@@ -36,6 +36,12 @@ const CATALOG := {
 	&"laser_fire": {"path": "res://assets/audio/laser/laser_fire.wav", "db": -9.0, "loop": true},
 	&"laser_sizzle": {"path": "res://assets/audio/laser/laser_sizzle_%d.wav", "variants": 3, "db": -8.0, "voices": 3, "jitter": 0.1},
 	&"laser_powerdown": {"path": "res://assets/audio/laser/laser_powerdown.wav", "db": -5.0},
+	&"glac_rune": {"path": "res://assets/audio/glacial/glac_rune.wav", "db": -5.0},
+	&"glac_erupt": {"path": "res://assets/audio/glacial/glac_erupt.wav", "db": 0.0},
+	&"glac_freeze": {"path": "res://assets/audio/glacial/glac_freeze.wav", "db": -4.0},
+	&"glac_peak": {"path": "res://assets/audio/glacial/glac_peak.wav", "db": 0.0},
+	&"glac_wind": {"path": "res://assets/audio/glacial/glac_wind.wav", "db": -8.0, "loop": true},
+	&"glac_shatter": {"path": "res://assets/audio/glacial/glac_shatter_%d.wav", "variants": 3, "db": -6.0, "voices": 4, "jitter": 0.12},
 	&"laser_depart": {"path": "res://assets/audio/laser/laser_depart.wav", "db": -7.0},
 }
 

@@ -6,6 +6,7 @@ const SUITES := [
 	"res://tests/test_fx_timeline.gd",
 	"res://tests/test_sfx_catalog.gd",
 	"res://tests/test_environment.gd",
+	"res://tests/test_freeze.gd",
 ]
 
 var failures := 0

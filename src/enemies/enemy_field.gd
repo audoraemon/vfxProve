@@ -7,6 +7,7 @@ signal enemy_killed(enemy: DummyEnemy, kind: StringName)
 var bounds := Rect2(-6.5, -6.5, 13, 13)
 var env: EnvironmentField
 var lights: LightField
+var look := DummyEnemy.Look.TROOPER
 
 var _enemies: Array[DummyEnemy] = []
 
@@ -14,6 +15,7 @@ var _enemies: Array[DummyEnemy] = []
 func spawn(count: int, parent: Node, rng: RandomNumberGenerator) -> void:
 	for i in count:
 		var e := DummyEnemy.new()
+		e.look = look
 		e.rng.seed = rng.randi()
 		e.ground_pos = Vector2(
 			rng.randf_range(bounds.position.x, bounds.end.x),
@@ -81,6 +83,24 @@ func kill(e: DummyEnemy, kind: StringName, source := Vector2.INF) -> bool:
 	e.die(kind, source)
 	enemy_killed.emit(e, kind)
 	return true
+
+
+## Freeze living enemies within radius; returns how many were newly frozen.
+func freeze_radius(center: Vector2, r: float, seconds: float) -> int:
+	var count := 0
+	for e in in_radius(center, r):
+		if not e.is_frozen():
+			count += 1
+		e.freeze(seconds)
+	return count
+
+
+func frozen_in_radius(center: Vector2, r: float) -> Array[DummyEnemy]:
+	var out: Array[DummyEnemy] = []
+	for e in in_radius(center, r):
+		if e.is_frozen():
+			out.append(e)
+	return out
 
 
 func knock_from(center: Vector2, r_min: float, r_max: float, force: float) -> void:

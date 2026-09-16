@@ -17,6 +17,8 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind) -> Structur
 	s.lights = lights
 	s.fx_parent = fx_parent
 	s.fx_back = fx_back
+	if kind == Structure.Kind.TORCH and lights != null:
+		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)
 	if world_parent != null:
 		world_parent.add_child(s)
@@ -39,6 +41,31 @@ func build_city() -> void:
 		[Rect2(1.8, -3.2, 1.6, 0.35), 14.0, W], [Rect2(-3.2, 1.8, 0.35, 1.6), 14.0, W],
 		[Rect2(0.6, -1.8, 0.6, 0.6), 12.0, C], [Rect2(-1.9, 0.9, 0.7, 0.5), 10.0, C],
 		[Rect2(3.4, 0.4, 0.6, 0.6), 12.0, C], [Rect2(-4.4, -0.6, 0.6, 0.6), 11.0, C],
+	]
+	for item in layout:
+		add_structure(item[0], item[1], item[2])
+
+
+## Castle courtyard: keeps on the corners, crenellated walls along the back edges, timber houses,
+## barricades and torches, leaving the middle open for the horde.
+func build_castle() -> void:
+	var K := Structure.Kind.KEEP
+	var W := Structure.Kind.CASTLE_WALL
+	var H := Structure.Kind.HOUSE
+	var T := Structure.Kind.TORCH
+	var C := Structure.Kind.CRATES
+	var layout := [
+		[Rect2(-6.6, -6.6, 1.8, 1.8), 96.0, K], [Rect2(4.8, -6.6, 1.8, 1.8), 88.0, K],
+		[Rect2(-6.6, 4.9, 1.6, 1.6), 80.0, K],
+		[Rect2(-4.6, -6.5, 9.2, 0.7), 34.0, W], [Rect2(-6.5, -4.6, 0.7, 9.3), 34.0, W],
+		[Rect2(-3.0, -4.9, 1.8, 1.2), 24.0, H], [Rect2(1.0, -5.0, 1.4, 1.4), 22.0, H],
+		[Rect2(-5.2, 1.4, 1.2, 1.8), 24.0, H], [Rect2(4.8, 2.0, 1.4, 1.6), 22.0, H],
+		[Rect2(2.2, 4.8, 1.8, 1.2), 22.0, H],
+		[Rect2(-2.6, 2.6, 1.4, 0.4), 12.0, C], [Rect2(2.4, -1.8, 0.5, 1.2), 12.0, C],
+		[Rect2(-3.4, -2.2, 0.5, 0.5), 10.0, C],
+		[Rect2(-4.2, -5.6, 0.2, 0.2), 16.0, T], [Rect2(3.6, -5.6, 0.2, 0.2), 16.0, T],
+		[Rect2(-5.6, -1.2, 0.2, 0.2), 16.0, T], [Rect2(-5.6, 3.4, 0.2, 0.2), 16.0, T],
+		[Rect2(0.2, 3.2, 0.2, 0.2), 16.0, T], [Rect2(4.2, -0.6, 0.2, 0.2), 16.0, T],
 	]
 	for item in layout:
 		add_structure(item[0], item[1], item[2])

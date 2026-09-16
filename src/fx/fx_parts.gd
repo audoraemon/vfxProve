@@ -16,6 +16,7 @@ const SH_REFRACT := preload("res://shaders/refract_ring.gdshader")
 const SH_BEAM_ADD := preload("res://shaders/beam_add.gdshader")
 const SH_MOLTEN := preload("res://shaders/molten_trail.gdshader")
 const SH_MUSHROOM := preload("res://shaders/mushroom_cloud.gdshader")
+const SH_FROST := preload("res://shaders/frost_ground.gdshader")
 
 ## Vertical screen pixels per ground unit along a ground radius (minor ellipse axis).
 const PX_PER_UNIT_MINOR := 16.0 * sqrt(2.0)
@@ -25,6 +26,8 @@ const PX_PER_UNIT_MAJOR := 32.0 * sqrt(2.0)
 # Shader ramps: darkest -> brightest (c0..c4).
 const FIRE := [Color(0.35, 0.04, 0.03, 0.55), Color("b3240f"), Color("ff6a1a"), Color("ffc14a"), Color("fff6d8")]
 const VOID := [Color(0.1, 0.02, 0.18, 0.6), Color("3b1470"), Color("7a3cf0"), Color("b98cff"), Color("f4ecff")]
+const ICE := [Color(0.06, 0.12, 0.3, 0.55), Color("2a5aa8"), Color("5aa0e8"), Color("b8e6ff"), Color("f4fcff")]
+const ICE_WAVE := [Color(0.55, 0.78, 1.0, 0.3), Color("8cc8f0"), Color("c8ecff"), Color("eaf8ff"), Color("ffffff")]
 const LASER := [Color(0.45, 0.03, 0.05, 0.5), Color("c8141e"), Color("ff3a2a"), Color("ff9a6a"), Color("fff0e8")]
 const ION := [Color(0.05, 0.12, 0.35, 0.5), Color("1f4fd6"), Color("2fa0ff"), Color("8fe6ff"), Color("f0fdff")]
 
@@ -40,13 +43,17 @@ const HOT_ROCK := [Color("ffc060"), Color("e0602a"), Color("8a3a22"), Color("4a3
 const RAD_LIFE := [Color("f0ffb0"), Color("a8ff4a"), Color("5fcf2a"), Color(0.2, 0.5, 0.1, 0.55)]
 const ION_LIFE := [Color("f0fdff"), Color("8fe6ff"), Color("2fa0ff"), Color(0.1, 0.3, 0.8, 0.5)]
 const VOID_LIFE := [Color("f4ecff"), Color("b98cff"), Color("7a3cf0"), Color("3b1470"), Color(0.12, 0.03, 0.2, 0.5)]
+const ICE_LIFE := [Color("ffffff"), Color("dff4ff"), Color("8cc8f0"), Color("4f8fd0"), Color(0.18, 0.36, 0.7, 0.5)]
+const ICE_CHUNK := [Color("eaf8ff"), Color("a8dcff"), Color("5a9ee0"), Color("2e5a98")]
+const SNOW_LIFE := [Color("ffffff"), Color("eef8ff"), Color(0.85, 0.93, 1.0, 0.7), Color(0.8, 0.9, 1.0, 0.35)]
+const MIST_LIFE := [Color(0.85, 0.92, 1.0, 0.45), Color(0.75, 0.85, 0.98, 0.35), Color(0.65, 0.78, 0.95, 0.22)]
 const LASER_LIFE := [Color("fff0e8"), Color("ff9a6a"), Color("ff3a2a"), Color("c8141e"), Color(0.4, 0.03, 0.05, 0.5)]
 
 
 ## Draw every VFX shader once, nearly invisible, so the renderer compiles them up front
 ## instead of hitching on an effect's first impact frame.
 static func prewarm(parent: Node2D, frames := 3) -> void:
-	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN, SH_MUSHROOM]:
+	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN, SH_MUSHROOM, SH_FROST]:
 		var q := QuadFx.new().setup(shader, Vector2(4, 4))
 		q.modulate.a = 0.02
 		parent.add_child(q)
@@ -174,6 +181,15 @@ static func refract_ring(fx: FxTimeline, center: Vector2, radius: float, tint: C
 	q.position = Iso.ground_to_screen(center)
 	q.set_param("size_px", size)
 	q.set_param("tint", tint)
+	return q
+
+
+## Frozen-ground decal on the ground plane; drive `progress` 0..1 to spread it.
+static func frost_ground(fx: FxTimeline, center: Vector2, radius: float) -> QuadFx:
+	var q := quad(fx, SH_FROST, Vector2.ONE * radius * 2.0, fx.ctx.ground)
+	q.position = center
+	q.z_index = 2
+	q.set_param("seed", fx.ctx.rng.randf() * 40.0)
 	return q
 
 

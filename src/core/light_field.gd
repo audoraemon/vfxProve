@@ -7,6 +7,8 @@ extends Node
 var _lights: Array[Dictionary] = []
 ## World ambient 0..1 (1 = normal). Lowered while effects dim the scene; lit things multiply by it.
 var ambient := 1.0
+var _next_id := 1
+var _time := 0.0
 
 
 ## Follow a QuadFx light pool: intensity is read from its shader each frame; position from
@@ -22,14 +24,31 @@ func pulse(center: Vector2, radius: float, color: Color, intensity: float, secon
 		"life": seconds, "start": intensity, "duration": seconds, "quad": null, "getter": Callable()})
 
 
+## Persistent light (torches, braziers) with optional flicker 0..1. Returns an id for remove().
+func add_static(center: Vector2, radius: float, color: Color, intensity: float, flicker := 0.0) -> int:
+	var id := _next_id
+	_next_id += 1
+	_lights.append({"pos": center, "radius": radius, "color": color, "intensity": intensity, "base": intensity,
+		"life": -1.0, "static": true, "id": id, "flicker": flicker, "quad": null, "getter": Callable()})
+	return id
+
+
+func remove(id: int) -> void:
+	_lights = _lights.filter(func(l): return l.get("id", 0) != id)
+
+
 func clear() -> void:
 	_lights.clear()
 
 
 func _process(delta: float) -> void:
+	_time += delta
 	var keep: Array[Dictionary] = []
 	for l in _lights:
-		if l.quad != null:
+		if l.get("static", false):
+			var f: float = l.flicker
+			l.intensity = l.base * (1.0 - f * 0.25 + f * 0.25 * sin(_time * 13.0 + l.id * 1.7) * sin(_time * 7.3 + l.id))
+		elif l.quad != null:
 			if not is_instance_valid(l.quad):
 				continue
 			var v = l.quad.mat.get_shader_parameter("intensity")

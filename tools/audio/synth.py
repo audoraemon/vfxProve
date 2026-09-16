@@ -433,6 +433,79 @@ def grav_shimmer(rng, dur):
     return reverb(x, size=1.3, feedback=0.85, mix=0.45)[:n]
 
 
+def _chimes(n, rng, count, lo, hi, tau):
+    x = np.zeros(n)
+    for _ in range(count):
+        f = rng.uniform(lo, hi)
+        k = int(rng.uniform(0, 0.7) * n)
+        m = n - k
+        env = decay(m, tau * rng.uniform(0.6, 1.4)) * attack(m, 0.01)
+        x[k:] += (sine(f, m) + 0.35 * sine(f * 2.76, m)) * env * rng.uniform(0.4, 1.0)
+    return x
+
+
+def glac_rune(rng, dur):
+    """Frost rune forming: shimmering crystal chimes over a thin cold wind."""
+    n = int(dur * SR)
+    chimes = _chimes(n, rng, 14, 1800, 5200, 0.35)
+    wind = sweep_filter(noise(n, rng), "bandpass", ramp(600, 1800, n, "exp"), q=0.4) * 0.35
+    x = chimes * 0.5 + wind * ramp(0.2, 1.0, n)
+    return reverb(x * attack(n, 0.15), size=1.3, feedback=0.84, mix=0.4)[:n]
+
+
+def glac_erupt(rng, dur):
+    """Ice spikes bursting: crystalline crunch, many cracks, deep thud."""
+    n = int(dur * SR)
+    thud = sine(ramp(90, 35, n, "exp"), n) * decay(n, 0.25)
+    body = sweep_filter(noise(n, rng), "lowpass", ramp(2500, 120, n, "exp")) * decay(n, 0.35) * 1.4
+    crunch = clicks(n, 260, rng, 0.004, 2500, amp=(0.2, 1.0), density=decay(n, 0.45)) * 0.9
+    ping = _chimes(n, rng, 10, 2500, 7000, 0.12) * 0.35
+    x = saturate(thud * 1.3 + body + crunch + ping, 2.2)
+    return reverb(x, size=1.1, mix=0.25, damp=6000)[:n]
+
+
+def glac_freeze(rng, dur):
+    """Freeze wave: rushing air with crackling frost racing outward."""
+    n = int(dur * SR)
+    air = sweep_filter(noise(n, rng), "highpass", ramp(800, 4000, n, "exp")) * decay(n, 0.6) * 0.8
+    crackle = clicks(n, 400, rng, 0.002, 3500, amp=(0.1, 0.8), density=np.sin(np.linspace(0, np.pi, n)) ** 0.6)
+    x = air + crackle * 0.7
+    return reverb(x * attack(n, 0.02), size=1.0, mix=0.25)[:n]
+
+
+def glac_peak(rng, dur):
+    """Crystal mountain peaks: resonant glassy chord and a deep boom."""
+    n = int(dur * SR)
+    chord = np.zeros(n)
+    for f in (523.25, 659.25, 783.99, 1046.5, 1318.5):
+        chord += (sine(f * rng.uniform(0.997, 1.003), n) + 0.3 * sine(f * 2.76, n)) * decay(n, 1.2)
+    boom = saturate(sine(ramp(70, 28, n, "exp"), n) * decay(n, 0.7) * 1.4
+                    + lowpass(noise(n, rng), 300) * decay(n, 0.4), 2.5)
+    shimmer = highpass(noise(n, rng), 6000) * decay(n, 0.5) * 0.25
+    x = chord * 0.22 + boom + shimmer
+    return reverb(x * attack(n, 0.003), size=1.5, feedback=0.86, mix=0.35)[:n]
+
+
+def glac_wind(rng, dur):
+    """Cold wind loop."""
+    n = int(dur * SR)
+    total = n + int(0.06 * SR)
+    t = np.arange(total) / SR
+    lfo = 0.5 + 0.5 * np.sin(2 * np.pi * 0.5 * t)
+    wind = sweep_filter(noise(total, rng), "bandpass", 500 + 900 * lfo, q=0.35)
+    whistle = sine(1400 + 300 * np.sin(2 * np.pi * 0.25 * t), total) * 0.04 * lfo
+    return loopify(wind * (0.6 + 0.4 * lfo) + whistle, n)
+
+
+def glac_shatter(rng, dur, variant):
+    """Ice breaking like glass."""
+    n = int(dur * SR)
+    burst = highpass(noise(n, rng), 3000 + variant * 400) * decay(n, 0.03)
+    pings = _chimes(n, rng, 8 + variant * 2, 2500, 8000, 0.06)
+    tinkle = clicks(n, 120, rng, 0.002, 4000, amp=(0.1, 0.6), density=decay(n, 0.15))
+    return (burst * 1.2 + pings * 0.5 + tinkle * 0.6) * attack(n, 0.001)
+
+
 def laser_scan(rng, dur):
     n = int(dur * SR)
     tri = 1.0 - np.abs(np.linspace(-1, 1, n))
@@ -536,9 +609,16 @@ CUES: dict[str, tuple] = {
     "laser_fire": ("laser", laser_fire, 2.0, True),
     "laser_powerdown": ("laser", laser_powerdown, 0.8, False),
     "laser_depart": ("laser", laser_depart, 1.5, False),
+    "glac_rune": ("glacial", glac_rune, 1.2, False),
+    "glac_erupt": ("glacial", glac_erupt, 2.0, False),
+    "glac_freeze": ("glacial", glac_freeze, 1.2, False),
+    "glac_peak": ("glacial", glac_peak, 3.0, False),
+    "glac_wind": ("glacial", glac_wind, 2.0, True),
 }
 for _v in range(1, 5):
     CUES[f"orb_hit_{_v}"] = ("orbital", lambda rng, dur, v=_v: orb_hit(rng, dur, v), 0.9, False)
+for _v in range(1, 4):
+    CUES[f"glac_shatter_{_v}"] = ("glacial", lambda rng, dur, v=_v: glac_shatter(rng, dur, v), 0.5, False)
 for _v in range(1, 4):
     CUES[f"laser_sizzle_{_v}"] = ("laser", lambda rng, dur, v=_v: laser_sizzle(rng, dur, v), 0.3, False)
 

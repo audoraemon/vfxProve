@@ -5,6 +5,7 @@ extends Node2D
 ## lasers cut the body apart into embers.
 
 enum State { WANDER, KNOCKBACK, PULLED, DEAD }
+enum Look { TROOPER, ORC }
 
 const WALK_SPEED := 0.6
 const KNOCK_DECAY := 8.0
@@ -21,6 +22,19 @@ const COL_CHAR := Color("16100e")
 const COL_EMBER := Color("ff8a2a")
 const COL_HOT := Color("ffd27a")
 const COL_VOID := Color("b98cff")
+const COL_ICE := Color("b8e6ff")
+const COL_ICE_DEEP := Color("5aa0e8")
+const COL_ICE_HI := Color("f4fcff")
+## Orc horde skin: dark iron armor, red cloth, green skin.
+const ORC_DARK := Color("1e1a1c")
+const ORC_ARMOR := Color("4a3f3e")
+const ORC_ARMOR_HI := Color("75625a")
+const ORC_CLOTH := Color("9a2420")
+const ORC_SKIN := Color("5f7a3a")
+const ORC_EYE := Color("ffd23a")
+const ORC_HORN := Color("c8b89a")
+const ORC_BLADE := Color("8c929c")
+const ORC_HAFT := Color("5a4a3a")
 
 var ground_pos := Vector2.ZERO
 var state := State.WANDER
@@ -29,6 +43,7 @@ var rng := RandomNumberGenerator.new()
 ## Optional: effect lights tint the trooper; blocked(ground_pos) -> bool keeps walkers out of buildings.
 var lights: LightField
 var blocked: Callable
+var look := Look.TROOPER
 
 var _velocity := Vector2.ZERO
 var _target := Vector2.ZERO
@@ -49,6 +64,9 @@ var _spin := 0.0
 var _char := 0.0
 var _toward := Vector2.ZERO
 var _embers: Array[Vector3] = []
+var _frozen := 0.0
+## Ice shards for the shatter death: x, y position; z, w velocity.
+var _shards: Array[Vector4] = []
 
 
 func _ready() -> void:
@@ -67,6 +85,10 @@ func _process(delta: float) -> void:
 
 func tick(delta: float) -> void:
 	_flash = maxf(_flash - delta, 0.0)
+	if _frozen > 0.0 and state != State.DEAD:
+		_frozen = maxf(_frozen - delta, 0.0)
+		_sync_position()
+		return
 	match state:
 		State.WANDER:
 			_anim += delta
@@ -110,6 +132,10 @@ func _tick_death(delta: float) -> void:
 			_char = minf(_char + delta * 3.5, 1.0)
 		&"gravity":
 			_char = minf(_char + delta * 6.0, 1.0)
+		&"ice":
+			for i in _shards.size():
+				var s := _shards[i]
+				_shards[i] = Vector4(s.x + s.z * delta, s.y + s.w * delta, s.z * 0.96, s.w + 260.0 * delta)
 		&"laser":
 			_fly += Vector2(_facing * 10.0, 6.0) * delta * clampf(0.4 - _dead_time, 0.0, 0.4) * 10.0
 			for i in _embers.size():
@@ -117,7 +143,7 @@ func _tick_death(delta: float) -> void:
 				_embers[i] = Vector3(e.x + sin(_dead_time * 9.0 + i) * 6.0 * delta, e.y - 18.0 * delta, e.z - delta)
 		_:
 			pass
-	var fade_start := 0.25 if _kind == &"gravity" else 0.6
+	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else 0.6)
 	modulate.a = clampf(1.0 - (_dead_time - fade_start) / (DEATH_FADE - fade_start), 0.0, 1.0)
 	if _kind == &"gravity" and _dead_time > 0.3:
 		modulate.a = 0.0
@@ -125,15 +151,29 @@ func _tick_death(delta: float) -> void:
 		queue_free()
 
 
-func knock(v: Vector2) -> void:
+## Encase in ice for `seconds`: no walking, pull or knockback until it thaws.
+func freeze(seconds: float) -> void:
 	if state == State.DEAD:
+		return
+	if state == State.PULLED or state == State.KNOCKBACK:
+		state = State.WANDER
+	_velocity = Vector2.ZERO
+	_frozen = maxf(_frozen, seconds)
+
+
+func is_frozen() -> bool:
+	return _frozen > 0.0 and state != State.DEAD
+
+
+func knock(v: Vector2) -> void:
+	if state == State.DEAD or is_frozen():
 		return
 	state = State.KNOCKBACK
 	_velocity = v
 
 
 func pull_step(center: Vector2, strength: float, swirl: float, delta: float) -> void:
-	if state == State.DEAD:
+	if state == State.DEAD or is_frozen():
 		return
 	state = State.PULLED
 	var to := center - ground_pos
@@ -155,6 +195,7 @@ func release() -> void:
 
 ## source: ground position the damage came from (INF = none).
 func die(kind: StringName, source := Vector2.INF) -> void:
+	_frozen = 0.0
 	state = State.DEAD
 	_kind = kind
 	_flash = 0.1
@@ -171,6 +212,12 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			_spin = rng.randf_range(8.0, 16.0) * (1.0 if away.x >= 0.0 else -1.0)
 		&"gravity":
 			_toward = -away
+		&"ice":
+			_flash = 0.05
+			for i in 14:
+				var a := rng.randf() * TAU
+				var sp := rng.randf_range(20.0, 75.0)
+				_shards.append(Vector4(rng.randf_range(-4, 4), rng.randf_range(-14, -2), cos(a) * sp, sin(a) * sp * 0.6 - 60.0))
 		&"laser":
 			_flash = 0.06
 			for i in 10:
@@ -210,6 +257,10 @@ func _sync_position() -> void:
 func _tint(c: Color) -> Color:
 	if _flash > 0.0:
 		return Color.WHITE
+	if is_frozen():
+		# Colors wash to pale ice; in the last second before thawing the original shows through.
+		var k := clampf(_frozen, 0.0, 1.0)
+		return c.lerp(COL_ICE_DEEP.lerp(COL_ICE, clampf(c.get_luminance() * 1.6, 0.0, 1.0)), 0.75 * k)
 	if _kind == &"gravity" and state == State.DEAD:
 		return c.lerp(COL_VOID, _char * 0.8)
 	return c.lerp(COL_CHAR, _char * 0.85)
@@ -231,16 +282,23 @@ func _draw() -> void:
 				_draw_stretched()
 			&"laser":
 				_draw_cut()
+			&"ice":
+				_draw_shatter()
 			_:
 				_draw_corpse()
 		return
 	draw_rect(Rect2(-4, -1, 9, 2), COL_SHADOW)
 	_draw_body(-int(round(_lift)), 0)
+	if is_frozen():
+		_draw_ice_shell()
 
 
 ## bottom_clip: skip rows below this offset from feet (0 = whole body). Used for the laser cut.
 func _draw_body(lift: int, top_only: int) -> void:
-	var step := int(_anim * 6.0) % 2 if state != State.DEAD else 0
+	if look == Look.ORC:
+		_draw_orc(lift, top_only)
+		return
+	var step := int(_anim * 6.0) % 2 if state != State.DEAD and not is_frozen() else 0
 	var f := _facing
 	if top_only == 0:
 		_px(-3, -5 + lift, 2, 5 - step, COL_DARK)
@@ -301,6 +359,55 @@ func _draw_cut() -> void:
 			var c := COL_HOT if e.z > 0.6 else COL_EMBER
 			c.a = clampf(e.z, 0.0, 1.0)
 			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), c)
+
+
+## Bulky orc raider: horned iron helm, red cloth, green arms, cleaver.
+func _draw_orc(lift: int, top_only: int) -> void:
+	var step := int(_anim * 5.0) % 2 if state != State.DEAD and not is_frozen() else 0
+	var f := _facing
+	if top_only == 0:
+		_px(-4, -5 + lift, 3, 5 - step, ORC_DARK)
+		_px(1, -5 + lift, 3, 4 + step, ORC_DARK)
+	_px(-5, -12 + lift, 10, 7, ORC_ARMOR)
+	_px(-5, -12 + lift, 10, 1, ORC_ARMOR_HI)
+	_px(-3, -7 + lift, 6, 2, ORC_CLOTH)
+	_px(-6, -11 + lift, 1, 4, ORC_SKIN)
+	_px(5, -11 + lift, 1, 4, ORC_SKIN)
+	_px(-3, -16 + lift, 6, 4, ORC_ARMOR)
+	_px(-3, -16 + lift, 6, 1, ORC_ARMOR_HI)
+	_px(-4, -18 + lift, 1, 3, ORC_HORN)
+	_px(3, -18 + lift, 1, 3, ORC_HORN)
+	if state != State.DEAD or _char < 0.5:
+		_px(-1 if f > 0 else -2, -14 + lift, 3, 1, ORC_EYE)
+	_px(5 * f, -13 + lift, 1, 6, ORC_HAFT)
+	_px(5 * f + (1 if f > 0 else -2), -14 + lift, 2, 3, ORC_BLADE)
+
+
+## Translucent ice block around the frozen body, with facet highlights and frost at the feet.
+func _draw_ice_shell() -> void:
+	var a := 0.55 * clampf(_frozen / 0.6, 0.0, 1.0)
+	var body := PackedVector2Array([Vector2(-7, 1), Vector2(-8, -9), Vector2(-5, -20), Vector2(1, -22),
+		Vector2(7, -17), Vector2(8, -6), Vector2(6, 1)])
+	draw_colored_polygon(body, Color(COL_ICE.r, COL_ICE.g, COL_ICE.b, a * 0.55))
+	var outline := body.duplicate()
+	outline.append(body[0])
+	draw_polyline(outline, Color(COL_ICE_HI, minf(a * 1.4, 1.0)), -1.0)
+	draw_line(Vector2(-5, -19), Vector2(-6, -8), Color(COL_ICE_HI, minf(a * 1.6, 1.0)), -1.0)
+	draw_line(Vector2(2, -21), Vector2(6, -16), Color(COL_ICE_HI, minf(a * 1.2, 1.0)), -1.0)
+	draw_rect(Rect2(-9, -1, 18, 2), Color(COL_ICE_DEEP, a))
+	if fmod(_frozen * 2.3 + float(rng.seed % 7), 1.6) < 0.1:
+		draw_rect(Rect2(-5, -19, 1, 1), COL_ICE_HI)
+
+
+func _draw_shatter() -> void:
+	if _dead_time < 0.06:
+		_draw_body(0, 0)
+		return
+	for s in _shards:
+		if s.y < 0.0:
+			draw_rect(Rect2(Vector2(s.x, s.y).round(), Vector2(2, 1)), COL_ICE_HI if int(absf(s.x) * 3.0) % 2 == 0 else COL_ICE)
+		else:
+			draw_rect(Rect2(Vector2(s.x, 0).round(), Vector2(1, 1)), COL_ICE_DEEP)
 
 
 func _draw_corpse() -> void:

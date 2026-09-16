@@ -13,6 +13,14 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 
 **Destructible city + effect lighting**: `src/environment/` builds a small city block of towers, blocks, barricades and crates drawn as lit iso pixel boxes. Structures take damage per effect — blasts collapse them outward into rubble with dust, debris and fires, the laser cuts them and the top slides off, gravity shakes then crumbles them inward — and walkers path around standing ones. `src/core/light_field.gd` collects every effect light pool, so building faces facing a light and nearby troopers are lit by fireballs, beams and void glow; the anticipation dim darkens the ground while lit faces still glow.
 
+**Set2 fantasy skills** (KWAI castle defense, concepts in `concepts/Set2/`): press `Tab` to switch to a fantasy castle map (stone courtyard, crenellated walls and keeps, timber houses, torches that light the scene, orc horde). Built so far:
+
+| Key | Effect | Stages |
+|---|---|---|
+| 1 | **Glacial Cataclysm** | glowing frost rune + cold mist → faceted ice spikes erupt (impact frame, hit-stop) → freeze wave spreads, frozen ground, enemies encased in ice → crystal mountain surges to full height, close frozen enemies shatter → outer spikes break into residue, icy fog, snow |
+
+Remaining Set2 effects (Heaven Splitter, Cinderfall Barrage, Tsunami Breaker, Tornado Tempest, Judgement of the Ancients, Dragonfire Parade) are listed in the HUD with `*` until built. Design: `docs/superpowers/specs/2026-09-16-set2-fantasy-vfx-design.md`.
+
 Everything is procedural: canvas shaders, a small pixel particle system, code-drawn sprites, and synthesized audio. No external art or sound assets.
 
 Settings match the sibling KWAI project: Godot 4.7.2, GL Compatibility, 640×360 viewport scaled ×2 with nearest filtering, 64×32 iso cells.
@@ -30,7 +38,8 @@ Or open the folder in the Godot 4.7.2 editor and press F5.
 
 | Input | Action |
 |---|---|
-| `1`–`4` | select effect |
+| `1`–`7` | select effect |
+| `Tab` | switch effect set (Set1 sci-fi city / Set2 fantasy castle) |
 | Left click | cast at cursor |
 | Left drag (Laser Grid) | press = lane start, drag direction = walk direction (short click walks down-right) |
 | `R` | respawn 40 enemies |
@@ -59,8 +68,8 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=109 failures=0
-python tools/audio/synth.py --verify                 # audio cue checks → 33 cues, 0 problems
+bash tools/test.sh                                   # headless tests → checks=135 failures=0
+python tools/audio/synth.py --verify                 # audio cue checks → 41 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png
 ```

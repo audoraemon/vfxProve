@@ -1,11 +1,24 @@
 extends Node2D
 ## VFX sandbox: iso floor, dummy enemies, effect picker, capture and bench modes.
 
+## Set 0: sci-fi city. Set 1: fantasy castle (KWAI). Tab switches set and rebuilds the map.
+const SETS := [
+	{"name": "Set1 Sci-Fi", "theme": "scifi", "clear": Color("07080d")},
+	{"name": "Set2 Fantasy", "theme": "fantasy", "clear": Color("0b0908")},
+]
+## `lane`: cast with a drag direction.
 const EFFECTS := [
-	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd"},
-	{"key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd"},
-	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd"},
-	{"key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd"},
+	{"set": 0, "key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd"},
+	{"set": 0, "key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd"},
+	{"set": 0, "key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd"},
+	{"set": 0, "key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd", "lane": true},
+	{"set": 1, "key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd"},
+	{"set": 1, "key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd", "lane": true},
+	{"set": 1, "key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd"},
+	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true},
+	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true},
+	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd"},
+	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "lane": true},
 ]
 
 ## Capture moments per effect (seconds from cast).
@@ -14,6 +27,7 @@ const CAPTURES := {
 	"orbital": {"target": Vector2(0, 0), "times": [2.6, 3.4]},
 	"gravity": {"target": Vector2(0, 0), "times": [1.5, 2.6, 3.6, 4.02, 4.2, 4.5, 5.5]},
 	"laser": {"target": Vector2(-4.5, 0), "dir": Vector2(1, 0), "times": [1.9, 2.8, 3.8, 4.8, 5.4, 6.2, 7.0]},
+	"glacial": {"target": Vector2(0, 0), "times": [0.8, 1.35, 1.7, 2.6, 3.4, 4.0, 5.5, 8.0]},
 }
 
 const ENEMY_COUNT := 40
@@ -22,6 +36,8 @@ const LASER_DRAG_MIN := 0.5
 
 var ctx := FxContext.new()
 var selected := 0
+var set_index := 0
+var _tiles: Node2D
 
 var _field: EnemyField
 var _camera: CameraShake
@@ -40,6 +56,13 @@ func _ready() -> void:
 	_build_world()
 	var args := OS.get_cmdline_user_args()
 	var seed_value := 7 if _has_any_flag(args) else Time.get_ticks_usec()
+	if _arg_value(args, "--set") != "":
+		set_index = int(_arg_value(args, "--set"))
+	var only := _arg_value(args, "--only")
+	if only != "":
+		for e in EFFECTS:
+			if e.key == only:
+				set_index = e.set
 	_reset_world(seed_value)
 	_update_hud()
 	await FxParts.prewarm(ctx.distort)
@@ -71,10 +94,10 @@ func _build_world() -> void:
 	_ground_plane.transform = Iso.BASIS
 	_ground_plane.z_index = -10
 	add_child(_ground_plane)
-	var tiles := Node2D.new()
-	tiles.name = "Tiles"
-	tiles.set_script(preload("res://src/sandbox/ground_tiles.gd"))
-	_ground_plane.add_child(tiles)
+	_tiles = Node2D.new()
+	_tiles.name = "Tiles"
+	_tiles.set_script(preload("res://src/sandbox/ground_tiles.gd"))
+	_ground_plane.add_child(_tiles)
 
 	_drag_preview = Node2D.new()
 	_drag_preview.name = "DragPreview"
@@ -190,8 +213,16 @@ func _screen_flash(color: Color, seconds: float) -> void:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
+func _visible_effects() -> Array:
+	return EFFECTS.filter(func(e): return e.set == set_index)
+
+
 func _reset_world(seed_value: int) -> void:
 	_rng.seed = seed_value
+	var theme: String = SETS[set_index].theme
+	RenderingServer.set_default_clear_color(SETS[set_index].clear)
+	_tiles.theme = theme
+	_field.look = DummyEnemy.Look.ORC if theme == "fantasy" else DummyEnemy.Look.TROOPER
 	ctx.impact.dim(0.0, 100.0)
 	for layer in [ctx.overhead_back, ctx.overhead, ctx.distort]:
 		for c in layer.get_children():
@@ -200,12 +231,18 @@ func _reset_world(seed_value: int) -> void:
 	ctx.lights.clear()
 	ctx.env.clear()
 	ctx.env.rng.seed = seed_value
-	ctx.env.build_city()
+	if theme == "fantasy":
+		ctx.env.build_castle()
+	else:
+		ctx.env.build_city()
 	_field.spawn(ENEMY_COUNT, ctx.world, _rng)
 
 
 func cast(index: int, ground: Vector2, extra := {}) -> FxTimeline:
-	var entry: Dictionary = EFFECTS[index]
+	return _cast_entry(_visible_effects()[index], ground, extra)
+
+
+func _cast_entry(entry: Dictionary, ground: Vector2, extra := {}) -> FxTimeline:
 	if not ResourceLoader.exists(entry.path):
 		push_warning("Effect not built yet: %s" % entry.name)
 		return null
@@ -219,8 +256,15 @@ func _mouse_ground() -> Vector2:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
-			KEY_1, KEY_2, KEY_3, KEY_4:
-				selected = event.physical_keycode - KEY_1
+			KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7:
+				var i: int = event.physical_keycode - KEY_1
+				if i < _visible_effects().size():
+					selected = i
+					_update_hud()
+			KEY_TAB:
+				set_index = (set_index + 1) % SETS.size()
+				selected = 0
+				_reset_world(Time.get_ticks_usec())
 				_update_hud()
 			KEY_R:
 				_reset_world(Time.get_ticks_usec())
@@ -237,7 +281,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pressing = false
 			_drag_preview.queue_redraw()
 			var extra := {}
-			if EFFECTS[selected].key == "laser":
+			if _visible_effects()[selected].get("lane", false):
 				var drag := _mouse_ground() - _press_ground
 				extra["dir"] = drag.normalized() if drag.length() >= LASER_DRAG_MIN else Vector2(1, 0)
 			cast(selected, _press_ground, extra)
@@ -264,7 +308,7 @@ func _process(delta: float) -> void:
 
 
 func _draw_drag_preview() -> void:
-	if not _pressing or EFFECTS[selected].key != "laser":
+	if not _pressing or not _visible_effects()[selected].get("lane", false):
 		return
 	var to := _mouse_ground()
 	var col := Color(1, 0.35, 0.2, 0.9)
@@ -274,11 +318,17 @@ func _draw_drag_preview() -> void:
 
 func _update_hud() -> void:
 	var names := []
-	for i in EFFECTS.size():
-		var label := "%d %s" % [i + 1, EFFECTS[i].name]
+	var list := _visible_effects()
+	for i in list.size():
+		var label := "%d %s" % [i + 1, list[i].name]
+		if not ResourceLoader.exists(list[i].path):
+			label += "*"
 		names.append("[%s]" % label if i == selected else " %s " % label)
+		if i == 3 and list.size() > 4:
+			names.append("\n   ")
 	var slow := "  SLOW-MO x0.25" if ctx.impact.base_time_scale < 0.5 else ""
-	_hud.text = "  ".join(names) + "\nLMB cast (Laser: drag = direction)   R respawn   SPACE slow-mo   WASD pan" + slow
+	_hud.text = "%s:  %s\nLMB cast (lane skills: drag = direction)   TAB switch set   R respawn   SPACE slow-mo   WASD pan%s" % [
+		SETS[set_index].name, "  ".join(names), slow]
 
 
 ## Stop voices before quitting so the audio server does not leak playbacks.
@@ -323,21 +373,22 @@ func _capture_idle() -> void:
 
 
 func _capture_all(only: String) -> void:
-	for i in EFFECTS.size():
-		var key: String = EFFECTS[i].key
+	for entry in EFFECTS:
+		var key: String = entry.key
 		if only != "" and only != key:
 			continue
-		if not ResourceLoader.exists(EFFECTS[i].path):
+		if not ResourceLoader.exists(entry.path) or not CAPTURES.has(key):
 			print("skip (not built): ", key)
 			continue
 		var plan: Dictionary = CAPTURES[key]
+		set_index = entry.set
 		_reset_world(7)
-		_hud.text = EFFECTS[i].name
+		_hud.text = entry.name
 		await _wait_frames(10)
 		var extra := {}
 		if plan.has("dir"):
 			extra["dir"] = plan.dir
-		var fx := cast(i, plan.target, extra)
+		var fx := _cast_entry(entry, plan.target, extra)
 		for time in plan.times:
 			while is_instance_valid(fx) and fx.t < time:
 				await get_tree().process_frame
@@ -350,11 +401,12 @@ func _capture_all(only: String) -> void:
 func _bench(only: String) -> void:
 	await _wait_frames(10)
 	var spots := [Vector2(-3, -3), Vector2(3, -3), Vector2(-3, 3), Vector2(-5, 3)]
-	for i in EFFECTS.size():
-		if only != "" and only != EFFECTS[i].key:
+	var list := _visible_effects()
+	for i in list.size():
+		if only != "" and only != list[i].key:
 			continue
-		if ResourceLoader.exists(EFFECTS[i].path):
-			cast(i, spots[i], {"dir": Vector2(1, 0)})
+		if ResourceLoader.exists(list[i].path):
+			_cast_entry(list[i], spots[i % spots.size()], {"dir": Vector2(1, 0)})
 	var worst := 0.0
 	var total := 0.0
 	var frames := 0

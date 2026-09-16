@@ -10,9 +10,9 @@ const EFFECTS := [
 
 ## Capture moments per effect (seconds from cast).
 const CAPTURES := {
-	"nova": {"target": Vector2(0, 0), "times": [0.9, 2.05, 2.36, 2.6, 3.0, 3.6, 5.5, 8.0]},
-	"orbital": {"target": Vector2(0, 0), "times": [0.7, 1.5, 2.2, 3.0, 3.8, 5.0, 6.2]},
-	"gravity": {"target": Vector2(0, 0), "times": [0.6, 1.6, 2.8, 3.8, 4.15, 4.4, 5.5]},
+	"nova": {"target": Vector2(0, 0), "times": [0.9, 2.05, 2.4, 2.75, 2.97, 3.15, 3.45, 4.4, 6.5, 9.0]},
+	"orbital": {"target": Vector2(0, 0), "times": [0.8, 1.7, 2.6, 3.4, 4.3, 5.2, 6.4, 8.0]},
+	"gravity": {"target": Vector2(0, 0), "times": [0.5, 1.5, 2.6, 3.4, 3.9, 4.18, 4.4, 5.2, 6.6]},
 	"laser": {"target": Vector2(-4.5, 0), "dir": Vector2(1, 0), "times": [0.7, 1.4, 1.9, 2.8, 3.8, 5.0, 6.2]},
 }
 

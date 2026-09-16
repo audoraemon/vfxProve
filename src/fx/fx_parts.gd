@@ -9,6 +9,10 @@ const SH_BEAM := preload("res://shaders/beam_glow.gdshader")
 const SH_DECAL := preload("res://shaders/scorch_decal.gdshader")
 const SH_FOG := preload("res://shaders/fog.gdshader")
 const SH_SING := preload("res://shaders/singularity.gdshader")
+const SH_LIGHT := preload("res://shaders/light_glow.gdshader")
+const SH_RAYS := preload("res://shaders/god_rays.gdshader")
+const SH_HAZE := preload("res://shaders/heat_haze.gdshader")
+const SH_REFRACT := preload("res://shaders/refract_ring.gdshader")
 
 ## Vertical screen pixels per ground unit along a ground radius (minor ellipse axis).
 const PX_PER_UNIT_MINOR := 16.0 * sqrt(2.0)
@@ -24,9 +28,10 @@ const ION := [Color(0.05, 0.12, 0.35, 0.5), Color("1f4fd6"), Color("2fa0ff"), Co
 # Particle lifetime ramps: first color at birth.
 const FIRE_LIFE := [Color("fff6d8"), Color("ffc14a"), Color("ff6a1a"), Color("b3240f"), Color(0.35, 0.05, 0.03, 0.7)]
 const EMBER_LIFE := [Color("ffd27a"), Color("ff8a2a"), Color("d0401a"), Color(0.45, 0.1, 0.05, 0.6)]
-const SMOKE_LIFE := [Color("5a4640"), Color("45403f"), Color("35353b"), Color(0.17, 0.17, 0.2, 0.75), Color(0.12, 0.12, 0.15, 0.4)]
-const ROCK := [Color("6a6e78"), Color("4b4f59"), Color("33363e"), Color("25272e")]
-const HOT_ROCK := [Color("ffb04a"), Color("c8501e"), Color("5b3a30"), Color("33363e")]
+const SMOKE_LIFE := [Color("54443d"), Color("463f3d"), Color("3a383b"), Color("302f34"), Color(0.17, 0.17, 0.2, 0.8), Color(0.13, 0.13, 0.15, 0.45)]
+const DUST_LIFE := [Color("7a6656"), Color("675a50"), Color(0.33, 0.3, 0.29, 0.85), Color(0.24, 0.23, 0.23, 0.55)]
+const ROCK := [Color("5d6170"), Color("4b4f5b"), Color("3a3d47"), Color("2b2d35")]
+const HOT_ROCK := [Color("ffc060"), Color("e0602a"), Color("8a3a22"), Color("4a3632"), Color("33343c")]
 const RAD_LIFE := [Color("f0ffb0"), Color("a8ff4a"), Color("5fcf2a"), Color(0.2, 0.5, 0.1, 0.55)]
 const ION_LIFE := [Color("f0fdff"), Color("8fe6ff"), Color("2fa0ff"), Color(0.1, 0.3, 0.8, 0.5)]
 const VOID_LIFE := [Color("f4ecff"), Color("b98cff"), Color("7a3cf0"), Color("3b1470"), Color(0.12, 0.03, 0.2, 0.5)]
@@ -36,7 +41,7 @@ const LASER_LIFE := [Color("fff0e8"), Color("ff9a6a"), Color("ff3a2a"), Color("c
 ## Draw every VFX shader once, nearly invisible, so the renderer compiles them up front
 ## instead of hitching on an effect's first impact frame.
 static func prewarm(parent: Node2D, frames := 3) -> void:
-	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING]:
+	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT]:
 		var q := QuadFx.new().setup(shader, Vector2(4, 4))
 		q.modulate.a = 0.02
 		parent.add_child(q)
@@ -108,7 +113,69 @@ static func fog(fx: FxTimeline, center: Vector2, radius: float, color: Color) ->
 	return q
 
 
+## Additive light pool on the ground (lights tiles, decals; enemies stay unlit above it).
+static func ground_light(fx: FxTimeline, center: Vector2, radius: float, color: Color, intensity := 1.0) -> QuadFx:
+	var q := quad(fx, SH_LIGHT, Vector2.ONE * radius * 2.0, fx.ctx.ground)
+	q.position = center
+	q.z_index = 6
+	q.set_param("color", color)
+	q.set_param("intensity", intensity)
+	return q
+
+
+## Radial god-rays streaking across the ground from center.
+static func ground_rays(fx: FxTimeline, center: Vector2, radius: float, color: Color, count := 64.0) -> QuadFx:
+	var q := quad(fx, SH_RAYS, Vector2.ONE * radius * 2.0, fx.ctx.ground)
+	q.position = center
+	q.z_index = 7
+	q.set_param("color", color)
+	q.set_param("count", count)
+	q.set_param("radius_px", (PX_PER_UNIT_MAJOR + PX_PER_UNIT_MINOR) * 0.5 * radius)
+	return q
+
+
 # --- Screen space --------------------------------------------------------
+
+## Additive round bloom in screen space (px radius), drawn over everything below the distort layer.
+static func bloom(fx: FxTimeline, screen_pos: Vector2, radius_px: float, color: Color, intensity := 1.0,
+		squash := 1.0) -> QuadFx:
+	var q := quad(fx, SH_LIGHT, Vector2(radius_px * 2.0, radius_px * 2.0 * squash), fx.ctx.overhead)
+	q.position = screen_pos
+	q.z_index = 5
+	q.set_param("color", color)
+	q.set_param("intensity", intensity)
+	return q
+
+
+## Screen-space rays (round), e.g. a starburst over an explosion.
+static func screen_rays(fx: FxTimeline, screen_pos: Vector2, radius_px: float, color: Color, count := 48.0,
+		squash := 1.0) -> QuadFx:
+	var q := quad(fx, SH_RAYS, Vector2(radius_px * 2.0, radius_px * 2.0 * squash), fx.ctx.overhead)
+	q.position = screen_pos
+	q.z_index = 6
+	q.set_param("color", color)
+	q.set_param("count", count)
+	q.set_param("radius_px", radius_px)
+	return q
+
+
+## Screen-refracting shock ring over a ground radius; drive `progress` 0..1.
+static func refract_ring(fx: FxTimeline, center: Vector2, radius: float, tint: Color) -> QuadFx:
+	var size := Iso.radius_to_screen(radius) * 2.0
+	var q := quad(fx, SH_REFRACT, size, fx.ctx.distort)
+	q.position = Iso.ground_to_screen(center)
+	q.set_param("size_px", size)
+	q.set_param("tint", tint)
+	return q
+
+
+## Heat shimmer over a ground point; semi_px = half width in px (ellipse 2:1).
+static func heat_haze(fx: FxTimeline, screen_pos: Vector2, semi_px: float, strength := 2.0) -> QuadFx:
+	var q := quad(fx, SH_HAZE, Vector2(semi_px * 2.0, semi_px * 1.4), fx.ctx.distort)
+	q.position = screen_pos + Vector2(0, -semi_px * 0.35)
+	q.set_param("strength", strength)
+	return q
+
 
 ## Vertical beam standing on screen_pos (bottom center).
 static func beam(fx: FxTimeline, parent: Node, screen_pos: Vector2, width: float, height: float, ramp: Array = FIRE) -> QuadFx:
@@ -163,14 +230,16 @@ static func particles(fx: FxTimeline, parent: Node, screen_pos: Vector2, shape: 
 
 
 static func debris(fx: FxTimeline, screen_pos: Vector2, count: int, radius_px: float, speed := Vector2(30, 200),
-		ramp: Array = ROCK) -> PixelParticles:
-	var p := particles(fx, fx.ctx.overhead, screen_pos, PixelParticles.Shape.SQUARE, ramp)
+		ramp: Array = ROCK, size := Vector2(1.5, 4.5), outward := false) -> PixelParticles:
+	var p := particles(fx, fx.ctx.overhead, screen_pos, PixelParticles.Shape.CHUNK, ramp)
 	p.gravity = 420.0
 	p.bounce = true
 	p.drag = 0.6
+	p.shadows = true
 	p.burst(count, {
-		"radius": radius_px, "speed": speed, "alt": Vector2(0, 6), "alt_speed": Vector2(60, 260),
-		"life": Vector2(1.0, 2.0), "size": Vector2(1, 3.4),
+		"radius": radius_px, "speed": speed, "alt": Vector2(0, 6), "alt_speed": Vector2(60, 280),
+		"life": Vector2(1.2, 2.4), "size": size,
+		"dir": PixelParticles.Dir.OUTWARD if outward else PixelParticles.Dir.ANGLE,
 	})
 	return p
 
@@ -202,10 +271,11 @@ static func emitter(fx: FxTimeline, parent: Node, screen_pos: Vector2, shape: Pi
 
 
 static func smoke(fx: FxTimeline, screen_pos: Vector2, radius_px: float, rate: float, seconds: float,
-		rise := Vector2(20, 50), size := Vector2(3, 6), life := Vector2(1.2, 2.2)) -> PixelParticles:
+		rise := Vector2(20, 50), size := Vector2(3, 6), life := Vector2(1.2, 2.2), underglow := Color(0, 0, 0, 0)) -> PixelParticles:
 	var p := emitter(fx, fx.ctx.overhead, screen_pos, PixelParticles.Shape.PUFF, SMOKE_LIFE, rate, seconds, {
 		"radius": radius_px, "speed": Vector2(4, 18), "alt": Vector2(0, 8), "alt_speed": rise,
-		"life": life, "size": size, "size_end_mul": 1.7,
+		"life": life, "size": size, "size_end_mul": 1.8,
 	})
 	p.drag = 0.4
+	p.underglow = underglow
 	return p

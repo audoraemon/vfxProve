@@ -8,6 +8,7 @@ const SH_DOME := preload("res://shaders/fireball_dome.gdshader")
 const SH_BEAM := preload("res://shaders/beam_glow.gdshader")
 const SH_DECAL := preload("res://shaders/scorch_decal.gdshader")
 const SH_FOG := preload("res://shaders/fog.gdshader")
+const SH_SING := preload("res://shaders/singularity.gdshader")
 
 ## Vertical screen pixels per ground unit along a ground radius (minor ellipse axis).
 const PX_PER_UNIT_MINOR := 16.0 * sqrt(2.0)
@@ -125,6 +126,16 @@ static func dome(fx: FxTimeline, screen_pos: Vector2, semi_x: float, ramp: Array
 	q.position = screen_pos
 	q.set_param("dome_ratio", DOME)
 	q.set_param("base_ratio", BASE)
+	set_ramp(q, ramp)
+	return q
+
+
+## Screen-distorting singularity over a ground point, covering a ground radius.
+static func singularity(fx: FxTimeline, center: Vector2, radius: float, ramp: Array = VOID) -> QuadFx:
+	var size := Iso.radius_to_screen(radius) * 2.0
+	var q := quad(fx, SH_SING, size, fx.ctx.distort)
+	q.position = Iso.ground_to_screen(center)
+	q.set_param("size_px", size)
 	set_ramp(q, ramp)
 	return q
 

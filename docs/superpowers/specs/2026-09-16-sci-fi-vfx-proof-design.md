@@ -42,6 +42,10 @@ vfxProve/
   scenes/sandbox.tscn
   src/core/iso.gd              ground<->screen (64x32), iso ellipse/lane helpers
   src/core/camera_shake.gd     trauma-based shake on Camera2D
+  src/audio/sfx.gd             cue catalog + pooled positional playback (see Audio)
+  default_bus_layout.tres      SFX bus, master compressor + limiter
+  assets/audio/<effect>/*.wav  generated cues (committed)
+  tools/audio/synth.py         cue synthesizer + --verify
   src/sandbox/sandbox.gd       tile ground, input, HUD label, effect picker, respawn, slow-mo, capture mode
   src/enemies/dummy_enemy.gd   code-drawn pixel soldier; states WANDER / KNOCKBACK / PULLED / DEAD
   src/enemies/enemy_field.gd   registry + queries: in_radius, in_lane_band, apply_impulse, set_pull, kill
@@ -123,6 +127,60 @@ Cast: press at start point, drag to set direction (release). Quick click without
 | Walk | 2–5.5 | whole row advances along lane; beams flicker; motion streaks; molten scorched trail decal left behind with glowing edge | any enemy whose ground position is within the lane width and within ±0.35 of wall line is killed with contact burn flash |
 | Aftermath | 5.5–7 | beams shut off, drones ascend out, smoke wisps and heat haze along trail, trail fades | none |
 
+## Audio
+
+Procedurally synthesized SFX, one or more cue per visual stage. No downloaded assets.
+
+### Generation
+
+- `tools/audio/synth.py` (Python 3.12 + numpy + scipy) builds every cue from oscillators, filtered noise, pitch envelopes, distortion and a simple convolution/feedback reverb.
+- Deterministic: fixed seed per cue, so re-running produces identical files.
+- Output: `assets/audio/<effect>/<cue>.wav`, 44.1 kHz, 16-bit, mono. Peak normalized to −1 dBFS, 5 ms fade in/out on one-shots, loops cut at zero crossings with crossfaded seam.
+- Generated WAVs are committed so the game runs without Python.
+- `python tools/audio/synth.py` regenerates all; `--only <cue>` regenerates one.
+
+### Cue list
+
+| Effect | Cue id | Stage / trigger time | Length | Character |
+|---|---|---|---|---|
+| Nova | `nova_alarm` | Telegraph, 0 | 1.5 s | two-tone warning beeps, speeding up |
+| Nova | `nova_lock` | end of telegraph, 1.3 | 0.3 s | rising lock-on tone |
+| Nova | `nova_descent` | Descent, 1.5 | 0.8 s | falling pitch scream/whistle + air noise, ends at impact |
+| Nova | `nova_crack` | Impact, 2.3 | 0.4 s | bright transient crack |
+| Nova | `nova_boom` | Impact, 2.3 | 3.0 s | sub-bass sine drop + saturated low noise |
+| Nova | `nova_shockwave` | Blast wave, 2.3 | 1.2 s | band-passed noise sweep high→low |
+| Nova | `nova_rumble` | Aftermath, 3.0 | 5.0 s | low filtered rumble with debris ticks, decaying |
+| Nova | `nova_geiger` (loop) | Aftermath, 3.3–9, fading | 2.0 s loop | random Geiger clicks over faint hiss |
+| Orbital | `orb_target` | Target zone, 0 | 0.8 s | scanning chirps |
+| Orbital | `orb_charge` | each strike reticle | 0.4 s | rising charge whine |
+| Orbital | `orb_hit_1..4` | each strike beam | 0.9 s | beam zap + thud + short boom; 4 variants, random pick + ±8% pitch |
+| Orbital | `orb_embers` (loop) | Aftermath, 4.5–6.5, fading | 2.0 s loop | crackle and hiss |
+| Gravity | `grav_field` | Field, 0 | 0.8 s | warping pitch-bent tone |
+| Gravity | `grav_drone` (loop) | 0–4.1 | 2.0 s loop | low detuned drone, volume/pitch rise with pull strength |
+| Gravity | `grav_suction` | Pull, 0.8 | 2.7 s | reversed whoosh rising in pitch |
+| Gravity | `grav_compress` | Compression, 3.5 | 0.6 s | fast wobble/flutter, tightening |
+| Gravity | `grav_implode` | Implosion, 4.1 | 2.5 s | all other gravity cues cut to silence for 0.08 s, then deep boom + reverse-tail snap |
+| Gravity | `grav_shimmer` | Aftermath, 4.3 | 2.4 s | airy high shimmer, decaying |
+| Laser | `laser_scan` | Path lock, 0 | 1.0 s | grid-scan sweep hum |
+| Laser | `laser_thrusters` | Emitter arrival, 1.0 | 0.6 s | jet thruster descent, landing clunk |
+| Laser | `laser_ignite` | Beam link, 1.6 | 0.4 s | "vvvm" beam ignition |
+| Laser | `laser_hum` (loop) | Walk, 2–5.5 | 1.0 s loop | buzzing electric hum, slight wobble |
+| Laser | `laser_sizzle_1..3` | each kill during walk | 0.3 s | burn sizzle; 3 variants |
+| Laser | `laser_powerdown` | Aftermath, 5.5 | 0.8 s | falling power-down |
+| Laser | `laser_depart` | Aftermath, 5.7 | 1.5 s | thrusters lifting off, fading |
+
+### Playback (Godot)
+
+- `src/audio/sfx.gd` — `Sfx` node in sandbox; catalog maps cue id → stream path + options (volume dB, voice limit, pitch jitter, loop).
+- `Sfx.play(cue, ground_pos) -> AudioStreamPlayer2D` plays positionally from pooled `AudioStreamPlayer2D` (pool 32). Returns handle so loops can be faded/stopped (`Sfx.fade_out(handle, seconds)`).
+- Loops set `AudioStreamWAV.loop_mode = LOOP_FORWARD`, `loop_end` = sample count, at load time.
+- Voice limits: `orb_hit_*` 4, `laser_sizzle_*` 3, others 2; oldest voice stolen when limit hit.
+- Pitch follows slow-mo: `pitch_scale = base_pitch * Engine.time_scale`, updated each frame for active voices.
+- Stereo panning: `AudioListener2D` on camera; `max_distance` ~900 px, `attenuation` 1.0 so any on-screen source is clearly audible and panned.
+- Bus layout `default_bus_layout.tres`: `SFX` bus → Master; Master has Compressor + HardLimiter (ceiling −0.5 dB) so stacked explosions don't clip.
+- Effects call audio only through `Sfx`, receive it at setup alongside `field` and `shake`.
+- Capture mode (`--capture-all`) runs with audio muted via `--audio-driver Dummy`.
+
 ## Sandbox
 
 - Iso tile ground ~20×20 cells, dark sci-fi floor with subtle panel variation, drawn procedurally.
@@ -135,10 +193,11 @@ Cast: press at start point, drag to set direction (release). Quick click without
 
 1. **Headless tests**: `Godot_console --headless --path . --script res://tests/run_all.gd` prints `failures=0`, exit 0. Covers iso round-trip, ellipse/lane containment, pull convergence, kill.
 2. **Error-free run**: console output of sandbox run contains no `ERROR`/`SCRIPT ERROR`/shader compile errors.
-3. **Visual capture mode**: `Godot_console --path . -- --capture-all` casts each effect in turn with a fixed seed and saves PNGs from the viewport at key stage times to `res://captures/<effect>_<t>.png` (project-root `captures/`, git-ignored), then quits. Claude inspects the images against the concept sheets and iterates.
-4. **Performance sanity**: FPS printed in capture mode; target ≥60 FPS during every effect on the dev machine.
+3. **Visual capture mode**: `Godot_console --path . --audio-driver Dummy -- --capture-all` casts each effect in turn with a fixed seed and saves PNGs from the viewport at key stage times to `res://captures/<effect>_<t>.png` (project-root `captures/`, git-ignored), then quits. Claude inspects the images against the concept sheets and iterates.
+4. **Audio checks**: `python tools/audio/synth.py --verify` asserts every catalog cue file exists, length within ±5% of spec, peak ≤ −1 dBFS, no NaN/DC offset > 1%, loops start/end near zero. Godot test asserts every `Sfx` catalog path loads as `AudioStreamWAV`. Final listen check is by the user (Claude cannot hear).
+5. **Performance sanity**: FPS printed in capture mode; target ≥60 FPS during every effect on the dev machine.
 
 ## Out of scope
 
 - Integration into x-siege-godot.
-- Networking, damage numbers, audio, real enemy art, cooldowns/UI skill bar.
+- Networking, damage numbers, music, recorded/downloaded audio, real enemy art, cooldowns/UI skill bar.

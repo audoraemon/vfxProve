@@ -65,6 +65,8 @@ var _char := 0.0
 var _toward := Vector2.ZERO
 var _embers: Array[Vector3] = []
 var _frozen := 0.0
+## Called with this enemy when its ice runs out (e.g. to burst it).
+var _on_thaw := Callable()
 ## Ice shards for the shatter death: x, y position; z, w velocity.
 var _shards: Array[Vector4] = []
 
@@ -88,6 +90,10 @@ func tick(delta: float) -> void:
 	if _frozen > 0.0 and state != State.DEAD:
 		_frozen = maxf(_frozen - delta, 0.0)
 		_sync_position()
+		if _frozen <= 0.0 and _on_thaw.is_valid():
+			var cb := _on_thaw
+			_on_thaw = Callable()
+			cb.call(self)
 		return
 	match state:
 		State.WANDER:
@@ -152,9 +158,11 @@ func _tick_death(delta: float) -> void:
 
 
 ## Encase in ice for `seconds`: no walking, pull or knockback until it thaws.
-func freeze(seconds: float) -> void:
+func freeze(seconds: float, on_thaw := Callable()) -> void:
 	if state == State.DEAD:
 		return
+	if on_thaw.is_valid():
+		_on_thaw = on_thaw
 	if state == State.PULLED or state == State.KNOCKBACK:
 		state = State.WANDER
 	_velocity = Vector2.ZERO

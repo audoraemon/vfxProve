@@ -9,8 +9,15 @@ const FREEZE_TIME := 0.9
 const T_PEAK := 3.2
 const T_AFTER := 4.6
 const ERUPT_KILL := 1.4
-const PEAK_KILL := 2.5
-const FREEZE_SECONDS := 6.0
+const PEAK_KILL := 1.6
+const FREEZE_SECONDS := 5.0
+## Spike field: covers most of the radius; height follows a mountain profile.
+const SPIKE_RADIUS := 4.5
+const SPIKE_COUNT := 95
+const PEAK_HEIGHT := 125.0
+const EDGE_HEIGHT := 12.0
+## Inner fraction of the field that surges at the crystal peak.
+const CORE_FRACTION := 0.3
 const ICE_LIGHT := Color(0.55, 0.8, 1.0)
 const ICE_WHITE := Color(0.85, 0.95, 1.0)
 
@@ -75,7 +82,7 @@ var _freeze_done := false
 
 
 func _build() -> void:
-	duration = 10.0
+	duration = 10.5
 	_center_px = Iso.ground_to_screen(origin)
 
 	_rune = FrostRune.new()
@@ -147,23 +154,7 @@ func _erupt() -> void:
 	_rings.tween_param("alpha", 1.0, 0.0, 0.3)
 	create_tween().tween_property(_rune, "alpha", 0.0, 0.5)
 
-	# Central mountain: tall spikes clustered near the middle.
-	for i in 26:
-		var a := ctx.rng.randf() * TAU
-		var d := sqrt(ctx.rng.randf()) * 1.1
-		var g := origin + Vector2.RIGHT.rotated(a) * d
-		var s := _make_spike(g, lerpf(110.0, 58.0, d / 1.1) * ctx.rng.randf_range(0.75, 1.1),
-			lerpf(22.0, 13.0, d / 1.1) * ctx.rng.randf_range(0.8, 1.2), d * 0.12 + ctx.rng.randf() * 0.05)
-		_core_spikes.append(s)
-	# Clusters spreading outward, shorter and slimmer with distance.
-	for i in 54:
-		var a := ctx.rng.randf() * TAU
-		var d := lerpf(1.1, 3.6, sqrt(ctx.rng.randf()))
-		var g := origin + Vector2.RIGHT.rotated(a) * d
-		var k := (d - 1.1) / 2.5
-		_make_spike(g, lerpf(64.0, 16.0, k) * ctx.rng.randf_range(0.7, 1.2), lerpf(13.0, 5.0, k) * ctx.rng.randf_range(0.8, 1.3),
-			0.1 + k * 0.7 + ctx.rng.randf() * 0.08)
-	_spikes.sort_custom(func(a, b): return a.position.y < b.position.y)
+	_build_mountain()
 
 	var burst := FxParts.particles(self, ctx.overhead, _center_px, PixelParticles.Shape.STREAK, FxParts.ICE_LIFE)
 	burst.gravity = 300.0
@@ -182,6 +173,111 @@ func _erupt() -> void:
 		ctx.field.kill(e, &"ice", origin)
 	ctx.env.damage_radius(origin, ERUPT_KILL, 99999.0, &"ice")
 	ctx.env.shake_radius(origin, RADIUS + 2.0, 2.0)
+
+
+## Spikes spread evenly over the whole field (area-uniform samples with a minimum spacing) so nothing
+## clumps; height and width follow a mountain profile: tallest at the center, sloping to the rim.
+## They erupt from the center outward.
+func _build_mountain() -> void:
+	var placed: Array[Vector2] = []
+	var attempts := 0
+	while placed.size() < SPIKE_COUNT and attempts < 4000:
+		attempts += 1
+		var d := SPIKE_RADIUS * sqrt(ctx.rng.randf())
+		var k := d / SPIKE_RADIUS
+		var g := origin + Vector2.RIGHT.rotated(ctx.rng.randf() * TAU) * d
+		var spacing := lerpf(0.5, 0.38, k)
+		var ok := true
+		for q in placed:
+			if q.distance_squared_to(g) < spacing * spacing:
+				ok = false
+				break
+		if not ok:
+			continue
+		placed.append(g)
+		# Smooth dome profile with a sharper summit.
+		var profile := 1.0 - pow(k, 0.85)
+		var h := lerpf(EDGE_HEIGHT, PEAK_HEIGHT, profile * profile * (3.0 - 2.0 * profile)) * ctx.rng.randf_range(0.85, 1.12)
+		var w := lerpf(5.0, 20.0, profile) * ctx.rng.randf_range(0.85, 1.15)
+		var s := _make_spike(g, h, w, k * 0.75 + ctx.rng.randf() * 0.06)
+		if k < CORE_FRACTION:
+			_core_spikes.append(s)
+
+
+## An enemy's ice ran out: it bursts shortly after, staggered so the field pops like a chain.
+func _on_thaw(e: DummyEnemy) -> void:
+	at(t + ctx.rng.randf_range(0.0, 0.45), _ice_burst.bind(e))
+
+
+func _ice_burst(e: DummyEnemy) -> void:
+	if not is_instance_valid(e) or not e.is_alive():
+		return
+	var g := e.ground_pos
+	ctx.field.kill(e, &"ice", g)
+	ctx.field.knock_from(g, 0.05, 1.3, 3.5)
+	_ice_explosion(g, 1.0)
+
+
+## Icy explosion: flash, frost ring, shards, ice chunks, crystal pops, mist and a frost patch.
+func _ice_explosion(g: Vector2, size: float) -> void:
+	var sp := Iso.ground_to_screen(g)
+	ctx.play(&"glac_shatter", g, -3.0)
+	ctx.shake.add_trauma(0.12 * size)
+
+	var flash := FxParts.bloom(self, sp + Vector2(0, -8), 30.0 * size, ICE_LIGHT, 1.3)
+	flash.tween_param("intensity", 1.3, 0.0, 0.3, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	flash.life = 0.32
+	var light := FxParts.ground_light(self, g, 1.4 * size, ICE_LIGHT)
+	light.tween_param("intensity", 1.2, 0.0, 0.45, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	light.life = 0.47
+
+	var ring := FxParts.shockwave(self, g, 1.25 * size, FxParts.ICE_WAVE)
+	ring.z_index = 9
+	ring.set_param("thickness", 0.14)
+	ring.set_param("inner_heat", 0.0)
+	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	ring.tween_param("fade", 1.0, 0.0, 0.2, 0.18)
+	ring.life = 0.4
+
+	var patch := FxParts.frost_ground(self, g, 0.9 * size)
+	patch.z_index = 8
+	patch.tween_param("progress", 0.0, 1.0, 0.25, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	patch.tween_param("fade", 1.0, 0.0, 1.2, 0.8)
+	patch.life = 2.05
+
+	var shards := FxParts.particles(self, ctx.overhead, sp + Vector2(0, -6), PixelParticles.Shape.STREAK, FxParts.ICE_LIFE)
+	shards.gravity = 320.0
+	shards.drag = 1.1
+	shards.streak_len = 0.05
+	shards.burst(int(26 * size), {"radius": 3.0, "speed": Vector2(60, 220), "alt": Vector2(2, 14),
+		"alt_speed": Vector2(40, 200), "life": Vector2(0.35, 0.8), "size": Vector2(1, 3)})
+	FxParts.debris(self, sp, int(8 * size), 4.0, Vector2(30, 120), FxParts.ICE_CHUNK, Vector2(1.5, 3.0), true)
+	var mist := FxParts.particles(self, ctx.overhead_back, sp, PixelParticles.Shape.PUFF, FxParts.MIST_LIFE)
+	mist.drag = 1.8
+	mist.burst(int(8 * size), {"radius": 5.0, "dir": PixelParticles.Dir.OUTWARD, "speed": Vector2(20, 60),
+		"alt": Vector2(0, 8), "alt_speed": Vector2(4, 20), "life": Vector2(0.6, 1.1), "size": Vector2(3, 6),
+		"size_end_mul": 1.6})
+
+	# A small star of crystals pops out of the ground and shatters.
+	for i in 5:
+		var a := TAU * i / 5.0 + ctx.rng.randf_range(-0.3, 0.3)
+		var pg := g + Vector2.RIGHT.rotated(a) * ctx.rng.randf_range(0.15, 0.4) * size
+		var c := IceSpike.new()
+		c.ground_pos = pg
+		c.position = Iso.ground_to_screen(pg).round()
+		c.height = ctx.rng.randf_range(16.0, 28.0) * size
+		c.width = ctx.rng.randf_range(4.0, 6.0) * size
+		c.lean = (Iso.ground_to_screen(pg) - sp).x * 1.4
+		c.seed = ctx.rng.randf() * 100.0
+		c.lights = ctx.lights
+		c.glow = 1.0
+		track(c, ctx.world)
+		var tw := c.create_tween()
+		tw.tween_property(c, "grow", 1.0, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(0.12)
+		tw.tween_property(c, "shatter", 1.0, 0.35)
+		tw.parallel().tween_property(c, "fade", 0.0, 0.45)
+		tw.tween_callback(c.queue_free)
 
 
 func _freeze() -> void:
@@ -212,7 +308,7 @@ func _fx_process(delta: float) -> void:
 		_wave.set_param("fade", 1.0 - smoothstep(0.8, 1.0, k))
 		_frost.set_param("progress", eased)
 		var r := eased * RADIUS
-		ctx.field.freeze_radius(origin, r, FREEZE_SECONDS)
+		ctx.field.freeze_radius(origin, r, FREEZE_SECONDS, _on_thaw)
 		ctx.env.damage_radius(origin, r, 30.0 * delta, &"ice")
 		if k >= 1.0:
 			_freeze_done = true
@@ -248,19 +344,12 @@ func _peak() -> void:
 	shards.burst(90, {"radius": 20.0, "speed": Vector2(80, 260), "alt": Vector2(0, 40), "alt_speed": Vector2(40, 200),
 		"life": Vector2(0.6, 1.2), "size": Vector2(2, 3)})
 
+	# Enemies inside the surging mountain burst immediately.
 	for e in ctx.field.frozen_in_radius(origin, PEAK_KILL):
-		_shatter_fx(e.ground_pos)
+		var g := e.ground_pos
 		ctx.field.kill(e, &"ice", origin)
+		_ice_explosion(g, 0.8)
 	ctx.env.damage_radius(origin, PEAK_KILL * 0.7, 99999.0, &"ice")
-
-
-func _shatter_fx(g: Vector2) -> void:
-	var sp := Iso.ground_to_screen(g)
-	var p := FxParts.particles(self, ctx.overhead, sp + Vector2(0, -8), PixelParticles.Shape.STREAK, FxParts.ICE_LIFE)
-	p.gravity = 320.0
-	p.drag = 1.0
-	p.burst(10, {"speed": Vector2(40, 130), "alt_speed": Vector2(40, 140), "life": Vector2(0.3, 0.7), "size": Vector2(1, 2)})
-	ctx.play(&"glac_shatter", g, -4.0)
 
 
 func _aftermath() -> void:

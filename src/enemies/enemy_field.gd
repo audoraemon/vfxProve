@@ -85,13 +85,15 @@ func kill(e: DummyEnemy, kind: StringName, source := Vector2.INF) -> bool:
 	return true
 
 
-## Freeze living enemies within radius; returns how many were newly frozen.
-func freeze_radius(center: Vector2, r: float, seconds: float) -> int:
+## Freeze living enemies within radius that are not frozen yet; returns how many were frozen.
+## Already frozen enemies keep their timer. `on_thaw(enemy)` fires when each one's ice runs out.
+func freeze_radius(center: Vector2, r: float, seconds: float, on_thaw := Callable()) -> int:
 	var count := 0
 	for e in in_radius(center, r):
-		if not e.is_frozen():
-			count += 1
-		e.freeze(seconds)
+		if e.is_frozen():
+			continue
+		count += 1
+		e.freeze(seconds, on_thaw)
 	return count
 
 

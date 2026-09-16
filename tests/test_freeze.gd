@@ -29,6 +29,27 @@ static func run(t) -> void:
 	t.check(f.kill(f.alive()[1], &"ice", Vector2.ZERO), "ice kill works")
 	t.check(f.alive().size() == 2, "shattered enemy removed from alive")
 
+	# Freeze-end callback fires exactly once when the ice runs out; re-freezing a frozen enemy
+	# does not extend its timer (so a wave passing over it keeps the original end time).
+	var g := EnemyField.new()
+	g.bounds = Rect2(-50, -50, 100, 100)
+	var ice := DummyEnemy.new()
+	ice.ground_pos = Vector2.ZERO
+	g.add(ice)
+	var ended: Array = []
+	g.freeze_radius(Vector2.ZERO, 1.0, 0.5, func(e): ended.append(e))
+	for i in 20:
+		g.freeze_radius(Vector2.ZERO, 1.0, 0.5, func(e): ended.append(e))
+		ice.tick(1.0 / 60.0)
+	for i in 20:
+		ice.tick(1.0 / 60.0)
+	t.check(ended.size() == 1 and ended[0] == ice, "freeze end callback fires once at 0.5s (got %d)" % ended.size())
+	for i in 30:
+		ice.tick(1.0 / 60.0)
+	t.check(ended.size() == 1, "callback does not repeat after thaw")
+	g.clear()
+	g.free()
+
 	# LightField static lights (torches) persist until removed.
 	var lights := LightField.new()
 	var id := lights.add_static(Vector2(0, 0), 2.0, Color(1, 0.6, 0.2), 1.0)

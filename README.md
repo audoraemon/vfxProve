@@ -17,7 +17,7 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 
 | Key | Effect | Stages |
 |---|---|---|
-| 1 | **Glacial Cataclysm** | glowing frost rune + cold mist → faceted ice spikes erupt (impact frame, hit-stop) → freeze wave spreads, frozen ground, enemies encased in ice → crystal mountain surges to full height, close frozen enemies shatter → outer spikes break into residue, icy fog, snow |
+| 1 | **Glacial Cataclysm** | glowing frost rune + cold mist → faceted ice spikes erupt (impact frame, hit-stop) → freeze wave spreads, frozen ground, enemies encased in ice → crystal mountain (spread over the whole radius, tallest at the center) surges to full height, enemies inside it burst → when each freeze ends the enemy explodes in an icy blast (frost ring, shards, crystal pops, mist) → outer spikes break into residue, icy fog, snow |
 
 Remaining Set2 effects (Heaven Splitter, Cinderfall Barrage, Tsunami Breaker, Tornado Tempest, Judgement of the Ancients, Dragonfire Parade) are listed in the HUD with `*` until built. Design: `docs/superpowers/specs/2026-09-16-set2-fantasy-vfx-design.md`.
 
@@ -68,7 +68,7 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=135 failures=0
+bash tools/test.sh                                   # headless tests → checks=137 failures=0
 python tools/audio/synth.py --verify                 # audio cue checks → 41 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png

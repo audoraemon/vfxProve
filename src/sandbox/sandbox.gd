@@ -32,6 +32,7 @@ const CAPTURES := {
 	"tsunami": {"target": Vector2(-4.5, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 3.6, 4.5, 5.0, 5.4, 6.5, 8.5]},
 	"tornado": {"target": Vector2(-4, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 4.0, 5.5, 7.0, 7.6, 9.0]},
 	"judgement": {"target": Vector2(0, 0), "times": [1.0, 1.6, 2.6, 3.72, 4.25, 5.3, 6.6, 7.22, 8.0, 10.0]},
+	"dragon": {"target": Vector2(0.4, 0.4), "dir": Vector2(1, 1), "times": [0.9, 1.5, 2.8, 3.9, 4.6, 5.4, 6.3, 7.4, 10.0]},
 	"glacial": {"target": Vector2(0, 0), "times": [1.9, 2.6, 3.6, 5.5, 7.35, 7.55, 7.8, 8.1, 9.2]},
 }
 

@@ -194,7 +194,7 @@ Procedurally synthesized SFX, one or more cue per visual stage. No downloaded as
 1. **Headless tests**: `Godot_console --headless --path . --script res://tests/run_all.gd` prints `failures=0`, exit 0. Covers iso round-trip, ellipse/lane containment, pull convergence, kill.
 2. **Error-free run**: console output of sandbox run contains no `ERROR`/`SCRIPT ERROR`/shader compile errors.
 3. **Visual capture mode**: `Godot_console --path . --audio-driver Dummy -- --capture-all` casts each effect in turn with a fixed seed and saves PNGs from the viewport at key stage times to `res://captures/<effect>_<t>.png` (project-root `captures/`, git-ignored), then quits. Claude inspects the images against the concept sheets and iterates.
-4. **Audio checks**: `python tools/audio/synth.py --verify` asserts every catalog cue file exists, length within ±5% of spec, peak ≤ −1 dBFS, no NaN/DC offset > 1%, loops start/end near zero. Godot test asserts every `Sfx` catalog path loads as `AudioStreamWAV`. Final listen check is by the user (Claude cannot hear).
+4. **Audio checks**: `python tools/audio/synth.py --verify` asserts every catalog cue file exists, length within ±5% of spec, peak ≤ −1 dBFS, no NaN/DC offset > 1%, loop wrap-around step no larger than the signal's own 99.9th-percentile sample step (no click); one-shots start/end within ±0.02. Godot test asserts every `Sfx` catalog path loads as `AudioStreamWAV`. Final listen check is by the user (Claude cannot hear).
 5. **Performance sanity**: FPS printed in capture mode; target ≥60 FPS during every effect on the dev machine.
 
 ## Out of scope

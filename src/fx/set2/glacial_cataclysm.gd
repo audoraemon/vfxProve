@@ -13,11 +13,11 @@ const PEAK_KILL := 1.6
 const FREEZE_SECONDS := 5.0
 ## Spike field: covers most of the radius; height follows a mountain profile.
 const SPIKE_RADIUS := 4.5
-const SPIKE_COUNT := 70
-const PEAK_HEIGHT := 150.0
-const EDGE_HEIGHT := 22.0
+const SPIKE_COUNT := 105
+const PEAK_HEIGHT := 128.0
+const EDGE_HEIGHT := 16.0
 ## Inner fraction of the field that surges at the crystal peak.
-const CORE_FRACTION := 0.3
+const CORE_FRACTION := 0.22
 const ICE_LIGHT := Color(0.55, 0.8, 1.0)
 const ICE_WHITE := Color(0.85, 0.95, 1.0)
 
@@ -134,7 +134,8 @@ func _make_spike(g: Vector2, h: float, w: float, delay: float) -> IceSpike:
 	s.width = w
 	var out := (Iso.ground_to_screen(g) - _center_px)
 	# Lean outward more toward the rim, like crystals bursting out of the mountain's flanks.
-	s.angle = clampf(out.x * 0.0022, -0.45, 0.45) + ctx.rng.randf_range(-0.12, 0.12)
+	var k := g.distance_to(origin) / SPIKE_RADIUS
+	s.angle = clampf(out.x * 0.0026, -0.5, 0.5) * (0.3 + 0.7 * k) + ctx.rng.randf_range(-0.1, 0.1)
 	s.seed = ctx.rng.randf() * 100.0
 	s.lights = ctx.lights
 	track(s, ctx.world)
@@ -180,14 +181,17 @@ func _erupt() -> void:
 ## clumps; height and width follow a mountain profile: tallest at the center, sloping to the rim.
 ## They erupt from the center outward.
 func _build_mountain() -> void:
-	var placed: Array[Vector2] = []
+	# Summit: one tall slender shard crowning the cone.
+	_core_spikes.append(_make_spike(origin, PEAK_HEIGHT * 1.02, 18.0, 0.0))
+	var placed: Array[Vector2] = [origin]
 	var attempts := 0
 	while placed.size() < SPIKE_COUNT and attempts < 4000:
 		attempts += 1
 		var d := SPIKE_RADIUS * sqrt(ctx.rng.randf())
 		var k := d / SPIKE_RADIUS
 		var g := origin + Vector2.RIGHT.rotated(ctx.rng.randf() * TAU) * d
-		var spacing := lerpf(0.62, 0.5, k)
+		# Denser toward the middle so the cone reads as a solid layered mass.
+		var spacing := lerpf(0.36, 0.5, k)
 		var ok := true
 		for q in placed:
 			if q.distance_squared_to(g) < spacing * spacing:
@@ -196,10 +200,10 @@ func _build_mountain() -> void:
 		if not ok:
 			continue
 		placed.append(g)
-		# Smooth dome profile with a sharper summit.
-		var profile := 1.0 - pow(k, 0.85)
-		var h := lerpf(EDGE_HEIGHT, PEAK_HEIGHT, profile * profile * (3.0 - 2.0 * profile)) * ctx.rng.randf_range(0.85, 1.12)
-		var w := lerpf(8.0, 24.0, profile) * ctx.rng.randf_range(0.85, 1.15)
+		# Cone profile: height falls off steadily from the summit to the rim.
+		var profile := 1.0 - pow(k, 0.8)
+		var h := lerpf(EDGE_HEIGHT, PEAK_HEIGHT, profile) * ctx.rng.randf_range(0.7, 1.05)
+		var w := lerpf(8.0, 19.0, profile) * ctx.rng.randf_range(0.8, 1.2)
 		var s := _make_spike(g, h, w, k * 0.75 + ctx.rng.randf() * 0.06)
 		if k < CORE_FRACTION:
 			_core_spikes.append(s)
@@ -265,10 +269,11 @@ func _ice_explosion(g: Vector2, size: float) -> void:
 		var dir_a := TAU * i / rays + ctx.rng.randf_range(-0.15, 0.15)
 		var c := IceSpike.new()
 		c.cluster = false
+		c.style = IceSpike.Style.PRISM
 		c.ground_pos = g
 		c.position = (sp + Vector2(0, -8)).round()
 		c.angle = dir_a
-		c.height = ctx.rng.randf_range(24.0, 38.0) * size * (0.7 if absf(sin(dir_a)) < 0.4 else 1.0)
+		c.height = ctx.rng.randf_range(18.0, 30.0) * size * (0.7 if absf(sin(dir_a)) < 0.4 else 1.0)
 		c.width = ctx.rng.randf_range(4.5, 6.5) * size
 		c.seed = ctx.rng.randf() * 100.0
 		c.lights = ctx.lights
@@ -326,7 +331,7 @@ func _peak() -> void:
 	ctx.shake.kick(Vector2(0, -5))
 	# The mountain surges to its full towering form.
 	for s in _core_spikes:
-		s.create_tween().tween_property(s, "grow", ctx.rng.randf_range(1.2, 1.5), 0.35) \
+		s.create_tween().tween_property(s, "grow", ctx.rng.randf_range(1.06, 1.18), 0.35) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		s.create_tween().tween_property(s, "glow", 1.0, 0.2)
 	var rays := FxParts.screen_rays(self, _center_px + Vector2(0, -70), 210.0, ICE_WHITE, 70.0, 0.9)
@@ -345,6 +350,24 @@ func _peak() -> void:
 	shards.drag = 1.0
 	shards.burst(90, {"radius": 20.0, "speed": Vector2(80, 260), "alt": Vector2(0, 40), "alt_speed": Vector2(40, 200),
 		"life": Vector2(0.6, 1.2), "size": Vector2(2, 3)})
+
+	# Glowing white frost mist hugging the mountain's base, and shards drifting around it.
+	var base_glow := FxParts.bloom(self, _center_px + Vector2(0, -6), 120.0, ICE_WHITE, 0.0, 0.42)
+	base_glow.tween_param("intensity", 0.0, 0.45, 0.4)
+	base_glow.tween_param("intensity", 0.45, 0.0, 1.6, duration - t - 2.2)
+	var mist := FxParts.emitter(self, ctx.overhead, _center_px, PixelParticles.Shape.PUFF, FxParts.MIST_LIFE, 12.0,
+		duration - t - 2.0, {
+			"radius": FxParts.particle_radius(1.8), "dir": PixelParticles.Dir.OUTWARD, "speed": Vector2(10, 35),
+			"alt": Vector2(0, 4), "alt_speed": Vector2(2, 8), "life": Vector2(0.8, 1.4), "size": Vector2(3, 5),
+			"size_end_mul": 1.5,
+		})
+	mist.drag = 0.6
+	var floaters := FxParts.emitter(self, ctx.overhead, _center_px, PixelParticles.Shape.STREAK, FxParts.ICE_LIFE, 18.0,
+		duration - t - 2.0, {
+			"radius": FxParts.particle_radius(2.6), "alt": Vector2(20, 110), "alt_speed": Vector2(6, 22),
+			"speed": Vector2(2, 10), "life": Vector2(1.0, 2.0), "size": Vector2(2, 4),
+		})
+	floaters.streak_len = 0.25
 
 	# Enemies inside the surging mountain burst immediately.
 	for e in ctx.field.frozen_in_radius(origin, PEAK_KILL):

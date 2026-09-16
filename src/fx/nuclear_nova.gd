@@ -167,6 +167,7 @@ func _impact() -> void:
 
 	# White-hot core swells slowly before the blast releases.
 	_core = FxParts.dome(self, _target_px, FxParts.PX_PER_UNIT_MAJOR * 2.6)
+	_core.set_param("detail", 1.8)
 	_core.tween_param("grow", 0.1, CORE_GROW, T_BLAST - T_IMPACT, 0.0, Tween.TRANS_SINE, Tween.EASE_OUT)
 	_core.set_param("heat", 1.35)
 

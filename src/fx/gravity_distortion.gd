@@ -301,6 +301,8 @@ func _implode() -> void:
 	refract.life = 0.72
 
 	var burst := FxParts.dome(self, _center_px, FxParts.PX_PER_UNIT_MAJOR * 1.4, FxParts.VOID)
+	burst.set_param("smoke_hot", Color(0.2, 0.08, 0.3))
+	burst.set_param("smoke_cold", Color(0.08, 0.04, 0.12))
 	burst.tween_param("grow", 0.1, 1.0, 0.14, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	burst.tween_param("heat", 1.2, 0.6, 0.4)
 	burst.tween_param("dissolve", 0.0, 1.0, 0.3, 0.12, Tween.TRANS_QUAD, Tween.EASE_IN)

@@ -68,6 +68,10 @@ static func load_stream(cue: StringName, rng: RandomNumberGenerator = null) -> A
 	return stream
 
 
+static func clear_cache() -> void:
+	_cache.clear()
+
+
 func _ready() -> void:
 	_rng.randomize()
 	for i in POOL_SIZE:

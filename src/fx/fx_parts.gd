@@ -33,6 +33,18 @@ const VOID_LIFE := [Color("f4ecff"), Color("b98cff"), Color("7a3cf0"), Color("3b
 const LASER_LIFE := [Color("fff0e8"), Color("ff9a6a"), Color("ff3a2a"), Color("c8141e"), Color(0.4, 0.03, 0.05, 0.5)]
 
 
+## Draw every VFX shader once, nearly invisible, so the renderer compiles them up front
+## instead of hitching on an effect's first impact frame.
+static func prewarm(parent: Node2D, frames := 3) -> void:
+	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING]:
+		var q := QuadFx.new().setup(shader, Vector2(4, 4))
+		q.modulate.a = 0.02
+		parent.add_child(q)
+		for i in frames:
+			await parent.get_tree().process_frame
+		q.queue_free()
+
+
 static func quad(fx: FxTimeline, shader: Shader, size: Vector2, parent: Node, anchor := Vector2(0.5, 0.5)) -> QuadFx:
 	var q := QuadFx.new().setup(shader, size, anchor)
 	fx.track(q, parent)

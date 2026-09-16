@@ -42,12 +42,13 @@ func _ready() -> void:
 	var seed_value := 7 if _has_any_flag(args) else Time.get_ticks_usec()
 	_reset_world(seed_value)
 	_update_hud()
+	await FxParts.prewarm(ctx.distort)
 	if "--capture-idle" in args:
 		_capture_idle()
 	elif "--capture-all" in args:
 		_capture_all(_arg_value(args, "--only"))
 	elif "--bench" in args:
-		_bench()
+		_bench(_arg_value(args, "--only"))
 
 
 func _has_any_flag(args: PackedStringArray) -> bool:
@@ -240,7 +241,13 @@ func _update_hud() -> void:
 ## Stop voices before quitting so the audio server does not leak playbacks.
 func _quit() -> void:
 	ctx.sfx.stop_all("")
-	await _wait_frames(2)
+	for c in ctx.overhead.get_children() + ctx.distort.get_children():
+		c.queue_free()
+	await _wait_frames(3)
+	# Stopped playbacks are released by the audio thread; give it real time (fixed-fps frames can be ~1 ms).
+	OS.delay_msec(150)
+	await _wait_frames(1)
+	Sfx.clear_cache()
 	get_tree().quit()
 
 
@@ -297,10 +304,12 @@ func _capture_all(only: String) -> void:
 	await _quit()
 
 
-func _bench() -> void:
+func _bench(only: String) -> void:
 	await _wait_frames(10)
 	var spots := [Vector2(-3, -3), Vector2(3, -3), Vector2(-3, 3), Vector2(-5, 3)]
 	for i in EFFECTS.size():
+		if only != "" and only != EFFECTS[i].key:
+			continue
 		if ResourceLoader.exists(EFFECTS[i].path):
 			cast(i, spots[i], {"dir": Vector2(1, 0)})
 	var worst := 0.0
@@ -317,6 +326,6 @@ func _bench() -> void:
 			worst = maxf(worst, ms)
 		total += ms
 		frames += 1
-	print("bench frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f" % [
-		frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst])
+	print("bench[%s] frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f" % [
+		only if only != "" else "all", frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst])
 	await _quit()

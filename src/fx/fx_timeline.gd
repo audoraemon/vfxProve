@@ -68,14 +68,15 @@ func _finish() -> void:
 
 
 func _exit_tree() -> void:
-	_free_tracked()
+	# Parents may be mid-teardown here, so never free immediately.
+	_free_tracked(true)
 
 
-func _free_tracked() -> void:
+func _free_tracked(deferred := false) -> void:
 	for n in _tracked:
 		if not is_instance_valid(n):
 			continue
-		if n.is_inside_tree():
+		if deferred or n.is_inside_tree():
 			n.queue_free()
 		else:
 			n.free()

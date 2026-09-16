@@ -42,6 +42,9 @@ var underglow := Color(0, 0, 0, 0)
 ## Fraction of lifetime the underglow lasts.
 var underglow_life := 0.4
 
+## Pixel discs by radius, shared by all systems: textured quads batch far better than draw_circle polygons.
+static var _discs: Array[ImageTexture] = []
+
 var _particles: Array[Particle] = []
 var _accum := 0.0
 var _spawned_any := false
@@ -145,20 +148,42 @@ func _draw() -> void:
 				_draw_chunk(p, at, sz, col)
 
 
+static func _disc_texture(r: int) -> ImageTexture:
+	r = clampi(r, 1, 32)
+	if _discs.is_empty():
+		_discs.resize(33)
+	if _discs[r] == null:
+		var size := r * 2 + 1
+		var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+		var limit := float(r * r) + float(r) * 0.8
+		for y in size:
+			for x in size:
+				var dx := x - r
+				var dy := y - r
+				if dx * dx + dy * dy <= limit:
+					img.set_pixel(x, y, Color.WHITE)
+		_discs[r] = ImageTexture.create_from_image(img)
+	return _discs[r]
+
+
+func _disc(center: Vector2, r: float, col: Color) -> void:
+	var ri := int(maxf(1.0, roundf(r)))
+	draw_texture(_disc_texture(ri), center - Vector2(ri, ri), col)
+
+
 ## Three-tone smoke ball: shadowed lower-right, body, lit upper-left, optional fire underglow.
 func _draw_puff(at: Vector2, sz: float, col: Color, k: float) -> void:
 	var r := maxf(1.0, roundf(sz))
 	if r < 3.0:
-		draw_circle(at, r, col)
+		_disc(at, r, col)
 		return
 	var shade := Color(col.darkened(0.14), col.a)
-	draw_circle(at + Vector2(roundf(r * 0.2), roundf(r * 0.2)), r, shade)
-	draw_circle(at, roundf(r * 0.9), col)
-	draw_circle(at + Vector2(-roundf(r * 0.3), -roundf(r * 0.35)), roundf(r * 0.5), Color(col.lightened(0.07), col.a))
+	_disc(at + Vector2(roundf(r * 0.2), roundf(r * 0.2)), r, shade)
+	_disc(at, roundf(r * 0.9), col)
+	_disc(at + Vector2(-roundf(r * 0.3), -roundf(r * 0.35)), roundf(r * 0.5), Color(col.lightened(0.07), col.a))
 	if underglow.a > 0.0 and k < underglow_life:
 		var g := 1.0 - k / underglow_life
-		var glow := Color(col.lerp(underglow, 0.75 * g), col.a)
-		draw_circle(at + Vector2(0, roundf(r * 0.45)), roundf(r * 0.55), glow)
+		_disc(at + Vector2(0, roundf(r * 0.45)), roundf(r * 0.55), Color(col.lerp(underglow, 0.75 * g), col.a))
 
 
 ## Angular rock fragment with a lit top edge, tumbling over its lifetime.

@@ -4,10 +4,10 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 
 | Key | Effect | Stages |
 |---|---|---|
-| 1 | **Nuclear Nova** | target rings → warhead descent → flash + pillar → shockwave + fireball dome → smoke column, crater, radiation fog |
-| 2 | **Orbital Strike** | zone + pips → per-point lock-on + aim beam → 12 beam impacts → craters, smoke, ion sparks |
-| 3 | **Gravity Distortion** | field rings → screen-warping singularity pulls enemies in → compression → implosion → warped scar |
-| 4 | **Walking Laser Grid** | lane telegraph → emitter drones descend → beam wall links → wall sweeps the lane → molten corridor |
+| 1 | **Nuclear Nova** | target rings → warhead descent → white-hot core swells slowly → blast dome + shockwave accelerate outward with god-rays, rubble and a rolling dust ring → fire-lit mushroom smoke, heat haze, crater, radiation fog |
+| 2 | **Orbital Strike** | zone + pips → ~30 Poisson-disc strike points covering the whole radius, lock-on in bursts of 1–3 → beam impacts with light pools, rays, fireballs, heat haze → crater field, smoke, ion sparks |
+| 3 | **Gravity Distortion** | sky beam seeds the field → screen-lensing singularity with wispy accretion disk, photon ring, lightning arcs and orbiting rubble pulls enemies in → compression → implosion with refraction shock ring and starburst → warped scar with hovering fragments |
+| 4 | **Walking Laser Grid** | lane telegraph → emitter drones descend → wide glowing beams (core + additive halo, contact rings) link into a wall → wall sweeps the lane with red floor light, heat haze and burn flashes → molten corridor |
 
 Everything is procedural: canvas shaders, a small pixel particle system, code-drawn sprites, and synthesized audio. No external art or sound assets.
 
@@ -42,7 +42,8 @@ src/enemies/     dummy troopers + EnemyField (radius/lane queries, pull, knockba
 src/fx/          FxTimeline base, QuadFx, PixelParticles, FxParts builders, the 4 effects
 src/audio/       Sfx cue catalog + pooled positional playback
 src/sandbox/     scene assembly, input, HUD, capture/bench modes
-shaders/         iso_rings, shockwave, fireball_dome, beam_glow, scorch_decal, fog, singularity
+shaders/         iso_rings, shockwave, fireball_dome, beam_glow, beam_add, scorch_decal, fog, singularity,
+                 light_glow, god_rays, heat_haze, refract_ring
 assets/audio/    generated WAV cues (committed)
 tools/           test runner, capture runner, contact sheets, audio synth
 docs/superpowers design spec + implementation plan
@@ -65,15 +66,15 @@ Benchmark (all four effects at once, or one with `--only=`):
 & $godot --path . --audio-driver Dummy --disable-vsync --max-fps 0 -- --bench
 ```
 
-Dev machine results (RTX 3060 Ti; another game was running in the background, so worst frames are noisy):
+Dev machine results after the realism pass (RTX 3060 Ti; another game was using ~2 CPU cores in the background, so worst frames are noisy — rerun on an idle machine for real numbers):
 
 | Bench | Avg FPS | Worst frame |
 |---|---|---|
-| nova | 291 | 12.5 ms |
-| orbital | 351 | 10.8 ms |
-| gravity | 567 | 6.4 ms |
-| laser | 331 | 9.5 ms |
-| all four at once | 232 | 20.7 ms |
+| nova | 307 | 15.5 ms |
+| orbital | 247 | 21.4 ms |
+| gravity | 397 | 8.7 ms |
+| laser | 374 | 9.7 ms |
+| all four at once | 152 | 41.3 ms |
 
 All shaders are drawn once at startup (`FxParts.prewarm`) — without it the Compatibility renderer compiled them on each effect's first impact frame (~30 ms hitch).
 
@@ -83,6 +84,7 @@ All shaders are drawn once at startup (`FxParts.prewarm`) — without it the Com
 
 ## Gotchas
 
+- Smoke puffs draw cached pixel-disc textures (`PixelParticles._disc_texture`) rather than `draw_circle`; polygons per puff were the biggest CPU cost.
 - `project.godot` enables `snap_2d_vertices_to_pixel`: `draw_line` with width ≥ 1 builds quads that can collapse to nothing. Use hairlines (`width = -1`) and stack them for thick pixel lines.
 - Shader timing uses `uniform float u_time` driven by `QuadFx`, not `TIME`, so effects honor `Engine.time_scale`.
 - The first headless import of new files occasionally crashes; `tools/test.sh` retries once.

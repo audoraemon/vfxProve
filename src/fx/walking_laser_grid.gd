@@ -11,8 +11,8 @@ const T_LINK := 1.6
 const T_WALK := 2.0
 const T_STOP := 5.5
 const T_DEPART := 5.7
-const HOVER_ALT := 66.0
-const LINK_HEIGHTS := [12.0, 30.0, 48.0]
+const HOVER_ALT := 82.0
+const LINK_HEIGHTS := [16.0, 40.0, 64.0]
 
 const COL_OUTER := Color(0.75, 0.04, 0.08, 0.55)
 const COL_MID := Color("ff3a2a")
@@ -129,6 +129,7 @@ class ScorchTrail:
 
 
 ## Hovering emitter drone. Positioned on the ground point (y-sorted); draws at altitude.
+## Beams are shader quads (bright core + additive halo) so they read as heavy energy beams.
 class Drone:
 	extends Node2D
 
@@ -137,6 +138,9 @@ class Drone:
 	const COL_DARK := Color("222630")
 	const COL_EYE := Color("ff4a3a")
 	const COL_THRUST := Color("5ab8ff")
+	const BEAM_W := 12.0
+	const HALO_W := 38.0
+	const HALO_COLOR := Color(1.0, 0.2, 0.08)
 
 	var alt := 190.0
 	var beam := 0.0
@@ -144,66 +148,110 @@ class Drone:
 	var next: Drone
 	var _time := 0.0
 	var _seed := 0.0
+	var _halo: QuadFx
+	var _core: QuadFx
+	var _base_glow: QuadFx
+	var _link_core: Array[QuadFx] = []
+	var _link_halo: Array[QuadFx] = []
+	var _body: Node2D
+
+	func _ready() -> void:
+		_halo = QuadFx.new().setup(FxParts.SH_BEAM_ADD, Vector2(HALO_W, 1), Vector2(0.5, 1.0))
+		_halo.set_param("color", HALO_COLOR)
+		add_child(_halo)
+		_core = QuadFx.new().setup(FxParts.SH_BEAM, Vector2(BEAM_W, 1), Vector2(0.5, 1.0))
+		FxParts.set_ramp(_core, FxParts.LASER)
+		_core.set_param("taper", 0.0)
+		# Solid core: no travelling bands, so it reads as one continuous beam.
+		_core.set_param("bands", 0.0)
+		add_child(_core)
+		_base_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(44, 22))
+		_base_glow.set_param("color", HALO_COLOR)
+		_base_glow.set_param("falloff", 1.3)
+		add_child(_base_glow)
+		_body = Node2D.new()
+		_body.draw.connect(_draw_body)
+		add_child(_body)
+
+	## Called once neighbors are known: build link beams toward the next drone.
+	func build_links() -> void:
+		if next == null:
+			return
+		for h in LINK_HEIGHTS:
+			var lc := QuadFx.new().setup(FxParts.SH_BEAM, Vector2(6, 1), Vector2(0.5, 0.0))
+			FxParts.set_ramp(lc, FxParts.LASER)
+			lc.set_param("taper", 0.0)
+			lc.set_param("bands", 0.0)
+			lc.set_param("intensity", 0.0)
+			var lh := QuadFx.new().setup(FxParts.SH_BEAM_ADD, Vector2(20, 1), Vector2(0.5, 0.0))
+			lh.set_param("color", HALO_COLOR)
+			lh.set_param("intensity", 0.0)
+			add_child(lh)
+			add_child(lc)
+			move_child(_body, -1)
+			_link_core.append(lc)
+			_link_halo.append(lh)
 
 	func _process(delta: float) -> void:
 		_time += delta
+		var flick := 0.85 + 0.15 * sin(_time * 60.0 + _seed * 9.0)
+		var length := maxf(alt - 3.0, 1.0)
+		for q in [_halo, _core]:
+			q.size.y = length
+			q.queue_redraw()
+		_core.set_param("intensity", beam)
+		_halo.set_param("intensity", clampf(beam * 1.2 - 0.2, 0.0, 1.0) * flick)
+		_base_glow.set_param("intensity", clampf(beam * 1.4 - 0.3, 0.0, 1.4) * flick)
+		if next != null and not _link_core.is_empty():
+			var d := next.position - position
+			for i in _link_core.size():
+				var h: float = LINK_HEIGHTS[i]
+				var a := Vector2(0, -h)
+				var b := d + Vector2(0, -h)
+				for q in [_link_core[i], _link_halo[i]]:
+					q.position = a
+					q.rotation = (b - a).angle() - PI * 0.5
+					q.size.y = maxf(a.distance_to(b) * link, 1.0)
+					q.queue_redraw()
+				_link_core[i].set_param("intensity", link * 0.85)
+				_link_halo[i].set_param("intensity", link * 0.8 * flick)
 		queue_redraw()
+		_body.queue_redraw()
 
 	func _draw() -> void:
+		# Under the beams: shadow and glowing contact ring on the ground.
+		var sh := clampf(1.0 - alt / 260.0, 0.1, 1.0)
+		draw_rect(Rect2(-4, -1, 9, 2), Color(0, 0, 0, 0.35 * sh * modulate.a))
+		if beam > 0.3:
+			var ring := PackedVector2Array()
+			var pulse := 1.0 + 0.15 * sin(_time * 12.0 + _seed)
+			for i in 17:
+				var a := TAU * i / 16.0
+				ring.append((Vector2(cos(a) * 10.0, sin(a) * 5.0) * pulse).round())
+			draw_polyline(ring, Color(1.0, 0.45, 0.3, beam), -1.0)
+			draw_polyline(PackedVector2Array(Array(ring).map(func(v): return (v * 0.55).round())), Color(1.0, 0.85, 0.75, beam), -1.0)
+
+	func _draw_body() -> void:
 		var bob := roundf(sin(_time * 5.0 + _seed) * 1.0)
 		var top := -alt + bob
 		var flick := fmod(_time * 30.0 + _seed * 7.0, 3.0) < 1.0
-		# Shadow.
-		var sh := clampf(1.0 - alt / 260.0, 0.1, 1.0)
-		draw_rect(Rect2(-4, -1, 9, 2), Color(0, 0, 0, 0.35 * sh * modulate.a))
-		# Links to the neighbor drone (the wall), plus burning ground line.
-		if link > 0.0 and next != null:
-			var d := next.position - position
-			# Hairlines only: thick draw_line quads collapse under 2D vertex snapping.
-			var ground_to := Vector2.ZERO.lerp(d, link).round()
-			# Faint energy curtain between emitters.
-			var top_h: float = LINK_HEIGHTS[-1] + 4.0
-			var curtain := Color(1.0, 0.15, 0.1, (0.1 if flick else 0.16) * link)
-			draw_colored_polygon(PackedVector2Array([
-				Vector2.ZERO, ground_to, ground_to + Vector2(0, -top_h), Vector2(0, -top_h)]), curtain)
-			draw_line(Vector2.ZERO, ground_to, COL_MID, -1.0)
-			draw_line(Vector2(0, -1), ground_to + Vector2(0, -1), COL_OUTER, -1.0)
-			for h in LINK_HEIGHTS:
-				var a := Vector2(0, -h)
-				var b := a.lerp(d + Vector2(0, -h), link).round()
-				if not flick:
-					draw_line(a + Vector2(0, -2), b + Vector2(0, -2), COL_OUTER, -1.0)
-					draw_line(a + Vector2(0, 2), b + Vector2(0, 2), COL_OUTER, -1.0)
-				draw_line(a + Vector2(0, -1), b + Vector2(0, -1), COL_MID, -1.0)
-				draw_line(a + Vector2(0, 1), b + Vector2(0, 1), COL_MID, -1.0)
-				draw_line(a, b, COL_CORE if link >= 1.0 else COL_MID, -1.0)
-				draw_rect(Rect2(a + Vector2(-1, -1), Vector2(3, 3)), COL_MID)
-				draw_rect(Rect2(a, Vector2.ONE), Color.WHITE)
-		# Vertical beam from emitter to ground.
+		var b := _body
+		b.draw_rect(Rect2(-10, top - 3, 3, 2), COL_DARK)
+		b.draw_rect(Rect2(8, top - 3, 3, 2), COL_DARK)
+		b.draw_rect(Rect2(-8, top - 2, 3, 1), COL_DARK)
+		b.draw_rect(Rect2(6, top - 2, 3, 1), COL_DARK)
+		b.draw_rect(Rect2(-6, top - 4, 13, 6), COL_BODY)
+		b.draw_rect(Rect2(-6, top - 4, 13, 1), COL_TOP)
+		b.draw_rect(Rect2(-2, top - 2, 5, 1), COL_EYE)
+		b.draw_rect(Rect2(-2, top + 2, 5, 2), Color("ff3a2a") if beam > 0.0 else COL_DARK)
 		if beam > 0.0:
-			var length := alt - 3.0
-			if beam > 0.6 and not flick:
-				draw_rect(Rect2(-2, top + 3, 5, length), COL_OUTER)
-			if beam > 0.3:
-				draw_rect(Rect2(-1, top + 3, 3, length), COL_MID)
-			draw_rect(Rect2(0, top + 3, 1, length), COL_CORE if beam > 0.6 else COL_MID)
-			draw_rect(Rect2(-3, -1, 7, 2), COL_MID)
-			draw_rect(Rect2(-1, -1, 3, 1), COL_CORE)
-		# Body.
-		draw_rect(Rect2(-9, top - 3, 2, 2), COL_DARK)
-		draw_rect(Rect2(8, top - 3, 2, 2), COL_DARK)
-		draw_rect(Rect2(-7, top - 2, 2, 1), COL_DARK)
-		draw_rect(Rect2(6, top - 2, 2, 1), COL_DARK)
-		draw_rect(Rect2(-5, top - 3, 11, 5), COL_BODY)
-		draw_rect(Rect2(-5, top - 3, 11, 1), COL_TOP)
-		draw_rect(Rect2(-1, top - 1, 3, 1), COL_EYE)
-		draw_rect(Rect2(-1, top + 2, 3, 1), COL_MID if beam > 0.0 else COL_DARK)
+			b.draw_rect(Rect2(-1, top + 3, 3, 1), Color("fff0e8"))
 		var thrust := COL_THRUST if flick else COL_THRUST.lightened(0.4)
-		draw_rect(Rect2(-9, top - 1, 2, 1), thrust)
-		draw_rect(Rect2(8, top - 1, 2, 1), thrust)
+		b.draw_rect(Rect2(-10, top - 1, 3, 1), thrust)
+		b.draw_rect(Rect2(8, top - 1, 3, 1), thrust)
 		if flick:
-			draw_rect(Rect2(-9, top, 1, 1), Color(COL_THRUST, 0.6))
-			draw_rect(Rect2(9, top, 1, 1), Color(COL_THRUST, 0.6))
+			b.draw_rect(Rect2(-9, top, 1, 1), Color(COL_THRUST, 0.6))
+			b.draw_rect(Rect2(9, top, 1, 1), Color(COL_THRUST, 0.6))
 
 
 var _dir := Vector2(1, 0)
@@ -214,6 +262,8 @@ var _drones: Array[Drone] = []
 var _front := 0.0
 var _streaks: PixelParticles
 var _hum: Node
+var _wall_light: QuadFx
+var _wall_haze: QuadFx
 
 
 func _build() -> void:
@@ -265,6 +315,7 @@ func _arrive() -> void:
 		tw.parallel().tween_property(d, "beam", 0.25, 0.3).set_delay(0.2)
 	for i in EMITTERS - 1:
 		_drones[i].next = _drones[i + 1]
+		_drones[i].build_links()
 
 
 func _link() -> void:
@@ -281,6 +332,19 @@ func _link() -> void:
 
 func _walk() -> void:
 	_hum = ctx.play(&"laser_hum", origin, -2.0)
+	# Red light spilling onto the floor along the wall, and heat shimmer riding with it.
+	var lane_space := Node2D.new()
+	lane_space.position = origin
+	lane_space.rotation = _dir.angle()
+	lane_space.z_index = 6
+	track(lane_space, ctx.ground)
+	_wall_light = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(2.2, WIDTH + 2.0))
+	_wall_light.set_param("color", Color(1.0, 0.22, 0.1))
+	_wall_light.set_param("falloff", 1.1)
+	_wall_light.set_param("intensity", 1.1)
+	_wall_light.set_param("flicker", 1.0)
+	lane_space.add_child(_wall_light)
+	_wall_haze = FxParts.heat_haze(self, Iso.ground_to_screen(origin), FxParts.PX_PER_UNIT_MAJOR * WIDTH * 0.45, 1.5)
 
 
 func _fx_process(delta: float) -> void:
@@ -288,6 +352,10 @@ func _fx_process(delta: float) -> void:
 		return
 	_front = clampf((t - T_WALK) / (T_STOP - T_WALK), 0.0, 1.0) * LENGTH
 	_trail.front = _front
+	if is_instance_valid(_wall_light):
+		_wall_light.position = Vector2(_front, 0)
+	if is_instance_valid(_wall_haze):
+		_wall_haze.position = Iso.ground_to_screen(origin + _dir * _front) + Vector2(0, -40)
 	for i in _drones.size():
 		_drones[i].position = Iso.ground_to_screen(_emitter_ground(i)).round()
 
@@ -307,7 +375,10 @@ func _fx_process(delta: float) -> void:
 	for e in ctx.field.in_lane(origin, _dir, KILL_HALF_WIDTH, _front - KILL_BAND, _front + KILL_BAND):
 		if ctx.field.kill(e, &"laser"):
 			var sp := Iso.ground_to_screen(e.ground_pos)
-			FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -8), 16, FxParts.LASER_LIFE, Vector2(40, 170), Vector2(20, 140))
+			FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -8), 22, FxParts.LASER_LIFE, Vector2(50, 200), Vector2(20, 160))
+			var burn := FxParts.bloom(self, sp + Vector2(0, -8), 20.0, Color(1.0, 0.4, 0.15), 1.3)
+			burn.tween_param("intensity", 1.3, 0.0, 0.35, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+			burn.life = 0.37
 			FxParts.smoke(self, sp + Vector2(0, -6), 3.0, 18.0, 0.25, Vector2(15, 35), Vector2(2, 3), Vector2(0.6, 1.0))
 			ctx.play(&"laser_sizzle", e.ground_pos)
 
@@ -320,6 +391,10 @@ func _stop() -> void:
 		tw.tween_property(d, "link", 0.0, 0.2)
 		tw.parallel().tween_property(d, "beam", 0.0, 0.3)
 	create_tween().tween_property(_lane, "alpha", 0.0, 0.3)
+	if is_instance_valid(_wall_light):
+		_wall_light.tween_param("intensity", 1.1, 0.0, 0.3)
+	if is_instance_valid(_wall_haze):
+		_wall_haze.tween_param("strength", 1.5, 0.0, 0.6)
 	# Smoke wisps rising from the corridor.
 	for k in 5:
 		var g := origin + _dir * (LENGTH * (k + 0.5) / 5.0) + _side * ctx.rng.randf_range(-1.8, 1.8)

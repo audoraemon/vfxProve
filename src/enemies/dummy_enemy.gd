@@ -126,7 +126,7 @@ func tick(delta: float) -> void:
 func _tick_death(delta: float) -> void:
 	_dead_time += delta
 	match _kind:
-		&"nova", &"orbital":
+		&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind":
 			_fly += _fly_vel * delta
 			_fly_vel *= maxf(1.0 - (0.6 if _alt > 0.0 else 6.0) * delta, 0.0)
 			_valt -= 520.0 * delta
@@ -135,7 +135,13 @@ func _tick_death(delta: float) -> void:
 				_rot += _spin * delta
 			else:
 				_rot = lerp_angle(_rot, PI * 0.5 * signf(_spin), minf(12.0 * delta, 1.0))
-			_char = minf(_char + delta * 3.5, 1.0)
+			if _kind != &"stone" and _kind != &"water" and _kind != &"wind":
+				_char = minf(_char + delta * 3.5, 1.0)
+		&"fire":
+			_char = minf(_char + delta * 2.2, 1.0)
+			for i in _embers.size():
+				var e := _embers[i]
+				_embers[i] = Vector3(e.x + sin(_dead_time * 9.0 + i) * 6.0 * delta, e.y - 22.0 * delta, e.z - delta * 0.8)
 		&"gravity":
 			_char = minf(_char + delta * 6.0, 1.0)
 		&"ice":
@@ -218,6 +224,20 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			_valt = rng.randf_range(90.0, 190.0) * power
 			_alt = 1.0
 			_spin = rng.randf_range(8.0, 16.0) * (1.0 if away.x >= 0.0 else -1.0)
+		&"lightning", &"cinder", &"stone", &"water", &"wind":
+			# power, lift, spin per type: wind flings high and spins, water sweeps along the ground.
+			var cfg: Array = {&"lightning": [0.6, 0.8, 1.0], &"cinder": [0.8, 1.0, 1.0], &"stone": [0.9, 0.9, 0.7],
+				&"water": [1.3, 0.35, 0.6], &"wind": [0.7, 2.2, 2.2]}[kind]
+			_fly_vel = away * rng.randf_range(60.0, 150.0) * cfg[0]
+			_valt = rng.randf_range(90.0, 190.0) * cfg[1]
+			_alt = 1.0
+			_spin = rng.randf_range(8.0, 16.0) * cfg[2] * (1.0 if away.x >= 0.0 else -1.0)
+			if kind == &"lightning":
+				_flash = 0.18
+		&"fire":
+			_flash = 0.05
+			for i in 14:
+				_embers.append(Vector3(rng.randf_range(-5, 5), rng.randf_range(-15, -2), rng.randf_range(0.5, 1.3)))
 		&"gravity":
 			_toward = -away
 		&"ice":
@@ -230,7 +250,7 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			_flash = 0.06
 			for i in 10:
 				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-12, -2), rng.randf_range(0.4, 1.0)))
-	z_index = 0 if kind == &"nova" or kind == &"orbital" else -1
+	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind"] else -1
 
 
 func is_alive() -> bool:
@@ -264,6 +284,8 @@ func _sync_position() -> void:
 
 func _tint(c: Color) -> Color:
 	if _flash > 0.0:
+		if _kind == &"lightning" and int(_flash * 40.0) % 2 == 0:
+			return Color("5aa8ff")
 		return Color.WHITE
 	if is_frozen():
 		# Colors wash to pale ice; in the last second before thawing the original shows through.
@@ -284,8 +306,10 @@ func _px(x: int, y: int, w: int, h: int, c: Color) -> void:
 func _draw() -> void:
 	if state == State.DEAD:
 		match _kind:
-			&"nova", &"orbital":
+			&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind":
 				_draw_thrown()
+			&"fire":
+				_draw_burn()
 			&"gravity":
 				_draw_stretched()
 			&"laser":
@@ -416,6 +440,21 @@ func _draw_shatter() -> void:
 			draw_rect(Rect2(Vector2(s.x, s.y).round(), Vector2(2, 1)), COL_ICE_HI if int(absf(s.x) * 3.0) % 2 == 0 else COL_ICE)
 		else:
 			draw_rect(Rect2(Vector2(s.x, 0).round(), Vector2(1, 1)), COL_ICE_DEEP)
+
+
+## Burned by dragon fire: blackens where it stands, crumbles to ash with rising embers.
+func _draw_burn() -> void:
+	var k := clampf((_dead_time - 0.5) / 0.8, 0.0, 1.0)
+	if k < 1.0:
+		draw_set_transform(Vector2(0, roundf(k * 8.0)), 0.0, Vector2(1.0, 1.0 - k * 0.8))
+		_draw_body(0, 0)
+		draw_set_transform(Vector2.ZERO)
+	draw_rect(Rect2(-5, -2, 10, 2), COL_CHAR)
+	for e in _embers:
+		if e.z > 0.0:
+			var c := COL_HOT if e.z > 0.8 else COL_EMBER
+			c.a = clampf(e.z, 0.0, 1.0)
+			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), c)
 
 
 func _draw_corpse() -> void:

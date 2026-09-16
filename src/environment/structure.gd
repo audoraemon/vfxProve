@@ -169,7 +169,7 @@ func destroy(source: Vector2, damage_kind: StringName) -> void:
 		var toward := damage_kind == &"gravity"
 		_spawn_debris(source, toward)
 		_spawn_dust(1.0)
-		if damage_kind != &"gravity" and damage_kind != &"ice":
+		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone"]:
 			_spawn_fire(Vector2.ZERO, 3.0)
 
 

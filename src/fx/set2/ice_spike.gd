@@ -23,6 +23,12 @@ const PR_TIP_L := Color("a8def5")
 const PR_TIP_R := Color("4aaee0")
 const PR_TIP_F := Color("f2fcff")
 const DEEP := Color("0f2a4f")
+## Shard palettes: core, dark face, mid face, light face, rim, ridge.
+const SHARD_PALETTES := [
+	[SH_CORE, SH_DARK, SH_MID, SH_LIGHT, SH_RIM, Color("ffffff")],
+	[Color("3a2e22"), Color("5e4c38"), Color("8e7858"), Color("c8ae80"), Color("ffe2a0"), Color("fff4d0")],
+	[Color("1a1414"), Color("2c2224"), Color("463638"), Color("6a5250"), Color("ff8a2a"), Color("ffd070")],
+]
 const HI := Color("ffffff")
 
 ## Main crystal length and half width in px.
@@ -31,6 +37,8 @@ var width := 10.0
 ## Main crystal tilt in radians (0 = straight up, positive leans right).
 var angle := 0.0
 var style := Style.SHARD
+## Shard palette: 0 ice, 1 golden sandstone, 2 obsidian with lava rim.
+var palette := 0
 ## Extra shards grouped with the main one.
 var cluster := true
 var grow := 0.0
@@ -120,10 +128,11 @@ func _draw_shard(base: Vector2, a: float, length: float, w: float, amb: float, l
 	var apex := base + u * length + p * w * skew
 	var knee := bl.lerp(apex, 0.42) - p * w * 0.12
 
-	var c_core := _shade(SH_CORE, amb, lit, boost, alpha)
-	var c_dark := _shade(SH_DARK, amb, lit, boost, alpha)
-	var c_mid := _shade(SH_MID, amb, lit, boost, alpha)
-	var c_light := _shade(SH_LIGHT, amb, lit, boost, alpha)
+	var pal: Array = SHARD_PALETTES[palette]
+	var c_core := _shade(pal[0], amb, lit, boost, alpha)
+	var c_dark := _shade(pal[1], amb, lit, boost, alpha)
+	var c_mid := _shade(pal[2], amb, lit, boost, alpha)
+	var c_light := _shade(pal[3], amb, lit, boost, alpha)
 	_tri(bl, ridge, knee, c_dark)
 	_tri(knee, ridge, apex, c_mid)
 	_tri(ridge, br, apex, c_light)
@@ -133,13 +142,13 @@ func _draw_shard(base: Vector2, a: float, length: float, w: float, amb: float, l
 	# Buried dark foot.
 	_quad(bl - u * w * 0.25, br - u * w * 0.25, br, bl, _shade(DEEP, amb, lit, boost, alpha * 0.9))
 
-	var rim := Color(SH_RIM, alpha * clampf(0.6 + glow * 0.35, 0.0, 1.0))
+	var rim := Color(pal[4], alpha * clampf(0.6 + glow * 0.35, 0.0, 1.0))
 	draw_line(bl.round(), knee.round(), rim, -1.0)
 	draw_line(knee.round(), apex.round(), rim, -1.0)
-	draw_line(apex.round(), br.round(), Color(SH_LIGHT, alpha * 0.6), -1.0)
-	draw_line(ridge.round(), apex.round(), Color(HI, alpha), -1.0)
+	draw_line(apex.round(), br.round(), Color(pal[3], alpha * 0.6), -1.0)
+	draw_line(ridge.round(), apex.round(), Color(pal[5], alpha), -1.0)
 	if w >= 7.0:
-		draw_line(bl.lerp(ridge, 0.5).round(), knee.lerp(apex, 0.4).round(), Color(SH_LIGHT, alpha * 0.55), -1.0)
+		draw_line(bl.lerp(ridge, 0.5).round(), knee.lerp(apex, 0.4).round(), Color(pal[3], alpha * 0.55), -1.0)
 
 	if shatter > 0.05 and length > 10.0:
 		var cu := fposmod(sin(seed * 3.3) * 9171.3, 1.0)

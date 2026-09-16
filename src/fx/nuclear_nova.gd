@@ -268,12 +268,15 @@ func _start_mushroom() -> void:
 
 func _drive_mushroom() -> void:
 	var m := t - _mushroom_t0
-	var rx := curve([[0.0, 36.0], [0.8, 66.0], [2.3, 92.0], [4.5, 104.0], [6.5, 108.0]], m)
-	_mushroom.set_param("rise", curve([[0.0, 20.0], [0.8, 62.0], [2.3, 108.0], [4.5, 130.0], [6.5, 138.0]], m))
+	# Proportions of a real nuclear mushroom: a rounded fireball lifts off, flattens into a cap
+	# ~0.6 as tall as it is wide, on a stem roughly twice the cap's height, over a wide low skirt.
+	var rx := curve([[0.0, 30.0], [0.8, 40.0], [2.3, 52.0], [4.5, 58.0], [6.5, 60.0]], m)
+	_mushroom.set_param("rise", curve([[0.0, 26.0], [0.8, 64.0], [2.3, 108.0], [4.5, 126.0], [6.5, 132.0]], m))
 	_mushroom.set_param("cap_rx", rx)
-	_mushroom.set_param("cap_ry", rx * 0.42)
-	_mushroom.set_param("stem_w", curve([[0.0, 7.0], [1.2, 14.0], [4.0, 17.0]], m))
-	_mushroom.set_param("base_w", curve([[0.0, 22.0], [1.2, 38.0], [4.0, 46.0]], m))
+	_mushroom.set_param("cap_ry", rx * curve([[0.0, 0.9], [1.2, 0.68], [3.0, 0.58]], m))
+	_mushroom.set_param("stem_w", curve([[0.0, 5.0], [1.2, 8.0], [4.0, 9.0]], m))
+	_mushroom.set_param("base_w", curve([[0.0, 10.0], [1.2, 14.0], [4.0, 16.0]], m))
+	_mushroom.set_param("skirt_rx", curve([[0.3, 0.0], [1.0, 50.0], [3.0, 80.0], [6.0, 92.0]], m))
 	_mushroom.set_param("heat", curve([[0.0, 1.5], [0.8, 1.2], [2.3, 0.55], [3.8, 0.18], [5.5, 0.0]], m))
 	_mushroom.set_param("ring", curve([[0.9, 0.0], [1.2, 1.0], [2.0, 0.8], [2.8, 0.0]], m))
 	_mushroom.set_param("fade", curve([[5.6, 1.0], [6.6, 0.0]], m))
@@ -284,10 +287,6 @@ func _aftermath() -> void:
 	_geiger = ctx.play(&"nova_geiger", origin, -4.0)
 	at(t + 5.2, func(): ctx.fade_out(_geiger, 1.5))
 
-	# Low dust skirt churning around the mushroom's foot.
-	var skirt := FxParts.smoke(self, _target_px, 40.0, 14.0, 2.4, Vector2(4, 14), Vector2(5, 8), Vector2(1.4, 2.4))
-	skirt.spec["dir"] = PixelParticles.Dir.OUTWARD
-	skirt.spec["speed"] = Vector2(20, 45)
 
 	var haze := FxParts.heat_haze(self, _target_px, 130.0, 2.0)
 	haze.tween_param("strength", 2.0, 0.0, 2.0, 3.2)

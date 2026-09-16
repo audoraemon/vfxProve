@@ -203,10 +203,13 @@ static func link_beam(fx: FxTimeline, parent: Node, a: Vector2, b: Vector2, widt
 
 ## Fireball dome over screen_pos; semi_x = half width in px.
 static func dome(fx: FxTimeline, screen_pos: Vector2, semi_x: float, ramp: Array = FIRE) -> QuadFx:
-	const DOME := 0.85
-	const BASE := 0.5
-	var q := quad(fx, SH_DOME, Vector2(semi_x * 2.0, semi_x * (DOME + BASE)), fx.ctx.overhead,
+	# Quad reaches 1.0 radii above ground (dome top is 0.866) so the billowing surface is never clipped.
+	const DOME := 1.0
+	const BASE := 0.62
+	const WIDTH := 1.16
+	var q := quad(fx, SH_DOME, Vector2(semi_x * 2.0 * WIDTH, semi_x * (DOME + BASE)), fx.ctx.overhead,
 		Vector2(0.5, DOME / (DOME + BASE)))
+	q.set_param("width_ratio", WIDTH)
 	q.position = screen_pos
 	q.set_param("dome_ratio", DOME)
 	q.set_param("seed", fx.ctx.rng.randf() * 40.0)

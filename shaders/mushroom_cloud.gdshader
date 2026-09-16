@@ -11,6 +11,8 @@ uniform float cap_rx = 50.0;
 uniform float cap_ry = 22.0;
 uniform float stem_w = 10.0;
 uniform float base_w = 26.0;
+// Low dust skirt on the ground (half width px); 0 disables.
+uniform float skirt_rx = 0.0;
 uniform float heat = 1.0;
 uniform float fade = 1.0;
 uniform float ring = 0.0;
@@ -28,9 +30,11 @@ void fragment() {
 	vec2 d = vec2(p.x / cap_rx, (p.y - rise) / cap_ry);
 	float a = atan(d.y, d.x);
 	// Flatter underside, taller domed top.
-	float under = d.y < 0.0 ? 1.4 : 0.85;
+	float under = d.y < 0.0 ? 1.4 : 0.72;
 	float rc = length(vec2(d.x, d.y * under));
-	float lobes = (fbm(vec2(a * 2.2 + seed, t * 0.25)) - 0.5) * 0.45 + 0.07 * sin(a * 7.0 + t * 0.6 + seed);
+	// Billowy lobes, gentler over the crown so the top stays rounded.
+	float crown = smoothstep(0.3, 1.0, sin(a));
+	float lobes = ((fbm(vec2(a * 2.2 + seed, t * 0.25)) - 0.5) * 0.45 + 0.07 * sin(a * 7.0 + t * 0.6 + seed)) * (1.0 - 0.6 * crown);
 	float cap_edge = 1.0 + lobes;
 	if (rc < cap_edge) {
 		// Dithered soft silhouette instead of a hard cut.
@@ -55,8 +59,11 @@ void fragment() {
 	if (density <= 0.0 && p.y >= 0.0 && p.y <= rise) {
 		float k = p.y / max(rise, 1.0);
 		float w = mix(base_w, stem_w, smoothstep(0.0, 0.35, k));
-		w += (fbm(vec2(p.y * 0.06 - t * 0.8, seed)) - 0.5) * w * 0.6;
-		w += base_w * 0.6 * exp(-p.y / 8.0);
+		w += (fbm(vec2(p.y * 0.06 - t * 0.8, seed)) - 0.5) * w * 0.45;
+		w += base_w * 0.35 * exp(-p.y / 6.0);
+		// Neck: the stem flares as it feeds into the cap's underside.
+		float below_cap = (rise - cap_ry * 0.6) - p.y;
+		w += stem_w * 1.3 * exp(-max(below_cap, 0.0) / 9.0);
 		if (abs(p.x) < w) {
 			density = 1.0;
 			float sx = p.x / w;
@@ -64,7 +71,22 @@ void fragment() {
 			// Vertical churning streaks.
 			tex = tex * 0.7 + vnoise(vec2(sx * 6.0 + seed, p.y * 0.03 - t * 1.6)) * 0.4 - 0.1;
 			light = clamp(0.6 - sx * 0.55, 0.0, 1.0);
-			glow = heat * (0.65 + 0.35 * tex) * (1.0 - abs(sx) * 0.6) * (0.55 + 0.45 * (1.0 - k));
+			glow = heat * (0.35 + 0.9 * tex) * (1.0 - abs(sx) * 0.6) * (0.55 + 0.45 * (1.0 - k));
+		}
+	}
+
+	// Low dust skirt rolling outward along the ground around the foot.
+	if (density <= 0.0 && skirt_rx > 1.0) {
+		vec2 sd = vec2(p.x / skirt_rx, (p.y - skirt_rx * 0.12) / (skirt_rx * 0.26));
+		float srr = length(sd) + (fbm(vec2(atan(sd.y, sd.x) * 2.5 + seed, t * 0.3)) - 0.5) * 0.4;
+		if (srr < 1.0) {
+			density = srr > 0.82 ? step(bayer4(FRAGCOORD.xy), (1.0 - srr) / 0.18) : 1.0;
+			// Rolling billows churning outward.
+			vec2 sq2 = vec2(sd.x * 4.0 - t * 0.25 * sign(sd.x), sd.y * 3.0) + seed;
+			float billow = smoothstep(0.0, 0.4, cell_edge(sq2, t * 0.3));
+			tex = fbm(sq2) * 0.6 + billow * 0.4 - 0.2;
+			light = clamp(0.35 + sd.y * 0.45 - sd.x * 0.15, 0.0, 1.0);
+			glow = heat * 0.45 * (1.0 - srr) * (0.5 + tex);
 		}
 	}
 

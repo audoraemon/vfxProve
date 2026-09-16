@@ -229,8 +229,8 @@ func _ice_explosion(g: Vector2, size: float) -> void:
 	ctx.play(&"glac_shatter", g, -3.0)
 	ctx.shake.add_trauma(0.12 * size)
 
-	var flash := FxParts.bloom(self, sp + Vector2(0, -8), 30.0 * size, ICE_LIGHT, 1.3)
-	flash.tween_param("intensity", 1.3, 0.0, 0.3, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	var flash := FxParts.bloom(self, sp + Vector2(0, -8), 22.0 * size, ICE_LIGHT, 0.7)
+	flash.tween_param("intensity", 0.7, 0.0, 0.25, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	flash.life = 0.32
 	var light := FxParts.ground_light(self, g, 1.4 * size, ICE_LIGHT)
 	light.tween_param("intensity", 1.2, 0.0, 0.45, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
@@ -254,34 +254,41 @@ func _ice_explosion(g: Vector2, size: float) -> void:
 	shards.gravity = 320.0
 	shards.drag = 1.1
 	shards.streak_len = 0.05
-	shards.burst(int(26 * size), {"radius": 3.0, "speed": Vector2(60, 220), "alt": Vector2(2, 14),
+	shards.burst(int(12 * size), {"radius": 3.0, "speed": Vector2(60, 220), "alt": Vector2(2, 14),
 		"alt_speed": Vector2(40, 200), "life": Vector2(0.35, 0.8), "size": Vector2(1, 3)})
 	FxParts.debris(self, sp, int(8 * size), 4.0, Vector2(30, 120), FxParts.ICE_CHUNK, Vector2(1.5, 3.0), true)
 	var mist := FxParts.particles(self, ctx.overhead_back, sp, PixelParticles.Shape.PUFF, FxParts.MIST_LIFE)
 	mist.drag = 1.8
-	mist.burst(int(8 * size), {"radius": 5.0, "dir": PixelParticles.Dir.OUTWARD, "speed": Vector2(20, 60),
+	mist.burst(int(4 * size), {"radius": 5.0, "dir": PixelParticles.Dir.OUTWARD, "speed": Vector2(20, 60),
 		"alt": Vector2(0, 8), "alt_speed": Vector2(4, 20), "life": Vector2(0.6, 1.1), "size": Vector2(3, 6),
 		"size_end_mul": 1.6})
 
-	# A star of crystals bursts out radially from the enemy, like a snowflake of prisms.
-	var rays := 8
-	for i in rays:
-		var dir_a := TAU * i / rays + ctx.rng.randf_range(-0.15, 0.15)
+	# A burst of ice shards erupts from the enemy's feet: a small copy of the mountain, fanned
+	# up and outward, tallest in the middle, low shards splayed along the ground.
+	var fan: Array = []
+	for i in 9:
+		var k := float(i) / 8.0 * 2.0 - 1.0
+		fan.append([k * 1.35 + ctx.rng.randf_range(-0.1, 0.1), absf(k)])
+	# Outer shards first so the tall middle ones draw on top.
+	fan.sort_custom(func(x, y): return x[1] > y[1])
+	for f in fan:
+		var a: float = f[0]
+		var side: float = f[1]
 		var c := IceSpike.new()
-		c.cluster = false
-		c.style = IceSpike.Style.PRISM
+		c.cluster = side < 0.3
 		c.ground_pos = g
-		c.position = (sp + Vector2(0, -8)).round()
-		c.angle = dir_a
-		c.height = ctx.rng.randf_range(18.0, 30.0) * size * (0.7 if absf(sin(dir_a)) < 0.4 else 1.0)
-		c.width = ctx.rng.randf_range(4.5, 6.5) * size
+		c.position = (sp + Vector2(a * 3.0, side * 3.0)).round()
+		c.angle = a
+		c.height = lerpf(44.0, 16.0, side) * ctx.rng.randf_range(0.85, 1.15) * size
+		c.width = lerpf(8.0, 4.5, side) * ctx.rng.randf_range(0.85, 1.15) * size
 		c.seed = ctx.rng.randf() * 100.0
 		c.lights = ctx.lights
-		c.glow = 1.0
+		c.glow = 0.4
 		track(c, ctx.world)
 		var tw := c.create_tween()
-		tw.tween_property(c, "grow", 1.0, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_interval(0.3)
+		tw.tween_interval(side * 0.04)
+		tw.tween_property(c, "grow", 1.0, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(0.55)
 		tw.tween_property(c, "shatter", 1.0, 0.35)
 		tw.parallel().tween_property(c, "fade", 0.0, 0.45)
 		tw.tween_callback(c.queue_free)

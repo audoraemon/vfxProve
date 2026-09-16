@@ -44,7 +44,7 @@ var _spawned_any := false
 ## Spec keys (all optional):
 ##   radius: float px spawn disc; speed: Vector2(min,max) px/s; angle: Vector2(min,max) rad;
 ##   dir: Dir; alt: Vector2; alt_speed: Vector2; life: Vector2; size: Vector2;
-##   size_end_mul: float; offset: Vector2 px added to spawn point.
+##   size_end_mul: float; offset: Vector2 px added to spawn point; velocity: Vector2 px/s override.
 func burst(count: int, s: Dictionary) -> void:
 	for i in count:
 		_spawn(s)
@@ -70,6 +70,8 @@ func _spawn(s: Dictionary) -> void:
 		_:
 			dir = Vector2.RIGHT.rotated(_rand(s, "angle", Vector2(0, TAU)))
 	p.vel = Vector2(dir.x, dir.y * iso_squash) * speed
+	if s.has("velocity"):
+		p.vel = s.velocity
 	p.alt = _rand(s, "alt", Vector2.ZERO)
 	p.valt = _rand(s, "alt_speed", Vector2.ZERO)
 	p.life = maxf(_rand(s, "life", Vector2(0.5, 1.0)), 0.01)

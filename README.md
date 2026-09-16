@@ -18,8 +18,14 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 | Key | Effect | Stages |
 |---|---|---|
 | 1 | **Glacial Cataclysm** | glowing frost rune + cold mist → faceted ice spikes erupt (impact frame, hit-stop) → freeze wave spreads, frozen ground, enemies encased in ice → crystal mountain (spread over the whole radius, tallest at the center) surges to full height, enemies inside it burst → when each freeze ends the enemy explodes in an icy blast (frost ring, shards, crystal pops, mist) → outer spikes break into residue, icy fog, snow |
+| 2 | **Heaven Splitter** | line marker + storm sigil charge → sky lightning column crashes down, lightning crawls along the marked line → 8 thick magma fissures crack outward → lightning erupts along the fissures → cooling cracks, static arcs, smoke *(drag = line direction)* |
+| 3 | **Cinderfall Barrage** | magma sigil and quake → a volcano of lit rock plates over molten lava thrusts out of the ground → crater eruption launches flaming boulders → fire stones rain across the area (fireballs, craters, lava pools) → volcano sinks into a smoking mound |
+| 4 | **Tsunami Breaker** | water lane telegraph → curling wave wall rises → sweeps the lane carrying enemies and smashing houses → terminal splash and shockwave → flooded lane with puddles, ripples and mist *(drag = direction)* |
+| 5 | **Tornado Tempest** | spiral wind rune + suction ring → funnel of wind ribbons forms from dust → pulls enemies in and flings them skyward, debris orbiting → walks the lane leaving scarred swirls → unravels, dropping debris into dust *(drag = direction)* |
+| 6 | **Judgement of the Ancients** | golden earth rune → stone hands and sandstone spikes break out, a stone titan rises → six knuckle slams on enemy clusters → two-hand final slam with golden shockwave and spike ring → titan crumbles to rubble |
+| 7 | **Dragonfire Parade** | dragon sigil and sweep-arc preview → ground ruptures in lava and obsidian → a winged fire dragon rises roaring → inhales, then sweeps a cone of flame across the ground → sinks away, leaving scorched earth and burning patches *(drag = breath direction)* |
 
-Remaining Set2 effects (Heaven Splitter, Cinderfall Barrage, Tsunami Breaker, Tornado Tempest, Judgement of the Ancients, Dragonfire Parade) are listed in the HUD with `*` until built. Design: `docs/superpowers/specs/2026-09-16-set2-fantasy-vfx-design.md`.
+Design: `docs/superpowers/specs/2026-09-16-set2-fantasy-vfx-design.md`.
 
 Everything is procedural: canvas shaders, a small pixel particle system, code-drawn sprites, and synthesized audio. No external art or sound assets.
 
@@ -68,8 +74,8 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=137 failures=0
-python tools/audio/synth.py --verify                 # audio cue checks → 41 cues, 0 problems
+bash tools/test.sh                                   # headless tests → checks=217 failures=0
+python tools/audio/synth.py --verify                 # audio cue checks → 78 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png
 ```

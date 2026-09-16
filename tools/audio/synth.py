@@ -506,6 +506,290 @@ def glac_shatter(rng, dur, variant):
     return (burst * 1.2 + pings * 0.5 + tinkle * 0.6) * attack(n, 0.001)
 
 
+# --- Set2: shared building blocks ---------------------------------------------
+
+def _boom(n, rng, f0=80.0, f1=28.0, tau=0.6, body=1.5, cutoff=1500.0, drive=2.5):
+    sub = sine(ramp(f0, f1, n, "exp"), n) * decay(n, tau)
+    rumble = sweep_filter(noise(n, rng), "lowpass", ramp(cutoff, 60, n, "exp")) * decay(n, tau * 0.7) * body
+    return saturate(sub * 1.2 + rumble, drive) * attack(n, 0.003)
+
+
+def _thunder_crack(n, rng):
+    crack = highpass(noise(n, rng), 1500) * decay(n, 0.02) * 1.5
+    tail = clicks(n, 300, rng, 0.003, 1200, amp=(0.2, 1.0), density=decay(n, 0.25)) * 0.8
+    return crack + tail
+
+
+def _crackle(n, rng, rate=40, hp=900):
+    return clicks(n, rate, rng, 0.004, hp, amp=(0.1, 1.0))
+
+
+def _whoosh(n, rng, f0, f1, q=0.5):
+    return sweep_filter(noise(n, rng), "bandpass", ramp(f0, f1, n, "exp"), q=q)
+
+
+# --- Heaven Splitter ------------------------------------------------------------
+
+def hs_charge(rng, dur):
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    hum = sweep_filter(saw(ramp(60, 180, n, "exp"), n), "lowpass", ramp(300, 3000, n, "exp"))
+    buzz = highpass(noise(n, rng), 3000) * (0.5 + 0.5 * np.sin(2 * np.pi * ramp(8, 40, n) * t)) * 0.25
+    zaps = clicks(n, 50, rng, 0.006, 2000, amp=(0.2, 1.0), density=ramp(0.1, 1.0, n)) * 0.5
+    return (hum * 0.6 + buzz + zaps) * ramp(0.1, 1.0, n) ** 1.5
+
+
+def hs_strike(rng, dur):
+    n = int(dur * SR)
+    x = _thunder_crack(n, rng) + _boom(n, rng, 90, 30, 0.9, 2.0, 2500, 3.0)
+    return reverb(x, size=1.5, feedback=0.85, mix=0.3, damp=4000)[:n]
+
+
+def hs_fissure(rng, dur):
+    n = int(dur * SR)
+    grind = sweep_filter(noise(n, rng), "lowpass", ramp(900, 200, n, "exp")) * decay(n, 0.5) * 1.5
+    cracks = clicks(n, 120, rng, 0.006, 400, amp=(0.2, 1.0), density=decay(n, 0.4))
+    return saturate(grind + cracks + sine(ramp(60, 30, n, "exp"), n) * decay(n, 0.4), 2.0)
+
+
+def hs_erupt(rng, dur):
+    n = int(dur * SR)
+    x = _thunder_crack(n, rng) * 0.8 + _boom(n, rng, 120, 50, 0.25, 0.8, 3000, 2.0) * 0.7
+    return reverb(x, size=0.9, mix=0.2)[:n]
+
+
+def hs_static(rng, dur):
+    n = int(dur * SR)
+    total = n + int(0.06 * SR)
+    gate = (rng.uniform(0, 1, total // 300 + 1) > 0.7).repeat(300)[:total]
+    x = highpass(noise(total, rng), 2500) * gate * 0.6 + clicks(total, 40, rng, 0.002, 3000) * 0.5
+    return loopify(x, n)
+
+
+def hs_rumble(rng, dur):
+    n = int(dur * SR)
+    return lowpass(brown(n, rng), 140, 4) * np.linspace(1.0, 0.0, n) ** 1.3 * attack(n, 0.1) * 1.5
+
+
+# --- Cinderfall Barrage ---------------------------------------------------------------
+
+def cf_rumble(rng, dur):
+    n = int(dur * SR)
+    return lowpass(brown(n, rng), 120, 4) * ramp(0.3, 1.0, n) * attack(n, 0.2) * 1.6
+
+
+def cf_rise(rng, dur):
+    n = int(dur * SR)
+    grind = sweep_filter(noise(n, rng), "lowpass", ramp(300, 1200, n, "exp")) * 1.4
+    cracks = clicks(n, 80, rng, 0.008, 300, amp=(0.2, 1.0))
+    sub = sine(ramp(35, 70, n, "exp"), n) * 0.8
+    return saturate((grind + cracks + sub) * adsr(n, 0.1, 0.2, 0.8, 0.4), 2.0)
+
+
+def cf_erupt(rng, dur):
+    n = int(dur * SR)
+    blast = _boom(n, rng, 70, 25, 0.9, 2.0, 1200, 3.0)
+    hiss = _whoosh(n, rng, 800, 3000, 0.6) * decay(n, 0.8) * 0.8
+    return reverb(blast + hiss + _crackle(n, rng, 60) * decay(n, 1.0) * 0.6, size=1.3, mix=0.25, damp=2500)[:n]
+
+
+def cf_lava(rng, dur):
+    n = int(dur * SR)
+    total = n + int(0.06 * SR)
+    t = np.arange(total) / SR
+    bubble = np.zeros(total)
+    for k in range(10):
+        pos = int(rng.uniform(0, total - 4000))
+        m = 4000
+        bubble[pos:pos + m] += sine(ramp(rng.uniform(80, 160), rng.uniform(200, 400), m, "exp"), m) * decay(m, 0.03) * 0.5
+    roar = lowpass(noise(total, rng), 400) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.8 * t))
+    return loopify(roar + bubble + _crackle(total, rng, 20) * 0.5, n)
+
+
+def cf_fall(rng, dur):
+    n = int(dur * SR)
+    return _whoosh(n, rng, 3000, 500, 0.5) * ramp(0.1, 1.0, n) ** 2 * 1.4
+
+
+def cf_impact(rng, dur):
+    n = int(dur * SR)
+    return reverb(_boom(n, rng, 110, 40, 0.3, 1.3, 2000, 2.5) + _crackle(n, rng, 80) * decay(n, 0.4) * 0.6,
+                  size=0.9, mix=0.18)[:n]
+
+
+# --- Tsunami Breaker ----------------------------------------------------------------
+
+def ts_surge(rng, dur):
+    n = int(dur * SR)
+    return _whoosh(n, rng, 200, 1200, 0.8) * ramp(0.1, 1.0, n) ** 1.5 * 1.3
+
+
+def ts_rise(rng, dur):
+    n = int(dur * SR)
+    water = lowpass(noise(n, rng), 1500) * adsr(n, 0.2, 0.3, 0.8, 0.3)
+    swell = sine(ramp(40, 90, n, "exp"), n) * adsr(n, 0.3, 0.2, 0.7, 0.3) * 0.8
+    return reverb(water + swell, size=1.2, mix=0.3)[:n]
+
+
+def ts_roar(rng, dur):
+    n = int(dur * SR)
+    t = times(dur)
+    surf = bandpass(noise(n, rng), 150, 2500) * (0.75 + 0.25 * np.sin(2 * np.pi * 1.7 * t))
+    low = lowpass(brown(n, rng), 200) * 1.2
+    fizz = highpass(noise(n, rng), 5000) * 0.15
+    return (surf + low + fizz) * adsr(n, 0.05, 0.2, 0.9, 0.3)
+
+
+def ts_crash(rng, dur):
+    n = int(dur * SR)
+    splash = highpass(noise(n, rng), 600) * decay(n, 0.35) * 1.6
+    boom = _boom(n, rng, 70, 30, 0.6, 1.5, 1000, 2.5)
+    return reverb(splash + boom, size=1.4, feedback=0.84, mix=0.3)[:n]
+
+
+def ts_drip(rng, dur):
+    n = int(dur * SR)
+    x = np.zeros(n)
+    for k in range(28):
+        pos = int(rng.uniform(0, n - 3000))
+        m = 3000
+        x[pos:pos + m] += sine(ramp(rng.uniform(900, 1600), rng.uniform(1800, 3000), m, "exp"), m) * decay(m, 0.012) * rng.uniform(0.3, 1.0)
+    trickle = bandpass(noise(n, rng), 1500, 5000) * 0.1 * np.linspace(1.0, 0.3, n)
+    return reverb(x + trickle, size=1.1, mix=0.3)[:n]
+
+
+# --- Tornado Tempest ----------------------------------------------------------------
+
+def tn_gust(rng, dur):
+    n = int(dur * SR)
+    return _whoosh(n, rng, 300, 1400, 0.6) * np.sin(np.linspace(0, np.pi, n)) ** 1.5 * 1.3
+
+
+def tn_form(rng, dur):
+    n = int(dur * SR)
+    swirl = sweep_filter(noise(n, rng), "bandpass", 400 + 300 * np.sin(np.linspace(0, 14, n)) + ramp(0, 800, n), q=0.4)
+    low = lowpass(brown(n, rng), 180) * 1.2
+    return (swirl * 1.2 + low) * adsr(n, 0.3, 0.2, 0.9, 0.3)
+
+
+def tn_wind(rng, dur):
+    n = int(dur * SR)
+    total = n + int(0.06 * SR)
+    t = np.arange(total) / SR
+    lfo = 0.5 + 0.5 * np.sin(2 * np.pi * 1.0 * t)
+    howl = sweep_filter(noise(total, rng), "bandpass", 300 + 700 * lfo, q=0.3)
+    low = lowpass(brown(total, rng), 150) * 1.4
+    debris = clicks(total, 25, rng, 0.006, 600, amp=(0.1, 0.6)) * 0.5
+    return loopify(howl * (0.7 + 0.3 * lfo) + low + debris, n)
+
+
+def tn_dissipate(rng, dur):
+    n = int(dur * SR)
+    fall = _whoosh(n, rng, 1400, 200, 0.5) * decay(n, 0.6) * 1.3
+    thuds = clicks(n, 30, rng, 0.02, 80, amp=(0.2, 1.0), density=decay(n, 0.8)) * 0.8
+    return reverb(fall + thuds, size=1.0, mix=0.25)[:n]
+
+
+# --- Judgement of the Ancients -----------------------------------------------------------
+
+def jg_rumble(rng, dur):
+    n = int(dur * SR)
+    choir = sum(sine(f, n) for f in (110.0, 164.8, 220.0)) * 0.12 * ramp(0.0, 1.0, n)
+    return (lowpass(brown(n, rng), 130, 4) * 1.5 + choir) * attack(n, 0.3)
+
+
+def jg_hands(rng, dur):
+    n = int(dur * SR)
+    return reverb(_boom(n, rng, 90, 35, 0.4, 1.4, 900, 2.5) + clicks(n, 100, rng, 0.01, 200, density=decay(n, 0.5)) * 0.7,
+                  size=1.1, mix=0.22)[:n]
+
+
+def jg_rise(rng, dur):
+    n = int(dur * SR)
+    grind = sweep_filter(noise(n, rng), "lowpass", ramp(200, 900, n, "exp")) * 1.5
+    chord = sum(sine(f, n) for f in (130.8, 196.0, 261.6)) * 0.15 * adsr(n, 0.4, 0.3, 0.8, 0.5)
+    return saturate((grind + chord + clicks(n, 60, rng, 0.01, 200) * 0.6) * adsr(n, 0.1, 0.2, 0.9, 0.3), 2.0)
+
+
+def jg_punch(rng, dur, variant):
+    n = int(dur * SR)
+    x = _boom(n, rng, 100 + variant * 10, 40, 0.28, 1.4, 1400, 3.0)
+    x += clicks(n, 90, rng, 0.008, 300, amp=(0.2, 1.0), density=decay(n, 0.2)) * 0.7
+    return reverb(x, size=1.0, mix=0.2)[:n]
+
+
+def jg_windup(rng, dur):
+    n = int(dur * SR)
+    rise = sweep_filter(noise(n, rng), "bandpass", ramp(200, 2000, n, "exp"), q=0.5) * ramp(0.1, 1.0, n) ** 2
+    tone = sine(ramp(110, 440, n, "exp"), n) * ramp(0.0, 0.5, n) ** 2
+    return (rise * 1.2 + tone) * attack(n, 0.05)
+
+
+def jg_slam(rng, dur):
+    n = int(dur * SR)
+    x = _boom(n, rng, 70, 22, 1.1, 2.4, 1500, 3.5) + clicks(n, 150, rng, 0.01, 250, density=decay(n, 0.6)) * 0.9
+    return reverb(x, size=1.6, feedback=0.86, mix=0.3, damp=2500)[:n]
+
+
+def jg_crumble(rng, dur):
+    n = int(dur * SR)
+    rocks = clicks(n, 70, rng, 0.02, 120, amp=(0.2, 1.0), density=np.linspace(1.0, 0.1, n)) * 1.2
+    slide = lowpass(noise(n, rng), 500) * np.linspace(1.0, 0.0, n) * 0.8
+    return reverb(rocks + slide, size=1.1, mix=0.25)[:n]
+
+
+# --- Dragonfire Parade ----------------------------------------------------------------
+
+def dr_rumble(rng, dur):
+    n = int(dur * SR)
+    return (lowpass(brown(n, rng), 140, 4) * 1.4 + _crackle(n, rng, 15, 700) * 0.3) * ramp(0.3, 1.0, n) * attack(n, 0.2)
+
+
+def dr_erupt(rng, dur):
+    n = int(dur * SR)
+    return reverb(_boom(n, rng, 80, 28, 0.7, 1.8, 1500, 3.0) + _whoosh(n, rng, 600, 2500) * decay(n, 0.5) * 0.7,
+                  size=1.2, mix=0.25)[:n]
+
+
+def dr_roar(rng, dur):
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = ramp(95, 70, n, "exp") * (1.0 + 0.04 * np.sin(2 * np.pi * 7 * t))
+    growl = saw(f, n) + 0.7 * saw(f * 1.51, n) + 0.5 * square(f * 0.5, n)
+    growl = sweep_filter(growl, "lowpass", ramp(1800, 700, n, "exp")) * (0.8 + 0.2 * np.sin(2 * np.pi * 23 * t))
+    breath = bandpass(noise(n, rng), 300, 2500) * 0.6
+    x = saturate((growl * 0.7 + breath) * adsr(n, 0.15, 0.3, 0.85, 0.6), 2.5)
+    return reverb(x, size=1.5, feedback=0.85, mix=0.3)[:n]
+
+
+def dr_inhale(rng, dur):
+    n = int(dur * SR)
+    return _whoosh(n, rng, 2000, 400, 0.5)[::-1] * ramp(0.2, 1.0, n) * 1.3
+
+
+def dr_ignite(rng, dur):
+    n = int(dur * SR)
+    whump = sine(ramp(160, 50, n, "exp"), n) * decay(n, 0.15) * 1.2
+    flare = highpass(noise(n, rng), 1200) * decay(n, 0.25)
+    return saturate(whump + flare, 2.0) * attack(n, 0.004)
+
+
+def dr_breath(rng, dur):
+    n = int(dur * SR)
+    total = n + int(0.06 * SR)
+    t = np.arange(total) / SR
+    roar = bandpass(noise(total, rng), 150, 3000) * (0.8 + 0.2 * np.sin(2 * np.pi * 3 * t))
+    low = lowpass(brown(total, rng), 220) * 1.2
+    return loopify(roar + low + _crackle(total, rng, 60, 1500) * 0.5, n)
+
+
+def dr_sink(rng, dur):
+    n = int(dur * SR)
+    fall = sweep_filter(noise(n, rng), "lowpass", ramp(2000, 200, n, "exp")) * decay(n, 0.7) * 1.3
+    hiss = highpass(noise(n, rng), 3000) * decay(n, 0.5) * 0.4
+    return reverb(fall + hiss + _crackle(n, rng, 40) * decay(n, 0.8) * 0.5, size=1.2, mix=0.25)[:n]
+
+
 def laser_scan(rng, dur):
     n = int(dur * SR)
     tri = 1.0 - np.abs(np.linspace(-1, 1, n))
@@ -614,9 +898,45 @@ CUES: dict[str, tuple] = {
     "glac_freeze": ("glacial", glac_freeze, 1.2, False),
     "glac_peak": ("glacial", glac_peak, 3.0, False),
     "glac_wind": ("glacial", glac_wind, 2.0, True),
+    "hs_charge": ("heaven", hs_charge, 1.4, False),
+    "hs_strike": ("heaven", hs_strike, 3.0, False),
+    "hs_fissure": ("heaven", hs_fissure, 1.2, False),
+    "hs_erupt": ("heaven", hs_erupt, 0.9, False),
+    "hs_static": ("heaven", hs_static, 2.0, True),
+    "hs_rumble": ("heaven", hs_rumble, 3.5, False),
+    "cf_rumble": ("cinder", cf_rumble, 1.3, False),
+    "cf_rise": ("cinder", cf_rise, 1.6, False),
+    "cf_erupt": ("cinder", cf_erupt, 3.0, False),
+    "cf_lava": ("cinder", cf_lava, 2.0, True),
+    "cf_fall": ("cinder", cf_fall, 0.5, False),
+    "cf_impact": ("cinder", cf_impact, 1.2, False),
+    "ts_surge": ("tsunami", ts_surge, 1.1, False),
+    "ts_rise": ("tsunami", ts_rise, 1.4, False),
+    "ts_roar": ("tsunami", ts_roar, 3.2, False),
+    "ts_crash": ("tsunami", ts_crash, 3.0, False),
+    "ts_drip": ("tsunami", ts_drip, 3.5, False),
+    "tn_gust": ("tornado", tn_gust, 1.0, False),
+    "tn_form": ("tornado", tn_form, 1.6, False),
+    "tn_wind": ("tornado", tn_wind, 2.0, True),
+    "tn_dissipate": ("tornado", tn_dissipate, 2.0, False),
+    "jg_rumble": ("judgement", jg_rumble, 1.5, False),
+    "jg_hands": ("judgement", jg_hands, 1.5, False),
+    "jg_rise": ("judgement", jg_rise, 1.6, False),
+    "jg_windup": ("judgement", jg_windup, 0.6, False),
+    "jg_slam": ("judgement", jg_slam, 3.5, False),
+    "jg_crumble": ("judgement", jg_crumble, 2.5, False),
+    "dr_rumble": ("dragon", dr_rumble, 1.3, False),
+    "dr_erupt": ("dragon", dr_erupt, 2.5, False),
+    "dr_roar": ("dragon", dr_roar, 2.2, False),
+    "dr_inhale": ("dragon", dr_inhale, 0.6, False),
+    "dr_ignite": ("dragon", dr_ignite, 0.7, False),
+    "dr_breath": ("dragon", dr_breath, 2.0, True),
+    "dr_sink": ("dragon", dr_sink, 2.0, False),
 }
 for _v in range(1, 5):
     CUES[f"orb_hit_{_v}"] = ("orbital", lambda rng, dur, v=_v: orb_hit(rng, dur, v), 0.9, False)
+for _v in range(1, 4):
+    CUES[f"jg_punch_{_v}"] = ("judgement", lambda rng, dur, v=_v: jg_punch(rng, dur, v), 1.2, False)
 for _v in range(1, 4):
     CUES[f"glac_shatter_{_v}"] = ("glacial", lambda rng, dur, v=_v: glac_shatter(rng, dur, v), 0.5, False)
 for _v in range(1, 4):

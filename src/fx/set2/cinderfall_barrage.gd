@@ -37,6 +37,7 @@ class Volcano:
 	var ground_pos := Vector2.ZERO
 	var _plates: Array = []
 	var _time := 0.0
+	var _redraw_in := 0.0
 
 	func setup(rng: RandomNumberGenerator) -> void:
 		# Plates in rows up the visible front of the cone; u across (-1..1), v up (0..1).
@@ -61,7 +62,12 @@ class Volcano:
 
 	func _process(delta: float) -> void:
 		_time += delta
-		queue_redraw()
+		# Many plate polygons: redraw at ~20 Hz while static, every frame while rising or sinking.
+		_redraw_in -= delta
+		var moving := (rise > 0.0 and rise < 1.0) or (sink > 0.0 and sink < 1.0)
+		if moving or _redraw_in <= 0.0:
+			_redraw_in = 0.05
+			queue_redraw()
 
 	func _cone_point(u: float, v: float, h: float) -> Vector2:
 		# Concave slopes, narrowing to the crater; front bulge sits lower on screen (iso base ellipse).
@@ -368,8 +374,9 @@ func _stone_impact(g: Vector2) -> void:
 	ring.tween_param("fade", 1.0, 0.0, 0.2, 0.15)
 	ring.life = 0.4
 	var light := FxParts.ground_light(self, g, 1.8, LAVA_LIGHT)
-	light.tween_param("intensity", 1.3, 0.25, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	light.tween_param("intensity", 0.25, 0.0, 1.5, duration - t - 1.6)
+	# Short-lived: every live light is sampled by each enemy and building per frame.
+	light.tween_param("intensity", 1.3, 0.0, 1.0, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	light.life = 1.05
 	# Lava splash puddle that keeps glowing.
 	var pool := FxParts.decal(self, g, 0.85, Color("ff7a1a"), Color("ffe08a"), Color(0.1, 0.04, 0.03, 0.7))
 	pool.tween_param("heat", 1.0, 0.45, 3.0)

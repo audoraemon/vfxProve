@@ -13,9 +13,9 @@ const PEAK_KILL := 1.6
 const FREEZE_SECONDS := 5.0
 ## Spike field: covers most of the radius; height follows a mountain profile.
 const SPIKE_RADIUS := 4.5
-const SPIKE_COUNT := 95
-const PEAK_HEIGHT := 125.0
-const EDGE_HEIGHT := 12.0
+const SPIKE_COUNT := 70
+const PEAK_HEIGHT := 150.0
+const EDGE_HEIGHT := 22.0
 ## Inner fraction of the field that surges at the crystal peak.
 const CORE_FRACTION := 0.3
 const ICE_LIGHT := Color(0.55, 0.8, 1.0)
@@ -133,7 +133,8 @@ func _make_spike(g: Vector2, h: float, w: float, delay: float) -> IceSpike:
 	s.height = h
 	s.width = w
 	var out := (Iso.ground_to_screen(g) - _center_px)
-	s.lean = clampf(out.x * 0.12, -18.0, 18.0) + ctx.rng.randf_range(-4.0, 4.0)
+	# Lean outward more toward the rim, like crystals bursting out of the mountain's flanks.
+	s.angle = clampf(out.x * 0.0022, -0.45, 0.45) + ctx.rng.randf_range(-0.12, 0.12)
 	s.seed = ctx.rng.randf() * 100.0
 	s.lights = ctx.lights
 	track(s, ctx.world)
@@ -186,7 +187,7 @@ func _build_mountain() -> void:
 		var d := SPIKE_RADIUS * sqrt(ctx.rng.randf())
 		var k := d / SPIKE_RADIUS
 		var g := origin + Vector2.RIGHT.rotated(ctx.rng.randf() * TAU) * d
-		var spacing := lerpf(0.5, 0.38, k)
+		var spacing := lerpf(0.62, 0.5, k)
 		var ok := true
 		for q in placed:
 			if q.distance_squared_to(g) < spacing * spacing:
@@ -198,7 +199,7 @@ func _build_mountain() -> void:
 		# Smooth dome profile with a sharper summit.
 		var profile := 1.0 - pow(k, 0.85)
 		var h := lerpf(EDGE_HEIGHT, PEAK_HEIGHT, profile * profile * (3.0 - 2.0 * profile)) * ctx.rng.randf_range(0.85, 1.12)
-		var w := lerpf(5.0, 20.0, profile) * ctx.rng.randf_range(0.85, 1.15)
+		var w := lerpf(8.0, 24.0, profile) * ctx.rng.randf_range(0.85, 1.15)
 		var s := _make_spike(g, h, w, k * 0.75 + ctx.rng.randf() * 0.06)
 		if k < CORE_FRACTION:
 			_core_spikes.append(s)
@@ -258,23 +259,24 @@ func _ice_explosion(g: Vector2, size: float) -> void:
 		"alt": Vector2(0, 8), "alt_speed": Vector2(4, 20), "life": Vector2(0.6, 1.1), "size": Vector2(3, 6),
 		"size_end_mul": 1.6})
 
-	# A small star of crystals pops out of the ground and shatters.
-	for i in 5:
-		var a := TAU * i / 5.0 + ctx.rng.randf_range(-0.3, 0.3)
-		var pg := g + Vector2.RIGHT.rotated(a) * ctx.rng.randf_range(0.15, 0.4) * size
+	# A star of crystals bursts out radially from the enemy, like a snowflake of prisms.
+	var rays := 8
+	for i in rays:
+		var dir_a := TAU * i / rays + ctx.rng.randf_range(-0.15, 0.15)
 		var c := IceSpike.new()
-		c.ground_pos = pg
-		c.position = Iso.ground_to_screen(pg).round()
-		c.height = ctx.rng.randf_range(16.0, 28.0) * size
-		c.width = ctx.rng.randf_range(4.0, 6.0) * size
-		c.lean = (Iso.ground_to_screen(pg) - sp).x * 1.4
+		c.cluster = false
+		c.ground_pos = g
+		c.position = (sp + Vector2(0, -8)).round()
+		c.angle = dir_a
+		c.height = ctx.rng.randf_range(24.0, 38.0) * size * (0.7 if absf(sin(dir_a)) < 0.4 else 1.0)
+		c.width = ctx.rng.randf_range(4.5, 6.5) * size
 		c.seed = ctx.rng.randf() * 100.0
 		c.lights = ctx.lights
 		c.glow = 1.0
 		track(c, ctx.world)
 		var tw := c.create_tween()
 		tw.tween_property(c, "grow", 1.0, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_interval(0.12)
+		tw.tween_interval(0.3)
 		tw.tween_property(c, "shatter", 1.0, 0.35)
 		tw.parallel().tween_property(c, "fade", 0.0, 0.45)
 		tw.tween_callback(c.queue_free)
@@ -384,7 +386,7 @@ func _break_spike(s: IceSpike, seconds: float) -> void:
 	if not is_instance_valid(s):
 		return
 	s.create_tween().tween_property(s, "shatter", 1.0, seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	var top := s.position + Vector2(s.lean * 0.5, -s.height * s.grow * 0.5)
+	var top := s.mid_point()
 	var p := FxParts.particles(self, ctx.overhead, top, PixelParticles.Shape.CHUNK, FxParts.ICE_CHUNK)
 	p.gravity = 360.0
 	p.bounce = true

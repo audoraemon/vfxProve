@@ -4,7 +4,7 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 
 | Key | Effect | Stages |
 |---|---|---|
-| 1 | **Nuclear Nova** | target rings → warhead descent → white-hot core swells slowly → blast dome + shockwave accelerate outward with god-rays, rubble and a rolling dust ring → fire-lit mushroom smoke, heat haze, crater, radiation fog |
+| 1 | **Nuclear Nova** | target rings → warhead descent → white-hot core swells slowly → plasma dome (boiling veins, meridian energy lines, rising pulses) + shockwave accelerate outward with god-rays, rubble and a rolling dust ring → shader mushroom cloud rising and cooling from fire to smoke with a condensation ring, heat haze, crater, radiation fog |
 | 2 | **Orbital Strike** | zone + pips → ~30 Poisson-disc strike points covering the whole radius, lock-on in bursts of 1–3 → beam impacts with light pools, rays, fireballs, heat haze → crater field, smoke, ion sparks |
 | 3 | **Gravity Distortion** | sky beam seeds the field → screen-lensing singularity with wispy accretion disk, photon ring, lightning arcs and orbiting rubble pulls enemies in → compression → implosion with refraction shock ring and starburst → warped scar with hovering fragments |
 | 4 | **Walking Laser Grid** | lane telegraph → emitter drones descend → wide glowing beams (core + additive halo, contact rings) link into a wall → wall sweeps the lane with red floor light, heat haze, flames and burn flashes → molten lava corridor (crack network shader) that cools to crust |
@@ -45,7 +45,7 @@ src/fx/          FxTimeline base, QuadFx, PixelParticles, FxParts builders, the 
 src/audio/       Sfx cue catalog + pooled positional playback
 src/sandbox/     scene assembly, input, HUD, capture/bench modes
 shaders/         iso_rings, shockwave, fireball_dome, beam_glow, beam_add, scorch_decal, fog, singularity,
-                 light_glow, god_rays, heat_haze, refract_ring, impact_post, molten_trail
+                 light_glow, god_rays, heat_haze, refract_ring, impact_post, molten_trail, mushroom_cloud
 assets/audio/    generated WAV cues (committed)
 tools/           test runner, capture runner, contact sheets, audio synth
 docs/superpowers design spec + implementation plan

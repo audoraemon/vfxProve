@@ -213,24 +213,13 @@ func _start_pull() -> void:
 	_streaks.streak_len = 0.06
 
 
-## Piecewise-linear lookup over (time, value) keys.
-func _curve(keys: Array) -> float:
-	if t <= keys[0][0]:
-		return keys[0][1]
-	for i in range(1, keys.size()):
-		if t <= keys[i][0]:
-			var k: float = (t - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0])
-			return lerpf(keys[i - 1][1], keys[i][1], k)
-	return keys[-1][1]
-
-
 func _fx_process(delta: float) -> void:
 	if _imploded:
 		return
-	var strength := _curve([[0.0, 0.0], [T_PULL, 0.6], [T_COMPRESS, 2.4], [T_IMPLODE, 3.6]])
-	var pinch := _curve([[0.0, 0.0], [T_PULL, 0.12], [T_COMPRESS, 0.35], [T_IMPLODE, 0.65]])
-	var core := _curve([[0.0, 0.0], [T_PULL, 7.0], [T_COMPRESS, 18.0], [T_IMPLODE, 5.0]])
-	var arms := _curve([[0.0, 0.0], [T_PULL, 0.35], [T_PULL + 1.0, 1.0], [T_IMPLODE, 1.0]])
+	var strength := curve([[0.0, 0.0], [T_PULL, 0.6], [T_COMPRESS, 2.4], [T_IMPLODE, 3.6]])
+	var pinch := curve([[0.0, 0.0], [T_PULL, 0.12], [T_COMPRESS, 0.35], [T_IMPLODE, 0.65]])
+	var core := curve([[0.0, 0.0], [T_PULL, 7.0], [T_COMPRESS, 18.0], [T_IMPLODE, 5.0]])
+	var arms := curve([[0.0, 0.0], [T_PULL, 0.35], [T_PULL + 1.0, 1.0], [T_IMPLODE, 1.0]])
 	var compress := clampf((t - T_COMPRESS) / (T_IMPLODE - T_COMPRESS), 0.0, 1.0)
 	if compress > 0.0:
 		# Unstable flicker as the core collapses.
@@ -268,7 +257,7 @@ func _fx_process(delta: float) -> void:
 
 	_rubble.pull = clampf((t - 0.3) / T_PULL, 0.0, 1.0) * (1.0 + compress)
 	if t >= T_PULL:
-		var pull_strength := _curve([[T_PULL, 0.8], [T_COMPRESS, 3.2], [T_IMPLODE, 4.2]])
+		var pull_strength := curve([[T_PULL, 0.8], [T_COMPRESS, 3.2], [T_IMPLODE, 4.2]])
 		ctx.field.pull(origin, RADIUS, pull_strength, 1.0, delta)
 
 

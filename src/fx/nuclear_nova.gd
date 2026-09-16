@@ -53,6 +53,8 @@ var _wave_done := false
 var _dust: PixelParticles
 var _descent_voice: Node
 var _geiger: Node
+var _mushroom: QuadFx
+var _mushroom_t0 := 0.0
 
 
 func _build() -> void:
@@ -103,6 +105,9 @@ func _fx_process(delta: float) -> void:
 			_fire_trail.spec["offset"] = tail
 		if is_instance_valid(_smoke_trail):
 			_smoke_trail.spec["offset"] = tail + DESCENT_FROM.normalized() * 8.0
+
+	if is_instance_valid(_mushroom):
+		_drive_mushroom()
 
 	if _wave != null and not _wave_done:
 		# Slow start, fast finish: the blast front accelerates outward.
@@ -196,8 +201,10 @@ func _blast() -> void:
 	# The core erupts: accelerating growth, then burns out.
 	_core.tween_param("grow", CORE_GROW, 1.0, 0.3, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	_core.tween_param("heat", 1.15, 0.55, 1.5, 0.0, Tween.TRANS_SINE, Tween.EASE_IN)
-	_core.tween_param("dissolve", 0.0, 1.0, 0.9, 0.55, Tween.TRANS_QUAD, Tween.EASE_IN)
-	_core.life = 1.5
+	_core.tween_param("soot", 0.0, 0.7, 1.3, 0.4)
+	_core.tween_param("dissolve", 0.0, 1.0, 0.9, 0.85, Tween.TRANS_QUAD, Tween.EASE_IN)
+	_core.life = 1.8
+	at(T_BLAST + 0.25, _start_mushroom)
 
 	_wave = FxParts.shockwave(self, origin, RADIUS, FxParts.FIRE)
 	_wave.set_param("thickness", 0.06)
@@ -247,22 +254,40 @@ func _blast() -> void:
 	FxParts.sparks(self, ctx.overhead, _target_px, 140, FxParts.FIRE_LIFE, Vector2(140, 460), Vector2(40, 360))
 
 
+## Shader mushroom cloud: the fireball lifts into a rolling cap on a stem, cooling from fire to smoke.
+func _start_mushroom() -> void:
+	_mushroom_t0 = t
+	_mushroom = QuadFx.new().setup(FxParts.SH_MUSHROOM, Vector2(310, 250), Vector2(0.5, 1.0))
+	_mushroom.position = _target_px
+	_mushroom.set_param("size_px", Vector2(310, 250))
+	_mushroom.set_param("seed", ctx.rng.randf() * 30.0)
+	FxParts.set_ramp(_mushroom, FxParts.FIRE)
+	track(_mushroom, ctx.overhead_back)
+	_drive_mushroom()
+
+
+func _drive_mushroom() -> void:
+	var m := t - _mushroom_t0
+	var rx := curve([[0.0, 36.0], [0.8, 66.0], [2.3, 92.0], [4.5, 104.0], [6.5, 108.0]], m)
+	_mushroom.set_param("rise", curve([[0.0, 20.0], [0.8, 62.0], [2.3, 108.0], [4.5, 130.0], [6.5, 138.0]], m))
+	_mushroom.set_param("cap_rx", rx)
+	_mushroom.set_param("cap_ry", rx * 0.42)
+	_mushroom.set_param("stem_w", curve([[0.0, 7.0], [1.2, 14.0], [4.0, 17.0]], m))
+	_mushroom.set_param("base_w", curve([[0.0, 22.0], [1.2, 38.0], [4.0, 46.0]], m))
+	_mushroom.set_param("heat", curve([[0.0, 1.5], [0.8, 1.2], [2.3, 0.55], [3.8, 0.18], [5.5, 0.0]], m))
+	_mushroom.set_param("ring", curve([[0.9, 0.0], [1.2, 1.0], [2.0, 0.8], [2.8, 0.0]], m))
+	_mushroom.set_param("fade", curve([[5.6, 1.0], [6.6, 0.0]], m))
+
+
 func _aftermath() -> void:
 	ctx.play(&"nova_rumble", origin)
 	_geiger = ctx.play(&"nova_geiger", origin, -4.0)
 	at(t + 5.2, func(): ctx.fade_out(_geiger, 1.5))
 
-	# Mushroom: a fire-lit stem rising, and a wide cap rolling outward up high.
-	var stem := FxParts.smoke(self, _target_px, 22.0, 36.0, 2.6, Vector2(60, 130), Vector2(5, 8),
-		Vector2(1.6, 2.6), Color("ff6a1a"))
-	stem.underglow_life = 0.55
-	var cap := FxParts.emitter(self, ctx.overhead_back, _target_px, PixelParticles.Shape.PUFF, FxParts.SMOKE_LIFE, 20.0, 2.2, {
-		"radius": 20.0, "alt": Vector2(85, 115), "alt_speed": Vector2(4, 18), "dir": PixelParticles.Dir.OUTWARD,
-		"speed": Vector2(15, 45), "life": Vector2(1.8, 2.8), "size": Vector2(6, 10), "size_end_mul": 1.5,
-	})
-	cap.drag = 0.5
-	cap.underglow = Color("c0501e")
-	cap.underglow_life = 0.25
+	# Low dust skirt churning around the mushroom's foot.
+	var skirt := FxParts.smoke(self, _target_px, 40.0, 14.0, 2.4, Vector2(4, 14), Vector2(5, 8), Vector2(1.4, 2.4))
+	skirt.spec["dir"] = PixelParticles.Dir.OUTWARD
+	skirt.spec["speed"] = Vector2(20, 45)
 
 	var haze := FxParts.heat_haze(self, _target_px, 130.0, 2.0)
 	haze.tween_param("strength", 2.0, 0.0, 2.0, 3.2)

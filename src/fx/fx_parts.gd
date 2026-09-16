@@ -15,6 +15,7 @@ const SH_HAZE := preload("res://shaders/heat_haze.gdshader")
 const SH_REFRACT := preload("res://shaders/refract_ring.gdshader")
 const SH_BEAM_ADD := preload("res://shaders/beam_add.gdshader")
 const SH_MOLTEN := preload("res://shaders/molten_trail.gdshader")
+const SH_MUSHROOM := preload("res://shaders/mushroom_cloud.gdshader")
 
 ## Vertical screen pixels per ground unit along a ground radius (minor ellipse axis).
 const PX_PER_UNIT_MINOR := 16.0 * sqrt(2.0)
@@ -45,7 +46,7 @@ const LASER_LIFE := [Color("fff0e8"), Color("ff9a6a"), Color("ff3a2a"), Color("c
 ## Draw every VFX shader once, nearly invisible, so the renderer compiles them up front
 ## instead of hitching on an effect's first impact frame.
 static func prewarm(parent: Node2D, frames := 3) -> void:
-	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN]:
+	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN, SH_MUSHROOM]:
 		var q := QuadFx.new().setup(shader, Vector2(4, 4))
 		q.modulate.a = 0.02
 		parent.add_child(q)
@@ -208,6 +209,7 @@ static func dome(fx: FxTimeline, screen_pos: Vector2, semi_x: float, ramp: Array
 		Vector2(0.5, DOME / (DOME + BASE)))
 	q.position = screen_pos
 	q.set_param("dome_ratio", DOME)
+	q.set_param("seed", fx.ctx.rng.randf() * 40.0)
 	q.set_param("base_ratio", BASE)
 	set_ramp(q, ramp)
 	return q

@@ -163,6 +163,7 @@ func _strike(i: int) -> void:
 	ball.tween_param("grow", 0.2, 1.0, 0.14, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ball.tween_param("heat", 1.2, 0.5, 0.55)
 	ball.tween_param("dissolve", 0.0, 1.0, 0.4, 0.2, Tween.TRANS_QUAD, Tween.EASE_IN)
+	ball.tween_param("soot", 0.0, 0.55, 0.5, 0.1)
 	ball.life = 0.65
 
 	var crater := FxParts.decal(self, p, 1.1)

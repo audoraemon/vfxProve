@@ -45,6 +45,18 @@ func track(node: Node, parent: Node) -> Node:
 	return node
 
 
+## Piecewise-linear lookup over [time, value] keys at `time` (defaults to the effect clock).
+func curve(keys: Array, time := -1.0) -> float:
+	var x := t if time < 0.0 else time
+	if x <= keys[0][0]:
+		return keys[0][1]
+	for i in range(1, keys.size()):
+		if x <= keys[i][0]:
+			var k: float = (x - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0])
+			return lerpf(keys[i - 1][1], keys[i][1], k)
+	return keys[-1][1]
+
+
 func ground_screen(g: Vector2) -> Vector2:
 	return Iso.ground_to_screen(g)
 

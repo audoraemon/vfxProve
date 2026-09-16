@@ -16,6 +16,7 @@ const CATALOG := {
 	&"nova_boom": {"path": "res://assets/audio/nova/nova_boom.wav", "db": 0.0},
 	&"nova_shockwave": {"path": "res://assets/audio/nova/nova_shockwave.wav", "db": -3.0},
 	&"nova_rumble": {"path": "res://assets/audio/nova/nova_rumble.wav", "db": -4.0},
+	&"nova_swell": {"path": "res://assets/audio/nova/nova_swell.wav", "db": -2.0},
 	&"nova_geiger": {"path": "res://assets/audio/nova/nova_geiger.wav", "db": -8.0, "loop": true},
 	&"orb_target": {"path": "res://assets/audio/orbital/orb_target.wav", "db": -6.0},
 	&"orb_charge": {"path": "res://assets/audio/orbital/orb_charge.wav", "db": -9.0, "voices": 4, "jitter": 0.06},
@@ -26,17 +27,21 @@ const CATALOG := {
 	&"grav_suction": {"path": "res://assets/audio/gravity/grav_suction.wav", "db": -3.0},
 	&"grav_compress": {"path": "res://assets/audio/gravity/grav_compress.wav", "db": -4.0},
 	&"grav_implode": {"path": "res://assets/audio/gravity/grav_implode.wav", "db": 0.0},
+	&"grav_arc": {"path": "res://assets/audio/gravity/grav_arc.wav", "db": -12.0, "voices": 3, "jitter": 0.15},
 	&"grav_shimmer": {"path": "res://assets/audio/gravity/grav_shimmer.wav", "db": -8.0},
 	&"laser_scan": {"path": "res://assets/audio/laser/laser_scan.wav", "db": -8.0},
 	&"laser_thrusters": {"path": "res://assets/audio/laser/laser_thrusters.wav", "db": -6.0},
 	&"laser_ignite": {"path": "res://assets/audio/laser/laser_ignite.wav", "db": -3.0},
 	&"laser_hum": {"path": "res://assets/audio/laser/laser_hum.wav", "db": -9.0, "loop": true},
+	&"laser_fire": {"path": "res://assets/audio/laser/laser_fire.wav", "db": -9.0, "loop": true},
 	&"laser_sizzle": {"path": "res://assets/audio/laser/laser_sizzle_%d.wav", "variants": 3, "db": -8.0, "voices": 3, "jitter": 0.1},
 	&"laser_powerdown": {"path": "res://assets/audio/laser/laser_powerdown.wav", "db": -5.0},
 	&"laser_depart": {"path": "res://assets/audio/laser/laser_depart.wav", "db": -7.0},
 }
 
 static var _cache := {}
+## Playback speed from the user's slow-mo, independent of hit-stop dips in Engine.time_scale.
+static var speed := 1.0
 
 var _pool: Array[AudioStreamPlayer2D] = []
 var _rng := RandomNumberGenerator.new()
@@ -137,7 +142,7 @@ func _process(_delta: float) -> void:
 
 func _pitch_for(p: AudioStreamPlayer2D) -> float:
 	var mul := float(p.get_meta(&"base_pitch", 1.0)) * float(p.get_meta(&"pitch_mul", 1.0))
-	return maxf(mul * Engine.time_scale, 0.05)
+	return maxf(mul * speed, 0.05)
 
 
 ## Free voice, or steal the oldest voice of this cue once its voice limit is reached,

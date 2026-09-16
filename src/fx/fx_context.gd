@@ -6,9 +6,12 @@ var field: EnemyField
 var shake: CameraShake
 var sfx: Node
 ## Node2D with transform Iso.BASIS: children are authored in ground units.
+var impact: Impact
 var ground: Node2D
 ## Screen-space, y-sorted with enemies.
 var world: Node2D
+## Screen-space, above the world but under overhead: smoke goes here so fireballs read in front.
+var overhead_back: Node2D
 ## Screen-space, above the world.
 var overhead: Node2D
 ## Screen-space, topmost; for screen-texture distortion.

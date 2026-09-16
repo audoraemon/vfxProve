@@ -63,10 +63,11 @@ func in_lane(origin: Vector2, dir: Vector2, half_width: float, along_min: float,
 	return out
 
 
-func kill(e: DummyEnemy, kind: StringName) -> bool:
+## source: ground position the damage came from, so the death reaction can move away from it.
+func kill(e: DummyEnemy, kind: StringName, source := Vector2.INF) -> bool:
 	if not is_instance_valid(e) or not e.is_alive():
 		return false
-	e.die(kind)
+	e.die(kind, source)
 	enemy_killed.emit(e, kind)
 	return true
 

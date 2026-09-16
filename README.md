@@ -7,7 +7,9 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 | 1 | **Nuclear Nova** | target rings → warhead descent → white-hot core swells slowly → blast dome + shockwave accelerate outward with god-rays, rubble and a rolling dust ring → fire-lit mushroom smoke, heat haze, crater, radiation fog |
 | 2 | **Orbital Strike** | zone + pips → ~30 Poisson-disc strike points covering the whole radius, lock-on in bursts of 1–3 → beam impacts with light pools, rays, fireballs, heat haze → crater field, smoke, ion sparks |
 | 3 | **Gravity Distortion** | sky beam seeds the field → screen-lensing singularity with wispy accretion disk, photon ring, lightning arcs and orbiting rubble pulls enemies in → compression → implosion with refraction shock ring and starburst → warped scar with hovering fragments |
-| 4 | **Walking Laser Grid** | lane telegraph → emitter drones descend → wide glowing beams (core + additive halo, contact rings) link into a wall → wall sweeps the lane with red floor light, heat haze and burn flashes → molten corridor |
+| 4 | **Walking Laser Grid** | lane telegraph → emitter drones descend → wide glowing beams (core + additive halo, contact rings) link into a wall → wall sweeps the lane with red floor light, heat haze, flames and burn flashes → molten lava corridor (crack network shader) that cools to crust |
+
+**Impact toolkit** (`src/core/impact.gd`): anticipation dimming of the world under the effect layers, inverted two-tone impact frames, hit-stop (real-time, audio keeps its pitch), RGB split, directional camera kicks. Enemies react per damage type: blasts throw and char them, gravity stretches them into the core, lasers cut them apart into embers. Smoke lives in `OverheadBackLayer` so fireballs always read in front of it.
 
 Everything is procedural: canvas shaders, a small pixel particle system, code-drawn sprites, and synthesized audio. No external art or sound assets.
 
@@ -43,7 +45,7 @@ src/fx/          FxTimeline base, QuadFx, PixelParticles, FxParts builders, the 
 src/audio/       Sfx cue catalog + pooled positional playback
 src/sandbox/     scene assembly, input, HUD, capture/bench modes
 shaders/         iso_rings, shockwave, fireball_dome, beam_glow, beam_add, scorch_decal, fog, singularity,
-                 light_glow, god_rays, heat_haze, refract_ring
+                 light_glow, god_rays, heat_haze, refract_ring, impact_post, molten_trail
 assets/audio/    generated WAV cues (committed)
 tools/           test runner, capture runner, contact sheets, audio synth
 docs/superpowers design spec + implementation plan
@@ -54,8 +56,8 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=90 failures=0
-python tools/audio/synth.py --verify                 # audio cue checks → 30 cues, 0 problems
+bash tools/test.sh                                   # headless tests → checks=98 failures=0
+python tools/audio/synth.py --verify                 # audio cue checks → 33 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png
 ```
@@ -66,21 +68,21 @@ Benchmark (all four effects at once, or one with `--only=`):
 & $godot --path . --audio-driver Dummy --disable-vsync --max-fps 0 -- --bench
 ```
 
-Dev machine results after the realism pass (RTX 3060 Ti; another game was using ~2 CPU cores in the background, so worst frames are noisy — rerun on an idle machine for real numbers):
+Dev machine results after the impact pass (RTX 3060 Ti; another game was running and using ~2 CPU cores, so numbers swing a lot between identical runs — the empty scene alone varied 380–448 FPS; rerun on an idle machine for real numbers):
 
 | Bench | Avg FPS | Worst frame |
 |---|---|---|
-| nova | 307 | 15.5 ms |
-| orbital | 247 | 21.4 ms |
-| gravity | 397 | 8.7 ms |
-| laser | 374 | 9.7 ms |
-| all four at once | 152 | 41.3 ms |
+| nova | 250 | 20.0 ms |
+| orbital | 140–157 | 31–35 ms |
+| gravity | 253 | 15.7 ms |
+| laser | 263 | 16.5 ms |
+| all four at once | 96 | 46.9 ms |
 
 All shaders are drawn once at startup (`FxParts.prewarm`) — without it the Compatibility renderer compiled them on each effect's first impact frame (~30 ms hitch).
 
 ## Audio
 
-`python tools/audio/synth.py` regenerates all 30 cues deterministically (numpy + scipy); `--only <cue>` for one, `--spectrograms captures` renders a review sheet. Cue timings per stage are in the design spec.
+`python tools/audio/synth.py` regenerates all 33 cues deterministically (numpy + scipy); `--only <cue>` for one, `--spectrograms captures` renders a review sheet. Cue timings per stage are in the design spec.
 
 ## Gotchas
 

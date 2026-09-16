@@ -41,6 +41,7 @@ var _pips: Pips
 var _points: Array[Vector2] = []
 var _tilts: Array[float] = []
 var _embers_voice: Node
+var _first_hit := true
 
 
 func _build() -> void:
@@ -48,6 +49,8 @@ func _build() -> void:
 	_rings = FxParts.rings(self, origin, RADIUS, Color("e8321f"), 3, 16.0)
 	_rings.tween_param("reveal", 0.0, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	_rings.tween_param("alpha", 1.0, 0.45, 0.3, T_SALVO_START)
+	# Darken the battlefield under the bombardment so every beam reads hot.
+	at(T_SALVO_START - 0.3, func(): ctx.impact.dim(0.35, 0.8))
 	ctx.play(&"orb_target", origin)
 
 	_points = _sample_points()
@@ -121,6 +124,11 @@ func _strike(i: int) -> void:
 	var p := _points[i]
 	var sp := Iso.ground_to_screen(p)
 	ctx.shake.add_trauma(0.26)
+	ctx.shake.kick(Vector2.RIGHT.rotated(ctx.rng.randf() * TAU) * 3.0 + Vector2(0, 2))
+	ctx.impact.aberration(1.6, 0.15)
+	if _first_hit:
+		_first_hit = false
+		ctx.impact.hitstop(0.05)
 	ctx.play(&"orb_hit", p)
 
 	var column := FxParts.beam(self, ctx.overhead, sp, 20.0, 420.0, FxParts.FIRE)
@@ -139,6 +147,11 @@ func _strike(i: int) -> void:
 	rays.tween_param("reach", 0.3, 1.0, 0.25, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	rays.tween_param("intensity", 1.2, 0.0, 0.4, 0.15)
 	rays.life = 0.56
+
+	var refract := FxParts.refract_ring(self, p, 2.0, Color(1.0, 0.8, 0.55))
+	refract.set_param("strength", 6.0)
+	refract.tween_param("progress", 0.1, 1.0, 0.35, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	refract.life = 0.37
 
 	var ring := FxParts.shockwave(self, p, 1.5, FxParts.FIRE)
 	ring.set_param("thickness", 0.16)
@@ -165,12 +178,13 @@ func _strike(i: int) -> void:
 	FxParts.smoke(self, sp, 8.0, 20.0, 0.8, Vector2(22, 60), Vector2(3, 6), Vector2(1.1, 2.0), Color("ff7a2a"))
 
 	for e in ctx.field.in_radius(p, KILL_R):
-		ctx.field.kill(e, &"orbital")
+		ctx.field.kill(e, &"orbital", p)
 	ctx.field.knock_from(p, KILL_R, KNOCK_R, 4.5)
 
 
 func _aftermath() -> void:
 	_rings.tween_param("alpha", 0.45, 0.0, 0.5)
+	ctx.impact.dim(0.0, 0.5)
 	_embers_voice = ctx.play(&"orb_embers", origin, -6.0)
 	at(duration - 0.9, func(): ctx.fade_out(_embers_voice, 0.8))
 

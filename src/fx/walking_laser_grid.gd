@@ -69,65 +69,6 @@ class LaneMarker:
 		draw_line(Vector2(sx, -hw), Vector2(sx, hw), Color(1.0, 0.6, 0.5, alpha * 0.8), -1.0)
 
 
-## Burned corridor behind the wall, drawn as coarse cells in lane space.
-class ScorchTrail:
-	extends Node2D
-
-	const CELL := 0.2
-	const CHAR := [Color(0.05, 0.035, 0.03, 0.85), Color(0.08, 0.05, 0.04, 0.8), Color(0.03, 0.02, 0.02, 0.9)]
-	const MOLTEN := [Color("fff0c0"), Color("ffb040"), Color("ff5a1a"), Color("a0200e")]
-
-	var front := 0.0
-	var fade := 1.0
-	var seed := 0
-	var _time := 0.0
-	var _noise := FastNoiseLite.new()
-
-	func _ready() -> void:
-		_noise.seed = seed
-		_noise.frequency = 0.9
-
-	func _process(delta: float) -> void:
-		_time += delta
-		queue_redraw()
-
-	func _hash(ix: int, iy: int) -> int:
-		return absi((ix * 73856093) ^ (iy * 19349663) ^ seed) % 1009
-
-	func _draw() -> void:
-		if front <= 0.0 or fade <= 0.0:
-			return
-		var hw := WIDTH * 0.5
-		var nx := int(front / CELL)
-		var ny := int(WIDTH / CELL)
-		for ix in nx:
-			var x := ix * CELL
-			var behind := front - x
-			for iy in ny:
-				var h := _hash(ix, iy)
-				var y := -hw + iy * CELL
-				# Clustered glow: noise field, strongest just behind the wall and along ragged edges.
-				var n := _noise.get_noise_2d(x, y) * 0.5 + 0.5
-				var edge_d := minf(float(iy), float(ny - 1 - iy))
-				var ragged := edge_d < 1.0 + float(h % 3) * 0.5
-				if edge_d < 0.5 and h % 4 == 0:
-					continue
-				var col: Color = CHAR[h % 3]
-				col.a *= fade
-				draw_rect(Rect2(x, y, CELL, CELL), col)
-				var heat := clampf(1.0 - behind / 1.8, 0.0, 1.0) * (0.55 + 0.6 * n)
-				if ragged:
-					heat = maxf(heat, clampf(1.0 - behind / 7.5, 0.0, 1.0) * (0.3 + 0.7 * n))
-				elif n > 0.72:
-					heat = maxf(heat, clampf(1.0 - behind / 5.0, 0.0, 1.0) * n * 0.8)
-				var threshold := 0.35 + float(h % 20) / 100.0
-				if heat > threshold:
-					var idx := clampi(int((1.0 - heat) * 4.0), 0, 3)
-					var m: Color = MOLTEN[idx]
-					m.a = fade
-					draw_rect(Rect2(x, y, CELL, CELL), m)
-
-
 ## Hovering emitter drone. Positioned on the ground point (y-sorted); draws at altitude.
 ## Beams are shader quads (bright core + additive halo) so they read as heavy energy beams.
 class Drone:
@@ -257,7 +198,12 @@ class Drone:
 var _dir := Vector2(1, 0)
 var _side := Vector2(0, 1)
 var _lane: LaneMarker
-var _trail: ScorchTrail
+var _lane_space: Node2D
+var _trail: QuadFx
+var _trail_glow: QuadFx
+var _flames: PixelParticles
+var _next_edge_fire := 0.0
+var _fire_voice: Node
 var _drones: Array[Drone] = []
 var _front := 0.0
 var _streaks: PixelParticles
@@ -279,12 +225,18 @@ func _build() -> void:
 	create_tween().tween_property(_lane, "reveal", 1.0, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	ctx.play(&"laser_scan", origin)
 
-	_trail = ScorchTrail.new()
-	_trail.position = origin
-	_trail.rotation = _dir.angle()
-	_trail.z_index = 1
-	_trail.seed = ctx.rng.randi() % 100000
-	track(_trail, ctx.ground)
+	# Lane-space node on the ground plane: x along the lane, y across.
+	_lane_space = Node2D.new()
+	_lane_space.position = origin
+	_lane_space.rotation = _dir.angle()
+	_lane_space.z_index = 1
+	track(_lane_space, ctx.ground)
+	_trail = QuadFx.new().setup(FxParts.SH_MOLTEN, Vector2(LENGTH, WIDTH), Vector2(0.0, 0.5))
+	FxParts.set_ramp(_trail, FxParts.LAVA)
+	_trail.set_param("length_units", LENGTH)
+	_trail.set_param("width_units", WIDTH)
+	_trail.set_param("seed", ctx.rng.randf() * 50.0)
+	_lane_space.add_child(_trail)
 
 	_streaks = FxParts.particles(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.STREAK, FxParts.LASER_LIFE)
 	_streaks.auto_free = false
@@ -320,7 +272,10 @@ func _arrive() -> void:
 
 func _link() -> void:
 	ctx.play(&"laser_ignite", origin)
-	ctx.shake.add_trauma(0.2)
+	ctx.shake.add_trauma(0.3)
+	ctx.shake.kick(Vector2(0, 3))
+	ctx.impact.aberration(2.5, 0.3)
+	ctx.impact.dim(0.3, 1.5)
 	for d in _drones:
 		var tw := d.create_tween()
 		tw.tween_property(d, "beam", 1.0, 0.1)
@@ -332,6 +287,17 @@ func _link() -> void:
 
 func _walk() -> void:
 	_hum = ctx.play(&"laser_hum", origin, -2.0)
+	_fire_voice = ctx.play(&"laser_fire", origin)
+	_trail_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(4.0, WIDTH + 1.5))
+	_trail_glow.set_param("color", Color(1.0, 0.45, 0.12))
+	_trail_glow.set_param("falloff", 1.2)
+	_trail_glow.set_param("intensity", 0.8)
+	_trail_glow.set_param("flicker", 1.0)
+	_trail_glow.z_index = 5
+	_lane_space.add_child(_trail_glow)
+	_flames = FxParts.particles(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE)
+	_flames.auto_free = false
+	_flames.drag = 1.5
 	# Red light spilling onto the floor along the wall, and heat shimmer riding with it.
 	var lane_space := Node2D.new()
 	lane_space.position = origin
@@ -351,7 +317,10 @@ func _fx_process(delta: float) -> void:
 	if t < T_WALK or t > T_STOP:
 		return
 	_front = clampf((t - T_WALK) / (T_STOP - T_WALK), 0.0, 1.0) * LENGTH
-	_trail.front = _front
+	_trail.set_param("front", _front)
+	if is_instance_valid(_trail_glow):
+		_trail_glow.position = Vector2(maxf(_front - 1.6, 0.0), 0)
+	_spawn_fire(delta)
 	if is_instance_valid(_wall_light):
 		_wall_light.position = Vector2(_front, 0)
 	if is_instance_valid(_wall_haze):
@@ -373,7 +342,7 @@ func _fx_process(delta: float) -> void:
 		FxParts.sparks(self, ctx.overhead, d.position, 3, FxParts.LASER_LIFE, Vector2(20, 90), Vector2(20, 80))
 
 	for e in ctx.field.in_lane(origin, _dir, KILL_HALF_WIDTH, _front - KILL_BAND, _front + KILL_BAND):
-		if ctx.field.kill(e, &"laser"):
+		if ctx.field.kill(e, &"laser", e.ground_pos - _dir):
 			var sp := Iso.ground_to_screen(e.ground_pos)
 			FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -8), 22, FxParts.LASER_LIFE, Vector2(50, 200), Vector2(20, 160))
 			var burn := FxParts.bloom(self, sp + Vector2(0, -8), 20.0, Color(1.0, 0.4, 0.15), 1.3)
@@ -381,6 +350,31 @@ func _fx_process(delta: float) -> void:
 			burn.life = 0.37
 			FxParts.smoke(self, sp + Vector2(0, -6), 3.0, 18.0, 0.25, Vector2(15, 35), Vector2(2, 3), Vector2(0.6, 1.0))
 			ctx.play(&"laser_sizzle", e.ground_pos)
+
+
+## Flames licking up along the burning wall base, and lingering fires along the corridor edges.
+func _spawn_fire(delta: float) -> void:
+	for i in int(ceil(70.0 * delta)):
+		var g := origin + _dir * (_front - ctx.rng.randf_range(0.05, 0.5)) + _side * ctx.rng.randf_range(-2.2, 2.2)
+		_flames.burst(1, {
+			"offset": Iso.ground_to_screen(g), "alt": Vector2(0, 3), "alt_speed": Vector2(30, 75),
+			"speed": Vector2(0, 8), "life": Vector2(0.25, 0.55), "size": Vector2(2, 4), "size_end_mul": 0.25,
+		})
+	if _front >= _next_edge_fire:
+		_next_edge_fire = _front + 0.7
+		for sgn in [-1.0, 1.0]:
+			var g: Vector2 = origin + _dir * maxf(_front - 0.4, 0.0) + _side * sgn * ctx.rng.randf_range(1.6, 2.3)
+			var sp := Iso.ground_to_screen(g)
+			FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE, 12.0,
+				ctx.rng.randf_range(1.2, 2.4), {
+					"radius": 5.0, "alt_speed": Vector2(20, 45), "speed": Vector2(0, 5), "life": Vector2(0.25, 0.5),
+					"size": Vector2(1.5, 3.0), "size_end_mul": 0.25,
+				})
+			FxParts.smoke(self, sp, 4.0, 1.5, 2.0, Vector2(14, 30), Vector2(2, 4), Vector2(1.0, 1.8))
+			FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 6.0, 2.0, {
+				"radius": 8.0, "alt_speed": Vector2(15, 40), "speed": Vector2(0, 10), "life": Vector2(0.5, 1.1),
+				"size": Vector2(1, 1),
+			})
 
 
 func _stop() -> void:
@@ -398,10 +392,15 @@ func _stop() -> void:
 	# Smoke wisps rising from the corridor.
 	for k in 5:
 		var g := origin + _dir * (LENGTH * (k + 0.5) / 5.0) + _side * ctx.rng.randf_range(-1.8, 1.8)
-		FxParts.smoke(self, Iso.ground_to_screen(g), 20.0, 9.0, 1.4, Vector2(12, 30), Vector2(3, 5), Vector2(1.0, 1.8))
-	var tw := create_tween()
-	tw.tween_interval(0.7)
-	tw.tween_property(_trail, "fade", 0.0, 1.1)
+		FxParts.smoke(self, Iso.ground_to_screen(g), 20.0, 5.0, 1.4, Vector2(12, 30), Vector2(3, 5), Vector2(1.0, 1.8))
+	_trail.tween_param("heat_mul", 1.0, 0.25, 1.4, 0.0, Tween.TRANS_SINE, Tween.EASE_OUT)
+	_trail.tween_param("fade", 1.0, 0.0, 0.8, 1.0)
+	if is_instance_valid(_trail_glow):
+		_trail_glow.tween_param("intensity", 0.8, 0.0, 1.4)
+	ctx.fade_out(_fire_voice, 1.6)
+	ctx.impact.dim(0.0, 1.0)
+	if is_instance_valid(_flames):
+		_flames.auto_free = true
 
 
 func _depart() -> void:

@@ -249,6 +249,8 @@ func _fx_process(delta: float) -> void:
 	_sing.set_param("arm_alpha", arms)
 	_sing.set_param("rim_boost", compress)
 
+	# Light drains from the world into the anomaly.
+	ctx.impact.dim(0.12 + 0.45 * strength / 3.6, 2.0)
 	_light.set_param("intensity", 0.25 + 0.55 * strength / 3.6 + 0.3 * compress * (0.5 + 0.5 * sin(t * 50.0)))
 	_rays.set_param("intensity", clampf((t - T_PULL) / 2.0, 0.0, 1.0) * (0.55 + 0.6 * compress))
 	_rays.set_param("reach", 0.7 + 0.3 * sin(t * 2.0))
@@ -262,6 +264,7 @@ func _fx_process(delta: float) -> void:
 		var from_ground := Vector2.RIGHT.rotated(a) * ctx.rng.randf_range(1.2, 3.2)
 		var from := Iso.ground_to_screen(origin + from_ground) - _center_px + Vector2(0, -ctx.rng.randf_range(4, 30))
 		_arcs.spawn(from, Vector2(0, -core * 1.1))
+		ctx.play(&"grav_arc", origin + from_ground * 0.5)
 
 	_rubble.pull = clampf((t - 0.3) / T_PULL, 0.0, 1.0) * (1.0 + compress)
 	if t >= T_PULL:
@@ -276,9 +279,13 @@ func _implode() -> void:
 	at(T_IMPLODE + 0.08, func(): ctx.play(&"grav_implode", origin))
 	at(T_IMPLODE + 0.2, func(): ctx.play(&"grav_shimmer", origin, -4.0))
 
-	ctx.flash.call(Color(0.05, 0.0, 0.1, 0.8), 0.07)
-	at(T_IMPLODE + 0.07, func(): ctx.flash.call(Color(0.82, 0.7, 1.0, 0.6), 0.35))
+	ctx.impact.impact_frame(0.07, ctx.impact.focus_of(_center_px), Color(0.9, 0.85, 1.0), Color(0.07, 0.0, 0.13))
+	ctx.impact.hitstop(0.1)
+	ctx.impact.aberration(5.0, 0.6)
+	ctx.impact.dim(0.0, 1.4)
+	at(T_IMPLODE + 0.03, func(): ctx.flash.call(Color(0.82, 0.7, 1.0, 0.55), 0.35))
 	ctx.shake.add_trauma(0.95)
+	ctx.shake.kick(Vector2(0, -8))
 
 	_sing.queue_free()
 	_rays.queue_free()
@@ -287,7 +294,7 @@ func _implode() -> void:
 	_light.tween_param("intensity", 1.6, 0.0, 1.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 
 	for e in ctx.field.in_radius(origin, KILL_R):
-		ctx.field.kill(e, &"gravity")
+		ctx.field.kill(e, &"gravity", origin)
 	ctx.field.release_all()
 	ctx.field.knock_from(origin, 0.0, RADIUS + 1.0, 7.0)
 

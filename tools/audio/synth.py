@@ -304,6 +304,16 @@ def nova_geiger(rng, dur):
     return loopify(tick + hiss, n)
 
 
+def nova_swell(rng, dur):
+    """Core gathering power: rising roar and sub pitch that slams into the blast."""
+    n = int(dur * SR)
+    roar = sweep_filter(noise(n, rng), "bandpass", ramp(150, 2200, n, "exp"), q=0.6)
+    sub = sine(ramp(30, 90, n, "exp"), n) + 0.4 * saw(ramp(45, 120, n, "exp"), n)
+    env = ramp(0.05, 1.0, n) ** 2.2
+    x = saturate((roar * 1.4 + lowpass(sub, 400) * 0.9) * env, 2.0)
+    return fade(x, 2)
+
+
 def orb_target(rng, dur):
     n = int(dur * SR)
     buf = np.zeros(n)
@@ -401,6 +411,15 @@ def grav_implode(rng, dur):
     return reverb(buf, size=1.5, feedback=0.84, mix=0.25, damp=2500)[:n]
 
 
+def grav_arc(rng, dur):
+    """Short electric crack for a lightning arc."""
+    n = int(dur * SR)
+    gate = (rng.uniform(0, 1, n // 120 + 1) > 0.45).repeat(120)[:n]
+    buzz = highpass(saw(ramp(180, 90, n), n) + noise(n, rng) * 0.8, 1200) * gate
+    snap = highpass(noise(n, rng), 3000) * decay(n, 0.008)
+    return (buzz * decay(n, 0.05) + snap * 1.5) * attack(n, 0.001)
+
+
 def grav_shimmer(rng, dur):
     n = int(dur * SR)
     t = times(dur)
@@ -463,6 +482,17 @@ def laser_sizzle(rng, dur, variant):
     return (fizz * decay(n, 0.09) + zap) * attack(n, 0.002)
 
 
+def laser_fire(rng, dur):
+    """Molten ground burning: low roar with crackles, loopable."""
+    n = int(dur * SR)
+    total = n + int(0.06 * SR)
+    t = np.arange(total) / SR
+    roar = lowpass(bandpass(noise(total, rng), 120, 900), 700) * (0.8 + 0.2 * np.sin(2 * np.pi * 1.5 * t))
+    pops = clicks(total, 22, rng, 0.005, 700, amp=(0.2, 0.9))
+    hiss = highpass(noise(total, rng), 4000) * 0.05
+    return loopify(roar * 1.2 + pops * 0.7 + hiss, n)
+
+
 def laser_powerdown(rng, dur):
     n = int(dur * SR)
     f = ramp(220, 28, n, "exp")
@@ -487,6 +517,7 @@ CUES: dict[str, tuple] = {
     "nova_boom": ("nova", nova_boom, 3.0, False),
     "nova_shockwave": ("nova", nova_shockwave, 1.2, False),
     "nova_rumble": ("nova", nova_rumble, 5.0, False),
+    "nova_swell": ("nova", nova_swell, 0.6, False),
     "nova_geiger": ("nova", nova_geiger, 2.0, True),
     "orb_target": ("orbital", orb_target, 0.8, False),
     "orb_charge": ("orbital", orb_charge, 0.4, False),
@@ -497,10 +528,12 @@ CUES: dict[str, tuple] = {
     "grav_compress": ("gravity", grav_compress, 0.6, False),
     "grav_implode": ("gravity", grav_implode, 2.5, False),
     "grav_shimmer": ("gravity", grav_shimmer, 2.4, False),
+    "grav_arc": ("gravity", grav_arc, 0.15, False),
     "laser_scan": ("laser", laser_scan, 1.0, False),
     "laser_thrusters": ("laser", laser_thrusters, 0.6, False),
     "laser_ignite": ("laser", laser_ignite, 0.4, False),
     "laser_hum": ("laser", laser_hum, 1.0, True),
+    "laser_fire": ("laser", laser_fire, 2.0, True),
     "laser_powerdown": ("laser", laser_powerdown, 0.8, False),
     "laser_depart": ("laser", laser_depart, 1.5, False),
 }

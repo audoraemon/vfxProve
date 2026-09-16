@@ -14,6 +14,7 @@ const SH_RAYS := preload("res://shaders/god_rays.gdshader")
 const SH_HAZE := preload("res://shaders/heat_haze.gdshader")
 const SH_REFRACT := preload("res://shaders/refract_ring.gdshader")
 const SH_BEAM_ADD := preload("res://shaders/beam_add.gdshader")
+const SH_MOLTEN := preload("res://shaders/molten_trail.gdshader")
 
 ## Vertical screen pixels per ground unit along a ground radius (minor ellipse axis).
 const PX_PER_UNIT_MINOR := 16.0 * sqrt(2.0)
@@ -31,6 +32,8 @@ const FIRE_LIFE := [Color("fff6d8"), Color("ffc14a"), Color("ff6a1a"), Color("b3
 const EMBER_LIFE := [Color("ffd27a"), Color("ff8a2a"), Color("d0401a"), Color(0.45, 0.1, 0.05, 0.6)]
 const SMOKE_LIFE := [Color("54443d"), Color("463f3d"), Color("3a383b"), Color("302f34"), Color(0.17, 0.17, 0.2, 0.8), Color(0.13, 0.13, 0.15, 0.45)]
 const DUST_LIFE := [Color("7a6656"), Color("675a50"), Color(0.33, 0.3, 0.29, 0.85), Color(0.24, 0.23, 0.23, 0.55)]
+const LAVA := [Color("4a0c06"), Color("9a1e0a"), Color("e04a12"), Color("ffa030"), Color("fff0b0")]
+const DUST_RING := [Color(0.2, 0.16, 0.13, 0.5), Color("4a3c32"), Color("6e5848"), Color("9a7e62"), Color("c8a47a")]
 const ROCK := [Color("5d6170"), Color("4b4f5b"), Color("3a3d47"), Color("2b2d35")]
 const HOT_ROCK := [Color("ffc060"), Color("e0602a"), Color("8a3a22"), Color("4a3632"), Color("33343c")]
 const RAD_LIFE := [Color("f0ffb0"), Color("a8ff4a"), Color("5fcf2a"), Color(0.2, 0.5, 0.1, 0.55)]
@@ -42,7 +45,7 @@ const LASER_LIFE := [Color("fff0e8"), Color("ff9a6a"), Color("ff3a2a"), Color("c
 ## Draw every VFX shader once, nearly invisible, so the renderer compiles them up front
 ## instead of hitching on an effect's first impact frame.
 static func prewarm(parent: Node2D, frames := 3) -> void:
-	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD]:
+	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN]:
 		var q := QuadFx.new().setup(shader, Vector2(4, 4))
 		q.modulate.a = 0.02
 		parent.add_child(q)
@@ -273,7 +276,7 @@ static func emitter(fx: FxTimeline, parent: Node, screen_pos: Vector2, shape: Pi
 
 static func smoke(fx: FxTimeline, screen_pos: Vector2, radius_px: float, rate: float, seconds: float,
 		rise := Vector2(20, 50), size := Vector2(3, 6), life := Vector2(1.2, 2.2), underglow := Color(0, 0, 0, 0)) -> PixelParticles:
-	var p := emitter(fx, fx.ctx.overhead, screen_pos, PixelParticles.Shape.PUFF, SMOKE_LIFE, rate, seconds, {
+	var p := emitter(fx, fx.ctx.overhead_back, screen_pos, PixelParticles.Shape.PUFF, SMOKE_LIFE, rate, seconds, {
 		"radius": radius_px, "speed": Vector2(4, 18), "alt": Vector2(0, 8), "alt_speed": rise,
 		"life": life, "size": size, "size_end_mul": 1.8,
 	})

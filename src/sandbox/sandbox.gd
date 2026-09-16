@@ -10,10 +10,10 @@ const EFFECTS := [
 
 ## Capture moments per effect (seconds from cast).
 const CAPTURES := {
-	"nova": {"target": Vector2(0, 0), "times": [0.9, 2.05, 2.4, 2.75, 2.97, 3.15, 3.45, 4.4, 6.5, 9.0]},
-	"orbital": {"target": Vector2(0, 0), "times": [0.8, 1.7, 2.6, 3.4, 4.3, 5.2, 6.4, 8.0]},
-	"gravity": {"target": Vector2(0, 0), "times": [0.5, 1.5, 2.6, 3.4, 3.9, 4.18, 4.4, 5.2, 6.6]},
-	"laser": {"target": Vector2(-4.5, 0), "dir": Vector2(1, 0), "times": [0.7, 1.4, 1.9, 2.8, 3.8, 5.0, 6.2]},
+	"nova": {"target": Vector2(0, 0), "times": [2.05, 2.5, 2.8, 2.901, 3.0, 3.2, 3.5, 4.2, 5.2, 7.0]},
+	"orbital": {"target": Vector2(0, 0), "times": [0.9, 2.2, 3.4, 4.6, 6.0]},
+	"gravity": {"target": Vector2(0, 0), "times": [1.5, 2.6, 3.6, 4.02, 4.2, 4.5, 5.5]},
+	"laser": {"target": Vector2(-4.5, 0), "dir": Vector2(1, 0), "times": [1.9, 2.8, 3.8, 4.8, 5.4, 6.2, 7.0]},
 }
 
 const ENEMY_COUNT := 40
@@ -87,6 +87,16 @@ func _build_world() -> void:
 	world.y_sort_enabled = true
 	add_child(world)
 
+	var dim_layer := Node2D.new()
+	dim_layer.name = "DimLayer"
+	dim_layer.z_index = 7
+	add_child(dim_layer)
+
+	var overhead_back := Node2D.new()
+	overhead_back.name = "OverheadBackLayer"
+	overhead_back.z_index = 8
+	add_child(overhead_back)
+
 	var overhead := Node2D.new()
 	overhead.name = "OverheadLayer"
 	overhead.z_index = 10
@@ -124,6 +134,14 @@ func _build_world() -> void:
 	_hud.add_theme_constant_override("outline_size", 2)
 	hud_layer.add_child(_hud)
 
+	var post_layer := CanvasLayer.new()
+	post_layer.layer = 3
+	add_child(post_layer)
+	var impact := Impact.new()
+	impact.name = "Impact"
+	add_child(impact)
+	impact.setup(post_layer, dim_layer, _camera)
+
 	var flash_layer := CanvasLayer.new()
 	flash_layer.layer = 4
 	add_child(flash_layer)
@@ -138,7 +156,9 @@ func _build_world() -> void:
 	ctx.sfx = sfx
 	ctx.ground = _ground_plane
 	ctx.world = world
+	ctx.overhead_back = overhead_back
 	ctx.overhead = overhead
+	ctx.impact = impact
 	ctx.distort = distort
 	ctx.rng = _rng
 	ctx.flash = _screen_flash
@@ -155,7 +175,8 @@ func _screen_flash(color: Color, seconds: float) -> void:
 
 func _reset_world(seed_value: int) -> void:
 	_rng.seed = seed_value
-	for layer in [ctx.overhead, ctx.distort]:
+	ctx.impact.dim(0.0, 100.0)
+	for layer in [ctx.overhead_back, ctx.overhead, ctx.distort]:
 		for c in layer.get_children():
 			c.queue_free()
 	_field.clear()
@@ -183,7 +204,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_R:
 				_reset_world(Time.get_ticks_usec())
 			KEY_SPACE:
-				Engine.time_scale = 0.25 if Engine.time_scale > 0.5 else 1.0
+				ctx.impact.set_base_time_scale(0.25 if ctx.impact.base_time_scale > 0.5 else 1.0)
 				_update_hud()
 			KEY_ESCAPE:
 				_quit()
@@ -234,14 +255,14 @@ func _update_hud() -> void:
 	for i in EFFECTS.size():
 		var label := "%d %s" % [i + 1, EFFECTS[i].name]
 		names.append("[%s]" % label if i == selected else " %s " % label)
-	var slow := "  SLOW-MO x0.25" if Engine.time_scale < 0.5 else ""
+	var slow := "  SLOW-MO x0.25" if ctx.impact.base_time_scale < 0.5 else ""
 	_hud.text = "  ".join(names) + "\nLMB cast (Laser: drag = direction)   R respawn   SPACE slow-mo   WASD pan" + slow
 
 
 ## Stop voices before quitting so the audio server does not leak playbacks.
 func _quit() -> void:
 	ctx.sfx.stop_all("")
-	for c in ctx.overhead.get_children() + ctx.distort.get_children():
+	for c in ctx.overhead_back.get_children() + ctx.overhead.get_children() + ctx.distort.get_children():
 		c.queue_free()
 	await _wait_frames(3)
 	# Stopped playbacks are released by the audio thread; give it real time (fixed-fps frames can be ~1 ms).

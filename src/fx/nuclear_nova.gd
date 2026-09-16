@@ -82,7 +82,7 @@ func _start_descent() -> void:
 		"radius": 2.5, "speed": Vector2(5, 25), "life": Vector2(0.15, 0.45), "size": Vector2(2, 4),
 		"size_end_mul": 0.4,
 	})
-	_smoke_trail = FxParts.emitter(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.SMOKE_LIFE, 70.0, 0.8, {
+	_smoke_trail = FxParts.emitter(self, ctx.overhead_back, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.SMOKE_LIFE, 70.0, 0.8, {
 		"radius": 3.0, "speed": Vector2(2, 10), "alt_speed": Vector2(4, 12), "life": Vector2(0.8, 1.6),
 		"size": Vector2(2.5, 4.5), "size_end_mul": 2.2,
 	})
@@ -112,10 +112,10 @@ func _fx_process(delta: float) -> void:
 		_wave.set_param("fade", 1.0 - smoothstep(0.85, 1.0, k))
 		var wave_r := eased * RADIUS
 		for e in ctx.field.in_radius(origin, wave_r):
-			ctx.field.kill(e, &"nova")
+			ctx.field.kill(e, &"nova", origin)
 		# Rolling dust ring riding the front.
 		if is_instance_valid(_dust):
-			var spawn := int(ceil(200.0 * delta))
+			var spawn := int(ceil(110.0 * delta))
 			for i in spawn:
 				var a := ctx.rng.randf() * TAU
 				var g := origin + Vector2.RIGHT.rotated(a) * wave_r
@@ -142,10 +142,14 @@ func _impact() -> void:
 	_rings.tween_param("alpha", 1.0, 0.0, 0.25)
 	ctx.flash.call(Color(1.0, 0.85, 0.6, 0.5), 0.25)
 	ctx.shake.add_trauma(0.45)
+	ctx.shake.kick(Vector2(0, 4))
 	ctx.play(&"nova_crack", origin)
+	ctx.play(&"nova_swell", origin)
+	# Anticipation: the world sinks into darkness while the core gathers light.
+	ctx.impact.dim(0.6, 1.1)
 
 	for e in ctx.field.in_radius(origin, KILL_CORE):
-		ctx.field.kill(e, &"nova")
+		ctx.field.kill(e, &"nova", origin)
 
 	var pillar := FxParts.beam(self, ctx.overhead, _target_px, 24.0, 420.0, FxParts.FIRE)
 	pillar.tween_param("intensity", 0.5, 1.0, T_BLAST - T_IMPACT, 0.0, Tween.TRANS_SINE, Tween.EASE_IN)
@@ -179,8 +183,13 @@ func _impact() -> void:
 
 
 func _blast() -> void:
-	ctx.flash.call(Color(1.0, 0.92, 0.8, 0.6), 0.35)
+	ctx.impact.impact_frame(0.06, ctx.impact.focus_of(_target_px))
+	ctx.impact.hitstop(0.09)
+	ctx.impact.aberration(4.0, 0.5)
+	ctx.impact.dim(0.0, 0.9)
+	at(T_BLAST + 0.02, func(): ctx.flash.call(Color(1.0, 0.92, 0.8, 0.55), 0.35))
 	ctx.shake.add_trauma(1.0)
+	ctx.shake.kick(Vector2(0, 9))
 	ctx.play(&"nova_boom", origin)
 	ctx.play(&"nova_shockwave", origin)
 
@@ -193,6 +202,18 @@ func _blast() -> void:
 	_wave = FxParts.shockwave(self, origin, RADIUS, FxParts.FIRE)
 	_wave.set_param("thickness", 0.06)
 	_wave.set_param("inner_heat", 0.1)
+
+	# Air refraction ring leads, a slower rolling dust wave follows.
+	var refract := FxParts.refract_ring(self, origin, RADIUS * 1.5, Color(1.0, 0.85, 0.6))
+	refract.set_param("strength", 12.0)
+	refract.tween_param("progress", 0.1, 1.0, 0.75, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	refract.life = 0.77
+	var dust_wave := FxParts.shockwave(self, origin, RADIUS * 1.3, FxParts.DUST_RING)
+	dust_wave.set_param("thickness", 0.14)
+	dust_wave.set_param("inner_heat", 0.0)
+	dust_wave.tween_param("progress", 0.1, 1.0, 1.4, 0.15, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	dust_wave.tween_param("fade", 1.0, 0.0, 0.6, 1.0)
+	dust_wave.life = 1.6
 
 	var light := FxParts.ground_light(self, origin, RADIUS * 1.15, FIRE_LIGHT)
 	light.set_param("falloff", 1.2)
@@ -211,7 +232,7 @@ func _blast() -> void:
 	glow.tween_param("intensity", 1.1, 0.0, 1.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	glow.life = 1.7
 
-	_dust = FxParts.particles(self, ctx.overhead, _target_px, PixelParticles.Shape.PUFF, FxParts.DUST_LIFE)
+	_dust = FxParts.particles(self, ctx.overhead_back, _target_px, PixelParticles.Shape.PUFF, FxParts.DUST_LIFE)
 	_dust.auto_free = false
 	_dust.drag = 1.2
 	_dust.underglow = Color("ff7a2a")
@@ -232,10 +253,10 @@ func _aftermath() -> void:
 	at(t + 5.2, func(): ctx.fade_out(_geiger, 1.5))
 
 	# Mushroom: a fire-lit stem rising, and a wide cap rolling outward up high.
-	var stem := FxParts.smoke(self, _target_px, 26.0, 70.0, 2.8, Vector2(60, 130), Vector2(5, 8),
+	var stem := FxParts.smoke(self, _target_px, 22.0, 36.0, 2.6, Vector2(60, 130), Vector2(5, 8),
 		Vector2(1.6, 2.6), Color("ff6a1a"))
 	stem.underglow_life = 0.55
-	var cap := FxParts.emitter(self, ctx.overhead, _target_px, PixelParticles.Shape.PUFF, FxParts.SMOKE_LIFE, 40.0, 2.4, {
+	var cap := FxParts.emitter(self, ctx.overhead_back, _target_px, PixelParticles.Shape.PUFF, FxParts.SMOKE_LIFE, 20.0, 2.2, {
 		"radius": 20.0, "alt": Vector2(85, 115), "alt_speed": Vector2(4, 18), "dir": PixelParticles.Dir.OUTWARD,
 		"speed": Vector2(15, 45), "life": Vector2(1.8, 2.8), "size": Vector2(6, 10), "size_end_mul": 1.5,
 	})
@@ -261,7 +282,7 @@ func _aftermath() -> void:
 				"radius": 6.0, "speed": Vector2(0, 6), "alt_speed": Vector2(18, 45), "life": Vector2(0.3, 0.65),
 				"size": Vector2(1.5, 3.5), "size_end_mul": 0.3,
 			})
-		FxParts.smoke(self, rim, 5.0, 6.0, 3.5, Vector2(15, 35), Vector2(2, 4), Vector2(1.2, 2.0))
+		FxParts.smoke(self, rim, 5.0, 4.0, 3.5, Vector2(15, 35), Vector2(2, 4), Vector2(1.2, 2.0))
 
 	var rad := FxParts.fog(self, origin, 4.6, Color(0.42, 0.95, 0.28, 0.5))
 	rad.tween_param("density", 0.0, 1.0, 1.8, 0.4, Tween.TRANS_SINE, Tween.EASE_OUT)

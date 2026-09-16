@@ -1,21 +1,21 @@
-﻿# Sci-Fi VFX Proof Implementation Plan
+# Sci-Fi VFX Proof Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Playable Godot 4.7.2 sandbox proving four sci-fi skill VFX (Nuclear Nova, Orbital Strike, Gravity Distortion, Walking Laser Grid) with procedural pixel-art visuals and synthesized audio, in a 640Ã—360 isometric view.
+**Goal:** Playable Godot 4.7.2 sandbox proving four sci-fi skill VFX (Nuclear Nova, Orbital Strike, Gravity Distortion, Walking Laser Grid) with procedural pixel-art visuals and synthesized audio, in a 640×360 isometric view.
 
-**Architecture:** Native 640Ã—360 render upscaled with nearest filter. Ground-plane effects live under a `GroundPlane` node whose transform is the iso basis, so they are authored in ground units and project automatically. Vertical/overhead effects live in screen-space layers (y-sorted world, overhead, distortion). Each effect is an `FxTimeline` subclass scheduling stage callbacks, talking to gameplay only through `EnemyField` and to audio only through `Sfx`. Audio cues synthesized offline by Python into committed WAVs.
+**Architecture:** Native 640×360 render upscaled with nearest filter. Ground-plane effects live under a `GroundPlane` node whose transform is the iso basis, so they are authored in ground units and project automatically. Vertical/overhead effects live in screen-space layers (y-sorted world, overhead, distortion). Each effect is an `FxTimeline` subclass scheduling stage callbacks, talking to gameplay only through `EnemyField` and to audio only through `Sfx`. Audio cues synthesized offline by Python into committed WAVs.
 
 **Tech Stack:** Godot 4.7.2 (GDScript, GL Compatibility, canvas_item shaders), Python 3.12 + numpy + scipy.
 
 ## Global Constraints
 
 - Godot `F:\Godot\Godot_v4.7.2-stable_win64_console.exe`, renderer `gl_compatibility`.
-- Viewport 640Ã—360, `stretch/mode="viewport"`, `aspect="keep"`, window override 1280Ã—720, default texture filter nearest.
-- Iso cell 64Ã—32 px = 1 ground unit. `screen = ((gx - gy) * 32, (gx + gy) * 16)`.
+- Viewport 640×360, `stretch/mode="viewport"`, `aspect="keep"`, window override 1280×720, default texture filter nearest.
+- Iso cell 64×32 px = 1 ground unit. `screen = ((gx - gy) * 32, (gx + gy) * 16)`.
 - Procedural art only; no downloaded/external assets.
 - Shaders use `uniform float u_time` driven from script (respects `Engine.time_scale`), never built-in `TIME`.
-- Audio: 44.1 kHz, 16-bit mono WAV, peak âˆ’1 dBFS, deterministic seeds, WAVs committed.
+- Audio: 44.1 kHz, 16-bit mono WAV, peak −1 dBFS, deterministic seeds, WAVs committed.
 - Tests: `& $godot --headless --path . --script res://tests/run_all.gd` prints `failures=0`, exit code 0.
 - Commit after each task; messages end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 
@@ -27,17 +27,17 @@
 |---|---|
 | `project.godot` | engine config (constraints above), main scene, bus layout |
 | `default_bus_layout.tres` | `SFX` bus; Master compressor + hard limiter |
-| `src/core/iso.gd` | `class_name Iso` â€” pure projection math |
-| `src/core/camera_shake.gd` | `class_name CameraShake extends Camera2D` â€” trauma shake, integer offsets |
-| `src/enemies/dummy_enemy.gd` | `class_name DummyEnemy extends Node2D` â€” ground-space state machine + pixel draw |
-| `src/enemies/enemy_field.gd` | `class_name EnemyField extends Node` â€” registry, spatial queries, pull/knock/kill |
-| `src/fx/fx_context.gd` | `class_name FxContext extends RefCounted` â€” handles passed to effects |
-| `src/fx/fx_timeline.gd` | `class_name FxTimeline extends Node2D` â€” time-scheduled stage base |
-| `src/fx/quad_fx.gd` | `class_name QuadFx extends Node2D` â€” shader quad, drives `u_time`, anchor |
-| `src/fx/pixel_particles.gd` | `class_name PixelParticles extends Node2D` â€” square/puff/streak particles with altitude |
-| `src/fx/fx_parts.gd` | `class_name FxParts` â€” static builders (rings, shockwave, beam, decal, bursts, smoke) |
+| `src/core/iso.gd` | `class_name Iso` — pure projection math |
+| `src/core/camera_shake.gd` | `class_name CameraShake extends Camera2D` — trauma shake, integer offsets |
+| `src/enemies/dummy_enemy.gd` | `class_name DummyEnemy extends Node2D` — ground-space state machine + pixel draw |
+| `src/enemies/enemy_field.gd` | `class_name EnemyField extends Node` — registry, spatial queries, pull/knock/kill |
+| `src/fx/fx_context.gd` | `class_name FxContext extends RefCounted` — handles passed to effects |
+| `src/fx/fx_timeline.gd` | `class_name FxTimeline extends Node2D` — time-scheduled stage base |
+| `src/fx/quad_fx.gd` | `class_name QuadFx extends Node2D` — shader quad, drives `u_time`, anchor |
+| `src/fx/pixel_particles.gd` | `class_name PixelParticles extends Node2D` — square/puff/streak particles with altitude |
+| `src/fx/fx_parts.gd` | `class_name FxParts` — static builders (rings, shockwave, beam, decal, bursts, smoke) |
 | `src/fx/nuclear_nova.gd` etc. | the four effects |
-| `src/audio/sfx.gd` | `class_name Sfx extends Node` â€” cue catalog, pooled positional playback |
+| `src/audio/sfx.gd` | `class_name Sfx extends Node` — cue catalog, pooled positional playback |
 | `src/sandbox/ground_tiles.gd` | draws tile floor in ground units |
 | `src/sandbox/sandbox.gd` | scene assembly, input, HUD, capture/bench modes |
 | `scenes/sandbox.tscn` | root node with `sandbox.gd` |
@@ -130,7 +130,7 @@ static func radius_to_screen(r: float) -> Vector2:
 	return Vector2(32.0, 16.0) * sqrt(2.0) * r
 ```
 
-- [ ] **Step 4: Re-import, run tests â†’ `failures=0`**
+- [ ] **Step 4: Re-import, run tests → `failures=0`**
 - [ ] **Step 5: Commit** `feat: project scaffold, iso projection, test harness`
 
 ---
@@ -196,9 +196,9 @@ static func run(t) -> void:
 		x.free()
 ```
 
-- [ ] **Step 2: Run â†’ FAIL**
-- [ ] **Step 3: Implement** `dummy_enemy.gd` (state machine in `tick(delta)` called from `_process`; wander picks random ground target inside `bounds` at 0.6 u/s; knock sets velocity decaying 6/s; pull_step moves toward center at `strength * (0.5 + 0.5 * (1 - d/5))` plus perpendicular `swirl * strength * 0.5`, clamped to not overshoot min distance 0.15; `_draw` pixel soldier ~9Ã—15 px with shadow, armor, red visor, 2-frame walk bob; flash draws white; DEAD: charred colors, fade 1.2 s then `queue_free`; `position = Iso.ground_to_screen(ground_pos).round()`) and `enemy_field.gd` (array registry, queries in ground space, emits `enemy_killed`).
-- [ ] **Step 4: Run â†’ `failures=0`**
+- [ ] **Step 2: Run → FAIL**
+- [ ] **Step 3: Implement** `dummy_enemy.gd` (state machine in `tick(delta)` called from `_process`; wander picks random ground target inside `bounds` at 0.6 u/s; knock sets velocity decaying 6/s; pull_step moves toward center at `strength * (0.5 + 0.5 * (1 - d/5))` plus perpendicular `swirl * strength * 0.5`, clamped to not overshoot min distance 0.15; `_draw` pixel soldier ~9×15 px with shadow, armor, red visor, 2-frame walk bob; flash draws white; DEAD: charred colors, fade 1.2 s then `queue_free`; `position = Iso.ground_to_screen(ground_pos).round()`) and `enemy_field.gd` (array registry, queries in ground space, emits `enemy_killed`).
+- [ ] **Step 4: Run → `failures=0`**
 - [ ] **Step 5: Commit** `feat: enemy field and dummy enemies`
 
 ---
@@ -211,13 +211,13 @@ static func run(t) -> void:
 
 **Interfaces:**
 - Produces:
-  - `CameraShake.add_trauma(amount: float)`; offset = `traumaÂ² * 8px * noise`, rounded; decay 1.6/s.
+  - `CameraShake.add_trauma(amount: float)`; offset = `trauma² * 8px * noise`, rounded; decay 1.6/s.
   - `FxContext` fields: `field: EnemyField`, `shake: CameraShake`, `sfx: Sfx` (null until Task 10), `ground: Node2D` (iso-basis plane), `world: Node2D` (y-sorted), `overhead: Node2D`, `distort: Node2D`, `rng: RandomNumberGenerator`, `flash: Callable` (`func(color: Color, seconds: float)`).
   - `FxTimeline`: `ctx: FxContext`, `origin: Vector2` (ground), `t: float`, `duration: float`, `at(time: float, fn: Callable)`, `track(node: Node, parent: Node) -> Node` (adds child, frees on effect end), virtual `_build()`, virtual `_fx_process(delta: float)`, `static func cast(script: GDScript, ctx: FxContext, origin: Vector2, extra := {}) -> FxTimeline`.
   - `QuadFx`: `setup(shader: Shader, size: Vector2, anchor := Vector2(0.5, 0.5)) -> QuadFx`, `set_param(name: StringName, value)`, `tween_param(name, from, to, seconds, trans := Tween.TRANS_LINEAR) -> Tween`, `life: float` (auto free when > 0 and elapsed). Updates `u_time` each frame.
-  - `PixelParticles`: `enum Shape { SQUARE, PUFF, STREAK }`, properties `shape`, `ramp: PackedColorArray`, `gravity: float` (px/sÂ² on altitude), `drag: float`, `iso_squash := 0.5`, `bounce := false`, `emitting := false`, `rate: float`, `spec: Dictionary`, `burst(count: int, spec: Dictionary)`. Spec keys: `radius`, `speed`: Vector2(min,max), `alt_speed`: Vector2, `alt`: Vector2, `life`: Vector2, `size`: Vector2, `size_end_mul`, `angle`: Vector2 (radians). Auto-frees when `auto_free` and empty and not emitting.
-  - Sandbox command-line: `--capture-all` (fixed seed 7, casts each effect, saves 2Ã— nearest-scaled PNGs to `res://captures/<effect>_<ms>.png`, quits), `--bench` (casts all four simultaneously, logs min/avg FPS over 9 s, quits).
-- [ ] **Step 1: Failing test** `tests/test_fx_timeline.gd` â€” timeline with events at 0.1 and 0.5 fires in order after manual `_process` steps; tracked node freed on end.
+  - `PixelParticles`: `enum Shape { SQUARE, PUFF, STREAK }`, properties `shape`, `ramp: PackedColorArray`, `gravity: float` (px/s² on altitude), `drag: float`, `iso_squash := 0.5`, `bounce := false`, `emitting := false`, `rate: float`, `spec: Dictionary`, `burst(count: int, spec: Dictionary)`. Spec keys: `radius`, `speed`: Vector2(min,max), `alt_speed`: Vector2, `alt`: Vector2, `life`: Vector2, `size`: Vector2, `size_end_mul`, `angle`: Vector2 (radians). Auto-frees when `auto_free` and empty and not emitting.
+  - Sandbox command-line: `--capture-all` (fixed seed 7, casts each effect, saves 2× nearest-scaled PNGs to `res://captures/<effect>_<ms>.png`, quits), `--bench` (casts all four simultaneously, logs min/avg FPS over 9 s, quits).
+- [ ] **Step 1: Failing test** `tests/test_fx_timeline.gd` — timeline with events at 0.1 and 0.5 fires in order after manual `_process` steps; tracked node freed on end.
 
 ```gdscript
 extends RefCounted
@@ -247,10 +247,10 @@ static func run(t) -> void:
 	if is_instance_valid(p):
 		p.free()
 ```
-- [ ] **Step 2: Run â†’ FAIL**
+- [ ] **Step 2: Run → FAIL**
 - [ ] **Step 3: Implement framework files** (FxTimeline sorts events by time, fires all `<= t`, sets `finished`, frees tracked nodes and `queue_free()` self).
-- [ ] **Step 4: Implement sandbox**: `GroundPlane` transform `Iso.BASIS`, `GroundTiles` draws 14Ã—14 cells (dark blue-grey 3 shades, 1px seams, sparse cyan light dots), `WorldLayer` `y_sort_enabled`, `OverheadLayer` z 10, `DistortLayer` z 20, camera centered on map, WASD/arrow pan, HUD label (CanvasLayer), full-screen flash ColorRect. Input: `1-4` select, LMB press/release cast (laser uses drag direction, default `Vector2(1,0)` ground when drag < 0.5 u), `R` respawn 40, `Space` toggle `Engine.time_scale` 1.0/0.25, `Esc` quit.
-- [ ] **Step 5: Tests pass; run sandbox capture of idle scene** `& $godot --path . --audio-driver Dummy -- --capture-idle` â†’ `captures/idle.png`; inspect: tiles visible, enemies drawn, no errors in console.
+- [ ] **Step 4: Implement sandbox**: `GroundPlane` transform `Iso.BASIS`, `GroundTiles` draws 14×14 cells (dark blue-grey 3 shades, 1px seams, sparse cyan light dots), `WorldLayer` `y_sort_enabled`, `OverheadLayer` z 10, `DistortLayer` z 20, camera centered on map, WASD/arrow pan, HUD label (CanvasLayer), full-screen flash ColorRect. Input: `1-4` select, LMB press/release cast (laser uses drag direction, default `Vector2(1,0)` ground when drag < 0.5 u), `R` respawn 40, `Space` toggle `Engine.time_scale` 1.0/0.25, `Esc` quit.
+- [ ] **Step 5: Tests pass; run sandbox capture of idle scene** `& $godot --path . --audio-driver Dummy -- --capture-idle` → `captures/idle.png`; inspect: tiles visible, enemies drawn, no errors in console.
 - [ ] **Step 6: Commit** `feat: sandbox scene, fx framework, capture mode`
 
 ---
@@ -272,11 +272,11 @@ static func run(t) -> void:
   - `debris(parent, screen_pos, count, radius) -> PixelParticles`
   - `sparks(parent, screen_pos, count, ramp, speed) -> PixelParticles`
   - `smoke(parent, screen_pos, count, spread, rise, life) -> PixelParticles`
-  - Palettes: `FxParts.FIRE: PackedColorArray` (whiteâ†’yellowâ†’orangeâ†’redâ†’dark red), `FxParts.VOID` (whiteâ†’lavenderâ†’violetâ†’purpleâ†’near black), `FxParts.SMOKE`, `FxParts.RAD` (greens), `FxParts.ION` (cyans)
-- Shader contract: every shader quantizes intensity to â‰¤5 steps and maps to palette colors passed as uniforms `c0..c4`; uses `u_time`.
+  - Palettes: `FxParts.FIRE: PackedColorArray` (white→yellow→orange→red→dark red), `FxParts.VOID` (white→lavender→violet→purple→near black), `FxParts.SMOKE`, `FxParts.RAD` (greens), `FxParts.ION` (cyans)
+- Shader contract: every shader quantizes intensity to ≤5 steps and maps to palette colors passed as uniforms `c0..c4`; uses `u_time`.
 
 - [ ] **Step 1: Write shaders + FxParts**
-- [ ] **Step 2: Write `nuclear_nova.gd`** per spec stage table: telegraph rings radius 5 (reveal 0â†’1 over 0.6 s, scan on) + center crosshair; 1.5 s warhead (code-drawn 7Ã—16 px sprite node in world layer, falling from screen offset (-140,-260) to target over 0.8 s, ease-in, emits fire streak + smoke puffs); 2.3 s: `ctx.flash(white, 0.25)`, shake 1.0, pillar beam (w 20, h 360) fading 0.6 s, kill radius 1.2; shockwave 0â†’5 over 1.0 s, kills enemies when `dist <= wave_radius`, knock 5â€“7 at wave end; dome quad grows 0â†’1 over 0.35 s, holds, collapses/dissolves by 1.4 s; debris 120, sparks 80; crater decal radius 2.2 life 8; aftermath smoke column (continuous puffs 2.2 s), rad fog radius 4 life 6, fallout green squares rising slowly.
+- [ ] **Step 2: Write `nuclear_nova.gd`** per spec stage table: telegraph rings radius 5 (reveal 0→1 over 0.6 s, scan on) + center crosshair; 1.5 s warhead (code-drawn 7×16 px sprite node in world layer, falling from screen offset (-140,-260) to target over 0.8 s, ease-in, emits fire streak + smoke puffs); 2.3 s: `ctx.flash(white, 0.25)`, shake 1.0, pillar beam (w 20, h 360) fading 0.6 s, kill radius 1.2; shockwave 0→5 over 1.0 s, kills enemies when `dist <= wave_radius`, knock 5–7 at wave end; dome quad grows 0→1 over 0.35 s, holds, collapses/dissolves by 1.4 s; debris 120, sparks 80; crater decal radius 2.2 life 8; aftermath smoke column (continuous puffs 2.2 s), rad fog radius 4 life 6, fallout green squares rising slowly.
 - [ ] **Step 3: Capture** `& $godot --path . --audio-driver Dummy -- --capture-all --only=nova`; view each PNG against `VFXConcept_Nuclear Nova.png` stages; iterate shader/params until each stage reads (telegraph clear, descent visible, flash+pillar, ring + dome, aftermath green haze). Console: zero errors.
 - [ ] **Step 4: Tests still pass; commit** `feat: nuclear nova effect and shared vfx shaders`
 
@@ -288,7 +288,7 @@ static func run(t) -> void:
 
 **Interfaces:** Consumes `FxParts.rings/beam/debris/sparks/smoke/decal`, `EnemyField.in_radius/kill/knock_from`.
 
-- [ ] **Step 1: Implement**: area rings radius 4.5 + 10 static pips (small crosses drawn by a ground-plane `_draw` node) for 0â€“1 s; strike points: 12 samples uniform in disc (`sqrt(u)` radius) with rejection for min spacing 0.8 (max 200 attempts), times spread 1.0â€“4.1 s with random jitter Â±0.08; per strike: at `ts` reticle rings (radius 0.7, 2 rings, reveal 0.2 s) + thin aim beam (w 2, alpha 0.5, from above screen) ; at `ts+0.4`: heavy beam (w 12â†’0 over 0.25 s), flash quad small, kill â‰¤1.0, knock 1.0â€“1.8 force 4, debris 30, sparks 25, smoke 8, crater decal radius 0.9 life 6, shake 0.35; aftermath 4.5â€“6.5: cyan ion sparks crackling at 5 random crater points, embers.
+- [ ] **Step 1: Implement**: area rings radius 4.5 + 10 static pips (small crosses drawn by a ground-plane `_draw` node) for 0–1 s; strike points: 12 samples uniform in disc (`sqrt(u)` radius) with rejection for min spacing 0.8 (max 200 attempts), times spread 1.0–4.1 s with random jitter ±0.08; per strike: at `ts` reticle rings (radius 0.7, 2 rings, reveal 0.2 s) + thin aim beam (w 2, alpha 0.5, from above screen) ; at `ts+0.4`: heavy beam (w 12→0 over 0.25 s), flash quad small, kill ≤1.0, knock 1.0–1.8 force 4, debris 30, sparks 25, smoke 8, crater decal radius 0.9 life 6, shake 0.35; aftermath 4.5–6.5: cyan ion sparks crackling at 5 random crater points, embers.
 - [ ] **Step 2: Capture `--only=orbital`**, compare with concept sheet; iterate.
 - [ ] **Step 3: Commit** `feat: orbital strike effect`
 
@@ -301,7 +301,7 @@ static func run(t) -> void:
 **Interfaces:** Consumes `EnemyField.pull/release_all/in_radius/kill/knock_from`, `FxParts.rings/shockwave/decal/sparks`, `FxParts.VOID`.
 
 - [ ] **Step 1: Singularity shader**: `hint_screen_texture, filter_nearest`; swirl rotation `strength * (1-r)^2`, pinch, purple tint rising toward center, spiral arm bands quantized, black core radius `core` with lavender rim, zero outside r>1.
-- [ ] **Step 2: Effect**: 0â€“0.8 purple rings (radius 4.5, reveal), singularity quad in distort layer sized to `Iso.radius_to_screen(4.5)*2`, strength 0â†’0.6, core 0â†’0.06; 0.8â€“3.5 pull strength ramps 0.8â†’3.2 u/s swirl 1.0 (`field.pull` per frame), strength 0.6â†’2.2, core 0.06â†’0.14, inward streak particles (STREAK spawned on ring edge with velocity toward center), rubble squares spiraling (manually integrated in `_fx_process`); 3.5â€“4.1 compression: core 0.14â†’0.05 with flicker, rings reveal 1â†’0.3, pull 4.0; 4.1: flash dark (`Color(0.1,0,0.15)` 0.06 s) then lavender flash 0.2 s, shake 0.9, kill â‰¤1.5, knock others outward force 7, `release_all`, void shockwave 0â†’4.5 over 0.6 s, sparks 120 radial; aftermath decal warp 1.0 purple edge life 6, floating sparks rising 2.4 s.
+- [ ] **Step 2: Effect**: 0–0.8 purple rings (radius 4.5, reveal), singularity quad in distort layer sized to `Iso.radius_to_screen(4.5)*2`, strength 0→0.6, core 0→0.06; 0.8–3.5 pull strength ramps 0.8→3.2 u/s swirl 1.0 (`field.pull` per frame), strength 0.6→2.2, core 0.06→0.14, inward streak particles (STREAK spawned on ring edge with velocity toward center), rubble squares spiraling (manually integrated in `_fx_process`); 3.5–4.1 compression: core 0.14→0.05 with flicker, rings reveal 1→0.3, pull 4.0; 4.1: flash dark (`Color(0.1,0,0.15)` 0.06 s) then lavender flash 0.2 s, shake 0.9, kill ≤1.5, knock others outward force 7, `release_all`, void shockwave 0→4.5 over 0.6 s, sparks 120 radial; aftermath decal warp 1.0 purple edge life 6, floating sparks rising 2.4 s.
 - [ ] **Step 3: Capture `--only=gravity`**, compare, iterate.
 - [ ] **Step 4: Commit** `feat: gravity distortion effect`
 
@@ -313,7 +313,7 @@ static func run(t) -> void:
 
 **Interfaces:** Consumes `EnemyField.in_lane/kill`, `FxParts.beam/link_beam/sparks/smoke/decal`. Extra cast data: `extra.dir: Vector2` (normalized ground direction).
 
-- [ ] **Step 1: Implement**: lane frame: `dir`, `side = dir.orthogonal()`, width 5, length 10. Ground-plane `_draw` node transformed by basis (rotation from `dir`) draws lane rect + 1-unit grid lines + boundary node markers, reveal sweep along length 0â€“1 s, pulsing alpha. 5 emitters at `origin + side * (-2, -1, 0, 1, 2)`, code-drawn drone (11Ã—7 px body, two blue thruster pixels) descending from altitude 180 px to 70 px over 0.6 s (ease-out) with vertical lock beams (w 3) to ground; 1.6 s link beams at altitude 20 and 45 between adjacent emitters + intersection sparks; walk 2.0â€“5.5 s: `front = (t-2)/3.5 * length`, per frame: move posts, kill enemies `in_lane(origin, dir, 2.6, front-0.35, front+0.35)` â†’ contact burn sparks + enemy flash; scorched trail decal = ground `_draw` strip from 0 to front with molten edge pixels (noise), fading after end; motion streaks behind wall; 5.5 s beams intensityâ†’0 0.3 s, drones rise to 260 px & fade 1.5 s; smoke wisps along trail.
+- [ ] **Step 1: Implement**: lane frame: `dir`, `side = dir.orthogonal()`, width 5, length 10. Ground-plane `_draw` node transformed by basis (rotation from `dir`) draws lane rect + 1-unit grid lines + boundary node markers, reveal sweep along length 0–1 s, pulsing alpha. 5 emitters at `origin + side * (-2, -1, 0, 1, 2)`, code-drawn drone (11×7 px body, two blue thruster pixels) descending from altitude 180 px to 70 px over 0.6 s (ease-out) with vertical lock beams (w 3) to ground; 1.6 s link beams at altitude 20 and 45 between adjacent emitters + intersection sparks; walk 2.0–5.5 s: `front = (t-2)/3.5 * length`, per frame: move posts, kill enemies `in_lane(origin, dir, 2.6, front-0.35, front+0.35)` → contact burn sparks + enemy flash; scorched trail decal = ground `_draw` strip from 0 to front with molten edge pixels (noise), fading after end; motion streaks behind wall; 5.5 s beams intensity→0 0.3 s, drones rise to 260 px & fade 1.5 s; smoke wisps along trail.
 - [ ] **Step 2: Capture `--only=laser`**, compare, iterate.
 - [ ] **Step 3: Commit** `feat: walking laser grid effect`
 
@@ -326,8 +326,8 @@ static func run(t) -> void:
 **Interfaces:** Produces WAV files at `assets/audio/<effect>/<cue>.wav` for every cue in spec table (variants `orb_hit_1..4`, `laser_sizzle_1..3`). CLI: `python tools/audio/synth.py [--only CUE] [--verify]`. Verify prints `audio verify: N cues, 0 problems`, exit 1 on problems.
 
 - [ ] **Step 1: Write DSP helpers**: `sine_sweep(f0,f1,dur)`, `noise(dur,seed)`, `bandpass/lowpass/highpass(x, f, q)` via `scipy.signal.butter` sos, `env_adsr`, `exp_decay`, `saturate(x, drive)` (tanh), `reverb(x, decay, mix)` (sum of 4 feedback comb filters + 2 allpass), `normalize(x, -1 dBFS)`, `fade(x, ms)`, `loopify(x, crossfade_ms)`.
-- [ ] **Step 2: Write cue functions** (one per cue id, registered in `CUES = {id: (effect, fn, length, loop)}`) and `--verify` checks (exists, length Â±5%, peak â‰¤ âˆ’1 dBFS + 0.05 tolerance, finite, |mean| < 0.01, loops: first/last sample |x| < 0.02).
-- [ ] **Step 3: Generate + verify** `python tools/audio/synth.py; python tools/audio/synth.py --verify` â†’ `0 problems`. Render spectrogram PNGs to scratchpad for sanity (shape of sweeps/booms visible).
+- [ ] **Step 2: Write cue functions** (one per cue id, registered in `CUES = {id: (effect, fn, length, loop)}`) and `--verify` checks (exists, length ±5%, peak ≤ −1 dBFS + 0.05 tolerance, finite, |mean| < 0.01, loops: first/last sample |x| < 0.02).
+- [ ] **Step 3: Generate + verify** `python tools/audio/synth.py; python tools/audio/synth.py --verify` → `0 problems`. Render spectrogram PNGs to scratchpad for sanity (shape of sweeps/booms visible).
 - [ ] **Step 4: Commit** `feat: synthesized sfx cues`
 
 ---
@@ -339,9 +339,9 @@ static func run(t) -> void:
 **Interfaces:**
 - Produces: `Sfx.CATALOG: Dictionary` (`&"nova_alarm": {path, db, voices, jitter, loop}`, variants via `variants: int`), `Sfx.play(cue: StringName, ground_pos: Vector2, db_offset := 0.0) -> AudioStreamPlayer2D`, `Sfx.fade_out(p: AudioStreamPlayer2D, seconds: float)`, `Sfx.stop_all(prefix: String)`, `Sfx.set_voice_pitch(p, mul: float)`.
 - [ ] **Step 1: Failing test** `test_sfx_catalog.gd`: every catalog entry (expanding variants) loads as `AudioStreamWAV`; loop entries report `loop_mode == AudioStreamWAV.LOOP_FORWARD` after `Sfx.load_stream(cue)`.
-- [ ] **Step 2: Implement Sfx** (pool 32 `AudioStreamPlayer2D` on bus `SFX`, `max_distance 900`, per-cue voice limit steals oldest, pitch = base Ã— jitter Ã— `Engine.time_scale` updated in `_process`) + bus layout (Master: Compressor threshold âˆ’12 dB ratio 4, HardLimiter ceiling âˆ’0.5 dB).
+- [ ] **Step 2: Implement Sfx** (pool 32 `AudioStreamPlayer2D` on bus `SFX`, `max_distance 900`, per-cue voice limit steals oldest, pitch = base × jitter × `Engine.time_scale` updated in `_process`) + bus layout (Master: Compressor threshold −12 dB ratio 4, HardLimiter ceiling −0.5 dB).
 - [ ] **Step 3: Hook cues** at spec trigger times in each effect `_build()`; loops faded at stage end; gravity implode cuts other gravity voices then plays boom after 0.08 s; laser sizzle on each kill; orbital charge + hit per strike.
-- [ ] **Step 4: Import, tests pass, sandbox run 10 s with real audio driver â†’ console no errors.**
+- [ ] **Step 4: Import, tests pass, sandbox run 10 s with real audio driver → console no errors.**
 - [ ] **Step 5: Commit** `feat: positional sfx playback wired to effects`
 
 ---
@@ -350,7 +350,7 @@ static func run(t) -> void:
 
 **Files:** Create `README.md`; Modify `src/sandbox/sandbox.gd` if bench needs fixes.
 
-- [ ] **Step 1:** `& $godot --path . --audio-driver Dummy -- --bench` â†’ record min/avg FPS; target min â‰¥ 60. If below, reduce particle counts / shader loops and rerun.
+- [ ] **Step 1:** `& $godot --path . --audio-driver Dummy -- --bench` → record min/avg FPS; target min ≥ 60. If below, reduce particle counts / shader loops and rerun.
 - [ ] **Step 2:** Full `--capture-all`, review all captures one final time.
 - [ ] **Step 3:** Tests + audio verify both green.
 - [ ] **Step 4:** README: run command, controls, file map, how to regenerate audio, how to capture.

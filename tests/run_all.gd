@@ -3,6 +3,7 @@ extends SceneTree
 const SUITES := [
 	"res://tests/test_iso.gd",
 	"res://tests/test_enemy_field.gd",
+	"res://tests/test_fx_timeline.gd",
 ]
 
 var failures := 0

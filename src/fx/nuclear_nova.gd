@@ -104,6 +104,7 @@ func _fx_process(_delta: float) -> void:
 func _impact() -> void:
 	if is_instance_valid(_warhead):
 		_warhead.queue_free()
+	ctx.fade_out(_descent_voice, 0.05)
 	_rings.tween_param("alpha", 1.0, 0.0, 0.12)
 	ctx.flash.call(Color(1.0, 0.96, 0.88, 0.95), 0.45)
 	ctx.shake.add_trauma(1.0)

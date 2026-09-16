@@ -4,6 +4,7 @@ const SUITES := [
 	"res://tests/test_iso.gd",
 	"res://tests/test_enemy_field.gd",
 	"res://tests/test_fx_timeline.gd",
+	"res://tests/test_sfx_catalog.gd",
 ]
 
 var failures := 0

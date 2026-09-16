@@ -151,6 +151,11 @@ func _fx_process(delta: float) -> void:
 		core *= 1.0 + 0.35 * sin(t * 70.0) * compress
 		_rings.set_param("reveal", lerpf(1.0, 0.3, compress * compress))
 		ctx.shake.add_trauma(0.9 * delta)
+	# Drone swells and rises in pitch with the pull.
+	var drone: Node = _voices[1]
+	if drone != null and is_instance_valid(drone) and ctx.sfx != null:
+		drone.volume_db = lerpf(-8.0, -1.0, strength / 3.6)
+		ctx.sfx.set_voice_pitch(drone, 1.0 + 0.3 * strength / 3.6)
 	_sing.set_param("strength", strength)
 	_sing.set_param("pinch", pinch)
 	_sing.set_param("core_px", core)

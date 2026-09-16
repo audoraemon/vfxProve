@@ -100,6 +100,13 @@ func _build_world() -> void:
 	_camera.name = "Camera"
 	add_child(_camera)
 	_camera.make_current()
+	var listener := AudioListener2D.new()
+	_camera.add_child(listener)
+	listener.make_current()
+
+	var sfx := Sfx.new()
+	sfx.name = "Sfx"
+	add_child(sfx)
 
 	_field = EnemyField.new()
 	_field.name = "EnemyField"
@@ -127,6 +134,7 @@ func _build_world() -> void:
 
 	ctx.field = _field
 	ctx.shake = _camera
+	ctx.sfx = sfx
 	ctx.ground = _ground_plane
 	ctx.world = world
 	ctx.overhead = overhead
@@ -177,7 +185,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				Engine.time_scale = 0.25 if Engine.time_scale > 0.5 else 1.0
 				_update_hud()
 			KEY_ESCAPE:
-				get_tree().quit()
+				_quit()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true
@@ -229,6 +237,13 @@ func _update_hud() -> void:
 	_hud.text = "  ".join(names) + "\nLMB cast (Laser: drag = direction)   R respawn   SPACE slow-mo   WASD pan" + slow
 
 
+## Stop voices before quitting so the audio server does not leak playbacks.
+func _quit() -> void:
+	ctx.sfx.stop_all("")
+	await _wait_frames(2)
+	get_tree().quit()
+
+
 # --- Capture / bench -------------------------------------------------------
 
 func _capture_dir() -> String:
@@ -254,7 +269,7 @@ func _wait_frames(n: int) -> void:
 func _capture_idle() -> void:
 	await _wait_frames(30)
 	await _save_capture("idle.png")
-	get_tree().quit()
+	await _quit()
 
 
 func _capture_all(only: String) -> void:
@@ -279,7 +294,7 @@ func _capture_all(only: String) -> void:
 			await _save_capture("%s_%04d.png" % [key, int(time * 1000)])
 		while is_instance_valid(fx):
 			await get_tree().process_frame
-	get_tree().quit()
+	await _quit()
 
 
 func _bench() -> void:
@@ -304,4 +319,4 @@ func _bench() -> void:
 		frames += 1
 	print("bench frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f" % [
 		frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst])
-	get_tree().quit()
+	await _quit()

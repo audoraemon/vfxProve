@@ -75,6 +75,11 @@ func dim(amount: float, speed := 1.5) -> void:
 	_dim_speed = speed
 
 
+## Current world dim level 0..1.
+func dim_level() -> float:
+	return _dim_amount
+
+
 func focus_of(screen_world_pos: Vector2) -> Vector2:
 	var vp := get_viewport()
 	var screen := vp.get_canvas_transform() * screen_world_pos

@@ -295,6 +295,8 @@ func _walk() -> void:
 	_trail_glow.set_param("flicker", 1.0)
 	_trail_glow.z_index = 5
 	_lane_space.add_child(_trail_glow)
+	ctx.lights.register_quad(_trail_glow, origin, 2.8, Color(1.0, 0.45, 0.12),
+		func(): return origin + _dir * maxf(_front - 1.6, 0.0))
 	_flames = FxParts.particles(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE)
 	_flames.auto_free = false
 	_flames.drag = 1.5
@@ -310,6 +312,7 @@ func _walk() -> void:
 	_wall_light.set_param("intensity", 1.1)
 	_wall_light.set_param("flicker", 1.0)
 	lane_space.add_child(_wall_light)
+	ctx.lights.register_quad(_wall_light, origin, 3.4, Color(1.0, 0.22, 0.1), func(): return origin + _dir * _front)
 	_wall_haze = FxParts.heat_haze(self, Iso.ground_to_screen(origin), FxParts.PX_PER_UNIT_MAJOR * WIDTH * 0.45, 1.5)
 
 
@@ -341,6 +344,7 @@ func _fx_process(delta: float) -> void:
 		var d := _drones[ctx.rng.randi() % _drones.size()]
 		FxParts.sparks(self, ctx.overhead, d.position, 3, FxParts.LASER_LIFE, Vector2(20, 90), Vector2(20, 80))
 
+	ctx.env.damage_lane(origin, _dir, KILL_HALF_WIDTH, _front - KILL_BAND, _front + KILL_BAND, &"laser")
 	for e in ctx.field.in_lane(origin, _dir, KILL_HALF_WIDTH, _front - KILL_BAND, _front + KILL_BAND):
 		if ctx.field.kill(e, &"laser", e.ground_pos - _dir):
 			var sp := Iso.ground_to_screen(e.ground_pos)

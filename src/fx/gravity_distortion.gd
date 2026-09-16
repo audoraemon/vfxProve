@@ -256,6 +256,7 @@ func _fx_process(delta: float) -> void:
 		ctx.play(&"grav_arc", origin + from_ground * 0.5)
 
 	_rubble.pull = clampf((t - 0.3) / T_PULL, 0.0, 1.0) * (1.0 + compress)
+	ctx.env.shake_radius(origin, RADIUS + 0.5, 0.4 + 2.6 * strength / 3.6)
 	if t >= T_PULL:
 		var pull_strength := curve([[T_PULL, 0.8], [T_COMPRESS, 3.2], [T_IMPLODE, 4.2]])
 		ctx.field.pull(origin, RADIUS, pull_strength, 1.0, delta)
@@ -286,6 +287,8 @@ func _implode() -> void:
 		ctx.field.kill(e, &"gravity", origin)
 	ctx.field.release_all()
 	ctx.field.knock_from(origin, 0.0, RADIUS + 1.0, 7.0)
+	ctx.env.damage_radius(origin, RADIUS * 0.75, 99999.0, &"gravity")
+	ctx.env.damage_radius(origin, RADIUS + 1.0, 50.0, &"gravity")
 
 	var wave := FxParts.shockwave(self, origin, RADIUS, FxParts.VOID)
 	wave.set_param("thickness", 0.08)

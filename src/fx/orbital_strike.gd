@@ -181,6 +181,7 @@ func _strike(i: int) -> void:
 	for e in ctx.field.in_radius(p, KILL_R):
 		ctx.field.kill(e, &"orbital", p)
 	ctx.field.knock_from(p, KILL_R, KNOCK_R, 4.5)
+	ctx.env.damage_radius(p, 1.4, 60.0, &"orbital")
 
 
 func _aftermath() -> void:

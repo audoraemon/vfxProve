@@ -11,6 +11,8 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 
 **Impact toolkit** (`src/core/impact.gd`): anticipation dimming of the world under the effect layers, inverted two-tone impact frames, hit-stop (real-time, audio keeps its pitch), RGB split, directional camera kicks. Enemies react per damage type: blasts throw and char them, gravity stretches them into the core, lasers cut them apart into embers. Smoke lives in `OverheadBackLayer` so fireballs always read in front of it.
 
+**Destructible city + effect lighting**: `src/environment/` builds a small city block of towers, blocks, barricades and crates drawn as lit iso pixel boxes. Structures take damage per effect — blasts collapse them outward into rubble with dust, debris and fires, the laser cuts them and the top slides off, gravity shakes then crumbles them inward — and walkers path around standing ones. `src/core/light_field.gd` collects every effect light pool, so building faces facing a light and nearby troopers are lit by fireballs, beams and void glow; the anticipation dim darkens the ground while lit faces still glow.
+
 Everything is procedural: canvas shaders, a small pixel particle system, code-drawn sprites, and synthesized audio. No external art or sound assets.
 
 Settings match the sibling KWAI project: Godot 4.7.2, GL Compatibility, 640×360 viewport scaled ×2 with nearest filtering, 64×32 iso cells.
@@ -41,6 +43,7 @@ Or open the folder in the Godot 4.7.2 editor and press F5.
 ```
 src/core/        iso projection, camera shake
 src/enemies/     dummy troopers + EnemyField (radius/lane queries, pull, knockback, kill)
+src/environment/ destructible structures + EnvironmentField (city layout, damage queries, blocking)
 src/fx/          FxTimeline base, QuadFx, PixelParticles, FxParts builders, the 4 effects
 src/audio/       Sfx cue catalog + pooled positional playback
 src/sandbox/     scene assembly, input, HUD, capture/bench modes
@@ -56,7 +59,7 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=98 failures=0
+bash tools/test.sh                                   # headless tests → checks=109 failures=0
 python tools/audio/synth.py --verify                 # audio cue checks → 33 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png

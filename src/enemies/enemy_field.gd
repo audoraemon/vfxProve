@@ -5,6 +5,8 @@ extends Node
 signal enemy_killed(enemy: DummyEnemy, kind: StringName)
 
 var bounds := Rect2(-6.5, -6.5, 13, 13)
+var env: EnvironmentField
+var lights: LightField
 
 var _enemies: Array[DummyEnemy] = []
 
@@ -16,12 +18,21 @@ func spawn(count: int, parent: Node, rng: RandomNumberGenerator) -> void:
 		e.ground_pos = Vector2(
 			rng.randf_range(bounds.position.x, bounds.end.x),
 			rng.randf_range(bounds.position.y, bounds.end.y))
+		for attempt in 20:
+			if env == null or not env.blocked(e.ground_pos, 0.3):
+				break
+			e.ground_pos = Vector2(
+				rng.randf_range(bounds.position.x, bounds.end.x),
+				rng.randf_range(bounds.position.y, bounds.end.y))
 		add(e)
 		parent.add_child(e)
 
 
 func add(e: DummyEnemy) -> void:
 	e.bounds = bounds
+	e.lights = lights
+	if env != null:
+		e.blocked = env.blocked
 	_enemies.append(e)
 
 

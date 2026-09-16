@@ -26,6 +26,9 @@ var ground_pos := Vector2.ZERO
 var state := State.WANDER
 var bounds := Rect2(-50, -50, 100, 100)
 var rng := RandomNumberGenerator.new()
+## Optional: effect lights tint the trooper; blocked(ground_pos) -> bool keeps walkers out of buildings.
+var lights: LightField
+var blocked: Callable
 
 var _velocity := Vector2.ZERO
 var _target := Vector2.ZERO
@@ -55,6 +58,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	tick(delta)
+	if lights != null:
+		var l := lights.sample(ground_pos)
+		var amb := lights.ambient
+		modulate = Color(amb + l.r * 2.5, amb + l.g * 2.5, amb + l.b * 2.5, modulate.a)
 	queue_redraw()
 
 
@@ -182,6 +189,11 @@ func flash(seconds: float) -> void:
 func _move(step: Vector2) -> void:
 	if absf(step.x - step.y) > 0.0001:
 		_facing = 1 if step.x - step.y > 0.0 else -1
+	if blocked.is_valid() and blocked.call(ground_pos + step):
+		_velocity = Vector2.ZERO
+		_idle = rng.randf_range(0.1, 0.5)
+		_pick_target()
+		return
 	ground_pos += step
 	ground_pos = ground_pos.clamp(bounds.position, bounds.end)
 

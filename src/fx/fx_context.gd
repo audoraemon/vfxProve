@@ -3,6 +3,8 @@ extends RefCounted
 ## Handles an effect needs: gameplay, camera, audio and the draw layers.
 
 var field: EnemyField
+var env: EnvironmentField
+var lights: LightField
 var shake: CameraShake
 var sfx: Node
 ## Node2D with transform Iso.BASIS: children are authored in ground units.

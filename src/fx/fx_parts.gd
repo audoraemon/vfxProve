@@ -125,6 +125,9 @@ static func ground_light(fx: FxTimeline, center: Vector2, radius: float, color: 
 	q.z_index = 6
 	q.set_param("color", color)
 	q.set_param("intensity", intensity)
+	# Every light pool also lights structures and enemies.
+	if fx.ctx.lights != null:
+		fx.ctx.lights.register_quad(q, center, radius * 1.15, color)
 	return q
 
 

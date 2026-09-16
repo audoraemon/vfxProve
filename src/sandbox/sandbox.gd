@@ -10,8 +10,8 @@ const EFFECTS := [
 
 ## Capture moments per effect (seconds from cast).
 const CAPTURES := {
-	"nova": {"target": Vector2(0, 0), "times": [3.3, 4.3, 5.2, 6.5, 8.0, 9.5]},
-	"orbital": {"target": Vector2(0, 0), "times": [3.4]},
+	"nova": {"target": Vector2(0, 0), "times": [1.0, 2.8, 3.3, 3.8, 5.0, 8.0]},
+	"orbital": {"target": Vector2(0, 0), "times": [0.9, 2.6, 4.2, 6.5]},
 	"gravity": {"target": Vector2(0, 0), "times": [1.5, 2.6, 3.6, 4.02, 4.2, 4.5, 5.5]},
 	"laser": {"target": Vector2(-4.5, 0), "dir": Vector2(1, 0), "times": [1.9, 2.8, 3.8, 4.8, 5.4, 6.2, 7.0]},
 }
@@ -87,9 +87,11 @@ func _build_world() -> void:
 	world.y_sort_enabled = true
 	add_child(world)
 
+	# Dim only darkens the ground; buildings and enemies darken themselves via LightField.ambient
+	# so effect light on them still reads in the dark.
 	var dim_layer := Node2D.new()
 	dim_layer.name = "DimLayer"
-	dim_layer.z_index = 7
+	dim_layer.z_index = -6
 	add_child(dim_layer)
 
 	var overhead_back := Node2D.new()
@@ -119,7 +121,20 @@ func _build_world() -> void:
 	sfx.name = "Sfx"
 	add_child(sfx)
 
+	var lights := LightField.new()
+	lights.name = "Lights"
+	add_child(lights)
+	var env := EnvironmentField.new()
+	env.name = "Environment"
+	add_child(env)
+	env.lights = lights
+	env.world_parent = world
+	env.fx_parent = overhead
+	env.fx_back = overhead_back
+
 	_field = EnemyField.new()
+	_field.env = env
+	_field.lights = lights
 	_field.name = "EnemyField"
 	add_child(_field)
 
@@ -152,6 +167,8 @@ func _build_world() -> void:
 	flash_layer.add_child(_flash_rect)
 
 	ctx.field = _field
+	ctx.env = env
+	ctx.lights = lights
 	ctx.shake = _camera
 	ctx.sfx = sfx
 	ctx.ground = _ground_plane
@@ -180,6 +197,10 @@ func _reset_world(seed_value: int) -> void:
 		for c in layer.get_children():
 			c.queue_free()
 	_field.clear()
+	ctx.lights.clear()
+	ctx.env.clear()
+	ctx.env.rng.seed = seed_value
+	ctx.env.build_city()
 	_field.spawn(ENEMY_COUNT, ctx.world, _rng)
 
 
@@ -239,6 +260,7 @@ func _process(delta: float) -> void:
 			Vector2(-300, -160), Vector2(300, 160))
 	if _pressing:
 		_drag_preview.queue_redraw()
+	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85
 
 
 func _draw_drag_preview() -> void:

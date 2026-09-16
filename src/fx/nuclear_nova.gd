@@ -118,6 +118,7 @@ func _fx_process(delta: float) -> void:
 		var wave_r := eased * RADIUS
 		for e in ctx.field.in_radius(origin, wave_r):
 			ctx.field.kill(e, &"nova", origin)
+		ctx.env.damage_radius(origin, wave_r, 99999.0, &"nova")
 		# Rolling dust ring riding the front.
 		if is_instance_valid(_dust):
 			var spawn := int(ceil(110.0 * delta))
@@ -133,6 +134,7 @@ func _fx_process(delta: float) -> void:
 		if k >= 1.0:
 			_wave_done = true
 			ctx.field.knock_from(origin, RADIUS, RADIUS + 2.5, 7.0)
+			ctx.env.damage_radius(origin, RADIUS + 2.5, 70.0, &"nova")
 			_wave.visible = false
 			if is_instance_valid(_dust):
 				_dust.auto_free = true
@@ -155,6 +157,8 @@ func _impact() -> void:
 
 	for e in ctx.field.in_radius(origin, KILL_CORE):
 		ctx.field.kill(e, &"nova", origin)
+	ctx.env.damage_radius(origin, KILL_CORE, 99999.0, &"nova")
+	ctx.env.shake_radius(origin, RADIUS + 3.0, 1.5)
 
 	var pillar := FxParts.beam(self, ctx.overhead, _target_px, 24.0, 420.0, FxParts.FIRE)
 	pillar.tween_param("intensity", 0.5, 1.0, T_BLAST - T_IMPACT, 0.0, Tween.TRANS_SINE, Tween.EASE_IN)

@@ -1,24 +1,37 @@
 class_name DragonSprite
 extends Node2D
-## Fire dragon from PixelLab sprite animations (assets/pixellab/dragon): an idle loop (wings beating,
-## flames flickering) and a breath clip (rears back, lunges down with jaws open). Rising and sinking are
-## done here by clipping the sprite at the ground line so it climbs out of its lava hole.
-## Same control surface the effect drives: rise, jaw, fade, aim, mouth_pos().
+## Fire dragon from PixelLab sprite animations (assets/pixellab/dragon8): an 8-frame idle loop and an
+## 8-frame breath clip (rear back, lunge down, jaws open) for 8 facing directions. Five directions were
+## generated; the other three are mirrors (SW = mirrored SE, W = mirrored E, NE = mirrored NW).
+## Rising and sinking clip the sprite at the ground line so it climbs out of its lava hole.
+## Control surface driven by the effect: rise, jaw, fade, look_ground(dir), mouth_pos().
 ## Positioned on its ground point; the lava hole in the art sits on that point.
 
-const IDLE := preload("res://assets/pixellab/dragon/dragon_idle.png")
-const BREATH := preload("res://assets/pixellab/dragon/dragon_breath.png")
-const FRAME := Vector2(168, 168)
-const FRAMES := 17
+## Clips are square frames laid out in a 9-frame strip; frame size varies per clip (224 or 236).
+const FRAMES := 9
 const SCALE := 1.5
-## Art pixel under the ground point (center of the lava hole).
-const FOOT := Vector2(84, 146)
-const IDLE_FPS := 10.0
-## Breath frames: 0..OPEN_FRAME is the rear-back and lunge, OPEN_FRAME..16 loops while jaws are open.
-const OPEN_FRAME := 12
-const HOLD_FPS := 8.0
-## Mouth position in art pixels per breath frame (idle uses frame 0).
-const MOUTH_KEYS := {0: Vector2(126, 44), 10: Vector2(130, 50), 11: Vector2(138, 64), 12: Vector2(145, 79), 16: Vector2(145, 80)}
+const IDLE_FPS := 8.0
+## Breath frames 0..OPEN_FRAME play while the jaw opens; OPEN_FRAME..8 ping-pong while breathing.
+const OPEN_FRAME := 6
+const HOLD_FPS := 7.0
+const DIRS := ["east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east"]
+## True facing -> source clip (PixelLab direction), mirrored, lava-hole foot px, mouth px idle, mouth px
+## with jaws open, and whether the breath clip is usable (the north clip turns its head to the camera).
+const VIEWS := {
+	"south": ["south-west", false, Vector2(109, 200), Vector2(106, 71), Vector2(70, 60), true],
+	"south-east": ["south", false, Vector2(113, 201), Vector2(162, 74), Vector2(180, 100), true],
+	"south-west": ["south", true, Vector2(113, 201), Vector2(162, 74), Vector2(180, 100), true],
+	"east": ["south-east", false, Vector2(111, 197), Vector2(177, 74), Vector2(183, 103), true],
+	"west": ["south-east", true, Vector2(111, 197), Vector2(177, 74), Vector2(183, 103), true],
+	"north": ["north-east", false, Vector2(104, 191), Vector2(118, 47), Vector2(118, 47), false],
+	"north-west": ["north-west", false, Vector2(125, 200), Vector2(83, 47), Vector2(53, 59), true],
+	"north-east": ["north-west", true, Vector2(125, 200), Vector2(83, 47), Vector2(53, 59), true],
+}
+
+## Idle frames to loop per source clip (the south-west clip flashes white in frames 3-5).
+const IDLE_LOOP := {"south-west": [0, 1, 2, 6, 7, 8, 7, 6, 2, 1]}
+
+static var _textures := {}
 
 ## 0 buried .. 1 fully out of the ground.
 var rise := 0.0
@@ -27,12 +40,27 @@ var jaw := 0.0
 var fade := 1.0
 ## Wing spread is part of the art; kept so the effect's tweens still apply.
 var wings := 0.0
-var aim := Vector2(80, 0)
-## +1 faces screen right, -1 left. 0 = pick from `aim` on first draw.
-var facing := 0.0
+## Current facing, one of DIRS.
+var facing := "south-east"
 
 var _time := 0.0
 var _hold := 0.0
+
+
+static func _tex(anim: String, src: String) -> Texture2D:
+	var key := anim + "_" + src
+	if not _textures.has(key):
+		_textures[key] = load("res://assets/pixellab/dragon8/%s.png" % key)
+	return _textures[key]
+
+
+## Face the compass direction closest to a ground-space direction (as it looks on screen).
+func look_ground(ground_dir: Vector2) -> void:
+	var screen := Iso.ground_to_screen(ground_dir)
+	if screen.length() < 0.001:
+		return
+	var idx := posmod(int(round(screen.angle() / (TAU / 8.0))), 8)
+	facing = DIRS[idx]
 
 
 func _process(delta: float) -> void:
@@ -44,45 +72,40 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-func _f() -> float:
-	if facing == 0.0:
-		facing = 1.0 if aim.x >= 0.0 else -1.0
-	return facing
-
-
-## Current strip and frame index.
+## [anim, frame index, open 0..1 for mouth interpolation]
 func _frame() -> Array:
-	if jaw <= 0.001:
-		return [IDLE, int(_time * IDLE_FPS) % FRAMES]
+	var view: Array = VIEWS[facing]
+	var can_breathe: bool = view[5]
+	if jaw <= 0.001 or not can_breathe:
+		var loop: Array = IDLE_LOOP.get(view[0], [])
+		if loop.is_empty():
+			return ["idle", int(_time * IDLE_FPS) % FRAMES, 0.0]
+		return ["idle", loop[int(_time * IDLE_FPS) % loop.size()], 0.0]
 	if jaw < 0.999:
-		return [BREATH, int(round(jaw * OPEN_FRAME))]
-	# Ping-pong over the open-jaw frames while breathing.
+		var i := int(round(jaw * OPEN_FRAME))
+		return ["breath", i, float(i) / OPEN_FRAME]
 	var span := FRAMES - 1 - OPEN_FRAME
 	var k := int(_hold * HOLD_FPS) % (span * 2)
-	return [BREATH, OPEN_FRAME + (k if k <= span else span * 2 - k)]
+	return ["breath", OPEN_FRAME + (k if k <= span else span * 2 - k), 1.0]
 
 
 func _art_to_local(p: Vector2) -> Vector2:
-	var v := (p - FOOT) * SCALE
-	v.x *= _f()
-	return v + Vector2(0, (1.0 - clampf(rise, 0.0, 1.0)) * FRAME.y * SCALE)
+	var view: Array = VIEWS[facing]
+	var v: Vector2 = (p - (view[2] as Vector2)) * SCALE
+	if view[1]:
+		v.x = -v.x
+	return v + Vector2(0, (1.0 - clampf(rise, 0.0, 1.0)) * _frame_size() * SCALE)
+
+
+func _frame_size() -> float:
+	var view: Array = VIEWS[facing]
+	return float(_tex("idle", view[0]).get_height())
 
 
 func mouth_pos() -> Vector2:
-	var fr: Array = _frame()
-	var idx: int = fr[1] if fr[0] == BREATH else 0
-	var keys := MOUTH_KEYS.keys()
-	keys.sort()
-	var art: Vector2 = MOUTH_KEYS[keys[0]]
-	for i in keys.size() - 1:
-		var a: int = keys[i]
-		var b: int = keys[i + 1]
-		if idx >= a and idx <= b:
-			art = (MOUTH_KEYS[a] as Vector2).lerp(MOUTH_KEYS[b], float(idx - a) / float(b - a))
-			break
-		if idx > b:
-			art = MOUTH_KEYS[b]
-	return _art_to_local(art)
+	var view: Array = VIEWS[facing]
+	var fr := _frame()
+	return _art_to_local((view[3] as Vector2).lerp(view[4], fr[2]))
 
 
 func head_pos() -> Vector2:
@@ -93,18 +116,21 @@ func _draw() -> void:
 	if rise <= 0.01 or fade <= 0.01:
 		return
 	modulate.a = fade
-	var fr: Array = _frame()
-	var tex: Texture2D = fr[0]
-	var idx: int = fr[1]
+	var view: Array = VIEWS[facing]
+	var fr := _frame()
+	var tex := _tex(fr[0], view[0])
+	var foot: Vector2 = view[2]
 	# Clip at the ground line: only the part above the ground has emerged.
-	var sink_px := (1.0 - clampf(rise, 0.0, 1.0)) * FRAME.y
-	var visible_h := FOOT.y - sink_px + 6.0
+	var frame := float(tex.get_height())
+	var sink_px := (1.0 - clampf(rise, 0.0, 1.0)) * frame
+	var visible_h := minf(foot.y - sink_px + 6.0, frame)
 	if visible_h <= 0.0:
 		return
-	var src := Rect2(Vector2(idx * FRAME.x, 0), Vector2(FRAME.x, minf(visible_h, FRAME.y)))
+	var src := Rect2(Vector2(int(fr[1]) * frame, 0), Vector2(frame, visible_h))
 	var top_left := _art_to_local(Vector2.ZERO)
 	var size := src.size * SCALE
-	if _f() < 0.0:
+	if view[1]:
+		# Mirrored: flip around the local x of the art's left edge.
 		draw_set_transform(Vector2(top_left.x, 0), 0.0, Vector2(-1, 1))
 		draw_texture_rect_region(tex, Rect2(Vector2(0, top_left.y), size), src)
 		draw_set_transform(Vector2.ZERO)

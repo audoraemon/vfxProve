@@ -112,7 +112,7 @@ func _rise() -> void:
 	ctx.shake.add_trauma(0.9)
 	_dragon = DragonSprite.new()
 	_dragon.position = _center_px
-	_dragon.aim = Iso.ground_to_screen(origin + _dir * 4.0) - _center_px + Vector2(0, -150)
+	_dragon.look_ground(_dir)
 	track(_dragon, ctx.overhead_back)
 	create_tween().tween_property(_dragon, "rise", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	create_tween().tween_property(_dragon, "wings", 1.0, 0.7).set_delay(RISE_TIME * 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -138,11 +138,10 @@ func _rise() -> void:
 
 func _inhale() -> void:
 	ctx.play(&"dr_inhale", origin)
-	# Head rears back toward the start of the sweep, jaw opens, a flash gathers in the mouth.
-	var start_target := Iso.ground_to_screen(origin + Vector2.RIGHT.rotated(_start_angle) * CONE_RADIUS) - _center_px
+	# Turns toward the start of the sweep, rears back and opens its jaws; a flash gathers in the mouth.
+	_dragon.look_ground(Vector2.RIGHT.rotated(_start_angle))
 	var tw := create_tween()
-	tw.tween_property(_dragon, "aim", start_target + Vector2(0, -60), T_BREATH - T_INHALE).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_property(_dragon, "jaw", 1.0, T_BREATH - T_INHALE)
+	tw.tween_property(_dragon, "jaw", 1.0, T_BREATH - T_INHALE)
 	var flash := FxParts.bloom(self, _center_px + _dragon.mouth_pos(), 20.0, Color(1.0, 0.85, 0.5), 0.0)
 	flash.tween_param("intensity", 0.0, 1.4, T_BREATH - T_INHALE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	flash.life = T_BREATH - T_INHALE + 0.05
@@ -165,8 +164,8 @@ func _breathe() -> void:
 	_jet = QuadFx.new().setup(SH_STREAM, Vector2(100, 72), Vector2(0.0, 0.5))
 	_jet.set_param("seed", ctx.rng.randf() * 100.0)
 	_jet.set_param("width_px", 72.0)
-	_jet.z_index = 1
-	track(_jet, ctx.overhead)
+	# Same layer as the dragon so the jet can pass behind it when breathing away from the camera.
+	track(_jet, ctx.overhead_back)
 	_jet.tween_param("fade", 0.0, 1.0, 0.12)
 	_stream = FxParts.particles(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE)
 	_stream.auto_free = false
@@ -184,14 +183,14 @@ func _fx_process(delta: float) -> void:
 	_cone.set_param("sweep", _sweep)
 	var beam_angle := _start_angle + _sweep
 	var beam_dir := Vector2.RIGHT.rotated(beam_angle)
-	var far := origin + beam_dir * CONE_RADIUS
-	var far_px := Iso.ground_to_screen(far) - _center_px
-	_dragon.aim = far_px + Vector2(0, -60)
+	# Turn through the compass views as the breath sweeps.
+	_dragon.look_ground(beam_dir)
 	var mouth := _center_px + _dragon.mouth_pos()
 	# Thick flame jet from the mouth to where it hits the ground, then puffs rolling on along the cone.
 	var hit := Iso.ground_to_screen(origin + beam_dir * CONE_RADIUS * JET_REACH)
 	_jet.position = mouth
 	_jet.rotation = (hit - mouth).angle()
+	_jet.z_index = 1 if hit.y >= mouth.y - 20.0 and Iso.ground_to_screen(beam_dir).y >= 0.0 else -1
 	_jet.size = Vector2(mouth.distance_to(hit) + 12.0, 72.0)
 	_jet.set_param("length_px", _jet.size.x)
 	_jet.queue_redraw()

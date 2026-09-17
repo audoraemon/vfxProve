@@ -23,7 +23,7 @@ var _center_px := Vector2.ZERO
 var _dir := Vector2(1, 0)
 var _start_angle := 0.0
 var _sigil: SigilRune
-var _dragon: FireDragon
+var _dragon: DragonSprite
 var _cone: QuadFx
 var _stream: PixelParticles
 var _jet: QuadFx
@@ -110,7 +110,7 @@ func _rise() -> void:
 	ctx.impact.hitstop(0.06)
 	ctx.impact.aberration(3.0, 0.4)
 	ctx.shake.add_trauma(0.9)
-	_dragon = FireDragon.new()
+	_dragon = DragonSprite.new()
 	_dragon.position = _center_px
 	_dragon.aim = Iso.ground_to_screen(origin + _dir * 4.0) - _center_px + Vector2(0, -150)
 	track(_dragon, ctx.overhead_back)

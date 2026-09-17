@@ -3,7 +3,7 @@ extends FxTimeline
 ## it sweeps its head left to right breathing a devastating cone of flame -> it sinks away, leaving scorched
 ## earth and fires that keep burning.
 
-const CONE_RADIUS := 5.6
+const CONE_RADIUS := 8.5
 const SWEEP_ARC := 2.1
 const T_ERUPT := 1.2
 const T_RISE := 2.2
@@ -16,7 +16,7 @@ const BEAM_HALF_ANGLE := 0.2
 const FIRE_LIGHT := Color(1.0, 0.5, 0.18)
 const SH_CONE := preload("res://shaders/fire_cone.gdshader")
 const SH_STREAM := preload("res://shaders/flame_stream.gdshader")
-const JET_REACH := 0.55
+const JET_REACH := 0.5
 ## The dragon sprite faces screen down-right (south-east); the breath is locked to that facing.
 const FACING := Vector2(1, 0)
 
@@ -172,7 +172,7 @@ func _breathe() -> void:
 	_stream.auto_free = false
 	_stream.drag = 0.6
 	ctx.lights.register_quad(_cone, origin, 3.2, FIRE_LIGHT,
-		func(): return origin + Vector2.RIGHT.rotated(_start_angle + _sweep) * CONE_RADIUS * 0.6)
+		func(): return origin + Vector2.RIGHT.rotated(_start_angle + SWEEP_ARC - _sweep) * CONE_RADIUS * 0.6)
 	_cone.set_param("intensity", 0.7)
 
 
@@ -191,7 +191,8 @@ func _fx_process(delta: float) -> void:
 	var hit := Iso.ground_to_screen(origin + beam_dir * CONE_RADIUS * JET_REACH)
 	_jet.position = mouth
 	_jet.rotation = (hit - mouth).angle()
-	_jet.z_index = 1 if hit.y >= mouth.y - 20.0 and Iso.ground_to_screen(beam_dir).y >= 0.0 else -1
+	# The locked sweep always aims in front of the dragon, so the jet always draws over the sprite.
+	_jet.z_index = 1
 	_jet.size = Vector2(mouth.distance_to(hit) + 12.0, 72.0)
 	_jet.set_param("length_px", _jet.size.x)
 	_jet.queue_redraw()

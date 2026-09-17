@@ -112,10 +112,12 @@ func _rise() -> void:
 	ctx.shake.add_trauma(0.9)
 	_dragon = DragonSprite.new()
 	_dragon.position = _center_px
-	_dragon.look_ground(_dir)
+	# Always faces the camera; mirror when the sweep runs right to left on screen.
+	var sweep_from := Iso.ground_to_screen(Vector2.RIGHT.rotated(_start_angle))
+	var sweep_to := Iso.ground_to_screen(Vector2.RIGHT.rotated(_start_angle + SWEEP_ARC))
+	_dragon.mirrored = sweep_to.x < sweep_from.x
 	track(_dragon, ctx.overhead_back)
 	create_tween().tween_property(_dragon, "rise", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	create_tween().tween_property(_dragon, "wings", 1.0, 0.7).set_delay(RISE_TIME * 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var light := FxParts.ground_light(self, origin, 4.8, FIRE_LIGHT)
 	light.set_param("flicker", 1.0)
 	light.tween_param("intensity", 0.0, 1.1, RISE_TIME)
@@ -138,11 +140,10 @@ func _rise() -> void:
 
 func _inhale() -> void:
 	ctx.play(&"dr_inhale", origin)
-	# Turns toward the start of the sweep, rears back and opens its jaws; a flash gathers in the mouth.
-	_dragon.look_ground(Vector2.RIGHT.rotated(_start_angle))
-	var tw := create_tween()
-	tw.tween_property(_dragon, "jaw", 1.0, T_BREATH - T_INHALE)
-	var flash := FxParts.bloom(self, _center_px + _dragon.mouth_pos(), 20.0, Color(1.0, 0.85, 0.5), 0.0)
+	# Rears back and lowers its head (breath clip); a flash gathers where the fire will leave the mouth.
+	_dragon.breathe(T_BREATH - T_INHALE, BREATH_TIME, 0.4)
+	var flash := FxParts.bloom(self, _center_px + _dragon.mouth_at(DragonSprite.INHALE_END + 1), 20.0,
+		Color(1.0, 0.85, 0.5), 0.0)
 	flash.tween_param("intensity", 0.0, 1.4, T_BREATH - T_INHALE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	flash.life = T_BREATH - T_INHALE + 0.05
 
@@ -183,8 +184,6 @@ func _fx_process(delta: float) -> void:
 	_cone.set_param("sweep", _sweep)
 	var beam_angle := _start_angle + _sweep
 	var beam_dir := Vector2.RIGHT.rotated(beam_angle)
-	# Turn through the compass views as the breath sweeps.
-	_dragon.look_ground(beam_dir)
 	var mouth := _center_px + _dragon.mouth_pos()
 	# Thick flame jet from the mouth to where it hits the ground, then puffs rolling on along the cone.
 	var hit := Iso.ground_to_screen(origin + beam_dir * CONE_RADIUS * JET_REACH)
@@ -223,7 +222,6 @@ func _fx_process(delta: float) -> void:
 		_stream.auto_free = true
 		_jet.tween_param("fade", 1.0, 0.0, 0.25)
 		_jet.life = _jet.age + 0.3
-		create_tween().tween_property(_dragon, "jaw", 0.0, 0.3)
 		_cone.tween_param("heat", 1.0, 0.45, 1.5)
 		_cone.tween_param("intensity", 0.7, 0.0, 1.2)
 		_cone.tween_param("fade", 1.0, 0.0, 2.0, duration - t - 2.1)
@@ -254,8 +252,7 @@ func _sink() -> void:
 	ctx.play(&"dr_sink", origin)
 	_burn_voice = ctx.play(&"laser_fire", origin, -6.0)
 	var tw := create_tween()
-	tw.tween_property(_dragon, "wings", 0.0, 0.5)
-	tw.parallel().tween_property(_dragon, "rise", 0.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(_dragon, "rise", 0.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(_dragon, "fade", 0.0, 1.2).set_delay(0.4)
 	FxParts.emitter(self, ctx.overhead, _center_px + Vector2(0, -70), PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 120.0, 1.2, {
 		"radius": 50.0, "alt": Vector2(0, 90), "alt_speed": Vector2(30, 90), "speed": Vector2(10, 40),

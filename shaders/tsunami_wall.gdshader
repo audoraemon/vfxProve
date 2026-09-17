@@ -1,7 +1,6 @@
 // Tsunami wall painted like the concept: one long standing wall of water, low at the left end and tallest
-// toward the right, with a row of curling hoods. Each hood has a dark hollow with broken cyan streaks
-// spiraling in, a thick foam lip arcing over it, streaked translucent face water flowing down and around the
-// curls, a lumpy churning foam crest with spray, and a whitewater band at the base spilling forward.
+// toward the right, with a row of curling hoods. Streaked face water sweeps up each hood and curls over its
+// lip, a dark crescent hollow sits under the lip with foam hanging over it, a lumpy churning foam crest with spray, and a whitewater band at the base spilling forward.
 // Quad: UV.x 0..1 along the wall (left -> right on screen), UV.y 0 top .. 1 bottom. Pixel space:
 // x = UV.x * length_px, y = height above the baseline (negative below it, down to -bottom_px).
 shader_type canvas_item;
@@ -115,49 +114,41 @@ void fragment() {
 		float d = crest - y;
 		float crest_env = max(hmax * env * shape, 1.0);
 		float yn = clamp(y / crest_env, 0.0, 1.0);
-		// Curl of this hood. Water wraps it in layered arcs: bright on the upper right where the wave rolls over,
-		// dark toward the lower left where the curl opens.
-		float cx = (ci - seed + 0.34) * cell_px;
-		float cy = crest_env * 0.54;
-		float rx_px = max(cell_px * 0.5 * mix(0.75, 1.0, env), 1.0);
-		float ry_px = crest_env * 0.4;
-		vec2 rel = vec2((x - cx) / rx_px, (y - cy) / ry_px);
+		// Curling barrel of this hood. Streamlines rise almost straight from the base and bend further toward the
+		// lip the higher they go, so the water sweeps up the face and curls over, like the concept.
+		float lx = fx * cell_px;
+		float lean = cell_px * (0.95 * pow(yn, 1.7) * cv + 0.1 * yn * (1.0 - cv));
+		// Lines passing over a hollow wrap around its top, bending hardest right above it.
+		vec2 wr = vec2((lx - cell_px * 0.34) / (cell_px * 0.26), (y - crest_env * 0.5) / (crest_env * 0.3));
+		wr.x -= wr.y * 0.45;
+		float wrap = (1.0 - smoothstep(0.9, 2.4, length(wr))) * smoothstep(-0.4, 0.8, wr.y) * cv;
+		lean += cell_px * 0.35 * wrap * smoothstep(-1.5, 1.0, wr.x);
+		float across = x + lean + (fbm(vec2(x * 0.06 + seed, y * 0.05 - t * 0.3)) - 0.5) * 4.0;
+		float stripe = fract(across / 4.5);
+		// Dashes flow up along each streamline toward the crest.
+		float dash = step(0.34, vnoise(vec2(floor(across / 4.5) * 2.9 + ci, y * 0.06 - t * 1.8)));
+		float streak = step(abs(stripe - 0.5), 0.17) * dash;
+
+		// Hollow under the lip: a leaning crescent on the lip side of the hood, darkest toward its lower left.
+		vec2 rel = vec2((lx - cell_px * 0.34) / (cell_px * 0.26), (y - crest_env * 0.5) / (crest_env * 0.3));
+		rel.x -= rel.y * 0.45;
 		float e = length(rel);
-		float ang = atan(rel.y, rel.x);
-		// Open side of the curl points to the lower left; stretch distances there so the dark core extends out.
-		float open_dir = dot(normalize(rel + vec2(0.0001)), normalize(vec2(-0.8, -0.6)));
-		float ec = e / (1.0 + 1.1 * max(open_dir, 0.0) * cv);
-		float hood_w = (1.0 - smoothstep(0.85, 1.9, e)) * cv;
+		float hollow = (1.0 - smoothstep(0.35, 1.0, e)) * cv;
+		hollow *= 0.6 + 0.4 * smoothstep(-0.6, 0.6, -rel.x - rel.y);
 
-		// Arc streaks around the curl, vertical streaks in the body below and between hoods.
-		// Spiral arms rather than closed rings, so the arcs read as water curling in.
-		float across = mix(x + y * 0.1, (e + (ang / 6.28318) * 0.42) * rx_px, hood_w);
-		float along = mix(y, ang * rx_px, hood_w);
-		across += (fbm(vec2(x * 0.07 + seed, y * 0.05 - t * 0.3)) - 0.5) * 6.0;
-		float stripe = fract(across / 4.0 - t * 0.35 * hood_w);
-		float dash = step(0.36, vnoise(vec2(floor(across / 4.0) * 2.9 + ci, along * 0.08 - t * 1.6)));
-		float streak = step(abs(stripe - 0.5), 0.18) * dash;
-		// Arcs break up on the open side of the curl.
-		streak *= 1.0 - smoothstep(0.2, 0.8, open_dir) * (1.0 - smoothstep(0.9, 1.5, e)) * 0.85 * cv;
-
-		float core = smoothstep(0.0, 0.8, ec);
-		float light = mix(0.28 + 0.26 * yn, 0.06 + 0.5 * core + 0.1 * yn, hood_w);
+		float light = 0.24 + 0.44 * yn + 0.1 * smoothstep(0.45, 1.0, fx) * yn;
 		// Back of the wave: a smooth darker slope brightening toward the crest.
-		light = mix(light, 0.2 + 0.42 * yn * yn + streak * 0.24, back_view);
-		light += streak * mix(0.34, 0.18 + 0.28 * core, hood_w);
+		light = mix(light, 0.2 + 0.42 * yn * yn, back_view);
+		light += streak * mix(0.34, 0.2, hollow);
+		light -= hollow * 0.46;
 		light -= (1.0 - smoothstep(0.0, 0.35, yn)) * 0.08;
 		vec3 c = water_ramp(quant(clamp(light, 0.0, 1.0), 6.0));
-		// Glints spiraling into the dark core.
-		if (ec < 0.55 && cv > 0.2) {
-			float spiral = fract(ang / 6.28318 * 2.0 + log(ec + 0.06) * 1.4 - t * 0.7 + ci * 0.37);
-			float glint = step(abs(spiral - 0.5), 0.07) * step(0.45, vnoise(vec2(ang * 5.0 + ci * 3.0, ec * 9.0 - t * 2.0)));
-			c = mix(c, cyan.rgb, glint);
-		}
 
-		// Foam: thick churning crest, broken foam curling over the lip toward the lower left, whitewater base.
+		// Foam: thick churning crest, foam curling over the lip and hanging down the hollow's outer edge, base.
 		float band = crest_env * (0.2 + 0.12 * fbm(vec2(x * 0.05 + seed, t * 0.3))) * (1.0 + 0.6 * back_view);
 		float crest_foam = (1.0 - smoothstep(band * 0.25, band, d)) * 0.95;
-		float lip_arc = smoothstep(0.86, 1.0, e) * (1.0 - smoothstep(1.0, 1.18, e)) * smoothstep(0.2, 0.9, -rel.x) * cv;
+		float over = clamp(smoothstep(-0.1, 0.5, rel.y) + smoothstep(0.2, 0.8, -rel.x), 0.0, 1.0);
+		float lip_arc = smoothstep(0.85, 1.0, e) * (1.0 - smoothstep(1.0, 1.25, e)) * over * cv;
 		float base_band = crest_env * 0.2 + 8.0 * fbm(vec2(x * 0.05 - t * 0.5, seed));
 		float base_foam = 1.0 - smoothstep(base_band * 0.3, base_band, y);
 		float amount = max(max(crest_foam, lip_arc * 0.8), base_foam);
@@ -172,7 +163,7 @@ void fragment() {
 				c = blue.rgb;
 			}
 		}
-		float fleck = step(mix(0.99, 0.96, streak), hash21(floor(p * 0.5) + ci + floor(t * 2.0))) * step(0.45, core);
+		float fleck = step(mix(0.99, 0.96, streak), hash21(floor(p * 0.5) + ci + floor(t * 2.0))) * (1.0 - hollow);
 		c = mix(c, white.rgb, fleck);
 		COLOR = vec4(c, smoothstep(0.02, 0.12, env * height) * fade);
 	}

@@ -19,7 +19,7 @@ const EFFECTS := [
 	{"set": 1, "key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd", "lane": true, "focus_along": 0.0, "zoom": 1.25},
 	{"set": 1, "key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd", "zoom": 1.25, "focus_up": -50.0},
 	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true, "focus_along": 3.0, "focus_up": -70.0, "zoom": 0.8},
-	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true, "focus_along": 3.0, "focus_up": -120.0, "zoom": 1.0},
+	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "follow": true, "focus_up": -120.0, "zoom": 0.9},
 	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -130.0, "zoom": 0.7},
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -10.0, "focus_px": Vector2(150, -20), "zoom": 0.8},
 ]
@@ -33,7 +33,7 @@ const CAPTURES := {
 	"heaven": {"target": Vector2(0, 0), "dir": Vector2(1, 0), "times": [1.0, 1.45, 1.75, 2.5, 3.0, 3.5, 5.0, 7.5]},
 	"cinder": {"target": Vector2(0, 0), "times": [1.0, 1.8, 2.7, 3.2, 4.2, 5.4, 6.6, 8.6, 10.2]},
 	"tsunami": {"target": Vector2(-3.0, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 3.4, 4.1, 4.5, 6.5, 8.5]},
-	"tornado": {"target": Vector2(-4, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 4.0, 5.5, 7.0, 7.6, 9.0]},
+	"tornado": {"target": Vector2(0, 0), "times": [0.8, 1.6, 2.6, 4.5, 6.5, 8.5, 10.5, 11.6, 13.0]},
 	"judgement": {"target": Vector2(0, 0), "times": [2.6, 3.64, 4.14, 4.64, 5.14, 5.64, 6.14, 6.64, 7.14, 7.94, 8.4, 11.0]},
 	"dragon": {"target": Vector2(-2, -1), "times": [0.9, 1.5, 2.8, 4.2, 5.0, 5.8, 6.5, 7.4, 10.0]},
 	"glacial": {"target": Vector2(0, 0), "times": [1.9, 2.6, 3.6, 5.5, 7.35, 7.55, 7.8, 8.1, 9.2]},
@@ -62,6 +62,9 @@ var _glow: ColorRect
 var _active_fx: Array[FxTimeline] = []
 var _home_position := Vector2.ZERO
 var _camera_tween: Tween
+## Effect the camera keeps following (entries with "follow"), and how far above its ground point to look.
+var _follow_fx: FxTimeline
+var _follow_up := 0.0
 
 
 func _ready() -> void:
@@ -251,6 +254,7 @@ func _reset_world(seed_value: int) -> void:
 	ctx.impact.dim_scale = SETS[set_index].dim_scale
 	ctx.impact.dim(0.0, 100.0)
 	_active_fx.clear()
+	_follow_fx = null
 	if _camera_tween:
 		_camera_tween.kill()
 	_camera.zoom = Vector2.ONE
@@ -296,12 +300,19 @@ func _focus_camera(entry: Dictionary, fx: FxTimeline, ground: Vector2, extra: Di
 	if _camera_tween:
 		_camera_tween.kill()
 	_camera_tween = create_tween().set_parallel()
-	_camera_tween.tween_property(_camera, "position", target.round(), FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if entry.get("follow", false) and fx.has_method("camera_focus"):
+		# Moving skills: _process eases the camera after the effect instead of tweening to a fixed spot.
+		_follow_fx = fx
+		_follow_up = float(entry.get("focus_up", -40.0))
+	else:
+		_camera_tween.tween_property(_camera, "position", target.round(), FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_camera_tween.tween_property(_camera, "zoom", Vector2.ONE * zoom, FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func _on_fx_done(fx: FxTimeline) -> void:
 	_active_fx.erase(fx)
+	if fx == _follow_fx:
+		_follow_fx = null
 	if not _active_fx.is_empty() or not is_inside_tree():
 		return
 	if _camera_tween:
@@ -364,6 +375,10 @@ func _process(delta: float) -> void:
 		var real_delta := delta / maxf(Engine.time_scale, 0.001)
 		_camera.position = (_camera.position + pan.normalized() * PAN_SPEED * real_delta).clamp(
 			Vector2(-300, -160), Vector2(300, 160))
+	if is_instance_valid(_follow_fx) and _follow_fx.is_inside_tree():
+		var real := delta / maxf(Engine.time_scale, 0.001)
+		var goal := Iso.ground_to_screen(_follow_fx.camera_focus()) + Vector2(0, _follow_up)
+		_camera.position = _camera.position.lerp(goal, minf(3.0 * real, 1.0))
 	if _pressing:
 		_drag_preview.queue_redraw()
 	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85

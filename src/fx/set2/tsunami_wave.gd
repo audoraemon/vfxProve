@@ -10,6 +10,9 @@ const SH_WALL := preload("res://shaders/tsunami_wall.gdshader")
 const BOTTOM_PX := 18.0
 ## Room above the crest for foam bumps and spray, as a fraction of max height.
 const TOP_MARGIN := 0.35
+## A wave front that lines up with screen vertical has no width on screen; its base is spread at least this
+## fraction of its length horizontally so it still reads as a wall facing the camera.
+const MIN_SCREEN_SPREAD := 0.85
 
 ## Ground direction the wave travels and wall width in ground units.
 var dir := Vector2(1, 0)
@@ -45,6 +48,9 @@ func _process(delta: float) -> void:
 	_mat.set_shader_parameter(&"curl", curl)
 	_mat.set_shader_parameter(&"hoods", hoods)
 	_mat.set_shader_parameter(&"seed", seed)
+	var travel := _travel()
+	_mat.set_shader_parameter(&"mirror", 1.0 if travel.x < -0.05 else 0.0)
+	_mat.set_shader_parameter(&"back_view", smoothstep(0.2, 0.75, -travel.y))
 	queue_redraw()
 
 
@@ -62,7 +68,20 @@ func _ends() -> Array:
 		var tmp := a
 		a = b
 		b = tmp
+	var half_len := side.length()
+	var min_half := half_len * MIN_SCREEN_SPREAD
+	if b.x < min_half:
+		# Keep the length, lay the base flatter across the screen.
+		var dy := sqrt(maxf(half_len * half_len - min_half * min_half, 0.0)) * signf(b.y if absf(b.y) > 0.001 else 1.0)
+		a = Vector2(-min_half, -dy)
+		b = Vector2(min_half, dy)
 	return [a, b]
+
+
+## Screen travel direction, normalized.
+func _travel() -> Vector2:
+	var ts := Iso.ground_to_screen(dir.normalized())
+	return ts.normalized() if ts.length() > 0.001 else Vector2(1, 0)
 
 
 func _draw() -> void:

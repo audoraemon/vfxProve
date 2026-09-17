@@ -17,6 +17,10 @@ uniform float curl = 1.0;
 uniform float hoods = 4.0;
 uniform float fade = 1.0;
 uniform float seed = 0.0;
+// 1 mirrors the wall so its curls and tall end lean the way the wave travels on screen.
+uniform float mirror = 0.0;
+// 0 = face toward the camera (curls), 1 = the back of the wave as it travels away (smooth slope, foam over the top).
+uniform float back_view = 0.0;
 
 uniform vec4 navy : source_color = vec4(0.03, 0.07, 0.22, 1.0);
 uniform vec4 deep : source_color = vec4(0.06, 0.18, 0.5, 1.0);
@@ -66,6 +70,11 @@ void fragment() {
 	float t = u_time;
 	vec2 fc = FRAGCOORD.xy;
 	float x = floor(UV.x * length_px);
+	if (mirror > 0.5) {
+		x = length_px - 1.0 - x;
+	}
+	// Curl detail fades out when we see the back of the wave.
+	float cv = curl * (1.0 - back_view);
 	float y = floor((1.0 - UV.y) * (top_px + bottom_px) - bottom_px);
 	float u = x / length_px;
 	float hmax = max_height * height;
@@ -76,7 +85,7 @@ void fragment() {
 	float fx = fract(cells);
 	float cell_px = length_px / hoods;
 	float env = envelope(u);
-	float shape = mix(0.86, hood_shape(fx), curl);
+	float shape = mix(0.86, hood_shape(fx), mix(cv, curl * 0.5, back_view));
 	float crest = hmax * env * shape;
 	vec2 p = vec2(x, y);
 	// Ragged churning top edge.
@@ -117,8 +126,8 @@ void fragment() {
 		float ang = atan(rel.y, rel.x);
 		// Open side of the curl points to the lower left; stretch distances there so the dark core extends out.
 		float open_dir = dot(normalize(rel + vec2(0.0001)), normalize(vec2(-0.8, -0.6)));
-		float ec = e / (1.0 + 1.1 * max(open_dir, 0.0) * curl);
-		float hood_w = (1.0 - smoothstep(0.85, 1.9, e)) * curl;
+		float ec = e / (1.0 + 1.1 * max(open_dir, 0.0) * cv);
+		float hood_w = (1.0 - smoothstep(0.85, 1.9, e)) * cv;
 
 		// Arc streaks around the curl, vertical streaks in the body below and between hoods.
 		// Spiral arms rather than closed rings, so the arcs read as water curling in.
@@ -129,24 +138,26 @@ void fragment() {
 		float dash = step(0.36, vnoise(vec2(floor(across / 4.0) * 2.9 + ci, along * 0.08 - t * 1.6)));
 		float streak = step(abs(stripe - 0.5), 0.18) * dash;
 		// Arcs break up on the open side of the curl.
-		streak *= 1.0 - smoothstep(0.2, 0.8, open_dir) * (1.0 - smoothstep(0.9, 1.5, e)) * 0.85 * curl;
+		streak *= 1.0 - smoothstep(0.2, 0.8, open_dir) * (1.0 - smoothstep(0.9, 1.5, e)) * 0.85 * cv;
 
 		float core = smoothstep(0.0, 0.8, ec);
 		float light = mix(0.28 + 0.26 * yn, 0.06 + 0.5 * core + 0.1 * yn, hood_w);
+		// Back of the wave: a smooth darker slope brightening toward the crest.
+		light = mix(light, 0.2 + 0.42 * yn * yn + streak * 0.24, back_view);
 		light += streak * mix(0.34, 0.18 + 0.28 * core, hood_w);
 		light -= (1.0 - smoothstep(0.0, 0.35, yn)) * 0.08;
 		vec3 c = water_ramp(quant(clamp(light, 0.0, 1.0), 6.0));
 		// Glints spiraling into the dark core.
-		if (ec < 0.55 && curl > 0.2) {
+		if (ec < 0.55 && cv > 0.2) {
 			float spiral = fract(ang / 6.28318 * 2.0 + log(ec + 0.06) * 1.4 - t * 0.7 + ci * 0.37);
 			float glint = step(abs(spiral - 0.5), 0.07) * step(0.45, vnoise(vec2(ang * 5.0 + ci * 3.0, ec * 9.0 - t * 2.0)));
 			c = mix(c, cyan.rgb, glint);
 		}
 
 		// Foam: thick churning crest, broken foam curling over the lip toward the lower left, whitewater base.
-		float band = crest_env * (0.2 + 0.12 * fbm(vec2(x * 0.05 + seed, t * 0.3)));
+		float band = crest_env * (0.2 + 0.12 * fbm(vec2(x * 0.05 + seed, t * 0.3))) * (1.0 + 0.6 * back_view);
 		float crest_foam = (1.0 - smoothstep(band * 0.25, band, d)) * 0.95;
-		float lip_arc = smoothstep(0.86, 1.0, e) * (1.0 - smoothstep(1.0, 1.18, e)) * smoothstep(0.2, 0.9, -rel.x) * curl;
+		float lip_arc = smoothstep(0.86, 1.0, e) * (1.0 - smoothstep(1.0, 1.18, e)) * smoothstep(0.2, 0.9, -rel.x) * cv;
 		float base_band = crest_env * 0.2 + 8.0 * fbm(vec2(x * 0.05 - t * 0.5, seed));
 		float base_foam = 1.0 - smoothstep(base_band * 0.3, base_band, y);
 		float amount = max(max(crest_foam, lip_arc * 0.8), base_foam);

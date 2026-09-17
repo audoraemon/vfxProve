@@ -18,6 +18,48 @@ const WATER_LIGHT := Color(0.45, 0.75, 1.0)
 const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
 
 
+## Final crash: tall tapered spikes of water fanning up out of the impact, layered cyan / pale / white, that
+## shoot up fast and then collapse. Screen space, positioned on the impact point.
+class SplashBurst:
+	extends Node2D
+
+	const LAYERS := [Color(0.25, 0.6, 0.98, 0.85), Color(0.55, 0.85, 1.0, 0.95), Color(0.95, 1.0, 1.0, 1.0)]
+
+	var grow := 0.0
+	var fall := 0.0
+	var _spikes: Array = []
+
+	func setup(rng: RandomNumberGenerator, count: int, reach: float) -> void:
+		for i in count:
+			var k := (float(i) + rng.randf()) / count
+			var ang := lerpf(-1.15, 1.15, k) + rng.randf_range(-0.08, 0.08)
+			var length := reach * rng.randf_range(0.45, 1.0) * (1.0 - 0.45 * absf(ang) / 1.15)
+			_spikes.append({"x": rng.randf_range(-reach * 0.35, reach * 0.35) * absf(ang), "ang": ang, "len": length,
+				"w": rng.randf_range(5.0, 11.0), "delay": rng.randf() * 0.25})
+		_spikes.sort_custom(func(a, b): return a.len > b.len)
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		for sp in _spikes:
+			var g := clampf((grow - sp.delay) / (1.0 - sp.delay), 0.0, 1.0)
+			if g <= 0.0:
+				continue
+			var l: float = sp.len * (1.0 - pow(1.0 - g, 3.0)) * (1.0 - fall * 0.6)
+			var dirv := Vector2.from_angle(-PI * 0.5 + sp.ang)
+			var base := Vector2(sp.x, 0) + Vector2(0, fall * 30.0)
+			var n := dirv.orthogonal()
+			for li in LAYERS.size():
+				var k := 1.0 - li * 0.3
+				var w: float = sp.w * k * (1.0 - fall * 0.5)
+				var col: Color = LAYERS[li]
+				col.a *= 1.0 - fall
+				var pts := PackedVector2Array([(base + n * w * 0.5).round(), (base - n * w * 0.5).round(),
+					(base + dirv * l * (1.0 - li * 0.12)).round()])
+				draw_colored_polygon(pts, col)
+
+
 ## Broken planks and beam frames floating on the flood, bobbing and drifting with the current.
 ## Drawn on the ground plane (ground units).
 class Flotsam:
@@ -132,9 +174,13 @@ func _rise() -> void:
 	# Above the world like the other titans: a tall diagonal wall sorts badly against castle walls.
 	track(_wave, ctx.overhead_back)
 	_place_wave()
-	var rise := _wave.create_tween().set_parallel()
-	rise.tween_property(_wave, "height", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	rise.tween_property(_wave, "curl", 1.0, RISE_TIME + 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# Form: water gathers into a low foaming swell, then heaves up into a wall and the hoods curl over.
+	var rise := _wave.create_tween()
+	rise.tween_property(_wave, "height", 0.3, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	rise.tween_property(_wave, "height", 1.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var curl := _wave.create_tween()
+	curl.tween_interval(0.45)
+	curl.tween_property(_wave, "curl", 1.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	ctx.shake.add_trauma(0.4)
 	var burst := FxParts.particles(self, ctx.overhead, _wave.position, PixelParticles.Shape.SQUARE, Set2Parts.FOAM_LIFE)
 	burst.gravity = 320.0
@@ -175,11 +221,15 @@ func _fx_process(delta: float) -> void:
 			if not e in _carried:
 				_carried.append(e)
 				e.flash(0.1)
-		for e in _carried:
+				# Tumble in the whitewater in front of the wall instead of vanishing behind it.
+				e.z_index = 9
+		for i in _carried.size():
+			var e: DummyEnemy = _carried[i]
 			if is_instance_valid(e) and e.is_alive():
-				var target := origin + _dir * (_front + 0.1) + _side * clampf((e.ground_pos - origin).dot(_side), -WIDTH * 0.5, WIDTH * 0.5)
+				var target := origin + _dir * (_front + 0.25) + _side * clampf((e.ground_pos - origin).dot(_side), -WIDTH * 0.5, WIDTH * 0.5)
 				e.ground_pos = e.ground_pos.lerp(target, minf(12.0 * delta, 1.0))
-				e.knock(Vector2.ZERO)
+				e.state = DummyEnemy.State.PULLED
+				e.lift_target = 12.0 + 7.0 * sin(t * 6.0 + i * 1.9)
 		ctx.env.damage_lane(origin, _dir, WIDTH * 0.5, _front - 0.3, _front + 0.3, &"water")
 		ctx.shake.add_trauma(0.35 * delta)
 	_place_wave()
@@ -220,8 +270,18 @@ func _crash() -> void:
 	fall.chain().tween_callback(_wave.queue_free)
 	_light.tween_param("intensity", 0.35, 0.0, 0.8)
 
-	# Terminal splash: a towering burst of water and spray fanning up and out.
+	# Terminal splash: a towering burst of water spikes and spray fanning up and out.
 	var ends := _wall_screen(LENGTH)
+	for i in 3:
+		var bp: Vector2 = (ends[0] as Vector2).lerp(ends[1], 0.2 + i * 0.3)
+		var splash := SplashBurst.new()
+		splash.setup(ctx.rng, 16, ctx.rng.randf_range(170.0, 240.0))
+		splash.position = bp.round()
+		track(splash, ctx.overhead)
+		var tw := splash.create_tween()
+		tw.tween_property(splash, "grow", 1.0, 0.35).set_delay(i * 0.05)
+		tw.tween_property(splash, "fall", 1.0, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(splash.queue_free)
 	for i in 7:
 		var p: Vector2 = (ends[0] as Vector2).lerp(ends[1], (i + 0.5) / 7.0)
 		Set2Parts.glow_column(self, p, 30.0, ctx.rng.randf_range(90.0, 170.0), WATER_LIGHT, 0.9, 0.5)

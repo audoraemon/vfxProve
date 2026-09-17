@@ -45,11 +45,14 @@ vec3 water_ramp(float v) {
 	return pale.rgb;
 }
 
-// Hood silhouette over one cell (fx 0..1 left to right): a broad rounded dome whose top leans left over the
-// hollow, dipping between hoods.
+// Hood silhouette over one cell (fx 0..1 left to right): each hood rises gently to a peak just before the
+// curl on its right, then drops steeply into the dip before the next hood, like a breaking wave's profile.
 float hood_shape(float fx) {
-	float k = (fx - 0.42) / 0.62;
-	return 0.8 + 0.2 * sqrt(max(1.0 - k * k, 0.0));
+	if (fx < 0.72) {
+		return mix(0.62, 1.0, sin(fx / 0.72 * 1.5708));
+	}
+	float k = (fx - 0.72) / 0.28;
+	return mix(1.0, 0.62, smoothstep(0.0, 1.0, k));
 }
 
 // Foam clumps: 1 bright top, 0.66 pale-blue shadow, 0.33 blue speck, 0 none. Blobs are lit from the upper left.
@@ -114,36 +117,44 @@ void fragment() {
 		float d = crest - y;
 		float crest_env = max(hmax * env * shape, 1.0);
 		float yn = clamp(y / crest_env, 0.0, 1.0);
-		// Curved water face. Streamlines rise almost straight from the base and bend over toward the lip the
-		// higher they go, bending hardest in the middle of each hood, so every hood reads as a wave rolling over.
+		// Layered water sheets, like the concept: every hood is a stack of wide nested "(" arcs wrapping around a
+		// curl point at the hood's right edge just under the lip. The next hood cuts the arcs off, so they never
+		// close into a ring. Each sheet is lit along its inner edge with a thin bright rim and falls into shadow
+		// toward its outer edge; the whole hood is brighter on its outer shoulder and deeper blue inside the curl.
 		float bow = sin(fx * 3.14159);
-		float lean = cell_px * (0.6 * pow(yn, 1.7) + 0.55 * bow * yn * yn) * cv + cell_px * 0.1 * yn * (1.0 - cv);
-		float across = x + lean + (fbm(vec2(x * 0.06 + seed, y * 0.05 - t * 0.3)) - 0.5) * 4.0;
-		float stripe = fract(across / 4.5);
-		// Dashes flow up along each streamline toward the crest.
-		float dash = step(0.34, vnoise(vec2(floor(across / 4.5) * 2.9 + ci, y * 0.06 - t * 1.8)));
-		float streak = step(abs(stripe - 0.5), 0.17) * dash;
-
-		// Shading: bright rounded face high on each hood, deeper blue low down and where hoods meet, and a soft
-		// shadow band under the overhanging foam lip that follows the crest.
-		float light = 0.2 + 0.36 * yn + 0.24 * bow * yn;
-		float lip_shadow = smoothstep(0.0, 0.25, d / crest_env) * (1.0 - smoothstep(0.25, 0.42, d / crest_env)) * cv;
-		light -= lip_shadow * 0.16;
-		// Deep valleys where one rolling section meets the next.
-		light -= pow(1.0 - bow, 2.0) * 0.26 * cv;
+		float lx = fx * cell_px;
+		vec2 dv = vec2(lx - cell_px * 0.97, (y - crest_env * 0.86) * (cell_px / crest_env) * 0.5);
+		float r = length(dv) / cell_px;
+		float ang = atan(dv.y, dv.x);
+		r += (fbm(vec2(ang * 2.0 + ci * 7.0, t * 0.3)) - 0.5) * 0.06 + (fbm(vec2(x * 0.05, y * 0.04 - t * 0.4)) - 0.5) * 0.05;
+		// Without curl the sheets straighten into upright bands.
+		float sheet_pos = mix((x + y * 0.1) / (cell_px * 0.22), r / 0.22, cv);
+		float bi = floor(sheet_pos);
+		float bf = fract(sheet_pos);
+		float sheet = 0.72 - 0.34 * smoothstep(0.0, 0.95, bf) + (hash21(vec2(bi, ci + 3.0)) - 0.5) * 0.12;
+		float rim_dash = step(0.3, vnoise(vec2(bi * 3.7 + ci, ang * 7.0 - t * 1.5)));
+		float rim = step(bf, 0.11) * rim_dash;
+		float light = sheet + 0.24 * yn - 0.12;
+		light -= (1.0 - smoothstep(0.1, 0.55, r)) * 0.2 * cv;
+		light += smoothstep(0.65, 1.05, r) * 0.08 * cv;
+		// Shadow where this hood tucks under the one before it.
+		light -= (1.0 - smoothstep(0.0, 0.1, fx)) * 0.26 * cv;
 		// Back of the wave: a smooth darker slope brightening toward the crest.
 		light = mix(light, 0.2 + 0.42 * yn * yn, back_view);
-		light += streak * 0.32;
-		light -= (1.0 - smoothstep(0.0, 0.35, yn)) * 0.08;
+		light -= (1.0 - smoothstep(0.0, 0.3, yn)) * 0.06;
 		vec3 c = water_ramp(quant(clamp(light, 0.0, 1.0), 6.0));
+		c = mix(c, mix(cyan.rgb, pale.rgb, step(0.55, yn)), rim * (1.0 - back_view));
+		float streak = rim;
+		// Spray churning in the eye of the curl.
+		float eye_foam = 0.0;
 
 		// Foam: thick churning crest with drips hanging down the face, patches, whitewater base.
-		float band = crest_env * (0.2 + 0.12 * fbm(vec2(x * 0.05 + seed, t * 0.3))) * (1.0 + 0.6 * back_view);
-		float crest_foam = (1.0 - smoothstep(band * 0.25, band, d)) * 0.95;
-		float drip = (1.0 - smoothstep(band, band * 2.2, d)) * step(0.55, vnoise(vec2(across * 0.25, t * 0.4))) * 0.8;
+		float band = crest_env * (0.17 + 0.11 * fbm(vec2(x * 0.05 + seed, t * 0.3))) * (1.0 + 0.7 * back_view);
+		float crest_foam = (1.0 - smoothstep(band * 0.2, band, d)) * 0.92;
+		float drip = (1.0 - smoothstep(band, band * 2.2, d)) * step(0.55, vnoise(vec2(sheet_pos * 1.1, t * 0.4))) * 0.8;
 		float base_band = crest_env * 0.2 + 8.0 * fbm(vec2(x * 0.05 - t * 0.5, seed));
 		float base_foam = 1.0 - smoothstep(base_band * 0.3, base_band, y);
-		float amount = max(max(crest_foam, drip), base_foam);
+		float amount = max(max(crest_foam, drip), max(base_foam, eye_foam));
 		amount = max(amount, smoothstep(0.7, 0.82, fbm(p * 0.05 + vec2(seed * 9.0, -t * 0.25))) * 0.65);
 		if (amount > 0.02) {
 			float tone = foam_tone(p, amount, t);

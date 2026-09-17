@@ -32,7 +32,7 @@ var max_height := 140.0
 var height := 0.0
 var curl := 0.0
 var fade := 1.0
-var hoods := 5.0
+var hoods := 4.0
 var seed := 0.0
 
 var _time := 0.0
@@ -137,8 +137,10 @@ func _envelope(u: float) -> float:
 
 
 func _hood_shape(fx: float) -> float:
-	var k := (fx - 0.42) / 0.62
-	return 0.8 + 0.2 * sqrt(maxf(1.0 - k * k, 0.0))
+	if fx < 0.72:
+		return lerpf(0.62, 1.0, sin(fx / 0.72 * PI * 0.5))
+	var k := (fx - 0.72) / 0.28
+	return lerpf(1.0, 0.62, smoothstep(0.0, 1.0, k))
 
 
 ## Crest height in pixels at fraction u along the wall (left to right on screen).

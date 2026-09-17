@@ -3,16 +3,16 @@ extends FxTimeline
 ## forward, engulfing and carrying enemies -> it crashes in a terminal splash and shockwave ->
 ## flooded ground with foam, puddles, mist and broken debris.
 
-const LENGTH := 10.0
-const WIDTH := 5.4
+const LENGTH := 6.5
+const WIDTH := 8.0
 const T_RISE := 1.0
 const RISE_TIME := 0.7
 const T_SWEEP := 1.9
-const SWEEP_TIME := 3.0
+const SWEEP_TIME := 2.4
 const T_CRASH := T_SWEEP + SWEEP_TIME
 const WAVE_HEIGHT := 150.0
 ## The painted wall is drawn longer than the damage lane so it reads as a colossal wave, like the concept.
-const WAVE_VISUAL_WIDTH := 1.45
+const WAVE_VISUAL_WIDTH := 1.15
 const CARRY_BAND := 0.8
 const WATER_LIGHT := Color(0.45, 0.75, 1.0)
 const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
@@ -172,6 +172,8 @@ func _rise() -> void:
 	_wave = TsunamiWave.new()
 	_wave.dir = _dir
 	_wave.width = WIDTH * WAVE_VISUAL_WIDTH
+	# Keep each rolling hood about the same size on the wider wall.
+	_wave.hoods = roundf(WIDTH * WAVE_VISUAL_WIDTH / 1.9)
 	_wave.max_height = WAVE_HEIGHT
 	_wave.seed = ctx.rng.randf()
 	# Above the world like the other titans: a tall diagonal wall sorts badly against castle walls.
@@ -281,8 +283,8 @@ func _crash() -> void:
 
 	# Terminal splash: a towering burst of water spikes and spray fanning up and out.
 	var ends := _wall_screen(LENGTH)
-	for i in 3:
-		var bp: Vector2 = (ends[0] as Vector2).lerp(ends[1], 0.2 + i * 0.3)
+	for i in 4:
+		var bp: Vector2 = (ends[0] as Vector2).lerp(ends[1], 0.14 + i * 0.24)
 		var splash := SplashBurst.new()
 		splash.setup(ctx.rng, 16, ctx.rng.randf_range(170.0, 240.0))
 		splash.position = bp.round()

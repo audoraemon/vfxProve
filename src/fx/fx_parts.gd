@@ -53,7 +53,7 @@ const LASER_LIFE := [Color("fff0e8"), Color("ff9a6a"), Color("ff3a2a"), Color("c
 ## Draw every VFX shader once, nearly invisible, so the renderer compiles them up front
 ## instead of hitching on an effect's first impact frame.
 static func prewarm(parent: Node2D, frames := 3) -> void:
-	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN, SH_MUSHROOM, SH_FROST, preload("res://shaders/tsunami_wall.gdshader"), preload("res://shaders/flood_water.gdshader"), preload("res://shaders/flame_stream.gdshader"), preload("res://shaders/tornado_funnel.gdshader"), preload("res://shaders/fire_cone.gdshader")]:
+	for shader in [SH_RINGS, SH_SHOCK, SH_DOME, SH_BEAM, SH_DECAL, SH_FOG, SH_SING, SH_LIGHT, SH_RAYS, SH_HAZE, SH_REFRACT, SH_BEAM_ADD, SH_MOLTEN, SH_MUSHROOM, SH_FROST, preload("res://shaders/tsunami_wall.gdshader"), preload("res://shaders/tsunami_body.gdshader"), preload("res://shaders/flood_water.gdshader"), preload("res://shaders/flame_stream.gdshader"), preload("res://shaders/tornado_funnel.gdshader"), preload("res://shaders/fire_cone.gdshader")]:
 		var q := QuadFx.new().setup(shader, Vector2(4, 4))
 		q.modulate.a = 0.02
 		parent.add_child(q)

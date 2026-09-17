@@ -40,7 +40,7 @@ $godot = 'F:\Godot\Godot_v4.7.2-stable_win64_console.exe'
 & $godot --path .
 ```
 
-Or open the folder in the Godot 4.7.2 editor and press F5.
+Or double-click `play.bat` (set `GODOT` if your engine lives elsewhere), or open the folder in the Godot 4.7.2 editor and press F5.
 
 ### Controls
 

@@ -7,9 +7,9 @@ shader_type canvas_item;
 uniform float fade = 1.0;
 uniform vec4 navy : source_color = vec4(0.03, 0.07, 0.22, 1.0);
 uniform vec4 deep : source_color = vec4(0.06, 0.18, 0.5, 1.0);
-uniform vec4 royal : source_color = vec4(0.1, 0.34, 0.8, 1.0);
-uniform vec4 blue : source_color = vec4(0.2, 0.55, 0.95, 1.0);
-uniform vec4 cyan : source_color = vec4(0.42, 0.8, 1.0, 1.0);
+uniform vec4 royal : source_color = vec4(0.12, 0.42, 0.86, 1.0);
+uniform vec4 blue : source_color = vec4(0.26, 0.62, 0.98, 1.0);
+uniform vec4 cyan : source_color = vec4(0.5, 0.84, 1.0, 1.0);
 uniform vec4 pale : source_color = vec4(0.76, 0.94, 1.0, 1.0);
 uniform vec4 white : source_color = vec4(0.97, 1.0, 1.0, 1.0);
 

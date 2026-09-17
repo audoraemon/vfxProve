@@ -130,6 +130,8 @@ var _flood: QuadFx
 var _roar: Node
 var _spray: PixelParticles
 var _foam: PixelParticles
+## Mist rolling off the crest.
+var _mist: PixelParticles
 var _light: QuadFx
 
 
@@ -140,7 +142,8 @@ func _build() -> void:
 	_lane = Set2Parts.lane(self, origin, _dir, LENGTH, WIDTH, Color("6ac8ff"), "water")
 	var swirl := Set2Parts.sigil(self, origin, 1.3, Color("6ac8ff"), "spiral")
 	swirl.z_index = 9
-	ctx.impact.dim(0.4, 1.2)
+	# Darker scene while the wave is up so the bright water and foam pop, like the concept's dark backdrop.
+	ctx.impact.dim(1.0, 1.2)
 	ctx.play(&"ts_surge", origin)
 	at(T_RISE, _rise)
 	at(T_SWEEP, _sweep)
@@ -187,11 +190,14 @@ func _rise() -> void:
 	burst.drag = 0.8
 	burst.burst(90, {"radius": 60.0, "speed": Vector2(10, 60), "alt": Vector2(0, 20), "alt_speed": Vector2(80, 240),
 		"life": Vector2(0.6, 1.2), "size": Vector2(1, 3)})
-	_spray = FxParts.emitter(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.SQUARE, Set2Parts.FOAM_LIFE, 90.0,
-		T_CRASH - t, {"radius": 0.0, "speed": Vector2(10, 50), "alt_speed": Vector2(40, 140), "life": Vector2(0.4, 0.9),
-			"size": Vector2(1, 2)})
+	_spray = FxParts.emitter(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.SQUARE, Set2Parts.FOAM_LIFE, 170.0,
+		T_CRASH - t, {"radius": 0.0, "speed": Vector2(10, 60), "alt_speed": Vector2(40, 180), "life": Vector2(0.4, 1.0),
+			"size": Vector2(1, 3)})
 	_spray.gravity = 300.0
-	_foam = FxParts.emitter(self, ctx.overhead_back, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.MIST_LIFE, 14.0,
+	_mist = FxParts.emitter(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.SQUARE, Set2Parts.FOAM_LIFE, 60.0,
+		T_CRASH - t, {"radius": 0.0, "speed": Vector2(4, 20), "alt_speed": Vector2(10, 40), "life": Vector2(0.5, 1.0),
+			"size": Vector2(1, 2)})
+	_foam = FxParts.emitter(self, ctx.overhead_back, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.MIST_LIFE, 22.0,
 		T_CRASH - t, {"radius": 0.0, "speed": Vector2(4, 20), "alt": Vector2(0, 20), "alt_speed": Vector2(6, 20),
 			"life": Vector2(0.6, 1.0), "size": Vector2(2, 4), "size_end_mul": 1.4})
 	_light = FxParts.ground_light(self, origin, 3.0, WATER_LIGHT, 0.0)
@@ -239,6 +245,9 @@ func _fx_process(delta: float) -> void:
 	if is_instance_valid(_spray):
 		_spray.spec["offset"] = mid + Iso.ground_to_screen(_dir) * 0.8 + Vector2(0, -_wave.lip_height())
 		_spray.spec["radius"] = half
+	if is_instance_valid(_mist):
+		_mist.spec["offset"] = mid + Vector2(0, -_wave.lip_height() * 1.05)
+		_mist.spec["radius"] = half
 	if is_instance_valid(_foam):
 		_foam.spec["offset"] = mid
 		_foam.spec["radius"] = half

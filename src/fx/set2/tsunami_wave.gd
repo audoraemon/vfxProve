@@ -10,7 +10,7 @@ extends Node2D
 const SH_WALL := preload("res://shaders/tsunami_wall.gdshader")
 const SH_BODY := preload("res://shaders/tsunami_body.gdshader")
 ## Extra whitewater drawn below the baseline, in pixels.
-const BOTTOM_PX := 18.0
+const BOTTOM_PX := 26.0
 ## Room above the crest for foam bumps and spray, as a fraction of max height.
 const TOP_MARGIN := 0.35
 ## A wave front that lines up with screen vertical has no width on screen; its base is spread at least this
@@ -137,10 +137,7 @@ func _envelope(u: float) -> float:
 
 
 func _hood_shape(fx: float) -> float:
-	if fx < 0.72:
-		return lerpf(0.62, 1.0, sin(fx / 0.72 * PI * 0.5))
-	var k := (fx - 0.72) / 0.28
-	return lerpf(1.0, 0.62, smoothstep(0.0, 1.0, k))
+	return 0.8 + 0.2 * pow(sin(PI * pow(fx, 1.4)), 0.7)
 
 
 ## Crest height in pixels at fraction u along the wall (left to right on screen).

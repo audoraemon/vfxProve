@@ -107,4 +107,9 @@ func _process(_delta: float) -> void:
 
 func _draw_dim() -> void:
 	var center := _camera.get_screen_center_position() if _camera else Vector2.ZERO
-	_dim.draw_rect(Rect2(center - Vector2(400, 260), Vector2(800, 520)), Color(0.01, 0.0, 0.03, _dim_amount))
+	# Cover the whole visible world at any zoom, with margin for shake offsets and zoom tweens.
+	var view := _dim.get_viewport_rect().size
+	if _camera:
+		view /= _camera.zoom
+	var size := view * 1.5 + Vector2(160, 160)
+	_dim.draw_rect(Rect2(center - size * 0.5, size), Color(0.01, 0.0, 0.03, _dim_amount))

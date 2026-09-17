@@ -10,16 +10,75 @@ const RISE_TIME := 0.7
 const T_SWEEP := 1.9
 const SWEEP_TIME := 3.0
 const T_CRASH := T_SWEEP + SWEEP_TIME
-const WAVE_HEIGHT := 130.0
+const WAVE_HEIGHT := 140.0
 const CARRY_BAND := 0.8
 const WATER_LIGHT := Color(0.45, 0.75, 1.0)
-const SH_WAVE := preload("res://shaders/wave_wall.gdshader")
+const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
 
+
+## Broken planks and beam frames floating on the flood, bobbing and drifting with the current.
+## Drawn on the ground plane (ground units).
+class Flotsam:
+	extends Node2D
+
+	const WOOD := Color("7a5a38")
+	const WOOD_LIT := Color("9a7650")
+	const WOOD_DARK := Color("4a3422")
+	const FOAM := Color(0.9, 0.97, 1.0, 0.85)
+
+	var drift := Vector2.ZERO
+	var alpha := 1.0
+	var _pieces: Array = []
+	var _time := 0.0
+
+	func setup(rng: RandomNumberGenerator, count: int, area_len: float, area_w: float, dir: Vector2) -> void:
+		var side := dir.orthogonal()
+		for i in count:
+			var p := dir * rng.randf_range(0.8, area_len) + side * rng.randf_range(-area_w * 0.45, area_w * 0.45)
+			var frame := rng.randf() < 0.35
+			_pieces.append({"pos": p, "angle": rng.randf() * TAU, "len": rng.randf_range(0.7, 1.4),
+				"frame": frame, "phase": rng.randf() * TAU, "spin": rng.randf_range(-0.25, 0.25)})
+
+	func _process(delta: float) -> void:
+		_time += delta
+		position += drift * delta
+		drift = drift.lerp(Vector2.ZERO, minf(0.6 * delta, 1.0))
+		modulate.a = alpha
+		queue_redraw()
+
+	func _plank(center: Vector2, angle: float, length: float, w: float) -> void:
+		var ax := Vector2.from_angle(angle) * length * 0.5
+		var sd := Vector2.from_angle(angle + PI * 0.5) * w * 0.5
+		var pts := PackedVector2Array([center - ax - sd, center + ax - sd, center + ax + sd, center - ax + sd])
+		# Foam lip around the plank, dark wet underside, lit top and a lighter edge.
+		var foam := PackedVector2Array()
+		for q in pts:
+			foam.append(center + (q - center) * 1.35)
+		draw_colored_polygon(foam, FOAM)
+		draw_colored_polygon(pts, WOOD_DARK)
+		var top := PackedVector2Array()
+		for q in pts:
+			top.append(center + (q - center) * 0.8 + Vector2(-0.02, -0.02))
+		draw_colored_polygon(top, WOOD)
+		draw_colored_polygon(PackedVector2Array([top[0], top[1], top[1].lerp(top[2], 0.35), top[0].lerp(top[3], 0.35)]), WOOD_LIT)
+
+	func _draw() -> void:
+		for pc in _pieces:
+			var bob := sin(_time * 2.2 + pc.phase) * 0.04
+			# Screen-up in ground units is (-1, -1).
+			var c: Vector2 = pc.pos + Vector2(-bob, -bob)
+			var a: float = pc.angle + sin(_time * 0.8 + pc.phase) * 0.15 + _time * pc.spin
+			if pc.frame:
+				_plank(c, a, pc.len, 0.15)
+				_plank(c, a + PI * 0.5, pc.len * 0.8, 0.15)
+				_plank(c + Vector2.from_angle(a) * pc.len * 0.3, a + PI * 0.5, pc.len * 0.7, 0.12)
+			else:
+				_plank(c, a, pc.len, 0.2)
 
 var _dir := Vector2(1, 0)
 var _side := Vector2(0, 1)
 var _lane: LanePath
-var _wave: QuadFx
+var _wave: TsunamiWave
 var _front := 0.0
 var _sweeping := false
 var _carried: Array[DummyEnemy] = []
@@ -58,27 +117,23 @@ func _wall_screen(front: float) -> Array:
 
 func _place_wave() -> void:
 	var ends := _wall_screen(_front)
-	var a: Vector2 = ends[0]
-	var b: Vector2 = ends[1]
-	var span := a.distance_to(b) + 40.0
-	_wave.size = Vector2(span, WAVE_HEIGHT + 20.0)
-	_wave.position = ((a + b) * 0.5).round()
-	_wave.rotation = (b - a).angle()
-	_wave.queue_redraw()
+	_wave.position = (((ends[0] as Vector2) + (ends[1] as Vector2)) * 0.5).round()
 
 
 func _rise() -> void:
 	ctx.play(&"ts_rise", origin)
-	_wave = QuadFx.new().setup(SH_WAVE, Vector2(100, WAVE_HEIGHT), Vector2(0.5, 1.0))
-	_wave.set_param("seed", ctx.rng.randf() * 20.0)
-	_wave.set_param("height", 0.0)
-	_wave.set_param("curl", 0.0)
+	_wave = TsunamiWave.new()
+	_wave.dir = _dir
+	_wave.width = WIDTH
+	_wave.max_height = WAVE_HEIGHT
+	_wave.seed = ctx.rng.randf()
 	# Sorted with the world so enemies behind the wave are hidden and ones in front show.
 	_wave.z_index = 0
 	track(_wave, ctx.world)
 	_place_wave()
-	_wave.tween_param("height", 0.0, 1.0, RISE_TIME, 0.0, Tween.TRANS_BACK, Tween.EASE_OUT)
-	_wave.tween_param("curl", 0.0, 0.8, RISE_TIME + 0.4, 0.0, Tween.TRANS_SINE, Tween.EASE_OUT)
+	var rise := _wave.create_tween().set_parallel()
+	rise.tween_property(_wave, "height", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	rise.tween_property(_wave, "curl", 1.0, RISE_TIME + 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	ctx.shake.add_trauma(0.4)
 	var burst := FxParts.particles(self, ctx.overhead, _wave.position, PixelParticles.Shape.SQUARE, Set2Parts.FOAM_LIFE)
 	burst.gravity = 320.0
@@ -96,11 +151,9 @@ func _rise() -> void:
 	_light.tween_param("intensity", 0.0, 0.35, RISE_TIME)
 	var light := _light
 	ctx.lights.register_quad(light, origin, 3.4, WATER_LIGHT, func(): return origin + _dir * _front)
-	_flood = FxParts.quad(self, FxParts.SH_FROST, Vector2(LENGTH, WIDTH), ctx.ground, Vector2(0.0, 0.5))
-	# Dark wet sheen, not ice: faint ripple lines only.
-	_flood.set_param("plate", Color(0.12, 0.3, 0.52, 0.55))
-	_flood.set_param("crack", Color(0.55, 0.78, 0.95, 0.18))
-	_flood.set_param("rim", Color(0.8, 0.93, 1.0, 0.7))
+	_flood = FxParts.quad(self, SH_FLOOD, Vector2(LENGTH, WIDTH), ctx.ground, Vector2(0.0, 0.5))
+	_flood.set_param("width", WIDTH)
+	_flood.set_param("seed", ctx.rng.randf() * 10.0)
 	_flood.z_index = 2
 
 
@@ -133,7 +186,7 @@ func _fx_process(delta: float) -> void:
 	var mid := ((ends[0] as Vector2) + (ends[1] as Vector2)) * 0.5
 	var half := (ends[1] as Vector2).distance_to(ends[0]) * 0.5
 	if is_instance_valid(_spray):
-		_spray.spec["offset"] = mid + Vector2(0, -WAVE_HEIGHT * 0.7)
+		_spray.spec["offset"] = mid + Iso.ground_to_screen(_dir) * 0.8 + Vector2(0, -_wave.lip_height())
 		_spray.spec["radius"] = half
 	if is_instance_valid(_foam):
 		_foam.spec["offset"] = mid
@@ -141,9 +194,9 @@ func _fx_process(delta: float) -> void:
 	if _flood != null and is_instance_valid(_flood):
 		_flood.position = origin
 		_flood.rotation = _dir.angle()
-		_flood.set_param("progress", 1.0)
 		_flood.visible = _front > 0.2
 		_flood.size = Vector2(maxf(_front, 0.01), WIDTH)
+		_flood.set_param("length", maxf(_front, 0.01))
 		_flood.queue_redraw()
 
 
@@ -160,9 +213,10 @@ func _crash() -> void:
 	ctx.flash.call(Color(0.85, 0.95, 1.0, 0.4), 0.3)
 	ctx.shake.add_trauma(0.95)
 	ctx.shake.kick(_dir.normalized() * 6.0)
-	_wave.tween_param("height", 1.0, 0.0, 0.35, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	_wave.tween_param("fade", 1.0, 0.0, 0.35)
-	_wave.life = _wave.age + 0.4
+	var fall := _wave.create_tween().set_parallel()
+	fall.tween_property(_wave, "height", 0.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	fall.tween_property(_wave, "fade", 0.0, 0.35)
+	fall.chain().tween_callback(_wave.queue_free)
 	_light.tween_param("intensity", 0.35, 0.0, 0.8)
 
 	# Terminal splash: a towering burst of water and spray fanning up and out.
@@ -181,6 +235,11 @@ func _crash() -> void:
 		foam.drag = 0.5
 		foam.burst(30, {"radius": 14.0, "speed": Vector2(40, 180), "alt": Vector2(10, 50), "alt_speed": Vector2(80, 300),
 			"life": Vector2(0.6, 1.3), "size": Vector2(1, 3)})
+	# Radial splash streaks fanning out across the ground, like water slapped flat.
+	var rays := FxParts.ground_rays(self, g, 4.2, Color(0.8, 0.94, 1.0), 40.0)
+	rays.tween_param("reach", 0.2, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	rays.tween_param("intensity", 1.4, 0.0, 0.7, 0.15)
+	rays.life = 0.9
 	var wave := FxParts.shockwave(self, g, 3.2, Set2Parts.WATER)
 	wave.z_index = 9
 	wave.set_param("thickness", 0.12)
@@ -212,20 +271,27 @@ func _crash() -> void:
 
 func _aftermath() -> void:
 	ctx.play(&"ts_drip", origin, -6.0)
-	# Flooded ground: wet dark sheen, puddles with ripples, foam patches and drifting mist.
-	var wet := FxParts.fog(self, origin + _dir * LENGTH * 0.5, LENGTH * 0.55, Color(0.25, 0.45, 0.7, 0.55))
-	wet.set_param("scale", 2.0)
-	wet.tween_param("density", 0.0, 1.0, 0.6)
-	wet.tween_param("fade", 1.0, 0.0, 1.5, duration - t - 1.6)
+	# Flooded lane: the water calms, broken planks float and drift, puddles spill past the end,
+	# ripples and mist.
 	if _flood != null and is_instance_valid(_flood):
+		_flood.tween_param("settle", 0.0, 0.6, 1.2)
 		_flood.tween_param("fade", 1.0, 0.0, 1.5, duration - t - 1.6)
-	for i in 12:
-		var g := origin + _dir * ctx.rng.randf_range(0.5, LENGTH + 1.5) + _side * ctx.rng.randf_range(-WIDTH * 0.55, WIDTH * 0.55)
+	var flot := Flotsam.new()
+	flot.setup(ctx.rng, 9, LENGTH + 0.5, WIDTH, _dir)
+	flot.position = origin
+	flot.drift = _dir * 0.6
+	flot.z_index = 3
+	track(flot, ctx.ground)
+	create_tween().tween_property(flot, "alpha", 0.0, 1.2).set_delay(duration - t - 1.4)
+	for i in 6:
+		var g := origin + _dir * ctx.rng.randf_range(LENGTH - 0.5, LENGTH + 1.8) + _side * ctx.rng.randf_range(-WIDTH * 0.6, WIDTH * 0.6)
 		var puddle := FxParts.frost_ground(self, g, ctx.rng.randf_range(0.35, 0.8))
 		puddle.set_param("plate", Color(0.18, 0.42, 0.68, 0.6))
 		puddle.set_param("crack", Color(0.6, 0.82, 0.98, 0.2))
 		puddle.set_param("progress", 1.0)
 		puddle.tween_param("fade", 1.0, 0.0, 1.2, duration - t - 1.3)
+	for i in 10:
+		var g := origin + _dir * ctx.rng.randf_range(0.5, LENGTH) + _side * ctx.rng.randf_range(-WIDTH * 0.4, WIDTH * 0.4)
 		var ripple := FxParts.rings(self, g, 0.7, Color(0.8, 0.93, 1.0), 2, 10.0)
 		ripple.set_param("scan", 0.0)
 		ripple.set_param("fill", 0.0)

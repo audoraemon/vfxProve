@@ -245,10 +245,14 @@ func _face_color(base: Color, normal: Vector2, light: Color, dir: Vector2) -> Co
 		facing = 0.9
 	var lit := Color(light.r * facing, light.g * facing, light.b * facing)
 	var amb := lights.ambient if lights else 1.0
+	# Dark materials take a strong multiplicative boost; bright daylight stone gets less so it never
+	# saturates to white under a light pool.
+	var gain := lerpf(4.0, 1.2, clampf((base.get_luminance() - 0.25) / 0.4, 0.0, 1.0))
+	var add := lerpf(0.35, 0.12, clampf((base.get_luminance() - 0.25) / 0.4, 0.0, 1.0))
 	var c := Color(
-		minf(base.r * amb * (1.0 + lit.r * 4.0) + lit.r * 0.35, 1.0),
-		minf(base.g * amb * (1.0 + lit.g * 4.0) + lit.g * 0.35, 1.0),
-		minf(base.b * amb * (1.0 + lit.b * 4.0) + lit.b * 0.35, 1.0))
+		minf(base.r * amb * (1.0 + lit.r * gain) + lit.r * add, 1.0),
+		minf(base.g * amb * (1.0 + lit.g * gain) + lit.g * add, 1.0),
+		minf(base.b * amb * (1.0 + lit.b * gain) + lit.b * add, 1.0))
 	c = c.lerp(COL_CHAR, scorch * 0.65)
 	return c.lerp(Color(0.62, 0.78, 0.92), frost * 0.35)
 

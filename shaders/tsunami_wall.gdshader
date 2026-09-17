@@ -1,0 +1,169 @@
+// Tsunami wall painted like the concept: one long standing wall of water, low at the left end and tallest
+// toward the right, with a row of curling hoods. Each hood has a dark hollow with broken cyan streaks
+// spiraling in, a thick foam lip arcing over it, streaked translucent face water flowing down and around the
+// curls, a lumpy churning foam crest with spray, and a whitewater band at the base spilling forward.
+// Quad: UV.x 0..1 along the wall (left -> right on screen), UV.y 0 top .. 1 bottom. Pixel space:
+// x = UV.x * length_px, y = height above the baseline (negative below it, down to -bottom_px).
+shader_type canvas_item;
+#include "res://shaders/common.gdshaderinc"
+
+uniform float length_px = 200.0;
+uniform float top_px = 160.0;
+uniform float bottom_px = 18.0;
+uniform float max_height = 130.0;
+// 0..1 rise and curl.
+uniform float height = 1.0;
+uniform float curl = 1.0;
+uniform float hoods = 4.0;
+uniform float fade = 1.0;
+uniform float seed = 0.0;
+
+uniform vec4 navy : source_color = vec4(0.03, 0.07, 0.22, 1.0);
+uniform vec4 deep : source_color = vec4(0.06, 0.18, 0.5, 1.0);
+uniform vec4 royal : source_color = vec4(0.1, 0.34, 0.8, 1.0);
+uniform vec4 blue : source_color = vec4(0.2, 0.55, 0.95, 1.0);
+uniform vec4 cyan : source_color = vec4(0.42, 0.8, 1.0, 1.0);
+uniform vec4 pale : source_color = vec4(0.76, 0.94, 1.0, 1.0);
+uniform vec4 white : source_color = vec4(0.97, 1.0, 1.0, 1.0);
+
+// Wall envelope along its length: low ramp on the left, tallest around 70-80%, short drop at the right.
+float envelope(float u) {
+	float ramp = mix(0.55, 1.0, smoothstep(0.0, 0.5, u));
+	float right = sqrt(max(1.0 - pow(smoothstep(0.74, 1.0, u), 2.0), 0.0));
+	return ramp * mix(0.12, 1.0, right) * smoothstep(0.0, 0.04, u) * smoothstep(1.0, 0.985, u);
+}
+
+vec3 water_ramp(float v) {
+	if (v < 0.16) return navy.rgb;
+	if (v < 0.34) return deep.rgb;
+	if (v < 0.52) return royal.rgb;
+	if (v < 0.7) return blue.rgb;
+	if (v < 0.86) return cyan.rgb;
+	return pale.rgb;
+}
+
+// Hood silhouette over one cell (fx 0..1 left to right): a broad rounded dome whose top leans left over the
+// hollow, dipping between hoods.
+float hood_shape(float fx) {
+	float k = (fx - 0.42) / 0.62;
+	return 0.8 + 0.2 * sqrt(max(1.0 - k * k, 0.0));
+}
+
+// Foam clumps: 1 bright top, 0.66 pale-blue shadow, 0.33 blue speck, 0 none. Blobs are lit from the upper left.
+float foam_tone(vec2 p, float amount, float t) {
+	vec2 q = p * 0.16 + vec2(-t * 0.7, t * 0.9);
+	float v1 = fbm(q);
+	float v2 = fbm(q + vec2(0.3, -0.3));
+	float fine = vnoise(p * 0.55 + vec2(t * 2.0, -t));
+	float v = v1 + (fine - 0.5) * 0.3 + (amount - 0.5) * 0.9;
+	if (v < 0.42) return 0.0;
+	if (v < 0.47) return 0.33;
+	if (step(0.93, hash21(floor(p * 0.5) + floor(t * 3.0))) > 0.5 && v < 0.75) return 0.33;
+	return (v1 + 0.03 >= v2 || v > 0.78) ? 1.0 : 0.66;
+}
+
+void fragment() {
+	float t = u_time;
+	vec2 fc = FRAGCOORD.xy;
+	float x = floor(UV.x * length_px);
+	float y = floor((1.0 - UV.y) * (top_px + bottom_px) - bottom_px);
+	float u = x / length_px;
+	float hmax = max_height * height;
+	if (hmax < 2.0) discard;
+
+	float cells = u * hoods + seed;
+	float ci = floor(cells);
+	float fx = fract(cells);
+	float cell_px = length_px / hoods;
+	float env = envelope(u);
+	float shape = mix(0.86, hood_shape(fx), curl);
+	float crest = hmax * env * shape;
+	vec2 p = vec2(x, y);
+	// Ragged churning top edge.
+	crest += (fbm(vec2(x * 0.08 + seed * 3.0, t * 0.9)) - 0.5) * hmax * 0.1 * env;
+	crest += (vnoise(vec2(x * 0.4, t * 3.0 + seed)) - 0.5) * 5.0 * env;
+
+	// Bubbly foam clumps bulging above the crest line.
+	float bulge = smoothstep(0.52, 0.8, fbm(vec2(x * 0.1 - t * 0.5, t * 0.6 + seed * 5.0))) * 9.0 * env * height;
+	if (y > crest && y <= crest + bulge) {
+		float tone = foam_tone(p, 0.95, t);
+		if (tone <= 0.0) discard;
+		COLOR = vec4(tone > 0.9 ? white.rgb : (tone > 0.5 ? pale.rgb : cyan.rgb), fade);
+	} else if (y > crest) {
+		// Spray droplets just above the crest.
+		float above = y - crest - bulge;
+		float dot_on = step(0.88, hash21(floor(fc * 0.5) + floor(t * 10.0) + ci));
+		float a = dot_on * (1.0 - smoothstep(0.0, 24.0 * height, above)) * step(0.08, env);
+		if (a <= 0.0) discard;
+		COLOR = vec4(mix(pale.rgb, white.rgb, step(0.5, hash21(floor(fc * 0.5) + 7.0))), a * fade);
+	} else if (y < 0.0) {
+		// Whitewater spilling forward in front of the base.
+		float depth = -y / bottom_px;
+		float tone = foam_tone(p + vec2(0.0, t * 20.0), 0.85 - depth * 0.9, t);
+		if (tone <= 0.0 || env < 0.03) discard;
+		COLOR = vec4(tone > 0.9 ? white.rgb : (tone > 0.5 ? pale.rgb : blue.rgb), fade);
+	} else {
+		float d = crest - y;
+		float crest_env = max(hmax * env * shape, 1.0);
+		float yn = clamp(y / crest_env, 0.0, 1.0);
+		// Curl of this hood. Water wraps it in layered arcs: bright on the upper right where the wave rolls over,
+		// dark toward the lower left where the curl opens.
+		float cx = (ci - seed + 0.34) * cell_px;
+		float cy = crest_env * 0.54;
+		float rx_px = max(cell_px * 0.5 * mix(0.75, 1.0, env), 1.0);
+		float ry_px = crest_env * 0.4;
+		vec2 rel = vec2((x - cx) / rx_px, (y - cy) / ry_px);
+		float e = length(rel);
+		float ang = atan(rel.y, rel.x);
+		// Open side of the curl points to the lower left; stretch distances there so the dark core extends out.
+		float open_dir = dot(normalize(rel + vec2(0.0001)), normalize(vec2(-0.8, -0.6)));
+		float ec = e / (1.0 + 1.1 * max(open_dir, 0.0) * curl);
+		float hood_w = (1.0 - smoothstep(0.85, 1.9, e)) * curl;
+
+		// Arc streaks around the curl, vertical streaks in the body below and between hoods.
+		// Spiral arms rather than closed rings, so the arcs read as water curling in.
+		float across = mix(x + y * 0.1, (e + (ang / 6.28318) * 0.42) * rx_px, hood_w);
+		float along = mix(y, ang * rx_px, hood_w);
+		across += (fbm(vec2(x * 0.07 + seed, y * 0.05 - t * 0.3)) - 0.5) * 6.0;
+		float stripe = fract(across / 4.0 - t * 0.35 * hood_w);
+		float dash = step(0.36, vnoise(vec2(floor(across / 4.0) * 2.9 + ci, along * 0.08 - t * 1.6)));
+		float streak = step(abs(stripe - 0.5), 0.18) * dash;
+		// Arcs break up on the open side of the curl.
+		streak *= 1.0 - smoothstep(0.2, 0.8, open_dir) * (1.0 - smoothstep(0.9, 1.5, e)) * 0.85 * curl;
+
+		float core = smoothstep(0.0, 0.8, ec);
+		float light = mix(0.28 + 0.26 * yn, 0.06 + 0.5 * core + 0.1 * yn, hood_w);
+		light += streak * mix(0.34, 0.18 + 0.28 * core, hood_w);
+		light -= (1.0 - smoothstep(0.0, 0.35, yn)) * 0.08;
+		vec3 c = water_ramp(quant(clamp(light, 0.0, 1.0), 6.0));
+		// Glints spiraling into the dark core.
+		if (ec < 0.55 && curl > 0.2) {
+			float spiral = fract(ang / 6.28318 * 2.0 + log(ec + 0.06) * 1.4 - t * 0.7 + ci * 0.37);
+			float glint = step(abs(spiral - 0.5), 0.07) * step(0.45, vnoise(vec2(ang * 5.0 + ci * 3.0, ec * 9.0 - t * 2.0)));
+			c = mix(c, cyan.rgb, glint);
+		}
+
+		// Foam: thick churning crest, broken foam curling over the lip toward the lower left, whitewater base.
+		float band = crest_env * (0.2 + 0.12 * fbm(vec2(x * 0.05 + seed, t * 0.3)));
+		float crest_foam = (1.0 - smoothstep(band * 0.25, band, d)) * 0.95;
+		float lip_arc = smoothstep(0.86, 1.0, e) * (1.0 - smoothstep(1.0, 1.18, e)) * smoothstep(0.2, 0.9, -rel.x) * curl;
+		float base_band = crest_env * 0.2 + 8.0 * fbm(vec2(x * 0.05 - t * 0.5, seed));
+		float base_foam = 1.0 - smoothstep(base_band * 0.3, base_band, y);
+		float amount = max(max(crest_foam, lip_arc * 0.8), base_foam);
+		amount = max(amount, smoothstep(0.7, 0.82, fbm(p * 0.05 + vec2(seed * 9.0, -t * 0.25))) * 0.65);
+		if (amount > 0.02) {
+			float tone = foam_tone(p, amount, t);
+			if (tone > 0.9) {
+				c = white.rgb;
+			} else if (tone > 0.5) {
+				c = pale.rgb;
+			} else if (tone > 0.2) {
+				c = blue.rgb;
+			}
+		}
+		float fleck = step(mix(0.99, 0.96, streak), hash21(floor(p * 0.5) + ci + floor(t * 2.0))) * step(0.45, core);
+		c = mix(c, white.rgb, fleck);
+		COLOR = vec4(c, smoothstep(0.02, 0.12, env * height) * fade);
+	}
+	if (COLOR.a <= 0.01) discard;
+}

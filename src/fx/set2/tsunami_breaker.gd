@@ -10,7 +10,9 @@ const RISE_TIME := 0.7
 const T_SWEEP := 1.9
 const SWEEP_TIME := 3.0
 const T_CRASH := T_SWEEP + SWEEP_TIME
-const WAVE_HEIGHT := 140.0
+const WAVE_HEIGHT := 150.0
+## The painted wall is drawn longer than the damage lane so it reads as a colossal wave, like the concept.
+const WAVE_VISUAL_WIDTH := 1.45
 const CARRY_BAND := 0.8
 const WATER_LIGHT := Color(0.45, 0.75, 1.0)
 const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
@@ -124,12 +126,11 @@ func _rise() -> void:
 	ctx.play(&"ts_rise", origin)
 	_wave = TsunamiWave.new()
 	_wave.dir = _dir
-	_wave.width = WIDTH
+	_wave.width = WIDTH * WAVE_VISUAL_WIDTH
 	_wave.max_height = WAVE_HEIGHT
 	_wave.seed = ctx.rng.randf()
-	# Sorted with the world so enemies behind the wave are hidden and ones in front show.
-	_wave.z_index = 0
-	track(_wave, ctx.world)
+	# Above the world like the other titans: a tall diagonal wall sorts badly against castle walls.
+	track(_wave, ctx.overhead_back)
 	_place_wave()
 	var rise := _wave.create_tween().set_parallel()
 	rise.tween_property(_wave, "height", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

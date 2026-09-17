@@ -8,8 +8,11 @@ const T_HANDS := 1.3
 const T_RISE := 2.0
 const RISE_TIME := 1.1
 const T_COMBO := 3.4
-const PUNCHES := 6
-const PUNCH_GAP := 0.52
+const PUNCHES := 8
+const PUNCH_GAP := 0.5
+## Punch clip timing: fist raise and slam down, then pull back.
+const PUNCH_BEFORE := 0.24
+const PUNCH_AFTER := 0.24
 const T_FINAL := T_COMBO + PUNCHES * PUNCH_GAP + 0.3
 const FINAL_WINDUP := 0.55
 const T_CRUMBLE := T_FINAL + FINAL_WINDUP + 1.6
@@ -18,13 +21,11 @@ const GOLD_LIGHT := Color(1.0, 0.8, 0.4)
 
 var _center_px := Vector2.ZERO
 var _sigil: SigilRune
-var _golem: StoneGolem
-var _rest_l := Vector2(-95, 50)
-var _rest_r := Vector2(95, 50)
+var _golem: GolemSprite
 
 
 func _build() -> void:
-	duration = 12.5
+	duration = 13.0
 	# The titan stands just behind the target so its fists land around the cast point.
 	_center_px = Iso.ground_to_screen(origin)
 	_sigil = Set2Parts.sigil(self, origin, 3.4, Color("ffc85a"), "earth")
@@ -81,20 +82,11 @@ func _hands() -> void:
 
 func _rise() -> void:
 	ctx.play(&"jg_rise", origin)
-	_golem = StoneGolem.new()
-	_golem.lights = ctx.lights
-	_golem.ground_pos = origin
-	# Stand the titan behind the cast point so its body doesn't cover the impacts.
-	_golem.position = _center_px + Vector2(0, -70)
-	_golem.fist_l = Vector2(-120, 40)
-	_golem.fist_r = Vector2(120, 40)
+	_golem = GolemSprite.new()
+	# Locked facing the camera, standing on the cast point; its fists land just in front of it.
+	_golem.position = _center_px
 	track(_golem, ctx.overhead_back)
 	create_tween().tween_property(_golem, "emerge", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	create_tween().tween_property(_golem, "glow", 1.0, RISE_TIME + 0.3).set_delay(0.3)
-	var tw := create_tween()
-	tw.tween_interval(RISE_TIME * 0.6)
-	tw.tween_property(_golem, "fist_l", _rest_l, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(_golem, "fist_r", _rest_r, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	ctx.shake.add_trauma(0.7)
 	for k in 5:
 		at(t + k * 0.2, func():
@@ -111,40 +103,17 @@ func _rise() -> void:
 	ctx.field.knock_from(origin, 1.3, 3.0, 5.5)
 
 
-## Pick a punch target: prefer clusters of living enemies in range, else a random spot.
-func _pick_target(i: int) -> Vector2:
-	var best := Vector2.INF
-	var best_count := 0
-	for attempt in 14:
-		var a := ctx.rng.randf() * TAU
-		var d := ctx.rng.randf_range(1.6, RADIUS * 0.85)
-		var g := origin + Vector2.RIGHT.rotated(a) * d
-		# Alternate sides so the left and right fists take turns.
-		var screen_x := (Iso.ground_to_screen(g) - _center_px).x
-		if (i % 2 == 0 and screen_x > 0.0) or (i % 2 == 1 and screen_x < 0.0):
-			continue
-		var n := ctx.field.in_radius(g, 1.1).size()
-		if best == Vector2.INF or n > best_count:
-			best = g
-			best_count = n
-	if best == Vector2.INF:
-		best = origin + Vector2(-1.0 if i % 2 == 0 else 1.0, 1.0) * 1.8
-	return best
-
-
+## Alternating left/right knuckle punches from the sprite clips. Each lands where the fist hits the ground,
+## then a second shock bursts further out in front so the barrage covers the battlefield.
 func _punch(i: int) -> void:
-	var g := _pick_target(i)
-	var target := Iso.ground_to_screen(g) - _golem.position
-	var left := i % 2 == 0
-	var prop := "fist_l" if left else "fist_r"
-	var rest := _rest_l if left else _rest_r
-	var raised := Vector2(rest.x * 1.5, -130)
-	var tw := create_tween()
-	tw.tween_property(_golem, prop, raised, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_golem, prop, target, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(_knuckle_impact.bind(g, 1.0, i % 3 == 2))
-	tw.tween_interval(0.08)
-	tw.tween_property(_golem, prop, rest, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	var clip := "punch_l" if i % 2 == 0 else "punch_r"
+	var fist := _golem.play(clip, PUNCH_BEFORE, PUNCH_AFTER)
+	var g := Iso.screen_to_ground(_golem.position + fist)
+	var out := (g - origin).normalized() if g.distance_to(origin) > 0.05 else Vector2(1, 1).normalized()
+	var reach := (out * 0.5 + Vector2(1, 1).normalized() * 0.5).normalized().rotated(ctx.rng.randf_range(-0.45, 0.45))
+	var far := g + reach * ctx.rng.randf_range(1.5, 2.6)
+	at(t + PUNCH_BEFORE, _knuckle_impact.bind(g, 1.0, i % 3 == 2))
+	at(t + PUNCH_BEFORE + 0.08, _knuckle_impact.bind(far, 0.8, false))
 
 
 func _knuckle_impact(g: Vector2, size: float, heavy: bool) -> void:
@@ -213,10 +182,7 @@ func _spike_burst(g: Vector2, size: float, count: int) -> void:
 func _final_windup() -> void:
 	ctx.play(&"jg_windup", origin)
 	ctx.impact.dim(0.6, 2.0)
-	var tw := create_tween()
-	tw.tween_property(_golem, "fist_l", Vector2(-80, -215), FINAL_WINDUP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(_golem, "fist_r", Vector2(80, -215), FINAL_WINDUP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(_golem, "glow", 1.0, 0.2)
+	_golem.play("slam", FINAL_WINDUP, 1.4)
 	var gather := FxParts.bloom(self, _golem.position + _golem.crown(), 90.0, GOLD_LIGHT, 0.0, 1.0)
 	gather.tween_param("intensity", 0.0, 1.3, FINAL_WINDUP, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	gather.life = FINAL_WINDUP + 0.05
@@ -229,12 +195,7 @@ func _final_windup() -> void:
 
 
 func _final_slam() -> void:
-	var g := origin + Vector2(0.9, 0.9)
-	var target := Iso.ground_to_screen(g) - _golem.position
-	var tw := create_tween()
-	tw.tween_property(_golem, "fist_l", target + Vector2(-44, 0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(_golem, "fist_r", target + Vector2(44, 0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(_final_impact.bind(g))
+	_final_impact(Iso.screen_to_ground(_golem.position + _golem.impact_pos("slam")))
 
 
 func _final_impact(g: Vector2) -> void:
@@ -283,7 +244,6 @@ func _final_impact(g: Vector2) -> void:
 
 func _crumble() -> void:
 	ctx.play(&"jg_crumble", origin)
-	create_tween().tween_property(_golem, "glow", 0.0, 0.6)
 	var tw := create_tween()
 	tw.tween_property(_golem, "crumble", 1.0, 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(_golem, "emerge", 0.0, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN).set_delay(0.3)

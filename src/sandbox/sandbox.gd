@@ -20,7 +20,7 @@ const EFFECTS := [
 	{"set": 1, "key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd", "zoom": 1.25, "focus_up": -50.0},
 	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true, "focus_along": 5.0, "focus_up": -30.0, "zoom": 1.0},
 	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true, "focus_along": 3.0, "focus_up": -120.0, "zoom": 1.0},
-	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -110.0, "zoom": 1.0},
+	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -165.0, "zoom": 0.8},
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -10.0, "focus_px": Vector2(150, -20), "zoom": 0.8},
 ]
 
@@ -34,7 +34,7 @@ const CAPTURES := {
 	"cinder": {"target": Vector2(0, 0), "times": [1.0, 1.8, 2.7, 3.2, 4.2, 5.4, 6.6, 8.6, 10.2]},
 	"tsunami": {"target": Vector2(-4.5, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 3.6, 4.5, 5.0, 5.4, 6.5, 8.5]},
 	"tornado": {"target": Vector2(-4, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 4.0, 5.5, 7.0, 7.6, 9.0]},
-	"judgement": {"target": Vector2(0, 0), "times": [1.0, 1.6, 2.6, 3.72, 4.25, 5.3, 6.6, 7.22, 8.0, 10.0]},
+	"judgement": {"target": Vector2(0, 0), "times": [1.0, 2.6, 3.4, 3.64, 3.72, 4.14, 7.94, 8.25, 8.4, 9.2, 11.0]},
 	"dragon": {"target": Vector2(-2, -1), "times": [0.9, 1.5, 2.8, 4.2, 5.0, 5.8, 6.5, 7.4, 10.0]},
 	"glacial": {"target": Vector2(0, 0), "times": [1.9, 2.6, 3.6, 5.5, 7.35, 7.55, 7.8, 8.1, 9.2]},
 }

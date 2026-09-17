@@ -103,17 +103,20 @@ func _rise() -> void:
 	ctx.field.knock_from(origin, 1.3, 3.0, 5.5)
 
 
-## Alternating left/right knuckle punches from the sprite clips. Each lands where the fist hits the ground,
-## then a second shock bursts further out in front so the barrage covers the battlefield.
+## Fixed punch pattern alternating arms, each clip landing its fist at a different spot so the barrage spreads
+## across the front of the titan: near left, wide right, far left, near right, wide left, far right, center.
+const PUNCH_PATTERN := ["punch_l", "reach_rw", "reach_lf", "punch_r", "reach_lw", "reach_rf", "reach_lc", "reach_rc"]
+
+
+## Knuckle punch from the sprite clips: impact where the fist lands, then a smaller shock a little further out
+## along the same direction.
 func _punch(i: int) -> void:
-	var clip := "punch_l" if i % 2 == 0 else "punch_r"
+	var clip: String = PUNCH_PATTERN[i % PUNCH_PATTERN.size()]
 	var fist := _golem.play(clip, PUNCH_BEFORE, PUNCH_AFTER)
 	var g := Iso.screen_to_ground(_golem.position + fist)
 	var out := (g - origin).normalized() if g.distance_to(origin) > 0.05 else Vector2(1, 1).normalized()
-	var reach := (out * 0.5 + Vector2(1, 1).normalized() * 0.5).normalized().rotated(ctx.rng.randf_range(-0.45, 0.45))
-	var far := g + reach * ctx.rng.randf_range(1.5, 2.6)
 	at(t + PUNCH_BEFORE, _knuckle_impact.bind(g, 1.0, i % 3 == 2))
-	at(t + PUNCH_BEFORE + 0.08, _knuckle_impact.bind(far, 0.8, false))
+	at(t + PUNCH_BEFORE + 0.08, _knuckle_impact.bind(g + out * 1.3, 0.65, false))
 
 
 func _knuckle_impact(g: Vector2, size: float, heavy: bool) -> void:

@@ -4,7 +4,7 @@ extends Node2D
 
 ## Ground extends past the play area so zoomed or panned views never show void.
 const HALF := 7
-const FILL := 13
+const FILL := 18
 
 const COL_BASE := [Color("1a1e29"), Color("1d2230"), Color("171b25")]
 const COL_PANEL := Color("232937")

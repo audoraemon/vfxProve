@@ -2,23 +2,26 @@ extends Node2D
 ## VFX sandbox: iso floor, dummy enemies, effect picker, capture and bench modes.
 
 ## Set 0: sci-fi city. Set 1: fantasy castle (KWAI). Tab switches set and rebuilds the map.
+## dim_scale: how strongly effects darken the world. zoom: camera push-in while a skill plays.
 const SETS := [
-	{"name": "Set1 Sci-Fi", "theme": "scifi", "clear": Color("07080d")},
-	{"name": "Set2 Fantasy", "theme": "fantasy", "clear": Color("0b0908")},
+	{"name": "Set1 Sci-Fi", "theme": "scifi", "clear": Color("07080d"), "dim_scale": 0.75, "zoom": 1.35},
+	{"name": "Set2 Fantasy", "theme": "fantasy", "clear": Color("2a2e24"), "dim_scale": 0.4, "zoom": 1.55},
 ]
+const FOCUS_IN := 0.45
+const FOCUS_OUT := 0.7
 ## `lane`: cast with a drag direction.
 const EFFECTS := [
-	{"set": 0, "key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd"},
+	{"set": 0, "key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd", "zoom": 1.2, "focus_up": -60.0},
 	{"set": 0, "key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd"},
 	{"set": 0, "key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd"},
-	{"set": 0, "key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd", "lane": true},
-	{"set": 1, "key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd"},
-	{"set": 1, "key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd", "lane": true},
-	{"set": 1, "key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd"},
-	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true},
-	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true},
-	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd"},
-	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "lane": true},
+	{"set": 0, "key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd", "lane": true, "focus_along": 5.0},
+	{"set": 1, "key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd", "zoom": 1.3, "focus_up": -50.0},
+	{"set": 1, "key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd", "lane": true, "focus_along": 0.0, "zoom": 1.25},
+	{"set": 1, "key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd", "zoom": 1.25, "focus_up": -50.0},
+	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true, "focus_along": 5.0, "focus_up": -30.0, "zoom": 1.0},
+	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true, "focus_along": 4.0, "focus_up": -60.0, "zoom": 1.0},
+	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -60.0, "zoom": 1.35},
+	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "lane": true, "focus_along": 1.5, "focus_up": -70.0, "zoom": 1.4},
 ]
 
 ## Capture moments per effect (seconds from cast).
@@ -55,6 +58,10 @@ var _drag_preview: Node2D
 var _press_ground := Vector2.ZERO
 var _pressing := false
 var _rng := RandomNumberGenerator.new()
+var _glow: ColorRect
+var _active_fx: Array[FxTimeline] = []
+var _home_position := Vector2.ZERO
+var _camera_tween: Tween
 
 
 func _ready() -> void:
@@ -178,6 +185,18 @@ func _build_world() -> void:
 	_hud.add_theme_constant_override("outline_size", 2)
 	hud_layer.add_child(_hud)
 
+	# Glow sits above the world and effects, below the impact post and flash.
+	var glow_layer := CanvasLayer.new()
+	glow_layer.layer = 2
+	add_child(glow_layer)
+	_glow = ColorRect.new()
+	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var glow_mat := ShaderMaterial.new()
+	glow_mat.shader = preload("res://shaders/glow_post.gdshader")
+	_glow.material = glow_mat
+	glow_layer.add_child(_glow)
+
 	var post_layer := CanvasLayer.new()
 	post_layer.layer = 3
 	add_child(post_layer)
@@ -229,7 +248,12 @@ func _reset_world(seed_value: int) -> void:
 	RenderingServer.set_default_clear_color(SETS[set_index].clear)
 	_tiles.theme = theme
 	_field.look = DummyEnemy.Look.ORC if theme == "fantasy" else DummyEnemy.Look.TROOPER
+	ctx.impact.dim_scale = SETS[set_index].dim_scale
 	ctx.impact.dim(0.0, 100.0)
+	_active_fx.clear()
+	if _camera_tween:
+		_camera_tween.kill()
+	_camera.zoom = Vector2.ONE
 	for layer in [ctx.overhead_back, ctx.overhead, ctx.distort]:
 		for c in layer.get_children():
 			c.queue_free()
@@ -252,7 +276,38 @@ func _cast_entry(entry: Dictionary, ground: Vector2, extra := {}) -> FxTimeline:
 	if not ResourceLoader.exists(entry.path):
 		push_warning("Effect not built yet: %s" % entry.name)
 		return null
-	return FxTimeline.cast(load(entry.path), ctx, ground, extra)
+	var fx := FxTimeline.cast(load(entry.path), ctx, ground, extra)
+	_focus_camera(entry, fx, ground, extra)
+	return fx
+
+
+## Push the camera in toward the skill while it plays, like the concept panels; ease back when the last one ends.
+func _focus_camera(entry: Dictionary, fx: FxTimeline, ground: Vector2, extra: Dictionary) -> void:
+	if _active_fx.is_empty():
+		_home_position = _camera.position
+	_active_fx.append(fx)
+	fx.tree_exited.connect(_on_fx_done.bind(fx))
+	var focus := ground
+	if entry.get("lane", false):
+		focus += (extra.get("dir", Vector2(1, 0)) as Vector2).normalized() * float(entry.get("focus_along", 4.0))
+	var target := Iso.ground_to_screen(focus) + Vector2(0, float(entry.get("focus_up", -40.0)))
+	var zoom: float = entry.get("zoom", SETS[set_index].zoom)
+	if _camera_tween:
+		_camera_tween.kill()
+	_camera_tween = create_tween().set_parallel()
+	_camera_tween.tween_property(_camera, "position", target.round(), FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_camera_tween.tween_property(_camera, "zoom", Vector2.ONE * zoom, FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _on_fx_done(fx: FxTimeline) -> void:
+	_active_fx.erase(fx)
+	if not _active_fx.is_empty() or not is_inside_tree():
+		return
+	if _camera_tween:
+		_camera_tween.kill()
+	_camera_tween = create_tween().set_parallel()
+	_camera_tween.tween_property(_camera, "position", _home_position, FOCUS_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_camera_tween.tween_property(_camera, "zoom", Vector2.ONE, FOCUS_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _mouse_ground() -> Vector2:

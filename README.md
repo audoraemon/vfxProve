@@ -27,6 +27,8 @@ Real-time Godot proof of four sci-fi skill effects from the concept sheets in `c
 
 Design: `docs/superpowers/specs/2026-09-16-set2-fantasy-vfx-design.md`.
 
+**Look pass**: daylight castle map, screen glow (`shaders/glow_post.gdshader`, thresholded mip bloom dithered to pixel steps), camera push-in framed per effect (`zoom`, `focus_up`, `focus_along` in `EFFECTS`) that eases back when the last effect ends, a lighter per-set anticipation dim (`Impact.dim_scale`) and dark outlines on debris chunks.
+
 Everything is procedural: canvas shaders, a small pixel particle system, code-drawn sprites, and synthesized audio. No external art or sound assets.
 
 Settings match the sibling KWAI project: Godot 4.7.2, GL Compatibility, 640×360 viewport scaled ×2 with nearest filtering, 64×32 iso cells.

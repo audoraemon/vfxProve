@@ -16,7 +16,7 @@ const COL_BANNER := Color("1f3f8a")
 const COL_BANNER_HI := Color("2f5cc0")
 const COL_GOLD := Color("d8b23a")
 const COL_BEAM := Color("3a2a1e")
-const COL_ROOF := [Color("7a3a26"), Color("5e2c1e"), Color("4a2218")]
+const COL_ROOF := [Color("5a6a86"), Color("46546e"), Color("363f54")]
 const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
 
@@ -228,7 +228,7 @@ func _palette() -> Array:
 		Kind.CRATES:
 			return [Color("6a5638"), Color("56452d"), Color("433523")]
 		Kind.KEEP, Kind.CASTLE_WALL:
-			return [Color("625c55"), Color("524d47"), Color("403c37")]
+			return [Color("a4a2a0"), Color("86858a"), Color("6a6a74")]
 		Kind.HOUSE:
 			return [Color("7a3a26"), Color("a8987a"), Color("8a7c64")]
 		Kind.TORCH:

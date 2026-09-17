@@ -7,6 +7,8 @@ const POST_SHADER := preload("res://shaders/impact_post.gdshader")
 
 ## User-chosen time scale (slow-mo toggle); hit-stop dips below it temporarily.
 var base_time_scale := 1.0
+## Scales every effect's darkening request (daylight maps dim far less).
+var dim_scale := 1.0
 
 var _post: ColorRect
 var _mat: ShaderMaterial
@@ -71,7 +73,7 @@ func aberration(pixels: float, real_seconds: float) -> void:
 
 ## Darken the world under the overhead effects toward `amount` (0..1) at `speed` per second.
 func dim(amount: float, speed := 1.5) -> void:
-	_dim_target = clampf(amount, 0.0, 0.9)
+	_dim_target = clampf(amount * dim_scale, 0.0, 0.9)
 	_dim_speed = speed
 
 

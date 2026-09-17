@@ -204,5 +204,10 @@ func _draw_chunk(p: Particle, at: Vector2, sz: float, col: Color) -> void:
 		var v := Vector2(cos(a), sin(a)) * rr
 		pts.append(at + v)
 		lit.append(at + v * 0.55 + Vector2(-0.6, -0.8) * sz * 0.3)
+	# Dark 1px outline first so chunks read as solid pixel-art rocks.
+	var outline := PackedVector2Array()
+	for q in pts:
+		outline.append(at + (q - at) + (q - at).normalized())
+	draw_colored_polygon(outline, Color(0.07, 0.06, 0.06, col.a))
 	draw_colored_polygon(pts, Color(col.darkened(0.3), col.a))
 	draw_colored_polygon(lit, Color(col.lightened(0.2), col.a))

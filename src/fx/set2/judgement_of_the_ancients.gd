@@ -19,8 +19,8 @@ const GOLD_LIGHT := Color(1.0, 0.8, 0.4)
 var _center_px := Vector2.ZERO
 var _sigil: SigilRune
 var _golem: StoneGolem
-var _rest_l := Vector2(-78, -30)
-var _rest_r := Vector2(78, -30)
+var _rest_l := Vector2(-95, 50)
+var _rest_r := Vector2(95, 50)
 
 
 func _build() -> void:
@@ -85,9 +85,9 @@ func _rise() -> void:
 	_golem.lights = ctx.lights
 	_golem.ground_pos = origin
 	# Stand the titan behind the cast point so its body doesn't cover the impacts.
-	_golem.position = _center_px + Vector2(0, -34)
-	_golem.fist_l = Vector2(-60, 40)
-	_golem.fist_r = Vector2(60, 40)
+	_golem.position = _center_px + Vector2(0, -70)
+	_golem.fist_l = Vector2(-120, 40)
+	_golem.fist_r = Vector2(120, 40)
 	track(_golem, ctx.overhead_back)
 	create_tween().tween_property(_golem, "emerge", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	create_tween().tween_property(_golem, "glow", 1.0, RISE_TIME + 0.3).set_delay(0.3)
@@ -138,7 +138,7 @@ func _punch(i: int) -> void:
 	var left := i % 2 == 0
 	var prop := "fist_l" if left else "fist_r"
 	var rest := _rest_l if left else _rest_r
-	var raised := Vector2(rest.x * 0.7, -90)
+	var raised := Vector2(rest.x * 1.5, -130)
 	var tw := create_tween()
 	tw.tween_property(_golem, prop, raised, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_golem, prop, target, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -214,15 +214,15 @@ func _final_windup() -> void:
 	ctx.play(&"jg_windup", origin)
 	ctx.impact.dim(0.6, 2.0)
 	var tw := create_tween()
-	tw.tween_property(_golem, "fist_l", Vector2(-44, -118), FINAL_WINDUP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(_golem, "fist_r", Vector2(44, -118), FINAL_WINDUP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_golem, "fist_l", Vector2(-80, -215), FINAL_WINDUP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(_golem, "fist_r", Vector2(80, -215), FINAL_WINDUP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(_golem, "glow", 1.0, 0.2)
-	var gather := FxParts.bloom(self, _golem.position + Vector2(0, -130), 60.0, GOLD_LIGHT, 0.0, 1.0)
+	var gather := FxParts.bloom(self, _golem.position + _golem.crown(), 90.0, GOLD_LIGHT, 0.0, 1.0)
 	gather.tween_param("intensity", 0.0, 1.3, FINAL_WINDUP, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	gather.life = FINAL_WINDUP + 0.05
-	var motes := FxParts.emitter(self, ctx.overhead, _golem.position + Vector2(0, -120), PixelParticles.Shape.STREAK,
+	var motes := FxParts.emitter(self, ctx.overhead, _golem.position + _golem.crown(), PixelParticles.Shape.STREAK,
 		Set2Parts.GOLD_LIFE, 80.0, FINAL_WINDUP, {
-			"radius": 70.0, "dir": PixelParticles.Dir.INWARD, "speed": Vector2(80, 180), "life": Vector2(0.3, 0.5),
+			"radius": 110.0, "dir": PixelParticles.Dir.INWARD, "speed": Vector2(80, 180), "life": Vector2(0.3, 0.5),
 			"size": Vector2(2, 3),
 		})
 	motes.streak_len = 0.05
@@ -232,8 +232,8 @@ func _final_slam() -> void:
 	var g := origin + Vector2(0.9, 0.9)
 	var target := Iso.ground_to_screen(g) - _golem.position
 	var tw := create_tween()
-	tw.tween_property(_golem, "fist_l", target + Vector2(-22, 0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(_golem, "fist_r", target + Vector2(22, 0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(_golem, "fist_l", target + Vector2(-44, 0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(_golem, "fist_r", target + Vector2(44, 0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(_final_impact.bind(g))
 
 
@@ -289,7 +289,7 @@ func _crumble() -> void:
 	tw.parallel().tween_property(_golem, "emerge", 0.0, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN).set_delay(0.3)
 	for k in 6:
 		at(t + k * 0.28, func():
-			var p := _golem.position + Vector2(ctx.rng.randf_range(-60, 60), ctx.rng.randf_range(-100, -20))
+			var p := _golem.position + Vector2(ctx.rng.randf_range(-140, 140), ctx.rng.randf_range(-220, -40))
 			FxParts.debris(self, p, 12, 20.0, Vector2(20, 110), Set2Parts.STONE_CHUNK, Vector2(3, 7), true)
 			FxParts.smoke(self, _golem.position + Vector2(0, 30), 60.0, 24.0, 0.3, Vector2(10, 30), Vector2(5, 9), Vector2(1.2, 2.2)))
 	ctx.shake.add_trauma(0.5)

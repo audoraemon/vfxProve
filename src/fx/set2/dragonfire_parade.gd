@@ -15,6 +15,8 @@ const T_SINK := T_BREATH + BREATH_TIME + 0.4
 const BEAM_HALF_ANGLE := 0.2
 const FIRE_LIGHT := Color(1.0, 0.5, 0.18)
 const SH_CONE := preload("res://shaders/fire_cone.gdshader")
+const SH_STREAM := preload("res://shaders/flame_stream.gdshader")
+const JET_REACH := 0.55
 
 
 var _center_px := Vector2.ZERO
@@ -24,6 +26,7 @@ var _sigil: SigilRune
 var _dragon: FireDragon
 var _cone: QuadFx
 var _stream: PixelParticles
+var _jet: QuadFx
 var _breath_voice: Node
 var _burn_voice: Node
 var _sweep := 0.0
@@ -159,6 +162,12 @@ func _breathe() -> void:
 	_cone.set_param("sweep", 0.0)
 	_cone.set_param("seed", ctx.rng.randf() * 20.0)
 	track(_cone, ctx.ground)
+	_jet = QuadFx.new().setup(SH_STREAM, Vector2(100, 72), Vector2(0.0, 0.5))
+	_jet.set_param("seed", ctx.rng.randf() * 100.0)
+	_jet.set_param("width_px", 72.0)
+	_jet.z_index = 1
+	track(_jet, ctx.overhead)
+	_jet.tween_param("fade", 0.0, 1.0, 0.12)
 	_stream = FxParts.particles(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE)
 	_stream.auto_free = false
 	_stream.drag = 0.6
@@ -179,13 +188,19 @@ func _fx_process(delta: float) -> void:
 	var far_px := Iso.ground_to_screen(far) - _center_px
 	_dragon.aim = far_px + Vector2(0, -60)
 	var mouth := _center_px + _dragon.mouth_pos()
-	# Fire stream: big puffs launched from the mouth toward points along the beam line.
-	for i in int(ceil(110.0 * delta)):
-		var along := ctx.rng.randf_range(0.2, 1.0)
+	# Thick flame jet from the mouth to where it hits the ground, then puffs rolling on along the cone.
+	var hit := Iso.ground_to_screen(origin + beam_dir * CONE_RADIUS * JET_REACH)
+	_jet.position = mouth
+	_jet.rotation = (hit - mouth).angle()
+	_jet.size = Vector2(mouth.distance_to(hit) + 12.0, 72.0)
+	_jet.set_param("length_px", _jet.size.x)
+	_jet.queue_redraw()
+	for i in int(ceil(70.0 * delta)):
+		var along := ctx.rng.randf_range(JET_REACH, 1.0)
 		var target := Iso.ground_to_screen(origin + beam_dir.rotated(ctx.rng.randf_range(-BEAM_HALF_ANGLE, BEAM_HALF_ANGLE)) * CONE_RADIUS * along)
 		var life := ctx.rng.randf_range(0.25, 0.45)
-		_stream.burst(1, {"offset": mouth, "velocity": (target - mouth) / life, "life": Vector2(life, life),
-			"size": Vector2(2, 4), "size_end_mul": 1.8})
+		_stream.burst(1, {"offset": hit, "velocity": (target - hit) / life, "life": Vector2(life, life),
+			"size": Vector2(3, 5), "size_end_mul": 1.6})
 	# Enemies and buildings inside the beam band burn.
 	for e in ctx.field.in_radius(origin, CONE_RADIUS):
 		var rel := e.ground_pos - origin
@@ -200,13 +215,15 @@ func _fx_process(delta: float) -> void:
 	# Residual fire patches left along the swept area.
 	if _sweep >= _next_patch:
 		_next_patch += 0.2
-		for n in 1:
+		for n in 2:
 			var g := origin + Vector2.RIGHT.rotated(beam_angle + ctx.rng.randf_range(-0.1, 0.1)) * ctx.rng.randf_range(1.4, CONE_RADIUS * 0.9)
 			_fire_patch(g)
 	if k >= 1.0:
 		_breathing = false
 		ctx.fade_out(_breath_voice, 0.4)
 		_stream.auto_free = true
+		_jet.tween_param("fade", 1.0, 0.0, 0.25)
+		_jet.life = _jet.age + 0.3
 		create_tween().tween_property(_dragon, "jaw", 0.0, 0.3)
 		_cone.tween_param("heat", 1.0, 0.45, 1.5)
 		_cone.tween_param("intensity", 0.7, 0.0, 1.2)
@@ -215,9 +232,18 @@ func _fx_process(delta: float) -> void:
 
 func _fire_patch(g: Vector2) -> void:
 	var sp := Iso.ground_to_screen(g)
-	FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE, 14.0, duration - t - ctx.rng.randf_range(0.5, 2.0), {
-		"radius": 8.0, "speed": Vector2(0, 6), "alt_speed": Vector2(20, 50), "life": Vector2(0.3, 0.7),
-		"size": Vector2(2.0, 4.0), "size_end_mul": 0.3,
+	var flame := FlameSprite.new()
+	flame.size = ctx.rng.randf_range(0.8, 1.3)
+	flame.setup(ctx.rng, ctx.rng.randi_range(3, 5))
+	flame.position = sp.round()
+	track(flame, ctx.world)
+	var burn_out := duration - t - ctx.rng.randf_range(0.6, 2.0)
+	var tw := flame.create_tween()
+	tw.tween_property(flame, "strength", 1.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(maxf(burn_out - 0.9, 0.1))
+	tw.tween_property(flame, "strength", 0.0, 0.6)
+	FxParts.emitter(self, ctx.overhead, sp + Vector2(0, -14), PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 5.0, burn_out, {
+		"radius": 8.0, "alt_speed": Vector2(20, 50), "life": Vector2(0.4, 0.9), "size": Vector2(1, 1),
 	})
 	FxParts.smoke(self, sp, 6.0, 1.2, duration - t - 2.0, Vector2(14, 34), Vector2(3, 5), Vector2(1.2, 2.2))
 	var light := FxParts.ground_light(self, g, 1.2, FIRE_LIGHT, 0.7)

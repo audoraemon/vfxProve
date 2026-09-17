@@ -3,8 +3,9 @@ extends FxTimeline
 ## it sweeps its head left to right breathing a devastating cone of flame -> it sinks away, leaving scorched
 ## earth and fires that keep burning.
 
-const CONE_RADIUS := 8.5
-const SWEEP_ARC := 2.1
+const CONE_RADIUS := 11.0
+## Narrow sweep matching the small head turn in the roar animation.
+const SWEEP_ARC := 1.0
 const T_ERUPT := 1.2
 const T_RISE := 2.2
 const RISE_TIME := 1.2
@@ -12,11 +13,11 @@ const T_INHALE := 3.6
 const T_BREATH := 4.1
 const BREATH_TIME := 2.4
 const T_SINK := T_BREATH + BREATH_TIME + 0.4
-const BEAM_HALF_ANGLE := 0.2
+const BEAM_HALF_ANGLE := 0.14
 const FIRE_LIGHT := Color(1.0, 0.5, 0.18)
 const SH_CONE := preload("res://shaders/fire_cone.gdshader")
 const SH_STREAM := preload("res://shaders/flame_stream.gdshader")
-const JET_REACH := 0.5
+const JET_REACH := 0.55
 ## The dragon sprite faces screen down-right (south-east); the breath is locked to that facing.
 const FACING := Vector2(1, 0)
 
@@ -40,8 +41,8 @@ func _build() -> void:
 	duration = 11.5
 	_center_px = Iso.ground_to_screen(origin)
 	_dir = FACING
-	# Arc runs from straight down on screen to the dragon's right, so the jet never crosses its body.
-	_start_angle = _dir.angle() - SWEEP_ARC * 0.5 - deg_to_rad(15.0)
+	# Arc centered on the dragon's facing, slightly biased to its right so the jet never crosses its body.
+	_start_angle = _dir.angle() - SWEEP_ARC * 0.5 - deg_to_rad(8.0)
 	_sigil = Set2Parts.sigil(self, origin, 2.4, Color("ff5a2a"), "dragon")
 	# Sweep arc indicator showing the coming cone.
 	var arc := FxParts.quad(self, SH_CONE, Vector2.ONE * CONE_RADIUS * 2.0, ctx.ground)
@@ -215,7 +216,7 @@ func _fx_process(delta: float) -> void:
 	ctx.shake.add_trauma(0.4 * delta)
 	# Residual fire patches left along the swept area.
 	if _sweep >= _next_patch:
-		_next_patch += 0.2
+		_next_patch += 0.09
 		for n in 2:
 			var g := origin + Vector2.RIGHT.rotated(beam_angle + ctx.rng.randf_range(-0.1, 0.1)) * ctx.rng.randf_range(1.4, CONE_RADIUS * 0.9)
 			_fire_patch(g)

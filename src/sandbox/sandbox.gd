@@ -21,7 +21,7 @@ const EFFECTS := [
 	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true, "focus_along": 5.0, "focus_up": -30.0, "zoom": 1.0},
 	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true, "focus_along": 3.0, "focus_up": -120.0, "zoom": 1.0},
 	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -110.0, "zoom": 1.0},
-	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "lane": true, "focus_along": 1.2, "focus_up": -110.0, "zoom": 1.0},
+	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -80.0, "zoom": 1.0},
 ]
 
 ## Capture moments per effect (seconds from cast).
@@ -35,7 +35,7 @@ const CAPTURES := {
 	"tsunami": {"target": Vector2(-4.5, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 3.6, 4.5, 5.0, 5.4, 6.5, 8.5]},
 	"tornado": {"target": Vector2(-4, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 4.0, 5.5, 7.0, 7.6, 9.0]},
 	"judgement": {"target": Vector2(0, 0), "times": [1.0, 1.6, 2.6, 3.72, 4.25, 5.3, 6.6, 7.22, 8.0, 10.0]},
-	"dragon": {"target": Vector2(0.4, 0.4), "dir": Vector2(1, 1), "times": [0.9, 1.5, 2.8, 3.9, 4.6, 5.4, 6.3, 7.4, 10.0]},
+	"dragon": {"target": Vector2(0.4, 0.4), "times": [2.8, 3.8, 4.2, 4.8, 5.6, 6.4, 6.9, 10.0]},
 	"glacial": {"target": Vector2(0, 0), "times": [1.9, 2.6, 3.6, 5.5, 7.35, 7.55, 7.8, 8.1, 9.2]},
 }
 

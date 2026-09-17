@@ -17,6 +17,8 @@ const FIRE_LIGHT := Color(1.0, 0.5, 0.18)
 const SH_CONE := preload("res://shaders/fire_cone.gdshader")
 const SH_STREAM := preload("res://shaders/flame_stream.gdshader")
 const JET_REACH := 0.55
+## The dragon sprite faces screen down-right (south-east); the breath is locked to that facing.
+const FACING := Vector2(1, 0)
 
 
 var _center_px := Vector2.ZERO
@@ -37,8 +39,9 @@ var _next_patch := 0.0
 func _build() -> void:
 	duration = 11.5
 	_center_px = Iso.ground_to_screen(origin)
-	_dir = (extra.get("dir", Vector2(1, 1)) as Vector2).normalized()
-	_start_angle = _dir.angle() - SWEEP_ARC * 0.5
+	_dir = FACING
+	# Arc runs from straight down on screen to the dragon's right, so the jet never crosses its body.
+	_start_angle = _dir.angle() - SWEEP_ARC * 0.5 - deg_to_rad(15.0)
 	_sigil = Set2Parts.sigil(self, origin, 2.4, Color("ff5a2a"), "dragon")
 	# Sweep arc indicator showing the coming cone.
 	var arc := FxParts.quad(self, SH_CONE, Vector2.ONE * CONE_RADIUS * 2.0, ctx.ground)
@@ -112,10 +115,6 @@ func _rise() -> void:
 	ctx.shake.add_trauma(0.9)
 	_dragon = DragonSprite.new()
 	_dragon.position = _center_px
-	# Always faces the camera; mirror when the sweep runs right to left on screen.
-	var sweep_from := Iso.ground_to_screen(Vector2.RIGHT.rotated(_start_angle))
-	var sweep_to := Iso.ground_to_screen(Vector2.RIGHT.rotated(_start_angle + SWEEP_ARC))
-	_dragon.mirrored = sweep_to.x < sweep_from.x
 	track(_dragon, ctx.overhead_back)
 	create_tween().tween_property(_dragon, "rise", 1.0, RISE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var light := FxParts.ground_light(self, origin, 4.8, FIRE_LIGHT)
@@ -142,7 +141,7 @@ func _inhale() -> void:
 	ctx.play(&"dr_inhale", origin)
 	# Rears back and lowers its head (breath clip); a flash gathers where the fire will leave the mouth.
 	_dragon.breathe(T_BREATH - T_INHALE, BREATH_TIME, 0.4)
-	var flash := FxParts.bloom(self, _center_px + _dragon.mouth_at(DragonSprite.INHALE_END + 1), 20.0,
+	var flash := FxParts.bloom(self, _center_px + _dragon.mouth_at(DragonSprite.FIRE_SEQ[0]), 20.0,
 		Color(1.0, 0.85, 0.5), 0.0)
 	flash.tween_param("intensity", 0.0, 1.4, T_BREATH - T_INHALE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	flash.life = T_BREATH - T_INHALE + 0.05
@@ -158,7 +157,8 @@ func _breathe() -> void:
 	_cone = QuadFx.new().setup(SH_CONE, Vector2.ONE * CONE_RADIUS * 2.0)
 	_cone.position = origin
 	_cone.z_index = 7
-	_cone.set_param("start", _start_angle)
+	_cone.set_param("start", _start_angle + SWEEP_ARC)
+	_cone.set_param("reverse", 1.0)
 	_cone.set_param("sweep", 0.0)
 	_cone.set_param("seed", ctx.rng.randf() * 20.0)
 	track(_cone, ctx.ground)
@@ -181,8 +181,10 @@ func _fx_process(delta: float) -> void:
 		return
 	var k := clampf((t - T_BREATH) / BREATH_TIME, 0.0, 1.0)
 	_sweep = SWEEP_ARC * (k * k * (3.0 - 2.0 * k) * 0.5 + k * 0.5)
+	# Sweep from the dragon's left (screen lower-left) to its right (screen right), following the head.
+	_cone.set_param("start", _start_angle + SWEEP_ARC - _sweep)
 	_cone.set_param("sweep", _sweep)
-	var beam_angle := _start_angle + _sweep
+	var beam_angle := _start_angle + SWEEP_ARC - _sweep
 	var beam_dir := Vector2.RIGHT.rotated(beam_angle)
 	var mouth := _center_px + _dragon.mouth_pos()
 	# Thick flame jet from the mouth to where it hits the ground, then puffs rolling on along the cone.

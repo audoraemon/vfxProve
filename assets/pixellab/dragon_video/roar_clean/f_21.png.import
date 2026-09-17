@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bv2pfnvtjrwwp"
-path="res://.godot/imported/dragon_breath.png-d57732f91fb4023c6555b60c29f3baf1.ctex"
+uid="uid://4twxo33rodag"
+path="res://.godot/imported/f_21.png-8e69e12babe898e0afbca43a8d0b5428.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixellab/dragon_video/dragon_breath.png"
-dest_files=["res://.godot/imported/dragon_breath.png-d57732f91fb4023c6555b60c29f3baf1.ctex"]
+source_file="res://assets/pixellab/dragon_video/roar_clean/f_21.png"
+dest_files=["res://.godot/imported/f_21.png-8e69e12babe898e0afbca43a8d0b5428.ctex"]
 
 [params]
 

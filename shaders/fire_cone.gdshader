@@ -10,6 +10,8 @@ uniform float inner = 0.12;
 uniform float heat = 1.0;
 uniform float fade = 1.0;
 uniform float seed = 0.0;
+// 1 = the sweep grows backward from start+sweep, so the leading flame front is at `start`.
+uniform float reverse = 0.0;
 
 void fragment() {
 	vec2 p = (UV - 0.5) * 2.0;
@@ -20,7 +22,8 @@ void fragment() {
 	// Ragged outer edge licking in and out.
 	float edge = 0.92 + (fbm(vec2(ang * 5.0 + seed, u_time * 2.5)) - 0.5) * 0.22;
 	if (r > edge) discard;
-	float behind = max(sweep - rel, 0.0);
+	float lead = reverse > 0.5 ? sweep - rel : rel;
+	float behind = max(sweep - lead, 0.0);
 	float front = 1.0 - smoothstep(0.0, 0.5, behind);
 	float lick = smoothstep(sweep + 0.12, sweep - 0.02, rel);
 	float flames = fbm(vec2(r * 7.0 - u_time * 5.0 + seed, ang * 9.0 + u_time * 0.8));

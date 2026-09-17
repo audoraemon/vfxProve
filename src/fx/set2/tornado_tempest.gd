@@ -11,17 +11,21 @@ const FORM_TIME := 1.2
 const T_WALK := 3.0
 const WALK_TIME := 4.2
 const T_END := T_WALK + WALK_TIME
-const FUNNEL_HEIGHT := 160.0
+const FUNNEL_HEIGHT := 240.0
+## Seconds a captured enemy spirals up the funnel before it is flung out.
+const CAPTURE_TIME := 1.1
 
 
-## Funnel of stacked wind ribbons with orbiting debris. Positioned on the ground point.
+## Tornado: shader funnel volume (`tornado_funnel.gdshader`) between two debris layers, so rocks and planks
+## orbit behind and in front of it. Positioned on the ground point.
 class Funnel:
 	extends Node2D
 
-	const RIBBON := Color(0.93, 0.95, 1.0)
-	const RIBBON_DIM := Color(0.7, 0.74, 0.8)
-	const BODY := Color(0.72, 0.72, 0.75)
 	const DEBRIS := [Color("6e5234"), Color("8a6a44"), Color("5d6170"), Color("4b4f5b"), Color("3a3032")]
+	const SH_FUNNEL := preload("res://shaders/tornado_funnel.gdshader")
+	const BASE_R := 22.0
+	const TOP_R := 115.0
+	const MARGIN := 40.0
 
 	var grow := 0.0
 	var fade := 1.0
@@ -32,111 +36,87 @@ class Funnel:
 	var rng: RandomNumberGenerator
 	var _time := 0.0
 	var _debris: Array = []
+	var _body: QuadFx
+	var _back: DebrisLayer
+	var _front: DebrisLayer
 
 	func setup() -> void:
-		for i in 46:
+		for i in 60:
 			_debris.append(_new_chunk(rng.randf()))
+		_back = DebrisLayer.new()
+		_back.funnel = self
+		add_child(_back)
+		var w := (TOP_R * 1.4 + 60.0) * 2.0
+		var h := FUNNEL_HEIGHT + TOP_R * 0.5 + MARGIN + 20.0
+		_body = QuadFx.new().setup(SH_FUNNEL, Vector2(w, h), Vector2(0.5, (h - MARGIN) / h))
+		_body.set_param("size", Vector2(w, h))
+		_body.set_param("base_margin", MARGIN)
+		_body.set_param("height_px", FUNNEL_HEIGHT)
+		_body.set_param("base_r", BASE_R)
+		_body.set_param("top_r", TOP_R)
+		add_child(_body)
+		_front = DebrisLayer.new()
+		_front.funnel = self
+		_front.front = true
+		add_child(_front)
 
 	func _new_chunk(h: float) -> Dictionary:
-		return {"a": rng.randf() * TAU, "h": h, "speed": rng.randf_range(0.08, 0.2), "size": rng.randf_range(3.0, 7.0),
-			"kind": rng.randi() % 5, "rot": rng.randf() * TAU, "plank": rng.randf() < 0.35, "orbit": rng.randf_range(0.7, 1.15)}
+		return {"a": rng.randf() * TAU, "h": h, "speed": rng.randf_range(0.08, 0.2), "size": rng.randf_range(4.0, 10.0),
+			"kind": rng.randi() % 5, "rot": rng.randf() * TAU, "plank": rng.randf() < 0.4, "orbit": rng.randf_range(0.6, 1.2)}
 
 	func _process(delta: float) -> void:
 		_time += delta
 		for c in _debris:
-			c.a += delta * spin * lerpf(4.5, 1.6, c.h)
+			c.a += delta * spin * lerpf(4.5, 1.4, c.h)
 			c.h += delta * c.speed * grow
 			c.rot += delta * 6.0
 			if c.h > 1.0:
 				c.merge(_new_chunk(0.0), true)
-		queue_redraw()
+		var amb := maxf(lights.ambient, 0.55) if lights else 1.0
+		_body.modulate = Color(amb, amb, amb)
+		_body.set_param("grow", grow)
+		_body.set_param("fade", fade)
+		_body.set_param("lean", lean)
+		_body.set_param("spin", spin)
+		_back.queue_redraw()
+		_front.queue_redraw()
 
-	func _radius(k: float) -> float:
-		return lerpf(10.0, 78.0, pow(k, 1.35))
+	## Funnel radius in px at height fraction k (matches the shader).
+	func radius(k: float) -> float:
+		return lerpf(BASE_R, TOP_R, pow(clampf(k, 0.0, 1.2), 1.4)) * lerpf(0.35, 1.0, grow)
 
-	func _center(k: float) -> Vector2:
-		var sway := sin(_time * 1.3 + k * 2.4) * 10.0 * k + lean * k * k
-		return Vector2(sway, -k * FUNNEL_HEIGHT * grow)
+	func center(k: float) -> Vector2:
+		return Vector2(sin(_body.age * 1.3 + k * 2.4) * 8.0 * k + lean * k * k, -k * FUNNEL_HEIGHT * grow)
 
-	func _draw() -> void:
+	func draw_debris(layer: Node2D, front: bool) -> void:
 		if grow <= 0.01 or fade <= 0.0:
 			return
 		var amb := maxf(lights.ambient, 0.55) if lights else 1.0
-		var levels := 22
-		# Translucent dusty body between the silhouette edges.
-		var left := PackedVector2Array()
-		var right := PackedVector2Array()
-		for i in levels + 1:
-			var k := float(i) / levels
-			var c := _center(k)
-			var r := _radius(k) * grow
-			left.append(c - Vector2(r, 0))
-			right.append(c + Vector2(r, 0))
-		for i in levels:
-			var col := Color(BODY * amb, 0.42 * fade * (1.0 - float(i) / levels * 0.35))
-			draw_primitive(PackedVector2Array([left[i], left[i + 1], right[i + 1], right[i]]),
-				PackedColorArray([col, col, col, col]), PackedVector2Array())
-			# Darker core column and bright rim streaks give the funnel volume.
-			var core := Color(0.42, 0.44, 0.5, 0.35 * fade)
-			var ml := left[i].lerp(right[i], 0.38)
-			var mr := left[i].lerp(right[i], 0.62)
-			var ml2 := left[i + 1].lerp(right[i + 1], 0.38)
-			var mr2 := left[i + 1].lerp(right[i + 1], 0.62)
-			draw_primitive(PackedVector2Array([ml, ml2, mr2, mr]), PackedColorArray([core, core, core, core]),
-				PackedVector2Array())
-			var rim := Color(RIBBON * amb, 0.7 * fade)
-			draw_line(left[i].round(), left[i + 1].round(), rim, -1.0)
-			draw_line(right[i].round(), right[i + 1].round(), Color(RIBBON_DIM * amb, 0.6 * fade), -1.0)
-		# Back half of the ribbons and debris, then front.
-		for pass_i in 2:
-			var front := pass_i == 1
-			for i in levels:
-				var k := (i + 0.5) / levels
-				_ribbon(k, front, amb)
-			for c in _debris:
-				var is_front := sin(c.a) > 0.0
-				if is_front == front:
-					_chunk(c, amb)
-
-	func _ribbon(k: float, front: bool, amb: float) -> void:
-		var c := _center(k)
-		var rx := _radius(k) * grow
-		var ry := rx * 0.34
-		var col := Color(RIBBON * amb, fade * (1.0 if front else 0.45))
-		# Dashed ribbon segments rotating around the funnel, faster low down.
-		var phase := _time * spin * lerpf(5.0, 2.0, k) + k * 7.0
-		var dashes := 4
-		for d in dashes:
-			var a0 := phase + TAU * d / dashes
-			var a1 := a0 + lerpf(1.2, 1.9, k)
-			var steps := 8
-			var prev := Vector2.ZERO
-			for s in steps + 1:
-				var a := lerpf(a0, a1, float(s) / steps)
-				var p := c + Vector2(cos(a) * rx, sin(a) * ry)
-				var in_front := sin(a) > 0.0
-				if s > 0 and in_front == front:
-					draw_line(prev.round(), p.round(), col, -1.0)
-					draw_line(prev.round() + Vector2(0, 1), p.round() + Vector2(0, 1), Color(RIBBON_DIM * amb, col.a * 0.8), -1.0)
-					if front:
-						draw_line(prev.round() + Vector2(0, -1), p.round() + Vector2(0, -1), Color(1, 1, 1, col.a * 0.55), -1.0)
-				prev = p
-
-	func _chunk(c: Dictionary, amb: float) -> void:
-		var k: float = c.h
-		var center := _center(k)
-		var r: float = _radius(k) * grow * c.orbit
-		var p := center + Vector2(cos(c.a) * r, sin(c.a) * r * 0.34)
-		var col: Color = DEBRIS[c.kind] * amb * (1.0 if sin(c.a) > 0.0 else 0.7)
-		col.a = fade * clampf(k * 6.0, 0.0, 1.0) * clampf((1.0 - k) * 6.0, 0.0, 1.0)
-		var s: float = c.size
-		if c.plank:
-			var d := Vector2(cos(c.rot), sin(c.rot)) * s * 1.4
-			draw_line((p - d).round(), (p + d).round(), col, -1.0)
-			draw_line((p - d).round() + Vector2(0, 1), (p + d).round() + Vector2(0, 1), col.darkened(0.3), -1.0)
-		else:
-			draw_rect(Rect2((p - Vector2(s, s) * 0.5).round(), Vector2(s, s).round()), col)
-			draw_rect(Rect2((p - Vector2(s, s) * 0.5).round(), Vector2(roundf(s), 1)), col.lightened(0.25))
+		for c in _debris:
+			if (sin(c.a) > 0.0) != front:
+				continue
+			var k: float = c.h
+			var r: float = radius(k) * c.orbit
+			var p := center(k) + Vector2(cos(c.a) * r, sin(c.a) * r * 0.32)
+			var col: Color = DEBRIS[c.kind] * amb * (1.0 if front else 0.7)
+			col.a = fade * clampf(k * 6.0, 0.0, 1.0) * clampf((1.0 - k) * 6.0, 0.0, 1.0)
+			var s: float = c.size
+			if c.plank:
+				var d := Vector2(cos(c.rot), sin(c.rot)) * s * 1.6
+				var n := d.orthogonal().normalized()
+				for w in 3:
+					var shade := col.lightened(0.2) if w == 0 else (col if w == 1 else col.darkened(0.35))
+					layer.draw_line((p - d + n * (w - 1)).round(), (p + d + n * (w - 1)).round(), shade, -1.0)
+			else:
+				var q := PackedVector2Array()
+				for i in 5:
+					var a: float = c.rot + TAU * i / 5.0
+					q.append(p + Vector2(cos(a), sin(a)) * s * (0.5 + 0.15 * sin(i * 2.3 + c.kind)))
+				layer.draw_colored_polygon(q, Color(0.1, 0.08, 0.08, col.a))
+				var inner := PackedVector2Array()
+				for v in q:
+					inner.append(p + (v - p) * 0.75 + Vector2(-0.5, -0.5))
+				layer.draw_colored_polygon(inner, col)
 
 	func release_debris(overhead: Node, back: Node) -> void:
 		# Everything in the funnel drops out at once.
@@ -152,11 +132,21 @@ class Funnel:
 		overhead.add_child(p)
 		for c in _debris:
 			var k: float = c.h
-			var r: float = _radius(k) * grow * c.orbit
-			var off := _center(k) + Vector2(cos(c.a) * r, 0)
-			p.burst(1, {"offset": Vector2(off.x, 0), "velocity": Vector2(-sin(c.a), cos(c.a) * 0.5) * 90.0,
+			var r: float = radius(k) * c.orbit
+			var off := center(k) + Vector2(cos(c.a) * r, 0)
+			p.burst(1, {"offset": Vector2(off.x, 0), "velocity": Vector2(-sin(c.a), cos(c.a) * 0.5) * 110.0,
 				"alt": Vector2(k * FUNNEL_HEIGHT, k * FUNNEL_HEIGHT), "alt_speed": Vector2(-20, 40),
-				"life": Vector2(1.0, 1.8), "size": Vector2(1.5, 4.0)})
+				"life": Vector2(1.0, 1.8), "size": Vector2(2.0, 5.0)})
+
+
+class DebrisLayer:
+	extends Node2D
+
+	var funnel: Funnel
+	var front := false
+
+	func _draw() -> void:
+		funnel.draw_debris(self, front)
 
 
 var _dir := Vector2(1, 0)
@@ -170,6 +160,8 @@ var _wind: Node
 var _pulling := false
 var _next_scar := 0.0
 var _flung := 0
+## Enemies spiralling up the funnel: {e, t, a}.
+var _captured: Array[Dictionary] = []
 
 
 func _build() -> void:
@@ -208,7 +200,8 @@ func _form() -> void:
 	_funnel.ground_pos = origin
 	_funnel.position = Iso.ground_to_screen(origin)
 	_funnel.setup()
-	track(_funnel, ctx.world)
+	# Overhead like the other titans: long castle walls sort badly against a 240 px tall funnel.
+	track(_funnel, ctx.overhead_back)
 	create_tween().tween_property(_funnel, "grow", 1.0, FORM_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	ctx.shake.add_trauma(0.4)
 	var ring := FxParts.shockwave(self, origin, 2.6, Set2Parts.WIND)
@@ -249,11 +242,29 @@ func _fx_process(delta: float) -> void:
 		return
 	var strength := curve([[T_FORM, 0.5], [T_FORM + FORM_TIME, 2.6], [T_END, 3.0]])
 	ctx.field.pull(_center, PULL_RADIUS, strength, 1.4, delta)
+	# Enemies reaching the core are caught: they circle up the funnel, then get flung out.
 	for e in ctx.field.in_radius(_center, CORE_RADIUS):
-		ctx.field.kill(e, &"wind", _center - _dir.orthogonal() * (1.0 if _flung % 2 == 0 else -1.0))
-		_flung += 1
-		if _flung % 3 == 0:
-			ctx.play(&"tn_gust", _center, -10.0)
+		if not _captured.any(func(c): return c.e == e):
+			var rel := e.ground_pos - _center
+			_captured.append({"e": e, "t": 0.0, "a": rel.angle() if rel.length() > 0.01 else ctx.rng.randf() * TAU})
+	var keep: Array[Dictionary] = []
+	for c in _captured:
+		var e: DummyEnemy = c.e
+		if not is_instance_valid(e) or not e.is_alive():
+			continue
+		c.t += delta
+		var k: float = clampf(c.t / CAPTURE_TIME, 0.0, 1.0)
+		c.a += delta * lerpf(9.0, 4.0, k)
+		var height := k * FUNNEL_HEIGHT * 0.7
+		# Funnel radius at that height, px -> ground units (a ground unit is ~36 px across).
+		var r := _funnel.radius(height / FUNNEL_HEIGHT) * 0.8 / 36.0
+		e.ground_pos = _center + Vector2(cos(c.a), sin(c.a)) * r
+		e.lift_target = height
+		if k >= 1.0:
+			_fling(e)
+		else:
+			keep.append(c)
+	_captured = keep
 	ctx.env.damage_radius(_center, 1.1, 140.0 * delta, &"wind")
 	ctx.env.shake_radius(_center, PULL_RADIUS, 1.5)
 	ctx.shake.add_trauma(0.25 * delta)
@@ -270,8 +281,19 @@ func _fx_process(delta: float) -> void:
 		trail.streak_len = 0.12
 
 
+func _fling(e: DummyEnemy) -> void:
+	ctx.field.kill(e, &"wind", _center - _dir.orthogonal() * (1.0 if _flung % 2 == 0 else -1.0))
+	_flung += 1
+	if _flung % 3 == 0:
+		ctx.play(&"tn_gust", _center, -10.0)
+
+
 func _dissipate() -> void:
 	_pulling = false
+	for c in _captured:
+		if is_instance_valid(c.e) and (c.e as DummyEnemy).is_alive():
+			_fling(c.e)
+	_captured.clear()
 	ctx.play(&"tn_dissipate", _center)
 	ctx.fade_out(_wind, 1.0)
 	ctx.field.release_all()

@@ -44,6 +44,8 @@ var rng := RandomNumberGenerator.new()
 var lights: LightField
 var blocked: Callable
 var look := Look.TROOPER
+## Height in px a pulled enemy is hoisted to (a tornado carries them up its funnel).
+var lift_target := 3.0
 
 var _velocity := Vector2.ZERO
 var _target := Vector2.ZERO
@@ -115,7 +117,7 @@ func tick(delta: float) -> void:
 				_pick_target()
 		State.PULLED:
 			_anim += delta * 3.0
-			_lift = move_toward(_lift, 3.0, 12.0 * delta)
+			_lift = move_toward(_lift, lift_target, maxf(12.0, lift_target * 3.0) * delta)
 		State.DEAD:
 			_tick_death(delta)
 	if state != State.PULLED:
@@ -204,6 +206,7 @@ func pull_step(center: Vector2, strength: float, swirl: float, delta: float) -> 
 func release() -> void:
 	if state == State.PULLED:
 		state = State.WANDER
+		lift_target = 3.0
 		_pick_target()
 
 
@@ -230,7 +233,8 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 				&"water": [1.3, 0.35, 0.6], &"wind": [0.7, 2.2, 2.2]}[kind]
 			_fly_vel = away * rng.randf_range(60.0, 150.0) * cfg[0]
 			_valt = rng.randf_range(90.0, 190.0) * cfg[1]
-			_alt = 1.0
+			# Enemies already hoisted (tornado) launch from where they are.
+			_alt = maxf(1.0, _lift)
 			_spin = rng.randf_range(8.0, 16.0) * cfg[2] * (1.0 if away.x >= 0.0 else -1.0)
 			if kind == &"lightning":
 				_flash = 0.18
@@ -318,6 +322,13 @@ func _draw() -> void:
 				_draw_shatter()
 			_:
 				_draw_corpse()
+		return
+	if _lift > 8.0:
+		# Hoisted and tumbling.
+		draw_rect(Rect2(-4, -1, 9, 2), Color(0, 0, 0, 0.35 * clampf(1.0 - _lift / 80.0, 0.2, 1.0)))
+		draw_set_transform(Vector2(0, -_lift - 7.0).round(), _anim * 1.4)
+		_draw_body(7, 0)
+		draw_set_transform(Vector2.ZERO)
 		return
 	draw_rect(Rect2(-4, -1, 9, 2), COL_SHADOW)
 	_draw_body(-int(round(_lift)), 0)

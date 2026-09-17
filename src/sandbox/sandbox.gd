@@ -19,7 +19,7 @@ const EFFECTS := [
 	{"set": 1, "key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd", "lane": true, "focus_along": 0.0, "zoom": 1.25},
 	{"set": 1, "key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd", "zoom": 1.25, "focus_up": -50.0},
 	{"set": 1, "key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd", "lane": true, "focus_along": 5.0, "focus_up": -30.0, "zoom": 1.0},
-	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true, "focus_along": 4.0, "focus_up": -60.0, "zoom": 1.0},
+	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "lane": true, "focus_along": 3.0, "focus_up": -120.0, "zoom": 1.0},
 	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -110.0, "zoom": 1.0},
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "lane": true, "focus_along": 1.2, "focus_up": -110.0, "zoom": 1.0},
 ]

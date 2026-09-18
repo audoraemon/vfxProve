@@ -30,7 +30,7 @@ const CAPTURES := {
 	"orbital": {"target": Vector2(0, 0), "times": [2.6, 3.4]},
 	"gravity": {"target": Vector2(0, 0), "times": [1.5, 2.6, 3.6, 4.02, 4.2, 4.5, 5.5]},
 	"laser": {"target": Vector2(-4.5, 0), "dir": Vector2(1, 0), "times": [1.9, 2.8, 3.8, 4.8, 5.4, 6.2, 7.0]},
-	"heaven": {"target": Vector2(0, 0), "dir": Vector2(1, 0), "times": [1.0, 1.45, 1.75, 2.5, 3.0, 3.5, 5.0, 7.5]},
+	"heaven": {"target": Vector2(0, 0), "dir": Vector2(1, 0), "times": [1.0, 1.3, 1.5, 1.75, 2.3, 2.8, 3.1, 3.45, 5.0, 7.0]},
 	"cinder": {"target": Vector2(0, 0), "times": [1.0, 1.8, 2.7, 3.2, 4.2, 5.4, 6.6, 8.6, 10.2]},
 	"tsunami": {"target": Vector2(-3.0, 0.5), "dir": Vector2(1, 0), "times": [0.8, 1.6, 2.6, 3.4, 4.1, 4.5, 6.5, 8.5]},
 	"tornado": {"target": Vector2(0, 0), "times": [0.8, 1.6, 2.6, 4.5, 6.5, 8.5, 10.5, 11.6, 13.0]},

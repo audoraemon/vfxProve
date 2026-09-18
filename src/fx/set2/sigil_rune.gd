@@ -43,7 +43,7 @@ func _draw() -> void:
 	_ring(ri * 0.95, dim, 1)
 	match glyph:
 		"storm":
-			_draw_storm(ri, c, hi)
+			_draw_storm(r, ri, c, hi)
 		"magma":
 			_draw_magma(ri, c, hi)
 		"spiral":
@@ -65,18 +65,30 @@ func _thick(a: Vector2, b: Vector2, col: Color) -> void:
 	draw_line(a + n, b + n, col, -1.0)
 
 
-func _draw_storm(ri: float, c: Color, hi: Color) -> void:
-	# Eight-point compass star with a lightning glyph in the middle.
-	for i in 8:
-		var d := Vector2.RIGHT.rotated(TAU * i / 8.0)
-		var arm := ri * (0.9 if i % 2 == 0 else 0.55)
-		_thick(d * ri * 0.18, d * arm, c)
-		_thick(d * arm, d.rotated(0.18) * arm * 0.72, c)
-		_thick(d * arm, d.rotated(-0.18) * arm * 0.72, c)
-	var s := ri * 0.28
-	var pts := [Vector2(0.15, -1), Vector2(-0.35, 0.05), Vector2(0.1, 0.05), Vector2(-0.2, 1)]
-	for i in pts.size() - 1:
-		_thick(pts[i] * s, pts[i + 1] * s, hi)
+func _draw_storm(r: float, ri: float, c: Color, hi: Color) -> void:
+	# Glowing halo round the outer ring.
+	for k in 4:
+		var off := 0.03 + k * 0.035
+		var halo := Color(color, alpha * (0.5 - k * 0.11))
+		draw_arc(Vector2.ZERO, r + off, 0.0, TAU, 72, halo, -1.0)
+		draw_arc(Vector2.ZERO, r - off, 0.0, TAU, 72, halo, -1.0)
+	# Dotted rune ring and a middle ring.
+	for i in 48:
+		var d := Vector2.RIGHT.rotated(-_time * 0.5 + TAU * i / 48.0)
+		draw_rect(Rect2(d * r * 0.8 - Vector2(0.025, 0.025), Vector2(0.05, 0.05)), hi if i % 4 == 0 else c)
+	_ring(ri * 0.62, c, 2)
+	# Compass spikes piercing out past the ring, short ticks between them.
+	for i in 4:
+		var d := Vector2.RIGHT.rotated(TAU * i / 4.0)
+		var n := d.orthogonal()
+		draw_colored_polygon(PackedVector2Array([d * r * 0.16 + n * r * 0.05, d * r * 1.3, d * r * 0.16 - n * r * 0.05]),
+			Color(color.lightened(0.3), alpha * 0.75))
+		_thick(d * r * 0.16, d * r * 1.3, hi)
+		var diag := d.rotated(TAU / 8.0)
+		_thick(diag * ri * 0.5, diag * ri * 0.95, c)
+	# Bright eye in the middle.
+	draw_circle(Vector2.ZERO, r * 0.11, Color(color.lightened(0.75), alpha))
+	_ring(r * 0.18, hi, 2)
 
 
 func _draw_magma(ri: float, c: Color, hi: Color) -> void:

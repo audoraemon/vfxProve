@@ -1,3 +1,5 @@
 .godot/
 captures/
 *.tmp
+.superpowers/
+assets/pixellab/icons/candidates/

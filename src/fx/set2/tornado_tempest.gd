@@ -1,7 +1,7 @@
 extends FxTimeline
-## Tornado Tempest: spiral wind rune and suction ring -> a tornado forms from swirling dust -> it wanders slowly
-## across the battlefield in random directions for about ten seconds, pulling enemies, rocks and planks into its
-## spiral -> it unravels, dropping debris, leaving dust clouds, wind ribbons and a scarred trail.
+## Tornado Tempest: spiral wind rune and suction ring -> a tornado forms from swirling dust -> for about ten seconds
+## it roams across the battlefield from spot to spot in random directions, pulling enemies, rocks and planks into
+## its spiral -> it unravels, dropping debris, leaving dust clouds, wind ribbons and a scarred trail.
 
 const PULL_RADIUS := 3.2
 const CORE_RADIUS := 0.6
@@ -13,12 +13,15 @@ const T_END := T_FORM + LIFETIME
 const FUNNEL_HEIGHT := 250.0
 ## Seconds a captured enemy spirals up the funnel before it is flung out.
 const CAPTURE_TIME := 1.1
-## Wandering: slow ground speed, how often it picks a new turn, and how far it strays from the cast point.
+## Roaming: ground speed, fastest turn (radians/s), how far each leg reaches (min, max ground units), how far it
+## may stray from the cast point and how much each leg snakes from side to side.
 const WANDER_SPEED := 1.4
-const WANDER_TURN_EVERY := 1.0
-const WANDER_RADIUS := 4.8
-## Keep inside the play area.
-const WANDER_BOUNDS := 6.0
+const WANDER_TURN_RATE := 1.4
+const WANDER_LEG := Vector2(2.5, 6.0)
+const WANDER_RADIUS := 7.0
+const WANDER_SWAY := 0.5
+## Roaming targets stay inside this square so it keeps to the play area.
+const WANDER_BOUNDS := 5.5
 const WARM_LIGHT := Color(1.0, 0.78, 0.45)
 
 
@@ -214,11 +217,13 @@ var _pulling := false
 var _flung := 0
 ## Enemies spiralling up the funnel: {e, t, a}.
 var _captured: Array[Dictionary] = []
-## Wandering state: heading (ground radians), current and target turn rate, distance walked, path samples.
+## Roaming state: heading (ground radians), current target spot and when to give up on it, sway phase, speed,
+## distance walked and path samples.
 var _heading := 0.0
-var _turn := 0.0
-var _turn_target := 0.0
-var _next_turn := 0.0
+var _goal := Vector2.ZERO
+var _has_goal := false
+var _leg_end := 0.0
+var _sway_phase := 0.0
 var _speed := 0.0
 var _walked := 0.0
 var _next_scar := 0.0
@@ -229,6 +234,7 @@ func _build() -> void:
 	duration = T_END + 2.8
 	_center = origin
 	_heading = ctx.rng.randf() * TAU
+	_sway_phase = ctx.rng.randf() * TAU
 	_sigil = Set2Parts.sigil(self, origin, 2.4, Color("dfeaf5"), "spiral")
 	_suction = FxParts.rings(self, origin, PULL_RADIUS, Color("cfdcea"), 3, 26.0)
 	_suction.z_index = 8
@@ -291,24 +297,48 @@ func _form() -> void:
 	_pulling = true
 
 
-## Slow random walk: the heading drifts on a turn rate that changes every so often; a soft leash turns it back
-## toward the cast point when it strays, and it stays inside the play area.
+## Roaming: the tornado heads for a far-off spot it has not visited yet, snaking from side to side on the way, then
+## picks the next one, so over its lifetime it sweeps across the field instead of circling one place.
 func _wander(delta: float) -> void:
-	if t >= _next_turn:
-		_next_turn = t + WANDER_TURN_EVERY * ctx.rng.randf_range(0.7, 1.3)
-		_turn_target = ctx.rng.randf_range(-2.2, 2.2)
-	_turn = move_toward(_turn, _turn_target, 2.4 * delta)
-	_heading += _turn * delta
-	var home := origin - _center
-	var stray := clampf((home.length() - WANDER_RADIUS * 0.55) / (WANDER_RADIUS * 0.45), 0.0, 1.0)
-	var edge := clampf((maxf(absf(_center.x), absf(_center.y)) - (WANDER_BOUNDS - 1.2)) / 1.2, 0.0, 1.0)
-	var pull_home := maxf(stray, edge)
-	if pull_home > 0.0 and home.length() > 0.01:
-		_heading = lerp_angle(_heading, home.angle(), minf(pull_home * 3.0 * delta, 1.0))
-	_speed = move_toward(_speed, WANDER_SPEED * (0.8 + 0.2 * sin(t * 1.7)), 1.8 * delta)
+	if not _has_goal or _center.distance_to(_goal) < 1.0 or t >= _leg_end:
+		_goal = _pick_goal()
+		_has_goal = true
+		_leg_end = t + _center.distance_to(_goal) / WANDER_SPEED * 1.6 + 1.0
+	var to := _goal - _center
+	var sway := WANDER_SWAY * (0.65 * sin(t * 1.9 + _sway_phase) + 0.35 * sin(t * 3.1 + _sway_phase * 1.7))
+	var want := to.angle() + sway * minf(to.length() / 2.0, 1.0)
+	var diff := angle_difference(_heading, want)
+	_heading += clampf(diff, -WANDER_TURN_RATE * delta, WANDER_TURN_RATE * delta)
+	# Eases off a little through sharp turns.
+	var target := WANDER_SPEED * (0.85 + 0.15 * sin(t * 1.7)) * (1.0 - 0.3 * minf(absf(diff) / 1.5, 1.0))
+	_speed = move_toward(_speed, target, 1.8 * delta)
 	var step := Vector2.from_angle(_heading) * _speed * delta
 	_center += step
 	_walked += step.length()
+
+
+## Next roaming target: of a handful of random spots in the play area, the one farthest from everywhere the tornado
+## has been so far, without doubling straight back.
+func _pick_goal() -> Vector2:
+	var best := Vector2.ZERO
+	var best_score := -INF
+	for i in 16:
+		var g := Vector2(ctx.rng.randf_range(-WANDER_BOUNDS, WANDER_BOUNDS), ctx.rng.randf_range(-WANDER_BOUNDS, WANDER_BOUNDS))
+		var d := _center.distance_to(g)
+		if g.distance_to(origin) > WANDER_RADIUS or d < WANDER_LEG.x or d > WANDER_LEG.y:
+			continue
+		var fresh := g.distance_to(origin)
+		for p in _path:
+			fresh = minf(fresh, g.distance_to(p))
+		var turn := absf(angle_difference(_heading, (g - _center).angle()))
+		var score := fresh - maxf(turn - 1.6, 0.0) * 1.5 + ctx.rng.randf() * 0.8
+		if score > best_score:
+			best_score = score
+			best = g
+	if best_score == -INF:
+		# Cast out past the edge of the field: head back into it.
+		best = Vector2(ctx.rng.randf_range(-2.0, 2.0), ctx.rng.randf_range(-2.0, 2.0))
+	return best
 
 
 func _fx_process(delta: float) -> void:

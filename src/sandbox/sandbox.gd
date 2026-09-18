@@ -42,6 +42,8 @@ const CAPTURES := {
 const ENEMY_COUNT := 40
 const PAN_SPEED := 240.0
 const LASER_DRAG_MIN := 0.5
+## How far (px) a followed effect may drift from the screen centre before the camera moves after it.
+const FOLLOW_SLACK := Vector2(120, 24)
 
 var ctx := FxContext.new()
 var selected := 0
@@ -65,6 +67,8 @@ var _camera_tween: Tween
 ## Effect the camera keeps following (entries with "follow"), and how far above its ground point to look.
 var _follow_fx: FxTimeline
 var _follow_up := 0.0
+## 0..1: ramps up once the follow camera has centred on the cast, letting the effect roam inside FOLLOW_SLACK.
+var _follow_slack := 0.0
 
 
 func _ready() -> void:
@@ -304,6 +308,7 @@ func _focus_camera(entry: Dictionary, fx: FxTimeline, ground: Vector2, extra: Di
 		# Moving skills: _process eases the camera after the effect instead of tweening to a fixed spot.
 		_follow_fx = fx
 		_follow_up = float(entry.get("focus_up", -40.0))
+		_follow_slack = 0.0
 	else:
 		_camera_tween.tween_property(_camera, "position", target.round(), FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_camera_tween.tween_property(_camera, "zoom", Vector2.ONE * zoom, FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -378,7 +383,14 @@ func _process(delta: float) -> void:
 	if is_instance_valid(_follow_fx) and _follow_fx.is_inside_tree():
 		var real := delta / maxf(Engine.time_scale, 0.001)
 		var goal := Iso.ground_to_screen(_follow_fx.camera_focus()) + Vector2(0, _follow_up)
-		_camera.position = _camera.position.lerp(goal, minf(4.0 * real, 1.0))
+		# Centre on the cast first, then only chase the effect once it drifts out of a dead zone, so its travel
+		# shows on screen instead of the ground sliding under a pinned effect.
+		var off := goal - _camera.position
+		if _follow_slack > 0.0 or off.length() < 6.0:
+			_follow_slack = move_toward(_follow_slack, 1.0, real / 1.5)
+		var slack := FOLLOW_SLACK * _follow_slack
+		var chase := Vector2(signf(off.x) * maxf(absf(off.x) - slack.x, 0.0), signf(off.y) * maxf(absf(off.y) - slack.y, 0.0))
+		_camera.position = _camera.position.lerp(_camera.position + chase, minf(4.0 * real, 1.0))
 	if _pressing:
 		_drag_preview.queue_redraw()
 	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85

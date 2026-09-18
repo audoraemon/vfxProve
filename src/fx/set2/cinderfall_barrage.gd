@@ -20,18 +20,27 @@ const ASH_SMOKE := [Color(0.42, 0.37, 0.36, 0.85), Color(0.36, 0.33, 0.33, 0.85)
 	Color(0.27, 0.26, 0.28, 0.55), Color(0.24, 0.23, 0.26, 0.3)]
 
 
-## Volcano: PixelLab-drawn mountain of dark rock slabs with glowing lava between them (`volcano_sprite.gdshader`).
-## It thrusts up out of the ground, clipped at the ground line and shaking as it climbs; its lava pulses and
-## flickers, `erupting` fans flames out of the crater, `heat` cools the lava and `sink` lowers it back underground.
+## Volcano: PixelLab-drawn mountain of dark rock slabs with glowing lava between them (`volcano_sprite.gdshader`),
+## animated with two PixelLab clips. Rising, a low mound slides up out of the ground (clipped at the ground line)
+## and the rise clip grows it into the peak; standing, the idle clip keeps lava flowing and the crater bubbling;
+## sinking plays the rise backwards and drops it underground. `erupting` fans flames out of the crater and `heat`
+## cools the lava.
 class Volcano:
 	extends Node2D
 
-	const TEX := preload("res://assets/pixellab/volcano/volcano.png")
+	const RISE_STRIP := preload("res://assets/pixellab/volcano/volcano_rise.png")
+	const IDLE_STRIP := preload("res://assets/pixellab/volcano/volcano_idle.png")
 	const SH := preload("res://shaders/volcano_sprite.gdshader")
+	const FRAME := 168
 	const SCALE := 1.4
-	## Sprite rows (px from the top): where the middle of the mountain's base meets the ground, and its lowest pixel.
+	const IDLE_FPS := 8.0
+	## Share of the rise spent sliding the mound up out of the ground before the peak starts growing.
+	const EMERGE := 0.25
+	## Sprite rows (px from the top): where the middle of the mountain's base meets the ground, its lowest pixel, and
+	## the top of the mound in the first rise frame.
 	const BASE_Y := 118.0
 	const BOTTOM_Y := 160.0
+	const MOUND_TOP := 96.0
 	## Crater mouth in sprite px.
 	const CRATER := Vector2(82, 37)
 
@@ -43,8 +52,12 @@ class Volcano:
 	var ground_pos := Vector2.ZERO
 	var _mat: ShaderMaterial
 	var _time := 0.0
+	var _rise_frames := 1
+	var _idle_frames := 1
 
 	func _ready() -> void:
+		_rise_frames = int(RISE_STRIP.get_width() / float(FRAME))
+		_idle_frames = int(IDLE_STRIP.get_width() / float(FRAME))
 		_mat = ShaderMaterial.new()
 		_mat.shader = SH
 		_mat.set_shader_parameter(&"clip_y", (BOTTOM_Y - BASE_Y) * SCALE)
@@ -58,17 +71,31 @@ class Volcano:
 		_mat.set_shader_parameter(&"ambient", lerpf(0.8, 1.0, lights.ambient) if lights else 1.0)
 		queue_redraw()
 
-	## How far below its resting place the sprite is drawn: it climbs out while rising and sinks back at the end.
+	## How grown the volcano is: 0 underground, 1 standing. Rising grows it, sinking shrinks it again.
+	func _grown() -> float:
+		return clampf(rise, 0.0, 1.0) * (1.0 - clampf(sink, 0.0, 1.0))
+
+	## How far below its resting place the sprite is drawn while the mound slides up out of (or back into) the ground.
 	func _drop() -> float:
-		return (BOTTOM_Y + 4.0) * SCALE * ((1.0 - rise) + sink)
+		var g := _grown()
+		return 0.0 if g >= EMERGE else (1.0 - g / EMERGE) * (BOTTOM_Y - MOUND_TOP + 4.0) * SCALE
 
 	func _draw() -> void:
-		if rise <= 0.001 or sink >= 0.999:
+		var g := _grown()
+		if g <= 0.001:
 			return
-		var size := TEX.get_size() * SCALE
+		var tex: Texture2D = RISE_STRIP
+		var frame := 0
+		if rise >= 1.0 and sink <= 0.0:
+			tex = IDLE_STRIP
+			frame = int(_time * IDLE_FPS) % maxi(_idle_frames - 1, 1)
+		elif g > EMERGE:
+			frame = int(round((g - EMERGE) / (1.0 - EMERGE) * (_rise_frames - 1)))
+		var size := Vector2(FRAME, FRAME) * SCALE
 		var moving := rise < 1.0 or sink > 0.0
 		var shake := Vector2(sin(_time * 53.0), cos(_time * 41.0)) * 1.5 if moving else Vector2.ZERO
-		draw_texture_rect(TEX, Rect2((Vector2(-size.x * 0.5, -BASE_Y * SCALE + _drop()) + shake).round(), size), false)
+		var dest := Rect2((Vector2(-size.x * 0.5, -BASE_Y * SCALE + _drop()) + shake).round(), size)
+		draw_texture_rect_region(tex, dest, Rect2(frame * FRAME, 0, FRAME, FRAME))
 		_draw_flames()
 
 	## Flames licking up out of the crater while it erupts.
@@ -88,7 +115,7 @@ class Volcano:
 				base + Vector2(2.5, 0)]), Color(1.0, 0.86, 0.45))
 
 	func crater_top() -> Vector2:
-		return position + Vector2((CRATER.x - TEX.get_width() * 0.5) * SCALE, (CRATER.y - BASE_Y) * SCALE + _drop())
+		return position + Vector2((CRATER.x - FRAME * 0.5) * SCALE, (CRATER.y - BASE_Y) * SCALE + _drop())
 
 
 ## Flaming boulder: dark cracked rock glowing through molten seams, wrapped in fire that streams into a long tail.
@@ -162,6 +189,8 @@ var _sigil: SigilRune
 var _volcano: Volcano
 var _cracks: CrackNet
 var _glow: QuadFx
+## World layer just behind the volcano: what the crater throws out rises from behind its rim instead of covering it.
+var _behind: Node2D
 var _plume: PixelParticles
 var _lava_voice: Node
 var _quake := 0.0
@@ -234,18 +263,44 @@ func _rise() -> void:
 	crater.z_index = 1
 	crater.tween_param("heat", 1.0, 0.3, 6.0)
 	crater.tween_param("fade", 1.0, 0.0, 1.2, duration - t - 1.3)
-	# Rock tearing loose as the mountain shoulders up.
-	for k in 6:
-		at(t + k * 0.2, func():
-			FxParts.debris(self, _center_px, 14, FxParts.PX_PER_UNIT_MAJOR * 1.6, Vector2(60, 220), FxParts.HOT_ROCK,
-				Vector2(2.5, 6.0), true)
-			FxParts.smoke(self, _center_px, FxParts.PX_PER_UNIT_MAJOR * 1.9, 18.0, 0.25, Vector2(10, 30), Vector2(4, 8),
-				Vector2(1.0, 1.8), Color(0, 0, 0, 0), Set2Parts.DUST_CLOUD))
+	_behind = Node2D.new()
+	_behind.z_index = -1
+	track(_behind, ctx.world)
+	# Rock and dust tearing loose round the foot of the mountain as it shoulders up.
+	for k in 3:
+		at(t + k * 0.3, _rise_burst)
 	for e in ctx.field.in_radius(origin, VOLCANO_RADIUS + 0.3):
 		ctx.field.kill(e, &"stone", origin)
 	ctx.field.knock_from(origin, VOLCANO_RADIUS + 0.3, VOLCANO_RADIUS + 2.0, 6.0)
 	ctx.env.damage_radius(origin, VOLCANO_RADIUS + 0.3, 99999.0, &"stone")
 	at(t + RISE_TIME, func(): _quake = 0.2)
+
+
+## Rocks and dust bursting out round the rim of the volcano's base, thrown outward; the far side of the rim goes
+## behind the mountain so none of it covers its face.
+func _rise_burst() -> void:
+	for i in 9:
+		var a := TAU * (i + ctx.rng.randf()) / 9.0
+		var sp := Iso.ground_to_screen(origin + Vector2.from_angle(a) * VOLCANO_RADIUS * 0.95)
+		var off := sp - _center_px
+		var out_angle := atan2(off.y * 2.0, off.x)
+		var layer: Node = _behind if off.y < 0.0 else ctx.overhead
+		var rocks := FxParts.particles(self, layer, sp, PixelParticles.Shape.CHUNK, FxParts.HOT_ROCK)
+		rocks.gravity = 420.0
+		rocks.bounce = true
+		rocks.drag = 0.6
+		rocks.shadows = true
+		rocks.burst(3, {
+			"radius": 6.0, "speed": Vector2(60, 160), "angle": Vector2(out_angle - 0.5, out_angle + 0.5),
+			"alt": Vector2(0, 6), "alt_speed": Vector2(60, 200), "life": Vector2(0.8, 1.6), "size": Vector2(2.5, 5.0),
+		})
+		var dust := FxParts.particles(self, layer, sp, PixelParticles.Shape.PUFF, Set2Parts.DUST_CLOUD)
+		dust.drag = 1.2
+		dust.burst(2, {
+			"radius": 8.0, "speed": Vector2(20, 50), "angle": Vector2(out_angle - 0.6, out_angle + 0.6),
+			"alt": Vector2(0, 6), "alt_speed": Vector2(8, 24), "life": Vector2(0.8, 1.4), "size": Vector2(4, 7),
+			"size_end_mul": 1.6,
+		})
 
 
 func _erupt() -> void:
@@ -261,33 +316,46 @@ func _erupt() -> void:
 	tw.tween_interval(T_BARRAGE_END - T_ERUPT)
 	tw.tween_property(_volcano, "erupting", 0.0, 1.0)
 	var top := _volcano.crater_top()
-	var bloom := FxParts.bloom(self, top, 70.0, LAVA_LIGHT, 1.0, 0.9)
-	bloom.tween_param("intensity", 1.0, 0.0, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	bloom.life = 0.62
-	var rays := FxParts.screen_rays(self, top, 170.0, Color(1.0, 0.72, 0.38), 36.0, 1.0)
-	rays.tween_param("intensity", 1.2, 0.0, 0.6)
-	rays.life = 0.72
-	# Lava fountain, a spray of hot rock and giant fire stones hurled into the sky.
-	var fountain := FxParts.emitter(self, ctx.overhead, top, PixelParticles.Shape.SQUARE, FxParts.FIRE_LIFE, 170.0, 1.2, {
+	var bloom := FxParts.bloom(self, top, 55.0, LAVA_LIGHT, 0.8, 0.9)
+	bloom.tween_param("intensity", 0.8, 0.0, 0.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	bloom.life = 0.52
+	var rays := FxParts.screen_rays(self, top + Vector2(0, -20), 120.0, Color(1.0, 0.72, 0.38), 30.0, 1.0)
+	rays.set_param("inner", 0.2)
+	rays.tween_param("intensity", 1.0, 0.0, 0.5)
+	rays.life = 0.55
+	# Behind the volcano, so it all rises out of the crater instead of covering the mountain: a lava fountain, a
+	# spray of hot rock and giant fire stones hurled into the sky.
+	var fountain := FxParts.emitter(self, _behind, top, PixelParticles.Shape.SQUARE, FxParts.FIRE_LIFE, 170.0, 1.2, {
 		"radius": 8.0, "speed": Vector2(20, 120), "alt_speed": Vector2(140, 340), "life": Vector2(0.5, 1.0),
 		"size": Vector2(1, 3),
 	})
 	fountain.gravity = 380.0
-	FxParts.debris(self, top, 55, 10.0, Vector2(50, 230), FxParts.HOT_ROCK, Vector2(2.5, 6.5), true)
+	var rocks := FxParts.particles(self, _behind, top, PixelParticles.Shape.CHUNK, FxParts.HOT_ROCK)
+	rocks.gravity = 420.0
+	rocks.drag = 0.6
+	rocks.burst(55, {
+		"radius": 10.0, "speed": Vector2(50, 230), "alt": Vector2(0, 6), "alt_speed": Vector2(120, 320),
+		"life": Vector2(1.2, 2.2), "size": Vector2(2.5, 6.5), "dir": PixelParticles.Dir.OUTWARD,
+	})
 	for i in 5:
 		var s := FireStone.new()
 		s.size = ctx.rng.randf_range(22.0, 30.0)
 		s.seed = ctx.rng.randf() * 10.0
 		s.dir = Vector2(ctx.rng.randf_range(-0.55, 0.55), -1.0)
 		s.position = top
-		track(s, ctx.overhead)
+		track(s, _behind)
 		var fly := s.create_tween()
 		fly.tween_interval(i * 0.08)
 		fly.tween_property(s, "position", top + Vector2(s.dir.x * 280.0, -420.0), 0.75) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		fly.tween_callback(s.queue_free)
-	_plume = FxParts.smoke(self, top, 16.0, 30.0, duration - t - 2.0, Vector2(50, 110), Vector2(6, 10), Vector2(1.8, 3.0),
-		Color("ff5a1a"), ASH_SMOKE)
+	# Ash plume rising from behind the summit.
+	_plume = FxParts.emitter(self, _behind, top, PixelParticles.Shape.PUFF, ASH_SMOKE, 30.0, duration - t - 2.0, {
+		"radius": 16.0, "speed": Vector2(4, 18), "alt": Vector2(0, 8), "alt_speed": Vector2(50, 110),
+		"life": Vector2(1.8, 3.0), "size": Vector2(6, 10), "size_end_mul": 1.8,
+	})
+	_plume.drag = 0.4
+	_plume.underglow = Color("ff5a1a")
 	_plume.underglow_life = 0.35
 	_lava_voice = ctx.play(&"cf_lava", origin, -6.0)
 

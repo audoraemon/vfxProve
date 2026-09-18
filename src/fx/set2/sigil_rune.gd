@@ -45,7 +45,7 @@ func _draw() -> void:
 		"storm":
 			_draw_storm(r, ri, c, hi)
 		"magma":
-			_draw_magma(ri, c, hi)
+			_draw_magma(r, ri, c, hi)
 		"spiral":
 			_draw_spiral(r, c, hi)
 		"earth":
@@ -91,14 +91,28 @@ func _draw_storm(r: float, ri: float, c: Color, hi: Color) -> void:
 	_ring(r * 0.18, hi, 2)
 
 
-func _draw_magma(ri: float, c: Color, hi: Color) -> void:
-	# Radiating crack spokes and a flame glyph.
+func _draw_magma(r: float, ri: float, c: Color, hi: Color) -> void:
+	# Bold glowing outer and inner rings with a soft halo, a dotted rune ring and a middle ring.
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 96, Color(color, alpha * 0.28), 0.34)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 96, Color(color.lightened(0.25), alpha * 0.9), 0.1)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 96, hi, -1.0)
+	draw_arc(Vector2.ZERO, ri, 0.0, TAU, 72, Color(color, alpha * 0.25), 0.22)
+	draw_arc(Vector2.ZERO, ri, 0.0, TAU, 72, Color(color.lightened(0.25), alpha * 0.85), 0.07)
+	for i in 60:
+		var d := Vector2.RIGHT.rotated(_time * 0.4 + TAU * i / 60.0)
+		draw_rect(Rect2(d * r * 0.8 - Vector2(0.03, 0.03), Vector2(0.06, 0.06)), hi if i % 5 == 0 else c)
+	_ring(r * 0.8 + 0.08, c, 1)
+	_ring(ri * 0.55, hi, 2)
+	# Radial spokes reaching out past the ring, and zig-zag crack spokes inside it.
 	for i in 12:
-		var d := Vector2.RIGHT.rotated(TAU * i / 12.0 + 0.1)
+		var d := Vector2.RIGHT.rotated(TAU * i / 12.0 + 0.13)
+		_thick(d * r * (0.62 if i % 2 == 0 else 0.84), d * r * (1.28 if i % 2 == 0 else 1.1), hi if i % 2 == 0 else c)
 		var p0 := d * ri * 0.3
 		var p1 := p0 + d * ri * 0.3 + d.orthogonal() * ri * 0.06
 		_thick(p0, p1, c)
 		_thick(p1, p1 + d * ri * 0.3 - d.orthogonal() * ri * 0.05, c)
+	# Bright core and a flame glyph.
+	draw_circle(Vector2.ZERO, ri * 0.2, Color(color.lightened(0.6), alpha * 0.9))
 	var s := ri * 0.3
 	var flame := [Vector2(0, -1), Vector2(0.45, -0.1), Vector2(0.35, 0.55), Vector2(0, 0.8), Vector2(-0.35, 0.55),
 		Vector2(-0.45, -0.1), Vector2(-0.1, -0.35), Vector2(0, -1)]

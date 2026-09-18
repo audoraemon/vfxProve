@@ -239,6 +239,10 @@ func _fx_process(delta: float) -> void:
 	if _quake > 0.0:
 		ctx.shake.add_trauma(_quake * delta * 2.0)
 		ctx.env.shake_radius(origin, RADIUS, _quake * 4.0)
+	# Nothing survives inside the standing volcano: whatever wanders into its foot is burned and thrown back out.
+	if _volcano != null and is_instance_valid(_volcano) and _volcano.rise > 0.0 and _volcano.sink < 0.9:
+		for e in ctx.field.in_radius(origin, VOLCANO_RADIUS + 0.3):
+			ctx.field.kill(e, &"cinder", origin)
 
 
 func _rise() -> void:
@@ -271,11 +275,45 @@ func _rise() -> void:
 	# Rock and dust tearing loose round the foot of the mountain as it shoulders up.
 	for k in 3:
 		at(t + k * 0.3, _rise_burst)
+	at(t + RISE_TIME, func(): _quake = 0.2)
+	_break_through()
+
+
+## The ground bursts open where the volcano breaks through: a flash and hitstop, a fire blast with light spikes, a
+## fiery shockwave racing out across the footprint, fireballs, flying rock and sparks. Every enemy inside the
+## footprint dies, every structure it touches is smashed, and the ones just outside are thrown back.
+func _break_through() -> void:
+	ctx.impact.impact_frame(0.05, ctx.impact.focus_of(_center_px), Color(1.0, 0.85, 0.6), Color(0.15, 0.03, 0.0))
+	ctx.impact.hitstop(0.08)
+	ctx.impact.aberration(3.0, 0.4)
+	ctx.flash.call(Color(1.0, 0.6, 0.3, 0.35), 0.3)
+	ctx.shake.add_trauma(1.0)
+	ctx.shake.kick(Vector2(0, -8))
+	var blast := FxParts.bloom(self, _center_px + Vector2(0, -16), 110.0, LAVA_LIGHT, 1.5, 0.8)
+	blast.tween_param("intensity", 1.5, 0.0, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	blast.life = 0.62
+	var spikes := FxParts.screen_rays(self, _center_px + Vector2(0, -10), 170.0, Color(1.0, 0.62, 0.25), 32.0, 0.8)
+	spikes.set_param("inner", 0.08)
+	spikes.tween_param("intensity", 2.0, 0.0, 0.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	spikes.life = 0.52
+	var fire_ring := FxParts.shockwave(self, origin, VOLCANO_RADIUS + 1.2, FxParts.FIRE)
+	fire_ring.z_index = 9
+	fire_ring.set_param("thickness", 0.18)
+	fire_ring.tween_param("progress", 0.05, 1.0, 0.45, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	fire_ring.tween_param("fade", 1.0, 0.0, 0.3, 0.2)
+	fire_ring.life = 0.55
+	var fireball := FxParts.particles(self, ctx.overhead, _center_px, PixelParticles.Shape.PUFF, FxParts.FIRE_LIFE)
+	fireball.drag = 1.8
+	fireball.burst(34, {
+		"radius": 18.0, "dir": PixelParticles.Dir.OUTWARD, "speed": Vector2(80, 230), "alt": Vector2(0, 10),
+		"alt_speed": Vector2(40, 170), "life": Vector2(0.35, 0.75), "size": Vector2(4, 8), "size_end_mul": 1.5,
+	})
+	FxParts.debris(self, _center_px, 36, 22.0, Vector2(120, 320), FxParts.HOT_ROCK, Vector2(3.0, 7.0), true)
+	FxParts.sparks(self, ctx.overhead, _center_px, 70, FxParts.FIRE_LIFE, Vector2(120, 360), Vector2(80, 320))
 	for e in ctx.field.in_radius(origin, VOLCANO_RADIUS + 0.3):
 		ctx.field.kill(e, &"stone", origin)
-	ctx.field.knock_from(origin, VOLCANO_RADIUS + 0.3, VOLCANO_RADIUS + 2.0, 6.0)
+	ctx.field.knock_from(origin, VOLCANO_RADIUS + 0.3, VOLCANO_RADIUS + 2.5, 7.0)
 	ctx.env.damage_radius(origin, VOLCANO_RADIUS + 0.3, 99999.0, &"stone")
-	at(t + RISE_TIME, func(): _quake = 0.2)
 
 
 ## Rocks and dust bursting out round the rim of the volcano's base, thrown outward; the far side of the rim goes

@@ -14,8 +14,8 @@ const FUNNEL_HEIGHT := 250.0
 ## Seconds a captured enemy spirals up the funnel before it is flung out.
 const CAPTURE_TIME := 1.1
 ## Wandering: slow ground speed, how often it picks a new turn, and how far it strays from the cast point.
-const WANDER_SPEED := 0.7
-const WANDER_TURN_EVERY := 1.3
+const WANDER_SPEED := 1.4
+const WANDER_TURN_EVERY := 1.0
 const WANDER_RADIUS := 4.8
 ## Keep inside the play area.
 const WANDER_BOUNDS := 6.0
@@ -39,7 +39,7 @@ class Funnel:
 	var grow := 0.0
 	var fade := 1.0
 	var lean := 0.0
-	var spin := 1.0
+	var spin := 2.0
 	var lights: LightField
 	var ground_pos := Vector2.ZERO
 	var rng: RandomNumberGenerator
@@ -296,16 +296,16 @@ func _form() -> void:
 func _wander(delta: float) -> void:
 	if t >= _next_turn:
 		_next_turn = t + WANDER_TURN_EVERY * ctx.rng.randf_range(0.7, 1.3)
-		_turn_target = ctx.rng.randf_range(-1.5, 1.5)
-	_turn = move_toward(_turn, _turn_target, 1.6 * delta)
+		_turn_target = ctx.rng.randf_range(-2.2, 2.2)
+	_turn = move_toward(_turn, _turn_target, 2.4 * delta)
 	_heading += _turn * delta
 	var home := origin - _center
 	var stray := clampf((home.length() - WANDER_RADIUS * 0.55) / (WANDER_RADIUS * 0.45), 0.0, 1.0)
 	var edge := clampf((maxf(absf(_center.x), absf(_center.y)) - (WANDER_BOUNDS - 1.2)) / 1.2, 0.0, 1.0)
 	var pull_home := maxf(stray, edge)
 	if pull_home > 0.0 and home.length() > 0.01:
-		_heading = lerp_angle(_heading, home.angle(), minf(pull_home * 2.2 * delta, 1.0))
-	_speed = move_toward(_speed, WANDER_SPEED * (0.8 + 0.2 * sin(t * 1.7)), 0.8 * delta)
+		_heading = lerp_angle(_heading, home.angle(), minf(pull_home * 3.0 * delta, 1.0))
+	_speed = move_toward(_speed, WANDER_SPEED * (0.8 + 0.2 * sin(t * 1.7)), 1.8 * delta)
 	var step := Vector2.from_angle(_heading) * _speed * delta
 	_center += step
 	_walked += step.length()
@@ -398,7 +398,7 @@ func _dissipate() -> void:
 	ctx.fade_out(_wind, 1.0)
 	ctx.field.release_all()
 	_funnel.release_debris(ctx.overhead, ctx.overhead_back)
-	_funnel.spin = 0.4
+	_funnel.spin = 0.8
 	var tw := create_tween()
 	tw.tween_property(_funnel, "fade", 0.0, 0.9)
 	tw.parallel().tween_property(_funnel, "grow", 1.25, 0.9)

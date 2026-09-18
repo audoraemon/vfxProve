@@ -378,7 +378,7 @@ func _process(delta: float) -> void:
 	if is_instance_valid(_follow_fx) and _follow_fx.is_inside_tree():
 		var real := delta / maxf(Engine.time_scale, 0.001)
 		var goal := Iso.ground_to_screen(_follow_fx.camera_focus()) + Vector2(0, _follow_up)
-		_camera.position = _camera.position.lerp(goal, minf(3.0 * real, 1.0))
+		_camera.position = _camera.position.lerp(goal, minf(4.0 * real, 1.0))
 	if _pressing:
 		_drag_preview.queue_redraw()
 	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85

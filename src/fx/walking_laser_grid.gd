@@ -260,7 +260,7 @@ func _arrive() -> void:
 		var d := Drone.new()
 		d._seed = i * 1.7
 		d.position = Iso.ground_to_screen(_emitter_ground(i))
-		track(d, ctx.world)
+		track(d, stand_layer())
 		_drones.append(d)
 		var tw := d.create_tween()
 		tw.tween_property(d, "alt", HOVER_ALT, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT).set_delay(i * 0.04)

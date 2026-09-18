@@ -26,6 +26,8 @@ var _golem: GolemSprite
 
 func _build() -> void:
 	duration = 13.0
+	# Standing pieces sort above buildings, under the golem.
+	stand_layer()
 	# The titan stands just behind the target so its fists land around the cast point.
 	_center_px = Iso.ground_to_screen(origin)
 	_sigil = Set2Parts.sigil(self, origin, 3.4, Color("ffc85a"), "earth")
@@ -173,7 +175,7 @@ func _spike_burst(g: Vector2, size: float, count: int) -> void:
 		s.angle = clampf((Iso.ground_to_screen(pg) - sp).x * 0.03, -0.7, 0.7)
 		s.seed = ctx.rng.randf() * 100.0
 		s.lights = ctx.lights
-		track(s, ctx.world)
+		track(s, stand_layer())
 		var tw := s.create_tween()
 		tw.tween_property(s, "grow", 1.0, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_interval(ctx.rng.randf_range(0.8, 1.6))
@@ -269,7 +271,7 @@ func _crumble() -> void:
 		rubble.angle = ctx.rng.randf_range(-0.9, 0.9)
 		rubble.seed = ctx.rng.randf() * 100.0
 		rubble.lights = ctx.lights
-		track(rubble, ctx.world)
+		track(rubble, stand_layer())
 		var rt := rubble.create_tween()
 		rt.tween_interval(0.8 + i * 0.05)
 		rt.tween_property(rubble, "grow", 1.0, 0.2)

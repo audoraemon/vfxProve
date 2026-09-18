@@ -39,6 +39,8 @@ var _next_patch := 0.0
 
 func _build() -> void:
 	duration = 11.5
+	# Standing pieces sort above buildings, under the dragon.
+	stand_layer()
 	_center_px = Iso.ground_to_screen(origin)
 	_dir = FACING
 	# Arc centered on the dragon's facing, slightly biased to its right so the jet never crosses its body.
@@ -88,7 +90,7 @@ func _erupt() -> void:
 		s.seed = ctx.rng.randf() * 100.0
 		s.glow = 1.0
 		s.lights = ctx.lights
-		track(s, ctx.world)
+		track(s, stand_layer())
 		var tw := s.create_tween()
 		tw.tween_interval(i * 0.02)
 		tw.tween_property(s, "grow", 1.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -237,7 +239,7 @@ func _fire_patch(g: Vector2) -> void:
 	flame.size = ctx.rng.randf_range(0.8, 1.3)
 	flame.setup(ctx.rng, ctx.rng.randi_range(3, 5))
 	flame.position = sp.round()
-	track(flame, ctx.world)
+	track(flame, stand_layer())
 	var burn_out := duration - t - ctx.rng.randf_range(0.6, 2.0)
 	var tw := flame.create_tween()
 	tw.tween_property(flame, "strength", 1.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

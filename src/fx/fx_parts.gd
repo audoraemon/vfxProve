@@ -300,8 +300,9 @@ static func emitter(fx: FxTimeline, parent: Node, screen_pos: Vector2, shape: Pi
 
 static func smoke(fx: FxTimeline, screen_pos: Vector2, radius_px: float, rate: float, seconds: float,
 		rise := Vector2(20, 50), size := Vector2(3, 6), life := Vector2(1.2, 2.2), underglow := Color(0, 0, 0, 0),
-		ramp: Array = SMOKE_LIFE) -> PixelParticles:
-	var p := emitter(fx, fx.ctx.overhead_back, screen_pos, PixelParticles.Shape.PUFF, ramp, rate, seconds, {
+		ramp: Array = SMOKE_LIFE, parent: Node = null) -> PixelParticles:
+	var layer: Node = parent if parent != null else fx.ctx.overhead_back
+	var p := emitter(fx, layer, screen_pos, PixelParticles.Shape.PUFF, ramp, rate, seconds, {
 		"radius": radius_px, "speed": Vector2(4, 18), "alt": Vector2(0, 8), "alt_speed": rise,
 		"life": life, "size": size, "size_end_mul": 1.8,
 	})

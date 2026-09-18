@@ -189,7 +189,8 @@ var _sigil: SigilRune
 var _volcano: Volcano
 var _cracks: CrackNet
 var _glow: QuadFx
-## World layer just behind the volcano: what the crater throws out rises from behind its rim instead of covering it.
+## Drawn just behind the volcano (its child, positioned from the volcano's foot): what the crater throws out rises
+## from behind its rim instead of covering the mountain, while still drawing above buildings.
 var _behind: Node2D
 var _plume: PixelParticles
 var _lava_voice: Node
@@ -249,7 +250,8 @@ func _rise() -> void:
 	_volcano.lights = ctx.lights
 	_volcano.ground_pos = origin
 	_volcano.position = _center_px
-	track(_volcano, ctx.world)
+	# Above buildings and castle walls like the other titans, sorted with the smoke of the impacts round it.
+	track(_volcano, stand_layer())
 	create_tween().tween_property(_volcano, "rise", 1.0, RISE_TIME).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
 	# Molten glow on the ground round the foot of the mountain (on the ground only, so the rock stays dark).
 	_glow = FxParts.ground_light(self, origin, VOLCANO_RADIUS * 1.8, LAVA_LIGHT, 0.0)
@@ -264,8 +266,8 @@ func _rise() -> void:
 	crater.tween_param("heat", 1.0, 0.3, 6.0)
 	crater.tween_param("fade", 1.0, 0.0, 1.2, duration - t - 1.3)
 	_behind = Node2D.new()
-	_behind.z_index = -1
-	track(_behind, ctx.world)
+	_behind.show_behind_parent = true
+	_volcano.add_child(_behind)
 	# Rock and dust tearing loose round the foot of the mountain as it shoulders up.
 	for k in 3:
 		at(t + k * 0.3, _rise_burst)
@@ -284,8 +286,10 @@ func _rise_burst() -> void:
 		var sp := Iso.ground_to_screen(origin + Vector2.from_angle(a) * VOLCANO_RADIUS * 0.95)
 		var off := sp - _center_px
 		var out_angle := atan2(off.y * 2.0, off.x)
-		var layer: Node = _behind if off.y < 0.0 else ctx.overhead
-		var rocks := FxParts.particles(self, layer, sp, PixelParticles.Shape.CHUNK, FxParts.HOT_ROCK)
+		var far := off.y < 0.0
+		var layer: Node = _behind if far else ctx.overhead
+		var at_pos := off if far else sp
+		var rocks := FxParts.particles(self, layer, at_pos, PixelParticles.Shape.CHUNK, FxParts.HOT_ROCK)
 		rocks.gravity = 420.0
 		rocks.bounce = true
 		rocks.drag = 0.6
@@ -294,7 +298,7 @@ func _rise_burst() -> void:
 			"radius": 6.0, "speed": Vector2(60, 160), "angle": Vector2(out_angle - 0.5, out_angle + 0.5),
 			"alt": Vector2(0, 6), "alt_speed": Vector2(60, 200), "life": Vector2(0.8, 1.6), "size": Vector2(2.5, 5.0),
 		})
-		var dust := FxParts.particles(self, layer, sp, PixelParticles.Shape.PUFF, Set2Parts.DUST_CLOUD)
+		var dust := FxParts.particles(self, layer, at_pos, PixelParticles.Shape.PUFF, Set2Parts.DUST_CLOUD)
 		dust.drag = 1.2
 		dust.burst(2, {
 			"radius": 8.0, "speed": Vector2(20, 50), "angle": Vector2(out_angle - 0.6, out_angle + 0.6),
@@ -325,12 +329,13 @@ func _erupt() -> void:
 	rays.life = 0.55
 	# Behind the volcano, so it all rises out of the crater instead of covering the mountain: a lava fountain, a
 	# spray of hot rock and giant fire stones hurled into the sky.
-	var fountain := FxParts.emitter(self, _behind, top, PixelParticles.Shape.SQUARE, FxParts.FIRE_LIFE, 170.0, 1.2, {
+	var local_top := top - _volcano.position
+	var fountain := FxParts.emitter(self, _behind, local_top, PixelParticles.Shape.SQUARE, FxParts.FIRE_LIFE, 170.0, 1.2, {
 		"radius": 8.0, "speed": Vector2(20, 120), "alt_speed": Vector2(140, 340), "life": Vector2(0.5, 1.0),
 		"size": Vector2(1, 3),
 	})
 	fountain.gravity = 380.0
-	var rocks := FxParts.particles(self, _behind, top, PixelParticles.Shape.CHUNK, FxParts.HOT_ROCK)
+	var rocks := FxParts.particles(self, _behind, local_top, PixelParticles.Shape.CHUNK, FxParts.HOT_ROCK)
 	rocks.gravity = 420.0
 	rocks.drag = 0.6
 	rocks.burst(55, {
@@ -342,15 +347,15 @@ func _erupt() -> void:
 		s.size = ctx.rng.randf_range(22.0, 30.0)
 		s.seed = ctx.rng.randf() * 10.0
 		s.dir = Vector2(ctx.rng.randf_range(-0.55, 0.55), -1.0)
-		s.position = top
+		s.position = local_top
 		track(s, _behind)
 		var fly := s.create_tween()
 		fly.tween_interval(i * 0.08)
-		fly.tween_property(s, "position", top + Vector2(s.dir.x * 280.0, -420.0), 0.75) \
+		fly.tween_property(s, "position", local_top + Vector2(s.dir.x * 280.0, -420.0), 0.75) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		fly.tween_callback(s.queue_free)
 	# Ash plume rising from behind the summit.
-	_plume = FxParts.emitter(self, _behind, top, PixelParticles.Shape.PUFF, ASH_SMOKE, 30.0, duration - t - 2.0, {
+	_plume = FxParts.emitter(self, _behind, local_top, PixelParticles.Shape.PUFF, ASH_SMOKE, 30.0, duration - t - 2.0, {
 		"radius": 16.0, "speed": Vector2(4, 18), "alt": Vector2(0, 8), "alt_speed": Vector2(50, 110),
 		"life": Vector2(1.8, 3.0), "size": Vector2(6, 10), "size_end_mul": 1.8,
 	})
@@ -472,7 +477,7 @@ func _stone_impact(g: Vector2) -> void:
 		"size": Vector2(1.5, 3.5), "size_end_mul": 0.3,
 	})
 	FxParts.smoke(self, sp, 6.0, 5.0, duration - t - 2.5, Vector2(14, 32), Vector2(3, 6), Vector2(1.4, 2.2), Color(0, 0, 0, 0),
-		ASH_SMOKE)
+		ASH_SMOKE, stand_layer())
 	for e in ctx.field.in_radius(g, STONE_KILL):
 		ctx.field.kill(e, &"cinder", g)
 	ctx.field.knock_from(g, STONE_KILL, 1.8, 4.5)

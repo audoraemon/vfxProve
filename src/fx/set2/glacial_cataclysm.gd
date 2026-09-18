@@ -138,7 +138,7 @@ func _make_spike(g: Vector2, h: float, w: float, delay: float) -> IceSpike:
 	s.angle = clampf(out.x * 0.0026, -0.5, 0.5) * (0.3 + 0.7 * k) + ctx.rng.randf_range(-0.1, 0.1)
 	s.seed = ctx.rng.randf() * 100.0
 	s.lights = ctx.lights
-	track(s, ctx.world)
+	track(s, stand_layer())
 	_spikes.append(s)
 	var tw := s.create_tween()
 	tw.tween_interval(delay)
@@ -284,7 +284,7 @@ func _ice_explosion(g: Vector2, size: float) -> void:
 		c.seed = ctx.rng.randf() * 100.0
 		c.lights = ctx.lights
 		c.glow = 0.4
-		track(c, ctx.world)
+		track(c, stand_layer())
 		var tw := c.create_tween()
 		tw.tween_interval(side * 0.04)
 		tw.tween_property(c, "grow", 1.0, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

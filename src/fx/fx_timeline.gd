@@ -12,6 +12,7 @@ var finished := false
 
 var _events: Array = []
 var _tracked: Array[Node] = []
+var _stand: Node2D
 
 
 static func cast(script: GDScript, c: FxContext, at_ground: Vector2, extra_data := {}) -> FxTimeline:
@@ -43,6 +44,16 @@ func track(node: Node, parent: Node) -> Node:
 	parent.add_child(node)
 	_tracked.append(node)
 	return node
+
+
+## Y-sorted layer above the world for effect pieces that stand on the ground (spikes, flames, rubble, titans): no
+## building or castle wall ever covers them, and they still sort among themselves. Made on first use.
+func stand_layer() -> Node2D:
+	if _stand == null or not is_instance_valid(_stand):
+		_stand = Node2D.new()
+		_stand.y_sort_enabled = true
+		track(_stand, ctx.overhead_back)
+	return _stand
 
 
 ## Piecewise-linear lookup over [time, value] keys at `time` (defaults to the effect clock).

@@ -14,7 +14,12 @@ const FISSURE_GROW := 0.8
 const T_ERUPT := 2.9
 const T_AFTER := 4.3
 ## Eruption points along each fissure, as fractions of its length.
-const ERUPT_AT := [0.28, 0.58, 0.88]
+const ERUPT_AT := [0.2, 0.42, 0.64, 0.86]
+## Eruption bolt height (px) at the outermost and innermost eruption points.
+const ERUPT_HEIGHT := Vector2(200, 320)
+## Ground radius and strip half-width an eruption kills in.
+const ERUPT_KILL := 1.25
+const ERUPT_STRIP := 0.7
 const SIGIL_RADIUS := 1.9
 const COLUMN_SIZE := Vector2(170, 470)
 const STORM_LIGHT := Color(0.45, 0.65, 1.0)
@@ -462,45 +467,57 @@ func _open_fissures() -> void:
 	# Eruption points along each fissure, rippling outward.
 	for i in FISSURES:
 		for k in ERUPT_AT.size():
-			at(T_ERUPT + k * 0.28 + i * 0.03 + ctx.rng.randf_range(0.0, 0.08), _erupt.bind(i, k))
+			at(T_ERUPT + k * 0.26 + i * 0.05 + ctx.rng.randf_range(0.0, 0.08), _erupt.bind(i, k))
 
 
 func _erupt(i: int, k: int) -> void:
 	var path := _paths[i]
 	var g := origin + path[int(ERUPT_AT[k] * (path.size() - 1))]
 	var sp := Iso.ground_to_screen(g)
-	if k == 0:
-		ctx.play(&"hs_erupt", g, -2.0)
-		ctx.shake.add_trauma(0.18)
+	if k <= 1:
+		ctx.play(&"hs_erupt", g, -2.0 if k == 0 else -6.0)
+		ctx.shake.add_trauma(0.22)
 	_cracks.charge = 1.0
-	# Forked lightning bursting up out of the fissure, tallest near the impact, a thinner strand beside it and a
-	# quick re-strike.
-	var h := lerpf(210.0, 120.0, k / 2.0) * ctx.rng.randf_range(0.8, 1.15)
-	var lean := ctx.rng.randf_range(-22.0, 22.0)
-	Set2Parts.bolt(self, ctx.overhead, sp, sp + Vector2(lean, -h), 0.42, 2.0 if k == 0 else 1.0, 4, BOLT_BLUE)
-	Set2Parts.bolt(self, ctx.overhead, sp + Vector2(ctx.rng.randf_range(-6, 6), 0),
-		sp + Vector2(lean * 0.5 + ctx.rng.randf_range(-30, 30), -h * ctx.rng.randf_range(0.45, 0.7)), 0.3, 1.0, 2, BOLT_BLUE)
-	at(t + 0.16, func():
-		Set2Parts.bolt(self, ctx.overhead, sp, sp + Vector2(-lean * 0.6, -h * ctx.rng.randf_range(0.6, 0.9)), 0.22, 1.0, 3,
-			BOLT_BLUE))
-	Set2Parts.glow_column(self, sp, 16.0, h, STORM_LIGHT, 0.5, 0.25)
-	var flash := FxParts.bloom(self, sp + Vector2(0, -8), 22.0, STORM_LIGHT, 1.0, 0.8)
-	flash.tween_param("intensity", 1.0, 0.0, 0.3)
-	flash.life = 0.34
-	var fire := FxParts.bloom(self, sp, 16.0, CRACK_LIGHT, 1.0, 0.6)
+	# Big forked bolts bursting up out of the fissure, tallest near the impact: a thick main bolt with long
+	# spreading branches, another leaning out to the side, then a re-strike.
+	var near := 1.0 - float(k) / (ERUPT_AT.size() - 1)
+	var h := lerpf(ERUPT_HEIGHT.x, ERUPT_HEIGHT.y, near) * ctx.rng.randf_range(0.85, 1.1)
+	var dx := sp.x - _center_px.x
+	var outward := signf(dx) if absf(dx) > 4.0 else (1.0 if ctx.rng.randf() < 0.5 else -1.0)
+	var lean := outward * ctx.rng.randf_range(10.0, 40.0)
+	_big_bolt(sp, sp + Vector2(lean, -h), 0.55, 3.0 if k <= 1 else 2.0, 4)
+	# Near the impact the side bolt leans outward, away from the crowd; further out it picks a side.
+	var side := outward if k == 0 or ctx.rng.randf() < 0.6 else -outward
+	var top := sp + Vector2(side * ctx.rng.randf_range(45.0, 90.0) + lean * 0.5, -h * ctx.rng.randf_range(0.5, 0.8))
+	_big_bolt(sp + Vector2(side * ctx.rng.randf_range(2.0, 8.0), 0), top, 0.4, 1.0, 2)
+	at(t + 0.18, func():
+		_big_bolt(sp, sp + Vector2(-lean * 0.7, -h * ctx.rng.randf_range(0.75, 1.0)), 0.3, 2.0, 3))
+	Set2Parts.glow_column(self, sp, 36.0, h, STORM_LIGHT, 0.22, 0.4)
+	var flash := FxParts.bloom(self, sp + Vector2(0, -10), 30.0, STORM_LIGHT, 0.9, 0.8)
+	flash.tween_param("intensity", 0.9, 0.0, 0.4)
+	flash.life = 0.42
+	var fire := FxParts.bloom(self, sp, 18.0, CRACK_LIGHT, 1.0, 0.6)
 	fire.tween_param("intensity", 1.0, 0.0, 0.4)
 	fire.life = 0.42
-	var light := FxParts.ground_light(self, g, 1.2, STORM_LIGHT)
-	light.tween_param("intensity", 0.8, 0.0, 0.4)
-	light.life = 0.42
+	var light := FxParts.ground_light(self, g, 1.6, STORM_LIGHT)
+	light.tween_param("intensity", 0.9, 0.0, 0.45)
+	light.life = 0.47
 	FxParts.debris(self, sp, 4, 4.0, Vector2(40, 170), STONE_LIT, Vector2(2.5, 5.0), true)
 	FxParts.sparks(self, ctx.overhead, sp, 14, Set2Parts.STORM_LIFE, Vector2(50, 200), Vector2(40, 220))
 	FxParts.sparks(self, ctx.overhead, sp, 10, FxParts.FIRE_LIFE, Vector2(40, 140), Vector2(30, 160))
 	var a := origin + path[int((ERUPT_AT[k - 1] if k > 0 else 0.0) * (path.size() - 1))]
 	for e in ctx.field.alive():
-		if e.ground_pos.distance_to(g) < 0.9 or Set2Parts.dist_to_segment(e.ground_pos, a, g) < 0.5:
+		if e.ground_pos.distance_to(g) < ERUPT_KILL or Set2Parts.dist_to_segment(e.ground_pos, a, g) < ERUPT_STRIP:
 			ctx.field.kill(e, &"lightning", g)
-	ctx.env.damage_radius(g, 1.0, 60.0, &"lightning")
+	ctx.env.damage_radius(g, ERUPT_KILL, 60.0, &"lightning")
+
+
+## Eruption bolt: long forks that swing wide, holding each shape a little longer than a small arc.
+func _big_bolt(a: Vector2, b: Vector2, life: float, thickness: float, branches: int) -> void:
+	var bolt := Set2Parts.bolt(self, ctx.overhead, a, b, life, thickness, branches, BOLT_BLUE)
+	bolt.fork_reach = Vector2(0.25, 0.5)
+	bolt.fork_angle = 1.15
+	bolt.jitter_every = 0.07
 
 
 func _aftermath() -> void:

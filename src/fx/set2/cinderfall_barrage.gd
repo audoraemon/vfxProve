@@ -1,11 +1,11 @@
 extends FxTimeline
-## Cinderfall Barrage: magma sigil, quake and glowing ground cracks -> a colossal volcano of rock shards thrusts
+## Cinderfall Barrage: magma sigil, quake and glowing ground cracks -> a colossal volcano (PixelLab sprite) thrusts
 ## out of the ground -> the crater launches giant fire stones -> they rain across the area, bursting into fire ->
 ## the volcano sinks back into a smoking crater, leaving burning lava pools, glowing cracks, smoke and embers.
 
 const RADIUS := 5.8
-const VOLCANO_RADIUS := 2.1
-const VOLCANO_HEIGHT := 215.0
+## Ground radius of the volcano's footprint (its ring of boulders).
+const VOLCANO_RADIUS := 2.4
 const T_RISE := 1.2
 const RISE_TIME := 1.3
 const T_ERUPT := 2.6
@@ -20,157 +20,66 @@ const ASH_SMOKE := [Color(0.42, 0.37, 0.36, 0.85), Color(0.36, 0.33, 0.33, 0.85)
 	Color(0.27, 0.26, 0.28, 0.55), Color(0.24, 0.23, 0.26, 0.3)]
 
 
-## Volcano: a steep, jagged mountain of chunky rock slabs in staggered rows, each lit from the upper left and glowing
-## orange where the lava wells up round its foot, with tall spires round the summit crater and bright lava in every
-## gap. `rise` pushes it up out of the ground and `sink` lowers it back, `heat` cools the lava, `erupting` fans
-## flames out of the crater.
+## Volcano: PixelLab-drawn mountain of dark rock slabs with glowing lava between them (`volcano_sprite.gdshader`).
+## It thrusts up out of the ground, clipped at the ground line and shaking as it climbs; its lava pulses and
+## flickers, `erupting` fans flames out of the crater, `heat` cools the lava and `sink` lowers it back underground.
 class Volcano:
 	extends Node2D
 
-	const ROCK_SHADE := Color("1f1a1b")
-	const ROCK_LIT := Color("4a4143")
-	const ROCK_TOP := Color("6a5e5c")
-	const ROCK_EDGE := Color("857673")
-	const OUTLINE := Color("0e0909")
-	const LAVA_DEEP := Color("7a1206")
-	const LAVA := Color("e8501a")
-	const LAVA_HOT := Color("ffa83a")
-	const LAVA_WHITE := Color("fff0b8")
-	const ROWS := 7
+	const TEX := preload("res://assets/pixellab/volcano/volcano.png")
+	const SH := preload("res://shaders/volcano_sprite.gdshader")
+	const SCALE := 1.4
+	## Sprite rows (px from the top): where the middle of the mountain's base meets the ground, and its lowest pixel.
+	const BASE_Y := 118.0
+	const BOTTOM_Y := 160.0
+	## Crater mouth in sprite px.
+	const CRATER := Vector2(82, 37)
 
-	var radius_px := 95.0
-	var height := 215.0
 	var rise := 0.0
 	var heat := 1.0
 	var sink := 0.0
 	var erupting := 0.0
 	var lights: LightField
 	var ground_pos := Vector2.ZERO
-	## Rock chunks, back to front: {u, v, w, h, tilt, shape (normalised outline, x -0.5..0.5, y 0..-1), apex, ridge,
-	## tone, vein}.
-	var _chunks: Array[Dictionary] = []
-	var _streams: Array[Dictionary] = []
+	var _mat: ShaderMaterial
 	var _time := 0.0
-	var _redraw_in := 0.0
 
-	func setup(rng: RandomNumberGenerator) -> void:
-		# Summit spires round the crater.
-		for i in 5:
-			var u := lerpf(-0.9, 0.9, (i + 0.5) / 5.0) + rng.randf_range(-0.08, 0.08)
-			_chunks.append(_chunk(rng, u, rng.randf_range(0.8, 0.86), 0.34 * rng.randf_range(0.8, 1.0),
-				rng.randf_range(2.0, 2.8), true, ROWS))
-		# Staggered rows of chunky slabs down to the foot.
-		for r in range(ROWS - 1, -1, -1):
-			var v := r / float(ROWS) * 0.86
-			var count := int(round(lerpf(8.0, 3.0, v / 0.86)))
-			var offset := 0.5 if r % 2 == 1 else 0.0
-			for c in count:
-				var u := lerpf(-1.05, 1.05, (c + 0.25 + offset * 0.5) / count) + rng.randf_range(-0.06, 0.06)
-				_chunks.append(_chunk(rng, u, v + rng.randf_range(-0.03, 0.03), 2.0 / count * rng.randf_range(0.9, 1.35),
-					rng.randf_range(1.0, 1.7) * lerpf(1.0, 1.4, v), rng.randf() < 0.5, r))
-		# Back to front: higher rows first, and within a row the outer chunks before the middle ones.
-		_chunks.sort_custom(func(a, b): return a.row > b.row or (a.row == b.row and absf(a.u) > absf(b.u)))
-		for k in 4:
-			_streams.append({"u": rng.randf_range(-0.6, 0.6), "phase": rng.randf() * TAU, "wig": rng.randf_range(0.03, 0.07)})
-
-	## A chunk outline in normalised coordinates: a flat-ish foot, bulging sides and a pointed or broken top.
-	func _chunk(rng: RandomNumberGenerator, u: float, v: float, w: float, hk: float, pointy: bool, row: int) -> Dictionary:
-		# Sides lean in toward an off-centre top so chunks read as broken rock rather than blocks.
-		var shape := PackedVector2Array()
-		shape.append(Vector2(-0.5, 0.0))
-		shape.append(Vector2(-0.5 + rng.randf_range(-0.08, 0.06), -rng.randf_range(0.3, 0.55)))
-		shape.append(Vector2(-0.3 + rng.randf_range(-0.1, 0.1), -rng.randf_range(0.7, 0.92)))
-		var apex := Vector2(rng.randf_range(-0.2, 0.28), -1.0)
-		if pointy:
-			shape.append(apex)
-		else:
-			apex = Vector2(rng.randf_range(-0.22, 0.05), -1.0)
-			shape.append(apex)
-			shape.append(Vector2(apex.x + rng.randf_range(0.25, 0.42), -rng.randf_range(0.72, 0.9)))
-		shape.append(Vector2(0.34 + rng.randf_range(-0.1, 0.1), -rng.randf_range(0.5, 0.78)))
-		shape.append(Vector2(0.5 + rng.randf_range(-0.06, 0.06), -rng.randf_range(0.15, 0.38)))
-		shape.append(Vector2(0.5, 0.0))
-		return {"u": u, "v": v, "w": w, "h": hk, "row": row, "tilt": u * 0.35 + rng.randf_range(-0.1, 0.1), "shape": shape,
-			"apex": 3, "ridge": rng.randf_range(0.05, 0.25), "tone": rng.randf(), "vein": rng.randf() < 0.35,
-			"vy": rng.randf_range(0.3, 0.6), "pointy": pointy}
+	func _ready() -> void:
+		_mat = ShaderMaterial.new()
+		_mat.shader = SH
+		_mat.set_shader_parameter(&"clip_y", (BOTTOM_Y - BASE_Y) * SCALE)
+		material = _mat
 
 	func _process(delta: float) -> void:
 		_time += delta
-		modulate.a = 1.0 - sink * sink
-		# Many chunk polygons: redraw at ~20 Hz while standing, every frame while rising or sinking.
-		_redraw_in -= delta
-		var moving := (rise > 0.0 and rise < 1.0) or (sink > 0.0 and sink < 1.0)
-		if moving or _redraw_in <= 0.0:
-			_redraw_in = 0.08
-			queue_redraw()
+		_mat.set_shader_parameter(&"u_time", _time)
+		_mat.set_shader_parameter(&"heat", heat)
+		# The dark rock only dims a little with the scene, so its slabs still read against the lava.
+		_mat.set_shader_parameter(&"ambient", lerpf(0.8, 1.0, lights.ambient) if lights else 1.0)
+		queue_redraw()
 
-	func _half_width(v: float) -> float:
-		return radius_px * lerpf(1.0, 0.18, pow(clampf(v, 0.0, 1.0), 0.85))
-
-	## Point on the front face of the cone: u across (-1..1), v up (0..1); the base bulges down like the iso ellipse.
-	func _cone_point(u: float, v: float, h: float) -> Vector2:
-		var w := _half_width(v)
-		var cv := clampf(v, 0.0, 1.0)
-		return Vector2(u * w, -v * h + sqrt(maxf(1.0 - minf(u * u, 1.0), 0.0)) * w * 0.5 * (1.0 - cv))
-
-	func _lava(k: float) -> Color:
-		var c := LAVA_DEEP.lerp(LAVA, clampf(k * 1.4, 0.0, 1.0)).lerp(LAVA_HOT, clampf(k * 1.6 - 0.8, 0.0, 1.0))
-		return c.lerp(Color(0.14, 0.05, 0.04), 1.0 - heat)
+	## How far below its resting place the sprite is drawn: it climbs out while rising and sinks back at the end.
+	func _drop() -> float:
+		return (BOTTOM_Y + 4.0) * SCALE * ((1.0 - rise) + sink)
 
 	func _draw() -> void:
-		if rise <= 0.01 or sink >= 0.98:
+		if rise <= 0.001 or sink >= 0.999:
 			return
-		var h := height * rise * (1.0 - sink)
-		var amb := maxf(lights.ambient, 0.6) if lights else 1.0
-		_draw_body(h)
-		_draw_streams(h)
-		_draw_crater(h)
-		var grow := clampf(rise * 1.3, 0.35, 1.0) * (1.0 - sink)
-		var rise_v := clampf(rise * 1.2, 0.0, 1.2)
-		# Every chunk goes into one triangle mesh, back to front, instead of hundreds of polygon calls.
-		var verts := PackedVector2Array()
-		var cols := PackedColorArray()
-		var idx := PackedInt32Array()
-		for s in _chunks:
-			if s.v > rise_v:
-				continue
-			_add_chunk(s, h, amb, grow, verts, cols, idx)
-		if not idx.is_empty():
-			RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), idx, verts, cols)
+		var size := TEX.get_size() * SCALE
+		var moving := rise < 1.0 or sink > 0.0
+		var shake := Vector2(sin(_time * 53.0), cos(_time * 41.0)) * 1.5 if moving else Vector2.ZERO
+		draw_texture_rect(TEX, Rect2((Vector2(-size.x * 0.5, -BASE_Y * SCALE + _drop()) + shake).round(), size), false)
+		_draw_flames()
 
-	## Lava body filling the cone, brightest down the middle; shows through the gaps between chunks.
-	func _draw_body(h: float) -> void:
-		var cols := 10
-		var rows := 8
-		var pts := PackedVector2Array()
-		var colors := PackedColorArray()
-		for j in rows + 1:
-			var v := float(j) / rows
-			for i in cols + 1:
-				var u := -1.0 + 2.0 * i / cols
-				pts.append(_cone_point(u, v, h))
-				var k := (1.0 - absf(u) * 0.5) * (0.8 + 0.2 * sin(_time * 3.0 + v * 9.0 + u * 4.0)) + 0.1
-				colors.append(_lava(k))
-		var idx := PackedInt32Array()
-		for j in rows:
-			for i in cols:
-				var a := j * (cols + 1) + i
-				idx.append_array(PackedInt32Array([a, a + 1, a + cols + 1, a + 1, a + cols + 2, a + cols + 1]))
-		RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), idx, pts, colors)
-
-	## Crater among the summit spires: a molten pool and, while erupting, flames licking up out of it.
-	func _draw_crater(h: float) -> void:
-		var top := Vector2(0, -h * 0.97)
-		var rx := _half_width(1.0) * 1.3
-		var ry := rx * 0.45
-		draw_colored_polygon(_ellipse(top, rx, ry), _lava(1.0))
-		draw_colored_polygon(_ellipse(top, rx * 0.55, ry * 0.5), LAVA_WHITE.lerp(LAVA, 1.0 - heat))
+	## Flames licking up out of the crater while it erupts.
+	func _draw_flames() -> void:
 		if erupting <= 0.01:
 			return
+		var top := crater_top() - position
 		for k in 7:
-			var x := (k / 6.0 - 0.5) * rx * 1.4
+			var x := (k / 6.0 - 0.5) * 26.0
 			var f := 0.6 + 0.4 * sin(_time * 17.0 + k * 2.1)
-			var tall := (20.0 + 30.0 * f) * erupting * (1.0 - absf(x) / rx * 0.5)
+			var tall := (20.0 + 30.0 * f) * erupting * (1.0 - absf(x) / 26.0)
 			var base := top + Vector2(x, 0)
 			var lean := sin(_time * 5.0 + k) * 4.0
 			draw_colored_polygon(PackedVector2Array([base + Vector2(-5, 0), base + Vector2(lean, -tall), base + Vector2(5, 0)]),
@@ -178,115 +87,8 @@ class Volcano:
 			draw_colored_polygon(PackedVector2Array([base + Vector2(-2.5, 0), base + Vector2(lean * 0.6, -tall * 0.6),
 				base + Vector2(2.5, 0)]), Color(1.0, 0.86, 0.45))
 
-	## One rock chunk standing on the cone, added to the mesh: a glowing molten rim, a dark outline, then inset a lit
-	## left face and a shadowed right face split by a ridge from the top, a pale top on broken tops, lit upper edges,
-	## lava light warming its foot and sometimes a lava vein.
-	func _add_chunk(s: Dictionary, h: float, amb: float, grow: float, verts: PackedVector2Array, cols: PackedColorArray,
-			idx: PackedInt32Array) -> void:
-		var v: float = s.v
-		var base := _cone_point(s.u, v, h) + Vector2(0, 3)
-		var cw: float = _half_width(v) * s.w
-		var ch: float = cw * s.h * grow
-		var rot: float = s.tilt
-		var shape: PackedVector2Array = s.shape
-		var pts := PackedVector2Array()
-		for p in shape:
-			pts.append(base + Vector2(p.x * cw, p.y * ch).rotated(rot))
-		var n := pts.size()
-		var apex_i: int = s.apex
-		var apex := pts[apex_i]
-		var ridge: Vector2 = base + Vector2(cw * s.ridge, 0).rotated(rot)
-		var glow := 0.55 + 0.35 * sin(_time * 3.0 + v * 9.0 + s.u * 5.0)
-		var rim_c := _lava(glow + 0.35)
-		var c := (pts[0] + pts[n - 1] + apex) / 3.0
-		_fan(_scaled(pts, c, 1.09), rim_c, verts, cols, idx)
-		_fan(pts, OUTLINE * amb, verts, cols, idx)
-		# Faces inset a pixel or so, leaving the outline showing round them and along the ridge.
-		var inset := 1.0 - 1.4 / maxf(minf(cw, ch), 6.0)
-		var ins := _scaled(pts, c, inset)
-		var ridge_in := c + (ridge - c) * inset
-		var shade: float = (0.78 + 0.32 * s.tone) * amb
-		var lit := PackedVector2Array()
-		for i in apex_i + 1:
-			lit.append(ins[i])
-		lit.append(ridge_in)
-		var dark := PackedVector2Array([ridge_in])
-		for i in range(apex_i, n):
-			dark.append(ins[i])
-		_fan(lit, ROCK_LIT * shade, verts, cols, idx)
-		_fan(dark, ROCK_SHADE * shade, verts, cols, idx)
-		if not s.pointy:
-			_fan(PackedVector2Array([ins[2], ins[apex_i], ins[apex_i + 1], ins[apex_i].lerp(ridge_in, 0.18)]), ROCK_TOP * shade,
-				verts, cols, idx)
-		_seg(ins[1], ins[2], 1.0, ROCK_EDGE * amb, verts, cols, idx)
-		_seg(ins[2], ins[apex_i], 1.0, ROCK_EDGE * amb, verts, cols, idx)
-		_fan(PackedVector2Array([ins[0], ins[0].lerp(ins[1], 0.22), ins[n - 1].lerp(ins[n - 2], 0.22), ins[n - 1]]),
-			Color(rim_c.r, rim_c.g * 0.8, rim_c.b * 0.6, 0.35), verts, cols, idx)
-		if s.vein:
-			var k: float = s.vy
-			var a := ins[1].lerp(ins[2], k)
-			var b := ridge_in.lerp(ins[apex_i], k)
-			var m := a.lerp(b, 0.5) + Vector2(0, -2)
-			var vein_c := Color(1.0, 0.62, 0.25, heat)
-			_seg(a, m, 1.2, vein_c, verts, cols, idx)
-			_seg(m, b, 1.2, vein_c, verts, cols, idx)
-
-	func _scaled(pts: PackedVector2Array, c: Vector2, k: float) -> PackedVector2Array:
-		var out := PackedVector2Array()
-		for p in pts:
-			out.append(c + (p - c) * k)
-		return out
-
-	## Triangle fan from the polygon's centroid (the chunk outlines are star-shaped round it).
-	func _fan(poly: PackedVector2Array, col: Color, verts: PackedVector2Array, cols: PackedColorArray,
-			idx: PackedInt32Array) -> void:
-		var n := poly.size()
-		var c := Vector2.ZERO
-		for p in poly:
-			c += p
-		c /= n
-		var base := verts.size()
-		verts.append(c)
-		verts.append_array(poly)
-		for i in n + 1:
-			cols.append(col)
-		for i in n:
-			idx.append_array(PackedInt32Array([base, base + 1 + i, base + 1 + (i + 1) % n]))
-
-	## A thin quad along a segment, `width` px wide.
-	func _seg(a: Vector2, b: Vector2, width: float, col: Color, verts: PackedVector2Array, cols: PackedColorArray,
-			idx: PackedInt32Array) -> void:
-		var off := (b - a).orthogonal().normalized() * width * 0.5
-		var base := verts.size()
-		verts.append_array(PackedVector2Array([a + off, b + off, b - off, a - off]))
-		cols.append_array(PackedColorArray([col, col, col, col]))
-		idx.append_array(PackedInt32Array([base, base + 1, base + 2, base, base + 2, base + 3]))
-
-	## Molten channels running down the flanks from the crater; drawn behind the chunks so they show in the gaps.
-	func _draw_streams(h: float) -> void:
-		if rise < 0.6 or heat < 0.2:
-			return
-		for st in _streams:
-			var pts := PackedVector2Array()
-			var cols := PackedColorArray()
-			for k in 14:
-				var v := 0.97 - k * 0.068
-				var u: float = st.u * (0.25 + 0.75 * (1.0 - v)) + sin(v * 14.0 + st.phase) * st.wig
-				pts.append(_cone_point(u, v, h))
-				var pulse := maxf(sin(v * 20.0 + _time * 6.0 + st.phase), 0.0)
-				cols.append(LAVA_HOT.lerp(LAVA_WHITE, pulse * 0.8).lerp(LAVA_DEEP, 1.0 - heat))
-			draw_polyline(pts, _lava(1.0), 4.0)
-			draw_polyline_colors(pts, cols, 2.0)
-
-	func _ellipse(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
-		var pts := PackedVector2Array()
-		for i in 16:
-			var a := TAU * i / 16.0
-			pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
-		return pts
-
 	func crater_top() -> Vector2:
-		return position + Vector2(0, -height * rise * (1.0 - sink) * 0.97)
+		return position + Vector2((CRATER.x - TEX.get_width() * 0.5) * SCALE, (CRATER.y - BASE_Y) * SCALE + _drop())
 
 
 ## Flaming boulder: dark cracked rock glowing through molten seams, wrapped in fire that streams into a long tail.
@@ -415,12 +217,9 @@ func _rise() -> void:
 	create_tween().tween_property(_sigil, "alpha", 0.0, 0.6)
 	create_tween().tween_property(_cracks, "heat", 1.0, 0.4)
 	_volcano = Volcano.new()
-	_volcano.radius_px = FxParts.PX_PER_UNIT_MAJOR * VOLCANO_RADIUS
-	_volcano.height = VOLCANO_HEIGHT
 	_volcano.lights = ctx.lights
 	_volcano.ground_pos = origin
 	_volcano.position = _center_px
-	_volcano.setup(ctx.rng)
 	track(_volcano, ctx.world)
 	create_tween().tween_property(_volcano, "rise", 1.0, RISE_TIME).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
 	# Molten glow on the ground round the foot of the mountain (on the ground only, so the rock stays dark).

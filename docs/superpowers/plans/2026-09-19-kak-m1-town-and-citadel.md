@@ -68,6 +68,7 @@ Expected `checks=` after each task: Task 1 → 217, Task 2 → 235, Task 3 → 2
   - `func clear_effects() -> void`, `func mouse_ground() -> Vector2`
   - `func save_capture(file_name: String) -> void` (await it; writes `res://captures/<file_name>` at 2×), `func wait_frames(n: int) -> void` (await it), `func bench(label: String, seconds := 9.0) -> void` (await it; prints `bench[<label>] frames=… avg_ms=… avg_fps=… worst_ms=… min_fps=…`), `func quit() -> void`
   - `static func arg_value(args: PackedStringArray, key: String) -> String` (value of `key=value`, or `""`)
+  - `static func key_pan_dir() -> Vector2` (held WASD/arrow keys as a direction, not normalized; zero when none), `func add_debug_label() -> Label` (small outlined debug text at the top left of `hud_layer`; adds it and returns it). The sandbox and the town debug scene share these instead of copying the code.
   - `_process` sets `ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85`.
 
 - [ ] **Step 1: Tag the starting point and run the baseline tests**
@@ -321,6 +322,18 @@ func mouse_ground() -> Vector2:
 	return Iso.screen_to_ground(get_global_mouse_position())
 
 
+## Small outlined debug text at the top left of the HUD layer.
+func add_debug_label() -> Label:
+	var label := Label.new()
+	label.position = Vector2(6, 4)
+	label.add_theme_font_size_override("font_size", 8)
+	label.add_theme_color_override("font_color", Color("cfd8e8"))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 2)
+	hud_layer.add_child(label)
+	return label
+
+
 ## Save the next drawn frame, scaled 2x with nearest filtering, to res://captures/<file_name>.
 func save_capture(file_name: String) -> void:
 	await RenderingServer.frame_post_draw
@@ -376,6 +389,20 @@ static func arg_value(args: PackedStringArray, key: String) -> String:
 		if a.begins_with(key + "="):
 			return a.substr(key.length() + 1)
 	return ""
+
+
+## Held WASD / arrow keys as a pan direction (not normalized; zero when none are held).
+static func key_pan_dir() -> Vector2:
+	var pan := Vector2.ZERO
+	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
+		pan.x -= 1
+	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
+		pan.x += 1
+	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
+		pan.y -= 1
+	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
+		pan.y += 1
+	return pan
 ```
 
 - [ ] **Step 5: Rebuild the sandbox on top of the Battlefield**
@@ -467,13 +494,7 @@ func _build_world() -> void:
 	_drag_preview.draw.connect(_draw_drag_preview)
 	_bf.ground_plane.add_child(_drag_preview)
 
-	_hud = Label.new()
-	_hud.position = Vector2(6, 4)
-	_hud.add_theme_font_size_override("font_size", 8)
-	_hud.add_theme_color_override("font_color", Color("cfd8e8"))
-	_hud.add_theme_color_override("font_outline_color", Color.BLACK)
-	_hud.add_theme_constant_override("outline_size", 2)
-	_bf.hud_layer.add_child(_hud)
+	_hud = _bf.add_debug_label()
 ```
 
 5f. Delete the whole `func _screen_flash(...)` function.
@@ -502,7 +523,7 @@ func _reset_world(seed_value: int) -> void:
 
 5h. In `_unhandled_input`, change the `KEY_ESCAPE:` branch body from `_quit()` to `_bf.quit()`.
 
-5i. In `_process`, delete the last line `ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85` (the Battlefield does it now).
+5i. In `_process`, replace the key-reading block at the top (from `var pan := Vector2.ZERO` through the `KEY_S`/`KEY_DOWN` check and its `pan.y += 1`) with the single line `var pan := Battlefield.key_pan_dir()`, keeping the `if pan != Vector2.ZERO:` block that follows unchanged. Then delete the last line of `_process`, `ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85` (the Battlefield does it now).
 
 5j. Replace everything from the line `## Stop voices before quitting so the audio server does not leak playbacks.` to the end of the file with:
 
@@ -2273,7 +2294,7 @@ func _meadow() -> void:
 			draw_rect(Rect2(x, y, 1, 1), pal[_hash(x, y) % 3])
 			for k in 4:
 				var hk := _hash(x * 13 + k, y * 29 - k)
-				var p := Vector2(x + float(hk % 89) / 89.0, y + float((hk / 89) % 83) / 83.0)
+				var p := Vector2(x + float(hk % 89) / 89.0, y + float(floori(hk / 89.0) % 83) / 83.0)
 				draw_rect(Rect2(p, Vector2(0.06, 0.12)), (pal[(hk + 1) % 3] as Color).lightened(0.12))
 
 
@@ -2523,7 +2544,7 @@ git commit -m "feat: power book for the 11 draftable powers" -m "Cost, cooldown,
 - Modify: `tools/capture.sh`, `README.md`
 
 **Interfaces:**
-- Consumes: `Battlefield` (Task 1), `Town`, `Citadel`, `TownLayout` (Tasks 4–6), `PowerBook` (Task 7), `FxTimeline.cast(script, ctx, ground, extra)`, `FxParts.prewarm`, `DummyEnemy.Look.ORC`, `EnemyField.bounds`.
+- Consumes: `Battlefield` (Task 1, including `add_debug_label()` and `key_pan_dir()`), `Town`, `Citadel`, `TownLayout` (Tasks 4–6), `PowerBook` (Task 7), `FxTimeline.cast(script, ctx, ground, extra)`, `FxParts.prewarm`, `DummyEnemy.Look.ORC`, `EnemyField.bounds`.
 - Produces: the M1 playable debug scene. Keys `1`–`9`, `0`, `-` pick `PowerBook.POWERS[0..10]`; left click casts point powers; left drag aims line powers; WASD/arrows or middle drag pan; wheel zooms (0.5–1.6); `R` rebuilds; `Esc` quits. Flags after `--`: `--capture-town`, `--citadel-test`, `--bench [--only=<key>]`. `tools/capture.sh` runs another scene when `SCENE` is set.
 
 - [ ] **Step 1: Create the scene and its script**
@@ -2609,13 +2630,7 @@ func _ready() -> void:
 	_drag_line.z_index = 5
 	_drag_line.draw.connect(_draw_drag_line)
 	_bf.ground_plane.add_child(_drag_line)
-	_hud = Label.new()
-	_hud.position = Vector2(6, 4)
-	_hud.add_theme_font_size_override("font_size", 8)
-	_hud.add_theme_color_override("font_color", Color("cfd8e8"))
-	_hud.add_theme_color_override("font_outline_color", Color.BLACK)
-	_hud.add_theme_constant_override("outline_size", 2)
-	_bf.hud_layer.add_child(_hud)
+	_hud = _bf.add_debug_label()
 	var args := OS.get_cmdline_user_args()
 	var scripted := "--capture-town" in args or "--citadel-test" in args or "--bench" in args
 	_rebuild(7 if scripted else Time.get_ticks_usec())
@@ -2685,15 +2700,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var pan := Vector2.ZERO
-	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
-		pan.x -= 1
-	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
-		pan.x += 1
-	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
-		pan.y -= 1
-	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
-		pan.y += 1
+	var pan := Battlefield.key_pan_dir()
 	if pan != Vector2.ZERO:
 		# Pan in real time regardless of hit-stop, faster when zoomed out.
 		var real_delta := delta / maxf(Engine.time_scale, 0.001)

@@ -1,5 +1,6 @@
 extends Node2D
-## VFX sandbox: iso floor, dummy enemies, effect picker, capture and bench modes.
+## VFX sandbox: iso floor, dummy enemies, effect picker, capture and bench modes. The world itself (layers, camera,
+## sound, lights, buildings, units, glow, impact, flash) is the shared Battlefield.
 
 ## Set 0: sci-fi city. Set 1: fantasy castle (KWAI). Tab switches set and rebuilds the map.
 ## dim_scale: how strongly effects darken the world. zoom: camera push-in while a skill plays.
@@ -45,22 +46,19 @@ const LASER_DRAG_MIN := 0.5
 ## How far (px) a followed effect may drift from the screen centre before the camera moves after it.
 const FOLLOW_SLACK := Vector2(120, 24)
 
-var ctx := FxContext.new()
+var ctx: FxContext
 var selected := 0
 var set_index := 0
+var _bf: Battlefield
 var _tiles: Node2D
 
 var _field: EnemyField
 var _camera: CameraShake
 var _hud: Label
-var _flash_rect: ColorRect
-var _flash_tween: Tween
-var _ground_plane: Node2D
 var _drag_preview: Node2D
 var _press_ground := Vector2.ZERO
 var _pressing := false
-var _rng := RandomNumberGenerator.new()
-var _glow: ColorRect
+var _rng: RandomNumberGenerator
 var _active_fx: Array[FxTimeline] = []
 var _home_position := Vector2.ZERO
 var _camera_tween: Tween
@@ -76,9 +74,9 @@ func _ready() -> void:
 	_build_world()
 	var args := OS.get_cmdline_user_args()
 	var seed_value := 7 if _has_any_flag(args) else Time.get_ticks_usec()
-	if _arg_value(args, "--set") != "":
-		set_index = int(_arg_value(args, "--set"))
-	var only := _arg_value(args, "--only")
+	if Battlefield.arg_value(args, "--set") != "":
+		set_index = int(Battlefield.arg_value(args, "--set"))
+	var only := Battlefield.arg_value(args, "--only")
 	if only != "":
 		for e in EFFECTS:
 			if e.key == only:
@@ -89,9 +87,9 @@ func _ready() -> void:
 	if "--capture-idle" in args:
 		_capture_idle()
 	elif "--capture-all" in args:
-		_capture_all(_arg_value(args, "--only"))
+		_capture_all(Battlefield.arg_value(args, "--only"))
 	elif "--bench" in args:
-		_bench(_arg_value(args, "--only"))
+		_bench(Battlefield.arg_value(args, "--only"))
 
 
 func _has_any_flag(args: PackedStringArray) -> bool:
@@ -101,148 +99,27 @@ func _has_any_flag(args: PackedStringArray) -> bool:
 	return false
 
 
-func _arg_value(args: PackedStringArray, key: String) -> String:
-	for a in args:
-		if a.begins_with(key + "="):
-			return a.substr(key.length() + 1)
-	return ""
-
-
 func _build_world() -> void:
-	_ground_plane = Node2D.new()
-	_ground_plane.name = "GroundPlane"
-	_ground_plane.transform = Iso.BASIS
-	_ground_plane.z_index = -10
-	add_child(_ground_plane)
+	_bf = Battlefield.new()
+	_bf.name = "Battlefield"
+	add_child(_bf)
+	ctx = _bf.ctx
+	_field = ctx.field
+	_camera = _bf.camera
+	_rng = _bf.rng
+
 	_tiles = Node2D.new()
 	_tiles.name = "Tiles"
 	_tiles.set_script(preload("res://src/sandbox/ground_tiles.gd"))
-	_ground_plane.add_child(_tiles)
+	_bf.ground_plane.add_child(_tiles)
 
 	_drag_preview = Node2D.new()
 	_drag_preview.name = "DragPreview"
 	_drag_preview.z_index = 5
 	_drag_preview.draw.connect(_draw_drag_preview)
-	_ground_plane.add_child(_drag_preview)
+	_bf.ground_plane.add_child(_drag_preview)
 
-	var world := Node2D.new()
-	world.name = "WorldLayer"
-	world.y_sort_enabled = true
-	add_child(world)
-
-	# Dim only darkens the ground; buildings and enemies darken themselves via LightField.ambient
-	# so effect light on them still reads in the dark.
-	var dim_layer := Node2D.new()
-	dim_layer.name = "DimLayer"
-	dim_layer.z_index = -6
-	add_child(dim_layer)
-
-	var overhead_back := Node2D.new()
-	overhead_back.name = "OverheadBackLayer"
-	overhead_back.z_index = 8
-	add_child(overhead_back)
-
-	var overhead := Node2D.new()
-	overhead.name = "OverheadLayer"
-	overhead.z_index = 10
-	add_child(overhead)
-
-	var distort := Node2D.new()
-	distort.name = "DistortLayer"
-	distort.z_index = 20
-	add_child(distort)
-
-	_camera = CameraShake.new()
-	_camera.name = "Camera"
-	add_child(_camera)
-	_camera.make_current()
-	var listener := AudioListener2D.new()
-	_camera.add_child(listener)
-	listener.make_current()
-
-	var sfx := Sfx.new()
-	sfx.name = "Sfx"
-	add_child(sfx)
-
-	var lights := LightField.new()
-	lights.name = "Lights"
-	add_child(lights)
-	var env := EnvironmentField.new()
-	env.name = "Environment"
-	add_child(env)
-	env.lights = lights
-	env.world_parent = world
-	env.fx_parent = overhead
-	env.fx_back = overhead_back
-
-	_field = EnemyField.new()
-	_field.env = env
-	_field.lights = lights
-	_field.name = "EnemyField"
-	add_child(_field)
-
-	var hud_layer := CanvasLayer.new()
-	hud_layer.layer = 5
-	add_child(hud_layer)
-	_hud = Label.new()
-	_hud.position = Vector2(6, 4)
-	_hud.add_theme_font_size_override("font_size", 8)
-	_hud.add_theme_color_override("font_color", Color("cfd8e8"))
-	_hud.add_theme_color_override("font_outline_color", Color.BLACK)
-	_hud.add_theme_constant_override("outline_size", 2)
-	hud_layer.add_child(_hud)
-
-	# Glow sits above the world and effects, below the impact post and flash.
-	var glow_layer := CanvasLayer.new()
-	glow_layer.layer = 2
-	add_child(glow_layer)
-	_glow = ColorRect.new()
-	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_glow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var glow_mat := ShaderMaterial.new()
-	glow_mat.shader = preload("res://shaders/glow_post.gdshader")
-	_glow.material = glow_mat
-	glow_layer.add_child(_glow)
-
-	var post_layer := CanvasLayer.new()
-	post_layer.layer = 3
-	add_child(post_layer)
-	var impact := Impact.new()
-	impact.name = "Impact"
-	add_child(impact)
-	impact.setup(post_layer, dim_layer, _camera)
-
-	var flash_layer := CanvasLayer.new()
-	flash_layer.layer = 4
-	add_child(flash_layer)
-	_flash_rect = ColorRect.new()
-	_flash_rect.color = Color(1, 1, 1, 0)
-	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	flash_layer.add_child(_flash_rect)
-
-	ctx.field = _field
-	ctx.env = env
-	ctx.lights = lights
-	ctx.shake = _camera
-	ctx.sfx = sfx
-	ctx.ground = _ground_plane
-	ctx.world = world
-	ctx.overhead_back = overhead_back
-	ctx.overhead = overhead
-	ctx.impact = impact
-	ctx.distort = distort
-	ctx.rng = _rng
-	ctx.flash = _screen_flash
-
-
-func _screen_flash(color: Color, seconds: float) -> void:
-	if _flash_tween:
-		_flash_tween.kill()
-	_flash_rect.color = color
-	_flash_tween = create_tween()
-	_flash_tween.tween_property(_flash_rect, "color:a", 0.0, seconds) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_hud = _bf.add_debug_label()
 
 
 func _visible_effects() -> Array:
@@ -250,25 +127,17 @@ func _visible_effects() -> Array:
 
 
 func _reset_world(seed_value: int) -> void:
-	_rng.seed = seed_value
 	var theme: String = SETS[set_index].theme
 	RenderingServer.set_default_clear_color(SETS[set_index].clear)
 	_tiles.theme = theme
 	_field.look = DummyEnemy.Look.ORC if theme == "fantasy" else DummyEnemy.Look.TROOPER
 	ctx.impact.dim_scale = SETS[set_index].dim_scale
-	ctx.impact.dim(0.0, 100.0)
 	_active_fx.clear()
 	_follow_fx = null
 	if _camera_tween:
 		_camera_tween.kill()
 	_camera.zoom = Vector2.ONE
-	for layer in [ctx.overhead_back, ctx.overhead, ctx.distort]:
-		for c in layer.get_children():
-			c.queue_free()
-	_field.clear()
-	ctx.lights.clear()
-	ctx.env.clear()
-	ctx.env.rng.seed = seed_value
+	_bf.reset(seed_value)
 	if theme == "fantasy":
 		ctx.env.build_castle()
 	else:
@@ -350,7 +219,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				ctx.impact.set_base_time_scale(0.25 if ctx.impact.base_time_scale > 0.5 else 1.0)
 				_update_hud()
 			KEY_ESCAPE:
-				_quit()
+				_bf.quit()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true
@@ -366,15 +235,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	var pan := Vector2.ZERO
-	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
-		pan.x -= 1
-	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
-		pan.x += 1
-	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
-		pan.y -= 1
-	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
-		pan.y += 1
+	var pan := Battlefield.key_pan_dir()
 	if pan != Vector2.ZERO:
 		# Pan in real time regardless of slow-mo.
 		var real_delta := delta / maxf(Engine.time_scale, 0.001)
@@ -393,7 +254,6 @@ func _process(delta: float) -> void:
 		_camera.position = _camera.position.lerp(_camera.position + chase, minf(4.0 * real, 1.0))
 	if _pressing:
 		_drag_preview.queue_redraw()
-	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85
 
 
 func _draw_drag_preview() -> void:
@@ -420,45 +280,12 @@ func _update_hud() -> void:
 		SETS[set_index].name, "  ".join(names), slow]
 
 
-## Stop voices before quitting so the audio server does not leak playbacks.
-func _quit() -> void:
-	ctx.sfx.stop_all("")
-	for c in ctx.overhead_back.get_children() + ctx.overhead.get_children() + ctx.distort.get_children():
-		c.queue_free()
-	await _wait_frames(3)
-	# Stopped playbacks are released by the audio thread; give it real time (fixed-fps frames can be ~1 ms).
-	OS.delay_msec(150)
-	await _wait_frames(1)
-	Sfx.clear_cache()
-	get_tree().quit()
-
-
 # --- Capture / bench -------------------------------------------------------
 
-func _capture_dir() -> String:
-	var dir := ProjectSettings.globalize_path("res://captures")
-	DirAccess.make_dir_recursive_absolute(dir)
-	return dir
-
-
-func _save_capture(file_name: String) -> void:
-	await RenderingServer.frame_post_draw
-	var img := get_viewport().get_texture().get_image()
-	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
-	var path := _capture_dir().path_join(file_name)
-	img.save_png(path)
-	print("captured ", path)
-
-
-func _wait_frames(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
-
 func _capture_idle() -> void:
-	await _wait_frames(30)
-	await _save_capture("idle.png")
-	await _quit()
+	await _bf.wait_frames(30)
+	await _bf.save_capture("idle.png")
+	await _bf.quit()
 
 
 func _capture_all(only: String) -> void:
@@ -473,7 +300,7 @@ func _capture_all(only: String) -> void:
 		set_index = entry.set
 		_reset_world(7)
 		_hud.text = entry.name
-		await _wait_frames(10)
+		await _bf.wait_frames(10)
 		var extra := {}
 		if plan.has("dir"):
 			extra["dir"] = plan.dir
@@ -481,14 +308,14 @@ func _capture_all(only: String) -> void:
 		for time in plan.times:
 			while is_instance_valid(fx) and fx.t < time:
 				await get_tree().process_frame
-			await _save_capture("%s_%04d.png" % [key, int(time * 1000)])
+			await _bf.save_capture("%s_%04d.png" % [key, int(time * 1000)])
 		while is_instance_valid(fx):
 			await get_tree().process_frame
-	await _quit()
+	await _bf.quit()
 
 
 func _bench(only: String) -> void:
-	await _wait_frames(10)
+	await _bf.wait_frames(10)
 	var spots := [Vector2(-3, -3), Vector2(3, -3), Vector2(-3, 3), Vector2(-5, 3)]
 	var list := _visible_effects()
 	for i in list.size():
@@ -496,20 +323,5 @@ func _bench(only: String) -> void:
 			continue
 		if ResourceLoader.exists(list[i].path):
 			_cast_entry(list[i], spots[i % spots.size()], {"dir": Vector2(1, 0)})
-	var worst := 0.0
-	var total := 0.0
-	var frames := 0
-	var last := Time.get_ticks_usec()
-	var start := last
-	while Time.get_ticks_usec() - start < 9_000_000:
-		await get_tree().process_frame
-		var now := Time.get_ticks_usec()
-		var ms := (now - last) / 1000.0
-		last = now
-		if frames > 2:
-			worst = maxf(worst, ms)
-		total += ms
-		frames += 1
-	print("bench[%s] frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f" % [
-		only if only != "" else "all", frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst])
-	await _quit()
+	await _bf.bench(only if only != "" else "all")
+	await _bf.quit()

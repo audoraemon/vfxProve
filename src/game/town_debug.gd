@@ -25,7 +25,7 @@ const TOWN_SHOTS := [
 	["town_market.png", Vector2(0, 0), 1.2],
 	["town_main_gate.png", Vector2(0, 8.7), 1.1],
 	["town_side_gate.png", Vector2(8.7, 0), 1.1],
-	["town_river_farms.png", Vector2(1, 13), 0.8],
+	["town_river_farms.png", Vector2(2.25, 14.05), 0.5],
 ]
 ## [time, power key, ground point] for --citadel-test.
 const CITADEL_CASTS := [
@@ -85,7 +85,11 @@ func _rebuild(seed_value: int) -> void:
 	_bf.reset(seed_value)
 	_destroyed = 0
 	if is_instance_valid(_town):
-		_town.free()
+		# Parents may be mid-teardown here, so never free a tree-resident town immediately.
+		if _town.is_inside_tree():
+			_town.queue_free()
+		else:
+			_town.free()
 	_town = Town.new()
 	_town.name = "Town"
 	add_child(_town)

@@ -30,5 +30,17 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 
 
 func _exit_tree() -> void:
+	_free_floor()
+
+
+func _notification(what: int) -> void:
+	# The floor hangs under the battlefield's ground plane, not under this node, so it has to be freed by
+	# hand whichever way the town goes away — including a town that never entered the scene tree.
+	if what == NOTIFICATION_PREDELETE:
+		_free_floor()
+
+
+func _free_floor() -> void:
 	if is_instance_valid(floor_node):
 		floor_node.queue_free()
+	floor_node = null

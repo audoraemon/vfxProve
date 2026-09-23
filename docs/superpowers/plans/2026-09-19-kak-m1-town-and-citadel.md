@@ -48,7 +48,7 @@
 | `tests/run_all.gd` | modify | registers the new suites |
 | `README.md` | modify | KAK section, layout, check count |
 
-Expected `checks=` after each task: Task 1 → 217, Task 2 → 235, Task 3 → 247, Task 4 → 263, Task 5 → 279, Task 6 → 288, Task 7 → 294, Task 8 → 294.
+Expected `checks=` after each task: Task 1 → 217, Task 2 → 235, Task 3 → 247, Task 4 → 263, Task 5 → 279, Task 6 → 290, Task 7 → 296, Task 8 → 296.
 
 ---
 
@@ -2227,6 +2227,20 @@ static func run(t) -> void:
 	env.structure_destroyed.connect(func(s: Structure) -> void: down.append(s))
 	env.damage_radius(Vector2(0, 12.2), 0.3, 99999.0, &"stone")
 	t.check(town.bridge.destroyed and down == [town.bridge], "the bridge can be destroyed and reports it")
+
+	# The floor hangs under the ground plane, so freeing the town must take it along even when the town
+	# never entered the scene tree.
+	var env2 := EnvironmentField.new()
+	var ground := Node2D.new()
+	var town2 := Town.new()
+	town2.build(env2, ground)
+	var floor_node: Node = town2.floor_node
+	t.check(floor_node != null and ground.get_child_count() == 1, "the floor is added under the ground plane")
+	town2.free()
+	t.check(not is_instance_valid(floor_node) or floor_node.is_queued_for_deletion(), "freeing the town frees its floor")
+	env2.clear()
+	env2.free()
+	ground.free()
 	env.clear()
 	env.free()
 	town.free()
@@ -2412,14 +2426,26 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 
 
 func _exit_tree() -> void:
+	_free_floor()
+
+
+func _notification(what: int) -> void:
+	# The floor hangs under the battlefield's ground plane, not under this node, so it has to be freed by
+	# hand whichever way the town goes away — including a town that never entered the scene tree.
+	if what == NOTIFICATION_PREDELETE:
+		_free_floor()
+
+
+func _free_floor() -> void:
 	if is_instance_valid(floor_node):
 		floor_node.queue_free()
+	floor_node = null
 ```
 
 - [ ] **Step 5: Run the tests**
 
 Run: `bash tools/test.sh`
-Expected: `checks=288 failures=0`.
+Expected: `checks=290 failures=0`.
 
 - [ ] **Step 6: Commit**
 
@@ -2486,7 +2512,7 @@ Register it: add `"res://tests/test_power_book.gd",` as the last entry of `SUITE
 - [ ] **Step 2: Run the tests to see the new suite fail**
 
 Run: `bash tools/test.sh`
-Expected: `FAIL: suite failed to load: res://tests/test_power_book.gd` and `checks=289 failures=1`.
+Expected: `FAIL: suite failed to load: res://tests/test_power_book.gd` and `checks=291 failures=1`.
 
 - [ ] **Step 3: Create `src/game/power_book.gd`**
 
@@ -2551,7 +2577,7 @@ static func hud_icon(key: String) -> Texture2D:
 - [ ] **Step 4: Run the tests**
 
 Run: `bash tools/test.sh`
-Expected: `checks=294 failures=0`.
+Expected: `checks=296 failures=0`.
 
 - [ ] **Step 5: Commit**
 
@@ -2861,7 +2887,7 @@ bash tools/test.sh
 SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --capture-town
 ```
 
-Expected: `checks=294 failures=0`; then six `captured …/captures/town_*.png` lines and no `SCRIPT ERROR`. Open all six PNGs and check:
+Expected: `checks=296 failures=0`; then six `captured …/captures/town_*.png` lines and no `SCRIPT ERROR`. Open all six PNGs and check:
 - `town_overview.png`: the whole walled town; Citadel upper right of centre, Main Gate lower left, Side Gate lower right; river and bridge beyond the Main Gate with farms past it; forest along the west, north and east edges; the floor draws under every building (no building half-covered by ground).
 - `town_citadel.png`: four tall towers, curtain walls, a taller keep, banners, paved court.
 - `town_market.png`: seven striped stalls round the crossroads, torches, cobbled streets.
@@ -2934,7 +2960,7 @@ src/game/town/   Aldermere layout, Town builder, town floor, fortified Citadel
 
 and add `scenes/          sandbox.tscn (main scene), town_debug.tscn` after the `docs/superpowers` line.
 
-6c. In `## Verify`, change `checks=217 failures=0` to `checks=294 failures=0`.
+6c. In `## Verify`, change `checks=217 failures=0` to `checks=296 failures=0`.
 
 - [ ] **Step 7: Commit, tag and push**
 

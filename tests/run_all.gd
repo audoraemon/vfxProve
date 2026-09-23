@@ -11,6 +11,7 @@ const SUITES := [
 	"res://tests/test_building_kinds.gd",
 	"res://tests/test_town_layout.gd",
 	"res://tests/test_citadel.gd",
+	"res://tests/test_town.gd",
 ]
 
 var failures := 0

@@ -4,6 +4,9 @@ extends Node2D
 ## on the side facing each light. Damage scorches and cracks it; destruction collapses it into
 ## rubble with dust and debris, reacting to the damage type (blast, beam cut, gravity).
 
+## Emitted once, when the building is destroyed by any cause.
+signal broken(s: Structure)
+
 enum Kind { TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH }
 
 const RUBBLE_H := 5.0
@@ -19,6 +22,8 @@ const COL_BEAM := Color("3a2a1e")
 const COL_ROOF := [Color("5a6a86"), Color("46546e"), Color("363f54")]
 const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
+## Seconds a dropped banner takes to fall and fade.
+const BANNER_FALL_TIME := 1.0
 
 var kind := Kind.BLOCK
 var footprint := Rect2()
@@ -33,6 +38,13 @@ var lights: LightField
 var fx_parent: Node
 var fx_back: Node
 var rng := RandomNumberGenerator.new()
+## Game role for rules and scoring (&"house", &"citadel", ...); empty in the sandbox.
+var role := &""
+## Units walk over it while it stands (gates, the bridge, fields).
+var walkable := false
+## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
+## When set, damage() hands every hit to it instead of lowering hp (the Citadel's damage budget).
+var damage_filter := Callable()
 
 var _collapse := -1.0
 var _collapse_from := 0.0
@@ -56,6 +68,8 @@ var _banner: Node2D
 ## Last drawn light state; redraw only when it changes or something animates.
 var _drawn_sig := -1
 var _dirty := true
+## Seconds since drop_banner() (-1 = the banner still hangs).
+var _banner_fall := -1.0
 
 
 func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
@@ -112,18 +126,17 @@ func distance_to(g: Vector2) -> float:
 func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 	if destroyed:
 		return
+	if damage_filter.is_valid():
+		# Someone else (the Citadel) owns this building's health and decides when it falls.
+		damage_filter.call(self, amount, source, damage_kind)
+		return
 	hp -= amount
-	_dirty = true
-	if damage_kind == &"ice":
-		frost = minf(frost + amount / max_hp * 3.0, 1.0)
-	else:
-		scorch = minf(scorch + amount / max_hp * 0.9, 1.0)
-	_shake = maxf(_shake, 2.5)
+	mark_hit(amount / max_hp, damage_kind)
 	if hp <= 0.0:
 		destroy(source, damage_kind)
 		return
-	if hp < max_hp * 0.65 and _cracks.is_empty():
-		_build_cracks()
+	if hp < max_hp * 0.65:
+		crack()
 	for w in _windows:
 		if rng.randf() < 0.3:
 			w[3] = false
@@ -132,10 +145,45 @@ func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 		_spawn_fire(Vector2(0, -height), 3.5)
 
 
+## Hit reaction without health: scorch (or frost, for ice) by `share` of the building, and a shake.
+func mark_hit(share: float, damage_kind: StringName) -> void:
+	if destroyed:
+		return
+	_dirty = true
+	if damage_kind == &"ice":
+		frost = minf(frost + share * 3.0, 1.0)
+	else:
+		scorch = minf(scorch + share * 0.9, 1.0)
+	_shake = maxf(_shake, 2.5)
+
+
+## Cracks up the visible walls (once).
+func crack() -> void:
+	if destroyed or not _cracks.is_empty():
+		return
+	_build_cracks()
+	_dirty = true
+
+
 func shake(amount: float) -> void:
 	if not destroyed:
 		_shake = maxf(_shake, amount)
 		_dirty = true
+
+
+## Fire and smoke on the building for `seconds`; `offset` is in px from its front corner (its position).
+func ignite(offset: Vector2, seconds: float) -> void:
+	_spawn_fire(offset, seconds)
+
+
+func dust_burst(amount: float) -> void:
+	_spawn_dust(amount)
+
+
+## The banner comes loose and slides down the wall, fading (the Citadel at 20%).
+func drop_banner() -> void:
+	if is_instance_valid(_banner) and _banner_fall < 0.0:
+		_banner_fall = 0.0
 
 
 func destroy(source: Vector2, damage_kind: StringName) -> void:
@@ -154,6 +202,13 @@ func destroy(source: Vector2, damage_kind: StringName) -> void:
 		light_id = 0
 	if is_instance_valid(_glow):
 		_glow.queue_free()
+	_fall_apart(source, damage_kind)
+	broken.emit(self)
+
+
+## How the building comes down: a laser slices the top off; anything else collapses into rubble with debris,
+## dust and, for hot damage, fire.
+func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
 	_build_rubble()
 	if damage_kind == &"laser" and max_height > 20.0:
 		# Cut clean through: the top slides off and falls, a molten stump remains.
@@ -195,7 +250,14 @@ func _process(delta: float) -> void:
 	_molten = maxf(_molten - delta * 0.5, 0.0)
 	if is_instance_valid(_banner):
 		_banner.visible = not destroyed
-		_banner.position = Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).round() * _shake if _shake > 0.2 else Vector2.ZERO
+		if _banner_fall >= 0.0:
+			_banner_fall += delta
+			_banner.position = Vector2(0, roundf(90.0 * _banner_fall * _banner_fall))
+			_banner.modulate.a = clampf(1.0 - _banner_fall / BANNER_FALL_TIME, 0.0, 1.0)
+			if _banner_fall >= BANNER_FALL_TIME:
+				_banner.queue_free()
+		else:
+			_banner.position = Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).round() * _shake if _shake > 0.2 else Vector2.ZERO
 		_banner.queue_redraw()
 	var animating := _shake > 0.0 or (_collapse >= 0.0 and _collapse <= 1.0 and _dirty) or not _top_piece.is_empty() \
 		or _molten > 0.0 or kind == Kind.TORCH

@@ -2,6 +2,13 @@ class_name EnvironmentField
 extends Node
 ## Registry of destructible structures with ground-space damage queries, like EnemyField for props.
 
+## A structure was destroyed (any cause); the game's rules count these.
+signal structure_destroyed(s: Structure)
+
+## Spatial index cell (ground units) for blocked(); query margins up to MAX_MARGIN use it.
+const CELL := 2.0
+const MAX_MARGIN := 0.5
+
 var lights: LightField
 ## Y-sorted world layer structures are added to (null in headless tests).
 var world_parent: Node
@@ -10,16 +17,21 @@ var fx_back: Node
 var rng := RandomNumberGenerator.new()
 
 var _structures: Array[Structure] = []
+## Vector2i cell -> structures whose footprint, grown by MAX_MARGIN, touches that cell.
+var _grid := {}
 
 
-func add_structure(rect: Rect2, height: float, kind: Structure.Kind) -> Structure:
+func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &"") -> Structure:
 	var s := Structure.new().setup(rect, height, kind, rng.randi())
+	s.role = role
 	s.lights = lights
 	s.fx_parent = fx_parent
 	s.fx_back = fx_back
+	s.broken.connect(_on_structure_broken)
 	if kind == Structure.Kind.TORCH and lights != null:
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)
+	_index(s)
 	if world_parent != null:
 		world_parent.add_child(s)
 	return s
@@ -80,16 +92,19 @@ func clear() -> void:
 		else:
 			s.free()
 	_structures.clear()
+	_grid.clear()
 
 
 func structures() -> Array[Structure]:
 	return _structures
 
 
-## True when a standing structure occupies the ground point (rubble is walkable).
+## True when a standing structure units cannot walk through occupies the ground point (rubble, gates, the bridge
+## and fields are walkable). Only the structures indexed in g's cell are checked.
 func blocked(g: Vector2, margin := 0.15) -> bool:
-	for s in _structures:
-		if is_instance_valid(s) and not s.destroyed and s.contains(g, margin):
+	var candidates: Array = _structures if margin > MAX_MARGIN else _grid.get(_cell(g), [])
+	for s in candidates:
+		if is_instance_valid(s) and not s.destroyed and not s.walkable and s.contains(g, margin):
 			return true
 	return false
 
@@ -120,3 +135,23 @@ func shake_radius(center: Vector2, radius: float, amount: float) -> void:
 	for s in _structures:
 		if is_instance_valid(s) and not s.destroyed and s.distance_to(center) <= radius:
 			s.shake(amount)
+
+
+func _on_structure_broken(s: Structure) -> void:
+	structure_destroyed.emit(s)
+
+
+func _cell(g: Vector2) -> Vector2i:
+	return Vector2i(floori(g.x / CELL), floori(g.y / CELL))
+
+
+func _index(s: Structure) -> void:
+	var r := s.footprint.grow(MAX_MARGIN)
+	var c0 := _cell(r.position)
+	var c1 := _cell(r.end)
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			var key := Vector2i(x, y)
+			if not _grid.has(key):
+				_grid[key] = []
+			_grid[key].append(s)

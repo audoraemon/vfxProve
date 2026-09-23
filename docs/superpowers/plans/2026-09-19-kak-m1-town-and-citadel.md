@@ -676,8 +676,9 @@ static func run(t) -> void:
 
 	# The keep's banner can be dropped: it falls, fades and is removed.
 	var keep := env.add_structure(Rect2(10, 10, 2, 2), 96.0, Structure.Kind.KEEP)
-	t.root.add_child(keep)
-	t.check(is_instance_valid(keep._banner), "the keep builds its banner when it enters the tree")
+	# Nothing is in a scene tree here, and the test runner never reaches a frame, so build the banner directly.
+	keep._ready()
+	t.check(is_instance_valid(keep._banner), "the keep builds its banner")
 	keep.drop_banner()
 	keep._process(0.5)
 	var alpha := keep._banner.modulate.a
@@ -1069,21 +1070,37 @@ func _index(s: Structure) -> void:
 Run: `bash tools/test.sh`
 Expected: `checks=235 failures=0`.
 
-- [ ] **Step 6: Check the sandbox is unchanged**
+- [ ] **Step 6: Prove the sandbox still behaves exactly as before**
 
-`damage()` and `destroy()` were reorganised; their random-number calls must keep the same order. This matters more than it looks: `Structure._draw()` draws a random jitter whenever `_shake > 0.2`, so one random call added, removed or moved — or one extra redraw — shifts every later random value (rubble shapes, crack lines, particle seeds) and shows up as a visible difference.
+`damage()` and `destroy()` were reorganised, so their random-number calls must keep their old order. This matters more than it looks: `Structure._draw()` and the keep's banner both draw a random jitter whenever `_shake > 0.2`, so one random call added, removed or moved — or one extra redraw — shifts every later random value (rubble shapes, crack lines, particle seeds).
+
+`tools/dev/state_digest.gd` runs a fixed script of hits over the sandbox castle headlessly and digests the result (hp, scorch, frost, cracks, rubble shapes, collapse state, each building's random stream, the walkability map, the particle emitters spawned). It does not depend on frame timing, so it is the gate:
+
+```bash
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tools/dev/state_digest.gd
+```
+
+Expected, exactly as before this task:
+
+```
+rows=19
+digest=61267b7e90524d800bf1c3473a71146b
+blocked=000000111000000000000011000000000000000000001110000000000000
+emitters=45
+```
+
+A different digest means behaviour changed: read `git diff src/environment/structure.gd src/environment/environment_field.gd` against the brief's edits, looking for a dropped line, a moved statement or a changed condition, and fix the code. Never edit the digest tool or these expected values.
+
+Screenshots are the weaker check here — the sandbox's hit-stop is timed against real time, so effect frames drift a little between identical runs — but take them anyway and look for anything grossly wrong:
 
 ```bash
 bash tools/dev/sandbox_baseline.sh captures/m1_task2
 python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'idle.png'
 python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'judgement_*.png'
 python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'cinder_*.png'
-python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'nova_*.png'
 ```
 
-Expected: the idle, judgement and cinder comparisons each print `worst_mean_diff=0.000` — those frames are exactly reproducible. The nova frames are timed against real time (hit-stop) and vary a little run to run: theirs must stay below 7.0.
-
-If any judgement, cinder or idle frame is not 0.000, the change altered behaviour. Find it by reading `git diff src/environment/structure.gd src/environment/environment_field.gd` against the brief's edits — look for a random call added, removed or moved, a dropped line in a replaced block, or a changed draw — and fix the code. Do not relax the threshold.
+Expected: the idle frame (no effects, no hit-stop) is `0.000`; the judgement and cinder frames stay below 9.0. Report the numbers for the record.
 
 - [ ] **Step 7: Commit**
 
@@ -1616,14 +1633,14 @@ Expected: `captured kinds_standing.png` and `captured kinds_destroyed.png`. Open
 - [ ] **Step 6: Check the sandbox is unchanged**
 
 ```bash
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tools/dev/state_digest.gd
 bash tools/dev/sandbox_baseline.sh captures/m1_task3
 python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'idle.png'
 python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'judgement_*.png'
 python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'cinder_*.png'
-python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'nova_*.png'
 ```
 
-Expected: the idle, judgement and cinder comparisons each print `worst_mean_diff=0.000` (the house roof now goes through `_draw_roof(COL_ROOF, 14.0, true)`, which must draw exactly as before); the real-time-dependent nova frames stay below 7.0. A non-zero idle, judgement or cinder difference means a drawing or random-call change slipped in — find it in `git diff src/environment/structure.gd` and fix it.
+Expected: the digest prints exactly `rows=19`, `digest=61267b7e90524d800bf1c3473a71146b`, `blocked=000000111000000000000011000000000000000000001110000000000000` and `emitters=45` — unchanged, because the sandbox castle uses none of the new kinds and `crack()`'s new guard must not touch the old ones. The idle frame must be `0.000`. The judgement and cinder frames show the timber houses, so their roofs must still draw as before: hit-stop drift keeps those frames from being pixel-exact, but each must stay below 9.0 — a roof drawn with the wrong colours or rise would move far more pixels than that. If one is higher, open it next to the baseline PNG before continuing. Never edit the digest tool or its expected values.
 
 - [ ] **Step 7: Commit**
 

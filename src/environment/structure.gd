@@ -7,7 +7,10 @@ extends Node2D
 ## Emitted once, when the building is destroyed by any cause.
 signal broken(s: Structure)
 
-enum Kind { TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH }
+enum Kind {
+	TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH,
+	TEMPLE, BARRACKS, MARKET_STALL, GATE, BRIDGE, FARM_FIELD, TREE,
+}
 
 const RUBBLE_H := 5.0
 const COLLAPSE_TIME := 0.8
@@ -24,6 +27,21 @@ const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
 ## Seconds a dropped banner takes to fall and fade.
 const BANNER_FALL_TIME := 1.0
+## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
+const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
+const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
+## Stone kinds that show mortar courses.
+const MASONRY := [Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE, Kind.TEMPLE, Kind.BARRACKS]
+## Units walk over these while they stand.
+const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
+## Nothing to crack on these.
+const NO_CRACKS := [Kind.FARM_FIELD, Kind.TREE]
+const TEMPLE_ROOF := [Color("4f8a8a"), Color("3f7070"), Color("2f5656")]
+const BARRACKS_ROOF := [Color("9a5a3a"), Color("7e4a30"), Color("623a26")]
+const STALL_CANOPY := [[Color("b8322a"), Color("e8dcc4")], [Color("2f5ca8"), Color("e8dcc4")], [Color("3f7a34"), Color("d8b23a")]]
+const COL_DOOR := Color("1a1614")
+const COL_IRON := Color("4a4540")
+const COL_SHIELD := Color("9a2420")
 
 var kind := Kind.BLOCK
 var footprint := Rect2()
@@ -79,15 +97,18 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
 	kind = k
 	rng.seed = seed_value
 	max_hp = {Kind.TOWER: 160.0, Kind.BLOCK: 110.0, Kind.WALL: 60.0, Kind.CRATES: 30.0,
-		Kind.KEEP: 180.0, Kind.CASTLE_WALL: 90.0, Kind.HOUSE: 50.0, Kind.TORCH: 10.0}[k]
+		Kind.KEEP: 180.0, Kind.CASTLE_WALL: 90.0, Kind.HOUSE: 50.0, Kind.TORCH: 10.0,
+		Kind.TEMPLE: 200.0, Kind.BARRACKS: 150.0, Kind.MARKET_STALL: 25.0, Kind.GATE: 120.0,
+		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0}[k]
 	hp = max_hp
+	walkable = k in WALKABLE
 	var g0 := rect.position
 	var g2 := rect.end
 	var front := Iso.ground_to_screen(g2)
 	position = front
 	_s = [Iso.ground_to_screen(g0) - front, Iso.ground_to_screen(Vector2(g2.x, g0.y)) - front,
 		Vector2.ZERO, Iso.ground_to_screen(Vector2(g0.x, g2.y)) - front]
-	if k == Kind.TOWER or k == Kind.BLOCK or k == Kind.KEEP or k == Kind.HOUSE:
+	if k in WINDOWED:
 		_build_windows()
 	return self
 
@@ -159,7 +180,7 @@ func mark_hit(share: float, damage_kind: StringName) -> void:
 
 ## Cracks up the visible walls (once).
 func crack() -> void:
-	if destroyed or not _cracks.is_empty():
+	if destroyed or not _cracks.is_empty() or kind in NO_CRACKS:
 		return
 	_build_cracks()
 	_dirty = true
@@ -209,8 +230,22 @@ func destroy(source: Vector2, damage_kind: StringName) -> void:
 ## How the building comes down: a laser slices the top off; anything else collapses into rubble with debris,
 ## dust and, for hot damage, fire.
 func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
+	if kind == Kind.FARM_FIELD:
+		# Crops burn flat (or freeze, or drown): no rubble, just a ruined field.
+		if damage_kind == &"ice":
+			frost = 1.0
+		elif damage_kind != &"water":
+			scorch = 1.0
+			_spawn_fire(Vector2.ZERO, 2.5)
+		_spawn_dust(0.4)
+		return
 	_build_rubble()
-	if damage_kind == &"laser" and max_height > 20.0:
+	if kind == Kind.TREE:
+		# Felled: a stump among its leaves (the rubble), never sliced or slumped like a building.
+		_spawn_dust(0.4)
+		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone"]:
+			_spawn_fire(Vector2.ZERO, 2.0)
+	elif damage_kind == &"laser" and max_height > 20.0:
 		# Cut clean through: the top slides off and falls, a molten stump remains.
 		var cut := clampf(max_height * 0.35, 10.0, 28.0)
 		var away := (Iso.ground_to_screen(center()) - Iso.ground_to_screen(source)).normalized()
@@ -289,12 +324,22 @@ func _palette() -> Array:
 			return [Color("4d525c"), Color("3d424b"), Color("31353d")]
 		Kind.CRATES:
 			return [Color("6a5638"), Color("56452d"), Color("433523")]
-		Kind.KEEP, Kind.CASTLE_WALL:
+		Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE:
 			return [Color("a4a2a0"), Color("86858a"), Color("6a6a74")]
 		Kind.HOUSE:
 			return [Color("7a3a26"), Color("a8987a"), Color("8a7c64")]
 		Kind.TORCH:
 			return [Color("4a3a2a"), Color("3a2c20"), Color("2c2118")]
+		Kind.TEMPLE:
+			return [Color("d6cba8"), Color("b8aa86"), Color("998c6a")]
+		Kind.BARRACKS:
+			return [Color("9a9486"), Color("7e796d"), Color("656157")]
+		Kind.MARKET_STALL, Kind.BRIDGE:
+			return [Color("9a7a4c"), Color("7c6038"), Color("604a2c")]
+		Kind.FARM_FIELD:
+			return [Color("c9a94f"), Color("7a5c3a"), Color("634a2f")]
+		Kind.TREE:
+			return [Color("6a9a3a"), Color("54803a"), Color("3e6230")]
 		_:
 			return [Color("3d4453"), Color("2f3542"), Color("252a34")]
 
@@ -329,18 +374,21 @@ func _draw() -> void:
 	var jitter := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * _shake if _shake > 0.2 else Vector2.ZERO
 	draw_set_transform(jitter.round())
 
-	# Ground shadow toward the back.
-	draw_colored_polygon(PackedVector2Array([_s[0], _s[1] + Vector2(6, -3), _s[2] + Vector2(6, -3), _s[3]]),
-		Color(0, 0, 0, 0.25))
+	# Ground shadow toward the back (fields lie flat and cast none).
+	if kind != Kind.FARM_FIELD:
+		draw_colored_polygon(PackedVector2Array([_s[0], _s[1] + Vector2(6, -3), _s[2] + Vector2(6, -3), _s[3]]),
+			Color(0, 0, 0, 0.25))
 
 	var rubble_top := _collapse >= 0.0
 	if kind == Kind.TORCH and not destroyed:
 		_draw_torch(right_c, left_c)
+	elif kind == Kind.TREE:
+		_draw_tree(top_c, right_c, left_c)
 	else:
 		_draw_box(0.0, height, top_c, right_c, left_c, rubble_top)
-	if not rubble_top and not destroyed and (kind == Kind.KEEP or kind == Kind.CASTLE_WALL):
+	if not rubble_top and not destroyed and kind in MASONRY:
 		_draw_masonry(right_c, left_c)
-	if not rubble_top and (kind == Kind.TOWER or kind == Kind.BLOCK or kind == Kind.KEEP or kind == Kind.HOUSE):
+	if not rubble_top and kind in WINDOWED:
 		_draw_windows(light)
 	_draw_kind_details(top_c, right_c, left_c)
 	for crack in _cracks:
@@ -388,7 +436,7 @@ func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color
 
 
 func _build_windows() -> void:
-	if kind == Kind.KEEP or kind == Kind.HOUSE:
+	if kind in FANTASY_WINDOWS:
 		_build_fantasy_windows()
 		return
 	var rows := int((max_height - 8.0) / 9.0)
@@ -404,7 +452,7 @@ func _build_windows() -> void:
 
 
 func _draw_windows(light: Color) -> void:
-	if kind == Kind.KEEP or kind == Kind.HOUSE:
+	if kind in FANTASY_WINDOWS:
 		_draw_fantasy_windows(light)
 		return
 	for w in _windows:
@@ -440,7 +488,30 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 		Kind.CASTLE_WALL:
 			_draw_crenellations(top_c, right_c, left_c, 0.22)
 		Kind.HOUSE:
-			_draw_roof()
+			_draw_roof(COL_ROOF, 14.0, true)
+		Kind.TEMPLE:
+			_draw_roof(TEMPLE_ROOF, 22.0, false)
+			_draw_opening(3, 0.42, 0.58, 16.0, COL_DOOR)
+			var sun := (_s[3].lerp(_s[2], 0.5) + Vector2(0, -height + 8.0)).round()
+			var gold := COL_GOLD.lerp(COL_CHAR, scorch)
+			draw_rect(Rect2(sun + Vector2(-2, -2), Vector2(5, 5)), gold)
+			draw_rect(Rect2(sun + Vector2(-1, -3), Vector2(3, 7)), gold)
+		Kind.BARRACKS:
+			_draw_roof(BARRACKS_ROOF, 12.0, false)
+			_draw_opening(3, 0.45, 0.58, 12.0, COL_DOOR)
+			for u in [0.2, 0.8]:
+				var p := (_s[3].lerp(_s[2], u) + Vector2(0, -height * 0.6)).round()
+				draw_rect(Rect2(p + Vector2(-2, -3), Vector2(4, 5)), COL_SHIELD.lerp(COL_CHAR, scorch))
+				draw_rect(Rect2(p + Vector2(-1, -2), Vector2(2, 2)), COL_GOLD.lerp(COL_CHAR, scorch))
+		Kind.MARKET_STALL:
+			_draw_stall()
+		Kind.GATE:
+			_draw_crenellations(top_c, right_c, left_c, 0.22)
+			_draw_gate()
+		Kind.BRIDGE:
+			_draw_bridge(top_c)
+		Kind.FARM_FIELD:
+			_draw_furrows(top_c)
 		Kind.CRATES:
 			draw_line(_s[3].lerp(_s[2], 0.5), _s[3].lerp(_s[2], 0.5) + Vector2(0, -height), left_c.darkened(0.3), -1.0)
 			draw_line(_s[1].lerp(_s[2], 0.5), _s[1].lerp(_s[2], 0.5) + Vector2(0, -height), right_c.darkened(0.3), -1.0)
@@ -499,19 +570,19 @@ func _draw_masonry(right_c: Color, left_c: Color) -> void:
 				draw_line(p, p + Vector2(0, course - 1), col, -1.0)
 
 
-func _draw_roof() -> void:
+## Pitched roof in `cols` (lit, mid, dark) rising `rise` px; `timber` adds the house's timber frame on the walls.
+func _draw_roof(cols: Array, rise: float, timber: bool) -> void:
 	# Ridge runs along the longer ground axis; two sloped planes plus gable ends.
 	var r := footprint
-	var rise := 14.0
 	var along_x := r.size.x >= r.size.y
 	var mid := r.get_center()
 	var p0 := _gp(r.position, height)
 	var p1 := _gp(Vector2(r.end.x, r.position.y), height)
 	var p2 := _gp(r.end, height)
 	var p3 := _gp(Vector2(r.position.x, r.end.y), height)
-	var roof_dark: Color = COL_ROOF[2].lerp(COL_CHAR, scorch)
-	var roof_mid: Color = COL_ROOF[1].lerp(COL_CHAR, scorch)
-	var roof_lit: Color = COL_ROOF[0].lerp(COL_CHAR, scorch)
+	var roof_dark: Color = cols[2].lerp(COL_CHAR, scorch)
+	var roof_mid: Color = cols[1].lerp(COL_CHAR, scorch)
+	var roof_lit: Color = cols[0].lerp(COL_CHAR, scorch)
 	if along_x:
 		var ra := _gp(Vector2(r.position.x, mid.y), height + rise)
 		var rb := _gp(Vector2(r.end.x, mid.y), height + rise)
@@ -532,6 +603,8 @@ func _draw_roof() -> void:
 		for i in range(1, 5):
 			var u := i / 5.0
 			draw_line(p1.lerp(p2, u), ra.lerp(rb, u), roof_mid, -1.0)
+	if not timber:
+		return
 	# Timber frame on the plaster walls.
 	for face in [3, 1]:
 		var a: Vector2 = _s[face]
@@ -552,6 +625,100 @@ func _draw_torch(right_c: Color, left_c: Color) -> void:
 	draw_rect(Rect2(-2, -height - 4, 4, 3), COL_FLAME[2])
 	draw_rect(Rect2(-1, -height - 6 - f % 2, 3, 4), COL_FLAME[1])
 	draw_rect(Rect2(-1 + (f % 2), -height - 8 - f, 1, 3), COL_FLAME[0])
+
+
+## Dark doorway or arch at the foot of a face (3 = the +y face on the left, 1 = the +x face on the right),
+## spanning u0..u1 along it, h px tall with a pointed top.
+func _draw_opening(face: int, u0: float, u1: float, h: float, col: Color) -> void:
+	var a := _s[face].lerp(_s[2], u0)
+	var b := _s[face].lerp(_s[2], u1)
+	var apex := a.lerp(b, 0.5) + Vector2(0, -h - 3.0)
+	draw_colored_polygon(PackedVector2Array([a, b, b + Vector2(0, -h), apex, a + Vector2(0, -h)]), col)
+
+
+## Gatehouse arch with a raised portcullis, on the long face the road runs through.
+func _draw_gate() -> void:
+	var face := 3 if footprint.size.x >= footprint.size.y else 1
+	var arch_h := roundf(height * 0.62)
+	_draw_opening(face, 0.3, 0.7, arch_h, COL_DOOR)
+	var iron := COL_IRON.lerp(COL_CHAR, scorch)
+	for u in [0.38, 0.5, 0.62]:
+		var p := _s[face].lerp(_s[2], u)
+		draw_line(p + Vector2(0, -arch_h * 0.45), p + Vector2(0, -arch_h), iron, -1.0)
+	draw_line(_s[face].lerp(_s[2], 0.3) + Vector2(0, -arch_h * 0.45), _s[face].lerp(_s[2], 0.7) + Vector2(0, -arch_h * 0.45),
+		iron, -1.0)
+
+
+## Striped cloth canopy on poles above the counter; the stripe colours come from the stall's seed.
+func _draw_stall() -> void:
+	var r := footprint
+	var h := height + 9.0
+	var cloth: Array = STALL_CANOPY[rng.seed % STALL_CANOPY.size()]
+	var pole := COL_BEAM.lerp(COL_CHAR, scorch)
+	for corner in [Vector2(r.position.x, r.end.y), r.end, Vector2(r.end.x, r.position.y)]:
+		draw_line(_gp(corner, height), _gp(corner, h), pole, -1.0)
+	var stripes := 4
+	for i in stripes:
+		var x0 := lerpf(r.position.x - 0.08, r.end.x + 0.08, float(i) / stripes)
+		var x1 := lerpf(r.position.x - 0.08, r.end.x + 0.08, float(i + 1) / stripes)
+		var col: Color = cloth[i % 2].lerp(COL_CHAR, scorch)
+		draw_colored_polygon(PackedVector2Array([
+			_gp(Vector2(x0, r.position.y - 0.08), h), _gp(Vector2(x1, r.position.y - 0.08), h),
+			_gp(Vector2(x1, r.end.y + 0.08), h - 3.0), _gp(Vector2(x0, r.end.y + 0.08), h - 3.0)]), col)
+
+
+## Deck planks across the span and a rail on posts along both long sides.
+func _draw_bridge(top_c: Color) -> void:
+	var r := footprint
+	var plank := top_c.darkened(0.25)
+	var along_y := r.size.y >= r.size.x
+	var span := r.size.y if along_y else r.size.x
+	var n := int(span / 0.3)
+	for i in range(1, n):
+		var k := float(i) / n
+		if along_y:
+			var y := lerpf(r.position.y, r.end.y, k)
+			draw_line(_gp(Vector2(r.position.x, y), height), _gp(Vector2(r.end.x, y), height), plank, -1.0)
+		else:
+			var x := lerpf(r.position.x, r.end.x, k)
+			draw_line(_gp(Vector2(x, r.position.y), height), _gp(Vector2(x, r.end.y), height), plank, -1.0)
+	var rail := COL_BEAM.lerp(COL_CHAR, scorch)
+	var sides := [[r.position, Vector2(r.position.x, r.end.y)], [Vector2(r.end.x, r.position.y), r.end]] if along_y \
+		else [[r.position, Vector2(r.end.x, r.position.y)], [Vector2(r.position.x, r.end.y), r.end]]
+	for side in sides:
+		var a: Vector2 = side[0]
+		var b: Vector2 = side[1]
+		draw_line(_gp(a, height + 5.0), _gp(b, height + 5.0), rail, -1.0)
+		var posts := maxi(int(a.distance_to(b) / 0.6), 1)
+		for i in posts + 1:
+			var p := a.lerp(b, float(i) / posts)
+			draw_line(_gp(p, height), _gp(p, height + 5.0), rail, -1.0)
+
+
+## Crop rows across a field.
+func _draw_furrows(top_c: Color) -> void:
+	var r := footprint
+	var col := top_c.darkened(0.25)
+	var rows := int(r.size.y / 0.22)
+	for i in range(1, rows):
+		var y := lerpf(r.position.y, r.end.y, float(i) / rows)
+		draw_line(_gp(Vector2(r.position.x, y), height), _gp(Vector2(r.end.x, y), height), col, -1.0)
+
+
+## Round pixel tree: a trunk and a lumpy three-tone canopy; once felled, just the stump (its leaves are the rubble).
+func _draw_tree(top_c: Color, right_c: Color, left_c: Color) -> void:
+	var base := _gp(center(), 0.0).round()
+	var bark := COL_BEAM.lerp(COL_CHAR, scorch)
+	if destroyed:
+		draw_rect(Rect2(base + Vector2(-1, -4), Vector2(3, 4)), bark)
+		return
+	var trunk_h := roundf(max_height * 0.35)
+	draw_rect(Rect2(base + Vector2(-1, -trunk_h), Vector2(3, trunk_h)), bark)
+	var r := roundf(max_height * 0.3)
+	var c := base + Vector2(0, -trunk_h - r * 0.7)
+	draw_circle(c + Vector2(-2, 2), r, left_c)
+	draw_circle(c + Vector2(2, 1), r * 0.85, right_c)
+	draw_circle(c + Vector2(1, -2), r * 0.55, top_c)
 
 
 func _build_fantasy_windows() -> void:

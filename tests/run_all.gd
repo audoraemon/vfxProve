@@ -8,6 +8,7 @@ const SUITES := [
 	"res://tests/test_environment.gd",
 	"res://tests/test_freeze.gd",
 	"res://tests/test_structure_roles.gd",
+	"res://tests/test_building_kinds.gd",
 ]
 
 var failures := 0

@@ -40,7 +40,7 @@ const TEMPLE_ROOF := [Color("4f8a8a"), Color("3f7070"), Color("2f5656")]
 const BARRACKS_ROOF := [Color("9a5a3a"), Color("7e4a30"), Color("623a26")]
 const STALL_CANOPY := [[Color("b8322a"), Color("e8dcc4")], [Color("2f5ca8"), Color("e8dcc4")], [Color("3f7a34"), Color("d8b23a")]]
 const COL_DOOR := Color("1a1614")
-const COL_IRON := Color("4a4540")
+const COL_IRON := Color("6d6259")
 const COL_SHIELD := Color("9a2420")
 
 var kind := Kind.BLOCK
@@ -351,11 +351,17 @@ func _face_color(base: Color, normal: Vector2, light: Color, dir: Vector2) -> Co
 	elif normal == Vector2.ZERO:
 		facing = 0.9
 	var lit := Color(light.r * facing, light.g * facing, light.b * facing)
+	# Soft-clip the pooled light per channel so two overlapping torch radii saturate gracefully instead of
+	# summing without limit; a channel can get arbitrarily bright but never exceeds 1.0 on its own.
+	lit = Color(lit.r / (1.0 + lit.r), lit.g / (1.0 + lit.g), lit.b / (1.0 + lit.b))
 	var amb := lights.ambient if lights else 1.0
-	# Dark materials take a strong multiplicative boost; bright daylight stone gets less so it never
-	# saturates to white under a light pool.
-	var gain := lerpf(4.0, 1.2, clampf((base.get_luminance() - 0.25) / 0.4, 0.0, 1.0))
-	var add := lerpf(0.35, 0.12, clampf((base.get_luminance() - 0.25) / 0.4, 0.0, 1.0))
+	# Dark materials take a strong multiplicative boost so unlit night buildings stay readable. Bright stone
+	# starts with less boost, and whatever boost it gets is further scaled by its own headroom above white
+	# (1.0 - luminance), so a fully lit pale-stone face keeps its masonry and crenellation detail instead of
+	# clamping to a flat white slab, while torch pools still read as warm pools of light.
+	var headroom := 1.0 - base.get_luminance()
+	var gain := lerpf(4.0, 1.2, clampf((base.get_luminance() - 0.25) / 0.4, 0.0, 1.0)) * headroom
+	var add := lerpf(0.35, 0.12, clampf((base.get_luminance() - 0.25) / 0.4, 0.0, 1.0)) * headroom
 	var c := Color(
 		minf(base.r * amb * (1.0 + lit.r * gain) + lit.r * add, 1.0),
 		minf(base.g * amb * (1.0 + lit.g * gain) + lit.g * add, 1.0),

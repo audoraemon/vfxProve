@@ -17,7 +17,9 @@ const DRAG_MIN := 0.5
 ## Keys 1-9, 0 and - pick PowerBook.POWERS[0..10].
 const POWER_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS]
 const KEY_LABELS := ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-"]
-const CLEAR := Color("2a2e24")
+## Meadow green (TownFloor.GRASS[2]), not the sandbox's near-black: TownFloor.FILL cannot cover the whole
+## viewport at ZOOM_MIN with the pan limits, so any gap at the edge blends into grass instead of showing a void.
+const CLEAR := Color("4a6a2a")
 ## [file, ground point to look at, zoom] for --capture-town.
 const TOWN_SHOTS := [
 	["town_overview.png", Vector2(2, 2), 0.5],
@@ -63,6 +65,7 @@ func _ready() -> void:
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"
 	_drag_line.z_index = 5
+	_drag_line.z_as_relative = false  # absolute z 5: above the world (0), below the overhead layer (8).
 	_drag_line.draw.connect(_draw_drag_line)
 	_bf.ground_plane.add_child(_drag_line)
 	_hud = _bf.add_debug_label()

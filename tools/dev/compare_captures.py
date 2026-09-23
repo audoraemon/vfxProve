@@ -1,14 +1,17 @@
 """Mean absolute pixel difference between same-named PNGs in two folders (0-255 scale, averaged over RGB).
-usage: python tools/dev/compare_captures.py <dir_a> <dir_b>"""
+usage: python tools/dev/compare_captures.py <dir_a> <dir_b> [glob]
+The glob picks which frames to compare (default '*.png'): the idle, judgement and cinder frames are exactly
+reproducible, while the nova frames are timed against real time (hit-stop) and vary a little run to run."""
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageStat
 
 a_dir, b_dir = Path(sys.argv[1]), Path(sys.argv[2])
+pattern = sys.argv[3] if len(sys.argv) > 3 else '*.png'
 worst = 0.0
 count = 0
-for a in sorted(a_dir.glob('*.png')):
+for a in sorted(a_dir.glob(pattern)):
     b = b_dir / a.name
     if not b.exists():
         print('missing', b)

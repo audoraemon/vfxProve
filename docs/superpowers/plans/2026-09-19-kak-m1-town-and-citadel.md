@@ -1071,14 +1071,19 @@ Expected: `checks=235 failures=0`.
 
 - [ ] **Step 6: Check the sandbox is unchanged**
 
-`damage()` and `destroy()` were reorganised; their random-number calls must keep the same order.
+`damage()` and `destroy()` were reorganised; their random-number calls must keep the same order. This matters more than it looks: `Structure._draw()` draws a random jitter whenever `_shake > 0.2`, so one random call added, removed or moved — or one extra redraw — shifts every later random value (rubble shapes, crack lines, particle seeds) and shows up as a visible difference.
 
 ```bash
 bash tools/dev/sandbox_baseline.sh captures/m1_task2
-python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'idle.png'
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'judgement_*.png'
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'cinder_*.png'
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task2 'nova_*.png'
 ```
 
-Expected: `files=28` and `worst_mean_diff` no more than the Task 1 noise value + 0.5.
+Expected: the idle, judgement and cinder comparisons each print `worst_mean_diff=0.000` — those frames are exactly reproducible. The nova frames are timed against real time (hit-stop) and vary a little run to run: theirs must stay below 7.0.
+
+If any judgement, cinder or idle frame is not 0.000, the change altered behaviour. Find it by reading `git diff src/environment/structure.gd src/environment/environment_field.gd` against the brief's edits — look for a random call added, removed or moved, a dropped line in a replaced block, or a changed draw — and fix the code. Do not relax the threshold.
 
 - [ ] **Step 7: Commit**
 
@@ -1612,10 +1617,13 @@ Expected: `captured kinds_standing.png` and `captured kinds_destroyed.png`. Open
 
 ```bash
 bash tools/dev/sandbox_baseline.sh captures/m1_task3
-python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'idle.png'
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'judgement_*.png'
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'cinder_*.png'
+python tools/dev/compare_captures.py captures/m1_base_a captures/m1_task3 'nova_*.png'
 ```
 
-Expected: `files=28`, `worst_mean_diff` no more than the Task 1 noise value + 0.5 (the house roof now goes through `_draw_roof(COL_ROOF, 14.0, true)`, which must draw exactly as before).
+Expected: the idle, judgement and cinder comparisons each print `worst_mean_diff=0.000` (the house roof now goes through `_draw_roof(COL_ROOF, 14.0, true)`, which must draw exactly as before); the real-time-dependent nova frames stay below 7.0. A non-zero idle, judgement or cinder difference means a drawing or random-call change slipped in — find it in `git diff src/environment/structure.gd` and fix it.
 
 - [ ] **Step 7: Commit**
 

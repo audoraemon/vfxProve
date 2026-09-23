@@ -55,6 +55,31 @@ Or double-click `play.bat` (set `GODOT` if your engine lives elsewhere), or open
 | `WASD` / arrows | pan camera |
 | `Esc` | quit |
 
+## Kingdoms Amid Kataclysm (KAK) — game slice in progress
+
+The approved effects are becoming a one-mission game (spec: `docs/superpowers/specs/2026-09-19-kak-one-mission-game-design.md`). Milestone 1: the walled town of Aldermere and its fortified Royal Citadel, on the same `Battlefield` world the sandbox uses. Open it with `town.bat`, or:
+
+```powershell
+& $godot --path . --scene res://scenes/town_debug.tscn
+```
+
+| Input | Action |
+|---|---|
+| `1`–`9`, `0`, `-` | pick a power (Heaven Splitter … Nuclear Nova, cheapest first) |
+| Left click | cast a point power at the cursor |
+| Left drag | line powers (Heaven Splitter, Tsunami Breaker, Walking Laser Grid): press = start, drag = direction |
+| `WASD` / arrows, middle drag | pan |
+| Mouse wheel | zoom |
+| `R` | rebuild the town |
+| `Esc` | quit |
+
+The Citadel is nine buildings on one hidden health pool: at most 25% can go per second, every 10% lost drops the part nearest the blow, and the keep falls last.
+
+```bash
+SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --capture-town   # town screenshots → captures/town_*.png
+SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --citadel-test   # scripted strikes; logs CITADEL t= frac= standing=
+```
+
 ## Layout
 
 ```
@@ -63,12 +88,15 @@ src/enemies/     dummy troopers + EnemyField (radius/lane queries, pull, knockba
 src/environment/ destructible structures + EnvironmentField (city layout, damage queries, blocking)
 src/fx/          FxTimeline base, QuadFx, PixelParticles, FxParts builders, the 4 effects
 src/audio/       Sfx cue catalog + pooled positional playback
-src/sandbox/     scene assembly, input, HUD, capture/bench modes
+src/sandbox/     VFX sandbox: effect picker, floor tiles, input, HUD, camera push-in, capture/bench modes
+src/game/        KAK game: Battlefield (shared world), PowerBook, town debug scene
+src/game/town/   Aldermere layout, Town builder, town floor, fortified Citadel
 shaders/         iso_rings, shockwave, fireball_dome, beam_glow, beam_add, scorch_decal, fog, singularity,
                  light_glow, god_rays, heat_haze, refract_ring, impact_post, molten_trail, mushroom_cloud
 assets/audio/    generated WAV cues (committed)
 tools/           test runner, capture runner, contact sheets, audio synth
 docs/superpowers design spec + implementation plan
+scenes/          sandbox.tscn (main scene), town_debug.tscn
 ```
 
 Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks with `at(time, fn)`, `_fx_process()` runs per-frame logic. Effects reach gameplay only through `EnemyField` and audio only through `Sfx` (via `FxContext`). Ground-plane effects are children of a node whose transform is the iso basis, so they are authored in ground units and project to iso automatically.
@@ -76,7 +104,7 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=217 failures=0
+bash tools/test.sh                                   # headless tests → checks=296 failures=0
 python tools/audio/synth.py --verify                 # audio cue checks → 78 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png

@@ -2504,7 +2504,8 @@ static func run(t) -> void:
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 40 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(PowerBook.keys()[0] == "heaven" and PowerBook.keys()[10] == "nova", "spec order, cheapest first")
+	t.check(Array(PowerBook.keys()) == ["heaven", "tornado", "dragon", "tsunami", "gravity", "laser", "orbital",
+		"cinder", "judgement", "glacial", "nova"], "spec order, cheapest first (%s)" % [PowerBook.keys()])
 ```
 
 Register it: add `"res://tests/test_power_book.gd",` as the last entry of `SUITES` in `tests/run_all.gd`.

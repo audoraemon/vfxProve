@@ -58,7 +58,7 @@
 
 Task order: 1, **7**, 2, 3, 4, 5, 6 — Task 7 (the Cinderfall frame budget) was added after Task 1's measurements and runs before the people are built.
 
-Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 4 → 351, Task 5 → 351, Task 6 → 362.
+Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 2's review fix → 332, Task 4 → 355, Task 5 → 355, Task 6 → 366.
 
 ---
 
@@ -637,6 +637,11 @@ func _on_destroyed(s: Structure) -> void:
 
 Run: `bash tools/test.sh`
 Expected: `checks=312 failures=0`.
+
+**Updated after review (already committed, in `ff77e25`).** Two findings changed the code above, and the committed `src/game/town/walk_grid.gd` is the reference:
+- A standing building people walk over must have its cells opened *explicitly*, after the blocking ones are stamped — skipping it left four cells of the Side Gate solid (the flanking wall segments' grown footprints reach into them) and needed a bridge-specific special case. `setup()` now runs two passes (`_apply` for blockers, then `_open` for walkables), and `_on_destroyed()` re-opens walkable neighbours after re-stamping the blocking ones.
+- `nearest_walkable()` could snap to the far side of a thin wall. It now prefers a candidate reachable in a straight line (`clear_line()`), falling back to the nearest free cell for a caller standing inside a building.
+- Four checks were added to the suite (the Side Gate's whole span, a farm field, and `clear_line` both ways), taking it to 332 once Task 3 is in.
 
 - [ ] **Step 5: Commit**
 
@@ -1290,7 +1295,7 @@ Register it: add `"res://tests/test_crowd.gd",` as the last entry of `SUITES` in
 - [ ] **Step 2: Run the tests to see the new suite fail**
 
 Run: `bash tools/test.sh`
-Expected: `FAIL: suite failed to load: res://tests/test_crowd.gd` and `checks=329 failures=1`.
+Expected: `FAIL: suite failed to load: res://tests/test_crowd.gd` and `checks=333 failures=1`.
 
 - [ ] **Step 3: Create `src/game/crowd/crowd.gd`**
 
@@ -1576,7 +1581,7 @@ func _on_citadel_fallen() -> void:
 - [ ] **Step 4: Run the tests**
 
 Run: `bash tools/test.sh`
-Expected: `checks=351 failures=0`.
+Expected: `checks=355 failures=0`.
 
 - [ ] **Step 5: Commit**
 
@@ -1785,7 +1790,7 @@ bash tools/test.sh
 SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --capture-town
 ```
 
-Expected: `checks=351 failures=0`; seven `captured …` lines and no `SCRIPT ERROR`. Open `captures/town_crowd.png`, `town_market.png` and `town_overview.png` and check: people stand and walk in the streets, not inside buildings or in the river; soldiers are visible in the barracks yard and around the Citadel; citizens are spread across the districts rather than clumped on one spot; nobody is stuck on a wall corner.
+Expected: `checks=355 failures=0`; seven `captured …` lines and no `SCRIPT ERROR`. Open `captures/town_crowd.png`, `town_market.png` and `town_overview.png` and check: people stand and walk in the streets, not inside buildings or in the river; soldiers are visible in the barracks yard and around the Citadel; citizens are spread across the districts rather than clumped on one spot; nobody is stuck on a wall corner.
 
 - [ ] **Step 4: Run the crowd's scripted test**
 
@@ -1814,6 +1819,7 @@ Run each twice, report the medians. The spec's target is **50+ fps average durin
 
 If Cinderfall is below 50 fps, measure before changing anything (the method and the attribution table from milestone 1's pass are in `.git/sdd/perf-report.md`), then use the cheapest lever that keeps the behaviour:
 - throttle the buildings' damage-driven repaints: a hit sets `_dirty` and repaints the same frame, and Cinderfall's stone rain hits buildings constantly — repainting them on the `SHAKE_HZ` step boundary instead (leaving the collapse, the laser's top piece and the molten edge at full rate) caps that churn without changing what a hit looks like;
+- throttle the buildings' own light sampling the way the units' was throttled (`Structure._process` recomputes `_light_signature()` every frame for all ~142 of them; units use a `LIGHT_HZ` clock);
 - let people think at half rate — `Person._think` on alternating frames (keep `super(delta)` every frame so movement stays smooth), which halves the brain cost;
 - sample the light field for units a few times a second instead of every frame (`DummyEnemy._process`), reusing the last tint in between;
 - raise `Person.REPATH` or the stagger window so fewer paths are planned per second.
@@ -1841,7 +1847,7 @@ SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --crowd-test    # scrip
 src/game/crowd/  the people: Person (citizen/soldier brains and bodies), Crowd (spawning, panic, gates, alarm, rally)
 ```
 
-6d. In `## Verify`, change the check count to `checks=351 failures=0` (Task 6 raises it again, to 362).
+6d. In `## Verify`, change the check count to `checks=355 failures=0` (Task 6 raises it again, to 366).
 
 - [ ] **Step 7: Commit**
 
@@ -1934,7 +1940,7 @@ Register it: add `"res://tests/test_rebuild.gd",` as the last entry of `SUITES` 
 - [ ] **Step 2: Run the tests to see the new suite fail**
 
 Run: `bash tools/test.sh`
-Expected: `FAIL: suite failed to load: res://tests/test_rebuild.gd` and `checks=352 failures=1`.
+Expected: `FAIL: suite failed to load: res://tests/test_rebuild.gd` and `checks=356 failures=1`.
 
 - [ ] **Step 3: Let the field give a building back**
 
@@ -2050,7 +2056,7 @@ func setup(env: EnvironmentField, at: Vector2, shake: CameraShake = null) -> Cit
 - [ ] **Step 6: Run the tests**
 
 Run: `bash tools/test.sh`
-Expected: `checks=362 failures=0`.
+Expected: `checks=366 failures=0`.
 
 - [ ] **Step 7: Check the debug scene's rebuild really works**
 

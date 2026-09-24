@@ -45,6 +45,7 @@
 | File | Change | Responsibility |
 |---|---|---|
 | `src/enemies/dummy_enemy.gd` | modify | redraw only when its art changes; `walk_speed` as a variable; two new looks (`CITIZEN`, `SOLDIER`) |
+| `src/core/light_field.gd` | modify | reject out-of-range lights before the square root (Task 7) |
 | `src/game/town_debug.gd` | modify | `--units=N` for benching; then the crowd, its HUD counts, and the crowd capture/bench modes |
 | `src/game/town/walk_grid.gd` | new | `class_name WalkGrid`: where people may walk (A* grid, river, bridge, rubble) |
 | `src/game/crowd/person.gd` | new | `class_name Person extends DummyEnemy`: citizen/soldier looks and brain |
@@ -55,7 +56,9 @@
 | `tests/run_all.gd` | modify | registers the new suites |
 | `README.md` | modify | crowd controls, checks and numbers |
 
-Expected `checks=` after each task: Task 1 → 296, Task 2 → 312, Task 3 → 328, Task 4 → 351, Task 5 → 351, Task 6 → 362.
+Task order: 1, **7**, 2, 3, 4, 5, 6 — Task 7 (the Cinderfall frame budget) was added after Task 1's measurements and runs before the people are built.
+
+Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 4 → 351, Task 5 → 351, Task 6 → 362.
 
 ---
 
@@ -210,6 +213,199 @@ If `captures/m1_base_a/` is missing, recreate the reference from the previous co
 ```bash
 git add src/enemies/dummy_enemy.gd src/game/town_debug.gd
 git commit -m "perf: units redraw only when their art changes" -m "Every unit sampled the light field and redrew its pixels 60 times a second for a two-frame walk cycle. The drawing now follows a quantized art signature, the wander speed is a variable a brain can raise, and the debug scene takes --units=N so the crowd's cost can be measured before it exists." -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 7: The Cinderfall frame budget
+
+**Run this straight after Task 1 and before Task 2.** It was added once Task 1's measurements showed where the rest of the frame goes.
+
+**Files:**
+- Modify: `src/core/light_field.gd`, `src/environment/structure.gd`, `src/enemies/dummy_enemy.gd`
+
+**Why:** the milestone's acceptance is 50+ fps with 160 people during Cinderfall. Task 1 made units cheap (160 of them idle at ~110 fps), but Cinderfall still sits at ~34 fps, and Task 1's ablation showed the units are no longer the reason: with **zero** units the same frame runs at ~35 fps. Two costs are left, both measured:
+
+- `LightField._weight()` takes a square root and a `pow()` for **every** light before finding out the point is out of range. Both `sample()` and `sample_dir()` go through it, and every unit calls both every frame — measured at ~4.1 ms per 160 units during Cinderfall, when the volcano and its meteors are lighting the sky.
+- A shaken building rebuilds its whole drawing 60 times a second. Milestone 1's report measured that at 4.3 ms of the Cinderfall frame and named it "the single best remaining cinder fix".
+
+All three fixes below keep what is on screen: the same light, the same shudder, the same tints — only computed less often or more cheaply.
+
+**Interfaces:** no new API. `LightField.sample/sample_dir/sample_signature` keep their signatures and their results.
+
+- [ ] **Step 1: Measure first**
+
+```bash
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/town_debug.tscn --audio-driver Dummy --disable-vsync --max-fps 0 -- --bench --units=160
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/town_debug.tscn --audio-driver Dummy --disable-vsync --max-fps 0 -- --bench --only=cinder --units=160
+```
+
+Twice each, medians. Task 1 measured `idle avg_fps=109.95` and `cinder avg_fps=34.4`; your numbers are the baseline you have to beat. `.git/sdd/m2-task-1-report.md` section 4 and `.git/sdd/perf-report.md` hold the attribution this task acts on — read both before changing anything.
+
+- [ ] **Step 2: Skip out-of-range lights before the expensive maths**
+
+In `src/core/light_field.gd`, replace `_weight()`:
+
+```gdscript
+func _weight(l: Dictionary, g: Vector2) -> float:
+	if l.intensity <= 0.0:
+		return 0.0
+	var d: float = g.distance_to(l.pos) / l.radius
+	if d >= 1.0:
+		return 0.0
+	return pow(1.0 - d, 1.4) * l.intensity
+```
+
+with:
+
+```gdscript
+func _weight(l: Dictionary, g: Vector2) -> float:
+	var intensity: float = l.intensity
+	if intensity <= 0.0:
+		return 0.0
+	var radius: float = l.radius
+	# Compare squared distances first: most lights are out of range, and this skips their sqrt and pow.
+	var d2 := g.distance_squared_to(l.pos)
+	if d2 >= radius * radius:
+		return 0.0
+	return pow(1.0 - sqrt(d2) / radius, 1.4) * intensity
+```
+
+and in `sample_signature()`, replace:
+
+```gdscript
+		var to: Vector2 = l.pos - g
+		var dist := to.length()
+		var d: float = dist / l.radius
+		if d >= 1.0:
+			continue
+		var w := pow(1.0 - d, 1.4) * intensity
+```
+
+with:
+
+```gdscript
+		var to: Vector2 = l.pos - g
+		var radius: float = l.radius
+		var d2 := to.length_squared()
+		if d2 >= radius * radius:
+			continue
+		var dist := sqrt(d2)
+		var w := pow(1.0 - dist / radius, 1.4) * intensity
+```
+
+`sqrt(d2)` is the same number `distance_to` and `length()` were computing, so every caller's result is unchanged.
+
+- [ ] **Step 3: Shake the buildings in steps, not every frame**
+
+In `src/environment/structure.gd`, add next to the other constants (after `const BANNER_FALL_TIME := 1.0`):
+
+```gdscript
+## The shake jitter is re-rolled this many times a second instead of every frame. A 1-2 px pixel-art shudder
+## reads the same, and a shaking building stops rebuilding its whole drawing sixty times a second.
+const SHAKE_HZ := 15.0
+```
+
+and next to the other private state (after `var _banner_fall := -1.0`):
+
+```gdscript
+## Which SHAKE_HZ step the current jitter belongs to (-1 = not shaking).
+var _shake_step := -1
+```
+
+Then in `_process()`, replace:
+
+```gdscript
+	var animating := _shake > 0.0 or (_collapse >= 0.0 and _collapse <= 1.0 and _dirty) or not _top_piece.is_empty() \
+		or _molten > 0.0 or kind == Kind.TORCH
+	if animating or _dirty:
+		_dirty = animating
+```
+
+with:
+
+```gdscript
+	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
+	var animating := shake_step != _shake_step or (_collapse >= 0.0 and _collapse <= 1.0) \
+		or not _top_piece.is_empty() or _molten > 0.0 or kind == Kind.TORCH
+	_shake_step = shake_step
+	if animating or _dirty:
+		_dirty = false
+```
+
+Two things changed together, and they belong together: the shudder now redraws on step boundaries instead of every frame, and `_dirty` became what its name says — "redraw once" — instead of being re-armed every animating frame. A collapse no longer needs `_dirty` to keep animating, because `_collapse` itself says it is running.
+
+- [ ] **Step 4: Let units take the light a few times a second**
+
+In `src/enemies/dummy_enemy.gd`, add next to the other constants:
+
+```gdscript
+## How often a unit re-reads the light around it. Pixel art tints in steps anyway, and with 160 people this
+## sampling was the biggest thing left in the crowd's frame.
+const LIGHT_HZ := 20.0
+```
+
+and next to `var _drawn_art := -1`:
+
+```gdscript
+## Seconds until the next light reading; spread across units so they do not all sample on the same frame.
+var _light_in := 0.0
+```
+
+In `_ready()`, stagger the first reading without touching `rng` (its stream must stay exactly as it is, or every unit in the sandbox would wander differently):
+
+```gdscript
+func _ready() -> void:
+	_light_in = float(get_instance_id() % 16) / (LIGHT_HZ * 16.0)
+	_pick_target()
+	_sync_position()
+```
+
+and in `_process()`, replace:
+
+```gdscript
+	if lights != null:
+		var l := lights.sample(ground_pos)
+		var amb := lights.ambient
+		modulate = Color(amb + l.r * 2.5, amb + l.g * 2.5, amb + l.b * 2.5, modulate.a)
+```
+
+with:
+
+```gdscript
+	_light_in -= delta
+	if lights != null and _light_in <= 0.0:
+		_light_in = 1.0 / LIGHT_HZ
+		var l := lights.sample(ground_pos)
+		var amb := lights.ambient
+		modulate = Color(amb + l.r * 2.5, amb + l.g * 2.5, amb + l.b * 2.5, modulate.a)
+```
+
+- [ ] **Step 5: Measure again**
+
+Re-run Step 1's two benches, twice each. Gate: **160 units at idle ≥ 100 fps and Cinderfall ≥ 45 fps.** Task 5's own levers (people thinking on alternating frames) are what carry the last few frames per second to the spec's 50, so do not spend them here.
+
+If you are still short, measure what dominates now and report it with numbers rather than guessing at another change. Milestone 1's report documents the ablation method (`--x-*` style scratch flags, reverted before committing).
+
+- [ ] **Step 6: Check nothing visible changed**
+
+```bash
+bash tools/test.sh
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tools/dev/state_digest.gd
+bash tools/dev/sandbox_baseline.sh captures/m2_task7
+python tools/dev/compare_captures.py captures/m1_base_a captures/m2_task7 'idle.png'
+SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --citadel-test 2>&1 | grep -E "CITADEL result|ERROR"
+```
+
+Expected: `checks=296 failures=0`; the digest exactly as in the Global Constraints; `idle.png` `worst_mean_diff=0.000`; one `CITADEL result ...` line and no `ERROR` lines.
+
+Then judge the shake by eye, because that is what Step 3 changed: open `captures/m2_task7/cinder_2700.png` and `cinder_5400.png` next to the same files in `captures/m1_base_a/`, and a couple of `captures/citadel_*.png` frames. Buildings must still look shaken and lit the same way (their jitter is re-rolled at a different moment, so individual pixels move; what must not change is that they shudder at all, that the collapse is smooth, and that the light pools look the same). Say in your report what you compared and what you saw.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/core/light_field.gd src/environment/structure.gd src/enemies/dummy_enemy.gd
+git commit -m "perf: cheaper light, stepped shake" -m "Out-of-range lights are now rejected on a squared distance before their sqrt and pow, a shaken building re-rolls its jitter fifteen times a second instead of sixty, and a unit re-reads the light around it twenty times a second. Same light, same shudder, same tints; far less arithmetic in the Cinderfall frame." -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
 ---

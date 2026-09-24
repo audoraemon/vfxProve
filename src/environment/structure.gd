@@ -27,6 +27,9 @@ const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
 ## Seconds a dropped banner takes to fall and fade.
 const BANNER_FALL_TIME := 1.0
+## The shake jitter is re-rolled this many times a second instead of every frame. A 1-2 px pixel-art shudder
+## reads the same, and a shaking building stops rebuilding its whole drawing sixty times a second.
+const SHAKE_HZ := 15.0
 ## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
 const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
@@ -95,6 +98,8 @@ var _drawn_sig := -1
 var _dirty := true
 ## Seconds since drop_banner() (-1 = the banner still hangs).
 var _banner_fall := -1.0
+## Which SHAKE_HZ step the current jitter belongs to (-1 = not shaking).
+var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
 var _banner_sig := -1
 
@@ -309,10 +314,12 @@ func _process(delta: float) -> void:
 		if banner_sig != _banner_sig:
 			_banner_sig = banner_sig
 			_banner.queue_redraw()
-	var animating := _shake > 0.0 or (_collapse >= 0.0 and _collapse <= 1.0 and _dirty) or not _top_piece.is_empty() \
-		or _molten > 0.0 or kind == Kind.TORCH
+	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
+	var animating := shake_step != _shake_step or (_collapse >= 0.0 and _collapse <= 1.0) \
+		or not _top_piece.is_empty() or _molten > 0.0 or kind == Kind.TORCH
+	_shake_step = shake_step
 	if animating or _dirty:
-		_dirty = animating
+		_dirty = false
 		# Keep the light bucket current while animating, or the first quiet frame compares against a
 		# stale one and can skip the redraw it needs.
 		_drawn_sig = _light_signature()

@@ -11,6 +11,9 @@ const WALK_SPEED := 0.6
 const KNOCK_DECAY := 8.0
 const MIN_PULL_DIST := 0.15
 const DEATH_FADE := 1.6
+## How often a unit re-reads the light around it. Pixel art tints in steps anyway, and with 160 people this
+## sampling was the biggest thing left in the crowd's frame.
+const LIGHT_HZ := 20.0
 
 const COL_SHADOW := Color(0, 0, 0, 0.4)
 const COL_DARK := Color("1c1f2a")
@@ -75,16 +78,21 @@ var _on_thaw := Callable()
 var _shards: Array[Vector4] = []
 ## Last drawn art signature; -1 forces the first draw.
 var _drawn_art := -1
+## Seconds until the next light reading; spread across units so they do not all sample on the same frame.
+var _light_in := 0.0
 
 
 func _ready() -> void:
+	_light_in = float(get_instance_id() % 16) / (LIGHT_HZ * 16.0)
 	_pick_target()
 	_sync_position()
 
 
 func _process(delta: float) -> void:
 	tick(delta)
-	if lights != null:
+	_light_in -= delta
+	if lights != null and _light_in <= 0.0:
+		_light_in = 1.0 / LIGHT_HZ
 		var l := lights.sample(ground_pos)
 		var amb := lights.ambient
 		modulate = Color(amb + l.r * 2.5, amb + l.g * 2.5, amb + l.b * 2.5, modulate.a)

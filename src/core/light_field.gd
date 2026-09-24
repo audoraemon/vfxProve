@@ -101,11 +101,12 @@ func sample_signature(g: Vector2, color_steps: float, dir_steps: float) -> int:
 		if intensity <= 0.0:
 			continue
 		var to: Vector2 = l.pos - g
-		var dist := to.length()
-		var d: float = dist / l.radius
-		if d >= 1.0:
+		var radius: float = l.radius
+		var d2 := to.length_squared()
+		if d2 >= radius * radius:
 			continue
-		var w := pow(1.0 - d, 1.4) * intensity
+		var dist := sqrt(d2)
+		var w := pow(1.0 - dist / radius, 1.4) * intensity
 		var col: Color = l.color
 		r += col.r * w
 		gr += col.g * w
@@ -120,9 +121,12 @@ func sample_signature(g: Vector2, color_steps: float, dir_steps: float) -> int:
 
 
 func _weight(l: Dictionary, g: Vector2) -> float:
-	if l.intensity <= 0.0:
+	var intensity: float = l.intensity
+	if intensity <= 0.0:
 		return 0.0
-	var d: float = g.distance_to(l.pos) / l.radius
-	if d >= 1.0:
+	var radius: float = l.radius
+	# Compare squared distances first: most lights are out of range, and this skips their sqrt and pow.
+	var d2 := g.distance_squared_to(l.pos)
+	if d2 >= radius * radius:
 		return 0.0
-	return pow(1.0 - d, 1.4) * l.intensity
+	return pow(1.0 - sqrt(d2) / radius, 1.4) * intensity

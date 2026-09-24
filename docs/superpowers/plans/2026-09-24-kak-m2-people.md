@@ -58,7 +58,7 @@
 
 Task order: 1, **7**, 2, 3, 4, 5, 6 — Task 7 (the Cinderfall frame budget) was added after Task 1's measurements and runs before the people are built.
 
-Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 2's review fix → 332, Task 4 → 355, Task 5 → 355, Task 6 → 366.
+Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 2's review fix → 332, Task 4 → 355, Task 3's review fix → 357, Task 5 → 357, Task 6 → 368.
 
 ---
 
@@ -869,6 +869,11 @@ func _think(delta: float) -> void:
 		_panic_left -= delta
 		if _panic_left <= 0.0:
 			flee()
+	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
+	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
+	if _goal != Vector2.INF and _path.is_empty() and _repath_in <= 0.0 			and ground_pos.distance_to(_goal) > GOAL_REACH:
+		_goal = Vector2.INF
+		_repath_in = 0.3
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -876,10 +881,6 @@ func _think(delta: float) -> void:
 					_plan_exit()
 				else:
 					_idle = maxf(_idle, 0.05)
-			elif _path.is_empty() and _repath_in <= 0.0 and ground_pos.distance_to(_goal) > GOAL_REACH:
-				# The way changed under us (a bridge fell): plan again.
-				_goal = Vector2.INF
-				_repath_in = 0.3
 		Mind.POST, Mind.RALLY:
 			if _goal == Vector2.INF and _repath_in <= 0.0 and ground_pos.distance_to(anchor) > GOAL_REACH * 2.0:
 				set_goal(anchor)

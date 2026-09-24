@@ -30,6 +30,10 @@ const BANNER_FALL_TIME := 1.0
 ## The shake jitter is re-rolled this many times a second instead of every frame. A 1-2 px pixel-art shudder
 ## reads the same, and a shaking building stops rebuilding its whole drawing sixty times a second.
 const SHAKE_HZ := 15.0
+## How often a quiet building re-checks its light bucket, the way DummyEnemy.LIGHT_HZ throttles units. An
+## animating building (shaking, collapsing, molten) always keeps its signature current every frame regardless
+## (see _process), so this only trims the ~142-structure cost while nothing is happening to them.
+const LIGHT_HZ := 20.0
 ## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
 const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
@@ -105,6 +109,8 @@ var _banner_fall := -1.0
 var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
 var _banner_sig := -1
+## Seconds until the next quiet-frame light check (staggered per-instance so all ~142 do not land on one frame).
+var _light_in := 0.0
 
 
 func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
@@ -131,6 +137,7 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
 
 
 func _ready() -> void:
+	_light_in = float(get_instance_id() % 16) / (LIGHT_HZ * 16.0)
 	if kind == Kind.KEEP:
 		# The waving banner redraws every frame on its own small node so the keep itself can stay cached.
 		_banner = Node2D.new()
@@ -320,13 +327,21 @@ func _process(delta: float) -> void:
 	var animating := shake_step != _shake_step or (_collapse >= 0.0 and _collapse <= 1.0) \
 		or not _top_piece.is_empty() or _molten > 0.0 or kind == Kind.TORCH
 	_shake_step = shake_step
-	if animating or _dirty:
+	# A hit sets _dirty and used to force a same-frame repaint regardless of the shake step; under Cinderfall's
+	# stone rain a building can be hit again before its step advances, repainting off-cadence. While it is
+	# already shaking, the pending repaint just rides the next step (still <= 1/SHAKE_HZ away); only a hit
+	# with no shake in progress (the first hit, or a building that never shakes) still repaints at once.
+	if animating or (_dirty and _shake <= 0.0):
 		_dirty = false
 		# Keep the light bucket current while animating, or the first quiet frame compares against a
 		# stale one and can skip the redraw it needs.
 		_drawn_sig = _light_signature()
 		queue_redraw()
 		return
+	_light_in -= delta
+	if _light_in > 0.0:
+		return
+	_light_in = 1.0 / LIGHT_HZ
 	var sig := _light_signature()
 	if sig != _drawn_sig:
 		_drawn_sig = sig

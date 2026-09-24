@@ -4,7 +4,7 @@
 cd "$(dirname "$0")/.."
 G="${GODOT:-/f/Godot/Godot_v4.7.2-stable_win64_console.exe}"
 EXTRA=()
-if [[ "$*" == *--capture* || "$*" == *--citadel-test* ]]; then EXTRA=(--fixed-fps 60); fi
+if [[ "$*" == *--capture* || "$*" == *--citadel-test* || "$*" == *--crowd-test* ]]; then EXTRA=(--fixed-fps 60); fi
 if [[ -n "$SCENE" ]]; then EXTRA+=(--scene "$SCENE"); fi
 timeout 300 "$G" --path . --audio-driver Dummy "${EXTRA[@]}" -- "$@" 2>&1 | grep -v '^\s*at:'
 exit ${PIPESTATUS[0]}

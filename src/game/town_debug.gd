@@ -1,13 +1,13 @@
 extends Node2D
-## Milestone 1 debug scene for Kingdoms Amid Kataclysm: the town of Aldermere and its fortified Royal Citadel on the
-## shared Battlefield, 40 placeholder units inside the walls, and every power castable from the keyboard. No rules,
-## HUD or people yet (milestones 2 and 3).
+## Debug scene for Kingdoms Amid Kataclysm: the town of Aldermere and its fortified Royal Citadel on the shared
+## Battlefield, its people (110 citizens and 50 soldiers, --people=N to scale), and every power castable from
+## the keyboard. No rules yet (milestone 3).
 ## Flags after `--`: --capture-town (screenshots), --citadel-test (scripted strikes on the Citadel, logged),
-## --bench [--only=<power key>] (frame times while that power plays beside the Citadel).
+## --crowd-test (scripted panic, logged), --bench [--only=<power key>] (frame times while that power plays
+## beside the Citadel).
 
-const UNIT_COUNT := 40
-## Placeholder units stay inside the town walls until the people milestone gives them real brains.
-const UNIT_BOUNDS := Rect2(-8.3, -8.3, 16.6, 16.6)
+## The spec's crowd: 110 citizens and 50 soldiers. --people=N scales both for benching.
+const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
 const PAN_SPEED := 320.0
 const PAN_MIN := Vector2(-760, -380)
 const PAN_MAX := Vector2(760, 520)
@@ -25,6 +25,7 @@ const TOWN_SHOTS := [
 	["town_overview.png", Vector2(2, 2), 0.5],
 	["town_citadel.png", Vector2(0, -5.9), 1.1],
 	["town_market.png", Vector2(0, 0), 1.2],
+	["town_crowd.png", Vector2(0.0, 3.0), 0.9],
 	["town_main_gate.png", Vector2(0, 8.7), 1.1],
 	["town_side_gate.png", Vector2(8.7, 0), 1.1],
 	["town_river_farms.png", Vector2(2.25, 14.05), 0.5],
@@ -40,9 +41,19 @@ const CITADEL_CASTS := [
 ]
 const CITADEL_SHOTS := [0.3, 4.0, 9.5, 14.0, 18.0, 25.5, 33.0, 43.5, 52.0]
 const CITADEL_TEST_END := 60.0
+## [time, power key, ground point] for --crowd-test: enough violence to start a panic and a rally.
+const CROWD_CASTS := [
+	[1.0, "heaven", Vector2(-4.0, 4.0)],
+	[8.0, "tornado", Vector2(3.0, 3.0)],
+	[18.0, "cinder", Vector2(0.0, -2.0)],
+]
+const CROWD_SHOTS := [0.5, 3.0, 10.0, 16.0, 24.0, 34.0]
+const CROWD_TEST_END := 40.0
 
 var _bf: Battlefield
 var _town: Town
+var _grid: WalkGrid
+var _crowd: Crowd
 var _selected := 0
 var _pressing := false
 var _press_ground := Vector2.ZERO
@@ -59,8 +70,7 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
-	_bf.ctx.field.look = DummyEnemy.Look.ORC
-	_bf.ctx.field.bounds = UNIT_BOUNDS
+	_bf.ctx.field.bounds = TownLayout.MAP
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"
@@ -70,7 +80,7 @@ func _ready() -> void:
 	_bf.ground_plane.add_child(_drag_line)
 	_hud = _bf.add_debug_label()
 	var args := OS.get_cmdline_user_args()
-	var scripted := "--capture-town" in args or "--citadel-test" in args or "--bench" in args
+	var scripted := "--capture-town" in args or "--citadel-test" in args or "--crowd-test" in args or "--bench" in args
 	_rebuild(7 if scripted else Time.get_ticks_usec())
 	_bf.camera.zoom = Vector2.ONE * 0.75
 	_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
@@ -79,6 +89,8 @@ func _ready() -> void:
 		_capture_town()
 	elif "--citadel-test" in args:
 		_citadel_test()
+	elif "--crowd-test" in args:
+		_crowd_test()
 	elif "--bench" in args:
 		_run_bench(Battlefield.arg_value(args, "--only"))
 
@@ -93,18 +105,33 @@ func _rebuild(seed_value: int) -> void:
 			_town.queue_free()
 		else:
 			_town.free()
+	if is_instance_valid(_crowd):
+		_crowd.clear()
+		if _crowd.is_inside_tree():
+			_crowd.queue_free()
+		else:
+			_crowd.free()
 	_town = Town.new()
 	_town.name = "Town"
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
-	var wanted := Battlefield.arg_value(OS.get_cmdline_user_args(), "--units")
-	_bf.ctx.field.spawn(int(wanted) if wanted != "" else UNIT_COUNT, _bf.ctx.world, _bf.rng)
+	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
+	_crowd = Crowd.new()
+	_crowd.name = "Crowd"
+	add_child(_crowd)
+	_crowd.setup(_bf.ctx.field, _bf.ctx.env, _town, _grid, _bf.ctx.world, seed_value)
+	var wanted := Battlefield.arg_value(OS.get_cmdline_user_args(), "--people")
+	var people := int(wanted) if wanted != "" else PEOPLE
+	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
+	_crowd.spawn(citizens, people - citizens)
 
 
 func _cast(power: Dictionary, ground: Vector2, extra := {}) -> FxTimeline:
 	if power.is_empty():
 		push_warning("Unknown power")
 		return null
+	if is_instance_valid(_crowd):
+		_crowd.on_cast(ground)
 	return FxTimeline.cast(load(power.path), _bf.ctx, ground, extra)
 
 
@@ -166,13 +193,13 @@ func _draw_drag_line() -> void:
 
 
 func _update_hud() -> void:
-	if _town == null or not is_instance_valid(_town.citadel):
+	if _town == null or not is_instance_valid(_town.citadel) or not is_instance_valid(_crowd):
 		return
 	var power: Dictionary = PowerBook.POWERS[_selected]
 	var cit := _town.citadel
-	var text := "KAK town debug   [%s] %s  (%s, %d DP)\nCitadel %d%%   parts %d/9   buildings down %d\n1-9 0 - pick   LMB cast (drag: line powers)   WASD / middle-drag pan   wheel zoom   R rebuild   Esc quit" % [
+	var text := "KAK town debug   [%s] %s  (%s, %d DP)\nCitadel %d%%   parts %d/9   buildings down %d\nCitizens %d   soldiers %d   escaped %d   alarm %d%%\n1-9 0 - pick   LMB cast (drag: line powers)   WASD / middle-drag pan   wheel zoom   R rebuild   Esc quit" % [
 		KEY_LABELS[_selected], power.name, power.aim, power.dp, roundi(cit.fraction() * 100.0), cit.standing_parts(),
-		_destroyed]
+		_destroyed, _crowd.alive_citizens(), _crowd.alive_soldiers(), _crowd.escaped_count, roundi(_crowd.alarm)]
 	if _hud.text != text:
 		_hud.text = text
 
@@ -220,6 +247,43 @@ func _citadel_test() -> void:
 			break
 		await get_tree().process_frame
 	print("CITADEL result fallen=%s frac=%.2f standing=%d t=%.1f" % [cit.is_fallen(), cit.fraction(), cit.standing_parts(), _t])
+	await _bf.quit()
+
+
+## Scripted run for the people: a few casts in the streets, then a log of what the crowd does — how many are
+## alive, fleeing, queueing and escaped, and what the alarm is doing.
+func _crowd_test() -> void:
+	_bf.camera.zoom = Vector2.ONE * 0.6
+	_bf.camera.position = (Iso.ground_to_screen(Vector2(0.0, 2.0)) + Vector2(0, -30)).round()
+	await _bf.wait_frames(10)
+	_t = 0.0
+	var casts := CROWD_CASTS.duplicate()
+	var shots := CROWD_SHOTS.duplicate()
+	var next_log := 0.0
+	while _t < CROWD_TEST_END:
+		while not casts.is_empty() and _t >= float(casts[0][0]):
+			var c: Array = casts.pop_front()
+			print("CAST %s t=%.1f" % [c[1], _t])
+			_cast(PowerBook.get_power(c[1]), c[2])
+		if not shots.is_empty() and _t >= float(shots[0]):
+			await _bf.save_capture("crowd_%05d.png" % int(float(shots.pop_front()) * 1000.0))
+		if _t >= next_log:
+			next_log += 1.0
+			var fleeing := 0
+			var waiting := 0
+			for p in _crowd.citizens:
+				if not is_instance_valid(p) or not p.is_alive():
+					continue
+				if p.mind == Person.Mind.FLEE:
+					fleeing += 1
+				if p.wait > 0.0:
+					waiting += 1
+			print("CROWD t=%.1f citizens=%d soldiers=%d fleeing=%d queued=%d escaped=%d alarm=%d rallied=%s" % [
+				_t, _crowd.alive_citizens(), _crowd.alive_soldiers(), fleeing, waiting, _crowd.escaped_count,
+				roundi(_crowd.alarm), _crowd.soldiers.size() > 0 and is_instance_valid(_crowd.soldiers[0]) \
+					and _crowd.soldiers[0].mind == Person.Mind.RALLY])
+		await get_tree().process_frame
+	print("CROWD result citizens=%d escaped=%d alarm=%d" % [_crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm)])
 	await _bf.quit()
 
 

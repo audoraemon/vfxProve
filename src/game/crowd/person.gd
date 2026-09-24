@@ -12,8 +12,9 @@ const FLEE_SPEED := 1.2
 const PANIC_SECONDS := 1.6
 ## Close enough to count as arrived.
 const GOAL_REACH := 0.45
-## Seconds before a person gives a stuck goal another try.
-const REPATH := 2.5
+## Seconds before a person gives a stuck goal another try. Cinderfall repeatedly invalidates routes (fallen
+## buildings, the bridge closing), so raised from 2.5 to spread the A* replanning out over fewer per-second calls.
+const REPATH := 4.0
 ## Chance per frame that a calm citizen strolls to the market or back home.
 const STROLL_CHANCE := 0.004
 ## How far a calm citizen drifts from home, and a posted soldier from its spot.
@@ -49,6 +50,14 @@ var _repath_in := 0.0
 var _skin := Color.WHITE
 var _tunic := Color.WHITE
 var _hair := Color.WHITE
+## Flips every eligible tick(): half the crowd starts true and half false (see setup_person), so _think()
+## calls spread evenly across frames instead of the whole crowd thinking on the same frame and idling on the
+## next. A per-instance toggle rather than a global frame count, so it alternates correctly however tick() is
+## driven (real per-frame play, or a test calling it directly in a tight loop).
+var _think_due := true
+## Seconds since the last _think() call; handed to it as its delta so timers (wait, _panic_left, _repath_in)
+## still decay in real time despite thinking at half rate.
+var _think_accum := 0.0
 
 
 ## `at` is where it stands and what it treats as home (or its post). Seed `rng` before calling this.
@@ -58,6 +67,7 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 	anchor = at
 	ground_pos = at
 	mind = Mind.POST if is_soldier else Mind.CALM
+	_think_due = get_instance_id() % 2 == 0
 	_skin = CIT_SKIN[rng.randi() % CIT_SKIN.size()]
 	_tunic = CIT_TUNIC[rng.randi() % CIT_TUNIC.size()]
 	_hair = CIT_HAIR[rng.randi() % CIT_HAIR.size()]
@@ -69,7 +79,11 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 
 func tick(delta: float) -> void:
 	if state == State.WANDER and not is_frozen():
-		_think(delta)
+		_think_accum += delta
+		if _think_due:
+			_think(_think_accum)
+			_think_accum = 0.0
+		_think_due = not _think_due
 	super(delta)
 
 
@@ -166,6 +180,9 @@ func panic(from: Vector2) -> void:
 	if soldier or mind == Mind.FLEE or state == State.DEAD:
 		return
 	mind = Mind.PANIC
+	# Set here, not left for the next _think(): that can be a frame away now that thinking is half-rate, and a
+	# jolt should visibly speed someone up the instant it lands, not on a coin-flip frame.
+	walk_speed = _mind_speed()
 	_panic_left = PANIC_SECONDS
 	var away := ground_pos - from
 	var to := ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 3.0
@@ -181,11 +198,12 @@ func flee() -> void:
 	if soldier or mind == Mind.FLEE or state == State.DEAD:
 		return
 	mind = Mind.FLEE
+	walk_speed = _mind_speed()
 	_panic_left = 0.0
 	_goal = Vector2.INF
 	_path = PackedVector2Array()
 	_leg = 0
-	_repath_in = rng.randf_range(0.05, 1.2)
+	_repath_in = rng.randf_range(0.05, 2.4)
 
 
 func _plan_exit() -> void:
@@ -204,6 +222,7 @@ func send_to_post(at: Vector2, rally := false) -> void:
 		return
 	anchor = at
 	mind = Mind.RALLY if rally else Mind.POST
+	walk_speed = _mind_speed()
 	set_goal(at)
 
 
@@ -212,6 +231,7 @@ func hold_ground() -> void:
 	if state == State.DEAD:
 		return
 	mind = Mind.HOLD
+	walk_speed = _mind_speed()
 	_goal = Vector2.INF
 	_path = PackedVector2Array()
 	_leg = 0

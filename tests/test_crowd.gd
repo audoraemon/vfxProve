@@ -84,7 +84,9 @@ static func run(t) -> void:
 			still_calm += 1
 	t.check(still_calm == 0, "at 50%% alarm nobody stays (%d did)" % still_calm)
 
-	# A gate passes one person every 0.6 s and holds the rest.
+	# A gate passes one person at a time and holds the rest; the one already through keeps moving instead
+	# of being re-held the instant it re-evaluates (that used to catch it mid-step and it could never walk
+	# far enough to clear the gate), so the next release waits for both the interval and an actual clearing.
 	var gate: Structure = town.gates[0]
 	var queue: Array[Person] = []
 	for i in 4:
@@ -94,22 +96,25 @@ static func run(t) -> void:
 		queue.append(p)
 	crowd.advance(0.0)
 	var passing := 0
+	var leader: Person = null
 	for p in queue:
 		if p.wait <= 0.0:
 			passing += 1
+			leader = p
 	t.check(passing == 1, "one person is let through at a time (%d were)" % passing)
 	crowd.advance(0.3)
 	passing = 0
 	for p in queue:
 		if p.wait <= 0.0:
 			passing += 1
-	t.check(passing == 0, "the next one still waits after 0.3 s")
+	t.check(passing == 1 and leader.wait <= 0.0, "the one already through keeps moving, not re-held, after 0.3 s")
+	leader.ground_pos = gate.center() + Vector2(0.0, -Crowd.GATE_QUEUE - 1.0)
 	crowd.advance(0.4)
 	passing = 0
 	for p in queue:
-		if p.wait <= 0.0:
+		if p != leader and p.wait <= 0.0:
 			passing += 1
-	t.check(passing == 1, "and goes through after 0.6 s (%d)" % passing)
+	t.check(passing == 1, "and the next one goes through once the leader clears and 0.6 s have passed (%d)" % passing)
 
 	# Reaching an exit escapes.
 	var runner: Person = crowd.citizens[20]

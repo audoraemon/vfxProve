@@ -45,6 +45,8 @@ var _parent: Node2D
 var _rng := RandomNumberGenerator.new()
 ## Gate -> the crowd clock time it may pass someone again.
 var _gate_next := {}
+## Gate -> the Person it last let through, exempt from the hold until it clears GATE_QUEUE range.
+var _gate_passing := {}
 var _clock := 0.0
 var _rallied := false
 var _citadel_hit := false
@@ -157,35 +159,52 @@ func advance(delta: float) -> void:
 func _gates() -> void:
 	for gate in _town.gates:
 		if not is_instance_valid(gate) or gate.destroyed:
+			_gate_passing.erase(gate)
 			continue  # rubble is no bottleneck
 		var centre := gate.center()
+		# Whoever this gate let through stays exempt from the hold until it actually clears the doorway —
+		# otherwise the very next frame's re-evaluation catches it again mid-step and nobody ever gets far
+		# enough to leave GATE_QUEUE range, let alone reach the exit.
+		var passing: Person = _gate_passing.get(gate)
+		if is_instance_valid(passing) and passing.is_alive() and passing.mind == Person.Mind.FLEE \
+				and passing.ground_pos.distance_to(centre) <= GATE_QUEUE:
+			passing.wait = 0.0
+		else:
+			passing = null
+			_gate_passing.erase(gate)
 		var queue: Array[Person] = []
 		for p in citizens:
-			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE \
+			if p != passing and is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE \
 					and p.ground_pos.distance_to(centre) <= GATE_QUEUE:
 				queue.append(p)
 		if queue.is_empty():
 			continue
 		queue.sort_custom(func(a: Person, b: Person) -> bool:
 			return a.ground_pos.distance_squared_to(centre) < b.ground_pos.distance_squared_to(centre))
-		var open: bool = _clock >= float(_gate_next.get(gate, -1.0))
+		var open: bool = passing == null and _clock >= float(_gate_next.get(gate, -1.0))
 		for i in queue.size():
 			if i == 0 and open:
 				_gate_next[gate] = _clock + GATE_INTERVAL
 				queue[0].wait = 0.0
+				_gate_passing[gate] = queue[0]
 			else:
 				queue[i].wait = maxf(queue[i].wait, 0.25)
 
 
 func _escapes() -> void:
-	for p in citizens.duplicate():
+	# Rebuilt rather than erased in place: a citizen DummyEnemy frees itself when its death fade ends, and
+	# Array.erase() on an already-freed object raises a TypedArray validation error instead of removing it.
+	var remaining: Array[Person] = []
+	for p in citizens:
 		if not is_instance_valid(p):
-			citizens.erase(p)
-		elif p.is_alive() and p.has_escaped():
-			citizens.erase(p)
+			continue
+		if p.is_alive() and p.has_escaped():
 			escaped_count += 1
 			escaped.emit(p)
 			p.queue_free()
+			continue
+		remaining.append(p)
+	citizens = remaining
 
 
 ## The player cast a power here: everyone close enough panics.
@@ -232,6 +251,7 @@ func clear() -> void:
 	citizens.clear()
 	soldiers.clear()
 	_gate_next.clear()
+	_gate_passing.clear()
 	alarm = 0.0
 	escaped_count = 0
 	killed_citizens = 0

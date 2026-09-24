@@ -57,7 +57,7 @@ Or double-click `play.bat` (set `GODOT` if your engine lives elsewhere), or open
 
 ## Kingdoms Amid Kataclysm (KAK) — game slice in progress
 
-The approved effects are becoming a one-mission game (spec: `docs/superpowers/specs/2026-09-19-kak-one-mission-game-design.md`). Milestone 1: the walled town of Aldermere and its fortified Royal Citadel, on the same `Battlefield` world the sandbox uses. Open it with `town.bat`, or:
+The approved effects are becoming a one-mission game (spec: `docs/superpowers/specs/2026-09-19-kak-one-mission-game-design.md`). Milestone 2: the town is inhabited — 110 citizens who wander, panic, flee to the exits and queue at the gates, and 50 soldiers who hold their posts, rally to the Citadel when the alarm rises, and hold their ground in its rubble. Milestone 1 built the shared `Battlefield`, the walled town of Aldermere and its fortified Royal Citadel. Open it with `town.bat`, or:
 
 ```powershell
 & $godot --path . --scene res://scenes/town_debug.tscn
@@ -78,6 +78,7 @@ The Citadel is nine buildings on one hidden health pool: at most 25% can go per 
 ```bash
 SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --capture-town   # town screenshots → captures/town_*.png
 SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --citadel-test   # scripted strikes; logs CITADEL t= frac= standing=
+SCENE=res://scenes/town_debug.tscn bash tools/capture.sh --crowd-test    # scripted panic; logs CROWD t= fleeing= queued= escaped= alarm=
 ```
 
 ## Layout
@@ -91,6 +92,7 @@ src/audio/       Sfx cue catalog + pooled positional playback
 src/sandbox/     VFX sandbox: effect picker, floor tiles, input, HUD, camera push-in, capture/bench modes
 src/game/        KAK game: Battlefield (shared world), PowerBook, town debug scene
 src/game/town/   Aldermere layout, Town builder, town floor, fortified Citadel
+src/game/crowd/  the people: Person (citizen/soldier brains and bodies), Crowd (spawning, panic, gates, alarm, rally)
 shaders/         iso_rings, shockwave, fireball_dome, beam_glow, beam_add, scorch_decal, fog, singularity,
                  light_glow, god_rays, heat_haze, refract_ring, impact_post, molten_trail, mushroom_cloud
 assets/audio/    generated WAV cues (committed)
@@ -104,7 +106,7 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=296 failures=0
+bash tools/test.sh                                   # headless tests → checks=357 failures=0
 python tools/audio/synth.py --verify                 # audio cue checks → 78 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png

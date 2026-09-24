@@ -14,6 +14,9 @@ static func run(t) -> void:
 	var town := Town.new()
 	town.build(env, ground)
 	var first := env.structures().size()
+	# Something the town did not build: teardown must leave it exactly where it is.
+	var outsider := env.add_structure(Rect2(20.0, 20.0, 1.0, 1.0), 20.0, Structure.Kind.HOUSE, &"outsider")
+	var first_citadel: Citadel = town.citadel
 	var grid := WalkGrid.new().setup(env, town)
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 3)
 	crowd.spawn(20, 10)
@@ -28,11 +31,14 @@ static func run(t) -> void:
 	crowd.clear()
 	crowd.free()
 	town.teardown()
-	t.check(env.structures().is_empty(), "teardown leaves no buildings behind (%d)" % env.structures().size())
+	t.check(env.structures().size() == 1 and env.structures()[0] == outsider,
+		"teardown takes only what the town built (%d left)" % env.structures().size())
 	t.check(not env.blocked(TownLayout.TEMPLE.get_center()), "and nothing blocks where the temple stood")
 
 	town.build(env, ground)
-	t.check(env.structures().size() == first, "the rebuilt town has the same buildings (%d)" % env.structures().size())
+	t.check(env.structures().size() == first + 1, "the rebuilt town has the same buildings (%d)" % env.structures().size())
+	t.check(town.get_child_count() == 1, "one Citadel node after a rebuild (%d children)" % town.get_child_count())
+	t.check(town.citadel == first_citadel, "the same Citadel instance is rebuilt, so listeners stay wired")
 	t.check(ground.get_child_count() == 1, "and still one floor")
 	t.near(town.citadel.fraction(), 1.0, 0.001, "the Citadel is whole again")
 	t.check(town.citadel.standing_parts() == 9 and town.citadel.parts.size() == 9, "with all nine parts")

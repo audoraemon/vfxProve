@@ -24,9 +24,12 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			gates.append(s)
 		elif s.kind == Structure.Kind.BRIDGE:
 			bridge = s
-	citadel = Citadel.new()
-	citadel.name = "Citadel"
-	add_child(citadel)
+	# One Citadel node for the life of this town: setup() resets its state, so a rebuild reuses it instead of
+	# orphaning the old node — and anything connected to its signals stays connected.
+	if not is_instance_valid(citadel):
+		citadel = Citadel.new()
+		citadel.name = "Citadel"
+		add_child(citadel)
 	citadel.setup(env, TownLayout.CITADEL_ORIGIN, shake)
 	_built.append_array(citadel.parts)
 	if ground != null:

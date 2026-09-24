@@ -42,6 +42,13 @@ const STALL_CANOPY := [[Color("b8322a"), Color("e8dcc4")], [Color("2f5ca8"), Col
 const COL_DOOR := Color("1a1614")
 const COL_IRON := Color("6d6259")
 const COL_SHIELD := Color("9a2420")
+## Light buckets the redraw signature quantizes to. Faces are always shaded from the exact sampled
+## light; these only decide how far the light has to move before a building rebuilds its drawing.
+const SIG_COLOR_STEPS := 48.0
+const SIG_DIR_STEPS := 8.0
+## Scratch buffers for _quad(); canvas drawing is single-threaded, so one shared pair is enough.
+static var _no_uv := PackedVector2Array()
+static var _quad_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
 
 var kind := Kind.BLOCK
 var footprint := Rect2()
@@ -88,6 +95,8 @@ var _drawn_sig := -1
 var _dirty := true
 ## Seconds since drop_banner() (-1 = the banner still hangs).
 var _banner_fall := -1.0
+## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
+var _banner_sig := -1
 
 
 func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
@@ -293,26 +302,34 @@ func _process(delta: float) -> void:
 				_banner.queue_free()
 		else:
 			_banner.position = Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).round() * _shake if _shake > 0.2 else Vector2.ZERO
-		_banner.queue_redraw()
+		# Sliding or jittering the banner moves the node; only its stepped wave and the light on it
+		# change what it draws, so that is all it redraws for.
+		var banner_sig := roundi(sin(_time * 3.0)) * 4096 + int((lights.ambient if lights else 1.0) * 48.0) * 64 \
+			+ int(scorch * 48.0)
+		if banner_sig != _banner_sig:
+			_banner_sig = banner_sig
+			_banner.queue_redraw()
 	var animating := _shake > 0.0 or (_collapse >= 0.0 and _collapse <= 1.0 and _dirty) or not _top_piece.is_empty() \
 		or _molten > 0.0 or kind == Kind.TORCH
-	var sig := _light_signature()
-	if animating or sig != _drawn_sig or _dirty:
-		_drawn_sig = sig
+	if animating or _dirty:
+		# Rebuilding anyway, so do not price the light: _drawn_sig keeps the bucket from before the
+		# animation, and the first quiet frame compares against it again.
 		_dirty = animating
+		queue_redraw()
+		return
+	var sig := _light_signature()
+	if sig != _drawn_sig:
+		_drawn_sig = sig
 		queue_redraw()
 
 
 ## Quantized light + ambient + blink bucket; equal signatures draw identically.
 func _light_signature() -> int:
-	var amb := int((lights.ambient if lights else 1.0) * 48.0)
-	var sig := amb
+	var sig := int((lights.ambient if lights else 1.0) * 48.0)
 	if lights != null:
-		var l := lights.sample(center())
-		var d := lights.sample_dir(center())
-		sig = hash([amb, int(l.r * 48.0), int(l.g * 48.0), int(l.b * 48.0), int(d.x * 8.0), int(d.y * 8.0)])
+		sig = sig * 1021 + lights.sample_signature(center(), SIG_COLOR_STEPS, SIG_DIR_STEPS)
 	if kind == Kind.TOWER or kind == Kind.BLOCK:
-		sig = hash([sig, int(_time * 8.0)])
+		sig = sig * 1021 + int(_time * 8.0)
 	return sig
 
 
@@ -382,7 +399,7 @@ func _draw() -> void:
 
 	# Ground shadow toward the back (fields lie flat and cast none).
 	if kind != Kind.FARM_FIELD:
-		draw_colored_polygon(PackedVector2Array([_s[0], _s[1] + Vector2(6, -3), _s[2] + Vector2(6, -3), _s[3]]),
+		_quad(PackedVector2Array([_s[0], _s[1] + Vector2(6, -3), _s[2] + Vector2(6, -3), _s[3]]),
 			Color(0, 0, 0, 0.25))
 
 	var rubble_top := _collapse >= 0.0
@@ -423,21 +440,24 @@ func _draw() -> void:
 func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color, jagged: bool) -> void:
 	var b := Vector2(0, -h0)
 	var t := Vector2(0, -h1)
-	draw_colored_polygon(PackedVector2Array([_s[3] + b, _s[2] + b, _s[2] + t, _s[3] + t]), left_c)
-	draw_colored_polygon(PackedVector2Array([_s[1] + b, _s[2] + b, _s[2] + t, _s[1] + t]), right_c)
-	var top := PackedVector2Array([_s[0] + t, _s[1] + t, _s[2] + t, _s[3] + t])
+	_quad(PackedVector2Array([_s[3] + b, _s[2] + b, _s[2] + t, _s[3] + t]), left_c)
+	_quad(PackedVector2Array([_s[1] + b, _s[2] + b, _s[2] + t, _s[1] + t]), right_c)
 	if jagged:
-		# Broken, uneven top while collapsing / as rubble.
-		top = PackedVector2Array()
+		# Broken, uneven top while collapsing / as rubble: twelve points, so not a quad.
+		var top := PackedVector2Array()
 		for i in 4:
 			var a := _s[i] + t
 			var c := _s[(i + 1) % 4] + t
 			for k in 3:
 				var p := a.lerp(c, k / 3.0)
 				top.append(p + Vector2(0, -fposmod(sin(float(i * 7 + k) * 12.9898) * 43758.5, 5.0)))
-	draw_colored_polygon(top, top_c)
+		draw_colored_polygon(top, top_c)
+	else:
+		_quad(PackedVector2Array([_s[0] + t, _s[1] + t, _s[2] + t, _s[3] + t]), top_c)
 	var edge := top_c.lightened(0.18)
-	draw_polyline(PackedVector2Array([_s[3] + t, _s[2] + t, _s[1] + t]), edge, -1.0)
+	# Two segments rather than a polyline: thin lines batch together, a polyline is its own draw call.
+	draw_line(_s[3] + t, _s[2] + t, edge, -1.0)
+	draw_line(_s[2] + t, _s[1] + t, edge, -1.0)
 	draw_line(_s[2] + b, _s[2] + t, right_c.lightened(0.1), -1.0)
 
 
@@ -523,6 +543,16 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 			draw_line(_s[1].lerp(_s[2], 0.5), _s[1].lerp(_s[2], 0.5) + Vector2(0, -height), right_c.darkened(0.3), -1.0)
 
 
+## One flat-coloured convex quad. Consecutive quads drawn this way share a single draw call, while a
+## polygon per face costs one each -- the town's crenellations alone were 1285 draw calls a frame.
+func _quad(p: PackedVector2Array, c: Color) -> void:
+	_quad_cols[0] = c
+	_quad_cols[1] = c
+	_quad_cols[2] = c
+	_quad_cols[3] = c
+	draw_primitive(p, _quad_cols, _no_uv)
+
+
 ## Screen position (local) of a ground point at height h.
 func _gp(g: Vector2, h: float) -> Vector2:
 	return Iso.ground_to_screen(g) - position + Vector2(0, -h)
@@ -548,11 +578,11 @@ func _draw_crenellations(top_c: Color, right_c: Color, left_c: Color, size: floa
 			var g1 := g0 + Vector2(size, size)
 			var h0 := height
 			var h1 := height + mh
-			draw_colored_polygon(PackedVector2Array([_gp(Vector2(g0.x, g1.y), h0), _gp(g1, h0), _gp(g1, h1),
+			_quad(PackedVector2Array([_gp(Vector2(g0.x, g1.y), h0), _gp(g1, h0), _gp(g1, h1),
 				_gp(Vector2(g0.x, g1.y), h1)]), left_c)
-			draw_colored_polygon(PackedVector2Array([_gp(Vector2(g1.x, g0.y), h0), _gp(g1, h0), _gp(g1, h1),
+			_quad(PackedVector2Array([_gp(Vector2(g1.x, g0.y), h0), _gp(g1, h0), _gp(g1, h1),
 				_gp(Vector2(g1.x, g0.y), h1)]), right_c)
-			draw_colored_polygon(PackedVector2Array([_gp(g0, h1), _gp(Vector2(g1.x, g0.y), h1), _gp(g1, h1),
+			_quad(PackedVector2Array([_gp(g0, h1), _gp(Vector2(g1.x, g0.y), h1), _gp(g1, h1),
 				_gp(Vector2(g0.x, g1.y), h1)]), top_c.darkened(0.08))
 
 

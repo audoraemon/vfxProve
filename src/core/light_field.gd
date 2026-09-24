@@ -89,6 +89,36 @@ func sample_dir(g: Vector2) -> Vector2:
 	return dir
 
 
+## Quantized light color and direction at `g` folded into one int: equal values shade a Structure
+## identically. One pass over the lights and no allocation, because every building asks every frame.
+func sample_signature(g: Vector2, color_steps: float, dir_steps: float) -> int:
+	var r := 0.0
+	var gr := 0.0
+	var b := 0.0
+	var dir := Vector2.ZERO
+	for l in _lights:
+		var intensity: float = l.intensity
+		if intensity <= 0.0:
+			continue
+		var to: Vector2 = l.pos - g
+		var dist := to.length()
+		var d: float = dist / l.radius
+		if d >= 1.0:
+			continue
+		var w := pow(1.0 - d, 1.4) * intensity
+		var col: Color = l.color
+		r += col.r * w
+		gr += col.g * w
+		b += col.b * w
+		if dist > 0.01:
+			dir += (to / dist) * w
+	var sig := int(r * color_steps)
+	sig = sig * 1021 + int(gr * color_steps)
+	sig = sig * 1021 + int(b * color_steps)
+	sig = sig * 1021 + int(dir.x * dir_steps)
+	return sig * 1021 + int(dir.y * dir_steps)
+
+
 func _weight(l: Dictionary, g: Vector2) -> float:
 	if l.intensity <= 0.0:
 		return 0.0

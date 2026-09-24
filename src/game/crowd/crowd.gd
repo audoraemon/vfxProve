@@ -24,9 +24,12 @@ const ALARM_FLEE_ALL := 50.0
 ## A cast this close frightens a citizen; a collapse this close does too.
 const PANIC_CAST := 7.0
 const PANIC_DESTROY := 4.0
-## One person through a gate this often, and how close counts as queueing for it.
+## One person through a gate this often.
 const GATE_INTERVAL := 0.6
-const GATE_QUEUE := 1.6
+## Only people this close to a gate's middle are held; the rest walk up and bunch on their own.
+const GATE_DOOR := 0.45
+## A released person keeps its pass until it is this far past the middle (or the interval runs out).
+const GATE_CLEAR := 0.8
 ## Where the soldiers ring the Citadel.
 const RING_RADIUS := 3.4
 
@@ -45,7 +48,7 @@ var _parent: Node2D
 var _rng := RandomNumberGenerator.new()
 ## Gate -> the crowd clock time it may pass someone again.
 var _gate_next := {}
-## Gate -> the Person it last let through, exempt from the hold until it clears GATE_QUEUE range.
+## Gate -> the Person it last let through, exempt from the hold until it clears GATE_CLEAR range.
 var _gate_passing := {}
 var _clock := 0.0
 var _rallied := false
@@ -164,10 +167,12 @@ func _gates() -> void:
 		var centre := gate.center()
 		# Whoever this gate let through stays exempt from the hold until it actually clears the doorway —
 		# otherwise the very next frame's re-evaluation catches it again mid-step and nobody ever gets far
-		# enough to leave GATE_QUEUE range, let alone reach the exit.
+		# enough to leave GATE_CLEAR range, let alone reach the exit. The exemption also ends once the
+		# interval runs out, so a slow passer cannot hold the gate open past its own turn.
 		var passing: Person = _gate_passing.get(gate)
 		if is_instance_valid(passing) and passing.is_alive() and passing.mind == Person.Mind.FLEE \
-				and passing.ground_pos.distance_to(centre) <= GATE_QUEUE:
+				and passing.ground_pos.distance_to(centre) <= GATE_CLEAR \
+				and _clock < float(_gate_next.get(gate, -1.0)):
 			passing.wait = 0.0
 		else:
 			passing = null
@@ -175,7 +180,7 @@ func _gates() -> void:
 		var queue: Array[Person] = []
 		for p in citizens:
 			if p != passing and is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE \
-					and p.ground_pos.distance_to(centre) <= GATE_QUEUE:
+					and p.ground_pos.distance_to(centre) <= GATE_DOOR:
 				queue.append(p)
 		if queue.is_empty():
 			continue
@@ -268,6 +273,11 @@ func _on_structure_destroyed(s: Structure) -> void:
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(at) <= PANIC_DESTROY:
 			p.panic(at)
+	if is_instance_valid(_town) and s == _town.bridge:
+		# The south route just closed: everyone already walking it needs a new plan.
+		for p in citizens:
+			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE:
+				p.replan()
 
 
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:

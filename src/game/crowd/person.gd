@@ -88,24 +88,26 @@ func tick(delta: float) -> void:
 
 
 func _think(delta: float) -> void:
+	_repath_in = maxf(_repath_in - delta, 0.0)
+	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
+	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
+	# Checked even while held at a gate: otherwise a citizen whose path ran out inside gate range can only
+	# recover by chance, when it happens to become that gate's leader.
+	if _goal != Vector2.INF and _path.is_empty() and _repath_in <= 0.0 \
+			and ground_pos.distance_to(_goal) > GOAL_REACH:
+		_goal = Vector2.INF
+		_repath_in = 0.3
 	if wait > 0.0:
 		# Held in a gate queue: stand still, but keep the fright timer running.
 		wait = maxf(wait - delta, 0.0)
 		_panic_left = maxf(_panic_left - delta, 0.0)
 		_idle = maxf(_idle, 0.05)
 		return
-	_repath_in = maxf(_repath_in - delta, 0.0)
 	walk_speed = _mind_speed()
 	if mind == Mind.PANIC:
 		_panic_left -= delta
 		if _panic_left <= 0.0:
 			flee()
-	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
-	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
-	if _goal != Vector2.INF and _path.is_empty() and _repath_in <= 0.0 \
-			and ground_pos.distance_to(_goal) > GOAL_REACH:
-		_goal = Vector2.INF
-		_repath_in = 0.3
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -149,6 +151,12 @@ func _pick_target() -> void:
 	while _leg < _path.size():
 		var p := _path[_leg]
 		_leg += 1
+		if grid != null and not grid.walkable(p):
+			# The way closed under us (the bridge fell, a wall's rubble shifted the grid): drop the plan and
+			# let the mind make a new one instead of walking through it.
+			_goal = Vector2.INF
+			_repath_in = 0.0
+			break
 		if ground_pos.distance_to(p) > 0.08:
 			_target = p
 			return
@@ -204,6 +212,15 @@ func flee() -> void:
 	_path = PackedVector2Array()
 	_leg = 0
 	_repath_in = rng.randf_range(0.05, 2.4)
+
+
+## The map changed under everyone (a bridge fell): throw this plan away so the mind makes a new one. The
+## retry is staggered, like flight's, so a hundred people do not all ask for a route in the same frame.
+func replan() -> void:
+	_path = PackedVector2Array()
+	_leg = 0
+	_goal = Vector2.INF
+	_repath_in = rng.randf_range(0.05, 0.8)
 
 
 func _plan_exit() -> void:

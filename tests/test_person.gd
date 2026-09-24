@@ -104,6 +104,26 @@ static func run(t) -> void:
 		parked.tick(1.0 / 60.0)
 	t.check(parked.ground_pos.distance_to(parked_at) > 0.05, "and the citizen goes back to wandering")
 	parked.free()
+
+	# A fleeing citizen already on its way south must not walk on water when the bridge falls.
+	var runner := Person.new()
+	runner.rng.seed = 31
+	runner.bounds = TownLayout.MAP
+	runner.setup_person(false, Vector2(0.0, 9.6), grid)
+	runner.flee()
+	var dropped := false
+	var crossed := false
+	for i in 4000:
+		runner.tick(1.0 / 60.0)
+		if not dropped and runner.ground_pos.y > 10.6:
+			town.bridge.destroy(Vector2(0.0, 12.0), &"water")
+			dropped = true
+		if runner.ground_pos.y > 11.5:
+			crossed = true
+			break
+	t.check(dropped, "the runner set off for the bridge (%s)" % runner.ground_pos)
+	t.check(not crossed, "and stopped at the water once the bridge fell (%s)" % runner.ground_pos)
+	runner.free()
 	env.clear()
 	env.free()
 	town.free()

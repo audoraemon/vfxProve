@@ -527,6 +527,11 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	stamp(TownLayout.RIVER, true)
 	for s in env.structures():
 		_apply(s)
+	# The bridge's footprint overlaps the river band, and _apply() skips every walkable structure (right for
+	# gates and fields, which touch nothing pre-stamped) -- so while the bridge stands, open the water under
+	# it explicitly, the same way _on_destroyed() re-opens it after a neighbour floods it back.
+	if is_instance_valid(_bridge) and not _bridge.destroyed:
+		stamp(_bridge.footprint, false)
 	env.structure_destroyed.connect(_on_destroyed)
 	return self
 

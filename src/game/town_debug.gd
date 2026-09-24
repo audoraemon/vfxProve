@@ -100,6 +100,7 @@ func _rebuild(seed_value: int) -> void:
 	_bf.reset(seed_value)
 	_destroyed = 0
 	if is_instance_valid(_town):
+		_town.teardown()
 		# Parents may be mid-teardown here, so never free a tree-resident town immediately.
 		if _town.is_inside_tree():
 			_town.queue_free()

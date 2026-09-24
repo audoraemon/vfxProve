@@ -95,6 +95,28 @@ func clear() -> void:
 	_grid.clear()
 
 
+## Take one structure out of the field and free it (the town's teardown). The spatial index is rebuilt, so
+## this is for the handful of times a map is torn down, not for destruction — destroyed buildings stay.
+func remove(s: Structure) -> void:
+	_structures.erase(s)
+	if is_instance_valid(s):
+		if s.light_id != 0 and lights != null:
+			lights.remove(s.light_id)
+			s.light_id = 0
+		if s.is_inside_tree():
+			s.queue_free()
+		else:
+			s.free()
+	_reindex()
+
+
+func _reindex() -> void:
+	_grid.clear()
+	for s in _structures:
+		if is_instance_valid(s):
+			_index(s)
+
+
 func structures() -> Array[Structure]:
 	return _structures
 

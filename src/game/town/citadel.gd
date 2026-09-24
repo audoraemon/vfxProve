@@ -54,6 +54,14 @@ func setup(env: EnvironmentField, at: Vector2, shake: CameraShake = null) -> Cit
 	_shake = shake
 	origin = at
 	health = max_health
+	parts.clear()
+	keep = null
+	_window.clear()
+	_clock = 0.0
+	_marks = 0
+	_fires_lit = false
+	_banner_dropped = false
+	_fallen = false
 	for r: Rect2 in TOWERS:
 		_add_part(r, TOWER_H, Structure.Kind.KEEP)
 	for r: Rect2 in WALLS:

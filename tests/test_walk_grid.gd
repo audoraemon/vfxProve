@@ -44,6 +44,24 @@ static func run(t) -> void:
 	t.check(grid.path(Vector2(0, 0), TownLayout.EXITS[0]).is_empty(), "the south route is closed")
 	t.near(grid.nearest_exit(Vector2(0, 6.0)).x, TownLayout.EXITS[1].x, 0.001, "so the east exit becomes the nearest open one")
 	t.check(grid.nearest_walkable(Vector2(-6.0, 12.2)) != Vector2.INF, "a point in the river snaps to the nearest bank")
+
+	# Gates are passable across their whole span, not just down the middle: the wall segments beside the Side
+	# Gate reach into its edge cells.
+	var side: Rect2 = TownLayout.SIDE_GATE
+	var blocked_cells := 0
+	var probes := 0
+	for gy in 6:
+		for gx in 2:
+			var p := side.position + Vector2(0.25 + 0.5 * float(gx), 0.25 + 0.5 * float(gy))
+			if not side.has_point(p):
+				continue
+			probes += 1
+			if not grid.walkable(p):
+				blocked_cells += 1
+	t.check(probes >= 8 and blocked_cells == 0, "the whole Side Gate is walkable (%d of %d cells blocked)" % [blocked_cells, probes])
+	t.check(grid.walkable(TownLayout.FIELDS[0].get_center()), "a farm field can be walked over")
+	t.check(not grid.clear_line(Vector2(-9.6, 0.0), Vector2(-8.0, 0.0)), "a straight walk through the west wall is not clear")
+	t.check(grid.clear_line(Vector2(0.0, 0.0), Vector2(0.0, 2.0)), "and straight down the open street it is")
 	env.clear()
 	env.free()
 	town.free()

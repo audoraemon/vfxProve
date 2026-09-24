@@ -28,13 +28,12 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	grid.update()
 	stamp(TownLayout.RIVER, true)
+	# Two passes, because a building people walk over has to win against whatever else claimed its cells: the
+	# gates sit inside the wall segments' grown footprints, and the bridge sits in the river.
 	for s in env.structures():
 		_apply(s)
-	# The bridge's footprint overlaps the river band, and _apply() above skips every walkable structure
-	# (right for gates and fields, which touch nothing pre-stamped) -- so while the bridge stands, open the
-	# water under it explicitly, the same way _on_destroyed() re-opens it after a neighbour floods it back.
-	if is_instance_valid(_bridge) and not _bridge.destroyed:
-		stamp(_bridge.footprint, false)
+	for s in env.structures():
+		_open(s)
 	env.structure_destroyed.connect(_on_destroyed)
 	return self
 
@@ -52,15 +51,25 @@ func walkable(g: Vector2) -> bool:
 	return grid.is_in_boundsv(id) and not grid.is_point_solid(id)
 
 
+## True when a straight walk from `from` to `to` crosses no solid cell (sampled every half cell).
+func clear_line(from: Vector2, to: Vector2) -> bool:
+	var span := to - from
+	var steps := maxi(int(span.length() / (CELL * 0.5)), 1)
+	for i in range(1, steps + 1):
+		if not walkable(from + span * (float(i) / float(steps))):
+			return false
+	return true
+
+
 ## `g` itself when it is free, otherwise the centre of the nearest free cell (searched in rings), or
 ## Vector2.INF when everything within max_cells is solid.
 func nearest_walkable(g: Vector2, max_cells := SNAP_CELLS) -> Vector2:
 	var id := world_to_id(g)
 	if grid.is_in_boundsv(id) and not grid.is_point_solid(id):
 		return g
+	var fallback := Vector2.INF
 	for r in range(1, max_cells + 1):
-		var best := Vector2i.ZERO
-		var found := false
+		var best := Vector2.INF
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if maxi(absi(dx), absi(dy)) != r:
@@ -68,12 +77,16 @@ func nearest_walkable(g: Vector2, max_cells := SNAP_CELLS) -> Vector2:
 				var c := id + Vector2i(dx, dy)
 				if not grid.is_in_boundsv(c) or grid.is_point_solid(c):
 					continue
-				if not found or id_to_world(c).distance_squared_to(g) < id_to_world(best).distance_squared_to(g):
-					best = c
-					found = true
-		if found:
-			return id_to_world(best)
-	return Vector2.INF
+				var w := id_to_world(c)
+				if fallback == Vector2.INF or w.distance_squared_to(g) < fallback.distance_squared_to(g):
+					fallback = w
+				if not clear_line(g, w):
+					continue
+				if best == Vector2.INF or w.distance_squared_to(g) < best.distance_squared_to(g):
+					best = w
+		if best != Vector2.INF:
+			return best
+	return fallback
 
 
 ## Waypoints from `from` to `to` in ground units (empty when there is no route). A goal inside a building
@@ -109,12 +122,19 @@ func stamp(rect: Rect2, solid: bool) -> void:
 				grid.set_point_solid(id, solid)
 
 
+## A standing building that blocks: its footprint, grown by a body's width, is solid.
 func _apply(s: Structure) -> void:
-	if not is_instance_valid(s):
-		return
-	if s.destroyed or s.walkable:
+	if not is_instance_valid(s) or s.destroyed or s.walkable:
 		return
 	stamp(s.footprint.grow(BODY), true)
+
+
+## A standing building people walk over — a gate, the bridge, a field: its own footprint is open again,
+## whatever a neighbour's margin or the river did to those cells.
+func _open(s: Structure) -> void:
+	if not is_instance_valid(s) or s.destroyed or not s.walkable:
+		return
+	stamp(s.footprint, false)
 
 
 ## A building fell: its ground opens up (rubble is walkable), except the bridge, whose fall closes the river.
@@ -123,14 +143,16 @@ func _on_destroyed(s: Structure) -> void:
 		stamp(s.footprint, true)
 		return
 	stamp(s.footprint.grow(BODY), false)
-	# Freeing a footprint can free cells a standing neighbour or the river needs, so put those back.
+	# Freeing a footprint can free cells a standing neighbour or the river still needs, so put those back...
 	var area := s.footprint.grow(BODY + CELL)
 	if area.intersects(TownLayout.RIVER):
-		var water := area.intersection(TownLayout.RIVER)
-		stamp(water, true)
-		if is_instance_valid(_bridge) and not _bridge.destroyed:
-			stamp(_bridge.footprint.intersection(water), false)
+		stamp(area.intersection(TownLayout.RIVER), true)
 	for other in _env.structures():
 		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
 				and other.footprint.grow(BODY).intersects(area):
 			_apply(other)
+	# ...and then open the ways through again, so a gate beside a fallen wall stays passable.
+	for other in _env.structures():
+		if other != s and is_instance_valid(other) and not other.destroyed and other.walkable \
+				and other.footprint.intersects(area):
+			_open(other)

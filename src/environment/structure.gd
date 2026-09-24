@@ -95,6 +95,9 @@ var _glow: QuadFx
 var _banner: Node2D
 ## Last drawn light state; redraw only when it changes or something animates.
 var _drawn_sig := -1
+## One-shot "redraw once" flag: set it when something changed the drawing (a hit, a crack, a collapse start).
+## A state that animates every frame belongs in `_process`'s `animating` expression instead — this is cleared
+## after the next redraw.
 var _dirty := true
 ## Seconds since drop_banner() (-1 = the banner still hangs).
 var _banner_fall := -1.0

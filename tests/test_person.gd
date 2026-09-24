@@ -88,6 +88,22 @@ static func run(t) -> void:
 	t.check(w.is_alive() and w is DummyEnemy, "people are ordinary units")
 	w.die(&"nova", w.ground_pos + Vector2(1, 0))
 	t.check(not w.is_alive(), "and they die like units")
+	# A goal inside a building parks the walker at its doorstep; it must not stay parked forever.
+	var parked := Person.new()
+	parked.rng.seed = 21
+	parked.bounds = TownLayout.MAP
+	parked.setup_person(false, Vector2(-6.0, 2.0), grid)
+	parked.set_goal(TownLayout.TEMPLE.get_center())
+	var ticks := 0
+	while ticks < 6000 and parked._goal != Vector2.INF:
+		parked.tick(1.0 / 60.0)
+		ticks += 1
+	t.check(parked._goal == Vector2.INF, "an unreachable goal is dropped instead of parking forever (%d ticks)" % ticks)
+	var parked_at := parked.ground_pos
+	for i in 240:
+		parked.tick(1.0 / 60.0)
+	t.check(parked.ground_pos.distance_to(parked_at) > 0.05, "and the citizen goes back to wandering")
+	parked.free()
 	env.clear()
 	env.free()
 	town.free()

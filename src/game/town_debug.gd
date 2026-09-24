@@ -97,7 +97,8 @@ func _rebuild(seed_value: int) -> void:
 	_town.name = "Town"
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
-	_bf.ctx.field.spawn(UNIT_COUNT, _bf.ctx.world, _bf.rng)
+	var wanted := Battlefield.arg_value(OS.get_cmdline_user_args(), "--units")
+	_bf.ctx.field.spawn(int(wanted) if wanted != "" else UNIT_COUNT, _bf.ctx.world, _bf.rng)
 
 
 func _cast(power: Dictionary, ground: Vector2, extra := {}) -> FxTimeline:

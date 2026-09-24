@@ -46,6 +46,8 @@ var blocked: Callable
 var look := Look.TROOPER
 ## Height in px a pulled enemy is hoisted to (a tornado carries them up its funnel).
 var lift_target := 3.0
+## Ground units per second while wandering; a brain raises it to run (Person's flee speed).
+var walk_speed := WALK_SPEED
 
 var _velocity := Vector2.ZERO
 var _target := Vector2.ZERO
@@ -71,6 +73,8 @@ var _frozen := 0.0
 var _on_thaw := Callable()
 ## Ice shards for the shatter death: x, y position; z, w velocity.
 var _shards: Array[Vector4] = []
+## Last drawn art signature; -1 forces the first draw.
+var _drawn_art := -1
 
 
 func _ready() -> void:
@@ -84,7 +88,29 @@ func _process(delta: float) -> void:
 		var l := lights.sample(ground_pos)
 		var amb := lights.ambient
 		modulate = Color(amb + l.r * 2.5, amb + l.g * 2.5, amb + l.b * 2.5, modulate.a)
-	queue_redraw()
+	# Pixel art changes a few times a second, not every frame: redraw only when something visible moved.
+	var sig := _art_signature()
+	if sig != _drawn_art:
+		_drawn_art = sig
+		queue_redraw()
+
+
+## Everything the unit's drawing depends on, quantized to what a pixel can show. Equal signatures draw
+## identically, so the frame can be skipped.
+func _art_signature() -> int:
+	if state == State.DEAD:
+		# Death animations move every frame; let them redraw.
+		return int(_dead_time * 1000.0) + 1
+	var walk := int(_anim * (5.0 if look == Look.ORC else 6.0)) % 2
+	# Folded with multiplies rather than hash([...]), which would allocate an array every frame per unit.
+	var sig := walk * 2 + (1 if _facing > 0 else 0)
+	sig = sig * 97 + int(_lift)
+	sig = sig * 97 + int(_frozen * 8.0)
+	sig = sig * 97 + int(_flash * 40.0)
+	sig = sig * 97 + int(state)
+	sig = sig * 251 + int(modulate.r * 24.0)
+	sig = sig * 251 + int(modulate.g * 24.0)
+	return sig * 251 + int(modulate.b * 24.0)
 
 
 func tick(delta: float) -> void:
@@ -108,7 +134,7 @@ func tick(delta: float) -> void:
 					_idle = rng.randf_range(0.3, 1.6)
 					_pick_target()
 				else:
-					_move(to.normalized() * WALK_SPEED * delta)
+					_move(to.normalized() * walk_speed * delta)
 		State.KNOCKBACK:
 			_move(_velocity * delta)
 			_velocity = _velocity.move_toward(Vector2.ZERO, KNOCK_DECAY * delta)

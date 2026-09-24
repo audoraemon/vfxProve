@@ -164,8 +164,15 @@ func _art_signature() -> int:
 		# Death animations move every frame; let them redraw.
 		return int(_dead_time * 1000.0) + 1
 	var walk := int(_anim * (5.0 if look == Look.ORC else 6.0)) % 2
-	var sig := hash([walk, _facing, int(_lift), int(_frozen * 8.0), int(_flash * 40.0), state])
-	return hash([sig, int(modulate.r * 24.0), int(modulate.g * 24.0), int(modulate.b * 24.0)])
+	# Folded with multiplies rather than hash([...]), which would allocate an array every frame per unit.
+	var sig := walk * 2 + (1 if _facing > 0 else 0)
+	sig = sig * 97 + int(_lift)
+	sig = sig * 97 + int(_frozen * 8.0)
+	sig = sig * 97 + int(_flash * 40.0)
+	sig = sig * 97 + int(state)
+	sig = sig * 251 + int(modulate.r * 24.0)
+	sig = sig * 251 + int(modulate.g * 24.0)
+	return sig * 251 + int(modulate.b * 24.0)
 ```
 
 and declare the cache next to the other private state (after `var _shards: Array[Vector4] = []`):
@@ -453,6 +460,7 @@ git commit -m "feat: a walk grid that knows water from rubble" -m "WalkGrid is a
   - `func set_goal(g: Vector2) -> void`, `func panic(from: Vector2) -> void`, `func flee() -> void`, `func send_to_post(at: Vector2, rally := false) -> void`, `func hold_ground() -> void`, `func has_escaped() -> bool`
   - Speeds: calm 0.6 (`DummyEnemy.WALK_SPEED`), panicked 0.9, fleeing 1.2. `wait` seconds make a person stand still (the gate queue sets it).
   - Drawing: overrides `_draw_body()`, so citizens and soldiers get their own pixel bodies and every death, freeze and lift animation keeps working. `DummyEnemy` itself is not touched by this task.
+  - `Person` is a subclass and uses its base's internals on purpose (`_idle`, `_target`, `_anim`, `_facing`, `_char`, `_px`, `state`): the spec asks for "new looks and brains on the existing unit", so the brain steers the same wander machinery instead of duplicating it.
 
 - [ ] **Step 1: Write the failing test**
 

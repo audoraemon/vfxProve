@@ -58,7 +58,7 @@
 
 Task order: 1, **7**, 2, 3, 4, 5, 6 — Task 7 (the Cinderfall frame budget) was added after Task 1's measurements and runs before the people are built.
 
-Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 2's review fix → 332, Task 4 → 355, Task 3's review fix → 357, Task 5 → 357, Task 6 → 368.
+Expected `checks=` after each task: Task 1 → 296, Task 7 → 296, Task 2 → 312, Task 3 → 328, Task 2's review fix → 332, Task 4 → 355, Task 3's review fix → 357, Task 5 → 357, Task 6 → 368, Task 6's review fix → 370.
 
 ---
 

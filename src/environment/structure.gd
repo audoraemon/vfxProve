@@ -203,7 +203,6 @@ func crack() -> void:
 func shake(amount: float) -> void:
 	if not destroyed:
 		_shake = maxf(_shake, amount)
-		_dirty = true
 
 
 ## Fire and smoke on the building for `seconds`; `offset` is in px from its front corner (its position).

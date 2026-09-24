@@ -104,7 +104,8 @@ func _process(delta: float) -> void:
 
 
 ## Everything the unit's drawing depends on, quantized to what a pixel can show. Equal signatures draw
-## identically, so the frame can be skipped.
+## identically, so the frame can be skipped. `modulate` is deliberately absent: the renderer applies it
+## without a redraw.
 func _art_signature() -> int:
 	if state == State.DEAD:
 		# Death animations move every frame; let them redraw.
@@ -112,13 +113,13 @@ func _art_signature() -> int:
 	var walk := int(_anim * (5.0 if look == Look.ORC else 6.0)) % 2
 	# Folded with multiplies rather than hash([...]), which would allocate an array every frame per unit.
 	var sig := walk * 2 + (1 if _facing > 0 else 0)
-	sig = sig * 97 + int(_lift)
+	# A hoisted body tumbles with _anim, so the angle itself has to count; eight steps per radian reads smooth.
+	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
+	# Rounded exactly like the draw site, or the body sits a pixel stale while _lift eases.
+	sig = sig * 97 + int(round(_lift))
 	sig = sig * 97 + int(_frozen * 8.0)
 	sig = sig * 97 + int(_flash * 40.0)
-	sig = sig * 97 + int(state)
-	sig = sig * 251 + int(modulate.r * 24.0)
-	sig = sig * 251 + int(modulate.g * 24.0)
-	return sig * 251 + int(modulate.b * 24.0)
+	return sig * 97 + int(state)
 
 
 func tick(delta: float) -> void:

@@ -312,9 +312,10 @@ func _process(delta: float) -> void:
 	var animating := _shake > 0.0 or (_collapse >= 0.0 and _collapse <= 1.0 and _dirty) or not _top_piece.is_empty() \
 		or _molten > 0.0 or kind == Kind.TORCH
 	if animating or _dirty:
-		# Rebuilding anyway, so do not price the light: _drawn_sig keeps the bucket from before the
-		# animation, and the first quiet frame compares against it again.
 		_dirty = animating
+		# Keep the light bucket current while animating, or the first quiet frame compares against a
+		# stale one and can skip the redraw it needs.
+		_drawn_sig = _light_signature()
 		queue_redraw()
 		return
 	var sig := _light_signature()

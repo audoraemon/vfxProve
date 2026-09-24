@@ -3,7 +3,7 @@ extends Node
 ## Registry of destructible structures with ground-space damage queries, like EnemyField for props.
 
 ## A structure was destroyed (any cause); the game's rules count these.
-signal structure_destroyed(s: Structure)
+signal structure_destroyed(s: Structure, kind: StringName)
 
 ## Spatial index cell (ground units) for blocked(); query margins up to MAX_MARGIN use it.
 const CELL := 2.0
@@ -160,7 +160,7 @@ func shake_radius(center: Vector2, radius: float, amount: float) -> void:
 
 
 func _on_structure_broken(s: Structure) -> void:
-	structure_destroyed.emit(s)
+	structure_destroyed.emit(s, s.destroy_kind)
 
 
 func _cell(g: Vector2) -> Vector2i:

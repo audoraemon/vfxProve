@@ -38,6 +38,11 @@ func add(e: DummyEnemy) -> void:
 	_enemies.append(e)
 
 
+## Take one unit out of the field: it left the map (a citizen escaped) rather than died.
+func remove(e: DummyEnemy) -> void:
+	_enemies.erase(e)
+
+
 func clear() -> void:
 	for e in _enemies:
 		if not is_instance_valid(e):
@@ -47,6 +52,15 @@ func clear() -> void:
 		else:
 			e.free()
 	_enemies.clear()
+
+
+## Drop units that are gone or dead, so a four-minute mission does not keep scanning corpses.
+func purge() -> void:
+	var keep: Array[DummyEnemy] = []
+	for e in _enemies:
+		if is_instance_valid(e) and e.is_alive():
+			keep.append(e)
+	_enemies = keep
 
 
 func alive() -> Array[DummyEnemy]:

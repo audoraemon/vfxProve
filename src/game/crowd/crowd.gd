@@ -35,6 +35,9 @@ const RING_RADIUS := 3.4
 
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
+## How many were spawned, so milestone 3's stability can measure losses against the starting town.
+var spawned_citizens := 0
+var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
 var killed_citizens := 0
@@ -52,7 +55,10 @@ var _gate_next := {}
 var _gate_passing := {}
 var _clock := 0.0
 var _rallied := false
+var _fled_all := false
 var _citadel_hit := false
+## Seconds until EnemyField.purge() runs again (about once a second; mirrors the gate clock's pacing).
+var _purge_in := 1.0
 
 
 func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid, parent: Node2D,
@@ -84,6 +90,8 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		citizens.append(p)
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
+	spawned_citizens = citizens.size()
+	spawned_soldiers = soldiers.size()
 
 
 ## Walkable ground within `spread` of `about`, or the nearest walkable point to it.
@@ -157,6 +165,11 @@ func advance(delta: float) -> void:
 	_clock += delta
 	_gates()
 	_escapes()
+	_prune_soldiers()
+	_purge_in -= delta
+	if _purge_in <= 0.0:
+		_purge_in = 1.0
+		_field.purge()
 
 
 func _gates() -> void:
@@ -206,10 +219,21 @@ func _escapes() -> void:
 		if p.is_alive() and p.has_escaped():
 			escaped_count += 1
 			escaped.emit(p)
+			_field.remove(p)
 			p.queue_free()
 			continue
 		remaining.append(p)
 	citizens = remaining
+
+
+## Drop freed soldiers from the roster, the same way _escapes() prunes citizens -- never Array.erase() a freed
+## object, that raises a typed-array error. A dead-but-not-yet-freed corpse stays here; rally() filters those.
+func _prune_soldiers() -> void:
+	var remaining: Array[Person] = []
+	for p in soldiers:
+		if is_instance_valid(p):
+			remaining.append(p)
+	soldiers = remaining
 
 
 ## The player cast a power here: everyone close enough panics.
@@ -226,7 +250,8 @@ func add_alarm(points: float) -> void:
 		alarm_changed.emit(alarm)
 	if alarm >= ALARM_RALLY:
 		rally()
-	if alarm >= ALARM_FLEE_ALL:
+	if alarm >= ALARM_FLEE_ALL and not _fled_all:
+		_fled_all = true
 		for p in citizens:
 			if is_instance_valid(p) and p.is_alive():
 				p.flee()
@@ -237,11 +262,13 @@ func rally() -> void:
 	if _rallied:
 		return
 	_rallied = true
-	for i in soldiers.size():
-		var p := soldiers[i]
-		if not is_instance_valid(p) or not p.is_alive():
-			continue
-		var a := TAU * float(i) / float(maxi(soldiers.size(), 1))
+	var living: Array[Person] = []
+	for p in soldiers:
+		if is_instance_valid(p) and p.is_alive():
+			living.append(p)
+	for i in living.size():
+		var p := living[i]
+		var a := TAU * float(i) / float(maxi(living.size(), 1))
 		p.send_to_post(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
 	rallied.emit()
 
@@ -261,12 +288,16 @@ func clear() -> void:
 	escaped_count = 0
 	killed_citizens = 0
 	killed_soldiers = 0
+	spawned_citizens = 0
+	spawned_soldiers = 0
 	_rallied = false
+	_fled_all = false
 	_citadel_hit = false
 	_clock = 0.0
+	_purge_in = 1.0
 
 
-func _on_structure_destroyed(s: Structure) -> void:
+func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
 		add_alarm(ALARM_BUILDING)
 	var at := s.center()

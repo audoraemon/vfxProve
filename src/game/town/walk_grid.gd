@@ -138,7 +138,7 @@ func _open(s: Structure) -> void:
 
 
 ## A building fell: its ground opens up (rubble is walkable), except the bridge, whose fall closes the river.
-func _on_destroyed(s: Structure) -> void:
+func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	if s == _bridge:
 		stamp(s.footprint, true)
 		return

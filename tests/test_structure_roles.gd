@@ -5,7 +5,7 @@ extends RefCounted
 static func run(t) -> void:
 	var env := EnvironmentField.new()
 	var down: Array = []
-	env.structure_destroyed.connect(func(s: Structure) -> void: down.append(s))
+	env.structure_destroyed.connect(func(s: Structure, _kind: StringName) -> void: down.append(s))
 
 	var house := env.add_structure(Rect2(0, 0, 1, 1), 24.0, Structure.Kind.HOUSE, &"house")
 	var plain := env.add_structure(Rect2(3, 0, 1, 1), 24.0, Structure.Kind.HOUSE)

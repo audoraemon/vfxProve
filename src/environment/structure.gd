@@ -80,7 +80,8 @@ var damage_filter := Callable()
 
 var _collapse := -1.0
 var _collapse_from := 0.0
-var _destroy_kind := &""
+## What damage kind brought it down (empty while it stands).
+var destroy_kind := &""
 var _shake := 0.0
 var _time := 0.0
 var _windows: Array = []
@@ -236,7 +237,7 @@ func destroy(source: Vector2, damage_kind: StringName) -> void:
 	destroyed = true
 	_dirty = true
 	hp = 0.0
-	_destroy_kind = damage_kind
+	destroy_kind = damage_kind
 	if damage_kind != &"ice":
 		scorch = maxf(scorch, 0.6)
 	for w in _windows:
@@ -889,7 +890,7 @@ func _spawn_debris(source: Vector2, toward: bool, offset := Vector2.ZERO) -> voi
 func _spawn_dust(amount: float, offset := Vector2.ZERO) -> void:
 	if fx_back == null:
 		return
-	var ramp: Array = FxParts.MIST_LIFE if _destroy_kind == &"ice" else FxParts.DUST_LIFE
+	var ramp: Array = FxParts.MIST_LIFE if destroy_kind == &"ice" else FxParts.DUST_LIFE
 	var p := _particles(fx_back, PixelParticles.Shape.PUFF, ramp, offset)
 	p.drag = 1.4
 	p.burst(int(12.0 * amount * clampf(max_height / 50.0, 0.5, 1.6)), {

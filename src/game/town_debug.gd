@@ -136,7 +136,7 @@ func _cast(power: Dictionary, ground: Vector2, extra := {}) -> FxTimeline:
 	return FxTimeline.cast(load(power.path), _bf.ctx, ground, extra)
 
 
-func _on_structure_destroyed(_s: Structure) -> void:
+func _on_structure_destroyed(_s: Structure, _kind: StringName) -> void:
 	_destroyed += 1
 
 

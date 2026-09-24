@@ -20,7 +20,7 @@ static func run(t) -> void:
 	t.check(env.blocked(Vector2(0, -8.7)) and env.blocked(Vector2(-8.7, 3.0)), "the town walls block")
 	t.check(town.floor_node == null, "no floor without a ground plane")
 	var down: Array = []
-	env.structure_destroyed.connect(func(s: Structure) -> void: down.append(s))
+	env.structure_destroyed.connect(func(s: Structure, _kind: StringName) -> void: down.append(s))
 	env.damage_radius(Vector2(0, 12.2), 0.3, 99999.0, &"stone")
 	t.check(town.bridge.destroyed and down == [town.bridge], "the bridge can be destroyed and reports it")
 	# The floor hangs under the ground plane, so freeing the town must take it along even when the town

@@ -170,8 +170,23 @@ static func run(t) -> void:
 	# stretch at once. Still a real, deterministic improvement over the old code's zero throughput here.
 	t.check(through >= 2, "about one person a second gets through the gate (%d in 3 s)" % through)
 
+	# Milestone 3 reads these: the spawned population, and a destroy that says what killed it.
+	t.check(crowd.spawned_citizens == 110 and crowd.spawned_soldiers == 50,
+		"the spawned population is recorded (%d / %d)" % [crowd.spawned_citizens, crowd.spawned_soldiers])
+	var kinds: Array = []
+	env.structure_destroyed.connect(func(s: Structure, kind: StringName): kinds.append([s.role, kind]))
+	var victim: Structure = null
+	for s in env.structures():
+		if s.role == &"house" and not s.destroyed:
+			victim = s
+			break
+	victim.destroy(victim.center() + Vector2(1.0, 0.0), &"cinder")
+	t.check(kinds.size() == 1 and kinds[0][0] == &"house" and kinds[0][1] == &"cinder",
+		"a destroyed building reports the damage kind that did it (%s)" % [kinds])
+
 	crowd.clear()
 	t.check(crowd.citizens.is_empty() and crowd.soldiers.is_empty(), "clear() empties the town")
+	t.check(crowd.spawned_citizens == 0 and crowd.spawned_soldiers == 0, "clear() forgets the spawned population")
 	field.clear()
 	field.free()
 	env.clear()

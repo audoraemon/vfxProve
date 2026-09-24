@@ -1808,6 +1808,7 @@ Open the `captures/crowd_*.png` frames: people running for the gates, a queue at
 Run each twice, report the medians. The spec's target is **50+ fps average during Cinderfall with the full crowd**. The bench spawns the full 160 people now, so these numbers are the milestone's acceptance.
 
 If Cinderfall is below 50 fps, measure before changing anything (the method and the attribution table from milestone 1's pass are in `.git/sdd/perf-report.md`), then use the cheapest lever that keeps the behaviour:
+- throttle the buildings' damage-driven repaints: a hit sets `_dirty` and repaints the same frame, and Cinderfall's stone rain hits buildings constantly — repainting them on the `SHAKE_HZ` step boundary instead (leaving the collapse, the laser's top piece and the molten edge at full rate) caps that churn without changing what a hit looks like;
 - let people think at half rate — `Person._think` on alternating frames (keep `super(delta)` every frame so movement stays smooth), which halves the brain cost;
 - sample the light field for units a few times a second instead of every frame (`DummyEnemy._process`), reusing the last tint in between;
 - raise `Person.REPATH` or the stagger window so fewer paths are planned per second.

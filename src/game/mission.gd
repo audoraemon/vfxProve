@@ -164,6 +164,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 
 
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
+## The running mission's rules (its clock, DP, stability), for whoever drives it. Null until started().
+func rules() -> Rules:
+	return _rules
+
+
 func in_intro() -> bool:
 	return _intro_left > 0.0
 

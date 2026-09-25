@@ -79,6 +79,7 @@ The loadout, seed and population can be set on the command line: `-- --loadout=h
 ```bash
 SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test   # scripted mission; logs MISSION test ...
 SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture   # one screen → captures/screen_<name>.png (title|prepare|results|pause)
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/game.tscn -- --flow-test   # drives title -> draft -> mission -> pause -> results -> replay; prints FLOW lines
 ```
 
 ### Debug scene
@@ -124,7 +125,7 @@ shaders/         iso_rings, shockwave, fireball_dome, beam_glow, beam_add, scorc
 assets/audio/    generated WAV cues (committed)
 tools/           test runner, capture runner, contact sheets, audio synth
 docs/superpowers design spec + implementation plan
-scenes/          sandbox.tscn (main scene), town_debug.tscn
+scenes/          game.tscn (main scene), mission.tscn, sandbox.tscn, town_debug.tscn
 ```
 
 Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks with `at(time, fn)`, `_fx_process()` runs per-frame logic. Effects reach gameplay only through `EnemyField` and audio only through `Sfx` (via `FxContext`). Ground-plane effects are children of a node whose transform is the iso basis, so they are authored in ground units and project to iso automatically.

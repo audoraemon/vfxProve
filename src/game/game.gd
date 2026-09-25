@@ -25,6 +25,8 @@ const FLOW := {
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
 const SANDBOX_SCENE := "res://scenes/sandbox.tscn"
+## Where --flow-test keeps its save, so a scripted run never touches the player's best score.
+const FLOW_TEST_SAVE := "user://test_flow.cfg"
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("4a6a2a")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -44,6 +46,8 @@ const SAMPLE_RESULT := {
 
 var screen := Screen.TITLE
 var save: SaveFile
+## Where the save file lives: the real one, or FLOW_TEST_SAVE under --flow-test.
+var save_path := SaveFile.PATH
 ## The four powers the player drafted, kept so Replay can run them again.
 var loadout := PackedStringArray()
 ## The last mission's numbers, for the Results screen: won, reason, score, rank, lines, best.
@@ -65,9 +69,12 @@ static func next_screen(action: String) -> int:
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
-	save = SaveFile.new().load_from()
-	loadout = save.last_loadout
 	var args := OS.get_cmdline_user_args()
+	if "--flow-test" in args:
+		save_path = FLOW_TEST_SAVE
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+	save = SaveFile.new().load_from(save_path)
+	loadout = save.last_loadout
 	var show := Battlefield.arg_value(args, "--show")
 	match show:
 		"prepare":
@@ -89,6 +96,10 @@ func _ready() -> void:
 			await _mission.prewarmed
 		await get_tree().create_timer(1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
+		get_tree().quit()
+	elif "--flow-test" in args:
+		await _flow_test()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 		get_tree().quit()
 
 
@@ -169,7 +180,7 @@ func _on_mission_finished(won: bool, reason: String, score: int, rank: String, l
 	result = {"won": won, "reason": reason, "score": score, "rank": rank, "lines": lines,
 		"best": save.record(score, rank)}
 	save.remember_loadout(loadout)
-	save.save_to()
+	save.save_to(save_path)
 	on_action("mission:over")
 
 
@@ -177,7 +188,7 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if what == "manifest":
 		loadout = prep.draft.picks
 		save.remember_loadout(loadout)
-		save.save_to()
+		save.save_to(save_path)
 	on_action("prepare:" + what)
 
 
@@ -218,3 +229,81 @@ func _capture(file_name: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png(dir.path_join(file_name))
 	print("captured ", dir.path_join(file_name))
+
+
+## The whole screen flow, driven without a mouse -- the part nobody could click through while it was being
+## built. One FLOW line per step, then one FLOW result line:
+##   /f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/game.tscn -- --flow-test
+func _flow_test() -> void:
+	var fails: Array[String] = []
+	var count := [0]
+	var step := func(ok: bool, what: String) -> void:
+		count[0] += 1
+		print("FLOW %s %s" % ["ok  " if ok else "FAIL", what])
+		if not ok:
+			fails.append(what)
+	var four := PackedStringArray(["heaven", "tsunami", "cinder", "nova"])
+
+	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "the game opens on the title")
+	on_action("title:play")
+	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen, "Play opens the draft")
+	var prep: PrepareScreen = _screen_node
+	prep.draft.preselect(four)
+	_on_prepare_action("manifest", prep)
+	step.call(screen == Screen.MISSION and is_instance_valid(_mission), "MANIFEST starts a mission")
+	step.call(loadout == four and save.last_loadout == four, "the drafted four are the loadout, and are saved")
+
+	# The intro holds the clock, then lets it run.
+	if not _mission.started():
+		await _mission.prewarmed
+	await get_tree().process_frame
+	step.call(_mission.in_intro(), "the mission opens with its intro")
+	var clock0 := _mission.rules().time_left
+	await get_tree().create_timer(Mission.INTRO_SECONDS * 0.5).timeout
+	step.call(_mission.rules().time_left == clock0, "the clock waits during the intro (%.2f)" % _mission.rules().time_left)
+	await get_tree().create_timer(Mission.INTRO_SECONDS * 0.5 + 1.0).timeout
+	var running := _mission.rules().time_left
+	step.call(not _mission.in_intro() and running < clock0, "after the intro the clock runs (%.2f)" % running)
+
+	# Pause freezes the mission; Resume gives the same one back.
+	var first := _mission
+	_open_pause()
+	var paused_at := _mission.rules().time_left
+	await get_tree().create_timer(1.0).timeout
+	step.call(is_instance_valid(_pause) and _mission.rules().time_left == paused_at,
+		"pause stops the clock (%.2f -> %.2f)" % [paused_at, _mission.rules().time_left])
+	on_action("pause:resume")
+	step.call(_mission == first and not is_instance_valid(_pause), "Resume gives back the same mission")
+	await get_tree().create_timer(0.5).timeout
+	step.call(_mission.rules().time_left < paused_at, "and its clock runs on (%.2f)" % _mission.rules().time_left)
+
+	# The clock running out ends it on the Results screen, over the frozen mission.
+	_mission.rules().time_left = 0.01
+	await get_tree().create_timer(0.3).timeout
+	step.call(screen == Screen.RESULTS and _screen_node is ResultsScreen, "the mission ends on the results")
+	step.call(is_instance_valid(_mission) and _mission.process_mode == Node.PROCESS_MODE_DISABLED,
+		"drawn over the frozen mission")
+	step.call(String(result.get("reason", "")) == "timeout" and not bool(result.get("won", true)),
+		"reported as a loss on the clock (%s)" % result.get("reason", "?"))
+
+	# Replay is a fresh mission with the same four.
+	on_action("results:replay")
+	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and _mission != first, "Replay starts a fresh mission")
+	step.call(loadout == four, "with the same four powers")
+
+	# Pause, then Change powers: the draft, with the four preselected, and nothing left of the mission.
+	if not _mission.started():
+		await _mission.prewarmed
+	_open_pause()
+	on_action("pause:change")
+	await get_tree().process_frame
+	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen, "Change powers opens the draft")
+	step.call(_screen_node is PrepareScreen and (_screen_node as PrepareScreen).draft.picks == four,
+		"with the four preselected")
+	step.call(not is_instance_valid(_pause) and not is_instance_valid(_mission), "and the pause menu and mission are gone")
+	on_action("prepare:back")
+	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back returns to the title")
+	step.call(Engine.time_scale == 1.0, "and time runs at normal speed")
+
+	print("FLOW result checks=%d failures=%d %s" % [count[0], fails.size(), ", ".join(fails)])
+

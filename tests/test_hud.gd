@@ -31,6 +31,11 @@ static func run(t) -> void:
 		"the objective names the Citadel and what is left of it (%s)" % hud.objective_text())
 	t.check(hud.status_text().contains("110") and hud.status_text().contains("50"),
 		"the status line counts the living (%s)" % hud.status_text())
+	# The five-colour bar has a legend, and the figures top right wear the colour of the part they drive.
+	t.check(Hud.LEGEND.size() == 5 and Hud.LEGEND[3][1] == 3, "the stability bar has a five-entry legend in part order")
+	var segs := hud.status_segments()
+	t.check(segs[0][1] == UiTheme.STABILITY_COLS[0] and segs[1][1] == UiTheme.STABILITY_COLS[3] and segs[2][1] == UiTheme.STABILITY_COLS[1],
+		"citizens are Population's colour, soldiers Military's, destroyed Infrastructure's")
 
 	# A slot says which of the four things it is.
 	aim.pick(0)

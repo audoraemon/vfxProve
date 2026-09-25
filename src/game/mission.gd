@@ -35,6 +35,11 @@ const INTRO_FROM_ZOOM := 0.5
 ## Where the camera rests for play, and how close.
 const PLAY_ZOOM := 0.75
 
+## The ending plays out in slow motion before the results: the last blow lands, the dust settles, then the
+## numbers (playtest note 9). Real seconds, and the time scale the world runs at meanwhile.
+const ENDING_SECONDS := 1.6
+const ENDING_TIME_SCALE := 0.3
+
 ## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
 const TEST_CASTS := [
 	[1.0, 0, Vector2(-1.0, -6.0), Vector2(0.2, 1.0)],
@@ -65,6 +70,8 @@ var autostart := true
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
 var _intro_left := 0.0
+## True from the last blow to Results: the slow-motion ending is playing out (note 9).
+var _ending := false
 
 
 func _ready() -> void:
@@ -206,12 +213,25 @@ func _on_over(won: bool, reason: String) -> void:
 		print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
 		for line: Dictionary in _rules.stat_lines():
 			print("  %-22s %8s %6d" % [line.label, line.value, line.points])
+	_play_ending(won, reason)
+
+
+func _play_ending(won: bool, reason: String) -> void:
+	_ending = true
+	_aim.unfocus()
+	if not _scripted:
+		# The scripted runs keep milestone 3's timing: no slow motion for them.
+		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
+		await get_tree().create_timer(ENDING_SECONDS, true, false, true).timeout
+		_bf.ctx.impact.set_base_time_scale(1.0)
 	finished.emit(won, reason, _rules.score(), _rules.rank(), _rules.stat_lines())
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not started():
 		return
+	if _ending:
+		return  # the mission is over; nothing to aim or pause
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:

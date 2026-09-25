@@ -25,6 +25,9 @@ const FLOW := {
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
 const SANDBOX_SCENE := "res://scenes/sandbox.tscn"
+## The fade into a mission: out to black, the mission loads behind it, back in once its town is there.
+const FADE_OUT := 0.25
+const FADE_IN := 0.35
 ## Where --flow-test keeps its save, so a scripted run never touches the player's best score.
 const FLOW_TEST_SAVE := "user://test_flow.cfg"
 ## Grass: what shows between screens, the same clear colour the mission uses.
@@ -60,6 +63,10 @@ var _mission: Mission
 var _screen_node: Node
 ## The pause menu, while it is up. It sits over the mission instead of replacing it.
 var _pause: PauseMenu
+## Black over everything between screens, so a fresh mission's bare battlefield is never shown (note 6).
+var _fader: Fader
+## True while a MANIFEST/Replay/Restart fade is under way, so a second click cannot start a second one.
+var _fading := false
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -75,6 +82,9 @@ func _ready() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	save = SaveFile.new().load_from(save_path)
 	loadout = save.last_loadout
+	_fader = Fader.new()
+	_fader.name = "Fader"
+	add_child(_fader)
 	var show := Battlefield.arg_value(args, "--show")
 	match show:
 		"prepare":
@@ -161,7 +171,26 @@ func on_action(action: String) -> void:
 	if to < 0:
 		push_warning("KAK ignored an unknown action: " + action)
 		return
+	if to == Screen.MISSION:
+		_faded_into_mission()
+		return
 	go_to(to)
+
+
+## Into a mission behind the fade. Not awaited by the caller: the button that asked for it has done its part.
+func _faded_into_mission() -> void:
+	if _fading:
+		return  # a second MANIFEST click during the fade
+	_fading = true
+	await _fader.fade_out(FADE_OUT)
+	go_to(Screen.MISSION)
+	if is_instance_valid(_mission) and not _mission.started():
+		await _mission.prewarmed
+	# Two frames for the town to be drawn once before it is shown.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _fader.fade_in(FADE_IN)
+	_fading = false
 
 
 func _build_mission() -> Mission:
@@ -249,6 +278,16 @@ func _quit_cleanly() -> void:
 	get_tree().quit()
 
 
+## Wait until `cond` holds or `seconds` of real time pass; true when it held.
+func _until(cond: Callable, seconds: float) -> bool:
+	var end := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while not cond.call():
+		if Time.get_ticks_msec() > end:
+			return false
+		await get_tree().process_frame
+	return true
+
+
 ## The whole screen flow, driven without a mouse -- the part nobody could click through while it was being
 ## built. One FLOW line per step, then one FLOW result line:
 ##   /f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/game.tscn -- --flow-test
@@ -268,6 +307,7 @@ func _flow_test() -> void:
 	var prep: PrepareScreen = _screen_node
 	prep.draft.preselect(four)
 	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
 	step.call(screen == Screen.MISSION and is_instance_valid(_mission), "MANIFEST starts a mission")
 	step.call(loadout == four and save.last_loadout == four, "the drafted four are the loadout, and are saved")
 
@@ -282,6 +322,7 @@ func _flow_test() -> void:
 	await get_tree().create_timer(Mission.INTRO_SECONDS * 0.5 + 1.0).timeout
 	var running := _mission.rules().time_left
 	step.call(not _mission.in_intro() and running < clock0, "after the intro the clock runs (%.2f)" % running)
+	step.call(_fader.is_clear(), "the fade has cleared once the mission is up")
 
 	# Pause freezes the mission; Resume gives the same one back.
 	var first := _mission
@@ -297,7 +338,8 @@ func _flow_test() -> void:
 
 	# The clock running out ends it on the Results screen, over the frozen mission.
 	_mission.rules().time_left = 0.01
-	await get_tree().create_timer(0.3).timeout
+	var reached := await _until(func() -> bool: return screen == Screen.RESULTS, 5.0)
+	step.call(reached, "the ending plays out before the results (slow motion, %.1f s)" % Mission.ENDING_SECONDS)
 	step.call(screen == Screen.RESULTS and _screen_node is ResultsScreen, "the mission ends on the results")
 	step.call(is_instance_valid(_mission) and _mission.process_mode == Node.PROCESS_MODE_DISABLED,
 		"drawn over the frozen mission")
@@ -306,6 +348,7 @@ func _flow_test() -> void:
 
 	# Replay is a fresh mission with the same four.
 	on_action("results:replay")
+	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
 	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and _mission != first, "Replay starts a fresh mission")
 	step.call(loadout == four, "with the same four powers")
 

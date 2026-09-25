@@ -20,8 +20,10 @@ const SCREEN_W := 640.0
 ## Where the slot row sits.
 const SLOT_TOP := 312.0
 const STABILITY_BAR := Vector2(96.0, 5.0)
-## The objectives, top left: sized for three lines of SIZE_SMALL text.
-const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 50.0)
+## The objectives, top left: sized for four lines of SIZE_SMALL text.
+const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 60.0)
+## The stability bar's legend: a short name for each part and its colour's index, in the bar's own order.
+const LEGEND := [["Pop", 0], ["Infra", 1], ["Lead", 2], ["Mil", 3], ["Res", 4]]
 ## The dark plate under a slot's hotkey and cost.
 const PLATE_H := 12.0
 const DP_BAR := Vector2(180.0, 7.0)
@@ -105,12 +107,22 @@ func objective_text() -> String:
 	return "Destroy the Royal Citadel - %d%% left" % roundi(left * 100.0)
 
 
-## The city's state, top right.
+## The city's state, top right, as [text, colour] pieces: each figure wears the colour of the stability part it
+## drives, so the player can tell which number moves which part of the bar.
+func status_segments() -> Array:
+	return [
+		["Citizens %d" % _crowd.alive_citizens(), UiTheme.STABILITY_COLS[0]],
+		["Soldiers %d" % _crowd.alive_soldiers(), UiTheme.STABILITY_COLS[3]],
+		["Destroyed %d" % _rules.buildings_down, UiTheme.STABILITY_COLS[1]],
+		["Alarm %d%%" % roundi(_crowd.alarm), UiTheme.COL_TEXT],
+	]
+
+
 func status_text() -> String:
-	# Short labels: at the legible 11 px this line runs from the right edge to within a few pixels of the
-	# centred clock, and "Buildings down" with a three-digit count would have reached it.
-	return "Citizens %d   Soldiers %d   Destroyed %d   Alarm %d%%" % [_crowd.alive_citizens(),
-		_crowd.alive_soldiers(), _rules.buildings_down, roundi(_crowd.alarm)]
+	var parts := PackedStringArray()
+	for seg: Array in status_segments():
+		parts.append(String(seg[0]))
+	return "   ".join(parts)
 
 
 ## What a slot is: ready to cast, waiting out a cooldown, or unaffordable. Being the picked one is a separate
@@ -218,15 +230,27 @@ func _draw_objectives() -> void:
 		x += full
 	UiTheme.text(self, Vector2(at.x + STABILITY_BAR.x + 5.0, at.y + 6.0),
 		"Stability %d%%" % roundi(_rules.stability.total() * 100.0), UiTheme.SIZE_SMALL)
+	# The legend: a swatch and a short name for each part, in the bar's order.
+	var lx := 6.0
+	for entry: Array in LEGEND:
+		draw_rect(Rect2(lx, 31.0, 5.0, 5.0), UiTheme.STABILITY_COLS[int(entry[1])])
+		UiTheme.text(self, Vector2(lx + 7.0, 38.0), String(entry[0]), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		lx += 7.0 + UiTheme.width(String(entry[0]), UiTheme.SIZE_SMALL) + 8.0
 	var escaped := "Escaped %d / %d" % [_crowd.escaped_count, Rules.ESCAPE_LIMIT]
 	var col := UiTheme.COL_BAD if _crowd.escaped_count >= Rules.ESCAPE_LIMIT - 8 else UiTheme.COL_DIM
-	UiTheme.text(self, Vector2(6.0, 45.0), escaped, UiTheme.SIZE_SMALL, col)
+	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
 
 
 func _draw_status(w: float) -> void:
-	var s := status_text()
-	UiTheme.text(self, Vector2(w - UiTheme.width(s, UiTheme.SIZE_SMALL) - 6.0, 14.0), s, UiTheme.SIZE_SMALL,
-		UiTheme.COL_DIM)
+	var gap := UiTheme.width("   ", UiTheme.SIZE_SMALL)
+	var segs := status_segments()
+	var total := gap * float(segs.size() - 1)
+	for seg: Array in segs:
+		total += UiTheme.width(String(seg[0]), UiTheme.SIZE_SMALL)
+	var x := w - total - 6.0
+	for seg: Array in segs:
+		UiTheme.text(self, Vector2(x, 14.0), String(seg[0]), UiTheme.SIZE_SMALL, seg[1])
+		x += UiTheme.width(String(seg[0]), UiTheme.SIZE_SMALL) + gap
 
 
 func _draw_banners(w: float) -> void:

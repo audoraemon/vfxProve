@@ -50,3 +50,14 @@ static func run(t) -> void:
 	for line in lines:
 		widest = maxf(widest, UiTheme.width(line, UiTheme.SIZE_SMALL))
 	t.check(lines.size() >= 2 and widest <= 60.0, "a long name wraps inside its width (%s, %.0f px)" % [lines, widest])
+
+	# Every power has a recorded preview, laid out the way the draft reads it.
+	var unrecorded := ""
+	for key in PowerBook.keys():
+		if PowerBook.clip(key) == null:
+			unrecorded += " " + key
+	t.check(unrecorded == "", "every power has a preview clip (missing:%s)" % unrecorded)
+	var sheet := PowerBook.clip("nova")
+	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
+	t.check(sheet != null and sheet.get_size() == Vector2(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows),
+		"a sheet holds its frames in a %d-column grid (%s)" % [PowerBook.CLIP_COLUMNS, sheet.get_size() if sheet != null else "none"])

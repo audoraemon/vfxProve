@@ -88,6 +88,8 @@ func _ready() -> void:
 		_capture_idle()
 	elif "--capture-all" in args:
 		_capture_all(Battlefield.arg_value(args, "--only"))
+	elif "--capture-clip" in args:
+		_capture_clips(Battlefield.arg_value(args, "--only"))
 	elif "--bench" in args:
 		_bench(Battlefield.arg_value(args, "--only"))
 
@@ -309,6 +311,48 @@ func _capture_all(only: String) -> void:
 			while is_instance_valid(fx) and fx.t < time:
 				await get_tree().process_frame
 			await _bf.save_capture("%s_%04d.png" % [key, int(time * 1000)])
+		while is_instance_valid(fx):
+			await get_tree().process_frame
+	await _bf.quit()
+
+
+## One preview sheet per power for the draft: PowerBook.CLIP_FRAMES frames spread evenly over the effect's
+## whole run, each the middle of the screen at half size. bash tools/capture.sh --capture-clip [--only=nova]
+func _capture_clips(only: String) -> void:
+	var crop := PowerBook.CLIP_SIZE * 2
+	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(PowerBook.CLIP_DIR))
+	for entry in EFFECTS:
+		var key: String = entry.key
+		if only != "" and only != key:
+			continue
+		if not ResourceLoader.exists(entry.path) or not CAPTURES.has(key):
+			continue
+		var plan: Dictionary = CAPTURES[key]
+		set_index = entry.set
+		_reset_world(7)
+		_hud.text = ""
+		await _bf.wait_frames(10)
+		var extra := {}
+		if plan.has("dir"):
+			extra["dir"] = plan.dir
+		var fx := _cast_entry(entry, plan.target, extra)
+		var run := fx.duration
+		var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false, Image.FORMAT_RGBA8)
+		for i in PowerBook.CLIP_FRAMES:
+			var at := run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
+			while is_instance_valid(fx) and fx.t < at:
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			var img := get_viewport().get_texture().get_image()
+			var from := Vector2i((img.get_width() - crop.x) / 2, (img.get_height() - crop.y) / 2)
+			var frame := img.get_region(Rect2i(from, crop))
+			frame.convert(Image.FORMAT_RGBA8)
+			frame.resize(PowerBook.CLIP_SIZE.x, PowerBook.CLIP_SIZE.y, Image.INTERPOLATE_BILINEAR)
+			sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(i).position))
+		var out := ProjectSettings.globalize_path(PowerBook.clip_path(key))
+		sheet.save_png(out)
+		print("clip ", out)
 		while is_instance_valid(fx):
 			await get_tree().process_frame
 	await _bf.quit()

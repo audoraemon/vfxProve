@@ -29,6 +29,14 @@ const POWERS := [
 		"dp": 40, "cooldown": 120.0, "aim": "click", "shape": "huge circle"},
 ]
 const ICON_DIR := "res://assets/pixellab/icons/"
+## Preview clips for the draft: each power recorded once from the sandbox (bash tools/capture.sh --capture-clip)
+## into one sprite sheet -- CLIP_FRAMES frames spread over the whole effect, CLIP_COLUMNS to a row.
+const CLIP_DIR := "res://assets/clips/"
+const CLIP_FRAMES := 16
+const CLIP_COLUMNS := 4
+const CLIP_SIZE := Vector2i(152, 86)
+## How fast the draft plays a clip: 16 frames at 8 a second is a two-second time-lapse of the whole power.
+const CLIP_FPS := 8.0
 
 
 static func get_power(key: String) -> Dictionary:
@@ -53,3 +61,18 @@ static func icon(key: String) -> Texture2D:
 ## 42x42 copy for the HUD slots.
 static func hud_icon(key: String) -> Texture2D:
 	return load(ICON_DIR + "hud/" + key + ".png")
+
+
+static func clip_path(key: String) -> String:
+	return CLIP_DIR + key + ".png"
+
+
+## The power's preview sheet, or null when it has not been recorded.
+static func clip(key: String) -> Texture2D:
+	var path := clip_path(key)
+	return load(path) if ResourceLoader.exists(path) else null
+
+
+## Where frame `i` sits in a sheet.
+static func clip_frame(i: int) -> Rect2:
+	return Rect2(Vector2(float(i % CLIP_COLUMNS) * CLIP_SIZE.x, float(i / CLIP_COLUMNS) * CLIP_SIZE.y), Vector2(CLIP_SIZE))

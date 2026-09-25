@@ -31,6 +31,10 @@ var _best_score := 0
 var _best_rank := ""
 ## The power key under the mouse, "manifest", or "".
 var _hover := ""
+## Each power's preview sheet, loaded once in setup() like the icons.
+var _clips := {}
+var _clip_t := 0.0
+var _clip_frame := 0
 
 
 func setup(preselect: PackedStringArray, best_score: int, best_rank: String) -> PrepareScreen:
@@ -41,6 +45,7 @@ func setup(preselect: PackedStringArray, best_score: int, best_rank: String) -> 
 		var key := String(p.key)
 		_icons[key] = PowerBook.hud_icon(key)
 		_art[key] = PowerBook.icon(key)
+		_clips[key] = PowerBook.clip(key)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -83,6 +88,8 @@ func _on_gui_input(event: InputEvent) -> void:
 		var h := hit(event.position)
 		if h != _hover:
 			_hover = h
+			_clip_t = 0.0
+			_clip_frame = 0
 			if h != "":
 				UiSound.play(&"ui_hover")
 			_ui.queue_redraw()
@@ -98,6 +105,24 @@ func _on_gui_input(event: InputEvent) -> void:
 			UiSound.play(&"ui_click")
 			draft.toggle(h)
 			_ui.queue_redraw()
+
+
+func _process(delta: float) -> void:
+	if _clips.get(_hover) == null:
+		return
+	_clip_t += delta
+	var f := int(_clip_t * PowerBook.CLIP_FPS) % PowerBook.CLIP_FRAMES
+	if f != _clip_frame:
+		_clip_frame = f
+		_ui.queue_redraw()
+
+
+## Show a power's preview as if the mouse were on its card -- for photographs of this screen.
+func preview(key: String) -> void:
+	_hover = key
+	_clip_t = 0.0
+	_clip_frame = 0
+	_ui.queue_redraw()
 
 
 func _draw_ui() -> void:
@@ -136,23 +161,21 @@ func _draw_panel() -> void:
 			UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint.size() - 1 - i)),
 				hint[i], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		return
-	var art_at := Vector2(PANEL.position.x + 4.0, PANEL.end.y - 92.0)
-	var art: Texture2D = _art.get(_hover)
-	if art != null:
-		_ui.draw_texture_rect(art, Rect2(art_at, Vector2(84, 84)), false)
-		UiTheme.frame(_ui, Rect2(art_at, Vector2(84, 84)), true)
-	var tx := art_at.x + 92.0
-	var ty := art_at.y + 10.0
-	for line in UiTheme.wrap(String(p.name), PANEL.end.x - tx - 4.0, UiTheme.SIZE_SMALL):
-		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		ty += UiTheme.LINE_SMALL
-	ty += 3.0
-	for line in ["%d DP  %d s" % [int(p.dp), int(p.cooldown)], "aim: %s" % String(p.aim)]:
-		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL)
-		ty += UiTheme.LINE_SMALL
-	for line in UiTheme.wrap(String(p.shape), PANEL.end.x - tx - 4.0, UiTheme.SIZE_SMALL):
-		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-		ty += UiTheme.LINE_SMALL
+	var clip_rect := Rect2(Vector2(PANEL.position.x + (PANEL.size.x - PowerBook.CLIP_SIZE.x) * 0.5, PANEL.end.y - 116.0),
+		Vector2(PowerBook.CLIP_SIZE))
+	var sheet: Texture2D = _clips.get(_hover)
+	if sheet != null:
+		_ui.draw_texture_rect_region(sheet, clip_rect, PowerBook.clip_frame(_clip_frame))
+	else:
+		# No recording for this power: its card art, centred where the clip would be.
+		var art: Texture2D = _art.get(_hover)
+		if art != null:
+			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
+	UiTheme.frame(_ui, clip_rect, true)
+	var tx := PANEL.position.x + 4.0
+	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0), String(p.name), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0 + UiTheme.LINE_SMALL),
+		"%d DP  %d s  %s" % [int(p.dp), int(p.cooldown), String(p.aim)], UiTheme.SIZE_SMALL)
 
 
 func _draw_card(i: int) -> void:

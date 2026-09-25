@@ -79,6 +79,9 @@ func _ready() -> void:
 	match show:
 		"prepare":
 			go_to(Screen.PREPARE)
+			var hover := Battlefield.arg_value(args, "--hover")
+			if hover != "" and _screen_node is PrepareScreen:
+				(_screen_node as PrepareScreen).preview(hover)
 		"results":
 			result = SAMPLE_RESULT.duplicate(true)
 			go_to(Screen.RESULTS)

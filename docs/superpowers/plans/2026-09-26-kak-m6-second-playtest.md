@@ -1108,3 +1108,25 @@ git commit -m "feat: music that follows the game" -m "The theme plays on the tit
 3. `--flow-test` — `FLOW result checks=24 failures=0`, nothing leaked; one `MISSION test`; one `CROWD result`; the two gate close-ups.
 4. A bench line next to milestone 5's (99–106 fps).
 5. Hand `play.bat` to the user with this round's notes as the checklist. Still open, by the user's choice: Tornado Tempest's wander and its preview clip.
+
+---
+
+## Changes made while executing
+
+- **Task 2, the gate crowd (`357ad2a`, `6100f8a`).** Two design bugs in this plan, both found by looking. Sorting
+  the waiting crowd by distance every tick made people trade spots as they walked, so some never settled; the
+  crowd is now ordered by arrival (`Person.queue_since`) along a snaking row order. And the first close-ups showed
+  an empty gate with twenty people queued, because the camera looks from the south-east and a 34-px wall hides
+  about 2.1 units of ground behind it — the fan now starts `QUEUE_DEPTH0 = 2.2` units inside the town, and a
+  released person carries `Person.passing_gate` so the gate does not pull it back into the crowd as it walks the
+  last stretch. The user approved the result.
+- **A milestone 3 bug, surfaced here (`40cbcd2`).** `Rules._forget_old_casts()` read each cast's effect into a
+  typed variable; an effect freed without finishing made that assignment raise and abort the loop, so old casts
+  were never forgotten. Seen as SCRIPT ERRORs with the Judgement / Laser Grid / Orbital / Glacial loadout. Fixed
+  with a regression test that fails without the fix. The same commit widens the HUD cards to 126 px — the
+  longest name line, "Judgement of", is 75 px, and at 112 the name lost "Ancients".
+- **Tasks 4–6, audio at quit.** Each new player (the crowd bed, the battle stems) leaked at quit until it was
+  stopped before the engine exited (`Crowd.stop_bed()`, `Music.stop_all()`). `Music._get()` was renamed
+  `_instance()`: `_get` is `Object`'s own virtual.
+- **Frame rate.** The mission benched at 39–45 fps at the end of this milestone — and milestone 5's tagged code
+  benched 42–45 fps on the same machine the same hour, so the machine was slower, not the game.

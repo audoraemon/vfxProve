@@ -1957,3 +1957,17 @@ git commit -m "feat: a fade, a slow ending and a labelled bar" -m "MANIFEST, Rep
 4. A bench line next to milestone 4's.
 5. Hand `play.bat` to the user with the ten playtest notes as a checklist, the same numbering, and ask for the next round of notes — including whether the escape limit still feels right with the faster crowd, and whether regeneration alone is now too little.
 6. Tornado Tempest's wander is still open (note 2), by the user's choice.
+
+---
+
+## Changes made while executing
+
+- **Task 4, beyond the plan (`6930b6e`).** The real cause of "walking like stuck" was deeper than the plan said: the
+  base unit pauses 0.3–1.6 s every time it reaches a target, and walking paths are half-unit waypoints, so every walk
+  was stop-and-go. `Person._pick_target()` now clears that pause for a runner and for any mid-path waypoint, and a
+  fleeing person that runs out of path scurries instead of drifting back toward home. The existing flee-speed check
+  compares against `FLEE_SPEED * pace`.
+- **Gate balance, the user's choice (`c404a3b`).** With people really running, 42 escaped in the scripted mission's
+  first 34 s (limit 38). The user chose tighter gates (2 s per person instead of 0.6 s), and measuring showed the
+  gates were also leaking: the whole doorway is walkable but only a 0.45-unit circle held anyone. The queue now holds
+  the whole doorway and the pass covers it too. Scripted mission: 17–18 escaped; crowd test: 23.

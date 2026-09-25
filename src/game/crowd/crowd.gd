@@ -44,6 +44,12 @@ const RING_RADIUS := 3.4
 const VOICE_BUDGET := 4.0
 const VOICES_PER_CAST := 3
 
+## The sound of a town running: a looping bed whose level follows how many citizens are running -- silent with
+## none, full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping.
+const BED_FULL := 40.0
+const BED_EASE := 1.5
+const BED_DB := -8.0
+
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
 ## How many were spawned, so milestone 3's stability can measure losses against the starting town.
@@ -57,6 +63,11 @@ var killed_soldiers := 0
 var sfx: Node
 var voices_played := 0
 var _voice_tokens := VOICE_BUDGET
+var _bed: AudioStreamPlayer
+var _bed_level := 0.0
+## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
+## crowd (unlike the frozen pause) keeps processing for the few frames Battlefield.quit() waits out.
+var _bed_stopped := false
 
 var _field: EnemyField
 var _env: EnvironmentField
@@ -156,6 +167,28 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 	return out
 
 
+## How loud the panic bed should be, 0 to 1, for this many running citizens.
+static func bed_level_for(running: int) -> float:
+	return clampf(float(running) / BED_FULL, 0.0, 1.0)
+
+
+## The mission paused (or the results are up over it): hold the bed where it is.
+func pause_bed(paused: bool) -> void:
+	if _bed != null:
+		_bed.stream_paused = paused
+
+
+## Silence the bed outright (the mission is quitting): unlike pause_bed(), nothing resumes it -- the crowd keeps
+## processing for the few frames Battlefield.quit() waits out, and without this latch a still-running citizen
+## would have _update_bed() call play() right back. Battlefield.quit() stops its own Sfx pool and waits out the
+## audio thread before it exits -- the bed is not in that pool, so it needs to be stopped before that wait, or
+## a bed still playing at process exit leaks its audio playback.
+func stop_bed() -> void:
+	_bed_stopped = true
+	if _bed != null:
+		_bed.stop()
+
+
 func alive_citizens() -> int:
 	return _alive(citizens)
 
@@ -187,6 +220,7 @@ func advance(delta: float) -> void:
 	if _purge_in <= 0.0:
 		_purge_in = 1.0
 		_field.purge()
+	_update_bed(delta)
 
 
 ## Rows fanned out in front of a gate's doorway on the town side, starting QUEUE_DEPTH0 in (beyond the wall's
@@ -339,6 +373,30 @@ func _prune_soldiers() -> void:
 		if is_instance_valid(p):
 			remaining.append(p)
 	soldiers = remaining
+
+
+func _update_bed(delta: float) -> void:
+	if _bed_stopped:
+		return  # the mission quit; nothing revives the bed after that, even a citizen still running
+	var running := 0
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive() and (p.mind == Person.Mind.PANIC or p.mind == Person.Mind.FLEE):
+			running += 1
+	_bed_level = move_toward(_bed_level, bed_level_for(running), BED_EASE * delta)
+	if sfx == null or DisplayServer.get_name() == "headless" or not is_inside_tree():
+		return
+	if _bed == null:
+		_bed = AudioStreamPlayer.new()
+		_bed.bus = Sfx.BUS
+		_bed.stream = Sfx.load_stream(&"crowd_panic")
+		add_child(_bed)
+	if _bed_level <= 0.001:
+		if _bed.playing:
+			_bed.stop()
+		return
+	if not _bed.playing:
+		_bed.play()
+	_bed.volume_db = BED_DB + linear_to_db(_bed_level)
 
 
 ## One voice from `p`, if the budget allows it.

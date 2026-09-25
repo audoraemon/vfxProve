@@ -101,7 +101,7 @@ func _ready() -> void:
 		# Both awaited: unawaited, quit()'s handful of frames beats bench()'s 9-second loop to
 		# get_tree().quit() and the run ends before a bench[...] line is ever printed.
 		await _bf.bench("mission")
-		await _bf.quit()
+		await _quit()
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and four minutes.
@@ -249,7 +249,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif _aim.slot >= 0:
 				_aim.unfocus()
 			elif autostart:
-				_bf.quit()
+				_quit()
 			else:
 				# Handled here, so the same Esc cannot reach the pause menu it is about to open and close it again.
 				get_viewport().set_input_as_handled()
@@ -342,7 +342,7 @@ func _mission_test() -> void:
 	print("MISSION test dp=%.1f buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
 		_rules.dp, _rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
 		roundi(_rules.stability.total() * 100.0), roundi(_town.citadel.fraction() * 100.0)])
-	_bf.quit()
+	await _quit()
 
 
 ## Whether start() has run. Between add_child() and the end of the shader prewarm there is a battlefield but
@@ -351,7 +351,17 @@ func started() -> bool:
 	return is_instance_valid(_rules)
 
 
+## Battlefield.quit() stops its own Sfx pool and waits out the audio thread before it exits; the crowd's panic
+## bed is not in that pool, so it is silenced first, or a bed still playing at that moment leaks its playback.
+func _quit() -> void:
+	if is_instance_valid(_crowd):
+		_crowd.stop_bed()
+	await _bf.quit()
+
+
 ## Stop the world without stopping the menu over it. The whole mission lives under this node, so pausing the
 ## subtree freezes the town, the crowd, the effects and the clock together.
 func set_frozen(frozen: bool) -> void:
 	process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
+	if is_instance_valid(_crowd):
+		_crowd.pause_bed(frozen)

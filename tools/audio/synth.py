@@ -981,6 +981,23 @@ def sol_rally(rng, dur):
     return reverb(saturate(horn * 0.5, 1.5), size=1.4, mix=0.3)
 
 
+def crowd_panic(rng, dur):
+    """A town running for its life: a formant-shaped murmur and dozens of voices crying out across the loop."""
+    n = int(round(dur * SR))
+    total = n + int(0.06 * SR)                   # loopify's crossfade takes the overflow
+    out = np.zeros(total)
+    murmur = brown(total, rng)
+    for fc, gain in VOWELS[0]:
+        out += bandpass(murmur, fc * 0.8, fc * 1.2) * gain * 0.35
+    for _ in range(38):
+        m = int(rng.uniform(0.25, 0.55) * SR)
+        k = np.linspace(0.0, 1.0, m)
+        f0 = rng.uniform(260.0, 560.0) * (1.0 + 0.4 * np.sin(np.pi * np.minimum(k * 1.3, 1.0)))
+        voice = _voice(rng, m, f0, VOWELS[int(rng.integers(0, 4))], breath=0.2) * adsr(m, 0.02, 0.08, 0.6, 0.12)
+        place(out, voice * rng.uniform(0.15, 0.45), rng.uniform(0.0, dur))
+    return loopify(reverb(out, size=1.6, mix=0.35), n)
+
+
 # id: (effect folder, builder, length seconds, loop)
 CUES: dict[str, tuple] = {
     "nova_alarm": ("nova", nova_alarm, 1.5, False),
@@ -1064,6 +1081,7 @@ for _name, _fn, _dur in (
 ):
     CUES[_name] = ("ui", _fn, _dur, False)
 CUES["sol_rally"] = ("crowd", sol_rally, 1.4, False)
+CUES["crowd_panic"] = ("crowd", crowd_panic, 6.0, True)
 for _v in range(1, 5):
     CUES[f"cit_yelp_{_v}"] = ("crowd", lambda rng, dur, v=_v: cit_yelp(rng, dur, v), 0.45, False)
 for _v in range(1, 4):

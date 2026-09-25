@@ -41,6 +41,13 @@ static func run(t) -> void:
 	t.check(ResourceLoader.exists("res://assets/audio/crowd/cit_yelp_4.wav") and ResourceLoader.exists("res://assets/audio/crowd/sol_rally.wav"),
 		"and on disk")
 
+	# The bed: silent with nobody running, full at BED_FULL, never louder.
+	t.check(Crowd.bed_level_for(0) == 0.0, "nobody running, no crowd noise")
+	t.near(Crowd.bed_level_for(int(Crowd.BED_FULL / 2.0)), 0.5, 0.001, "half the full crowd, half the level")
+	t.check(Crowd.bed_level_for(500) == 1.0, "and a stampede is no louder than full")
+	t.check(Sfx.CATALOG.has(&"crowd_panic") and bool(Sfx.CATALOG[&"crowd_panic"].get("loop", false))
+		and ResourceLoader.exists("res://assets/audio/crowd/crowd_panic.wav"), "the crowd bed is a loop in the catalog and on disk")
+
 	crowd.clear()
 	field.clear()
 	field.free()

@@ -233,8 +233,10 @@ func _credit(kind: StringName) -> Dictionary:
 func _forget_old_casts() -> void:
 	var keep: Array[Dictionary] = []
 	for c in _casts:
-		var fx: FxTimeline = c.fx
-		var running: bool = is_instance_valid(fx) and not fx.finished
+		# Read untyped first: an effect can be freed without finishing (its layer cleared), and assigning a freed
+		# object to a typed variable raises and aborts this loop -- after which old casts were never forgotten.
+		var ref: Variant = c.fx
+		var running: bool = is_instance_valid(ref) and not (ref as FxTimeline).finished
 		if running or _elapsed < float(c.until):
 			keep.append(c)
 	_casts = keep

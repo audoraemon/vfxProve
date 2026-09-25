@@ -167,6 +167,18 @@ static func run(t) -> void:
 	t.near(r2.dp - dp_before, Rules.CITADEL_DP, 0.0001, "the Citadel's fall pays 15 DP (%.1f)" % (r2.dp - dp_before))
 	t.check(banners.has("THE CITADEL FALLS"), "and is announced (%s)" % [banners])
 	r2.free()
+
+	# An effect freed without finishing (its layer cleared, say) must not trip the crediting: before the fix, reading
+	# it into a typed variable raised and aborted the pruning, so old casts were never forgotten.
+	var r3 := Rules.new().setup(loadout, null, env, field, crowd, town)
+	var gone := FxTimeline.new()
+	r3.caster = func(_script: GDScript, _ground: Vector2, _extra: Dictionary) -> FxTimeline:
+		return gone
+	r3.cast(0, Vector2.ZERO, {"dir": Vector2(1, 0)})
+	gone.free()
+	r3.advance(Rules.CAST_GRACE + 0.1)
+	t.check(r3.credited_key(&"lightning") == "", "a cast whose effect was freed is forgotten once its grace runs out")
+	r3.free()
 	rules.free()
 	crowd.clear()
 	field.clear()

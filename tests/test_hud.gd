@@ -62,6 +62,11 @@ static func run(t) -> void:
 		"a slot is a %d x %d card (%s)" % [int(Hud.SLOT_W), int(Hud.SLOT_SIZE), hud.slot_rect(0).size])
 	t.check(hud.slot_name(0) == "Heaven Splitter" and hud.slot_name(3) == "Nuclear Nova",
 		"and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
+	var too_long := ""
+	for p: Dictionary in PowerBook.POWERS:
+		if UiTheme.wrap(String(p.name), Hud.SLOT_W - Hud.SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL).size() > 2:
+			too_long += " " + String(p.name)
+	t.check(too_long == "", "every power's name fits a card in two lines (too long:%s)" % too_long)
 
 	# Banners queue up, show for their time and go.
 	rules.banner.emit("CHAIN!")

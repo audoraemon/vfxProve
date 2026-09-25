@@ -16,7 +16,9 @@ const HURRY_AT := 30.0
 const SLOT_SIZE := 42.0
 const SLOT_GAP := 6.0
 ## A slot is a card: the SLOT_SIZE icon on the left, the power's name and cost on the right.
-const SLOT_W := 112.0
+## Wide enough that every power's name fits in two lines: the longest line is "Judgement of", 75 px at
+## SIZE_SMALL, and at 112 the name wrapped to three and lost "Ancients". The row is 522 px, inside 640.
+const SLOT_W := 126.0
 ## The screen width to lay out against before the Control has been sized (headless tests).
 const SCREEN_W := 640.0
 ## Where the slot row sits.

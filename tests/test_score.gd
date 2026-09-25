@@ -98,6 +98,44 @@ static func run(t) -> void:
 	t.check(rules.rank() == "D", "2,700 is a D (%s)" % rules.rank())
 	_drop(d)
 
+	# --- A loser still scores what it broke ----------------------------------------------------------
+	var e := _mission()
+	rules = e.rules
+	rules.buildings_down = 10
+	rules.chains = 2
+	rules.advance(Rules.MISSION_SECONDS + 1.0)
+	var earned := 10 * Rules.SCORE_PER_BUILDING + 2 * Rules.SCORE_PER_CHAIN
+	t.check(not rules.won and rules.score() == earned,
+		"a lost mission still scores its buildings and chains (%d, expected %d)" % [rules.score(), earned])
+	var victory_line := false
+	for line: Dictionary in rules.stat_lines():
+		victory_line = victory_line or String(line.label) == "The city has fallen"
+	t.check(not victory_line, "and its table has no victory line")
+	_drop(e)
+
+	# --- A city that falls as the clock dies is still a win -----------------------------------------
+	var f := _mission()
+	rules = f.rules
+	crowd = f.crowd
+	var env2: EnvironmentField = f.env
+	var town2: Town = f.town
+	var field2: EnemyField = f.field
+	ended = []
+	rules.over.connect(func(won: bool, reason: String): ended.append([won, reason]))
+	for s in env2.structures():
+		if not s.destroyed and s.role != &"citadel":
+			s.destroy(s.center(), &"nova")
+	for p in crowd.citizens.duplicate() + crowd.soldiers.duplicate():
+		if is_instance_valid(p) and p.is_alive():
+			field2.kill(p, &"nova")
+	while not town2.citadel.is_fallen():
+		town2.citadel.advance(1.01)
+		env2.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
+	rules.time_left = 0.02
+	rules.advance(0.05)
+	t.check(ended == [[true, "citadel"]], "a city that falls as the clock dies is still a win (%s)" % [ended])
+	_drop(f)
+
 
 ## A fresh mission's world, with its own field and crowd so one test's kills never leak into another's.
 static func _mission() -> Dictionary:

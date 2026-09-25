@@ -125,6 +125,7 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 		_town.citadel.fallen.connect(_on_citadel_fallen)
 		_town.citadel.health_changed.connect(_on_citadel_health)
 	stability.measure(_env, _crowd, _town.citadel)
+	_stability_dirty = false
 	return self
 
 
@@ -278,9 +279,13 @@ func _check_chain(c: Dictionary) -> void:
 
 
 func _gain(amount: float, at: Vector2) -> void:
+	var before := dp
 	dp = minf(DP_MAX, dp + amount)
+	var applied := dp - before
+	if applied <= 0.0:
+		return  # the bar was already full: no popup for Divine Power that went nowhere
 	dp_changed.emit(dp)
-	dp_gained.emit(amount, at)
+	dp_gained.emit(applied, at)
 
 
 func _on_escaped(_p: Person) -> void:
@@ -343,3 +348,20 @@ func stat_lines() -> Array[Dictionary]:
 	lines.append({"label": "Citizens escaped", "value": "%d" % _crowd.escaped_count, "points": 0})
 	lines.append({"label": "Chains", "value": "%d" % chains, "points": chains * SCORE_PER_CHAIN})
 	return lines
+
+
+## Let the world go. A mission that is finished stops counting, and a restart never has two Rules adding up the
+## same destroyed building -- freeing a node disconnects it eventually, but queue_free() is deferred and the
+## overlap is a whole frame wide.
+func teardown() -> void:
+	if is_instance_valid(_env) and _env.structure_destroyed.is_connected(_on_structure_destroyed):
+		_env.structure_destroyed.disconnect(_on_structure_destroyed)
+	if is_instance_valid(_field) and _field.enemy_killed.is_connected(_on_killed):
+		_field.enemy_killed.disconnect(_on_killed)
+	if is_instance_valid(_crowd) and _crowd.escaped.is_connected(_on_escaped):
+		_crowd.escaped.disconnect(_on_escaped)
+	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
+		if _town.citadel.fallen.is_connected(_on_citadel_fallen):
+			_town.citadel.fallen.disconnect(_on_citadel_fallen)
+		if _town.citadel.health_changed.is_connected(_on_citadel_health):
+			_town.citadel.health_changed.disconnect(_on_citadel_health)

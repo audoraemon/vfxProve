@@ -118,9 +118,11 @@ static func run(t) -> void:
 
 	# Leadership is the Citadel's health, straight through.
 	t.near(stab.leadership, town.citadel.fraction(), 0.0001, "leadership is the Citadel's health (%.3f)" % stab.leadership)
-	# Two rolling seconds of 200 damage: the Citadel can only lose 250 of its 1000 in a second, so this takes
-	# it to 60% and leaves it standing. Six rounds would flatten it, and the "has not fallen" check below --
-	# which is about a city whose Leadership is the only part left -- would then be wrong.
+	# Two rolling seconds of 200 damage: the Citadel's shared budget caps each rolling second at 250 of its
+	# 1000, and it is the budget that lands, not the 200 a single part asked for -- so each round takes the
+	# full 250, taking it to 50% and leaving it standing. Six rounds would flatten it, and the "has not
+	# fallen" check below -- which is about a city whose Leadership is the only part left -- would then be
+	# wrong.
 	for i in 2:
 		town.citadel.advance(1.01)
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 200.0, &"nova")
@@ -856,9 +858,13 @@ func _check_chain(c: Dictionary) -> void:
 
 
 func _gain(amount: float, at: Vector2) -> void:
+	var before := dp
 	dp = minf(DP_MAX, dp + amount)
+	var applied := dp - before
+	if applied <= 0.0:
+		return  # the bar was already full: no popup for Divine Power that went nowhere
 	dp_changed.emit(dp)
-	dp_gained.emit(amount, at)
+	dp_gained.emit(applied, at)
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
@@ -999,6 +1005,44 @@ static func run(t) -> void:
 	t.check(rules.rank() == "D", "2,700 is a D (%s)" % rules.rank())
 	_drop(d)
 
+	# --- A loser still scores what it broke ----------------------------------------------------------
+	var e := _mission()
+	rules = e.rules
+	rules.buildings_down = 10
+	rules.chains = 2
+	rules.advance(Rules.MISSION_SECONDS + 1.0)
+	var earned := 10 * Rules.SCORE_PER_BUILDING + 2 * Rules.SCORE_PER_CHAIN
+	t.check(not rules.won and rules.score() == earned,
+		"a lost mission still scores its buildings and chains (%d, expected %d)" % [rules.score(), earned])
+	var victory_line := false
+	for line: Dictionary in rules.stat_lines():
+		victory_line = victory_line or String(line.label) == "The city has fallen"
+	t.check(not victory_line, "and its table has no victory line")
+	_drop(e)
+
+	# --- A city that falls as the clock dies is still a win -----------------------------------------
+	var f := _mission()
+	rules = f.rules
+	crowd = f.crowd
+	var env2: EnvironmentField = f.env
+	var town2: Town = f.town
+	var field2: EnemyField = f.field
+	ended = []
+	rules.over.connect(func(won: bool, reason: String): ended.append([won, reason]))
+	for s in env2.structures():
+		if not s.destroyed and s.role != &"citadel":
+			s.destroy(s.center(), &"nova")
+	for p in crowd.citizens.duplicate() + crowd.soldiers.duplicate():
+		if is_instance_valid(p) and p.is_alive():
+			field2.kill(p, &"nova")
+	while not town2.citadel.is_fallen():
+		town2.citadel.advance(1.01)
+		env2.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
+	rules.time_left = 0.02
+	rules.advance(0.05)
+	t.check(ended == [[true, "citadel"]], "a city that falls as the clock dies is still a win (%s)" % [ended])
+	_drop(f)
+
 
 ## A fresh mission's world, with its own field and crowd so one test's kills never leak into another's.
 static func _mission() -> Dictionary:
@@ -1093,6 +1137,7 @@ In `setup()`, **replace the connection block Task 3 added** with this one — th
 		_town.citadel.fallen.connect(_on_citadel_fallen)
 		_town.citadel.health_changed.connect(_on_citadel_health)
 	stability.measure(_env, _crowd, _town.citadel)
+	_stability_dirty = false
 ```
 
 Replace the end of `advance()` — the `time_left` lines — with:
@@ -1177,6 +1222,23 @@ func stat_lines() -> Array[Dictionary]:
 	lines.append({"label": "Citizens escaped", "value": "%d" % _crowd.escaped_count, "points": 0})
 	lines.append({"label": "Chains", "value": "%d" % chains, "points": chains * SCORE_PER_CHAIN})
 	return lines
+
+
+## Let the world go. A mission that is finished stops counting, and a restart never has two Rules adding up the
+## same destroyed building -- freeing a node disconnects it eventually, but queue_free() is deferred and the
+## overlap is a whole frame wide.
+func teardown() -> void:
+	if is_instance_valid(_env) and _env.structure_destroyed.is_connected(_on_structure_destroyed):
+		_env.structure_destroyed.disconnect(_on_structure_destroyed)
+	if is_instance_valid(_field) and _field.enemy_killed.is_connected(_on_killed):
+		_field.enemy_killed.disconnect(_on_killed)
+	if is_instance_valid(_crowd) and _crowd.escaped.is_connected(_on_escaped):
+		_crowd.escaped.disconnect(_on_escaped)
+	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
+		if _town.citadel.fallen.is_connected(_on_citadel_fallen):
+			_town.citadel.fallen.disconnect(_on_citadel_fallen)
+		if _town.citadel.health_changed.is_connected(_on_citadel_health):
+			_town.citadel.health_changed.disconnect(_on_citadel_health)
 ```
 
 `stat_lines()` uses `UiTheme.clock()`, which Task 6 writes. Until then, format it here as `"%d:%02d" % [int(time_left) / 60, int(time_left) % 60]` and swap it for `UiTheme.clock(time_left)` in Task 6 — the swap is one line and Task 6's step list says so.
@@ -1801,8 +1863,10 @@ func _process(delta: float) -> void:
 
 ## Age the banners and popups, and redraw when anything on screen has changed.
 func advance(delta: float) -> void:
-	for b in _banners:
-		b[1] += delta
+	# Only the one on screen (index 0, the only one _draw_banners() ever reads) ages: a banner waiting behind
+	# it must not lose part of its own showing to the time it spent queued.
+	if not _banners.is_empty():
+		_banners[0][1] += delta
 	while not _banners.is_empty() and float(_banners[0][1]) >= BANNER_SECONDS:
 		_banners.pop_front()
 	for p in _popups:
@@ -2302,7 +2366,7 @@ bash tools/dev/sandbox_baseline.sh captures/m3_task7
 python tools/dev/compare_captures.py captures/m1_base_a captures/m3_task7 'idle.png'
 ```
 
-Expected: `checks=490 failures=0`; the digest exactly as in the Global Constraints; one `CROWD result ...` line with no `ERROR`; `idle.png` `worst_mean_diff=0.000`.
+Expected: `checks=493 failures=0`; the digest exactly as in the Global Constraints; one `CROWD result ...` line with no `ERROR`; `idle.png` `worst_mean_diff=0.000`.
 
 - [ ] **Step 5: Measure the frame rate**
 
@@ -2335,7 +2399,7 @@ git commit -m "feat: a playable mission" -m "Mission composes the battlefield, A
 
 After Task 7, before the milestone is called done:
 
-1. `bash tools/test.sh` — `checks=490 failures=0`, output pristine.
+1. `bash tools/test.sh` — `checks=493 failures=0`, output pristine.
 2. The digest line, exactly as in the Global Constraints.
 3. `SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test` — one `MISSION test` line, no errors.
 4. A **user playtest** of `play.bat`. Show the user the three frames from Task 7 and the bench number first, then hand over. The questions that matter: can they read the HUD at 640×360, does the DP economy let them cast often enough to be interesting, and is four minutes the right length? Their answers are milestone 5's tuning list, not this milestone's bugs.

@@ -49,9 +49,11 @@ static func run(t) -> void:
 
 	# Leadership is the Citadel's health, straight through.
 	t.near(stab.leadership, town.citadel.fraction(), 0.0001, "leadership is the Citadel's health (%.3f)" % stab.leadership)
-	# Two rolling seconds of 200 damage: the Citadel can only lose 250 of its 1000 in a second, so this takes
-	# it to 60% and leaves it standing. Six rounds would flatten it, and the "has not fallen" check below --
-	# which is about a city whose Leadership is the only part left -- would then be wrong.
+	# Two rolling seconds of 200 damage: the Citadel's shared budget caps each rolling second at 250 of its
+	# 1000, and it is the budget that lands, not the 200 a single part asked for -- so each round takes the
+	# full 250, taking it to 50% and leaving it standing. Six rounds would flatten it, and the "has not
+	# fallen" check below -- which is about a city whose Leadership is the only part left -- would then be
+	# wrong.
 	for i in 2:
 		town.citadel.advance(1.01)
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 200.0, &"nova")

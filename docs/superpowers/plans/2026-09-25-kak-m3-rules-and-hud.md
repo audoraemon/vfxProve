@@ -164,9 +164,11 @@ static func run(t) -> void:
 	t.near(stab.total(), Stability.W_LEADERSHIP * stab.leadership, 0.0001,
 		"with only leadership left the total is its weight (%.3f)" % stab.total())
 	t.check(not stab.is_broken(), "a city with a standing Citadel has not fallen")
+	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
+	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
 	while not town.citadel.is_fallen():
 		town.citadel.advance(1.01)
-		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 400.0, &"nova")
+		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
 	stab.measure(env, crowd, town.citadel)
 	t.check(stab.is_broken() and stab.total() == 0.0, "with the Citadel down as well, the city has fallen (%.3f)" % stab.total())
 
@@ -666,9 +668,11 @@ In `tests/test_rules.gd`, insert this block immediately **before** the closing `
 
 	# The Citadel falling is worth 15 DP and its own banner.
 	dp_before = r2.dp
+	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
+	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
 	while not town.citadel.is_fallen():
 		town.citadel.advance(1.01)
-		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 400.0, &"nova")
+		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
 	t.near(r2.dp - dp_before, Rules.CITADEL_DP, 0.0001, "the Citadel's fall pays 15 DP (%.1f)" % (r2.dp - dp_before))
 	t.check(banners.has("THE CITADEL FALLS"), "and is announced (%s)" % [banners])
 	r2.free()
@@ -949,9 +953,11 @@ static func run(t) -> void:
 			c.field.kill(p, &"nova")
 	rules.advance(0.1)
 	t.check(not rules.finished, "a razed town with the Citadel still up is not a win yet")
+	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
+	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
 	while not town.citadel.is_fallen():
 		town.citadel.advance(1.01)
-		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 400.0, &"nova")
+		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
 	rules.advance(0.1)
 	t.check(ended.size() == 1 and ended[0][0] == true and ended[0][1] == "citadel",
 		"the Citadel down with stability at zero wins it (%s)" % [ended])

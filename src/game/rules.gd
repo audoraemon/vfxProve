@@ -15,6 +15,8 @@ signal dp_gained(amount: float, at: Vector2)
 signal chained(at: Vector2)
 ## Something worth a line across the middle of the screen.
 signal banner(text: String)
+## The mission ended. reason: "citadel" (won), "escapes" or "timeout".
+signal over(won: bool, reason: String)
 
 const DP_MAX := 100.0
 ## Divine Power comes back this fast on its own (spec §4.1).
@@ -54,6 +56,19 @@ const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barr
 ## credited for what it started.
 const CAST_GRACE := 4.0
 
+## This many citizens reaching an exit loses the mission (spec §4.4).
+const ESCAPE_LIMIT := 38
+
+const SCORE_WIN := 5000
+const SCORE_PER_SECOND := 25
+const SCORE_PER_BUILDING := 40
+const SCORE_PER_CITIZEN := 10
+const SCORE_PER_SOLDIER := 25
+const SCORE_PER_CHAIN := 300
+const SCORE_PER_DP := 10
+## Score floors for each rank, best first; anything under the last one is a D.
+const RANKS := [[12000, "S"], [9000, "A"], [6000, "B"], [3000, "C"]]
+
 var dp := DP_MAX
 var time_left := MISSION_SECONDS
 ## The four drafted power keys, in slot order.
@@ -64,6 +79,14 @@ var finished := false
 var buildings_down := 0
 ## How many casts chained.
 var chains := 0
+
+## The five-part city health. Measured at most once a frame, and only after something changed it.
+var stability: Stability
+var won := false
+## Which ending: "citadel", "escapes", "timeout", or "" while the mission runs.
+var over_reason := ""
+
+var _stability_dirty := true
 
 ## How a cast reaches the world: func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline.
 ## Set in setup() to go through FxTimeline.cast; tests replace it so they need no effects.
@@ -94,10 +117,14 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	_cooldowns.fill(0.0)
 	caster = func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
 		return FxTimeline.cast(script, _ctx, ground, extra)
+	stability = Stability.new().setup(_env)
 	_env.structure_destroyed.connect(_on_structure_destroyed)
 	_field.enemy_killed.connect(_on_killed)
+	_crowd.escaped.connect(_on_escaped)
 	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
 		_town.citadel.fallen.connect(_on_citadel_fallen)
+		_town.citadel.health_changed.connect(_on_citadel_health)
+	stability.measure(_env, _crowd, _town.citadel)
 	return self
 
 
@@ -117,8 +144,10 @@ func advance(delta: float) -> void:
 		dp = minf(DP_MAX, dp + DP_REGEN * delta)
 		dp_changed.emit(dp)
 	time_left = maxf(0.0, time_left - delta)
-	if time_left <= 0.0:
-		finished = true
+	if _stability_dirty:
+		_stability_dirty = false
+		stability.measure(_env, _crowd, _town.citadel)
+	_check_end()
 
 
 ## The power in a slot, or an empty dictionary for a slot nothing was drafted into.
@@ -206,6 +235,7 @@ func _forget_old_casts() -> void:
 
 
 func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
+	_stability_dirty = true
 	if not BUILDING_ROLES.has(s.role):
 		return
 	buildings_down += 1
@@ -220,6 +250,7 @@ func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
 
 
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
+	_stability_dirty = true
 	var p := e as Person
 	if p != null and p.soldier:
 		_gain(DP_SOLDIER, p.ground_pos)
@@ -250,3 +281,65 @@ func _gain(amount: float, at: Vector2) -> void:
 	dp = minf(DP_MAX, dp + amount)
 	dp_changed.emit(dp)
 	dp_gained.emit(amount, at)
+
+
+func _on_escaped(_p: Person) -> void:
+	_stability_dirty = true
+
+
+func _on_citadel_health(_fraction: float) -> void:
+	_stability_dirty = true
+
+
+## Win: the Citadel is down and the city's stability has reached zero. Lose: the people got away, or the
+## manifestation ran out. The win is tested first, so a city that falls on the last tick of the clock counts.
+func _check_end() -> void:
+	if finished:
+		return
+	if is_instance_valid(_town.citadel) and _town.citadel.is_fallen() and stability.is_broken():
+		_finish(true, "citadel")
+	elif _crowd.escaped_count >= ESCAPE_LIMIT:
+		_finish(false, "escapes")
+	elif time_left <= 0.0:
+		_finish(false, "timeout")
+
+
+func _finish(win: bool, reason: String) -> void:
+	finished = true
+	won = win
+	over_reason = reason
+	over.emit(won, reason)
+
+
+## The mission's points (spec §4.4). The victory bonus, the seconds left and the DP left are a winner's only:
+## a mission lost to the escape would otherwise pay the player for losing it quickly.
+func score() -> int:
+	var total := buildings_down * SCORE_PER_BUILDING + _crowd.killed_citizens * SCORE_PER_CITIZEN \
+		+ _crowd.killed_soldiers * SCORE_PER_SOLDIER + chains * SCORE_PER_CHAIN
+	if won:
+		total += SCORE_WIN + int(roundf(time_left)) * SCORE_PER_SECOND + int(floorf(dp)) * SCORE_PER_DP
+	return total
+
+
+func rank() -> String:
+	var s := score()
+	for r: Array in RANKS:
+		if s >= int(r[0]):
+			return String(r[1])
+	return "D"
+
+
+## The results table: one line per scoring rule, with what it was worth. Milestone 4's Results screen draws
+## these; Task 7 prints them at the end of a scripted run.
+func stat_lines() -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	if won:
+		lines.append({"label": "The city has fallen", "value": "", "points": SCORE_WIN})
+		lines.append({"label": "Time left", "value": "%d:%02d" % [int(time_left) / 60, int(time_left) % 60], "points": int(roundf(time_left)) * SCORE_PER_SECOND})
+		lines.append({"label": "Divine Power left", "value": "%d" % int(floorf(dp)), "points": int(floorf(dp)) * SCORE_PER_DP})
+	lines.append({"label": "Buildings destroyed", "value": "%d" % buildings_down, "points": buildings_down * SCORE_PER_BUILDING})
+	lines.append({"label": "Citizens killed", "value": "%d" % _crowd.killed_citizens, "points": _crowd.killed_citizens * SCORE_PER_CITIZEN})
+	lines.append({"label": "Soldiers killed", "value": "%d" % _crowd.killed_soldiers, "points": _crowd.killed_soldiers * SCORE_PER_SOLDIER})
+	lines.append({"label": "Citizens escaped", "value": "%d" % _crowd.escaped_count, "points": 0})
+	lines.append({"label": "Chains", "value": "%d" % chains, "points": chains * SCORE_PER_CHAIN})
+	return lines

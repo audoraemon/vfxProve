@@ -12,3 +12,13 @@ static func run(t) -> void:
 	t.check(ResultsScreen.thousands(999) == "999" and ResultsScreen.thousands(0) == "0", "small ones do not")
 	t.check(ResultsScreen.thousands(1234567) == "1,234,567", "and big ones get every comma (%s)" % ResultsScreen.thousands(1234567))
 	t.check(ResultsScreen.thousands(-3000) == "-3,000", "a negative keeps its sign in front (%s)" % ResultsScreen.thousands(-3000))
+
+	# Every interface sound is in the catalog and on disk (synthesized by tools/audio/synth.py).
+	var missing := ""
+	for cue: StringName in UiSound.CUES:
+		if not Sfx.CATALOG.has(cue):
+			missing += " %s(catalog)" % cue
+		elif not ResourceLoader.exists(String(Sfx.CATALOG[cue].path)):
+			missing += " %s(file)" % cue
+	t.check(missing == "", "every interface sound exists (missing:%s)" % missing)
+	t.check(UiSound.CUES.size() == 8, "eight of them (%d)" % UiSound.CUES.size())

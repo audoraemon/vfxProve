@@ -96,10 +96,14 @@ func _ready() -> void:
 			await _mission.prewarmed
 		await get_tree().create_timer(1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
+		UiSound.stop_all()
+		Sfx.clear_cache()
 		get_tree().quit()
 	elif "--flow-test" in args:
 		await _flow_test()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+		UiSound.stop_all()
+		Sfx.clear_cache()
 		get_tree().quit()
 
 
@@ -140,6 +144,7 @@ func go_to(to: int) -> void:
 			res.name = "Results"
 			add_child(res)
 			res.setup(result)
+			UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
 			res.action.connect(func(what: String) -> void: on_action("results:" + what))
 			_screen_node = res
 		_:
@@ -200,6 +205,7 @@ func _open_pause() -> void:
 	_pause.name = "Pause"
 	add_child(_pause)
 	_pause.setup()
+	UiSound.play(&"ui_pause")
 	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
 
 

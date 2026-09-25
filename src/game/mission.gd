@@ -143,6 +143,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_aim.name = "Targeting"
 	_bf.ground_plane.add_child(_aim)
 	_aim.setup(_rules, _crowd)
+	_aim.picked.connect(func(s: int) -> void:
+		if s >= 0:
+			UiSound.play(&"ui_focus"))
 
 	_hud = Hud.new()
 	_hud.name = "Hud"

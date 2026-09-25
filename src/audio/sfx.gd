@@ -78,6 +78,14 @@ const CATALOG := {
 	&"dr_breath": {"path": "res://assets/audio/dragon/dr_breath.wav", "db": -3.0, "loop": true},
 	&"dr_sink": {"path": "res://assets/audio/dragon/dr_sink.wav", "db": -4.0},
 	&"laser_depart": {"path": "res://assets/audio/laser/laser_depart.wav", "db": -7.0},
+	&"ui_hover": {"path": "res://assets/audio/ui/ui_hover.wav", "db": -16.0},
+	&"ui_click": {"path": "res://assets/audio/ui/ui_click.wav", "db": -10.0},
+	&"ui_focus": {"path": "res://assets/audio/ui/ui_focus.wav", "db": -12.0},
+	&"ui_buzz": {"path": "res://assets/audio/ui/ui_buzz.wav", "db": -10.0},
+	&"ui_pause": {"path": "res://assets/audio/ui/ui_pause.wav", "db": -10.0},
+	&"ui_manifest": {"path": "res://assets/audio/ui/ui_manifest.wav", "db": -6.0},
+	&"ui_win": {"path": "res://assets/audio/ui/ui_win.wav", "db": -6.0},
+	&"ui_lose": {"path": "res://assets/audio/ui/ui_lose.wav", "db": -6.0},
 }
 
 static var _cache := {}

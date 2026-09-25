@@ -161,6 +161,7 @@ func flashing(slot: int) -> bool:
 func _on_cast_refused(slot: int, _reason: String) -> void:
 	if slot >= 0 and slot < _flash.size():
 		_flash[slot] = FLASH_SECONDS
+	UiSound.play(&"ui_buzz")
 
 
 func _on_dp_gained(amount: float, at: Vector2) -> void:

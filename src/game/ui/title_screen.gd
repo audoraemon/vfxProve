@@ -66,10 +66,13 @@ func _on_gui_input(event: InputEvent) -> void:
 		var h := _menu.at(event.position)
 		if h != _hover:
 			_hover = h
+			if h != "":
+				UiSound.play(&"ui_hover")
 			_ui.queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var a := _menu.at(event.position)
 		if a != "":
+			UiSound.play(&"ui_click")
 			action.emit(a)
 
 

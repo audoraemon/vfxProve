@@ -74,6 +74,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.physical_keycode == KEY_ESCAPE:
 			action.emit("back")
 		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and draft.is_full():
+			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
 
 
@@ -82,13 +83,19 @@ func _on_gui_input(event: InputEvent) -> void:
 		var h := hit(event.position)
 		if h != _hover:
 			_hover = h
+			if h != "":
+				UiSound.play(&"ui_hover")
 			_ui.queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var h := hit(event.position)
 		if h == "manifest":
 			if draft.is_full():
+				UiSound.play(&"ui_manifest")
 				action.emit("manifest")
+			else:
+				UiSound.play(&"ui_buzz")
 		elif h != "":
+			UiSound.play(&"ui_click")
 			draft.toggle(h)
 			_ui.queue_redraw()
 

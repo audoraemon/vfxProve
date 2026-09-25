@@ -865,6 +865,76 @@ def laser_depart(rng, dur):
     return (jet * 1.5 + whine) * env
 
 
+# --------------------------------------------------------------------------
+# Interface (KAK milestone 5): short, dry, and plainly not part of the world.
+# --------------------------------------------------------------------------
+
+def ui_hover(rng, dur):
+    n = int(round(dur * SR))
+    return sine(1800.0, n) * decay(n, 0.012) * attack(n, 0.002) * 0.5
+
+
+def ui_click(rng, dur):
+    n = int(round(dur * SR))
+    body = sine(ramp(900.0, 520.0, n, "exp"), n) * decay(n, 0.03)
+    tick = highpass(noise(n, rng), 3000.0) * decay(n, 0.004)
+    return (body + tick * 0.4) * attack(n, 0.001)
+
+
+def ui_focus(rng, dur):
+    n = int(round(dur * SR))
+    tone = sine(ramp(700.0, 1400.0, n, "exp"), n) + 0.3 * sine(ramp(1400.0, 2800.0, n, "exp"), n)
+    return tone * adsr(n, 0.004, 0.03, 0.4, 0.04)
+
+
+def ui_buzz(rng, dur):
+    n = int(round(dur * SR))
+    tone = lowpass(square(110.0, n, 0.3) + 0.5 * square(116.0, n, 0.3), 1800.0)
+    return saturate(tone * 0.6, 2.0) * adsr(n, 0.005, 0.05, 0.7, 0.06)
+
+
+def ui_pause(rng, dur):
+    n = int(round(dur * SR))
+    out = sine(660.0, n) * decay(n, 0.05)
+    place(out, sine(440.0, n) * decay(n, 0.06), 0.07)
+    return out * attack(n, 0.002)
+
+
+def ui_manifest(rng, dur):
+    n = int(round(dur * SR))
+    rise = ramp(0.0, 1.0, n) ** 2
+    drift = ramp(0.98, 1.0, n)
+    chord = sum(saw(f * drift, n) for f in (110.0, 164.8, 220.0, 329.6))
+    chord = sweep_filter(chord, "lowpass", ramp(300.0, 4000.0, n, "exp"))
+    hit = int(dur * 0.55 * SR)
+    boom = np.zeros(n)
+    boom[hit:] = sine(ramp(90.0, 40.0, n - hit, "exp"), n - hit) * decay(n - hit, 0.35)
+    return reverb(chord * rise * 0.25 + boom * 0.8, size=1.2, mix=0.3)
+
+
+def ui_win(rng, dur):
+    n = int(round(dur * SR))
+    out = np.zeros(n)
+    for i, f in enumerate((261.6, 329.6, 392.0, 523.3)):
+        m = int(0.9 * SR)
+        note = lowpass(saw(f, m) * 0.5 + sine(f * 2.0, m) * 0.3, 2600.0) * adsr(m, 0.01, 0.1, 0.6, 0.3)
+        place(out, note, 0.13 * i)
+    m = n - int(0.55 * SR)
+    chord = lowpass(sum(saw(f, m) for f in (261.6, 329.6, 392.0, 523.3)) * 0.18, 3000.0)
+    place(out, chord * adsr(m, 0.02, 0.3, 0.5, 0.8), 0.55)
+    return reverb(out, size=1.3, mix=0.28)
+
+
+def ui_lose(rng, dur):
+    n = int(round(dur * SR))
+    out = np.zeros(n)
+    for i, f in enumerate((392.0, 349.2, 311.1, 261.6)):
+        m = int(0.7 * SR)
+        note = lowpass(saw(f, m) * 0.5 + sine(f * 0.5, m) * 0.4, 1600.0) * adsr(m, 0.01, 0.12, 0.5, 0.35)
+        place(out, note, 0.3 * i)
+    return reverb(out, size=1.4, mix=0.32)
+
+
 # id: (effect folder, builder, length seconds, loop)
 CUES: dict[str, tuple] = {
     "nova_alarm": ("nova", nova_alarm, 1.5, False),
@@ -941,6 +1011,12 @@ for _v in range(1, 4):
     CUES[f"glac_shatter_{_v}"] = ("glacial", lambda rng, dur, v=_v: glac_shatter(rng, dur, v), 0.5, False)
 for _v in range(1, 4):
     CUES[f"laser_sizzle_{_v}"] = ("laser", lambda rng, dur, v=_v: laser_sizzle(rng, dur, v), 0.3, False)
+for _name, _fn, _dur in (
+    ("ui_hover", ui_hover, 0.06), ("ui_click", ui_click, 0.12), ("ui_focus", ui_focus, 0.1),
+    ("ui_buzz", ui_buzz, 0.25), ("ui_pause", ui_pause, 0.25), ("ui_manifest", ui_manifest, 1.6),
+    ("ui_win", ui_win, 2.4), ("ui_lose", ui_lose, 2.2),
+):
+    CUES[_name] = ("ui", _fn, _dur, False)
 
 
 def cue_path(cue: str) -> Path:

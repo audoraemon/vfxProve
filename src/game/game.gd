@@ -27,6 +27,20 @@ const MISSION_SCENE := "res://scenes/mission.tscn"
 const SANDBOX_SCENE := "res://scenes/sandbox.tscn"
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("4a6a2a")
+## What --show=results displays: a winning run with every line of the table in use.
+const SAMPLE_RESULT := {
+	"won": true, "reason": "citadel", "score": 16350, "rank": "S", "best": true,
+	"lines": [
+		{"label": "The city has fallen", "value": "", "points": 5000},
+		{"label": "Time left", "value": "3:20", "points": 5000},
+		{"label": "Divine Power left", "value": "100", "points": 1000},
+		{"label": "Buildings destroyed", "value": "60", "points": 2400},
+		{"label": "Citizens killed", "value": "110", "points": 1100},
+		{"label": "Soldiers killed", "value": "50", "points": 1250},
+		{"label": "Citizens escaped", "value": "0", "points": 0},
+		{"label": "Chains", "value": "2", "points": 600},
+	],
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
@@ -56,6 +70,9 @@ func _ready() -> void:
 	match show:
 		"prepare":
 			go_to(Screen.PREPARE)
+		"results":
+			result = SAMPLE_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -98,7 +115,12 @@ func go_to(to: int) -> void:
 		Screen.RESULTS:
 			if is_instance_valid(_mission):
 				_mission.set_frozen(true)
-			push_warning("KAK has no Results screen yet")  # Task 5
+			var res := ResultsScreen.new()
+			res.name = "Results"
+			add_child(res)
+			res.setup(result)
+			res.action.connect(func(what: String) -> void: on_action("results:" + what))
+			_screen_node = res
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)  # Tasks 3 and 4
 

@@ -242,11 +242,25 @@ func _prune_soldiers() -> void:
 	soldiers = remaining
 
 
-## The player cast a power here: everyone close enough panics.
-func on_cast(ground: Vector2) -> void:
+## A cast landed: everyone close enough panics. A lane power (`dir` set, `length` above zero) frightens people
+## along its whole lane -- a tsunami's far end runs through streets the player never pressed on.
+func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0) -> void:
+	var points: Array[Vector2] = [ground]
+	if dir != Vector2.ZERO and length > 0.0:
+		var step := PANIC_CAST
+		var along := step
+		var unit := dir.normalized()
+		while along < length:
+			points.append(ground + unit * along)
+			along += step
+		points.append(ground + unit * length)
 	for p in citizens:
-		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(ground) <= PANIC_CAST:
-			p.panic(ground)
+		if not is_instance_valid(p) or not p.is_alive():
+			continue
+		for point in points:
+			if p.ground_pos.distance_to(point) <= PANIC_CAST:
+				p.panic(point)
+				break
 
 
 func add_alarm(points: float) -> void:

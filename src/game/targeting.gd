@@ -1,0 +1,175 @@
+class_name Targeting
+extends Node2D
+## Aiming: which slot is picked, the area it would cover drawn on the ground, and the click or drag that turns
+## into a cast. A child of Battlefield.ground_plane, so it draws in ground units and its circles come out as
+## the right iso ellipses. It knows nothing about the mouse: Mission hands it ground positions, which is also
+## what makes it testable headless.
+
+## The player picked another slot.
+signal picked(slot: int)
+
+## A drag shorter than this keeps the default direction rather than spinning on a twitch.
+const DRAG_MIN := 0.5
+const COL_EDGE := Color(1.0, 0.86, 0.35, 0.7)
+const COL_INNER := Color(1.0, 0.45, 0.2, 0.8)
+const COL_FAINT := Color(1.0, 0.86, 0.35, 0.25)
+const COL_BAD := Color(0.9, 0.2, 0.15, 0.7)
+## Which way a drag power points when the player barely moved the mouse.
+const DEFAULT_DIR := Vector2(1, 0)
+
+## What each power covers, taken from the effect's own constants (the comment names them). Milestone 5 may
+## repaint these; it must not invent numbers for them.
+const AREAS := {
+	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH
+	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6},
+	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
+	"tornado": {"shape": "circle", "r": 3.2, "inner": 0.6, "roam": 7.0},
+	# CONE_RADIUS, SWEEP_ARC (the dragon is locked to screen down-right, so this cone does not follow the mouse)
+	"dragon": {"shape": "cone", "r": 11.0, "arc": 1.0},
+	# LENGTH, WIDTH * 0.5
+	"tsunami": {"shape": "lane", "length": 6.5, "half": 4.0},
+	# RADIUS, KILL_R
+	"gravity": {"shape": "circle", "r": 4.5, "inner": 1.5},
+	# LENGTH, KILL_HALF_WIDTH
+	"laser": {"shape": "lane", "length": 10.0, "half": 2.6},
+	# RADIUS
+	"orbital": {"shape": "circle", "r": 4.5},
+	# RADIUS, VOLCANO_RADIUS
+	"cinder": {"shape": "circle", "r": 5.8, "inner": 2.4},
+	# RADIUS
+	"judgement": {"shape": "circle", "r": 5.2},
+	# RADIUS, SPIKE_RADIUS
+	"glacial": {"shape": "circle", "r": 5.0, "inner": 4.5},
+	# RADIUS, KILL_CORE
+	"nova": {"shape": "circle", "r": 5.0, "inner": 1.2},
+}
+
+var slot := 0
+## A drag power has the button down and is being aimed.
+var aiming := false
+
+var _rules: Rules
+var _crowd: Crowd
+## Where the button went down (a cast lands here, not where it came up).
+var _press := Vector2.ZERO
+## Where the cursor is now, for the preview and the drag's direction.
+var _at := Vector2.ZERO
+
+
+func setup(rules: Rules, crowd: Crowd) -> Targeting:
+	_rules = rules
+	_crowd = crowd
+	_rules.cast_made.connect(_on_cast_made)
+	z_index = 5
+	z_as_relative = false  # absolute z 5: over the ground and the world, under the overhead layer at 8.
+	return self
+
+
+func pick(new_slot: int) -> void:
+	if new_slot == slot:
+		return
+	slot = new_slot
+	aiming = false
+	picked.emit(slot)
+	queue_redraw()
+
+
+## The cursor moved. Keeps the preview where the player is looking.
+func hover(ground: Vector2) -> void:
+	_at = ground
+	if not aiming:
+		_press = ground
+	queue_redraw()
+
+
+func press(ground: Vector2) -> void:
+	_press = ground
+	_at = ground
+	aiming = _is_drag()
+	queue_redraw()
+
+
+## The button came up: cast. A click power fires from where it went down; a drag power fires from there along
+## the way it was dragged.
+func release(ground: Vector2) -> void:
+	_at = ground
+	var extra := {}
+	if _is_drag():
+		extra["dir"] = aim_dir()
+	aiming = false
+	_rules.cast(slot, _press, extra)
+	queue_redraw()
+
+
+func cancel() -> void:
+	aiming = false
+	queue_redraw()
+
+
+## Which way a drag power points: the drag itself, or DEFAULT_DIR when the player hardly moved.
+func aim_dir() -> Vector2:
+	var drag := _at - _press
+	return drag.normalized() if drag.length() >= DRAG_MIN else DEFAULT_DIR
+
+
+func area() -> Dictionary:
+	return AREAS.get(_rules.key(slot), {})
+
+
+func _is_drag() -> bool:
+	return String(_rules.power(slot).get("aim", "click")) == "drag"
+
+
+func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
+	var a: Dictionary = AREAS.get(key, {})
+	if String(a.get("shape", "")) == "lane":
+		_crowd.on_cast(at, aim_dir(), float(a.length))
+	else:
+		_crowd.on_cast(at)
+
+
+func _draw() -> void:
+	var a := area()
+	if a.is_empty():
+		return
+	# A power that cannot be cast still shows its area, in red, so the player can aim while it comes back.
+	var edge := COL_EDGE if _rules.refusal(slot) == "" else COL_BAD
+	match String(a.shape):
+		"circle":
+			_ring(_press, float(a.r), edge)
+			if a.has("inner"):
+				_ring(_press, float(a.inner), COL_INNER)
+			if a.has("roam"):
+				_ring(_press, float(a.roam), COL_FAINT)
+		"lane":
+			_lane(_press, aim_dir(), float(a.length), float(a.half), edge)
+			if a.has("fissure"):
+				for i in 8:
+					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5
+					draw_line(_press, _press + out, COL_FAINT, -1.0)
+		"cone":
+			_cone(_press, float(a.r), float(a.arc), edge)
+
+
+func _ring(at: Vector2, r: float, col: Color) -> void:
+	draw_arc(at, r, 0.0, TAU, 48, col, -1.0)
+
+
+func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) -> void:
+	var side := Vector2(-dir.y, dir.x) * half
+	var a := from + side
+	var b := from + dir * length + side
+	var c := from + dir * length - side
+	var d := from - side
+	draw_polyline(PackedVector2Array([a, b, c, d, a]), col, -1.0)
+	draw_line(from, from + dir * length, COL_FAINT, -1.0)
+
+
+func _cone(from: Vector2, r: float, arc: float, col: Color) -> void:
+	# The dragon's own start angle: its facing, biased 8 degrees to its right so the jet misses its body.
+	var start := Vector2(1, 0).angle() - arc * 0.5 - deg_to_rad(8.0)
+	var points := PackedVector2Array([from])
+	for i in 17:
+		points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / 16.0) * r)
+	points.append(from)
+	draw_polyline(points, col, -1.0)

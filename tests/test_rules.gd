@@ -73,6 +73,85 @@ static func run(t) -> void:
 	rules.cast(0, Vector2.ZERO, {"dir": Vector2(1, 0)})
 	t.check(refused == [[0, "over"]], "and a finished mission takes no more casts (%s)" % refused)
 
+	# --- What a cast destroyed -------------------------------------------------------------------------
+	var r2 := Rules.new().setup(loadout, null, env, field, crowd, town)
+	var gains: Array = []
+	r2.dp_gained.connect(func(amount: float, at: Vector2): gains.append([amount, at]))
+	var banners: Array = []
+	r2.banner.connect(func(text: String): banners.append(text))
+	var chains: Array = []
+	r2.chained.connect(func(at: Vector2): chains.append(at))
+	r2.caster = func(_script: GDScript, _ground: Vector2, _extra: Dictionary) -> FxTimeline:
+		return null
+	r2.dp = 50.0   # spend first: a gain cannot show on a bar that is already full
+
+	# Nothing is credited to nobody: a destroyed building still pays its DP.
+	var towers: Array[Structure] = []
+	for s in env.structures():
+		if s.role == &"tower" and not s.destroyed:
+			towers.append(s)
+	var houses: Array[Structure] = []
+	for s in env.structures():
+		if s.role == &"house" and not s.destroyed:
+			houses.append(s)
+	t.check(towers.size() >= 4 and houses.size() >= 11, "the town still has towers and houses to break (%d, %d)" % [towers.size(), houses.size()])
+	var dp_before := r2.dp
+	houses[0].destroy(houses[0].center(), &"nova")
+	t.check(r2.dp == dp_before and r2.buildings_down == 1, "a house is worth no DP but counts as a building (%.1f, %d)" % [r2.dp, r2.buildings_down])
+	towers[0].destroy(towers[0].center(), &"nova")
+	t.near(r2.dp, dp_before + 3.0, 0.0001, "a wall tower pays 3 DP (%.1f)" % r2.dp)
+	t.check(gains.size() == 1 and gains[0][0] == 3.0, "and the gain is reported for its popup (%s)" % [gains])
+
+	# The Citadel's own parts are the Citadel's, not nine more buildings.
+	var parts_before := r2.buildings_down
+	town.citadel.parts[0].destroy(town.citadel.parts[0].center(), &"nova")
+	t.check(r2.buildings_down == parts_before, "a fallen Citadel part is not counted as a building (%d)" % r2.buildings_down)
+
+	# A soldier pays, a citizen does not.
+	dp_before = r2.dp
+	var soldier: Person = null
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive():
+			soldier = p
+			break
+	field.kill(soldier, &"nova")
+	t.near(r2.dp, dp_before + Rules.DP_SOLDIER, 0.0001, "a dead soldier pays 0.4 DP (%.1f)" % r2.dp)
+	dp_before = r2.dp
+	var citizen: Person = null
+	for p in crowd.citizens:
+		if is_instance_valid(p) and p.is_alive():
+			citizen = p
+			break
+	field.kill(citizen, &"nova")
+	t.check(r2.dp == dp_before, "a dead citizen pays nothing (%.1f)" % r2.dp)
+
+	# Credit goes to the running cast whose power deals that kind, and the latest one wins a tie.
+	r2.cast(2, Vector2(1.0, 1.0))   # cinder: deals &"cinder" and &"stone"
+	t.check(r2.credited_key(&"stone") == "cinder", "the Barrage is credited for falling stone (%s)" % r2.credited_key(&"stone"))
+	t.check(r2.credited_key(&"ice") == "", "and nothing running deals ice (%s)" % r2.credited_key(&"ice"))
+
+	# Six buildings from one cast is a chain: +6 DP and the banner.
+	var dp_chain := r2.dp
+	for i in 6:
+		houses[i + 1].destroy(houses[i + 1].center(), &"stone")
+	t.check(chains.size() == 1, "six buildings from one cast is one chain (%d)" % chains.size())
+	t.near(r2.dp - dp_chain, Rules.CHAIN_DP, 0.0001, "worth 6 DP (%.1f)" % (r2.dp - dp_chain))
+	t.check(banners.has("CHAIN!"), "and says so (%s)" % [banners])
+	t.check(r2.chains == 1, "the chain is kept for the score (%d)" % r2.chains)
+	for i in range(7, 11):
+		houses[i].destroy(houses[i].center(), &"stone")
+	t.check(r2.chains == 1, "one cast only ever chains once (%d)" % r2.chains)
+
+	# The Citadel falling is worth 15 DP and its own banner.
+	dp_before = r2.dp
+	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
+	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
+	while not town.citadel.is_fallen():
+		town.citadel.advance(1.01)
+		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
+	t.near(r2.dp - dp_before, Rules.CITADEL_DP, 0.0001, "the Citadel's fall pays 15 DP (%.1f)" % (r2.dp - dp_before))
+	t.check(banners.has("THE CITADEL FALLS"), "and is announced (%s)" % [banners])
+	r2.free()
 	rules.free()
 	crowd.clear()
 	field.clear()

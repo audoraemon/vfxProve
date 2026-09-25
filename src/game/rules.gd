@@ -9,12 +9,50 @@ signal dp_changed(value: float)
 signal cast_made(slot: int, key: String, at: Vector2)
 ## A cast could not go out: "cooldown", "dp", "empty" or "over".
 signal cast_refused(slot: int, reason: String)
+## Divine Power came back from something that was destroyed, at the place it happened (for the popup).
+signal dp_gained(amount: float, at: Vector2)
+## One cast destroyed six buildings or killed twenty-five people.
+signal chained(at: Vector2)
+## Something worth a line across the middle of the screen.
+signal banner(text: String)
 
 const DP_MAX := 100.0
 ## Divine Power comes back this fast on its own (spec §4.1).
 const DP_REGEN := 0.5
 ## The manifestation's length in seconds (spec §1: 4:00).
 const MISSION_SECONDS := 240.0
+## What each destroyed thing pays back (spec §4.1). Citizens, houses, the market, the farms and the walls pay
+## nothing: the player is not rewarded for shopping.
+const DP_FOR_ROLE := {&"tower": 3.0, &"gate": 5.0, &"temple": 8.0, &"barracks": 10.0}
+const DP_SOLDIER := 0.4
+const CITADEL_DP := 15.0
+## One cast that destroys this many buildings, or kills this many people, is a chain.
+const CHAIN_BUILDINGS := 6
+const CHAIN_KILLS := 25
+const CHAIN_DP := 6.0
+
+## The damage kinds each power deals, so a destroyed building or a kill can be credited to the cast that did
+## it. Two kinds are shared (Dragonfire Parade and the Barrage both burn with &"cinder"; the Barrage and
+## Judgement both drop &"stone"), which the tie rule in _credit() settles.
+const POWER_KINDS := {
+	"heaven": [&"lightning"],
+	"tornado": [&"wind"],
+	"dragon": [&"fire", &"cinder"],
+	"tsunami": [&"water"],
+	"gravity": [&"gravity"],
+	"laser": [&"laser"],
+	"orbital": [&"orbital"],
+	"cinder": [&"cinder", &"stone"],
+	"judgement": [&"stone"],
+	"glacial": [&"ice"],
+	"nova": [&"nova"],
+}
+## The roles that count as a building for the tally, the chain and the score. Decor (trees, torch posts) does
+## not, and the Citadel's nine parts are not nine buildings -- the Citadel is worth its own CITADEL_DP.
+const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barracks", &"market", &"farm", &"bridge"]
+## How long a cast with no effect behind it (a test's stub, an effect that has already finished) can still be
+## credited for what it started.
+const CAST_GRACE := 4.0
 
 var dp := DP_MAX
 var time_left := MISSION_SECONDS
@@ -22,6 +60,10 @@ var time_left := MISSION_SECONDS
 var loadout := PackedStringArray()
 ## The mission is over: the clock ran out, the people got away, or the city fell.
 var finished := false
+## Buildings destroyed this mission, by BUILDING_ROLES.
+var buildings_down := 0
+## How many casts chained.
+var chains := 0
 
 ## How a cast reaches the world: func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline.
 ## Set in setup() to go through FxTimeline.cast; tests replace it so they need no effects.
@@ -34,6 +76,10 @@ var _crowd: Crowd
 var _town: Town
 ## Seconds of cooldown left per slot.
 var _cooldowns := PackedFloat32Array()
+## One entry per cast that may still be credited: {"key", "fx", "at", "buildings", "kills", "chained", "until"}.
+var _casts: Array[Dictionary] = []
+## Seconds since the mission started, for the casts' grace window.
+var _elapsed := 0.0
 
 
 func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, field: EnemyField, crowd: Crowd,
@@ -48,6 +94,10 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	_cooldowns.fill(0.0)
 	caster = func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
 		return FxTimeline.cast(script, _ctx, ground, extra)
+	_env.structure_destroyed.connect(_on_structure_destroyed)
+	_field.enemy_killed.connect(_on_killed)
+	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
+		_town.citadel.fallen.connect(_on_citadel_fallen)
 	return self
 
 
@@ -61,6 +111,8 @@ func advance(delta: float) -> void:
 		return
 	for i in _cooldowns.size():
 		_cooldowns[i] = maxf(0.0, _cooldowns[i] - delta)
+	_elapsed += delta
+	_forget_old_casts()
 	if dp < DP_MAX:
 		dp = minf(DP_MAX, dp + DP_REGEN * delta)
 		dp_changed.emit(dp)
@@ -118,5 +170,83 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	dp_changed.emit(dp)
 	_cooldowns[slot] = float(p.cooldown)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)
+	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
+		"until": _elapsed + CAST_GRACE})
 	cast_made.emit(slot, String(p.key), ground)
 	return fx
+
+
+## The power key credited with this damage kind: among the casts still running, the one whose power deals it,
+## latest first (spec §4.1). "" when nothing running claims it -- a building that falls to a stray fire after
+## its cast is gone still pays its DP, it just has nobody to chain for.
+func credited_key(kind: StringName) -> String:
+	var c := _credit(kind)
+	return String(c.get("key", "")) if not c.is_empty() else ""
+
+
+func _credit(kind: StringName) -> Dictionary:
+	for i in range(_casts.size() - 1, -1, -1):
+		var c: Dictionary = _casts[i]
+		var kinds: Array = POWER_KINDS.get(c.key, [])
+		if kinds.has(kind):
+			return c
+	return {}
+
+
+## Drop casts whose effect has finished and whose grace has run out, so a four-minute mission does not credit
+## a kill to a volcano that went cold three minutes ago.
+func _forget_old_casts() -> void:
+	var keep: Array[Dictionary] = []
+	for c in _casts:
+		var fx: FxTimeline = c.fx
+		var running: bool = is_instance_valid(fx) and not fx.finished
+		if running or _elapsed < float(c.until):
+			keep.append(c)
+	_casts = keep
+
+
+func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
+	if not BUILDING_ROLES.has(s.role):
+		return
+	buildings_down += 1
+	var pay: float = DP_FOR_ROLE.get(s.role, 0.0)
+	if pay > 0.0:
+		_gain(pay, s.center())
+	var c := _credit(kind)
+	if c.is_empty():
+		return
+	c.buildings = int(c.buildings) + 1
+	_check_chain(c)
+
+
+func _on_killed(e: DummyEnemy, kind: StringName) -> void:
+	var p := e as Person
+	if p != null and p.soldier:
+		_gain(DP_SOLDIER, p.ground_pos)
+	var c := _credit(kind)
+	if c.is_empty():
+		return
+	c.kills = int(c.kills) + 1
+	_check_chain(c)
+
+
+func _on_citadel_fallen() -> void:
+	var at: Vector2 = _town.citadel.origin if is_instance_valid(_town.citadel) else Vector2.ZERO
+	_gain(CITADEL_DP, at)
+	banner.emit("THE CITADEL FALLS")
+
+
+func _check_chain(c: Dictionary) -> void:
+	if bool(c.chained) or (int(c.buildings) < CHAIN_BUILDINGS and int(c.kills) < CHAIN_KILLS):
+		return
+	c.chained = true
+	chains += 1
+	_gain(CHAIN_DP, c.at)
+	chained.emit(c.at)
+	banner.emit("CHAIN!")
+
+
+func _gain(amount: float, at: Vector2) -> void:
+	dp = minf(DP_MAX, dp + amount)
+	dp_changed.emit(dp)
+	dp_gained.emit(amount, at)

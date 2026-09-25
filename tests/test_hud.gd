@@ -33,6 +33,7 @@ static func run(t) -> void:
 		"the status line counts the living (%s)" % hud.status_text())
 
 	# A slot says which of the four things it is.
+	aim.pick(0)
 	t.check(hud.is_picked(0) and hud.slot_state(0) == "ready",
 		"the picked slot is known as picked and still reports what it can do (%s)" % hud.slot_state(0))
 	t.check(hud.slot_state(3) == "ready", "a slot that can be paid for is ready (%s)" % hud.slot_state(3))
@@ -46,6 +47,10 @@ static func run(t) -> void:
 	t.check(hud.flashing(2) and not hud.flashing(1), "a refused cast flashes its slot (%s)" % hud.flashing(2))
 	hud.advance(Hud.FLASH_SECONDS + 0.1)
 	t.check(not hud.flashing(2), "and the flash fades")
+
+	# The slots answer to the mouse (spec §1: "keys 1-4 or click its slot").
+	t.check(hud.slot_at(hud.slot_rect(2).get_center()) == 2, "a point on the third slot is the third slot")
+	t.check(hud.slot_at(Vector2(4.0, 200.0)) == -1, "and a point on the town is no slot")
 
 	# Banners queue up, show for their time and go.
 	rules.banner.emit("CHAIN!")

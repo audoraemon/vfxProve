@@ -51,14 +51,26 @@ static func run(t) -> void:
 		casts.append([ground, extra])
 		return null
 	var aim := Targeting.new().setup(rules, crowd)
+	t.check(aim.slot == -1 and aim.area().is_empty(), "nothing is focused when a mission starts, so nothing is drawn")
+	aim.press(Vector2(1.0, 1.0))
+	aim.release(Vector2(1.0, 1.0))
+	t.check(casts.is_empty() and not aim.armed, "a click with nothing focused casts nothing")
 
 	aim.pick(0)
+	t.check(aim.slot == 0 and not aim.area().is_empty(), "pressing a slot's key focuses it and shows its area")
+	aim.pick(0)
+	t.check(aim.slot == -1, "pressing it again unfocuses it")
+
+	# A click power: cast where the button went down, then unfocused.
+	aim.pick(0)
 	aim.press(Vector2(2.0, 2.0))
-	t.check(not aim.aiming, "a click power does not start a drag")
+	t.check(aim.armed and not aim.aiming, "a click power arms on press without starting a drag")
 	aim.release(Vector2(2.4, 2.1))
 	t.check(casts.size() == 1 and casts[0][0] == Vector2(2.0, 2.0) and not casts[0][1].has("dir"),
 		"a click power is cast where the button went down, with no direction (%s)" % [casts])
+	t.check(aim.slot == -1 and not aim.armed, "and a cast that goes out unfocuses (%d)" % aim.slot)
 
+	# A drag power: cast from where the drag started, along the drag.
 	aim.pick(1)
 	aim.press(Vector2(-3.0, 0.0))
 	t.check(aim.aiming, "a drag power starts aiming")
@@ -66,12 +78,17 @@ static func run(t) -> void:
 	t.check(casts.size() == 2 and casts[1][0] == Vector2(-3.0, 0.0), "and is cast from where the drag started")
 	t.check((casts[1][1].dir as Vector2).is_equal_approx(Vector2(1, 0)),
 		"pointed the way it was dragged (%s)" % [casts[1][1].dir])
-	t.check(not aim.aiming, "and the drag is done")
+	t.check(not aim.aiming and aim.slot == -1, "and the drag is done")
 
+	# Right-click while the button is held calls the cast off; the power stays focused.
 	aim.pick(3)
 	aim.press(Vector2(0.0, 5.0))
-	aim.cancel()
-	t.check(not aim.aiming and casts.size() == 2, "cancelling a drag casts nothing (%d)" % casts.size())
+	t.check(aim.cancel(), "calling off a held press reports that it did")
+	aim.release(Vector2(1.0, 5.0))
+	t.check(casts.size() == 2 and aim.slot == 3, "the release after it casts nothing, and the power stays focused (%d)" % casts.size())
+	t.check(not aim.cancel(), "with nothing held there is nothing to call off")
+	aim.unfocus()
+	t.check(aim.slot == -1 and aim.area().is_empty(), "and unfocusing takes the area away")
 
 	# A lane power frightens the people along it, not only at its start.
 	var far: Person = crowd.citizens[0]

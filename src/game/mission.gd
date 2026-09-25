@@ -217,10 +217,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.physical_keycode == KEY_R:
 			start(PackedStringArray(), Time.get_ticks_usec())
 		elif event.physical_keycode == KEY_ESCAPE:
-			# Aiming first: Esc cancels a drag. With nothing to cancel it is the pause menu's -- or, for a
-			# mission running on its own with no Game around it, still the way out.
-			if _aim.aiming:
-				_aim.cancel()
+			# Esc first calls off a held press, then unfocuses the power. With nothing focused it is the
+			# pause menu's -- or, for a mission running on its own with no Game around it, still the way out.
+			if _aim.cancel():
+				pass  # a held press was called off
+			elif _aim.slot >= 0:
+				_aim.unfocus()
 			elif autostart:
 				_bf.quit()
 			else:
@@ -233,9 +235,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-		_aim.cancel()
+		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
+		if not _aim.cancel():
+			_aim.unfocus()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			# A click on a HUD slot focuses that power instead of casting into the town under it.
+			var on_slot := _hud.slot_at(event.position)
+			if on_slot >= 0 and on_slot < _rules.loadout.size():
+				_aim.pick(on_slot)
+				return
 			_pressing = true
 			_aim.press(_bf.mouse_ground())
 		elif _pressing:

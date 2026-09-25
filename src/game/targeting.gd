@@ -44,7 +44,10 @@ const AREAS := {
 	"nova": {"shape": "circle", "r": 5.0, "inner": 1.2},
 }
 
-var slot := 0
+## The focused slot, or -1 when nothing is: the area is only drawn while a power is focused.
+var slot := -1
+## A left press is in progress on a focused power; the release casts it unless something called it off.
+var armed := false
 ## A drag power has the button down and is being aimed.
 var aiming := false
 
@@ -66,10 +69,21 @@ func setup(rules: Rules, crowd: Crowd) -> Targeting:
 	return self
 
 
+## Focus a slot, or unfocus it when it is the one already focused (pressing its key again).
 func pick(new_slot: int) -> void:
 	if new_slot == slot:
+		unfocus()
 		return
 	slot = new_slot
+	armed = false
+	aiming = false
+	picked.emit(slot)
+	queue_redraw()
+
+
+func unfocus() -> void:
+	slot = -1
+	armed = false
 	aiming = false
 	picked.emit(slot)
 	queue_redraw()
@@ -88,16 +102,22 @@ func hover(ground: Vector2) -> void:
 
 
 func press(ground: Vector2) -> void:
+	if slot < 0:
+		return
 	_press = ground
 	_at = ground
+	armed = true
 	aiming = _is_drag()
 	queue_redraw()
 
 
-## The button came up: cast. A click power fires from where it went down; a drag power fires from there along
-## the way it was dragged.
+## The button came up: cast, unless the press was called off. A click power fires from where the button went
+## down; a drag power fires from there along the way it was dragged.
 func release(ground: Vector2) -> void:
+	if not armed:
+		return
 	_at = ground
+	armed = false
 	var extra := {}
 	if _is_drag():
 		extra["dir"] = aim_dir()
@@ -106,9 +126,14 @@ func release(ground: Vector2) -> void:
 	queue_redraw()
 
 
-func cancel() -> void:
+## Call off a press in progress (right-click or Esc while the button is held). True when there was one; the
+## power stays focused either way.
+func cancel() -> bool:
+	var had := armed
+	armed = false
 	aiming = false
 	queue_redraw()
+	return had
 
 
 ## Which way a drag power points: the drag itself, or DEFAULT_DIR when the player hardly moved.
@@ -131,6 +156,8 @@ func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
 		_crowd.on_cast(at, aim_dir(), float(a.length))
 	else:
 		_crowd.on_cast(at)
+	# A power that went out is on its cooldown: unfocus, so its area stops following the cursor.
+	unfocus()
 
 
 func _draw() -> void:

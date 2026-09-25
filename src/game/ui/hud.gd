@@ -15,6 +15,10 @@ const HURRY_AT := 30.0
 
 const SLOT_SIZE := 42.0
 const SLOT_GAP := 6.0
+## The screen width to lay out against before the Control has been sized (headless tests).
+const SCREEN_W := 640.0
+## Where the slot row sits.
+const SLOT_TOP := 312.0
 const STABILITY_BAR := Vector2(96.0, 5.0)
 ## The objectives, top left: sized for three lines of SIZE_SMALL text.
 const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 50.0)
@@ -119,6 +123,23 @@ func slot_state(slot: int) -> String:
 ## Is this the slot the player has picked?
 func is_picked(slot: int) -> bool:
 	return _aim != null and _aim.slot == slot
+
+
+## Where slot `i` is drawn -- the one geometry both the drawing and the mouse use.
+func slot_rect(i: int) -> Rect2:
+	var w := size.x if size.x > 1.0 else SCREEN_W
+	var count := _rules.loadout.size()
+	var total := float(count) * SLOT_SIZE + float(maxi(count - 1, 0)) * SLOT_GAP
+	var left := roundf((w - total) * 0.5)
+	return Rect2(Vector2(left + float(i) * (SLOT_SIZE + SLOT_GAP), SLOT_TOP), Vector2(SLOT_SIZE, SLOT_SIZE))
+
+
+## The slot under a screen point, or -1.
+func slot_at(point: Vector2) -> int:
+	for i in _rules.loadout.size():
+		if slot_rect(i).has_point(point):
+			return i
+	return -1
 
 
 func push_banner(text: String) -> void:
@@ -237,12 +258,9 @@ func _draw_dp(w: float) -> void:
 		UiTheme.SIZE_SMALL)
 
 
-func _draw_slots(w: float) -> void:
-	var count := _rules.loadout.size()
-	var total := float(count) * SLOT_SIZE + float(maxi(count - 1, 0)) * SLOT_GAP
-	var at := Vector2(roundf((w - total) * 0.5), 312.0)
-	for i in count:
-		var box := Rect2(at + Vector2(float(i) * (SLOT_SIZE + SLOT_GAP), 0.0), Vector2(SLOT_SIZE, SLOT_SIZE))
+func _draw_slots(_w: float) -> void:
+	for i in _rules.loadout.size():
+		var box := slot_rect(i)
 		var state := slot_state(i)
 		draw_rect(box, UiTheme.COL_PANEL)
 		if flashing(i):

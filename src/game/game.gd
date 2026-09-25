@@ -96,15 +96,11 @@ func _ready() -> void:
 			await _mission.prewarmed
 		await get_tree().create_timer(1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
-		UiSound.stop_all()
-		Sfx.clear_cache()
-		get_tree().quit()
+		await _quit_cleanly()
 	elif "--flow-test" in args:
 		await _flow_test()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
-		UiSound.stop_all()
-		Sfx.clear_cache()
-		get_tree().quit()
+		await _quit_cleanly()
 
 
 ## Put up a screen, taking down whatever was there.
@@ -235,6 +231,19 @@ func _capture(file_name: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png(dir.path_join(file_name))
 	print("captured ", dir.path_join(file_name))
+
+
+## Stop any interface sound still ringing (the win/lose stings run past 2 seconds) and let the audio thread
+## actually release its playback before the process ends -- the same wait Battlefield.quit() gives the
+## mission's own Sfx pool, so a scripted --capture or --flow-test run does not leak a live playback.
+func _quit_cleanly() -> void:
+	UiSound.stop_all()
+	for i in 3:
+		await get_tree().process_frame
+	OS.delay_msec(150)
+	await get_tree().process_frame
+	Sfx.clear_cache()
+	get_tree().quit()
 
 
 ## The whole screen flow, driven without a mouse -- the part nobody could click through while it was being

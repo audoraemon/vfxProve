@@ -1737,7 +1737,9 @@ func in_intro() -> bool:
 	return _intro_left > 0.0
 ```
 
-At the top of `_process(delta)`, before the panning:
+In `_process(delta)`, directly after its opening `if not started(): return` guard (added after Task 2 by commit
+`c70815e` — a mission driven by `Game` exists for a few frames before `start()` has built anything) and before
+the panning:
 
 ```gdscript
 	if _intro_left > 0.0:
@@ -1751,7 +1753,8 @@ At the top of `_process(delta)`, before the panning:
 		return  # the camera is the intro's until it lands: no panning, no aiming
 ```
 
-At the top of `_unhandled_input(event)`, let only Esc through during the intro — a click there would cast before the clock starts:
+In `_unhandled_input(event)`, directly after its `if not started(): return` guard, let only Esc through during the
+intro — a click there would cast before the clock starts:
 
 ```gdscript
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):

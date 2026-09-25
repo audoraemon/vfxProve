@@ -13,6 +13,7 @@
 - Engine: `F:\Godot\Godot_v4.7.2-stable_win64_console.exe` (Git Bash: `/f/Godot/Godot_v4.7.2-stable_win64_console.exe`), renderer `gl_compatibility`.
 - Viewport 640×360, nearest filtering, `2d/snap/snap_2d_vertices_to_pixel=true`: pixel lines are hairlines (`width = -1.0`); never `draw_line` with width ≥ 1.
 - Every screen is drawn at 640×360 with `UiTheme`'s font, palette and gold frame. No new fonts, no new colours outside `UiTheme`, no `Label`/`Button` nodes: the screens draw themselves in `_draw()` and hit-test with `Menu`, the way `Hud` does. The reason is consistency — a themed `Button` and a drawn panel do not match at this size.
+- **No text smaller than `UiTheme.SIZE_SMALL` (11 px).** Pixelify Sans drops strokes below that with smoothing off — at 8 px "Citadel" read "Otodel" and "50" read "20" (fixed in `39be595`, which also turned off the font's broken `fi` ligature). Stack lines with `UiTheme.LINE_SMALL` / `LINE_BODY`, not hand-typed spacings. The font draws its 5 as an S-shape at every size; that is its design, not a bug to work around.
 - **A texture is loaded before it is drawn, never inside `_draw()`.** Milestone 3 lost an afternoon to this: `load()` during drawing hands over a texture the GPU does not have yet and paints a solid white block, and a screen that only redraws on change keeps the white. Load in `setup()` / `_ready()` and keep the reference.
 - The 11 effects and the effect toolkit (`src/fx/`) do not change. Neither do `Rules`, `Stability`, `Targeting` or `Hud`, beyond what a task names.
 - New code lives in `src/game/` (screens in `src/game/ui/`).
@@ -961,7 +962,7 @@ git commit -m "feat: the draft" -m "Prepare shows the briefing, the eleven power
 **Interfaces:**
 - Consumes: `Battlefield`, `Town`, `UiTheme`, `Iso`.
 - Produces:
-  - `Menu.new()`, `add(action: String, label: String, rect: Rect2) -> Menu`, `static column(actions: Array, labels: Array, centre_x: float, top: float, width: float, gap := 6.0) -> Menu`, `static row(actions: Array, labels: Array, centre_x: float, top: float, width: float, gap := 8.0) -> Menu`, `at(point: Vector2) -> String`, `rect_of(action: String) -> Rect2`, `draw_on(on: CanvasItem, hover: String, dim := PackedStringArray()) -> void`, `const HEIGHT := 18.0`
+  - `Menu.new()`, `add(action: String, label: String, rect: Rect2) -> Menu`, `static column(actions: Array, labels: Array, centre_x: float, top: float, width: float, gap := 6.0) -> Menu`, `static row(actions: Array, labels: Array, centre_x: float, top: float, width: float, gap := 8.0) -> Menu`, `at(point: Vector2) -> String`, `rect_of(action: String) -> Rect2`, `draw_on(on: CanvasItem, hover: String, dim := PackedStringArray()) -> void`, `const HEIGHT := 20.0`
   - `TitleScreen.new()` (a `Node`), `setup(best_score: int, best_rank: String) -> TitleScreen`, `signal action(name: String)` — `"play"`, `"sandbox"` or `"quit"`
   - `UiTheme.SIZE_TITLE := 32`
 
@@ -1016,7 +1017,7 @@ extends RefCounted
 ## A handful of pixel buttons: where each one is, which one a point is over, and how they draw. Title, Results
 ## and Pause all use it, so every button in the game looks and answers the same way.
 
-const HEIGHT := 18.0
+const HEIGHT := 20.0
 
 ## One entry per button: {"action": String, "label": String, "rect": Rect2}.
 var items: Array[Dictionary] = []
@@ -1072,7 +1073,7 @@ func draw_on(on: CanvasItem, hover: String, dim := PackedStringArray()) -> void:
 		UiTheme.frame(on, r, action == hover and not off)
 		var label := String(item.label)
 		var col := UiTheme.COL_DIM if off else (UiTheme.COL_GOLD if action == hover else UiTheme.COL_TEXT)
-		UiTheme.text(on, Vector2(roundf(r.get_center().x - UiTheme.width(label) * 0.5), r.position.y + 13.0),
+		UiTheme.text(on, Vector2(roundf(r.get_center().x - UiTheme.width(label) * 0.5), r.position.y + 14.0),
 			label, UiTheme.SIZE_BODY, col)
 ```
 
@@ -1175,7 +1176,7 @@ func _draw_ui() -> void:
 	_menu.draw_on(_ui, _hover)
 	if _best_score > 0:
 		var best := "Best %d  %s" % [_best_score, _best_rank]
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_SMALL) * 0.5), 290.0), best,
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_SMALL) * 0.5), 300.0), best,
 			UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 ```
 
@@ -1313,7 +1314,7 @@ const PANEL := Rect2(36.0, 20.0, 568.0, 320.0)
 const TABLE_X := 300.0
 const VALUE_R := 500.0
 const POINTS_R := 588.0
-const ROW := 12.0
+const ROW := 14.0
 
 var _result := {}
 var _ui: Control
@@ -1809,3 +1810,14 @@ After Task 7, before the milestone is called done:
 3. The four screen photographs, looked at and described.
 4. One full loop by hand: title → Play → draft four → MANIFEST → intro → Esc → Resume → play to an ending → Results over the ruins → Replay → Esc → Change powers (the four preselected) → back → Title, with the best score now shown on the title and on Prepare. Then quit and relaunch: the best score and the last loadout must survive.
 5. Show the user the four screen photographs and hand over `play.bat` for a playtest. Their notes on the screens, like their notes on the numbers, feed milestone 5.
+
+---
+
+## Changes made while executing
+
+- `c70815e` (after Task 2): `Game` waits for the mission's shader prewarm before calling `start()` — starting
+  it at once freed the prewarm's nodes under it — and `Mission._process` / `_unhandled_input` return until
+  `started()`. Task 7's intro code goes after that guard.
+- `39be595` (after Task 3): text sizes raised to 11 / 13 px and the `fi` ligature turned off, with the HUD and
+  Prepare re-flowed; Tasks 4 to 6 above already use the new sizes (`Menu.HEIGHT` 20, results rows 14 px).
+

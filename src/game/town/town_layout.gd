@@ -58,11 +58,35 @@ const HOUSE_GAP := Vector2(0.45, 0.5)
 const TREE_SIZE := Vector2(0.7, 0.7)
 
 
+## A wall run is built in short pieces instead of one long slab. A building sorts against the rest of the town
+## by the screen point of its south-east corner, which is the corner nearest the camera -- fine for a house,
+## wrong for a fifteen-unit wall, because that one corner put the whole north run in front of the north-west
+## district, the market and all nine parts of the Citadel. A piece this long still sorts correctly against
+## anything standing half a unit behind it, and a blast now takes a hole out of a wall instead of the side.
+const WALL_PIECE := 1.2
+
+
+## One wall run cut into pieces along its length. A run shorter than a piece comes back whole.
+static func wall_pieces(r: Rect2) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var along_x := r.size.x >= r.size.y
+	var run: float = r.size.x if along_x else r.size.y
+	var count := maxi(1, ceili(run / WALL_PIECE))
+	var step := run / float(count)
+	for i in count:
+		var at := step * float(i)
+		var pos: Vector2 = r.position + (Vector2(at, 0.0) if along_x else Vector2(0.0, at))
+		var size: Vector2 = Vector2(step, r.size.y) if along_x else Vector2(r.size.x, step)
+		out.append(Rect2(pos, size))
+	return out
+
+
 ## Every building except the Citadel, as {rect, height, kind, role}.
 static func structures() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for r: Rect2 in WALLS:
-		_add(out, r, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
+		for piece in wall_pieces(r):
+			_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
 	for r: Rect2 in CORNER_TOWERS:
 		_add(out, r, 70.0, Structure.Kind.KEEP, &"tower")
 	for r: Rect2 in SIDE_TOWERS:

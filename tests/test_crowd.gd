@@ -148,9 +148,8 @@ static func run(t) -> void:
 	for p in queue:
 		if is_instance_valid(p):
 			p.release_from_queue()
-			p.ground_pos = gate.center() - gate.center().normalized() * (Crowd.QUEUE_REACH + 3.0)
+			p.ground_pos = gate.center() - gate.center().normalized() * (Crowd.QUEUE_DEPTH0 + Crowd.QUEUE_REACH + 3.0)
 	crowd._gate_next.erase(gate)
-	crowd._gate_passing.erase(gate)
 	crowd.advance(0.0)
 
 	# Reaching an exit escapes.

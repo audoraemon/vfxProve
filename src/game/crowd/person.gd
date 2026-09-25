@@ -68,6 +68,11 @@ var queue_spot := Vector2.INF
 ## longest -- immune to the spots array's own distance-to-face ordering, which zig-zags between the two sides
 ## of a row and so is not itself a stable left-to-right order to sort by. Negative while not queued.
 var queue_since := -1.0
+## The gate this person was just released from and is walking to, or null. Set by the gate itself
+## (release_from_queue() only clears queue_spot); cleared once it is through, dead, no longer fleeing, or has
+## wandered too far off to still be "on its way out". While set, this person does not rejoin that gate's
+## waiting crowd, even though it is not the only one with a pass any more.
+var passing_gate: Structure = null
 ## The field of buildings, for sorting against them. Null in tests that build a person without a town.
 var env: EnvironmentField
 ## This person's own speed multiplier, drawn from PACE_RANGE, so a crowd is not a marching column.

@@ -278,8 +278,8 @@ func _crowd_test() -> void:
 			var saved_position := _bf.camera.position
 			for i in _town.gates.size():
 				var g: Structure = _town.gates[i]
-				_bf.camera.zoom = Vector2.ONE * 1.4
-				_bf.camera.position = Iso.ground_to_screen(g.center() - g.center().normalized() * 1.5).round()
+				_bf.camera.zoom = Vector2.ONE * 1.2
+				_bf.camera.position = Iso.ground_to_screen(g.center() - g.center().normalized() * 3.2).round()
 				await _bf.wait_frames(3)
 				await _bf.save_capture("crowd_gate_%d.png" % i)
 			_bf.camera.zoom = saved_zoom

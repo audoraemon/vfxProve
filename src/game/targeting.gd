@@ -156,25 +156,37 @@ func _draw() -> void:
 			_cone(_press, float(a.r), float(a.arc), edge)
 
 
+## Every preview line is drawn twice: a dark stroke a hair outside, then the bright one. Hairlines are all
+## this project draws (a pixel line cannot be made thicker), and one gold hairline vanishes over lit stone.
+const SHADE := Color(0.05, 0.04, 0.02, 0.75)
+## How far outside the bright line the dark one sits, in ground units (about two pixels).
+const SHADE_GAP := 0.05
+
+
 func _ring(at: Vector2, r: float, col: Color) -> void:
+	draw_arc(at, r + SHADE_GAP, 0.0, TAU, 48, SHADE, -1.0)
 	draw_arc(at, r, 0.0, TAU, 48, col, -1.0)
 
 
 func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) -> void:
-	var side := Vector2(-dir.y, dir.x) * half
-	var a := from + side
-	var b := from + dir * length + side
-	var c := from + dir * length - side
-	var d := from - side
-	draw_polyline(PackedVector2Array([a, b, c, d, a]), col, -1.0)
+	var unit := Vector2(-dir.y, dir.x)
+	for pass_i in 2:
+		var grow: float = SHADE_GAP if pass_i == 0 else 0.0
+		var side := unit * (half + grow)
+		var tip := dir * (length + grow)
+		var back := dir * -grow
+		draw_polyline(PackedVector2Array([from + back + side, from + tip + side, from + tip - side,
+			from + back - side, from + back + side]), SHADE if pass_i == 0 else col, -1.0)
 	draw_line(from, from + dir * length, COL_FAINT, -1.0)
 
 
 func _cone(from: Vector2, r: float, arc: float, col: Color) -> void:
 	# The dragon's own start angle: its facing, biased 8 degrees to its right so the jet misses its body.
 	var start := Vector2(1, 0).angle() - arc * 0.5 - deg_to_rad(8.0)
-	var points := PackedVector2Array([from])
-	for i in 17:
-		points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / 16.0) * r)
-	points.append(from)
-	draw_polyline(points, col, -1.0)
+	for pass_i in 2:
+		var grow: float = SHADE_GAP if pass_i == 0 else 0.0
+		var points := PackedVector2Array([from])
+		for i in 17:
+			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / 16.0) * (r + grow))
+		points.append(from)
+		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)

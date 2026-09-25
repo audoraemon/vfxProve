@@ -209,8 +209,16 @@ func _draw_banners(w: float) -> void:
 	var fade := clampf((BANNER_SECONDS - age) / 0.4, 0.0, 1.0)
 	var col := UiTheme.COL_GOLD
 	col.a = fade
-	var x := roundf((w - UiTheme.width(text, UiTheme.SIZE_BIG)) * 0.5)
-	UiTheme.text(self, Vector2(x, 128.0), text, UiTheme.SIZE_BIG, col)
+	var text_w := UiTheme.width(text, UiTheme.SIZE_BIG)
+	var x := roundf((w - text_w) * 0.5)
+	# A banner announces something that is happening right now, which means it lands on top of the effect that
+	# caused it. On its own bar with a gold edge it stays readable over lightning or a wave.
+	var bar := Rect2(x - 8.0, 116.0, text_w + 16.0, 20.0)
+	draw_rect(bar, Color(0.03, 0.03, 0.05, 0.78 * fade))
+	var edge := UiTheme.COL_GOLD_DARK
+	edge.a = fade
+	draw_rect(bar, edge, false, -1.0)
+	UiTheme.text(self, Vector2(x, 131.0), text, UiTheme.SIZE_BIG, col)
 
 
 func _draw_dp(w: float) -> void:
@@ -241,10 +249,12 @@ func _draw_slots(w: float) -> void:
 			draw_texture_rect(icon, box, false, Color(0.45, 0.45, 0.5) if state in ["cooldown", "dp"] else Color.WHITE)
 		# Gold only for the picked slot (spec §5): when every affordable slot wore it, the pick was invisible.
 		UiTheme.frame(self, box, is_picked(i))
-		UiTheme.text(self, box.position + Vector2(2.0, 9.0), "%d" % (i + 1), UiTheme.SIZE_SMALL)
+		# The hotkey and the cost sit on their own dark plates: painted icons are busy, and a bare glyph over one
+		# of them is a smudge at this size.
+		_plate(box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
 		var cost := "%d" % _rules.cost(i)
-		UiTheme.text(self, box.position + Vector2(SLOT_SIZE - UiTheme.width(cost, UiTheme.SIZE_SMALL) - 2.0,
-			SLOT_SIZE - 6.0), cost, UiTheme.SIZE_SMALL,
+		var cost_w := UiTheme.width(cost, UiTheme.SIZE_SMALL)
+		_plate(box.position + Vector2(SLOT_SIZE - cost_w - 3.0, SLOT_SIZE - 10.0), cost,
 			UiTheme.COL_BAD if state == "dp" else UiTheme.COL_TEXT)
 		if state == "cooldown":
 			# The cooldown as a shade falling away from the top, with its seconds over it.
@@ -253,6 +263,13 @@ func _draw_slots(w: float) -> void:
 			draw_rect(Rect2(box.position, Vector2(SLOT_SIZE, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
 			var secs := "%d" % ceili(left)
 			UiTheme.text(self, box.get_center() + Vector2(-UiTheme.width(secs) * 0.5, 4.0), secs, UiTheme.SIZE_BODY)
+
+
+## A short label on a dark plate, `at` being the plate's top-left corner.
+func _plate(at: Vector2, label: String, col: Color) -> void:
+	var w := UiTheme.width(label, UiTheme.SIZE_SMALL)
+	draw_rect(Rect2(at, Vector2(w + 2.0, 9.0)), Color(0, 0, 0, 0.62))
+	UiTheme.text(self, at + Vector2(1.0, 7.0), label, UiTheme.SIZE_SMALL, col)
 
 
 func _draw_popups() -> void:

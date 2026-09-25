@@ -25,6 +25,8 @@ const TEST_CASTS := [
 	[24.0, 3, TownLayout.CITADEL_ORIGIN, Vector2.ZERO],
 ]
 const TEST_SHOTS := [0.5, 2.0, 8.0, 16.0, 26.0, 30.0]
+## How many banner frames the scripted run takes before it stops bothering.
+const BANNER_SHOTS := 3
 const TEST_END := 34.0
 
 var _bf: Battlefield
@@ -200,6 +202,14 @@ func _mission_test() -> void:
 	_aim.hover(TownLayout.CITADEL_ORIGIN)
 	var casts := TEST_CASTS.duplicate()
 	var shots := TEST_SHOTS.duplicate()
+	# Banners are the one thing a fixed timetable cannot catch: they fire when the town happens to break. The
+	# run takes its own shot a moment after each of the first few, so the layout is actually seen.
+	var banner_shots: Array[String] = []
+	_rules.banner.connect(func(text: String) -> void:
+		if banner_shots.size() < BANNER_SHOTS:
+			banner_shots.append(text)
+	)
+	var banners_taken := 0
 	var t := 0.0
 	while t < TEST_END:
 		await get_tree().process_frame
@@ -218,6 +228,10 @@ func _mission_test() -> void:
 		while not shots.is_empty() and t >= float(shots[0]):
 			var at: float = shots.pop_front()
 			await _bf.save_capture("mission_%04d.png" % roundi(at * 100.0))
+		while banners_taken < banner_shots.size():
+			banners_taken += 1
+			await _bf.save_capture("mission_banner_%d.png" % banners_taken)
+			print("banner ", banners_taken, ": ", banner_shots[banners_taken - 1])
 	print("MISSION test dp=%.1f buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
 		_rules.dp, _rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
 		roundi(_rules.stability.total() * 100.0), roundi(_town.citadel.fraction() * 100.0)])

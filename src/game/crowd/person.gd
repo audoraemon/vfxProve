@@ -20,6 +20,16 @@ const STROLL_CHANCE := 0.004
 ## How far a calm citizen drifts from home, and a posted soldier from its spot.
 const CALM_SPREAD := 1.4
 const POST_SPREAD := 0.35
+## How far around its feet (ground units) a person looks for buildings it might be drawn against. A building
+## further away cannot overlap it on screen.
+const SORT_REACH := 3.0
+## How often a person re-reads its draw order. 160 people against the buildings around each of them is real
+## work; ten times a second is plenty for someone walking under two units a second.
+const SORT_HZ := 10.0
+## A person's sprite on screen, relative to its feet: wide enough for a spear, tall enough for a helmet.
+const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
+## Drawn above a building's footprint: its height plus a roof or battlements.
+const ROOF_MARGIN := 14.0
 
 const CIT_SKIN := [Color("c89a72"), Color("b07a52"), Color("8a5a3a")]
 const CIT_TUNIC := [Color("8a5a3a"), Color("6a6a4a"), Color("7a4a4a"), Color("4a5a6a"), Color("8a7a4a"), Color("6a5a7a")]
@@ -41,6 +51,10 @@ var anchor := Vector2.ZERO
 var grid: WalkGrid
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0
+## The field of buildings, for sorting against them. Null in tests that build a person without a town.
+var env: EnvironmentField
+## Seconds until the next draw-order reading, staggered by instance so a crowd does not all re-sort together.
+var _sort_in := 0.0
 
 var _path := PackedVector2Array()
 var _leg := 0
@@ -123,6 +137,10 @@ func _think(delta: float) -> void:
 				set_goal(TownLayout.MARKET_SQUARE.get_center() if rng.randf() < 0.5 else anchor)
 		Mind.HOLD:
 			_idle = maxf(_idle, 0.2)
+	_sort_in -= delta
+	if env != null and _sort_in <= 0.0:
+		_sort_in = 1.0 / SORT_HZ + float(get_instance_id() % 7) * 0.001
+		sort_bias = sort_bias_for(ground_pos, env.near(ground_pos, SORT_REACH))
 
 
 func _mind_speed() -> float:
@@ -258,6 +276,42 @@ func hold_ground() -> void:
 ## True once a fleeing citizen has reached the exit it was walking to; the Crowd then removes it.
 func has_escaped() -> bool:
 	return mind == Mind.FLEE and _goal != Vector2.INF and ground_pos.distance_to(_goal) <= GOAL_REACH
+
+
+# --- Draw order ----------------------------------------------------------------
+
+## The sort-key shift (screen px) that draws a person at `feet` after every building in `near` it stands in
+## front of and before every one it stands behind, counting only buildings that overlap it on screen. 0 when
+## its own feet already do that, or when nothing can (it would have to be before and after the same key).
+static func sort_bias_for(feet: Vector2, near: Array[Structure]) -> float:
+	var own := (feet.x + feet.y) * 16.0
+	var me := Rect2(Iso.ground_to_screen(feet) + SPRITE_BOX.position, SPRITE_BOX.size)
+	var lo := -INF
+	var hi := INF
+	for s in near:
+		if not is_instance_valid(s) or s.destroyed or s.walkable:
+			continue
+		var fp := s.footprint
+		if fp.has_point(feet) or not _screen_box(fp, s.height).intersects(me):
+			continue
+		var key := s.position.y
+		if feet.x >= fp.end.x or feet.y >= fp.end.y:
+			lo = maxf(lo, key + 1.0)
+		else:
+			hi = minf(hi, key - 1.0)
+	if (own >= lo and own <= hi) or lo > hi:
+		return 0.0
+	return (lo if own < lo else hi) - own
+
+
+## A footprint's box on screen, raised by its height and a roof.
+static func _screen_box(fp: Rect2, h: float) -> Rect2:
+	var box := Rect2(Iso.ground_to_screen(fp.position), Vector2.ZERO)
+	for corner in [Vector2(fp.end.x, fp.position.y), fp.end, Vector2(fp.position.x, fp.end.y)]:
+		box = box.expand(Iso.ground_to_screen(corner))
+	box.position.y -= h + ROOF_MARGIN
+	box.size.y += h + ROOF_MARGIN
+	return box
 
 
 # --- Drawing -----------------------------------------------------------------

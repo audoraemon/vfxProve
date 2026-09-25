@@ -16,6 +16,7 @@ const SUITES := [
 	"res://tests/test_walk_grid.gd",
 	"res://tests/test_person.gd",
 	"res://tests/test_crowd.gd",
+	"res://tests/test_sort.gd",
 	"res://tests/test_stability.gd",
 	"res://tests/test_rules.gd",
 	"res://tests/test_score.gd",

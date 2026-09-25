@@ -41,6 +41,9 @@ const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const MASONRY := [Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE, Kind.TEMPLE, Kind.BARRACKS]
 ## Units walk over these while they stand.
 const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
+## Flat things people walk on. They are drawn under every person whatever their sort key says: a bridge sorts
+## by its far corner, and drew over everyone crossing it.
+const FLAT := [Kind.BRIDGE, Kind.FARM_FIELD]
 ## Nothing to crack on these.
 const NO_CRACKS := [Kind.FARM_FIELD, Kind.TREE]
 const TEMPLE_ROOF := [Color("4f8a8a"), Color("3f7070"), Color("2f5656")]
@@ -126,6 +129,7 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
 		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0}[k]
 	hp = max_hp
 	walkable = k in WALKABLE
+	z_index = -1 if k in FLAT else 0
 	var g0 := rect.position
 	var g2 := rect.end
 	var front := Iso.ground_to_screen(g2)

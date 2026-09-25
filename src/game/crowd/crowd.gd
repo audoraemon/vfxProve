@@ -109,6 +109,7 @@ func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	p.rng.seed = _rng.randi()
 	_field.add(p)
 	p.setup_person(is_soldier, at, _grid)
+	p.env = _env
 	_parent.add_child(p)
 	return p
 

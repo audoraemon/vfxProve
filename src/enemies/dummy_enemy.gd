@@ -78,6 +78,11 @@ var _on_thaw := Callable()
 var _shards: Array[Vector4] = []
 ## Last drawn art signature; -1 forces the first draw.
 var _drawn_art := -1
+## Screen pixels added to this unit's y-sort key without moving where it is drawn. Zero except for the town's
+## people, who use it to sort in front of a long building they stand in front of (Person.sort_bias_for).
+var sort_bias := 0.0
+## Where drawing starts relative to the node: the sort bias drawn back out, so the body stays on its feet.
+var _draw_origin := Vector2.ZERO
 ## Seconds until the next light reading; spread across units so they do not all sample on the same frame.
 var _light_in := 0.0
 
@@ -110,7 +115,7 @@ func _art_signature() -> int:
 	if state == State.DEAD:
 		# Death animations move every frame; let them redraw.
 		return int(_dead_time * 1000.0) + 1
-	var walk := int(_anim * (5.0 if look == Look.ORC else 6.0)) % 2
+	var walk := int(_anim * _walk_rate()) % 2
 	# Folded with multiplies rather than hash([...]), which would allocate an array every frame per unit.
 	var sig := walk * 2 + (1 if _facing > 0 else 0)
 	# A hoisted body tumbles with _anim, so the angle itself has to count; eight steps per radian reads smooth.
@@ -119,7 +124,21 @@ func _art_signature() -> int:
 	sig = sig * 97 + int(round(_lift))
 	sig = sig * 97 + int(_frozen * 8.0)
 	sig = sig * 97 + int(_flash * 40.0)
-	return sig * 97 + int(state)
+	sig = sig * 97 + int(state)
+	# Where the body is drawn from moves with the sort bias; a stale draw would sit that far off its feet.
+	sig = sig * 131 + int(_draw_origin.y) + 64
+	return sig * 7 + _pose_signature()
+
+
+## What a subclass draws differently that the signature above cannot see (a person running or stumbling).
+func _pose_signature() -> int:
+	return 0
+
+
+## Leg steps per unit of _anim. A person running steps faster (Task 4); the signature samples the same rate,
+## or a redraw would only happen on the slower cycle and the legs would stutter.
+func _walk_rate() -> float:
+	return 5.0 if look == Look.ORC else 6.0
 
 
 func tick(delta: float) -> void:
@@ -318,7 +337,9 @@ func _pick_target() -> void:
 
 
 func _sync_position() -> void:
-	position = Iso.ground_to_screen(ground_pos).round()
+	var bias := roundf(sort_bias)
+	position = Iso.ground_to_screen(ground_pos).round() + Vector2(0.0, bias)
+	_draw_origin = Vector2(0.0, -bias)
 
 
 func _tint(c: Color) -> Color:
@@ -343,6 +364,7 @@ func _px(x: int, y: int, w: int, h: int, c: Color) -> void:
 
 
 func _draw() -> void:
+	draw_set_transform(_draw_origin)
 	if state == State.DEAD:
 		match _kind:
 			&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind":
@@ -361,9 +383,9 @@ func _draw() -> void:
 	if _lift > 8.0:
 		# Hoisted and tumbling.
 		draw_rect(Rect2(-4, -1, 9, 2), Color(0, 0, 0, 0.35 * clampf(1.0 - _lift / 80.0, 0.2, 1.0)))
-		draw_set_transform(Vector2(0, -_lift - 7.0).round(), _anim * 1.4)
+		draw_set_transform(_draw_origin + Vector2(0, -_lift - 7.0).round(), _anim * 1.4)
 		_draw_body(7, 0)
-		draw_set_transform(Vector2.ZERO)
+		draw_set_transform(_draw_origin)
 		return
 	draw_rect(Rect2(-4, -1, 9, 2), COL_SHADOW)
 	_draw_body(-int(round(_lift)), 0)
@@ -376,7 +398,7 @@ func _draw_body(lift: int, top_only: int) -> void:
 	if look == Look.ORC:
 		_draw_orc(lift, top_only)
 		return
-	var step := int(_anim * 6.0) % 2 if state != State.DEAD and not is_frozen() else 0
+	var step := int(_anim * _walk_rate()) % 2 if state != State.DEAD and not is_frozen() else 0
 	var f := _facing
 	if top_only == 0:
 		_px(-3, -5 + lift, 2, 5 - step, COL_DARK)
@@ -396,7 +418,7 @@ func _draw_thrown() -> void:
 	var shadow_a := 0.35 * clampf(1.0 - _alt / 60.0, 0.2, 1.0)
 	draw_rect(Rect2(_fly.round() + Vector2(-4, -1), Vector2(9, 2)), Color(0, 0, 0, shadow_a))
 	var center := (_fly + Vector2(0, -_alt - 7.0)).round()
-	draw_set_transform(center, _rot)
+	draw_set_transform(_draw_origin + center, _rot)
 	_draw_body(7, 0)
 	# Smouldering while charred.
 	if _char > 0.4 and _dead_time < 1.1:
@@ -405,7 +427,7 @@ func _draw_thrown() -> void:
 		draw_rect(Rect2(-2, -4, 1, 1), ember)
 		draw_rect(Rect2(1, 0, 1, 1), COL_HOT if _dead_time < 0.4 else ember)
 		draw_rect(Rect2(-3, 2, 1, 1), ember)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_origin)
 
 
 ## Spaghettified: squeezed thin and dragged toward the singularity, then gone.
@@ -413,9 +435,9 @@ func _draw_stretched() -> void:
 	var k := clampf(_dead_time / 0.3, 0.0, 1.0)
 	var pull := _toward * 26.0 * k * k
 	var squash := lerpf(1.0, 0.25, k)
-	draw_set_transform(pull.round(), _toward.angle() + PI * 0.5, Vector2(squash, 1.0 + 1.8 * k))
+	draw_set_transform(_draw_origin + pull.round(), _toward.angle() + PI * 0.5, Vector2(squash, 1.0 + 1.8 * k))
 	_draw_body(0, 0)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_origin)
 
 
 ## Cut by the laser: legs drop, torso slides off along a glowing cut, then burns away into embers.
@@ -425,9 +447,9 @@ func _draw_cut() -> void:
 		# Legs stay put.
 		_px(-3, -5, 2, 5, COL_DARK)
 		_px(1, -5, 2, 5, COL_DARK)
-		draw_set_transform(_fly.round())
+		draw_set_transform(_draw_origin + _fly.round())
 		_draw_body(0, 1)
-		draw_set_transform(Vector2.ZERO)
+		draw_set_transform(_draw_origin)
 		# Molten cut line.
 		var cut := COL_HOT if _dead_time < 0.25 else COL_EMBER
 		cut.a = 1.0 - burn
@@ -492,9 +514,9 @@ func _draw_shatter() -> void:
 func _draw_burn() -> void:
 	var k := clampf((_dead_time - 0.5) / 0.8, 0.0, 1.0)
 	if k < 1.0:
-		draw_set_transform(Vector2(0, roundf(k * 8.0)), 0.0, Vector2(1.0, 1.0 - k * 0.8))
+		draw_set_transform(_draw_origin + Vector2(0, roundf(k * 8.0)), 0.0, Vector2(1.0, 1.0 - k * 0.8))
 		_draw_body(0, 0)
-		draw_set_transform(Vector2.ZERO)
+		draw_set_transform(_draw_origin)
 	draw_rect(Rect2(-5, -2, 10, 2), COL_CHAR)
 	for e in _embers:
 		if e.z > 0.0:

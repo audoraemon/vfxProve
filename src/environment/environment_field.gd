@@ -121,6 +121,20 @@ func structures() -> Array[Structure]:
 	return _structures
 
 
+## Structures whose footprint comes within `r` of `g`, from the spatial index -- for a person deciding what it
+## stands in front of. A radius beyond the index's margin still works; it just walks more cells.
+func near(g: Vector2, r: float) -> Array[Structure]:
+	var out: Array[Structure] = []
+	var c0 := _cell(g - Vector2(r, r))
+	var c1 := _cell(g + Vector2(r, r))
+	for cx in range(c0.x, c1.x + 1):
+		for cy in range(c0.y, c1.y + 1):
+			for s in _grid.get(Vector2i(cx, cy), []):
+				if is_instance_valid(s) and not out.has(s) and (s as Structure).footprint.grow(r).has_point(g):
+					out.append(s)
+	return out
+
+
 ## True when a standing structure units cannot walk through occupies the ground point (rubble, gates, the bridge
 ## and fields are walkable). Only the structures indexed in g's cell are checked.
 func blocked(g: Vector2, margin := 0.15) -> bool:

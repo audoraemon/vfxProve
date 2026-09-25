@@ -26,6 +26,15 @@ const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 ## Grass, the same clear colour the debug scene uses.
 const CLEAR := Color("4a6a2a")
 
+## The mission opens with the camera sweeping in to the Citadel under a MANIFEST banner, and the clock only
+## starts when it arrives (spec §1).
+const INTRO_SECONDS := 2.0
+## Where the sweep starts: the whole town, from further out.
+const INTRO_FROM := Vector2(0.0, 3.0)
+const INTRO_FROM_ZOOM := 0.5
+## Where the camera rests for play, and how close.
+const PLAY_ZOOM := 0.75
+
 ## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
 const TEST_CASTS := [
 	[1.0, 0, Vector2(-1.0, -6.0), Vector2(0.2, 1.0)],
@@ -54,6 +63,8 @@ var _scripted := false
 var autostart := true
 ## True once _ready() has finished compiling the effect shaders.
 var is_prewarmed := false
+## Seconds of intro left; 0 once the mission is under way.
+var _intro_left := 0.0
 
 
 func _ready() -> void:
@@ -73,8 +84,6 @@ func _ready() -> void:
 	var seed_value := int(seed_arg) if seed_arg != "" else (7 if scripted else Time.get_ticks_usec())
 	if autostart:
 		start(_loadout(args), seed_value)
-	_bf.camera.zoom = Vector2.ONE * 0.75
-	_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
 	await FxParts.prewarm(_bf.ctx.distort)
 	is_prewarmed = true
 	prewarmed.emit()
@@ -140,6 +149,24 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
 
+	if _scripted:
+		# The scripted runs time their casts from the first frame and frame the town the way milestone 3 did,
+		# so their captures and numbers stay comparable: no intro for them.
+		_intro_left = 0.0
+		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
+		_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
+	else:
+		_intro_left = INTRO_SECONDS
+		_rules.set_process(false)  # the clock waits for the camera
+		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
+		_bf.camera.position = Iso.ground_to_screen(INTRO_FROM).round()
+		_rules.banner.emit("MANIFEST")
+
+
+## True while the sweep is still landing: the world does not yet respond to input or run its clock.
+func in_intro() -> bool:
+	return _intro_left > 0.0
+
 
 ## The drafted loadout: the command line's, or the default four.
 func _loadout(args: PackedStringArray) -> PackedStringArray:
@@ -175,6 +202,8 @@ func _on_over(won: bool, reason: String) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not started():
+		return
+	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var i := SLOT_KEYS.find(event.physical_keycode)
@@ -212,6 +241,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not started():
 		return
+	if _intro_left > 0.0:
+		_intro_left = maxf(0.0, _intro_left - delta)
+		var k := 1.0 - _intro_left / INTRO_SECONDS
+		var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
+		_bf.camera.position = Iso.ground_to_screen(INTRO_FROM.lerp(TownLayout.CITADEL_ORIGIN, smooth)).round()
+		_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
+		if _intro_left <= 0.0:
+			_rules.set_process(true)
+		return  # the camera is the intro's until it lands: no panning, no aiming
 	var pan := Battlefield.key_pan_dir()
 	if pan != Vector2.ZERO:
 		# Pan in real time regardless of hit-stop, faster when zoomed out.

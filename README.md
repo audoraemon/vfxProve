@@ -40,7 +40,7 @@ $godot = 'F:\Godot\Godot_v4.7.2-stable_win64_console.exe'
 & $godot --path .
 ```
 
-Or open the folder in the Godot 4.7.2 editor and press F5. (`play.bat` launches the KAK mission below, not this sandbox.)
+Or open the folder in the Godot 4.7.2 editor and press F5. Running the project (`& $godot --path .`, F5 in the editor, or `play.bat`) opens the **KAK title screen**; the VFX sandbox below is its "VFX Sandbox" button, or `& $godot --path . --scene res://scenes/sandbox.tscn`.
 
 ### Controls
 
@@ -57,7 +57,7 @@ Or open the folder in the Godot 4.7.2 editor and press F5. (`play.bat` launches 
 
 ## Kingdoms Amid Kataclysm (KAK) — game slice in progress
 
-The approved effects are becoming a one-mission game (spec: `docs/superpowers/specs/2026-09-19-kak-one-mission-game-design.md`). Milestone 3: the pieces became a mission you can play — Divine Power and its four-minute clock, City Stability, win/lose and scoring (`rules.gd`), aim previews for all eleven powers (`targeting.gd`) and the in-mission HUD (`ui/hud.gd`), composed into `mission.gd` / `scenes/mission.tscn`. Milestone 2 inhabited the town: 110 citizens who wander, panic, flee to the exits and queue at the gates, and 50 soldiers who hold their posts, rally to the Citadel when the alarm rises, and hold their ground in its rubble. Milestone 1 built the shared `Battlefield`, the walled town of Aldermere and its fortified Royal Citadel. Play it with `play.bat`, or:
+The approved effects are becoming a one-mission game (spec: `docs/superpowers/specs/2026-09-19-kak-one-mission-game-design.md`). Milestone 4 put the game itself around the mission: Title, Prepare with the four-card draft, Pause, and Results with the score and rank, with the save file at `user://kak_save.cfg`. Milestone 3: the pieces became a mission you can play — Divine Power and its four-minute clock, City Stability, win/lose and scoring (`rules.gd`), aim previews for all eleven powers (`targeting.gd`) and the in-mission HUD (`ui/hud.gd`), composed into `mission.gd` / `scenes/mission.tscn`. Milestone 2 inhabited the town: 110 citizens who wander, panic, flee to the exits and queue at the gates, and 50 soldiers who hold their posts, rally to the Citadel when the alarm rises, and hold their ground in its rubble. Milestone 1 built the shared `Battlefield`, the walled town of Aldermere and its fortified Royal Citadel. Play it with `play.bat`, or:
 
 ```powershell
 & $godot --path . --scene res://scenes/mission.tscn
@@ -65,18 +65,20 @@ The approved effects are becoming a one-mission game (spec: `docs/superpowers/sp
 
 | Input | Action |
 |---|---|
+| `Enter` | Play on the title, MANIFEST on Prepare once four are picked, Replay on Results |
 | `1`–`4` | pick a power from the drafted loadout |
 | Left click | cast a point power at the cursor |
 | Left drag | line powers (Heaven Splitter, Tsunami Breaker): press = start, drag = direction |
 | `WASD` / arrows, middle drag | pan |
 | Mouse wheel | zoom |
 | `R` | restart with a fresh mission |
-| `Esc` | cancel an aim in progress, else quit |
+| `Esc` | cancel an aim in progress, else quit; back on Prepare, pause in a mission, resume from pause, Title from Results |
 
 The loadout, seed and population can be set on the command line: `-- --loadout=heaven,gravity,judgement,nova --seed=7 --people=80`; the default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and Nuclear Nova. A mission ends with a banner and its score, rank and stat table printed to the console — milestone 4 turns that into the Results screen.
 
 ```bash
 SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test   # scripted mission; logs MISSION test ...
+SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture   # one screen → captures/screen_<name>.png (title|prepare|results|pause)
 ```
 
 ### Debug scene
@@ -130,7 +132,7 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=495 failures=0
+bash tools/test.sh                                   # headless tests → checks=562 failures=0
 python tools/audio/synth.py --verify                 # audio cue checks → 78 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png
@@ -139,7 +141,7 @@ python tools/contact_sheet.py nova 4                 # tile captures into captur
 Benchmark (all four effects at once, or one with `--only=`):
 
 ```powershell
-& $godot --path . --audio-driver Dummy --disable-vsync --max-fps 0 -- --bench
+& $godot --path . --audio-driver Dummy --disable-vsync --max-fps 0 --scene res://scenes/sandbox.tscn -- --bench
 ```
 
 Dev machine results after the impact pass (RTX 3060 Ti; another game was running and using ~2 CPU cores, so numbers swing a lot between identical runs — the empty scene alone varied 380–448 FPS; rerun on an idle machine for real numbers):

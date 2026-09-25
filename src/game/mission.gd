@@ -36,8 +36,9 @@ const INTRO_FROM_ZOOM := 0.5
 const PLAY_ZOOM := 0.75
 
 ## The ending plays out in slow motion before the results: the last blow lands, the dust settles, then the
-## numbers (playtest note 9). Real seconds, and the time scale the world runs at meanwhile.
-const ENDING_SECONDS := 1.6
+## numbers (playtest note 5: three seconds between the mission's end and the results). Real seconds, and the
+## time scale the world runs at meanwhile.
+const ENDING_SECONDS := 3.0
 const ENDING_TIME_SCALE := 0.3
 
 ## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].

@@ -20,8 +20,8 @@ const DEFAULT_DIR := Vector2(1, 0)
 ## What each power covers, taken from the effect's own constants (the comment names them). Milestone 5 may
 ## repaint these; it must not invent numbers for them.
 const AREAS := {
-	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH
-	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6},
+	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
+	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
 	"tornado": {"shape": "circle", "r": 3.2, "inner": 0.6, "roam": 7.0},
 	# CONE_RADIUS, SWEEP_ARC (the dragon is locked to screen down-right, so this cone does not follow the mouse)
@@ -146,6 +146,15 @@ func area() -> Dictionary:
 	return AREAS.get(_rules.key(slot), {})
 
 
+## Where a lane power's lane begins: at the cast for a power that sweeps forward from it, half a length back for
+## one centred on it.
+static func lane_start(key: String, press: Vector2, dir: Vector2) -> Vector2:
+	var a: Dictionary = AREAS.get(key, {})
+	if bool(a.get("centred", false)):
+		return press - dir * float(a.get("length", 0.0)) * 0.5
+	return press
+
+
 func _is_drag() -> bool:
 	return String(_rules.power(slot).get("aim", "click")) == "drag"
 
@@ -153,7 +162,8 @@ func _is_drag() -> bool:
 func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
 	var a: Dictionary = AREAS.get(key, {})
 	if String(a.get("shape", "")) == "lane":
-		_crowd.on_cast(at, aim_dir(), float(a.length))
+		var dir := aim_dir()
+		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length))
 	else:
 		_crowd.on_cast(at)
 	# A power that went out is on its cooldown: unfocus, so its area stops following the cursor.
@@ -174,7 +184,8 @@ func _draw() -> void:
 			if a.has("roam"):
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
-			_lane(_press, aim_dir(), float(a.length), float(a.half), edge)
+			var dir := aim_dir()
+			_lane(lane_start(_rules.key(slot), _press, dir), dir, float(a.length), float(a.half), edge)
 			if a.has("fissure"):
 				for i in 8:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5

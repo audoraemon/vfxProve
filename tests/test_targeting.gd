@@ -33,6 +33,15 @@ static func run(t) -> void:
 			missing += " " + key
 	t.check(missing == "", "every power has an area to show (missing:%s)" % missing)
 
+	# The Heaven Splitter's line is centred on the cast (heaven_splitter.gd lays its lane from
+	# origin - dir * LINE_LENGTH / 2); the Tsunami and the Laser Grid start at it.
+	t.check(bool(Targeting.AREAS["heaven"].get("centred", false)), "the Heaven Splitter's lane is centred on the cast")
+	t.check(not bool(Targeting.AREAS["tsunami"].get("centred", false)) and not bool(Targeting.AREAS["laser"].get("centred", false)),
+		"the Tsunami's and the Laser Grid's start at it")
+	var mid := Targeting.lane_start("heaven", Vector2(2.0, 2.0), Vector2(1.0, 0.0))
+	t.check(mid.is_equal_approx(Vector2(-3.0, 2.0)), "so a Heaven Splitter at (2, 2) pointing east starts 5 units west (%s)" % mid)
+	t.check(Targeting.lane_start("tsunami", Vector2(2.0, 2.0), Vector2(1.0, 0.0)) == Vector2(2.0, 2.0), "and a Tsunami starts where it is cast")
+
 	# Aiming: a click casts a point power where it was clicked, a drag casts along its direction.
 	var env := EnvironmentField.new()
 	var town := Town.new()

@@ -50,9 +50,20 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	save = SaveFile.new().load_from()
 	loadout = save.last_loadout
-	# Until Task 3 lands the title screen, go straight into a mission so the game is playable and the
-	# scripted runs keep working.
-	go_to(Screen.MISSION)
+	var args := OS.get_cmdline_user_args()
+	var show := Battlefield.arg_value(args, "--show")
+	match show:
+		"prepare":
+			go_to(Screen.PREPARE)
+		_:
+			# The title screen arrives in Task 4; until then the game opens on the draft.
+			go_to(Screen.PREPARE)
+	if "--capture" in args:
+		# A second for anything behind the screen to settle, then one frame to disk. This is how each screen
+		# task shows its work: SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture
+		await get_tree().create_timer(1.0).timeout
+		await _capture("screen_%s.png" % (show if show != "" else "start"))
+		get_tree().quit()
 
 
 ## Put up a screen, taking down whatever was there.
@@ -68,6 +79,13 @@ func go_to(to: int) -> void:
 		_mission.queue_free()
 		_mission = null
 	match to:
+		Screen.PREPARE:
+			var prep := PrepareScreen.new()
+			prep.name = "Prepare"
+			add_child(prep)
+			prep.setup(loadout, save.best_score, save.best_rank)
+			prep.action.connect(_on_prepare_action.bind(prep))
+			_screen_node = prep
 		Screen.MISSION:
 			_mission = _build_mission()
 		Screen.RESULTS:
@@ -108,3 +126,23 @@ func _on_mission_finished(won: bool, reason: String, score: int, rank: String, l
 	save.remember_loadout(loadout)
 	save.save_to()
 	on_action("mission:over")
+
+
+func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
+	if what == "manifest":
+		loadout = prep.draft.picks
+		save.remember_loadout(loadout)
+		save.save_to()
+	on_action("prepare:" + what)
+
+
+## One frame to res://captures/<file_name>, scaled 2x with nearest filtering -- the same shape as the
+## battlefield's captures, so they sit next to each other.
+func _capture(file_name: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
+	var dir := ProjectSettings.globalize_path("res://captures")
+	DirAccess.make_dir_recursive_absolute(dir)
+	img.save_png(dir.path_join(file_name))
+	print("captured ", dir.path_join(file_name))

@@ -52,6 +52,23 @@ static func width(s: String, size := SIZE_BODY) -> float:
 	return font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 
 
+## A string broken into lines no wider than `width`, at word boundaries. A single word wider than the line is
+## left whole on its own line rather than cut: the pixel font has no hyphenation worth reading.
+static func wrap(s: String, line_width: float, size := SIZE_BODY) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var line := ""
+	for word in s.split(" ", false):
+		var tried := word if line == "" else line + " " + word
+		if line != "" and width(tried, size) > line_width:
+			lines.append(line)
+			line = word
+		else:
+			line = tried
+	if line != "":
+		lines.append(line)
+	return lines
+
+
 ## The one gold frame every icon in the game wears: a bevel, four corner studs and a small diamond on top.
 static func frame(on: CanvasItem, rect: Rect2, bright := true) -> void:
 	var gold := COL_GOLD if bright else COL_GOLD_DARK

@@ -118,7 +118,10 @@ static func run(t) -> void:
 
 	# Leadership is the Citadel's health, straight through.
 	t.near(stab.leadership, town.citadel.fraction(), 0.0001, "leadership is the Citadel's health (%.3f)" % stab.leadership)
-	for i in 6:
+	# Two rolling seconds of 200 damage: the Citadel can only lose 250 of its 1000 in a second, so this takes
+	# it to 60% and leaves it standing. Six rounds would flatten it, and the "has not fallen" check below --
+	# which is about a city whose Leadership is the only part left -- would then be wrong.
+	for i in 2:
 		town.citadel.advance(1.01)
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 200.0, &"nova")
 	stab.measure(env, crowd, town.citadel)
@@ -172,8 +175,13 @@ static func run(t) -> void:
 		+ Stability.W_RESOURCES, 1.0, 0.0001, "the five weights add up to one")
 
 	crowd.clear()
-	world.free()
+	field.clear()
+	field.free()
 	env.clear()
+	env.free()
+	town.free()
+	crowd.free()
+	world.free()
 ```
 
 - [ ] **Step 2: Register it and run it to see it fail**
@@ -411,8 +419,13 @@ static func run(t) -> void:
 
 	rules.free()
 	crowd.clear()
-	world.free()
+	field.clear()
+	field.free()
 	env.clear()
+	env.free()
+	town.free()
+	crowd.free()
+	world.free()
 ```
 
 - [ ] **Step 2: Register it and run it to see it fail**
@@ -1005,10 +1018,17 @@ static func _drop(m: Dictionary) -> void:
 	rules.free()
 	var crowd: Crowd = m.crowd
 	crowd.clear()
-	var world: Node2D = m.world
-	world.free()
+	var field: EnemyField = m.field
+	field.clear()
+	field.free()
 	var env: EnvironmentField = m.env
 	env.clear()
+	env.free()
+	var town: Town = m.town
+	town.free()
+	crowd.free()
+	var world: Node2D = m.world
+	world.free()
 ```
 
 - [ ] **Step 2: Register it and run it to see it fail**
@@ -1289,8 +1309,13 @@ static func run(t) -> void:
 	rules.free()
 	aim.free()
 	crowd.clear()
-	world.free()
+	field.clear()
+	field.free()
 	env.clear()
+	env.free()
+	town.free()
+	crowd.free()
+	world.free()
 
 
 ## One constant out of an effect's script, by name.
@@ -1621,8 +1646,13 @@ static func run(t) -> void:
 	aim.free()
 	rules.free()
 	crowd.clear()
-	world.free()
+	field.clear()
+	field.free()
 	env.clear()
+	env.free()
+	town.free()
+	crowd.free()
+	world.free()
 ```
 
 - [ ] **Step 2: Register it and run it to see it fail**

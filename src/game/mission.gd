@@ -9,6 +9,9 @@ extends Node2D
 signal finished(won: bool, reason: String, score: int, rank: String, lines: Array[Dictionary])
 ## Esc with nothing to cancel: whoever owns this mission decides what that means.
 signal pause_pressed
+## The effect shaders are compiled and the mission can start. start() before this would clear the effect
+## layers under the prewarm while it is still using them.
+signal prewarmed
 
 ## The four powers a mission starts with until the Prepare screen exists (milestone 4). Override on the
 ## command line: -- --loadout=heaven,gravity,judgement,nova
@@ -49,6 +52,8 @@ var _scripted := false
 ## True when the mission runs on its own (play.bat before milestone 4, the scripted runs, the bench) and
 ## starts itself. Game sets it false before adding the node, then calls start() with the drafted loadout.
 var autostart := true
+## True once _ready() has finished compiling the effect shaders.
+var is_prewarmed := false
 
 
 func _ready() -> void:
@@ -71,6 +76,8 @@ func _ready() -> void:
 	_bf.camera.zoom = Vector2.ONE * 0.75
 	_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
 	await FxParts.prewarm(_bf.ctx.distort)
+	is_prewarmed = true
+	prewarmed.emit()
 	if "--mission-test" in args:
 		_mission_test()
 	elif "--bench" in args:
@@ -167,6 +174,8 @@ func _on_over(won: bool, reason: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not started():
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var i := SLOT_KEYS.find(event.physical_keycode)
 		if i >= 0 and i < _rules.loadout.size():
@@ -201,6 +210,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if not started():
+		return
 	var pan := Battlefield.key_pan_dir()
 	if pan != Vector2.ZERO:
 		# Pan in real time regardless of hit-stop, faster when zoomed out.
@@ -255,6 +266,12 @@ func _mission_test() -> void:
 		_rules.dp, _rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
 		roundi(_rules.stability.total() * 100.0), roundi(_town.citadel.fraction() * 100.0)])
 	_bf.quit()
+
+
+## Whether start() has run. Between add_child() and the end of the shader prewarm there is a battlefield but
+## no town, rules or aim yet, and nothing in the mission may touch them.
+func started() -> bool:
+	return is_instance_valid(_rules)
 
 
 ## Stop the world without stopping the menu over it. The whole mission lives under this node, so pausing the

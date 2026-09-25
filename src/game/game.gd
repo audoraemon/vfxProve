@@ -92,7 +92,13 @@ func _build_mission() -> Mission:
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
-	mission.start(loadout, Time.get_ticks_usec())
+	# Its _ready() is still compiling the effect shaders into the effect layers a frame or two after
+	# add_child(), and start() clears those layers -- starting now freed the prewarm's nodes under it.
+	var seed_value := Time.get_ticks_usec()
+	if mission.is_prewarmed:
+		mission.start(loadout, seed_value)
+	else:
+		mission.prewarmed.connect(func() -> void: mission.start(loadout, seed_value), CONNECT_ONE_SHOT)
 	return mission
 
 

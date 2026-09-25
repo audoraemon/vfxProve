@@ -35,6 +35,9 @@ var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
 var _pressing := false
+## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
+## is off the map, so the aim preview follows the script instead of it.
+var _scripted := false
 
 
 func _ready() -> void:
@@ -49,6 +52,7 @@ func _ready() -> void:
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	var args := OS.get_cmdline_user_args()
 	var scripted := "--mission-test" in args or "--bench" in args
+	_scripted = scripted
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var seed_value := int(seed_arg) if seed_arg != "" else (7 if scripted else Time.get_ticks_usec())
 	_start(seed_value)
@@ -181,7 +185,8 @@ func _process(delta: float) -> void:
 		# Pan in real time regardless of hit-stop, faster when zoomed out.
 		var real_delta := delta / maxf(Engine.time_scale, 0.001)
 		_pan(pan.normalized() * PAN_SPEED * real_delta / _bf.camera.zoom.x)
-	_aim.hover(_bf.mouse_ground())
+	if not _scripted:
+		_aim.hover(_bf.mouse_ground())
 
 
 func _pan(by: Vector2) -> void:
@@ -190,6 +195,9 @@ func _pan(by: Vector2) -> void:
 
 ## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line.
 func _mission_test() -> void:
+	# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
+	_aim.pick(3)
+	_aim.hover(TownLayout.CITADEL_ORIGIN)
 	var casts := TEST_CASTS.duplicate()
 	var shots := TEST_SHOTS.duplicate()
 	var t := 0.0
@@ -202,6 +210,10 @@ func _mission_test() -> void:
 			var extra := {}
 			if (c[3] as Vector2) != Vector2.ZERO:
 				extra["dir"] = (c[3] as Vector2).normalized()
+			# Aim first, so the captured frames show the preview and the picked slot the way a player would see
+			# them. Nothing moves the mouse in a scripted run, and the cursor's own ground position is off-map.
+			_aim.pick(slot)
+			_aim.hover(c[2])
 			_rules.cast(slot, c[2], extra)
 		while not shots.is_empty() and t >= float(shots[0]):
 			var at: float = shots.pop_front()

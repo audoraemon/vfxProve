@@ -33,7 +33,8 @@ static func run(t) -> void:
 		"the status line counts the living (%s)" % hud.status_text())
 
 	# A slot says which of the four things it is.
-	t.check(hud.slot_state(0) == "picked", "the picked slot says so (%s)" % hud.slot_state(0))
+	t.check(hud.is_picked(0) and hud.slot_state(0) == "ready",
+		"the picked slot is known as picked and still reports what it can do (%s)" % hud.slot_state(0))
 	t.check(hud.slot_state(3) == "ready", "a slot that can be paid for is ready (%s)" % hud.slot_state(3))
 	rules.cast(3, Vector2.ZERO)
 	t.check(hud.slot_state(3) == "cooldown", "one that just fired is on cooldown (%s)" % hud.slot_state(3))

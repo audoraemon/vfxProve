@@ -62,6 +62,7 @@ func setup(rules: Rules, crowd: Crowd) -> Targeting:
 	_rules.cast_made.connect(_on_cast_made)
 	z_index = 5
 	z_as_relative = false  # absolute z 5: over the ground and the world, under the overhead layer at 8.
+	queue_redraw()  # the first preview: hover() only redraws when the cursor moves, so nothing else would
 	return self
 
 
@@ -76,6 +77,10 @@ func pick(new_slot: int) -> void:
 
 ## The cursor moved. Keeps the preview where the player is looking.
 func hover(ground: Vector2) -> void:
+	# Mission calls this every frame. A preview that has not moved is not redrawn: this node sits on the ground
+	# plane, and redrawing it re-batches the layer the whole town is drawn in.
+	if ground.is_equal_approx(_at):
+		return
 	_at = ground
 	if not aiming:
 		_press = ground

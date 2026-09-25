@@ -30,6 +30,10 @@ var _popups: Array = []
 var _flash := PackedFloat32Array()
 ## What the last frame drew, so an unchanged HUD costs nothing.
 var _drawn := ""
+## The four slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
+## _draw() can reach the draw list before the GPU has it -- which paints a solid white block, and because the
+## HUD only redraws when something changes, the block stays white for the rest of the mission.
+var _slot_icons: Array[Texture2D] = []
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -41,6 +45,9 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # the player is aiming at the town, not clicking the HUD
 	_flash.resize(_rules.loadout.size())
 	_flash.fill(0.0)
+	_slot_icons.clear()
+	for i in _rules.loadout.size():
+		_slot_icons.append(PowerBook.hud_icon(_rules.key(i)))
 	_rules.banner.connect(push_banner)
 	_rules.dp_gained.connect(_on_dp_gained)
 	_rules.cast_refused.connect(_on_cast_refused)
@@ -96,12 +103,16 @@ func status_text() -> String:
 		_crowd.alive_soldiers(), _rules.buildings_down, roundi(_crowd.alarm)]
 
 
-## What a slot is: the one the player has picked, ready to cast, waiting out a cooldown, or unaffordable.
+## What a slot is: ready to cast, waiting out a cooldown, or unaffordable. Being the picked one is a separate
+## question -- a picked slot still has to show its own cooldown, which it did not when this answered "picked".
 func slot_state(slot: int) -> String:
-	if _aim != null and _aim.slot == slot:
-		return "picked"
 	var reason := _rules.refusal(slot)
 	return "ready" if reason == "" else reason
+
+
+## Is this the slot the player has picked?
+func is_picked(slot: int) -> bool:
+	return _aim != null and _aim.slot == slot
 
 
 func push_banner(text: String) -> void:
@@ -135,7 +146,7 @@ func _signature() -> String:
 	var out := "%s|%s|%s|%d|%d" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
 		roundi(_rules.dp * 2.0), roundi(_rules.stability.total() * 200.0)]
 	for i in _rules.loadout.size():
-		out += "%s%d," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0)]
+		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), "p" if is_picked(i) else ""]
 	return out
 
 
@@ -224,15 +235,16 @@ func _draw_slots(w: float) -> void:
 			var red := UiTheme.COL_BAD
 			red.a = _flash[i] / FLASH_SECONDS
 			draw_rect(box, red)
-		var icon := PowerBook.hud_icon(_rules.key(i))
+		var icon: Texture2D = _slot_icons[i] if i < _slot_icons.size() else null
 		if icon != null:
 			# Greyed while it cannot be cast, so the player reads the row at a glance.
 			draw_texture_rect(icon, box, false, Color(0.45, 0.45, 0.5) if state in ["cooldown", "dp"] else Color.WHITE)
-		UiTheme.frame(self, box, state == "picked" or state == "ready")
+		# Gold only for the picked slot (spec §5): when every affordable slot wore it, the pick was invisible.
+		UiTheme.frame(self, box, is_picked(i))
 		UiTheme.text(self, box.position + Vector2(2.0, 9.0), "%d" % (i + 1), UiTheme.SIZE_SMALL)
 		var cost := "%d" % _rules.cost(i)
 		UiTheme.text(self, box.position + Vector2(SLOT_SIZE - UiTheme.width(cost, UiTheme.SIZE_SMALL) - 2.0,
-			SLOT_SIZE - 2.0), cost, UiTheme.SIZE_SMALL,
+			SLOT_SIZE - 6.0), cost, UiTheme.SIZE_SMALL,
 			UiTheme.COL_BAD if state == "dp" else UiTheme.COL_TEXT)
 		if state == "cooldown":
 			# The cooldown as a shade falling away from the top, with its seconds over it.

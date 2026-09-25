@@ -24,11 +24,14 @@ const ALARM_FLEE_ALL := 50.0
 ## A cast this close frightens a citizen; a collapse this close does too.
 const PANIC_CAST := 7.0
 const PANIC_DESTROY := 4.0
-## One person through a gate this often.
-const GATE_INTERVAL := 0.6
-## Only people this close to a gate's middle are held; the rest walk up and bunch on their own.
+## One person through a gate this often. 0.6 s was the spec's starting value, calibrated against people who
+## stalled at every path waypoint; once they really ran (milestone 5) 42 escaped in the first 34 s against a
+## loss limit of 38. At 2 s the gates are the bottleneck the spec describes: crowds pile up in front of them.
+const GATE_INTERVAL := 2.0
+## How far beyond a gate's footprint its queue reaches, so people are held just before the arch as well.
 const GATE_DOOR := 0.45
-## A released person keeps its pass until it is this far past the middle (or the interval runs out).
+## A released person keeps its pass while inside the gate's footprint grown by this much (or until the interval
+## runs out). Larger than GATE_DOOR, so nobody given the pass is caught by the queue's zone again.
 const GATE_CLEAR := 0.8
 ## Where the soldiers ring the Citadel.
 const RING_RADIUS := 3.4
@@ -184,13 +187,17 @@ func _gates() -> void:
 		# second time the moment its pass expires -- it is still inside the 0.45 span, and being nearest the
 		# centre it wins the next turn as well, so every person spent two of the gate's turns.
 		var outward := centre.normalized()
-		# Whoever this gate let through stays exempt from the hold until it actually clears the doorway —
-		# otherwise the very next frame's re-evaluation catches it again mid-step and nobody ever gets far
-		# enough to leave GATE_CLEAR range, let alone reach the exit. The exemption also ends once the
+		# The whole doorway holds people, not a circle at its middle: the gate's footprint is walkable from side
+		# to side, and with only a 0.45-unit circle held, 38 of 60 escapers in a quiet run walked out past it
+		# along the doorway's edges without ever queueing.
+		var doorway := gate.footprint.grow(GATE_DOOR)
+		# Whoever this gate let through keeps its pass anywhere in the doorway (a little larger than the queue's
+		# zone) until it is out -- a pass measured from the gate's middle was lost the frame after it was given
+		# to someone released from the doorway's edge, and the gate jammed. The pass also ends once the
 		# interval runs out, so a slow passer cannot hold the gate open past its own turn.
 		var passing: Person = _gate_passing.get(gate)
 		if is_instance_valid(passing) and passing.is_alive() and passing.mind == Person.Mind.FLEE \
-				and passing.ground_pos.distance_to(centre) <= GATE_CLEAR \
+				and gate.footprint.grow(GATE_CLEAR).has_point(passing.ground_pos) \
 				and _clock < float(_gate_next.get(gate, -1.0)):
 			passing.wait = 0.0
 		else:
@@ -199,7 +206,7 @@ func _gates() -> void:
 		var queue: Array[Person] = []
 		for p in citizens:
 			if p != passing and is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE \
-					and p.ground_pos.distance_to(centre) <= GATE_DOOR \
+					and doorway.has_point(p.ground_pos) \
 					and (p.ground_pos - centre).dot(outward) <= 0.0:
 				queue.append(p)
 		if queue.is_empty():

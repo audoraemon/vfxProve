@@ -109,12 +109,12 @@ static func run(t) -> void:
 			passing += 1
 	t.check(passing == 1 and leader.wait <= 0.0, "the one already through keeps moving, not re-held, after 0.3 s")
 	leader.ground_pos = gate.center() + Vector2(0.0, -Crowd.GATE_CLEAR - 1.0)
-	crowd.advance(0.4)
+	crowd.advance(Crowd.GATE_INTERVAL - 0.3 + 0.1)
 	passing = 0
 	for p in queue:
 		if p != leader and p.wait <= 0.0:
 			passing += 1
-	t.check(passing == 1, "and the next one goes through once the leader clears and 0.6 s have passed (%d)" % passing)
+	t.check(passing == 1, "and the next one goes through once the leader clears and the gate's interval has passed (%d)" % passing)
 
 	# This synthetic queue is done with the gate; send it far away and forget its pass so it does not linger
 	# in the doorway and skew the throughput test below, which wants this gate idle when it starts.
@@ -145,7 +145,7 @@ static func run(t) -> void:
 			holding = holding and p.mind == Person.Mind.HOLD
 	t.check(holding, "the surviving soldiers hold their ground")
 
-	# Throughput: the spec wants about one person through a gate every 0.6 s. Walk whoever holds the pass.
+	# Throughput: one person through a gate every GATE_INTERVAL. Walk whoever holds the pass for five intervals.
 	var flow_gate: Structure = town.gates[0]
 	var middle := flow_gate.center()
 	var walkers: Array[Person] = []
@@ -155,7 +155,7 @@ static func run(t) -> void:
 		w.wait = 0.0
 		walkers.append(w)
 	var through := 0
-	for step in 180:
+	for step in int(Crowd.GATE_INTERVAL * 5.0 * 60.0):
 		crowd.advance(1.0 / 60.0)
 		for w in walkers:
 			if w.wait <= 0.0:
@@ -165,9 +165,9 @@ static func run(t) -> void:
 			if w.ground_pos.y > middle.y:
 				walkers.erase(w)
 				through += 1
-	# Five turns fit in three seconds, and each walker spends part of its own turn stepping up to the middle,
+	# Five turns fit in five intervals, and each walker spends part of its own turn stepping up to the middle,
 	# so four is the floor the gate has to clear.
-	t.check(through >= 4, "about one person every 0.6 s gets through the gate (%d in 3 s)" % through)
+	t.check(through >= 4, "about one person every %.1f s gets through the gate (%d in five intervals)" % [Crowd.GATE_INTERVAL, through])
 
 	# Milestone 3 reads these: the spawned population, and a destroy that says what killed it.
 	t.check(crowd.spawned_citizens == 110 and crowd.spawned_soldiers == 50,

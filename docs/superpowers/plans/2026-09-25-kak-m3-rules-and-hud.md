@@ -2176,6 +2176,10 @@ func _start(seed_value: int) -> void:
 				(n as Town).teardown()
 			elif n is Crowd:
 				(n as Crowd).clear()
+			elif n is Rules:
+				# The old rules let the world go before the new ones take it: queue_free() is deferred, and a
+				# frame with two Rules connected would count the next destroyed building twice.
+				(n as Rules).teardown()
 			# Parents may be mid-teardown here, so never free a tree-resident node immediately.
 			if n.is_inside_tree():
 				n.queue_free()

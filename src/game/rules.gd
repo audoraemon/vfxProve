@@ -335,7 +335,7 @@ func stat_lines() -> Array[Dictionary]:
 	var lines: Array[Dictionary] = []
 	if won:
 		lines.append({"label": "The city has fallen", "value": "", "points": SCORE_WIN})
-		lines.append({"label": "Time left", "value": "%d:%02d" % [int(time_left) / 60, int(time_left) % 60], "points": int(roundf(time_left)) * SCORE_PER_SECOND})
+		lines.append({"label": "Time left", "value": UiTheme.clock(time_left), "points": int(roundf(time_left)) * SCORE_PER_SECOND})
 		lines.append({"label": "Divine Power left", "value": "%d" % int(floorf(dp)), "points": int(floorf(dp)) * SCORE_PER_DP})
 	lines.append({"label": "Buildings destroyed", "value": "%d" % buildings_down, "points": buildings_down * SCORE_PER_BUILDING})
 	lines.append({"label": "Citizens killed", "value": "%d" % _crowd.killed_citizens, "points": _crowd.killed_citizens * SCORE_PER_CITIZEN})

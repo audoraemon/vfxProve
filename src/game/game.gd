@@ -158,6 +158,11 @@ func go_to(to: int) -> void:
 			_screen_node = res
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)  # Tasks 3 and 4
+	match to:
+		Screen.TITLE, Screen.PREPARE:
+			Music.play(&"theme")
+		Screen.RESULTS:
+			Music.play(&"")  # the win or lose sting stands alone
 
 
 ## What a screen reports the player pressed.
@@ -183,6 +188,7 @@ func _faded_into_mission() -> void:
 		return  # a second MANIFEST click during the fade
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
+	Music.play(&"battle")  # rises behind the fade
 	go_to(Screen.MISSION)
 	if is_instance_valid(_mission) and not _mission.started():
 		await _mission.prewarmed
@@ -234,6 +240,7 @@ func _open_pause() -> void:
 	add_child(_pause)
 	_pause.setup()
 	UiSound.play(&"ui_pause")
+	Music.set_ducked(true)
 	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
 
 
@@ -241,6 +248,7 @@ func _close_pause() -> void:
 	if is_instance_valid(_pause):
 		_pause.queue_free()
 	_pause = null
+	Music.set_ducked(false)
 
 
 func _on_title_action(what: String) -> void:
@@ -270,6 +278,7 @@ func _capture(file_name: String) -> void:
 ## mission's own Sfx pool, so a scripted --capture or --flow-test run does not leak a live playback.
 func _quit_cleanly() -> void:
 	UiSound.stop_all()
+	Music.stop_all()  # the battle stems loop forever and are not in either pool; stop them before the wait below
 	for i in 3:
 		await get_tree().process_frame
 	OS.delay_msec(150)
@@ -302,6 +311,7 @@ func _flow_test() -> void:
 	var four := PackedStringArray(["heaven", "tsunami", "cinder", "nova"])
 
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "the game opens on the title")
+	step.call(Music.current() == &"theme", "the title plays the theme")
 	on_action("title:play")
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen, "Play opens the draft")
 	var prep: PrepareScreen = _screen_node
@@ -323,6 +333,7 @@ func _flow_test() -> void:
 	var running := _mission.rules().time_left
 	step.call(not _mission.in_intro() and running < clock0, "after the intro the clock runs (%.2f)" % running)
 	step.call(_fader.is_clear(), "the fade has cleared once the mission is up")
+	step.call(Music.current() == &"battle", "the mission plays the battle")
 
 	# Pause freezes the mission; Resume gives the same one back.
 	var first := _mission

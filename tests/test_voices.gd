@@ -57,6 +57,16 @@ static func run(t) -> void:
 	t.check(lengths[1] > 0.0 and is_equal_approx(lengths[1], lengths[2]) and is_equal_approx(lengths[1], lengths[3]),
 		"the battle's three stems are the same length (%s)" % [lengths])
 
+	# The battle's layers: the base always, the drums from a third of the way down, the lead from two thirds.
+	var calm := Music.stem_gains(0.0)
+	var half := Music.stem_gains(0.5)
+	var falling := Music.stem_gains(1.0)
+	t.check(calm[0] == 1.0 and calm[1] == 0.0 and calm[2] == 0.0, "a standing city hears only the battle's base (%s)" % [calm])
+	# is_equal_approx(), not ==: (0.5 - 0.33) / 0.17 lands at 0.9999999999999999 in double precision, a hair
+	# under the clamp's ceiling, so it never hits the exact 1.0 that clamping an out-of-range value would give.
+	t.check(is_equal_approx(half[1], 1.0) and half[2] == 0.0, "half fallen adds the drums (%s)" % [half])
+	t.check(falling[0] == 1.0 and falling[1] == 1.0 and falling[2] == 1.0, "and a city falling hears all three (%s)" % [falling])
+
 	crowd.clear()
 	field.clear()
 	field.free()

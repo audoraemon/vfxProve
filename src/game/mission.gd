@@ -73,6 +73,8 @@ var is_prewarmed := false
 var _intro_left := 0.0
 ## True from the last blow to Results: the slow-motion ending is playing out (note 9).
 var _ending := false
+## Seconds until the battle's layers are next fed how far the city has fallen.
+var _music_in := 0.0
 
 
 func _ready() -> void:
@@ -280,6 +282,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not started():
 		return
+	if not _ending:
+		_music_in -= delta
+		if _music_in <= 0.0:
+			_music_in = 0.5
+			Music.set_intensity(1.0 - _rules.stability.total())
 	if _intro_left > 0.0:
 		_intro_left = maxf(0.0, _intro_left - delta)
 		var k := 1.0 - _intro_left / INTRO_SECONDS

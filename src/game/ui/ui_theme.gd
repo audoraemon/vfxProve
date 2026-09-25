@@ -25,6 +25,8 @@ const SIZE_BODY := 13
 const LINE_SMALL := 12.0
 const LINE_BODY := 15.0
 const SIZE_BIG := 16
+## The game's name on the title screen and the ending on the results screen.
+const SIZE_TITLE := 32
 
 static var _font: FontFile
 

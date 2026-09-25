@@ -24,6 +24,7 @@ const FLOW := {
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
+const SANDBOX_SCENE := "res://scenes/sandbox.tscn"
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("4a6a2a")
 
@@ -56,8 +57,7 @@ func _ready() -> void:
 		"prepare":
 			go_to(Screen.PREPARE)
 		_:
-			# The title screen arrives in Task 4; until then the game opens on the draft.
-			go_to(Screen.PREPARE)
+			go_to(Screen.TITLE)
 	if "--capture" in args:
 		# A second for anything behind the screen to settle, then one frame to disk. This is how each screen
 		# task shows its work: SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture
@@ -79,6 +79,13 @@ func go_to(to: int) -> void:
 		_mission.queue_free()
 		_mission = null
 	match to:
+		Screen.TITLE:
+			var title := TitleScreen.new()
+			title.name = "Title"
+			add_child(title)
+			title.setup(save.best_score, save.best_rank)
+			title.action.connect(_on_title_action)
+			_screen_node = title
 		Screen.PREPARE:
 			var prep := PrepareScreen.new()
 			prep.name = "Prepare"
@@ -134,6 +141,16 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		save.remember_loadout(loadout)
 		save.save_to()
 	on_action("prepare:" + what)
+
+
+func _on_title_action(what: String) -> void:
+	match what:
+		"sandbox":
+			get_tree().change_scene_to_file(SANDBOX_SCENE)
+		"quit":
+			get_tree().quit()
+		_:
+			on_action("title:" + what)
 
 
 ## One frame to res://captures/<file_name>, scaled 2x with nearest filtering -- the same shape as the

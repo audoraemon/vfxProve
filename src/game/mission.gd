@@ -1,8 +1,14 @@
+class_name Mission
 extends Node2D
 ## One mission of Kingdoms Amid Kataclysm: the battlefield, the town of Aldermere, its people, the rules, the
 ## aiming and the HUD. The player picks a power with 1-4, clicks or drags to cast it, pans with WASD or the
 ## middle button and zooms with the wheel. R starts a fresh mission. Milestone 4 puts the Title, Prepare,
 ## Pause and Results screens around this.
+
+## The run is over, with everything the Results screen shows.
+signal finished(won: bool, reason: String, score: int, rank: String, lines: Array[Dictionary])
+## Esc with nothing to cancel: whoever owns this mission decides what that means.
+signal pause_pressed
 
 ## The four powers a mission starts with until the Prepare screen exists (milestone 4). Override on the
 ## command line: -- --loadout=heaven,gravity,judgement,nova
@@ -40,6 +46,9 @@ var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
 var _scripted := false
+## True when the mission runs on its own (play.bat before milestone 4, the scripted runs, the bench) and
+## starts itself. Game sets it false before adding the node, then calls start() with the drafted loadout.
+var autostart := true
 
 
 func _ready() -> void:
@@ -57,7 +66,8 @@ func _ready() -> void:
 	_scripted = scripted
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var seed_value := int(seed_arg) if seed_arg != "" else (7 if scripted else Time.get_ticks_usec())
-	_start(seed_value)
+	if autostart:
+		start(_loadout(args), seed_value)
 	_bf.camera.zoom = Vector2.ONE * 0.75
 	_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
 	await FxParts.prewarm(_bf.ctx.distort)
@@ -71,7 +81,9 @@ func _ready() -> void:
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and four minutes.
-func _start(seed_value: int) -> void:
+## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
+## default four, so a standalone run still works.
+func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.reset(seed_value)
 	for n: Node in [_town, _crowd, _rules, _aim, _hud]:
 		if is_instance_valid(n):
@@ -106,7 +118,8 @@ func _start(seed_value: int) -> void:
 	_rules = Rules.new()
 	_rules.name = "Rules"
 	add_child(_rules)
-	_rules.setup(_loadout(args), _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town)
+	var loadout := powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args())
+	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town)
 	_rules.over.connect(_on_over)
 	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
 
@@ -145,10 +158,12 @@ func _on_over(won: bool, reason: String) -> void:
 	if not won:
 		title = "THE PEOPLE ESCAPED" if reason == "escapes" else "MANIFESTATION ENDED"
 	_rules.banner.emit(title)
-	# Milestone 4 turns this into the Results screen; until then the numbers go to the console.
-	print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
-	for line: Dictionary in _rules.stat_lines():
-		print("  %-22s %8s %6d" % [line.label, line.value, line.points])
+	if _scripted:
+		# The scripted runs have no Results screen to show, so they keep printing what they found.
+		print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
+		for line: Dictionary in _rules.stat_lines():
+			print("  %-22s %8s %6d" % [line.label, line.value, line.points])
+	finished.emit(won, reason, _rules.score(), _rules.rank(), _rules.stat_lines())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -157,14 +172,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		if i >= 0 and i < _rules.loadout.size():
 			_aim.pick(i)
 		elif event.physical_keycode == KEY_R:
-			_start(Time.get_ticks_usec())
+			start(PackedStringArray(), Time.get_ticks_usec())
 		elif event.physical_keycode == KEY_ESCAPE:
-			# Aiming first: Esc cancels a drag, and only quits when there is nothing to cancel (Pause is
-			# milestone 4's).
+			# Aiming first: Esc cancels a drag. With nothing to cancel it is the pause menu's -- or, for a
+			# mission running on its own with no Game around it, still the way out.
 			if _aim.aiming:
 				_aim.cancel()
-			else:
+			elif autostart:
 				_bf.quit()
+			else:
+				# Handled here, so the same Esc cannot reach the pause menu it is about to open and close it again.
+				get_viewport().set_input_as_handled()
+				pause_pressed.emit()
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
@@ -236,3 +255,9 @@ func _mission_test() -> void:
 		_rules.dp, _rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
 		roundi(_rules.stability.total() * 100.0), roundi(_town.citadel.fraction() * 100.0)])
 	_bf.quit()
+
+
+## Stop the world without stopping the menu over it. The whole mission lives under this node, so pausing the
+## subtree freezes the town, the crowd, the effects and the clock together.
+func set_frozen(frozen: bool) -> void:
+	process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT

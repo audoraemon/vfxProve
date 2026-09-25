@@ -2408,3 +2408,36 @@ After Task 7, before the milestone is called done:
 3. `SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test` — one `MISSION test` line, no errors.
 4. A **user playtest** of `play.bat`. Show the user the three frames from Task 7 and the bench number first, then hand over. The questions that matter: can they read the HUD at 640×360, does the DP economy let them cast often enough to be interesting, and is four minutes the right length? Their answers are milestone 5's tuning list, not this milestone's bugs.
 5. Write down anything the playtest turns up that is not a defect into the milestone 5 notes rather than fixing it here.
+
+---
+
+## After the plan: what the screen taught us
+
+The seven tasks landed as written. Three rounds of fixes followed, and the plan's own test code carried two
+bugs that the implementers caught (both are corrected above).
+
+- `416458d` — the review of Tasks 1 to 4. `Rules.teardown()` lets the world go, so a restart cannot have two
+  of them counting the same destroyed building for a frame; a gain the 100-point cap ate no longer floats a
+  popup; the first frame stops measuring stability twice; and two tests were missing (a lost mission still
+  scores what it broke, and a city that falls as the clock dies is a win, not a timeout). One finding was
+  deliberately left: `Stability._part()` counts a category with no targets as whole, which could pin the total
+  above zero on a future map that lacks one. Aldermere has all five, and the fallback is intentional -- it is a
+  note for milestone 5, not a defect.
+- `8d2fd35` — what only a screenshot could show. The four slot icons drew as **solid white blocks**, because
+  `PowerBook.hud_icon()` goes through `load()` and a texture asked for inside `_draw()` can reach the draw list
+  before the GPU has it; since the HUD only redraws when something changes, the white stayed for the rest of
+  the mission. They are taken once in `setup()`. A picked slot hid its own cooldown, because "picked" was one
+  of the answers `slot_state()` could give instead of a separate `is_picked()`; and the gold frame went to
+  every affordable slot, which left the pick invisible -- gold is the picked slot alone now (spec §5). The
+  aim preview needed a first redraw of its own, and a scripted run needed to stop overwriting the aim with the
+  desktop cursor's off-map ground position every frame.
+
+**Frame rate.** The mission benches at **96-100 fps** idle with the full 160-person crowd, against the debug
+scene's **107-110 fps measured the same day**. Milestone 2's report has 141 fps for that scene, so most of the
+apparent gap is a stale baseline rather than this milestone's work: the HUD, the rules and the aim preview
+together cost about 1 ms a frame. `Targeting.hover()` was measured and ruled out as the cause (a bench never
+moves the mouse, and skipping the redraw entirely changed nothing).
+
+**Still open for milestone 5:** the slot costs are tight against their boxes at 640x360, the aim preview's
+hairlines are faint over a busy plaza, and no banner happened to land in any of the six scripted frames, so
+the banner layout has not been seen on screen yet.

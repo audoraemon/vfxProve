@@ -33,6 +33,10 @@ const GATE_DOOR := 0.45
 ## A released person keeps its pass while inside the gate's footprint grown by this much (or until the interval
 ## runs out). Larger than GATE_DOOR, so nobody given the pass is caught by the queue's zone again.
 const GATE_CLEAR := 0.8
+## A gate's waiting crowd: how far in front of the doorway it may reach, and how far apart two waiting people
+## stand. People never collide, so without spots of their own a crowd of thirty stood on three pixels.
+const QUEUE_REACH := 3.2
+const QUEUE_SPACING := 0.34
 ## Where the soldiers ring the Citadel.
 const RING_RADIUS := 3.4
 ## Voices: at most this many a second across the whole town, refilling steadily, so 160 people can never drown
@@ -64,6 +68,8 @@ var _rng := RandomNumberGenerator.new()
 var _gate_next := {}
 ## Gate -> the Person it last let through, exempt from the hold until it clears GATE_CLEAR range.
 var _gate_passing := {}
+## Gate -> its queue spots, nearest the doorway first. Built when the town is first asked about, per gate.
+var _spots := {}
 var _clock := 0.0
 var _rallied := false
 var _fled_all := false
@@ -185,51 +191,118 @@ func advance(delta: float) -> void:
 		_field.purge()
 
 
+## Rows fanned out in front of a gate's doorway on the town side, nearest the doorway first, walkable only. The
+## crowd widens as it backs into the town, the way a real one does.
+func queue_spots(gate: Structure) -> Array[Vector2]:
+	if _spots.has(gate):
+		return _spots[gate]
+	var out_dir := gate.center().normalized()
+	var side := Vector2(-out_dir.y, out_dir.x)
+	var face := gate.center() - out_dir * (absf(gate.footprint.size.dot(out_dir)) * 0.5 + GATE_DOOR)
+	# Built as one continuous path, nearest row first and snaking left-right-left row to row (not always left
+	# to right) -- not re-sorted by plain distance to face, which would let a row's far edge sort ahead of the
+	# next row's near centre and zig-zag between the two sides of a single row. _gates() advances the whole
+	# waiting crowd by one array index at a time as people are let through, so a neighbour in the fan has to be
+	# a neighbour in this array too (in both directions, row to row as well as within one), or the person
+	# handed that index has to cross the row -- or jump from one edge of the fan clear over to the other -- to
+	# reach it.
+	var spots: Array[Vector2] = []
+	var row := 0
+	var depth := 0.0
+	while depth <= QUEUE_REACH:
+		var half := 1.2 + depth * 0.6
+		var count := int(half * 2.0 / QUEUE_SPACING) + 1
+		var stagger := QUEUE_SPACING * 0.5 if row % 2 == 1 else 0.0
+		var order := range(count) if row % 2 == 0 else range(count - 1, -1, -1)
+		for i in order:
+			var spot := face - out_dir * depth + side * (-half + stagger + QUEUE_SPACING * float(i))
+			if _grid == null or _grid.walkable(spot):
+				spots.append(spot)
+		row += 1
+		depth += QUEUE_SPACING * 0.87
+	_spots[gate] = spots
+	return spots
+
+
+## How many people are waiting at a gate right now.
+func waiting_at(gate: Structure) -> int:
+	var n := 0
+	var spots := queue_spots(gate)
+	for p in citizens:
+		if is_instance_valid(p) and p.queue_spot != Vector2.INF and spots.has(p.queue_spot):
+			n += 1
+	return n
+
+
 func _gates() -> void:
 	for gate in _town.gates:
 		if not is_instance_valid(gate) or gate.destroyed:
 			_gate_passing.erase(gate)
+			_release_all(gate)
 			continue  # rubble is no bottleneck
 		var centre := gate.center()
-		# The way out of town is straight away from its crossroads at the origin, so anyone already further out
-		# than the gate is through it and is not held again. Without this the doorway catches its own passer a
-		# second time the moment its pass expires -- it is still inside the 0.45 span, and being nearest the
-		# centre it wins the next turn as well, so every person spent two of the gate's turns.
 		var outward := centre.normalized()
-		# The whole doorway holds people, not a circle at its middle: the gate's footprint is walkable from side
-		# to side, and with only a 0.45-unit circle held, 38 of 60 escapers in a quiet run walked out past it
-		# along the doorway's edges without ever queueing.
-		var doorway := gate.footprint.grow(GATE_DOOR)
-		# Whoever this gate let through keeps its pass anywhere in the doorway (a little larger than the queue's
-		# zone) until it is out -- a pass measured from the gate's middle was lost the frame after it was given
-		# to someone released from the doorway's edge, and the gate jammed. The pass also ends once the
-		# interval runs out, so a slow passer cannot hold the gate open past its own turn.
+		var spots := queue_spots(gate)
+		var face := centre - outward * (absf(gate.footprint.size.dot(outward)) * 0.5 + GATE_DOOR)
+		# The passer keeps its pass while it is still in the doorway and its turn lasts.
 		var passing: Person = _gate_passing.get(gate)
-		if is_instance_valid(passing) and passing.is_alive() and passing.mind == Person.Mind.FLEE \
+		if not (is_instance_valid(passing) and passing.is_alive() and passing.mind == Person.Mind.FLEE \
 				and gate.footprint.grow(GATE_CLEAR).has_point(passing.ground_pos) \
-				and _clock < float(_gate_next.get(gate, -1.0)):
-			passing.wait = 0.0
-		else:
+				and _clock < float(_gate_next.get(gate, -1.0))):
 			passing = null
 			_gate_passing.erase(gate)
-		var queue: Array[Person] = []
+		# The waiting crowd: fleeing, in front of the doorway, not yet through it.
+		var crowd_here: Array[Person] = []
 		for p in citizens:
-			if p != passing and is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE \
-					and doorway.has_point(p.ground_pos) \
-					and (p.ground_pos - centre).dot(outward) <= 0.0:
-				queue.append(p)
-		if queue.is_empty():
+			if p == passing or not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.FLEE:
+				continue
+			var rel := p.ground_pos - centre
+			var in_front := rel.dot(outward) <= 0.0 and p.ground_pos.distance_to(face) <= QUEUE_REACH + 0.5
+			if in_front:
+				crowd_here.append(p)
+			elif spots.has(p.queue_spot):
+				p.release_from_queue()  # it left this gate's crowd (thrown clear, or through)
+		if crowd_here.is_empty():
 			continue
-		queue.sort_custom(func(a: Person, b: Person) -> bool:
-			return a.ground_pos.distance_squared_to(centre) < b.ground_pos.distance_squared_to(centre))
-		var open: bool = passing == null and _clock >= float(_gate_next.get(gate, -1.0))
-		for i in queue.size():
-			if i == 0 and open:
-				_gate_next[gate] = _clock + GATE_INTERVAL
-				queue[0].wait = 0.0
-				_gate_passing[gate] = queue[0]
-			else:
-				queue[i].wait = maxf(queue[i].wait, 0.25)
+		# Order by who joined the queue first, not by distance: a distance sort every tick re-ranked people as
+		# they walked (two people converging from the same direction kept overtaking each other in "distance
+		# to face", so the gate kept swapping which spot each of them was walking to, and neither ever
+		# arrived). Arrival order does not have that problem, and unlike ordering by the spot each person
+		# already holds, it also is not upset by queue_spots()'s own distance sort, which zig-zags between the
+		# two sides of a row rather than running left to right -- two neighbours could hold spots on opposite
+		# sides of the same row and, ordered by spot index, swap them outright the next time the queue shuffled
+		# forward. A newcomer with no turn yet falls in after everyone already waiting, nearest the face first.
+		crowd_here.sort_custom(func(a: Person, b: Person) -> bool:
+			if a.queue_since < 0.0 and b.queue_since < 0.0:
+				return a.ground_pos.distance_squared_to(face) < b.ground_pos.distance_squared_to(face)
+			if a.queue_since < 0.0 or b.queue_since < 0.0:
+				return b.queue_since < 0.0
+			if not is_equal_approx(a.queue_since, b.queue_since):
+				return a.queue_since < b.queue_since
+			# Joined in the same tick (a burst of newcomers gets one queue_since between them): break the tie
+			# by instance id, which never changes, rather than leaving it to sort_custom's own stability --
+			# that let two same-tick joiners flip order the next time the queue's composition changed.
+			return a.get_instance_id() < b.get_instance_id())
+		var first := 0
+		if passing == null and _clock >= float(_gate_next.get(gate, -1.0)):
+			_gate_next[gate] = _clock + GATE_INTERVAL
+			_gate_passing[gate] = crowd_here[0]
+			crowd_here[0].release_from_queue()
+			first = 1
+		for i in range(first, crowd_here.size()):
+			var slot := i - first
+			var p: Person = crowd_here[i]
+			if p.queue_since < 0.0:
+				p.queue_since = _clock
+			p.queue_spot = spots[mini(slot, spots.size() - 1)]
+
+
+## A gate that fell lets its whole crowd go.
+func _release_all(gate: Structure) -> void:
+	var spots: Array[Vector2] = _spots.get(gate, [])
+	for p in citizens:
+		if is_instance_valid(p) and spots.has(p.queue_spot):
+			p.release_from_queue()
 
 
 func _escapes() -> void:
@@ -353,6 +426,7 @@ func clear() -> void:
 	soldiers.clear()
 	_gate_next.clear()
 	_gate_passing.clear()
+	_spots.clear()
 	alarm = 0.0
 	escaped_count = 0
 	killed_citizens = 0

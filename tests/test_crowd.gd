@@ -84,44 +84,74 @@ static func run(t) -> void:
 			still_calm += 1
 	t.check(still_calm == 0, "at 50%% alarm nobody stays (%d did)" % still_calm)
 
-	# A gate passes one person at a time and holds the rest; the one already through keeps moving instead
-	# of being re-held the instant it re-evaluates (that used to catch it mid-step and it could never walk
-	# far enough to clear the gate), so the next release waits for both the interval and an actual clearing.
+	# A gate's waiting crowd: everyone waiting gets a spot of their own in front of the doorway, spread out
+	# rather than stacked, and one person at a time is let through.
 	var gate: Structure = town.gates[0]
-	var queue: Array[Person] = []
-	for i in 4:
-		var p: Person = crowd.citizens[10 + i]
-		p.ground_pos = gate.center() + Vector2(0.05 * i, -0.4)
-		p.wait = 0.0
-		queue.append(p)
-	crowd.advance(0.0)
-	var passing := 0
-	var leader: Person = null
-	for p in queue:
-		if p.wait <= 0.0:
-			passing += 1
-			leader = p
-	t.check(passing == 1, "one person is let through at a time (%d were)" % passing)
-	crowd.advance(0.3)
-	passing = 0
-	for p in queue:
-		if p.wait <= 0.0:
-			passing += 1
-	t.check(passing == 1 and leader.wait <= 0.0, "the one already through keeps moving, not re-held, after 0.3 s")
-	leader.ground_pos = gate.center() + Vector2(0.0, -Crowd.GATE_CLEAR - 1.0)
-	crowd.advance(Crowd.GATE_INTERVAL - 0.3 + 0.1)
-	passing = 0
-	for p in queue:
-		if p != leader and p.wait <= 0.0:
-			passing += 1
-	t.check(passing == 1, "and the next one goes through once the leader clears and the gate's interval has passed (%d)" % passing)
+	var spots := crowd.queue_spots(gate)
+	t.check(spots.size() >= 20, "a gate has room for a crowd in front of it (%d spots)" % spots.size())
+	var tightest := INF
+	for i in spots.size():
+		for j in range(i + 1, spots.size()):
+			tightest = minf(tightest, spots[i].distance_to(spots[j]))
+	t.check(tightest >= Crowd.QUEUE_SPACING * 0.8, "and the spots are spread out (closest pair %.2f)" % tightest)
+	var spots_off_grid := 0
+	for s in spots:
+		if not grid.walkable(s):
+			spots_off_grid += 1
+	t.check(spots_off_grid == 0, "every spot is somewhere a person can stand (%d are not)" % spots_off_grid)
 
-	# This synthetic queue is done with the gate; send it far away and forget its pass so it does not linger
-	# in the doorway and skew the throughput test below, which wants this gate idle when it starts.
+	var queue: Array[Person] = []
+	for i in 12:
+		var p: Person = crowd.citizens[10 + i]
+		p.ground_pos = gate.center() - gate.center().normalized() * 1.0 + Vector2(0.02 * i, 0.0)
+		queue.append(p)
+	# Everyone else waits at the market -- far enough that nobody else reaches this gate during the test, so the
+	# crowd at it is exactly these twelve.
+	for p in crowd.citizens:
+		if is_instance_valid(p) and not queue.has(p):
+			p.ground_pos = TownLayout.MARKET_SQUARE.get_center()
+	crowd.advance(0.0)
+	var released := 0
+	var placed: Array[Vector2] = []
 	for p in queue:
-		p.ground_pos = gate.center() + Vector2(0.0, -(Crowd.GATE_CLEAR + 1.0))
+		if p.queue_spot == Vector2.INF:
+			released += 1
+		else:
+			placed.append(p.queue_spot)
+	t.check(released == 1, "one person is let through at a time (%d were)" % released)
+	var doubled := 0
+	for i in placed.size():
+		for j in range(i + 1, placed.size()):
+			if placed[i].is_equal_approx(placed[j]):
+				doubled += 1
+	t.check(placed.size() == 11 and doubled == 0, "the other eleven wait on eleven different spots (%d shared)" % doubled)
+	t.check(crowd.waiting_at(gate) == 11, "and the gate counts them (%d)" % crowd.waiting_at(gate))
+
+	# Walk them: after two intervals they have spread onto their spots and the queue has moved on by one.
+	for i in int(Crowd.GATE_INTERVAL * 2.0 * 60.0) + 30:
+		crowd.advance(1.0 / 60.0)
+		for p in queue:
+			if is_instance_valid(p):
+				p.tick(1.0 / 60.0)
+	var stacked := 0
+	for i in queue.size():
+		for j in range(i + 1, queue.size()):
+			if is_instance_valid(queue[i]) and is_instance_valid(queue[j]) \
+					and queue[i].queue_spot != Vector2.INF and queue[j].queue_spot != Vector2.INF \
+					and queue[i].ground_pos.distance_to(queue[j].ground_pos) < Crowd.QUEUE_SPACING * 0.5:
+				stacked += 1
+	t.check(stacked == 0, "waiting people stand apart instead of on top of each other (%d pairs stacked)" % stacked)
+	t.check(crowd.waiting_at(gate) <= 10, "and the gate has let more through (%d still waiting)" % crowd.waiting_at(gate))
+
+	# This synthetic crowd is done with the gate: send it away and forget the gate's pass, so the throughput test
+	# below starts with an idle gate.
+	for p in queue:
+		if is_instance_valid(p):
+			p.release_from_queue()
+			p.ground_pos = gate.center() - gate.center().normalized() * (Crowd.QUEUE_REACH + 3.0)
 	crowd._gate_next.erase(gate)
 	crowd._gate_passing.erase(gate)
+	crowd.advance(0.0)
 
 	# Reaching an exit escapes.
 	var runner: Person = crowd.citizens[20]
@@ -158,7 +188,7 @@ static func run(t) -> void:
 	for step in int(Crowd.GATE_INTERVAL * 5.0 * 60.0):
 		crowd.advance(1.0 / 60.0)
 		for w in walkers:
-			if w.wait <= 0.0:
+			if w.queue_spot == Vector2.INF:
 				w.ground_pos += Vector2(0.0, 1.2 / 60.0)
 		for w in walkers.duplicate():
 			# Counted at the doorway itself: a finish line further out would measure the walk to it as well.

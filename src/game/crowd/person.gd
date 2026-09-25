@@ -61,6 +61,13 @@ var anchor := Vector2.ZERO
 var grid: WalkGrid
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0
+## This person's spot in a gate's waiting crowd, or Vector2.INF. While set, it walks there and stands; the gate
+## clears it (release_from_queue) when it lets the person through or the person leaves the crowd.
+var queue_spot := Vector2.INF
+## Crowd clock time this person joined its gate's queue, so _gates() can order the crowd by who has waited
+## longest -- immune to the spots array's own distance-to-face ordering, which zig-zags between the two sides
+## of a row and so is not itself a stable left-to-right order to sort by. Negative while not queued.
+var queue_since := -1.0
 ## The field of buildings, for sorting against them. Null in tests that build a person without a town.
 var env: EnvironmentField
 ## This person's own speed multiplier, drawn from PACE_RANGE, so a crowd is not a marching column.
@@ -141,6 +148,16 @@ func _think(delta: float) -> void:
 	if is_running() and not soldier and rng.randf() < STUMBLE_CHANCE:
 		_stumble = STUMBLE_SECONDS
 		return
+	if queue_spot != Vector2.INF:
+		# Waiting at a gate: shuffle to this spot in the crowd and stand. The fright keeps ticking.
+		_panic_left = maxf(_panic_left - delta, 0.0)
+		walk_speed = WALK_SPEED * pace
+		if ground_pos.distance_to(queue_spot) > 0.06:
+			_target = queue_spot
+			_idle = 0.0
+		else:
+			_idle = maxf(_idle, 0.1)
+		return
 	walk_speed = _mind_speed()
 	if mind == Mind.PANIC:
 		_panic_left -= delta
@@ -187,9 +204,23 @@ func set_goal(g: Vector2) -> void:
 	_pick_target()
 
 
+## Let a waiting person go: leave its spot and pick its route up again from where it stands (the waypoint it
+## was heading for when it joined the crowd may now be behind it).
+func release_from_queue() -> void:
+	if queue_spot == Vector2.INF:
+		return
+	queue_spot = Vector2.INF
+	queue_since = -1.0
+	if _goal != Vector2.INF:
+		set_goal(_goal)
+
+
 ## Next waypoint, or a drift around the anchor when there is nothing to walk to. DummyEnemy calls this
 ## whenever it reaches its current target.
 func _pick_target() -> void:
+	if queue_spot != Vector2.INF:
+		_target = queue_spot
+		return
 	if is_running():
 		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
 		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.

@@ -261,6 +261,7 @@ func _crowd_test() -> void:
 	var casts := CROWD_CASTS.duplicate()
 	var shots := CROWD_SHOTS.duplicate()
 	var next_log := 0.0
+	var gates_shot := false
 	while _t < CROWD_TEST_END:
 		while not casts.is_empty() and _t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
@@ -268,6 +269,21 @@ func _crowd_test() -> void:
 			_cast(PowerBook.get_power(c[1]), c[2])
 		if not shots.is_empty() and _t >= float(shots[0]):
 			await _bf.save_capture("crowd_%05d.png" % int(float(shots.pop_front()) * 1000.0))
+		# Close on each gate for its waiting crowd (milestone 6): these are the frames the user judges the
+		# queue by, taken once mid-run while there is still a crowd to see -- by the end of the run everyone
+		# who was ever going to escape already has, and the gates stand empty.
+		if not gates_shot and _t >= 18.0:
+			gates_shot = true
+			var saved_zoom := _bf.camera.zoom
+			var saved_position := _bf.camera.position
+			for i in _town.gates.size():
+				var g: Structure = _town.gates[i]
+				_bf.camera.zoom = Vector2.ONE * 1.4
+				_bf.camera.position = Iso.ground_to_screen(g.center() - g.center().normalized() * 1.5).round()
+				await _bf.wait_frames(3)
+				await _bf.save_capture("crowd_gate_%d.png" % i)
+			_bf.camera.zoom = saved_zoom
+			_bf.camera.position = saved_position
 		if _t >= next_log:
 			next_log += 1.0
 			var fleeing := 0
@@ -277,7 +293,7 @@ func _crowd_test() -> void:
 					continue
 				if p.mind == Person.Mind.FLEE:
 					fleeing += 1
-				if p.wait > 0.0:
+				if p.queue_spot != Vector2.INF:
 					waiting += 1
 			print("CROWD t=%.1f citizens=%d soldiers=%d fleeing=%d queued=%d escaped=%d alarm=%d rallied=%s" % [
 				_t, _crowd.alive_citizens(), _crowd.alive_soldiers(), fleeing, waiting, _crowd.escaped_count,

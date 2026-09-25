@@ -106,7 +106,7 @@ Each effect is a `FxTimeline` subclass: `_build()` schedules stage callbacks wit
 ## Verify
 
 ```bash
-bash tools/test.sh                                   # headless tests → checks=357 failures=0
+bash tools/test.sh                                   # headless tests → checks=376 failures=0
 python tools/audio/synth.py --verify                 # audio cue checks → 78 cues, 0 problems
 bash tools/capture.sh --capture-all [--only=nova]    # PNG frames at key stage times → captures/
 python tools/contact_sheet.py nova 4                 # tile captures into captures/sheet_nova.png

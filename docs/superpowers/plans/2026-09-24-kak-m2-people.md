@@ -2100,3 +2100,30 @@ git tag kak-m2-people
 git -c credential.helper= -c 'credential.helper=!"/c/Program Files/GitHub CLI/gh.exe" auth git-credential' push origin feat/vfx-proof
 git -c credential.helper= -c 'credential.helper=!"/c/Program Files/GitHub CLI/gh.exe" auth git-credential' push origin kak-m2-people
 ```
+
+---
+
+## After the plan: the whole-milestone review
+
+The eight tasks above landed as written (tag `kak-m2-people`). A review of the milestone as a whole then found
+work the plan had not called for, which landed in three commits. The check counts in the tasks above are what
+each task ended at; the suite stands at **376 checks** today.
+
+- `504cad7` / `d85a2ce` — a rebuild orphaned the Citadel node. `Town.build()` now reuses the one it has, so
+  anything connected to the Citadel's signals survives a rebuild. Task 6's code above matches.
+- `872ca6b` — three playtest blockers. A person now revalidates each waypoint and drops a plan that leads
+  through ground that has closed (a fallen bridge used to send fleeing citizens across open water); the gate
+  hold became a 0.45-unit doorway with a 0.8-unit clearance instead of a 1.6-unit ring that queued people who
+  were nowhere near it and never released them; and a waiting person recovers a lost goal instead of standing
+  still until something else nudges it.
+- `c8a6c2d` — the seams milestone 3 reads. `EnvironmentField.structure_destroyed` carries the damage kind that
+  did it, `Crowd` remembers `spawned_citizens` / `spawned_soldiers` for City Stability's denominators, an
+  escaping citizen leaves `EnemyField` before it is freed so it cannot also be counted as killed, dead soldiers
+  stop holding rally slots, the field drops corpses once a second, and the town-wide flight fires once.
+- `a0052e0` — the gate spent two of its turns on each person (0.6 s covers 0.72 units at flee speed, less than
+  the doorway's 0.9-unit span, so the passer was still inside it when its pass expired and won the next turn as
+  well). It now passes the spec's one person every 0.6 s.
+
+Known and accepted: Cinderfall with the full 160-person crowd runs at **42.6 fps**, short of the milestone's
+50+. The user accepted it rather than spend another performance pass; `.git/sdd/perf-report.md` and
+`.git/sdd/m2-task-1-report.md` hold the attribution, and the remaining cost is per-person `_process` work.

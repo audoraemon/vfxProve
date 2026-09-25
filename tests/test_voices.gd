@@ -48,6 +48,15 @@ static func run(t) -> void:
 	t.check(Sfx.CATALOG.has(&"crowd_panic") and bool(Sfx.CATALOG[&"crowd_panic"].get("loop", false))
 		and ResourceLoader.exists("res://assets/audio/crowd/crowd_panic.wav"), "the crowd bed is a loop in the catalog and on disk")
 
+	# The music: four loops, the three battle stems exactly the same length so they stay in step.
+	var lengths: Array[float] = []
+	for cue: StringName in [&"music_theme", &"music_battle_base", &"music_battle_drums", &"music_battle_lead"]:
+		var stream := Sfx.load_stream(cue) if Sfx.CATALOG.has(cue) else null
+		lengths.append(stream.get_length() if stream != null else -1.0)
+	t.check(lengths[0] > 20.0, "the theme is a long loop (%.1f s)" % lengths[0])
+	t.check(lengths[1] > 0.0 and is_equal_approx(lengths[1], lengths[2]) and is_equal_approx(lengths[1], lengths[3]),
+		"the battle's three stems are the same length (%s)" % [lengths])
+
 	crowd.clear()
 	field.clear()
 	field.free()

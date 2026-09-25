@@ -998,6 +998,105 @@ def crowd_panic(rng, dur):
     return loopify(reverb(out, size=1.6, mix=0.35), n)
 
 
+# --------------------------------------------------------------------------
+# Music (KAK milestone 6), synthesized like everything else. A brooding theme for the title and the draft; a battle
+# loop in three stems -- base, drums, lead -- that the game layers in as the city falls. All loops, all built with
+# loopify, so they pass verify()'s seam check.
+# --------------------------------------------------------------------------
+
+def hz(midi):
+    return 440.0 * 2.0 ** ((midi - 69) / 12.0)
+
+
+BEAT = 0.5                                   # 120 bpm
+BAR = BEAT * 4.0
+BATTLE_BARS = 8
+# Two bars each: D minor, B flat, C, and A -- the dominant that pulls the loop back to its start.
+BATTLE_CHORDS = ((38, 41, 45), (34, 38, 41), (36, 40, 43), (33, 37, 40))
+THEME_CHORDS = ((50, 53, 57), (46, 50, 53), (41, 45, 48), (48, 52, 55))
+# (midi, beats) at 60 bpm: 24 beats, the whole 24 s loop.
+THEME_MELODY = ((74, 2), (72, 1), (69, 3), (70, 2), (69, 1), (65, 3),
+                (69, 2), (67, 1), (65, 3), (64, 2), (65, 1), (62, 3))
+
+
+def _note(freq, m, cutoff, a, d, s, r):
+    return lowpass(saw(freq, m), cutoff) * adsr(m, a, d, s, r)
+
+
+def music_theme(rng, dur):
+    n = int(round(dur * SR))
+    out = np.zeros(n + int(0.06 * SR))
+    seg = dur / len(THEME_CHORDS)
+    for i in range(len(THEME_CHORDS) + 1):   # one extra chord feeds the loop's crossfade
+        chord = THEME_CHORDS[i % len(THEME_CHORDS)]
+        m = int(seg * 1.15 * SR)
+        pad = sum(lowpass(saw(hz(p), m) + saw(hz(p) * 1.004, m), 900.0) for p in chord)
+        place(out, pad * adsr(m, 1.2, 0.5, 0.7, 1.5) * 0.12, i * seg)
+        place(out, sine(hz(chord[0] - 12), m) * adsr(m, 0.6, 0.4, 0.8, 1.2) * 0.35, i * seg)
+    at = 0.0
+    for midi, beats in THEME_MELODY:
+        m = int(beats * SR)
+        vib = hz(midi) * (1.0 + 0.006 * np.sin(2.0 * np.pi * 5.0 * np.arange(m) / SR))
+        place(out, (sine(vib, m) + 0.3 * sine(vib * 2.0, m)) * adsr(m, 0.08, 0.3, 0.6, 0.4) * 0.28, at)
+        at += beats
+    return loopify(reverb(out, size=1.8, mix=0.4), n)
+
+
+def music_battle_base(rng, dur):
+    n = int(round(dur * SR))
+    out = np.zeros(n + int(0.06 * SR))
+    step = BEAT / 2.0                        # eighth notes
+    pattern = (0, 0, 0, 2, 0, 0, 1, 0)       # root, root, root, fifth, root, root, third, root
+    for bar in range(BATTLE_BARS + 1):
+        chord = BATTLE_CHORDS[(bar // 2) % len(BATTLE_CHORDS)]
+        for i, idx in enumerate(pattern):
+            m = int(step * 0.9 * SR)
+            place(out, _note(hz(chord[idx] - 12), m, 700.0, 0.005, 0.05, 0.5, 0.05) * 0.5, bar * BAR + i * step)
+        if bar % 2 == 0:
+            m = int(BAR * 2.0 * SR)
+            root = hz(chord[0] - 12)
+            drone = lowpass(saw(root, m) + saw(root * 1.005, m), 300.0) * adsr(m, 0.2, 0.3, 0.8, 0.3)
+            place(out, drone * 0.3, bar * BAR)
+    return loopify(out, n)
+
+
+def _taiko(rng, m, pitch):
+    body = sine(ramp(pitch * 1.8, pitch, m, "exp"), m) * decay(m, 0.18)
+    skin = lowpass(noise(m, rng), 900.0) * decay(m, 0.03)
+    return saturate(body + skin * 0.5, 1.5)
+
+
+def _snare(rng, m):
+    return bandpass(noise(m, rng), 1500.0, 6000.0) * decay(m, 0.07) + sine(190.0, m) * decay(m, 0.04) * 0.4
+
+
+def music_battle_drums(rng, dur):
+    n = int(round(dur * SR))
+    out = np.zeros(n + int(0.06 * SR))
+    for bar in range(BATTLE_BARS + 1):
+        start = bar * BAR
+        for beat in (0.0, 1.5, 2.0):         # taiko on 1, the and of 2, and 3
+            place(out, _taiko(rng, int(0.5 * SR), 62.0) * 0.9, start + beat * BEAT)
+        for beat in (1.0, 3.0):              # snare on 2 and 4
+            place(out, _snare(rng, int(0.25 * SR)) * 0.5, start + beat * BEAT)
+        if bar % 4 == 3:                     # a roll into the end of every fourth bar
+            for i in range(4):
+                place(out, _taiko(rng, int(0.3 * SR), 90.0) * 0.5, start + (3.0 + i * 0.25) * BEAT)
+    return loopify(reverb(out, size=1.1, mix=0.18), n)
+
+
+def music_battle_lead(rng, dur):
+    n = int(round(dur * SR))
+    out = np.zeros(n + int(0.06 * SR))
+    for bar in range(BATTLE_BARS + 1):
+        chord = BATTLE_CHORDS[(bar // 2) % len(BATTLE_CHORDS)]
+        for beat, length in ((0.0, 1.2), (1.5, 0.4), (2.0, 1.8)):
+            m = int(length * BEAT * SR)
+            stab = sum(_note(hz(p + 12), m, 1800.0, 0.02, 0.15, 0.5, 0.15) for p in chord)
+            place(out, stab * 0.25, bar * BAR + beat * BEAT)
+    return loopify(reverb(out, size=1.3, mix=0.25), n)
+
+
 # id: (effect folder, builder, length seconds, loop)
 CUES: dict[str, tuple] = {
     "nova_alarm": ("nova", nova_alarm, 1.5, False),
@@ -1086,6 +1185,13 @@ for _v in range(1, 5):
     CUES[f"cit_yelp_{_v}"] = ("crowd", lambda rng, dur, v=_v: cit_yelp(rng, dur, v), 0.45, False)
 for _v in range(1, 4):
     CUES[f"cit_shout_{_v}"] = ("crowd", lambda rng, dur, v=_v: cit_shout(rng, dur, v), 0.55, False)
+for _name, _fn, _dur in (
+    ("music_theme", music_theme, 24.0),
+    ("music_battle_base", music_battle_base, BAR * BATTLE_BARS),
+    ("music_battle_drums", music_battle_drums, BAR * BATTLE_BARS),
+    ("music_battle_lead", music_battle_lead, BAR * BATTLE_BARS),
+):
+    CUES[_name] = ("music", _fn, _dur, True)
 
 
 def cue_path(cue: str) -> Path:

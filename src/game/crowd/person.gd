@@ -6,10 +6,10 @@ extends DummyEnemy
 
 enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD }
 
-const PANIC_SPEED := 0.9
+const PANIC_SPEED := 1.6
 const FLEE_SPEED := 1.2
 ## How long a fright lasts before it turns into flight.
-const PANIC_SECONDS := 1.6
+const PANIC_SECONDS := 3.0
 ## Close enough to count as arrived.
 const GOAL_REACH := 0.45
 ## Seconds before a person gives a stuck goal another try. Cinderfall repeatedly invalidates routes (fallen
@@ -30,6 +30,16 @@ const SORT_HZ := 10.0
 const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
 ## Drawn above a building's footprint: its height plus a roof or battlements.
 const ROOF_MARGIN := 14.0
+## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
+const PACE_RANGE := Vector2(0.85, 1.2)
+## One panicked dash: how far (ground units), and how far it may veer from straight away (radians).
+const DASH := Vector2(1.6, 3.2)
+const DASH_VEER := 0.6
+## While its route out is being planned a fleeing person scurries in hops this long, without path-finding.
+const SCURRY := 0.9
+## Chance per think that a running person stumbles, and how long they are down for.
+const STUMBLE_CHANCE := 0.006
+const STUMBLE_SECONDS := 0.45
 
 const CIT_SKIN := [Color("c89a72"), Color("b07a52"), Color("8a5a3a")]
 const CIT_TUNIC := [Color("8a5a3a"), Color("6a6a4a"), Color("7a4a4a"), Color("4a5a6a"), Color("8a7a4a"), Color("6a5a7a")]
@@ -53,8 +63,14 @@ var grid: WalkGrid
 var wait := 0.0
 ## The field of buildings, for sorting against them. Null in tests that build a person without a town.
 var env: EnvironmentField
+## This person's own speed multiplier, drawn from PACE_RANGE, so a crowd is not a marching column.
+var pace := 1.0
 ## Seconds until the next draw-order reading, staggered by instance so a crowd does not all re-sort together.
 var _sort_in := 0.0
+## Where the fright came from, so a dash and a scurry run away from it.
+var _threat := Vector2.INF
+## Seconds left face-down after a stumble; see is_stumbling().
+var _stumble := 0.0
 
 var _path := PackedVector2Array()
 var _leg := 0
@@ -85,6 +101,7 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 	_skin = CIT_SKIN[rng.randi() % CIT_SKIN.size()]
 	_tunic = CIT_TUNIC[rng.randi() % CIT_TUNIC.size()]
 	_hair = CIT_HAIR[rng.randi() % CIT_HAIR.size()]
+	pace = rng.randf_range(PACE_RANGE.x, PACE_RANGE.y)
 	_pick_target()
 	return self
 
@@ -117,6 +134,13 @@ func _think(delta: float) -> void:
 		_panic_left = maxf(_panic_left - delta, 0.0)
 		_idle = maxf(_idle, 0.05)
 		return
+	if _stumble > 0.0:
+		_stumble = maxf(_stumble - delta, 0.0)
+		_idle = maxf(_idle, 0.05)
+		return
+	if is_running() and not soldier and rng.randf() < STUMBLE_CHANCE:
+		_stumble = STUMBLE_SECONDS
+		return
 	walk_speed = _mind_speed()
 	if mind == Mind.PANIC:
 		_panic_left -= delta
@@ -127,8 +151,8 @@ func _think(delta: float) -> void:
 			if _goal == Vector2.INF:
 				if _repath_in <= 0.0:
 					_plan_exit()
-				else:
-					_idle = maxf(_idle, 0.05)
+				elif ground_pos.distance_to(_target) < 0.1:
+					_scurry()
 		Mind.POST, Mind.RALLY:
 			if _goal == Vector2.INF and _repath_in <= 0.0 and ground_pos.distance_to(anchor) > GOAL_REACH * 2.0:
 				set_goal(anchor)
@@ -146,11 +170,11 @@ func _think(delta: float) -> void:
 func _mind_speed() -> float:
 	match mind:
 		Mind.PANIC, Mind.RALLY:
-			return PANIC_SPEED
+			return PANIC_SPEED * pace
 		Mind.FLEE:
-			return FLEE_SPEED
+			return FLEE_SPEED * pace
 		_:
-			return WALK_SPEED
+			return WALK_SPEED * pace
 
 
 ## Walk to `g` along the grid's path. A goal inside a building routes to its doorstep.
@@ -166,6 +190,10 @@ func set_goal(g: Vector2) -> void:
 ## Next waypoint, or a drift around the anchor when there is nothing to walk to. DummyEnemy calls this
 ## whenever it reaches its current target.
 func _pick_target() -> void:
+	if is_running():
+		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
+		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.
+		_idle = 0.0
 	while _leg < _path.size():
 		var p := _path[_leg]
 		_leg += 1
@@ -176,6 +204,9 @@ func _pick_target() -> void:
 			_repath_in = 0.0
 			break
 		if ground_pos.distance_to(p) > 0.08:
+			# The base unit's pause after every target, applied to a path of half-unit grid waypoints, turns
+			# every walk into stop-and-go; nobody (calm or not) should stall mid-path, only on arrival.
+			_idle = 0.0
 			_target = p
 			return
 	_path = PackedVector2Array()
@@ -186,6 +217,12 @@ func _pick_target() -> void:
 		_repath_in = minf(_repath_in, 0.3)
 		return
 	_goal = Vector2.INF
+	if mind == Mind.PANIC:
+		_dash()
+		return
+	if mind == Mind.FLEE:
+		_scurry()
+		return
 	_drift()
 
 
@@ -210,12 +247,44 @@ func panic(from: Vector2) -> void:
 	# jolt should visibly speed someone up the instant it lands, not on a coin-flip frame.
 	walk_speed = _mind_speed()
 	_panic_left = PANIC_SECONDS
-	var away := ground_pos - from
-	var to := ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 3.0
+	_threat = from
+	_dash()
+
+
+## A panicked dash: away from the danger, veering, to the nearest walkable point.
+func _dash() -> void:
+	var away := ground_pos - _threat if _threat != Vector2.INF else Vector2.RIGHT.rotated(rng.randf() * TAU)
+	var dir := (away.normalized() if away.length() > 0.01 else Vector2.RIGHT).rotated(rng.randf_range(-DASH_VEER, DASH_VEER))
+	var to := ground_pos + dir * rng.randf_range(DASH.x, DASH.y)
 	if grid != null:
 		var free := grid.nearest_walkable(to, 6)
 		to = free if free != Vector2.INF else ground_pos
+	if to.distance_to(ground_pos) <= GOAL_REACH:
+		# Nowhere to dash (hemmed in by walls): scurry instead. set_goal() on a point already reached would
+		# arrive at once, dash again, and recurse forever.
+		_scurry()
+		return
 	set_goal(to)
+
+
+## Keep running while the route out is still being planned: a short straight hop away from the danger. No
+## path-finding -- the stagger exists so a whole town does not path-find in one frame.
+func _scurry() -> void:
+	var away := ground_pos - _threat if _threat != Vector2.INF else Vector2.RIGHT.rotated(rng.randf() * TAU)
+	var dir := (away.normalized() if away.length() > 0.01 else Vector2.RIGHT).rotated(rng.randf_range(-0.8, 0.8))
+	for turn in [0.0, PI * 0.5, -PI * 0.5]:
+		var to := ground_pos + dir.rotated(turn) * SCURRY
+		if grid == null or grid.walkable(to):
+			_target = to
+			return
+
+
+func is_running() -> bool:
+	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY)
+
+
+func is_stumbling() -> bool:
+	return _stumble > 0.0
 
 
 ## Head for the nearest exit there is still a route to. The plan itself is staggered, so a town-wide panic
@@ -325,15 +394,19 @@ func _draw_body(lift: int, top_only: int) -> void:
 
 ## Townsfolk: bare head, tunic, no armour. Smaller than the soldiers so a crowd reads at a glance.
 func _draw_citizen(lift: int, top_only: int) -> void:
-	var step := int(_anim * 6.0) % 2 if state != State.DEAD and not is_frozen() else 0
+	var running := is_running()
+	var step := int(_anim * _walk_rate()) % 2 if state != State.DEAD and not is_frozen() and not is_stumbling() else 0
+	if is_stumbling():
+		lift += 2  # down on one knee
 	var f := _facing
 	if top_only == 0:
 		_px(-2, -4 + lift, 2, 4 - step, CIT_LEGS)
 		_px(1, -4 + lift, 2, 3 + step, CIT_LEGS)
 	_px(-3, -10 + lift, 6, 6, _tunic)
 	_px(-3, -10 + lift, 6, 1, _tunic.lightened(0.18))
-	_px(-4, -9 + lift, 1, 3, _skin)
-	_px(3, -9 + lift, 1, 3, _skin)
+	var arm_y := -12 if running else -9
+	_px(-4, arm_y + lift, 1, 3, _skin)
+	_px(3, arm_y + lift, 1, 3, _skin)
 	_px(-2, -13 + lift, 4, 3, _skin)
 	_px(-2, -13 + lift, 4, 1, _hair)
 	if state != State.DEAD or _char < 0.5:
@@ -342,7 +415,7 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 
 ## Town guard: mail, royal blue tabard, helmet, spear and shield.
 func _draw_soldier(lift: int, top_only: int) -> void:
-	var step := int(_anim * 5.0) % 2 if state != State.DEAD and not is_frozen() else 0
+	var step := int(_anim * _walk_rate()) % 2 if state != State.DEAD and not is_frozen() else 0
 	var f := _facing
 	if top_only == 0:
 		_px(-3, -5 + lift, 2, 5 - step, SOL_HELM)
@@ -361,3 +434,13 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 	_px(5 * f, -18 + lift, 1, 2, SOL_TIP)
 	_px(-5 * f, -10 + lift, 2 * f, 5, SOL_SHIELD)
 	_px(-4 * f, -8 + lift, 1, 1, SOL_GOLD)
+
+
+func _pose_signature() -> int:
+	return (1 if is_running() else 0) + (2 if is_stumbling() else 0)
+
+
+func _walk_rate() -> float:
+	if is_running():
+		return 8.0 if soldier else 10.0
+	return 5.0 if soldier else 6.0

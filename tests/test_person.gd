@@ -38,7 +38,7 @@ static func run(t) -> void:
 		c.tick(1.0 / 60.0)
 		fled += 1
 	t.check(c.has_escaped(), "it reaches an exit (%s after %d steps)" % [c.ground_pos, fled])
-	t.near(c.walk_speed, 1.2, 0.001, "fleeing at the spec's 1.2 units per second")
+	t.near(c.walk_speed, Person.FLEE_SPEED * c.pace, 0.001, "fleeing at the spec's speed times its own pace")
 
 	# Soldiers never flee; they march where they are posted and then hold.
 	var s := Person.new()
@@ -124,6 +124,60 @@ static func run(t) -> void:
 	t.check(dropped, "the runner set off for the bridge (%s)" % runner.ground_pos)
 	t.check(not crossed, "and stopped at the water once the bridge fell (%s)" % runner.ground_pos)
 	runner.free()
+
+	# --- A lively panic ------------------------------------------------------------------------------
+	var paces: Array[float] = []
+	for i in 20:
+		var q := Person.new()
+		q.rng.seed = 100 + i
+		q.setup_person(false, Vector2(0.0, 2.0), grid)
+		paces.append(q.pace)
+		q.free()
+	var slowest: float = paces.min()
+	var fastest: float = paces.max()
+	t.check(slowest >= Person.PACE_RANGE.x and fastest <= Person.PACE_RANGE.y and fastest - slowest > 0.1,
+		"people move at their own pace (%.2f to %.2f)" % [slowest, fastest])
+
+	var r := Person.new()
+	r.rng.seed = 7
+	r.bounds = TownLayout.MAP
+	r.setup_person(false, Vector2(0.0, 2.0), grid)
+	var threat := r.ground_pos + Vector2(0.0, -1.0)
+	r.panic(threat)
+	t.check(r.is_running(), "a panicked citizen runs")
+	var first_goal := r._goal
+	t.check(first_goal.distance_to(threat) > r.ground_pos.distance_to(threat), "away from the blow")
+	# Walk it to the end of its dash: still panicking, it dashes again instead of milling about.
+	var guard := 0
+	while guard < 600 and r.ground_pos.distance_to(first_goal) > Person.GOAL_REACH:
+		r.tick(1.0 / 60.0)
+		guard += 1
+	# GOAL_REACH (used above so the guard loop doesn't run forever waiting for an exact arrival) is looser
+	# than the finer distance _pick_target() itself waits for, so a handful more ticks closes that last
+	# stretch and fires the redash -- promptly, not the up-to-2.4s of the old standing wait.
+	var redash := 0
+	while redash < 60 and r._goal == first_goal:
+		r.tick(1.0 / 60.0)
+		redash += 1
+	t.check(r.mind == Person.Mind.PANIC and r._goal != Vector2.INF and r._goal != first_goal,
+		"at the end of a dash it dashes again (%s after %d ticks)" % [r._goal, redash])
+
+	# Turning to flight, it does not stand still while its route out is worked out.
+	r.flee()
+	var still := 0
+	var last := r.ground_pos
+	for i in 60:
+		r.tick(1.0 / 60.0)
+		if r.ground_pos.distance_to(last) < 0.001 and not r.is_stumbling():
+			still += 1
+		last = r.ground_pos
+	t.check(still < 15, "waiting for its route, a fleeing citizen keeps moving (%d still frames of 60)" % still)
+	r.free()
+
+	var calm := Person.new()
+	calm.setup_person(false, Vector2(0.0, 2.0), grid)
+	t.check(not calm.is_running(), "a calm citizen does not run")
+	calm.free()
 	env.clear()
 	env.free()
 	town.free()

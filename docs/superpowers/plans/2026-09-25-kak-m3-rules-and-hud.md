@@ -45,7 +45,7 @@
 
 Task order: 1, 2, 3, 4, 5, 6, 7. Each task ends with a green suite and a commit.
 
-Expected `checks=` after each task: Task 1 → 392, Task 2 → 413, Task 3 → 429, Task 4 → 450, Task 5 → 473, Task 6 → 489, Task 7 → 489.
+Expected `checks=` after each task: Task 1 → 392, Task 2 → 413, Task 3 → 429, Task 4 → 451, Task 5 → 474, Task 6 → 490, Task 7 → 490.
 
 ---
 
@@ -1184,7 +1184,7 @@ func stat_lines() -> Array[Dictionary]:
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `bash tools/test.sh`
-Expected: `checks=450 failures=0`.
+Expected: `checks=451 failures=0`.
 
 If the win never fires, print `rules.stability.population`, `.infrastructure`, `.military` and `.resources` after the razing loop: the likely cause is a part that cannot reach zero because the loop skipped a role (the Bridge and the farm fields are `walkable`, and a walkable structure still has to be destroyed to count).
 
@@ -1334,7 +1334,7 @@ static func _k(script: GDScript, name: String) -> float:
 In `tests/run_all.gd`, add `"res://tests/test_targeting.gd",` to `SUITES` after `"res://tests/test_score.gd",`.
 
 Run: `bash tools/test.sh`
-Expected: `FAIL: suite failed to load: res://tests/test_targeting.gd` and `checks=451 failures=1`.
+Expected: `FAIL: suite failed to load: res://tests/test_targeting.gd` and `checks=452 failures=1`.
 
 - [ ] **Step 3: Teach the crowd about lanes**
 
@@ -1547,7 +1547,7 @@ func _cone(from: Vector2, r: float, arc: float, col: Color) -> void:
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `bash tools/test.sh`
-Expected: `checks=473 failures=0`.
+Expected: `checks=474 failures=0`.
 
 Then check the behaviour gate, because `Crowd.on_cast()` changed:
 
@@ -1666,7 +1666,7 @@ static func run(t) -> void:
 In `tests/run_all.gd`, add `"res://tests/test_hud.gd",` to `SUITES` after `"res://tests/test_targeting.gd",`.
 
 Run: `bash tools/test.sh`
-Expected: `FAIL: suite failed to load: res://tests/test_hud.gd` and `checks=474 failures=1`.
+Expected: `FAIL: suite failed to load: res://tests/test_hud.gd` and `checks=475 failures=1`.
 
 - [ ] **Step 3: Write the theme**
 
@@ -2007,7 +2007,7 @@ In `src/game/rules.gd`'s `stat_lines()`, replace the hand-rolled `"%d:%02d"` tim
 - [ ] **Step 6: Run the test to verify it passes**
 
 Run: `bash tools/test.sh`
-Expected: `checks=489 failures=0`.
+Expected: `checks=490 failures=0`.
 
 `Hud` is a `Control`, so the suite must `free()` it (the test does). If `UiTheme.font()` returns null in the headless run, the font's `.import` is missing from the working tree — check `assets/fonts/PixelifySans-Variable.ttf.import` is present rather than working around it in code.
 
@@ -2302,7 +2302,7 @@ bash tools/dev/sandbox_baseline.sh captures/m3_task7
 python tools/dev/compare_captures.py captures/m1_base_a captures/m3_task7 'idle.png'
 ```
 
-Expected: `checks=489 failures=0`; the digest exactly as in the Global Constraints; one `CROWD result ...` line with no `ERROR`; `idle.png` `worst_mean_diff=0.000`.
+Expected: `checks=490 failures=0`; the digest exactly as in the Global Constraints; one `CROWD result ...` line with no `ERROR`; `idle.png` `worst_mean_diff=0.000`.
 
 - [ ] **Step 5: Measure the frame rate**
 
@@ -2320,7 +2320,7 @@ In `README.md`'s KAK section, replace the milestone line with milestone 3's, lis
 SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test   # scripted mission; logs MISSION test ...
 ```
 
-Keep the check count line current (`checks=489 failures=0`) and mention `play.bat` as the way in.
+Keep the check count line current (`checks=490 failures=0`) and mention `play.bat` as the way in.
 
 - [ ] **Step 7: Commit**
 
@@ -2335,7 +2335,7 @@ git commit -m "feat: a playable mission" -m "Mission composes the battlefield, A
 
 After Task 7, before the milestone is called done:
 
-1. `bash tools/test.sh` — `checks=489 failures=0`, output pristine.
+1. `bash tools/test.sh` — `checks=490 failures=0`, output pristine.
 2. The digest line, exactly as in the Global Constraints.
 3. `SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test` — one `MISSION test` line, no errors.
 4. A **user playtest** of `play.bat`. Show the user the three frames from Task 7 and the bench number first, then hand over. The questions that matter: can they read the HUD at 640×360, does the DP economy let them cast often enough to be interesting, and is four minutes the right length? Their answers are milestone 5's tuning list, not this milestone's bugs.

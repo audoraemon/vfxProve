@@ -17,8 +17,13 @@ const COL_SHADOW := Color(0, 0, 0, 0.75)
 ## The five stability colours in the spec's order: population, infrastructure, leadership, military, resources.
 const STABILITY_COLS := [Color("7fc46a"), Color("c8a05a"), Color("d8b23a"), Color("c05a4a"), Color("6fa8c8")]
 
-const SIZE_SMALL := 8
-const SIZE_BODY := 10
+## The smallest text that reads. Pixelify Sans is drawn on a pixel grid and, with smoothing off, anything under
+## 11 px drops strokes: at 8 px "Citadel" read "Otodel", the colon in 4:00 vanished and 50 read 20.
+const SIZE_SMALL := 11
+const SIZE_BODY := 13
+## Line spacing for stacked text at those sizes.
+const LINE_SMALL := 12.0
+const LINE_BODY := 15.0
 const SIZE_BIG := 16
 
 static var _font: FontFile
@@ -31,6 +36,10 @@ static func font() -> FontFile:
 		_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
 		_font.hinting = TextServer.HINTING_NONE
 		_font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+		# The font's "fi" ligature is a single glyph that reads as a capital A at every size ("fire" -> "Are",
+		# "Dragonfire" -> "DragonAre"). Letters are drawn one by one instead.
+		var ts := TextServerManager.get_primary_interface()
+		_font.opentype_feature_overrides = {ts.name_to_tag("liga"): 0, ts.name_to_tag("clig"): 0}
 	return _font
 
 

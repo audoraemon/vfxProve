@@ -16,6 +16,10 @@ const HURRY_AT := 30.0
 const SLOT_SIZE := 42.0
 const SLOT_GAP := 6.0
 const STABILITY_BAR := Vector2(96.0, 5.0)
+## The objectives, top left: sized for three lines of SIZE_SMALL text.
+const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 50.0)
+## The dark plate under a slot's hotkey and cost.
+const PLATE_H := 12.0
 const DP_BAR := Vector2(180.0, 7.0)
 
 var _rules: Rules
@@ -99,7 +103,9 @@ func objective_text() -> String:
 
 ## The city's state, top right.
 func status_text() -> String:
-	return "Citizens %d   Soldiers %d   Buildings down %d   Alarm %d%%" % [_crowd.alive_citizens(),
+	# Short labels: at the legible 11 px this line runs from the right edge to within a few pixels of the
+	# centred clock, and "Buildings down" with a three-digit count would have reached it.
+	return "Citizens %d   Soldiers %d   Destroyed %d   Alarm %d%%" % [_crowd.alive_citizens(),
 		_crowd.alive_soldiers(), _rules.buildings_down, roundi(_crowd.alarm)]
 
 
@@ -172,10 +178,10 @@ func _draw_clock(w: float) -> void:
 
 
 func _draw_objectives() -> void:
-	draw_rect(Rect2(2.0, 2.0, 172.0, 40.0), UiTheme.COL_PANEL)
-	UiTheme.text(self, Vector2(6.0, 13.0), objective_text(), UiTheme.SIZE_SMALL)
+	draw_rect(OBJECTIVE_PANEL, UiTheme.COL_PANEL)
+	UiTheme.text(self, Vector2(6.0, 14.0), objective_text(), UiTheme.SIZE_SMALL)
 	# The five-colour stability bar: one segment per part, each as wide as its weight.
-	var at := Vector2(6.0, 18.0)
+	var at := Vector2(6.0, 21.0)
 	var parts := [[_rules.stability.population, Stability.W_POPULATION],
 		[_rules.stability.infrastructure, Stability.W_INFRASTRUCTURE],
 		[_rules.stability.leadership, Stability.W_LEADERSHIP],
@@ -188,16 +194,16 @@ func _draw_objectives() -> void:
 		var full := STABILITY_BAR.x * float(part[1])
 		draw_rect(Rect2(Vector2(x, at.y), Vector2(full * float(part[0]), STABILITY_BAR.y)), UiTheme.STABILITY_COLS[i])
 		x += full
-	UiTheme.text(self, Vector2(at.x + STABILITY_BAR.x + 5.0, at.y + 5.0),
+	UiTheme.text(self, Vector2(at.x + STABILITY_BAR.x + 5.0, at.y + 6.0),
 		"Stability %d%%" % roundi(_rules.stability.total() * 100.0), UiTheme.SIZE_SMALL)
 	var escaped := "Escaped %d / %d" % [_crowd.escaped_count, Rules.ESCAPE_LIMIT]
 	var col := UiTheme.COL_BAD if _crowd.escaped_count >= Rules.ESCAPE_LIMIT - 8 else UiTheme.COL_DIM
-	UiTheme.text(self, Vector2(6.0, 36.0), escaped, UiTheme.SIZE_SMALL, col)
+	UiTheme.text(self, Vector2(6.0, 45.0), escaped, UiTheme.SIZE_SMALL, col)
 
 
 func _draw_status(w: float) -> void:
 	var s := status_text()
-	UiTheme.text(self, Vector2(w - UiTheme.width(s, UiTheme.SIZE_SMALL) - 6.0, 13.0), s, UiTheme.SIZE_SMALL,
+	UiTheme.text(self, Vector2(w - UiTheme.width(s, UiTheme.SIZE_SMALL) - 6.0, 14.0), s, UiTheme.SIZE_SMALL,
 		UiTheme.COL_DIM)
 
 
@@ -254,7 +260,7 @@ func _draw_slots(w: float) -> void:
 		_plate(box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
 		var cost := "%d" % _rules.cost(i)
 		var cost_w := UiTheme.width(cost, UiTheme.SIZE_SMALL)
-		_plate(box.position + Vector2(SLOT_SIZE - cost_w - 3.0, SLOT_SIZE - 10.0), cost,
+		_plate(box.position + Vector2(SLOT_SIZE - cost_w - 3.0, SLOT_SIZE - PLATE_H - 1.0), cost,
 			UiTheme.COL_BAD if state == "dp" else UiTheme.COL_TEXT)
 		if state == "cooldown":
 			# The cooldown as a shade falling away from the top, with its seconds over it.
@@ -268,8 +274,8 @@ func _draw_slots(w: float) -> void:
 ## A short label on a dark plate, `at` being the plate's top-left corner.
 func _plate(at: Vector2, label: String, col: Color) -> void:
 	var w := UiTheme.width(label, UiTheme.SIZE_SMALL)
-	draw_rect(Rect2(at, Vector2(w + 2.0, 9.0)), Color(0, 0, 0, 0.62))
-	UiTheme.text(self, at + Vector2(1.0, 7.0), label, UiTheme.SIZE_SMALL, col)
+	draw_rect(Rect2(at, Vector2(w + 2.0, PLATE_H)), Color(0, 0, 0, 0.62))
+	UiTheme.text(self, at + Vector2(1.0, PLATE_H - 3.0), label, UiTheme.SIZE_SMALL, col)
 
 
 func _draw_popups() -> void:

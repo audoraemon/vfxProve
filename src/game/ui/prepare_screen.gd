@@ -16,7 +16,9 @@ const GRID_AT := Vector2(196.0, 40.0)
 const COLUMNS := 3
 ## The left panel: briefing above, the card under the mouse below.
 const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
-const BADGE := 11.0
+const BADGE := 13.0
+## Where the briefing's values start, right of its labels (TARGET is the widest, 31 px at SIZE_SMALL).
+const VALUE_X := 42.0
 
 var draft := Draft.new()
 
@@ -115,14 +117,17 @@ func _draw_panel() -> void:
 	var y := PANEL.position.y + 10.0
 	for pair: Array in brief:
 		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, y), String(pair[0]), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		for line in UiTheme.wrap(String(pair[1]), PANEL.size.x - 48.0, UiTheme.SIZE_SMALL):
-			UiTheme.text(_ui, Vector2(PANEL.position.x + 44.0, y), line, UiTheme.SIZE_SMALL)
-			y += 9.0
+		for line in UiTheme.wrap(String(pair[1]), PANEL.size.x - VALUE_X - 4.0, UiTheme.SIZE_SMALL):
+			UiTheme.text(_ui, Vector2(PANEL.position.x + VALUE_X, y), line, UiTheme.SIZE_SMALL)
+			y += UiTheme.LINE_SMALL
 		y += 3.0
 	# The card under the mouse, with its big art.
 	var p := PowerBook.get_power(_hover)
 	if p.is_empty():
-		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, PANEL.end.y - 8.0), "Pick four powers, in the order you want them", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		var hint := UiTheme.wrap("Pick four powers, in the order you want them", PANEL.size.x - 8.0, UiTheme.SIZE_SMALL)
+		for i in hint.size():
+			UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint.size() - 1 - i)),
+				hint[i], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		return
 	var art_at := Vector2(PANEL.position.x + 4.0, PANEL.end.y - 92.0)
 	var art: Texture2D = _art.get(_hover)
@@ -130,17 +135,17 @@ func _draw_panel() -> void:
 		_ui.draw_texture_rect(art, Rect2(art_at, Vector2(84, 84)), false)
 		UiTheme.frame(_ui, Rect2(art_at, Vector2(84, 84)), true)
 	var tx := art_at.x + 92.0
-	var ty := art_at.y + 8.0
+	var ty := art_at.y + 10.0
 	for line in UiTheme.wrap(String(p.name), PANEL.end.x - tx - 4.0, UiTheme.SIZE_SMALL):
 		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		ty += 9.0
+		ty += UiTheme.LINE_SMALL
 	ty += 3.0
-	for line in ["%d DP" % int(p.dp), "%d s cooldown" % int(p.cooldown), "aim: %s" % String(p.aim)]:
+	for line in ["%d DP  %d s" % [int(p.dp), int(p.cooldown)], "aim: %s" % String(p.aim)]:
 		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL)
-		ty += 9.0
+		ty += UiTheme.LINE_SMALL
 	for line in UiTheme.wrap(String(p.shape), PANEL.end.x - tx - 4.0, UiTheme.SIZE_SMALL):
 		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-		ty += 9.0
+		ty += UiTheme.LINE_SMALL
 
 
 func _draw_card(i: int) -> void:
@@ -155,18 +160,18 @@ func _draw_card(i: int) -> void:
 	# Gold for a picked card (spec §5), so the four read at a glance across the grid.
 	UiTheme.frame(_ui, r, slot > 0)
 	var tx := r.position.x + 52.0
-	var ty := r.position.y + 13.0
+	var ty := r.position.y + 14.0
 	for line in UiTheme.wrap(String(p.name), CARD.x - 56.0, UiTheme.SIZE_SMALL):
 		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if slot > 0 else UiTheme.COL_TEXT)
-		ty += 9.0
+		ty += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, r.position.y + 42.0), "%d DP  %d s" % [int(p.dp), int(p.cooldown)], UiTheme.SIZE_SMALL)
 	# The shape's first clause is short enough for the card; the whole of it is in the left panel.
 	var short := String(p.shape).split(",")[0]
-	UiTheme.text(_ui, Vector2(r.position.x + 4.0, r.end.y - 5.0), short, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(r.position.x + 4.0, r.end.y - 4.0), short, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if slot > 0:
 		var badge := Rect2(Vector2(r.end.x - BADGE - 3.0, r.position.y + 3.0), Vector2(BADGE, BADGE))
 		_ui.draw_rect(badge, UiTheme.COL_GOLD)
-		UiTheme.text(_ui, badge.position + Vector2(3.0, 9.0), "%d" % slot, UiTheme.SIZE_SMALL, Color(0.08, 0.06, 0.02))
+		UiTheme.text(_ui, badge.position + Vector2(3.0, 11.0), "%d" % slot, UiTheme.SIZE_SMALL, Color(0.08, 0.06, 0.02))
 
 
 func _draw_manifest() -> void:

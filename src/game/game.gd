@@ -83,6 +83,10 @@ func _ready() -> void:
 	if "--capture" in args:
 		# A second for anything behind the screen to settle, then one frame to disk. This is how each screen
 		# task shows its work: SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture
+		# A mission underneath (the pause photograph) only builds its town once its shader prewarm is done,
+		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
+		if is_instance_valid(_mission) and not _mission.started():
+			await _mission.prewarmed
 		await get_tree().create_timer(1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		get_tree().quit()

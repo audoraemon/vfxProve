@@ -81,8 +81,9 @@ var buildings_down := 0
 var chains := 0
 ## Whether destroying things pays Divine Power back (spec §4.1's table). Off since the milestone 4 playtest --
 ## the player had far more DP than they could spend -- so a mission runs on regeneration alone. The table stays,
-## so bringing it back is this one line.
-var dp_recovery := false
+## so bringing it back is this one line. The draft's briefing reads the same constant, so it tells the truth.
+const DP_RECOVERY_DEFAULT := false
+var dp_recovery := DP_RECOVERY_DEFAULT
 
 ## The five-part city health. Measured at most once a frame, and only after something changed it.
 var stability: Stability

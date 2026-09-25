@@ -16,9 +16,10 @@ const GRID_AT := Vector2(196.0, 40.0)
 const COLUMNS := 3
 ## The left panel: briefing above, the card under the mouse below.
 const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
-const BADGE := 13.0
-## Where the briefing's values start, right of its labels (TARGET is the widest, 31 px at SIZE_SMALL).
-const VALUE_X := 42.0
+## The 1-4 badge on a picked card: large enough for the body size, where 2 and 3 do not read as 8.
+const BADGE := 15.0
+## The gap between the briefing's widest label and its values.
+const LABEL_GAP := 6.0
 
 var draft := Draft.new()
 
@@ -144,13 +145,20 @@ func _draw_panel() -> void:
 		["WIN", "Bring down the Citadel and break the city before %s" % UiTheme.clock(Rules.MISSION_SECONDS)],
 		["LOSE", "%d citizens escape, or the time runs out" % Rules.ESCAPE_LIMIT],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
-		["POWER", "%d DP, +%.1f a second; towers, gates, soldiers and chains pay back" % [int(Rules.DP_MAX), Rules.DP_REGEN]],
+		["POWER", ("%d DP, +%.1f a second; towers, gates, soldiers and chains pay back" if Rules.DP_RECOVERY_DEFAULT
+			else "%d DP, +%.1f a second, nothing refunds it") % [int(Rules.DP_MAX), Rules.DP_REGEN]],
 	]
+	# Values start just right of the widest label, measured rather than guessed -- a guessed column ran
+	# TARGET into "Aldermere".
+	var value_x := 0.0
+	for pair: Array in brief:
+		value_x = maxf(value_x, UiTheme.width(String(pair[0]), UiTheme.SIZE_SMALL))
+	value_x = roundf(value_x + 4.0 + LABEL_GAP)
 	var y := PANEL.position.y + 10.0
 	for pair: Array in brief:
 		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, y), String(pair[0]), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		for line in UiTheme.wrap(String(pair[1]), PANEL.size.x - VALUE_X - 4.0, UiTheme.SIZE_SMALL):
-			UiTheme.text(_ui, Vector2(PANEL.position.x + VALUE_X, y), line, UiTheme.SIZE_SMALL)
+		for line in UiTheme.wrap(String(pair[1]), PANEL.size.x - value_x - 4.0, UiTheme.SIZE_SMALL):
+			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
 			y += UiTheme.LINE_SMALL
 		y += 3.0
 	# The card under the mouse, with its big art.
@@ -199,9 +207,14 @@ func _draw_card(i: int) -> void:
 	var short := String(p.shape).split(",")[0]
 	UiTheme.text(_ui, Vector2(r.position.x + 4.0, r.end.y - 4.0), short, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if slot > 0:
-		var badge := Rect2(Vector2(r.end.x - BADGE - 3.0, r.position.y + 3.0), Vector2(BADGE, BADGE))
-		_ui.draw_rect(badge, UiTheme.COL_GOLD)
-		UiTheme.text(_ui, badge.position + Vector2(3.0, 11.0), "%d" % slot, UiTheme.SIZE_SMALL, Color(0.08, 0.06, 0.02))
+		# On the icon's corner, gold on dark like the HUD's hotkeys. Dark digits on a gold square picked up every
+		# label's one-pixel shadow and read as 8, and a badge in the card's top-right corner covered long names.
+		var badge := Rect2(r.position + Vector2(2.0, 2.0), Vector2(BADGE, BADGE))
+		_ui.draw_rect(badge, Color(0.04, 0.04, 0.06, 0.92))
+		_ui.draw_rect(badge, UiTheme.COL_GOLD, false, -1.0)
+		var digit := "%d" % slot
+		UiTheme.text(_ui, badge.position + Vector2(roundf((BADGE - UiTheme.width(digit, UiTheme.SIZE_BODY)) * 0.5), 12.0),
+			digit, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 
 
 func _draw_manifest() -> void:

@@ -15,6 +15,8 @@ const HURRY_AT := 30.0
 
 const SLOT_SIZE := 42.0
 const SLOT_GAP := 6.0
+## A slot is a card: the SLOT_SIZE icon on the left, the power's name and cost on the right.
+const SLOT_W := 112.0
 ## The screen width to lay out against before the Control has been sized (headless tests).
 const SCREEN_W := 640.0
 ## Where the slot row sits.
@@ -44,6 +46,8 @@ var _drawn := ""
 ## _draw() can reach the draw list before the GPU has it -- which paints a solid white block, and because the
 ## HUD only redraws when something changes, the block stays white for the rest of the mission.
 var _slot_icons: Array[Texture2D] = []
+## The powers' names, taken once with their icons.
+var _slot_names: Array[String] = []
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -58,6 +62,9 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	_slot_icons.clear()
 	for i in _rules.loadout.size():
 		_slot_icons.append(PowerBook.hud_icon(_rules.key(i)))
+	_slot_names.clear()
+	for i in _rules.loadout.size():
+		_slot_names.append(String(_rules.power(i).get("name", "")))
 	_rules.banner.connect(push_banner)
 	_rules.dp_gained.connect(_on_dp_gained)
 	_rules.cast_refused.connect(_on_cast_refused)
@@ -141,9 +148,14 @@ func is_picked(slot: int) -> bool:
 func slot_rect(i: int) -> Rect2:
 	var w := size.x if size.x > 1.0 else SCREEN_W
 	var count := _rules.loadout.size()
-	var total := float(count) * SLOT_SIZE + float(maxi(count - 1, 0)) * SLOT_GAP
+	var total := float(count) * SLOT_W + float(maxi(count - 1, 0)) * SLOT_GAP
 	var left := roundf((w - total) * 0.5)
-	return Rect2(Vector2(left + float(i) * (SLOT_SIZE + SLOT_GAP), SLOT_TOP), Vector2(SLOT_SIZE, SLOT_SIZE))
+	return Rect2(Vector2(left + float(i) * (SLOT_W + SLOT_GAP), SLOT_TOP), Vector2(SLOT_W, SLOT_SIZE))
+
+
+## The power's name in slot `i`, taken once in setup().
+func slot_name(i: int) -> String:
+	return _slot_names[i] if i >= 0 and i < _slot_names.size() else ""
 
 
 ## The slot under a screen point, or -1.
@@ -286,7 +298,9 @@ func _draw_dp(w: float) -> void:
 func _draw_slots(_w: float) -> void:
 	for i in _rules.loadout.size():
 		var box := slot_rect(i)
+		var icon_box := Rect2(box.position, Vector2(SLOT_SIZE, SLOT_SIZE))
 		var state := slot_state(i)
+		var usable := state == "ready"
 		draw_rect(box, UiTheme.COL_PANEL)
 		if flashing(i):
 			var red := UiTheme.COL_BAD
@@ -294,24 +308,25 @@ func _draw_slots(_w: float) -> void:
 			draw_rect(box, red)
 		var icon: Texture2D = _slot_icons[i] if i < _slot_icons.size() else null
 		if icon != null:
-			# Greyed while it cannot be cast, so the player reads the row at a glance.
-			draw_texture_rect(icon, box, false, Color(0.45, 0.45, 0.5) if state in ["cooldown", "dp"] else Color.WHITE)
-		# Gold only for the picked slot (spec §5): when every affordable slot wore it, the pick was invisible.
+			draw_texture_rect(icon, icon_box, false, Color.WHITE if usable else Color(0.45, 0.45, 0.5))
 		UiTheme.frame(self, box, is_picked(i))
-		# The hotkey and the cost sit on their own dark plates: painted icons are busy, and a bare glyph over one
-		# of them is a smudge at this size.
-		_plate(box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
-		var cost := "%d" % _rules.cost(i)
-		var cost_w := UiTheme.width(cost, UiTheme.SIZE_SMALL)
-		_plate(box.position + Vector2(SLOT_SIZE - cost_w - 3.0, SLOT_SIZE - PLATE_H - 1.0), cost,
-			UiTheme.COL_BAD if state == "dp" else UiTheme.COL_TEXT)
+		_plate(icon_box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
+		# The name beside the icon, up to two lines; gold when focused, dim when it cannot be cast.
+		var tx := box.position.x + SLOT_SIZE + 4.0
+		var name_col := UiTheme.COL_GOLD if is_picked(i) else (UiTheme.COL_TEXT if usable else UiTheme.COL_DIM)
+		var lines := UiTheme.wrap(slot_name(i), SLOT_W - SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL)
+		for k in mini(lines.size(), 2):
+			UiTheme.text(self, Vector2(tx, box.position.y + 12.0 + UiTheme.LINE_SMALL * float(k)), lines[k], UiTheme.SIZE_SMALL, name_col)
+		var cost := "%d DP" % _rules.cost(i)
+		UiTheme.text(self, Vector2(box.end.x - UiTheme.width(cost, UiTheme.SIZE_SMALL) - 4.0, box.end.y - 4.0), cost,
+			UiTheme.SIZE_SMALL, UiTheme.COL_BAD if state == "dp" else UiTheme.COL_DIM)
 		if state == "cooldown":
-			# The cooldown as a shade falling away from the top, with its seconds over it.
+			# The cooldown as a shade falling away from the top of the card, its seconds over the icon.
 			var left := _rules.cooldown_left(i)
 			var frac := clampf(left / maxf(float(_rules.power(i).cooldown), 0.001), 0.0, 1.0)
-			draw_rect(Rect2(box.position, Vector2(SLOT_SIZE, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
 			var secs := "%d" % ceili(left)
-			UiTheme.text(self, box.get_center() + Vector2(-UiTheme.width(secs) * 0.5, 4.0), secs, UiTheme.SIZE_BODY)
+			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(secs) * 0.5, 4.0), secs, UiTheme.SIZE_BODY)
 
 
 ## A short label on a dark plate, `at` being the plate's top-left corner.

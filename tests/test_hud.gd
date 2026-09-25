@@ -57,6 +57,12 @@ static func run(t) -> void:
 	t.check(hud.slot_at(hud.slot_rect(2).get_center()) == 2, "a point on the third slot is the third slot")
 	t.check(hud.slot_at(Vector2(4.0, 200.0)) == -1, "and a point on the town is no slot")
 
+	# Each slot is a card with the power's name beside its icon (the user's second playtest).
+	t.check(hud.slot_rect(0).size.x == Hud.SLOT_W and hud.slot_rect(0).size.y == Hud.SLOT_SIZE,
+		"a slot is a %d x %d card (%s)" % [int(Hud.SLOT_W), int(Hud.SLOT_SIZE), hud.slot_rect(0).size])
+	t.check(hud.slot_name(0) == "Heaven Splitter" and hud.slot_name(3) == "Nuclear Nova",
+		"and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
+
 	# Banners queue up, show for their time and go.
 	rules.banner.emit("CHAIN!")
 	t.check(hud.banners().size() == 1 and hud.banners()[0] == "CHAIN!", "a banner from the rules is shown (%s)" % [hud.banners()])

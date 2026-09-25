@@ -178,6 +178,11 @@ func _gates() -> void:
 			_gate_passing.erase(gate)
 			continue  # rubble is no bottleneck
 		var centre := gate.center()
+		# The way out of town is straight away from its crossroads at the origin, so anyone already further out
+		# than the gate is through it and is not held again. Without this the doorway catches its own passer a
+		# second time the moment its pass expires -- it is still inside the 0.45 span, and being nearest the
+		# centre it wins the next turn as well, so every person spent two of the gate's turns.
+		var outward := centre.normalized()
 		# Whoever this gate let through stays exempt from the hold until it actually clears the doorway —
 		# otherwise the very next frame's re-evaluation catches it again mid-step and nobody ever gets far
 		# enough to leave GATE_CLEAR range, let alone reach the exit. The exemption also ends once the
@@ -193,7 +198,8 @@ func _gates() -> void:
 		var queue: Array[Person] = []
 		for p in citizens:
 			if p != passing and is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE \
-					and p.ground_pos.distance_to(centre) <= GATE_DOOR:
+					and p.ground_pos.distance_to(centre) <= GATE_DOOR \
+					and (p.ground_pos - centre).dot(outward) <= 0.0:
 				queue.append(p)
 		if queue.is_empty():
 			continue

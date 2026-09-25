@@ -161,14 +161,13 @@ static func run(t) -> void:
 			if w.wait <= 0.0:
 				w.ground_pos += Vector2(0.0, 1.2 / 60.0)
 		for w in walkers.duplicate():
-			if w.ground_pos.y > middle.y + 1.2:
+			# Counted at the doorway itself: a finish line further out would measure the walk to it as well.
+			if w.ground_pos.y > middle.y:
 				walkers.erase(w)
 				through += 1
-	# >= 2, not the spec's naive 5 (or even 3): GATE_DOOR's 0.9-unit catch span is wider than the 0.72 units
-	# one GATE_INTERVAL covers at FLEE_SPEED, so a passer often needs a second interval to clear it, and this
-	# six-abreast synthetic queue (unlike organic, staggered arrivals) puts several walkers in that same
-	# stretch at once. Still a real, deterministic improvement over the old code's zero throughput here.
-	t.check(through >= 2, "about one person a second gets through the gate (%d in 3 s)" % through)
+	# Five turns fit in three seconds, and each walker spends part of its own turn stepping up to the middle,
+	# so four is the floor the gate has to clear.
+	t.check(through >= 4, "about one person every 0.6 s gets through the gate (%d in 3 s)" % through)
 
 	# Milestone 3 reads these: the spawned population, and a destroy that says what killed it.
 	t.check(crowd.spawned_citizens == 110 and crowd.spawned_soldiers == 50,

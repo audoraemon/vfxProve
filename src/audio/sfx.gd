@@ -86,6 +86,9 @@ const CATALOG := {
 	&"ui_manifest": {"path": "res://assets/audio/ui/ui_manifest.wav", "db": -6.0},
 	&"ui_win": {"path": "res://assets/audio/ui/ui_win.wav", "db": -6.0},
 	&"ui_lose": {"path": "res://assets/audio/ui/ui_lose.wav", "db": -6.0},
+	&"cit_yelp": {"path": "res://assets/audio/crowd/cit_yelp_%d.wav", "variants": 4, "db": -10.0, "voices": 4, "jitter": 0.12},
+	&"cit_shout": {"path": "res://assets/audio/crowd/cit_shout_%d.wav", "variants": 3, "db": -12.0, "voices": 3, "jitter": 0.1},
+	&"sol_rally": {"path": "res://assets/audio/crowd/sol_rally.wav", "db": -6.0},
 }
 
 static var _cache := {}

@@ -935,6 +935,52 @@ def ui_lose(rng, dur):
     return reverb(out, size=1.4, mix=0.32)
 
 
+# --------------------------------------------------------------------------
+# The crowd (KAK milestone 5): crude voices -- a buzzy source through a few vowel formants. Stylized on
+# purpose: heard in a crowd under a volcano, they need to read as people, not to fool anyone.
+# --------------------------------------------------------------------------
+
+VOWELS = (
+    ((800.0, 1.0), (1150.0, 0.7), (2800.0, 0.3)),   # ah
+    ((400.0, 1.0), (2000.0, 0.6), (2800.0, 0.3)),   # eh
+    ((700.0, 1.0), (1800.0, 0.6), (2600.0, 0.3)),   # ae
+    ((500.0, 1.0), (900.0, 0.7), (2500.0, 0.25)),   # oh
+)
+
+
+def _voice(rng, n, f0, vowel, breath=0.15):
+    src = saw(f0, n) + 0.3 * square(f0, n, 0.2)
+    out = np.zeros(n)
+    for fc, gain in vowel:
+        out += bandpass(src, fc * 0.85, fc * 1.15) * gain
+    return out + bandpass(noise(n, rng), 1500.0, 5000.0) * breath
+
+
+def cit_yelp(rng, dur, v):
+    n = int(round(dur * SR))
+    k = np.linspace(0.0, 1.0, n)
+    base = (380.0, 460.0, 330.0, 520.0)[v - 1]
+    f0 = base * (1.0 + 0.55 * np.sin(np.pi * np.minimum(k * 1.4, 1.0)))
+    f0 = f0 * (1.0 + 0.03 * np.sin(2.0 * np.pi * 7.0 * k * dur))
+    return saturate(_voice(rng, n, f0, VOWELS[v - 1]) * adsr(n, 0.02, 0.1, 0.7, 0.18), 1.5)
+
+
+def cit_shout(rng, dur, v):
+    n = int(round(dur * SR))
+    k = np.linspace(0.0, 1.0, n)
+    f0 = (210.0, 260.0, 180.0)[v - 1] * (1.15 - 0.25 * k)
+    return saturate(_voice(rng, n, f0, VOWELS[v % 4], breath=0.25) * adsr(n, 0.01, 0.08, 0.8, 0.2), 2.0)
+
+
+def sol_rally(rng, dur):
+    n = int(round(dur * SR))
+    k = np.linspace(0.0, 1.0, n)
+    f0 = 146.8 * (1.0 + 0.06 * np.minimum(k * 6.0, 1.0)) * (1.0 + 0.008 * np.sin(2.0 * np.pi * 5.0 * k * dur))
+    horn = saw(f0, n) + 0.5 * saw(f0 * 2.0, n) + 0.25 * saw(f0 * 3.0, n)
+    horn = lowpass(horn, 1400.0) * adsr(n, 0.12, 0.2, 0.8, 0.45)
+    return reverb(saturate(horn * 0.5, 1.5), size=1.4, mix=0.3)
+
+
 # id: (effect folder, builder, length seconds, loop)
 CUES: dict[str, tuple] = {
     "nova_alarm": ("nova", nova_alarm, 1.5, False),
@@ -1017,6 +1063,11 @@ for _name, _fn, _dur in (
     ("ui_win", ui_win, 2.4), ("ui_lose", ui_lose, 2.2),
 ):
     CUES[_name] = ("ui", _fn, _dur, False)
+CUES["sol_rally"] = ("crowd", sol_rally, 1.4, False)
+for _v in range(1, 5):
+    CUES[f"cit_yelp_{_v}"] = ("crowd", lambda rng, dur, v=_v: cit_yelp(rng, dur, v), 0.45, False)
+for _v in range(1, 4):
+    CUES[f"cit_shout_{_v}"] = ("crowd", lambda rng, dur, v=_v: cit_shout(rng, dur, v), 0.55, False)
 
 
 def cue_path(cue: str) -> Path:

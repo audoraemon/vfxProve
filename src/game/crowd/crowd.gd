@@ -35,6 +35,10 @@ const GATE_DOOR := 0.45
 const GATE_CLEAR := 0.8
 ## Where the soldiers ring the Citadel.
 const RING_RADIUS := 3.4
+## Voices: at most this many a second across the whole town, refilling steadily, so 160 people can never drown
+## the powers. A cast is heard from at most VOICES_PER_CAST of the people it frightened, the nearest first.
+const VOICE_BUDGET := 4.0
+const VOICES_PER_CAST := 3
 
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
@@ -45,6 +49,10 @@ var alarm := 0.0
 var escaped_count := 0
 var killed_citizens := 0
 var killed_soldiers := 0
+## The battlefield's Sfx; null in tests, which still count what would have played.
+var sfx: Node
+var voices_played := 0
+var _voice_tokens := VOICE_BUDGET
 
 var _field: EnemyField
 var _env: EnvironmentField
@@ -170,6 +178,7 @@ func advance(delta: float) -> void:
 	_gates()
 	_escapes()
 	_prune_soldiers()
+	_voice_tokens = minf(VOICE_BUDGET, _voice_tokens + VOICE_BUDGET * delta)
 	_purge_in -= delta
 	if _purge_in <= 0.0:
 		_purge_in = 1.0
@@ -250,6 +259,24 @@ func _prune_soldiers() -> void:
 	soldiers = remaining
 
 
+## One voice from `p`, if the budget allows it.
+func _voice(p: Person, cue: StringName) -> void:
+	if _voice_tokens < 1.0:
+		return
+	_voice_tokens -= 1.0
+	voices_played += 1
+	if sfx != null:
+		sfx.play(cue, p.ground_pos)
+
+
+## A few of the people just frightened near `at` cry out, nearest first.
+func _yelp(frightened: Array[Person], at: Vector2) -> void:
+	frightened.sort_custom(func(a: Person, b: Person) -> bool:
+		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+	for i in mini(frightened.size(), VOICES_PER_CAST):
+		_voice(frightened[i], &"cit_yelp")
+
+
 ## A cast landed: everyone close enough panics. A lane power (`dir` set, `length` above zero) frightens people
 ## along its whole lane -- a tsunami's far end runs through streets the player never pressed on.
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0) -> void:
@@ -262,13 +289,18 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0) -> void:
 			points.append(ground + unit * along)
 			along += step
 		points.append(ground + unit * length)
+	var frightened: Array[Person] = []
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
 		for point in points:
 			if p.ground_pos.distance_to(point) <= PANIC_CAST:
+				var was := p.mind
 				p.panic(point)
+				if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
+					frightened.append(p)
 				break
+	_yelp(frightened, ground)
 
 
 func add_alarm(points: float) -> void:
@@ -283,6 +315,13 @@ func add_alarm(points: float) -> void:
 		for p in citizens:
 			if is_instance_valid(p) and p.is_alive():
 				p.flee()
+		var shouted := 0
+		for p in citizens:
+			if shouted >= 2:
+				break
+			if is_instance_valid(p) and p.is_alive():
+				_voice(p, &"cit_shout")
+				shouted += 1
 
 
 ## Every soldier leaves its post for a slot on the Citadel's ring.
@@ -298,6 +337,8 @@ func rally() -> void:
 		var p := living[i]
 		var a := TAU * float(i) / float(maxi(living.size(), 1))
 		p.send_to_post(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
+	if sfx != null:
+		sfx.play(&"sol_rally", TownLayout.CITADEL_ORIGIN)
 	rallied.emit()
 
 
@@ -323,15 +364,22 @@ func clear() -> void:
 	_citadel_hit = false
 	_clock = 0.0
 	_purge_in = 1.0
+	_voice_tokens = VOICE_BUDGET
+	voices_played = 0
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
 		add_alarm(ALARM_BUILDING)
 	var at := s.center()
+	var frightened: Array[Person] = []
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(at) <= PANIC_DESTROY:
+			var was := p.mind
 			p.panic(at)
+			if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
+				frightened.append(p)
+	_yelp(frightened, at)
 	if is_instance_valid(_town) and s == _town.bridge:
 		# The south route just closed: everyone already walking it needs a new plan.
 		for p in citizens:

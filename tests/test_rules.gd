@@ -74,7 +74,22 @@ static func run(t) -> void:
 	t.check(refused == [[0, "over"]], "and a finished mission takes no more casts (%s)" % refused)
 
 	# --- What a cast destroyed -------------------------------------------------------------------------
+	# Since the milestone 4 playtest the mission runs on regeneration alone: destroying things pays nothing.
+	var r0 := Rules.new().setup(loadout, null, env, field, crowd, town)
+	t.check(not r0.dp_recovery, "Divine Power comes back only by regeneration by default")
+	r0.dp = 50.0
+	var first_tower: Structure = null
+	for s in env.structures():
+		if s.role == &"tower" and not s.destroyed:
+			first_tower = s
+			break
+	first_tower.destroy(first_tower.center(), &"nova")
+	t.check(r0.dp == 50.0 and r0.buildings_down == 1,
+		"a destroyed tower pays nothing but still counts as a building (%.1f DP, %d)" % [r0.dp, r0.buildings_down])
+	r0.free()
+
 	var r2 := Rules.new().setup(loadout, null, env, field, crowd, town)
+	r2.dp_recovery = true  # the table is kept, switched off; this block proves it still pays when switched on
 	var gains: Array = []
 	r2.dp_gained.connect(func(amount: float, at: Vector2): gains.append([amount, at]))
 	var banners: Array = []

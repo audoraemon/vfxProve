@@ -79,6 +79,10 @@ var finished := false
 var buildings_down := 0
 ## How many casts chained.
 var chains := 0
+## Whether destroying things pays Divine Power back (spec §4.1's table). Off since the milestone 4 playtest --
+## the player had far more DP than they could spend -- so a mission runs on regeneration alone. The table stays,
+## so bringing it back is this one line.
+var dp_recovery := false
 
 ## The five-part city health. Measured at most once a frame, and only after something changed it.
 var stability: Stability
@@ -279,6 +283,8 @@ func _check_chain(c: Dictionary) -> void:
 
 
 func _gain(amount: float, at: Vector2) -> void:
+	if not dp_recovery:
+		return
 	var before := dp
 	dp = minf(DP_MAX, dp + amount)
 	var applied := dp - before

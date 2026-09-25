@@ -54,6 +54,8 @@ var result := {}
 var _mission: Mission
 ## Title, Prepare or Results: whichever full screen is up.
 var _screen_node: Node
+## The pause menu, while it is up. It sits over the mission instead of replacing it.
+var _pause: PauseMenu
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -73,6 +75,9 @@ func _ready() -> void:
 		"results":
 			result = SAMPLE_RESULT.duplicate(true)
 			go_to(Screen.RESULTS)
+		"pause":
+			go_to(Screen.MISSION)
+			_open_pause()
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -85,6 +90,7 @@ func _ready() -> void:
 
 ## Put up a screen, taking down whatever was there.
 func go_to(to: int) -> void:
+	_close_pause()
 	screen = to
 	# A hit dips Engine.time_scale and the battlefield's Impact restores it from its own _process. A mission
 	# freed mid-dip never restores it, and the whole game would stay in slow motion from then on.
@@ -127,6 +133,11 @@ func go_to(to: int) -> void:
 
 ## What a screen reports the player pressed.
 func on_action(action: String) -> void:
+	if action == "pause:resume":
+		_close_pause()
+		if is_instance_valid(_mission):
+			_mission.set_frozen(false)
+		return
 	var to := next_screen(action)
 	if to < 0:
 		push_warning("KAK ignored an unknown action: " + action)
@@ -139,6 +150,7 @@ func _build_mission() -> Mission:
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
+	mission.pause_pressed.connect(_open_pause)
 	# Its _ready() is still compiling the effect shaders into the effect layers a frame or two after
 	# add_child(), and start() clears those layers -- starting now freed the prewarm's nodes under it.
 	var seed_value := Time.get_ticks_usec()
@@ -163,6 +175,23 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		save.remember_loadout(loadout)
 		save.save_to()
 	on_action("prepare:" + what)
+
+
+func _open_pause() -> void:
+	if is_instance_valid(_pause) or not is_instance_valid(_mission):
+		return
+	_mission.set_frozen(true)
+	_pause = PauseMenu.new()
+	_pause.name = "Pause"
+	add_child(_pause)
+	_pause.setup()
+	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
+
+
+func _close_pause() -> void:
+	if is_instance_valid(_pause):
+		_pause.queue_free()
+	_pause = null
 
 
 func _on_title_action(what: String) -> void:

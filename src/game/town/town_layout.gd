@@ -127,9 +127,12 @@ const GARDEN_SHORT := 0.45
 ## Gap between a garden and its cottage.
 const GARDEN_GAP := 0.18
 const GARDEN_STREET_CLEAR := 0.7
+## The share of cottages that try for a garden.
+const GARDEN_CHANCE := 0.85
 const TREE_SIZE := Vector2(0.7, 0.7)
-## Trees in town, between the cottages.
+## Trees in town, between the cottages, and the share of candidate spots that get one.
 const TOWN_TREE := Vector2(0.45, 0.45)
+const TOWN_TREE_CHANCE := 0.8
 
 
 ## A wall run is built in short pieces instead of one long slab. A building sorts against the rest of the town
@@ -263,7 +266,7 @@ static func structures() -> Array[Dictionary]:
 		_add(out, Rect2(p, Vector2(0.2, 0.2)), 18.0, Structure.Kind.TORCH, &"decor", &"lamp")
 	var town_trees := town_trees()
 	for i in town_trees.size():
-		_add(out, Rect2(town_trees[i], TOWN_TREE), 22.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor")
+		_add(out, Rect2(town_trees[i], TOWN_TREE), 25.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor", &"oak")
 	return out
 
 
@@ -345,7 +348,7 @@ static func gardens() -> Array[Rect2]:
 		blocks.append(d.grow(-0.05))
 	var hs := houses()
 	for i in hs.size():
-		if _unit(i * 11 + 3) > 0.55:
+		if _unit(i * 11 + 3) > GARDEN_CHANCE:
 			continue
 		var h := hs[i]
 		var long_x := minf(h.size.x + 0.2, GARDEN_LONG)
@@ -399,12 +402,16 @@ static func town_trees() -> Array[Vector2]:
 		var cols := maxi(int(d.size.x / HOUSE_CELL.x), 1)
 		var rows := maxi(int(d.size.y / HOUSE_CELL.y), 1)
 		var cell := Vector2(d.size.x / cols, d.size.y / rows)
-		for j in rows + 1:
-			for i in cols + 1:
-				n += 1
-				if _unit(n * 5 + 7) > 0.62:
+		# Candidates at every grid corner and half-way along each cell's sides: the reference's blocks are thick
+		# with trees between the cottages.
+		for j in rows * 2 + 1:
+			for i in cols * 2 + 1:
+				if i % 2 == 1 and j % 2 == 1:
 					continue
-				var p := d.position + cell * Vector2(i, j) - TOWN_TREE * 0.5
+				n += 1
+				if _unit(n * 5 + 7) > TOWN_TREE_CHANCE:
+					continue
+				var p := d.position + cell * Vector2(i, j) * 0.5 - TOWN_TREE * 0.5
 				p += Vector2(_unit(n * 5 + 8) - 0.5, _unit(n * 5 + 9) - 0.5) * 0.3
 				var t := Rect2(p, TOWN_TREE)
 				if not TOWN.grow(-0.75).encloses(t):
@@ -416,6 +423,9 @@ static func town_trees() -> Array[Vector2]:
 						break
 				for road: Rect2 in ROADS:
 					if road.grow(0.25).intersects(t):
+						clear = false
+				for o: Vector2 in out:
+					if Rect2(o, TOWN_TREE).grow(0.15).intersects(t):
 						clear = false
 				if clear:
 					out.append(p)

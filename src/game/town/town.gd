@@ -20,7 +20,10 @@ class DecorLayer extends Node2D:
 
 ## The town's warm evening light, after the reference: everything lit takes this colour (LightField.tint); windows,
 ## torches and lamps do not, so they glow against it.
-const EVENING := Color(1.0, 0.95, 0.87)
+const EVENING := Color(1.03, 0.93, 0.8)
+## The ground takes a deeper gold than the buildings: in the reference the low sun turns its dirt and cobbles
+## orange while its stone stays grey and its slate blue (tools/dev/match_interior.py measures the whole).
+const GROUND_EVENING := Color(1.06, 0.92, 0.74)
 
 var citadel: Citadel
 var bridge: Structure
@@ -93,7 +96,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = baked
-		floor_node.tint = EVENING
+		floor_node.tint = GROUND_EVENING
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
 

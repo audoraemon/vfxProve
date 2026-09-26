@@ -7,6 +7,9 @@ extends RefCounted
 ## - Tree: a lumpy oak or a tiered pine. tree() is shared with decor, so it only collects: callers flush.
 ## Colours are unlit: the structure's shader lights them (see ArtKit).
 
+## Leaf clusters on an oak's crown, and on the town's oaks (tag &"oak").
+const OAK_CLUSTERS := 30
+const TOWN_OAK_CLUSTERS := 16
 ## Stall cloths [stripe, stripe]: red and cream, blue and cream, cream and tan.
 const CLOTH := [[Color("c8342a"), Color("ece2c8")], [Color("2f5fb8"), Color("ece2c8")], [Color("ece2c8"), Color("c0a070")]]
 const COUNTER_H := 7.0
@@ -33,7 +36,8 @@ static func plan(s: Structure) -> Dictionary:
 		Structure.Kind.FARM_FIELD:
 			return {"crop": ArtKit.pick(sd, 31, 2)}
 		Structure.Kind.TREE:
-			return {"species": ArtKit.pick(sd, 30, 2)}
+			# Trees tagged oak (the town's, between the cottages) are always leafy, as in the reference.
+			return {"species": 0 if s.art_tag == &"oak" else ArtKit.pick(sd, 30, 2)}
 	return {}
 
 
@@ -47,7 +51,9 @@ static func draw(s: Structure) -> void:
 			_field(s)
 		Structure.Kind.TREE:
 			ArtKit.begin()
-			tree(s._gp(s.center(), 0.0), s.max_height * 1.8, s.art.species, s.rng.seed)
+			# The town's oaks stand by the dozen between the cottages: fewer leaf clusters keep their cost down.
+			tree(s._gp(s.center(), 0.0), s.max_height * 1.8, s.art.species, s.rng.seed,
+				TOWN_OAK_CLUSTERS if s.art_tag == &"oak" else OAK_CLUSTERS)
 			ArtKit.flush(s)
 		Structure.Kind.FOUNTAIN:
 			_fountain(s)
@@ -462,7 +468,7 @@ static func _fountain(s: Structure) -> void:
 # --- Tree ------------------------------------------------------------------
 
 ## A tree standing on `base` (canvas px), `tall` px to its crown: species 0 an oak, 1 a pine. Collects only.
-static func tree(base: Vector2, tall: float, species: int, seed_value: int) -> void:
+static func tree(base: Vector2, tall: float, species: int, seed_value: int, clusters := OAK_CLUSTERS) -> void:
 	var trunk_h := roundf(tall * (0.24 if species == 0 else 0.14))
 	# A trunk with a little root flare at its foot.
 	ArtKit.poly(PackedVector2Array([base + Vector2(-2, 0), base + Vector2(3, 0), base + Vector2(2, -trunk_h),
@@ -472,15 +478,15 @@ static func tree(base: Vector2, tall: float, species: int, seed_value: int) -> v
 	ArtKit.poly(PackedVector2Array([base + Vector2(-4, 1), base + Vector2(5, 1), base + Vector2(2, -2), base + Vector2(-1, -2)]),
 		ArtKit.BARK.darkened(0.15), ArtKit.LIT_LEFT)
 	if species == 0:
-		_oak(base + Vector2(0, -trunk_h), tall - trunk_h, seed_value)
+		_oak(base + Vector2(0, -trunk_h), tall - trunk_h, seed_value, clusters)
 	else:
 		_pine(base + Vector2(0, -trunk_h * 0.5), tall - trunk_h * 0.5, seed_value)
 
 
-static func _oak(foot: Vector2, crown: float, seed_value: int) -> void:
+static func _oak(foot: Vector2, crown: float, seed_value: int, clusters: int) -> void:
 	var rx := roundf(crown * 0.5)
 	var c := foot + Vector2(0, -crown * 0.5)
-	leafy(c, Vector2(rx, crown * 0.46), seed_value, 30, ArtKit.OAK)
+	leafy(c, Vector2(rx, crown * 0.46), seed_value, clusters, ArtKit.OAK)
 
 
 ## A leafy mass as the reference draws its oaks and bushes: a dark outline of big clumps, then many small leaf

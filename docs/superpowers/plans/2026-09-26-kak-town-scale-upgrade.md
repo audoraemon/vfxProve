@@ -223,3 +223,35 @@ Tests and scripted runs:
 Escape limit (unchanged at 76):
 - Escapes flow at about 0.9/s once the queues form.
 - At that rate the limit falls about 106 s into the 360 s mission, or 29% of the way through. In v0.02 it fell about 69 s into 240 s, also 29%.
+
+## Follow-up: a denser, warmer interior (2026-09-27)
+
+Asked for after `kak-scale-v1`. A new check, `tools/dev/match_interior.py`, compares the town inside the walls as a whole. It lays the reference and our overview flat onto the ground inside the walls, then scores five things:
+
+- how warm the colours are;
+- how green;
+- how saturated;
+- red against blue;
+- how busy the surface is.
+
+It also reports how grey and how flat the interior is, but does not score them. The reference's walls bulge into the area it samples, so most of its grey is wall and awning stripe.
+
+The score went from **67% to 89%** (warm 34 → 91, R-B 60 → 94, sat 66 → 84, detail 83 → 88, green 90 → 89):
+
+- **Ground:**
+  - Cobbles and flagstones are light warm beige.
+  - The lawn in the house blocks is now worn ground, from bare earth to patches of grass.
+  - Low shrubs and flower clumps are painted into the floor over the blocks (`SHRUB_STEP` 0.6, `SHRUB_CHANCE` 0.8).
+- **Light:**
+  - The ground takes a deeper gold (`Town.GROUND_EVENING` 1.06, 0.92, 0.74) than lit things (`EVENING` 1.03, 0.93, 0.80).
+  - Tinting everything that gold cost the parts their colour match: component match 90% → 88%, because stone went brown and slate went grey. The split keeps component match at 89%.
+- **Trees:**
+  - Town trees can stand at grid corners and half-way along cell sides (`TOWN_TREE_CHANCE` 0.8): 85 inside the walls, up from 15.
+  - They are always leafy oaks (tag `oak`), drawn with 16 leaf clusters instead of 30.
+- **Gardens:** 85% of cottages try for a garden, up from 45%.
+- **Roofs:** 30% of cottages are roofed in red tile (`HouseArt.TILE_SHARE`).
+
+Checks and costs:
+- 712 checks pass. The digest is unchanged. FLOW 24/24.
+- Crowd test: escaped 15 (16 before). Mission test: escaped 10, stability 49%.
+- Mission frame rate is 72.5 → 66.3 fps against `kak-scale-v1`, same hour. The cost is the ~70 extra tree nodes, not their triangles: cutting the leaf clusters took 11k primitives off and did not change the frame rate.

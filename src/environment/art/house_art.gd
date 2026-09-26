@@ -3,6 +3,7 @@ extends RefCounted
 ## Aldermere's cottages and the farms' barns, after concepts/TOWN REF/Town Visual Upgrade.png.
 ## - Cottage: warm plaster between dark timbers; a steep slate roof with a deep overhang, thick edge boards and a
 ##   dark outline, over a timbered gable; a stone chimney, glowing windows and a plank door.
+## - Cottage roofs are slate, or red tile on TILE_SHARE of them.
 ## - Barn: planks instead of plaster, red tile instead of slate.
 ## - Tavern (tag &"tavern"): two storeys of timber and plaster under red tile, windows on both floors, an awning
 ##   over the door, and a hanging blue sign.
@@ -28,6 +29,8 @@ const PLINTH_H := 2.0
 const CHIMNEY_W := 0.17
 const CHIMNEY_FRONT := 0.12
 const CHIMNEY_UP := 6.0
+## The share of cottages roofed in red tile instead of slate, as in the Scale reference's town.
+const TILE_SHARE := 0.3
 
 
 static func plan(s: Structure) -> Dictionary:
@@ -45,6 +48,7 @@ static func plan(s: Structure) -> Dictionary:
 		"steps": ArtKit.hash01(sd, 6) < 0.45,
 		# A farm's house is a barn, except the mills, which are plastered cottages.
 		"barn": s.role == &"farm" and s.art_tag == &"",
+		"tile": s.role == &"house" and s.art_tag == &"" and ArtKit.hash01(sd, 7) < TILE_SHARE,
 		"tavern": s.art_tag == &"tavern",
 		"smithy": s.art_tag == &"smithy",
 	}
@@ -131,7 +135,7 @@ static func draw(s: Structure) -> void:
 		_draw_openings(s, p, h, eave_face, gable_face, timber_c, door_c, barn)
 
 	# Roof: back slope, then the gable in front of it; the front slope comes over both in the next layer.
-	var pal: Array = ArtKit.RED_TILE if barn or tavern else ArtKit.SLATE
+	var pal: Array = ArtKit.RED_TILE if barn or tavern or p.tile else ArtKit.SLATE
 	var shade: int = p.roof_shade
 	var roof: Array[Color] = []
 	for i in pal.size():

@@ -20,10 +20,13 @@ const FOREST := [Color("6a7f30"), Color("5c722b"), Color("4f6527"), Color("43582
 const EARTH := [Color("b09468"), Color("a4885e"), Color("987c55"), Color("8a704c")]
 ## Dirt trails and roads [light, mid, dark].
 const DIRT := [Color("c49a62"), Color("b08a56"), Color("94744a")]
-const COBBLE := [Color("c4baac"), Color("b8ad9e"), Color("aa9f90"), Color("9c9082")]
-const COBBLE_MORTAR := Color("6e6458")
-const FLAG := [Color("c8c2b8"), Color("bdb6ac"), Color("b1a99e"), Color("a69e93")]
-const FLAG_MORTAR := Color("7a7268")
+const COBBLE := [Color("d8cab0"), Color("cbbca1"), Color("bcad92"), Color("ab9d84")]
+const COBBLE_MORTAR := Color("857058")
+const FLAG := [Color("d6c19a"), Color("cab58f"), Color("bca884"), Color("ad9a78")]
+const FLAG_MORTAR := Color("7c6446")
+## The house blocks inside the walls: worn ground, from bare warm earth to patches of grass, as in the reference
+## (its blocks are gardens, hedges and dirt, not lawn).
+const BLOCK := [Color("b8a066"), Color("a89a58"), Color("98984a"), Color("8a9040"), Color("7c8a38")]
 const SAND := [Color("cdb07e"), Color("c4a674"), Color("b89a68")]
 const WATER := [Color("3a82b4"), Color("2b70a4"), Color("225f93")]
 const BANK := Color("4a4a38")
@@ -50,6 +53,9 @@ const ROAD_TRAILS := [
 ]
 ## Grass painting cell (ground units) and the noise lattice spacing.
 const CELL := 0.25
+## Shrubs over the house blocks: the spacing of their jittered grid, and the share of its points that get one.
+const SHRUB_STEP := 0.6
+const SHRUB_CHANCE := 0.8
 const LATTICE := 1.6
 
 
@@ -162,11 +168,11 @@ static func _iso_bounds(r: Rect2) -> Rect2:
 
 func paint_ground(ci: CanvasItem) -> void:
 	_meadow(ci)
-	# Inside the walls the lanes are cobbled; the house blocks are lawn, and each house stands in its own small
+	# Inside the walls the lanes are cobbled; the house blocks are worn ground, and each house stands in its own small
 	# packed-earth yard, as in the reference.
 	_paving(ci, TownLayout.TOWN, COBBLE, COBBLE_MORTAR, 0.2)
 	for d: Rect2 in TownLayout.DISTRICTS:
-		_yard(ci, d.grow(-0.12), GRASS)
+		_yard(ci, d.grow(-0.12), BLOCK)
 	_yard_rects = _yards()
 	for h: Rect2 in _yard_rects:
 		_yard(ci, h, EARTH)
@@ -449,7 +455,38 @@ func paint_detail(ci: CanvasItem) -> void:
 			ci.draw_rect(Rect2(p, Vector2(1, 1)), (EARTH[3] as Color).darkened(0.15))
 			if hz % 2 == 0:
 				ci.draw_rect(Rect2(p + Vector2(1, 0), Vector2(1, 1)), (EARTH[0] as Color).lightened(0.1))
+	_shrubs(ci)
 	_paint_decor(ci)
+
+
+## Low shrubs and flower clumps over the house blocks' open ground, as thick as the reference's: painted into the
+## floor, since they are too low to hide anyone. Buildings, gardens and trees stand over any that fall under them.
+func _shrubs(ci: CanvasItem) -> void:
+	var n := 0
+	for d: Rect2 in TownLayout.DISTRICTS:
+		var nx := int(d.size.x / SHRUB_STEP)
+		var ny := int(d.size.y / SHRUB_STEP)
+		for j in ny:
+			for i in nx:
+				n += 1
+				var h := _hash(n * 7 + 3, n * 13 + 11)
+				if float(h % 100) / 100.0 > SHRUB_CHANCE:
+					continue
+				var g := d.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * SHRUB_STEP 					+ (Vector2(float(h % 17) / 17.0, float(h % 13) / 13.0) - Vector2(0.5, 0.5)) * SHRUB_STEP * 0.8
+				if _zone(g) != 1:
+					continue
+				var p := Iso.ground_to_screen(g).round()
+				ArtKit.begin()
+				if h % 5 == 0:
+					# A clump of flowers in one colour, among a little green.
+					PropArt.leafy(p + Vector2(0, -2), Vector2(4, 2.5), h, 5, ArtKit.OAK)
+					var col: Color = FLOWERS[h % FLOWERS.size()]
+					for k in 4:
+						ci.draw_rect(Rect2(p + Vector2(float((h + k * 7) % 7) - 3.0, float((h + k * 3) % 4) - 5.0), Vector2(1, 1)), col)
+				else:
+					var r := Vector2(4.0 + float(h % 4), 3.0 + float(h % 3))
+					PropArt.leafy(p + Vector2(0, -r.y * 0.6), r, h, 7, ArtKit.OAK)
+				ArtKit.flush(ci)
 
 
 ## Baked decor over the detail, back to front: trees, rocks, bushes, reeds and fences nothing ever stands in front of.

@@ -38,6 +38,8 @@ const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const MASONRY := [Kind.TEMPLE, Kind.BARRACKS]
 ## Drawn by StoneArt while they stand.
 const STONEWORK := [Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE]
+## Lights the art's unlit geometry (see ArtKit); the rest of a structure's drawing passes through it untouched.
+const ART_SHADER := preload("res://src/environment/art/structure_art.gdshader")
 ## Units walk over these while they stand.
 const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
 ## Flat things people walk on. They are drawn under every person whatever their sort key says: a bridge sorts
@@ -78,6 +80,9 @@ var role := &""
 var walkable := false
 ## Art plan from setup(): pure data hashed from the seed (ArtKit.plan_for), empty for kinds without art.
 var art := {}
+## The last art drawing and what it was drawn for (_art_key_now()); replayed until its geometry changes.
+var _art_cache: Array = []
+var _art_key := 0
 ## Marks a part with extra art: &"keep" (the Citadel keep's flag), &"gate" (the Citadel's gateway).
 var art_tag := &""
 ## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
@@ -453,10 +458,19 @@ func _draw() -> void:
 
 	var rubble_top := _collapse >= 0.0
 	var art_drawn := not destroyed and not rubble_top and (kind == Kind.HOUSE or kind in STONEWORK)
-	if kind == Kind.HOUSE and art_drawn:
-		HouseArt.draw(self, light, dir)
-	elif art_drawn:
-		StoneArt.draw(self, light, dir)
+	if art_drawn:
+		var key := _art_key_now()
+		_light_art(light, dir)
+		if key != _art_key or _art_cache.is_empty():
+			ArtKit.record()
+			if kind == Kind.HOUSE:
+				HouseArt.draw(self)
+			else:
+				StoneArt.draw(self)
+			_art_cache = ArtKit.take()
+			_art_key = key
+		else:
+			ArtKit.replay(self, _art_cache)
 	elif kind == Kind.TORCH and not destroyed:
 		_draw_torch(right_c, left_c)
 	elif kind == Kind.TREE:
@@ -489,6 +503,30 @@ func _draw() -> void:
 		for r in _rubble:
 			draw_colored_polygon(r[0], r[1].lerp(COL_CHAR, scorch * 0.5))
 	draw_set_transform(Vector2.ZERO)
+
+
+## Everything the art's geometry reads besides the seed: height and which windows are lit. Light, scorch and
+## frost only change the shader's uniforms (_light_art), so a building rebuilds its art only when a window goes dark.
+func _art_key_now() -> int:
+	var lit := 0
+	for i in _windows.size():
+		if _windows[i][3]:
+			lit |= 1 << (i % 60)
+	return int(height) * 1000003 + lit
+
+
+## Hand the light, ambient, scorch and frost to the art shader (created on first use).
+func _light_art(light: Color, dir: Vector2) -> void:
+	var mat := material as ShaderMaterial
+	if mat == null:
+		mat = ShaderMaterial.new()
+		mat.shader = ART_SHADER
+		material = mat
+	mat.set_shader_parameter("light_col", Vector3(light.r, light.g, light.b))
+	mat.set_shader_parameter("light_dir", dir)
+	mat.set_shader_parameter("ambient", lights.ambient if lights else 1.0)
+	mat.set_shader_parameter("scorch", scorch)
+	mat.set_shader_parameter("frost", frost)
 
 
 func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color, jagged: bool) -> void:

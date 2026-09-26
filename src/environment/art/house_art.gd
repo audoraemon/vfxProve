@@ -1,13 +1,14 @@
 class_name HouseArt
 extends RefCounted
 ## Aldermere's cottages and the farms' barns, after concepts/TOWN REF/Town Visual Upgrade.png.
-## - Cottage: warm plaster between dark timbers; a steep slate roof as tall as the walls, with a deep overhang,
-##   thick edge boards and a dark outline, over a timbered gable; a stone chimney, glowing windows and a plank door.
+## - Cottage: warm plaster between dark timbers; a steep slate roof with a deep overhang, thick edge boards and a
+##   dark outline, over a timbered gable; a stone chimney, glowing windows and a plank door.
 ## - Barn: planks instead of plaster, red tile instead of slate.
 ##
 ## The ridge runs along the longer side, so one visible wall is the eave wall (under the roof's edge) and the other
 ## is the gable end. Planning is pure data from the seed; drawing only runs while the house stands whole
-## (Structure falls back to its plain box while collapsing, cut or in ruins).
+## (Structure falls back to its plain box while collapsing, cut or in ruins). Colours are unlit: the structure's
+## shader lights them (see ArtKit).
 
 ## Ridge height above the wall top: px per ground unit of half-depth (the roof's pitch), clamped.
 const RISE_PER_HALF := 46.0
@@ -43,7 +44,7 @@ static func plan(s: Structure) -> Dictionary:
 
 ## Three layers, each flushed so the next one's fills cover its lines: walls, openings, back slope and gable; the
 ## front slope with its seams, boards and outline; the chimney standing on it.
-static func draw(s: Structure, light: Color, dir: Vector2) -> void:
+static func draw(s: Structure) -> void:
 	ArtKit.begin()
 	var p := s.art
 	var barn: bool = p.barn
@@ -53,11 +54,8 @@ static func draw(s: Structure, light: Color, dir: Vector2) -> void:
 	var eave_face := ArtKit.LEFT if ax else ArtKit.RIGHT
 	var gable_face := ArtKit.RIGHT if ax else ArtKit.LEFT
 	var wall_pal: Array = ArtKit.PLANK if barn else ArtKit.PLASTER
-	var wall_c := {ArtKit.RIGHT: _lit(s, wall_pal[0], ArtKit.RIGHT, light, dir),
-		ArtKit.LEFT: _lit(s, wall_pal[1], ArtKit.LEFT, light, dir)}
-	var timber_c := {ArtKit.RIGHT: _lit(s, ArtKit.TIMBER, ArtKit.RIGHT, light, dir),
-		ArtKit.LEFT: _lit(s, ArtKit.TIMBER_DARK, ArtKit.LEFT, light, dir)}
-	var outline := ArtKit.OUTLINE_WALL.lerp(Structure.COL_CHAR, s.scorch * 0.65)
+	var wall_c := {ArtKit.RIGHT: wall_pal[0], ArtKit.LEFT: wall_pal[1]}
+	var timber_c := {ArtKit.RIGHT: ArtKit.TIMBER, ArtKit.LEFT: ArtKit.TIMBER_DARK}
 
 	# Roof geometry, in the house's own frame: a runs along the ridge, b across it; +b is the slope facing the camera.
 	var r := s.footprint
@@ -82,10 +80,9 @@ static func draw(s: Structure, light: Color, dir: Vector2) -> void:
 			var seams := int(px / 3.0)
 			for i in range(1, seams):
 				var u := float(i) / seams
-				ArtKit.face_line(s, face, u, 0.0, u, eave - BOARD, wc.darkened(0.22))
+				ArtKit.face_line(s, face, u, 0.0, u, eave - BOARD, ArtKit.ink(0.3))
 		else:
-			ArtKit.face_quad(s, face, 0.0, 1.0, 0.0, PLINTH_H, _lit(s, ArtKit.PLINTH[0 if face == ArtKit.RIGHT else 1],
-				face, light, dir))
+			ArtKit.face_quad(s, face, 0.0, 1.0, 0.0, PLINTH_H, ArtKit.PLINTH[0 if face == ArtKit.RIGHT else 1])
 		if face == eave_face:
 			ArtKit.face_quad(s, face, 0.0, 1.0, eave - BOARD - 3.0, h, wc.darkened(0.32))
 		var post := 2.0 / maxf(px, 1.0)
@@ -94,11 +91,10 @@ static func draw(s: Structure, light: Color, dir: Vector2) -> void:
 		if not barn and face == eave_face and px > 34.0 \
 				and (p.door_face != face or absf(float(p.door_u) - 0.5) > 0.12):
 			ArtKit.face_quad(s, face, 0.5 - post * 0.5, 0.5 + post * 0.5, PLINTH_H, h, tc)
-		ArtKit.face_line(s, face, 0.0, 0.0, 1.0, 0.0, outline)
+		ArtKit.face_line(s, face, 0.0, 0.0, 1.0, 0.0, ArtKit.ink(0.75))
 
-	var door_c := {ArtKit.RIGHT: _lit(s, ArtKit.DOOR[0], ArtKit.RIGHT, light, dir),
-		ArtKit.LEFT: _lit(s, ArtKit.DOOR[1], ArtKit.LEFT, light, dir)}
-	_draw_openings(s, p, h, eave_face, gable_face, wall_c, timber_c, door_c, barn)
+	var door_c := {ArtKit.RIGHT: ArtKit.DOOR[0], ArtKit.LEFT: ArtKit.DOOR[1]}
+	_draw_openings(s, p, h, eave_face, gable_face, timber_c, door_c, barn)
 
 	# Roof: back slope, then the gable in front of it; the front slope comes over both in the next layer.
 	var pal: Array = ArtKit.RED_TILE if barn else ArtKit.SLATE
@@ -106,44 +102,46 @@ static func draw(s: Structure, light: Color, dir: Vector2) -> void:
 	var roof: Array[Color] = []
 	for i in pal.size():
 		var base: Color = pal[i]
-		base = base.lightened(0.06) if shade > 0 else (base.darkened(0.06) if shade < 0 else base)
-		# The last entry is the outline: ink, not a lit surface.
-		roof.append(_lit(s, base, 0, light, dir) if i < pal.size() - 1 else base.lerp(Structure.COL_CHAR, s.scorch * 0.65))
+		roof.append(base.lightened(0.06) if shade > 0 else (base.darkened(0.06) if shade < 0 else base))
+	var top_code := ArtKit.LIT_TOP
 	var ridge0 := s._gp(_g(ax, a0, bm), top)
 	var ridge1 := s._gp(_g(ax, a1, bm), top)
 	var front0 := s._gp(_g(ax, a0, b1 + OVERHANG), eave)
 	var front1 := s._gp(_g(ax, a1, b1 + OVERHANG), eave)
 	var back0 := s._gp(_g(ax, a0, b0 - OVERHANG), eave)
 	var back1 := s._gp(_g(ax, a1, b0 - OVERHANG), eave)
-	ArtKit.poly(PackedVector2Array([back0, back1, ridge1, ridge0]), roof[2])
+	ArtKit.poly(PackedVector2Array([back0, back1, ridge1, ridge0]), roof[2], top_code)
 	var gc: Color = wall_c[gable_face]
 	var gt: Color = timber_c[gable_face]
+	var gcode := ArtKit.face_code(gable_face)
 	ArtKit.face_quad(s, gable_face, 0.0, 1.0, h, shoulder, gc)
 	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, gable_face, 0.0, shoulder),
-		ArtKit.face_pt(s, gable_face, 1.0, shoulder), ArtKit.face_pt(s, gable_face, 0.5, top)]), gc)
+		ArtKit.face_pt(s, gable_face, 1.0, shoulder), ArtKit.face_pt(s, gable_face, 0.5, top)]), gc, gcode)
 	# Shade under the far rake, then the gable's timbers.
 	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, gable_face, 0.0, shoulder),
 		ArtKit.face_pt(s, gable_face, 0.5, top), ArtKit.face_pt(s, gable_face, 0.5, top - 3.0),
-		ArtKit.face_pt(s, gable_face, 0.0, shoulder - 3.0)]), gc.darkened(0.3))
+		ArtKit.face_pt(s, gable_face, 0.0, shoulder - 3.0)]), gc.darkened(0.3), gcode)
 	if barn:
 		for u in [0.25, 0.5, 0.75]:
 			ArtKit.face_line(s, gable_face, u, h, u, lerpf(shoulder, top, 1.0 - absf(u - 0.5) * 2.0) - 2.0,
-				gc.darkened(0.22))
+				ArtKit.ink(0.3))
 	else:
 		ArtKit.face_quad(s, gable_face, 0.0, 1.0, h - 1.0, h + 1.0, gt)
 		var kp := 1.0 / maxf(ArtKit.face_px(s, gable_face), 1.0)
 		ArtKit.face_quad(s, gable_face, 0.5 - kp, 0.5 + kp, h, top - 4.0, gt)
 		var knee := h + (top - h) * 0.42
-		ArtKit.face_line(s, gable_face, 0.5, knee, 0.22, h + 1.0, gt)
-		ArtKit.face_line(s, gable_face, 0.5, knee, 0.78, h + 1.0, gt)
+		ArtKit.face_line(s, gable_face, 0.5, knee, 0.22, h + 1.0, ArtKit.ink(0.75))
+		ArtKit.face_line(s, gable_face, 0.5, knee, 0.78, h + 1.0, ArtKit.ink(0.75))
 		if p.gable_window:
-			ArtKit.window(s, gable_face, 0.33, h + 3.0, 2.0, 3.0, _window_lit(s, 7), gt, gc)
+			ArtKit.window(s, gable_face, 0.33, h + 3.0, 2.0, 3.0, _window_lit(s, 7), gt)
 	ArtKit.flush(s)
 
 	# Front slope: tiles, a lit band under the ridge and a dark one above the eave, seams and streaks.
-	ArtKit.poly(PackedVector2Array([front0, front1, ridge1, ridge0]), roof[1])
-	ArtKit.poly(PackedVector2Array([ridge0, ridge1, ridge1.lerp(front1, 0.12), ridge0.lerp(front0, 0.12)]), roof[0])
-	ArtKit.poly(PackedVector2Array([front0.lerp(ridge0, 0.1), front1.lerp(ridge1, 0.1), front1, front0]), roof[2])
+	ArtKit.poly(PackedVector2Array([front0, front1, ridge1, ridge0]), roof[1], top_code)
+	ArtKit.poly(PackedVector2Array([ridge0, ridge1, ridge1.lerp(front1, 0.12), ridge0.lerp(front0, 0.12)]), roof[0],
+		top_code)
+	ArtKit.poly(PackedVector2Array([front0.lerp(ridge0, 0.1), front1.lerp(ridge1, 0.1), front1, front0]), roof[2],
+		top_code)
 	var length_px := ridge0.distance_to(ridge1)
 	var seams := maxi(int(length_px / 4.0), 3)
 	for i in range(1, seams * 2):
@@ -151,20 +149,21 @@ static func draw(s: Structure, light: Color, dir: Vector2) -> void:
 		var hi := s._gp(_g(ax, a, bm), top)
 		var lo := s._gp(_g(ax, a, b1 + OVERHANG), eave)
 		if i % 2 == 0:
-			ArtKit.line(hi.lerp(lo, 0.06), lo, roof[2].lerp(roof[3], 0.5))
+			ArtKit.line(hi.lerp(lo, 0.06), lo, ArtKit.ink(0.22))
 		elif ArtKit.hash01(s.rng.seed, 20 + i) < 0.6:
 			var from := lerpf(0.04, 0.3, ArtKit.hash01(s.rng.seed, 60 + i))
 			ArtKit.line(hi.lerp(lo, from), hi.lerp(lo, from + lerpf(0.2, 0.5, ArtKit.hash01(s.rng.seed, 40 + i))),
-				roof[0].lightened(0.08))
+				ArtKit.ink(0.12, true))
 	# Edge boards along the eave and down both near rakes: the roof's thickness seen end-on.
 	var board := Vector2(0, BOARD)
-	ArtKit.poly(PackedVector2Array([front0, front1, front1 + board, front0 + board]), roof[3])
-	ArtKit.poly(PackedVector2Array([ridge1, front1, front1 + board, ridge1 + board]), roof[3])
-	ArtKit.poly(PackedVector2Array([back1, ridge1, ridge1 + board, back1 + board]), roof[3].darkened(0.2))
+	ArtKit.poly(PackedVector2Array([front0, front1, front1 + board, front0 + board]), roof[3], ArtKit.LIT_LEFT)
+	ArtKit.poly(PackedVector2Array([ridge1, front1, front1 + board, ridge1 + board]), roof[3], ArtKit.LIT_RIGHT)
+	ArtKit.poly(PackedVector2Array([back1, ridge1, ridge1 + board, back1 + board]), roof[3].darkened(0.2),
+		ArtKit.LIT_RIGHT)
 	# Ridge cap and the lit top edge of the near rakes.
-	ArtKit.line(ridge0, ridge1, roof[4])
-	ArtKit.line(ridge1, front1, roof[0])
-	ArtKit.line(ridge1, back1, roof[0].darkened(0.1))
+	ArtKit.line(ridge0, ridge1, ArtKit.ink(0.3, true))
+	ArtKit.line(ridge1, front1, ArtKit.ink(0.18, true))
+	ArtKit.line(ridge1, back1, ArtKit.ink(0.12, true))
 	# Dark outline round the roof's silhouette.
 	var ol: Color = roof[5]
 	ArtKit.line(back0, back1, ol)
@@ -177,7 +176,7 @@ static func draw(s: Structure, light: Color, dir: Vector2) -> void:
 	ArtKit.line(back1, back1 + board, ol)
 	ArtKit.flush(s)
 	if not barn:
-		_draw_chimney(s, p, ax, a0, a1, bm, half, top, rise, outline, light, dir)
+		_draw_chimney(s, p, ax, a0, a1, bm, half, top, rise)
 		ArtKit.flush(s)
 
 
@@ -193,7 +192,7 @@ static func chimney_top(s: Structure) -> Vector2:
 	return s._gp(_g(ax, a, bm), s.height + float(p.rise) + CHIMNEY_UP)
 
 
-static func _draw_openings(s: Structure, p: Dictionary, h: float, eave_face: int, gable_face: int, wall_c: Dictionary,
+static func _draw_openings(s: Structure, p: Dictionary, h: float, eave_face: int, gable_face: int,
 		timber_c: Dictionary, door_c: Dictionary, barn: bool) -> void:
 	var door_face: int = p.door_face
 	var door_u: float = p.door_u
@@ -220,7 +219,7 @@ static func _draw_openings(s: Structure, p: Dictionary, h: float, eave_face: int
 		if barn:
 			spots = spots.slice(0, 1)
 		for u in spots:
-			ArtKit.window(s, face, u, sill, w, tall, _window_lit(s, n), timber_c[face], wall_c[face])
+			ArtKit.window(s, face, u, sill, w, tall, _window_lit(s, n), timber_c[face])
 			n += 1
 
 
@@ -232,16 +231,17 @@ static func _draw_door(s: Structure, face: int, u: float, w: float, tall: float,
 	ArtKit.face_quad(s, face, u - du - fu, u + du + fu, 0.0, tall + 1.0, timber)
 	ArtKit.face_quad(s, face, u - du, u + du, 0.0, tall, wood)
 	if barn:
-		ArtKit.face_line(s, face, u - du, 0.0, u + du, tall, timber)
-		ArtKit.face_line(s, face, u - du, tall, u + du, 0.0, timber)
-		ArtKit.face_line(s, face, u, 0.0, u, tall, timber)
+		ArtKit.face_line(s, face, u - du, 0.0, u + du, tall, ArtKit.ink(0.7))
+		ArtKit.face_line(s, face, u - du, tall, u + du, 0.0, ArtKit.ink(0.7))
+		ArtKit.face_line(s, face, u, 0.0, u, tall, ArtKit.ink(0.7))
 	else:
-		ArtKit.face_line(s, face, u, 0.0, u, tall, wood.darkened(0.3))
-		ArtKit.face_quad(s, face, u + du * 0.45, u + du * 0.45 + fu, tall * 0.45, tall * 0.45 + 1.0, ArtKit.GLOW_RIM)
+		ArtKit.face_line(s, face, u, 0.0, u, tall, ArtKit.ink(0.35))
+		ArtKit.face_quad(s, face, u + du * 0.45, u + du * 0.45 + fu, tall * 0.45, tall * 0.45 + 1.0, ArtKit.GLOW_RIM,
+			ArtKit.EMIT)
 
 
 static func _draw_chimney(s: Structure, p: Dictionary, ax: bool, a0: float, a1: float, bm: float, half: float,
-		top: float, rise: float, outline: Color, light: Color, dir: Vector2) -> void:
+		top: float, rise: float) -> void:
 	var a := lerpf(a0 + OVERHANG, a1 - OVERHANG, p.chimney_u)
 	var hw := CHIMNEY_W * 0.5
 	var b := bm + CHIMNEY_FRONT
@@ -251,41 +251,34 @@ static func _draw_chimney(s: Structure, p: Dictionary, ax: bool, a0: float, a1: 
 	var fb := b + hw
 	var na := a - hw
 	var nb := b - hw
-	var right_c := _lit(s, ArtKit.CHIMNEY[0], ArtKit.RIGHT, light, dir)
-	var left_c := _lit(s, ArtKit.CHIMNEY[1], ArtKit.LEFT, light, dir)
-	var cap_c := _lit(s, ArtKit.CHIMNEY_CAP, 0, light, dir)
 	# The +b side faces the eave wall's way, the +a side the gable end's.
-	var b_c := left_c if ax else right_c
-	var a_c := right_c if ax else left_c
-	for side in [[[_g(ax, na, fb), _g(ax, fa, fb)], b_c], [[_g(ax, fa, nb), _g(ax, fa, fb)], a_c]]:
+	var b_face := ArtKit.LEFT if ax else ArtKit.RIGHT
+	var a_face := ArtKit.RIGHT if ax else ArtKit.LEFT
+	for side in [[[_g(ax, na, fb), _g(ax, fa, fb)], b_face], [[_g(ax, fa, nb), _g(ax, fa, fb)], a_face]]:
 		var g: Array = side[0]
-		var c: Color = side[1]
+		var face: int = side[1]
+		var code := ArtKit.face_code(face)
+		var c: Color = ArtKit.CHIMNEY[0] if face == ArtKit.RIGHT else ArtKit.CHIMNEY[1]
 		var g0: Vector2 = g[0]
 		var g1: Vector2 = g[1]
 		var h0 := _roof_h(ax, g0, bm, half, top, rise) - 1.0
 		var h1 := _roof_h(ax, g1, bm, half, top, rise) - 1.0
-		ArtKit.poly(PackedVector2Array([s._gp(g0, h0), s._gp(g1, h1), s._gp(g1, cap), s._gp(g0, cap)]), c)
+		ArtKit.poly(PackedVector2Array([s._gp(g0, h0), s._gp(g1, h1), s._gp(g1, cap), s._gp(g0, cap)]), c, code)
 		for k in [5.0, 9.0]:
-			ArtKit.line(s._gp(g0, cap - k), s._gp(g1, cap - k), c.darkened(0.3))
+			ArtKit.line(s._gp(g0, cap - k), s._gp(g1, cap - k), ArtKit.ink(0.3))
 		ArtKit.poly(PackedVector2Array([s._gp(g0, cap - 2.0), s._gp(g1, cap - 2.0), s._gp(g1, cap), s._gp(g0, cap)]),
-			cap_c if c == b_c else cap_c.lightened(0.1))
+			ArtKit.CHIMNEY_CAP if face == ArtKit.LEFT else ArtKit.CHIMNEY_CAP.lightened(0.1), code)
 	ArtKit.poly(PackedVector2Array([s._gp(_g(ax, na, nb), cap), s._gp(_g(ax, fa, nb), cap), s._gp(_g(ax, fa, fb), cap),
-		s._gp(_g(ax, na, fb), cap)]), ArtKit.CHIMNEY[2].darkened(0.5))
+		s._gp(_g(ax, na, fb), cap)]), ArtKit.CHIMNEY[2].darkened(0.5), ArtKit.INK)
 	# Outline down the three visible edges.
 	for g: Vector2 in [_g(ax, na, fb), _g(ax, fa, fb), _g(ax, fa, nb)]:
-		ArtKit.line(s._gp(g, _roof_h(ax, g, bm, half, top, rise) - 1.0), s._gp(g, cap), outline)
+		ArtKit.line(s._gp(g, _roof_h(ax, g, bm, half, top, rise) - 1.0), s._gp(g, cap), ArtKit.ink(0.75))
 
 
 ## Height of the roof surface over a ground point (px), from the ridge down either slope.
 static func _roof_h(ax: bool, g: Vector2, bm: float, half: float, top: float, rise: float) -> float:
 	var b := g.y if ax else g.x
 	return top - (rise + DROP) * absf(b - bm) / (half + OVERHANG)
-
-
-## A material colour lit for the wall it sits on (0 = a roof or top, facing the sky).
-static func _lit(s: Structure, base: Color, face: int, light: Color, dir: Vector2) -> Color:
-	var normal := Vector2(1, 0) if face == ArtKit.RIGHT else (Vector2(0, 1) if face == ArtKit.LEFT else Vector2.ZERO)
-	return s._face_color(base, normal, light, dir)
 
 
 ## Window n's light: the house's own window flags when it has them (damage puts them out), else a hashed guess.

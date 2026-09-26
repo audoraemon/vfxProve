@@ -14,6 +14,9 @@ var grid := AStarGrid2D.new()
 
 var _env: EnvironmentField
 var _bridge: Structure
+## TownLayout.blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
+## far too slow to redo each time a building falls (a Cinderfall felling a dozen trees at once hitched ~100 ms).
+var _blockers: Array[Rect2] = []
 
 
 func setup(env: EnvironmentField, town: Town) -> WalkGrid:
@@ -31,7 +34,9 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 		stamp(r, true)
 	# A garden or a yard closes every cell it touches, so nobody is drawn walking through its fence or props.
 	for g in TownLayout.blockers():
-		stamp(g.grow(CELL * 0.5), true)
+		_blockers.append(g.grow(CELL * 0.5))
+	for g in _blockers:
+		stamp(g, true)
 	# Two passes, because a building people walk over has to win against whatever else claimed its cells: the
 	# gates sit inside the wall segments' grown footprints, and the bridge sits in the river.
 	for s in env.structures():
@@ -156,9 +161,9 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
 				and other.footprint.grow(BODY).intersects(area):
 			_apply(other)
-	for g in TownLayout.blockers():
-		if g.grow(CELL * 0.5).intersects(area):
-			stamp(g.grow(CELL * 0.5), true)
+	for g in _blockers:
+		if g.intersects(area):
+			stamp(g, true)
 	# ...and then open the ways through again, so a gate beside a fallen wall stays passable.
 	for other in _env.structures():
 		if other != s and is_instance_valid(other) and not other.destroyed and other.walkable \

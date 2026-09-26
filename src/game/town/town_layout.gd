@@ -133,6 +133,12 @@ const TREE_SIZE := Vector2(0.7, 0.7)
 ## Trees in town, between the cottages, and the share of candidate spots that get one.
 const TOWN_TREE := Vector2(0.45, 0.45)
 const TOWN_TREE_CHANCE := 0.8
+## Street trees: spacing along each side of a street, the share of spots that get one, how far off the street's edge
+## they stand, and how far they keep from any other street (a junction).
+const STREET_TREE_STEP := 2.2
+const STREET_TREE_CHANCE := 0.85
+const STREET_TREE_GAP := 0.3
+const STREET_TREE_JUNCTION := 0.9
 
 
 ## A wall run is built in short pieces instead of one long slab. A building sorts against the rest of the town
@@ -387,7 +393,8 @@ static func blockers() -> Array[Rect2]:
 	return out
 
 
-## Tree spots between the cottages: grid corners inside each district, kept clear of every building and street.
+## Tree spots between the cottages -- grid corners inside each district, kept clear of every building and street --
+## then along the streets (_street_trees()).
 static func town_trees() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var keep_clear: Array[Rect2] = houses()
@@ -429,7 +436,60 @@ static func town_trees() -> Array[Vector2]:
 						clear = false
 				if clear:
 					out.append(p)
+	_street_trees(out, keep_clear)
 	return out
+
+
+## Trees lining the streets, as in the reference: on the open ground between a street and its cottages, a little
+## off the street's edge, every STREET_TREE_STEP along each side (the two sides staggered) with gaps between them,
+## so a crowd still crosses from the blocks to the street and walks the street itself unhindered. None stands at a
+## junction, in a square or plaza, or by a lamp or torch.
+static func _street_trees(out: Array[Vector2], keep_clear: Array[Rect2]) -> void:
+	var clear_of := keep_clear.duplicate()
+	clear_of.append(CITADEL_AREA)
+	for p: Vector2 in TORCHES + LAMPS:
+		clear_of.append(Rect2(p, Vector2(0.2, 0.2)).grow(0.2))
+	var inner := TOWN.grow(-0.75)
+	var n := 0
+	for road: Rect2 in ROADS:
+		var along_y := road.size.y > road.size.x
+		var r := road.intersection(inner)
+		if r.size.x <= 0.0 or r.size.y <= 0.0:
+			continue
+		for side in [-1.0, 1.0]:
+			var length := r.size.y if along_y else r.size.x
+			var k := STREET_TREE_STEP * (0.5 if side > 0.0 else 0.0) + STREET_TREE_STEP * 0.5
+			while k < length:
+				n += 1
+				var off := (_unit(n * 7 + 1) - 0.5) * 0.4
+				var p: Vector2
+				if along_y:
+					var x := r.position.x - STREET_TREE_GAP - TOWN_TREE.x if side < 0.0 else r.end.x + STREET_TREE_GAP
+					p = Vector2(x, r.position.y + k + off - TOWN_TREE.y * 0.5)
+				else:
+					var y := r.position.y - STREET_TREE_GAP - TOWN_TREE.y if side < 0.0 else r.end.y + STREET_TREE_GAP
+					p = Vector2(r.position.x + k + off - TOWN_TREE.x * 0.5, y)
+				k += STREET_TREE_STEP
+				if _unit(n * 7 + 2) > STREET_TREE_CHANCE:
+					continue
+				var t := Rect2(p, TOWN_TREE)
+				if not inner.encloses(t):
+					continue
+				var ok := true
+				for c in clear_of:
+					if c.grow(0.2).intersects(t):
+						ok = false
+						break
+				for other: Rect2 in ROADS:
+					# Its own street is STREET_TREE_GAP away; any other street means a junction.
+					var reach := 0.25 if other == road else STREET_TREE_JUNCTION
+					if other.grow(reach).intersects(t):
+						ok = false
+				for o: Vector2 in out:
+					if Rect2(o, TOWN_TREE).grow(0.3).intersects(t):
+						ok = false
+				if ok:
+					out.append(p)
 
 
 ## A stable number in [0, 1) for layout variety.

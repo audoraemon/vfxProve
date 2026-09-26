@@ -255,3 +255,22 @@ Checks and costs:
 - 712 checks pass. The digest is unchanged. FLOW 24/24.
 - Crowd test: escaped 15 (16 before). Mission test: escaped 10, stability 49%.
 - Mission frame rate is 72.5 → 66.3 fps against `kak-scale-v1`, same hour. The cost is the ~70 extra tree nodes, not their triangles: cutting the leaf clusters took 11k primitives off and did not change the frame rate.
+
+**Street trees (same day):**
+- Trees now line the streets on the open ground between each street and its cottages (`TownLayout._street_trees()`).
+- Each stands 0.3 off the street's edge, every 2.2 units, with 85% of spots planted and the two sides staggered.
+- None stands at a junction, in a square or by a lamp. The street itself stays clear, and the gaps between trees let people cross.
+- That adds 27 trees, for 112 inside the walls. The interior score went from 89% to 91% (green 89 → 94).
+- Crowd test: 13 escaped (was 15). Mission test: 169 citizens left alive (was 177), 11 escaped.
+
+**Hitch fix.** The crowd's walking map, `WalkGrid`, called `TownLayout.blockers()` every time a building fell. That call lays out every house, garden and tree again, and took 8.2 ms. With the extra trees, a Cinderfall felling 13 at once hitched 150 ms. `WalkGrid` now works the blockers out once, when the town is built, and a fall costs 0.22 ms.
+
+Frame rate against `kak-scale-v1`, same hour:
+
+| Scene | kak-scale-v1 | Now |
+|---|---|---|
+| Cinderfall average | 34.3 fps | 30.0 fps |
+| Cinderfall worst frame | 69 ms | 66–69 ms |
+| Mission | 70.4 fps | 62.0 fps |
+
+The mission loss (about 12%) comes from the ~100 extra trees in the interior, each updated every frame.

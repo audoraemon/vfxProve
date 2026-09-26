@@ -27,7 +27,8 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	grid.update()
-	stamp(TownLayout.RIVER, true)
+	for r: Rect2 in TownLayout.RIVERS:
+		stamp(r, true)
 	# A garden or a yard closes every cell it touches, so nobody is drawn walking through its fence or props.
 	for g in TownLayout.blockers():
 		stamp(g.grow(CELL * 0.5), true)
@@ -148,8 +149,9 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	stamp(s.footprint.grow(BODY), false)
 	# Freeing a footprint can free cells a standing neighbour or the river still needs, so put those back...
 	var area := s.footprint.grow(BODY + CELL)
-	if area.intersects(TownLayout.RIVER):
-		stamp(area.intersection(TownLayout.RIVER), true)
+	for r: Rect2 in TownLayout.RIVERS:
+		if area.intersects(r):
+			stamp(area.intersection(r), true)
 	for other in _env.structures():
 		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
 				and other.footprint.grow(BODY).intersects(area):

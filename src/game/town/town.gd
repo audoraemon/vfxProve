@@ -58,8 +58,11 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	citadel.setup(env, TownLayout.CITADEL_ORIGIN, shake)
 	_built.append_array(citadel.parts)
 	# Built last so every other building keeps the seed it had before the fountain existed.
-	fountain = env.add_structure(TownLayout.FOUNTAIN, 24.0, Structure.Kind.FOUNTAIN, &"decor")
-	_built.append(fountain)
+	for f: Rect2 in TownLayout.FOUNTAINS:
+		var built := env.add_structure(f, 24.0, Structure.Kind.FOUNTAIN, &"decor")
+		_built.append(built)
+		if fountain == null:
+			fountain = built
 	var baked: Array[Dictionary] = []
 	if env.world_parent != null:
 		_decor_layer = DecorLayer.new()

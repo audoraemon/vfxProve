@@ -19,17 +19,19 @@ static func run(t) -> void:
 	t.near(stab.total(), 1.0, 0.0001, "an untouched city is at full stability (%.3f)" % stab.total())
 
 	# Population: broken when 75% of the citizens are dead or gone, and linear on the way there.
-	for i in 41:
+	var half := int(Crowd.CITIZENS * Stability.POPULATION_BROKEN * 0.5)
+	var broken := ceili(Crowd.CITIZENS * Stability.POPULATION_BROKEN)
+	for i in half:
 		field.kill(crowd.citizens[i], &"nova")
 	crowd.advance(0.0)
 	stab.measure(env, crowd, town.citadel)
 	t.near(stab.population, 0.503, 0.01, "half the way to 75%% dead is half the population part (%.3f)" % stab.population)
-	for i in range(41, 83):
+	for i in range(half, broken):
 		field.kill(crowd.citizens[i], &"nova")
 	crowd.advance(0.0)
 	stab.measure(env, crowd, town.citadel)
 	t.check(stab.population == 0.0, "75%% dead or escaped breaks the population part (%.3f)" % stab.population)
-	t.check(crowd.killed_citizens == 83, "the kills were counted (%d)" % crowd.killed_citizens)
+	t.check(crowd.killed_citizens == broken, "the kills were counted (%d)" % crowd.killed_citizens)
 
 	# Infrastructure is measured by footprint, so the wall weighs more than a house.
 	var infra_area := 0.0
@@ -72,7 +74,7 @@ static func run(t) -> void:
 	stab.measure(env, crowd, town.citadel)
 	t.near(military_before - stab.military, 1.0 - Stability.MILITARY_SOLDIER_SHARE, 0.0001,
 		"the Barracks is a third of the military part (%.3f -> %.3f)" % [military_before, stab.military])
-	for i in 40:
+	for i in ceili(Crowd.SOLDIERS * Stability.SOLDIERS_BROKEN):
 		field.kill(crowd.soldiers[i], &"nova")
 	crowd.advance(0.0)
 	stab.measure(env, crowd, town.citadel)

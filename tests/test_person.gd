@@ -10,11 +10,11 @@ static func run(t) -> void:
 	var grid := WalkGrid.new().setup(env, town)
 
 	# A citizen walks to a goal across town.
-	var goal := Vector2(0.0, 6.0)
+	var goal := Vector2(2.7, 12.0)
 	var c := Person.new()
 	c.rng.seed = 11
 	c.bounds = TownLayout.MAP
-	c.setup_person(false, Vector2(0.0, 2.0), grid)
+	c.setup_person(false, Vector2(2.7, 2.0), grid)
 	c.set_goal(goal)
 	var steps := 0
 	while steps < 2400 and c.ground_pos.distance_to(goal) > 0.5:
@@ -73,8 +73,8 @@ static func run(t) -> void:
 	var w := Person.new()
 	w.rng.seed = 13
 	w.bounds = TownLayout.MAP
-	w.setup_person(false, Vector2(0.0, 7.0), grid)
-	w.set_goal(Vector2(0.0, 10.0))
+	w.setup_person(false, Vector2(2.7, 7.0), grid)
+	w.set_goal(Vector2(2.7, 10.0))
 	w.wait = 0.5
 	var waited := w.ground_pos
 	for i in 20:
@@ -92,7 +92,7 @@ static func run(t) -> void:
 	var parked := Person.new()
 	parked.rng.seed = 21
 	parked.bounds = TownLayout.MAP
-	parked.setup_person(false, Vector2(-6.0, 2.0), grid)
+	parked.setup_person(false, Vector2(-6.0, 3.0), grid)
 	parked.set_goal(TownLayout.TEMPLE.get_center())
 	var ticks := 0
 	while ticks < 6000 and parked._goal != Vector2.INF:
@@ -109,16 +109,16 @@ static func run(t) -> void:
 	var runner := Person.new()
 	runner.rng.seed = 31
 	runner.bounds = TownLayout.MAP
-	runner.setup_person(false, Vector2(0.0, 9.6), grid)
+	runner.setup_person(false, Vector2(2.7, 17.0), grid)
 	runner.flee()
 	var dropped := false
 	var crossed := false
 	for i in 4000:
 		runner.tick(1.0 / 60.0)
-		if not dropped and runner.ground_pos.y > 10.6:
-			town.bridge.destroy(Vector2(0.0, 12.0), &"water")
+		if not dropped and runner.ground_pos.y > 18.4:
+			town.bridge.destroy(Vector2(2.7, 21.6), &"water")
 			dropped = true
-		if runner.ground_pos.y > 11.5:
+		if runner.ground_pos.y > TownLayout.RIVER.position.y + 0.1:
 			crossed = true
 			break
 	t.check(dropped, "the runner set off for the bridge (%s)" % runner.ground_pos)
@@ -130,7 +130,7 @@ static func run(t) -> void:
 	for i in 20:
 		var q := Person.new()
 		q.rng.seed = 100 + i
-		q.setup_person(false, Vector2(0.0, 2.0), grid)
+		q.setup_person(false, Vector2(2.7, 2.0), grid)
 		paces.append(q.pace)
 		q.free()
 	var slowest: float = paces.min()
@@ -141,7 +141,7 @@ static func run(t) -> void:
 	var r := Person.new()
 	r.rng.seed = 7
 	r.bounds = TownLayout.MAP
-	r.setup_person(false, Vector2(0.0, 2.0), grid)
+	r.setup_person(false, Vector2(2.7, 2.0), grid)
 	var threat := r.ground_pos + Vector2(0.0, -1.0)
 	r.panic(threat)
 	t.check(r.is_running(), "a panicked citizen runs")
@@ -175,7 +175,7 @@ static func run(t) -> void:
 	r.free()
 
 	var calm := Person.new()
-	calm.setup_person(false, Vector2(0.0, 2.0), grid)
+	calm.setup_person(false, Vector2(2.7, 2.0), grid)
 	t.check(not calm.is_running(), "a calm citizen does not run")
 	calm.free()
 	env.clear()

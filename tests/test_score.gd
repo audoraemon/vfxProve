@@ -27,7 +27,7 @@ static func run(t) -> void:
 	for i in Rules.ESCAPE_LIMIT:
 		crowd.escaped_count += 1
 	rules.advance(0.1)
-	t.check(ended == [[false, "escapes"]], "38 citizens getting away loses it (%s)" % [ended])
+	t.check(ended == [[false, "escapes"]], "%d citizens getting away loses it (%s)" % [Rules.ESCAPE_LIMIT, ended])
 	t.near(rules.time_left, Rules.MISSION_SECONDS - 0.1, 0.0001, "with time still on the clock (%.1f)" % rules.time_left)
 	_drop(b)
 
@@ -69,7 +69,7 @@ static func run(t) -> void:
 		+ rules.buildings_down * Rules.SCORE_PER_BUILDING + crowd.killed_citizens * Rules.SCORE_PER_CITIZEN \
 		+ crowd.killed_soldiers * Rules.SCORE_PER_SOLDIER + rules.chains * Rules.SCORE_PER_CHAIN
 	t.check(rules.score() == expected, "the score adds up (%d, expected %d)" % [rules.score(), expected])
-	t.check(rules.buildings_down >= 50 and crowd.killed_citizens == 110,
+	t.check(rules.buildings_down >= 50 and crowd.killed_citizens == Crowd.CITIZENS,
 		"this run flattened the town and everyone in it (%d buildings, %d citizens)" % [rules.buildings_down, crowd.killed_citizens])
 	var points := 0
 	for line: Dictionary in rules.stat_lines():
@@ -82,18 +82,18 @@ static func run(t) -> void:
 	# Driven through the real score, one chain at a time: 300 points each, so the thresholds land exactly.
 	var d := _mission()
 	rules = d.rules
-	rules.chains = 40
-	t.check(rules.score() == 12000 and rules.rank() == "S", "40 chains is 12,000 points and an S (%d, %s)" % [rules.score(), rules.rank()])
-	rules.chains = 39
-	t.check(rules.rank() == "A", "11,700 is an A (%s)" % rules.rank())
-	rules.chains = 30
-	t.check(rules.score() == 9000 and rules.rank() == "A", "9,000 is still an A (%d)" % rules.score())
-	rules.chains = 29
-	t.check(rules.rank() == "B", "8,700 is a B (%s)" % rules.rank())
-	rules.chains = 20
-	t.check(rules.score() == 6000 and rules.rank() == "B", "6,000 is still a B (%d)" % rules.score())
-	rules.chains = 10
-	t.check(rules.rank() == "C" and rules.score() == 3000, "3,000 is a C (%s)" % rules.rank())
+	rules.chains = 64
+	t.check(rules.score() == 19200 and rules.rank() == "S", "64 chains is 19,200 points and an S (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 63
+	t.check(rules.rank() == "A", "18,900 is an A (%s)" % rules.rank())
+	rules.chains = 48
+	t.check(rules.score() == 14400 and rules.rank() == "A", "14,400 is still an A (%d)" % rules.score())
+	rules.chains = 47
+	t.check(rules.rank() == "B", "14,100 is a B (%s)" % rules.rank())
+	rules.chains = 32
+	t.check(rules.score() == 9600 and rules.rank() == "B", "9,600 is still a B (%d)" % rules.score())
+	rules.chains = 16
+	t.check(rules.rank() == "C" and rules.score() == 4800, "4,800 is a C (%s)" % rules.rank())
 	rules.chains = 9
 	t.check(rules.rank() == "D", "2,700 is a D (%s)" % rules.rank())
 	_drop(d)

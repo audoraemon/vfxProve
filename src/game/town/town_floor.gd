@@ -1,10 +1,10 @@
 class_name TownFloor
 extends Node2D
-## Aldermere's ground after concepts/TOWN REF/Town Visual Upgrade.png:
+## Aldermere's ground after concepts/TOWN REF/Town Visual Upgrade.png, at the Scale reference's size:
 ## - outside the walls, a warm meadow in organic patches, darker under the forest, with dirt trails winding through;
 ## - dirt roads out of the gates;
 ## - inside, packed earth, cobbled streets, flagstones in the market and the Citadel court, and the barracks' sand;
-## - farm tracks, and a saturated river with stony banks.
+## - tilled ground round the farms, and a saturated river (the south river and its west branch) with stony banks.
 ##
 ## Everything is painted once into a texture, and the floor draws just that one texture. The painting happens in a
 ## SubViewport that renders once: ground-unit shapes under the iso basis, then screen-pixel tufts, flowers and
@@ -12,7 +12,7 @@ extends Node2D
 ## redraws on its own. Without a renderer (headless) nothing is baked and the floor paints itself directly.
 
 ## Drawn area: past the map so zoomed-out views rarely show the void.
-const FILL := Rect2(-24, -24, 52, 52)
+const FILL := Rect2(-34, -34, 68, 68)
 ## Meadow greens, light to dark, and the forest floor's.
 const GRASS := [Color("9aa447"), Color("8a9a3c"), Color("7c8f35"), Color("6e8230"), Color("5f742b")]
 const FOREST := [Color("6a7f30"), Color("5c722b"), Color("4f6527"), Color("435823")]
@@ -29,23 +29,24 @@ const WATER := [Color("3a82b4"), Color("2b70a4"), Color("225f93")]
 const BANK := Color("4a4a38")
 const PEBBLE := [Color("a8a49c"), Color("8e8a82"), Color("76726c")]
 const FLOWERS := [Color("f4f0e0"), Color("f2d24a"), Color("f09a3a"), Color("e87aa0"), Color("b0d0f0")]
-## Tilled band the farm fields sit in: dirt tracks show between them.
-const FARM_BAND := Rect2(-12, 13.4, 28, 2.4)
-## Decorative dirt trails through the meadow and forest (ground units), all clear of the walls.
+## Decorative dirt trails through the meadow, forest and farms (ground units), all clear of the walls and the river.
 const TRAILS := [
-	[Vector2(-19, -12.2), Vector2(-14, -11.2), Vector2(-10, -12.6), Vector2(-5, -11.6), Vector2(0, -12.8),
-		Vector2(6, -11.4), Vector2(12, -12.9), Vector2(19, -11.2)],
-	[Vector2(-12.4, -19), Vector2(-11.6, -14), Vector2(-12.9, -8), Vector2(-11.3, -2), Vector2(-12.7, 4),
-		Vector2(-11.8, 10.6)],
-	[Vector2(11.2, -1.0), Vector2(12.6, -4.5), Vector2(11.4, -8.5), Vector2(13.8, -12.6), Vector2(17.5, -18)],
-	[Vector2(-19, 16.4), Vector2(-8, 16.1), Vector2(0, 16.5), Vector2(10, 16.2), Vector2(19, 16.6)],
-	[Vector2(16.0, 0.4), Vector2(17.5, 4.5), Vector2(15.8, 8.5), Vector2(17.8, 10.8)],
+	[Vector2(-26, -19.5), Vector2(-18, -18.8), Vector2(-10, -20.2), Vector2(-2, -19.2), Vector2(6, -20.4),
+		Vector2(14, -19.0), Vector2(26, -20.0)],
+	[Vector2(-3.0, -19.4), Vector2(-3.5, -24.0), Vector2(-2.5, -29.5)],
+	[Vector2(-14.0, -19.2), Vector2(-14.8, -23.5), Vector2(-15.5, -29.5)],
+	[Vector2(-19.5, -26), Vector2(-20.2, -18), Vector2(-19.0, -10), Vector2(-20.5, -4), Vector2(-19.4, 4),
+		Vector2(-20.2, 12), Vector2(-19.2, 17.5)],
+	[Vector2(19.5, -26), Vector2(20.2, -18), Vector2(19.0, -10), Vector2(20.4, -2), Vector2(19.6, 4)],
+	[Vector2(-26, 29.5), Vector2(-12, 29.0), Vector2(1.5, 29.4)],
+	[Vector2(4.0, 29.4), Vector2(14, 29.0), Vector2(26, 29.6)],
+	[Vector2(17.2, 11.4), Vector2(22, 11.8), Vector2(27, 11.2)],
 ]
-## Roads outside the walls, as trails: the south road to the bridge and beyond, the east road to the forest.
+## Roads outside the walls, as trails: the south road to the bridge and on from its far end, the east road.
 const ROAD_TRAILS := [
-	[Vector2(0, 9.3), Vector2(0, 11.0)],
-	[Vector2(0, 13.4), Vector2(0.1, 16.0), Vector2(-0.2, 19)],
-	[Vector2(9.3, 0), Vector2(16, 0.1), Vector2(19, -0.2)],
+	[Vector2(2.7, 16.2), Vector2(2.7, 18.8)],
+	[Vector2(2.7, 24.6), Vector2(2.8, 27.0), Vector2(2.6, 30.0)],
+	[Vector2(16.2, 9.0), Vector2(22, 9.1), Vector2(30, 8.9)],
 ]
 ## Grass painting cell (ground units) and the noise lattice spacing.
 const CELL := 0.25
@@ -66,11 +67,18 @@ class RiverGlints extends Node2D:
 
 	func _draw() -> void:
 		var r := TownLayout.RIVER
-		for i in 90:
+		for i in 200:
 			var h := (i * 7919 + 13) % 997
 			var y := r.position.y + 0.15 + float(h % 61) / 61.0 * (r.size.y - 0.3)
 			var x := r.position.x - 8.0 + fposmod(float(h) * 0.53 + _time * (0.5 + float(h % 5) * 0.1), r.size.x + 16.0)
 			draw_rect(Rect2(x, y, 0.3 + float(h % 3) * 0.12, 0.04), Color(0.82, 0.94, 1.0, 0.6))
+		# The west branch flows south, down to the main river.
+		var w := TownLayout.RIVER_WEST
+		for i in 60:
+			var h := (i * 6151 + 29) % 997
+			var x := w.position.x + 0.15 + float(h % 43) / 43.0 * (w.size.x - 0.3)
+			var y := w.position.y + fposmod(float(h) * 0.41 + _time * (0.7 + float(h % 5) * 0.1), w.size.y)
+			draw_rect(Rect2(x, y, 0.04, 0.3 + float(h % 3) * 0.12), Color(0.82, 0.94, 1.0, 0.6))
 
 
 ## Paints the ground-unit layer inside the bake viewport.
@@ -157,12 +165,16 @@ func paint_ground(ci: CanvasItem) -> void:
 	# Inside the walls the lanes are cobbled; the house blocks are lawn, and each house stands in its own small
 	# packed-earth yard, as in the reference.
 	_paving(ci, TownLayout.TOWN, COBBLE, COBBLE_MORTAR, 0.2)
-	for d: Array in TownLayout.DISTRICTS:
-		_yard(ci, (d[0] as Rect2).grow(-0.12), GRASS)
+	for d: Rect2 in TownLayout.DISTRICTS:
+		_yard(ci, d.grow(-0.12), GRASS)
 	_yard_rects = _yards()
 	for h: Rect2 in _yard_rects:
 		_yard(ci, h, EARTH)
-	_patches(ci, FARM_BAND, DIRT, 0.3)
+	# Tilled ground round every field and farmhouse.
+	for f: Rect2 in TownLayout.FIELDS:
+		_patches(ci, f.grow(0.5), DIRT, 0.3)
+	for b: Rect2 in TownLayout.BARNS:
+		_patches(ci, b.grow(0.6), DIRT, 0.3)
 	for tr in TRAILS:
 		_trail(ci, tr, 0.34)
 	for tr in ROAD_TRAILS:
@@ -170,6 +182,7 @@ func paint_ground(ci: CanvasItem) -> void:
 	_patches(ci, TownLayout.BARRACKS_YARD, SAND, 0.3)
 	_paving(ci, TownLayout.MARKET_SQUARE, FLAG, FLAG_MORTAR, 0.42)
 	_paving(ci, TownLayout.CITADEL_COURT, FLAG, FLAG_MORTAR, 0.42)
+	_paving(ci, TownLayout.FOUNTAIN_PLAZA, FLAG, FLAG_MORTAR, 0.42)
 	_river(ci)
 
 
@@ -217,13 +230,16 @@ func _meadow(ci: CanvasItem) -> void:
 			ci.draw_rect(Rect2(g, Vector2(CELL, CELL)), pal[int(v * pal.size())])
 
 
-## Forest floor beyond the walls on the west, north and east, north of the river and off the east road.
+## Forest floor in a ring round the walls (farmland beyond it), north of the river and off the two roads.
 func _forest(g: Vector2) -> bool:
-	if g.y > TownLayout.RIVER.position.y or (absf(g.y) < 1.2 and g.x > TownLayout.TOWN.end.x):
+	if g.y > TownLayout.RIVER.position.y:
 		return false
-	var town := TownLayout.TOWN.grow(1.6)
+	var t := TownLayout.TOWN
+	if (g.x > t.end.x and absf(g.y - 9.0) < 1.5) or (g.y > t.end.y and absf(g.x - 2.7) < 1.5):
+		return false
 	var edge := _noise(g * 1.7) * 1.4
-	return g.x < town.position.x - edge or g.y < town.position.y - edge or g.x > town.end.x + edge
+	var out := maxf(maxf(t.position.x - g.x, g.x - t.end.x), maxf(t.position.y - g.y, g.y - t.end.y))
+	return out > 1.6 + edge and out < 7.0 + edge
 
 
 ## Organic patches of `pal` over a rect, like the meadow but confined.
@@ -243,7 +259,9 @@ static func _yards() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for h: Rect2 in TownLayout.houses():
 		out.append(h.grow(0.22))
-	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.TAVERN.grow(0.3), TownLayout.SMITHY.grow(0.3)])
+	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.SMITHY.grow(0.3), TownLayout.WORKSHOP.grow(0.3)])
+	for t: Rect2 in TownLayout.TAVERNS:
+		out.append(t.grow(0.3))
 	return out
 
 
@@ -323,8 +341,8 @@ func _paving(ci: CanvasItem, r: Rect2, pal: Array, mortar: Color, stone: float) 
 				ci.draw_rect(Rect2(sq.position + Vector2(0, sq.size.y - 0.04), Vector2(sq.size.x, 0.04)), c.darkened(0.12))
 
 
-## Water across the whole drawn width in bands, lighter at the edges and deep in the middle, with dark wet banks
-## and pebbles along both of them.
+## Water in bands, lighter at the edges and deep in the middle, with dark wet banks and pebbles along them: the
+## south river across the whole drawn width, and the west branch from its source down to it.
 func _river(ci: CanvasItem) -> void:
 	var r := TownLayout.RIVER
 	var x0 := FILL.position.x
@@ -334,26 +352,41 @@ func _river(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(x0, r.position.y + r.size.y * 0.35, w, r.size.y * 0.3), WATER[2])
 	ci.draw_rect(Rect2(x0, r.position.y - 0.1, w, 0.1), BANK)
 	ci.draw_rect(Rect2(x0, r.end.y, w, 0.1), BANK)
-	for bank_y in [r.position.y - 0.12, r.end.y + 0.12]:
-		var x := x0
-		var i := 0
-		while x < FILL.end.x:
-			var h := _hash(i * 17, roundi(bank_y * 10.0))
-			x += 0.18 + float(h % 7) * 0.05
-			i += 1
-			if absf(x) < 1.3:
-				continue
-			var rad := 0.07 + float(h % 5) * 0.025
-			var p := Vector2(x, bank_y + (float(h % 3) - 1.0) * 0.05)
-			ci.draw_circle(p, rad, PEBBLE[h % 3])
-			ci.draw_circle(p + Vector2(-0.02, -0.02), rad * 0.5, (PEBBLE[h % 3] as Color).lightened(0.12))
+	var b := TownLayout.RIVER_WEST
+	var bx0 := FILL.position.x
+	var bw := b.end.x - bx0
+	ci.draw_rect(Rect2(bx0, b.position.y, bw, b.size.y), WATER[0])
+	ci.draw_rect(Rect2(b.position.x + b.size.x * 0.15, b.position.y, b.size.x * 0.7, b.size.y), WATER[1])
+	ci.draw_rect(Rect2(b.position.x + b.size.x * 0.35, b.position.y, b.size.x * 0.3, b.size.y), WATER[2])
+	ci.draw_rect(Rect2(b.end.x, b.position.y, 0.1, b.size.y), BANK)
+	for bank_y: float in [r.position.y - 0.12, r.end.y + 0.12]:
+		_pebbles(ci, Vector2(x0, bank_y), Vector2(FILL.end.x, bank_y), 2.7)
+	_pebbles(ci, Vector2(b.end.x + 0.12, b.position.y), Vector2(b.end.x + 0.12, r.position.y), -100.0)
+
+
+## Pebbles along a bank from a to b, leaving a gap round the bridge at x = `gap_x`.
+func _pebbles(ci: CanvasItem, a: Vector2, b: Vector2, gap_x: float) -> void:
+	var length := a.distance_to(b)
+	var d := 0.0
+	var i := 0
+	while d < length:
+		var h := _hash(i * 17, roundi((a.x + a.y) * 10.0))
+		d += 0.18 + float(h % 7) * 0.05
+		i += 1
+		var p := a.lerp(b, minf(d / length, 1.0))
+		if absf(p.x - gap_x) < 1.3:
+			continue
+		var rad := 0.07 + float(h % 5) * 0.025
+		p += (Vector2(0, 1) if absf(b.x - a.x) > absf(b.y - a.y) else Vector2(1, 0)) * (float(h % 3) - 1.0) * 0.05
+		ci.draw_circle(p, rad, PEBBLE[h % 3])
+		ci.draw_circle(p + Vector2(-0.02, -0.02), rad * 0.5, (PEBBLE[h % 3] as Color).lightened(0.12))
 
 
 # --- Screen-pixel layer ------------------------------------------------------------------
 
 ## Tufts, flowers and pebbles in screen pixels over the meadow and the town's earth; none on water, roads or paving.
 func paint_detail(ci: CanvasItem) -> void:
-	var count := 36000
+	var count := 62000
 	for i in count:
 		var hx := _hash(i * 3 + 1, i * 7 + 5)
 		var hy := _hash(i * 11 + 3, i * 5 + 9)
@@ -395,19 +428,28 @@ func paint_detail(ci: CanvasItem) -> void:
 ## Baked decor over the detail, back to front: trees, rocks, bushes, reeds and fences nothing ever stands in front of.
 func _paint_decor(ci: CanvasItem) -> void:
 	for d in baked_decor:
+		# The same tuning a live Decor takes: its size about its ground point, and its colour.
+		var key := String(Decor.Kind.keys()[d.kind]).to_lower()
+		var sc := ArtTuning.scale(key)
+		var at := Iso.ground_to_screen(d.at)
+		ci.draw_set_transform(at * (1.0 - sc), 0.0, Vector2(sc, sc))
+		ArtKit.color_mul = ArtTuning.tint(key)
 		ArtKit.begin()
 		DecorArt.paint(d.kind, d.at, d.size, d.seed, Vector2.ZERO)
 		ArtKit.flush(ci)
+	ArtKit.color_mul = Color.WHITE
+	ci.draw_set_transform(Vector2.ZERO)
 
 
 ## What lies at a ground point for detail: 0 nothing (water, roads, paving, trails, fields), 1 meadow,
 ## 2 forest floor, 3 the town's earth.
 func _zone(g: Vector2) -> int:
-	var river := TownLayout.RIVER
-	if g.y > river.position.y - 0.25 and g.y < river.end.y + 0.25:
-		return 0
-	if FARM_BAND.has_point(g):
-		return 0
+	for river: Rect2 in TownLayout.RIVERS:
+		if river.grow(0.25).has_point(g):
+			return 0
+	for f: Rect2 in TownLayout.FIELDS:
+		if f.grow(0.5).has_point(g):
+			return 0
 	for road: Rect2 in TownLayout.ROADS:
 		if road.grow(0.15).has_point(g):
 			return 0
@@ -418,8 +460,8 @@ func _zone(g: Vector2) -> int:
 		for y: Rect2 in _yard_rects:
 			if y.has_point(g):
 				return 3
-		for d: Array in TownLayout.DISTRICTS:
-			if (d[0] as Rect2).grow(-0.2).has_point(g):
+		for d: Rect2 in TownLayout.DISTRICTS:
+			if d.grow(-0.2).has_point(g):
 				return 1
 		return 0
 	if _zn == 0:

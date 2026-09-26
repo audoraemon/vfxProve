@@ -20,7 +20,7 @@ static func run(t) -> void:
 
 	# A colossal blast from the north-west takes only this second's budget (25%): two 10% marks, so the two
 	# parts nearest the blast collapse, nearest first.
-	var nw := Vector2(-4.5, -7.2)
+	var nw := TownLayout.CITADEL_ORIGIN + Vector2(-4.5, -1.3)
 	env.damage_radius(nw, 3.0, 99999.0, &"stone")
 	t.near(c.fraction(), 0.75, 0.001, "one blast takes only 25%")
 	t.check(down == [c.parts[0], c.parts[6]], "the NW tower then the W wall collapse (%s)" % [_indices(c, down)])

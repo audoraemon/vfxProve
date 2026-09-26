@@ -8,8 +8,8 @@ static func run(t) -> void:
 	var counts := {}
 	for d in items:
 		counts[d.role] = int(counts.get(d.role, 0)) + 1
-	var want := {&"house": 36, &"wall": 51, &"tower": 6, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
-		&"market": 7, &"farm": 9, &"decor": 60}
+	var want := {&"house": 71, &"wall": 85, &"tower": 17, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
+		&"market": 14, &"farm": 14, &"decor": 86}
 	for role in want:
 		t.check(counts.get(role, 0) == want[role], "%d x %s (got %d)" % [want[role], role, counts.get(role, 0)])
 	t.check(counts.size() == want.size(), "no unexpected roles (%s)" % [counts.keys()])
@@ -17,7 +17,7 @@ static func run(t) -> void:
 	# The wall pieces have to tile their run exactly: a gap would be a hole in the wall and an overlap a double
 	# thickness, and each has to stay short enough to sort correctly against what stands behind it.
 	var tiling: Array[String] = []
-	for r: Rect2 in TownLayout.WALLS:
+	for r: Rect2 in TownLayout.walls():
 		var pieces := TownLayout.wall_pieces(r)
 		var area := 0.0
 		var covered := pieces[0]
@@ -63,6 +63,12 @@ static func run(t) -> void:
 		for road: Rect2 in TownLayout.ROADS:
 			on_road = on_road or road.has_point(e)
 		t.check(on_road and TownLayout.MAP.has_point(e), "exit %s is on a road inside the map" % e)
+	var plaza_clear := true
+	for d in items:
+		for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+			if not Structure.WALKABLE.has(d.kind) and (d.rect as Rect2).intersects(plaza):
+				plaza_clear = false
+	t.check(plaza_clear, "nothing stands on the ground in front of a gate, where the crowd queues")
 	var bridge: Rect2 = TownLayout.BRIDGE
 	t.check(bridge.position.y < TownLayout.RIVER.position.y and bridge.end.y > TownLayout.RIVER.end.y, "the bridge spans the river")
 	t.check(TownLayout.CITADEL_AREA.has_point(TownLayout.CITADEL_ORIGIN), "the Citadel origin is inside its ground")

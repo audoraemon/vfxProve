@@ -49,7 +49,8 @@ static func run(t) -> void:
 	t.check(d1.down, "a lane cuts decor down too")
 
 	t.check(town.fountain != null and town.fountain.kind == Structure.Kind.FOUNTAIN, "the market has a fountain")
-	t.check(env.blocked(Vector2(0, 0)) and not grid.walkable(Vector2(0, 0)), "people walk round the fountain")
+	var fc: Vector2 = TownLayout.FOUNTAIN.get_center()
+	t.check(env.blocked(fc) and not grid.walkable(fc), "people walk round the fountain")
 	var houses := 0
 	for st in env.structures():
 		if st.kind == Structure.Kind.HOUSE and st.role == &"house":

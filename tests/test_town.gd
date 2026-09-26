@@ -10,19 +10,20 @@ static func run(t) -> void:
 	var counts := {}
 	for s in env.structures():
 		counts[s.role] = int(counts.get(s.role, 0)) + 1
-	t.check(env.structures().size() == TownLayout.structures().size() + 10,
-		"every layout building plus the 9 Citadel parts and the fountain")
-	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 36 and counts.get(&"gate", 0) == 2,
+	t.check(env.structures().size() == TownLayout.structures().size() + 9 + TownLayout.FOUNTAINS.size(),
+		"every layout building plus the 9 Citadel parts and the fountains")
+	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 71 and counts.get(&"gate", 0) == 2,
 		"roles carried over (%s)" % [counts])
 	t.check(town.gates.size() == 2 and town.bridge != null and town.bridge.walkable, "gates and bridge found")
 	t.check(town.citadel != null and town.citadel.fraction() == 1.0 and town.citadel.standing_parts() == 9, "the Citadel is intact")
-	t.check(not env.blocked(Vector2(0, 8.7)) and not env.blocked(Vector2(8.7, 0)), "both gates are passable")
-	t.check(not env.blocked(Vector2(0, 12.2)), "the bridge is passable")
-	t.check(env.blocked(Vector2(0, -8.7)) and env.blocked(Vector2(-8.7, 3.0)), "the town walls block")
+	t.check(not env.blocked(TownLayout.MAIN_GATE.get_center()) and not env.blocked(TownLayout.SIDE_GATE.get_center()),
+		"both gates are passable")
+	t.check(not env.blocked(Vector2(2.7, 21.6)), "the bridge is passable")
+	t.check(env.blocked(Vector2(0, -15.6)) and env.blocked(Vector2(-15.6, 3.0)), "the town walls block")
 	t.check(town.floor_node == null, "no floor without a ground plane")
 	var down: Array = []
 	env.structure_destroyed.connect(func(s: Structure, _kind: StringName) -> void: down.append(s))
-	env.damage_radius(Vector2(0, 12.2), 0.3, 99999.0, &"stone")
+	env.damage_radius(Vector2(2.7, 21.6), 0.3, 99999.0, &"stone")
 	t.check(town.bridge.destroyed and down == [town.bridge], "the bridge can be destroyed and reports it")
 	# The floor hangs under the ground plane, so freeing the town must take it along even when the town
 	# never entered the scene tree.

@@ -9,9 +9,10 @@ extends Node2D
 ## The spec's crowd: 110 citizens and 50 soldiers. --people=N scales both for benching.
 const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
 const PAN_SPEED := 320.0
-const PAN_MIN := Vector2(-760, -380)
-const PAN_MAX := Vector2(760, 520)
-const ZOOM_MIN := 0.5
+## Pan limits (screen px) and the furthest zoom out: the map is 60 x 60 units since the town scale upgrade.
+const PAN_MIN := Vector2(-1700, -900)
+const PAN_MAX := Vector2(1700, 1000)
+const ZOOM_MIN := 0.3
 const ZOOM_MAX := 1.6
 const DRAG_MIN := 0.5
 ## Keys 1-9, 0 and - pick PowerBook.POWERS[0..10].
@@ -22,30 +23,30 @@ const KEY_LABELS := ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-"]
 const CLEAR := Color("6e8230")
 ## [file, ground point to look at, zoom] for --capture-town.
 const TOWN_SHOTS := [
-	["town_overview.png", Vector2(2, 2), 0.5],
-	["town_citadel.png", Vector2(0, -5.9), 1.1],
-	["town_market.png", Vector2(0, 0), 1.2],
-	["town_crowd.png", Vector2(0.0, 3.0), 0.9],
-	["town_main_gate.png", Vector2(0, 8.7), 1.1],
-	["town_side_gate.png", Vector2(8.7, 0), 1.1],
-	["town_river_farms.png", Vector2(2.25, 14.05), 0.5],
+	["town_overview.png", Vector2(0, 2), 0.3],
+	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
+	["town_market.png", Vector2(0.8, 2.0), 1.0],
+	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],
+	["town_main_gate.png", Vector2(2.7, 16.0), 1.0],
+	["town_side_gate.png", Vector2(16.0, 9.0), 1.0],
+	["town_river_farms.png", Vector2(2.0, 24.0), 0.5],
 ]
 ## [time, power key, ground point] for --citadel-test.
 const CITADEL_CASTS := [
-	[0.5, "judgement", Vector2(0, -5.9)],
-	[12.0, "cinder", Vector2(-4.5, -5.0)],
-	[22.0, "nova", Vector2(0, -5.9)],
-	[30.0, "judgement", Vector2(0, -5.9)],
-	[40.0, "nova", Vector2(0, -5.9)],
-	[48.0, "orbital", Vector2(0, -5.9)],
+	[0.5, "judgement", TownLayout.CITADEL_ORIGIN],
+	[12.0, "cinder", TownLayout.CITADEL_ORIGIN + Vector2(-4.5, 0.9)],
+	[22.0, "nova", TownLayout.CITADEL_ORIGIN],
+	[30.0, "judgement", TownLayout.CITADEL_ORIGIN],
+	[40.0, "nova", TownLayout.CITADEL_ORIGIN],
+	[48.0, "orbital", TownLayout.CITADEL_ORIGIN],
 ]
 const CITADEL_SHOTS := [0.3, 4.0, 9.5, 14.0, 18.0, 25.5, 33.0, 43.5, 52.0]
 const CITADEL_TEST_END := 60.0
 ## [time, power key, ground point] for --crowd-test: enough violence to start a panic and a rally.
 const CROWD_CASTS := [
-	[1.0, "heaven", Vector2(-4.0, 4.0)],
-	[8.0, "tornado", Vector2(3.0, 3.0)],
-	[18.0, "cinder", Vector2(0.0, -2.0)],
+	[1.0, "heaven", Vector2(-2.0, 3.0)],
+	[8.0, "tornado", Vector2(3.0, 5.0)],
+	[18.0, "cinder", Vector2(0.8, 1.0)],
 ]
 const CROWD_SHOTS := [0.5, 3.0, 10.0, 16.0, 24.0, 34.0]
 const CROWD_TEST_END := 40.0
@@ -83,7 +84,7 @@ func _ready() -> void:
 	var scripted := "--capture-town" in args or "--citadel-test" in args or "--crowd-test" in args or "--bench" in args
 	_rebuild(7 if scripted else Time.get_ticks_usec())
 	_bf.camera.zoom = Vector2.ONE * 0.75
-	_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
+	_bf.camera.position = Iso.ground_to_screen(Vector2(0.8, 2.0)).round()
 	await FxParts.prewarm(_bf.ctx.distort)
 	if "--capture-town" in args:
 		_capture_town()
@@ -255,7 +256,7 @@ func _citadel_test() -> void:
 ## alive, fleeing, queueing and escaped, and what the alarm is doing.
 func _crowd_test() -> void:
 	_bf.camera.zoom = Vector2.ONE * 0.6
-	_bf.camera.position = (Iso.ground_to_screen(Vector2(0.0, 2.0)) + Vector2(0, -30)).round()
+	_bf.camera.position = (Iso.ground_to_screen(Vector2(0.8, 3.0)) + Vector2(0, -30)).round()
 	await _bf.wait_frames(10)
 	_t = 0.0
 	var casts := CROWD_CASTS.duplicate()

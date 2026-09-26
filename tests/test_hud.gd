@@ -29,7 +29,7 @@ static func run(t) -> void:
 
 	t.check(hud.objective_text().contains("Royal Citadel") and hud.objective_text().contains("100%"),
 		"the objective names the Citadel and what is left of it (%s)" % hud.objective_text())
-	t.check(hud.status_text().contains("110") and hud.status_text().contains("50"),
+	t.check(hud.status_text().contains(str(Crowd.CITIZENS)) and hud.status_text().contains(str(Crowd.SOLDIERS)),
 		"the status line counts the living (%s)" % hud.status_text())
 	# The five-colour bar has a legend, and the figures top right wear the colour of the part they drive.
 	t.check(Hud.LEGEND.size() == 5 and Hud.LEGEND[3][1] == 3, "the stability bar has a five-entry legend in part order")

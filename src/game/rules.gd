@@ -21,8 +21,8 @@ signal over(won: bool, reason: String)
 const DP_MAX := 100.0
 ## Divine Power comes back this fast on its own (spec §4.1).
 const DP_REGEN := 0.5
-## The manifestation's length in seconds (spec §1: 4:00).
-const MISSION_SECONDS := 240.0
+## The manifestation's length in seconds (spec §1 had 4:00; six minutes since the town scale upgrade tripled the town).
+const MISSION_SECONDS := 360.0
 ## What each destroyed thing pays back (spec §4.1). Citizens, houses, the market, the farms and the walls pay
 ## nothing: the player is not rewarded for shopping.
 const DP_FOR_ROLE := {&"tower": 3.0, &"gate": 5.0, &"temple": 8.0, &"barracks": 10.0}
@@ -57,7 +57,7 @@ const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barr
 const CAST_GRACE := 4.0
 
 ## This many citizens reaching an exit loses the mission (spec §4.4).
-const ESCAPE_LIMIT := 38
+const ESCAPE_LIMIT := 76
 
 const SCORE_WIN := 5000
 const SCORE_PER_SECOND := 25
@@ -67,7 +67,7 @@ const SCORE_PER_SOLDIER := 25
 const SCORE_PER_CHAIN := 300
 const SCORE_PER_DP := 10
 ## Score floors for each rank, best first; anything under the last one is a D.
-const RANKS := [[12000, "S"], [9000, "A"], [6000, "B"], [3000, "C"]]
+const RANKS := [[19200, "S"], [14400, "A"], [9600, "B"], [4800, "C"]]
 
 var dp := DP_MAX
 var time_left := MISSION_SECONDS

@@ -24,7 +24,7 @@ static func run(t) -> void:
 		return null
 
 	t.check(rules.dp == Rules.DP_MAX and rules.dp == 100.0, "the mission starts on a full 100 DP (%.1f)" % rules.dp)
-	t.near(rules.time_left, 240.0, 0.0001, "the manifestation lasts four minutes (%.1f)" % rules.time_left)
+	t.near(rules.time_left, 360.0, 0.0001, "the manifestation lasts six minutes (%.1f)" % rules.time_left)
 	t.check(rules.key(0) == "heaven" and rules.key(3) == "nova", "the loadout fills slots 1 to 4 in order")
 	t.check(rules.cost(0) == 10 and rules.cost(3) == 40, "each slot costs its power's DP (%d, %d)" % [rules.cost(0), rules.cost(3)])
 	t.check(rules.refusal(0) == "" and rules.refusal(4) == "empty", "a paid-up slot is ready and a fifth slot is empty")
@@ -55,7 +55,7 @@ static func run(t) -> void:
 	t.near(rules.dp, 100.0, 0.0001, "20 s of regeneration at 0.5/s tops the bar back up (%.1f)" % rules.dp)
 	rules.advance(10.0)
 	t.check(rules.dp == 100.0, "and DP never passes 100 (%.1f)" % rules.dp)
-	t.near(rules.time_left, 240.0 - 30.0, 0.0001, "the clock has run 30 s (%.1f)" % rules.time_left)
+	t.near(rules.time_left, 360.0 - 30.0, 0.0001, "the clock has run 30 s (%.1f)" % rules.time_left)
 
 	# Too little DP is its own refusal, and the cost is not taken.
 	rules.cast(3, Vector2.ZERO)
@@ -67,7 +67,7 @@ static func run(t) -> void:
 	t.check(refused == [[1, "dp"]] and rules.dp == 15.0, "20 DP is out of reach on 15 and nothing is spent (%s)" % refused)
 
 	# The clock stops the mission dead: no more casting once it is out.
-	rules.advance(300.0)
+	rules.advance(Rules.MISSION_SECONDS)
 	t.check(rules.time_left == 0.0, "the clock floors at zero (%.1f)" % rules.time_left)
 	refused.clear()
 	rules.cast(0, Vector2.ZERO, {"dir": Vector2(1, 0)})

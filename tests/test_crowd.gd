@@ -15,7 +15,8 @@ static func run(t) -> void:
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
 	crowd.spawn()
 
-	t.check(crowd.citizens.size() == 110 and crowd.soldiers.size() == 50, "110 citizens and 50 soldiers (%d / %d)" % [crowd.citizens.size(), crowd.soldiers.size()])
+	t.check(crowd.citizens.size() == Crowd.CITIZENS and crowd.soldiers.size() == Crowd.SOLDIERS,
+		"%d citizens and %d soldiers (%d / %d)" % [Crowd.CITIZENS, Crowd.SOLDIERS, crowd.citizens.size(), crowd.soldiers.size()])
 	var off_grid := 0
 	for p in crowd.citizens + crowd.soldiers:
 		if not grid.walkable(p.ground_pos):
@@ -32,7 +33,7 @@ static func run(t) -> void:
 				in_yard += 1
 		elif p.anchor.distance_to(TownLayout.CITADEL_ORIGIN) <= Crowd.RING_RADIUS + 1.2:
 			at_citadel += 1
-	t.check(in_yard == 20, "20 soldiers drill in the yard (%d)" % in_yard)
+	t.check(in_yard == Crowd.POST_YARD, "%d soldiers drill in the yard (%d)" % [Crowd.POST_YARD, in_yard])
 	t.check(at_citadel >= 10, "at least 10 guard the Citadel (%d)" % at_citadel)
 	var soldiers_calm := true
 	for p in crowd.soldiers:
@@ -145,7 +146,8 @@ static func run(t) -> void:
 	for p in queue:
 		if is_instance_valid(p) and p.queue_spot != Vector2.INF:
 			waiting += 1
-			if p.ground_pos.distance_to(p.queue_spot) <= 0.1:
+			# On its spot: within half a spacing of it, so two people on neighbouring spots cannot count as one.
+			if p.ground_pos.distance_to(p.queue_spot) <= Crowd.QUEUE_SPACING * 0.5:
 				settled.append(p)
 	t.check(settled.size() >= 3, "some of the waiting crowd stands on its spots (%d of %d)" % [settled.size(), waiting])
 	var stacked := 0
@@ -212,7 +214,7 @@ static func run(t) -> void:
 	t.check(through >= 4, "about one person every %.1f s gets through the gate (%d in five intervals)" % [Crowd.GATE_INTERVAL, through])
 
 	# Milestone 3 reads these: the spawned population, and a destroy that says what killed it.
-	t.check(crowd.spawned_citizens == 110 and crowd.spawned_soldiers == 50,
+	t.check(crowd.spawned_citizens == Crowd.CITIZENS and crowd.spawned_soldiers == Crowd.SOLDIERS,
 		"the spawned population is recorded (%d / %d)" % [crowd.spawned_citizens, crowd.spawned_soldiers])
 	var kinds: Array = []
 	env.structure_destroyed.connect(func(s: Structure, kind: StringName): kinds.append([s.role, kind]))

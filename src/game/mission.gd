@@ -18,9 +18,10 @@ signal prewarmed
 const DEFAULT_LOADOUT := ["heaven", "tsunami", "cinder", "nova"]
 const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
 const PAN_SPEED := 320.0
-const PAN_MIN := Vector2(-760, -380)
-const PAN_MAX := Vector2(760, 520)
-const ZOOM_MIN := 0.5
+## Pan limits (screen px) and the furthest zoom out: the map is 60 x 60 units since the town scale upgrade.
+const PAN_MIN := Vector2(-1700, -900)
+const PAN_MAX := Vector2(1700, 1000)
+const ZOOM_MIN := 0.3
 const ZOOM_MAX := 1.6
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 ## Grass, the same clear colour the debug scene uses.
@@ -30,10 +31,10 @@ const CLEAR := Color("6e8230")
 ## starts when it arrives (spec §1).
 const INTRO_SECONDS := 2.0
 ## Where the sweep starts: the whole town, from further out.
-const INTRO_FROM := Vector2(0.0, 3.0)
-const INTRO_FROM_ZOOM := 0.5
+const INTRO_FROM := Vector2(2.7, 12.0)
+const INTRO_FROM_ZOOM := 0.35
 ## Where the camera rests for play, and how close.
-const PLAY_ZOOM := 0.75
+const PLAY_ZOOM := 0.6
 
 ## The ending plays out in slow motion before the results: the last blow lands, the dust settles, then the
 ## numbers (playtest note 5: three seconds between the mission's end and the results). Real seconds, and the
@@ -43,9 +44,9 @@ const ENDING_TIME_SCALE := 0.3
 
 ## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
 const TEST_CASTS := [
-	[1.0, 0, Vector2(-1.0, -6.0), Vector2(0.2, 1.0)],
-	[6.0, 2, Vector2(2.6, 2.2), Vector2.ZERO],
-	[14.0, 1, Vector2(-7.0, 1.0), Vector2(1.0, 0.1)],
+	[1.0, 0, Vector2(-9.0, -11.0), Vector2(0.2, 1.0)],
+	[6.0, 2, Vector2(0.8, 2.2), Vector2.ZERO],
+	[14.0, 1, Vector2(-12.0, 1.0), Vector2(1.0, 0.1)],
 	[24.0, 3, TownLayout.CITADEL_ORIGIN, Vector2.ZERO],
 ]
 const TEST_SHOTS := [0.5, 2.0, 8.0, 16.0, 26.0, 30.0]
@@ -106,7 +107,7 @@ func _ready() -> void:
 		await _quit()
 
 
-## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and four minutes.
+## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works.
 func start(powers: PackedStringArray, seed_value: int) -> void:

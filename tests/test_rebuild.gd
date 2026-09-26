@@ -20,7 +20,7 @@ static func run(t) -> void:
 	var grid := WalkGrid.new().setup(env, town)
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 3)
 	crowd.spawn(20, 10)
-	t.check(first == TownLayout.structures().size() + 10, "the first town is complete (%d)" % first)
+	t.check(first == TownLayout.structures().size() + 9 + TownLayout.FOUNTAINS.size(), "the first town is complete (%d)" % first)
 	t.check(ground.get_child_count() == 1, "one floor under the ground plane")
 
 	# Knock a few things down and hurt the Citadel, so the rebuild has state to clear.

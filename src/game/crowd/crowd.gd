@@ -9,13 +9,14 @@ signal escaped(person: Person)
 signal alarm_changed(value: float)
 signal rallied
 
-const CITIZENS := 110
-const SOLDIERS := 50
+## The town scale upgrade doubled the people along with the town (110 + 50 before).
+const CITIZENS := 220
+const SOLDIERS := 100
 ## Soldier posts: drilling in the yard, on the walls and gates, guarding the Citadel, patrolling in pairs.
-const POST_YARD := 20
-const POST_WALLS := 12
-const POST_CITADEL := 10
-const POST_PATROL := 8
+const POST_YARD := 30
+const POST_WALLS := 30
+const POST_CITADEL := 20
+const POST_PATROL := 20
 const ALARM_BUILDING := 2.0
 const ALARM_KILL := 0.5
 const ALARM_CITADEL_HIT := 10.0
@@ -155,11 +156,17 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 	for i in POST_CITADEL:
 		var a := TAU * float(i) / float(POST_CITADEL)
 		out.append(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.8))
+	# Pairs walk the streets inside the walls; their posts are points spread along each street's centre line.
+	var streets: Array[Rect2] = []
+	for road: Rect2 in TownLayout.ROADS:
+		if TownLayout.TOWN.encloses(road):
+			streets.append(road)
 	for i in POST_PATROL:
-		# Pairs walk the two streets; their post is a point on the road.
-		var along := -6.0 + 4.0 * float(i / 2)
-		var road_point := Vector2(0.0, along) if i % 4 < 2 else Vector2(along, 0.0)
-		out.append(_spot_near(road_point, 0.8))
+		var road := streets[(i / 2) % streets.size()]
+		var along := (float((i / 2) / streets.size()) + 0.5) / ceilf(float(POST_PATROL / 2) / streets.size())
+		var point := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \
+			else Vector2(lerpf(road.position.x, road.end.x, along), road.get_center().y)
+		out.append(_spot_near(point, 0.8))
 	while out.size() > count:
 		out.pop_back()
 	while out.size() < count:
@@ -229,7 +236,7 @@ func advance(delta: float) -> void:
 func queue_spots(gate: Structure) -> Array[Vector2]:
 	if _spots.has(gate):
 		return _spots[gate]
-	var out_dir := gate.center().normalized()
+	var out_dir := outward_of(gate)
 	var side := Vector2(-out_dir.y, out_dir.x)
 	var face := gate.center() - out_dir * (absf(gate.footprint.size.dot(out_dir)) * 0.5 + GATE_DOOR)
 	# Built as one continuous path, nearest row first and snaking left-right-left row to row (not always left
@@ -257,6 +264,15 @@ func queue_spots(gate: Structure) -> Array[Vector2]:
 	return spots
 
 
+## The way out through a gate: straight across the wall it stands in, away from the town. (Its centre's direction
+## from the town's middle only works for a gate in the middle of its wall; the Side Gate is not.)
+static func outward_of(gate: Structure) -> Vector2:
+	var c := gate.center()
+	if absf(c.x) > absf(c.y):
+		return Vector2(signf(c.x), 0.0)
+	return Vector2(0.0, signf(c.y))
+
+
 ## How many people are waiting at a gate right now.
 func waiting_at(gate: Structure) -> int:
 	var n := 0
@@ -273,7 +289,7 @@ func _gates() -> void:
 			_release_all(gate)
 			continue  # rubble is no bottleneck
 		var centre := gate.center()
-		var outward := centre.normalized()
+		var outward := outward_of(gate)
 		var spots := queue_spots(gate)
 		var face := centre - outward * (absf(gate.footprint.size.dot(outward)) * 0.5 + GATE_DOOR)
 		# Each person this gate has released keeps its own pass until it is through (more than a third of the

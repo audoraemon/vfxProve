@@ -1,92 +1,127 @@
 class_name TownLayout
 extends RefCounted
-## Aldermere, the town of the one-mission game, as pure data in ground units: origin at the town centre, plan
-## north = -y (on screen the Citadel sits upper right, the Main Gate lower left). Town builds it; the Citadel's
-## nine parts live in citadel.gd. Numbers follow the spec's town table.
+## Aldermere as pure data in ground units, laid out after concepts/TOWN REF/Town Visual and Scale Upgrade.png (the
+## town scale upgrade): origin at the town centre, plan north = -y (on screen the north corner is the top, the Main
+## Gate is on the lower-left wall and the Side Gate on the lower-right one). Town builds it; the Citadel's nine
+## parts live in citadel.gd.
+##
+## Landmarks sit where the reference has them (read through a homography anchored on its corner towers); the
+## Citadel, which the reference does not have, takes the north corner. The reference's walls are not a clean
+## square; ours are.
 
-const MAP := Rect2(-12, -12, 28, 28)
+const MAP := Rect2(-30, -30, 60, 60)
 ## Inside the town walls.
-const TOWN := Rect2(-9, -9, 18, 18)
-const RIVER := Rect2(-12, 11.4, 28, 1.6)
-## North-south street from the Citadel gate out through the Main Gate and over the bridge; east-west street from
-## the west wall out through the Side Gate along the forest road.
-const ROADS := [Rect2(-0.4, -3.5, 0.8, 19.5), Rect2(-8.4, -0.4, 24.4, 0.8)]
-const MARKET_SQUARE := Rect2(-2.9, -2.4, 5.8, 5.0)
-const BARRACKS_YARD := Rect2(3.9, 0.7, 4.2, 2.4)
-## The Citadel's ground (its nine parts stay inside) and its paved court.
-const CITADEL_AREA := Rect2(-2.7, -8.2, 5.4, 4.6)
-const CITADEL_COURT := Rect2(-2.9, -8.4, 5.8, 5.0)
-## Centre of the keep.
-const CITADEL_ORIGIN := Vector2(0, -5.9)
-## Reaching one of these means a citizen escaped: the south road and the east forest road at the map edge.
-const EXITS := [Vector2(0, 15.6), Vector2(15.6, 0)]
+const TOWN := Rect2(-16, -16, 32, 32)
+## The river across the south, and its branch up the west side to a waterfall at the map's edge.
+const RIVER := Rect2(-30, 20.0, 60, 3.3)
+const RIVER_WEST := Rect2(-30, -2.0, 3.2, 22.0)
+const RIVERS := [RIVER, RIVER_WEST]
+## Wall band thickness, inside TOWN's edge.
+const WALL_T := 0.7
+## Streets: the main north-south street from the cathedral through the market to the Main Gate; the main east-west
+## street from the west wall to the Side Gate; a street along the cathedral's front; two long north-south streets;
+## the lane from the Citadel's gate; and outside, the south road over the bridge and the east road.
+const ROADS := [
+	Rect2(2.0, -4.6, 1.4, 19.9), Rect2(-15.3, 8.3, 30.6, 1.4), Rect2(-15.3, -5.6, 30.6, 1.0),
+	Rect2(-6.5, -15.3, 1.0, 30.6), Rect2(9.0, -15.3, 1.0, 30.6), Rect2(-11.0, -8.0, 1.0, 2.4),
+	Rect2(2.0, 16.2, 1.4, 13.8), Rect2(16.2, 8.3, 13.8, 1.4),
+]
+const MARKET_SQUARE := Rect2(-3.5, -3.5, 8.5, 11.5)
+## The small plaza round the second fountain, in the north-east.
+const FOUNTAIN_PLAZA := Rect2(9.8, -11.6, 3.2, 3.2)
+const BARRACKS_YARD := Rect2(10.3, 6.0, 4.5, 2.1)
+## The Citadel's ground (its nine parts stay inside) and its paved court, in the north corner.
+const CITADEL_ORIGIN := Vector2(-10.5, -10.5)
+const CITADEL_AREA := Rect2(-13.25, -12.85, 5.5, 4.7)
+const CITADEL_COURT := Rect2(-13.4, -13.0, 5.8, 5.0)
+## Reaching one of these means a citizen escaped: the south road and the east road at the map's edge.
+const EXITS := [Vector2(2.7, 29.6), Vector2(29.6, 9.0)]
 
-const WALLS := [
-	Rect2(-7.95, -9.0, 15.9, 0.6), Rect2(-9.0, -7.95, 0.6, 15.9),
-	Rect2(-7.95, 8.4, 6.55, 0.6), Rect2(1.4, 8.4, 6.55, 0.6),
-	Rect2(8.4, -7.95, 0.6, 2.35), Rect2(8.4, -4.3, 0.6, 3.0), Rect2(8.4, 1.3, 0.6, 2.7), Rect2(8.4, 5.3, 0.6, 2.65),
+const CORNER_TOWER := 2.0
+const WALL_TOWER := 1.6
+## Wall towers along each run, at these offsets from its middle (gates keep their own towers).
+const TOWER_AT := [-8.0, 0.0, 8.0]
+## The gatehouses: a gate between two towers, the Main Gate on the south wall and the Side Gate on the east wall.
+const MAIN_GATE := Rect2(1.7, 15.1, 2.0, 1.1)
+const SIDE_GATE := Rect2(15.1, 8.0, 1.1, 2.0)
+const GATE_TOWERS := [
+	Rect2(0.1, 14.9, 1.6, 1.6), Rect2(3.7, 14.9, 1.6, 1.6),
+	Rect2(14.9, 6.4, 1.6, 1.6), Rect2(14.9, 10.0, 1.6, 1.6),
 ]
-const CORNER_TOWERS := [
-	Rect2(-9.45, -9.45, 1.5, 1.5), Rect2(7.95, -9.45, 1.5, 1.5), Rect2(-9.45, 7.95, 1.5, 1.5), Rect2(7.95, 7.95, 1.5, 1.5),
-]
-const SIDE_TOWERS := [Rect2(8.05, -5.6, 1.3, 1.3), Rect2(8.05, 4.0, 1.3, 1.3)]
-const MAIN_GATE := Rect2(-1.4, 8.2, 2.8, 1.0)
-const SIDE_GATE := Rect2(8.2, -1.3, 1.0, 2.6)
-const TEMPLE := Rect2(3.5, -7.6, 2.7, 3.1)
-const BARRACKS := Rect2(3.9, -2.5, 4.2, 1.9)
-const BRIDGE := Rect2(-1.0, 11.0, 2.0, 2.4)
-## The market fountain at the crossroads (built after the Citadel so every other building keeps its seed).
-const FOUNTAIN := Rect2(-0.6, -0.6, 1.2, 1.2)
+## Ground in front of each gate kept clear of everything, where the fleeing crowd queues (up to the gatehouse's
+## torches).
+const GATE_PLAZAS := [Rect2(-0.6, 10.9, 6.6, 3.3), Rect2(10.6, 9.8, 3.6, 3.8)]
+
+## The cathedral, facing the market across the street along its front.
+const TEMPLE := Rect2(-1.3, -11.8, 4.2, 6.2)
+const BARRACKS := Rect2(10.3, 3.9, 4.4, 1.9)
+## The workshop hall and the forge, in the east quarter beside the barracks.
+const WORKSHOP := Rect2(10.2, -1.3, 2.6, 1.5)
+const SMITHY := Rect2(13.0, -1.6, 1.5, 1.25)
+## The taverns: north (by the Citadel's lane), west of the market, and east of the market.
+const TAVERNS := [Rect2(-9.6, -7.6, 2.4, 1.5), Rect2(-5.3, -0.6, 1.6, 2.4), Rect2(5.6, 2.4, 2.8, 1.8)]
+const TAVERN := Rect2(5.6, 2.4, 2.8, 1.8)
+## Working ground the reference fills with props: tables on the east tavern's patio, barrels and crates in the
+## blacksmith's yard. People walk round them (see blockers()).
+const TAVERN_PATIO := Rect2(5.8, 4.2, 2.4, 0.42)
+const SMITHY_YARD := Rect2(13.1, -0.2, 1.3, 0.55)
+const YARDS := [TAVERN_PATIO, SMITHY_YARD]
+const BRIDGE := Rect2(1.7, 18.6, 2.0, 6.2)
+## The market fountain and the north-east plaza's (built after the Citadel so every other building keeps its seed).
+const FOUNTAIN := Rect2(0.2, 5.1, 1.2, 1.2)
+const FOUNTAINS := [Rect2(0.2, 5.1, 1.2, 1.2), Rect2(10.8, -10.6, 1.2, 1.2)]
+## Market stalls in rows west of the main street, and two east of it.
 const STALLS := [
-	Rect2(-2.5, -2.0, 0.9, 0.7), Rect2(-1.4, -2.0, 0.9, 0.7), Rect2(0.6, -2.0, 0.9, 0.7), Rect2(1.7, -2.0, 0.9, 0.7),
-	Rect2(-2.5, 1.4, 0.9, 0.7), Rect2(0.6, 1.4, 0.9, 0.7), Rect2(1.7, 1.4, 0.9, 0.7),
+	Rect2(-3.1, -2.8, 0.9, 0.7), Rect2(-1.9, -2.8, 0.9, 0.7), Rect2(-0.7, -2.8, 0.9, 0.7),
+	Rect2(-3.1, -0.6, 0.9, 0.7), Rect2(-1.9, -0.6, 0.9, 0.7), Rect2(-0.7, -0.6, 0.9, 0.7),
+	Rect2(-3.1, 1.6, 0.9, 0.7), Rect2(-1.9, 1.6, 0.9, 0.7), Rect2(-0.7, 1.6, 0.9, 0.7),
+	Rect2(-3.1, 3.8, 0.9, 0.7), Rect2(-1.9, 3.8, 0.9, 0.7), Rect2(-0.7, 3.8, 0.9, 0.7),
+	Rect2(3.7, -2.8, 0.9, 0.7), Rect2(3.7, -0.6, 0.9, 0.7),
 ]
+## Farm fields outside the walls: north, south of the river, and east.
 const FIELDS := [
-	Rect2(-10.5, 13.7, 2.6, 1.8), Rect2(-7.7, 13.7, 2.6, 1.8), Rect2(-4.9, 13.7, 2.6, 1.8),
-	Rect2(2.5, 13.7, 2.8, 1.8), Rect2(5.5, 13.7, 2.8, 1.8), Rect2(8.5, 13.7, 2.8, 1.8), Rect2(11.5, 13.7, 2.8, 1.8),
+	Rect2(-24, -28, 5, 3.5), Rect2(-18, -28, 5, 3.5), Rect2(0, -28, 5, 3.5), Rect2(6, -28, 5, 3.5), Rect2(12, -27, 5, 3.5),
+	Rect2(-24, 25, 5, 3.5), Rect2(-17, 25, 5, 3.5), Rect2(6, 25, 5, 3.5), Rect2(13, 25, 5, 3.5), Rect2(19, 13, 5, 3.5),
 ]
-const BARNS := [Rect2(-11.9, 13.7, 1.2, 1.4), Rect2(14.5, 13.7, 1.2, 1.4)]
-## Torch posts: the market corners, both sides of the Main Gate and the Citadel gate, outside the Side Gate.
+## Farmhouses by the fields.
+const BARNS := [Rect2(-12.5, -28.4, 1.3, 1.5), Rect2(18.0, -26.5, 1.3, 1.5), Rect2(-10.0, 25.4, 1.3, 1.5),
+	Rect2(19.5, 17.2, 1.3, 1.5)]
+## Torch posts: the market's corners, inside the Main Gate, outside the Side Gate, at the Citadel's gate and the
+## cathedral's steps.
 const TORCHES := [
-	Vector2(-2.9, -2.45), Vector2(2.8, -2.45), Vector2(-2.9, 2.35), Vector2(2.8, 2.35),
-	Vector2(-1.8, 8.0), Vector2(1.6, 8.0), Vector2(-0.9, -3.3), Vector2(0.7, -3.3),
-	Vector2(9.6, -1.8), Vector2(9.6, 1.6),
+	Vector2(-3.8, -3.8), Vector2(5.1, -3.8), Vector2(-3.8, 8.0), Vector2(5.1, 8.0),
+	Vector2(1.3, 14.4), Vector2(3.9, 14.4), Vector2(16.8, 7.5), Vector2(16.8, 10.3),
+	Vector2(-11.5, -7.6), Vector2(-9.9, -7.9), Vector2(-0.9, -4.3), Vector2(3.6, -4.3),
 ]
-## Residential blocks (north-west, south-west, south-middle, south-east), each a loose grid of cottages with room
-## between them for trees and gardens (see houses()): [rect, columns, rows]. The southern blocks stop short of the
-## south wall, leaving a lane inside it.
+## Street lamps along the streets' edges.
+const LAMPS := [
+	Vector2(-12.5, 8.0), Vector2(-8.2, 9.8), Vector2(-4.5, 8.0), Vector2(6.8, 9.8), Vector2(13.5, 13.9),
+	Vector2(-12.5, -4.4), Vector2(-8.2, -5.8), Vector2(6.8, -4.4), Vector2(12.2, -5.8),
+	Vector2(-0.9, 11.2), Vector2(6.3, 11.2), Vector2(-5.3, -11.0), Vector2(-5.3, 3.5), Vector2(10.2, -2.5), Vector2(10.2, 12.5),
+]
+## Residential blocks between the streets, each filled with a loose grid of cottages (see houses()).
 const DISTRICTS := [
-	[Rect2(-8.1, -7.8, 4.9, 6.9), 3, 4], [Rect2(-8.1, 0.9, 4.9, 6.5), 3, 4],
-	[Rect2(-2.6, 3.6, 2.0, 2.9), 1, 2], [Rect2(0.7, 3.6, 7.1, 3.8), 4, 3],
+	Rect2(-15.2, -15.2, 8.6, 9.5), Rect2(-5.4, -15.2, 4.0, 9.5), Rect2(3.0, -15.2, 5.9, 9.5), Rect2(10.1, -15.2, 5.1, 9.5),
+	Rect2(-15.2, -4.5, 8.6, 12.7), Rect2(5.1, -4.5, 3.8, 12.7), Rect2(-15.2, 9.8, 8.6, 5.4), Rect2(-5.4, 9.8, 7.3, 5.4),
+	Rect2(3.5, 9.8, 5.4, 5.4), Rect2(10.1, 9.8, 5.1, 5.4),
 ]
+## Grid spacing of the cottages: the reference's cottages stand about 2 units apart.
+const HOUSE_CELL := Vector2(1.75, 1.8)
 ## A cottage's footprint, turned either way.
 const HOUSE_WIDE := Vector2(0.95, 0.75)
 const HOUSE_DEEP := Vector2(0.75, 0.95)
-## Open ground kept between a cottage and either street.
+## Open ground kept between a cottage and any street, and between a cottage and the walls.
 const STREET_CLEAR := 0.95
-## A garden plot's sides (ground units), and the open ground kept between it and either street.
+const WALL_CLEAR := 1.0
+## A garden plot's sides (ground units), and the open ground kept between it and any street.
 const GARDEN_LONG := 1.0
 const GARDEN_SHORT := 0.45
 ## Gap between a garden and its cottage.
 const GARDEN_GAP := 0.18
 const GARDEN_STREET_CLEAR := 0.7
-## The tavern faces the market across the west street; the blacksmith works against the west wall at the street's
-## end. Both are homes too (role &"house"), drawn by their own art (tag).
-const TAVERN := Rect2(-5.4, -2.35, 2.1, 1.4)
-const SMITHY := Rect2(-8.1, 0.95, 1.5, 1.25)
-## Working ground the reference fills with props: tables on the tavern's patio, barrels and crates in the
-## blacksmith's yard and in a store at the barracks' west end. People walk round them (see blockers()).
-const TAVERN_PATIO := Rect2(-5.25, -0.95, 1.8, 0.42)
-const SMITHY_YARD := Rect2(-6.55, 1.05, 0.45, 1.05)
-const BARRACKS_STORE := Rect2(3.4, -2.3, 0.45, 1.3)
-const YARDS := [TAVERN_PATIO, SMITHY_YARD, BARRACKS_STORE]
 const TREE_SIZE := Vector2(0.7, 0.7)
 ## Trees in town, between the cottages.
 const TOWN_TREE := Vector2(0.45, 0.45)
-## Street lamps: along both streets at their edges, and round the market.
-const LAMPS := [
-	Vector2(-7.2, 0.55), Vector2(-5.6, -0.75), Vector2(-3.4, 0.55), Vector2(3.4, -0.75), Vector2(0.55, 3.4), Vector2(-0.75, -3.1),
-]
 
 
 ## A wall run is built in short pieces instead of one long slab. A building sorts against the rest of the town
@@ -112,16 +147,85 @@ static func wall_pieces(r: Rect2) -> Array[Rect2]:
 	return out
 
 
-## Every building except the Citadel, as {rect, height, kind, role}.
+## The four corner towers, centred 0.3 inside each corner so they stand mostly out of it.
+static func corner_towers() -> Array[Rect2]:
+	var h := CORNER_TOWER * 0.5
+	var out: Array[Rect2] = []
+	for c: Vector2 in [TOWN.position, Vector2(TOWN.end.x, TOWN.position.y), TOWN.end, Vector2(TOWN.position.x, TOWN.end.y)]:
+		var centre := c + (TOWN.get_center() - c).sign() * 0.3
+		out.append(Rect2(centre - Vector2(h, h), Vector2(CORNER_TOWER, CORNER_TOWER)))
+	return out
+
+
+## Towers along the runs, at TOWER_AT from each run's middle, moved along the wall off any street that ends there,
+## and left out where a gatehouse stands.
+static func wall_towers() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var h := WALL_TOWER * 0.5
+	var mid := WALL_T * 0.5
+	for off: float in TOWER_AT:
+		for side in 4:
+			for nudge: float in [0.0, -1.4, 1.4]:
+				var o := off + nudge
+				var c: Vector2 = [Vector2(o, TOWN.position.y + mid), Vector2(TOWN.position.x + mid, o),
+					Vector2(o, TOWN.end.y - mid), Vector2(TOWN.end.x - mid, o)][side]
+				var r := Rect2(c - Vector2(h, h), Vector2(WALL_TOWER, WALL_TOWER))
+				var on_road := false
+				for road: Rect2 in ROADS:
+					on_road = on_road or road.grow(0.3).intersects(r)
+				if on_road:
+					continue
+				var clear := true
+				for g: Rect2 in GATE_TOWERS + [MAIN_GATE, SIDE_GATE]:
+					clear = clear and not g.grow(0.6).intersects(r)
+				if clear:
+					out.append(r)
+				break
+	return out
+
+
+## The wall runs between the towers and gatehouses: each side's band, less whatever stands on it.
+static func walls() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var blocking: Array[Rect2] = corner_towers() + wall_towers()
+	for g: Rect2 in GATE_TOWERS + [MAIN_GATE, SIDE_GATE]:
+		blocking.append(g)
+	var bands := [
+		Rect2(TOWN.position.x, TOWN.position.y, TOWN.size.x, WALL_T), Rect2(TOWN.position.x, TOWN.end.y - WALL_T, TOWN.size.x, WALL_T),
+		Rect2(TOWN.position.x, TOWN.position.y, WALL_T, TOWN.size.y), Rect2(TOWN.end.x - WALL_T, TOWN.position.y, WALL_T, TOWN.size.y),
+	]
+	for band: Rect2 in bands:
+		var along_x := band.size.x >= band.size.y
+		var cuts: Array = []
+		for b: Rect2 in blocking:
+			if b.intersects(band):
+				cuts.append([b.position.x, b.end.x] if along_x else [b.position.y, b.end.y])
+		cuts.sort_custom(func(p: Array, q: Array) -> bool: return p[0] < q[0])
+		var at: float = band.position.x if along_x else band.position.y
+		var end: float = band.end.x if along_x else band.end.y
+		for c: Array in cuts:
+			if c[0] - at > 0.05:
+				out.append(Rect2(at, band.position.y, c[0] - at, band.size.y) if along_x \
+					else Rect2(band.position.x, at, band.size.x, c[0] - at))
+			at = maxf(at, c[1])
+		if end - at > 0.05:
+			out.append(Rect2(at, band.position.y, end - at, band.size.y) if along_x \
+				else Rect2(band.position.x, at, band.size.x, end - at))
+	return out
+
+
+## Every building except the Citadel and the fountains, as {rect, height, kind, role, tag}.
 static func structures() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for r: Rect2 in WALLS:
+	for r: Rect2 in walls():
 		for piece in wall_pieces(r):
 			_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
-	for r: Rect2 in CORNER_TOWERS:
+	for r: Rect2 in corner_towers():
 		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower")
-	for r: Rect2 in SIDE_TOWERS:
+	for r: Rect2 in wall_towers():
 		_add(out, r, 46.0, Structure.Kind.KEEP, &"tower")
+	for r: Rect2 in GATE_TOWERS:
+		_add(out, r, 52.0, Structure.Kind.KEEP, &"tower")
 	_add(out, MAIN_GATE, 34.0, Structure.Kind.GATE, &"gate")
 	_add(out, SIDE_GATE, 34.0, Structure.Kind.GATE, &"gate")
 	_add(out, TEMPLE, 56.0, Structure.Kind.TEMPLE, &"temple")
@@ -131,8 +235,10 @@ static func structures() -> Array[Dictionary]:
 	var house_rects := houses()
 	for i in house_rects.size():
 		_add(out, house_rects[i], 15.0 + float(i * 7 % 5), Structure.Kind.HOUSE, &"house")
-	_add(out, TAVERN, 30.0, Structure.Kind.HOUSE, &"house", &"tavern")
+	for r: Rect2 in TAVERNS:
+		_add(out, r, 30.0, Structure.Kind.HOUSE, &"house", &"tavern")
 	_add(out, SMITHY, 20.0, Structure.Kind.HOUSE, &"house", &"smithy")
+	_add(out, WORKSHOP, 24.0, Structure.Kind.HOUSE, &"house", &"smithy")
 	_add(out, BRIDGE, 6.0, Structure.Kind.BRIDGE, &"bridge")
 	for r: Rect2 in FIELDS:
 		_add(out, r, 3.0, Structure.Kind.FARM_FIELD, &"farm")
@@ -151,70 +257,82 @@ static func structures() -> Array[Dictionary]:
 	return out
 
 
-## Cottage footprints: one per cell of each district's grid, turned and nudged by a hash so the streets are not a
-## chessboard, leaving out the cells the tavern and the blacksmith stand in. 10 + 11 + 2 + 12 = 35 cottages; the
-## ground in front of the Main Gate stays open for the crowd that queues there.
-static func houses() -> Array[Rect2]:
-	var out: Array[Rect2] = []
-	var n := 0
-	for d: Array in DISTRICTS:
-		var r: Rect2 = d[0]
-		var cols: int = d[1]
-		var rows: int = d[2]
-		var cell := Vector2(r.size.x / cols, r.size.y / rows)
-		for j in rows:
-			for i in cols:
-				n += 1
-				var c := r.position + cell * Vector2(i + 0.5, j + 0.5)
-				var size: Vector2 = HOUSE_WIDE if _unit(n * 3) < 0.55 else HOUSE_DEEP
-				var room := (cell - size) * 0.5 - Vector2(0.2, 0.2)
-				c += Vector2((_unit(n * 3 + 1) - 0.5) * 2.0 * maxf(room.x, 0.0) * 0.6,
-					(_unit(n * 3 + 2) - 0.5) * 2.0 * maxf(room.y, 0.0) * 0.6)
-				var h := _off_streets(Rect2(c - size * 0.5, size))
-				if h.grow(0.3).intersects(TAVERN) or h.grow(0.3).intersects(SMITHY):
-					continue
-				var in_yard := false
-				for y: Rect2 in YARDS:
-					in_yard = in_yard or h.grow(0.3).intersects(y)
-				if in_yard:
-					continue
-				out.append(h)
+## Everything a cottage must keep clear of: the landmarks, yards, gate plazas and the Citadel's ground.
+static func _landmarks() -> Array[Rect2]:
+	var out: Array[Rect2] = [TEMPLE, BARRACKS, BARRACKS_YARD, WORKSHOP, SMITHY, MARKET_SQUARE, FOUNTAIN_PLAZA,
+		CITADEL_COURT]
+	for r: Rect2 in TAVERNS + YARDS + GATE_PLAZAS:
+		out.append(r)
 	return out
 
 
-## A cottage nudged back from both streets so at least STREET_CLEAR of open ground runs beside each road: with
+## Cottage footprints: a loose grid in every district at the reference's density, each turned and nudged by a
+## hash so the blocks are not a chessboard, kept STREET_CLEAR from every street and WALL_CLEAR inside the walls,
+## and left out wherever a landmark, a yard or a gate plaza stands.
+static func houses() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var inner := TOWN.grow(-WALL_T - WALL_CLEAR)
+	var keep_clear := _landmarks()
+	var n := 0
+	for d: Rect2 in DISTRICTS:
+		var cols := maxi(int(d.size.x / HOUSE_CELL.x), 1)
+		var rows := maxi(int(d.size.y / HOUSE_CELL.y), 1)
+		var cell := Vector2(d.size.x / cols, d.size.y / rows)
+		for j in rows:
+			for i in cols:
+				n += 1
+				var c := d.position + cell * Vector2(i + 0.5, j + 0.5)
+				var size: Vector2 = HOUSE_WIDE if _unit(n * 3) < 0.55 else HOUSE_DEEP
+				var room := (cell - size) * 0.5 - Vector2(0.25, 0.25)
+				c += Vector2((_unit(n * 3 + 1) - 0.5) * 2.0 * maxf(room.x, 0.0) * 0.6,
+					(_unit(n * 3 + 2) - 0.5) * 2.0 * maxf(room.y, 0.0) * 0.6)
+				var h := _off_streets(Rect2(c - size * 0.5, size))
+				if not inner.encloses(h):
+					continue
+				var clear := true
+				for k in keep_clear:
+					clear = clear and not h.grow(0.35).intersects(k)
+				for road: Rect2 in ROADS:
+					clear = clear and not h.grow(0.5).intersects(road)
+				if clear:
+					out.append(h)
+	return out
+
+
+## A cottage nudged back from every street so at least STREET_CLEAR of open ground runs beside each road: with
 ## less, one grid cell of passage is left and a crowd fleeing to a gate jams in it.
 static func _off_streets(h: Rect2) -> Rect2:
-	var ns: Rect2 = ROADS[0]
-	var ew: Rect2 = ROADS[1]
-	if h.grow(STREET_CLEAR).intersects(ns):
-		if h.get_center().x < ns.get_center().x:
-			h.position.x = minf(h.position.x, ns.position.x - STREET_CLEAR - h.size.x)
+	for road: Rect2 in ROADS:
+		if not h.grow(STREET_CLEAR).intersects(road):
+			continue
+		if road.size.y > road.size.x:
+			if h.get_center().x < road.get_center().x:
+				h.position.x = minf(h.position.x, road.position.x - STREET_CLEAR - h.size.x)
+			else:
+				h.position.x = maxf(h.position.x, road.end.x + STREET_CLEAR)
 		else:
-			h.position.x = maxf(h.position.x, ns.end.x + STREET_CLEAR)
-	if h.grow(STREET_CLEAR).intersects(ew):
-		if h.get_center().y < ew.get_center().y:
-			h.position.y = minf(h.position.y, ew.position.y - STREET_CLEAR - h.size.y)
-		else:
-			h.position.y = maxf(h.position.y, ew.end.y + STREET_CLEAR)
+			if h.get_center().y < road.get_center().y:
+				h.position.y = minf(h.position.y, road.position.y - STREET_CLEAR - h.size.y)
+			else:
+				h.position.y = maxf(h.position.y, road.end.y + STREET_CLEAR)
 	return h
 
 
-## Fenced vegetable gardens beside the cottages, as in the reference: a plot along a cottage's south or east side,
-## on the block's lawn, kept clear of the streets, the other buildings, the town's trees and each other. They are
-## solid to people (WalkGrid stamps them), so decor drawn on them never has anyone walking through its fence.
+## Fenced vegetable gardens beside the cottages, as in the reference: a plot along one of a cottage's sides (those
+## facing the camera first), on the block's lawn, kept clear of the streets, the other buildings, the town's trees
+## and each other. They are solid to people (WalkGrid stamps them), so decor drawn on them never has anyone
+## walking through its fence.
 static func gardens() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	var others: Array[Rect2] = houses()
-	others.append_array([TAVERN, SMITHY, TEMPLE, BARRACKS])
-	for y: Rect2 in YARDS:
-		others.append(y)
+	others.append_array(_landmarks())
+	others.append(SMITHY)
 	var trees: Array[Rect2] = []
 	for p in town_trees():
 		trees.append(Rect2(p, TOWN_TREE))
 	var blocks: Array[Rect2] = []
-	for d: Array in DISTRICTS:
-		blocks.append((d[0] as Rect2).grow(-0.05))
+	for d: Rect2 in DISTRICTS:
+		blocks.append(d.grow(-0.05))
 	var hs := houses()
 	for i in hs.size():
 		if _unit(i * 11 + 3) > 0.55:
@@ -222,7 +340,6 @@ static func gardens() -> Array[Rect2]:
 		var h := hs[i]
 		var long_x := minf(h.size.x + 0.2, GARDEN_LONG)
 		var long_y := minf(h.size.y + 0.2, GARDEN_LONG)
-		# Try the sides facing the camera first (south, east, in a hashed order), where a roof cannot hide the plot.
 		var sides := [
 			Rect2(Vector2(h.position.x - 0.05, h.end.y + GARDEN_GAP), Vector2(long_x, GARDEN_SHORT)),
 			Rect2(Vector2(h.end.x + GARDEN_GAP, h.position.y - 0.05), Vector2(GARDEN_SHORT, long_y)),
@@ -261,24 +378,23 @@ static func blockers() -> Array[Rect2]:
 static func town_trees() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var keep_clear: Array[Rect2] = houses()
-	keep_clear.append_array([TAVERN, SMITHY, TEMPLE, BARRACKS, BARRACKS_YARD, MARKET_SQUARE, CITADEL_COURT, MAIN_GATE, SIDE_GATE])
-	for y: Rect2 in YARDS:
-		keep_clear.append(y)
-	keep_clear.append_array(CORNER_TOWERS)
-	keep_clear.append_array(SIDE_TOWERS)
-	keep_clear.append_array(WALLS)
+	keep_clear.append_array(_landmarks())
+	keep_clear.append(SMITHY)
+	for r: Rect2 in corner_towers() + wall_towers() + walls():
+		keep_clear.append(r)
+	for r: Rect2 in GATE_TOWERS + [MAIN_GATE, SIDE_GATE]:
+		keep_clear.append(r)
 	var n := 0
-	for d: Array in DISTRICTS:
-		var r: Rect2 = d[0]
-		var cols: int = d[1]
-		var rows: int = d[2]
-		var cell := Vector2(r.size.x / cols, r.size.y / rows)
+	for d: Rect2 in DISTRICTS:
+		var cols := maxi(int(d.size.x / HOUSE_CELL.x), 1)
+		var rows := maxi(int(d.size.y / HOUSE_CELL.y), 1)
+		var cell := Vector2(d.size.x / cols, d.size.y / rows)
 		for j in rows + 1:
 			for i in cols + 1:
 				n += 1
 				if _unit(n * 5 + 7) > 0.62:
 					continue
-				var p := r.position + cell * Vector2(i, j) - TOWN_TREE * 0.5
+				var p := d.position + cell * Vector2(i, j) - TOWN_TREE * 0.5
 				p += Vector2(_unit(n * 5 + 8) - 0.5, _unit(n * 5 + 9) - 0.5) * 0.3
 				var t := Rect2(p, TOWN_TREE)
 				if not TOWN.grow(-0.75).encloses(t):
@@ -301,23 +417,34 @@ static func _unit(n: int) -> float:
 	return float(absi((n * 2654435761) ^ (n * 40503 + 12345)) % 1009) / 1009.0
 
 
-## Tree spots (top-left corners): a row along the north edge, a column along the west edge and two columns on
-## the east edge that leave the forest road clear, each nudged a little so the forest does not look planted.
+## Tree spots (top-left corners) standing just outside the walls, every 2.4 units round the town, leaving the
+## roads, the river and the gatehouses clear and nudged a little so the forest edge does not look planted.
 static func trees() -> Array[Vector2]:
 	var spots: Array[Vector2] = []
-	for i in 14:
-		spots.append(Vector2(-11.4 + 2.0 * i, -10.6))
-	for i in 9:
-		spots.append(Vector2(-10.6, -8.5 + 2.2 * i))
-	for x: float in [10.6, 13.0]:
-		for i in 9:
-			var y := -8.5 + 2.2 * i
-			if absf(y) < 1.4:
-				continue
-			spots.append(Vector2(x, y))
+	var ring := TOWN.grow(2.2)
+	var n := int(ring.size.x / 2.4)
+	for i in n + 1:
+		var t := float(i) / n
+		for p: Vector2 in [Vector2(lerpf(ring.position.x, ring.end.x, t), ring.position.y),
+				Vector2(ring.position.x, lerpf(ring.position.y, ring.end.y, t)),
+				Vector2(ring.end.x, lerpf(ring.position.y, ring.end.y, t))]:
+			spots.append(p)
+	var out: Array[Vector2] = []
 	for i in spots.size():
-		spots[i] += Vector2(_jitter(i * 2), _jitter(i * 2 + 1))
-	return spots
+		var p := spots[i] + Vector2(_jitter(i * 2), _jitter(i * 2 + 1))
+		var t := Rect2(p, TREE_SIZE)
+		var clear := true
+		for road: Rect2 in ROADS:
+			clear = clear and not road.grow(0.8).intersects(t)
+		for r: Rect2 in RIVERS:
+			clear = clear and not r.grow(0.3).intersects(t)
+		for f: Rect2 in FIELDS + BARNS:
+			clear = clear and not f.grow(0.3).intersects(t)
+		for o in out:
+			clear = clear and o.distance_to(p) > 1.0
+		if clear:
+			out.append(p)
+	return out
 
 
 static func _jitter(n: int) -> float:

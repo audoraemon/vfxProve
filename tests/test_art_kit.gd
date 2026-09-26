@@ -38,6 +38,8 @@ static func run(t) -> void:
 	barn.free()
 
 	var env := EnvironmentField.new()
+	# A fixed seed: each piece's torch is a coin flip from its seed, and an unseeded town could land outside the band.
+	env.rng.seed = 7
 	var town := Town.new()
 	town.build(env)
 	var pieces := 0

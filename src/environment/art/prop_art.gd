@@ -17,8 +17,8 @@ const POST_IN := 0.08
 const POST_UP := 11.0
 const ROPE := Color(0.24, 0.16, 0.1, 0.9)
 ## Fence posts: spacing along an edge (ground units) and height (px).
-const FENCE_STEP := 0.36
-const FENCE_H := 8.0
+const FENCE_STEP := 0.4
+const FENCE_H := 12.0
 ## Wheat stands this far above the soil (px).
 const WHEAT_H := 6.0
 
@@ -45,7 +45,7 @@ static func draw(s: Structure) -> void:
 			_field(s)
 		Structure.Kind.TREE:
 			ArtKit.begin()
-			tree(s._gp(s.center(), 0.0), s.max_height * 1.3, s.art.species, s.rng.seed)
+			tree(s._gp(s.center(), 0.0), s.max_height * 1.8, s.art.species, s.rng.seed)
 			ArtKit.flush(s)
 		Structure.Kind.FOUNTAIN:
 			_fountain(s)
@@ -251,10 +251,14 @@ static func _fence(s: Structure, a: Vector2, b: Vector2) -> void:
 	var prev := Vector2.INF
 	for i in n + 1:
 		var g := a.lerp(b, float(i) / n)
-		_post(s, g, 0.0, FENCE_H)
 		if prev != Vector2.INF:
-			for hh in [2.5, 5.0]:
-				ArtKit.line(s._gp(prev, hh), s._gp(g, hh), ROPE)
+			for hh in [FENCE_H * 0.35, FENCE_H * 0.72]:
+				var p0 := s._gp(prev, hh)
+				var p1 := s._gp(g, hh)
+				ArtKit.poly(PackedVector2Array([p0, p1, p1 + Vector2(0, 2), p0 + Vector2(0, 2)]), ArtKit.WOOD[1],
+					ArtKit.LIT_LEFT)
+				ArtKit.line(p0 + Vector2(0, 2), p1 + Vector2(0, 2), ArtKit.ink(0.4))
+		_post(s, g, 0.0, FENCE_H, 2.0)
 		prev = g
 
 
@@ -318,11 +322,14 @@ static func _fountain(s: Structure) -> void:
 
 ## A tree standing on `base` (canvas px), `tall` px to its crown: species 0 an oak, 1 a pine. Collects only.
 static func tree(base: Vector2, tall: float, species: int, seed_value: int) -> void:
-	var trunk_h := roundf(tall * (0.22 if species == 0 else 0.16))
-	ArtKit.poly(PackedVector2Array([base + Vector2(-1, 0), base + Vector2(2, 0), base + Vector2(2, -trunk_h),
+	var trunk_h := roundf(tall * (0.24 if species == 0 else 0.14))
+	# A trunk with a little root flare at its foot.
+	ArtKit.poly(PackedVector2Array([base + Vector2(-2, 0), base + Vector2(3, 0), base + Vector2(2, -trunk_h),
 		base + Vector2(-1, -trunk_h)]), ArtKit.BARK, ArtKit.LIT_RIGHT)
-	ArtKit.poly(PackedVector2Array([base + Vector2(-1, 0), base + Vector2(0, 0), base + Vector2(0, -trunk_h),
+	ArtKit.poly(PackedVector2Array([base + Vector2(-2, 0), base + Vector2(0, 0), base + Vector2(0, -trunk_h),
 		base + Vector2(-1, -trunk_h)]), ArtKit.BARK.darkened(0.3), ArtKit.LIT_LEFT)
+	ArtKit.poly(PackedVector2Array([base + Vector2(-4, 1), base + Vector2(5, 1), base + Vector2(2, -2), base + Vector2(-1, -2)]),
+		ArtKit.BARK.darkened(0.15), ArtKit.LIT_LEFT)
 	if species == 0:
 		_oak(base + Vector2(0, -trunk_h), tall - trunk_h, seed_value)
 	else:
@@ -330,58 +337,81 @@ static func tree(base: Vector2, tall: float, species: int, seed_value: int) -> v
 
 
 static func _oak(foot: Vector2, crown: float, seed_value: int) -> void:
-	var rad := roundf(crown * 0.56)
-	var c := foot + Vector2(0, -crown * 0.48)
-	var clumps := [Vector3(-0.45, 0.2, 0.62), Vector3(0.45, 0.22, 0.6), Vector3(0.0, -0.38, 0.66),
+	var rx := roundf(crown * 0.5)
+	var c := foot + Vector2(0, -crown * 0.5)
+	leafy(c, Vector2(rx, crown * 0.46), seed_value, 30, ArtKit.OAK)
+
+
+## A leafy mass as the reference draws its oaks and bushes: a dark outline of big clumps, then many small leaf
+## clusters, each with a darker rim and a light top, lit from the upper left and shaded to the lower right, back
+## to front. `pal` is [light, mid, dark, outline]. Collects only.
+static func leafy(c: Vector2, r: Vector2, seed_value: int, clusters: int, pal: Array) -> void:
+	var o := ArtKit.LIT_TOP
+	var big := [Vector3(-0.45, 0.2, 0.6), Vector3(0.45, 0.22, 0.58), Vector3(0.0, -0.38, 0.64),
 		Vector3(-0.2, 0.42, 0.55), Vector3(0.28, -0.08, 0.6), Vector3(-0.35, -0.18, 0.5)]
-	var pts: Array[Vector3] = []
-	for i in clumps.size():
-		var k: Vector3 = clumps[i]
-		var j := Vector2(ArtKit.hash01(seed_value, 500 + i) - 0.5, ArtKit.hash01(seed_value, 520 + i) - 0.5) * 0.25
-		pts.append(Vector3((k.x + j.x) * rad, (k.y + j.y) * rad, k.z * rad))
-	var o := ArtKit.LIT_TOP
-	for p in pts:
-		ArtKit.blob(c + Vector2(p.x, p.y), Vector2(p.z + 1.0, p.z * 0.9 + 1.0), ArtKit.OAK[3], o)
-	for p in pts:
-		ArtKit.blob(c + Vector2(p.x, p.y + 1.0), Vector2(p.z, p.z * 0.9), ArtKit.OAK[2], o)
-	for p in pts:
-		ArtKit.blob(c + Vector2(p.x - 0.5, p.y - 0.5), Vector2(p.z * 0.8, p.z * 0.7), ArtKit.OAK[1], o)
-	for i in 3:
-		var p := pts[[2, 5, 4][i]]
-		ArtKit.blob(c + Vector2(p.x - p.z * 0.3, p.y - p.z * 0.35), Vector2(p.z * 0.4, p.z * 0.3), ArtKit.OAK[0], o, 6)
+	for i in big.size():
+		var k: Vector3 = big[i]
+		var p := c + Vector2(k.x * r.x, k.y * r.y)
+		ArtKit.blob(p, Vector2(k.z * r.x + 1.0, k.z * r.y + 1.0), pal[3], o)
+	for i in big.size():
+		var k: Vector3 = big[i]
+		ArtKit.blob(c + Vector2(k.x * r.x, k.y * r.y + 1.0), Vector2(k.z * r.x, k.z * r.y), pal[2], o)
+	# Leaf clusters, spread over the crown and drawn from the back (top) to the front (bottom).
+	var spots: Array[Vector3] = []
+	for i in clusters:
+		var ang := ArtKit.hash01(seed_value, 600 + i) * TAU
+		var dist := sqrt(ArtKit.hash01(seed_value, 700 + i)) * 0.82
+		var size := lerpf(0.16, 0.26, ArtKit.hash01(seed_value, 800 + i)) * r.x
+		spots.append(Vector3(cos(ang) * dist * r.x, sin(ang) * dist * r.y, maxf(size, 1.6)))
+	spots.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.y < b.y)
+	var light := Vector2(-0.6, -0.8)
+	for p in spots:
+		var at := c + Vector2(p.x, p.y)
+		var lit := Vector2(p.x / r.x, p.y / r.y).dot(light)
+		var tone: Color = pal[0] if lit > 0.35 else (pal[1] if lit > -0.25 else pal[2])
+		ArtKit.blob(at + Vector2(0.5, 0.8), Vector2(p.z + 0.6, p.z * 0.85 + 0.6), pal[2].darkened(0.25), o, 7)
+		ArtKit.blob(at, Vector2(p.z, p.z * 0.85), tone, o, 7)
+		ArtKit.blob(at + Vector2(-p.z * 0.35, -p.z * 0.35), Vector2(p.z * 0.45, p.z * 0.35), tone.lightened(0.18), o, 5)
 
 
+## A pine as the reference draws it: a dark cone built up from rows of drooping branch clumps, lit on the right
+## and shaded on the left, the rows flaring every few steps so the outline is ragged.
 static func _pine(foot: Vector2, crown: float, seed_value: int) -> void:
-	var tiers := 4
-	var w := crown * 0.36
-	var tier_h := crown * 0.36
-	var step := (crown - tier_h) / (tiers - 1)
 	var o := ArtKit.LIT_TOP
-	var lean := (ArtKit.hash01(seed_value, 540) - 0.5) * 2.0
-	for i in tiers:
-		var y := foot.y - i * step
-		var half := roundf(w * (1.0 - 0.2 * i))
-		var apex := Vector2(foot.x + lean * i * 0.3, y - tier_h)
-		var l := Vector2(foot.x - half, y)
-		var r := Vector2(foot.x + half, y)
-		var m := Vector2(foot.x, y + 1.0)
-		ArtKit.poly(PackedVector2Array([apex + Vector2(0, -1), r + Vector2(1, 1), l + Vector2(-1, 1)]), ArtKit.PINE[3], o)
-		ArtKit.poly(PackedVector2Array([apex, m, l]), ArtKit.PINE[2], o)
-		ArtKit.poly(PackedVector2Array([apex, r, m]), ArtKit.PINE[1], o)
-		ArtKit.poly(PackedVector2Array([apex, apex.lerp(r, 0.55), apex.lerp(m, 0.4)]), ArtKit.PINE[0], o)
+	var top := foot + Vector2(0, -crown)
+	var base_half := crown * 0.34
+	ArtKit.poly(PackedVector2Array([top + Vector2(0, -1), foot + Vector2(base_half + 1, 1), foot + Vector2(-base_half - 1, 1)]),
+		ArtKit.PINE[3], o)
+	var rows := maxi(int(crown / 3.5), 4)
+	for j in rows:
+		var t := (j + 0.6) / rows
+		var y := lerpf(top.y, foot.y - 1.0, t)
+		var flare := 0.8 + 0.2 * float(j % 3) / 2.0
+		var half := base_half * t * flare
+		var n := maxi(int(half * 2.0 / 3.5), 1)
+		for k in n + 1:
+			var x := lerpf(-half, half, float(k) / n) if n > 0 else 0.0
+			var side := x / maxf(half, 1.0)
+			var tone: Color = ArtKit.PINE[0] if side > 0.3 else (ArtKit.PINE[1] if side > -0.35 else ArtKit.PINE[2])
+			var r := 2.0 + ArtKit.hash01(seed_value, 900 + j * 31 + k) * 1.2
+			var c := Vector2(foot.x + x, y)
+			ArtKit.blob(c + Vector2(0.4, 0.9), Vector2(r + 0.5, r * 0.6 + 0.5), ArtKit.PINE[3], o, 6)
+			ArtKit.blob(c, Vector2(r, r * 0.6), tone, o, 6)
+			if side > 0.3:
+				ArtKit.blob(c + Vector2(-0.6, -0.6), Vector2(r * 0.4, r * 0.25), tone.lightened(0.2), o, 5)
 
 
 # --- Shared ------------------------------------------------------------------
 
-## A 2 px post standing at ground point `g` from height h0 to h1.
-static func _post(s: Structure, g: Vector2, h0: float, h1: float) -> void:
+## A post standing at ground point `g` from height h0 to h1, `half` px either side of it.
+static func _post(s: Structure, g: Vector2, h0: float, h1: float, half := 1.0) -> void:
 	var p := s._gp(g, h0)
 	var q := s._gp(g, h1)
-	ArtKit.poly(PackedVector2Array([p + Vector2(-1, 0), p + Vector2(1, 0), q + Vector2(1, 0), q + Vector2(-1, 0)]),
+	ArtKit.poly(PackedVector2Array([p + Vector2(-half, 0), p + Vector2(half, 0), q + Vector2(half, 0), q + Vector2(-half, 0)]),
 		ArtKit.WOOD[2], ArtKit.LIT_RIGHT)
-	ArtKit.poly(PackedVector2Array([q + Vector2(-1, -1), q + Vector2(1, -1), q + Vector2(1, 0), q + Vector2(-1, 0)]),
+	ArtKit.poly(PackedVector2Array([q + Vector2(-half, -1), q + Vector2(half, -1), q + Vector2(half, 0), q + Vector2(-half, 0)]),
 		ArtKit.WOOD[1], ArtKit.LIT_TOP)
-	ArtKit.poly(PackedVector2Array([p + Vector2(-1, 0), p, q, q + Vector2(-1, 0)]), ArtKit.WOOD[2].darkened(0.25),
+	ArtKit.poly(PackedVector2Array([p + Vector2(-half, 0), p, q, q + Vector2(-half, 0)]), ArtKit.WOOD[2].darkened(0.25),
 		ArtKit.LIT_LEFT)
 
 

@@ -16,7 +16,7 @@ const ROAD_CLEAR := 1.0
 const BAKE_CLEAR := 1.4
 const SEED := 5171
 ## A generous screen box around any decor piece (relative to its ground point): tall enough for a tree.
-const SCREEN_BOX := Rect2(-14, -50, 28, 52)
+const SCREEN_BOX := Rect2(-26, -66, 52, 68)
 
 
 static func spots() -> Array[Dictionary]:
@@ -40,6 +40,9 @@ static func _solid_rects() -> Array[Rect2]:
 	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
 		out.append(Rect2(r.position + TownLayout.CITADEL_ORIGIN, r.size))
 	out.append(TownLayout.FOUNTAIN)
+	# Gardens close every cell they touch (WalkGrid): grown so that, with blocked()'s own BODY, they reach half a cell.
+	for g in TownLayout.gardens():
+		out.append(g.grow(CELL * 0.5 - BODY))
 	return out
 
 
@@ -115,17 +118,8 @@ static func _houses(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 					kind = Decor.Kind.LAMP
 				_add(out, kind, g)
 				placed += 1
-		# A garden plot against the house's south side, where the whole plot is off the street.
-		var plot := Rect2(Vector2(r.position.x + 0.15, r.end.y + 0.04), Vector2(minf(r.size.x - 0.3, 0.7), 0.22))
-		if _h(i, 2) < 0.6 and _plot_ok(plot, solid) and _far_from_others(out, plot.position, 0.2):
-			_add(out, Decor.Kind.GARDEN, plot.position, plot.size)
-
-
-static func _plot_ok(plot: Rect2, solid: Array[Rect2]) -> bool:
-	for c in [plot.position, Vector2(plot.end.x, plot.position.y), plot.end, Vector2(plot.position.x, plot.end.y)]:
-		if not blocked(c, solid) or _inside_any(c, solid, -0.01):
-			return false
-	return true
+	for g in TownLayout.gardens():
+		_add(out, Decor.Kind.GARDEN, g.position, g.size)
 
 
 ## Bunting strung between the market's torch posts, across its north and south edges.

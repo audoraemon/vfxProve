@@ -36,7 +36,7 @@ const TEMPLE := Rect2(3.5, -7.6, 2.7, 3.1)
 const BARRACKS := Rect2(3.9, -2.5, 4.2, 1.9)
 const BRIDGE := Rect2(-1.0, 11.0, 2.0, 2.4)
 ## The market fountain at the crossroads (built after the Citadel so every other building keeps its seed).
-const FOUNTAIN := Rect2(-0.45, -0.45, 0.9, 0.9)
+const FOUNTAIN := Rect2(-0.6, -0.6, 1.2, 1.2)
 const STALLS := [
 	Rect2(-2.5, -2.0, 0.9, 0.7), Rect2(-1.4, -2.0, 0.9, 0.7), Rect2(0.6, -2.0, 0.9, 0.7), Rect2(1.7, -2.0, 0.9, 0.7),
 	Rect2(-2.5, 1.4, 0.9, 0.7), Rect2(0.6, 1.4, 0.9, 0.7), Rect2(1.7, 1.4, 0.9, 0.7),
@@ -64,6 +64,10 @@ const HOUSE_WIDE := Vector2(0.95, 0.75)
 const HOUSE_DEEP := Vector2(0.75, 0.95)
 ## Open ground kept between a cottage and either street.
 const STREET_CLEAR := 0.95
+## A garden plot's sides (ground units), and the open ground kept between it and either street.
+const GARDEN_LONG := 1.1
+const GARDEN_SHORT := 0.55
+const GARDEN_STREET_CLEAR := 0.7
 ## The tavern faces the market across the west street; the blacksmith works against the west wall at the street's
 ## end. Both are homes too (role &"house"), drawn by their own art (tag).
 const TAVERN := Rect2(-5.4, -2.35, 2.1, 1.4)
@@ -181,6 +185,43 @@ static func _off_streets(h: Rect2) -> Rect2:
 		else:
 			h.position.y = maxf(h.position.y, ew.end.y + STREET_CLEAR)
 	return h
+
+
+## Fenced vegetable gardens beside the cottages, as in the reference: a plot along a cottage's south or east side,
+## on the block's lawn, kept clear of the streets, the other buildings, the town's trees and each other. They are
+## solid to people (WalkGrid stamps them), so decor drawn on them never has anyone walking through its fence.
+static func gardens() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var others: Array[Rect2] = houses()
+	others.append_array([TAVERN, SMITHY, TEMPLE, BARRACKS])
+	var trees: Array[Rect2] = []
+	for p in town_trees():
+		trees.append(Rect2(p, TOWN_TREE))
+	var blocks: Array[Rect2] = []
+	for d: Array in DISTRICTS:
+		blocks.append((d[0] as Rect2).grow(-0.05))
+	var hs := houses()
+	for i in hs.size():
+		if _unit(i * 11 + 3) > 0.7:
+			continue
+		var h := hs[i]
+		var south := _unit(i * 11 + 4) < 0.5
+		var plot := Rect2(Vector2(h.position.x - 0.05, h.end.y + 0.3), Vector2(minf(h.size.x + 0.3, GARDEN_LONG), GARDEN_SHORT)) \
+			if south else Rect2(Vector2(h.end.x + 0.3, h.position.y - 0.05), Vector2(GARDEN_SHORT, minf(h.size.y + 0.3, GARDEN_LONG)))
+		var ok := false
+		for b in blocks:
+			ok = ok or b.encloses(plot)
+		for road: Rect2 in ROADS:
+			ok = ok and not road.grow(GARDEN_STREET_CLEAR).intersects(plot)
+		for o in others:
+			ok = ok and not o.grow(0.12).intersects(plot)
+		for t in trees:
+			ok = ok and not t.intersects(plot)
+		for g in out:
+			ok = ok and not g.grow(0.45).intersects(plot)
+		if ok:
+			out.append(plot)
+	return out
 
 
 ## Tree spots between the cottages: grid corners inside each district, kept clear of every building and street.

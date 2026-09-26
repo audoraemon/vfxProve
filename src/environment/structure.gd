@@ -21,6 +21,9 @@ const COL_MOLTEN := Color("ffb040")
 const COL_GOLD := Color("d8b23a")
 const COL_BEAM := Color("3a2a1e")
 const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
+const COL_IRON_CUP := Color("3a3230")
+## A street lamp's post height, px (the reference's lamps stand about twice a person's height).
+const LAMP_H := 34.0
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
 ## Seconds a dropped banner takes to fall and fade.
 const BANNER_FALL_TIME := 1.0
@@ -638,28 +641,34 @@ func _draw_torch(right_c: Color, left_c: Color) -> void:
 	if art_tag == &"lamp":
 		_draw_lamp(right_c, left_c)
 		return
-	draw_rect(Rect2(-1, -height, 2, height), left_c)
-	draw_rect(Rect2(0, -height, 1, height), right_c)
-	draw_rect(Rect2(-2, -height - 1, 4, 2), COL_BEAM)
+	# A stout post with an iron cup and a fat flame, the reference's torch.
+	draw_rect(Rect2(-2, -height, 4, height), left_c)
+	draw_rect(Rect2(0, -height, 2, height), right_c)
+	draw_rect(Rect2(-3, -2, 6, 2), left_c.darkened(0.2))
+	draw_rect(Rect2(-3, -height - 2, 6, 3), COL_IRON_CUP)
 	var f := int(_time * 12.0 + float(rng.seed % 5)) % 3
-	draw_rect(Rect2(-2, -height - 4, 4, 3), COL_FLAME[2])
-	draw_rect(Rect2(-1, -height - 6 - f % 2, 3, 4), COL_FLAME[1])
-	draw_rect(Rect2(-1 + (f % 2), -height - 8 - f, 1, 3), COL_FLAME[0])
+	draw_rect(Rect2(-3, -height - 6, 6, 4), COL_FLAME[2])
+	draw_rect(Rect2(-2, -height - 9 - f % 2, 4, 5), COL_FLAME[1])
+	draw_rect(Rect2(-1 + (f % 2), -height - 12 - f, 2, 4), COL_FLAME[0])
 
 
-## A street lamp: a dark post with an arm, a lantern hanging from it whose glow flickers a little.
+## A street lamp as in the reference: a stout post on a foot with an arm at the top, and a lantern hanging from the
+## arm whose glow flickers a little.
 func _draw_lamp(right_c: Color, left_c: Color) -> void:
 	var post := COL_BEAM.lerp(COL_CHAR, scorch)
-	draw_rect(Rect2(-1, -height, 2, height), post)
-	draw_rect(Rect2(0, -height, 1, height), post.lightened(0.15))
-	draw_rect(Rect2(-2, -1, 4, 1), post)
-	draw_rect(Rect2(-1, -height - 1, 6, 1), post)
+	var tall := LAMP_H
+	draw_rect(Rect2(-2, -tall, 3, tall), post)
+	draw_rect(Rect2(0, -tall, 1, tall), post.lightened(0.18))
+	draw_rect(Rect2(-4, -2, 7, 2), post)
+	draw_rect(Rect2(-2, -tall - 2, 12, 2), post)
+	draw_rect(Rect2(1, -tall + 1, 2, 3), post)
 	var f := int(_time * 6.0 + float(rng.seed % 5)) % 4
-	var l := Vector2(2, -height)
-	draw_rect(Rect2(l, Vector2(4, 5)), right_c.darkened(0.4))
-	draw_rect(Rect2(l + Vector2(1, 1), Vector2(2, 3)), COL_FLAME[1] if f != 0 else COL_FLAME[2])
-	draw_rect(Rect2(l + Vector2(1, 1), Vector2(1, 2)), COL_FLAME[0])
-	draw_rect(Rect2(l + Vector2(0, -1), Vector2(4, 1)), left_c.darkened(0.3))
+	var l := Vector2(5, -tall + 1)
+	draw_rect(Rect2(l + Vector2(2, -1), Vector2(1, 2)), post)
+	draw_rect(Rect2(l, Vector2(6, 8)), right_c.darkened(0.45))
+	draw_rect(Rect2(l + Vector2(1, 1), Vector2(4, 6)), COL_FLAME[1] if f != 0 else COL_FLAME[2])
+	draw_rect(Rect2(l + Vector2(2, 2), Vector2(2, 4)), COL_FLAME[0])
+	draw_rect(Rect2(l + Vector2(-1, -1), Vector2(8, 1)), left_c.darkened(0.3))
 
 
 ## A felled tree's stump (its leaves are the rubble).

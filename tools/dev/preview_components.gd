@@ -20,7 +20,7 @@ const STRUCTURES := [
 	["stall_red", S.MARKET_STALL, Rect2(0, 0, 0.9, 0.7), 10.0, &"market", &"", 0],
 	["stall_blue", S.MARKET_STALL, Rect2(0, 0, 0.9, 0.7), 10.0, &"market", &"", 1],
 	["stall_cream", S.MARKET_STALL, Rect2(0, 0, 0.9, 0.7), 10.0, &"market", &"", 2],
-	["fountain", S.FOUNTAIN, Rect2(0, 0, 0.9, 0.9), 14.0, &"decor", &"", 18],
+	["fountain", S.FOUNTAIN, Rect2(0, 0, 1.2, 1.2), 24.0, &"decor", &"", 18],
 	["corner_tower", S.KEEP, Rect2(0, 0, 1.5, 1.5), 50.0, &"tower", &"", 19],
 	["wall_piece", S.CASTLE_WALL, Rect2(0, 0, 1.2, 0.6), 34.0, &"wall", &"", 20],
 	["main_gate", S.GATE, Rect2(0, 0, 2.8, 1.0), 34.0, &"gate", &"", 21],
@@ -38,7 +38,7 @@ const STRUCTURES := [
 const DECOR := [
 	["barrel", D.BARREL, Vector2.ZERO, 1], ["crates", D.CRATES, Vector2.ZERO, 2],
 	["bench", D.BENCH, Vector2(0.5, 0.0), 3], ["fence", D.FENCE, Vector2(1.3, 0.0), 4],
-	["garden", D.GARDEN, Vector2(0.7, 0.3), 5], ["bush", D.BUSH, Vector2.ZERO, 6], ["rock", D.ROCK, Vector2.ZERO, 7],
+	["garden", D.GARDEN, Vector2(1.1, 0.55), 5], ["bush", D.BUSH, Vector2.ZERO, 6], ["rock", D.ROCK, Vector2.ZERO, 7],
 	["oak", D.OAK, Vector2.ZERO, 8], ["pine", D.PINE, Vector2.ZERO, 9], ["scarecrow", D.SCARECROW, Vector2.ZERO, 10],
 	["signpost", D.SIGNPOST, Vector2.ZERO, 11], ["reeds", D.REEDS, Vector2.ZERO, 12],
 	["flowers", D.FLOWERS, Vector2.ZERO, 13], ["bunting", D.BUNTING, Vector2(2.0, 0.0), 14],

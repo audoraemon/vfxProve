@@ -455,3 +455,26 @@ fountain **after** the Citadel so every other seed is unchanged; build `ChimneyS
   - MISSION `citizens=21 escaped=20` (21 before the fountain). CROWD `citizens=35 escaped=18`.
   - Mission bench 112-114 fps with 963 draw calls; Cinderfall 39.7 fps. The prototype baseline measured
     ~79 / ~30 fps on the same machine.
+- **Refinement pass (0cd78b4).** Each component compared with the reference at the same scale:
+  - towers lowered (70/60 -> 50/46) and gates flush with the wall (40 -> 34);
+  - finer masonry and smaller merlons;
+  - the Citadel's gateway is an arched door up wide steps;
+  - lanes inside the walls are cobbled throughout;
+  - torch halos;
+  - tufted wheat, bigger cabbages, taller fences, thicker reeds;
+  - darker oaks and a taller forge.
+  Tagged `kak-visual-restyle`.
+- **Layout pass (39159b0).** The user chose: smaller spaced houses, a tavern and a blacksmith, and warm evening
+  light.
+  - Cottages are 0.95×0.75 with 15-19 px walls and a flatter roof (RISE_MIN 14), one per plot on a hashed grid,
+    on lawn with earth yards.
+  - Cottages keep 0.95 clear of both streets. A one-cell passage jammed the gate queue.
+  - South-middle has two cottages, so the ground in front of the Main Gate stays open, and the southern blocks
+    stop short of the wall.
+  - There are 37 homes: 35 cottages, the tavern and the blacksmith.
+  - Six street lamps with lanterns, and trees behind many houses.
+  - `LightField.tint` (Town.EVENING `fff2de`) multiplies into lit art, the ground, decor and people. Glow is
+    untinted.
+  - Two tests were made timing-robust: the yard soldiers are checked by post, and stacking is checked only among
+    people who have settled.
+  - Mission test escaped 20 -> 12 (routes changed). Bench: mission ~100 fps, Cinderfall 34-36 fps.

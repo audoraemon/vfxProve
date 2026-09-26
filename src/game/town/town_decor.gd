@@ -99,6 +99,9 @@ static func _yards(out: Array[Dictionary]) -> void:
 static func _houses(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 	var hosts: Array[Rect2] = TownLayout.houses()
 	hosts.append_array([TownLayout.TEMPLE, TownLayout.BARRACKS, TownLayout.SMITHY, TownLayout.WORKSHOP])
+	# Crates, barrels and baskets pile up round the market stalls too.
+	for st: Rect2 in TownLayout.STALLS:
+		hosts.append(st)
 	for t: Rect2 in TownLayout.TAVERNS:
 		hosts.append(t)
 	for i in hosts.size():

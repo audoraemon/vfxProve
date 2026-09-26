@@ -62,6 +62,9 @@ static func plan(s: Structure) -> Dictionary:
 static func draw(s: Structure) -> void:
 	ArtKit.begin()
 	var p := s.art
+	if s.art_tag == &"workshop":
+		CivicArt.workshop(s)
+		return
 	if p.smithy:
 		_smithy(s)
 		return

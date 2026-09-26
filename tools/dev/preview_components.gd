@@ -33,6 +33,9 @@ const STRUCTURES := [
 	["tree_b", S.TREE, Rect2(0, 0, 0.7, 0.7), 26.0, &"decor", &"", 28],
 	["torch", S.TORCH, Rect2(0, 0, 0.2, 0.2), 16.0, &"decor", &"", 29],
 	["lamp", S.TORCH, Rect2(0, 0, 0.2, 0.2), 18.0, &"decor", &"lamp", 30],
+	["cathedral", S.TEMPLE, Rect2(0, 0, 4.2, 6.2), 56.0, &"temple", &"cathedral", 31],
+	["bridge_stone", S.BRIDGE, Rect2(0, 0, 2.0, 7.6), 6.0, &"bridge", &"stone", 32],
+	["workshop", S.HOUSE, Rect2(0, 0, 2.6, 1.5), 22.0, &"house", &"workshop", 33],
 ]
 ## [name, kind, size, seed]; decor.
 const DECOR := [

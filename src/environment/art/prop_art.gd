@@ -122,6 +122,9 @@ static func _stall(s: Structure) -> void:
 # --- Bridge ------------------------------------------------------------------
 
 static func _bridge(s: Structure) -> void:
+	if s.art_tag == &"stone":
+		_stone_bridge(s)
+		return
 	ArtKit.begin()
 	var r := s.footprint
 	var h := s.height
@@ -199,12 +202,100 @@ static func _head_stones(s: Structure, far: bool) -> void:
 			_box(s, g, g + Vector2(0.22, 0.2), 0.0, hgt, ArtKit.STONE[1], ArtKit.STONE[0], ArtKit.STONE_TOP)
 
 
+## The Scale reference's bridge: stone on three round arches, a paved deck, crenellated parapets along both
+## sides, and a torch on each corner pier. Its side wall reaches down below the deck into the water.
+static func _stone_bridge(s: Structure) -> void:
+	ArtKit.begin()
+	var r := s.footprint
+	var h := s.height
+	var along_y := r.size.y >= r.size.x
+	var side_face := ArtKit.RIGHT if along_y else ArtKit.LEFT
+	var end_face := ArtKit.LEFT if along_y else ArtKit.RIGHT
+	var low := -16.0
+	var t := 0.14
+	# The far parapet first.
+	var far := Rect2(r.position, Vector2(t, r.size.y)) if along_y else Rect2(r.position, Vector2(r.size.x, t))
+	_parapet(s, far, h, along_y)
+	ArtKit.flush(s)
+	# The side wall with its arches, and the end wall at the far bank.
+	ArtKit.masonry(s, side_face, low, h, ArtKit.STONE[0], 360, 5.0, 9.0)
+	ArtKit.masonry(s, end_face, low, h, ArtKit.STONE[1], 380, 5.0, 9.0)
+	var px := maxf(ArtKit.face_px(s, side_face), 1.0)
+	for k in 3:
+		var u0 := 0.08 + k * 0.3
+		var u1 := u0 + 0.24
+		var um := (u0 + u1) * 0.5
+		var spring := low + 10.0
+		var arch := PackedVector2Array()
+		ArtKit.face_quad(s, side_face, u0, u1, low, spring, Color("1c3450"), ArtKit.EMIT)
+		for j in 7:
+			var a := PI * float(j) / 6.0
+			arch.append(ArtKit.face_pt(s, side_face, um - cos(a) * (u1 - u0) * 0.5, spring + sin(a) * (u1 - u0) * px * 0.32))
+		for j in range(1, 6):
+			ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, side_face, um, spring), arch[j], arch[j + 1]]), Color("1c3450"),
+				ArtKit.EMIT)
+		ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, side_face, um, spring), arch[0], arch[1]]), Color("1c3450"),
+			ArtKit.EMIT)
+		# The arch's stone ring.
+		for j in 6:
+			ArtKit.line(arch[j], arch[j + 1], ArtKit.ink(0.5))
+	for face in [side_face, end_face]:
+		ArtKit.mortar_lines(s, face, low, h, 5.0)
+	ArtKit.face_line(s, side_face, 0.0, h, 1.0, h, ArtKit.ink(0.5))
+	ArtKit.flush(s)
+	# The deck, paved across, then the near parapet.
+	var deck := PackedVector2Array([s._gp(r.position, h), s._gp(Vector2(r.end.x, r.position.y), h), s._gp(r.end, h),
+		s._gp(Vector2(r.position.x, r.end.y), h)])
+	ArtKit.poly(deck, ArtKit.STONE_TOP.lightened(0.05), ArtKit.LIT_TOP)
+	var n := int((r.size.y if along_y else r.size.x) / 0.35)
+	for i in range(1, n):
+		var k := float(i) / n
+		if along_y:
+			var y := lerpf(r.position.y, r.end.y, k)
+			ArtKit.line(s._gp(Vector2(r.position.x, y), h), s._gp(Vector2(r.end.x, y), h), ArtKit.ink(0.18))
+		else:
+			var x := lerpf(r.position.x, r.end.x, k)
+			ArtKit.line(s._gp(Vector2(x, r.position.y), h), s._gp(Vector2(x, r.end.y), h), ArtKit.ink(0.18))
+	var near := Rect2(Vector2(r.end.x - t, r.position.y), Vector2(t, r.size.y)) if along_y \
+		else Rect2(Vector2(r.position.x, r.end.y - t), Vector2(r.size.x, t))
+	_parapet(s, near, h, along_y)
+	# Corner piers for the torches.
+	for c in _bridge_posts(s):
+		_box(s, c - Vector2(0.12, 0.12), c + Vector2(0.12, 0.12), h, h + POST_UP, ArtKit.STONE[1], ArtKit.STONE[0],
+			ArtKit.STONE_TOP)
+		var tip := s._gp(c, h + POST_UP)
+		ArtKit.poly(PackedVector2Array([tip + Vector2(-2, 0), tip + Vector2(2, 0), tip + Vector2(1, 2), tip + Vector2(-1, 2)]),
+			ArtKit.IRON, ArtKit.LIT_RIGHT)
+	ArtKit.flush(s)
+
+
+## A low stone wall along one edge of the deck, with merlons.
+static func _parapet(s: Structure, g: Rect2, h: float, along_y: bool) -> void:
+	_box(s, g.position, g.end, h, h + 4.0, ArtKit.STONE[1], ArtKit.STONE[0], ArtKit.STONE_TOP)
+	var run := g.size.y if along_y else g.size.x
+	var n := int(run / 0.45)
+	for i in n:
+		var k0 := (float(i) + 0.2) / n
+		var k1 := (float(i) + 0.75) / n
+		var a := g.position + (Vector2(-0.03, run * k0) if along_y else Vector2(run * k0, -0.03))
+		var b := g.position + (Vector2(g.size.x + 0.03, run * k1) if along_y else Vector2(run * k1, g.size.y + 0.03))
+		_box(s, a, b, h + 4.0, h + 8.0, ArtKit.STONE[1], ArtKit.STONE[0], ArtKit.STONE_TOP.lightened(0.08))
+
+
 ## The bridge's corner posts: far side pair first (drawn first), then the near side's.
 static func _bridge_posts(s: Structure) -> Array[Vector2]:
 	var r := s.footprint.grow(-POST_IN)
-	if s.footprint.size.y >= s.footprint.size.x:
-		return [r.position, Vector2(r.position.x, r.end.y), Vector2(r.end.x, r.position.y), r.end]
-	return [r.position, Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), r.end]
+	var along_y := s.footprint.size.y >= s.footprint.size.x
+	var out: Array[Vector2] = []
+	# The stone bridge has piers every third of its length as well as at its corners.
+	var steps: Array = [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0] if s.art_tag == &"stone" else [0.0, 1.0]
+	for side in 2:
+		for t: float in steps:
+			if along_y:
+				out.append(Vector2(r.position.x if side == 0 else r.end.x, lerpf(r.position.y, r.end.y, t)))
+			else:
+				out.append(Vector2(lerpf(r.position.x, r.end.x, t), r.position.y if side == 0 else r.end.y))
+	return out
 
 
 # --- Farm field ------------------------------------------------------------------

@@ -1,6 +1,8 @@
 class_name CivicArt
 extends RefCounted
-## The Temple and the barracks, after concepts/TOWN REF/Town Visual Upgrade.png.
+## The Temple and the barracks, after concepts/TOWN REF/Town Visual Upgrade.png; the Scale reference's cathedral
+## (tag &"cathedral") adds carved pinnacles on its front and buttress piers along its nave, and its workshop hall
+## (a house tagged &"workshop") is an open timber pavilion.
 ## - Temple: sandstone blocks under a teal seamed roof. Pointed windows glow along its long wall. Its gable end is
 ##   a west front that hides the roof end, with a bell turret, a great banner, two small ones, and an arched door
 ##   up three steps.
@@ -92,17 +94,24 @@ static func _temple(s: Structure) -> void:
 		ArtKit.line(ArtKit.face_pt(s, front_face, side, h - 1.0), ArtKit.face_pt(s, front_face, 0.5, peak + 1.0),
 			ArtKit.ink(0.5))
 	ArtKit.flush(s)
-	_turret(s, front_face, h)
+	if s.art_tag == &"cathedral":
+		_pinnacles(s, front_face, top)
+	else:
+		_turret(s, front_face, h)
 	ArtKit.flush(s)
 
 	# The long wall's pointed windows and side door; the west front's door, steps and banners.
-	var sill := roundf(h * 0.3)
-	var tall := minf(roundf(h * 0.3), h - sill - DROP - BOARD - 8.0)
+	var cathedral := s.art_tag == &"cathedral"
+	var sill := roundf(h * (0.22 if cathedral else 0.3))
+	var tall := minf(roundf(h * (0.42 if cathedral else 0.3)), h - sill - DROP - BOARD - 8.0)
 	var n := 0
-	for u in [0.14, 0.33, 0.52, 0.7]:
-		_pointed_window(s, eave_face, u, sill, 5.0, tall, _lit(s, n))
+	# The cathedral's windows sit between its buttress piers, taller and wider.
+	var spots: Array = [0.14, 0.33, 0.52, 0.71, 0.9] if cathedral else [0.14, 0.33, 0.52, 0.7]
+	for u in spots:
+		_pointed_window(s, eave_face, u, sill, 7.0 if cathedral else 5.0, tall, _lit(s, n) or cathedral)
 		n += 1
-	_door(s, eave_face, 0.87, 5.0, 10.0, false)
+	if not cathedral:
+		_door(s, eave_face, 0.87, 5.0, 10.0, false)
 	var arch := roundf(h * 0.3)
 	_door(s, front_face, 0.5, 9.0, arch, true)
 	_banner(s, front_face, 0.5, h + 6.0, 11.0, 24.0)
@@ -112,6 +121,82 @@ static func _temple(s: Structure) -> void:
 	_pointed_window(s, front_face, 0.3, h - 14.0, 3.0, 9.0, _lit(s, n))
 	_pointed_window(s, front_face, 0.7, h - 14.0, 3.0, 9.0, _lit(s, n + 1))
 	ArtKit.flush(s)
+
+
+## The cathedral's front: a slender pinnacle tower at each corner of the west front, rising past the ridge to a
+## spire with a gold finial, and between the nave's windows, buttress piers stepping out of the long wall.
+static func _pinnacles(s: Structure, front_face: int, roof_top: float) -> void:
+	var r := s.footprint
+	var ax := r.size.x >= r.size.y
+	var side := 0.4
+	var eave_face := ArtKit.RIGHT if front_face == ArtKit.LEFT else ArtKit.LEFT
+	# Buttresses first: they stand against the long wall, behind the front's pinnacles on screen.
+	var h := s.height
+	for u: float in [0.235, 0.425, 0.615, 0.805]:
+		var g: Vector2
+		var lo: Vector2
+		var hi: Vector2
+		if eave_face == ArtKit.RIGHT:
+			g = Vector2(r.end.x, lerpf(r.position.y, r.end.y, u))
+			lo = g + Vector2(0.0, -0.13)
+			hi = g + Vector2(0.28, 0.13)
+		else:
+			g = Vector2(lerpf(r.position.x, r.end.x, u), r.end.y)
+			lo = g + Vector2(-0.13, 0.0)
+			hi = g + Vector2(0.13, 0.28)
+		var top := h - 6.0
+		PropArt._box(s, lo, hi, 0.0, top, ArtKit.SANDSTONE[1].lightened(0.04), ArtKit.SANDSTONE[0].lightened(0.06),
+			ArtKit.SANDSTONE[0].lightened(0.12))
+		# A sloped cap leaning back to the wall.
+		var gl := Vector2(lo.x, hi.y)
+		var gr := Vector2(hi.x, lo.y)
+		var back_l := gl if eave_face == ArtKit.LEFT else lo
+		var wall_pt := s._gp(g, top + 6.0)
+		ArtKit.poly(PackedVector2Array([s._gp(gl, top), s._gp(hi, top), s._gp(gr, top), wall_pt]),
+			ArtKit.SANDSTONE[0].lightened(0.14), ArtKit.LIT_TOP)
+		ArtKit.line(s._gp(hi, 0.0), s._gp(hi, top), ArtKit.ink(0.3))
+		ArtKit.line(s._gp(back_l, 0.0), s._gp(back_l, top), ArtKit.ink(0.35))
+	ArtKit.flush(s)
+	# The front's two corners, far one first.
+	var corners: Array[Rect2] = []
+	if ax:
+		corners = [Rect2(Vector2(r.end.x - side, r.position.y), Vector2(side, side)),
+			Rect2(r.end - Vector2(side, side), Vector2(side, side))]
+	else:
+		corners = [Rect2(Vector2(r.position.x, r.end.y - side), Vector2(side, side)),
+			Rect2(r.end - Vector2(side, side), Vector2(side, side))]
+	for c in corners:
+		_pinnacle(s, c, roof_top + 2.0)
+
+
+## One pinnacle over the ground square `g`: carved sandstone up to `top`, a four-sided spire above it.
+static func _pinnacle(s: Structure, g: Rect2, top: float) -> void:
+	var g0 := g.position
+	var g1 := g.end
+	var gl := Vector2(g0.x, g1.y)
+	var gr := Vector2(g1.x, g0.y)
+	_box_masonry(s, gl, g1, 0.0, top, ArtKit.SANDSTONE[1], ArtKit.LIT_LEFT, 260)
+	_box_masonry(s, gr, g1, 0.0, top, ArtKit.SANDSTONE[0], ArtKit.LIT_RIGHT, 280)
+	ArtKit.poly(PackedVector2Array([s._gp(g0, top), s._gp(gr, top), s._gp(g1, top), s._gp(gl, top)]),
+		ArtKit.SANDSTONE[0].lightened(0.1), ArtKit.LIT_TOP)
+	# Carved bands and niches.
+	for hh: float in [top * 0.35, top * 0.7]:
+		ArtKit.poly(PackedVector2Array([s._gp(gl, hh), s._gp(g1, hh), s._gp(g1, hh + 2.0), s._gp(gl, hh + 2.0)]),
+			ArtKit.SANDSTONE[0].lightened(0.12), ArtKit.LIT_LEFT)
+		ArtKit.poly(PackedVector2Array([s._gp(gr, hh), s._gp(g1, hh), s._gp(g1, hh + 2.0), s._gp(gr, hh + 2.0)]),
+			ArtKit.SANDSTONE[0].lightened(0.18), ArtKit.LIT_RIGHT)
+	var nl := gl.lerp(g1, 0.5)
+	ArtKit.poly(PackedVector2Array([s._gp(nl, top * 0.75) + Vector2(-1, 0), s._gp(nl, top * 0.75) + Vector2(1, 0),
+		s._gp(nl, top * 0.9) + Vector2(1, 0), s._gp(nl, top * 0.9) + Vector2(-1, 0)]), ArtKit.VOID, ArtKit.EMIT)
+	# The spire: four faces to a point, the two the camera sees lit and shaded, a gold finial on top.
+	var tip := s._gp(g.get_center(), top + 18.0)
+	ArtKit.poly(PackedVector2Array([s._gp(gl, top), s._gp(g1, top), tip]), ArtKit.SANDSTONE[1].darkened(0.1), ArtKit.LIT_LEFT)
+	ArtKit.poly(PackedVector2Array([s._gp(gr, top), s._gp(g1, top), tip]), ArtKit.SANDSTONE[0], ArtKit.LIT_RIGHT)
+	ArtKit.line(s._gp(g1, top), tip, ArtKit.ink(0.35))
+	ArtKit.poly(PackedVector2Array([tip + Vector2(-1, -1), tip + Vector2(1, -1), tip + Vector2(1, 1), tip + Vector2(-1, 1)]),
+		Structure.COL_GOLD, ArtKit.EMIT)
+	ArtKit.line(s._gp(gl, 0.0), s._gp(gl, top), ArtKit.ink(0.5))
+	ArtKit.line(s._gp(gr, 0.0), s._gp(gr, top), ArtKit.ink(0.4))
 
 
 ## A small grey stone bell block on the front's far corner, open for its bell.
@@ -374,6 +459,71 @@ static func _box_masonry(s: Structure, a: Vector2, b: Vector2, h0: float, h1: fl
 					s._gp(a.lerp(b, ub), y1), s._gp(a.lerp(b, ua), y1)]), bc, code)
 			x += 8.0
 			i += 1
+
+
+# --- Workshop ------------------------------------------------------------------
+
+const WORKSHOP_RISE := 14.0
+
+
+## The workshop hall: an open timber pavilion under red tile, posts along its sides, and goods under the roof --
+## crates, barrels, a workbench -- all drawn inside the footprint.
+static func workshop(s: Structure) -> void:
+	ArtKit.begin()
+	var h := s.height
+	var r := s.footprint
+	var ax := r.size.x >= r.size.y
+	# Goods on the floor, back to front.
+	var goods: Array[Vector3] = []
+	# Along the open front, where the eave does not hide them (a row just inside it, one just outside).
+	for i in 8:
+		var t := (float(i) + 0.5) / 8.0
+		var inside := 0.3 if i % 2 == 0 else -0.12
+		var gpos := Vector2(lerpf(r.position.x + 0.2, r.end.x - 0.2, t), r.end.y - inside) if ax \
+			else Vector2(r.end.x - inside, lerpf(r.position.y + 0.2, r.end.y - 0.2, t))
+		goods.append(Vector3(gpos.x, gpos.y, float(ArtKit.pick(s.rng.seed, 340 + i, 3))))
+	goods.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.x + a.y < b.x + b.y)
+	ArtKit.poly(PackedVector2Array([s._gp(r.position, 0.0), s._gp(Vector2(r.end.x, r.position.y), 0.0), s._gp(r.end, 0.0),
+		s._gp(Vector2(r.position.x, r.end.y), 0.0)]), ArtKit.INTERIOR_FLOOR, ArtKit.LIT_TOP)
+	# Back posts before the goods, front posts after.
+	var posts: Array[Vector2] = []
+	var n := maxi(int((r.size.x if ax else r.size.y) / 0.9), 2)
+	for i in n + 1:
+		var t := float(i) / n
+		posts.append(Vector2(lerpf(r.position.x + 0.08, r.end.x - 0.08, t), r.position.y + 0.08) if ax
+			else Vector2(r.position.x + 0.08, lerpf(r.position.y + 0.08, r.end.y - 0.08, t)))
+		posts.append(Vector2(lerpf(r.position.x + 0.08, r.end.x - 0.08, t), r.end.y - 0.08) if ax
+			else Vector2(r.end.x - 0.08, lerpf(r.position.y + 0.08, r.end.y - 0.08, t)))
+	posts.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x + a.y < b.x + b.y)
+	var back_posts := posts.slice(0, posts.size() / 2)
+	var front_posts := posts.slice(posts.size() / 2)
+	for p: Vector2 in back_posts:
+		PropArt._post(s, p, 0.0, h, 1.5)
+	for gd in goods:
+		var g := Vector2(gd.x, gd.y)
+		if int(gd.z) == 0:
+			PropArt._box(s, g - Vector2(0.14, 0.14), g + Vector2(0.14, 0.14), 0.0, 6.0, ArtKit.WOOD[1], ArtKit.WOOD[0],
+				ArtKit.WOOD[0].lightened(0.1))
+		elif int(gd.z) == 1:
+			var p := s._gp(g, 0.0)
+			ArtKit.poly(PackedVector2Array([p + Vector2(-3, -8), p + Vector2(3, -8), p + Vector2(3, 0), p + Vector2(-3, 0)]),
+				ArtKit.WOOD[1], ArtKit.LIT_LEFT)
+			ArtKit.blob(p + Vector2(0, -8), Vector2(3, 1.4), ArtKit.WOOD[0], ArtKit.LIT_TOP, 8)
+			ArtKit.line(p + Vector2(-3, -2), p + Vector2(3, -2), ArtKit.ink(0.5))
+			ArtKit.line(p + Vector2(-3, -6), p + Vector2(3, -6), ArtKit.ink(0.5))
+		else:
+			PropArt._box(s, g - Vector2(0.3, 0.1), g + Vector2(0.3, 0.1), 5.0, 6.5, ArtKit.WOOD[2], ArtKit.WOOD[1],
+				ArtKit.WOOD[0])
+			for x in [-0.25, 0.25]:
+				PropArt._post(s, g + Vector2(x, 0.05), 0.0, 5.0, 1.0)
+	for p: Vector2 in front_posts:
+		PropArt._post(s, p, 0.0, h, 1.5)
+	ArtKit.flush(s)
+	var g := _roof(s, ax, WORKSHOP_RISE, false)
+	_roof_back(g, ArtKit.RED_TILE)
+	ArtKit.flush(s)
+	_roof_front(s, g, ArtKit.RED_TILE, 4.0, true)
+	ArtKit.flush(s)
 
 
 # --- Shared roof ------------------------------------------------------------------

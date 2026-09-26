@@ -115,6 +115,16 @@ COMPONENTS = [
         ('fence round it', 1), ('green plants', 1), ('flowers', 1), ('soil', 1)]),
     ('Reeds', 'reeds', (273, 717, 290, 750), [
         ('tall blades', 1), ('cattail heads', 1)]),
+    ('Cathedral', 'cathedral', (852, 283, 1030, 442), [
+        ('sandstone walls', 1), ('teal roof', 1), ('carved front with pinnacles', 1), ('spires', 1),
+        ('buttress piers along the nave', 1), ('tall lit pointed windows', 1), ('banners on the front', 1),
+        ('steps to an arched door', 1)], {'ref': 'scale', 'group': 'Scale buildings'}),
+    ('Stone bridge', 'bridge_stone', (305, 738, 560, 862), [
+        ('stone arches', 1), ('paved deck', 1), ('crenellated parapets', 1), ('torches on piers', 1)],
+        {'ref': 'scale', 'group': 'Scale buildings'}),
+    ('Workshop', 'workshop', (1047, 597, 1173, 673), [
+        ('open timber posts', 1), ('red tile roof', 1), ('goods under the roof', 1), ('workbench', 1)],
+        {'ref': 'scale', 'group': 'Scale buildings'}),
 ]
 
 
@@ -201,7 +211,8 @@ TUNING_KEYS = {
     'stall_blue': 'market_stall', 'stall_cream': 'market_stall', 'fountain': 'fountain', 'corner_tower': 'keep',
     'wall_piece': 'castle_wall', 'main_gate': 'gate', 'citadel_keep': 'keep_keep', 'citadel_tower': 'keep',
     'bridge': 'bridge', 'field_a': 'farm_field', 'field_b': 'farm_field', 'tree_a': 'tree', 'tree_b': 'tree',
-    'torch': 'torch', 'lamp': 'torch_lamp',
+    'torch': 'torch', 'lamp': 'torch_lamp', 'cathedral': 'temple_cathedral', 'bridge_stone': 'bridge_stone',
+    'workshop': 'house_workshop',
 }
 GROUPS = {
     'Buildings': ['Cottage', 'Tavern', 'Blacksmith', 'Temple', 'Barracks', 'Market stall', 'Fountain'],

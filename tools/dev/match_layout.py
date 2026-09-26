@@ -48,7 +48,7 @@ LANDMARKS = {
     'Tavern, west of market': ((-4.9, 0.5), {'tag': 'tavern', 'index': 1}),
     'Tavern, east of market': ((6.9, 3.6), {'tag': 'tavern', 'index': 2}),
     'Barracks hall': ((11.4, 5.3), {'role': 'barracks'}),
-    'Workshop hall': ((12.1, 0.1), {'tag': 'smithy', 'index': 1}),
+    'Workshop hall': ((12.1, 0.1), {'tag': 'workshop'}),
     'Forge': ((14.3, -0.6), {'tag': 'smithy', 'index': 0}),
     'Main Gate': ((2.8, 15.8), {'kind': 'GATE', 'index': 0}),
     'Side Gate': ((16.1, 9.0), {'kind': 'GATE', 'index': 1}),

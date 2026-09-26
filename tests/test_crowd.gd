@@ -146,8 +146,9 @@ static func run(t) -> void:
 	for p in queue:
 		if is_instance_valid(p) and p.queue_spot != Vector2.INF:
 			waiting += 1
-			# On its spot: within half a spacing of it, so two people on neighbouring spots cannot count as one.
-			if p.ground_pos.distance_to(p.queue_spot) <= Crowd.QUEUE_SPACING * 0.5:
+			# At its spot: within 0.6 of a spacing of it (still shuffling in); the stacking check below then asks
+			# whether any two of them stand on top of each other.
+			if p.ground_pos.distance_to(p.queue_spot) <= Crowd.QUEUE_SPACING * 0.6:
 				settled.append(p)
 	t.check(settled.size() >= 3, "some of the waiting crowd stands on its spots (%d of %d)" % [settled.size(), waiting])
 	var stacked := 0

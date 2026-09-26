@@ -45,7 +45,7 @@ const TRAILS := [
 ## Roads outside the walls, as trails: the south road to the bridge and on from its far end, the east road.
 const ROAD_TRAILS := [
 	[Vector2(2.7, 16.2), Vector2(2.7, 18.8)],
-	[Vector2(2.7, 24.6), Vector2(2.8, 27.0), Vector2(2.6, 30.0)],
+	[Vector2(2.7, 25.8), Vector2(2.8, 27.5), Vector2(2.6, 30.0)],
 	[Vector2(16.2, 9.0), Vector2(22, 9.1), Vector2(30, 8.9)],
 ]
 ## Grass painting cell (ground units) and the noise lattice spacing.

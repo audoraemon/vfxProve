@@ -13,8 +13,8 @@ const MAP := Rect2(-30, -30, 60, 60)
 ## Inside the town walls.
 const TOWN := Rect2(-16, -16, 32, 32)
 ## The river across the south, and its branch up the west side to a waterfall at the map's edge.
-const RIVER := Rect2(-30, 20.0, 60, 3.3)
-const RIVER_WEST := Rect2(-30, -2.0, 3.2, 22.0)
+const RIVER := Rect2(-30, 20.0, 60, 4.4)
+const RIVER_WEST := Rect2(-30, -2.0, 3.6, 22.0)
 const RIVERS := [RIVER, RIVER_WEST]
 ## Wall band thickness, inside TOWN's edge.
 const WALL_T := 0.7
@@ -66,25 +66,26 @@ const TAVERN := Rect2(5.6, 2.4, 2.8, 1.8)
 const TAVERN_PATIO := Rect2(5.8, 4.2, 2.4, 0.42)
 const SMITHY_YARD := Rect2(13.1, -0.2, 1.3, 0.55)
 const YARDS := [TAVERN_PATIO, SMITHY_YARD]
-const BRIDGE := Rect2(1.7, 18.6, 2.0, 6.2)
+const BRIDGE := Rect2(1.7, 18.4, 2.0, 7.6)
 ## The market fountain and the north-east plaza's (built after the Citadel so every other building keeps its seed).
 const FOUNTAIN := Rect2(0.2, 5.1, 1.2, 1.2)
 const FOUNTAINS := [Rect2(0.2, 5.1, 1.2, 1.2), Rect2(10.8, -10.6, 1.2, 1.2)]
-## Market stalls in rows west of the main street, and two east of it.
+## Market stalls in rows west of the main street, a row east of it, and a ring round the fountain.
 const STALLS := [
 	Rect2(-3.1, -2.8, 0.9, 0.7), Rect2(-1.9, -2.8, 0.9, 0.7), Rect2(-0.7, -2.8, 0.9, 0.7),
 	Rect2(-3.1, -0.6, 0.9, 0.7), Rect2(-1.9, -0.6, 0.9, 0.7), Rect2(-0.7, -0.6, 0.9, 0.7),
 	Rect2(-3.1, 1.6, 0.9, 0.7), Rect2(-1.9, 1.6, 0.9, 0.7), Rect2(-0.7, 1.6, 0.9, 0.7),
 	Rect2(-3.1, 3.8, 0.9, 0.7), Rect2(-1.9, 3.8, 0.9, 0.7), Rect2(-0.7, 3.8, 0.9, 0.7),
-	Rect2(3.7, -2.8, 0.9, 0.7), Rect2(3.7, -0.6, 0.9, 0.7),
+	Rect2(3.7, -2.8, 0.9, 0.7), Rect2(3.7, -0.6, 0.9, 0.7), Rect2(3.7, 1.6, 0.9, 0.7), Rect2(3.7, 3.8, 0.9, 0.7),
+	Rect2(3.7, 6.0, 0.9, 0.7), Rect2(-3.1, 6.2, 0.9, 0.7), Rect2(-1.9, 6.2, 0.9, 0.7), Rect2(-0.7, 7.1, 0.9, 0.7),
 ]
 ## Farm fields outside the walls: north, south of the river, and east.
 const FIELDS := [
 	Rect2(-24, -28, 5, 3.5), Rect2(-18, -28, 5, 3.5), Rect2(0, -28, 5, 3.5), Rect2(6, -28, 5, 3.5), Rect2(12, -27, 5, 3.5),
-	Rect2(-24, 25, 5, 3.5), Rect2(-17, 25, 5, 3.5), Rect2(6, 25, 5, 3.5), Rect2(13, 25, 5, 3.5), Rect2(19, 13, 5, 3.5),
+	Rect2(-24, 25.9, 5, 3.4), Rect2(-17, 25.9, 5, 3.4), Rect2(6, 25.9, 5, 3.4), Rect2(13, 25.9, 5, 3.4), Rect2(19, 13, 5, 3.5),
 ]
 ## Farmhouses by the fields.
-const BARNS := [Rect2(-12.5, -28.4, 1.3, 1.5), Rect2(18.0, -26.5, 1.3, 1.5), Rect2(-10.0, 25.4, 1.3, 1.5),
+const BARNS := [Rect2(-12.5, -28.4, 1.3, 1.5), Rect2(18.0, -26.5, 1.3, 1.5), Rect2(-10.0, 26.2, 1.3, 1.5),
 	Rect2(19.5, 17.2, 1.3, 1.5)]
 ## Torch posts: the market's corners, inside the Main Gate, outside the Side Gate, at the Citadel's gate and the
 ## cathedral's steps.
@@ -228,7 +229,7 @@ static func structures() -> Array[Dictionary]:
 		_add(out, r, 52.0, Structure.Kind.KEEP, &"tower")
 	_add(out, MAIN_GATE, 34.0, Structure.Kind.GATE, &"gate")
 	_add(out, SIDE_GATE, 34.0, Structure.Kind.GATE, &"gate")
-	_add(out, TEMPLE, 56.0, Structure.Kind.TEMPLE, &"temple")
+	_add(out, TEMPLE, 56.0, Structure.Kind.TEMPLE, &"temple", &"cathedral")
 	_add(out, BARRACKS, 36.0, Structure.Kind.BARRACKS, &"barracks")
 	for r: Rect2 in STALLS:
 		_add(out, r, 10.0, Structure.Kind.MARKET_STALL, &"market")
@@ -238,8 +239,8 @@ static func structures() -> Array[Dictionary]:
 	for r: Rect2 in TAVERNS:
 		_add(out, r, 30.0, Structure.Kind.HOUSE, &"house", &"tavern")
 	_add(out, SMITHY, 20.0, Structure.Kind.HOUSE, &"house", &"smithy")
-	_add(out, WORKSHOP, 24.0, Structure.Kind.HOUSE, &"house", &"smithy")
-	_add(out, BRIDGE, 6.0, Structure.Kind.BRIDGE, &"bridge")
+	_add(out, WORKSHOP, 22.0, Structure.Kind.HOUSE, &"house", &"workshop")
+	_add(out, BRIDGE, 6.0, Structure.Kind.BRIDGE, &"bridge", &"stone")
 	for r: Rect2 in FIELDS:
 		_add(out, r, 3.0, Structure.Kind.FARM_FIELD, &"farm")
 	for r: Rect2 in BARNS:

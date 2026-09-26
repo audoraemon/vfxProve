@@ -339,7 +339,11 @@ func _pick_target() -> void:
 
 func _sync_position() -> void:
 	var bias := roundf(sort_bias)
-	position = Iso.ground_to_screen(ground_pos).round() + Vector2(0.0, bias)
+	var at := Iso.ground_to_screen(ground_pos).round() + Vector2(0.0, bias)
+	# Setting position always re-sends the node's transform to the renderer, even unchanged; most units stand
+	# still most frames.
+	if at != position:
+		position = at
 	_draw_origin = Vector2(0.0, -bias)
 
 

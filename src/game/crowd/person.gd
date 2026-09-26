@@ -100,6 +100,15 @@ var _think_due := true
 ## Seconds since the last _think() call; handed to it as its delta so timers (wait, _panic_left, _repath_in)
 ## still decay in real time despite thinking at half rate.
 var _think_accum := 0.0
+## Time an off-screen person has not been updated for, handed to its next update (see _process).
+var _offscreen_delta := 0.0
+
+## What the camera shows, in world (screen) pixels, grown by a margin; set every frame by the Battlefield. An
+## empty rect (headless tests, before the first frame) counts everyone as seen.
+static var view := Rect2()
+## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
+## screen at play zoom, and nobody can see a stride or a light reading there.
+const OFFSCREEN_EVERY := 3
 
 
 ## `at` is where it stands and what it treats as home (or its post). Seed `rng` before calling this.
@@ -116,6 +125,19 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 	pace = rng.randf_range(PACE_RANGE.x, PACE_RANGE.y)
 	_pick_target()
 	return self
+
+
+func _process(delta: float) -> void:
+	if view.has_area() and not view.has_point(position):
+		_offscreen_delta += delta
+		if (Engine.get_process_frames() + get_instance_id()) % OFFSCREEN_EVERY != 0:
+			return
+		delta = _offscreen_delta
+		_offscreen_delta = 0.0
+	elif _offscreen_delta > 0.0:
+		delta += _offscreen_delta
+		_offscreen_delta = 0.0
+	super(delta)
 
 
 # --- Brain -------------------------------------------------------------------

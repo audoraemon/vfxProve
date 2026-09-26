@@ -5,6 +5,14 @@ extends Node
 
 ## Each light: {pos, radius, color, intensity, life, quad, getter}
 var _lights: Array[Dictionary] = []
+## The moving and fading lights (effects): every sample looks at all of them.
+var _dynamic: Array[Dictionary] = []
+## The static lights (torches, lamps) by the cells their radius reaches: a sample looks only at its own cell's.
+## The town has dozens of torches and every person and building samples several times a second, so walking all
+## of them for every sample was a measurable share of each frame.
+var _cells := {}
+const CELL := 3.0
+const _EMPTY: Array[Dictionary] = []
 ## World ambient 0..1 (1 = normal). Lowered while effects dim the scene; lit things multiply by it.
 var ambient := 1.0
 ## Colour of the world's own light, multiplied into everything lit (the town's warm evening, Town.EVENING).
@@ -17,36 +25,67 @@ var _time := 0.0
 ## Follow a QuadFx light pool: intensity is read from its shader each frame; position from
 ## `center` or `getter` (Callable returning a ground Vector2) when the light moves.
 func register_quad(quad: QuadFx, center: Vector2, radius: float, color: Color, getter := Callable()) -> void:
-	_lights.append({"pos": center, "radius": radius, "color": color, "intensity": 0.0, "life": -1.0,
-		"quad": quad, "getter": getter})
+	var l := {"pos": center, "radius": radius, "color": color, "intensity": 0.0, "life": -1.0,
+		"quad": quad, "getter": getter}
+	_lights.append(l)
+	_dynamic.append(l)
 
 
 ## Short light that fades out linearly over `seconds`.
 func pulse(center: Vector2, radius: float, color: Color, intensity: float, seconds: float) -> void:
-	_lights.append({"pos": center, "radius": radius, "color": color, "intensity": intensity,
-		"life": seconds, "start": intensity, "duration": seconds, "quad": null, "getter": Callable()})
+	var l := {"pos": center, "radius": radius, "color": color, "intensity": intensity,
+		"life": seconds, "start": intensity, "duration": seconds, "quad": null, "getter": Callable()}
+	_lights.append(l)
+	_dynamic.append(l)
 
 
 ## Persistent light (torches, braziers) with optional flicker 0..1. Returns an id for remove().
 func add_static(center: Vector2, radius: float, color: Color, intensity: float, flicker := 0.0) -> int:
 	var id := _next_id
 	_next_id += 1
-	_lights.append({"pos": center, "radius": radius, "color": color, "intensity": intensity, "base": intensity,
-		"life": -1.0, "static": true, "id": id, "flicker": flicker, "quad": null, "getter": Callable()})
+	var l := {"pos": center, "radius": radius, "color": color, "intensity": intensity, "base": intensity,
+		"life": -1.0, "static": true, "id": id, "flicker": flicker, "quad": null, "getter": Callable()}
+	_lights.append(l)
+	var c0 := _cell(center - Vector2(radius, radius))
+	var c1 := _cell(center + Vector2(radius, radius))
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			var key := Vector2i(x, y)
+			if not _cells.has(key):
+				var list: Array[Dictionary] = []
+				_cells[key] = list
+			(_cells[key] as Array[Dictionary]).append(l)
 	return id
 
 
 func remove(id: int) -> void:
 	_lights = _lights.filter(func(l): return l.get("id", 0) != id)
+	for key in _cells:
+		var list: Array[Dictionary] = _cells[key]
+		for i in range(list.size() - 1, -1, -1):
+			if list[i].get("id", 0) == id:
+				list.remove_at(i)
 
 
 func clear() -> void:
 	_lights.clear()
+	_dynamic.clear()
+	_cells.clear()
+
+
+func _cell(g: Vector2) -> Vector2i:
+	return Vector2i(floori(g.x / CELL), floori(g.y / CELL))
+
+
+## The static lights whose radius reaches the cell `g` is in.
+func _static_near(g: Vector2) -> Array[Dictionary]:
+	return _cells.get(_cell(g), _EMPTY)
 
 
 func _process(delta: float) -> void:
 	_time += delta
 	var keep: Array[Dictionary] = []
+	var moving: Array[Dictionary] = []
 	for l in _lights:
 		if l.get("static", false):
 			var f: float = l.flicker
@@ -64,7 +103,10 @@ func _process(delta: float) -> void:
 				continue
 			l.intensity = l.start * l.life / l.duration
 		keep.append(l)
+		if not l.get("static", false):
+			moving.append(l)
 	_lights = keep
+	_dynamic = moving
 
 
 ## Summed light color at a ground point (quadratic falloff to zero at each light's radius).
@@ -72,23 +114,25 @@ func sample(g: Vector2) -> Color:
 	var r := 0.0
 	var gr := 0.0
 	var b := 0.0
-	for l in _lights:
-		var w := _weight(l, g)
-		if w > 0.0:
-			r += l.color.r * w
-			gr += l.color.g * w
-			b += l.color.b * w
+	for list: Array[Dictionary] in [_dynamic, _static_near(g)]:
+		for l in list:
+			var w := _weight(l, g)
+			if w > 0.0:
+				r += l.color.r * w
+				gr += l.color.g * w
+				b += l.color.b * w
 	return Color(r, gr, b, 1.0)
 
 
 ## Weighted ground direction from `g` toward the lights (not normalized; length ~ strength).
 func sample_dir(g: Vector2) -> Vector2:
 	var dir := Vector2.ZERO
-	for l in _lights:
-		var w := _weight(l, g)
-		if w > 0.0:
-			var to: Vector2 = l.pos - g
-			dir += (to.normalized() if to.length() > 0.01 else Vector2.ZERO) * w
+	for list: Array[Dictionary] in [_dynamic, _static_near(g)]:
+		for l in list:
+			var w := _weight(l, g)
+			if w > 0.0:
+				var to: Vector2 = l.pos - g
+				dir += (to.normalized() if to.length() > 0.01 else Vector2.ZERO) * w
 	return dir
 
 
@@ -99,23 +143,24 @@ func sample_signature(g: Vector2, color_steps: float, dir_steps: float) -> int:
 	var gr := 0.0
 	var b := 0.0
 	var dir := Vector2.ZERO
-	for l in _lights:
-		var intensity: float = l.intensity
-		if intensity <= 0.0:
-			continue
-		var to: Vector2 = l.pos - g
-		var radius: float = l.radius
-		var d2 := to.length_squared()
-		if d2 >= radius * radius:
-			continue
-		var dist := sqrt(d2)
-		var w := pow(1.0 - dist / radius, 1.4) * intensity
-		var col: Color = l.color
-		r += col.r * w
-		gr += col.g * w
-		b += col.b * w
-		if dist > 0.01:
-			dir += (to / dist) * w
+	for list: Array[Dictionary] in [_dynamic, _static_near(g)]:
+		for l in list:
+			var intensity: float = l.intensity
+			if intensity <= 0.0:
+				continue
+			var to: Vector2 = l.pos - g
+			var radius: float = l.radius
+			var d2 := to.length_squared()
+			if d2 >= radius * radius:
+				continue
+			var dist := sqrt(d2)
+			var w := pow(1.0 - dist / radius, 1.4) * intensity
+			var col: Color = l.color
+			r += col.r * w
+			gr += col.g * w
+			b += col.b * w
+			if dist > 0.01:
+				dir += (to / dist) * w
 	var sig := int(r * color_steps)
 	sig = sig * 1021 + int(gr * color_steps)
 	sig = sig * 1021 + int(b * color_steps)

@@ -129,8 +129,14 @@ func _ready() -> void:
 	ctx.flash = flash
 
 
+## Margin (world px) round the camera's view inside which people count as on screen.
+const VIEW_MARGIN := 48.0
+
+
 func _process(_delta: float) -> void:
 	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85
+	var size := get_viewport().get_visible_rect().size / camera.zoom
+	Person.view = Rect2(camera.get_screen_center_position() - size * 0.5, size).grow(VIEW_MARGIN)
 
 
 ## Full-screen flash of `color` that fades out over `seconds`.

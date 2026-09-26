@@ -22,8 +22,7 @@ var _grid := {}
 
 
 func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &"") -> Structure:
-	var s := Structure.new().setup(rect, height, kind, rng.randi())
-	s.role = role
+	var s := Structure.new().setup(rect, height, kind, rng.randi(), role)
 	s.lights = lights
 	s.fx_parent = fx_parent
 	s.fx_back = fx_back

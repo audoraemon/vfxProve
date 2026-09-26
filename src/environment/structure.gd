@@ -22,7 +22,6 @@ const COL_BANNER := Color("1f3f8a")
 const COL_BANNER_HI := Color("2f5cc0")
 const COL_GOLD := Color("d8b23a")
 const COL_BEAM := Color("3a2a1e")
-const COL_ROOF := [Color("5a6a86"), Color("46546e"), Color("363f54")]
 const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
 ## Seconds a dropped banner takes to fall and fade.
@@ -77,6 +76,8 @@ var rng := RandomNumberGenerator.new()
 var role := &""
 ## Units walk over it while it stands (gates, the bridge, fields).
 var walkable := false
+## Art plan from setup(): pure data hashed from the seed (ArtKit.plan_for), empty for kinds without art.
+var art := {}
 ## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
 ## When set, damage() hands every hit to it instead of lowering hp (the Citadel's damage budget).
 var damage_filter := Callable()
@@ -117,7 +118,8 @@ var _banner_sig := -1
 var _light_in := 0.0
 
 
-func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
+func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"") -> Structure:
+	role = role_value
 	footprint = rect
 	max_height = h
 	height = h
@@ -138,6 +140,8 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int) -> Structure:
 		Vector2.ZERO, Iso.ground_to_screen(Vector2(g0.x, g2.y)) - front]
 	if k in WINDOWED:
 		_build_windows()
+	# After the windows: the plan hashes the seed and must never draw from the rng stream they just used.
+	art = ArtKit.plan_for(self)
 	return self
 
 
@@ -374,7 +378,7 @@ func _palette() -> Array:
 		Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE:
 			return [Color("a4a2a0"), Color("86858a"), Color("6a6a74")]
 		Kind.HOUSE:
-			return [Color("7a3a26"), Color("a8987a"), Color("8a7c64")]
+			return [Color("7a6a58"), Color("c8b28c"), Color("a8916c")]
 		Kind.TORCH:
 			return [Color("4a3a2a"), Color("3a2c20"), Color("2c2118")]
 		Kind.TEMPLE:
@@ -433,7 +437,9 @@ func _draw() -> void:
 			Color(0, 0, 0, 0.25))
 
 	var rubble_top := _collapse >= 0.0
-	if kind == Kind.TORCH and not destroyed:
+	if kind == Kind.HOUSE and not destroyed and not rubble_top:
+		HouseArt.draw(self, light, dir)
+	elif kind == Kind.TORCH and not destroyed:
 		_draw_torch(right_c, left_c)
 	elif kind == Kind.TREE:
 		_draw_tree(top_c, right_c, left_c)
@@ -441,7 +447,7 @@ func _draw() -> void:
 		_draw_box(0.0, height, top_c, right_c, left_c, rubble_top)
 	if not rubble_top and not destroyed and kind in MASONRY:
 		_draw_masonry(right_c, left_c)
-	if not rubble_top and kind in WINDOWED:
+	if not rubble_top and kind in WINDOWED and kind != Kind.HOUSE:
 		_draw_windows(light)
 	_draw_kind_details(top_c, right_c, left_c)
 	for crack in _cracks:
@@ -543,8 +549,6 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 			_draw_crenellations(top_c, right_c, left_c, 0.34)
 		Kind.CASTLE_WALL:
 			_draw_crenellations(top_c, right_c, left_c, 0.22)
-		Kind.HOUSE:
-			_draw_roof(COL_ROOF, 14.0, true)
 		Kind.TEMPLE:
 			_draw_roof(TEMPLE_ROOF, 22.0, false)
 			_draw_opening(3, 0.42, 0.58, 16.0, COL_DOOR)

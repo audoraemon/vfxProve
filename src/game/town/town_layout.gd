@@ -72,6 +72,12 @@ const GARDEN_STREET_CLEAR := 0.7
 ## end. Both are homes too (role &"house"), drawn by their own art (tag).
 const TAVERN := Rect2(-5.4, -2.35, 2.1, 1.4)
 const SMITHY := Rect2(-8.1, 0.95, 1.5, 1.25)
+## Working ground the reference fills with props: tables on the tavern's patio, barrels and crates in the
+## blacksmith's yard and in a store at the barracks' west end. People walk round them (see blockers()).
+const TAVERN_PATIO := Rect2(-5.25, -0.95, 1.8, 0.42)
+const SMITHY_YARD := Rect2(-6.55, 1.05, 0.45, 1.05)
+const BARRACKS_STORE := Rect2(3.4, -2.3, 0.45, 1.3)
+const YARDS := [TAVERN_PATIO, SMITHY_YARD, BARRACKS_STORE]
 const TREE_SIZE := Vector2(0.7, 0.7)
 ## Trees in town, between the cottages.
 const TOWN_TREE := Vector2(0.45, 0.45)
@@ -165,6 +171,11 @@ static func houses() -> Array[Rect2]:
 				var h := _off_streets(Rect2(c - size * 0.5, size))
 				if h.grow(0.3).intersects(TAVERN) or h.grow(0.3).intersects(SMITHY):
 					continue
+				var in_yard := false
+				for y: Rect2 in YARDS:
+					in_yard = in_yard or h.grow(0.3).intersects(y)
+				if in_yard:
+					continue
 				out.append(h)
 	return out
 
@@ -194,6 +205,8 @@ static func gardens() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	var others: Array[Rect2] = houses()
 	others.append_array([TAVERN, SMITHY, TEMPLE, BARRACKS])
+	for y: Rect2 in YARDS:
+		others.append(y)
 	var trees: Array[Rect2] = []
 	for p in town_trees():
 		trees.append(Rect2(p, TOWN_TREE))
@@ -224,11 +237,21 @@ static func gardens() -> Array[Rect2]:
 	return out
 
 
+## Ground people walk round besides the buildings: the gardens and the working yards.
+static func blockers() -> Array[Rect2]:
+	var out := gardens()
+	for y: Rect2 in YARDS:
+		out.append(y)
+	return out
+
+
 ## Tree spots between the cottages: grid corners inside each district, kept clear of every building and street.
 static func town_trees() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var keep_clear: Array[Rect2] = houses()
 	keep_clear.append_array([TAVERN, SMITHY, TEMPLE, BARRACKS, BARRACKS_YARD, MARKET_SQUARE, CITADEL_COURT, MAIN_GATE, SIDE_GATE])
+	for y: Rect2 in YARDS:
+		keep_clear.append(y)
 	keep_clear.append_array(CORNER_TOWERS)
 	keep_clear.append_array(SIDE_TOWERS)
 	keep_clear.append_array(WALLS)

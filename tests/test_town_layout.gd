@@ -8,8 +8,8 @@ static func run(t) -> void:
 	var counts := {}
 	for d in items:
 		counts[d.role] = int(counts.get(d.role, 0)) + 1
-	var want := {&"house": 37, &"wall": 51, &"tower": 6, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
-		&"market": 7, &"farm": 9, &"decor": 59}
+	var want := {&"house": 36, &"wall": 51, &"tower": 6, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
+		&"market": 7, &"farm": 9, &"decor": 60}
 	for role in want:
 		t.check(counts.get(role, 0) == want[role], "%d x %s (got %d)" % [want[role], role, counts.get(role, 0)])
 	t.check(counts.size() == want.size(), "no unexpected roles (%s)" % [counts.keys()])

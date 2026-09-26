@@ -10,6 +10,8 @@ extends RefCounted
 ## Stall cloths [stripe, stripe]: red and cream, blue and cream, cream and tan.
 const CLOTH := [[Color("c8342a"), Color("ece2c8")], [Color("2f5fb8"), Color("ece2c8")], [Color("ece2c8"), Color("c0a070")]]
 const COUNTER_H := 7.0
+## The fountain's water: [highlight, body], emissive so it glows a little.
+const WATER_GLOW := [Color("bfe8fa"), Color("58a8dc")]
 const CANOPY_BACK := 25.0
 const CANOPY_FRONT := 20.0
 ## Bridge corner posts: how far in from the corners and how tall above the deck.
@@ -72,7 +74,7 @@ static func _stall(s: Structure) -> void:
 		_post(s, c, 0.0, CANOPY_BACK)
 	# Counter: a wooden box with a plank line, and produce heaped on top.
 	var c0 := r.position + Vector2(0.06, 0.06)
-	var c1 := r.end - Vector2(0.06, 0.06)
+	var c1 := r.end - Vector2(0.06, 0.26)
 	_box(s, c0, c1, 0.0, COUNTER_H, ArtKit.WOOD[1], ArtKit.WOOD[0], ArtKit.WOOD[0].lightened(0.1))
 	for i in 9:
 		var g := Vector2(lerpf(c0.x + 0.08, c1.x - 0.08, ArtKit.hash01(s.rng.seed, 80 + i)),
@@ -82,6 +84,15 @@ static func _stall(s: Structure) -> void:
 		ArtKit.blob(p + Vector2(0, -1), Vector2(2, 1.5), col, ArtKit.LIT_TOP, 6)
 		ArtKit.poly(PackedVector2Array([p + Vector2(-1, -2), p + Vector2(0, -2), p + Vector2(0, -1), p + Vector2(-1, -1)]),
 			col.lightened(0.35), ArtKit.LIT_TOP)
+	# A basket of produce and a small crate in front of the counter, as in the reference.
+	var bk := s._gp(Vector2(r.position.x + 0.24, r.end.y - 0.12), 0.0)
+	ArtKit.blob(bk + Vector2(0, -2), Vector2(4, 2.5), ArtKit.WOOD[1], ArtKit.LIT_LEFT, 8)
+	ArtKit.blob(bk + Vector2(0, -3.5), Vector2(3.5, 1.6), ArtKit.WOOD[0], ArtKit.LIT_TOP, 8)
+	for i in 4:
+		var col: Color = ArtKit.PRODUCE[ArtKit.pick(s.rng.seed, 120 + i, ArtKit.PRODUCE.size())]
+		ArtKit.blob(bk + Vector2(-2 + i * 1.4, -4.5 - float(i % 2)), Vector2(1.3, 1.0), col, ArtKit.LIT_TOP, 5)
+	var cr := Vector2(r.end.x - 0.34, r.end.y - 0.22)
+	_box(s, cr, cr + Vector2(0.2, 0.18), 0.0, 5.0, ArtKit.WOOD[1], ArtKit.WOOD[0], ArtKit.WOOD[0].lightened(0.1))
 	for c: Vector2 in front_posts:
 		_post(s, c, 0.0, CANOPY_FRONT)
 	# Awning: stripes across, sloping down to the front, scallops along the front edge and the open side.
@@ -115,6 +126,8 @@ static func _bridge(s: Structure) -> void:
 	var r := s.footprint
 	var h := s.height
 	var along_y := r.size.y >= r.size.x
+	# Stone blocks line the bridge heads on both banks, as in the reference: the far end's first.
+	_head_stones(s, true)
 	# Sides: the long beam on the right, the plank ends on the left.
 	ArtKit.face_quad(s, ArtKit.RIGHT, 0.0, 1.0, 0.0, h, ArtKit.WOOD[2])
 	ArtKit.face_quad(s, ArtKit.LEFT, 0.0, 1.0, 0.0, h, ArtKit.WOOD[1])
@@ -152,7 +165,7 @@ static func _bridge(s: Structure) -> void:
 	# Corner posts with torch cups, then the ropes sagging between each side's pair.
 	var posts := _bridge_posts(s)
 	for c: Vector2 in posts:
-		_post(s, c, h, h + POST_UP)
+		_post(s, c, h, h + POST_UP, 2.0)
 		var tip := s._gp(c, h + POST_UP)
 		ArtKit.poly(PackedVector2Array([tip + Vector2(-2, 0), tip + Vector2(2, 0), tip + Vector2(1, 2), tip + Vector2(-1, 2)]),
 			ArtKit.IRON, ArtKit.LIT_RIGHT)
@@ -164,7 +177,26 @@ static func _bridge(s: Structure) -> void:
 		ArtKit.line(a.lerp(mid, 0.5) + Vector2(0, 1), mid, ROPE)
 		ArtKit.line(mid, mid.lerp(b, 0.5) + Vector2(0, 1), ROPE)
 		ArtKit.line(mid.lerp(b, 0.5) + Vector2(0, 1), b, ROPE)
+	_head_stones(s, false)
 	ArtKit.flush(s)
+
+
+## A few rough stone blocks beside each bridge head, on the land outside the deck's sides (`far`: the far head).
+static func _head_stones(s: Structure, far: bool) -> void:
+	var r := s.footprint
+	var along_y := r.size.y >= r.size.x
+	for side in [-1.0, 1.0]:
+		for k in 2:
+			var t := 0.04 + k * 0.1 if far else 0.86 - k * 0.1
+			var g: Vector2
+			if along_y:
+				var x := r.position.x - 0.26 if side < 0.0 else r.end.x + 0.04
+				g = Vector2(x, lerpf(r.position.y, r.end.y, t))
+			else:
+				var y := r.position.y - 0.26 if side < 0.0 else r.end.y + 0.04
+				g = Vector2(lerpf(r.position.x, r.end.x, t), y)
+			var hgt := 4.0 + float(ArtKit.pick(s.rng.seed, 180 + k + int(side + 1.0) * 3 + (0 if far else 10), 3))
+			_box(s, g, g + Vector2(0.22, 0.2), 0.0, hgt, ArtKit.STONE[1], ArtKit.STONE[0], ArtKit.STONE_TOP)
 
 
 ## The bridge's corner posts: far side pair first (drawn first), then the near side's.
@@ -268,41 +300,60 @@ static func _fence(s: Structure, a: Vector2, b: Vector2) -> void:
 static func _fountain(s: Structure) -> void:
 	ArtKit.begin()
 	var c := s.center()
-	var rad := s.footprint.size.x * 0.5
-	var rim := 5.0
+	# Drawn a little inside the footprint (which people keep clear of): the reference's fountain is this size.
+	var r := s.footprint.grow(-0.2)
+	# A square blocky stone base, as in the reference, the round basin sitting on it.
+	var base := 3.0
+	_box(s, r.position + Vector2(0.02, 0.02), r.end - Vector2(0.02, 0.02), 0.0, base, ArtKit.STONE[1], ArtKit.STONE[0],
+		ArtKit.STONE_TOP)
+	for k in range(1, 4):
+		var u := k / 4.0
+		ArtKit.line(s._gp(Vector2(lerpf(r.position.x, r.end.x, u), r.end.y), 0.0),
+			s._gp(Vector2(lerpf(r.position.x, r.end.x, u), r.end.y), base), ArtKit.ink(0.35))
+		ArtKit.line(s._gp(Vector2(r.end.x, lerpf(r.position.y, r.end.y, u)), 0.0),
+			s._gp(Vector2(r.end.x, lerpf(r.position.y, r.end.y, u)), base), ArtKit.ink(0.35))
+	var rad := r.size.x * 0.44
+	var rim := base + 7.0
 	var ring: Array[Vector2] = []
 	for k in 8:
 		var ang := TAU * (k + 0.5) / 8.0
 		ring.append(c + Vector2(cos(ang), sin(ang)) * rad)
-	# Back half of the rim's top, the water, then the front walls and their top.
 	var inner: Array[Vector2] = []
 	for g in ring:
-		inner.append(c + (g - c) * 0.78)
+		inner.append(c + (g - c) * 0.8)
 	for k in 8:
-		var a := ring[k]
-		var b := ring[(k + 1) % 8]
-		ArtKit.poly(PackedVector2Array([s._gp(a, rim), s._gp(b, rim), s._gp(inner[(k + 1) % 8], rim), s._gp(inner[k], rim)]),
-			ArtKit.STONE_TOP, ArtKit.LIT_TOP)
+		ArtKit.poly(PackedVector2Array([s._gp(ring[k], rim), s._gp(ring[(k + 1) % 8], rim), s._gp(inner[(k + 1) % 8], rim),
+			s._gp(inner[k], rim)]), ArtKit.STONE_TOP, ArtKit.LIT_TOP)
+	# Water glows a little, as the reference's does.
 	var water := PackedVector2Array()
 	for g in inner:
 		water.append(s._gp(g, rim - 1.0))
 	for k in range(1, 7):
-		ArtKit.poly(PackedVector2Array([water[0], water[k], water[k + 1]]), Color("3f8cc4"), ArtKit.LIT_TOP)
-	ArtKit.blob(s._gp(c, rim - 1.0) + Vector2(-5, 1), Vector2(3, 1), Color("7cc0e8"), ArtKit.LIT_TOP, 6)
-	ArtKit.blob(s._gp(c, rim - 1.0) + Vector2(6, 2), Vector2(2, 1), Color("7cc0e8"), ArtKit.LIT_TOP, 6)
-	# Pillar and upper bowl with water spilling from it.
-	var p0 := s._gp(c, rim - 1.0)
-	ArtKit.poly(PackedVector2Array([p0 + Vector2(-2, 0), p0 + Vector2(2, 0), p0 + Vector2(2, -9), p0 + Vector2(-2, -9)]),
+		ArtKit.poly(PackedVector2Array([water[0], water[k], water[k + 1]]), WATER_GLOW[1], ArtKit.EMIT)
+	var wc := s._gp(c, rim - 1.0)
+	ArtKit.blob(wc + Vector2(-7, 2), Vector2(4, 1.5), WATER_GLOW[0], ArtKit.EMIT, 6)
+	ArtKit.blob(wc + Vector2(8, 3), Vector2(3, 1), WATER_GLOW[0], ArtKit.EMIT, 6)
+	# Two tiers: a pillar to a wide bowl, a short pillar to a small bowl with a spout, water spilling from both.
+	var t1 := 14.0
+	var t2 := 7.0
+	ArtKit.poly(PackedVector2Array([wc + Vector2(-2, 0), wc + Vector2(2, 0), wc + Vector2(2, -t1), wc + Vector2(-2, -t1)]),
 		ArtKit.STONE[0], ArtKit.LIT_RIGHT)
-	ArtKit.poly(PackedVector2Array([p0 + Vector2(-2, 0), p0 + Vector2(0, 0), p0 + Vector2(0, -9), p0 + Vector2(-2, -9)]),
+	ArtKit.poly(PackedVector2Array([wc + Vector2(-2, 0), wc + Vector2(0, 0), wc + Vector2(0, -t1), wc + Vector2(-2, -t1)]),
 		ArtKit.STONE[1], ArtKit.LIT_LEFT)
-	ArtKit.blob(p0 + Vector2(0, -10), Vector2(6, 2.5), ArtKit.STONE[1], ArtKit.LIT_LEFT)
-	ArtKit.blob(p0 + Vector2(0, -11), Vector2(5, 2), Color("5aa8d8"), ArtKit.LIT_TOP)
-	ArtKit.poly(PackedVector2Array([p0 + Vector2(-1, -11), p0 + Vector2(1, -11), p0 + Vector2(1, -15), p0 + Vector2(-1, -15)]),
-		Color("bfe6fa"), ArtKit.EMIT)
-	for x in [-5.0, 5.0]:
-		ArtKit.line(p0 + Vector2(x, -10), p0 + Vector2(x * 1.2, -3), Color(0.75, 0.9, 1.0, 0.8))
-	# Front walls of the basin (the sides facing the camera), each block its own shade.
+	for x in [-8.0, 8.0]:
+		ArtKit.line(wc + Vector2(x, -t1), wc + Vector2(x * 1.15, -1), Color(0.78, 0.92, 1.0, 0.85))
+	ArtKit.blob(wc + Vector2(0, -t1), Vector2(9, 3.5), ArtKit.STONE[1], ArtKit.LIT_LEFT)
+	ArtKit.blob(wc + Vector2(0, -t1 - 1), Vector2(7.5, 2.6), WATER_GLOW[1], ArtKit.EMIT)
+	var w2 := wc + Vector2(0, -t1 - 1)
+	ArtKit.poly(PackedVector2Array([w2 + Vector2(-1, 0), w2 + Vector2(1, 0), w2 + Vector2(1, -t2), w2 + Vector2(-1, -t2)]),
+		ArtKit.STONE[0], ArtKit.LIT_RIGHT)
+	for x in [-4.0, 4.0]:
+		ArtKit.line(w2 + Vector2(x, -t2), w2 + Vector2(x * 1.3, -1), Color(0.78, 0.92, 1.0, 0.85))
+	ArtKit.blob(w2 + Vector2(0, -t2), Vector2(4.5, 1.8), ArtKit.STONE[1], ArtKit.LIT_LEFT)
+	ArtKit.blob(w2 + Vector2(0, -t2 - 0.5), Vector2(3.5, 1.2), WATER_GLOW[1], ArtKit.EMIT)
+	ArtKit.poly(PackedVector2Array([w2 + Vector2(-1, -t2), w2 + Vector2(1, -t2), w2 + Vector2(1, -t2 - 5), w2 + Vector2(-1, -t2 - 5)]),
+		WATER_GLOW[0], ArtKit.EMIT)
+	# The basin's front walls (the sides facing the camera), each block its own shade.
 	for k in 8:
 		var a := ring[k]
 		var b := ring[(k + 1) % 8]
@@ -311,12 +362,11 @@ static func _fountain(s: Structure) -> void:
 			continue
 		var shade := ArtKit.STONE[0] if n.x >= n.y else ArtKit.STONE[1]
 		var code := ArtKit.LIT_RIGHT if n.x >= n.y else ArtKit.LIT_LEFT
-		ArtKit.poly(PackedVector2Array([s._gp(a, 0.0), s._gp(b, 0.0), s._gp(b, rim), s._gp(a, rim)]),
+		ArtKit.poly(PackedVector2Array([s._gp(a, base), s._gp(b, base), s._gp(b, rim), s._gp(a, rim)]),
 			shade.darkened(ArtKit.hash01(s.rng.seed, 150 + k) * 0.1), code)
 		ArtKit.line(s._gp(a, rim), s._gp(b, rim), ArtKit.ink(0.2, true))
-		ArtKit.line(s._gp(a, 0.0), s._gp(a, rim), ArtKit.ink(0.35))
+		ArtKit.line(s._gp(a, base), s._gp(a, rim), ArtKit.ink(0.35))
 	ArtKit.flush(s)
-
 
 # --- Tree ------------------------------------------------------------------
 

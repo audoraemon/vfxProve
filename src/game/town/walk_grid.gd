@@ -28,8 +28,8 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	grid.update()
 	stamp(TownLayout.RIVER, true)
-	# A garden closes every cell it touches, so nobody is drawn walking through its fence.
-	for g in TownLayout.gardens():
+	# A garden or a yard closes every cell it touches, so nobody is drawn walking through its fence or props.
+	for g in TownLayout.blockers():
 		stamp(g.grow(CELL * 0.5), true)
 	# Two passes, because a building people walk over has to win against whatever else claimed its cells: the
 	# gates sit inside the wall segments' grown footprints, and the bridge sits in the river.
@@ -154,7 +154,7 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
 				and other.footprint.grow(BODY).intersects(area):
 			_apply(other)
-	for g in TownLayout.gardens():
+	for g in TownLayout.blockers():
 		if g.grow(CELL * 0.5).intersects(area):
 			stamp(g.grow(CELL * 0.5), true)
 	# ...and then open the ways through again, so a gate beside a fallen wall stays passable.

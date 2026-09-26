@@ -6,6 +6,7 @@ extends Node2D
 
 enum Kind {
 	BARREL, CRATES, BENCH, FENCE, GARDEN, BUSH, ROCK, OAK, PINE, LAMP, BUNTING, SCARECROW, SIGNPOST, REEDS, FLOWERS,
+	TABLE,
 }
 
 ## A hit this strong (or any falling stone) knocks decor down; weaker hits char it by amount / CHAR_PER.

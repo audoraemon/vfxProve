@@ -14,6 +14,8 @@ const OVERHANG := 0.12
 const DROP := 3.0
 const BOARD := 2.0
 ## The barracks forge chimney: its ground square and how far it stands above the ridge.
+## Where along the barracks the main roof stops and the lower lean-to over its east end begins.
+const LEAN_AT := 0.78
 const FORGE_SIDE := 0.5
 const FORGE_UP := 18.0
 
@@ -66,20 +68,31 @@ static func _temple(s: Structure) -> void:
 	_roof_front(s, g, ArtKit.TEAL, 8.0, false)
 	ArtKit.flush(s)
 
-	# West front: the gable wall carried up square past the ridge, with a coping and a bell turret.
+	# West front: the gable wall rises to a point that follows the roof line, with a coping along both rakes and a
+	# small grey bell block on its far corner, as in the reference.
 	var top: float = g.top
-	var crest := top
-	ArtKit.masonry(s, front_face, h, crest, stone[front_face], 91, 5.0, 10.0, 0.0, 1.0, 0.2)
-	ArtKit.face_quad(s, front_face, 0.0, 1.0, crest - 2.0, crest, (stone[front_face] as Color).lightened(0.15))
-	ArtKit.mortar_lines(s, front_face, h, crest, 5.0)
-	# The front's top, seen from above: a thin ledge back into the roof.
-	var ledge := 0.18
-	var f0 := ArtKit.face_pt(s, front_face, 0.0, crest)
-	var f1 := ArtKit.face_pt(s, front_face, 1.0, crest)
-	var back := s._gp(r.end - (Vector2(ledge, 0) if ax else Vector2(0, ledge)), crest) - s._gp(r.end, crest)
-	ArtKit.poly(PackedVector2Array([f0 + back, f1 + back, f1, f0]), ArtKit.SANDSTONE[0].lightened(0.1), ArtKit.LIT_TOP)
+	var peak := top + 3.0
+	var fc: Color = stone[front_face]
+	var fcode := ArtKit.face_code(front_face)
+	ArtKit.face_quad(s, front_face, 0.0, 1.0, h - 1.0, h + 1.0, fc)
+	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, front_face, 0.0, h), ArtKit.face_pt(s, front_face, 1.0, h),
+		ArtKit.face_pt(s, front_face, 0.5, peak)]), fc.darkened(0.3), fcode)
+	var rows := ceili((peak - h) / 5.0)
+	for row in rows:
+		var y0 := h + row * 5.0
+		var y1 := minf(y0 + 5.0, peak)
+		var f := 1.0 - (y1 - h) / (peak - h)
+		if f > 0.04:
+			ArtKit.masonry(s, front_face, y0, y1, fc, 91 + row * 7, 5.0, 10.0, 0.5 - f * 0.5, 0.5 + f * 0.5, 0.2)
+	var cope := fc.lightened(0.16)
+	for side in [0.0, 1.0]:
+		ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, front_face, side, h - 1.0),
+			ArtKit.face_pt(s, front_face, 0.5, peak + 1.0), ArtKit.face_pt(s, front_face, 0.5, peak - 3.0),
+			ArtKit.face_pt(s, front_face, side, h - 4.0)]), cope, fcode)
+		ArtKit.line(ArtKit.face_pt(s, front_face, side, h - 1.0), ArtKit.face_pt(s, front_face, 0.5, peak + 1.0),
+			ArtKit.ink(0.5))
 	ArtKit.flush(s)
-	_turret(s, front_face, crest)
+	_turret(s, front_face, h)
 	ArtKit.flush(s)
 
 	# The long wall's pointed windows and side door; the west front's door, steps and banners.
@@ -95,37 +108,29 @@ static func _temple(s: Structure) -> void:
 	_banner(s, front_face, 0.5, h + 6.0, 11.0, 24.0)
 	_banner(s, front_face, 0.2, arch + 3.0, 6.0, 11.0)
 	_banner(s, front_face, 0.8, arch + 3.0, 6.0, 11.0)
-	# Lancets either side of the great banner, and a rose window up in the gable.
+	# Lancets either side of the great banner.
 	_pointed_window(s, front_face, 0.3, h - 14.0, 3.0, 9.0, _lit(s, n))
 	_pointed_window(s, front_face, 0.7, h - 14.0, 3.0, 9.0, _lit(s, n + 1))
-	var rose := ArtKit.face_pt(s, front_face, 0.5, h + (top - h) * 0.55)
-	ArtKit.blob(rose, Vector2(5, 5), ArtKit.SANDSTONE[1].darkened(0.45), ArtKit.face_code(front_face))
-	ArtKit.blob(rose, Vector2(4, 4), ArtKit.GLOW_RIM if _lit(s, n + 2) else ArtKit.WINDOW_OFF,
-		ArtKit.EMIT if _lit(s, n + 2) else ArtKit.face_code(front_face))
-	ArtKit.blob(rose, Vector2(2, 2), ArtKit.GLOW if _lit(s, n + 2) else ArtKit.WINDOW_OFF,
-		ArtKit.EMIT if _lit(s, n + 2) else ArtKit.face_code(front_face))
-	ArtKit.line(rose + Vector2(-4, 0), rose + Vector2(4, 0), ArtKit.ink(0.5))
-	ArtKit.line(rose + Vector2(0, -4), rose + Vector2(0, 4), ArtKit.ink(0.5))
 	ArtKit.flush(s)
 
 
-## A small square bell turret on the front's far corner, open for its bell.
+## A small grey stone bell block on the front's far corner, open for its bell.
 static func _turret(s: Structure, front_face: int, base_h: float) -> void:
 	var r := s.footprint
-	var side := 0.45
+	var side := 0.34
 	var ax := r.size.x >= r.size.y
 	# Far corner of the front: the front runs along the +y wall (x from pos.x) or the +x wall (y from pos.y).
 	var g0 := Vector2(r.position.x, r.end.y - side) if not ax else Vector2(r.end.x - side, r.position.y)
 	var g1 := g0 + Vector2(side, side)
-	var h1 := base_h + 14.0
+	var h1 := base_h + 11.0
 	var gl := Vector2(g0.x, g1.y)
 	var gr := Vector2(g1.x, g0.y)
 	ArtKit.poly(PackedVector2Array([s._gp(gl, base_h), s._gp(g1, base_h), s._gp(g1, h1), s._gp(gl, h1)]),
-		ArtKit.SANDSTONE[1], ArtKit.LIT_LEFT)
+		ArtKit.STONE[1], ArtKit.LIT_LEFT)
 	ArtKit.poly(PackedVector2Array([s._gp(gr, base_h), s._gp(g1, base_h), s._gp(g1, h1), s._gp(gr, h1)]),
-		ArtKit.SANDSTONE[0], ArtKit.LIT_RIGHT)
+		ArtKit.STONE[0], ArtKit.LIT_RIGHT)
 	ArtKit.poly(PackedVector2Array([s._gp(g0, h1), s._gp(gr, h1), s._gp(g1, h1), s._gp(gl, h1)]),
-		ArtKit.SANDSTONE[0].lightened(0.12), ArtKit.LIT_TOP)
+		ArtKit.STONE_TOP, ArtKit.LIT_TOP)
 	# Bell openings on both visible sides, and a dark mouth on top.
 	for side_pts in [[gl, g1], [gr, g1]]:
 		var a: Vector2 = side_pts[0]
@@ -268,19 +273,36 @@ static func _barracks(s: Structure) -> void:
 	ArtKit.face_line(s, end_face, 0.0, 0.0, 1.0, 0.0, ArtKit.ink(0.6))
 	ArtKit.flush(s)
 
-	var g := _roof(s, ax, BARRACKS_RISE, false)
+	# The main roof over most of the length, and a lower lean-to over the east end, as in the reference.
+	var a_lo: float = (r.position.x if ax else r.position.y) - OVERHANG
+	var a_hi: float = (r.end.x if ax else r.end.y) + OVERHANG
+	var a_split: float = lerpf(r.position.x if ax else r.position.y, r.end.x if ax else r.end.y, LEAN_AT)
+	var g := _roof_span(s, ax, BARRACKS_RISE, a_lo, a_split, 0.0)
+	var lean := _roof_span(s, ax, BARRACKS_RISE * 0.55, a_split, a_hi, 3.0)
 	_roof_back(g, ArtKit.RED_TILE)
-	# Stone gable on the end wall.
+	_roof_back(lean, ArtKit.RED_TILE)
 	var gc: Color = ArtKit.STONE[0]
 	var gcode := ArtKit.face_code(end_face)
-	ArtKit.face_quad(s, end_face, 0.0, 1.0, h, g.shoulder, gc)
-	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, end_face, 0.0, g.shoulder), ArtKit.face_pt(s, end_face, 1.0, g.shoulder),
-		ArtKit.face_pt(s, end_face, 0.5, g.top)]), gc, gcode)
-	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, end_face, 0.0, g.shoulder), ArtKit.face_pt(s, end_face, 0.5, g.top),
-		ArtKit.face_pt(s, end_face, 0.5, g.top - 3.0), ArtKit.face_pt(s, end_face, 0.0, g.shoulder - 3.0)]),
-		gc.darkened(0.3), gcode)
+	# The main roof's stone gable where it steps down to the lean-to.
+	var b0: float = r.position.y if ax else r.position.x
+	var b1: float = r.end.y if ax else r.end.x
+	var bm: float = (b0 + b1) * 0.5
+	ArtKit.poly(PackedVector2Array([s._gp(_g(ax, a_split, b0), h), s._gp(_g(ax, a_split, b1), h),
+		s._gp(_g(ax, a_split, b1), g.shoulder), s._gp(_g(ax, a_split, b0), g.shoulder)]), gc, gcode)
+	ArtKit.poly(PackedVector2Array([s._gp(_g(ax, a_split, b0), g.shoulder), s._gp(_g(ax, a_split, b1), g.shoulder),
+		s._gp(_g(ax, a_split, bm), g.top)]), gc, gcode)
 	ArtKit.flush(s)
 	_roof_front(s, g, ArtKit.RED_TILE, 4.0, true)
+	ArtKit.flush(s)
+	# The lean-to's gable on the end wall, then its own front slope.
+	ArtKit.face_quad(s, end_face, 0.0, 1.0, h, lean.shoulder, gc)
+	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, end_face, 0.0, lean.shoulder),
+		ArtKit.face_pt(s, end_face, 1.0, lean.shoulder), ArtKit.face_pt(s, end_face, 0.5, lean.top)]), gc, gcode)
+	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, end_face, 0.0, lean.shoulder), ArtKit.face_pt(s, end_face, 0.5, lean.top),
+		ArtKit.face_pt(s, end_face, 0.5, lean.top - 3.0), ArtKit.face_pt(s, end_face, 0.0, lean.shoulder - 3.0)]),
+		gc.darkened(0.3), gcode)
+	ArtKit.flush(s)
+	_roof_front(s, lean, ArtKit.RED_TILE, 4.0, true)
 	ArtKit.flush(s)
 	_forge(s, g.top)
 	ArtKit.flush(s)
@@ -360,23 +382,27 @@ static func _box_masonry(s: Structure, a: Vector2, b: Vector2, h0: float, h1: fl
 ## `open_end` leaves the +a end without an overhang (the temple's west front covers it).
 static func _roof(s: Structure, ax: bool, rise: float, open_end: bool) -> Dictionary:
 	var r := s.footprint
-	var a0: float = (r.position.x if ax else r.position.y) - OVERHANG
-	var a1: float = (r.end.x if ax else r.end.y) + (0.0 if open_end else OVERHANG)
+	return _roof_span(s, ax, rise, (r.position.x if ax else r.position.y) - OVERHANG,
+		(r.end.x if ax else r.end.y) + (0.0 if open_end else OVERHANG), 0.0)
+
+
+## A gable roof over the span a0..a1 along the ridge; `lower` drops the whole roof (a lean-to) by that many px.
+static func _roof_span(s: Structure, ax: bool, rise: float, a0: float, a1: float, lower: float) -> Dictionary:
+	var r := s.footprint
 	var b0: float = r.position.y if ax else r.position.x
 	var b1: float = r.end.y if ax else r.end.x
 	var bm := (b0 + b1) * 0.5
 	var half := (b1 - b0) * 0.5
 	var h := s.height
 	var top := h + rise
-	var eave := h - DROP
+	var eave := h - DROP - lower
 	return {
 		"s": s, "ax": ax, "a0": a0, "a1": a1, "bm": bm, "b1": b1, "top": top, "eave": eave,
-		"shoulder": top - (rise + DROP) * half / (half + OVERHANG),
+		"shoulder": top - (top - eave) * half / (half + OVERHANG),
 		"ridge0": s._gp(_g(ax, a0, bm), top), "ridge1": s._gp(_g(ax, a1, bm), top),
 		"front0": s._gp(_g(ax, a0, b1 + OVERHANG), eave), "front1": s._gp(_g(ax, a1, b1 + OVERHANG), eave),
 		"back0": s._gp(_g(ax, a0, b0 - OVERHANG), eave), "back1": s._gp(_g(ax, a1, b0 - OVERHANG), eave),
 	}
-
 
 static func _roof_back(g: Dictionary, pal: Array) -> void:
 	ArtKit.poly(PackedVector2Array([g.back0, g.back1, g.ridge1, g.ridge0]), (pal[2] as Color).darkened(0.1), ArtKit.LIT_TOP)

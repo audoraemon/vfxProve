@@ -51,6 +51,8 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			_reeds(o, seed_value)
 		Decor.Kind.FLOWERS:
 			_flowers(o, seed_value)
+		Decor.Kind.TABLE:
+			_table(at, origin, seed_value)
 
 
 ## Where a lamp's lantern glows (relative to its ground point, screen px).
@@ -285,6 +287,40 @@ static func _reeds(o: Vector2, seed_value: int) -> void:
 			b + Vector2(lean - 0.5, -tall)]), col, 0.0)
 		if i % 3 == 0:
 			_rect(b + Vector2(lean - 1, -tall - 3), 2, 5, Color("5a3a22"))
+
+
+## A tavern table with a bench either side and a mug or two on it; `at` is the table's centre.
+static func _table(at: Vector2, origin: Vector2, seed_value: int) -> void:
+	var half := Vector2(0.22, 0.1)
+	for bench_y: float in [-0.2, 0.2]:
+		if bench_y > 0.0:
+			_table_top(at, half, origin, seed_value)
+		var c := at + Vector2(0, bench_y)
+		var g0 := c - Vector2(0.2, 0.04)
+		var g1 := c + Vector2(0.2, 0.04)
+		_quad(_gp(g0, 4.0, origin), _gp(Vector2(g1.x, g0.y), 4.0, origin), _gp(g1, 4.0, origin), _gp(Vector2(g0.x, g1.y), 4.0, origin),
+			ArtKit.WOOD[0])
+		_quad(_gp(Vector2(g0.x, g1.y), 4.0, origin), _gp(g1, 4.0, origin), _gp(g1, 2.5, origin), _gp(Vector2(g0.x, g1.y), 2.5, origin),
+			ArtKit.WOOD[2])
+		for x in [g0.x + 0.03, g1.x - 0.03]:
+			var p := _gp(Vector2(x, g1.y), 0.0, origin)
+			_rect(p + Vector2(0, -3), 1, 3, ArtKit.WOOD[2])
+
+
+static func _table_top(at: Vector2, half: Vector2, origin: Vector2, seed_value: int) -> void:
+	var g0 := at - half
+	var g1 := at + half
+	for x in [g0.x + 0.04, g1.x - 0.04]:
+		var p := _gp(Vector2(x, g1.y - 0.02), 0.0, origin)
+		_rect(p + Vector2(-1, -7), 2, 7, ArtKit.WOOD[2])
+	_quad(_gp(g0, 7.0, origin), _gp(Vector2(g1.x, g0.y), 7.0, origin), _gp(g1, 7.0, origin), _gp(Vector2(g0.x, g1.y), 7.0, origin),
+		ArtKit.WOOD[0].lightened(0.08))
+	_quad(_gp(Vector2(g0.x, g1.y), 7.0, origin), _gp(g1, 7.0, origin), _gp(g1, 5.5, origin), _gp(Vector2(g0.x, g1.y), 5.5, origin),
+		ArtKit.WOOD[2])
+	for i in 1 + ArtKit.pick(seed_value, 130, 2):
+		var m := _gp(at + Vector2(-0.1 + i * 0.16, 0.0), 7.0, origin)
+		_rect(m + Vector2(-1, -3), 2, 3, Color("c8a060"))
+		_rect(m + Vector2(-1, -3), 2, 1, Color("f0e6c8"))
 
 
 static func _flowers(o: Vector2, seed_value: int) -> void:

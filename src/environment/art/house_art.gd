@@ -42,6 +42,7 @@ static func plan(s: Structure) -> Dictionary:
 		"door_u": lerpf(0.32, 0.68, ArtKit.hash01(sd, 3)),
 		"roof_shade": ArtKit.pick(sd, 4, 3) - 1,
 		"gable_window": ArtKit.hash01(sd, 5) < 0.5,
+		"steps": ArtKit.hash01(sd, 6) < 0.45,
 		"barn": s.role == &"farm",
 		"tavern": s.art_tag == &"tavern",
 		"smithy": s.art_tag == &"smithy",
@@ -237,6 +238,8 @@ static func _draw_openings(s: Structure, p: Dictionary, h: float, eave_face: int
 			var dw := 8.0 if barn else 5.0
 			_draw_door(s, face, door_u, dw, minf(roundf(h * (0.62 if barn else 0.55)), h - DROP - BOARD - 2.0),
 				door_c[face], timber_c[face], barn)
+			if p.steps and not barn:
+				_steps(s, face, door_u)
 			var side := 0.3 if px > 34.0 else 0.26
 			for u in [door_u - side, door_u + side]:
 				if u > 0.16 and u < 0.84:
@@ -304,6 +307,37 @@ static func _draw_chimney(s: Structure, p: Dictionary, ax: bool, a0: float, a1: 
 		ArtKit.line(s._gp(g, _roof_h(ax, g, bm, half, top, rise) - 1.0), s._gp(g, cap), ArtKit.ink(0.75))
 
 
+## Two stone steps before a door, reaching out from the wall (0.18 deep, the lower one wider).
+static func _steps(s: Structure, face: int, u: float) -> void:
+	var r := s.footprint
+	var at: Vector2
+	var along: Vector2
+	var out: Vector2
+	if face == ArtKit.LEFT:
+		at = Vector2(lerpf(r.position.x, r.end.x, u), r.end.y)
+		along = Vector2(1, 0)
+		out = Vector2(0, 1)
+	else:
+		at = Vector2(r.end.x, lerpf(r.position.y, r.end.y, u))
+		along = Vector2(0, 1)
+		out = Vector2(1, 0)
+	for k in 2:
+		var w := 0.16 - k * 0.04
+		var depth := 0.2 - k * 0.09
+		var hh := 2.0 + k * 2.0
+		var p00 := at - along * w
+		var p10 := at + along * w
+		var p01 := p00 + out * depth
+		var p11 := p10 + out * depth
+		ArtKit.poly(PackedVector2Array([s._gp(p01, 0.0), s._gp(p11, 0.0), s._gp(p11, hh), s._gp(p01, hh)]),
+			ArtKit.STONE[1] if face == ArtKit.LEFT else ArtKit.STONE[0], ArtKit.face_code(face))
+		ArtKit.poly(PackedVector2Array([s._gp(p10, 0.0), s._gp(p11, 0.0), s._gp(p11, hh), s._gp(p10, hh)]),
+			ArtKit.STONE[0] if face == ArtKit.LEFT else ArtKit.STONE[1], ArtKit.LIT_RIGHT if face == ArtKit.LEFT else ArtKit.LIT_LEFT)
+		ArtKit.poly(PackedVector2Array([s._gp(p00, hh), s._gp(p10, hh), s._gp(p11, hh), s._gp(p01, hh)]), ArtKit.STONE_TOP,
+			ArtKit.LIT_TOP)
+		ArtKit.line(s._gp(p01, hh), s._gp(p11, hh), ArtKit.ink(0.35))
+
+
 ## The tavern's front: windows on both floors, a door under an awning, and a hanging sign with a blue banner.
 static func _tavern_front(s: Structure, h: float, eave_face: int, gable_face: int, timber_c: Dictionary,
 		door_c: Dictionary) -> void:
@@ -329,6 +363,14 @@ static func _tavern_front(s: Structure, h: float, eave_face: int, gable_face: in
 	for k in 5:
 		var q := ArtKit.face_pt(s, eave_face, lerpf(0.36, 0.64, (k + 0.5) / 5.0), dh + 5.0)
 		ArtKit.line(q, q + drop, ArtKit.ink(0.25))
+	# Wall lanterns at both ends of the front.
+	for u: float in [0.05, 0.95]:
+		var q := ArtKit.face_pt(s, eave_face, u, roundf(h * 0.42))
+		ArtKit.line(q + Vector2(0, -2), q + Vector2(2, -2), ArtKit.ink(0.8))
+		ArtKit.poly(PackedVector2Array([q + Vector2(0, -1), q + Vector2(4, -1), q + Vector2(4, 5), q + Vector2(0, 5)]),
+			ArtKit.IRON.darkened(0.3), ArtKit.INK)
+		ArtKit.poly(PackedVector2Array([q + Vector2(1, 0), q + Vector2(3, 0), q + Vector2(3, 4), q + Vector2(1, 4)]),
+			ArtKit.GLOW, ArtKit.EMIT)
 	# Hanging sign on a bracket at the front corner: a blue banner with a gold mug.
 	var code := ArtKit.face_code(gable_face)
 	var corner := ArtKit.face_pt(s, eave_face, 0.97, h * 0.75)
@@ -344,20 +386,15 @@ static func _tavern_front(s: Structure, h: float, eave_face: int, gable_face: in
 # --- Blacksmith ------------------------------------------------------------------
 
 const SMITHY_RISE := 14.0
-const SMITHY_STACK := 0.45
-const SMITHY_STACK_UP := 16.0
+const SMITHY_STACK := 0.55
+const SMITHY_STACK_UP := 22.0
 ## Wooden shingles [lit, mid, dark, board, ridge, outline].
 const ROOF_WOOD := [Color("8a6440"), Color("745234"), Color("5e4128"), Color("4a3220"), Color("a07a52"), Color("2a1a10")]
 
 
-## The chimney's ground square at the blacksmith's far end.
+## The chimney's ground square in the blacksmith's back corner.
 static func _smithy_stack(s: Structure) -> Rect2:
-	var r := s.footprint
-	if s.art.along_x:
-		return Rect2(Vector2(r.position.x + 0.05, r.position.y + (r.size.y - SMITHY_STACK) * 0.5),
-			Vector2(SMITHY_STACK, SMITHY_STACK))
-	return Rect2(Vector2(r.position.x + (r.size.x - SMITHY_STACK) * 0.5, r.position.y + 0.05),
-		Vector2(SMITHY_STACK, SMITHY_STACK))
+	return Rect2(s.footprint.position + Vector2(0.04, 0.04), Vector2(SMITHY_STACK, SMITHY_STACK))
 
 
 ## Where the forge glows inside the open front (structure-local px), for the flame node.
@@ -372,6 +409,29 @@ static func _smithy(s: Structure) -> void:
 	var open_face := ArtKit.LEFT if ax else ArtKit.RIGHT
 	var end_face := ArtKit.RIGHT if ax else ArtKit.LEFT
 	var plank := [ArtKit.PLANK[0].darkened(0.25), ArtKit.PLANK[1].darkened(0.3)]
+	# The chimney first: a rough grey stone tower in the back corner, twice the shed's height, with a lit window
+	# near its top, as in the reference. The shed and its roof stand in front of its foot.
+	var f := _smithy_stack(s)
+	var g0 := f.position
+	var g1 := f.end
+	var gl := Vector2(g0.x, g1.y)
+	var gr := Vector2(g1.x, g0.y)
+	var stack_top := h + SMITHY_RISE + SMITHY_STACK_UP
+	CivicArt._box_masonry(s, gl, g1, 0.0, stack_top, ArtKit.STONE[1].darkened(0.12), ArtKit.LIT_LEFT, 210)
+	CivicArt._box_masonry(s, gr, g1, 0.0, stack_top, ArtKit.STONE[0].darkened(0.12), ArtKit.LIT_RIGHT, 230)
+	ArtKit.poly(PackedVector2Array([s._gp(g0, stack_top), s._gp(gr, stack_top), s._gp(g1, stack_top), s._gp(gl, stack_top)]),
+		ArtKit.STONE_TOP.darkened(0.15), ArtKit.LIT_TOP)
+	var i0 := g0.lerp(g1, 0.28)
+	var i1 := g0.lerp(g1, 0.72)
+	ArtKit.poly(PackedVector2Array([s._gp(i0, stack_top), s._gp(Vector2(i1.x, i0.y), stack_top), s._gp(i1, stack_top),
+		s._gp(Vector2(i0.x, i1.y), stack_top)]), ArtKit.VOID, ArtKit.INK)
+	var win := gl.lerp(g1, 0.5)
+	ArtKit.poly(PackedVector2Array([s._gp(win, stack_top - 12.0) + Vector2(-1, 0), s._gp(win, stack_top - 12.0) + Vector2(1, 0),
+		s._gp(win, stack_top - 7.0) + Vector2(1, 0), s._gp(win, stack_top - 7.0) + Vector2(-1, 0)]), ArtKit.GLOW_RIM, ArtKit.EMIT)
+	ArtKit.line(s._gp(gl, 0.0), s._gp(gl, stack_top), ArtKit.ink(0.6))
+	ArtKit.line(s._gp(g1, 0.0), s._gp(g1, stack_top), ArtKit.ink(0.15, true))
+	ArtKit.line(s._gp(gr, 0.0), s._gp(gr, stack_top), ArtKit.ink(0.5))
+	ArtKit.flush(s)
 	# The open front: dark inside, the forge's hearth glowing, an anvil and hanging tools; a plank end wall.
 	ArtKit.face_quad(s, open_face, 0.0, 1.0, 0.0, h, ArtKit.INTERIOR)
 	ArtKit.face_quad(s, open_face, 0.0, 1.0, 0.0, 3.0, ArtKit.INTERIOR_FLOOR)
@@ -429,25 +489,6 @@ static func _smithy(s: Structure) -> void:
 	for e in [[back0, back1], [back0, ridge0], [ridge0, front0], [front0 + board, front1 + board],
 			[front1 + board, ridge1 + board]]:
 		ArtKit.line(e[0], e[1], ol)
-	ArtKit.flush(s)
-	# The tall stone chimney at the far end, standing through the roof.
-	var f := _smithy_stack(s)
-	var g0 := f.position
-	var g1 := f.end
-	var gl := Vector2(g0.x, g1.y)
-	var gr := Vector2(g1.x, g0.y)
-	var stack_top := top + SMITHY_STACK_UP
-	ArtKit.poly(PackedVector2Array([s._gp(gl, 0.0), s._gp(g1, 0.0), s._gp(g1, stack_top), s._gp(gl, stack_top)]),
-		ArtKit.STONE[1], ArtKit.LIT_LEFT)
-	ArtKit.poly(PackedVector2Array([s._gp(gr, 0.0), s._gp(g1, 0.0), s._gp(g1, stack_top), s._gp(gr, stack_top)]),
-		ArtKit.STONE[0], ArtKit.LIT_RIGHT)
-	ArtKit.poly(PackedVector2Array([s._gp(g0, stack_top), s._gp(gr, stack_top), s._gp(g1, stack_top), s._gp(gl, stack_top)]),
-		ArtKit.VOID, ArtKit.INK)
-	for k in range(1, int(stack_top / 5.0)):
-		ArtKit.line(s._gp(gl, k * 5.0), s._gp(g1, k * 5.0), ArtKit.ink(0.3))
-		ArtKit.line(s._gp(g1, k * 5.0), s._gp(gr, k * 5.0), ArtKit.ink(0.3))
-	ArtKit.line(s._gp(gl, 0.0), s._gp(gl, stack_top), ArtKit.ink(0.6))
-	ArtKit.line(s._gp(g1, 0.0), s._gp(g1, stack_top), ArtKit.ink(0.15, true))
 	ArtKit.flush(s)
 
 

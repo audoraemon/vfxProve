@@ -42,6 +42,7 @@ const DECOR := [
 	["oak", D.OAK, Vector2.ZERO, 8], ["pine", D.PINE, Vector2.ZERO, 9], ["scarecrow", D.SCARECROW, Vector2.ZERO, 10],
 	["signpost", D.SIGNPOST, Vector2.ZERO, 11], ["reeds", D.REEDS, Vector2.ZERO, 12],
 	["flowers", D.FLOWERS, Vector2.ZERO, 13], ["bunting", D.BUNTING, Vector2(2.0, 0.0), 14],
+	["table", D.TABLE, Vector2.ZERO, 15],
 ]
 
 var _cam: Camera2D

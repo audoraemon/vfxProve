@@ -22,6 +22,7 @@ const SCREEN_BOX := Rect2(-26, -66, 52, 68)
 static func spots() -> Array[Dictionary]:
 	var solid := _solid_rects()
 	var out: Array[Dictionary] = []
+	_yards(out)
 	_houses(out, solid)
 	_market(out)
 	_outside(out, solid)
@@ -40,8 +41,9 @@ static func _solid_rects() -> Array[Rect2]:
 	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
 		out.append(Rect2(r.position + TownLayout.CITADEL_ORIGIN, r.size))
 	out.append(TownLayout.FOUNTAIN)
-	# Gardens close every cell they touch (WalkGrid): grown so that, with blocked()'s own BODY, they reach half a cell.
-	for g in TownLayout.gardens():
+	# Gardens and yards close every cell they touch (WalkGrid): grown so that, with blocked()'s own BODY, they reach
+	# half a cell.
+	for g in TownLayout.blockers():
 		out.append(g.grow(CELL * 0.5 - BODY))
 	return out
 
@@ -78,6 +80,23 @@ static func _far_from_others(out: Array[Dictionary], g: Vector2, d: float) -> bo
 
 
 # --- Inside the walls ------------------------------------------------------------------
+
+## The working yards: tables and benches on the tavern's patio, barrels and crates in the blacksmith's yard and the
+## barracks store.
+static func _yards(out: Array[Dictionary]) -> void:
+	var p: Rect2 = TownLayout.TAVERN_PATIO
+	_add(out, Decor.Kind.TABLE, p.position + Vector2(0.45, 0.22))
+	_add(out, Decor.Kind.TABLE, p.position + Vector2(1.3, 0.22))
+	_add(out, Decor.Kind.BARREL, p.position + Vector2(1.72, 0.12))
+	var y: Rect2 = TownLayout.SMITHY_YARD
+	_add(out, Decor.Kind.BARREL, y.position + Vector2(0.22, 0.2))
+	_add(out, Decor.Kind.CRATES, y.position + Vector2(0.38, 0.62))
+	_add(out, Decor.Kind.BARREL, y.position + Vector2(0.22, 0.95))
+	var b: Rect2 = TownLayout.BARRACKS_STORE
+	_add(out, Decor.Kind.CRATES, b.position + Vector2(0.38, 0.32))
+	_add(out, Decor.Kind.BARREL, b.position + Vector2(0.22, 0.72))
+	_add(out, Decor.Kind.CRATES, b.position + Vector2(0.38, 1.18))
+
 
 ## Trees behind the houses; barrels, crates, flowers, bushes and lamps against the houses, the Temple, the barracks,
 ## the tavern and the blacksmith; and small gardens.

@@ -14,10 +14,10 @@ extends RefCounted
 ## Block course height and length, px; merlon height, px.
 const COURSE := 5.0
 const BLOCK := 9.0
-const MERLON_H := 5.0
+const MERLON_H := 7.0
 ## Merlon size (ground units) on walls and gates, and on towers and keeps.
-const MERLON_WALL := 0.17
-const MERLON_TOWER := 0.24
+const MERLON_WALL := 0.25
+const MERLON_TOWER := 0.32
 ## A wall wide enough (px) for a banner.
 const BANNER_FACE := 36.0
 
@@ -52,8 +52,9 @@ static func draw(s: Structure) -> void:
 
 	_draw_slits(s)
 	if s.kind == Structure.Kind.GATE:
-		_draw_portcullis(s, ArtKit.LEFT if s.footprint.size.x >= s.footprint.size.y else ArtKit.RIGHT, 0.32, 0.68,
-			roundf(h * 0.62), face_c)
+		var gate_face := ArtKit.LEFT if s.footprint.size.x >= s.footprint.size.y else ArtKit.RIGHT
+		_draw_portcullis(s, gate_face, 0.32, 0.68, roundf(h * 0.85), face_c)
+		_draw_gate_stones(s, gate_face)
 	elif s.art_tag == &"gate":
 		_draw_arched_door(s, ArtKit.LEFT, 0.5, 12.0, roundf(h * 0.5))
 	if s.art.get("torch", false):
@@ -211,6 +212,45 @@ static func _draw_portcullis(s: Structure, face: int, u0: float, u1: float, tall
 		ArtKit.face_line(s, face, u, tall * 0.35, u, tall, Color(0.35, 0.3, 0.28, 0.9))
 	ArtKit.face_line(s, face, u0, tall * 0.62, u1, tall * 0.62, Color(0.35, 0.3, 0.28, 0.9))
 	ArtKit.face_line(s, face, u0, tall * 0.35, u1, tall * 0.35, Color(0.3, 0.25, 0.22, 0.9))
+
+
+## Rough stone blocks at the gateway's feet on the outer side, as in the reference, two either side of the way
+## through.
+static func _draw_gate_stones(s: Structure, face: int) -> void:
+	var r := s.footprint
+	for u: float in [0.2, 0.27, 0.73, 0.8]:
+		var g: Vector2
+		var along: Vector2
+		var out: Vector2
+		if face == ArtKit.LEFT:
+			g = Vector2(lerpf(r.position.x, r.end.x, u), r.end.y)
+			along = Vector2(1, 0)
+			out = Vector2(0, 1)
+		else:
+			g = Vector2(r.end.x, lerpf(r.position.y, r.end.y, u))
+			along = Vector2(0, 1)
+			out = Vector2(1, 0)
+		var hgt := 4.0 + float(ArtKit.pick(s.rng.seed, 170 + int(u * 100.0), 3))
+		var g0 := g - along * 0.09 + out * 0.04
+		var g1 := g + along * 0.09 + out * 0.26
+		var lo := Vector2(minf(g0.x, g1.x), minf(g0.y, g1.y))
+		var hi := Vector2(maxf(g0.x, g1.x), maxf(g0.y, g1.y))
+		_block(s, lo, hi, hgt)
+
+
+## An iso block of stone over the ground rect lo..hi, `hgt` px tall, with a light top and an outline.
+static func _block(s: Structure, lo: Vector2, hi: Vector2, hgt: float) -> void:
+	var gl := Vector2(lo.x, hi.y)
+	var gr := Vector2(hi.x, lo.y)
+	ArtKit.poly(PackedVector2Array([s._gp(gl, 0.0), s._gp(hi, 0.0), s._gp(hi, hgt), s._gp(gl, hgt)]), ArtKit.STONE[1],
+		ArtKit.LIT_LEFT)
+	ArtKit.poly(PackedVector2Array([s._gp(gr, 0.0), s._gp(hi, 0.0), s._gp(hi, hgt), s._gp(gr, hgt)]), ArtKit.STONE[0],
+		ArtKit.LIT_RIGHT)
+	ArtKit.poly(PackedVector2Array([s._gp(lo, hgt), s._gp(gr, hgt), s._gp(hi, hgt), s._gp(gl, hgt)]), ArtKit.STONE_TOP,
+		ArtKit.LIT_TOP)
+	ArtKit.line(s._gp(gl, 0.0), s._gp(hi, 0.0), ArtKit.ink(0.5))
+	ArtKit.line(s._gp(hi, 0.0), s._gp(gr, 0.0), ArtKit.ink(0.5))
+	ArtKit.line(s._gp(hi, 0.0), s._gp(hi, hgt), ArtKit.ink(0.3))
 
 
 ## The Citadel's great door: a dark arch in a pale surround, up a wide flight of steps.

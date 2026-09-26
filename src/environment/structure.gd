@@ -396,7 +396,7 @@ func _palette() -> Array:
 		Kind.CRATES:
 			return [Color("6a5638"), Color("56452d"), Color("433523")]
 		Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE:
-			return [Color("bcb4b0"), Color("aaa3a1"), Color("8f898c")]
+			return [Color("b4aca8"), Color("9f9796"), Color("7f797d")]
 		Kind.HOUSE:
 			return [Color("7a6a58"), Color("c8b28c"), Color("a8916c")]
 		Kind.TORCH:

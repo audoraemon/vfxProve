@@ -42,8 +42,8 @@ const RED_TILE := [Color("bd6a40"), Color("a7532f"), Color("8c4428"), Color("6a3
 ## Ink along wall footings and chimney edges.
 const OUTLINE_WALL := Color("2a1c14")
 ## Town stone: [lit (right wall), shade (left wall)], the walkway, and the ink at its foot.
-const STONE := [Color("aaa3a1"), Color("8f898c")]
-const STONE_TOP := Color("bcb4b0")
+const STONE := [Color("9f9796"), Color("7f797d")]
+const STONE_TOP := Color("b4aca8")
 const OUTLINE_STONE := Color("3a3438")
 ## Banner cloth [blue, lit edge, cross].
 const BANNER := [Color("1f45a6"), Color("3563c8"), Color("e8dcc0")]

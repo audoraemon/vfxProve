@@ -134,23 +134,34 @@ static func draw_banners(s: Structure, ci: CanvasItem, time: float, ambient: flo
 			ArtKit.poly(PackedVector2Array([f + Vector2(-1, -1), f + Vector2(1, -1), f + Vector2(1, 1), f + Vector2(-1, 1)]),
 				gold, e)
 	if s.art_tag == &"keep":
-		# Flag pole from the middle of the roof, flag streaming to the right.
+		# A tall pole on a wooden stand in the middle of the roof, a banner hanging from its crossbar.
 		var foot := s._gp(s.center(), s.height)
-		var pole_top := foot + Vector2(0, -26)
-		ArtKit.poly(PackedVector2Array([foot, foot + Vector2(1, 0), pole_top + Vector2(1, 0), pole_top]),
-			ArtKit.TIMBER.lerp(Structure.COL_CHAR, s.scorch) * tint, e)
-		var w1 := roundf(sin(time * 4.0))
-		var w2 := roundf(sin(time * 4.0 + 1.6))
-		var f0 := pole_top + Vector2(1, 1)
-		ArtKit.poly(PackedVector2Array([f0, f0 + Vector2(6, w1), f0 + Vector2(6, 8 + w1), f0 + Vector2(0, 8)]), blue, e)
-		ArtKit.poly(PackedVector2Array([f0 + Vector2(6, w1), f0 + Vector2(12, w2), f0 + Vector2(12, 8 + w2),
-			f0 + Vector2(6, 8 + w1)]), blue_hi, e)
-		ArtKit.poly(PackedVector2Array([f0 + Vector2(4, w1), f0 + Vector2(6, w1), f0 + Vector2(6, 8 + w1),
-			f0 + Vector2(4, 8)]), cross, e)
-		ArtKit.poly(PackedVector2Array([f0 + Vector2(0, 3), f0 + Vector2(12, 3 + w2), f0 + Vector2(12, 5 + w2),
-			f0 + Vector2(0, 5)]), cross, e)
-		ArtKit.poly(PackedVector2Array([pole_top + Vector2(-1, -2), pole_top + Vector2(2, -2), pole_top + Vector2(2, 0),
+		var wood := ArtKit.TIMBER.lerp(Structure.COL_CHAR, s.scorch) * tint
+		var stand := ArtKit.PLANK[0].lerp(Structure.COL_CHAR, s.scorch) * tint
+		ArtKit.poly(PackedVector2Array([foot + Vector2(-5, 1), foot + Vector2(5, 1), foot + Vector2(2, -4),
+			foot + Vector2(-2, -4)]), stand, e)
+		var pole_top := foot + Vector2(0, -34)
+		ArtKit.poly(PackedVector2Array([foot + Vector2(0, -4), foot + Vector2(2, -4), pole_top + Vector2(2, 0),
+			pole_top]), wood, e)
+		ArtKit.poly(PackedVector2Array([pole_top + Vector2(-5, 2), pole_top + Vector2(7, 2), pole_top + Vector2(7, 4),
+			pole_top + Vector2(-5, 4)]), wood, e)
+		ArtKit.poly(PackedVector2Array([pole_top + Vector2(-1, -2), pole_top + Vector2(3, -2), pole_top + Vector2(3, 0),
 			pole_top + Vector2(-1, 0)]), gold, e)
+		var f0 := pole_top + Vector2(-4, 4)
+		var sway := Vector2(roundf(sin(time * 4.0)), 0)
+		var sway2 := Vector2(roundf(sin(time * 4.0 + 1.6)), 0)
+		ArtKit.poly(PackedVector2Array([f0, f0 + Vector2(10, 0), f0 + Vector2(10, 14) + sway, f0 + Vector2(0, 14) + sway]),
+			blue, e)
+		ArtKit.poly(PackedVector2Array([f0 + Vector2(0, 14) + sway, f0 + Vector2(5, 14) + sway,
+			f0 + Vector2(0, 18) + sway2]), blue, e)
+		ArtKit.poly(PackedVector2Array([f0 + Vector2(5, 14) + sway, f0 + Vector2(10, 14) + sway,
+			f0 + Vector2(10, 18) + sway2]), blue, e)
+		ArtKit.poly(PackedVector2Array([f0, f0 + Vector2(1, 0), f0 + Vector2(1, 14) + sway, f0 + Vector2(0, 14) + sway]),
+			blue_hi, e)
+		ArtKit.poly(PackedVector2Array([f0 + Vector2(4, 2), f0 + Vector2(6, 2), f0 + Vector2(6, 12) + sway,
+			f0 + Vector2(4, 12) + sway]), cross, e)
+		ArtKit.poly(PackedVector2Array([f0 + Vector2(2, 5), f0 + Vector2(8, 5), f0 + Vector2(8, 7), f0 + Vector2(2, 7)]),
+			cross, e)
 	ArtKit.flush(ci)
 
 

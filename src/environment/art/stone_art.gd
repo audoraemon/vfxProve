@@ -32,26 +32,9 @@ static func draw(s: Structure) -> void:
 	ArtKit.begin()
 	var h := s.height
 	var face_c := {ArtKit.RIGHT: ArtKit.STONE[0], ArtKit.LEFT: ArtKit.STONE[1]}
-	var sd := s.rng.seed
 	for face in [ArtKit.LEFT, ArtKit.RIGHT]:
 		var fc: Color = face_c[face]
-		ArtKit.face_quad(s, face, 0.0, 1.0, 0.0, h, fc.darkened(0.3))
-		var px := maxf(ArtKit.face_px(s, face), 1.0)
-		var rows := ceili(h / COURSE)
-		for row in rows:
-			var y0 := row * COURSE
-			var y1 := minf(y0 + COURSE, h)
-			var x := -BLOCK * 0.5 if row % 2 == 1 else 0.0
-			var i := 0
-			while x < px:
-				var x0 := maxf(x, 0.0)
-				var x1 := minf(x + BLOCK, px)
-				if x1 - x0 >= 2.0:
-					var tint := (ArtKit.hash01(sd, face * 100003 + row * 211 + i) - 0.5) * 0.16
-					var bc := fc.lightened(tint) if tint > 0.0 else fc.darkened(-tint)
-					ArtKit.face_quad(s, face, (x0 + (1.0 if x0 > 0.0 else 0.0)) / px, x1 / px, y0 + 1.0, y1, bc)
-				x += BLOCK
-				i += 1
+		ArtKit.masonry(s, face, 0.0, h, fc, 0, COURSE, BLOCK)
 		# Lit coping along the top of the wall.
 		ArtKit.face_quad(s, face, 0.0, 1.0, h - 2.0, h, fc.lightened(0.14))
 	var up := Vector2(0, -h)
@@ -60,8 +43,7 @@ static func draw(s: Structure) -> void:
 	_draw_merlons(s)
 	# Mortar courses over the fills (merlons stand above the walls, so the lines never cross them).
 	for face in [ArtKit.LEFT, ArtKit.RIGHT]:
-		for row in range(1, ceili(h / COURSE)):
-			ArtKit.face_line(s, face, 0.0, row * COURSE, 1.0, row * COURSE, ArtKit.ink(0.3))
+		ArtKit.mortar_lines(s, face, 0.0, h, COURSE)
 		ArtKit.face_line(s, face, 0.0, 0.0, 1.0, 0.0, ArtKit.ink(0.6))
 	if s.kind != Structure.Kind.CASTLE_WALL:
 		# A lit corner on towers and gates; a curtain wall is built of pieces, and the line would mark every seam.

@@ -50,6 +50,26 @@ const BANNER := [Color("1f45a6"), Color("3563c8"), Color("e8dcc0")]
 const IRON := Color("6a5a55")
 ## A gateway's darkness.
 const VOID := Color("171210")
+## Temple sandstone [lit (right wall), shade (left wall)] and its teal roof [lit, mid, dark, seam, ridge, outline].
+const SANDSTONE := [Color("d6c08c"), Color("b49c6a")]
+const TEAL := [Color("4a9ba1"), Color("3e8f97"), Color("357a80"), Color("2c6469"), Color("7cc3c8"), Color("173a3d")]
+## Wood for posts, planks, counters and barrels [lit, mid, shade].
+const WOOD := [Color("9a6a3c"), Color("7e5530"), Color("5c3d22")]
+## A dark interior seen through an open front, and its floor.
+const INTERIOR := Color("2c221a")
+const INTERIOR_FLOOR := Color("5a4632")
+## Furnace glow [core, rim].
+const FURNACE := [Color("ffe08a"), Color("ff8a2a")]
+## Crops: wheat [light, mid, dark]; cabbage leaves [light, mid, dark]; soil.
+const WHEAT := [Color("f5c24a"), Color("dca334"), Color("a8741f")]
+const LEAF := [Color("8fb03a"), Color("5f8a2a"), Color("3d5e22")]
+const SOIL := [Color("6e5236"), Color("5a432c")]
+## Foliage [light, mid, dark, outline] for oaks and for pines, and bark.
+const OAK := [Color("8cbf4a"), Color("5f9a34"), Color("3f7128"), Color("22401a")]
+const PINE := [Color("4f8a44"), Color("356a36"), Color("24502c"), Color("12301a")]
+const BARK := Color("5a3e26")
+## Market produce.
+const PRODUCE := [Color("d83a2a"), Color("e8a23a"), Color("8cc04a"), Color("f0d060"), Color("8a4ab0")]
 ## Barn planks [lit, shade, seam].
 const PLANK := [Color("9c6c40"), Color("7e5532"), Color("573a22")]
 const CHIMNEY := [Color("a39a92"), Color("847b75"), Color("5f5856")]
@@ -90,6 +110,10 @@ static func plan_for(s: Structure) -> Dictionary:
 			return HouseArt.plan(s)
 		Structure.Kind.KEEP, Structure.Kind.CASTLE_WALL, Structure.Kind.GATE:
 			return StoneArt.plan(s)
+		Structure.Kind.TEMPLE, Structure.Kind.BARRACKS:
+			return CivicArt.plan(s)
+		Structure.Kind.MARKET_STALL, Structure.Kind.BRIDGE, Structure.Kind.FARM_FIELD, Structure.Kind.TREE:
+			return PropArt.plan(s)
 	return {}
 
 
@@ -177,6 +201,48 @@ static func line(a: Vector2, b: Vector2, c: Color) -> void:
 	_line_pts.append(a)
 	_line_pts.append(b)
 	_line_cols.append(c)
+
+
+## A filled convex polygon around `c` of `n` points with radii `r` (x, y), as a triangle fan.
+static func blob(c: Vector2, r: Vector2, col: Color, code: float, n := 8) -> void:
+	var prev := c + Vector2(r.x, 0)
+	for i in range(1, n + 1):
+		var ang := TAU * i / n
+		var p := c + Vector2(cos(ang) * r.x, sin(ang) * r.y)
+		poly(PackedVector2Array([c, prev, p]), col, code)
+		prev = p
+
+
+## Block masonry on a wall between heights h0..h1 and along u0..u1: dark mortar under blocks that each take a
+## hashed shade of `base`. Mortar courses are lines (mortar_lines()), drawn later over everything in the flush.
+static func masonry(s: Structure, face: int, h0: float, h1: float, base: Color, salt: int, course := 6.0,
+		block := 12.0, u0 := 0.0, u1 := 1.0, tint := 0.16) -> void:
+	face_quad(s, face, u0, u1, h0, h1, base.darkened(0.3))
+	var px := maxf(face_px(s, face), 1.0)
+	var x_from := u0 * px
+	var x_to := u1 * px
+	var rows := ceili((h1 - h0) / course)
+	for row in rows:
+		var y0 := h0 + row * course
+		var y1 := minf(y0 + course, h1)
+		var x := x_from - (block * 0.5 if row % 2 == 1 else 0.0)
+		var i := 0
+		while x < x_to:
+			var xa := maxf(x, x_from)
+			var xb := minf(x + block, x_to)
+			if xb - xa >= 2.0:
+				var t := (hash01(s.rng.seed, salt + face * 100003 + row * 211 + i) - 0.5) * tint
+				var bc := base.lightened(t) if t > 0.0 else base.darkened(-t)
+				face_quad(s, face, (xa + (1.0 if xa > x_from else 0.0)) / px, xb / px, y0 + 1.0, y1, bc)
+			x += block
+			i += 1
+
+
+## Mortar courses for masonry(): ink lines every `course` px between h0 and h1.
+static func mortar_lines(s: Structure, face: int, h0: float, h1: float, course := 6.0, u0 := 0.0, u1 := 1.0,
+		strength := 0.3) -> void:
+	for row in range(1, ceili((h1 - h0) / course)):
+		face_line(s, face, u0, h0 + row * course, u1, h0 + row * course, ink(strength))
 
 
 ## Screen point (structure-local) on a visible wall: `u` along it (0 far corner, 1 front corner), `h` px up.

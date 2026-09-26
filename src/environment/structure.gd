@@ -34,10 +34,9 @@ const LIGHT_HZ := 20.0
 ## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
 const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
-## Stone kinds that show mortar courses.
-const MASONRY := [Kind.TEMPLE, Kind.BARRACKS]
-## Drawn by StoneArt while they stand.
-const STONEWORK := [Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE]
+## Drawn by the art classes (src/environment/art) while they stand; the rest keep the plain lit box.
+const ART_KINDS := [Kind.HOUSE, Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE, Kind.TEMPLE, Kind.BARRACKS,
+	Kind.MARKET_STALL, Kind.BRIDGE, Kind.FARM_FIELD, Kind.TREE]
 ## Lights the art's unlit geometry (see ArtKit); the rest of a structure's drawing passes through it untouched.
 const ART_SHADER := preload("res://src/environment/art/structure_art.gdshader")
 ## Units walk over these while they stand.
@@ -47,12 +46,6 @@ const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
 const FLAT := [Kind.BRIDGE, Kind.FARM_FIELD]
 ## Nothing to crack on these.
 const NO_CRACKS := [Kind.FARM_FIELD, Kind.TREE]
-const TEMPLE_ROOF := [Color("4f8a8a"), Color("3f7070"), Color("2f5656")]
-const BARRACKS_ROOF := [Color("9a5a3a"), Color("7e4a30"), Color("623a26")]
-const STALL_CANOPY := [[Color("b8322a"), Color("e8dcc4")], [Color("2f5ca8"), Color("e8dcc4")], [Color("3f7a34"), Color("d8b23a")]]
-const COL_DOOR := Color("1a1614")
-const COL_IRON := Color("6d6259")
-const COL_SHIELD := Color("9a2420")
 ## Light buckets the redraw signature quantizes to. Faces are always shaded from the exact sampled
 ## light; these only decide how far the light has to move before a building rebuilds its drawing.
 const SIG_COLOR_STEPS := 48.0
@@ -162,7 +155,7 @@ func _ready() -> void:
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
-	if art.get("torch", false):
+	if not _flame_tips().is_empty():
 		_flame = Node2D.new()
 		_flame.draw.connect(_draw_flame)
 		add_child(_flame)
@@ -402,7 +395,7 @@ func _palette() -> Array:
 		Kind.TORCH:
 			return [Color("4a3a2a"), Color("3a2c20"), Color("2c2118")]
 		Kind.TEMPLE:
-			return [Color("d6cba8"), Color("b8aa86"), Color("998c6a")]
+			return [Color("4a9ba1"), Color("d6c08c"), Color("b49c6a")]
 		Kind.BARRACKS:
 			return [Color("9a9486"), Color("7e796d"), Color("656157")]
 		Kind.MARKET_STALL, Kind.BRIDGE:
@@ -457,16 +450,21 @@ func _draw() -> void:
 			Color(0, 0, 0, 0.25))
 
 	var rubble_top := _collapse >= 0.0
-	var art_drawn := not destroyed and not rubble_top and (kind == Kind.HOUSE or kind in STONEWORK)
+	var art_drawn := not destroyed and not rubble_top and kind in ART_KINDS
 	if art_drawn:
 		var key := _art_key_now()
 		_light_art(light, dir)
 		if key != _art_key or _art_cache.is_empty():
 			ArtKit.record()
-			if kind == Kind.HOUSE:
-				HouseArt.draw(self)
-			else:
-				StoneArt.draw(self)
+			match kind:
+				Kind.HOUSE:
+					HouseArt.draw(self)
+				Kind.TEMPLE, Kind.BARRACKS:
+					CivicArt.draw(self)
+				Kind.MARKET_STALL, Kind.BRIDGE, Kind.FARM_FIELD, Kind.TREE:
+					PropArt.draw(self)
+				_:
+					StoneArt.draw(self)
 			_art_cache = ArtKit.take()
 			_art_key = key
 		else:
@@ -474,11 +472,9 @@ func _draw() -> void:
 	elif kind == Kind.TORCH and not destroyed:
 		_draw_torch(right_c, left_c)
 	elif kind == Kind.TREE:
-		_draw_tree(top_c, right_c, left_c)
+		_draw_stump()
 	else:
 		_draw_box(0.0, height, top_c, right_c, left_c, rubble_top)
-	if not rubble_top and not destroyed and kind in MASONRY:
-		_draw_masonry(right_c, left_c)
 	if not rubble_top and kind in WINDOWED and not art_drawn:
 		_draw_windows(light)
 	_draw_kind_details(top_c, right_c, left_c)
@@ -601,26 +597,6 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 				var u := (i + 0.5) / 6.0
 				var p := _s[3].lerp(_s[2], u) + Vector2(0, -height * 0.55)
 				draw_rect(Rect2(p.round(), Vector2(2, 2)), Color("c89a2a").lerp(COL_CHAR, scorch))
-		Kind.TEMPLE:
-			_draw_roof(TEMPLE_ROOF, 22.0, false)
-			_draw_opening(3, 0.42, 0.58, 16.0, COL_DOOR)
-			var sun := (_s[3].lerp(_s[2], 0.5) + Vector2(0, -height + 8.0)).round()
-			var gold := COL_GOLD.lerp(COL_CHAR, scorch)
-			draw_rect(Rect2(sun + Vector2(-2, -2), Vector2(5, 5)), gold)
-			draw_rect(Rect2(sun + Vector2(-1, -3), Vector2(3, 7)), gold)
-		Kind.BARRACKS:
-			_draw_roof(BARRACKS_ROOF, 12.0, false)
-			_draw_opening(3, 0.45, 0.58, 12.0, COL_DOOR)
-			for u in [0.2, 0.8]:
-				var p := (_s[3].lerp(_s[2], u) + Vector2(0, -height * 0.6)).round()
-				draw_rect(Rect2(p + Vector2(-2, -3), Vector2(4, 5)), COL_SHIELD.lerp(COL_CHAR, scorch))
-				draw_rect(Rect2(p + Vector2(-1, -2), Vector2(2, 2)), COL_GOLD.lerp(COL_CHAR, scorch))
-		Kind.MARKET_STALL:
-			_draw_stall()
-		Kind.BRIDGE:
-			_draw_bridge(top_c)
-		Kind.FARM_FIELD:
-			_draw_furrows(top_c)
 		Kind.CRATES:
 			draw_line(_s[3].lerp(_s[2], 0.5), _s[3].lerp(_s[2], 0.5) + Vector2(0, -height), left_c.darkened(0.3), -1.0)
 			draw_line(_s[1].lerp(_s[2], 0.5), _s[1].lerp(_s[2], 0.5) + Vector2(0, -height), right_c.darkened(0.3), -1.0)
@@ -641,73 +617,6 @@ func _gp(g: Vector2, h: float) -> Vector2:
 	return Iso.ground_to_screen(g) - position + Vector2(0, -h)
 
 
-## Mortar courses and staggered joints on the two visible faces.
-func _draw_masonry(right_c: Color, left_c: Color) -> void:
-	var course := 6.0
-	var rows := int(height / course)
-	for face in [3, 1]:
-		var col: Color = (left_c if face == 3 else right_c).darkened(0.28)
-		var a: Vector2 = _s[face]
-		var b: Vector2 = _s[2]
-		var joints := maxi(int(a.distance_to(b) / 10.0), 1)
-		for row in range(1, rows + 1):
-			var y := -row * course
-			draw_line(a + Vector2(0, y), b + Vector2(0, y), col, -1.0)
-			for j in joints:
-				var u := (j + (0.5 if row % 2 == 0 else 0.0)) / float(joints)
-				if u <= 0.02 or u >= 0.98:
-					continue
-				var p := a.lerp(b, u) + Vector2(0, y)
-				draw_line(p, p + Vector2(0, course - 1), col, -1.0)
-
-
-## Pitched roof in `cols` (lit, mid, dark) rising `rise` px; `timber` adds the house's timber frame on the walls.
-func _draw_roof(cols: Array, rise: float, timber: bool) -> void:
-	# Ridge runs along the longer ground axis; two sloped planes plus gable ends.
-	var r := footprint
-	var along_x := r.size.x >= r.size.y
-	var mid := r.get_center()
-	var p0 := _gp(r.position, height)
-	var p1 := _gp(Vector2(r.end.x, r.position.y), height)
-	var p2 := _gp(r.end, height)
-	var p3 := _gp(Vector2(r.position.x, r.end.y), height)
-	var roof_dark: Color = cols[2].lerp(COL_CHAR, scorch)
-	var roof_mid: Color = cols[1].lerp(COL_CHAR, scorch)
-	var roof_lit: Color = cols[0].lerp(COL_CHAR, scorch)
-	if along_x:
-		var ra := _gp(Vector2(r.position.x, mid.y), height + rise)
-		var rb := _gp(Vector2(r.end.x, mid.y), height + rise)
-		draw_colored_polygon(PackedVector2Array([p0, p1, rb, ra]), roof_dark)
-		draw_colored_polygon(PackedVector2Array([p3, p2, rb, ra]), roof_lit)
-		draw_colored_polygon(PackedVector2Array([p1, p2, rb]), roof_mid)
-		draw_line(ra, rb, roof_lit.lightened(0.2), -1.0)
-		for i in range(1, 5):
-			var u := i / 5.0
-			draw_line(p3.lerp(p2, u), ra.lerp(rb, u), roof_mid, -1.0)
-	else:
-		var ra := _gp(Vector2(mid.x, r.position.y), height + rise)
-		var rb := _gp(Vector2(mid.x, r.end.y), height + rise)
-		draw_colored_polygon(PackedVector2Array([p0, p3, rb, ra]), roof_dark)
-		draw_colored_polygon(PackedVector2Array([p1, p2, rb, ra]), roof_lit)
-		draw_colored_polygon(PackedVector2Array([p3, p2, rb]), roof_mid)
-		draw_line(ra, rb, roof_lit.lightened(0.2), -1.0)
-		for i in range(1, 5):
-			var u := i / 5.0
-			draw_line(p1.lerp(p2, u), ra.lerp(rb, u), roof_mid, -1.0)
-	if not timber:
-		return
-	# Timber frame on the plaster walls.
-	for face in [3, 1]:
-		var a: Vector2 = _s[face]
-		var b: Vector2 = _s[2]
-		var beam := COL_BEAM.lerp(COL_CHAR, scorch)
-		draw_line(a + Vector2(0, -height), b + Vector2(0, -height), beam, -1.0)
-		draw_line(a + Vector2(0, -height * 0.5), b + Vector2(0, -height * 0.5), beam, -1.0)
-		for u in [0.0, 0.5, 1.0]:
-			var p := a.lerp(b, u)
-			draw_line(p, p + Vector2(0, -height), beam, -1.0)
-
-
 func _draw_torch(right_c: Color, left_c: Color) -> void:
 	draw_rect(Rect2(-1, -height, 2, height), left_c)
 	draw_rect(Rect2(0, -height, 1, height), right_c)
@@ -718,85 +627,10 @@ func _draw_torch(right_c: Color, left_c: Color) -> void:
 	draw_rect(Rect2(-1 + (f % 2), -height - 8 - f, 1, 3), COL_FLAME[0])
 
 
-## Dark doorway or arch at the foot of a face (3 = the +y face on the left, 1 = the +x face on the right),
-## spanning u0..u1 along it, h px tall with a pointed top.
-func _draw_opening(face: int, u0: float, u1: float, h: float, col: Color) -> void:
-	var a := _s[face].lerp(_s[2], u0)
-	var b := _s[face].lerp(_s[2], u1)
-	var apex := a.lerp(b, 0.5) + Vector2(0, -h - 3.0)
-	draw_colored_polygon(PackedVector2Array([a, b, b + Vector2(0, -h), apex, a + Vector2(0, -h)]), col)
-
-
-## Striped cloth canopy on poles above the counter; the stripe colours come from the stall's seed.
-func _draw_stall() -> void:
-	var r := footprint
-	var h := height + 9.0
-	var cloth: Array = STALL_CANOPY[rng.seed % STALL_CANOPY.size()]
-	var pole := COL_BEAM.lerp(COL_CHAR, scorch)
-	for corner in [Vector2(r.position.x, r.end.y), r.end, Vector2(r.end.x, r.position.y)]:
-		draw_line(_gp(corner, height), _gp(corner, h), pole, -1.0)
-	var stripes := 4
-	for i in stripes:
-		var x0 := lerpf(r.position.x - 0.08, r.end.x + 0.08, float(i) / stripes)
-		var x1 := lerpf(r.position.x - 0.08, r.end.x + 0.08, float(i + 1) / stripes)
-		var col: Color = cloth[i % 2].lerp(COL_CHAR, scorch)
-		draw_colored_polygon(PackedVector2Array([
-			_gp(Vector2(x0, r.position.y - 0.08), h), _gp(Vector2(x1, r.position.y - 0.08), h),
-			_gp(Vector2(x1, r.end.y + 0.08), h - 3.0), _gp(Vector2(x0, r.end.y + 0.08), h - 3.0)]), col)
-
-
-## Deck planks across the span and a rail on posts along both long sides.
-func _draw_bridge(top_c: Color) -> void:
-	var r := footprint
-	var plank := top_c.darkened(0.25)
-	var along_y := r.size.y >= r.size.x
-	var span := r.size.y if along_y else r.size.x
-	var n := int(span / 0.3)
-	for i in range(1, n):
-		var k := float(i) / n
-		if along_y:
-			var y := lerpf(r.position.y, r.end.y, k)
-			draw_line(_gp(Vector2(r.position.x, y), height), _gp(Vector2(r.end.x, y), height), plank, -1.0)
-		else:
-			var x := lerpf(r.position.x, r.end.x, k)
-			draw_line(_gp(Vector2(x, r.position.y), height), _gp(Vector2(x, r.end.y), height), plank, -1.0)
-	var rail := COL_BEAM.lerp(COL_CHAR, scorch)
-	var sides := [[r.position, Vector2(r.position.x, r.end.y)], [Vector2(r.end.x, r.position.y), r.end]] if along_y \
-		else [[r.position, Vector2(r.end.x, r.position.y)], [Vector2(r.position.x, r.end.y), r.end]]
-	for side in sides:
-		var a: Vector2 = side[0]
-		var b: Vector2 = side[1]
-		draw_line(_gp(a, height + 5.0), _gp(b, height + 5.0), rail, -1.0)
-		var posts := maxi(int(a.distance_to(b) / 0.6), 1)
-		for i in posts + 1:
-			var p := a.lerp(b, float(i) / posts)
-			draw_line(_gp(p, height), _gp(p, height + 5.0), rail, -1.0)
-
-
-## Crop rows across a field.
-func _draw_furrows(top_c: Color) -> void:
-	var r := footprint
-	var col := top_c.darkened(0.25)
-	var rows := int(r.size.y / 0.22)
-	for i in range(1, rows):
-		var y := lerpf(r.position.y, r.end.y, float(i) / rows)
-		draw_line(_gp(Vector2(r.position.x, y), height), _gp(Vector2(r.end.x, y), height), col, -1.0)
-
-
-## Round pixel tree: a trunk and a lumpy three-tone canopy; once felled, just the stump (its leaves are the rubble).
-func _draw_tree(top_c: Color, right_c: Color, left_c: Color) -> void:
+## A felled tree's stump (its leaves are the rubble).
+func _draw_stump() -> void:
 	var base := _gp(center(), 0.0).round()
-	var bark := COL_BEAM.lerp(COL_CHAR, scorch)
-	if destroyed:
-		draw_rect(Rect2(base + Vector2(-1, -4), Vector2(3, 4)), bark)
-		return
-	var trunk_h := roundf(max_height * 0.35)
-	draw_rect(Rect2(base + Vector2(-1, -trunk_h), Vector2(3, trunk_h)), bark)
-	var r := roundf(max_height * 0.3)
-	var c := base + Vector2(0, -trunk_h - r * 0.7)
-	draw_circle(c + Vector2(-2, 2), r, left_c)
-	draw_circle(c + Vector2(2, 1), r * 0.85, right_c)
-	draw_circle(c + Vector2(1, -2), r * 0.55, top_c)
+	draw_rect(Rect2(base + Vector2(-1, -4), Vector2(3, 4)), COL_BEAM.lerp(COL_CHAR, scorch))
 
 
 func _build_fantasy_windows() -> void:
@@ -832,13 +666,26 @@ func _draw_banner() -> void:
 	StoneArt.draw_banners(self, _banner, _time, maxf(lights.ambient, 0.35) if lights else 1.0)
 
 
-## A wall torch's flame on the walkway, flickering in 8 Hz steps.
+## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace.
+func _flame_tips() -> Array[Vector2]:
+	if art.get("torch", false):
+		return [StoneArt.torch_tip(self)]
+	if kind == Kind.BRIDGE:
+		return PropArt.flame_tips(self)
+	if kind == Kind.BARRACKS:
+		return CivicArt.flame_tips(self)
+	return []
+
+
+## The art's flames, flickering in 8 Hz steps, each a little out of step with the others.
 func _draw_flame() -> void:
-	var tip := StoneArt.torch_tip(self)
-	var f := int(_time * 8.0 + float(rng.seed % 5)) % 3
-	_flame.draw_rect(Rect2(tip + Vector2(-2, -3), Vector2(4, 3)), COL_FLAME[2])
-	_flame.draw_rect(Rect2(tip + Vector2(-1, -5 - f % 2), Vector2(3, 4)), COL_FLAME[1])
-	_flame.draw_rect(Rect2(tip + Vector2(-1 + (f % 2), -7 - f), Vector2(1, 3)), COL_FLAME[0])
+	var tips := _flame_tips()
+	for i in tips.size():
+		var tip: Vector2 = tips[i]
+		var f := int(_time * 8.0 + float((rng.seed + i * 3) % 5)) % 3
+		_flame.draw_rect(Rect2(tip + Vector2(-2, -3), Vector2(4, 3)), COL_FLAME[2])
+		_flame.draw_rect(Rect2(tip + Vector2(-1, -5 - f % 2), Vector2(3, 4)), COL_FLAME[1])
+		_flame.draw_rect(Rect2(tip + Vector2(-1 + (f % 2), -7 - f), Vector2(1, 3)), COL_FLAME[0])
 
 
 func _build_cracks() -> void:

@@ -57,3 +57,29 @@ static func run(t) -> void:
 	town.teardown()
 	town.free()
 	env.free()
+
+	var species := {}
+	var crops := {}
+	for i in 40:
+		var tr := Structure.new().setup(Rect2(0, 0, 0.7, 0.7), 26.0, Structure.Kind.TREE, i * 104729)
+		species[tr.art.species] = true
+		tr.free()
+		var fd := Structure.new().setup(Rect2(0, 0, 2.6, 1.8), 3.0, Structure.Kind.FARM_FIELD, i * 7907)
+		crops[fd.art.crop] = true
+		fd.free()
+	t.check(species.size() == 2, "trees come as oaks and pines")
+	t.check(crops.size() == 2, "fields come as wheat and cabbages")
+	var bar := Structure.new().setup(Rect2(0, 0, 4.2, 1.9), 36.0, Structure.Kind.BARRACKS, 3)
+	var forge: Rect2 = bar.art.forge
+	t.check(bar.footprint.encloses(forge) and forge.end == bar.footprint.end, "the barracks forge stands in its east corner")
+	t.check(bar._flame_tips().size() == 1, "the forge's furnace flickers")
+	bar.free()
+	var br := Structure.new().setup(Rect2(0, 0, 2.0, 2.4), 6.0, Structure.Kind.BRIDGE, 4)
+	t.check(br._flame_tips().size() == 4, "the bridge carries four torches")
+	br.free()
+	var cloths := {}
+	for i in 12:
+		var st := Structure.new().setup(Rect2(0, 0, 0.9, 0.7), 10.0, Structure.Kind.MARKET_STALL, i)
+		cloths[st.art.cloth] = true
+		st.free()
+	t.check(cloths.size() == 3, "stalls come in all three cloths")

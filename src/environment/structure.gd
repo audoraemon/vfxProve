@@ -395,7 +395,7 @@ func _palette() -> Array:
 		Kind.TORCH:
 			return [Color("4a3a2a"), Color("3a2c20"), Color("2c2118")]
 		Kind.TEMPLE:
-			return [Color("4a9ba1"), Color("d6c08c"), Color("b49c6a")]
+			return [Color("a8926a"), Color("d6c08c"), Color("b49c6a")]
 		Kind.BARRACKS:
 			return [Color("9a9486"), Color("7e796d"), Color("656157")]
 		Kind.MARKET_STALL, Kind.BRIDGE:

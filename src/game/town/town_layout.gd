@@ -65,8 +65,10 @@ const HOUSE_DEEP := Vector2(0.75, 0.95)
 ## Open ground kept between a cottage and either street.
 const STREET_CLEAR := 0.95
 ## A garden plot's sides (ground units), and the open ground kept between it and either street.
-const GARDEN_LONG := 1.1
-const GARDEN_SHORT := 0.55
+const GARDEN_LONG := 1.0
+const GARDEN_SHORT := 0.45
+## Gap between a garden and its cottage.
+const GARDEN_GAP := 0.18
 const GARDEN_STREET_CLEAR := 0.7
 ## The tavern faces the market across the west street; the blacksmith works against the west wall at the street's
 ## end. Both are homes too (role &"house"), drawn by their own art (tag).
@@ -215,25 +217,35 @@ static func gardens() -> Array[Rect2]:
 		blocks.append((d[0] as Rect2).grow(-0.05))
 	var hs := houses()
 	for i in hs.size():
-		if _unit(i * 11 + 3) > 0.7:
+		if _unit(i * 11 + 3) > 0.55:
 			continue
 		var h := hs[i]
-		var south := _unit(i * 11 + 4) < 0.5
-		var plot := Rect2(Vector2(h.position.x - 0.05, h.end.y + 0.3), Vector2(minf(h.size.x + 0.3, GARDEN_LONG), GARDEN_SHORT)) \
-			if south else Rect2(Vector2(h.end.x + 0.3, h.position.y - 0.05), Vector2(GARDEN_SHORT, minf(h.size.y + 0.3, GARDEN_LONG)))
-		var ok := false
-		for b in blocks:
-			ok = ok or b.encloses(plot)
-		for road: Rect2 in ROADS:
-			ok = ok and not road.grow(GARDEN_STREET_CLEAR).intersects(plot)
-		for o in others:
-			ok = ok and not o.grow(0.12).intersects(plot)
-		for t in trees:
-			ok = ok and not t.intersects(plot)
-		for g in out:
-			ok = ok and not g.grow(0.45).intersects(plot)
-		if ok:
-			out.append(plot)
+		var long_x := minf(h.size.x + 0.2, GARDEN_LONG)
+		var long_y := minf(h.size.y + 0.2, GARDEN_LONG)
+		# Try the sides facing the camera first (south, east, in a hashed order), where a roof cannot hide the plot.
+		var sides := [
+			Rect2(Vector2(h.position.x - 0.05, h.end.y + GARDEN_GAP), Vector2(long_x, GARDEN_SHORT)),
+			Rect2(Vector2(h.end.x + GARDEN_GAP, h.position.y - 0.05), Vector2(GARDEN_SHORT, long_y)),
+			Rect2(Vector2(h.position.x - 0.05, h.position.y - GARDEN_GAP - GARDEN_SHORT), Vector2(long_x, GARDEN_SHORT)),
+			Rect2(Vector2(h.position.x - GARDEN_GAP - GARDEN_SHORT, h.position.y - 0.05), Vector2(GARDEN_SHORT, long_y)),
+		]
+		var order := [0, 1, 3, 2] if _unit(i * 11 + 4) < 0.5 else [1, 0, 3, 2]
+		for k in 4:
+			var plot: Rect2 = sides[order[k]]
+			var ok := false
+			for bl in blocks:
+				ok = ok or bl.encloses(plot)
+			for road: Rect2 in ROADS:
+				ok = ok and not road.grow(GARDEN_STREET_CLEAR).intersects(plot)
+			for o in others:
+				ok = ok and not o.grow(0.1).intersects(plot)
+			for t in trees:
+				ok = ok and not t.intersects(plot)
+			for g in out:
+				ok = ok and not g.grow(0.45).intersects(plot)
+			if ok:
+				out.append(plot)
+				break
 	return out
 
 

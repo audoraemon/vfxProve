@@ -158,3 +158,68 @@ tag `workshop`), farmhouses (HouseArt, `farm` role variants).
 - Bench beside `prototype-v0.02` in the same hour.
 - `--mission-test` and `--crowd-test` recorded.
 - Append "Changes made while executing" and tag `kak-scale-v1`.
+
+## Changes made while executing
+
+**Phase 0:**
+- `tools/dev/tune_components.py` adds a hue guard: no tint channel strays more than 0.06 from the tint's mean. Without it the score turned the reeds blue to match the water in their crop.
+- It writes `art_tuning.json` with LF endings.
+
+**Phase 1:**
+- Cottages keep 0.95 clear of the streets.
+- Gate plazas stay clear for the queue. The gate-queue test counts a person within 0.6 of a spacing of their spot as settled.
+- Wall towers are nudged off the streets.
+- The ground inside the gates is cobbled.
+
+**Crowd performance** (a checkpoint decision, not in the plan). Doubling the crowd halved the frame rate. Three fixes:
+- LightField keeps its static lights in a 3-unit cell grid.
+- People off screen are updated every third frame.
+- A person's position is re-sent only when it changes.
+
+Result: mission 63 → 77 fps, Cinderfall 28 → 35 fps.
+
+**Phase 2:**
+- The river widened to 4.4 and the stone bridge grew to 7.6. The market grew to 20 stalls.
+- Not built: the gatehouse art (the gates stay between two towers), tavern variants and farmhouse variants. The existing tavern and barn art is used instead.
+
+**Phase 3:**
+- The windmill is a 0.9 × 0.9 tower, 60 px high. The watermill is `Rect2(-6.9, 25.0, 2.4, 1.9)`, 34 px high. Its wheel turns against the front (left) wall over a mill race.
+- `ArtKit.fan()` draws convex polygons with more than 4 points. `poly()` only fills the first triangle of those.
+- Sheep, cows, carts, the ship and the boats are decor drawn at the reference's size. The animals are static, with no idle frames.
+- The west branch's head has a waterfall. Hay and the extra rocks were not added.
+- Pasture animals sit on a jittered 3 × 3 grid, so none of them overlap.
+
+**Phase 4 results** (2026-09-27):
+
+Component match: ALL 90%. By group:
+
+| Group | Match |
+|---|---|
+| Buildings | 91% |
+| Fortifications | 93% |
+| Land & nature | 90% |
+| Props | 87% |
+| Scale buildings | 87% |
+| Countryside | 89% |
+
+Countryside components, in order: windmill 89%, watermill 85%, ship 85%, boat 90%, sheep 88%, cow 93%, cart 96%.
+
+Layout match: 15 of 15 landmarks within 1.5 units.
+
+Bench against `prototype-v0.02`, same hour:
+
+| Scene | v0.02 fps | Now fps |
+|---|---|---|
+| Mission | 106.7 | 72.7 |
+| Cinderfall | 39.5 | 34.8 |
+
+The spec estimated ~75 and ~28.
+
+Tests and scripted runs:
+- 712 checks. The digest is unchanged. FLOW 24/24.
+- `--mission-test`: `dp=21.5 buildings=58 citizens=188 escaped=11 alarm=100 stability=51% citadel=0%`.
+- `--crowd-test`: `citizens=167 escaped=16 alarm=93`. Queues reach about 130 at the two gates.
+
+Escape limit (unchanged at 76):
+- Escapes flow at about 0.9/s once the queues form.
+- At that rate the limit falls about 106 s into the 360 s mission, or 29% of the way through. In v0.02 it fell about 69 s into 240 s, also 29%.

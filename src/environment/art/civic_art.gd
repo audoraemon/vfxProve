@@ -14,8 +14,8 @@ const OVERHANG := 0.12
 const DROP := 3.0
 const BOARD := 2.0
 ## The barracks forge chimney: its ground square and how far it stands above the ridge.
-const FORGE_SIDE := 0.6
-const FORGE_UP := 10.0
+const FORGE_SIDE := 0.5
+const FORGE_UP := 18.0
 
 
 static func plan(s: Structure) -> Dictionary:
@@ -295,10 +295,8 @@ static func _forge(s: Structure, roof_top: float) -> void:
 	var gr := Vector2(g1.x, g0.y)
 	var top := roof_top + FORGE_UP
 	var dark := [ArtKit.STONE[0].darkened(0.15), ArtKit.STONE[1].darkened(0.15)]
-	ArtKit.poly(PackedVector2Array([s._gp(gl, 0.0), s._gp(g1, 0.0), s._gp(g1, top), s._gp(gl, top)]), dark[1],
-		ArtKit.LIT_LEFT)
-	ArtKit.poly(PackedVector2Array([s._gp(gr, 0.0), s._gp(g1, 0.0), s._gp(g1, top), s._gp(gr, top)]), dark[0],
-		ArtKit.LIT_RIGHT)
+	_box_masonry(s, gl, g1, 0.0, top, dark[1], ArtKit.LIT_LEFT, 170)
+	_box_masonry(s, gr, g1, 0.0, top, dark[0], ArtKit.LIT_RIGHT, 190)
 	# A narrower stack above the firebox.
 	var inset := 0.14
 	var s0 := g0 + Vector2(inset, inset)
@@ -327,6 +325,33 @@ static func _forge(s: Structure, roof_top: float) -> void:
 		ArtKit.line(s._gp(gl, hh), s._gp(g1, hh), ArtKit.ink(0.3))
 		ArtKit.line(s._gp(g1, hh), s._gp(gr, hh), ArtKit.ink(0.3))
 	ArtKit.line(s._gp(g1, 0.0), s._gp(g1, top), ArtKit.ink(0.15, true))
+	ArtKit.line(s._gp(gl, 0.0), s._gp(gl, top + 8.0), ArtKit.ink(0.5))
+	ArtKit.line(s._gp(gr, 0.0), s._gp(gr, top + 8.0), ArtKit.ink(0.5))
+
+
+## Block masonry on a free-standing vertical face from ground point a to b (b nearer the camera), h0..h1.
+static func _box_masonry(s: Structure, a: Vector2, b: Vector2, h0: float, h1: float, base: Color, code: float,
+		salt: int) -> void:
+	ArtKit.poly(PackedVector2Array([s._gp(a, h0), s._gp(b, h0), s._gp(b, h1), s._gp(a, h1)]), base.darkened(0.3), code)
+	var px := maxf(absf(s._gp(b, 0.0).x - s._gp(a, 0.0).x), 1.0)
+	var rows := ceili((h1 - h0) / 5.0)
+	for row in rows:
+		var y0 := h0 + row * 5.0
+		var y1 := minf(y0 + 5.0, h1)
+		var x := -4.0 if row % 2 == 1 else 0.0
+		var i := 0
+		while x < px:
+			var xa := maxf(x, 0.0)
+			var xb := minf(x + 8.0, px)
+			if xb - xa >= 2.0:
+				var t := (ArtKit.hash01(s.rng.seed, salt + row * 31 + i) - 0.5) * 0.2
+				var bc := base.lightened(t) if t > 0.0 else base.darkened(-t)
+				var ua := (xa + (1.0 if xa > 0.0 else 0.0)) / px
+				var ub := xb / px
+				ArtKit.poly(PackedVector2Array([s._gp(a.lerp(b, ua), y0 + 1.0), s._gp(a.lerp(b, ub), y0 + 1.0),
+					s._gp(a.lerp(b, ub), y1), s._gp(a.lerp(b, ua), y1)]), bc, code)
+			x += 8.0
+			i += 1
 
 
 # --- Shared roof ------------------------------------------------------------------

@@ -17,10 +17,10 @@ const POST_IN := 0.08
 const POST_UP := 11.0
 const ROPE := Color(0.24, 0.16, 0.1, 0.9)
 ## Fence posts: spacing along an edge (ground units) and height (px).
-const FENCE_STEP := 0.45
-const FENCE_H := 6.0
+const FENCE_STEP := 0.36
+const FENCE_H := 8.0
 ## Wheat stands this far above the soil (px).
-const WHEAT_H := 5.0
+const WHEAT_H := 6.0
 
 
 static func plan(s: Structure) -> Dictionary:
@@ -198,43 +198,50 @@ static func _field(s: Structure) -> void:
 
 static func _wheat(s: Structure, r: Rect2, h: float) -> void:
 	var top := h + WHEAT_H
-	_box(s, r.position, r.end, h, top, ArtKit.WHEAT[2], ArtKit.WHEAT[1], ArtKit.WHEAT[0])
-	# Ears on top: short strokes in a loose grid, dark and light.
-	var step := 0.11
+	_box(s, r.position, r.end, h, top, ArtKit.WHEAT[2], ArtKit.WHEAT[1], ArtKit.WHEAT[1])
+	# Ears in loose rows: each a light tuft with a dark shadow under it, some leaning, some paler.
+	var step := 0.12
 	var nx := int(r.size.x / step)
 	var ny := int(r.size.y / step)
 	for j in ny:
 		for i in nx:
-			var jit := Vector2(ArtKit.hash01(s.rng.seed, 200 + i * 31 + j) - 0.5, ArtKit.hash01(s.rng.seed, 900 + i * 17 + j) - 0.5)
-			var g := r.position + Vector2((i + 0.5) * step, (j + 0.5) * step) + jit * step * 0.6
+			var n := j * 97 + i
+			var jit := Vector2(ArtKit.hash01(s.rng.seed, 200 + n) - 0.5, ArtKit.hash01(s.rng.seed, 900 + n) - 0.5)
+			var g := r.position + Vector2((i + 0.5) * step, (j + 0.5) * step) + jit * step * 0.5
 			var p := s._gp(g, top)
-			ArtKit.line(p, p + Vector2(0, -2), ArtKit.ink(0.22) if (i + j) % 2 == 0 else ArtKit.ink(0.25, true))
-	# Stalks down the two visible sides, poking above the top edge.
+			var lean := roundf((ArtKit.hash01(s.rng.seed, 1600 + n) - 0.5) * 2.0)
+			ArtKit.poly(PackedVector2Array([p + Vector2(-2, 1), p + Vector2(2, 1), p + Vector2(2, 2), p + Vector2(-2, 2)]),
+				ArtKit.WHEAT[2], ArtKit.LIT_TOP)
+			var tone: Color = ArtKit.WHEAT[0] if ArtKit.hash01(s.rng.seed, 2300 + n) < 0.7 else ArtKit.WHEAT[0].lightened(0.2)
+			ArtKit.blob(p + Vector2(lean * 0.5, -1), Vector2(2.2, 1.8), tone, ArtKit.LIT_TOP, 6)
+			ArtKit.poly(PackedVector2Array([p + Vector2(lean, -4), p + Vector2(lean + 1, -4), p + Vector2(1, -1),
+				p + Vector2(0, -1)]), ArtKit.WHEAT[1], ArtKit.LIT_TOP)
+	# Stalks down the two visible sides, poking above the top edge as a ragged fringe.
 	for face in [ArtKit.LEFT, ArtKit.RIGHT]:
 		var a := s._gp(Vector2(r.position.x, r.end.y) if face == ArtKit.LEFT else Vector2(r.end.x, r.position.y), 0.0)
 		var b := s._gp(r.end, 0.0)
 		var cols := int(absf(b.x - a.x) / 2.0)
 		for i in cols:
 			var p := a.lerp(b, (i + 0.5) / cols)
-			var poke := 1.0 + float(ArtKit.pick(s.rng.seed, 300 + i + face * 50, 3))
+			var poke := 1.0 + float(ArtKit.pick(s.rng.seed, 300 + i + face * 50, 4))
 			ArtKit.line(p + Vector2(0, -h - 1.0), p + Vector2(0, -top - poke),
-				ArtKit.ink(0.2) if i % 2 == 0 else ArtKit.ink(0.2, true))
+				ArtKit.ink(0.25) if i % 2 == 0 else ArtKit.ink(0.25, true))
 
 
 static func _cabbages(s: Structure, r: Rect2, h: float) -> void:
-	var rows := int(r.size.y / 0.3)
+	var rows := int(r.size.y / 0.24)
 	for j in rows:
 		var y := r.position.y + (j + 0.5) * r.size.y / rows
 		ArtKit.line(s._gp(Vector2(r.position.x, y + 0.1), h), s._gp(Vector2(r.end.x, y + 0.1), h), ArtKit.ink(0.3))
-		var n := int(r.size.x / 0.26)
+		var n := int(r.size.x / 0.22)
 		for i in n:
 			var g := Vector2(r.position.x + (i + 0.5) * r.size.x / n, y)
 			var p := s._gp(g, h)
-			ArtKit.blob(p + Vector2(0.5, 0), Vector2(3, 1.8), ArtKit.LEAF[2], ArtKit.LIT_TOP, 6)
-			ArtKit.blob(p + Vector2(0, -1), Vector2(2.6, 1.8), ArtKit.LEAF[1], ArtKit.LIT_TOP, 6)
-			ArtKit.blob(p + Vector2(-1, -2), Vector2(1.4, 0.9), ArtKit.LEAF[0], ArtKit.LIT_TOP, 6)
-			if ArtKit.hash01(s.rng.seed, 400 + j * 37 + i) < 0.3:
-				ArtKit.poly(PackedVector2Array([p + Vector2(1, -3), p + Vector2(2, -3), p + Vector2(2, -2), p + Vector2(1, -2)]),
+			ArtKit.blob(p + Vector2(0.5, 0), Vector2(4, 2.6), ArtKit.LEAF[2].darkened(0.2), ArtKit.LIT_TOP, 7)
+			ArtKit.blob(p + Vector2(0, -2), Vector2(3.6, 2.6), ArtKit.LEAF[1], ArtKit.LIT_TOP, 7)
+			ArtKit.blob(p + Vector2(-1, -3), Vector2(2, 1.3), ArtKit.LEAF[0], ArtKit.LIT_TOP, 6)
+			if ArtKit.hash01(s.rng.seed, 400 + j * 37 + i) < 0.45:
+				ArtKit.poly(PackedVector2Array([p + Vector2(1, -4), p + Vector2(3, -4), p + Vector2(3, -3), p + Vector2(1, -3)]),
 					ArtKit.PRODUCE[3], ArtKit.LIT_TOP)
 
 
@@ -372,6 +379,8 @@ static func _post(s: Structure, g: Vector2, h0: float, h1: float) -> void:
 	var q := s._gp(g, h1)
 	ArtKit.poly(PackedVector2Array([p + Vector2(-1, 0), p + Vector2(1, 0), q + Vector2(1, 0), q + Vector2(-1, 0)]),
 		ArtKit.WOOD[2], ArtKit.LIT_RIGHT)
+	ArtKit.poly(PackedVector2Array([q + Vector2(-1, -1), q + Vector2(1, -1), q + Vector2(1, 0), q + Vector2(-1, 0)]),
+		ArtKit.WOOD[1], ArtKit.LIT_TOP)
 	ArtKit.poly(PackedVector2Array([p + Vector2(-1, 0), p, q, q + Vector2(-1, 0)]), ArtKit.WOOD[2].darkened(0.25),
 		ArtKit.LIT_LEFT)
 

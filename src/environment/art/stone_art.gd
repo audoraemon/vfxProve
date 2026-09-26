@@ -12,12 +12,12 @@ extends RefCounted
 ## Colours are unlit: the structure's shader lights them (see ArtKit).
 
 ## Block course height and length, px; merlon height, px.
-const COURSE := 6.0
-const BLOCK := 12.0
-const MERLON_H := 7.0
+const COURSE := 5.0
+const BLOCK := 9.0
+const MERLON_H := 5.0
 ## Merlon size (ground units) on walls and gates, and on towers and keeps.
-const MERLON_WALL := 0.26
-const MERLON_TOWER := 0.34
+const MERLON_WALL := 0.17
+const MERLON_TOWER := 0.24
 ## A wall wide enough (px) for a banner.
 const BANNER_FACE := 36.0
 
@@ -52,10 +52,10 @@ static func draw(s: Structure) -> void:
 
 	_draw_slits(s)
 	if s.kind == Structure.Kind.GATE:
-		_draw_portcullis(s, ArtKit.LEFT if s.footprint.size.x >= s.footprint.size.y else ArtKit.RIGHT, 0.3, 0.7,
-			roundf(h * 0.6), face_c, false)
+		_draw_portcullis(s, ArtKit.LEFT if s.footprint.size.x >= s.footprint.size.y else ArtKit.RIGHT, 0.32, 0.68,
+			roundf(h * 0.62), face_c)
 	elif s.art_tag == &"gate":
-		_draw_portcullis(s, ArtKit.LEFT, 0.36, 0.64, roundf(h * 0.55), face_c, true)
+		_draw_arched_door(s, ArtKit.LEFT, 0.5, 12.0, roundf(h * 0.5))
 	if s.art.get("torch", false):
 		var base := s._gp(s.center(), h)
 		ArtKit.poly(PackedVector2Array([base + Vector2(-1, 0), base + Vector2(1, 0), base + Vector2(1, -7),
@@ -200,22 +200,38 @@ static func _draw_slits(s: Structure) -> void:
 			ArtKit.face_quad(s, face, u - 1.0 / px, u + 1.0 / px, hh - 5.0, hh, ArtKit.WINDOW_OFF)
 
 
-## A black gateway with an iron portcullis, a stone lintel and jambs; `steps` adds stairs up to it.
-static func _draw_portcullis(s: Structure, face: int, u0: float, u1: float, tall: float, face_c: Dictionary,
-		steps: bool) -> void:
+## A dark gateway in the wall with a lighter stone surround and a raised portcullis's faint bars.
+static func _draw_portcullis(s: Structure, face: int, u0: float, u1: float, tall: float, face_c: Dictionary) -> void:
 	var px := maxf(ArtKit.face_px(s, face), 1.0)
 	var fc: Color = face_c[face]
-	var base := 3.0 if steps else 0.0
-	ArtKit.face_quad(s, face, u0 - 2.0 / px, u1 + 2.0 / px, base, tall + base + 3.0, fc.lightened(0.12))
-	ArtKit.face_quad(s, face, u0, u1, base, tall + base, ArtKit.VOID, ArtKit.EMIT)
-	var bars := maxi(int((u1 - u0) * px / 5.0), 2)
+	ArtKit.face_quad(s, face, u0 - 2.0 / px, u1 + 2.0 / px, 0.0, tall + 2.0, fc.lightened(0.14))
+	ArtKit.face_quad(s, face, u0, u1, 0.0, tall, ArtKit.VOID, ArtKit.EMIT)
+	var bars := maxi(int((u1 - u0) * px / 7.0), 2)
 	for i in range(1, bars):
 		var u := lerpf(u0, u1, float(i) / bars)
-		ArtKit.face_line(s, face, u, base + 1.0, u, tall + base, ArtKit.IRON)
-	ArtKit.face_line(s, face, u0, base + tall * 0.55, u1, base + tall * 0.55, ArtKit.IRON)
-	ArtKit.face_line(s, face, u0, base + tall * 0.2, u1, base + tall * 0.2, ArtKit.IRON.darkened(0.3))
-	if steps:
-		# Three stone steps up to the sill, each a little narrower than the one below.
-		for k in 3:
-			var grow := (3.0 - k) / px
-			ArtKit.face_quad(s, face, u0 - grow, u1 + grow, k, k + 1.0, fc.lightened(0.2 - k * 0.05))
+		ArtKit.face_line(s, face, u, tall * 0.35, u, tall, Color(0.35, 0.3, 0.28, 0.9))
+	ArtKit.face_line(s, face, u0, tall * 0.62, u1, tall * 0.62, Color(0.35, 0.3, 0.28, 0.9))
+	ArtKit.face_line(s, face, u0, tall * 0.35, u1, tall * 0.35, Color(0.3, 0.25, 0.22, 0.9))
+
+
+## The Citadel's great door: a dark arch in a pale surround, up a wide flight of steps.
+static func _draw_arched_door(s: Structure, face: int, u: float, w: float, tall: float) -> void:
+	var px := maxf(ArtKit.face_px(s, face), 1.0)
+	var du := w * 0.5 / px
+	var base := 5.0
+	var jamb := ArtKit.STONE[0].lightened(0.16)
+	var code := ArtKit.face_code(face)
+	ArtKit.face_quad(s, face, u - du - 3.0 / px, u + du + 3.0 / px, base, base + tall, jamb)
+	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, face, u - du - 3.0 / px, base + tall),
+		ArtKit.face_pt(s, face, u + du + 3.0 / px, base + tall), ArtKit.face_pt(s, face, u, base + tall + w * 0.6 + 3.0)]),
+		jamb, code)
+	ArtKit.face_quad(s, face, u - du, u + du, base, base + tall, ArtKit.VOID, ArtKit.EMIT)
+	ArtKit.poly(PackedVector2Array([ArtKit.face_pt(s, face, u - du, base + tall), ArtKit.face_pt(s, face, u + du, base + tall),
+		ArtKit.face_pt(s, face, u, base + tall + w * 0.6)]), ArtKit.VOID, ArtKit.EMIT)
+	ArtKit.face_line(s, face, u, base, u, base + tall, Color(0.3, 0.22, 0.16, 0.8))
+	# Five steps, each wider than the one above, reaching out of the wall's foot.
+	for k in 5:
+		var grow := (5.0 - k) * 3.0 / px
+		ArtKit.face_quad(s, face, u - du - 3.0 / px - grow, u + du + 3.0 / px + grow, k, k + 1.0,
+			ArtKit.STONE[0].lightened(0.12 - k * 0.02))
+		ArtKit.face_line(s, face, u - du - 3.0 / px - grow, k + 1.0, u + du + 3.0 / px + grow, k + 1.0, ArtKit.ink(0.3))

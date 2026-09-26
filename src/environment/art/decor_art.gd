@@ -214,9 +214,9 @@ static func _signpost(o: Vector2) -> void:
 
 
 static func _reeds(o: Vector2, seed_value: int) -> void:
-	for i in 7:
-		var x := (ArtKit.hash01(seed_value, 60 + i) - 0.5) * 10.0
-		var tall := 5.0 + ArtKit.hash01(seed_value, 70 + i) * 6.0
+	for i in 10:
+		var x := (ArtKit.hash01(seed_value, 60 + i) - 0.5) * 12.0
+		var tall := 6.0 + ArtKit.hash01(seed_value, 70 + i) * 8.0
 		var col: Color = ArtKit.LEAF[i % 3]
 		_rect(o + Vector2(roundf(x), -tall), 1, tall, col)
 		if i % 3 == 0:

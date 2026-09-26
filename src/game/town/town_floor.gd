@@ -20,10 +20,10 @@ const FOREST := [Color("6a7f30"), Color("5c722b"), Color("4f6527"), Color("43582
 const EARTH := [Color("b09468"), Color("a4885e"), Color("987c55"), Color("8a704c")]
 ## Dirt trails and roads [light, mid, dark].
 const DIRT := [Color("c49a62"), Color("b08a56"), Color("94744a")]
-const COBBLE := [Color("c2b09a"), Color("b7a591"), Color("a5927e"), Color("98806a")]
-const COBBLE_MORTAR := Color("6a5c52")
-const FLAG := [Color("c4b39c"), Color("bba88f"), Color("b09c83"), Color("a8937a")]
-const FLAG_MORTAR := Color("7e6a5c")
+const COBBLE := [Color("c4baac"), Color("b8ad9e"), Color("aa9f90"), Color("9c9082")]
+const COBBLE_MORTAR := Color("6e6458")
+const FLAG := [Color("c8c2b8"), Color("bdb6ac"), Color("b1a99e"), Color("a69e93")]
+const FLAG_MORTAR := Color("7a7268")
 const SAND := [Color("cdb07e"), Color("c4a674"), Color("b89a68")]
 const WATER := [Color("3a82b4"), Color("2b70a4"), Color("225f93")]
 const BANK := Color("4a4a38")
@@ -150,15 +150,17 @@ static func _iso_bounds(r: Rect2) -> Rect2:
 
 func paint_ground(ci: CanvasItem) -> void:
 	_meadow(ci)
-	_patches(ci, TownLayout.TOWN, EARTH, 0.5)
+	# Inside the walls the lanes are cobbled throughout; each house stands in its own packed-earth yard.
+	_paving(ci, TownLayout.TOWN, COBBLE, COBBLE_MORTAR, 0.2)
+	for h: Rect2 in TownLayout.houses():
+		_yard(ci, h.grow(0.3))
+	_yard(ci, TownLayout.TEMPLE.grow(0.35))
 	_patches(ci, FARM_BAND, DIRT, 0.3)
 	for tr in TRAILS:
 		_trail(ci, tr, 0.34)
 	for tr in ROAD_TRAILS:
 		_trail(ci, tr, 0.5)
 	_patches(ci, TownLayout.BARRACKS_YARD, SAND, 0.3)
-	for road: Rect2 in TownLayout.ROADS:
-		_paving(ci, road.intersection(TownLayout.TOWN), COBBLE, COBBLE_MORTAR, 0.2)
 	_paving(ci, TownLayout.MARKET_SQUARE, FLAG, FLAG_MORTAR, 0.42)
 	_paving(ci, TownLayout.CITADEL_COURT, FLAG, FLAG_MORTAR, 0.42)
 	_river(ci)
@@ -226,6 +228,26 @@ func _patches(ci: CanvasItem, r: Rect2, pal: Array, cell: float) -> void:
 			var sq := Rect2(r.position + Vector2(i, j) * cell, Vector2(cell, cell)).intersection(r)
 			var v := clampf(_noise(sq.get_center() * 1.3 + Vector2(40, 40)) * 1.3 - 0.15, 0.0, 0.999)
 			ci.draw_rect(sq, pal[int(v * pal.size())])
+
+
+## A house's yard: packed earth in organic patches, its edge ragged with a few discs so it does not read as a box.
+func _yard(ci: CanvasItem, r: Rect2) -> void:
+	_patches(ci, r, EARTH, 0.25)
+	var n := int((r.size.x + r.size.y) * 2.0 / 0.35)
+	for i in n:
+		var h := _hash(roundi(r.position.x * 13.0) + i * 7, roundi(r.position.y * 17.0) - i * 3)
+		var t := float(i) / n
+		var p: Vector2
+		var per := (r.size.x + r.size.y) * 2.0 * t
+		if per < r.size.x:
+			p = r.position + Vector2(per, 0)
+		elif per < r.size.x + r.size.y:
+			p = Vector2(r.end.x, r.position.y + per - r.size.x)
+		elif per < r.size.x * 2.0 + r.size.y:
+			p = Vector2(r.end.x - (per - r.size.x - r.size.y), r.end.y)
+		else:
+			p = Vector2(r.position.x, r.end.y - (per - r.size.x * 2.0 - r.size.y))
+		ci.draw_circle(p, 0.1 + float(h % 5) * 0.03, EARTH[h % EARTH.size()])
 
 
 ## A dirt trail: overlapping discs of ragged size along a polyline, dark rim first, then the lighter tread.

@@ -65,7 +65,7 @@ const WHEAT := [Color("f5c24a"), Color("dca334"), Color("a8741f")]
 const LEAF := [Color("8fb03a"), Color("5f8a2a"), Color("3d5e22")]
 const SOIL := [Color("6e5236"), Color("5a432c")]
 ## Foliage [light, mid, dark, outline] for oaks and for pines, and bark.
-const OAK := [Color("8cbf4a"), Color("5f9a34"), Color("3f7128"), Color("22401a")]
+const OAK := [Color("7ea846"), Color("558832"), Color("3a6326"), Color("1c3616")]
 const PINE := [Color("4f8a44"), Color("356a36"), Color("24502c"), Color("12301a")]
 const BARK := Color("5a3e26")
 ## Market produce.

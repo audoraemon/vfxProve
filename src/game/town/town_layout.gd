@@ -90,11 +90,11 @@ static func structures() -> Array[Dictionary]:
 		for piece in wall_pieces(r):
 			_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
 	for r: Rect2 in CORNER_TOWERS:
-		_add(out, r, 70.0, Structure.Kind.KEEP, &"tower")
+		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower")
 	for r: Rect2 in SIDE_TOWERS:
-		_add(out, r, 60.0, Structure.Kind.KEEP, &"tower")
-	_add(out, MAIN_GATE, 40.0, Structure.Kind.GATE, &"gate")
-	_add(out, SIDE_GATE, 40.0, Structure.Kind.GATE, &"gate")
+		_add(out, r, 46.0, Structure.Kind.KEEP, &"tower")
+	_add(out, MAIN_GATE, 34.0, Structure.Kind.GATE, &"gate")
+	_add(out, SIDE_GATE, 34.0, Structure.Kind.GATE, &"gate")
 	_add(out, TEMPLE, 56.0, Structure.Kind.TEMPLE, &"temple")
 	_add(out, BARRACKS, 36.0, Structure.Kind.BARRACKS, &"barracks")
 	for r: Rect2 in STALLS:

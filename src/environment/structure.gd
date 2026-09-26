@@ -159,6 +159,15 @@ func _ready() -> void:
 		_flame = Node2D.new()
 		_flame.draw.connect(_draw_flame)
 		add_child(_flame)
+		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do.
+		for tip in _flame_tips():
+			var halo := QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(44, 30))
+			halo.set_param("color", TORCH_LIGHT)
+			halo.set_param("falloff", 1.8)
+			halo.set_param("intensity", 0.35)
+			halo.set_param("flicker", 1.0)
+			halo.position = tip + Vector2(0, -4)
+			_flame.add_child(halo)
 	if kind == Kind.TORCH:
 		# Warm pool of light on the ground around the torch; sits above the dim layer so it glows at night.
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(90, 45))

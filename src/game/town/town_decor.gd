@@ -159,9 +159,9 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 		var x := area.position.x
 		while x < area.end.x:
 			var g := Vector2(x + _h(i, 50) * 0.3, bank_y + (_h(i, 51) - 0.5) * 0.12)
-			if _h(i, 52) < 0.72 and _outside_ok(g, solid, 0.25):
+			if _h(i, 52) < 0.9 and _outside_ok(g, solid, 0.25):
 				_add(out, Decor.Kind.REEDS, g)
-			x += 0.55
+			x += 0.32
 			i += 1
 	# Short fence runs beside the trails.
 	for tr: Array in TownFloor.TRAILS:

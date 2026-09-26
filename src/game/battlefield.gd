@@ -201,6 +201,9 @@ func bench(label: String, seconds := 9.0) -> void:
 	var worst := 0.0
 	var total := 0.0
 	var frames := 0
+	# Draw calls and primitives do not depend on how busy the machine is, so they compare across runs when fps won't.
+	var calls := 0.0
+	var prims := 0.0
 	var last := Time.get_ticks_usec()
 	var start := last
 	while Time.get_ticks_usec() - start < int(seconds * 1_000_000.0):
@@ -212,8 +215,11 @@ func bench(label: String, seconds := 9.0) -> void:
 			worst = maxf(worst, ms)
 		total += ms
 		frames += 1
-	print("bench[%s] frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f" % [
-		label, frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst])
+		calls += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+		prims += Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
+	print("bench[%s] frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f draw_calls=%d primitives=%d" % [
+		label, frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst, roundi(calls / frames),
+		roundi(prims / frames)])
 
 
 ## Stop voices and effects before quitting so the audio server does not leak playbacks.

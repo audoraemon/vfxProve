@@ -412,3 +412,46 @@ fountain **after** the Citadel so every other seed is unchanged; build `ChimneyS
 - [ ] Full gates: tests, digest, flow 24/24, mission-test, the bench beside `prototype-v0.01` in the same hour.
 - [ ] Append "Changes made while executing" to this plan. Commit `docs: record what changed during the town
   visual upgrade`. Tag `kak-visual-v1` and push the branch and the tag.
+
+## Changes made while executing
+
+- **Checkpoints.** The user approved houses (after one "closer to the reference" pass) and stone, then asked for
+  phases 3-5 to run straight through with one review at the end.
+- **Batching.** ArtKit does not draw piece by piece. Art is collected and flushed per layer as one triangle array
+  plus one multiline. Interleaved quads and hairlines broke gl_compatibility batches ~35 times per cottage and
+  cost ~6 ms. `Battlefield.bench()` now also prints draw calls and primitives, which, unlike fps, do not swing
+  with machine load.
+- **Lighting in a shader.** Each art vertex carries its unlit colour and a lighting code (UV.x).
+  `src/environment/art/structure_art.gdshader` applies `_face_color`'s maths from uniforms. Geometry is recorded
+  once and replayed (`Structure._art_cache`), rebuilt only when height or window lights change. Under
+  Cinderfall's moving lights the rebuilds had cost ~7 ms a frame (2540 builds in one bench, now 110). Detail lines
+  are translucent ink (`ArtKit.ink()`).
+- **Houses.** Pitch comes from depth (46 px per unit of half-depth), with a 0.11 overhang, edge boards, a dark
+  roof outline, bigger windows and warmer plaster. A steeper pitch matched the reference house but turned the
+  dense districts into a sheet of overlapping roofs. `Person.ROOF_MARGIN` went 14 -> 40 for the taller roofs.
+- **Stone.**
+  - No `outer` hint: the reference crenellates both edges, and a curtain-wall piece now crenellates only its long
+    edges.
+  - Faces are a step darker.
+  - The keep has a tall banner pole on a stand rather than a small flag.
+  - The Citadel's south wall is a gateway (`art_tag`).
+- **Temple.** The west front rises to ridge height with a bell turret, a rose window and lancets.
+- **Barracks.** The forge is a stone chimney with a flickering furnace. Flames are shared on one per-structure
+  flame node: wall torches, bridge torches and the furnace.
+- **Floor.**
+  - Baked through a SubViewport (UPDATE_ONCE) and drawn under the inverse iso basis.
+  - FILL grew to 52×52 and the clear colour became meadow `6e8230`, so zoomed-out views do not show a seam.
+  - Bake ~0.48 s after inline lattice hashing and a zone grid for the detail pass (it was ~0.9 s).
+- **Decor.**
+  - Split into live `Decor` nodes (in a y-sorted `DecorLayer` dimmed by ambient) and pieces painted into the floor
+    bake (`bake`: outside, clear of roads, overlapping no building's screen box). This keeps draw calls down.
+  - Decor has no shader and no `_process`.
+  - Bunting is tied beside the market torch posts (inside a post counts as inside a building).
+- **Fountain.** Built after the Citadel so every other seed holds. Tests that pinned the structure count and a
+  walkable crossroads now expect the fountain.
+- **Ruins.** A ruined Temple is sandstone rubble (its palette top had been teal).
+- **End state.**
+  - checks=703, digest unchanged, FLOW 24/24.
+  - MISSION `citizens=21 escaped=20` (21 before the fountain). CROWD `citizens=35 escaped=18`.
+  - Mission bench 112-114 fps with 963 draw calls; Cinderfall 39.7 fps. The prototype baseline measured
+    ~79 / ~30 fps on the same machine.

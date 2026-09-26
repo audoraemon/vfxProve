@@ -20,11 +20,10 @@ Scores:   size = min(r, 1/r) of the width ratio, averaged with the height ratio'
           material = clamp(1 - (dE - 6) / 30); shape = aspect agreement x 0.4 + checklist x 0.6;
           a component's total is the mean of the three.
 
-usage: python tools/dev/match_components.py [--render] [--min PERCENT] [--sheet PATH] [--ref PATH]
+usage: python tools/dev/match_components.py [--render] [--min PERCENT] [--sheet PATH]
   --render   render the components first (runs Godot: $GODOT, or the project's usual Godot path)
   --min      exit 1 when the overall match is below PERCENT (for use as a check)
   --sheet    where to write the side-by-side sheet (default captures/components_compare.png)
-  --ref      the reference image (default concepts/TOWN REF/Town Visual Upgrade.png)
 Needs numpy, scipy and Pillow.
 """
 import argparse
@@ -41,10 +40,10 @@ ROOT = Path(__file__).resolve().parents[2]
 COMPONENTS_DIR = ROOT / 'captures' / 'components'
 ## The project's usual Godot, as in tools/capture.sh; $GODOT overrides it.
 DEFAULT_GODOT = 'F:/Godot/Godot_v4.7.2-stable_win64_console.exe'
-K = 1.235
 
-# name: ours render, reference box (x0, y0, x1, y1), features [(reference feature, we have it)]; a box with
-# y1 = None means the base is hidden in the reference, so only the width is compared.
+# (label, render name, reference box (x0, y0, x1, y1), features [(reference feature, we have it)], options).
+# A box with y1 = None means the base is hidden in the reference, so only the width is compared. Options:
+# 'ref': 'visual' (default) or 'scale', the reference the box is in; 'group': the table's group for new entries.
 COMPONENTS = [
     ('Cottage', 'cottage_wide', (680, 617, 760, 700), [
         ('blue slate roof', 1), ('cream plaster walls', 1), ('dark timber frame', 1), ('stone chimney', 1),
@@ -188,33 +187,60 @@ def render():
     subprocess.run(['git', '-C', str(ROOT), 'checkout', '--', 'default_bus_layout.tres'], stderr=subprocess.DEVNULL)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument('--render', action='store_true')
-    parser.add_argument('--min', type=float)
-    parser.add_argument('--sheet', default=str(ROOT / 'captures' / 'components_compare.png'))
-    parser.add_argument('--ref', default=str(ROOT / 'concepts' / 'TOWN REF' / 'Town Visual Upgrade.png'))
-    args = parser.parse_args()
-    if not Path(args.ref).exists():
-        print('reference image not found: %s' % args.ref)
-        return 2
-    ref = Image.open(args.ref).convert('RGB')
-    if args.render:
-        render()
-    missing = [c[1] for c in COMPONENTS if not (COMPONENTS_DIR / ('%s.png' % c[1])).exists()]
-    if missing:
-        print('no render for %s: run with --render (or tools/dev/preview_components.gd) first' % ', '.join(missing))
-        return 2
+## The references a component can be boxed in, with their pixels per our pixel (at zoom 1).
+REFS = {
+    'visual': (ROOT / 'concepts' / 'TOWN REF' / 'Town Visual Upgrade.png', 1.235),
+    # The Scale reference's town is 1386 px across its corner towers, ours 2073.6 (towers at +-16.2).
+    'scale': (ROOT / 'concepts' / 'TOWN REF' / 'Town Visual and Scale Upgrade.png', 0.668),
+}
+## ArtTuning key of each render (renders that share a key are tuned together); decor renders are named after
+## their kind, which is their key.
+TUNING_KEYS = {
+    'cottage_wide': 'house', 'cottage_deep': 'house', 'tavern': 'house_tavern', 'blacksmith': 'house_smithy',
+    'barn': 'house_barn', 'temple': 'temple', 'barracks': 'barracks', 'stall_red': 'market_stall',
+    'stall_blue': 'market_stall', 'stall_cream': 'market_stall', 'fountain': 'fountain', 'corner_tower': 'keep',
+    'wall_piece': 'castle_wall', 'main_gate': 'gate', 'citadel_keep': 'keep_keep', 'citadel_tower': 'keep',
+    'bridge': 'bridge', 'field_a': 'farm_field', 'field_b': 'farm_field', 'tree_a': 'tree', 'tree_b': 'tree',
+    'torch': 'torch', 'lamp': 'torch_lamp',
+}
+GROUPS = {
+    'Buildings': ['Cottage', 'Tavern', 'Blacksmith', 'Temple', 'Barracks', 'Market stall', 'Fountain'],
+    'Fortifications': ['Corner tower', 'Curtain wall', 'Main gate', 'Citadel keep', 'Citadel tower'],
+    'Land & nature': ['Bridge', 'Wheat field', 'Cabbage field', 'Oak tree', 'Pine tree', 'Rock', 'Reeds'],
+    'Props': ['Fence run', 'Street lamp', 'Torch post', 'Signpost', 'Scarecrow', 'Barrel', 'Bush', 'Garden plot'],
+}
+_ref_cache = {}
+
+
+def tuning_key(name):
+    return TUNING_KEYS.get(name, name)
+
+
+def _reference(which):
+    if which not in _ref_cache:
+        path, k = REFS[which]
+        if not path.exists():
+            raise FileNotFoundError(str(path))
+        _ref_cache[which] = (Image.open(path).convert('RGB'), k)
+    return _ref_cache[which]
+
+
+def score_all(only=None):
+    """Score every component (or those whose render names are in `only`). Returns a list of dicts with the
+    component's label, render name, tuning key, measurements, the three scores and the total (0..1)."""
     rows = []
-    tiles = []
-    details = []
-    for label, name, box, feats in COMPONENTS:
+    for entry in COMPONENTS:
+        label, name, box, feats = entry[:4]
+        opts = entry[4] if len(entry) > 4 else {}
+        if only is not None and name not in only:
+            continue
+        ref, k = _reference(opts.get('ref', 'visual'))
         ours, mask = crop_ours(name)
         ow, oh = ours.size
         x0, y0, x1, y1 = box
         rbox = (x0, y0, x1, y1 if y1 is not None else y0 + int((x1 - x0) * 1.2))
         rimg = ref.crop(rbox)
-        rw, rh = (x1 - x0) / K, ((y1 - y0) / K if y1 is not None else None)
+        rw, rh = (x1 - x0) / k, ((y1 - y0) / k if y1 is not None else None)
         wr = ow / rw
         hr = oh / rh if rh else None
         size_s = min(wr, 1 / wr) if hr is None else (min(wr, 1 / wr) + min(hr, 1 / hr)) / 2
@@ -222,63 +248,33 @@ def main():
         pb, wb = palette(foreground(np.array(rimg)))
         de = palette_de(pa, wa, pb, wb)
         mat_s = float(np.clip(1 - (de - 6) / 30, 0, 1))
-        if rh:
-            ar_o, ar_r = ow / oh, rw / rh
-            aspect = min(ar_o / ar_r, ar_r / ar_o)
-        else:
-            aspect = 1.0
+        aspect = min((ow / oh) / (rw / rh), (rw / rh) / (ow / oh)) if rh else 1.0
         check = sum(f[1] for f in feats) / len(feats)
         shape_s = aspect * 0.4 + check * 0.6
-        # Surface detail: edge strength inside the silhouette, the reference scaled down to our pixel scale first.
-        r_small = rimg.resize((max(4, round(rimg.width / K)), max(4, round(rimg.height / K))), Image.LANCZOS)
-        dr = detail(ours, mask) / max(detail(r_small), 1e-6)
-        details.append((label, dr))
-        total = (size_s + mat_s + shape_s) / 3
-        rows.append((label, ow, oh, rw, rh, wr, hr, de, aspect, check, feats, size_s, mat_s, shape_s, total))
-        tiles.append((label, rimg, ours, pa, wa, pb, wb, total))
+        r_small = rimg.resize((max(4, round(rimg.width / k)), max(4, round(rimg.height / k))), Image.LANCZOS)
+        rows.append({
+            'label': label, 'name': name, 'key': tuning_key(name), 'group': opts.get('group', ''),
+            'ow': ow, 'oh': oh, 'rw': rw, 'rh': rh, 'wr': wr, 'hr': hr, 'de': de, 'aspect': aspect, 'check': check,
+            'feats': feats, 'size': size_s, 'mat': mat_s, 'shape': shape_s, 'total': (size_s + mat_s + shape_s) / 3,
+            'detail': detail(ours, mask) / max(detail(r_small), 1e-6),
+            'tile': (r_small, ours, pa, wa, pb, wb),
+        })
+    return rows
 
-    print('%-14s %11s %13s %7s %7s %6s %7s %6s | %5s %5s %5s %6s' % (
-        'component', 'ours px', 'ref px (/K)', 'width', 'height', 'dE', 'aspect', 'feat', 'size', 'mat', 'shape', 'TOTAL'))
-    for r in rows:
-        label, ow, oh, rw, rh, wr, hr, de, aspect, check, feats, ss, ms, sh, tot = r
-        print('%-14s %4dx%-6d %5.0fx%-7s %6.2fx %7s %6.1f %7.2f %5.0f%% | %4.0f%% %4.0f%% %4.0f%% %5.0f%%' % (
-            label, ow, oh, rw, ('%.0f' % rh) if rh else '-', wr, ('%.2fx' % hr) if hr else '-', de, aspect,
-            check * 100, ss * 100, ms * 100, sh * 100, tot * 100))
-    groups = {
-        'Buildings': ['Cottage', 'Tavern', 'Blacksmith', 'Temple', 'Barracks', 'Market stall', 'Fountain'],
-        'Fortifications': ['Corner tower', 'Curtain wall', 'Main gate', 'Citadel keep', 'Citadel tower'],
-        'Land & nature': ['Bridge', 'Wheat field', 'Cabbage field', 'Oak tree', 'Pine tree', 'Rock', 'Reeds'],
-        'Props': ['Fence run', 'Street lamp', 'Torch post', 'Signpost', 'Scarecrow', 'Barrel', 'Bush', 'Garden plot'],
-    }
-    print()
-    for g, names in groups.items():
-        sel = [r for r in rows if r[0] in names]
-        print('%-16s size %3.0f%%  material %3.0f%%  shape %3.0f%%  overall %3.0f%%   width ratio median %.2fx' % (
-            g, 100 * np.mean([r[11] for r in sel]), 100 * np.mean([r[12] for r in sel]), 100 * np.mean([r[13] for r in sel]),
-            100 * np.mean([r[14] for r in sel]), np.median([r[5] for r in sel])))
-    print('%-16s size %3.0f%%  material %3.0f%%  shape %3.0f%%  overall %3.0f%%' % (
-        'ALL', 100 * np.mean([r[11] for r in rows]), 100 * np.mean([r[12] for r in rows]), 100 * np.mean([r[13] for r in rows]),
-        100 * np.mean([r[14] for r in rows])))
-    print()
-    print('Surface detail (our edge strength over the reference, same scale; 1.0 = as busy):')
-    for label, dr in details:
-        print('  %-14s %.2f' % (label, dr))
-    print('  median %.2f' % np.median([d for _, d in details]))
-    print()
-    print('Missing features:')
-    missing_any = False
-    for r in rows:
-        miss = [f[0] for f in r[10] if not f[1]]
-        if miss:
-            missing_any = True
-            print('  %-14s %s' % (r[0], '; '.join(miss)))
-    if not missing_any:
-        print('  none')
 
-    # Sheet: reference crop (scaled to our pixel scale) beside ours, both at 3x, with palettes and the score.
+def group_of(r):
+    if r['group']:
+        return r['group']
+    for g, names in GROUPS.items():
+        if r['label'] in names:
+            return g
+    return 'Other'
+
+
+def write_sheet(rows, path):
     cells = []
-    for label, rimg, ours, pa, wa, pb, wb, tot in tiles:
-        r2 = rimg.resize((max(1, round(rimg.width / K)), max(1, round(rimg.height / K))), Image.LANCZOS)
+    for r in rows:
+        r2, ours, pa, wa, pb, wb = r['tile']
         sc = 3 if max(r2.width, ours.width) < 110 else 2
         if max(r2.width, ours.width) > 200:
             sc = 1
@@ -288,7 +284,7 @@ def main():
         h = max(a.height, b.height) + 48
         c = Image.new('RGB', (max(w, 260), h), (32, 32, 36))
         d = ImageDraw.Draw(c)
-        d.text((4, 2), '%s  %.0f%%' % (label, tot * 100), fill=(255, 230, 120))
+        d.text((4, 2), '%s  %.0f%%' % (r['label'], r['total'] * 100), fill=(255, 230, 120))
         d.text((4, 14), 'REF', fill=(200, 200, 200))
         d.text((a.width + 14, 14), 'OURS', fill=(200, 200, 200))
         c.paste(a, (4, 26))
@@ -301,22 +297,76 @@ def main():
                 x += ww
             x += 16
         cells.append(c)
-    W = 1900
-    sheet = Image.new('RGB', (W, 6000), (20, 20, 22))
+    width = 1900
+    sheet = Image.new('RGB', (width, 12000), (20, 20, 22))
     x = y = rowh = 0
     for c in cells:
-        if x + c.width > W:
+        if x + c.width > width:
             x = 0
             y += rowh + 8
             rowh = 0
         sheet.paste(c, (x, y))
         x += c.width + 8
         rowh = max(rowh, c.height)
-    sheet = sheet.crop((0, 0, W, y + rowh))
-    Path(args.sheet).parent.mkdir(parents=True, exist_ok=True)
-    sheet.save(args.sheet)
+    sheet = sheet.crop((0, 0, width, y + rowh))
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(path)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('--render', action='store_true')
+    parser.add_argument('--min', type=float)
+    parser.add_argument('--sheet', default=str(ROOT / 'captures' / 'components_compare.png'))
+    args = parser.parse_args()
+    if args.render:
+        render()
+    missing = [c[1] for c in COMPONENTS if not (COMPONENTS_DIR / ('%s.png' % c[1])).exists()]
+    if missing:
+        print('no render for %s: run with --render (or tools/dev/preview_components.gd) first' % ', '.join(missing))
+        return 2
+    try:
+        rows = score_all()
+    except FileNotFoundError as e:
+        print('reference image not found: %s' % e)
+        return 2
+    print('%-14s %11s %13s %7s %7s %6s %7s %6s | %5s %5s %5s %6s' % (
+        'component', 'ours px', 'ref px (/K)', 'width', 'height', 'dE', 'aspect', 'feat', 'size', 'mat', 'shape', 'TOTAL'))
+    for r in rows:
+        print('%-14s %4dx%-6d %5.0fx%-7s %6.2fx %7s %6.1f %7.2f %5.0f%% | %4.0f%% %4.0f%% %4.0f%% %5.0f%%' % (
+            r['label'], r['ow'], r['oh'], r['rw'], ('%.0f' % r['rh']) if r['rh'] else '-', r['wr'],
+            ('%.2fx' % r['hr']) if r['hr'] else '-', r['de'], r['aspect'], r['check'] * 100, r['size'] * 100,
+            r['mat'] * 100, r['shape'] * 100, r['total'] * 100))
+    print()
+    groups = {}
+    for r in rows:
+        groups.setdefault(group_of(r), []).append(r)
+    for g, sel in groups.items():
+        print('%-16s size %3.0f%%  material %3.0f%%  shape %3.0f%%  overall %3.0f%%   width ratio median %.2fx' % (
+            g, 100 * np.mean([r['size'] for r in sel]), 100 * np.mean([r['mat'] for r in sel]),
+            100 * np.mean([r['shape'] for r in sel]), 100 * np.mean([r['total'] for r in sel]),
+            np.median([r['wr'] for r in sel])))
+    overall = 100 * np.mean([r['total'] for r in rows])
+    print('%-16s size %3.0f%%  material %3.0f%%  shape %3.0f%%  overall %3.0f%%' % (
+        'ALL', 100 * np.mean([r['size'] for r in rows]), 100 * np.mean([r['mat'] for r in rows]),
+        100 * np.mean([r['shape'] for r in rows]), overall))
+    print()
+    print('Surface detail (our edge strength over the reference, same scale; 1.0 = as busy):')
+    for r in rows:
+        print('  %-14s %.2f' % (r['label'], r['detail']))
+    print('  median %.2f' % np.median([r['detail'] for r in rows]))
+    print()
+    print('Missing features:')
+    missing_any = False
+    for r in rows:
+        miss = [f[0] for f in r['feats'] if not f[1]]
+        if miss:
+            missing_any = True
+            print('  %-14s %s' % (r['label'], '; '.join(miss)))
+    if not missing_any:
+        print('  none')
+    write_sheet(rows, args.sheet)
     print('sheet: %s' % args.sheet)
-    overall = 100 * np.mean([r[14] for r in rows])
     if args.min is not None and overall < args.min:
         print('FAIL: overall %.0f%% is below %.0f%%' % (overall, args.min))
         return 1

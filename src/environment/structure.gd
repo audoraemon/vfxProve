@@ -519,6 +519,16 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+## This structure's key in ArtTuning: its kind, then its art tag ("house_tavern"), or "_barn" for a farm's house.
+func tuning_key() -> String:
+	var key := String(Kind.keys()[kind]).to_lower()
+	if art_tag != &"":
+		return key + "_" + String(art_tag)
+	if kind == Kind.HOUSE and role == &"farm":
+		return key + "_barn"
+	return key
+
+
 ## Everything the art's geometry reads besides the seed: height and which windows are lit. Light, scorch and
 ## frost only change the shader's uniforms (_light_art), so a building rebuilds its art only when a window goes dark.
 func _art_key_now() -> int:
@@ -543,6 +553,8 @@ func _light_art(light: Color, dir: Vector2) -> void:
 	mat.set_shader_parameter("frost", frost)
 	var t := lights.tint if lights else Color.WHITE
 	mat.set_shader_parameter("tint", Vector3(t.r, t.g, t.b))
+	var at := ArtTuning.tint(tuning_key())
+	mat.set_shader_parameter("art_tint", Vector3(at.r, at.g, at.b))
 
 
 func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color, jagged: bool) -> void:

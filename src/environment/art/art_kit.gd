@@ -82,6 +82,8 @@ const WINDOW_OFF := Color("2a2220")
 ## Translucent detail lines: dark ink of a given strength, and a light sheen.
 const SHADE_LINE := Color(0.08, 0.05, 0.04, 0.8)
 
+## Multiplies every colour poly() and line() collect (ArtTuning's tint for baked decor); white leaves them as given.
+static var color_mul := Color.WHITE
 static var _pts := PackedVector2Array()
 static var _cols := PackedColorArray()
 static var _uvs := PackedVector2Array()
@@ -183,6 +185,8 @@ static func _emit(ci: CanvasItem, b: Array) -> void:
 
 ## One flat triangle or convex quad (3 or 4 points) in unlit colour `c`, lit by `code`.
 static func poly(p: PackedVector2Array, c: Color, code: float) -> void:
+	if color_mul != Color.WHITE:
+		c = Color(c.r * color_mul.r, c.g * color_mul.g, c.b * color_mul.b, c.a)
 	var base := _pts.size()
 	_pts.append_array(p)
 	var uv := Vector2(code, 0.0)
@@ -200,6 +204,8 @@ static func poly(p: PackedVector2Array, c: Color, code: float) -> void:
 
 ## One hairline (1 px at any zoom). Its colour is final: use ink() for detail over lit surfaces.
 static func line(a: Vector2, b: Vector2, c: Color) -> void:
+	if color_mul != Color.WHITE and c.a >= 0.99:
+		c = Color(c.r * color_mul.r, c.g * color_mul.g, c.b * color_mul.b, c.a)
 	_line_pts.append(a)
 	_line_pts.append(b)
 	_line_cols.append(c)

@@ -3,3 +3,4 @@ captures/
 *.tmp
 .superpowers/
 assets/pixellab/icons/candidates/
+__pycache__/

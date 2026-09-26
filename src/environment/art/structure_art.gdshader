@@ -10,6 +10,8 @@ uniform float scorch = 0.0;
 uniform float frost = 0.0;
 // The world's light colour (LightField.tint): lit surfaces and ink take it, emissive glow does not.
 uniform vec3 tint = vec3(1.0);
+// This component's colour tuning (ArtTuning.tint): multiplies its materials before they are lit.
+uniform vec3 art_tint = vec3(1.0);
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -24,7 +26,7 @@ void fragment() {
 		// INK: outlines darken with scorch only.
 		COLOR.rgb = mix(COLOR.rgb, CHAR, scorch * 0.65) * tint;
 	} else {
-		vec3 base = COLOR.rgb;
+		vec3 base = min(COLOR.rgb * art_tint, vec3(1.0));
 		vec2 n = code < 2.5 ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
 		float facing = 0.35;
 		if (code > 3.5) {

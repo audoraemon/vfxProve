@@ -36,7 +36,13 @@ func setup(k: Kind, at_point: Vector2, extent: Vector2, s: int) -> Decor:
 	return self
 
 
+## This decor's key in ArtTuning ("barrel", "oak").
+func tuning_key() -> String:
+	return String(Kind.keys()[kind]).to_lower()
+
+
 func _ready() -> void:
+	self_modulate = ArtTuning.tint(tuning_key())
 	if kind == Kind.LAMP:
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(46, 23))
 		_glow.set_param("color", Structure.TORCH_LIGHT)
@@ -58,11 +64,15 @@ func hit(amount: float, damage_kind: StringName) -> void:
 			_glow.queue_free()
 	else:
 		char_amount = minf(char_amount + amount / CHAR_PER, 1.0)
-	self_modulate = Color.WHITE.lerp(Structure.COL_CHAR, char_amount * 0.7)
+	self_modulate = ArtTuning.tint(tuning_key()).lerp(Structure.COL_CHAR, char_amount * 0.7)
 	queue_redraw()
 
 
 func _draw() -> void:
+	var sc := ArtTuning.scale(tuning_key())
+	if sc != 1.0:
+		# Scaled about the ground point it stands on (this node's origin).
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
 	ArtKit.begin()
 	DecorArt.paint(kind, at, size, seed_value, position, down)
 	ArtKit.flush(self)

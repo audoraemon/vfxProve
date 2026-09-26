@@ -67,6 +67,9 @@ func setup(env: EnvironmentField, at: Vector2, shake: CameraShake = null) -> Cit
 	for r: Rect2 in WALLS:
 		_add_part(r, WALL_H, Structure.Kind.CASTLE_WALL)
 	keep = _add_part(KEEP, KEEP_H, Structure.Kind.KEEP)
+	# Art only: the keep flies the flag, and the south wall (facing the market) is the Citadel's gateway.
+	keep.art_tag = &"keep"
+	parts[5].art_tag = &"gate"
 	return self
 
 

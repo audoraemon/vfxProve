@@ -36,3 +36,24 @@ static func run(t) -> void:
 	s.free()
 	twin.free()
 	barn.free()
+
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var pieces := 0
+	var torches := 0
+	var others_plain := true
+	for st in env.structures():
+		if st.kind == Structure.Kind.CASTLE_WALL and st.role == &"wall":
+			pieces += 1
+			if st.art.torch:
+				torches += 1
+		elif st.art.get("torch", false):
+			others_plain = false
+	t.check(torches >= pieces / 5 and torches <= pieces / 2, "about a third of the town wall pieces carry a torch")
+	t.check(others_plain, "only town wall pieces carry torches")
+	t.check(town.citadel.keep.art_tag == &"keep" and town.citadel.parts[5].art_tag == &"gate",
+		"the Citadel keep flies the flag and its south wall is the gateway")
+	town.teardown()
+	town.free()
+	env.free()

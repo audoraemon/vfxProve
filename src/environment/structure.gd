@@ -18,8 +18,6 @@ const COL_CHAR := Color("141112")
 const COL_WINDOW := [Color("ffcf7a"), Color("9fe8ff"), Color("ffb060")]
 const COL_WINDOW_OFF := Color("1b1f28")
 const COL_MOLTEN := Color("ffb040")
-const COL_BANNER := Color("1f3f8a")
-const COL_BANNER_HI := Color("2f5cc0")
 const COL_GOLD := Color("d8b23a")
 const COL_BEAM := Color("3a2a1e")
 const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
@@ -37,7 +35,9 @@ const LIGHT_HZ := 20.0
 const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 ## Stone kinds that show mortar courses.
-const MASONRY := [Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE, Kind.TEMPLE, Kind.BARRACKS]
+const MASONRY := [Kind.TEMPLE, Kind.BARRACKS]
+## Drawn by StoneArt while they stand.
+const STONEWORK := [Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE]
 ## Units walk over these while they stand.
 const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
 ## Flat things people walk on. They are drawn under every person whatever their sort key says: a bridge sorts
@@ -78,6 +78,8 @@ var role := &""
 var walkable := false
 ## Art plan from setup(): pure data hashed from the seed (ArtKit.plan_for), empty for kinds without art.
 var art := {}
+## Marks a part with extra art: &"keep" (the Citadel keep's flag), &"gate" (the Citadel's gateway).
+var art_tag := &""
 ## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
 ## When set, damage() hands every hit to it instead of lowering hp (the Citadel's damage budget).
 var damage_filter := Callable()
@@ -102,6 +104,9 @@ var light_id := 0
 var frost := 0.0
 var _glow: QuadFx
 var _banner: Node2D
+## A wall torch's flame, on its own node so the wall piece under it stays cached.
+var _flame: Node2D
+var _flame_step := -1
 ## Last drawn light state; redraw only when it changes or something animates.
 var _drawn_sig := -1
 ## One-shot "redraw once" flag: set it when something changed the drawing (a hit, a crack, a collapse start).
@@ -148,10 +153,14 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"") -
 func _ready() -> void:
 	_light_in = float(get_instance_id() % 16) / (LIGHT_HZ * 16.0)
 	if kind == Kind.KEEP:
-		# The waving banner redraws every frame on its own small node so the keep itself can stay cached.
+		# The waving banners redraw on their own small node so the keep itself can stay cached.
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
+	if art.get("torch", false):
+		_flame = Node2D.new()
+		_flame.draw.connect(_draw_flame)
+		add_child(_flame)
 	if kind == Kind.TORCH:
 		# Warm pool of light on the ground around the torch; sits above the dim layer so it glows at night.
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(90, 45))
@@ -332,6 +341,12 @@ func _process(delta: float) -> void:
 		if banner_sig != _banner_sig:
 			_banner_sig = banner_sig
 			_banner.queue_redraw()
+	if is_instance_valid(_flame):
+		_flame.visible = not destroyed
+		var flame_step := int(_time * 8.0)
+		if flame_step != _flame_step and not destroyed:
+			_flame_step = flame_step
+			_flame.queue_redraw()
 	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
 	var animating := shake_step != _shake_step or (_collapse >= 0.0 and _collapse <= 1.0) \
 		or not _top_piece.is_empty() or _molten > 0.0 or kind == Kind.TORCH
@@ -376,7 +391,7 @@ func _palette() -> Array:
 		Kind.CRATES:
 			return [Color("6a5638"), Color("56452d"), Color("433523")]
 		Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE:
-			return [Color("a4a2a0"), Color("86858a"), Color("6a6a74")]
+			return [Color("bcb4b0"), Color("aaa3a1"), Color("8f898c")]
 		Kind.HOUSE:
 			return [Color("7a6a58"), Color("c8b28c"), Color("a8916c")]
 		Kind.TORCH:
@@ -437,8 +452,11 @@ func _draw() -> void:
 			Color(0, 0, 0, 0.25))
 
 	var rubble_top := _collapse >= 0.0
-	if kind == Kind.HOUSE and not destroyed and not rubble_top:
+	var art_drawn := not destroyed and not rubble_top and (kind == Kind.HOUSE or kind in STONEWORK)
+	if kind == Kind.HOUSE and art_drawn:
 		HouseArt.draw(self, light, dir)
+	elif art_drawn:
+		StoneArt.draw(self, light, dir)
 	elif kind == Kind.TORCH and not destroyed:
 		_draw_torch(right_c, left_c)
 	elif kind == Kind.TREE:
@@ -447,7 +465,7 @@ func _draw() -> void:
 		_draw_box(0.0, height, top_c, right_c, left_c, rubble_top)
 	if not rubble_top and not destroyed and kind in MASONRY:
 		_draw_masonry(right_c, left_c)
-	if not rubble_top and kind in WINDOWED and kind != Kind.HOUSE:
+	if not rubble_top and kind in WINDOWED and not art_drawn:
 		_draw_windows(light)
 	_draw_kind_details(top_c, right_c, left_c)
 	for crack in _cracks:
@@ -545,10 +563,6 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 				var u := (i + 0.5) / 6.0
 				var p := _s[3].lerp(_s[2], u) + Vector2(0, -height * 0.55)
 				draw_rect(Rect2(p.round(), Vector2(2, 2)), Color("c89a2a").lerp(COL_CHAR, scorch))
-		Kind.KEEP:
-			_draw_crenellations(top_c, right_c, left_c, 0.34)
-		Kind.CASTLE_WALL:
-			_draw_crenellations(top_c, right_c, left_c, 0.22)
 		Kind.TEMPLE:
 			_draw_roof(TEMPLE_ROOF, 22.0, false)
 			_draw_opening(3, 0.42, 0.58, 16.0, COL_DOOR)
@@ -565,9 +579,6 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 				draw_rect(Rect2(p + Vector2(-1, -2), Vector2(2, 2)), COL_GOLD.lerp(COL_CHAR, scorch))
 		Kind.MARKET_STALL:
 			_draw_stall()
-		Kind.GATE:
-			_draw_crenellations(top_c, right_c, left_c, 0.22)
-			_draw_gate()
 		Kind.BRIDGE:
 			_draw_bridge(top_c)
 		Kind.FARM_FIELD:
@@ -590,34 +601,6 @@ func _quad(p: PackedVector2Array, c: Color) -> void:
 ## Screen position (local) of a ground point at height h.
 func _gp(g: Vector2, h: float) -> Vector2:
 	return Iso.ground_to_screen(g) - position + Vector2(0, -h)
-
-
-## Small stone merlons along all four roof edges; back edges first so front ones overlap them.
-func _draw_crenellations(top_c: Color, right_c: Color, left_c: Color, size: float) -> void:
-	var r := footprint
-	var mh := 6.0
-	var edges := [
-		[r.position, Vector2(r.end.x, r.position.y)],
-		[r.position, Vector2(r.position.x, r.end.y)],
-		[Vector2(r.position.x, r.end.y), r.end],
-		[Vector2(r.end.x, r.position.y), r.end],
-	]
-	for e in edges:
-		var a: Vector2 = e[0]
-		var b: Vector2 = e[1]
-		var n := maxi(int(a.distance_to(b) / (size * 2.0)), 1)
-		for i in n + 1:
-			var c := a.lerp(b, float(i) / n)
-			var g0 := (c - Vector2(size, size) * 0.5).clamp(r.position, r.end - Vector2(size, size))
-			var g1 := g0 + Vector2(size, size)
-			var h0 := height
-			var h1 := height + mh
-			_quad(PackedVector2Array([_gp(Vector2(g0.x, g1.y), h0), _gp(g1, h0), _gp(g1, h1),
-				_gp(Vector2(g0.x, g1.y), h1)]), left_c)
-			_quad(PackedVector2Array([_gp(Vector2(g1.x, g0.y), h0), _gp(g1, h0), _gp(g1, h1),
-				_gp(Vector2(g1.x, g0.y), h1)]), right_c)
-			_quad(PackedVector2Array([_gp(g0, h1), _gp(Vector2(g1.x, g0.y), h1), _gp(g1, h1),
-				_gp(Vector2(g0.x, g1.y), h1)]), top_c.darkened(0.08))
 
 
 ## Mortar courses and staggered joints on the two visible faces.
@@ -704,19 +687,6 @@ func _draw_opening(face: int, u0: float, u1: float, h: float, col: Color) -> voi
 	var b := _s[face].lerp(_s[2], u1)
 	var apex := a.lerp(b, 0.5) + Vector2(0, -h - 3.0)
 	draw_colored_polygon(PackedVector2Array([a, b, b + Vector2(0, -h), apex, a + Vector2(0, -h)]), col)
-
-
-## Gatehouse arch with a raised portcullis, on the long face the road runs through.
-func _draw_gate() -> void:
-	var face := 3 if footprint.size.x >= footprint.size.y else 1
-	var arch_h := roundf(height * 0.62)
-	_draw_opening(face, 0.3, 0.7, arch_h, COL_DOOR)
-	var iron := COL_IRON.lerp(COL_CHAR, scorch)
-	for u in [0.38, 0.5, 0.62]:
-		var p := _s[face].lerp(_s[2], u)
-		draw_line(p + Vector2(0, -arch_h * 0.45), p + Vector2(0, -arch_h), iron, -1.0)
-	draw_line(_s[face].lerp(_s[2], 0.3) + Vector2(0, -arch_h * 0.45), _s[face].lerp(_s[2], 0.7) + Vector2(0, -arch_h * 0.45),
-		iron, -1.0)
 
 
 ## Striped cloth canopy on poles above the counter; the stripe colours come from the stall's seed.
@@ -819,18 +789,18 @@ func _draw_fantasy_windows(light: Color) -> void:
 			draw_rect(Rect2(p.round() + Vector2(-1, -3), Vector2(3, 3)), COL_BEAM, false, -1.0)
 
 
-## Royal banner hanging on the keep's left face.
+## The keep's banners (and the Citadel keep's flag), drawn by StoneArt onto the banner node.
 func _draw_banner() -> void:
-	var b := _banner
-	var amb := maxf(lights.ambient, 0.35) if lights else 1.0
-	var tint := Color(amb, amb, amb)
-	var bp := _s[3].lerp(_s[2], 0.5) + Vector2(0, -height * 0.78)
-	var wave := roundf(sin(_time * 3.0) * 1.0)
-	b.draw_colored_polygon(PackedVector2Array([bp + Vector2(-4, 0), bp + Vector2(4, 2), bp + Vector2(4, 22),
-		bp + Vector2(0, 18 + wave), bp + Vector2(-4, 20)]), COL_BANNER.lerp(COL_CHAR, scorch) * tint)
-	b.draw_rect(Rect2(bp + Vector2(-3, 1), Vector2(2, 18)), COL_BANNER_HI.lerp(COL_CHAR, scorch) * tint)
-	b.draw_rect(Rect2(bp + Vector2(-1, 7), Vector2(3, 4)), COL_GOLD.lerp(COL_CHAR, scorch) * tint)
-	b.draw_line(bp + Vector2(-5, -1), bp + Vector2(5, 1), COL_GOLD.darkened(0.3) * tint, -1.0)
+	StoneArt.draw_banners(self, _banner, _time, maxf(lights.ambient, 0.35) if lights else 1.0)
+
+
+## A wall torch's flame on the walkway, flickering in 8 Hz steps.
+func _draw_flame() -> void:
+	var tip := StoneArt.torch_tip(self)
+	var f := int(_time * 8.0 + float(rng.seed % 5)) % 3
+	_flame.draw_rect(Rect2(tip + Vector2(-2, -3), Vector2(4, 3)), COL_FLAME[2])
+	_flame.draw_rect(Rect2(tip + Vector2(-1, -5 - f % 2), Vector2(3, 4)), COL_FLAME[1])
+	_flame.draw_rect(Rect2(tip + Vector2(-1 + (f % 2), -7 - f), Vector2(1, 3)), COL_FLAME[0])
 
 
 func _build_cracks() -> void:

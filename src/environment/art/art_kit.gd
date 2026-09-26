@@ -29,6 +29,15 @@ const SLATE := [Color("6479a3"), Color("54698f"), Color("45587c"), Color("35435f
 const RED_TILE := [Color("bd6a40"), Color("a7532f"), Color("8c4428"), Color("6a3424"), Color("d08a5e"), Color("3b1c12")]
 ## Ink along wall footings and chimney edges.
 const OUTLINE_WALL := Color("2a1c14")
+## Town stone: [lit (right wall), shade (left wall)], the walkway, and the ink at its foot.
+const STONE := [Color("aaa3a1"), Color("8f898c")]
+const STONE_TOP := Color("bcb4b0")
+const OUTLINE_STONE := Color("3a3438")
+## Banner cloth [blue, lit edge, cross].
+const BANNER := [Color("1f45a6"), Color("3563c8"), Color("e8dcc0")]
+const IRON := Color("6a5a55")
+## A gateway's darkness.
+const VOID := Color("171210")
 ## Barn planks [lit, shade, seam].
 const PLANK := [Color("9c6c40"), Color("7e5532"), Color("573a22")]
 const CHIMNEY := [Color("a39a92"), Color("847b75"), Color("5f5856")]
@@ -61,6 +70,8 @@ static func plan_for(s: Structure) -> Dictionary:
 	match s.kind:
 		Structure.Kind.HOUSE:
 			return HouseArt.plan(s)
+		Structure.Kind.KEEP, Structure.Kind.CASTLE_WALL, Structure.Kind.GATE:
+			return StoneArt.plan(s)
 	return {}
 
 

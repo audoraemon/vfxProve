@@ -19,14 +19,16 @@ const LEFT := 3
 const RIGHT := 1
 
 ## Plaster [lit (right wall), shade (left wall)], and the timber framing it.
-const PLASTER := [Color("dcc69a"), Color("bb9f76")]
+const PLASTER := [Color("e0c290"), Color("b99769")]
 const TIMBER := Color("4e3624")
 const TIMBER_DARK := Color("35251a")
 ## Stone foot course under the plaster.
 const PLINTH := [Color("8e8478"), Color("73695f")]
-## Roofs as [lit, mid, dark, seam, ridge].
-const SLATE := [Color("6b7a99"), Color("5b6a8a"), Color("4b5878"), Color("3c4661"), Color("8f9bb4")]
-const RED_TILE := [Color("bd6a40"), Color("a7532f"), Color("8c4428"), Color("6a3424"), Color("d08a5e")]
+## Roofs as [lit, mid, dark, seam, ridge, outline].
+const SLATE := [Color("6479a3"), Color("54698f"), Color("45587c"), Color("35435f"), Color("93a6c8"), Color("1d2335")]
+const RED_TILE := [Color("bd6a40"), Color("a7532f"), Color("8c4428"), Color("6a3424"), Color("d08a5e"), Color("3b1c12")]
+## Ink along wall footings and chimney edges.
+const OUTLINE_WALL := Color("2a1c14")
 ## Barn planks [lit, shade, seam].
 const PLANK := [Color("9c6c40"), Color("7e5532"), Color("573a22")]
 const CHIMNEY := [Color("a39a92"), Color("847b75"), Color("5f5856")]

@@ -28,8 +28,8 @@ const SORT_REACH := 3.0
 const SORT_HZ := 10.0
 ## A person's sprite on screen, relative to its feet: wide enough for a spear, tall enough for a helmet.
 const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
-## Drawn above a building's footprint: its height plus a roof or battlements.
-const ROOF_MARGIN := 14.0
+## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
+const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
 const PACE_RANGE := Vector2(0.85, 1.2)
 ## One panicked dash: how far (ground units), and how far it may veer from straight away (radians).

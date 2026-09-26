@@ -9,7 +9,7 @@ static func run(t) -> void:
 	for d in items:
 		counts[d.role] = int(counts.get(d.role, 0)) + 1
 	var want := {&"house": 71, &"wall": 85, &"tower": 17, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
-		&"market": 20, &"farm": 14, &"decor": 86}
+		&"market": 20, &"farm": 16, &"decor": 83}
 	for role in want:
 		t.check(counts.get(role, 0) == want[role], "%d x %s (got %d)" % [want[role], role, counts.get(role, 0)])
 	t.check(counts.size() == want.size(), "no unexpected roles (%s)" % [counts.keys()])

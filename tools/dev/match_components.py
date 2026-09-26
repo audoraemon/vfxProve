@@ -125,6 +125,26 @@ COMPONENTS = [
     ('Workshop', 'workshop', (1047, 597, 1173, 673), [
         ('open timber posts', 1), ('red tile roof', 1), ('goods under the roof', 1), ('workbench', 1)],
         {'ref': 'scale', 'group': 'Scale buildings'}),
+    ('Windmill', 'windmill', (857, 57, 906, 129), [
+        ('tapering tower', 1), ('slate cap', 1), ('four lattice sails', 1), ('sails turn', 1), ('door', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
+    ('Watermill', 'watermill', (103, 776, 207, 872), [
+        ('plaster walls', 1), ('slate roof', 1), ('wooden waterwheel', 1), ('wheel turns', 1), ('mill race', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
+    ('Ship', 'ship', (175, 645, 270, 740), [
+        ('wooden hull', 1), ('cream square sails', 1), ('two masts', 1), ('rigging', 1), ('pennant', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
+    ('River boat', 'boat', (137, 604, 177, 651), [('wooden hull', 1), ('ribs and thwarts', 1),
+        ('mast with a loading spar', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
+    ('Sheep', 'sheep', (1273, 891, 1293, 912), [('white fleece', 1), ('pale face and legs', 1),
+        ('head raised', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
+    ('Cow', 'cow', (1338, 896, 1370, 930), [('brown and white hide', 1), ('head raised', 1), ('horns', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
+    ('Cart', 'cart', (140, 916, 178, 949), [('deep plank bed', 1), ('two spoked wheels', 1), ('sacks load', 1),
+        ('shafts', 1)],
+        {'ref': 'scale', 'group': 'Countryside'}),
 ]
 
 
@@ -212,7 +232,7 @@ TUNING_KEYS = {
     'wall_piece': 'castle_wall', 'main_gate': 'gate', 'citadel_keep': 'keep_keep', 'citadel_tower': 'keep',
     'bridge': 'bridge', 'field_a': 'farm_field', 'field_b': 'farm_field', 'tree_a': 'tree', 'tree_b': 'tree',
     'torch': 'torch', 'lamp': 'torch_lamp', 'cathedral': 'temple_cathedral', 'bridge_stone': 'bridge_stone',
-    'workshop': 'house_workshop',
+    'workshop': 'house_workshop', 'windmill': 'house_windmill', 'watermill': 'house_watermill',
 }
 GROUPS = {
     'Buildings': ['Cottage', 'Tavern', 'Blacksmith', 'Temple', 'Barracks', 'Market stall', 'Fountain'],

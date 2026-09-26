@@ -30,6 +30,9 @@ const TOWN_SHOTS := [
 	["town_main_gate.png", Vector2(2.7, 16.0), 1.0],
 	["town_side_gate.png", Vector2(16.0, 9.0), 1.0],
 	["town_river_farms.png", Vector2(2.0, 24.0), 0.5],
+	["town_windmill.png", Vector2(-10.0, -24.0), 1.0],
+	["town_watermill.png", Vector2(-4.0, 24.5), 1.0],
+	["town_pasture_east.png", Vector2(21.5, 4.0), 1.0],
 ]
 ## [time, power key, ground point] for --citadel-test.
 const CITADEL_CASTS := [

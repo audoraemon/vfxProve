@@ -55,7 +55,7 @@ LANDMARKS = {
     'Bridge': ((2.4, 21.6), {'role': 'bridge'}),
     'Windmill': ((-11.5, -24.5), {'tag': 'windmill'}),
     'Watermill': ((-5.0, 25.4), {'tag': 'watermill'}),
-    'Dock': ((-0.4, 24.0), {'tag': 'dock'}),
+    'Dock': ((-0.4, 24.0), {'decor': 'DOCK'}),
 }
 
 
@@ -83,7 +83,12 @@ def to_ground(p):
     return (v[0] / v[2], v[1] / v[2])
 
 
-def find(structures, spec):
+def find(structures, spec, decor=()):
+    if 'decor' in spec:
+        for d in decor:
+            if d['kind'] == spec['decor']:
+                return (d['at'][0] + d['size'][0] / 2, d['at'][1] + d['size'][1] / 2)
+        return None
     sel = [s for s in structures
            if all(s.get(k) == v for k, v in spec.items() if k != 'index')]
     i = spec.get('index', 0)
@@ -139,7 +144,7 @@ def main():
     print('%-26s %16s %16s %7s' % ('landmark', 'reference', 'ours', 'off'))
     in_place = 0
     for name, (at, spec) in LANDMARKS.items():
-        ours = find(structures, spec)
+        ours = find(structures, spec, data.get('decor', []))
         if ours is None:
             print('%-26s %16s %16s %7s' % (name, '(%.1f, %.1f)' % at, 'missing', '-'))
             continue

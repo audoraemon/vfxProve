@@ -6,8 +6,10 @@ extends Node2D
 
 enum Kind {
 	BARREL, CRATES, BENCH, FENCE, GARDEN, BUSH, ROCK, OAK, PINE, LAMP, BUNTING, SCARECROW, SIGNPOST, REEDS, FLOWERS,
-	TABLE,
+	TABLE, SHIP, BOAT, DOCK, SHEEP, COW, CART,
 }
+## Decor that belongs on the water, not the land.
+const ON_WATER := [Kind.SHIP, Kind.BOAT, Kind.DOCK]
 
 ## A hit this strong (or any falling stone) knocks decor down; weaker hits char it by amount / CHAR_PER.
 const KNOCK_AT := 30.0

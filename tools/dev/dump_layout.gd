@@ -15,7 +15,10 @@ func _init() -> void:
 		items.append({"rect": [g.position.x, g.position.y, g.size.x, g.size.y], "kind": "KEEP", "role": "citadel", "tag": ""})
 	for r: Rect2 in TownLayout.FOUNTAINS:
 		items.append({"rect": [r.position.x, r.position.y, r.size.x, r.size.y], "kind": "FOUNTAIN", "role": "decor", "tag": ""})
-	var out := {"structures": items, "citadel": [TownLayout.CITADEL_ORIGIN.x, TownLayout.CITADEL_ORIGIN.y],
+	var decor: Array = []
+	for d in TownDecor.spots():
+		decor.append({"kind": Decor.Kind.keys()[d.kind], "at": [d.at.x, d.at.y], "size": [d.size.x, d.size.y]})
+	var out := {"structures": items, "decor": decor, "citadel": [TownLayout.CITADEL_ORIGIN.x, TownLayout.CITADEL_ORIGIN.y],
 		"town": [TownLayout.TOWN.position.x, TownLayout.TOWN.position.y, TownLayout.TOWN.size.x, TownLayout.TOWN.size.y]}
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)

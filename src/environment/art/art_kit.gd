@@ -202,6 +202,12 @@ static func poly(p: PackedVector2Array, c: Color, code: float) -> void:
 		_idx.append(base + 3)
 
 
+## A flat convex polygon of any number of points, as a triangle fan from its first point.
+static func fan(p: PackedVector2Array, c: Color, code: float) -> void:
+	for i in range(1, p.size() - 1):
+		poly(PackedVector2Array([p[0], p[i], p[i + 1]]), c, code)
+
+
 ## One hairline (1 px at any zoom). Its colour is final: use ink() for detail over lit surfaces.
 static func line(a: Vector2, b: Vector2, c: Color) -> void:
 	if color_mul != Color.WHITE and c.a >= 0.99:

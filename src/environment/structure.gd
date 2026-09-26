@@ -109,6 +109,9 @@ var _banner: Node2D
 ## A wall torch's flame, on its own node so the wall piece under it stays cached.
 var _flame: Node2D
 var _flame_step := -1
+## A mill's turning sails or wheel, on its own node so the building stays cached.
+var _spin: Node2D
+var _spin_step := -1
 ## Last drawn light state; redraw only when it changes or something animates.
 var _drawn_sig := -1
 ## One-shot "redraw once" flag: set it when something changed the drawing (a hit, a crack, a collapse start).
@@ -160,6 +163,10 @@ func _ready() -> void:
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
+	if art_tag == &"windmill" or art_tag == &"watermill":
+		_spin = Node2D.new()
+		_spin.draw.connect(_draw_spin)
+		add_child(_spin)
 	if not _flame_tips().is_empty():
 		_flame = Node2D.new()
 		_flame.draw.connect(_draw_flame)
@@ -353,6 +360,12 @@ func _process(delta: float) -> void:
 		if banner_sig != _banner_sig:
 			_banner_sig = banner_sig
 			_banner.queue_redraw()
+	if is_instance_valid(_spin):
+		_spin.visible = not destroyed
+		var spin_step := int(_time * 8.0)
+		if spin_step != _spin_step and not destroyed:
+			_spin_step = spin_step
+			_spin.queue_redraw()
 	if is_instance_valid(_flame):
 		_flame.visible = not destroyed
 		var flame_step := int(_time * 8.0)
@@ -722,6 +735,14 @@ func _draw_banner() -> void:
 	var amb := maxf(lights.ambient, 0.35) if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
 	StoneArt.draw_banners(self, _banner, _time, Color(amb * t.r, amb * t.g, amb * t.b))
+
+
+## A mill's sails or wheel, turning a sixteenth of a turn (sails) or a twenty-fourth (the wheel) a step.
+func _draw_spin() -> void:
+	var amb := maxf(lights.ambient, 0.35) if lights else 1.0
+	var t := lights.tint if lights else Color.WHITE
+	var step := TAU / (16.0 if art_tag == &"windmill" else 24.0)
+	FarmArt.draw_spin(self, _spin, float(_spin_step) * step, Color(amb * t.r, amb * t.g, amb * t.b))
 
 
 ## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace.

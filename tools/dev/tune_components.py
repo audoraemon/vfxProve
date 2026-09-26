@@ -32,7 +32,7 @@ import match_components as mc  # noqa: E402
 TUNING = mc.ROOT / 'src' / 'environment' / 'art' / 'art_tuning.json'
 ## Decor kinds: the only keys whose size can be tuned (a structure's size is its footprint).
 DECOR_KEYS = {'barrel', 'crates', 'bench', 'fence', 'garden', 'bush', 'rock', 'oak', 'pine', 'lamp', 'bunting',
-              'scarecrow', 'signpost', 'reeds', 'flowers', 'table'}
+              'scarecrow', 'signpost', 'reeds', 'flowers', 'table', 'ship', 'boat', 'dock', 'sheep', 'cow', 'cart'}
 BOUNDS = {'scale': (0.7, 1.4), 'r': (0.8, 1.25), 'g': (0.8, 1.25), 'b': (0.8, 1.25)}
 ## A tint may change a component's brightness freely, but no channel may stray further than this from the tint's
 ## mean: the score alone would happily turn reeds blue to match the water in their reference crop.
@@ -81,7 +81,7 @@ def clean(state):
 
 
 def evaluate(state):
-    TUNING.write_text(json.dumps(clean(state), indent=1) + '\n', encoding='utf-8')
+    TUNING.write_text(json.dumps(clean(state), indent=1) + '\n', encoding='utf-8', newline='\n')
     mc.render()
     per_key = {}
     for r in mc.score_all():
@@ -135,9 +135,9 @@ def main():
     # Leave the file holding each key's best setting (the last candidate written may be worse).
     final = clean(state)
     if args.dry:
-        TUNING.write_text(original, encoding='utf-8')
+        TUNING.write_text(original, encoding='utf-8', newline='\n')
     else:
-        TUNING.write_text(json.dumps(final, indent=1) + '\n', encoding='utf-8')
+        TUNING.write_text(json.dumps(final, indent=1) + '\n', encoding='utf-8', newline='\n')
     mc.render()
     print()
     print('%-16s %7s %7s  %s' % ('key', 'before', 'after', 'setting'))

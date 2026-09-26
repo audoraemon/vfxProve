@@ -25,6 +25,7 @@ static func spots() -> Array[Dictionary]:
 	_yards(out)
 	_houses(out, solid)
 	_market(out)
+	_countryside(out)
 	_outside(out, solid)
 	var boxes := _screen_boxes()
 	for d in out:
@@ -211,6 +212,37 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 			_add(out, Decor.Kind.SIGNPOST, g)
 
 
+## The Scale reference's countryside: the dock with the ship moored at it and rowing boats on the rivers, fenced
+## pastures with sheep and cows, and carts by the farms.
+static func _countryside(out: Array[Dictionary]) -> void:
+	var d: Rect2 = TownLayout.DOCK
+	_add(out, Decor.Kind.DOCK, d.position, d.size)
+	_add(out, Decor.Kind.SHIP, Vector2(-4.3, 22.3))
+	for g in [Vector2(-11.0, 21.4), Vector2(7.8, 22.6), Vector2(-20.5, 22.0), Vector2(-28.2, 9.0), Vector2(14.0, 21.2)]:
+		_add(out, Decor.Kind.BOAT, g)
+	var n := 0
+	for p: Rect2 in TownLayout.PASTURES:
+		# Fences on all four sides, with a gap for a gate on the side facing the camera.
+		var gl := Vector2(p.position.x, p.end.y)
+		var gr := Vector2(p.end.x, p.position.y)
+		_add(out, Decor.Kind.FENCE, p.position, gr - p.position)
+		_add(out, Decor.Kind.FENCE, p.position, gl - p.position)
+		_add(out, Decor.Kind.FENCE, gr, p.end - gr)
+		var gate := gl.lerp(p.end, 0.45)
+		_add(out, Decor.Kind.FENCE, gl, gate - gl)
+		_add(out, Decor.Kind.FENCE, gate + (p.end - gl).normalized() * 1.0, p.end - gate - (p.end - gl).normalized() * 1.0)
+		# One animal to each cell of a 3 x 3 grid, jittered inside its cell, so no two stand on each other.
+		var cell := (p.size - Vector2(1.2, 1.2)) / 3.0
+		for i in 9:
+			n += 1
+			var at := p.position + Vector2(0.6, 0.6) + cell * Vector2(float(i % 3) + 0.2 + _h(n, 70) * 0.6,
+				floorf(i / 3.0) + 0.2 + _h(n, 71) * 0.6)
+			var cow := n % 3 == 0 and p.position.x > 0.0
+			_add(out, Decor.Kind.COW if cow else Decor.Kind.SHEEP, at)
+	for g in [Vector2(-1.0, 27.6), Vector2(22.0, 12.6), Vector2(-15.5, -21.5)]:
+		_add(out, Decor.Kind.CART, g)
+
+
 ## Points on a jittered grid over `area`; `pick` turns (point, roll, index) into a kind, or -1 to skip.
 static func _scatter(out: Array[Dictionary], solid: Array[Rect2], area: Rect2, step: float, salt: int,
 		pick: Callable) -> void:
@@ -247,6 +279,9 @@ static func _outside_ok(g: Vector2, solid: Array[Rect2], trail_gap: float, farm 
 			return false
 	if TownLayout.BRIDGE.grow(0.4).has_point(g):
 		return false
+	for p: Rect2 in TownLayout.PASTURES + [TownLayout.DOCK.grow(0.6)]:
+		if p.grow(0.3).has_point(g):
+			return false
 	if _inside_any(g, solid, 0.45):
 		return false
 	for tr: Array in TownFloor.TRAILS:

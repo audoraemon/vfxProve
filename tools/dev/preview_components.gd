@@ -36,6 +36,8 @@ const STRUCTURES := [
 	["cathedral", S.TEMPLE, Rect2(0, 0, 4.2, 6.2), 56.0, &"temple", &"cathedral", 31],
 	["bridge_stone", S.BRIDGE, Rect2(0, 0, 2.0, 7.6), 6.0, &"bridge", &"stone", 32],
 	["workshop", S.HOUSE, Rect2(0, 0, 2.6, 1.5), 22.0, &"house", &"workshop", 33],
+	["windmill", S.HOUSE, Rect2(0, 0, 0.9, 0.9), 60.0, &"farm", &"windmill", 34],
+	["watermill", S.HOUSE, Rect2(0, 0, 2.4, 1.9), 34.0, &"farm", &"watermill", 35],
 ]
 ## [name, kind, size, seed]; decor.
 const DECOR := [
@@ -45,7 +47,8 @@ const DECOR := [
 	["oak", D.OAK, Vector2.ZERO, 8], ["pine", D.PINE, Vector2.ZERO, 9], ["scarecrow", D.SCARECROW, Vector2.ZERO, 10],
 	["signpost", D.SIGNPOST, Vector2.ZERO, 11], ["reeds", D.REEDS, Vector2.ZERO, 12],
 	["flowers", D.FLOWERS, Vector2.ZERO, 13], ["bunting", D.BUNTING, Vector2(2.0, 0.0), 14],
-	["table", D.TABLE, Vector2.ZERO, 15],
+	["table", D.TABLE, Vector2.ZERO, 15], ["ship", D.SHIP, Vector2.ZERO, 16], ["boat", D.BOAT, Vector2.ZERO, 17],
+	["sheep", D.SHEEP, Vector2.ZERO, 18], ["cow", D.COW, Vector2.ZERO, 19], ["cart", D.CART, Vector2.ZERO, 20],
 ]
 
 var _cam: Camera2D

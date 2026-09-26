@@ -84,6 +84,13 @@ const FIELDS := [
 	Rect2(-24, -28, 5, 3.5), Rect2(-18, -28, 5, 3.5), Rect2(0, -28, 5, 3.5), Rect2(6, -28, 5, 3.5), Rect2(12, -27, 5, 3.5),
 	Rect2(-24, 25.9, 5, 3.4), Rect2(-17, 25.9, 5, 3.4), Rect2(6, 25.9, 5, 3.4), Rect2(13, 25.9, 5, 3.4), Rect2(19, 13, 5, 3.5),
 ]
+## The mills: a windmill among the north farms, a watermill on the south bank west of the bridge.
+const WINDMILL := Rect2(-11.9, -24.9, 0.9, 0.9)
+const WATERMILL := Rect2(-6.9, 25.0, 2.4, 1.9)
+## Fenced pastures with sheep and cows: north, and east of the Side Gate's road.
+const PASTURES := [Rect2(-9.8, -26.8, 5.8, 5.0), Rect2(18.5, 1.5, 7.0, 5.5)]
+## The dock: a pier out from the south bank west of the bridge, where the ship is moored.
+const DOCK := Rect2(-2.4, 23.2, 2.8, 1.2)
 ## Farmhouses by the fields.
 const BARNS := [Rect2(-12.5, -28.4, 1.3, 1.5), Rect2(18.0, -26.5, 1.3, 1.5), Rect2(-10.0, 26.2, 1.3, 1.5),
 	Rect2(19.5, 17.2, 1.3, 1.5)]
@@ -245,6 +252,8 @@ static func structures() -> Array[Dictionary]:
 		_add(out, r, 3.0, Structure.Kind.FARM_FIELD, &"farm")
 	for r: Rect2 in BARNS:
 		_add(out, r, 20.0, Structure.Kind.HOUSE, &"farm")
+	_add(out, WINDMILL, 60.0, Structure.Kind.HOUSE, &"farm", &"windmill")
+	_add(out, WATERMILL, 34.0, Structure.Kind.HOUSE, &"farm", &"watermill")
 	var tree_spots := trees()
 	for i in tree_spots.size():
 		_add(out, Rect2(tree_spots[i], TREE_SIZE), 26.0 + float(i % 3) * 3.0, Structure.Kind.TREE, &"decor")
@@ -439,7 +448,7 @@ static func trees() -> Array[Vector2]:
 			clear = clear and not road.grow(0.8).intersects(t)
 		for r: Rect2 in RIVERS:
 			clear = clear and not r.grow(0.3).intersects(t)
-		for f: Rect2 in FIELDS + BARNS:
+		for f: Rect2 in FIELDS + BARNS + PASTURES + [WINDMILL, WATERMILL]:
 			clear = clear and not f.grow(0.3).intersects(t)
 		for o in out:
 			clear = clear and o.distance_to(p) > 1.0

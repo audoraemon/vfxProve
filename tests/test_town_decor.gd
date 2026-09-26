@@ -31,7 +31,9 @@ static func run(t) -> void:
 				outside_ok = outside_ok and not road.grow(1.0).has_point(at)
 			for ex: Vector2 in TownLayout.EXITS:
 				outside_ok = outside_ok and at.distance_to(ex) >= 1.0
-			outside_ok = outside_ok and not TownLayout.RIVER.has_point(at)
+			if not Decor.ON_WATER.has(d.kind):
+				for r: Rect2 in TownLayout.RIVERS:
+					outside_ok = outside_ok and not r.has_point(at)
 	t.check(inside_ok, "decor inside the walls only stands where people already cannot walk")
 	t.check(outside_ok, "decor outside keeps off the roads, the exits and the river")
 	t.check(no_overlap, "no decor stands inside a building")

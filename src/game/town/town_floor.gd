@@ -37,7 +37,7 @@ const TRAILS := [
 	[Vector2(-14.0, -19.2), Vector2(-14.8, -23.5), Vector2(-15.5, -29.5)],
 	[Vector2(-19.5, -26), Vector2(-20.2, -18), Vector2(-19.0, -10), Vector2(-20.5, -4), Vector2(-19.4, 4),
 		Vector2(-20.2, 12), Vector2(-19.2, 17.5)],
-	[Vector2(19.5, -26), Vector2(20.2, -18), Vector2(19.0, -10), Vector2(20.4, -2), Vector2(19.6, 4)],
+	[Vector2(19.5, -26), Vector2(20.2, -18), Vector2(19.0, -10), Vector2(20.4, -2), Vector2(19.4, 0.6)],
 	[Vector2(-26, 29.5), Vector2(-12, 29.0), Vector2(1.5, 29.4)],
 	[Vector2(4.0, 29.4), Vector2(14, 29.0), Vector2(26, 29.6)],
 	[Vector2(17.2, 11.4), Vector2(22, 11.8), Vector2(27, 11.2)],
@@ -173,7 +173,7 @@ func paint_ground(ci: CanvasItem) -> void:
 	# Tilled ground round every field and farmhouse.
 	for f: Rect2 in TownLayout.FIELDS:
 		_patches(ci, f.grow(0.5), DIRT, 0.3)
-	for b: Rect2 in TownLayout.BARNS:
+	for b: Rect2 in TownLayout.BARNS + [TownLayout.WINDMILL, TownLayout.WATERMILL]:
 		_patches(ci, b.grow(0.6), DIRT, 0.3)
 	for tr in TRAILS:
 		_trail(ci, tr, 0.34)
@@ -365,6 +365,30 @@ func _river(ci: CanvasItem) -> void:
 	for bank_y: float in [r.position.y - 0.12, r.end.y + 0.12]:
 		_pebbles(ci, Vector2(x0, bank_y), Vector2(FILL.end.x, bank_y), 2.7)
 	_pebbles(ci, Vector2(b.end.x + 0.12, b.position.y), Vector2(b.end.x + 0.12, r.position.y), -100.0)
+	_waterfall(ci, b)
+
+
+## The west branch's source: a band of grey cliff across its head, and white water falling from it into a pool.
+func _waterfall(ci: CanvasItem, b: Rect2) -> void:
+	var y := b.position.y
+	for i in 26:
+		var h := _hash(i * 13 + 5, 77)
+		var p := Vector2(FILL.position.x + float(i) / 26.0 * (b.end.x + 1.2 - FILL.position.x), y - 0.35 - float(h % 5) * 0.12)
+		var rad := 0.35 + float(h % 4) * 0.12
+		ci.draw_circle(p, rad, PEBBLE[2].darkened(0.1))
+		ci.draw_circle(p + Vector2(-0.08, -0.08), rad * 0.7, PEBBLE[1])
+		ci.draw_circle(p + Vector2(-0.14, -0.14), rad * 0.35, PEBBLE[0])
+	# Falling water: pale streaks from the cliff's lip down into foam.
+	var x0 := b.position.x + b.size.x * 0.25
+	var x1 := b.end.x - b.size.x * 0.25
+	ci.draw_rect(Rect2(x0, y - 0.7, x1 - x0, 1.6), Color("7cc0e8"))
+	for i in 9:
+		var x := lerpf(x0, x1, (float(i) + 0.5) / 9.0)
+		ci.draw_rect(Rect2(x, y - 0.7, 0.06, 1.4), Color(0.95, 0.98, 1.0, 0.8))
+	for i in 14:
+		var h := _hash(i * 7, 91)
+		ci.draw_circle(Vector2(lerpf(x0 - 0.3, x1 + 0.3, float(h % 97) / 97.0), y + 0.9 + float(h % 5) * 0.1), 0.12,
+			Color(0.95, 0.98, 1.0, 0.85))
 
 
 ## Pebbles along a bank from a to b, leaving a gap round the bridge at x = `gap_x`.
@@ -453,6 +477,8 @@ func _zone(g: Vector2) -> int:
 	for f: Rect2 in TownLayout.FIELDS:
 		if f.grow(0.5).has_point(g):
 			return 0
+	if g.x < TownLayout.RIVER_WEST.end.x + 1.4 and absf(g.y - TownLayout.RIVER_WEST.position.y) < 1.6:
+		return 0
 	for road: Rect2 in TownLayout.ROADS:
 		if road.grow(0.15).has_point(g):
 			return 0

@@ -43,7 +43,8 @@ static func plan(s: Structure) -> Dictionary:
 		"roof_shade": ArtKit.pick(sd, 4, 3) - 1,
 		"gable_window": ArtKit.hash01(sd, 5) < 0.5,
 		"steps": ArtKit.hash01(sd, 6) < 0.45,
-		"barn": s.role == &"farm",
+		# A farm's house is a barn, except the mills, which are plastered cottages.
+		"barn": s.role == &"farm" and s.art_tag == &"",
 		"tavern": s.art_tag == &"tavern",
 		"smithy": s.art_tag == &"smithy",
 	}
@@ -62,6 +63,9 @@ static func plan(s: Structure) -> Dictionary:
 static func draw(s: Structure) -> void:
 	ArtKit.begin()
 	var p := s.art
+	if s.art_tag == &"windmill":
+		FarmArt.draw(s)
+		return
 	if s.art_tag == &"workshop":
 		CivicArt.workshop(s)
 		return
@@ -208,6 +212,8 @@ static func draw(s: Structure) -> void:
 	if not barn:
 		_draw_chimney(s, p, ax, a0, a1, bm, half, top, rise)
 		ArtKit.flush(s)
+	if s.art_tag == &"watermill":
+		FarmArt.watermill_race(s)
 
 
 ## Where the chimney's smoke leaves it (structure-local screen px), or Vector2.INF for a barn.

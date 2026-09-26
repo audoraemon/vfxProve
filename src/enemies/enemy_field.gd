@@ -35,6 +35,7 @@ func add(e: DummyEnemy) -> void:
 	e.lights = lights
 	if env != null:
 		e.blocked = env.blocked
+		e.block_env = env
 	_enemies.append(e)
 
 

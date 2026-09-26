@@ -11,6 +11,8 @@ var _dynamic: Array[Dictionary] = []
 ## The town has dozens of torches and every person and building samples several times a second, so walking all
 ## of them for every sample was a measurable share of each frame.
 var _cells := {}
+## _lists_at()'s reused pair.
+var _pair: Array = [null, null]
 const CELL := 3.0
 const _EMPTY: Array[Dictionary] = []
 ## World ambient 0..1 (1 = normal). Lowered while effects dim the scene; lit things multiply by it.
@@ -82,6 +84,13 @@ func _static_near(g: Vector2) -> Array[Dictionary]:
 	return _cells.get(_cell(g), _EMPTY)
 
 
+## The moving lights and the static ones in g's cell, in a list reused between calls (never kept by a caller).
+func _lists_at(g: Vector2) -> Array:
+	_pair[0] = _dynamic
+	_pair[1] = _static_near(g)
+	return _pair
+
+
 func _process(delta: float) -> void:
 	_time += delta
 	var keep: Array[Dictionary] = []
@@ -114,20 +123,27 @@ func sample(g: Vector2) -> Color:
 	var r := 0.0
 	var gr := 0.0
 	var b := 0.0
-	for list: Array[Dictionary] in [_dynamic, _static_near(g)]:
-		for l in list:
-			var w := _weight(l, g)
-			if w > 0.0:
-				r += l.color.r * w
-				gr += l.color.g * w
-				b += l.color.b * w
+	# The moving lights, then the static ones in g's cell, as two plain loops: every person asks several times a
+	# second, and building a list of the two lists for each call was a measurable share of that.
+	for l in _dynamic:
+		var w := _weight(l, g)
+		if w > 0.0:
+			r += l.color.r * w
+			gr += l.color.g * w
+			b += l.color.b * w
+	for l in _static_near(g):
+		var w := _weight(l, g)
+		if w > 0.0:
+			r += l.color.r * w
+			gr += l.color.g * w
+			b += l.color.b * w
 	return Color(r, gr, b, 1.0)
 
 
 ## Weighted ground direction from `g` toward the lights (not normalized; length ~ strength).
 func sample_dir(g: Vector2) -> Vector2:
 	var dir := Vector2.ZERO
-	for list: Array[Dictionary] in [_dynamic, _static_near(g)]:
+	for list: Array[Dictionary] in _lists_at(g):
 		for l in list:
 			var w := _weight(l, g)
 			if w > 0.0:
@@ -143,7 +159,7 @@ func sample_signature(g: Vector2, color_steps: float, dir_steps: float) -> int:
 	var gr := 0.0
 	var b := 0.0
 	var dir := Vector2.ZERO
-	for list: Array[Dictionary] in [_dynamic, _static_near(g)]:
+	for list: Array[Dictionary] in _lists_at(g):
 		for l in list:
 			var intensity: float = l.intensity
 			if intensity <= 0.0:

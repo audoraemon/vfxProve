@@ -29,10 +29,10 @@ var _near_query := 0
 ## it: blocked() asks for every step of every walker, and a 2-unit cell's list was long.
 var _fine := {}
 const FINE_CELL := 0.5
-## near_cached()'s candidate lists: Vector3i(cell x, cell y, radius in 1/16ths) -> Array of structures.
-var _near_cache := {}
-## near_cached()'s cell (ground units).
-const NEAR_CELL := 0.5
+## Bumped whenever the set of structures changes (added, cleared, re-indexed): caches built from them are stale.
+var layout_epoch := 0
+## Bumped whenever a structure is destroyed.
+var destroy_epoch := 0
 
 
 ## `tag` picks a variant of the kind's art (&"tavern", &"smithy", &"lamp"); see Structure.art_tag.
@@ -46,7 +46,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)
 	_index(s)
-	_near_cache.clear()
+	layout_epoch += 1
 	if world_parent != null:
 		world_parent.add_child(s)
 	return s
@@ -109,7 +109,7 @@ func clear() -> void:
 	_structures.clear()
 	_grid.clear()
 	_fine.clear()
-	_near_cache.clear()
+	layout_epoch += 1
 
 
 ## Take one structure out of the field and free it (the town's teardown). The spatial index is rebuilt, so
@@ -130,7 +130,7 @@ func remove(s: Structure) -> void:
 func _reindex() -> void:
 	_grid.clear()
 	_fine.clear()
-	_near_cache.clear()
+	layout_epoch += 1
 	for s in _structures:
 		if is_instance_valid(s):
 			_index(s)
@@ -186,25 +186,6 @@ func near(g: Vector2, r: float) -> Array[Structure]:
 	return out
 
 
-## Exactly near(g, r), from a candidate list cached per NEAR_CELL cell: every structure within r of any point in
-## the cell. A person asks this ten times a second; walking the index's cells each time cost ~30 us a query.
-func near_cached(g: Vector2, r: float) -> Array[Structure]:
-	var c := Vector2i(floori(g.x / NEAR_CELL), floori(g.y / NEAR_CELL))
-	var key := Vector3i(c.x, c.y, roundi(r * 16.0))
-	var list: Array[Structure]
-	if _near_cache.has(key):
-		list = _near_cache[key]
-	else:
-		# Half the cell's diagonal past r reaches everything any point in the cell could.
-		list = near((Vector2(c) + Vector2(0.5, 0.5)) * NEAR_CELL, r + NEAR_CELL * 0.7072)
-		_near_cache[key] = list
-	var out: Array[Structure] = []
-	for s in list:
-		if is_instance_valid(s) and s.footprint.grow(r).has_point(g):
-			out.append(s)
-	return out
-
-
 ## True when a standing structure units cannot walk through occupies the ground point (rubble, gates, the bridge
 ## and fields are walkable). Only the structures indexed in g's cell are checked.
 func blocked(g: Vector2, margin := 0.15) -> bool:
@@ -254,6 +235,7 @@ func shake_radius(center: Vector2, radius: float, amount: float) -> void:
 
 
 func _on_structure_broken(s: Structure) -> void:
+	destroy_epoch += 1
 	structure_destroyed.emit(s, s.destroy_kind)
 
 

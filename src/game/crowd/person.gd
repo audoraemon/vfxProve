@@ -79,6 +79,14 @@ var env: EnvironmentField
 var pace := 1.0
 ## Seconds until the next draw-order reading, staggered by instance so a crowd does not all re-sort together.
 var _sort_in := 0.0
+## Where the last reading was taken, and the field's destroy_epoch then.
+var _sort_feet := Vector2.INF
+var _sort_epoch := -1
+## Draw-order candidates per SORT_CELL cell (see _sort_candidates()), for the field and layout they were built from.
+static var _sort_cells := {}
+static var _sort_cells_env: EnvironmentField
+static var _sort_cells_epoch := -1
+const SORT_CELL := 0.5
 ## Where the fright came from, so a dash and a scurry run away from it.
 var _threat := Vector2.INF
 ## Seconds left face-down after a stumble; see is_stumbling().
@@ -109,8 +117,23 @@ static var view := Rect2()
 ## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
 ## screen at play zoom, and nobody can see a stride or a light reading there.
 const OFFSCREEN_EVERY := 3
+## DummyEnemy._art_signature()'s multipliers for its walk step and its state, when every term between is zero.
+const SIG_WALK := 1024 * 97 * 97 * 97 * 97 * 131 * 7
+const SIG_STATE := 131 * 7
 ## Whether the camera showed this person when its frame began (see view).
 var _seen := true
+## Stepped by its crowd's ticker (Crowd.step_people) rather than processing on its own: one engine call per
+## person every frame was a measurable share of a person's cost.
+var ticked := false
+## This person's place in its crowd's spawn order (Crowd sets it; -1 for one made on its own). The crowd staggers
+## its thinking, light readings and off-screen updates by it. By instance id they shifted with any unrelated change
+## that made one object more or fewer, which made the crowd's runs impossible to compare across changes.
+var stagger := -1
+
+
+## What the crowd staggers by: the spawn order, or the instance id for a person made on its own.
+func stagger_key() -> int:
+	return stagger if stagger >= 0 else get_instance_id()
 
 
 ## `at` is where it stands and what it treats as home (or its post). Seed `rng` before calling this.
@@ -120,7 +143,7 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 	anchor = at
 	ground_pos = at
 	mind = Mind.POST if is_soldier else Mind.CALM
-	_think_due = get_instance_id() % 2 == 0
+	_think_due = stagger_key() % 2 == 0
 	_skin = CIT_SKIN[rng.randi() % CIT_SKIN.size()]
 	_tunic = CIT_TUNIC[rng.randi() % CIT_TUNIC.size()]
 	_hair = CIT_HAIR[rng.randi() % CIT_HAIR.size()]
@@ -133,19 +156,34 @@ func _in_view() -> bool:
 	return _seen
 
 
+func _ready() -> void:
+	super()
+	if stagger >= 0:
+		_light_in = float(stagger % 16) / (LIGHT_HZ * 16.0)
+	if ticked:
+		set_process(false)
+
+
 func _process(delta: float) -> void:
+	frame(delta)
+
+
+## One frame of this person: the camera check, the off-screen throttle, the tick, then the light and the redraw
+## check. A crowd's people are stepped by its ticker instead of processing one by one (see ticked).
+func frame(delta: float) -> void:
 	# Looked up once a frame: the base unit and the brain both ask.
 	_seen = not view.has_area() or view.has_point(position)
 	if not _seen:
 		_offscreen_delta += delta
-		if (Engine.get_process_frames() + get_instance_id()) % OFFSCREEN_EVERY != 0:
+		if (Engine.get_process_frames() + stagger_key()) % OFFSCREEN_EVERY != 0:
 			return
 		delta = _offscreen_delta
 		_offscreen_delta = 0.0
 	elif _offscreen_delta > 0.0:
 		delta += _offscreen_delta
 		_offscreen_delta = 0.0
-	super(delta)
+	tick(delta)
+	_refresh(delta)
 
 
 # --- Brain -------------------------------------------------------------------
@@ -216,8 +254,12 @@ func _think(delta: float) -> void:
 	_sort_in -= delta
 	# Off screen, who stands in front of whom shows nobody; the view's margin updates it before it can.
 	if env != null and _sort_in <= 0.0 and _in_view():
-		_sort_in = 1.0 / SORT_HZ + float(get_instance_id() % 7) * 0.001
-		sort_bias = sort_bias_for(ground_pos, env.near_cached(ground_pos, SORT_REACH))
+		_sort_in = 1.0 / SORT_HZ + float(stagger_key() % 7) * 0.001
+		# Standing where it stood, with no building fallen since, the answer cannot have changed.
+		if ground_pos != _sort_feet or env.destroy_epoch != _sort_epoch:
+			_sort_feet = ground_pos
+			_sort_epoch = env.destroy_epoch
+			sort_bias = sort_bias_for(ground_pos, _sort_candidates(), SORT_REACH)
 
 
 func _mind_speed() -> float:
@@ -419,7 +461,7 @@ func has_escaped() -> bool:
 ## The sort-key shift (screen px) that draws a person at `feet` after every building in `near` it stands in
 ## front of and before every one it stands behind, counting only buildings that overlap it on screen. 0 when
 ## its own feet already do that, or when nothing can (it would have to be before and after the same key).
-static func sort_bias_for(feet: Vector2, near: Array[Structure]) -> float:
+static func sort_bias_for(feet: Vector2, near: Array[Structure], reach := INF) -> float:
 	var own := (feet.x + feet.y) * 16.0
 	var me := Rect2(Iso.ground_to_screen(feet) + SPRITE_BOX.position, SPRITE_BOX.size)
 	var lo := -INF
@@ -430,7 +472,10 @@ static func sort_bias_for(feet: Vector2, near: Array[Structure]) -> float:
 		var fp := s.footprint
 		if fp.has_point(feet) or not _screen_box(fp, s.height).intersects(me):
 			continue
-		var key := s.position.y
+		if reach < INF and not fp.grow(reach).has_point(feet):
+			continue
+		# Where it stands when still: a shudder moves the node a pixel or two, and the draw order should not.
+		var key := s.base_position().y
 		if feet.x >= fp.end.x or feet.y >= fp.end.y:
 			lo = maxf(lo, key + 1.0)
 		else:
@@ -438,6 +483,32 @@ static func sort_bias_for(feet: Vector2, near: Array[Structure]) -> float:
 	if (own >= lo and own <= hi) or lo > hi:
 		return 0.0
 	return (lo if own < lo else hi) - own
+
+
+## The buildings someone standing anywhere in this person's half-unit cell could be drawn against: within
+## SORT_REACH of it, and with a screen box (at full height) that can meet the sprite there. A handful instead of
+## the dozens within reach, cached per cell until the town changes; sort_bias_for() still checks each exactly.
+func _sort_candidates() -> Array[Structure]:
+	if _sort_cells_env != env or _sort_cells_epoch != env.layout_epoch:
+		_sort_cells.clear()
+		_sort_cells_env = env
+		_sort_cells_epoch = env.layout_epoch
+	var c := Vector2i(floori(ground_pos.x / SORT_CELL), floori(ground_pos.y / SORT_CELL))
+	if _sort_cells.has(c):
+		return _sort_cells[c]
+	var x0 := c.x * SORT_CELL
+	var y0 := c.y * SORT_CELL
+	var x1 := x0 + SORT_CELL
+	var y1 := y0 + SORT_CELL
+	# Every sprite box whose feet fall in the cell: the cell's diamond on screen, widened by the sprite.
+	var region := Rect2((x0 - y1) * 32.0 + SPRITE_BOX.position.x, (x0 + y0) * 16.0 + SPRITE_BOX.position.y,
+		(x1 - y0 - x0 + y1) * 32.0 + SPRITE_BOX.size.x, (x1 + y1 - x0 - y0) * 16.0 + SPRITE_BOX.size.y)
+	var list: Array[Structure] = []
+	for s in env.near(Vector2(x0, y0) + Vector2(SORT_CELL, SORT_CELL) * 0.5, SORT_REACH + SORT_CELL * 0.7072):
+		if not s.walkable and _screen_box(s.footprint, s.max_height).intersects(region):
+			list.append(s)
+	_sort_cells[c] = list
+	return list
 
 
 ## A footprint's box on screen, raised by its height and a roof. Its corners' iso extremes, written out: this
@@ -505,6 +576,23 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 
 func _pose_signature() -> int:
 	return (1 if is_running() else 0) + (2 if is_stumbling() else 0)
+
+
+## DummyEnemy._art_signature(), folded ahead of time for a person on its feet with nothing lifting, freezing or
+## flashing it: the same integer, so it redraws exactly when it did, for a fraction of the work. Every person
+## on screen asks this every frame.
+func _art_signature() -> int:
+	if state != State.WANDER or _lift != 0.0 or _frozen > 0.0 or _flash > 0.0:
+		return super()
+	var running := mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY
+	var rate: float
+	if running:
+		rate = 8.0 if soldier else 10.0
+	else:
+		rate = 5.0 if soldier else 6.0
+	var walk := int(_anim * rate) % 2 * 2 + (1 if _facing > 0 else 0)
+	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0)
+	return walk * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
 
 
 func _walk_rate() -> float:

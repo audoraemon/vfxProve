@@ -309,3 +309,41 @@ Same hour, `kak-dense-v1` → now:
 - Flattening the other art (walls, keeps, the cathedral, fields): too slow to do at load for a call or two each.
 - Drawing hairlines as fills everywhere: they would thin out or vanish at the play zoom of 0.6.
 - Merging the crowd's gate loops: that is gameplay logic, for about 0.2 ms.
+
+## Crowd restructure (2026-09-27, after `kak-perf-v1`)
+
+**New tools:**
+- `tools/dev/crowd_bench.gd` builds the town and the full crowd headless and steps it by hand. It prints the cost per person per frame, calm and fleeing, and a checksum of where everyone ends up.
+- `tools/dev/crowd_check.gd` lets the engine step the same crowd at `--fixed-fps 60` and prints a checksum. This is the exact check.
+- The mission test is not an exact check across speed changes. Its hitstop (`Impact`) ends on the wall clock, so a faster or slower frame changes how many frames it covers. Even adding logging moved its line.
+
+**Where the time went.** Switching each part off in turn gave these costs per person per frame, all on screen (10.5 µs in total):
+
+| Part | Cost |
+|---|---|
+| Thinking | ~4 µs, of which the draw-order reading was 3.1 µs |
+| Redraw signature | 2.5 µs |
+| Light reading | 1.5 µs |
+| Walking collision check | 1.3 µs |
+
+**Changes** (each shown exact by the bench checksum):
+- **Draw order:**
+  - Each half-unit cell keeps a list of the buildings that could overlap a sprite standing in it. `sort_bias_for()` still checks each one exactly.
+  - Standing still with no building fallen since, a person skips the reading altogether (`EnvironmentField.destroy_epoch`).
+  - The key is a building's still position (`base_position`), so a shudder does not flicker the order.
+- **Redraw signature:** `Person._art_signature()` computes the base unit's integer directly for a person simply on their feet.
+- **Light:** `LightField.sample()` no longer builds a list of its two light lists on every call.
+- **Walking:** the collision check calls the field directly (`DummyEnemy.block_env`) instead of through a Callable.
+- **Crowd ticker:**
+  - People no longer process one by one. `Crowd.Ticker` steps them all through `Person.frame()`, citizens then soldiers.
+  - The ticker is made after the people, then moved to just before the first of them, so they are stepped at the same point in the frame and in the same order.
+- **Stagger:** people are staggered by spawn order (`Person.stagger`), not instance id. By id, every run shifted whenever any unrelated change made one object more or fewer: the id's parity decided which half of the crowd thinks on even frames.
+
+Per person per frame, all on screen: 10.5 µs → 7.1 µs. A fast path for the walk itself was exact but measured nothing, so it was left out.
+
+Same hour against `kak-perf-v1`: mission 101.9 → 108.0 fps, Cinderfall 46.8 → 47.9 fps.
+
+Checks:
+- 712 pass, the digest is unchanged, FLOW 24/24, and the citadel test is unchanged (falls at 11.8 s).
+- The crowd check's new baseline is `checksum=-890235158`, the same with extra objects allocated before the crowd spawns.
+- Mission test, with the new stagger: `citizens=164 escaped=14 stability=47%`, from 169, 11 and 48%. Crowd test: 165 alive, 15 escaped.

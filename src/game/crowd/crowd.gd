@@ -86,6 +86,17 @@ var _fled_all := false
 var _citadel_hit := false
 ## Seconds until EnemyField.purge() runs again (about once a second; mirrors the gate clock's pacing).
 var _purge_in := 1.0
+## Steps the people (see Ticker).
+var _ticker: Ticker
+
+
+## Steps the whole crowd from one node in the world, placed just before the first person: people do not process
+## on their own (Person.ticked), so the engine makes one call a frame instead of one per person.
+class Ticker extends Node:
+	var crowd: Crowd
+
+	func _process(delta: float) -> void:
+		crowd.step_people(delta)
 
 
 func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid, parent: Node2D,
@@ -119,6 +130,16 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		soldiers.append(_add_person(true, spot))
 	spawned_citizens = citizens.size()
 	spawned_soldiers = soldiers.size()
+	if _ticker == null:
+		# Made after the people, so their instance ids (which stagger their timers) are what they always were, then
+		# moved to just before the first of them: the crowd is stepped where its people used to be in the frame.
+		_ticker = Ticker.new()
+		_ticker.name = "CrowdTicker"
+		_ticker.crowd = self
+		_parent.add_child(_ticker)
+		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
+		if first != null and first.get_parent() == _parent:
+			_parent.move_child(_ticker, first.get_index())
 
 
 ## Walkable ground within `spread` of `about`, or the nearest walkable point to it.
@@ -133,6 +154,8 @@ func _spot_near(about: Vector2, spread: float) -> Vector2:
 
 func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	var p := Person.new()
+	p.ticked = true
+	p.stagger = citizens.size() + soldiers.size()
 	p.rng.seed = _rng.randi()
 	_field.add(p)
 	p.setup_person(is_soldier, at, _grid)
@@ -214,6 +237,17 @@ func _alive(list: Array[Person]) -> int:
 
 func _process(delta: float) -> void:
 	advance(delta)
+
+
+## One frame of every person, citizens then soldiers: the order they were spawned, which was the order the engine
+## processed them in when each processed itself.
+func step_people(delta: float) -> void:
+	for p in citizens:
+		if is_instance_valid(p):
+			p.frame(delta)
+	for p in soldiers:
+		if is_instance_valid(p):
+			p.frame(delta)
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
@@ -332,9 +366,9 @@ func _gates() -> void:
 			if not is_equal_approx(a.queue_since, b.queue_since):
 				return a.queue_since < b.queue_since
 			# Joined in the same tick (a burst of newcomers gets one queue_since between them): break the tie
-			# by instance id, which never changes, rather than leaving it to sort_custom's own stability --
+			# by spawn order (stagger_key), which never changes, rather than leaving it to sort_custom's own stability --
 			# that let two same-tick joiners flip order the next time the queue's composition changed.
-			return a.get_instance_id() < b.get_instance_id())
+			return a.stagger_key() < b.stagger_key())
 		# The gate opens on the clock alone: each passer now keeps its own pass, so there is no "previous
 		# passer must be gone" condition to also satisfy, only the interval -- and that alone still limits the
 		# gate to one release per GATE_INTERVAL.
@@ -499,6 +533,12 @@ func rally() -> void:
 
 
 func clear() -> void:
+	if is_instance_valid(_ticker):
+		if _ticker.is_inside_tree():
+			_ticker.queue_free()
+		else:
+			_ticker.free()
+	_ticker = null
 	for p in citizens + soldiers:
 		if is_instance_valid(p):
 			if p.is_inside_tree():

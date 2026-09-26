@@ -46,6 +46,8 @@ var rng := RandomNumberGenerator.new()
 ## Optional: effect lights tint the trooper; blocked(ground_pos) -> bool keeps walkers out of buildings.
 var lights: LightField
 var blocked: Callable
+## The field `blocked` asks, when there is one: called directly, the walk's check skips a Callable per step.
+var block_env: EnvironmentField
 var look := Look.TROOPER
 ## Height in px a pulled enemy is hoisted to (a tornado carries them up its funnel).
 var lift_target := 3.0
@@ -97,6 +99,11 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	tick(delta)
+	_refresh(delta)
+
+
+## After a tick: the light on the unit, and a redraw if what it shows changed.
+func _refresh(delta: float) -> void:
 	if not _in_view():
 		# Nobody sees the light on it or its stride: read the light and redraw the moment it comes into view.
 		_light_in = 0.0
@@ -335,7 +342,12 @@ func flash(seconds: float) -> void:
 func _move(step: Vector2) -> void:
 	if absf(step.x - step.y) > 0.0001:
 		_facing = 1 if step.x - step.y > 0.0 else -1
-	if blocked.is_valid() and blocked.call(ground_pos + step):
+	var hit: bool
+	if block_env != null:
+		hit = block_env.blocked(ground_pos + step)
+	else:
+		hit = blocked.is_valid() and blocked.call(ground_pos + step)
+	if hit:
 		_velocity = Vector2.ZERO
 		_idle = rng.randf_range(0.1, 0.5)
 		_pick_target()

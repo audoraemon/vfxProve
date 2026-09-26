@@ -21,11 +21,15 @@ static func run(t) -> void:
 		if not grid.walkable(p.ground_pos):
 			off_grid += 1
 	t.check(off_grid == 0, "everyone stands on walkable ground (%d do not)" % off_grid)
+	# Soldiers are posted in order: the yard's first, then walls, Citadel and patrols. A patrol's post on the east
+	# street can land beside the yard, so the yard is checked by who was posted there, not by who stands near it.
 	var in_yard := 0
 	var at_citadel := 0
-	for p in crowd.soldiers:
-		if TownLayout.BARRACKS_YARD.grow(0.6).has_point(p.anchor):
-			in_yard += 1
+	for i in crowd.soldiers.size():
+		var p := crowd.soldiers[i]
+		if i < Crowd.POST_YARD:
+			if TownLayout.BARRACKS_YARD.grow(0.6).has_point(p.anchor):
+				in_yard += 1
 		elif p.anchor.distance_to(TownLayout.CITADEL_ORIGIN) <= Crowd.RING_RADIUS + 1.2:
 			at_citadel += 1
 	t.check(in_yard == 20, "20 soldiers drill in the yard (%d)" % in_yard)
@@ -133,12 +137,21 @@ static func run(t) -> void:
 		for p in queue:
 			if is_instance_valid(p):
 				p.tick(1.0 / 60.0)
+	# Only people standing on their spot count as waiting: everyone started at the gate, the queue has moved
+	# everyone on by a spot each time someone was let through, and a few are still on their way out to the fan's
+	# far edge, passing others as they go.
+	var settled: Array[Person] = []
+	var waiting := 0
+	for p in queue:
+		if is_instance_valid(p) and p.queue_spot != Vector2.INF:
+			waiting += 1
+			if p.ground_pos.distance_to(p.queue_spot) <= 0.1:
+				settled.append(p)
+	t.check(settled.size() >= 3, "some of the waiting crowd stands on its spots (%d of %d)" % [settled.size(), waiting])
 	var stacked := 0
-	for i in queue.size():
-		for j in range(i + 1, queue.size()):
-			if is_instance_valid(queue[i]) and is_instance_valid(queue[j]) \
-					and queue[i].queue_spot != Vector2.INF and queue[j].queue_spot != Vector2.INF \
-					and queue[i].ground_pos.distance_to(queue[j].ground_pos) < Crowd.QUEUE_SPACING * 0.5:
+	for i in settled.size():
+		for j in range(i + 1, settled.size()):
+			if settled[i].ground_pos.distance_to(settled[j].ground_pos) < Crowd.QUEUE_SPACING * 0.5:
 				stacked += 1
 	t.check(stacked == 0, "waiting people stand apart instead of on top of each other (%d pairs stacked)" % stacked)
 	t.check(crowd.waiting_at(gate) <= 10, "and the gate has let more through (%d still waiting)" % crowd.waiting_at(gate))

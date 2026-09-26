@@ -52,12 +52,29 @@ const TORCHES := [
 	Vector2(-1.8, 8.0), Vector2(1.6, 8.0), Vector2(-0.9, -3.3), Vector2(0.7, -3.3),
 	Vector2(9.6, -1.8), Vector2(9.6, 1.6),
 ]
-## Residential blocks filled with rows of houses (see houses()): north-west, south-west, south-middle, south-east.
-const DISTRICTS := [Rect2(-8.1, -7.8, 4.9, 6.9), Rect2(-8.1, 0.9, 4.9, 6.9), Rect2(-2.6, 3.6, 2.0, 4.3), Rect2(0.7, 3.6, 7.1, 4.3)]
-const HOUSE_WIDE := Vector2(1.3, 0.95)
-const HOUSE_DEEP := Vector2(0.95, 1.25)
-const HOUSE_GAP := Vector2(0.45, 0.5)
+## Residential blocks (north-west, south-west, south-middle, south-east), each a loose grid of cottages with room
+## between them for trees and gardens (see houses()): [rect, columns, rows]. The southern blocks stop short of the
+## south wall, leaving a lane inside it.
+const DISTRICTS := [
+	[Rect2(-8.1, -7.8, 4.9, 6.9), 3, 4], [Rect2(-8.1, 0.9, 4.9, 6.5), 3, 4],
+	[Rect2(-2.6, 3.6, 2.0, 2.9), 1, 2], [Rect2(0.7, 3.6, 7.1, 3.8), 4, 3],
+]
+## A cottage's footprint, turned either way.
+const HOUSE_WIDE := Vector2(0.95, 0.75)
+const HOUSE_DEEP := Vector2(0.75, 0.95)
+## Open ground kept between a cottage and either street.
+const STREET_CLEAR := 0.95
+## The tavern faces the market across the west street; the blacksmith works against the west wall at the street's
+## end. Both are homes too (role &"house"), drawn by their own art (tag).
+const TAVERN := Rect2(-5.4, -2.35, 2.1, 1.4)
+const SMITHY := Rect2(-8.1, 0.95, 1.5, 1.25)
 const TREE_SIZE := Vector2(0.7, 0.7)
+## Trees in town, between the cottages.
+const TOWN_TREE := Vector2(0.45, 0.45)
+## Street lamps: along both streets at their edges, and round the market.
+const LAMPS := [
+	Vector2(-7.2, 0.55), Vector2(-5.6, -0.75), Vector2(-3.4, 0.55), Vector2(3.4, -0.75), Vector2(0.55, 3.4), Vector2(-0.75, -3.1),
+]
 
 
 ## A wall run is built in short pieces instead of one long slab. A building sorts against the rest of the town
@@ -101,7 +118,9 @@ static func structures() -> Array[Dictionary]:
 		_add(out, r, 10.0, Structure.Kind.MARKET_STALL, &"market")
 	var house_rects := houses()
 	for i in house_rects.size():
-		_add(out, house_rects[i], 20.0 + float(i * 7 % 5) * 1.5, Structure.Kind.HOUSE, &"house")
+		_add(out, house_rects[i], 15.0 + float(i * 7 % 5), Structure.Kind.HOUSE, &"house")
+	_add(out, TAVERN, 30.0, Structure.Kind.HOUSE, &"house", &"tavern")
+	_add(out, SMITHY, 20.0, Structure.Kind.HOUSE, &"house", &"smithy")
 	_add(out, BRIDGE, 6.0, Structure.Kind.BRIDGE, &"bridge")
 	for r: Rect2 in FIELDS:
 		_add(out, r, 3.0, Structure.Kind.FARM_FIELD, &"farm")
@@ -112,27 +131,98 @@ static func structures() -> Array[Dictionary]:
 		_add(out, Rect2(tree_spots[i], TREE_SIZE), 26.0 + float(i % 3) * 3.0, Structure.Kind.TREE, &"decor")
 	for p: Vector2 in TORCHES:
 		_add(out, Rect2(p, Vector2(0.2, 0.2)), 16.0, Structure.Kind.TORCH, &"decor")
+	for p: Vector2 in LAMPS:
+		_add(out, Rect2(p, Vector2(0.2, 0.2)), 18.0, Structure.Kind.TORCH, &"decor", &"lamp")
+	var town_trees := town_trees()
+	for i in town_trees.size():
+		_add(out, Rect2(town_trees[i], TOWN_TREE), 22.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor")
 	return out
 
 
-## House footprints: rows filling each district, alternating wide (1.3 x 0.95) and deep (0.95 x 1.25) houses,
-## deep rows nudged sideways so the streets are not a perfect grid. 12 + 12 + 3 + 13 = 40 houses.
+## Cottage footprints: one per cell of each district's grid, turned and nudged by a hash so the streets are not a
+## chessboard, leaving out the cells the tavern and the blacksmith stand in. 10 + 11 + 2 + 12 = 35 cottages; the
+## ground in front of the Main Gate stays open for the crowd that queues there.
 static func houses() -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	for d: Rect2 in DISTRICTS:
-		var y := d.position.y
-		var row := 0
-		while true:
-			var size: Vector2 = HOUSE_WIDE if row % 2 == 0 else HOUSE_DEEP
-			if y + size.y > d.end.y + 0.001:
-				break
-			var x := d.position.x + (0.2 if row % 2 == 1 else 0.0)
-			while x + size.x <= d.end.x + 0.001:
-				out.append(Rect2(Vector2(x, y), size))
-				x += size.x + HOUSE_GAP.x
-			y += size.y + HOUSE_GAP.y
-			row += 1
+	var n := 0
+	for d: Array in DISTRICTS:
+		var r: Rect2 = d[0]
+		var cols: int = d[1]
+		var rows: int = d[2]
+		var cell := Vector2(r.size.x / cols, r.size.y / rows)
+		for j in rows:
+			for i in cols:
+				n += 1
+				var c := r.position + cell * Vector2(i + 0.5, j + 0.5)
+				var size: Vector2 = HOUSE_WIDE if _unit(n * 3) < 0.55 else HOUSE_DEEP
+				var room := (cell - size) * 0.5 - Vector2(0.2, 0.2)
+				c += Vector2((_unit(n * 3 + 1) - 0.5) * 2.0 * maxf(room.x, 0.0) * 0.6,
+					(_unit(n * 3 + 2) - 0.5) * 2.0 * maxf(room.y, 0.0) * 0.6)
+				var h := _off_streets(Rect2(c - size * 0.5, size))
+				if h.grow(0.3).intersects(TAVERN) or h.grow(0.3).intersects(SMITHY):
+					continue
+				out.append(h)
 	return out
+
+
+## A cottage nudged back from both streets so at least STREET_CLEAR of open ground runs beside each road: with
+## less, one grid cell of passage is left and a crowd fleeing to a gate jams in it.
+static func _off_streets(h: Rect2) -> Rect2:
+	var ns: Rect2 = ROADS[0]
+	var ew: Rect2 = ROADS[1]
+	if h.grow(STREET_CLEAR).intersects(ns):
+		if h.get_center().x < ns.get_center().x:
+			h.position.x = minf(h.position.x, ns.position.x - STREET_CLEAR - h.size.x)
+		else:
+			h.position.x = maxf(h.position.x, ns.end.x + STREET_CLEAR)
+	if h.grow(STREET_CLEAR).intersects(ew):
+		if h.get_center().y < ew.get_center().y:
+			h.position.y = minf(h.position.y, ew.position.y - STREET_CLEAR - h.size.y)
+		else:
+			h.position.y = maxf(h.position.y, ew.end.y + STREET_CLEAR)
+	return h
+
+
+## Tree spots between the cottages: grid corners inside each district, kept clear of every building and street.
+static func town_trees() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var keep_clear: Array[Rect2] = houses()
+	keep_clear.append_array([TAVERN, SMITHY, TEMPLE, BARRACKS, BARRACKS_YARD, MARKET_SQUARE, CITADEL_COURT, MAIN_GATE, SIDE_GATE])
+	keep_clear.append_array(CORNER_TOWERS)
+	keep_clear.append_array(SIDE_TOWERS)
+	keep_clear.append_array(WALLS)
+	var n := 0
+	for d: Array in DISTRICTS:
+		var r: Rect2 = d[0]
+		var cols: int = d[1]
+		var rows: int = d[2]
+		var cell := Vector2(r.size.x / cols, r.size.y / rows)
+		for j in rows + 1:
+			for i in cols + 1:
+				n += 1
+				if _unit(n * 5 + 7) > 0.62:
+					continue
+				var p := r.position + cell * Vector2(i, j) - TOWN_TREE * 0.5
+				p += Vector2(_unit(n * 5 + 8) - 0.5, _unit(n * 5 + 9) - 0.5) * 0.3
+				var t := Rect2(p, TOWN_TREE)
+				if not TOWN.grow(-0.75).encloses(t):
+					continue
+				var clear := true
+				for k in keep_clear:
+					if k.grow(0.2).intersects(t):
+						clear = false
+						break
+				for road: Rect2 in ROADS:
+					if road.grow(0.25).intersects(t):
+						clear = false
+				if clear:
+					out.append(p)
+	return out
+
+
+## A stable number in [0, 1) for layout variety.
+static func _unit(n: int) -> float:
+	return float(absi((n * 2654435761) ^ (n * 40503 + 12345)) % 1009) / 1009.0
 
 
 ## Tree spots (top-left corners): a row along the north edge, a column along the west edge and two columns on
@@ -158,5 +248,6 @@ static func _jitter(n: int) -> float:
 	return (float((n * 37 + 11) % 7) / 6.0 - 0.5) * 0.6
 
 
-static func _add(out: Array[Dictionary], rect: Rect2, height: float, kind: Structure.Kind, role: StringName) -> void:
-	out.append({"rect": rect, "height": height, "kind": kind, "role": role})
+static func _add(out: Array[Dictionary], rect: Rect2, height: float, kind: Structure.Kind, role: StringName,
+		tag := &"") -> void:
+	out.append({"rect": rect, "height": height, "kind": kind, "role": role, "tag": tag})

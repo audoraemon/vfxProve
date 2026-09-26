@@ -71,10 +71,9 @@ static func torch_tip(s: Structure) -> Vector2:
 
 
 ## Banners on every tower wall wide enough, and the keep's flag, drawn onto `ci` (the structure's banner node,
-## which has no lighting shader: the cloth is tinted by `ambient` here).
-static func draw_banners(s: Structure, ci: CanvasItem, time: float, ambient: float) -> void:
+## which has no lighting shader: the cloth is tinted here by the ambient light and the world's tint).
+static func draw_banners(s: Structure, ci: CanvasItem, time: float, tint: Color) -> void:
 	ArtKit.begin()
-	var tint := Color(ambient, ambient, ambient)
 	var blue := ArtKit.BANNER[0].lerp(Structure.COL_CHAR, s.scorch) * tint
 	var blue_hi := ArtKit.BANNER[1].lerp(Structure.COL_CHAR, s.scorch) * tint
 	var cross := ArtKit.BANNER[2].lerp(Structure.COL_CHAR, s.scorch) * tint

@@ -13,8 +13,14 @@ class DecorLayer extends Node2D:
 
 	func _process(_delta: float) -> void:
 		var a := lights.ambient if lights else 1.0
-		if not is_equal_approx(modulate.r, a):
-			modulate = Color(a, a, a)
+		var t := lights.tint if lights else Color.WHITE
+		var m := Color(a * t.r, a * t.g, a * t.b)
+		if not modulate.is_equal_approx(m):
+			modulate = m
+
+## The town's warm evening light, after the reference: everything lit takes this colour (LightField.tint); windows,
+## torches and lamps do not, so they glow against it.
+const EVENING := Color(1.0, 0.95, 0.87)
 
 var citadel: Citadel
 var bridge: Structure
@@ -34,8 +40,10 @@ var _env: EnvironmentField
 ## ground: the battlefield's ground plane, or null for no floor. shake: camera the Citadel shakes when parts fall.
 func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = null) -> void:
 	_env = env
+	if env.lights != null:
+		env.lights.tint = EVENING
 	for d in TownLayout.structures():
-		var s := env.add_structure(d.rect, d.height, d.kind, d.role)
+		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
 		_built.append(s)
 		if s.kind == Structure.Kind.GATE:
 			gates.append(s)
@@ -82,6 +90,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = baked
+		floor_node.tint = EVENING
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
 
@@ -96,6 +105,8 @@ func teardown() -> void:
 	gates.clear()
 	bridge = null
 	fountain = null
+	if _env.lights != null:
+		_env.lights.tint = Color.WHITE
 	_env.clear_decor()
 	for d in _decor:
 		_free(d)

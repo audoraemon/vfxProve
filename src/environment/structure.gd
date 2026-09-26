@@ -76,7 +76,8 @@ var art := {}
 ## The last art drawing and what it was drawn for (_art_key_now()); replayed until its geometry changes.
 var _art_cache: Array = []
 var _art_key := 0
-## Marks a part with extra art: &"keep" (the Citadel keep's flag), &"gate" (the Citadel's gateway).
+## Picks a variant of the kind's art: &"keep" (the Citadel keep's flag), &"gate" (the Citadel's gateway),
+## &"tavern" and &"smithy" (houses), &"lamp" (a street lamp instead of a torch).
 var art_tag := &""
 ## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
 ## When set, damage() hands every hit to it instead of lowering hp (the Citadel's damage budget).
@@ -121,8 +122,9 @@ var _banner_sig := -1
 var _light_in := 0.0
 
 
-func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"") -> Structure:
+func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", tag_value := &"") -> Structure:
 	role = role_value
+	art_tag = tag_value
 	footprint = rect
 	max_height = h
 	height = h
@@ -442,7 +444,9 @@ func _face_color(base: Color, normal: Vector2, light: Color, dir: Vector2) -> Co
 		minf(base.g * amb * (1.0 + lit.g * gain) + lit.g * add, 1.0),
 		minf(base.b * amb * (1.0 + lit.b * gain) + lit.b * add, 1.0))
 	c = c.lerp(COL_CHAR, scorch * 0.65)
-	return c.lerp(Color(0.62, 0.78, 0.92), frost * 0.35)
+	c = c.lerp(Color(0.62, 0.78, 0.92), frost * 0.35)
+	var t := lights.tint if lights else Color.WHITE
+	return Color(c.r * t.r, c.g * t.g, c.b * t.b)
 
 
 func _draw() -> void:
@@ -534,6 +538,8 @@ func _light_art(light: Color, dir: Vector2) -> void:
 	mat.set_shader_parameter("ambient", lights.ambient if lights else 1.0)
 	mat.set_shader_parameter("scorch", scorch)
 	mat.set_shader_parameter("frost", frost)
+	var t := lights.tint if lights else Color.WHITE
+	mat.set_shader_parameter("tint", Vector3(t.r, t.g, t.b))
 
 
 func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color, jagged: bool) -> void:
@@ -629,6 +635,9 @@ func _gp(g: Vector2, h: float) -> Vector2:
 
 
 func _draw_torch(right_c: Color, left_c: Color) -> void:
+	if art_tag == &"lamp":
+		_draw_lamp(right_c, left_c)
+		return
 	draw_rect(Rect2(-1, -height, 2, height), left_c)
 	draw_rect(Rect2(0, -height, 1, height), right_c)
 	draw_rect(Rect2(-2, -height - 1, 4, 2), COL_BEAM)
@@ -636,6 +645,21 @@ func _draw_torch(right_c: Color, left_c: Color) -> void:
 	draw_rect(Rect2(-2, -height - 4, 4, 3), COL_FLAME[2])
 	draw_rect(Rect2(-1, -height - 6 - f % 2, 3, 4), COL_FLAME[1])
 	draw_rect(Rect2(-1 + (f % 2), -height - 8 - f, 1, 3), COL_FLAME[0])
+
+
+## A street lamp: a dark post with an arm, a lantern hanging from it whose glow flickers a little.
+func _draw_lamp(right_c: Color, left_c: Color) -> void:
+	var post := COL_BEAM.lerp(COL_CHAR, scorch)
+	draw_rect(Rect2(-1, -height, 2, height), post)
+	draw_rect(Rect2(0, -height, 1, height), post.lightened(0.15))
+	draw_rect(Rect2(-2, -1, 4, 1), post)
+	draw_rect(Rect2(-1, -height - 1, 6, 1), post)
+	var f := int(_time * 6.0 + float(rng.seed % 5)) % 4
+	var l := Vector2(2, -height)
+	draw_rect(Rect2(l, Vector2(4, 5)), right_c.darkened(0.4))
+	draw_rect(Rect2(l + Vector2(1, 1), Vector2(2, 3)), COL_FLAME[1] if f != 0 else COL_FLAME[2])
+	draw_rect(Rect2(l + Vector2(1, 1), Vector2(1, 2)), COL_FLAME[0])
+	draw_rect(Rect2(l + Vector2(0, -1), Vector2(4, 1)), left_c.darkened(0.3))
 
 
 ## A felled tree's stump (its leaves are the rubble).
@@ -674,7 +698,9 @@ func _draw_fantasy_windows(light: Color) -> void:
 
 ## The keep's banners (and the Citadel keep's flag), drawn by StoneArt onto the banner node.
 func _draw_banner() -> void:
-	StoneArt.draw_banners(self, _banner, _time, maxf(lights.ambient, 0.35) if lights else 1.0)
+	var amb := maxf(lights.ambient, 0.35) if lights else 1.0
+	var t := lights.tint if lights else Color.WHITE
+	StoneArt.draw_banners(self, _banner, _time, Color(amb * t.r, amb * t.g, amb * t.b))
 
 
 ## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace.
@@ -685,6 +711,8 @@ func _flame_tips() -> Array[Vector2]:
 		return PropArt.flame_tips(self)
 	if kind == Kind.BARRACKS:
 		return CivicArt.flame_tips(self)
+	if art_tag == &"smithy":
+		return [HouseArt.forge_tip(self)]
 	return []
 
 

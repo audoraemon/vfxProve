@@ -89,12 +89,16 @@ class DetailPaint extends Node2D:
 		floor_node.paint_detail(self)
 
 
+## The world's light colour laid over the baked ground (Town.EVENING).
+var tint := Color.WHITE
 ## Decor painted into the floor (TownDecor spots with `bake`), back to front.
 var baked_decor: Array[Dictionary] = []
 ## Per meadow cell: 1 meadow, 2 forest floor, +4 on a trail. Filled while painting the ground, read by the detail.
 var _zones := PackedByteArray()
 var _zn := 0
 var _texture: Texture2D
+## House yards, worked out once per paint (the detail pass asks about them ~36k times).
+var _yard_rects: Array[Rect2] = []
 ## Screen position of the baked texture's top-left corner.
 var _origin := Vector2.ZERO
 
@@ -136,7 +140,7 @@ func _draw() -> void:
 		return
 	# The floor sits under the iso basis; undo it and lay the baked screen-space texture down pixel for pixel.
 	draw_set_transform_matrix(Iso.BASIS.affine_inverse())
-	draw_texture(_texture, _origin)
+	draw_texture(_texture, _origin, tint)
 
 
 static func _iso_bounds(r: Rect2) -> Rect2:
@@ -150,11 +154,14 @@ static func _iso_bounds(r: Rect2) -> Rect2:
 
 func paint_ground(ci: CanvasItem) -> void:
 	_meadow(ci)
-	# Inside the walls the lanes are cobbled throughout; each house stands in its own packed-earth yard.
+	# Inside the walls the lanes are cobbled; the house blocks are lawn, and each house stands in its own small
+	# packed-earth yard, as in the reference.
 	_paving(ci, TownLayout.TOWN, COBBLE, COBBLE_MORTAR, 0.2)
-	for h: Rect2 in TownLayout.houses():
-		_yard(ci, h.grow(0.3))
-	_yard(ci, TownLayout.TEMPLE.grow(0.35))
+	for d: Array in TownLayout.DISTRICTS:
+		_yard(ci, (d[0] as Rect2).grow(-0.12), GRASS)
+	_yard_rects = _yards()
+	for h: Rect2 in _yard_rects:
+		_yard(ci, h, EARTH)
 	_patches(ci, FARM_BAND, DIRT, 0.3)
 	for tr in TRAILS:
 		_trail(ci, tr, 0.34)
@@ -231,8 +238,17 @@ func _patches(ci: CanvasItem, r: Rect2, pal: Array, cell: float) -> void:
 
 
 ## A house's yard: packed earth in organic patches, its edge ragged with a few discs so it does not read as a box.
-func _yard(ci: CanvasItem, r: Rect2) -> void:
-	_patches(ci, r, EARTH, 0.25)
+## Every house's yard: its footprint grown a little (the Temple, the tavern and the blacksmith too).
+static func _yards() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for h: Rect2 in TownLayout.houses():
+		out.append(h.grow(0.22))
+	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.TAVERN.grow(0.3), TownLayout.SMITHY.grow(0.3)])
+	return out
+
+
+func _yard(ci: CanvasItem, r: Rect2, pal: Array) -> void:
+	_patches(ci, r, pal, 0.25)
 	var n := int((r.size.x + r.size.y) * 2.0 / 0.35)
 	for i in n:
 		var h := _hash(roundi(r.position.x * 13.0) + i * 7, roundi(r.position.y * 17.0) - i * 3)
@@ -247,7 +263,7 @@ func _yard(ci: CanvasItem, r: Rect2) -> void:
 			p = Vector2(r.end.x - (per - r.size.x - r.size.y), r.end.y)
 		else:
 			p = Vector2(r.position.x, r.end.y - (per - r.size.x * 2.0 - r.size.y))
-		ci.draw_circle(p, 0.1 + float(h % 5) * 0.03, EARTH[h % EARTH.size()])
+		ci.draw_circle(p, 0.1 + float(h % 5) * 0.03, pal[h % pal.size()])
 
 
 ## A dirt trail: overlapping discs of ragged size along a polyline, dark rim first, then the lighter tread.
@@ -399,7 +415,13 @@ func _zone(g: Vector2) -> int:
 		if TownLayout.MARKET_SQUARE.has_point(g) or TownLayout.CITADEL_COURT.has_point(g) \
 				or TownLayout.BARRACKS_YARD.has_point(g):
 			return 0
-		return 3
+		for y: Rect2 in _yard_rects:
+			if y.has_point(g):
+				return 3
+		for d: Array in TownLayout.DISTRICTS:
+			if (d[0] as Rect2).grow(-0.2).has_point(g):
+				return 1
+		return 0
 	if _zn == 0:
 		return 2 if _forest(g) else 1
 	var i := clampi(floori((g.x - FILL.position.x) / CELL), 0, _zn - 1)

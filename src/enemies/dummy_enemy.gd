@@ -100,7 +100,8 @@ func _process(delta: float) -> void:
 		_light_in = 1.0 / LIGHT_HZ
 		var l := lights.sample(ground_pos)
 		var amb := lights.ambient
-		modulate = Color(amb + l.r * 2.5, amb + l.g * 2.5, amb + l.b * 2.5, modulate.a)
+		var t := lights.tint
+		modulate = Color((amb + l.r * 2.5) * t.r, (amb + l.g * 2.5) * t.g, (amb + l.b * 2.5) * t.b, modulate.a)
 	# Pixel art changes a few times a second, not every frame: redraw only when something visible moved.
 	var sig := _art_signature()
 	if sig != _drawn_art:

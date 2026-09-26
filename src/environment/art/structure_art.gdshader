@@ -8,6 +8,8 @@ uniform vec2 light_dir = vec2(0.0);
 uniform float ambient = 1.0;
 uniform float scorch = 0.0;
 uniform float frost = 0.0;
+// The world's light colour (LightField.tint): lit surfaces and ink take it, emissive glow does not.
+uniform vec3 tint = vec3(1.0);
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -20,7 +22,7 @@ void fragment() {
 		// EMIT: window glow, the dark of a gateway.
 	} else if (code > 4.5) {
 		// INK: outlines darken with scorch only.
-		COLOR.rgb = mix(COLOR.rgb, CHAR, scorch * 0.65);
+		COLOR.rgb = mix(COLOR.rgb, CHAR, scorch * 0.65) * tint;
 	} else {
 		vec3 base = COLOR.rgb;
 		vec2 n = code < 2.5 ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
@@ -39,6 +41,6 @@ void fragment() {
 		float add = mix(0.35, 0.12, t) * head;
 		vec3 c = min(base * ambient * (1.0 + lit * gain) + lit * add, vec3(1.0));
 		c = mix(c, CHAR, scorch * 0.65);
-		COLOR.rgb = mix(c, FROST, frost * 0.35);
+		COLOR.rgb = mix(c, FROST, frost * 0.35) * tint;
 	}
 }

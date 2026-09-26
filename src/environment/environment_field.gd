@@ -23,8 +23,9 @@ var _decor: Array[Decor] = []
 var _grid := {}
 
 
-func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &"") -> Structure:
-	var s := Structure.new().setup(rect, height, kind, rng.randi(), role)
+## `tag` picks a variant of the kind's art (&"tavern", &"smithy", &"lamp"); see Structure.art_tag.
+func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &"", tag := &"") -> Structure:
+	var s := Structure.new().setup(rect, height, kind, rng.randi(), role, tag)
 	s.lights = lights
 	s.fx_parent = fx_parent
 	s.fx_back = fx_back

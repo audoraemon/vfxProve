@@ -76,14 +76,18 @@ static func _far_from_others(out: Array[Dictionary], g: Vector2, d: float) -> bo
 
 # --- Inside the walls ------------------------------------------------------------------
 
-## Barrels, crates, flowers, bushes and lamps against the houses, the Temple and the barracks, and small gardens.
+## Trees behind the houses; barrels, crates, flowers, bushes and lamps against the houses, the Temple, the barracks,
+## the tavern and the blacksmith; and small gardens.
 static func _houses(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 	var hosts: Array[Rect2] = TownLayout.houses()
-	hosts.append(TownLayout.TEMPLE)
-	hosts.append(TownLayout.BARRACKS)
+	hosts.append_array([TownLayout.TEMPLE, TownLayout.BARRACKS, TownLayout.TAVERN, TownLayout.SMITHY])
 	for i in hosts.size():
 		var r := hosts[i]
 		var placed := 0
+		# A tree behind the house (its north or west side), its crown showing over the roof as in the reference.
+		var back := Vector2(r.get_center().x, r.position.y - 0.12) if _h(i, 3) < 0.5 			else Vector2(r.position.x - 0.12, r.get_center().y)
+		if _h(i, 4) < 0.85 and blocked(back, solid) and not _inside_any(back, solid) and _far_from_others(out, back, 0.5):
+			_add(out, Decor.Kind.OAK if _h(i, 5) < 0.75 else Decor.Kind.PINE, back, Vector2(24.0 + _h(i, 6) * 8.0, 0.0))
 		var sides := [
 			[Vector2(r.position.x, r.end.y + 0.1), Vector2(r.end.x, r.end.y + 0.1)],
 			[Vector2(r.end.x + 0.1, r.position.y), Vector2(r.end.x + 0.1, r.end.y)],

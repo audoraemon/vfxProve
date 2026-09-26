@@ -12,7 +12,7 @@ static func run(t) -> void:
 		counts[s.role] = int(counts.get(s.role, 0)) + 1
 	t.check(env.structures().size() == TownLayout.structures().size() + 10,
 		"every layout building plus the 9 Citadel parts and the fountain")
-	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 40 and counts.get(&"gate", 0) == 2,
+	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 37 and counts.get(&"gate", 0) == 2,
 		"roles carried over (%s)" % [counts])
 	t.check(town.gates.size() == 2 and town.bridge != null and town.bridge.walkable, "gates and bridge found")
 	t.check(town.citadel != null and town.citadel.fraction() == 1.0 and town.citadel.standing_parts() == 9, "the Citadel is intact")

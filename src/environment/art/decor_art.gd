@@ -36,7 +36,9 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 		Decor.Kind.ROCK:
 			_rock(o, seed_value)
 		Decor.Kind.OAK, Decor.Kind.PINE:
-			PropArt.tree(o, 30.0 + ArtKit.hash01(seed_value, 3) * 16.0, 0 if kind == Decor.Kind.OAK else 1, seed_value)
+			# A tree in town carries its height (px) in size.x; out in the country it picks one.
+			var tall := size.x if size.x > 0.0 else 30.0 + ArtKit.hash01(seed_value, 3) * 16.0
+			PropArt.tree(o, tall, 0 if kind == Decor.Kind.OAK else 1, seed_value)
 		Decor.Kind.LAMP:
 			_lamp(o)
 		Decor.Kind.BUNTING:

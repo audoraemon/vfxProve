@@ -7,6 +7,9 @@ extends Node
 var _lights: Array[Dictionary] = []
 ## World ambient 0..1 (1 = normal). Lowered while effects dim the scene; lit things multiply by it.
 var ambient := 1.0
+## Colour of the world's own light, multiplied into everything lit (the town's warm evening, Town.EVENING).
+## White by default, so the sandbox looks as it always has.
+var tint := Color.WHITE
 var _next_id := 1
 var _time := 0.0
 

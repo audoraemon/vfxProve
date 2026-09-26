@@ -19,7 +19,7 @@ const LEFT := 3
 const RIGHT := 1
 
 ## Plaster [lit (right wall), shade (left wall)], and the timber framing it.
-const PLASTER := [Color("e6d6b2"), Color("c8ae86")]
+const PLASTER := [Color("dcc69a"), Color("bb9f76")]
 const TIMBER := Color("4e3624")
 const TIMBER_DARK := Color("35251a")
 ## Stone foot course under the plaster.

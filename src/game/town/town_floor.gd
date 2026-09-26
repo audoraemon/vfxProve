@@ -183,6 +183,9 @@ func paint_ground(ci: CanvasItem) -> void:
 	_paving(ci, TownLayout.MARKET_SQUARE, FLAG, FLAG_MORTAR, 0.42)
 	_paving(ci, TownLayout.CITADEL_COURT, FLAG, FLAG_MORTAR, 0.42)
 	_paving(ci, TownLayout.FOUNTAIN_PLAZA, FLAG, FLAG_MORTAR, 0.42)
+	# The ground inside each gate, where the crowd queues, is cobbled like the streets.
+	for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+		_paving(ci, plaza.grow(0.3), COBBLE, COBBLE_MORTAR, 0.2)
 	_river(ci)
 
 
@@ -455,8 +458,11 @@ func _zone(g: Vector2) -> int:
 			return 0
 	if TownLayout.TOWN.has_point(g):
 		if TownLayout.MARKET_SQUARE.has_point(g) or TownLayout.CITADEL_COURT.has_point(g) \
-				or TownLayout.BARRACKS_YARD.has_point(g):
+				or TownLayout.BARRACKS_YARD.has_point(g) or TownLayout.FOUNTAIN_PLAZA.has_point(g):
 			return 0
+		for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+			if plaza.grow(0.3).has_point(g):
+				return 0
 		for y: Rect2 in _yard_rects:
 			if y.has_point(g):
 				return 3

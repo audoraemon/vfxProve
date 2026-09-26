@@ -78,6 +78,8 @@ var _on_thaw := Callable()
 var _shards: Array[Vector4] = []
 ## Last drawn art signature; -1 forces the first draw.
 var _drawn_art := -1
+## A signature no drawing has: the unit redraws on its next frame in view.
+const UNDRAWN := -0x7fffffffffffffff
 ## Screen pixels added to this unit's y-sort key without moving where it is drawn. Zero except for the town's
 ## people, who use it to sort in front of a long building they stand in front of (Person.sort_bias_for).
 var sort_bias := 0.0
@@ -95,6 +97,11 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	tick(delta)
+	if not _in_view():
+		# Nobody sees the light on it or its stride: read the light and redraw the moment it comes into view.
+		_light_in = 0.0
+		_drawn_art = UNDRAWN
+		return
 	_light_in -= delta
 	if lights != null and _light_in <= 0.0:
 		_light_in = 1.0 / LIGHT_HZ
@@ -107,6 +114,11 @@ func _process(delta: float) -> void:
 	if sig != _drawn_art:
 		_drawn_art = sig
 		queue_redraw()
+
+
+## Whether anyone can see the unit: always, unless a subclass knows what the camera shows (Person.view).
+func _in_view() -> bool:
+	return true
 
 
 ## Everything the unit's drawing depends on, quantized to what a pixel can show. Equal signatures draw

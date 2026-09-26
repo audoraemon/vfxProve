@@ -28,12 +28,14 @@ const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
 ## Seconds a dropped banner takes to fall and fade.
 const BANNER_FALL_TIME := 1.0
 ## The shake jitter is re-rolled this many times a second instead of every frame. A 1-2 px pixel-art shudder
-## reads the same, and a shaking building stops rebuilding its whole drawing sixty times a second.
+## reads the same. It moves the node, so a shaking building never repaints for it.
 const SHAKE_HZ := 15.0
 ## How often a quiet building re-checks its light bucket, the way DummyEnemy.LIGHT_HZ throttles units. An
 ## animating building (shaking, collapsing, molten) always keeps its signature current every frame regardless
 ## (see _process), so this only trims the ~142-structure cost while nothing is happening to them.
 const LIGHT_HZ := 20.0
+## A torch's flame and a lamp's glow flicker in steps this often.
+const TORCH_FLICKER_HZ := 12.0
 ## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
 const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
@@ -55,6 +57,7 @@ const SIG_COLOR_STEPS := 48.0
 const SIG_DIR_STEPS := 8.0
 ## Scratch buffers for _quad(); canvas drawing is single-threaded, so one shared pair is enough.
 static var _no_uv := PackedVector2Array()
+const SHADOW := Color(0, 0, 0, 0.25)
 static var _quad_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
 
 var kind := Kind.BLOCK
@@ -112,6 +115,9 @@ var _flame_step := -1
 ## A mill's turning sails or wheel, on its own node so the building stays cached.
 var _spin: Node2D
 var _spin_step := -1
+## EnvironmentField.near()'s last query that returned this structure (it counts each structure once without
+## searching what it already found).
+var near_query := -1
 ## Last drawn light state; redraw only when it changes or something animates.
 var _drawn_sig := -1
 ## One-shot "redraw once" flag: set it when something changed the drawing (a hit, a crack, a collapse start).
@@ -124,6 +130,24 @@ var _banner_fall := -1.0
 var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
 var _banner_sig := -1
+## Last drawn flicker step of a torch's or lamp's flame.
+var _torch_step := -1
+## What the camera shows (world px, grown by a margin), set every frame by the Battlefield. Empty (headless tests,
+## the sandbox before its first frame) counts every structure as seen.
+static var view := Rect2()
+## A structure whose screen box (_view_box) is off screen updates every OFFSCREEN_EVERY frames with the time it
+## skipped, and draws nothing until it is seen again (_unseen): most of the town is off screen at play zoom.
+const OFFSCREEN_EVERY := 4
+const VIEW_BOX_MARGIN := 64.0
+var _view_box := Rect2()
+var _offscreen_delta := 0.0
+var _unseen := false
+## Off screen with nothing going on, a structure stops processing altogether; EnvironmentField wakes it when it
+## comes into view, and anything that happens to it (a hit, a fire, a falling banner) wakes it at once.
+var asleep := false
+## Where the node stands when still: its front corner. A shudder moves the node off it (_process), so the art and
+## effects are placed from here.
+var _base := Vector2.ZERO
 ## Seconds until the next quiet-frame light check (staggered per-instance so all ~142 do not land on one frame).
 var _light_in := 0.0
 
@@ -147,8 +171,16 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", t
 	var g2 := rect.end
 	var front := Iso.ground_to_screen(g2)
 	position = front
+	_base = front
 	_s = [Iso.ground_to_screen(g0) - front, Iso.ground_to_screen(Vector2(g2.x, g0.y)) - front,
 		Vector2.ZERO, Iso.ground_to_screen(Vector2(g0.x, g2.y)) - front]
+	# Everything it can draw on screen: the footprint's diamond raised by its height, with room for roofs, spires,
+	# sails, banners, flames and its shadow.
+	var x0 := (g0.x - g2.y) * 32.0
+	var x1 := (g2.x - g0.y) * 32.0
+	var y0 := (g0.x + g0.y) * 16.0 - h
+	var y1 := (g2.x + g2.y) * 16.0
+	_view_box = Rect2(x0, y0, x1 - x0, y1 - y0).grow(VIEW_BOX_MARGIN)
 	if k in WINDOWED:
 		_build_windows()
 	# After the windows: the plan hashes the seed and must never draw from the rng stream they just used.
@@ -208,6 +240,7 @@ func distance_to(g: Vector2) -> float:
 func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 	if destroyed:
 		return
+	wake()
 	if damage_filter.is_valid():
 		# Someone else (the Citadel) owns this building's health and decides when it falls.
 		damage_filter.call(self, amount, source, damage_kind)
@@ -231,6 +264,7 @@ func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 func mark_hit(share: float, damage_kind: StringName) -> void:
 	if destroyed:
 		return
+	wake()
 	_dirty = true
 	if damage_kind == &"ice":
 		frost = minf(frost + share * 3.0, 1.0)
@@ -241,6 +275,7 @@ func mark_hit(share: float, damage_kind: StringName) -> void:
 
 ## Cracks up the visible walls (once).
 func crack() -> void:
+	wake()
 	if destroyed or not _cracks.is_empty() or kind in NO_CRACKS:
 		return
 	_build_cracks()
@@ -248,21 +283,25 @@ func crack() -> void:
 
 
 func shake(amount: float) -> void:
+	wake()
 	if not destroyed:
 		_shake = maxf(_shake, amount)
 
 
 ## Fire and smoke on the building for `seconds`; `offset` is in px from its front corner (its position).
 func ignite(offset: Vector2, seconds: float) -> void:
+	wake()
 	_spawn_fire(offset, seconds)
 
 
 func dust_burst(amount: float) -> void:
+	wake()
 	_spawn_dust(amount)
 
 
 ## The banner comes loose and slides down the wall, fading (the Citadel at 20%).
 func drop_banner() -> void:
+	wake()
 	if is_instance_valid(_banner) and _banner_fall < 0.0:
 		_banner_fall = 0.0
 
@@ -270,6 +309,7 @@ func drop_banner() -> void:
 func destroy(source: Vector2, damage_kind: StringName) -> void:
 	if destroyed:
 		return
+	wake()
 	destroyed = true
 	_dirty = true
 	hp = 0.0
@@ -324,6 +364,33 @@ func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
 
 
 func _process(delta: float) -> void:
+	if view.has_area() and not view.intersects(_view_box):
+		if _quiet():
+			_unseen = true
+			asleep = true
+			position = _base
+			_offscreen_delta = 0.0
+			set_process(false)
+			return
+		# Off screen: keep time and any fall going every few frames, with the time skipped, and draw nothing.
+		_offscreen_delta += delta
+		if (Engine.get_process_frames() + get_instance_id()) % OFFSCREEN_EVERY != 0:
+			return
+		delta = _offscreen_delta
+		_offscreen_delta = 0.0
+		_unseen = true
+	else:
+		delta += _offscreen_delta
+		_offscreen_delta = 0.0
+		if _unseen:
+			# Back in view: draw everything that changed while nobody looked.
+			_unseen = false
+			_dirty = true
+			position = _base
+			_banner_sig = -1
+			_spin_step = -1
+			_flame_step = -1
+			_torch_step = -1
 	_time += delta
 	_shake = move_toward(_shake, 0.0, 10.0 * delta)
 	if _collapse >= 0.0 and _collapse < 1.0:
@@ -357,30 +424,42 @@ func _process(delta: float) -> void:
 		# change what it draws, so that is all it redraws for.
 		var banner_sig := roundi(sin(_time * 3.0)) * 4096 + int((lights.ambient if lights else 1.0) * 48.0) * 64 \
 			+ int(scorch * 48.0)
-		if banner_sig != _banner_sig:
+		if banner_sig != _banner_sig and not _unseen:
 			_banner_sig = banner_sig
 			_banner.queue_redraw()
 	if is_instance_valid(_spin):
 		_spin.visible = not destroyed
 		var spin_step := int(_time * 8.0)
-		if spin_step != _spin_step and not destroyed:
+		if spin_step != _spin_step and not destroyed and not _unseen:
 			_spin_step = spin_step
 			_spin.queue_redraw()
 	if is_instance_valid(_flame):
 		_flame.visible = not destroyed
 		var flame_step := int(_time * 8.0)
-		if flame_step != _flame_step and not destroyed:
+		if flame_step != _flame_step and not destroyed and not _unseen:
 			_flame_step = flame_step
 			_flame.queue_redraw()
 	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
-	var animating := shake_step != _shake_step or (_collapse >= 0.0 and _collapse <= 1.0) \
-		or not _top_piece.is_empty() or _molten > 0.0 or kind == Kind.TORCH
+	var stepped := shake_step != _shake_step
 	_shake_step = shake_step
-	# A hit sets _dirty and used to force a same-frame repaint regardless of the shake step; under Cinderfall's
-	# stone rain a building can be hit again before its step advances, repainting off-cadence. While it is
-	# already shaking, the pending repaint just rides the next step (still <= 1/SHAKE_HZ away); only a hit
-	# with no shake in progress (the first hit, or a building that never shakes) still repaints at once.
-	if animating or (_dirty and _shake <= 0.0):
+	if _unseen:
+		return
+	if stepped:
+		# The shudder moves the whole node, so shaking alone never repaints: under Cinderfall's stone rain dozens
+		# of buildings shake at once. The art and effects are placed from _base, never from the moved position.
+		var jitter := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * _shake if _shake > 0.2 else Vector2.ZERO
+		position = _base + jitter.round()
+	var animating := (_collapse >= 0.0 and _collapse <= 1.0) or not _top_piece.is_empty() or _molten > 0.0
+	if kind == Kind.TORCH:
+		# The flame flickers in steps (TORCH_FLICKER_HZ): redraw on each step, not every frame.
+		var torch_step := int(_time * TORCH_FLICKER_HZ)
+		if torch_step != _torch_step:
+			_torch_step = torch_step
+			animating = true
+	# A hit sets _dirty (scorch, frost, cracks, a window going dark). Under Cinderfall's stone rain a building
+	# can be hit again and again between steps, so while it shakes the repaint rides the next shake step (still
+	# <= 1/SHAKE_HZ away); a hit with no shake in progress repaints at once.
+	if animating or (_dirty and (stepped or _shake <= 0.0)):
 		_dirty = false
 		# Keep the light bucket current while animating, or the first quiet frame compares against a
 		# stale one and can skip the redraw it needs.
@@ -472,20 +551,19 @@ func _draw() -> void:
 	var top_c := _face_color(pal[0], Vector2.ZERO, light, dir)
 	var right_c := _face_color(pal[1], Vector2(1, 0), light, dir)
 	var left_c := _face_color(pal[2], Vector2(0, 1), light, dir)
-	var jitter := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * _shake if _shake > 0.2 else Vector2.ZERO
-	draw_set_transform(jitter.round())
-
-	# Ground shadow toward the back (fields lie flat and cast none).
-	if kind != Kind.FARM_FIELD:
-		_quad(PackedVector2Array([_s[0], _s[1] + Vector2(6, -3), _s[2] + Vector2(6, -3), _s[3]]),
-			Color(0, 0, 0, 0.25))
 
 	var rubble_top := _collapse >= 0.0
 	var art_drawn := not destroyed and not rubble_top and kind in ART_KINDS
+	# Ground shadow toward the back (fields lie flat and cast none). Drawn art carries it in its own first batch.
+	if kind != Kind.FARM_FIELD and not art_drawn:
+		_quad(_shadow(), SHADOW)
 	if art_drawn:
 		var key := _art_key_now()
 		_light_art(light, dir)
 		if key != _art_key or _art_cache.is_empty():
+			# This once, the shadow goes down on its own: the recording only takes it in once it is made.
+			if kind != Kind.FARM_FIELD:
+				_quad(_shadow(), SHADOW)
 			ArtKit.record()
 			match kind:
 				Kind.HOUSE:
@@ -497,6 +575,11 @@ func _draw() -> void:
 				_:
 					StoneArt.draw(self)
 			_art_cache = ArtKit.take()
+			if kind == Kind.HOUSE:
+				# A house's layers are few and its lines many: flattened, it is one fill call and one line call.
+				_art_cache = ArtKit.flatten(_art_cache)
+			if kind != Kind.FARM_FIELD:
+				_art_cache = _with_shadow(_art_cache)
 			_art_key = key
 		else:
 			ArtKit.replay(self, _art_cache)
@@ -522,7 +605,7 @@ func _draw() -> void:
 			_s[1] + Vector2(0, -height)]), m, -1.0)
 
 	if not _top_piece.is_empty():
-		draw_set_transform((jitter + _top_piece.off + Vector2(0, _top_piece.fall)).round())
+		draw_set_transform((_top_piece.off + Vector2(0, _top_piece.fall)).round())
 		_draw_box(_top_piece.h0, _top_piece.h1, top_c, right_c, left_c, false)
 		draw_set_transform(Vector2.ZERO)
 
@@ -530,6 +613,35 @@ func _draw() -> void:
 		for r in _rubble:
 			draw_colored_polygon(r[0], r[1].lerp(COL_CHAR, scorch * 0.5))
 	draw_set_transform(Vector2.ZERO)
+
+
+## The ground shadow toward the back.
+func _shadow() -> PackedVector2Array:
+	return PackedVector2Array([_s[0], _s[1] + Vector2(6, -3), _s[2] + Vector2(6, -3), _s[3]])
+
+
+## The art's recording with the ground shadow as the first thing its first batch fills: one draw call fewer than
+## the shadow on its own (every draw call costs the renderer, and the town shows a couple of hundred structures).
+## Its UVs are the art shader's pass-through (code 0), as the shadow's own quad had.
+func _with_shadow(rec: Array) -> Array:
+	var out := rec.duplicate()
+	var first: Array = out[0] if not out.is_empty() else [PackedInt32Array(), PackedVector2Array(), PackedColorArray(),
+		PackedVector2Array(), PackedVector2Array(), PackedColorArray()]
+	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
+	for i in (first[0] as PackedInt32Array):
+		idx.append(i + 4)
+	var pts := _shadow()
+	pts.append_array(first[1])
+	var cols := PackedColorArray([SHADOW, SHADOW, SHADOW, SHADOW])
+	cols.append_array(first[2])
+	var uvs := PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+	uvs.append_array(first[3])
+	var merged := [idx, pts, cols, uvs, first[4], first[5]]
+	if out.is_empty():
+		out.append(merged)
+	else:
+		out[0] = merged
+	return out
 
 
 ## This structure's key in ArtTuning: its kind, then its art tag ("house_tavern"), or "_barn" for a farm's house.
@@ -657,9 +769,32 @@ func _quad(p: PackedVector2Array, c: Color) -> void:
 	draw_primitive(p, _quad_cols, _no_uv)
 
 
+## Nothing is moving, falling, cooling or shaking: an unseen structure can sleep (see asleep).
+func _quiet() -> bool:
+	return (_collapse < 0.0 or _collapse >= 1.0) and _top_piece.is_empty() and _molten <= 0.0 and _shake <= 0.0 \
+		and (_banner_fall < 0.0 or not is_instance_valid(_banner))
+
+
+## Start processing again (see asleep).
+func wake() -> void:
+	if asleep:
+		asleep = false
+		set_process(true)
+
+
+## Everything it can draw on screen (world px), for deciding whether it is in view.
+func view_box() -> Rect2:
+	return _view_box
+
+
+## Where the node stands when still (its front corner, world px); a shudder moves `position` off it.
+func base_position() -> Vector2:
+	return _base
+
+
 ## Screen position (local) of a ground point at height h.
 func _gp(g: Vector2, h: float) -> Vector2:
-	return Iso.ground_to_screen(g) - position + Vector2(0, -h)
+	return Iso.ground_to_screen(g) - _base + Vector2(0, -h)
 
 
 func _draw_torch(right_c: Color, left_c: Color) -> void:
@@ -671,7 +806,7 @@ func _draw_torch(right_c: Color, left_c: Color) -> void:
 	draw_rect(Rect2(0, -height, 2, height), right_c)
 	draw_rect(Rect2(-3, -2, 6, 2), left_c.darkened(0.2))
 	draw_rect(Rect2(-3, -height - 2, 6, 3), COL_IRON_CUP)
-	var f := int(_time * 12.0 + float(rng.seed % 5)) % 3
+	var f := int(_time * TORCH_FLICKER_HZ + float(rng.seed % 5)) % 3
 	draw_rect(Rect2(-3, -height - 6, 6, 4), COL_FLAME[2])
 	draw_rect(Rect2(-2, -height - 9 - f % 2, 4, 5), COL_FLAME[1])
 	draw_rect(Rect2(-1 + (f % 2), -height - 12 - f, 2, 4), COL_FLAME[0])
@@ -788,7 +923,7 @@ func _build_rubble() -> void:
 	for i in count:
 		var g := Vector2(rng.randf_range(footprint.position.x - 0.25, footprint.end.x + 0.25),
 			rng.randf_range(footprint.position.y - 0.25, footprint.end.y + 0.25))
-		var c := Iso.ground_to_screen(g) - position
+		var c := Iso.ground_to_screen(g) - _base
 		var size := rng.randf_range(2.0, 5.5)
 		var poly := PackedVector2Array()
 		for k in 5:
@@ -804,7 +939,7 @@ func _particles(parent: Node, shape: PixelParticles.Shape, ramp: Array, offset :
 	p.rng.seed = rng.randi()
 	p.shape = shape
 	p.ramp = PackedColorArray(ramp)
-	p.position = position + offset
+	p.position = _base + offset
 	parent.add_child(p)
 	return p
 

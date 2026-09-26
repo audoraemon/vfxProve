@@ -88,13 +88,15 @@ static func _barrel(o: Vector2) -> void:
 	_rect(o + Vector2(-5, -10), 10, 10, ArtKit.WOOD[1])
 	_rect(o + Vector2(-5, -10), 3, 10, ArtKit.WOOD[2])
 	_rect(o + Vector2(3, -10), 2, 10, ArtKit.WOOD[0])
-	for x in [-2.0, 1.0]:
-		ArtKit.line(o + Vector2(x, -9), o + Vector2(x, 0), ArtKit.ink(0.25))
 	ArtKit.blob(o + Vector2(0, -10), Vector2(5, 2.2), ArtKit.WOOD[0], 0.0, 10)
 	ArtKit.blob(o + Vector2(0, -10), Vector2(3.5, 1.4), ArtKit.WOOD[2], 0.0, 8)
 	for y in [-2.0, -8.0]:
 		_rect(o + Vector2(-5, y), 10, 1, Color(0.24, 0.2, 0.18))
-	ArtKit.line(o + Vector2(-5, 0), o + Vector2(5, 0), ArtKit.ink(0.6))
+	# Staves and the foot's shadow as one-pixel fills, not lines: a barrel without lines is a single draw call,
+	# and the town has about a hundred.
+	for x in [-2.0, 1.0]:
+		_rect(o + Vector2(x, -9), 1, 9, ArtKit.ink(0.25))
+	_rect(o + Vector2(-5, -1), 10, 1, ArtKit.ink(0.6))
 
 
 static func _crate(at: Vector2, side: Vector2, lift: float, origin: Vector2) -> void:

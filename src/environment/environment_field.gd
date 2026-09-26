@@ -5,9 +5,11 @@ extends Node
 ## A structure was destroyed (any cause); the game's rules count these.
 signal structure_destroyed(s: Structure, kind: StringName)
 
-## Spatial index cell (ground units) for blocked(); query margins up to MAX_MARGIN use it.
+## Spatial index cell (ground units) for near() and the other area queries; blocked() uses the finer FINE_CELL
+## index. Margins up to MAX_MARGIN are covered.
 const CELL := 2.0
 const MAX_MARGIN := 0.5
+const _NONE: Array = []
 
 var lights: LightField
 ## Y-sorted world layer structures are added to (null in headless tests).
@@ -21,6 +23,16 @@ var _structures: Array[Structure] = []
 var _decor: Array[Decor] = []
 ## Vector2i cell -> structures whose footprint, grown by MAX_MARGIN, touches that cell.
 var _grid := {}
+## Counts near() queries; see Structure.near_query.
+var _near_query := 0
+## Vector2i fine cell -> the structures people cannot walk through whose footprint, grown by MAX_MARGIN, touches
+## it: blocked() asks for every step of every walker, and a 2-unit cell's list was long.
+var _fine := {}
+const FINE_CELL := 0.5
+## near_cached()'s candidate lists: Vector3i(cell x, cell y, radius in 1/16ths) -> Array of structures.
+var _near_cache := {}
+## near_cached()'s cell (ground units).
+const NEAR_CELL := 0.5
 
 
 ## `tag` picks a variant of the kind's art (&"tavern", &"smithy", &"lamp"); see Structure.art_tag.
@@ -34,6 +46,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)
 	_index(s)
+	_near_cache.clear()
 	if world_parent != null:
 		world_parent.add_child(s)
 	return s
@@ -95,6 +108,8 @@ func clear() -> void:
 			s.free()
 	_structures.clear()
 	_grid.clear()
+	_fine.clear()
+	_near_cache.clear()
 
 
 ## Take one structure out of the field and free it (the town's teardown). The spatial index is rebuilt, so
@@ -114,9 +129,22 @@ func remove(s: Structure) -> void:
 
 func _reindex() -> void:
 	_grid.clear()
+	_fine.clear()
+	_near_cache.clear()
 	for s in _structures:
 		if is_instance_valid(s):
 			_index(s)
+
+
+## Wake every sleeping structure that has come into view (Structure.asleep): one loop here instead of every
+## structure in town being processed each frame to find out it is still off screen.
+func _process(_delta: float) -> void:
+	var v := Structure.view
+	if not v.has_area():
+		return
+	for s in _structures:
+		if s.asleep and is_instance_valid(s) and s.view_box().intersects(v):
+			s.wake()
 
 
 ## Register a decor piece for blasts to reach.
@@ -141,20 +169,46 @@ func structures() -> Array[Structure]:
 ## stands in front of. A radius beyond the index's margin still works; it just walks more cells.
 func near(g: Vector2, r: float) -> Array[Structure]:
 	var out: Array[Structure] = []
+	# A structure spans several cells: the query stamp counts it once, where out.has() made this quadratic
+	# (the busiest per-person query in the crowd, ten times a second each).
+	_near_query += 1
+	var q := _near_query
 	var c0 := _cell(g - Vector2(r, r))
 	var c1 := _cell(g + Vector2(r, r))
 	for cx in range(c0.x, c1.x + 1):
 		for cy in range(c0.y, c1.y + 1):
-			for s in _grid.get(Vector2i(cx, cy), []):
-				if is_instance_valid(s) and not out.has(s) and (s as Structure).footprint.grow(r).has_point(g):
+			for s: Structure in _grid.get(Vector2i(cx, cy), _NONE):
+				if not is_instance_valid(s) or s.near_query == q:
+					continue
+				s.near_query = q
+				if s.footprint.grow(r).has_point(g):
 					out.append(s)
+	return out
+
+
+## Exactly near(g, r), from a candidate list cached per NEAR_CELL cell: every structure within r of any point in
+## the cell. A person asks this ten times a second; walking the index's cells each time cost ~30 us a query.
+func near_cached(g: Vector2, r: float) -> Array[Structure]:
+	var c := Vector2i(floori(g.x / NEAR_CELL), floori(g.y / NEAR_CELL))
+	var key := Vector3i(c.x, c.y, roundi(r * 16.0))
+	var list: Array[Structure]
+	if _near_cache.has(key):
+		list = _near_cache[key]
+	else:
+		# Half the cell's diagonal past r reaches everything any point in the cell could.
+		list = near((Vector2(c) + Vector2(0.5, 0.5)) * NEAR_CELL, r + NEAR_CELL * 0.7072)
+		_near_cache[key] = list
+	var out: Array[Structure] = []
+	for s in list:
+		if is_instance_valid(s) and s.footprint.grow(r).has_point(g):
+			out.append(s)
 	return out
 
 
 ## True when a standing structure units cannot walk through occupies the ground point (rubble, gates, the bridge
 ## and fields are walkable). Only the structures indexed in g's cell are checked.
 func blocked(g: Vector2, margin := 0.15) -> bool:
-	var candidates: Array = _structures if margin > MAX_MARGIN else _grid.get(_cell(g), [])
+	var candidates: Array = _structures if margin > MAX_MARGIN 		else _fine.get(Vector2i(floori(g.x / FINE_CELL), floori(g.y / FINE_CELL)), _NONE)
 	for s in candidates:
 		if is_instance_valid(s) and not s.destroyed and not s.walkable and s.contains(g, margin):
 			return true
@@ -217,3 +271,13 @@ func _index(s: Structure) -> void:
 			if not _grid.has(key):
 				_grid[key] = []
 			_grid[key].append(s)
+	if s.walkable:
+		return
+	var f0 := Vector2i(floori(r.position.x / FINE_CELL), floori(r.position.y / FINE_CELL))
+	var f1 := Vector2i(floori(r.end.x / FINE_CELL), floori(r.end.y / FINE_CELL))
+	for y in range(f0.y, f1.y + 1):
+		for x in range(f0.x, f1.x + 1):
+			var key := Vector2i(x, y)
+			if not _fine.has(key):
+				_fine[key] = []
+			_fine[key].append(s)

@@ -140,7 +140,7 @@ func _advance_stages(source: Vector2, kind: StringName) -> void:
 	if f <= FIRE_AT and not _fires_lit:
 		_fires_lit = true
 		for spot: Vector2 in FIRE_POINTS:
-			keep.ignite(Iso.ground_to_screen(origin + spot) - keep.position, FIRE_SECONDS)
+			keep.ignite(Iso.ground_to_screen(origin + spot) - keep.base_position(), FIRE_SECONDS)
 	if f <= BANNER_AT and not _banner_dropped:
 		_banner_dropped = true
 		keep.drop_banner()

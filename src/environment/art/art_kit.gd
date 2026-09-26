@@ -170,6 +170,66 @@ static func take() -> Array:
 	return out
 
 
+## A recording's layers as one batch: every fill in order, then every line, each line cut out of the opaque fills
+## of the layers drawn after its own, so it still shows only where it showed before. Two draw calls where each
+## layer took two (the renderer pays per call, and a town shows dozens of houses). Done once per recording.
+static func flatten(rec: Array) -> Array:
+	if rec.size() < 2:
+		return rec
+	# Each layer's opaque fill triangles, with their boxes for a quick reject.
+	var layer_tris: Array = []
+	for b in rec:
+		var idx: PackedInt32Array = b[0]
+		var p: PackedVector2Array = b[1]
+		var c: PackedColorArray = b[2]
+		var list: Array = []
+		for t in range(0, idx.size(), 3):
+			if c[idx[t]].a < 0.99:
+				continue
+			var a := p[idx[t]]
+			var bb := p[idx[t + 1]]
+			var cc := p[idx[t + 2]]
+			if absf((bb - a).cross(cc - a)) < 0.5:
+				continue
+			list.append([Rect2(a, Vector2.ZERO).expand(bb).expand(cc), PackedVector2Array([a, bb, cc])])
+		layer_tris.append(list)
+	var idx_out := PackedInt32Array()
+	var pts_out := PackedVector2Array()
+	var cols_out := PackedColorArray()
+	var uvs_out := PackedVector2Array()
+	var lpts_out := PackedVector2Array()
+	var lcols_out := PackedColorArray()
+	for i in rec.size():
+		var b: Array = rec[i]
+		var base := pts_out.size()
+		for k in (b[0] as PackedInt32Array):
+			idx_out.append(k + base)
+		pts_out.append_array(b[1])
+		cols_out.append_array(b[2])
+		uvs_out.append_array(b[3])
+		var lp: PackedVector2Array = b[4]
+		var lc: PackedColorArray = b[5]
+		for k in range(0, lp.size(), 2):
+			var pieces: Array = [PackedVector2Array([lp[k], lp[k + 1]])]
+			var box := Rect2(lp[k], Vector2.ZERO).expand(lp[k + 1]).grow(0.5)
+			for j in range(i + 1, rec.size()):
+				for tri: Array in layer_tris[j]:
+					if pieces.is_empty():
+						break
+					if not (tri[0] as Rect2).intersects(box):
+						continue
+					var next: Array = []
+					for piece: PackedVector2Array in pieces:
+						next.append_array(Geometry2D.clip_polyline_with_polygon(piece, tri[1]))
+					pieces = next
+			for piece: PackedVector2Array in pieces:
+				for m in piece.size() - 1:
+					lpts_out.append(piece[m])
+					lpts_out.append(piece[m + 1])
+					lcols_out.append(lc[k >> 1])
+	return [[idx_out, pts_out, cols_out, uvs_out, lpts_out, lcols_out]]
+
+
 ## Draw a recording again: nothing in it depends on the light, which the shader applies.
 static func replay(ci: CanvasItem, rec: Array) -> void:
 	for b in rec:

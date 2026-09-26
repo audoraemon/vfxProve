@@ -274,3 +274,38 @@ Frame rate against `kak-scale-v1`, same hour:
 | Mission | 70.4 fps | 62.0 fps |
 
 The mission loss (about 12%) comes from the ~100 extra trees in the interior, each updated every frame.
+
+## Performance pass (2026-09-27, after `kak-dense-v1`)
+
+Profiled with temporary timers round every per-frame hook, plus the renderer's CPU and GPU time and a count of draw calls per category of node. The mission frame was CPU-bound: people took 7.0 ms, render CPU 5.9 ms (1527 draw calls), structure redraws 1.4 ms and structure `_process` 0.9 ms, against render GPU of 2.3 ms. Changes:
+
+- **`EnvironmentField.near()`** deduplicated with a per-query stamp on each structure instead of `out.has()`, which was quadratic.
+  - `near_cached()` keeps a candidate list per half-unit cell, then filters to exactly the same result.
+  - `Person._screen_box()` no longer allocates a corner list.
+  - Together: sort-bias lookup 2.8 ms → ~0.3 ms.
+- **People out of view** skip their light reading, redraw check and sort bias, and redraw as they come into view. Each person checks the view once per frame.
+- **Structures out of view** update every 4th frame with the time they skipped, and draw nothing until seen again.
+  - When they are also quiet (nothing collapsing, falling, cooling or shaking) they stop processing altogether.
+  - `EnvironmentField` wakes them when they come into view; any hit, fire or falling banner wakes them at once.
+- **Torches and lamps** redraw on their 12 Hz flicker steps, not every frame.
+- **A shaking building** moves its node instead of repainting. Its art is placed from `Structure._base`, so a shudder never ends up in the cached art.
+- **`blocked()`** (every step of every walker) uses a half-unit index of solid structures.
+- **Draw calls:**
+  - Each structure's ground shadow rides in its art's first fill batch: −177.
+  - A house's three layers are flattened into one fill call and one line call (`ArtKit.flatten()`). Each line is cut out of the opaque fills drawn after it, so it shows exactly where it showed before, give or take a pixel at a cut. This costs 0.65 ms per house, once. Result: structures 826 → 420 calls.
+  - A barrel's hairlines became one-pixel fills: −77 decor calls.
+
+Checks: 712 pass, the digest is unchanged, FLOW 24/24, and the mission and citadel tests are identical to before. Component match holds at 89% and interior match at 91%.
+
+Same hour, `kak-dense-v1` → now:
+
+| Scene | kak-dense-v1 | Now |
+|---|---|---|
+| Mission | 61.0 fps (worst frame 36 ms), 1526 draw calls | 101.6 fps (worst frame 19 ms), 1035 draw calls |
+| Cinderfall | 30.0 fps (worst frame 66–74 ms) | 46.9 fps (worst frame 45–48 ms) |
+
+**Not done, and why:**
+- Baking flowers into the floor: blasts erase flowers today, and baked ones would survive in the craters.
+- Flattening the other art (walls, keeps, the cathedral, fields): too slow to do at load for a call or two each.
+- Drawing hairlines as fills everywhere: they would thin out or vanish at the play zoom of 0.6.
+- Merging the crowd's gate loops: that is gameplay logic, for about 0.2 ms.

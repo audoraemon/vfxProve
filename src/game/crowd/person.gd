@@ -109,6 +109,8 @@ static var view := Rect2()
 ## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
 ## screen at play zoom, and nobody can see a stride or a light reading there.
 const OFFSCREEN_EVERY := 3
+## Whether the camera showed this person when its frame began (see view).
+var _seen := true
 
 
 ## `at` is where it stands and what it treats as home (or its post). Seed `rng` before calling this.
@@ -127,8 +129,14 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 	return self
 
 
+func _in_view() -> bool:
+	return _seen
+
+
 func _process(delta: float) -> void:
-	if view.has_area() and not view.has_point(position):
+	# Looked up once a frame: the base unit and the brain both ask.
+	_seen = not view.has_area() or view.has_point(position)
+	if not _seen:
 		_offscreen_delta += delta
 		if (Engine.get_process_frames() + get_instance_id()) % OFFSCREEN_EVERY != 0:
 			return
@@ -206,9 +214,10 @@ func _think(delta: float) -> void:
 		Mind.HOLD:
 			_idle = maxf(_idle, 0.2)
 	_sort_in -= delta
-	if env != null and _sort_in <= 0.0:
+	# Off screen, who stands in front of whom shows nobody; the view's margin updates it before it can.
+	if env != null and _sort_in <= 0.0 and _in_view():
 		_sort_in = 1.0 / SORT_HZ + float(get_instance_id() % 7) * 0.001
-		sort_bias = sort_bias_for(ground_pos, env.near(ground_pos, SORT_REACH))
+		sort_bias = sort_bias_for(ground_pos, env.near_cached(ground_pos, SORT_REACH))
 
 
 func _mind_speed() -> float:
@@ -431,14 +440,14 @@ static func sort_bias_for(feet: Vector2, near: Array[Structure]) -> float:
 	return (lo if own < lo else hi) - own
 
 
-## A footprint's box on screen, raised by its height and a roof.
+## A footprint's box on screen, raised by its height and a roof. Its corners' iso extremes, written out: this
+## runs for every building near every person ten times a second, and building it from a corner list allocated.
 static func _screen_box(fp: Rect2, h: float) -> Rect2:
-	var box := Rect2(Iso.ground_to_screen(fp.position), Vector2.ZERO)
-	for corner in [Vector2(fp.end.x, fp.position.y), fp.end, Vector2(fp.position.x, fp.end.y)]:
-		box = box.expand(Iso.ground_to_screen(corner))
-	box.position.y -= h + ROOF_MARGIN
-	box.size.y += h + ROOF_MARGIN
-	return box
+	var x0 := (fp.position.x - fp.end.y) * 32.0
+	var x1 := (fp.end.x - fp.position.y) * 32.0
+	var y0 := (fp.position.x + fp.position.y) * 16.0 - h - ROOF_MARGIN
+	var y1 := (fp.end.x + fp.end.y) * 16.0
+	return Rect2(x0, y0, x1 - x0, y1 - y0)
 
 
 # --- Drawing -----------------------------------------------------------------

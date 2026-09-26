@@ -10,7 +10,8 @@ static func run(t) -> void:
 	var counts := {}
 	for s in env.structures():
 		counts[s.role] = int(counts.get(s.role, 0)) + 1
-	t.check(env.structures().size() == TownLayout.structures().size() + 9, "every layout building plus the 9 Citadel parts")
+	t.check(env.structures().size() == TownLayout.structures().size() + 10,
+		"every layout building plus the 9 Citadel parts and the fountain")
 	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 40 and counts.get(&"gate", 0) == 2,
 		"roles carried over (%s)" % [counts])
 	t.check(town.gates.size() == 2 and town.bridge != null and town.bridge.walkable, "gates and bridge found")

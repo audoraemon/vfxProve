@@ -12,7 +12,7 @@ extends Node2D
 ## redraws on its own. Without a renderer (headless) nothing is baked and the floor paints itself directly.
 
 ## Drawn area: past the map so zoomed-out views rarely show the void.
-const FILL := Rect2(-20, -20, 44, 44)
+const FILL := Rect2(-24, -24, 52, 52)
 ## Meadow greens, light to dark, and the forest floor's.
 const GRASS := [Color("9aa447"), Color("8a9a3c"), Color("7c8f35"), Color("6e8230"), Color("5f742b")]
 const FOREST := [Color("6a7f30"), Color("5c722b"), Color("4f6527"), Color("435823")]
@@ -89,11 +89,14 @@ class DetailPaint extends Node2D:
 		floor_node.paint_detail(self)
 
 
+## Decor painted into the floor (TownDecor spots with `bake`), back to front.
+var baked_decor: Array[Dictionary] = []
+## Per meadow cell: 1 meadow, 2 forest floor, +4 on a trail. Filled while painting the ground, read by the detail.
+var _zones := PackedByteArray()
+var _zn := 0
 var _texture: Texture2D
 ## Screen position of the baked texture's top-left corner.
 var _origin := Vector2.ZERO
-## Noise lattice values, hashed once.
-var _lattice := {}
 
 
 func _ready() -> void:
@@ -177,28 +180,30 @@ func _octave(p: Vector2, salt: int) -> float:
 	var fy := p.y - y0
 	fx = fx * fx * (3.0 - 2.0 * fx)
 	fy = fy * fy * (3.0 - 2.0 * fy)
-	var a := _lat(x0, y0, salt)
-	var b := _lat(x0 + 1, y0, salt)
-	var c := _lat(x0, y0 + 1, salt)
-	var d := _lat(x0 + 1, y0 + 1, salt)
-	return lerpf(lerpf(a, b, fx), lerpf(c, d, fx), fy)
-
-
-func _lat(x: int, y: int, salt: int) -> float:
-	var key := Vector3i(x, y, salt)
-	if not _lattice.has(key):
-		_lattice[key] = float(_hash(x * 7 + salt * 131, y * 13 - salt * 71)) / 997.0
-	return _lattice[key]
+	# Four lattice corners, hashed inline: this runs ~100k times per bake.
+	var hx0 := (x0 * 7 + salt * 131) * 73856093
+	var hx1 := ((x0 + 1) * 7 + salt * 131) * 73856093
+	var hy0 := (y0 * 13 - salt * 71) * 19349663
+	var hy1 := ((y0 + 1) * 13 - salt * 71) * 19349663
+	var a := float(absi(hx0 ^ hy0) % 997)
+	var b := float(absi(hx1 ^ hy0) % 997)
+	var c := float(absi(hx0 ^ hy1) % 997)
+	var d := float(absi(hx1 ^ hy1) % 997)
+	return lerpf(lerpf(a, b, fx), lerpf(c, d, fx), fy) / 997.0
 
 
 ## Meadow (or forest floor) in organic patches: noise quantized into the palette, cell by cell.
 func _meadow(ci: CanvasItem) -> void:
 	var n := int(FILL.size.x / CELL)
+	_zn = n
+	_zones.resize(n * n)
 	for j in n:
 		for i in n:
 			var g := FILL.position + Vector2(i, j) * CELL
 			var c := g + Vector2(CELL, CELL) * 0.5
-			var pal: Array = FOREST if _forest(c) else GRASS
+			var forest := _forest(c)
+			_zones[j * n + i] = 2 if forest else 1
+			var pal: Array = FOREST if forest else GRASS
 			var v := clampf(_noise(c) * 1.25 - 0.12, 0.0, 0.999)
 			ci.draw_rect(Rect2(g, Vector2(CELL, CELL)), pal[int(v * pal.size())])
 
@@ -236,8 +241,22 @@ func _trail(ci: CanvasItem, pts: Array, width: float) -> void:
 				var r := width * (0.85 + float(h % 23) / 23.0 * 0.35)
 				if pass_i == 0:
 					ci.draw_circle(p, r + 0.06, DIRT[2])
+					_mark_trail(p, r + 0.15)
 				else:
 					ci.draw_circle(p + Vector2(0.02, -0.02), r * 0.8, DIRT[h % 2])
+
+
+## Flag the meadow cells within `r` of `p` as trail, so no tuft or flower grows on it.
+func _mark_trail(p: Vector2, r: float) -> void:
+	if _zn == 0:
+		return
+	var i0 := maxi(floori((p.x - r - FILL.position.x) / CELL), 0)
+	var i1 := mini(floori((p.x + r - FILL.position.x) / CELL), _zn - 1)
+	var j0 := maxi(floori((p.y - r - FILL.position.y) / CELL), 0)
+	var j1 := mini(floori((p.y + r - FILL.position.y) / CELL), _zn - 1)
+	for j in range(j0, j1 + 1):
+		for i in range(i0, i1 + 1):
+			_zones[j * _zn + i] |= 4
 
 
 ## Stones in staggered rows with mortar gaps, each a little jittered in size; some catch the light on top.
@@ -296,7 +315,7 @@ func _river(ci: CanvasItem) -> void:
 
 ## Tufts, flowers and pebbles in screen pixels over the meadow and the town's earth; none on water, roads or paving.
 func paint_detail(ci: CanvasItem) -> void:
-	var count := 26000
+	var count := 36000
 	for i in count:
 		var hx := _hash(i * 3 + 1, i * 7 + 5)
 		var hy := _hash(i * 11 + 3, i * 5 + 9)
@@ -332,6 +351,15 @@ func paint_detail(ci: CanvasItem) -> void:
 			ci.draw_rect(Rect2(p, Vector2(1, 1)), (EARTH[3] as Color).darkened(0.15))
 			if hz % 2 == 0:
 				ci.draw_rect(Rect2(p + Vector2(1, 0), Vector2(1, 1)), (EARTH[0] as Color).lightened(0.1))
+	_paint_decor(ci)
+
+
+## Baked decor over the detail, back to front: trees, rocks, bushes, reeds and fences nothing ever stands in front of.
+func _paint_decor(ci: CanvasItem) -> void:
+	for d in baked_decor:
+		ArtKit.begin()
+		DecorArt.paint(d.kind, d.at, d.size, d.seed, Vector2.ZERO)
+		ArtKit.flush(ci)
 
 
 ## What lies at a ground point for detail: 0 nothing (water, roads, paving, trails, fields), 1 meadow,
@@ -350,10 +378,12 @@ func _zone(g: Vector2) -> int:
 				or TownLayout.BARRACKS_YARD.has_point(g):
 			return 0
 		return 3
-	for tr in TRAILS:
-		if _near_polyline(g, tr, 0.45):
-			return 0
-	return 2 if _forest(g) else 1
+	if _zn == 0:
+		return 2 if _forest(g) else 1
+	var i := clampi(floori((g.x - FILL.position.x) / CELL), 0, _zn - 1)
+	var j := clampi(floori((g.y - FILL.position.y) / CELL), 0, _zn - 1)
+	var z := _zones[j * _zn + i]
+	return 0 if z & 4 else (2 if z & 2 else 1)
 
 
 static func _near_polyline(g: Vector2, pts: Array, d: float) -> bool:

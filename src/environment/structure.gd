@@ -9,7 +9,7 @@ signal broken(s: Structure)
 
 enum Kind {
 	TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH,
-	TEMPLE, BARRACKS, MARKET_STALL, GATE, BRIDGE, FARM_FIELD, TREE,
+	TEMPLE, BARRACKS, MARKET_STALL, GATE, BRIDGE, FARM_FIELD, TREE, FOUNTAIN,
 }
 
 const RUBBLE_H := 5.0
@@ -36,7 +36,7 @@ const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, K
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 ## Drawn by the art classes (src/environment/art) while they stand; the rest keep the plain lit box.
 const ART_KINDS := [Kind.HOUSE, Kind.KEEP, Kind.CASTLE_WALL, Kind.GATE, Kind.TEMPLE, Kind.BARRACKS,
-	Kind.MARKET_STALL, Kind.BRIDGE, Kind.FARM_FIELD, Kind.TREE]
+	Kind.MARKET_STALL, Kind.BRIDGE, Kind.FARM_FIELD, Kind.TREE, Kind.FOUNTAIN]
 ## Lights the art's unlit geometry (see ArtKit); the rest of a structure's drawing passes through it untouched.
 const ART_SHADER := preload("res://src/environment/art/structure_art.gdshader")
 ## Units walk over these while they stand.
@@ -131,7 +131,7 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"") -
 	max_hp = {Kind.TOWER: 160.0, Kind.BLOCK: 110.0, Kind.WALL: 60.0, Kind.CRATES: 30.0,
 		Kind.KEEP: 180.0, Kind.CASTLE_WALL: 90.0, Kind.HOUSE: 50.0, Kind.TORCH: 10.0,
 		Kind.TEMPLE: 200.0, Kind.BARRACKS: 150.0, Kind.MARKET_STALL: 25.0, Kind.GATE: 120.0,
-		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0}[k]
+		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0, Kind.FOUNTAIN: 80.0}[k]
 	hp = max_hp
 	walkable = k in WALKABLE
 	z_index = -1 if k in FLAT else 0
@@ -400,6 +400,8 @@ func _palette() -> Array:
 			return [Color("9a9486"), Color("7e796d"), Color("656157")]
 		Kind.MARKET_STALL, Kind.BRIDGE:
 			return [Color("9a7a4c"), Color("7c6038"), Color("604a2c")]
+		Kind.FOUNTAIN:
+			return [Color("b4aca8"), Color("9f9796"), Color("7f797d")]
 		Kind.FARM_FIELD:
 			return [Color("c9a94f"), Color("7a5c3a"), Color("634a2f")]
 		Kind.TREE:
@@ -461,7 +463,7 @@ func _draw() -> void:
 					HouseArt.draw(self)
 				Kind.TEMPLE, Kind.BARRACKS:
 					CivicArt.draw(self)
-				Kind.MARKET_STALL, Kind.BRIDGE, Kind.FARM_FIELD, Kind.TREE:
+				Kind.MARKET_STALL, Kind.BRIDGE, Kind.FARM_FIELD, Kind.TREE, Kind.FOUNTAIN:
 					PropArt.draw(self)
 				_:
 					StoneArt.draw(self)

@@ -19,7 +19,7 @@ const POWER_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY
 const KEY_LABELS := ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-"]
 ## Meadow green (TownFloor.GRASS[2]), not the sandbox's near-black: TownFloor.FILL cannot cover the whole
 ## viewport at ZOOM_MIN with the pan limits, so any gap at the edge blends into grass instead of showing a void.
-const CLEAR := Color("4a6a2a")
+const CLEAR := Color("6e8230")
 ## [file, ground point to look at, zoom] for --capture-town.
 const TOWN_SHOTS := [
 	["town_overview.png", Vector2(2, 2), 0.5],

@@ -1,0 +1,265 @@
+class_name TownDecor
+extends RefCounted
+## Where Aldermere's decor goes, as pure data: {kind, at, size, seed, bake}. Deterministic.
+## - Inside the walls it only stands where people already cannot walk: on walk-grid cells a building blocks,
+##   hugging houses, the Temple and the barracks.
+## - Outside it keeps at least ROAD_CLEAR from the roads and both exits, and out of the river, the fields and the
+##   trails.
+## - `bake` marks pieces that neither a building nor a person can ever overlap on screen (the open meadow and
+##   forest). The floor paints those into its texture; the rest become live Decor nodes that sort with everyone.
+
+## Cell size and body margin the walk grid blocks buildings by (WalkGrid.CELL, WalkGrid.BODY).
+const CELL := 0.5
+const BODY := 0.15
+const ROAD_CLEAR := 1.0
+## How far from a road (and exit) a piece has to be before it can be baked into the floor.
+const BAKE_CLEAR := 1.4
+const SEED := 5171
+## A generous screen box around any decor piece (relative to its ground point): tall enough for a tree.
+const SCREEN_BOX := Rect2(-14, -50, 28, 52)
+
+
+static func spots() -> Array[Dictionary]:
+	var solid := _solid_rects()
+	var out: Array[Dictionary] = []
+	_houses(out, solid)
+	_market(out)
+	_outside(out, solid)
+	var boxes := _screen_boxes()
+	for d in out:
+		d.bake = _bakeable(d, boxes)
+	return out
+
+
+## Footprints that block walking: every standing non-walkable building, the Citadel's parts and the fountain.
+static func _solid_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for d in TownLayout.structures():
+		if not d.kind in Structure.WALKABLE:
+			out.append(d.rect)
+	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
+		out.append(Rect2(r.position + TownLayout.CITADEL_ORIGIN, r.size))
+	out.append(TownLayout.FOUNTAIN)
+	return out
+
+
+## The walk grid's rule: a cell is solid when its centre lies in a footprint grown by a body's width.
+static func blocked(g: Vector2, solid: Array[Rect2]) -> bool:
+	var c := (Vector2(floorf(g.x / CELL), floorf(g.y / CELL)) + Vector2(0.5, 0.5)) * CELL
+	for r in solid:
+		if r.grow(BODY).has_point(c):
+			return true
+	return false
+
+
+static func _inside_any(g: Vector2, solid: Array[Rect2], margin := 0.02) -> bool:
+	for r in solid:
+		if r.grow(margin).has_point(g):
+			return true
+	return false
+
+
+static func _h(i: int, salt: int) -> float:
+	return ArtKit.hash01(SEED + i * 131, salt)
+
+
+static func _add(out: Array[Dictionary], kind: Decor.Kind, at: Vector2, size := Vector2.ZERO) -> void:
+	out.append({"kind": kind, "at": at, "size": size, "seed": SEED + out.size() * 7919, "bake": false})
+
+
+static func _far_from_others(out: Array[Dictionary], g: Vector2, d: float) -> bool:
+	for o in out:
+		if (o.at as Vector2).distance_to(g) < d:
+			return false
+	return true
+
+
+# --- Inside the walls ------------------------------------------------------------------
+
+## Barrels, crates, flowers, bushes and lamps against the houses, the Temple and the barracks, and small gardens.
+static func _houses(out: Array[Dictionary], solid: Array[Rect2]) -> void:
+	var hosts: Array[Rect2] = TownLayout.houses()
+	hosts.append(TownLayout.TEMPLE)
+	hosts.append(TownLayout.BARRACKS)
+	for i in hosts.size():
+		var r := hosts[i]
+		var placed := 0
+		var sides := [
+			[Vector2(r.position.x, r.end.y + 0.1), Vector2(r.end.x, r.end.y + 0.1)],
+			[Vector2(r.end.x + 0.1, r.position.y), Vector2(r.end.x + 0.1, r.end.y)],
+			[Vector2(r.position.x, r.position.y - 0.1), Vector2(r.end.x, r.position.y - 0.1)],
+			[Vector2(r.position.x - 0.1, r.position.y), Vector2(r.position.x - 0.1, r.end.y)],
+		]
+		for sd in sides.size():
+			for t in [0.2, 0.8]:
+				if placed >= 3:
+					break
+				var g: Vector2 = (sides[sd][0] as Vector2).lerp(sides[sd][1], t)
+				if not blocked(g, solid) or _inside_any(g, solid) or not _far_from_others(out, g, 0.35):
+					continue
+				var roll := _h(i * 8 + sd * 2 + int(t * 2.0), 1)
+				var kind := Decor.Kind.BARREL
+				if roll < 0.38:
+					kind = Decor.Kind.BARREL
+				elif roll < 0.62:
+					kind = Decor.Kind.CRATES
+				elif roll < 0.78:
+					kind = Decor.Kind.FLOWERS
+				elif roll < 0.92:
+					kind = Decor.Kind.BUSH
+				else:
+					kind = Decor.Kind.LAMP
+				_add(out, kind, g)
+				placed += 1
+		# A garden plot against the house's south side, where the whole plot is off the street.
+		var plot := Rect2(Vector2(r.position.x + 0.15, r.end.y + 0.04), Vector2(minf(r.size.x - 0.3, 0.7), 0.22))
+		if _h(i, 2) < 0.6 and _plot_ok(plot, solid) and _far_from_others(out, plot.position, 0.2):
+			_add(out, Decor.Kind.GARDEN, plot.position, plot.size)
+
+
+static func _plot_ok(plot: Rect2, solid: Array[Rect2]) -> bool:
+	for c in [plot.position, Vector2(plot.end.x, plot.position.y), plot.end, Vector2(plot.position.x, plot.end.y)]:
+		if not blocked(c, solid) or _inside_any(c, solid, -0.01):
+			return false
+	return true
+
+
+## Bunting strung between the market's torch posts, across its north and south edges.
+static func _market(out: Array[Dictionary]) -> void:
+	var t: Array = TownLayout.TORCHES
+	var pairs := [[t[0], t[1]], [t[2], t[3]]]
+	for pr in pairs:
+		# Tied to the facing sides of the two posts: the cells the posts block, but not inside them.
+		var a: Vector2 = pr[0] + Vector2(0.25, 0.1)
+		var b: Vector2 = pr[1] + Vector2(-0.05, 0.1)
+		_add(out, Decor.Kind.BUNTING, a, b - a)
+
+
+# --- Outside the walls ------------------------------------------------------------------
+
+static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
+	var area := Rect2(-19.5, -19.5, 39, 39)
+	# Trees on a jittered grid: thick in the forest, scattered in the meadow.
+	_scatter(out, solid, area, 1.05, 10, func(g: Vector2, roll: float, i: int) -> int:
+		var forest := _forest(g)
+		if roll > (0.45 if forest else 0.12):
+			return -1
+		var pine := _h(i, 11) < (0.6 if forest else 0.25)
+		return Decor.Kind.PINE if pine else Decor.Kind.OAK)
+	_scatter(out, solid, area, 2.0, 20, func(_g: Vector2, roll: float, _i: int) -> int:
+		return Decor.Kind.ROCK if roll < 0.32 else -1)
+	_scatter(out, solid, area, 1.6, 30, func(_g: Vector2, roll: float, _i: int) -> int:
+		return Decor.Kind.BUSH if roll < 0.28 else -1)
+	_scatter(out, solid, area, 1.3, 40, func(g: Vector2, roll: float, _i: int) -> int:
+		return Decor.Kind.FLOWERS if roll < 0.3 and not _forest(g) else -1)
+	# Reeds along both river banks, clear of the road and the bridge.
+	var river := TownLayout.RIVER
+	var i := 0
+	for bank_y in [river.position.y - 0.28, river.end.y + 0.3]:
+		var x := area.position.x
+		while x < area.end.x:
+			var g := Vector2(x + _h(i, 50) * 0.3, bank_y + (_h(i, 51) - 0.5) * 0.12)
+			if _h(i, 52) < 0.72 and _outside_ok(g, solid, 0.25):
+				_add(out, Decor.Kind.REEDS, g)
+			x += 0.55
+			i += 1
+	# Short fence runs beside the trails.
+	for tr: Array in TownFloor.TRAILS:
+		for k in tr.size() - 1:
+			var a: Vector2 = tr[k]
+			var b: Vector2 = tr[k + 1]
+			var along := (b - a).normalized()
+			var side := Vector2(-along.y, along.x) * (0.62 if _h(k + i, 60) < 0.5 else -0.62)
+			var start := a.lerp(b, 0.3) + side
+			var run := along * 1.3
+			i += 1
+			if _h(k * 7 + i, 61) < 0.55 and _outside_ok(start, solid, 0.2) and _outside_ok(start + run, solid, 0.2) \
+					and _outside_ok(start + run * 0.5, solid, 0.2):
+				_add(out, Decor.Kind.FENCE, start, run)
+	for g in [Vector2(-1.8, 14.6), Vector2(1.9, 14.5)]:
+		if _outside_ok(g, solid, 0.0, false):
+			_add(out, Decor.Kind.SCARECROW, g)
+	var sign := Vector2(12.6, 1.6)
+	if _outside_ok(sign, solid, 0.0):
+		_add(out, Decor.Kind.SIGNPOST, sign)
+
+
+## Points on a jittered grid over `area`; `pick` turns (point, roll, index) into a kind, or -1 to skip.
+static func _scatter(out: Array[Dictionary], solid: Array[Rect2], area: Rect2, step: float, salt: int,
+		pick: Callable) -> void:
+	var nx := int(area.size.x / step)
+	var ny := int(area.size.y / step)
+	for j in ny:
+		for i in nx:
+			var n := j * 1000 + i
+			var g := area.position + Vector2((i + 0.2 + _h(n, salt) * 0.6) * step, (j + 0.2 + _h(n, salt + 1) * 0.6) * step)
+			var kind: int = pick.call(g, _h(n, salt + 2), n)
+			if kind < 0 or not _outside_ok(g, solid, 0.45):
+				continue
+			if not _far_from_others(out, g, 0.55):
+				continue
+			_add(out, kind, g)
+
+
+## Outside the walls, off the roads, the exits, the river, the fields and the farm band, clear of trails (by
+## `trail_gap`) and of every building. `farm` false lets a piece stand in the farm band (the scarecrows).
+static func _outside_ok(g: Vector2, solid: Array[Rect2], trail_gap: float, farm := true) -> bool:
+	if TownLayout.TOWN.grow(0.9).has_point(g) or TownLayout.RIVER.grow(0.12).has_point(g):
+		return false
+	if farm and TownFloor.FARM_BAND.grow(0.2).has_point(g):
+		return false
+	for road: Rect2 in TownLayout.ROADS:
+		if road.grow(ROAD_CLEAR).has_point(g):
+			return false
+	for ex: Vector2 in TownLayout.EXITS:
+		if g.distance_to(ex) < ROAD_CLEAR:
+			return false
+	for f: Rect2 in TownLayout.FIELDS:
+		if f.grow(0.25).has_point(g):
+			return false
+	if TownLayout.BRIDGE.grow(0.4).has_point(g):
+		return false
+	if _inside_any(g, solid, 0.45):
+		return false
+	for tr: Array in TownFloor.TRAILS:
+		if trail_gap > 0.0 and TownFloor._near_polyline(g, tr, trail_gap):
+			return false
+	return true
+
+
+## The floor's forest, repeated without its noisy edge (a tree thinning out at the forest's rim is fine).
+static func _forest(g: Vector2) -> bool:
+	if g.y > TownLayout.RIVER.position.y or (absf(g.y) < 1.2 and g.x > TownLayout.TOWN.end.x):
+		return false
+	var town := TownLayout.TOWN.grow(2.2)
+	return g.x < town.position.x or g.y < town.position.y or g.x > town.end.x
+
+
+# --- Baking ------------------------------------------------------------------
+
+## Every building's screen box (raised by its height and a roof), for the bake test.
+static func _screen_boxes() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for d in TownLayout.structures():
+		out.append(Person._screen_box(d.rect, d.height))
+	return out
+
+
+## Bakeable: outside the walls, well clear of the roads and exits, and overlapping no building on screen.
+static func _bakeable(d: Dictionary, boxes: Array[Rect2]) -> bool:
+	var g: Vector2 = d.at
+	if TownLayout.TOWN.grow(1.0).has_point(g) or d.kind in [Decor.Kind.BUNTING, Decor.Kind.LAMP]:
+		return false
+	for road: Rect2 in TownLayout.ROADS:
+		if road.grow(BAKE_CLEAR).has_point(g):
+			return false
+	for ex: Vector2 in TownLayout.EXITS:
+		if g.distance_to(ex) < BAKE_CLEAR:
+			return false
+	var mine := Rect2(Iso.ground_to_screen(g) + SCREEN_BOX.position, SCREEN_BOX.size)
+	if d.kind == Decor.Kind.FENCE:
+		mine = mine.merge(Rect2(Iso.ground_to_screen(g + (d.size as Vector2)) + SCREEN_BOX.position, SCREEN_BOX.size))
+	for b in boxes:
+		if b.intersects(mine):
+			return false
+	return true

@@ -24,7 +24,7 @@ const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 ## Grass, the same clear colour the debug scene uses.
-const CLEAR := Color("4a6a2a")
+const CLEAR := Color("6e8230")
 
 ## The mission opens with the camera sweeping in to the Citadel under a MANIFEST banner, and the clock only
 ## starts when it arrives (spec §1).

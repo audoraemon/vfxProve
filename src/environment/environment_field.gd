@@ -17,6 +17,8 @@ var fx_back: Node
 var rng := RandomNumberGenerator.new()
 
 var _structures: Array[Structure] = []
+## Small things in town (barrels, gardens, trees...) that blasts char or knock down; empty in the sandbox.
+var _decor: Array[Decor] = []
 ## Vector2i cell -> structures whose footprint, grown by MAX_MARGIN, touches that cell.
 var _grid := {}
 
@@ -116,6 +118,20 @@ func _reindex() -> void:
 			_index(s)
 
 
+## Register a decor piece for blasts to reach.
+func add_decor(d: Decor) -> void:
+	_decor.append(d)
+
+
+func decor() -> Array[Decor]:
+	return _decor
+
+
+## Forget every decor piece (the town is being torn down).
+func clear_decor() -> void:
+	_decor.clear()
+
+
 func structures() -> Array[Structure]:
 	return _structures
 
@@ -148,6 +164,9 @@ func damage_radius(center: Vector2, radius: float, amount: float, kind: StringNa
 	for s in _structures:
 		if is_instance_valid(s) and not s.destroyed and s.distance_to(center) <= radius:
 			s.damage(amount, center, kind)
+	for d in _decor:
+		if is_instance_valid(d) and d.at.distance_to(center) <= radius + 0.15:
+			d.hit(amount, kind)
 
 
 ## Anything the lane band [along_min, along_max] x [-half_width, half_width] overlaps is cut down.
@@ -164,6 +183,13 @@ func damage_lane(origin: Vector2, dir: Vector2, half_width: float, along_min: fl
 		var ext_side := absf(half.x * side.x) + absf(half.y * side.y)
 		if along + ext_along >= along_min and along - ext_along <= along_max and absf(across) <= half_width + ext_side:
 			s.damage(99999.0, s.center() - dir, kind)
+	for d in _decor:
+		if not is_instance_valid(d):
+			continue
+		var rel := d.at - origin
+		var along := rel.dot(dir)
+		if along >= along_min - 0.15 and along <= along_max + 0.15 and absf(rel.dot(side)) <= half_width + 0.15:
+			d.hit(99999.0, kind)
 
 
 func shake_radius(center: Vector2, radius: float, amount: float) -> void:

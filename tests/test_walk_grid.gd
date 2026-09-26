@@ -9,7 +9,8 @@ static func run(t) -> void:
 	town.build(env)
 	var grid := WalkGrid.new().setup(env, town)
 
-	t.check(grid.walkable(Vector2(0, 0)), "the market crossroads is walkable")
+	t.check(not grid.walkable(Vector2(0, 0)) and grid.walkable(Vector2(0, 1.0)) and grid.walkable(Vector2(1.0, 0)),
+		"the fountain fills the market crossroads and the streets run on past it")
 	t.check(not grid.walkable(TownLayout.TEMPLE.get_center()), "the temple blocks")
 	t.check(not grid.walkable(Vector2(-6.0, 12.2)), "the river blocks")
 	t.check(grid.walkable(Vector2(0, 12.2)), "the bridge crosses it")
@@ -61,7 +62,7 @@ static func run(t) -> void:
 	t.check(probes >= 8 and blocked_cells == 0, "the whole Side Gate is walkable (%d of %d cells blocked)" % [blocked_cells, probes])
 	t.check(grid.walkable(TownLayout.FIELDS[0].get_center()), "a farm field can be walked over")
 	t.check(not grid.clear_line(Vector2(-9.6, 0.0), Vector2(-8.0, 0.0)), "a straight walk through the west wall is not clear")
-	t.check(grid.clear_line(Vector2(0.0, 0.0), Vector2(0.0, 2.0)), "and straight down the open street it is")
+	t.check(grid.clear_line(Vector2(0.0, 1.0), Vector2(0.0, 3.0)), "and straight down the open street it is")
 	env.clear()
 	env.free()
 	town.free()

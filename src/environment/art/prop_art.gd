@@ -45,8 +45,10 @@ static func draw(s: Structure) -> void:
 			_field(s)
 		Structure.Kind.TREE:
 			ArtKit.begin()
-			tree(s._gp(s.center(), 0.0), s.max_height, s.art.species, s.rng.seed)
+			tree(s._gp(s.center(), 0.0), s.max_height * 1.3, s.art.species, s.rng.seed)
 			ArtKit.flush(s)
+		Structure.Kind.FOUNTAIN:
+			_fountain(s)
 
 
 ## Flame spots for the structure's flame node (structure-local px): the bridge's four torches.
@@ -247,6 +249,62 @@ static func _fence(s: Structure, a: Vector2, b: Vector2) -> void:
 			for hh in [2.5, 5.0]:
 				ArtKit.line(s._gp(prev, hh), s._gp(g, hh), ROPE)
 		prev = g
+
+
+# --- Fountain ------------------------------------------------------------------
+
+## The market fountain: an eight-sided stone basin of water, a pillar and an upper bowl spilling over.
+static func _fountain(s: Structure) -> void:
+	ArtKit.begin()
+	var c := s.center()
+	var rad := s.footprint.size.x * 0.5
+	var rim := 5.0
+	var ring: Array[Vector2] = []
+	for k in 8:
+		var ang := TAU * (k + 0.5) / 8.0
+		ring.append(c + Vector2(cos(ang), sin(ang)) * rad)
+	# Back half of the rim's top, the water, then the front walls and their top.
+	var inner: Array[Vector2] = []
+	for g in ring:
+		inner.append(c + (g - c) * 0.78)
+	for k in 8:
+		var a := ring[k]
+		var b := ring[(k + 1) % 8]
+		ArtKit.poly(PackedVector2Array([s._gp(a, rim), s._gp(b, rim), s._gp(inner[(k + 1) % 8], rim), s._gp(inner[k], rim)]),
+			ArtKit.STONE_TOP, ArtKit.LIT_TOP)
+	var water := PackedVector2Array()
+	for g in inner:
+		water.append(s._gp(g, rim - 1.0))
+	for k in range(1, 7):
+		ArtKit.poly(PackedVector2Array([water[0], water[k], water[k + 1]]), Color("3f8cc4"), ArtKit.LIT_TOP)
+	ArtKit.blob(s._gp(c, rim - 1.0) + Vector2(-5, 1), Vector2(3, 1), Color("7cc0e8"), ArtKit.LIT_TOP, 6)
+	ArtKit.blob(s._gp(c, rim - 1.0) + Vector2(6, 2), Vector2(2, 1), Color("7cc0e8"), ArtKit.LIT_TOP, 6)
+	# Pillar and upper bowl with water spilling from it.
+	var p0 := s._gp(c, rim - 1.0)
+	ArtKit.poly(PackedVector2Array([p0 + Vector2(-2, 0), p0 + Vector2(2, 0), p0 + Vector2(2, -9), p0 + Vector2(-2, -9)]),
+		ArtKit.STONE[0], ArtKit.LIT_RIGHT)
+	ArtKit.poly(PackedVector2Array([p0 + Vector2(-2, 0), p0 + Vector2(0, 0), p0 + Vector2(0, -9), p0 + Vector2(-2, -9)]),
+		ArtKit.STONE[1], ArtKit.LIT_LEFT)
+	ArtKit.blob(p0 + Vector2(0, -10), Vector2(6, 2.5), ArtKit.STONE[1], ArtKit.LIT_LEFT)
+	ArtKit.blob(p0 + Vector2(0, -11), Vector2(5, 2), Color("5aa8d8"), ArtKit.LIT_TOP)
+	ArtKit.poly(PackedVector2Array([p0 + Vector2(-1, -11), p0 + Vector2(1, -11), p0 + Vector2(1, -15), p0 + Vector2(-1, -15)]),
+		Color("bfe6fa"), ArtKit.EMIT)
+	for x in [-5.0, 5.0]:
+		ArtKit.line(p0 + Vector2(x, -10), p0 + Vector2(x * 1.2, -3), Color(0.75, 0.9, 1.0, 0.8))
+	# Front walls of the basin (the sides facing the camera), each block its own shade.
+	for k in 8:
+		var a := ring[k]
+		var b := ring[(k + 1) % 8]
+		var n := ((a + b) * 0.5 - c).normalized()
+		if n.x + n.y <= 0.05:
+			continue
+		var shade := ArtKit.STONE[0] if n.x >= n.y else ArtKit.STONE[1]
+		var code := ArtKit.LIT_RIGHT if n.x >= n.y else ArtKit.LIT_LEFT
+		ArtKit.poly(PackedVector2Array([s._gp(a, 0.0), s._gp(b, 0.0), s._gp(b, rim), s._gp(a, rim)]),
+			shade.darkened(ArtKit.hash01(s.rng.seed, 150 + k) * 0.1), code)
+		ArtKit.line(s._gp(a, rim), s._gp(b, rim), ArtKit.ink(0.2, true))
+		ArtKit.line(s._gp(a, 0.0), s._gp(a, rim), ArtKit.ink(0.35))
+	ArtKit.flush(s)
 
 
 # --- Tree ------------------------------------------------------------------

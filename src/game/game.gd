@@ -31,7 +31,7 @@ const FADE_IN := 0.35
 ## Where --flow-test keeps its save, so a scripted run never touches the player's best score.
 const FLOW_TEST_SAVE := "user://test_flow.cfg"
 ## Grass: what shows between screens, the same clear colour the mission uses.
-const CLEAR := Color("4a6a2a")
+const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
 const SAMPLE_RESULT := {
 	"won": true, "reason": "citadel", "score": 16350, "rank": "S", "best": true,

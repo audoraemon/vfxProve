@@ -114,6 +114,8 @@ static func plan_for(s: Structure) -> Dictionary:
 			return CivicArt.plan(s)
 		Structure.Kind.MARKET_STALL, Structure.Kind.BRIDGE, Structure.Kind.FARM_FIELD, Structure.Kind.TREE:
 			return PropArt.plan(s)
+		Structure.Kind.FOUNTAIN:
+			return PropArt.plan(s)
 	return {}
 
 

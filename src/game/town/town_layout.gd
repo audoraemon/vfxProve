@@ -35,6 +35,8 @@ const SIDE_GATE := Rect2(8.2, -1.3, 1.0, 2.6)
 const TEMPLE := Rect2(3.5, -7.6, 2.7, 3.1)
 const BARRACKS := Rect2(3.9, -2.5, 4.2, 1.9)
 const BRIDGE := Rect2(-1.0, 11.0, 2.0, 2.4)
+## The market fountain at the crossroads (built after the Citadel so every other building keeps its seed).
+const FOUNTAIN := Rect2(-0.45, -0.45, 0.9, 0.9)
 const STALLS := [
 	Rect2(-2.5, -2.0, 0.9, 0.7), Rect2(-1.4, -2.0, 0.9, 0.7), Rect2(0.6, -2.0, 0.9, 0.7), Rect2(1.7, -2.0, 0.9, 0.7),
 	Rect2(-2.5, 1.4, 0.9, 0.7), Rect2(0.6, 1.4, 0.9, 0.7), Rect2(1.7, 1.4, 0.9, 0.7),

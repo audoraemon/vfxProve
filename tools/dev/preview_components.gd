@@ -53,10 +53,10 @@ func _init() -> void:
 	RenderingServer.set_default_clear_color(BG)
 	var root2 := Node2D.new()
 	get_root().add_child(root2)
+	# The only camera, so it is current once the tree runs; make_current() here would come too early.
 	_cam = Camera2D.new()
 	_cam.zoom = Vector2.ONE
 	root2.add_child(_cam)
-	_cam.make_current()
 	_world = Node2D.new()
 	_world.y_sort_enabled = true
 	root2.add_child(_world)
@@ -82,6 +82,8 @@ func _init() -> void:
 		_world.add_child(d)
 		await _shoot(d, Iso.ground_to_screen(item[2] * 0.5) + Vector2(0, -12), dir.path_join(item[0] + ".png"))
 		d.free()
+	root2.queue_free()
+	await process_frame
 	quit()
 
 

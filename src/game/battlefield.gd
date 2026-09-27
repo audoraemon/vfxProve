@@ -114,6 +114,11 @@ func _ready() -> void:
 	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	flash_layer.add_child(_flash_rect)
 
+	# F3 shows the frame rate.
+	var fps_meter := FpsMeter.new()
+	fps_meter.name = "FpsMeter"
+	add_child(fps_meter)
+
 	ctx.field = field
 	ctx.env = env
 	ctx.lights = lights

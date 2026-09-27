@@ -1,7 +1,8 @@
 extends FxTimeline
 ## Tornado Tempest: spiral wind rune and suction ring -> a tornado forms from swirling dust -> for about ten seconds
-## it roams across the battlefield from spot to spot in random directions, pulling enemies, rocks and planks into
-## its spiral -> it unravels, dropping debris, leaving dust clouds, wind ribbons and a scarred trail.
+## it homes in on the nearest building inside its ring and circles it, grinding it down, then the next, pulling
+## enemies, rocks and planks into its spiral -> it unravels, dropping debris, leaving dust clouds, wind ribbons and a
+## scarred trail.
 
 const PULL_RADIUS := 3.2
 const CORE_RADIUS := 0.6
@@ -13,15 +14,21 @@ const T_END := T_FORM + LIFETIME
 const FUNNEL_HEIGHT := 250.0
 ## Seconds a captured enemy spirals up the funnel before it is flung out.
 const CAPTURE_TIME := 1.1
-## Roaming: ground speed, fastest turn (radians/s), how far each leg reaches (min, max ground units), how far it
-## may stray from the cast point and how much each leg snakes from side to side.
+## Roaming: ground speed, fastest turn (radians/s), the ring round the cast point it locks onto buildings in (the
+## aim preview draws it), and how much it snakes from side to side on the way.
 const WANDER_SPEED := 1.4
 const WANDER_TURN_RATE := 1.4
-const WANDER_LEG := Vector2(2.5, 6.0)
 const WANDER_RADIUS := 7.0
 const WANDER_SWAY := 0.5
-## Roaming targets stay inside this square so it keeps to the play area.
-const WANDER_BOUNDS := 5.5
+## Lock-on (playtest, 2026-09-27: "softly lock the nearest structure" instead of wandering at random): how often it
+## looks again for the nearest building, how much nearer another must be before it switches (so it does not dither
+## between two), how close it circles its target instead of driving on, how much it slows there, and the circle it
+## drifts round the cast point once nothing is left in the ring.
+const LOCK_REPICK := 0.5
+const LOCK_SWITCH := 1.0
+const LOCK_CLOSE := 1.2
+const LOCK_GRIND_SPEED := 0.45
+const IDLE_ORBIT := 1.5
 const WARM_LIGHT := Color(1.0, 0.78, 0.45)
 
 
@@ -217,12 +224,12 @@ var _pulling := false
 var _flung := 0
 ## Enemies spiralling up the funnel: {e, t, a}.
 var _captured: Array[Dictionary] = []
-## Roaming state: heading (ground radians), current target spot and when to give up on it, sway phase, speed,
-## distance walked and path samples.
+## Roaming state: heading (ground radians), the building it is locked onto and the buildings in its ring, when it
+## next looks again, sway phase, speed, distance walked and path samples.
 var _heading := 0.0
-var _goal := Vector2.ZERO
-var _has_goal := false
-var _leg_end := 0.0
+var _target: Structure
+var _ring: Array[Structure] = []
+var _repick_in := 0.0
 var _sway_phase := 0.0
 var _speed := 0.0
 var _walked := 0.0
@@ -297,48 +304,63 @@ func _form() -> void:
 	_pulling = true
 
 
-## Roaming: the tornado heads for a far-off spot it has not visited yet, snaking from side to side on the way, then
-## picks the next one, so over its lifetime it sweeps across the field instead of circling one place.
+## Roaming: the tornado homes in on the nearest building in its ring, snaking a little on the way, and once close
+## circles it slowly, grinding it down, until it falls and the next nearest takes its place. With nothing left in the
+## ring it drifts round the cast point. The turn rate keeps every change of course soft.
 func _wander(delta: float) -> void:
-	if not _has_goal or _center.distance_to(_goal) < 1.0 or t >= _leg_end:
-		_goal = _pick_goal()
-		_has_goal = true
-		_leg_end = t + _center.distance_to(_goal) / WANDER_SPEED * 1.6 + 1.0
-	var to := _goal - _center
+	_repick_in -= delta
+	if _repick_in <= 0.0 or not is_instance_valid(_target) or _target.destroyed:
+		_repick_in = LOCK_REPICK
+		if _ring.is_empty():
+			_ring = ctx.env.near(origin, WANDER_RADIUS + 1.0)
+		_target = pick_target(_center, origin, _target, _ring)
+	var goal: Vector2
+	var close := false
+	if _target != null:
+		goal = _target.center()
+		close = _target.distance_to(_center) < LOCK_CLOSE
+	else:
+		var a := t * 0.5 + _sway_phase
+		goal = origin + Vector2(cos(a), sin(a)) * IDLE_ORBIT
+	var to := goal - _center
 	var sway := WANDER_SWAY * (0.65 * sin(t * 1.9 + _sway_phase) + 0.35 * sin(t * 3.1 + _sway_phase * 1.7))
 	var want := to.angle() + sway * minf(to.length() / 2.0, 1.0)
+	if close:
+		# Circle the building rather than park on it: aim a little to one side of it.
+		want += 1.0
 	var diff := angle_difference(_heading, want)
 	_heading += clampf(diff, -WANDER_TURN_RATE * delta, WANDER_TURN_RATE * delta)
-	# Eases off a little through sharp turns.
+	# Eases off a little through sharp turns, and a lot while grinding.
 	var target := WANDER_SPEED * (0.85 + 0.15 * sin(t * 1.7)) * (1.0 - 0.3 * minf(absf(diff) / 1.5, 1.0))
+	if close:
+		target *= LOCK_GRIND_SPEED
 	_speed = move_toward(_speed, target, 1.8 * delta)
 	var step := Vector2.from_angle(_heading) * _speed * delta
 	_center += step
 	_walked += step.length()
 
 
-## Next roaming target: of a handful of random spots in the play area, the one farthest from everywhere the tornado
-## has been so far, without doubling straight back.
-func _pick_goal() -> Vector2:
-	var best := Vector2.ZERO
-	var best_score := -INF
-	for i in 16:
-		var g := Vector2(ctx.rng.randf_range(-WANDER_BOUNDS, WANDER_BOUNDS), ctx.rng.randf_range(-WANDER_BOUNDS, WANDER_BOUNDS))
-		var d := _center.distance_to(g)
-		if g.distance_to(origin) > WANDER_RADIUS or d < WANDER_LEG.x or d > WANDER_LEG.y:
+## The building to head for: the nearest standing one (not decor, not a wall, not ground people walk on) with its
+## centre within WANDER_RADIUS of `origin`, measured to its footprint. `current` is kept unless another is at least
+## LOCK_SWITCH nearer. Null when none are left in the ring.
+static func pick_target(center: Vector2, origin: Vector2, current: Structure, structures: Array) -> Structure:
+	var best: Structure = null
+	var best_d := INF
+	for s in structures:
+		if not _lockable(s, origin):
 			continue
-		var fresh := g.distance_to(origin)
-		for p in _path:
-			fresh = minf(fresh, g.distance_to(p))
-		var turn := absf(angle_difference(_heading, (g - _center).angle()))
-		var score := fresh - maxf(turn - 1.6, 0.0) * 1.5 + ctx.rng.randf() * 0.8
-		if score > best_score:
-			best_score = score
-			best = g
-	if best_score == -INF:
-		# Cast out past the edge of the field: head back into it.
-		best = Vector2(ctx.rng.randf_range(-2.0, 2.0), ctx.rng.randf_range(-2.0, 2.0))
+		var d: float = s.distance_to(center)
+		if d < best_d:
+			best_d = d
+			best = s
+	if best != current and _lockable(current, origin) and current.distance_to(center) < best_d + LOCK_SWITCH:
+		return current
 	return best
+
+
+static func _lockable(s: Structure, origin: Vector2) -> bool:
+	return is_instance_valid(s) and not s.destroyed and not s.walkable and s.role != &"decor" and s.role != &"wall" \
+		and s.center().distance_to(origin) <= WANDER_RADIUS
 
 
 func _fx_process(delta: float) -> void:

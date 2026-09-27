@@ -25,6 +25,7 @@ const SUITES := [
 	"res://tests/test_rules.gd",
 	"res://tests/test_score.gd",
 	"res://tests/test_targeting.gd",
+	"res://tests/test_tornado_lock.gd",
 	"res://tests/test_hud.gd",
 	"res://tests/test_save_file.gd",
 	"res://tests/test_flow.gd",

@@ -22,6 +22,27 @@ static func run(t) -> void:
 		steps += 1
 	t.check(c.ground_pos.distance_to(goal) <= 0.5, "a citizen walks to its goal (%s after %d steps)" % [c.ground_pos, steps])
 
+	# On screen, a calm citizen is updated every other frame (by its stagger) with the time it skipped; a frightened
+	# one every frame. The test runner never advances the engine's frame count, so the parity is fixed here.
+	Person.view = Rect2(-100000, -100000, 200000, 200000)
+	var odd := Person.new()
+	odd.rng.seed = 12
+	odd.bounds = TownLayout.MAP
+	odd.setup_person(false, Vector2(2.7, 2.0), grid)
+	odd.stagger = 1 - Engine.get_process_frames() % 2
+	odd.set_goal(goal)
+	var at := odd.ground_pos
+	for i in 3:
+		odd.frame(1.0 / 60.0)
+	t.check(odd.unhurried() and odd.ground_pos == at and is_equal_approx(odd._offscreen_delta, 3.0 / 60.0),
+		"a calm citizen on screen waits its turn, keeping the time it skipped")
+	odd.panic(at + Vector2(0.0, -1.0))
+	odd.frame(1.0 / 60.0)
+	t.check(not odd.unhurried() and odd.ground_pos != at and odd._offscreen_delta == 0.0,
+		"a frightened one moves at once, with the time it skipped")
+	Person.view = Rect2()
+	odd.free()
+
 	# Panic runs away from the blow, then turns into flight.
 	var start := c.ground_pos
 	c.panic(start + Vector2(0.0, -1.0))

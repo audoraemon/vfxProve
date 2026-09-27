@@ -108,7 +108,7 @@ var _think_due := true
 ## Seconds since the last _think() call; handed to it as its delta so timers (wait, _panic_left, _repath_in)
 ## still decay in real time despite thinking at half rate.
 var _think_accum := 0.0
-## Time an off-screen person has not been updated for, handed to its next update (see _process).
+## Time a person has not been updated for (off screen, or unhurried on it), handed to its next update (see frame()).
 var _offscreen_delta := 0.0
 
 ## What the camera shows, in world (screen) pixels, grown by a margin; set every frame by the Battlefield. An
@@ -117,6 +117,11 @@ static var view := Rect2()
 ## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
 ## screen at play zoom, and nobody can see a stride or a light reading there.
 const OFFSCREEN_EVERY := 3
+## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
+## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
+## halves most of the crowd's cost there. Anyone frightened, fleeing, knocked, pulled, stumbling or held at a gate
+## is updated every frame.
+const CALM_EVERY := 2
 ## DummyEnemy._art_signature()'s multipliers for its walk step and its state, when every term between is zero.
 const SIG_WALK := 1024 * 97 * 97 * 97 * 97 * 131 * 7
 const SIG_STATE := 131 * 7
@@ -173,9 +178,14 @@ func _process(delta: float) -> void:
 func frame(delta: float) -> void:
 	# Looked up once a frame: the base unit and the brain both ask.
 	_seen = not view.has_area() or view.has_point(position)
+	var every := 1
 	if not _seen:
+		every = OFFSCREEN_EVERY
+	elif unhurried():
+		every = CALM_EVERY
+	if every > 1:
 		_offscreen_delta += delta
-		if (Engine.get_process_frames() + stagger_key()) % OFFSCREEN_EVERY != 0:
+		if (Engine.get_process_frames() + stagger_key()) % every != 0:
 			return
 		delta = _offscreen_delta
 		_offscreen_delta = 0.0
@@ -184,6 +194,11 @@ func frame(delta: float) -> void:
 		_offscreen_delta = 0.0
 	tick(delta)
 	_refresh(delta)
+
+
+## Calm or at a post, wandering, and nothing holding or tripping it: updated at CALM_EVERY on screen.
+func unhurried() -> bool:
+	return (mind == Mind.CALM or mind == Mind.POST) and state == State.WANDER and not is_frozen() and _stumble <= 0.0 		and wait <= 0.0
 
 
 # --- Brain -------------------------------------------------------------------

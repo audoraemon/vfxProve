@@ -66,6 +66,14 @@ func _run() -> void:
 			idle += 1
 	print("structures: %d processing, %d idle in view, %d of %d asleep off screen" % [busy, idle,
 		all.size() - busy - idle, all.size()])
+	var seen := 0
+	var calm := 0
+	for p: Person in mission._crowd.citizens + mission._crowd.soldiers:
+		if is_instance_valid(p) and p._seen:
+			seen += 1
+			if p.unhurried():
+				calm += 1
+	print("people: %d on screen, %d of them unhurried (every %d frames)" % [seen, calm, Person.CALM_EVERY])
 	for c in cats:
 		var cat := String(c).get_slice(":", 0)
 		var how := String(c).get_slice(":", 1)

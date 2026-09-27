@@ -125,6 +125,9 @@ COMPONENTS = [
     ('Workshop', 'workshop', (1047, 597, 1173, 673), [
         ('open timber posts', 1), ('red tile roof', 1), ('goods under the roof', 1), ('workbench', 1)],
         {'ref': 'scale', 'group': 'Scale buildings'}),
+    ('Townhouse', 'townhouse', (496, 393, 553, 452), [
+        ('slate roof', 1), ('two storeys of windows', 1), ('timber frame', 1), ('chimney', 1), ('plaster walls', 1)],
+        {'ref': 'scale', 'group': 'Scale buildings'}),
     ('Windmill', 'windmill', (857, 57, 906, 129), [
         ('tapering tower', 1), ('slate cap', 1), ('four lattice sails', 1), ('sails turn', 1), ('door', 1)],
         {'ref': 'scale', 'group': 'Countryside'}),
@@ -233,6 +236,7 @@ TUNING_KEYS = {
     'bridge': 'bridge', 'field_a': 'farm_field', 'field_b': 'farm_field', 'tree_a': 'tree', 'tree_b': 'tree',
     'torch': 'torch', 'lamp': 'torch_lamp', 'cathedral': 'temple_cathedral', 'bridge_stone': 'bridge_stone',
     'workshop': 'house_workshop', 'windmill': 'house_windmill', 'watermill': 'house_watermill',
+    'townhouse': 'house_townhouse',
 }
 GROUPS = {
     'Buildings': ['Cottage', 'Tavern', 'Blacksmith', 'Temple', 'Barracks', 'Market stall', 'Fountain'],

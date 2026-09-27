@@ -36,6 +36,7 @@ const STRUCTURES := [
 	["cathedral", S.TEMPLE, Rect2(0, 0, 4.2, 6.2), 56.0, &"temple", &"cathedral", 31],
 	["bridge_stone", S.BRIDGE, Rect2(0, 0, 2.0, 7.6), 6.0, &"bridge", &"stone", 32],
 	["workshop", S.HOUSE, Rect2(0, 0, 2.6, 1.5), 22.0, &"house", &"workshop", 33],
+	["townhouse", S.HOUSE, Rect2(0, 0, 1.3, 0.95), 29.0, &"house", &"townhouse", 36],
 	["windmill", S.HOUSE, Rect2(0, 0, 0.9, 0.9), 60.0, &"farm", &"windmill", 34],
 	["watermill", S.HOUSE, Rect2(0, 0, 2.4, 1.9), 34.0, &"farm", &"watermill", 35],
 ]

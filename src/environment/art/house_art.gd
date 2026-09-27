@@ -48,8 +48,10 @@ static func plan(s: Structure) -> Dictionary:
 		"steps": ArtKit.hash01(sd, 6) < 0.45,
 		# A farm's house is a barn, except the mills, which are plastered cottages.
 		"barn": s.role == &"farm" and s.art_tag == &"",
-		"tile": s.role == &"house" and s.art_tag == &"" and ArtKit.hash01(sd, 7) < TILE_SHARE,
+		"tile": s.role == &"house" and (s.art_tag == &"" or s.art_tag == &"townhouse") and ArtKit.hash01(sd, 7) < TILE_SHARE,
 		"tavern": s.art_tag == &"tavern",
+		# A townhouse: the tavern's two storeys, as a home -- no sign, awning or lanterns.
+		"townhouse": s.art_tag == &"townhouse",
 		"smithy": s.art_tag == &"smithy",
 	}
 	if plan.tavern or plan.smithy:
@@ -121,7 +123,7 @@ static func draw(s: Structure) -> void:
 		if not barn and face == eave_face and px > 34.0 \
 				and (p.door_face != face or absf(float(p.door_u) - 0.5) > 0.12):
 			ArtKit.face_quad(s, face, 0.5 - post * 0.5, 0.5 + post * 0.5, PLINTH_H, h, tc)
-		if tavern:
+		if tavern or p.townhouse:
 			# Storey beam, and posts between the bays on both floors.
 			ArtKit.face_quad(s, face, 0.0, 1.0, h * 0.5 - 1.0, h * 0.5 + 1.0, tc)
 			for u: float in ([0.25, 0.75] if face == eave_face else [0.5]):
@@ -131,6 +133,9 @@ static func draw(s: Structure) -> void:
 	var door_c := {ArtKit.RIGHT: ArtKit.DOOR[0], ArtKit.LEFT: ArtKit.DOOR[1]}
 	if tavern:
 		_tavern_front(s, h, eave_face, gable_face, timber_c, door_c)
+	elif p.townhouse:
+		_storey_windows(s, h, eave_face, gable_face, timber_c)
+		_draw_door(s, eave_face, 0.5, 6.0, roundf(h * 0.4), door_c[eave_face], timber_c[eave_face], false)
 	else:
 		_draw_openings(s, p, h, eave_face, gable_face, timber_c, door_c, barn)
 
@@ -351,9 +356,9 @@ static func _steps(s: Structure, face: int, u: float) -> void:
 		ArtKit.line(s._gp(p01, hh), s._gp(p11, hh), ArtKit.ink(0.35))
 
 
-## The tavern's front: windows on both floors, a door under an awning, and a hanging sign with a blue banner.
-static func _tavern_front(s: Structure, h: float, eave_face: int, gable_face: int, timber_c: Dictionary,
-		door_c: Dictionary) -> void:
+## Windows on both floors of a two-storey house (the tavern, a townhouse): four bays along the front, two on the
+## gable, leaving the middle of the ground floor's front for the door.
+static func _storey_windows(s: Structure, h: float, eave_face: int, gable_face: int, timber_c: Dictionary) -> void:
 	var n := 0
 	for face in [eave_face, gable_face]:
 		var spots: Array = [0.12, 0.38, 0.62, 0.88] if face == eave_face else [0.3, 0.7]
@@ -363,6 +368,12 @@ static func _tavern_front(s: Structure, h: float, eave_face: int, gable_face: in
 					continue
 				ArtKit.window(s, face, u, sill, 4.0, 5.0, _window_lit(s, n), timber_c[face])
 				n += 1
+
+
+## The tavern's front: windows on both floors, a door under an awning, and a hanging sign with a blue banner.
+static func _tavern_front(s: Structure, h: float, eave_face: int, gable_face: int, timber_c: Dictionary,
+		door_c: Dictionary) -> void:
+	_storey_windows(s, h, eave_face, gable_face, timber_c)
 	var dh := roundf(h * 0.4)
 	_draw_door(s, eave_face, 0.5, 7.0, dh, door_c[eave_face], timber_c[eave_face], false)
 	# Awning: a slanted red board over the door, reaching out from the wall.

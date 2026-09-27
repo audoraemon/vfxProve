@@ -124,8 +124,13 @@ const HOUSE_CELL := Vector2(1.75, 1.8)
 ## A cottage's footprint, turned either way.
 const HOUSE_WIDE := Vector2(0.95, 0.75)
 const HOUSE_DEEP := Vector2(0.75, 0.95)
+## A two-storey townhouse's footprint, turned either way, and the share of house spots that get one: the reference's
+## streets are lined with them.
+const TOWNHOUSE_WIDE := Vector2(1.3, 0.95)
+const TOWNHOUSE_DEEP := Vector2(0.95, 1.3)
+const TOWNHOUSE_SHARE := 0.3
 ## Open ground kept between a cottage and any street, and between a cottage and the walls.
-const STREET_CLEAR := 0.95
+const STREET_CLEAR := 0.6
 const WALL_CLEAR := 1.0
 ## A garden plot's sides (ground units), and the open ground kept between it and any street.
 const GARDEN_LONG := 1.0
@@ -257,7 +262,10 @@ static func structures() -> Array[Dictionary]:
 		_add(out, r, 10.0, Structure.Kind.MARKET_STALL, &"market")
 	var house_rects := houses()
 	for i in house_rects.size():
-		_add(out, house_rects[i], 15.0 + float(i * 7 % 5), Structure.Kind.HOUSE, &"house")
+		if is_townhouse(house_rects[i]):
+			_add(out, house_rects[i], 28.0 + float(i * 7 % 3), Structure.Kind.HOUSE, &"house", &"townhouse")
+		else:
+			_add(out, house_rects[i], 15.0 + float(i * 7 % 5), Structure.Kind.HOUSE, &"house")
 	for r: Rect2 in TAVERNS:
 		_add(out, r, 30.0, Structure.Kind.HOUSE, &"house", &"tavern")
 	_add(out, SMITHY, 20.0, Structure.Kind.HOUSE, &"house", &"smithy")
@@ -307,7 +315,10 @@ static func houses() -> Array[Rect2]:
 			for i in cols:
 				n += 1
 				var c := d.position + cell * Vector2(i + 0.5, j + 0.5)
-				var size: Vector2 = HOUSE_WIDE if _unit(n * 3) < 0.55 else HOUSE_DEEP
+				var wide := _unit(n * 3) < 0.55
+				var size: Vector2 = HOUSE_WIDE if wide else HOUSE_DEEP
+				if _unit(n * 3 + 5) < TOWNHOUSE_SHARE:
+					size = TOWNHOUSE_WIDE if wide else TOWNHOUSE_DEEP
 				var room := (cell - size) * 0.5 - Vector2(0.25, 0.25)
 				c += Vector2((_unit(n * 3 + 1) - 0.5) * 2.0 * maxf(room.x, 0.0) * 0.6,
 					(_unit(n * 3 + 2) - 0.5) * 2.0 * maxf(room.y, 0.0) * 0.6)
@@ -322,6 +333,11 @@ static func houses() -> Array[Rect2]:
 				if clear:
 					out.append(h)
 	return out
+
+
+## Whether a house footprint from houses() is a two-storey townhouse (by its size).
+static func is_townhouse(r: Rect2) -> bool:
+	return r.get_area() > HOUSE_WIDE.x * HOUSE_WIDE.y * 1.4
 
 
 ## A cottage nudged back from every street so at least STREET_CLEAR of open ground runs beside each road: with

@@ -6,7 +6,7 @@ extends Node2D
 
 enum Kind {
 	BARREL, CRATES, BENCH, FENCE, GARDEN, BUSH, ROCK, OAK, PINE, LAMP, BUNTING, SCARECROW, SIGNPOST, REEDS, FLOWERS,
-	TABLE, SHIP, BOAT, DOCK, SHEEP, COW, CART, LOGS,
+	TABLE, SHIP, BOAT, DOCK, SHEEP, COW, CART, LOGS, PILE,
 }
 ## Decor that belongs on the water, not the land.
 const ON_WATER := [Kind.SHIP, Kind.BOAT, Kind.DOCK]
@@ -23,6 +23,9 @@ var seed_value := 0
 ## 0..1 how burnt it is.
 var char_amount := 0.0
 var down := false
+## A PILE's pieces, back to front: {"kind", "at", "size", "seed"} each (TownDecor merges goods standing together
+## into one node, one draw call instead of one each).
+var parts: Array = []
 var _glow: QuadFx
 
 ## Decor that moves in the wind (trees sway, bunting flutters; see ArtKit.wind_gain), and the one material they share.
@@ -91,5 +94,12 @@ func _draw() -> void:
 		# Scaled about the ground point it stands on (this node's origin).
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
 	ArtKit.begin()
-	DecorArt.paint(kind, at, size, seed_value, position, down)
+	if kind == Kind.PILE:
+		# Each piece in its own colour tuning (a pile only holds pieces drawn at their own size).
+		for p: Dictionary in parts:
+			ArtKit.color_mul = ArtTuning.tint(String(Kind.keys()[p.kind]).to_lower())
+			DecorArt.paint(p.kind, p.at, p.size, p.seed, position, down)
+		ArtKit.color_mul = Color.WHITE
+	else:
+		DecorArt.paint(kind, at, size, seed_value, position, down)
 	ArtKit.flush(self)

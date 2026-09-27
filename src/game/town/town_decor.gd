@@ -23,10 +23,42 @@ const FOREST_PINES := 0.35
 const BUSHES := 0.45
 ## A generous screen box around any decor piece (relative to its ground point): tall enough for a tree.
 const SCREEN_BOX := Rect2(-26, -66, 52, 68)
+## Inside the walls, low decor is painted into the floor (_bake_low()): these kinds, each with the screen box it
+## draws in (relative to its ground point; a garden's runs to its far corner as well).
+const LOW_BOX := {
+	Decor.Kind.FLOWERS: Rect2(-7, -5, 14, 9), Decor.Kind.BUSH: Rect2(-10, -15, 20, 16),
+	Decor.Kind.ROCK: Rect2(-14, -14, 28, 18), Decor.Kind.GARDEN: Rect2(-4, -14, 8, 16),
+}
+## The box other pieces draw in (relative to the ground point), for deciding what may lie under them; GOODS_BOX
+## for any kind not listed.
+const DRAW_BOX := {
+	Decor.Kind.BARREL: Rect2(-6, -11, 12, 12), Decor.Kind.CRATES: Rect2(-10, -17, 20, 19),
+	Decor.Kind.TABLE: Rect2(-16, -14, 32, 18), Decor.Kind.LOGS: Rect2(-12, -16, 24, 18),
+	Decor.Kind.BENCH: Rect2(-4, -6, 8, 8), Decor.Kind.LAMP: Rect2(-5, -Structure.LAMP_H - 3, 17, Structure.LAMP_H + 4),
+}
+const GOODS_BOX := Rect2(-24, -36, 56, 40)
+## Goods inside the walls standing within PILE_REACH of each other merge into one PILE node of up to PILE_MAX
+## (_merge_piles()): one draw call where each took one. Only kinds drawn at their own size can share a node.
+const PILE_KINDS := [Decor.Kind.BARREL, Decor.Kind.CRATES, Decor.Kind.TABLE, Decor.Kind.BENCH, Decor.Kind.LOGS]
+const PILE_REACH := 0.6
+const PILE_MAX := 6
+## Screen cell for the box index the two passes above use.
+const BOX_CELL := 64.0
+## A height (px) above any part of the Citadel, for the index.
+const CITADEL_TALL := 140.0
+## Px a building's screen outline is grown by, for eaves and overhangs (_silhouette()).
+const SILHOUETTE_GROW := 4.0
+## A tree's screen shape (_tree_shape()): where its crown starts above the ground, how far it spreads either side,
+## and how far it rises past the tree's height.
+const TREE_CROWN_LOW := 10.0
+const TREE_CROWN_HALF := 26.0
+const TREE_CROWN_UP := 16.0
 
 
 static func spots() -> Array[Dictionary]:
-	var solid := _solid_rects()
+	# The layout's buildings, worked out once: every pass below needs them, and each working-out lays out the town.
+	var built := TownLayout.structures()
+	var solid := _solid_rects(built)
 	var out: Array[Dictionary] = []
 	_yards(out)
 	_houses(out, solid)
@@ -36,16 +68,17 @@ static func spots() -> Array[Dictionary]:
 	# Last, so every other piece keeps its seed.
 	_carpenter(out)
 	_street(out)
-	var boxes := _screen_boxes()
+	var boxes := _screen_boxes(built)
 	for d in out:
 		d.bake = _bakeable(d, boxes)
-	return out
+	_bake_low(out, built)
+	return _merge_piles(out, built)
 
 
 ## Footprints that block walking: every standing non-walkable building, the Citadel's parts and the fountain.
-static func _solid_rects() -> Array[Rect2]:
+static func _solid_rects(built: Array[Dictionary]) -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	for d in TownLayout.structures():
+	for d in built:
 		if not d.kind in Structure.WALKABLE:
 			out.append(d.rect)
 	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
@@ -368,11 +401,239 @@ static func _forest(g: Vector2) -> bool:
 # --- Baking ------------------------------------------------------------------
 
 ## Every building's screen box (raised by its height and a roof), for the bake test.
-static func _screen_boxes() -> Array[Rect2]:
+static func _screen_boxes(built: Array[Dictionary]) -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	for d in TownLayout.structures():
+	for d in built:
 		out.append(Person._screen_box(d.rect, d.height))
 	return out
+
+
+## Where a piece is drawn in the world's y-sort (its node's screen y), and the box it draws in.
+static func _sort_y(g: Vector2) -> float:
+	return Iso.ground_to_screen(g).y
+
+
+static func _box(d: Dictionary) -> Rect2:
+	var p := Iso.ground_to_screen(d.at)
+	if LOW_BOX.has(d.kind):
+		var b: Rect2 = LOW_BOX[d.kind]
+		var box := Rect2(p + b.position, b.size)
+		if d.kind == Decor.Kind.GARDEN:
+			var sc := ArtTuning.scale("garden")
+			for c: Vector2 in [Vector2((d.size as Vector2).x, 0.0), d.size, Vector2(0.0, (d.size as Vector2).y)]:
+				var q := p + (Iso.ground_to_screen(d.at + c) - p) * sc
+				box = box.merge(Rect2(q + b.position, b.size))
+		return box
+	if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE]:
+		return Rect2(p + SCREEN_BOX.position, SCREEN_BOX.size)
+	if d.kind == Decor.Kind.PILE:
+		var box := Rect2()
+		for part: Dictionary in d.parts:
+			box = _box(part) if box.size == Vector2.ZERO else box.merge(_box(part))
+		return box
+	if DRAW_BOX.has(d.kind):
+		var b: Rect2 = DRAW_BOX[d.kind]
+		var box := Rect2(p + b.position, b.size)
+		if d.kind == Decor.Kind.BENCH:
+			# A bench runs from its point along its size.
+			var q := Iso.ground_to_screen(d.at + (d.size as Vector2))
+			box = box.merge(Rect2(q + b.position, b.size))
+		return box
+	return Rect2(p + GOODS_BOX.position, GOODS_BOX.size)
+
+
+## Everything drawn live in the town, as [box, sort y, id, outline or null]: the buildings (sorted by their front
+## corner), the Citadel and the fountains, and the decor not baked (without the low kinds, with `skip_low`).
+## Indexed by BOX_CELL screen cells.
+static func _live_index(out: Array[Dictionary], built: Array[Dictionary], skip_low := false) -> Dictionary:
+	var index := {}
+	var n := 0
+	for s in built:
+		var r: Rect2 = s.rect
+		var shape: Variant = null
+		if s.kind == Structure.Kind.TREE:
+			shape = _tree_shape(Iso.ground_to_screen(r.get_center()), s.height)
+		elif s.kind != Structure.Kind.MARKET_STALL:
+			shape = _silhouette(r, s.height)
+		_index_box(index, [Person._screen_box(r, s.height), _sort_y(r.end), n, shape])
+		n += 1
+	# Built beside the layout's buildings: the fountains, and the Citadel's parts (as tall as its keep, to be safe).
+	var others: Array[Rect2] = []
+	for f: Rect2 in TownLayout.FOUNTAINS:
+		others.append(f)
+	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
+		others.append(Rect2(r.position + TownLayout.CITADEL_ORIGIN, r.size))
+	for r in others:
+		_index_box(index, [Person._screen_box(r, CITADEL_TALL), _sort_y(r.end), n, null])
+		n += 1
+	for i in out.size():
+		var d := out[i]
+		if not d.bake and not (skip_low and LOW_BOX.has(d.kind)):
+			var shape: Variant = null
+			if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE]:
+				var tall: float = (d.size as Vector2).x if (d.size as Vector2).x > 0.0 else 64.0
+				shape = _tree_shape(Iso.ground_to_screen(d.at), tall)
+			_index_box(index, [_box(d), _sort_y(d.at), -1 - i, shape])
+	return index
+
+
+## A tree on screen, from its ground point: a narrow trunk up to TREE_CROWN_LOW px, then a crown TREE_CROWN_HALF
+## either side up to its height and a margin.
+static func _tree_shape(p: Vector2, tall: float) -> PackedVector2Array:
+	var top := -tall - TREE_CROWN_UP
+	var low := -TREE_CROWN_LOW
+	var w := TREE_CROWN_HALF
+	return PackedVector2Array([p + Vector2(-4, 3), p + Vector2(4, 3), p + Vector2(4, low), p + Vector2(w, low),
+		p + Vector2(w, top), p + Vector2(-w, top), p + Vector2(-w, low), p + Vector2(-4, low)])
+
+
+## A building's outline on screen: its footprint's near corners on the ground and all four raised by its height and
+## a roof's rise, grown by SILHOUETTE_GROW for eaves. Its bounding box's empty corners cover nothing.
+static func _silhouette(r: Rect2, h: float) -> PackedVector2Array:
+	var up := Vector2(0.0, -(h + Person.ROOF_MARGIN))
+	var back := Iso.ground_to_screen(r.position)
+	var right := Iso.ground_to_screen(Vector2(r.end.x, r.position.y))
+	var front := Iso.ground_to_screen(r.end)
+	var left := Iso.ground_to_screen(Vector2(r.position.x, r.end.y))
+	var g := SILHOUETTE_GROW
+	return PackedVector2Array([left + Vector2(-g, 0.0), front + Vector2(0.0, g), right + Vector2(g, 0.0),
+		right + up + Vector2(g, 0.0), back + up + Vector2(0.0, -g), left + up + Vector2(-g, 0.0)])
+
+
+static func _index_box(index: Dictionary, e: Array) -> void:
+	var b: Rect2 = e[0]
+	for y in range(floori(b.position.y / BOX_CELL), floori(b.end.y / BOX_CELL) + 1):
+		for x in range(floori(b.position.x / BOX_CELL), floori(b.end.x / BOX_CELL) + 1):
+			var key := Vector2i(x, y)
+			if not index.has(key):
+				index[key] = []
+			(index[key] as Array).append(e)
+
+
+## Whether anything live that sorts before `sort_y` (drawn earlier, so under it) overlaps `box`, ignoring `skip` ids.
+## A piece painted into the floor is under everything, so such a neighbour would wrongly cover it.
+static func _covered(index: Dictionary, box: Rect2, sort_y: float, skip: Array = []) -> bool:
+	for y in range(floori(box.position.y / BOX_CELL), floori(box.end.y / BOX_CELL) + 1):
+		for x in range(floori(box.position.x / BOX_CELL), floori(box.end.x / BOX_CELL) + 1):
+			for e: Array in index.get(Vector2i(x, y), []):
+				if e[1] < sort_y and not skip.has(e[2]) and _overlaps(e, box):
+					return true
+	return false
+
+
+static func _overlaps(e: Array, box: Rect2) -> bool:
+	if not (e[0] as Rect2).intersects(box):
+		return false
+	if e[3] == null:
+		return true
+	var poly := PackedVector2Array([box.position, Vector2(box.end.x, box.position.y), box.end,
+		Vector2(box.position.x, box.end.y)])
+	return not Geometry2D.intersect_polygons(poly, e[3]).is_empty()
+
+
+## Low decor inside the walls -- flowers, bushes, garden beds, rocks -- painted into the floor instead of standing
+## as a live node each. A piece qualifies unless something live and taller sorting before it overlaps it: a building,
+## a tree, a lamp or goods behind it would then cover it. Low pieces never keep each other live: at ground level
+## their order moves a pixel or two. A baked piece keeps its live colour, the decor's evening light rather than the
+## floor's deeper gold; unlike a live piece, a blast neither chars it nor knocks it flat.
+static func _bake_low(out: Array[Dictionary], built: Array[Dictionary]) -> void:
+	var low: Array[int] = []
+	for i in out.size():
+		if LOW_BOX.has(out[i].kind) and TownLayout.TOWN.grow(1.0).has_point(out[i].at):
+			low.append(i)
+	# Everything else that is live goes in the index first; then each low piece, back to front, joins it if it has
+	# to stay live.
+	for i in low:
+		out[i].bake = true
+	var index := _live_index(out, built, true)
+	low.sort_custom(func(a: int, b: int) -> bool: return _sort_y(out[a].at) < _sort_y(out[b].at))
+	var lit := Color(Town.EVENING.r / Town.GROUND_EVENING.r, Town.EVENING.g / Town.GROUND_EVENING.g,
+		Town.EVENING.b / Town.GROUND_EVENING.b)
+	for i in low:
+		var d := out[i]
+		var box := _box(d)
+		d.bake = not _covered(index, box, _sort_y(d.at))
+		if d.bake:
+			d.tint = lit
+
+
+## Goods inside the walls standing together merged into PILE entries: a cluster grows from its first piece (back to
+## front) with pieces within PILE_REACH of any piece already in it, up to PILE_MAX, and only while nothing live
+## sorts between its pieces and overlaps them (it would be drawn wrongly over or under the whole pile). The pile
+## stands at, and sorts by, its front piece.
+static func _merge_piles(out: Array[Dictionary], built: Array[Dictionary]) -> Array[Dictionary]:
+	var goods: Array[int] = []
+	for i in out.size():
+		var d := out[i]
+		if not d.bake and d.kind in PILE_KINDS and TownLayout.TOWN.has_point(d.at) \
+				and ArtTuning.scale(String(Decor.Kind.keys()[d.kind]).to_lower()) == 1.0:
+			goods.append(i)
+	goods.sort_custom(func(a: int, b: int) -> bool: return _sort_y(out[a].at) < _sort_y(out[b].at))
+	var index := _live_index(out, built)
+	var taken := {}
+	var piles: Array[Dictionary] = []
+	for gi in goods.size():
+		var first: int = goods[gi]
+		if taken.has(first):
+			continue
+		var members: Array[int] = [first]
+		for gj in range(gi + 1, goods.size()):
+			if members.size() >= PILE_MAX:
+				break
+			var j: int = goods[gj]
+			if taken.has(j):
+				continue
+			var near := false
+			for m in members:
+				near = near or (out[j].at as Vector2).distance_to(out[m].at) <= PILE_REACH
+			if not near:
+				continue
+			if _pile_ok(out, members + [j], index):
+				members.append(j)
+		if members.size() < 2:
+			continue
+		var parts: Array = []
+		for m in members:
+			taken[m] = true
+			var d := out[m]
+			parts.append({"kind": d.kind, "at": d.at, "size": d.size, "seed": d.seed})
+		# Members were taken back to front, so the last is the front piece the pile sorts by.
+		var front := out[members[members.size() - 1]]
+		piles.append({"kind": Decor.Kind.PILE, "at": front.at, "size": Vector2.ZERO, "seed": front.seed, "bake": false,
+			"parts": parts})
+	var result: Array[Dictionary] = []
+	for i in out.size():
+		if not taken.has(i):
+			result.append(out[i])
+	result.append_array(piles)
+	return result
+
+
+## Whether these goods can share a node: nothing else live that sorts between the back piece and the front one
+## overlaps them.
+static func _pile_ok(out: Array[Dictionary], members: Array, index: Dictionary) -> bool:
+	var y0 := INF
+	var y1 := -INF
+	var box := Rect2()
+	var skip: Array = []
+	for m: int in members:
+		var y := _sort_y(out[m].at)
+		y0 = minf(y0, y)
+		y1 = maxf(y1, y)
+		box = _box(out[m]) if skip.is_empty() else box.merge(_box(out[m]))
+		skip.append(-1 - m)
+	return not _between(index, box, y0, y1, skip)
+
+
+## Whether anything live sorting between y0 (inclusive) and y1 overlaps `box`, ignoring `skip` ids.
+static func _between(index: Dictionary, box: Rect2, y0: float, y1: float, skip: Array) -> bool:
+	for y in range(floori(box.position.y / BOX_CELL), floori(box.end.y / BOX_CELL) + 1):
+		for x in range(floori(box.position.x / BOX_CELL), floori(box.end.x / BOX_CELL) + 1):
+			for e: Array in index.get(Vector2i(x, y), []):
+				var sy: float = e[1]
+				if sy >= y0 and sy < y1 and not skip.has(e[2]) and _overlaps(e, box):
+					return true
+	return false
 
 
 ## Bakeable: outside the walls, well clear of the roads and exits, and overlapping no building on screen.

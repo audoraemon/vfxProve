@@ -81,6 +81,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			baked.append(d)
 			continue
 		var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
+		dec.parts = d.get("parts", [])
 		env.add_decor(dec)
 		_decor.append(dec)
 		if _decor_layer != null:

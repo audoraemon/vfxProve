@@ -586,7 +586,8 @@ func _paint_decor(ci: CanvasItem) -> void:
 		var sc := ArtTuning.scale(key)
 		var at := Iso.ground_to_screen(d.at)
 		ci.draw_set_transform(at * (1.0 - sc), 0.0, Vector2(sc, sc))
-		ArtKit.color_mul = ArtTuning.tint(key)
+		# A piece from inside the walls keeps the colour it had live (see TownDecor._bake_low()).
+		ArtKit.color_mul = ArtTuning.tint(key) * (d.get("tint", Color.WHITE) as Color)
 		ArtKit.begin()
 		DecorArt.paint(d.kind, d.at, d.size, d.seed, Vector2.ZERO)
 		ArtKit.flush(ci)

@@ -17,7 +17,7 @@ const CATEGORIES := [
 ## Decor low enough to paint into the floor (people are never hidden behind it), and the goods piled by buildings.
 const DECOR_LOW := [Decor.Kind.FLOWERS, Decor.Kind.BUSH, Decor.Kind.GARDEN, Decor.Kind.ROCK, Decor.Kind.REEDS]
 const DECOR_GOODS := [Decor.Kind.BARREL, Decor.Kind.CRATES, Decor.Kind.TABLE, Decor.Kind.BENCH, Decor.Kind.LOGS,
-	Decor.Kind.CART]
+	Decor.Kind.CART, Decor.Kind.PILE]
 
 var mission: Mission
 var frames := 240

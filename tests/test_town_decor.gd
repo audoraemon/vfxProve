@@ -39,6 +39,36 @@ static func run(t) -> void:
 	t.check(no_overlap, "no decor stands inside a building")
 	t.check(spots == TownDecor.spots(), "decor placement is the same every time")
 	t.check(env.decor().size() == spots.size(), "without a floor to bake into, every piece is live decor")
+
+	# Fewer live nodes, same look: low pieces inside the walls go into the floor where nothing taller covers them,
+	# and goods standing together share one PILE node.
+	var baked_low := 0
+	var piles_ok := true
+	var piles := 0
+	for d in spots:
+		if d.bake and TownDecor.LOW_BOX.has(d.kind) and TownLayout.TOWN.grow(1.0).has_point(d.at):
+			baked_low += 1
+			piles_ok = piles_ok and d.has("tint")
+		if d.kind != Decor.Kind.PILE:
+			continue
+		piles += 1
+		var parts: Array = d.parts
+		piles_ok = piles_ok and parts.size() >= 2 and parts.size() <= TownDecor.PILE_MAX
+		var front_y := -INF
+		for k in parts.size():
+			var part: Dictionary = parts[k]
+			piles_ok = piles_ok and part.kind in TownDecor.PILE_KINDS
+			var y := Iso.ground_to_screen(part.at).y
+			piles_ok = piles_ok and y >= front_y  # back to front
+			front_y = y
+			var near := k == 0
+			for m in k:
+				near = near or (part.at as Vector2).distance_to(parts[m].at) <= TownDecor.PILE_REACH
+			piles_ok = piles_ok and near
+		piles_ok = piles_ok and d.at == parts[parts.size() - 1].at
+	t.check(baked_low >= 50 and piles >= 30 and piles_ok,
+		"low decor painted into the floor (%d), goods merged into piles (%d), each pile back to front and close" % [
+		baked_low, piles])
 	var d0 := Decor.new().setup(Decor.Kind.BARREL, Vector2(40.5, 40.5), Vector2.ZERO, 1)
 	env.add_decor(d0)
 	env.damage_radius(Vector2(40.5, 40.5), 1.0, 12.0, &"nova")

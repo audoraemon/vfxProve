@@ -18,10 +18,11 @@ signal prewarmed
 const DEFAULT_LOADOUT := ["heaven", "tsunami", "cinder", "nova"]
 const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
 const PAN_SPEED := 320.0
-## Pan limits (screen px) and the furthest zoom out: the map is 60 x 60 units since the town scale upgrade.
+## Pan limits (screen px): the map is 60 x 60 units since the town scale upgrade. The furthest zoom out: below 0.5
+## the pixel art shrinks past legibility -- cobbles shimmer and people vanish (playtest, 2026-09-27).
 const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
-const ZOOM_MIN := 0.3
+const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 ## Grass, the same clear colour the debug scene uses.
@@ -30,9 +31,9 @@ const CLEAR := Color("6e8230")
 ## The mission opens with the camera sweeping in to the Citadel under a MANIFEST banner, and the clock only
 ## starts when it arrives (spec §1).
 const INTRO_SECONDS := 2.0
-## Where the sweep starts: the whole town, from further out.
+## Where the sweep starts: from the Main Gate, as far out as the zoom goes.
 const INTRO_FROM := Vector2(2.7, 12.0)
-const INTRO_FROM_ZOOM := 0.35
+const INTRO_FROM_ZOOM := ZOOM_MIN
 ## Where the camera rests for play, and how close.
 const PLAY_ZOOM := 0.6
 

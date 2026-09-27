@@ -27,11 +27,12 @@ const ROADS := [
 	Rect2(2.0, 16.2, 1.4, 13.8), Rect2(16.2, 8.3, 13.8, 1.4),
 ]
 const MARKET_SQUARE := Rect2(-3.5, -3.5, 8.5, 11.5)
-## Market clutter between the stall rows, as the reference's square is busy with it: a cart, crate stacks, barrels.
-## Solid to people like the gardens (blockers()), and clear of the street and the fountain.
+## Market clutter, as the reference's square is busy with it: at the west rows' street ends, tables of goods and
+## crate stacks with barrels; a cart by the fountain. Solid to people like the gardens (blockers()), and clear of the
+## street, the aisles and the fountain.
 const MARKET_PILES := [
-	Rect2(-2.7, -1.55, 0.5, 0.4), Rect2(-1.1, 0.65, 0.5, 0.4), Rect2(-2.95, 2.8, 0.95, 0.5), Rect2(-1.2, 5.0, 0.5, 0.4),
-	Rect2(3.95, -1.5, 0.45, 0.4), Rect2(3.95, 2.85, 0.45, 0.4),
+	Rect2(0.25, -3.18, 0.5, 0.45), Rect2(0.25, -1.68, 0.5, 0.45), Rect2(0.25, -0.18, 0.5, 0.45), Rect2(0.25, 1.32, 0.5, 0.45),
+	Rect2(0.25, 2.82, 0.5, 0.45), Rect2(-0.95, 4.3, 0.95, 0.5),
 ]
 ## The small plaza round the second fountain, in the north-east.
 const FOUNTAIN_PLAZA := Rect2(9.8, -11.6, 3.2, 3.2)
@@ -80,14 +81,17 @@ const BRIDGE := Rect2(1.7, 18.4, 2.0, 7.6)
 ## The market fountain and the north-east plaza's (built after the Citadel so every other building keeps its seed).
 const FOUNTAIN := Rect2(0.2, 5.1, 1.2, 1.2)
 const FOUNTAINS := [Rect2(0.2, 5.1, 1.2, 1.2), Rect2(10.8, -10.6, 1.2, 1.2)]
-## Market stalls in rows west of the main street, a row east of it, and a ring round the fountain.
+## Market stalls packed as the reference's are: rows 1.5 apart (0.8 aisles between them) of three stalls west of
+## the main street, leaving a walkway along it for the piles; a column east of it; none within 0.6 of the fountain.
 const STALLS := [
-	Rect2(-3.1, -2.8, 0.9, 0.7), Rect2(-1.9, -2.8, 0.9, 0.7), Rect2(-0.7, -2.8, 0.9, 0.7),
-	Rect2(-3.1, -0.6, 0.9, 0.7), Rect2(-1.9, -0.6, 0.9, 0.7), Rect2(-0.7, -0.6, 0.9, 0.7),
-	Rect2(-3.1, 1.6, 0.9, 0.7), Rect2(-1.9, 1.6, 0.9, 0.7), Rect2(-0.7, 1.6, 0.9, 0.7),
-	Rect2(-3.1, 3.8, 0.9, 0.7), Rect2(-1.9, 3.8, 0.9, 0.7), Rect2(-0.7, 3.8, 0.9, 0.7),
-	Rect2(3.7, -2.8, 0.9, 0.7), Rect2(3.7, -0.6, 0.9, 0.7), Rect2(3.7, 1.6, 0.9, 0.7), Rect2(3.7, 3.8, 0.9, 0.7),
-	Rect2(3.7, 6.0, 0.9, 0.7), Rect2(-3.1, 6.2, 0.9, 0.7), Rect2(-1.9, 6.2, 0.9, 0.7), Rect2(-0.7, 7.1, 0.9, 0.7),
+	Rect2(-3.3, -3.3, 0.9, 0.7), Rect2(-2.1, -3.3, 0.9, 0.7), Rect2(-0.9, -3.3, 0.9, 0.7), Rect2(-3.3, -1.8, 0.9, 0.7),
+	Rect2(-2.1, -1.8, 0.9, 0.7), Rect2(-0.9, -1.8, 0.9, 0.7), Rect2(-3.3, -0.3, 0.9, 0.7), Rect2(-2.1, -0.3, 0.9, 0.7),
+	Rect2(-0.9, -0.3, 0.9, 0.7), Rect2(-3.3, 1.2, 0.9, 0.7), Rect2(-2.1, 1.2, 0.9, 0.7), Rect2(-0.9, 1.2, 0.9, 0.7),
+	Rect2(-3.3, 2.7, 0.9, 0.7), Rect2(-2.1, 2.7, 0.9, 0.7), Rect2(-0.9, 2.7, 0.9, 0.7), Rect2(-3.3, 4.2, 0.9, 0.7),
+	Rect2(-2.1, 4.2, 0.9, 0.7), Rect2(-3.3, 5.7, 0.9, 0.7), Rect2(-2.1, 5.7, 0.9, 0.7), Rect2(-3.3, 7.2, 0.9, 0.7),
+	Rect2(-2.1, 7.2, 0.9, 0.7), Rect2(-0.9, 7.2, 0.9, 0.7), Rect2(3.7, -3.3, 0.9, 0.7), Rect2(3.7, -1.8, 0.9, 0.7),
+	Rect2(3.7, -0.3, 0.9, 0.7), Rect2(3.7, 1.2, 0.9, 0.7), Rect2(3.7, 2.7, 0.9, 0.7), Rect2(3.7, 4.2, 0.9, 0.7),
+	Rect2(3.7, 5.7, 0.9, 0.7), Rect2(3.7, 7.2, 0.9, 0.7),
 ]
 ## Farm fields outside the walls: north, south of the river, and east.
 const FIELDS := [
@@ -116,6 +120,8 @@ const LAMPS := [
 	Vector2(-12.5, 8.0), Vector2(-8.2, 9.8), Vector2(-4.5, 8.0), Vector2(6.8, 9.8), Vector2(11.35, 13.3),
 	Vector2(-12.5, -4.4), Vector2(-8.2, -5.8), Vector2(6.8, -4.4), Vector2(12.2, -5.8),
 	Vector2(-0.9, 11.2), Vector2(6.3, 11.2), Vector2(-5.3, -11.0), Vector2(-5.3, 3.5), Vector2(10.2, -2.5), Vector2(10.2, 12.5),
+	# The market's walkway, at the heads of two aisles.
+	Vector2(1.65, -0.8), Vector2(1.65, 3.7),
 ]
 ## Residential blocks between the streets, each filled with a loose grid of cottages (see houses()).
 const DISTRICTS := [
@@ -296,7 +302,6 @@ static func structures() -> Array[Dictionary]:
 	var town_trees := town_trees()
 	for i in town_trees.size():
 		_add(out, Rect2(town_trees[i], TOWN_TREE), 25.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor", &"oak")
-	# Last, so every other building keeps its seed.
 	_add(out, CARPENTER, 20.0, Structure.Kind.HOUSE, &"house", &"carpenter")
 	return out
 

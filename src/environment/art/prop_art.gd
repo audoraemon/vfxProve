@@ -472,6 +472,54 @@ static func _fountain(s: Structure) -> void:
 		ArtKit.line(s._gp(a, base), s._gp(a, rim), ArtKit.ink(0.35))
 	ArtKit.flush(s)
 
+## The fountain's running water, drawn onto `ci` (its spin node) at `step` (Structure.FOUNTAIN_HZ a second), lit by
+## `tint`: the jet bobbing over the top spout with spray at its crown, drops running down both tiers' streams and
+## splashing below, and rings widening across the basin. The same geometry as _fountain()'s.
+static func fountain_water(s: Structure, ci: CanvasItem, step: int, tint: Color) -> void:
+	var c := s.center()
+	var r := s.footprint.grow(-0.2)
+	var rim := 3.0 + 7.0
+	var wc := s._gp(c, rim - 1.0)
+	var t1 := 14.0
+	var t2 := 7.0
+	var w2 := wc + Vector2(0, -t1 - 1)
+	var spout := w2 + Vector2(0, -t2 - 5)
+	var hi: Color = WATER_GLOW[0] * tint
+	var lo: Color = Color(0.78, 0.92, 1.0, 0.85) * tint
+	# Rings across the basin: two, half a cycle apart, widening and fading.
+	var basin := r.size.x * 0.44 * 0.8 * 45.0
+	for k in 2:
+		var f := fposmod(float(step) / 10.0 + k * 0.5, 1.0)
+		var rx := lerpf(3.0, basin - 1.5, f)
+		var ring := PackedVector2Array()
+		for i in 13:
+			var a := TAU * i / 12.0
+			ring.append((wc + Vector2(cos(a) * rx, sin(a) * rx * 0.48)).round())
+		ci.draw_polyline(ring, Color(hi.r, hi.g, hi.b, 0.55 * (1.0 - f)), -1.0)
+	# The jet: its height bobs, and a crown of spray arcs out and falls back.
+	var jet := 4.0 + float((step * 7) % 5)
+	ci.draw_rect(Rect2(spout + Vector2(-0.5, -jet), Vector2(1, jet)), hi)
+	for k in 3:
+		var f := fposmod(float(step) / 6.0 + k / 3.0, 1.0)
+		var side := -1.0 if k == 1 else 1.0
+		var p := spout + Vector2(side * (1.0 + f * 4.0) * (0.5 if k == 2 else 1.0), -jet - 2.0 + f * f * 9.0)
+		ci.draw_rect(Rect2(p.round(), Vector2(1, 1)), hi if f < 0.6 else lo)
+	# Drops down both tiers' streams (the lines _fountain() draws), each landing in a little splash.
+	for x in [-8.0, 8.0]:
+		_drops(ci, wc + Vector2(x, -t1), wc + Vector2(x * 1.15, -1), step, hi, lo, x)
+	for x in [-4.0, 4.0]:
+		_drops(ci, w2 + Vector2(x, -t2), w2 + Vector2(x * 1.3, -1), step, hi, lo, x)
+
+
+static func _drops(ci: CanvasItem, from: Vector2, to: Vector2, step: int, hi: Color, lo: Color, salt: float) -> void:
+	for k in 2:
+		var f := fposmod(float(step) / 5.0 + k * 0.5 + salt * 0.037, 1.0)
+		ci.draw_rect(Rect2(from.lerp(to, f * f).round(), Vector2(1, 2)), hi)
+	if (step + int(salt)) % 3 == 0:
+		ci.draw_rect(Rect2(to.round() + Vector2(-1, -1), Vector2(1, 1)), lo)
+		ci.draw_rect(Rect2(to.round() + Vector2(1, -1), Vector2(1, 1)), lo)
+
+
 # --- Tree ------------------------------------------------------------------
 
 ## A tree standing on `base` (canvas px), `tall` px to its crown: species 0 an oak, 1 a pine. Collects only.

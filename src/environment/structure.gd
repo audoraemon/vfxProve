@@ -34,6 +34,8 @@ const SHAKE_HZ := 15.0
 ## animating building (shaking, collapsing, molten) always keeps its signature current every frame regardless
 ## (see _process), so this only trims the ~142-structure cost while nothing is happening to them.
 const LIGHT_HZ := 20.0
+## A fountain's water moves in steps this often.
+const FOUNTAIN_HZ := 12.0
 ## A torch's flame and a lamp's glow flicker in steps this often.
 const TORCH_FLICKER_HZ := 12.0
 ## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
@@ -197,7 +199,7 @@ func _ready() -> void:
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
-	if art_tag == &"windmill" or art_tag == &"watermill":
+	if art_tag == &"windmill" or art_tag == &"watermill" or kind == Kind.FOUNTAIN:
 		_spin = Node2D.new()
 		_spin.draw.connect(_draw_spin)
 		add_child(_spin)
@@ -431,7 +433,7 @@ func _process(delta: float) -> void:
 			_banner.queue_redraw()
 	if is_instance_valid(_spin):
 		_spin.visible = not destroyed
-		var spin_step := int(_time * 8.0)
+		var spin_step := int(_time * (FOUNTAIN_HZ if kind == Kind.FOUNTAIN else 8.0))
 		if spin_step != _spin_step and not destroyed and not _unseen:
 			_spin_step = spin_step
 			_spin.queue_redraw()
@@ -875,10 +877,14 @@ func _draw_banner() -> void:
 	StoneArt.draw_banners(self, _banner, _time, Color(amb * t.r, amb * t.g, amb * t.b))
 
 
-## A mill's sails or wheel, turning a sixteenth of a turn (sails) or a twenty-fourth (the wheel) a step.
+## A mill's sails or wheel, turning a sixteenth of a turn (sails) or a twenty-fourth (the wheel) a step; a
+## fountain's running water.
 func _draw_spin() -> void:
 	var amb := maxf(lights.ambient, 0.35) if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
+	if kind == Kind.FOUNTAIN:
+		PropArt.fountain_water(self, _spin, _spin_step, Color(amb * t.r, amb * t.g, amb * t.b))
+		return
 	var step := TAU / (16.0 if art_tag == &"windmill" else 24.0)
 	FarmArt.draw_spin(self, _spin, float(_spin_step) * step, Color(amb * t.r, amb * t.g, amb * t.b))
 

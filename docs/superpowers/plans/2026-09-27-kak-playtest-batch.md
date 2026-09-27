@@ -137,3 +137,38 @@
 2. Record the mission test and crowd test.
 3. Append "Changes made while executing".
 4. Tag `kak-playtest-2`, push, and show the final sheets.
+
+## Changes made while executing
+
+- **Task 1 (Temple):**
+  - It pays 70 DP whatever `dp_recovery` says, through a shared `_restore()`.
+  - The Prepare briefing gained a TEMPLE line: "Its fall restores 70 DP, once".
+- **Task 2 (zoom):** the intro sweep starts at `ZOOM_MIN` (0.5).
+- **Task 3 (collapse sounds):**
+  - The listener lives in `Town`; mission and town_debug set `Town.sfx`.
+  - Fields and torch posts are silent; everything else not tree or timber is stone.
+  - The catalog grew from 99 to 108 files.
+- **Task 4 (wind):**
+  - The positive/negative weight split (sway vs ripple) was added to tell trees from cloth.
+  - `ArtKit.poly_wind()` gives per-vertex weights for the awnings and bunting.
+  - The wind phase also varies with vertex position, so it reads as a gust across the forest.
+  - `town_debug --capture-town` takes `--frames=N`.
+- **Task 5 (fountain):** added `town_debug`'s `town_fountain` shot.
+- **Task 6 (Tornado):**
+  - The digest does not cover effects: it replays fixed damage on the sandbox castle. So it did not change, and needs no new baseline; the spec's expectation was wrong.
+  - The draft clip was re-recorded.
+  - The "tornado wander deferred" memory is retired.
+- **Task 7 (gaps):**
+  - `match_interior.py --band outside` measures the ring from 19 to 25 units. At 16.8 it caught the reference's bulging walls.
+  - The forest ring reaches 11 units out, is denser and has fewer pines; the meadow and forest floor are cooler.
+  - Five rocky outcrops were added.
+  - Outside: 72% → 79%. Interior: 91% → 90%, because the greener tufts inside the blocks shifted its green slightly.
+  - Street lamps and torches were redrawn in warm wood on a stone foot: 78% → 84% each. The reeds, tuned, went 81% → 83.5%. Their brighter redraw scored 74% and was reverted. All three stayed just under 85%.
+  - The market got six piles (`MARKET_PILES`, blockers): a cart, and crates with barrels.
+  - The component match is 90% overall.
+  - The crowd check's baseline moved with the walk grid to `checksum=-970983303`.
+- **Added:** the denser forest was 330k triangles in one batch (1.1 ms of GPU). `ForestLayer` now draws culled bands of x + y, with 14 leaf clusters per oak: 224k primitives, ~0.35 ms.
+- **Wrap-up:**
+  - 745 checks pass, the digest is unchanged, FLOW 24/24.
+  - Mission test: `citizens=162 escaped=12 stability=46%`. It moves with frame speed (the hitstop runs on wall-clock time).
+  - The same-hour bench against `kak-perf-v1` was unstable: that build itself swung from 76.7 to 57.6 fps across three runs. In the steadiest pair the two builds matched: 76.7 vs 77.7 fps.

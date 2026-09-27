@@ -55,6 +55,14 @@ static func run(t) -> void:
 	t.check(house._drawn_sig != drawn, "a light placed on it is seen within 1/LIGHT_HZ")
 	house.mark_hit(0.1, &"blast")
 	t.check(not house.idle and not house.asleep, "a hit wakes it")
+	# A fallen building settles: once its collapse is over it stops redrawing every frame and goes idle. (It used
+	# to count as collapsing for ever, and every heap of rubble in view repainted itself each frame.)
+	var hut := field.add_structure(Rect2(6, 0, 1, 1), 20.0, Structure.Kind.HOUSE)
+	hut._ready()
+	hut.destroy(Vector2(5, 0), &"blast")
+	for i in 150:
+		hut._process(1.0 / 60.0)
+	t.check(hut.destroyed and hut.idle, "a fallen building settles and goes idle once its collapse is over")
 	field.tick_idle(1.0, Rect2())
 	t.check(not field._idle.has(house), "and the field lets it go")
 	field.clear()

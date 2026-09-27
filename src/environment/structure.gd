@@ -63,10 +63,14 @@ const NO_CRACKS := [Kind.FARM_FIELD, Kind.TREE]
 ## light; these only decide how far the light has to move before a building rebuilds its drawing.
 const SIG_COLOR_STEPS := 48.0
 const SIG_DIR_STEPS := 8.0
-## Scratch buffers for _quad(); canvas drawing is single-threaded, so one shared pair is enough.
+## The cracks drawn up a damaged building's walls.
+const COL_CRACK := Color(0.05, 0.04, 0.05, 0.9)
+## Scratch buffers for _quad() and _fan(); canvas drawing is single-threaded, so one shared set is enough.
 static var _no_uv := PackedVector2Array()
 const SHADOW := Color(0, 0, 0, 0.25)
 static var _quad_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
+static var _tri := PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+static var _tri_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE])
 
 var kind := Kind.BLOCK
 var footprint := Rect2()
@@ -418,6 +422,8 @@ func _process(delta: float) -> void:
 		_shake = maxf(_shake, 2.0 * (1.0 - _collapse))
 		if _collapse >= 1.0:
 			_spawn_dust(0.5)
+			# The heap's final shape, drawn once more; from then on it is quiet and can go idle.
+			_dirty = true
 	if not _top_piece.is_empty():
 		_top_piece.t += delta
 		_top_piece.off += _top_piece.vel * delta
@@ -467,7 +473,9 @@ func _process(delta: float) -> void:
 		# of buildings shake at once. The art and effects are placed from _base, never from the moved position.
 		var jitter := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * _shake if _shake > 0.2 else Vector2.ZERO
 		position = _base + jitter.round()
-	var animating := (_collapse >= 0.0 and _collapse <= 1.0) or not _top_piece.is_empty() or _molten > 0.0
+	# A finished collapse stays at 1.0: counting it here (<= 1.0) kept every heap of rubble in view repainting itself
+	# every frame for the rest of the mission.
+	var animating := (_collapse >= 0.0 and _collapse < 1.0) or not _top_piece.is_empty() or _molten > 0.0
 	if kind == Kind.TORCH:
 		# The flame flickers in steps (TORCH_FLICKER_HZ): redraw on each step, not every frame.
 		var torch_step := int(_time * TORCH_FLICKER_HZ)
@@ -613,11 +621,11 @@ func _draw() -> void:
 	if not rubble_top and kind in WINDOWED and not art_drawn:
 		_draw_windows(light)
 	_draw_kind_details(top_c, right_c, left_c)
+	# Segments, not a polyline: thin lines batch together, while a polyline is a draw call of its own.
 	for crack in _cracks:
-		var pts := PackedVector2Array()
-		for p in crack:
-			pts.append(Vector2(p.x, p.y * height))
-		draw_polyline(pts, Color(0.05, 0.04, 0.05, 0.9), -1.0)
+		for k in crack.size() - 1:
+			draw_line(Vector2(crack[k].x, crack[k].y * height), Vector2(crack[k + 1].x, crack[k + 1].y * height),
+				COL_CRACK, -1.0)
 
 	if _molten > 0.0:
 		var m := COL_MOLTEN
@@ -632,7 +640,7 @@ func _draw() -> void:
 
 	if _collapse >= 1.0 or (destroyed and _top_piece.is_empty() and _collapse < 0.0):
 		for r in _rubble:
-			draw_colored_polygon(r[0], r[1].lerp(COL_CHAR, scorch * 0.5))
+			_fan(r[0], r[1].lerp(COL_CHAR, scorch * 0.5))
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -718,7 +726,7 @@ func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color
 			for k in 3:
 				var p := a.lerp(c, k / 3.0)
 				top.append(p + Vector2(0, -fposmod(sin(float(i * 7 + k) * 12.9898) * 43758.5, 5.0)))
-		draw_colored_polygon(top, top_c)
+		_fan(top, top_c)
 	else:
 		_quad(PackedVector2Array([_s[0] + t, _s[1] + t, _s[2] + t, _s[3] + t]), top_c)
 	var edge := top_c.lightened(0.18)
@@ -779,6 +787,24 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 		Kind.CRATES:
 			draw_line(_s[3].lerp(_s[2], 0.5), _s[3].lerp(_s[2], 0.5) + Vector2(0, -height), left_c.darkened(0.3), -1.0)
 			draw_line(_s[1].lerp(_s[2], 0.5), _s[1].lerp(_s[2], 0.5) + Vector2(0, -height), right_c.darkened(0.3), -1.0)
+
+
+## One flat-coloured polygon, star-shaped about its vertices' average (a rubble chunk, a heap's jagged top), as a
+## fan of triangles from there. Like _quad(), consecutive primitives share one draw call; draw_colored_polygon cost
+## one each, and a heap of rubble has up to 26 chunks -- a town of fallen buildings in view was ~1800 draw calls.
+func _fan(p: PackedVector2Array, c: Color) -> void:
+	var mid := Vector2.ZERO
+	for v in p:
+		mid += v
+	mid /= p.size()
+	_tri_cols[0] = c
+	_tri_cols[1] = c
+	_tri_cols[2] = c
+	_tri[0] = mid
+	for i in p.size():
+		_tri[1] = p[i]
+		_tri[2] = p[(i + 1) % p.size()]
+		draw_primitive(_tri, _tri_cols, _no_uv)
 
 
 ## One flat-coloured convex quad. Consecutive quads drawn this way share a single draw call, while a

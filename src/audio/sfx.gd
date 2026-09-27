@@ -90,6 +90,11 @@ const CATALOG := {
 	&"cit_shout": {"path": "res://assets/audio/crowd/cit_shout_%d.wav", "variants": 3, "db": -12.0, "voices": 3, "jitter": 0.1},
 	&"sol_rally": {"path": "res://assets/audio/crowd/sol_rally.wav", "db": -6.0},
 	&"crowd_panic": {"path": "res://assets/audio/crowd/crowd_panic.wav", "db": -8.0, "loop": true},
+	# A building or tree coming down (Town plays them). Capped at four voices each, so a stone rain felling a
+	# dozen things at once is a roar, not a pile-up.
+	&"collapse_stone": {"path": "res://assets/audio/collapse/collapse_stone_%d.wav", "variants": 3, "db": -5.0, "voices": 4, "jitter": 0.08},
+	&"collapse_timber": {"path": "res://assets/audio/collapse/collapse_timber_%d.wav", "variants": 3, "db": -6.0, "voices": 4, "jitter": 0.08},
+	&"collapse_tree": {"path": "res://assets/audio/collapse/collapse_tree_%d.wav", "variants": 3, "db": -9.0, "voices": 4, "jitter": 0.1},
 	&"music_theme": {"path": "res://assets/audio/music/music_theme.wav", "db": 0.0, "loop": true},
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},
 	&"music_battle_drums": {"path": "res://assets/audio/music/music_battle_drums.wav", "db": 0.0, "loop": true},

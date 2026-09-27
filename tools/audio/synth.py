@@ -738,6 +738,67 @@ def jg_crumble(rng, dur):
     return reverb(rocks + slide, size=1.1, mix=0.25)[:n]
 
 
+# --- Collapses (a building or tree coming down; KAK playtest batch) --------------------
+
+def collapse_stone(rng, dur, variant):
+    """Masonry giving way: a low boom, a long gritty crumble, a few heavy stone knocks, and dust settling."""
+    n = int(dur * SR)
+    j = rng.uniform(0.85, 1.15)
+    boom = _boom(n, rng, f0=70 * j, f1=30, tau=0.45, body=1.1, cutoff=900 * j, drive=2.0) * 0.9
+    rocks = clicks(n, 80, rng, 0.02, 110, amp=(0.2, 1.0), density=np.clip(np.linspace(1.3, -0.2, n), 0, 1)) * 1.1
+    slide = lowpass(noise(n, rng), 420) * np.clip(np.linspace(1.0, -0.1, n), 0, 1) * 0.7
+    buf = boom + rocks + slide
+    for _ in range(3 + variant):
+        kn = int(0.12 * SR)
+        f = rng.uniform(160, 420)
+        knock = bandpass(noise(kn, rng), f * 0.7, f * 1.6) * decay(kn, 0.03) * rng.uniform(0.5, 1.0)
+        knock += sine(f * 0.5, kn) * decay(kn, 0.05) * 0.4
+        place(buf, knock, rng.uniform(0.08, 0.85) * dur)
+    dust = highpass(noise(n, rng), 2500) * decay(n, 0.5, delay=0.2) * 0.12
+    return reverb(saturate(buf + dust, 1.6), size=1.0, mix=0.22, damp=3000)[:n]
+
+
+def collapse_timber(rng, dur, variant):
+    """A timber house going over: a sharp crack, a groan, splintering, then the thud of it landing."""
+    n = int(dur * SR)
+    j = rng.uniform(0.85, 1.15)
+    buf = np.zeros(n)
+    cn = int(0.08 * SR)
+    crack = highpass(noise(cn, rng), 1200) * decay(cn, 0.02) * 1.3
+    crack += bandpass(noise(cn, rng), 700 * j, 2600 * j) * decay(cn, 0.04) * 0.8
+    place(buf, crack, 0.0)
+    gn = int(0.35 * SR)
+    groan = lowpass(saw(ramp(170 * j, 85 * j, gn, "exp"), gn), 900) * adsr(gn, 0.04, 0.1, 0.6, 0.15) * 0.35
+    place(buf, groan, 0.03)
+    splinter = clicks(n, 140, rng, 0.004, 1500, amp=(0.1, 0.8), density=np.clip(np.linspace(1.0, -0.6, n), 0, 1)) * 0.9
+    buf += splinter
+    tn = n - int(0.32 * SR)
+    thud = sine(ramp(95 * j, 44, tn, "exp"), tn) * decay(tn, 0.2) * 1.2
+    thud += lowpass(noise(tn, rng), 320) * decay(tn, 0.25) * 0.9
+    place(buf, thud, 0.3 + 0.05 * variant)
+    return reverb(saturate(buf, 1.5), size=0.8, mix=0.18, damp=3500)[:n]
+
+
+def collapse_tree(rng, dur, variant):
+    """A tree felled: a bright crack, leaves rushing through the fall, a soft thud."""
+    n = int(dur * SR)
+    j = rng.uniform(0.85, 1.15)
+    buf = np.zeros(n)
+    cn = int(0.06 * SR)
+    crack = highpass(noise(cn, rng), 1800) * decay(cn, 0.015) * 1.2
+    crack += bandpass(noise(cn, rng), 1000 * j, 3500 * j) * decay(cn, 0.03) * 0.6
+    place(buf, crack, 0.0)
+    sn = int(0.5 * SR)
+    swish = _whoosh(sn, rng, 1400 * j, 4200 * j, q=0.6) * np.sin(np.linspace(0.0, np.pi, sn)) ** 1.5 * 0.7
+    place(buf, swish, 0.05)
+    tn = n - int(0.45 * SR)
+    thud = sine(ramp(75 * j, 40, tn, "exp"), tn) * decay(tn, 0.16) * 0.9
+    thud += lowpass(noise(tn, rng), 260) * decay(tn, 0.2) * 0.6
+    thud += clicks(tn, 60, rng, 0.003, 2500, amp=(0.05, 0.3), density=decay(tn, 0.15)) * 0.4
+    place(buf, thud, 0.42 + 0.03 * variant)
+    return reverb(saturate(buf, 1.4), size=0.7, mix=0.15, damp=4000)[:n]
+
+
 # --- Dragonfire Parade ----------------------------------------------------------------
 
 def dr_rumble(rng, dur):
@@ -1179,6 +1240,10 @@ for _name, _fn, _dur in (
     ("ui_win", ui_win, 2.4), ("ui_lose", ui_lose, 2.2),
 ):
     CUES[_name] = ("ui", _fn, _dur, False)
+for _v in range(1, 4):
+    CUES[f"collapse_stone_{_v}"] = ("collapse", lambda rng, dur, v=_v: collapse_stone(rng, dur, v), 1.6, False)
+    CUES[f"collapse_timber_{_v}"] = ("collapse", lambda rng, dur, v=_v: collapse_timber(rng, dur, v), 1.2, False)
+    CUES[f"collapse_tree_{_v}"] = ("collapse", lambda rng, dur, v=_v: collapse_tree(rng, dur, v), 0.9, False)
 CUES["sol_rally"] = ("crowd", sol_rally, 1.4, False)
 CUES["crowd_panic"] = ("crowd", crowd_panic, 6.0, True)
 for _v in range(1, 5):

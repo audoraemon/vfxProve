@@ -36,6 +36,8 @@ var floor_node: TownFloor
 var _built: Array[Structure] = []
 var _decor: Array[Decor] = []
 var _decor_layer: DecorLayer
+## Plays each collapse (collapse_cue()). Set by whoever builds the town on a battlefield; null in tests.
+var sfx: Sfx
 
 var _env: EnvironmentField
 
@@ -43,6 +45,7 @@ var _env: EnvironmentField
 ## ground: the battlefield's ground plane, or null for no floor. shake: camera the Citadel shakes when parts fall.
 func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = null) -> void:
 	_env = env
+	env.structure_destroyed.connect(_on_structure_destroyed)
 	if env.lights != null:
 		env.lights.tint = EVENING
 	for d in TownLayout.structures():
@@ -104,6 +107,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 ## Take this town out of the world: its buildings (the Citadel's parts included) leave the field, the floor is
 ## freed, and the town forgets them so build() can run again.
 func teardown() -> void:
+	if _env.structure_destroyed.is_connected(_on_structure_destroyed):
+		_env.structure_destroyed.disconnect(_on_structure_destroyed)
 	for s in _built:
 		if is_instance_valid(s):
 			_env.remove(s)
@@ -122,6 +127,29 @@ func teardown() -> void:
 	_free(smoke)
 	smoke = null
 	_free_floor()
+
+
+## The sound a structure makes coming down, by what it is built of: stone for fortifications and the big civic
+## buildings, timber for houses, stalls and farm buildings, a tree's own; none for torch and lamp posts or fields.
+static func collapse_cue(s: Structure) -> StringName:
+	match s.kind:
+		Structure.Kind.TREE:
+			return &"collapse_tree"
+		Structure.Kind.HOUSE, Structure.Kind.MARKET_STALL, Structure.Kind.CRATES:
+			return &"collapse_timber"
+		Structure.Kind.TORCH, Structure.Kind.FARM_FIELD:
+			return &""
+	return &"collapse_stone"
+
+
+## A structure came down: its material's crash where it stood, louder the bigger it was.
+func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
+	if sfx == null:
+		return
+	var cue := collapse_cue(s)
+	if cue == &"":
+		return
+	sfx.play(cue, s.center(), lerpf(-3.0, 1.0, clampf(s.footprint.get_area() / 6.0, 0.0, 1.0)))
 
 
 ## Free a node now if it never entered the tree, else at the end of the frame.

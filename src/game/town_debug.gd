@@ -120,6 +120,7 @@ func _rebuild(seed_value: int) -> void:
 	_town.name = "Town"
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
+	_town.sfx = _bf.ctx.sfx
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
 	_crowd = Crowd.new()
 	_crowd.name = "Crowd"

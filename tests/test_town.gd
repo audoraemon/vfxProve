@@ -38,6 +38,24 @@ static func run(t) -> void:
 	env2.clear()
 	env2.free()
 	ground.free()
+
+	# Each building comes down with its material's sound; the little posts, the fields and the fountain's
+	# ornament do not.
+	var cues := {}
+	for s in env.structures():
+		var key := "%s/%s" % [Structure.Kind.keys()[s.kind], s.role]
+		cues[key] = Town.collapse_cue(s)
+	t.check(cues.get("KEEP/tower") == &"collapse_stone" and cues.get("CASTLE_WALL/wall") == &"collapse_stone"
+		and cues.get("GATE/gate") == &"collapse_stone" and cues.get("TEMPLE/temple") == &"collapse_stone"
+		and cues.get("BARRACKS/barracks") == &"collapse_stone" and cues.get("KEEP/citadel") == &"collapse_stone",
+		"stone for towers, walls, gates, the Temple, the barracks and the Citadel (%s)" % [cues])
+	t.check(cues.get("HOUSE/house") == &"collapse_timber" and cues.get("MARKET_STALL/market") == &"collapse_timber"
+		and cues.get("HOUSE/farm") == &"collapse_timber", "timber for houses, stalls and farm buildings")
+	t.check(cues.get("TREE/decor") == &"collapse_tree", "a tree falls like a tree")
+	t.check(cues.get("TORCH/decor") == &"" and cues.get("FARM_FIELD/farm") == &"",
+		"torch and lamp posts and fields make no collapse sound")
+	for cue in [&"collapse_stone", &"collapse_timber", &"collapse_tree"]:
+		t.check(Sfx.CATALOG.has(cue) and Sfx.paths_for(cue).size() == 3, "%s has three variants" % cue)
 	env.clear()
 	env.free()
 	town.free()

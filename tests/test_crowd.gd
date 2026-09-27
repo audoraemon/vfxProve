@@ -94,6 +94,20 @@ static func run(t) -> void:
 	var gate: Structure = town.gates[0]
 	var spots := crowd.queue_spots(gate)
 	t.check(spots.size() >= 20, "a gate has room for a crowd in front of it (%d spots)" % spots.size())
+	# Nothing built in town may eat into a gate's queue: each keeps at least the room it had before the density
+	# pass (Main Gate 219 spots, Side Gate 213), and no queue spot lies in anything TownLayout builds near it.
+	var side_spots := crowd.queue_spots(town.gates[1])
+	t.check(spots.size() >= 219 and side_spots.size() >= 213,
+		"the gates keep their queue room (%d, %d spots)" % [spots.size(), side_spots.size()])
+	var fans := TownLayout.queue_fans(0.2)
+	var in_fan := 0
+	for p: Vector2 in spots + side_spots:
+		for fan in fans:
+			if Geometry2D.is_point_in_polygon(p, fan):
+				in_fan += 1
+				break
+	t.check(in_fan == spots.size() + side_spots.size(), "every queue spot lies inside its gate's fan (%d of %d)"
+		% [in_fan, spots.size() + side_spots.size()])
 	var tightest := INF
 	for i in spots.size():
 		for j in range(i + 1, spots.size()):

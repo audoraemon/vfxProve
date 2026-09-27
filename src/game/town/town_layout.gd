@@ -391,6 +391,33 @@ static func gardens() -> Array[Rect2]:
 	return out
 
 
+## Each gate's queue fan: the ground Crowd.queue_spots() lays its waiting rows on, from the doorway out to the last
+## row (QUEUE_DEPTH0 + QUEUE_REACH), widening as the rows do, grown by `margin`. Nothing new may block it: a blocked
+## spot is dropped, and a gate with fewer spots jams sooner.
+static func queue_fans(margin := 0.3) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for gate: Rect2 in [MAIN_GATE, SIDE_GATE]:
+		var c := gate.get_center()
+		var dir := Vector2(signf(c.x), 0.0) if absf(c.x) > absf(c.y) else Vector2(0.0, signf(c.y))
+		var side := Vector2(-dir.y, dir.x)
+		var face := c - dir * (absf(gate.size.dot(dir)) * 0.5 + Crowd.GATE_DOOR)
+		var far := Crowd.QUEUE_DEPTH0 + Crowd.QUEUE_REACH
+		var near_half := 1.2 + margin
+		var far_half := 1.2 + far * 0.6 + margin
+		out.append(PackedVector2Array([face + dir * margin + side * near_half, face + dir * margin - side * near_half,
+			face - dir * (far + margin) - side * far_half, face - dir * (far + margin) + side * far_half]))
+	return out
+
+
+## Whether a rect reaches into any gate's queue fan.
+static func in_queue_fan(r: Rect2) -> bool:
+	var poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+	for fan in queue_fans():
+		if not Geometry2D.intersect_polygons(poly, fan).is_empty():
+			return true
+	return false
+
+
 ## Ground people walk round besides the buildings: the gardens, the working yards and the market's piles.
 static func blockers() -> Array[Rect2]:
 	var out := gardens()

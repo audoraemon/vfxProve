@@ -13,9 +13,19 @@ extends Node2D
 
 ## Drawn area: past the map so zoomed-out views rarely show the void.
 const FILL := Rect2(-34, -34, 68, 68)
+## How far out from the walls the forest ring reaches (ground units): the reference's woods fill nearly all the land
+## its fields leave.
+const FOREST_OUT := 11.0
+## Grey rocky outcrops in the woods, as the reference's cliffs break its forest: [centre, radius] in ground units,
+## clear of the trails, fields, pastures and river.
+const OUTCROPS := [
+	[Vector2(-26.5, -22.0), 1.8], [Vector2(-25.5, -9.0), 2.0], [Vector2(8.5, -22.5), 1.4], [Vector2(25.0, -12.0), 2.0],
+	[Vector2(26.5, 21.0), 1.6],
+]
+const ROCKY := [Color("b0aca3"), Color("99958c"), Color("827e76"), Color("6a675f")]
 ## Meadow greens, light to dark, and the forest floor's.
-const GRASS := [Color("9aa447"), Color("8a9a3c"), Color("7c8f35"), Color("6e8230"), Color("5f742b")]
-const FOREST := [Color("6a7f30"), Color("5c722b"), Color("4f6527"), Color("435823")]
+const GRASS := [Color("8aab4c"), Color("7a9d43"), Color("6c8f3c"), Color("5e8036"), Color("507030")]
+const FOREST := [Color("5c7e34"), Color("4f712f"), Color("43632a"), Color("385524")]
 ## Packed earth inside the walls.
 const EARTH := [Color("b09468"), Color("a4885e"), Color("987c55"), Color("8a704c")]
 ## Dirt trails and roads [light, mid, dark].
@@ -181,6 +191,8 @@ func paint_ground(ci: CanvasItem) -> void:
 		_patches(ci, f.grow(0.5), DIRT, 0.3)
 	for b: Rect2 in TownLayout.BARNS + [TownLayout.WINDMILL, TownLayout.WATERMILL]:
 		_patches(ci, b.grow(0.6), DIRT, 0.3)
+	for o: Array in OUTCROPS:
+		_outcrop(ci, o[0], o[1])
 	for tr in TRAILS:
 		_trail(ci, tr, 0.34)
 	for tr in ROAD_TRAILS:
@@ -248,7 +260,7 @@ func _forest(g: Vector2) -> bool:
 		return false
 	var edge := _noise(g * 1.7) * 1.4
 	var out := maxf(maxf(t.position.x - g.x, g.x - t.end.x), maxf(t.position.y - g.y, g.y - t.end.y))
-	return out > 1.6 + edge and out < 7.0 + edge
+	return out > 1.6 + edge and out < FOREST_OUT + edge
 
 
 ## Organic patches of `pal` over a rect, like the meadow but confined.
@@ -291,6 +303,38 @@ func _yard(ci: CanvasItem, r: Rect2, pal: Array) -> void:
 		else:
 			p = Vector2(r.position.x, r.end.y - (per - r.size.x * 2.0 - r.size.y))
 		ci.draw_circle(p, 0.1 + float(h % 5) * 0.03, pal[h % pal.size()])
+
+
+## Whether a ground point lies on one of the rocky outcrops (nothing grows there but rocks).
+static func on_outcrop(g: Vector2) -> bool:
+	for o: Array in OUTCROPS:
+		if g.distance_to(o[0]) < float(o[1]):
+			return true
+	return false
+
+
+## A rocky outcrop: boulders of grey stone heaped together, dark between them and lit on their upper faces, with no
+## grass growing on it.
+func _outcrop(ci: CanvasItem, c: Vector2, rad: float) -> void:
+	var n := int(rad * 9.0)
+	var stones: Array[Vector3] = []
+	for i in n:
+		var h := _hash(i * 17 + roundi(c.x * 7.0), i * 29 + roundi(c.y * 11.0))
+		var a := float(h % 360) * PI / 180.0
+		var d := sqrt(float(h % 97) / 97.0) * rad * 0.78
+		stones.append(Vector3(c.x + cos(a) * d, c.y + sin(a) * d, 0.3 + float(h % 11) / 11.0 * 0.45))
+	# Back to front, so the nearer boulders overlap the farther.
+	stones.sort_custom(func(p: Vector3, q: Vector3) -> bool: return p.x + p.y < q.x + q.y)
+	for s in stones:
+		var p := Vector2(s.x, s.y)
+		ci.draw_circle(p, s.z + 0.08, ROCKY[3].darkened(0.25))
+		_mark_trail(p, s.z + 0.15)
+	for s in stones:
+		var p := Vector2(s.x, s.y)
+		var h := _hash(roundi(s.x * 31.0), roundi(s.y * 37.0))
+		ci.draw_circle(p, s.z, ROCKY[1 + h % 2])
+		ci.draw_circle(p + Vector2(-0.08, -0.08) * s.z * 2.0, s.z * 0.62, ROCKY[0])
+		ci.draw_circle(p + Vector2(0.1, 0.1) * s.z * 2.0, s.z * 0.35, ROCKY[3])
 
 
 ## A dirt trail: overlapping discs of ragged size along a polyline, dark rim first, then the lighter tread.

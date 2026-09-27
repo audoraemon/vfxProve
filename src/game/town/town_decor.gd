@@ -15,6 +15,12 @@ const ROAD_CLEAR := 1.0
 ## How far from a road (and exit) a piece has to be before it can be baked into the floor.
 const BAKE_CLEAR := 1.4
 const SEED := 5171
+## Outside the walls: the share of the tree grid's spots that get a tree in the forest ring and in the meadow, the
+## forest's share of pines (the reference's woods are mostly round-crowned), and the bush grid's share.
+const FOREST_TREES := 0.85
+const MEADOW_TREES := 0.2
+const FOREST_PINES := 0.35
+const BUSHES := 0.45
 ## A generous screen box around any decor piece (relative to its ground point): tall enough for a tree.
 const SCREEN_BOX := Rect2(-26, -66, 52, 68)
 
@@ -162,16 +168,27 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 	# Trees on a jittered grid: thick in the forest, scattered in the meadow.
 	_scatter(out, solid, area, 1.05, 10, func(g: Vector2, roll: float, i: int) -> int:
 		var forest := _forest(g)
-		if roll > (0.45 if forest else 0.12):
+		if roll > (FOREST_TREES if forest else MEADOW_TREES) or TownFloor.on_outcrop(g):
 			return -1
-		var pine := _h(i, 11) < (0.6 if forest else 0.25)
+		var pine := _h(i, 11) < (FOREST_PINES if forest else 0.25)
 		return Decor.Kind.PINE if pine else Decor.Kind.OAK)
-	_scatter(out, solid, area, 2.0, 20, func(_g: Vector2, roll: float, _i: int) -> int:
-		return Decor.Kind.ROCK if roll < 0.32 else -1)
-	_scatter(out, solid, area, 1.6, 30, func(_g: Vector2, roll: float, _i: int) -> int:
-		return Decor.Kind.BUSH if roll < 0.28 else -1)
+	_scatter(out, solid, area, 2.0, 20, func(g: Vector2, roll: float, _i: int) -> int:
+		return Decor.Kind.ROCK if roll < (0.55 if _forest(g) else 0.32) else -1)
+	_scatter(out, solid, area, 1.6, 30, func(g: Vector2, roll: float, _i: int) -> int:
+		return Decor.Kind.BUSH if roll < BUSHES and not TownFloor.on_outcrop(g) else -1)
 	_scatter(out, solid, area, 1.3, 40, func(g: Vector2, roll: float, _i: int) -> int:
-		return Decor.Kind.FLOWERS if roll < 0.3 and not _forest(g) else -1)
+		return Decor.Kind.FLOWERS if roll < 0.3 and not _forest(g) and not TownFloor.on_outcrop(g) else -1)
+	# Boulders heaped on the rocky outcrops.
+	var boulder := 0
+	for o: Array in TownFloor.OUTCROPS:
+		var c: Vector2 = o[0]
+		var rad: float = o[1]
+		for j in int(rad * 4.0):
+			boulder += 1
+			var a := _h(boulder, 80) * TAU
+			var g := c + Vector2(cos(a), sin(a)) * sqrt(_h(boulder, 81)) * rad * 0.7
+			if _outside_ok(g, solid, 0.2) and _far_from_others(out, g, 0.35):
+				_add(out, Decor.Kind.ROCK, g)
 	# Reeds along both banks of the south river and the west branch's east bank, clear of the road and the bridge.
 	var river := TownLayout.RIVER
 	var west := TownLayout.RIVER_WEST
@@ -299,7 +316,7 @@ static func _forest(g: Vector2) -> bool:
 	if (g.x > t.end.x and absf(g.y - 9.0) < 1.5) or (g.y > t.end.y and absf(g.x - 2.7) < 1.5):
 		return false
 	var out := maxf(maxf(t.position.x - g.x, g.x - t.end.x), maxf(t.position.y - g.y, g.y - t.end.y))
-	return out > 2.2 and out < 7.0
+	return out > 2.2 and out < TownFloor.FOREST_OUT
 
 
 # --- Baking ------------------------------------------------------------------

@@ -17,9 +17,13 @@ Each scores 1 - |ours - ref| / max(ours, ref); the interior score is the mean of
 shown but not scored: the reference's walls bulge into the sampled ground, so most of its grey is wall and awning
 stripe, and both are shares of a few percent, where a sliver of difference reads as a large miss.
 
-usage: python tools/dev/match_interior.py [--capture] [--out PATH]
+With --band outside the same is measured on the ground round the town instead: from just outside the walls to
+OUTSIDE units beyond the corner towers (the forest ring, the fields near the walls), wherever both pictures show it.
+
+usage: python tools/dev/match_interior.py [--capture] [--band inside|outside] [--out PATH]
   --capture  re-capture the overview first (runs Godot: town_debug --capture-town --only=town_overview)
-  --out      side-by-side of the two flattened interiors (default captures/interior_compare.png)
+  --band     inside the walls (default) or the ring round them
+  --out      side-by-side of the two flattened grounds (default captures/<band>_compare.png)
 Needs numpy and Pillow.
 """
 import argparse
@@ -42,9 +46,11 @@ GODOT = os.environ.get('GODOT', 'F:/Godot/Godot_v4.7.2-stable_win64_console.exe'
 VIEW = (640, 360)
 SAVE_SCALE = 2
 CAM_LIFT = -30
-## Ground sampled inside the walls, and how finely.
+## Ground sampled inside the walls, and how finely; the outside band runs from WALL out to WALL + OUTSIDE.
 T = 15.8
 STEP = 0.08
+WALL = 19.0
+OUTSIDE = 6.0
 
 
 def overview_shot():
@@ -77,13 +83,21 @@ def sample(img, fx, fy):
     return img[yi, xi]
 
 
-def flatten(img, to_px):
-    n = int(2 * T / STEP)
-    gx, gy = np.meshgrid(np.linspace(-T, T, n), np.linspace(-T, T, n))
-    return sample(img, *to_px(gx, gy))
+def ground(extent):
+    n = int(2 * extent / STEP)
+    return np.meshgrid(np.linspace(-extent, extent, n), np.linspace(-extent, extent, n))
 
 
-def metrics(a):
+def flatten(img, to_px, gx, gy):
+    """The picture's colour at every ground point, and whether the picture shows that point at all."""
+    fx, fy = to_px(gx, gy)
+    shown = (fx >= 0) & (fx < img.shape[1]) & (fy >= 0) & (fy < img.shape[0])
+    return sample(img, fx, fy), shown
+
+
+def metrics(a, mask=None):
+    if mask is None:
+        mask = np.ones(a.shape[:2], bool)
     a = a.astype(float) / 255.0
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     mx = a.max(-1)
@@ -94,12 +108,15 @@ def metrics(a):
     lum = 0.3 * r + 0.59 * g + 0.11 * b
     n = lum.shape[0] // 8
     cells = lum[:n * 8, :n * 8].reshape(n, 8, n, 8).std(axis=(1, 3))
+    whole = mask[:n * 8, :n * 8].reshape(n, 8, n, 8).all(axis=(1, 3))
+    cells = cells[whole]
+    m = mask
     return {
-        'warm': float(((hue < 0.14) & (sat > 0.35) & (mx > 0.45)).mean()),
-        'grey': float((sat < 0.22).mean()),
-        'green': float(((hue > 0.17) & (hue < 0.45) & (sat > 0.3)).mean()),
-        'sat': float(sat.mean()),
-        'R-B': float((r - b).mean()),
+        'warm': float(((hue < 0.14) & (sat > 0.35) & (mx > 0.45))[m].mean()),
+        'grey': float((sat < 0.22)[m].mean()),
+        'green': float(((hue > 0.17) & (hue < 0.45) & (sat > 0.3))[m].mean()),
+        'sat': float(sat[m].mean()),
+        'R-B': float((r - b)[m].mean()),
         'detail': float(cells.mean()),
         'flat': float((cells < 0.035).mean()),
     }
@@ -122,23 +139,30 @@ def capture():
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--capture', action='store_true')
-    parser.add_argument('--out', default=str(ROOT / 'captures' / 'interior_compare.png'))
+    parser.add_argument('--band', choices=['inside', 'outside'], default='inside')
+    parser.add_argument('--out')
     args = parser.parse_args()
+    out = args.out or str(ROOT / 'captures' / ('interior_compare.png' if args.band == 'inside' else 'outside_compare.png'))
     if args.capture:
         capture()
     point, zoom = overview_shot()
-    ref = flatten(np.array(Image.open(ml.REF).convert('RGB')), ref_px)
-    ours = flatten(np.array(Image.open(OURS).convert('RGB')), lambda x, y: ours_px(x, y, point, zoom))
-    rm, om = metrics(ref), metrics(ours)
+    gx, gy = ground(T if args.band == 'inside' else WALL + OUTSIDE)
+    ref, ref_shown = flatten(np.array(Image.open(ml.REF).convert('RGB')), ref_px, gx, gy)
+    ours, ours_shown = flatten(np.array(Image.open(OURS).convert('RGB')), lambda x, y: ours_px(x, y, point, zoom), gx, gy)
+    mask = ref_shown & ours_shown
+    if args.band == 'outside':
+        mask &= np.maximum(np.abs(gx), np.abs(gy)) > WALL
+    rm, om = metrics(ref, mask), metrics(ours, mask)
     sc = score(om, rm)
     print('%-8s %7s %7s %7s' % ('metric', 'ref', 'ours', 'score'))
     for k in rm:
         print('%-8s %7.3f %7.3f %6.0f%%%s' % (k, rm[k], om[k], 100 * sc[k], '' if k in SCORED else '  (not scored)'))
     total = sum(sc[k] for k in SCORED) / len(SCORED)
-    print('interior %.0f%%' % (100 * total))
+    print('%s %.0f%%  (%d ground points)' % ('interior' if args.band == 'inside' else 'outside', 100 * total, mask.sum()))
     gap = np.zeros((ref.shape[0], 10, 3), np.uint8)
-    Image.fromarray(np.concatenate([ref, gap, ours], axis=1)).save(args.out)
-    print('side by side: %s (reference left, ours right; north at the top-left corner)' % args.out)
+    dim = np.where(mask[..., None], 1.0, 0.25)
+    Image.fromarray(np.concatenate([(ref * dim).astype(np.uint8), gap, (ours * dim).astype(np.uint8)], axis=1)).save(out)
+    print('side by side: %s (reference left, ours right; north at the top-left corner; unmeasured ground dimmed)' % out)
     return 0
 
 

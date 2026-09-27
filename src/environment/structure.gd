@@ -20,6 +20,10 @@ const COL_WINDOW_OFF := Color("1b1f28")
 const COL_MOLTEN := Color("ffb040")
 const COL_GOLD := Color("d8b23a")
 const COL_BEAM := Color("3a2a1e")
+## Street lamps and torches: warm wood on a grey stone foot, as the reference's.
+const COL_POST := Color("6b4428")
+const COL_POST_LIT := Color("94643a")
+const COL_STONE_FOOT := Color("8e8a82")
 const COL_FLAME := [Color("fff0b0"), Color("ffb040"), Color("ff6a1a")]
 const COL_IRON_CUP := Color("3a3230")
 ## A street lamp's post height, px (the reference's lamps stand about twice a person's height).
@@ -503,7 +507,7 @@ func _palette() -> Array:
 		Kind.HOUSE:
 			return [Color("7a6a58"), Color("c8b28c"), Color("a8916c")]
 		Kind.TORCH:
-			return [Color("4a3a2a"), Color("3a2c20"), Color("2c2118")]
+			return [Color("7a5232"), Color("6a4428"), Color("56361f")]
 		Kind.TEMPLE:
 			return [Color("a8926a"), Color("d6c08c"), Color("b49c6a")]
 		Kind.BARRACKS:
@@ -806,34 +810,42 @@ func _draw_torch(right_c: Color, left_c: Color) -> void:
 	if art_tag == &"lamp":
 		_draw_lamp(right_c, left_c)
 		return
-	# A stout post with an iron cup and a fat flame, the reference's torch.
+	# A stout wooden post on a stone foot, an iron cup and a big bright flame, the reference's torch.
 	draw_rect(Rect2(-2, -height, 4, height), left_c)
 	draw_rect(Rect2(0, -height, 2, height), right_c)
-	draw_rect(Rect2(-3, -2, 6, 2), left_c.darkened(0.2))
+	draw_rect(Rect2(-3, -3, 6, 3), COL_STONE_FOOT.darkened(0.15))
+	draw_rect(Rect2(-3, -3, 6, 1), COL_STONE_FOOT)
 	draw_rect(Rect2(-3, -height - 2, 6, 3), COL_IRON_CUP)
 	var f := int(_time * TORCH_FLICKER_HZ + float(rng.seed % 5)) % 3
-	draw_rect(Rect2(-3, -height - 6, 6, 4), COL_FLAME[2])
-	draw_rect(Rect2(-2, -height - 9 - f % 2, 4, 5), COL_FLAME[1])
-	draw_rect(Rect2(-1 + (f % 2), -height - 12 - f, 2, 4), COL_FLAME[0])
+	draw_rect(Rect2(-4, -height - 7, 8, 5), COL_FLAME[2])
+	draw_rect(Rect2(-3, -height - 11 - f % 2, 6, 7), COL_FLAME[1])
+	draw_rect(Rect2(-2 + (f % 2), -height - 14 - f, 3, 6), COL_FLAME[0])
+	draw_rect(Rect2(-1, -height - 9, 2, 3), Color.WHITE)
 
 
 ## A street lamp as in the reference: a stout post on a foot with an arm at the top, and a lantern hanging from the
 ## arm whose glow flickers a little.
 func _draw_lamp(right_c: Color, left_c: Color) -> void:
-	var post := COL_BEAM.lerp(COL_CHAR, scorch)
+	var post := COL_POST.lerp(COL_CHAR, scorch)
+	var lit := COL_POST_LIT.lerp(COL_CHAR, scorch)
 	var tall := LAMP_H
-	draw_rect(Rect2(-2, -tall, 3, tall), post)
-	draw_rect(Rect2(0, -tall, 1, tall), post.lightened(0.18))
-	draw_rect(Rect2(-4, -2, 7, 2), post)
-	draw_rect(Rect2(-2, -tall - 2, 12, 2), post)
-	draw_rect(Rect2(1, -tall + 1, 2, 3), post)
+	# A warm wooden post on a stone foot, with a bracket arm.
+	draw_rect(Rect2(-2, -tall, 4, tall), post)
+	draw_rect(Rect2(0, -tall, 1, tall), lit)
+	draw_rect(Rect2(-4, -4, 8, 4), COL_STONE_FOOT.darkened(0.15))
+	draw_rect(Rect2(-4, -4, 8, 1), COL_STONE_FOOT)
+	draw_rect(Rect2(-2, -tall - 2, 13, 3), post)
+	draw_rect(Rect2(-2, -tall - 2, 13, 1), lit)
+	draw_rect(Rect2(2, -tall + 1, 2, 4), post)
+	# The lantern: a dark frame round a bright glow, flickering a little.
 	var f := int(_time * 6.0 + float(rng.seed % 5)) % 4
-	var l := Vector2(5, -tall + 1)
-	draw_rect(Rect2(l + Vector2(2, -1), Vector2(1, 2)), post)
-	draw_rect(Rect2(l, Vector2(6, 8)), right_c.darkened(0.45))
-	draw_rect(Rect2(l + Vector2(1, 1), Vector2(4, 6)), COL_FLAME[1] if f != 0 else COL_FLAME[2])
-	draw_rect(Rect2(l + Vector2(2, 2), Vector2(2, 4)), COL_FLAME[0])
-	draw_rect(Rect2(l + Vector2(-1, -1), Vector2(8, 1)), left_c.darkened(0.3))
+	var l := Vector2(5, -tall + 2)
+	draw_rect(Rect2(l + Vector2(3, -1), Vector2(1, 2)), post)
+	draw_rect(Rect2(l, Vector2(8, 11)), right_c.darkened(0.55))
+	draw_rect(Rect2(l + Vector2(1, 1), Vector2(6, 9)), COL_FLAME[1] if f != 0 else COL_FLAME[2])
+	draw_rect(Rect2(l + Vector2(2, 2), Vector2(4, 6)), COL_FLAME[0])
+	draw_rect(Rect2(l + Vector2(-1, -1), Vector2(10, 2)), left_c.darkened(0.35))
+	draw_rect(Rect2(l + Vector2(0, 11), Vector2(8, 1)), left_c.darkened(0.35))
 
 
 ## A felled tree's stump (its leaves are the rubble).

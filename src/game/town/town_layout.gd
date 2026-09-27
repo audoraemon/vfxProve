@@ -27,6 +27,12 @@ const ROADS := [
 	Rect2(2.0, 16.2, 1.4, 13.8), Rect2(16.2, 8.3, 13.8, 1.4),
 ]
 const MARKET_SQUARE := Rect2(-3.5, -3.5, 8.5, 11.5)
+## Market clutter between the stall rows, as the reference's square is busy with it: a cart, crate stacks, barrels.
+## Solid to people like the gardens (blockers()), and clear of the street and the fountain.
+const MARKET_PILES := [
+	Rect2(-2.7, -1.55, 0.5, 0.4), Rect2(-1.1, 0.65, 0.5, 0.4), Rect2(-2.95, 2.8, 0.95, 0.5), Rect2(-1.2, 5.0, 0.5, 0.4),
+	Rect2(3.95, -1.5, 0.45, 0.4), Rect2(3.95, 2.85, 0.45, 0.4),
+]
 ## The small plaza round the second fountain, in the north-east.
 const FOUNTAIN_PLAZA := Rect2(9.8, -11.6, 3.2, 3.2)
 const BARRACKS_YARD := Rect2(10.3, 6.0, 4.5, 2.1)
@@ -385,10 +391,10 @@ static func gardens() -> Array[Rect2]:
 	return out
 
 
-## Ground people walk round besides the buildings: the gardens and the working yards.
+## Ground people walk round besides the buildings: the gardens, the working yards and the market's piles.
 static func blockers() -> Array[Rect2]:
 	var out := gardens()
-	for y: Rect2 in YARDS:
+	for y: Rect2 in YARDS + MARKET_PILES:
 		out.append(y)
 	return out
 

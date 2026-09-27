@@ -159,6 +159,16 @@ static func _market(out: Array[Dictionary]) -> void:
 		var a: Vector2 = pr[0] + Vector2(0.25, 0.1)
 		var b: Vector2 = pr[1] + Vector2(-0.05, 0.1)
 		_add(out, Decor.Kind.BUNTING, a, b - a)
+	# The piles between the stall rows: the wide one a cart, the rest crates stacked beside a barrel or two.
+	for i in TownLayout.MARKET_PILES.size():
+		var r: Rect2 = TownLayout.MARKET_PILES[i]
+		if r.size.x > 0.8:
+			_add(out, Decor.Kind.CART, r.get_center() + Vector2(0.0, 0.1))
+			continue
+		_add(out, Decor.Kind.CRATES, r.position + Vector2(0.3, 0.3))
+		_add(out, Decor.Kind.BARREL, r.position + Vector2(0.12, 0.35))
+		if _h(i, 90) < 0.5:
+			_add(out, Decor.Kind.BARREL, r.end - Vector2(0.05, 0.02))
 
 
 # --- Outside the walls ------------------------------------------------------------------

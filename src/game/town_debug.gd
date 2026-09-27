@@ -2,7 +2,7 @@ extends Node2D
 ## Debug scene for Kingdoms Amid Kataclysm: the town of Aldermere and its fortified Royal Citadel on the shared
 ## Battlefield, its people (110 citizens and 50 soldiers, --people=N to scale), and every power castable from
 ## the keyboard. No rules yet (milestone 3).
-## Flags after `--`: --capture-town [--only=<shot file prefix>] (screenshots), --citadel-test (scripted strikes on the Citadel, logged),
+## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] (screenshots), --citadel-test (scripted strikes on the Citadel, logged),
 ## --crowd-test (scripted panic, logged), --bench [--only=<power key>] (frame times while that power plays
 ## beside the Citadel).
 
@@ -90,7 +90,8 @@ func _ready() -> void:
 	_bf.camera.position = Iso.ground_to_screen(Vector2(0.8, 2.0)).round()
 	await FxParts.prewarm(_bf.ctx.distort)
 	if "--capture-town" in args:
-		_capture_town(Battlefield.arg_value(args, "--only"))
+		var frames := Battlefield.arg_value(args, "--frames")
+		_capture_town(Battlefield.arg_value(args, "--only"), int(frames) if frames != "" else 1)
 	elif "--citadel-test" in args:
 		_citadel_test()
 	elif "--crowd-test" in args:
@@ -212,8 +213,10 @@ func _update_hud() -> void:
 
 # --- Scripted runs ---------------------------------------------------------
 
-## Every TOWN_SHOTS shot, or with `only` just the one whose file name starts with it (e.g. town_overview).
-func _capture_town(only := "") -> void:
+## Every TOWN_SHOTS shot, or with `only` just the one whose file name starts with it (e.g. town_overview). With
+## `frames` above 1, each shot is saved that many times a quarter of a second apart (name_0.png, name_1.png...), to
+## show what moves.
+func _capture_town(only := "", frames := 1) -> void:
 	_hud.visible = false
 	for shot in TOWN_SHOTS:
 		if only != "" and not String(shot[0]).begins_with(only):
@@ -221,7 +224,12 @@ func _capture_town(only := "") -> void:
 		_bf.camera.zoom = Vector2.ONE * float(shot[2])
 		_bf.camera.position = (Iso.ground_to_screen(shot[1]) + Vector2(0, -30)).round()
 		await _bf.wait_frames(20)
-		await _bf.save_capture(shot[0])
+		if frames <= 1:
+			await _bf.save_capture(shot[0])
+			continue
+		for i in frames:
+			await _bf.save_capture(String(shot[0]).replace(".png", "_%d.png" % i))
+			await _bf.wait_frames(15)
 	await _bf.quit()
 
 

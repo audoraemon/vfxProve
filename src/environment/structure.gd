@@ -135,6 +135,8 @@ var _torch_step := -1
 ## What the camera shows (world px, grown by a margin), set every frame by the Battlefield. Empty (headless tests,
 ## the sandbox before its first frame) counts every structure as seen.
 static var view := Rect2()
+## The wind on the art's moving parts (structure_art.gdshader): 1 in play, 0 for still captures.
+static var wind := 1.0
 ## A structure whose screen box (_view_box) is off screen updates every OFFSCREEN_EVERY frames with the time it
 ## skipped, and draws nothing until it is seen again (_unseen): most of the town is off screen at play zoom.
 const OFFSCREEN_EVERY := 4
@@ -680,6 +682,7 @@ func _light_art(light: Color, dir: Vector2) -> void:
 	mat.set_shader_parameter("tint", Vector3(t.r, t.g, t.b))
 	var at := ArtTuning.tint(tuning_key())
 	mat.set_shader_parameter("art_tint", Vector3(at.r, at.g, at.b))
+	mat.set_shader_parameter("wind", wind)
 
 
 func _draw_box(h0: float, h1: float, top_c: Color, right_c: Color, left_c: Color, jagged: bool) -> void:

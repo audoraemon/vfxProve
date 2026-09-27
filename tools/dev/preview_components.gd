@@ -68,6 +68,9 @@ func _init() -> void:
 	root2.add_child(_world)
 	var lights := LightField.new()
 	lights.tint = Town.EVENING
+	# Still pictures: no wind (it would shift a crown or an awning by a pixel from one render to the next).
+	Structure.wind = 0.0
+	Decor.wind_material().set_shader_parameter("wind", 0.0)
 	root2.add_child(lights)
 	var dir := ProjectSettings.globalize_path("res://captures/components")
 	DirAccess.make_dir_recursive_absolute(dir)

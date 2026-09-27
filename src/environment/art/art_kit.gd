@@ -84,6 +84,14 @@ const SHADE_LINE := Color(0.08, 0.05, 0.04, 0.8)
 
 ## Multiplies every colour poly() and line() collect (ArtTuning's tint for baked decor); white leaves them as given.
 static var color_mul := Color.WHITE
+## Wind (structure_art.gdshader and shaders/wind.gdshader move what carries a weight in UV.y). While wind_gain is not
+## zero, each vertex drawn takes wind_gain x clamp((wind_from_y - y) / wind_span, 0, 1): no weight at the line
+## wind_from_y, the full gain wind_span px beyond it (up for a positive span, down for a negative one). A positive
+## gain sways, px across (a tree's crown); a negative one ripples (cloth, a banner). Art sets it round the parts that
+## move and sets wind_gain back to 0 after.
+static var wind_from_y := 0.0
+static var wind_span := 1.0
+static var wind_gain := 0.0
 static var _pts := PackedVector2Array()
 static var _cols := PackedColorArray()
 static var _uvs := PackedVector2Array()
@@ -133,6 +141,7 @@ static func face_code(face: int) -> float:
 
 ## Start collecting a drawing (drops anything a previous draw left unflushed).
 static func begin() -> void:
+	wind_gain = 0.0
 	_pts.clear()
 	_cols.clear()
 	_uvs.clear()
@@ -243,16 +252,22 @@ static func _emit(ci: CanvasItem, b: Array) -> void:
 		ci.draw_multiline_colors(b[4], b[5], -1.0)
 
 
-## One flat triangle or convex quad (3 or 4 points) in unlit colour `c`, lit by `code`.
+## One flat triangle or convex quad (3 or 4 points) in unlit colour `c`, lit by `code`. While wind_gain is set,
+## each vertex also takes its wind weight (see wind_gain).
 static func poly(p: PackedVector2Array, c: Color, code: float) -> void:
 	if color_mul != Color.WHITE:
 		c = Color(c.r * color_mul.r, c.g * color_mul.g, c.b * color_mul.b, c.a)
 	var base := _pts.size()
 	_pts.append_array(p)
-	var uv := Vector2(code, 0.0)
-	for i in p.size():
-		_cols.append(c)
-		_uvs.append(uv)
+	if wind_gain != 0.0:
+		for i in p.size():
+			_cols.append(c)
+			_uvs.append(Vector2(code, wind_gain * clampf((wind_from_y - p[i].y) / wind_span, 0.0, 1.0)))
+	else:
+		var uv := Vector2(code, 0.0)
+		for i in p.size():
+			_cols.append(c)
+			_uvs.append(uv)
 	_idx.append(base)
 	_idx.append(base + 1)
 	_idx.append(base + 2)
@@ -260,6 +275,18 @@ static func poly(p: PackedVector2Array, c: Color, code: float) -> void:
 		_idx.append(base)
 		_idx.append(base + 2)
 		_idx.append(base + 3)
+
+
+## poly() with each vertex's wind weight given outright (see wind_gain), for moving parts whose weight does not
+## follow height (an awning's front edge).
+static func poly_wind(p: PackedVector2Array, c: Color, code: float, w: PackedFloat32Array) -> void:
+	var gain := wind_gain
+	wind_gain = 0.0
+	poly(p, c, code)
+	wind_gain = gain
+	var first := _uvs.size() - p.size()
+	for i in p.size():
+		_uvs[first + i] = Vector2(code, w[i])
 
 
 ## A flat convex polygon of any number of points, as a triangle fan from its first point.

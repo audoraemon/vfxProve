@@ -25,6 +25,18 @@ var char_amount := 0.0
 var down := false
 var _glow: QuadFx
 
+## Decor that moves in the wind (trees sway, bunting flutters; see ArtKit.wind_gain), and the one material they share.
+const SWAYS := [Kind.OAK, Kind.PINE, Kind.BUNTING]
+static var _wind: ShaderMaterial
+
+
+## The wind shader every swaying decor piece and the forest layer share; set its `wind` to 0 to still them all.
+static func wind_material() -> ShaderMaterial:
+	if _wind == null:
+		_wind = ShaderMaterial.new()
+		_wind.shader = preload("res://shaders/wind.gdshader")
+	return _wind
+
 
 func setup(k: Kind, at_point: Vector2, extent: Vector2, s: int) -> Decor:
 	kind = k
@@ -45,6 +57,8 @@ func tuning_key() -> String:
 
 func _ready() -> void:
 	self_modulate = ArtTuning.tint(tuning_key())
+	if kind in SWAYS:
+		material = wind_material()
 	if kind == Kind.LAMP:
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(46, 23))
 		_glow.set_param("color", Structure.TORCH_LIGHT)

@@ -246,7 +246,9 @@ static func _bunting(a: Vector2, b: Vector2, origin: Vector2) -> void:
 		ArtKit.line(prev, p, PropArt.ROPE)
 		var mid := prev.lerp(p, 0.5)
 		var col: Color = ArtKit.BANNER[0] if i % 2 == 0 else ArtKit.BANNER[2]
-		ArtKit.poly(PackedVector2Array([prev + Vector2(1, 0), p + Vector2(-1, 0), mid + Vector2(0, 4)]), col, 0.0)
+		# Each flag hangs from the string and flutters at its point.
+		ArtKit.poly_wind(PackedVector2Array([prev + Vector2(1, 0), p + Vector2(-1, 0), mid + Vector2(0, 4)]), col, 0.0,
+			PackedFloat32Array([0.0, 0.0, -1.2]))
 		prev = p
 
 

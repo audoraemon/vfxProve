@@ -13,8 +13,30 @@ uniform vec3 tint = vec3(1.0);
 // This component's colour tuning (ArtTuning.tint): multiplies its materials before they are lit.
 uniform vec3 art_tint = vec3(1.0);
 
+// Wind: 1 in play, 0 stills it (component previews). See the vertex stage.
+uniform float wind = 1.0;
+
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
+
+// Art vertices whose UV.y carries a weight (ArtKit.wind_*) move with the wind, the rest stay: a positive weight is a
+// slow sway, px across (a tree's crown); a negative one a ripple, mostly up and down along the edge (an awning, a
+// banner). Whole pixels only, phased by where the structure stands so neighbours do not move in step. The same
+// motion as shaders/wind.gdshader's, for decor and the forest: keep the two in step.
+void vertex() {
+	if (UV.x > 1.5 && UV.y != 0.0) {
+		vec2 at = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xy;
+		float ph = at.x * 0.013 + at.y * 0.021 + VERTEX.x * 0.011 + VERTEX.y * 0.017;
+		float w = abs(UV.y);
+		vec2 off;
+		if (UV.y > 0.0) {
+			off = w * vec2(sin(TIME * 1.3 + ph), 0.0);
+		} else {
+			off = w * vec2(0.4 * sin(TIME * 2.1 + ph), sin(TIME * 6.0 + VERTEX.x * 0.45 + ph));
+		}
+		VERTEX += round(off * wind);
+	}
+}
 
 void fragment() {
 	float code = UV.x;

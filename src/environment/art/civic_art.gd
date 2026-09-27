@@ -10,6 +10,8 @@ extends RefCounted
 ##   a stone gable closes the far end, and a forge chimney with a glowing furnace stands at the east corner.
 ## Colours are unlit: the structure's shader lights them (see ArtKit).
 
+## How far a banner's foot waves (px; see ArtKit.wind_gain).
+const BANNER_WAVE := 1.5
 const TEMPLE_RISE := 30.0
 const BARRACKS_RISE := 16.0
 const OVERHANG := 0.12
@@ -286,6 +288,10 @@ static func _banner(s: Structure, face: int, u: float, top: float, w: float, len
 	var code := ArtKit.face_code(face)
 	var bot := top - length + 4.0
 	var p := func(uu: float, hh: float) -> Vector2: return ArtKit.face_pt(s, face, uu, hh)
+	# Hanging from its rod, it waves more towards its foot.
+	ArtKit.wind_from_y = (p.call(u, top) as Vector2).y
+	ArtKit.wind_span = -length
+	ArtKit.wind_gain = -BANNER_WAVE
 	ArtKit.poly(PackedVector2Array([p.call(u - du, top), p.call(u + du, top), p.call(u + du, bot), p.call(u - du, bot)]),
 		ArtKit.BANNER[0], code)
 	ArtKit.poly(PackedVector2Array([p.call(u - du, bot), p.call(u, bot), p.call(u - du, bot - 4.0)]), ArtKit.BANNER[0], code)
@@ -301,6 +307,7 @@ static func _banner(s: Structure, face: int, u: float, top: float, w: float, len
 		p.call(u - arm, cy - 5.0)]), ArtKit.BANNER[2], code)
 	ArtKit.poly(PackedVector2Array([p.call(u - du - 1.0 / px, top + 1.0), p.call(u + du + 1.0 / px, top + 1.0),
 		p.call(u + du + 1.0 / px, top), p.call(u - du - 1.0 / px, top)]), Structure.COL_GOLD, code)
+	ArtKit.wind_gain = 0.0
 
 
 # --- Barracks ------------------------------------------------------------------

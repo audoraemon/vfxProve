@@ -9,6 +9,9 @@ extends RefCounted
 
 ## Leaf clusters on an oak's crown, and on the town's oaks (tag &"oak").
 const OAK_CLUSTERS := 30
+## How far a tree's crown sways at its top, and an awning's front edge ripples (px; see ArtKit.wind_gain).
+const TREE_SWAY := 1.6
+const AWNING_RIPPLE := 1.2
 const TOWN_OAK_CLUSTERS := 16
 ## Stall cloths [stripe, stripe]: red and cream, blue and cream, cream and tan.
 const CLOTH := [[Color("c8342a"), Color("ece2c8")], [Color("2f5fb8"), Color("ece2c8")], [Color("ece2c8"), Color("c0a070")]]
@@ -111,13 +114,17 @@ static func _stall(s: Structure) -> void:
 		var xa := lerpf(x0, x1, float(i) / stripes)
 		var xb := lerpf(x0, x1, float(i + 1) / stripes)
 		var col: Color = cloth[i % 2]
-		ArtKit.poly(PackedVector2Array([s._gp(Vector2(xa, yb), CANOPY_BACK), s._gp(Vector2(xb, yb), CANOPY_BACK),
-			s._gp(Vector2(xb, yf), CANOPY_FRONT), s._gp(Vector2(xa, yf), CANOPY_FRONT)]), col, ArtKit.LIT_TOP)
-		ArtKit.poly(PackedVector2Array([s._gp(Vector2(xa, yf), CANOPY_FRONT), s._gp(Vector2(xb, yf), CANOPY_FRONT),
-			s._gp(Vector2((xa + xb) * 0.5, yf), CANOPY_FRONT - 3.0)]), col.darkened(0.12), ArtKit.LIT_LEFT)
-	ArtKit.poly(PackedVector2Array([s._gp(Vector2(x1, yb), CANOPY_BACK), s._gp(Vector2(x1, yf), CANOPY_FRONT),
+		# Tied along the back, the front edge and its scallops ripple in the breeze.
+		var f := -AWNING_RIPPLE
+		ArtKit.poly_wind(PackedVector2Array([s._gp(Vector2(xa, yb), CANOPY_BACK), s._gp(Vector2(xb, yb), CANOPY_BACK),
+			s._gp(Vector2(xb, yf), CANOPY_FRONT), s._gp(Vector2(xa, yf), CANOPY_FRONT)]), col, ArtKit.LIT_TOP,
+			PackedFloat32Array([0.0, 0.0, f, f]))
+		ArtKit.poly_wind(PackedVector2Array([s._gp(Vector2(xa, yf), CANOPY_FRONT), s._gp(Vector2(xb, yf), CANOPY_FRONT),
+			s._gp(Vector2((xa + xb) * 0.5, yf), CANOPY_FRONT - 3.0)]), col.darkened(0.12), ArtKit.LIT_LEFT,
+			PackedFloat32Array([f, f, f]))
+	ArtKit.poly_wind(PackedVector2Array([s._gp(Vector2(x1, yb), CANOPY_BACK), s._gp(Vector2(x1, yf), CANOPY_FRONT),
 		s._gp(Vector2(x1, yf), CANOPY_FRONT - 2.0), s._gp(Vector2(x1, yb), CANOPY_BACK - 2.0)]),
-		(cloth[0] as Color).darkened(0.15), ArtKit.LIT_RIGHT)
+		(cloth[0] as Color).darkened(0.15), ArtKit.LIT_RIGHT, PackedFloat32Array([0.0, -AWNING_RIPPLE, -AWNING_RIPPLE, 0.0]))
 	ArtKit.line(s._gp(Vector2(x0, yf), CANOPY_FRONT), s._gp(Vector2(x1, yf), CANOPY_FRONT), ArtKit.ink(0.35))
 	ArtKit.line(s._gp(Vector2(x0, yb), CANOPY_BACK), s._gp(Vector2(x1, yb), CANOPY_BACK), ArtKit.ink(0.45))
 	ArtKit.line(s._gp(Vector2(x0, yb), CANOPY_BACK), s._gp(Vector2(x0, yf), CANOPY_FRONT), ArtKit.ink(0.45))
@@ -477,10 +484,15 @@ static func tree(base: Vector2, tall: float, species: int, seed_value: int, clus
 		base + Vector2(-1, -trunk_h)]), ArtKit.BARK.darkened(0.3), ArtKit.LIT_LEFT)
 	ArtKit.poly(PackedVector2Array([base + Vector2(-4, 1), base + Vector2(5, 1), base + Vector2(2, -2), base + Vector2(-1, -2)]),
 		ArtKit.BARK.darkened(0.15), ArtKit.LIT_LEFT)
+	# The crown sways in the wind, more towards its top; the trunk stays put.
+	ArtKit.wind_from_y = base.y - trunk_h * (1.0 if species == 0 else 0.5)
+	ArtKit.wind_span = tall - trunk_h
+	ArtKit.wind_gain = TREE_SWAY
 	if species == 0:
 		_oak(base + Vector2(0, -trunk_h), tall - trunk_h, seed_value, clusters)
 	else:
 		_pine(base + Vector2(0, -trunk_h * 0.5), tall - trunk_h * 0.5, seed_value)
+	ArtKit.wind_gain = 0.0
 
 
 static func _oak(foot: Vector2, crown: float, seed_value: int, clusters: int) -> void:

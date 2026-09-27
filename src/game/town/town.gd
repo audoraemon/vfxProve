@@ -32,6 +32,7 @@ var fountain: Structure
 var smoke: ChimneySmoke
 ## Null when built without a ground plane (headless tests).
 var floor_node: TownFloor
+var forest: ForestLayer
 ## Everything this town put into the field, so teardown() can take exactly that back out.
 var _built: Array[Structure] = []
 var _decor: Array[Decor] = []
@@ -96,12 +97,24 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	if ground != null:
 		baked.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 			return (a.at as Vector2).x + (a.at as Vector2).y < (b.at as Vector2).x + (b.at as Vector2).y)
+		# The baked trees sway, so they are drawn by the forest layer; the rest is painted into the floor.
+		var trees: Array[Dictionary] = []
+		var flat: Array[Dictionary] = []
+		for d in baked:
+			(trees if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE] else flat).append(d)
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
-		floor_node.baked_decor = baked
+		floor_node.baked_decor = flat
 		floor_node.tint = GROUND_EVENING
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
+		forest = ForestLayer.new()
+		forest.name = "Forest"
+		forest.trees = trees
+		# Lit as the floor's texture is: the baked trees took its tint.
+		forest.modulate = GROUND_EVENING
+		ground.add_child(forest)
+		ground.move_child(forest, 1)
 
 
 ## Take this town out of the world: its buildings (the Citadel's parts included) leave the field, the floor is
@@ -190,3 +203,9 @@ func _free_floor() -> void:
 		else:
 			floor_node.free()
 	floor_node = null
+	if is_instance_valid(forest):
+		if forest.is_inside_tree():
+			forest.queue_free()
+		else:
+			forest.free()
+	forest = null

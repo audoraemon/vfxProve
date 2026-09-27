@@ -79,3 +79,43 @@
 1. Profile the market again and bench against `kak-density` in the same hour.
 2. Append "Changes made while executing".
 3. Tag `kak-perf2`, then push.
+
+---
+
+## Changes made while executing
+
+- **The machine was busy.** Diablo IV ran through the whole pass (CPU at 99–100%, 1.2 GB of memory free). Timings from that time are depressed and noisy.
+  - Progress was measured with numbers load cannot move: how many structures process, how many people update, and the draw calls.
+  - The final bench compares against `kak-density` in alternating runs.
+  - The test suite took over 120 s under the load and hit `tools/test.sh`'s timeout. It was run directly, with a longer timeout.
+- **Task 1** also moved every permanent glow (a torch's pool, a wall flame's halo, a street lamp's) onto the shader's own clock: `QuadFx.run_on_shader_clock()`, with `light_glow.gdshader` using TIME offset by position.
+  - Each glow had processed every frame only to feed its flicker.
+  - The flicker no longer pauses during hitstop.
+- **Task 1 result:** at the market, 228 of the 290 structures in view are idle. The 62 still processing are torches, towers, the keep, the mills and the fountain.
+- **Task 2:** `crowd_check` −245538477 → −772255736.
+  - Crowd test: 146 alive, 15 escaped (from 140 and 17).
+  - All 249 people on screen at the market are unhurried until the first blow.
+- **Task 3:**
+  - **Structures:** a building's cover test uses its outline on screen (`_silhouette()`), not its bounding box. The box's empty corners blocked most pieces.
+  - **Trees:** a trunk-and-crown shape.
+  - **Other decor:** tight per-kind boxes (`DRAW_BOX`).
+  - **Low pieces never keep each other live.** At ground level their order moves a pixel or two. Without this rule only 46 pieces qualified.
+  - **Piles** grow by chain (within 0.6 of any piece already in them), up to 6.
+  - **Totals:** 80 low pieces baked and 121 goods in 58 piles; live decor 1019 → 876.
+  - **Build time:** `TownDecor.spots()` works out the layout's buildings once instead of four times, so the town builds no slower.
+  - Captures before and after differ in 0.06–0.14% of pixels, all lamp flicker.
+
+### Results
+
+- **Draw calls at the market:** 1175 → 1056. Decor 516 → 411, of which low pieces 106 → 51 and goods 269 → 236.
+- **Mission bench**, three alternating runs against `kak-density` under the same load:
+
+  | | `kak-density` | Now |
+  |---|---|---|
+  | fps (the three runs) | 32.2, 32.2, 35.0 | 37.8, 42.7, 46.4 |
+  | Frame time (average) | 30.2 ms | 23.8 ms |
+  | Worst-frame fps | ~22 | ~29 |
+  | Draw calls | 1201 | 1084 |
+
+  That is about 21% less frame time. Unloaded, the market's ~82 fps should rise in proportion.
+- **Tests:** 763 checks. The digest and FLOW are unchanged.

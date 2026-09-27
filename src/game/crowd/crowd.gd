@@ -11,6 +11,9 @@ signal rallied
 
 ## The town scale upgrade doubled the people along with the town (110 + 50 before).
 const CITIZENS := 220
+## The share of citizens at home in public, as the reference's market and streets are full of people: two of every
+## five (is_public()), half of them in the market, half along the streets and plazas (TownLayout.public_spots()).
+const PUBLIC_SHARE := 0.4
 const SOLDIERS := 100
 ## Soldier posts: drilling in the yard, on the walls and gates, guarding the Citadel, patrolling in pairs.
 const POST_YARD := 30
@@ -55,6 +58,8 @@ var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
 ## How many were spawned, so milestone 3's stability can measure losses against the starting town.
 var spawned_citizens := 0
+## How many citizens were anchored in public (PUBLIC_SHARE).
+var public_citizens := 0
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -120,9 +125,20 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	for s in _env.structures():
 		if s.role == &"house":
 			homes.append(s)
+	var spots := TownLayout.public_spots()
+	var pools: Array = [_walkable(spots[0]), _walkable(spots[1])]
+	var at_home := 0
+	public_citizens = 0
 	for i in citizen_count:
-		var home: Structure = homes[i % maxi(homes.size(), 1)] if not homes.is_empty() else null
-		var at := _spot_near(home.center() if home != null else Vector2.ZERO, 1.6)
+		var at: Vector2
+		var pool: Array[Vector2] = pools[public_citizens % 2]
+		if is_public(i) and not pool.is_empty():
+			at = _spot_near(pool[_rng.randi_range(0, pool.size() - 1)], 0.2)
+			public_citizens += 1
+		else:
+			var home: Structure = homes[at_home % maxi(homes.size(), 1)] if not homes.is_empty() else null
+			at = _spot_near(home.center() if home != null else Vector2.ZERO, 1.6)
+			at_home += 1
 		var p := _add_person(false, at)
 		p.anchor = at
 		citizens.append(p)
@@ -140,6 +156,19 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+
+
+## Whether the citizen spawned `i`-th is at home in public: two of every five, spread evenly through the crowd.
+static func is_public(i: int) -> bool:
+	return i % 5 == 1 or i % 5 == 3
+
+
+func _walkable(points: Array[Vector2]) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for g in points:
+		if _grid.walkable(g):
+			out.append(g)
+	return out
 
 
 ## Walkable ground within `spread` of `about`, or the nearest walkable point to it.

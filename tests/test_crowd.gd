@@ -22,6 +22,23 @@ static func run(t) -> void:
 		if not grid.walkable(p.ground_pos):
 			off_grid += 1
 	t.check(off_grid == 0, "everyone stands on walkable ground (%d do not)" % off_grid)
+	# Two of every five citizens are at home in public: the market, the streets and the plazas.
+	var in_public := 0
+	for i in crowd.citizens.size():
+		if not Crowd.is_public(i):
+			continue
+		var a := crowd.citizens[i].anchor
+		var public := TownLayout.MARKET_SQUARE.grow(0.3).has_point(a)
+		for r: Rect2 in TownLayout.ROADS:
+			public = public or r.grow(0.4).has_point(a)
+		for r: Rect2 in TownLayout.GATE_PLAZAS + [TownLayout.FOUNTAIN_PLAZA]:
+			public = public or r.grow(0.6).has_point(a)
+		if public:
+			in_public += 1
+	var want := roundi(Crowd.CITIZENS * Crowd.PUBLIC_SHARE)
+	t.check(absi(crowd.public_citizens - want) <= 2 and in_public == crowd.public_citizens,
+		"%d%% of citizens are at home in public (%d, %d of them on public ground)" % [roundi(Crowd.PUBLIC_SHARE * 100.0),
+		crowd.public_citizens, in_public])
 	# Soldiers are posted in order: the yard's first, then walls, Citadel and patrols. A patrol's post on the east
 	# street can land beside the yard, so the yard is checked by who was posted there, not by who stands near it.
 	var in_yard := 0

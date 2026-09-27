@@ -11,6 +11,8 @@ var anchor := Vector2(0.5, 0.5)
 var life := 0.0
 var age := 0.0
 var mat: ShaderMaterial
+## Set by run_on_shader_clock(): the shader keeps time, and this node never processes.
+var _shader_clock := false
 
 
 func setup(shader: Shader, quad_size: Vector2, quad_anchor := Vector2(0.5, 0.5)) -> QuadFx:
@@ -20,6 +22,20 @@ func setup(shader: Shader, quad_size: Vector2, quad_anchor := Vector2(0.5, 0.5))
 	size = quad_size
 	anchor = quad_anchor
 	return self
+
+
+## For a permanent light_glow quad (a torch's, a lamp's): the shader keeps its own time, so the node does no work
+## each frame. A town has a hundred of them, each once setting u_time every frame.
+func run_on_shader_clock() -> QuadFx:
+	_shader_clock = true
+	set_param(&"shader_clock", true)
+	return self
+
+
+func _ready() -> void:
+	# Processing is switched on for a script with _process() just before _ready(), so it is switched off here.
+	if _shader_clock:
+		set_process(false)
 
 
 func set_param(param: StringName, value: Variant) -> void:

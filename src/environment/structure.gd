@@ -226,6 +226,7 @@ func _ready() -> void:
 			halo.set_param("falloff", 1.8)
 			halo.set_param("intensity", 0.35)
 			halo.set_param("flicker", 1.0)
+			halo.run_on_shader_clock()
 			halo.position = tip + Vector2(0, -4)
 			_flame.add_child(halo)
 	if kind == Kind.TORCH:
@@ -235,6 +236,7 @@ func _ready() -> void:
 		_glow.set_param("falloff", 1.6)
 		_glow.set_param("intensity", 0.55)
 		_glow.set_param("flicker", 1.0)
+		_glow.run_on_shader_clock()
 		_glow.z_as_relative = false
 		_glow.z_index = -4
 		add_child(_glow)

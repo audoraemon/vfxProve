@@ -65,6 +65,7 @@ func _ready() -> void:
 		_glow.set_param("falloff", 1.6)
 		_glow.set_param("intensity", 0.4)
 		_glow.set_param("flicker", 0.6)
+		_glow.run_on_shader_clock()
 		_glow.z_as_relative = false
 		_glow.z_index = -4
 		add_child(_glow)

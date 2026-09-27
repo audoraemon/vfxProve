@@ -93,3 +93,49 @@ lining the streets, and a filled bottom of town.
 2. Record the interior score and the density numbers.
 3. Append "Changes made while executing".
 4. Tag `kak-density`, then push.
+
+---
+
+## Changes made while executing
+
+- **Task 1.** Step 2 (houses, gardens and trees keep clear of the fans instead of the plaza rectangles) moved to Task 3, where it opened the plazas' corners.
+- **Task 3: the bottom of town.**
+  - No hand-placed south-quarter rects. An infill pass (`TownLayout._infill()`) scans the southern districts every 0.25 units from the wall up and puts a townhouse, else a cottage, wherever one fits: clear of the streets, the fans, the landmarks, and 0.5 from every other house. Houses 71 → 81.
+  - The carpenter's yard sits in the south-east corner under the Side Gate's queue: a shed drawn by the workshop's art, with log piles and sawhorses among the benches, and a log pile (the new `Decor.Kind.LOGS`) with a barrel on a blocker beside it.
+  - Rosettes stand at fixed spots inside the fans (`TownFloor.ROSETTES`): the Side Gate plaza's centre lay outside its fan, under a new house.
+  - Ruts are strips of stone darker than the mortar. A mortar-coloured line vanished among the cobbles.
+  - A lamp moved out of the shed, from (13.5, 13.9) to (11.35, 13.3).
+  - The plaza test checks the fans themselves (no margin). The barracks is exempt: it has always cut the Side fan's far corner, and the queue-room test counts the spots actually free (Main 219, Side 213, unchanged).
+- **Task 4: the market.**
+  - Rows are 1.5 apart, not 1.2. With 0.7-deep stalls, 1.2 could not keep 0.8 aisles.
+  - Three stalls per row west of the street (not four), leaving a walkway along the street for the piles. The east column goes from 5 to 8 stalls. 20 → 30 stalls, kept as a const list.
+  - Six piles: tables of goods and crate stacks at the rows' street ends, and a cart by the fountain. A seventh, south of the fountain, was dropped: the walk-grid test keeps that ground open.
+  - Two lamps at the aisle heads.
+- **Task 5: street props.**
+  - The step is 1.75, not 3.5. At 3.5 only 20 props stood: junctions, trees, lamps, squares and the fans rule out most spots. 48 stand now.
+  - Carts only along east-west streets (the cart is drawn along the ground's x axis).
+  - Props stand 0.15 off the street's edge, so the cells people walk in the street stay open. The crowd test's escapes were unchanged: 16 with and without props.
+- **Task 6: people in public.** Two of every five citizens by spawn order (88 of 220): half on the market's walkable floor, half on the street centre lines and round the plazas outside the fans.
+- **crowd_check** by task: −881706988 (Task 3), −232271476 (Task 4), −417410755 (Task 5), −245538477 (Task 6, the new baseline).
+
+### Results
+
+- **Density** (`match_density.py`):
+
+  | | Reference | Before | After |
+  |---|---|---|---|
+  | All roofs | 15.9% | 12.8% | 16.1% |
+  | Canopy | 11.5% | 11.4% | 9.6% |
+  | Open ground (ours, from the layout) | ~30–40% (judged) | 67% | 61% |
+
+  The target of ~50% open ground was not reached. What stays open is mostly the streets and the two queue fans, which must stay walkable. Canopy fell as houses took tree spots.
+- **Interior score:** 91%.
+- **Crowd test:** 140 alive, 17 escaped (from 162 and 16). The scripted powers land on the market, where more people now stand.
+- **Mission test:** `citizens=143 escaped=10 stability=45%` (from 162, 12, 46%).
+- **Bench** against `kak-playtest-2`, same hour, three alternating runs:
+  - `kak-playtest-2`: 79.4, 94.5, 85.2 fps (median 85.2);
+  - now: 90.0, 66.5, 83.0 fps (median 83.0);
+  - draw calls 1064 → 1201.
+
+  The median cost is about 2 fps, inside the 5-fps budget. The draw calls predict ~0.5 ms (3.5 µs each).
+- **Tests:** 749 checks.

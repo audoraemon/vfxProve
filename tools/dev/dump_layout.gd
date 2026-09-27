@@ -18,7 +18,10 @@ func _init() -> void:
 	var decor: Array = []
 	for d in TownDecor.spots():
 		decor.append({"kind": Decor.Kind.keys()[d.kind], "at": [d.at.x, d.at.y], "size": [d.size.x, d.size.y]})
-	var out := {"structures": items, "decor": decor, "citadel": [TownLayout.CITADEL_ORIGIN.x, TownLayout.CITADEL_ORIGIN.y],
+	var blockers: Array = []
+	for r: Rect2 in TownLayout.blockers():
+		blockers.append([r.position.x, r.position.y, r.size.x, r.size.y])
+	var out := {"structures": items, "decor": decor, "blockers": blockers, "citadel": [TownLayout.CITADEL_ORIGIN.x, TownLayout.CITADEL_ORIGIN.y],
 		"town": [TownLayout.TOWN.position.x, TownLayout.TOWN.position.y, TownLayout.TOWN.size.x, TownLayout.TOWN.size.y]}
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)

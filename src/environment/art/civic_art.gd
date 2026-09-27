@@ -482,6 +482,8 @@ static func workshop(s: Structure) -> void:
 	var ax := r.size.x >= r.size.y
 	# Goods on the floor, back to front.
 	var goods: Array[Vector3] = []
+	# The carpenter's shed keeps logs and sawhorses among its benches.
+	var carpenter := s.art_tag == &"carpenter"
 	# Along the open front, where the eave does not hide them (a row just inside it, one just outside).
 	for i in 8:
 		var t := (float(i) + 0.5) / 8.0
@@ -508,7 +510,12 @@ static func workshop(s: Structure) -> void:
 		PropArt._post(s, p, 0.0, h, 1.5)
 	for gd in goods:
 		var g := Vector2(gd.x, gd.y)
-		if int(gd.z) == 0:
+		if carpenter and int(gd.z) < 2:
+			if int(gd.z) == 0:
+				DecorArt.log_pile(s._gp(g, 0.0), 2)
+			else:
+				_sawhorse(s, g)
+		elif int(gd.z) == 0:
 			PropArt._box(s, g - Vector2(0.14, 0.14), g + Vector2(0.14, 0.14), 0.0, 6.0, ArtKit.WOOD[1], ArtKit.WOOD[0],
 				ArtKit.WOOD[0].lightened(0.1))
 		elif int(gd.z) == 1:
@@ -531,6 +538,20 @@ static func workshop(s: Structure) -> void:
 	ArtKit.flush(s)
 	_roof_front(s, g, ArtKit.RED_TILE, 4.0, true)
 	ArtKit.flush(s)
+
+
+## A sawhorse with a log across it: two splayed leg pairs and the log on top.
+static func _sawhorse(s: Structure, g: Vector2) -> void:
+	for x in [-0.15, 0.15]:
+		var top := s._gp(g + Vector2(x, 0.0), 6.0)
+		ArtKit.line(top, s._gp(g + Vector2(x, -0.08), 0.0), ArtKit.WOOD[2])
+		ArtKit.line(top, s._gp(g + Vector2(x, 0.08), 0.0), ArtKit.WOOD[2])
+	PropArt._box(s, g - Vector2(0.24, 0.04), g + Vector2(0.24, 0.04), 5.0, 6.5, ArtKit.WOOD[2], ArtKit.WOOD[1],
+		ArtKit.WOOD[0])
+	var p := s._gp(g + Vector2(0.0, 0.0), 6.5)
+	ArtKit.poly(PackedVector2Array([p + Vector2(-8, -4), p + Vector2(8, 4), p + Vector2(8, -1), p + Vector2(-8, -9)]),
+		ArtKit.BARK, ArtKit.LIT_TOP)
+	ArtKit.blob(p + Vector2(8, 1.5), Vector2(1.8, 2.4), DecorArt.LOG_END, ArtKit.LIT_TOP, 8)
 
 
 # --- Shared roof ------------------------------------------------------------------

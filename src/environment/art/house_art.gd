@@ -72,7 +72,7 @@ static func draw(s: Structure) -> void:
 	if s.art_tag == &"windmill":
 		FarmArt.draw(s)
 		return
-	if s.art_tag == &"workshop":
+	if s.art_tag == &"workshop" or s.art_tag == &"carpenter":
 		CivicArt.workshop(s)
 		return
 	if p.smithy:

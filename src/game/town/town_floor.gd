@@ -67,6 +67,9 @@ const CELL := 0.25
 const SHRUB_STEP := 0.6
 const SHRUB_CHANCE := 0.8
 const LATTICE := 1.6
+## Each gate plaza's rosette (centre, radius): inside its queue fan, where no house stands, and clear of the barracks
+## yard.
+const ROSETTES := [[Vector2(2.7, 12.55), 1.49], [Vector2(12.2, 9.9), 1.3]]
 
 
 ## Light glints drifting down the river, redrawn a few times a second for a stepped pixel flow.
@@ -204,6 +207,11 @@ func paint_ground(ci: CanvasItem) -> void:
 	# The ground inside each gate, where the crowd queues, is cobbled like the streets.
 	for plaza: Rect2 in TownLayout.GATE_PLAZAS:
 		_paving(ci, plaza.grow(0.3), COBBLE, COBBLE_MORTAR, 0.2)
+	# The gate plazas are the crowd's queue ground and stay open (TownLayout.queue_fans()): dressed on the floor
+	# instead, with a paved rosette and the ruts carts have worn towards each gate.
+	for i in TownLayout.GATE_PLAZAS.size():
+		_ruts(ci, TownLayout.GATE_PLAZAS[i], i)
+		_rosette(ci, ROSETTES[i][0], ROSETTES[i][1])
 	_river(ci)
 
 
@@ -280,7 +288,8 @@ static func _yards() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for h: Rect2 in TownLayout.houses():
 		out.append(h.grow(0.22))
-	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.SMITHY.grow(0.3), TownLayout.WORKSHOP.grow(0.3)])
+	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.SMITHY.grow(0.3), TownLayout.WORKSHOP.grow(0.3),
+		TownLayout.CARPENTER.grow(0.3), TownLayout.CARPENTER_YARD.grow(0.2)])
 	for t: Rect2 in TownLayout.TAVERNS:
 		out.append(t.grow(0.3))
 	return out
@@ -303,6 +312,42 @@ func _yard(ci: CanvasItem, r: Rect2, pal: Array) -> void:
 		else:
 			p = Vector2(r.position.x, r.end.y - (per - r.size.x * 2.0 - r.size.y))
 		ci.draw_circle(p, 0.1 + float(h % 5) * 0.03, pal[h % pal.size()])
+
+
+## A paved rosette: rings of flagstones round a dark centre stone, as the reference's squares have.
+func _rosette(ci: CanvasItem, c: Vector2, rad: float) -> void:
+	ci.draw_circle(c, rad + 0.08, FLAG_MORTAR.darkened(0.15))
+	var rings := int(rad / 0.36)
+	for k in range(rings, 0, -1):
+		var r0 := rad * float(k - 1) / rings + 0.05
+		var r1 := rad * float(k) / rings
+		ci.draw_circle(c, r1, FLAG_MORTAR)
+		var n := maxi(int(TAU * (r0 + r1) * 0.5 / 0.42), 6)
+		for i in n:
+			var a0 := TAU * (i + 0.06) / n
+			var a1 := TAU * (i + 0.94) / n
+			var col: Color = FLAG[(i + k) % FLAG.size()] if k % 2 == 0 else COBBLE[(i * 3 + k) % COBBLE.size()]
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2.from_angle(a0) * r0, c + Vector2.from_angle(a1) * r0,
+				c + Vector2.from_angle(a1) * (r1 - 0.04), c + Vector2.from_angle(a0) * (r1 - 0.04)]), col)
+	ci.draw_circle(c, rad / rings * 0.8, ROCKY[2])
+	ci.draw_circle(c + Vector2(-0.05, -0.05), rad / rings * 0.55, ROCKY[1])
+
+
+## Ruts worn into the cobbles by carts: two dark tracks through the plaza towards its gate, a wheel apart. The Main
+## Gate's run north-south, the Side Gate's west-east.
+func _ruts(ci: CanvasItem, plaza: Rect2, salt: int) -> void:
+	var rut := (COBBLE_MORTAR as Color).darkened(0.3)
+	var from := plaza.position.y - 2.0 if salt == 0 else plaza.position.x - 2.0
+	var to := plaza.end.y + 0.8 if salt == 0 else plaza.end.x + 0.8
+	var across := plaza.get_center().x if salt == 0 else 9.0
+	for side: float in [-0.32, 0.32]:
+		var t := from
+		while t < to:
+			var h := _hash(int(t * 10.0) + salt * 31, int(side * 10.0) + 50)
+			var off := across + side + sin(t * 1.3 + side * 9.0) * 0.05
+			var seg := Rect2(off - 0.08, t, 0.16, 0.2) if salt == 0 else Rect2(t, off - 0.08, 0.2, 0.16)
+			ci.draw_rect(seg, rut if h % 4 != 0 else rut.lightened(0.12))
+			t += 0.22
 
 
 ## Whether a ground point lies on one of the rocky outcrops (nothing grows there but rocks).

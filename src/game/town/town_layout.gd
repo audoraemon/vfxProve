@@ -71,7 +71,11 @@ const TAVERN := Rect2(5.6, 2.4, 2.8, 1.8)
 ## blacksmith's yard. People walk round them (see blockers()).
 const TAVERN_PATIO := Rect2(5.8, 4.2, 2.4, 0.42)
 const SMITHY_YARD := Rect2(13.1, -0.2, 1.3, 0.55)
-const YARDS := [TAVERN_PATIO, SMITHY_YARD]
+## The carpenter's yard in the south-east corner, under the Side Gate's queue: an open timber shed, and a log pile
+## on a blocker beside it.
+const CARPENTER := Rect2(11.6, 13.1, 2.3, 1.15)
+const CARPENTER_YARD := Rect2(10.4, 13.55, 0.9, 0.7)
+const YARDS := [TAVERN_PATIO, SMITHY_YARD, CARPENTER_YARD]
 const BRIDGE := Rect2(1.7, 18.4, 2.0, 7.6)
 ## The market fountain and the north-east plaza's (built after the Citadel so every other building keeps its seed).
 const FOUNTAIN := Rect2(0.2, 5.1, 1.2, 1.2)
@@ -109,7 +113,7 @@ const TORCHES := [
 ]
 ## Street lamps along the streets' edges.
 const LAMPS := [
-	Vector2(-12.5, 8.0), Vector2(-8.2, 9.8), Vector2(-4.5, 8.0), Vector2(6.8, 9.8), Vector2(13.5, 13.9),
+	Vector2(-12.5, 8.0), Vector2(-8.2, 9.8), Vector2(-4.5, 8.0), Vector2(6.8, 9.8), Vector2(11.35, 13.3),
 	Vector2(-12.5, -4.4), Vector2(-8.2, -5.8), Vector2(6.8, -4.4), Vector2(12.2, -5.8),
 	Vector2(-0.9, 11.2), Vector2(6.3, 11.2), Vector2(-5.3, -11.0), Vector2(-5.3, 3.5), Vector2(10.2, -2.5), Vector2(10.2, 12.5),
 ]
@@ -131,6 +135,11 @@ const TOWNHOUSE_DEEP := Vector2(0.95, 1.3)
 const TOWNHOUSE_SHARE := 0.3
 ## Open ground kept between a cottage and any street, and between a cottage and the walls.
 const STREET_CLEAR := 0.6
+## The south quarter (districts from this y down to the wall) gets its corners filled (_infill()): the scan's step,
+## and the open ground kept between an infill house and any other.
+const SOUTH_ROW := 9.8
+const INFILL_STEP := 0.25
+const INFILL_GAP := 0.5
 const WALL_CLEAR := 1.0
 ## A garden plot's sides (ground units), and the open ground kept between it and any street.
 const GARDEN_LONG := 1.0
@@ -287,21 +296,23 @@ static func structures() -> Array[Dictionary]:
 	var town_trees := town_trees()
 	for i in town_trees.size():
 		_add(out, Rect2(town_trees[i], TOWN_TREE), 25.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor", &"oak")
+	# Last, so every other building keeps its seed.
+	_add(out, CARPENTER, 20.0, Structure.Kind.HOUSE, &"house", &"carpenter")
 	return out
 
 
 ## Everything a cottage must keep clear of: the landmarks, yards, gate plazas and the Citadel's ground.
 static func _landmarks() -> Array[Rect2]:
-	var out: Array[Rect2] = [TEMPLE, BARRACKS, BARRACKS_YARD, WORKSHOP, SMITHY, MARKET_SQUARE, FOUNTAIN_PLAZA,
-		CITADEL_COURT]
-	for r: Rect2 in TAVERNS + YARDS + GATE_PLAZAS:
+	var out: Array[Rect2] = [TEMPLE, BARRACKS, BARRACKS_YARD, WORKSHOP, SMITHY, CARPENTER, MARKET_SQUARE,
+		FOUNTAIN_PLAZA, CITADEL_COURT]
+	for r: Rect2 in TAVERNS + YARDS:
 		out.append(r)
 	return out
 
 
 ## Cottage footprints: a loose grid in every district at the reference's density, each turned and nudged by a
 ## hash so the blocks are not a chessboard, kept STREET_CLEAR from every street and WALL_CLEAR inside the walls,
-## and left out wherever a landmark, a yard or a gate plaza stands.
+## and left out wherever a landmark or a yard stands or a gate's queue waits (queue_fans()).
 static func houses() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	var inner := TOWN.grow(-WALL_T - WALL_CLEAR)
@@ -330,9 +341,47 @@ static func houses() -> Array[Rect2]:
 					clear = clear and not h.grow(0.35).intersects(k)
 				for road: Rect2 in ROADS:
 					clear = clear and not h.grow(0.5).intersects(road)
+				clear = clear and not in_queue_fan(h.grow(0.35))
 				if clear:
 					out.append(h)
+	_infill(out, inner, keep_clear)
 	return out
+
+
+## The south quarter's corners the grid leaves empty round the gate queues, filled: a scan every INFILL_STEP over the
+## southern districts, from the wall up, puts a townhouse, else a cottage, wherever one fits clear of the streets, the queues, the
+## landmarks and INFILL_GAP from every other house (a cell's passage between them).
+static func _infill(out: Array[Rect2], inner: Rect2, keep_clear: Array[Rect2]) -> void:
+	for d: Rect2 in DISTRICTS:
+		if d.position.y < SOUTH_ROW:
+			continue
+		# From the wall up, so the new houses line the wall's inner strip as the reference's do.
+		var y := d.end.y
+		while y > d.position.y:
+			var x := d.position.x
+			while x < d.end.x:
+				for size: Vector2 in [TOWNHOUSE_WIDE, HOUSE_WIDE, HOUSE_DEEP]:
+					var h := Rect2(Vector2(x, y - size.y), size)
+					if _infill_fits(h, out, inner, keep_clear):
+						out.append(h)
+						break
+				x += INFILL_STEP
+			y -= INFILL_STEP
+
+
+static func _infill_fits(h: Rect2, others: Array[Rect2], inner: Rect2, keep_clear: Array[Rect2]) -> bool:
+	if not inner.encloses(h) or in_queue_fan(h.grow(0.35)):
+		return false
+	for road: Rect2 in ROADS:
+		if h.grow(STREET_CLEAR).intersects(road):
+			return false
+	for k in keep_clear:
+		if h.grow(0.35).intersects(k):
+			return false
+	for o in others:
+		if o.grow(INFILL_GAP).intersects(h):
+			return false
+	return true
 
 
 ## Whether a house footprint from houses() is a two-storey townhouse (by its size).
@@ -395,6 +444,7 @@ static func gardens() -> Array[Rect2]:
 				ok = ok or bl.encloses(plot)
 			for road: Rect2 in ROADS:
 				ok = ok and not road.grow(GARDEN_STREET_CLEAR).intersects(plot)
+			ok = ok and not in_queue_fan(plot.grow(0.1))
 			for o in others:
 				ok = ok and not o.grow(0.1).intersects(plot)
 			for t in trees:
@@ -405,6 +455,10 @@ static func gardens() -> Array[Rect2]:
 				out.append(plot)
 				break
 	return out
+
+
+## queue_fans() with its default margin, worked out once (in_queue_fan() runs for every candidate house and tree).
+static var _fans: Array[PackedVector2Array] = []
 
 
 ## Each gate's queue fan: the ground Crowd.queue_spots() lays its waiting rows on, from the doorway out to the last
@@ -427,8 +481,10 @@ static func queue_fans(margin := 0.3) -> Array[PackedVector2Array]:
 
 ## Whether a rect reaches into any gate's queue fan.
 static func in_queue_fan(r: Rect2) -> bool:
+	if _fans.is_empty():
+		_fans = queue_fans()
 	var poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
-	for fan in queue_fans():
+	for fan in _fans:
 		if not Geometry2D.intersect_polygons(poly, fan).is_empty():
 			return true
 	return false
@@ -483,6 +539,8 @@ static func town_trees() -> Array[Vector2]:
 				for o: Vector2 in out:
 					if Rect2(o, TOWN_TREE).grow(0.15).intersects(t):
 						clear = false
+				if clear and in_queue_fan(t.grow(0.2)):
+					clear = false
 				if clear:
 					out.append(p)
 	_street_trees(out, keep_clear)
@@ -537,6 +595,8 @@ static func _street_trees(out: Array[Vector2], keep_clear: Array[Rect2]) -> void
 				for o: Vector2 in out:
 					if Rect2(o, TOWN_TREE).grow(0.3).intersects(t):
 						ok = false
+				if ok and in_queue_fan(t.grow(0.2)):
+					ok = false
 				if ok:
 					out.append(p)
 

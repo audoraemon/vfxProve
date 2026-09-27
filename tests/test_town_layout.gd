@@ -8,8 +8,8 @@ static func run(t) -> void:
 	var counts := {}
 	for d in items:
 		counts[d.role] = int(counts.get(d.role, 0)) + 1
-	var want := {&"house": 71, &"wall": 85, &"tower": 17, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
-		&"market": 20, &"farm": 16, &"decor": 180}
+	var want := {&"house": 81, &"wall": 85, &"tower": 17, &"gate": 2, &"temple": 1, &"barracks": 1, &"bridge": 1,
+		&"market": 20, &"farm": 16, &"decor": 168}
 	for role in want:
 		t.check(counts.get(role, 0) == want[role], "%d x %s (got %d)" % [want[role], role, counts.get(role, 0)])
 	t.check(counts.size() == want.size(), "no unexpected roles (%s)" % [counts.keys()])
@@ -63,12 +63,19 @@ static func run(t) -> void:
 		for road: Rect2 in TownLayout.ROADS:
 			on_road = on_road or road.has_point(e)
 		t.check(on_road and TownLayout.MAP.has_point(e), "exit %s is on a road inside the map" % e)
-	var plaza_clear := true
+	# The queue fans themselves (no margin): the gatehouse's own towers and torches stand at their mouths, and the
+	# barracks has always cut the Side Gate fan's far corner (its queue room, spots actually free, is pinned in
+	# test_crowd).
+	var in_fans: Array[String] = []
 	for d in items:
-		for plaza: Rect2 in TownLayout.GATE_PLAZAS:
-			if not Structure.WALKABLE.has(d.kind) and (d.rect as Rect2).intersects(plaza):
-				plaza_clear = false
-	t.check(plaza_clear, "nothing stands on the ground in front of a gate, where the crowd queues")
+		if Structure.WALKABLE.has(d.kind) or d.kind in [Structure.Kind.GATE, Structure.Kind.KEEP, Structure.Kind.TORCH] 				or d.role == &"barracks":
+			continue
+		var r: Rect2 = d.rect
+		var poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+		for fan in TownLayout.queue_fans(0.0):
+			if not Geometry2D.intersect_polygons(poly, fan).is_empty():
+				in_fans.append("%s %s" % [d.role, r])
+	t.check(in_fans.is_empty(), "nothing stands on the ground in front of a gate, where the crowd queues: %s" % [in_fans])
 	var bridge: Rect2 = TownLayout.BRIDGE
 	t.check(bridge.position.y < TownLayout.RIVER.position.y and bridge.end.y > TownLayout.RIVER.end.y, "the bridge spans the river")
 	t.check(TownLayout.CITADEL_AREA.has_point(TownLayout.CITADEL_ORIGIN), "the Citadel origin is inside its ground")

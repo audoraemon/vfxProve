@@ -6,7 +6,7 @@ extends Node2D
 
 enum Kind {
 	BARREL, CRATES, BENCH, FENCE, GARDEN, BUSH, ROCK, OAK, PINE, LAMP, BUNTING, SCARECROW, SIGNPOST, REEDS, FLOWERS,
-	TABLE, SHIP, BOAT, DOCK, SHEEP, COW, CART,
+	TABLE, SHIP, BOAT, DOCK, SHEEP, COW, CART, LOGS,
 }
 ## Decor that belongs on the water, not the land.
 const ON_WATER := [Kind.SHIP, Kind.BOAT, Kind.DOCK]

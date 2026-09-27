@@ -33,6 +33,8 @@ static func spots() -> Array[Dictionary]:
 	_market(out)
 	_countryside(out)
 	_outside(out, solid)
+	# Last, so every other piece keeps its seed.
+	_carpenter(out)
 	var boxes := _screen_boxes()
 	for d in out:
 		d.bake = _bakeable(d, boxes)
@@ -99,6 +101,13 @@ static func _yards(out: Array[Dictionary]) -> void:
 	_add(out, Decor.Kind.BARREL, y.position + Vector2(0.2, 0.22))
 	_add(out, Decor.Kind.CRATES, y.position + Vector2(0.72, 0.4))
 	_add(out, Decor.Kind.BARREL, y.position + Vector2(1.12, 0.22))
+
+
+## The carpenter's log pile and a barrel of pegs, on the yard beside his shed.
+static func _carpenter(out: Array[Dictionary]) -> void:
+	var c: Rect2 = TownLayout.CARPENTER_YARD
+	_add(out, Decor.Kind.LOGS, c.position + Vector2(0.4, 0.5))
+	_add(out, Decor.Kind.BARREL, c.position + Vector2(0.78, 0.22))
 
 
 ## Trees behind the houses; barrels, crates, flowers, bushes and lamps against the houses, the Temple, the barracks,

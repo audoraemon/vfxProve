@@ -9,6 +9,8 @@ extends RefCounted
 
 const STRAW := Color("d8b860")
 const CLOTH := Color("8a4a3a")
+## A log's cut end.
+const LOG_END := Color("d9b27a")
 
 
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> void:
@@ -63,6 +65,8 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			_cow(o, seed_value)
 		Decor.Kind.CART:
 			_cart(o, seed_value)
+		Decor.Kind.LOGS:
+			log_pile(o, 3)
 
 
 ## A decor oak or pine. A tree in town carries its height (px) in size.x; out in the country it picks one. The forest
@@ -88,6 +92,28 @@ static func _quad(a: Vector2, b: Vector2, c: Vector2, d: Vector2, col: Color) ->
 
 static func _rect(p: Vector2, w: float, h: float, col: Color) -> void:
 	_quad(p, p + Vector2(w, 0), p + Vector2(w, h), p + Vector2(0, h), col)
+
+
+## A pile of felled logs lying along the ground's x axis, `rows` along the bottom and one fewer on each row above,
+## their cut ends to the camera. `o` is the screen point under the middle of the pile's front log.
+static func log_pile(o: Vector2, rows: int) -> void:
+	for row in rows:
+		for j in rows - row:
+			# Along the ground's y axis the logs lie side by side (back ones first); each row above sits in the dips.
+			var dy := float(j) - float(rows - row - 1) + float(row) * 0.5
+			_log(o + Vector2(-5, 2.5) * dy + Vector2(0, -4.0 * row))
+	ArtKit.line(o + Vector2(-9, 1), o + Vector2(9, 5), ArtKit.ink(0.4))
+
+
+## One log, 0.5 units long, 5 px thick: a bark body and a pale cut end with a ring.
+static func _log(c: Vector2) -> void:
+	var a := c + Vector2(-8, -4)
+	var b := c + Vector2(8, 4)
+	ArtKit.poly(PackedVector2Array([a + Vector2(0, -5), b + Vector2(0, -5), b, a]), ArtKit.BARK, 0.0)
+	_quad(a + Vector2(0, -5), b + Vector2(0, -5), b + Vector2(0, -4), a + Vector2(0, -4), ArtKit.BARK.lightened(0.2))
+	ArtKit.blob(b + Vector2(0, -2.5), Vector2(2.2, 2.6), ArtKit.BARK.darkened(0.2), 0.0, 8)
+	ArtKit.blob(b + Vector2(0, -2.5), Vector2(1.6, 2.0), LOG_END, 0.0, 8)
+	_rect(b + Vector2(0, -3), 1, 1, LOG_END.darkened(0.3))
 
 
 static func _barrel(o: Vector2) -> void:

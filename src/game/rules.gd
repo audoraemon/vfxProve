@@ -25,7 +25,10 @@ const DP_REGEN := 0.5
 const MISSION_SECONDS := 360.0
 ## What each destroyed thing pays back (spec §4.1). Citizens, houses, the market, the farms and the walls pay
 ## nothing: the player is not rewarded for shopping.
-const DP_FOR_ROLE := {&"tower": 3.0, &"gate": 5.0, &"temple": 8.0, &"barracks": 10.0}
+const DP_FOR_ROLE := {&"tower": 3.0, &"gate": 5.0, &"barracks": 10.0}
+## The Temple's fall restores this share of the full bar, whatever dp_recovery says: the one deliberate refill, so a
+## player who runs dry can choose to spend the Temple (playtest, 2026-09-27). There is one Temple, so it is once.
+const TEMPLE_DP_SHARE := 0.7
 const DP_SOLDIER := 0.4
 const CITADEL_DP := 15.0
 ## One cast that destroys this many buildings, or kills this many people, is a chain.
@@ -247,6 +250,9 @@ func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
 	if not BUILDING_ROLES.has(s.role):
 		return
 	buildings_down += 1
+	if s.role == &"temple":
+		_restore(DP_MAX * TEMPLE_DP_SHARE, s.center())
+		banner.emit("THE TEMPLE FALLS — DIVINE POWER RESTORED")
 	var pay: float = DP_FOR_ROLE.get(s.role, 0.0)
 	if pay > 0.0:
 		_gain(pay, s.center())
@@ -288,6 +294,11 @@ func _check_chain(c: Dictionary) -> void:
 func _gain(amount: float, at: Vector2) -> void:
 	if not dp_recovery:
 		return
+	_restore(amount, at)
+
+
+## Add Divine Power (capped at the maximum) and report what actually went in, for the bar and the popup.
+func _restore(amount: float, at: Vector2) -> void:
 	var before := dp
 	dp = minf(DP_MAX, dp + amount)
 	var applied := dp - before

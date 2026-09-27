@@ -188,3 +188,60 @@ static func run(t) -> void:
 	town.free()
 	crowd.free()
 	world.free()
+	_temple(t, loadout)
+
+
+## The Temple's fall is the one refill: 70% of the bar, whatever the recovery switch says, once.
+static func _temple(t, loadout: PackedStringArray) -> void:
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var field := EnemyField.new()
+	field.env = env
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, WalkGrid.new().setup(env, town), world, 5)
+	var rules := Rules.new().setup(loadout, null, env, field, crowd, town)
+	var gains: Array = []
+	rules.dp_gained.connect(func(amount: float, at: Vector2): gains.append([amount, at]))
+	var banners: Array = []
+	rules.banner.connect(func(text: String): banners.append(text))
+	t.check(not rules.dp_recovery and not Rules.DP_FOR_ROLE.has(&"temple"),
+		"with recovery off, and the Temple out of the recovery table")
+	var temple: Structure = null
+	var house: Structure = null
+	for s in env.structures():
+		if s.role == &"temple":
+			temple = s
+		elif s.role == &"house" and house == null:
+			house = s
+	rules.dp = 10.0
+	house.destroy(house.center(), &"nova")
+	t.check(rules.dp == 10.0, "a house still pays nothing (%.1f)" % rules.dp)
+	temple.destroy(temple.center(), &"nova")
+	t.near(rules.dp, 80.0, 0.0001, "the Temple's fall restores 70 DP: 10 -> 80 (%.1f)" % rules.dp)
+	t.check(gains.size() == 1 and is_equal_approx(gains[0][0], 70.0) and gains[0][1] == temple.center(),
+		"and the gain pops up at the Temple (%s)" % [gains])
+	t.check(banners.has("THE TEMPLE FALLS — DIVINE POWER RESTORED"), "with its banner (%s)" % [banners])
+	rules.free()
+	# On a fuller bar it tops out at the maximum.
+	var town2 := Town.new()
+	var env2 := EnvironmentField.new()
+	town2.build(env2)
+	var crowd2 := Crowd.new().setup(field, env2, town2, WalkGrid.new().setup(env2, town2), world, 5)
+	var rules2 := Rules.new().setup(loadout, null, env2, field, crowd2, town2)
+	rules2.dp = 50.0
+	for s in env2.structures():
+		if s.role == &"temple":
+			s.destroy(s.center(), &"nova")
+	t.check(rules2.dp == Rules.DP_MAX, "from 50 DP it tops out at the full 100 (%.1f)" % rules2.dp)
+	rules2.free()
+	crowd.free()
+	crowd2.free()
+	world.free()
+	field.free()
+	env.clear()
+	env.free()
+	town.free()
+	env2.clear()
+	env2.free()
+	town2.free()

@@ -35,6 +35,7 @@ static func spots() -> Array[Dictionary]:
 	_outside(out, solid)
 	# Last, so every other piece keeps its seed.
 	_carpenter(out)
+	_street(out)
 	var boxes := _screen_boxes()
 	for d in out:
 		d.bake = _bakeable(d, boxes)
@@ -101,6 +102,29 @@ static func _yards(out: Array[Dictionary]) -> void:
 	_add(out, Decor.Kind.BARREL, y.position + Vector2(0.2, 0.22))
 	_add(out, Decor.Kind.CRATES, y.position + Vector2(0.72, 0.4))
 	_add(out, Decor.Kind.BARREL, y.position + Vector2(1.12, 0.22))
+
+
+## What stands on each street prop's blocker (TownLayout.street_props()).
+static func _street(out: Array[Dictionary]) -> void:
+	for p in TownLayout.street_props():
+		var r: Rect2 = p.rect
+		var ay: bool = p.along_y
+		# Offsets inside the blocker, given along the street and across it.
+		var o := func(along: float, across: float) -> Vector2:
+			return r.position + (Vector2(across, along) if ay else Vector2(along, across))
+		match p.kind:
+			TownLayout.Prop.CART:
+				_add(out, Decor.Kind.CART, r.position + Vector2(0.45, 0.33))
+			TownLayout.Prop.BENCH:
+				_add(out, Decor.Kind.BENCH, o.call(0.0, 0.12), Vector2(0.0, 0.7) if ay else Vector2(0.7, 0.0))
+			TownLayout.Prop.CRATES:
+				_add(out, Decor.Kind.CRATES, o.call(0.3, 0.32))
+				_add(out, Decor.Kind.BARREL, o.call(0.45, 0.25))
+			TownLayout.Prop.BARRELS:
+				_add(out, Decor.Kind.BARREL, o.call(0.12, 0.18))
+				_add(out, Decor.Kind.BARREL, o.call(0.36, 0.2))
+			TownLayout.Prop.LAMP:
+				_add(out, Decor.Kind.LAMP, r.get_center())
 
 
 ## The carpenter's log pile and a barrel of pegs, on the yard beside his shed.

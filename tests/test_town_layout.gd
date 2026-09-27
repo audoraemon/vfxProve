@@ -76,6 +76,17 @@ static func run(t) -> void:
 			if not Geometry2D.intersect_polygons(poly, fan).is_empty():
 				in_fans.append("%s %s" % [d.role, r])
 	t.check(in_fans.is_empty(), "nothing stands on the ground in front of a gate, where the crowd queues: %s" % [in_fans])
+	# Street life: props line the streets, each off the street itself and clear of the gates' queues.
+	var props := TownLayout.street_props()
+	var props_ok := props.size() >= 40
+	for p in props:
+		var r: Rect2 = p.rect
+		props_ok = props_ok and not TownLayout.in_queue_fan(r)
+		for road: Rect2 in TownLayout.ROADS:
+			props_ok = props_ok and not road.intersects(r)
+		for d in items:
+			props_ok = props_ok and not (d.rect as Rect2).intersects(r)
+	t.check(props_ok, "%d street props, off the streets, the queues and every building" % props.size())
 	var bridge: Rect2 = TownLayout.BRIDGE
 	t.check(bridge.position.y < TownLayout.RIVER.position.y and bridge.end.y > TownLayout.RIVER.end.y, "the bridge spans the river")
 	t.check(TownLayout.CITADEL_AREA.has_point(TownLayout.CITADEL_ORIGIN), "the Citadel origin is inside its ground")

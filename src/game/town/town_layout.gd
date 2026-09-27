@@ -144,6 +144,17 @@ const STREET_CLEAR := 0.6
 ## The south quarter (districts from this y down to the wall) gets its corners filled (_infill()): the scan's step,
 ## and the open ground kept between an infill house and any other.
 const SOUTH_ROW := 9.8
+## Street life (street_props()): a prop every STREET_PROP_STEP along each side of the streets inside the walls, the
+## two sides staggered, STREET_PROP_GAP off the street's edge in the margin before the houses (so the cells people
+## walk in the street itself stay open).
+const STREET_PROP_STEP := 1.75
+const STREET_PROP_GAP := 0.15
+enum Prop { CART, BENCH, CRATES, BARRELS, LAMP }
+## Each prop's blocker: its length along the street and its depth across it. A cart stands along its street.
+const PROP_SIZE := {
+	Prop.CART: Vector2(1.5, 0.66), Prop.BENCH: Vector2(0.7, 0.25), Prop.CRATES: Vector2(0.55, 0.4),
+	Prop.BARRELS: Vector2(0.5, 0.3), Prop.LAMP: Vector2(0.25, 0.25),
+}
 const INFILL_STEP := 0.25
 const INFILL_GAP := 0.5
 const WALL_CLEAR := 1.0
@@ -500,7 +511,89 @@ static func blockers() -> Array[Rect2]:
 	var out := gardens()
 	for y: Rect2 in YARDS + MARKET_PILES:
 		out.append(y)
+	for p in street_props():
+		out.append(p.rect)
 	return out
+
+
+## street_props(), worked out once: it lays out every house, garden and tree to keep clear of them.
+static var _props: Array[Dictionary] = []
+
+
+## Props lining the streets inside the walls, as the reference's streets are lined with carts, benches, crates and
+## barrels: each {"rect": its blocker, "kind": a Prop, "along_y": whether its street runs north-south}. A prop keeps
+## clear of junctions, squares and plazas, the gates and their queues, every building, garden, tree, lamp and torch,
+## and the walls; a spot that is not clear is skipped. People walk round them (blockers()).
+static func street_props() -> Array[Dictionary]:
+	if not _props.is_empty():
+		return _props
+	var clear_of: Array[Rect2] = []
+	# Houses stand STREET_CLEAR back from the streets: a prop fits in front of one, just short of its wall.
+	for h: Rect2 in houses() + gardens():
+		clear_of.append(h.grow(0.03))
+	for r: Rect2 in _landmarks() + [CITADEL_AREA]:
+		clear_of.append(r.grow(0.3))
+	for p: Vector2 in town_trees():
+		clear_of.append(Rect2(p, TOWN_TREE).grow(0.15))
+	for p: Vector2 in TORCHES + LAMPS:
+		clear_of.append(Rect2(p, Vector2(0.2, 0.2)).grow(0.3))
+	for r: Rect2 in FOUNTAINS + GATE_TOWERS + [MAIN_GATE, SIDE_GATE]:
+		clear_of.append(r.grow(0.5))
+	var inner := TOWN.grow(-WALL_T - 0.4)
+	var n := 0
+	for road: Rect2 in ROADS:
+		var along_y := road.size.y > road.size.x
+		var r := road.intersection(inner)
+		if r.size.x <= 0.0 or r.size.y <= 0.0:
+			continue
+		var length := r.size.y if along_y else r.size.x
+		for side in [-1.0, 1.0]:
+			var k := STREET_PROP_STEP * (0.25 if side < 0.0 else 0.75)
+			while k < length:
+				n += 1
+				var kind := _prop_kind(_unit(n * 13 + 1), along_y)
+				var size: Vector2 = PROP_SIZE[kind]
+				var dims := Vector2(size.y, size.x) if along_y else size
+				var at: Vector2
+				if along_y:
+					var x := r.position.x - STREET_PROP_GAP - dims.x if side < 0.0 else r.end.x + STREET_PROP_GAP
+					at = Vector2(x, r.position.y + k - dims.y * 0.5)
+				else:
+					var y := r.position.y - STREET_PROP_GAP - dims.y if side < 0.0 else r.end.y + STREET_PROP_GAP
+					at = Vector2(r.position.x + k - dims.x * 0.5, y)
+				k += STREET_PROP_STEP
+				var rect := Rect2(at, dims)
+				if _prop_clear(rect, road, clear_of, inner):
+					_props.append({"rect": rect, "kind": kind, "along_y": along_y})
+					clear_of.append(rect.grow(0.5))
+	return _props
+
+
+## A prop by roll: carts only along east-west streets (the cart is drawn along the ground's x axis; beside a north-south
+## street it would stand across it, too long for the margin).
+static func _prop_kind(roll: float, along_y: bool) -> Prop:
+	if roll < 0.15:
+		return Prop.BARRELS if along_y else Prop.CART
+	if roll < 0.4:
+		return Prop.BENCH
+	if roll < 0.68:
+		return Prop.CRATES
+	if roll < 0.88:
+		return Prop.BARRELS
+	return Prop.LAMP
+
+
+static func _prop_clear(rect: Rect2, road: Rect2, clear_of: Array[Rect2], inner: Rect2) -> bool:
+	if not inner.encloses(rect) or in_queue_fan(rect.grow(0.3)):
+		return false
+	for c in clear_of:
+		if c.intersects(rect):
+			return false
+	for other: Rect2 in ROADS:
+		# Its own street is STREET_PROP_GAP away; any other street means a junction.
+		if other.grow(0.05 if other == road else STREET_TREE_JUNCTION).intersects(rect):
+			return false
+	return true
 
 
 ## Tree spots between the cottages -- grid corners inside each district, kept clear of every building and street --

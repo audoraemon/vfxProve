@@ -36,9 +36,7 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 		Decor.Kind.ROCK:
 			_rock(o, seed_value)
 		Decor.Kind.OAK, Decor.Kind.PINE:
-			# A tree in town carries its height (px) in size.x; out in the country it picks one.
-			var tall := size.x if size.x > 0.0 else 46.0 + ArtKit.hash01(seed_value, 3) * 18.0
-			PropArt.tree(o, tall, 0 if kind == Decor.Kind.OAK else 1, seed_value)
+			tree(kind, at, size, seed_value, origin)
 		Decor.Kind.LAMP:
 			_lamp(o)
 		Decor.Kind.BUNTING:
@@ -65,6 +63,14 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			_cow(o, seed_value)
 		Decor.Kind.CART:
 			_cart(o, seed_value)
+
+
+## A decor oak or pine. A tree in town carries its height (px) in size.x; out in the country it picks one. The forest
+## layer draws its hundreds with fewer leaf clusters (`clusters`).
+static func tree(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2,
+		clusters := PropArt.OAK_CLUSTERS) -> void:
+	var tall := size.x if size.x > 0.0 else 46.0 + ArtKit.hash01(seed_value, 3) * 18.0
+	PropArt.tree(Iso.ground_to_screen(at) - origin, tall, 0 if kind == Decor.Kind.OAK else 1, seed_value, clusters)
 
 
 ## Where a lamp's lantern glows (relative to its ground point, screen px).

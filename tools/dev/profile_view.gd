@@ -56,6 +56,16 @@ func _run() -> void:
 		await process_frame
 	print("PROFILE at=%s zoom=%.2f frames=%d" % [at, zoom, frames])
 	var base := await _sample("all")
+	var busy := 0
+	var idle := 0
+	var all := mission._bf.ctx.env.structures()
+	for st in all:
+		if st.is_processing():
+			busy += 1
+		elif st.idle:
+			idle += 1
+	print("structures: %d processing, %d idle in view, %d of %d asleep off screen" % [busy, idle,
+		all.size() - busy - idle, all.size()])
 	for c in cats:
 		var cat := String(c).get_slice(":", 0)
 		var how := String(c).get_slice(":", 1)

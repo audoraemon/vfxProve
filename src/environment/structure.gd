@@ -6,6 +6,8 @@ extends Node2D
 
 ## Emitted once, when the building is destroyed by any cause.
 signal broken(s: Structure)
+## It went idle (see idle), for EnvironmentField to check its light from then on.
+signal idled(s: Structure)
 
 enum Kind {
 	TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH,
@@ -153,6 +155,12 @@ var _unseen := false
 ## Off screen with nothing going on, a structure stops processing altogether; EnvironmentField wakes it when it
 ## comes into view, and anything that happens to it (a hit, a fire, a falling banner) wakes it at once.
 var asleep := false
+## Asleep while in view (_can_idle()): nothing on it moves, so only its light can change what it draws, and
+## EnvironmentField checks that LIGHT_HZ times a second (idle_check()) instead of the structure processing every
+## frame. A town centre shows ~250 buildings; per-frame processing of them all cost ~3 ms.
+var idle := false
+## Kinds whose drawing steps with time (a torch's flicker, a tower's blink): never idle.
+const NEVER_IDLE := [Kind.TORCH, Kind.TOWER, Kind.BLOCK]
 ## Where the node stands when still: its front corner. A shudder moves the node off it (_process), so the art and
 ## effects are placed from here.
 var _base := Vector2.ZERO
@@ -474,6 +482,9 @@ func _process(delta: float) -> void:
 		_drawn_sig = _light_signature()
 		queue_redraw()
 		return
+	if not _dirty and _can_idle():
+		_go_idle()
+		return
 	_light_in -= delta
 	if _light_in > 0.0:
 		return
@@ -788,7 +799,40 @@ func _quiet() -> bool:
 func wake() -> void:
 	if asleep:
 		asleep = false
+		idle = false
 		set_process(true)
+
+
+## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch).
+func _can_idle() -> bool:
+	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) 		and not is_instance_valid(_flame)
+
+
+func _go_idle() -> void:
+	# Drawn with the light it has now, so the first idle check compares against what is on screen.
+	var sig := _light_signature()
+	if sig != _drawn_sig:
+		_drawn_sig = sig
+		queue_redraw()
+	position = _base
+	asleep = true
+	idle = true
+	set_process(false)
+	idled.emit(self)
+
+
+## An idle structure's check, LIGHT_HZ times a second (EnvironmentField): redraw if the light on it changed. False
+## once it has left the view `v`: it is then an ordinary off-screen sleeper, woken when it comes back.
+func idle_check(v: Rect2) -> bool:
+	if v.has_area() and not v.intersects(_view_box):
+		idle = false
+		_unseen = true
+		return false
+	var sig := _light_signature()
+	if sig != _drawn_sig:
+		_drawn_sig = sig
+		queue_redraw()
+	return true
 
 
 ## Everything it can draw on screen (world px), for deciding whether it is in view.

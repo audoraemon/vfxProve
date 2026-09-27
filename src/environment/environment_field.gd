@@ -31,6 +31,10 @@ var _fine := {}
 const FINE_CELL := 0.5
 ## Bumped whenever the set of structures changes (added, cleared, re-indexed): caches built from them are stale.
 var layout_epoch := 0
+## Structures idle in view (Structure.idle), visited round-robin so each is checked LIGHT_HZ times a second.
+var _idle: Array[Structure] = []
+var _idle_at := 0
+var _idle_due := 0.0
 ## Bumped whenever a structure is destroyed.
 var destroy_epoch := 0
 
@@ -42,6 +46,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 	s.fx_parent = fx_parent
 	s.fx_back = fx_back
 	s.broken.connect(_on_structure_broken)
+	s.idled.connect(_on_idled)
 	if kind == Structure.Kind.TORCH and lights != null:
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)
@@ -107,6 +112,7 @@ func clear() -> void:
 		else:
 			s.free()
 	_structures.clear()
+	_idle.clear()
 	_grid.clear()
 	_fine.clear()
 	layout_epoch += 1
@@ -116,6 +122,7 @@ func clear() -> void:
 ## this is for the handful of times a map is torn down, not for destruction — destroyed buildings stay.
 func remove(s: Structure) -> void:
 	_structures.erase(s)
+	_idle.erase(s)
 	if is_instance_valid(s):
 		if s.light_id != 0 and lights != null:
 			lights.remove(s.light_id)
@@ -138,13 +145,40 @@ func _reindex() -> void:
 
 ## Wake every sleeping structure that has come into view (Structure.asleep): one loop here instead of every
 ## structure in town being processed each frame to find out it is still off screen.
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var v := Structure.view
+	tick_idle(delta, v)
 	if not v.has_area():
 		return
 	for s in _structures:
-		if s.asleep and is_instance_valid(s) and s.view_box().intersects(v):
+		if s.asleep and not s.idle and is_instance_valid(s) and s.view_box().intersects(v):
 			s.wake()
+
+
+func _on_idled(s: Structure) -> void:
+	_idle.append(s)
+
+
+## Check the idle structures' light, a slice a frame so each is seen Structure.LIGHT_HZ times a second; drop any
+## that woke, left the view or was freed.
+func tick_idle(delta: float, v: Rect2) -> void:
+	if _idle.is_empty():
+		return
+	_idle_due = minf(_idle_due + _idle.size() * Structure.LIGHT_HZ * delta, _idle.size())
+	var n := int(_idle_due)
+	_idle_due -= n
+	for k in n:
+		if _idle.is_empty():
+			return
+		if _idle_at >= _idle.size():
+			_idle_at = 0
+		var s := _idle[_idle_at]
+		if is_instance_valid(s) and s.idle and s.idle_check(v):
+			_idle_at += 1
+		else:
+			# Swapped out: the order does not matter, only that everyone gets their turn.
+			_idle[_idle_at] = _idle[_idle.size() - 1]
+			_idle.pop_back()
 
 
 ## Register a decor piece for blasts to reach.

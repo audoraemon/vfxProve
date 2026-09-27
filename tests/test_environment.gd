@@ -35,3 +35,28 @@ static func run(t) -> void:
 	t.check(d.destroyed, "accumulated damage destroys")
 	env.clear()
 	env.free()
+
+	# In view with nothing going on, a building goes idle: it stops processing, and the field checks its light for it.
+	var field := EnvironmentField.new()
+	field.lights = LightField.new()
+	var house := field.add_structure(Rect2(0, 0, 1, 1), 20.0, Structure.Kind.HOUSE)
+	var torch := field.add_structure(Rect2(3, 3, 0.2, 0.2), 16.0, Structure.Kind.TORCH)
+	house._ready()
+	torch._ready()
+	# The first frame draws it (a new building is dirty); the next finds nothing to do.
+	for i in 2:
+		house._process(1.0 / 60.0)
+		torch._process(1.0 / 60.0)
+	t.check(house.idle and house.asleep and field._idle.has(house), "a quiet building in view goes idle")
+	t.check(not torch.idle, "a torch, whose flame steps with time, never does")
+	var drawn := house._drawn_sig
+	field.lights.add_static(house.center(), 2.0, Color(1.0, 0.6, 0.3), 1.0)
+	field.tick_idle(1.0 / Structure.LIGHT_HZ, Rect2())
+	t.check(house._drawn_sig != drawn, "a light placed on it is seen within 1/LIGHT_HZ")
+	house.mark_hit(0.1, &"blast")
+	t.check(not house.idle and not house.asleep, "a hit wakes it")
+	field.tick_idle(1.0, Rect2())
+	t.check(not field._idle.has(house), "and the field lets it go")
+	field.clear()
+	field.lights.free()
+	field.free()

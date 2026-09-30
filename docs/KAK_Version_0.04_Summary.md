@@ -31,7 +31,7 @@ You are an ancient god who **manifests over one walled medieval town, Aldermere*
 | Cancel / unfocus / pause | Esc |
 | Restart | R |
 | FPS meter | F3 (fps, frame ms, slowest frame, draw calls) |
-| Behaviour overlay | F4 (citizens' intents — blue for fire responders — alarm stage and timeline, gate queues, the citizen under the mouse) |
+| Behaviour overlay | F4 (citizens' intents — blue for fire responders, lilac for people heading into shelter — alarm stage and timeline, gate queues, the citizen under the mouse) |
 
 ## 4. Rules and resources
 
@@ -129,6 +129,11 @@ The default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and 
   - A fire grows, eats its building, keeps a danger zone about it and can spread to neighbours within 1.5 units — much faster in a tornado's wind.
   - **Responders:** up to 4 nearby calm citizens per fire (within 10 units, only before the Evacuation stage) fetch water from the nearest fountain or well and douse it.
   - They give up if the fire grows too big, the water points are destroyed, or the town evacuates. Destroying fountains and wells takes away the town's firefighting.
+- **Shelter (P2):**
+  - **Taking cover:** a frightened citizen may duck into a sturdy building within 5 units instead of running — the cathedral (holds 20), taverns, the barracks, the workshop or townhouses (room by floor size, 4–20). This happens 80% of the time for tornado, stone rain, Nova, orbital and collapses, 30% otherwise.
+  - **Inside:** people are hidden and out of reach of every effect.
+  - **Coming out:** when no danger has been near for 5 s, or at the evacuation (then they head for the gates).
+  - **When the building is hit:** heavy damage (under half health) or fire throws them out running; a collapse kills everyone inside. A full cathedral is a target.
 - **Families (P1):** people sharing a home are a household. At City Emergency whole households (and every merchant) go home. When the evacuation comes, each household leaves together once everyone is home, or after 20 s.
 
 ## 8. Tools and dev features
@@ -143,7 +148,7 @@ The default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and 
   - `profile_view.gd` (per-category frame cost at any view);
   - `profile_wear.gd` (late-game slowdown after rounds of destruction).
 - **Art measurement:** `match_components.py`, `match_interior.py`, `match_density.py`, `match_layout.py`.
-- **Tests:** 824 automated checks (`tools/test.sh`).
+- **Tests:** 829 automated checks (`tools/test.sh`).
 - **Behaviour scenarios:** `tools/dev/behaviour_check.gd` runs calm, strike, escalate, gates and fire scenarios, each with a deterministic checksum.
 
 ## 9. Performance (v0.04: the citizen AI costs nothing measurable against v0.03, in same-hour benches)
@@ -162,7 +167,5 @@ The default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and 
   - 64+ fps zoomed fully out.
 
 ## 10. Not yet in (later)
-
-**Next (P2):** shelter in buildings.
 
 **Later:** world map, progression and upgrades, more maps, civilization ages, building materials, elemental combos, enemy heroes and defenses that fight back, repair crews.

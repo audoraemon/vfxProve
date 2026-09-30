@@ -4,10 +4,10 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
-enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST }
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER }
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
@@ -94,6 +94,12 @@ var assist_fire: Structure
 var assist_at_water := false
 var assist_full := false
 var assist_wait := 0.0
+## Taking cover (v0.04 P2; ShelterManager runs it): the crowd's manager, the building sought or sheltered in, its
+## door, and whether it is inside (hidden, out of every effect's reach, not stepped).
+var shelters: ShelterManager
+var shelter: Structure
+var shelter_door := Vector2.INF
+var inside := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
@@ -335,6 +341,8 @@ func _mind_speed() -> float:
 			return WALK_SPEED * RECOVER_PACE * pace
 		Mind.ASSIST:
 			return WALK_SPEED * ASSIST_PACE * pace
+		Mind.SHELTER:
+			return PANIC_SPEED * pace
 		Mind.FLEE:
 			return FLEE_SPEED * pace
 		_:
@@ -403,7 +411,7 @@ func _pick_target() -> void:
 	if mind == Mind.PANIC:
 		_settle()
 		return
-	if mind == Mind.OBSERVE or mind == Mind.ASSIST:
+	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER:
 		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
@@ -428,8 +436,12 @@ func _drift() -> void:
 
 ## A danger of radius `radius` at `from` is on top of it: run clear of it, to LOCAL_FLEE beyond its edge, then
 ## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. Soldiers do not.
-func panic(from: Vector2, radius := 1.0) -> void:
-	if soldier or mind == Mind.FLEE or state == State.DEAD:
+func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
+	if soldier or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD:
+		return
+	# A sturdy building nearby may be better than running (ShelterManager).
+	if shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
+		awareness = Awareness.THREATENED
 		return
 	mind = Mind.PANIC
 	awareness = Awareness.THREATENED
@@ -525,7 +537,28 @@ func intent() -> Intent:
 			return Intent.REGROUP
 		Mind.ASSIST:
 			return Intent.ASSIST
+		Mind.SHELTER:
+			return Intent.SHELTER
 	return Intent.ROUTINE
+
+
+## Run to the door of `s` to take cover inside.
+func seek_shelter(s: Structure, door: Vector2) -> void:
+	mind = Mind.SHELTER
+	shelter = s
+	shelter_door = door
+	walk_speed = PANIC_SPEED * pace
+	set_goal(door)
+
+
+## Out of cover (or giving up on it): to the gates if the town is evacuating, else back to its day.
+func leave_shelter(evacuate: bool) -> void:
+	shelter = null
+	if evacuate:
+		mind = Mind.CALM
+		flee()
+	else:
+		_recover(rng.randf_range(2.0, 4.0))
 
 
 ## Turn out to fight the fire on `s` (FireManager sends it for water).

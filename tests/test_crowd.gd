@@ -101,7 +101,8 @@ static func run(t) -> void:
 	beside.ground_pos = market.center() + Vector2(1.0, 0.0)
 	market.destroy(market.center() + Vector2(2.0, 0.0), &"stone")
 	t.near(crowd.alarm - alarm_before, Crowd.ALARM_BUILDING, 0.001, "a destroyed building is worth 2 alarm")
-	t.check(beside.mind == Person.Mind.PANIC, "and frightens the people beside it")
+	t.check(beside.mind == Person.Mind.PANIC or beside.mind == Person.Mind.SHELTER,
+		"and frightens the people beside it (run or take cover)")
 
 	# The Citadel's parts do not each count as a building, but the first hit on it is worth 10 and rallies.
 	alarm_before = crowd.alarm
@@ -130,6 +131,7 @@ static func run(t) -> void:
 	var households := crowd._households.size()
 	crowd._clock += Crowd.HOUSEHOLD_WAIT
 	crowd._tend_households()
+	crowd.shelters.step(1.0)
 	t.check(households > 0 and crowd._households.is_empty(), "regrouped households wait, then leave together (%d)" % households)
 	var still_calm := 0
 	for p in crowd.citizens:

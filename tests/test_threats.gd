@@ -63,7 +63,8 @@ static func run(t) -> void:
 	walker.mind = Person.Mind.CALM
 	walker.ground_pos = Vector2(-10, 6)
 	crowd._watch_threats()
-	t.check(walker.mind == Person.Mind.PANIC, "someone walking into a lasting danger runs from it")
+	t.check(walker.mind == Person.Mind.PANIC or walker.mind == Person.Mind.SHELTER,
+		"someone walking into a lasting danger runs from it or takes cover")
 
 	# Recovering, a citizen's routine steers clear of the ground a danger left.
 	var back: Person = crowd.citizens[5]

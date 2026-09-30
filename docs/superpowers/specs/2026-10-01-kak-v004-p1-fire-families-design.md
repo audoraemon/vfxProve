@@ -61,3 +61,29 @@
   | Wear, round 4 | 116.2 fps | 131.3 fps |
 
 - **Tests:** 824 checks.
+
+## P2 — Shelter (added 2026-10-01)
+
+**Decisions (with the user):** sturdy buildings nearby; a collapse kills those inside and heavy damage flushes them out; they stay until the danger clears.
+
+**What was built:** ShelterManager (`src/game/crowd/shelter_manager.gd`).
+- **Shelters:** the cathedral, the taverns, the barracks, the workshop and the townhouses. Capacity is 6 people per unit of floor, from 4 to 20.
+- **Who takes cover:** a frightened citizen within 5 units, with a chance of 0.8 for severe dangers (tornado, cinder, judgement, nova, orbital, collapse) and 0.3 otherwise.
+- **Inside:** people are removed from EnemyField, hidden and not stepped.
+- **Coming out:** after 5 s with no danger within 8 units, or at the evacuation (then to the gates).
+- **Hit:** under half health, or burning, flushes them out running; destroyed kills them inside (`collapse`).
+
+**Results:**
+- **Escalate scenario:** up to 28 people in shelter at once.
+- **Mission test:** `citizens=168 escaped=1` (P1: 192, 2); the scripted strikes flatten occupied shelters.
+- **crowd_check:** −193622645.
+- **Bench, same hour** (vs `kak-v0.04-p1`):
+
+  | | `kak-v0.04-p1` | P2 |
+  |---|---|---|
+  | Market view | 96.5 fps | 105.6 fps |
+  | Wear, start | 102.6 fps | 109.2 fps |
+  | Wear, round 1 | 73.2 fps | 95.1 fps |
+  | Wear, round 4 | 115.7 fps | 140.2 fps |
+
+- **Tests:** 829 checks.

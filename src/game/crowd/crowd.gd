@@ -90,6 +90,8 @@ var alarms := AlarmManager.new()
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
 var fires: FireManager
+## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
+var shelters: ShelterManager
 var _stage_in := 0.0
 ## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
 var _investigating: Array = []
@@ -189,8 +191,10 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		soldiers.append(_add_person(true, spot))
 	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
+	shelters = ShelterManager.new().setup(self, _env, _field)
 	for p in citizens:
 		p.evac = evac
+		p.shelters = shelters
 	spawned_citizens = citizens.size()
 	spawned_soldiers = soldiers.size()
 	if _ticker == null:
@@ -366,7 +370,7 @@ func _process(delta: float) -> void:
 ## processed them in when each processed itself.
 func step_people(delta: float) -> void:
 	for p in citizens:
-		if is_instance_valid(p):
+		if is_instance_valid(p) and not p.inside:
 			p.frame(delta)
 	for p in soldiers:
 		if is_instance_valid(p):
@@ -387,6 +391,8 @@ func advance(delta: float) -> void:
 	if evac != null:
 		evac.step(delta)
 	fires.step(delta)
+	if shelters != null:
+		shelters.step(delta)
 	_stage_in -= delta
 	if _stage_in <= 0.0:
 		_stage_in = 0.5
@@ -627,7 +633,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 	for point in points:
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
-	_react(points, radius, float(reach[1]), ground)
+	_react(points, radius, float(reach[1]), ground, StringName(key))
 
 
 ## A cast's danger radius: its area on the ground (Targeting.AREAS), or v0.03's fright less the margin.
@@ -641,7 +647,7 @@ static func _cast_radius(key: String) -> float:
 
 
 ## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look.
-func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2) -> void:
+func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"") -> void:
 	var frightened: Array[Person] = []
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
@@ -653,9 +659,11 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 			if d < best:
 				best = d
 				at = point
+		if p.inside:
+			continue
 		if best <= radius + Person.THREAT_MARGIN:
 			var was := p.mind
-			p.panic(at, radius)
+			p.panic(at, radius, kind)
 			if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
 				frightened.append(p)
 				_spreads.append([_clock + _rng.randf_range(SPREAD_DELAY.x, SPREAD_DELAY.y), p])
@@ -692,7 +700,7 @@ func _watch_threats() -> void:
 		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER):
 			continue
 		for t in threats.nearby(p.ground_pos, Person.THREAT_MARGIN):
-			p.panic(t.at, float(t.radius))
+			p.panic(t.at, float(t.radius), t.kind)
 			break
 
 
@@ -723,6 +731,8 @@ func _evacuate() -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
+		if p.mind == Person.Mind.SHELTER:
+			continue  # ShelterManager sends them to the gates
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):
@@ -898,6 +908,8 @@ func clear() -> void:
 	_spreads.clear()
 	alarms.reset()
 	fires.clear()
+	if shelters != null:
+		shelters.clear()
 	_households.clear()
 	_investigating.clear()
 	_ringer = null
@@ -927,7 +939,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
 	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
 	var points: Array[Vector2] = [at]
-	_react(points, radius, COLLAPSE_SOUND, at)
+	_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
 	if is_instance_valid(_town) and s == _town.bridge:
 		# The south route just closed: everyone already walking it needs a new plan.
 		for p in citizens:

@@ -25,3 +25,7 @@ static func run(t) -> void:
 	FpsMeter.shown = false
 	m.free()
 	again.free()
+
+	# F4's behaviour overlay (v0.04 debug): a colour for every intent, hidden until asked for.
+	t.check(BehaviourOverlay.INTENT_COLS.size() == Person.Intent.size() and not BehaviourOverlay.shown,
+		"the behaviour overlay has a colour per intent and starts hidden")

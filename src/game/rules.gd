@@ -59,8 +59,9 @@ const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barr
 ## credited for what it started.
 const CAST_GRACE := 4.0
 
-## This many citizens reaching an exit loses the mission (spec §4.4).
-const ESCAPE_LIMIT := 76
+## This many citizens reaching an exit loses the mission (spec §4.4: 76; 50 since v0.04, whose evacuation comes
+## late -- after the bell and a regroup -- and then lets out about 0.65 a second across both gates).
+const ESCAPE_LIMIT := 50
 
 const SCORE_WIN := 5000
 const SCORE_PER_SECOND := 25

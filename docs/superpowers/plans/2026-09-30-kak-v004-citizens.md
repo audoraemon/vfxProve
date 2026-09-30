@@ -302,3 +302,21 @@
   | Wear, round 4 | 127.7 fps | 140.2 fps |
 
 - **Tests:** 810 checks.
+
+### M5
+- **F4 behaviour overlay** (`src/game/ui/behaviour_overlay.gd`, created per mission):
+  - a ring under each citizen in its intent's colour;
+  - a panel with the stage, alarm and bell, the last stage changes, counts by intent, and each gate's state and queue;
+  - for the citizen nearest the mouse: role, intent, awareness, exit scores, dangers within 12 and a line to its goal.
+  - `-- --behaviour` starts it shown; `behaviour_check.gd gates --shots` captures it.
+- **Escape limit 76 → 50** (the user's choice).
+  - Evidence: across 5 seeds the scripted mission (Citadel down in about 30 s) saw 0–6 escapes. In the gates scenario an evacuation lets out about 0.65 people a second, so 50 takes about 75 s of unchecked evacuation.
+- **Acceptance** (source doc §13):
+  - calm 60 s (M1 counts);
+  - local catastrophe: the strike scenario;
+  - alarm escalation: the escalate timeline;
+  - gate congestion and gate hazard: the gates scenarios;
+  - repeat mission: 5 seeds all end at 53–56% stability with different escapes.
+  - Performance: the M4 same-hour bench; M5 adds only the overlay, hidden by default.
+- **Summary:** `docs/KAK_Version_0.04_Summary.md`.
+- **Tests:** 811 checks.

@@ -62,6 +62,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## F4: the citizens' intents, the alarm stage and the gates (v0.04 debug).
+var _overlay: BehaviourOverlay
 var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
@@ -113,7 +115,7 @@ func _ready() -> void:
 ## default four, so a standalone run still works.
 func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.reset(seed_value)
-	for n: Node in [_town, _crowd, _rules, _aim, _hud]:
+	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay]:
 		if is_instance_valid(n):
 			if n is Town:
 				(n as Town).teardown()
@@ -165,6 +167,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_hud.name = "Hud"
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
+	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
+	_overlay.name = "BehaviourOverlay"
+	if "--behaviour" in OS.get_cmdline_user_args():
+		BehaviourOverlay.shown = true
+	add_child(_overlay)
 
 	if _scripted:
 		# The scripted runs time their casts from the first frame and frame the town the way milestone 3 did,

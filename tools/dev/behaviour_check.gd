@@ -36,7 +36,7 @@ func _run() -> void:
 		"escalate":
 			await _escalate()
 		"gates":
-			await _gates("--hazard" in args)
+			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -98,7 +98,7 @@ func _escalate() -> void:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
 
 
-func _gates(hazard: bool) -> void:
+func _gates(hazard: bool, shots := false) -> void:
 	await _frames(20 * 60)
 	var crowd: Crowd = mission._crowd
 	crowd.alarms.bell_rung = true
@@ -125,6 +125,12 @@ func _gates(hazard: bool) -> void:
 		var queues := []
 		for g in crowd.evac.gates:
 			queues.append(crowd.waiting_at(g))
+		if shots and t == 10.0:
+			var bf: Battlefield = mission._bf
+			bf.camera.zoom = Vector2.ONE * 0.6
+			bf.camera.position = Iso.ground_to_screen(Vector2(6.0, 9.0)).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_gates.png")
 		print("BEHAVIOUR gates t=%d by exit %s rerouting=%d queues(main,side)=%s escaped=%d" % [roundi(t), by_exit,
 			rerouting, queues, crowd.escaped_count])
 

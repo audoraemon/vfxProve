@@ -87,7 +87,8 @@ static func run(t) -> void:
 	far.ground_pos = Vector2(0.0, 8.0)
 	crowd.on_cast(Vector2(0.0, 0.0))
 	t.check(near.mind == Person.Mind.PANIC, "a cast nearby starts a panic")
-	t.check(far.mind == Person.Mind.CALM, "one 8 units away is not frightened")
+	t.check(far.mind != Person.Mind.PANIC and far.mind != Person.Mind.FLEE,
+		"one 8 units away is not frightened (it stops to look: %s)" % Person.Mind.keys()[far.mind])
 
 	# A building falling frightens the people beside it and raises the alarm.
 	var alarm_before := crowd.alarm

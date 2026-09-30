@@ -163,9 +163,9 @@ func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
 	var a: Dictionary = AREAS.get(key, {})
 	if String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
-		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length))
+		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key)
 	else:
-		_crowd.on_cast(at)
+		_crowd.on_cast(at, Vector2.ZERO, 0.0, key)
 	# A power that went out is on its cooldown: unfocus, so its area stops following the cursor.
 	unfocus()
 

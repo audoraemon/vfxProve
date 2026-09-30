@@ -833,7 +833,8 @@ func wake() -> void:
 
 ## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch).
 func _can_idle() -> bool:
-	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) 		and not is_instance_valid(_flame)
+	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) \
+		and not is_instance_valid(_flame)
 
 
 func _go_idle() -> void:

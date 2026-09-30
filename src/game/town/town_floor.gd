@@ -561,7 +561,8 @@ func _shrubs(ci: CanvasItem) -> void:
 				var h := _hash(n * 7 + 3, n * 13 + 11)
 				if float(h % 100) / 100.0 > SHRUB_CHANCE:
 					continue
-				var g := d.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * SHRUB_STEP 					+ (Vector2(float(h % 17) / 17.0, float(h % 13) / 13.0) - Vector2(0.5, 0.5)) * SHRUB_STEP * 0.8
+				var g := d.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * SHRUB_STEP \
+					+ (Vector2(float(h % 17) / 17.0, float(h % 13) / 13.0) - Vector2(0.5, 0.5)) * SHRUB_STEP * 0.8
 				if _zone(g) != 1:
 					continue
 				var p := Iso.ground_to_screen(g).round()

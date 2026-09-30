@@ -56,15 +56,28 @@ func step(delta: float) -> void:
 
 ## One look at citizen `i`, `dt` seconds after the last: count down its stay once it has arrived, then send it on.
 func visit(i: int, dt: float) -> void:
+	if not is_instance_valid(_crowd.citizens[i]):
+		return
 	var p: Person = _crowd.citizens[i]
-	if not is_instance_valid(p) or p.profile == null or p.mind != Person.Mind.CALM or p.state == DummyEnemy.State.DEAD \
-			or p.has_goal():
+	if p.profile == null or p.state == DummyEnemy.State.DEAD or p.has_goal():
+		return
+	if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 		return
 	p.stay_left -= dt
 	if p.stay_left > 0.0:
 		return
 	var place := pick(p.profile, p.last_place)
 	var to := destination(p.profile, place)
+	if p.mind == Person.Mind.RECOVER:
+		# Back to its day, but not onto ground a danger has just left: home instead, or wait a little longer.
+		if _crowd.threats.unsafe(to, 1.0):
+			place = Place.HOME
+			to = p.profile.home
+		if _crowd.threats.unsafe(to, 1.0):
+			p.stay_left = 4.0
+			return
+		p.mind = Person.Mind.CALM
+		p.awareness = Person.Awareness.UNAWARE
 	p.last_place = place
 	p.stay_left = _rng.randf_range(STAY[place].x, STAY[place].y)
 	p.anchor = to

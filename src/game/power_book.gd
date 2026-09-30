@@ -39,6 +39,19 @@ const CLIP_SIZE := Vector2i(152, 86)
 const CLIP_FPS := 8.0
 
 
+## How far each power is seen and heard, how severe it is and how long it stays dangerous (v0.04 local awareness):
+## [sight, sound, severity, seconds]. People inside its area plus Person.THREAT_MARGIN run clear of it; within sight
+## or earshot they stop and look; beyond that they go on with their day.
+const REACH := {
+	"heaven": [6.0, 9.0, 0.5, 3.0], "tornado": [8.0, 11.0, 0.6, 10.0], "dragon": [8.0, 11.0, 0.6, 5.0],
+	"tsunami": [8.0, 12.0, 0.7, 5.0], "gravity": [6.0, 9.0, 0.6, 6.0], "laser": [7.0, 10.0, 0.6, 6.0],
+	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
+	"glacial": [8.0, 12.0, 0.7, 6.0], "nova": [40.0, 40.0, 1.0, 4.0],
+}
+## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
+const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
+
+
 static func get_power(key: String) -> Dictionary:
 	for p: Dictionary in POWERS:
 		if p.key == key:

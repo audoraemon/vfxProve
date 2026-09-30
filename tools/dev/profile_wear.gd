@@ -64,11 +64,11 @@ func _run() -> void:
 		decor.append(d)
 	var fx: Array[Node] = [env.fx_back, env.fx_parent]
 	for pair in [["fallen", fallen], ["standing", standing], ["people", people], ["decor", decor], ["fx layers", fx]]:
-		for n: Node in pair[1]:
+		for n in pair[1]:
 			if is_instance_valid(n):
 				(n as CanvasItem).visible = false
 		await _sample("-" + pair[0])
-		for n: Node in pair[1]:
+		for n in pair[1]:
 			if is_instance_valid(n):
 				(n as CanvasItem).visible = true
 	quit()

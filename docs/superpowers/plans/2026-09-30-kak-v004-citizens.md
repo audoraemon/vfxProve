@@ -232,3 +232,28 @@
 
   The spread at ~155 fps is 0.3 ms of noise, inside the budget.
 - **Bug found by the wear run:** RoutineManager's place in the roster ran past its end once people escaped or died. It now wraps, and a test covers it.
+
+### M2
+- **Threats are kept in a plain list** (ThreatManager), not buckets: only a handful are ever active.
+- **Per-power reach** is `PowerBook.REACH` (sight, sound, severity, seconds). The danger radius comes from `Targeting.AREAS`; a lane registers a threat every radius along it.
+- **The Tornado is not moved per frame.** Its threat covers its roam (radius r + roam) for its 10 s.
+- **Intents are read from minds.** Mind gains OBSERVE and RECOVER; `Person.intent()` maps the minds to intents.
+- **Panic no longer turns into flight.** Panic becomes a local run to beyond the danger's edge, then RECOVER (5–10 s wait, then the routine, avoiding unsafe ground).
+- **The alarm-50 town-wide flight is still in place until M3.** In the strike scenario:
+  - for the first 2 s only nearby people react; the rest carry on;
+  - the kills and collapses of one Heaven Splitter in the packed market take the alarm past 50 by 5 s, and everyone evacuates.
+- **Strike scenario, intents by distance at 2 s:**
+
+  | Distance | Intents |
+  |---|---|
+  | 0–6 | 22 fleeing locally, 7 looking |
+  | 6–12 | 26 fleeing, 42 looking, 12 in routine, 14 recovering |
+  | 12–20 | 65 in routine, 12 looking |
+  | 20+ | 13 in routine |
+
+- **Freed people:** typed assignments of freed people in the spread and routine code are guarded, and so is the same bug in `profile_wear.gd`'s breakdown.
+- **Checksums:** crowd_check −215896176; strike checksum 331747187.
+- **Mission test:** `citizens=144 escaped=18` (v0.03: 143, 10); the global flight now fires after the local runs.
+- **Bench:**
+  - market view: 115.3 and 113.9 fps (v0.03: 114);
+  - wear: 110 fps at the start, 149 at round 4 (v0.03: 159; within noise at that rate, 0.4 ms).

@@ -223,7 +223,8 @@ func near(g: Vector2, r: float) -> Array[Structure]:
 ## True when a standing structure units cannot walk through occupies the ground point (rubble, gates, the bridge
 ## and fields are walkable). Only the structures indexed in g's cell are checked.
 func blocked(g: Vector2, margin := 0.15) -> bool:
-	var candidates: Array = _structures if margin > MAX_MARGIN 		else _fine.get(Vector2i(floori(g.x / FINE_CELL), floori(g.y / FINE_CELL)), _NONE)
+	var candidates: Array = _structures if margin > MAX_MARGIN \
+		else _fine.get(Vector2i(floori(g.x / FINE_CELL), floori(g.y / FINE_CELL)), _NONE)
 	for s in candidates:
 		if is_instance_valid(s) and not s.destroyed and not s.walkable and s.contains(g, margin):
 			return true

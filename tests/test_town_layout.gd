@@ -68,7 +68,8 @@ static func run(t) -> void:
 	# test_crowd).
 	var in_fans: Array[String] = []
 	for d in items:
-		if Structure.WALKABLE.has(d.kind) or d.kind in [Structure.Kind.GATE, Structure.Kind.KEEP, Structure.Kind.TORCH] 				or d.role == &"barracks":
+		if Structure.WALKABLE.has(d.kind) or d.kind in [Structure.Kind.GATE, Structure.Kind.KEEP, Structure.Kind.TORCH] \
+				or d.role == &"barracks":
 			continue
 		var r: Rect2 = d.rect
 		var poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])

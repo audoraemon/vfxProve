@@ -24,7 +24,16 @@ const ALARM_RALLY := 25.0
 const ALARM_FLEE_ALL := 50.0
 ## A cast this close frightens a citizen; a collapse this close does too.
 const PANIC_CAST := 7.0
-const PANIC_DESTROY := 4.0
+## A fallen building: its danger's radius past the footprint's reach, and how far it is seen and heard.
+const COLLAPSE_RADIUS := 1.0
+const COLLAPSE_SIGHT := 4.0
+const COLLAPSE_SOUND := 6.0
+const COLLAPSE_SECONDS := 3.0
+## A frightened citizen's fright spreads to calm people within this, after SPREAD_DELAY seconds.
+const SPREAD_REACH := 2.5
+const SPREAD_DELAY := Vector2(0.5, 1.5)
+## How often people walking into a lasting danger (a tornado, a fire) are checked for it.
+const WATCH_HZ := 4.0
 ## One person through a gate this often. 0.6 s was the spec's starting value, calibrated against people who
 ## stalled at every path waypoint; once they really ran (milestone 5) 42 escaped in the first 34 s against a
 ## loss limit of 38. At 2 s the gates are the bottleneck the spec describes: crowds pile up in front of them.
@@ -57,6 +66,11 @@ var soldiers: Array[Person] = []
 var spawned_citizens := 0
 ## Where calm citizens go next (v0.04); made by spawn().
 var routine: RoutineManager
+## The dangers people know of (v0.04 local awareness).
+var threats := ThreatManager.new()
+## A frightened citizen's fright reaches the calm people beside it after a moment: [due clock, person].
+var _spreads: Array = []
+var _watch_in := 0.0
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -324,6 +338,12 @@ func step_people(delta: float) -> void:
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
 func advance(delta: float) -> void:
 	_clock += delta
+	threats.step(delta)
+	_spread_fright()
+	_watch_in -= delta
+	if _watch_in <= 0.0:
+		_watch_in = 1.0 / WATCH_HZ
+		_watch_threats()
 	if routine != null:
 		routine.step(delta)
 	_gates()
@@ -540,30 +560,92 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 		_voice(frightened[i], &"cit_yelp")
 
 
-## A cast landed: everyone close enough panics. A lane power (`dir` set, `length` above zero) frightens people
-## along its whole lane -- a tsunami's far end runs through streets the player never pressed on.
-func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0) -> void:
+## A cast of power `key` landed (v0.04): it registers a threat (PowerBook.REACH), and the people it reaches react
+## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
+## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
+## its whole lane: a tsunami's far end runs through streets the player never pressed on.
+func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
+	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
+	var radius := _cast_radius(key)
 	var points: Array[Vector2] = [ground]
 	if dir != Vector2.ZERO and length > 0.0:
-		var step := PANIC_CAST
+		var step := maxf(radius, 1.0)
 		var along := step
 		var unit := dir.normalized()
 		while along < length:
 			points.append(ground + unit * along)
 			along += step
 		points.append(ground + unit * length)
+	for point in points:
+		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
+			StringName(key))
+	_react(points, radius, float(reach[1]), ground)
+
+
+## A cast's danger radius: its area on the ground (Targeting.AREAS), or v0.03's fright less the margin.
+static func _cast_radius(key: String) -> float:
+	var a: Dictionary = Targeting.AREAS.get(key, {})
+	if a.has("r"):
+		return float(a.r) + float(a.get("roam", 0.0))
+	if a.has("half"):
+		return float(a.half) + 1.0
+	return PANIC_CAST - Person.THREAT_MARGIN
+
+
+## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look.
+func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2) -> void:
 	var frightened: Array[Person] = []
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
+		var best := INF
+		var at := Vector2.INF
 		for point in points:
-			if p.ground_pos.distance_to(point) <= PANIC_CAST:
-				var was := p.mind
-				p.panic(point)
-				if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
-					frightened.append(p)
-				break
-	_yelp(frightened, ground)
+			var d := p.ground_pos.distance_to(point)
+			if d < best:
+				best = d
+				at = point
+		if best <= radius + Person.THREAT_MARGIN:
+			var was := p.mind
+			p.panic(at, radius)
+			if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
+				frightened.append(p)
+				_spreads.append([_clock + _rng.randf_range(SPREAD_DELAY.x, SPREAD_DELAY.y), p])
+		elif best <= sound:
+			p.observe(at)
+	_yelp(frightened, yelp_at)
+
+
+## Frights passed on: a moment after a citizen was frightened, the calm people beside it stop and look its way.
+func _spread_fright() -> void:
+	var due: Array = []
+	var later: Array = []
+	for s in _spreads:
+		(due if float(s[0]) <= _clock else later).append(s)
+	_spreads = later
+	for s in due:
+		# Checked before the typed assignment: assigning a freed person to a Person variable is an error.
+		if not is_instance_valid(s[1]):
+			continue
+		var src: Person = s[1]
+		for p in citizens:
+			if is_instance_valid(p) and p != src and p.is_alive() and p.mind == Person.Mind.CALM \
+					and p.ground_pos.distance_to(src.ground_pos) <= SPREAD_REACH:
+				p.observe(src._threat)
+
+
+## People who walk into a lasting danger (a tornado still spinning) run from it too.
+func _watch_threats() -> void:
+	if threats.active_count() == 0:
+		return
+	for p in citizens:
+		if not is_instance_valid(p) or not p.is_alive():
+			continue
+		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER):
+			continue
+		for t in threats.nearby(p.ground_pos, Person.THREAT_MARGIN):
+			p.panic(t.at, float(t.radius))
+			break
 
 
 func add_alarm(points: float) -> void:
@@ -620,6 +702,8 @@ func clear() -> void:
 				p.free()
 	citizens.clear()
 	soldiers.clear()
+	threats.clear()
+	_spreads.clear()
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0
@@ -641,14 +725,10 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
 		add_alarm(ALARM_BUILDING)
 	var at := s.center()
-	var frightened: Array[Person] = []
-	for p in citizens:
-		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(at) <= PANIC_DESTROY:
-			var was := p.mind
-			p.panic(at)
-			if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
-				frightened.append(p)
-	_yelp(frightened, at)
+	var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
+	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
+	var points: Array[Vector2] = [at]
+	_react(points, radius, COLLAPSE_SOUND, at)
 	if is_instance_valid(_town) and s == _town.bridge:
 		# The south route just closed: everyone already walking it needs a new plan.
 		for p in citizens:

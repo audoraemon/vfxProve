@@ -4,12 +4,30 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER }
+## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
+## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER }
+## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
+## alarm).
+enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
 
 const PANIC_SPEED := 1.6
 const FLEE_SPEED := 1.2
-## How long a fright lasts before it turns into flight.
-const PANIC_SECONDS := 3.0
+## How long a fright can last before it settles even if the person never reached safety (walled in, a path that
+## keeps closing).
+const PANIC_SECONDS := 12.0
+## A local flight runs to this far beyond the threat's radius (plus up to LOCAL_FLEE_JITTER more).
+const LOCAL_FLEE := 3.0
+const LOCAL_FLEE_JITTER := 2.0
+## A frightened person still inside the threat's radius plus this is not yet safe.
+const THREAT_MARGIN := 1.5
+## How long a person stops to look at something it saw or heard (seconds, min and max), and how long one waits where
+## it ran to (or after looking) before going back to its day.
+const OBSERVE_SECONDS := Vector2(1.0, 3.0)
+const RECOVER_WAIT := Vector2(5.0, 10.0)
+## Walking back after a fright, a little slower than a stroll.
+const RECOVER_PACE := 0.8
 ## Close enough to count as arrived.
 const GOAL_REACH := 0.45
 ## Seconds before a person gives a stuck goal another try. Cinderfall repeatedly invalidates routes (fallen
@@ -94,8 +112,11 @@ static var _sort_cells := {}
 static var _sort_cells_env: EnvironmentField
 static var _sort_cells_epoch := -1
 const SORT_CELL := 0.5
-## Where the fright came from, so a dash and a scurry run away from it.
+## Where the fright came from, so a dash and a scurry run away from it, and its radius.
 var _threat := Vector2.INF
+var _threat_r := 1.0
+var awareness := Awareness.UNAWARE
+var _observe_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 
@@ -205,7 +226,8 @@ func frame(delta: float) -> void:
 
 ## Calm or at a post, wandering, and nothing holding or tripping it: updated at CALM_EVERY on screen.
 func unhurried() -> bool:
-	return (mind == Mind.CALM or mind == Mind.POST) and state == State.WANDER and not is_frozen() and _stumble <= 0.0 		and wait <= 0.0
+	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER
+	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and wait <= 0.0
 
 
 # --- Brain -------------------------------------------------------------------
@@ -257,7 +279,12 @@ func _think(delta: float) -> void:
 	if mind == Mind.PANIC:
 		_panic_left -= delta
 		if _panic_left <= 0.0:
-			flee()
+			_settle()
+	elif mind == Mind.OBSERVE:
+		_observe_left -= delta
+		_idle = maxf(_idle, 0.1)
+		if _observe_left <= 0.0:
+			_recover(rng.randf_range(1.0, 3.0))
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -289,6 +316,8 @@ func _mind_speed() -> float:
 	match mind:
 		Mind.PANIC, Mind.RALLY:
 			return PANIC_SPEED * pace
+		Mind.RECOVER:
+			return WALK_SPEED * RECOVER_PACE * pace
 		Mind.FLEE:
 			return FLEE_SPEED * pace
 		_:
@@ -355,7 +384,10 @@ func _pick_target() -> void:
 		return
 	_goal = Vector2.INF
 	if mind == Mind.PANIC:
-		_dash()
+		_settle()
+		return
+	if mind == Mind.OBSERVE:
+		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
 		_scurry()
@@ -366,7 +398,7 @@ func _pick_target() -> void:
 ## A small aimless step: citizens milling about their street, soldiers shifting at their post.
 func _drift() -> void:
 	var spread := POST_SPREAD
-	if mind == Mind.CALM:
+	if mind == Mind.CALM or mind == Mind.RECOVER:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
 	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
 	if grid != null:
@@ -377,17 +409,88 @@ func _drift() -> void:
 
 # --- What the town does to a person ------------------------------------------
 
-## A power landed, or a building fell, at `from`: bolt away from it, then flee for good. Soldiers do not.
-func panic(from: Vector2) -> void:
+## A danger of radius `radius` at `from` is on top of it: run clear of it, to LOCAL_FLEE beyond its edge, then
+## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. Soldiers do not.
+func panic(from: Vector2, radius := 1.0) -> void:
 	if soldier or mind == Mind.FLEE or state == State.DEAD:
 		return
 	mind = Mind.PANIC
+	awareness = Awareness.THREATENED
 	# Set here, not left for the next _think(): that can be a frame away now that thinking is half-rate, and a
 	# jolt should visibly speed someone up the instant it lands, not on a coin-flip frame.
 	walk_speed = _mind_speed()
 	_panic_left = PANIC_SECONDS
 	_threat = from
-	_dash()
+	_threat_r = radius
+	_flee_local()
+
+
+## Something happened within sight or earshot at `from`: stop and look at it for a moment. Only a calm or recovering
+## citizen does; the frightened and the fleeing are past looking.
+func observe(from: Vector2) -> void:
+	if soldier or state == State.DEAD or not (mind == Mind.CALM or mind == Mind.RECOVER):
+		return
+	mind = Mind.OBSERVE
+	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
+	_threat = from
+	_observe_left = rng.randf_range(OBSERVE_SECONDS.x, OBSERVE_SECONDS.y)
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	_target = ground_pos
+	walk_speed = _mind_speed()
+
+
+## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is
+## found).
+func _flee_local() -> void:
+	var away := ground_pos - _threat
+	var dir := away.normalized() if away.length() > 0.01 else Vector2.RIGHT.rotated(rng.randf() * TAU)
+	dir = dir.rotated(rng.randf_range(-DASH_VEER, DASH_VEER) * 0.5)
+	var to := _threat + dir * (_threat_r + LOCAL_FLEE + rng.randf_range(0.0, LOCAL_FLEE_JITTER))
+	if grid != null:
+		var free := grid.nearest_walkable(to, 8)
+		to = free if free != Vector2.INF else ground_pos
+	if to.distance_to(ground_pos) <= GOAL_REACH:
+		_dash()
+		return
+	set_goal(to)
+
+
+## The flight is over: still inside the danger, run on; clear of it, wait where it is and then go back to its day.
+func _settle() -> void:
+	if ground_pos.distance_to(_threat) < _threat_r + THREAT_MARGIN and _panic_left > 0.0:
+		_flee_local()
+		return
+	_recover(rng.randf_range(RECOVER_WAIT.x, RECOVER_WAIT.y))
+
+
+## Wait `wait` seconds where it stands, then its routine picks up again (RoutineManager), steering clear of the
+## ground the danger left.
+func _recover(wait: float) -> void:
+	mind = Mind.RECOVER
+	_panic_left = 0.0
+	anchor = ground_pos
+	stay_left = wait
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	walk_speed = _mind_speed()
+	_drift()
+
+
+## What it is trying to do (Intent), read from its mind.
+func intent() -> Intent:
+	match mind:
+		Mind.OBSERVE:
+			return Intent.OBSERVE
+		Mind.PANIC:
+			return Intent.LOCAL_FLEE
+		Mind.FLEE:
+			return Intent.EVACUATE
+		Mind.RECOVER:
+			return Intent.RECOVER
+	return Intent.ROUTINE
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.

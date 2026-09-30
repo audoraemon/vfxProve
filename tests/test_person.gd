@@ -43,7 +43,7 @@ static func run(t) -> void:
 	Person.view = Rect2()
 	odd.free()
 
-	# Panic runs away from the blow, then turns into flight.
+	# Panic runs clear of the blow, then settles to recover: flight to a gate is the alarm's call, not a fright's.
 	var start := c.ground_pos
 	c.panic(start + Vector2(0.0, -1.0))
 	c.tick(1.0 / 60.0)
@@ -51,9 +51,11 @@ static func run(t) -> void:
 	for i in 200:
 		c.tick(1.0 / 60.0)
 	t.check(c.ground_pos.y >= start.y - 0.05, "it runs away from the blow, not into it")
-	for i in 240:
+	for i in 600:
 		c.tick(1.0 / 60.0)
-	t.check(c.mind == Person.Mind.FLEE, "panic turns into flight")
+	t.check(c.mind == Person.Mind.RECOVER and c.ground_pos.distance_to(start + Vector2(0.0, -1.0)) > 1.0 + Person.THREAT_MARGIN,
+		"clear of the danger, the panic settles into recovery, not flight (%s)" % Person.Mind.keys()[c.mind])
+	c.flee()
 	var fled := 0
 	while fled < 9000 and not c.has_escaped():
 		c.tick(1.0 / 60.0)
@@ -168,7 +170,7 @@ static func run(t) -> void:
 	t.check(r.is_running(), "a panicked citizen runs")
 	var first_goal := r._goal
 	t.check(first_goal.distance_to(threat) > r.ground_pos.distance_to(threat), "away from the blow")
-	# Walk it to the end of its dash: still panicking, it dashes again instead of milling about.
+	# Walk it to the end of its flight: clear of the danger, it stops running and recovers.
 	var guard := 0
 	while guard < 600 and r.ground_pos.distance_to(first_goal) > Person.GOAL_REACH:
 		r.tick(1.0 / 60.0)
@@ -180,8 +182,8 @@ static func run(t) -> void:
 	while redash < 60 and r._goal == first_goal:
 		r.tick(1.0 / 60.0)
 		redash += 1
-	t.check(r.mind == Person.Mind.PANIC and r._goal != Vector2.INF and r._goal != first_goal,
-		"at the end of a dash it dashes again (%s after %d ticks)" % [r._goal, redash])
+	t.check(r.mind == Person.Mind.RECOVER and not r.is_running(),
+		"at the end of its flight, clear of the danger, it recovers (%s after %d ticks)" % [Person.Mind.keys()[r.mind], redash])
 
 	# Turning to flight, it does not stand still while its route out is worked out.
 	r.flee()

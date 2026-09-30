@@ -5,6 +5,7 @@ extends SceneTree
 ## usage: godot --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=calm
 ##   [--seconds=60] [--shots]
 ##   calm   nothing cast: where citizens are, by kind of place, every 20 s; --shots saves captures at the end
+##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
 
 var mission: Mission
 
@@ -27,6 +28,8 @@ func _run() -> void:
 	match scenario:
 		"calm", "":
 			await _calm(seconds, "--shots" in args)
+		"strike":
+			await _strike("--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -45,6 +48,40 @@ func _calm(seconds: float, shots: bool) -> void:
 			bf.camera.position = Iso.ground_to_screen(shot[1]).round()
 			await _frames(3)
 			await bf.save_capture(shot[0])
+
+
+func _strike(shots: bool) -> void:
+	await _frames(20 * 60)
+	var at := Vector2(0.8, 2.0)
+	mission._rules.cast(0, at, {"dir": Vector2(1, 0)})
+	var t := 0.0
+	for mark in [0.5, 2.0, 5.0, 10.0, 20.0, 30.0]:
+		await _frames(roundi((mark - t) * 60.0))
+		t = mark
+		print("BEHAVIOUR strike t=%.1f %s" % [t, _bands(at)])
+		if shots and is_equal_approx(mark, 2.0):
+			var bf: Battlefield = mission._bf
+			bf.camera.zoom = Vector2.ONE * 0.6
+			bf.camera.position = Iso.ground_to_screen(at).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_strike.png")
+
+
+## Living citizens' intents, by distance band (ground units) from `at`.
+func _bands(at: Vector2) -> String:
+	var bands := [[0.0, 6.0], [6.0, 12.0], [12.0, 20.0], [20.0, 999.0]]
+	var parts := []
+	for b in bands:
+		var counts := {}
+		for p: Person in mission._crowd.citizens:
+			if not is_instance_valid(p) or p.state == DummyEnemy.State.DEAD:
+				continue
+			var d := p.ground_pos.distance_to(at)
+			if d >= float(b[0]) and d < float(b[1]):
+				var k: String = Person.Intent.keys()[p.intent()]
+				counts[k] = int(counts.get(k, 0)) + 1
+		parts.append("%d-%d:%s" % [b[0], mini(int(b[1]), 99), counts])
+	return " ".join(parts)
 
 
 func _frames(n: int) -> void:

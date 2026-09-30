@@ -83,7 +83,7 @@ static func _solid_rects(built: Array[Dictionary]) -> Array[Rect2]:
 			out.append(d.rect)
 	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
 		out.append(Rect2(r.position + TownLayout.CITADEL_ORIGIN, r.size))
-	for f: Rect2 in TownLayout.FOUNTAINS:
+	for f: Rect2 in TownLayout.FOUNTAINS + TownLayout.WELLS:
 		out.append(f)
 	# Gardens and yards close every cell they touch (WalkGrid): grown so that, with blocked()'s own BODY, they reach
 	# half a cell.
@@ -459,7 +459,7 @@ static func _live_index(out: Array[Dictionary], built: Array[Dictionary], skip_l
 		n += 1
 	# Built beside the layout's buildings: the fountains, and the Citadel's parts (as tall as its keep, to be safe).
 	var others: Array[Rect2] = []
-	for f: Rect2 in TownLayout.FOUNTAINS:
+	for f: Rect2 in TownLayout.FOUNTAINS + TownLayout.WELLS:
 		others.append(f)
 	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
 		others.append(Rect2(r.position + TownLayout.CITADEL_ORIGIN, r.size))

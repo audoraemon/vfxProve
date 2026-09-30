@@ -81,6 +81,11 @@ const BRIDGE := Rect2(1.7, 18.4, 2.0, 7.6)
 ## The market fountain and the north-east plaza's (built after the Citadel so every other building keeps its seed).
 const FOUNTAIN := Rect2(0.2, 5.1, 1.2, 1.2)
 const FOUNTAINS := [Rect2(0.2, 5.1, 1.2, 1.2), Rect2(10.8, -10.6, 1.2, 1.2)]
+## Wells: the town's water points besides the fountains (citizens gather at them; fire response draws from them
+## later), in the western quarters, which have no fountain. Each stands on open ground clear of the houses, the streets
+## and the gate queues, where no building in front hides it; the east has no such ground (its open spots lie behind
+## the tavern or in the Side Gate's queue), and the market fountain serves it. Built after the fountains.
+const WELLS := [Rect2(-11.9, -13.8, 0.5, 0.5), Rect2(-14.1, 1.6, 0.5, 0.5), Rect2(-9.1, 13.5, 0.5, 0.5)]
 ## Market stalls packed as the reference's are: rows 1.5 apart (0.8 aisles between them) of three stalls west of
 ## the main street, leaving a walkway along it for the piles; a column east of it; none within 0.6 of the fountain.
 const STALLS := [
@@ -540,6 +545,44 @@ static func public_spots() -> Array:
 				if inner.has_point(p) and not in_queue_fan(Rect2(p, Vector2(0.01, 0.01))):
 					street.append(p)
 	return [market, street]
+
+
+## Where citizens go about their day (CitizenProfile, RoutineManager), by kind: "home" (outside each house's front),
+## "stall" (in front of each market stall), "craft" (the smithy, workshop and carpenter's yards), "tavern",
+## "cathedral" (its steps), "plaza" (the squares and plazas), "water" (round the fountains and wells), "field"
+## (field edges), "mill", "dock". Raw ground points: the crowd snaps each to the nearest walkable cell. None in a
+## gate's queue fan.
+static func anchors() -> Dictionary:
+	var out := {"home": [], "stall": [], "craft": [], "tavern": [], "cathedral": [], "plaza": [], "water": [],
+		"field": [], "mill": [], "dock": []}
+	for h: Rect2 in houses():
+		out.home.append(Vector2(h.get_center().x, h.end.y + 0.35))
+	for st: Rect2 in STALLS:
+		out.stall.append(Vector2(st.get_center().x, st.end.y + 0.3))
+	for r: Rect2 in [SMITHY_YARD, WORKSHOP, CARPENTER_YARD]:
+		out.craft.append(Vector2(r.get_center().x, r.end.y + 0.35))
+	for t: Rect2 in TAVERNS:
+		out.tavern.append(Vector2(t.get_center().x, t.end.y + 0.4))
+	for k in 3:
+		out.cathedral.append(Vector2(TEMPLE.position.x + 0.8 + k * 1.3, TEMPLE.end.y + 0.4))
+	for pl: Rect2 in [MARKET_SQUARE, FOUNTAIN_PLAZA] + GATE_PLAZAS:
+		for k in 4:
+			out.plaza.append(pl.position + pl.size * Vector2(0.25 + 0.5 * (k % 2), 0.25 + 0.5 * (k / 2)))
+	for w: Rect2 in FOUNTAINS + WELLS:
+		out.water.append(Vector2(w.get_center().x, w.end.y + 0.3))
+		out.water.append(Vector2(w.end.x + 0.3, w.get_center().y))
+	for f: Rect2 in FIELDS:
+		out.field.append(Vector2(f.get_center().x, f.end.y + 0.3))
+	for m: Rect2 in [WINDMILL, WATERMILL]:
+		out.mill.append(Vector2(m.get_center().x, m.end.y + 0.4))
+	out.dock.append(Vector2(DOCK.get_center().x, DOCK.position.y - 0.4))
+	for k in out:
+		var kept := []
+		for g: Vector2 in out[k]:
+			if not in_queue_fan(Rect2(g - Vector2(0.05, 0.05), Vector2(0.1, 0.1))):
+				kept.append(g)
+		out[k] = kept
+	return out
 
 
 ## Whether a rect reaches into any gate's queue fan.

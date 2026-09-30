@@ -215,7 +215,7 @@ func _ready() -> void:
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
-	if art_tag == &"windmill" or art_tag == &"watermill" or kind == Kind.FOUNTAIN:
+	if art_tag == &"windmill" or art_tag == &"watermill" or (kind == Kind.FOUNTAIN and art_tag != &"well"):
 		_spin = Node2D.new()
 		_spin.draw.connect(_draw_spin)
 		add_child(_spin)

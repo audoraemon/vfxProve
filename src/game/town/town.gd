@@ -70,6 +70,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		_built.append(built)
 		if fountain == null:
 			fountain = built
+	for w: Rect2 in TownLayout.WELLS:
+		_built.append(env.add_structure(w, 12.0, Structure.Kind.FOUNTAIN, &"decor", &"well"))
 	var baked: Array[Dictionary] = []
 	if env.world_parent != null:
 		_decor_layer = DecorLayer.new()

@@ -59,7 +59,10 @@ static func draw(s: Structure) -> void:
 				TOWN_OAK_CLUSTERS if s.art_tag == &"oak" else OAK_CLUSTERS)
 			ArtKit.flush(s)
 		Structure.Kind.FOUNTAIN:
-			_fountain(s)
+			if s.art_tag == &"well":
+				_well(s)
+			else:
+				_fountain(s)
 
 
 ## Flame spots for the structure's flame node (structure-local px): the bridge's four torches.
@@ -401,6 +404,45 @@ static func _fence(s: Structure, a: Vector2, b: Vector2) -> void:
 # --- Fountain ------------------------------------------------------------------
 
 ## The market fountain: an eight-sided stone basin of water, a pillar and an upper bowl spilling over.
+## A well: a round stone ring with dark water, two timber posts and a crossbeam with its rope and bucket.
+static func _well(s: Structure) -> void:
+	ArtKit.begin()
+	var c := s.center()
+	var rad := s.footprint.size.x * 0.42
+	var rim := 6.0
+	var ring: Array[Vector2] = []
+	for k in 8:
+		var ang := TAU * (k + 0.5) / 8.0
+		ring.append(c + Vector2(cos(ang), sin(ang)) * rad)
+	# Wall faces towards the camera, then the rim and the water.
+	for k in 8:
+		var a := ring[k]
+		var b := ring[(k + 1) % 8]
+		if (a + b - 2.0 * c).dot(Vector2(1, 1)) <= 0.0:
+			continue
+		ArtKit.poly(PackedVector2Array([s._gp(a, 0.0), s._gp(b, 0.0), s._gp(b, rim), s._gp(a, rim)]),
+			ArtKit.STONE[k % 2], ArtKit.LIT_LEFT if (b - a).x < 0.0 else ArtKit.LIT_RIGHT)
+	var inner: Array[Vector2] = []
+	for g in ring:
+		inner.append(c + (g - c) * 0.7)
+	for k in 8:
+		ArtKit.poly(PackedVector2Array([s._gp(ring[k], rim), s._gp(ring[(k + 1) % 8], rim), s._gp(inner[(k + 1) % 8], rim),
+			s._gp(inner[k], rim)]), ArtKit.STONE_TOP, ArtKit.LIT_TOP)
+	var water := PackedVector2Array()
+	for g in inner:
+		water.append(s._gp(g, rim - 1.0))
+	ArtKit.fan(water, Color("2c4a5c"), 0.0)
+	var p0 := c + Vector2(-rad, 0.0)
+	var p1 := c + Vector2(rad, 0.0)
+	_post(s, p0, rim, rim + 14.0, 1.0)
+	_post(s, p1, rim, rim + 14.0, 1.0)
+	ArtKit.line(s._gp(p0, rim + 14.0), s._gp(p1, rim + 14.0), ArtKit.WOOD[2])
+	ArtKit.line(s._gp(c, rim + 14.0), s._gp(c, rim + 6.0), ArtKit.ink(0.6))
+	_box(s, c - Vector2(0.05, 0.05), c + Vector2(0.05, 0.05), rim + 3.0, rim + 6.0, ArtKit.WOOD[1], ArtKit.WOOD[0],
+		ArtKit.WOOD[0].lightened(0.1))
+	ArtKit.flush(s)
+
+
 static func _fountain(s: Structure) -> void:
 	ArtKit.begin()
 	var c := s.center()

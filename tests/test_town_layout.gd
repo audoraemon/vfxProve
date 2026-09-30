@@ -87,6 +87,20 @@ static func run(t) -> void:
 		for d in items:
 			props_ok = props_ok and not (d.rect as Rect2).intersects(r)
 	t.check(props_ok, "%d street props, off the streets, the queues and every building" % props.size())
+	# Wells: one per fountainless quarter, off the streets and the queues.
+	var wells_ok := TownLayout.WELLS.size() >= 3
+	for w: Rect2 in TownLayout.WELLS:
+		wells_ok = wells_ok and not TownLayout.in_queue_fan(w.grow(0.3))
+		for road: Rect2 in TownLayout.ROADS:
+			wells_ok = wells_ok and not road.grow(0.3).intersects(w)
+		for d in items:
+			wells_ok = wells_ok and not (d.rect as Rect2).grow(0.1).intersects(w)
+	t.check(wells_ok, "%d wells, clear of the streets, the queues and every building" % TownLayout.WELLS.size())
+	var anchors := TownLayout.anchors()
+	var anchors_ok := true
+	for k in ["home", "stall", "craft", "tavern", "cathedral", "plaza", "water", "field", "mill", "dock"]:
+		anchors_ok = anchors_ok and not (anchors[k] as Array).is_empty()
+	t.check(anchors_ok, "every kind of anchor has places (%s)" % [anchors.keys()])
 	var bridge: Rect2 = TownLayout.BRIDGE
 	t.check(bridge.position.y < TownLayout.RIVER.position.y and bridge.end.y > TownLayout.RIVER.end.y, "the bridge spans the river")
 	t.check(TownLayout.CITADEL_AREA.has_point(TownLayout.CITADEL_ORIGIN), "the Citadel origin is inside its ground")

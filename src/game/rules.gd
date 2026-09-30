@@ -108,6 +108,8 @@ var _crowd: Crowd
 var _town: Town
 ## Seconds of cooldown left per slot.
 var _cooldowns := PackedFloat32Array()
+## The power now playing; no other can be cast until it finishes (busy_left()).
+var _playing: FxTimeline
 ## One entry per cast that may still be credited: {"key", "fx", "at", "buildings", "kills", "chained", "until"}.
 var _casts: Array[Dictionary] = []
 ## Seconds since the mission started, for the casts' grace window.
@@ -197,7 +199,17 @@ func refusal(slot: int) -> String:
 		return "cooldown"
 	if dp < float(cost(slot)):
 		return "dp"
+	if busy_left() > 0.0:
+		return "busy"
 	return ""
+
+
+## Seconds until the power now playing has finished (0 when none is): one cataclysm at a time, so a player cannot
+## stack every power at once -- the town reads each one, and the frame keeps up.
+func busy_left() -> float:
+	if not is_instance_valid(_playing) or _playing.finished:
+		return 0.0
+	return maxf(_playing.duration - _playing.t, 0.0)
 
 
 ## Spend the slot's DP, start its cooldown and put its effect in the world. Returns the running effect, or
@@ -212,6 +224,7 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	dp_changed.emit(dp)
 	_cooldowns[slot] = float(p.cooldown)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)
+	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
 		"until": _elapsed + CAST_GRACE})
 	cast_made.emit(slot, String(p.key), ground)

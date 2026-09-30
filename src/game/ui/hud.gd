@@ -326,6 +326,12 @@ func _draw_slots(_w: float) -> void:
 		var cost := "%d DP" % _rules.cost(i)
 		UiTheme.text(self, Vector2(box.end.x - UiTheme.width(cost, UiTheme.SIZE_SMALL) - 4.0, box.end.y - 4.0), cost,
 			UiTheme.SIZE_SMALL, UiTheme.COL_BAD if state == "dp" else UiTheme.COL_DIM)
+		if state == "busy":
+			# Another power is still playing: a light shade and its seconds left, in gold.
+			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE)), Color(0, 0, 0, 0.35))
+			var wait := "%d" % ceili(_rules.busy_left())
+			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(wait) * 0.5, 4.0), wait, UiTheme.SIZE_BODY,
+				UiTheme.COL_GOLD)
 		if state == "cooldown":
 			# The cooldown as a shade falling away from the top of the card, its seconds over the icon.
 			var left := _rules.cooldown_left(i)

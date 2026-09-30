@@ -44,13 +44,15 @@ const ENDING_SECONDS := 3.0
 const ENDING_TIME_SCALE := 0.3
 
 ## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
+## Spaced so each power has finished before the next is cast (Rules.busy_left()): Heaven 8.5 s, Cinderfall 12,
+## Tsunami 9.5.
 const TEST_CASTS := [
 	[1.0, 0, Vector2(-9.0, -11.0), Vector2(0.2, 1.0)],
-	[6.0, 2, Vector2(0.8, 2.2), Vector2.ZERO],
-	[14.0, 1, Vector2(-12.0, 1.0), Vector2(1.0, 0.1)],
-	[24.0, 3, TownLayout.CITADEL_ORIGIN, Vector2.ZERO],
+	[10.0, 2, Vector2(0.8, 2.2), Vector2.ZERO],
+	[22.5, 1, Vector2(-12.0, 1.0), Vector2(1.0, 0.1)],
+	[32.5, 3, TownLayout.CITADEL_ORIGIN, Vector2.ZERO],
 ]
-const TEST_SHOTS := [0.5, 2.0, 8.0, 16.0, 26.0, 30.0]
+const TEST_SHOTS := [0.5, 2.0, 12.0, 24.0, 34.0, 44.0]
 ## How many banner frames the scripted run takes before it stops bothering.
 const BANNER_SHOTS := 3
 const TEST_END := 34.0

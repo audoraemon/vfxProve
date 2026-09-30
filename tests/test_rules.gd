@@ -38,6 +38,22 @@ static func run(t) -> void:
 	t.check(rules.dp == 90.0, "casting Heaven Splitter spends its 10 DP (%.1f)" % rules.dp)
 	t.check(casts.size() == 1 and String(casts[0][0]).ends_with("heaven_splitter.gd"),
 		"and reaches the world as its own effect script (%s)" % [casts])
+
+	# One power at a time: while one plays, every other slot is busy until it has finished.
+	var playing := FxTimeline.new()
+	playing.duration = 8.0
+	rules._playing = playing
+	t.check(rules.refusal(1) == "busy" and is_equal_approx(rules.busy_left(), 8.0),
+		"while a power plays, the others wait for it (%s, %.1f s)" % [rules.refusal(1), rules.busy_left()])
+	var before_dp := rules.dp
+	rules.cast(1, Vector2.ZERO)
+	t.check(rules.dp == before_dp and refused.back() == [1, "busy"], "a cast then is refused and costs nothing")
+	playing.t = 8.0
+	playing.finished = true
+	t.check(rules.busy_left() == 0.0 and rules.refusal(1) == "", "once it has finished, the next can go")
+	playing.free()
+	rules._playing = null
+	refused.clear()
 	t.check(made.size() == 1 and made[0][0] == 0 and made[0][1] == "heaven" and made[0][2] == Vector2(2.0, -3.0),
 		"and is reported with its slot, power and place (%s)" % [made])
 	t.near(rules.cooldown_left(0), 20.0, 0.0001, "the slot goes on its 20 s cooldown (%.1f)" % rules.cooldown_left(0))

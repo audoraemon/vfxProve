@@ -87,6 +87,7 @@ func _escalate() -> void:
 			var c: Array = casts.pop_front()
 			mission._rules.dp = Rules.DP_MAX
 			mission._rules._cooldowns[int(c[1])] = 0.0
+			mission._rules._playing = null
 			mission._rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0.3).normalized()})
 		var intents := {}
 		for p: Person in crowd.citizens:

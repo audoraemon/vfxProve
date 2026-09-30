@@ -40,6 +40,19 @@ static func run(t) -> void:
 		shares_ok = shares_ok and absi(int(roles.get(sh[0], 0)) - roundi(float(sh[1]) * Crowd.CITIZENS)) <= 1
 	t.check(profiles_ok and shares_ok, "citizens' roles in the spec's shares, with walkable homes, work and leisure (%s)"
 		% [roles])
+	# Their day: once a citizen's stay is over, RoutineManager sends it to one of its own places.
+	var routine_ok := crowd.routine != null
+	var sent := 0
+	for i in 20:
+		var p := crowd.citizens[i]
+		p._goal = Vector2.INF
+		crowd.routine.visit(i, 100.0)
+		if p.has_goal():
+			sent += 1
+			var pr: CitizenProfile = p.profile
+			routine_ok = routine_ok and (p.anchor == pr.home or p.anchor == pr.work or p.anchor in pr.leisure
+				or p.anchor in crowd.routine._stalls)
+	t.check(routine_ok and sent == 20, "a citizen whose stay is over is sent to one of its places (%d of 20)" % sent)
 	t.check(outside >= Crowd.CITIZENS * 0.08 and outside <= Crowd.CITIZENS * 0.2,
 		"about a tenth work outside the walls (%d)" % outside)
 	# Soldiers are posted in order: the yard's first, then walls, Citadel and patrols. A patrol's post on the east

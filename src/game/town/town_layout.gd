@@ -503,11 +503,11 @@ static func queue_fans(margin := 0.3) -> Array[PackedVector2Array]:
 ## Where citizens go about their day (CitizenProfile, RoutineManager), by kind: "home" (outside each house's front),
 ## "stall" (in front of each market stall), "craft" (the smithy, workshop and carpenter's yards), "tavern",
 ## "cathedral" (its steps), "plaza" (the squares and plazas), "water" (round the fountains and wells), "field"
-## (field edges), "mill", "dock". Raw ground points: the crowd snaps each to the nearest walkable cell. None in a
+## (field edges), "mill", "dock", "barn" (the farmhouses, where farmers live). Raw ground points: the crowd snaps each to the nearest walkable cell. None in a
 ## gate's queue fan.
 static func anchors() -> Dictionary:
 	var out := {"home": [], "stall": [], "craft": [], "tavern": [], "cathedral": [], "plaza": [], "water": [],
-		"field": [], "mill": [], "dock": []}
+		"field": [], "mill": [], "dock": [], "barn": []}
 	for h: Rect2 in houses():
 		out.home.append(Vector2(h.get_center().x, h.end.y + 0.35))
 	for st: Rect2 in STALLS:
@@ -529,6 +529,8 @@ static func anchors() -> Dictionary:
 	for m: Rect2 in [WINDMILL, WATERMILL]:
 		out.mill.append(Vector2(m.get_center().x, m.end.y + 0.4))
 	out.dock.append(Vector2(DOCK.get_center().x, DOCK.position.y - 0.4))
+	for b: Rect2 in BARNS:
+		out.barn.append(Vector2(b.get_center().x, b.end.y + 0.4))
 	for k in out:
 		var kept := []
 		for g: Vector2 in out[k]:

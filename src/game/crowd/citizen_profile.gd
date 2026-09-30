@@ -18,6 +18,8 @@ const WORK := {
 ## Where anyone spends leisure: the kinds, and how many of the nearest to home each citizen may pick from.
 const LEISURE := ["plaza", "water", "tavern"]
 const LEISURE_NEAREST := 5
+## A workplace is one of this many of its kind nearest home (a farmer's farmhouse is the one nearest its field).
+const WORK_NEAREST := 4
 ## A spawn-order stride through the town (coprime with any sensible crowd size), so the roles interleave.
 const STRIDE := 97
 

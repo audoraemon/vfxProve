@@ -55,6 +55,8 @@ var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
 ## How many were spawned, so milestone 3's stability can measure losses against the starting town.
 var spawned_citizens := 0
+## Where calm citizens go next (v0.04); made by spawn().
+var routine: RoutineManager
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -139,6 +141,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		citizens.append(p)
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
+	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
 	spawned_citizens = citizens.size()
 	spawned_soldiers = soldiers.size()
 	if _ticker == null:
@@ -151,6 +154,14 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+
+
+func _nearest(pts: Array[Vector2], to: Vector2) -> Vector2:
+	var best := pts[0]
+	for g in pts:
+		if g.distance_squared_to(to) < best.distance_squared_to(to):
+			best = g
+	return best
 
 
 ## TownLayout.anchors(), each point moved onto the nearest walkable cell.
@@ -178,8 +189,19 @@ func _profile(i: int, n: int, home: Structure, anchors: Dictionary) -> CitizenPr
 		var pool: Array[Vector2] = []
 		for k: String in CitizenProfile.WORK[pr.role]:
 			pool.append_array(anchors.get(k, []))
-		if not pool.is_empty():
-			pr.work = pool[_rng.randi_range(0, pool.size() - 1)]
+		if pr.role == CitizenProfile.Role.FARMER:
+			# Farmers live out at the farmhouse nearest their field.
+			if not pool.is_empty():
+				pr.work = pool[_rng.randi_range(0, pool.size() - 1)]
+				var barns: Array[Vector2] = anchors.get("barn", [])
+				if not barns.is_empty():
+					pr.home = _nearest(barns, pr.work)
+				h = pr.home
+		else:
+			pool.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(h) < b.distance_squared_to(h))
+			pool = pool.slice(0, CitizenProfile.WORK_NEAREST)
+			if not pool.is_empty():
+				pr.work = pool[_rng.randi_range(0, pool.size() - 1)]
 	var near: Array[Vector2] = []
 	for k: String in CitizenProfile.LEISURE:
 		near.append_array(anchors.get(k, []))
@@ -302,6 +324,8 @@ func step_people(delta: float) -> void:
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
 func advance(delta: float) -> void:
 	_clock += delta
+	if routine != null:
+		routine.step(delta)
 	_gates()
 	_escapes()
 	_prune_soldiers()

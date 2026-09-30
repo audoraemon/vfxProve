@@ -19,6 +19,8 @@ const REPATH := 4.0
 const STROLL_CHANCE := 0.004
 ## How far a calm citizen drifts from home, and a posted soldier from its spot.
 const CALM_SPREAD := 1.4
+## How far a citizen with a routine mills about the place it is at (its anchor).
+const PLACE_SPREAD := 0.6
 const POST_SPREAD := 0.35
 ## How far around its feet (ground units) a person looks for buildings it might be drawn against. A building
 ## further away cannot overlap it on screen.
@@ -60,6 +62,9 @@ var soldier := false
 var anchor := Vector2.ZERO
 ## A citizen's role and the places of its day (Crowd sets it; null for soldiers and people made on their own).
 var profile: CitizenProfile
+## Its routine (RoutineManager): seconds left at the place it is at, and the kind of place it last went to.
+var stay_left := 0.0
+var last_place := -1
 var grid: WalkGrid
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0
@@ -264,7 +269,8 @@ func _think(delta: float) -> void:
 			if _goal == Vector2.INF and _repath_in <= 0.0 and ground_pos.distance_to(anchor) > GOAL_REACH * 2.0:
 				set_goal(anchor)
 		Mind.CALM:
-			if _goal == Vector2.INF and rng.randf() < STROLL_CHANCE:
+			# A citizen with a day of its own goes where RoutineManager sends it; one made on its own strolls.
+			if profile == null and _goal == Vector2.INF and rng.randf() < STROLL_CHANCE:
 				set_goal(TownLayout.MARKET_SQUARE.get_center() if rng.randf() < 0.5 else anchor)
 		Mind.HOLD:
 			_idle = maxf(_idle, 0.2)
@@ -287,6 +293,11 @@ func _mind_speed() -> float:
 			return FLEE_SPEED * pace
 		_:
 			return WALK_SPEED * pace
+
+
+## Whether it is on its way somewhere (a goal it has not reached).
+func has_goal() -> bool:
+	return _goal != Vector2.INF
 
 
 ## Walk to `g` along the grid's path. A goal inside a building routes to its doorstep.
@@ -354,7 +365,9 @@ func _pick_target() -> void:
 
 ## A small aimless step: citizens milling about their street, soldiers shifting at their post.
 func _drift() -> void:
-	var spread := CALM_SPREAD if mind == Mind.CALM else POST_SPREAD
+	var spread := POST_SPREAD
+	if mind == Mind.CALM:
+		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
 	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
 	if grid != null:
 		var free := grid.nearest_walkable(to, 3)

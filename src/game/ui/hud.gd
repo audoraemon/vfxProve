@@ -118,12 +118,16 @@ func objective_text() -> String:
 
 ## The city's state, top right, as [text, colour] pieces: each figure wears the colour of the stability part it
 ## drives, so the player can tell which number moves which part of the bar.
+## The alarm stage's colour on the status line (v0.04), calm to red.
+const STAGE_COLS := [Color("9a9484"), Color("e8e2d0"), Color("d8b23a"), Color("ff8a3a"), Color("c8342a"), Color("ff4a4a")]
+
+
 func status_segments() -> Array:
 	return [
 		["Citizens %d" % _crowd.alive_citizens(), UiTheme.STABILITY_COLS[0]],
 		["Soldiers %d" % _crowd.alive_soldiers(), UiTheme.STABILITY_COLS[3]],
 		["Destroyed %d" % _rules.buildings_down, UiTheme.STABILITY_COLS[1]],
-		["Alarm %d%%" % roundi(_crowd.alarm), UiTheme.COL_TEXT],
+		[_crowd.alarms.stage_name(), STAGE_COLS[_crowd.alarms.stage]],
 	]
 
 

@@ -4,7 +4,7 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
 enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER }
@@ -226,7 +226,8 @@ func frame(delta: float) -> void:
 
 ## Calm or at a post, wandering, and nothing holding or tripping it: updated at CALM_EVERY on screen.
 func unhurried() -> bool:
-	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER
+	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER \
+		or mind == Mind.REGROUP
 	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and wait <= 0.0
 
 
@@ -398,7 +399,7 @@ func _pick_target() -> void:
 ## A small aimless step: citizens milling about their street, soldiers shifting at their post.
 func _drift() -> void:
 	var spread := POST_SPREAD
-	if mind == Mind.CALM or mind == Mind.RECOVER:
+	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.DUTY:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
 	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
 	if grid != null:
@@ -490,7 +491,30 @@ func intent() -> Intent:
 			return Intent.EVACUATE
 		Mind.RECOVER:
 			return Intent.RECOVER
+		Mind.REGROUP:
+			return Intent.REGROUP
 	return Intent.ROUTINE
+
+
+## City Emergency (v0.04): go home to `home` and wait there with the family until the evacuation or the danger.
+func regroup(home: Vector2) -> void:
+	if soldier or state == State.DEAD or mind == Mind.FLEE:
+		return
+	mind = Mind.REGROUP
+	awareness = maxi(awareness, Awareness.EMERGENCY) as Awareness
+	anchor = home
+	walk_speed = _mind_speed()
+	set_goal(home)
+
+
+## A clergy member's duty: walk to the cathedral steps `steps` to ring the bell (Crowd rings it on arrival).
+func go_ring(steps: Vector2) -> void:
+	if soldier or state == State.DEAD or mind == Mind.FLEE:
+		return
+	mind = Mind.DUTY
+	anchor = steps
+	walk_speed = _mind_speed()
+	set_goal(steps)
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.

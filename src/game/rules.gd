@@ -156,6 +156,9 @@ func advance(delta: float) -> void:
 	if _stability_dirty:
 		_stability_dirty = false
 		stability.measure(_env, _crowd, _town.citadel)
+		# Order breaks down in the town once stability has fallen this far (v0.04's last alarm stage).
+		if stability.total() <= AlarmManager.COLLAPSE_STABILITY and is_instance_valid(_crowd):
+			_crowd.order_collapses()
 	_check_end()
 
 

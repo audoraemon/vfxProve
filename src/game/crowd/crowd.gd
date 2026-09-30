@@ -20,8 +20,16 @@ const POST_PATROL := 20
 const ALARM_BUILDING := 2.0
 const ALARM_KILL := 0.5
 const ALARM_CITADEL_HIT := 10.0
-const ALARM_RALLY := 25.0
-const ALARM_FLEE_ALL := 50.0
+## The staged alarm (AlarmManager) replaced v0.03's rally at 25 and town-wide flight at 50: the soldiers rally at
+## City Emergency (alarm 25) and citizens evacuate at the Evacuation stage.
+## Soldiers sent to look at a district's emergency: how many, and for how long before they go back to their posts.
+const INVESTIGATORS := 2
+const INVESTIGATE_SECONDS := 20.0
+## At City Emergency this share of citizens (and every merchant: the market closes) goes home to regroup.
+const REGROUP_SHARE := 0.3
+## How close to the cathedral steps the bell-ringer must get, and how often a new one is sought if it cannot.
+const BELL_REACH := 0.8
+const BELL_RETRY := 2.0
 ## A cast this close frightens a citizen; a collapse this close does too.
 const PANIC_CAST := 7.0
 ## A fallen building: its danger's radius past the footprint's reach, and how far it is seen and heard.
@@ -71,6 +79,15 @@ var threats := ThreatManager.new()
 ## A frightened citizen's fright reaches the calm people beside it after a moment: [due clock, person].
 var _spreads: Array = []
 var _watch_in := 0.0
+## The town's alarm in stages (v0.04).
+var alarms := AlarmManager.new()
+var _stage_in := 0.0
+## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
+var _investigating: Array = []
+## The clergy member walking to ring the cathedral bell, and when to look for another.
+var _ringer: Person
+var _ringer_in := 0.0
+var _steps := Vector2.INF
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -124,6 +141,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_parent = parent
 	_rng.seed = seed_value
 	env.structure_destroyed.connect(_on_structure_destroyed)
+	alarms.stage_changed.connect(_on_stage)
 	field.enemy_killed.connect(_on_killed)
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
@@ -346,6 +364,12 @@ func advance(delta: float) -> void:
 		_watch_threats()
 	if routine != null:
 		routine.step(delta)
+	_stage_in -= delta
+	if _stage_in <= 0.0:
+		_stage_in = 0.5
+		alarms.update(alarm, threats.active_count(), _clock)
+	_tend_bell(delta)
+	_return_investigators()
 	_gates()
 	_escapes()
 	_prune_soldiers()
@@ -653,20 +677,137 @@ func add_alarm(points: float) -> void:
 	alarm = clampf(alarm + points, 0.0, 100.0)
 	if alarm != before:
 		alarm_changed.emit(alarm)
-	if alarm >= ALARM_RALLY:
-		rally()
-	if alarm >= ALARM_FLEE_ALL and not _fled_all:
-		_fled_all = true
-		for p in citizens:
-			if is_instance_valid(p) and p.is_alive():
-				p.flee()
-		var shouted := 0
-		for p in citizens:
-			if shouted >= 2:
-				break
-			if is_instance_valid(p) and p.is_alive():
-				_voice(p, &"cit_shout")
-				shouted += 1
+	alarms.update(alarm, threats.active_count(), _clock)
+
+
+## A new alarm stage (AlarmManager.stage_changed): what the town does about it.
+func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
+	match stage:
+		AlarmManager.Stage.CITY_EMERGENCY:
+			rally()
+			_regroup()
+			_call_bell()
+		AlarmManager.Stage.EVACUATION, AlarmManager.Stage.COLLAPSE:
+			_evacuate()
+
+
+## Everyone still in town makes for the gates.
+func _evacuate() -> void:
+	if _fled_all:
+		return
+	_fled_all = true
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive():
+			p.flee()
+	var shouted := 0
+	for p in citizens:
+		if shouted >= 2:
+			break
+		if is_instance_valid(p) and p.is_alive():
+			_voice(p, &"cit_shout")
+			shouted += 1
+
+
+## City Emergency: the market closes (merchants go home) and REGROUP_SHARE of the rest go home to wait with theirs.
+func _regroup() -> void:
+	for i in citizens.size():
+		var p := citizens[i]
+		if not is_instance_valid(p) or not p.is_alive() or p.profile == null:
+			continue
+		if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
+			continue
+		var merchant := p.profile.role == CitizenProfile.Role.MERCHANT
+		if merchant or float((p.stagger * 37) % 100) < REGROUP_SHARE * 100.0:
+			p.regroup(p.profile.home)
+
+
+## City Emergency: a clergy member goes to ring the cathedral bell -- if the cathedral stands and one is alive.
+func _call_bell() -> void:
+	if alarms.bell_rung or _temple_down():
+		return
+	if _steps == Vector2.INF:
+		var steps: Array = TownLayout.anchors().get("cathedral", [])
+		if steps.is_empty():
+			return
+		var s: Vector2 = steps[steps.size() / 2]
+		_steps = s if _grid.walkable(s) else _grid.nearest_walkable(s)
+	_ringer = null
+	var best := INF
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY \
+				and p.mind != Person.Mind.FLEE and p.ground_pos.distance_to(_steps) < best:
+			best = p.ground_pos.distance_to(_steps)
+			_ringer = p
+	if _ringer != null:
+		_ringer.go_ring(_steps)
+	_ringer_in = BELL_RETRY
+
+
+func _temple_down() -> bool:
+	for s in _env.structures():
+		if s.role == &"temple":
+			return s.destroyed
+	return true
+
+
+## The bell-ringer on its way: ring once it reaches the steps; find another if it died, fled or cannot get there.
+func _tend_bell(delta: float) -> void:
+	if alarms.bell_rung or alarms.stage < AlarmManager.Stage.CITY_EMERGENCY or _temple_down():
+		return
+	if is_instance_valid(_ringer) and _ringer.is_alive() and _ringer.mind == Person.Mind.DUTY:
+		if _ringer.ground_pos.distance_to(_steps) <= BELL_REACH:
+			ring_bell()
+			return
+		if _ringer.has_goal():
+			return
+	_ringer_in -= delta
+	if _ringer_in <= 0.0:
+		_call_bell()
+
+
+## The cathedral bell: every citizen learns of the danger, and the alarm can call the evacuation sooner.
+func ring_bell() -> void:
+	alarms.bell_rung = true
+	if is_instance_valid(_ringer) and _ringer.mind == Person.Mind.DUTY:
+		_ringer.regroup(_ringer.profile.home)
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive():
+			p.awareness = maxi(p.awareness, Person.Awareness.EMERGENCY) as Person.Awareness
+	if sfx != null:
+		sfx.play(&"town_bell", TownLayout.TEMPLE.get_center())
+	alarms.update(alarm, threats.active_count(), _clock)
+
+
+## A district's first local emergency: the two nearest patrolling soldiers go to look, and return after a while.
+func _investigate(at: Vector2) -> void:
+	if _rallied:
+		return
+	var first := POST_YARD + POST_WALLS + POST_CITADEL
+	var pool: Array[Person] = []
+	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
+		var p := soldiers[i]
+		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST:
+			pool.append(p)
+	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(at) < b.ground_pos.distance_to(at))
+	var spot := at if _grid.walkable(at) else _grid.nearest_walkable(at)
+	if spot == Vector2.INF:
+		return
+	for k in mini(INVESTIGATORS, pool.size()):
+		_investigating.append([pool[k], pool[k].anchor, _clock + INVESTIGATE_SECONDS])
+		pool[k].send_to_post(_spot_near(spot, 0.8))
+
+
+func _return_investigators() -> void:
+	var kept: Array = []
+	for e in _investigating:
+		if not is_instance_valid(e[0]):
+			continue
+		var p: Person = e[0]
+		if _clock < float(e[2]):
+			kept.append(e)
+		elif p.is_alive() and p.mind == Person.Mind.POST:
+			p.send_to_post(e[1])
+	_investigating = kept
 
 
 ## Every soldier leaves its post for a slot on the Citadel's ring.
@@ -704,6 +845,9 @@ func clear() -> void:
 	soldiers.clear()
 	threats.clear()
 	_spreads.clear()
+	alarms.reset()
+	_investigating.clear()
+	_ringer = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0
@@ -725,6 +869,8 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
 		add_alarm(ALARM_BUILDING)
 	var at := s.center()
+	if s.role != &"citadel" and alarms.incident(at):
+		_investigate(at)
 	var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
 	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
 	var points: Array[Vector2] = [at]
@@ -744,6 +890,8 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 		killed_soldiers += 1
 	else:
 		killed_citizens += 1
+	if alarms.incident(p.ground_pos):
+		_investigate(p.ground_pos)
 	add_alarm(ALARM_KILL)
 
 
@@ -756,7 +904,16 @@ func _on_citadel_health(_fraction: float) -> void:
 	rally()
 
 
+## Order breaks down (the Citadel fell, or stability ran out; Rules calls this).
+func order_collapses() -> void:
+	if alarms.collapsed:
+		return
+	alarms.collapsed = true
+	alarms.update(alarm, threats.active_count(), _clock)
+
+
 func _on_citadel_fallen() -> void:
+	order_collapses()
 	for p in soldiers:
 		if is_instance_valid(p) and p.is_alive():
 			p.hold_ground()

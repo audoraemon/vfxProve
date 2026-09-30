@@ -122,13 +122,16 @@ static func run(t) -> void:
 	t.near(crowd.alarm - alarm_before, Crowd.ALARM_KILL * 2.0, 0.001, "each death is worth half a point")
 	t.check(crowd.killed_citizens == 1 and crowd.killed_soldiers == 1, "deaths are counted per kind")
 
-	# At 50 alarm every citizen runs.
-	crowd.add_alarm(50.0)
+	# Without the bell, the evacuation comes at 90 alarm, once families have had time to regroup: every citizen runs.
+	crowd.add_alarm(AlarmManager.EVAC_NO_BELL)
+	crowd._clock += AlarmManager.REGROUP_SECONDS
+	crowd.add_alarm(0.001)
 	var still_calm := 0
 	for p in crowd.citizens:
 		if is_instance_valid(p) and p.is_alive() and p.mind != Person.Mind.FLEE:
 			still_calm += 1
-	t.check(still_calm == 0, "at 50%% alarm nobody stays (%d did)" % still_calm)
+	t.check(still_calm == 0 and crowd.alarms.stage >= AlarmManager.Stage.EVACUATION,
+		"at 90%% alarm with no bell the town evacuates: nobody stays (%d did)" % still_calm)
 
 	# A gate's waiting crowd: everyone waiting gets a spot of their own in front of the doorway, spread out
 	# rather than stacked, and one person at a time is let through.

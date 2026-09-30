@@ -89,6 +89,7 @@ const CATALOG := {
 	&"cit_yelp": {"path": "res://assets/audio/crowd/cit_yelp_%d.wav", "variants": 4, "db": -10.0, "voices": 4, "jitter": 0.12},
 	&"cit_shout": {"path": "res://assets/audio/crowd/cit_shout_%d.wav", "variants": 3, "db": -12.0, "voices": 3, "jitter": 0.1},
 	&"sol_rally": {"path": "res://assets/audio/crowd/sol_rally.wav", "db": -6.0},
+	&"town_bell": {"path": "res://assets/audio/crowd/town_bell.wav", "db": -4.0},
 	&"crowd_panic": {"path": "res://assets/audio/crowd/crowd_panic.wav", "db": -8.0, "loop": true},
 	# A building or tree coming down (Town plays them). Capped at four voices each, so a stone rain felling a
 	# dozen things at once is a roar, not a pile-up.

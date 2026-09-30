@@ -6,6 +6,7 @@ extends SceneTree
 ##   [--seconds=60] [--shots]
 ##   calm   nothing cast: where citizens are, by kind of place, every 20 s; --shots saves captures at the end
 ##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
+##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
 
 var mission: Mission
 
@@ -30,6 +31,8 @@ func _run() -> void:
 			await _calm(seconds, "--shots" in args)
 		"strike":
 			await _strike("--shots" in args)
+		"escalate":
+			await _escalate()
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -65,6 +68,30 @@ func _strike(shots: bool) -> void:
 			bf.camera.position = Iso.ground_to_screen(at).round()
 			await _frames(2)
 			await bf.save_capture("behaviour_strike.png")
+
+
+func _escalate() -> void:
+	await _frames(20 * 60)
+	var casts := [[0.0, 0, Vector2(0.8, 2.0)], [15.0, 2, Vector2(-9.0, 5.0)], [30.0, 1, Vector2(7.0, -3.0)]]
+	var t := 0.0
+	var crowd: Crowd = mission._crowd
+	while t <= 60.0:
+		while not casts.is_empty() and t >= float(casts[0][0]):
+			var c: Array = casts.pop_front()
+			mission._rules.dp = Rules.DP_MAX
+			mission._rules._cooldowns[int(c[1])] = 0.0
+			mission._rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0.3).normalized()})
+		var intents := {}
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.state != DummyEnemy.State.DEAD:
+				var k: String = Person.Intent.keys()[p.intent()]
+				intents[k] = int(intents.get(k, 0)) + 1
+		print("BEHAVIOUR escalate t=%d stage=%s alarm=%d bell=%s escaped=%d %s" % [roundi(t), crowd.alarms.stage_name(),
+			roundi(crowd.alarm), crowd.alarms.bell_rung, crowd.escaped_count, intents])
+		await _frames(5 * 60)
+		t += 5.0
+	for h in crowd.alarms.history:
+		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
 
 
 ## Living citizens' intents, by distance band (ground units) from `at`.

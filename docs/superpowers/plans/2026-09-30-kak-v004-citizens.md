@@ -257,3 +257,27 @@
 - **Bench:**
   - market view: 115.3 and 113.9 fps (v0.03: 114);
   - wear: 110 fps at the start, 149 at round 4 (v0.03: 159; within noise at that rate, 0.4 ms).
+
+### M3
+- **Thresholds tuned past the spec's starting values.**
+  - At the spec's values, one Heaven Splitter into the packed market (about 20 stalls and 40 deaths) reached alarm 51–62 on its own, rang the bell within 2 s and emptied the town 5 s after the first cast.
+  - Now: LOCAL_EVENTS 4 (was 2), CITY_ALARM 35 (25), EVAC_BELL 75 (50), EVAC_NO_BELL 90 (70).
+  - New: REGROUP_SECONDS 15 — no evacuation until 15 s after City Emergency begins.
+  - The soldiers still rally at City Emergency; the first hit on the Citadel still rallies them too.
+- **The bell:** the nearest living Clergy member walks to the middle cathedral step (Mind.DUTY) and rings it on arrival. If the ringer dies or flees, another is sought every 2 s. A new synthesized `town_bell` cue joins the catalog (109 files).
+- **Regrouping:** Mind.REGROUP (walk home and wait). Every merchant regroups at City Emergency (the market closes), plus 30% of the other citizens, picked by spawn stagger.
+- **Collapse:** reached when the Citadel falls or stability ≤ 25% (Rules calls `Crowd.order_collapses()`). Routing noise waits for M4.
+- **HUD:** the status line shows the stage name, coloured by stage, in place of "Alarm %".
+- **Scenarios:**
+  - strike: one Heaven Splitter leaves the town at City Emergency, with people regrouping and returning to their routines; nobody evacuates within 30 s;
+  - escalate: Concern at 21.2 s, Local Emergency at 22.6, City Emergency at 24.7 (alarm 36), the bell by 10 s after the first cast, Evacuation at 39.7 once the second cast had taken the alarm to 100. Escaped at 60 s: 28 (50 at the spec's values).
+- **Mission test:** `citizens=189 escaped=2 stability=53%` (v0.03: 143, 10, 45%). The scripted casts no longer empty the town into the gates.
+- **Market bench, same hour:**
+
+  | | Run 1 | Run 2 |
+  |---|---|---|
+  | `kak-v0.03` | 94.4 fps | 96.3 fps |
+  | M3 | 92.5 fps | 100.3 fps |
+
+  The machine was slower that hour (msedge busy).
+- **Tests:** 801 checks. crowd_check −215896176, unchanged (it never raises the alarm).

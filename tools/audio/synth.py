@@ -1042,6 +1042,27 @@ def sol_rally(rng, dur):
     return reverb(saturate(horn * 0.5, 1.5), size=1.4, mix=0.3)
 
 
+def town_bell(rng, dur):
+    """The cathedral bell rung in alarm: three strokes of a bronze bell -- inharmonic partials (hum, prime, tierce,
+    quint, nominal), each ringing down at its own rate."""
+    n = int(round(dur * SR))
+    out = np.zeros(n)
+    f0 = 196.0
+    partials = [(0.5, 0.5, 2.6), (1.0, 1.0, 1.8), (1.19, 0.6, 1.3), (1.5, 0.35, 1.1), (2.0, 0.55, 0.9),
+                (2.51, 0.25, 0.6), (3.01, 0.18, 0.45)]
+    for k, at in enumerate((0.0, 1.1, 2.2)):
+        m = n - int(at * SR)
+        if m <= 0:
+            continue
+        stroke = np.zeros(m)
+        for mul, amp, tau in partials:
+            f = f0 * mul * (1.0 + 0.002 * k)
+            stroke += amp * sine(f, m) * decay(m, tau)
+        stroke += 0.15 * highpass(noise(m, rng), 2500.0) * decay(m, 0.02)
+        place(out, stroke, at)
+    return reverb(saturate(out * 0.35, 1.2), size=1.8, mix=0.35)
+
+
 def crowd_panic(rng, dur):
     """A town running for its life: a formant-shaped murmur and dozens of voices crying out across the loop."""
     n = int(round(dur * SR))
@@ -1245,6 +1266,7 @@ for _v in range(1, 4):
     CUES[f"collapse_timber_{_v}"] = ("collapse", lambda rng, dur, v=_v: collapse_timber(rng, dur, v), 1.2, False)
     CUES[f"collapse_tree_{_v}"] = ("collapse", lambda rng, dur, v=_v: collapse_tree(rng, dur, v), 0.9, False)
 CUES["sol_rally"] = ("crowd", sol_rally, 1.4, False)
+CUES["town_bell"] = ("crowd", town_bell, 4.5, False)
 CUES["crowd_panic"] = ("crowd", crowd_panic, 6.0, True)
 for _v in range(1, 5):
     CUES[f"cit_yelp_{_v}"] = ("crowd", lambda rng, dur, v=_v: cit_yelp(rng, dur, v), 0.45, False)

@@ -116,6 +116,7 @@ func _draw_world(ci: CanvasItem) -> void:
 func _draw_panel(ci: Control) -> void:
 	var lines: Array = []
 	var a := crowd.alarms
+	lines.append(["%s: %s" % [crowd.profile.tier_name(), ", ".join(crowd.profile.lines())], UiTheme.COL_GOLD])
 	lines.append(["Stage: %s   alarm %d   bell %s" % [a.stage_name(), roundi(crowd.alarm),
 		"rung" if a.bell_rung else "silent"], Hud.STAGE_COLS[a.stage]])
 	for h in a.history:

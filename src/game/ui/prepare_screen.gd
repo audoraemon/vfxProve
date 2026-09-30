@@ -22,6 +22,11 @@ const BADGE := 15.0
 const LABEL_GAP := 6.0
 
 var draft := Draft.new()
+## The difficulty chosen here (v0.05), and the town responses it brings (the Defense Profile strip at the bottom).
+var difficulty := ResponseProfile.DEFAULT
+## The bottom strip: the difficulty selector on the left, the Defense Profile beside it.
+const STRIP := Rect2(8.0, 318.0, 624.0, 38.0)
+const ARROW := Vector2(14.0, 14.0)
 
 var _ui: Control
 ## Both icon sizes, loaded once here and never inside _draw() (a texture loaded while drawing can reach the
@@ -38,8 +43,10 @@ var _clip_t := 0.0
 var _clip_frame := 0
 
 
-func setup(preselect: PackedStringArray, best_score: int, best_rank: String) -> PrepareScreen:
+func setup(preselect: PackedStringArray, best_score: int, best_rank: String,
+		tier := ResponseProfile.DEFAULT) -> PrepareScreen:
 	draft.preselect(preselect)
+	difficulty = tier
 	_best_score = best_score
 	_best_rank = best_rank
 	for p: Dictionary in PowerBook.POWERS:
@@ -72,13 +79,36 @@ func hit(point: Vector2) -> String:
 			return String(PowerBook.POWERS[i].key)
 	if cell_rect(PowerBook.POWERS.size()).has_point(point):
 		return "manifest"
+	if arrow_rect(-1).has_point(point):
+		return "diff_prev"
+	if arrow_rect(1).has_point(point):
+		return "diff_next"
 	return ""
+
+
+## The difficulty selector's arrows: -1 the left one, 1 the right one.
+static func arrow_rect(side: int) -> Rect2:
+	var y := STRIP.position.y + 12.0
+	var x := STRIP.position.x + 6.0 if side < 0 else STRIP.position.x + 130.0
+	return Rect2(Vector2(x, y), ARROW)
+
+
+## Step the difficulty by `by`, wrapping.
+func step_difficulty(by: int) -> void:
+	difficulty = posmod(int(difficulty) + by, ResponseProfile.NAMES.size()) as ResponseProfile.Tier
+	UiSound.play(&"ui_click")
+	if _ui != null:
+		_ui.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_ESCAPE:
 			action.emit("back")
+		elif event.physical_keycode == KEY_LEFT:
+			step_difficulty(-1)
+		elif event.physical_keycode == KEY_RIGHT:
+			step_difficulty(1)
 		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and draft.is_full():
 			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
@@ -96,7 +126,9 @@ func _on_gui_input(event: InputEvent) -> void:
 			_ui.queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var h := hit(event.position)
-		if h == "manifest":
+		if h == "diff_prev" or h == "diff_next":
+			step_difficulty(-1 if h == "diff_prev" else 1)
+		elif h == "manifest":
 			if draft.is_full():
 				UiSound.play(&"ui_manifest")
 				action.emit("manifest")
@@ -136,6 +168,34 @@ func _draw_ui() -> void:
 	for i in PowerBook.POWERS.size():
 		_draw_card(i)
 	_draw_manifest()
+	_draw_profile()
+
+
+## The bottom strip: "< ORGANIZED >" and the Defense Profile -- what the town will do this time.
+func _draw_profile() -> void:
+	_ui.draw_rect(STRIP, UiTheme.COL_PANEL)
+	UiTheme.frame(_ui, STRIP, false)
+	var profile := ResponseProfile.for_tier(difficulty)
+	for side in [-1, 1]:
+		var r := arrow_rect(side)
+		_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == ("diff_prev" if side < 0 else "diff_next") else Color(0, 0, 0, 0.5))
+		UiTheme.text(_ui, r.position + Vector2(4.0, 11.0), "<" if side < 0 else ">", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(STRIP.position.x + 6.0, STRIP.position.y + 9.0), "DIFFICULTY", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var name := profile.tier_name().to_upper()
+	var mid := (arrow_rect(-1).end.x + arrow_rect(1).position.x) * 0.5
+	UiTheme.text(_ui, Vector2(roundf(mid - UiTheme.width(name, UiTheme.SIZE_SMALL) * 0.5), STRIP.position.y + 23.0), name,
+		UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	# The Defense Profile right of the selector: its label and the tier's blurb, then the responses in three columns.
+	var x0 := STRIP.position.x + 160.0
+	var label := "DEFENSE PROFILE"
+	UiTheme.text(_ui, Vector2(x0, STRIP.position.y + 9.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(x0 + UiTheme.width(label, UiTheme.SIZE_SMALL) + 8.0, STRIP.position.y + 9.0),
+		ResponseProfile.BLURBS[difficulty], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var lines := profile.lines()
+	var col_w := (STRIP.end.x - x0) / 3.0
+	for i in lines.size():
+		UiTheme.text(_ui, Vector2(x0 + float(i % 3) * col_w, STRIP.position.y + 9.0 + UiTheme.LINE_SMALL * float(1 + i / 3)),
+			lines[i], UiTheme.SIZE_SMALL)
 
 
 func _draw_panel() -> void:

@@ -66,6 +66,8 @@ var _aim: Targeting
 var _hud: Hud
 ## F4: the citizens' intents, the alarm stage and the gates (v0.04 debug).
 var _overlay: BehaviourOverlay
+## The difficulty (v0.05): Game sets it before start(); a standalone run reads --difficulty=<name>.
+var difficulty := ResponseProfile.DEFAULT
 var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
@@ -144,6 +146,10 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()
+	var tier := difficulty
+	if autostart and Battlefield.arg_value(args, "--difficulty") != "":
+		tier = ResponseProfile.tier_named(Battlefield.arg_value(args, "--difficulty"))
+	_crowd.profile = ResponseProfile.for_tier(tier)
 	var wanted := Battlefield.arg_value(args, "--people")
 	var people := int(wanted) if wanted != "" else PEOPLE
 	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))

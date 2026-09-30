@@ -141,7 +141,7 @@ func go_to(to: int) -> void:
 			var prep := PrepareScreen.new()
 			prep.name = "Prepare"
 			add_child(prep)
-			prep.setup(loadout, save.best_score, save.best_rank)
+			prep.setup(loadout, save.best_score, save.best_rank, save.difficulty)
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:
@@ -202,6 +202,7 @@ func _faded_into_mission() -> void:
 func _build_mission() -> Mission:
 	var mission: Mission = load(MISSION_SCENE).instantiate()
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
+	mission.difficulty = save.difficulty
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
 	mission.pause_pressed.connect(_open_pause)
@@ -227,6 +228,7 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if what == "manifest":
 		loadout = prep.draft.picks
 		save.remember_loadout(loadout)
+		save.difficulty = prep.difficulty
 		save.save_to(save_path)
 	on_action("prepare:" + what)
 

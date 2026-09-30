@@ -13,6 +13,8 @@ var best_score := 0
 var best_rank := NO_RANK
 ## The last drafted loadout, in slot order. Empty when there is nothing to preselect.
 var last_loadout := PackedStringArray()
+## The difficulty last chosen (v0.05; ResponseProfile.Tier).
+var difficulty := ResponseProfile.DEFAULT
 
 
 func load_from(path := PATH) -> SaveFile:
@@ -23,6 +25,8 @@ func load_from(path := PATH) -> SaveFile:
 	best_score = int(cfg.get_value(SECTION, "best_score", 0))
 	best_rank = String(cfg.get_value(SECTION, "best_rank", NO_RANK))
 	last_loadout = _known(PackedStringArray(cfg.get_value(SECTION, "last_loadout", PackedStringArray())))
+	difficulty = clampi(int(cfg.get_value(SECTION, "difficulty", ResponseProfile.DEFAULT)), 0,
+		ResponseProfile.NAMES.size() - 1) as ResponseProfile.Tier
 	return self
 
 
@@ -31,6 +35,7 @@ func save_to(path := PATH) -> void:
 	cfg.set_value(SECTION, "best_score", best_score)
 	cfg.set_value(SECTION, "best_rank", best_rank)
 	cfg.set_value(SECTION, "last_loadout", last_loadout)
+	cfg.set_value(SECTION, "difficulty", int(difficulty))
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("KAK could not write its save file (%d): %s" % [err, path])

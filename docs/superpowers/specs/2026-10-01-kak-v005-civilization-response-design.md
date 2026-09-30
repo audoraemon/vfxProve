@@ -122,3 +122,20 @@ The overlay gains:
 5. **M5 — River boats:** the ferry cycle, and the dock as an exit in routing.
 6. **M6 — Quiet powers:** Silent Doom and Blight, the blighted state, and their icons and VFX.
 7. **M7 — Tuning:** the overlay, the scenarios, the benchmark, the v0.05 summary, and the tag `kak-v0.05`.
+
+---
+
+## Changes made while executing
+
+### M1
+- **No separate ResponseManager.** The difficulty is a `ResponseProfile` (`src/game/response_profile.gd`) that the crowd carries. Each manager reads what it needs (FireManager: `fire_crew` and `fire_from`; the bell: `bell`), which was lighter than a manager in between.
+- **The Prepare screen's bottom strip:**
+  - left: the difficulty selector `< ORGANIZED >` (arrows clickable; Left/Right keys too);
+  - right: the Defense Profile label, the tier's blurb, and its responses in three columns.
+  - The left panel and the card grid were already full at 640×360.
+- **The difficulty is saved** (`SaveFile.difficulty`) and handed to the mission by Game. A standalone mission reads `-- --difficulty=<name>`.
+- **Until M2** the bell is still v0.04's cathedral bell. Unprepared has none.
+- **The fire brigade turns out from the profile's stage:** Local Emergency for Organized and up, City Emergency for Unprepared. v0.04 turned out at any stage, so a lone house fire at Concern now burns unfought.
+- **F4 panel:** it shows the tier and its responses.
+- **Mission test:** Unprepared 179 alive / 3 escaped; Organized 183 / 2; God-Resistant 181 / 3. The tiers' big responses arrive in M2–M5.
+- **Tests:** 844 checks.

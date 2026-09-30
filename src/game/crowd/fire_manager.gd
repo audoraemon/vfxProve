@@ -20,7 +20,8 @@ const SPREAD := 0.08
 const SPREAD_REACH := 1.5
 ## How often the flames, smoke and danger are renewed.
 const RENEW := 3.0
-## Responders: at most this many per fire, recruited within RECRUIT_REACH, never for a fire past ABANDON; a bucket
+## Responders: at most this many per fire by default (the profile sets it: ResponseProfile.fire_crew), recruited
+## within RECRUIT_REACH, never for a fire past ABANDON; a bucket
 ## takes DOUSE off the intensity; filling and dousing each take ACT seconds.
 const MAX_RESPONDERS := 4
 const RECRUIT_REACH := 10.0
@@ -160,14 +161,17 @@ func nearest_water(g: Vector2) -> Structure:
 
 
 func _recruit() -> void:
-	if _crowd.alarms.stage >= AlarmManager.Stage.EVACUATION or fires.is_empty():
+	# The brigade turns out from the profile's stage (ResponseProfile.fire_from), until the town evacuates.
+	var stage := _crowd.alarms.stage
+	if stage >= AlarmManager.Stage.EVACUATION or stage < _crowd.profile.fire_from or fires.is_empty():
 		return
+	var most := _crowd.profile.fire_crew
 	for s: Structure in fires.keys():
 		var f: Dictionary = fires[s]
 		var crew: Array = f.responders.filter(func(p) -> bool:
 			return is_instance_valid(p) and p.mind == Person.Mind.ASSIST and p.assist_fire == s)
 		f.responders = crew
-		if crew.size() >= MAX_RESPONDERS or float(f.intensity) >= ABANDON or nearest_water(s.center()) == null:
+		if crew.size() >= most or float(f.intensity) >= ABANDON or nearest_water(s.center()) == null:
 			continue
 		var pool: Array[Person] = []
 		for p in _crowd.citizens:
@@ -177,7 +181,7 @@ func _recruit() -> void:
 				pool.append(p)
 		pool.sort_custom(func(a: Person, b: Person) -> bool:
 			return a.ground_pos.distance_to(s.center()) < b.ground_pos.distance_to(s.center()))
-		for k in mini(MAX_RESPONDERS - crew.size(), pool.size()):
+		for k in mini(most - crew.size(), pool.size()):
 			pool[k].assist(s)
 			crew.append(pool[k])
 			_go_to_water(pool[k], s)

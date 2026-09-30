@@ -21,6 +21,8 @@ static func run(t) -> void:
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
 	crowd.spawn()
 	var fm := crowd.fires
+	# The fire brigade turns out from the profile's stage (Organized: Local Emergency).
+	crowd.alarms.stage = crowd.profile.fire_from
 
 	# Catching fire: a fire-kind hit on a house, not a stone wall and not a flood.
 	var house: Structure = null

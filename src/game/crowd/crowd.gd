@@ -90,6 +90,8 @@ var alarms := AlarmManager.new()
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
 var fires: FireManager
+## How ready the town is (v0.05): which responses it has and how strong. Mission sets it before spawn().
+var profile := ResponseProfile.for_tier(ResponseProfile.DEFAULT)
 ## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
 var shelters: ShelterManager
 var _stage_in := 0.0
@@ -784,7 +786,7 @@ func _regroup() -> void:
 
 ## City Emergency: a clergy member goes to ring the cathedral bell -- if the cathedral stands and one is alive.
 func _call_bell() -> void:
-	if alarms.bell_rung or _temple_down():
+	if alarms.bell_rung or _temple_down() or not profile.bell:
 		return
 	if _steps == Vector2.INF:
 		var steps: Array = TownLayout.anchors().get("cathedral", [])

@@ -86,6 +86,10 @@ const FOUNTAINS := [Rect2(0.2, 5.1, 1.2, 1.2), Rect2(10.8, -10.6, 1.2, 1.2)]
 ## and the gate queues, where no building in front hides it; the east has no such ground (its open spots lie behind
 ## the tavern or in the Side Gate's queue), and the market fountain serves it. Built after the fountains.
 const WELLS := [Rect2(-11.9, -13.8, 0.5, 0.5), Rect2(-14.1, 1.6, 0.5, 0.5), Rect2(-9.1, 13.5, 0.5, 0.5)]
+## The Bell Tower (v0.05): a tall stone tower with an open belfry, east of the market, where the bellkeeper spreads
+## the alarm (BellNetwork). Built last, so every other building keeps its seed.
+const BELL_TOWER := Rect2(7.0, 0.8, 1.1, 1.1)
+const BELL_TOWER_H := 60.0
 ## Market stalls packed as the reference's are: rows 1.5 apart (0.8 aisles between them) of three stalls west of
 ## the main street, leaving a walkway along it for the piles; a column east of it; none within 0.6 of the fountain.
 const STALLS := [
@@ -319,12 +323,13 @@ static func structures() -> Array[Dictionary]:
 	for i in town_trees.size():
 		_add(out, Rect2(town_trees[i], TOWN_TREE), 25.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor", &"oak")
 	_add(out, CARPENTER, 20.0, Structure.Kind.HOUSE, &"house", &"carpenter")
+	_add(out, BELL_TOWER, BELL_TOWER_H, Structure.Kind.KEEP, &"tower", &"bell_tower")
 	return out
 
 
 ## Everything a cottage must keep clear of: the landmarks, yards, gate plazas and the Citadel's ground.
 static func _landmarks() -> Array[Rect2]:
-	var out: Array[Rect2] = [TEMPLE, BARRACKS, BARRACKS_YARD, WORKSHOP, SMITHY, CARPENTER, MARKET_SQUARE,
+	var out: Array[Rect2] = [TEMPLE, BARRACKS, BARRACKS_YARD, WORKSHOP, SMITHY, CARPENTER, BELL_TOWER, MARKET_SQUARE,
 		FOUNTAIN_PLAZA, CITADEL_COURT]
 	for r: Rect2 in TAVERNS + YARDS:
 		out.append(r)
@@ -503,11 +508,11 @@ static func queue_fans(margin := 0.3) -> Array[PackedVector2Array]:
 ## Where citizens go about their day (CitizenProfile, RoutineManager), by kind: "home" (outside each house's front),
 ## "stall" (in front of each market stall), "craft" (the smithy, workshop and carpenter's yards), "tavern",
 ## "cathedral" (its steps), "plaza" (the squares and plazas), "water" (round the fountains and wells), "field"
-## (field edges), "mill", "dock", "barn" (the farmhouses, where farmers live). Raw ground points: the crowd snaps each to the nearest walkable cell. None in a
+## (field edges), "mill", "dock", "barn" (the farmhouses, where farmers live), "bell" (the Bell Tower's foot). Raw ground points: the crowd snaps each to the nearest walkable cell. None in a
 ## gate's queue fan.
 static func anchors() -> Dictionary:
 	var out := {"home": [], "stall": [], "craft": [], "tavern": [], "cathedral": [], "plaza": [], "water": [],
-		"field": [], "mill": [], "dock": [], "barn": []}
+		"field": [], "mill": [], "dock": [], "barn": [], "bell": []}
 	for h: Rect2 in houses():
 		out.home.append(Vector2(h.get_center().x, h.end.y + 0.35))
 	for st: Rect2 in STALLS:
@@ -531,6 +536,7 @@ static func anchors() -> Dictionary:
 	out.dock.append(Vector2(DOCK.get_center().x, DOCK.position.y - 0.4))
 	for b: Rect2 in BARNS:
 		out.barn.append(Vector2(b.get_center().x, b.end.y + 0.4))
+	out.bell.append(Vector2(BELL_TOWER.position.x - 0.45, BELL_TOWER.get_center().y))
 	for k in out:
 		var kept := []
 		for g: Vector2 in out[k]:

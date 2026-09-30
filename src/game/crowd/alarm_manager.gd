@@ -17,8 +17,10 @@ const NAMES := ["Normal", "Concern", "Local Emergency", "City Emergency", "Evacu
 ## 40 people) reaches alarm 50-60 on its own, and must not empty the town by itself.
 const LOCAL_EVENTS := 4
 const CITY_ALARM := 35.0
+## Once the Bell Tower has rung (v0.05), the town calls City Emergency and the evacuation sooner.
+const CITY_ALARM_BELL := 25.0
 const CITY_DISTRICTS := 2
-const EVAC_BELL := 75.0
+const EVAC_BELL := 60.0
 const EVAC_NO_BELL := 90.0
 ## Seconds after City Emergency before any evacuation: time for families to regroup and the bell to ring.
 const REGROUP_SECONDS := 15.0
@@ -76,9 +78,10 @@ func update(alarm: float, dangers: int, clock: float) -> void:
 	if districts_in_emergency() >= 1:
 		target = Stage.LOCAL_EMERGENCY
 		reason = "a district in emergency"
-	if alarm >= CITY_ALARM or districts_in_emergency() >= CITY_DISTRICTS:
+	var city_at := CITY_ALARM_BELL if bell_rung else CITY_ALARM
+	if alarm >= city_at or districts_in_emergency() >= CITY_DISTRICTS:
 		target = Stage.CITY_EMERGENCY
-		reason = "alarm %d" % roundi(alarm) if alarm >= CITY_ALARM else "%d districts in emergency" % districts_in_emergency()
+		reason = "alarm %d" % roundi(alarm) if alarm >= city_at else "%d districts in emergency" % districts_in_emergency()
 	var regrouped := _city_at >= 0.0 and clock - _city_at >= REGROUP_SECONDS
 	if regrouped and ((bell_rung and alarm >= EVAC_BELL) or alarm >= EVAC_NO_BELL):
 		target = Stage.EVACUATION

@@ -9,7 +9,11 @@ extends SceneTree
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
 ##   gates  an evacuation called after 20 s of calm; --hazard puts a lasting danger on the Main Gate's approach at
 ##          5 s: evacuees by chosen exit, reroutes and queues over 40 s
+##   bell   a strike in the west after 20 s of calm; --kill-keeper kills the bellkeeper first (quietly): the Bell
+##          Tower's state, the stage and the alarm every 2 s over 30 s
 ##   fire   three houses set burning in the west quarter after 20 s of calm: fires, intensity, responders over 40 s
+
+const SEED := 7
 
 var mission: Mission
 
@@ -27,6 +31,9 @@ func _run() -> void:
 		else 60.0
 	while not mission.is_prewarmed or not mission.started():
 		await process_frame
+	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
+	var seed_arg := Battlefield.arg_value(args, "--seed")
+	mission.start(PackedStringArray(), int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
@@ -38,6 +45,8 @@ func _run() -> void:
 			await _escalate()
 		"fire":
 			await _fire("--shots" in args)
+		"bell":
+			await _bell("--kill-keeper" in args, "--shots" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -100,6 +109,32 @@ func _escalate() -> void:
 		t += 5.0
 	for h in crowd.alarms.history:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
+
+
+func _bell(kill_keeper: bool, shots: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	if kill_keeper and crowd.bell.keeper != null:
+		crowd._field.kill(crowd.bell.keeper, &"test")
+	mission._rules.cast(0, Vector2(-10.0, 3.0), {"dir": Vector2(1, 0)})
+	var t := 0.0
+	var shot := false
+	while t < 30.0:
+		await _frames(2 * 60)
+		t += 2.0
+		var k: Person = crowd.bell.keeper
+		var where := "-" if k == null or not is_instance_valid(k) else "%s mind=%s goal=%s foot=%.1f" % [k.ground_pos.round(),
+			Person.Mind.keys()[k.mind], k.goal().round(), k.ground_pos.distance_to(crowd.bell.foot)]
+		print("BEHAVIOUR bell t=%d state=%s progress=%.1f stage=%s alarm=%d rung=%s keeper %s" % [roundi(t),
+			BellNetwork.State.keys()[crowd.bell.state], crowd.bell.progress, crowd.alarms.stage_name(), roundi(crowd.alarm),
+			crowd.alarms.bell_rung, where])
+		if shots and not shot and crowd.bell.state == BellNetwork.State.CLIMBING:
+			shot = true
+			var bf: Battlefield = mission._bf
+			bf.camera.zoom = Vector2.ONE * 1.0
+			bf.camera.position = (Iso.ground_to_screen(TownLayout.BELL_TOWER.get_center()) + Vector2(0, -20)).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_bell.png")
 
 
 func _fire(shots: bool) -> void:

@@ -162,6 +162,10 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town)
 	_rules.over.connect(_on_over)
 	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
+	if _crowd.bell != null:
+		_crowd.bell.climbing_started.connect(func(): _rules.banner.emit("THE BELLKEEPER CLIMBS THE TOWER"))
+		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
+		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
 
 	_aim = Targeting.new()
 	_aim.name = "Targeting"

@@ -139,3 +139,22 @@ The overlay gains:
 - **F4 panel:** it shows the tier and its responses.
 - **Mission test:** Unprepared 179 alive / 3 escaped; Organized 183 / 2; God-Resistant 181 / 3. The tiers' big responses arrive in M2–M5.
 - **Tests:** 844 checks.
+
+### M2
+- **The tower:** `TownLayout.BELL_TOWER` at (7.0, 0.8), 1.1 units square and 60 px tall, east of the market. It is a KEEP tagged `bell_tower`, drawn with `StoneArt._draw_belfry()`: a dark inside, stone piers at three corners (a front pier would sit straight in front of the bell in this view), a bronze bell hung low enough to show under the roof's front eave, and a slate pyramid roof. Its role is `tower`: 3 DP, and it counts as a building.
+- **The bellkeeper:** the resident living nearest the tower (Role.BELLKEEPER). They work at the tower's foot, on its west side facing the market; the north side was a pocket the path could not reach. A test checks the foot is reachable from the market. On duty they run.
+- **The v0.04 clergy/cathedral bell is gone.** BellNetwork runs the bell: IDLE → CALLED at the first Local Emergency → CLIMBING (8 s, a gold bar over the roof) → RUNG. A frightened keeper goes to WAITING and retries in 10 s; a dead keeper or a fallen or blighted tower means SILENCED. There are banners for each.
+- **New rule — the unwarned half-rate.** Until the bell has rung, alarm from events (collapses, deaths, Citadel hits) counts half (`Crowd.UNWARNED_ALARM` 0.5), following the source doc's "the global Alarm rises faster after the bell". Without it, one Heaven Splitter into the dense west quarter reached alarm ~90 on its own, and silencing the bell bought nothing.
+- **Thresholds after the bell:** City Emergency at 25; evacuation at 60.
+- **Bell scenario** (Heaven Splitter in the west, seed 7):
+  - keeper alive: the bell rings at about 14 s (alarm 47 → 67), and the town evacuates by 20 s;
+  - keeper killed first: the bell is silenced, the alarm holds at 49 (City Emergency), and there is no evacuation within 30 s.
+- **Walking fixes found through the bell:**
+  - A walker blocked by a building's margin now slides the full step along the axis it leans (`DummyEnemy._move`). A walker already inside a margin may step out.
+  - Paths' diagonals clip corner margins (the walk grid checks cell centres), and one keeper stood pinned at a stall corner for good.
+  - Seven seeds now all ring.
+- **`behaviour_check.gd` was never seeded.** It now restarts the mission on `--seed` (default 7). Checksums recorded before this were from clock seeds and do not repeat.
+- **Checksums:** crowd_check −549829194.
+- **Mission test:** `citizens=164 escaped=1 stability=65% citadel=50%`.
+- **Market bench, alternating:** M1 93.8 / 92.7 / 92.2 fps, M2 91.6 / 92.9 / 92.8 fps.
+- **Tests:** 853 checks.

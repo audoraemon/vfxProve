@@ -15,6 +15,7 @@ const WEIGHTS := {
 	CitizenProfile.Role.LABORER: [0.15, 0.55, 0.1, 0.2],
 	CitizenProfile.Role.CLERGY: [0.2, 0.6, 0.2, 0.0],
 	CitizenProfile.Role.FARMER: [0.2, 0.6, 0.05, 0.15],
+	CitizenProfile.Role.BELLKEEPER: [0.15, 0.75, 0.1, 0.0],
 }
 ## How long a citizen stays (seconds, min and max) at each kind of place.
 const STAY := [Vector2(10, 30), Vector2(25, 60), Vector2(8, 25), Vector2(5, 12)]

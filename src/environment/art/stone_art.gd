@@ -40,7 +40,8 @@ static func draw(s: Structure) -> void:
 	var up := Vector2(0, -h)
 	ArtKit.poly(PackedVector2Array([s._s[0] + up, s._s[1] + up, s._s[2] + up, s._s[3] + up]), ArtKit.STONE_TOP,
 		ArtKit.LIT_TOP)
-	_draw_merlons(s)
+	if s.art_tag != &"bell_tower":
+		_draw_merlons(s)
 	# Mortar courses over the fills (merlons stand above the walls, so the lines never cross them).
 	for face in [ArtKit.LEFT, ArtKit.RIGHT]:
 		ArtKit.mortar_lines(s, face, 0.0, h, COURSE)
@@ -57,6 +58,8 @@ static func draw(s: Structure) -> void:
 		_draw_gate_stones(s, gate_face)
 	elif s.art_tag == &"gate":
 		_draw_arched_door(s, ArtKit.LEFT, 0.5, 12.0, roundf(h * 0.5))
+	if s.art_tag == &"bell_tower":
+		_draw_belfry(s)
 	if s.art.get("torch", false):
 		var base := s._gp(s.center(), h)
 		ArtKit.poly(PackedVector2Array([base + Vector2(-1, 0), base + Vector2(1, 0), base + Vector2(1, -7),
@@ -64,6 +67,49 @@ static func draw(s: Structure) -> void:
 		ArtKit.poly(PackedVector2Array([base + Vector2(-2, -7), base + Vector2(2, -7), base + Vector2(2, -8),
 			base + Vector2(-2, -8)]), ArtKit.IRON, ArtKit.LIT_RIGHT)
 	ArtKit.flush(s)
+
+
+## The Bell Tower's belfry (v0.05): stone piers at three corners, a bronze bell hanging between them over a dark
+## inside, and a slate roof. The inside first, then the piers, the bell and the roof.
+static func _draw_belfry(s: Structure) -> void:
+	# Tall enough that the roof's front eave, which comes far down on screen, still leaves the bell in view.
+	const HIGH := 28.0
+	const ROOF := 18.0
+	var h := s.height
+	var r := s.footprint
+	var pier := 0.14
+	var back := r.position
+	var right := Vector2(r.end.x, r.position.y)
+	var left := Vector2(r.position.x, r.end.y)
+	# The dark inside of the belfry, on its two back walls.
+	var dark := ArtKit.STONE[1].darkened(0.65)
+	for g: Vector2 in [right, left]:
+		ArtKit.poly(PackedVector2Array([s._gp(back, h), s._gp(g, h), s._gp(g, h + HIGH), s._gp(back, h + HIGH)]), dark, 0.0)
+	# Three piers: the front corner stands open (in this view it sits straight in front of the bell).
+	var corners := [back, right, left]
+	var bronze := Color("b08838")
+	for k in 4:
+		if k == 3:
+			# The bell, hanging low enough to show under the roof's front eave.
+			var mouth := s._gp(r.get_center(), h + 1.0)
+			var crown := s._gp(r.get_center(), h + 10.0)
+			ArtKit.poly(PackedVector2Array([crown + Vector2(-3, 0), crown + Vector2(3, 0), mouth + Vector2(6, 0),
+				mouth + Vector2(-6, 0)]), bronze, ArtKit.LIT_RIGHT)
+			ArtKit.poly(PackedVector2Array([mouth + Vector2(-7, 0), mouth + Vector2(7, 0), mouth + Vector2(7, 2),
+				mouth + Vector2(-7, 2)]), bronze.darkened(0.25), ArtKit.LIT_LEFT)
+			ArtKit.line(s._gp(r.get_center(), h + HIGH), crown, ArtKit.ink(0.6))
+			continue
+		var g: Vector2 = corners[k]
+		var lo := Vector2(clampf(g.x, r.position.x, r.end.x - pier), clampf(g.y, r.position.y, r.end.y - pier))
+		PropArt._box(s, lo, lo + Vector2(pier, pier), h, h + HIGH, ArtKit.STONE[1], ArtKit.STONE[0], ArtKit.STONE_TOP)
+	# The roof: a pyramid on the piers, its two faces toward the camera.
+	var apex := s._gp(r.get_center(), h + HIGH + ROOF)
+	var e_left := s._gp(left, h + HIGH)
+	var e_front := s._gp(r.end, h + HIGH)
+	var e_right := s._gp(right, h + HIGH)
+	ArtKit.poly(PackedVector2Array([e_left, e_front, apex]), Color("4a5870"), ArtKit.LIT_LEFT)
+	ArtKit.poly(PackedVector2Array([e_front, e_right, apex]), Color("5c6c86"), ArtKit.LIT_RIGHT)
+	ArtKit.line(e_front, apex, ArtKit.ink(0.3, true))
 
 
 ## Where a wall torch's flame sits (structure-local px).

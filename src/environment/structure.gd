@@ -161,6 +161,9 @@ var _unseen := false
 ## Off screen with nothing going on, a structure stops processing altogether; EnvironmentField wakes it when it
 ## comes into view, and anything that happens to it (a hit, a fire, a falling banner) wakes it at once.
 var asleep := false
+## Its function ruined by Blight (v0.05): a well that gives no water, a bell that cannot ring, a jammed gate, a
+## sunk dock, a cathedral that holds no rite. It still stands.
+var blighted := false
 ## Asleep while in view (_can_idle()): nothing on it moves, so only its light can change what it draws, and
 ## EnvironmentField checks that LIGHT_HZ times a second (idle_check()) instead of the structure processing every
 ## frame. A town centre shows ~250 buildings; per-frame processing of them all cost ~3 ms.

@@ -342,11 +342,20 @@ func flash(seconds: float) -> void:
 func _move(step: Vector2) -> void:
 	if absf(step.x - step.y) > 0.0001:
 		_facing = 1 if step.x - step.y > 0.0 else -1
-	var hit: bool
-	if block_env != null:
-		hit = block_env.blocked(ground_pos + step)
-	else:
-		hit = blocked.is_valid() and blocked.call(ground_pos + step)
+	var hit := _step_blocked(step)
+	if hit:
+		# Slide along what is in the way: a path's diagonal can clip a building's corner margin (the walk grid only
+		# looks at cell centres), and without sliding a walker pinned there never moves again.
+		# The full step's length along each axis the step leans, the larger lean first: a walker grazing a margin's
+		# edge has almost nothing to spare on one axis and would inch along it for ever.
+		var span := step.length()
+		var axes := [Vector2(signf(step.x) * span, 0.0), Vector2(0.0, signf(step.y) * span)]
+		if absf(step.y) > absf(step.x):
+			axes.reverse()
+		for along: Vector2 in axes:
+			if along.length_squared() > 0.0 and not _step_blocked(along):
+				ground_pos = (ground_pos + along).clamp(bounds.position, bounds.end)
+				return
 	if hit:
 		_velocity = Vector2.ZERO
 		_idle = rng.randf_range(0.1, 0.5)
@@ -354,6 +363,14 @@ func _move(step: Vector2) -> void:
 		return
 	ground_pos += step
 	ground_pos = ground_pos.clamp(bounds.position, bounds.end)
+
+
+## Whether a step would take it into a building's margin. One already inside a margin (put there by a spawn, a
+## shove, a building going up) may step anyway: its path runs through walkable cells and out.
+func _step_blocked(step: Vector2) -> bool:
+	if block_env != null:
+		return block_env.blocked(ground_pos + step) and not block_env.blocked(ground_pos)
+	return blocked.is_valid() and blocked.call(ground_pos + step) and not blocked.call(ground_pos)
 
 
 func _pick_target() -> void:

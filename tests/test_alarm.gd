@@ -55,7 +55,7 @@ static func run(t) -> void:
 	crowd._return_investigators()
 	t.check(crowd._investigating.is_empty(), "and go back to their posts after a while")
 
-	# City Emergency: the soldiers rally, merchants go home, a clergy member heads for the bell.
+	# City Emergency: the soldiers rally, merchants go home.
 	crowd.add_alarm(AlarmManager.CITY_ALARM)
 	t.check(crowd.alarms.stage == AlarmManager.Stage.CITY_EMERGENCY and crowd._rallied, "alarm 35: City Emergency, the soldiers rally")
 	var merchants_home := true
@@ -66,33 +66,33 @@ static func run(t) -> void:
 		if p.mind == Person.Mind.REGROUP:
 			regrouping += 1
 	t.check(merchants_home and regrouping >= Crowd.CITIZENS * 0.3, "the market closes and people go home (%d)" % regrouping)
-	t.check(is_instance_valid(crowd._ringer) and crowd._ringer.mind == Person.Mind.DUTY
-		and crowd._ringer.profile.role == CitizenProfile.Role.CLERGY, "a clergy member sets off to ring the bell")
-	crowd._ringer.ground_pos = crowd._steps
-	crowd._tend_bell(0.1)
-	t.check(crowd.alarms.bell_rung, "reaching the steps, it rings")
+	# The Bell Tower rings (BellNetwork; tests/test_bell.gd has the climb).
+	crowd.ring_bell()
+	t.check(crowd.alarms.bell_rung, "the bell rings")
 	var aware := true
 	for p in crowd.citizens:
 		aware = aware and p.awareness >= Person.Awareness.EMERGENCY
 	t.check(aware, "and everyone knows")
 	crowd._clock += AlarmManager.REGROUP_SECONDS
 	crowd.add_alarm(AlarmManager.EVAC_BELL - crowd.alarm)
-	t.check(crowd.alarms.stage == AlarmManager.Stage.EVACUATION and crowd._fled_all, "after the bell and the regroup, 75 evacuates the town")
+	t.check(crowd.alarms.stage == AlarmManager.Stage.EVACUATION and crowd._fled_all, "after the bell and the regroup, 60 evacuates the town")
 	crowd.clear()
 	(made[2] as Node).free()
 
-	# No cathedral, no bell: the evacuation waits for 70.
+	# No Bell Tower, no bell: the evacuation waits for 90.
 	made = _crowd()
 	crowd = made[0]
 	env = made[1]
 	for s in env.structures():
-		if s.role == &"temple":
+		if s.art_tag == &"bell_tower":
 			s.destroy(s.center(), &"nova")
 	crowd.add_alarm(80.0 - crowd.alarm)
 	crowd._clock += AlarmManager.REGROUP_SECONDS
 	crowd.add_alarm(0.001)
-	t.check(not crowd.alarms.bell_rung and crowd._ringer == null and crowd.alarms.stage == AlarmManager.Stage.CITY_EMERGENCY,
-		"with the cathedral down nobody rings, and 80 is not yet an evacuation")
+	crowd.bell.step(0.1)
+	t.check(not crowd.alarms.bell_rung and crowd.bell.state == BellNetwork.State.SILENCED
+		and crowd.alarms.stage == AlarmManager.Stage.CITY_EMERGENCY,
+		"with the Bell Tower down nobody rings, and 80 is not yet an evacuation")
 	crowd.add_alarm(AlarmManager.EVAC_NO_BELL - crowd.alarm)
 	t.check(crowd.alarms.stage == AlarmManager.Stage.EVACUATION, "90 is")
 	crowd.order_collapses()

@@ -341,7 +341,7 @@ func _mind_speed() -> float:
 			return WALK_SPEED * RECOVER_PACE * pace
 		Mind.ASSIST:
 			return WALK_SPEED * ASSIST_PACE * pace
-		Mind.SHELTER:
+		Mind.SHELTER, Mind.DUTY:
 			return PANIC_SPEED * pace
 		Mind.FLEE:
 			return FLEE_SPEED * pace
@@ -599,7 +599,7 @@ func regroup(home: Vector2) -> void:
 	set_goal(home)
 
 
-## A clergy member's duty: walk to the cathedral steps `steps` to ring the bell (Crowd rings it on arrival).
+## The bellkeeper's duty: walk to the Bell Tower's foot `steps` to climb it and ring the bell (BellNetwork).
 func go_ring(steps: Vector2) -> void:
 	if soldier or state == State.DEAD or mind == Mind.FLEE:
 		return

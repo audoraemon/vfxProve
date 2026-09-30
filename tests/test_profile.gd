@@ -54,7 +54,7 @@ static func run(t) -> void:
 	crowd.profile = u
 	crowd.spawn()
 	crowd.add_alarm(AlarmManager.CITY_ALARM)
-	t.check(crowd.alarms.stage == AlarmManager.Stage.CITY_EMERGENCY and crowd._ringer == null,
-		"an Unprepared town reaches City Emergency with nobody to ring a bell")
+	t.check(crowd.alarms.stage == AlarmManager.Stage.CITY_EMERGENCY and crowd.bell.state == BellNetwork.State.SILENCED
+		and crowd.bell.keeper == null, "an Unprepared town reaches City Emergency with nobody to ring a bell")
 	crowd.clear()
 	world.free()

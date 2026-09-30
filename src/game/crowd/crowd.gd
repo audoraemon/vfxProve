@@ -27,16 +27,15 @@ const INVESTIGATORS := 2
 const INVESTIGATE_SECONDS := 20.0
 ## At City Emergency this share of citizens (and every merchant: the market closes) goes home to regroup.
 const REGROUP_SHARE := 0.3
-## How close to the cathedral steps the bell-ringer must get, and how often a new one is sought if it cannot.
-const BELL_REACH := 0.8
 ## A household regrouping at home leaves together at the evacuation once every member still regrouping is home,
 ## or after HOUSEHOLD_WAIT seconds. Farmhouse households are numbered from FARM_FAMILY.
 const HOUSEHOLD_WAIT := 20.0
 const HOME_REACH := 1.2
 const FARM_FAMILY := 10000
-const BELL_RETRY := 2.0
 ## A cast this close frightens a citizen; a collapse this close does too.
 const PANIC_CAST := 7.0
+## Alarm from events counts this share of its worth before the bell has rung (_hear_alarm()).
+const UNWARNED_ALARM := 0.5
 ## A fallen building: its danger's radius past the footprint's reach, and how far it is seen and heard.
 const COLLAPSE_RADIUS := 1.0
 const COLLAPSE_SIGHT := 4.0
@@ -98,9 +97,9 @@ var _stage_in := 0.0
 ## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
 var _investigating: Array = []
 ## The clergy member walking to ring the cathedral bell, and when to look for another.
-var _ringer: Person
-var _ringer_in := 0.0
-var _steps := Vector2.INF
+## The Bell Tower and its bellkeeper (v0.05); made by spawn().
+var bell: BellNetwork
+var _bell_drawer: Node2D
 ## Households waiting to leave together: family -> clock the evacuation found them.
 var _households := {}
 var spawned_soldiers := 0
@@ -140,6 +139,15 @@ var _ticker: Ticker
 
 ## Steps the whole crowd from one node in the world, placed just before the first person: people do not process
 ## on their own (Person.ticked), so the engine makes one call a frame instead of one per person.
+## Draws the Bell Tower's climb and ring (BellNetwork.draw()) over the world.
+class BellDrawer extends Node2D:
+	var crowd: Crowd
+
+	func _draw() -> void:
+		if crowd != null and crowd.bell != null:
+			crowd.bell.draw(self)
+
+
 class Ticker extends Node:
 	var crowd: Crowd
 
@@ -193,6 +201,14 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		soldiers.append(_add_person(true, spot))
 	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
+	var keeper := _appoint_bellkeeper(anchors)
+	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
+	if _bell_drawer == null or not is_instance_valid(_bell_drawer):
+		_bell_drawer = BellDrawer.new()
+		_bell_drawer.name = "BellDrawer"
+		_bell_drawer.z_index = 60
+		_parent.add_child(_bell_drawer)
+	(_bell_drawer as BellDrawer).crowd = self
 	shelters = ShelterManager.new().setup(self, _env, _field)
 	for p in citizens:
 		p.evac = evac
@@ -399,7 +415,12 @@ func advance(delta: float) -> void:
 	if _stage_in <= 0.0:
 		_stage_in = 0.5
 		alarms.update(alarm, threats.active_count(), _clock)
-	_tend_bell(delta)
+	if bell != null:
+		bell.step(delta)
+		if is_instance_valid(_bell_drawer) and (bell.state == BellNetwork.State.CLIMBING or bell.ring_show > 0.0
+				or _bell_drawer.get_meta("shown", false)):
+			_bell_drawer.set_meta("shown", bell.state == BellNetwork.State.CLIMBING or bell.ring_show > 0.0)
+			_bell_drawer.queue_redraw()
 	_tend_households()
 	_return_investigators()
 	_gates()
@@ -706,6 +727,13 @@ func _watch_threats() -> void:
 			break
 
 
+## What happened in town reaching the alarm (a collapse, a death, a hit on the Citadel): until the Bell Tower has
+## rung, only those nearby know, so it counts UNWARNED_ALARM of its worth (v0.05) -- a town kept from its bell
+## mobilizes slower. Once the bell has rung, everything counts in full.
+func _hear_alarm(points: float) -> void:
+	add_alarm(points if alarms.bell_rung else points * UNWARNED_ALARM)
+
+
 func add_alarm(points: float) -> void:
 	var before := alarm
 	alarm = clampf(alarm + points, 0.0, 100.0)
@@ -717,10 +745,12 @@ func add_alarm(points: float) -> void:
 ## A new alarm stage (AlarmManager.stage_changed): what the town does about it.
 func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 	match stage:
+		AlarmManager.Stage.LOCAL_EMERGENCY:
+			if bell != null:
+				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
 			rally()
 			_regroup()
-			_call_bell()
 		AlarmManager.Stage.EVACUATION, AlarmManager.Stage.COLLAPSE:
 			_evacuate()
 
@@ -784,26 +814,21 @@ func _regroup() -> void:
 			p.regroup(p.profile.home)
 
 
-## City Emergency: a clergy member goes to ring the cathedral bell -- if the cathedral stands and one is alive.
-func _call_bell() -> void:
-	if alarms.bell_rung or _temple_down() or not profile.bell:
-		return
-	if _steps == Vector2.INF:
-		var steps: Array = TownLayout.anchors().get("cathedral", [])
-		if steps.is_empty():
-			return
-		var s: Vector2 = steps[steps.size() / 2]
-		_steps = s if _grid.walkable(s) else _grid.nearest_walkable(s)
-	_ringer = null
-	var best := INF
+## A Bell Tower needs its keeper (v0.05): the resident living nearest it takes the post, working at the tower's foot.
+## None in an Unprepared town.
+func _appoint_bellkeeper(anchors: Dictionary) -> Person:
+	var foot: Array = anchors.get("bell", [])
+	if not profile.bell or foot.is_empty():
+		return null
+	var best: Person = null
 	for p in citizens:
-		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY \
-				and p.mind != Person.Mind.FLEE and p.ground_pos.distance_to(_steps) < best:
-			best = p.ground_pos.distance_to(_steps)
-			_ringer = p
-	if _ringer != null:
-		_ringer.go_ring(_steps)
-	_ringer_in = BELL_RETRY
+		if p.profile != null and p.profile.role == CitizenProfile.Role.RESIDENT and (best == null
+				or p.profile.home.distance_to(foot[0]) < best.profile.home.distance_to(foot[0])):
+			best = p
+	if best != null:
+		best.profile.role = CitizenProfile.Role.BELLKEEPER
+		best.profile.work = foot[0]
+	return best
 
 
 func _temple_down() -> bool:
@@ -813,31 +838,15 @@ func _temple_down() -> bool:
 	return true
 
 
-## The bell-ringer on its way: ring once it reaches the steps; find another if it died, fled or cannot get there.
-func _tend_bell(delta: float) -> void:
-	if alarms.bell_rung or alarms.stage < AlarmManager.Stage.CITY_EMERGENCY or _temple_down():
-		return
-	if is_instance_valid(_ringer) and _ringer.is_alive() and _ringer.mind == Person.Mind.DUTY:
-		if _ringer.ground_pos.distance_to(_steps) <= BELL_REACH:
-			ring_bell()
-			return
-		if _ringer.has_goal():
-			return
-	_ringer_in -= delta
-	if _ringer_in <= 0.0:
-		_call_bell()
-
-
-## The cathedral bell: every citizen learns of the danger, and the alarm can call the evacuation sooner.
-func ring_bell() -> void:
+## The Bell Tower rings (BellNetwork): every citizen learns of the danger, and the town calls City Emergency and the
+## evacuation sooner.
+func ring_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
 	alarms.bell_rung = true
-	if is_instance_valid(_ringer) and _ringer.mind == Person.Mind.DUTY:
-		_ringer.regroup(_ringer.profile.home)
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
 			p.awareness = maxi(p.awareness, Person.Awareness.EMERGENCY) as Person.Awareness
 	if sfx != null:
-		sfx.play(&"town_bell", TownLayout.TEMPLE.get_center())
+		sfx.play(&"town_bell", at)
 	alarms.update(alarm, threats.active_count(), _clock)
 
 
@@ -914,7 +923,10 @@ func clear() -> void:
 		shelters.clear()
 	_households.clear()
 	_investigating.clear()
-	_ringer = null
+	if is_instance_valid(_bell_drawer):
+		_bell_drawer.queue_free()
+	_bell_drawer = null
+	bell = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0
@@ -934,7 +946,7 @@ func clear() -> void:
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
-		add_alarm(ALARM_BUILDING)
+		_hear_alarm(ALARM_BUILDING)
 	var at := s.center()
 	if s.role != &"citadel" and alarms.incident(at):
 		_investigate(at)
@@ -959,7 +971,7 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 		killed_citizens += 1
 	if alarms.incident(p.ground_pos):
 		_investigate(p.ground_pos)
-	add_alarm(ALARM_KILL)
+	_hear_alarm(ALARM_KILL)
 
 
 ## The Citadel reports every hit that takes health; the first one is the alarm bell.
@@ -967,7 +979,7 @@ func _on_citadel_health(_fraction: float) -> void:
 	if _citadel_hit:
 		return
 	_citadel_hit = true
-	add_alarm(ALARM_CITADEL_HIT)
+	_hear_alarm(ALARM_CITADEL_HIT)
 	rally()
 
 

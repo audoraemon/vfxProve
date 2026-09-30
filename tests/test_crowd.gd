@@ -100,7 +100,8 @@ static func run(t) -> void:
 	var beside := crowd.citizens[2]
 	beside.ground_pos = market.center() + Vector2(1.0, 0.0)
 	market.destroy(market.center() + Vector2(2.0, 0.0), &"stone")
-	t.near(crowd.alarm - alarm_before, Crowd.ALARM_BUILDING, 0.001, "a destroyed building is worth 2 alarm")
+	t.near(crowd.alarm - alarm_before, Crowd.ALARM_BUILDING * Crowd.UNWARNED_ALARM, 0.001,
+		"a destroyed building is worth 2 alarm -- half until the bell has rung")
 	t.check(beside.mind == Person.Mind.PANIC or beside.mind == Person.Mind.SHELTER,
 		"and frightens the people beside it (run or take cover)")
 
@@ -109,18 +110,20 @@ static func run(t) -> void:
 	town.citadel.parts[0].destroy(TownLayout.CITADEL_ORIGIN, &"stone")
 	t.near(crowd.alarm, alarm_before, 0.001, "a Citadel part is not counted as a building")
 	town.citadel.keep.damage(20.0, TownLayout.CITADEL_ORIGIN, &"stone")
-	t.check(crowd.alarm >= alarm_before + Crowd.ALARM_CITADEL_HIT, "the first hit on the Citadel is worth 10")
+	t.check(crowd.alarm >= alarm_before + Crowd.ALARM_CITADEL_HIT * Crowd.UNWARNED_ALARM,
+		"the first hit on the Citadel is worth 10 (half before the bell)")
 	var rallying := 0
 	for p in crowd.soldiers:
 		if p.mind == Person.Mind.RALLY:
 			rallying += 1
 	t.check(rallying == crowd.soldiers.size(), "every soldier rallies to the Citadel (%d)" % rallying)
 
-	# Kills raise the alarm and are counted by kind.
+	# Kills raise the alarm and are counted by kind (after the bell, events count in full).
+	crowd.alarms.bell_rung = true
 	alarm_before = crowd.alarm
 	field.kill(crowd.citizens[3], &"nova")
 	field.kill(crowd.soldiers[0], &"nova")
-	t.near(crowd.alarm - alarm_before, Crowd.ALARM_KILL * 2.0, 0.001, "each death is worth half a point")
+	t.near(crowd.alarm - alarm_before, Crowd.ALARM_KILL * 2.0, 0.001, "each death is worth half a point once the bell has rung")
 	t.check(crowd.killed_citizens == 1 and crowd.killed_soldiers == 1, "deaths are counted per kind")
 
 	# Without the bell, the evacuation comes at 90 alarm, once families have had time to regroup: every citizen runs.

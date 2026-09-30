@@ -44,3 +44,20 @@
    - tests, digest, FLOW, crowd_check;
    - bench against `kak-v0.04` (market view and wear, at most a 5-fps loss);
    - commit, and tag `kak-v0.04-p1`.
+
+## Changes made while executing
+
+- **Shared home points:** households share one exact home point. Each member's home had been jittered separately, so a household's members stood at slightly different points.
+- **Fire scenario** (three houses lit in the west quarter): 12 responders turned out from the west well, two fires were out by 10 s and the last by 15 s. The alarm stayed at Concern.
+- **Checksums:** crowd_check −805209164; fire scenario 282895529.
+- **Mission test:** `citizens=192 escaped=2`.
+- **Bench, same hour:**
+
+  | | `kak-v0.04` | P1 |
+  |---|---|---|
+  | Market view | 103.1 fps | 104.5 fps |
+  | Wear, start | 83.4 fps | 100.1 fps |
+  | Wear, round 1 | 76.1 fps | 77.4 fps |
+  | Wear, round 4 | 116.2 fps | 131.3 fps |
+
+- **Tests:** 824 checks.

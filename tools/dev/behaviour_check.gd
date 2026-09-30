@@ -9,6 +9,7 @@ extends SceneTree
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
 ##   gates  an evacuation called after 20 s of calm; --hazard puts a lasting danger on the Main Gate's approach at
 ##          5 s: evacuees by chosen exit, reroutes and queues over 40 s
+##   fire   three houses set burning in the west quarter after 20 s of calm: fires, intensity, responders over 40 s
 
 var mission: Mission
 
@@ -35,6 +36,8 @@ func _run() -> void:
 			await _strike("--shots" in args)
 		"escalate":
 			await _escalate()
+		"fire":
+			await _fire("--shots" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -96,6 +99,37 @@ func _escalate() -> void:
 		t += 5.0
 	for h in crowd.alarms.history:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
+
+
+func _fire(shots: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var lit := 0
+	for st in mission._bf.ctx.env.structures():
+		if lit < 3 and st.kind == Structure.Kind.HOUSE and st.role == &"house" and st.center().distance_to(Vector2(-12, 3)) < 3.5:
+			crowd.fires.ignite(st, 0.4)
+			lit += 1
+	var t := 0.0
+	for mark in [2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 40.0]:
+		await _frames(roundi((mark - t) * 60.0))
+		t = mark
+		var parts := []
+		var crew := 0
+		for st in crowd.fires.fires.keys():
+			parts.append("%.2f" % crowd.fires.intensity(st))
+			crew += (crowd.fires.fires[st].responders as Array).size()
+		var assisting := 0
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.mind == Person.Mind.ASSIST:
+				assisting += 1
+		print("BEHAVIOUR fire t=%d fires=%d intensity=[%s] responders=%d stage=%s" % [roundi(t), crowd.fires.fires.size(),
+			", ".join(parts), assisting, crowd.alarms.stage_name()])
+		if shots and t == 10.0:
+			var bf: Battlefield = mission._bf
+			bf.camera.zoom = Vector2.ONE * 1.0
+			bf.camera.position = Iso.ground_to_screen(Vector2(-12, 2.5)).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_fire.png")
 
 
 func _gates(hazard: bool, shots := false) -> void:

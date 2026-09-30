@@ -6,6 +6,8 @@ extends Node2D
 
 ## Emitted once, when the building is destroyed by any cause.
 signal broken(s: Structure)
+## Damage landed and it still stands (v0.04 P1: fire catches from fire-kind hits).
+signal hit(s: Structure, amount: float, kind: StringName)
 ## It went idle (see idle), for EnvironmentField to check its light from then on.
 signal idled(s: Structure)
 
@@ -272,6 +274,7 @@ func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 	if hp <= 0.0:
 		destroy(source, damage_kind)
 		return
+	hit.emit(self, amount, damage_kind)
 	if hp < max_hp * 0.65:
 		crack()
 	for w in _windows:

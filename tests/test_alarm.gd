@@ -99,3 +99,32 @@ static func run(t) -> void:
 	t.check(crowd.alarms.stage == AlarmManager.Stage.COLLAPSE, "and order can collapse")
 	crowd.clear()
 	(made[2] as Node).free()
+
+	# Households: people sharing a home are a family, and a family regrouped at home leaves together as soon as
+	# everyone is home.
+	made = _crowd()
+	crowd = made[0]
+	var fam: int = crowd.citizens[0].profile.family
+	var members: Array[Person] = []
+	for p in crowd.citizens:
+		if p.profile.family == fam:
+			members.append(p)
+	var same_home := true
+	for p in members:
+		same_home = same_home and p.profile.home == members[0].profile.home
+		p.ground_pos = p.profile.home + Vector2(3.0, 0.0)
+		p.regroup(p.profile.home)
+	crowd._households[fam] = crowd._clock
+	crowd._tend_households()
+	t.check(members.size() >= 2 and same_home and members[0].mind == Person.Mind.REGROUP,
+		"a household (%d people, one home) waits while members are still on their way" % members.size())
+	for p in members:
+		p.ground_pos = p.profile.home
+		p._goal = Vector2.INF
+	crowd._tend_households()
+	var gone := true
+	for p in members:
+		gone = gone and p.mind == Person.Mind.FLEE
+	t.check(gone, "and leaves together once everyone is home")
+	crowd.clear()
+	(made[2] as Node).free()

@@ -4,10 +4,10 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
-enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER }
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST }
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
@@ -28,6 +28,8 @@ const OBSERVE_SECONDS := Vector2(1.0, 3.0)
 const RECOVER_WAIT := Vector2(5.0, 10.0)
 ## Walking back after a fright, a little slower than a stroll.
 const RECOVER_PACE := 0.8
+## A fire responder hurries.
+const ASSIST_PACE := 1.5
 ## Close enough to count as arrived.
 const GOAL_REACH := 0.45
 ## Seconds before a person gives a stuck goal another try. Cinderfall repeatedly invalidates routes (fallen
@@ -86,6 +88,12 @@ var last_place := -1
 ## Its way out (v0.04): the crowd's EvacuationManager (citizens only), when it last chose, and seconds left showing
 ## the reroute.
 var evac: EvacuationManager
+## Fighting a fire (v0.04 P1; FireManager runs the round): the burning building, whether it is at the water or
+## carrying a full bucket, and seconds left filling or dousing.
+var assist_fire: Structure
+var assist_at_water := false
+var assist_full := false
+var assist_wait := 0.0
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
@@ -325,6 +333,8 @@ func _mind_speed() -> float:
 			return PANIC_SPEED * pace
 		Mind.RECOVER:
 			return WALK_SPEED * RECOVER_PACE * pace
+		Mind.ASSIST:
+			return WALK_SPEED * ASSIST_PACE * pace
 		Mind.FLEE:
 			return FLEE_SPEED * pace
 		_:
@@ -393,7 +403,7 @@ func _pick_target() -> void:
 	if mind == Mind.PANIC:
 		_settle()
 		return
-	if mind == Mind.OBSERVE:
+	if mind == Mind.OBSERVE or mind == Mind.ASSIST:
 		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
@@ -513,7 +523,36 @@ func intent() -> Intent:
 			return Intent.RECOVER
 		Mind.REGROUP:
 			return Intent.REGROUP
+		Mind.ASSIST:
+			return Intent.ASSIST
 	return Intent.ROUTINE
+
+
+## Turn out to fight the fire on `s` (FireManager sends it for water).
+func assist(s: Structure) -> void:
+	if soldier or state == State.DEAD or mind == Mind.FLEE:
+		return
+	mind = Mind.ASSIST
+	assist_fire = s
+	assist_at_water = false
+	assist_full = false
+	assist_wait = 0.0
+	walk_speed = _mind_speed()
+
+
+## Stop fighting a fire: wait a moment, then back to its day.
+func stand_down() -> void:
+	assist_fire = null
+	assist_full = false
+	assist_at_water = false
+	if mind == Mind.ASSIST:
+		_recover(rng.randf_range(2.0, 4.0))
+
+
+## Walk to `g` and stand there (a responder's round).
+func walk_to(g: Vector2) -> void:
+	anchor = g
+	set_goal(g)
 
 
 ## City Emergency (v0.04): go home to `home` and wait there with the family until the evacuation or the danger.

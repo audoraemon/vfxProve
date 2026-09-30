@@ -29,6 +29,11 @@ const INVESTIGATE_SECONDS := 20.0
 const REGROUP_SHARE := 0.3
 ## How close to the cathedral steps the bell-ringer must get, and how often a new one is sought if it cannot.
 const BELL_REACH := 0.8
+## A household regrouping at home leaves together at the evacuation once every member still regrouping is home,
+## or after HOUSEHOLD_WAIT seconds. Farmhouse households are numbered from FARM_FAMILY.
+const HOUSEHOLD_WAIT := 20.0
+const HOME_REACH := 1.2
+const FARM_FAMILY := 10000
 const BELL_RETRY := 2.0
 ## A cast this close frightens a citizen; a collapse this close does too.
 const PANIC_CAST := 7.0
@@ -83,6 +88,8 @@ var _watch_in := 0.0
 var alarms := AlarmManager.new()
 ## Which way out each evacuee takes (v0.04); made by spawn().
 var evac: EvacuationManager
+## Fires and the citizens fighting them (v0.04 P1); made by setup().
+var fires: FireManager
 var _stage_in := 0.0
 ## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
 var _investigating: Array = []
@@ -90,6 +97,8 @@ var _investigating: Array = []
 var _ringer: Person
 var _ringer_in := 0.0
 var _steps := Vector2.INF
+## Households waiting to leave together: family -> clock the evacuation found them.
+var _households := {}
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -144,6 +153,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_rng.seed = seed_value
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	alarms.stage_changed.connect(_on_stage)
+	fires = FireManager.new().setup(self, env, seed_value + 17)
 	field.enemy_killed.connect(_on_killed)
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
@@ -159,9 +169,11 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	var anchors := _snapped_anchors()
 	var at_home := 0
 	for i in citizen_count:
-		var home: Structure = homes[at_home % maxi(homes.size(), 1)] if not homes.is_empty() else null
+		var home_i := at_home % maxi(homes.size(), 1)
+		var home: Structure = homes[home_i] if not homes.is_empty() else null
 		at_home += 1
 		var profile := _profile(i, citizen_count, home, anchors)
+		profile.family = home_i
 		# Each starts somewhere in its day: at home, at work or at a leisure spot.
 		var starts: Array[Vector2] = [profile.home]
 		if profile.works():
@@ -221,7 +233,8 @@ func _profile(i: int, n: int, home: Structure, anchors: Dictionary) -> CitizenPr
 	var pr := CitizenProfile.new()
 	pr.role = CitizenProfile.role_for(i, n)
 	var h := home.center() if home != null else Vector2.ZERO
-	pr.home = _spot_near(h + Vector2(0.0, home.footprint.size.y * 0.5 + 0.35) if home != null else h, 0.2)
+	# One exact point per house, so a household shares its home (spread 0: the point itself, or the nearest walkable).
+	pr.home = _spot_near(h + Vector2(0.0, home.footprint.size.y * 0.5 + 0.35) if home != null else h, 0.0)
 	if CitizenProfile.WORK.has(pr.role):
 		var pool: Array[Vector2] = []
 		for k: String in CitizenProfile.WORK[pr.role]:
@@ -233,6 +246,8 @@ func _profile(i: int, n: int, home: Structure, anchors: Dictionary) -> CitizenPr
 				var barns: Array[Vector2] = anchors.get("barn", [])
 				if not barns.is_empty():
 					pr.home = _nearest(barns, pr.work)
+					# A farmhouse's household (Crowd.spawn() gives townsfolk their house's index).
+					pr.family = FARM_FAMILY + barns.find(pr.home)
 				h = pr.home
 		else:
 			pool.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(h) < b.distance_squared_to(h))
@@ -371,11 +386,13 @@ func advance(delta: float) -> void:
 		routine.step(delta)
 	if evac != null:
 		evac.step(delta)
+	fires.step(delta)
 	_stage_in -= delta
 	if _stage_in <= 0.0:
 		_stage_in = 0.5
 		alarms.update(alarm, threats.active_count(), _clock)
 	_tend_bell(delta)
+	_tend_households()
 	_return_investigators()
 	_gates()
 	_escapes()
@@ -704,8 +721,14 @@ func _evacuate() -> void:
 		return
 	_fled_all = true
 	for p in citizens:
-		if is_instance_valid(p) and p.is_alive():
-			p.flee()
+		if not is_instance_valid(p) or not p.is_alive():
+			continue
+		if p.mind == Person.Mind.REGROUP and p.profile != null:
+			# A household waiting at home leaves together (_tend_households()).
+			if not _households.has(p.profile.family):
+				_households[p.profile.family] = _clock
+			continue
+		p.flee()
 	var shouted := 0
 	for p in citizens:
 		if shouted >= 2:
@@ -713,6 +736,26 @@ func _evacuate() -> void:
 		if is_instance_valid(p) and p.is_alive():
 			_voice(p, &"cit_shout")
 			shouted += 1
+
+
+## Households regrouped at home leave together: once every member still regrouping is home, or after a while.
+func _tend_households() -> void:
+	if _households.is_empty():
+		return
+	for fam in _households.keys():
+		var members: Array[Person] = []
+		var home_all := true
+		for p in citizens:
+			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.REGROUP and p.profile != null \
+					and p.profile.family == fam:
+				members.append(p)
+				home_all = home_all and not p.has_goal() and p.ground_pos.distance_to(p.profile.home) <= HOME_REACH
+		if members.is_empty():
+			_households.erase(fam)
+		elif home_all or _clock - float(_households[fam]) >= HOUSEHOLD_WAIT:
+			for p in members:
+				p.flee()
+			_households.erase(fam)
 
 
 ## City Emergency: the market closes (merchants go home) and REGROUP_SHARE of the rest go home to wait with theirs.
@@ -724,7 +767,8 @@ func _regroup() -> void:
 		if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 			continue
 		var merchant := p.profile.role == CitizenProfile.Role.MERCHANT
-		if merchant or float((p.stagger * 37) % 100) < REGROUP_SHARE * 100.0:
+		# Whole households regroup together, chosen by family.
+		if merchant or float((absi(p.profile.family) * 37 + 11) % 100) < REGROUP_SHARE * 100.0:
 			p.regroup(p.profile.home)
 
 
@@ -853,6 +897,8 @@ func clear() -> void:
 	threats.clear()
 	_spreads.clear()
 	alarms.reset()
+	fires.clear()
+	_households.clear()
 	_investigating.clear()
 	_ringer = null
 	_gate_next.clear()

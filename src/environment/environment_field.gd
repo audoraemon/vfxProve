@@ -4,6 +4,8 @@ extends Node
 
 ## A structure was destroyed (any cause); the game's rules count these.
 signal structure_destroyed(s: Structure, kind: StringName)
+## Damage landed on a structure that still stands (FireManager lights fires from it).
+signal structure_hit(s: Structure, amount: float, kind: StringName)
 
 ## Spatial index cell (ground units) for near() and the other area queries; blocked() uses the finer FINE_CELL
 ## index. Margins up to MAX_MARGIN are covered.
@@ -47,6 +49,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 	s.fx_back = fx_back
 	s.broken.connect(_on_structure_broken)
 	s.idled.connect(_on_idled)
+	s.hit.connect(func(st: Structure, amount: float, kind: StringName) -> void: structure_hit.emit(st, amount, kind))
 	if kind == Structure.Kind.TORCH and lights != null:
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)

@@ -126,6 +126,11 @@ static func run(t) -> void:
 	crowd.add_alarm(AlarmManager.EVAC_NO_BELL)
 	crowd._clock += AlarmManager.REGROUP_SECONDS
 	crowd.add_alarm(0.001)
+	# Households regrouped at home leave together, at the latest after their wait.
+	var households := crowd._households.size()
+	crowd._clock += Crowd.HOUSEHOLD_WAIT
+	crowd._tend_households()
+	t.check(households > 0 and crowd._households.is_empty(), "regrouped households wait, then leave together (%d)" % households)
 	var still_calm := 0
 	for p in crowd.citizens:
 		if is_instance_valid(p) and p.is_alive() and p.mind != Person.Mind.FLEE:

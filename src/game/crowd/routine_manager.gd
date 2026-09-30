@@ -47,6 +47,9 @@ func step(delta: float) -> void:
 	var k := int(_due)
 	_due -= k
 	for j in k:
+		# The roster shrinks as people escape or die (Crowd._escapes()): keep the place within it.
+		if _at >= n:
+			_at = 0
 		visit(_at, 1.0 / HZ)
 		_at = (_at + 1) % n
 

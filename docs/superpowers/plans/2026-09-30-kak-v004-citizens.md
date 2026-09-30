@@ -201,3 +201,34 @@
 - **After M2:** the strike scenario numbers and a capture.
 - **After M4:** a playtest request (routing feel).
 - **After M5:** the escape-limit decision.
+
+---
+
+## Changes made while executing
+
+### M1
+- **Wells: three, not 4–6.** Each needs open ground clear of the houses, the streets and the gate queues, with no building in front hiding it.
+  - The ones built are in the NW, the W and the SW.
+  - The north quarter's only open spot is behind a townhouse, and the east's lie behind the tavern or in the Side Gate's queue; the market fountain serves the east.
+- **Farmers live at the farmhouse nearest their field** (a new "barn" anchor kind). As townsfolk their commute was ~30 units, and half the town was walking at any moment.
+- **Places are chosen near home:** work is one of the 4 of its kind nearest home, and an errand one of the 6 stalls nearest home.
+- **Stays are longer than the spec's 5–25 s:** home 10–30 s, work 25–60, leisure 8–25, errands 5–12.
+- **Milling:** at a place, citizens stay within 0.6 of it (PLACE_SPREAD), not v0.03's 1.4.
+- **Routine state lives on Person** (`stay_left`, `last_place`), not in arrays indexed by the citizen list, which shrinks as people escape.
+- **Calm scenario at 60 s:** 41 at stalls, 38 at home, 18 at water, 10 at taverns, 9 at fields, 7 at craft yards, 7 on plazas, 4 at the cathedral, 80 walking.
+- **crowd_check:** −856644546 (wells), then −774498493 (routines).
+- **Market view bench** (same hour, `profile_view`):
+
+  | | fps (two runs) | Draw calls |
+  |---|---|---|
+  | `kak-v0.03` | 114.5, 113.7 | 1054 |
+  | M1 | 117.5, 116.1 | 1036 |
+- **Wear bench** (4 rounds, 15 s settle), `kak-v0.03` against M1:
+
+  | | `kak-v0.03` | M1 |
+  |---|---|---|
+  | Start | 112.6 fps | 113.0 fps |
+  | Round 4 | 159.2 fps | 158.6 fps (first run), 152.2 (rerun) |
+
+  The spread at ~155 fps is 0.3 ms of noise, inside the budget.
+- **Bug found by the wear run:** RoutineManager's place in the roster ran past its end once people escaped or died. It now wraps, and a test covers it.

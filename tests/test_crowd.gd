@@ -52,6 +52,13 @@ static func run(t) -> void:
 			var pr: CitizenProfile = p.profile
 			routine_ok = routine_ok and (p.anchor == pr.home or p.anchor == pr.work or p.anchor in pr.leisure
 				or p.anchor in crowd.routine._stalls)
+	# The roster shrinks as people escape or die; the manager's place in it must follow.
+	var full := crowd.citizens.duplicate()
+	crowd.routine._at = crowd.citizens.size() - 1
+	crowd.citizens = crowd.citizens.slice(0, 10)
+	crowd.routine.step(1.0)
+	t.check(crowd.routine._at < 10, "the routine keeps its place within a shrunken roster")
+	crowd.citizens = full
 	t.check(routine_ok and sent == 20, "a citizen whose stay is over is sent to one of its places (%d of 20)" % sent)
 	t.check(outside >= Crowd.CITIZENS * 0.08 and outside <= Crowd.CITIZENS * 0.2,
 		"about a tenth work outside the walls (%d)" % outside)

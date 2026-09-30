@@ -11,9 +11,6 @@ signal rallied
 
 ## The town scale upgrade doubled the people along with the town (110 + 50 before).
 const CITIZENS := 220
-## The share of citizens at home in public, as the reference's market and streets are full of people: two of every
-## five (is_public()), half of them in the market, half along the streets and plazas (TownLayout.public_spots()).
-const PUBLIC_SHARE := 0.4
 const SOLDIERS := 100
 ## Soldier posts: drilling in the yard, on the walls and gates, guarding the Citadel, patrolling in pairs.
 const POST_YARD := 30
@@ -58,8 +55,6 @@ var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
 ## How many were spawned, so milestone 3's stability can measure losses against the starting town.
 var spawned_citizens := 0
-## How many citizens were anchored in public (PUBLIC_SHARE).
-var public_citizens := 0
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -125,22 +120,22 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	for s in _env.structures():
 		if s.role == &"house":
 			homes.append(s)
-	var spots := TownLayout.public_spots()
-	var pools: Array = [_walkable(spots[0]), _walkable(spots[1])]
+	var anchors := _snapped_anchors()
 	var at_home := 0
-	public_citizens = 0
 	for i in citizen_count:
-		var at: Vector2
-		var pool: Array[Vector2] = pools[public_citizens % 2]
-		if is_public(i) and not pool.is_empty():
-			at = _spot_near(pool[_rng.randi_range(0, pool.size() - 1)], 0.2)
-			public_citizens += 1
-		else:
-			var home: Structure = homes[at_home % maxi(homes.size(), 1)] if not homes.is_empty() else null
-			at = _spot_near(home.center() if home != null else Vector2.ZERO, 1.6)
-			at_home += 1
+		var home: Structure = homes[at_home % maxi(homes.size(), 1)] if not homes.is_empty() else null
+		at_home += 1
+		var profile := _profile(i, citizen_count, home, anchors)
+		# Each starts somewhere in its day: at home, at work or at a leisure spot.
+		var starts: Array[Vector2] = [profile.home]
+		if profile.works():
+			starts.append(profile.work)
+		for g in profile.leisure:
+			starts.append(g)
+		var at := _spot_near(starts[_rng.randi_range(0, starts.size() - 1)], 0.3)
 		var p := _add_person(false, at)
 		p.anchor = at
+		p.profile = profile
 		citizens.append(p)
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
@@ -158,17 +153,42 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 			_parent.move_child(_ticker, first.get_index())
 
 
-## Whether the citizen spawned `i`-th is at home in public: two of every five, spread evenly through the crowd.
-static func is_public(i: int) -> bool:
-	return i % 5 == 1 or i % 5 == 3
-
-
-func _walkable(points: Array[Vector2]) -> Array[Vector2]:
-	var out: Array[Vector2] = []
-	for g in points:
-		if _grid.walkable(g):
-			out.append(g)
+## TownLayout.anchors(), each point moved onto the nearest walkable cell.
+func _snapped_anchors() -> Dictionary:
+	var out := {}
+	var raw := TownLayout.anchors()
+	for k in raw:
+		var pts: Array[Vector2] = []
+		for g: Vector2 in raw[k]:
+			var w := g if _grid.walkable(g) else _grid.nearest_walkable(g)
+			if w != Vector2.INF:
+				pts.append(w)
+		out[k] = pts
 	return out
+
+
+## The `i`-th citizen's profile: its role (CitizenProfile.role_for()), its home in front of `home`, a workplace of
+## its role's kinds, and 1-3 leisure spots among the nearest to home.
+func _profile(i: int, n: int, home: Structure, anchors: Dictionary) -> CitizenProfile:
+	var pr := CitizenProfile.new()
+	pr.role = CitizenProfile.role_for(i, n)
+	var h := home.center() if home != null else Vector2.ZERO
+	pr.home = _spot_near(h + Vector2(0.0, home.footprint.size.y * 0.5 + 0.35) if home != null else h, 0.2)
+	if CitizenProfile.WORK.has(pr.role):
+		var pool: Array[Vector2] = []
+		for k: String in CitizenProfile.WORK[pr.role]:
+			pool.append_array(anchors.get(k, []))
+		if not pool.is_empty():
+			pr.work = pool[_rng.randi_range(0, pool.size() - 1)]
+	var near: Array[Vector2] = []
+	for k: String in CitizenProfile.LEISURE:
+		near.append_array(anchors.get(k, []))
+	near.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(h) < b.distance_squared_to(h))
+	near = near.slice(0, CitizenProfile.LEISURE_NEAREST)
+	for k in _rng.randi_range(1, 3):
+		if not near.is_empty():
+			pr.leisure.append(near[_rng.randi_range(0, near.size() - 1)])
+	return pr
 
 
 ## Walkable ground within `spread` of `about`, or the nearest walkable point to it.

@@ -162,8 +162,6 @@ const PROP_SIZE := {
 }
 const INFILL_STEP := 0.25
 const INFILL_GAP := 0.5
-## Spacing of the public ground's points (public_spots()).
-const PUBLIC_STEP := 0.5
 const WALL_CLEAR := 1.0
 ## A garden plot's sides (ground units), and the open ground kept between it and any street.
 const GARDEN_LONG := 1.0
@@ -500,51 +498,6 @@ static func queue_fans(margin := 0.3) -> Array[PackedVector2Array]:
 		out.append(PackedVector2Array([face + dir * margin + side * near_half, face + dir * margin - side * near_half,
 			face - dir * (far + margin) - side * far_half, face - dir * (far + margin) + side * far_half]))
 	return out
-
-
-## Public ground where calm citizens gather (Crowd.PUBLIC_SHARE of them), as the reference's market and streets are
-## full of people: [the market square's floor, the streets and plazas], points every PUBLIC_STEP. Street points run
-## along each street's centre line inside the walls, away from junctions and the market; plaza points ring the gate
-## plazas outside the queues, and the north-east fountain's plaza. Some fall on stalls or piles: the crowd keeps the
-## walkable ones.
-static func public_spots() -> Array:
-	var market: Array[Vector2] = []
-	var y := MARKET_SQUARE.position.y + PUBLIC_STEP * 0.5
-	while y < MARKET_SQUARE.end.y:
-		var x := MARKET_SQUARE.position.x + PUBLIC_STEP * 0.5
-		while x < MARKET_SQUARE.end.x:
-			market.append(Vector2(x, y))
-			x += PUBLIC_STEP
-		y += PUBLIC_STEP
-	var street: Array[Vector2] = []
-	var inner := TOWN.grow(-WALL_T - 0.5)
-	for road: Rect2 in ROADS:
-		var r := road.intersection(inner)
-		if r.size.x <= 0.0 or r.size.y <= 0.0:
-			continue
-		var along_y := r.size.y > r.size.x
-		var length := r.size.y if along_y else r.size.x
-		var t := PUBLIC_STEP * 0.5
-		while t < length:
-			var p := Vector2(r.get_center().x, r.position.y + t) if along_y else Vector2(r.position.x + t, r.get_center().y)
-			t += PUBLIC_STEP * 2.0
-			var ok := not MARKET_SQUARE.grow(0.5).has_point(p) and not in_queue_fan(Rect2(p, Vector2(0.01, 0.01)))
-			for other: Rect2 in ROADS:
-				ok = ok and (other == road or not other.grow(0.6).has_point(p))
-			if ok:
-				street.append(p)
-	for plaza: Rect2 in GATE_PLAZAS + [FOUNTAIN_PLAZA]:
-		var ring := plaza.grow(0.3)
-		var corners := [ring.position, Vector2(ring.end.x, ring.position.y), ring.end, Vector2(ring.position.x, ring.end.y)]
-		for k in 4:
-			var a: Vector2 = corners[k]
-			var b: Vector2 = corners[(k + 1) % 4]
-			var n := int(a.distance_to(b) / PUBLIC_STEP)
-			for i in n:
-				var p := a.lerp(b, (float(i) + 0.5) / n)
-				if inner.has_point(p) and not in_queue_fan(Rect2(p, Vector2(0.01, 0.01))):
-					street.append(p)
-	return [market, street]
 
 
 ## Where citizens go about their day (CitizenProfile, RoutineManager), by kind: "home" (outside each house's front),

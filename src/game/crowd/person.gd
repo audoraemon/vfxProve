@@ -58,6 +58,8 @@ var mind := Mind.CALM
 var soldier := false
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
 var anchor := Vector2.ZERO
+## A citizen's role and the places of its day (Crowd sets it; null for soldiers and people made on their own).
+var profile: CitizenProfile
 var grid: WalkGrid
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0

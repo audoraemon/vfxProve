@@ -7,6 +7,8 @@ extends SceneTree
 ##   calm   nothing cast: where citizens are, by kind of place, every 20 s; --shots saves captures at the end
 ##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
+##   gates  an evacuation called after 20 s of calm; --hazard puts a lasting danger on the Main Gate's approach at
+##          5 s: evacuees by chosen exit, reroutes and queues over 40 s
 
 var mission: Mission
 
@@ -33,6 +35,8 @@ func _run() -> void:
 			await _strike("--shots" in args)
 		"escalate":
 			await _escalate()
+		"gates":
+			await _gates("--hazard" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -92,6 +96,37 @@ func _escalate() -> void:
 		t += 5.0
 	for h in crowd.alarms.history:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
+
+
+func _gates(hazard: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	crowd.alarms.bell_rung = true
+	crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+	crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+	crowd.add_alarm(100.0)
+	var t := 0.0
+	var placed := false
+	for mark in [1.0, 5.0, 6.0, 10.0, 20.0, 30.0, 40.0]:
+		await _frames(roundi((mark - t) * 60.0))
+		t = mark
+		if hazard and not placed and t >= 5.0:
+			placed = true
+			crowd.threats.register(Vector2(2.7, 11.5), 2.5, 0.8, 60.0, 8.0, 12.0, &"test")
+		var by_exit := {}
+		var rerouting := 0
+		for p: Person in crowd.citizens:
+			if not is_instance_valid(p) or p.state == DummyEnemy.State.DEAD or p.mind != Person.Mind.FLEE:
+				continue
+			var k := "south" if p.goal() == TownLayout.EXITS[0] else ("east" if p.goal() == TownLayout.EXITS[1] else "none")
+			by_exit[k] = int(by_exit.get(k, 0)) + 1
+			if p.intent() == Person.Intent.REROUTE:
+				rerouting += 1
+		var queues := []
+		for g in crowd.evac.gates:
+			queues.append(crowd.waiting_at(g))
+		print("BEHAVIOUR gates t=%d by exit %s rerouting=%d queues(main,side)=%s escaped=%d" % [roundi(t), by_exit,
+			rerouting, queues, crowd.escaped_count])
 
 
 ## Living citizens' intents, by distance band (ground units) from `at`.

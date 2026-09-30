@@ -14,12 +14,15 @@ var _active := {}
 ## [{at, radius, until}] of threats that have ended.
 var _recent: Array[Dictionary] = []
 var _clock := 0.0
+## Rises whenever a threat starts, ends or a recent impact fades: EvacuationManager re-weighs the walk grid on it.
+var epoch := 0
 
 
 func register(at: Vector2, radius: float, severity: float, duration: float, sight: float, sound: float,
 		kind: StringName) -> int:
 	var id := _next
 	_next += 1
+	epoch += 1
 	_active[id] = {"id": id, "at": at, "radius": radius, "severity": severity, "until": _clock + duration,
 		"sight": sight, "sound": sound, "kind": kind}
 	return id
@@ -40,11 +43,23 @@ func step(delta: float) -> void:
 		if _clock >= float(t.until):
 			_recent.append({"at": t.at, "radius": t.radius, "until": _clock + RECENT})
 			_active.erase(id)
+			epoch += 1
 	var kept: Array[Dictionary] = []
 	for r in _recent:
 		if _clock < float(r.until):
 			kept.append(r)
+	if kept.size() != _recent.size():
+		epoch += 1
 	_recent = kept
+
+
+## Every dangerous zone, active or a recent impact: [{at, radius}].
+func all_zones() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for t: Dictionary in _active.values():
+		out.append(t)
+	out.append_array(_recent)
+	return out
 
 
 ## Active threats whose radius comes within `reach` of `at`.
@@ -75,3 +90,4 @@ func clear() -> void:
 	_active.clear()
 	_recent.clear()
 	_clock = 0.0
+	epoch += 1

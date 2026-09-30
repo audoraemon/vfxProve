@@ -81,6 +81,8 @@ var _spreads: Array = []
 var _watch_in := 0.0
 ## The town's alarm in stages (v0.04).
 var alarms := AlarmManager.new()
+## Which way out each evacuee takes (v0.04); made by spawn().
+var evac: EvacuationManager
 var _stage_in := 0.0
 ## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
 var _investigating: Array = []
@@ -174,6 +176,9 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
 	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
+	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
+	for p in citizens:
+		p.evac = evac
 	spawned_citizens = citizens.size()
 	spawned_soldiers = soldiers.size()
 	if _ticker == null:
@@ -364,6 +369,8 @@ func advance(delta: float) -> void:
 		_watch_threats()
 	if routine != null:
 		routine.step(delta)
+	if evac != null:
+		evac.step(delta)
 	_stage_in -= delta
 	if _stage_in <= 0.0:
 		_stage_in = 0.5

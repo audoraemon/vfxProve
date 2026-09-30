@@ -281,3 +281,24 @@
 
   The machine was slower that hour (msedge busy).
 - **Tests:** 801 checks. crowd_check −215896176, unchanged (it never raises the alarm).
+
+### M4
+- **Distance fields:** 4-neighbour BFS per exit over the walk grid. They are grown 3000 cells a frame into a spare set (no hitch), and rebuilt when `WalkGrid.version` changes, which now rises on every `stamp()`.
+- **Danger in the grid:** active threats and recent impacts are costed into the walk grid (`set_point_weight_scale` 6) whenever `ThreatManager.epoch` changes. Every path bends round danger, soldiers' included; that is Task 11's soldier hazard avoidance.
+- **Gates are not assigned per citizen.** Queues still form by arrival in front of a gate; routing picks the exit, and the gate is the one on its route.
+- **Rerouting** shows as Intent.REROUTE for 1 s after a switch.
+- **Gates scenario** (evacuation called after 20 s of calm):
+  - Congestion alone: 142 south / 54 east at 5 s, shifting to 83 / 111 by 20 s as the Main queue grew.
+  - With a danger at the Main Gate's approach at 5 s: 51 rerouted at once, and south-bound fell 109 → 23 (spec: ≥ 40% of those heading there).
+- **Checksums:** crowd_check −774327537 (the manager draws one number from the crowd's rng); gates checksums 221399467 (plain) and 632853817 (hazard).
+- **Mission test:** `citizens=191 escaped=3 stability=54%`.
+- **Bench, same hour** (the machine was loaded):
+
+  | | `kak-v0.03` | M4 |
+  |---|---|---|
+  | Market view | 73.3 fps | 78.8 fps |
+  | Wear, start | 83.9 fps | 83.8 fps |
+  | Wear, round 1 | 74.5 fps | 76.7 fps |
+  | Wear, round 4 | 127.7 fps | 140.2 fps |
+
+- **Tests:** 810 checks.

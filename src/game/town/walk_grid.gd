@@ -11,6 +11,8 @@ const BODY := 0.15
 const SNAP_CELLS := 8
 
 var grid := AStarGrid2D.new()
+## Rises whenever a cell turns solid or free (stamp()): distance fields built on the grid rebuild on it.
+var version := 0
 
 var _env: EnvironmentField
 var _bridge: Structure
@@ -122,6 +124,7 @@ func nearest_exit(from: Vector2) -> Vector2:
 
 ## Mark every cell whose centre lies in `rect` solid or free.
 func stamp(rect: Rect2, solid: bool) -> void:
+	version += 1
 	var c0 := world_to_id(rect.position)
 	var c1 := world_to_id(rect.end)
 	for y in range(c0.y, c1.y + 1):

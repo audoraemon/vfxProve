@@ -83,6 +83,11 @@ var profile: CitizenProfile
 ## Its routine (RoutineManager): seconds left at the place it is at, and the kind of place it last went to.
 var stay_left := 0.0
 var last_place := -1
+## Its way out (v0.04): the crowd's EvacuationManager (citizens only), when it last chose, and seconds left showing
+## the reroute.
+var evac: EvacuationManager
+var route_since := -INF
+var rerouting := 0.0
 var grid: WalkGrid
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0
@@ -277,6 +282,7 @@ func _think(delta: float) -> void:
 			_idle = maxf(_idle, 0.1)
 		return
 	walk_speed = _mind_speed()
+	rerouting = maxf(rerouting - delta, 0.0)
 	if mind == Mind.PANIC:
 		_panic_left -= delta
 		if _panic_left <= 0.0:
@@ -480,8 +486,22 @@ func _recover(wait: float) -> void:
 	_drift()
 
 
+## Where it is walking to (Vector2.INF when nowhere).
+func goal() -> Vector2:
+	return _goal
+
+
+## A better way out: head for `exit` instead (EvacuationManager, at its clock `now`).
+func reroute(exit: Vector2, now: float) -> void:
+	route_since = now
+	rerouting = 1.0
+	set_goal(exit)
+
+
 ## What it is trying to do (Intent), read from its mind.
 func intent() -> Intent:
+	if mind == Mind.FLEE and rerouting > 0.0:
+		return Intent.REROUTE
 	match mind:
 		Mind.OBSERVE:
 			return Intent.OBSERVE
@@ -577,7 +597,12 @@ func replan() -> void:
 
 
 func _plan_exit() -> void:
-	var exit := grid.nearest_exit(ground_pos) if grid != null else Vector2.INF
+	var exit := Vector2.INF
+	if evac != null:
+		exit = evac.choose(self)
+		route_since = evac._clock
+	elif grid != null:
+		exit = grid.nearest_exit(ground_pos)
 	if exit == Vector2.INF:
 		# Sealed in: mill about and try again shortly.
 		_repath_in = 1.5

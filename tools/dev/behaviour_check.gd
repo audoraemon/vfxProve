@@ -29,6 +29,10 @@ extends SceneTree
 ##   siege  (v0.05 M7) one scripted siege for comparing the difficulty tiers (--difficulty=): eight casts over 105 s
 ##          from 20 s (the first in the west, clear of the Bell Tower), then a report every 15 s to 150 s -- escapes, the Citadel, the clock, the rite, the boats, the
 ##          engineers
+##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
+##          troopers cannot be lured, confused or infected): --power=<key> [--at=x,y] [--seconds=s] [--setup=rite|evac];
+##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
+##          its run into assets/clips/<key>.png
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -52,13 +56,15 @@ func _run() -> void:
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")
-	if tier == "" and scenario in ["rite", "engineers", "boats"]:
+	if tier == "" and scenario in ["rite", "engineers", "boats", "clip"]:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
 	var powers := PackedStringArray()
 	if scenario == "quiet":
 		powers = PackedStringArray(["doom", "blight", "heaven", "nova"])
+	elif scenario == "clip":
+		powers = PackedStringArray([Battlefield.arg_value(args, "--power"), "heaven", "cinder", "nova"])
 	elif scenario == "opening":
 		powers = PackedStringArray(["doom", "blight", "heaven", "cinder"])
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
@@ -85,6 +91,9 @@ func _run() -> void:
 			await _quiet("--shots" in args)
 		"opening":
 			await _opening("--quiet" in args)
+		"clip":
+			await _clip(Battlefield.arg_value(args, "--power"), Battlefield.arg_value(args, "--at"),
+				Battlefield.arg_value(args, "--seconds"), Battlefield.arg_value(args, "--setup"))
 		"siege":
 			await _siege()
 		"gates":
@@ -340,12 +349,61 @@ func _quiet(shots: bool) -> void:
 
 
 ## Cast slot `slot` at `at` now, whatever its cooldown, the DP left or another power still playing.
-func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0)) -> void:
+func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0)) -> FxTimeline:
 	var rules: Rules = mission._rules
 	rules.dp = Rules.DP_MAX
 	rules._cooldowns[slot] = 0.0
 	rules._playing = null
-	rules.cast(slot, at, {"dir": dir})
+	return rules.cast(slot, at, {"dir": dir})
+
+
+## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
+## spread over `seconds` (default: the effect's run), each the screen's middle at half size, as the sandbox's clips.
+func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> void:
+	var at := Vector2(0.8, 2.0)
+	if at_arg != "":
+		var xy := at_arg.split(",")
+		at = Vector2(float(xy[0]), float(xy[1]))
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	if setup == "rite":
+		crowd.add_alarm(AlarmManager.CITY_ALARM)
+		await _frames(20 * 60)
+	elif setup == "evac":
+		crowd.alarms.bell_rung = true
+		crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+		crowd.add_alarm(100.0)
+		await _frames(10 * 60)
+	var bf: Battlefield = mission._bf
+	mission._hud.visible = false
+	bf.camera.zoom = Vector2.ONE * 1.5
+	bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -16)).round()
+	bf.camera.reset_smoothing()
+	await _frames(2)
+	var fx := _force_cast(0, at, Vector2(1, 0))
+	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
+	var crop := PowerBook.CLIP_SIZE * 2
+	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
+	var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false,
+		Image.FORMAT_RGBA8)
+	var t := 0.0
+	for i in PowerBook.CLIP_FRAMES:
+		var due := run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
+		await _frames(maxi(roundi((due - t) * 60.0), 0))
+		t = due
+		await RenderingServer.frame_post_draw
+		var img := bf.get_viewport().get_texture().get_image()
+		var from := Vector2i((img.get_width() - crop.x) / 2, (img.get_height() - crop.y) / 2)
+		var frame := img.get_region(Rect2i(from, crop))
+		frame.convert(Image.FORMAT_RGBA8)
+		frame.resize(PowerBook.CLIP_SIZE.x, PowerBook.CLIP_SIZE.y, Image.INTERPOLATE_BILINEAR)
+		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(i).position))
+		if i == PowerBook.CLIP_FRAMES / 2:
+			_clip_report(key, at, t)
+	var out := ProjectSettings.globalize_path(PowerBook.clip_path(key))
+	sheet.save_png(out)
+	print("BEHAVIOUR clip ", out)
 
 
 func _opening(quiet: bool) -> void:
@@ -407,6 +465,20 @@ func _siege() -> void:
 		t += 1.0
 	for h in crowd.alarms.history:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
+
+
+## What the power is doing halfway through its clip, for the record.
+func _clip_report(key: String, at: Vector2, t: float) -> void:
+	var crowd: Crowd = mission._crowd
+	var near := 0
+	var watching := 0
+	for p: Person in crowd.citizens:
+		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(at) <= 2.5:
+			near += 1
+			if p.mind == Person.Mind.OBSERVE:
+				watching += 1
+	print("BEHAVIOUR clip %s t=%.1f within 2.5: %d citizens, %d watching; alarm=%.1f threats=%d" % [key, t, near, watching,
+		crowd.alarm, crowd.threats.active_count()])
 
 
 func _fire(shots: bool) -> void:

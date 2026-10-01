@@ -148,3 +148,14 @@ Each plays against systems the town already has. The Prepare screen gains tabs b
   - Hovering a slot previews its power in the left panel.
 - **The plan moved icons and clips forward:** each power's milestone brings its own, because the tests require one for every power.
 - **Checks:** FLOW 24/24; crowd_check unchanged at −346732806; digest unchanged; 931 checks.
+
+### M2
+- **Will-o'-Wisp** (`src/fx/control/will_o_wisp.gd`, class `WillOWisp`) as specified: 10 DP, 25 s, kind control, quiet.
+  - The light is a breathing ground glow, a bobbing orb and drifting motes; the cast locks the slots for 1 s.
+- **`Person.lure(at, seconds)`** puts a person in the watching mind with a walk to `at`. A watcher is held in place only when it has nowhere to go, so a lured citizen walks there, then stands.
+- **`Person.LURABLE`:** the minds a wisp can draw.
+- **The aim preview** rings the people it would draw.
+- **Icon:** `tools/dev/make_power_icons.py` (renamed from `make_quiet_icons.py`) paints any icon by key; the wisp is a pale orb over a dark marsh.
+- **Clip:** `behaviour_check.gd --scenario=clip --power=<key> [--at=] [--seconds=] [--setup=rite|evac]` records a power's draft clip in the town, with the HUD hidden and the camera snapped close. Halfway through it prints what the power is doing.
+- **Result in the town** (market, seed 7): 20 citizens gathered within 2.5 by 6.4 s, all watching; alarm 0, no danger registered.
+- **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 938 checks.

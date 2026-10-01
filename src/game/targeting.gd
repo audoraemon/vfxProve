@@ -26,6 +26,8 @@ const AREAS := {
 	"doom": {"shape": "circle", "r": 0.8},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
+	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())
+	"wisp": {"shape": "circle", "r": 1.6, "roam": 6.0},
 	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
 	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
@@ -203,6 +205,10 @@ func _draw() -> void:
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"wisp":
+			# Who it would draw.
+			for p in WillOWisp.drawn(_crowd._field, _press):
+				_ring(p.ground_pos, 0.18, COL_FAINT)
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
 			var s := BlightFx.target(_crowd._env, _press)

@@ -67,6 +67,8 @@ const CIT_SKIN := [Color("c89a72"), Color("b07a52"), Color("8a5a3a")]
 const CIT_TUNIC := [Color("8a5a3a"), Color("6a6a4a"), Color("7a4a4a"), Color("4a5a6a"), Color("8a7a4a"), Color("6a5a7a")]
 const CIT_HAIR := [Color("3a2a1a"), Color("5a4a2a"), Color("24201c"), Color("7a5a3a")]
 const CIT_LEGS := Color("453c33")
+## Minds a Will-o'-Wisp can draw (lure()).
+const LURABLE := [Mind.CALM, Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -313,7 +315,8 @@ func _think(delta: float) -> void:
 			_settle()
 	elif mind == Mind.OBSERVE:
 		_observe_left -= delta
-		_idle = maxf(_idle, 0.1)
+		if _goal == Vector2.INF:
+			_idle = maxf(_idle, 0.1)  # stands and looks; one drawn by a wisp (lure()) walks there first
 		if _observe_left <= 0.0:
 			_recover(rng.randf_range(1.0, 3.0))
 	match mind:
@@ -478,6 +481,21 @@ func observe(from: Vector2) -> void:
 	_leg = 0
 	_target = ground_pos
 	walk_speed = _mind_speed()
+
+
+## Drawn by a Will-o'-Wisp (v0.06): walk to `at` and stand staring at the light for `seconds` (the watching mind,
+## with a walk first), then back to its day. Only a citizen going about its day, watching, recovering or regrouping
+## comes; true when it did.
+func lure(at: Vector2, seconds: float) -> bool:
+	if soldier or inside or state == State.DEAD or not mind in LURABLE:
+		return false
+	mind = Mind.OBSERVE
+	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
+	_threat = at
+	_observe_left = seconds
+	walk_speed = _mind_speed()
+	set_goal(at)
+	return true
 
 
 ## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is

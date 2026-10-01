@@ -1,7 +1,9 @@
-"""Paint the two quiet powers' icons (v0.05): Silent Doom and Blight, in the painted icons' manner -- a dark field with
-one glowing subject -- at 84x84 for the Prepare cards and 42x42 for the HUD slots.
+"""Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
+for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight) and v0.06's (Will-o'-Wisp,
+Thornwall, Discord, Pestilence).
 
-usage: python tools/dev/make_quiet_icons.py   (writes assets/pixellab/icons/{doom,blight}.png and hud/ copies)
+usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
+       hud/<key>.png)
 """
 import math
 import os
@@ -133,7 +135,42 @@ def blight():
     finish(rgb, "blight")
 
 
+def wisp():
+    """A pale will-o'-wisp: a bright core in a soft green halo over a dark marsh, motes drifting up from it."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(17, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (6, 14, 16)
+    # Marsh mist low down, and reeds.
+    rgb = blend(rgb, (18, 44, 44), np.clip((y + 6) / 40.0, 0, 1) * (0.6 + 0.4 * n))
+    for k in range(-38, 40, 7):
+        reed = (np.abs(x - k - 2 * np.sin(y * 0.2 + k)) < 0.8) & (y > 18 + (k * 7 % 9))
+        rgb = blend(rgb, (8, 22, 18), reed.astype(float))
+    cy = -4.0
+    rc = np.hypot(x, (y - cy))
+    rgb = blend(rgb, (40, 140, 120), np.exp(-(rc / 22.0) ** 2) * 0.8)
+    rgb = blend(rgb, (150, 240, 210), np.exp(-(rc / 10.0) ** 2) * 0.9)
+    rgb = blend(rgb, (240, 255, 248), np.exp(-(rc / 4.5) ** 2))
+    # Its reflection on the water.
+    rgb = blend(rgb, (90, 200, 180), np.exp(-((x / 6.0) ** 2 + ((y - 30) / 2.0) ** 2)) * 0.6)
+    rng = np.random.default_rng(21)
+    for _ in range(18):
+        sx = rng.normal(0, 10)
+        sy = rng.uniform(-36, 8)
+        rad = rng.uniform(0.6, 1.4)
+        rgb = blend(rgb, (200, 255, 230), np.exp(-((x - sx) ** 2 + (y - sy) ** 2) / (rad * rad)) * rng.uniform(0.5, 1.0))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "wisp")
+
+
+PAINTERS = {"doom": None, "blight": None, "wisp": wisp}
+
+
 if __name__ == "__main__":
-    doom()
-    blight()
+    import sys
+    PAINTERS["doom"] = doom
+    PAINTERS["blight"] = blight
+    for key in sys.argv[1:] or list(PAINTERS):
+        PAINTERS[key]()
     print("wrote", os.path.abspath(OUT))

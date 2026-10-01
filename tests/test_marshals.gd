@@ -27,6 +27,10 @@ static func run(t) -> void:
 	t.check(m != null and not m.active, "the marshals wait on the walls until the evacuation")
 	var fired := []
 	m.posted.connect(func() -> void: fired.append(true))
+	var calm := true
+	for e in m.exits():
+		calm = calm and is_equal_approx(m.speed_at(e[0]), 1.0)
+	t.check(calm, "before the evacuation the ways out run at their own pace")
 	crowd.alarms.stage = AlarmManager.Stage.CITY_EMERGENCY
 	crowd._on_stage(AlarmManager.Stage.EVACUATION, "test")
 	var per := crowd.profile.marshals_per_exit
@@ -66,6 +70,13 @@ static func run(t) -> void:
 	ev.confuse(15.0)
 	m.step(1.0)
 	t.check(ev._confused_left <= MarshalManager.STEADY_TIME, "a confused evacuee near a marshal comes to sooner")
+	var far: Person = crowd.citizens[11]
+	far.mind = Person.Mind.FLEE
+	far.ground_pos = mouth + Vector2(0.0, -(MarshalManager.STEADY_R + 3.0))
+	far.confuse(15.0)
+	m.step(1.0)
+	t.check(far.mind == Person.Mind.CONFUSED and far._confused_left > MarshalManager.STEADY_TIME,
+		"a confused evacuee away from every marshal stays confused")
 
 	for p: Person in m.posts[mouth]:
 		field.kill(p, &"test")

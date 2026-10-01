@@ -2,7 +2,7 @@ class_name MarshalManager
 extends RefCounted
 ## Marshals (v0.07): at the Evacuation stage the soldiers from the walls take the ways out -- the profile's
 ## marshals_per_exit at the Main Gate, the Side Gate and, in a town with boats, the postern and the dock -- standing
-## either side of the crowd's head. Each living marshal within REACH of a way out makes it SPEED faster (speed_at(): a
+## either side of the crowd's head. Each way out takes the nearest of the marshals not yet posted. Each living marshal within REACH of a way out makes it SPEED faster (speed_at(): a
 ## gate lets the next one through sooner, the boat takes them aboard sooner), and a confused evacuee near one is
 ## brought round within STEADY_TIME. Kill them or knock them away and the way out slows again.
 
@@ -53,7 +53,8 @@ func exits() -> Array:
 	return out
 
 
-## The Evacuation stage: the marshals leave the walls for the ways out.
+## The Evacuation stage: the marshals leave the walls for the ways out, each taking the `marshals_per_exit` nearest
+## of those not yet posted. `posted` is emitted only if at least one marshal was sent.
 func begin() -> void:
 	if active:
 		return
@@ -63,17 +64,18 @@ func begin() -> void:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL:
 			pool.append(p)
 	var per := _crowd.profile.marshals_per_exit
-	var k := 0
+	var sent := 0
 	for e in exits():
 		var mouth: Vector2 = e[0]
 		var out_dir: Vector2 = e[1]
 		var side := Vector2(-out_dir.y, out_dir.x)
 		var mine: Array = []
+		pool.sort_custom(func(a: Person, b: Person) -> bool:
+			return a.ground_pos.distance_squared_to(mouth) < b.ground_pos.distance_squared_to(mouth))
 		for j in per:
-			if k >= pool.size():
+			if pool.is_empty():
 				break
-			var p := pool[k]
-			k += 1
+			var p: Person = pool.pop_front()
 			var sgn := -1.0 if j % 2 == 0 else 1.0
 			var spot := mouth - out_dir * BACK + side * sgn * (FLANK + FLANK_STEP * float(j / 2))
 			if not _grid.walkable(spot):
@@ -81,12 +83,17 @@ func begin() -> void:
 				spot = near if near != Vector2.INF else mouth
 			p.send_to_post(spot)
 			mine.append(p)
+			sent += 1
 		posts[mouth] = mine
-	posted.emit()
+	if sent > 0:
+		posted.emit()
 
 
-## How much faster the way out at `mouth` runs: 1 + SPEED for each living marshal within REACH of it.
+## How much faster the way out at `mouth` runs: 1 + SPEED for each living marshal within REACH of it, once the
+## evacuation has begun (before it, the marshals are only soldiers on the walls, and nothing is faster).
 func speed_at(mouth: Vector2) -> float:
+	if not active:
+		return 1.0
 	var n := 0
 	for p in _crowd.soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL \

@@ -42,6 +42,10 @@ extends SceneTree
 ##                            not): escapes by way out every 10 s to 60 s
 ##            discord / rite  City Emergency at 20 s, the rite chanting; at 35 s Discord on its ring (or not): the
 ##                            rite's state every 5 s to 90 s
+##   soldiers (v0.07) each soldier role against doing without, --case= one of (Prepared):
+##            marshals / nomarshals  an evacuation called at 20 s: escapes every 10 s to 60 s
+##            escort / noescort      the bellkeeper killed 3 s into its climb: the bell's state every 2 s to 50 s
+##            rescue / norescue      ten people in the cathedral, then it falls: trapped, saved, lost every 5 s to 80 s
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -65,7 +69,7 @@ func _run() -> void:
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")
-	if tier == "" and scenario in ["rite", "engineers", "boats", "clip", "powers"]:
+	if tier == "" and scenario in ["rite", "engineers", "boats", "clip", "powers", "soldiers"]:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
@@ -104,6 +108,8 @@ func _run() -> void:
 			await _opening("--quiet" in args)
 		"powers":
 			await _powers(Battlefield.arg_value(args, "--case"))
+		"soldiers":
+			await _soldiers(Battlefield.arg_value(args, "--case"))
 		"clip":
 			await _clip(Battlefield.arg_value(args, "--power"), Battlefield.arg_value(args, "--at"),
 				Battlefield.arg_value(args, "--seconds"), Battlefield.arg_value(args, "--setup"))
@@ -535,6 +541,74 @@ func _powers(which: String) -> void:
 				print("BEHAVIOUR powers %s t=%d rite=%s in_ring=%d progress=%.1f clock=%s" % [which, t,
 					BanishingRite.State.keys()[crowd.rite.state], crowd.rite.in_ring(), crowd.rite.progress,
 					UiTheme.clock(mission._rules.time_left)])
+
+
+func _soldiers(which: String) -> void:
+	var crowd: Crowd = mission._crowd
+	# The "no" cases take the role away from its soldiers: they keep v0.06's ways.
+	var off := {"nomarshals": Person.Corps.MARSHAL, "noescort": Person.Corps.ESCORT, "norescue": Person.Corps.RESCUE}
+	if off.has(which):
+		for p in crowd.soldiers:
+			if p.corps == off[which]:
+				p.corps = Person.Corps.NONE
+		if which == "norescue":
+			crowd.rescue.squads.clear()
+	await _frames(20 * 60)
+	match which:
+		"marshals", "nomarshals":
+			crowd.alarms.bell_rung = true
+			crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+			crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+			crowd.add_alarm(100.0)
+			for k in 4:
+				await _frames(10 * 60)
+				print("BEHAVIOUR soldiers %s t=%d escaped=%d" % [which, 20 + 10 * (k + 1), crowd.escaped_count])
+		"escort", "noescort":
+			crowd.alarms.stage = AlarmManager.Stage.CONCERN
+			crowd._on_stage(AlarmManager.Stage.LOCAL_EMERGENCY, "test")
+			var killed := false
+			# Stepped by half seconds so that the kill falls on a set point of the climb; a line every 2 s.
+			for k in 60:
+				await _frames(30)
+				var bell := crowd.bell
+				if not killed and bell.state == BellNetwork.State.CLIMBING and bell.progress >= 3.0:
+					killed = true
+					var near := INF
+					for g in crowd.escorts.guards.get("bell", []):
+						if is_instance_valid(g):
+							near = minf(near, g.ground_pos.distance_to(bell.keeper.ground_pos))
+					crowd._field.kill(bell.keeper, &"test")
+					print("BEHAVIOUR soldiers %s t=%.1f the bellkeeper killed %.1f s into its climb, nearest escort %s" % [
+						which, 20.0 + 0.5 * float(k + 1), bell.progress, ("%.1f away" % near) if near < INF else "none"])
+				if k % 4 != 3:
+					continue
+				var who := "none"
+				if is_instance_valid(bell.keeper):
+					who = "dead" if not bell.keeper.is_alive() else ("soldier" if bell.keeper.soldier else "citizen")
+				print("BEHAVIOUR soldiers %s t=%d bell=%s progress=%.1f keeper=%s rung=%s" % [which, 20 + 2 * ((k + 1) / 4),
+					BellNetwork.State.keys()[bell.state], bell.progress, who, crowd.alarms.bell_rung])
+		"rescue", "norescue":
+			var cathedral: Structure = null
+			for s in crowd.shelters.shelters.keys():
+				if s.role == &"temple" and s.art_tag == &"cathedral":
+					cathedral = s
+			# Ten citizens taken into the cathedral as if they had run there, then it falls (the collapse's usual
+			# consequences follow). `crushed` counts those of the ten the collapse killed outright.
+			var ten := []
+			for p in crowd.citizens:
+				if ten.size() < 10 and p.is_alive() and not p.inside:
+					crowd.shelters._enter(p, cathedral)
+					(crowd.shelters.shelters[cathedral].inside as Array).append(p)
+					ten.append(p)
+			cathedral.destroy(cathedral.center(), &"nova")
+			for k in 12:
+				await _frames(5 * 60)
+				var dead := 0
+				for p in ten:
+					if not is_instance_valid(p) or not p.is_alive():
+						dead += 1
+				print("BEHAVIOUR soldiers %s t=%d trapped=%d saved=%d lost=%d crushed=%d" % [which, 20 + 5 * (k + 1),
+					crowd.rescue.trapped.size(), crowd.rescue.rescued, crowd.rescue.died, dead - crowd.rescue.died])
 
 
 func _nearest_citizen(at: Vector2) -> Vector2:

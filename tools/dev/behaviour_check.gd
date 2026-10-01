@@ -43,9 +43,10 @@ extends SceneTree
 ##            discord / rite  City Emergency at 20 s, the rite chanting; at 35 s Discord on its ring (or not): the
 ##                            rite's state every 5 s to 90 s
 ##   soldiers (v0.07) each soldier role against doing without, --case= one of (Prepared):
-##            marshals / nomarshals  an evacuation called at 20 s: escapes every 10 s to 60 s
+##            each case first prints how many soldiers have the role (the "no" cases print 0: they prove themselves)
+##            marshals / nomarshals  an evacuation called at 20 s: escapes by way out and the gates' queues every 10 s to 60 s
 ##            escort / noescort      the bellkeeper killed 3 s into its climb: the bell's state every 2 s to 50 s
-##            rescue / norescue      ten people in the cathedral, then it falls: trapped, saved, lost every 5 s to 80 s
+##            rescue / norescue      the cathedral filled to its capacity, then it falls: trapped, saved, lost every 5 s to 80 s
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -545,24 +546,44 @@ func _powers(which: String) -> void:
 
 func _soldiers(which: String) -> void:
 	var crowd: Crowd = mission._crowd
+	var roles := {"marshals": Person.Corps.MARSHAL, "nomarshals": Person.Corps.MARSHAL, "escort": Person.Corps.ESCORT,
+		"noescort": Person.Corps.ESCORT, "rescue": Person.Corps.RESCUE, "norescue": Person.Corps.RESCUE}
+	if not roles.has(which):
+		print("BEHAVIOUR soldiers: --case= one of %s" % [roles.keys()])
+		return
 	# The "no" cases take the role away from its soldiers: they keep v0.06's ways.
-	var off := {"nomarshals": Person.Corps.MARSHAL, "noescort": Person.Corps.ESCORT, "norescue": Person.Corps.RESCUE}
-	if off.has(which):
+	if which.begins_with("no"):
 		for p in crowd.soldiers:
-			if p.corps == off[which]:
+			if p.corps == roles[which]:
 				p.corps = Person.Corps.NONE
 		if which == "norescue":
 			crowd.rescue.squads.clear()
+	var in_role := 0
+	for p in crowd.soldiers:
+		if p.corps == roles[which]:
+			in_role += 1
+	print("BEHAVIOUR soldiers %s t=0 %s soldiers=%d%s" % [which, String(Person.Corps.keys()[roles[which]]).to_lower(),
+		in_role, " squads=%d" % crowd.rescue.squads.size() if which.ends_with("rescue") else ""])
 	await _frames(20 * 60)
 	match which:
 		"marshals", "nomarshals":
+			# Escapes by the way out each took (as the powers scenario's wall case names them).
+			var by_exit := {}
+			crowd.escaped.connect(func(p: Person) -> void:
+				var k := "south" if p.goal() == TownLayout.EXITS[0] else ("east" if p.goal() == TownLayout.EXITS[1]
+					else ("boat" if crowd.ferry != null and p.goal() == crowd.ferry.board_at else "other"))
+				by_exit[k] = int(by_exit.get(k, 0)) + 1)
 			crowd.alarms.bell_rung = true
 			crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
 			crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 			crowd.add_alarm(100.0)
 			for k in 4:
 				await _frames(10 * 60)
-				print("BEHAVIOUR soldiers %s t=%d escaped=%d" % [which, 20 + 10 * (k + 1), crowd.escaped_count])
+				var queues := []
+				for g in mission._town.gates:
+					queues.append(crowd.waiting_at(g) if g.walkable else -1)
+				print("BEHAVIOUR soldiers %s t=%d escaped=%d by way out %s queues(main,side,postern)=%s" % [which,
+					20 + 10 * (k + 1), crowd.escaped_count, by_exit, queues])
 		"escort", "noescort":
 			crowd.alarms.stage = AlarmManager.Stage.CONCERN
 			crowd._on_stage(AlarmManager.Stage.LOCAL_EMERGENCY, "test")
@@ -587,24 +608,27 @@ func _soldiers(which: String) -> void:
 					who = "dead" if not bell.keeper.is_alive() else ("soldier" if bell.keeper.soldier else "citizen")
 				print("BEHAVIOUR soldiers %s t=%d bell=%s progress=%.1f keeper=%s rung=%s" % [which, 20 + 2 * ((k + 1) / 4),
 					BellNetwork.State.keys()[bell.state], bell.progress, who, crowd.alarms.bell_rung])
+			if not killed:
+				print("BEHAVIOUR soldiers %s no kill: the bell never climbed" % which)
 		"rescue", "norescue":
 			var cathedral: Structure = null
 			for s in crowd.shelters.shelters.keys():
 				if s.role == &"temple" and s.art_tag == &"cathedral":
 					cathedral = s
-			# Ten citizens taken into the cathedral as if they had run there, then it falls (the collapse's usual
-			# consequences follow). `crushed` counts those of the ten the collapse killed outright.
-			var ten := []
+			# Citizens taken into the cathedral, up to its capacity, as if they had run there, then it falls (the
+			# collapse's usual consequences follow). `crushed` counts those of them the collapse killed outright.
+			var sheltered := []
 			for p in crowd.citizens:
-				if ten.size() < 10 and p.is_alive() and not p.inside:
+				if sheltered.size() < ShelterManager.capacity(cathedral) and p.is_alive() and not p.inside:
 					crowd.shelters._enter(p, cathedral)
 					(crowd.shelters.shelters[cathedral].inside as Array).append(p)
-					ten.append(p)
+					sheltered.append(p)
+			print("BEHAVIOUR soldiers %s t=20 %d sheltered in the cathedral, then it falls" % [which, sheltered.size()])
 			cathedral.destroy(cathedral.center(), &"nova")
 			for k in 12:
 				await _frames(5 * 60)
 				var dead := 0
-				for p in ten:
+				for p in sheltered:
 					if not is_instance_valid(p) or not p.is_alive():
 						dead += 1
 				print("BEHAVIOUR soldiers %s t=%d trapped=%d saved=%d lost=%d crushed=%d" % [which, 20 + 5 * (k + 1),

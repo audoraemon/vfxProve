@@ -246,7 +246,7 @@ In `for_tier()`:
 At the end of `lines()`, before `return out`:
 
 ```gdscript
-	out.append("Soldiers: marshals x%d, escorts x%d, rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
+	out.append("Marshals x%d, Escorts x%d, Rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
 ```
 
 `src/game/crowd/person.gd`:

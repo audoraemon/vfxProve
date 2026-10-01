@@ -150,7 +150,7 @@ func teardown() -> void:
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)
 	for s in _built:
 		if is_instance_valid(s):
-			_env.remove(s)
+			_env.remove(s, false)
 	_built.clear()
 	gates.clear()
 	bridge = null

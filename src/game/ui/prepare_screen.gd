@@ -1,20 +1,27 @@
 class_name PrepareScreen
 extends Node
-## Prepare (spec §1, §5): the briefing and the card under the mouse on the left, the thirteen power cards in a
-## grid on the right, and MANIFEST in the grid's fourteenth cell once four are picked.
+## Prepare (spec §1, §5): the briefing and the card under the mouse on the left; on the right the powers by kind
+## (v0.06: tabs for Cataclysm, Control, Quiet and Curse over a grid of the open tab's cards), and under them the
+## loadout bar -- the four picks in slot order, whichever tab they came from -- with MANIFEST once four are picked.
 ##
 ## One deviation from the spec's layout, forced by 640x360: the cards carry the 42-pixel HUD icons, and the
-## 84-pixel card art is shown large in the left panel for the card under the mouse, with the power's shape. Thirteen
-## cards with the big art and a readable name do not fit on this screen; since v0.05's two quiet powers the cards are
-## five rows of 50 px (the shape line moved to the left panel).
+## 84-pixel card art is shown large in the left panel for the card under the mouse, with the power's shape.
 
 ## "manifest" (four are picked and the player pressed MANIFEST or Enter) or "back" (Esc).
 signal action(name: String)
 
 const CARD := Vector2(140.0, 50.0)
 const GAP := 6.0
-const GRID_AT := Vector2(196.0, 40.0)
+const GRID_AT := Vector2(196.0, 60.0)
 const COLUMNS := 3
+## The tabs above the grid, one per PowerBook.KINDS.
+const TAB_AT := Vector2(196.0, 40.0)
+const TAB := Vector2(105.0, 16.0)
+const TAB_GAP := 4.0
+## The loadout bar under the grid: four slots, then MANIFEST.
+const LOADOUT_BAR := Rect2(196.0, 280.0, 432.0, 32.0)
+const SLOT := Vector2(84.0, 28.0)
+const MANIFEST_RECT := Rect2(552.0, 282.0, 76.0, 28.0)
 ## The left panel: briefing above, the card under the mouse below.
 const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
 ## The 1-4 badge on a picked card: large enough for the body size, where 2 and 3 do not read as 8.
@@ -23,6 +30,8 @@ const BADGE := 15.0
 const LABEL_GAP := 6.0
 
 var draft := Draft.new()
+## The open tab: an index into PowerBook.KINDS.
+var tab := 0
 ## The difficulty chosen here (v0.05), and the town responses it brings (the Defense Profile strip at the bottom).
 var difficulty := ResponseProfile.DEFAULT
 ## The bottom strip: the difficulty selector on the left, the Defense Profile beside it.
@@ -47,6 +56,8 @@ var _clip_frame := 0
 func setup(preselect: PackedStringArray, best_score: int, best_rank: String,
 		tier := ResponseProfile.DEFAULT) -> PrepareScreen:
 	draft.preselect(preselect)
+	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
+	tab = maxi(PowerBook.KINDS.find(PowerBook.kind_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
 	difficulty = tier
 	_best_score = best_score
 	_best_rank = best_rank
@@ -66,19 +77,46 @@ func setup(preselect: PackedStringArray, best_score: int, best_rank: String,
 	return self
 
 
-## Where cell `i` sits: 0-12 are the powers in PowerBook order, 13 is MANIFEST.
+## Where the open tab's card `i` sits.
 static func cell_rect(i: int) -> Rect2:
 	var col := i % COLUMNS
 	var row := i / COLUMNS
 	return Rect2(GRID_AT + Vector2(float(col) * (CARD.x + GAP), float(row) * (CARD.y + GAP)), CARD)
 
 
-## What is under a point: a power key, "manifest", or "".
+static func tab_rect(i: int) -> Rect2:
+	return Rect2(TAB_AT + Vector2(float(i) * (TAB.x + TAB_GAP), 0.0), TAB)
+
+
+## The loadout bar's slot `i` (0-3).
+static func slot_rect(i: int) -> Rect2:
+	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (SLOT.x + 4.0), LOADOUT_BAR.position.y + 2.0), SLOT)
+
+
+## The open tab's power keys, in PowerBook order.
+func shown() -> PackedStringArray:
+	return PowerBook.of_kind(PowerBook.KINDS[tab])
+
+
+func set_tab(i: int) -> void:
+	tab = posmod(i, PowerBook.KINDS.size())
+	if _ui != null:
+		_ui.queue_redraw()
+
+
+## What is under a point: a power key, "tab:<i>", "slot:<i>", "manifest", the difficulty arrows, or "".
 func hit(point: Vector2) -> String:
-	for i in PowerBook.POWERS.size():
+	for i in PowerBook.KINDS.size():
+		if tab_rect(i).has_point(point):
+			return "tab:%d" % i
+	var keys := shown()
+	for i in keys.size():
 		if cell_rect(i).has_point(point):
-			return String(PowerBook.POWERS[i].key)
-	if cell_rect(PowerBook.POWERS.size()).has_point(point):
+			return String(keys[i])
+	for i in Draft.SLOTS:
+		if slot_rect(i).has_point(point):
+			return "slot:%d" % i
+	if MANIFEST_RECT.has_point(point):
 		return "manifest"
 	if arrow_rect(-1).has_point(point):
 		return "diff_prev"
@@ -110,6 +148,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			step_difficulty(-1)
 		elif event.physical_keycode == KEY_RIGHT:
 			step_difficulty(1)
+		elif event.physical_keycode == KEY_TAB:
+			UiSound.play(&"ui_click")
+			set_tab(tab + (-1 if event.shift_pressed else 1))
 		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and draft.is_full():
 			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
@@ -129,6 +170,16 @@ func _on_gui_input(event: InputEvent) -> void:
 		var h := hit(event.position)
 		if h == "diff_prev" or h == "diff_next":
 			step_difficulty(-1 if h == "diff_prev" else 1)
+		elif h.begins_with("tab:"):
+			UiSound.play(&"ui_click")
+			set_tab(int(h.substr(4)))
+		elif h.begins_with("slot:"):
+			# A filled slot gives its pick back.
+			var i := int(h.substr(5))
+			if i < draft.picks.size():
+				UiSound.play(&"ui_click")
+				draft.toggle(draft.picks[i])
+				_ui.queue_redraw()
 		elif h == "manifest":
 			if draft.is_full():
 				UiSound.play(&"ui_manifest")
@@ -141,8 +192,16 @@ func _on_gui_input(event: InputEvent) -> void:
 			_ui.queue_redraw()
 
 
+## The power the mouse is over: a card's, or the pick in a loadout slot's.
+func _hover_key() -> String:
+	if _hover.begins_with("slot:"):
+		var i := int(_hover.substr(5))
+		return draft.picks[i] if i < draft.picks.size() else ""
+	return _hover
+
+
 func _process(delta: float) -> void:
-	if _clips.get(_hover) == null:
+	if _clips.get(_hover_key()) == null:
 		return
 	_clip_t += delta
 	var f := int(_clip_t * PowerBook.CLIP_FPS) % PowerBook.CLIP_FRAMES
@@ -154,6 +213,8 @@ func _process(delta: float) -> void:
 ## Show a power's preview as if the mouse were on its card -- for photographs of this screen.
 func preview(key: String) -> void:
 	_hover = key
+	if PowerBook.KINDS.has(PowerBook.kind_of(key)):
+		tab = PowerBook.KINDS.find(PowerBook.kind_of(key))
 	_clip_t = 0.0
 	_clip_frame = 0
 	_ui.queue_redraw()
@@ -166,10 +227,31 @@ func _draw_ui() -> void:
 		var best := "Best %d  %s" % [_best_score, _best_rank]
 		UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(best, UiTheme.SIZE_SMALL), 24.0), best, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	_draw_panel()
-	for i in PowerBook.POWERS.size():
-		_draw_card(i)
-	_draw_manifest()
+	_draw_tabs()
+	var keys := shown()
+	for i in keys.size():
+		_draw_card(i, String(keys[i]))
+	_draw_loadout()
 	_draw_profile()
+
+
+## The kinds' tabs: the open one gold-framed; a gold mark on any tab holding a pick.
+func _draw_tabs() -> void:
+	for i in PowerBook.KINDS.size():
+		var r := tab_rect(i)
+		var open := i == tab
+		_ui.draw_rect(r, Color(0.12, 0.1, 0.05, 0.95) if open else (Color(0.1, 0.09, 0.07, 0.9) if _hover == "tab:%d" % i
+			else UiTheme.COL_PANEL))
+		UiTheme.frame(_ui, r, open)
+		var keys := PowerBook.of_kind(PowerBook.KINDS[i])
+		var label := "%s %d" % [PowerBook.KIND_TITLES[i], keys.size()]
+		UiTheme.text(_ui, Vector2(r.position.x + 5.0, r.end.y - 4.0), label, UiTheme.SIZE_SMALL,
+			UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
+		var picked := false
+		for key in keys:
+			picked = picked or draft.slot_of(key) > 0
+		if picked:
+			_ui.draw_rect(Rect2(r.end - Vector2(8.0, 10.0), Vector2(3.0, 3.0)), UiTheme.COL_GOLD)
 
 
 ## The bottom strip: "< ORGANIZED >" and the Defense Profile -- what the town will do this time.
@@ -224,7 +306,8 @@ func _draw_panel() -> void:
 			y += UiTheme.LINE_SMALL
 		y += 3.0
 	# The card under the mouse, with its big art.
-	var p := PowerBook.get_power(_hover)
+	var hover := _hover_key()
+	var p := PowerBook.get_power(hover)
 	if p.is_empty():
 		var hint := UiTheme.wrap("Pick four powers, in the order you want them", PANEL.size.x - 8.0, UiTheme.SIZE_SMALL)
 		for i in hint.size():
@@ -233,12 +316,12 @@ func _draw_panel() -> void:
 		return
 	var clip_rect := Rect2(Vector2(PANEL.position.x + (PANEL.size.x - PowerBook.CLIP_SIZE.x) * 0.5, PANEL.end.y - 116.0),
 		Vector2(PowerBook.CLIP_SIZE))
-	var sheet: Texture2D = _clips.get(_hover)
+	var sheet: Texture2D = _clips.get(hover)
 	if sheet != null:
 		_ui.draw_texture_rect_region(sheet, clip_rect, PowerBook.clip_frame(_clip_frame))
 	else:
 		# No recording for this power: its card art, centred where the clip would be.
-		var art: Texture2D = _art.get(_hover)
+		var art: Texture2D = _art.get(hover)
 		if art != null:
 			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
 	UiTheme.frame(_ui, clip_rect, true)
@@ -250,9 +333,8 @@ func _draw_panel() -> void:
 		UiTheme.COL_DIM)
 
 
-func _draw_card(i: int) -> void:
-	var p: Dictionary = PowerBook.POWERS[i]
-	var key := String(p.key)
+func _draw_card(i: int, key: String) -> void:
+	var p := PowerBook.get_power(key)
 	var r := cell_rect(i)
 	var slot := draft.slot_of(key)
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
@@ -284,13 +366,35 @@ func _draw_card(i: int) -> void:
 			digit, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 
 
-func _draw_manifest() -> void:
-	var r := cell_rect(PowerBook.POWERS.size())
+## The loadout bar: the four picks in slot order, whichever tab they came from (a click gives one back), then
+## MANIFEST, lit once all four are picked.
+func _draw_loadout() -> void:
+	_ui.draw_rect(LOADOUT_BAR, UiTheme.COL_PANEL)
+	for i in Draft.SLOTS:
+		var r := slot_rect(i)
+		var key := draft.picks[i] if i < draft.picks.size() else ""
+		_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == "slot:%d" % i else Color(0, 0, 0, 0.35))
+		UiTheme.frame(_ui, r, key != "")
+		var digit := "%d" % (i + 1)
+		if key == "":
+			UiTheme.text(_ui, r.position + Vector2(5.0, 18.0), digit, UiTheme.SIZE_BODY, UiTheme.COL_DIM)
+			continue
+		var icon: Texture2D = _icons.get(key)
+		if icon != null:
+			_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(2, 2), Vector2(24, 24)), false)
+		UiTheme.text(_ui, r.position + Vector2(3.0, 12.0), digit, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+		# The name, or its first word, cut to the slot's room.
+		var name := String(PowerBook.get_power(key).name)
+		var room := SLOT.x - 32.0
+		if UiTheme.width(name, UiTheme.SIZE_SMALL) > room:
+			name = name.split(" ")[0]
+		while name.length() > 1 and UiTheme.width(name, UiTheme.SIZE_SMALL) > room:
+			name = name.substr(0, name.length() - 1)
+		UiTheme.text(_ui, r.position + Vector2(29.0, 17.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 	var full := draft.is_full()  # not "ready": that is Node's own signal, and shadowing it warns
-	_ui.draw_rect(r, Color(0.12, 0.1, 0.04, 0.95) if full else UiTheme.COL_PANEL)
-	UiTheme.frame(_ui, r, full and _hover == "manifest")
+	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))
+	UiTheme.frame(_ui, MANIFEST_RECT, full and _hover == "manifest")
 	var label := "MANIFEST"
-	var col := UiTheme.COL_GOLD if full else UiTheme.COL_DIM
-	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_BIG) * 0.5), r.position.y + 24.0), label, UiTheme.SIZE_BIG, col)
-	var count := "loadout %d / %d" % [draft.picks.size(), Draft.SLOTS]
-	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(count, UiTheme.SIZE_SMALL) * 0.5), r.position.y + 40.0), count, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var size := UiTheme.SIZE_BIG if UiTheme.width(label, UiTheme.SIZE_BIG) <= MANIFEST_RECT.size.x - 6.0 else UiTheme.SIZE_BODY
+	UiTheme.text(_ui, Vector2(roundf(MANIFEST_RECT.get_center().x - UiTheme.width(label, size) * 0.5),
+		MANIFEST_RECT.position.y + 19.0), label, size, UiTheme.COL_GOLD if full else UiTheme.COL_DIM)

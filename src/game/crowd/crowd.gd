@@ -203,6 +203,9 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_rng.seed = seed_value
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	env.structure_blighted.connect(_on_blighted)
+	# A structure built or taken away (v0.06's thorns) may stand on a gate's queue: find the spots again.
+	env.structure_added.connect(func(_s: Structure) -> void: _spots.clear())
+	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	field.enemy_killed.connect(_on_killed)

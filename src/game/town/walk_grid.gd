@@ -47,6 +47,8 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 		_open(s)
 	env.structure_destroyed.connect(_on_destroyed)
 	env.structure_restored.connect(refresh)
+	env.structure_added.connect(refresh)
+	env.structure_removed.connect(_reopen)
 	return self
 
 
@@ -157,6 +159,11 @@ func refresh(s: Structure) -> void:
 		_open(s)
 	else:
 		_apply(s)
+
+
+## A structure taken away (a thorn wall withering, v0.06): its ground opens as a fallen building's does.
+func _reopen(s: Structure) -> void:
+	_on_destroyed(s, &"")
 
 
 ## A building fell: its ground opens up (rubble is walkable), except the bridge, whose fall closes the river.

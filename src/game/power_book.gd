@@ -1,37 +1,40 @@
 class_name PowerBook
 extends RefCounted
-## The 13 draftable powers: Divine Power cost, cooldown (seconds), how they are aimed, their effect script and icons.
+## The draftable powers: Divine Power cost, cooldown (seconds), how they are aimed, their effect script and icons, and
+## their kind (v0.06: the draft's tabs).
 ## Costs and cooldowns are the spec's starting values (§4.2); aim "drag" = press at the start point, drag the
 ## direction, release. The two quiet powers (v0.05, "quiet") register no danger for the town and raise no alarm
 ## when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight adds one alarm.
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
-		"dp": 8, "cooldown": 15.0, "aim": "click", "shape": "up to 3 struck down, unseen", "quiet": true},
+		"dp": 8, "cooldown": 15.0, "aim": "click", "shape": "up to 3 struck down, unseen", "quiet": true,
+		"kind": "quiet"},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
-		"dp": 10, "cooldown": 20.0, "aim": "drag", "shape": "line + 8 fissures"},
+		"dp": 10, "cooldown": 20.0, "aim": "drag", "shape": "line + 8 fissures", "kind": "cataclysm"},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
-		"dp": 12, "cooldown": 25.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true},
+		"dp": 12, "cooldown": 25.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
+		"kind": "quiet"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
-		"dp": 15, "cooldown": 30.0, "aim": "click", "shape": "roaming vortex, 10 s"},
+		"dp": 15, "cooldown": 30.0, "aim": "click", "shape": "roaming vortex, 10 s", "kind": "cataclysm"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
-		"dp": 18, "cooldown": 35.0, "aim": "click", "shape": "cone, faces down-right on screen"},
+		"dp": 18, "cooldown": 35.0, "aim": "click", "shape": "cone, faces down-right on screen", "kind": "cataclysm"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
-		"dp": 20, "cooldown": 40.0, "aim": "drag", "shape": "moving wall"},
+		"dp": 20, "cooldown": 40.0, "aim": "drag", "shape": "moving wall", "kind": "cataclysm"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
-		"dp": 20, "cooldown": 45.0, "aim": "click", "shape": "pull field"},
+		"dp": 20, "cooldown": 45.0, "aim": "click", "shape": "pull field", "kind": "cataclysm"},
 	{"key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd",
-		"dp": 22, "cooldown": 45.0, "aim": "drag", "shape": "moving lane"},
+		"dp": 22, "cooldown": 45.0, "aim": "drag", "shape": "moving lane", "kind": "cataclysm"},
 	{"key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd",
-		"dp": 22, "cooldown": 45.0, "aim": "click", "shape": "random bombardment"},
+		"dp": 22, "cooldown": 45.0, "aim": "click", "shape": "random bombardment", "kind": "cataclysm"},
 	{"key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd",
-		"dp": 25, "cooldown": 50.0, "aim": "click", "shape": "volcano + stone rain"},
+		"dp": 25, "cooldown": 50.0, "aim": "click", "shape": "volcano + stone rain", "kind": "cataclysm"},
 	{"key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd",
-		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "8 punches + slam"},
+		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "8 punches + slam", "kind": "cataclysm"},
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
-		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "burst + freeze + ice"},
+		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "burst + freeze + ice", "kind": "cataclysm"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
-		"dp": 40, "cooldown": 120.0, "aim": "click", "shape": "huge circle"},
+		"dp": 40, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "kind": "cataclysm"},
 ]
 const ICON_DIR := "res://assets/pixellab/icons/"
 ## Preview clips for the draft: each power recorded once from the sandbox (bash tools/capture.sh --capture-clip)
@@ -62,6 +65,23 @@ static func get_power(key: String) -> Dictionary:
 		if p.key == key:
 			return p
 	return {}
+
+
+## The draft's tabs (v0.06): what a power is for.
+const KINDS := ["cataclysm", "control", "quiet", "curse"]
+const KIND_TITLES := ["CATACLYSM", "CONTROL", "QUIET", "CURSE"]
+
+
+static func of_kind(kind: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for p: Dictionary in POWERS:
+		if String(p.get("kind", "")) == kind:
+			out.append(p.key)
+	return out
+
+
+static func kind_of(key: String) -> String:
+	return String(get_power(key).get("kind", ""))
 
 
 ## A quiet power (v0.05): its cast is no danger the town can see.

@@ -214,11 +214,13 @@ func refusal(slot: int) -> String:
 
 
 ## Seconds until the power now playing has finished (0 when none is): one cataclysm at a time, so a player cannot
-## stack every power at once -- the town reads each one, and the frame keeps up.
+## stack every power at once -- the town reads each one, and the frame keeps up. A lingering effect sets
+## FxTimeline.busy to lock only while it is cast.
 func busy_left() -> float:
 	if not is_instance_valid(_playing) or _playing.finished:
 		return 0.0
-	return maxf(_playing.duration - _playing.t, 0.0)
+	var lock := _playing.busy if _playing.busy >= 0.0 else _playing.duration
+	return maxf(lock - _playing.t, 0.0)
 
 
 ## Spend the slot's DP, start its cooldown and put its effect in the world. Returns the running effect, or

@@ -32,19 +32,38 @@ static func run(t) -> void:
 		"a saved loadout is cleaned up on the way in (%s)" % [saved.picks])
 	t.check(Draft.new().preselect(PackedStringArray()).picks.is_empty(), "and an empty one gives an empty draft")
 
-	# The Prepare screen's grid: thirteen cards and the MANIFEST cell, none overlapping, all on screen above the
-	# difficulty strip.
+	# The Prepare screen (v0.06): tabs by kind, the open tab's cards, the loadout bar with MANIFEST -- none
+	# overlapping, all above the difficulty strip.
 	var screen := Rect2(0, 0, 640, PrepareScreen.STRIP.position.y)
-	var overlaps := 0
-	var cells := PowerBook.POWERS.size() + 1
-	for i in cells:
-		var a := PrepareScreen.cell_rect(i)
-		if not screen.encloses(a):
-			overlaps += 100
-		for j in range(i + 1, cells):
-			if a.intersects(PrepareScreen.cell_rect(j)):
-				overlaps += 1
-	t.check(cells == 14 and overlaps == 0, "the %d cells fit the screen without touching (%d)" % [cells, overlaps])
+	var boxes: Array[Rect2] = []
+	for i in PowerBook.KINDS.size():
+		boxes.append(PrepareScreen.tab_rect(i))
+	var most := 0
+	for kind in PowerBook.KINDS:
+		most = maxi(most, PowerBook.of_kind(kind).size())
+	for i in most:
+		boxes.append(PrepareScreen.cell_rect(i))
+	for i in Draft.SLOTS:
+		boxes.append(PrepareScreen.slot_rect(i))
+	boxes.append(PrepareScreen.MANIFEST_RECT)
+	var bad := 0
+	for i in boxes.size():
+		if not screen.encloses(boxes[i]):
+			bad += 100
+		for j in range(i + 1, boxes.size()):
+			if boxes[i].intersects(boxes[j]):
+				bad += 1
+	t.check(bad == 0, "tabs, the largest tab's %d cards and the loadout bar fit without touching (%d)" % [most, bad])
+	var prep := PrepareScreen.new()
+	prep.setup(PackedStringArray(["doom", "heaven"]), 0, "")
+	t.check(prep.tab == PowerBook.KINDS.find("quiet") and Array(prep.shown()) == Array(PowerBook.of_kind("quiet")),
+		"the screen opens on the first pick's tab (%d)" % prep.tab)
+	t.check(prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0"
+		and prep.hit(PrepareScreen.slot_rect(1).get_center()) == "slot:1"
+		and prep.hit(PrepareScreen.cell_rect(0).get_center()) == String(PowerBook.of_kind("quiet")[0])
+		and prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest",
+		"tabs, slots, MANIFEST and the open tab's cards answer the mouse")
+	prep.free()
 
 	# Wrapping keeps every line inside its width.
 	var lines := UiTheme.wrap("Judgement of the Ancients", 60.0, UiTheme.SIZE_SMALL)

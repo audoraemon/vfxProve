@@ -130,3 +130,21 @@ Each plays against systems the town already has. The Prepare screen gains tabs b
 4. **M4 — Discord.**
 5. **M5 — Pestilence.**
 6. **M6 — Assets and tuning:** icons, clips, the `powers` scenario, the bench, the v0.06 summary, tag `kak-v0.06`.
+
+---
+
+## Changes made while executing
+
+### M1
+- **The cast lock:** `FxTimeline.busy`, read by `Rules.busy_left()`.
+- **Power kinds:** every PowerBook entry has a `kind`, and `PowerBook.KINDS`, `KIND_TITLES`, `of_kind()` and `kind_of()` exist.
+- **Structure signals:**
+  - `EnvironmentField.structure_added` / `structure_removed`. The walk grid stamps or reopens; the crowd clears its gate spot cache.
+  - `remove(s, announce := true)`: the town's teardown removes silently (`announce` false), so a restart does not walk the grid through every building.
+- **Prepare screen:**
+  - **Tabs** (title and count, gold when open, with a gold mark when holding a pick). Tab / Shift-Tab and clicks switch; the first pick's tab opens first.
+  - **The open tab's cards** in the 3-column grid at y 60.
+  - **The loadout bar:** four slots with the icon, the slot number and the name (cut to fit), each giving its pick back on a click, then MANIFEST.
+  - Hovering a slot previews its power in the left panel.
+- **The plan moved icons and clips forward:** each power's milestone brings its own, because the tests require one for every power.
+- **Checks:** FLOW 24/24; crowd_check unchanged at −346732806; digest unchanged; 931 checks.

@@ -8,6 +8,9 @@ var origin := Vector2.ZERO
 var extra := {}
 var t := 0.0
 var duration := 5.0
+## Seconds a cast of this effect keeps the other slots locked ("one power at a time"); -1 = its whole duration. A
+## power that lingers (a wisp, a thorn wall) locks only while it is cast (v0.06).
+var busy := -1.0
 var finished := false
 
 var _events: Array = []

@@ -8,6 +8,9 @@ signal structure_destroyed(s: Structure, kind: StringName)
 signal structure_hit(s: Structure, amount: float, kind: StringName)
 ## A fallen structure was rebuilt (Structure.restore()).
 signal structure_restored(s: Structure)
+## A structure built after the town (v0.06's thorns), and one taken away again (remove()).
+signal structure_added(s: Structure)
+signal structure_removed(s: Structure)
 ## A structure was blighted (blight(); v0.05's Blight), or came clean again (unblight()).
 signal structure_blighted(s: Structure)
 signal structure_unblighted(s: Structure)
@@ -63,6 +66,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 	layout_epoch += 1
 	if world_parent != null:
 		world_parent.add_child(s)
+	structure_added.emit(s)
 	return s
 
 
@@ -129,7 +133,11 @@ func clear() -> void:
 
 ## Take one structure out of the field and free it (the town's teardown). The spatial index is rebuilt, so
 ## this is for the handful of times a map is torn down, not for destruction — destroyed buildings stay.
-func remove(s: Structure) -> void:
+## `announce` (v0.06): tell the walk grid and the crowd (structure_removed) -- a thorn wall withering mid-mission;
+## a town torn down for a restart does not, its grid and crowd go with it.
+func remove(s: Structure, announce := true) -> void:
+	if announce and _structures.has(s):
+		structure_removed.emit(s)
 	_structures.erase(s)
 	_idle.erase(s)
 	if is_instance_valid(s):

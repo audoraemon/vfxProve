@@ -40,6 +40,8 @@ func step(delta: float) -> void:
 		return
 	var dying: Array[Person] = []
 	for p in sick:
+		if _crowd.rescue != null and _crowd.rescue.holds(p):
+			continue  # the sickness waits under the rubble (v0.07): it neither runs down nor is cured
 		p.sick_left -= delta
 		if p.sick_left <= 0.0:
 			dying.append(p)

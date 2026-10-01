@@ -196,7 +196,8 @@ func enlist(p: Person, s: Structure) -> void:
 	p.assist(s, true)
 	if p.mind != Person.Mind.ASSIST:
 		return
-	(fires[s].responders as Array).append(p)
+	if not (fires[s].responders as Array).has(p):
+		(fires[s].responders as Array).append(p)
 	_go_to_water(p, s)
 
 

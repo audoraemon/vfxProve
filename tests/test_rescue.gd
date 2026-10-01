@@ -47,6 +47,18 @@ static func run(t) -> void:
 	var trapped := r.trapped_at(s)
 	t.check(trapped > 0 and trapped < 10 and crowd.killed_citizens - killed == 10 - trapped,
 		"a collapse traps %d of the 10 inside; the rest die" % trapped)
+	var hidden := not r.trapped.is_empty()
+	for e in r.trapped:
+		hidden = hidden and not (e.p as Person).visible and (e.p as Person).inside
+	t.check(hidden, "the trapped are hidden under the rubble")
+
+	# A trapped person's sickness waits under the rubble: it neither runs down nor is cured.
+	var sick: Person = r.trapped.back().p
+	sick.infect(PlagueManager.PLAGUE_LIFE)
+	var sick_left := sick.sick_left
+	crowd.plague.step(PlagueManager.PLAGUE_LIFE + 1.0)
+	t.check(sick.is_alive() and sick.sick_left == sick_left and crowd.plague.sick.has(sick),
+		"the sickness of a trapped person waits under the rubble")
 
 	# A squad goes to the rubble and digs them out, one every DIG_TIME.
 	var firsts := []
@@ -73,6 +85,17 @@ static func run(t) -> void:
 			freed = p
 	t.check(r.rescued == 1 and freed != null and freed.visible and firsts.size() == 1,
 		"one dug out after %d s, frightened and alive" % roundi(RescueManager.DIG_TIME))
+	t.check(freed != null and freed.mind == Person.Mind.PANIC, "the one dug out is frightened")
+
+	# Dug out after the evacuation began, a survivor makes for the gates.
+	crowd.alarms.stage = AlarmManager.Stage.EVACUATION
+	r.step(RescueManager.DIG_TIME + 0.1)
+	var second: Person = null
+	for p in inside:
+		if p.is_alive() and not p.inside and p != freed and p.mind == Person.Mind.FLEE:
+			second = p
+	t.check(r.rescued == 2 and second != null, "one dug out once the town evacuates makes for the gates")
+	crowd.alarms.stage = AlarmManager.Stage.CONCERN
 
 	# Untended, the trapped die.
 	for m in squad.members:
@@ -82,8 +105,10 @@ static func run(t) -> void:
 	r.step(0.1)
 	t.check(squad.site == null, "a squad wiped out frees its site")
 	var left := r.trapped_at(s)
+	var killed_before := crowd.killed_citizens
 	r.step(RescueManager.TRAPPED_LIFE + 0.1)
 	t.check(left > 0 and r.trapped_at(s) == 0 and r.died == left, "left untended, the trapped die (%d died)" % r.died)
+	t.check(crowd.killed_citizens - killed_before == left, "the untended count among the town's dead")
 	crowd.clear()
 	(made[2] as Node).free()
 
@@ -107,5 +132,8 @@ static func run(t) -> void:
 				at_fire += 1
 	t.check(at_fire >= Crowd.RESCUE_SQUAD and (crowd.fires.fires[house].responders as Array).size() >= Crowd.RESCUE_SQUAD,
 		"an idle squad turns out to a fire (%d soldiers)" % at_fire)
+	var crew: int = (crowd.fires.fires[house].responders as Array).size()
+	crowd.fires.enlist(r.squads[0].members[0], house)
+	t.check((crowd.fires.fires[house].responders as Array).size() == crew, "a soldier enlisted twice is on the crew once")
 	crowd.clear()
 	(made[2] as Node).free()

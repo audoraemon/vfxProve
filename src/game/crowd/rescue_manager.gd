@@ -23,6 +23,7 @@ var trapped: Array = []
 ## Each squad: {"members": Array of Person, "site": Structure being dug (null when free), "spot": where it digs,
 ## "dig": progress on the next one, 0..1}.
 var squads: Array = []
+## How many the squads have dug out alive, and how many died under the rubble untended.
 var rescued := 0
 var died := 0
 var _crowd: Crowd
@@ -46,7 +47,8 @@ func setup(crowd: Crowd, field: EnemyField) -> RescueManager:
 	return self
 
 
-## The trapped from a shelter's collapse: hidden under the rubble with TRAPPED_LIFE to live.
+## The trapped from a shelter's collapse (ShelterManager hands them over): hidden under the rubble `s` with TRAPPED_LIFE
+## to live.
 func trap(people: Array, s: Structure) -> void:
 	for p in people:
 		if not is_instance_valid(p):
@@ -59,6 +61,7 @@ func trap(people: Array, s: Structure) -> void:
 		trapped.append({"p": q, "left": TRAPPED_LIFE, "site": s})
 
 
+## How many are trapped under the rubble `s`.
 func trapped_at(s: Structure) -> int:
 	var n := 0
 	for t in trapped:
@@ -67,6 +70,15 @@ func trapped_at(s: Structure) -> int:
 	return n
 
 
+## Whether `p` is trapped under some rubble now.
+func holds(p: Person) -> bool:
+	for t in trapped:
+		if t.p == p:
+			return true
+	return false
+
+
+## One frame: the trapped run down their time, the squads dig, and every EVERY seconds they are given work.
 func step(delta: float) -> void:
 	for t in trapped.duplicate():
 		t.left = float(t.left) - delta
@@ -89,7 +101,8 @@ func _living(sq: Dictionary) -> Array:
 	return out
 
 
-## Free squads to the rubble with nobody digging (nearest first); the rest to fires, or back to their posts.
+## Free squads to the rubble with nobody digging (nearest first), at a run; the rest to the nearest fire, or back to their
+## posts.
 func _assign() -> void:
 	var sites: Array = []
 	for t in trapped:
@@ -187,16 +200,19 @@ func _dig(sq: Dictionary, delta: float) -> void:
 
 func _free(t: Dictionary, at: Vector2) -> void:
 	trapped.erase(t)
-	var p: Person = t.p
-	if not is_instance_valid(p):
+	# Read untyped first: assigning a freed person to a Person variable is an error.
+	var q = t.p
+	if not is_instance_valid(q):
 		return
+	var p: Person = q
 	var site: Structure = t.site
 	p.inside = false
 	p.visible = true
 	p.ground_pos = _crowd._spot_near(at, 0.3)
 	_field.add(p)
-	# As ShelterManager throws people out of a building hit hard: out of the shelter's ways, and running.
-	p.leave_shelter(false)
+	# As ShelterManager throws people out of a building hit hard (_flush): out of the shelter's ways, and running -- to
+	# the gates once the town has evacuated (the evacuation's sweep passed them by while they were under the rubble).
+	p.leave_shelter(_crowd.alarms.stage >= AlarmManager.Stage.EVACUATION)
 	p.panic(site.center(), site.footprint.size.length() * 0.5)
 	rescued += 1
 	if not _announced:
@@ -206,9 +222,10 @@ func _free(t: Dictionary, at: Vector2) -> void:
 
 func _die(t: Dictionary) -> void:
 	trapped.erase(t)
-	var p: Person = t.p
-	if not is_instance_valid(p):
+	var q = t.p
+	if not is_instance_valid(q):
 		return
+	var p: Person = q
 	var site: Structure = t.site
 	p.inside = false
 	p.visible = true

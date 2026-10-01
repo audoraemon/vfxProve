@@ -125,8 +125,12 @@ func _draw_panel(ci: Control) -> void:
 	var lines: Array = []
 	var a := crowd.alarms
 	lines.append(["%s: %s" % [crowd.profile.tier_name(), ", ".join(crowd.profile.lines())], UiTheme.COL_GOLD])
-	lines.append(["Stage: %s   alarm %d   bell %s" % [a.stage_name(), roundi(crowd.alarm),
-		"rung" if a.bell_rung else "silent"], Hud.STAGE_COLS[a.stage]])
+	var bell := "none"
+	if crowd.bell != null:
+		bell = BellNetwork.State.keys()[crowd.bell.state].capitalize()
+		if crowd.bell.state == BellNetwork.State.CLIMBING:
+			bell += " %.0f/%.0f s" % [crowd.bell.progress, crowd.bell.climb]
+	lines.append(["Stage: %s   alarm %d   bell %s" % [a.stage_name(), roundi(crowd.alarm), bell], Hud.STAGE_COLS[a.stage]])
 	if crowd.rite != null and crowd.profile.rite:
 		var r := crowd.rite
 		lines.append(["Rite: %s   %d/%d in ring   %.0f/%.0f s   clergy %d" % [BanishingRite.State.keys()[r.state].capitalize(),

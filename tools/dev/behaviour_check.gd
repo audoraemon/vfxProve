@@ -22,6 +22,13 @@ extends SceneTree
 ##   quiet  (loadout Silent Doom, Blight, Heaven Splitter, Nuclear Nova) after 20 s of calm: Silent Doom on the
 ##          bellkeeper, Blight on the Bell Tower and on the Main Gate, then at 30 s a Heaven Splitter in the west: the
 ##          alarm, the stage, the bell and the dead every 5 s over 60 s; --shots photographs the rot and the doom
+##   opening  (v0.05 M7) stealth against loud: the same four loud casts from 30 s (Heaven Splitter in the west and the
+##          north-west, Cinderfall Barrage, Heaven Splitter at the Citadel), and with --quiet a quiet opening first at 20 s
+##          (Silent Doom on the bellkeeper, Blight on the Bell Tower and the Main Gate): the alarm, the stage, the bell
+##          and the escapes every 5 s over 100 s, then the stage history
+##   siege  (v0.05 M7) one scripted siege for comparing the difficulty tiers (--difficulty=): eight casts over 105 s
+##          from 20 s (the first in the west, clear of the Bell Tower), then a report every 15 s to 150 s -- escapes, the Citadel, the clock, the rite, the boats, the
+##          engineers
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -49,7 +56,11 @@ func _run() -> void:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
-	var powers := PackedStringArray(["doom", "blight", "heaven", "nova"]) if scenario == "quiet" else PackedStringArray()
+	var powers := PackedStringArray()
+	if scenario == "quiet":
+		powers = PackedStringArray(["doom", "blight", "heaven", "nova"])
+	elif scenario == "opening":
+		powers = PackedStringArray(["doom", "blight", "heaven", "cinder"])
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -72,6 +83,10 @@ func _run() -> void:
 			await _boats("--cut-bridge" in args, "--shots" in args)
 		"quiet":
 			await _quiet("--shots" in args)
+		"opening":
+			await _opening("--quiet" in args)
+		"siege":
+			await _siege()
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -322,6 +337,76 @@ func _quiet(shots: bool) -> void:
 		var step := 2.0 if t < 4.0 else 5.0
 		await _frames(roundi(step * 60.0))
 		t += step
+
+
+## Cast slot `slot` at `at` now, whatever its cooldown, the DP left or another power still playing.
+func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0)) -> void:
+	var rules: Rules = mission._rules
+	rules.dp = Rules.DP_MAX
+	rules._cooldowns[slot] = 0.0
+	rules._playing = null
+	rules.cast(slot, at, {"dir": dir})
+
+
+func _opening(quiet: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var gate: Structure = mission._town.gates[0]
+	var keeper: Person = crowd.bell.keeper
+	var casts: Array = []
+	if quiet:
+		casts.append_array([[0.0, 0, keeper.ground_pos if keeper != null else Vector2.ZERO],
+			[2.0, 1, crowd.bell.tower.center()], [4.0, 1, gate.center() - Vector2(0, 0.5)]])
+	casts.append_array([[10.0, 2, Vector2(-10.0, 3.0)], [25.0, 2, Vector2(-9.0, -11.0)], [40.0, 3, Vector2(-9.0, 9.0)],
+		[55.0, 2, Vector2(-10.5, -8.0)]])
+	var t := 0.0
+	while t <= 100.0:
+		while not casts.is_empty() and t >= float(casts[0][0]):
+			var c: Array = casts.pop_front()
+			_force_cast(int(c[1]), c[2])
+		if int(t) % 5 == 0:
+			print("BEHAVIOUR opening t=%d alarm=%.1f stage=%s bell=%s escaped=%d alive=%d" % [roundi(t), crowd.alarm,
+				crowd.alarms.stage_name(), BellNetwork.State.keys()[crowd.bell.state], crowd.escaped_count,
+				crowd.alive_citizens()])
+		await _frames(60)
+		t += 1.0
+	for h in crowd.alarms.history:
+		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
+
+
+func _siege() -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var rules: Rules = mission._rules
+	var citadel: Citadel = mission._town.citadel
+	var o := TownLayout.CITADEL_ORIGIN
+	# The default loadout: heaven, tsunami, cinder, nova.
+	if crowd.rite != null:
+		crowd.rite.broken.connect(func(why: String) -> void: print("BEHAVIOUR siege rite broken: %s" % why))
+		crowd.rite.ended.connect(func(why: String) -> void: print("BEHAVIOUR siege rite ended: %s" % why))
+		crowd.rite.completed.connect(func() -> void: print("BEHAVIOUR siege rite completed"))
+	var casts := [[0.0, 0, Vector2(-10.0, 3.0)], [15.0, 2, Vector2(-9.0, 5.0)], [30.0, 3, o], [45.0, 1, Vector2(5.0, -3.0)],
+		[60.0, 0, o + Vector2(0.0, 2.5)], [75.0, 2, Vector2(10.0, 10.0)], [90.0, 3, o], [105.0, 0, Vector2(2.0, 12.0)]]
+	var t := 0.0
+	while t <= 130.0:
+		while not casts.is_empty() and t >= float(casts[0][0]):
+			var c: Array = casts.pop_front()
+			_force_cast(int(c[1]), c[2], Vector2(1, 0.3).normalized())
+		if int(t) % 15 == 0:
+			var teams := []
+			if crowd.engineers != null:
+				for team: Dictionary in crowd.engineers.teams:
+					teams.append("idle" if (team.job as Dictionary).is_empty() else String(EngineerManager.Job.keys()[team.job.type]).to_lower())
+			print("BEHAVIOUR siege t=%d stage=%s alarm=%d escaped=%d alive=%d citadel=%.0f%% stability=%.0f%% clock=%s rite=%s boats=%d engineers=%s jobs=%d over=%s" % [
+				roundi(t), crowd.alarms.stage_name(), roundi(crowd.alarm), crowd.escaped_count, crowd.alive_citizens(),
+				100.0 * citadel.fraction(), 100.0 * rules.stability.total(), UiTheme.clock(rules.time_left),
+				BanishingRite.State.keys()[crowd.rite.state] if crowd.rite != null else "-",
+				crowd.ferry.carried if crowd.ferry != null else 0, teams,
+				crowd.engineers.jobs().size() if crowd.engineers != null and crowd.engineers.active else -1, rules.over_reason])
+		await _frames(60)
+		t += 1.0
+	for h in crowd.alarms.history:
+		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
 
 
 func _fire(shots: bool) -> void:

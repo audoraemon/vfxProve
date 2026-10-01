@@ -293,3 +293,24 @@ The overlay gains:
 - **Mission test:** unchanged (Organized 173 / 1, Prepared 171 / 1).
 - **Mission bench at Prepared, alternating:** M5 107.9 / 108.4 fps, M6 109.3 / 108.4 fps.
 - **Tests:** 921 checks.
+
+### M7
+- **Responders dress for their duty** (`Person._draw_citizen`), so they can be picked out as targets:
+  - clergy in a cream robe to the ground with a gold stole;
+  - engineers in a leather apron and an orange cap, with a hammer;
+  - the bellkeeper in a navy coat with a brass badge.
+- **F4 panel:** the bell's state, and its climb's progress.
+- **Scenarios added:**
+  - `opening` (stealth against loud, with `--quiet`);
+  - `siege` (one scripted siege for comparing tiers via `--difficulty=`; it prints the rite's breaks and completion and the engineers' open jobs).
+  - The results and what they show are in `docs/KAK_Version_0.05_Summary.md` §11. **No numbers were retuned**; the tiers wait for a playtest, as v0.04's did.
+- **Performance against `kak-v0.04-final`** (market bench, alternating): 115.6 fps against ~111 at Organized (−4.7) and ~109 at God-Resistant (−6.2).
+  - A bisection over the milestone tags put about 4 fps on M2 and about 1.6 on M5.
+  - The Bell Tower accounts for about 0.6 fps (12 draw calls). Inlining the walkers' step check changed nothing, so the rest of M2's cost is behaviour: walkers no longer stick on building corners, so they keep walking and redrawing. That is a fix, and it stays.
+  - M5's cost was `Person.has_escaped()` calling into the evacuation manager for every citizen every frame before its cheap tests. Reordered, it gave back 1.7 fps.
+  - Flattening the Bell Tower's art saved only 2 draw calls and no fps, so it was not kept.
+- **Checksums:**
+  - crowd_check −346732806, quiet −931095950 and boats 452876283: all unchanged.
+  - rite −998498170: it drifted with M4–M6.
+- **Mission test:** Unprepared 172 / 2, Organized 173 / 1, Prepared 171 / 1, God-Resistant 173 / 1.
+- **Tests:** 921 checks.

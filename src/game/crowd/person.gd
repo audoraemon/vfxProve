@@ -67,6 +67,16 @@ const CIT_SKIN := [Color("c89a72"), Color("b07a52"), Color("8a5a3a")]
 const CIT_TUNIC := [Color("8a5a3a"), Color("6a6a4a"), Color("7a4a4a"), Color("4a5a6a"), Color("8a7a4a"), Color("6a5a7a")]
 const CIT_HAIR := [Color("3a2a1a"), Color("5a4a2a"), Color("24201c"), Color("7a5a3a")]
 const CIT_LEGS := Color("453c33")
+## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
+## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
+const CLERGY_ROBE := Color("e4dcc4")
+const CLERGY_STOLE := Color("d8b23a")
+const ENG_APRON := Color("5a3a22")
+const ENG_CAP := Color("c08a3a")
+const ENG_HAFT := Color("6b4428")
+const ENG_IRON := Color("a0a6ae")
+const KEEPER_COAT := Color("2c3a5c")
+const KEEPER_BADGE := Color("e0b84a")
 const SOL_MAIL := Color("6a6f78")
 const SOL_MAIL_HI := Color("8d939c")
 const SOL_HELM := Color("484d56")
@@ -713,9 +723,11 @@ func hold_ground() -> void:
 
 ## True once a fleeing citizen has reached the exit it was walking to; the Crowd then removes it.
 func has_escaped() -> bool:
-	if evac != null and evac.is_boat_exit(_goal):
-		return false  # at the dock it waits for the boat (RiverFerry), which carries it off
-	return mind == Mind.FLEE and _goal != Vector2.INF and ground_pos.distance_to(_goal) <= GOAL_REACH
+	if mind != Mind.FLEE or _goal == Vector2.INF or ground_pos.distance_to(_goal) > GOAL_REACH:
+		return false
+	# At the dock it waits for the boat (RiverFerry), which carries it off. Asked last: every citizen is asked every
+	# frame, and the call costs more than the checks above.
+	return evac == null or not evac.is_boat_exit(_goal)
 
 
 # --- Draw order ----------------------------------------------------------------
@@ -799,16 +811,37 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	if is_stumbling():
 		lift += 2  # down on one knee
 	var f := _facing
-	if top_only == 0:
-		_px(-2, -4 + lift, 2, 4 - step, CIT_LEGS)
-		_px(1, -4 + lift, 2, 3 + step, CIT_LEGS)
-	_px(-3, -10 + lift, 6, 6, _tunic)
-	_px(-3, -10 + lift, 6, 1, _tunic.lightened(0.18))
+	var role := profile.role if profile != null else -1
+	if role == CitizenProfile.Role.CLERGY:
+		# A robe to the ground (no legs showing), a gold stole down its front.
+		if top_only == 0:
+			_px(-3, -4 + lift, 6, 4, CLERGY_ROBE.darkened(0.14))
+		_px(-3, -10 + lift, 6, 6, CLERGY_ROBE)
+		_px(-3, -10 + lift, 6, 1, CLERGY_ROBE.lightened(0.2))
+		_px(-1, -10 + lift, 1, 8, CLERGY_STOLE)
+	else:
+		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else _tunic
+		if top_only == 0:
+			_px(-2, -4 + lift, 2, 4 - step, CIT_LEGS)
+			_px(1, -4 + lift, 2, 3 + step, CIT_LEGS)
+		_px(-3, -10 + lift, 6, 6, coat)
+		_px(-3, -10 + lift, 6, 1, coat.lightened(0.18))
+		if role == CitizenProfile.Role.ENGINEER:
+			_px(-2, -8 + lift, 4, 4, ENG_APRON)
+		elif role == CitizenProfile.Role.BELLKEEPER:
+			_px(1, -8 + lift, 1, 1, KEEPER_BADGE)
 	var arm_y := -12 if running else -9
 	_px(-4, arm_y + lift, 1, 3, _skin)
 	_px(3, arm_y + lift, 1, 3, _skin)
 	_px(-2, -13 + lift, 4, 3, _skin)
-	_px(-2, -13 + lift, 4, 1, _hair)
+	if role == CitizenProfile.Role.ENGINEER:
+		# A leather cap, and a hammer in the leading hand.
+		_px(-2, -14 + lift, 4, 2, ENG_CAP)
+		var hx := 4 if f > 0 else -5
+		_px(hx, arm_y - 1 + lift, 1, 4, ENG_HAFT)
+		_px(hx - 1, arm_y - 2 + lift, 3, 1, ENG_IRON)
+	else:
+		_px(-2, -13 + lift, 4, 1, _hair)
 	if state != State.DEAD or _char < 0.5:
 		_px(0 if f > 0 else -1, -12 + lift, 1, 1, COL_DARK)
 

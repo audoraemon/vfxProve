@@ -83,7 +83,8 @@ static func run(t) -> void:
 	t.check(not esc.guards.has("bell") and new_keeper.mind == Person.Mind.POST and new_keeper.anchor == new_keeper.post,
 		"the bell rung, the stand-in goes back to its post")
 	# Every escort that was still guarding the bell goes back to its post, and no longer at a run.
-	var home := bell_escorts.size() == per and not bell_escorts.has(new_keeper)
+	# (The stand-in came from the guard and was not replaced from the town's other escorts: per - 1 are left.)
+	var home := bell_escorts.size() == per - 1 and not bell_escorts.has(new_keeper)
 	var slow := 0.0
 	for g: Person in bell_escorts:
 		home = home and g.mind == Person.Mind.POST and g.anchor == g.post and not g.hurrying
@@ -120,5 +121,158 @@ static func run(t) -> void:
 	guarded.confuse(15.0)
 	esc.step(1.0)
 	t.check(guarded._confused_left <= EscortManager.STEADY_TIME, "a guarded engineer confused near its escort comes to sooner")
+	crowd.clear()
+	(made[2] as Node).free()
+	_bell_takeovers(t)
+	_top_up(t)
+	_silenced(t)
+	_hurry(t)
+
+
+## Notes every soldier guarding the bell in `ever`.
+static func _note(ever: Dictionary, esc: EscortManager) -> void:
+	for g in esc.guards.get("bell", []):
+		ever[g] = true
+
+
+## A duty is given its escorts once, over its whole life: killing the bellkeeper again and again meets the escorts one
+## by one and then the bell is silenced, whatever other escorts the town has.
+static func _bell_takeovers(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var esc := crowd.escorts
+	var bell := crowd.bell
+	var per := crowd.profile.escorts_per_duty
+	var free := 0
+	for p in crowd.soldiers:
+		free += 1 if p.corps == Person.Corps.ESCORT else 0
+	var ever := {}  # every soldier that guarded the bell, at any step
+	bell.call_keeper()
+	esc.step(1.0)
+	_note(ever, esc)
+	t.check(per == 2 and ever.size() == per and free > per + 1,
+		"the bell is called and %d of the town's %d escorts join it" % [ever.size(), free])
+	for n in per:
+		field.kill(bell.keeper, &"test")
+		esc.step(1.0)
+		_note(ever, esc)
+		bell.step(0.1)
+		t.check(bell.state == BellNetwork.State.CALLED and bell.keeper.soldier and bell.keeper.is_alive(),
+			"killed, the keeper is replaced by escort %d of %d" % [n + 1, per])
+		esc.step(1.0)  # (the look that used to top the duty back up from the town's free escorts)
+		_note(ever, esc)
+		t.check((esc.guards.get("bell", []) as Array).size() == per - 1 - n,
+			"the stand-in is not replaced on the guard (%d left)" % (esc.guards.get("bell", []) as Array).size())
+	field.kill(bell.keeper, &"test")
+	esc.step(1.0)
+	_note(ever, esc)
+	bell.step(0.1)
+	t.check(bell.state == BellNetwork.State.SILENCED and not crowd.alarms.bell_rung,
+		"with its escorts gone, the keeper killed once more silences the bell")
+	esc.step(1.0)
+	_note(ever, esc)
+	t.check(ever.size() == per, "and no escort beyond the %d the duty began with ever joined it" % ever.size())
+	crowd.clear()
+	(made[2] as Node).free()
+
+
+## A duty that started with too few free escorts tops up later, but never beyond its share; a guard that falls is not
+## made up.
+static func _top_up(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var esc := crowd.escorts
+	var per := crowd.profile.escorts_per_duty
+	var escorts: Array[Person] = []
+	for p in crowd.soldiers:
+		if p.corps == Person.Corps.ESCORT:
+			escorts.append(p)
+	for p in escorts:
+		p.corps = Person.Corps.NONE  # none free
+	crowd.bell.call_keeper()
+	esc.step(1.0)
+	t.check((esc.guards.get("bell", []) as Array).is_empty(), "a duty with no free escorts starts with none")
+	for p in escorts:
+		p.corps = Person.Corps.ESCORT
+	esc.step(1.0)
+	var mine: Array = (esc.guards.get("bell", []) as Array).duplicate()
+	t.check(mine.size() == per, "and tops up from the escorts free later (%d)" % mine.size())
+	field.kill(mine[0], &"test")
+	esc.step(1.0)
+	t.check((esc.guards.get("bell", []) as Array).size() == per - 1, "a guard that falls is not made up")
+	crowd.clear()
+	(made[2] as Node).free()
+
+
+## A keeper still on the rope when the bell is silenced (the tower cracks under it) is let go: an escort stand-in goes
+## back to its post, a citizen to its day.
+static func _silenced(t) -> void:
+	for soldier in [false, true]:
+		var made := _crowd()
+		var crowd: Crowd = made[0]
+		var bell := crowd.bell
+		bell.call_keeper()
+		if soldier:
+			(made[3] as EnemyField).kill(bell.keeper, &"test")
+			crowd.escorts.step(1.0)
+			bell.step(0.1)
+		var keeper := bell.keeper
+		t.check(keeper.mind == Person.Mind.DUTY and keeper.soldier == soldier,
+			"%s on the rope" % ("an escort" if soldier else "the bellkeeper"))
+		(made[1] as EnvironmentField).blight(bell.tower)
+		bell.step(0.1)
+		t.check(bell.state == BellNetwork.State.SILENCED and keeper.mind != Person.Mind.DUTY,
+			"the bell cracked and silenced, the keeper is let go")
+		if soldier:
+			t.check(keeper.mind == Person.Mind.POST and keeper.anchor == keeper.post and not crowd.escorts.guarding(keeper),
+				"an escort back at its post, free for another duty")
+		crowd.clear()
+		(made[2] as Node).free()
+
+
+## A soldier hurrying to its post stays at a run until it is there: a route that closes under it drops the goal, and
+## the re-path to the post is as quick as the first leg. At its post it shifts about at a walk. (Drives _pick_target()
+## and _think() on one soldier, with its path set by hand, not a walk through the town.)
+static func _hurry(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var s: Person = null
+	for p in crowd.soldiers:
+		if p.corps == Person.Corps.ESCORT:
+			s = p
+			break
+	var here := s.ground_pos
+	var spot := crowd._spot_near(here + Vector2(6.0, 0.0), 0.2)
+	t.check(spot.distance_to(here) > 3.0, "a post the soldier is well away from")
+	var shut := Vector2.INF
+	for st in (made[1] as EnvironmentField).structures():
+		if st.role == &"house" and not grid.walkable(st.center()):
+			shut = st.center()
+			break
+	t.check(shut != Vector2.INF, "a way that is closed (a house's middle)")
+
+	s.send_to_post(spot, false, true)
+	t.check(s.hurrying and not s.unhurried(), "sent at a run, a soldier is hurrying and not calm")
+	s._path = PackedVector2Array([shut])
+	s._leg = 0
+	s._pick_target()
+	t.check(s._goal == Vector2.INF and s.hurrying,
+		"its way closed under it, the goal is dropped and it is still hurrying")
+	s._repath_in = 0.0
+	s._think(0.1)
+	t.check(s.has_goal() and s.goal().distance_to(spot) < 0.01 and is_equal_approx(s._mind_speed(), Person.PANIC_SPEED * s.pace),
+		"and the re-path to its post is at a run")
+
+	s._goal = Vector2.INF
+	s._path = PackedVector2Array()
+	s._leg = 0
+	s.ground_pos = spot
+	s._pick_target()
+	t.check(not s.hurrying and is_equal_approx(s._mind_speed(), Person.WALK_SPEED * s.pace),
+		"at its post, it is at a walk again")
+	t.check(s.unhurried(), "and calm again")
 	crowd.clear()
 	(made[2] as Node).free()

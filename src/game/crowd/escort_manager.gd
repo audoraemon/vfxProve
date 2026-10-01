@@ -5,7 +5,9 @@ extends RefCounted
 ## team while the engineers are out -- the profile's escorts_per_duty each, keeping within REACH. Near a guarded
 ## responder Silent Doom is seen (Crowd counts any living witness, soldiers too); a guarded responder confused near its
 ## escort comes to within STEADY_TIME; a bellkeeper killed before the bell rang is replaced by an escort
-## (bell_stand_in(); BellNetwork climbs it slower), an engineer by one of its team's (engineer_stand_in()). When a duty
+## (bell_stand_in(); BellNetwork climbs it slower), an engineer by one of its team's (engineer_stand_in()). A duty is
+## given its escorts_per_duty escorts once, over its whole life: one that falls, or takes a fallen responder's place, is
+## not replaced from the town's other escorts -- the counter to a guarded duty is to kill its escorts first. When a duty
 ## ends its escorts go back to their posts.
 
 ## How near its charge an escort keeps (the point it stands round is re-set when its place is farther than this).
@@ -21,6 +23,9 @@ const OFFSETS := [Vector2(0.8, 0.5), Vector2(-0.8, 0.5), Vector2(0.5, -0.8), Vec
 
 ## A duty's key ("bell", "rite", "team:<id>") -> its escorts.
 var guards := {}
+## A duty's key -> how many escorts it has been given in all, living or fallen (at most escorts_per_duty); forgotten
+## when the duty ends.
+var _assigned := {}
 var _crowd: Crowd
 var _in := 0.0
 
@@ -70,6 +75,7 @@ func step(delta: float) -> void:
 		if not duties.has(key):
 			_release(guards[key])
 			guards.erase(key)
+			_assigned.erase(key)
 	var per := _crowd.profile.escorts_per_duty
 	for key in duties:
 		var d: Dictionary = duties[key]
@@ -78,11 +84,15 @@ func step(delta: float) -> void:
 			if is_instance_valid(p) and (p as Person).is_alive():
 				mine.append(p)
 		guards[key] = mine  # (before the picking: _free_nearest() leaves out those already guarding)
-		while mine.size() < per:
+		# Topped up only while the duty has been given fewer than `per` escorts in all: a fallen or taken guard stays gone.
+		var given: int = _assigned.get(key, 0)
+		while given < per:
 			var free := _free_nearest(d.point)
 			if free == null:
 				break
 			mine.append(free)
+			given += 1
+		_assigned[key] = given
 		var point: Vector2 = d.point
 		for i in mine.size():
 			var p: Person = mine[i]
@@ -157,3 +167,4 @@ func _take(key: String) -> Person:
 
 func clear() -> void:
 	guards.clear()
+	_assigned.clear()

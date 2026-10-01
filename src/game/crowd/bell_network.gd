@@ -145,6 +145,11 @@ func _silence(reason: String) -> void:
 	var was_called := state != State.IDLE
 	state = State.SILENCED
 	progress = 0.0
+	# A living keeper on the rope (an escort's stand-in, or the bellkeeper itself when the tower falls or cracks under
+	# it) is let go: off_duty() sends it back to its post or its day, and does nothing for one that is dead or free.
+	# (Only while the keeper exists: one that left the town is freed, and a freed person cannot be passed on.)
+	if is_instance_valid(keeper):
+		_crowd.off_duty(keeper)
 	if was_called:
 		silenced.emit(reason)
 

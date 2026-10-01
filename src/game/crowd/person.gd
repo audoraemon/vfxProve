@@ -279,11 +279,12 @@ func frame(delta: float) -> void:
 	_refresh(delta)
 
 
-## Calm or at a post, wandering, and nothing holding or tripping it: updated at CALM_EVERY on screen.
+## Calm or at a post, wandering, and nothing holding or tripping it (a soldier hurrying to its post is not): updated at
+## CALM_EVERY on screen.
 func unhurried() -> bool:
 	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER \
 		or mind == Mind.REGROUP
-	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and wait <= 0.0
+	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and wait <= 0.0 and not hurrying
 
 
 # --- Brain -------------------------------------------------------------------
@@ -464,8 +465,10 @@ func _pick_target() -> void:
 	if mind == Mind.FLEE:
 		_scurry()
 		return
-	if mind == Mind.POST:
-		hurrying = false  # arrived: shifting about its post is at a walk again
+	if mind == Mind.POST and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
+		# At its post (the reach _think() re-paths beyond): shifting about it is at a walk again. A goal dropped short of
+		# the post (the way closed) is not an arrival: the re-path keeps the run.
+		hurrying = false
 	_drift()
 
 

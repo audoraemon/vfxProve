@@ -164,7 +164,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_rules.over.connect(_on_over)
 	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
 	if _crowd.bell != null:
-		_crowd.bell.climbing_started.connect(func(): _rules.banner.emit("THE BELLKEEPER CLIMBS THE TOWER"))
+		_crowd.bell.climbing_started.connect(func():
+			var soldier := is_instance_valid(_crowd.bell.keeper) and _crowd.bell.keeper.soldier  # (after a takeover)
+			_rules.banner.emit("A SOLDIER CLIMBS THE TOWER" if soldier else "THE BELLKEEPER CLIMBS THE TOWER"))
 		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
 		_crowd.bell.keeper_replaced.connect(func(): _rules.banner.emit("A SOLDIER TAKES THE BELL ROPE"))

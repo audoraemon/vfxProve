@@ -4,23 +4,30 @@ extends RefCounted
 ## goes to the tower and climbs it -- CLIMB seconds, with a progress bar over the tower -- and rings the bell: the
 ## alarm jumps RING_ALARM, every citizen learns of the danger, and the town reaches City Emergency and Evacuation
 ## sooner (AlarmManager). A frightened bellkeeper abandons the climb and tries again RETRY seconds later; a dead one
-## is not replaced; a fallen tower rings no more. An Unprepared town (ResponseProfile.bell off) has no bellkeeper.
+## is replaced by one of its escorts if it has any (v0.07; a slower climb), else not; a fallen tower rings no more. An
+## Unprepared town (ResponseProfile.bell off) has no bellkeeper.
 
 signal climbing_started
 signal rung
 signal silenced(reason: String)
+## An escort took over from a fallen bellkeeper (v0.07).
+signal keeper_replaced
 
 enum State { IDLE, CALLED, CLIMBING, WAITING, RUNG, SILENCED }
 
 const RING_ALARM := 20.0
 const RETRY := 10.0
 const FOOT_REACH := 0.8
+## An escort climbing in a fallen bellkeeper's place takes this much longer (v0.07).
+const ESCORT_CLIMB := 1.5
 
 var state := State.IDLE
 var progress := 0.0
 var climb := 8.0
 var tower: Structure
 var keeper: Person
+## Whether an escort has taken the rope (v0.07; replace_keeper()).
+var keeper_is_soldier := false
 var foot := Vector2.INF
 var _crowd: Crowd
 var _retry_in := 0.0
@@ -75,6 +82,11 @@ func step(delta: float) -> void:
 		_silence("the bell is cracked")
 		return
 	if not _keeper_ok():
+		# An escort takes the rope (v0.07), else the bell is silenced.
+		var sub: Person = _crowd.escorts.bell_stand_in() if _crowd.escorts != null else null
+		if sub != null:
+			replace_keeper(sub)
+			return
 		_silence("the bellkeeper is dead")
 		return
 	match state:
@@ -100,6 +112,19 @@ func step(delta: float) -> void:
 			if _retry_in <= 0.0 and keeper.mind in [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE,
 					Person.Mind.REGROUP]:
 				_send()
+
+
+## An escort climbs in the fallen bellkeeper's place, ESCORT_CLIMB times slower (once, however many fall); the climb
+## starts over.
+func replace_keeper(p: Person) -> void:
+	keeper = p
+	if not keeper_is_soldier:
+		climb *= ESCORT_CLIMB
+	keeper_is_soldier = true
+	progress = 0.0
+	state = State.CALLED
+	keeper.go_ring(foot)
+	keeper_replaced.emit()
 
 
 func _wait() -> void:

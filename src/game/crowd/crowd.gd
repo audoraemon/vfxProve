@@ -123,6 +123,8 @@ var ferry: RiverFerry
 var plague: PlagueManager
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
+## The patrols' escorts for the responders (v0.07); made by spawn().
+var escorts: EscortManager
 ## The seed setup() was given, for managers that must not draw from the crowd's own rng (which would move everyone).
 var _seed := 0
 ## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
@@ -272,6 +274,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
 	marshals = MarshalManager.new().setup(self, _town, _grid)
+	escorts = EscortManager.new().setup(self)
 	if ferry.state != RiverFerry.State.ENDED:
 		evac.add_boat_exit(ferry.board_at, ferry)
 	if _drawer == null or not is_instance_valid(_drawer):
@@ -525,6 +528,8 @@ func advance(delta: float) -> void:
 		plague.step(delta)
 	if marshals != null:
 		marshals.step(delta)
+	if escorts != null:
+		escorts.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1037,7 +1042,8 @@ func _investigate(at: Vector2) -> void:
 	var pool: Array[Person] = []
 	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
 		var p := soldiers[i]
-		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST:
+		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST \
+				and not (escorts != null and escorts.guarding(p)):
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(at) < b.ground_pos.distance_to(at))
 	var spot := at if _grid.walkable(at) else _grid.nearest_walkable(at)
@@ -1056,8 +1062,8 @@ func _return_investigators() -> void:
 		var p: Person = e[0]
 		if _clock < float(e[2]):
 			kept.append(e)
-		elif p.is_alive() and p.mind == Person.Mind.POST:
-			p.send_to_post(e[1])
+		elif p.is_alive() and p.mind == Person.Mind.POST and not (escorts != null and escorts.guarding(p)):
+			p.send_to_post(e[1])  # (one since taken as an escort stays with its duty)
 	_investigating = kept
 
 
@@ -1121,6 +1127,9 @@ func clear() -> void:
 	if marshals != null:
 		marshals.clear()
 	marshals = null
+	if escorts != null:
+		escorts.clear()
+	escorts = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

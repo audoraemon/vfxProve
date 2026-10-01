@@ -158,6 +158,11 @@ func _draw_panel(ci: Control) -> void:
 		for e in crowd.marshals.exits():
 			parts.append("x%.2f" % crowd.marshals.speed_at(e[0]))
 		lines.append(["Marshals at the ways out: %s" % ", ".join(parts), Color("e06060")])
+	if crowd.escorts != null and not crowd.escorts.guards.is_empty():
+		var parts := []
+		for key in crowd.escorts.guards:
+			parts.append("%s %d" % [key, (crowd.escorts.guards[key] as Array).size()])
+		lines.append(["Escorts: %s" % ", ".join(parts), Color("e8e4dc")])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

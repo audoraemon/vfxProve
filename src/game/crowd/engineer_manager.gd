@@ -8,8 +8,9 @@ extends RefCounted
 ## DAMAGED of their health) are healed RATE of their health a second while both of the team stand at the site; a
 ## fallen gate or bridge is rebuilt in REBUILD seconds, as it was. The Citadel mends only back to its last collapse:
 ## its fallen towers and walls stay down. Once the town evacuates the gates are left alone: a fallen gate lets the
-## crowd out with no queue, and a rebuilt one would hold it back. A team that loses a member is lost, and the workshop sends out another
-## REPLACE seconds later while it stands. Only towns whose profile has engineer_teams have engineers.
+## crowd out with no queue, and a rebuilt one would hold it back. A team that loses a member takes one of its escorts
+## in the place (v0.07); with none it is lost, and the workshop sends out another REPLACE seconds later while it
+## stands. Only towns whose profile has engineer_teams have engineers.
 
 signal turned_out
 signal rebuilt(s: Structure)
@@ -40,8 +41,8 @@ const SWITCH_MARGIN := 20.0
 ## Minds a member can be called from (and goes back to work from after a fright).
 const AVAILABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
 
-## One dictionary per team: {"members": [Person, Person], "job": {} or a job (jobs()), "spots": [Vector2, Vector2],
-## "progress": float (a rebuild's, 0..1), "working": bool}.
+## One dictionary per team: {"id": int (v0.07), "members": [Person, Person], "job": {} or a job (jobs()),
+## "spots": [Vector2, Vector2], "progress": float (a rebuild's, 0..1), "working": bool}.
 var teams: Array = []
 var active := false
 var workshop: Structure
@@ -49,6 +50,8 @@ var workshop: Structure
 var base := Vector2.INF
 ## Seconds until each lost team's replacement.
 var replacing: Array[float] = []
+## The last team id given out (v0.07; each team's "id").
+var _next_id := 0
 var _think_in := 0.0
 var _crowd: Crowd
 var _env: EnvironmentField
@@ -73,7 +76,8 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid, town: Town, engi
 
 
 func _team(members: Array) -> Dictionary:
-	return {"members": members, "job": {}, "spots": [], "progress": 0.0, "working": false}
+	_next_id += 1
+	return {"id": _next_id, "members": members, "job": {}, "spots": [], "progress": 0.0, "working": false}
 
 
 ## City Emergency: the engineers turn out.
@@ -261,7 +265,7 @@ func _stand_by(team: Dictionary) -> void:
 
 
 func _send(p: Person, at: Vector2) -> void:
-	if is_instance_valid(p) and p.is_alive() and (p.mind == Person.Mind.DUTY or p.mind in AVAILABLE):
+	if is_instance_valid(p) and p.is_alive() and (p.mind == Person.Mind.DUTY or p.mind in AVAILABLE or p.soldier):
 		p.go_duty(at)
 
 
@@ -275,7 +279,7 @@ func _work(team: Dictionary, delta: float) -> void:
 		var spot: Vector2 = team.spots[i] if i < team.spots.size() else base
 		if p.mind != Person.Mind.DUTY:
 			# Frightened off (or busy elsewhere): back to it once calm again.
-			if p.mind in AVAILABLE and spot != Vector2.INF:
+			if (p.mind in AVAILABLE or p.soldier) and spot != Vector2.INF:
 				p.go_duty(spot)
 			ready = false
 		elif p.has_goal() or p.ground_pos.distance_to(spot) > WORK_REACH:
@@ -333,10 +337,21 @@ func working() -> bool:
 
 # --- Losses ---------------------------------------------------------------------------------------------------------
 
-## A team with a dead member is lost: the one left goes off duty, and the workshop sends another team later.
+## A team with a dead member takes one of its escorts in the place (v0.07); with none it is lost: the one left goes
+## off duty, and the workshop sends another team later.
 func _check_losses() -> void:
 	var kept: Array = []
 	for team in teams:
+		# A fallen engineer's place is taken by one of the team's escorts (v0.07) before the team is written off.
+		for i in team.members.size():
+			var p = team.members[i]
+			if not is_instance_valid(p) or not (p as Person).is_alive():
+				var sub: Person = _crowd.escorts.engineer_stand_in(team) if _crowd.escorts != null else null
+				if sub != null:
+					team.members[i] = sub
+					var spot: Vector2 = team.spots[i] if i < team.spots.size() else base
+					if spot != Vector2.INF:
+						sub.go_duty(spot)
 		var whole := true
 		for p in team.members:
 			whole = whole and is_instance_valid(p) and (p as Person).is_alive()

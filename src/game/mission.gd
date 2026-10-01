@@ -167,6 +167,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_crowd.bell.climbing_started.connect(func(): _rules.banner.emit("THE BELLKEEPER CLIMBS THE TOWER"))
 		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
+		_crowd.bell.keeper_replaced.connect(func(): _rules.banner.emit("A SOLDIER TAKES THE BELL ROPE"))
 	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty():
 		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
 		_crowd.engineers.rebuilt.connect(func(s: Structure):

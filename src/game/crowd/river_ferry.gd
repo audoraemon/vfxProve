@@ -151,7 +151,9 @@ func step(delta: float) -> void:
 		var head := _waiting[0]
 		if head.queue_spot == spots[0] and head.ground_pos.distance_to(board_at) <= BOARD_REACH:
 			_board(head)
-			_board_in = LOAD_TIME / float(LOAD)
+			# Marshals at the dock (v0.07) see them aboard faster.
+			var speed := _crowd.marshals.speed_at(board_at) if _crowd.marshals != null else 1.0
+			_board_in = LOAD_TIME / float(LOAD) / speed
 	if aboard.size() >= LOAD or (_loading >= LOAD_TIME and not aboard.is_empty() and _waiting.is_empty()):
 		_sail()
 

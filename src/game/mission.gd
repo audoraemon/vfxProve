@@ -177,6 +177,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED:
 		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
 		_crowd.ferry.closed.connect(func(_why: String): _rules.banner.emit("THE BOATS ARE STOPPED"))
+	if _crowd.marshals != null:
+		_crowd.marshals.posted.connect(func(): _rules.banner.emit("THE SOLDIERS TAKE THE GATES"))
 	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED:
 		var rite := _crowd.rite
 		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))

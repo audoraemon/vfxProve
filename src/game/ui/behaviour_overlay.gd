@@ -153,6 +153,11 @@ func _draw_panel(ci: Control) -> void:
 		lines.append(["Boats: %s   aboard %d/%d   waiting %d   %d trips, %d carried" % [
 			RiverFerry.State.keys()[f.state].capitalize(), f.aboard.size(), RiverFerry.LOAD, f.waiting(), f.trips, f.carried],
 			Color("8ac8e8")])
+	if crowd.marshals != null and crowd.marshals.active:
+		var parts := []
+		for e in crowd.marshals.exits():
+			parts.append("x%.2f" % crowd.marshals.speed_at(e[0]))
+		lines.append(["Marshals at the ways out: %s" % ", ".join(parts), Color("e06060")])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

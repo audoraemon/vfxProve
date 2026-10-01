@@ -121,6 +121,8 @@ var engineers: EngineerManager
 var ferry: RiverFerry
 ## Pestilence's spread (v0.06); made by spawn().
 var plague: PlagueManager
+## The soldiers' roles (v0.07); made by spawn().
+var marshals: MarshalManager
 ## The seed setup() was given, for managers that must not draw from the crowd's own rng (which would move everyone).
 var _seed := 0
 ## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
@@ -269,6 +271,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(workshop), workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
+	marshals = MarshalManager.new().setup(self, _town, _grid)
 	if ferry.state != RiverFerry.State.ENDED:
 		evac.add_boat_exit(ferry.board_at, ferry)
 	if _drawer == null or not is_instance_valid(_drawer):
@@ -520,6 +523,8 @@ func advance(delta: float) -> void:
 		ferry.step(delta)
 	if plague != null:
 		plague.step(delta)
+	if marshals != null:
+		marshals.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -656,7 +661,9 @@ func _gates() -> void:
 		var first := 0
 		# A blighted gate is jammed (v0.05): its crowd waits, nobody passes.
 		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted:
-			_gate_next[gate] = _clock + (POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL)
+			var interval := POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL
+			# Marshals at the mouth (v0.07) let them through faster.
+			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()
 			crowd_here[0].passing_gate = gate
 			first = 1
@@ -883,6 +890,8 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			# The boats first, so the first evacuees to plan their way out already see the dock.
 			if ferry != null:
 				ferry.begin()
+			if marshals != null:
+				marshals.begin()
 			_evacuate()
 
 
@@ -1109,6 +1118,9 @@ func clear() -> void:
 	if plague != null:
 		plague.clear()
 	plague = null
+	if marshals != null:
+		marshals.clear()
+	marshals = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

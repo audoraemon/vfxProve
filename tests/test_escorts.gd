@@ -52,24 +52,44 @@ static func run(t) -> void:
 		near = near and g.corps == Person.Corps.ESCORT and g.goal().distance_to(bell.keeper.ground_pos) <= EscortManager.REACH + 0.5
 	t.check(guards.size() == per and near, "%d escorts join the bellkeeper" % guards.size())
 	t.check(_distinct(guards), "each of them a different soldier")
+	# They run to their charge as the bellkeeper does, not at a soldier's walk.
+	var gap := 0.0
+	for g: Person in guards:
+		gap = maxf(gap, absf(g._mind_speed() - Person.PANIC_SPEED * g.pace))
+	t.near(gap, 0.0, 0.001, "the escorts run to the bellkeeper (%.1f u/s)" % (Person.PANIC_SPEED * guards[0].pace))
 
 	# The bellkeeper killed before the bell rang: an escort takes over, its climb slower.
 	var replaced := []
 	bell.keeper_replaced.connect(func() -> void: replaced.append(true))
 	var climb := bell.climb
 	field.kill(bell.keeper, &"test")
+	# The escorts' own look at the duties can come between the keeper's death and the bell's next step (Crowd steps the
+	# bell first, but the death can fall inside the same frame): they must keep their duty for the bell to find them.
+	esc.step(1.0)
+	t.check(esc.guards.has("bell") and (esc.guards["bell"] as Array).size() == per,
+		"the escorts keep the bell's duty while its keeper lies dead")
 	bell.step(0.1)
 	t.check(bell.keeper != null and bell.keeper.soldier and bell.state == BellNetwork.State.CALLED and replaced.size() == 1
 		and is_equal_approx(bell.climb, climb * BellNetwork.ESCORT_CLIMB),
 		"an escort takes the bell rope (climb %.1f s)" % bell.climb)
 	var new_keeper := bell.keeper
+	esc.step(1.0)
+	var bell_escorts: Array = (esc.guards.get("bell", []) as Array).duplicate()
 	_arrive(new_keeper)
 	bell.step(0.1)
 	bell.step(bell.climb + 0.1)
 	t.check(bell.state == BellNetwork.State.RUNG and crowd.alarms.bell_rung, "and the bell still rings")
 	esc.step(1.0)
 	t.check(not esc.guards.has("bell") and new_keeper.mind == Person.Mind.POST and new_keeper.anchor == new_keeper.post,
-		"the bell rung, the escorts go back to their posts")
+		"the bell rung, the stand-in goes back to its post")
+	# Every escort that was still guarding the bell goes back to its post, and no longer at a run.
+	var home := bell_escorts.size() == per and not bell_escorts.has(new_keeper)
+	var slow := 0.0
+	for g: Person in bell_escorts:
+		home = home and g.mind == Person.Mind.POST and g.anchor == g.post and not g.hurrying
+		slow = maxf(slow, absf(g._mind_speed() - Person.WALK_SPEED * g.pace))
+	t.check(home, "and the %d escorts still on guard go back to their posts" % bell_escorts.size())
+	t.near(slow, 0.0, 0.001, "at a walk again")
 
 	# Engineers: escorts join a team; an engineer killed is replaced by one of them.
 	var e := crowd.engineers

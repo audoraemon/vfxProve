@@ -107,6 +107,8 @@ var soldier := false
 ## A soldier's role (v0.07; Crowd._assign_corps()) and the post it was given at spawn, which it goes back to.
 var corps := Corps.NONE
 var post := Vector2.INF
+## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
+var hurrying := false
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
 var anchor := Vector2.ZERO
 ## A citizen's role and the places of its day (Crowd sets it; null for soldiers and people made on their own).
@@ -391,7 +393,7 @@ func _base_speed() -> float:
 		Mind.FLEE:
 			return FLEE_SPEED * pace
 		_:
-			return WALK_SPEED * pace
+			return PANIC_SPEED * pace if mind == Mind.POST and hurrying else WALK_SPEED * pace
 
 
 ## Whether it is on its way somewhere (a goal it has not reached).
@@ -462,6 +464,8 @@ func _pick_target() -> void:
 	if mind == Mind.FLEE:
 		_scurry()
 		return
+	if mind == Mind.POST:
+		hurrying = false  # arrived: shifting about its post is at a walk again
 	_drift()
 
 
@@ -794,12 +798,14 @@ func _plan_exit() -> void:
 	set_goal(exit)
 
 
-## Soldiers only: stand at `at` (its starting post, or a slot on the Citadel's rally ring).
-func send_to_post(at: Vector2, rally := false) -> void:
+## Soldiers only: stand at `at` (its starting post, or a slot on the Citadel's rally ring), at a walk or, `hurried`
+## (escorts, marshals, rescue squads), at a run.
+func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 	if state == State.DEAD:
 		return
 	anchor = at
 	mind = Mind.RALLY if rally else Mind.POST
+	hurrying = hurried
 	walk_speed = _mind_speed()
 	set_goal(at)
 

@@ -82,7 +82,7 @@ func begin() -> void:
 			if not _grid.walkable(spot):
 				var near := _grid.nearest_walkable(spot, 3)
 				spot = near if near != Vector2.INF else mouth
-			p.send_to_post(spot)
+			p.send_to_post(spot, false, true)  # at a run
 			mine.append(p)
 			sent += 1
 		posts[mouth] = mine

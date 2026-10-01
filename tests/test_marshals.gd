@@ -35,11 +35,14 @@ static func run(t) -> void:
 	crowd._on_stage(AlarmManager.Stage.EVACUATION, "test")
 	var per := crowd.profile.marshals_per_exit
 	var placed := true
+	var gap := 0.0
 	for mouth: Vector2 in m.posts:
 		var mine: Array = m.posts[mouth]
 		placed = placed and mine.size() == per
 		for p: Person in mine:
 			placed = placed and p.corps == Person.Corps.MARSHAL and p.goal().distance_to(mouth) <= MarshalManager.REACH
+			gap = maxf(gap, absf(p._mind_speed() - Person.PANIC_SPEED * p.pace))
+	t.near(gap, 0.0, 0.001, "the marshals run to the ways out")
 	t.check(m.active and fired.size() == 1 and m.posts.size() == m.exits().size() and m.posts.size() == 4 and placed,
 		"at the evacuation %d marshals take each of the %d ways out" % [per, m.posts.size()])
 

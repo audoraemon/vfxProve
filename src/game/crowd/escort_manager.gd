@@ -8,8 +8,11 @@ extends RefCounted
 ## (bell_stand_in(); BellNetwork climbs it slower), an engineer by one of its team's (engineer_stand_in()). When a duty
 ## ends its escorts go back to their posts.
 
+## How near its charge an escort keeps (the point it stands round is re-set when its place is farther than this).
 const REACH := 1.5
+## How near a guarded responder an escort must be to steady it.
 const STEADY_R := 2.0
+## The longest a steadied responder stays confused.
 const STEADY_TIME := 3.0
 ## How often the duties are looked at.
 const EVERY := 0.5
@@ -31,9 +34,11 @@ func setup(crowd: Crowd) -> EscortManager:
 func _duties() -> Dictionary:
 	var out := {}
 	var bell := _crowd.bell
-	if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING, BellNetwork.State.WAITING] \
-			and is_instance_valid(bell.keeper) and bell.keeper.is_alive():
-		out["bell"] = {"point": bell.keeper.ground_pos, "guarded": [bell.keeper]}
+	if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING, BellNetwork.State.WAITING]:
+		# Kept while the keeper lies dead too: the bell looks for a stand-in on its next step (it may come after this
+		# one, in the same frame as the death), and must find the escorts still on the duty.
+		var alive := is_instance_valid(bell.keeper) and bell.keeper.is_alive()
+		out["bell"] = {"point": bell.keeper.ground_pos if alive else bell.foot, "guarded": [bell.keeper] if alive else []}
 	var rite := _crowd.rite
 	if rite != null and rite.state in [BanishingRite.State.GATHERING, BanishingRite.State.CHANTING,
 			BanishingRite.State.COOLDOWN]:
@@ -84,7 +89,7 @@ func step(delta: float) -> void:
 			if p.mind == Person.Mind.DUTY:
 				continue  # it took over a duty (the bell, an engineer's place)
 			if p.anchor.distance_to(point) > REACH or p.mind != Person.Mind.POST:
-				p.send_to_post(_crowd._spot_near(point + OFFSETS[i % OFFSETS.size()], 0.2))
+				p.send_to_post(_crowd._spot_near(point + OFFSETS[i % OFFSETS.size()], 0.2), false, true)  # at a run
 		_steady(d.guarded, mine)
 
 

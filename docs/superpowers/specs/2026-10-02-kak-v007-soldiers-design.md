@@ -104,3 +104,41 @@ The Defense Profile gains a line "Marshals xN, Escorts xN, Rescue xN". Soldiers 
 3. **M3 — Escorts.**
 4. **M4 — Rescue squads.**
 5. **M5 — Scenario and wrap-up:** the `soldiers` scenario, the bench, the v0.07 summary, tag `kak-v0.07`.
+
+## Changes made while executing
+
+### M1 — Corps
+- **Defense Profile line** uses this spec's wording, "Marshals xN, Escorts xN, Rescue xN". The plan's longer "Soldiers: marshals xN, …" ran ~80 px past the Prepare strip in every tier.
+- **Prepare strip columns** are now sized to their content (`PrepareScreen.profile_columns()`), and a test keeps every tier's lines inside the strip.
+- **`Person.stand_down()`** sends a soldier back to its post instead of recovering into a citizen's day.
+- **Hold ground:** after the Citadel falls only soldiers without a role hold its rubble (`test_crowd` updated).
+- **Checks:** 977; digest and crowd_check unchanged (−346732806); FLOW 24/24.
+
+### M2 — Marshals
+- **`speed_at()` is 1.0 until the Evacuation stage.** A wall post sits 1.4 from the Main Gate's mouth, so the Main Gate and the postern were ×1.15 from the start.
+- **Posting:** each way out takes the nearest marshals not yet posted (greedy, in gate order), instead of the soldier list's order.
+- **Banner:** "THE SOLDIERS TAKE THE GATES" only shows if at least one marshal was sent.
+- **Checks:** 985.
+
+### M3 — Escorts
+- **Plan bug fixed:** the plan stored a duty's guard list after the loop that filled it, so the same escort filled every slot.
+- **The bell duty is kept while the bell is called, climbing or waiting**, even with its keeper dead. A keeper killed between the bell's step and the escorts' step would otherwise have released the escorts and silenced the bell.
+- **`Person.hurrying`:** soldiers sent with `send_to_post(at, rally, hurried=true)` run (`PANIC_SPEED`) until they arrive. Before this, escorts walked at about 0.6 u/s and trailed their charge.
+  - Escorts and marshals are sent hurried, and so are rescue squads (M4).
+- **Investigations:** a guarding escort is left out of the patrols' investigations.
+- **A bellkeeper killed before the bell is called is not replaced:** no escort is assigned yet. This keeps the v0.05 counter of killing the keeper early.
+- **Checks:** 999.
+
+### M4 — Rescue squads
+- **Plan bug fixed:** a squad wiped out while digging kept its site, so no other squad would take that rubble.
+- **Survivors dug out once the town is evacuating head for the gates.** They used to recover into their day, because the evacuation sweep skips sheltering people.
+- **The plague waits under the rubble:** a sick person who is trapped neither recovers nor dies until dug out (`RescueManager.holds()`).
+- **`FireManager.enlist`** does not add a soldier twice.
+- **Checks:** 1013. Mission test (Prepared): 186 citizens alive at the end, against 172 before M4.
+
+### M5 — Scenario and wrap-up
+- **`soldiers` scenario:**
+  - Every case prints its role's soldier count first (0 in the "no" cases).
+  - The marshals pair reports escapes by way out and the gate queues.
+  - The rescue case fills the cathedral to its capacity (20).
+- **Measurements and bench:** see `docs/KAK_Version_0.07_Summary.md`.

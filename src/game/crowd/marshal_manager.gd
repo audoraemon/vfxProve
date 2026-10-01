@@ -2,9 +2,10 @@ class_name MarshalManager
 extends RefCounted
 ## Marshals (v0.07): at the Evacuation stage the soldiers from the walls take the ways out -- the profile's
 ## marshals_per_exit at the Main Gate, the Side Gate and, in a town with boats, the postern and the dock -- standing
-## either side of the crowd's head. Each way out takes the nearest of the marshals not yet posted. Each living marshal within REACH of a way out makes it SPEED faster (speed_at(): a
-## gate lets the next one through sooner, the boat takes them aboard sooner), and a confused evacuee near one is
-## brought round within STEADY_TIME. Kill them or knock them away and the way out slows again.
+## either side of the crowd's head. Each way out takes the nearest of the marshals not yet posted. Each living marshal
+## within REACH of a way out makes it SPEED faster (speed_at(): a gate lets the next one through sooner, the boat takes
+## them aboard sooner), and a confused evacuee near one is brought round within STEADY_TIME. Kill them or knock them
+## away and the way out slows again.
 
 signal posted
 

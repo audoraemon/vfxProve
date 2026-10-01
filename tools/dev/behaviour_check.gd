@@ -477,8 +477,11 @@ func _clip_report(key: String, at: Vector2, t: float) -> void:
 			near += 1
 			if p.mind == Person.Mind.OBSERVE:
 				watching += 1
-	print("BEHAVIOUR clip %s t=%.1f within 2.5: %d citizens, %d watching; alarm=%.1f threats=%d" % [key, t, near, watching,
-		crowd.alarm, crowd.threats.active_count()])
+	var queues := []
+	for g in mission._town.gates:
+		queues.append(crowd.waiting_at(g) if g.walkable else -1)
+	print("BEHAVIOUR clip %s t=%.1f within 2.5: %d citizens, %d watching; alarm=%.1f threats=%d queues(main,side,postern)=%s escaped=%d" % [
+		key, t, near, watching, crowd.alarm, crowd.threats.active_count(), queues, crowd.escaped_count])
 
 
 func _fire(shots: bool) -> void:

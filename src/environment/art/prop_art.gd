@@ -53,6 +53,9 @@ static func draw(s: Structure) -> void:
 		Structure.Kind.FARM_FIELD:
 			_field(s)
 		Structure.Kind.TREE:
+			if s.art_tag == &"thorns":
+				_thorns(s)
+				return
 			ArtKit.begin()
 			# The town's oaks stand by the dozen between the cottages: fewer leaf clusters keep their cost down.
 			tree(s._gp(s.center(), 0.0), s.max_height * 1.8, s.art.species, s.rng.seed,
@@ -200,6 +203,34 @@ static func _bridge(s: Structure) -> void:
 		ArtKit.line(mid, mid.lerp(b, 0.5) + Vector2(0, 1), ROPE)
 		ArtKit.line(mid.lerp(b, 0.5) + Vector2(0, 1), b, ROPE)
 	_head_stones(s, false)
+	ArtKit.flush(s)
+
+
+## A Thornwall's segment (v0.06): a tangle of dark bramble stems arching out of the ground, with thorns, a few leaves
+## and dark berries -- about as high as a person.
+static func _thorns(s: Structure) -> void:
+	ArtKit.begin()
+	var r := s.footprint
+	var sd := s.rng.seed
+	var stem := Color("2e2a1a")
+	var stem_lit := Color("4a4426")
+	var leaf := Color("4a5a2a")
+	for k in 9:
+		var a := r.position + r.size * Vector2(ArtKit.hash01(sd, k * 5), ArtKit.hash01(sd, k * 5 + 1))
+		var b := r.position + r.size * Vector2(ArtKit.hash01(sd, k * 5 + 2), ArtKit.hash01(sd, k * 5 + 3))
+		var h := s.height * (0.55 + 0.45 * ArtKit.hash01(sd, k * 5 + 4))
+		var top := s._gp(a.lerp(b, 0.5), h)
+		ArtKit.line(s._gp(a, 0.0), top, stem)
+		ArtKit.line(top, s._gp(b, h * 0.35), stem)
+		ArtKit.line(s._gp(a, 0.0) + Vector2(1, 0), top + Vector2(1, 0), stem_lit)
+		# Thorns along the arch, a leaf, and a berry at its crown.
+		for j in 3:
+			var p := s._gp(a, 0.0).lerp(top, 0.3 + 0.25 * j)
+			ArtKit.line(p, p + Vector2(-2 if j % 2 == 0 else 2, -1), Color("c8b890"))
+		ArtKit.poly(PackedVector2Array([top + Vector2(-2, 1), top + Vector2(1, -1), top + Vector2(2, 2)]), leaf, 0.0)
+		if k % 3 == 0:
+			ArtKit.poly(PackedVector2Array([top + Vector2(-1, -1), top + Vector2(1, -1), top + Vector2(1, 1),
+				top + Vector2(-1, 1)]), Color("5a1430"), 0.0)
 	ArtKit.flush(s)
 
 

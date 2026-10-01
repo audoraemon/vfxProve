@@ -28,6 +28,8 @@ const AREAS := {
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())
 	"wisp": {"shape": "circle", "r": 1.6, "roam": 6.0},
+	# ThornwallFx.THORN_LENGTH, SEG * 0.5; centred on the press
+	"thorns": {"shape": "lane", "length": 3.0, "half": 0.3, "centred": true},
 	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
 	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS

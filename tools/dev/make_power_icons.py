@@ -164,7 +164,43 @@ def wisp():
     finish(rgb, "wisp")
 
 
-PAINTERS = {"doom": None, "blight": None, "wisp": wisp}
+def thorns():
+    """A wall of brambles: dark arching stems with pale thorns and red berries, against a dusk sky."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    sky = np.clip((y + 42) / 84.0, 0, 1)[..., None]
+    rgb[:] = 0
+    rgb = rgb + np.array([70, 40, 70]) * (1 - sky) + np.array([150, 80, 50]) * sky
+    rgb = blend(rgb, (20, 14, 22), np.clip((y - 18) / 6.0, 0, 1))
+    rng = np.random.default_rng(31)
+    stems = np.zeros((SIZE, SIZE))
+    thorn_pts = []
+    for k in range(11):
+        x0 = rng.uniform(-44, 44)
+        x1 = x0 + rng.uniform(-30, 30)
+        h = rng.uniform(26, 46)
+        w = rng.uniform(1.6, 2.6)
+        for i in range(60):
+            u = i / 59.0
+            cx = x0 + (x1 - x0) * u
+            cy = 30 - h * 4 * u * (1 - u)
+            stems = np.maximum(stems, np.exp(-((x - cx) ** 2 + (y - cy) ** 2) / (w * w)))
+            if i % 9 == 4:
+                thorn_pts.append((cx, cy, 1 if k % 2 else -1))
+    rgb = blend(rgb, (26, 30, 14), stems * 1.2)
+    rgb = blend(rgb, (70, 84, 36), np.clip(stems - 0.75, 0, 1) * 2.5)
+    for (cx, cy, sgn) in thorn_pts:
+        t = np.exp(-(((x - cx - sgn * 2.0) ** 2) / 0.5 + ((y - cy + 1.2) ** 2) / 0.5))
+        rgb = blend(rgb, (190, 170, 120), t * 0.8)
+    for _ in range(9):
+        bx, by = rng.uniform(-36, 36), rng.uniform(-14, 26)
+        rgb = blend(rgb, (150, 20, 50), np.exp(-((x - bx) ** 2 + (y - by) ** 2) / 3.0))
+    rgb *= np.clip(1.3 - (r / 52.0) ** 2, 0.35, 1.0)[..., None]
+    finish(rgb, "thorns")
+
+
+PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns}
 
 
 if __name__ == "__main__":

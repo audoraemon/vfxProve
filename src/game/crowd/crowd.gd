@@ -42,6 +42,11 @@ const UNWARNED_ALARM := 0.5
 const DOOM_WITNESS := 2.0
 const BLIGHT_ALARM := 1.0
 const GATE_JAM := 30.0
+## A Thornwall (v0.06) growing out of the street: this much alarm for a wall (its segments within THORN_WALL seconds
+## of each other count once), and calm citizens within THORN_LOOK stop to look at it.
+const THORN_ALARM := 1.0
+const THORN_WALL := 1.0
+const THORN_LOOK := 3.0
 ## A fallen building: its danger's radius past the footprint's reach, and how far it is seen and heard.
 const COLLAPSE_RADIUS := 1.0
 const COLLAPSE_SIGHT := 4.0
@@ -122,6 +127,8 @@ var _households := {}
 var _doomed: Array[Person] = []
 ## Blighted gates -> the clock they free themselves at.
 var _jams := {}
+## When the last thorn wall's alarm was raised.
+var _thorn_alarm_at := -INF
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -204,7 +211,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	env.structure_blighted.connect(_on_blighted)
 	# A structure built or taken away (v0.06's thorns) may stand on a gate's queue: find the spots again.
-	env.structure_added.connect(func(_s: Structure) -> void: _spots.clear())
+	env.structure_added.connect(_on_structure_added)
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
@@ -1054,6 +1061,7 @@ func clear() -> void:
 	_households.clear()
 	_doomed.clear()
 	_jams.clear()
+	_thorn_alarm_at = -INF
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -1082,6 +1090,8 @@ func clear() -> void:
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
+	if s.role == &"thorns":
+		return  # a bramble burnt or blasted away: no incident, nothing to flee
 	if s.role != &"citadel":
 		_hear_alarm(ALARM_BUILDING)
 	var at := s.center()
@@ -1139,6 +1149,19 @@ func _settle_doom() -> void:
 		if alarms.incident(at):
 			_investigate(at)
 		_hear_alarm(ALARM_KILL)
+
+
+## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.
+func _on_structure_added(s: Structure) -> void:
+	_spots.clear()
+	if s.role != &"thorns":
+		return
+	if _clock - _thorn_alarm_at > THORN_WALL:
+		_thorn_alarm_at = _clock
+		add_alarm(THORN_ALARM)
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(s.center()) <= THORN_LOOK:
+			p.observe(s.center())
 
 
 ## Blight (v0.05): one alarm, and a gate jams for GATE_JAM seconds.

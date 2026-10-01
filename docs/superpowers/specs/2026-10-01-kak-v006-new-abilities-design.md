@@ -159,3 +159,15 @@ Each plays against systems the town already has. The Prepare screen gains tabs b
 - **Clip:** `behaviour_check.gd --scenario=clip --power=<key> [--at=] [--seconds=] [--setup=rite|evac]` records a power's draft clip in the town, with the HUD hidden and the camera snapped close. Halfway through it prints what the power is doing.
 - **Result in the town** (market, seed 7): 20 citizens gathered within 2.5 by 6.4 s, all watching; alarm 0, no danger registered.
 - **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 938 checks.
+
+### M3
+- **Thornwall** (`src/fx/control/thornwall.gd`, class `ThornwallFx`) as specified: 14 DP, 30 s, drag, kind control, quiet to `on_cast`.
+  - Five 0.6 segments, each a tree-kind structure tagged `thorns` (30 hp, 14 px). No segment grows inside a building.
+  - The segments grow out of the ground (the node's y-scale) over 0.6 s, with a burst of leaves, and sink back over the last 0.8 s. They are removed at 25 s.
+  - Anyone standing on a segment is moved just clear.
+- **Art:** `PropArt._thorns()`: arching dark stems with pale thorns, leaves and dark berries.
+- **The town's reaction:** `Crowd._on_structure_added` refinds the gate spots. For thorns it also adds +1 alarm per wall (segments within 1 s count once) and makes calm citizens within 3 look. A thorn segment destroyed raises nothing.
+- **Engineers:** `Job.CLEAR` (priority 70) for every standing segment; 5 s with both at the site, then `env.remove()`. Its bar is steel, like a rebuild's.
+- **Icon:** brambles against a dusk sky.
+- **Clip:** recorded at the Main Gate's mouth during an evacuation (`--setup=evac`).
+- **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 946 checks.

@@ -2,7 +2,8 @@ class_name EngineerManager
 extends RefCounted
 ## The town's engineers (v0.05): teams of two from the workshop who mend what the god breaks, out from City
 ## Emergency. A team takes the job scoring highest on PRIORITY less DISTANCE_WEIGHT for each unit of the way there --
-## the Citadel first, then the ways out (the gates, the bridge), then the Bell Tower and the cathedral, then houses --
+## the Citadel first, then the ways out (the gates, the bridge), then a Thornwall to cut down (v0.06), then the Bell
+## Tower and the cathedral, then houses --
 ## never one another team holds, and changes it only for one SWITCH_MARGIN better. Damaged standing buildings (under
 ## DAMAGED of their health) are healed RATE of their health a second while both of the team stand at the site; a
 ## fallen gate or bridge is rebuilt in REBUILD seconds, as it was. The Citadel mends only back to its last collapse:
@@ -14,8 +15,11 @@ signal turned_out
 signal rebuilt(s: Structure)
 signal team_lost
 
-enum Job { NONE, CITADEL, ROUTE, LANDMARK, HOUSE }
-const PRIORITY := {Job.CITADEL: 100.0, Job.ROUTE: 80.0, Job.LANDMARK: 60.0, Job.HOUSE: 20.0}
+## CLEAR (v0.06): cut down a Thornwall's segment.
+enum Job { NONE, CITADEL, ROUTE, LANDMARK, HOUSE, CLEAR }
+const PRIORITY := {Job.CITADEL: 100.0, Job.ROUTE: 80.0, Job.CLEAR: 70.0, Job.LANDMARK: 60.0, Job.HOUSE: 20.0}
+## Seconds to cut down one thorn segment.
+const CLEAR_TIME := 5.0
 const DISTANCE_WEIGHT := 2.0
 const DAMAGED := 0.9
 ## The Citadel is a job once this share of its full health can be mended.
@@ -120,6 +124,9 @@ func jobs() -> Array:
 		if is_instance_valid(s) and (s.destroyed or s.hp < s.max_hp * DAMAGED):
 			_add_job(out, Job.ROUTE, s, s.footprint, s.destroyed)
 	for s in _env.structures():
+		if is_instance_valid(s) and not s.destroyed and s.role == &"thorns":
+			_add_job(out, Job.CLEAR, s, s.footprint, false)
+			continue
 		if not is_instance_valid(s) or s.destroyed or s.hp >= s.max_hp * DAMAGED or s.damage_filter.is_valid():
 			continue
 		if _crowd.fires != null and _crowd.fires.is_burning(s):
@@ -167,6 +174,8 @@ func _valid(job: Dictionary) -> bool:
 		var c: Citadel = job.target
 		return not c.is_fallen() and c.health < c.repair_cap()
 	var s: Structure = job.target
+	if job.type == Job.CLEAR:
+		return not s.destroyed and _env.structures().has(s)
 	if s.kind == Structure.Kind.GATE and _evacuating():
 		return false
 	if job.rebuild:
@@ -280,6 +289,13 @@ func _work(team: Dictionary, delta: float) -> void:
 	if job.type == Job.CITADEL:
 		var c: Citadel = job.target
 		c.repair(RATE * c.keep.max_hp * delta)
+	elif job.type == Job.CLEAR:
+		team.progress += delta / CLEAR_TIME
+		if team.progress >= 1.0:
+			_env.remove(job.target)
+			team.job = {}
+			team.working = false
+			_think_in = 0.0
 	elif job.rebuild:
 		team.progress += delta / REBUILD
 		if team.progress >= 1.0:
@@ -302,7 +318,7 @@ func job_fraction(team: Dictionary) -> float:
 	if job.type == Job.CITADEL:
 		var c: Citadel = job.target
 		return clampf(c.health / maxf(c.repair_cap(), 1.0), 0.0, 1.0)
-	if job.rebuild:
+	if job.rebuild or job.type == Job.CLEAR:
 		return clampf(float(team.progress), 0.0, 1.0)
 	var s: Structure = job.target
 	return clampf(s.hp / s.max_hp, 0.0, 1.0)
@@ -399,5 +415,5 @@ func draw(ci: CanvasItem) -> void:
 		var w := 24.0
 		var r := Rect2(top - Vector2(w * 0.5, 0), Vector2(w, 3))
 		ci.draw_rect(r.grow(1.0), Color(0, 0, 0, 0.75))
-		var col := Color("9ab4d0") if job.rebuild else Color("7cd07a")
+		var col := Color("9ab4d0") if job.rebuild or job.type == Job.CLEAR else Color("7cd07a")
 		ci.draw_rect(Rect2(r.position, Vector2(roundf(w * job_fraction(team)), 3)), col)

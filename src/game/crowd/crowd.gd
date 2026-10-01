@@ -100,6 +100,8 @@ var _investigating: Array = []
 var bell: BellNetwork
 ## The clergy's Banishing Rite at the cathedral (v0.05); made by spawn().
 var rite: BanishingRite
+## The engineers from the workshop (v0.05); made by spawn().
+var engineers: EngineerManager
 ## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
 ## ring, under the people and buildings).
 var _drawer: Node2D
@@ -160,11 +162,14 @@ class ResponseDrawer extends Node2D:
 				crowd.rite.draw_ground(self)
 			else:
 				crowd.rite.draw_over(self)
+		if crowd.engineers != null and not ground:
+			crowd.engineers.draw(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
 		return crowd != null and ((crowd.bell != null and (crowd.bell.state == BellNetwork.State.CLIMBING
-			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0))
+			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
+			or (crowd.engineers != null and crowd.engineers.working()))
 
 
 class Ticker extends Node:
@@ -223,6 +228,9 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	var keeper := _appoint_bellkeeper(anchors)
 	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
 	rite = BanishingRite.new().setup(self, _env, _grid)
+	var workshop := _nearest_of(anchors.get("craft", []), Vector2(TownLayout.WORKSHOP.get_center().x,
+		TownLayout.WORKSHOP.end.y + 0.35))
+	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(workshop), workshop)
 	if _drawer == null or not is_instance_valid(_drawer):
 		_drawer = _response_drawer("ResponseDrawer", 60, false)
 		_ground_drawer = _response_drawer("ResponseGround", -3, true)
@@ -447,6 +455,8 @@ func advance(delta: float) -> void:
 		bell.step(delta)
 	if rite != null:
 		rite.step(delta)
+	if engineers != null:
+		engineers.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -787,6 +797,8 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			_regroup()
 			if rite != null:
 				rite.begin()
+			if engineers != null:
+				engineers.begin()
 		AlarmManager.Stage.EVACUATION, AlarmManager.Stage.COLLAPSE:
 			_evacuate()
 
@@ -862,6 +874,35 @@ func off_duty(p: Person) -> void:
 		p.flee()
 	elif p.profile != null:
 		p.regroup(p.profile.home)
+
+
+## The engineers' teams (v0.05): the craftsfolk living nearest the workshop -- two for each of the profile's teams --
+## take the role, working at the workshop (`at`). None when the profile has no engineers.
+func _appoint_engineers(at: Vector2) -> Array[Person]:
+	var out: Array[Person] = []
+	var want := profile.engineer_teams * 2
+	if want <= 0 or at == Vector2.INF:
+		return out
+	var pool: Array[Person] = []
+	for p in citizens:
+		if p.profile != null and p.profile.role == CitizenProfile.Role.CRAFT:
+			pool.append(p)
+	pool.sort_custom(func(a: Person, b: Person) -> bool:
+		return a.profile.home.distance_squared_to(at) < b.profile.home.distance_squared_to(at))
+	for p in pool.slice(0, want):
+		p.profile.role = CitizenProfile.Role.ENGINEER
+		p.profile.work = at
+		out.append(p)
+	return out
+
+
+## The point of `pts` nearest `to`, or Vector2.INF when there are none.
+func _nearest_of(pts: Array, to: Vector2) -> Vector2:
+	var best := Vector2.INF
+	for g: Vector2 in pts:
+		if best == Vector2.INF or g.distance_squared_to(to) < best.distance_squared_to(to):
+			best = g
+	return best
 
 
 ## A Bell Tower needs its keeper (v0.05): the resident living nearest it takes the post, working at the tower's foot.
@@ -973,6 +1014,7 @@ func clear() -> void:
 	_ground_drawer = null
 	bell = null
 	rite = null
+	engineers = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

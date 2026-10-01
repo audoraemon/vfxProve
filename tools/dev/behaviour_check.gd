@@ -15,7 +15,9 @@ extends SceneTree
 ##   rite   (Prepared) City Emergency called after 20 s of calm: the Banishing Rite's state, the ring, its progress and
 ##          the manifestation's clock every 5 s over 90 s; --interrupt quietly kills three of the ring's clergy 10 s
 ##          into the chant (as Silent Doom will): the rite breaks, and the rest regather after the cooldown
-## --difficulty=<tier> plays any scenario at that tier (default Organized; rite: Prepared).
+##   engineers  (Prepared) City Emergency called after 20 s of calm, then a Heaven Splitter on the Citadel and the
+##          bridge brought down: the Citadel's health, the bridge and each team's job every 5 s over 60 s
+## --difficulty=<tier> plays any scenario at that tier (default Organized; rite and engineers: Prepared).
 
 const SEED := 7
 
@@ -38,7 +40,7 @@ func _run() -> void:
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")
-	if tier == "" and scenario == "rite":
+	if tier == "" and scenario in ["rite", "engineers"]:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
@@ -58,6 +60,8 @@ func _run() -> void:
 			await _bell("--kill-keeper" in args, "--shots" in args)
 		"rite":
 			await _rite("--interrupt" in args, "--shots" in args)
+		"engineers":
+			await _engineers("--shots" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -177,6 +181,50 @@ func _rite(interrupt: bool, shots: bool) -> void:
 			bf.camera.position = (Iso.ground_to_screen(r.centre) + Vector2(0, -30)).round()
 			await _frames(2)
 			await bf.save_capture("behaviour_rite.png")
+
+
+func _engineers(shots: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var rules: Rules = mission._rules
+	var town: Town = mission._town
+	crowd.add_alarm(AlarmManager.CITY_ALARM)
+	rules.cast(0, town.citadel.origin, {"dir": Vector2(1, 0)})
+	var bridge := town.bridge
+	bridge.destroy(bridge.center(), &"nova")
+	var e := crowd.engineers
+	var t := 0.0
+	var shots_taken := {}
+	while t < 60.0:
+		await _frames(5 * 60)
+		t += 5.0
+		var parts := []
+		for team: Dictionary in e.teams:
+			var job: Dictionary = team.job
+			parts.append("standby" if job.is_empty() else "%s%s %d%%%s" % ["rebuild " if job.rebuild else "",
+				EngineerManager.Job.keys()[job.type], roundi(100.0 * e.job_fraction(team)), " working" if team.working else ""])
+		print("BEHAVIOUR engineers t=%d citadel=%.1f%% cap=%.0f%% bridge=%s teams=%s stage=%s" % [roundi(t),
+			100.0 * town.citadel.fraction(), 100.0 * town.citadel.repair_cap() / town.citadel.max_health,
+			"down" if bridge.destroyed else "standing", parts, crowd.alarms.stage_name()])
+		if shots:
+			for team: Dictionary in e.teams:
+				var job: Dictionary = team.job
+				if not team.working or job.is_empty():
+					continue
+				var name := "behaviour_engineers_%s.png" % ("rebuild" if job.rebuild else String(EngineerManager.Job.keys()[job.type]).to_lower())
+				if shots_taken.has(name):
+					continue
+				shots_taken[name] = true
+				var bf: Battlefield = mission._bf
+				bf.camera.zoom = Vector2.ONE * 1.0
+				bf.camera.position = (Iso.ground_to_screen(job.site) + Vector2(0, -40)).round()
+				await _frames(2)
+				await bf.save_capture(name)
+	if shots:
+		var bf: Battlefield = mission._bf
+		bf.camera.position = (Iso.ground_to_screen(bridge.center()) + Vector2(0, -40)).round()
+		await _frames(2)
+		await bf.save_capture("behaviour_engineers_after.png")
 
 
 func _fire(shots: bool) -> void:

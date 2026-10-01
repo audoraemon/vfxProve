@@ -135,6 +135,7 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
 		_town.citadel.fallen.connect(_on_citadel_fallen)
 		_town.citadel.health_changed.connect(_on_citadel_health)
+	_env.structure_restored.connect(_on_structure_restored)
 	stability.measure(_env, _crowd, _town.citadel)
 	_stability_dirty = false
 	return self
@@ -286,6 +287,11 @@ func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
 	_check_chain(c)
 
 
+## A gate or the bridge rebuilt (v0.05's engineers): the town's infrastructure is back.
+func _on_structure_restored(_s: Structure) -> void:
+	_stability_dirty = true
+
+
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_stability_dirty = true
 	var p := e as Person
@@ -399,6 +405,8 @@ func stat_lines() -> Array[Dictionary]:
 func teardown() -> void:
 	if is_instance_valid(_env) and _env.structure_destroyed.is_connected(_on_structure_destroyed):
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)
+	if is_instance_valid(_env) and _env.structure_restored.is_connected(_on_structure_restored):
+		_env.structure_restored.disconnect(_on_structure_restored)
 	if is_instance_valid(_field) and _field.enemy_killed.is_connected(_on_killed):
 		_field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(_crowd) and _crowd.escaped.is_connected(_on_escaped):

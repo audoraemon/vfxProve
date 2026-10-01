@@ -100,6 +100,14 @@ func _draw_world(ci: CanvasItem) -> void:
 			continue
 		var at := Iso.ground_to_screen(p.ground_pos)
 		ci.draw_arc(at, 4.0, 0.0, TAU, 10, intent_color(p.intent()), 1.0)
+	if crowd.engineers != null:
+		for team: Dictionary in crowd.engineers.teams:
+			if (team.job as Dictionary).is_empty():
+				continue
+			for p in team.members:
+				if is_instance_valid(p):
+					ci.draw_line(Iso.ground_to_screen((p as Person).ground_pos), Iso.ground_to_screen(team.job.site),
+						Color(0.6, 0.75, 0.9, 0.8), 1.0)
 	var picked := _picked()
 	if picked != null:
 		var at := Iso.ground_to_screen(picked.ground_pos)
@@ -123,6 +131,19 @@ func _draw_panel(ci: Control) -> void:
 		var r := crowd.rite
 		lines.append(["Rite: %s   %d/%d in ring   %.0f/%.0f s   clergy %d" % [BanishingRite.State.keys()[r.state].capitalize(),
 			r.in_ring(), BanishingRite.NEED, r.progress, r.duration, r.living_clergy()], UiTheme.COL_GOLD])
+	if crowd.engineers != null and crowd.profile.engineer_teams > 0:
+		var e := crowd.engineers
+		for i in e.teams.size():
+			var team: Dictionary = e.teams[i]
+			var what := "standing by"
+			if not (team.job as Dictionary).is_empty():
+				var job: Dictionary = team.job
+				what = "%s %s %d%%  score %d" % ["rebuilding" if job.rebuild else "mending",
+					EngineerManager.Job.keys()[job.type].capitalize(), roundi(100.0 * e.job_fraction(team)),
+					roundi(e.score(job, e._where(team)))]
+			lines.append(["Engineers %d: %s%s" % [i + 1, what, ", working" if team.working else ""], Color("9ab4d0")])
+		if not e.replacing.is_empty():
+			lines.append(["Engineers: %d lost, next in %.0f s" % [e.replacing.size(), e.replacing.min()], Color("9ab4d0")])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

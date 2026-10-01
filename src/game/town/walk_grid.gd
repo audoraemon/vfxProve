@@ -46,6 +46,7 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	for s in env.structures():
 		_open(s)
 	env.structure_destroyed.connect(_on_destroyed)
+	env.structure_restored.connect(_on_restored)
 	return self
 
 
@@ -147,6 +148,14 @@ func _open(s: Structure) -> void:
 	if not is_instance_valid(s) or s.destroyed or not s.walkable:
 		return
 	stamp(s.footprint, false)
+
+
+## A fallen building rebuilt (v0.05): a gate or the bridge opens its way again, anything else closes its ground.
+func _on_restored(s: Structure) -> void:
+	if s.walkable:
+		_open(s)
+	else:
+		_apply(s)
 
 
 ## A building fell: its ground opens up (rubble is walkable), except the bridge, whose fall closes the river.

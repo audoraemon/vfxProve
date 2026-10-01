@@ -187,3 +187,36 @@ The overlay gains:
   - Prepared `citizens=171 escaped=0`.
 - **Mission bench, alternating:** M2 106.5 / 104.1 fps, M3 108.9 / 110.2 fps.
 - **Tests:** 870 checks.
+
+### M4
+- **EngineerManager** (`src/game/crowd/engineer_manager.gd`): made by `Crowd.spawn()`, stepped in `advance()`, and turned out at City Emergency. Only a profile with `engineer_teams` has one (Prepared 2 teams, God-Resistant 3).
+- **The engineers:** the craftsfolk living nearest the workshop take the role Engineer, two per team, and work at the workshop until called. On a job they run there on duty (`go_duty`). With nothing to mend they stand by at the workshop, on call.
+- **Jobs and scoring:** as specified — `PRIORITY − 2 × distance` (Citadel 100, routes 80, Bell Tower and cathedral 60, houses 20).
+  - Rethought every 2 s. A team changes job only for one at least 20 better.
+  - Two teams never hold the same job.
+  - A building on fire is left to the fire brigade.
+  - The Citadel is a job once 2% of its health can be mended.
+- **Mending:** 5% of the building's health a second, while both of the team stand at their places at the site; for the Citadel, 5% of the keep's health a second.
+  - Scorch and frost fade with the damage (`Structure.repair()` and `ease_marks()`); cracks close once the building is over 65% (the Citadel's parts: over 90%).
+  - **The Citadel mends only back to its last collapse** (`Citadel.repair_cap()`). Its fallen towers and walls stay down, so a repair never climbs back over a collapse mark.
+- **Rebuilding:** `Structure.restore()` brings a fallen gate or the bridge back as it was, in 20 s. `EnvironmentField.structure_restored` relays it: the walk grid reopens the way (`WalkGrid._on_restored`), and Rules re-measures stability.
+- **Gates are left alone once the town evacuates.** In this game a fallen gate is rubble with no queue, so it lets the crowd out faster; rebuilding one mid-evacuation would hold the town's own people back. Before the Evacuation stage the gates are routes like the bridge. The bridge is always a job, because its fall cuts the south road.
+- **The dock waits for M5.** It is decor today; M5 makes it a structure the boats need, and then a route job.
+- **Losses:** a team with a dead member is lost, and its survivor goes off duty. After 60 s the workshop sends a new pair, if it still stands: engineers off a team first, then craftsfolk, nearest first. If nobody is free it retries every 5 s.
+- **What you see:**
+  - sparks between a working pair;
+  - a bar over what they mend (steel for a rebuild, green for health);
+  - the banners "THE ENGINEERS TURN OUT" and "THE BRIDGE / MAIN GATE / SIDE GATE IS REBUILT";
+  - the F4 panel lists each team's job, score and progress, and draws a line from each engineer to their site.
+- **Engineers scenario** (Prepared, City Emergency at 20 s, a Heaven Splitter on the Citadel and the bridge brought down, seed 7):
+  - one team rebuilds the bridge, working from about 17 s; the bridge stands again at about 37 s;
+  - the other walks across town to the Citadel (about 24 units), works from about 27 s, and mends it from 44% to its cap of 50% by 35 s.
+  - In the same run the rite completed: the clock reads 4:00 at 60 s.
+- **Checksums:**
+  - crowd_check unchanged at −549829194;
+  - engineers scenario 415943000.
+- **Mission test:**
+  - Organized `citizens=167 escaped=1` (unchanged);
+  - Prepared `citizens=169 escaped=1`.
+- **Mission bench at Prepared, alternating:** M3 106.9 / 105.8 fps, M4 105.5 / 107.8 fps.
+- **Tests:** 890 checks.

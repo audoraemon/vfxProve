@@ -166,6 +166,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_crowd.bell.climbing_started.connect(func(): _rules.banner.emit("THE BELLKEEPER CLIMBS THE TOWER"))
 		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
+	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty():
+		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
+		_crowd.engineers.rebuilt.connect(func(s: Structure):
+			_rules.banner.emit("THE BRIDGE IS REBUILT" if s.kind == Structure.Kind.BRIDGE else
+				("THE MAIN GATE IS REBUILT" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE IS REBUILT")))
 	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED:
 		var rite := _crowd.rite
 		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))

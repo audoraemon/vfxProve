@@ -3,7 +3,7 @@ extends RefCounted
 ## Who a citizen is and where their day takes them (v0.04): a role, a home, a workplace for the roles that have one,
 ## and a few leisure spots near home. RoutineManager picks among these; Crowd.spawn() hands them out.
 
-enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER }
+enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER }
 
 ## Each role's share of the town (the v0.04 spec's table). Farmers work the fields and mills outside the walls.
 const SHARES := [
@@ -13,7 +13,7 @@ const SHARES := [
 ## Where each working role works (TownLayout.anchors() kinds).
 const WORK := {
 	Role.MERCHANT: ["stall", "tavern"], Role.CRAFT: ["craft"], Role.LABORER: ["stall", "dock"],
-	Role.CLERGY: ["cathedral"], Role.FARMER: ["field", "mill"], Role.BELLKEEPER: ["bell"],
+	Role.CLERGY: ["cathedral"], Role.FARMER: ["field", "mill"], Role.BELLKEEPER: ["bell"], Role.ENGINEER: ["craft"],
 }
 ## Where anyone spends leisure: the kinds, and how many of the nearest to home each citizen may pick from.
 const LEISURE := ["plaza", "water", "tavern"]

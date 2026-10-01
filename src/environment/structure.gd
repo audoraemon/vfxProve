@@ -10,6 +10,8 @@ signal broken(s: Structure)
 signal hit(s: Structure, amount: float, kind: StringName)
 ## It went idle (see idle), for EnvironmentField to check its light from then on.
 signal idled(s: Structure)
+## Rebuilt from its rubble (restore(); v0.05's engineers).
+signal restored(s: Structure)
 
 enum Kind {
 	TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH,
@@ -353,6 +355,53 @@ func destroy(source: Vector2, damage_kind: StringName) -> void:
 		_glow.queue_free()
 	_fall_apart(source, damage_kind)
 	broken.emit(self)
+
+
+## Engineers at work (v0.05): health back by `amount`, up to full. The scorch and frost fade with the damage, and the
+## cracks close once it is past the point they opened at. A building whose health someone else owns (a Citadel part)
+## is mended through its owner instead (Citadel.repair()).
+func repair(amount: float) -> void:
+	if destroyed or amount <= 0.0 or hp >= max_hp or damage_filter.is_valid():
+		return
+	hp = minf(hp + amount, max_hp)
+	ease_marks(1.0 - hp / max_hp, 0.35)
+
+
+## The marks of damage eased to `level` (0: none, 1: as bad as they get): scorch and frost no worse than it, and the
+## cracks gone once it is at or under `crack_level`.
+func ease_marks(level: float, crack_level: float) -> void:
+	if destroyed:
+		return
+	wake()
+	scorch = minf(scorch, level)
+	frost = minf(frost, level)
+	if level <= crack_level:
+		_cracks.clear()
+	_dirty = true
+
+
+## Rebuilt as it was before it fell (v0.05's engineers rebuild the gates and the bridge): standing, at full health and
+## height, unmarked, its rubble gone. EnvironmentField relays restored, and the walk grid closes or opens its ground
+## again. Not for torches: their light is gone with them.
+func restore() -> void:
+	if not destroyed:
+		return
+	wake()
+	destroyed = false
+	hp = max_hp
+	height = max_height
+	destroy_kind = &""
+	scorch = 0.0
+	frost = 0.0
+	_collapse = -1.0
+	_top_piece = {}
+	_molten = 0.0
+	_shake = 0.0
+	_burning = false
+	_rubble.clear()
+	_cracks.clear()
+	_dirty = true
+	restored.emit(self)
 
 
 ## How the building comes down: a laser slices the top off; anything else collapses into rubble with debris,

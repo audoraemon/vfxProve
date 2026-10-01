@@ -77,6 +77,26 @@ func fraction() -> float:
 	return health / max_health
 
 
+## The health engineers can mend it back to (v0.05): what it had when its last part fell. Fallen towers and walls
+## stay down, so a repair never climbs back over a collapse mark.
+func repair_cap() -> float:
+	return 0.0 if _fallen else max_health * (1.0 - STEP * float(_marks))
+
+
+## Mend the Citadel by `amount` of health, up to repair_cap(); the standing parts' scorch fades with it, and their
+## cracks close once it is back over 90%. Returns the health put back.
+func repair(amount: float) -> float:
+	var before := health
+	health = minf(health + maxf(amount, 0.0), maxf(repair_cap(), health))
+	if health == before:
+		return 0.0
+	for p in parts:
+		if is_instance_valid(p) and not p.destroyed:
+			p.ease_marks(1.0 - fraction(), 0.1)
+	health_changed.emit(fraction())
+	return health - before
+
+
 func standing_parts() -> int:
 	var n := 0
 	for p in parts:

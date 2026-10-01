@@ -6,6 +6,8 @@ extends Node
 signal structure_destroyed(s: Structure, kind: StringName)
 ## Damage landed on a structure that still stands (FireManager lights fires from it).
 signal structure_hit(s: Structure, amount: float, kind: StringName)
+## A fallen structure was rebuilt (Structure.restore()).
+signal structure_restored(s: Structure)
 
 ## Spatial index cell (ground units) for near() and the other area queries; blocked() uses the finer FINE_CELL
 ## index. Margins up to MAX_MARGIN are covered.
@@ -37,7 +39,7 @@ var layout_epoch := 0
 var _idle: Array[Structure] = []
 var _idle_at := 0
 var _idle_due := 0.0
-## Bumped whenever a structure is destroyed.
+## Bumped whenever a structure is destroyed or rebuilt.
 var destroy_epoch := 0
 
 
@@ -49,6 +51,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 	s.fx_back = fx_back
 	s.broken.connect(_on_structure_broken)
 	s.idled.connect(_on_idled)
+	s.restored.connect(_on_structure_restored)
 	s.hit.connect(func(st: Structure, amount: float, kind: StringName) -> void: structure_hit.emit(st, amount, kind))
 	if kind == Structure.Kind.TORCH and lights != null:
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
@@ -275,6 +278,11 @@ func shake_radius(center: Vector2, radius: float, amount: float) -> void:
 func _on_structure_broken(s: Structure) -> void:
 	destroy_epoch += 1
 	structure_destroyed.emit(s, s.destroy_kind)
+
+
+func _on_structure_restored(s: Structure) -> void:
+	destroy_epoch += 1
+	structure_restored.emit(s)
 
 
 func _cell(g: Vector2) -> Vector2i:

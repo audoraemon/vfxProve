@@ -141,6 +141,28 @@ func step(delta: float) -> void:
 			_flush(s, e, false)
 
 
+## The others sheltering in the same building as `p` (v0.06: the plague passes between them).
+func occupants_with(p: Person) -> Array:
+	for s in shelters:
+		var inside: Array = shelters[s].inside
+		if inside.has(p):
+			var out := inside.duplicate()
+			out.erase(p)
+			return out
+	return []
+
+
+## Take `p` out of whatever shelter it is in, back onto the street where it stood.
+func release(p: Person) -> void:
+	for s in shelters:
+		var inside: Array = shelters[s].inside
+		if inside.has(p):
+			inside.erase(p)
+			_exit(p, s)
+			p.leave_shelter(false)
+			return
+
+
 ## Everyone out of `s`: running from it (`fright`), or on their way (to the gates when the town evacuates).
 func _flush(s: Structure, e: Dictionary, fright: bool) -> void:
 	for p in e.inside:

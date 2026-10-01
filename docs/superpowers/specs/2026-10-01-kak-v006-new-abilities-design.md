@@ -182,3 +182,23 @@ Each plays against systems the town already has. The Prepare screen gains tabs b
 - **No manager needed a change.** The rite drops any member off duty (in a test, confusing three of the four in the ring broke it); the bell waits, then retries once the keeper has recovered; engineers go back to work once their member is available again; the fire brigade drops anyone who is not assisting.
 - **Clip:** the rite's ring confused, the clergy wandering under swirls (`--setup=rite`).
 - **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 955 checks.
+
+### M5
+- **Pestilence** (`src/fx/curse/pestilence.gd`, class `PestilenceFx`): 16 DP, 40 s, click, kind curse, quiet when cast. A green miasma puff at the aim and on each victim; infection lands 0.4 s in; the cast locks the slots for 0.8 s.
+- **PlagueManager** (`src/game/crowd/plague_manager.gd`):
+  - **Seeding:** from the crowd's setup seed + 41, never the crowd's own rng, so the crowd check is unchanged.
+  - **The sick list:** kept every frame. The town is scanned for the newly sick every 0.5 s; scanning every frame measurably cost a little.
+  - **Spread:** within the reach, or among the others in the same shelter (`ShelterManager.occupants_with`).
+  - **Deaths:** the damage kind `plague`. One who dies sheltering is carried out first (`ShelterManager.release`); one aboard a boat sails away.
+- **The sick on Person:** `sick_left` and `infect()`.
+  - They move at 70% pace.
+  - Their skin and clothes are greened, with a cough mote over the mouth.
+  - The redraw signature counts sickness, so the tint shows the moment it is caught.
+- **Rules:** `POWER_KINDS["pestilence"] = [&"plague"]`.
+- **Retuned while executing, from measurements in the town:** the catch is 1.2 (not 0.8) and the spread reach 1.0 (not 0.6).
+  - **Why:** at 0.6 a sick evacuee had only 0–3 people within reach. The real queue is sparser than its spot spacing suggests, and the sick soon pass the gate and walk the road out alone. Aimed into the Main Gate's queue during an evacuation, it reached 4 sick at 21 s and 1–2 deaths.
+  - **Now:** 15 sick at 17 s, 36 at 31 s.
+  - A calm, moving market crowd still barely spreads it (2 sick). That leaves room for the Wisp-then-Pestilence combo, which M6 will measure.
+- **Clip:** the Main Gate's queue during an evacuation. `--snap` (aim at the citizen nearest `--at`) was added because the queue forms where it will.
+- **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 964 checks.
+  - The bench was taken under heavy machine load: M4 58.2 / 58.9 fps, M5 54.0 / 57.3 fps. M6 re-benches on an idle machine.

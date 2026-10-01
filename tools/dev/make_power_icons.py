@@ -230,7 +230,44 @@ def discord():
     finish(rgb, "discord")
 
 
-PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord}
+def pestilence():
+    """A plague skull wreathed in sickly green miasma, on a dark field."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(53, 5)
+    n2 = noise(59, 3)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (10, 14, 6)
+    rgb = blend(rgb, (60, 90, 20), np.exp(-(r / 32.0) ** 2) * (0.6 + 0.5 * n))
+    # The skull: a dome over a narrower jaw.
+    dome = ((x / 17.0) ** 2 + ((y + 4) / 16.0) ** 2) < 1.0
+    jaw = (np.abs(x) < 10.0 - np.clip(y - 10, 0, 10) * 0.4) & (y > 6) & (y < 20)
+    skull = dome | jaw
+    shade = np.clip(0.75 + 0.25 * (-x / 17.0), 0.5, 1.0)
+    bone = np.stack([220 * shade, 214 * shade, 170 * shade], axis=-1)
+    rgb = rgb * (1 - skull[..., None]) + bone * skull[..., None]
+    # Sickly mottling on the bone.
+    rgb = blend(rgb, (150, 170, 80), (skull & (n2 > 0.62)).astype(float) * 0.6)
+    # Eye sockets with a green glow, the nose, teeth.
+    for ex in (-6.5, 6.5):
+        sock = ((x - ex) ** 2 / 20.0 + (y + 1) ** 2 / 16.0) < 1.0
+        rgb = blend(rgb, (10, 14, 6), sock.astype(float))
+        rgb = blend(rgb, (170, 255, 90), np.exp(-((x - ex) ** 2 + (y + 1) ** 2) / 3.0))
+    nose = (np.abs(x) < 2.0 - (y - 6) * 0.3) & (y > 5) & (y < 10)
+    rgb = blend(rgb, (20, 22, 10), nose.astype(float))
+    for k in range(-8, 9, 4):
+        tooth = (np.abs(x - k) < 0.6) & (y > 12) & (y < 18)
+        rgb = blend(rgb, (60, 60, 40), tooth.astype(float))
+    # Miasma curling round it.
+    for k, (ph, rad) in enumerate([(0.0, 26.0), (2.0, 31.0), (4.1, 22.0)]):
+        ang = np.arctan2(y, x)
+        band = np.exp(-((r - rad - 3.0 * np.sin(ang * 3 + ph)) ** 2) / 8.0) * (0.5 + 0.5 * np.sin(ang * 2 + ph))
+        rgb = blend(rgb, (140, 200, 60), band * (0.35 + 0.4 * n) * (~skull))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "pestilence")
+
+
+PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence}
 
 
 if __name__ == "__main__":

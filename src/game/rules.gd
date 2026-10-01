@@ -41,6 +41,7 @@ const CHAIN_DP := 6.0
 ## Judgement both drop &"stone"), which the tie rule in _credit() settles.
 const POWER_KINDS := {
 	"doom": [&"doom"],
+	"pestilence": [&"plague"],
 	"heaven": [&"lightning"],
 	"tornado": [&"wind"],
 	"dragon": [&"fire", &"cinder"],

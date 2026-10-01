@@ -117,6 +117,10 @@ var rite: BanishingRite
 var engineers: EngineerManager
 ## The river boats at the dock (v0.05); made by spawn().
 var ferry: RiverFerry
+## Pestilence's spread (v0.06); made by spawn().
+var plague: PlagueManager
+## The seed setup() was given, for managers that must not draw from the crowd's own rng (which would move everyone).
+var _seed := 0
 ## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
 ## ring, under the people and buildings).
 var _drawer: Node2D
@@ -208,6 +212,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_grid = grid
 	_parent = parent
 	_rng.seed = seed_value
+	_seed = seed_value
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	env.structure_blighted.connect(_on_blighted)
 	# A structure built or taken away (v0.06's thorns) may stand on a gate's queue: find the spots again.
@@ -260,6 +265,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		TownLayout.WORKSHOP.end.y + 0.35))
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(workshop), workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
+	plague = PlagueManager.new().setup(self, _field, _seed + 41)
 	if ferry.state != RiverFerry.State.ENDED:
 		evac.add_boat_exit(ferry.board_at, ferry)
 	if _drawer == null or not is_instance_valid(_drawer):
@@ -490,6 +496,8 @@ func advance(delta: float) -> void:
 		engineers.step(delta)
 	if ferry != null:
 		ferry.step(delta)
+	if plague != null:
+		plague.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1072,6 +1080,9 @@ func clear() -> void:
 	rite = null
 	engineers = null
 	ferry = null
+	if plague != null:
+		plague.clear()
+	plague = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

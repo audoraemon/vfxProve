@@ -30,7 +30,8 @@ extends SceneTree
 ##          from 20 s (the first in the west, clear of the Bell Tower), then a report every 15 s to 150 s -- escapes, the Citadel, the clock, the rite, the boats, the
 ##          engineers
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
-##          troopers cannot be lured, confused or infected): --power=<key> [--at=x,y] [--seconds=s] [--setup=rite|evac];
+##          troopers cannot be lured, confused or infected): --power=<key> [--at=x,y] [--snap] [--seconds=s]
+##          [--setup=rite|evac]; --snap aims at the citizen nearest --at;
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
 ##          its run into assets/clips/<key>.png
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
@@ -375,6 +376,15 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 		crowd.add_alarm(100.0)
 		await _frames(10 * 60)
+	if "--snap" in OS.get_cmdline_user_args():
+		# Aim at the citizen nearest the point asked for (a queue forms where it will, not where it was guessed).
+		var best := INF
+		var near := at
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best:
+				best = p.ground_pos.distance_to(at)
+				near = p.ground_pos
+		at = near
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
 	bf.camera.zoom = Vector2.ONE * 1.5
@@ -399,7 +409,7 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		frame.convert(Image.FORMAT_RGBA8)
 		frame.resize(PowerBook.CLIP_SIZE.x, PowerBook.CLIP_SIZE.y, Image.INTERPOLATE_BILINEAR)
 		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(i).position))
-		if i == PowerBook.CLIP_FRAMES / 2:
+		if i == PowerBook.CLIP_FRAMES / 2 or i == PowerBook.CLIP_FRAMES - 1:
 			_clip_report(key, at, t)
 	var out := ProjectSettings.globalize_path(PowerBook.clip_path(key))
 	sheet.save_png(out)
@@ -480,8 +490,14 @@ func _clip_report(key: String, at: Vector2, t: float) -> void:
 	var queues := []
 	for g in mission._town.gates:
 		queues.append(crowd.waiting_at(g) if g.walkable else -1)
-	print("BEHAVIOUR clip %s t=%.1f within 2.5: %d citizens, %d watching; alarm=%.1f threats=%d queues(main,side,postern)=%s escaped=%d" % [
-		key, t, near, watching, crowd.alarm, crowd.threats.active_count(), queues, crowd.escaped_count])
+	var confused := 0
+	for p: Person in crowd.citizens:
+		if is_instance_valid(p) and p.mind == Person.Mind.CONFUSED:
+			confused += 1
+	print("BEHAVIOUR clip %s t=%.1f within 2.5: %d citizens, %d watching; confused=%d sick=%d plague_dead=%d alarm=%.1f threats=%d queues(main,side,postern)=%s escaped=%d" % [
+		key, t, near, watching, confused, crowd.plague.sick.size() if crowd.plague != null else 0,
+		crowd.plague.deaths if crowd.plague != null else 0, crowd.alarm, crowd.threats.active_count(), queues,
+		crowd.escaped_count])
 
 
 func _fire(shots: bool) -> void:

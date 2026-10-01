@@ -3,7 +3,7 @@ extends RefCounted
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 16, "16 powers")
+	t.check(PowerBook.POWERS.size() == 17, "17 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -28,14 +28,14 @@ static func run(t) -> void:
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 40 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(Array(PowerBook.keys()) == ["doom", "wisp", "discord", "heaven", "blight", "thorns", "tornado", "dragon",
-		"tsunami", "gravity", "laser", "orbital", "cinder", "judgement", "glacial", "nova"],
+	t.check(Array(PowerBook.keys()) == ["doom", "wisp", "discord", "heaven", "blight", "thorns", "tornado", "pestilence",
+		"dragon", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement", "glacial", "nova"],
 		"spec order, cheapest first (%s)" % [PowerBook.keys()])
 	var quiet := []
 	for key in PowerBook.keys():
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
-	t.check(quiet == ["doom", "wisp", "discord", "blight", "thorns"],
+	t.check(quiet == ["doom", "wisp", "discord", "blight", "thorns", "pestilence"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var kinds_ok := true
 	for p: Dictionary in PowerBook.POWERS:

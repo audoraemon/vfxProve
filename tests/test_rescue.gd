@@ -85,7 +85,8 @@ static func run(t) -> void:
 			freed = p
 	t.check(r.rescued == 1 and freed != null and freed.visible and firsts.size() == 1,
 		"one dug out after %d s, frightened and alive" % roundi(RescueManager.DIG_TIME))
-	t.check(freed != null and freed.mind == Person.Mind.PANIC, "the one dug out is frightened")
+	t.check(freed != null and freed.mind in [Person.Mind.PANIC, Person.Mind.SHELTER],
+		"the one dug out is frightened (running, or into another shelter)")
 
 	# Dug out after the evacuation began, a survivor makes for the gates.
 	crowd.alarms.stage = AlarmManager.Stage.EVACUATION

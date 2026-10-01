@@ -200,7 +200,37 @@ def thorns():
     finish(rgb, "thorns")
 
 
-PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns}
+def discord():
+    """Madness: a broken violet spiral turning round a pale staring eye, on a deep purple field."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(41, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (16, 8, 26)
+    rgb = blend(rgb, (70, 30, 110), np.exp(-(r / 30.0) ** 2) * (0.7 + 0.4 * n))
+    ang = np.arctan2(y, x)
+    # A spiral arm: r grows with angle; broken into dashes.
+    for arm in range(2):
+        a = np.mod(ang + arm * np.pi, 2 * np.pi)
+        for turn in range(3):
+            target = 7.0 + (a + turn * 2 * np.pi) * 2.6
+            band = np.exp(-((r - target) ** 2) / 3.0)
+            dash = (np.sin(a * 5.0 + turn * 1.7) > -0.3).astype(float)
+            rgb = blend(rgb, (200, 140, 255), band * dash * (0.9 - 0.15 * turn))
+    # The eye: an almond of pale white with a violet iris and a black pupil.
+    eye = ((x / 13.0) ** 2 + (y / 6.5) ** 2) < 1.0
+    rgb = blend(rgb, (236, 228, 244), eye.astype(float))
+    iris = np.hypot(x, y) < 5.2
+    rgb = blend(rgb, (130, 70, 200), (eye & iris).astype(float))
+    rgb = blend(rgb, (8, 4, 12), (np.hypot(x, y) < 2.4).astype(float))
+    rgb = blend(rgb, (255, 255, 255), np.exp(-((x + 1.5) ** 2 + (y + 1.5) ** 2) / 0.8))
+    lid = np.abs(((x / 13.0) ** 2 + (y / 6.5) ** 2) - 1.0) < 0.12
+    rgb = blend(rgb, (60, 20, 80), lid.astype(float))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "discord")
+
+
+PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord}
 
 
 if __name__ == "__main__":

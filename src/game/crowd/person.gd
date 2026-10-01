@@ -4,10 +4,10 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
-enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER }
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED }
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
@@ -69,6 +69,9 @@ const CIT_HAIR := [Color("3a2a1a"), Color("5a4a2a"), Color("24201c"), Color("7a5
 const CIT_LEGS := Color("453c33")
 ## Minds a Will-o'-Wisp can draw (lure()).
 const LURABLE := [Mind.CALM, Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
+## Discord (v0.06): a confused citizen ambles at this share of a walk, under a violet swirl.
+const CONFUSED_PACE := 0.7
+const COL_DISCORD := Color("b070ff")
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -148,6 +151,9 @@ var _threat := Vector2.INF
 var _threat_r := 1.0
 var awareness := Awareness.UNAWARE
 var _observe_left := 0.0
+## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
+var _confused_left := 0.0
+var _was_fleeing := false
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 
@@ -319,6 +325,10 @@ func _think(delta: float) -> void:
 			_idle = maxf(_idle, 0.1)  # stands and looks; one drawn by a wisp (lure()) walks there first
 		if _observe_left <= 0.0:
 			_recover(rng.randf_range(1.0, 3.0))
+	elif mind == Mind.CONFUSED:
+		_confused_left -= delta
+		if _confused_left <= 0.0:
+			_come_to()
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -356,6 +366,8 @@ func _mind_speed() -> float:
 			return WALK_SPEED * ASSIST_PACE * pace
 		Mind.SHELTER, Mind.DUTY:
 			return PANIC_SPEED * pace
+		Mind.CONFUSED:
+			return WALK_SPEED * CONFUSED_PACE * pace
 		Mind.FLEE:
 			return FLEE_SPEED * pace
 		_:
@@ -436,7 +448,7 @@ func _pick_target() -> void:
 ## A small aimless step: citizens milling about their street, soldiers shifting at their post.
 func _drift() -> void:
 	var spread := POST_SPREAD
-	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP:
+	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.CONFUSED:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
 	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
 	if grid != null:
@@ -481,6 +493,35 @@ func observe(from: Vector2) -> void:
 	_leg = 0
 	_target = ground_pos
 	walk_speed = _mind_speed()
+
+
+## Discord (v0.06): forget everything for `seconds` -- duty, the day, even the way out -- and amble about where it
+## stands under a violet swirl; then pick up again (flee if it was fleeing, else back to its day, where a responder's
+## manager takes it back). A fright still works on it.
+func confuse(seconds: float) -> void:
+	if soldier or inside or state == State.DEAD:
+		return
+	_was_fleeing = mind == Mind.FLEE
+	release_from_queue()
+	passing_gate = null
+	mind = Mind.CONFUSED
+	_confused_left = seconds
+	anchor = ground_pos
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	walk_speed = _mind_speed()
+	_drift()
+
+
+## The confusion lifts.
+func _come_to() -> void:
+	_confused_left = 0.0
+	if _was_fleeing:
+		mind = Mind.CALM
+		flee()
+	else:
+		_recover(rng.randf_range(1.0, 2.0))
 
 
 ## Drawn by a Will-o'-Wisp (v0.06): walk to `at` and stand staring at the light for `seconds` (the watching mind,
@@ -567,6 +608,8 @@ func intent() -> Intent:
 			return Intent.ASSIST
 		Mind.SHELTER:
 			return Intent.SHELTER
+		Mind.CONFUSED:
+			return Intent.CONFUSED
 	return Intent.ROUTINE
 
 
@@ -862,6 +905,12 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(-2, -13 + lift, 4, 1, _hair)
 	if state != State.DEAD or _char < 0.5:
 		_px(0 if f > 0 else -1, -12 + lift, 1, 1, COL_DARK)
+	if mind == Mind.CONFUSED and state != State.DEAD:
+		# Discord's swirl over the head: four violet motes turning with its steps.
+		var turn := int(_anim * 3.0)
+		for k in 4:
+			var a := float((turn + k) % 8) * TAU / 8.0
+			_px(roundi(cos(a) * 3.0), -17 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
 
 
 ## Town guard: mail, royal blue tabard, helmet, spear and shield.
@@ -888,7 +937,7 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 
 
 func _pose_signature() -> int:
-	return (1 if is_running() else 0) + (2 if is_stumbling() else 0)
+	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0)
 
 
 ## DummyEnemy._art_signature(), folded ahead of time for a person on its feet with nothing lifting, freezing or
@@ -904,7 +953,8 @@ func _art_signature() -> int:
 	else:
 		rate = 5.0 if soldier else 6.0
 	var walk := int(_anim * rate) % 2 * 2 + (1 if _facing > 0 else 0)
-	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0)
+	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7.
+	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0)
 	return walk * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
 
 

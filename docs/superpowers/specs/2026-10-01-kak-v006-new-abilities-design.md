@@ -171,3 +171,14 @@ Each plays against systems the town already has. The Prepare screen gains tabs b
 - **Icon:** brambles against a dusk sky.
 - **Clip:** recorded at the Main Gate's mouth during an evacuation (`--setup=evac`).
 - **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 946 checks.
+
+### M4
+- **Discord** (`src/fx/quiet/discord.gd`, class `DiscordFx`) as specified: 10 DP, 20 s, click, kind quiet; a violet swirl at the aim; the cast locks the slots for 0.6 s.
+- **The confused mind** (`Mind.CONFUSED`, `Intent.CONFUSED`):
+  - `Person.confuse(seconds)` releases a queue spot or a gate pass, then ambles round where it stands at 70% of a walk, under a swirl of four violet motes.
+  - When it comes to, it flees again if it was fleeing, and otherwise recovers.
+  - The redraw signature counts confusion (pose bit 4, which never adds to the running/stumbling bits).
+  - The overlay draws the confused violet.
+- **No manager needed a change.** The rite drops any member off duty (in a test, confusing three of the four in the ring broke it); the bell waits, then retries once the keeper has recovered; engineers go back to work once their member is available again; the fire brigade drops anyone who is not assisting.
+- **Clip:** the rite's ring confused, the clergy wandering under swirls (`--setup=rite`).
+- **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 955 checks.

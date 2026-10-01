@@ -30,6 +30,8 @@ const AREAS := {
 	"wisp": {"shape": "circle", "r": 1.6, "roam": 6.0},
 	# ThornwallFx.THORN_LENGTH, SEG * 0.5; centred on the press
 	"thorns": {"shape": "lane", "length": 3.0, "half": 0.3, "centred": true},
+	# DiscordFx.DISCORD_R; who it would take is ringed (_draw())
+	"discord": {"shape": "circle", "r": 1.2},
 	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
 	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
@@ -207,6 +209,10 @@ func _draw() -> void:
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"discord":
+			# Who it would take.
+			for p in DiscordFx.taken(_crowd._field, _press):
+				_ring(p.ground_pos, 0.2, Person.COL_DISCORD)
 		"wisp":
 			# Who it would draw.
 			for p in WillOWisp.drawn(_crowd._field, _press):

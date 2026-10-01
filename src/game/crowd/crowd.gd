@@ -17,6 +17,8 @@ const POST_YARD := 30
 const POST_WALLS := 30
 const POST_CITADEL := 20
 const POST_PATROL := 20
+## A rescue squad's size (v0.07).
+const RESCUE_SQUAD := 3
 const ALARM_BUILDING := 2.0
 const ALARM_KILL := 0.5
 const ALARM_CITADEL_HIT := 10.0
@@ -256,6 +258,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		citizens.append(p)
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
+	_assign_corps()
 	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
 	var keeper := _appoint_bellkeeper(anchors)
@@ -380,6 +383,25 @@ func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	p.env = _env
 	_parent.add_child(p)
 	return p
+
+
+## The soldiers' roles (v0.07), from their posts (_soldier_posts() lays them out yard, walls, Citadel, patrols): the
+## barracks yard's first profile.rescue_squads x RESCUE_SQUAD form the rescue squads, the walls' first
+## profile.marshals_per_exit x ways out become marshals, and the patrols escort the responders. The Citadel's guard and
+## anyone over the counts keep v0.06's ways (posts, the rally). Each remembers its post.
+func _assign_corps() -> void:
+	var exits := 2 + (2 if profile.boats else 0)
+	for i in soldiers.size():
+		var p := soldiers[i]
+		p.post = p.anchor
+		if i < POST_YARD:
+			if i < profile.rescue_squads * RESCUE_SQUAD:
+				p.corps = Person.Corps.RESCUE
+		elif i < POST_YARD + POST_WALLS:
+			if i - POST_YARD < profile.marshals_per_exit * exits:
+				p.corps = Person.Corps.MARSHAL
+		elif i >= POST_YARD + POST_WALLS + POST_CITADEL:
+			p.corps = Person.Corps.ESCORT
 
 
 ## The spec's posting: the yard, the wall towers and gates, the Citadel, and street patrols in pairs.
@@ -930,6 +952,9 @@ func _regroup() -> void:
 func off_duty(p: Person) -> void:
 	if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.DUTY:
 		return
+	if p.soldier:
+		p.send_to_post(p.post if p.post != Vector2.INF else p.ground_pos)  # back to its post (v0.07)
+		return
 	if _fled_all:
 		p.mind = Person.Mind.CALM
 		p.flee()
@@ -1027,14 +1052,15 @@ func _return_investigators() -> void:
 	_investigating = kept
 
 
-## Every soldier leaves its post for a slot on the Citadel's ring.
+## Every soldier leaves its post for a slot on the Citadel's ring. Only soldiers without a role (v0.07): the others have
+## their own work.
 func rally() -> void:
 	if _rallied:
 		return
 	_rallied = true
 	var living: Array[Person] = []
 	for p in soldiers:
-		if is_instance_valid(p) and p.is_alive():
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
 			living.append(p)
 	for i in living.size():
 		var p := living[i]
@@ -1212,5 +1238,5 @@ func order_collapses() -> void:
 func _on_citadel_fallen() -> void:
 	order_collapses()
 	for p in soldiers:
-		if is_instance_valid(p) and p.is_alive():
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
 			p.hold_ground()

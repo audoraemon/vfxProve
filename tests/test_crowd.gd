@@ -113,10 +113,13 @@ static func run(t) -> void:
 	t.check(crowd.alarm >= alarm_before + Crowd.ALARM_CITADEL_HIT * Crowd.UNWARNED_ALARM,
 		"the first hit on the Citadel is worth 10 (half before the bell)")
 	var rallying := 0
+	var free := 0
 	for p in crowd.soldiers:
 		if p.mind == Person.Mind.RALLY:
 			rallying += 1
-	t.check(rallying == crowd.soldiers.size(), "every soldier rallies to the Citadel (%d)" % rallying)
+		if p.corps == Person.Corps.NONE:
+			free += 1
+	t.check(rallying == free and free > 0, "every soldier without a role rallies to the Citadel (%d of %d)" % [rallying, free])
 
 	# Kills raise the alarm and are counted by kind (after the bell, events count in full).
 	crowd.alarms.bell_rung = true
@@ -256,10 +259,12 @@ static func run(t) -> void:
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 4.0, 99999.0, &"nova")
 	t.check(town.citadel.is_fallen(), "the Citadel fell")
 	var holding := true
+	var holders := 0
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.is_alive():
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
 			holding = holding and p.mind == Person.Mind.HOLD
-	t.check(holding, "the surviving soldiers hold their ground")
+			holders += 1
+	t.check(holding and holders > 0, "the surviving soldiers without a role hold their ground (%d)" % holders)
 
 	# Throughput: one person through a gate every GATE_INTERVAL. Walk whoever holds the pass for five intervals.
 	var flow_gate: Structure = town.gates[0]

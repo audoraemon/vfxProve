@@ -11,6 +11,9 @@ enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER,
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
+## A soldier's role (v0.07): none (the Citadel's guard and anyone over the profile's counts), marshal at a way out,
+## escort for a responder, or rescue squad.
+enum Corps { NONE, MARSHAL, ESCORT, RESCUE }
 
 const PANIC_SPEED := 1.6
 const FLEE_SPEED := 1.2
@@ -94,9 +97,16 @@ const SOL_SHIELD := Color("2f5cc0")
 const SOL_GOLD := Color("d8b23a")
 const SOL_HAFT := Color("5a4a3a")
 const SOL_TIP := Color("b8bcc4")
+## The roles' looks (v0.07): a red tabard for a marshal, a white one for an escort, and a shovel for a rescue squad.
+const SOL_MARSHAL := Color("a02424")
+const SOL_ESCORT := Color("e4e0d6")
+const SOL_SHOVEL := Color("8a8e96")
 
 var mind := Mind.CALM
 var soldier := false
+## A soldier's role (v0.07; Crowd._assign_corps()) and the post it was given at spawn, which it goes back to.
+var corps := Corps.NONE
+var post := Vector2.INF
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
 var anchor := Vector2.ZERO
 ## A citizen's role and the places of its day (Crowd sets it; null for soldiers and people made on their own).
@@ -651,9 +661,10 @@ func leave_shelter(evacuate: bool) -> void:
 		_recover(rng.randf_range(2.0, 4.0))
 
 
-## Turn out to fight the fire on `s` (FireManager sends it for water).
-func assist(s: Structure) -> void:
-	if soldier or state == State.DEAD or mind == Mind.FLEE:
+## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
+## (force).
+func assist(s: Structure, force := false) -> void:
+	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE:
 		return
 	mind = Mind.ASSIST
 	assist_fire = s
@@ -669,7 +680,10 @@ func stand_down() -> void:
 	assist_full = false
 	assist_at_water = false
 	if mind == Mind.ASSIST:
-		_recover(rng.randf_range(2.0, 4.0))
+		if soldier:
+			send_to_post(post if post != Vector2.INF else ground_pos)  # a rescue squad back to its post (v0.07)
+		else:
+			_recover(rng.randf_range(2.0, 4.0))
 
 
 ## Walk to `g` and stand there (a responder's round).
@@ -696,8 +710,9 @@ func go_ring(steps: Vector2) -> void:
 
 ## A duty for the town (v0.05): run to `at` and stand there -- the bellkeeper at the tower's foot, a cleric at
 ## its place in the Banishing Rite's ring. A fright still breaks it (panic()); Crowd.off_duty() ends it.
+## Soldiers take duties too (v0.07): an escort taking over the bell or an engineer's place.
 func go_duty(at: Vector2) -> void:
-	if soldier or state == State.DEAD or mind == Mind.FLEE:
+	if state == State.DEAD or mind == Mind.FLEE:
 		return
 	mind = Mind.DUTY
 	anchor = at
@@ -950,7 +965,8 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 		_px(1, -5 + lift, 2, 4 + step, SOL_HELM)
 	_px(-4, -11 + lift, 8, 6, SOL_MAIL)
 	_px(-4, -11 + lift, 8, 1, SOL_MAIL_HI)
-	_px(-2, -9 + lift, 4, 4, SOL_TABARD)
+	var tabard := SOL_MARSHAL if corps == Corps.MARSHAL else (SOL_ESCORT if corps == Corps.ESCORT else SOL_TABARD)
+	_px(-2, -9 + lift, 4, 4, tabard)
 	_px(-5, -10 + lift, 1, 3, _skin)
 	_px(4, -10 + lift, 1, 3, _skin)
 	_px(-3, -15 + lift, 6, 4, SOL_HELM)
@@ -958,8 +974,13 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 	if state != State.DEAD or _char < 0.5:
 		_px(-1 if f > 0 else -2, -13 + lift, 3, 1, COL_DARK)
 	# Spear in the leading hand, shield on the other arm.
-	_px(5 * f, -17 + lift, 1, 12, SOL_HAFT)
-	_px(5 * f, -18 + lift, 1, 2, SOL_TIP)
+	if corps == Corps.RESCUE:
+		# A shovel, blade up over the shoulder.
+		_px(5 * f, -14 + lift, 1, 9, SOL_HAFT)
+		_px(5 * f - 1, -17 + lift, 3, 3, SOL_SHOVEL)
+	else:
+		_px(5 * f, -17 + lift, 1, 12, SOL_HAFT)
+		_px(5 * f, -18 + lift, 1, 2, SOL_TIP)
 	_px(-5 * f, -10 + lift, 2 * f, 5, SOL_SHIELD)
 	_px(-4 * f, -8 + lift, 1, 1, SOL_GOLD)
 

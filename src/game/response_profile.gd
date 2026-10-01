@@ -33,6 +33,11 @@ var boats := false
 ## The Banishing Rite at the cathedral (M3), and how long it takes.
 var rite := false
 var rite_time := 45.0
+## The soldiers' roles (v0.07): marshals at each way out at the evacuation, escorts for each responder on duty, and
+## rescue squads of Crowd.RESCUE_SQUAD. Every tier has them; harder towns have more.
+var marshals_per_exit := 3
+var escorts_per_duty := 1
+var rescue_squads := 3
 
 
 static func for_tier(t: Tier) -> ResponseProfile:
@@ -43,12 +48,17 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.bell = false
 			p.fire_crew = 2
 			p.fire_from = AlarmManager.Stage.CITY_EMERGENCY
+			p.marshals_per_exit = 2
+			p.rescue_squads = 2
 		Tier.ORGANIZED:
 			pass
 		Tier.PREPARED:
 			p.engineer_teams = 2
 			p.boats = true
 			p.rite = true
+			p.marshals_per_exit = 4
+			p.escorts_per_duty = 2
+			p.rescue_squads = 4
 		Tier.GOD_RESISTANT:
 			p.bell_climb = 5.0
 			p.fire_crew = 5
@@ -56,6 +66,9 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.boats = true
 			p.rite = true
 			p.rite_time = 35.0
+			p.marshals_per_exit = 5
+			p.escorts_per_duty = 2
+			p.rescue_squads = 5
 	return p
 
 
@@ -79,4 +92,5 @@ func lines() -> PackedStringArray:
 		out.append("River Evacuation")
 	if rite:
 		out.append("Banishing Rite, %.0f s" % rite_time)
+	out.append("Soldiers: marshals x%d, escorts x%d, rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
 	return out

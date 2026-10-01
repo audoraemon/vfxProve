@@ -15,10 +15,14 @@ static func run(t) -> void:
 	t.check(p.engineer_teams == 2 and p.boats and p.rite, "Prepared: engineers, boats and the rite too")
 	t.check(g.bell_climb < p.bell_climb and g.rite_time < p.rite_time and g.engineer_teams > p.engineer_teams
 		and g.fire_crew > p.fire_crew, "God-Resistant: all of it, faster")
+	t.check([u.marshals_per_exit, o.marshals_per_exit, p.marshals_per_exit, g.marshals_per_exit] == [2, 3, 4, 5]
+		and [u.escorts_per_duty, o.escorts_per_duty, p.escorts_per_duty, g.escorts_per_duty] == [1, 1, 2, 2]
+		and [u.rescue_squads, o.rescue_squads, p.rescue_squads, g.rescue_squads] == [2, 3, 4, 5],
+		"the soldiers' roles grow with the tier (v0.07)")
 	t.check(ResponseProfile.DEFAULT == ResponseProfile.Tier.ORGANIZED and ResponseProfile.tier_named("prepared")
 		== ResponseProfile.Tier.PREPARED and ResponseProfile.tier_named("nonsense") == ResponseProfile.DEFAULT,
 		"Organized by default; named tiers from the command line")
-	t.check(u.lines().size() == 2 and p.lines().size() == 5, "the Defense Profile lists each response (%s)" % [p.lines()])
+	t.check(u.lines().size() == 3 and p.lines().size() == 6, "the Defense Profile lists each response (%s)" % [p.lines()])
 
 	# The save remembers the difficulty.
 	var path := "user://test_profile_save.cfg"

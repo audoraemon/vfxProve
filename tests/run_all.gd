@@ -35,6 +35,7 @@ const SUITES := [
 	"res://tests/test_thornwall.gd",
 	"res://tests/test_discord.gd",
 	"res://tests/test_plague.gd",
+	"res://tests/test_corps.gd",
 	"res://tests/test_sort.gd",
 	"res://tests/test_voices.gd",
 	"res://tests/test_stability.gd",

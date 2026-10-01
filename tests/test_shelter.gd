@@ -67,6 +67,8 @@ static func run(t) -> void:
 	var killed := crowd.killed_citizens
 	tavern.destroy(tavern.center(), &"stone")
 	sm.step(1.0)
-	t.check(r != null and not r.is_alive() and crowd.killed_citizens == killed + 1, "a collapse kills those inside")
+	var trapped := crowd.rescue.trapped_at(tavern) if crowd.rescue != null else 0
+	t.check(r != null and ((not r.is_alive() and crowd.killed_citizens == killed + 1) or (r.is_alive() and trapped == 1)),
+		"a collapse kills those inside, or traps them for the rescue squads (v0.07)")
 	crowd.clear()
 	world.free()

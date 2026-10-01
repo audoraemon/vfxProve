@@ -180,6 +180,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_crowd.ferry.closed.connect(func(_why: String): _rules.banner.emit("THE BOATS ARE STOPPED"))
 	if _crowd.marshals != null:
 		_crowd.marshals.posted.connect(func(): _rules.banner.emit("THE SOLDIERS TAKE THE GATES"))
+	if _crowd.rescue != null:
+		_crowd.rescue.first_rescue.connect(func(): _rules.banner.emit("SURVIVORS DUG FROM THE RUBBLE"))
 	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED:
 		var rite := _crowd.rite
 		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))

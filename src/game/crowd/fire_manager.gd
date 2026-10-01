@@ -188,6 +188,18 @@ func _recruit() -> void:
 			_go_to_water(pool[k], s)
 
 
+## A rescue squad's soldier turns out to the fire on `s` (RescueManager, v0.07): on its crew whatever the brigade's
+## numbers.
+func enlist(p: Person, s: Structure) -> void:
+	if not fires.has(s) or not is_instance_valid(p) or not p.is_alive():
+		return
+	p.assist(s, true)
+	if p.mind != Person.Mind.ASSIST:
+		return
+	(fires[s].responders as Array).append(p)
+	_go_to_water(p, s)
+
+
 ## Each responder's round: to the water, fill, to the fire, douse, again -- or stand down.
 func _tend_responders(delta: float) -> void:
 	var evacuating := _crowd.alarms.stage >= AlarmManager.Stage.EVACUATION

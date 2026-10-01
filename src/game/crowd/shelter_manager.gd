@@ -4,7 +4,8 @@ extends RefCounted
 ## a tavern, the barracks, the workshop, a townhouse -- instead of running, if it has room. Inside, people are out
 ## of reach of every effect and out of sight. They come out once no danger has been near for a while, or when the
 ## town evacuates (then they make for the gates). A building hit hard (under half health) or set burning throws
-## them out running; one that collapses kills everyone inside. A full cathedral is a target.
+## them out running; one that collapses kills those inside, or traps some under its rubble for the rescue squads (v0.07).
+## A full cathedral is a target.
 
 ## Chance a frightened citizen seeks cover, by what frightened it: storms of stone, wind and blast send most people
 ## indoors, a strike they can outrun far fewer.
@@ -123,10 +124,18 @@ func step(delta: float) -> void:
 		if (e.inside as Array).is_empty():
 			continue
 		if not is_instance_valid(s) or s.destroyed:
+			# Some of those inside are trapped under the rubble for the rescue squads (v0.07); the rest die.
+			var trapped: Array = []
 			for p in e.inside:
-				if is_instance_valid(p):
-					_exit(p, s)
-					_field.kill(p, &"collapse", s.center())
+				if not is_instance_valid(p):
+					continue
+				if _crowd.rescue != null and is_instance_valid(s) and (p as Person).rng.randf() < RescueManager.TRAPPED_SHARE:
+					trapped.append(p)
+					continue
+				_exit(p, s)
+				_field.kill(p, &"collapse", s.center())
+			if not trapped.is_empty():
+				_crowd.rescue.trap(trapped, s)
 			e.inside = []
 			continue
 		if not _usable(s):

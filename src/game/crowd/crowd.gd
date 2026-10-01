@@ -125,6 +125,8 @@ var plague: PlagueManager
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
 var escorts: EscortManager
+## The rescue squads and the people trapped under collapsed shelters (v0.07); made by spawn().
+var rescue: RescueManager
 ## The seed setup() was given, for managers that must not draw from the crowd's own rng (which would move everyone).
 var _seed := 0
 ## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
@@ -195,12 +197,15 @@ class ResponseDrawer extends Node2D:
 				crowd.rite.draw_over(self)
 		if crowd.engineers != null and not ground:
 			crowd.engineers.draw(self)
+		if crowd.rescue != null and not ground:
+			crowd.rescue.draw(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
 		return crowd != null and ((crowd.bell != null and (crowd.bell.state == BellNetwork.State.CLIMBING
 			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
-			or (crowd.engineers != null and crowd.engineers.working()))
+			or (crowd.engineers != null and crowd.engineers.working())
+			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty()))
 
 
 class Ticker extends Node:
@@ -275,6 +280,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
 	marshals = MarshalManager.new().setup(self, _town, _grid)
 	escorts = EscortManager.new().setup(self)
+	rescue = RescueManager.new().setup(self, _field)
 	if ferry.state != RiverFerry.State.ENDED:
 		evac.add_boat_exit(ferry.board_at, ferry)
 	if _drawer == null or not is_instance_valid(_drawer):
@@ -530,6 +536,8 @@ func advance(delta: float) -> void:
 		marshals.step(delta)
 	if escorts != null:
 		escorts.step(delta)
+	if rescue != null:
+		rescue.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1130,6 +1138,9 @@ func clear() -> void:
 	if escorts != null:
 		escorts.clear()
 	escorts = null
+	if rescue != null:
+		rescue.clear()
+	rescue = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

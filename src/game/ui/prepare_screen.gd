@@ -281,8 +281,15 @@ func _draw_profile() -> void:
 			lines[i], UiTheme.SIZE_SMALL)
 
 
+## The left panel: the briefing, or -- while the mouse is on a power -- that power's card: its name, its preview clip,
+## its cost and how it is aimed, what it does and its kind. (v0.06: the briefing had grown under the clip.)
 func _draw_panel() -> void:
 	_ui.draw_rect(PANEL, UiTheme.COL_PANEL)
+	var hover := _hover_key()
+	var p := PowerBook.get_power(hover)
+	if not p.is_empty():
+		_draw_power_card(hover, p)
+		return
 	var brief := [
 		["TARGET", "Aldermere and its Royal Citadel"],
 		["WIN", "Bring down the Citadel and break the city before %s" % UiTheme.clock(Rules.MISSION_SECONDS)],
@@ -305,32 +312,39 @@ func _draw_panel() -> void:
 			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
 			y += UiTheme.LINE_SMALL
 		y += 3.0
-	# The card under the mouse, with its big art.
-	var hover := _hover_key()
-	var p := PowerBook.get_power(hover)
-	if p.is_empty():
-		var hint := UiTheme.wrap("Pick four powers, in the order you want them", PANEL.size.x - 8.0, UiTheme.SIZE_SMALL)
-		for i in hint.size():
-			UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint.size() - 1 - i)),
-				hint[i], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-		return
-	var clip_rect := Rect2(Vector2(PANEL.position.x + (PANEL.size.x - PowerBook.CLIP_SIZE.x) * 0.5, PANEL.end.y - 116.0),
+	var hint := UiTheme.wrap("Pick four powers, in the order you want them", PANEL.size.x - 8.0, UiTheme.SIZE_SMALL)
+	for i in hint.size():
+		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint.size() - 1 - i)),
+			hint[i], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
+func _draw_power_card(key: String, p: Dictionary) -> void:
+	var tx := PANEL.position.x + 6.0
+	var y := PANEL.position.y + 14.0
+	UiTheme.text(_ui, Vector2(tx, y), String(p.name), UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
+	y += 6.0
+	var clip_rect := Rect2(Vector2(PANEL.position.x + (PANEL.size.x - PowerBook.CLIP_SIZE.x) * 0.5, y),
 		Vector2(PowerBook.CLIP_SIZE))
-	var sheet: Texture2D = _clips.get(hover)
+	var sheet: Texture2D = _clips.get(key)
 	if sheet != null:
 		_ui.draw_texture_rect_region(sheet, clip_rect, PowerBook.clip_frame(_clip_frame))
 	else:
 		# No recording for this power: its card art, centred where the clip would be.
-		var art: Texture2D = _art.get(hover)
+		var art: Texture2D = _art.get(key)
 		if art != null:
 			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
 	UiTheme.frame(_ui, clip_rect, true)
-	var tx := PANEL.position.x + 4.0
-	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0), String(p.name), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0 + UiTheme.LINE_SMALL),
-		"%d DP  %d s  %s" % [int(p.dp), int(p.cooldown), String(p.aim)], UiTheme.SIZE_SMALL)
-	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0 + UiTheme.LINE_SMALL * 2.0), String(p.shape), UiTheme.SIZE_SMALL,
-		UiTheme.COL_DIM)
+	y = clip_rect.end.y + 16.0
+	var kind := PowerBook.kind_of(key)
+	var title: String = PowerBook.KIND_TITLES[PowerBook.KINDS.find(kind)] if PowerBook.KINDS.has(kind) else ""
+	UiTheme.text(_ui, Vector2(tx, y), "%d DP   %d s   %s" % [int(p.dp), int(p.cooldown), String(p.aim)], UiTheme.SIZE_SMALL)
+	y += UiTheme.LINE_SMALL
+	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,
+		Color("9ab48a") if bool(p.get("quiet", false)) else UiTheme.COL_DIM)
+	y += UiTheme.LINE_SMALL + 4.0
+	for line in UiTheme.wrap(String(p.shape), PANEL.size.x - 12.0, UiTheme.SIZE_SMALL):
+		UiTheme.text(_ui, Vector2(tx, y), line, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+		y += UiTheme.LINE_SMALL
 
 
 func _draw_card(i: int, key: String) -> void:

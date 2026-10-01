@@ -34,6 +34,14 @@ extends SceneTree
 ##          [--setup=rite|evac]; --snap aims at the citizen nearest --at;
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
 ##          its run into assets/clips/<key>.png
+##   powers (v0.06) the new powers measured against doing without, Prepared, loadout wisp, thorns, discord,
+##          pestilence; --case= one of:
+##            plague / combo  Pestilence on the market crowd at 26 s, alone or after a Will-o'-Wisp there at 20 s:
+##                            sick and dead every 10 s to 90 s
+##            wall / nowall   an evacuation called at 20 s, and at 25 s a Thornwall across the Main Gate's mouth (or
+##                            not): escapes by way out every 10 s to 60 s
+##            discord / rite  City Emergency at 20 s, the rite chanting; at 35 s Discord on its ring (or not): the
+##                            rite's state every 5 s to 90 s
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -57,13 +65,15 @@ func _run() -> void:
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")
-	if tier == "" and scenario in ["rite", "engineers", "boats", "clip"]:
+	if tier == "" and scenario in ["rite", "engineers", "boats", "clip", "powers"]:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
 	var powers := PackedStringArray()
 	if scenario == "quiet":
 		powers = PackedStringArray(["doom", "blight", "heaven", "nova"])
+	elif scenario == "powers":
+		powers = PackedStringArray(["wisp", "thorns", "discord", "pestilence"])
 	elif scenario == "clip":
 		powers = PackedStringArray([Battlefield.arg_value(args, "--power"), "heaven", "cinder", "nova"])
 	elif scenario == "opening":
@@ -92,6 +102,8 @@ func _run() -> void:
 			await _quiet("--shots" in args)
 		"opening":
 			await _opening("--quiet" in args)
+		"powers":
+			await _powers(Battlefield.arg_value(args, "--case"))
 		"clip":
 			await _clip(Battlefield.arg_value(args, "--power"), Battlefield.arg_value(args, "--at"),
 				Battlefield.arg_value(args, "--seconds"), Battlefield.arg_value(args, "--setup"))
@@ -475,6 +487,64 @@ func _siege() -> void:
 		t += 1.0
 	for h in crowd.alarms.history:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
+
+
+func _powers(which: String) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var market := Vector2(0.8, 2.0)
+	match which:
+		"plague", "combo":
+			if which == "combo":
+				_force_cast(0, market)
+			await _frames(6 * 60)
+			var at := _nearest_citizen(market)
+			_force_cast(3, at)
+			print("BEHAVIOUR powers %s pestilence at %s" % [which, at.round()])
+			for k in 7:
+				await _frames(10 * 60)
+				print("BEHAVIOUR powers %s t=%d sick=%d plague_dead=%d alarm=%.1f stage=%s" % [which, 26 + 10 * (k + 1),
+					crowd.plague.sick.size(), crowd.plague.deaths, crowd.alarm, crowd.alarms.stage_name()])
+		"wall", "nowall":
+			var by_exit := {}
+			crowd.escaped.connect(func(p: Person) -> void:
+				var k := "south" if p.goal() == TownLayout.EXITS[0] else ("east" if p.goal() == TownLayout.EXITS[1]
+					else ("boat" if crowd.ferry != null and p.goal() == crowd.ferry.board_at else "other"))
+				by_exit[k] = int(by_exit.get(k, 0)) + 1)
+			crowd.alarms.bell_rung = true
+			crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+			crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+			crowd.add_alarm(100.0)
+			await _frames(5 * 60)
+			if which == "wall":
+				_force_cast(1, Vector2(2.7, 14.25), Vector2(1, 0))
+			for k in 4:
+				await _frames(10 * 60)
+				var queues := []
+				for g in mission._town.gates:
+					queues.append(crowd.waiting_at(g) if g.walkable else -1)
+				print("BEHAVIOUR powers %s t=%d escaped=%d by way out %s queues(main,side,postern)=%s" % [which,
+					25 + 10 * (k + 1), crowd.escaped_count, by_exit, queues])
+		"discord", "rite":
+			crowd.add_alarm(AlarmManager.CITY_ALARM)
+			for k in 14:
+				await _frames(5 * 60)
+				var t := 25 + 5 * k
+				if which == "discord" and t == 35:
+					_force_cast(2, crowd.rite.centre)
+				print("BEHAVIOUR powers %s t=%d rite=%s in_ring=%d progress=%.1f clock=%s" % [which, t,
+					BanishingRite.State.keys()[crowd.rite.state], crowd.rite.in_ring(), crowd.rite.progress,
+					UiTheme.clock(mission._rules.time_left)])
+
+
+func _nearest_citizen(at: Vector2) -> Vector2:
+	var best := INF
+	var near := at
+	for p: Person in mission._crowd.citizens:
+		if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best:
+			best = p.ground_pos.distance_to(at)
+			near = p.ground_pos
+	return near
 
 
 ## What the power is doing halfway through its clip, for the record.

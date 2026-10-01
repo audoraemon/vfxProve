@@ -202,3 +202,19 @@ Each plays against systems the town already has. The Prepare screen gains tabs b
 - **Clip:** the Main Gate's queue during an evacuation. `--snap` (aim at the citizen nearest `--at`) was added because the queue forms where it will.
 - **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; 964 checks.
   - The bench was taken under heavy machine load: M4 58.2 / 58.9 fps, M5 54.0 / 57.3 fps. M6 re-benches on an idle machine.
+
+### M6
+- **`powers` scenario** (`behaviour_check.gd --scenario=powers --case=`): each new power against doing without, Prepared, seed 7.
+
+  | Case | Without | With | Checksums (without / with) |
+  |---|---|---|---|
+  | `plague` / `combo` | Pestilence alone: 16 sick at 56 s, 22 dead at 96 s | Wisp then Pestilence: 58 sick at 56 s, 76 dead at 96 s | −944527342 / −194167208 |
+  | `nowall` / `wall` | 40 escaped at 65 s (17 south) | Thornwall across the Main Gate's mouth: 28 escaped (5 south) | 60415929 / 383278877 |
+  | `rite` / `discord` | The rite done at ~70 s; clock 3:51 at 90 s | Broken at 35 s, regathered ~66 s; clock 4:31 at 90 s | −844216440 / −250281115 |
+
+  - **Thornwall needs a choke point.** At y 12.4, in the wide gate plaza, it changed nothing, because people walked round its ends. At y 14.25, between the gate towers, it sealed the gate.
+  - **The combo is flagged for the playtest:** 76 deaths for 26 DP.
+- **The Prepare screen's left panel** shows the hovered power's own card (its name, its clip, cost and aim, its kind and quiet, what it does) in place of the briefing. The clip had covered the end of the briefing, and the description ran into the difficulty strip.
+- **Bench against `kak-v0.05`, alternating:** 100.3 / 101.5 / 104.4 fps against 102.7 / 104.5 / 94.7 fps, at 1052 draw calls each: equal within noise.
+- **Checks:** crowd_check unchanged at −346732806; digest unchanged; FLOW 24/24; the mission test is 173 / 1 at both Organized and Prepared; 964 checks.
+- **Summary:** `docs/KAK_Version_0.06_Summary.md`.

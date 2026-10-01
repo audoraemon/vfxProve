@@ -165,6 +165,12 @@ func advance(delta: float) -> void:
 	_check_end()
 
 
+## The manifestation is cut short by `seconds` (the clergy's Banishing Rite, v0.05). The clock never goes below
+## zero; the next advance() ends a mission it ran out on.
+func lose_time(seconds: float) -> void:
+	time_left = maxf(0.0, time_left - seconds)
+
+
 ## The power in a slot, or an empty dictionary for a slot nothing was drafted into.
 func power(slot: int) -> Dictionary:
 	if slot < 0 or slot >= loadout.size():

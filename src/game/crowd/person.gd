@@ -411,7 +411,7 @@ func _pick_target() -> void:
 	if mind == Mind.PANIC:
 		_settle()
 		return
-	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER:
+	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY:
 		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
@@ -423,7 +423,7 @@ func _pick_target() -> void:
 ## A small aimless step: citizens milling about their street, soldiers shifting at their post.
 func _drift() -> void:
 	var spread := POST_SPREAD
-	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.DUTY:
+	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
 	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
 	if grid != null:
@@ -601,12 +601,18 @@ func regroup(home: Vector2) -> void:
 
 ## The bellkeeper's duty: walk to the Bell Tower's foot `steps` to climb it and ring the bell (BellNetwork).
 func go_ring(steps: Vector2) -> void:
+	go_duty(steps)
+
+
+## A duty for the town (v0.05): run to `at` and stand there -- the bellkeeper at the tower's foot, a cleric at
+## its place in the Banishing Rite's ring. A fright still breaks it (panic()); Crowd.off_duty() ends it.
+func go_duty(at: Vector2) -> void:
 	if soldier or state == State.DEAD or mind == Mind.FLEE:
 		return
 	mind = Mind.DUTY
-	anchor = steps
+	anchor = at
 	walk_speed = _mind_speed()
-	set_goal(steps)
+	set_goal(at)
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.

@@ -96,10 +96,14 @@ var shelters: ShelterManager
 var _stage_in := 0.0
 ## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
 var _investigating: Array = []
-## The clergy member walking to ring the cathedral bell, and when to look for another.
 ## The Bell Tower and its bellkeeper (v0.05); made by spawn().
 var bell: BellNetwork
-var _bell_drawer: Node2D
+## The clergy's Banishing Rite at the cathedral (v0.05); made by spawn().
+var rite: BanishingRite
+## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
+## ring, under the people and buildings).
+var _drawer: Node2D
+var _ground_drawer: Node2D
 ## Households waiting to leave together: family -> clock the evacuation found them.
 var _households := {}
 var spawned_soldiers := 0
@@ -139,13 +143,28 @@ var _ticker: Ticker
 
 ## Steps the whole crowd from one node in the world, placed just before the first person: people do not process
 ## on their own (Person.ticked), so the engine makes one call a frame instead of one per person.
-## Draws the Bell Tower's climb and ring (BellNetwork.draw()) over the world.
-class BellDrawer extends Node2D:
+## Draws the town's responses over the world: the Bell Tower's climb and ring (BellNetwork.draw()) and the Banishing
+## Rite's ring (BanishingRite.draw()).
+class ResponseDrawer extends Node2D:
 	var crowd: Crowd
+	## Drawing on the ground, under the people (the rite's ring), rather than over everything.
+	var ground := false
 
 	func _draw() -> void:
-		if crowd != null and crowd.bell != null:
+		if crowd == null:
+			return
+		if crowd.bell != null and not ground:
 			crowd.bell.draw(self)
+		if crowd.rite != null:
+			if ground:
+				crowd.rite.draw_ground(self)
+			else:
+				crowd.rite.draw_over(self)
+
+	## Whether anything is on show now.
+	func showing() -> bool:
+		return crowd != null and ((crowd.bell != null and (crowd.bell.state == BellNetwork.State.CLIMBING
+			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0))
 
 
 class Ticker extends Node:
@@ -203,12 +222,12 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
 	var keeper := _appoint_bellkeeper(anchors)
 	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
-	if _bell_drawer == null or not is_instance_valid(_bell_drawer):
-		_bell_drawer = BellDrawer.new()
-		_bell_drawer.name = "BellDrawer"
-		_bell_drawer.z_index = 60
-		_parent.add_child(_bell_drawer)
-	(_bell_drawer as BellDrawer).crowd = self
+	rite = BanishingRite.new().setup(self, _env, _grid)
+	if _drawer == null or not is_instance_valid(_drawer):
+		_drawer = _response_drawer("ResponseDrawer", 60, false)
+		_ground_drawer = _response_drawer("ResponseGround", -3, true)
+	(_drawer as ResponseDrawer).crowd = self
+	(_ground_drawer as ResponseDrawer).crowd = self
 	shelters = ShelterManager.new().setup(self, _env, _field)
 	for p in citizens:
 		p.evac = evac
@@ -225,6 +244,15 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+
+
+func _response_drawer(label: String, z: int, on_ground: bool) -> ResponseDrawer:
+	var d := ResponseDrawer.new()
+	d.name = label
+	d.z_index = z
+	d.ground = on_ground
+	_parent.add_child(d)
+	return d
 
 
 func _nearest(pts: Array[Vector2], to: Vector2) -> Vector2:
@@ -417,10 +445,16 @@ func advance(delta: float) -> void:
 		alarms.update(alarm, threats.active_count(), _clock)
 	if bell != null:
 		bell.step(delta)
-		if is_instance_valid(_bell_drawer) and (bell.state == BellNetwork.State.CLIMBING or bell.ring_show > 0.0
-				or _bell_drawer.get_meta("shown", false)):
-			_bell_drawer.set_meta("shown", bell.state == BellNetwork.State.CLIMBING or bell.ring_show > 0.0)
-			_bell_drawer.queue_redraw()
+	if rite != null:
+		rite.step(delta)
+	if is_instance_valid(_drawer):
+		# Redrawn while something shows, and once more as it stops, to clear it.
+		var showing := (_drawer as ResponseDrawer).showing()
+		if showing or _drawer.get_meta("shown", false):
+			_drawer.set_meta("shown", showing)
+			_drawer.queue_redraw()
+			if is_instance_valid(_ground_drawer):
+				_ground_drawer.queue_redraw()
 	_tend_households()
 	_return_investigators()
 	_gates()
@@ -751,6 +785,8 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 		AlarmManager.Stage.CITY_EMERGENCY:
 			rally()
 			_regroup()
+			if rite != null:
+				rite.begin()
 		AlarmManager.Stage.EVACUATION, AlarmManager.Stage.COLLAPSE:
 			_evacuate()
 
@@ -765,6 +801,8 @@ func _evacuate() -> void:
 			continue
 		if p.mind == Person.Mind.SHELTER:
 			continue  # ShelterManager sends them to the gates
+		if p.mind == Person.Mind.DUTY:
+			continue  # the bellkeeper and the clergy stay at their duty (off_duty() sends them on after)
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):
@@ -814,6 +852,18 @@ func _regroup() -> void:
 			p.regroup(p.profile.home)
 
 
+## Someone's duty is done (the bell rung, the rite over): to the gates if the town is evacuating, else home to wait
+## with the family.
+func off_duty(p: Person) -> void:
+	if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.DUTY:
+		return
+	if _fled_all:
+		p.mind = Person.Mind.CALM
+		p.flee()
+	elif p.profile != null:
+		p.regroup(p.profile.home)
+
+
 ## A Bell Tower needs its keeper (v0.05): the resident living nearest it takes the post, working at the tower's foot.
 ## None in an Unprepared town.
 func _appoint_bellkeeper(anchors: Dictionary) -> Person:
@@ -829,13 +879,6 @@ func _appoint_bellkeeper(anchors: Dictionary) -> Person:
 		best.profile.role = CitizenProfile.Role.BELLKEEPER
 		best.profile.work = foot[0]
 	return best
-
-
-func _temple_down() -> bool:
-	for s in _env.structures():
-		if s.role == &"temple":
-			return s.destroyed
-	return true
 
 
 ## The Bell Tower rings (BellNetwork): every citizen learns of the danger, and the town calls City Emergency and the
@@ -923,10 +966,13 @@ func clear() -> void:
 		shelters.clear()
 	_households.clear()
 	_investigating.clear()
-	if is_instance_valid(_bell_drawer):
-		_bell_drawer.queue_free()
-	_bell_drawer = null
+	for d in [_drawer, _ground_drawer]:
+		if is_instance_valid(d):
+			(d as Node).queue_free()
+	_drawer = null
+	_ground_drawer = null
 	bell = null
+	rite = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

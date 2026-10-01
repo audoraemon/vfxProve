@@ -166,6 +166,15 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_crowd.bell.climbing_started.connect(func(): _rules.banner.emit("THE BELLKEEPER CLIMBS THE TOWER"))
 		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
+	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED:
+		var rite := _crowd.rite
+		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))
+		rite.started.connect(func(): _rules.banner.emit("THE BANISHING RITE BEGINS"))
+		rite.broken.connect(func(_why: String): _rules.banner.emit("THE RITE IS BROKEN"))
+		rite.ended.connect(func(_why: String): _rules.banner.emit("THE RITE IS ENDED"))
+		rite.completed.connect(func():
+			_rules.lose_time(BanishingRite.PENALTY)
+			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(BanishingRite.PENALTY)))
 
 	_aim = Targeting.new()
 	_aim.name = "Targeting"

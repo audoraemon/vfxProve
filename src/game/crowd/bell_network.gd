@@ -110,8 +110,7 @@ func _wait() -> void:
 func _ring() -> void:
 	state = State.RUNG
 	ring_show = 3.0
-	if keeper.mind == Person.Mind.DUTY and keeper.profile != null:
-		keeper.regroup(keeper.profile.home)
+	_crowd.off_duty(keeper)
 	_crowd.ring_bell(tower.center())
 	_crowd.add_alarm(RING_ALARM)
 	rung.emit()

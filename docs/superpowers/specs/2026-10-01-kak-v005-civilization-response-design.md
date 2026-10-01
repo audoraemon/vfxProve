@@ -158,3 +158,32 @@ The overlay gains:
 - **Mission test:** `citizens=164 escaped=1 stability=65% citadel=50%`.
 - **Market bench, alternating:** M1 93.8 / 92.7 / 92.2 fps, M2 91.6 / 92.9 / 92.8 fps.
 - **Tests:** 853 checks.
+
+### M3
+- **BanishingRite** (`src/game/crowd/banishing_rite.gd`): made by `Crowd.spawn()` and stepped in `advance()`. Its states are IDLE, GATHERING, CHANTING, COOLDOWN, DONE and ENDED. Only a profile with `rite` (Prepared and up) holds one.
+- **Gathering:** at City Emergency (after the market closes) up to 4 clergy run to the steps, nearest first. They are drawn from those calm, recovering, watching or regrouping, and take a new Person mind duty (`Person.go_duty()`; the bellkeeper's `go_ring()` now goes through it). Their places are an arc of four, 1.0 in front of the doors. The chant starts once 3 stand at their places and the cathedral is at 50% or more.
+- **Done once.** The source doc's stealth story is "finish the Citadel before the Banishing Rite completes", so a completed rite does not repeat. Completion calls `Rules.lose_time(40)`, and the clergy go off duty.
+- **Breaking:**
+  - fewer than 2 in the ring, or the cathedral under 50%: the progress is lost;
+  - the clergy still on the steps stay there, and the rest are called again after 30 s;
+  - it will not restart while the cathedral is under 50% (M4's engineers can mend it).
+- **Ending:** the cathedral destroyed or blighted, or fewer than 3 clergy alive. The town starts with about 9.
+- **What you see:**
+  - a gold ring on the ground under the people, its bright arc growing with the progress;
+  - halos over the chanting clergy, and motes rising from the ring;
+  - under the clock, "CLERGY GATHER n/3", then "BANISHING RITE" with a bar, on a dark plate;
+  - banners for the gathering, the start, a break, the end, and "THE CLERGY BANISH YOU - 40 s LOST".
+  - The F4 panel gains a rite line.
+- **Duty survives the evacuation.** `Crowd._evacuate()` skips anyone on duty; `Crowd.off_duty()` sends them on afterwards (to the gates if the town is evacuating, otherwise home). This applies to the bellkeeper too: a keeper who rang after the evacuation was called used to regroup at home and never leave.
+- **People on duty stand still** at their post instead of drifting round it.
+- **Rite scenario** (Prepared, City Emergency called at 20 s, seed 7):
+  - the clergy gather and chant within 5 s; the rite completes at about 50 s, and the clock drops from 290 to 245;
+  - `--interrupt` (three of the clergy killed quietly 10 s into the chant): the rite breaks; the clergy regather after the cooldown and are chanting again 31 s later.
+- **Checksums:**
+  - crowd_check unchanged at −549829194;
+  - rite scenario −305545241; interrupted −930059581.
+- **Mission test:**
+  - Organized `citizens=167 escaped=1` (M2: 164 / 1; the bellkeeper now keeps to the tower);
+  - Prepared `citizens=171 escaped=0`.
+- **Mission bench, alternating:** M2 106.5 / 104.1 fps, M3 108.9 / 110.2 fps.
+- **Tests:** 870 checks.

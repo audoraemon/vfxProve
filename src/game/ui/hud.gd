@@ -31,6 +31,9 @@ const LEGEND := [["Pop", 0], ["Infra", 1], ["Lead", 2], ["Mil", 3], ["Res", 4]]
 ## The dark plate under a slot's hotkey and cost.
 const PLATE_H := 12.0
 const DP_BAR := Vector2(180.0, 7.0)
+## The Banishing Rite's bar under the clock (v0.05).
+const RITE_BAR := Vector2(120.0, 4.0)
+const RITE_TOP := 30.0
 
 var _rules: Rules
 var _crowd: Crowd
@@ -201,8 +204,8 @@ func _on_dp_gained(amount: float, at: Vector2) -> void:
 ## Everything the HUD shows, as one string. Cheap to build, and it means a still frame is not redrawn sixty
 ## times a second while a four-minute mission's effects are already busy.
 func _signature() -> String:
-	var out := "%s|%s|%s|%d|%d" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
-		roundi(_rules.dp * 2.0), roundi(_rules.stability.total() * 200.0)]
+	var out := "%s|%s|%s|%d|%d|%s" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
+		roundi(_rules.dp * 2.0), roundi(_rules.stability.total() * 200.0), rite_text()]
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), "p" if is_picked(i) else ""]
 	return out
@@ -212,6 +215,7 @@ func _draw() -> void:
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
+	_draw_rite(w)
 	_draw_objectives()
 	_draw_status(w)
 	_draw_banners(w)
@@ -227,6 +231,36 @@ func _draw_clock(w: float) -> void:
 		# One pulse a second, so the last half minute is felt without a tween.
 		col = UiTheme.COL_BAD if fmod(_rules.time_left, 1.0) > 0.5 else Color("ff8a72")
 	UiTheme.text(self, Vector2(roundf((w - UiTheme.width(s, UiTheme.SIZE_BIG)) * 0.5), 18.0), s, UiTheme.SIZE_BIG, col)
+
+
+## The Banishing Rite under the clock: the clergy gathering, then the rite's progress in RITE_BAR's steps; "" when
+## there is nothing to show.
+func rite_text() -> String:
+	var rite := _crowd.rite if _crowd != null else null
+	if rite == null:
+		return ""
+	match rite.state:
+		BanishingRite.State.GATHERING:
+			return "CLERGY GATHER %d/%d" % [mini(rite.in_ring(), BanishingRite.NEED), BanishingRite.NEED]
+		BanishingRite.State.CHANTING:
+			return "BANISHING RITE %d" % floori(rite.fraction() * RITE_BAR.x)
+	return ""
+
+
+func _draw_rite(w: float) -> void:
+	var rite := _crowd.rite if _crowd != null else null
+	if rite_text() == "":
+		return
+	var chanting := rite.state == BanishingRite.State.CHANTING
+	var label := "BANISHING RITE" if chanting else rite_text()
+	var plate_w := maxf(RITE_BAR.x, UiTheme.width(label, UiTheme.SIZE_SMALL)) + 8.0
+	draw_rect(Rect2(roundf((w - plate_w) * 0.5), RITE_TOP - 8.0, plate_w, 17.0 if chanting else 11.0), UiTheme.COL_PANEL)
+	UiTheme.text(self, Vector2(roundf((w - UiTheme.width(label, UiTheme.SIZE_SMALL)) * 0.5), RITE_TOP),
+		label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if chanting else UiTheme.COL_DIM)
+	if chanting:
+		var at := Vector2(roundf((w - RITE_BAR.x) * 0.5), RITE_TOP + 3.0)
+		draw_rect(Rect2(at - Vector2.ONE, RITE_BAR + Vector2(2.0, 2.0)), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(at, Vector2(roundf(RITE_BAR.x * rite.fraction()), RITE_BAR.y)), UiTheme.COL_GOLD)
 
 
 func _draw_objectives() -> void:

@@ -12,6 +12,10 @@ extends SceneTree
 ##   bell   a strike in the west after 20 s of calm; --kill-keeper kills the bellkeeper first (quietly): the Bell
 ##          Tower's state, the stage and the alarm every 2 s over 30 s
 ##   fire   three houses set burning in the west quarter after 20 s of calm: fires, intensity, responders over 40 s
+##   rite   (Prepared) City Emergency called after 20 s of calm: the Banishing Rite's state, the ring, its progress and
+##          the manifestation's clock every 5 s over 90 s; --interrupt quietly kills three of the ring's clergy 10 s
+##          into the chant (as Silent Doom will): the rite breaks, and the rest regather after the cooldown
+## --difficulty=<tier> plays any scenario at that tier (default Organized; rite: Prepared).
 
 const SEED := 7
 
@@ -33,6 +37,11 @@ func _run() -> void:
 		await process_frame
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
+	var tier := Battlefield.arg_value(args, "--difficulty")
+	if tier == "" and scenario == "rite":
+		tier = "prepared"
+	if tier != "":
+		mission.difficulty = ResponseProfile.tier_named(tier)
 	mission.start(PackedStringArray(), int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -47,6 +56,8 @@ func _run() -> void:
 			await _fire("--shots" in args)
 		"bell":
 			await _bell("--kill-keeper" in args, "--shots" in args)
+		"rite":
+			await _rite("--interrupt" in args, "--shots" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -135,6 +146,37 @@ func _bell(kill_keeper: bool, shots: bool) -> void:
 			bf.camera.position = (Iso.ground_to_screen(TownLayout.BELL_TOWER.get_center()) + Vector2(0, -20)).round()
 			await _frames(2)
 			await bf.save_capture("behaviour_bell.png")
+
+
+func _rite(interrupt: bool, shots: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var rules: Rules = mission._rules
+	crowd.add_alarm(AlarmManager.CITY_ALARM)
+	var t := 0.0
+	var struck := false
+	var shot := false
+	while t < 90.0:
+		await _frames(5 * 60)
+		t += 5.0
+		var r := crowd.rite
+		if interrupt and not struck and r.state == BanishingRite.State.CHANTING and r.progress >= 10.0:
+			struck = true
+			for e in r.circle.slice(0, 3):
+				crowd._field.kill(e[0], &"test")
+			r.step(0.0)
+			print("BEHAVIOUR rite t=%d three of the clergy killed" % roundi(t))
+		print("BEHAVIOUR rite t=%d state=%s ring=%d called=%d progress=%.1f clergy=%d cathedral=%d%% time_left=%.1f stage=%s" % [
+			roundi(t), BanishingRite.State.keys()[r.state], r.in_ring(), r.circle.size(), r.progress, r.living_clergy(),
+			roundi(100.0 * r.cathedral.hp / r.cathedral.max_hp) if is_instance_valid(r.cathedral) else 0, rules.time_left,
+			crowd.alarms.stage_name()])
+		if shots and not shot and r.state == BanishingRite.State.CHANTING and r.progress >= 5.0:
+			shot = true
+			var bf: Battlefield = mission._bf
+			bf.camera.zoom = Vector2.ONE * 1.0
+			bf.camera.position = (Iso.ground_to_screen(r.centre) + Vector2(0, -30)).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_rite.png")
 
 
 func _fire(shots: bool) -> void:

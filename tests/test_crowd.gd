@@ -137,11 +137,14 @@ static func run(t) -> void:
 	crowd.shelters.step(1.0)
 	t.check(households > 0 and crowd._households.is_empty(), "regrouped households wait, then leave together (%d)" % households)
 	var still_calm := 0
+	var on_duty := 0
 	for p in crowd.citizens:
-		if is_instance_valid(p) and p.is_alive() and p.mind != Person.Mind.FLEE:
+		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.DUTY:
+			on_duty += 1  # the bellkeeper keeps to the tower until it has rung (v0.05)
+		elif is_instance_valid(p) and p.is_alive() and p.mind != Person.Mind.FLEE:
 			still_calm += 1
-	t.check(still_calm == 0 and crowd.alarms.stage >= AlarmManager.Stage.EVACUATION,
-		"at 90%% alarm with no bell the town evacuates: nobody stays (%d did)" % still_calm)
+	t.check(still_calm == 0 and on_duty <= 1 and crowd.alarms.stage >= AlarmManager.Stage.EVACUATION,
+		"at 90%% alarm with no bell the town evacuates: nobody stays (%d did, %d on duty)" % [still_calm, on_duty])
 
 	# A gate's waiting crowd: everyone waiting gets a spot of their own in front of the doorway, spread out
 	# rather than stacked, and one person at a time is let through.

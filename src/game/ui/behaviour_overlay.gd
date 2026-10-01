@@ -119,6 +119,10 @@ func _draw_panel(ci: Control) -> void:
 	lines.append(["%s: %s" % [crowd.profile.tier_name(), ", ".join(crowd.profile.lines())], UiTheme.COL_GOLD])
 	lines.append(["Stage: %s   alarm %d   bell %s" % [a.stage_name(), roundi(crowd.alarm),
 		"rung" if a.bell_rung else "silent"], Hud.STAGE_COLS[a.stage]])
+	if crowd.rite != null and crowd.profile.rite:
+		var r := crowd.rite
+		lines.append(["Rite: %s   %d/%d in ring   %.0f/%.0f s   clergy %d" % [BanishingRite.State.keys()[r.state].capitalize(),
+			r.in_ring(), BanishingRite.NEED, r.progress, r.duration, r.living_clergy()], UiTheme.COL_GOLD])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

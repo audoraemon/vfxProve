@@ -1,16 +1,17 @@
 class_name PrepareScreen
 extends Node
-## Prepare (spec §1, §5): the briefing and the card under the mouse on the left, the eleven power cards in a
-## grid on the right, and MANIFEST in the grid's twelfth cell once four are picked.
+## Prepare (spec §1, §5): the briefing and the card under the mouse on the left, the thirteen power cards in a
+## grid on the right, and MANIFEST in the grid's fourteenth cell once four are picked.
 ##
 ## One deviation from the spec's layout, forced by 640x360: the cards carry the 42-pixel HUD icons, and the
-## 84-pixel card art is shown large in the left panel for the card under the mouse. Eleven cards with the big
-## art and a readable name do not fit on this screen.
+## 84-pixel card art is shown large in the left panel for the card under the mouse, with the power's shape. Thirteen
+## cards with the big art and a readable name do not fit on this screen; since v0.05's two quiet powers the cards are
+## five rows of 50 px (the shape line moved to the left panel).
 
 ## "manifest" (four are picked and the player pressed MANIFEST or Enter) or "back" (Esc).
 signal action(name: String)
 
-const CARD := Vector2(140.0, 64.0)
+const CARD := Vector2(140.0, 50.0)
 const GAP := 6.0
 const GRID_AT := Vector2(196.0, 40.0)
 const COLUMNS := 3
@@ -65,7 +66,7 @@ func setup(preselect: PackedStringArray, best_score: int, best_rank: String,
 	return self
 
 
-## Where cell `i` sits: 0-10 are the powers in PowerBook order, 11 is MANIFEST.
+## Where cell `i` sits: 0-12 are the powers in PowerBook order, 13 is MANIFEST.
 static func cell_rect(i: int) -> Rect2:
 	var col := i % COLUMNS
 	var row := i / COLUMNS
@@ -245,6 +246,8 @@ func _draw_panel() -> void:
 	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0), String(p.name), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0 + UiTheme.LINE_SMALL),
 		"%d DP  %d s  %s" % [int(p.dp), int(p.cooldown), String(p.aim)], UiTheme.SIZE_SMALL)
+	UiTheme.text(_ui, Vector2(tx, clip_rect.end.y + 12.0 + UiTheme.LINE_SMALL * 2.0), String(p.shape), UiTheme.SIZE_SMALL,
+		UiTheme.COL_DIM)
 
 
 func _draw_card(i: int) -> void:
@@ -259,14 +262,17 @@ func _draw_card(i: int) -> void:
 	# Gold for a picked card (spec §5), so the four read at a glance across the grid.
 	UiTheme.frame(_ui, r, slot > 0)
 	var tx := r.position.x + 52.0
-	var ty := r.position.y + 14.0
-	for line in UiTheme.wrap(String(p.name), CARD.x - 56.0, UiTheme.SIZE_SMALL):
-		UiTheme.text(_ui, Vector2(tx, ty), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if slot > 0 else UiTheme.COL_TEXT)
+	var ty := r.position.y + 13.0
+	var lines := UiTheme.wrap(String(p.name), CARD.x - 56.0, UiTheme.SIZE_SMALL)
+	for k in mini(lines.size(), 2):
+		UiTheme.text(_ui, Vector2(tx, ty), lines[k], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if slot > 0 else UiTheme.COL_TEXT)
 		ty += UiTheme.LINE_SMALL
-	UiTheme.text(_ui, Vector2(tx, r.position.y + 42.0), "%d DP  %d s" % [int(p.dp), int(p.cooldown)], UiTheme.SIZE_SMALL)
-	# The shape's first clause is short enough for the card; the whole of it is in the left panel.
-	var short := String(p.shape).split(",")[0]
-	UiTheme.text(_ui, Vector2(r.position.x + 4.0, r.end.y - 4.0), short, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var cost := "%d DP  %d s" % [int(p.dp), int(p.cooldown)]
+	UiTheme.text(_ui, Vector2(tx, r.end.y - 5.0), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	if bool(p.get("quiet", false)):
+		# The quiet powers' mark: the town does not see them cast.
+		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - 5.0), "quiet",
+			UiTheme.SIZE_SMALL, Color("9ab48a"))
 	if slot > 0:
 		# On the icon's corner, gold on dark like the HUD's hotkeys. Dark digits on a gold square picked up every
 		# label's one-pixel shadow and read as 8, and a badge in the card's top-right corner covered long names.
@@ -285,6 +291,6 @@ func _draw_manifest() -> void:
 	UiTheme.frame(_ui, r, full and _hover == "manifest")
 	var label := "MANIFEST"
 	var col := UiTheme.COL_GOLD if full else UiTheme.COL_DIM
-	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_BIG) * 0.5), r.position.y + 30.0), label, UiTheme.SIZE_BIG, col)
+	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_BIG) * 0.5), r.position.y + 24.0), label, UiTheme.SIZE_BIG, col)
 	var count := "loadout %d / %d" % [draft.picks.size(), Draft.SLOTS]
-	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(count, UiTheme.SIZE_SMALL) * 0.5), r.position.y + 46.0), count, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(count, UiTheme.SIZE_SMALL) * 0.5), r.position.y + 40.0), count, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)

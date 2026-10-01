@@ -36,6 +36,12 @@ const FARM_FAMILY := 10000
 const PANIC_CAST := 7.0
 ## Alarm from events counts this share of its worth before the bell has rung (_hear_alarm()).
 const UNWARNED_ALARM := 0.5
+## The quiet powers (v0.05). Silent Doom's deaths go unseen unless someone stands within DOOM_WITNESS of one: then
+## those near it panic, and the death counts like any other. Blight adds BLIGHT_ALARM, and jams a gate for GATE_JAM
+## seconds.
+const DOOM_WITNESS := 2.0
+const BLIGHT_ALARM := 1.0
+const GATE_JAM := 30.0
 ## A fallen building: its danger's radius past the footprint's reach, and how far it is seen and heard.
 const COLLAPSE_RADIUS := 1.0
 const COLLAPSE_SIGHT := 4.0
@@ -112,6 +118,10 @@ var _drawer: Node2D
 var _ground_drawer: Node2D
 ## Households waiting to leave together: family -> clock the evacuation found them.
 var _households := {}
+## Silent Doom's dead, judged for witnesses once all of a cast's victims have fallen (_settle_doom()).
+var _doomed: Array[Person] = []
+## Blighted gates -> the clock they free themselves at.
+var _jams := {}
 var spawned_soldiers := 0
 var alarm := 0.0
 var escaped_count := 0
@@ -192,6 +202,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_parent = parent
 	_rng.seed = seed_value
 	env.structure_destroyed.connect(_on_structure_destroyed)
+	env.structure_blighted.connect(_on_blighted)
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	field.enemy_killed.connect(_on_killed)
@@ -477,6 +488,8 @@ func advance(delta: float) -> void:
 			_drawer.queue_redraw()
 			if is_instance_valid(_ground_drawer):
 				_ground_drawer.queue_redraw()
+	_settle_doom()
+	_free_jams()
 	_tend_households()
 	_return_investigators()
 	_gates()
@@ -601,7 +614,8 @@ func _gates() -> void:
 		# passer must be gone" condition to also satisfy, only the interval -- and that alone still limits the
 		# gate to one release per GATE_INTERVAL.
 		var first := 0
-		if _clock >= float(_gate_next.get(gate, -1.0)):
+		# A blighted gate is jammed (v0.05): its crowd waits, nobody passes.
+		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted:
 			_gate_next[gate] = _clock + (POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL)
 			crowd_here[0].release_from_queue()
 			crowd_here[0].passing_gate = gate
@@ -710,6 +724,8 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
+	if PowerBook.is_quiet(key):
+		return  # nothing for the town to see (v0.05): Silent Doom and Blight report their own effects
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key)
 	var points: Array[Vector2] = [ground]
@@ -1033,6 +1049,8 @@ func clear() -> void:
 	if shelters != null:
 		shelters.clear()
 	_households.clear()
+	_doomed.clear()
+	_jams.clear()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -1077,7 +1095,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				p.replan()
 
 
-func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
+func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	var p := e as Person
 	if p == null:
 		return
@@ -1085,9 +1103,56 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 		killed_soldiers += 1
 	else:
 		killed_citizens += 1
+	if kind == &"doom":
+		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
+		return
 	if alarms.incident(p.ground_pos):
 		_investigate(p.ground_pos)
 	_hear_alarm(ALARM_KILL)
+
+
+## Silent Doom's dead (v0.05), judged after all of a cast's victims have fallen (so they never witness each other):
+## nobody living within DOOM_WITNESS, and the town never knows; otherwise those near panic at a small danger and the
+## death raises the alarm like any other.
+func _settle_doom() -> void:
+	if _doomed.is_empty():
+		return
+	var dead := _doomed
+	_doomed = []
+	for v in dead:
+		if not is_instance_valid(v):
+			continue
+		var at := v.ground_pos
+		var seen := false
+		for p in citizens + soldiers:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= DOOM_WITNESS:
+				seen = true
+				break
+		if not seen:
+			continue
+		threats.register(at, 0.6, 0.3, 3.0, DOOM_WITNESS, DOOM_WITNESS + 1.0, &"doom")
+		var points: Array[Vector2] = [at]
+		_react(points, 0.6, DOOM_WITNESS + 1.0, at, &"doom")
+		if alarms.incident(at):
+			_investigate(at)
+		_hear_alarm(ALARM_KILL)
+
+
+## Blight (v0.05): one alarm, and a gate jams for GATE_JAM seconds.
+func _on_blighted(s: Structure) -> void:
+	add_alarm(BLIGHT_ALARM)
+	if s.kind == Structure.Kind.GATE:
+		_jams[s] = _clock + GATE_JAM
+
+
+func _free_jams() -> void:
+	if _jams.is_empty():
+		return
+	for g in _jams.keys():
+		if _clock >= float(_jams[g]):
+			_jams.erase(g)
+			if is_instance_valid(g):
+				_env.unblight(g)
 
 
 ## The Citadel reports every hit that takes health; the first one is the alarm bell.

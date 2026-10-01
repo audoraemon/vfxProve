@@ -164,8 +164,9 @@ var _unseen := false
 ## comes into view, and anything that happens to it (a hit, a fire, a falling banner) wakes it at once.
 var asleep := false
 ## Its function ruined by Blight (v0.05): a well that gives no water, a bell that cannot ring, a jammed gate, a
-## sunk dock, a cathedral that holds no rite. It still stands.
+## sunk dock, a cathedral that holds no rite. It still stands, rotted grey-green (set_blighted()).
 var blighted := false
+const BLIGHT_TINT := Color(0.66, 0.78, 0.6)
 ## Asleep while in view (_can_idle()): nothing on it moves, so only its light can change what it draws, and
 ## EnvironmentField checks that LIGHT_HZ times a second (idle_check()) instead of the structure processing every
 ## frame. A town centre shows ~250 buildings; per-frame processing of them all cost ~3 ms.
@@ -355,6 +356,14 @@ func destroy(source: Vector2, damage_kind: StringName) -> void:
 		_glow.queue_free()
 	_fall_apart(source, damage_kind)
 	broken.emit(self)
+
+
+## Blighted or clean again (a jammed gate frees itself): the flag the town's responses read, and the rot's tint.
+func set_blighted(on: bool) -> void:
+	blighted = on
+	self_modulate = BLIGHT_TINT if on else Color.WHITE
+	wake()
+	_dirty = true
 
 
 ## Engineers at work (v0.05): health back by `amount`, up to full. The scorch and frost fade with the damage, and the

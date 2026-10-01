@@ -260,3 +260,36 @@ The overlay gains:
   - at Organized, M5 109.6–110.0 fps.
   - Primitives in view rose from 224k to 237k with the decor reshuffled by the move. Restoring the old exclusion gave 220k at the same fps.
 - **Tests:** 906 checks.
+
+### M6
+- **Two quiet powers** in PowerBook, flagged `quiet`, cheapest first. The draft now has 13 powers.
+  - **Silent Doom** (`src/fx/quiet/silent_doom.gd`, class `SilentDoom`): 8 DP, 15 s.
+  - **Blight** (`src/fx/quiet/blight.gd`, class `BlightFx`): 12 DP, 25 s.
+  - `Crowd.on_cast()` skips quiet powers: no danger is registered and nobody reacts to the cast itself.
+- **Silent Doom:**
+  - A dark wisp curls down onto up to 3 people within 0.8 of the aim, nearest first, and they die with the damage kind `doom`. It plays a faint shimmer at −10 dB.
+  - `Crowd._on_killed` counts the dead but holds them in `_doomed`. `_settle_doom()` judges them on the next frame, once all of a cast's victims have fallen, so they never witness each other.
+  - If nobody living stands within 2.0 (`Crowd.DOOM_WITNESS`), the town never knows: no threat, no incident, no alarm.
+  - If someone does, a small danger is registered at the body and those near it panic. The death then counts as an incident and raises the kill alarm, like any other.
+- **Blight:**
+  - The nearest standing, unblighted structure it can ruin, within 1.0, rots: a well or fountain, the Bell Tower, a gate or the postern, the dock, or the cathedral.
+  - `EnvironmentField.blight()` sets `Structure.set_blighted()` (a grey-green self-modulate tint) and emits `structure_blighted`.
+  - The crowd adds 1 alarm (`Crowd.BLIGHT_ALARM`). A gate jams for 30 s (`GATE_JAM`): its crowd still forms, but nobody is let through until `EnvironmentField.unblight()`.
+  - Fire brigades skip blighted water points. The bell is silenced ("the bell is cracked"). The ferry ends.
+  - The rite cannot begin: `BanishingRite.begin()` on a blighted or fallen cathedral ends it and announces the end.
+  - With nothing in reach, Blight fizzles; the aim preview shows a red ring.
+  - The player gets a banner ("BLIGHT - THE BELL IS CRACKED", "… THE MAIN GATE IS JAMMED", "… THE WELL IS POISONED", and so on); the town gets none.
+- **Aim previews:** Silent Doom rings the people it would take; Blight outlines the structure it would ruin.
+- **Icons:** painted procedurally by `tools/dev/make_quiet_icons.py` (a hooded death with cold green eyes; a cracked bronze bell eaten by green rot), at 84 and 42 px, into `assets/pixellab/icons/`.
+- **Preview clips:** recorded from the sandbox (`--capture-clip --only=doom|blight`). The sandbox gained both powers. Capture plans can now set a well down for Blight (`well`), aim at the nearest trooper (`at_enemy`), and snap the camera for short effects (`snap`, with `reset_smoothing()`).
+- **The Prepare grid:** five rows of 140×50 cards (it was four rows of 64). The cards keep the icon, the name in up to two lines, cost and cooldown, and a green "quiet" tag. The shape line moved to the left panel.
+- **Quiet scenario** (Organized; loadout doom, blight, heaven, nova; seed 7):
+  - Silent Doom on the bellkeeper at the busy tower foot: two died, and it was witnessed (+0.5 alarm).
+  - Blight on the Bell Tower (+1) and on the Main Gate (+1): the gate jammed until about 34 s after.
+  - A Heaven Splitter at 10 s: alarm 48 and City Emergency, the bell SILENCED, and no evacuation in 60 s.
+- **Checksums:**
+  - crowd_check unchanged at −346732806;
+  - quiet scenario −931095950.
+- **Mission test:** unchanged (Organized 173 / 1, Prepared 171 / 1).
+- **Mission bench at Prepared, alternating:** M5 107.9 / 108.4 fps, M6 109.3 / 108.4 fps.
+- **Tests:** 921 checks.

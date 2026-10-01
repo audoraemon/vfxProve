@@ -19,6 +19,9 @@ extends SceneTree
 ##          bridge brought down: the Citadel's health, the bridge and each team's job every 5 s over 60 s
 ##   boats  (Prepared) an evacuation called after 20 s of calm: evacuees by chosen way out (south road, east road,
 ##          dock), the boats' state, load and crowd, and escapes, over 40 s; --cut-bridge brings the bridge down at 5 s
+##   quiet  (loadout Silent Doom, Blight, Heaven Splitter, Nuclear Nova) after 20 s of calm: Silent Doom on the
+##          bellkeeper, Blight on the Bell Tower and on the Main Gate, then at 30 s a Heaven Splitter in the west: the
+##          alarm, the stage, the bell and the dead every 5 s over 60 s; --shots photographs the rot and the doom
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -46,7 +49,8 @@ func _run() -> void:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
-	mission.start(PackedStringArray(), int(seed_arg) if seed_arg != "" else SEED)
+	var powers := PackedStringArray(["doom", "blight", "heaven", "nova"]) if scenario == "quiet" else PackedStringArray()
+	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
@@ -66,6 +70,8 @@ func _run() -> void:
 			await _engineers("--shots" in args)
 		"boats":
 			await _boats("--cut-bridge" in args, "--shots" in args)
+		"quiet":
+			await _quiet("--shots" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -262,6 +268,60 @@ func _boats(cut_bridge: bool, shots: bool) -> void:
 			bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
 			await _frames(2)
 			await bf.save_capture("behaviour_boats.png" if t == 15.0 else "behaviour_postern.png")
+
+
+func _quiet(shots: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var rules: Rules = mission._rules
+	var gate: Structure = mission._town.gates[0]
+	var keeper: Person = crowd.bell.keeper
+	var casts := [[0.0, 0, keeper.ground_pos if keeper != null else Vector2.ZERO, "doom on the bellkeeper"],
+		[2.0, 1, crowd.bell.tower.center(), "blight on the Bell Tower"],
+		[4.0, 1, gate.center() - Vector2(0, 0.5), "blight on the Main Gate"],
+		[10.0, 2, Vector2(-10.0, 3.0), "Heaven Splitter in the west"]]
+	var t := 0.0
+	var shot := {}
+	var bf: Battlefield = mission._bf
+	if shots:
+		# The aim previews: Silent Doom rings who it would take, Blight outlines what it would ruin.
+		for slot in [0, 1]:
+			var aim_at: Vector2 = keeper.ground_pos if slot == 0 else crowd.bell.tower.center() + Vector2(0.6, 0.6)
+			mission._aim.pick(slot)
+			bf.camera.zoom = Vector2.ONE * 1.5
+			bf.camera.position = (Iso.ground_to_screen(aim_at) + Vector2(0, -16)).round()
+			await _frames(2)
+			# The mission aims wherever the mouse is, every frame: put the mouse on the target.
+			bf.get_viewport().warp_mouse(bf.get_viewport().get_canvas_transform() * Iso.ground_to_screen(aim_at))
+			await _frames(3)
+			await bf.save_capture("behaviour_aim_%s.png" % ["doom", "blight"][slot])
+		mission._aim.unfocus()
+	while t <= 60.0:
+		while not casts.is_empty() and t >= float(casts[0][0]):
+			var c: Array = casts.pop_front()
+			rules.dp = Rules.DP_MAX
+			rules._cooldowns[int(c[1])] = 0.0
+			rules._playing = null
+			rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0)})
+			print("BEHAVIOUR quiet t=%.1f %s" % [t, c[3]])
+			if shots and int(c[1]) == 0:
+				bf.camera.zoom = Vector2.ONE * 1.5
+				bf.camera.position = (Iso.ground_to_screen(c[2]) + Vector2(0, -16)).round()
+				await _frames(roundi(SilentDoom.T_STRIKE * 60.0) - 6)
+				await bf.save_capture("behaviour_doom.png")
+		print("BEHAVIOUR quiet t=%.1f alarm=%.1f stage=%s bell=%s keeper=%s killed=%d threats=%d gate=%s" % [t,
+			crowd.alarm, crowd.alarms.stage_name(), BellNetwork.State.keys()[crowd.bell.state],
+			"alive" if is_instance_valid(keeper) and keeper.is_alive() else "dead", crowd.killed_citizens,
+			crowd.threats.active_count(), "jammed" if gate.blighted else "open"])
+		if shots and t >= 5.0 and not shot.has("rot"):
+			shot["rot"] = true
+			bf.camera.zoom = Vector2.ONE * 1.0
+			bf.camera.position = (Iso.ground_to_screen(crowd.bell.tower.center()) + Vector2(0, -30)).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_blight.png")
+		var step := 2.0 if t < 4.0 else 5.0
+		await _frames(roundi(step * 60.0))
+		t += step
 
 
 func _fire(shots: bool) -> void:

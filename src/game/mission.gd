@@ -95,6 +95,7 @@ func _ready() -> void:
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
+	_bf.ctx.env.structure_blighted.connect(_on_structure_blighted)
 	var args := OS.get_cmdline_user_args()
 	var scripted := "--mission-test" in args or "--bench" in args
 	_scripted = scripted
@@ -245,6 +246,26 @@ func _loadout(args: PackedStringArray) -> PackedStringArray:
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if is_instance_valid(_town) and is_instance_valid(_rules) and s == _town.bridge:
 		_rules.banner.emit("THE BRIDGE HAS FALLEN")
+
+
+## Blight landed (v0.05): what it ruined, for the player -- the town itself is not told.
+func _on_structure_blighted(s: Structure) -> void:
+	if is_instance_valid(_rules):
+		_rules.banner.emit(blight_banner(s))
+
+
+static func blight_banner(s: Structure) -> String:
+	if s.art_tag == &"bell_tower":
+		return "BLIGHT - THE BELL IS CRACKED"
+	if s.role == &"temple":
+		return "BLIGHT - THE CATHEDRAL IS DEFILED"
+	if s.role == &"dock":
+		return "BLIGHT - THE DOCK ROTS"
+	if s.kind == Structure.Kind.GATE:
+		var which := "THE POSTERN" if s.art_tag == &"postern" else (
+			"THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")
+		return "BLIGHT - %s IS JAMMED" % which
+	return "BLIGHT - THE %s IS POISONED" % ("WELL" if s.art_tag == &"well" else "FOUNTAIN")
 
 
 func _on_over(won: bool, reason: String) -> void:

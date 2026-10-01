@@ -40,6 +40,7 @@ const CHAIN_DP := 6.0
 ## it. Two kinds are shared (Dragonfire Parade and the Barrage both burn with &"cinder"; the Barrage and
 ## Judgement both drop &"stone"), which the tie rule in _credit() settles.
 const POWER_KINDS := {
+	"doom": [&"doom"],
 	"heaven": [&"lightning"],
 	"tornado": [&"wind"],
 	"dragon": [&"fire", &"cinder"],

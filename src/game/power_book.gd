@@ -1,12 +1,17 @@
 class_name PowerBook
 extends RefCounted
-## The 11 draftable powers: Divine Power cost, cooldown (seconds), how they are aimed, their effect script and icons.
+## The 13 draftable powers: Divine Power cost, cooldown (seconds), how they are aimed, their effect script and icons.
 ## Costs and cooldowns are the spec's starting values (§4.2); aim "drag" = press at the start point, drag the
-## direction, release.
+## direction, release. The two quiet powers (v0.05, "quiet") register no danger for the town and raise no alarm
+## when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight adds one alarm.
 
 const POWERS := [
+	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
+		"dp": 8, "cooldown": 15.0, "aim": "click", "shape": "up to 3 struck down, unseen", "quiet": true},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 10, "cooldown": 20.0, "aim": "drag", "shape": "line + 8 fissures"},
+	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
+		"dp": 12, "cooldown": 25.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"dp": 15, "cooldown": 30.0, "aim": "click", "shape": "roaming vortex, 10 s"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
@@ -57,6 +62,11 @@ static func get_power(key: String) -> Dictionary:
 		if p.key == key:
 			return p
 	return {}
+
+
+## A quiet power (v0.05): its cast is no danger the town can see.
+static func is_quiet(key: String) -> bool:
+	return bool(get_power(key).get("quiet", false))
 
 
 static func keys() -> PackedStringArray:

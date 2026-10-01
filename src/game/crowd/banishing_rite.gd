@@ -74,6 +74,11 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid) -> BanishingRite
 func begin() -> void:
 	if state != State.IDLE:
 		return
+	if not is_instance_valid(cathedral) or cathedral.destroyed or cathedral.blighted:
+		state = State.GATHERING  # so the end is announced: the town learns its rite cannot be held
+		_end("the cathedral has fallen" if not is_instance_valid(cathedral) or cathedral.destroyed
+			else "the cathedral is defiled")
+		return
 	_gather()
 
 

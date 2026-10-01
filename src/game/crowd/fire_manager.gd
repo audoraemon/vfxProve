@@ -144,10 +144,11 @@ func douse(s: Structure) -> void:
 		_put_out(s, true)
 
 
+## The fountains and wells the brigade draws from; a blighted one gives none (v0.05).
 func water_points() -> Array[Structure]:
 	var out: Array[Structure] = []
 	for s in _env.structures():
-		if s.kind == Structure.Kind.FOUNTAIN and not s.destroyed:
+		if s.kind == Structure.Kind.FOUNTAIN and not s.destroyed and not s.blighted:
 			out.append(s)
 	return out
 

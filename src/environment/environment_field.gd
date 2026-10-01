@@ -8,6 +8,9 @@ signal structure_destroyed(s: Structure, kind: StringName)
 signal structure_hit(s: Structure, amount: float, kind: StringName)
 ## A fallen structure was rebuilt (Structure.restore()).
 signal structure_restored(s: Structure)
+## A structure was blighted (blight(); v0.05's Blight), or came clean again (unblight()).
+signal structure_blighted(s: Structure)
+signal structure_unblighted(s: Structure)
 
 ## Spatial index cell (ground units) for near() and the other area queries; blocked() uses the finer FINE_CELL
 ## index. Margins up to MAX_MARGIN are covered.
@@ -138,6 +141,21 @@ func remove(s: Structure) -> void:
 		else:
 			s.free()
 	_reindex()
+
+
+## Blight `s` (v0.05): its use is gone until unblight().
+func blight(s: Structure) -> void:
+	if not is_instance_valid(s) or s.blighted or s.destroyed:
+		return
+	s.set_blighted(true)
+	structure_blighted.emit(s)
+
+
+func unblight(s: Structure) -> void:
+	if not is_instance_valid(s) or not s.blighted:
+		return
+	s.set_blighted(false)
+	structure_unblighted.emit(s)
 
 
 ## Rebuild the spatial index (a structure's footprint or walkability changed).

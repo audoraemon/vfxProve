@@ -23,6 +23,8 @@ const EFFECTS := [
 	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "follow": true, "focus_up": -120.0, "zoom": 0.9},
 	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -130.0, "zoom": 0.7},
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -10.0, "focus_px": Vector2(150, -20), "zoom": 0.8},
+	{"set": 1, "key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd", "focus_up": -16.0, "zoom": 2.2},
+	{"set": 1, "key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd", "focus_up": -20.0, "zoom": 2.2},
 ]
 
 ## Capture moments per effect (seconds from cast).
@@ -38,6 +40,9 @@ const CAPTURES := {
 	"judgement": {"target": Vector2(0, 0), "times": [2.6, 3.64, 4.14, 4.64, 5.14, 5.64, 6.14, 6.64, 7.14, 7.94, 8.4, 11.0]},
 	"dragon": {"target": Vector2(-2, -1), "times": [0.9, 1.5, 2.8, 4.2, 5.0, 5.8, 6.5, 7.4, 10.0]},
 	"glacial": {"target": Vector2(0, 0), "times": [1.9, 2.6, 3.6, 5.5, 7.35, 7.55, 7.8, 8.1, 9.2]},
+	# The quiet powers (v0.05): Silent Doom on the trooper nearest the middle; Blight on a well set down there.
+	"doom": {"target": Vector2(0, 0), "times": [0.2, 0.45, 0.8, 1.2], "at_enemy": true, "snap": true},
+	"blight": {"target": Vector2(0, 0), "times": [0.3, 0.8, 1.2, 1.5], "well": true, "snap": true},
 }
 
 const ENEMY_COUNT := 40
@@ -306,7 +311,7 @@ func _capture_all(only: String) -> void:
 		var extra := {}
 		if plan.has("dir"):
 			extra["dir"] = plan.dir
-		var fx := _cast_entry(entry, plan.target, extra)
+		var fx := _cast_entry(entry, _stage(plan), extra)
 		for time in plan.times:
 			while is_instance_valid(fx) and fx.t < time:
 				await get_tree().process_frame
@@ -318,6 +323,24 @@ func _capture_all(only: String) -> void:
 
 ## One preview sheet per power for the draft: PowerBook.CLIP_FRAMES frames spread evenly over the effect's
 ## whole run, each the middle of the screen at half size. bash tools/capture.sh --capture-clip [--only=nova]
+## Set the scene a capture plan asks for and return where to cast: a well for Blight to ruin ("well"), or the trooper
+## nearest the target for Silent Doom ("at_enemy").
+func _stage(plan: Dictionary) -> Vector2:
+	var target: Vector2 = plan.target
+	if plan.get("well", false):
+		ctx.env.add_structure(Rect2(target - Vector2(0.25, 0.25), Vector2(0.5, 0.5)), 24.0, Structure.Kind.FOUNTAIN,
+			&"decor", &"well")
+	if plan.get("at_enemy", false):
+		var best := INF
+		var at := target
+		for e in _field.alive():
+			if e.ground_pos.distance_to(target) < best:
+				best = e.ground_pos.distance_to(target)
+				at = e.ground_pos
+		target = at
+	return target
+
+
 func _capture_clips(only: String) -> void:
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
@@ -336,7 +359,15 @@ func _capture_clips(only: String) -> void:
 		var extra := {}
 		if plan.has("dir"):
 			extra["dir"] = plan.dir
-		var fx := _cast_entry(entry, plan.target, extra)
+		var cast_at := _stage(plan)
+		var fx := _cast_entry(entry, cast_at, extra)
+		if plan.get("snap", false):
+			# A short effect: be where the camera is going at once, not after its ease-in.
+			if _camera_tween:
+				_camera_tween.kill()
+			_camera.position = Iso.ground_to_screen(cast_at) + Vector2(0, float(entry.get("focus_up", -40.0)))
+			_camera.zoom = Vector2.ONE * float(entry.get("zoom", SETS[set_index].zoom))
+			_camera.reset_smoothing()
 		var run := fx.duration
 		var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false, Image.FORMAT_RGBA8)
 		for i in PowerBook.CLIP_FRAMES:

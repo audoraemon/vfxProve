@@ -3,7 +3,7 @@ extends RefCounted
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 11, "11 powers")
+	t.check(PowerBook.POWERS.size() == 13, "13 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -28,5 +28,10 @@ static func run(t) -> void:
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 40 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(Array(PowerBook.keys()) == ["heaven", "tornado", "dragon", "tsunami", "gravity", "laser", "orbital",
-		"cinder", "judgement", "glacial", "nova"], "spec order, cheapest first (%s)" % [PowerBook.keys()])
+	t.check(Array(PowerBook.keys()) == ["doom", "heaven", "blight", "tornado", "dragon", "tsunami", "gravity", "laser",
+		"orbital", "cinder", "judgement", "glacial", "nova"], "spec order, cheapest first (%s)" % [PowerBook.keys()])
+	var quiet := []
+	for key in PowerBook.keys():
+		if PowerBook.is_quiet(key):
+			quiet.append(key)
+	t.check(quiet == ["doom", "blight"], "the quiet powers (v0.05): Silent Doom and Blight (%s)" % [quiet])

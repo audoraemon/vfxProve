@@ -32,17 +32,19 @@ static func run(t) -> void:
 		"a saved loadout is cleaned up on the way in (%s)" % [saved.picks])
 	t.check(Draft.new().preselect(PackedStringArray()).picks.is_empty(), "and an empty one gives an empty draft")
 
-	# The Prepare screen's grid: eleven cards and the MANIFEST cell, none overlapping, all on screen.
-	var screen := Rect2(0, 0, 640, 360)
+	# The Prepare screen's grid: thirteen cards and the MANIFEST cell, none overlapping, all on screen above the
+	# difficulty strip.
+	var screen := Rect2(0, 0, 640, PrepareScreen.STRIP.position.y)
 	var overlaps := 0
-	for i in 12:
+	var cells := PowerBook.POWERS.size() + 1
+	for i in cells:
 		var a := PrepareScreen.cell_rect(i)
 		if not screen.encloses(a):
 			overlaps += 100
-		for j in range(i + 1, 12):
+		for j in range(i + 1, cells):
 			if a.intersects(PrepareScreen.cell_rect(j)):
 				overlaps += 1
-	t.check(overlaps == 0, "the twelve cells fit the screen without touching (%d)" % overlaps)
+	t.check(cells == 14 and overlaps == 0, "the %d cells fit the screen without touching (%d)" % [cells, overlaps])
 
 	# Wrapping keeps every line inside its width.
 	var lines := UiTheme.wrap("Judgement of the Ancients", 60.0, UiTheme.SIZE_SMALL)

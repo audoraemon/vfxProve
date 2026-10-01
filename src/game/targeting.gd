@@ -14,12 +14,18 @@ const COL_EDGE := Color(1.0, 0.86, 0.35, 0.7)
 const COL_INNER := Color(1.0, 0.45, 0.2, 0.8)
 const COL_FAINT := Color(1.0, 0.86, 0.35, 0.25)
 const COL_BAD := Color(0.9, 0.2, 0.15, 0.7)
+## Blight's target outline.
+const COL_ROT := Color(0.62, 0.78, 0.4, 0.9)
 ## Which way a drag power points when the player barely moved the mouse.
 const DEFAULT_DIR := Vector2(1, 0)
 
 ## What each power covers, taken from the effect's own constants (the comment names them). Milestone 5 may
 ## repaint these; it must not invent numbers for them.
 const AREAS := {
+	# SilentDoom.RADIUS; the people it would take are ringed (_draw())
+	"doom": {"shape": "circle", "r": 0.8},
+	# Blight.REACH; the structure it would ruin is outlined (_draw())
+	"blight": {"shape": "circle", "r": 1.0},
 	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
 	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
@@ -192,6 +198,23 @@ func _draw() -> void:
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
 			_cone(_press, float(a.r), float(a.arc), edge)
+	match _rules.key(slot):
+		"doom":
+			# Who it would take.
+			for v in SilentDoom.victims_at(_crowd._field, _press):
+				_ring(v.ground_pos, 0.22, COL_INNER)
+		"blight":
+			# What it would ruin, or a red ring for nothing in reach.
+			var s := BlightFx.target(_crowd._env, _press)
+			if s != null:
+				var r := s.footprint.grow(0.08)
+				for pass_i in 2:
+					var g := SHADE_GAP if pass_i == 0 else 0.0
+					var q := r.grow(g)
+					draw_polyline(PackedVector2Array([q.position, Vector2(q.end.x, q.position.y), q.end,
+						Vector2(q.position.x, q.end.y), q.position]), SHADE if pass_i == 0 else COL_ROT, -1.0)
+			else:
+				_ring(_press, 0.3, COL_BAD)
 
 
 ## Every preview line is drawn twice: a dark stroke a hair outside, then the bright one. Hairlines are all

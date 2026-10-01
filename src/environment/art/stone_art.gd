@@ -54,7 +54,11 @@ static func draw(s: Structure) -> void:
 	_draw_slits(s)
 	if s.kind == Structure.Kind.GATE:
 		var gate_face := ArtKit.LEFT if s.footprint.size.x >= s.footprint.size.y else ArtKit.RIGHT
-		_draw_portcullis(s, gate_face, 0.32, 0.68, roundf(h * 0.85), face_c)
+		if s.art_tag == &"postern":
+			# A narrow door, not a gateway.
+			_draw_portcullis(s, gate_face, 0.3, 0.7, roundf(h * 0.55), face_c)
+		else:
+			_draw_portcullis(s, gate_face, 0.32, 0.68, roundf(h * 0.85), face_c)
 		_draw_gate_stones(s, gate_face)
 	elif s.art_tag == &"gate":
 		_draw_arched_door(s, ArtKit.LEFT, 0.5, 12.0, roundf(h * 0.5))

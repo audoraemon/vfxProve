@@ -4,10 +4,14 @@ extends RefCounted
 ## distance field per exit over the walk grid), the crowd already waiting at its gate, and the danger it knows of on
 ## the way and at the gate -- and re-checks now and then, switching only when another way is clearly better. The
 ## danger is also costed into the walk grid itself (grid weights), so every path, a soldier's too, bends round it.
+## A town with river boats (v0.05) has a third way out: the dock (add_boat_exit()), open while the ferry runs, its
+## crowd costed like a gate's.
 
 ## Score weights: ground units per person waiting at the gate, per unsafe route step (0.5 units), and for a gate
 ## whose mouth lies in danger.
 const CONGESTION := 0.5
+## Per person waiting at the dock: the boat carries RiverFerry.LOAD every LOAD_TIME + TRIP seconds, slower than a gate.
+const BOAT_CONGESTION := 0.7
 const HAZARD := 4.0
 const HAZARD_GATE := 20.0
 ## Route steps (walk cells) sampled for danger from where a person stands.
@@ -28,8 +32,12 @@ const FIELD_CELLS_PER_FRAME := 3000
 var exits: Array[Vector2] = []
 ## The gate each exit's route runs through (null for none).
 var gates: Array = []
+## The dock's index in exits (-1: no boats), and the ferry that serves it.
+var boat_exit := -1
+var ferry: RiverFerry
 var _crowd: Crowd
 var _grid: WalkGrid
+var _town: Town
 var _rng := RandomNumberGenerator.new()
 ## Per exit: the finished distance field (cells from the exit, -1 unreachable), and the one being built.
 var _fields: Array[PackedInt32Array] = []
@@ -53,16 +61,34 @@ func setup(crowd: Crowd, grid: WalkGrid, town: Town, seed_value: int) -> Evacuat
 	_origin = r.position
 	_w = r.size.x
 	_h = r.size.y
+	_town = town
 	for e: Vector2 in TownLayout.EXITS:
-		exits.append(e)
-		var best: Structure = null
-		for g: Structure in town.gates:
-			if best == null or g.center().distance_to(e) < best.center().distance_to(e):
-				best = g
-		gates.append(best)
-		_fields.append(PackedInt32Array())
+		_add_exit(e)
 	_rebuild_all()
 	return self
+
+
+func _add_exit(e: Vector2) -> void:
+	exits.append(e)
+	var best: Structure = null
+	for g: Structure in _town.gates:
+		if best == null or g.center().distance_to(e) < best.center().distance_to(e):
+			best = g
+	gates.append(best)
+	_fields.append(PackedInt32Array())
+
+
+## River boats (v0.05): the dock's boarding point `at` becomes a way out, through the gate nearest it, while `f` runs.
+func add_boat_exit(at: Vector2, f: RiverFerry) -> void:
+	ferry = f
+	boat_exit = exits.size()
+	_add_exit(at)
+	_rebuild_all()
+
+
+## Is `g` the dock's boarding point? Reaching it is not escaping: the boat has to sail first.
+func is_boat_exit(g: Vector2) -> bool:
+	return boat_exit >= 0 and g == exits[boat_exit]
 
 
 ## One frame: keep the danger costed into the grid, the distance fields current, and let a slice of the evacuees
@@ -108,13 +134,20 @@ func exit_index(g: Vector2) -> int:
 
 ## Exit `i`'s score for `p` (lower is better; INF when it cannot be reached).
 func score(p: Person, i: int) -> float:
+	if i == boat_exit and (ferry == null or not ferry.open()):
+		return INF
 	var d := _dist(i, p.ground_pos)
 	if d < 0:
 		return INF
 	var s := float(d) * WalkGrid.CELL
+	if i == boat_exit:
+		s += BOAT_CONGESTION * ferry.waiting()
 	var gate: Structure = gates[i]
-	if is_instance_valid(gate) and not gate.destroyed:
-		s += CONGESTION * _crowd.waiting_at(gate)
+	# A gate's crowd and danger only count for those still inside the walls: outside, the gate is behind them.
+	if is_instance_valid(gate) and not gate.destroyed and TownLayout.TOWN.has_point(p.ground_pos):
+		# A slower door (the postern) makes each person ahead a longer wait.
+		var slow := Crowd.POSTERN_INTERVAL / Crowd.GATE_INTERVAL if gate.art_tag == &"postern" else 1.0
+		s += CONGESTION * slow * _crowd.waiting_at(gate)
 		if _known_unsafe(p, gate.center() - Crowd.outward_of(gate) * Crowd.QUEUE_DEPTH0):
 			s += HAZARD_GATE
 	s += HAZARD * _route_danger(p, i)

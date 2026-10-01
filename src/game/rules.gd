@@ -54,7 +54,8 @@ const POWER_KINDS := {
 }
 ## The roles that count as a building for the tally, the chain and the score. Decor (trees, torch posts) does
 ## not, and the Citadel's nine parts are not nine buildings -- the Citadel is worth its own CITADEL_DP.
-const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barracks", &"market", &"farm", &"bridge"]
+const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barracks", &"market", &"farm", &"bridge",
+	&"dock"]
 ## How long a cast with no effect behind it (a test's stub, an effect that has already finished) can still be
 ## credited for what it started.
 const CAST_GRACE := 4.0

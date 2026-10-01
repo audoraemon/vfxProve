@@ -24,7 +24,7 @@ const MILITARY_SOLDIER_SHARE := 2.0 / 3.0
 
 ## The roles Infrastructure measures, by footprint (spec §4.3: houses, walls, towers, gates, the Bridge, the
 ## Temple). The Citadel is Leadership's business, and decor (trees, torch posts) is nobody's.
-const INFRA_ROLES := [&"house", &"wall", &"tower", &"gate", &"bridge", &"temple"]
+const INFRA_ROLES := [&"house", &"wall", &"tower", &"gate", &"bridge", &"temple", &"dock"]
 ## The roles Resources measures, counted per building: a stall and a field weigh the same.
 const RESOURCE_ROLES := [&"market", &"farm"]
 

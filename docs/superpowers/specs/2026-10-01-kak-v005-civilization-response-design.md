@@ -220,3 +220,43 @@ The overlay gains:
   - Prepared `citizens=169 escaped=1`.
 - **Mission bench at Prepared, alternating:** M3 106.9 / 105.8 fps, M4 105.5 / 107.8 fps.
 - **Tests:** 890 checks.
+
+### M5
+- **The dock moved to the north bank, below a new postern** (decided with the user).
+  - The v0.04 dock stood on the far (south) bank, past the river, so nobody could reach it without the bridge.
+  - On the north bank but outside the Main Gate, the boats' passengers still queued at that gate, so the boats only added capacity once the bridge fell.
+  - Now `TownLayout.DOCK` is a pier on the north bank below **the postern**: a small door in the south wall where the long west street meets it.
+- **The postern:** it is the wall piece standing on `POSTERN_AT`, built as a gate tagged `postern`. Building it in that piece's place keeps every other building's seed.
+  - It is open only in towns with boats; `Crowd.spawn()` bars it otherwise (`Town.bar_postern()`, `WalkGrid.refresh()`).
+  - It lets one person through every 3 s (`Crowd.POSTERN_INTERVAL`, about the boats' pace).
+  - It is the third entry in `Town.gates`, after the Main and Side Gates.
+- **The dock is a structure:** Kind.BRIDGE tagged `dock`, role `dock`, 80 hp, with its own pier art (`PropArt._dock`). It counts as a building and as infrastructure. The ship decor lies moored beside it (`SHIP_AT`), and the bank between the postern and the dock is kept clear of decor (`DOCK_WAIT`).
+- **RiverFerry** (`src/game/crowd/river_ferry.gd`) opens at the Evacuation stage, before the crowd is sent out, so the first to plan their route see the dock.
+  - Evacuees bound for the dock wait in a crowd that forms on the pier and the bank behind it, in arrival order. The one at its head steps aboard every 0.67 s.
+  - The ship sails when full, or 4 s after its first passenger if nobody else is waiting. (Sailing 4 s after the first, whatever, left it carrying 2 a trip while a crowd waited.)
+  - Those aboard escape when it sails (`Crowd.escape()`). It is back 12 s later.
+  - On the trip, the ship slips 3 units downriver as it fades out, and fades back in as it returns.
+- **Routing:** `EvacuationManager.add_boat_exit()` makes the dock a third exit, through the postern, while the ferry runs. Each person waiting at the dock costs 0.7, and each person in the postern's queue counts 1.5× a gate's, as it is slower. Reaching the boarding point is not escaping (`Person.has_escaped()`).
+- **Gate queues count only inside the walls.** A gate's crowd and danger no longer count against someone already outside: people who had passed the postern were weighing its queue again and turning back for the south road.
+- **A destroyed dock stops the boats until the engineers rebuild it** (the dock is a route job), because rebuilding implies the boats run again. A blighted dock ends them for good. Either way, those waiting go for the gates.
+- **Banners:** "BOATS TAKE PEOPLE FROM THE DOCK", "THE BOATS ARE STOPPED", and "THE DOCK / POSTERN IS REBUILT". The F4 panel shows the boats' state, load, crowd and trips, and the postern's queue.
+- **Fixed:** `Crowd._release_all()` assigned an untyped `[]` to a typed array. It showed when a gate (here the postern) fell before anyone had queued at it.
+- **Boats scenario** (Prepared, evacuation called at 20 s, seed 7; at 40 s):
+
+  | | Escaped | Boat trips | Carried by boat |
+  |---|---|---|---|
+  | Bridge standing | 34 | — | 6 by 30 s |
+  | Bridge cut at 5 s | 29 | 2 | 12 |
+
+  The Organized gates scenario has 29 escaped at 40 s; the Prepared one has 33.
+- **Checksums:**
+  - crowd_check −346732806 (it changed: the laborers' dock anchor moved, and so did decor);
+  - boats 452876283; boats with `--cut-bridge` −510933028.
+- **Mission test:**
+  - Organized `citizens=173 escaped=1`;
+  - Prepared `citizens=171 escaped=1`.
+- **Mission bench, alternating:**
+  - at Prepared, M4 110.9 / 110.9 fps and M5 107.7 / 109.3 fps;
+  - at Organized, M5 109.6–110.0 fps.
+  - Primitives in view rose from 224k to 237k with the decor reshuffled by the move. Restoring the old exclusion gave 220k at the same fps.
+- **Tests:** 906 checks.

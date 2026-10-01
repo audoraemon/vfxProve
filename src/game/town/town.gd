@@ -24,9 +24,14 @@ const EVENING := Color(1.03, 0.93, 0.8)
 ## The ground takes a deeper gold than the buildings: in the reference the low sun turns its dirt and cobbles
 ## orange while its stone stays grey and its slate blue (tools/dev/match_interior.py measures the whole).
 const GROUND_EVENING := Color(1.06, 0.92, 0.74)
+## The dock's health (v0.05): a wooden pier, weaker than the stone bridge's kind default.
+const DOCK_HP := 80.0
 
 var citadel: Citadel
 var bridge: Structure
+## The river boats' landing (v0.05), and the postern in the south wall that leads down to it (also in gates, last).
+var dock: Structure
+var postern: Structure
 var gates: Array[Structure] = []
 var fountain: Structure
 var smoke: ChimneySmoke
@@ -52,10 +57,19 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	for d in TownLayout.structures():
 		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
 		_built.append(s)
-		if s.kind == Structure.Kind.GATE:
+		if s.art_tag == &"postern":
+			postern = s
+		elif s.kind == Structure.Kind.GATE:
 			gates.append(s)
+		elif s.role == &"dock":
+			dock = s
+			# A wooden pier: easier to break than the stone bridge.
+			s.max_hp = DOCK_HP
+			s.hp = DOCK_HP
 		elif s.kind == Structure.Kind.BRIDGE:
 			bridge = s
+	if postern != null:
+		gates.append(postern)
 	# One Citadel node for the life of this town: setup() resets its state, so a rebuild reuses it instead of
 	# orphaning the old node — and anything connected to its signals stays connected.
 	if not is_instance_valid(citadel):
@@ -122,6 +136,15 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 
 ## Take this town out of the world: its buildings (the Citadel's parts included) leave the field, the floor is
 ## freed, and the town forgets them so build() can run again.
+
+## No river boats, no way down to them (v0.05): the postern is barred, a wall like any other until something breaks
+## it open. The caller re-stamps the walk grid (WalkGrid.refresh()).
+func bar_postern() -> void:
+	if not is_instance_valid(postern) or not postern.walkable:
+		return
+	postern.walkable = false
+	_env.reindex()
+
 func teardown() -> void:
 	if _env.structure_destroyed.is_connected(_on_structure_destroyed):
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)
@@ -131,6 +154,8 @@ func teardown() -> void:
 	_built.clear()
 	gates.clear()
 	bridge = null
+	dock = null
+	postern = null
 	fountain = null
 	if _env.lights != null:
 		_env.lights.tint = Color.WHITE

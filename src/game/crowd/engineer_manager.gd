@@ -114,6 +114,8 @@ func jobs() -> Array:
 			routes.append_array(_town.gates)
 		if is_instance_valid(_town.bridge):
 			routes.append(_town.bridge)
+		if is_instance_valid(_town.dock):
+			routes.append(_town.dock)
 	for s in routes:
 		if is_instance_valid(s) and (s.destroyed or s.hp < s.max_hp * DAMAGED):
 			_add_job(out, Job.ROUTE, s, s.footprint, s.destroyed)

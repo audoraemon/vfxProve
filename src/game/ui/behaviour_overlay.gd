@@ -144,6 +144,11 @@ func _draw_panel(ci: Control) -> void:
 			lines.append(["Engineers %d: %s%s" % [i + 1, what, ", working" if team.working else ""], Color("9ab4d0")])
 		if not e.replacing.is_empty():
 			lines.append(["Engineers: %d lost, next in %.0f s" % [e.replacing.size(), e.replacing.min()], Color("9ab4d0")])
+	if crowd.ferry != null and crowd.profile.boats:
+		var f := crowd.ferry
+		lines.append(["Boats: %s   aboard %d/%d   waiting %d   %d trips, %d carried" % [
+			RiverFerry.State.keys()[f.state].capitalize(), f.aboard.size(), RiverFerry.LOAD, f.waiting(), f.trips, f.carried],
+			Color("8ac8e8")])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}
@@ -154,11 +159,11 @@ func _draw_panel(ci: Control) -> void:
 		if counts.has(k):
 			lines.append(["%s %d" % [Person.Intent.keys()[k].capitalize(), counts[k]], INTENT_COLS[k]])
 	if crowd.evac != null:
-		var names := ["Main", "Side"]
+		var names := ["Main Gate", "Side Gate", "Postern"]
 		for i in crowd.evac.gates.size():
 			var g: Structure = crowd.evac.gates[i]
 			var state := "destroyed" if not is_instance_valid(g) or g.destroyed else "open"
-			lines.append(["%s Gate: %s, queue %d" % [names[mini(i, 1)], state,
+			lines.append(["%s: %s, queue %d" % [names[mini(i, 2)], state,
 				crowd.waiting_at(g) if is_instance_valid(g) else 0], UiTheme.COL_TEXT])
 	var picked := _picked()
 	if picked != null and picked.profile != null:

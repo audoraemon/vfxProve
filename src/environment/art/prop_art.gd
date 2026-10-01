@@ -68,7 +68,7 @@ static func draw(s: Structure) -> void:
 ## Flame spots for the structure's flame node (structure-local px): the bridge's four torches.
 static func flame_tips(s: Structure) -> Array[Vector2]:
 	var out: Array[Vector2] = []
-	if s.kind == Structure.Kind.BRIDGE:
+	if s.kind == Structure.Kind.BRIDGE and s.art_tag != &"dock":
 		for c in _bridge_posts(s):
 			out.append(s._gp(c, s.height + POST_UP) + Vector2(0, -1))
 	return out
@@ -141,6 +141,9 @@ static func _bridge(s: Structure) -> void:
 	if s.art_tag == &"stone":
 		_stone_bridge(s)
 		return
+	if s.art_tag == &"dock":
+		_dock(s)
+		return
 	ArtKit.begin()
 	var r := s.footprint
 	var h := s.height
@@ -198,6 +201,41 @@ static func _bridge(s: Structure) -> void:
 		ArtKit.line(mid.lerp(b, 0.5) + Vector2(0, 1), b, ROPE)
 	_head_stones(s, false)
 	ArtKit.flush(s)
+
+
+## The river boats' landing (v0.05; until then the dock was decor on the far bank): a wooden pier on posts out from
+## the bank, its planks at the water's surface, with crates and a barrel waiting on it.
+static func _dock(s: Structure) -> void:
+	ArtKit.begin()
+	var g0 := s.footprint.position
+	var g1 := s.footprint.end
+	var gl := Vector2(g0.x, g1.y)
+	var gr := Vector2(g1.x, g0.y)
+	var h := s.height
+	var wood: Array = ArtKit.WOOD
+	for p: Vector2 in [g0 + Vector2(0.1, 0.1), gr + Vector2(-0.1, 0.1), gl + Vector2(0.1, -0.1), g1 - Vector2(0.1, 0.1),
+			g0.lerp(gl, 0.5) + Vector2(0.1, 0.0), gr.lerp(g1, 0.5) - Vector2(0.1, 0.0)]:
+		var q := s._gp(p, 0.0)
+		_px_rect(q + Vector2(-1, -h - 2), 3, h + 6, wood[2])
+	ArtKit.poly(PackedVector2Array([s._gp(gl, h), s._gp(g1, h), s._gp(g1, h - 2.0), s._gp(gl, h - 2.0)]), wood[2], 0.0)
+	ArtKit.poly(PackedVector2Array([s._gp(gr, h), s._gp(g1, h), s._gp(g1, h - 2.0), s._gp(gr, h - 2.0)]), wood[1], 0.0)
+	ArtKit.poly(PackedVector2Array([s._gp(g0, h), s._gp(gr, h), s._gp(g1, h), s._gp(gl, h)]), wood[0], 0.0)
+	var n := int(s.footprint.size.x / 0.25)
+	for i in range(1, n):
+		var x := lerpf(g0.x, g1.x, float(i) / n)
+		ArtKit.line(s._gp(Vector2(x, g0.y), h), s._gp(Vector2(x, g1.y), h), ArtKit.ink(0.3))
+	# Crates and a barrel waiting on the planks, at the landward end.
+	var c := s._gp(Vector2(lerpf(g0.x, g1.x, 0.15), lerpf(g0.y, g1.y, 0.35)), h)
+	_px_rect(c + Vector2(-3, -6), 6, 6, wood[1])
+	_px_rect(c + Vector2(-3, -6), 6, 1, wood[0])
+	var bz := s._gp(Vector2(lerpf(g0.x, g1.x, 0.85), lerpf(g0.y, g1.y, 0.35)), h)
+	_px_rect(bz + Vector2(-2, -6), 5, 6, (wood[1] as Color).darkened(0.1))
+	ArtKit.line(bz + Vector2(-2, -2), bz + Vector2(3, -2), ArtKit.ink(0.5))
+	ArtKit.flush(s)
+
+
+static func _px_rect(p: Vector2, w: float, h: float, col: Color) -> void:
+	ArtKit.poly(PackedVector2Array([p, p + Vector2(w, 0), p + Vector2(w, h), p + Vector2(0, h)]), col, 0.0)
 
 
 ## A few rough stone blocks beside each bridge head, on the land outside the deck's sides (`far`: the far head).

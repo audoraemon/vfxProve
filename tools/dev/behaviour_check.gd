@@ -17,7 +17,9 @@ extends SceneTree
 ##          into the chant (as Silent Doom will): the rite breaks, and the rest regather after the cooldown
 ##   engineers  (Prepared) City Emergency called after 20 s of calm, then a Heaven Splitter on the Citadel and the
 ##          bridge brought down: the Citadel's health, the bridge and each team's job every 5 s over 60 s
-## --difficulty=<tier> plays any scenario at that tier (default Organized; rite and engineers: Prepared).
+##   boats  (Prepared) an evacuation called after 20 s of calm: evacuees by chosen way out (south road, east road,
+##          dock), the boats' state, load and crowd, and escapes, over 40 s; --cut-bridge brings the bridge down at 5 s
+## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
 
@@ -40,7 +42,7 @@ func _run() -> void:
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")
-	if tier == "" and scenario in ["rite", "engineers"]:
+	if tier == "" and scenario in ["rite", "engineers", "boats"]:
 		tier = "prepared"
 	if tier != "":
 		mission.difficulty = ResponseProfile.tier_named(tier)
@@ -62,6 +64,8 @@ func _run() -> void:
 			await _rite("--interrupt" in args, "--shots" in args)
 		"engineers":
 			await _engineers("--shots" in args)
+		"boats":
+			await _boats("--cut-bridge" in args, "--shots" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 	print("BEHAVIOUR checksum=%d" % _checksum())
@@ -225,6 +229,39 @@ func _engineers(shots: bool) -> void:
 		bf.camera.position = (Iso.ground_to_screen(bridge.center()) + Vector2(0, -40)).round()
 		await _frames(2)
 		await bf.save_capture("behaviour_engineers_after.png")
+
+
+func _boats(cut_bridge: bool, shots: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	crowd.alarms.bell_rung = true
+	crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+	crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+	crowd.add_alarm(100.0)
+	var f := crowd.ferry
+	var t := 0.0
+	for mark in [1.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0]:
+		await _frames(roundi((mark - t) * 60.0))
+		t = mark
+		if cut_bridge and t == 5.0:
+			mission._town.bridge.destroy(mission._town.bridge.center(), &"nova")
+		var by_exit := {}
+		for p: Person in crowd.citizens:
+			if not is_instance_valid(p) or p.state == DummyEnemy.State.DEAD or p.mind != Person.Mind.FLEE or p.inside:
+				continue
+			var k := "south" if p.goal() == TownLayout.EXITS[0] else ("east" if p.goal() == TownLayout.EXITS[1]
+				else ("dock" if p.goal() == f.board_at else "none"))
+			by_exit[k] = int(by_exit.get(k, 0)) + 1
+		print("BEHAVIOUR boats t=%d by exit %s boats=%s aboard=%d waiting=%d trips=%d carried=%d escaped=%d bridge=%s" % [
+			roundi(t), by_exit, RiverFerry.State.keys()[f.state], f.aboard.size(), f.waiting(), f.trips, f.carried,
+			crowd.escaped_count, "down" if mission._town.bridge.destroyed else "up"])
+		if shots and (t == 15.0 or t == 25.0):
+			var bf: Battlefield = mission._bf
+			bf.camera.zoom = Vector2.ONE * 1.0
+			var at := f.board_at if t == 15.0 else TownLayout.POSTERN_AT
+			bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
+			await _frames(2)
+			await bf.save_capture("behaviour_boats.png" if t == 15.0 else "behaviour_postern.png")
 
 
 func _fire(shots: bool) -> void:

@@ -311,9 +311,8 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 ## The Scale reference's countryside: the dock with the ship moored at it and rowing boats on the rivers, fenced
 ## pastures with sheep and cows, and carts by the farms.
 static func _countryside(out: Array[Dictionary]) -> void:
-	var d: Rect2 = TownLayout.DOCK
-	_add(out, Decor.Kind.DOCK, d.position, d.size)
-	_add(out, Decor.Kind.SHIP, Vector2(-4.3, 22.3))
+	# The dock itself is a structure since v0.05 (TownLayout.DOCK); the ship lies moored beside it.
+	_add(out, Decor.Kind.SHIP, TownLayout.SHIP_AT)
 	for g in [Vector2(-11.0, 21.4), Vector2(7.8, 22.6), Vector2(-20.5, 22.0), Vector2(-28.2, 9.0), Vector2(14.0, 21.2)]:
 		_add(out, Decor.Kind.BOAT, g)
 	var n := 0
@@ -375,7 +374,7 @@ static func _outside_ok(g: Vector2, solid: Array[Rect2], trail_gap: float, farm 
 			return false
 	if TownLayout.BRIDGE.grow(0.4).has_point(g):
 		return false
-	for p: Rect2 in TownLayout.PASTURES + [TownLayout.DOCK.grow(0.6)]:
+	for p: Rect2 in TownLayout.PASTURES + [TownLayout.DOCK.grow(0.6), TownLayout.DOCK_WAIT]:
 		if p.grow(0.3).has_point(g):
 			return false
 	if _inside_any(g, solid, 0.45):

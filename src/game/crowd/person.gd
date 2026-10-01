@@ -713,6 +713,8 @@ func hold_ground() -> void:
 
 ## True once a fleeing citizen has reached the exit it was walking to; the Crowd then removes it.
 func has_escaped() -> bool:
+	if evac != null and evac.is_boat_exit(_goal):
+		return false  # at the dock it waits for the boat (RiverFerry), which carries it off
 	return mind == Mind.FLEE and _goal != Vector2.INF and ground_pos.distance_to(_goal) <= GOAL_REACH
 
 

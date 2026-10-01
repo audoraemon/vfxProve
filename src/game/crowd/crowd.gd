@@ -50,6 +50,8 @@ const WATCH_HZ := 4.0
 ## stalled at every path waypoint; once they really ran (milestone 5) 42 escaped in the first 34 s against a
 ## loss limit of 38. At 2 s the gates are the bottleneck the spec describes: crowds pile up in front of them.
 const GATE_INTERVAL := 2.0
+## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace.
+const POSTERN_INTERVAL := 3.0
 ## How far beyond a gate's footprint its queue reaches, so people are held just before the arch as well.
 const GATE_DOOR := 0.45
 ## A gate's waiting crowd: how far in front of the doorway it may reach, and how far apart two waiting people
@@ -102,6 +104,8 @@ var bell: BellNetwork
 var rite: BanishingRite
 ## The engineers from the workshop (v0.05); made by spawn().
 var engineers: EngineerManager
+## The river boats at the dock (v0.05); made by spawn().
+var ferry: RiverFerry
 ## Draw the town's responses: over the world (the bell's climb, the clergy's halos) and on the ground (the rite's
 ## ring, under the people and buildings).
 var _drawer: Node2D
@@ -198,6 +202,9 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 
 
 func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
+	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
+		_town.bar_postern()
+		_grid.refresh(_town.postern)
 	var homes: Array[Structure] = []
 	for s in _env.structures():
 		if s.role == &"house":
@@ -231,6 +238,9 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	var workshop := _nearest_of(anchors.get("craft", []), Vector2(TownLayout.WORKSHOP.get_center().x,
 		TownLayout.WORKSHOP.end.y + 0.35))
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(workshop), workshop)
+	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
+	if ferry.state != RiverFerry.State.ENDED:
+		evac.add_boat_exit(ferry.board_at, ferry)
 	if _drawer == null or not is_instance_valid(_drawer):
 		_drawer = _response_drawer("ResponseDrawer", 60, false)
 		_ground_drawer = _response_drawer("ResponseGround", -3, true)
@@ -457,6 +467,8 @@ func advance(delta: float) -> void:
 		rite.step(delta)
 	if engineers != null:
 		engineers.step(delta)
+	if ferry != null:
+		ferry.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -536,6 +548,8 @@ func _gates() -> void:
 		if not is_instance_valid(gate) or gate.destroyed:
 			_release_all(gate)
 			continue  # rubble is no bottleneck
+		if not gate.walkable:
+			continue  # a barred postern
 		var centre := gate.center()
 		var outward := outward_of(gate)
 		var spots := queue_spots(gate)
@@ -588,7 +602,7 @@ func _gates() -> void:
 		# gate to one release per GATE_INTERVAL.
 		var first := 0
 		if _clock >= float(_gate_next.get(gate, -1.0)):
-			_gate_next[gate] = _clock + GATE_INTERVAL
+			_gate_next[gate] = _clock + (POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL)
 			crowd_here[0].release_from_queue()
 			crowd_here[0].passing_gate = gate
 			first = 1
@@ -602,7 +616,8 @@ func _gates() -> void:
 
 ## A gate that fell lets its whole crowd go, waiting or already walking through it.
 func _release_all(gate: Structure) -> void:
-	var spots: Array[Vector2] = _spots.get(gate, [])
+	# Untyped: a gate that fell before anyone queued at it has no spots yet, and the [] default is an untyped Array.
+	var spots: Array = _spots.get(gate, [])
 	for p in citizens:
 		if not is_instance_valid(p):
 			continue
@@ -610,6 +625,15 @@ func _release_all(gate: Structure) -> void:
 			p.release_from_queue()
 		if p.passing_gate == gate:
 			p.passing_gate = null
+
+
+## Someone got away other than on foot through an exit: carried off by the river boats (RiverFerry, which has
+## already taken it out of the field).
+func escape(p: Person) -> void:
+	escaped_count += 1
+	escaped.emit(p)
+	citizens.erase(p)
+	p.queue_free()
 
 
 func _escapes() -> void:
@@ -800,6 +824,9 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if engineers != null:
 				engineers.begin()
 		AlarmManager.Stage.EVACUATION, AlarmManager.Stage.COLLAPSE:
+			# The boats first, so the first evacuees to plan their way out already see the dock.
+			if ferry != null:
+				ferry.begin()
 			_evacuate()
 
 
@@ -1015,6 +1042,7 @@ func clear() -> void:
 	bell = null
 	rite = null
 	engineers = null
+	ferry = null
 	_gate_next.clear()
 	_spots.clear()
 	alarm = 0.0

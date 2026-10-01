@@ -169,8 +169,13 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty():
 		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
 		_crowd.engineers.rebuilt.connect(func(s: Structure):
-			_rules.banner.emit("THE BRIDGE IS REBUILT" if s.kind == Structure.Kind.BRIDGE else
-				("THE MAIN GATE IS REBUILT" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE IS REBUILT")))
+			var what := "THE DOCK" if s.role == &"dock" else ("THE BRIDGE" if s.kind == Structure.Kind.BRIDGE else
+				("THE POSTERN" if s.art_tag == &"postern" else
+				("THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")))
+			_rules.banner.emit(what + " IS REBUILT"))
+	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED:
+		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
+		_crowd.ferry.closed.connect(func(_why: String): _rules.banner.emit("THE BOATS ARE STOPPED"))
 	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED:
 		var rite := _crowd.rite
 		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))

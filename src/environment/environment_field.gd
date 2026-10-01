@@ -140,6 +140,11 @@ func remove(s: Structure) -> void:
 	_reindex()
 
 
+## Rebuild the spatial index (a structure's footprint or walkability changed).
+func reindex() -> void:
+	_reindex()
+
+
 func _reindex() -> void:
 	_grid.clear()
 	_fine.clear()

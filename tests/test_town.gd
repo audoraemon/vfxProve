@@ -12,9 +12,10 @@ static func run(t) -> void:
 		counts[s.role] = int(counts.get(s.role, 0)) + 1
 	t.check(env.structures().size() == TownLayout.structures().size() + 9 + TownLayout.FOUNTAINS.size() + TownLayout.WELLS.size(),
 		"every layout building plus the 9 Citadel parts and the fountains")
-	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 81 and counts.get(&"gate", 0) == 2,
+	t.check(counts.get(&"citadel", 0) == 9 and counts.get(&"house", 0) == 81 and counts.get(&"gate", 0) == 3,
 		"roles carried over (%s)" % [counts])
-	t.check(town.gates.size() == 2 and town.bridge != null and town.bridge.walkable, "gates and bridge found")
+	t.check(town.gates.size() == 3 and town.gates[2] == town.postern and town.bridge != null and town.bridge.walkable
+		and town.dock != null, "gates (the postern last), bridge and dock found")
 	t.check(town.citadel != null and town.citadel.fraction() == 1.0 and town.citadel.standing_parts() == 9, "the Citadel is intact")
 	t.check(not env.blocked(TownLayout.MAIN_GATE.get_center()) and not env.blocked(TownLayout.SIDE_GATE.get_center()),
 		"both gates are passable")

@@ -112,8 +112,19 @@ const WINDMILL := Rect2(-11.9, -24.9, 0.9, 0.9)
 const WATERMILL := Rect2(-6.9, 25.0, 2.4, 1.9)
 ## Fenced pastures with sheep and cows: north, and east of the Side Gate's road.
 const PASTURES := [Rect2(-9.8, -26.8, 5.8, 5.0), Rect2(18.5, 1.5, 7.0, 5.5)]
-## The dock: a pier out from the south bank west of the bridge, where the ship is moored.
-const DOCK := Rect2(-2.4, 23.2, 2.8, 1.2)
+## The postern (v0.05): a small door in the south wall where the long west street meets it, the way down to the
+## dock. It is the wall piece standing on this point, built as a gate instead (so every building keeps its seed),
+## and open only in a town with river boats (Crowd.spawn() bars it otherwise).
+const POSTERN_AT := Vector2(-5.75, 15.65)
+## The dock: a pier out from the north bank below the postern, where the ship is moored -- the river boats' landing
+## (v0.05). It stood on the far bank until then, where nobody from town could reach it without the bridge. Built
+## last, a structure people walk onto (Kind.BRIDGE, tagged dock).
+const DOCK := Rect2(-7.1, 19.6, 3.0, 1.0)
+const DOCK_H := 3.0
+## The bank between the postern and the dock where people wait for the boat, kept clear of decor; and where the ship
+## lies moored.
+const DOCK_WAIT := Rect2(-7.9, 16.6, 4.6, 3.0)
+const SHIP_AT := Vector2(-5.6, 21.35)
 ## Farmhouses by the fields.
 const BARNS := [Rect2(-12.5, -28.4, 1.3, 1.5), Rect2(18.0, -26.5, 1.3, 1.5), Rect2(-10.0, 26.2, 1.3, 1.5),
 	Rect2(19.5, 17.2, 1.3, 1.5)]
@@ -282,7 +293,10 @@ static func structures() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for r: Rect2 in walls():
 		for piece in wall_pieces(r):
-			_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
+			if piece.has_point(POSTERN_AT):
+				_add(out, piece, 34.0, Structure.Kind.GATE, &"gate", &"postern")
+			else:
+				_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
 	for r: Rect2 in corner_towers():
 		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower")
 	for r: Rect2 in wall_towers():
@@ -324,6 +338,7 @@ static func structures() -> Array[Dictionary]:
 		_add(out, Rect2(town_trees[i], TOWN_TREE), 25.0 + float(i % 3) * 2.0, Structure.Kind.TREE, &"decor", &"oak")
 	_add(out, CARPENTER, 20.0, Structure.Kind.HOUSE, &"house", &"carpenter")
 	_add(out, BELL_TOWER, BELL_TOWER_H, Structure.Kind.KEEP, &"tower", &"bell_tower")
+	_add(out, DOCK, DOCK_H, Structure.Kind.BRIDGE, &"dock", &"dock")
 	return out
 
 

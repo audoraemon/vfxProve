@@ -46,7 +46,7 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	for s in env.structures():
 		_open(s)
 	env.structure_destroyed.connect(_on_destroyed)
-	env.structure_restored.connect(_on_restored)
+	env.structure_restored.connect(refresh)
 	return self
 
 
@@ -150,8 +150,9 @@ func _open(s: Structure) -> void:
 	stamp(s.footprint, false)
 
 
-## A fallen building rebuilt (v0.05): a gate or the bridge opens its way again, anything else closes its ground.
-func _on_restored(s: Structure) -> void:
+## Stamp a standing building again: one people walk over opens its way, anything else closes its ground. For a
+## fallen building rebuilt (v0.05) and a postern barred (Town.bar_postern()).
+func refresh(s: Structure) -> void:
 	if s.walkable:
 		_open(s)
 	else:

@@ -33,7 +33,7 @@ Following v0.05's rule, soldiers never hurt the god. Each role can be countered.
   - **Each engineer team:** while the engineers are turned out. The escorts stay with the team's first member.
 - **When the duty ends:** the escorts go back to their patrol posts.
 - **Witnesses:** Silent Doom near a guarded responder is seen. No new code: `Crowd._settle_doom()` already counts any living person within 2, soldiers included.
-- **Steadying:** a guarded responder confused within 2 of its escort comes to after `STEADY_TIME` (3 s).
+- **Steadying:** a guarded responder confused within 2 of its escort comes to after `STEADY_TIME` (3 s). *(As built: the bellkeeper and the engineers. A confused cleric leaves the rite's ring at once, before any escort can steady it, so v0.06's Discord-on-the-rite counter stands.)*
 - **Taking over:**
   - **The bell:** if the bellkeeper dies before the bell has rung, a living escort becomes the keeper (`BellNetwork.replace_keeper`). Its climb takes `ESCORT_CLIMB` (1.5×) as long. The banner reads "A SOLDIER TAKES THE BELL ROPE".
   - **Engineers:** if an engineer dies, a living escort of that team takes its place, so the team is not lost.
@@ -142,3 +142,11 @@ The Defense Profile gains a line "Marshals xN, Escorts xN, Rescue xN". Soldiers 
   - The marshals pair reports escapes by way out and the gate queues.
   - The rescue case fills the cathedral to its capacity (20).
 - **Measurements and bench:** see `docs/KAK_Version_0.07_Summary.md`.
+
+### Final review
+- **Each duty gets `ESCORTS_PER_DUTY` escorts over its whole life.** A guard who dies or takes over is not replaced. Before this, every free escort in town refilled the duty, so killing the bellkeeper again and again took 20 takeovers to silence the bell.
+- **A hurried soldier keeps running** when its route is blocked. `hurrying` clears only at its post.
+- **A silenced bell lets a living keeper off duty.** Before this, an escort stand-in stayed on duty for good.
+- **After a takeover the climb banner reads "A SOLDIER CLIMBS THE TOWER".**
+- **Documented, not changed:** every patroller is an escort, as §2 says. Fewer soldiers rally at the Citadel, which makes the Military part of the win harder. The summary's §11 has the numbers, and it is listed for the playtest.
+- **Checks:** 1035.

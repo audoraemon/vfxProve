@@ -121,8 +121,8 @@ Chosen on the Prepare screen and saved. Harder tiers add no hit points: the town
 - A stone tower with an open belfry east of the market. Its **bellkeeper** (in a navy coat with a brass badge) works at its foot.
 - At the first Local Emergency the bellkeeper runs to the tower and climbs it for 8 s (a gold bar over the roof). The ring adds 20 alarm, tells every citizen, and brings City Emergency at alarm 25 (not 35) and the evacuation at 60 (not 90).
 - **Until the bell has rung, alarm from events counts half** (collapses, deaths, Citadel hits): a town kept from its bell mobilizes slower.
-- **Counters:** kill the bellkeeper before it is called (it is not replaced), Blight the tower (the bell cracks), or destroy it. A frightened bellkeeper drops the climb and retries 10 s later.
-- **v0.07:** once the keeper is called, its escort guards it. Kill the keeper then and an escort takes the rope ("A SOLDIER TAKES THE BELL ROPE") and climbs it again, half as slow again (12 s at Prepared). Kill the escorts too and the bell is silenced.
+- **Counters:** kill the bellkeeper before it is called (it is not replaced), Blight the tower (the bell cracks), or destroy it. A frightened bellkeeper drops the climb and retries 10 s later. **v0.07:** a silenced bell sends its living keeper off duty: home to wait with the family, or to the gates once the town evacuates.
+- **v0.07:** once the keeper is called, its escort guards it. Kill the keeper then and an escort takes the rope ("A SOLDIER TAKES THE BELL ROPE") and climbs it again, half as slow again (12 s at Prepared). The bell gets the tier's escorts per duty and no more (1, or 2 at Prepared and up): kill each one who takes the rope and the bell is silenced.
 
 ### 7.2 Fire brigade
 - Up to 4 calm citizens per fire (5 at God-Resistant; 2 when Unprepared), from Local Emergency (City Emergency when Unprepared), fetch water from the nearest fountain or well and douse it. Blighted or destroyed water points give none.
@@ -148,7 +148,7 @@ Chosen on the Prepare screen and saved. Harder tiers add no hit points: the town
 - **Counters:** destroy the dock (the boats stop until the engineers rebuild it) or Blight it (they stop for good). Destroying the bridge no longer seals the south.
 
 ### 7.6 Soldiers (v0.07)
-Soldiers never hurt the god. Each takes a role from where it is posted at the start, up to the tier's counts. The rest keep v0.06's ways: drill, guard, patrol, and rally at the Citadel at City Emergency.
+Soldiers never hurt the god. Each takes a role from where it is posted at the start: marshals and rescue squads up to the tier's counts, and every patroller an escort. The rest keep v0.06's ways: drill, guard, and rally at the Citadel at City Emergency. Escorts with nothing to guard keep patrolling (all of them at Unprepared, which has no bellkeeper, rite or engineers).
 
 | Posted | Role | Look |
 |---|---|---|
@@ -167,8 +167,10 @@ Soldiers sent to a role **run** there.
 - **Escorts.**
   - They join each responder on duty and keep close: the bellkeeper while the bell is called, climbed or waited for; the clergy's ring while it gathers, chants or cools down (by its centre); and each engineer team while the engineers are out.
   - Silent Doom near them is seen (soldiers count as witnesses).
-  - A guarded responder confused by Discord near its escort comes to within 3 s.
+  - A guarded bellkeeper or engineer confused by Discord near its escort comes to within 3 s. A confused cleric leaves the ring at once, as in v0.06, so Discord still breaks the rite.
   - **The bell:** a keeper killed before the bell has rung is replaced by an escort (the climb takes 1.5 times as long, once).
+  - **Each duty gets the tier's escorts per duty, once**, for the duty's whole life (a rite that regathers keeps what it has). A guard who dies or takes over is not replaced, so the takeovers run out.
+  - After a takeover the banners read "A SOLDIER TAKES THE BELL ROPE" and "A SOLDIER CLIMBS THE TOWER".
   - **Engineers:** a fallen engineer is replaced by one of the team's escorts, so the team is not lost.
   - **The rite:** it cannot be taken over, because soldiers do not chant.
   - When the duty ends they go back to their patrols. The patrols' investigations leave a guarding escort alone.
@@ -179,7 +181,8 @@ Soldiers sent to a role **run** there.
   - **The freed** come out frightened, or head for the gates if the town is evacuating.
   - **The untended** die there.
   - A plague caught before the collapse waits under the rubble.
-  - **Fires:** a squad with nothing to dig turns out to the nearest fire within 10, on top of the brigade, until the evacuation.
+  - **Fires:** a squad with nothing to dig turns out to the nearest fire within 10, from any alarm stage until the evacuation. The squad counts towards the fire's crew, so fewer citizens turn out near the barracks. At Unprepared the squads reach fires before the brigade is called.
+  - **In the counts:** the trapped are alive. They count as citizens in the HUD and the results until they die.
   - **Counter:** kill or scatter the squad, or bring down several shelters at once. One squad digs at each site, and they are few.
 
 ## 8. The town of Aldermere
@@ -219,7 +222,7 @@ Soldiers sent to a role **run** there.
   - v0.07: **soldiers** (`--case=` marshals/nomarshals, escort/noescort, rescue/norescue: each role against doing without).
 - **Profilers:** `profile_view.gd`, `profile_wear.gd`.
 - **Art:** `tools/dev/make_power_icons.py` paints the procedural icons (Silent Doom, Blight, Will-o'-Wisp, Thornwall, Discord, Pestilence). The sandbox records the cataclysm powers' preview clips (`--capture-clip`); the town records the others (`behaviour_check --scenario=clip`).
-- **Tests:** 1013 automated checks (`tools/test.sh`).
+- **Tests:** 1035 automated checks (`tools/test.sh`).
 
 ## 11. The soldiers, measured (v0.07)
 
@@ -227,29 +230,32 @@ With the `soldiers` scenario: Prepared, seed 7, each role against the same soldi
 
 | Case | Without the role | With it |
 |---|---|---|
-| **Marshals:** an evacuation called at 20 s, escapes at 60 s | 33 escaped (south 15, east 12, boat 6); queues at the Main and Side Gates 30 / 20 | **43 escaped** (south 20, east 17, boat 6); queues 20 / 10 |
+| **Marshals:** an evacuation called at 20 s, escapes at 60 s | 33 escaped (south 15, east 12, boat 6); queues at the Main and Side Gates 30 / 20 | **44 escaped** (south 20, east 18, boat 6); queues 20 / 10 |
 | **Escorts:** the bellkeeper killed 3 s into its climb | Silenced; the bell never rings | An escort 0.5 away takes the rope; **the bell rings at ~36 s** after a 12 s climb |
 | **Rescue squads:** 20 sheltering in the cathedral when it falls | 11 crushed, 9 trapped, **all 9 lost** at 65 s | 11 crushed, 9 trapped, **all 9 dug out** (the first at ~40 s, the last at ~65 s) |
 
-**The tiers under one siege** (`siege`, seed 7: eight loud casts from 20 s, with no answer to the escapes; the game is lost at 50 escaped). Times are from the first cast; deaths are people neither alive in town nor escaped at 120 s:
+**The tiers under one siege** (`siege`, seed 7: eight loud casts from 20 s, with no answer to the escapes; the game is lost at 50 escaped). Times are from the first cast; deaths are people neither alive in town nor escaped at 120 s. Casts use a wall-clock hitstop, so repeated runs differ by a few people:
 
 | Tier | v0.06: 50 escaped | v0.07: 50 escaped | v0.06: escaped / dead at 120 s | v0.07: escaped / dead at 120 s |
 |---|---|---|---|---|
-| Unprepared | ~90 s | ~90 s | 86 / 74 | 99 / 59 |
-| Organized | ~77 s | ~74 s | 100 / 60 | 119 / 27 |
-| Prepared | ~70 s | ~62 s | 114 / 25 | 144 / 22 |
-| God-Resistant | ~70 s | ~58 s | 120 / 29 | 153 / 27 |
+| Unprepared | ~90 s | ~88 s | 86 / 74 | 99 / 59 |
+| Organized | ~76 s | ~75 s | 100 / 60 | 118 / 24 |
+| Prepared | ~69 s | ~61 s | 114 / 25 | 144 / 22 |
+| God-Resistant | ~70 s | ~59 s | 120 / 29 | 152 / 27 |
 
 **What the runs show:**
 - **The soldiers are a game changer for the town.**
-  - **Escapes:** in the siege, the harder tiers lose the player the game to escapes 8–12 s sooner.
-  - **Deaths:** fewer people die at every tier, and less than half as many at Organized (27 against 60), because squads dig out the buried and the crowd leaves before the next strike.
+  - **Escapes:** in the siege, Prepared and God-Resistant lose the player the game to escapes 8–11 s sooner. Unprepared and Organized barely change.
+  - **Deaths:** fewer people die at every tier, and less than half as many at Organized (24 against 60), because squads dig out the buried and the crowd leaves before the next strike.
 - **Marshals work at the road gates, not at the dock.** The boats carried 6 with or without them: the ferry's trips, not the boarding, limit the dock, and the postern's queue stays at 60–70 either way.
 - **Rescue is tight against the 45 s.** One squad digs at a site at one person every 3 s, and the run from the yard takes most of the first 20 s. The cathedral's last survivor came out at about 65 s, the very end of the 45 s.
   - Larger collapses, or several at once, will lose people. That is the counter.
   - If the playtest wants rescue stronger: let a second squad join a big site, or shorten the dig.
 - **Killing the bellkeeper early still silences the bell.** No escort is assigned until the keeper is called, so the v0.05 opening counter is kept.
-- **Unprepared changes least** (2 marshals a way out, 1 escort, 2 squads). That is in keeping with a town that is not ready.
+- **Unprepared changes least** (2 marshals a way out, 2 squads, and escorts with nothing to guard). That is in keeping with a town that is not ready.
+- **The soldiers are harder to break, and so is the win.** A win needs City Stability broken, and its Military part needs 80 soldiers dead. Only soldiers without a role rally at the Citadel: 70 at Unprepared, 65 at Organized, 52 at Prepared and 45 at God-Resistant (all 100 in v0.06). The rest are spread through the town.
+  - Same siege, Prepared: the first Nova on the Citadel killed 42 soldiers (58 in v0.06), and by 120 s 74 were dead (89), leaving the Military part at 5% instead of broken.
+  - **For the playtest:** this makes the win harder, as the soldiers were meant to. If it is too hard, make only the escorts a tier can use (1 at Organized, 8 at Prepared, 10 at God-Resistant) and let the other patrollers rally.
 
 ### From v0.06: the new powers
 

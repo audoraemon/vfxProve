@@ -19,6 +19,15 @@ static func run(t) -> void:
 		and [u.escorts_per_duty, o.escorts_per_duty, p.escorts_per_duty, g.escorts_per_duty] == [1, 1, 2, 2]
 		and [u.rescue_squads, o.rescue_squads, p.rescue_squads, g.rescue_squads] == [2, 3, 4, 5],
 		"the soldiers' roles grow with the tier (v0.07)")
+	# Every line of every tier's Defense Profile fits the strip on the Prepare screen.
+	var worst := 0.0
+	for tier in ResponseProfile.Tier.values():
+		var lines := ResponseProfile.for_tier(tier).lines()
+		var cols := PrepareScreen.profile_columns(lines, PrepareScreen.PROFILE_LEFT, PrepareScreen.PROFILE_RIGHT)
+		for i in lines.size():
+			worst = maxf(worst, cols[i % 3] + UiTheme.width(lines[i], UiTheme.SIZE_SMALL))
+	t.check(worst > 0.0 and worst <= PrepareScreen.PROFILE_RIGHT + 0.01 and PrepareScreen.PROFILE_RIGHT < PrepareScreen.STRIP.end.x,
+		"every Defense Profile line fits the Prepare strip (rightmost edge %.1f of %.1f)" % [worst, PrepareScreen.STRIP.end.x])
 	t.check(ResponseProfile.DEFAULT == ResponseProfile.Tier.ORGANIZED and ResponseProfile.tier_named("prepared")
 		== ResponseProfile.Tier.PREPARED and ResponseProfile.tier_named("nonsense") == ResponseProfile.DEFAULT,
 		"Organized by default; named tiers from the command line")

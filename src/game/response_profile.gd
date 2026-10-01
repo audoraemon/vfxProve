@@ -92,5 +92,5 @@ func lines() -> PackedStringArray:
 		out.append("River Evacuation")
 	if rite:
 		out.append("Banishing Rite, %.0f s" % rite_time)
-	out.append("Soldiers: marshals x%d, escorts x%d, rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
+	out.append("Marshals x%d, Escorts x%d, Rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
 	return out

@@ -674,7 +674,7 @@ func assist(s: Structure, force := false) -> void:
 	walk_speed = _mind_speed()
 
 
-## Stop fighting a fire: wait a moment, then back to its day.
+## Stop fighting a fire: wait a moment, then back to its day (a soldier goes back to its post).
 func stand_down() -> void:
 	assist_fire = null
 	assist_full = false

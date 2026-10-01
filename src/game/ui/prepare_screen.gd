@@ -37,6 +37,11 @@ var difficulty := ResponseProfile.DEFAULT
 ## The bottom strip: the difficulty selector on the left, the Defense Profile beside it.
 const STRIP := Rect2(8.0, 318.0, 624.0, 38.0)
 const ARROW := Vector2(14.0, 14.0)
+## The Defense Profile's columns run from the right of the selector to the strip's edge less the padding the selector has on
+## the left, with at least COLUMN_GAP between them.
+const PROFILE_LEFT := 168.0
+const PROFILE_RIGHT := 626.0
+const COLUMN_GAP := 8.0
 
 var _ui: Control
 ## Both icon sizes, loaded once here and never inside _draw() (a texture loaded while drawing can reach the
@@ -254,6 +259,19 @@ func _draw_tabs() -> void:
 			_ui.draw_rect(Rect2(r.end - Vector2(8.0, 10.0), Vector2(3.0, 3.0)), UiTheme.COL_GOLD)
 
 
+## Where the Defense Profile's three columns start, left to right between `left` and `right`: each as wide as its widest
+## line (line i is in column i % 3), the space left over shared between the two gaps (at least COLUMN_GAP each).
+static func profile_columns(lines: PackedStringArray, left: float, right: float) -> PackedFloat32Array:
+	var widths := [0.0, 0.0, 0.0]
+	for i in lines.size():
+		widths[i % 3] = maxf(widths[i % 3], UiTheme.width(lines[i], UiTheme.SIZE_SMALL))
+	var gap := maxf(COLUMN_GAP, (right - left - widths[0] - widths[1] - widths[2]) * 0.5)
+	var out := PackedFloat32Array([left, 0.0, 0.0])
+	out[1] = left + widths[0] + gap
+	out[2] = out[1] + widths[1] + gap
+	return out
+
+
 ## The bottom strip: "< ORGANIZED >" and the Defense Profile -- what the town will do this time.
 func _draw_profile() -> void:
 	_ui.draw_rect(STRIP, UiTheme.COL_PANEL)
@@ -269,15 +287,15 @@ func _draw_profile() -> void:
 	UiTheme.text(_ui, Vector2(roundf(mid - UiTheme.width(name, UiTheme.SIZE_SMALL) * 0.5), STRIP.position.y + 23.0), name,
 		UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	# The Defense Profile right of the selector: its label and the tier's blurb, then the responses in three columns.
-	var x0 := STRIP.position.x + 160.0
+	var x0 := PROFILE_LEFT
 	var label := "DEFENSE PROFILE"
 	UiTheme.text(_ui, Vector2(x0, STRIP.position.y + 9.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(x0 + UiTheme.width(label, UiTheme.SIZE_SMALL) + 8.0, STRIP.position.y + 9.0),
 		ResponseProfile.BLURBS[difficulty], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	var lines := profile.lines()
-	var col_w := (STRIP.end.x - x0) / 3.0
+	var cols := profile_columns(lines, PROFILE_LEFT, PROFILE_RIGHT)
 	for i in lines.size():
-		UiTheme.text(_ui, Vector2(x0 + float(i % 3) * col_w, STRIP.position.y + 9.0 + UiTheme.LINE_SMALL * float(1 + i / 3)),
+		UiTheme.text(_ui, Vector2(cols[i % 3], STRIP.position.y + 9.0 + UiTheme.LINE_SMALL * float(1 + i / 3)),
 			lines[i], UiTheme.SIZE_SMALL)
 
 

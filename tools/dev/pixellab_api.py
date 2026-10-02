@@ -187,6 +187,22 @@ def _fetch_character(cid, out):
     return c
 
 
+def _groups(cid, template, name):
+    st, c = _call("GET", "/characters/" + cid)
+    return [g for g in (c.get("animations") or [])
+            if g.get("animation_type") == template or g.get("display_name") == name]
+
+
+## The directions of a character's animation (by template or name) that have frames.
+def _animated_dirs(cid, template, name):
+    return {d["direction"] for g in _groups(cid, template, name) for d in g.get("directions", []) if d.get("frames")}
+
+
+def _group_of(cid, template, name):
+    gs = _groups(cid, template, name)
+    return gs[0].get("animation_group_id") if gs else None
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -246,19 +262,41 @@ def main():
         print("  balance after: %s" % _balance())
     elif args.cmd == "char-anim":
         before = _balance()
-        body = {"character_id": args.id, "mode": "template", "template_animation_id": args.template,
-                "animation_name": args.name or args.template, "directions": args.dirs.split(",")}
-        st, r = _call("POST", "/animate-character", body)
-        jobs = r.get("background_job_ids") or []
-        if st >= 300 or not jobs:
-            sys.exit("char-anim failed (%d): %s" % (st, json.dumps(_strip(r))[:800]))
-        print("char-anim %s on %s: %d jobs (balance before: %s)" % (args.template, args.id, len(jobs), before))
-        for job in jobs:
-            status, j = _wait_job(job, "char-anim")
-            if status != "completed":
-                print("  job %s %s: %s" % (job, status, json.dumps(_strip(j))[:300]))
+        wanted = args.dirs.split(",")
+        name = args.name or args.template
+        group = None
+        # PixelLab takes only as many directions as it has free job slots and drops the rest: submit what is missing
+        # into the same animation group until every direction has landed.
+        for attempt in range(12):
+            missing = [d for d in wanted if d not in _animated_dirs(args.id, args.template, name)]
+            if not missing:
+                break
+            body = {"character_id": args.id, "mode": "template", "template_animation_id": args.template,
+                    "animation_name": name, "directions": missing}
+            if group:
+                body["animation_group_id"] = group
+            st, r = _call("POST", "/animate-character", body)
+            jobs = r.get("background_job_ids") or []
+            if st == 429 or (st < 300 and not jobs):
+                time.sleep(15)
+                continue
+            if st >= 300:
+                sys.exit("char-anim failed (%d): %s" % (st, json.dumps(_strip(r))[:800]))
+            group = r.get("animation_group_id") or group
+            print("char-anim %s on %s: %s submitted (%d of %d missing)" % (args.template, args.id, r.get("directions"),
+                                                                          len(jobs), len(missing)))
+            for job in jobs:
+                status, j = _wait_job(job, "char-anim")
+                if status != "completed":
+                    print("  job %s %s: %s" % (job, status, json.dumps(_strip(j))[:300]))
+            if group is None:
+                group = _group_of(args.id, args.template, name)
+        missing = [d for d in wanted if d not in _animated_dirs(args.id, args.template, name)]
         _fetch_character(args.id, args.out)
-        print("  balance after: %s" % _balance())
+        print("  balance before: %s; after: %s%s" % (before, _balance(),
+                                                     "; STILL MISSING %s" % missing if missing else ""))
+        if missing:
+            sys.exit(1)
     elif args.cmd == "char-get":
         _fetch_character(args.id, args.out)
     elif args.cmd == "generate":

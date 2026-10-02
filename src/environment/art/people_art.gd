@@ -1,0 +1,114 @@
+class_name PeopleArt
+extends RefCounted
+## People sprites (PixelLab people; docs/superpowers/specs/2026-10-03-pixellab-people-design.md): which design a
+## citizen or soldier wears, and where each animation frame sits in the shared atlas (assets/pixellab/people/atlas.png,
+## packed by tools/dev/make_people_atlas.py from the PixelLab frames). The atlas also holds a white silhouette of every
+## frame: Person draws it over the sprite to tint it (char, ice, flash, sickness) with no shader of its own, so every
+## person stays in one draw batch. Shown while SpriteArt.on(): F7 and `-- --art=procedural` switch people too.
+
+const DIR := "res://assets/pixellab/people/"
+const ANIMS := [&"idle", &"walk", &"run", &"stumble", &"death"]
+## Frames a second per animation; stumble and death hold their last frame.
+const FPS := {&"idle": 4.0, &"walk": 8.0, &"run": 12.0, &"stumble": 10.0, &"death": 12.0}
+## The diagonals, in atlas order: front-right, front-left, back-right, back-left.
+enum Facing { SE, SW, NE, NW }
+const DIR_NAMES := ["south-east", "south-west", "north-east", "north-west"]
+## Each citizen role's designs, in CitizenProfile.Role order: one look, or two picked by the person's look.
+const CITIZEN := [["resident_a", "resident_b"], ["merchant_a", "merchant_b"], ["craft_a", "craft_b"], ["laborer"],
+	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"]]
+## Each soldier's design, in Person.Corps order.
+const SOLDIER := ["guard", "marshal", "escort", "rescue"]
+## Stand-ins while a design is not generated yet.
+const FALLBACK_CITIZEN := "resident_a"
+const FALLBACK_SOLDIER := "guard"
+
+static var _manifest := {}
+static var _loaded := false
+static var _atlas: Texture2D
+
+
+static func manifest() -> Dictionary:
+	if not _loaded:
+		_loaded = true
+		_manifest = {}
+		var path := DIR + "manifest.json"
+		if FileAccess.file_exists(path):
+			var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+			if parsed is Dictionary:
+				_manifest = parsed
+		if ResourceLoader.exists(DIR + "atlas.png"):
+			_atlas = load(DIR + "atlas.png")
+	return _manifest
+
+
+static func reload() -> void:
+	_loaded = false
+
+
+## The atlas and its manifest are there (else people keep their procedural bodies).
+static func ready() -> bool:
+	return not manifest().is_empty() and _atlas != null
+
+
+static func atlas() -> Texture2D:
+	manifest()
+	return _atlas
+
+
+static func has(design: String) -> bool:
+	return manifest().get("designs", {}).has(design)
+
+
+static func cell() -> Vector2:
+	var c: Array = manifest().get("cell", [24, 24])
+	return Vector2(c[0], c[1])
+
+
+## The design a person should wear: its role's (its look, 0..1, picks between two), or its corps'.
+static func wanted(soldier: bool, role: int, corps: int, look: float) -> String:
+	if soldier:
+		return SOLDIER[clampi(corps, 0, SOLDIER.size() - 1)]
+	var looks: Array = CITIZEN[clampi(role, 0, CITIZEN.size() - 1)]
+	return looks[mini(int(look * looks.size()), looks.size() - 1)]
+
+
+## The design a person wears: the one it should, else its role's first look, else the stand-in.
+static func design_for(soldier: bool, role: int, corps: int, look: float) -> String:
+	var d := wanted(soldier, role, corps, look)
+	if has(d):
+		return d
+	if not soldier:
+		var first: String = CITIZEN[clampi(role, 0, CITIZEN.size() - 1)][0]
+		if has(first):
+			return first
+	return FALLBACK_SOLDIER if soldier else FALLBACK_CITIZEN
+
+
+static func frame_count(design: String, anim: StringName, facing: int) -> int:
+	var d: Dictionary = manifest().designs[design]
+	return int(d.frames[String(anim)][DIR_NAMES[facing]])
+
+
+static func _cell_offset(anim: StringName, facing: int, frame: int, n: int) -> Vector2:
+	var c := cell()
+	return Vector2((frame % n) * c.x, (ANIMS.find(anim) * 4 + facing) * c.y)
+
+
+## The frame's rect in the atlas (frames wrap).
+static func frame_rect(design: String, anim: StringName, facing: int, frame: int) -> Rect2:
+	var d: Dictionary = manifest().designs[design]
+	var b := Vector2(d.block[0], d.block[1])
+	return Rect2(b + _cell_offset(anim, facing, frame, frame_count(design, anim, facing)), cell())
+
+
+## The same frame's white silhouette.
+static func silhouette_rect(design: String, anim: StringName, facing: int, frame: int) -> Rect2:
+	var d: Dictionary = manifest().designs[design]
+	var b := Vector2(d.sil[0], d.sil[1])
+	return Rect2(b + _cell_offset(anim, facing, frame, frame_count(design, anim, facing)), cell())
+
+
+## Where the feet are in a cell: drawn at -foot, the feet stand on the person's ground point.
+static func foot(design: String) -> Vector2:
+	var f: Array = manifest().designs[design].foot
+	return Vector2(f[0], f[1])

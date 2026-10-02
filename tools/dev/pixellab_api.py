@@ -7,6 +7,9 @@ Usage (from the project root):
   python tools/dev/pixellab_api.py generate --desc TEXT --size 84x76 --out DIR [--ref PATH=USAGE ...] [--seed N]
   python tools/dev/pixellab_api.py edit --image PATH --desc TEXT --out DIR [--seed N]
   python tools/dev/pixellab_api.py animate --first PATH [--last PATH] --action TEXT --frames N --out DIR [--seed N]
+  python tools/dev/pixellab_api.py character --desc TEXT --size 32 --out DIR [--seed N]   (8 directions, standard mode)
+  python tools/dev/pixellab_api.py char-anim --id CHARACTER --template walking-4-frames --out DIR [--dirs a,b,..]
+  python tools/dev/pixellab_api.py char-get --id CHARACTER --out DIR
 Each job prints its id, cost and the files it wrote; its raw response goes to DIR/<kind>_job.json (images stripped).
 """
 import argparse
@@ -129,7 +132,7 @@ def _run(kind, path, body, out):
     _images_in(j.get("last_response", j), found)
     written = []
     for i, (how, data) in enumerate(found):
-        raw = base64.b64decode(data) if how == "b64" else urllib.request.urlopen(data, timeout=60).read()
+        raw = base64.b64decode(data) if how == "b64" else _fetch_url(data)
         p = os.path.join(out, "%s_%02d.png" % (kind, i))
         Image.open(io.BytesIO(raw)).save(p)
         written.append(p)
@@ -138,10 +141,71 @@ def _run(kind, path, body, out):
     return written
 
 
+def _wait_job(job, label):
+    t0 = time.time()
+    while True:
+        time.sleep(POLL_S)
+        st, j = _call("GET", "/background-jobs/" + job)
+        status = j.get("status")
+        if status in ("completed", "failed", "cancelled"):
+            return status, j
+        if time.time() - t0 > TIMEOUT_S:
+            sys.exit("%s job %s still %s after %d s" % (label, job, status, TIMEOUT_S))
+
+
+def _fetch_url(url):
+    # PixelLab's file host refuses Python's default user agent (403).
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    return urllib.request.urlopen(req, timeout=60).read()
+
+
+def _download(url, path):
+    Image.open(io.BytesIO(_fetch_url(url))).save(path)
+
+
+## Every rotation and animation frame of a character, as <out>/rot_<dir>.png and <out>/<anim>/<dir>_<i>.png.
+def _fetch_character(cid, out):
+    os.makedirs(out, exist_ok=True)
+    st, c = _call("GET", "/characters/" + cid)
+    if st >= 300:
+        sys.exit("character %s: %d %s" % (cid, st, json.dumps(c)[:400]))
+    with open(os.path.join(out, "character.json"), "w", encoding="utf-8") as f:
+        json.dump(c, f, indent=1)
+    n = 0
+    for d, url in (c.get("rotation_urls") or {}).items():
+        if url:
+            _download(url, os.path.join(out, "rot_%s.png" % d))
+            n += 1
+    for group in c.get("animations") or []:
+        name = group.get("display_name") or group.get("animation_type")
+        for dr in group.get("directions", []):
+            os.makedirs(os.path.join(out, name), exist_ok=True)
+            for i, url in enumerate(dr.get("frames", [])):
+                _download(url, os.path.join(out, name, "%s_%02d.png" % (dr["direction"], i)))
+                n += 1
+    print("character %s (%s): %d images -> %s" % (cid, c.get("status"), n, out))
+    return c
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("balance")
+    c = sub.add_parser("character", help="create an 8-direction character (standard mode, 1 generation)")
+    c.add_argument("--desc", required=True)
+    c.add_argument("--size", type=int, required=True)
+    c.add_argument("--seed", type=int)
+    c.add_argument("--detail", default="medium detail")
+    c.add_argument("--out", required=True)
+    an = sub.add_parser("char-anim", help="add a template animation to a character, then download everything")
+    an.add_argument("--id", required=True)
+    an.add_argument("--template", required=True)
+    an.add_argument("--name")
+    an.add_argument("--dirs", default="south-east,south-west,north-east,north-west")
+    an.add_argument("--out", required=True)
+    gc = sub.add_parser("char-get", help="download a character's rotations and animations")
+    gc.add_argument("--id", required=True)
+    gc.add_argument("--out", required=True)
     g = sub.add_parser("generate")
     g.add_argument("--desc", required=True)
     g.add_argument("--size", required=True)
@@ -164,6 +228,39 @@ def main():
 
     if args.cmd == "balance":
         print(_balance())
+    elif args.cmd == "character":
+        before = _balance()
+        body = {"description": args.desc, "image_size": {"width": args.size, "height": args.size}, "mode": "standard",
+                "view": "low top-down", "outline": "single color black outline", "shading": "medium shading",
+                "detail": args.detail, "template_id": "mannequin", "seed": args.seed}
+        st, r = _call("POST", "/create-character-with-8-directions", body)
+        cid = r.get("character_id")
+        if st >= 300 or not cid:
+            sys.exit("character failed (%d): %s" % (st, json.dumps(_strip(r))[:800]))
+        print("character %s submitted (balance before: %s)" % (cid, before))
+        if r.get("background_job_id"):
+            status, j = _wait_job(r["background_job_id"], "character")
+            if status != "completed":
+                sys.exit("character job %s: %s" % (status, json.dumps(_strip(j))[:600]))
+        _fetch_character(cid, args.out)
+        print("  balance after: %s" % _balance())
+    elif args.cmd == "char-anim":
+        before = _balance()
+        body = {"character_id": args.id, "mode": "template", "template_animation_id": args.template,
+                "animation_name": args.name or args.template, "directions": args.dirs.split(",")}
+        st, r = _call("POST", "/animate-character", body)
+        jobs = r.get("background_job_ids") or []
+        if st >= 300 or not jobs:
+            sys.exit("char-anim failed (%d): %s" % (st, json.dumps(_strip(r))[:800]))
+        print("char-anim %s on %s: %d jobs (balance before: %s)" % (args.template, args.id, len(jobs), before))
+        for job in jobs:
+            status, j = _wait_job(job, "char-anim")
+            if status != "completed":
+                print("  job %s %s: %s" % (job, status, json.dumps(_strip(j))[:300]))
+        _fetch_character(args.id, args.out)
+        print("  balance after: %s" % _balance())
+    elif args.cmd == "char-get":
+        _fetch_character(args.id, args.out)
     elif args.cmd == "generate":
         w, h = (int(v) for v in args.size.lower().split("x"))
         refs = []

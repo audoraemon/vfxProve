@@ -53,6 +53,8 @@ One row per building. Every call's job log is in the session scratchpad; the pro
 
 **Grand total: 678 generations** (2000 → 1322), across 44 calls. 26 of them went on rejected results (the first keep, two collapses).
 
+**Fix (2026-10-03, user review):** the cathedral's ruins left arches, pinnacles and wall stumps standing, so its fall did not read as a collapse. Re-edited with "completely destroyed and flattened… no walls, arches, buttresses, pinnacles, towers or spire left standing, nothing taller than a few blocks" (seed 311, 25). The result was a flat heap of stone, beams, copper sheets and glass, drawn 53 px high and 20 px right; moved (−20, +53). Total 703.
+
 ## Findings
 
 - **The composition reference is followed loosely.** PixelLab keeps the iso angle and the canvas position, but draws its own cottage: 62 px wide against the reference's 69, and 6–9 px taller. That reads fine on a cottage's footprint. Measure the anchor per pick; don't assume it.

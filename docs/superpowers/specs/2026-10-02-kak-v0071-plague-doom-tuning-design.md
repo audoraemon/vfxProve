@@ -87,3 +87,39 @@ One milestone, tag `kak-v0.07.1`:
 2. Plague looks.
 3. Doom.
 4. Measurements, summary, tag.
+
+## Changes made while executing
+
+### Task 1: plague rules
+- **As specified.** `SCAN_EVERY` 0.5 → 0.1, so someone the cast infects starts their 5 s at once (with a 0.5 s scan, cast victims died 5.0–5.5 s after catching it).
+
+### Task 2: plague looks
+The first look failed its purpose. At play zoom 0.6 the 1-px rings were invisible, and the green-to-red blend passed through brown, which read as an ordinary tunic under the evening light. So:
+- **The tint is a fixed five-colour ladder** instead of a blend:
+  - `Person.SICK_COLORS`: green `8ee04a`, yellow-green `d8e040`, amber `f0b030`, orange `f07028`, red `e8302c`.
+  - `SICK_STAGES` must equal its size.
+  - `SICK_SKIN` and `SICK_CLOTH` are 0.7.
+  - `SICK_RED` and `SICK_TINT` are gone.
+  - The cough mote is the tint, lightened.
+- **A filled glow instead of a ring:**
+  - each sick person out in the open gets a pulsing filled iso ellipse (`GLOW_R` 0.42, 12 segments, alpha 0.30–0.50) and a rim;
+  - all the fills are drawn with one `RenderingServer.canvas_item_add_triangle_array`, and all the rims with one `draw_multiline_colors`;
+  - the unit ellipse is computed once.
+- **Smaller changes:**
+  - `_art_signature()` asks for the stage only of the sick.
+  - Puffs are pruned once per spread.
+  - The response drawers show only while someone sick is out in the open (`PlagueManager.any_in_open()`), not for the trapped or people aboard a boat.
+
+### Task 3: Silent Doom
+- **Card text:** the draft cards printed the cooldown with `%d`, so 2.5 s read "2 s". `PrepareScreen.cooldown_text()` now prints whole cooldowns whole and fractions to one decimal.
+
+### Final review
+- **A seen Doom reacts once for all its victims.**
+  - `Crowd._settle_doom()` called `_react()` per victim. Each witness re-pathed once per victim, so 25 victims with 40 witnesses took about 100 ms.
+  - It now calls `_react()` once, with every seen victim's position, and each witness flees the nearest one.
+  - The alarm, incidents and threats per death are unchanged.
+- **Doom spares anyone who boarded a boat** between the cast and the strike. Before, they died aboard and were also counted as escaped.
+- **F4 plague line:** sick, sick soldiers, dead and puffs.
+- **Draft clips re-recorded** for Pestilence and Silent Doom.
+- **Checks:** 1065. The digest and crowd_check are unchanged; FLOW 24/24.
+- **Measurements:** see the v0.07 summary, §11 "v0.07.1".

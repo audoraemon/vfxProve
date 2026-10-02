@@ -1203,29 +1203,33 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 
 ## Silent Doom's dead (v0.05), judged after all of a cast's victims have fallen (so they never witness each other):
 ## nobody living within DOOM_WITNESS, and the town never knows; otherwise those near panic at a small danger and the
-## death raises the alarm like any other.
+## death raises the alarm like any other. The seen victims are reacted to together (v0.07.1): with no cap a cast can
+## take a crowd, and a witness among them would otherwise panic -- and plan a fresh path -- once for each.
 func _settle_doom() -> void:
 	if _doomed.is_empty():
 		return
 	var dead := _doomed
 	_doomed = []
+	var onlookers := citizens + soldiers
+	var seen_at: Array[Vector2] = []
 	for v in dead:
 		if not is_instance_valid(v):
 			continue
 		var at := v.ground_pos
 		var seen := false
-		for p in citizens + soldiers:
+		for p in onlookers:
 			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= DOOM_WITNESS:
 				seen = true
 				break
 		if not seen:
 			continue
 		threats.register(at, 0.6, 0.3, 3.0, DOOM_WITNESS, DOOM_WITNESS + 1.0, &"doom")
-		var points: Array[Vector2] = [at]
-		_react(points, 0.6, DOOM_WITNESS + 1.0, at, &"doom")
+		seen_at.append(at)
 		if alarms.incident(at):
 			_investigate(at)
 		_hear_alarm(ALARM_KILL)
+	if not seen_at.is_empty():
+		_react(seen_at, 0.6, DOOM_WITNESS + 1.0, seen_at[0], &"doom")
 
 
 ## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.

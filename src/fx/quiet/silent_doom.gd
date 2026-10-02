@@ -2,8 +2,9 @@ class_name SilentDoom
 extends FxTimeline
 ## Silent Doom (v0.05): a quiet death. A dark wisp gathers over everyone within RADIUS of the aim (v0.07.1; before,
 ## the nearest three), and they fall without a sound past a whisper and with no danger for the town to see -- no threat
-## is registered and no alarm raised (Crowd.on_cast() skips quiet powers). Whether anyone saw it, Crowd decides once
-## they have all fallen (Crowd.DOOM_WITNESS): a witness panics, and then each death counts like any other.
+## is registered and no alarm raised (Crowd.on_cast() skips quiet powers). The victims are fixed at the cast and fall
+## T_STRIKE later, except anyone who has gone inside by then (a boat, a shelter). Whether anyone saw it, Crowd decides
+## once they have all fallen (Crowd.DOOM_WITNESS): a witness panics, and then each death counts like any other.
 
 const RADIUS := 0.8
 const T_STRIKE := 0.45
@@ -28,8 +29,12 @@ func _build() -> void:
 		_wisp(Iso.ground_to_screen(origin))
 	at(T_STRIKE, func() -> void:
 		for v in victims:
-			if is_instance_valid(v):
-				ctx.field.kill(v, &"doom", origin))
+			if not is_instance_valid(v):
+				continue
+			var person := v as Person
+			if person != null and person.inside:
+				continue  # boarded a boat or took shelter since the cast: out of reach, hidden away
+			ctx.field.kill(v, &"doom", origin))
 
 
 ## A dark wisp: smoke that curls down onto the spot, then a faint puff as it takes them.

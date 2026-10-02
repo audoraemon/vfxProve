@@ -30,7 +30,7 @@ extends SceneTree
 ##          from 20 s (the first in the west, clear of the Bell Tower), then a report every 15 s to 150 s -- escapes, the Citadel, the clock, the rite, the boats, the
 ##          engineers
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
-##          troopers cannot be lured, confused or infected): --power=<key> [--at=x,y] [--snap] [--seconds=s]
+##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
 ##          [--setup=rite|evac]; --snap aims at the citizen nearest --at;
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
 ##          its run into assets/clips/<key>.png

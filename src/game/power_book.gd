@@ -27,7 +27,7 @@ const POWERS := [
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"dp": 15, "cooldown": 30.0, "aim": "click", "shape": "roaming vortex, 10 s", "kind": "cataclysm"},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
-		"dp": 16, "cooldown": 40.0, "aim": "click", "shape": "a plague spreading through crowds", "quiet": true,
+		"dp": 16, "cooldown": 40.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
 		"kind": "curse"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"dp": 18, "cooldown": 35.0, "aim": "click", "shape": "cone, faces down-right on screen", "kind": "cataclysm"},

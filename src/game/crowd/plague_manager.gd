@@ -3,11 +3,12 @@ extends RefCounted
 ## Pestilence (v0.06): the sick (Person.sick_left) die PLAGUE_LIFE after they caught it, and every SPREAD_EVERY seconds
 ## each one gives it to each healthy citizen within SPREAD_R with SPREAD_CHANCE -- so a packed gate queue, the dock's
 ## crowd or a full shelter spreads it fast -- up to PLAGUE_MAX sick at once. People sheltering together pass it on
-## inside; one who dies in there is carried out first, to be seen. Soldiers do not catch it. A plague death is an
-## ordinary death (damage kind plague): it counts, raises the alarm and is an incident.
+## inside; one who dies in there is carried out first, to be seen. Soldiers catch it too (v0.07.1). A plague death is an
+## ordinary death (damage kind plague): it counts, raises the alarm and is an incident. v0.07.1: death 5 s after
+## catching it, spreading each second.
 
-const PLAGUE_LIFE := 30.0
-const SPREAD_EVERY := 3.0
+const PLAGUE_LIFE := 5.0
+const SPREAD_EVERY := 1.0
 const SPREAD_R := 1.0
 const SPREAD_CHANCE := 0.3
 const PLAGUE_MAX := 60
@@ -69,7 +70,7 @@ func _collect(scan: bool) -> void:
 	sick = kept
 	if not scan or sick.size() >= PLAGUE_MAX:
 		return
-	for p in _crowd.citizens:
+	for p in _crowd.citizens + _crowd.soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.sick_left > 0.0 and not sick.has(p):
 			sick.append(p)
 
@@ -87,7 +88,7 @@ func _spread() -> void:
 			if sick.size() + fresh.size() >= PLAGUE_MAX:
 				break
 			var q := e as Person
-			if q != null and q != p and not q.soldier and q.is_alive() and q.sick_left <= 0.0 and not fresh.has(q) \
+			if q != null and q != p and q.is_alive() and q.sick_left <= 0.0 and not fresh.has(q) \
 					and _rng.randf() < SPREAD_CHANCE:
 				fresh.append(q)
 	for q in fresh:

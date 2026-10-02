@@ -522,9 +522,10 @@ func observe(from: Vector2) -> void:
 	walk_speed = _mind_speed()
 
 
-## Pestilence (v0.06): catch the plague, with `seconds` to live. Soldiers, the dead and the already sick do not.
+## Pestilence (v0.06): catch the plague, with `seconds` to live. Soldiers too (v0.07.1); the dead and the already sick
+## do not.
 func infect(seconds: float) -> bool:
-	if soldier or state == State.DEAD or sick_left > 0.0:
+	if state == State.DEAD or sick_left > 0.0:
 		return false
 	sick_left = seconds
 	walk_speed = _mind_speed()

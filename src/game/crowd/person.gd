@@ -929,6 +929,15 @@ func _draw_body(lift: int, top_only: int) -> void:
 		_draw_citizen(lift, top_only)
 
 
+## A death with no effect of its own (the quiet powers, the plague): with the people sprites, the body falls and lies
+## (its death animation) where the procedural one left a dark smear.
+func _draw_corpse() -> void:
+	if SpriteArt.on() and PeopleArt.ready():
+		_draw_body(0, 0)
+	else:
+		super()
+
+
 ## The design it wears (PeopleArt): its role's or its corps', the look hashed once from where it lives.
 func _design() -> String:
 	if _look < 0.0:

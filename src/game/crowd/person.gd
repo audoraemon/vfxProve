@@ -75,9 +75,8 @@ const LURABLE := [Mind.CALM, Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
 ## Discord (v0.06): a confused citizen ambles at this share of a walk, under a violet swirl.
 const CONFUSED_PACE := 0.7
 const COL_DISCORD := Color("b070ff")
-## Pestilence (v0.06): the sick move at this share of their pace, tinged green, coughing up a green mote.
+## Pestilence (v0.06): the sick move at this share of their pace; SICK_MOTE is the green the targeting preview rings them in.
 const SICK_PACE := 0.7
-const SICK_TINT := Color("7a9a4a")
 const SICK_MOTE := Color("a8d060")
 ## Pestilence (v0.07.1): the sick go through these colours as death nears, one for each of SICK_STAGES steps: bright
 ## green when caught, then yellow-green, amber, orange and red. Saturated, so they stay readable under the evening light.
@@ -1051,7 +1050,7 @@ func _art_signature() -> int:
 	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7.
 	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0)
 	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
-	return (walk + 4 * sick_stage()) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
+	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
 
 
 func _walk_rate() -> float:

@@ -110,6 +110,8 @@ func _spread() -> void:
 			if q != null and q != p and q.is_alive() and q.sick_left <= 0.0 and not fresh.has(q) \
 					and _rng.randf() < SPREAD_CHANCE:
 				fresh.append(q)
+	if not fresh.is_empty():
+		_puffs = _puffs.filter(func(x) -> bool: return is_instance_valid(x))  # the finished ones, once for all of them
 	for q in fresh:
 		q.infect(PLAGUE_LIFE)
 		sick.append(q)
@@ -118,7 +120,6 @@ func _spread() -> void:
 
 ## A green smoke puff where the plague was just passed on (v0.07.1), in the cast's colours, on the crowd's overlay.
 func _puff(p: Person) -> void:
-	_puffs = _puffs.filter(func(x) -> bool: return is_instance_valid(x))
 	var layer := _crowd.overlay()
 	if _puffs.size() >= PUFF_MAX or layer == null or p.inside:
 		return
@@ -149,6 +150,19 @@ func draw_ground(ci: CanvasItem) -> void:
 	ci.draw_multiline_colors(glow.rim_pts, glow.rim_cols, GLOW_RIM_WIDTH)
 
 
+## The glow's rim points in screen space, relative to its centre: Iso.ground_to_screen() is linear, so one ellipse is
+## worked out once and moved to each person. Built on first use.
+static var _ring_offsets := PackedVector2Array()
+
+
+static func _glow_ring() -> PackedVector2Array:
+	if _ring_offsets.is_empty():
+		for k in GLOW_SEGMENTS:
+			var a := TAU * float(k) / float(GLOW_SEGMENTS)
+			_ring_offsets.append(Iso.ground_to_screen(Vector2(cos(a), sin(a)) * GLOW_R))
+	return _ring_offsets
+
+
 ## The geometry of draw_ground() at pulse `pulse` (0 the trough, 1 the crest): `fill_pts`/`fill_cols`/`fill_idx`, a
 ## triangle fan (centre, then GLOW_SEGMENTS rim points) for each of the sick in the open, all in one array, and
 ## `rim_pts`/`rim_cols`, the rim's segments as point pairs with a colour each.
@@ -160,16 +174,17 @@ func build_glow(pulse: float) -> Dictionary:
 	var rim_cols := PackedColorArray()
 	var fill_a := lerpf(GLOW_FILL_ALPHA.x, GLOW_FILL_ALPHA.y, pulse)
 	var rim_a := lerpf(GLOW_RIM_ALPHA.x, GLOW_RIM_ALPHA.y, pulse)
+	var ring := _glow_ring()
 	for p in sick:
 		if not is_instance_valid(p) or p.inside or not p.visible:
 			continue
 		var c := p.sick_color()
 		var base := fill_pts.size()
-		fill_pts.append(Iso.ground_to_screen(p.ground_pos))
+		var centre := Iso.ground_to_screen(p.ground_pos)
+		fill_pts.append(centre)
 		fill_cols.append(Color(c, fill_a))
 		for k in GLOW_SEGMENTS:
-			var a := TAU * float(k) / float(GLOW_SEGMENTS)
-			fill_pts.append(Iso.ground_to_screen(p.ground_pos + Vector2(cos(a), sin(a)) * GLOW_R))
+			fill_pts.append(centre + ring[k])
 			fill_cols.append(Color(c, fill_a))
 			fill_idx.append(base)
 			fill_idx.append(base + 1 + k)

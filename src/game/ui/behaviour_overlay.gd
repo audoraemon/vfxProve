@@ -2,8 +2,9 @@ class_name BehaviourOverlay
 extends Node
 ## F4 (v0.04 debug): what the town's people are thinking. In the world, a ring under every citizen in its intent's
 ## colour; on screen, the alarm stage, the bell, the last stage changes, each gate's queue and the route score an
-## average evacuee gives it, and for the citizen nearest the mouse its role, intent, awareness, the dangers near it
-## and a line to where it is going. Hidden until asked for; stays shown for the run once shown.
+## average evacuee gives it, the plague while anyone is sick, and for the citizen nearest the mouse its role, intent,
+## awareness, the dangers near it and a line to where it is going. Hidden until asked for; stays shown for the run
+## once shown.
 
 const TOGGLE_KEY := KEY_F4
 ## Ring colours by Person.Intent: routine, observe, local flee, regroup, evacuate, reroute, recover, assist, shelter.
@@ -170,6 +171,14 @@ func _draw_panel(ci: Control) -> void:
 				digging += 1
 		lines.append(["Rescue: %d squads, %d digging; trapped %d, saved %d, lost %d" % [crowd.rescue.squads.size(), digging,
 			crowd.rescue.trapped.size(), crowd.rescue.rescued, crowd.rescue.died], Color("c0a070")])
+	if crowd.plague != null and not crowd.plague.sick.is_empty():
+		var plague := crowd.plague
+		var sick_soldiers := 0
+		for p in plague.sick:
+			if is_instance_valid(p) and p.soldier:
+				sick_soldiers += 1
+		lines.append(["Plague: %d sick (%d soldiers), %d dead, %d puffs" % [plague.sick.size(), sick_soldiers,
+			plague.deaths, plague.puffs_alive()], Person.SICK_MOTE])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

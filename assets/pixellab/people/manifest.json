@@ -4,14 +4,612 @@
   24
  ],
  "designs": {
-  "guard": {
+  "bellkeeper": {
    "block": [
     0,
     0
    ],
    "sil": [
+    768,
+    960
+   ],
+   "foot": [
+    11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "caregiver_a": {
+   "block": [
+    192,
+    0
+   ],
+   "sil": [
+    960,
+    960
+   ],
+   "foot": [
+    11,
+    22
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "caregiver_b": {
+   "block": [
     384,
     0
+   ],
+   "sil": [
+    0,
+    1440
+   ],
+   "foot": [
+    11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "clergy": {
+   "block": [
+    576,
+    0
+   ],
+   "sil": [
+    192,
+    1440
+   ],
+   "foot": [
+    11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "craft_a": {
+   "block": [
+    768,
+    0
+   ],
+   "sil": [
+    384,
+    1440
+   ],
+   "foot": [
+    11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "craft_b": {
+   "block": [
+    960,
+    0
+   ],
+   "sil": [
+    576,
+    1440
+   ],
+   "foot": [
+    12,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "engineer": {
+   "block": [
+    0,
+    480
+   ],
+   "sil": [
+    768,
+    1440
+   ],
+   "foot": [
+    12,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "escort": {
+   "block": [
+    192,
+    480
+   ],
+   "sil": [
+    960,
+    1440
+   ],
+   "foot": [
+    13,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "farmer": {
+   "block": [
+    384,
+    480
+   ],
+   "sil": [
+    0,
+    1920
+   ],
+   "foot": [
+    11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "guard": {
+   "block": [
+    576,
+    480
+   ],
+   "sil": [
+    192,
+    1920
+   ],
+   "foot": [
+    12,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "laborer": {
+   "block": [
+    768,
+    480
+   ],
+   "sil": [
+    384,
+    1920
+   ],
+   "foot": [
+    11,
+    22
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "marshal": {
+   "block": [
+    960,
+    480
+   ],
+   "sil": [
+    576,
+    1920
+   ],
+   "foot": [
+    11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "merchant_a": {
+   "block": [
+    0,
+    960
+   ],
+   "sil": [
+    768,
+    1920
+   ],
+   "foot": [
+    12,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "merchant_b": {
+   "block": [
+    192,
+    960
+   ],
+   "sil": [
+    960,
+    1920
    ],
    "foot": [
     12,
@@ -52,15 +650,61 @@
   },
   "resident_a": {
    "block": [
-    192,
-    0
+    384,
+    960
    ],
    "sil": [
-    576,
-    0
+    0,
+    2400
    ],
    "foot": [
     11,
+    21
+   ],
+   "frames": {
+    "idle": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "walk": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "run": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "stumble": {
+     "south-east": 5,
+     "south-west": 5,
+     "north-east": 5,
+     "north-west": 5
+    },
+    "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    }
+   }
+  },
+  "resident_b": {
+   "block": [
+    576,
+    960
+   ],
+   "sil": [
+    192,
+    2400
+   ],
+   "foot": [
+    12,
     21
    ],
    "frames": {

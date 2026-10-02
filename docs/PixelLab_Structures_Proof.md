@@ -78,6 +78,46 @@ Each building through its states (procedural, intact, damaged, blast mid-fall, r
 - **Lighting:** sprites take the effects' light evenly. They lose the procedural art's per-face light, which the captures do not make obvious.
 - **Generations:** 678 for 10 sprites (about 62–90 each). 26 went on rejected results. Converting the remaining ~25 component kinds the same way would take roughly 1500–2000.
 
+## People (2026-10-03)
+
+Spec: `docs/superpowers/specs/2026-10-03-pixellab-people-design.md`. Plan: `docs/superpowers/plans/2026-10-03-pixellab-people.md`.
+
+**Every citizen and soldier is drawn from PixelLab character sprites:** 17 designs, each in idle, walk, run, stumble and death, in 4 diagonals.
+
+| Who | Designs |
+|---|---|
+| Residents, merchants, craftsmen, caregivers | 2 looks each, picked from each person's home |
+| Laborer, clergy, farmer, bellkeeper, engineer | 1 each, in the responders' colours (cream robe and stole, navy coat, leather apron and cap) |
+| Guard, marshal, escort, rescue | blue, red, white tabards; the rescue squad carries a shovel instead of spear and shield |
+
+- **Size:** PixelLab size 16, which makes 18–19 px figures on a 24 px cell, native beside the new buildings. Sizes 20–32 made people as tall as doors.
+- **Engine:**
+  - `PeopleArt` and one atlas (`assets/pixellab/people/atlas.png`, packed by `tools/dev/make_people_atlas.py`);
+  - `Person` picks the animation and diagonal from what it does and which way it last stepped;
+  - every effect still draws on top: freeze shell, lift, knockback, the thrown, burned, gravity, laser and ice deaths, sickness, Discord's swirl, the hit flash;
+  - tints are a white silhouette of each frame drawn over it, so no custom shader;
+  - a quiet death now lays the body down;
+  - F7 and `-- --art=procedural` switch people with the buildings.
+- **Behaviour unchanged:** `tests/test_people_art.gd` runs a crowd through panic, blasts, freezes and deaths with sprites on and off and gets the same state. 1327 checks, 0 failures; `state_digest` unchanged.
+- **Speed:** mission bench (busy machine), 3 runs each:
+  - sprites 101.1 fps (100.5 / 101.3 / 101.5), procedural 101.2 (97.9 / 106.3 / 99.3);
+  - draw calls 1037 against 1052.
+  - The first version cost 11 fps and +185 draw calls: each person's untextured shadow broke the crowd's batch. Drawing shadows from a white square in the atlas fixed it.
+- **Captures:**
+  - `captures/people_states.png`: every design through every state;
+  - `captures/sprite_proof/people_compare_*.png`: procedural against sprites;
+  - `captures/mission_*.png`: the scripted mission.
+- **Generations:** 384 (1297 → 913):
+  - pilot and size tests 48;
+  - 14 designs at about 21 each, 294;
+  - the rescue twice, 42. The first had no visible shovel and a marshal-like red.
+
+**People findings:**
+- **Missing directions:** PixelLab's animation endpoint takes only as many directions as it has free job slots and drops the rest silently. The helper re-submits the missing directions into the same animation group until all four exist. Nothing is charged twice.
+- **Costs:** template animations cost about 1 generation per direction; a character costs about 1.
+- **Size:** at size 16 the outfits still read (aprons, robes, tabards, the farmer's hat and pitchfork). Small props can vanish: the first rescue's shovel.
+- **Back diagonals** read as three-quarter backs, enough to tell people walking away.
+
 ## Before merging
 
 1. **Worst-frame bump:** the first draw of each sprite likely compiles the shader and uploads textures. Warm them up at load, then re-bench on a quiet machine.

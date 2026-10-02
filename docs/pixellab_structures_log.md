@@ -68,3 +68,16 @@ One row per building. Every call's job log is in the session scratchpad; the pro
 - **A collapse can "heal" midway:** the damage fades and the building shrinks before snapping to the ruins. Asking for "crumbles from the top down… it is never repaired" fixed both the keep's and the tower's.
 - **An idle loop's generated frames can sit 1 px off frame 0.** Loop the generated frames only.
 - **Generated collapses cost 1 generation, against 20–25 for each still, and look good.** With the damaged and ruins sprites pinned as first and last frames, PixelLab fills the fall in between. Every building up to 256 px can have one. The engine plays it on a fall (`collapse_frames` in the manifest). Gravity keeps the engine's inward squeeze, and the laser its slice.
+
+## People (2026-10-03)
+
+Characters made with `tools/dev/pixellab_api.py character --size 16` (standard mode, 8 rotations, low top-down), then `char-anim` with the templates `breathing-idle`, `walking-4-frames`, `running-4-frames`, `crouching` and `falling-back-death` in south-east, south-west, north-east and north-west. Prompts are in `docs/superpowers/plans/2026-10-03-pixellab-people.md`.
+
+| Step | Cost | Result |
+|---|---|---|
+| Size tests: resident and guard at 24 and 32, then 16 and 20 | 7 | 24 → 27 px figures, 32 → 35 px, 20 → 22 px, 16 → 18–19 px. **Chose 16**: native beside the doors and stalls |
+| Pilot: resident_a and guard, 5 animations × 4 directions | 41 | The first batch landed only some directions (PixelLab drops what has no job slot); the helper now fills in the missing ones |
+| 14 designs (resident_b … escort), character + 20 animation directions each | 294 | All complete, 4–7 frames a direction |
+| Rescue | 21 + 21 | First: no visible shovel, red like the marshal. Re-rolled: "holding a big iron shovel in both hands, no spear, no shield" |
+
+**People total: 384 generations** (1297 → 913). **Everything so far: 1087** (2000 → 913).

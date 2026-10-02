@@ -136,6 +136,153 @@ func _puff(p: Person) -> void:
 	_puffs.append(puff)
 
 
+## Whether any of the sick is out in the open to be seen (v0.07.1): not sheltering or aboard a boat, not hidden under
+## rubble. Only these have a glow, so the drawers need to show for no one else.
+func any_in_open() -> bool:
+	for p in sick:
+		if is_instance_valid(p) and not p.inside and p.visible:
+			return true
+	return false
+
+
+## The sick's glow (v0.07.1): a filled ellipse this many ground units round under each, with a rim, of so many segments,
+## pulsing so many times a second.
+const GLOW_R := 0.42
+const GLOW_SEGMENTS := 12
+const GLOW_PULSE_HZ := 3.0
+## The glow's alpha at the pulse's trough (x) and crest (y): the fill, and the brighter rim round it.
+const GLOW_FILL_ALPHA := Vector2(0.30, 0.50)
+const GLOW_RIM_ALPHA := Vector2(0.65, 1.0)
+## The rim's width, in canvas units.
+const GLOW_RIM_WIDTH := 2.0
+## Spread puffs (v0.07.1): this many particles each, and at most PUFF_MAX alive at once.
+const PUFF_PARTICLES := 6
+const PUFF_MAX := 40
+
+var sick: Array[Person] = []
+var deaths := 0
+var _crowd: Crowd
+var _field: EnemyField
+var _rng := RandomNumberGenerator.new()
+var _spread_in := SPREAD_EVERY
+var _scan_in := 0.0
+var _puffs: Array = []
+## The puffs' own randomness, so drawing them never changes who catches it.
+var _fx_rng := RandomNumberGenerator.new()
+
+
+func setup(crowd: Crowd, field: EnemyField, seed_value: int) -> PlagueManager:
+	_crowd = crowd
+	_field = field
+	_rng.seed = seed_value
+	_fx_rng.seed = seed_value + 1
+	return self
+
+
+func step(delta: float) -> void:
+	_scan_in -= delta
+	_collect(_scan_in <= 0.0)
+	if _scan_in <= 0.0:
+		_scan_in = SCAN_EVERY
+	if sick.is_empty():
+		_spread_in = SPREAD_EVERY
+		return
+	var dying: Array[Person] = []
+	for p in sick:
+		if _crowd.rescue != null and _crowd.rescue.holds(p):
+			continue  # the sickness waits under the rubble (v0.07): it neither runs down nor is cured
+		p.sick_left -= delta
+		if p.sick_left <= 0.0:
+			dying.append(p)
+	for p in dying:
+		sick.erase(p)
+		p.sick_left = 0.0
+		if p.inside and _crowd.shelters != null:
+			_crowd.shelters.release(p)
+		if p.inside:
+			continue  # aboard a boat: it sails away with the others
+		if _field.kill(p, &"plague"):
+			deaths += 1
+	_spread_in -= delta
+	if _spread_in <= 0.0:
+		_spread_in = SPREAD_EVERY
+		_spread()
+
+
+## The sick list: the dead, the freed and the escaped leave it; on a scan, the effect's newly infected join it.
+func _collect(scan: bool) -> void:
+	var kept: Array[Person] = []
+	for p in sick:
+		if is_instance_valid(p) and p.is_alive() and p.sick_left > 0.0:
+			kept.append(p)
+	sick = kept
+	if not scan or sick.size() >= PLAGUE_MAX:
+		return
+	for p in _crowd.citizens + _crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.sick_left > 0.0 and not sick.has(p):
+			sick.append(p)
+
+
+func _spread() -> void:
+	var fresh: Array[Person] = []
+	for p in sick:
+		var near: Array = []
+		if p.inside:
+			if _crowd.shelters != null:
+				near = _crowd.shelters.occupants_with(p)
+		else:
+			near = _field.in_radius(p.ground_pos, SPREAD_R)
+		for e in near:
+			if sick.size() + fresh.size() >= PLAGUE_MAX:
+				break
+			var q := e as Person
+			if q != null and q != p and q.is_alive() and q.sick_left <= 0.0 and not fresh.has(q) \
+					and _rng.randf() < SPREAD_CHANCE:
+				fresh.append(q)
+	if not fresh.is_empty():
+		_puffs = _puffs.filter(func(x) -> bool: return is_instance_valid(x))  # the finished ones, once for all of them
+	for q in fresh:
+		q.infect(PLAGUE_LIFE)
+		sick.append(q)
+		_puff(q)
+
+
+## A green smoke puff where the plague was just passed on (v0.07.1), in the cast's colours, on the crowd's overlay.
+func _puff(p: Person) -> void:
+	var layer := _crowd.overlay()
+	if _puffs.size() >= PUFF_MAX or layer == null or p.inside:
+		return
+	var puff := PixelParticles.new()
+	puff.rng.seed = _fx_rng.randi()
+	puff.shape = PixelParticles.Shape.PUFF
+	puff.ramp = PackedColorArray(PestilenceFx.MIASMA)
+	puff.position = Iso.ground_to_screen(p.ground_pos)
+	puff.drag = 1.4
+	puff.gravity = -14.0
+	layer.add_child(puff)
+	puff.burst(PUFF_PARTICLES, {"radius": 4.0, "speed": Vector2(4, 12), "alt": Vector2(2, 10),
+		"alt_speed": Vector2(2, 8), "life": Vector2(0.5, 0.9), "size": Vector2(2, 3), "size_end_mul": 1.8})
+	_puffs.append(puff)
+
+
+## Whether any of the sick is out in the open to be seen (v0.07.1): not sheltering or aboard a boat, not hidden under
+## rubble. Only these have a glow, so the drawers need to show for no one else.
+func any_in_open() -> bool:
+	for p in sick:
+		if is_instance_valid(p) and not p.inside and p.visible:
+			return true
+	return false
+
+
+## How many spread puffs are still alive (the F4 overlay shows it).
+func puffs_alive() -> int:
+	var n := 0
+	for x in _puffs:
+		if is_instance_valid(x):
+			n += 1
+	return n
+
+
 ## The sick's glow (v0.07.1): a pulsing filled ellipse with a rim under each sick person out in the open, in its
 ## sickness's colour. Into `ci` (the crowd's ground drawer, under the people), world space, in two canvas commands in
 ## all, however many are sick: every fill as one triangle array, every rim as one multiline.

@@ -41,6 +41,15 @@ static func run(t) -> void:
 	var drawer := crowd._ground_drawer as Crowd.ResponseDrawer
 	plague.step(0.01)
 	t.check(drawer.showing(), "the glow shows while anyone is sick")
+	# Not while the only sick are out of sight: aboard a boat or sheltering (inside), or trapped under rubble (hidden).
+	p.inside = true
+	s.visible = false
+	t.check(plague.sick.size() == 2 and not plague.any_in_open() and not drawer.showing(),
+		"the drawers rest while the only sick are inside or trapped")
+	s.visible = true
+	t.check(plague.any_in_open() and drawer.showing(), "and show again as one is in the open")
+	p.inside = false
+	s.visible = true
 	for q in crowd.citizens + crowd.soldiers:
 		q.sick_left = 0.0
 	plague.step(0.01)

@@ -208,7 +208,7 @@ class ResponseDrawer extends Node2D:
 			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
 			or (crowd.engineers != null and crowd.engineers.working())
 			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty())
-			or (crowd.plague != null and not crowd.plague.sick.is_empty()))
+			or (crowd.plague != null and crowd.plague.any_in_open()))
 
 
 class Ticker extends Node:

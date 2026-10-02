@@ -14,6 +14,7 @@ static func run(t) -> void:
 	_mapping(t)
 	_sets(t)
 	_view(t)
+	_structure(t)
 	SpriteArt.set_enabled(true)
 
 
@@ -110,3 +111,69 @@ static func _view(t) -> void:
 	t.check(mm.get_shader_parameter("corner_left") == left and mm.get_shader_parameter("corner_right") == right,
 		"and sees the deep footprint as the wide one it was drawn for")
 	m.free()
+
+
+## A sprite building goes intact -> damaged -> falling -> ruins (or cut, under a laser), and back on a rebuild; its
+## view box holds the whole sprite; and sprites change only what is drawn.
+static func _structure(t) -> void:
+	SpriteArt.set_enabled(true)
+	var cot := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	t.check(not cot.sprite.is_empty() and cot.sprite_state() == &"intact", "a cottage stands as its intact sprite")
+	cot.damage(cot.max_hp * 0.4, Vector2(-5, -5), &"blast")
+	t.check(cot.sprite_state() == &"damaged", "cracked under 65%, it shows the damaged sprite")
+	cot.destroy(Vector2(-5, -5), &"blast")
+	t.check(cot.sprite_state() == &"falling", "a blast brings it down")
+	for i in 90:
+		cot._process(1.0 / 60.0)
+	t.check(cot.sprite_state() == &"ruins", "and leaves its ruins")
+	cot.restore()
+	for i in 2:
+		cot._process(1.0 / 60.0)
+	t.check(cot.sprite_state() == &"intact", "rebuilt, it stands intact again")
+	cot.free()
+	var tav := _make(Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, 6, &"house", &"tavern")
+	tav.destroy(Vector2(-5, -5), &"laser")
+	t.check(tav.sprite_state() == &"cut", "a laser slices a tall building")
+	tav.free()
+	var cat := _make(Rect2(0, 0, 4.2, 6.2), 56.0, K.TEMPLE, 7, &"temple", &"cathedral")
+	var at: Vector2 = cat.sprite.anchor
+	t.check(cat.view_box().encloses(Rect2(cat.base_position() - at, cat.sprite.size)),
+		"the view box holds the whole sprite")
+	cat.free()
+	var proc := _make(Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, 8, &"house", &"townhouse")
+	t.check(proc.sprite.is_empty() and proc.sprite_state() == &"", "a building without a sprite keeps its art")
+	proc.free()
+	t.check(_battered(true) == _battered(false), "sprites on or off, the same hits leave the same buildings")
+	SpriteArt.set_enabled(true)
+
+
+## The proof's buildings put through the same hits, with sprites on or off: their state, as text.
+static func _battered(sprites: bool) -> String:
+	SpriteArt.set_enabled(sprites)
+	var rows := PackedStringArray()
+	var specs := [
+		[Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, &"house", &"", &"blast"],
+		[Rect2(0, 0, 0.75, 0.95), 18.0, K.HOUSE, &"house", &"", &"gravity"],
+		[Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, &"house", &"tavern", &"laser"],
+		[Rect2(0, 0, 1.5, 1.25), 20.0, K.HOUSE, &"house", &"smithy", &"ice"],
+		[Rect2(0, 0, 4.2, 6.2), 56.0, K.TEMPLE, &"temple", &"cathedral", &"stone"],
+		[Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, &"citadel", &"", &"nova"],
+	]
+	for i in specs.size():
+		var c: Array = specs[i]
+		var s := _make(c[0], c[1], c[2], 100 + i, c[3], c[4])
+		s.damage(s.max_hp * 0.3, Vector2(-4, -4), c[5])
+		s.damage(s.max_hp * 0.3, Vector2(-4, -4), c[5])
+		for f in 20:
+			s._process(1.0 / 60.0)
+		s.damage(s.max_hp, Vector2(-4, -4), c[5])
+		for f in 90:
+			s._process(1.0 / 60.0)
+		var rubble := 0.0
+		for r in s._rubble:
+			for p in r[0]:
+				rubble += p.x * 1.7 + p.y * 2.3
+		rows.append("%s hp=%.2f h=%.2f sc=%.3f fr=%.3f cr=%d rub=%.3f col=%.3f st=%d pos=%s" % [s.tuning_key(), s.hp,
+			s.height, s.scorch, s.frost, s._cracks.size(), rubble, s._collapse, s.rng.state, s.position])
+		s.free()
+	return "\n".join(rows)

@@ -101,6 +101,15 @@ var _art_key := 0
 ## Picks a variant of the kind's art: &"keep" (the Citadel keep's flag), &"gate" (the Citadel's gateway),
 ## &"tavern" and &"smithy" (houses), &"lamp" (a street lamp instead of a torch).
 var art_tag := &""
+## Sprite set from setup() (SpriteArt.set_for, the PixelLab proof): when it has one, the building is drawn from it by
+## its SpriteViews instead of its procedural art. Only the drawing changes; its state and rng stream never do.
+var sprite := {}
+## Its sprite's views: the building; its ruins, under it while it falls and after; a top a laser sliced off.
+var _sprite_view: SpriteView
+var _ruins_view: SpriteView
+var _top_view: SpriteView
+## The last light handed to the views [light, ambient, world tint], for views made after it (the ruins, a top).
+var _sprite_light := [Color.BLACK, 1.0, Color.WHITE]
 ## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
 ## When set, damage() hands every hit to it instead of lowering hp (the Citadel's damage budget).
 var damage_filter := Callable()
@@ -213,6 +222,8 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", t
 		_build_windows()
 	# After the windows: the plan hashes the seed and must never draw from the rng stream they just used.
 	art = ArtKit.plan_for(self)
+	sprite = SpriteArt.set_for(self)
+	_grow_view_box_for_sprite()
 	return self
 
 
@@ -252,6 +263,8 @@ func _ready() -> void:
 		_glow.z_as_relative = false
 		_glow.z_index = -4
 		add_child(_glow)
+	if not sprite.is_empty():
+		_sync_sprite()
 
 
 func contains(g: Vector2, margin := 0.0) -> bool:
@@ -413,6 +426,117 @@ func restore() -> void:
 	restored.emit(self)
 
 
+## Re-read the sprite set (SpriteArt turned on or off, ArtToggle) and redraw either way.
+func refresh_sprite() -> void:
+	sprite = SpriteArt.set_for(self)
+	_grow_view_box_for_sprite()
+	for v in [_sprite_view, _ruins_view, _top_view]:
+		if is_instance_valid(v):
+			v.queue_free()
+	_sprite_view = null
+	_ruins_view = null
+	_top_view = null
+	wake()
+	_dirty = true
+	queue_redraw()
+
+
+## What a sprite building shows now: &"intact", &"damaged" (cracked), &"falling" (collapsing), &"cut" (a laser's stump;
+## only a laser leaves a building destroyed without a collapse) or &"ruins"; &"" without a sprite.
+func sprite_state() -> StringName:
+	if sprite.is_empty():
+		return &""
+	if destroyed:
+		if _collapse < 0.0:
+			return &"cut"
+		return &"falling" if _collapse < 1.0 else &"ruins"
+	return &"intact" if _cracks.is_empty() else &"damaged"
+
+
+## Its view box takes in the whole sprite: a spire or a chimney can rise above the procedural box.
+func _grow_view_box_for_sprite() -> void:
+	if sprite.is_empty():
+		return
+	var size: Vector2 = sprite.size
+	var at: Vector2 = sprite.anchor
+	var x0 := _base.x - (size.x - at.x if sprite.mirror else at.x)
+	_view_box = _view_box.merge(Rect2(Vector2(x0, _base.y - at.y), size).grow(VIEW_BOX_MARGIN))
+
+
+## Points the views at what the building shows now (sprite_state()): standing, damaged, sinking into the ground (gravity
+## squeezes it inward as it goes) over its ruins, sliced by a laser with the top sliding off, or its ruins. Setters
+## that change nothing redraw nothing, so this runs every processed frame.
+func _sync_sprite() -> void:
+	var state := sprite_state()
+	if not is_instance_valid(_sprite_view):
+		_sprite_view = _new_view()
+	var ruins := state == &"falling" or state == &"ruins"
+	if ruins and not is_instance_valid(_ruins_view):
+		_ruins_view = _new_view()
+		move_child(_ruins_view, _sprite_view.get_index())
+		_ruins_view.show_still(&"ruins")
+	elif not ruins and is_instance_valid(_ruins_view):
+		_ruins_view.queue_free()
+		_ruins_view = null
+	if is_instance_valid(_ruins_view):
+		_ruins_view.set_color(Color(self_modulate, clampf(_collapse * 3.0, 0.0, 1.0)))
+	var m := -1.0 if sprite.mirror else 1.0
+	_sprite_view.visible = state != &"ruins"
+	_sprite_view.set_color(self_modulate)
+	match state:
+		&"intact", &"damaged":
+			_sprite_view.show_still(state, int(_time * float(sprite.fps)))
+			_sprite_view.position = Vector2.ZERO
+			_sprite_view.scale = Vector2(m, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
+		&"falling":
+			var k := _collapse * _collapse
+			var at: Vector2 = sprite.anchor
+			var sink := roundf(k * at.y)
+			var squeeze := 1.0 - 0.35 * k if destroy_kind == &"gravity" else 1.0
+			_sprite_view.show_still(&"damaged")
+			_sprite_view.position = Vector2(0.0, sink)
+			_sprite_view.scale = Vector2(m * squeeze, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_ABOVE, sink)
+		&"cut":
+			_sprite_view.show_still(&"damaged")
+			_sprite_view.position = Vector2.ZERO
+			_sprite_view.scale = Vector2(m, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_BELOW, height, _molten)
+	var top := state == &"cut" and not _top_piece.is_empty()
+	if top and not is_instance_valid(_top_view):
+		_top_view = _new_view()
+		_top_view.show_still(&"damaged")
+		_top_view.set_cut(SpriteView.KEEP_ABOVE, float(_top_piece.h0))
+	elif not top and is_instance_valid(_top_view):
+		_top_view.queue_free()
+		_top_view = null
+	if is_instance_valid(_top_view):
+		_top_view.position = ((_top_piece.off as Vector2) + Vector2(0.0, float(_top_piece.fall))).round()
+		var gone := clampf(float(_top_piece.fall) / (float(_top_piece.h0) + 4.0), 0.0, 1.0)
+		_top_view.set_color(Color(self_modulate, 1.0 - gone))
+
+
+func _new_view() -> SpriteView:
+	var v := SpriteView.new().setup(sprite, _s[3], _s[1])
+	v.set_light(_sprite_light[0], _sprite_light[1], scorch, frost, _sprite_light[2])
+	add_child(v)
+	return v
+
+
+## A sprite building's own drawing: its ground shadow while it stands, and the light handed to its views (they draw
+## the sprite; see _sync_sprite()).
+func _draw_sprite_frame(light: Color) -> void:
+	if not destroyed:
+		_quad(_shadow(), SHADOW)
+	var amb := lights.ambient if lights else 1.0
+	var t := lights.tint if lights else Color.WHITE
+	_sprite_light = [light, amb, t]
+	for v in [_sprite_view, _ruins_view, _top_view]:
+		if is_instance_valid(v):
+			v.set_light(light, amb, scorch, frost, t)
+
+
 ## How the building comes down: a laser slices the top off; anything else collapses into rubble with debris,
 ## dust and, for hot damage, fire.
 func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
@@ -499,7 +623,7 @@ func _process(delta: float) -> void:
 			_top_piece = {}
 	_molten = maxf(_molten - delta * 0.5, 0.0)
 	if is_instance_valid(_banner):
-		_banner.visible = not destroyed
+		_banner.visible = not destroyed and sprite.is_empty()
 		if _banner_fall >= 0.0:
 			_banner_fall += delta
 			_banner.position = Vector2(0, roundf(90.0 * _banner_fall * _banner_fall))
@@ -522,11 +646,13 @@ func _process(delta: float) -> void:
 			_spin_step = spin_step
 			_spin.queue_redraw()
 	if is_instance_valid(_flame):
-		_flame.visible = not destroyed
+		_flame.visible = not destroyed and sprite.is_empty()
 		var flame_step := int(_time * 8.0)
 		if flame_step != _flame_step and not destroyed and not _unseen:
 			_flame_step = flame_step
 			_flame.queue_redraw()
+	if not sprite.is_empty():
+		_sync_sprite()
 	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
 	var stepped := shake_step != _shake_step
 	_shake_step = shake_step
@@ -640,6 +766,9 @@ func _face_color(base: Color, normal: Vector2, light: Color, dir: Vector2) -> Co
 func _draw() -> void:
 	var light := lights.sample(center()) if lights else Color.BLACK
 	var dir := lights.sample_dir(center()) if lights else Vector2.ZERO
+	if not sprite.is_empty():
+		_draw_sprite_frame(light)
+		return
 	var pal := _palette()
 	var top_c := _face_color(pal[0], Vector2.ZERO, light, dir)
 	var right_c := _face_color(pal[1], Vector2(1, 0), light, dir)
@@ -898,7 +1027,7 @@ func wake() -> void:
 ## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch).
 func _can_idle() -> bool:
 	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) \
-		and not is_instance_valid(_flame)
+		and not is_instance_valid(_flame) and (sprite.is_empty() or int(sprite.frames) <= 1)
 
 
 func _go_idle() -> void:

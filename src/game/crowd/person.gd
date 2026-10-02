@@ -53,6 +53,10 @@ const SORT_REACH := 3.0
 const SORT_HZ := 10.0
 ## A person's sprite on screen, relative to its feet: wide enough for a spear, tall enough for a helmet.
 const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
+## People sprites: rows above the feet that stay with the legs when a laser cuts a person in two.
+const SPRITE_WAIST := 7.0
+## A lightning hit's blue flash (DummyEnemy._tint's).
+const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -174,6 +178,12 @@ var _confused_left := 0.0
 var _was_fleeing := false
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
+## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
+## toward the back of the screen (a back view), and which of a role's two looks it wears (hashed from its home or
+## post, never drawn from rng; -1 until first drawn).
+var _stride := false
+var _back := false
+var _look := -1.0
 
 var _path := PackedVector2Array()
 var _leg := 0
@@ -296,7 +306,16 @@ func tick(delta: float) -> void:
 			_think(_think_accum)
 			_think_accum = 0.0
 		_think_due = not _think_due
+	var before := ground_pos
 	super(delta)
+	_track_stride(ground_pos - before)
+
+
+## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
+func _track_stride(d: Vector2) -> void:
+	_stride = d.length_squared() > 1e-10
+	if _stride and absf(d.x + d.y) > 1e-6:
+		_back = d.x + d.y < 0.0
 
 
 func _think(delta: float) -> void:
@@ -902,10 +921,98 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 # --- Drawing -----------------------------------------------------------------
 
 func _draw_body(lift: int, top_only: int) -> void:
-	if soldier:
+	if SpriteArt.on() and PeopleArt.ready():
+		_draw_sprite(lift, top_only)
+	elif soldier:
 		_draw_soldier(lift, top_only)
 	else:
 		_draw_citizen(lift, top_only)
+
+
+## The design it wears (PeopleArt): its role's or its corps', the look hashed once from where it lives.
+func _design() -> String:
+	if _look < 0.0:
+		_look = ArtKit.hash01(int(anchor.x * 64.0) * 73856093 ^ int(anchor.y * 64.0) * 19349663, 7)
+	return PeopleArt.design_for(soldier, profile.role if profile != null else 0, corps, _look)
+
+
+## The people sprite's [animation, facing, frame] for what it is doing: its fall when dead, still while frozen, on one
+## knee in a stumble, running when lifted, knocked or frightened, walking when it stepped, else idle; facing the way it
+## last stepped. Stumble and death hold their last frame.
+func _sprite_pose() -> Array:
+	var facing: int
+	if _back:
+		facing = PeopleArt.Facing.NE if _facing > 0 else PeopleArt.Facing.NW
+	else:
+		facing = PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
+	var anim := &"idle"
+	var t := _anim
+	if state == State.DEAD:
+		anim = &"death"
+		t = _dead_time
+	elif is_frozen():
+		return [&"idle", facing, 0]
+	elif _stumble > 0.0:
+		anim = &"stumble"
+		t = STUMBLE_SECONDS - _stumble
+	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
+		anim = &"run"
+	elif _stride:
+		anim = &"run" if is_running() else &"walk"
+	var frame := int(t * float(PeopleArt.FPS[anim]))
+	if anim == &"death" or anim == &"stumble":
+		frame = mini(frame, PeopleArt.frame_count(_design(), anim, facing) - 1)
+	return [anim, facing, frame]
+
+
+## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way
+## DummyEnemy._tint() colours the procedural body — a hit's flash, ice, gravity's void, a char, sickness.
+func _sprite_tint() -> Color:
+	if _flash > 0.0:
+		if _kind == &"lightning" and int(_flash * 40.0) % 2 == 0:
+			return Color(COL_LIGHTNING_FLASH, 1.0)
+		return Color(1.0, 1.0, 1.0, 1.0)
+	if is_frozen():
+		return Color(COL_ICE, 0.6 * clampf(_frozen, 0.0, 1.0))
+	if _kind == &"gravity" and state == State.DEAD:
+		return Color(COL_VOID, _char * 0.8)
+	if _char > 0.0:
+		return Color(COL_CHAR, _char * 0.85)
+	if sick_left > 0.0 and state != State.DEAD:
+		return Color(SICK_TINT, 0.35)
+	return Color(0.0, 0.0, 0.0, 0.0)
+
+
+## The person drawn from the people atlas: the frame for what it does (_sprite_pose()) with its feet on its ground
+## point, its white silhouette over it at the strength of whatever tints it, then the cough and Discord's swirl.
+## The atlas and the default shader are every person's, so the whole crowd stays one draw batch.
+func _draw_sprite(lift: int, top_only: int) -> void:
+	var d := _design()
+	var pose := _sprite_pose()
+	var src := PeopleArt.frame_rect(d, pose[0], pose[1], pose[2])
+	var sil := PeopleArt.silhouette_rect(d, pose[0], pose[1], pose[2])
+	var foot := PeopleArt.foot(d)
+	var dst := Rect2(Vector2(-foot.x, -foot.y + lift), src.size)
+	if top_only != 0:
+		# The laser's cut: only what is above the waist slides off; DummyEnemy draws the legs left standing.
+		var keep := maxf(foot.y - SPRITE_WAIST, 1.0)
+		src.size.y = keep
+		sil.size.y = keep
+		dst.size.y = keep
+	var atlas := PeopleArt.atlas()
+	draw_texture_rect_region(atlas, dst, src)
+	var tint := _sprite_tint()
+	if tint.a > 0.01:
+		draw_texture_rect_region(atlas, dst, sil, tint)
+	if state == State.DEAD:
+		return
+	if sick_left > 0.0:
+		_px(2 if _facing > 0 else -3, -16 - int(_anim * 2.0) % 4 + lift, 1, 1, SICK_MOTE)
+	if mind == Mind.CONFUSED:
+		var turn := int(_anim * 3.0)
+		for k in 4:
+			var a := float((turn + k) % 8) * TAU / 8.0
+			_px(roundi(cos(a) * 3.0), -22 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
 
 
 ## Townsfolk: bare head, tunic, no armour. Smaller than the soldiers so a crowd reads at a glance.
@@ -1002,6 +1109,8 @@ func _pose_signature() -> int:
 ## flashing it: the same integer, so it redraws exactly when it did, for a fraction of the work. Every person
 ## on screen asks this every frame.
 func _art_signature() -> int:
+	if SpriteArt.on() and PeopleArt.ready():
+		return _sprite_signature()
 	if state != State.WANDER or _lift != 0.0 or _frozen > 0.0 or _flash > 0.0:
 		return super()
 	var running := mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY
@@ -1015,6 +1124,28 @@ func _art_signature() -> int:
 	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0)
 	# Sickness (v0.06) above the walk frames, so its tint shows the moment it is caught.
 	return (walk + (4 if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
+
+
+## _art_signature() for the people sprites: the frame (_sprite_pose()) and everything drawn over or around it, so a
+## person redraws exactly when its picture changes. Folded with multiplies, like the procedural one.
+func _sprite_signature() -> int:
+	if state == State.DEAD:
+		return super._art_signature()
+	var pose := _sprite_pose()
+	var sig: int = PeopleArt.ANIMS.find(pose[0]) * 4 + int(pose[1])
+	sig = sig * 16 + int(pose[2]) % 16
+	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
+	sig = sig * 97 + int(round(_lift))
+	sig = sig * 97 + int(_frozen * 8.0)
+	sig = sig * 97 + int(_flash * 40.0)
+	sig = sig * 7 + int(state)
+	sig = sig * 131 + int(_draw_origin.y) + 64
+	var overlay := 0
+	if mind == Mind.CONFUSED:
+		overlay = 1 + int(_anim * 3.0) % 8
+	elif sick_left > 0.0:
+		overlay = 9 + int(_anim * 2.0) % 4
+	return sig * 16 + overlay
 
 
 func _walk_rate() -> float:

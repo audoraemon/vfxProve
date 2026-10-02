@@ -21,14 +21,17 @@ Canvas sizes are today's renders from `tools/dev/preview_components.gd` (zoom 1,
 | Sprite | Replaces (role / `tuning_key()`) | Footprint | Today's render | Canvas |
 |---|---|---|---|---|
 | `cottage_red`, `cottage_blue` | `house` / `house` | 0.95×0.75 (wide); 0.75×0.95 (deep) = mirrored | 69×56 | 72×60 |
-| `tavern` | `house` / `house_tavern` | 2.4×1.5, 1.6×2.4, 2.8×1.8 | 127×105 | 128×108 |
+| `tavern` | `house` / `house_tavern` | drawn for 2.4×1.5; also stands on 1.6×2.4 (mirrored) and 2.8×1.8 | 127×105 (at 2.1×1.4) | 140×128 |
 | `smithy` | `house` / `house_smithy` | 1.5×1.25 | 102×99 | 104×100 |
 | `cathedral` | `temple` / `temple_cathedral` | 4.2×6.2 | 344×223 | 348×224 |
 | `citadel_keep` | `citadel` / Kind.KEEP, 2.0×2.0 | 2.0×2.0 | 133×189 | 136×192 |
 | `citadel_tower` | `citadel` / Kind.KEEP, 1.3×1.3 | 1.3×1.3 | 89×133 | 92×136 |
-| `citadel_wall` | `citadel` / Kind.CASTLE_WALL | 2.8×0.6 (N, S); 0.6×2.0 (W, E) = mirrored | ≈109×103 (computed: footprint 109 px across, 40 high plus crenels) | 112×108 |
+| `citadel_wall` | `citadel` / Kind.CASTLE_WALL, long side ≥ 2.4 | 2.8×0.6 (N, S) | ≈109×103 (computed) | 116×108 |
+| `citadel_wall_side` | `citadel` / Kind.CASTLE_WALL, long side < 2.4 | drawn for 2.0×0.6; stands on 0.6×2.0 (W, E) mirrored | ≈83×92 (computed) | 88×96 |
 
-The three taverns have different footprints. The proof makes one tavern sprite for the 2.8×1.8 footprint and checks how it sits on the other two. If it reads badly, a second sprite is generated.
+The three taverns have different footprints. The proof makes one tavern sprite for the 2.4×1.5 footprint, which also fits the 1.6×2.4 one mirrored, and checks how it sits on the 2.8×1.8 one. If it reads badly, a second sprite is generated.
+
+The Citadel's west and east walls are 2.0 long against the north and south walls' 2.8, so they get their own sprite (`citadel_wall_side`) rather than a mirrored copy of the long one. The plan's manifest sizes supersede the canvas column above wherever they differ.
 
 ### 1.2 Per sprite
 
@@ -76,7 +79,7 @@ Chimney smoke stays procedural (`ChimneySmoke`).
 - **Idle frames** step on a node of their own, the way the banner and flame nodes do now, so the building stays cached and can still idle (`_can_idle()`).
 - **Collapse** (`_collapse` 0→1, `COLLAPSE_TIME` as today): the damaged sprite shakes and sinks by its own height, clipped at the ground line so it disappears into the ground. The ruins sprite is drawn beneath it, fading in over the first third. Today's debris, dust and fire spawn unchanged.
   - **Gravity** pulls inward instead: the sinking sprite also squeezes horizontally toward its centre.
-  - **Laser:** the cut height is today's. The sprite is drawn in two parts, split at the cut: the stump stays with a molten line, the top slides off along `_top_piece` and fades. The ruins sprite appears under the stump once the top has fallen.
+  - **Laser:** the cut height is today's. The sprite is drawn in two parts, split at the cut: the stump stays with a molten line, the top slides off along `_top_piece` and fades. The stump stays as the laser's ruin: the damaged sprite below the cut, its edge cooling from molten. No ruins sprite is drawn under it.
 - `_build_rubble()` still runs (the digest hashes its shapes and the walk grid reads them), but a structure with a sprite set does not draw the rubble fans.
 
 ### 2.3 Lighting

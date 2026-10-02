@@ -51,7 +51,14 @@ static func run(t) -> void:
 		var p: Person = crowd.citizens[10 + k]
 		p.ground_pos = sick.ground_pos + Vector2(-0.08 * k, 0.1)
 		group.append(p)
-	plague.step(PlagueManager.SPREAD_EVERY)
+	# Nothing spreads before SPREAD_EVERY has passed; the next step takes it past.
+	plague.step(PlagueManager.SPREAD_EVERY * 0.5)
+	var early := 0
+	for p in group:
+		if p != sick and p.sick_left > 0.0:
+			early += 1
+	t.check(early == 0, "nobody catches it before %.0f s have passed (%d did)" % [PlagueManager.SPREAD_EVERY, early])
+	plague.step(PlagueManager.SPREAD_EVERY * 0.6)
 	t.check(soldier in plague.sick, "a soldier infected outside the spread is on the sick list once a scan has run")
 	var caught := 0
 	for p in group:

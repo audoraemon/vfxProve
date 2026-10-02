@@ -140,7 +140,7 @@ func _puff(p: Person) -> void:
 ## rubble. Only these have a glow, so the drawers need to show for no one else.
 func any_in_open() -> bool:
 	for p in sick:
-		if is_instance_valid(p) and not p.inside and p.visible:
+		if is_instance_valid(p) and p.is_alive() and not p.inside and p.visible:
 			return true
 	return false
 
@@ -194,7 +194,7 @@ func build_glow(pulse: float) -> Dictionary:
 	var rim_a := lerpf(GLOW_RIM_ALPHA.x, GLOW_RIM_ALPHA.y, pulse)
 	var ring := _glow_ring()
 	for p in sick:
-		if not is_instance_valid(p) or p.inside or not p.visible:
+		if not is_instance_valid(p) or not p.is_alive() or p.inside or not p.visible:
 			continue
 		var c := p.sick_color()
 		var base := fill_pts.size()

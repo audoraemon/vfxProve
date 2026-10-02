@@ -79,7 +79,7 @@ static func run(t) -> void:
 	var killed := crowd.killed_citizens
 	var killed_soldiers := crowd.killed_soldiers
 	plague.step(PlagueManager.PLAGUE_LIFE - PlagueManager.SPREAD_EVERY - 0.5)
-	t.check(sick.is_alive(), "still alive half a second before its time")
+	t.check(sick.is_alive(), "still alive just before its time")
 	plague.step(1.0)
 	t.check(not sick.is_alive(), "the sick die %.0f s after catching it" % PlagueManager.PLAGUE_LIFE)
 	plague.step(PlagueManager.PLAGUE_LIFE)

@@ -8,7 +8,7 @@ extends RefCounted
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
-		"dp": 8, "cooldown": 15.0, "aim": "click", "shape": "up to 3 struck down, unseen", "quiet": true,
+		"dp": 8, "cooldown": 2.5, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
 		"kind": "quiet"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 10, "cooldown": 25.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,

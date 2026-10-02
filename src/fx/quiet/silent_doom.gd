@@ -1,22 +1,21 @@
 class_name SilentDoom
 extends FxTimeline
-## Silent Doom (v0.05): a quiet death. A dark wisp gathers over up to VICTIMS people within RADIUS of the aim,
-## nearest first, and they fall without a sound past a whisper and with no danger for the town to see -- no threat
+## Silent Doom (v0.05): a quiet death. A dark wisp gathers over everyone within RADIUS of the aim (v0.07.1; before,
+## the nearest three), and they fall without a sound past a whisper and with no danger for the town to see -- no threat
 ## is registered and no alarm raised (Crowd.on_cast() skips quiet powers). Whether anyone saw it, Crowd decides once
 ## they have all fallen (Crowd.DOOM_WITNESS): a witness panics, and then each death counts like any other.
 
 const RADIUS := 0.8
-const VICTIMS := 3
 const T_STRIKE := 0.45
 const WISP := [Color("0e0b12"), Color("231c2c"), Color("3a3048"), Color("4d4060")]
 
 
-## Who the doom would take at `at`: the nearest living, up to VICTIMS, within RADIUS.
+## Who the doom would take at `at`: every living person within RADIUS (v0.07.1: no cap), nearest first.
 static func victims_at(field: EnemyField, at: Vector2) -> Array[DummyEnemy]:
 	var near := field.in_radius(at, RADIUS)
 	near.sort_custom(func(a: DummyEnemy, b: DummyEnemy) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
-	return near.slice(0, VICTIMS)
+	return near
 
 
 func _build() -> void:

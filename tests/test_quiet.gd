@@ -1,5 +1,5 @@
 extends RefCounted
-## v0.05 quiet powers. Silent Doom takes up to three people within reach of the aim; unseen, the town never knows (no
+## v0.05 quiet powers. Silent Doom takes everyone within reach of the aim (v0.07.1); unseen, the town never knows (no
 ## danger, no alarm), but a witness panics and the death raises the alarm. Blight ruins what a structure is for --
 ## a well's water, a gate (jammed for a while), the bell, the dock, the rite -- and adds a single alarm.
 
@@ -47,7 +47,7 @@ static func run(t) -> void:
 	var town: Town = made[5]
 	_clear_round(crowd)
 
-	# Who Silent Doom takes: the nearest, three at most, within reach.
+	# Who Silent Doom takes: everyone within reach, soldiers too (v0.07.1), and nobody beyond.
 	var at := Vector2(-4.0, 10.0)
 	var four: Array[Person] = []
 	for k in 4:
@@ -56,25 +56,29 @@ static func run(t) -> void:
 		four.append(p)
 	var far: Person = crowd.citizens[4]
 	far.ground_pos = at + Vector2(1.5, 0.0)
+	var soldier: Person = crowd.soldiers[0]
+	soldier.ground_pos = at + Vector2(0.0, 0.6)
 	var taken := SilentDoom.victims_at(field, at)
-	t.check(taken.size() == SilentDoom.VICTIMS and four[3] not in taken and four[0] in taken and far not in taken,
-		"Silent Doom takes the three nearest within reach")
+	t.check(taken.size() == 5 and four.all(func(p: Person) -> bool: return p in taken) and soldier in taken
+		and far not in taken, "Silent Doom takes everyone within reach, soldiers too, and nobody beyond")
+	t.check(is_equal_approx(float(PowerBook.get_power("doom").cooldown), 2.5), "Silent Doom is ready again 2.5 s after a cast")
+	taken.erase(soldier)
+	soldier.ground_pos = Vector2(-27.0, 22.0)
 
 	# A quiet cast registers no danger.
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "doom")
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "blight")
 	t.check(crowd.threats.active_count() == 0, "a quiet cast is no danger the town can see")
 
-	# Unseen: three fall together (none witnesses another) and the town never knows.
-	four[3].ground_pos = Vector2(-27.0, 20.0)
+	# Unseen: four fall together (none witnesses another) and the town never knows.
 	far.ground_pos = Vector2(-27.0, 21.0)
 	var alarm := crowd.alarm
 	var killed := crowd.killed_citizens
 	for p in taken:
 		field.kill(p, &"doom", at)
 	crowd.advance(0.1)
-	t.check(crowd.killed_citizens == killed + 3 and crowd.alarm == alarm and crowd.threats.active_count() == 0
-		and crowd.alarms.stage == AlarmManager.Stage.NORMAL, "unseen, three die and the town never knows")
+	t.check(crowd.killed_citizens == killed + taken.size() and crowd.alarm == alarm and crowd.threats.active_count() == 0
+		and crowd.alarms.stage == AlarmManager.Stage.NORMAL, "unseen, all four die and the town never knows")
 
 	# Seen: a witness close by panics, and the death raises the alarm.
 	var victim: Person = crowd.citizens[10]

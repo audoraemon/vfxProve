@@ -79,6 +79,8 @@ static func name_for(s: Structure) -> String:
 				return "citadel_keep" if s.footprint.size.x >= 1.8 else "citadel_tower"
 		Structure.Kind.CASTLE_WALL:
 			if s.role == &"citadel":
+				if s.art_tag == &"gate":
+					return "citadel_gate"
 				var long := maxf(s.footprint.size.x, s.footprint.size.y)
 				return "citadel_wall" if long >= 2.4 else "citadel_wall_side"
 	return ""

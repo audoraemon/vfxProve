@@ -39,6 +39,14 @@ bool glows(vec3 c) {
 	return c.r > 0.85 && c.g > 0.5 && c.b < 0.55 && c.r - c.b > 0.4;
 }
 
+// The draw's modulate (the blight's tint, a fade) alone: the fragment's COLOR comes in already multiplied by the
+// texture, which the lighting below has used once.
+varying vec4 modulate;
+
+void vertex() {
+	modulate = COLOR;
+}
+
 void fragment() {
 	vec4 px = texture(TEXTURE, UV);
 	vec2 p = floor(UV / TEXTURE_PIXEL_SIZE) + 0.5 - frame_origin - anchor;
@@ -62,5 +70,5 @@ void fragment() {
 	if (cut_mode == -1 && p.y < line + 2.0) {
 		c = mix(c, MOLTEN, molten);
 	}
-	COLOR = vec4(c, px.a) * COLOR;
+	COLOR = vec4(c, px.a) * modulate;
 }

@@ -3,7 +3,7 @@ extends RefCounted
 
 const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
-	"citadel_wall", "citadel_wall_side"]
+	"citadel_wall", "citadel_wall_side", "citadel_gate"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -34,6 +34,7 @@ static func _mapping(t) -> void:
 		[Rect2(0, 0, 1.5, 1.5), 50.0, K.KEEP, &"tower", &"", ""],
 		[Rect2(0, 0, 2.8, 0.6), 40.0, K.CASTLE_WALL, &"citadel", &"", "citadel_wall"],
 		[Rect2(0, 0, 0.6, 2.0), 40.0, K.CASTLE_WALL, &"citadel", &"", "citadel_wall_side"],
+		[Rect2(0, 0, 2.8, 0.6), 40.0, K.CASTLE_WALL, &"citadel", &"gate", "citadel_gate"],
 		[Rect2(0, 0, 1.2, 0.6), 34.0, K.CASTLE_WALL, &"wall", &"", ""],
 	]
 	for c in cases:
@@ -146,6 +147,14 @@ static func _structure(t) -> void:
 	proc.free()
 	t.check(_battered(true) == _battered(false), "sprites on or off, the same hits leave the same buildings")
 	SpriteArt.set_enabled(true)
+	# The Citadel tags its keep and its gateway after making them; they still get their own sprites.
+	var env := EnvironmentField.new()
+	var cit := Citadel.new().setup(env, Vector2.ZERO)
+	t.check(cit.parts[5].sprite.get("name", "") == "citadel_gate" and cit.keep.sprite.get("name", "") == "citadel_keep"
+		and cit.parts[4].sprite.get("name", "") == "citadel_wall", "the Citadel's gateway and keep get their own sprites")
+	cit.free()
+	env.clear()
+	env.free()
 
 
 ## F7 turns every building's sprite off and on again.

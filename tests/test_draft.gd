@@ -64,6 +64,9 @@ static func run(t) -> void:
 		and prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest",
 		"tabs, slots, MANIFEST and the open tab's cards answer the mouse")
 	prep.free()
+	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("doom")) == "2.5 s"
+		and PrepareScreen.cooldown_text(PowerBook.get_power("nova")) == "120 s",
+		"a card shows a fractional cooldown as 2.5 s and a whole one without a decimal")
 
 	# Wrapping keeps every line inside its width.
 	var lines := UiTheme.wrap("Judgement of the Ancients", 60.0, UiTheme.SIZE_SMALL)

@@ -93,6 +93,12 @@ static func tab_rect(i: int) -> Rect2:
 	return Rect2(TAB_AT + Vector2(float(i) * (TAB.x + TAB_GAP), 0.0), TAB)
 
 
+## A power's cooldown as the cards print it: whole seconds stay whole ("20 s"), a fraction shows one decimal ("2.5 s").
+static func cooldown_text(p: Dictionary) -> String:
+	var seconds := float(p.cooldown)
+	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
+
+
 ## The loadout bar's slot `i` (0-3).
 static func slot_rect(i: int) -> Rect2:
 	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (SLOT.x + 4.0), LOADOUT_BAR.position.y + 2.0), SLOT)
@@ -355,7 +361,7 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	y = clip_rect.end.y + 16.0
 	var kind := PowerBook.kind_of(key)
 	var title: String = PowerBook.KIND_TITLES[PowerBook.KINDS.find(kind)] if PowerBook.KINDS.has(kind) else ""
-	UiTheme.text(_ui, Vector2(tx, y), "%d DP   %d s   %s" % [int(p.dp), int(p.cooldown), String(p.aim)], UiTheme.SIZE_SMALL)
+	UiTheme.text(_ui, Vector2(tx, y), "%d DP   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)], UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,
 		Color("9ab48a") if bool(p.get("quiet", false)) else UiTheme.COL_DIM)
@@ -381,7 +387,7 @@ func _draw_card(i: int, key: String) -> void:
 	for k in mini(lines.size(), 2):
 		UiTheme.text(_ui, Vector2(tx, ty), lines[k], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if slot > 0 else UiTheme.COL_TEXT)
 		ty += UiTheme.LINE_SMALL
-	var cost := "%d DP  %d s" % [int(p.dp), int(p.cooldown)]
+	var cost := "%d DP  %s" % [int(p.dp), cooldown_text(p)]
 	UiTheme.text(_ui, Vector2(tx, r.end.y - 5.0), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.

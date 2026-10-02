@@ -81,6 +81,18 @@ static func _sets(t) -> void:
 		"a deep cottage is the wide one mirrored")
 	t.check(SpriteArt.set_for(side).get("mirror", false) and not SpriteArt.set_for(keep).get("mirror", true),
 		"a west or east wall is mirrored, the square keep never")
+	# Smoke rises from a sprite's own chimney (mirrored with it); a sprite with its smoke drawn in has none.
+	var red := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	red.sprite = SpriteArt.sprite("cottage_red").duplicate()
+	var at: Vector2 = red.sprite.anchor
+	var chim := Vector2(SpriteArt.manifest().cottage_red.chimney[0], SpriteArt.manifest().cottage_red.chimney[1])
+	t.check(ChimneySmoke.tip_of(red) == chim - at, "a cottage smokes from its sprite's chimney")
+	red.sprite.mirror = true
+	t.check(ChimneySmoke.tip_of(red) == Vector2(at.x - chim.x, chim.y - at.y), "mirrored with it")
+	red.free()
+	var inn := _make(Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, 5, &"house", &"tavern")
+	t.check(ChimneySmoke.tip_of(inn) == Vector2.INF, "the tavern's smoke is in its sprite")
+	inn.free()
 	SpriteArt.set_enabled(false)
 	t.check(SpriteArt.set_for(wide).is_empty(), "with sprites off nothing gets a set")
 	SpriteArt.set_enabled(true)

@@ -123,6 +123,9 @@ static func sprite(n: String) -> Dictionary:
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else default_anchor(size, fp),
 		"idle": idle, "frames": frames if idle != null else 1, "fps": float(m.get("fps", 8.0)), "mirror": false,
 		"collapse": collapse, "collapse_frames": collapse_frames if collapse != null else 0,
+		# Its chimney's top (sprite px) for ChimneySmoke; INF when it has none. own_smoke: its smoke is drawn in.
+		"chimney": Vector2(m.chimney[0], m.chimney[1]) if m.has("chimney") else Vector2.INF,
+		"own_smoke": bool(m.get("own_smoke", false)),
 	}
 	_sets[n] = built
 	return built

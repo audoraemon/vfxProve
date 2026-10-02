@@ -119,6 +119,12 @@ func _ready() -> void:
 	fps_meter.name = "FpsMeter"
 	add_child(fps_meter)
 
+	# F7 flips the buildings between their sprites and the procedural art (PixelLab structures proof).
+	var art_toggle := ArtToggle.new()
+	art_toggle.name = "ArtToggle"
+	art_toggle.env = env
+	add_child(art_toggle)
+
 	ctx.field = field
 	ctx.env = env
 	ctx.lights = lights

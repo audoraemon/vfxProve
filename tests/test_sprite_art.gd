@@ -15,6 +15,7 @@ static func run(t) -> void:
 	_sets(t)
 	_view(t)
 	_structure(t)
+	_toggle(t)
 	SpriteArt.set_enabled(true)
 
 
@@ -145,6 +146,23 @@ static func _structure(t) -> void:
 	proc.free()
 	t.check(_battered(true) == _battered(false), "sprites on or off, the same hits leave the same buildings")
 	SpriteArt.set_enabled(true)
+
+
+## F7 turns every building's sprite off and on again.
+static func _toggle(t) -> void:
+	SpriteArt.set_enabled(true)
+	var env := EnvironmentField.new()
+	var s := env.add_structure(Rect2(0, 0, 1.5, 1.25), 20.0, K.HOUSE, &"house", &"smithy")
+	t.check(not s.sprite.is_empty(), "the smithy starts as a sprite")
+	var toggle := ArtToggle.new()
+	toggle.env = env
+	toggle.toggle()
+	t.check(not SpriteArt.on() and s.sprite.is_empty(), "F7 turns the sprites off for every building")
+	toggle.toggle()
+	t.check(SpriteArt.on() and s.sprite.get("name", "") == "smithy", "and on again")
+	toggle.free()
+	env.clear()
+	env.free()
 
 
 ## The proof's buildings put through the same hits, with sprites on or off: their state, as text.

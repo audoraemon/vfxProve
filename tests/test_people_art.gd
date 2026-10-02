@@ -125,6 +125,8 @@ static func _designs(t) -> void:
 static func _frames(t) -> void:
 	var atlas := PeopleArt.atlas()
 	var size := Vector2(atlas.get_size())
+	var w := PeopleArt.white_rect()
+	t.check(atlas.get_image().get_pixelv(Vector2i(w.position)) == Color.WHITE, "the atlas has a white pixel for shadows")
 	for d in ["resident_a", "guard"]:
 		var foot := PeopleArt.foot(d)
 		t.check(Rect2(Vector2.ZERO, PeopleArt.cell()).has_point(foot - Vector2(0, 1)), "%s's feet are inside its cell" % d)

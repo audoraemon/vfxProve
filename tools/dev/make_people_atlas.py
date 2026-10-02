@@ -54,7 +54,9 @@ def main():
             design, _, src = args[i + 1].partition("=")
             import_character(design, src)
     designs = sorted(p.name for p in FRAMES.iterdir() if p.is_dir())
-    blocks = len(designs) * 2
+    # The design blocks, their silhouettes, and one more for a white square (shadows drawn from the atlas itself, so a
+    # person's every draw shares one texture and the crowd batches).
+    blocks = len(designs) * 2 + 1
     rows_of_blocks = (blocks + BLOCKS_ACROSS - 1) // BLOCKS_ACROSS
     atlas = Image.new("RGBA", (BLOCKS_ACROSS * BLOCK_COLS * CELL, rows_of_blocks * BLOCK_ROWS * CELL), (0, 0, 0, 0))
     manifest = {"cell": [CELL, CELL], "designs": {}}
@@ -91,6 +93,9 @@ def main():
         manifest["designs"][design] = {"block": list(block), "sil": list(sil), "foot": [(bb[0] + bb[2]) // 2, bb[3]],
                                        "frames": counts}
         print("packed", design, "foot", manifest["designs"][design]["foot"])
+    white = origin(len(designs) * 2)
+    atlas.paste(Image.new("RGBA", (8, 8), (255, 255, 255, 255)), white)
+    manifest["white"] = list(white)
     atlas.save(PEOPLE / "atlas.png")
     (PEOPLE / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
     print("atlas", atlas.size, "with", len(designs), "designs")

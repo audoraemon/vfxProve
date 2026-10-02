@@ -108,6 +108,13 @@ static func silhouette_rect(design: String, anim: StringName, facing: int, frame
 	return Rect2(b + _cell_offset(anim, facing, frame, frame_count(design, anim, facing)), cell())
 
 
+## A pixel of the atlas's white square: flat shapes (a person's shadow) drawn from it, tinted, share the crowd's
+## texture, so they do not break its draw batch the way an untextured rect does.
+static func white_rect() -> Rect2:
+	var w: Array = manifest().get("white", [0, 0])
+	return Rect2(Vector2(w[0], w[1]) + Vector2(3, 3), Vector2.ONE)
+
+
 ## Where the feet are in a cell: drawn at -foot, the feet stand on the person's ground point.
 static func foot(design: String) -> Vector2:
 	var f: Array = manifest().designs[design].foot

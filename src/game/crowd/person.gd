@@ -929,6 +929,15 @@ func _draw_body(lift: int, top_only: int) -> void:
 		_draw_citizen(lift, top_only)
 
 
+## With the people sprites, the shadow comes from the atlas's white square: an untextured rect between two atlas draws
+## would split the crowd into a draw batch a person (+~190 calls in the mission bench).
+func _draw_shadow(r: Rect2, c: Color) -> void:
+	if SpriteArt.on() and PeopleArt.ready():
+		draw_texture_rect_region(PeopleArt.atlas(), r, PeopleArt.white_rect(), c)
+	else:
+		super(r, c)
+
+
 ## A death with no effect of its own (the quiet powers, the plague): with the people sprites, the body falls and lies
 ## (its death animation) where the procedural one left a dark smear.
 func _draw_corpse() -> void:

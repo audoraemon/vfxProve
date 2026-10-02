@@ -402,6 +402,12 @@ func _tint(c: Color) -> Color:
 	return c.lerp(COL_CHAR, _char * 0.85)
 
 
+## The unit's ground shadow; a subclass drawn from a texture draws it from the same one (Person and the people atlas),
+## so the shadow does not cost the crowd its shared draw batch.
+func _draw_shadow(r: Rect2, c: Color) -> void:
+	draw_rect(r, c)
+
+
 func _px(x: int, y: int, w: int, h: int, c: Color) -> void:
 	if w < 0:
 		x += w
@@ -428,12 +434,12 @@ func _draw() -> void:
 		return
 	if _lift > 8.0:
 		# Hoisted and tumbling.
-		draw_rect(Rect2(-4, -1, 9, 2), Color(0, 0, 0, 0.35 * clampf(1.0 - _lift / 80.0, 0.2, 1.0)))
+		_draw_shadow(Rect2(-4, -1, 9, 2), Color(0, 0, 0, 0.35 * clampf(1.0 - _lift / 80.0, 0.2, 1.0)))
 		draw_set_transform(_draw_origin + Vector2(0, -_lift - 7.0).round(), _anim * 1.4)
 		_draw_body(7, 0)
 		draw_set_transform(_draw_origin)
 		return
-	draw_rect(Rect2(-4, -1, 9, 2), COL_SHADOW)
+	_draw_shadow(Rect2(-4, -1, 9, 2), COL_SHADOW)
 	_draw_body(-int(round(_lift)), 0)
 	if is_frozen():
 		_draw_ice_shell()
@@ -462,7 +468,7 @@ func _draw_body(lift: int, top_only: int) -> void:
 
 func _draw_thrown() -> void:
 	var shadow_a := 0.35 * clampf(1.0 - _alt / 60.0, 0.2, 1.0)
-	draw_rect(Rect2(_fly.round() + Vector2(-4, -1), Vector2(9, 2)), Color(0, 0, 0, shadow_a))
+	_draw_shadow(Rect2(_fly.round() + Vector2(-4, -1), Vector2(9, 2)), Color(0, 0, 0, shadow_a))
 	var center := (_fly + Vector2(0, -_alt - 7.0)).round()
 	draw_set_transform(_draw_origin + center, _rot)
 	_draw_body(7, 0)

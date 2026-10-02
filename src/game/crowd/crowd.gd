@@ -199,13 +199,16 @@ class ResponseDrawer extends Node2D:
 			crowd.engineers.draw(self)
 		if crowd.rescue != null and not ground:
 			crowd.rescue.draw(self)
+		if crowd.plague != null and ground:
+			crowd.plague.draw_ground(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
 		return crowd != null and ((crowd.bell != null and (crowd.bell.state == BellNetwork.State.CLIMBING
 			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
 			or (crowd.engineers != null and crowd.engineers.working())
-			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty()))
+			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty())
+			or (crowd.plague != null and not crowd.plague.sick.is_empty()))
 
 
 class Ticker extends Node:
@@ -304,6 +307,11 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+
+
+## The drawer over the people (z 60), where short-lived effects such as the plague's puffs go; null before spawn().
+func overlay() -> Node2D:
+	return _drawer if is_instance_valid(_drawer) else null
 
 
 func _response_drawer(label: String, z: int, on_ground: bool) -> ResponseDrawer:

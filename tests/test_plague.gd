@@ -23,7 +23,7 @@ static func run(t) -> void:
 		i += 1
 	var at := Vector2(0.8, 2.0)
 
-	# The cast: the three nearest healthy citizens; soldiers never.
+	# The cast: the three nearest healthy people, soldiers too.
 	var group: Array[Person] = []
 	for k in 5:
 		var p: Person = crowd.citizens[k]
@@ -52,6 +52,7 @@ static func run(t) -> void:
 		p.ground_pos = sick.ground_pos + Vector2(-0.08 * k, 0.1)
 		group.append(p)
 	plague.step(PlagueManager.SPREAD_EVERY)
+	t.check(soldier in plague.sick, "a soldier infected outside the spread is on the sick list once a scan has run")
 	var caught := 0
 	for p in group:
 		if p != sick and p.sick_left > 0.0:

@@ -79,6 +79,12 @@ const COL_DISCORD := Color("b070ff")
 const SICK_PACE := 0.7
 const SICK_TINT := Color("7a9a4a")
 const SICK_MOTE := Color("a8d060")
+## Pestilence (v0.07.1): the sick turn from SICK_TINT to this red as death nears, in SICK_STAGES steps, and the
+## sickness colours the skin and the clothes this strongly.
+const SICK_RED := Color("b03a2e")
+const SICK_STAGES := 5
+const SICK_SKIN := 0.6
+const SICK_CLOTH := 0.55
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -169,6 +175,8 @@ var awareness := Awareness.UNAWARE
 var _observe_left := 0.0
 ## Pestilence (v0.06): seconds left to live, sick; 0 is healthy (PlagueManager spreads it and ends it).
 var sick_left := 0.0
+## Pestilence (v0.07.1): the seconds the sickness ran in all, from infect(), to tell how far along it is.
+var sick_total := 0.0
 ## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
 var _confused_left := 0.0
 var _was_fleeing := false
@@ -528,8 +536,22 @@ func infect(seconds: float) -> bool:
 	if state == State.DEAD or sick_left > 0.0:
 		return false
 	sick_left = seconds
+	sick_total = seconds
 	walk_speed = _mind_speed()
 	return true
+
+
+## Pestilence (v0.07.1): 0 when healthy, else 1..SICK_STAGES by how much of the sickness has run.
+func sick_stage() -> int:
+	if sick_left <= 0.0 or state == State.DEAD:
+		return 0
+	var run := 1.0 - sick_left / maxf(sick_total, 0.001)
+	return clampi(1 + int(run * float(SICK_STAGES)), 1, SICK_STAGES)
+
+
+## Pestilence (v0.07.1): the sickness's colour now, green when caught to red near death.
+func sick_color() -> Color:
+	return SICK_TINT.lerp(SICK_RED, float(maxi(sick_stage() - 1, 0)) / float(SICK_STAGES - 1))
 
 
 ## Discord (v0.06): forget everything for `seconds` -- duty, the day, even the way out -- and amble about where it
@@ -917,12 +939,14 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		lift += 2  # down on one knee
 	var f := _facing
 	var role := profile.role if profile != null else -1
-	# The plague (v0.06) greens the skin and the clothes.
+	# The plague (v0.06) greens the skin and the clothes, going red as death nears (v0.07.1).
 	var sick := sick_left > 0.0 and state != State.DEAD
-	var skin := _skin.lerp(SICK_TINT, 0.5) if sick else _skin
+	var tint := sick_color() if sick else Color.WHITE
+	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
+	var legs := CIT_LEGS.lerp(tint, SICK_CLOTH) if sick else CIT_LEGS
 	if role == CitizenProfile.Role.CLERGY:
 		# A robe to the ground (no legs showing), a gold stole down its front.
-		var robe := CLERGY_ROBE.lerp(SICK_TINT, 0.3) if sick else CLERGY_ROBE
+		var robe := CLERGY_ROBE.lerp(tint, SICK_CLOTH) if sick else CLERGY_ROBE
 		if top_only == 0:
 			_px(-3, -4 + lift, 6, 4, robe.darkened(0.14))
 		_px(-3, -10 + lift, 6, 6, robe)
@@ -931,10 +955,10 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	else:
 		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else _tunic
 		if sick:
-			coat = coat.lerp(SICK_TINT, 0.3)
+			coat = coat.lerp(tint, SICK_CLOTH)
 		if top_only == 0:
-			_px(-2, -4 + lift, 2, 4 - step, CIT_LEGS)
-			_px(1, -4 + lift, 2, 3 + step, CIT_LEGS)
+			_px(-2, -4 + lift, 2, 4 - step, legs)
+			_px(1, -4 + lift, 2, 3 + step, legs)
 		_px(-3, -10 + lift, 6, 6, coat)
 		_px(-3, -10 + lift, 6, 1, coat.lightened(0.18))
 		if role == CitizenProfile.Role.ENGINEER:
@@ -947,7 +971,7 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	_px(-2, -13 + lift, 4, 3, skin)
 	if sick:
 		# A cough: a green mote drifting up from the mouth with its steps.
-		_px(2 if f > 0 else -3, -14 - int(_anim * 2.0) % 4 + lift, 1, 1, SICK_MOTE)
+		_px(2 if f > 0 else -3, -14 - int(_anim * 2.0) % 4 + lift, 1, 1, tint.lightened(0.35))
 	if role == CitizenProfile.Role.ENGINEER:
 		# A leather cap, and a hammer in the leading hand.
 		_px(-2, -14 + lift, 4, 2, ENG_CAP)
@@ -970,15 +994,22 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 func _draw_soldier(lift: int, top_only: int) -> void:
 	var step := int(_anim * _walk_rate()) % 2 if state != State.DEAD and not is_frozen() else 0
 	var f := _facing
+	# The plague (v0.07.1) colours a soldier too.
+	var sick := sick_left > 0.0 and state != State.DEAD
+	var tint := sick_color() if sick else Color.WHITE
+	var mail := SOL_MAIL.lerp(tint, SICK_CLOTH) if sick else SOL_MAIL
+	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
 	if top_only == 0:
 		_px(-3, -5 + lift, 2, 5 - step, SOL_HELM)
 		_px(1, -5 + lift, 2, 4 + step, SOL_HELM)
-	_px(-4, -11 + lift, 8, 6, SOL_MAIL)
+	_px(-4, -11 + lift, 8, 6, mail)
 	_px(-4, -11 + lift, 8, 1, SOL_MAIL_HI)
 	var tabard := SOL_MARSHAL if corps == Corps.MARSHAL else (SOL_ESCORT if corps == Corps.ESCORT else SOL_TABARD)
+	if sick:
+		tabard = tabard.lerp(tint, SICK_CLOTH)
 	_px(-2, -9 + lift, 4, 4, tabard)
-	_px(-5, -10 + lift, 1, 3, _skin)
-	_px(4, -10 + lift, 1, 3, _skin)
+	_px(-5, -10 + lift, 1, 3, skin)
+	_px(4, -10 + lift, 1, 3, skin)
 	_px(-3, -15 + lift, 6, 4, SOL_HELM)
 	_px(-3, -15 + lift, 6, 1, SOL_MAIL_HI)
 	if state != State.DEAD or _char < 0.5:
@@ -993,6 +1024,9 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 		_px(5 * f, -18 + lift, 1, 2, SOL_TIP)
 	_px(-5 * f, -10 + lift, 2 * f, 5, SOL_SHIELD)
 	_px(-4 * f, -8 + lift, 1, 1, SOL_GOLD)
+	if sick:
+		# A cough from under the helm.
+		_px(2 if f > 0 else -3, -16 - int(_anim * 2.0) % 4 + lift, 1, 1, tint.lightened(0.35))
 
 
 func _pose_signature() -> int:
@@ -1014,8 +1048,8 @@ func _art_signature() -> int:
 	var walk := int(_anim * rate) % 2 * 2 + (1 if _facing > 0 else 0)
 	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7.
 	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0)
-	# Sickness (v0.06) above the walk frames, so its tint shows the moment it is caught.
-	return (walk + (4 if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
+	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
+	return (walk + 4 * sick_stage()) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
 
 
 func _walk_rate() -> float:

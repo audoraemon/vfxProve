@@ -470,7 +470,11 @@ func _sync_sprite() -> void:
 	var state := sprite_state()
 	if not is_instance_valid(_sprite_view):
 		_sprite_view = _new_view()
-	var ruins := state == &"falling" or state == &"ruins"
+	# A set's generated collapse ends on its ruins, so it needs none under it; gravity's inward pull keeps the
+	# engine's squeeze.
+	var played := state == &"falling" and sprite.collapse != null and destroy_kind != &"gravity" \
+		and SpriteArt.generated_collapse()
+	var ruins := (state == &"falling" and not played) or state == &"ruins"
 	if ruins and not is_instance_valid(_ruins_view):
 		_ruins_view = _new_view()
 		move_child(_ruins_view, _sprite_view.get_index())
@@ -486,6 +490,11 @@ func _sync_sprite() -> void:
 	match state:
 		&"intact", &"damaged":
 			_sprite_view.show_still(state, int(_time * float(sprite.fps)))
+			_sprite_view.position = Vector2.ZERO
+			_sprite_view.scale = Vector2(m, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
+		&"falling" when played:
+			_sprite_view.show_still(&"collapse", int(_collapse * float(sprite.collapse_frames)))
 			_sprite_view.position = Vector2.ZERO
 			_sprite_view.scale = Vector2(m, 1.0)
 			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)

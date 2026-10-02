@@ -133,6 +133,27 @@ static func _structure(t) -> void:
 		cot._process(1.0 / 60.0)
 	t.check(cot.sprite_state() == &"intact", "rebuilt, it stands intact again")
 	cot.free()
+	# A set with a generated collapse plays it as it falls, ending on its ruins; gravity keeps the engine's squeeze.
+	var red := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 9, &"house")
+	red.sprite = SpriteArt.sprite("cottage_red").duplicate()
+	t.check(red.sprite.collapse != null and int(red.sprite.collapse_frames) > 1, "the red cottage has a generated collapse")
+	red.destroy(Vector2(-5, -5), &"blast")
+	for i in 24:
+		red._process(1.0 / 60.0)
+	t.check(red._sprite_view.still == &"collapse" and red._sprite_view.frame > 0 and red._sprite_view.position == Vector2.ZERO
+		and not is_instance_valid(red._ruins_view), "a blast plays the generated collapse instead of sinking")
+	for i in 60:
+		red._process(1.0 / 60.0)
+	t.check(red.sprite_state() == &"ruins" and red._ruins_view.still == &"ruins", "and leaves the ruins it ends on")
+	red.free()
+	var pulled := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 9, &"house")
+	pulled.sprite = SpriteArt.sprite("cottage_red").duplicate()
+	pulled.destroy(Vector2(-5, -5), &"gravity")
+	for i in 24:
+		pulled._process(1.0 / 60.0)
+	t.check(pulled._sprite_view.still == &"damaged" and pulled._sprite_view.position.y > 0.0,
+		"gravity still sinks and squeezes it")
+	pulled.free()
 	var tav := _make(Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, 6, &"house", &"tavern")
 	tav.destroy(Vector2(-5, -5), &"laser")
 	t.check(tav.sprite_state() == &"cut", "a laser slices a tall building")

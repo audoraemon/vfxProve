@@ -37,15 +37,27 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	return self
 
 
-## Show `st` (&"intact", &"damaged", &"ruins"). The intact still plays its idle strip's `frame_index` when the set
-## has one. Redraws only on a change.
+## Show `st` (&"intact", &"damaged", &"ruins", or &"collapse", the set's generated collapse). The intact still loops
+## its idle strip's `frame_index` when the set has one; the collapse holds its last frame. Redraws only on a change.
 func show_still(st: StringName, frame_index := 0) -> void:
-	var f := frame_index % int(sprite.frames) if st == &"intact" and sprite.idle != null else 0
+	var n := frame_count(st)
+	var f := 0
+	if n > 1:
+		f = clampi(frame_index, 0, n - 1) if st == &"collapse" else frame_index % n
 	if st == still and f == frame:
 		return
 	still = st
 	frame = f
 	queue_redraw()
+
+
+## Frames the still `st` steps through (1 for a plain still).
+func frame_count(st: StringName) -> int:
+	if st == &"collapse":
+		return maxi(int(sprite.collapse_frames), 1)
+	if st == &"intact" and sprite.idle != null:
+		return int(sprite.frames)
+	return 1
 
 
 func set_color(c: Color) -> void:
@@ -72,8 +84,13 @@ func set_light(light: Color, ambient: float, scorch: float, frost: float, tint: 
 func _draw() -> void:
 	var size: Vector2 = sprite.size
 	var at: Vector2 = sprite.anchor
-	var strip: bool = still == &"intact" and sprite.idle != null
-	var tex: Texture2D = sprite.idle if strip else sprite.stills[still]
+	var tex: Texture2D
+	if still == &"collapse":
+		tex = sprite.collapse
+	elif still == &"intact" and sprite.idle != null:
+		tex = sprite.idle
+	else:
+		tex = sprite.stills[still]
 	var origin := Vector2(frame * size.x, 0.0)
 	_mat.set_shader_parameter("frame_origin", origin)
 	draw_texture_rect_region(tex, Rect2(-at, size), Rect2(origin, size), color)

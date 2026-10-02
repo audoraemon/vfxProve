@@ -64,6 +64,8 @@ func _init() -> void:
 				s.destroy(s.center() + Vector2(-2, -2), p[2])
 				for f in int(float(p[3]) * 60.0):
 					s._process(1.0 / 60.0)
+			# One tick so the views catch the last change (a crack alone wakes it in play, a frame later).
+			s._process(0.0)
 			s.set_process(false)
 			s.position = s.base_position()
 			s.queue_redraw()

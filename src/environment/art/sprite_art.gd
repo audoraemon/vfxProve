@@ -2,8 +2,9 @@ class_name SpriteArt
 extends RefCounted
 ## Building sprites for the PixelLab structures proof (docs/superpowers/specs/2026-10-02-pixellab-structures-proof-
 ## design.md): which structures are drawn from a sprite instead of their procedural art, and the sprite sets, read from
-## assets/pixellab/buildings/manifest.json. A set is three stills on one canvas -- intact, damaged, ruins -- and an
-## optional idle strip, all anchored at the footprint's front corner, where Structure.position sits.
+## assets/pixellab/buildings/manifest.json. A set is three stills on one canvas -- intact, damaged, ruins -- with an
+## optional idle strip and an optional generated collapse strip (damaged to ruins), all anchored at the footprint's
+## front corner, where Structure.position sits.
 ##
 ## `-- --art=procedural` starts with the sprites off for old-vs-new captures; F7 (ArtToggle) flips them live.
 ##
@@ -112,13 +113,25 @@ static func sprite(n: String) -> Dictionary:
 	var idle_path := DIR + n + "/idle.png"
 	var frames := int(m.get("frames", 1))
 	var idle: Texture2D = load(idle_path) if frames > 1 and ResourceLoader.exists(idle_path) else null
+	var collapse_path := DIR + n + "/collapse.png"
+	var collapse_frames := int(m.get("collapse_frames", 0))
+	var collapse: Texture2D = null
+	if collapse_frames > 1 and ResourceLoader.exists(collapse_path):
+		collapse = load(collapse_path)
 	var built := {
 		"name": n, "stills": stills, "size": size, "footprint": fp,
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else default_anchor(size, fp),
 		"idle": idle, "frames": frames if idle != null else 1, "fps": float(m.get("fps", 8.0)), "mirror": false,
+		"collapse": collapse, "collapse_frames": collapse_frames if collapse != null else 0,
 	}
 	_sets[n] = built
 	return built
+
+
+## Whether a fall plays a set's generated collapse (its collapse strip) or the engine's sink: `-- --collapse=engine`
+## forces the engine's, to compare the two.
+static func generated_collapse() -> bool:
+	return not "--collapse=engine" in OS.get_cmdline_user_args()
 
 
 ## The sprite set drawn for `s`, or {} when sprites are off or it has none. A sprite drawn for a wide footprint stands

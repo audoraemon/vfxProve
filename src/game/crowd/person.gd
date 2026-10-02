@@ -79,12 +79,13 @@ const COL_DISCORD := Color("b070ff")
 const SICK_PACE := 0.7
 const SICK_TINT := Color("7a9a4a")
 const SICK_MOTE := Color("a8d060")
-## Pestilence (v0.07.1): the sick turn from SICK_TINT to this red as death nears, in SICK_STAGES steps, and the
-## sickness colours the skin and the clothes this strongly.
-const SICK_RED := Color("b03a2e")
+## Pestilence (v0.07.1): the sick go through these colours as death nears, one for each of SICK_STAGES steps: bright
+## green when caught, then yellow-green, amber, orange and red. Saturated, so they stay readable under the evening light.
+const SICK_COLORS: Array[Color] = [Color("8ee04a"), Color("d8e040"), Color("f0b030"), Color("f07028"), Color("e8302c")]
 const SICK_STAGES := 5
-const SICK_SKIN := 0.6
-const SICK_CLOTH := 0.55
+## How strongly the sickness colours the skin, and the clothes (and a soldier's mail).
+const SICK_SKIN := 0.7
+const SICK_CLOTH := 0.7
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -549,9 +550,10 @@ func sick_stage() -> int:
 	return clampi(1 + int(run * float(SICK_STAGES)), 1, SICK_STAGES)
 
 
-## Pestilence (v0.07.1): the sickness's colour now, green when caught to red near death.
+## Pestilence (v0.07.1): the sickness's colour now, green when caught to red near death; white when healthy.
 func sick_color() -> Color:
-	return SICK_TINT.lerp(SICK_RED, float(maxi(sick_stage() - 1, 0)) / float(SICK_STAGES - 1))
+	var stage := sick_stage()
+	return SICK_COLORS[stage - 1] if stage > 0 else Color.WHITE
 
 
 ## Discord (v0.06): forget everything for `seconds` -- duty, the day, even the way out -- and amble about where it

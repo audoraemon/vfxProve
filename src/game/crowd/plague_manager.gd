@@ -5,7 +5,7 @@ extends RefCounted
 ## crowd or a full shelter spreads it fast -- up to PLAGUE_MAX sick at once. People sheltering together pass it on
 ## inside; one who dies in there is carried out first, to be seen. Soldiers catch it too (v0.07.1). A plague death is an
 ## ordinary death (damage kind plague): it counts, raises the alarm and is an incident.
-## Looks (v0.07.1): the sick are tinted by stage (Person.sick_color()), a ring pulses under each (draw_ground()), and
+## Looks (v0.07.1): the sick are tinted by stage (Person.sick_color()), a glow pulses under each (draw_ground()), and
 ## each infection passed on raises a green puff.
 
 const PLAGUE_LIFE := 5.0
@@ -16,11 +16,16 @@ const PLAGUE_MAX := 60
 ## How often the town is searched for the newly sick (the effect's infections); the sick list itself is kept every frame.
 ## Short, because someone the cast infects only starts their PLAGUE_LIFE once a scan adds them to the list.
 const SCAN_EVERY := 0.1
-## The sick's rings (v0.07.1): an ellipse this many ground units round under each, of so many segments, pulsing so
-## many times a second.
-const RING_R := 0.32
-const RING_SEGMENTS := 10
-const RING_PULSE_HZ := 3.0
+## The sick's glow (v0.07.1): a filled ellipse this many ground units round under each, with a rim, of so many segments,
+## pulsing so many times a second.
+const GLOW_R := 0.42
+const GLOW_SEGMENTS := 12
+const GLOW_PULSE_HZ := 3.0
+## The glow's alpha at the pulse's trough (x) and crest (y): the fill, and the brighter rim round it.
+const GLOW_FILL_ALPHA := Vector2(0.30, 0.50)
+const GLOW_RIM_ALPHA := Vector2(0.65, 1.0)
+## The rim's width, in canvas units.
+const GLOW_RIM_WIDTH := 2.0
 ## Spread puffs (v0.07.1): this many particles each, and at most PUFF_MAX alive at once.
 const PUFF_PARTICLES := 6
 const PUFF_MAX := 40
@@ -130,29 +135,51 @@ func _puff(p: Person) -> void:
 	_puffs.append(puff)
 
 
-## The sick's rings (v0.07.1): a pulsing ellipse under each sick person out in the open, in its sickness's colour, all
-## in one draw call. Into `ci` (the crowd's ground drawer, under the people), world space.
+## The sick's glow (v0.07.1): a pulsing filled ellipse with a rim under each sick person out in the open, in its
+## sickness's colour. Into `ci` (the crowd's ground drawer, under the people), world space, in two canvas commands in
+## all, however many are sick: every fill as one triangle array, every rim as one multiline.
 func draw_ground(ci: CanvasItem) -> void:
 	if sick.is_empty():
 		return
-	var pts := PackedVector2Array()
-	var cols := PackedColorArray()
-	var pulse := 0.55 + 0.45 * sin(float(Time.get_ticks_msec()) * 0.001 * TAU * RING_PULSE_HZ)
+	var glow := build_glow(0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.001 * TAU * GLOW_PULSE_HZ))
+	var fill_pts: PackedVector2Array = glow.fill_pts
+	if fill_pts.is_empty():
+		return
+	RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), glow.fill_idx, fill_pts, glow.fill_cols)
+	ci.draw_multiline_colors(glow.rim_pts, glow.rim_cols, GLOW_RIM_WIDTH)
+
+
+## The geometry of draw_ground() at pulse `pulse` (0 the trough, 1 the crest): `fill_pts`/`fill_cols`/`fill_idx`, a
+## triangle fan (centre, then GLOW_SEGMENTS rim points) for each of the sick in the open, all in one array, and
+## `rim_pts`/`rim_cols`, the rim's segments as point pairs with a colour each.
+func build_glow(pulse: float) -> Dictionary:
+	var fill_pts := PackedVector2Array()
+	var fill_cols := PackedColorArray()
+	var fill_idx := PackedInt32Array()
+	var rim_pts := PackedVector2Array()
+	var rim_cols := PackedColorArray()
+	var fill_a := lerpf(GLOW_FILL_ALPHA.x, GLOW_FILL_ALPHA.y, pulse)
+	var rim_a := lerpf(GLOW_RIM_ALPHA.x, GLOW_RIM_ALPHA.y, pulse)
 	for p in sick:
 		if not is_instance_valid(p) or p.inside or not p.visible:
 			continue
 		var c := p.sick_color()
-		c.a = pulse
-		var prev := Iso.ground_to_screen(p.ground_pos + Vector2(RING_R, 0.0))
-		for k in range(1, RING_SEGMENTS + 1):
-			var a := TAU * float(k) / float(RING_SEGMENTS)
-			var nxt := Iso.ground_to_screen(p.ground_pos + Vector2(cos(a), sin(a)) * RING_R)
-			pts.append(prev)
-			pts.append(nxt)
-			cols.append(c)
-			prev = nxt
-	if not pts.is_empty():
-		ci.draw_multiline_colors(pts, cols, -1.0)
+		var base := fill_pts.size()
+		fill_pts.append(Iso.ground_to_screen(p.ground_pos))
+		fill_cols.append(Color(c, fill_a))
+		for k in GLOW_SEGMENTS:
+			var a := TAU * float(k) / float(GLOW_SEGMENTS)
+			fill_pts.append(Iso.ground_to_screen(p.ground_pos + Vector2(cos(a), sin(a)) * GLOW_R))
+			fill_cols.append(Color(c, fill_a))
+			fill_idx.append(base)
+			fill_idx.append(base + 1 + k)
+			fill_idx.append(base + 1 + (k + 1) % GLOW_SEGMENTS)
+		# The rim is the fan's outer edge, each segment ending where the next begins.
+		for k in GLOW_SEGMENTS:
+			rim_pts.append(fill_pts[base + 1 + k])
+			rim_pts.append(fill_pts[base + 1 + (k + 1) % GLOW_SEGMENTS])
+			rim_cols.append(Color(c, rim_a))
+	return {"fill_pts": fill_pts, "fill_cols": fill_cols, "fill_idx": fill_idx, "rim_pts": rim_pts, "rim_cols": rim_cols}
 
 
 func clear() -> void:

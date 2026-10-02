@@ -13,6 +13,7 @@ static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: St
 static func run(t) -> void:
 	_mapping(t)
 	_sets(t)
+	_view(t)
 	SpriteArt.set_enabled(true)
 
 
@@ -82,3 +83,30 @@ static func _sets(t) -> void:
 	SpriteArt.set_enabled(true)
 	for s in [wide, deep, side, keep]:
 		s.free()
+
+
+## A view shows one still, mirrors with its set, and carries the footprint's corners into the sprite's own pixels.
+static func _view(t) -> void:
+	var sp := SpriteArt.sprite("cottage_red")
+	var left := Vector2(-30.4, -15.2)
+	var right := Vector2(24.0, -12.0)
+	var v := SpriteView.new().setup(sp, left, right)
+	var mat := v.material as ShaderMaterial
+	t.check(v.scale == Vector2.ONE and mat.get_shader_parameter("anchor") == sp.anchor, "a view anchors its sprite")
+	t.check(mat.get_shader_parameter("corner_left") == left and mat.get_shader_parameter("corner_right") == right,
+		"and knows its footprint's corners")
+	v.show_still(&"damaged")
+	t.check(v.still == &"damaged" and v.frame == 0, "it shows the still it is given")
+	v.set_cut(SpriteView.KEEP_BELOW, 12.0, 0.5)
+	t.check(mat.get_shader_parameter("cut_mode") == -1 and is_equal_approx(mat.get_shader_parameter("cut_lift"), 12.0),
+		"a cut is the shader's to draw")
+	v.free()
+	var mirrored := sp.duplicate()
+	mirrored.mirror = true
+	# A deep cottage's corners (0.75 x 0.95): mirrored, they are the wide sprite's own again.
+	var m := SpriteView.new().setup(mirrored, Vector2(-24.0, -12.0), Vector2(30.4, -15.2))
+	var mm := m.material as ShaderMaterial
+	t.check(m.scale.x == -1.0, "a mirrored set flips its view")
+	t.check(mm.get_shader_parameter("corner_left") == left and mm.get_shader_parameter("corner_right") == right,
+		"and sees the deep footprint as the wide one it was drawn for")
+	m.free()

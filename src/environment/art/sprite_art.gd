@@ -12,8 +12,9 @@ extends RefCounted
 const DIR := "res://assets/pixellab/buildings/"
 const MANIFEST := DIR + "manifest.json"
 const STILLS := [&"intact", &"damaged", &"ruins"]
-## Pixels kept under the front corner, for steps, eaves and rubble spilling forward.
-const FOOT_ROOM := 4.0
+## Pixels kept under the front corner, for steps, eaves and the rubble a collapse spills forward (it scatters up to a
+## quarter cell past the footprint: 8 px down at the front corner).
+const FOOT_ROOM := 10.0
 ## ArtKit.hash01 salt for a cottage's roof.
 const SALT_ROOF := 90
 

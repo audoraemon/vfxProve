@@ -12,6 +12,7 @@ static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: St
 
 static func run(t) -> void:
 	_mapping(t)
+	_sets(t)
 	SpriteArt.set_enabled(true)
 
 
@@ -53,5 +54,31 @@ static func _mapping(t) -> void:
 		var m: Dictionary = SpriteArt.manifest().get(n, {})
 		t.check(m.has("size") and m.has("footprint") and m.has("height") and m.has("kind") and m.has("seed"),
 			"the manifest describes " + n)
-	t.check(SpriteArt.default_anchor(Vector2(76, 64), Vector2(0.95, 0.75)) == Vector2(41, 60),
-		"the anchor centres the footprint's diamond across the canvas, 4 px above its bottom")
+	t.check(SpriteArt.default_anchor(Vector2(76, 64), Vector2(0.95, 0.75)) == Vector2(41, 54),
+		"the anchor centres the footprint's diamond across the canvas, 10 px above its bottom")
+
+
+## Every set loads: three stills on the manifest's canvas, mirrored only on the other footprint orientation.
+static func _sets(t) -> void:
+	SpriteArt.set_enabled(true)
+	for n in NAMES:
+		var sp := SpriteArt.sprite(n)
+		t.check(not sp.is_empty(), "the %s set loads" % n)
+		if sp.is_empty():
+			continue
+		for st in SpriteArt.STILLS:
+			var tex: Texture2D = sp.stills[st]
+			t.check(Vector2(tex.get_size()) == sp.size, "%s/%s is %s" % [n, st, sp.size])
+	var wide := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	var deep := _make(Rect2(0, 0, 0.75, 0.95), 17.0, K.HOUSE, 5, &"house")
+	var side := _make(Rect2(0, 0, 0.6, 2.0), 40.0, K.CASTLE_WALL, 5, &"citadel")
+	var keep := _make(Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, 5, &"citadel")
+	t.check(not SpriteArt.set_for(wide).get("mirror", true) and SpriteArt.set_for(deep).get("mirror", false),
+		"a deep cottage is the wide one mirrored")
+	t.check(SpriteArt.set_for(side).get("mirror", false) and not SpriteArt.set_for(keep).get("mirror", true),
+		"a west or east wall is mirrored, the square keep never")
+	SpriteArt.set_enabled(false)
+	t.check(SpriteArt.set_for(wide).is_empty(), "with sprites off nothing gets a set")
+	SpriteArt.set_enabled(true)
+	for s in [wide, deep, side, keep]:
+		s.free()

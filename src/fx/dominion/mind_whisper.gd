@@ -10,15 +10,23 @@ const PICK_R := 0.6
 const REACH := 10.0
 ## How long they linger at the spot.
 const LINGER := 8.0
-## The ring at the spot: its soft gold and its radius (ground units).
-const COL_RING := Color(0.95, 0.82, 0.4, 0.6)
+## The ring at the spot: a soft gold, bright enough to read over lit paving (it is the player's only sign of where
+## the person goes), and its radius (ground units).
+const COL_RING := Color(1.0, 0.88, 0.45, 0.9)
 const RING_R := 0.5
+## A faint halo ring around it, breathing against the ring's own gentle pulse.
+const COL_HALO := Color(1.0, 0.86, 0.5, 0.45)
+const HALO_R := 0.85
+## The pulse: how fast (radians a second) and how deep.
+const PULSE_RATE := 3.0
+const PULSE_DEPTH := 0.25
 ## The ring is drawn for as long as this, at most: a walk of REACH along the town's paths at a stroll, then LINGER.
 const MAX_SHOW := 40.0
 
 var _target: Person
 var _to := Vector2.INF
 var _ring: QuadFx
+var _halo: QuadFx
 
 
 ## The citizen a press at `at` whispers to: the nearest living one out in the open within PICK_R, or null.
@@ -62,13 +70,19 @@ func _build() -> void:
 		duration = 0.1
 		return
 	ctx.play(&"grav_shimmer", _to, -14.0)
-	# One solid ring, no telegraph's scan or crosshair: a mark, not a threat.
-	_ring = FxParts.rings(self, _to, RING_R, COL_RING, 1, 12.0)
-	_ring.set_param("scan", 0.0)
-	_ring.set_param("crosshair", 0.0)
-	_ring.set_param("pulse", 0.0)
-	_ring.set_param("fill", 0.15)
-	_ring.set_param("alpha", 0.0)
+	# A solid ring in a faint halo, no telegraph's scan or crosshair: a mark, not a threat.
+	_ring = _mark(RING_R, COL_RING, 0.25)
+	_halo = _mark(HALO_R, COL_HALO, 0.0)
+
+
+func _mark(r: float, col: Color, fill: float) -> QuadFx:
+	var q := FxParts.rings(self, _to, r, col, 1, 12.0)
+	q.set_param("scan", 0.0)
+	q.set_param("crosshair", 0.0)
+	q.set_param("pulse", 0.0)
+	q.set_param("fill", fill)
+	q.set_param("alpha", 0.0)
+	return q
 
 
 ## Still whispered to this spot: alive, of the whispered mind, and not since sent somewhere else.
@@ -80,6 +94,9 @@ func _holds() -> bool:
 func _fx_process(_delta: float) -> void:
 	if not _holds():
 		duration = minf(duration, t + 0.4)  # fade out with the whisper
+	var fade := clampf(minf(t / 0.3, (duration - t) / 0.4), 0.0, 1.0)
+	var beat := sin(t * PULSE_RATE)
 	if is_instance_valid(_ring):
-		var fade := clampf(minf(t / 0.3, (duration - t) / 0.4), 0.0, 1.0)
-		_ring.set_param("alpha", fade * (0.75 + 0.25 * sin(t * 3.0)))
+		_ring.set_param("alpha", fade * (1.0 - PULSE_DEPTH + PULSE_DEPTH * beat))
+	if is_instance_valid(_halo):
+		_halo.set_param("alpha", fade * (1.0 - PULSE_DEPTH - PULSE_DEPTH * beat))

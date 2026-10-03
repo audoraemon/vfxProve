@@ -32,7 +32,8 @@ extends SceneTree
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
 ##          [--setup=rite|evac]; --snap aims at the citizen nearest --at (a whisper always does, and sends them
-##          (1, 3) on, down-left across the square, the camera halfway);
+##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
+##          open paving south of the market);
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
 ##          its run into assets/clips/<key>.png
 ##   powers (v0.06) the new powers measured against doing without, Prepared, loadout wisp, thorns, discord,
@@ -418,13 +419,13 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	# The camera's ground point: the cast, or for a whisper halfway along the walk, so the walk stays in frame.
 	var look := at
 	if whisper:
-		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(1.0, 3.0))
+		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(2.2, -2.2))
 		extra = {"to": to, "target": who}
 		look = at.lerp(to, 0.5)
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
 	bf.camera.zoom = Vector2.ONE * 1.5
-	bf.camera.position = (Iso.ground_to_screen(look) + Vector2(0, -6 if whisper else -16)).round()
+	bf.camera.position = (Iso.ground_to_screen(look) + Vector2(0, -10 if whisper else -16)).round()
 	bf.camera.reset_smoothing()
 	await _frames(2)
 	var fx := _force_cast(0, at, Vector2(1, 0), extra)

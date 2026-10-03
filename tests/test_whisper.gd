@@ -164,8 +164,8 @@ static func _power(t, made: Array) -> void:
 	var spot := MindWhisperFx.clamp_to(grid, d.ground_pos, d.ground_pos + Vector2(0.0, 3.0))
 	var fx := FxTimeline.cast(MindWhisperFx, ctx, d.ground_pos, {"to": spot, "target": d})
 	fx._process(1.0)
-	t.check(d.mind == Person.Mind.WHISPERED and not fx.finished and ctx.ground.get_child_count() == 1,
-		"the effect whispers and rings the spot")
+	t.check(d.mind == Person.Mind.WHISPERED and not fx.finished and ctx.ground.get_child_count() == 2,
+		"the effect whispers and rings the spot, a ring in its halo (%d marks)" % ctx.ground.get_child_count())
 	_arrive(d)
 	_think(d, MindWhisperFx.LINGER + 0.5)
 	fx._process(0.1)

@@ -31,7 +31,8 @@ extends SceneTree
 ##          engineers
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac]; --snap aims at the citizen nearest --at;
+##          [--setup=rite|evac]; --snap aims at the citizen nearest --at (a whisper always does, and sends them
+##          (1, 3) on, down-left across the square, the camera halfway);
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
 ##          its run into assets/clips/<key>.png
 ##   powers (v0.06) the new powers measured against doing without, Prepared, loadout wisp, thorns, discord,
@@ -371,12 +372,15 @@ func _quiet(shots: bool) -> void:
 		t += step
 
 
-## Cast slot `slot` at `at` now, whatever its cooldown or another power still playing.
-func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0)) -> FxTimeline:
+## Cast slot `slot` at `at` now, whatever its cooldown or another power still playing. `extra` joins the direction
+## in the cast's extra (v0.08: a Mind Whisper's "to" and "target").
+func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0), extra := {}) -> FxTimeline:
 	var rules: Rules = mission._rules
 	rules._cooldowns[slot] = 0.0
 	rules._playing = null
-	return rules.cast(slot, at, {"dir": dir})
+	var all := {"dir": dir}
+	all.merge(extra)
+	return rules.cast(slot, at, all)
 
 
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
@@ -397,7 +401,10 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 		crowd.add_alarm(100.0)
 		await _frames(10 * 60)
-	if "--snap" in OS.get_cmdline_user_args():
+	# A Mind Whisper (v0.08) always snaps: it is cast on someone.
+	var whisper := key == "whisper"
+	var who: Person = null
+	if "--snap" in OS.get_cmdline_user_args() or whisper:
 		# Aim at the citizen nearest the point asked for (a queue forms where it will, not where it was guessed).
 		var best := INF
 		var near := at
@@ -405,14 +412,22 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best:
 				best = p.ground_pos.distance_to(at)
 				near = p.ground_pos
+				who = p
 		at = near
+	var extra := {}
+	# The camera's ground point: the cast, or for a whisper halfway along the walk, so the walk stays in frame.
+	var look := at
+	if whisper:
+		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(1.0, 3.0))
+		extra = {"to": to, "target": who}
+		look = at.lerp(to, 0.5)
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
 	bf.camera.zoom = Vector2.ONE * 1.5
-	bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -16)).round()
+	bf.camera.position = (Iso.ground_to_screen(look) + Vector2(0, -6 if whisper else -16)).round()
 	bf.camera.reset_smoothing()
 	await _frames(2)
-	var fx := _force_cast(0, at, Vector2(1, 0))
+	var fx := _force_cast(0, at, Vector2(1, 0), extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)

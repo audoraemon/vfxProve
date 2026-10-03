@@ -186,10 +186,9 @@ static func run(t) -> void:
 	t.check(lines.size() >= 2 and widest <= 60.0, "a long name wraps inside its width (%s, %.0f px)" % [lines, widest])
 
 	# Every power has a recorded preview, laid out the way the draft reads it.
-	# Mind Whisper's clip is recorded with its icon (v0.08 M3, Task 18).
 	var unrecorded := ""
 	for key in PowerBook.keys():
-		if PowerBook.clip(key) == null and key != "whisper":
+		if PowerBook.clip(key) == null:
 			unrecorded += " " + key
 	t.check(unrecorded == "", "every power has a preview clip (missing:%s)" % unrecorded)
 	var sheet := PowerBook.clip("nova")

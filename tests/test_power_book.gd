@@ -9,9 +9,6 @@ const V07_COOLDOWNS := {
 }
 ## The powers v0.08 adds, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["whisper"]
-## Powers whose icons are not painted yet (Task 18 paints Mind Whisper's): PowerBook.icon() and hud_icon() must give
-## null for them rather than fail, and once painted they are held to the sizes like every other.
-const UNPAINTED := ["whisper"]
 
 
 static func run(t) -> void:
@@ -31,9 +28,7 @@ static func run(t) -> void:
 			problems.append("bad cost or cooldown for %s" % p.key)
 		var big := PowerBook.icon(p.key)
 		var small := PowerBook.hud_icon(p.key)
-		if big == null and small == null and p.key in UNPAINTED:
-			pass
-		elif big == null or big.get_width() != 84 or small == null or small.get_width() != 42:
+		if big == null or big.get_width() != 84 or small == null or small.get_width() != 42:
 			problems.append("icon sizes for %s" % p.key)
 		if p.aim == "drag":
 			drag.append(p.key)

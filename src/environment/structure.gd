@@ -153,6 +153,10 @@ var _drawn_sig := -1
 var _dirty := true
 ## Seconds since drop_banner() (-1 = the banner still hangs).
 var _banner_fall := -1.0
+## What a settled sprite building showed when _sync_sprite() last ran (_sprite_settled()); &"" while it changes.
+var _synced_state := &""
+var _synced_mod := Color.WHITE
+var _synced_fallen := false
 ## Which SHAKE_HZ step the current jitter belongs to (-1 = not shaking).
 var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
@@ -473,7 +477,8 @@ func _grow_view_box_for_sprite() -> void:
 
 ## Points the views at what the building shows now (sprite_state()): standing, damaged, sinking into the ground (gravity
 ## squeezes it inward as it goes) over its ruins, sliced by a laser with the top sliding off, or its ruins. Setters
-## that change nothing redraw nothing, so this runs every processed frame.
+## that change nothing redraw nothing, so this can run every processed frame; a settled building skips it
+## (_sprite_settled()).
 func _sync_sprite() -> void:
 	var state := sprite_state()
 	if not is_instance_valid(_sprite_view):
@@ -551,6 +556,25 @@ func _sync_sprite() -> void:
 		_top_view.position = ((_top_piece.off as Vector2) + Vector2(0.0, float(_top_piece.fall))).round()
 		var gone := clampf(float(_top_piece.fall) / (float(_top_piece.h0) + 4.0), 0.0, 1.0)
 		_top_view.set_color(Color(self_modulate, 1.0 - gone))
+
+
+## True when _sync_sprite() would hand its views exactly what they already show: the building is quiet (nothing
+## falling, sliding off or cooling), steps through no idle frames, has no banners mid-fall, and shows the state, tint
+## and banners it showed at the last sync. Walls and towers on screen process every frame, and syncing each of them
+## anyway cost ~5 us a frame apiece (~0.25 ms a frame, -4 fps in the mission bench).
+func _sprite_settled() -> bool:
+	if not is_instance_valid(_sprite_view) or not _quiet() or int(sprite.frames) > 1 \
+			or (_banner_fall >= 0.0 and _banner_fall < BANNER_FALL_TIME):
+		_synced_state = &""
+		return false
+	var state := sprite_state()
+	var fallen := _banner_fall >= 0.0
+	if state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
+		return true
+	_synced_state = state
+	_synced_mod = self_modulate
+	_synced_fallen = fallen
+	return false
 
 
 ## A sprite building's ground shadow: its footprint's, or, when the sprite covers less than its plot (the cathedral),
@@ -708,7 +732,8 @@ func _process(delta: float) -> void:
 		# A sprite keep's banners fall on their own clock once the procedural banner node is gone (or never was).
 		if _banner_fall >= 0.0 and _banner_fall < BANNER_FALL_TIME and not is_instance_valid(_banner):
 			_banner_fall += delta
-		_sync_sprite()
+		if not _sprite_settled():
+			_sync_sprite()
 	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
 	var stepped := shake_step != _shake_step
 	_shake_step = shake_step

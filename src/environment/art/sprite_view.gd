@@ -17,6 +17,8 @@ var frame := 0
 ## The draw's modulate: the blight's tint, a fade.
 var color := Color.WHITE
 var _mat: ShaderMaterial
+## The clip last handed to the shader (set_cut()); NAN until the first.
+var _cut := [NAN, NAN, NAN]
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -68,6 +70,11 @@ func set_color(c: Color) -> void:
 
 ## Clip along the ground line raised by `lift` px (see the shader); `molten` lights a stump's cut edge.
 func set_cut(mode: int, lift: float, molten := 0.0) -> void:
+	# An animated sprite syncs every frame (Structure._sync_sprite()), and a parameter set reaches the renderer even
+	# when its value is the same, so only a change is passed on.
+	if _cut[0] == float(mode) and _cut[1] == lift and _cut[2] == molten:
+		return
+	_cut = [float(mode), lift, molten]
 	_mat.set_shader_parameter("cut_mode", mode)
 	_mat.set_shader_parameter("cut_lift", lift)
 	_mat.set_shader_parameter("molten", molten)

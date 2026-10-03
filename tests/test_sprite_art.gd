@@ -141,6 +141,13 @@ static func _view(t) -> void:
 	v.set_cut(SpriteView.KEEP_BELOW, 12.0, 0.5)
 	t.check(mat.get_shader_parameter("cut_mode") == -1 and is_equal_approx(mat.get_shader_parameter("cut_lift"), 12.0),
 		"a cut is the shader's to draw")
+	# The same cut again never reaches the material: a parameter set re-uploads it even when nothing changed.
+	mat.set_shader_parameter("cut_lift", 3.0)
+	v.set_cut(SpriteView.KEEP_BELOW, 12.0, 0.5)
+	t.check(is_equal_approx(mat.get_shader_parameter("cut_lift"), 3.0), "an unchanged cut is not set again")
+	v.set_cut(SpriteView.KEEP_ALL, 0.0)
+	t.check(mat.get_shader_parameter("cut_mode") == 0 and is_equal_approx(mat.get_shader_parameter("cut_lift"), 0.0),
+		"a changed one is")
 	v.free()
 	var mirrored := sp.duplicate()
 	mirrored.mirror = true
@@ -202,6 +209,18 @@ static func _structure(t) -> void:
 		cot._process(1.0 / 60.0)
 	t.check(cot.sprite_state() == &"intact", "rebuilt, it stands intact again")
 	cot.free()
+	# A quiet sprite building stops re-syncing its views every frame; a crack or the blight still reaches them.
+	var calm := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	for i in 2:
+		calm._process(1.0 / 60.0)
+	t.check(calm._sprite_settled(), "a quiet sprite building is settled: its views are not synced again")
+	calm.set_blighted(true)
+	calm._process(1.0 / 60.0)
+	t.check(calm._sprite_view.color == Structure.BLIGHT_TINT, "the blight's tint still reaches its sprite")
+	calm.crack()
+	calm._process(1.0 / 60.0)
+	t.check(calm._sprite_view.still == &"damaged" and calm._sprite_settled(), "and so does a crack, then it settles again")
+	calm.free()
 	# A set with a generated collapse plays it as it falls, ending on its ruins; gravity keeps the engine's squeeze.
 	var red := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 9, &"house")
 	red.sprite = SpriteArt.sprite("cottage_red").duplicate()

@@ -2089,3 +2089,76 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   - Judging waits for the crowd to settle its doom.
   - A dead or silenced bell is never revived.
   - A relayed witness walks to the tower's foot before taking the rope.
+
+### Task 23 warning scenario
+
+- Measured at 39e61ab plus the scenario, on BURIN_NITRO, 2026-10-03, seed 7 (the scenario's default), three runs of
+  each case. Every cast goes through `Rules.cast()` when `refusal()` allows it (never forced): Mind Whisper with
+  `{"to": MindWhisperFx.clamp_to(...), "target": messenger}`, Thornwall with a drag `dir`. The quiet powers have no
+  hit-stop, so all three runs of each case were identical, down to the checksum.
+- End lines (each printed three times, identically):
+  - `none`: `end case=none won=false reason=bell time=24.8 relays=0 unseen=false solved_by= casts={  }`
+  - `doom`: `end case=doom won=true reason=warning time=13.6 relays=0 unseen=true solved_by=VEIL casts={ "doom": 1 }`
+  - `whisper`: `end case=whisper won=true reason=omen time=120.0 relays=0 unseen=true solved_by=DOMINION casts={ "whisper": 5 }`
+  - `discord`: `end case=discord won=false reason=bell time=59.4 relays=0 unseen=false solved_by=DISORDER casts={ "discord": 2 }`
+  - `thornwall`: `end case=thornwall won=false reason=bell time=25.4 relays=0 unseen=false solved_by=PASSAGE casts={ "thorns": 1 }`
+  - `mix`: `end case=mix won=true reason=warning time=13.8 relays=0 unseen=true solved_by=VEIL casts={ "whisper": 1, "doom": 1 }`
+- Per case:
+  - **none:** the star at 2.0, the run at 6.0, the keeper told at 16.4, the bell at 24.8 (the mission test says 24.1;
+    the scenario has no intro to skip). Seeds 1-4: the bell at 26.9 / 24.3 / 24.3 / 23.8. Inside 0:20-0:35, so
+    `OMEN_AT`, `STARE` and the watchman's post are unchanged.
+  - **doom:** the watchman is never alone at his post: two gate soldiers (POST) stand 0.4-1.9 from him through the
+    stare. On his run he is alone at 6.9 (for 0.1 s) and again from 13.1 to 14.3 at about (5.1, 4.9). The scenario
+    casts when nobody is within `DOOM_WITNESS` of him now **nor of where he will be when it strikes** (0.45 s on, at
+    his speed), so it waits for the second window and wins at 13.6 with no relay. The plan's literal check (nobody
+    near him now) cast at 6.9 in the first, 0.1-s window; he ran 0.7 on before he fell, into a soldier's sight, and
+    soldier#93 relayed it: delivered at 15.1, the bell at 23.1 (three runs, identical; faster than doing nothing). On
+    seeds 1-4 the leading policy won at 8.0 / 7.1 / 6.8 and lost once (seed 4: cast at 0.1, before the gate soldiers
+    were at their posts, a soldier walked into sight, relay, the bell at 19.4).
+  - **whisper:** the slot is ready every time he gets up. Each whisper holds him about 23.7 s (an 8-unit walk at
+    `WALK_SPEED` 0.6, LINGER 8, 1-2 s RECOVER) against an 8-s cooldown, so he never runs again: five whispers
+    ping-pong him through the Main Gate, and the omen fades with the warning never delivered. The known risk: Mind
+    Whisper alone wins every run.
+  - **discord:** 15 s confused at 6.1, then RECOVER, delivered at 31.3 (+15 s); the second Discord (ready at 36.1)
+    catches the keeper on the way to the tower; the bell at 59.4. About 35 s of delay; it cannot win alone (30-s
+    cooldown against a 15-s hold).
+  - **thornwall:** the wall grows 3 units ahead of him at 6.1; he paths round it, delivered at 16.9 (+0.5 s), the bell
+    at 25.4. Only one cast fits before the bell (42-s cooldown). Tried 1, 2, 5 and 8 units ahead: +0.5 / +0.5 / +1.5 /
+    0 s, and a wall in front of the keeper at the tower: 0 s (the keeper is already at the tower's foot when told).
+    Placed 5 or more ahead, the cast is past `DELAY_REACH` (3) of him and "Solved by" stays empty.
+  - **mix:** the whisper at 6.1 sends him out through the gate, alone; Doom at 13.3 there, a clean win at 13.8.
+- Relays: none in the final runs. They happen when Doom is cast with someone about to see it (the literal policy's
+  6.9 cast, seed 4's 0.1 cast): a soldier carries it on, and runs it faster than the watchman did.
+- Unseen: earned in every win (doom, whisper, mix): no win reached Local Emergency. Never earned in a loss (the bonus
+  needs the win).
+- **Balance: Mind Whisper trivialises it; Thornwall cannot affect it.** No number was changed. Measured with temporary
+  edits (reverted), the `whisper` case on seeds 7 and 1:
+  - cooldown 15 s: still wins both (5 whispers; the hold of ~24 s outlasts it);
+  - `REACH` 6: still wins both (6 whispers; a 10-s walk plus LINGER still outlasts 8 s);
+  - cooldown 30 s: still wins both (each whisper sends him back 8 units, which he runs back in 5 s of his ~6 s free);
+  - the slot's cooldown starting only when the whisper wears off: still wins both;
+  - a person the whisper has just let go ignores another for 20 s (counted from when it wore off; counted from the
+    first whisper it changes nothing, as the whispers are already 24 s apart): **loses, the bell at 87.3 / 82.5**
+    (one whisper on the watchman, delivered at 45.3 / 46.8, one on the keeper, about 60 s of delay).
+  - Options for the user:
+    1. **Shake-off (recommended):** someone a whisper has just released cannot be whispered again for 20 s. Expected:
+       Whisper alone delays about 60 s and loses; it still wins with Doom or Discord. Needs a `Person` field and a
+       refusal ("they shake it off"), with the cooldown not spent.
+    2. **Long cooldown:** 45 s or more (only past ~33 s does the messenger gain ground between whispers, at REACH 10).
+       Expected (estimated, not run): one or two holds of ~24 s, a loss at about 0:50-1:20; but Mind Whisper stops
+       being a quick 1-DP tool in Last Judgement too.
+    3. **The messenger does not linger:** a messenger on the warning walks to the spot and runs on at once. Alone this
+       still locks him (a 13-s walk outlasts 8 s); it needs option 1 or 2 with it.
+  - Thornwall: a 3-unit wall is bypassed for at most 1.5 s, once a mission. Options: (a) leave it out of The Warning's
+    loadout (it is a Last Judgement tool: gates, evacuees); (b) a longer wall in this mission only, long enough to
+    close a street on the route (not measured); (c) let the messenger stop and push through brambles (a fixed delay
+    of a few seconds when his path is blocked), which would make it a real, small delay tool.
+  - Silent Doom: a single cast wins by 0:14 in 4 of 5 seeds for a bot that reads the 2-unit witness rule exactly; a
+    player has 0.1-1.2-s windows to find, and the gate soldiers make the watchman's post a trap. It reads as the
+    intended skill solution; no change proposed.
+- Deviations from the plan's policies: Doom judges the witnesses where he will fall, not only where he stands (above);
+  Discord, like Whisper and Thornwall, waits for the messenger to be running (cast at once, it would land on the
+  staring watchman); `none` drafts Mind Whisper and never casts it (an empty loadout falls back to the mission's
+  default, and the HUD cannot draw an empty slot). The ledger task with `needs_you` is left to the controller.
+- Gates after the scenario: tests `checks=1263 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW
+  `checks=34 failures=0`; `calm --seconds=60` -695580348.

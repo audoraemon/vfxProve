@@ -33,13 +33,23 @@ static func pick(field: EnemyField, at: Vector2) -> Person:
 	return best
 
 
-## Where a release at `to` sends someone standing at `from`: at most REACH away, on walkable ground.
+## Where a release at `to` sends someone standing at `from`: at most REACH away, on walkable ground. A release on
+## something solid snaps to the nearest free ground, or -- when that lies past REACH -- to the last free ground
+## short of it on the way there.
 static func clamp_to(grid: WalkGrid, from: Vector2, to: Vector2) -> Vector2:
 	var g := from + (to - from).limit_length(REACH)
 	if grid == null or grid.walkable(g):
 		return g
 	var free := grid.nearest_walkable(g, 6)
-	return free if free != Vector2.INF else from
+	if free != Vector2.INF and free.distance_to(from) <= REACH:
+		return free
+	var span := g - from
+	var steps := int(span.length() / (WalkGrid.CELL * 0.5))
+	for i in range(steps, 0, -1):
+		var back := from + span * (float(i) / float(steps))
+		if grid.walkable(back):
+			return back
+	return from
 
 
 func _build() -> void:

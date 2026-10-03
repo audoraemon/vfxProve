@@ -179,9 +179,11 @@ func flashing(slot: int) -> bool:
 	return slot >= 0 and slot < _flash.size() and _flash[slot] > 0.0
 
 
-func _on_cast_refused(slot: int, _reason: String) -> void:
+func _on_cast_refused(slot: int, reason: String) -> void:
 	if slot >= 0 and slot < _flash.size():
 		_flash[slot] = FLASH_SECONDS
+	if reason == "nobody":
+		push_banner("NO ONE TO WHISPER TO")
 	UiSound.play(&"ui_buzz")
 
 

@@ -125,3 +125,19 @@ town_postern: copies town_wall's strip stills (0 generations), same strip entry 
 | town_gate | `edit` (ruins) on damaged | destroyed: lower third of walls as stumps, fallen arch, rubble, fallen portcullis, banner on rubble | default | 20 (628 -> 608) | Kept edit_00, shifted (0, +21) |
 
 town_gate total: 85 generations (693 -> 608). No generated collapse (budget ruling): engine sink. Stills padded locally to 136x144 (6 px left/right, 12 px bottom), anchor [76, 114]. Glow 3.3% intact, 2.2% damaged, 0% ruins.
+
+### Fix: towers fill their plots
+
+The batch-2 tower's art was 76 px wide on a 102 px footprint diamond (1.6 x 1.6), so ground showed where wall runs end at the footprint edge; the corner tower (2.0 x 2.0, 128 px) reused it with ~26 px gaps. Composition ref: `render_sprite_refs.gd` with the manifest height raised to 96 (tower) / 100 (corner) only for the render, so the procedural block is tall and full-width; heights put back to 46 / 50 afterwards.
+
+| Set | Call | Prompt / refs | Seed | Cost | Result |
+|---|---|---|---|---|---|
+| town_tower | `generate` 112x172 | massive square isometric stone tower whose walls rise straight from the full width of its base, cool grey limestone, merlons, torch brazier with warm light, blue fleur-de-lis banner, arched window, arched door, moss; refs: reference.png (tall full-footprint block: "walls stand exactly on this footprint's edges, same base width, fill the whole footprint"), style_ref.png (TownMap_Component4 tower) | 241 | 20 (608 → 588) | 1 image, kept. Wall outline x 7..104 (outer edges 7 and 105) vs diamond 4.8..107.2 at anchor x 56: left and right base corners 2.2 px inside, front corner on the anchor. Touched the canvas top and bottom: padded locally to 120x180 (+4, +4). Anchor [60, 172] from overlay variants 170/172/174 |
+| town_tower | `edit` (damaged) on intact | the same single tower damaged: cracked and missing blocks, broken merlons, scorch, torn banner, torch out and smoking; same size and position | 242 | 20 (588 → 568) | 2 images, same bbox; kept edit_00 |
+| town_tower | `edit` (ruins) on damaged | destroyed: only short broken wall stumps on the same square base, rubble heap filling the base, banner lying on the rubble | 243 | 20 (568 → 548) | Kept edit_00: the stump base was right but the cut-off top and the hanging banner floated above it; cleared rows < 93 and the banner (x 24..42, y ≤ 113) locally, `largest`. Same lowest row as intact (175), no shift |
+| town_tower_corner | `generate` 136x200 | massive heavy corner tower, walls from the full width of its broad base, two torches, two banners, windows, no door; refs: reference.png (2.0 tall block), town_tower/intact.png (family), style_ref.png | 342 | 20 (548 → 528) | Rejected: body x 14..121 vs diamond 4..132 (10 px short each side; cornice 9..126) |
+| town_tower_corner | `generate` 136x200 (re-roll) | as above plus "very wide ... as wide as the whole canvas ... no overhang"; family ref demoted to style only ("ignore its size and proportions"), TownMap style ref dropped | 343 | 20 (528 → 508) | Rejected: body x 16..119 (12 px short each side) |
+
+town_tower total: 60 generations (cap 70). Glow 2.3% intact, 0% damaged, 0% ruins. No collapse (engine sink). In town (main gate, side gate captures) the wall runs meet the tower faces with no ground between.
+
+town_tower_corner: 40 generations, no candidate fills the 2.0 plot; stopped because a third generate plus two edits (60) would take the balance under the 473 floor. Interim: the corner reuses the new town_tower stills (size [120, 180], anchor [60, 178.4] = the tower's anchor + 6.4 px, shadow [1.6, 1.6]), so its corners still sit ~13 px inside the 2.0 diamond. Open. Rejected candidates kept in the session scratchpad (tower2/cgen1, tower2/cgen2).

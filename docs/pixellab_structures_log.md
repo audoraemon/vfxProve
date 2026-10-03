@@ -116,3 +116,12 @@ town_tower_corner: reuses town_tower's stills (0 generations), anchor [58, 131.4
 town_wall total: 80 generations (773 → 693), at its cap; no seam inpaint was needed. Strip: u0 = (41, 83) (the front edge of the run at x = 41, inside the left end's outline; front corner of the run at (147, 136)), period 1.5 (48 px, about three merlon pitches, chosen by matching columns 41.. against 89.. shifted 24 down and keeping the torch out of the repeated band), span 2.7. `sprite_fix.py tile` on all three runs: size [152, 172], anchor [127.4, 126.2], footprint [2.7, 0.7], period 1.5. Glow 0% on the stills (runs 0.1-0.2%). In town (main gate, side gate captures) the north-south and east walls join without jogs; the y-runs read mirrored.
 
 town_postern: copies town_wall's strip stills (0 generations), same strip entry with seed 45, kind GATE, role gate, tag postern. The postern piece now draws its stretch of the plain wall: no door.
+
+| Set | Call | Prompt / refs | Seed | Cost | Result |
+|---|---|---|---|---|---|
+| town_gate | `generate` 124x132 | gatehouse, round arch, raised portcullis, open doors, torches, fleur-de-lis banner; refs: reference.png, style_ref.png (TownMap_Component4 gatehouse, box 125,262,285,440), town_tower/intact.png | 44 | 25 (693 -> 668) | 4 images; picked #03 (grey stone matches the tower). Door leaves touched the canvas bottom |
+| town_gate | `edit` (damaged) on intact | cracked stone, broken merlons, bent portcullis, scorch | default | 20 (668 -> 648) | Kept edit_00 |
+| town_gate | `edit` (ruins) on intact | collapsed into rubble around a broken arch stump | default | 20 (648 -> 628) | Rejected: arch and merlons still standing |
+| town_gate | `edit` (ruins) on damaged | destroyed: lower third of walls as stumps, fallen arch, rubble, fallen portcullis, banner on rubble | default | 20 (628 -> 608) | Kept edit_00, shifted (0, +21) |
+
+town_gate total: 85 generations (693 -> 608). No generated collapse (budget ruling): engine sink. Stills padded locally to 136x144 (6 px left/right, 12 px bottom), anchor [76, 114]. Glow 3.3% intact, 2.2% damaged, 0% ruins.

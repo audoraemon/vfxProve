@@ -12,5 +12,6 @@
 	"town_tower": {"size": [112, 136], "footprint": [1.6, 1.6], "height": 46, "seed": 41, "kind": "KEEP", "role": "tower", "tag": "", "anchor": [58, 125]},
 	"town_tower_corner": {"size": [112, 136], "footprint": [2.0, 2.0], "height": 50, "seed": 42, "kind": "KEEP", "role": "tower", "tag": "", "anchor": [58, 131.4], "shadow": [1.6, 1.6]},
 	"town_wall": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 43, "kind": "CASTLE_WALL", "role": "wall", "tag": "", "anchor": [127.4, 126.2], "strip": true, "period": 1.5},
-	"town_postern": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 45, "kind": "GATE", "role": "gate", "tag": "postern", "anchor": [127.4, 126.2], "strip": true, "period": 1.5}
+	"town_postern": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 45, "kind": "GATE", "role": "gate", "tag": "postern", "anchor": [127.4, 126.2], "strip": true, "period": 1.5},
+	"town_gate": {"size": [136, 144], "footprint": [2.0, 1.1], "height": 34, "seed": 44, "kind": "GATE", "role": "gate", "tag": "", "anchor": [76, 114]}
 }

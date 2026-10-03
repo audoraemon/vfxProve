@@ -1998,3 +1998,16 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   - `dp=21.5 buildings=57 citizens=175 escaped=0 alarm=100 stability=66% citadel=50%`
   - `dp=21.5 buildings=52 citizens=181 escaped=0 alarm=100 stability=69% citadel=50%`
 - Bench (mission, Organized): 122.7 / 123.9 / 125.1 fps; worst 19.4 / 18.8 / 18.0 ms; draw calls 1052.
+
+### M1 gate (at 0402472)
+
+- Tests `checks=1120 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `checks=30 failures=0`.
+- All five exact behaviour checksums identical to Task 0.
+- Mission test, three runs: buildings 55/55/51, citizens 186/188/188, escaped 1/1/1, stability 69/69/70%, citadel 50%.
+  - These are about 8 citizens higher and 1 escaped more than Task 0. The unchanged a875fd1, run the same day, gave the same (187–191 citizens, 1 escaped), so the drift is machine timing (the wall-clock hitstop), not M1.
+- Deviations reported by the implementers:
+  - The Task 1 test brings the Citadel down as `test_rules.gd` does.
+  - Bonus results use the key `bonuses`.
+  - The FLOW test waits out the fade before its second MANIFEST, and waits two frames after the title.
+  - The board has a key-hint line, and hovering a card selects it.
+  - Known small issue, left for later: a MANIFEST pressed during a fade-in is ignored.

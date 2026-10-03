@@ -2162,3 +2162,31 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   default, and the HUD cannot draw an empty slot). The ledger task with `needs_you` is left to the controller.
 - Gates after the scenario: tests `checks=1263 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW
   `checks=34 failures=0`; `calm --seconds=60` -695580348.
+
+### Task 24 bench and final gates (at f2609c5)
+
+- Bench, mission (Organized, market view), alternating with a `kak-v0.07.1` worktree in the scratchpad (`.godot`
+  copied in, imported once headless), BURIN_NITRO, 2026-10-03. **The machine was not quiet:** Chrome, Edge and a
+  second Godot (the pixellab worktree's town_debug scene, the user's) were running, and the same build swung 98-120 fps.
+  The first three pairs read -6.3 fps, so three more pairs were run in the reverse order (v0.08 first):
+  - v0.07.1: `avg_fps` 109.6 / 120.4 / 101.8, then 107.5 / 102.2 / 98.6 (mean of six 106.7); worst 20.45 / 24.53 /
+    21.95 / 26.80 / 19.80 / 24.13 ms; draw calls 1052-1053.
+  - v0.08: `avg_fps` 109.2 / 102.0 / 101.8, then 98.2 / 112.2 / 113.0 (mean of six 106.1); worst 21.24 / 24.02 /
+    25.93 / 24.56 / 19.07 / 18.36 ms; draw calls 1050.
+  - First three pairs -6.3, second three +5.0, all six **-0.6 fps: within the 5-fps budget.** Read as machine noise;
+    nothing profiled or changed.
+  - The Warning (`--mission=warning --bench`; `--bench` already respects `--mission`, no change needed): `avg_fps=130.0
+    worst_ms=16.02 min_fps=62.4 draw_calls=867`.
+  - The worktree was removed; `default_bus_layout.tres` was not left changed in the main tree.
+- Final gates: tests `checks=1263 failures=0`; digest `61267b7e90524d800bf1c3473a71146b`; crowd_check `-346732806
+  alive=220 escaped=0`; FLOW `checks=34 failures=0`.
+- Exact checksums, all identical to Task 0: `calm --seconds=60` -695580348, `gates` 619520995, `fire` -16560442,
+  `rite --interrupt` -129298221, `soldiers --case=escort` -935015846.
+- Mission test (Last Judgement), one run: `buildings=51 citizens=188 escaped=1 alarm=100 stability=70% citadel=50%`.
+- `--mission=warning --mission-test`: `won=false reason=bell time=24.2 relays=0`.
+- `warning` cases, one run each, end lines identical to Task 23 (checksums: none -446012507, doom -999129915,
+  whisper 807198573, discord -909358062, thornwall -331560682, mix -430643507):
+  none lost (bell) 24.8; doom won (warning) 13.6, VEIL; whisper won (omen) 120.0, DOMINION, 5 whispers; discord lost
+  (bell) 59.4, DISORDER; thornwall lost (bell) 25.4, PASSAGE; mix won (warning) 13.8, VEIL.
+- Summary: `docs/KAK_Version_0.08_Summary.md`. README: the KAK controls (keys 1-6, the board, Esc's new targets,
+  Mind Whisper's drag), the versions line, `--mission=`, and the FLOW and `--show=` notes.

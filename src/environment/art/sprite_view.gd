@@ -92,5 +92,11 @@ func _draw() -> void:
 	else:
 		tex = sprite.stills[still]
 	var origin := Vector2(frame * size.x, 0.0)
+	var src := Rect2(origin, size)
+	# A strip piece draws only its stretch of the strip (SpriteArt.strip_piece); strips have no idle or collapse, so
+	# its frame is always 0.
+	var region: Rect2 = sprite.get("region", Rect2())
+	if region.has_area():
+		src = region
 	_mat.set_shader_parameter("frame_origin", origin)
-	draw_texture_rect_region(tex, Rect2(-at, size), Rect2(origin, size), color)
+	draw_texture_rect_region(tex, Rect2(src.position - origin - at, src.size), src, color)

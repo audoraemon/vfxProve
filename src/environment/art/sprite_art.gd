@@ -20,6 +20,12 @@ const BANNER_STILLS := [&"intact_fallen", &"damaged_fallen", &"banners_intact", 
 const FOOT_ROOM := 10.0
 ## ArtKit.hash01 salt for a cottage's roof.
 const SALT_ROOF := 90
+## ArtKit.hash01 salt for a townhouse's look.
+const SALT_TOWNHOUSE := 91
+## A market stall's sprite by its awning (PropArt.CLOTH's index, the stall's art.cloth).
+const STALLS := ["stall_red", "stall_blue", "stall_cream"]
+## The longest piece a wall run is cut into (TownLayout.WALL_PIECE): a strip spans its period plus this.
+const STRIP_PIECE := 1.2
 
 static var _enabled := true
 static var _args_read := false
@@ -60,32 +66,56 @@ static func reload() -> void:
 	_sets.clear()
 
 
-## The sprite that replaces `s`, or "" (only the proof's buildings have one).
+## The sprite that replaces `s`, or "" (only buildings with a set in the manifest are drawn from one).
 static func name_for(s: Structure) -> String:
 	match s.kind:
 		Structure.Kind.HOUSE:
+			if s.role == &"farm":
+				# A barn; the windmill and watermill keep their turning procedural art.
+				return "barn" if s.art_tag == &"" else ""
 			if s.role != &"house":
 				return ""
 			match s.art_tag:
 				&"":
 					return "cottage_red" if ArtKit.hash01(s.rng.seed, SALT_ROOF) < 0.5 else "cottage_blue"
+				&"townhouse":
+					return "townhouse_a" if ArtKit.hash01(s.rng.seed, SALT_TOWNHOUSE) < 0.5 else "townhouse_b"
 				&"tavern":
 					return "tavern"
 				&"smithy":
 					return "smithy"
+				&"workshop":
+					return "workshop"
+				&"carpenter":
+					return "carpenter"
 		Structure.Kind.TEMPLE:
 			if s.art_tag == &"cathedral":
 				return "cathedral"
 		Structure.Kind.KEEP:
-			# The Citadel's keep and towers share their kind and role; only their size tells them apart.
+			# The Citadel's keep and towers share their kind and role; only their size tells them apart. So do the town's
+			# corner towers (2.0) and wall and gate towers (1.6).
 			if s.role == &"citadel":
 				return "citadel_keep" if s.footprint.size.x >= 1.8 else "citadel_tower"
+			if s.role == &"tower":
+				if s.art_tag == &"bell_tower":
+					return "bell_tower"
+				return "town_tower_corner" if s.footprint.size.x >= 1.8 else "town_tower"
 		Structure.Kind.CASTLE_WALL:
 			if s.role == &"citadel":
 				if s.art_tag == &"gate":
 					return "citadel_gate"
 				var long := maxf(s.footprint.size.x, s.footprint.size.y)
 				return "citadel_wall" if long >= 2.4 else "citadel_wall_side"
+			if s.role == &"wall":
+				return "town_wall"
+		Structure.Kind.GATE:
+			# The side gate is the main gate turned, so it draws the same sprite mirrored.
+			if s.role == &"gate":
+				return "town_postern" if s.art_tag == &"postern" else "town_gate"
+		Structure.Kind.BARRACKS:
+			return "barracks"
+		Structure.Kind.MARKET_STALL:
+			return STALLS[int(s.art.get("cloth", 0)) % STALLS.size()]
 	return ""
 
 
@@ -137,6 +167,9 @@ static func sprite(n: String) -> Dictionary:
 		"own_smoke": bool(m.get("own_smoke", false)),
 		# The building's own footprint (ground units) when the sprite covers less than its plot: its shadow's size.
 		"shadow": Vector2(m.shadow[0], m.shadow[1]) if m.has("shadow") else Vector2.ZERO,
+		# A strip set (the town wall): one long run of wall repeating every `period` ground units; each piece draws its
+		# own stretch of it (strip_piece()), so `region` is set per structure in set_for(). Rect2() = the whole frame.
+		"strip": bool(m.get("strip", false)), "period": float(m.get("period", 0.0)), "region": Rect2(),
 	}
 	_sets[n] = built
 	return built
@@ -162,4 +195,26 @@ static func set_for(s: Structure) -> Dictionary:
 	var out := base.duplicate()
 	var fp: Vector2 = base.footprint
 	out.mirror = not is_equal_approx(fp.x, fp.y) and (fp.x >= fp.y) != (s.footprint.size.x >= s.footprint.size.y)
+	if out.strip:
+		var piece := strip_piece(base, s.footprint, out.mirror)
+		out.anchor = piece.anchor
+		out.region = piece.region
 	return out
+
+
+## A wall piece's stretch of its strip set `base`. The strip is a run along ground x drawn on its canvas with its
+## footprint's front corner at `anchor` (as every set); its front edge at run distance u sits at pixel
+## anchor - (32, 16) * (footprint.x - u), and it repeats every `period` units. A piece covering [start, start + length)
+## of its run reads u0 = start mod period onward: the strip's columns for its stretch, anchored at its own front corner.
+## Pieces read their stretch from where they stand, so neighbours join, and a run wraps at the period without a jog
+## (the strip spans a period plus the longest piece, STRIP_PIECE). A run along y is the strip mirrored (`mirrored`),
+## measured along y. Nothing is rounded: rounding would shift a piece a pixel against its neighbour.
+static func strip_piece(base: Dictionary, fp: Rect2, mirrored: bool) -> Dictionary:
+	var start := fp.position.y if mirrored else fp.position.x
+	var length := fp.size.y if mirrored else fp.size.x
+	var u0 := fposmod(start, float(base.period))
+	var span: float = (base.footprint as Vector2).x
+	var run0: Vector2 = (base.anchor as Vector2) - Vector2(32.0, 16.0) * span
+	var size: Vector2 = base.size
+	var x0 := run0.x + 32.0 * u0
+	return {"anchor": run0 + Vector2(32.0, 16.0) * (u0 + length), "region": Rect2(x0, 0.0, 32.0 * length, size.y)}

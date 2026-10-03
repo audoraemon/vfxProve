@@ -456,12 +456,17 @@ func sprite_state() -> StringName:
 	return &"intact" if _cracks.is_empty() else &"damaged"
 
 
-## Its view box takes in the whole sprite: a spire or a chimney can rise above the procedural box.
+## Its view box takes in the whole sprite: a spire or a chimney can rise above the procedural box. A strip piece takes in
+## only its own stretch of the strip.
 func _grow_view_box_for_sprite() -> void:
 	if sprite.is_empty():
 		return
 	var size: Vector2 = sprite.size
 	var at: Vector2 = sprite.anchor
+	var region: Rect2 = sprite.get("region", Rect2())
+	if region.has_area():
+		size = region.size
+		at -= region.position
 	var x0 := _base.x - (size.x - at.x if sprite.mirror else at.x)
 	_view_box = _view_box.merge(Rect2(Vector2(x0, _base.y - at.y), size).grow(VIEW_BOX_MARGIN))
 

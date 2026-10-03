@@ -14,6 +14,7 @@ static func run(t) -> void:
 	_mapping(t)
 	_sets(t)
 	_view(t)
+	_strip(t)
 	_structure(t)
 	_toggle(t)
 	SpriteArt.set_enabled(true)
@@ -23,25 +24,36 @@ static func run(t) -> void:
 static func _mapping(t) -> void:
 	var cases := [
 		[Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, &"house", &"", "cottage"],
-		[Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, &"house", &"townhouse", ""],
-		[Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, &"farm", &"", ""],
+		[Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, &"house", &"townhouse", "townhouse"],
+		[Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, &"farm", &"", "barn"],
+		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", ""],
+		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", ""],
 		[Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, &"house", &"tavern", "tavern"],
 		[Rect2(0, 0, 1.5, 1.25), 20.0, K.HOUSE, &"house", &"smithy", "smithy"],
-		[Rect2(0, 0, 2.6, 1.5), 22.0, K.HOUSE, &"house", &"workshop", ""],
+		[Rect2(0, 0, 2.6, 1.5), 22.0, K.HOUSE, &"house", &"workshop", "workshop"],
+		[Rect2(0, 0, 2.3, 1.15), 20.0, K.HOUSE, &"house", &"carpenter", "carpenter"],
 		[Rect2(0, 0, 4.2, 6.2), 56.0, K.TEMPLE, &"temple", &"cathedral", "cathedral"],
 		[Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, &"citadel", &"", "citadel_keep"],
 		[Rect2(0, 0, 1.3, 1.3), 84.0, K.KEEP, &"citadel", &"", "citadel_tower"],
-		[Rect2(0, 0, 1.5, 1.5), 50.0, K.KEEP, &"tower", &"", ""],
+		[Rect2(0, 0, 1.6, 1.6), 46.0, K.KEEP, &"tower", &"", "town_tower"],
+		[Rect2(0, 0, 2.0, 2.0), 50.0, K.KEEP, &"tower", &"", "town_tower_corner"],
+		[Rect2(0, 0, 1.1, 1.1), 60.0, K.KEEP, &"tower", &"bell_tower", "bell_tower"],
 		[Rect2(0, 0, 2.8, 0.6), 40.0, K.CASTLE_WALL, &"citadel", &"", "citadel_wall"],
 		[Rect2(0, 0, 0.6, 2.0), 40.0, K.CASTLE_WALL, &"citadel", &"", "citadel_wall_side"],
 		[Rect2(0, 0, 2.8, 0.6), 40.0, K.CASTLE_WALL, &"citadel", &"gate", "citadel_gate"],
-		[Rect2(0, 0, 1.2, 0.6), 34.0, K.CASTLE_WALL, &"wall", &"", ""],
+		[Rect2(0, 0, 1.2, 0.7), 34.0, K.CASTLE_WALL, &"wall", &"", "town_wall"],
+		[Rect2(0, 0, 0.7, 1.1), 34.0, K.CASTLE_WALL, &"wall", &"", "town_wall"],
+		[Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, &"gate", &"", "town_gate"],
+		[Rect2(0, 0, 1.1, 2.0), 34.0, K.GATE, &"gate", &"", "town_gate"],
+		[Rect2(0, 0, 1.15, 0.7), 34.0, K.GATE, &"gate", &"postern", "town_postern"],
+		[Rect2(0, 0, 4.4, 1.9), 36.0, K.BARRACKS, &"barracks", &"", "barracks"],
+		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", "stall"],
 	]
 	for c in cases:
 		var s := _make(c[0], c[1], c[2], 5, c[3], c[4])
 		var got := SpriteArt.name_for(s)
 		var want: String = c[5]
-		var ok := got.begins_with("cottage_") if want == "cottage" else got == want
+		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse", "stall"] else got == want
 		t.check(ok, "sprite for %s/%s/%s is '%s' (got '%s')" % [K.keys()[c[2]], c[3], c[4], want, got])
 		s.free()
 	# Cottages pick a roof from their seed: stable per seed, and both roofs appear.
@@ -54,6 +66,19 @@ static func _mapping(t) -> void:
 		a.free()
 		b.free()
 	t.check(seen.has("cottage_red") and seen.has("cottage_blue"), "both cottage roofs appear")
+	# Townhouses pick one of two looks from their seed, as cottages pick a roof.
+	var looks := {}
+	for sd in 40:
+		var th := _make(Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, sd, &"house", &"townhouse")
+		looks[SpriteArt.name_for(th)] = true
+		th.free()
+	t.check(looks.has("townhouse_a") and looks.has("townhouse_b") and looks.size() == 2, "both townhouse looks appear")
+	# A stall keeps today's awning: PropArt picks cloth = seed % 3 (red, blue, cream).
+	for sd in [3, 4, 5]:
+		var st := _make(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, sd, &"market")
+		var want: String = ["stall_red", "stall_blue", "stall_cream"][int(st.art.cloth)]
+		t.check(SpriteArt.name_for(st) == want, "a stall with cloth %d is %s" % [int(st.art.cloth), want])
+		st.free()
 	for n in NAMES:
 		var m: Dictionary = SpriteArt.manifest().get(n, {})
 		t.check(m.has("size") and m.has("footprint") and m.has("height") and m.has("kind") and m.has("seed"),
@@ -125,6 +150,37 @@ static func _view(t) -> void:
 	t.check(mm.get_shader_parameter("corner_left") == left and mm.get_shader_parameter("corner_right") == right,
 		"and sees the deep footprint as the wide one it was drawn for")
 	m.free()
+
+
+## A wall piece reads its own stretch of its strip, from where it stands: neighbours join, a run wraps at the strip's
+## period without a jog, and a run along y reads the strip mirrored the way a run along x reads it.
+static func _strip(t) -> void:
+	# A strip spanning 3.7 units (period 2.5 + one 1.2 piece) whose run starts (u = 0) at pixel (30, 100).
+	var base := {"anchor": Vector2(30, 100) + Vector2(32, 16) * 3.7, "footprint": Vector2(3.7, 0.7),
+		"size": Vector2(170, 170), "period": 2.5}
+	var a := SpriteArt.strip_piece(base, Rect2(10.0, 3.0, 1.2, 0.7), false)
+	var b := SpriteArt.strip_piece(base, Rect2(11.2, 3.0, 1.1, 0.7), false)
+	var c := SpriteArt.strip_piece(base, Rect2(12.3, 3.0, 1.2, 0.7), false)
+	var d := SpriteArt.strip_piece(base, Rect2(13.5, 3.0, 1.0, 0.7), false)
+	t.check(a.region.position.is_equal_approx(Vector2(30, 0)) and is_equal_approx(a.region.size.x, 38.4)
+		and is_equal_approx(a.region.size.y, 170.0), "a piece at the period's start reads the strip's first stretch")
+	t.check(a.anchor.is_equal_approx(Vector2(30, 100) + Vector2(32, 16) * 1.2), "anchored at its own front corner")
+	t.check(is_equal_approx(b.region.position.x, a.region.end.x) and is_equal_approx(c.region.position.x, b.region.end.x),
+		"each piece starts where the one before it ends")
+	t.check((b.anchor - a.anchor).is_equal_approx(Vector2(32, 16) * 1.1)
+		and (c.anchor - b.anchor).is_equal_approx(Vector2(32, 16) * 1.2), "and is placed one piece further along")
+	t.check(c.region.end.x <= 170.0 + 0.001, "a piece running past the period stays inside the strip")
+	# d wraps to the period's start: its stretch is c's continuation one period back.
+	t.check(d.anchor.x < c.anchor.x and (d.anchor + Vector2(32, 16) * 2.5 - c.anchor).is_equal_approx(Vector2(32, 16) * 1.0),
+		"a run wraps at the period without a jog")
+	var y := SpriteArt.strip_piece(base, Rect2(3.0, 10.0, 0.7, 1.2), true)
+	t.check(y.anchor.is_equal_approx(a.anchor) and y.region.is_equal_approx(a.region),
+		"a run along y reads the strip mirrored, measured along y")
+	for n in SpriteArt.manifest():
+		var m: Dictionary = SpriteArt.manifest()[n]
+		if m.get("strip", false):
+			t.check(float(m.footprint[0]) >= float(m.period) + 1.2 - 0.001 and is_equal_approx(fmod(float(m.period) * 16.0, 1.0), 0.0),
+				"%s spans a period plus a piece, and its period is a whole number of pixels" % n)
 
 
 ## A sprite building goes intact -> damaged -> falling -> ruins (or cut, under a laser), and back on a rebuild; its
@@ -202,7 +258,7 @@ static func _structure(t) -> void:
 	t.check(keep._sprite_view.still == &"damaged_fallen", "and cracked, it is the bannerless damaged keep")
 	keep.free()
 	cat.free()
-	var proc := _make(Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, 8, &"house", &"townhouse")
+	var proc := _make(Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, 8, &"farm", &"windmill")
 	t.check(proc.sprite.is_empty() and proc.sprite_state() == &"", "a building without a sprite keeps its art")
 	proc.free()
 	t.check(_battered(true) == _battered(false), "sprites on or off, the same hits leave the same buildings")

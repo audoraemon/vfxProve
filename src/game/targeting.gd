@@ -24,6 +24,8 @@ const DEFAULT_DIR := Vector2(1, 0)
 const AREAS := {
 	# SilentDoom.RADIUS; the people it would take are ringed (_draw())
 	"doom": {"shape": "circle", "r": 0.8},
+	# MindWhisperFx.PICK_R: who the press would whisper to
+	"whisper": {"shape": "circle", "r": 0.6},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())

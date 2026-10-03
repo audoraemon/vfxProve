@@ -8,7 +8,8 @@ extends Node
 
 ## A cast went out: the slot, its power key and where it landed.
 signal cast_made(slot: int, key: String, at: Vector2)
-## A cast could not go out: "cooldown", "busy", "empty" or "over".
+## A cast could not go out: "cooldown", "busy", "empty", "over", or "nobody" (v0.08: a Mind Whisper with no one to
+## whisper to).
 signal cast_refused(slot: int, reason: String)
 ## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
 signal surged
@@ -220,6 +221,11 @@ func busy_left() -> float:
 	return maxf(lock - _playing.t, 0.0)
 
 
+## Refuse a cast for the slot before it reaches cast() (v0.08: Targeting, when a Mind Whisper's press finds nobody).
+func refuse(slot: int, reason: String) -> void:
+	cast_refused.emit(slot, reason)
+
+
 ## Start the slot's cooldown and put its effect in the world. Returns the running effect, or
 ## null when the cast was refused (and when a test's caster hands nothing back).
 func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
@@ -228,6 +234,14 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		cast_refused.emit(slot, reason)
 		return null
 	var p := power(slot)
+	if String(p.key) == "whisper":
+		# Mind Whisper (v0.08) with no one to whisper to: refused, and no cooldown starts.
+		var who: Variant = extra.get("target")
+		var heard := is_instance_valid(who) and who is Person and (who as Person).is_alive() \
+			and not (who as Person).inside and not (who as Person).soldier
+		if not heard and MindWhisperFx.pick(_field, ground) == null:
+			cast_refused.emit(slot, "nobody")
+			return null
 	_cooldowns[slot] = float(p.cooldown)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)
 	_playing = fx

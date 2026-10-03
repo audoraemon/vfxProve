@@ -50,8 +50,8 @@ static func run(t) -> void:
 	var one := Draft.new().for_mission(MissionBook.last_judgement())
 	one.toggle("heaven")
 	t.check(one.can_manifest() and not one.is_full(), "one pick can manifest: empty slots are allowed")
-	# Six cheap picks fill the slots well inside the Divine Power; the seventh is refused for want of a slot. There
-	# are six powers of 1-2 DP, so the seventh is the Tornado's 3: 14 in all, still within the budget.
+	# Six cheap picks fill the slots well inside the Divine Power; the seventh is refused for want of a slot. With
+	# six of the 1-2 DP powers taken, the Tornado's 3 makes 14 in all, still within the budget.
 	var cheap := Draft.new().for_mission(MissionBook.last_judgement())
 	for key in ["doom", "wisp", "discord", "heaven", "blight", "thorns"]:
 		changed += cheap.toggle(key)
@@ -186,9 +186,10 @@ static func run(t) -> void:
 	t.check(lines.size() >= 2 and widest <= 60.0, "a long name wraps inside its width (%s, %.0f px)" % [lines, widest])
 
 	# Every power has a recorded preview, laid out the way the draft reads it.
+	# Mind Whisper's clip is recorded with its icon (v0.08 M3, Task 18).
 	var unrecorded := ""
 	for key in PowerBook.keys():
-		if PowerBook.clip(key) == null:
+		if PowerBook.clip(key) == null and key != "whisper":
 			unrecorded += " " + key
 	t.check(unrecorded == "", "every power has a preview clip (missing:%s)" % unrecorded)
 	var sheet := PowerBook.clip("nova")

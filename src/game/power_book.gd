@@ -4,14 +4,18 @@ extends RefCounted
 ## their Authority (v0.08: the draft's tabs).
 ## Prices are the loadout budget (v0.08): a mission's draft may spend its Divine Power capacity on them, and nothing
 ## is spent once the mission runs. Cooldowns follow spec §2's rule of thumb, the larger of the old cooldown and 3x
-## the old DP cost. Aim "drag" = press at the start point, drag the direction, release. The quiet powers (v0.05,
-## "quiet") register no danger for the town and raise no alarm when cast (Crowd.on_cast()): Silent Doom's deaths
-## count only if someone saw them, Blight adds one alarm.
+## the old DP cost. Aim "drag" = press at the start point, drag the direction, release; aim "whisper" (v0.08) = press
+## on a person, drag to where they should go, release. The quiet powers (v0.05, "quiet") register no danger for the
+## town and raise no alarm when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight
+## adds one alarm.
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
 		"authority": "veil"},
+	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
+		"dp": 1, "cooldown": 8.0, "aim": "whisper", "shape": "send one person somewhere, then they linger 8 s",
+		"quiet": true, "authority": "dominion"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
 		"authority": "dominion"},
@@ -119,14 +123,19 @@ static func keys() -> PackedStringArray:
 	return out
 
 
-## 84x84 painted icon (Prepare cards).
+## 84x84 painted icon (Prepare cards), or null when it has not been painted yet.
 static func icon(key: String) -> Texture2D:
-	return load(ICON_DIR + key + ".png")
+	return _texture(ICON_DIR + key + ".png")
 
 
-## 42x42 copy for the HUD slots.
+## 42x42 copy for the HUD slots, or null when it has not been painted yet.
 static func hud_icon(key: String) -> Texture2D:
-	return load(ICON_DIR + "hud/" + key + ".png")
+	return _texture(ICON_DIR + "hud/" + key + ".png")
+
+
+## A texture that may not exist yet (a new power before its icon is painted): null rather than a load error.
+static func _texture(path: String) -> Texture2D:
+	return load(path) if ResourceLoader.exists(path) else null
 
 
 static func clip_path(key: String) -> String:

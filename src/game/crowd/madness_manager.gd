@@ -99,11 +99,7 @@ static func stage_of(value: float) -> Stage:
 
 ## What `p` is, for resistance: a soldier, or its role.
 static func kind_of(p: Person) -> StringName:
-	if p.soldier:
-		return &"soldier"
-	if p.profile != null:
-		return StringName(CitizenProfile.Role.keys()[p.profile.role].to_lower())
-	return &"citizen"
+	return p.kind()
 
 
 ## Whether `p` shrugs it off, by its kind's chance; rolled on `rng`.

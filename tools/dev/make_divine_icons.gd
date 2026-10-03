@@ -19,6 +19,14 @@ func _initialize() -> void:
 	_save(_madness(), "madness")
 	_save(_voice(), "voice")
 	_save(_schism(), "schism")
+	# Dominion, Tier III and IV: the sigil with each power's own sign at its heart.
+	_save(_sign(DominionParts.RINGS, Color(1.0, 0.86, 0.5), Color(0.1, 0.08, 0.05), 81), "oath")
+	_save(_sign(DominionParts.WAVES, Color(1.0, 0.9, 0.6), Color(0.07, 0.09, 0.08), 82), "echo")
+	_save(_sign(DominionParts.SPLIT, Color(1.0, 0.6, 0.3), Color(0.12, 0.05, 0.05), 83), "turncoat")
+	_save(_sign(DominionParts.FLAME, Color(1.0, 0.42, 0.25), Color(0.13, 0.04, 0.04), 84), "hatred")
+	_save(_sign(DominionParts.ARROW, Color(1.0, 0.95, 0.75), Color(0.08, 0.07, 0.1), 85), "priority")
+	_save(_sign(DominionParts.BLADE, Color(1.0, 0.3, 0.25), Color(0.12, 0.03, 0.04), 86), "verdict")
+	_save(_sign(DominionParts.EYE, Color(0.6, 0.85, 1.0), Color(0.04, 0.06, 0.12), 87), "delusion")
 	print("wrote ", ProjectSettings.globalize_path(OUT))
 	quit()
 
@@ -270,5 +278,38 @@ func _schism() -> Image:
 			c = _mix(c, Color(1.0, 0.75, 0.4), exp(-pow((gap - 2.6) / 0.7, 2.0)) * 0.9)
 			var rr := Vector2(x, y).length()
 			c = c * clampf(1.3 - (rr / 50.0) * (rr / 50.0), 0.3, 1.0)
+			img.set_pixel(px, py, c)
+	return img
+
+
+## A Dominion power's icon: its five-by-five sign, large and lit, at the heart of the sigil's rings.
+func _sign(rows: Array[int], col: Color, field: Color, seed_value: int) -> Image:
+	var img := Image.create(SIZE, SIZE, false, Image.FORMAT_RGB8)
+	var n := _noise(seed_value, 0.08)
+	for py in SIZE:
+		for px in SIZE:
+			var x := float(px) - SIZE * 0.5 + 0.5
+			var y := float(py) - SIZE * 0.5 + 0.5
+			var grain := n.get_noise_2d(px, py) * 0.5 + 0.5
+			var r := Vector2(x, y).length()
+			var ang := atan2(y, x)
+			var c := field.lerp(field * 2.2, grain)
+			c = _mix(c, col * 0.6, exp(-r * r / 800.0) * 0.6)
+			# The sigil: an outer ring, a dashed ring, spokes.
+			c = _mix(c, col, exp(-pow((r - 36.0) / 1.1, 2.0)) * 0.9)
+			c = _mix(c, col, exp(-pow((r - 28.0) / 0.9, 2.0)) * float(fposmod(ang / TAU * 16.0, 1.0) < 0.5) * 0.7)
+			c = _mix(c, col, exp(-pow(sin(ang * 6.0) / 0.06, 2.0)) * float(r > 28.0 and r < 36.0) * 0.5)
+			# The sign: each of its cells a lit block of seven pixels, on a dark plate.
+			var gx := int(floor((x + 17.5) / 7.0))
+			var gy := int(floor((y + 17.5) / 7.0))
+			if absf(x) < 20.0 and absf(y) < 20.0:
+				c = _mix(c, field * 0.5, 0.75)
+			if gx >= 0 and gx < 5 and gy >= 0 and gy < 5 and rows[gy] & (1 << (4 - gx)):
+				var inx := fposmod(x + 17.5, 7.0)
+				var iny := fposmod(y + 17.5, 7.0)
+				var edge := minf(minf(inx, 7.0 - inx), minf(iny, 7.0 - iny))
+				c = _mix(c, col, 0.9)
+				c = _mix(c, Color(1, 1, 0.95), clampf((edge - 1.5) / 2.0, 0.0, 1.0) * 0.6)
+			c = c * clampf(1.3 - (r / 50.0) * (r / 50.0), 0.3, 1.0)
 			img.set_pixel(px, py, c)
 	return img

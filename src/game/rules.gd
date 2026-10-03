@@ -45,6 +45,9 @@ const POWER_KINDS := {
 	"solaris": [&"solaris", &"pit"],
 	"madness": [&"frenzy"],
 	"voice": [&"frenzy"],
+	"turncoat": [&"frenzy"],
+	"hatred": [&"frenzy"],
+	"verdict": [&"frenzy", &"mob"],
 	"schism": [&"frenzy"],
 	"nova": [&"nova"],
 }

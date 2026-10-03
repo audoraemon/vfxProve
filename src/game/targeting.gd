@@ -44,6 +44,20 @@ const AREAS := {
 	"pestilence": {"shape": "circle", "r": 1.2},
 	# DiscordFx.DISCORD_R; who it would take is ringed (_draw())
 	"discord": {"shape": "circle", "r": 1.2},
+	# OathboundFx.PICK_R; who it would bind is ringed; its Hold mode picks them first, then the place ("pick")
+	"oath": {"shape": "circle", "r": 1.2},
+	# CommandEchoFx.SEED_R; who it would start with is ringed
+	"echo": {"shape": "circle", "r": 1.2},
+	# TurncoatFx.PICK_R; who it would turn is ringed
+	"turncoat": {"shape": "circle", "r": 1.0},
+	# ManufacturedHatredFx.GROUP_R
+	"hatred": {"shape": "circle", "r": 3.0},
+	# RewritePriorityFx.RADIUS
+	"priority": {"shape": "circle", "r": 7.0},
+	# MobVerdictFx.RADIUS: the judged at the first click, the mob's circle at the second
+	"verdict": {"shape": "gather", "r": 7.0},
+	# CollectiveDelusionFx.DANGER_R (its All Is Well mode covers RADIUS)
+	"delusion": {"shape": "circle", "r": 3.0},
 	# Voice of God speaks to the whole town: the mark is only where the click lands (Flee's origin, Gather's place,
 	# Judge's target -- ringed in _draw())
 	"voice": {"shape": "circle", "r": 0.6},
@@ -358,6 +372,14 @@ func _draw() -> void:
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
 			_cone(_press, float(a.r), float(a.arc), edge)
+		"pick":
+			# The people at the first click, then the place the cursor is on.
+			if placed:
+				_ring(first, float(a.r), edge)
+				_place_mark(_press, COL_DIVINE)
+				draw_line(first, _press, COL_FAINT, -1.0)
+			else:
+				_ring(_press, float(a.r), edge)
 		"regions":
 			# Divine Schism's Custom Division: one side's region at the first click, the other's following the cursor.
 			if placed:
@@ -389,6 +411,14 @@ func _draw() -> void:
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"oath", "echo":
+			# Whom it would bind, or start with.
+			for p in OathboundFx.bound_at(_crowd._field, first if placed else _press, 5 if _rules.key(slot) == "echo" else 4):
+				_ring(p.ground_pos, 0.2, COL_DIVINE)
+		"turncoat":
+			var turned := TurncoatFx.target_at(_crowd._field, _press)
+			if turned != null:
+				_ring(turned.ground_pos, 0.25, COL_CRIMSON)
 		"voice":
 			match String(mode().get("key", "")):
 				"gather":

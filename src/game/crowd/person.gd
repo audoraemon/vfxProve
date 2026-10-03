@@ -108,8 +108,9 @@ const HEALTH_CITIZEN := 1.0
 const HEALTH_SOLDIER := 2.0
 ## Whom a fighter may go for (fight()): anyone near (a maddened frenzy); only hostiles, the fighting citizens (a
 ## soldier engaging one); only its given target, the fight ending with it (Voice of God's Judge); only the other side
-## (Divine Schism).
-enum FightRule { ANYONE, HOSTILES, TARGET_ONLY, OTHER_SIDE }
+## (Divine Schism); only its own kind, soldier against soldiers and citizen against citizens (Turncoat); only those of
+## one kind, `fight()`'s `kind` (Manufactured Hatred).
+enum FightRule { ANYONE, HOSTILES, TARGET_ONLY, OTHER_SIDE, OWN_KIND, OF_KIND }
 ## A mark's glyph: five rows of five bits, the top row first. The diamond is a compulsion's own.
 const GLYPH_DIAMOND: Array[int] = [0b00100, 0b01110, 0b11111, 0b01110, 0b00100]
 const COL_MARK_EDGE := Color(0.12, 0.08, 0.02)
@@ -229,6 +230,11 @@ var _swing_in := 0.0
 var _retarget_in := 0.0
 var _fight_rule := FightRule.ANYONE
 var _fight_sight := FIGHT_SIGHT
+var _fight_kind := &""
+## Seconds left of fearing nothing (Rewrite Priority's Ignore, Collective Delusion's All Is Well): no danger frightens
+## it, nothing makes it look, no evacuation calls it; and whether it was fleeing when reassured, to flee again after.
+var fearless_left := 0.0
+var _reassured_fled := false
 ## The side it has been set on (Divine Schism; 0: none): under FightRule.OTHER_SIDE a fighter goes for the other one.
 var side := 0
 ## A compulsion's pace (a run: Voice of God's Flee), its pose (&"kneel") and its mark's glyph.
@@ -385,6 +391,14 @@ func tick(delta: float) -> void:
 func _think(delta: float) -> void:
 	if badge_left > 0.0:
 		badge_left = maxf(badge_left - delta, 0.0)
+	if fearless_left > 0.0:
+		fearless_left = maxf(fearless_left - delta, 0.0)
+		if fearless_left <= 0.0 and _reassured_fled:
+			# The false calm wears off, and the town is still leaving.
+			_reassured_fled = false
+			if mind == Mind.CALM or mind == Mind.RECOVER:
+				mind = Mind.CALM
+				flee()
 	_repath_in = maxf(_repath_in - delta, 0.0)
 	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
 	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
@@ -598,8 +612,8 @@ func _drift() -> void:
 func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	if soldier or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
-	if held_by_will(WILL_ABSOLUTE):
-		return  # a Dominion stronger than fear
+	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
+		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
@@ -619,7 +633,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 ## citizen does; the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
 ## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
 func observe(from: Vector2, seconds := -1.0) -> void:
-	if soldier or state == State.DEAD or not (mind == Mind.CALM or mind == Mind.RECOVER):
+	if soldier or state == State.DEAD or not (mind == Mind.CALM or mind == Mind.RECOVER) or fearless_left > 0.0:
 		return
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
@@ -772,6 +786,30 @@ func release_compulsion() -> void:
 		_recover(rng.randf_range(1.0, 2.5))
 
 
+## What it is, for the powers that tell people apart: a soldier, or its role's name (clergy, engineer, merchant...).
+func kind() -> StringName:
+	if soldier:
+		return &"soldier"
+	if profile != null:
+		return StringName(CitizenProfile.Role.keys()[profile.role].to_lower())
+	return &"citizen"
+
+
+## Told there is nothing to fear, for `seconds` (Collective Delusion): whatever fright, flight or watching it was in is
+## dropped and it goes back to its day; nothing frightens it meanwhile; and if it was leaving the town, it leaves again
+## when the calm wears off.
+func reassure(seconds: float) -> void:
+	if inside or state == State.DEAD or soldier:
+		return
+	var fled := mind == Mind.FLEE
+	fearless_left = maxf(fearless_left, seconds)
+	_reassured_fled = _reassured_fled or fled
+	if mind in [Mind.PANIC, Mind.FLEE, Mind.OBSERVE, Mind.REGROUP, Mind.RECOVER]:
+		release_from_queue()
+		passing_gate = null
+		_recover(rng.randf_range(0.5, 1.5))
+
+
 ## A badge over the head for `seconds`: `glyph` in `color` (a side's mark, the silenced, the condemned).
 func set_badge(glyph: Array[int], color: Color, seconds: float) -> void:
 	badge_glyph = glyph
@@ -800,7 +838,7 @@ func stun(seconds: float) -> void:
 
 ## Go for someone (Mind.FIGHT) for `seconds`, striking `blow` of their health each swing: `target` or, when null,
 ## whoever `rule` allows (FightRule) within `sight`. Ends on its own (stop_fighting()).
-func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE, sight := FIGHT_SIGHT) -> void:
+func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE, sight := FIGHT_SIGHT, kind := &"") -> void:
 	if inside or state == State.DEAD:
 		return
 	release_from_queue()
@@ -811,6 +849,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	_fight_blow = blow
 	_fight_rule = rule
 	_fight_sight = sight
+	_fight_kind = kind
 	_swing_in = 0.0
 	_retarget_in = 0.0
 	_panic_left = 0.0
@@ -838,7 +877,12 @@ func _fightable(p: Person) -> bool:
 		return false
 	match _fight_rule:
 		FightRule.HOSTILES:
-			return p.mind == Mind.FIGHT and not p.soldier
+			# A fighting citizen, or a fighter set on another side (a soldier turned).
+			return p.mind == Mind.FIGHT and (not p.soldier or p.side != side)
+		FightRule.OWN_KIND:
+			return p.soldier == soldier
+		FightRule.OF_KIND:
+			return p.kind() == _fight_kind
 		FightRule.TARGET_ONLY:
 			return p == fight_target
 		FightRule.OTHER_SIDE:
@@ -1092,7 +1136,7 @@ func walk_to(g: Vector2) -> void:
 
 ## City Emergency (v0.04): go home to `home` and wait there with the family until the evacuation or the danger.
 func regroup(home: Vector2) -> void:
-	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or fearless_left > 0.0:
 		return
 	mind = Mind.REGROUP
 	awareness = maxi(awareness, Awareness.EMERGENCY) as Awareness
@@ -1159,6 +1203,9 @@ func is_stumbling() -> bool:
 ## does not ask for a hundred paths in the same frame.
 func flee() -> void:
 	if soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+		return
+	if fearless_left > 0.0:
+		_reassured_fled = true  # it will go when the calm wears off
 		return
 	mind = Mind.FLEE
 	walk_speed = _mind_speed()

@@ -1,5 +1,5 @@
 extends RefCounted
-## The power book: 24 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
+## The power book: 31 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
 
 ## v0.07's cooldowns (kak-v0.07.1), which v0.08's may lengthen but never shorten (spec §2).
 const V07_COOLDOWNS := {
@@ -8,11 +8,12 @@ const V07_COOLDOWNS := {
 	"cinder": 50.0, "judgement": 60.0, "glacial": 60.0, "nova": 120.0,
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
-const NEW_IN_08 := ["whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism"]
+const NEW_IN_08 := ["whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
+	"turncoat", "hatred", "priority", "verdict", "delusion"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 24, "24 powers")
+	t.check(PowerBook.POWERS.size() == 31, "31 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -38,14 +39,16 @@ static func run(t) -> void:
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "wisp", "discord", "heaven", "madness", "blight", "thorns", "tornado",
-		"pestilence", "dragon", "mirror", "congregation", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
+		"pestilence", "dragon", "mirror", "congregation", "oath", "echo", "turncoat", "hatred", "priority", "verdict", "delusion",
+		"tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "schism", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []
 	for key in PowerBook.keys():
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
-	t.check(quiet == ["doom", "whisper", "wisp", "discord", "madness", "blight", "thorns", "pestilence", "mirror", "congregation", "voice"],
+	t.check(quiet == ["doom", "whisper", "wisp", "discord", "madness", "blight", "thorns", "pestilence", "mirror", "congregation", "oath", "echo",
+		"turncoat", "hatred", "priority", "verdict", "delusion", "voice"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var authorities_ok := true
 	for p: Dictionary in PowerBook.POWERS:
@@ -74,7 +77,8 @@ static func run(t) -> void:
 	t.check(PowerBook.authority_of("whisper") == "dominion" and int(whisper.dp) == 1 and float(whisper.cooldown) == 8.0
 		and String(whisper.aim) == "whisper" and PowerBook.is_quiet("whisper") and whisper.name == "Mind Whisper",
 		"Mind Whisper: Dominion, 1 DP, 8 s, its own aim, quiet (%s)" % [whisper])
-	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "congregation", "voice", "schism"],
+	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "congregation", "oath", "echo", "turncoat",
+		"hatred", "priority", "verdict", "delusion", "voice", "schism"],
 		"Dominion holds Mind Whisper, the Will-o'-Wisp, Divine Congregation and the two of Tier 5 (%s)" % [PowerBook.of_authority("dominion")])
 	t.check(PowerBook.icon("kettle") == null and PowerBook.hud_icon("kettle") == null,
 		"an icon that is not painted is null, not a load error")

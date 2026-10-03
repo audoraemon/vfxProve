@@ -103,3 +103,5 @@ Balance at start: 873.
 | town_tower | `edit` (damaged, re-roll) | as above plus "one single tower… same size" | 202 | 20 (793 → 773) | Kept edit_00: cracks, scorch, torn banner, torch out, same outline |
 
 town_tower total: 100 generations (873 → 773), 30 over its 70 cap: the orphaned ruins job (20) and the tiled damaged edit (20) were wasted. Lesson: run `edit` calls with `run_in_background` or a long timeout, one at a time. Glow 1.4% intact, 0% damaged, 0% ruins. No collapse (engine sink).
+
+town_tower_corner: reuses town_tower's stills (0 generations), anchor [58, 131.4] centres the 1.6 tower on the 2.0 corner plot, shadow [1.6, 1.6].

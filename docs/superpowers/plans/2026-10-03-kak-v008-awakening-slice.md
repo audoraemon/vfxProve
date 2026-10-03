@@ -2011,3 +2011,21 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   - The FLOW test waits out the fade before its second MANIFEST, and waits two frames after the title.
   - The board has a key-hint line, and hovering a card selects it.
   - Known small issue, left for later: a MANIFEST pressed during a fade-in is ignored.
+
+### Task 7 judgement baseline (pre-M2)
+
+- Measured at 5bd39e5 plus the scenario, on BURIN_NITRO, 2026-10-03.
+- One run takes about 135 s of wall time (a mission of about 85 s of game time at `--fixed-fps 60`).
+- The scenario counts `t` in game time (each frame's scaled delta): with hit-stop, counting frames would run ahead of the mission's clock. Its loop also stops after twice the mission's clock in frames, so a run always ends. `_run()` already turns the intro off (`_intro_left = 0.0`, the rules processing).
+- Five runs, all Organized, the default loadout:
+  - `end t=87.3 citadel_fell=47.1 won=false reason=escapes escaped=50 buildings=79 score=6930 rank=C dp_left=16.733`
+  - `end t=88.6 citadel_fell=47.2 won=false reason=escapes escaped=50 buildings=79 score=6965 rank=C dp_left=17.404`
+  - `end t=84.7 citadel_fell=47.3 won=false reason=escapes escaped=50 buildings=80 score=7045 rank=C dp_left=25.419`
+  - `end t=83.7 citadel_fell=47.2 won=false reason=escapes escaped=50 buildings=80 score=7010 rank=C dp_left=24.934`
+  - `end t=87.0 citadel_fell=47.2 won=false reason=escapes escaped=50 buildings=79 score=6910 rank=C dp_left=16.613`
+  - A sixth run was thrown away: an R pressed in its window restarted the mission (`Mission._unhandled_input`), freeing the Rules the scenario held. The fourth line above is its redo.
+- The 30-s reports (first run; the others differ by at most one escape):
+  - `t=30 citadel=50% stability=75% escaped=0 buildings=44 stage=Evacuation`
+  - `t=60 citadel=0% stability=47% escaped=19 buildings=64 stage=Collapse`
+- **No run wins.** The Citadel falls at about 47 s, but stability is still about 47% at 60 s and never reaches zero. Every run is lost to the escape limit at 84–89 s.
+- Medians over all five runs, since none won: `citadel_fell` 47.2, `escaped` 50, `score` 6965 (a loser's score: no win bonus, no time or DP), `floor(dp_left)` 17 (16, 16, 17, 24, 25). The end `t` has a median of 87.0 and `buildings` a median of 79.

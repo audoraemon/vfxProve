@@ -47,6 +47,9 @@ extends SceneTree
 ##            marshals / nomarshals  an evacuation called at 20 s: escapes by way out and the gates' queues every 10 s to 60 s
 ##            escort / noescort      the bellkeeper killed 3 s into its climb: the bell's state every 2 s to 50 s
 ##            rescue / norescue      the cathedral filled to its capacity, then it falls: trapped, saved, lost every 5 s to 80 s
+##   judgement (v0.08) Last Judgement played greedily with the default loadout: from 5 s, each slot is cast the moment
+##          its rules allow it, at the next of a fixed ring of targets closing on the Citadel; a report every 30 s,
+##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any)
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -118,6 +121,8 @@ func _run() -> void:
 			await _siege()
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
+		"judgement":
+			await _judgement()
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -734,6 +739,51 @@ func _gates(hazard: bool, shots := false) -> void:
 			await bf.save_capture("behaviour_gates.png")
 		print("BEHAVIOUR gates t=%d by exit %s rerouting=%d queues(main,side)=%s escaped=%d" % [roundi(t), by_exit,
 			rerouting, queues, crowd.escaped_count])
+
+
+## The judgement scenario's targets, cast in turn (v0.08): a ring closing on the Citadel.
+const JUDGEMENT_TARGETS := [Vector2(-9.0, -11.0), Vector2(0.8, 2.2), Vector2(-12.0, 1.0), Vector2(-4.0, -6.0),
+	TownLayout.CITADEL_ORIGIN, Vector2(-6.0, -12.0), Vector2(4.0, -4.0), Vector2(-10.5, -8.0)]
+## A cap on the judgement scenario's frames, so a run ends even if the mission does not: twice the mission's clock.
+const JUDGEMENT_MAX_FRAMES := int(Rules.MISSION_SECONDS * 2.0 * 60.0)
+
+
+## Written only against what exists both before and after v0.08 M2 (refusal(), cast(), loadout, an optional `dp`),
+## so the same scenario measures both sides of the change. `t` is game time, the mission's own seconds: a hit's
+## hit-stop slows Engine.time_scale, so counting frames alone would run ahead of the mission's clock.
+func _judgement() -> void:
+	var rules: Rules = mission._rules
+	var town: Town = mission._town
+	var fell_at := -1.0
+	var next := 0
+	var t := 0.0
+	var frames := 0
+	var report_at := 30.0
+	while not rules.finished and frames < JUDGEMENT_MAX_FRAMES:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t < 5.0 or frames % 6 != 0:
+			continue
+		for slot in rules.loadout.size():
+			if rules.refusal(slot) == "":
+				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+				next += 1
+				rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()})
+				break
+		if fell_at < 0.0 and town.citadel.is_fallen():
+			fell_at = t
+		if t >= report_at:
+			report_at += 30.0
+			print("BEHAVIOUR judgement t=%d citadel=%d%% stability=%d%% escaped=%d buildings=%d stage=%s" % [
+				roundi(t), roundi(town.citadel.fraction() * 100.0), roundi(rules.stability.total() * 100.0),
+				mission._crowd.escaped_count, rules.buildings_down, mission._crowd.alarms.stage_name()])
+	if fell_at < 0.0 and town.citadel.is_fallen():
+		fell_at = t
+	var dp_left: Variant = rules.get("dp")
+	print("BEHAVIOUR judgement end t=%.1f citadel_fell=%.1f won=%s reason=%s escaped=%d buildings=%d score=%d rank=%s dp_left=%s" % [
+		t, fell_at, rules.won, rules.over_reason, mission._crowd.escaped_count, rules.buildings_down, rules.score(),
+		rules.rank(), str(dp_left)])
 
 
 ## Living citizens' intents, by distance band (ground units) from `at`.

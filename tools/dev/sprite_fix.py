@@ -205,6 +205,12 @@ def tile(src, dst, u0, period, span):
     im = _rgba(src)
     ux, uy = (float(v) for v in u0.split(","))
     S, span = float(period), float(span)
+    if ux != int(ux) or uy != int(uy):
+        sys.exit("u0 must be whole pixels")
+    if S <= 0:
+        sys.exit("period must be positive")
+    if span < S:
+        sys.exit("span must be at least one period")
     dx, dy = 32.0 * S, 16.0 * S
     if dx != int(dx) or dy != int(dy):
         sys.exit("period must be a multiple of 1/16 unit")

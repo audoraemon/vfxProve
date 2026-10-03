@@ -1,10 +1,10 @@
 class_name ResultsScreen
 extends Node
 ## Results (spec §5): the ending in gold for a win or red for a loss, the big rank letter, the score, NEW BEST!
-## when it is one, the stat table with what each line was worth, and Replay / Change powers / Title. It is drawn
+## when it is one, the stat table with what each line was worth, and Replay / Change powers / Missions. It is drawn
 ## over the mission's frozen ruins, which Game keeps up underneath it.
 
-## "replay" (the same four powers again), "change" (back to the draft) or "title".
+## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08).
 signal action(name: String)
 
 const PANEL := Rect2(36.0, 20.0, 568.0, 320.0)
@@ -47,7 +47,7 @@ func setup(result: Dictionary) -> ResultsScreen:
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	_menu = Menu.row(["replay", "change", "title"], ["Replay", "Change powers", "Title"], 320.0, PANEL.end.y - 28.0, 120.0)
+	_menu = Menu.row(["replay", "change", "missions"], ["Replay", "Change powers", "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
 	return self
 
 
@@ -56,7 +56,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:
 			action.emit("replay")
 		elif event.physical_keycode == KEY_ESCAPE:
-			action.emit("title")
+			action.emit("missions")
 
 
 func _on_gui_input(event: InputEvent) -> void:

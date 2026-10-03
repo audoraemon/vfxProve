@@ -5,22 +5,25 @@ extends Node
 ## string, and FLOW says where that leads. Keeping the flow as data is what makes it provable without
 ## building a single screen.
 
-enum Screen {TITLE, PREPARE, MISSION, RESULTS}
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS}
 
-## Where every button leads (spec §1). Pause is not a screen of its own: it sits over the mission, which is
-## why "pause:resume" leads back to MISSION -- on_action() resumes that mission rather than building a new one.
+## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
+## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
+## leads back to MISSION -- on_action() resumes that mission rather than building a new one.
 const FLOW := {
-	"title:play": Screen.PREPARE,
+	"title:play": Screen.BOARD,
+	"board:pick": Screen.PREPARE,
+	"board:back": Screen.TITLE,
 	"prepare:manifest": Screen.MISSION,
-	"prepare:back": Screen.TITLE,
+	"prepare:back": Screen.BOARD,
 	"mission:over": Screen.RESULTS,
 	"results:replay": Screen.MISSION,
 	"results:change": Screen.PREPARE,
-	"results:title": Screen.TITLE,
+	"results:missions": Screen.BOARD,
 	"pause:resume": Screen.MISSION,
 	"pause:restart": Screen.MISSION,
 	"pause:change": Screen.PREPARE,
-	"pause:title": Screen.TITLE,
+	"pause:missions": Screen.BOARD,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -62,7 +65,7 @@ var result := {}
 ## The running mission. It outlives the MISSION screen by one step: the Results screen is drawn over its
 ## frozen ruins, which is the payoff for the whole run.
 var _mission: Mission
-## Title, Prepare or Results: whichever full screen is up.
+## Title, the board, Prepare or Results: whichever full screen is up.
 var _screen_node: Node
 ## The pause menu, while it is up. It sits over the mission instead of replacing it.
 var _pause: PauseMenu
@@ -91,6 +94,8 @@ func _ready() -> void:
 	add_child(_fader)
 	var show := Battlefield.arg_value(args, "--show")
 	match show:
+		"board":
+			go_to(Screen.BOARD)
 		"prepare":
 			go_to(Screen.PREPARE)
 			var hover := Battlefield.arg_value(args, "--hover")
@@ -141,11 +146,18 @@ func go_to(to: int) -> void:
 			title.setup(save.best_score, save.best_rank)
 			title.action.connect(_on_title_action)
 			_screen_node = title
+		Screen.BOARD:
+			var board := MissionBoard.new()
+			board.name = "Board"
+			add_child(board)
+			board.setup(save, mission_id)
+			board.action.connect(_on_board_action.bind(board))
+			_screen_node = board
 		Screen.PREPARE:
 			var prep := PrepareScreen.new()
 			prep.name = "Prepare"
 			add_child(prep)
-			prep.setup(loadout, save.best_score, save.best_rank, save.difficulty)
+			prep.setup(MissionBook.get_mission(mission_id), loadout, save.difficulty)
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:
@@ -163,7 +175,7 @@ func go_to(to: int) -> void:
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)  # Tasks 3 and 4
 	match to:
-		Screen.TITLE, Screen.PREPARE:
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE:
 			Music.play(&"theme")
 		Screen.RESULTS:
 			Music.play(&"")  # the win or lose sting stands alone
@@ -227,6 +239,16 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 	save.remember_loadout(mission_id, loadout)
 	save.save_to(save_path)
 	on_action("mission:over")
+
+
+## The board's pick becomes the mission to prepare, with the loadout last drafted for it; the save remembers it.
+func _on_board_action(what: String, board: MissionBoard) -> void:
+	if what == "pick":
+		mission_id = board.chosen
+		save.last_mission = mission_id
+		loadout = save.loadout_for(mission_id)
+		save.save_to(save_path)
+	on_action("board:" + what)
 
 
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
@@ -319,8 +341,17 @@ func _flow_test() -> void:
 
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "the game opens on the title")
 	step.call(Music.current() == &"theme", "the title plays the theme")
+	# The title's first frames compile its shaders, which can take seconds; let them pass before anything is timed.
+	await get_tree().process_frame
+	await get_tree().process_frame
 	on_action("title:play")
-	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen, "Play opens the draft")
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Play opens the mission board")
+	step.call(Music.current() == &"theme", "the board plays the theme")
+	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
+	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
+		and (_screen_node as PrepareScreen).mission.id == MissionBook.LAST_JUDGEMENT
+		and mission_id == MissionBook.LAST_JUDGEMENT and save.last_mission == MissionBook.LAST_JUDGEMENT,
+		"picking Last Judgement opens its draft, and the save remembers the pick")
 	var prep: PrepareScreen = _screen_node
 	prep.draft.preselect(four)
 	_on_prepare_action("manifest", prep)
@@ -381,7 +412,22 @@ func _flow_test() -> void:
 		"with the four preselected")
 	step.call(not is_instance_valid(_pause) and not is_instance_valid(_mission), "and the pause menu and mission are gone")
 	on_action("prepare:back")
-	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back returns to the title")
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Back from the draft returns to the board")
+
+	# Pause, then Missions: the board, with nothing left of the mission. The Replay's fade-in is still running this
+	# soon after it (no player is this quick), and a MANIFEST during a fade is ignored, so let it finish first.
+	await _until(func() -> bool: return not _fading, 5.0)
+	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
+	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and loadout == four, "the board, the draft and MANIFEST again")
+	_open_pause()
+	on_action("pause:missions")
+	await get_tree().process_frame
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Missions from the pause menu opens the board")
+	step.call(not is_instance_valid(_pause) and not is_instance_valid(_mission), "and the pause menu and mission are gone")
+	(_screen_node as MissionBoard).action.emit("back")
+	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back from the board returns to the title")
 	step.call(Engine.time_scale == 1.0, "and time runs at normal speed")
 
 	print("FLOW result checks=%d failures=%d %s" % [count[0], fails.size(), ", ".join(fails)])

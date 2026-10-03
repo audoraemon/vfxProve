@@ -32,6 +32,16 @@ static func run(t) -> void:
 		"a saved loadout is cleaned up on the way in (%s)" % [saved.picks])
 	t.check(Draft.new().preselect(PackedStringArray()).picks.is_empty(), "and an empty one gives an empty draft")
 
+	# The mission sets the draft (v0.08): Last Judgement has four slots and allows every power.
+	var lj := Draft.new().for_mission(MissionBook.last_judgement())
+	t.check(lj.slots == 4 and lj.pool == PowerBook.keys(), "Last Judgement's draft has four slots and every power (%d)" % lj.slots)
+	var narrow := Draft.new()
+	narrow.slots = 2
+	narrow.pool = PackedStringArray(["nova", "heaven"])
+	narrow.preselect(PackedStringArray(["cinder", "heaven", "nova", "gravity"]))
+	t.check(narrow.picks == PackedStringArray(["heaven", "nova"]) and narrow.is_full(),
+		"a power outside the mission's pool is refused, and its slots make it full (%s)" % [narrow.picks])
+
 	# The Prepare screen (v0.06): tabs by kind, the open tab's cards, the loadout bar with MANIFEST -- none
 	# overlapping, all above the difficulty strip.
 	var screen := Rect2(0, 0, 640, PrepareScreen.STRIP.position.y)
@@ -43,7 +53,7 @@ static func run(t) -> void:
 		most = maxi(most, PowerBook.of_kind(kind).size())
 	for i in most:
 		boxes.append(PrepareScreen.cell_rect(i))
-	for i in Draft.SLOTS:
+	for i in d.slots:
 		boxes.append(PrepareScreen.slot_rect(i))
 	boxes.append(PrepareScreen.MANIFEST_RECT)
 	var bad := 0
@@ -55,7 +65,7 @@ static func run(t) -> void:
 				bad += 1
 	t.check(bad == 0, "tabs, the largest tab's %d cards and the loadout bar fit without touching (%d)" % [most, bad])
 	var prep := PrepareScreen.new()
-	prep.setup(PackedStringArray(["doom", "heaven"]), 0, "")
+	prep.setup(MissionBook.last_judgement(), PackedStringArray(["doom", "heaven"]))
 	t.check(prep.tab == PowerBook.KINDS.find("quiet") and Array(prep.shown()) == Array(PowerBook.of_kind("quiet")),
 		"the screen opens on the first pick's tab (%d)" % prep.tab)
 	t.check(prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0"

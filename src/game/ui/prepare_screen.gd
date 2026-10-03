@@ -29,6 +29,8 @@ const BADGE := 15.0
 ## The gap between the briefing's widest label and its values.
 const LABEL_GAP := 6.0
 
+## The mission being prepared (v0.08): its briefing, its slots and the powers it allows. Last Judgement until setup().
+var mission: MissionDef = MissionBook.last_judgement()
 var draft := Draft.new()
 ## The open tab: an index into PowerBook.KINDS.
 var tab := 0
@@ -48,8 +50,6 @@ var _ui: Control
 ## draw list before the GPU has it and paint a white block that stays).
 var _icons := {}
 var _art := {}
-var _best_score := 0
-var _best_rank := ""
 ## The power key under the mouse, "manifest", or "".
 var _hover := ""
 ## Each power's preview sheet, loaded once in setup() like the icons.
@@ -58,14 +58,13 @@ var _clip_t := 0.0
 var _clip_frame := 0
 
 
-func setup(preselect: PackedStringArray, best_score: int, best_rank: String,
-		tier := ResponseProfile.DEFAULT) -> PrepareScreen:
+func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfile.DEFAULT) -> PrepareScreen:
+	mission = def
+	draft = Draft.new().for_mission(mission)
 	draft.preselect(preselect)
 	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
 	tab = maxi(PowerBook.KINDS.find(PowerBook.kind_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
 	difficulty = tier
-	_best_score = best_score
-	_best_rank = best_rank
 	for p: Dictionary in PowerBook.POWERS:
 		var key := String(p.key)
 		_icons[key] = PowerBook.hud_icon(key)
@@ -99,14 +98,23 @@ static func cooldown_text(p: Dictionary) -> String:
 	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
 
 
-## The loadout bar's slot `i` (0-3).
+## The loadout bar's slot `i`, from 0 (sized for four; M2 sizes it for six).
 static func slot_rect(i: int) -> Rect2:
 	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (SLOT.x + 4.0), LOADOUT_BAR.position.y + 2.0), SLOT)
 
 
-## The open tab's power keys, in PowerBook order.
+## The open tab's power keys, in PowerBook order: those the mission allows.
 func shown() -> PackedStringArray:
-	return PowerBook.of_kind(PowerBook.KINDS[tab])
+	return kind_keys(tab)
+
+
+## Tab `i`'s power keys that the mission allows, in PowerBook order.
+func kind_keys(i: int) -> PackedStringArray:
+	var out := PackedStringArray()
+	for key in PowerBook.of_kind(PowerBook.KINDS[i]):
+		if mission.allows(key):
+			out.append(key)
+	return out
 
 
 func set_tab(i: int) -> void:
@@ -124,7 +132,7 @@ func hit(point: Vector2) -> String:
 	for i in keys.size():
 		if cell_rect(i).has_point(point):
 			return String(keys[i])
-	for i in Draft.SLOTS:
+	for i in draft.slots:
 		if slot_rect(i).has_point(point):
 			return "slot:%d" % i
 	if MANIFEST_RECT.has_point(point):
@@ -234,9 +242,6 @@ func preview(key: String) -> void:
 func _draw_ui() -> void:
 	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
 	UiTheme.text(_ui, Vector2(8, 24), "PREPARE THE MANIFESTATION", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
-	if _best_score > 0:
-		var best := "Best %d  %s" % [_best_score, _best_rank]
-		UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(best, UiTheme.SIZE_SMALL), 24.0), best, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	_draw_panel()
 	_draw_tabs()
 	var keys := shown()
@@ -254,7 +259,7 @@ func _draw_tabs() -> void:
 		_ui.draw_rect(r, Color(0.12, 0.1, 0.05, 0.95) if open else (Color(0.1, 0.09, 0.07, 0.9) if _hover == "tab:%d" % i
 			else UiTheme.COL_PANEL))
 		UiTheme.frame(_ui, r, open)
-		var keys := PowerBook.of_kind(PowerBook.KINDS[i])
+		var keys := kind_keys(i)
 		var label := "%s %d" % [PowerBook.KIND_TITLES[i], keys.size()]
 		UiTheme.text(_ui, Vector2(r.position.x + 5.0, r.end.y - 4.0), label, UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
@@ -315,8 +320,8 @@ func _draw_panel() -> void:
 		_draw_power_card(hover, p)
 		return
 	var brief := [
-		["TARGET", "Aldermere and its Royal Citadel"],
-		["WIN", "Bring down the Citadel and break the city before %s" % UiTheme.clock(Rules.MISSION_SECONDS)],
+		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
+		["WIN", mission.goal],
 		["LOSE", "%d citizens escape, or the time runs out" % Rules.ESCAPE_LIMIT],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
 		["POWER", ("%d DP, +%.1f a second; towers, gates, soldiers and chains pay back" if Rules.DP_RECOVERY_DEFAULT
@@ -408,7 +413,7 @@ func _draw_card(i: int, key: String) -> void:
 ## MANIFEST, lit once all four are picked.
 func _draw_loadout() -> void:
 	_ui.draw_rect(LOADOUT_BAR, UiTheme.COL_PANEL)
-	for i in Draft.SLOTS:
+	for i in draft.slots:
 		var r := slot_rect(i)
 		var key := draft.picks[i] if i < draft.picks.size() else ""
 		_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == "slot:%d" % i else Color(0, 0, 0, 0.35))

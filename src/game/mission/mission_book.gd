@@ -21,7 +21,8 @@ static func get_mission(id: String) -> MissionDef:
 
 
 ## The Warning (v0.08 M4): a star falls over the Main Gate and a watchman runs to wake the bell; kill whoever carries
-## the warning unseen, or hold it off until the omen fades (WarningDirector).
+## the warning unseen, or hold it off until the omen fades (WarningDirector). v0.08.1 left Thornwall out of its pool: a
+## 3-unit wall is walked round in at most 1.5 s, once a mission -- a Last Judgement tool (gates, evacuees).
 static func warning() -> MissionDef:
 	var m := MissionDef.new()
 	m.id = WARNING
@@ -33,7 +34,7 @@ static func warning() -> MissionDef:
 	m.lose = "The bell tolls before the omen fades"
 	m.slots = 3
 	m.dp_capacity = 6
-	m.pool = PackedStringArray(["whisper", "doom", "wisp", "discord", "thorns"])
+	m.pool = PackedStringArray(["whisper", "doom", "wisp", "discord"])
 	m.clock = 120.0
 	m.profile = "unaware"
 	m.intro_from = TownLayout.MAIN_GATE.get_center() + Vector2(0.0, 6.0)

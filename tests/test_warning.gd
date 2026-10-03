@@ -210,8 +210,8 @@ static func _endings(t) -> void:
 	rules = s.rules
 	var d: WarningDirector = s.d
 	rules.cast_made.emit(0, "discord", d.messenger.ground_pos)
-	rules.cast_made.emit(1, "thorns", d.messenger.ground_pos + Vector2(10.0, 0.0))
-	t.check(d.delayed_by.has("disorder") and not d.delayed_by.has("passage"),
+	rules.cast_made.emit(1, "wisp", d.messenger.ground_pos + Vector2(10.0, 0.0))
+	t.check(d.delayed_by.has("disorder") and not d.delayed_by.has("dominion"),
 		"a cast at the messenger delays the warning; one 10 away does not (%s)" % [d.delayed_by])
 	rules.time_left = 0.01
 	_run(s, 0.1)

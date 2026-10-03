@@ -195,6 +195,9 @@ static func run(t) -> void:
 	r3.advance(Rules.CAST_GRACE + 0.1)
 	t.check(r3.credited_key(&"lightning") == "", "a cast whose effect was freed is forgotten once its grace runs out")
 	r3.free()
+	# v0.08: with no mission given, the rules play Last Judgement, decided by its three objectives.
+	t.check(rules.mission.id == "last_judgement" and rules.objectives.size() == 3,
+		"the rules play Last Judgement by its three objectives (%s, %d)" % [rules.mission.id, rules.objectives.size()])
 	rules.free()
 	crowd.clear()
 	field.clear()

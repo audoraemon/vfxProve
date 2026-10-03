@@ -100,6 +100,12 @@ var over_reason := ""
 
 var _stability_dirty := true
 
+## The mission being played (v0.08), its objectives -- decided in list order, see Objective -- and its director.
+var mission: MissionDef
+var objectives: Array[Objective] = []
+var bonuses: Array[Objective] = []
+var director: MissionDirector
+
 ## How a cast reaches the world: func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline.
 ## Set in setup() to go through FxTimeline.cast; tests replace it so they need no effects.
 var caster := Callable()
@@ -120,8 +126,12 @@ var _elapsed := 0.0
 
 
 func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, field: EnemyField, crowd: Crowd,
-		town: Town) -> Rules:
+		town: Town, mission_def: MissionDef = null) -> Rules:
 	loadout = powers
+	mission = mission_def if mission_def != null else MissionBook.last_judgement()
+	time_left = mission.clock
+	objectives = mission.objectives()
+	bonuses = mission.bonuses()
 	_ctx = ctx
 	_env = env
 	_field = field
@@ -166,6 +176,8 @@ func advance(delta: float) -> void:
 		# Order breaks down in the town once stability has fallen this far (v0.04's last alarm stage).
 		if stability.total() <= AlarmManager.COLLAPSE_STABILITY and is_instance_valid(_crowd):
 			_crowd.order_collapses()
+	if director != null:
+		director.step(delta)
 	_check_end()
 
 
@@ -359,17 +371,19 @@ func _on_citadel_health(_fraction: float) -> void:
 	_stability_dirty = true
 
 
-## Win: the Citadel is down and the city's stability has reached zero. Lose: the people got away, or the
-## manifestation ran out. The win is tested first, so a city that falls on the last tick of the clock counts.
+## The mission's primary objectives decide it, in their order (v0.08): the first DONE wins, the first FAILED loses.
+## Last Judgement lists the Citadel first, so a city that falls on the last tick of the clock still counts.
 func _check_end() -> void:
 	if finished:
 		return
-	if is_instance_valid(_town.citadel) and _town.citadel.is_fallen() and stability.is_broken():
-		_finish(true, "citadel")
-	elif _crowd.escaped_count >= ESCAPE_LIMIT:
-		_finish(false, "escapes")
-	elif time_left <= 0.0:
-		_finish(false, "timeout")
+	for o in objectives:
+		match o.check(self):
+			Objective.Status.DONE:
+				_finish(true, o.reason)
+				return
+			Objective.Status.FAILED:
+				_finish(false, o.reason)
+				return
 
 
 func _finish(win: bool, reason: String) -> void:
@@ -413,10 +427,29 @@ func stat_lines() -> Array[Dictionary]:
 	return lines
 
 
+## Everything the Results screen and the save need (v0.08): the mission, the ending, the time it took, the goal and
+## each bonus as earned or not, a scored mission's score, rank and table, and the director's own report.
+func result() -> Dictionary:
+	var out := {"mission": mission.id, "won": won, "reason": over_reason, "time": _elapsed,
+		"goal": {"label": mission.goal_label, "done": won}, "bonuses": []}
+	for b in bonuses:
+		out.bonuses.append({"label": b.label, "earned": won and b.check(self) != Objective.Status.FAILED})
+	if mission.scored:
+		out["score"] = score()
+		out["rank"] = rank()
+		out["lines"] = stat_lines()
+	if director != null:
+		out.merge(director.report())
+	return out
+
+
 ## Let the world go. A mission that is finished stops counting, and a restart never has two Rules adding up the
 ## same destroyed building -- freeing a node disconnects it eventually, but queue_free() is deferred and the
 ## overlap is a whole frame wide.
 func teardown() -> void:
+	if director != null:
+		director.teardown()
+		director = null
 	if is_instance_valid(_env) and _env.structure_destroyed.is_connected(_on_structure_destroyed):
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)
 	if is_instance_valid(_env) and _env.structure_restored.is_connected(_on_structure_restored):

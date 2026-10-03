@@ -53,7 +53,10 @@ var save: SaveFile
 var save_path := SaveFile.PATH
 ## The four powers the player drafted, kept so Replay can run them again.
 var loadout := PackedStringArray()
-## The last mission's numbers, for the Results screen: won, reason, score, rank, lines, best.
+## The mission to play (v0.08): Last Judgement until the board picks one.
+var mission_id := MissionBook.LAST_JUDGEMENT
+## The last mission's numbers, for the Results screen: Rules.result() -- won, reason, score, rank, lines, ... --
+## and best.
 var result := {}
 
 ## The running mission. It outlives the MISSION screen by one step: the Results screen is drawn over its
@@ -203,6 +206,7 @@ func _build_mission() -> Mission:
 	var mission: Mission = load(MISSION_SCENE).instantiate()
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	mission.difficulty = save.difficulty
+	mission.mission_id = mission_id
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
 	mission.pause_pressed.connect(_open_pause)
@@ -216,9 +220,9 @@ func _build_mission() -> Mission:
 	return mission
 
 
-func _on_mission_finished(won: bool, reason: String, score: int, rank: String, lines: Array[Dictionary]) -> void:
-	result = {"won": won, "reason": reason, "score": score, "rank": rank, "lines": lines,
-		"best": save.record(score, rank)}
+func _on_mission_finished(outcome: Dictionary) -> void:
+	result = outcome
+	result["best"] = save.record(int(result.get("score", 0)), String(result.get("rank", "D")))
 	save.remember_loadout(loadout)
 	save.save_to(save_path)
 	on_action("mission:over")

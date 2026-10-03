@@ -5,8 +5,8 @@ extends Node2D
 ## middle button and zooms with the wheel. R starts a fresh mission. Milestone 4 puts the Title, Prepare,
 ## Pause and Results screens around this.
 
-## The run is over, with everything the Results screen shows.
-signal finished(won: bool, reason: String, score: int, rank: String, lines: Array[Dictionary])
+## The run is over, with everything the Results screen shows (Rules.result()).
+signal finished(result: Dictionary)
 ## Esc with nothing to cancel: whoever owns this mission decides what that means.
 signal pause_pressed
 ## The effect shaders are compiled and the mission can start. start() before this would clear the effect
@@ -28,13 +28,12 @@ const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 ## Grass, the same clear colour the debug scene uses.
 const CLEAR := Color("6e8230")
 
-## The mission opens with the camera sweeping in to the Citadel under a MANIFEST banner, and the clock only
-## starts when it arrives (spec §1).
+## The mission opens with the camera sweeping in under its banner (Last Judgement: to the Citadel, MANIFEST), and
+## the clock only starts when it arrives (spec §1). Where it sweeps from and to is the mission's (MissionDef).
 const INTRO_SECONDS := 2.0
-## Where the sweep starts: from the Main Gate, as far out as the zoom goes.
-const INTRO_FROM := Vector2(2.7, 12.0)
+## The sweep starts as far out as the zoom goes.
 const INTRO_FROM_ZOOM := ZOOM_MIN
-## Where the camera rests for play, and how close.
+## How close the camera rests for play.
 const PLAY_ZOOM := 0.6
 
 ## The ending plays out in slow motion before the results: the last blow lands, the dust settles, then the
@@ -68,6 +67,11 @@ var _hud: Hud
 var _overlay: BehaviourOverlay
 ## The difficulty (v0.05): Game sets it before start(); a standalone run reads --difficulty=<name>.
 var difficulty := ResponseProfile.DEFAULT
+## The mission to play (v0.08): Game sets it before start(); a standalone run reads --mission=<id>.
+var mission_id := MissionBook.LAST_JUDGEMENT
+## The mission being played, and its director (null for a mission without scripted actors).
+var _def: MissionDef
+var _director: MissionDirector
 var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
@@ -119,6 +123,11 @@ func _ready() -> void:
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works.
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	if _director != null:
+		_director.teardown()
+		if is_instance_valid(_rules):
+			_rules.director = null  # already let go: the old rules' teardown below must not do it twice
+	_director = null
 	_bf.reset(seed_value)
 	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay]:
 		if is_instance_valid(n):
@@ -147,10 +156,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()
+	_def = _mission_def(args)
 	var tier := difficulty
 	if autostart and Battlefield.arg_value(args, "--difficulty") != "":
 		tier = ResponseProfile.tier_named(Battlefield.arg_value(args, "--difficulty"))
-	_crowd.profile = ResponseProfile.for_tier(tier)
+	_crowd.profile = _def.response_profile(tier)
 	var wanted := Battlefield.arg_value(args, "--people")
 	var people := int(wanted) if wanted != "" else PEOPLE
 	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
@@ -160,8 +170,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_rules.name = "Rules"
 	add_child(_rules)
 	var loadout := powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args())
-	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town)
+	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, _def)
 	_rules.over.connect(_on_over)
+	if _def.director != null:
+		_director = (_def.director.new() as MissionDirector).setup(_rules, _crowd, _town, _bf.ctx)
+		_rules.director = _director
 	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
 	if _crowd.bell != null:
 		_crowd.bell.climbing_started.connect(func():
@@ -217,13 +230,15 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		# so their captures and numbers stay comparable: no intro for them.
 		_intro_left = 0.0
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
-		_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
+		var framed := Vector2(0, -2) if _def.id == MissionBook.LAST_JUDGEMENT else _def.camera_at
+		_bf.camera.position = Iso.ground_to_screen(framed).round()
 	else:
 		_intro_left = INTRO_SECONDS
 		_rules.set_process(false)  # the clock waits for the camera
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
-		_bf.camera.position = Iso.ground_to_screen(INTRO_FROM).round()
-		_rules.banner.emit("MANIFEST")
+		_bf.camera.position = Iso.ground_to_screen(_def.intro_from).round()
+		if _def.intro_banner != "":
+			_rules.banner.emit(_def.intro_banner)
 
 
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
@@ -236,10 +251,18 @@ func in_intro() -> bool:
 	return _intro_left > 0.0
 
 
-## The drafted loadout: the command line's, or the default four.
+## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08).
+func _mission_def(args: PackedStringArray) -> MissionDef:
+	var wanted_mission := Battlefield.arg_value(args, "--mission") if autostart else ""
+	return MissionBook.get_mission(wanted_mission if wanted_mission != "" else mission_id)
+
+
+## The drafted loadout: the command line's, or the mission's default. _ready() asks before start() has chosen the
+## mission, so it is looked up here when there is none yet.
 func _loadout(args: PackedStringArray) -> PackedStringArray:
 	var wanted := Battlefield.arg_value(args, "--loadout")
-	var keys := PackedStringArray(DEFAULT_LOADOUT)
+	var def := _def if _def != null else _mission_def(args)
+	var keys := PackedStringArray(def.default_loadout)
 	if wanted != "":
 		keys = PackedStringArray()
 		for key in wanted.split(","):
@@ -285,10 +308,10 @@ func _on_over(won: bool, reason: String) -> void:
 		print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
 		for line: Dictionary in _rules.stat_lines():
 			print("  %-22s %8s %6d" % [line.label, line.value, line.points])
-	_play_ending(won, reason)
+	_play_ending()
 
 
-func _play_ending(won: bool, reason: String) -> void:
+func _play_ending() -> void:
 	_ending = true
 	_aim.unfocus()
 	if not _scripted:
@@ -296,7 +319,7 @@ func _play_ending(won: bool, reason: String) -> void:
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		await get_tree().create_timer(ENDING_SECONDS, true, false, true).timeout
 		_bf.ctx.impact.set_base_time_scale(1.0)
-	finished.emit(won, reason, _rules.score(), _rules.rank(), _rules.stat_lines())
+	finished.emit(_rules.result())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -360,7 +383,7 @@ func _process(delta: float) -> void:
 		_intro_left = maxf(0.0, _intro_left - delta)
 		var k := 1.0 - _intro_left / INTRO_SECONDS
 		var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
-		_bf.camera.position = Iso.ground_to_screen(INTRO_FROM.lerp(TownLayout.CITADEL_ORIGIN, smooth)).round()
+		_bf.camera.position = Iso.ground_to_screen(_def.intro_from.lerp(_def.camera_at, smooth)).round()
 		_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
 			_rules.set_process(true)

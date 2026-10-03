@@ -35,8 +35,13 @@ float ground_y(float x) {
 	return corner_right.y * clamp(x / corner_right.x, 0.0, 1.0);
 }
 
+// A lit window or a fire: warm (red strongest, some green), very bright and strongly saturated. Pale warm stone (the
+// cathedral's sandstone, saturation ~0.5) must stay out, or whole walls ignore the dim and never char.
+// tools/dev/check_sprite_glow.py holds the same rule: change both together.
 bool glows(vec3 c) {
-	return c.r > 0.85 && c.g > 0.5 && c.b < 0.55 && c.r - c.b > 0.4;
+	float mx = max(c.r, max(c.g, c.b));
+	float mn = min(c.r, min(c.g, c.b));
+	return c.r >= mx && mx > 0.93 && (mx - mn) / mx > 0.55 && c.g > 0.45;
 }
 
 // The draw's modulate (the blight's tint, a fade) alone: the fragment's COLOR comes in already multiplied by the

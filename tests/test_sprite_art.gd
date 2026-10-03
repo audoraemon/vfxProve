@@ -19,6 +19,8 @@ static func run(t) -> void:
 	_view(t)
 	_strip(t)
 	_structure(t)
+	_settled_paths(t)
+	_flames(t)
 	_toggle(t)
 	SpriteArt.set_enabled(true)
 
@@ -230,8 +232,21 @@ static func _strip(t) -> void:
 	for n in SpriteArt.manifest():
 		var m: Dictionary = SpriteArt.manifest()[n]
 		if m.get("strip", false):
-			t.check(float(m.footprint[0]) >= float(m.period) + 1.2 - 0.001 and is_equal_approx(fmod(float(m.period) * 16.0, 1.0), 0.0),
+			t.check(float(m.footprint[0]) >= float(m.period) + TownLayout.WALL_PIECE - 0.001 and is_equal_approx(fmod(float(m.period) * 16.0, 1.0), 0.0),
 				"%s spans a period plus a piece, and its period is a whole number of pixels" % n)
+	t.check(is_equal_approx(SpriteArt.STRIP_PIECE, TownLayout.WALL_PIECE), "a strip's longest piece is the town's")
+	# A strip set without a positive period would read its stretch at fposmod(start, 0) = NaN and vanish: it is drawn
+	# as one whole frame instead (with a warning).
+	var real: Dictionary = SpriteArt.manifest()["town_wall"]
+	var bad := real.duplicate(true)
+	bad.erase("period")
+	SpriteArt.manifest()["town_wall"] = bad
+	SpriteArt._sets.erase("town_wall")
+	var no_period := SpriteArt.sprite("town_wall")
+	SpriteArt.manifest()["town_wall"] = real
+	SpriteArt._sets.erase("town_wall")
+	t.check(not no_period.is_empty() and not no_period.strip, "a strip set without a period is drawn whole, not as a strip")
+	t.check(SpriteArt.sprite("town_wall").strip, "and the real town wall is a strip again")
 
 
 ## A sprite building goes intact -> damaged -> falling -> ruins (or cut, under a laser), and back on a rebuild; its
@@ -334,6 +349,80 @@ static func _structure(t) -> void:
 	cit.free()
 	env.clear()
 	env.free()
+
+
+## The settled skip's riskiest paths: a settled building re-read by F7, and one rebuilt from settled ruins.
+static func _settled_paths(t) -> void:
+	SpriteArt.set_enabled(true)
+	var cot := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	for i in 4:
+		cot._process(1.0 / 60.0)
+	t.check(cot._sprite_settled(), "a quiet cottage settles")
+	SpriteArt.set_enabled(false)
+	cot.refresh_sprite()
+	cot.crack()
+	for i in 4:
+		cot._process(1.0 / 60.0)
+	t.check(cot.sprite.is_empty() and not is_instance_valid(cot._sprite_view), "F7 off: the settled cottage drops its sprite")
+	SpriteArt.set_enabled(true)
+	cot.refresh_sprite()
+	for i in 4:
+		cot._process(1.0 / 60.0)
+	t.check(is_instance_valid(cot._sprite_view) and cot._sprite_view.visible and cot._sprite_view.still == &"damaged",
+		"F7 on: it gets a new view showing the crack it took while sprites were off")
+	cot.free()
+	var fell := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	fell.destroy(Vector2(-5, -5), &"blast")
+	for i in 120:
+		fell._process(1.0 / 60.0)
+	t.check(fell.sprite_state() == &"ruins" and fell._sprite_settled() and is_instance_valid(fell._ruins_view)
+		and not fell._sprite_view.visible, "its ruins settle")
+	fell.restore()
+	for i in 4:
+		fell._process(1.0 / 60.0)
+	t.check(fell._sprite_view.visible and fell._sprite_view.still == &"intact" and not is_instance_valid(fell._ruins_view),
+		"rebuilt from settled ruins, it shows its intact still again and its ruins are gone")
+	fell.free()
+
+
+## Wall torches and the barracks' forge keep their procedural flames over their sprites (the sprites paint none);
+## sets that paint their own light (the cottages' none, the gate's torches) get no flame node or keep it hidden.
+static func _flames(t) -> void:
+	SpriteArt.set_enabled(true)
+	t.check(SpriteArt.sprite("town_wall").keep_flames and SpriteArt.sprite("barracks").keep_flames
+		and not SpriteArt.sprite("town_gate").keep_flames and not SpriteArt.sprite("smithy").keep_flames,
+		"the town wall and the barracks keep their flames; the gate and the smithy paint their own")
+	var wall: Structure = null
+	for sd in range(1, 80):
+		var w := _make(Rect2(0, 0, 1.2, 0.7), 34.0, K.CASTLE_WALL, sd, &"wall")
+		if w.art.get("torch", false):
+			wall = w
+			break
+		w.free()
+	t.check(wall != null and wall.sprite.get("name", "") == "town_wall", "a town wall piece with a torch")
+	wall._ready()
+	wall._process(1.0 / 60.0)
+	t.check(is_instance_valid(wall._flame) and wall._flame.visible, "keeps its torch's flame with sprites on")
+	t.check(wall._flame.get_index() > wall._sprite_view.get_index(), "drawn over its sprite, not hidden behind it")
+	wall.destroy(Vector2(-5, -5), &"blast")
+	wall._process(1.0 / 60.0)
+	t.check(not wall._flame.visible, "and loses it when it falls")
+	wall.free()
+	var bar := _make(Rect2(0, 0, 4.4, 1.9), 36.0, K.BARRACKS, 5, &"barracks")
+	bar._ready()
+	bar._process(1.0 / 60.0)
+	t.check(bar.sprite.get("name", "") == "barracks" and is_instance_valid(bar._flame) and bar._flame.visible,
+		"the barracks' forge stays lit with sprites on")
+	bar.free()
+	var smith := _make(Rect2(0, 0, 1.5, 1.25), 20.0, K.HOUSE, 5, &"house", &"smithy")
+	smith._ready()
+	smith._process(1.0 / 60.0)
+	t.check(not smith._flame.visible, "the sprite smithy's painted forge is not doubled")
+	smith.free()
+	var cot := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	cot._ready()
+	t.check(not is_instance_valid(cot._flame), "a cottage has no flame")
+	cot.free()
 
 
 ## F7 turns every building's sprite off and on again.

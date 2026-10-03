@@ -598,6 +598,9 @@ func _new_view() -> SpriteView:
 	var v := SpriteView.new().setup(sprite, _s[3], _s[1])
 	v.set_light(_sprite_light[0], _sprite_light[1], scorch, frost, _sprite_light[2])
 	add_child(v)
+	# Kept flames (a wall torch, the barracks' forge: SpriteArt keep_flames) burn over the sprite, not behind it.
+	if is_instance_valid(_flame):
+		move_child(_flame, -1)
 	return v
 
 
@@ -723,7 +726,7 @@ func _process(delta: float) -> void:
 			_spin_step = spin_step
 			_spin.queue_redraw()
 	if is_instance_valid(_flame):
-		_flame.visible = not destroyed and sprite.is_empty()
+		_flame.visible = not destroyed and (sprite.is_empty() or bool(sprite.keep_flames))
 		var flame_step := int(_time * 8.0)
 		if flame_step != _flame_step and not destroyed and not _unseen:
 			_flame_step = flame_step

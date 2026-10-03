@@ -165,6 +165,12 @@ static func sprite(n: String) -> Dictionary:
 	var collapse: Texture2D = null
 	if collapse_frames > 1 and ResourceLoader.exists(collapse_path):
 		collapse = load(collapse_path)
+	# A strip without a positive period would read its stretch at fposmod(start, 0) = NaN and vanish: draw it whole.
+	var strip := bool(m.get("strip", false))
+	var period := float(m.get("period", 0.0))
+	if strip and period <= 0.0:
+		push_warning("SpriteArt: strip set %s has no positive period; drawn whole" % n)
+		strip = false
 	var built := {
 		"name": n, "stills": stills, "size": size, "footprint": fp,
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else default_anchor(size, fp),
@@ -177,7 +183,9 @@ static func sprite(n: String) -> Dictionary:
 		"shadow": Vector2(m.shadow[0], m.shadow[1]) if m.has("shadow") else Vector2.ZERO,
 		# A strip set (the town wall): one long run of wall repeating every `period` ground units; each piece draws its
 		# own stretch of it (strip_piece()), so `region` is set per structure in set_for(). Rect2() = the whole frame.
-		"strip": bool(m.get("strip", false)), "period": float(m.get("period", 0.0)), "region": Rect2(),
+		"strip": strip, "period": period, "region": Rect2(),
+		# Its procedural flames (a wall torch, the barracks' forge) stay lit over it: the sprite paints none of its own.
+		"keep_flames": bool(m.get("keep_flames", false)),
 	}
 	_sets[n] = built
 	return built

@@ -39,7 +39,8 @@ Each building through its states (procedural, intact, damaged, blast mid-fall, r
 
 - **`SpriteArt`** (`src/environment/art/sprite_art.gd`) decides which structure is drawn from which sprite, and reads `assets/pixellab/buildings/manifest.json`. Each manifest entry gives:
   - canvas, footprint and anchor (the footprint's front corner, measured per sprite);
-  - idle strip, collapse strip and chimney.
+  - idle strip, collapse strip and chimney;
+  - `keep_flames`: the procedural flames stay lit over the sprite (wall torches, the barracks forge).
 - **`SpriteView`** (`src/environment/art/sprite_view.gd`, `structure_sprite.gdshader`) draws one still or strip frame. Like the procedural art, it is lit by the effects' light, charred by scorch and frosted by ice; lit windows and the forge still glow in the dim. It clips along the footprint's ground line for the engine's falls.
 - **`Structure`** keeps all its state and its random stream as before, and only chooses what its views show:
   - intact, then damaged once it cracks (at 65%, or when the Citadel cracks a part);
@@ -159,6 +160,7 @@ Still procedural: bell tower, carpenter, barns, windmill, watermill, and the pro
 
 - **Strip sets.** A wall is one long run, not a fixed picture. The manifest entry has `strip` and `period`. `SpriteArt.strip_piece` gives each piece the part of the strip it stands on, so neighbouring pieces read the strip from where they stand and the pattern runs on without a seam. Mirrored runs (the y-runs) read mirrored.
 - **Door tags.** `TownLayout` gives a tower or corner a `door_tag`: `"door_"` + `e` or `e_hi` + `s` or `s_hi`. The first part is the east face, the second the south face; `_hi` is the high gate walkway, plain is the low wall-walk. `SpriteArt.name_for` maps the tag to the matching door variant of the set, with a fallback to the plain sprite.
+- **Kept flames.** The wall and barracks sprites paint no lit torch or forge, so their entries carry `keep_flames`: the procedural flames and light halos of the wall torches (about a third of wall pieces) and the barracks' forge stay lit over the sprite, drawn above it. Without the torch post the wall flames sit on the walkway between the merlons; the barracks flame sits in the sprite's forge mouth. The gate and the smithy paint their own fire, so theirs stay hidden. Before this fix the town's wall torches went dark with sprites on, which also flattered the bench.
 - **Settled-sprite sync skip.** A sprite that has finished changing skips its per-frame sync (and `set_cut` caches its last value). This was the speed fix: script time 911 to 731 us.
 
 ### Fixes after the user's reviews
@@ -174,8 +176,12 @@ Still procedural: bell tower, carpenter, barns, windmill, watermill, and the pro
 |---|---|---|
 | Mission fps (2 runs) | 116.7 / 114.6 | 113.6 / 113.9 |
 | Draw calls | 998 | 1052 |
+| With kept flames: fps (2 runs, alternating) | 111.3 / 114.3 (avg 112.8) | 112.6 / 113.3 (avg 113.0) |
+| With kept flames: draw calls | 1010 | 1052 |
 
-Tests 1473 checks, 0 failures. `state_digest` `61267b7e90524d800bf1c3473a71146b`, unchanged. The 3-4 fps gap seen at the first checkpoint is gone in the latest bench.
+The first two rows were measured while the wall torches were wrongly hidden with sprites on. With them back (kept flames, last two rows), sprites and procedural are level: 112.8 against 113.0 fps.
+
+Tests 1489 checks, 0 failures (after the final review's fixes; 1473 before). `state_digest` `61267b7e90524d800bf1c3473a71146b`, unchanged. The 3-4 fps gap seen at the first checkpoint is gone in the latest bench.
 
 ### Budget
 

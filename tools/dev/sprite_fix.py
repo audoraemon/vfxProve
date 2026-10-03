@@ -301,6 +301,8 @@ def stonemean(*paths):
     for p in _paths(paths):
         arr = np.array(_rgba(p))
         _, w = _stone(arr)
+        if w.sum() <= 0:
+            sys.exit("stonemean: %s has no stone pixels" % p)
         m = (arr[..., :3] * w[..., None]).sum((0, 1)) / w.sum()
         print(p, "stone share %.2f" % (w.sum() / max(1, (arr[..., 3] > 0).sum())), "mean RGB", m.round(1).tolist())
 
@@ -315,9 +317,15 @@ def harmonize(target, box, *paths):
     if box != "all":
         ref = ref.crop(tuple(int(v) for v in box.split(",")))
     tlab, tw = _stone(np.array(ref))
+    if tw.sum() <= 0:
+        sys.exit("harmonize: the target %s (%s) has no stone pixels" % (target, box))
     tm, ts = _stats(tlab, tw)
     paths = _paths(paths)
+    if not paths:
+        sys.exit("harmonize: no png to recolour")
     slab, sw = _stone(np.array(_rgba(paths[0])))
+    if sw.sum() <= 0:
+        sys.exit("harmonize: the source %s has no stone pixels" % paths[0])
     sm, ss = _stats(slab, sw)
     k = np.clip(ts / np.maximum(ss, 1e-6), [0.75, 0.5, 0.5], [1.25, 2.0, 2.0])
     print("target Lab", tm.round(2).tolist(), "spread", ts.round(2).tolist())
@@ -325,6 +333,9 @@ def harmonize(target, box, *paths):
     for p in paths:
         arr = np.array(_rgba(p))
         lab, w = _stone(arr)
+        if w.sum() <= 0:
+            print(p, "no stone pixels: left unchanged")
+            continue
         mapped = tm + (lab - sm) * k
         out = lab + (mapped - lab) * w[..., None]
         rgb = _rgb(out)
@@ -365,6 +376,9 @@ def huemap(src, dst, hues, palette, box, *opts):
         a, b = (float(v) for v in o["phue"].split(","))
         pm &= (ph >= a) & (ph <= b)
     cols = np.unique(pal[..., :3][pm], axis=0)
+    if len(cols) == 0:
+        sys.exit("huemap: the palette box %s of %s has no usable colour (opaque, saturated, mid-light%s)"
+                 % (box, palette, ", in phue" if "phue" in o else ""))
     _, cl, _ = _hls(cols[None])
     cl = cl[0]
     arr = np.array(_rgba(src))
@@ -377,11 +391,13 @@ def huemap(src, dst, hues, palette, box, *opts):
         m &= np.array(area) > 0
     if "mask" in o:
         mk = Image.open(o["mask"])
+        if mk.size != (arr.shape[1], arr.shape[0]):
+            sys.exit("huemap: mask %s is %dx%d, the sprite is %dx%d" % ((o["mask"],) + mk.size + (arr.shape[1], arr.shape[0])))
         m &= np.array(mk.getchannel("A") if "A" in mk.getbands() else mk.convert("L")) > 0
-    if not m.any():
-        sys.exit("huemap: no pixel in the hue band / area")
     for x0, y0, x1, y1 in skips:
         m[y0:y1, x0:x1] = False
+    if not m.any():
+        sys.exit("huemap: no pixel in the hue band / area")
     if "lrange" in o:
         lo, hi = (float(v) for v in o["lrange"].split(","))
     else:

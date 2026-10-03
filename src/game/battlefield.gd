@@ -167,10 +167,14 @@ func reset(seed_value: int) -> void:
 	ctx.env.rng.seed = seed_value
 
 
-## Free every effect node in the overhead and distortion layers.
+## Free every effect node in the overhead and distortion layers, and what an effect left in the world for good (the
+## Light of Solaris's pit).
 func clear_effects() -> void:
 	for layer in [ctx.overhead_back, ctx.overhead, ctx.distort]:
 		for c in layer.get_children():
+			c.queue_free()
+	for c in ctx.world.get_children():
+		if c.is_in_group(SolarisPit.GROUP):
 			c.queue_free()
 
 

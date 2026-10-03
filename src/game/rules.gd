@@ -52,6 +52,8 @@ const POWER_KINDS := {
 	"cinder": [&"cinder", &"stone"],
 	"judgement": [&"stone"],
 	"glacial": [&"ice"],
+	"solaris": [&"solaris", &"pit"],
+	"madness": [&"frenzy"],
 	"nova": [&"nova"],
 }
 ## The roles that count as a building for the tally, the chain and the score. Decor (trees, torch posts) does

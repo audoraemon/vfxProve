@@ -4,10 +4,10 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED, COMPELLED, FIGHT }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
-enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED }
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED, GATHER, FRENZY }
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
@@ -85,6 +85,20 @@ const SICK_STAGES := 5
 ## How strongly the sickness colours the skin, and the clothes (and a soldier's mail).
 const SICK_SKIN := 0.7
 const SICK_CLOTH := 0.7
+## A compulsion (Divine Congregation, and any Dominion power after it): one at least WILL_FIRM strong is not broken by
+## an evacuation, a duty or a regrouping; one of WILL_ABSOLUTE or more is not broken even by a danger on top of it.
+const WILL_FIRM := 0.75
+const WILL_ABSOLUTE := 1.0
+## Fighting (a maddened citizen's frenzy, a soldier engaging one): how far one looks for someone to go for, how near it
+## must be to strike, how often it strikes and looks again, and a soldier's blow.
+const FIGHT_SIGHT := 3.0
+const FIGHT_REACH := 0.45
+const FIGHT_SWING := 0.8
+const FIGHT_RETARGET := 0.6
+const SOLDIER_BLOW := 0.5
+## Health, for blows (hurt()): a citizen falls to three frenzied blows, a soldier to twice as many.
+const HEALTH_CITIZEN := 1.0
+const HEALTH_SOLDIER := 2.0
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -180,6 +194,28 @@ var sick_total := 0.0
 ## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
 var _confused_left := 0.0
 var _was_fleeing := false
+## Discord's swirl is drawn over a confused head unless the confusion was given without it (a maddened wander).
+var _confused_swirl := true
+## A compulsion (Mind.COMPELLED, Intent.GATHER): seconds left, how strongly it holds (WILL_*), and the mark worn over
+## the head. Generic: the power that lays it says where, how long and how firmly.
+var _compel_left := 0.0
+var compel_will := 0.0
+var compel_mark := Color(1.0, 0.85, 0.4)
+## Fighting (Mind.FIGHT, Intent.FRENZY): seconds left, the one gone for (null: whoever is nearest), the blow dealt, and
+## the timers. A soldier engaging the maddened picks only among hostiles; a frenzied citizen goes for anyone.
+var fight_target: Person
+var _fight_left := 0.0
+var _fight_blow := 0.34
+var _swing_in := 0.0
+var _retarget_in := 0.0
+var _hostiles_only := false
+## Health, for blows (hurt()); set by setup_person().
+var health := HEALTH_CITIZEN
+## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
+## reads and steps it; the person only carries it, and responds to what the manager asks of it.
+var statuses := {}
+## The field this person is in, for blows that kill (null for one made on its own).
+var field: EnemyField
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 
@@ -239,6 +275,7 @@ func setup_person(is_soldier: bool, at: Vector2, w: WalkGrid) -> Person:
 	anchor = at
 	ground_pos = at
 	mind = Mind.POST if is_soldier else Mind.CALM
+	health = HEALTH_SOLDIER if is_soldier else HEALTH_CITIZEN
 	_think_due = stagger_key() % 2 == 0
 	_skin = CIT_SKIN[rng.randi() % CIT_SKIN.size()]
 	_tunic = CIT_TUNIC[rng.randi() % CIT_TUNIC.size()]
@@ -291,7 +328,7 @@ func frame(delta: float) -> void:
 ## CALM_EVERY on screen.
 func unhurried() -> bool:
 	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER \
-		or mind == Mind.REGROUP
+		or mind == Mind.REGROUP or mind == Mind.COMPELLED
 	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and wait <= 0.0 and not hurrying
 
 
@@ -356,6 +393,18 @@ func _think(delta: float) -> void:
 		_confused_left -= delta
 		if _confused_left <= 0.0:
 			_come_to()
+	elif mind == Mind.COMPELLED:
+		_compel_left -= delta
+		if _goal == Vector2.INF:
+			_idle = maxf(_idle, 0.1)  # gathered: stands where it was drawn to
+		if _compel_left <= 0.0:
+			release_compulsion()
+	elif mind == Mind.FIGHT:
+		_fight_left -= delta
+		if _fight_left <= 0.0:
+			stop_fighting()
+		else:
+			_fight_step(delta)
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -399,7 +448,7 @@ func _base_speed() -> float:
 			return PANIC_SPEED * pace
 		Mind.CONFUSED:
 			return WALK_SPEED * CONFUSED_PACE * pace
-		Mind.FLEE:
+		Mind.FLEE, Mind.FIGHT:
 			return FLEE_SPEED * pace
 		_:
 			return PANIC_SPEED * pace if mind == Mind.POST and hurrying else WALK_SPEED * pace
@@ -467,7 +516,8 @@ func _pick_target() -> void:
 	if mind == Mind.PANIC:
 		_settle()
 		return
-	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY:
+	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY or mind == Mind.COMPELLED \
+			or mind == Mind.FIGHT:
 		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
@@ -497,8 +547,10 @@ func _drift() -> void:
 ## A danger of radius `radius` at `from` is on top of it: run clear of it, to LOCAL_FLEE beyond its edge, then
 ## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. Soldiers do not.
 func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
-	if soldier or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD:
+	if soldier or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
+	if held_by_will(WILL_ABSOLUTE):
+		return  # a Dominion stronger than fear
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
@@ -558,10 +610,11 @@ func sick_color() -> Color:
 ## Discord (v0.06): forget everything for `seconds` -- duty, the day, even the way out -- and amble about where it
 ## stands under a violet swirl; then pick up again (flee if it was fleeing, else back to its day, where a responder's
 ## manager takes it back). A fright still works on it.
-func confuse(seconds: float) -> void:
+func confuse(seconds: float, swirl := true) -> void:
 	if soldier or inside or state == State.DEAD:
 		return
 	_was_fleeing = mind == Mind.FLEE
+	_confused_swirl = swirl
 	release_from_queue()
 	passing_gate = null
 	mind = Mind.CONFUSED
@@ -597,6 +650,179 @@ func lure(at: Vector2, seconds: float) -> bool:
 	walk_speed = _mind_speed()
 	set_goal(at)
 	return true
+
+
+## Mirrorfold Passage: set down at `to` (or the nearest ground to it) in mid-stride and none the wiser. Its mind is
+## untouched; it walks on to wherever it was going -- its goal, or the step it was taking -- by a new path from where
+## it now stands. A place held in a gate's queue is let go: the gate takes it back when it comes round again. False
+## when it is inside somewhere or there is no ground there.
+func fold(to: Vector2) -> bool:
+	if inside or state == State.DEAD:
+		return false
+	if grid != null and not grid.walkable(to):
+		to = grid.nearest_walkable(to, 4)
+		if to == Vector2.INF:
+			return false
+	var bound := _goal if _goal != Vector2.INF else _target
+	queue_spot = Vector2.INF
+	queue_since = -1.0
+	ground_pos = to
+	_sync_position()
+	set_goal(bound)
+	return true
+
+
+# --- Generic status and intent modifiers (Dominion, Disorder) ---------------------
+
+## Whether a compulsion of at least `level` holds this person now.
+func held_by_will(level: float) -> bool:
+	return mind == Mind.COMPELLED and compel_will >= level
+
+
+## A compulsion (Divine Congregation): walk, as if of its own mind, to `spot` and stay there `seconds`, held by
+## `will` (WILL_FIRM keeps it through an evacuation; WILL_ABSOLUTE through a danger on top of it), with `mark` over
+## the head. A place in a gate's queue is given up. True when it took.
+func compel(spot: Vector2, seconds: float, will: float, mark: Color) -> bool:
+	if inside or state == State.DEAD:
+		return false
+	release_from_queue()
+	passing_gate = null
+	queue_spot = Vector2.INF
+	queue_since = -1.0
+	mind = Mind.COMPELLED
+	_compel_left = seconds
+	compel_will = will
+	compel_mark = mark
+	_panic_left = 0.0
+	anchor = spot
+	walk_speed = _mind_speed()
+	set_goal(spot)
+	return true
+
+
+## The compulsion lifts: a soldier goes back to its post, anyone else looks about for a moment and then takes up
+## its day again (the routine decides where; nothing of what it meant to do before is forced on it).
+func release_compulsion() -> void:
+	if mind != Mind.COMPELLED:
+		return
+	_compel_left = 0.0
+	compel_will = 0.0
+	if soldier:
+		send_to_post(post if post != Vector2.INF else ground_pos)
+	else:
+		_recover(rng.randf_range(1.0, 2.5))
+
+
+## A moment's hesitation: stand, and turn to look the other way.
+func hesitate(seconds: float) -> void:
+	if state == State.DEAD:
+		return
+	_idle = maxf(_idle, seconds)
+	_facing = -_facing
+
+
+## Rooted to the spot for `seconds`, whatever it was doing (the gate queue's hold, used by a stun).
+func stun(seconds: float) -> void:
+	if state == State.DEAD:
+		return
+	wait = maxf(wait, seconds)
+
+
+## Go for someone (Mind.FIGHT) for `seconds`, striking `blow` of their health each swing: `target` or, when null,
+## whoever is nearest -- anyone for a frenzied citizen, only hostiles (fighting citizens) for a soldier
+## (`hostiles_only`). Ends on its own (stop_fighting()).
+func fight(target: Person, seconds: float, blow: float, hostiles_only := false) -> void:
+	if inside or state == State.DEAD:
+		return
+	release_from_queue()
+	passing_gate = null
+	mind = Mind.FIGHT
+	fight_target = target
+	_fight_left = seconds
+	_fight_blow = blow
+	_hostiles_only = hostiles_only
+	_swing_in = 0.0
+	_retarget_in = 0.0
+	_panic_left = 0.0
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	walk_speed = _mind_speed()
+
+
+## The fight is over: a soldier back to its post, a citizen to come round where it stands.
+func stop_fighting() -> void:
+	if mind != Mind.FIGHT:
+		return
+	fight_target = null
+	_fight_left = 0.0
+	if soldier:
+		send_to_post(post if post != Vector2.INF else ground_pos)
+	else:
+		_recover(rng.randf_range(2.0, 4.0))
+
+
+## Whether `p` is someone a fighter may go for.
+func _fightable(p: Person) -> bool:
+	return p != null and p != self and is_instance_valid(p) and p.is_alive() and not p.inside and p.visible \
+		and (not _hostiles_only or (p.mind == Mind.FIGHT and not p.soldier))
+
+
+## One frame of fighting: look again for someone every FIGHT_RETARGET, go to them, strike within FIGHT_REACH every
+## FIGHT_SWING.
+func _fight_step(delta: float) -> void:
+	_retarget_in -= delta
+	_swing_in -= delta
+	if not _fightable(fight_target):
+		fight_target = null
+	if fight_target == null or _retarget_in <= 0.0:
+		_retarget_in = FIGHT_RETARGET
+		if field != null and (fight_target == null or not _hostiles_only):
+			var best: Person = fight_target
+			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else INF
+			for e in field.in_radius(ground_pos, FIGHT_SIGHT):
+				var q := e as Person
+				if _fightable(q) and q.ground_pos.distance_to(ground_pos) < best_d:
+					best = q
+					best_d = q.ground_pos.distance_to(ground_pos)
+			fight_target = best
+		if fight_target != null:
+			set_goal(fight_target.ground_pos)
+		elif _goal == Vector2.INF:
+			_drift()
+	if fight_target == null:
+		return
+	if ground_pos.distance_to(fight_target.ground_pos) <= FIGHT_REACH:
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+		_leg = 0
+		_target = ground_pos
+		_facing = 1 if fight_target.ground_pos.x - fight_target.ground_pos.y > ground_pos.x - ground_pos.y else -1
+		if _swing_in <= 0.0:
+			_swing_in = FIGHT_SWING
+			fight_target.hurt(_fight_blow, self)
+
+
+## Struck for `amount` of health by `by`: a flash and a shove, and death (damage kind frenzy) at none left. A struck
+## soldier turns on its attacker; a struck citizen runs from it.
+func hurt(amount: float, by: Person) -> void:
+	if state == State.DEAD:
+		return
+	health -= amount
+	flash(0.08)
+	if by != null and is_instance_valid(by):
+		var away := ground_pos - by.ground_pos
+		knock((away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 1.2)
+	if health <= 0.0:
+		if field != null:
+			field.kill(self, &"frenzy", by.ground_pos if by != null and is_instance_valid(by) else Vector2.INF)
+		return
+	if by == null or not is_instance_valid(by) or mind == Mind.FIGHT:
+		return
+	if soldier:
+		fight(by, 20.0, SOLDIER_BLOW, true)
+	else:
+		panic(by.ground_pos, 0.5, &"frenzy")
 
 
 ## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is
@@ -670,6 +896,10 @@ func intent() -> Intent:
 			return Intent.SHELTER
 		Mind.CONFUSED:
 			return Intent.CONFUSED
+		Mind.COMPELLED:
+			return Intent.GATHER
+		Mind.FIGHT:
+			return Intent.FRENZY
 	return Intent.ROUTINE
 
 
@@ -695,7 +925,8 @@ func leave_shelter(evacuate: bool) -> void:
 ## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
 ## (force).
 func assist(s: Structure, force := false) -> void:
-	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE:
+	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
+			or held_by_will(WILL_FIRM):
 		return
 	mind = Mind.ASSIST
 	assist_fire = s
@@ -725,7 +956,7 @@ func walk_to(g: Vector2) -> void:
 
 ## City Emergency (v0.04): go home to `home` and wait there with the family until the evacuation or the danger.
 func regroup(home: Vector2) -> void:
-	if soldier or state == State.DEAD or mind == Mind.FLEE:
+	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
 	mind = Mind.REGROUP
 	awareness = maxi(awareness, Awareness.EMERGENCY) as Awareness
@@ -743,7 +974,7 @@ func go_ring(steps: Vector2) -> void:
 ## its place in the Banishing Rite's ring. A fright still breaks it (panic()); Crowd.off_duty() ends it.
 ## Soldiers take duties too (v0.07): an escort taking over the bell or an engineer's place.
 func go_duty(at: Vector2) -> void:
-	if state == State.DEAD or mind == Mind.FLEE:
+	if state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
 	mind = Mind.DUTY
 	anchor = at
@@ -780,7 +1011,7 @@ func _scurry() -> void:
 
 
 func is_running() -> bool:
-	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY)
+	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY or mind == Mind.FIGHT)
 
 
 func is_stumbling() -> bool:
@@ -790,7 +1021,7 @@ func is_stumbling() -> bool:
 ## Head for the nearest exit there is still a route to. The plan itself is staggered, so a town-wide panic
 ## does not ask for a hundred paths in the same frame.
 func flee() -> void:
-	if soldier or mind == Mind.FLEE or state == State.DEAD:
+	if soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
 	mind = Mind.FLEE
 	walk_speed = _mind_speed()
@@ -983,7 +1214,27 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(-2, -13 + lift, 4, 1, _hair)
 	if state != State.DEAD or _char < 0.5:
 		_px(0 if f > 0 else -1, -12 + lift, 1, 1, COL_DARK)
-	if mind == Mind.CONFUSED and state != State.DEAD:
+	if mind == Mind.COMPELLED and state != State.DEAD:
+		# A compulsion's mark: a halo over the head, a diamond of light edged dark so it reads on any ground, drifting
+		# up and down with its steps, and a ring of the same light at the feet.
+		var y := -22 + lift - (int(_anim * 2.0) % 2)
+		var edge := Color(0.12, 0.08, 0.02)
+		for row in 5:
+			var half := 2 - absi(row - 2)
+			_px(-half - 1, y - 2 + row, half * 2 + 3, 1, edge)
+		for row in 5:
+			var half := 2 - absi(row - 2)
+			_px(-half, y - 2 + row, half * 2 + 1, 1, compel_mark)
+		_px(0, y, 1, 1, Color(1.0, 0.98, 0.9))
+		draw_set_transform(_draw_origin, 0.0, Vector2(1.0, 0.5))
+		draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 12, Color(compel_mark, 0.85), 1.0)
+		draw_set_transform(_draw_origin)
+	if mind == Mind.FIGHT and state != State.DEAD:
+		# Frenzy: the arms thrown up, a red eye.
+		_px(-4, -15 + lift, 1, 2, skin)
+		_px(3, -15 + lift, 1, 2, skin)
+		_px(0 if f > 0 else -1, -12 + lift, 1, 1, Color("ff3030"))
+	if mind == Mind.CONFUSED and _confused_swirl and state != State.DEAD:
 		# Discord's swirl over the head: four violet motes turning with its steps.
 		var turn := int(_anim * 3.0)
 		for k in 4:
@@ -1031,7 +1282,8 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 
 
 func _pose_signature() -> int:
-	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0)
+	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED and _confused_swirl else 0) \
+		+ (8 if mind == Mind.COMPELLED else 0) + (16 if mind == Mind.FIGHT else 0)
 
 
 ## DummyEnemy._art_signature(), folded ahead of time for a person on its feet with nothing lifting, freezing or

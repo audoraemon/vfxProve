@@ -3,8 +3,10 @@ extends RefCounted
 ## The draftable powers: Divine Power cost, cooldown (seconds), how they are aimed, their effect script and icons, and
 ## their kind (v0.06: the draft's tabs).
 ## Costs and cooldowns are the spec's starting values (§4.2); aim "drag" = press at the start point, drag the
-## direction, release. The two quiet powers (v0.05, "quiet") register no danger for the town and raise no alarm
-## when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight adds one alarm.
+## direction, release; "two clicks" = one click for each of the power's two places (Mirrorfold Passage). The quiet
+## powers (v0.05, "quiet") register no danger for the town and raise no alarm when cast (Crowd.on_cast()): Silent
+## Doom's deaths count only if someone saw them, Blight adds one alarm; a quiet power with an "alarm" unsettles the town by
+## that much when cast (Crowd.on_cast()).
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
@@ -18,9 +20,15 @@ const POWERS := [
 		"kind": "quiet"},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 10, "cooldown": 20.0, "aim": "drag", "shape": "line + 8 fissures", "kind": "cataclysm"},
+	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
+		"dp": 10, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
+		"quiet": true, "alarm": 0.2, "kind": "curse"},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
 		"dp": 12, "cooldown": 25.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
 		"kind": "quiet"},
+	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
+		"dp": 14, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
+		"quiet": true, "alarm": 0.3, "kind": "control"},
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
 		"dp": 14, "cooldown": 30.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
 		"kind": "control"},
@@ -31,6 +39,9 @@ const POWERS := [
 		"kind": "curse"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"dp": 18, "cooldown": 35.0, "aim": "click", "shape": "cone, faces down-right on screen", "kind": "cataclysm"},
+	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
+		"dp": 18, "cooldown": 45.0, "aim": "two clicks", "shape": "two faint mirrors: in at the first, out at the second, 30 s",
+		"quiet": true, "kind": "control"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"dp": 20, "cooldown": 40.0, "aim": "drag", "shape": "moving wall", "kind": "cataclysm"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
@@ -45,6 +56,9 @@ const POWERS := [
 		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "8 punches + slam", "kind": "cataclysm"},
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
 		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "burst + freeze + ice", "kind": "cataclysm"},
+	{"key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd",
+		"dp": 35, "cooldown": 90.0, "aim": "click", "shape": "5 s pillar of sunfire; leaves a pit that takes all who enter",
+		"kind": "cataclysm"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 40, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "kind": "cataclysm"},
 ]
@@ -66,7 +80,7 @@ const REACH := {
 	"heaven": [6.0, 9.0, 0.5, 3.0], "tornado": [8.0, 11.0, 0.6, 10.0], "dragon": [8.0, 11.0, 0.6, 5.0],
 	"tsunami": [8.0, 12.0, 0.7, 5.0], "gravity": [6.0, 9.0, 0.6, 6.0], "laser": [7.0, 10.0, 0.6, 6.0],
 	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
-	"glacial": [8.0, 12.0, 0.7, 6.0], "nova": [40.0, 40.0, 1.0, 4.0],
+	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "nova": [40.0, 40.0, 1.0, 4.0],
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]

@@ -121,6 +121,8 @@ var engineers: EngineerManager
 var ferry: RiverFerry
 ## Pestilence's spread (v0.06); made by spawn().
 var plague: PlagueManager
+## Madness Bloom's madness (a Disorder status); made by spawn().
+var madness: MadnessManager
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -201,6 +203,11 @@ class ResponseDrawer extends Node2D:
 			crowd.rescue.draw(self)
 		if crowd.plague != null and ground:
 			crowd.plague.draw_ground(self)
+		if crowd.madness != null:
+			if ground:
+				crowd.madness.draw_ground(self)
+			else:
+				crowd.madness.draw_over(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
@@ -208,7 +215,8 @@ class ResponseDrawer extends Node2D:
 			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
 			or (crowd.engineers != null and crowd.engineers.working())
 			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty())
-			or (crowd.plague != null and crowd.plague.any_in_open()))
+			or (crowd.plague != null and crowd.plague.any_in_open())
+			or (crowd.madness != null and crowd.madness.any_in_open()))
 
 
 class Ticker extends Node:
@@ -281,6 +289,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(workshop), workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
+	madness = MadnessManager.new().setup(self, _field, _seed + 43)
 	marshals = MarshalManager.new().setup(self, _town, _grid)
 	escorts = EscortManager.new().setup(self)
 	rescue = RescueManager.new().setup(self, _field)
@@ -401,6 +410,7 @@ func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	_field.add(p)
 	p.setup_person(is_soldier, at, _grid)
 	p.env = _env
+	p.field = _field
 	_parent.add_child(p)
 	return p
 
@@ -540,6 +550,8 @@ func advance(delta: float) -> void:
 		ferry.step(delta)
 	if plague != null:
 		plague.step(delta)
+	if madness != null:
+		madness.step(delta)
 	if marshals != null:
 		marshals.step(delta)
 	if escorts != null:
@@ -793,7 +805,12 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
 	if PowerBook.is_quiet(key):
-		return  # nothing for the town to see (v0.05): Silent Doom and Blight report their own effects
+		# Nothing for the town to see (v0.05): Silent Doom and Blight report their own effects. A quiet power may still
+		# unsettle it a little (its book entry's "alarm": a congregation forming, a bloom of madness).
+		var unease := float(PowerBook.get_power(key).get("alarm", 0.0))
+		if unease > 0.0:
+			add_alarm(unease)
+		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key)
 	var points: Array[Vector2] = [ground]
@@ -819,6 +836,14 @@ static func _cast_radius(key: String) -> float:
 	if a.has("half"):
 		return float(a.half) + 1.0
 	return PANIC_CAST - Person.THREAT_MARGIN
+
+
+## Something frightening at `at` of `radius` (a maddened citizen turning on the crowd): a danger the town knows of for
+## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
+func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName) -> void:
+	threats.register(at, radius, severity, seconds, sight, sound, kind)
+	var points: Array[Vector2] = [at]
+	_react(points, radius, sound, at, kind)
 
 
 ## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look.
@@ -872,8 +897,9 @@ func _watch_threats() -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
-		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER):
-			continue
+		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER
+				or p.mind == Person.Mind.COMPELLED):
+			continue  # the compelled keep their survival (unless held absolutely: Person.panic())
 		for t in threats.nearby(p.ground_pos, Person.THREAT_MARGIN):
 			p.panic(t.at, float(t.radius), t.kind)
 			break
@@ -1140,6 +1166,9 @@ func clear() -> void:
 	if plague != null:
 		plague.clear()
 	plague = null
+	if madness != null:
+		madness.clear()
+	madness = null
 	if marshals != null:
 		marshals.clear()
 	marshals = null

@@ -16,6 +16,10 @@ const COL_FAINT := Color(1.0, 0.86, 0.35, 0.25)
 const COL_BAD := Color(0.9, 0.2, 0.15, 0.7)
 ## Blight's target outline.
 const COL_ROT := Color(0.62, 0.78, 0.4, 0.9)
+## Divine Congregation's circle (its fill and its edge) and Madness Bloom's ring.
+const COL_DIVINE := Color(1.0, 0.9, 0.6, 0.8)
+const COL_DIVINE_FILL := Color(1.0, 0.9, 0.6, 0.1)
+const COL_MAD := Color(0.6, 0.15, 0.3, 0.8)
 ## Which way a drag power points when the player barely moved the mouse.
 const DEFAULT_DIR := Vector2(1, 0)
 
@@ -34,6 +38,12 @@ const AREAS := {
 	"pestilence": {"shape": "circle", "r": 1.2},
 	# DiscordFx.DISCORD_R; who it would take is ringed (_draw())
 	"discord": {"shape": "circle", "r": 1.2},
+	# MadnessBloomFx.RADIUS; who it would take is ringed (_draw())
+	"madness": {"shape": "circle", "r": 1.5},
+	# CongregationFx.RADIUS: the place at the first click, the circle at the second; who it would draw is ringed
+	"congregation": {"shape": "gather", "r": 7.0},
+	# MirrorfoldFx.HALF_WIDE, HALF_DEEP: the way in at the first click, the way out at the second (MirrorfoldFx.exit_for())
+	"mirror": {"shape": "pair", "wide": 2.4, "deep": 1.0},
 	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
 	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
@@ -54,6 +64,8 @@ const AREAS := {
 	"judgement": {"shape": "circle", "r": 5.2},
 	# RADIUS, SPIKE_RADIUS
 	"glacial": {"shape": "circle", "r": 5.0, "inner": 4.5},
+	# RADIUS: the pillar, and the pit it leaves
+	"solaris": {"shape": "circle", "r": 2.2},
 	# RADIUS, KILL_CORE
 	"nova": {"shape": "circle", "r": 5.0, "inner": 1.2},
 }
@@ -64,6 +76,10 @@ var slot := -1
 var armed := false
 ## A drag power has the button down and is being aimed.
 var aiming := false
+## A two-click power (Mirrorfold Passage) has its first place set and waits for the second click.
+var placed := false
+## That first place.
+var first := Vector2.ZERO
 
 var _rules: Rules
 var _crowd: Crowd
@@ -91,6 +107,7 @@ func pick(new_slot: int) -> void:
 	slot = new_slot
 	armed = false
 	aiming = false
+	placed = false
 	picked.emit(slot)
 	queue_redraw()
 
@@ -99,6 +116,7 @@ func unfocus() -> void:
 	slot = -1
 	armed = false
 	aiming = false
+	placed = false
 	picked.emit(slot)
 	queue_redraw()
 
@@ -126,26 +144,41 @@ func press(ground: Vector2) -> void:
 
 
 ## The button came up: cast, unless the press was called off. A click power fires from where the button went
-## down; a drag power fires from there along the way it was dragged.
+## down; a drag power fires from there along the way it was dragged, and is told where the drag ended ("to"). A
+## two-click power keeps its first click as its place (`first`) and fires from there on the second, told where that
+## one landed ("to").
 func release(ground: Vector2) -> void:
 	if not armed:
 		return
 	_at = ground
 	armed = false
 	var extra := {}
+	if _is_twice():
+		if not placed:
+			placed = true
+			first = ground
+			queue_redraw()
+			return
+		placed = false
+		extra["to"] = ground
+		_rules.cast(slot, first, extra)
+		queue_redraw()
+		return
 	if _is_drag():
 		extra["dir"] = aim_dir()
+		extra["to"] = ground
 	aiming = false
 	_rules.cast(slot, _press, extra)
 	queue_redraw()
 
 
-## Call off a press in progress (right-click or Esc while the button is held). True when there was one; the
-## power stays focused either way.
+## Call off a press in progress (right-click or Esc while the button is held), or a two-click power's first place.
+## True when there was one; the power stays focused either way.
 func cancel() -> bool:
-	var had := armed
+	var had := armed or placed
 	armed = false
 	aiming = false
+	placed = false
 	queue_redraw()
 	return had
 
@@ -171,6 +204,10 @@ static func lane_start(key: String, press: Vector2, dir: Vector2) -> Vector2:
 
 func _is_drag() -> bool:
 	return String(_rules.power(slot).get("aim", "click")) == "drag"
+
+
+func _is_twice() -> bool:
+	return String(_rules.power(slot).get("aim", "click")) == "two clicks"
 
 
 func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
@@ -206,11 +243,34 @@ func _draw() -> void:
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
 			_cone(_press, float(a.r), float(a.arc), edge)
+		"gather":
+			# The place under the cursor until the first click sets it; then the circle follows the cursor.
+			if placed:
+				_place_mark(first, edge)
+				_disc(_press, float(a.r), COL_DIVINE_FILL, COL_DIVINE)
+				draw_line(first, _press, COL_FAINT, -1.0)
+				for p in CongregationFx.drawn(_crowd._field, _press):
+					_ring(p.ground_pos, 0.18, COL_DIVINE)
+			else:
+				_place_mark(_press, edge)
+		"pair":
+			# The way in under the cursor until the first click sets it; then the way out follows the cursor.
+			if placed:
+				_oval(first, float(a.wide), float(a.deep), edge)
+				var out := MirrorfoldFx.exit_for(first, _press)
+				_oval(out, float(a.wide), float(a.deep), COL_INNER)
+				draw_line(first, out, COL_FAINT, -1.0)
+			else:
+				_oval(_press, float(a.wide), float(a.deep), edge)
 	match _rules.key(slot):
 		"doom":
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"madness":
+			# Who it would take.
+			for p in MadnessBloomFx.victims_at(_crowd._field, _press):
+				_ring(p.ground_pos, 0.2, COL_MAD)
 		"pestilence":
 			# Who it would infect.
 			for p in PestilenceFx.victims_at(_crowd._field, _press):
@@ -247,6 +307,41 @@ const SHADE_GAP := 0.05
 func _ring(at: Vector2, r: float, col: Color) -> void:
 	draw_arc(at, r + SHADE_GAP, 0.0, TAU, 48, SHADE, -1.0)
 	draw_arc(at, r, 0.0, TAU, 48, col, -1.0)
+
+
+## A translucent disc with an edge (Divine Congregation's circle), in ground units.
+func _disc(at: Vector2, r: float, fill: Color, edge: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 48:
+		var a := TAU * float(i) / 48.0
+		pts.append(at + Vector2(cos(a), sin(a)) * r)
+	draw_colored_polygon(pts, fill)
+	_ring(at, r, edge)
+
+
+## The gathering place: the building it would be, or a small ring on the ground, with a four-point star over it.
+func _place_mark(at: Vector2, col: Color) -> void:
+	var found := CongregationFx.place_for(_crowd._env, at)
+	if found.structure != null:
+		var q: Rect2 = (found.structure as Structure).footprint.grow(0.1)
+		draw_polyline(PackedVector2Array([q.position, Vector2(q.end.x, q.position.y), q.end, Vector2(q.position.x, q.end.y),
+			q.position]), col, -1.0)
+	else:
+		_ring(at, 0.5, col)
+	var c: Vector2 = found.at
+	draw_line(c + Vector2(-0.3, -0.3), c + Vector2(0.3, 0.3), col, -1.0)
+	draw_line(c + Vector2(-0.3, 0.3), c + Vector2(0.3, -0.3), col, -1.0)
+
+
+## An oval lying across the screen: `wide` along the screen's horizontal, `deep` along its vertical (ground units).
+func _oval(at: Vector2, wide: float, deep: float, col: Color) -> void:
+	for pass_i in 2:
+		var grow: float = SHADE_GAP if pass_i == 0 else 0.0
+		var points := PackedVector2Array()
+		for i in 49:
+			var a := TAU * float(i) / 48.0
+			points.append(at + MirrorfoldFx.ACROSS * cos(a) * (wide + grow) + MirrorfoldFx.DOWN * sin(a) * (deep + grow))
+		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)
 
 
 func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) -> void:

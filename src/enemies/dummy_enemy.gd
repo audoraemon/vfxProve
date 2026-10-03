@@ -229,9 +229,17 @@ func _tick_death(delta: float) -> void:
 			for i in _embers.size():
 				var e := _embers[i]
 				_embers[i] = Vector3(e.x + sin(_dead_time * 9.0 + i) * 6.0 * delta, e.y - 18.0 * delta, e.z - delta)
+		&"solaris":
+			# Ash drawn up the pillar, faster the higher it gets.
+			for i in _embers.size():
+				var e := _embers[i]
+				_embers[i] = Vector3(e.x + sin(_dead_time * 11.0 + i) * 8.0 * delta, e.y - (40.0 + 160.0 * _dead_time) * delta,
+					e.z - delta * 1.1)
+		&"pit":
+			_char = minf(_char + delta * 0.9, 1.0)
 		_:
 			pass
-	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else 0.6)
+	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else (1.0 if _kind == &"pit" else 0.6))
 	modulate.a = clampf(1.0 - (_dead_time - fade_start) / (DEATH_FADE - fade_start), 0.0, 1.0)
 	if _kind == &"gravity" and _dead_time > 0.3:
 		modulate.a = 0.0
@@ -328,7 +336,18 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			_flash = 0.06
 			for i in 10:
 				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-12, -2), rng.randf_range(0.4, 1.0)))
-	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind"] else -1
+		&"solaris":
+			_flash = 0.14
+			for i in 16:
+				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-15, -1), rng.randf_range(0.5, 1.2)))
+		&"pit":
+			# Drawn down toward the hole's middle (the source) as it falls, up to a body's reach away.
+			_fly = Vector2.ZERO
+			if source != Vector2.INF:
+				_fly = (Iso.ground_to_screen(source) - Iso.ground_to_screen(ground_pos)).limit_length(26.0)
+			_spin = rng.randf_range(2.0, 4.0) * (1.0 if rng.randf() < 0.5 else -1.0)
+	# Those thrown stay in the draw order; so does one falling into the pit, which is drawn over the hole (SolarisPit).
+	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind", &"pit"] else -1
 
 
 func is_alive() -> bool:
@@ -337,6 +356,17 @@ func is_alive() -> bool:
 
 func flash(seconds: float) -> void:
 	_flash = maxf(_flash, seconds)
+
+
+## Mirrorfold Passage: set down at `to` in mid-stride and none the wiser -- still walking the way it was. False when
+## `to` is no ground to stand on, and it stays where it is.
+func fold(to: Vector2) -> bool:
+	if state == State.DEAD or (block_env != null and block_env.blocked(to)):
+		return false
+	_target += to - ground_pos
+	ground_pos = to
+	_sync_position()
+	return true
 
 
 func _move(step: Vector2) -> void:
@@ -423,6 +453,10 @@ func _draw() -> void:
 				_draw_cut()
 			&"ice":
 				_draw_shatter()
+			&"solaris":
+				_draw_ashed()
+			&"pit":
+				_draw_fallen()
 			_:
 				_draw_corpse()
 		return
@@ -569,6 +603,36 @@ func _draw_burn() -> void:
 			var c := COL_HOT if e.z > 0.8 else COL_EMBER
 			c.a = clampf(e.z, 0.0, 1.0)
 			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), c)
+
+
+## Burned away by the Light of Solaris: a white shape drawn thin up the pillar, then only ash rising.
+func _draw_ashed() -> void:
+	var k := clampf(_dead_time / 0.22, 0.0, 1.0)
+	if k < 1.0:
+		draw_set_transform(_draw_origin + Vector2(0, -roundf(k * 10.0)), 0.0, Vector2(1.0 - k * 0.75, 1.0 + k * 1.6))
+		_draw_body(0, 0)
+		draw_set_transform(_draw_origin)
+	for e in _embers:
+		if e.z > 0.0:
+			var c := COL_HOT if e.z > 0.7 else (COL_EMBER if e.z > 0.35 else COL_CHAR)
+			c.a = clampf(e.z * 1.5, 0.0, 1.0)
+			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), c)
+
+
+## Fallen into the Light of Solaris's pit: the hole takes it. It is drawn in toward the hole's middle and down, turning
+## over, and smaller and smaller the farther it falls -- ever darker, until it is a speck and then nothing.
+func _draw_fallen() -> void:
+	var k := clampf(_dead_time / 1.4, 0.0, 1.0)
+	if k >= 1.0:
+		return
+	# Slow to go over the edge, then away ever faster: the depth is in the shrinking, not the drop.
+	var fall := k * k
+	var size := 1.0 - 0.95 * pow(k, 2.2)
+	var at := _fly * minf(fall * 1.3, 1.0) + Vector2(0, 10.0 * fall)
+	var turn := _spin * fall + 0.2 * sin(_dead_time * 18.0) * (1.0 - k)
+	draw_set_transform(_draw_origin + at.round(), turn, Vector2.ONE * size)
+	_draw_body(0, 0)
+	draw_set_transform(_draw_origin)
 
 
 func _draw_corpse() -> void:

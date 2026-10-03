@@ -24,6 +24,9 @@ static func run(t) -> void:
 	t.near(float(Targeting.AREAS["nova"].r), _k(nova, "RADIUS"), 0.0001, "the Nova's circle is its RADIUS")
 	t.near(float(Targeting.AREAS["nova"].inner), _k(nova, "KILL_CORE"), 0.0001, "with its KILL_CORE inside")
 	t.near(float(Targeting.AREAS["cinder"].r), _k(cinder, "RADIUS"), 0.0001, "the Barrage's circle is its RADIUS")
+	t.check(float(Targeting.AREAS["mirror"].wide) == MirrorfoldFx.HALF_WIDE and float(Targeting.AREAS["mirror"].deep) == MirrorfoldFx.HALF_DEEP,
+		"the mirrors lie HALF_WIDE by HALF_DEEP")
+	t.check(float(Targeting.AREAS["solaris"].r) == LightOfSolaris.RADIUS, "the Light of Solaris covers its RADIUS")
 	t.near(float(Targeting.AREAS["dragon"].r), _k(dragon, "CONE_RADIUS"), 0.0001, "the dragon's cone is its CONE_RADIUS")
 	t.near(float(Targeting.AREAS["dragon"].arc), _k(dragon, "SWEEP_ARC"), 0.0001, "over its SWEEP_ARC")
 	t.near(float(Targeting.AREAS["tornado"].roam), _k(tornado, "WANDER_RADIUS"), 0.0001, "the tornado roams its WANDER_RADIUS")
@@ -53,7 +56,7 @@ static func run(t) -> void:
 	var world := Node2D.new()
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
 	crowd.spawn()
-	var rules := Rules.new().setup(PackedStringArray(["nova", "tsunami", "cinder", "heaven"]), null, env, field,
+	var rules := Rules.new().setup(PackedStringArray(["nova", "tsunami", "cinder", "heaven", "mirror"]), null, env, field,
 		crowd, town)
 	var casts: Array = []
 	rules.caster = func(_script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
@@ -87,6 +90,7 @@ static func run(t) -> void:
 	t.check(casts.size() == 2 and casts[1][0] == Vector2(-3.0, 0.0), "and is cast from where the drag started")
 	t.check((casts[1][1].dir as Vector2).is_equal_approx(Vector2(1, 0)),
 		"pointed the way it was dragged (%s)" % [casts[1][1].dir])
+	t.check(casts[1][1].to == Vector2(0.0, 0.0), "and told where the drag ended, for a power with two places (%s)" % [casts[1][1].get("to")])
 	t.check(not aim.aiming and aim.slot == -1, "and the drag is done")
 
 	# Right-click while the button is held calls the cast off; the power stays focused.
@@ -98,6 +102,23 @@ static func run(t) -> void:
 	t.check(not aim.cancel(), "with nothing held there is nothing to call off")
 	aim.unfocus()
 	t.check(aim.slot == -1 and aim.area().is_empty(), "and unfocusing takes the area away")
+
+	# A two-click power: the first click sets its first place, the second casts from there and tells where it landed.
+	aim.pick(4)
+	aim.press(Vector2(2.0, 3.0))
+	aim.release(Vector2(2.0, 3.0))
+	t.check(casts.size() == 2 and aim.placed and aim.first == Vector2(2.0, 3.0) and aim.slot == 4,
+		"the first click of a two-click power casts nothing: it sets the first place and the power stays focused")
+	aim.press(Vector2(8.0, 3.0))
+	aim.release(Vector2(8.0, 3.0))
+	t.check(casts.size() == 3 and casts[2][0] == Vector2(2.0, 3.0) and casts[2][1].to == Vector2(8.0, 3.0) and not aim.placed,
+		"the second casts from the first place, told where the second landed (%s)" % [casts])
+	t.check(aim.slot == -1, "and the cast unfocuses")
+	aim.pick(4)
+	aim.press(Vector2(2.0, 3.0))
+	aim.release(Vector2(2.0, 3.0))
+	t.check(aim.cancel() and not aim.placed and aim.slot == 4, "a right-click after the first place calls it off; the power stays focused")
+	aim.unfocus()
 
 	# A lane power frightens the people along it, not only at its start.
 	var far: Person = crowd.citizens[0]

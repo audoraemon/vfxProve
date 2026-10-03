@@ -2074,3 +2074,18 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   - Icon painted (numpy and Pillow installed for the user's Python 3.12).
   - Draft clip recorded at `--at=0,11 --seconds=8`, on open paving. The destination ring was strengthened (alpha 0.9, fill 0.25, with a halo and a pulse) after the first clip did not read.
 - Deviations: `clamp_to` now never passes REACH. The press refuses with the slot's own reason first. A target that dies mid-drag refuses the cast.
+
+### M4 gate (at b1f9be8)
+
+- Tests `checks=1263 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `checks=34 failures=0`. FLOW now includes a pass that picks The Warning, wins on the omen, and returns through Missions.
+- All five exact behaviour checksums identical to Task 0.
+- Mission test (Last Judgement), three runs: buildings 55/53/55, citizens 187/184/185, escaped 1/1/1, stability 69%.
+- The Warning, unhindered (`--mission=warning --mission-test`): `won=false reason=bell time=24.1 relays=0` (the spec says about 0:25). The watchman delivers at about 0:16.
+- Captures checked: the board (Tier digits drawn as bitmaps, because the font's 5 read as S), the Warning's Prepare (the town strip shows UNAWARE), the HUD objective panel, the marker chevron and edge arrow, and both results layouts.
+- Director fixes over the plan:
+  - The omen always falls at 0:02.
+  - The stare ends through the resumable check.
+  - A relay keeps a Discord or Whisper hold.
+  - Judging waits for the crowd to settle its doom.
+  - A dead or silenced bell is never revived.
+  - A relayed witness walks to the tower's foot before taking the rope.

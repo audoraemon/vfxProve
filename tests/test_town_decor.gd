@@ -84,18 +84,19 @@ static func run(t) -> void:
 	var fc: Vector2 = TownLayout.FOUNTAIN.get_center()
 	t.check(env.blocked(fc) and not grid.walkable(fc), "people walk round the fountain")
 	var houses := 0
+	var smoker: Structure = null
 	for st in env.structures():
-		# A sprite with its smoke drawn in (the PixelLab proof's tavern and smithy) smokes on its own; one with no chimney
-		# at all (the open workshop pavilion) does not smoke.
+		# A sprite with its smoke drawn in (the PixelLab proof's tavern and smithy) smokes on its own. The sprite
+		# workshop is an open pavilion with no chimney, so it is the one house left out; every other must smoke.
 		if st.kind == Structure.Kind.HOUSE and st.role == &"house" and not st.sprite.get("own_smoke", false) \
-				and st.sprite.get("chimney", Vector2.ZERO) != Vector2.INF:
+				and not (st.art_tag == &"workshop" and not st.sprite.is_empty()):
 			houses += 1
+			if smoker == null:
+				smoker = st
 	var before := town.smoke.wisp_count()
 	t.check(before == houses, "every cottage smokes (%d of %d)" % [before, houses])
-	for st in env.structures():
-		if st.kind == Structure.Kind.HOUSE and st.role == &"house":
-			st.destroy(st.center(), &"nova")
-			break
+	# A house that smokes (never the chimneyless workshop) falls.
+	smoker.destroy(smoker.center(), &"nova")
 	t.check(town.smoke.wisp_count() == before - 1, "a fallen house stops smoking")
 	town.teardown()
 	t.check(env.decor().is_empty() and town.smoke == null, "teardown takes the decor and the smoke away")

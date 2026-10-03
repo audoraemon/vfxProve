@@ -229,9 +229,9 @@ The five exact checksums, unchanged throughout: `calm --seconds=60` −695580348
 ## 12. Known issues
 
 - **A MANIFEST pressed during a fade-in is ignored** (small; left for later).
-- **Pushes are pending a GitHub sign-in on this laptop:** the branch and tags are committed locally.
+- **Pushed:** `feat/Develop-Main` and the tags `kak-v008-m1` … `m4` and `kak-v0.08` are on GitHub. The GitHub sign-in on BURIN_NITRO was completed during the release.
 
-## 13. To confirm with you
+## 13. Interpretations (confirmed by you, 2026-10-03)
 
 1. **How a mission is decided:** in list order, the first primary objective done wins and the first failed loses (spec: "all primaries done wins").
 2. **The messenger after delivery:** the told keeper is the messenger; killing them unseen still wins; a witnessed death passes the rope on.

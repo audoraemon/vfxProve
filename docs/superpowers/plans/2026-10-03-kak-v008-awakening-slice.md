@@ -1979,3 +1979,22 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
 3. **"Delayed a messenger" for Solved by.** A power cast within 3 units of the messenger or the keeper, while the warning is alive.
 4. **Pause and Results.** Both offer Missions in place of Title. The Title is reached from the board, with Esc.
 5. **Tags.** `kak-v008-m1` to `kak-v008-m4`, matching the earlier milestone tags, then `kak-v0.08`.
+
+## Execution notes
+
+### Task 0 baselines (BURIN_NITRO, 2026-10-03, at 369ec52 = kak-v0.07.1 code)
+
+- tests `checks=1065 failures=0`; digest `rows=19 digest=61267b7e90524d800bf1c3473a71146b emitters=45`;
+  crowd_check `checksum=-346732806 alive=220 escaped=0`; FLOW `checks=24 failures=0`.
+- Exact behaviour checksums (two identical runs each):
+  - `calm --seconds=60` -695580348
+  - `gates` 619520995
+  - `fire` -16560442
+  - `rite --interrupt` -129298221
+  - `soldiers --case=escort` -935015846
+  - Dropped: `bell --kill-keeper` (-845730435, then -49782016): it casts a Heaven Splitter, so its hitstop is wall-clock.
+- Mission test (it ends at 34 s, before any `MISSION result` line):
+  - `dp=21.5 buildings=53 citizens=181 escaped=0 alarm=100 stability=69% citadel=50%`
+  - `dp=21.5 buildings=57 citizens=175 escaped=0 alarm=100 stability=66% citadel=50%`
+  - `dp=21.5 buildings=52 citizens=181 escaped=0 alarm=100 stability=69% citadel=50%`
+- Bench (mission, Organized): 122.7 / 123.9 / 125.1 fps; worst 19.4 / 18.8 / 18.0 ms; draw calls 1052.

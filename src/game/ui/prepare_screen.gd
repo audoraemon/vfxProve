@@ -435,12 +435,7 @@ func _draw_loadout() -> void:
 		# The name, or its first word, cut to the slot's room -- none in a slot too narrow for one.
 		if r.size.x < SLOT_NAME_MIN:
 			continue
-		var name := String(PowerBook.get_power(key).name)
-		var room := r.size.x - 32.0
-		if UiTheme.width(name, UiTheme.SIZE_SMALL) > room:
-			name = name.split(" ")[0]
-		while name.length() > 1 and UiTheme.width(name, UiTheme.SIZE_SMALL) > room:
-			name = name.substr(0, name.length() - 1)
+		var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - 32.0)
 		UiTheme.text(_ui, r.position + Vector2(29.0, 17.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 	var full := draft.can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
 	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))

@@ -12,15 +12,16 @@ const FLASH_SECONDS := 0.35
 const HURRY_AT := 30.0
 
 const SLOT_SIZE := 42.0
-const SLOT_GAP := 6.0
-## A slot is a card: the SLOT_SIZE icon on the left, the power's name and cooldown on the right.
-## Wide enough that every power's name fits in two lines: the longest line is "Judgement of", 75 px at
-## SIZE_SMALL, and at 112 the name wrapped to three and lost "Ancients". The row is 522 px, inside 640.
-const SLOT_W := 126.0
+const SLOT_GAP := 4.0
+## A slot is a compact card (v0.08: six fit across the screen): the SLOT_SIZE icon on the left, and beside it the
+## power's name on one line, cut to NAME_ROOM, over its cooldown. Six make a 620-px row inside 640.
+const SLOT_W := 100.0
+## How wide the name may run beside the icon, short of the card's right edge.
+const NAME_ROOM := SLOT_W - SLOT_SIZE - 6.0
 ## The screen width to lay out against before the Control has been sized (headless tests).
 const SCREEN_W := 640.0
-## Where the slot row sits.
-const SLOT_TOP := 312.0
+## Where the slot row sits: low, where the Divine Power bar was before v0.08.
+const SLOT_TOP := 316.0
 const STABILITY_BAR := Vector2(96.0, 5.0)
 ## The objectives, top left: sized for four lines of SIZE_SMALL text.
 const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 60.0)
@@ -42,11 +43,11 @@ var _banners: Array = []
 var _flash := PackedFloat32Array()
 ## What the last frame drew, so an unchanged HUD costs nothing.
 var _drawn := ""
-## The four slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
+## The slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
 ## _draw() can reach the draw list before the GPU has it -- which paints a solid white block, and because the
 ## HUD only redraws when something changes, the block stays white for the rest of the mission.
 var _slot_icons: Array[Texture2D] = []
-## The powers' names, taken once with their icons.
+## The powers' names, cut to one line of NAME_ROOM, taken once with their icons.
 var _slot_names: Array[String] = []
 
 
@@ -64,7 +65,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 		_slot_icons.append(PowerBook.hud_icon(_rules.key(i)))
 	_slot_names.clear()
 	for i in _rules.loadout.size():
-		_slot_names.append(String(_rules.power(i).get("name", "")))
+		_slot_names.append(UiTheme.fit(String(_rules.power(i).get("name", "")), NAME_ROOM))
 	_rules.banner.connect(push_banner)
 	_rules.cast_refused.connect(_on_cast_refused)
 	return self
@@ -149,7 +150,7 @@ func slot_rect(i: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (SLOT_W + SLOT_GAP), SLOT_TOP), Vector2(SLOT_W, SLOT_SIZE))
 
 
-## The power's name in slot `i`, taken once in setup().
+## The power's name in slot `i` as its card shows it, cut to one line (taken once in setup()).
 func slot_name(i: int) -> String:
 	return _slot_names[i] if i >= 0 and i < _slot_names.size() else ""
 
@@ -322,16 +323,12 @@ func _draw_slots(_w: float) -> void:
 			draw_texture_rect(icon, icon_box, false, Color.WHITE if usable else Color(0.45, 0.45, 0.5))
 		UiTheme.frame(self, box, is_picked(i))
 		_plate(icon_box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
-		# The name beside the icon, up to two lines; gold when focused, dim when it cannot be cast.
+		# The name beside the icon on one line, gold when focused, dim when it cannot be cast; its cooldown under it.
 		var tx := box.position.x + SLOT_SIZE + 4.0
 		var name_col := UiTheme.COL_GOLD if is_picked(i) else (UiTheme.COL_TEXT if usable else UiTheme.COL_DIM)
-		var lines := UiTheme.wrap(slot_name(i), SLOT_W - SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL)
-		for k in mini(lines.size(), 2):
-			UiTheme.text(self, Vector2(tx, box.position.y + 12.0 + UiTheme.LINE_SMALL * float(k)), lines[k], UiTheme.SIZE_SMALL, name_col)
-		# The power's cooldown, dim in the corner (v0.08: it was the DP cost; Task 11 lays the card out anew).
-		var cooldown := PrepareScreen.cooldown_text(_rules.power(i))
-		UiTheme.text(self, Vector2(box.end.x - UiTheme.width(cooldown, UiTheme.SIZE_SMALL) - 4.0, box.end.y - 4.0),
-			cooldown, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(tx, box.position.y + 14.0), slot_name(i), UiTheme.SIZE_SMALL, name_col)
+		UiTheme.text(self, Vector2(tx, box.position.y + 14.0 + UiTheme.LINE_SMALL),
+			PrepareScreen.cooldown_text(_rules.power(i)), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		if state == "busy":
 			# Another power is still playing: a light shade and its seconds left, in gold.
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE)), Color(0, 0, 0, 0.35))

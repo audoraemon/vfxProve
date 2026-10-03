@@ -64,16 +64,21 @@ static func run(t) -> void:
 	t.check(hud.slot_at(hud.slot_rect(2).get_center()) == 2, "a point on the third slot is the third slot")
 	t.check(hud.slot_at(Vector2(4.0, 200.0)) == -1, "and a point on the town is no slot")
 
-	# Each slot is a card with the power's name beside its icon (the user's second playtest).
+	# Each slot is a card with the power's name beside its icon (the user's second playtest); since v0.08 a compact
+	# one, the name on one line cut to fit.
 	t.check(hud.slot_rect(0).size.x == Hud.SLOT_W and hud.slot_rect(0).size.y == Hud.SLOT_SIZE,
 		"a slot is a %d x %d card (%s)" % [int(Hud.SLOT_W), int(Hud.SLOT_SIZE), hud.slot_rect(0).size])
-	t.check(hud.slot_name(0) == "Heaven Splitter" and hud.slot_name(3) == "Nuclear Nova",
-		"and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
+	t.check(hud.slot_name(0) == UiTheme.fit("Heaven Splitter", Hud.NAME_ROOM) and hud.slot_name(0).begins_with("Heaven")
+		and hud.slot_name(3).begins_with("Nuclear"), "and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
 	var too_long := ""
 	for p: Dictionary in PowerBook.POWERS:
-		if UiTheme.wrap(String(p.name), Hud.SLOT_W - Hud.SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL).size() > 2:
+		var cut := UiTheme.fit(String(p.name), Hud.NAME_ROOM)
+		if cut.length() < 3 or UiTheme.width(cut, UiTheme.SIZE_SMALL) > Hud.NAME_ROOM:
 			too_long += " " + String(p.name)
-	t.check(too_long == "", "every power's name fits a card in two lines (too long:%s)" % too_long)
+	t.check(too_long == "", "every power's name fits a card on one line (too long:%s)" % too_long)
+	# Four slots sit centred on the screen.
+	t.check(is_equal_approx(hud.slot_rect(0).position.x, Hud.SCREEN_W - hud.slot_rect(3).end.x),
+		"four slots are centred (%.0f .. %.0f)" % [hud.slot_rect(0).position.x, hud.slot_rect(3).end.x])
 
 	# Banners queue up, show for their time and go.
 	rules.banner.emit("CHAIN!")
@@ -84,6 +89,25 @@ static func run(t) -> void:
 	t.check(hud.banners().size() == 1, "the first one goes when its time is up (%d)" % hud.banners().size())
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
 	t.check(hud.banners().is_empty(), "and so does the last (%d)" % hud.banners().size())
+
+	# Six powers (v0.08): six compact slots across the 640-px screen, none touching, each found by the mouse.
+	var six_rules := Rules.new().setup(PackedStringArray(["doom", "heaven", "wisp", "thorns", "discord", "blight"]), null,
+		env, field, crowd, town)
+	var six := Hud.new().setup(six_rules, crowd, town, null)
+	var six_bad := 0
+	for i in 6:
+		var r := six.slot_rect(i)
+		if r.position.x < 0.0 or r.end.x > Hud.SCREEN_W or r.end.y > 360.0:
+			six_bad += 100
+		if i > 0 and r.intersects(six.slot_rect(i - 1)):
+			six_bad += 10
+		if six.slot_at(r.get_center()) != i:
+			six_bad += 1
+	t.check(six_bad == 0 and six.slot_rect(5).end.x - six.slot_rect(0).position.x == 620.0,
+		"six slots make a 620-px row inside the screen, none touching, each under the mouse (%d, %.0f .. %.0f)"
+		% [six_bad, six.slot_rect(0).position.x, six.slot_rect(5).end.x])
+	six.free()
+	six_rules.free()
 
 	hud.free()
 	aim.free()

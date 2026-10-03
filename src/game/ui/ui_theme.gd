@@ -80,6 +80,17 @@ static func wrap(s: String, line_width: float, size := SIZE_BODY) -> PackedStrin
 	return lines
 
 
+## A name cut to one line of `room` px (v0.08: Prepare's loadout bar and the HUD's compact slots): whole if it fits,
+## else its first word, trimmed letter by letter until that fits.
+static func fit(s: String, room: float, size := SIZE_SMALL) -> String:
+	var out := s
+	if width(out, size) > room:
+		out = out.split(" ")[0]
+	while out.length() > 1 and width(out, size) > room:
+		out = out.substr(0, out.length() - 1)
+	return out
+
+
 ## The one gold frame every icon in the game wears: a bevel, four corner studs and a small diamond on top.
 static func frame(on: CanvasItem, rect: Rect2, bright := true) -> void:
 	var gold := COL_GOLD if bright else COL_GOLD_DARK

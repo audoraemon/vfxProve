@@ -1,7 +1,7 @@
 class_name Mission
 extends Node2D
 ## One mission of Kingdoms Amid Kataclysm: the battlefield, the town of Aldermere, its people, the rules, the
-## aiming and the HUD. The player picks a power with 1-4, clicks or drags to cast it, pans with WASD or the
+## aiming and the HUD. The player picks a power with 1-6, clicks or drags to cast it, pans with WASD or the
 ## middle button and zooms with the wheel. R starts a fresh mission. Milestone 4 puts the Title, Prepare,
 ## Pause and Results screens around this.
 
@@ -24,7 +24,8 @@ const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
 const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
-const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
+## A slot's hotkey: 1-6, for up to six slots (v0.08).
+const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6]
 ## Grass, the same clear colour the debug scene uses.
 const CLEAR := Color("6e8230")
 

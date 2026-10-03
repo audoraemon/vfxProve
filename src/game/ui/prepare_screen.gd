@@ -2,12 +2,12 @@ class_name PrepareScreen
 extends Node
 ## Prepare (spec §1, §5): the briefing and the card under the mouse on the left; on the right the powers by Authority
 ## (v0.08: a tab per Authority -- v0.06's were kinds -- over a grid of the open tab's cards), and under them the
-## loadout bar -- the four picks in slot order, whichever tab they came from -- with MANIFEST once four are picked.
+## loadout bar -- the picks in slot order, whichever tab they came from -- with MANIFEST once there is one.
 ##
 ## One deviation from the spec's layout, forced by 640x360: the cards carry the 42-pixel HUD icons, and the
 ## 84-pixel card art is shown large in the left panel for the card under the mouse, with the power's shape.
 
-## "manifest" (four are picked and the player pressed MANIFEST or Enter) or "back" (Esc).
+## "manifest" (a power is picked and the player pressed MANIFEST or Enter) or "back" (Esc).
 signal action(name: String)
 
 const CARD := Vector2(140.0, 50.0)
@@ -18,9 +18,11 @@ const COLUMNS := 3
 const TAB_AT := Vector2(196.0, 40.0)
 const TAB := Vector2(68.0, 16.0)
 const TAB_GAP := 4.0
-## The loadout bar under the grid: four slots, then MANIFEST.
+## The loadout bar under the grid: the mission's slots, then MANIFEST. SLOT is a slot's size when there are four.
 const LOADOUT_BAR := Rect2(196.0, 280.0, 432.0, 32.0)
 const SLOT := Vector2(84.0, 28.0)
+## A loadout slot narrower than this shows its icon and number without the name.
+const SLOT_NAME_MIN := 70.0
 const MANIFEST_RECT := Rect2(552.0, 282.0, 76.0, 28.0)
 ## The left panel: briefing above, the card under the mouse below.
 const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
@@ -98,9 +100,11 @@ static func cooldown_text(p: Dictionary) -> String:
 	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
 
 
-## The loadout bar's slot `i`, from 0 (sized for four; M2 sizes it for six).
-static func slot_rect(i: int) -> Rect2:
-	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (SLOT.x + 4.0), LOADOUT_BAR.position.y + 2.0), SLOT)
+## The loadout bar's slot `i`, from 0, of `count`: the slots share the bar left of MANIFEST (v0.08: up to six).
+static func slot_rect(i: int, count := 4) -> Rect2:
+	var room := MANIFEST_RECT.position.x - 4.0 - LOADOUT_BAR.position.x
+	var w := floorf((room - 4.0 * float(count)) / float(count))
+	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (w + 4.0), LOADOUT_BAR.position.y + 2.0), Vector2(w, SLOT.y))
 
 
 ## The open tab's power keys, in PowerBook order: those the mission allows.
@@ -133,7 +137,7 @@ func hit(point: Vector2) -> String:
 		if cell_rect(i).has_point(point):
 			return String(keys[i])
 	for i in draft.slots:
-		if slot_rect(i).has_point(point):
+		if slot_rect(i, draft.slots).has_point(point):
 			return "slot:%d" % i
 	if MANIFEST_RECT.has_point(point):
 		return "manifest"
@@ -170,7 +174,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.physical_keycode == KEY_TAB:
 			UiSound.play(&"ui_click")
 			set_tab(tab + (-1 if event.shift_pressed else 1))
-		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and draft.is_full():
+		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and draft.can_manifest():
 			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
 
@@ -200,7 +204,7 @@ func _on_gui_input(event: InputEvent) -> void:
 				draft.toggle(draft.picks[i])
 				_ui.queue_redraw()
 		elif h == "manifest":
-			if draft.is_full():
+			if draft.can_manifest():
 				UiSound.play(&"ui_manifest")
 				action.emit("manifest")
 			else:
@@ -412,12 +416,12 @@ func _draw_card(i: int, key: String) -> void:
 			digit, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 
 
-## The loadout bar: the four picks in slot order, whichever tab they came from (a click gives one back), then
-## MANIFEST, lit once all four are picked.
+## The loadout bar: the picks in slot order, whichever tab they came from (a click gives one back), then MANIFEST,
+## lit once there is one (v0.08: empty slots are allowed).
 func _draw_loadout() -> void:
 	_ui.draw_rect(LOADOUT_BAR, UiTheme.COL_PANEL)
 	for i in draft.slots:
-		var r := slot_rect(i)
+		var r := slot_rect(i, draft.slots)
 		var key := draft.picks[i] if i < draft.picks.size() else ""
 		_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == "slot:%d" % i else Color(0, 0, 0, 0.35))
 		UiTheme.frame(_ui, r, key != "")
@@ -429,15 +433,17 @@ func _draw_loadout() -> void:
 		if icon != null:
 			_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(2, 2), Vector2(24, 24)), false)
 		UiTheme.text(_ui, r.position + Vector2(3.0, 12.0), digit, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		# The name, or its first word, cut to the slot's room.
+		# The name, or its first word, cut to the slot's room -- none in a slot too narrow for one.
+		if r.size.x < SLOT_NAME_MIN:
+			continue
 		var name := String(PowerBook.get_power(key).name)
-		var room := SLOT.x - 32.0
+		var room := r.size.x - 32.0
 		if UiTheme.width(name, UiTheme.SIZE_SMALL) > room:
 			name = name.split(" ")[0]
 		while name.length() > 1 and UiTheme.width(name, UiTheme.SIZE_SMALL) > room:
 			name = name.substr(0, name.length() - 1)
 		UiTheme.text(_ui, r.position + Vector2(29.0, 17.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
-	var full := draft.is_full()  # not "ready": that is Node's own signal, and shadowing it warns
+	var full := draft.can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
 	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))
 	UiTheme.frame(_ui, MANIFEST_RECT, full and _hover == "manifest")
 	var label := "MANIFEST"

@@ -13,7 +13,7 @@ var brief := PackedStringArray()
 var goal := ""
 ## The goal in a few words, for the results (unscored missions).
 var goal_label := ""
-## Loadout: how many slots, and how much Divine Power the picks may cost in all (0: no budget -- v0.08 M1 only).
+## Loadout: how many slots, and how much Divine Power the picks may cost in all (0: no budget).
 var slots := 4
 var dp_capacity := 0
 ## The powers it allows; empty for every power.

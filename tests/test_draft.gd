@@ -1,6 +1,6 @@
 extends RefCounted
-## The draft's rules: four slots filled in pick order, a fifth pick refused, unpicking closes the gap, and a
-## saved loadout comes back cleaned up.
+## The draft's rules: slots filled in pick order, a pick past the last slot or over the Divine Power refused (v0.08),
+## unpicking closes the gap, and a saved loadout comes back cleaned up.
 
 
 static func run(t) -> void:
@@ -15,8 +15,8 @@ static func run(t) -> void:
 	t.check(not d.is_full(), "three picks is not a loadout")
 	d.toggle("gravity")
 	t.check(d.is_full() and d.slot_of("gravity") == 4, "the fourth pick fills it")
-	d.toggle("tornado")
-	t.check(d.picks.size() == 4 and d.slot_of("tornado") == 0, "a fifth pick is refused (%s)" % [d.picks])
+	var fifth := d.toggle("tornado")
+	t.check(fifth == "slots" and d.picks.size() == 4 and d.slot_of("tornado") == 0, "a fifth pick is refused (%s, %s)" % [fifth, d.picks])
 
 	# Taking a pick back closes the gap: the later picks move up a slot.
 	d.toggle("heaven")
@@ -32,9 +32,43 @@ static func run(t) -> void:
 		"a saved loadout is cleaned up on the way in (%s)" % [saved.picks])
 	t.check(Draft.new().preselect(PackedStringArray()).picks.is_empty(), "and an empty one gives an empty draft")
 
-	# The mission sets the draft (v0.08): Last Judgement has four slots and allows every power.
+	# The mission sets the draft (v0.08): Last Judgement has six slots, 14 Divine Power and every power.
 	var lj := Draft.new().for_mission(MissionBook.last_judgement())
-	t.check(lj.slots == 4 and lj.pool == PowerBook.keys(), "Last Judgement's draft has four slots and every power (%d)" % lj.slots)
+	t.check(lj.slots == 6 and lj.capacity == 14 and lj.pool == PowerBook.keys(),
+		"Last Judgement's draft has six slots, 14 DP and every power (%d, %d)" % [lj.slots, lj.capacity])
+	t.check(not lj.can_manifest(), "an empty draft cannot manifest")
+	var changed := ""
+	for key in Mission.DEFAULT_LOADOUT:
+		changed += lj.toggle(key)
+	t.check(changed == "" and lj.spent() == 14 and lj.can_manifest(),
+		"the default four (2+4+4+4) cost 14 and fit (%d DP, '%s')" % [lj.spent(), changed])
+	t.check(lj.refusal("doom") == "dp" and lj.toggle("doom") == "dp" and lj.spent() == 14 and lj.slot_of("doom") == 0,
+		"a fifth pick of 1 DP is refused for its Divine Power, with two slots free (%s, %d DP)" % [lj.picks, lj.spent()])
+	t.check(lj.toggle("nova") == "" and lj.spent() == 10, "taking out the Nova leaves 10 DP spent (%d)" % lj.spent())
+	t.check(lj.toggle("doom") == "" and lj.slot_of("doom") == 4 and lj.spent() == 11,
+		"after which Silent Doom fits (%s, %d DP)" % [lj.picks, lj.spent()])
+	var one := Draft.new().for_mission(MissionBook.last_judgement())
+	one.toggle("heaven")
+	t.check(one.can_manifest() and not one.is_full(), "one pick can manifest: empty slots are allowed")
+	# Six cheap picks fill the slots well inside the Divine Power; the seventh is refused for want of a slot. There
+	# are six powers of 1-2 DP, so the seventh is the Tornado's 3: 14 in all, still within the budget.
+	var cheap := Draft.new().for_mission(MissionBook.last_judgement())
+	for key in ["doom", "wisp", "discord", "heaven", "blight", "thorns"]:
+		changed += cheap.toggle(key)
+	t.check(changed == "" and cheap.is_full() and cheap.spent() == 11, "six cheap picks fill the six slots (%d DP)" % cheap.spent())
+	t.check(cheap.toggle("tornado") == "slots" and cheap.picks.size() == 6,
+		"and the seventh is refused for want of a slot, not of DP (%s)" % [cheap.picks])
+	# A mission's pool: a power outside it is refused as such, and so is a key that is no power at all.
+	var pooled := MissionDef.new()
+	pooled.pool = PackedStringArray(["doom", "discord"])
+	var small := Draft.new().for_mission(pooled)
+	t.check(small.toggle("nova") == "pool" and small.toggle("kettle") == "pool" and small.toggle("doom") == ""
+		and small.picks == PackedStringArray(["doom"]), "a key outside the pool is refused with \"pool\" (%s)" % [small.picks])
+	# A saved loadout skips whatever no longer fits: here the Nova, which would take the spend past 14.
+	var over := Draft.new().for_mission(MissionBook.last_judgement())
+	over.preselect(PackedStringArray(["cinder", "judgement", "glacial", "nova", "doom", "kettle", "heaven"]))
+	t.check(over.picks == PackedStringArray(["cinder", "judgement", "glacial", "doom"]) and over.spent() == 13,
+		"a saved loadout keeps its order and skips what is refused (%s, %d DP)" % [over.picks, over.spent()])
 	var narrow := Draft.new()
 	narrow.slots = 2
 	narrow.pool = PackedStringArray(["nova", "heaven"])
@@ -64,12 +98,21 @@ static func run(t) -> void:
 			if boxes[i].intersects(boxes[j]):
 				bad += 1
 	t.check(bad == 0, "tabs, the largest tab's %d cards and the loadout bar fit without touching (%d)" % [most, bad])
+	# Last Judgement's six slots (v0.08) share the bar left of MANIFEST.
+	var six_bad := 0
+	for i in lj.slots:
+		var r := PrepareScreen.slot_rect(i, lj.slots)
+		if not PrepareScreen.LOADOUT_BAR.encloses(r) or r.end.x > PrepareScreen.MANIFEST_RECT.position.x:
+			six_bad += 100
+		if i > 0 and r.intersects(PrepareScreen.slot_rect(i - 1, lj.slots)):
+			six_bad += 1
+	t.check(six_bad == 0, "six loadout slots fit left of MANIFEST without touching (%d)" % six_bad)
 	var prep := PrepareScreen.new()
 	prep.setup(MissionBook.last_judgement(), PackedStringArray(["doom", "heaven"]))
 	t.check(prep.tab == PowerBook.AUTHORITIES.find("veil") and Array(prep.shown()) == Array(PowerBook.of_authority("veil")),
 		"the screen opens on the first pick's tab (%d)" % prep.tab)
 	t.check(prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0"
-		and prep.hit(PrepareScreen.slot_rect(1).get_center()) == "slot:1"
+		and prep.hit(PrepareScreen.slot_rect(1, prep.draft.slots).get_center()) == "slot:1"
 		and prep.hit(PrepareScreen.cell_rect(0).get_center()) == String(PowerBook.of_authority("veil")[0])
 		and prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest",
 		"tabs, slots, MANIFEST and the open tab's cards answer the mouse")

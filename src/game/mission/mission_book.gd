@@ -27,7 +27,8 @@ static func last_judgement() -> MissionDef:
 	m.brief = PackedStringArray(["Aldermere and its Royal Citadel.", "Bring the whole kingdom down."])
 	m.goal = "Destroy the Citadel and break the city before %s" % UiTheme.clock(Rules.MISSION_SECONDS)
 	m.goal_label = "The city has fallen"
-	m.slots = 4
+	m.slots = 6
+	m.dp_capacity = 14
 	m.clock = Rules.MISSION_SECONDS
 	m.scored = true
 	m.default_loadout = PackedStringArray(Mission.DEFAULT_LOADOUT)

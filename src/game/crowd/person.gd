@@ -4,10 +4,10 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED, WHISPERED }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
-enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED }
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED, WHISPERED }
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
@@ -75,6 +75,8 @@ const LURABLE := [Mind.CALM, Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
 ## Discord (v0.06): a confused citizen ambles at this share of a walk, under a violet swirl.
 const CONFUSED_PACE := 0.7
 const COL_DISCORD := Color("b070ff")
+## Mind Whisper (v0.08): the gold of the eye over a whispered citizen.
+const COL_WHISPER := Color("f0d070")
 ## Pestilence (v0.06): the sick move at this share of their pace; SICK_MOTE is the green the targeting preview rings them in.
 const SICK_PACE := 0.7
 const SICK_MOTE := Color("a8d060")
@@ -180,6 +182,9 @@ var sick_total := 0.0
 ## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
 var _confused_left := 0.0
 var _was_fleeing := false
+## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
+var _whisper_left := 0.0
+var _whisper_fled := false
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 
@@ -356,6 +361,13 @@ func _think(delta: float) -> void:
 		_confused_left -= delta
 		if _confused_left <= 0.0:
 			_come_to()
+	elif mind == Mind.WHISPERED:
+		if _goal == Vector2.INF:
+			# There (or as near as the way allowed): stand and linger.
+			_idle = maxf(_idle, 0.1)
+			_whisper_left -= delta
+			if _whisper_left <= 0.0:
+				_wake()
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -467,7 +479,8 @@ func _pick_target() -> void:
 	if mind == Mind.PANIC:
 		_settle()
 		return
-	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY:
+	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY \
+			or mind == Mind.WHISPERED:
 		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
@@ -599,6 +612,48 @@ func lure(at: Vector2, seconds: float) -> bool:
 	return true
 
 
+## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
+## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
+## where a duty's manager takes it back. Soldiers, anyone inside and the dead do not hear it; true when it did.
+func whisper(to: Vector2, linger: float) -> bool:
+	if soldier or inside or state == State.DEAD:
+		return false
+	_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
+	release_from_queue()
+	passing_gate = null
+	mind = Mind.WHISPERED
+	_whisper_left = linger
+	_confused_left = 0.0
+	_panic_left = 0.0
+	# Up from a stumble too: a whispered person never runs, so never stumbles, and the pose signatures count on it.
+	_stumble = 0.0
+	anchor = to
+	walk_speed = _mind_speed()
+	set_goal(to)
+	return true
+
+
+## Seconds of lingering left while whispered, else 0.
+func whispered_left() -> float:
+	return _whisper_left if mind == Mind.WHISPERED else 0.0
+
+
+## The town is evacuating while it is whispered: it flees once the whisper wears off.
+func whisper_resume_flee() -> void:
+	_whisper_fled = true
+
+
+## The whisper wears off: flight again if it fled before (or the town evacuated meanwhile), else back to its day.
+func _wake() -> void:
+	_whisper_left = 0.0
+	if _whisper_fled:
+		_whisper_fled = false
+		mind = Mind.CALM
+		flee()
+	else:
+		_recover(rng.randf_range(1.0, 2.0))
+
+
 ## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is
 ## found).
 func _flee_local() -> void:
@@ -670,6 +725,8 @@ func intent() -> Intent:
 			return Intent.SHELTER
 		Mind.CONFUSED:
 			return Intent.CONFUSED
+		Mind.WHISPERED:
+			return Intent.WHISPERED
 	return Intent.ROUTINE
 
 
@@ -989,6 +1046,10 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		for k in 4:
 			var a := float((turn + k) % 8) * TAU / 8.0
 			_px(roundi(cos(a) * 3.0), -17 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
+	if mind == Mind.WHISPERED and state != State.DEAD:
+		# Mind Whisper's glyph: a small gold eye over the head.
+		_px(-1, -17 + lift, 3, 1, COL_WHISPER)
+		_px(0, -18 + lift, 1, 3, COL_WHISPER)
 
 
 ## Town guard: mail, royal blue tabard, helmet, spear and shield.
@@ -1031,7 +1092,8 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 
 
 func _pose_signature() -> int:
-	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0)
+	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0) \
+		+ (5 if mind == Mind.WHISPERED else 0)
 
 
 ## DummyEnemy._art_signature(), folded ahead of time for a person on its feet with nothing lifting, freezing or
@@ -1047,8 +1109,10 @@ func _art_signature() -> int:
 	else:
 		rate = 5.0 if soldier else 6.0
 	var walk := int(_anim * rate) % 2 * 2 + (1 if _facing > 0 else 0)
-	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7.
-	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0)
+	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7. A
+	# whispered one (v0.08) neither runs nor stumbles (whisper() stands it up), so 5 is free too.
+	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0) \
+		+ (5 if mind == Mind.WHISPERED else 0)
 	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
 	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
 

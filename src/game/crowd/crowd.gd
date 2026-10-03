@@ -933,6 +933,9 @@ func _evacuate() -> void:
 			if not _households.has(p.profile.family):
 				_households[p.profile.family] = _clock
 			continue
+		if p.mind == Person.Mind.WHISPERED:
+			p.whisper_resume_flee()  # Mind Whisper (v0.08): it lingers first, then flees
+			continue
 		p.flee()
 	var shouted := 0
 	for p in citizens:

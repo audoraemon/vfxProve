@@ -928,6 +928,8 @@ func _evacuate() -> void:
 			continue  # ShelterManager sends them to the gates
 		if p.mind == Person.Mind.DUTY:
 			continue  # the bellkeeper and the clergy stay at their duty (off_duty() sends them on after)
+		if p.mind == Person.Mind.ASSIST and p.assist_stays:
+			continue  # an engineer at a fire works on (v0.08.2), as at its other duties
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):

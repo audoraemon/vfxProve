@@ -28,7 +28,9 @@ extends SceneTree
 ##          and the escapes every 5 s over 100 s, then the stage history
 ##   siege  (v0.05 M7) one scripted siege for comparing the difficulty tiers (--difficulty=): eight casts over 105 s
 ##          from 20 s (the first in the west, clear of the Bell Tower), then a report every 15 s to 150 s -- escapes, the Citadel, the clock, the rite, the boats, the
-##          engineers
+##          engineers ("fire" for a team at a fire), the fires burning, burned down and doused, the buildings down;
+##          --burn (v0.08.2) makes it fire-heavy: BURN_HOUSES standing houses set burning at 30 s and again at 60 s
+##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
 ##          [--setup=rite|evac]; --snap aims at the citizen nearest --at (a whisper always does, and sends them
@@ -65,6 +67,8 @@ extends SceneTree
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
+## How many houses `siege --burn` sets burning each time (v0.08.2).
+const BURN_HOUSES := 6
 
 var mission: Mission
 
@@ -134,7 +138,7 @@ func _run() -> void:
 			await _clip(Battlefield.arg_value(args, "--power"), Battlefield.arg_value(args, "--at"),
 				Battlefield.arg_value(args, "--seconds"), Battlefield.arg_value(args, "--setup"))
 		"siege":
-			await _siege()
+			await _siege("--burn" in args)
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
 		"judgement":
@@ -500,7 +504,7 @@ func _opening(quiet: bool) -> void:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
 
 
-func _siege() -> void:
+func _siege(burn: bool) -> void:
 	await _frames(20 * 60)
 	var crowd: Crowd = mission._crowd
 	var rules: Rules = mission._rules
@@ -518,17 +522,34 @@ func _siege() -> void:
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
 			_force_cast(int(c[1]), c[2], Vector2(1, 0.3).normalized())
+		if burn and (t == 10.0 or t == 40.0):
+			var lit := 0
+			var k := 0
+			for st in mission._bf.ctx.env.structures():
+				if st.kind == Structure.Kind.HOUSE and st.role == &"house" and not st.destroyed \
+						and not crowd.fires.is_burning(st):
+					k += 1
+					if k % 5 == 0 and lit < BURN_HOUSES:
+						crowd.fires.ignite(st, 0.4)
+						lit += 1
+			print("BEHAVIOUR siege t=%d set %d houses burning" % [roundi(t), lit])
 		if int(t) % 15 == 0:
 			var teams := []
 			if crowd.engineers != null:
 				for team: Dictionary in crowd.engineers.teams:
-					teams.append("idle" if (team.job as Dictionary).is_empty() else String(EngineerManager.Job.keys()[team.job.type]).to_lower())
-			print("BEHAVIOUR siege t=%d stage=%s alarm=%d escaped=%d alive=%d citadel=%.0f%% stability=%.0f%% clock=%s rite=%s boats=%d engineers=%s jobs=%d over=%s" % [
+					var at_fire := false
+					for m in team.members:
+						at_fire = at_fire or (is_instance_valid(m) and (m as Person).mind == Person.Mind.ASSIST)
+					teams.append(("fire" if at_fire else "idle") if (team.job as Dictionary).is_empty()
+						else String(EngineerManager.Job.keys()[team.job.type]).to_lower())
+			print("BEHAVIOUR siege t=%d stage=%s alarm=%d escaped=%d alive=%d citadel=%.0f%% stability=%.0f%% clock=%s rite=%s boats=%d engineers=%s jobs=%d fires=%d burned=%d doused=%d buildings=%d over=%s" % [
 				roundi(t), crowd.alarms.stage_name(), roundi(crowd.alarm), crowd.escaped_count, crowd.alive_citizens(),
 				100.0 * citadel.fraction(), 100.0 * rules.stability.total(), UiTheme.clock(rules.time_left),
 				BanishingRite.State.keys()[crowd.rite.state] if crowd.rite != null else "-",
 				crowd.ferry.carried if crowd.ferry != null else 0, teams,
-				crowd.engineers.jobs().size() if crowd.engineers != null and crowd.engineers.active else -1, rules.over_reason])
+				crowd.engineers.jobs().size() if crowd.engineers != null and crowd.engineers.active else -1,
+				crowd.fires.fires.size(), crowd.fires.burned_down, crowd.fires.doused_out, rules.buildings_down,
+				rules.over_reason])
 		await _frames(60)
 		t += 1.0
 	for h in crowd.alarms.history:

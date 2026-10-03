@@ -139,6 +139,9 @@ var assist_fire: Structure
 var assist_at_water := false
 var assist_full := false
 var assist_wait := 0.0
+## Kept on its fire through the evacuation (v0.08.2): an engineer, who works on while the town leaves, unlike the
+## fire brigade.
+var assist_stays := false
 ## Taking cover (v0.04 P2; ShelterManager runs it): the crowd's manager, the building sought or sheltered in, its
 ## door, and whether it is inside (hidden, out of every effect's reach, not stepped).
 var shelters: ShelterManager
@@ -772,12 +775,13 @@ func leave_shelter(evacuate: bool) -> void:
 
 
 ## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
-## (force).
-func assist(s: Structure, force := false) -> void:
+## or its engineer team (force); `stays` keeps it on through the evacuation (an engineer, v0.08.2).
+func assist(s: Structure, force := false, stays := false) -> void:
 	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE:
 		return
 	mind = Mind.ASSIST
 	assist_fire = s
+	assist_stays = stays
 	assist_at_water = false
 	assist_full = false
 	assist_wait = 0.0
@@ -789,6 +793,7 @@ func stand_down() -> void:
 	assist_fire = null
 	assist_full = false
 	assist_at_water = false
+	assist_stays = false
 	if mind == Mind.ASSIST:
 		if soldier:
 			send_to_post(post if post != Vector2.INF else ground_pos)  # a rescue squad back to its post (v0.07)

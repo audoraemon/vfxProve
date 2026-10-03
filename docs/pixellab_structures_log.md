@@ -264,3 +264,30 @@ Fit (anchor [98, 117.5]; diamond left = ax - 32 * 2.6, the long side runs left):
 Manifest: size [164, 128], footprint [2.6, 1.5], height 22, seed 50, anchor [98, 117.5], no collapse_frames, no chimney (an open pavilion: it does not smoke; tests/test_town_decor.gd now counts only houses with a chimney). reference.png = render at the final size. Glow: intact, damaged, ruins 0%. Captures: captures/sprite_states/workshop.png; new shot town_east_quarter.png (town_debug.gd TOWN_SHOTS, dev-only) shows the hall on its plot between the barracks and the smithy.
 
 Workshop total: 65 generations (211 → 146).
+
+### Market stalls (stall_red, stall_blue, stall_cream)
+
+29 stalls in the market square (footprint 0.9 x 0.7, height 10). Each keeps today's awning: PropArt cloth = seed % 3 → stall_red / stall_blue / stall_cream (SpriteArt.STALLS). Style ref: TownMap_Component2.png, red-and-white stall, box (10, 20, 155, 165). Composition ref: `render_sprite_refs.gd` at [68, 72]. Balance before: 146 (floor 81). No collapse for any of them (the engine's sink, by ruling).
+
+| Set | Call | Prompt / refs | Seed | Cost | Result |
+|---|---|---|---|---|---|
+| stall_red | `generate` 68x72 | isometric pixel art medieval market stall, red and white striped scalloped awning on four wooden posts, a wooden counter heaped with fruit and vegetables in baskets, high detail, crisp dark outline, no ground, transparent background; refs: reference.png (exact footprint …), style_ref.png (art style only) | 3 | 25 (146 → 121) | 16 images, all bigger than the reference (~64 x 65 vs 58 x 52, several touch the canvas edge), long side running RIGHT from a front post at x ~21 (posts 37 px right / 15 px left vs the plot's 28.8 left / 22.4 right), a row of produce baskets in front. Picked 09 (pears, apples, oranges: reads at 1x). Fitted locally (below) |
+| stall_red | `edit` (damaged) on intact | the same stall damaged: torn awning, a snapped post, spilled produce | 31 | 20 (121 → 101) | 2 near-identical images on the intact's bbox: hole torn in the awning, pears and an orange spilled on the ground (no snapped post). Kept edit_00, no shift |
+| stall_red | `edit` (ruins) on damaged | the same stall collapsed: the awning fallen over a heap of broken planks and spilled baskets, same footprint | 32 | 20 (101 → 81) | 2 images, NOT collapsed: the awning still stands on its posts, broken planks added round the baskets. Floor reached, so the ruins were made locally from edit_01 (below) |
+
+Local fit of the intact (0 gens, native scale, pixel copy only; scratchpad stalls/fit.py, `fit.py generate_09.png intact.png 10 5 4 0`):
+1. Awning cut out by a hand polygon; the rest (posts, counter, produce) is the ground layer.
+2. Ground, long axis -10 px: pixels right of a cut (x 29.5 down to the counter's back edge (29.5, 44.5), along the ground (2,1) to the front edge (44.5, 52.5), then down) take the source moved (-10, +5); the 10 px slab is dropped (part of the back produce).
+3. Awning: three cuts parallel to the stripes (x = x0 + 1.2 (y - 20), x0 44 / 33.5 / 23.5, inside the three wide stripes), each moving the part right of it (-2, +1): stripes come out 6-8 px wide, the back and front edges stay straight.
+4. Awning dropped 5 px over the ground layer (shorter posts: 65 → 58 px tall overall, the old procedural stall is 52; width 57 vs 58).
+5. Mirrored (the plot's long side runs left) and moved 4 px left on the 68 x 72 canvas.
+
+Fit (anchor [41, 65]; the long side runs left): the front post stands at (41.5, 64) on the diamond's front corner; back-left post (14.5, ~51) vs the left corner (12.2, 50.6); the produce baskets reach x 9 (left) and x 63 (right corner 63.4). The front row of baskets hangs ~7 px in front of the front-left edge (lowest row 66 at x 25-33), like the procedural stall's basket and crate.
+
+Ruins (0 gens; scratchpad stalls/ruins.py, `ruins.py ruin/edit_01.png awnmask.png ruins.png 16 8 44`): the awning (its pixels in edit_01 under the intact's awning mask) lifted off and dropped 16 px onto the heap, its left end 8 px more (column-wise shift: tilted), the uncovered old awning area cleared, and ground pixels above row 44 (the post tops) cleared: the awning lies over the broken planks and baskets. Same canvas and base as the intact (lowest row 69 = the spilled fruit, as in damaged).
+
+stall_blue (seed 4) and stall_cream (seed 5), 0 gens: the stall_red stills with only the awning's red recoloured, `sprite_fix.py huemap <red still> <dst> 345,22 <ramp> 0,0,12,1 minsat=0.3 lrange=0.125,0.520 mask=<awning mask>` (huemap gained hue wrap, h0 > h1, and `mask=`). Ramps are 12-step HSL swatches at the procedural cloth hues: blue hsl(220, 0.60, 0.12..0.56) (CLOTH 2f5fb8 = hsl(220, 0.59, 0.45); the Component2 blue stall averages (18, 92, 198)), tan hsl(36, 0.40, 0.16..0.62) (CLOTH c0a070). White/cream stripes, produce and wood untouched, so blue = blue and white, cream = cream and tan. Masks: intact = fit.py's awning mask; damaged = the same dilated 1 px, plus a second pass in poly 57,14..67,32 for the torn right edge (11 px); ruins = ruins.py's fallen-awning mask dilated 1 px. Same size and anchor as stall_red.
+
+Manifest (all three): size [68, 72], footprint [0.9, 0.7], height 10, role market, anchor [41, 65], seeds 3 / 4 / 5, no collapse_frames. Glow: intact 0.5%, damaged 0.6%, ruins 1.0% (all three). Captures: captures/sprite_states/stall_{red,blue,cream}.png; captures/town_market.png and town_crowd.png show the three colours in orderly rows on their plots.
+
+Market stalls total: 65 generations (146 → 81).

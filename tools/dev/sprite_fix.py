@@ -14,13 +14,15 @@
                                          the first png sets the source statistics for all of them: pass a set's
                                          intact first so damaged/ruins keep their scorch). `stonemean <png> [...]`
                                          prints the stone mask's share and mean RGB.
-  huemap  <src> <dst> <h0,h1> <palette png> <x0,y0,x1,y1> [minsat=S] [minl=L] [lrange=lo,hi] [phue=a,b] [poly=x,y;x,y;...] [skip=x0,y0,x1,y1 ...]
+  huemap  <src> <dst> <h0,h1> <palette png> <x0,y0,x1,y1> [minsat=S] [minl=L] [lrange=lo,hi] [phue=a,b] [poly=x,y;x,y;...] [mask=png] [skip=x0,y0,x1,y1 ...]
                                          recolour one hue band (degrees; e.g. a red tile roof) to another sprite's
                                          palette (the box's colours, phue filters them by hue): each pixel takes the
                                          palette colour nearest its lightness, mapped linearly from lrange (default:
                                          its own 2..98 % lightness) onto the palette's range, so the light-dark order
                                          stays. Only pixels inside poly (if given) change; skip boxes are left
-                                         alone (e.g. a brick chimney in the roof's hue).
+                                         alone (e.g. a brick chimney in the roof's hue). h0 > h1 wraps
+                                         through 360 (reds: 340,20). mask=<png> limits it to that image's
+                                         opaque (or, for a grey mask, non-black) pixels (e.g. a stall's awning, cut out by hand).
 Run from the project root.
 """
 import glob
@@ -367,11 +369,17 @@ def huemap(src, dst, hues, palette, box, *opts):
     cl = cl[0]
     arr = np.array(_rgba(src))
     h, l, s = _hls(arr)
-    m = (arr[..., 3] > 0) & (h >= h0) & (h <= h1) & (s >= minsat) & (l >= minl)
+    band = ((h >= h0) & (h <= h1)) if h0 <= h1 else ((h >= h0) | (h <= h1))
+    m = (arr[..., 3] > 0) & band & (s >= minsat) & (l >= minl)
     if "poly" in o:
         area = Image.new("L", (arr.shape[1], arr.shape[0]), 0)
         ImageDraw.Draw(area).polygon([tuple(float(v) for v in pt.split(",")) for pt in o["poly"].split(";")], fill=255)
         m &= np.array(area) > 0
+    if "mask" in o:
+        mk = Image.open(o["mask"])
+        m &= np.array(mk.getchannel("A") if "A" in mk.getbands() else mk.convert("L")) > 0
+    if not m.any():
+        sys.exit("huemap: no pixel in the hue band / area")
     for x0, y0, x1, y1 in skips:
         m[y0:y1, x0:x1] = False
     if "lrange" in o:

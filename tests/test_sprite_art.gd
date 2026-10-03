@@ -5,7 +5,7 @@ const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
 	"citadel_wall", "citadel_wall_side", "citadel_gate", "town_tower", "town_tower_corner", "town_wall",
 	"town_postern", "town_gate", "town_tower_e", "town_tower_s", "town_tower_e_hi", "town_tower_s_hi",
-	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop"]
+	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop", "stall_red", "stall_blue", "stall_cream"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:

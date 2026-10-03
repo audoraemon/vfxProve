@@ -214,3 +214,28 @@ townhouse_b (0 gens): townhouse_a's stills and collapse recoloured locally with 
 Manifest: size [96, 104], footprint [1.3, 0.95], height 30, anchor [49, 90], collapse_frames 9, chimney [44, 7] for both. reference.png = render at the final size. Glow: intact 0.9%, damaged/ruins/collapse 0% (both). Captures: town_crowd/town_bell_tower show both roofs in the default orientation next to the cottages; town_citadel shows a mirrored (deep) townhouse_b.
 
 Townhouses total: 62 generations (338 → 276).
+
+### Barracks
+
+One long open-sided hall (footprint 4.4 x 1.9, beside the side gate; the soldiers drill in its yard). Style ref: Final Town_Ref01.png, the long timber-framed hall with the lit open front in the barracks yard, box (38, 156, 135, 232) (an opaque sheet, so the crop keeps some yard ground). Family ref: townhouse_a/intact.png rather than town_tower: the barracks is a timber-and-tile building, so the house gives the town's exact roof red and timber; the town_tower ref has pulled shapes narrower before (Task 6b). Its stone footings were harmonized to the town stone afterwards. Composition ref: `render_sprite_refs.gd` at size [232, 172] (216 clipped the eaves), height 36. Balance before: 276 (floor 206).
+
+| Set | Call | Prompt / refs | Seed | Cost | Result |
+|---|---|---|---|---|---|
+| barracks | `generate` 232x172 | isometric pixel art medieval soldiers' barracks, a long open-sided timber hall on low grey stone footings, its long side facing left along the whole length of the footprint, red clay tile roof, weapon racks with spears and shields under the roof, a small forge glowing orange at the right end, a blue fleur-de-lis banner, high detail, crisp dark outline, no ground, transparent background; refs: reference.png (fill the whole footprint), style_ref.png (art style only), townhouse_a/intact.png (roof tiles, timber, plaster: materials and colours only) | 49 | 20 (276 → 256) | 1 image, kept: open hall on stone post pads, cross gable with the banner, racks, benches, barrels, hay, a stone forge with a fire under the right gable, chimney. Base corners (pad outer vertices) left (17, 90), front (152.5, 156), right (217, 121): long side 135.5 px of 140.8, short side 64.5 of 60.8, so the corners sat ~4.5 px off the diamond vertically. Fitted locally (below) |
+| barracks | `edit` (damaged) on intact | the same barracks damaged: broken roof tiles and a hole in the roof, snapped posts, scorch marks, a torn banner, weapon racks knocked over, forge out and cold; same size and position on the canvas | 491 | 20 (256 → 236) | 2 near-identical images on the intact's bbox; kept edit_00 (two roof holes, scorch, racks down, debris, forge cold). No shift |
+| barracks | `edit` (ruins) on damaged | the same barracks collapsed into a long low heap of charred timber, broken red roof tiles and fallen weapon racks, a few snapped post stumps on their stone footings, the cold forge as a pile of stones, same footprint, same position on the canvas, nothing floating | 492 | 20 (236 → 216) | 2 identical images; heap came back 50 px high (lowest row 110 vs 160): moved (0, +50). Post stumps then stand on the intact's pads |
+| barracks | `animate` (collapse) damaged → ruins, 8 frames | the building crumbles from the top down into a heap of rubble, dust; it is never repaired | 493 | 5 (216 → 211) | 9 frames (745 s job), every frame on the same base (lowest row 160, front x 152-153); the roof sinks steadily, no healing. Kept as is |
+
+Local fit of the intact (0 gens, native scale, pixel copy only; scratchpad barracks/{lstretch,rshrink2}.py):
+1. Canvas padded 8 px on top (232 x 180).
+2. Long axis +6 px: cut at x 40 on the left face (first bay: a weapon rack, so the bay reads one more spear) and on the roof along a line parallel to the left-end rake (37 across per 35 up); the left end moves (-6, -3).
+3. Short axis -4 px at the right gable end: for x >= 207 the source is x + 4; roof/eave rows (src y <= 85) move along the eave (-4, -2) so the roof tip stays continuous, the post, wall and floor move along the short axis (-4, +2) so the floor edge stays continuous, the 4 rows between repeat the post top. A bucket now stands half behind the right post pad.
+4. Cropped the 4 empty top rows: 232 x 176.
+
+Stone: `harmonize "concepts/TOWN REF/TownMap_Component4.png" 310,66,535,250` on a copy of the intact holding only pixels with Lab L < 74 (the cream plaster, which the warm-limestone rule would also catch, left out), merged back: footings, forge and chimney stone (103, 98, 86) → (122, 110, 105); timber, roof, plaster, banner, fire untouched. Damaged and ruins came from the harmonized intact and were not re-harmonized (their low-chroma mean is darker, ~(92, 82, 74), from scorch and charred timber, not from the stone).
+
+Fit (anchor [152, 159.5]; diamond left = ax - 32 * 4.4, the long side runs left): left corner diamond (11.2, 89.1) vs art (11, 91): 0.2 / 1.9 px; front (152, 159.5) vs art (152.5, 160): 0.5 / 0.5; right (212.8, 129.1) vs art (213, 127): 0.2 / 2.1. Same for damaged, ruins and every collapse frame (same pads).
+
+Manifest: size [232, 176], footprint [4.4, 1.9], height 36, seed 49, anchor [152, 159.5], collapse_frames 9. reference.png = render at the final size. Glow: intact 0.1% (forge), damaged 0%, ruins 0.2%, collapse 0%. Captures: town_side_gate shows the hall behind the gatehouse with the soldiers drilling in front; town_overview shows it on its plot by the side gate.
+
+Barracks total: 65 generations (276 → 211).

@@ -22,5 +22,6 @@
 	"town_tower_corner_e_s": {"size": [148, 168], "footprint": [2.0, 2.0], "height": 50, "seed": 42, "kind": "KEEP", "role": "tower", "tag": "door_e_s", "anchor": [74, 157]},
 	"town_wall": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 43, "kind": "CASTLE_WALL", "role": "wall", "tag": "", "anchor": [127.4, 126.2], "strip": true, "period": 1.5},
 	"town_postern": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 45, "kind": "GATE", "role": "gate", "tag": "postern", "anchor": [127.4, 126.2], "strip": true, "period": 1.5},
-	"town_gate": {"size": [112, 152], "footprint": [2.0, 1.1], "height": 34, "seed": 44, "kind": "GATE", "role": "gate", "tag": "", "anchor": [70, 131]}
+	"town_gate": {"size": [112, 152], "footprint": [2.0, 1.1], "height": 34, "seed": 44, "kind": "GATE", "role": "gate", "tag": "", "anchor": [70, 131]},
+	"barracks": {"size": [232, 176], "footprint": [4.4, 1.9], "height": 36, "seed": 49, "kind": "BARRACKS", "role": "barracks", "tag": "", "anchor": [152, 159.5], "collapse_frames": 9}
 }

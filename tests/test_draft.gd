@@ -109,14 +109,70 @@ static func run(t) -> void:
 	t.check(six_bad == 0, "six loadout slots fit left of MANIFEST without touching (%d)" % six_bad)
 	var prep := PrepareScreen.new()
 	prep.setup(MissionBook.last_judgement(), PackedStringArray(["doom", "heaven"]))
-	t.check(prep.tab == PowerBook.AUTHORITIES.find("veil") and Array(prep.shown()) == Array(PowerBook.of_authority("veil")),
+	t.check(prep.tab == prep.tabs().find("veil") and Array(prep.shown()) == Array(PowerBook.of_authority("veil")),
 		"the screen opens on the first pick's tab (%d)" % prep.tab)
 	t.check(prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0"
 		and prep.hit(PrepareScreen.slot_rect(1, prep.draft.slots).get_center()) == "slot:1"
 		and prep.hit(PrepareScreen.cell_rect(0).get_center()) == String(PowerBook.of_authority("veil")[0])
 		and prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest",
 		"tabs, slots, MANIFEST and the open tab's cards answer the mouse")
+	# Tabs (v0.08): one per Authority with a power in the mission's pool, in AUTHORITIES order.
+	t.check(Array(prep.tabs()) == PowerBook.AUTHORITIES, "Last Judgement shows all six Authorities' tabs (%s)" % [prep.tabs()])
 	prep.free()
+	var pooled_prep := PrepareScreen.new()
+	pooled_prep.setup(pooled, PackedStringArray())
+	t.check(pooled_prep.tabs() == PackedStringArray(["veil", "disorder"]),
+		"a pool of Silent Doom and Discord shows only Veil and Disorder (%s)" % [pooled_prep.tabs()])
+	t.check(pooled_prep.hit(PrepareScreen.tab_rect(1, 2).get_center()) == "tab:1"
+		and PrepareScreen.tab_rect(1, 2).end.x <= PrepareScreen.TAB_AT.x + PrepareScreen.TAB_ROW
+		and PrepareScreen.tab_rect(1, 2).size.x == 214.0,
+		"and its two tabs share the 432-px row (%s)" % PrepareScreen.tab_rect(1, 2))
+	pooled_prep.set_tab(1)
+	t.check(Array(pooled_prep.shown()) == ["discord"], "the second tab holds Discord (%s)" % [pooled_prep.shown()])
+	# Difficulty: a mission that sets the town's readiness itself has no selector to hit.
+	t.check(pooled_prep.mission.chooses_difficulty() and pooled_prep.hit(PrepareScreen.arrow_rect(-1).get_center()) == "diff_prev",
+		"a mission that chooses its difficulty on Prepare has the arrows")
+	pooled_prep.free()
+	var fixed := MissionDef.new()
+	fixed.profile = "unaware"
+	var fixed_prep := PrepareScreen.new()
+	fixed_prep.setup(fixed, PackedStringArray())
+	var arrows := ""
+	for side in [-1, 1]:
+		var r := PrepareScreen.arrow_rect(side)
+		for p in [r.get_center(), r.position + Vector2.ONE, r.end - Vector2.ONE]:
+			arrows += fixed_prep.hit(p)
+	t.check(not fixed_prep.mission.chooses_difficulty() and arrows == "",
+		"a mission with a fixed profile never offers the difficulty arrows ('%s')" % arrows)
+	fixed_prep.free()
+
+	# Clicks (v0.08): a card that does not fit leaves the draft as it was and says why; MANIFEST needs one pick.
+	var click := PrepareScreen.new()
+	click.setup(MissionBook.last_judgement(), PackedStringArray(Mission.DEFAULT_LOADOUT))
+	var emitted: Array[String] = []
+	click.action.connect(func(what: String) -> void: emitted.append(what))
+	click.set_tab(click.tabs().find("veil"))
+	var before := click.draft.picks.duplicate()
+	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("doom")).get_center())
+	t.check(click.draft.picks == before and click.refused_reason == "Not enough Divine Power",
+		"a card over the Divine Power is refused with its reason ('%s', %s)" % [click.refused_reason, click.draft.picks])
+	click.draft.preselect(PackedStringArray(["doom", "wisp", "discord", "heaven", "blight", "thorns"]))
+	click.set_tab(click.tabs().find("ruin"))
+	before = click.draft.picks.duplicate()
+	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("tornado")).get_center())
+	t.check(click.draft.picks == before and click.refused_reason == "No free slot",
+		"a card with no free slot is refused with its reason ('%s', %s)" % [click.refused_reason, click.draft.picks])
+	click.draft.preselect(PackedStringArray(["heaven"]))
+	t.check(click.can_manifest(), "one pick lights MANIFEST")
+	click.draft.preselect(PackedStringArray())
+	click.refused_reason = ""
+	click.click(PrepareScreen.MANIFEST_RECT.get_center())
+	t.check(not click.can_manifest() and emitted.is_empty() and click.refused_reason != "",
+		"MANIFEST with nothing picked does not go, and says why (%s, '%s')" % [emitted, click.refused_reason])
+	click.draft.preselect(PackedStringArray(["heaven"]))
+	click.click(PrepareScreen.MANIFEST_RECT.get_center())
+	t.check(emitted.size() == 1 and emitted[0] == "manifest", "and with one pick it does (%s)" % [emitted])
+	click.free()
 	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("doom")) == "10 s"
 		and PrepareScreen.cooldown_text(PowerBook.get_power("nova")) == "120 s",
 		"a card shows Silent Doom's 10 s and Nova's 120 s without a decimal")

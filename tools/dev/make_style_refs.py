@@ -29,7 +29,7 @@ BOXES = {
     "citadel_gate": CASTLE,
     "town_tower": ("TownMap_Component4.png", (40, 470, 185, 695)),
     "town_tower_corner": ("TownMap_Component4.png", (40, 470, 185, 695)),
-    "town_wall": ("TownMap_Component4.png", (40, 40, 300, 245)),
+    "town_wall": ("TownMap_Component4.png", (310, 66, 535, 250)),
     "town_gate": ("TownMap_Component4.png", (35, 210, 405, 495)),
     "town_postern": ("TownMap_Component4.png", (425, 280, 610, 470)),
     "bell_tower": ("TownMap_Component4.png", (495, 470, 620, 700)),

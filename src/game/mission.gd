@@ -179,11 +179,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
 	if _crowd.bell != null:
 		_crowd.bell.climbing_started.connect(func():
-			var soldier := is_instance_valid(_crowd.bell.keeper) and _crowd.bell.keeper.soldier  # (after a takeover)
-			_rules.banner.emit("A SOLDIER CLIMBS THE TOWER" if soldier else "THE BELLKEEPER CLIMBS THE TOWER"))
+			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
 		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
-		_crowd.bell.keeper_replaced.connect(func(): _rules.banner.emit("A SOLDIER TAKES THE BELL ROPE"))
+		_crowd.bell.keeper_replaced.connect(func():
+			_rules.banner.emit(bell_hand(_crowd.bell) + " TAKES THE BELL ROPE"))
 	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty():
 		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
 		_crowd.engineers.rebuilt.connect(func(s: Structure):
@@ -283,6 +283,19 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 func _on_structure_blighted(s: Structure) -> void:
 	if is_instance_valid(_rules):
 		_rules.banner.emit(blight_banner(s))
+
+
+## Who is on the bell rope, for its banners: the bellkeeper, a soldier who took it over (v0.07), or the watchman -- or
+## a citizen the warning passed to -- climbing in a dead keeper's place (v0.08, The Warning).
+static func bell_hand(bell: BellNetwork) -> String:
+	if not is_instance_valid(bell.keeper):
+		return "THE BELLKEEPER"
+	var p := bell.keeper
+	if p.soldier:
+		return "A SOLDIER"
+	if p.profile == null or p.profile.role == CitizenProfile.Role.BELLKEEPER:
+		return "THE BELLKEEPER"
+	return "THE WATCHMAN" if p.profile.role == CitizenProfile.Role.WATCHMAN else "A CITIZEN"
 
 
 static func blight_banner(s: Structure) -> String:

@@ -33,6 +33,21 @@ static func run(t) -> void:
 		"Organized by default; named tiers from the command line")
 	t.check(u.lines().size() == 3 and p.lines().size() == 6, "the Defense Profile lists each response (%s)" % [p.lines()])
 
+	# The Warning's town (v0.08): Organized's bell and fire brigade, marshals and rescue squads, but no escorts.
+	var w := ResponseProfile.unaware()
+	t.check(w.bell and is_equal_approx(w.bell_climb, 8.0) and w.fire_crew == o.fire_crew and w.fire_from == o.fire_from
+		and w.engineer_teams == 0 and not w.boats and not w.rite,
+		"Unaware: a bell with an 8 s climb and Organized's fire brigade")
+	t.check(w.escorts_per_duty == 0 and w.marshals_per_exit == o.marshals_per_exit and w.rescue_squads == o.rescue_squads,
+		"Unaware: no escorts; marshals and rescue squads as at Organized")
+	t.check(w.tier_name() == "Unaware" and o.tier_name() == "Organized" and w.lines().size() == o.lines().size(),
+		"Unaware has its own name and a Defense Profile (%s)" % [w.lines()])
+	var wm := MissionDef.new()
+	wm.profile = "unaware"
+	t.check(wm.response_profile(ResponseProfile.Tier.GOD_RESISTANT).tier_name() == "Unaware"
+		and MissionDef.new().response_profile(ResponseProfile.Tier.PREPARED).tier == ResponseProfile.Tier.PREPARED,
+		"a mission's own profile overrides the chosen difficulty; otherwise the choice holds")
+
 	# The save remembers the difficulty.
 	var path := "user://test_profile_save.cfg"
 	var save := SaveFile.new()

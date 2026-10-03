@@ -66,6 +66,8 @@ func chooses_difficulty() -> bool:
 	return profile == ""
 
 
-## The town's response for this mission, given the difficulty chosen on Prepare.
+## The town's response for this mission: the difficulty chosen on Prepare, unless the mission sets its own.
 func response_profile(chosen: ResponseProfile.Tier) -> ResponseProfile:
+	if profile == "unaware":
+		return ResponseProfile.unaware()
 	return ResponseProfile.for_tier(chosen)

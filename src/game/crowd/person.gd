@@ -97,6 +97,9 @@ const ENG_HAFT := Color("6b4428")
 const ENG_IRON := Color("a0a6ae")
 const KEEPER_COAT := Color("2c3a5c")
 const KEEPER_BADGE := Color("e0b84a")
+## The watchman (v0.08): a dark cloak, and a lit lantern in his leading hand.
+const WATCH_CLOAK := Color("2a2630")
+const WATCH_LANTERN := Color("ffd27a")
 const SOL_MAIL := Color("6a6f78")
 const SOL_MAIL_HI := Color("8d939c")
 const SOL_HELM := Color("484d56")
@@ -528,14 +531,15 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 
 
 ## Something happened within sight or earshot at `from`: stop and look at it for a moment. Only a calm or recovering
-## citizen does; the frightened and the fleeing are past looking.
-func observe(from: Vector2) -> void:
+## citizen does; the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
+## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
+func observe(from: Vector2, seconds := -1.0) -> void:
 	if soldier or state == State.DEAD or not (mind == Mind.CALM or mind == Mind.RECOVER):
 		return
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
 	_threat = from
-	_observe_left = rng.randf_range(OBSERVE_SECONDS.x, OBSERVE_SECONDS.y)
+	_observe_left = seconds if seconds > 0.0 else rng.randf_range(OBSERVE_SECONDS.x, OBSERVE_SECONDS.y)
 	_goal = Vector2.INF
 	_path = PackedVector2Array()
 	_leg = 0
@@ -1011,7 +1015,8 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(-3, -10 + lift, 6, 1, robe.lightened(0.2))
 		_px(-1, -10 + lift, 1, 8, CLERGY_STOLE)
 	else:
-		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else _tunic
+		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else (
+			WATCH_CLOAK if role == CitizenProfile.Role.WATCHMAN else _tunic)
 		if sick:
 			coat = coat.lerp(tint, SICK_CLOTH)
 		if top_only == 0:
@@ -1038,6 +1043,11 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(hx - 1, arm_y - 2 + lift, 3, 1, ENG_IRON)
 	else:
 		_px(-2, -13 + lift, 4, 1, _hair)
+	if role == CitizenProfile.Role.WATCHMAN and state != State.DEAD:
+		# His lantern, hanging from the leading hand: an iron cap over a 1x2 glow.
+		var lx := 3 if f > 0 else -4
+		_px(lx, arm_y + 3 + lift, 1, 1, COL_DARK)
+		_px(lx, arm_y + 4 + lift, 1, 2, WATCH_LANTERN)
 	if state != State.DEAD or _char < 0.5:
 		_px(0 if f > 0 else -1, -12 + lift, 1, 1, COL_DARK)
 	if mind == Mind.CONFUSED and state != State.DEAD:

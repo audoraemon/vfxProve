@@ -141,6 +141,27 @@ static func run(t) -> void:
 	t.check(not open_air.is_alive() and boarding.is_alive(), "someone who boards a boat before the strike is not taken")
 	boarding.inside = false
 	ctx.overhead.free()
+
+	# The witness (v0.08, Crowd.nearest_witness()): the nearest living person within DOOM_WITNESS, never one inside or
+	# dead -- the rule above, and The Warning's relay.
+	_clear_round(crowd)
+	var scene := Vector2(8.0, 20.0)
+	var near_one: Person = crowd.citizens[60]
+	var farther: Person = crowd.soldiers[3]
+	var indoors: Person = crowd.citizens[61]
+	var corpse: Person = four[0]
+	near_one.ground_pos = scene + Vector2(1.0, 0.0)
+	farther.ground_pos = scene + Vector2(0.0, 1.5)
+	indoors.ground_pos = scene + Vector2(0.3, 0.0)
+	indoors.inside = true
+	corpse.ground_pos = scene + Vector2(0.0, 0.4)
+	t.check(not corpse.is_alive() and crowd.nearest_witness(scene) == near_one,
+		"the nearest witness is the nearer of two, past the one inside and the dead")
+	t.check(crowd.nearest_witness(scene, near_one) == farther, "a soldier witnesses too; `exclude` is passed over")
+	near_one.ground_pos = scene + Vector2(2.1, 0.0)
+	farther.ground_pos = scene + Vector2(0.0, -2.5)
+	t.check(crowd.nearest_witness(scene) == null, "nobody within %.1f: no witness" % Crowd.DOOM_WITNESS)
+	indoors.inside = false
 	_done(made)
 
 	# Blight: its target, its alarm, and what each loses.

@@ -126,6 +126,8 @@ static func sprite(n: String) -> Dictionary:
 		# Its chimney's top (sprite px) for ChimneySmoke; INF when it has none. own_smoke: its smoke is drawn in.
 		"chimney": Vector2(m.chimney[0], m.chimney[1]) if m.has("chimney") else Vector2.INF,
 		"own_smoke": bool(m.get("own_smoke", false)),
+		# The building's own footprint (ground units) when the sprite covers less than its plot: its shadow's size.
+		"shadow": Vector2(m.shadow[0], m.shadow[1]) if m.has("shadow") else Vector2.ZERO,
 	}
 	_sets[n] = built
 	return built

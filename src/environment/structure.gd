@@ -526,6 +526,23 @@ func _sync_sprite() -> void:
 		_top_view.set_color(Color(self_modulate, 1.0 - gone))
 
 
+## A sprite building's ground shadow: its footprint's, or, when the sprite covers less than its plot (the cathedral),
+## the building's own footprint from the manifest, centred on the plot (mirrored sprites swap its sides).
+func _sprite_shadow() -> PackedVector2Array:
+	var own: Vector2 = sprite.get("shadow", Vector2.ZERO)
+	if own == Vector2.ZERO:
+		return _shadow()
+	if sprite.mirror:
+		own = Vector2(own.y, own.x)
+	var c := footprint.get_center()
+	var g0 := c - own * 0.5
+	var g2 := c + own * 0.5
+	var lean := Vector2(6, -3)
+	return PackedVector2Array([Iso.ground_to_screen(g0) - _base,
+		Iso.ground_to_screen(Vector2(g2.x, g0.y)) - _base + lean, Iso.ground_to_screen(g2) - _base + lean,
+		Iso.ground_to_screen(Vector2(g0.x, g2.y)) - _base])
+
+
 func _new_view() -> SpriteView:
 	var v := SpriteView.new().setup(sprite, _s[3], _s[1])
 	v.set_light(_sprite_light[0], _sprite_light[1], scorch, frost, _sprite_light[2])
@@ -537,7 +554,7 @@ func _new_view() -> SpriteView:
 ## the sprite; see _sync_sprite()).
 func _draw_sprite_frame(light: Color) -> void:
 	if not destroyed:
-		_quad(_shadow(), SHADOW)
+		_quad(_sprite_shadow(), SHADOW)
 	var amb := lights.ambient if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
 	_sprite_light = [light, amb, t]

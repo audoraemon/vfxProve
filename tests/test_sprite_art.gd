@@ -174,6 +174,16 @@ static func _structure(t) -> void:
 	var at: Vector2 = cat.sprite.anchor
 	t.check(cat.view_box().encloses(Rect2(cat.base_position() - at, cat.sprite.size)),
 		"the view box holds the whole sprite")
+	# The cathedral's sprite covers less than its plot: its shadow is the building's, centred on the plot.
+	var own := cat._sprite_shadow()
+	var plot := cat._shadow()
+	var lean := Vector2(6, -3)
+	t.check(own[1].x - own[3].x < plot[1].x - plot[3].x - 20.0, "a sprite smaller than its plot casts a smaller shadow")
+	t.check(((own[0] + own[2] - lean) * 0.5).distance_to((plot[0] + plot[2] - lean) * 0.5) < 1.0,
+		"centred on the plot")
+	var hut := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	t.check(hut._sprite_shadow() == hut._shadow(), "a sprite without its own shadow casts its footprint's")
+	hut.free()
 	cat.free()
 	var proc := _make(Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, 8, &"house", &"townhouse")
 	t.check(proc.sprite.is_empty() and proc.sprite_state() == &"", "a building without a sprite keeps its art")

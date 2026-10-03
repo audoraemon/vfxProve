@@ -60,6 +60,24 @@ static func run(t) -> void:
 	t.check(win_clock.hud_text(rules) == "Omen fades 1:23", "the clock's line shows the time (%s)" % win_clock.hud_text(rules))
 	t.check(lose_clock.hud_text(rules) == "", "a clock with no label stays off the panel")
 
+	# The Warning's (v0.08 M4): the bell rung fails it, off the panel; the warning stopped needs its director; Unseen
+	# fails at Local Emergency.
+	var bell_silent := BellSilentObjective.new()
+	t.check(bell_silent.check(rules) == P and bell_silent.hud_text(rules) == "", "a silent bell is pending, off the panel")
+	var was: BellNetwork.State = crowd.bell.state
+	crowd.bell.state = BellNetwork.State.RUNG
+	t.check(bell_silent.check(rules) == F and bell_silent.reason == "bell", "the bell rung fails it")
+	crowd.bell.state = was
+	var warning := WarningObjective.new()
+	t.check(warning.check(rules) == P and warning.label == "Stop the warning" and warning.reason == "warning",
+		"with no Warning director the warning is never stopped")
+	var unseen := UnseenObjective.new()
+	t.check(unseen.check(rules) == P and unseen.label == "Unseen", "Unseen is pending in a quiet town")
+	for i in AlarmManager.LOCAL_EVENTS:
+		crowd.alarms.incident(TownLayout.MARKET_SQUARE.get_center())
+	crowd.alarms.update(crowd.alarm, 0, 0.0)
+	t.check(unseen.check(rules) == F, "and fails at Local Emergency")
+
 	# A broken city with the Citadel still standing is not enough.
 	_break(rules.stability)
 	t.check(citadel.check(rules) == P, "a broken city with the Citadel standing is still pending")

@@ -23,3 +23,23 @@ static func run(t) -> void:
 	for m in MissionBook.all():
 		ids.append(m.id)
 	t.check(ids.has(MissionBook.LAST_JUDGEMENT), "the book lists it (%s)" % [ids])
+
+	# The Warning (v0.08 M4): Tier 1, its own small pool and an Unaware town, first on the board.
+	var w := MissionBook.warning()
+	t.check(w.id == MissionBook.WARNING and w.tier == 1 and w.slots == 3 and w.dp_capacity == 6,
+		"The Warning is Tier 1, 3 slots, 6 DP")
+	t.check(Array(w.powers()) == ["whisper", "doom", "wisp", "discord", "thorns"], "its pool is the five small powers (%s)"
+		% [w.powers()])
+	t.near(w.clock, 120.0, 0.001, "on a 2:00 clock")
+	t.check(w.profile == "unaware" and not w.chooses_difficulty() and not w.scored and w.director == WarningDirector,
+		"an Unaware town, unscored, with WarningDirector")
+	t.check(w.response_profile(ResponseProfile.Tier.GOD_RESISTANT).tier_name() == "Unaware", "whatever difficulty was chosen")
+	var w_reasons := []
+	for o in w.objectives():
+		w_reasons.append(o.reason)
+	t.check(w_reasons == ["warning", "bell", "omen"], "its objectives in order (%s)" % [w_reasons])
+	t.check(w.bonuses().size() == 1 and w.bonuses()[0].label == "Unseen", "one bonus, Unseen")
+	t.check(MissionBook.all()[0].id == MissionBook.WARNING and MissionBook.get_mission(MissionBook.WARNING).id == "warning",
+		"it is first in the book")
+	for key in w.default_loadout:
+		t.check(w.allows(key), "its default loadout is in its pool (%s)" % key)

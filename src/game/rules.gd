@@ -175,6 +175,15 @@ func lose_time(seconds: float) -> void:
 	time_left = maxf(0.0, time_left - seconds)
 
 
+## The mission's crowd and town, for its objectives and its director (v0.08).
+func crowd() -> Crowd:
+	return _crowd
+
+
+func town() -> Town:
+	return _town
+
+
 ## The power in a slot, or an empty dictionary for a slot nothing was drafted into.
 func power(slot: int) -> Dictionary:
 	if slot < 0 or slot >= loadout.size():

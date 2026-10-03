@@ -120,8 +120,15 @@ Spec: `docs/superpowers/specs/2026-10-03-pixellab-people-design.md`. Plan: `docs
 
 ## Before merging
 
-1. **Worst-frame bump:** the first draw of each sprite likely compiles the shader and uploads textures. Warm them up at load, then re-bench on a quiet machine.
-2. **The keep's falling banner:** at 20% health the procedural banner drops; it is hidden on the sprite keep. Animate it, or leave it out.
-3. **The cathedral:** accept the 256-px cathedral, or generate it in two parts.
-4. **Decide on the rest:** convert the remaining components (the recipe is in the log) or keep the mix.
-5. `concepts/TOWN REF/` is untracked in both checkouts. The style refs were cut from it and committed; whether to commit the sheet is your call.
+Fixed (2026-10-03):
+- **The cathedral's glowing sandstone.** The sprite shader's glow rule took the cathedral's pale stone for lit windows: 19% of it ignored the dim, the effects' light and the char. Glow now needs a very bright, strongly saturated warm colour; the cathedral is at 0.2%, its stained-glass highlights. `tools/dev/check_sprite_glow.py` flags any sprite over 5%.
+- **The Citadel's 20% banner.** PixelLab inpainted the keep's banners and flag into bare stone, on both the intact and the damaged keep (40 generations). At the drop the cut-out banners slide down and fade, and the keep stays bannerless.
+- **The cathedral's shadow.** It is now the building's own footprint (2.6 × 4.9), centred, not the whole 4.2 × 6.2 plot.
+
+Checked, not a sprite problem:
+- **The worst-frame bump.** With every frame over 12 ms logged, the spikes are spread through the whole run in both modes, not bunched at a first draw. The procedural build's worst frames were the higher ones (32 and 47 ms, against 26). No warm-up added.
+
+Still open:
+1. **The cathedral's size:** accept the 256-px cathedral, or generate it in two parts.
+2. **Decide on the rest:** convert the remaining components (the recipe is in the log) or keep the mix.
+3. **Where it merges:** `feat/Develop-Main` is the main line since 2026-10-03. Merge or cherry-pick is your call.

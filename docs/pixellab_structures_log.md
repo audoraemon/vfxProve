@@ -81,3 +81,12 @@ Characters made with `tools/dev/pixellab_api.py character --size 16` (standard m
 | Rescue | 21 + 21 | First: no visible shovel, red like the marshal. Re-rolled: "holding a big iron shovel in both hands, no spear, no shield" |
 
 **People total: 384 generations** (1297 → 913). **Everything so far: 1087** (2000 → 913).
+
+## Fixes (2026-10-03)
+
+| Call | Cost | Result |
+|---|---|---|
+| `inpaint` the keep's intact still: banners and flag masked (`tools/dev/banner_mask.py`), "bare pale grey cut stone… only the bare flagpole", seed 801 | 20 | Clean. 711 px changed, all inside the mask but 3 |
+| `inpaint` the keep's damaged still, the same with "cracked… scorch marks", seed 802 | 20 | The banner patches come out a little paler than the wall round them; they read as where the banners hung. Kept |
+
+**Total so far: 1127** (2000 → 873).

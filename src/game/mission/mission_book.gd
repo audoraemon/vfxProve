@@ -30,6 +30,7 @@ static func warning() -> MissionDef:
 	m.brief = PackedStringArray(["A star falls over the Main Gate.", "A watchman runs to wake the bell."])
 	m.goal = "Stop the warning before the bell tolls, or until the omen fades"
 	m.goal_label = "Stop the warning"
+	m.lose = "The bell tolls before the omen fades"
 	m.slots = 3
 	m.dp_capacity = 6
 	m.pool = PackedStringArray(["whisper", "doom", "wisp", "discord", "thorns"])
@@ -58,6 +59,7 @@ static func last_judgement() -> MissionDef:
 	m.brief = PackedStringArray(["Aldermere and its Royal Citadel.", "Bring the whole kingdom down."])
 	m.goal = "Destroy the Citadel and break the city before %s" % UiTheme.clock(Rules.MISSION_SECONDS)
 	m.goal_label = "The city has fallen"
+	m.lose = "%d citizens escape, or the time runs out" % Rules.ESCAPE_LIMIT
 	m.slots = 6
 	m.dp_capacity = 14
 	m.clock = Rules.MISSION_SECONDS

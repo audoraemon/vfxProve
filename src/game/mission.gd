@@ -56,6 +56,13 @@ const TEST_SHOTS := [0.5, 2.0, 12.0, 24.0, 34.0, 44.0]
 ## How many banner frames the scripted run takes before it stops bothering.
 const BANNER_SHOTS := 3
 const TEST_END := 34.0
+## The Warning's scripted run (v0.08, --mission=warning --mission-test) casts nothing and lets the bell ring: frames
+## of the start, the falling star, the watchman's run under his marker, and -- the camera turned west, to
+## WARNING_LOOK_AT, between WARNING_LOOK_AWAY's two times -- the edge arrow pointing back at the messenger.
+const WARNING_SHOTS := [0.5, 2.5, 9.0, 15.0]
+const WARNING_LOOK_AWAY := [14.0, 16.0]
+const WARNING_LOOK_AT := Vector2(-12.0, 8.0)
+const WARNING_TEST_END := 45.0
 
 var _bf: Battlefield
 var _town: Town
@@ -313,15 +320,17 @@ static func blight_banner(s: Structure) -> String:
 
 
 func _on_over(won: bool, reason: String) -> void:
-	var title := "THE CITY HAS FALLEN"
-	if not won:
-		title = "THE PEOPLE ESCAPED" if reason == "escapes" else "MANIFESTATION ENDED"
-	_rules.banner.emit(title)
+	_rules.banner.emit(ResultsScreen.title_for(won, reason))
 	if _scripted:
 		# The scripted runs have no Results screen to show, so they keep printing what they found.
-		print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
-		for line: Dictionary in _rules.stat_lines():
-			print("  %-22s %8s %6d" % [line.label, line.value, line.points])
+		if _rules.mission.scored:
+			print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
+			for line: Dictionary in _rules.stat_lines():
+				print("  %-22s %8s %6d" % [line.label, line.value, line.points])
+		else:
+			var res := _rules.result()
+			print("MISSION result won=%s reason=%s time=%.1f relays=%s" % [won, reason, float(res.time),
+				res.get("relays", 0)])
 	_play_ending()
 
 
@@ -415,13 +424,20 @@ func _pan(by: Vector2) -> void:
 	_bf.camera.position = (_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX)
 
 
-## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line.
+## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line. The
+## Warning's (v0.08) casts nothing: see WARNING_SHOTS.
 func _mission_test() -> void:
-	# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
-	_aim.pick(3)
-	_aim.hover(TownLayout.CITADEL_ORIGIN)
-	var casts := TEST_CASTS.duplicate()
-	var shots := TEST_SHOTS.duplicate()
+	var judgement := _def.id == MissionBook.LAST_JUDGEMENT
+	var prefix := "mission" if judgement else _def.id
+	if judgement:
+		# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
+		_aim.pick(3)
+		_aim.hover(TownLayout.CITADEL_ORIGIN)
+	var casts := TEST_CASTS.duplicate() if judgement else []
+	var shots := TEST_SHOTS.duplicate() if judgement else WARNING_SHOTS.duplicate()
+	var looks := [] if judgement else WARNING_LOOK_AWAY.duplicate()
+	var framed := _bf.camera.position
+	var end := TEST_END if judgement else WARNING_TEST_END
 	# Banners are the one thing a fixed timetable cannot catch: they fire when the town happens to break. The
 	# run takes its own shot a moment after each of the first few, so the layout is actually seen.
 	var banner_shots: Array[String] = []
@@ -431,9 +447,12 @@ func _mission_test() -> void:
 	)
 	var banners_taken := 0
 	var t := 0.0
-	while t < TEST_END:
+	while t < end:
 		await get_tree().process_frame
 		t += get_process_delta_time()
+		if not looks.is_empty() and t >= float(looks[0]):
+			looks.pop_front()
+			_bf.camera.position = framed if looks.is_empty() else Iso.ground_to_screen(WARNING_LOOK_AT).round()
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
 			var slot := int(c[1])
@@ -447,10 +466,10 @@ func _mission_test() -> void:
 			_rules.cast(slot, c[2], extra)
 		while not shots.is_empty() and t >= float(shots[0]):
 			var at: float = shots.pop_front()
-			await _bf.save_capture("mission_%04d.png" % roundi(at * 100.0))
+			await _bf.save_capture("%s_%04d.png" % [prefix, roundi(at * 100.0)])
 		while banners_taken < banner_shots.size():
 			banners_taken += 1
-			await _bf.save_capture("mission_banner_%d.png" % banners_taken)
+			await _bf.save_capture("%s_banner_%d.png" % [prefix, banners_taken])
 			print("banner ", banners_taken, ": ", banner_shots[banners_taken - 1])
 	print("MISSION test buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
 		_rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),

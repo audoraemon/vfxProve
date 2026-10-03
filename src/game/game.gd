@@ -48,6 +48,12 @@ const SAMPLE_RESULT := {
 		{"label": "Chains", "value": "2", "points": 600},
 	],
 }
+## What --show=results-warning displays (v0.08): The Warning won unseen, its messenger killed by Silent Doom.
+const SAMPLE_WARNING_RESULT := {
+	"mission": "warning", "won": true, "reason": "warning", "time": 21.4, "best": true,
+	"goal": {"label": "Stop the warning", "done": true}, "bonuses": [{"label": "Unseen", "earned": true}],
+	"solved_by": ["VEIL"], "relays": 0,
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
@@ -88,6 +94,14 @@ func _ready() -> void:
 	save = SaveFile.new().load_from(save_path)
 	mission_id = save.last_mission
 	loadout = save.loadout_for(mission_id)
+	# For the photographs (v0.08): --mission=<id> puts that mission on the board, Prepare or a paused run, with its
+	# default loadout when nothing was drafted for it.
+	var wanted := Battlefield.arg_value(args, "--mission")
+	if wanted != "":
+		mission_id = MissionBook.get_mission(wanted).id
+		loadout = save.loadout_for(mission_id)
+		if loadout.is_empty():
+			loadout = MissionBook.get_mission(mission_id).default_loadout
 	_fader = Fader.new()
 	_fader.name = "Fader"
 	add_child(_fader)
@@ -102,6 +116,9 @@ func _ready() -> void:
 				(_screen_node as PrepareScreen).preview(hover)
 		"results":
 			result = SAMPLE_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
+		"results-warning":
+			result = SAMPLE_WARNING_RESULT.duplicate(true)
 			go_to(Screen.RESULTS)
 		"pause":
 			go_to(Screen.MISSION)
@@ -425,6 +442,31 @@ func _flow_test() -> void:
 	await get_tree().process_frame
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Missions from the pause menu opens the board")
 	step.call(not is_instance_valid(_pause) and not is_instance_valid(_mission), "and the pause menu and mission are gone")
+
+	# The Warning (v0.08): picked by its id, its default loadout manifested, won when the omen fades -- an unscored
+	# result -- and Missions goes back to the board.
+	var kit := MissionBook.warning().default_loadout
+	await _until(func() -> bool: return not _fading, 5.0)
+	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
+	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
+		and (_screen_node as PrepareScreen).mission.id == MissionBook.WARNING and mission_id == MissionBook.WARNING,
+		"picking The Warning opens its draft")
+	(_screen_node as PrepareScreen).draft.preselect(kit)
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
+	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and loadout == kit
+		and _mission.rules().mission.id == MissionBook.WARNING,
+		"MANIFEST starts The Warning with its default loadout (%s)" % ",".join(loadout))
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	_mission.rules().time_left = 0.01
+	var faded := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	step.call(faded and _screen_node is ResultsScreen and String(result.get("reason", "")) == "omen"
+		and bool(result.get("won", false)) and not result.has("score"),
+		"the omen fading wins it, on unscored results (%s)" % result.get("reason", "?"))
+	on_action("results:missions")
+	await get_tree().process_frame
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission),
+		"Missions from the results returns to the board")
 	(_screen_node as MissionBoard).action.emit("back")
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back from the board returns to the title")
 	step.call(Engine.time_scale == 1.0, "and time runs at normal speed")

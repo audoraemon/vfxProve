@@ -1,7 +1,9 @@
 class_name Hud
 extends Control
 ## The in-mission HUD (spec §5): the clock above, the objectives to the left, the city's state to the right,
-## banners across the middle, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). It reads Rules, Crowd and
+## banners across the middle, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
+## without a score (v0.08: The Warning) lists its objectives top left, and its director's marked person -- the
+## messenger -- wears a gold marker, or an arrow at the screen's edge points to him. It reads Rules, Crowd and
 ## the Citadel and changes nothing; it redraws only when what it shows has changed.
 
 ## How long one banner stays up.
@@ -32,6 +34,14 @@ const PLATE_H := 12.0
 ## The Banishing Rite's bar under the clock (v0.05).
 const RITE_BAR := Vector2(120.0, 4.0)
 const RITE_TOP := 30.0
+## The screen height to lay out against before the Control has been sized (headless tests).
+const SCREEN_H := 360.0
+## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
+const ROW_H := 13.0
+## The messenger's marker (v0.08): a gold chevron this far above his feet while he is on screen, else an arrow at the
+## screen's edge, this far in, pointing at him.
+const MARKER_LIFT := 26.0
+const EDGE_MARGIN := 10.0
 
 var _rules: Rules
 var _crowd: Crowd
@@ -87,9 +97,10 @@ func advance(delta: float) -> void:
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners fade, a refused slot burns red and the last half minute pulses: while any of those
-	# is on screen the HUD is an animation and redraws every frame. The rest of the time it is a still picture.
-	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT:
+	# Banners fade, a refused slot burns red, the last half minute pulses and a marker follows its messenger (v0.08):
+	# while any of those is on screen the HUD is an animation and redraws every frame. The rest of the time it is a
+	# still picture.
+	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT or marker_shown():
 		_drawn = ""
 		queue_redraw()
 		return
@@ -105,6 +116,53 @@ func objective_text() -> String:
 	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
 		left = _town.citadel.fraction()
 	return "Destroy the Royal Citadel - %d%% left" % roundi(left * 100.0)
+
+
+## The objective panel of a mission without a score (v0.08), as [text, mark] rows: each primary objective with a line
+## to show (mark ""), then each bonus -- "ok" while it holds, "x" once it has failed.
+func objective_rows() -> Array:
+	var rows := []
+	for o in _rules.objectives:
+		var s := o.hud_text(_rules)
+		if s != "":
+			rows.append([s, ""])
+	for b in _rules.bonuses:
+		rows.append([b.hud_text(_rules), "x" if b.check(_rules) == Objective.Status.FAILED else "ok"])
+	return rows
+
+
+## The mission's director marks someone (v0.08: The Warning's messenger).
+func marker_shown() -> bool:
+	return _rules.director != null and _rules.director.marker() != Vector2.INF
+
+
+## Where the marked person's feet are on the screen, or Vector2.INF with nobody marked. The world point goes through
+## the camera's canvas transform (none before the HUD is in a tree: headless tests).
+func marker_screen() -> Vector2:
+	if not marker_shown():
+		return Vector2.INF
+	var world := Iso.ground_to_screen(_rules.director.marker())
+	return (get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY) * world
+
+
+## Where the edge arrow for an off-screen `point` sits: on the line from the screen's centre to it, EDGE_MARGIN inside
+## the frame.
+func edge_arrow(point: Vector2) -> Vector2:
+	var view := _view()
+	var mid := view * 0.5
+	var d := point - mid
+	var half := mid - Vector2.ONE * EDGE_MARGIN
+	var k := 1.0
+	if absf(d.x) > half.x:
+		k = half.x / absf(d.x)
+	if absf(d.y) * k > half.y:
+		k = half.y / absf(d.y)
+	return mid + d * k
+
+
+## The screen's size: the Control's once laid out, else 640 x 360.
+func _view() -> Vector2:
+	return Vector2(size.x if size.x > 1.0 else SCREEN_W, size.y if size.y > 1.0 else SCREEN_H)
 
 
 ## The city's state, top right, as [text, colour] pieces: each figure wears the colour of the stability part it
@@ -190,7 +248,8 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 ## Everything the HUD shows, as one string. Cheap to build, and it means a still frame is not redrawn sixty
 ## times a second while a four-minute mission's effects are already busy.
 func _signature() -> String:
-	var out := "%s|%s|%s|%d|%s" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
+	var out := "%s|%s|%s|%d|%s" % [UiTheme.clock(_rules.time_left),
+		objective_text() if _rules.mission.scored else str(objective_rows()), status_text(),
 		roundi(_rules.stability.total() * 200.0), rite_text()]
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), "p" if is_picked(i) else ""]
@@ -202,10 +261,15 @@ func _draw() -> void:
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
 	_draw_rite(w)
-	_draw_objectives()
+	if _rules.mission.scored:
+		_draw_objectives()
+	else:
+		_draw_rows()
 	_draw_status(w)
 	_draw_banners(w)
 	_draw_slots(w)
+	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
+	_draw_marker()
 
 
 func _draw_clock(w: float) -> void:
@@ -275,6 +339,51 @@ func _draw_objectives() -> void:
 	var escaped := "Escaped %d / %d" % [_crowd.escaped_count, Rules.ESCAPE_LIMIT]
 	var col := UiTheme.COL_BAD if _crowd.escaped_count >= Rules.ESCAPE_LIMIT - 8 else UiTheme.COL_DIM
 	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
+
+
+## The objective panel of a mission without a score (v0.08): objective_rows(), each with its tick or cross after it.
+func _draw_rows() -> void:
+	var rows := objective_rows()
+	if rows.is_empty():
+		return
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0))
+	draw_rect(Rect2(2.0, 2.0, wide + 10.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
+	var y := 14.0
+	for row: Array in rows:
+		var text := String(row[0])
+		UiTheme.text(self, Vector2(6.0, y), text, UiTheme.SIZE_SMALL)
+		if String(row[1]) != "":
+			UiTheme.mark(self, Vector2(6.0 + UiTheme.width(text, UiTheme.SIZE_SMALL) + 5.0, y - 7.0), String(row[1]) == "ok")
+		y += ROW_H
+
+
+## The messenger's marker (v0.08): a gold chevron over him while he is on screen, else an arrow at the screen's edge
+## pointing his way.
+func _draw_marker() -> void:
+	var feet := marker_screen()
+	if feet == Vector2.INF:
+		return
+	var view := _view()
+	var tip := feet - Vector2(0.0, MARKER_LIFT)
+	var dark := Color(0.04, 0.04, 0.06, 0.9)
+	if Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(tip):
+		var down := PackedVector2Array([tip + Vector2(-5.0, -7.0), tip + Vector2(5.0, -7.0), tip])
+		draw_colored_polygon(down, UiTheme.COL_GOLD)
+		down.append(down[0])
+		draw_polyline(down, dark, -1.0)
+		return
+	var at := edge_arrow(tip)
+	var dir := (tip - view * 0.5).normalized()
+	var side := Vector2(-dir.y, dir.x)
+	# On a dark disc, so it stands out from the town's warm roofs and stalls.
+	draw_circle(at - dir * 5.0, 10.0, dark)
+	draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, UiTheme.COL_GOLD_DARK, -1.0)
+	var arrow := PackedVector2Array([at, at - dir * 10.0 + side * 6.0, at - dir * 10.0 - side * 6.0])
+	draw_colored_polygon(arrow, UiTheme.COL_GOLD)
+	arrow.append(arrow[0])
+	draw_polyline(arrow, dark, -1.0)
 
 
 func _draw_status(w: float) -> void:

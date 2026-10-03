@@ -114,6 +114,9 @@ static func run(t) -> void:
 	six.free()
 	six_rules.free()
 
+	# The Warning (v0.08): the objective panel in place of the Citadel's, the messenger's marker and its edge arrow.
+	_warning(t, env, field, crowd, town)
+
 	hud.free()
 	aim.free()
 	rules.free()
@@ -125,3 +128,42 @@ static func run(t) -> void:
 	town.free()
 	crowd.free()
 	world.free()
+
+
+static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, town: Town) -> void:
+	var def := MissionBook.warning()
+	var rules := Rules.new().setup(def.default_loadout, null, env, field, crowd, town, def)
+	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
+	var director := (def.director.new() as MissionDirector).setup(rules, crowd, town, null) as WarningDirector
+	rules.director = director
+	var hud := Hud.new().setup(rules, crowd, town, null)
+	var rows := hud.objective_rows()
+	t.check(rows == [["Stop the warning", ""], ["Omen fades 2:00", ""], ["Unseen", "ok"]],
+		"The Warning's panel: the warning, the omen's clock, and Unseen ticked (%s)" % [rows])
+	for i in AlarmManager.LOCAL_EVENTS:
+		crowd.alarms.incident(TownLayout.MARKET_SQUARE.get_center())
+	crowd.alarms.update(crowd.alarm, 0, 0.0)
+	t.check(hud.objective_rows()[2] == ["Unseen", "x"], "and Unseen crossed after Local Emergency (%s)" % [hud.objective_rows()])
+	crowd.alarms.reset()
+
+	# Out of a tree there is no camera: the marker is the messenger's feet in world pixels.
+	t.check(director.messenger != null and hud.marker_shown()
+		and hud.marker_screen() == Iso.ground_to_screen(director.messenger.ground_pos),
+		"the marker sits on the messenger (%s)" % hud.marker_screen())
+	var messenger := director.messenger
+	director.messenger = null
+	t.check(not hud.marker_shown() and hud.marker_screen() == Vector2.INF, "and is gone with no messenger")
+	director.messenger = messenger
+	var inside := Rect2(Vector2.ONE * Hud.EDGE_MARGIN, Vector2(Hud.SCREEN_W, Hud.SCREEN_H) - Vector2.ONE * Hud.EDGE_MARGIN * 2.0)
+	var bad := ""
+	for far: Vector2 in [Vector2(5000.0, -3000.0), Vector2(-900.0, 180.0), Vector2(320.0, 2000.0), Vector2(-40.0, -40.0)]:
+		var at := hud.edge_arrow(far)
+		var on_edge := is_equal_approx(at.x, inside.position.x) or is_equal_approx(at.x, inside.end.x) \
+			or is_equal_approx(at.y, inside.position.y) or is_equal_approx(at.y, inside.end.y)
+		if not inside.grow(0.01).has_point(at) or not on_edge:
+			bad += " %s->%s" % [far, at]
+	t.check(bad == "", "an off-screen messenger's arrow sits on the frame, %d px in (bad:%s)" % [int(Hud.EDGE_MARGIN), bad])
+
+	hud.free()
+	rules.teardown()
+	rules.free()

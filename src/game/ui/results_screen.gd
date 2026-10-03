@@ -1,8 +1,9 @@
 class_name ResultsScreen
 extends Node
 ## Results (spec §5): the ending in gold for a win or red for a loss, the big rank letter, the score, NEW BEST!
-## when it is one, the stat table with what each line was worth, and Replay / Change powers / Missions. It is drawn
-## over the mission's frozen ruins, which Game keeps up underneath it.
+## when it is one, the stat table with what each line was worth, and Replay / Change powers / Missions. A mission
+## without a score (v0.08: The Warning) shows its goal and bonus ticked or crossed, the time and "Solved by" instead.
+## It is drawn over the mission's frozen ruins, which Game keeps up underneath it.
 
 ## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08).
 signal action(name: String)
@@ -13,6 +14,13 @@ const TABLE_X := 300.0
 const VALUE_R := 500.0
 const POINTS_R := 588.0
 const ROW := 14.0
+## An unscored mission's table (v0.08): its labels' left edge, its values' right edge, the first row and the row step.
+const PLAIN_L := 196.0
+const PLAIN_R := 444.0
+const PLAIN_TOP := 124.0
+const PLAIN_ROW := 22.0
+## What "Solved by" says when nothing solved it.
+const NOBODY := "-"
 
 var _result := {}
 var _ui: Control
@@ -22,9 +30,22 @@ var _hover := ""
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:
+	if reason in ["warning", "omen"]:
+		return "THE WARNING DIES"  # (v0.08: the messenger killed unseen, or the omen faded with the bell silent)
+	if reason == "bell":
+		return "THE BELL TOLLS"
 	if won:
 		return "THE CITY HAS FALLEN"
 	return "THE PEOPLE ESCAPED" if reason == "escapes" else "MANIFESTATION ENDED"
+
+
+## "Solved by" in an unscored mission's results (v0.08): the Authorities' titles, or NOBODY -- and NOBODY for a loss,
+## whose delays solved nothing.
+static func solved_text(result: Dictionary) -> String:
+	var by := PackedStringArray(result.get("solved_by", PackedStringArray()))
+	if not bool(result.get("won", false)) or by.is_empty():
+		return NOBODY
+	return ", ".join(by)
 
 
 ## 12450 -> "12,450".
@@ -83,6 +104,10 @@ func _draw_ui() -> void:
 	var title := title_for(won, String(_result.get("reason", "")))
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 60.0), title,
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD if won else UiTheme.COL_BAD)
+	if not _result.has("score"):
+		_draw_unscored()
+		_menu.draw_on(_ui, _hover)
+		return
 
 	# The rank on the left, big, with the score beside it.
 	var rank := String(_result.get("rank", "D"))
@@ -114,3 +139,39 @@ func _draw_ui() -> void:
 	UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(sum, UiTheme.SIZE_SMALL), y + 4.0), sum, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 
 	_menu.draw_on(_ui, _hover)
+
+
+## An unscored mission (v0.08): the mission's name under the title, then its goal and each bonus with a tick or a
+## cross, the time it took, "Solved by", and NEW BEST! when it is one.
+func _draw_unscored() -> void:
+	var called := MissionBook.get_mission(String(_result.get("mission", ""))).name
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(called, UiTheme.SIZE_BODY) * 0.5), 84.0), called,
+		UiTheme.SIZE_BODY, UiTheme.COL_DIM)
+	var y := PLAIN_TOP
+	var goal: Dictionary = _result.get("goal", {})
+	_plain_row(y, String(goal.get("label", "")), "", bool(goal.get("done", false)))
+	y += PLAIN_ROW
+	for b: Dictionary in _result.get("bonuses", []):
+		_plain_row(y, String(b.get("label", "")), "", bool(b.get("earned", false)))
+		y += PLAIN_ROW
+	_ui.draw_line(Vector2(PLAIN_L, y - 13.0), Vector2(PLAIN_R, y - 13.0), UiTheme.COL_GOLD_DARK, -1.0)
+	y += 4.0
+	_plain_row(y, "Time", UiTheme.clock(float(_result.get("time", 0.0))))
+	y += PLAIN_ROW
+	_plain_row(y, "Solved by", solved_text(_result))
+	y += PLAIN_ROW
+	if bool(_result.get("best", false)):
+		var best := "NEW BEST!"
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_BIG) * 0.5), y + 10.0), best,
+			UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+
+
+## One row of the unscored table, `y` its baseline: the label, then its value right-aligned -- or, with no value, a
+## tick for `ok` or a cross.
+func _plain_row(y: float, label: String, value: String, ok := false) -> void:
+	UiTheme.text(_ui, Vector2(PLAIN_L, y), label, UiTheme.SIZE_BODY)
+	if value != "":
+		UiTheme.text(_ui, Vector2(PLAIN_R - UiTheme.width(value, UiTheme.SIZE_BODY), y), value, UiTheme.SIZE_BODY,
+			UiTheme.COL_GOLD)
+	else:
+		UiTheme.mark(_ui, Vector2(PLAIN_R - 7.0, y - 8.0), ok)

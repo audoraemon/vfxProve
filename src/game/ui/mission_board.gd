@@ -13,8 +13,23 @@ const CARD_GAP := 12.0
 const CARD_TOP := 48.0
 ## The padding inside a card.
 const PAD := 10.0
-## The Tier badge's plate, top-right on a card.
-const BADGE_H := 16.0
+## The Tier badge's plate, top-right on a card: tall enough for its digit.
+const BADGE_H := 18.0
+## The badge's digit is drawn from these 5 x 7 bitmaps, DIGIT_PX screen pixels a cell: the pixel font's 5 is round at
+## the top-left like an S, and "TIER 5" read "TIER S" at every size it has.
+const DIGITS := [
+	[".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."],
+	["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+	[".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+	["####.", "....#", "....#", ".###.", "....#", "....#", "####."],
+	["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+	["#####", "#....", "#....", "####.", "....#", "....#", "####."],
+	[".###.", "#....", "#....", "####.", "#...#", "#...#", ".###."],
+	["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+	[".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+	[".###.", "#...#", "#...#", ".####", "....#", "....#", ".###."],
+]
+const DIGIT_PX := 2.0
 
 ## The mission picked, once "pick" is emitted.
 var chosen := ""
@@ -85,6 +100,16 @@ func best_line(def: MissionDef) -> String:
 	return "Won"
 
 
+## An unscored mission's best as marks (v0.08): [["Won", won], [each bonus's label, earned]], drawn with a tick or a
+## cross each.
+func best_marks(def: MissionDef) -> Array:
+	var best := _save.best(def.id) if _save != null else {}
+	var out := [["Won", bool(best.get("won", false))]]
+	for b in def.bonuses():
+		out.append([b.label, bool(best.get("bonus", false))])
+	return out
+
+
 func _pick() -> void:
 	chosen = missions[selected].id
 	UiSound.play(&"ui_manifest")
@@ -138,6 +163,18 @@ func _draw_ui() -> void:
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 
 
+## A digit from DIGITS, its top-left at `at`, with the one-pixel shadow every label wears.
+func _digit(at: Vector2, n: int, col: Color) -> void:
+	var rows: Array = DIGITS[clampi(n, 0, 9)]
+	for layer: Array in [[Vector2.ONE, UiTheme.COL_SHADOW], [Vector2.ZERO, col]]:
+		for y in rows.size():
+			var row := String(rows[y])
+			for x in row.length():
+				if row[x] == "#":
+					_ui.draw_rect(Rect2(at + layer[0] + Vector2(float(x), float(y)) * DIGIT_PX, Vector2.ONE * DIGIT_PX),
+						layer[1])
+
+
 ## One card, top to bottom: the name and its Tier badge, the brief, the goal, the loadout, the best result.
 func _draw_card(r: Rect2, def: MissionDef, on: bool) -> void:
 	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if on else UiTheme.COL_PANEL)
@@ -146,12 +183,16 @@ func _draw_card(r: Rect2, def: MissionDef, on: bool) -> void:
 	var room := r.size.x - PAD * 2.0
 	var text_col := UiTheme.COL_TEXT if on else UiTheme.COL_DIM
 
-	var tier := "TIER %d" % def.tier
-	var plate := Rect2(Vector2(r.end.x - PAD - UiTheme.width(tier, UiTheme.SIZE_SMALL) - 10.0, r.position.y + PAD),
-		Vector2(UiTheme.width(tier, UiTheme.SIZE_SMALL) + 10.0, BADGE_H))
+	# "TIER" in the font, its digit from DIGITS beside it.
+	var word_w := UiTheme.width("TIER", UiTheme.SIZE_SMALL)
+	var digit_w := 5.0 * DIGIT_PX
+	var plate := Rect2(Vector2(r.end.x - PAD - word_w - digit_w - 15.0, r.position.y + PAD),
+		Vector2(word_w + digit_w + 15.0, BADGE_H))
 	_ui.draw_rect(plate, Color(0.04, 0.04, 0.06, 0.92))
 	UiTheme.frame(_ui, plate, on)
-	UiTheme.text(_ui, plate.position + Vector2(5.0, 12.0), tier, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	var badge_col := UiTheme.COL_GOLD if on else UiTheme.COL_DIM
+	UiTheme.text(_ui, plate.position + Vector2(5.0, 13.0), "TIER", UiTheme.SIZE_SMALL, badge_col)
+	_digit(plate.position + Vector2(10.0 + word_w, 2.0), def.tier, badge_col)
 
 	var y := r.position.y + PAD + 14.0
 	for line in UiTheme.wrap(def.name, plate.position.x - x - 6.0, UiTheme.SIZE_BIG):
@@ -175,4 +216,13 @@ func _draw_card(r: Rect2, def: MissionDef, on: bool) -> void:
 	_ui.draw_line(Vector2(x, foot - UiTheme.LINE_SMALL * 2.0 - 4.0), Vector2(r.end.x - PAD, foot - UiTheme.LINE_SMALL * 2.0 - 4.0),
 		UiTheme.COL_GOLD_DARK, -1.0)
 	UiTheme.text(_ui, Vector2(x, foot - UiTheme.LINE_SMALL), loadout, UiTheme.SIZE_SMALL, text_col)
-	UiTheme.text(_ui, Vector2(x, foot), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	if def.scored:
+		UiTheme.text(_ui, Vector2(x, foot), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+		return
+	# An unscored mission (v0.08): "Won" and each bonus, each with a tick or a cross.
+	for entry: Array in best_marks(def):
+		var label := String(entry[0])
+		UiTheme.text(_ui, Vector2(x, foot), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+		x += UiTheme.width(label, UiTheme.SIZE_SMALL) + 5.0
+		UiTheme.mark(_ui, Vector2(x, foot - 7.0), bool(entry[1]))
+		x += 7.0 + 14.0

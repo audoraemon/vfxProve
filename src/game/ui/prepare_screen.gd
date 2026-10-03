@@ -313,8 +313,7 @@ func _draw_ui() -> void:
 	for i in keys.size():
 		_draw_card(i, String(keys[i]))
 	_draw_loadout()
-	if mission.chooses_difficulty():
-		_draw_profile()
+	_draw_profile()
 
 
 ## "4 / 6 slots   12 / 14 DP" at the header's right (v0.08's budget meter): gold once the slots or the Divine Power
@@ -369,16 +368,20 @@ static func profile_columns(lines: PackedStringArray, left: float, right: float)
 	return out
 
 
-## The bottom strip: "< ORGANIZED >" and the Defense Profile -- what the town will do this time.
+## The bottom strip: "< ORGANIZED >" and the Defense Profile -- what the town will do this time. A mission that sets
+## the town itself (v0.08: The Warning's UNAWARE) shows its profile with no arrows.
 func _draw_profile() -> void:
 	_ui.draw_rect(STRIP, UiTheme.COL_PANEL)
 	UiTheme.frame(_ui, STRIP, false)
-	var profile := ResponseProfile.for_tier(difficulty)
-	for side in [-1, 1]:
-		var r := arrow_rect(side)
-		_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == ("diff_prev" if side < 0 else "diff_next") else Color(0, 0, 0, 0.5))
-		UiTheme.text(_ui, r.position + Vector2(4.0, 11.0), "<" if side < 0 else ">", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-	UiTheme.text(_ui, Vector2(STRIP.position.x + 6.0, STRIP.position.y + 9.0), "DIFFICULTY", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var chooses := mission.chooses_difficulty()
+	var profile := mission.response_profile(difficulty)
+	if chooses:
+		for side in [-1, 1]:
+			var r := arrow_rect(side)
+			_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == ("diff_prev" if side < 0 else "diff_next") else Color(0, 0, 0, 0.5))
+			UiTheme.text(_ui, r.position + Vector2(4.0, 11.0), "<" if side < 0 else ">", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(STRIP.position.x + 6.0, STRIP.position.y + 9.0), "DIFFICULTY" if chooses else "THE TOWN",
+		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	var name := profile.tier_name().to_upper()
 	var mid := (arrow_rect(-1).end.x + arrow_rect(1).position.x) * 0.5
 	UiTheme.text(_ui, Vector2(roundf(mid - UiTheme.width(name, UiTheme.SIZE_SMALL) * 0.5), STRIP.position.y + 23.0), name,
@@ -388,7 +391,7 @@ func _draw_profile() -> void:
 	var label := "DEFENSE PROFILE"
 	UiTheme.text(_ui, Vector2(x0, STRIP.position.y + 9.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(x0 + UiTheme.width(label, UiTheme.SIZE_SMALL) + 8.0, STRIP.position.y + 9.0),
-		ResponseProfile.BLURBS[difficulty], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		profile.blurb(), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	var lines := profile.lines()
 	var cols := profile_columns(lines, PROFILE_LEFT, PROFILE_RIGHT)
 	for i in lines.size():
@@ -409,7 +412,7 @@ func _draw_panel() -> void:
 	var brief := [
 		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
 		["WIN", mission.goal],
-		["LOSE", "%d citizens escape, or the time runs out" % Rules.ESCAPE_LIMIT],
+		["LOSE", mission.lose],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
 		["LOADOUT", "%d slots, %d Divine Power to spend on them" % [mission.slots, mission.dp_capacity]],
 		["TEMPLE", "Its fall resets every cooldown, once"],

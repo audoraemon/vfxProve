@@ -21,6 +21,8 @@ const SHORT_STAGE := ["Normal", "Concern", "Local Em.", "City Em.", "Evac.", "Co
 var tier := DEFAULT
 ## A profile's own name when a mission sets it rather than a tier (v0.08: "Unaware"); "" for the tier's name.
 var title := ""
+## Its own line for the Prepare screen when a mission sets it (v0.08); "" for the tier's BLURBS line.
+var note := ""
 ## The Bell Network (v0.05 M2): a bellkeeper who climbs the tower at the first Local Emergency, and how long the
 ## climb takes.
 var bell := true
@@ -79,6 +81,7 @@ static func for_tier(t: Tier) -> ResponseProfile:
 static func unaware() -> ResponseProfile:
 	var p := for_tier(Tier.ORGANIZED)
 	p.title = "Unaware"
+	p.note = "An evening like any other: nobody guards the bell."
 	p.escorts_per_duty = 0
 	return p
 
@@ -90,6 +93,11 @@ static func tier_named(name: String) -> Tier:
 
 func tier_name() -> String:
 	return title if title != "" else NAMES[tier]
+
+
+## Its one line for the Prepare screen.
+func blurb() -> String:
+	return note if note != "" else BLURBS[tier]
 
 
 ## The Defense Profile: what the town will do, one short line each.

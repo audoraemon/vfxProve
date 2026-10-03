@@ -13,6 +13,8 @@ var brief := PackedStringArray()
 var goal := ""
 ## The goal in a few words, for the results (unscored missions).
 var goal_label := ""
+## How it is lost, for Prepare's briefing.
+var lose := ""
 ## Loadout: how many slots, and how much Divine Power the picks may cost in all (0: no budget).
 var slots := 4
 var dp_capacity := 0

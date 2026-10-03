@@ -94,6 +94,11 @@ static func run(t) -> void:
 	t.check(hud.flashing(1) and hud.banners() == PackedStringArray(["NO ONE TO WHISPER TO"]),
 		"a whisper at nobody flashes its slot and says so (%s)" % [hud.banners()])
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	# And at someone still shaking the last one off (v0.08.1): a banner of its own.
+	rules.refuse(1, "shaken")
+	t.check(hud.flashing(1) and hud.banners() == PackedStringArray(["THEY SHAKE OFF THE WHISPER"]),
+		"a whisper at someone shaken flashes its slot and says so (%s)" % [hud.banners()])
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
 
 	# Six powers (v0.08): six compact slots across the 640-px screen, none touching, each found by the mouse.
 	var six_rules := Rules.new().setup(PackedStringArray(["doom", "heaven", "wisp", "thorns", "discord", "blight"]), null,

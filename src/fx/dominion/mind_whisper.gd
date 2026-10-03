@@ -29,7 +29,8 @@ var _ring: QuadFx
 var _halo: QuadFx
 
 
-## The citizen a press at `at` whispers to: the nearest living one out in the open within PICK_R, or null.
+## The citizen a press at `at` whispers to: the nearest living one out in the open within PICK_R, or null. One still
+## shaking the last whisper off (Person.shaken(), v0.08.1) is picked all the same, so the refusal can name why.
 static func pick(field: EnemyField, at: Vector2) -> Person:
 	var best: Person = null
 	for e in field.in_radius(at, PICK_R):

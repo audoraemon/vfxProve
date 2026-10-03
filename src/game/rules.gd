@@ -8,8 +8,8 @@ extends Node
 
 ## A cast went out: the slot, its power key and where it landed.
 signal cast_made(slot: int, key: String, at: Vector2)
-## A cast could not go out: "cooldown", "busy", "empty", "over", or "nobody" (v0.08: a Mind Whisper with no one to
-## whisper to).
+## A cast could not go out: "cooldown", "busy", "empty", "over", "nobody" (v0.08: a Mind Whisper with no one to
+## whisper to) or "shaken" (v0.08.1: a Mind Whisper on someone still shaking the last one off, Person.SHAKE_OFF).
 signal cast_refused(slot: int, reason: String)
 ## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
 signal surged
@@ -221,7 +221,8 @@ func busy_left() -> float:
 	return maxf(lock - _playing.t, 0.0)
 
 
-## Refuse a cast for the slot before it reaches cast() (v0.08: Targeting, when a Mind Whisper's press finds nobody).
+## Refuse a cast for the slot before it reaches cast() (v0.08: Targeting, when a Mind Whisper's press finds nobody, or
+## v0.08.1 someone shaken).
 func refuse(slot: int, reason: String) -> void:
 	cast_refused.emit(slot, reason)
 
@@ -235,12 +236,17 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		return null
 	var p := power(slot)
 	if String(p.key) == "whisper":
-		# Mind Whisper (v0.08) with no one to whisper to: refused, and no cooldown starts.
-		var who: Variant = extra.get("target")
-		var heard := is_instance_valid(who) and who is Person and (who as Person).is_alive() \
-			and not (who as Person).inside and not (who as Person).soldier
-		if not heard and MindWhisperFx.pick(_field, ground) == null:
+		# Mind Whisper (v0.08) with no one to whisper to, or (v0.08.1) to someone still shaking the last one off:
+		# refused, and no cooldown starts.
+		var given: Variant = extra.get("target")
+		var heard := is_instance_valid(given) and given is Person and (given as Person).is_alive() \
+			and not (given as Person).inside and not (given as Person).soldier
+		var who: Person = (given as Person) if heard else MindWhisperFx.pick(_field, ground)
+		if who == null:
 			cast_refused.emit(slot, "nobody")
+			return null
+		if who.shaken():
+			cast_refused.emit(slot, "shaken")
 			return null
 	_cooldowns[slot] = float(p.cooldown)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)

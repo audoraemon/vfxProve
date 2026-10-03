@@ -77,6 +77,9 @@ const CONFUSED_PACE := 0.7
 const COL_DISCORD := Color("b070ff")
 ## Mind Whisper (v0.08): the gold of the eye over a whispered citizen.
 const COL_WHISPER := Color("f0d070")
+## Mind Whisper (v0.08.1): seconds after a whisper wears off before the same person can be whispered to again. Counted
+## from when it wore off: counted from the cast it changes nothing, as a messenger's whispers already come ~24 s apart.
+const SHAKE_OFF := 20.0
 ## Pestilence (v0.06): the sick move at this share of their pace; SICK_MOTE is the green the targeting preview rings them in.
 const SICK_PACE := 0.7
 const SICK_MOTE := Color("a8d060")
@@ -188,6 +191,9 @@ var _was_fleeing := false
 ## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
 var _whisper_left := 0.0
 var _whisper_fled := false
+## Mind Whisper (v0.08.1): seconds left of shaking the last whisper off (see SHAKE_OFF); 0 for anyone never whispered.
+## Counted down in tick(), so it runs on at any thinking rate, off screen or held still.
+var _shaken_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 
@@ -306,6 +312,8 @@ func unhurried() -> bool:
 # --- Brain -------------------------------------------------------------------
 
 func tick(delta: float) -> void:
+	if _shaken_left > 0.0:
+		_shaken_left = maxf(_shaken_left - delta, 0.0)
 	if state == State.WANDER and not is_frozen():
 		_think_accum += delta
 		if _think_due:
@@ -618,11 +626,14 @@ func lure(at: Vector2, seconds: float) -> bool:
 
 ## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
 ## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
-## where a duty's manager takes it back. Soldiers, anyone inside and the dead do not hear it; true when it did.
+## where a duty's manager takes it back. Soldiers, anyone inside and the dead do not hear it, nor (v0.08.1) anyone still
+## shaking the last one off; true when it did. One still under a whisper hears a new one -- the shake-off starts when
+## it wears off -- and keeps the flight it owes.
 func whisper(to: Vector2, linger: float) -> bool:
-	if soldier or inside or state == State.DEAD:
+	if soldier or inside or state == State.DEAD or shaken():
 		return false
-	_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
+	if mind != Mind.WHISPERED:
+		_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
 	release_from_queue()
 	passing_gate = null
 	mind = Mind.WHISPERED
@@ -642,14 +653,21 @@ func whispered_left() -> float:
 	return _whisper_left if mind == Mind.WHISPERED else 0.0
 
 
+## Mind Whisper (v0.08.1): a whisper let it go less than SHAKE_OFF seconds ago, and another would not take.
+func shaken() -> bool:
+	return _shaken_left > 0.0
+
+
 ## The town is evacuating while it is whispered: it flees once the whisper wears off.
 func whisper_resume_flee() -> void:
 	_whisper_fled = true
 
 
-## The whisper wears off: flight again if it fled before (or the town evacuated meanwhile), else back to its day.
+## The whisper wears off: flight again if it fled before (or the town evacuated meanwhile), else back to its day. It
+## shakes the whisper off for SHAKE_OFF seconds (v0.08.1).
 func _wake() -> void:
 	_whisper_left = 0.0
+	_shaken_left = SHAKE_OFF
 	if _whisper_fled:
 		_whisper_fled = false
 		mind = Mind.CALM

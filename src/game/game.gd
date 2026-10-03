@@ -84,7 +84,8 @@ func _ready() -> void:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	save = SaveFile.new().load_from(save_path)
-	loadout = save.last_loadout
+	mission_id = save.last_mission
+	loadout = save.loadout_for(mission_id)
 	_fader = Fader.new()
 	_fader.name = "Fader"
 	add_child(_fader)
@@ -222,8 +223,8 @@ func _build_mission() -> Mission:
 
 func _on_mission_finished(outcome: Dictionary) -> void:
 	result = outcome
-	result["best"] = save.record(int(result.get("score", 0)), String(result.get("rank", "D")))
-	save.remember_loadout(loadout)
+	result["best"] = save.record(mission_id, result)
+	save.remember_loadout(mission_id, loadout)
 	save.save_to(save_path)
 	on_action("mission:over")
 
@@ -231,7 +232,7 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if what == "manifest":
 		loadout = prep.draft.picks
-		save.remember_loadout(loadout)
+		save.remember_loadout(mission_id, loadout)
 		save.difficulty = prep.difficulty
 		save.save_to(save_path)
 	on_action("prepare:" + what)
@@ -325,7 +326,7 @@ func _flow_test() -> void:
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
 	step.call(screen == Screen.MISSION and is_instance_valid(_mission), "MANIFEST starts a mission")
-	step.call(loadout == four and save.last_loadout == four, "the drafted four are the loadout, and are saved")
+	step.call(loadout == four and save.loadout_for(mission_id) == four, "the drafted four are the loadout, and are saved")
 
 	# The intro holds the clock, then lets it run.
 	if not _mission.started():

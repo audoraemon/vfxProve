@@ -242,6 +242,8 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		_flash[slot] = FLASH_SECONDS
 	if reason == "nobody":
 		push_banner("NO ONE TO WHISPER TO")
+	elif reason == "shaken":
+		push_banner("THEY SHAKE OFF THE WHISPER")
 	UiSound.play(&"ui_buzz")
 
 

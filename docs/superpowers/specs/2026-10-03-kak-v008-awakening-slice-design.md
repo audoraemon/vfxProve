@@ -25,7 +25,8 @@ Resonance, Awakening Trials, the campaign save and civilization memory come in l
 | First Tier 1 mission | **The Warning:** a watchman runs from the Main Gate to raise the bell; stop the warning |
 | Divine Power | **Loadout budget, in this slice:** no DP spent during a mission. Last Judgement moves to the new model too, with retuned cooldowns |
 | Mind Whisper | **Drag "go there":** press on a person, release on a spot; they walk there, linger, then resume |
-| The Warning's pool | **Five small powers:** Mind Whisper 1, Silent Doom 1, Will-o'-Wisp 2, Discord 2, Thornwall 2; 3 slots, 6 DP |
+| Mind Whisper shake-off | **v0.08.1 (2026-10-03):** someone a whisper has just released cannot be whispered again for **20 s**, counted from when it wore off; the press is refused ("THEY SHAKE OFF THE WHISPER") and no cooldown is spent. Measured: Mind Whisper alone won The Warning every run without it |
+| The Warning's pool | **Five small powers:** Mind Whisper 1, Silent Doom 1, Will-o'-Wisp 2, Discord 2, Thornwall 2; 3 slots, 6 DP. **v0.08.1 (2026-10-03): four** — Thornwall left out (it delayed the messenger at most 1.5 s); it stays in Last Judgement |
 | Win rule | **The warning dies:** win if the messenger is killed unseen or the omen fades (2:00); lose if the bell rings; a witnessed death passes the warning to the witness |
 | Choosing a mission | **Mission board** between Title and Prepare |
 | Silent Doom | Cooldown **10 s** (2.5 s was safe only while each cast cost 8 DP) |
@@ -115,7 +116,7 @@ Resonance, Awakening Trials, the campaign save and civilization memory come in l
   - the Bell Network with an 8 s climb, and the fire brigade as at Organized;
   - **no escorts** (`escorts_per_duty` 0);
   - marshals and rescue squads as at Organized; they rarely matter here.
-- **Loadout:** 3 slots and 6 DP, from Mind Whisper, Silent Doom, Will-o'-Wisp, Discord and Thornwall.
+- **Loadout:** 3 slots and 6 DP, from Mind Whisper, Silent Doom, Will-o'-Wisp and Discord. *(v0.08.1, 2026-10-03: Thornwall was in the pool too; the balance pass measured it delaying the messenger at most 1.5 s, so it was left out. It stays in Last Judgement.)*
 - **Clock:** 2:00, shown as "Omen fades". The `ClockObjective` succeeds at 0:00.
 
 **The watchman**
@@ -131,8 +132,8 @@ Resonance, Awakening Trials, the campaign save and civilization memory come in l
 - **Interruptions:**
   - **Fright:** a frightened watchman drops the errand and picks it up again once he recovers.
   - **Discord:** he forgets it for 15 s, then remembers.
-  - **Mind Whisper:** he walks where he is sent, lingers 8 s, then runs on.
-  - **Thornwall:** he paths round it.
+  - **Mind Whisper:** he walks where he is sent, lingers 8 s, then runs on; for 20 s after, he shakes off another whisper (v0.08.1).
+  - **Thornwall** (not in the pool since v0.08.1): he paths round it.
 
 **Win and lose**
 - **Lose:** the bell rings (`BellSilentObjective` fails).
@@ -147,10 +148,10 @@ Resonance, Awakening Trials, the campaign save and civilization memory come in l
 | Authority | Power | Effect on the warning |
 |---|---|---|
 | Veil | Silent Doom | Kills the messenger; clean only with no witnesses near |
-| Dominion | Mind Whisper | Sends the messenger or the keeper elsewhere for about 8 s |
+| Dominion | Mind Whisper | Sends the messenger or the keeper elsewhere for about 8 s; not the same person again for 20 s after (v0.08.1) |
 | Dominion | Will-o'-Wisp | The messenger ignores it; it pulls the keeper and onlookers away |
 | Disorder | Discord | The messenger forgets for 15 s |
-| Passage | Thornwall | Blocks his street for 25 s; forces a detour |
+| Passage | Thornwall | Blocks his street for 25 s; forces a detour. *Not in The Warning since v0.08.1: measured at +0.5–1.5 s* |
 
 **On screen**
 - A marker over the current messenger. When he is off screen, an arrow at the screen edge points to him.
@@ -191,6 +192,13 @@ Resonance, Awakening Trials, the campaign save and civilization memory come in l
   - a duty is picked up again by its manager (the bell, the rite, the engineers);
   - anything else returns to their day.
 - **Who is immune:** soldiers, anyone inside, and the dead. The cast is refused for them too.
+
+**Shake-off (v0.08.1, decided 2026-10-03)**
+- When a whisper wears off, the person shakes it off for `Person.SHAKE_OFF` **20 s**: a press on them is refused with "THEY SHAKE OFF THE WHISPER" (reason `"shaken"`). The slot is not spent and no cooldown starts. The preview rings them in red.
+- The 20 s count from when the whisper **wore off**. Counted from the cast they change nothing, because a messenger's whispers already come about 24 s apart.
+- Someone **still under** a whisper can be sent somewhere new. The shake-off starts only when the last whisper wears off, and someone fleeing before still flees after.
+- The timer counts down every frame the person is stepped, whether its thinking is skipped, half-rate or off screen. Nobody who was never whispered is touched.
+- **Why:** without it, Mind Whisper alone won The Warning every run, each ~24-s hold against an 8-s cooldown. Shorter reach, cooldowns of 15 s and 30 s, and a cooldown counted from when the whisper wears off all still won. Only the shake-off lost.
 
 **Look**
 - A faint gold glyph over the person while whispered, and a soft gold ring at the destination.

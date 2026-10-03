@@ -28,8 +28,9 @@ static func run(t) -> void:
 	var w := MissionBook.warning()
 	t.check(w.id == MissionBook.WARNING and w.tier == 1 and w.slots == 3 and w.dp_capacity == 6,
 		"The Warning is Tier 1, 3 slots, 6 DP")
-	t.check(Array(w.powers()) == ["whisper", "doom", "wisp", "discord", "thorns"], "its pool is the five small powers (%s)"
+	t.check(Array(w.powers()) == ["whisper", "doom", "wisp", "discord"], "its pool is the four small powers (%s)"
 		% [w.powers()])
+	t.check(not w.allows("thorns") and lj.allows("thorns"), "Thornwall is Last Judgement's only (v0.08.1)")
 	t.near(w.clock, 120.0, 0.001, "on a 2:00 clock")
 	t.check(w.profile == "unaware" and not w.chooses_difficulty() and not w.scored and w.director == WarningDirector,
 		"an Unaware town, unscored, with WarningDirector")

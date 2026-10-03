@@ -57,10 +57,11 @@ extends SceneTree
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
 ##            whisper    Mind Whisper: the running messenger sent 8 units straight back toward the gate
 ##            discord    Discord on the running messenger
-##            thornwall  Thornwall across the street 3 units ahead of the running messenger
 ##            mix        Whisper, Discord and Silent Doom: Doom whenever he is alone, else Whisper and Discord in turn
-##          each whenever its slot allows it (never forced), looked at every 0.1 s; a line for every cast and every
-##          change of phase or messenger, a report every 5 s, then the ending, the relays, Unseen and "Solved by"
+##          each whenever its slot allows it (never forced), looked at every 0.1 s -- and Mind Whisper only while the
+##          messenger is not shaking the last one off (v0.08.1: the aim rings him red); a line for every cast and every
+##          change of phase or messenger, a report every 5 s, then the ending, the relays, Unseen and "Solved by".
+##          v0.08.1 left Thornwall out of The Warning's pool, and its case with it; any other case is refused.
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -140,7 +141,11 @@ func _run() -> void:
 			await _judgement()
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
-			await _warning(case_arg if case_arg != "" else "none")
+			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
+				await _warning(case_arg if case_arg != "" else "none")
+			else:
+				print("BEHAVIOUR warning no case=%s (cases: %s; Thornwall is not in The Warning's pool since v0.08.1)"
+					% [case_arg, ", ".join(WARNING_CASES.keys())])
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -818,11 +823,9 @@ func _judgement() -> void:
 ## The warning scenario's loadout for each case (v0.08 M5). "none" drafts Mind Whisper and never casts it: an empty
 ## loadout would fall back to the mission's default, and the HUD has no look for an empty slot.
 const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whisper"], "discord": ["discord"],
-	"thornwall": ["thorns"], "mix": ["whisper", "discord", "doom"]}
+	"mix": ["whisper", "discord", "doom"]}
 ## How far straight back toward the gate the whisper sends the messenger.
 const WARNING_WHISPER_BACK := 8.0
-## How far ahead of the messenger, along his way, the Thornwall grows across his street.
-const WARNING_THORN_AHEAD := 3.0
 
 
 ## The Warning, played by one policy against the director's messenger (whoever carries the warning now: the
@@ -871,10 +874,12 @@ func _warning(which: String) -> void:
 		if slots.has("doom") and rules.refusal(slots.doom) == "" and _warning_alone(m, crowd):
 			key = "doom"
 		elif running:
-			var order := ["whisper", "discord", "thorns"]
+			var order := ["whisper", "discord"]
 			if which == "mix" and last_delay == "whisper":
 				order = ["discord", "whisper"]
 			for k: String in order:
+				if k == "whisper" and m.shaken():
+					continue  # v0.08.1: he shakes it off; the aim shows him in red
 				if slots.has(k) and rules.refusal(slots[k]) == "":
 					key = k
 					break
@@ -888,11 +893,6 @@ func _warning(which: String) -> void:
 				var to := MindWhisperFx.clamp_to(crowd._grid, m.ground_pos,
 					m.ground_pos + back.normalized() * WARNING_WHISPER_BACK)
 				extra = {"to": to, "target": m}
-			"thorns":
-				var ahead := _warning_ahead(m, WARNING_THORN_AHEAD)
-				at = ahead[0]
-				var h: Vector2 = ahead[1]
-				extra = {"dir": Vector2(-h.y, h.x)}
 		if rules.cast(slots[key], at, extra) != null:
 			casts[key] = int(casts.get(key, 0)) + 1
 			if key in ["whisper", "discord"]:
@@ -939,27 +939,6 @@ func _warning_heading(p: Person) -> Vector2:
 	var next := p._target if p._target.distance_to(p.ground_pos) > 0.05 else p.goal()
 	var h := next - p.ground_pos if next != Vector2.INF else Vector2.ZERO
 	return h.normalized() if h.length() > 0.01 else Vector2(1, 0)
-
-
-## The point `ahead` units on along the person's way (its waypoint, then the rest of its path), and the way the path
-## runs there.
-func _warning_ahead(p: Person, ahead: float) -> Array:
-	var pts := PackedVector2Array([p._target])
-	for i in range(p._leg, p._path.size()):
-		pts.append(p._path[i])
-	var from := p.ground_pos
-	var left := ahead
-	var h := _warning_heading(p)
-	for q in pts:
-		var span := q - from
-		if span.length() < 0.01:
-			continue
-		h = span.normalized()
-		if span.length() >= left:
-			return [from + h * left, h]
-		left -= span.length()
-		from = q
-	return [from + h * left, h]
 
 
 ## Living citizens' intents, by distance band (ground units) from `at`.

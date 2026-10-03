@@ -202,12 +202,13 @@ func press(ground: Vector2) -> void:
 		return
 	_at = ground
 	if _is_whisper():
-		# Mind Whisper: the press snaps to the citizen under it, and with nobody there nothing is armed. A slot
-		# that could not cast anyway names its own reason first, as a release would.
+		# Mind Whisper: the press snaps to the citizen under it, and with nobody there -- or (v0.08.1) only someone
+		# still shaking the last whisper off -- nothing is armed. A slot that could not cast anyway names its own
+		# reason first, as a release would.
 		var who := MindWhisperFx.pick(_crowd._field, ground)
-		if who == null:
+		if who == null or who.shaken():
 			var why := _rules.refusal(slot)
-			_rules.refuse(slot, why if why != "" else "nobody")
+			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"))
 			queue_redraw()
 			return
 		_whisper_target = who
@@ -314,6 +315,11 @@ func _is_whisper() -> bool:
 	return _aim_kind() == "whisper"
 
 
+## The ring over whoever a Mind Whisper press would pick: red while they shake the last whisper off (v0.08.1).
+static func whisper_pick_color(who: Person) -> Color:
+	return COL_BAD if who.shaken() else COL_INNER
+
+
 ## A Mind Whisper press is held on someone still there to hear it.
 func _whisper_held() -> bool:
 	return armed and is_instance_valid(_whisper_target)
@@ -417,10 +423,10 @@ func _draw() -> void:
 			if _whisper_held():
 				_whisper_line(_press, _at)
 			else:
-				# Who a press here would whisper to.
+				# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
 				var who := MindWhisperFx.pick(_crowd._field, _press)
 				if who != null:
-					_ring(who.ground_pos, 0.2, COL_INNER)
+					_ring(who.ground_pos, 0.2, whisper_pick_color(who))
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
 			var s := BlightFx.target(_crowd._env, _press)

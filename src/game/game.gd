@@ -78,6 +78,12 @@ var _pause: PauseMenu
 var _fader: Fader
 ## True while a MANIFEST/Replay/Restart fade is under way, so a second click cannot start a second one.
 var _fading := false
+## True once that fade has the new mission up, behind the black and then coming back in (v0.08.2): the player can
+## already pause and Restart, or go to Prepare and MANIFEST again, and that request is kept for when the fade ends.
+var _fading_in := false
+## A MANIFEST/Replay/Restart pressed during a fade-in (v0.08.2), run when the fade ends. Any other screen change
+## drops it: the player has gone somewhere else since.
+var _mission_queued := false
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -211,24 +217,35 @@ func on_action(action: String) -> void:
 	if to == Screen.MISSION:
 		_faded_into_mission()
 		return
+	_mission_queued = false
 	go_to(to)
 
 
 ## Into a mission behind the fade. Not awaited by the caller: the button that asked for it has done its part.
 func _faded_into_mission() -> void:
 	if _fading:
-		return  # a second MANIFEST click during the fade
+		# During the fade out it is a second click on the same button: dropped. Once the mission is up it is a new
+		# request from the mission now up (Restart) or from a Prepare reached through its pause menu (MANIFEST):
+		# kept, and run once this fade has ended (v0.08.2; before, it was lost).
+		if _fading_in:
+			_mission_queued = true
+		return
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
 	Music.play(&"battle")  # rises behind the fade
 	go_to(Screen.MISSION)
+	_fading_in = true
 	if is_instance_valid(_mission) and not _mission.started():
 		await _mission.prewarmed
 	# Two frames for the town to be drawn once before it is shown.
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await _fader.fade_in(FADE_IN)
+	_fading_in = false
 	_fading = false
+	if _mission_queued:
+		_mission_queued = false
+		_faded_into_mission()
 
 
 func _build_mission() -> Mission:
@@ -431,10 +448,13 @@ func _flow_test() -> void:
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Back from the draft returns to the board")
 
 	# Pause, then Missions: the board, with nothing left of the mission. The Replay's fade-in is still running this
-	# soon after it (no player is this quick), and a MANIFEST during a fade is ignored, so let it finish first.
-	await _until(func() -> bool: return not _fading, 5.0)
+	# soon after it (no player is this quick): the MANIFEST below is kept until it ends, then runs (v0.08.2; before,
+	# it was dropped, and this test waited the fade out first).
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
+	var during_fade := _fading_in
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	step.call(during_fade and _mission_queued and screen == Screen.PREPARE,
+		"a MANIFEST during the Replay's fade-in is kept for when it ends (fading in: %s)" % during_fade)
 	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
 	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and loadout == four, "the board, the draft and MANIFEST again")
 	_open_pause()
@@ -446,7 +466,6 @@ func _flow_test() -> void:
 	# The Warning (v0.08): picked by its id, its default loadout manifested, won when the omen fades -- an unscored
 	# result -- and Missions goes back to the board.
 	var kit := MissionBook.warning().default_loadout
-	await _until(func() -> bool: return not _fading, 5.0)
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
 		and (_screen_node as PrepareScreen).mission.id == MissionBook.WARNING and mission_id == MissionBook.WARNING,

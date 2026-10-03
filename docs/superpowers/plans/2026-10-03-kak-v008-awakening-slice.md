@@ -2190,3 +2190,33 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   (bell) 59.4, DISORDER; thornwall lost (bell) 25.4, PASSAGE; mix won (warning) 13.8, VEIL.
 - Summary: `docs/KAK_Version_0.08_Summary.md`. README: the KAK controls (keys 1-6, the board, Esc's new targets,
   Mind Whisper's drag), the versions line, `--mission=`, and the FLOW and `--show=` notes.
+
+### v0.08.1
+
+- The user's two decisions after Task 23 (2026-10-03):
+  - the Mind Whisper shake-off (`Person.SHAKE_OFF` 20 s, from when the whisper wears off), at 95aaeba;
+  - Thornwall left out of The Warning's pool, at 8e33c39.
+- **Shake-off design:**
+  - The timer `_shaken_left` lives on `Person`. `_wake()` sets it, and `tick()` counts it down, so it runs whatever `_think()` does: half-rate, off screen (`frame()` hands over the skipped time) or frozen.
+  - `Person.whisper()` refuses a shaken person. One still WHISPERED can be re-whispered, since the shake-off has not started, and keeps `_whisper_fled`. Before this, a re-whisper reset it, so a whispered evacuee whispered again would not flee after.
+  - `MindWhisperFx.pick()` still picks a shaken person. `Rules.cast()` refuses an explicit `extra.target` or the picked person with `"shaken"`, and spends no cooldown. `Targeting.press()` refuses the same way and arms nothing, and the hover ring is `COL_BAD` (`whisper_pick_color()`). The HUD banner reads "THEY SHAKE OFF THE WHISPER".
+- **Scenario changes:**
+  - the whisper policy skips a shaken messenger (a player sees him ringed red);
+  - the `thornwall` case and `_warning_ahead()` are gone;
+  - an unknown case prints `BEHAVIOUR warning no case=<case> (...)` and casts nothing.
+- **End lines** (seed 7, each printed three times, identically):
+  - `none`: `end case=none won=false reason=bell time=24.8 relays=0 unseen=false solved_by= casts={  }` (checksum -446012507)
+  - `doom`: `end case=doom won=true reason=warning time=13.6 relays=0 unseen=true solved_by=VEIL casts={ "doom": 1 }` (-999129915)
+  - `whisper`: `end case=whisper won=false reason=bell time=87.3 relays=0 unseen=false solved_by=DOMINION casts={ "whisper": 2 }` (442055066). The watchman is whispered at 6.1 and delivers at 45.3; the keeper is whispered at 45.3. This matches Task 23's temporary-edit measurement exactly, checksum included.
+  - `discord`: `end case=discord won=false reason=bell time=59.4 relays=0 unseen=false solved_by=DISORDER casts={ "discord": 2 }` (-909358062)
+  - `mix`: `end case=mix won=true reason=warning time=13.8 relays=0 unseen=true solved_by=VEIL casts={ "whisper": 1, "doom": 1 }` (-430643507)
+  - `--case=thornwall`: `warning no case=thornwall (cases: none, doom, whisper, discord, mix; Thornwall is not in The Warning's pool since v0.08.1)`
+  - `whisper --seed=1`, one run: lost, the bell at 82.5, 2 whispers (watchman 6.1, keeper 46.9).
+  - Every case except `whisper` matches v0.08's lines and checksums.
+- **Prepare** (`--show=prepare --mission=warning --capture`): the tabs are VEIL 1, DOMINION 2, DISORDER 1, with no PASSAGE. With `--hover=whisper`, the new shape text wraps to three lines in the panel.
+- **Gates:**
+  - tests `checks=1278 failures=0`;
+  - digest `61267b7e90524d800bf1c3473a71146b`;
+  - crowd_check `-346732806 alive=220 escaped=0`;
+  - FLOW `checks=34 failures=0`;
+  - exact checksums unchanged: `calm --seconds=60` -695580348, `gates` 619520995, `fire` -16560442, `rite --interrupt` -129298221, `soldiers --case=escort` -935015846.

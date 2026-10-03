@@ -94,7 +94,69 @@ static func run(t) -> void:
 	_think(w, 8.5)
 	t.check(w.mind == Person.Mind.FLEE, "and it joins the flight after")
 	_power(t, made)
+	_shake_off(t, made)
 	_done(made)
+
+
+## The shake-off (v0.08.1): someone a whisper has just let go does not hear another for SHAKE_OFF seconds, counted from
+## when it wore off and counted down whatever its thinking does; one still under a whisper can be sent on; nobody never
+## whispered is touched. Rules refuses a whisper on them with "shaken", and spends no cooldown.
+static func _shake_off(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var grid: WalkGrid = made[4]
+	var shaken_any := false
+	for q: Person in crowd.citizens.slice(20) + crowd.soldiers:
+		shaken_any = shaken_any or q.shaken()
+	t.check(not shaken_any, "nobody never whispered is shaken")
+	var p: Person = crowd.citizens[20]
+	var first := grid.nearest_walkable(p.ground_pos + Vector2(2.0, 0.0))
+	p.whisper(first, 8.0)
+	var second := grid.nearest_walkable(p.ground_pos + Vector2(-2.0, 0.0))
+	t.check(p.whisper(second, 8.0) and p.goal().distance_to(second) < 0.01 and not p.shaken(),
+		"one still under a whisper hears a new one, and is sent on (the shake-off starts when it wears off)")
+	_arrive(p)
+	_think(p, 8.5)
+	t.check(p.mind != Person.Mind.WHISPERED and p.shaken(), "when the whisper wears off it shakes it off (%s)"
+		% Person.Mind.keys()[p.mind])
+	t.check(not p.whisper(first, 8.0) and p.mind != Person.Mind.WHISPERED, "and another whisper does not take")
+	# Frozen, it does not think at all; the shake-off runs on in tick() all the same.
+	p.freeze(60.0)
+	for i in 199:
+		p.tick(0.1)
+	t.check(p.shaken(), "still shaken at 19.9 s, frozen the whole time")
+	p.tick(0.2)
+	t.check(not p.shaken() and p.whisper(first, 8.0), "and past %d s it hears a whisper again" % roundi(Person.SHAKE_OFF))
+	p._frozen = 0.0
+
+	# A whispered evacuee sent on keeps the flight it owes.
+	var f: Person = crowd.citizens[21]
+	f.flee()
+	f.whisper(grid.nearest_walkable(f.ground_pos + Vector2(0.0, 2.0)), 8.0)
+	f.whisper(grid.nearest_walkable(f.ground_pos + Vector2(2.0, 0.0)), 8.0)
+	_arrive(f)
+	_think(f, 8.5)
+	t.check(f.mind == Person.Mind.FLEE, "a whispered evacuee whispered again still flees after")
+
+	# The cast: refused with "shaken", no cooldown, nothing cast; never-whispered people are not refused.
+	var rules := Rules.new().setup(PackedStringArray(["whisper"]), null, made[1], field, crowd, made[5])
+	var casts: Array = []
+	rules.caster = func(_script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
+		casts.append([ground, extra])
+		return null
+	var refused: Array = []
+	rules.cast_refused.connect(func(slot: int, reason: String): refused.append([slot, reason]))
+	var s: Person = crowd.citizens[22]
+	s._shaken_left = Person.SHAKE_OFF
+	t.check(rules.cast(0, s.ground_pos, {"to": s.ground_pos, "target": s}) == null and refused == [[0, "shaken"]]
+		and rules.cooldown_left(0) == 0.0 and casts.is_empty(),
+		"a whisper on someone shaken is refused with \"shaken\", and spends no cooldown (%s)" % [refused])
+	s._shaken_left = 0.0
+	var n: Person = crowd.citizens[23]
+	rules.cast(0, n.ground_pos, {"to": n.ground_pos, "target": n})
+	t.check(casts.size() == 1 and rules.cooldown_left(0) == 8.0, "one never whispered is whispered as before")
+	rules.teardown()
+	rules.free()
 
 
 ## The power (v0.08 M3 Task 16): who a press picks, how far a release may send them, the cast's refusal, the effect.

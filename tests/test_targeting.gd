@@ -199,6 +199,26 @@ static func _whisper(t, crowd: Crowd, field: EnemyField, grid: WalkGrid, env: En
 	t.check(to.distance_to(c.ground_pos) <= MindWhisperFx.REACH + 0.001 and grid.walkable(to),
 		"a release twenty units away sends them no further than REACH, on walkable ground (%.2f)"
 		% to.distance_to(c.ground_pos))
+
+	# The shake-off (v0.08.1): someone a whisper has just let go is ringed red, and a press on them is refused with
+	# "shaken" -- nothing armed, no cooldown spent; a release on someone who became shaken meanwhile is refused too.
+	rules._cooldowns[0] = 0.0
+	t.check(Targeting.whisper_pick_color(c) == Targeting.COL_INNER, "the preview rings a citizen who can hear it as usual")
+	c._shaken_left = Person.SHAKE_OFF
+	t.check(Targeting.whisper_pick_color(c) == Targeting.COL_BAD, "and one still shaking a whisper off in red")
+	refused.clear()
+	aim.pick(0)
+	aim.press(c.ground_pos)
+	t.check(not aim.armed and refused == [[0, "shaken"]] and casts.size() == 2 and rules.cooldown_left(0) == 0.0,
+		"a press on them arms nothing and is refused with \"shaken\", the cooldown untouched (%s)" % [refused])
+	c._shaken_left = 0.0
+	refused.clear()
+	aim.press(c.ground_pos)
+	c._shaken_left = Person.SHAKE_OFF
+	aim.release(c.ground_pos + Vector2(2.0, 0.0))
+	t.check(refused == [[0, "shaken"]] and casts.size() == 2 and rules.cooldown_left(0) == 0.0,
+		"a release on someone shaken since the press is refused the same way (%s)" % [refused])
+	c._shaken_left = 0.0
 	aim.free()
 	rules.free()
 

@@ -159,7 +159,7 @@ The `warning` scenario (seed 7): each case drafts its power and plays a simple p
 
 ## 8. Balance findings — decisions for you
 
-No gameplay number was changed in the balance pass. These need your call:
+No gameplay number was changed in the balance pass. These needed your call; **1 and 2 were decided in v0.08.1 (§15)**:
 
 **1. Mind Whisper alone wins The Warning every run.** Measured with temporary edits (reverted), the `whisper` case on seeds 7 and 1:
 
@@ -245,3 +245,28 @@ The five exact checksums, unchanged throughout: `calm --seconds=60` −695580348
 - **The campaign save:** progress through the Tiers, beyond each mission's best.
 - **Civilization memory:** a town that adapts to how it was struck before.
 - More Tier 1–4 missions, and the balance decisions in §8.
+
+## 15. v0.08.1 — the balance decisions (2026-10-03)
+
+Two changes, decided by you after §8's measurements:
+
+1. **Mind Whisper shake-off** (every mission). When a whisper wears off, the person shakes it off for **20 s** (`Person.SHAKE_OFF`).
+   - **Refusal:** a press on them is refused with **"THEY SHAKE OFF THE WHISPER"** (reason `"shaken"`). The slot is not spent and no cooldown starts.
+   - **Preview:** the aim rings them in red.
+   - **When it starts:** the 20 s count from when the whisper wore off; counted from the cast, they changed nothing. Someone *still under* a whisper can be sent somewhere new: the shake-off starts only when the last whisper wears off, and someone who was fleeing still flees after.
+   - **The timer** lives on the person and counts down every frame they are stepped, off screen or frozen too. Nobody who was never whispered is touched, so Last Judgement's exact checksums are unchanged.
+   - **Power text:** "send one person somewhere, then they linger 8 s; not the same one again for 20 s".
+2. **Thornwall leaves The Warning's pool:** now Mind Whisper, Silent Doom, Will-o'-Wisp and Discord, with 3 slots and 6 DP as before. Thornwall stays in Last Judgement. The Prepare screen shows three tabs for The Warning (Veil, Dominion, Disorder), with no Passage. The scenario's `thornwall` case is gone.
+
+**Measured** (the `warning` scenario, seed 7, three runs per case, identical down to the checksum):
+
+| Case | Result | Time | Solved by | vs v0.08 |
+|---|---|---|---|---|
+| none | lost, the bell | 0:24.8 | — | same |
+| doom | **won**, unseen kill | 0:13.6 | Veil | same |
+| whisper | **lost**, the bell (2 whispers: the watchman at 6.1, the keeper at 45.3) | 1:27.3 | Dominion | was a 2:00 win |
+| discord | lost, the bell | 0:59.4 | Disorder | same |
+| mix | **won**, unseen kill (a whisper, then Doom) | 0:13.8 | Veil | same |
+
+- **Whisper alone now delays the bell by about 62 s and loses.** The watchman is whispered once and delivers the warning at 45.3; the keeper is whispered once; the bell rings at 1:27. On seed 1 it loses at 1:22.5, matching the balance pass's 87.3 / 82.5. Doom and the mix still win.
+- **Gates:** tests **1278 / 0 failures** (1263 before); state digest unchanged; crowd_check −346732806; FLOW 34 / 0; the five exact checksums unchanged.

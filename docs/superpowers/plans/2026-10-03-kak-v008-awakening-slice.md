@@ -2055,3 +2055,11 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   buildings (40). `Game.SAMPLE_RESULT` (15350, "S") does not follow the thresholds (it was already an A's score at
   19200) and is left as it is.
 - Tests `checks=1140 failures=0`; FLOW `checks=30 failures=0`.
+
+### M2 gate (at 9ae912c)
+
+- Tests `checks=1140 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `checks=30 failures=0`.
+- All five exact behaviour checksums identical to Task 0.
+- Mission test, three runs: buildings 55/56/56, citizens 188/179/184, escaped 1/0/0, stability 69/67/69%, citadel 50%. The DP field is gone.
+- Captures checked: the mission bar with six slots (names and cooldowns), and Prepare with the budget meter, dimmed cards and "Not enough Divine Power".
+- Not changed: no cooldown was tuned in Task 13. The ranks are 200 lower each.

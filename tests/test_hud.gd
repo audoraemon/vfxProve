@@ -37,21 +37,28 @@ static func run(t) -> void:
 	t.check(segs[0][1] == UiTheme.STABILITY_COLS[0] and segs[1][1] == UiTheme.STABILITY_COLS[3] and segs[2][1] == UiTheme.STABILITY_COLS[1],
 		"citizens are Population's colour, soldiers Military's, destroyed Infrastructure's")
 
-	# A slot says which of the four things it is.
+	# A slot says what it can do: ready, on cooldown, or waiting for the power now playing (v0.08: never "dp").
 	aim.pick(0)
 	t.check(hud.is_picked(0) and hud.slot_state(0) == "ready",
 		"the picked slot is known as picked and still reports what it can do (%s)" % hud.slot_state(0))
-	t.check(hud.slot_state(3) == "ready", "a slot that can be paid for is ready (%s)" % hud.slot_state(3))
+	t.check(hud.slot_state(3) == "ready", "a slot nothing has fired is ready (%s)" % hud.slot_state(3))
 	rules.cast(3, Vector2.ZERO)
 	t.check(hud.slot_state(3) == "cooldown", "one that just fired is on cooldown (%s)" % hud.slot_state(3))
-	rules.dp = 3.0   # the Barrage (slot index 2) costs 4
-	t.check(hud.slot_state(2) == "dp", "and one the player cannot afford says so (%s, %.1f DP)" % [hud.slot_state(2), rules.dp])
+	t.check(hud.slot_state(2) == "ready", "and the others are still ready: nothing is spent (%s)" % hud.slot_state(2))
+	var playing := FxTimeline.new()
+	playing.duration = 8.0
+	rules._playing = playing
+	t.check(hud.slot_state(2) == "busy" and hud.slot_state(3) == "cooldown",
+		"while a power plays, a ready slot waits for it and a cooling one still shows its cooldown (%s, %s)"
+		% [hud.slot_state(2), hud.slot_state(3)])
 
 	# A refused cast flashes its own slot red (the buzz that goes with it is milestone 5's).
 	rules.cast(2, Vector2.ZERO)
 	t.check(hud.flashing(2) and not hud.flashing(1), "a refused cast flashes its slot (%s)" % hud.flashing(2))
 	hud.advance(Hud.FLASH_SECONDS + 0.1)
 	t.check(not hud.flashing(2), "and the flash fades")
+	rules._playing = null
+	playing.free()
 
 	# The slots answer to the mouse (spec §1: "keys 1-4 or click its slot").
 	t.check(hud.slot_at(hud.slot_rect(2).get_center()) == 2, "a point on the third slot is the third slot")

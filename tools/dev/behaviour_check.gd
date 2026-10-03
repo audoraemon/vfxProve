@@ -168,7 +168,6 @@ func _escalate() -> void:
 	while t <= 60.0:
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
-			mission._rules.dp = Rules.DP_MAX
 			mission._rules._cooldowns[int(c[1])] = 0.0
 			mission._rules._playing = null
 			mission._rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0.3).normalized()})
@@ -348,7 +347,6 @@ func _quiet(shots: bool) -> void:
 	while t <= 60.0:
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
-			rules.dp = Rules.DP_MAX
 			rules._cooldowns[int(c[1])] = 0.0
 			rules._playing = null
 			rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0)})
@@ -373,10 +371,9 @@ func _quiet(shots: bool) -> void:
 		t += step
 
 
-## Cast slot `slot` at `at` now, whatever its cooldown, the DP left or another power still playing.
+## Cast slot `slot` at `at` now, whatever its cooldown or another power still playing.
 func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0)) -> FxTimeline:
 	var rules: Rules = mission._rules
-	rules.dp = Rules.DP_MAX
 	rules._cooldowns[slot] = 0.0
 	rules._playing = null
 	return rules.cast(slot, at, {"dir": dir})

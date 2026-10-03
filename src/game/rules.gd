@@ -1,16 +1,17 @@
 class_name Rules
 extends Node
-## One mission's numbers (spec §4): Divine Power and its recovery, the four slots' cooldowns, the four-minute
-## clock, City Stability, chains, win and lose, score and rank. It learns what happened from the signals the
-## world already emits and never reaches into the world itself, except to start a cast.
+## One mission's numbers (spec §4): the slots' cooldowns, the one-power-at-a-time lock, the clock, City Stability,
+## chains, win and lose, score and rank. No Divine Power is spent in a mission (v0.08): the loadout's price was
+## paid in the draft, and the Temple's fall is a Divine Surge that resets every cooldown, once. It learns what
+## happened from the signals the world already emits and never reaches into the world itself, except to start a
+## cast.
 
-signal dp_changed(value: float)
 ## A cast went out: the slot, its power key and where it landed.
 signal cast_made(slot: int, key: String, at: Vector2)
-## A cast could not go out: "cooldown", "dp", "empty" or "over".
+## A cast could not go out: "cooldown", "busy", "empty" or "over".
 signal cast_refused(slot: int, reason: String)
-## Divine Power came back from something that was destroyed, at the place it happened (for the popup).
-signal dp_gained(amount: float, at: Vector2)
+## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
+signal surged
 ## One cast destroyed six buildings or killed twenty-five people.
 signal chained(at: Vector2)
 ## Something worth a line across the middle of the screen.
@@ -18,23 +19,11 @@ signal banner(text: String)
 ## The mission ended. reason: "citadel" (won), "escapes" or "timeout".
 signal over(won: bool, reason: String)
 
-const DP_MAX := 100.0
-## Divine Power comes back this fast on its own (spec §4.1).
-const DP_REGEN := 0.5
 ## The manifestation's length in seconds (spec §1 had 4:00; six minutes since the town scale upgrade tripled the town).
 const MISSION_SECONDS := 360.0
-## What each destroyed thing pays back (spec §4.1). Citizens, houses, the market, the farms and the walls pay
-## nothing: the player is not rewarded for shopping.
-const DP_FOR_ROLE := {&"tower": 3.0, &"gate": 5.0, &"barracks": 10.0}
-## The Temple's fall restores this share of the full bar, whatever dp_recovery says: the one deliberate refill, so a
-## player who runs dry can choose to spend the Temple (playtest, 2026-09-27). There is one Temple, so it is once.
-const TEMPLE_DP_SHARE := 0.7
-const DP_SOLDIER := 0.4
-const CITADEL_DP := 15.0
 ## One cast that destroys this many buildings, or kills this many people, is a chain.
 const CHAIN_BUILDINGS := 6
 const CHAIN_KILLS := 25
-const CHAIN_DP := 6.0
 
 ## The damage kinds each power deals, so a destroyed building or a kill can be credited to the cast that did
 ## it. Two kinds are shared (Dragonfire Parade and the Barrage both burn with &"cinder"; the Barrage and
@@ -55,7 +44,7 @@ const POWER_KINDS := {
 	"nova": [&"nova"],
 }
 ## The roles that count as a building for the tally, the chain and the score. Decor (trees, torch posts) does
-## not, and the Citadel's nine parts are not nine buildings -- the Citadel is worth its own CITADEL_DP.
+## not, and the Citadel's nine parts are not nine buildings -- the Citadel is its own objective.
 const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barracks", &"market", &"farm", &"bridge",
 	&"dock"]
 ## How long a cast with no effect behind it (a test's stub, an effect that has already finished) can still be
@@ -72,13 +61,11 @@ const SCORE_PER_BUILDING := 40
 const SCORE_PER_CITIZEN := 10
 const SCORE_PER_SOLDIER := 25
 const SCORE_PER_CHAIN := 300
-const SCORE_PER_DP := 10
 ## Score floors for each rank, best first; anything under the last one is a D.
 const RANKS := [[19200, "S"], [14400, "A"], [9600, "B"], [4800, "C"]]
 
-var dp := DP_MAX
 var time_left := MISSION_SECONDS
-## The four drafted power keys, in slot order.
+## The drafted power keys, in slot order.
 var loadout := PackedStringArray()
 ## The mission is over: the clock ran out, the people got away, or the city fell.
 var finished := false
@@ -86,11 +73,8 @@ var finished := false
 var buildings_down := 0
 ## How many casts chained.
 var chains := 0
-## Whether destroying things pays Divine Power back (spec §4.1's table). Off since the milestone 4 playtest --
-## the player had far more DP than they could spend -- so a mission runs on regeneration alone. The table stays,
-## so bringing it back is this one line. The draft's briefing reads the same constant, so it tells the truth.
-const DP_RECOVERY_DEFAULT := false
-var dp_recovery := DP_RECOVERY_DEFAULT
+## The Divine Surge has happened: the Temple's fall resets the cooldowns only once a mission.
+var surged_once := false
 
 ## The five-part city health. Measured at most once a frame, and only after something changed it.
 var stability: Stability
@@ -166,9 +150,6 @@ func advance(delta: float) -> void:
 		_cooldowns[i] = maxf(0.0, _cooldowns[i] - delta)
 	_elapsed += delta
 	_forget_old_casts()
-	if dp < DP_MAX:
-		dp = minf(DP_MAX, dp + DP_REGEN * delta)
-		dp_changed.emit(dp)
 	time_left = maxf(0.0, time_left - delta)
 	if _stability_dirty:
 		_stability_dirty = false
@@ -208,11 +189,6 @@ func key(slot: int) -> String:
 	return String(p.get("key", ""))
 
 
-func cost(slot: int) -> int:
-	var p := power(slot)
-	return int(p.get("dp", 0))
-
-
 func cooldown_left(slot: int) -> float:
 	if slot < 0 or slot >= _cooldowns.size():
 		return 0.0
@@ -228,8 +204,6 @@ func refusal(slot: int) -> String:
 		return "empty"
 	if cooldown_left(slot) > 0.0:
 		return "cooldown"
-	if dp < float(cost(slot)):
-		return "dp"
 	if busy_left() > 0.0:
 		return "busy"
 	return ""
@@ -245,7 +219,7 @@ func busy_left() -> float:
 	return maxf(lock - _playing.t, 0.0)
 
 
-## Spend the slot's DP, start its cooldown and put its effect in the world. Returns the running effect, or
+## Start the slot's cooldown and put its effect in the world. Returns the running effect, or
 ## null when the cast was refused (and when a test's caster hands nothing back).
 func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	var reason := refusal(slot)
@@ -253,8 +227,6 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		cast_refused.emit(slot, reason)
 		return null
 	var p := power(slot)
-	dp -= float(cost(slot))
-	dp_changed.emit(dp)
 	_cooldowns[slot] = float(p.cooldown)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)
 	_playing = fx
@@ -266,7 +238,7 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 
 ## The power key credited with this damage kind: among the casts still running, the one whose power deals it,
 ## latest first (spec §4.1). "" when nothing running claims it -- a building that falls to a stray fire after
-## its cast is gone still pays its DP, it just has nobody to chain for.
+## its cast is gone still counts, it just has nobody to chain for.
 func credited_key(kind: StringName) -> String:
 	var c := _credit(kind)
 	return String(c.get("key", "")) if not c.is_empty() else ""
@@ -300,12 +272,12 @@ func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
 	if not BUILDING_ROLES.has(s.role):
 		return
 	buildings_down += 1
-	if s.role == &"temple":
-		_restore(DP_MAX * TEMPLE_DP_SHARE, s.center())
-		banner.emit("THE TEMPLE FALLS — DIVINE POWER RESTORED")
-	var pay: float = DP_FOR_ROLE.get(s.role, 0.0)
-	if pay > 0.0:
-		_gain(pay, s.center())
+	if s.role == &"temple" and not surged_once:
+		# The Divine Surge (v0.08): the Temple's fall resets every cooldown, once.
+		surged_once = true
+		_cooldowns.fill(0.0)
+		surged.emit()
+		banner.emit("DIVINE SURGE")
 	var c := _credit(kind)
 	if c.is_empty():
 		return
@@ -318,11 +290,8 @@ func _on_structure_restored(_s: Structure) -> void:
 	_stability_dirty = true
 
 
-func _on_killed(e: DummyEnemy, kind: StringName) -> void:
+func _on_killed(_e: DummyEnemy, kind: StringName) -> void:
 	_stability_dirty = true
-	var p := e as Person
-	if p != null and p.soldier:
-		_gain(DP_SOLDIER, p.ground_pos)
 	var c := _credit(kind)
 	if c.is_empty():
 		return
@@ -331,8 +300,6 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 
 
 func _on_citadel_fallen() -> void:
-	var at: Vector2 = _town.citadel.origin if is_instance_valid(_town.citadel) else Vector2.ZERO
-	_gain(CITADEL_DP, at)
 	banner.emit("THE CITADEL FALLS")
 
 
@@ -341,26 +308,8 @@ func _check_chain(c: Dictionary) -> void:
 		return
 	c.chained = true
 	chains += 1
-	_gain(CHAIN_DP, c.at)
 	chained.emit(c.at)
 	banner.emit("CHAIN!")
-
-
-func _gain(amount: float, at: Vector2) -> void:
-	if not dp_recovery:
-		return
-	_restore(amount, at)
-
-
-## Add Divine Power (capped at the maximum) and report what actually went in, for the bar and the popup.
-func _restore(amount: float, at: Vector2) -> void:
-	var before := dp
-	dp = minf(DP_MAX, dp + amount)
-	var applied := dp - before
-	if applied <= 0.0:
-		return  # the bar was already full: no popup for Divine Power that went nowhere
-	dp_changed.emit(dp)
-	dp_gained.emit(applied, at)
 
 
 func _on_escaped(_p: Person) -> void:
@@ -393,13 +342,13 @@ func _finish(win: bool, reason: String) -> void:
 	over.emit(won, reason)
 
 
-## The mission's points (spec §4.4). The victory bonus, the seconds left and the DP left are a winner's only:
+## The mission's points (spec §4.4). The victory bonus and the seconds left are a winner's only:
 ## a mission lost to the escape would otherwise pay the player for losing it quickly.
 func score() -> int:
 	var total := buildings_down * SCORE_PER_BUILDING + _crowd.killed_citizens * SCORE_PER_CITIZEN \
 		+ _crowd.killed_soldiers * SCORE_PER_SOLDIER + chains * SCORE_PER_CHAIN
 	if won:
-		total += SCORE_WIN + int(roundf(time_left)) * SCORE_PER_SECOND + int(floorf(dp)) * SCORE_PER_DP
+		total += SCORE_WIN + int(roundf(time_left)) * SCORE_PER_SECOND
 	return total
 
 
@@ -418,7 +367,6 @@ func stat_lines() -> Array[Dictionary]:
 	if won:
 		lines.append({"label": "The city has fallen", "value": "", "points": SCORE_WIN})
 		lines.append({"label": "Time left", "value": UiTheme.clock(time_left), "points": int(roundf(time_left)) * SCORE_PER_SECOND})
-		lines.append({"label": "Divine Power left", "value": "%d" % int(floorf(dp)), "points": int(floorf(dp)) * SCORE_PER_DP})
 	lines.append({"label": "Buildings destroyed", "value": "%d" % buildings_down, "points": buildings_down * SCORE_PER_BUILDING})
 	lines.append({"label": "Citizens killed", "value": "%d" % _crowd.killed_citizens, "points": _crowd.killed_citizens * SCORE_PER_CITIZEN})
 	lines.append({"label": "Soldiers killed", "value": "%d" % _crowd.killed_soldiers, "points": _crowd.killed_soldiers * SCORE_PER_SOLDIER})

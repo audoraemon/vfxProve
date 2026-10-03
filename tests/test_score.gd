@@ -52,8 +52,7 @@ static func run(t) -> void:
 			c.field.kill(p, &"nova")
 	rules.advance(0.1)
 	t.check(not rules.finished, "a razed town with the Citadel still up is not a win yet")
-	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
-	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
+	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, and the Temple's near edge is 3.5 away.
 	while not town.citadel.is_fallen():
 		town.citadel.advance(1.01)
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
@@ -62,10 +61,9 @@ static func run(t) -> void:
 		"the Citadel down with stability at zero wins it (%s)" % [ended])
 	t.near(rules.stability.total(), 0.0, 0.0001, "the city has fallen (%.3f)" % rules.stability.total())
 
-	# The score is the spec's arithmetic, line by line.
+	# The score is the spec's arithmetic, line by line (v0.08: no Divine Power term).
 	var seconds := int(roundf(rules.time_left))
-	var dp_left := int(floorf(rules.dp))
-	var expected := Rules.SCORE_WIN + seconds * Rules.SCORE_PER_SECOND + dp_left * Rules.SCORE_PER_DP \
+	var expected := Rules.SCORE_WIN + seconds * Rules.SCORE_PER_SECOND \
 		+ rules.buildings_down * Rules.SCORE_PER_BUILDING + crowd.killed_citizens * Rules.SCORE_PER_CITIZEN \
 		+ crowd.killed_soldiers * Rules.SCORE_PER_SOLDIER + rules.chains * Rules.SCORE_PER_CHAIN
 	t.check(rules.score() == expected, "the score adds up (%d, expected %d)" % [rules.score(), expected])

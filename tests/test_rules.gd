@@ -1,6 +1,6 @@
 extends RefCounted
-## The mission's economy: Divine Power and its regeneration, the four slots' costs and cooldowns, the clock,
-## and what happens when a cast cannot be paid for.
+## The mission's limits: the slots' cooldowns, one power at a time, the clock, and what happens when a cast cannot
+## go out. No Divine Power is spent in a mission (v0.08); the Temple's fall is a Divine Surge.
 
 
 static func run(t) -> void:
@@ -23,19 +23,20 @@ static func run(t) -> void:
 		casts.append([script.resource_path, ground, extra])
 		return null
 
-	t.check(rules.dp == Rules.DP_MAX and rules.dp == 100.0, "the mission starts on a full 100 DP (%.1f)" % rules.dp)
 	t.near(rules.time_left, 360.0, 0.0001, "the manifestation lasts six minutes (%.1f)" % rules.time_left)
 	t.check(rules.key(0) == "heaven" and rules.key(3) == "nova", "the loadout fills slots 1 to 4 in order")
-	t.check(rules.cost(0) == 2 and rules.cost(3) == 4, "each slot costs its power's DP (%d, %d)" % [rules.cost(0), rules.cost(3)])
-	t.check(rules.refusal(0) == "" and rules.refusal(4) == "empty", "a paid-up slot is ready and a fifth slot is empty")
+	t.check(rules.refusal(0) == "" and rules.refusal(4) == "empty", "a fresh slot is ready and a fifth slot is empty")
+	t.check(rules.get("dp") == null and not rules.has_method("cost"), "and the rules keep no Divine Power (v0.08)")
 
-	# A cast spends its cost and starts its cooldown.
+	# A cast starts its cooldown, and changes nothing else.
 	var refused: Array = []
 	rules.cast_refused.connect(func(slot: int, reason: String): refused.append([slot, reason]))
 	var made: Array = []
 	rules.cast_made.connect(func(slot: int, power_key: String, at: Vector2): made.append([slot, power_key, at]))
 	rules.cast(0, Vector2(2.0, -3.0), {"dir": Vector2(1, 0)})
-	t.check(rules.dp == 98.0, "casting Heaven Splitter spends its 2 DP (%.1f)" % rules.dp)
+	t.check(rules.cooldown_left(1) == 0.0 and rules.cooldown_left(2) == 0.0 and rules.cooldown_left(3) == 0.0
+		and rules.refusal(1) == "" and rules.refusal(3) == "",
+		"a cast changes nothing but its own slot's cooldown (%s, %s)" % [rules.refusal(1), rules.refusal(3)])
 	t.check(casts.size() == 1 and String(casts[0][0]).ends_with("heaven_splitter.gd"),
 		"and reaches the world as its own effect script (%s)" % [casts])
 
@@ -45,9 +46,9 @@ static func run(t) -> void:
 	rules._playing = playing
 	t.check(rules.refusal(1) == "busy" and is_equal_approx(rules.busy_left(), 8.0),
 		"while a power plays, the others wait for it (%s, %.1f s)" % [rules.refusal(1), rules.busy_left()])
-	var before_dp := rules.dp
 	rules.cast(1, Vector2.ZERO)
-	t.check(rules.dp == before_dp and refused.back() == [1, "busy"], "a cast then is refused and costs nothing")
+	t.check(refused.back() == [1, "busy"] and rules.cooldown_left(1) == 0.0,
+		"a cast then is refused and starts no cooldown (%s)" % [refused])
 	playing.t = 8.0
 	playing.finished = true
 	t.check(rules.busy_left() == 0.0 and rules.refusal(1) == "", "once it has finished, the next can go")
@@ -59,28 +60,31 @@ static func run(t) -> void:
 	t.near(rules.cooldown_left(0), 30.0, 0.0001, "the slot goes on its 30 s cooldown (%.1f)" % rules.cooldown_left(0))
 	t.check(rules.refusal(0) == "cooldown", "so the slot refuses a second cast")
 	rules.cast(0, Vector2(2.0, -3.0))
-	t.check(rules.dp == 98.0 and casts.size() == 1 and refused == [[0, "cooldown"]],
-		"a refused cast costs nothing and says why (%.1f DP, %s)" % [rules.dp, refused])
+	t.check(casts.size() == 1 and refused == [[0, "cooldown"]],
+		"a refused cast reaches nothing and says why (%s)" % [refused])
 
-	# The cooldown runs off, DP creeps back at half a point a second, and the clock runs down.
+	# The cooldown runs off, and the clock runs down.
 	rules.advance(29.0)
 	t.near(rules.cooldown_left(0), 1.0, 0.0001, "the cooldown counts down (%.1f)" % rules.cooldown_left(0))
 	t.check(rules.refusal(0) == "cooldown", "and still refuses with a second to go")
 	rules.advance(1.0)
 	t.check(rules.cooldown_left(0) == 0.0 and rules.refusal(0) == "", "then the slot is ready again")
-	t.near(rules.dp, 100.0, 0.0001, "30 s of regeneration at 0.5/s tops the bar back up (%.1f)" % rules.dp)
 	rules.advance(10.0)
-	t.check(rules.dp == 100.0, "and DP never passes 100 (%.1f)" % rules.dp)
 	t.near(rules.time_left, 360.0 - 40.0, 0.0001, "the clock has run 40 s (%.1f)" % rules.time_left)
 
-	# Too little DP is its own refusal, and the cost is not taken.
+	# Casting is never refused for Divine Power (v0.08): the Nova, the Barrage and the Tsunami go out back to back,
+	# and the only refusal left is a slot's own cooldown.
+	refused.clear()
 	rules.cast(3, Vector2.ZERO)
 	rules.cast(2, Vector2.ZERO)
-	t.near(rules.dp, 100.0 - 4.0 - 4.0, 0.0001, "two casts spend both costs (%.1f)" % rules.dp)
-	rules.dp = 3.0   # the Tsunami (slot index 1) costs 4, and that slot has not been cast yet
-	refused.clear()
 	rules.cast(1, Vector2.ZERO, {"dir": Vector2(0, 1)})
-	t.check(refused == [[1, "dp"]] and rules.dp == 3.0, "4 DP is out of reach on 3 and nothing is spent (%s)" % refused)
+	rules.cast(3, Vector2.ZERO)
+	t.check(casts.size() == 4 and refused == [[3, "cooldown"]],
+		"three casts in a row all go out, and a repeat is refused for its cooldown (%d, %s)" % [casts.size(), refused])
+	var reasons := PackedStringArray()
+	for slot in 5:
+		reasons.append(rules.refusal(slot))
+	t.check(not reasons.has("dp"), "and refusal() never answers \"dp\" (%s)" % [reasons])
 
 	# The clock stops the mission dead: no more casting once it is out.
 	rules.advance(Rules.MISSION_SECONDS)
@@ -90,33 +94,25 @@ static func run(t) -> void:
 	t.check(refused == [[0, "over"]], "and a finished mission takes no more casts (%s)" % refused)
 
 	# --- What a cast destroyed -------------------------------------------------------------------------
-	# Since the milestone 4 playtest the mission runs on regeneration alone: destroying things pays nothing.
 	var r0 := Rules.new().setup(loadout, null, env, field, crowd, town)
-	t.check(not r0.dp_recovery, "Divine Power comes back only by regeneration by default")
-	r0.dp = 50.0
 	var first_tower: Structure = null
 	for s in env.structures():
 		if s.role == &"tower" and not s.destroyed:
 			first_tower = s
 			break
 	first_tower.destroy(first_tower.center(), &"nova")
-	t.check(r0.dp == 50.0 and r0.buildings_down == 1,
-		"a destroyed tower pays nothing but still counts as a building (%.1f DP, %d)" % [r0.dp, r0.buildings_down])
+	t.check(r0.buildings_down == 1, "a destroyed tower counts as a building (%d)" % r0.buildings_down)
 	r0.free()
 
 	var r2 := Rules.new().setup(loadout, null, env, field, crowd, town)
-	r2.dp_recovery = true  # the table is kept, switched off; this block proves it still pays when switched on
-	var gains: Array = []
-	r2.dp_gained.connect(func(amount: float, at: Vector2): gains.append([amount, at]))
 	var banners: Array = []
 	r2.banner.connect(func(text: String): banners.append(text))
 	var chains: Array = []
 	r2.chained.connect(func(at: Vector2): chains.append(at))
 	r2.caster = func(_script: GDScript, _ground: Vector2, _extra: Dictionary) -> FxTimeline:
 		return null
-	r2.dp = 50.0   # spend first: a gain cannot show on a bar that is already full
 
-	# Nothing is credited to nobody: a destroyed building still pays its DP.
+	# Nothing is credited to nobody: a destroyed building still counts.
 	var towers: Array[Structure] = []
 	for s in env.structures():
 		if s.role == &"tower" and not s.destroyed:
@@ -126,62 +122,39 @@ static func run(t) -> void:
 		if s.role == &"house" and not s.destroyed:
 			houses.append(s)
 	t.check(towers.size() >= 4 and houses.size() >= 11, "the town still has towers and houses to break (%d, %d)" % [towers.size(), houses.size()])
-	var dp_before := r2.dp
 	houses[0].destroy(houses[0].center(), &"nova")
-	t.check(r2.dp == dp_before and r2.buildings_down == 1, "a house is worth no DP but counts as a building (%.1f, %d)" % [r2.dp, r2.buildings_down])
+	t.check(r2.buildings_down == 1, "a house counts as a building (%d)" % r2.buildings_down)
 	towers[0].destroy(towers[0].center(), &"nova")
-	t.near(r2.dp, dp_before + 3.0, 0.0001, "a wall tower pays 3 DP (%.1f)" % r2.dp)
-	t.check(gains.size() == 1 and gains[0][0] == 3.0, "and the gain is reported for its popup (%s)" % [gains])
+	t.check(r2.buildings_down == 2, "and so does a wall tower (%d)" % r2.buildings_down)
 
 	# The Citadel's own parts are the Citadel's, not nine more buildings.
 	var parts_before := r2.buildings_down
 	town.citadel.parts[0].destroy(town.citadel.parts[0].center(), &"nova")
 	t.check(r2.buildings_down == parts_before, "a fallen Citadel part is not counted as a building (%d)" % r2.buildings_down)
 
-	# A soldier pays, a citizen does not.
-	dp_before = r2.dp
-	var soldier: Person = null
-	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.is_alive():
-			soldier = p
-			break
-	field.kill(soldier, &"nova")
-	t.near(r2.dp, dp_before + Rules.DP_SOLDIER, 0.0001, "a dead soldier pays 0.4 DP (%.1f)" % r2.dp)
-	dp_before = r2.dp
-	var citizen: Person = null
-	for p in crowd.citizens:
-		if is_instance_valid(p) and p.is_alive():
-			citizen = p
-			break
-	field.kill(citizen, &"nova")
-	t.check(r2.dp == dp_before, "a dead citizen pays nothing (%.1f)" % r2.dp)
-
 	# Credit goes to the running cast whose power deals that kind, and the latest one wins a tie.
 	r2.cast(2, Vector2(1.0, 1.0))   # cinder: deals &"cinder" and &"stone"
 	t.check(r2.credited_key(&"stone") == "cinder", "the Barrage is credited for falling stone (%s)" % r2.credited_key(&"stone"))
 	t.check(r2.credited_key(&"ice") == "", "and nothing running deals ice (%s)" % r2.credited_key(&"ice"))
 
-	# Six buildings from one cast is a chain: +6 DP and the banner.
-	var dp_chain := r2.dp
+	# Six buildings from one cast is a chain, with its banner.
 	for i in 6:
 		houses[i + 1].destroy(houses[i + 1].center(), &"stone")
 	t.check(chains.size() == 1, "six buildings from one cast is one chain (%d)" % chains.size())
-	t.near(r2.dp - dp_chain, Rules.CHAIN_DP, 0.0001, "worth 6 DP (%.1f)" % (r2.dp - dp_chain))
 	t.check(banners.has("CHAIN!"), "and says so (%s)" % [banners])
 	t.check(r2.chains == 1, "the chain is kept for the score (%d)" % r2.chains)
 	for i in range(7, 11):
 		houses[i].destroy(houses[i].center(), &"stone")
 	t.check(r2.chains == 1, "one cast only ever chains once (%d)" % r2.chains)
 
-	# The Citadel falling is worth 15 DP and its own banner.
-	dp_before = r2.dp
+	# The Citadel falling has its own banner.
 	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
-	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
+	# away, and a blast that took it down as well would bring on the Divine Surge too.
 	while not town.citadel.is_fallen():
 		town.citadel.advance(1.01)
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
-	t.near(r2.dp - dp_before, Rules.CITADEL_DP, 0.0001, "the Citadel's fall pays 15 DP (%.1f)" % (r2.dp - dp_before))
-	t.check(banners.has("THE CITADEL FALLS"), "and is announced (%s)" % [banners])
+	t.check(banners.has("THE CITADEL FALLS") and not banners.has("DIVINE SURGE"),
+		"the Citadel's fall is announced (%s)" % [banners])
 	r2.free()
 
 	# An effect freed without finishing (its layer cleared, say) must not trip the crediting: before the fix, reading
@@ -207,11 +180,12 @@ static func run(t) -> void:
 	town.free()
 	crowd.free()
 	world.free()
-	_temple(t, loadout)
+	_surge(t, loadout)
 
 
-## The Temple's fall is the one refill: 70% of the bar, whatever the recovery switch says, once.
-static func _temple(t, loadout: PackedStringArray) -> void:
+
+## The Divine Surge (v0.08): the Temple's fall resets every cooldown, once a mission, with its banner.
+static func _surge(t, loadout: PackedStringArray) -> void:
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
@@ -220,12 +194,12 @@ static func _temple(t, loadout: PackedStringArray) -> void:
 	var world := Node2D.new()
 	var crowd := Crowd.new().setup(field, env, town, WalkGrid.new().setup(env, town), world, 5)
 	var rules := Rules.new().setup(loadout, null, env, field, crowd, town)
-	var gains: Array = []
-	rules.dp_gained.connect(func(amount: float, at: Vector2): gains.append([amount, at]))
+	rules.caster = func(_script: GDScript, _ground: Vector2, _extra: Dictionary) -> FxTimeline:
+		return null
+	var surges: Array = []
+	rules.surged.connect(func(): surges.append(true))
 	var banners: Array = []
 	rules.banner.connect(func(text: String): banners.append(text))
-	t.check(not rules.dp_recovery and not Rules.DP_FOR_ROLE.has(&"temple"),
-		"with recovery off, and the Temple out of the recovery table")
 	var temple: Structure = null
 	var house: Structure = null
 	for s in env.structures():
@@ -233,34 +207,35 @@ static func _temple(t, loadout: PackedStringArray) -> void:
 			temple = s
 		elif s.role == &"house" and house == null:
 			house = s
-	rules.dp = 10.0
+	rules.cast(0, Vector2.ZERO, {"dir": Vector2(1, 0)})
+	rules.cast(3, Vector2.ZERO)
+	t.check(rules.cooldown_left(0) > 0.0 and rules.cooldown_left(3) > 0.0 and not rules.surged_once,
+		"two slots are on cooldown (%.1f, %.1f)" % [rules.cooldown_left(0), rules.cooldown_left(3)])
 	house.destroy(house.center(), &"nova")
-	t.check(rules.dp == 10.0, "a house still pays nothing (%.1f)" % rules.dp)
+	t.check(rules.cooldown_left(0) > 0.0 and surges.is_empty(), "a house's fall resets nothing")
 	temple.destroy(temple.center(), &"nova")
-	t.near(rules.dp, 80.0, 0.0001, "the Temple's fall restores 70 DP: 10 -> 80 (%.1f)" % rules.dp)
-	t.check(gains.size() == 1 and is_equal_approx(gains[0][0], 70.0) and gains[0][1] == temple.center(),
-		"and the gain pops up at the Temple (%s)" % [gains])
-	t.check(banners.has("THE TEMPLE FALLS — DIVINE POWER RESTORED"), "with its banner (%s)" % [banners])
+	t.check(rules.cooldown_left(0) == 0.0 and rules.cooldown_left(3) == 0.0 and rules.refusal(0) == "",
+		"the Temple's fall resets both cooldowns (%.1f, %.1f)" % [rules.cooldown_left(0), rules.cooldown_left(3)])
+	t.check(surges.size() == 1 and rules.surged_once and banners.has("DIVINE SURGE"),
+		"and is a Divine Surge, announced (%d, %s)" % [surges.size(), banners])
+	# Once a mission. The town has one Temple, so its fall is reported a second time to stand in for another.
+	rules.cast(0, Vector2.ZERO, {"dir": Vector2(1, 0)})
+	var left := rules.cooldown_left(0)
+	var second: Structure = null
+	for s in env.structures():
+		if s.role == &"temple" and s != temple:
+			second = s
+	if second != null:
+		second.destroy(second.center(), &"nova")
+	else:
+		rules._on_structure_destroyed(temple, &"nova")
+	t.check(left > 0.0 and is_equal_approx(rules.cooldown_left(0), left) and surges.size() == 1
+		and banners.count("DIVINE SURGE") == 1,
+		"a second fall resets nothing (%.1f s left, %d surges)" % [rules.cooldown_left(0), surges.size()])
 	rules.free()
-	# On a fuller bar it tops out at the maximum.
-	var town2 := Town.new()
-	var env2 := EnvironmentField.new()
-	town2.build(env2)
-	var crowd2 := Crowd.new().setup(field, env2, town2, WalkGrid.new().setup(env2, town2), world, 5)
-	var rules2 := Rules.new().setup(loadout, null, env2, field, crowd2, town2)
-	rules2.dp = 50.0
-	for s in env2.structures():
-		if s.role == &"temple":
-			s.destroy(s.center(), &"nova")
-	t.check(rules2.dp == Rules.DP_MAX, "from 50 DP it tops out at the full 100 (%.1f)" % rules2.dp)
-	rules2.free()
 	crowd.free()
-	crowd2.free()
 	world.free()
 	field.free()
 	env.clear()
 	env.free()
 	town.free()
-	env2.clear()
-	env2.free()
-	town2.free()

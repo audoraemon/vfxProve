@@ -11,8 +11,6 @@ const COL_GOLD := Color("d8b23a")
 const COL_GOLD_DARK := Color("7a5f18")
 const COL_PANEL := Color(0.04, 0.04, 0.06, 0.66)
 const COL_BAD := Color("c8342a")
-const COL_DP := Color("6fd0ff")
-const COL_DP_LOW := Color("ffb040")
 const COL_SHADOW := Color(0, 0, 0, 0.75)
 ## The five stability colours in the spec's order: population, infrastructure, leadership, military, resources.
 const STABILITY_COLS := [Color("7fc46a"), Color("c8a05a"), Color("d8b23a"), Color("c05a4a"), Color("6fa8c8")]

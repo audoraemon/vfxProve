@@ -332,9 +332,8 @@ func _draw_panel() -> void:
 		["WIN", mission.goal],
 		["LOSE", "%d citizens escape, or the time runs out" % Rules.ESCAPE_LIMIT],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
-		["POWER", ("%d DP, +%.1f a second; towers, gates, soldiers and chains pay back" if Rules.DP_RECOVERY_DEFAULT
-			else "%d DP, +%.1f a second, nothing else refunds it") % [int(Rules.DP_MAX), Rules.DP_REGEN]],
-		["TEMPLE", "Its fall restores %d DP, once" % roundi(Rules.DP_MAX * Rules.TEMPLE_DP_SHARE)],
+		["POWER", "%d DP for the loadout; none is spent in the mission" % mission.dp_capacity],
+		["TEMPLE", "Its fall resets every cooldown, once"],
 	]
 	# Values start just right of the widest label, measured rather than guessed -- a guessed column ran
 	# TARGET into "Aldermere".

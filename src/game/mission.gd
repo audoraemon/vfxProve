@@ -438,8 +438,8 @@ func _mission_test() -> void:
 			banners_taken += 1
 			await _bf.save_capture("mission_banner_%d.png" % banners_taken)
 			print("banner ", banners_taken, ": ", banner_shots[banners_taken - 1])
-	print("MISSION test dp=%.1f buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
-		_rules.dp, _rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
+	print("MISSION test buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
+		_rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
 		roundi(_rules.stability.total() * 100.0), roundi(_town.citadel.fraction() * 100.0)])
 	await _quit()
 

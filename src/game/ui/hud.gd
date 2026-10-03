@@ -1,13 +1,11 @@
 class_name Hud
 extends Control
 ## The in-mission HUD (spec §5): the clock above, the objectives to the left, the city's state to the right,
-## banners across the middle, and the Divine Power bar with the four slots below. It reads Rules, Crowd and
+## banners across the middle, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). It reads Rules, Crowd and
 ## the Citadel and changes nothing; it redraws only when what it shows has changed.
 
 ## How long one banner stays up.
 const BANNER_SECONDS := 2.2
-## A +DP popup drifts up for this long.
-const POPUP_SECONDS := 1.2
 ## A slot that refused a cast stays red for this long (spec §1; the buzz that goes with it is milestone 5's).
 const FLASH_SECONDS := 0.35
 ## The clock turns red and pulses under this many seconds (spec §5).
@@ -15,7 +13,7 @@ const HURRY_AT := 30.0
 
 const SLOT_SIZE := 42.0
 const SLOT_GAP := 6.0
-## A slot is a card: the SLOT_SIZE icon on the left, the power's name and cost on the right.
+## A slot is a card: the SLOT_SIZE icon on the left, the power's name and cooldown on the right.
 ## Wide enough that every power's name fits in two lines: the longest line is "Judgement of", 75 px at
 ## SIZE_SMALL, and at 112 the name wrapped to three and lost "Ancients". The row is 522 px, inside 640.
 const SLOT_W := 126.0
@@ -28,9 +26,8 @@ const STABILITY_BAR := Vector2(96.0, 5.0)
 const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 60.0)
 ## The stability bar's legend: a short name for each part and its colour's index, in the bar's own order.
 const LEGEND := [["Pop", 0], ["Infra", 1], ["Lead", 2], ["Mil", 3], ["Res", 4]]
-## The dark plate under a slot's hotkey and cost.
+## The dark plate under a slot's hotkey.
 const PLATE_H := 12.0
-const DP_BAR := Vector2(180.0, 7.0)
 ## The Banishing Rite's bar under the clock (v0.05).
 const RITE_BAR := Vector2(120.0, 4.0)
 const RITE_TOP := 30.0
@@ -41,8 +38,6 @@ var _town: Town
 var _aim: Targeting
 ## Banners waiting their turn: [text, seconds shown].
 var _banners: Array = []
-## Floating gains: [text, screen position, seconds shown].
-var _popups: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
 var _flash := PackedFloat32Array()
 ## What the last frame drew, so an unchanged HUD costs nothing.
@@ -71,7 +66,6 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	for i in _rules.loadout.size():
 		_slot_names.append(String(_rules.power(i).get("name", "")))
 	_rules.banner.connect(push_banner)
-	_rules.dp_gained.connect(_on_dp_gained)
 	_rules.cast_refused.connect(_on_cast_refused)
 	return self
 
@@ -80,7 +74,7 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
-## Age the banners and popups, and redraw when anything on screen has changed.
+## Age the banners, and redraw when anything on screen has changed.
 func advance(delta: float) -> void:
 	# Only the one on screen (index 0, the only one _draw_banners() ever reads) ages: a banner waiting behind
 	# it must not lose part of its own showing to the time it spent queued.
@@ -88,20 +82,13 @@ func advance(delta: float) -> void:
 		_banners[0][1] += delta
 	while not _banners.is_empty() and float(_banners[0][1]) >= BANNER_SECONDS:
 		_banners.pop_front()
-	for p in _popups:
-		p[2] += delta
-	var kept: Array = []
-	for p in _popups:
-		if float(p[2]) < POPUP_SECONDS:
-			kept.append(p)
-	_popups = kept
 	var flashing := false
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners fade, popups drift, a refused slot burns red and the last half minute pulses: while any of those
+	# Banners fade, a refused slot burns red and the last half minute pulses: while any of those
 	# is on screen the HUD is an animation and redraws every frame. The rest of the time it is a still picture.
-	if flashing or not _banners.is_empty() or not _popups.is_empty() or _rules.time_left <= HURRY_AT:
+	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT:
 		_drawn = ""
 		queue_redraw()
 		return
@@ -141,7 +128,7 @@ func status_text() -> String:
 	return "   ".join(parts)
 
 
-## What a slot is: ready to cast, waiting out a cooldown, or unaffordable. Being the picked one is a separate
+## What a slot is: ready to cast, waiting out a cooldown, or waiting for the power now playing. Being the picked one is a separate
 ## question -- a picked slot still has to show its own cooldown, which it did not when this answered "picked".
 func slot_state(slot: int) -> String:
 	var reason := _rules.refusal(slot)
@@ -197,15 +184,11 @@ func _on_cast_refused(slot: int, _reason: String) -> void:
 	UiSound.play(&"ui_buzz")
 
 
-func _on_dp_gained(amount: float, at: Vector2) -> void:
-	_popups.append(["+%.1f" % amount, Iso.ground_to_screen(at), 0.0])
-
-
 ## Everything the HUD shows, as one string. Cheap to build, and it means a still frame is not redrawn sixty
 ## times a second while a four-minute mission's effects are already busy.
 func _signature() -> String:
-	var out := "%s|%s|%s|%d|%d|%s" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
-		roundi(_rules.dp * 2.0), roundi(_rules.stability.total() * 200.0), rite_text()]
+	var out := "%s|%s|%s|%d|%s" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
+		roundi(_rules.stability.total() * 200.0), rite_text()]
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), "p" if is_picked(i) else ""]
 	return out
@@ -219,9 +202,7 @@ func _draw() -> void:
 	_draw_objectives()
 	_draw_status(w)
 	_draw_banners(w)
-	_draw_dp(w)
 	_draw_slots(w)
-	_draw_popups()
 
 
 func _draw_clock(w: float) -> void:
@@ -325,16 +306,6 @@ func _draw_banners(w: float) -> void:
 	UiTheme.text(self, Vector2(x, 131.0), text, UiTheme.SIZE_BIG, col)
 
 
-func _draw_dp(w: float) -> void:
-	var at := Vector2(roundf((w - DP_BAR.x) * 0.5), 300.0)
-	draw_rect(Rect2(at - Vector2.ONE, DP_BAR + Vector2(2.0, 2.0)), Color(0, 0, 0, 0.7))
-	var frac := clampf(_rules.dp / Rules.DP_MAX, 0.0, 1.0)
-	var col := UiTheme.COL_DP if _rules.dp >= 20.0 else UiTheme.COL_DP_LOW
-	draw_rect(Rect2(at, Vector2(DP_BAR.x * frac, DP_BAR.y)), col)
-	UiTheme.text(self, Vector2(at.x + DP_BAR.x + 5.0, at.y + DP_BAR.y), "%d DP" % roundi(_rules.dp),
-		UiTheme.SIZE_SMALL)
-
-
 func _draw_slots(_w: float) -> void:
 	for i in _rules.loadout.size():
 		var box := slot_rect(i)
@@ -357,9 +328,10 @@ func _draw_slots(_w: float) -> void:
 		var lines := UiTheme.wrap(slot_name(i), SLOT_W - SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL)
 		for k in mini(lines.size(), 2):
 			UiTheme.text(self, Vector2(tx, box.position.y + 12.0 + UiTheme.LINE_SMALL * float(k)), lines[k], UiTheme.SIZE_SMALL, name_col)
-		var cost := "%d DP" % _rules.cost(i)
-		UiTheme.text(self, Vector2(box.end.x - UiTheme.width(cost, UiTheme.SIZE_SMALL) - 4.0, box.end.y - 4.0), cost,
-			UiTheme.SIZE_SMALL, UiTheme.COL_BAD if state == "dp" else UiTheme.COL_DIM)
+		# The power's cooldown, dim in the corner (v0.08: it was the DP cost; Task 11 lays the card out anew).
+		var cooldown := PrepareScreen.cooldown_text(_rules.power(i))
+		UiTheme.text(self, Vector2(box.end.x - UiTheme.width(cooldown, UiTheme.SIZE_SMALL) - 4.0, box.end.y - 4.0),
+			cooldown, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		if state == "busy":
 			# Another power is still playing: a light shade and its seconds left, in gold.
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE)), Color(0, 0, 0, 0.35))
@@ -380,14 +352,3 @@ func _plate(at: Vector2, label: String, col: Color) -> void:
 	var w := UiTheme.width(label, UiTheme.SIZE_SMALL)
 	draw_rect(Rect2(at, Vector2(w + 2.0, PLATE_H)), Color(0, 0, 0, 0.62))
 	UiTheme.text(self, at + Vector2(1.0, PLATE_H - 3.0), label, UiTheme.SIZE_SMALL, col)
-
-
-func _draw_popups() -> void:
-	for p in _popups:
-		var age := float(p[2])
-		var col := UiTheme.COL_DP
-		col.a = clampf((POPUP_SECONDS - age) / 0.5, 0.0, 1.0)
-		# The popup belongs to the place the DP came from, so its stored world pixel is put through the
-		# camera's transform: the HUD's own layer does not move with the camera.
-		var at: Vector2 = get_viewport().get_canvas_transform() * Vector2(p[1])
-		UiTheme.text(self, at - Vector2(0.0, age * 14.0), String(p[0]), UiTheme.SIZE_SMALL, col)

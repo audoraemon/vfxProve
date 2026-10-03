@@ -37,11 +37,10 @@ const FLOW_TEST_SAVE := "user://test_flow.cfg"
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
 const SAMPLE_RESULT := {
-	"won": true, "reason": "citadel", "score": 16350, "rank": "S", "best": true,
+	"mission": "last_judgement", "won": true, "reason": "citadel", "score": 15350, "rank": "S", "best": true,
 	"lines": [
 		{"label": "The city has fallen", "value": "", "points": 5000},
 		{"label": "Time left", "value": "3:20", "points": 5000},
-		{"label": "Divine Power left", "value": "100", "points": 1000},
 		{"label": "Buildings destroyed", "value": "60", "points": 2400},
 		{"label": "Citizens killed", "value": "110", "points": 1100},
 		{"label": "Soldiers killed", "value": "50", "points": 1250},

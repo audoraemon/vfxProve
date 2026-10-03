@@ -21,6 +21,9 @@ BOXES = {
     "cottage_blue": (380, 0, 665, 270),
     "tavern": (1070, 0, 1395, 265),
     "smithy": (5, 275, 355, 550),
+    # Two-storey timber-framed house with dormers (top middle). townhouse_b is townhouse_a recoloured locally.
+    "townhouse_a": (720, 15, 1050, 270),
+    "townhouse_b": (720, 15, 1050, 270),
     "cathedral": (365, 250, 705, 585),
     "citadel_keep": CASTLE,
     "citadel_tower": CASTLE,

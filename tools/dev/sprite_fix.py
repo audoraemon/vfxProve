@@ -14,6 +14,13 @@
                                          the first png sets the source statistics for all of them: pass a set's
                                          intact first so damaged/ruins keep their scorch). `stonemean <png> [...]`
                                          prints the stone mask's share and mean RGB.
+  huemap  <src> <dst> <h0,h1> <palette png> <x0,y0,x1,y1> [minsat=S] [minl=L] [lrange=lo,hi] [phue=a,b] [poly=x,y;x,y;...] [skip=x0,y0,x1,y1 ...]
+                                         recolour one hue band (degrees; e.g. a red tile roof) to another sprite's
+                                         palette (the box's colours, phue filters them by hue): each pixel takes the
+                                         palette colour nearest its lightness, mapped linearly from lrange (default:
+                                         its own 2..98 % lightness) onto the palette's range, so the light-dark order
+                                         stays. Only pixels inside poly (if given) change; skip boxes are left
+                                         alone (e.g. a brick chimney in the roof's hue).
 Run from the project root.
 """
 import glob
@@ -328,8 +335,60 @@ def harmonize(target, box, *paths):
         print(p, "stone px %.0f" % w.sum(), "mean RGB", m0.round(1).tolist(), "->", m1.round(1).tolist())
 
 
+def _hls(arr):
+    """Hue (degrees), lightness, saturation (0..1) of an RGB(A) array, as in colorsys."""
+    import numpy as np
+    rgb = arr[..., :3].astype(np.float64) / 255.0
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    l = (mx + mn) / 2
+    d = mx - mn
+    s = np.where(d == 0, 0, d / np.where(l <= 0.5, mx + mn, 2 - mx - mn + 1e-12))
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    dd = np.where(d == 0, 1, d)
+    h = np.where(mx == r, ((g - b) / dd) % 6, np.where(mx == g, (b - r) / dd + 2, (r - g) / dd + 4)) * 60
+    h = np.where(d == 0, 0, h)
+    return h, l, s
+
+
+def huemap(src, dst, hues, palette, box, *opts):
+    import numpy as np
+    o = dict(kv.split("=", 1) for kv in opts if not kv.startswith("skip="))
+    skips = [tuple(int(v) for v in kv[5:].split(",")) for kv in opts if kv.startswith("skip=")]
+    h0, h1 = (float(v) for v in hues.split(","))
+    minsat, minl = float(o.get("minsat", 0.4)), float(o.get("minl", 0.08))
+    pal = np.array(_rgba(palette).crop(tuple(int(v) for v in box.split(","))))
+    ph, pl, ps = _hls(pal)
+    pm = (pal[..., 3] == 255) & (ps >= 0.12) & (pl > 0.05) & (pl < 0.9)
+    if "phue" in o:
+        a, b = (float(v) for v in o["phue"].split(","))
+        pm &= (ph >= a) & (ph <= b)
+    cols = np.unique(pal[..., :3][pm], axis=0)
+    _, cl, _ = _hls(cols[None])
+    cl = cl[0]
+    arr = np.array(_rgba(src))
+    h, l, s = _hls(arr)
+    m = (arr[..., 3] > 0) & (h >= h0) & (h <= h1) & (s >= minsat) & (l >= minl)
+    if "poly" in o:
+        area = Image.new("L", (arr.shape[1], arr.shape[0]), 0)
+        ImageDraw.Draw(area).polygon([tuple(float(v) for v in pt.split(",")) for pt in o["poly"].split(";")], fill=255)
+        m &= np.array(area) > 0
+    for x0, y0, x1, y1 in skips:
+        m[y0:y1, x0:x1] = False
+    if "lrange" in o:
+        lo, hi = (float(v) for v in o["lrange"].split(","))
+    else:
+        lo, hi = np.percentile(l[m], 2), np.percentile(l[m], 98)
+    t = np.clip((l - lo) / max(hi - lo, 1e-6), 0, 1)
+    lt = cl.min() + t * (cl.max() - cl.min())
+    idx = np.abs(lt[..., None] - cl[None, None, :]).argmin(-1)
+    out = arr.copy()
+    out[..., :3][m] = cols[idx][m]
+    Image.fromarray(out, "RGBA").save(dst)
+    print(dst, "recoloured px", int(m.sum()), "palette", len(cols), "lrange %.3f,%.3f" % (lo, hi))
+
+
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
     {"shift": shift, "corner": corner, "profile": profile, "unwhite": unwhite, "largest": largest, "strip": strip,
      "view": view, "sheet": sheet, "footprint": footprint, "tile": tile, "harmonize": harmonize,
-     "stonemean": stonemean}[cmd](*args)
+     "stonemean": stonemean, "huemap": huemap}[cmd](*args)

@@ -90,3 +90,16 @@ Characters made with `tools/dev/pixellab_api.py character --size 16` (standard m
 | `inpaint` the keep's damaged still, the same with "cracked… scorch marks", seed 802 | 20 | The banner patches come out a little paler than the wall round them; they read as where the banners hung. Kept |
 
 **Total so far: 1127** (2000 → 873).
+
+## Batch 2 (2026-10-03)
+
+Balance at start: 873.
+
+| Set | Call | Prompt / refs | Seed | Cost | Result |
+|---|---|---|---|---|---|
+| town_tower | `generate` 112x136 | grey limestone square wall tower, torch brazier, blue fleur-de-lis banner, arched window, moss; refs: reference.png (footprint), style_ref.png (TownMap_Component4 tower) | 41 | 20 (873 → 853) | 4 candidates; picked #03: banner, window, torch, bottom dy +3, centre dx +2, nothing touches the canvas edge. #00/#01 sat 8 px high; #02 had no banner. Taller than the procedural block (117 px), reads as the reference's tower. Anchor (58, 125) |
+| town_tower | `edit` (damaged) | cracked and missing blocks, broken merlons, torn banner, scorch, torch out | default | 20 (853 → 833) | Rejected: the output was a 2x4 tiling of small towers |
+| town_tower | `edit` (ruins) | collapsed into a low heap of rubble with a short broken stump | default | 20 (a first attempt, orphaned when the shell timed out, was billed too: 40 in all, 833 → 793) | Kept edit_00; lowest row 106 vs intact 128, moved (0, +22) |
+| town_tower | `edit` (damaged, re-roll) | as above plus "one single tower… same size" | 202 | 20 (793 → 773) | Kept edit_00: cracks, scorch, torn banner, torch out, same outline |
+
+town_tower total: 100 generations (873 → 773), 30 over its 70 cap: the orphaned ruins job (20) and the tiled damaged edit (20) were wasted. Lesson: run `edit` calls with `run_in_background` or a long timeout, one at a time. Glow 1.4% intact, 0% damaged, 0% ruins. No collapse (engine sink).

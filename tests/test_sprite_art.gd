@@ -3,7 +3,7 @@ extends RefCounted
 
 const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
-	"citadel_wall", "citadel_wall_side", "citadel_gate"]
+	"citadel_wall", "citadel_wall_side", "citadel_gate", "town_tower"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:

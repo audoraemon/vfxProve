@@ -959,6 +959,9 @@ func _evacuate() -> void:
 			if not _households.has(p.profile.family):
 				_households[p.profile.family] = _clock
 			continue
+		if p.mind == Person.Mind.WHISPERED:
+			p.whisper_resume_flee()  # Mind Whisper (v0.08): it lingers first, then flees
+			continue
 		p.flee()
 	var shouted := 0
 	for p in citizens:
@@ -1230,6 +1233,22 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_hear_alarm(ALARM_KILL)
 
 
+## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
+## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen.
+func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
+	var best: Person = null
+	var best_d := DOOM_WITNESS
+	for group: Array[Person] in [citizens, soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside:
+				continue
+			var d := p.ground_pos.distance_to(at)
+			if d <= best_d:
+				best = p
+				best_d = d
+	return best
+
+
 ## Silent Doom's dead (v0.05), judged after all of a cast's victims have fallen (so they never witness each other):
 ## nobody living within DOOM_WITNESS, and the town never knows; otherwise those near panic at a small danger and the
 ## death raises the alarm like any other. The seen victims are reacted to together (v0.07.1): with no cap a cast can
@@ -1239,17 +1258,12 @@ func _settle_doom() -> void:
 		return
 	var dead := _doomed
 	_doomed = []
-	var onlookers := citizens + soldiers
 	var seen_at: Array[Vector2] = []
 	for v in dead:
 		if not is_instance_valid(v):
 			continue
 		var at := v.ground_pos
-		var seen := false
-		for p in onlookers:
-			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= DOOM_WITNESS:
-				seen = true
-				break
+		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
 		threats.register(at, 0.6, 0.3, 3.0, DOOM_WITNESS, DOOM_WITNESS + 1.0, &"doom")

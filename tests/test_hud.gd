@@ -37,36 +37,48 @@ static func run(t) -> void:
 	t.check(segs[0][1] == UiTheme.STABILITY_COLS[0] and segs[1][1] == UiTheme.STABILITY_COLS[3] and segs[2][1] == UiTheme.STABILITY_COLS[1],
 		"citizens are Population's colour, soldiers Military's, destroyed Infrastructure's")
 
-	# A slot says which of the four things it is.
+	# A slot says what it can do: ready, on cooldown, or waiting for the power now playing (v0.08: never "dp").
 	aim.pick(0)
 	t.check(hud.is_picked(0) and hud.slot_state(0) == "ready",
 		"the picked slot is known as picked and still reports what it can do (%s)" % hud.slot_state(0))
-	t.check(hud.slot_state(3) == "ready", "a slot that can be paid for is ready (%s)" % hud.slot_state(3))
+	t.check(hud.slot_state(3) == "ready", "a slot nothing has fired is ready (%s)" % hud.slot_state(3))
 	rules.cast(3, Vector2.ZERO)
 	t.check(hud.slot_state(3) == "cooldown", "one that just fired is on cooldown (%s)" % hud.slot_state(3))
-	rules.dp = 15.0   # the Barrage (slot index 2) costs 25
-	t.check(hud.slot_state(2) == "dp", "and one the player cannot afford says so (%s, %.1f DP)" % [hud.slot_state(2), rules.dp])
+	t.check(hud.slot_state(2) == "ready", "and the others are still ready: nothing is spent (%s)" % hud.slot_state(2))
+	var playing := FxTimeline.new()
+	playing.duration = 8.0
+	rules._playing = playing
+	t.check(hud.slot_state(2) == "busy" and hud.slot_state(3) == "cooldown",
+		"while a power plays, a ready slot waits for it and a cooling one still shows its cooldown (%s, %s)"
+		% [hud.slot_state(2), hud.slot_state(3)])
 
 	# A refused cast flashes its own slot red (the buzz that goes with it is milestone 5's).
 	rules.cast(2, Vector2.ZERO)
 	t.check(hud.flashing(2) and not hud.flashing(1), "a refused cast flashes its slot (%s)" % hud.flashing(2))
 	hud.advance(Hud.FLASH_SECONDS + 0.1)
 	t.check(not hud.flashing(2), "and the flash fades")
+	rules._playing = null
+	playing.free()
 
 	# The slots answer to the mouse (spec §1: "keys 1-4 or click its slot").
 	t.check(hud.slot_at(hud.slot_rect(2).get_center()) == 2, "a point on the third slot is the third slot")
 	t.check(hud.slot_at(Vector2(4.0, 200.0)) == -1, "and a point on the town is no slot")
 
-	# Each slot is a card with the power's name beside its icon (the user's second playtest).
+	# Each slot is a card with the power's name beside its icon (the user's second playtest); since v0.08 a compact
+	# one, the name on one line cut to fit.
 	t.check(hud.slot_rect(0).size.x == Hud.SLOT_W and hud.slot_rect(0).size.y == Hud.SLOT_SIZE,
 		"a slot is a %d x %d card (%s)" % [int(Hud.SLOT_W), int(Hud.SLOT_SIZE), hud.slot_rect(0).size])
-	t.check(hud.slot_name(0) == "Heaven Splitter" and hud.slot_name(3) == "Nuclear Nova",
-		"and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
+	t.check(hud.slot_name(0) == UiTheme.fit("Heaven Splitter", Hud.NAME_ROOM) and hud.slot_name(0).begins_with("Heaven")
+		and hud.slot_name(3).begins_with("Nuclear"), "and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
 	var too_long := ""
 	for p: Dictionary in PowerBook.POWERS:
-		if UiTheme.wrap(String(p.name), Hud.SLOT_W - Hud.SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL).size() > 2:
+		var cut := UiTheme.fit(String(p.name), Hud.NAME_ROOM)
+		if cut.length() < 3 or UiTheme.width(cut, UiTheme.SIZE_SMALL) > Hud.NAME_ROOM:
 			too_long += " " + String(p.name)
-	t.check(too_long == "", "every power's name fits a card in two lines (too long:%s)" % too_long)
+	t.check(too_long == "", "every power's name fits a card on one line (too long:%s)" % too_long)
+	# Four slots sit centred on the screen.
+	t.check(is_equal_approx(hud.slot_rect(0).position.x, Hud.SCREEN_W - hud.slot_rect(3).end.x),
+		"four slots are centred (%.0f .. %.0f)" % [hud.slot_rect(0).position.x, hud.slot_rect(3).end.x])
 
 	# Banners queue up, show for their time and go.
 	rules.banner.emit("CHAIN!")
@@ -77,6 +89,33 @@ static func run(t) -> void:
 	t.check(hud.banners().size() == 1, "the first one goes when its time is up (%d)" % hud.banners().size())
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
 	t.check(hud.banners().is_empty(), "and so does the last (%d)" % hud.banners().size())
+	# A Mind Whisper pressed on nobody (v0.08): the slot flashes and the banner says why.
+	rules.refuse(1, "nobody")
+	t.check(hud.flashing(1) and hud.banners() == PackedStringArray(["NO ONE TO WHISPER TO"]),
+		"a whisper at nobody flashes its slot and says so (%s)" % [hud.banners()])
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+
+	# Six powers (v0.08): six compact slots across the 640-px screen, none touching, each found by the mouse.
+	var six_rules := Rules.new().setup(PackedStringArray(["doom", "heaven", "wisp", "thorns", "discord", "blight"]), null,
+		env, field, crowd, town)
+	var six := Hud.new().setup(six_rules, crowd, town, null)
+	var six_bad := 0
+	for i in 6:
+		var r := six.slot_rect(i)
+		if r.position.x < 0.0 or r.end.x > Hud.SCREEN_W or r.end.y > 360.0:
+			six_bad += 100
+		if i > 0 and r.intersects(six.slot_rect(i - 1)):
+			six_bad += 10
+		if six.slot_at(r.get_center()) != i:
+			six_bad += 1
+	t.check(six_bad == 0 and six.slot_rect(5).end.x - six.slot_rect(0).position.x == 620.0,
+		"six slots make a 620-px row inside the screen, none touching, each under the mouse (%d, %.0f .. %.0f)"
+		% [six_bad, six.slot_rect(0).position.x, six.slot_rect(5).end.x])
+	six.free()
+	six_rules.free()
+
+	# The Warning (v0.08): the objective panel in place of the Citadel's, the messenger's marker and its edge arrow.
+	_warning(t, env, field, crowd, town)
 
 	hud.free()
 	aim.free()
@@ -89,3 +128,42 @@ static func run(t) -> void:
 	town.free()
 	crowd.free()
 	world.free()
+
+
+static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, town: Town) -> void:
+	var def := MissionBook.warning()
+	var rules := Rules.new().setup(def.default_loadout, null, env, field, crowd, town, def)
+	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
+	var director := (def.director.new() as MissionDirector).setup(rules, crowd, town, null) as WarningDirector
+	rules.director = director
+	var hud := Hud.new().setup(rules, crowd, town, null)
+	var rows := hud.objective_rows()
+	t.check(rows == [["Stop the warning", ""], ["Omen fades 2:00", ""], ["Unseen", "ok"]],
+		"The Warning's panel: the warning, the omen's clock, and Unseen ticked (%s)" % [rows])
+	for i in AlarmManager.LOCAL_EVENTS:
+		crowd.alarms.incident(TownLayout.MARKET_SQUARE.get_center())
+	crowd.alarms.update(crowd.alarm, 0, 0.0)
+	t.check(hud.objective_rows()[2] == ["Unseen", "x"], "and Unseen crossed after Local Emergency (%s)" % [hud.objective_rows()])
+	crowd.alarms.reset()
+
+	# Out of a tree there is no camera: the marker is the messenger's feet in world pixels.
+	t.check(director.messenger != null and hud.marker_shown()
+		and hud.marker_screen() == Iso.ground_to_screen(director.messenger.ground_pos),
+		"the marker sits on the messenger (%s)" % hud.marker_screen())
+	var messenger := director.messenger
+	director.messenger = null
+	t.check(not hud.marker_shown() and hud.marker_screen() == Vector2.INF, "and is gone with no messenger")
+	director.messenger = messenger
+	var inside := Rect2(Vector2.ONE * Hud.EDGE_MARGIN, Vector2(Hud.SCREEN_W, Hud.SCREEN_H) - Vector2.ONE * Hud.EDGE_MARGIN * 2.0)
+	var bad := ""
+	for far: Vector2 in [Vector2(5000.0, -3000.0), Vector2(-900.0, 180.0), Vector2(320.0, 2000.0), Vector2(-40.0, -40.0)]:
+		var at := hud.edge_arrow(far)
+		var on_edge := is_equal_approx(at.x, inside.position.x) or is_equal_approx(at.x, inside.end.x) \
+			or is_equal_approx(at.y, inside.position.y) or is_equal_approx(at.y, inside.end.y)
+		if not inside.grow(0.01).has_point(at) or not on_edge:
+			bad += " %s->%s" % [far, at]
+	t.check(bad == "", "an off-screen messenger's arrow sits on the frame, %d px in (bad:%s)" % [int(Hud.EDGE_MARGIN), bad])
+
+	hud.free()
+	rules.teardown()
+	rules.free()

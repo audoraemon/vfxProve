@@ -51,9 +51,9 @@ static func _run_for(crowd: Crowd, people: Array, seconds: float, dt := 0.1) -> 
 
 static func run(t) -> void:
 	var book := PowerBook.get_power("madness")
-	t.check(PowerBook.kind_of("madness") == "curse" and PowerBook.is_quiet("madness") and float(book.alarm) > 0.0
+	t.check(PowerBook.authority_of("madness") == "disorder" and PowerBook.is_quiet("madness") and float(book.alarm) > 0.0
 		and PowerBook.icon("madness") != null and PowerBook.hud_icon("madness") != null and PowerBook.clip("madness") != null,
-		"%s is a quiet curse with its icons and clip" % book.name)
+		"%s is a quiet Disorder power with its icons and clip" % book.name)
 	t.check(Rules.POWER_KINDS["madness"] == [&"frenzy"], "its casts are credited with the frenzy's dead")
 	t.check(MadnessManager.stage_of(0.1) == MadnessManager.Stage.UNEASY and MadnessManager.stage_of(0.5) == MadnessManager.Stage.DISTURBED
 		and MadnessManager.stage_of(0.7) == MadnessManager.Stage.UNSTABLE and MadnessManager.stage_of(0.95) == MadnessManager.Stage.BROKEN,

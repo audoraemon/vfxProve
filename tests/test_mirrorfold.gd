@@ -37,9 +37,9 @@ static func _done(made: Array) -> void:
 
 static func run(t) -> void:
 	var p := PowerBook.get_power("mirror")
-	t.check(PowerBook.kind_of("mirror") == "control" and PowerBook.is_quiet("mirror") and String(p.aim) == "two clicks"
+	t.check(PowerBook.authority_of("mirror") == "passage" and PowerBook.is_quiet("mirror") and String(p.aim) == "two clicks"
 		and PowerBook.icon("mirror") != null and PowerBook.hud_icon("mirror") != null and PowerBook.clip("mirror") != null,
-		"%s is a quiet control power aimed with two clicks, with its icons and clip" % p.name)
+		"%s is a quiet Passage power aimed with two clicks, with its icons and clip" % p.name)
 
 	# The oval: long across the screen, short down it.
 	var a := Vector2(2.75, 11.25)  # the Main Gate's plaza

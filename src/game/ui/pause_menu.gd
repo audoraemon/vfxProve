@@ -1,10 +1,11 @@
 class_name PauseMenu
 extends Node
-## Pause (spec §1): the mission frozen underneath, and Resume, Restart, Change powers, Title. Esc resumes, the
+## Pause (spec §1): the mission frozen underneath, and Resume, Restart, Change powers, Missions. Esc resumes, the
 ## way it paused. This node lives beside the mission, not inside it, so it keeps running while the mission is
 ## switched off.
 
-## "resume", "restart" (a new mission with the same four powers), "change" (back to the draft) or "title".
+## "resume", "restart" (a new mission with the same four powers), "change" (back to the draft) or "missions" (the
+## mission board, v0.08).
 signal action(name: String)
 
 var _ui: Control
@@ -21,7 +22,7 @@ func setup() -> PauseMenu:
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	_menu = Menu.column(["resume", "restart", "change", "title"], ["Resume", "Restart", "Change powers", "Title"],
+	_menu = Menu.column(["resume", "restart", "change", "missions"], ["Resume", "Restart", "Change powers", "Missions"],
 		320.0, 148.0, 140.0)
 	return self
 

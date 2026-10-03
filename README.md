@@ -65,21 +65,24 @@ The approved effects are becoming a one-mission game (spec: `docs/superpowers/sp
 
 | Input | Action |
 |---|---|
-| `Enter` | Play on the title, MANIFEST on Prepare once four are picked, Replay on Results |
-| `1`–`4` | pick a power from the drafted loadout |
+| `Enter` | Play on the title, choose the selected mission on the board, MANIFEST on Prepare once at least one power is picked, Replay on Results |
+| `Left` / `Right` | select a mission on the board (or hover a card); the difficulty on Prepare (Last Judgement only) |
+| `1`–`6` | pick a power from the drafted loadout (up to six slots, by mission) |
 | Left click | cast a point power at the cursor |
-| Left drag | line powers (Heaven Splitter, Tsunami Breaker): press = start, drag = direction |
+| Left drag | line powers (Heaven Splitter, Tsunami Breaker, Thornwall): press = start, drag = direction; Mind Whisper: press on a person, release on the spot |
 | `WASD` / arrows, middle drag | pan |
 | Mouse wheel | zoom |
 | `R` | restart with a fresh mission |
-| `Esc` | cancel an aim in progress, else quit; back on Prepare, pause in a mission, resume from pause, Title from Results |
+| `Esc` | cancel an aim in progress, else quit; Title from the board, the board from Prepare, pause in a mission, resume from pause, the board from Results |
 
-The loadout, seed and population can be set on the command line: `-- --loadout=heaven,gravity,judgement,nova --seed=7 --people=80`; the default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and Nuclear Nova. A mission ends with a banner and its score, rank and stat table printed to the console — milestone 4 turns that into the Results screen.
+**Versions:** v0.08 (tag `kak-v0.08`) adds the mission board (The Warning, Tier 1; Last Judgement, Tier 5), Divine Power as a loadout budget with up to six slots, and Mind Whisper. Each version is described in `docs/KAK_Version_0.0N_Summary.md` (latest: `docs/KAK_Version_0.08_Summary.md`).
+
+The mission, loadout, seed and population can be set on the command line: `-- --mission=warning --loadout=whisper,doom,discord --seed=7 --people=80`. Last Judgement's default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and Nuclear Nova; The Warning's is Mind Whisper, Silent Doom and Discord. A mission ends with a banner and the Results screen.
 
 ```bash
-SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test   # scripted mission; logs MISSION test ...
-SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture   # one screen → captures/screen_<name>.png (title|prepare|results|pause)
-/f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/game.tscn -- --flow-test   # drives title -> draft -> mission -> pause -> results -> replay; prints FLOW lines
+SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test   # scripted mission; logs MISSION test ... (add --mission=warning for The Warning)
+SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture   # one screen → captures/screen_<name>.png (title|board|prepare|results|results-warning|pause; add --mission=warning for The Warning)
+/f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/game.tscn -- --flow-test   # drives title -> board -> draft -> mission -> pause -> results -> replay -> board; prints FLOW lines
 ```
 
 ### Debug scene

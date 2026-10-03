@@ -1,6 +1,6 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
-for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight) and v0.06's (Will-o'-Wisp,
-Thornwall, Discord, Pestilence).
+for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
+Thornwall, Discord, Pestilence) and v0.08's Mind Whisper.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -267,7 +267,62 @@ def pestilence():
     finish(rgb, "pestilence")
 
 
-PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence}
+def whisper():
+    """Mind Whisper: a pale gold eye inside a spiral of faint script-like strokes, on a deep indigo field."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(67, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (8, 8, 30)
+    rgb = blend(rgb, (34, 36, 96), np.exp(-(r / 30.0) ** 2) * (0.7 + 0.4 * n))
+    # The whisper: a faint gold breath spiralling in to the eye, two turns of it, and on it short strokes at odd
+    # slants with a dot here and there, like a line of script.
+    ang = np.arctan2(y / 0.9, x)
+    for turn in range(3):
+        a = np.mod(ang, 2 * np.pi) + turn * 2 * np.pi
+        target = 15.0 + a * 1.95
+        breath = np.exp(-((r - target) ** 2) / 5.0) * np.clip(1.0 - (target - 15.0) / 26.0, 0, 1)
+        rgb = blend(rgb, (120, 100, 70), breath * 0.35)
+    rng = np.random.default_rng(71)
+    a = 0.0
+    while True:
+        rad = 15.0 + a * 1.95
+        if rad > 40.0:
+            break
+        cx, cy = rad * math.cos(a), rad * math.sin(a) * 0.9
+        tilt = a + math.pi / 2 + rng.uniform(-0.9, 0.9)
+        length = rng.uniform(1.8, 3.2)
+        ux, uy = math.cos(tilt), math.sin(tilt)
+        # A stroke: a short line (its distance from the segment).
+        px, py = x - cx, y - cy
+        along = np.clip(px * ux + py * uy, -length, length)
+        d = np.hypot(px - along * ux, py - along * uy)
+        fade = 1.0 - (rad - 15.0) / 32.0
+        rgb = blend(rgb, (240, 208, 124), np.exp(-(d ** 2) / 0.8) * (0.45 + 0.55 * fade))
+        if rng.random() < 0.35:
+            # A dot beside it, as script has.
+            dx, dy = cx + uy * 2.6, cy - ux * 2.6
+            rgb = blend(rgb, (240, 208, 124), np.exp(-((x - dx) ** 2 + (y - dy) ** 2) / 0.7) * 0.7 * fade)
+        a += (length * 2.0 + 2.0) / rad
+    # A soft gold halo round the eye.
+    rgb = blend(rgb, (200, 160, 70), np.exp(-((x / 20.0) ** 2 + (y / 12.0) ** 2)) * 0.45)
+    # The eye: a pale gold almond, a gold iris, an indigo pupil and a glint.
+    almond = (x / 15.0) ** 2 + (y / 7.5) ** 2
+    eye = almond < 1.0
+    rgb = blend(rgb, (250, 238, 196), eye.astype(float))
+    iris = r < 6.0
+    rgb = blend(rgb, (214, 160, 50), (eye & iris).astype(float))
+    rgb = blend(rgb, (255, 214, 110), (eye & (r < 4.6) & (r > 3.4)).astype(float) * 0.5)
+    rgb = blend(rgb, (14, 12, 40), (r < 2.6).astype(float))
+    rgb = blend(rgb, (255, 255, 240), np.exp(-((x + 1.6) ** 2 + (y + 1.6) ** 2) / 0.8))
+    lid = np.abs(almond - 1.0) < 0.13
+    rgb = blend(rgb, (120, 84, 30), lid.astype(float))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "whisper")
+
+
+PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
+            "whisper": whisper}
 
 
 if __name__ == "__main__":

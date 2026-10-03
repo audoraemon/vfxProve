@@ -17,6 +17,8 @@ const WEIGHTS := {
 	CitizenProfile.Role.FARMER: [0.2, 0.6, 0.05, 0.15],
 	CitizenProfile.Role.BELLKEEPER: [0.15, 0.75, 0.1, 0.0],
 	CitizenProfile.Role.ENGINEER: [0.15, 0.75, 0.1, 0.0],
+	# The watchman (v0.08) keeps his gate: work is the gate post his appointment gives him.
+	CitizenProfile.Role.WATCHMAN: [0.1, 0.9, 0.0, 0.0],
 }
 ## How long a citizen stays (seconds, min and max) at each kind of place.
 const STAY := [Vector2(10, 30), Vector2(25, 60), Vector2(8, 25), Vector2(5, 12)]

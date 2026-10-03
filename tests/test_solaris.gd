@@ -40,9 +40,9 @@ static func _done(made: Array) -> void:
 
 static func run(t) -> void:
 	var p := PowerBook.get_power("solaris")
-	t.check(PowerBook.kind_of("solaris") == "cataclysm" and not PowerBook.is_quiet("solaris") and PowerBook.icon("solaris") != null
+	t.check(PowerBook.authority_of("solaris") == "ruin" and not PowerBook.is_quiet("solaris") and PowerBook.icon("solaris") != null
 		and PowerBook.hud_icon("solaris") != null and PowerBook.clip("solaris") != null and PowerBook.REACH.has("solaris"),
-		"%s is a cataclysm the town sees, with its icons and clip" % p.name)
+		"%s is a Ruin power the town sees, with its icons and clip" % p.name)
 	t.check(Rules.POWER_KINDS["solaris"] == [&"solaris", &"pit"], "its casts are credited with the beam's dead and the pit's")
 
 	var made := _setup()

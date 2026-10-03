@@ -39,10 +39,10 @@ static func _done(made: Array) -> void:
 
 static func run(t) -> void:
 	var p := PowerBook.get_power("congregation")
-	t.check(PowerBook.kind_of("congregation") == "control" and PowerBook.is_quiet("congregation") and String(p.aim) == "two clicks"
+	t.check(PowerBook.authority_of("congregation") == "dominion" and PowerBook.is_quiet("congregation") and String(p.aim) == "two clicks"
 		and float(p.alarm) == CongregationFx.ALARM_GENERATED and PowerBook.icon("congregation") != null
 		and PowerBook.hud_icon("congregation") != null and PowerBook.clip("congregation") != null,
-		"%s is a quiet control power of two clicks, with its icons and clip" % p.name)
+		"%s is a quiet Dominion power of two clicks, with its icons and clip" % p.name)
 
 	var made := _setup()
 	var crowd: Crowd = made[0]

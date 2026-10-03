@@ -10,7 +10,8 @@ const TOGGLE_KEY := KEY_F4
 ## Ring colours by Person.Intent: routine, observe, local flee, regroup, evacuate, reroute, recover, assist, shelter,
 ## confused, gather, frenzy.
 const INTENT_COLS := [Color("7fc46a"), Color("e8e2d0"), Color("ff8a3a"), Color("6fa8c8"), Color("c8342a"),
-	Color("d060e0"), Color("d8b23a"), Color("5ad0ff"), Color("b0b0ff"), Person.COL_DISCORD, Color("ffd86a"), Color("ff3838")]
+	Color("d060e0"), Color("d8b23a"), Color("5ad0ff"), Color("b0b0ff"), Person.COL_DISCORD,
+	Person.COL_WHISPER, Color("ffd86a"), Color("ff3838")]
 ## How near the mouse (ground units) a citizen must be to be the one described.
 const PICK_REACH := 1.5
 

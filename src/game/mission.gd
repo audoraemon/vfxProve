@@ -1,12 +1,12 @@
 class_name Mission
 extends Node2D
 ## One mission of Kingdoms Amid Kataclysm: the battlefield, the town of Aldermere, its people, the rules, the
-## aiming and the HUD. The player picks a power with 1-4, clicks or drags to cast it, pans with WASD or the
+## aiming and the HUD. The player picks a power with 1-6, clicks or drags to cast it, pans with WASD or the
 ## middle button and zooms with the wheel. R starts a fresh mission. Milestone 4 puts the Title, Prepare,
 ## Pause and Results screens around this.
 
-## The run is over, with everything the Results screen shows.
-signal finished(won: bool, reason: String, score: int, rank: String, lines: Array[Dictionary])
+## The run is over, with everything the Results screen shows (Rules.result()).
+signal finished(result: Dictionary)
 ## Esc with nothing to cancel: whoever owns this mission decides what that means.
 signal pause_pressed
 ## The effect shaders are compiled and the mission can start. start() before this would clear the effect
@@ -24,17 +24,17 @@ const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
 const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
-const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
+## A slot's hotkey: 1-6, for up to six slots (v0.08).
+const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6]
 ## Grass, the same clear colour the debug scene uses.
 const CLEAR := Color("6e8230")
 
-## The mission opens with the camera sweeping in to the Citadel under a MANIFEST banner, and the clock only
-## starts when it arrives (spec §1).
+## The mission opens with the camera sweeping in under its banner (Last Judgement: to the Citadel, MANIFEST), and
+## the clock only starts when it arrives (spec §1). Where it sweeps from and to is the mission's (MissionDef).
 const INTRO_SECONDS := 2.0
-## Where the sweep starts: from the Main Gate, as far out as the zoom goes.
-const INTRO_FROM := Vector2(2.7, 12.0)
+## The sweep starts as far out as the zoom goes.
 const INTRO_FROM_ZOOM := ZOOM_MIN
-## Where the camera rests for play, and how close.
+## How close the camera rests for play.
 const PLAY_ZOOM := 0.6
 
 ## The ending plays out in slow motion before the results: the last blow lands, the dust settles, then the
@@ -56,6 +56,13 @@ const TEST_SHOTS := [0.5, 2.0, 12.0, 24.0, 34.0, 44.0]
 ## How many banner frames the scripted run takes before it stops bothering.
 const BANNER_SHOTS := 3
 const TEST_END := 34.0
+## The Warning's scripted run (v0.08, --mission=warning --mission-test) casts nothing and lets the bell ring: frames
+## of the start, the falling star, the watchman's run under his marker, and -- the camera turned west, to
+## WARNING_LOOK_AT, between WARNING_LOOK_AWAY's two times -- the edge arrow pointing back at the messenger.
+const WARNING_SHOTS := [0.5, 2.5, 9.0, 15.0]
+const WARNING_LOOK_AWAY := [14.0, 16.0]
+const WARNING_LOOK_AT := Vector2(-12.0, 8.0)
+const WARNING_TEST_END := 45.0
 
 var _bf: Battlefield
 var _town: Town
@@ -68,6 +75,11 @@ var _hud: Hud
 var _overlay: BehaviourOverlay
 ## The difficulty (v0.05): Game sets it before start(); a standalone run reads --difficulty=<name>.
 var difficulty := ResponseProfile.DEFAULT
+## The mission to play (v0.08): Game sets it before start(); a standalone run reads --mission=<id>.
+var mission_id := MissionBook.LAST_JUDGEMENT
+## The mission being played, and its director (null for a mission without scripted actors).
+var _def: MissionDef
+var _director: MissionDirector
 var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
@@ -119,6 +131,11 @@ func _ready() -> void:
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works.
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	if _director != null:
+		_director.teardown()
+		if is_instance_valid(_rules):
+			_rules.director = null  # already let go: the old rules' teardown below must not do it twice
+	_director = null
 	_bf.reset(seed_value)
 	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay]:
 		if is_instance_valid(n):
@@ -147,10 +164,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()
+	_def = _mission_def(args)
 	var tier := difficulty
 	if autostart and Battlefield.arg_value(args, "--difficulty") != "":
 		tier = ResponseProfile.tier_named(Battlefield.arg_value(args, "--difficulty"))
-	_crowd.profile = ResponseProfile.for_tier(tier)
+	_crowd.profile = _def.response_profile(tier)
 	var wanted := Battlefield.arg_value(args, "--people")
 	var people := int(wanted) if wanted != "" else PEOPLE
 	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
@@ -160,16 +178,19 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_rules.name = "Rules"
 	add_child(_rules)
 	var loadout := powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args())
-	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town)
+	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, _def)
 	_rules.over.connect(_on_over)
+	if _def.director != null:
+		_director = (_def.director.new() as MissionDirector).setup(_rules, _crowd, _town, _bf.ctx)
+		_rules.director = _director
 	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
 	if _crowd.bell != null:
 		_crowd.bell.climbing_started.connect(func():
-			var soldier := is_instance_valid(_crowd.bell.keeper) and _crowd.bell.keeper.soldier  # (after a takeover)
-			_rules.banner.emit("A SOLDIER CLIMBS THE TOWER" if soldier else "THE BELLKEEPER CLIMBS THE TOWER"))
+			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
 		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
-		_crowd.bell.keeper_replaced.connect(func(): _rules.banner.emit("A SOLDIER TAKES THE BELL ROPE"))
+		_crowd.bell.keeper_replaced.connect(func():
+			_rules.banner.emit(bell_hand(_crowd.bell) + " TAKES THE BELL ROPE"))
 	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty():
 		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
 		_crowd.engineers.rebuilt.connect(func(s: Structure):
@@ -217,13 +238,15 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		# so their captures and numbers stay comparable: no intro for them.
 		_intro_left = 0.0
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
-		_bf.camera.position = Iso.ground_to_screen(Vector2(0, -2)).round()
+		var framed := Vector2(0, -2) if _def.id == MissionBook.LAST_JUDGEMENT else _def.camera_at
+		_bf.camera.position = Iso.ground_to_screen(framed).round()
 	else:
 		_intro_left = INTRO_SECONDS
 		_rules.set_process(false)  # the clock waits for the camera
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
-		_bf.camera.position = Iso.ground_to_screen(INTRO_FROM).round()
-		_rules.banner.emit("MANIFEST")
+		_bf.camera.position = Iso.ground_to_screen(_def.intro_from).round()
+		if _def.intro_banner != "":
+			_rules.banner.emit(_def.intro_banner)
 
 
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
@@ -236,10 +259,18 @@ func in_intro() -> bool:
 	return _intro_left > 0.0
 
 
-## The drafted loadout: the command line's, or the default four.
+## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08).
+func _mission_def(args: PackedStringArray) -> MissionDef:
+	var wanted_mission := Battlefield.arg_value(args, "--mission") if autostart else ""
+	return MissionBook.get_mission(wanted_mission if wanted_mission != "" else mission_id)
+
+
+## The drafted loadout: the command line's, or the mission's default. _ready() asks before start() has chosen the
+## mission, so it is looked up here when there is none yet.
 func _loadout(args: PackedStringArray) -> PackedStringArray:
 	var wanted := Battlefield.arg_value(args, "--loadout")
-	var keys := PackedStringArray(DEFAULT_LOADOUT)
+	var def := _def if _def != null else _mission_def(args)
+	var keys := PackedStringArray(def.default_loadout)
 	if wanted != "":
 		keys = PackedStringArray()
 		for key in wanted.split(","):
@@ -261,6 +292,19 @@ func _on_structure_blighted(s: Structure) -> void:
 		_rules.banner.emit(blight_banner(s))
 
 
+## Who is on the bell rope, for its banners: the bellkeeper, a soldier who took it over (v0.07), or the watchman -- or
+## a citizen the warning passed to -- climbing in a dead keeper's place (v0.08, The Warning).
+static func bell_hand(bell: BellNetwork) -> String:
+	if not is_instance_valid(bell.keeper):
+		return "THE BELLKEEPER"
+	var p := bell.keeper
+	if p.soldier:
+		return "A SOLDIER"
+	if p.profile == null or p.profile.role == CitizenProfile.Role.BELLKEEPER:
+		return "THE BELLKEEPER"
+	return "THE WATCHMAN" if p.profile.role == CitizenProfile.Role.WATCHMAN else "A CITIZEN"
+
+
 static func blight_banner(s: Structure) -> String:
 	if s.art_tag == &"bell_tower":
 		return "BLIGHT - THE BELL IS CRACKED"
@@ -276,19 +320,21 @@ static func blight_banner(s: Structure) -> String:
 
 
 func _on_over(won: bool, reason: String) -> void:
-	var title := "THE CITY HAS FALLEN"
-	if not won:
-		title = "THE PEOPLE ESCAPED" if reason == "escapes" else "MANIFESTATION ENDED"
-	_rules.banner.emit(title)
+	_rules.banner.emit(ResultsScreen.title_for(won, reason))
 	if _scripted:
 		# The scripted runs have no Results screen to show, so they keep printing what they found.
-		print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
-		for line: Dictionary in _rules.stat_lines():
-			print("  %-22s %8s %6d" % [line.label, line.value, line.points])
-	_play_ending(won, reason)
+		if _rules.mission.scored:
+			print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
+			for line: Dictionary in _rules.stat_lines():
+				print("  %-22s %8s %6d" % [line.label, line.value, line.points])
+		else:
+			var res := _rules.result()
+			print("MISSION result won=%s reason=%s time=%.1f relays=%s" % [won, reason, float(res.time),
+				res.get("relays", 0)])
+	_play_ending()
 
 
-func _play_ending(won: bool, reason: String) -> void:
+func _play_ending() -> void:
 	_ending = true
 	_aim.unfocus()
 	if not _scripted:
@@ -296,7 +342,7 @@ func _play_ending(won: bool, reason: String) -> void:
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		await get_tree().create_timer(ENDING_SECONDS, true, false, true).timeout
 		_bf.ctx.impact.set_base_time_scale(1.0)
-	finished.emit(won, reason, _rules.score(), _rules.rank(), _rules.stat_lines())
+	finished.emit(_rules.result())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -360,7 +406,7 @@ func _process(delta: float) -> void:
 		_intro_left = maxf(0.0, _intro_left - delta)
 		var k := 1.0 - _intro_left / INTRO_SECONDS
 		var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
-		_bf.camera.position = Iso.ground_to_screen(INTRO_FROM.lerp(TownLayout.CITADEL_ORIGIN, smooth)).round()
+		_bf.camera.position = Iso.ground_to_screen(_def.intro_from.lerp(_def.camera_at, smooth)).round()
 		_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
 			_rules.set_process(true)
@@ -378,13 +424,20 @@ func _pan(by: Vector2) -> void:
 	_bf.camera.position = (_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX)
 
 
-## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line.
+## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line. The
+## Warning's (v0.08) casts nothing: see WARNING_SHOTS.
 func _mission_test() -> void:
-	# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
-	_aim.pick(3)
-	_aim.hover(TownLayout.CITADEL_ORIGIN)
-	var casts := TEST_CASTS.duplicate()
-	var shots := TEST_SHOTS.duplicate()
+	var judgement := _def.id == MissionBook.LAST_JUDGEMENT
+	var prefix := "mission" if judgement else _def.id
+	if judgement:
+		# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
+		_aim.pick(3)
+		_aim.hover(TownLayout.CITADEL_ORIGIN)
+	var casts := TEST_CASTS.duplicate() if judgement else []
+	var shots := TEST_SHOTS.duplicate() if judgement else WARNING_SHOTS.duplicate()
+	var looks := [] if judgement else WARNING_LOOK_AWAY.duplicate()
+	var framed := _bf.camera.position
+	var end := TEST_END if judgement else WARNING_TEST_END
 	# Banners are the one thing a fixed timetable cannot catch: they fire when the town happens to break. The
 	# run takes its own shot a moment after each of the first few, so the layout is actually seen.
 	var banner_shots: Array[String] = []
@@ -394,9 +447,12 @@ func _mission_test() -> void:
 	)
 	var banners_taken := 0
 	var t := 0.0
-	while t < TEST_END:
+	while t < end:
 		await get_tree().process_frame
 		t += get_process_delta_time()
+		if not looks.is_empty() and t >= float(looks[0]):
+			looks.pop_front()
+			_bf.camera.position = framed if looks.is_empty() else Iso.ground_to_screen(WARNING_LOOK_AT).round()
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
 			var slot := int(c[1])
@@ -410,13 +466,13 @@ func _mission_test() -> void:
 			_rules.cast(slot, c[2], extra)
 		while not shots.is_empty() and t >= float(shots[0]):
 			var at: float = shots.pop_front()
-			await _bf.save_capture("mission_%04d.png" % roundi(at * 100.0))
+			await _bf.save_capture("%s_%04d.png" % [prefix, roundi(at * 100.0)])
 		while banners_taken < banner_shots.size():
 			banners_taken += 1
-			await _bf.save_capture("mission_banner_%d.png" % banners_taken)
+			await _bf.save_capture("%s_banner_%d.png" % [prefix, banners_taken])
 			print("banner ", banners_taken, ": ", banner_shots[banners_taken - 1])
-	print("MISSION test dp=%.1f buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
-		_rules.dp, _rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
+	print("MISSION test buildings=%d citizens=%d escaped=%d alarm=%d stability=%d%% citadel=%d%%" % [
+		_rules.buildings_down, _crowd.alive_citizens(), _crowd.escaped_count, roundi(_crowd.alarm),
 		roundi(_rules.stability.total() * 100.0), roundi(_town.citadel.fraction() * 100.0)])
 	await _quit()
 

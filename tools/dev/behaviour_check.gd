@@ -31,7 +31,9 @@ extends SceneTree
 ##          engineers
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac]; --snap aims at the citizen nearest --at;
+##          [--setup=rite|evac]; --snap aims at the citizen nearest --at (a whisper always does, and sends them
+##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
+##          open paving south of the market);
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
 ##          its run into assets/clips/<key>.png
 ##   powers (v0.06) the new powers measured against doing without, Prepared, loadout wisp, thorns, discord,
@@ -47,6 +49,18 @@ extends SceneTree
 ##            marshals / nomarshals  an evacuation called at 20 s: escapes by way out and the gates' queues every 10 s to 60 s
 ##            escort / noescort      the bellkeeper killed 3 s into its climb: the bell's state every 2 s to 50 s
 ##            rescue / norescue      the cathedral filled to its capacity, then it falls: trapped, saved, lost every 5 s to 80 s
+##   judgement (v0.08) Last Judgement played greedily with the default loadout: from 5 s, each slot is cast the moment
+##          its rules allow it, at the next of a fixed ring of targets closing on the Citadel; a report every 30 s,
+##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any)
+##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
+##            none       nothing cast (the bell should ring at about 0:25)
+##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
+##            whisper    Mind Whisper: the running messenger sent 8 units straight back toward the gate
+##            discord    Discord on the running messenger
+##            thornwall  Thornwall across the street 3 units ahead of the running messenger
+##            mix        Whisper, Discord and Silent Doom: Doom whenever he is alone, else Whisper and Discord in turn
+##          each whenever its slot allows it (never forced), looked at every 0.1 s; a line for every cast and every
+##          change of phase or messenger, a report every 5 s, then the ending, the relays, Unseen and "Solved by"
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -83,6 +97,10 @@ func _run() -> void:
 		powers = PackedStringArray([Battlefield.arg_value(args, "--power"), "heaven", "cinder", "nova"])
 	elif scenario == "opening":
 		powers = PackedStringArray(["doom", "blight", "heaven", "cinder"])
+	elif scenario == "warning":
+		var case_arg := Battlefield.arg_value(args, "--case")
+		powers = PackedStringArray(WARNING_CASES.get(case_arg if case_arg != "" else "none", ["whisper"]))
+		mission.mission_id = MissionBook.WARNING
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -118,6 +136,11 @@ func _run() -> void:
 			await _siege()
 		"gates":
 			await _gates("--hazard" in args, "--shots" in args)
+		"judgement":
+			await _judgement()
+		"warning":
+			var case_arg := Battlefield.arg_value(args, "--case")
+			await _warning(case_arg if case_arg != "" else "none")
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
 
@@ -163,7 +186,6 @@ func _escalate() -> void:
 	while t <= 60.0:
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
-			mission._rules.dp = Rules.DP_MAX
 			mission._rules._cooldowns[int(c[1])] = 0.0
 			mission._rules._playing = null
 			mission._rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0.3).normalized()})
@@ -343,7 +365,6 @@ func _quiet(shots: bool) -> void:
 	while t <= 60.0:
 		while not casts.is_empty() and t >= float(casts[0][0]):
 			var c: Array = casts.pop_front()
-			rules.dp = Rules.DP_MAX
 			rules._cooldowns[int(c[1])] = 0.0
 			rules._playing = null
 			rules.cast(int(c[1]), c[2], {"dir": Vector2(1, 0)})
@@ -368,13 +389,15 @@ func _quiet(shots: bool) -> void:
 		t += step
 
 
-## Cast slot `slot` at `at` now, whatever its cooldown, the DP left or another power still playing.
-func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0)) -> FxTimeline:
+## Cast slot `slot` at `at` now, whatever its cooldown or another power still playing. `extra` joins the direction
+## in the cast's extra (v0.08: a Mind Whisper's "to" and "target").
+func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0), extra := {}) -> FxTimeline:
 	var rules: Rules = mission._rules
-	rules.dp = Rules.DP_MAX
 	rules._cooldowns[slot] = 0.0
 	rules._playing = null
-	return rules.cast(slot, at, {"dir": dir})
+	var all := {"dir": dir}
+	all.merge(extra)
+	return rules.cast(slot, at, all)
 
 
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
@@ -395,7 +418,10 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 		crowd.add_alarm(100.0)
 		await _frames(10 * 60)
-	if "--snap" in OS.get_cmdline_user_args():
+	# A Mind Whisper (v0.08) always snaps: it is cast on someone.
+	var whisper := key == "whisper"
+	var who: Person = null
+	if "--snap" in OS.get_cmdline_user_args() or whisper:
 		# Aim at the citizen nearest the point asked for (a queue forms where it will, not where it was guessed).
 		var best := INF
 		var near := at
@@ -403,14 +429,22 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best:
 				best = p.ground_pos.distance_to(at)
 				near = p.ground_pos
+				who = p
 		at = near
+	var extra := {}
+	# The camera's ground point: the cast, or for a whisper halfway along the walk, so the walk stays in frame.
+	var look := at
+	if whisper:
+		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(2.2, -2.2))
+		extra = {"to": to, "target": who}
+		look = at.lerp(to, 0.5)
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
 	bf.camera.zoom = Vector2.ONE * 1.5
-	bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -16)).round()
+	bf.camera.position = (Iso.ground_to_screen(look) + Vector2(0, -10 if whisper else -16)).round()
 	bf.camera.reset_smoothing()
 	await _frames(2)
-	var fx := _force_cast(0, at, Vector2(1, 0))
+	var fx := _force_cast(0, at, Vector2(1, 0), extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
@@ -734,6 +768,198 @@ func _gates(hazard: bool, shots := false) -> void:
 			await bf.save_capture("behaviour_gates.png")
 		print("BEHAVIOUR gates t=%d by exit %s rerouting=%d queues(main,side)=%s escaped=%d" % [roundi(t), by_exit,
 			rerouting, queues, crowd.escaped_count])
+
+
+## The judgement scenario's targets, cast in turn (v0.08): a ring closing on the Citadel.
+const JUDGEMENT_TARGETS := [Vector2(-9.0, -11.0), Vector2(0.8, 2.2), Vector2(-12.0, 1.0), Vector2(-4.0, -6.0),
+	TownLayout.CITADEL_ORIGIN, Vector2(-6.0, -12.0), Vector2(4.0, -4.0), Vector2(-10.5, -8.0)]
+## A cap on the judgement scenario's frames, so a run ends even if the mission does not: twice the mission's clock.
+const JUDGEMENT_MAX_FRAMES := int(Rules.MISSION_SECONDS * 2.0 * 60.0)
+
+
+## Written only against what exists both before and after v0.08 M2 (refusal(), cast(), loadout, an optional `dp`),
+## so the same scenario measures both sides of the change. `t` is game time, the mission's own seconds: a hit's
+## hit-stop slows Engine.time_scale, so counting frames alone would run ahead of the mission's clock.
+func _judgement() -> void:
+	var rules: Rules = mission._rules
+	var town: Town = mission._town
+	var fell_at := -1.0
+	var next := 0
+	var t := 0.0
+	var frames := 0
+	var report_at := 30.0
+	while not rules.finished and frames < JUDGEMENT_MAX_FRAMES:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t < 5.0 or frames % 6 != 0:
+			continue
+		for slot in rules.loadout.size():
+			if rules.refusal(slot) == "":
+				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+				next += 1
+				rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()})
+				break
+		if fell_at < 0.0 and town.citadel.is_fallen():
+			fell_at = t
+		if t >= report_at:
+			report_at += 30.0
+			print("BEHAVIOUR judgement t=%d citadel=%d%% stability=%d%% escaped=%d buildings=%d stage=%s" % [
+				roundi(t), roundi(town.citadel.fraction() * 100.0), roundi(rules.stability.total() * 100.0),
+				mission._crowd.escaped_count, rules.buildings_down, mission._crowd.alarms.stage_name()])
+	if fell_at < 0.0 and town.citadel.is_fallen():
+		fell_at = t
+	var dp_left: Variant = rules.get("dp")
+	print("BEHAVIOUR judgement end t=%.1f citadel_fell=%.1f won=%s reason=%s escaped=%d buildings=%d score=%d rank=%s dp_left=%s" % [
+		t, fell_at, rules.won, rules.over_reason, mission._crowd.escaped_count, rules.buildings_down, rules.score(),
+		rules.rank(), str(dp_left)])
+
+
+## The warning scenario's loadout for each case (v0.08 M5). "none" drafts Mind Whisper and never casts it: an empty
+## loadout would fall back to the mission's default, and the HUD has no look for an empty slot.
+const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whisper"], "discord": ["discord"],
+	"thornwall": ["thorns"], "mix": ["whisper", "discord", "doom"]}
+## How far straight back toward the gate the whisper sends the messenger.
+const WARNING_WHISPER_BACK := 8.0
+## How far ahead of the messenger, along his way, the Thornwall grows across his street.
+const WARNING_THORN_AHEAD := 3.0
+
+
+## The Warning, played by one policy against the director's messenger (whoever carries the warning now: the
+## watchman, a relay's witness, or the keeper once told). Every cast goes through Rules.cast() with what the real aim
+## would give it, and only when the slot allows it. `t` is game time, as in _judgement().
+func _warning(which: String) -> void:
+	var rules: Rules = mission._rules
+	var crowd: Crowd = mission._crowd
+	var director := rules.director as WarningDirector
+	var slots := {}
+	for slot in rules.loadout.size():
+		if rules.key(slot) != "":
+			slots[rules.key(slot)] = slot
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var casts := {}
+	var last_delay := ""  # mix: the power that last held him, so the other goes next
+	var t := 0.0
+	var frames := 0
+	var report_at := 5.0
+	var seen_phase := -1
+	var seen_messenger: Person = null
+	while not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if director.phase != seen_phase or director.messenger != seen_messenger:
+			seen_phase = director.phase
+			seen_messenger = director.messenger
+			print("BEHAVIOUR warning t=%.1f event phase=%s messenger=%s relays=%d" % [t,
+				WarningDirector.Phase.keys()[director.phase], _warning_who(director.messenger, crowd), director.relays])
+		if t >= report_at:
+			report_at += 5.0
+			print("BEHAVIOUR warning t=%d phase=%s messenger_mind=%s relays=%d bell=%s stage=%s" % [roundi(t),
+				WarningDirector.Phase.keys()[director.phase], _warning_mind(director.messenger), director.relays,
+				BellNetwork.State.keys()[crowd.bell.state] if crowd.bell != null else "none",
+				crowd.alarms.stage_name()])
+		if frames % 6 != 0 or which == "none":
+			continue
+		var m := director.messenger
+		if not is_instance_valid(m) or not m.is_alive() or director.warning_dead:
+			continue
+		var running := m.mind == Person.Mind.DUTY
+		var key := ""
+		var at := m.ground_pos
+		var extra := {}
+		if slots.has("doom") and rules.refusal(slots.doom) == "" and _warning_alone(m, crowd):
+			key = "doom"
+		elif running:
+			var order := ["whisper", "discord", "thorns"]
+			if which == "mix" and last_delay == "whisper":
+				order = ["discord", "whisper"]
+			for k: String in order:
+				if slots.has(k) and rules.refusal(slots[k]) == "":
+					key = k
+					break
+		if key == "":
+			continue
+		match key:
+			"whisper":
+				var back := director.gate_spot - m.ground_pos
+				if back.length() < 0.5:
+					back = -_warning_heading(m)
+				var to := MindWhisperFx.clamp_to(crowd._grid, m.ground_pos,
+					m.ground_pos + back.normalized() * WARNING_WHISPER_BACK)
+				extra = {"to": to, "target": m}
+			"thorns":
+				var ahead := _warning_ahead(m, WARNING_THORN_AHEAD)
+				at = ahead[0]
+				var h: Vector2 = ahead[1]
+				extra = {"dir": Vector2(-h.y, h.x)}
+		if rules.cast(slots[key], at, extra) != null:
+			casts[key] = int(casts.get(key, 0)) + 1
+			if key in ["whisper", "discord"]:
+				last_delay = key
+			var sent := (" to %s" % (extra.to as Vector2).snapped(Vector2(0.1, 0.1))) if extra.has("to") else ""
+			print("BEHAVIOUR warning t=%.1f cast %s at %s on %s (%s)%s" % [t, key, at.snapped(Vector2(0.1, 0.1)),
+				_warning_who(m, crowd), _warning_mind(m), sent])
+	var res := rules.result()
+	var unseen := false
+	for b: Dictionary in res.bonuses:
+		unseen = unseen or bool(b.earned)
+	print("BEHAVIOUR warning end case=%s won=%s reason=%s time=%.1f relays=%d unseen=%s solved_by=%s casts=%s" % [
+		which, rules.won, rules.over_reason, float(res.time), int(res.get("relays", 0)), unseen,
+		",".join(res.get("solved_by", PackedStringArray())), casts])
+
+
+## Nobody would see Silent Doom take the person: nobody within Crowd.DOOM_WITNESS of them now, nor of where they will
+## have run to when it strikes (SilentDoom.T_STRIKE on, along their way) -- the victims are fixed at the cast, but the
+## witnesses are judged where they fall.
+func _warning_alone(p: Person, crowd: Crowd) -> bool:
+	var lead := _warning_heading(p) * p.walk_speed * SilentDoom.T_STRIKE if p.has_goal() else Vector2.ZERO
+	return crowd.nearest_witness(p.ground_pos, p) == null and crowd.nearest_witness(p.ground_pos + lead, p) == null
+
+
+## Who carries the warning, for the scenario's lines: the watchman, the keeper, or a citizen's (soldier's) index.
+func _warning_who(p: Person, crowd: Crowd) -> String:
+	if not is_instance_valid(p):
+		return "none"
+	if crowd.bell != null and p == crowd.bell.keeper:
+		return "keeper"
+	if p.profile != null and p.profile.role == CitizenProfile.Role.WATCHMAN:
+		return "watchman"
+	return ("soldier#%d" % crowd.soldiers.find(p)) if p.soldier else ("citizen#%d" % crowd.citizens.find(p))
+
+
+func _warning_mind(p: Person) -> String:
+	if not is_instance_valid(p) or not p.is_alive():
+		return "DEAD"
+	return Person.Mind.keys()[p.mind]
+
+
+## Which way the person is heading: toward the waypoint it is walking to, else its goal, else (1, 0).
+func _warning_heading(p: Person) -> Vector2:
+	var next := p._target if p._target.distance_to(p.ground_pos) > 0.05 else p.goal()
+	var h := next - p.ground_pos if next != Vector2.INF else Vector2.ZERO
+	return h.normalized() if h.length() > 0.01 else Vector2(1, 0)
+
+
+## The point `ahead` units on along the person's way (its waypoint, then the rest of its path), and the way the path
+## runs there.
+func _warning_ahead(p: Person, ahead: float) -> Array:
+	var pts := PackedVector2Array([p._target])
+	for i in range(p._leg, p._path.size()):
+		pts.append(p._path[i])
+	var from := p.ground_pos
+	var left := ahead
+	var h := _warning_heading(p)
+	for q in pts:
+		var span := q - from
+		if span.length() < 0.01:
+			continue
+		h = span.normalized()
+		if span.length() >= left:
+			return [from + h * left, h]
+		left -= span.length()
+		from = q
+	return [from + h * left, h]
 
 
 ## Living citizens' intents, by distance band (ground units) from `at`.

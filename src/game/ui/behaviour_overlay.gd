@@ -153,7 +153,7 @@ func _draw_panel(ci: Control) -> void:
 	if crowd.ferry != null and crowd.profile.boats:
 		var f := crowd.ferry
 		lines.append(["Boats: %s   aboard %d/%d   waiting %d   %d trips, %d carried" % [
-			RiverFerry.State.keys()[f.state].capitalize(), f.aboard.size(), RiverFerry.LOAD, f.waiting(), f.trips, f.carried],
+			RiverFerry.State.keys()[f.state].capitalize(), f.aboard.size(), f.capacity, f.waiting(), f.trips, f.carried],
 			Color("8ac8e8")])
 	if crowd.marshals != null and crowd.marshals.active:
 		var parts := []

@@ -63,7 +63,8 @@ const WATCH_HZ := 4.0
 ## stalled at every path waypoint; once they really ran (milestone 5) 42 escaped in the first 34 s against a
 ## loss limit of 38. At 2 s the gates are the bottleneck the spec describes: crowds pile up in front of them.
 const GATE_INTERVAL := 2.0
-## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace.
+## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace -- by
+## default; the profile sets it (ResponseProfile.postern_interval, v0.08.2).
 const POSTERN_INTERVAL := 3.0
 ## How far beyond a gate's footprint its queue reaches, so people are held just before the arch as well.
 const GATE_DOOR := 0.45
@@ -242,6 +243,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 
 
 func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
+	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
 		_grid.refresh(_town.postern)
@@ -682,7 +684,7 @@ func _gates() -> void:
 		var first := 0
 		# A blighted gate is jammed (v0.05): its crowd waits, nobody passes.
 		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted:
-			var interval := POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL
+			var interval := profile.postern_interval if gate.art_tag == &"postern" else GATE_INTERVAL
 			# Marshals at the mouth (v0.07) let them through faster.
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()

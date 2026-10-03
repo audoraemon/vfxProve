@@ -141,12 +141,15 @@ func score(p: Person, i: int) -> float:
 		return INF
 	var s := float(d) * WalkGrid.CELL
 	if i == boat_exit:
-		s += BOAT_CONGESTION * ferry.waiting()
+		# A bigger boat (v0.08.2, ResponseProfile.boat_load) clears its crowd sooner.
+		var boat := BOAT_CONGESTION if ferry.capacity == RiverFerry.LOAD \
+			else BOAT_CONGESTION * float(RiverFerry.LOAD) / float(ferry.capacity)
+		s += boat * ferry.waiting()
 	var gate: Structure = gates[i]
 	# A gate's crowd and danger only count for those still inside the walls: outside, the gate is behind them.
 	if is_instance_valid(gate) and not gate.destroyed and TownLayout.TOWN.has_point(p.ground_pos):
 		# A slower door (the postern) makes each person ahead a longer wait.
-		var slow := Crowd.POSTERN_INTERVAL / Crowd.GATE_INTERVAL if gate.art_tag == &"postern" else 1.0
+		var slow := _crowd.profile.postern_interval / Crowd.GATE_INTERVAL if gate.art_tag == &"postern" else 1.0
 		s += CONGESTION * slow * _crowd.waiting_at(gate)
 		if _known_unsafe(p, gate.center() - Crowd.outward_of(gate) * Crowd.QUEUE_DEPTH0):
 			s += HAZARD_GATE

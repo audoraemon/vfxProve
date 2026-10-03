@@ -511,10 +511,13 @@ func _siege(burn: bool) -> void:
 	var citadel: Citadel = mission._town.citadel
 	var o := TownLayout.CITADEL_ORIGIN
 	# The default loadout: heaven, tsunami, cinder, nova.
+	# The time now, for the rite's lines (a lambda keeps a copy of a local float, not the variable).
+	var now := [0.0]
+	var ended := false
 	if crowd.rite != null:
-		crowd.rite.broken.connect(func(why: String) -> void: print("BEHAVIOUR siege rite broken: %s" % why))
-		crowd.rite.ended.connect(func(why: String) -> void: print("BEHAVIOUR siege rite ended: %s" % why))
-		crowd.rite.completed.connect(func() -> void: print("BEHAVIOUR siege rite completed"))
+		crowd.rite.broken.connect(func(why: String) -> void: print("BEHAVIOUR siege t=%d rite broken: %s" % [roundi(now[0]), why]))
+		crowd.rite.ended.connect(func(why: String) -> void: print("BEHAVIOUR siege t=%d rite ended: %s" % [roundi(now[0]), why]))
+		crowd.rite.completed.connect(func() -> void: print("BEHAVIOUR siege t=%d rite completed" % roundi(now[0])))
 	var casts := [[0.0, 0, Vector2(-10.0, 3.0)], [15.0, 2, Vector2(-9.0, 5.0)], [30.0, 3, o], [45.0, 1, Vector2(5.0, -3.0)],
 		[60.0, 0, o + Vector2(0.0, 2.5)], [75.0, 2, Vector2(10.0, 10.0)], [90.0, 3, o], [105.0, 0, Vector2(2.0, 12.0)]]
 	var t := 0.0
@@ -550,8 +553,13 @@ func _siege(burn: bool) -> void:
 				crowd.engineers.jobs().size() if crowd.engineers != null and crowd.engineers.active else -1,
 				crowd.fires.fires.size(), crowd.fires.burned_down, crowd.fires.doused_out, rules.buildings_down,
 				rules.over_reason])
+		if not ended and rules.over_reason != "":
+			ended = true
+			print("BEHAVIOUR siege over t=%d reason=%s escaped=%d citadel=%.0f%% clock=%s" % [roundi(t), rules.over_reason,
+				crowd.escaped_count, 100.0 * citadel.fraction(), UiTheme.clock(rules.time_left)])
 		await _frames(60)
 		t += 1.0
+		now[0] = t
 	for h in crowd.alarms.history:
 		print("BEHAVIOUR stage at %.1f: %s (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]])
 

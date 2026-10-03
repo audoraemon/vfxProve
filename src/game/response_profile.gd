@@ -12,7 +12,7 @@ const BLURBS := [
 	"A sleepy settlement: no bell, fires fought late.",
 	"A watchful town: a bell and a fire brigade.",
 	"A kingdom ready for you: engineers, boats and a rite.",
-	"Everything, and faster.",
+	"Everything faster: evacuates sooner, big boats.",
 ]
 const DEFAULT := Tier.ORGANIZED
 ## Alarm stages, short enough for a Defense Profile line.
@@ -32,11 +32,18 @@ var fire_crew := 4
 var fire_from := AlarmManager.Stage.LOCAL_EMERGENCY
 ## Engineers (M4): teams of two (0: none).
 var engineer_teams := 0
-## River boats at the dock (M5).
+## River boats at the dock (M5), and how many each sailing carries (v0.08.2: God-Resistant's are bigger).
 var boats := false
-## The Banishing Rite at the cathedral (M3), and how long it takes.
+var boat_load := 6
+## Seconds between two people through the postern down to the dock (v0.08.2; God-Resistant's is quicker).
+var postern_interval := 3.0
+## Seconds from City Emergency to the evacuation, for families to regroup (v0.08.2; God-Resistant's town is quicker).
+var regroup_seconds := 15.0
+## The Banishing Rite at the cathedral (M3), how long it takes, and how many clergy it calls (v0.08.2: God-Resistant
+## calls more of its clergy, so its ring is harder to scatter).
 var rite := false
 var rite_time := 45.0
+var rite_clergy := 4
 ## The soldiers' roles (v0.07): marshals at each way out at the evacuation, escorts for each responder on duty, and
 ## rescue squads of Crowd.RESCUE_SQUAD. Every tier has them; harder towns have more.
 var marshals_per_exit := 3
@@ -70,6 +77,10 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.boats = true
 			p.rite = true
 			p.rite_time = 35.0
+			p.boat_load = 10
+			p.postern_interval = 1.5
+			p.rite_clergy = 6
+			p.regroup_seconds = 8.0
 			p.marshals_per_exit = 5
 			p.escorts_per_duty = 2
 			p.rescue_squads = 5
@@ -108,8 +119,8 @@ func lines() -> PackedStringArray:
 	if engineer_teams > 0:
 		out.append("Engineers: %d teams" % engineer_teams)
 	if boats:
-		out.append("River Evacuation")
+		out.append("River Boats x%d" % boat_load)
 	if rite:
-		out.append("Banishing Rite, %.0f s" % rite_time)
+		out.append("Banishing Rite x%d, %.0f s" % [rite_clergy, rite_time])
 	out.append("Marshals x%d, Escorts x%d, Rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
 	return out

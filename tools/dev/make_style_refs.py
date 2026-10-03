@@ -1,18 +1,20 @@
 """Style references for PixelLab (PixelLab structures proof): crop each building from the concept sheet
-concepts/TOWN REF/TownMap_Component1.png (already on transparency), trimmed to its pixels, kept at the sheet's resolution
+concepts/TOWN REF/ (default TownMap_Component1.png; already on transparency), trimmed to its pixels, kept at the sheet's resolution
 (PixelLab reads detail and style from it; the composition comes from reference.png).
-Usage: python tools/dev/make_style_refs.py [--sheet]   (--sheet also writes captures/style_refs_sheet.png to check the boxes)
+Usage: python tools/dev/make_style_refs.py [--sheet]   (--sheet also writes captures/style_refs_sheet*.png, one per sheet, to check the boxes)
 """
+import json
 import sys
 from collections import deque
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[2]
-SRC = ROOT / "concepts" / "TOWN REF" / "TownMap_Component1.png"
+SHEETS = ROOT / "concepts" / "TOWN REF"
+DEFAULT_SHEET = "TownMap_Component1.png"
 OUT = ROOT / "assets" / "pixellab" / "buildings"
-# Boxes (x0, y0, x1, y1) on the 1448x1086 sheet. The Citadel's parts all take the castle.
+# Boxes (x0, y0, x1, y1) on the 1448x1086 default sheet, or (sheet name, box) for another sheet in concepts/TOWN REF. The Citadel's parts all take the castle.
 CASTLE = (105, 793, 670, 1086)
 BOXES = {
     "cottage_red": (30, 0, 315, 270),
@@ -25,6 +27,15 @@ BOXES = {
     "citadel_wall": CASTLE,
     "citadel_wall_side": CASTLE,
     "citadel_gate": CASTLE,
+    "town_tower": ("TownMap_Component4.png", (40, 470, 185, 695)),
+    "town_tower_corner": ("TownMap_Component4.png", (40, 470, 185, 695)),
+    "town_wall": ("TownMap_Component4.png", (40, 40, 300, 245)),
+    "town_gate": ("TownMap_Component4.png", (35, 210, 405, 495)),
+    "town_postern": ("TownMap_Component4.png", (425, 280, 610, 470)),
+    "bell_tower": ("TownMap_Component4.png", (495, 470, 620, 700)),
+    "stall_red": ("TownMap_Component2.png", (10, 20, 155, 165)),
+    "stall_blue": ("TownMap_Component2.png", (150, 20, 295, 165)),
+    "stall_cream": ("TownMap_Component2.png", (15, 170, 155, 295)),
 }
 # Pixels at least this opaque join a shape: the sheet's soft glows and shadows would bridge a building to its neighbour.
 SOLID = 160
@@ -62,27 +73,43 @@ def _largest_shape(crop):
     return out.crop(keep.getbbox())
 
 
+def _box(entry):
+    """(sheet path, box) for a BOXES entry; a bare box is on the default sheet."""
+    if isinstance(entry[0], str):
+        return SHEETS / entry[0], entry[1]
+    return SHEETS / DEFAULT_SHEET, entry
+
+
+def _check_sheets(sheets):
+    """One check image per sheet with every box drawn on it: captures/style_refs_sheet[_<stem>].png."""
+    (ROOT / "captures").mkdir(exist_ok=True)
+    for path, im in sheets.items():
+        check = Image.new("RGBA", im.size, (60, 58, 52, 255))
+        check.alpha_composite(im)
+        d = ImageDraw.Draw(check)
+        for name, entry in BOXES.items():
+            p, box = _box(entry)
+            if p == path:
+                d.rectangle(box, outline=(255, 255, 0, 255))
+                d.text((box[0] + 3, box[1] + 3), name, fill=(255, 255, 0, 255))
+        stem = "" if path.name == DEFAULT_SHEET else "_" + path.stem
+        check.save(ROOT / "captures" / ("style_refs_sheet" + stem + ".png"))
+
+
 def main():
-    sheet = Image.open(SRC).convert("RGBA")
-    crops = []
-    for name, box in BOXES.items():
-        crop = _largest_shape(sheet.crop(box))
+    manifest = json.loads((OUT / "manifest.json").read_text(encoding="utf-8"))
+    sheets = {}
+    for name, entry in BOXES.items():
+        path, box = _box(entry)
+        sheets.setdefault(path, Image.open(path).convert("RGBA"))
+        if name not in manifest:
+            continue
+        crop = _largest_shape(sheets[path].crop(box))
+        (OUT / name).mkdir(exist_ok=True)
         crop.save(OUT / name / "style_ref.png")
-        crops.append(crop)
         print("style ref", name, crop.size)
     if "--sheet" in sys.argv:
-        uniq = []
-        for c in crops:
-            if not any(c.size == u.size and c.tobytes() == u.tobytes() for u in uniq):
-                uniq.append(c)
-        w = sum(c.width for c in uniq) + 8 * len(uniq)
-        h = max(c.height for c in uniq)
-        out = Image.new("RGBA", (w, h), (60, 58, 52, 255))
-        x = 0
-        for c in uniq:
-            out.alpha_composite(c, (x, h - c.height))
-            x += c.width + 8
-        out.save(ROOT / "captures" / "style_refs_sheet.png")
+        _check_sheets(sheets)
 
 
 if __name__ == "__main__":

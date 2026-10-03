@@ -9,9 +9,11 @@
   view    <dst> <scale> <png|glob> [...] side-by-side review sheet on grey, scaled up nearest
   sheet   <reference> <dir> <prefix> <dst> [scale] [cols]   candidates next to their reference, with bbox offsets
   footprint <png> <dst> <w> <d> <ax>,<ay> [...]   draw a w x d footprint's diamond at candidate anchors, to judge fit
+  tile    <src> <dst> <u0x>,<u0y> <period> <span>   repeat one generated wall run into a seamless strip
 Run from the project root.
 """
 import glob
+import math
 import os
 import sys
 from collections import deque
@@ -194,7 +196,36 @@ def footprint(png, dst, fw, fd, *anchors):
     out.save(dst)
 
 
+def tile(src, dst, u0, period, span):
+    """A seamless wall strip from one generated run along ground x. `u0` is the pixel of the run's front edge at
+    u = 0; `period` (ground units, a multiple of 1/16 so it shifts by whole pixels) is where the art repeats -- pick it
+    at matching merlons. The strip keeps the source's columns left of u = period, then repeats the band of columns for
+    u in [0, period) every period (32*period px right, 16*period px down) until it spans `span` units plus the wall's
+    0.7-unit depth. Prints the manifest values for the strip."""
+    im = _rgba(src)
+    ux, uy = (float(v) for v in u0.split(","))
+    S, span = float(period), float(span)
+    dx, dy = 32.0 * S, 16.0 * S
+    if dx != int(dx) or dy != int(dy):
+        sys.exit("period must be a multiple of 1/16 unit")
+    dx, dy = int(dx), int(dy)
+    ax = int(round(ux))
+    cut = ax + dx
+    w = int(math.ceil(ux + 32.0 * (span + 0.7))) + 2
+    h = im.height + int(math.ceil(16.0 * (span - S)))
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    out.paste(im.crop((0, 0, min(cut, im.width), im.height)), (0, 0))
+    band = im.crop((ax, 0, cut, im.height))
+    k = 1
+    while ax + k * dx < w:
+        out.paste(band, (ax + k * dx, k * dy))
+        k += 1
+    out.save(dst)
+    anchor = (ux + 32.0 * span, uy + 16.0 * span)
+    print("size", [w, h], "anchor", [round(anchor[0], 3), round(anchor[1], 3)], "footprint", [span, 0.7], "period", S)
+
+
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
     {"shift": shift, "corner": corner, "profile": profile, "unwhite": unwhite, "largest": largest, "strip": strip,
-     "view": view, "sheet": sheet, "footprint": footprint}[cmd](*args)
+     "view": view, "sheet": sheet, "footprint": footprint, "tile": tile}[cmd](*args)

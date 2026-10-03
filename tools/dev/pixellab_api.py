@@ -219,6 +219,12 @@ def main():
     an.add_argument("--name")
     an.add_argument("--dirs", default="south-east,south-west,north-east,north-west")
     an.add_argument("--out", required=True)
+    ip = sub.add_parser("inpaint", help="regenerate the mask's white area of an image, the rest kept as it is")
+    ip.add_argument("--image", required=True)
+    ip.add_argument("--mask", required=True)
+    ip.add_argument("--desc", required=True)
+    ip.add_argument("--seed", type=int)
+    ip.add_argument("--out", required=True)
     gc = sub.add_parser("char-get", help="download a character's rotations and animations")
     gc.add_argument("--id", required=True)
     gc.add_argument("--out", required=True)
@@ -297,6 +303,12 @@ def main():
                                                      "; STILL MISSING %s" % missing if missing else ""))
         if missing:
             sys.exit(1)
+    elif args.cmd == "inpaint":
+        w, h = _size(args.image)
+        body = {"description": args.desc, "seed": args.seed, "no_background": True, "crop_to_mask": True,
+                "inpainting_image": {"image": _image(args.image), "size": {"width": w, "height": h}},
+                "mask_image": {"image": _image(args.mask), "size": {"width": w, "height": h}}}
+        _run("inpaint", "/inpaint-v3", body, args.out)
     elif args.cmd == "char-get":
         _fetch_character(args.id, args.out)
     elif args.cmd == "generate":

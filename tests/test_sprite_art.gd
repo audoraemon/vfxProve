@@ -184,6 +184,23 @@ static func _structure(t) -> void:
 	var hut := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
 	t.check(hut._sprite_shadow() == hut._shadow(), "a sprite without its own shadow casts its footprint's")
 	hut.free()
+	# The Citadel's 20% signal: the sprite keep's banners slide down and fade, then it stands bannerless.
+	var keep := _make(Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, 5, &"citadel", &"keep")
+	t.root.add_child(keep)
+	keep.drop_banner()
+	for i in 20:
+		keep._process(1.0 / 60.0)
+	t.check(keep._sprite_view.still == &"intact_fallen" and is_instance_valid(keep._flag_view)
+		and keep._flag_view.still == &"banners_intact" and keep._flag_view.position.y > 0.0,
+		"the keep's banners fall, and it shows the bannerless keep behind them")
+	for i in 60:
+		keep._process(1.0 / 60.0)
+	t.check(not is_instance_valid(keep._flag_view) and keep._sprite_view.still == &"intact_fallen",
+		"once they have fallen the keep stays bannerless")
+	keep.crack()
+	keep._process(1.0 / 60.0)
+	t.check(keep._sprite_view.still == &"damaged_fallen", "and cracked, it is the bannerless damaged keep")
+	keep.free()
 	cat.free()
 	var proc := _make(Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, 8, &"house", &"townhouse")
 	t.check(proc.sprite.is_empty() and proc.sprite_state() == &"", "a building without a sprite keeps its art")

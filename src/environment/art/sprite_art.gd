@@ -13,6 +13,8 @@ extends RefCounted
 const DIR := "res://assets/pixellab/buildings/"
 const MANIFEST := DIR + "manifest.json"
 const STILLS := [&"intact", &"damaged", &"ruins"]
+## A set with "banner_drop" also has these: its intact and damaged stills once the banners fell, and the banners.
+const BANNER_STILLS := [&"intact_fallen", &"damaged_fallen", &"banners_intact", &"banners_damaged"]
 ## Pixels kept under the front corner, for steps, eaves and the rubble a collapse spills forward (it scatters up to a
 ## quarter cell past the footprint: 8 px down at the front corner).
 const FOOT_ROOM := 10.0
@@ -108,6 +110,13 @@ static func sprite(n: String) -> Dictionary:
 			_sets[n] = {}
 			return {}
 		stills[st] = load(path)
+	# The Citadel keep's banner drop (Citadel.BANNER_AT): its stills without the banners, and the banners on their own
+	# to slide down and fade (tools/dev/banner_mask.py). Missing files: the keep's banners never fall.
+	if m.get("banner_drop", false):
+		for extra: StringName in BANNER_STILLS:
+			var p := DIR + n + "/" + String(extra) + ".png"
+			if ResourceLoader.exists(p):
+				stills[extra] = load(p)
 	var size := Vector2(m.size[0], m.size[1])
 	var fp := Vector2(m.footprint[0], m.footprint[1])
 	var idle_path := DIR + n + "/idle.png"

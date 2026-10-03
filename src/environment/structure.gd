@@ -104,10 +104,12 @@ var art_tag := &""
 ## Sprite set from setup() (SpriteArt.set_for, the PixelLab proof): when it has one, the building is drawn from it by
 ## its SpriteViews instead of its procedural art. Only the drawing changes; its state and rng stream never do.
 var sprite := {}
-## Its sprite's views: the building; its ruins, under it while it falls and after; a top a laser sliced off.
+## Its sprite's views: the building; its ruins, under it while it falls and after; a top a laser sliced off; the keep's
+## banners while they fall (drop_banner()).
 var _sprite_view: SpriteView
 var _ruins_view: SpriteView
 var _top_view: SpriteView
+var _flag_view: SpriteView
 ## The last light handed to the views [light, ambient, world tint], for views made after it (the ruins, a top).
 var _sprite_light := [Color.BLACK, 1.0, Color.WHITE]
 ## Optional owner of this building's health: func(s: Structure, amount: float, source: Vector2, kind: StringName).
@@ -346,7 +348,7 @@ func dust_burst(amount: float) -> void:
 ## The banner comes loose and slides down the wall, fading (the Citadel at 20%).
 func drop_banner() -> void:
 	wake()
-	if is_instance_valid(_banner) and _banner_fall < 0.0:
+	if (is_instance_valid(_banner) or sprite.get("stills", {}).has(&"intact_fallen")) and _banner_fall < 0.0:
 		_banner_fall = 0.0
 
 
@@ -430,12 +432,13 @@ func restore() -> void:
 func refresh_sprite() -> void:
 	sprite = SpriteArt.set_for(self)
 	_grow_view_box_for_sprite()
-	for v in [_sprite_view, _ruins_view, _top_view]:
+	for v in [_sprite_view, _ruins_view, _top_view, _flag_view]:
 		if is_instance_valid(v):
 			v.queue_free()
 	_sprite_view = null
 	_ruins_view = null
 	_top_view = null
+	_flag_view = null
 	wake()
 	_dirty = true
 	queue_redraw()
@@ -487,7 +490,26 @@ func _sync_sprite() -> void:
 	var m := -1.0 if sprite.mirror else 1.0
 	_sprite_view.visible = state != &"ruins"
 	_sprite_view.set_color(self_modulate)
+	# The keep's banners came down (the Citadel at 20%): it stands bannerless from then on, and while they fall they
+	# slide down its walls and fade, as the procedural banner does.
+	var fallen: bool = _banner_fall >= 0.0 and sprite.stills.has(&"intact_fallen")
+	var falling := fallen and _banner_fall < BANNER_FALL_TIME and (state == &"intact" or state == &"damaged")
+	if falling and not is_instance_valid(_flag_view):
+		_flag_view = _new_view()
+	elif not falling and is_instance_valid(_flag_view):
+		_flag_view.queue_free()
+		_flag_view = null
+	if is_instance_valid(_flag_view):
+		_flag_view.show_still(StringName("banners_" + state))
+		_flag_view.scale = Vector2(m, 1.0)
+		_flag_view.position = Vector2(0.0, roundf(90.0 * _banner_fall * _banner_fall))
+		_flag_view.set_color(Color(self_modulate, clampf(1.0 - _banner_fall / BANNER_FALL_TIME, 0.0, 1.0)))
 	match state:
+		&"intact", &"damaged" when fallen:
+			_sprite_view.show_still(StringName(state + "_fallen"))
+			_sprite_view.position = Vector2.ZERO
+			_sprite_view.scale = Vector2(m, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
 		&"intact", &"damaged":
 			_sprite_view.show_still(state, int(_time * float(sprite.fps)))
 			_sprite_view.position = Vector2.ZERO
@@ -558,7 +580,7 @@ func _draw_sprite_frame(light: Color) -> void:
 	var amb := lights.ambient if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
 	_sprite_light = [light, amb, t]
-	for v in [_sprite_view, _ruins_view, _top_view]:
+	for v in [_sprite_view, _ruins_view, _top_view, _flag_view]:
 		if is_instance_valid(v):
 			v.set_light(light, amb, scorch, frost, t)
 
@@ -678,6 +700,9 @@ func _process(delta: float) -> void:
 			_flame_step = flame_step
 			_flame.queue_redraw()
 	if not sprite.is_empty():
+		# A sprite keep's banners fall on their own clock once the procedural banner node is gone (or never was).
+		if _banner_fall >= 0.0 and _banner_fall < BANNER_FALL_TIME and not is_instance_valid(_banner):
+			_banner_fall += delta
 		_sync_sprite()
 	var shake_step := int(_time * SHAKE_HZ) if _shake > 0.0 else -1
 	var stepped := shake_step != _shake_step

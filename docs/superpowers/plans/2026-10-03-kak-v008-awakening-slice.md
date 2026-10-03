@@ -2029,3 +2029,29 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   - `t=60 citadel=0% stability=47% escaped=19 buildings=64 stage=Collapse`
 - **No run wins.** The Citadel falls at about 47 s, but stability is still about 47% at 60 s and never reaches zero. Every run is lost to the escape limit at 84–89 s.
 - Medians over all five runs, since none won: `citadel_fell` 47.2, `escaped` 50, `score` 6965 (a loser's score: no win bonus, no time or DP), `floor(dp_left)` 17 (16, 16, 17, 24, 25). The end `t` has a median of 87.0 and `buildings` a median of 79.
+
+### Task 13 judgement after M2
+
+- Measured at 97e9b52 (M2 Tasks 8-12: no DP spent in a mission, the new prices and cooldowns, the Divine Surge), on
+  BURIN_NITRO, 2026-10-03, five runs, Organized, the default loadout (`heaven`, `tsunami`, `cinder`, `nova`).
+  - `end t=85.6 citadel_fell=46.9 won=false reason=escapes escaped=50 buildings=77 score=6815 rank=C dp_left=<null>`
+  - `end t=86.9 citadel_fell=47.0 won=false reason=escapes escaped=50 buildings=84 score=7435 rank=C dp_left=<null>`
+  - `end t=85.2 citadel_fell=47.1 won=false reason=escapes escaped=50 buildings=77 score=6850 rank=C dp_left=<null>`
+  - `end t=85.1 citadel_fell=47.0 won=false reason=escapes escaped=50 buildings=77 score=6850 rank=C dp_left=<null>`
+  - `end t=87.3 citadel_fell=47.1 won=false reason=escapes escaped=50 buildings=84 score=7400 rank=C dp_left=<null>`
+  - The 30-s reports: `t=30 citadel=50% stability=75% escaped=0 buildings=44 stage=Evacuation` in every run;
+    `t=60 citadel=0% stability=49% escaped=18-19 buildings=57 stage=Collapse`.
+- Medians, before (Task 7) -> after: `citadel_fell` 47.2 -> 47.0, end `t` 87.0 -> 85.6, `escaped` 50 -> 50 (every run
+  lost to the escape limit, as before), `buildings` 79 -> 77, `score` 6965 -> 6850, rank C -> C.
+- The comparison (spec §2, as the controller adjusted it, since the Task 7 baseline never won): the median
+  `citadel_fell` stays in the same 30-second window (30-60 s), the median end time is within 10 s of 87.0 s with the
+  same ending (escapes at 50), so escapes are within 5. **No cooldown was tuned:** heaven 30, tsunami 60, cinder 75 and
+  nova 120 s stay as Task 8 set them. No tuning attempts.
+- The ranks: no run wins, so there is no winning median to compare. Each threshold of `Rules.RANKS` was lowered by the
+  median DP term the Task 7 runs still held at their end, `floor(dp_left)` 17 x 10 = 170, rounded to 200:
+  `[[19000, "S"], [14200, "A"], [9400, "B"], [4600, "C"]]` (was 19200/14400/9600/4800). **This is derived from losing
+  runs**, whose score never had the DP term; a winning v0.07 run's DP term may differ. The median losing run is a C
+  before (6965) and after (6850). `tests/test_score.gd` drives the new thresholds exactly with chains (300) and
+  buildings (40). `Game.SAMPLE_RESULT` (15350, "S") does not follow the thresholds (it was already an A's score at
+  19200) and is left as it is.
+- Tests `checks=1140 failures=0`; FLOW `checks=30 failures=0`.

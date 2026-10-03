@@ -61,8 +61,9 @@ const SCORE_PER_BUILDING := 40
 const SCORE_PER_CITIZEN := 10
 const SCORE_PER_SOLDIER := 25
 const SCORE_PER_CHAIN := 300
-## Score floors for each rank, best first; anything under the last one is a D.
-const RANKS := [[19200, "S"], [14400, "A"], [9600, "B"], [4800, "C"]]
+## Score floors for each rank, best first; anything under the last one is a D. v0.08 lowered each by 200, the Divine
+## Power term (floor(dp_left) x 10) a v0.07 run still held at its end.
+const RANKS := [[19000, "S"], [14200, "A"], [9400, "B"], [4600, "C"]]
 
 var time_left := MISSION_SECONDS
 ## The drafted power keys, in slot order.

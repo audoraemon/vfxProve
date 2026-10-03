@@ -77,22 +77,32 @@ static func run(t) -> void:
 	_drop(c)
 
 	# --- The rank thresholds -------------------------------------------------------------------------
-	# Driven through the real score, one chain at a time: 300 points each, so the thresholds land exactly.
+	# Driven through the real score, chains (300 points each) and buildings (40 each), so each threshold lands exactly
+	# and one building less falls just under it.
 	var d := _mission()
 	rules = d.rules
-	rules.chains = 64
-	t.check(rules.score() == 19200 and rules.rank() == "S", "64 chains is 19,200 points and an S (%d, %s)" % [rules.score(), rules.rank()])
-	rules.chains = 63
-	t.check(rules.rank() == "A", "18,900 is an A (%s)" % rules.rank())
-	rules.chains = 48
-	t.check(rules.score() == 14400 and rules.rank() == "A", "14,400 is still an A (%d)" % rules.score())
-	rules.chains = 47
-	t.check(rules.rank() == "B", "14,100 is a B (%s)" % rules.rank())
-	rules.chains = 32
-	t.check(rules.score() == 9600 and rules.rank() == "B", "9,600 is still a B (%d)" % rules.score())
-	rules.chains = 16
-	t.check(rules.rank() == "C" and rules.score() == 4800, "4,800 is a C (%s)" % rules.rank())
+	rules.chains = 60
+	rules.buildings_down = 25
+	t.check(rules.score() == 19000 and rules.rank() == "S", "19,000 points is an S (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 24
+	t.check(rules.score() == 18960 and rules.rank() == "A", "18,960 is an A (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 46
+	rules.buildings_down = 10
+	t.check(rules.score() == 14200 and rules.rank() == "A", "14,200 is still an A (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 9
+	t.check(rules.score() == 14160 and rules.rank() == "B", "14,160 is a B (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 30
+	rules.buildings_down = 10
+	t.check(rules.score() == 9400 and rules.rank() == "B", "9,400 is still a B (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 9
+	t.check(rules.score() == 9360 and rules.rank() == "C", "9,360 is a C (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 14
+	rules.buildings_down = 10
+	t.check(rules.score() == 4600 and rules.rank() == "C", "4,600 is a C (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 9
+	t.check(rules.score() == 4560 and rules.rank() == "D", "4,560 is a D (%d, %s)" % [rules.score(), rules.rank()])
 	rules.chains = 9
+	rules.buildings_down = 0
 	t.check(rules.rank() == "D", "2,700 is a D (%s)" % rules.rank())
 	_drop(d)
 

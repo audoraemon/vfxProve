@@ -42,15 +42,15 @@ static func run(t) -> void:
 	t.check(narrow.picks == PackedStringArray(["heaven", "nova"]) and narrow.is_full(),
 		"a power outside the mission's pool is refused, and its slots make it full (%s)" % [narrow.picks])
 
-	# The Prepare screen (v0.06): tabs by kind, the open tab's cards, the loadout bar with MANIFEST -- none
-	# overlapping, all above the difficulty strip.
+	# The Prepare screen (v0.06): tabs by Authority (v0.08), the open tab's cards, the loadout bar with MANIFEST --
+	# none overlapping, all above the difficulty strip.
 	var screen := Rect2(0, 0, 640, PrepareScreen.STRIP.position.y)
 	var boxes: Array[Rect2] = []
-	for i in PowerBook.KINDS.size():
+	for i in PowerBook.AUTHORITIES.size():
 		boxes.append(PrepareScreen.tab_rect(i))
 	var most := 0
-	for kind in PowerBook.KINDS:
-		most = maxi(most, PowerBook.of_kind(kind).size())
+	for authority in PowerBook.AUTHORITIES:
+		most = maxi(most, PowerBook.of_authority(authority).size())
 	for i in most:
 		boxes.append(PrepareScreen.cell_rect(i))
 	for i in d.slots:
@@ -66,17 +66,18 @@ static func run(t) -> void:
 	t.check(bad == 0, "tabs, the largest tab's %d cards and the loadout bar fit without touching (%d)" % [most, bad])
 	var prep := PrepareScreen.new()
 	prep.setup(MissionBook.last_judgement(), PackedStringArray(["doom", "heaven"]))
-	t.check(prep.tab == PowerBook.KINDS.find("quiet") and Array(prep.shown()) == Array(PowerBook.of_kind("quiet")),
+	t.check(prep.tab == PowerBook.AUTHORITIES.find("veil") and Array(prep.shown()) == Array(PowerBook.of_authority("veil")),
 		"the screen opens on the first pick's tab (%d)" % prep.tab)
 	t.check(prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0"
 		and prep.hit(PrepareScreen.slot_rect(1).get_center()) == "slot:1"
-		and prep.hit(PrepareScreen.cell_rect(0).get_center()) == String(PowerBook.of_kind("quiet")[0])
+		and prep.hit(PrepareScreen.cell_rect(0).get_center()) == String(PowerBook.of_authority("veil")[0])
 		and prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest",
 		"tabs, slots, MANIFEST and the open tab's cards answer the mouse")
 	prep.free()
-	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("doom")) == "2.5 s"
+	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("doom")) == "10 s"
 		and PrepareScreen.cooldown_text(PowerBook.get_power("nova")) == "120 s",
-		"a card shows a fractional cooldown as 2.5 s and a whole one without a decimal")
+		"a card shows Silent Doom's 10 s and Nova's 120 s without a decimal")
+	t.check(PrepareScreen.cooldown_text({"cooldown": 2.5}) == "2.5 s", "and a fractional cooldown with one")
 
 	# Wrapping keeps every line inside its width.
 	var lines := UiTheme.wrap("Judgement of the Ancients", 60.0, UiTheme.SIZE_SMALL)

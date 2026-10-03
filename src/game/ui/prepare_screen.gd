@@ -1,7 +1,7 @@
 class_name PrepareScreen
 extends Node
-## Prepare (spec §1, §5): the briefing and the card under the mouse on the left; on the right the powers by kind
-## (v0.06: tabs for Cataclysm, Control, Quiet and Curse over a grid of the open tab's cards), and under them the
+## Prepare (spec §1, §5): the briefing and the card under the mouse on the left; on the right the powers by Authority
+## (v0.08: a tab per Authority -- v0.06's were kinds -- over a grid of the open tab's cards), and under them the
 ## loadout bar -- the four picks in slot order, whichever tab they came from -- with MANIFEST once four are picked.
 ##
 ## One deviation from the spec's layout, forced by 640x360: the cards carry the 42-pixel HUD icons, and the
@@ -14,9 +14,9 @@ const CARD := Vector2(140.0, 50.0)
 const GAP := 6.0
 const GRID_AT := Vector2(196.0, 60.0)
 const COLUMNS := 3
-## The tabs above the grid, one per PowerBook.KINDS.
+## The tabs above the grid, one per PowerBook.AUTHORITIES: six share the grid's 432 px (v0.08).
 const TAB_AT := Vector2(196.0, 40.0)
-const TAB := Vector2(105.0, 16.0)
+const TAB := Vector2(68.0, 16.0)
 const TAB_GAP := 4.0
 ## The loadout bar under the grid: four slots, then MANIFEST.
 const LOADOUT_BAR := Rect2(196.0, 280.0, 432.0, 32.0)
@@ -32,7 +32,7 @@ const LABEL_GAP := 6.0
 ## The mission being prepared (v0.08): its briefing, its slots and the powers it allows. Last Judgement until setup().
 var mission: MissionDef = MissionBook.last_judgement()
 var draft := Draft.new()
-## The open tab: an index into PowerBook.KINDS.
+## The open tab: an index into PowerBook.AUTHORITIES.
 var tab := 0
 ## The difficulty chosen here (v0.05), and the town responses it brings (the Defense Profile strip at the bottom).
 var difficulty := ResponseProfile.DEFAULT
@@ -63,7 +63,7 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	draft = Draft.new().for_mission(mission)
 	draft.preselect(preselect)
 	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
-	tab = maxi(PowerBook.KINDS.find(PowerBook.kind_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
+	tab = maxi(PowerBook.AUTHORITIES.find(PowerBook.authority_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
 	difficulty = tier
 	for p: Dictionary in PowerBook.POWERS:
 		var key := String(p.key)
@@ -105,27 +105,27 @@ static func slot_rect(i: int) -> Rect2:
 
 ## The open tab's power keys, in PowerBook order: those the mission allows.
 func shown() -> PackedStringArray:
-	return kind_keys(tab)
+	return authority_keys(tab)
 
 
 ## Tab `i`'s power keys that the mission allows, in PowerBook order.
-func kind_keys(i: int) -> PackedStringArray:
+func authority_keys(i: int) -> PackedStringArray:
 	var out := PackedStringArray()
-	for key in PowerBook.of_kind(PowerBook.KINDS[i]):
+	for key in PowerBook.of_authority(PowerBook.AUTHORITIES[i]):
 		if mission.allows(key):
 			out.append(key)
 	return out
 
 
 func set_tab(i: int) -> void:
-	tab = posmod(i, PowerBook.KINDS.size())
+	tab = posmod(i, PowerBook.AUTHORITIES.size())
 	if _ui != null:
 		_ui.queue_redraw()
 
 
 ## What is under a point: a power key, "tab:<i>", "slot:<i>", "manifest", the difficulty arrows, or "".
 func hit(point: Vector2) -> String:
-	for i in PowerBook.KINDS.size():
+	for i in PowerBook.AUTHORITIES.size():
 		if tab_rect(i).has_point(point):
 			return "tab:%d" % i
 	var keys := shown()
@@ -232,8 +232,8 @@ func _process(delta: float) -> void:
 ## Show a power's preview as if the mouse were on its card -- for photographs of this screen.
 func preview(key: String) -> void:
 	_hover = key
-	if PowerBook.KINDS.has(PowerBook.kind_of(key)):
-		tab = PowerBook.KINDS.find(PowerBook.kind_of(key))
+	if PowerBook.AUTHORITIES.has(PowerBook.authority_of(key)):
+		tab = PowerBook.AUTHORITIES.find(PowerBook.authority_of(key))
 	_clip_t = 0.0
 	_clip_frame = 0
 	_ui.queue_redraw()
@@ -251,16 +251,20 @@ func _draw_ui() -> void:
 	_draw_profile()
 
 
-## The kinds' tabs: the open one gold-framed; a gold mark on any tab holding a pick.
+## The Authorities' tabs: the open one gold-framed; a gold mark on any tab holding a pick.
 func _draw_tabs() -> void:
-	for i in PowerBook.KINDS.size():
+	for i in PowerBook.AUTHORITIES.size():
 		var r := tab_rect(i)
 		var open := i == tab
 		_ui.draw_rect(r, Color(0.12, 0.1, 0.05, 0.95) if open else (Color(0.1, 0.09, 0.07, 0.9) if _hover == "tab:%d" % i
 			else UiTheme.COL_PANEL))
 		UiTheme.frame(_ui, r, open)
-		var keys := kind_keys(i)
-		var label := "%s %d" % [PowerBook.KIND_TITLES[i], keys.size()]
+		var keys := authority_keys(i)
+		# The count goes when it would not fit beside the title ("LIFE/DEATH" fills a sixth of the row).
+		var title: String = PowerBook.AUTHORITY_TITLES[i]
+		var label := "%s %d" % [title, keys.size()]
+		if UiTheme.width(label, UiTheme.SIZE_SMALL) > r.size.x - 10.0:
+			label = title
 		UiTheme.text(_ui, Vector2(r.position.x + 5.0, r.end.y - 4.0), label, UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
 		var picked := false
@@ -311,7 +315,7 @@ func _draw_profile() -> void:
 
 
 ## The left panel: the briefing, or -- while the mouse is on a power -- that power's card: its name, its preview clip,
-## its cost and how it is aimed, what it does and its kind. (v0.06: the briefing had grown under the clip.)
+## its price and how it is aimed, what it does and its Authority. (v0.06: the briefing had grown under the clip.)
 func _draw_panel() -> void:
 	_ui.draw_rect(PANEL, UiTheme.COL_PANEL)
 	var hover := _hover_key()
@@ -364,8 +368,7 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
-	var kind := PowerBook.kind_of(key)
-	var title: String = PowerBook.KIND_TITLES[PowerBook.KINDS.find(kind)] if PowerBook.KINDS.has(kind) else ""
+	var title := PowerBook.authority_title(PowerBook.authority_of(key))
 	UiTheme.text(_ui, Vector2(tx, y), "%d DP   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)], UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,

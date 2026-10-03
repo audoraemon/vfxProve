@@ -44,7 +44,7 @@ static func run(t) -> void:
 	t.check(hud.slot_state(3) == "ready", "a slot that can be paid for is ready (%s)" % hud.slot_state(3))
 	rules.cast(3, Vector2.ZERO)
 	t.check(hud.slot_state(3) == "cooldown", "one that just fired is on cooldown (%s)" % hud.slot_state(3))
-	rules.dp = 15.0   # the Barrage (slot index 2) costs 25
+	rules.dp = 3.0   # the Barrage (slot index 2) costs 4
 	t.check(hud.slot_state(2) == "dp", "and one the player cannot afford says so (%s, %.1f DP)" % [hud.slot_state(2), rules.dp])
 
 	# A refused cast flashes its own slot red (the buzz that goes with it is milestone 5's).

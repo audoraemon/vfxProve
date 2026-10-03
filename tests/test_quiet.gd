@@ -62,7 +62,7 @@ static func run(t) -> void:
 	t.check(taken.size() == 5 and four.all(func(p: Person) -> bool: return p in taken) and soldier in taken
 		and far not in taken, "Silent Doom takes everyone within reach, soldiers too, and nobody beyond")
 	t.check(taken[0] == four[0], "and the nearest comes first")
-	t.check(is_equal_approx(float(PowerBook.get_power("doom").cooldown), 2.5), "Silent Doom's cooldown is 2.5 s")
+	t.check(is_equal_approx(float(PowerBook.get_power("doom").cooldown), 10.0), "Silent Doom's cooldown is 10 s")
 	taken.erase(soldier)
 	soldier.ground_pos = Vector2(-27.0, 22.0)
 

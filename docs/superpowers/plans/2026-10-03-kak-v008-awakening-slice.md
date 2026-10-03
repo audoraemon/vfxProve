@@ -2063,3 +2063,14 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
 - Mission test, three runs: buildings 55/56/56, citizens 188/179/184, escaped 1/0/0, stability 69/67/69%, citadel 50%. The DP field is gone.
 - Captures checked: the mission bar with six slots (names and cooldowns), and Prepare with the budget meter, dimmed cards and "Not enough Divine Power".
 - Not changed: no cooldown was tuned in Task 13. The ranks are 200 lower each.
+
+### M3 gate (at 28d4ebc)
+
+- Tests `checks=1181 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `checks=30 failures=0`.
+- All five exact behaviour checksums identical to Task 0.
+- Mission test, three runs: buildings 53/55/55, citizens 187/190/192, escaped 1/1/1, stability 69/70/70%.
+- Mind Whisper:
+  - 18 powers; Dominion holds Mind Whisper and Will-o'-Wisp.
+  - Icon painted (numpy and Pillow installed for the user's Python 3.12).
+  - Draft clip recorded at `--at=0,11 --seconds=8`, on open paving. The destination ring was strengthened (alpha 0.9, fill 0.25, with a halo and a pulse) after the first clip did not read.
+- Deviations: `clamp_to` now never passes REACH. The press refuses with the slot's own reason first. A target that dies mid-drag refuses the cast.

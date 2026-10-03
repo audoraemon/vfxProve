@@ -123,6 +123,8 @@ var ferry: RiverFerry
 var plague: PlagueManager
 ## Madness Bloom's madness (a Disorder status); made by spawn().
 var madness: MadnessManager
+## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
+var _hush_until := -INF
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -783,6 +785,8 @@ func _update_bed(delta: float) -> void:
 
 ## One voice from `p`, if the budget allows it.
 func _voice(p: Person, cue: StringName) -> void:
+	if is_hushed():
+		return
 	if _voice_tokens < 1.0:
 		return
 	_voice_tokens -= 1.0
@@ -874,6 +878,9 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 
 ## Frights passed on: a moment after a citizen was frightened, the calm people beside it stop and look its way.
 func _spread_fright() -> void:
+	if is_hushed():
+		_spreads.clear()  # nobody can pass a fright on
+		return
 	var due: Array = []
 	var later: Array = []
 	for s in _spreads:
@@ -909,7 +916,19 @@ func _watch_threats() -> void:
 ## rung, only those nearby know, so it counts UNWARNED_ALARM of its worth (v0.05) -- a town kept from its bell
 ## mobilizes slower. Once the bell has rung, everything counts in full.
 func _hear_alarm(points: float) -> void:
+	if is_hushed():
+		return  # nobody can call for help
 	add_alarm(points if alarms.bell_rung else points * UNWARNED_ALARM)
+
+
+## Silence the town for `seconds` (Voice of God): no shouts, no fright passed from one to the next, no call for help
+## -- what happens raises no alarm and brings no one to look -- and no bell.
+func hush(seconds: float) -> void:
+	_hush_until = maxf(_hush_until, _clock + seconds)
+
+
+func is_hushed() -> bool:
+	return _clock < _hush_until
 
 
 func add_alarm(points: float) -> void:
@@ -1156,6 +1175,7 @@ func clear() -> void:
 	_doomed.clear()
 	_jams.clear()
 	_thorn_alarm_at = -INF
+	_hush_until = -INF
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -1204,7 +1224,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
 		_hear_alarm(ALARM_BUILDING)
 	var at := s.center()
-	if s.role != &"citadel" and alarms.incident(at):
+	if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
 		_investigate(at)
 	var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
 	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
@@ -1228,7 +1248,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"doom":
 		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
 		return
-	if alarms.incident(p.ground_pos):
+	if not is_hushed() and alarms.incident(p.ground_pos):
 		_investigate(p.ground_pos)
 	_hear_alarm(ALARM_KILL)
 

@@ -239,7 +239,7 @@ func _outbreak(p: Person) -> void:
 			best = s
 			best_d = s.ground_pos.distance_to(p.ground_pos)
 	if best != null:
-		best.fight(p, SOLDIER_FIGHT_SECONDS, Person.SOLDIER_BLOW, true)
+		best.fight(p, SOLDIER_FIGHT_SECONDS, Person.SOLDIER_BLOW, Person.FightRule.HOSTILES)
 
 
 ## What a stage asks of a person while it lasts.

@@ -161,6 +161,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_crowd.name = "Crowd"
 	add_child(_crowd)
 	_crowd.setup(_bf.ctx.field, _bf.ctx.env, _town, _grid, _bf.ctx.world, seed_value)
+	_bf.ctx.crowd = _crowd
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()

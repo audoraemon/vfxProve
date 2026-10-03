@@ -103,6 +103,15 @@ const SOLDIER_BLOW := 0.5
 ## Health, for blows (hurt()): a citizen falls to three frenzied blows, a soldier to twice as many.
 const HEALTH_CITIZEN := 1.0
 const HEALTH_SOLDIER := 2.0
+## Whom a fighter may go for (fight()): anyone near (a maddened frenzy); only hostiles, the fighting citizens (a
+## soldier engaging one); only its given target, the fight ending with it (Voice of God's Judge); only the other side
+## (Divine Schism).
+enum FightRule { ANYONE, HOSTILES, TARGET_ONLY, OTHER_SIDE }
+## A mark's glyph: five rows of five bits, the top row first. The diamond is a compulsion's own.
+const GLYPH_DIAMOND: Array[int] = [0b00100, 0b01110, 0b11111, 0b01110, 0b00100]
+const COL_MARK_EDGE := Color(0.12, 0.08, 0.02)
+## The marks' place in the redraw signature: above the walk frames and the sickness (SIG_WALK * 64 clears both).
+const SIG_MARK := SIG_WALK * 64
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -215,7 +224,18 @@ var _fight_left := 0.0
 var _fight_blow := 0.34
 var _swing_in := 0.0
 var _retarget_in := 0.0
-var _hostiles_only := false
+var _fight_rule := FightRule.ANYONE
+var _fight_sight := FIGHT_SIGHT
+## The side it has been set on (Divine Schism; 0: none): under FightRule.OTHER_SIDE a fighter goes for the other one.
+var side := 0
+## A compulsion's pace (a run: Voice of God's Flee), its pose (&"kneel") and its mark's glyph.
+var _compel_run := false
+var compel_pose := &""
+var compel_glyph: Array[int] = GLYPH_DIAMOND
+## A badge over the head (a side's mark, the silenced, the condemned): its glyph, its colour, the seconds it has left.
+var badge_glyph: Array[int] = GLYPH_DIAMOND
+var badge_color := Color.WHITE
+var badge_left := 0.0
 ## Health, for blows (hurt()); set by setup_person().
 var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
@@ -355,6 +375,8 @@ func tick(delta: float) -> void:
 
 
 func _think(delta: float) -> void:
+	if badge_left > 0.0:
+		badge_left = maxf(badge_left - delta, 0.0)
 	_repath_in = maxf(_repath_in - delta, 0.0)
 	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
 	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
@@ -465,6 +487,8 @@ func _base_speed() -> float:
 			return PANIC_SPEED * pace
 		Mind.CONFUSED:
 			return WALK_SPEED * CONFUSED_PACE * pace
+		Mind.COMPELLED:
+			return (FLEE_SPEED if _compel_run else WALK_SPEED) * pace
 		Mind.FLEE, Mind.FIGHT:
 			return FLEE_SPEED * pace
 		_:
@@ -699,10 +723,17 @@ func held_by_will(level: float) -> bool:
 
 ## A compulsion (Divine Congregation): walk, as if of its own mind, to `spot` and stay there `seconds`, held by
 ## `will` (WILL_FIRM keeps it through an evacuation; WILL_ABSOLUTE through a danger on top of it), with `mark` over
-## the head. A place in a gate's queue is given up. True when it took.
-func compel(spot: Vector2, seconds: float, will: float, mark: Color) -> bool:
+## the head (`glyph`). `run` makes it a run, `pose` (&"kneel") how it holds itself. A place in a gate's queue is given
+## up, and a fight dropped. True when it took.
+func compel(spot: Vector2, seconds: float, will: float, mark: Color, run := false, pose := &"",
+		glyph: Array[int] = GLYPH_DIAMOND) -> bool:
 	if inside or state == State.DEAD:
 		return false
+	fight_target = null
+	_fight_left = 0.0
+	_compel_run = run
+	compel_pose = pose
+	compel_glyph = glyph
 	release_from_queue()
 	passing_gate = null
 	queue_spot = Vector2.INF
@@ -725,10 +756,23 @@ func release_compulsion() -> void:
 		return
 	_compel_left = 0.0
 	compel_will = 0.0
+	_compel_run = false
+	compel_pose = &""
 	if soldier:
 		send_to_post(post if post != Vector2.INF else ground_pos)
 	else:
 		_recover(rng.randf_range(1.0, 2.5))
+
+
+## A badge over the head for `seconds`: `glyph` in `color` (a side's mark, the silenced, the condemned).
+func set_badge(glyph: Array[int], color: Color, seconds: float) -> void:
+	badge_glyph = glyph
+	badge_color = color
+	badge_left = seconds
+
+
+func clear_badge() -> void:
+	badge_left = 0.0
 
 
 ## A moment's hesitation: stand, and turn to look the other way.
@@ -747,9 +791,8 @@ func stun(seconds: float) -> void:
 
 
 ## Go for someone (Mind.FIGHT) for `seconds`, striking `blow` of their health each swing: `target` or, when null,
-## whoever is nearest -- anyone for a frenzied citizen, only hostiles (fighting citizens) for a soldier
-## (`hostiles_only`). Ends on its own (stop_fighting()).
-func fight(target: Person, seconds: float, blow: float, hostiles_only := false) -> void:
+## whoever `rule` allows (FightRule) within `sight`. Ends on its own (stop_fighting()).
+func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE, sight := FIGHT_SIGHT) -> void:
 	if inside or state == State.DEAD:
 		return
 	release_from_queue()
@@ -758,7 +801,8 @@ func fight(target: Person, seconds: float, blow: float, hostiles_only := false) 
 	fight_target = target
 	_fight_left = seconds
 	_fight_blow = blow
-	_hostiles_only = hostiles_only
+	_fight_rule = rule
+	_fight_sight = sight
 	_swing_in = 0.0
 	_retarget_in = 0.0
 	_panic_left = 0.0
@@ -782,8 +826,16 @@ func stop_fighting() -> void:
 
 ## Whether `p` is someone a fighter may go for.
 func _fightable(p: Person) -> bool:
-	return p != null and p != self and is_instance_valid(p) and p.is_alive() and not p.inside and p.visible \
-		and (not _hostiles_only or (p.mind == Mind.FIGHT and not p.soldier))
+	if p == null or p == self or not is_instance_valid(p) or not p.is_alive() or p.inside or not p.visible:
+		return false
+	match _fight_rule:
+		FightRule.HOSTILES:
+			return p.mind == Mind.FIGHT and not p.soldier
+		FightRule.TARGET_ONLY:
+			return p == fight_target
+		FightRule.OTHER_SIDE:
+			return p.side != 0 and p.side != side
+	return true
 
 
 ## One frame of fighting: look again for someone every FIGHT_RETARGET, go to them, strike within FIGHT_REACH every
@@ -792,20 +844,26 @@ func _fight_step(delta: float) -> void:
 	_retarget_in -= delta
 	_swing_in -= delta
 	if not _fightable(fight_target):
+		if _fight_rule == FightRule.TARGET_ONLY:
+			stop_fighting()  # the one it was set on is gone: nothing more to do
+			return
 		fight_target = null
 	if fight_target == null or _retarget_in <= 0.0:
 		_retarget_in = FIGHT_RETARGET
-		if field != null and (fight_target == null or not _hostiles_only):
+		# A frenzy turns on whoever is nearest now; the rest keep the one they have until it is gone.
+		if field != null and (fight_target == null or _fight_rule == FightRule.ANYONE):
 			var best: Person = fight_target
 			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else INF
-			for e in field.in_radius(ground_pos, FIGHT_SIGHT):
+			for e in field.in_radius(ground_pos, _fight_sight):
 				var q := e as Person
 				if _fightable(q) and q.ground_pos.distance_to(ground_pos) < best_d:
 					best = q
 					best_d = q.ground_pos.distance_to(ground_pos)
 			fight_target = best
 		if fight_target != null:
-			set_goal(fight_target.ground_pos)
+			# A new path only when they have moved: a street of fighters must not all ask for one every look.
+			if _goal == Vector2.INF or _goal.distance_to(fight_target.ground_pos) > 0.75:
+				set_goal(fight_target.ground_pos)
 		elif _goal == Vector2.INF:
 			_drift()
 	if fight_target == null:
@@ -838,7 +896,7 @@ func hurt(amount: float, by: Person) -> void:
 	if by == null or not is_instance_valid(by) or mind == Mind.FIGHT:
 		return
 	if soldier:
-		fight(by, 20.0, SOLDIER_BLOW, true)
+		fight(by, 20.0, SOLDIER_BLOW, FightRule.HOSTILES)
 	else:
 		panic(by.ground_pos, 0.5, &"frenzy")
 ## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
@@ -1071,7 +1129,8 @@ func _scurry() -> void:
 
 
 func is_running() -> bool:
-	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY or mind == Mind.FIGHT)
+	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY or mind == Mind.FIGHT
+		or (mind == Mind.COMPELLED and _compel_run))
 
 
 func is_stumbling() -> bool:
@@ -1217,10 +1276,47 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 # --- Drawing -----------------------------------------------------------------
 
 func _draw_body(lift: int, top_only: int) -> void:
+	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD:
+		# On its knees: the body down, no legs under it.
+		lift += 3
+		top_only = 1
 	if soldier:
 		_draw_soldier(lift, top_only)
 	else:
 		_draw_citizen(lift, top_only)
+	if state != State.DEAD:
+		_draw_marks(lift)
+
+
+## What a power has laid on it, over the head: a compulsion's mark (its glyph, drifting up and down with its steps,
+## and a ring of the same light at the feet) and, above that, a badge. Each on a dark plate, to read on any ground.
+func _draw_marks(lift: int) -> void:
+	var y := (-25 if soldier else -22) + lift - (int(_anim * 2.0) % 2)
+	if mind == Mind.COMPELLED:
+		_glyph(compel_glyph, y, compel_mark)
+		draw_set_transform(_draw_origin, 0.0, Vector2(1.0, 0.5))
+		draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 12, Color(compel_mark, 0.85), 1.0)
+		draw_set_transform(_draw_origin)
+		y -= 8
+	if badge_left > 0.0:
+		_glyph(badge_glyph, y, badge_color)
+
+
+## A five-by-five glyph centred over the head at height `y`, on a dark plate.
+func _glyph(rows: Array[int], y: int, col: Color) -> void:
+	_px(-3, y - 3, 7, 7, COL_MARK_EDGE)
+	for r in 5:
+		var bits := rows[r]
+		for c in 5:
+			if bits & (1 << (4 - c)):
+				_px(c - 2, y - 2 + r, 1, 1, col)
+
+
+## What the marks add to the redraw signature.
+func _mark_signature() -> int:
+	var marked := mind == Mind.COMPELLED or badge_left > 0.0
+	return (1 if mind == Mind.COMPELLED else 0) + (2 if mind == Mind.FIGHT else 0) + (4 if badge_left > 0.0 else 0) \
+		+ (8 if compel_pose == &"kneel" else 0) + 16 * (side % 3) + (64 if marked and int(_anim * 2.0) % 2 == 1 else 0)
 
 
 ## Townsfolk: bare head, tunic, no armour. Smaller than the soldiers so a crowd reads at a glance.
@@ -1280,21 +1376,6 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(lx, arm_y + 4 + lift, 1, 2, WATCH_LANTERN)
 	if state != State.DEAD or _char < 0.5:
 		_px(0 if f > 0 else -1, -12 + lift, 1, 1, COL_DARK)
-	if mind == Mind.COMPELLED and state != State.DEAD:
-		# A compulsion's mark: a halo over the head, a diamond of light edged dark so it reads on any ground, drifting
-		# up and down with its steps, and a ring of the same light at the feet.
-		var y := -22 + lift - (int(_anim * 2.0) % 2)
-		var edge := Color(0.12, 0.08, 0.02)
-		for row in 5:
-			var half := 2 - absi(row - 2)
-			_px(-half - 1, y - 2 + row, half * 2 + 3, 1, edge)
-		for row in 5:
-			var half := 2 - absi(row - 2)
-			_px(-half, y - 2 + row, half * 2 + 1, 1, compel_mark)
-		_px(0, y, 1, 1, Color(1.0, 0.98, 0.9))
-		draw_set_transform(_draw_origin, 0.0, Vector2(1.0, 0.5))
-		draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 12, Color(compel_mark, 0.85), 1.0)
-		draw_set_transform(_draw_origin)
 	if mind == Mind.FIGHT and state != State.DEAD:
 		# Frenzy: the arms thrown up, a red eye.
 		_px(-4, -15 + lift, 1, 2, skin)
@@ -1353,7 +1434,7 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 
 func _pose_signature() -> int:
 	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED and _confused_swirl else 0) \
-		+ (5 if mind == Mind.WHISPERED else 0) + (8 if mind == Mind.COMPELLED else 0) + (16 if mind == Mind.FIGHT else 0)
+		+ (5 if mind == Mind.WHISPERED else 0)
 
 
 ## DummyEnemy._art_signature(), folded ahead of time for a person on its feet with nothing lifting, freezing or
@@ -1361,8 +1442,8 @@ func _pose_signature() -> int:
 ## on screen asks this every frame.
 func _art_signature() -> int:
 	if state != State.WANDER or _lift != 0.0 or _frozen > 0.0 or _flash > 0.0:
-		return super()
-	var running := mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY
+		return super() + _mark_signature() * SIG_MARK
+	var running := is_running()
 	var rate: float
 	if running:
 		rate = 8.0 if soldier else 10.0
@@ -1374,7 +1455,8 @@ func _art_signature() -> int:
 	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0) \
 		+ (5 if mind == Mind.WHISPERED else 0)
 	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
-	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
+	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose \
+		+ _mark_signature() * SIG_MARK
 
 
 func _walk_rate() -> float:

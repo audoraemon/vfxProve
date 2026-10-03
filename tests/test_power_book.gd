@@ -1,5 +1,5 @@
 extends RefCounted
-## The power book: 22 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
+## The power book: 24 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
 
 ## v0.07's cooldowns (kak-v0.07.1), which v0.08's may lengthen but never shorten (spec §2).
 const V07_COOLDOWNS := {
@@ -8,11 +8,11 @@ const V07_COOLDOWNS := {
 	"cinder": 50.0, "judgement": 60.0, "glacial": 60.0, "nova": 120.0,
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
-const NEW_IN_08 := ["whisper", "madness", "mirror", "congregation", "solaris"]
+const NEW_IN_08 := ["whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 22, "22 powers")
+	t.check(PowerBook.POWERS.size() == 24, "24 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -39,13 +39,13 @@ static func run(t) -> void:
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "wisp", "discord", "heaven", "madness", "blight", "thorns", "tornado",
 		"pestilence", "dragon", "mirror", "congregation", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
-		"glacial", "solaris", "nova"],
+		"glacial", "solaris", "voice", "schism", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []
 	for key in PowerBook.keys():
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
-	t.check(quiet == ["doom", "whisper", "wisp", "discord", "madness", "blight", "thorns", "pestilence", "mirror", "congregation"],
+	t.check(quiet == ["doom", "whisper", "wisp", "discord", "madness", "blight", "thorns", "pestilence", "mirror", "congregation", "voice"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var authorities_ok := true
 	for p: Dictionary in PowerBook.POWERS:
@@ -61,20 +61,20 @@ static func run(t) -> void:
 	# than v0.07's -- checked against v0.07's table, not worked out from it.
 	var problems_08: Array[String] = []
 	for p: Dictionary in PowerBook.POWERS:
-		if int(p.dp) < 1 or int(p.dp) > 4:
+		if int(p.dp) < 1 or int(p.dp) > 6:
 			problems_08.append("%s costs %d" % [p.key, p.dp])
 		if not V07_COOLDOWNS.has(p.key) and not p.key in NEW_IN_08:
 			problems_08.append("%s has no v0.07 cooldown" % p.key)
 		elif V07_COOLDOWNS.has(p.key) and float(p.cooldown) < float(V07_COOLDOWNS[p.key]):
 			problems_08.append("%s cools in %.1f s" % [p.key, p.cooldown])
-	t.check(problems_08.is_empty(), "prices are 1-4 DP and no cooldown got shorter (%s)" % [problems_08])
+	t.check(problems_08.is_empty(), "prices are 1-6 DP (Tier 5: 5 and 6) and no cooldown got shorter (%s)" % [problems_08])
 
 	# Mind Whisper (v0.08, spec §4): Dominion, Tier 1's 1 DP, 8 s, aimed by dragging from a person, quiet.
 	var whisper := PowerBook.get_power("whisper")
 	t.check(PowerBook.authority_of("whisper") == "dominion" and int(whisper.dp) == 1 and float(whisper.cooldown) == 8.0
 		and String(whisper.aim) == "whisper" and PowerBook.is_quiet("whisper") and whisper.name == "Mind Whisper",
 		"Mind Whisper: Dominion, 1 DP, 8 s, its own aim, quiet (%s)" % [whisper])
-	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "congregation"],
-		"Dominion holds Mind Whisper, the Will-o'-Wisp and Divine Congregation (%s)" % [PowerBook.of_authority("dominion")])
+	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "congregation", "voice", "schism"],
+		"Dominion holds Mind Whisper, the Will-o'-Wisp, Divine Congregation and the two of Tier 5 (%s)" % [PowerBook.of_authority("dominion")])
 	t.check(PowerBook.icon("kettle") == null and PowerBook.hud_icon("kettle") == null,
 		"an icon that is not painted is null, not a load error")

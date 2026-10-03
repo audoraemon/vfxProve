@@ -3,9 +3,10 @@ rem Try powers in the real town mission, skipping the title and the draft. The f
 rem or the two new ones with Heaven Splitter and Nuclear Nova. In the mission: 1-4 picks a slot, LMB casts (drag
 rem powers: press, drag, release), F3 shows the frame rate, F4 the behaviour overlay, Esc pauses.
 rem   try.bat                            mirror, solaris, heaven, nova
-rem   try.bat solaris wisp thorns doom   any four keys from PowerBook (doom wisp discord heaven blight thorns
-rem                                      tornado pestilence dragon mirror tsunami gravity laser orbital cinder
-rem                                      judgement glacial solaris nova)
+rem   try.bat voice schism wisp doom     any four keys from PowerBook (doom whisper wisp discord heaven madness
+rem                                      blight thorns tornado pestilence dragon mirror congregation tsunami
+rem                                      gravity laser orbital cinder judgement glacial solaris voice schism nova)
+rem Voice of God and Divine Schism: Q and E pick the command or the way to divide while the slot is focused.
 rem Override the engine path with: set GODOT=C:\path\to\Godot.exe
 setlocal
 if "%GODOT%"=="" set "GODOT=F:\Godot\Godot_v4.7.2-stable_win64.exe"

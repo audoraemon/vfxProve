@@ -17,6 +17,8 @@ func _initialize() -> void:
 	_save(_mirror(), "mirror")
 	_save(_congregation(), "congregation")
 	_save(_madness(), "madness")
+	_save(_voice(), "voice")
+	_save(_schism(), "schism")
 	print("wrote ", ProjectSettings.globalize_path(OUT))
 	quit()
 
@@ -197,5 +199,76 @@ func _madness() -> Image:
 			c = _mix(c, Color(0.1, 0.02, 0.06), pupil)
 			c = _mix(c, Color(1.0, 0.3, 0.4), exp(-(Vector2(x - 1.0, y - 1.0).length_squared()) / 1.5))
 			c = c * clampf(1.3 - (r / 50.0) * (r / 50.0), 0.3, 1.0)
+			img.set_pixel(px, py, c)
+	return img
+
+
+## The Dominion sigil's rings and star in white-gold, low in the sky, rays falling from it onto a line of kneeling figures.
+func _voice() -> Image:
+	var img := Image.create(SIZE, SIZE, false, Image.FORMAT_RGB8)
+	var n := _noise(61, 0.08)
+	for py in SIZE:
+		for px in SIZE:
+			var x := float(px) - SIZE * 0.5 + 0.5
+			var y := float(py) - SIZE * 0.5 + 0.5
+			var grain := n.get_noise_2d(px, py) * 0.5 + 0.5
+			var c := Color(0.1, 0.07, 0.04).lerp(Color(0.2, 0.14, 0.07), grain)
+			var s := Vector2(x, (y + 14.0) * 1.15)
+			var r := s.length()
+			var ang := atan2(s.y, s.x)
+			# Rays falling from the sigil.
+			var ray := pow(0.5 + 0.5 * cos(ang * 14.0), 6.0) * clampf((r - 16.0) / 6.0, 0.0, 1.0) * exp(-r / 60.0) * float(y > -14.0)
+			c = _mix(c, Color(1.0, 0.85, 0.45), ray * 0.6)
+			c = _mix(c, Color(1.0, 0.8, 0.4), exp(-r * r / 700.0) * 0.5)
+			# The sigil: two rings and a six-point star.
+			c = _mix(c, Color(1.0, 0.95, 0.72), exp(-pow((r - 18.0) / 1.0, 2.0)) + exp(-pow((r - 11.0) / 0.8, 2.0)) * 0.9)
+			for k in 6:
+				var ea := float(k) * TAU / 6.0
+				var d := s.dot(Vector2(cos(ea), sin(ea))) - 8.5
+				c = _mix(c, Color(1.0, 0.95, 0.72), exp(-d * d / 0.6) * float(r < 18.0) * 0.85)
+			c = _mix(c, Color(1.0, 1.0, 0.92), exp(-r * r / 14.0))
+			# The ground, and those kneeling on it: low dark shapes, heads bowed.
+			if y > 28.0:
+				c = Color(0.07, 0.05, 0.04)
+			for k in 5:
+				var kx := -30.0 + 15.0 * float(k)
+				var body := float(absf(x - kx) < 3.2 and y > 22.0 and y < 29.0)
+				var head := clampf(1.6 - Vector2(x - kx - 2.0, y - 20.5).length() / 1.5, 0.0, 1.0)
+				c = _mix(c, Color(0.05, 0.04, 0.04), clampf(body + head, 0.0, 1.0))
+				c = _mix(c, Color(1.0, 0.9, 0.55), exp(-(Vector2(x - kx, y - 14.0).length_squared()) / 1.4))
+			var rr := Vector2(x, y).length()
+			c = c * clampf(1.3 - (rr / 50.0) * (rr / 50.0), 0.3, 1.0)
+			img.set_pixel(px, py, c)
+	return img
+
+
+## The sigil broken down the middle by a jagged crack: the left half white-gold, the right crimson, the halves apart.
+func _schism() -> Image:
+	var img := Image.create(SIZE, SIZE, false, Image.FORMAT_RGB8)
+	var n := _noise(71, 0.08)
+	for py in SIZE:
+		for px in SIZE:
+			var x := float(px) - SIZE * 0.5 + 0.5
+			var y := float(py) - SIZE * 0.5 + 0.5
+			var grain := n.get_noise_2d(px, py) * 0.5 + 0.5
+			var zig := (absf(fposmod(y / 12.0, 1.0) - 0.5) - 0.25) * 10.0
+			var right := x - zig > 0.0
+			var c := (Color(0.12, 0.03, 0.04) if right else Color(0.1, 0.08, 0.04)).lerp(Color(0.22, 0.1, 0.07), grain * 0.6)
+			var q := Vector2(x + (-3.0 if not right else 3.0), y)
+			var r := q.length()
+			var col := Color(1.0, 0.3, 0.25) if right else Color(1.0, 0.92, 0.66)
+			c = _mix(c, col * 0.7, exp(-r * r / 900.0) * 0.5)
+			var gap := absf(x - zig)
+			if gap > 2.2:
+				c = _mix(c, col, exp(-pow((r - 30.0) / 1.2, 2.0)) + exp(-pow((r - 19.0) / 0.9, 2.0)) * 0.85)
+				for k in 6:
+					var ea := float(k) * TAU / 6.0 + 0.26
+					var d := q.dot(Vector2(cos(ea), sin(ea))) - 14.5
+					c = _mix(c, col, exp(-d * d / 0.7) * float(r < 30.0) * 0.8)
+			# The crack: black, with burning lips.
+			c = _mix(c, Color(0.02, 0.01, 0.01), clampf((2.2 - gap) / 0.8, 0.0, 1.0))
+			c = _mix(c, Color(1.0, 0.75, 0.4), exp(-pow((gap - 2.6) / 0.7, 2.0)) * 0.9)
+			var rr := Vector2(x, y).length()
+			c = c * clampf(1.3 - (rr / 50.0) * (rr / 50.0), 0.3, 1.0)
 			img.set_pixel(px, py, c)
 	return img

@@ -21,6 +21,9 @@ const COL_ROT := Color(0.62, 0.78, 0.4, 0.9)
 const COL_DIVINE := Color(1.0, 0.9, 0.6, 0.8)
 const COL_DIVINE_FILL := Color(1.0, 0.9, 0.6, 0.1)
 const COL_MAD := Color(0.6, 0.15, 0.3, 0.8)
+## Divine Schism's other side, and the condemned.
+const COL_CRIMSON := Color(1.0, 0.3, 0.25, 0.85)
+const COL_CRIMSON_FILL := Color(1.0, 0.3, 0.25, 0.1)
 ## Which way a drag power points when the player barely moved the mouse.
 const DEFAULT_DIR := Vector2(1, 0)
 
@@ -41,6 +44,11 @@ const AREAS := {
 	"pestilence": {"shape": "circle", "r": 1.2},
 	# DiscordFx.DISCORD_R; who it would take is ringed (_draw())
 	"discord": {"shape": "circle", "r": 1.2},
+	# Voice of God speaks to the whole town: the mark is only where the click lands (Flee's origin, Gather's place,
+	# Judge's target -- ringed in _draw())
+	"voice": {"shape": "circle", "r": 0.6},
+	# Divine Schism: the middle of the region it divides; its modes cover their own ground (the book's "area")
+	"schism": {"shape": "circle", "r": 0.6},
 	# MadnessBloomFx.RADIUS; who it would take is ringed (_draw())
 	"madness": {"shape": "circle", "r": 1.5},
 	# CongregationFx.RADIUS: the place at the first click, the circle at the second; who it would draw is ringed
@@ -89,6 +97,8 @@ var _whisper_target: Person
 
 var _rules: Rules
 var _crowd: Crowd
+## The mode picked for each power that has modes (its book entry's "modes"), by power key: Q and E step through them.
+var _mode := {}
 ## Where the button went down (a cast lands here, not where it came up).
 var _press := Vector2.ZERO
 ## Where the cursor is now, for the preview and the drag's direction.
@@ -127,6 +137,48 @@ func unfocus() -> void:
 	_whisper_target = null
 	picked.emit(slot)
 	queue_redraw()
+
+
+## The focused power's modes (Voice of God's commands, Divine Schism's ways to divide), or none.
+func modes() -> Array:
+	return _rules.power(slot).get("modes", []) if slot >= 0 else []
+
+
+func mode_index() -> int:
+	var m := modes()
+	return int(_mode.get(_rules.key(slot), 0)) % m.size() if not m.is_empty() else 0
+
+
+## The picked mode's entry ({"key", "name", ...}), or empty for a power with none.
+func mode() -> Dictionary:
+	var m := modes()
+	return m[mode_index()] if not m.is_empty() else {}
+
+
+## Step to the next mode (or the one before): a first place already set is dropped, the modes may aim differently.
+func step_mode(by: int) -> void:
+	var m := modes()
+	if m.is_empty():
+		return
+	_mode[_rules.key(slot)] = posmod(mode_index() + by, m.size())
+	placed = false
+	armed = false
+	aiming = false
+	queue_redraw()
+
+
+## Q and E step through the focused power's modes.
+func _unhandled_input(event: InputEvent) -> void:
+	if slot < 0 or not (event is InputEventKey) or not event.pressed or event.echo or modes().is_empty():
+		return
+	if event.physical_keycode == KEY_Q or event.physical_keycode == KEY_E:
+		step_mode(-1 if event.physical_keycode == KEY_Q else 1)
+		get_viewport().set_input_as_handled()
+
+
+## How the focused power is aimed: its mode's own way when the mode has one.
+func _aim_kind() -> String:
+	return String(mode().get("aim", _rules.power(slot).get("aim", "click")))
 
 
 ## The cursor moved. Keeps the preview where the player is looking.
@@ -176,6 +228,8 @@ func release(ground: Vector2) -> void:
 	_at = ground
 	armed = false
 	var extra := {}
+	if not modes().is_empty():
+		extra["mode"] = String(mode().key)
 	if _is_twice():
 		if not placed:
 			placed = true
@@ -229,7 +283,14 @@ func aim_dir() -> Vector2:
 
 
 func area() -> Dictionary:
-	return AREAS.get(_rules.key(slot), {})
+	var a: Dictionary = AREAS.get(_rules.key(slot), {})
+	var own: Dictionary = mode().get("area", {})
+	if own.is_empty():
+		return a
+	# A mode may cover its own ground (Divine Schism's regions).
+	var out := a.duplicate()
+	out.merge(own, true)
+	return out
 
 
 ## Where a lane power's lane begins: at the cast for a power that sweeps forward from it, half a length back for
@@ -242,13 +303,15 @@ static func lane_start(key: String, press: Vector2, dir: Vector2) -> Vector2:
 
 
 func _is_drag() -> bool:
-	return String(_rules.power(slot).get("aim", "click")) == "drag"
+	return _aim_kind() == "drag"
 
 
 func _is_twice() -> bool:
-	return String(_rules.power(slot).get("aim", "click")) == "two clicks"
+	return _aim_kind() == "two clicks"
+
+
 func _is_whisper() -> bool:
-	return String(_rules.power(slot).get("aim", "click")) == "whisper"
+	return _aim_kind() == "whisper"
 
 
 ## A Mind Whisper press is held on someone still there to hear it.
@@ -289,6 +352,13 @@ func _draw() -> void:
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
 			_cone(_press, float(a.r), float(a.arc), edge)
+		"regions":
+			# Divine Schism's Custom Division: one side's region at the first click, the other's following the cursor.
+			if placed:
+				_disc(first, float(a.r), COL_DIVINE_FILL, COL_DIVINE)
+				_disc(_press, float(a.r), COL_CRIMSON_FILL, COL_CRIMSON)
+			else:
+				_disc(_press, float(a.r), COL_DIVINE_FILL, COL_DIVINE)
 		"gather":
 			# The place under the cursor until the first click sets it; then the circle follows the cursor.
 			if placed:
@@ -313,6 +383,20 @@ func _draw() -> void:
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"voice":
+			match String(mode().get("key", "")):
+				"gather":
+					_place_mark(_press, edge)
+				"judge":
+					# Whom everyone would turn on.
+					var judged := VoiceOfGodFx.judged_at(_crowd._field, _press)
+					if judged != null:
+						_ring(judged.ground_pos, 0.3, COL_CRIMSON)
+		"schism":
+			if String(mode().get("key", "")) == "purge":
+				# The condemned.
+				for p in DivineSchismFx.condemned_at(_crowd._field, _press):
+					_ring(p.ground_pos, 0.25, COL_CRIMSON)
 		"madness":
 			# Who it would take.
 			for p in MadnessBloomFx.victims_at(_crowd._field, _press):

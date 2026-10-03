@@ -8,7 +8,9 @@ extends RefCounted
 ## on a person, drag to where they should go, release; aim "two clicks" = one click for each of the power's two places
 ## (Mirrorfold Passage, Divine Congregation). The quiet powers (v0.05, "quiet") register no danger for the
 ## town and raise no alarm when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight
-## adds one alarm; a quiet power with an "alarm" unsettles the town by that much when cast.
+## adds one alarm; a quiet power with an "alarm" unsettles the town by that much when cast. A power with "modes" is cast
+## in one of them (Targeting: Q and E step through them; the effect is told which in extra["mode"]); a mode may aim
+## its own way ("aim") and cover its own ground ("area").
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
@@ -64,6 +66,18 @@ const POWERS := [
 	{"key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd",
 		"dp": 4, "cooldown": 105.0, "aim": "click", "shape": "5 s pillar of sunfire; leaves a pit that takes all who enter",
 		"authority": "ruin"},
+	{"key": "voice", "name": "Voice of God", "path": "res://src/fx/dominion/voice_of_god.gd",
+		"dp": 5, "cooldown": 180.0, "aim": "click", "shape": "one command the whole town obeys; Q/E picks it",
+		"quiet": true, "alarm": 6.0, "authority": "dominion", "modes": [
+			{"key": "kneel", "name": "KNEEL"}, {"key": "halt", "name": "HALT"}, {"key": "flee", "name": "FLEE"},
+			{"key": "gather", "name": "GATHER"}, {"key": "return", "name": "RETURN"}, {"key": "silence", "name": "SILENCE"},
+			{"key": "judge", "name": "JUDGE"}]},
+	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
+		"authority": "dominion", "modes": [
+			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
+			{"key": "custom", "name": "CUSTOM", "aim": "two clicks", "area": {"shape": "regions", "r": 5.0}},
+			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}}]},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -85,7 +99,8 @@ const REACH := {
 	"heaven": [6.0, 9.0, 0.5, 3.0], "tornado": [8.0, 11.0, 0.6, 10.0], "dragon": [8.0, 11.0, 0.6, 5.0],
 	"tsunami": [8.0, 12.0, 0.7, 5.0], "gravity": [6.0, 9.0, 0.6, 6.0], "laser": [7.0, 10.0, 0.6, 6.0],
 	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
-	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "nova": [40.0, 40.0, 1.0, 4.0],
+	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "schism": [14.0, 18.0, 0.8, 8.0],
+	"nova": [40.0, 40.0, 1.0, 4.0],
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]

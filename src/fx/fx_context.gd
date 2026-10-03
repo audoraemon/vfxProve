@@ -19,6 +19,9 @@ var overhead: Node2D
 ## Screen-space, topmost; for screen-texture distortion.
 var distort: Node2D
 var rng: RandomNumberGenerator
+## The town's crowd, for an effect that changes how the town itself behaves (Voice of God's Silence); null in the
+## sandbox and in tests that have none.
+var crowd: Crowd
 ## func(color: Color, seconds: float)
 var flash: Callable
 

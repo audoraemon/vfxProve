@@ -142,6 +142,9 @@ func _wait() -> void:
 
 
 func _ring() -> void:
+	if _crowd.is_hushed():
+		_wait()  # a silenced town's bell makes no sound: the keeper tries again
+		return
 	state = State.RUNG
 	ring_show = 3.0
 	_crowd.off_duty(keeper)

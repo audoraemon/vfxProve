@@ -141,3 +141,13 @@ The batch-2 tower's art was 76 px wide on a 102 px footprint diamond (1.6 x 1.6)
 town_tower total: 60 generations (cap 70). Glow 2.3% intact, 0% damaged, 0% ruins. No collapse (engine sink). In town (main gate, side gate captures) the wall runs meet the tower faces with no ground between.
 
 town_tower_corner: 40 generations, no candidate fills the 2.0 plot; stopped because a third generate plus two edits (60) would take the balance under the 473 floor. Interim: the corner reuses the new town_tower stills (size [120, 180], anchor [60, 178.4] = the tower's anchor + 6.4 px, shadow [1.6, 1.6]), so its corners still sit ~13 px inside the 2.0 diamond. Open. Rejected candidates kept in the session scratchpad (tower2/cgen1, tower2/cgen2).
+
+Corner, second attempt (controller ruling, floor 443): composition ref rendered on a 140x156 canvas at height 60 (squat full-footprint block, bbox 6..134), only that ref plus the Component4 style ref, no family ref.
+
+| Set | Call | Prompt / refs | Seed | Cost | Result |
+|---|---|---|---|---|---|
+| town_tower_corner | `generate` 140x156 | wide square corner bastion, broad, massive and squat, as wide as it is tall, walls flush with the footprint edges, cool grey limestone blocks, crenellations, two torches, blue fleur-de-lis banners, small arched windows, moss; refs: reference.png (2.0 squat block), style_ref.png (TownMap_Component4 tower) | 344 | 25 (508 → 483) | 4 images, all with body outline x 7..132 (outer edges 7/133) vs diamond 6..134 at anchor x 70: base corners 1 px inside. Kept #00 (two torches, moss like town_tower). Touched canvas top/bottom: padded to 148x168 (+4, +4). Anchor [74, 157] from overlays |
+| town_tower_corner | `edit` (damaged) on intact | the same wide bastion damaged: cracks, missing blocks, broken merlons, scorch, torn banners, torches out | 345 | 20 (483 → 463) | Kept edit_00; came back 4 px low (whole sprite), moved (0, -4); a 2 px smoke wisp on row 0..1 cleared |
+| town_tower_corner | `edit` (ruins) on damaged | destroyed: short wall stumps on the same wide base, rubble heap, banner on the rubble, nothing floating | 346 | 20 (463 → 443) | Kept edit_00; lowest row 115 vs 159, moved (0, +44) |
+
+town_tower_corner total: 105 generations over both attempts (548 → 443). Manifest: size [148, 168], height 50, anchor [74, 157], no shadow. Glow 0.3% / 0% / 0%. New capture shots town_corner_south.png and town_corner_east.png (town_debug.gd TOWN_SHOTS): both walls meet the bastion's faces with no ground between.

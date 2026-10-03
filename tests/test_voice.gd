@@ -41,7 +41,7 @@ static func _done(made: Array) -> void:
 ## Cast `command` at `at` and let the wave cross the town.
 static func _cast(ctx: FxContext, at: Vector2, command: String) -> VoiceOfGodFx:
 	var fx: VoiceOfGodFx = FxTimeline.cast(load(PATH), ctx, at, {"mode": command})
-	fx._process(2.5)
+	fx._process(VoiceOfGodFx.T_SPEAK + 2.5)
 	return fx
 
 
@@ -84,8 +84,11 @@ static func run(t) -> void:
 
 	# Kneel: the wave reaches the near first and the whole town within its sweep; soldiers obey; no danger breaks it.
 	var fx: VoiceOfGodFx = FxTimeline.cast(load(PATH), ctx, at, {"mode": "kneel"})
-	t.check(fx.busy == 1.5 and is_equal_approx(fx.duration, 13.0) and fx.obeyed == 0, "the cast locks the slots for 1.5 s; nobody is reached yet")
-	fx._process(0.1)
+	t.check(is_equal_approx(fx.busy, VoiceOfGodFx.T_SPEAK + 1.0) and is_equal_approx(fx.duration, VoiceOfGodFx.T_SPEAK + 13.0),
+		"the cast locks the slots until a second after the Voice has spoken")
+	fx._process(VoiceOfGodFx.T_SPEAK - 0.1)
+	t.check(fx.obeyed == 0 and c.mind != Person.Mind.COMPELLED, "while the sigil gathers nobody is commanded")
+	fx._process(0.2)
 	t.check(c.mind == Person.Mind.COMPELLED and fx.obeyed < alive, "the wave reaches those near first (%d of %d)" % [fx.obeyed, alive])
 	fx._process(2.4)
 	var inside := 0

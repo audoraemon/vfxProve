@@ -91,8 +91,10 @@ static func run(t) -> void:
 	var bystander: Person = _fighter(crowd, b.stagger + 1)
 	bystander.ground_pos = at + Vector2(DivineSchismFx.REGION + 2.0, 0.0)
 	var fx: DivineSchismFx = FxTimeline.cast(load(PATH), ctx, at, {"mode": "faction"})
-	t.check(fx.busy == 2.0 and a.side == 0, "the cast locks the slots for 2 s; nobody is on a side yet")
-	fx._process(1.0)
+	t.check(is_equal_approx(fx.busy, DivineSchismFx.T_BREAK + 1.0) and a.side == 0, "nobody is on a side yet")
+	fx._process(DivineSchismFx.T_BREAK - 0.1)
+	t.check(a.side == 0 and fx.members.is_empty(), "while the sigil strains nobody is on a side")
+	fx._process(1.1)
 	t.check(a.side == 1 and b.side == 1 and guard.side == 2 and bystander.side == 0, "citizens on one side, soldiers on the other; beyond the region, no one")
 	t.check(a.mind == Person.Mind.FIGHT and guard.mind == Person.Mind.FIGHT and a.badge_color == DivineSchismFx.GOLD
 		and guard.badge_color == DivineSchismFx.CRIMSON, "each wears its side's mark and fights")
@@ -123,7 +125,7 @@ static func run(t) -> void:
 	b.ground_pos = at + Vector2(4.0, 0.0)
 	t.check(DivineSchismFx.condemned_at(ctx.field, at) == [a], "Purge condemns those at the click")
 	fx = FxTimeline.cast(load(PATH), ctx, at, {"mode": "purge"})
-	fx._process(1.0)
+	fx._process(DivineSchismFx.T_BREAK + 1.0)
 	t.check(a.side == 2 and a.mind != Person.Mind.FIGHT and b.side == 1 and b.mind == Person.Mind.FIGHT,
 		"the condemned is on its own side and runs; the rest hunt it")
 	b.tick(0.1)
@@ -139,7 +141,7 @@ static func run(t) -> void:
 	b.ground_pos = other - Vector2(0.5, 0.0)
 	bystander.ground_pos = at + Vector2(0.0, DivineSchismFx.CUSTOM_R + 3.0)
 	fx = FxTimeline.cast(load(PATH), ctx, at, {"mode": "custom", "to": other})
-	fx._process(1.0)
+	fx._process(DivineSchismFx.T_BREAK + 1.0)
 	t.check(a.side == 1 and b.side == 2 and bystander.side == 0, "Custom: the first region on one side, the second on the other, nobody else")
 	fx._process(DivineSchismFx.DURATION + 1.0)
 	fx.free()
@@ -155,7 +157,7 @@ static func run(t) -> void:
 		near.append(q)
 	a.ground_pos = at + Vector2(DivineSchismFx.SEED_R - 0.3, 0.6)  # a seed standing beside them
 	fx = FxTimeline.cast(load(PATH), ctx, at, {"mode": "spreading"})
-	fx._process(0.5)
+	fx._process(DivineSchismFx.T_BREAK + 0.5)
 	t.check(a.side != 0 and b.side != 0 and a.side != b.side and near[0].side == 0, "Spreading: the few at the click split in two")
 	for k in 8:
 		a.ground_pos = at + Vector2(DivineSchismFx.SEED_R - 0.3, 0.6)

@@ -9,6 +9,10 @@ uniform vec4 color_b : source_color = vec4(1.0, 0.25, 0.22, 1.0);
 uniform float reveal = 1.0;
 // 0..1: how far the halves have been driven apart.
 uniform float split = 0.0;
+// 0..1: how far the second half has turned to its own colour (0: both halves the first colour).
+uniform float sundered = 1.0;
+// Drawn on the screen (the sigil in the sky) rather than the ground plane: the crack runs straight down it.
+uniform bool screen = false;
 uniform float alpha = 1.0;
 // One screen pixel (vertical) in normalized radius units.
 uniform float px = 0.01;
@@ -21,12 +25,12 @@ void fragment() {
 	vec2 p = (UV - 0.5) * 2.0;
 	if (alpha <= 0.0) discard;
 	// The crack runs down the screen through the middle (ground x = y), zigzagging.
-	float across = (p.x - p.y) * 0.70710678;
-	float along = (p.x + p.y) * 0.70710678;
+	float across = screen ? p.x : (p.x - p.y) * 0.70710678;
+	float along = screen ? p.y : (p.x + p.y) * 0.70710678;
 	float zig = (abs(fract(along * 3.0) - 0.5) - 0.25) * 0.22 + (vnoise(vec2(along * 9.0, 1.3)) - 0.5) * 0.08;
 	float side = sign(across - zig);
 	// Each half slides away from the crack.
-	vec2 away = vec2(0.70710678, -0.70710678) * side * split * 0.12;
+	vec2 away = (screen ? vec2(1.0, 0.0) : vec2(0.70710678, -0.70710678)) * side * split * 0.12;
 	vec2 q = p - away;
 	float r = length(q);
 	if (r > 1.0 || r > reveal + px * 3.0) discard;
@@ -51,6 +55,6 @@ void fragment() {
 	v *= alpha;
 	float qv = quant_d(v, 4.0, FRAGCOORD.xy);
 	if (qv <= 0.0) discard;
-	vec4 col = side > 0.0 ? color_b : color_a;
+	vec4 col = side > 0.0 ? mix(color_a, color_b, sundered) : color_a;
 	COLOR = vec4(col.rgb, col.a * qv);
 }

@@ -85,8 +85,10 @@ static func run(t) -> void:
 	t.check(env.blocked(fc) and not grid.walkable(fc), "people walk round the fountain")
 	var houses := 0
 	for st in env.structures():
-		# A sprite with its smoke drawn in (the PixelLab proof's tavern and smithy) smokes on its own.
-		if st.kind == Structure.Kind.HOUSE and st.role == &"house" and not st.sprite.get("own_smoke", false):
+		# A sprite with its smoke drawn in (the PixelLab proof's tavern and smithy) smokes on its own; one with no chimney
+		# at all (the open workshop pavilion) does not smoke.
+		if st.kind == Structure.Kind.HOUSE and st.role == &"house" and not st.sprite.get("own_smoke", false) \
+				and st.sprite.get("chimney", Vector2.ZERO) != Vector2.INF:
 			houses += 1
 	var before := town.smoke.wisp_count()
 	t.check(before == houses, "every cottage smokes (%d of %d)" % [before, houses])

@@ -23,5 +23,6 @@
 	"town_wall": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 43, "kind": "CASTLE_WALL", "role": "wall", "tag": "", "anchor": [127.4, 126.2], "strip": true, "period": 1.5},
 	"town_postern": {"size": [152, 172], "footprint": [2.7, 0.7], "height": 34, "seed": 45, "kind": "GATE", "role": "gate", "tag": "postern", "anchor": [127.4, 126.2], "strip": true, "period": 1.5},
 	"town_gate": {"size": [112, 152], "footprint": [2.0, 1.1], "height": 34, "seed": 44, "kind": "GATE", "role": "gate", "tag": "", "anchor": [70, 131]},
-	"barracks": {"size": [232, 176], "footprint": [4.4, 1.9], "height": 36, "seed": 49, "kind": "BARRACKS", "role": "barracks", "tag": "", "anchor": [152, 159.5], "collapse_frames": 9}
+	"barracks": {"size": [232, 176], "footprint": [4.4, 1.9], "height": 36, "seed": 49, "kind": "BARRACKS", "role": "barracks", "tag": "", "anchor": [152, 159.5], "collapse_frames": 9},
+	"workshop": {"size": [164, 128], "footprint": [2.6, 1.5], "height": 22, "seed": 50, "kind": "HOUSE", "role": "house", "tag": "workshop", "anchor": [98, 117.5]}
 }

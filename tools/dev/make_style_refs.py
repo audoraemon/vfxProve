@@ -38,6 +38,8 @@ BOXES = {
     "bell_tower": ("TownMap_Component4.png", (495, 470, 620, 700)),
     # Final Town_Ref01 barracks yard (top left): the long timber-framed hall with the lit open front (an opaque sheet, so the crop keeps some yard ground).
     "barracks": ("Final Town_Ref01.png", (38, 156, 135, 232)),
+    # Open-sided timber hall with the red tile roof (middle right): the craft workshop's pavilion (its yard ground comes along).
+    "workshop": (1085, 300, 1430, 555),
     "stall_red": ("TownMap_Component2.png", (10, 20, 155, 165)),
     "stall_blue": ("TownMap_Component2.png", (150, 20, 295, 165)),
     "stall_cream": ("TownMap_Component2.png", (15, 170, 155, 295)),

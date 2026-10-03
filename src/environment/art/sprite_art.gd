@@ -99,7 +99,15 @@ static func name_for(s: Structure) -> String:
 			if s.role == &"tower":
 				if s.art_tag == &"bell_tower":
 					return "bell_tower"
-				return "town_tower_corner" if s.footprint.size.x >= 1.8 else "town_tower"
+				var tower := "town_tower_corner" if s.footprint.size.x >= 1.8 else "town_tower"
+				# A walkway door (TownLayout.door_tag): "door_e_s" -> town_tower_e_s; a variant missing from the
+				# manifest falls back to the plain tower, so a tower is never left blank.
+				var tag := String(s.art_tag)
+				if tag.begins_with("door_"):
+					var doored := tower + "_" + tag.trim_prefix("door_")
+					if manifest().has(doored):
+						return doored
+				return tower
 		Structure.Kind.CASTLE_WALL:
 			if s.role == &"citadel":
 				if s.art_tag == &"gate":

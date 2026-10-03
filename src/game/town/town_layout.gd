@@ -288,21 +288,53 @@ static func walls() -> Array[Rect2]:
 	return out
 
 
+## A town tower's art tag: which of its two visible faces a wall walk enters, so its sprite shows a doorway there.
+## On screen a tower shows its south side (the left face) and its east side (the right face); walls and gates meeting
+## its west or north side join hidden faces. A wall run (the postern is a piece of one) enters at the wall's walk
+## height (LOW); a gatehouse at its higher walkway (HIGH, "_hi"). The tag is "door_" + the east part ("e" / "e_hi")
+## then the south part ("s" / "s_hi"), joined by "_": "door_e", "door_s_hi", "door_e_s", "door_e_hi_s". A tower
+## joined on no visible face keeps "". Art only: SpriteArt.name_for maps it to town_tower[_corner]_<suffix>.
+static func door_tag(r: Rect2, runs: Array[Rect2]) -> StringName:
+	var parts: Array[String] = []
+	for face in ["e", "s"]:
+		var low := false
+		var high := false
+		for w: Rect2 in runs:
+			low = low or _meets(r, w, face)
+		for g: Rect2 in [MAIN_GATE, SIDE_GATE]:
+			high = high or _meets(r, g, face)
+		if high:
+			parts.append(face + "_hi")
+		elif low:
+			parts.append(face)
+	return &"" if parts.is_empty() else StringName("door_" + "_".join(PackedStringArray(parts)))
+
+
+## Whether `o` stands against tower `r`'s east ("e": o starts at r's east edge, overlapping it in y) or south ("s")
+## side.
+static func _meets(r: Rect2, o: Rect2, face: String) -> bool:
+	const EPS := 0.05
+	if face == "e":
+		return absf(o.position.x - r.end.x) < EPS and o.position.y < r.end.y - EPS and o.end.y > r.position.y + EPS
+	return absf(o.position.y - r.end.y) < EPS and o.position.x < r.end.x - EPS and o.end.x > r.position.x + EPS
+
+
 ## Every building except the Citadel and the fountains, as {rect, height, kind, role, tag}.
 static func structures() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for r: Rect2 in walls():
+	var runs := walls()
+	for r: Rect2 in runs:
 		for piece in wall_pieces(r):
 			if piece.has_point(POSTERN_AT):
 				_add(out, piece, 34.0, Structure.Kind.GATE, &"gate", &"postern")
 			else:
 				_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
 	for r: Rect2 in corner_towers():
-		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower")
+		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower", door_tag(r, runs))
 	for r: Rect2 in wall_towers():
-		_add(out, r, 46.0, Structure.Kind.KEEP, &"tower")
+		_add(out, r, 46.0, Structure.Kind.KEEP, &"tower", door_tag(r, runs))
 	for r: Rect2 in GATE_TOWERS:
-		_add(out, r, 52.0, Structure.Kind.KEEP, &"tower")
+		_add(out, r, 52.0, Structure.Kind.KEEP, &"tower", door_tag(r, runs))
 	_add(out, MAIN_GATE, 34.0, Structure.Kind.GATE, &"gate")
 	_add(out, SIDE_GATE, 34.0, Structure.Kind.GATE, &"gate")
 	_add(out, TEMPLE, 56.0, Structure.Kind.TEMPLE, &"temple", &"cathedral")

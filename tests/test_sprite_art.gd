@@ -4,7 +4,8 @@ extends RefCounted
 const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
 	"citadel_wall", "citadel_wall_side", "citadel_gate", "town_tower", "town_tower_corner", "town_wall",
-	"town_postern", "town_gate"]
+	"town_postern", "town_gate", "town_tower_e", "town_tower_s", "town_tower_e_hi", "town_tower_s_hi",
+	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -13,6 +14,7 @@ static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: St
 
 static func run(t) -> void:
 	_mapping(t)
+	_doors(t)
 	_sets(t)
 	_view(t)
 	_strip(t)
@@ -39,6 +41,13 @@ static func _mapping(t) -> void:
 		[Rect2(0, 0, 1.6, 1.6), 46.0, K.KEEP, &"tower", &"", "town_tower"],
 		[Rect2(0, 0, 2.0, 2.0), 50.0, K.KEEP, &"tower", &"", "town_tower_corner"],
 		[Rect2(0, 0, 1.1, 1.1), 60.0, K.KEEP, &"tower", &"bell_tower", "bell_tower"],
+		[Rect2(0, 0, 1.6, 1.6), 46.0, K.KEEP, &"tower", &"door_e", "town_tower_e"],
+		[Rect2(0, 0, 1.6, 1.6), 52.0, K.KEEP, &"tower", &"door_s_hi", "town_tower_s_hi"],
+		[Rect2(0, 0, 2.0, 2.0), 50.0, K.KEEP, &"tower", &"door_e_s", "town_tower_corner_e_s"],
+		[Rect2(0, 0, 2.0, 2.0), 50.0, K.KEEP, &"tower", &"door_s", "town_tower_corner_s"],
+		# A door tag without its variant in the manifest falls back to the plain tower, never a blank one.
+		[Rect2(0, 0, 1.6, 1.6), 46.0, K.KEEP, &"tower", &"door_e_hi_s_hi", "town_tower"],
+		[Rect2(0, 0, 2.0, 2.0), 50.0, K.KEEP, &"tower", &"door_e_hi", "town_tower_corner"],
 		[Rect2(0, 0, 2.8, 0.6), 40.0, K.CASTLE_WALL, &"citadel", &"", "citadel_wall"],
 		[Rect2(0, 0, 0.6, 2.0), 40.0, K.CASTLE_WALL, &"citadel", &"", "citadel_wall_side"],
 		[Rect2(0, 0, 2.8, 0.6), 40.0, K.CASTLE_WALL, &"citadel", &"gate", "citadel_gate"],
@@ -86,6 +95,40 @@ static func _mapping(t) -> void:
 			"the manifest describes " + n)
 	t.check(SpriteArt.default_anchor(Vector2(76, 64), Vector2(0.95, 0.75)) == Vector2(41, 54),
 		"the anchor centres the footprint's diamond across the canvas, 10 px above its bottom")
+
+
+## The town towers' walkway doors: each tower's tag names the visible faces (east = right, south = left on screen)
+## a wall walk (LOW) or a gatehouse walkway (HIGH) enters, and every tag the layout gives has its sprite.
+static func _doors(t) -> void:
+	var tags := {}
+	for d in TownLayout.structures():
+		if d.role == &"tower":
+			tags[d.rect] = d.tag
+	var corners := TownLayout.corner_towers()  # NW, NE, SE, SW
+	t.check(tags[corners[0]] == &"door_e_s", "the NW corner opens on both faces (got '%s')" % tags[corners[0]])
+	t.check(tags[corners[1]] == &"door_s", "the NE corner opens south (got '%s')" % tags[corners[1]])
+	t.check(tags[corners[2]] == &"", "the SE corner's walls join hidden faces (got '%s')" % tags[corners[2]])
+	t.check(tags[corners[3]] == &"door_e", "the SW corner opens east (got '%s')" % tags[corners[3]])
+	var gt := TownLayout.GATE_TOWERS
+	t.check(tags[gt[0]] == &"door_e_hi", "the Main Gate's west tower opens high onto the gate (got '%s')" % tags[gt[0]])
+	t.check(tags[gt[1]] == &"door_e", "the Main Gate's east tower opens onto the wall (got '%s')" % tags[gt[1]])
+	t.check(tags[gt[2]] == &"door_s_hi", "the Side Gate's north tower opens high onto the gate (got '%s')" % tags[gt[2]])
+	t.check(tags[gt[3]] == &"door_s", "the Side Gate's south tower opens onto the wall (got '%s')" % tags[gt[3]])
+	var bare: Array = []
+	var missing: Array = []
+	for r: Rect2 in tags:
+		var tag: StringName = tags[r]
+		if tag == &"bell_tower":
+			continue
+		if tag == &"" and not r in corners:
+			bare.append(r)
+		var s := _make(r, 46.0, K.KEEP, 5, &"tower", tag)
+		var base := "town_tower_corner" if r.size.x >= 1.8 else "town_tower"
+		if tag != &"" and SpriteArt.name_for(s) == base:
+			missing.append("%s %s" % [r, tag])
+		s.free()
+	t.check(bare.is_empty(), "every wall and gate tower meets a wall on a visible face (%s)" % [bare])
+	t.check(missing.is_empty(), "every door tag the layout gives has its sprite (%s)" % [missing])
 
 
 ## Every set loads: three stills on the manifest's canvas, mirrored only on the other footprint orientation.

@@ -132,3 +132,71 @@ Still open:
 1. **The cathedral's size:** accept the 256-px cathedral, or generate it in two parts.
 2. **Decide on the rest:** convert the remaining components (the recipe is in the log) or keep the mix.
 3. **Where it merges:** `feat/Develop-Main` is the main line since 2026-10-03. Merge or cherry-pick is your call.
+
+## Batch 2 (2026-10-03 to 2026-10-04)
+
+Spec: `docs/superpowers/specs/2026-10-03-pixellab-town-batch2-design.md`. Plan: `docs/superpowers/plans/2026-10-03-pixellab-town-batch2.md`. Every call: `docs/pixellab_structures_log.md`, "Batch 2".
+
+### What was replaced
+
+| Set | In town | Notes |
+|---|---|---|
+| `town_tower` | the wall towers | 5 door variants (walkway doors) |
+| `town_tower_corner` | the corner towers, 2.0 plot | its own generation; 3 door variants |
+| `town_wall` | the wall runs | one seamless strip, period 1.5, span 2.7 |
+| `town_postern` | the postern pieces | a copy of the wall's strip |
+| `town_gate` | the gatehouse | the side gate is the same sprite mirrored |
+| `townhouse_a` | the 18 townhouses | |
+| `townhouse_b` | townhouses with the other roof | local recolour of `townhouse_a` (slate-blue roof) |
+| `barracks` | 1 | PixelLab collapse |
+| `workshop` | 1 | no collapse yet (engine sink), no smoke |
+| `stall_red` | market stalls | PixelLab |
+| `stall_blue`, `stall_cream` | market stalls | local recolours of `stall_red` |
+
+Still procedural: bell tower, carpenter, barns, windmill, watermill, and the props (batch 3).
+
+### New engine pieces
+
+- **Strip sets.** A wall is one long run, not a fixed picture. The manifest entry has `strip` and `period`. `SpriteArt.strip_piece` gives each piece the part of the strip it stands on, so neighbouring pieces read the strip from where they stand and the pattern runs on without a seam. Mirrored runs (the y-runs) read mirrored.
+- **Door tags.** `TownLayout` gives a tower or corner a `door_tag`: `"door_"` + `e` or `e_hi` + `s` or `s_hi`. The first part is the east face, the second the south face; `_hi` is the high gate walkway, plain is the low wall-walk. `SpriteArt.name_for` maps the tag to the matching door variant of the set, with a fallback to the plain sprite.
+- **Settled-sprite sync skip.** A sprite that has finished changing skips its per-frame sync (and `set_cut` caches its last value). This was the speed fix: script time 911 to 731 us.
+
+### Fixes after the user's reviews
+
+- **Towers fill their plots.** The first towers were 76 px wide on a 102 px plot, so walls did not meet them. Regenerated at the plot size; the corner needed its own generation (2.0 plot).
+- **One stone colour.** `sprite_fix.py harmonize` moved the tower, corner, wall, postern and gate toward the stone of the Component4 wall crop. Largest stone difference between intact sprites 33.2 to 10.7. Banners, torches and windows untouched.
+- **Taller gatehouse with a walkway** that meets the towers (top 117 px against the tower's 168; the first gate was about 34 px).
+- **Walkway doors.** Walls no longer end on blank tower faces: low and high doors, made by local compositing (2 inpaints).
+
+### Bench (2026-10-04, BURIN_NITRO)
+
+| | Sprites | Procedural |
+|---|---|---|
+| Mission fps (2 runs) | 116.7 / 114.6 | 113.6 / 113.9 |
+| Draw calls | 998 | 1052 |
+
+Tests 1473 checks, 0 failures. `state_digest` `61267b7e90524d800bf1c3473a71146b`, unchanged. The 3-4 fps gap seen at the first checkpoint is gone in the latest bench.
+
+### Budget
+
+Batch 2 spent 792 of 873 generations (873 to 81). Real costs: generate 20-25, edit 20, inpaint 20, animate 2-5. A full set with damaged, ruins and collapse is 60-65 at the least. The reviews' fixes cost about 270 on their own (regenerated towers, gate, doors).
+
+### Findings and lessons
+
+- PixelLab candidates come out about 0.8-0.9x the footprint. Measure the base corners against the plot diamond and hand-fit by pixel copy (strip duplication, widening) rather than regenerate.
+- A family reference can shrink shapes: the corner tower only fit once it was generated without the tower as reference.
+- Ruins edits drift (shift) or fail to collapse. A stronger edit costs another 20.
+- One call at a time. A timed-out call is still billed, and its job may finish unseen.
+- Colours drift between sets. Run `harmonize` toward the town palette.
+- Colour variants are free: `huemap` recolours a band of hues (townhouse roof, stall awnings).
+
+### Still open
+
+- **Batch 3 (needs a top-up):** carpenter, barn, bell tower, windmill, watermill, fountains, wells, torches, lamps, bridge, dock, decor, and the workshop collapse.
+- **Known cosmetic items:**
+  - the wall's merlon and damage pattern repeats every 1.5 units;
+  - the corner bastion is a little greyer and squatter than the tower;
+  - the gate's banner mark is stylised;
+  - door faces lose the banner or window;
+  - the workshop has no collapse and no smoke;
+  - all stalls share one produce arrangement, and the baskets overhang the plot front by about 9 px.

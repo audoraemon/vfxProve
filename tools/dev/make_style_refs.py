@@ -34,7 +34,6 @@ BOXES = {
     "town_tower_corner": ("TownMap_Component4.png", (40, 470, 185, 695)),
     "town_wall": ("TownMap_Component4.png", (310, 66, 535, 250)),
     "town_gate": ("TownMap_Component4.png", (125, 262, 285, 440)),
-    "town_postern": ("TownMap_Component4.png", (425, 280, 610, 470)),
     "bell_tower": ("TownMap_Component4.png", (495, 470, 620, 700)),
     # Final Town_Ref01 barracks yard (top left): the long timber-framed hall with the lit open front (an opaque sheet, so the crop keeps some yard ground).
     "barracks": ("Final Town_Ref01.png", (38, 156, 135, 232)),

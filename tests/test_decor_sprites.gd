@@ -64,5 +64,7 @@ static func _trees(t) -> void:
 static func _missing(t) -> void:
 	# An entry whose PNG is missing falls back to procedural instead of failing.
 	var fakes := _fake(["rock_9"])
+	DecorSprites.manifest()["rock_9"] = {"size": [8, 8]}  # declared, no PNG: takes the warn branch (once)
 	t.check(DecorSprites.decor_set("rock_9").is_empty(), "a set without its PNG reads as missing")
 	_unfake(fakes)
+	DecorSprites._sets.erase("rock_9")

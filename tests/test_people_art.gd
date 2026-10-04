@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_frames(t)
 	_poses(t)
 	_merged_looks(t)
+	_cached_frames(t)
 	t.check(_crowd_run(true) == _crowd_run(false), "people sprites on or off, the crowd does exactly the same")
 	SpriteArt.set_enabled(true)
 
@@ -195,3 +196,50 @@ static func _merged_looks(t) -> void:
 	t.check(w.mind == Person.Mind.WHISPERED and w._art_signature() != sig_calm, "a whisper redraws him with its eye")
 	p.free()
 	w.free()
+
+
+## The per-frame shortcuts (perf, integrate): a design's cached frame table gives the manifest's numbers; a standing
+## sprite person keeps its signature through an idle frame and changes it on the next, so it redraws at the idle
+## animation's rate and not every frame; and the quiet signature is the full fold's own integer.
+static func _cached_frames(t) -> void:
+	SpriteArt.set_enabled(true)
+	var same := true
+	for d in ["resident_a", "guard", "bellkeeper"]:
+		var info := PeopleArt.info(d)
+		same = same and info[2] == PeopleArt.foot(d) and info[3] == PeopleArt.cell()
+		for a in PeopleArt.ANIMS.size():
+			for f in PeopleArt.Facing.values():
+				var n := PeopleArt.frame_count(d, PeopleArt.ANIMS[a], f)
+				same = same and info[4][a * 4 + f] == n
+				for k in [0, n - 1, n + 2]:
+					var off := Vector2((k % n) * info[3].x, (a * 4 + f) * info[3].y)
+					same = same and (info[0] as Vector2) + off == PeopleArt.frame_rect(d, PeopleArt.ANIMS[a], f, k).position \
+						and (info[1] as Vector2) + off == PeopleArt.silhouette_rect(d, PeopleArt.ANIMS[a], f, k).position
+	t.check(same, "PeopleArt.info() holds the manifest's frames, silhouettes, foot, cell and frame counts")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var p := Person.new()
+	p.rng.seed = 25
+	p.bounds = TownLayout.MAP
+	p.setup_person(false, Vector2(2.7, 2.0), grid)
+	var fps: float = PeopleArt.FPS[&"idle"]
+	p._anim = 0.1 / fps
+	var a0 := p._art_signature()
+	p._anim = 0.9 / fps
+	var a1 := p._art_signature()
+	p._anim = 1.1 / fps
+	var b := p._art_signature()
+	t.check(p._sprite_pose()[0] == &"idle" and a0 == a1 and b != a0,
+		"a standing person keeps its signature through an idle frame and changes it on the next")
+	var quiet := p._art_signature()
+	p._flash = 0.001  # takes the full fold, with a flash term that rounds to 0: the same picture
+	t.check(p._art_signature() == quiet, "the quiet signature is the full fold's integer")
+	p._flash = 0.0
+	p.whisper(p.ground_pos + Vector2(0.0, 0.3), 3.0)
+	quiet = p._art_signature()
+	p._flash = 0.001
+	t.check(p.mind == Person.Mind.WHISPERED and p._art_signature() == quiet, "whispered too")
+	p.free()
+

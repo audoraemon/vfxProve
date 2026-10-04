@@ -59,6 +59,10 @@ const SPRITE_WAIST := 7.0
 ## against the side of the coat at the leading hand; mirrored facing left. The sprite's arms swing within its frames
 ## (they do not rise as the procedural ones do when running), so the lantern stays put.
 const SPRITE_LANTERN := Vector2i(3, -8)
+## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
+## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage and whisper terms.
+const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
+const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
@@ -213,6 +217,10 @@ var _stumble := 0.0
 var _stride := false
 var _back := false
 var _look := -1.0
+## The design _design() picked, its PeopleArt.info() table, and what it was picked for (manifest load, role, corps).
+var _design_key := -1
+var _design_name := ""
+var _design_info: Array
 
 var _path := PackedVector2Array()
 var _leg := 0
@@ -1063,36 +1071,51 @@ func _draw_corpse() -> void:
 func _design() -> String:
 	if _look < 0.0:
 		_look = ArtKit.hash01(int(anchor.x * 64.0) * 73856093 ^ int(anchor.y * 64.0) * 19349663, 7)
-	return PeopleArt.design_for(soldier, profile.role if profile != null else 0, corps, _look)
+	var role := profile.role if profile != null else 0
+	var key := ((PeopleArt.generation * 64 + role) * 16 + corps) * 2 + (1 if soldier else 0)
+	if key != _design_key:
+		_design_key = key
+		_design_name = PeopleArt.design_for(soldier, role, corps, _look)
+		_design_info = PeopleArt.info(_design_name)
+	return _design_name
 
 
 ## The people sprite's [animation, facing, frame] for what it is doing: its fall when dead, still while frozen, on one
 ## knee in a stumble, running when lifted, knocked or frightened, walking when it stepped, else idle; facing the way it
 ## last stepped. Stumble and death hold their last frame.
 func _sprite_pose() -> Array:
+	var code := _sprite_pose_code()
+	return [PeopleArt.ANIMS[code >> 2 & 7], code & 3, code >> 5]
+
+
+## _sprite_pose() folded into one int, frame << 5 | ANIMS index << 2 | facing: every person on screen asks for it every
+## frame (_sprite_signature()), so it allocates nothing and reads its frame counts from the cached design table.
+func _sprite_pose_code() -> int:
 	var facing: int
 	if _back:
 		facing = PeopleArt.Facing.NE if _facing > 0 else PeopleArt.Facing.NW
 	else:
 		facing = PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
-	var anim := &"idle"
+	var anim := 0
 	var t := _anim
 	if state == State.DEAD:
-		anim = &"death"
+		anim = 4
 		t = _dead_time
-	elif is_frozen():
-		return [&"idle", facing, 0]
+	elif _frozen > 0.0:
+		return facing
 	elif _stumble > 0.0:
-		anim = &"stumble"
+		anim = 3
 		t = STUMBLE_SECONDS - _stumble
 	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
-		anim = &"run"
+		anim = 2
 	elif _stride:
-		anim = &"run" if is_running() else &"walk"
-	var frame := int(t * float(PeopleArt.FPS[anim]))
-	if anim == &"death" or anim == &"stumble":
-		frame = mini(frame, PeopleArt.frame_count(_design(), anim, facing) - 1)
-	return [anim, facing, frame]
+		# is_frozen() and is_running(), inline: it is not dead here.
+		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
+	var frame := int(t * PeopleArt.FPS_AT[anim])
+	if anim >= 3:
+		_design()
+		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
+	return frame << 5 | anim << 2 | facing
 
 
 ## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way
@@ -1119,11 +1142,16 @@ func _sprite_tint() -> Color:
 ## Discord's swirl and Mind Whisper's eye, placed for the sprite's taller body.
 ## The atlas and the default shader are every person's, so the whole crowd stays one draw batch.
 func _draw_sprite(lift: int, top_only: int) -> void:
-	var d := _design()
-	var pose := _sprite_pose()
-	var src := PeopleArt.frame_rect(d, pose[0], pose[1], pose[2])
-	var sil := PeopleArt.silhouette_rect(d, pose[0], pose[1], pose[2])
-	var foot := PeopleArt.foot(d)
+	# PeopleArt.frame_rect(), silhouette_rect() and foot(), from the design's cached table (PeopleArt.info()).
+	_design()
+	var code := _sprite_pose_code()
+	var row := (code >> 2 & 7) * 4 + (code & 3)
+	var n: int = _design_info[4][row]
+	var cell: Vector2 = _design_info[3]
+	var off := Vector2(((code >> 5) % n) * cell.x, row * cell.y)
+	var src := Rect2(_design_info[0] + off, cell)
+	var sil := Rect2(_design_info[1] + off, cell)
+	var foot: Vector2 = _design_info[2]
 	var dst := Rect2(Vector2(-foot.x, -foot.y + lift), src.size)
 	if top_only != 0:
 		# The laser's cut: only what is above the waist slides off; DummyEnemy draws the legs left standing.
@@ -1297,9 +1325,14 @@ func _art_signature() -> int:
 func _sprite_signature() -> int:
 	if state == State.DEAD:
 		return super._art_signature()
-	var pose := _sprite_pose()
-	var sig: int = PeopleArt.ANIMS.find(pose[0]) * 4 + int(pose[1])
-	sig = sig * 16 + int(pose[2]) % 16
+	var code := _sprite_pose_code()
+	var sig: int = (code >> 2 & 7) * 4 + (code & 3)
+	sig = sig * 16 + (code >> 5) % 16
+	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED:
+		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
+		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
+		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
+			+ (1 if mind == Mind.WHISPERED else 0)
 	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
 	sig = sig * 97 + int(round(_lift))
 	sig = sig * 97 + int(_frozen * 8.0)

@@ -103,7 +103,10 @@ var _art_key := 0
 var art_tag := &""
 ## Sprite set from setup() (SpriteArt.set_for, the PixelLab proof): when it has one, the building is drawn from it by
 ## its SpriteViews instead of its procedural art. Only the drawing changes; its state and rng stream never do.
-var sprite := {}
+var sprite := {}:
+	set(value):
+		sprite = value
+		_sprite_frames = int(value.get("frames", 1))
 ## Its sprite's views: the building; its ruins, under it while it falls and after; a top a laser sliced off; the keep's
 ## banners while they fall (drop_banner()).
 var _sprite_view: SpriteView
@@ -157,6 +160,10 @@ var _banner_fall := -1.0
 var _synced_state := &""
 var _synced_mod := Color.WHITE
 var _synced_fallen := false
+## The idle frame the views were last synced on, and sprite.frames, read once as the set is handed over (sprite's
+## setter), not out of the dictionary every frame.
+var _synced_step := -1
+var _sprite_frames := 1
 ## Which SHAKE_HZ step the current jitter belongs to (-1 = not shaking).
 var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
@@ -559,18 +566,22 @@ func _sync_sprite() -> void:
 
 
 ## True when _sync_sprite() would hand its views exactly what they already show: the building is quiet (nothing
-## falling, sliding off or cooling), steps through no idle frames, has no banners mid-fall, and shows the state, tint
-## and banners it showed at the last sync. Walls and towers on screen process every frame, and syncing each of them
-## anyway cost ~5 us a frame apiece (~0.25 ms a frame, -4 fps in the mission bench).
+## falling, sliding off or cooling), has no banners mid-fall, and shows the idle frame, state, tint and banners it
+## showed at the last sync. Walls and towers on screen process every frame, and syncing each of them anyway cost ~5 us a
+## frame apiece (~0.25 ms a frame, -4 fps in the mission bench); an animated set (a smoking chimney) synced every frame
+## between its idle frames cost ~12 us a frame apiece.
 func _sprite_settled() -> bool:
-	if not is_instance_valid(_sprite_view) or not _quiet() or int(sprite.frames) > 1 \
+	if not is_instance_valid(_sprite_view) or not _quiet() \
 			or (_banner_fall >= 0.0 and _banner_fall < BANNER_FALL_TIME):
 		_synced_state = &""
 		return false
+	# An animated set (sprite.frames > 1) changes only on its next idle frame, _sync_sprite()'s int(_time * fps).
+	var step := int(_time * float(sprite.fps)) if _sprite_frames > 1 else 0
 	var state := sprite_state()
 	var fallen := _banner_fall >= 0.0
-	if state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
+	if step == _synced_step and state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
 		return true
+	_synced_step = step
 	_synced_state = state
 	_synced_mod = self_modulate
 	_synced_fallen = fallen

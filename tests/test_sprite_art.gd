@@ -383,6 +383,18 @@ static func _settled_paths(t) -> void:
 	t.check(fell._sprite_view.visible and fell._sprite_view.still == &"intact" and not is_instance_valid(fell._ruins_view),
 		"rebuilt from settled ruins, it shows its intact still again and its ruins are gone")
 	fell.free()
+	# An animated set (the smithy's smoke) settles between its idle frames, and still steps to the next one.
+	var smith := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
+	smith.sprite = SpriteArt.sprite("smithy").duplicate()
+	t.check(smith._sprite_frames == int(smith.sprite.frames) and smith._sprite_frames > 1, "the smithy's set is animated")
+	smith._process(0.001)
+	var first := smith._sprite_view.frame
+	smith._process(0.001)
+	t.check(smith._sprite_settled() and smith._sprite_view.frame == first,
+		"between its idle frames it is settled: its views are not synced every frame")
+	smith._process(1.0 / float(smith.sprite.fps))
+	t.check(smith._sprite_view.frame == (first + 1) % smith._sprite_frames, "on its next idle frame it syncs and steps")
+	smith.free()
 
 
 ## Wall torches and the barracks' forge keep their procedural flames over their sprites (the sprites paint none);

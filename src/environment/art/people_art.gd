@@ -15,7 +15,10 @@ enum Facing { SE, SW, NE, NW }
 const DIR_NAMES := ["south-east", "south-west", "north-east", "north-west"]
 ## Each citizen role's designs, in CitizenProfile.Role order: one look, or two picked by the person's look.
 const CITIZEN := [["resident_a", "resident_b"], ["merchant_a", "merchant_b"], ["craft_a", "craft_b"], ["laborer"],
-	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"]]
+	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"], ["watchman"]]
+## Designs not generated yet that wear another's until they are: the watchman (v0.08) the bellkeeper's dark navy coat
+## and cap, the nearest to his dark cloak (Person draws his lantern over it).
+const STAND_INS := {"watchman": "bellkeeper"}
 ## Each soldier's design, in Person.Corps order.
 const SOLDIER := ["guard", "marshal", "escort", "rescue"]
 ## Stand-ins while a design is not generated yet.
@@ -72,11 +75,14 @@ static func wanted(soldier: bool, role: int, corps: int, look: float) -> String:
 	return looks[mini(int(look * looks.size()), looks.size() - 1)]
 
 
-## The design a person wears: the one it should, else its role's first look, else the stand-in.
+## The design a person wears: the one it should, else the design standing in for it (STAND_INS), else its role's
+## first look, else the stand-in.
 static func design_for(soldier: bool, role: int, corps: int, look: float) -> String:
 	var d := wanted(soldier, role, corps, look)
 	if has(d):
 		return d
+	if STAND_INS.has(d) and has(STAND_INS[d]):
+		return STAND_INS[d]
 	if not soldier:
 		var first: String = CITIZEN[clampi(role, 0, CITIZEN.size() - 1)][0]
 		if has(first):

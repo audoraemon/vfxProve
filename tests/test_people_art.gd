@@ -8,6 +8,7 @@ static func run(t) -> void:
 	_designs(t)
 	_frames(t)
 	_poses(t)
+	_merged_looks(t)
 	t.check(_crowd_run(true) == _crowd_run(false), "people sprites on or off, the crowd does exactly the same")
 	SpriteArt.set_enabled(true)
 
@@ -141,3 +142,56 @@ static func _frames(t) -> void:
 					"%s %s %d: the last frame and its silhouette are cells in the atlas" % [d, anim, f])
 				t.check(PeopleArt.frame_rect(d, anim, f, n + 3) == PeopleArt.frame_rect(d, anim, f, (n + 3) % n),
 					"%s %s frames wrap" % [d, anim])
+
+
+## Develop-Main's looks on the sprites (v0.07.1 Pestilence, v0.08 watchman and Mind Whisper): the sick sprite takes its
+## stage's colour as strongly as the procedural body does and redraws at each stage; the watchman wears a stand-in
+## design, his lantern hangs beside the sprite, and a whisper or his running redraws him.
+static func _merged_looks(t) -> void:
+	SpriteArt.set_enabled(true)
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var p := Person.new()
+	p.rng.seed = 23
+	p.bounds = TownLayout.MAP
+	p.setup_person(false, Vector2(2.7, 2.0), grid)
+	var sig_well := p._art_signature()
+	t.check(p._sprite_tint().a == 0.0, "a healthy sprite is untinted")
+	p.infect(PlagueManager.PLAGUE_LIFE)
+	var sigs := {}
+	var tints_ok := true
+	for stage in range(1, Person.SICK_STAGES + 1):
+		# Just inside each stage's share of the sickness.
+		p.sick_left = PlagueManager.PLAGUE_LIFE * (1.0 - (float(stage) - 0.5) / float(Person.SICK_STAGES))
+		var want := Color(Person.SICK_COLORS[stage - 1], Person.SICK_CLOTH)
+		tints_ok = tints_ok and p.sick_stage() == stage and p._sprite_tint().is_equal_approx(want)
+		sigs[p._art_signature()] = true
+	t.check(tints_ok, "a sick sprite takes each stage's colour, green to red, at SICK_CLOTH")
+	t.check(sigs.size() == Person.SICK_STAGES and not sigs.has(sig_well), "and redraws at every stage")
+	p.sick_left = 0.0
+	var w := Person.new()
+	w.rng.seed = 24
+	w.bounds = TownLayout.MAP
+	w.setup_person(false, Vector2(2.7, 2.0), grid)
+	var prof := CitizenProfile.new()
+	prof.role = R.WATCHMAN
+	w.profile = prof
+	t.check(PeopleArt.wanted(false, R.WATCHMAN, 0, 0.5) == "watchman", "the watchman has a design of his own to come")
+	t.check(not PeopleArt.has("watchman") and w._design() == PeopleArt.STAND_INS["watchman"]
+		and PeopleArt.has(w._design()), "until then he wears the bellkeeper's (%s)" % w._design())
+	t.check(w._is_watchman() and not p._is_watchman(), "only the watchman carries a lantern")
+	var cell := Rect2(-PeopleArt.foot(w._design()), PeopleArt.cell())
+	w._facing = 1
+	var right := w._sprite_lantern()
+	w._facing = -1
+	var left := w._sprite_lantern()
+	t.check(right.x >= 4 and left.x == -right.x - 1 and right.y < -4 and right.y > -12
+		and cell.has_point(Vector2(right)) and cell.has_point(Vector2(left) + Vector2(0, 2)),
+		"his lantern hangs beside the sprite at hand height, mirrored by facing (%s / %s)" % [right, left])
+	var sig_calm := w._art_signature()
+	w.whisper(w.ground_pos + Vector2(0.0, 0.3), 3.0)
+	t.check(w.mind == Person.Mind.WHISPERED and w._art_signature() != sig_calm, "a whisper redraws him with its eye")
+	p.free()
+	w.free()

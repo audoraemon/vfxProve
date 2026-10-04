@@ -55,6 +55,9 @@ const SORT_HZ := 10.0
 const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
 ## People sprites: rows above the feet that stay with the legs when a laser cuts a person in two.
 const SPRITE_WAIST := 7.0
+## Where the watchman's lantern hangs beside his sprite (v0.08), facing right: its iron cap, from his ground point,
+## just under the leading hand; mirrored facing left, and 3 px higher while he runs.
+const SPRITE_LANTERN := Vector2i(4, -8)
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
@@ -1092,7 +1095,8 @@ func _sprite_pose() -> Array:
 
 
 ## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way
-## DummyEnemy._tint() colours the procedural body — a hit's flash, ice, gravity's void, a char, sickness.
+## DummyEnemy._tint() colours the procedural body — a hit's flash, ice, gravity's void, a char, sickness (v0.07.1: the
+## stage's colour, sick_color(), as strongly as _draw_citizen() lerps the clothes and skin to it).
 func _sprite_tint() -> Color:
 	if _flash > 0.0:
 		if _kind == &"lightning" and int(_flash * 40.0) % 2 == 0:
@@ -1105,12 +1109,13 @@ func _sprite_tint() -> Color:
 	if _char > 0.0:
 		return Color(COL_CHAR, _char * 0.85)
 	if sick_left > 0.0 and state != State.DEAD:
-		return Color(SICK_TINT, 0.35)
+		return Color(sick_color(), SICK_CLOTH)
 	return Color(0.0, 0.0, 0.0, 0.0)
 
 
 ## The person drawn from the people atlas: the frame for what it does (_sprite_pose()) with its feet on its ground
-## point, its white silhouette over it at the strength of whatever tints it, then the cough and Discord's swirl.
+## point, its white silhouette over it at the strength of whatever tints it, then the cough, the watchman's lantern,
+## Discord's swirl and Mind Whisper's eye, placed for the sprite's taller body.
 ## The atlas and the default shader are every person's, so the whole crowd stays one draw batch.
 func _draw_sprite(lift: int, top_only: int) -> void:
 	var d := _design()
@@ -1133,12 +1138,21 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 	if state == State.DEAD:
 		return
 	if sick_left > 0.0:
-		_px(2 if _facing > 0 else -3, -16 - int(_anim * 2.0) % 4 + lift, 1, 1, SICK_MOTE)
+		_px(2 if _facing > 0 else -3, -16 - int(_anim * 2.0) % 4 + lift, 1, 1, sick_color().lightened(0.35))
+	if _is_watchman():
+		# His lantern (v0.08), hanging from the leading hand beside the sprite: an iron cap over a 1x2 glow.
+		var at := _sprite_lantern()
+		_px(at.x, at.y + lift, 1, 1, COL_DARK)
+		_px(at.x, at.y + 1 + lift, 1, 2, WATCH_LANTERN)
 	if mind == Mind.CONFUSED:
 		var turn := int(_anim * 3.0)
 		for k in 4:
 			var a := float((turn + k) % 8) * TAU / 8.0
 			_px(roundi(cos(a) * 3.0), -22 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
+	if mind == Mind.WHISPERED:
+		# Mind Whisper's glyph (v0.08): a small gold eye over the head.
+		_px(-1, -22 + lift, 3, 1, COL_WHISPER)
+		_px(0, -23 + lift, 1, 3, COL_WHISPER)
 
 
 ## Townsfolk: bare head, tunic, no armour. Smaller than the soldiers so a crowd reads at a glance.
@@ -1291,12 +1305,23 @@ func _sprite_signature() -> int:
 	sig = sig * 97 + int(_flash * 40.0)
 	sig = sig * 7 + int(state)
 	sig = sig * 131 + int(_draw_origin.y) + 64
-	var overlay := 0
-	if mind == Mind.CONFUSED:
-		overlay = 1 + int(_anim * 3.0) % 8
-	elif sick_left > 0.0:
-		overlay = 9 + int(_anim * 2.0) % 4
-	return sig * 16 + overlay
+	# The overlays, each its own term: Discord's swirl, the cough, the sickness's stage (v0.07.1: its tint goes green
+	# to red), Mind Whisper's eye and the watchman's lantern (v0.08; it rises when he runs).
+	sig = sig * 9 + (1 + int(_anim * 3.0) % 8 if mind == Mind.CONFUSED else 0)
+	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
+	sig = sig * (SICK_STAGES + 1) + sick_stage()
+	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	return sig * 2 + (1 if _is_watchman() and is_running() else 0)
+
+
+## Where the watchman's lantern cap sits beside his sprite now (SPRITE_LANTERN, by facing and pace), from his feet.
+func _sprite_lantern() -> Vector2i:
+	return Vector2i(SPRITE_LANTERN.x if _facing > 0 else -SPRITE_LANTERN.x - 1,
+		SPRITE_LANTERN.y - (3 if is_running() else 0))
+
+
+func _is_watchman() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.WATCHMAN
 
 
 func _walk_rate() -> float:

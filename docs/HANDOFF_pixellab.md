@@ -82,6 +82,7 @@
 
 ## Open work (KAK Dev Ledger, https://claude.ai/artifact/6zL2bsrt3H1Vnehk1RkfiK)
 
+- **Market stall redo (needs the user):** the stalls were switched back to procedural after the user's review (crowded, uniform produce). The `stall_*` assets are kept in `assets/pixellab/buildings/` but out of the manifest; restore the manifest entries and `SpriteArt.name_for` when redoing them.
 - **`p05`, needs the user:** bring the PixelLab art into `feat/Develop-Main`, by merge or cherry-pick.
 - **`p07`, needs the user and a top-up (batch 3):**
   - carpenter, barn, bell tower, windmill, watermill;

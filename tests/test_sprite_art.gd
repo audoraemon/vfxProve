@@ -5,7 +5,7 @@ const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
 	"citadel_wall", "citadel_wall_side", "citadel_gate", "town_tower", "town_tower_corner", "town_wall",
 	"town_postern", "town_gate", "town_tower_e", "town_tower_s", "town_tower_e_hi", "town_tower_s_hi",
-	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop", "stall_red", "stall_blue", "stall_cream"]
+	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -59,13 +59,13 @@ static func _mapping(t) -> void:
 		[Rect2(0, 0, 1.1, 2.0), 34.0, K.GATE, &"gate", &"", "town_gate"],
 		[Rect2(0, 0, 1.15, 0.7), 34.0, K.GATE, &"gate", &"postern", "town_postern"],
 		[Rect2(0, 0, 4.4, 1.9), 36.0, K.BARRACKS, &"barracks", &"", "barracks"],
-		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", "stall"],
+		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", ""],
 	]
 	for c in cases:
 		var s := _make(c[0], c[1], c[2], 5, c[3], c[4])
 		var got := SpriteArt.name_for(s)
 		var want: String = c[5]
-		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse", "stall"] else got == want
+		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse"] else got == want
 		t.check(ok, "sprite for %s/%s/%s is '%s' (got '%s')" % [K.keys()[c[2]], c[3], c[4], want, got])
 		s.free()
 	# Cottages pick a roof from their seed: stable per seed, and both roofs appear.
@@ -85,11 +85,11 @@ static func _mapping(t) -> void:
 		looks[SpriteArt.name_for(th)] = true
 		th.free()
 	t.check(looks.has("townhouse_a") and looks.has("townhouse_b") and looks.size() == 2, "both townhouse looks appear")
-	# A stall keeps today's awning: PropArt picks cloth = seed % 3 (red, blue, cream).
+	# Market stalls stay procedural for now (user review 2026-10-04): every awning cloth, no sprite set.
 	for sd in [3, 4, 5]:
 		var st := _make(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, sd, &"market")
-		var want: String = ["stall_red", "stall_blue", "stall_cream"][int(st.art.cloth)]
-		t.check(SpriteArt.name_for(st) == want, "a stall with cloth %d is %s" % [int(st.art.cloth), want])
+		t.check(SpriteArt.name_for(st) == "" and SpriteArt.set_for(st).is_empty(),
+			"a stall with cloth %d stays procedural" % int(st.art.cloth))
 		st.free()
 	for n in NAMES:
 		var m: Dictionary = SpriteArt.manifest().get(n, {})

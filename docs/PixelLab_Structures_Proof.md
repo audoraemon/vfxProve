@@ -154,6 +154,8 @@ Spec: `docs/superpowers/specs/2026-10-03-pixellab-town-batch2-design.md`. Plan: 
 | `stall_red` | market stalls | PixelLab |
 | `stall_blue`, `stall_cream` | market stalls | local recolours of `stall_red` |
 
+Market stalls were switched back to the procedural art after the user's in-game review (2026-10-04: too crowded, same produce on every stall). The `stall_red`, `stall_blue` and `stall_cream` assets stay on disk but are out of the manifest; a redo is open work.
+
 Still procedural: bell tower, carpenter, barns, windmill, watermill, and the props (batch 3).
 
 ### New engine pieces

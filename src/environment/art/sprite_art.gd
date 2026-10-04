@@ -22,8 +22,6 @@ const FOOT_ROOM := 10.0
 const SALT_ROOF := 90
 ## ArtKit.hash01 salt for a townhouse's look.
 const SALT_TOWNHOUSE := 91
-## A market stall's sprite by its awning (PropArt.CLOTH's index, the stall's art.cloth).
-const STALLS := ["stall_red", "stall_blue", "stall_cream"]
 ## The longest piece a wall run is cut into (TownLayout.WALL_PIECE): a strip spans its period plus this.
 const STRIP_PIECE := 1.2
 
@@ -123,7 +121,9 @@ static func name_for(s: Structure) -> String:
 		Structure.Kind.BARRACKS:
 			return "barracks"
 		Structure.Kind.MARKET_STALL:
-			return STALLS[int(s.art.get("cloth", 0)) % STALLS.size()]
+			# Procedural for now (user review 2026-10-04: stalls too crowded and uniform). The PixelLab stalls are
+			# kept in assets/pixellab/buildings/stall_* for a later redo.
+			return ""
 	return ""
 
 

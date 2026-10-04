@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_strip(t)
 	_structure(t)
 	_settled_paths(t)
+	_idle_strip(t)
 	_flames(t)
 	_toggle(t)
 	SpriteArt.set_enabled(true)
@@ -383,18 +384,88 @@ static func _settled_paths(t) -> void:
 	t.check(fell._sprite_view.visible and fell._sprite_view.still == &"intact" and not is_instance_valid(fell._ruins_view),
 		"rebuilt from settled ruins, it shows its intact still again and its ruins are gone")
 	fell.free()
-	# An animated set (the smithy's smoke) settles between its idle frames, and still steps to the next one.
+	# An animated set (the smithy's smoke) settles at once: its idle frames are its view's to step (_idle_strip()), so
+	# the structure's own time crossing an idle frame syncs nothing.
 	var smith := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
 	smith.sprite = SpriteArt.sprite("smithy").duplicate()
-	t.check(smith._sprite_frames == int(smith.sprite.frames) and smith._sprite_frames > 1, "the smithy's set is animated")
+	t.check(int(smith.sprite.frames) > 1, "the smithy's set is animated")
 	smith._process(0.001)
 	var first := smith._sprite_view.frame
 	smith._process(0.001)
-	t.check(smith._sprite_settled() and smith._sprite_view.frame == first,
-		"between its idle frames it is settled: its views are not synced every frame")
-	smith._process(1.0 / float(smith.sprite.fps))
-	t.check(smith._sprite_view.frame == (first + 1) % smith._sprite_frames, "on its next idle frame it syncs and steps")
+	t.check(smith._sprite_settled() and smith._sprite_view.playing, "it settles while its view plays its idle strip")
+	smith._sprite_view._process(1.0 / float(smith.sprite.fps))
+	t.check(smith._sprite_view.frame == (first + 1) % int(smith.sprite.frames) and smith._sprite_settled(),
+		"its view steps to the next idle frame on its own; the structure stays settled")
 	smith.free()
+
+
+## A set with an idle strip (the town gate's swaying banners) steps it on its view's own clock, so the structure under
+## it sleeps like a still sprite's; a crack, its ruins or F7 stop or restart the view's animation.
+static func _idle_strip(t) -> void:
+	SpriteArt.set_enabled(true)
+	var gate := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
+	t.check(gate.sprite.get("name", "") == "town_gate" and int(gate.sprite.frames) > 1, "the town gate's set is animated")
+	gate._ready()
+	for i in 4:
+		gate._process(1.0 / 60.0)
+	var v := gate._sprite_view
+	t.check(gate.idle and not gate.is_processing(), "a quiet animated gate goes idle: it stops processing")
+	t.check(v.playing and v.is_processing() and v.still == &"intact", "while its view plays its idle strip")
+	var seen := {}
+	for i in 60:
+		v._process(1.0 / 60.0)
+		seen[v.frame] = true
+	t.check(seen.size() == int(gate.sprite.frames), "in a second the view steps through all %d idle frames (%d)"
+		% [int(gate.sprite.frames), seen.size()])
+	t.check(gate.idle and not gate.is_processing(), "and the gate sleeps through them")
+	gate.damage(gate.max_hp * 0.4, Vector2(-5, -5), &"blast")
+	t.check(gate.is_processing(), "a hit wakes it")
+	for i in 90:
+		gate._process(1.0 / 60.0)
+	t.check(gate.sprite_state() == &"damaged" and v.still == &"damaged" and not v.playing and not v.is_processing(),
+		"cracked, its view shows the damaged still and stops animating")
+	gate.destroy(Vector2(-5, -5), &"blast")
+	for i in 120:
+		gate._process(1.0 / 60.0)
+	t.check(gate.sprite_state() == &"ruins" and not v.playing and not v.is_processing(),
+		"brought down, its view stops animating")
+	gate.restore()
+	for i in 4:
+		gate._process(1.0 / 60.0)
+	t.check(gate.sprite_state() == &"intact" and v.playing and v.is_processing(), "rebuilt, its view plays again")
+	gate.free()
+	# F7 on an idle animated building: a new view, animating again.
+	var f7 := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
+	f7._ready()
+	for i in 4:
+		f7._process(1.0 / 60.0)
+	t.check(f7.idle and f7._sprite_view.playing, "an idle animated gate")
+	SpriteArt.set_enabled(false)
+	f7.refresh_sprite()
+	for i in 4:
+		f7._process(1.0 / 60.0)
+	t.check(f7.sprite.is_empty() and not is_instance_valid(f7._sprite_view), "F7 off: its view is gone")
+	SpriteArt.set_enabled(true)
+	f7.refresh_sprite()
+	t.check(f7.is_processing(), "F7 on wakes it")
+	f7._process(1.0 / 60.0)
+	t.check(is_instance_valid(f7._sprite_view) and f7._sprite_view.playing and f7._sprite_view.is_processing(),
+		"and its new view animates its idle strip again")
+	for i in 4:
+		f7._process(1.0 / 60.0)
+	t.check(f7.idle and not f7.is_processing(), "then it goes idle again")
+	f7.free()
+	# The Citadel keep's banner-drop stills are plain: a keep showing them never animates.
+	var keep := _make(Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, 5, &"citadel")
+	t.check(keep.sprite.stills.has(&"intact_fallen") and int(keep.sprite.frames) > 1, "the citadel keep is animated")
+	keep._process(1.0 / 60.0)
+	t.check(keep._sprite_view.playing, "with its banners up its view plays")
+	keep.drop_banner()
+	for i in 60:
+		keep._process(1.0 / 60.0)
+	t.check(keep._sprite_view.still == &"intact_fallen" and not keep._sprite_view.playing,
+		"with its banners down it shows the bannerless still and stops animating")
+	keep.free()
 
 
 ## Wall torches and the barracks' forge keep their procedural flames over their sprites (the sprites paint none);

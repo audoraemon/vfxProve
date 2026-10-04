@@ -103,10 +103,7 @@ var _art_key := 0
 var art_tag := &""
 ## Sprite set from setup() (SpriteArt.set_for, the PixelLab proof): when it has one, the building is drawn from it by
 ## its SpriteViews instead of its procedural art. Only the drawing changes; its state and rng stream never do.
-var sprite := {}:
-	set(value):
-		sprite = value
-		_sprite_frames = int(value.get("frames", 1))
+var sprite := {}
 ## Its sprite's views: the building; its ruins, under it while it falls and after; a top a laser sliced off; the keep's
 ## banners while they fall (drop_banner()).
 var _sprite_view: SpriteView
@@ -160,10 +157,6 @@ var _banner_fall := -1.0
 var _synced_state := &""
 var _synced_mod := Color.WHITE
 var _synced_fallen := false
-## The idle frame the views were last synced on, and sprite.frames, read once as the set is handed over (sprite's
-## setter), not out of the dictionary every frame.
-var _synced_step := -1
-var _sprite_frames := 1
 ## Which SHAKE_HZ step the current jitter belongs to (-1 = not shaking).
 var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
@@ -527,8 +520,14 @@ func _sync_sprite() -> void:
 			_sprite_view.position = Vector2.ZERO
 			_sprite_view.scale = Vector2(m, 1.0)
 			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
-		&"intact", &"damaged":
-			_sprite_view.show_still(state, int(_time * float(sprite.fps)))
+		&"intact":
+			# The view steps its own idle strip (SpriteView.play_idle()), so the structure can sleep under it.
+			_sprite_view.play_idle(_time)
+			_sprite_view.position = Vector2.ZERO
+			_sprite_view.scale = Vector2(m, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
+		&"damaged":
+			_sprite_view.show_still(state)
 			_sprite_view.position = Vector2.ZERO
 			_sprite_view.scale = Vector2(m, 1.0)
 			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
@@ -566,22 +565,19 @@ func _sync_sprite() -> void:
 
 
 ## True when _sync_sprite() would hand its views exactly what they already show: the building is quiet (nothing
-## falling, sliding off or cooling), has no banners mid-fall, and shows the idle frame, state, tint and banners it
-## showed at the last sync. Walls and towers on screen process every frame, and syncing each of them anyway cost ~5 us a
-## frame apiece (~0.25 ms a frame, -4 fps in the mission bench); an animated set (a smoking chimney) synced every frame
-## between its idle frames cost ~12 us a frame apiece.
+## falling, sliding off or cooling), has no banners mid-fall, and shows the state, tint and banners it showed at the
+## last sync. Walls and towers on screen process every frame, and syncing each of them anyway cost ~5 us a frame apiece
+## (~0.25 ms a frame, -4 fps in the mission bench). An animated set's idle frames are no change here: its view steps
+## them itself (SpriteView.play_idle()).
 func _sprite_settled() -> bool:
 	if not is_instance_valid(_sprite_view) or not _quiet() \
 			or (_banner_fall >= 0.0 and _banner_fall < BANNER_FALL_TIME):
 		_synced_state = &""
 		return false
-	# An animated set (sprite.frames > 1) changes only on its next idle frame, _sync_sprite()'s int(_time * fps).
-	var step := int(_time * float(sprite.fps)) if _sprite_frames > 1 else 0
 	var state := sprite_state()
 	var fallen := _banner_fall >= 0.0
-	if step == _synced_step and state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
+	if state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
 		return true
-	_synced_step = step
 	_synced_state = state
 	_synced_mod = self_modulate
 	_synced_fallen = fallen
@@ -1119,10 +1115,11 @@ func wake() -> void:
 		set_process(true)
 
 
-## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch).
+## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch). A sprite's
+## idle strip is no such part: its view steps it on its own (SpriteView.play_idle()).
 func _can_idle() -> bool:
 	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) \
-		and not is_instance_valid(_flame) and (sprite.is_empty() or int(sprite.frames) <= 1)
+		and not is_instance_valid(_flame)
 
 
 func _go_idle() -> void:

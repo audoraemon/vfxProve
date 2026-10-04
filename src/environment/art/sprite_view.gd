@@ -19,6 +19,10 @@ var color := Color.WHITE
 var _mat: ShaderMaterial
 ## The clip last handed to the shader (set_cut()); NAN until the first.
 var _cut := [NAN, NAN, NAN]
+## Playing the intact still's idle strip on its own clock (play_idle()): the view steps its frames itself, so the
+## Structure under it can sleep (Structure._can_idle()) while its banner waves or its chimney smokes.
+var playing := false
+var _clock := 0.0
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -39,9 +43,58 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	return self
 
 
-## Show `st` (&"intact", &"damaged", &"ruins", or &"collapse", the set's generated collapse). The intact still loops
-## its idle strip's `frame_index` when the set has one; the collapse holds its last frame. Redraws only on a change.
+## Show `st` (&"intact", &"damaged", &"ruins", or &"collapse", the set's generated collapse), and stop playing the idle
+## strip (play_idle()). The intact still shows its idle strip's `frame_index` when the set has one; the collapse holds
+## its last frame. Redraws only on a change.
 func show_still(st: StringName, frame_index := 0) -> void:
+	_stop()
+	_show(st, frame_index)
+
+
+## Play the intact still's idle strip from `t` seconds on (Structure._time, so it starts on the frame the structure
+## would have shown), stepping it in _process() on the view's own clock. Already playing, it keeps its clock: the
+## structure's time stands still while it sleeps. A set without an idle strip just shows its intact still.
+func play_idle(t: float) -> void:
+	if frame_count(&"intact") <= 1:
+		show_still(&"intact")
+		return
+	if playing and still == &"intact":
+		return
+	playing = true
+	_clock = t
+	_show(&"intact", int(_clock * float(sprite.fps)))
+	set_process(true)
+
+
+func _ready() -> void:
+	# A script with _process() starts processing on entering the tree; only a playing view needs to.
+	set_process(playing)
+
+
+## Steps the idle strip: a redraw only when the frame changes (sprite.fps), and none while the structure's whole
+## screen box is off screen (Structure.view); the frame it lands on then is drawn when it comes back.
+func _process(delta: float) -> void:
+	var fps := float(sprite.fps)
+	var n := int(sprite.frames)
+	# Wrapped to one loop of the strip, so the clock never grows without bound.
+	_clock = fmod(_clock + delta, float(n) / fps)
+	var f := int(_clock * fps) % n
+	if f == frame:
+		return
+	var host := get_parent() as Structure
+	if host != null and Structure.view.has_area() and not Structure.view.intersects(host.view_box()):
+		return
+	frame = f
+	queue_redraw()
+
+
+func _stop() -> void:
+	if playing:
+		playing = false
+		set_process(false)
+
+
+func _show(st: StringName, frame_index: int) -> void:
 	var n := frame_count(st)
 	var f := 0
 	if n > 1:

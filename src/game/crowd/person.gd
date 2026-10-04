@@ -59,6 +59,10 @@ const SPRITE_WAIST := 7.0
 ## against the side of the coat at the leading hand; mirrored facing left. The sprite's arms swing within its frames
 ## (they do not rise as the procedural ones do when running), so the lantern stays put.
 const SPRITE_LANTERN := Vector2i(3, -8)
+## Where the Mayor's chain lies across the stand-in sprite's chest, and the noble's crown sits on its head, from the
+## ground point: the chain's left pixel (3 across), and the crown's left pixel (a 3x1 band under 3 points).
+const SPRITE_CHAIN := Vector2i(-1, -11)
+const SPRITE_CROWN := Vector2i(-1, -17)
 ## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
 ## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage and whisper terms.
 const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
@@ -115,6 +119,11 @@ const KEEPER_BADGE := Color("e0b84a")
 ## The watchman (v0.08): a dark cloak, and a lit lantern in his leading hand.
 const WATCH_CLOAK := Color("2a2630")
 const WATCH_LANTERN := Color("ffd27a")
+## The Mayor (v0.09): a dark red robe and a gold chain of office. The Prince's noble: a purple cape and a gold crown.
+const MAYOR_ROBE := Color("7a1e22")
+const MAYOR_CHAIN := Color("e0b84a")
+const NOBLE_CAPE := Color("4a2a6a")
+const NOBLE_CROWN := Color("e8c24a")
 const SOL_MAIL := Color("6a6f78")
 const SOL_MAIL_HI := Color("8d939c")
 const SOL_HELM := Color("484d56")
@@ -1173,6 +1182,12 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 		var at := _sprite_lantern()
 		_px(at.x, at.y + lift, 1, 1, COL_DARK)
 		_px(at.x, at.y + 1 + lift, 1, 2, WATCH_LANTERN)
+	elif _is_mayor():
+		# His chain of office (v0.09) over the merchant standing in for him: 3 px across the chest, dipping in the middle.
+		_px(SPRITE_CHAIN.x, SPRITE_CHAIN.y + lift, 3, 1, MAYOR_CHAIN)
+		_px(SPRITE_CHAIN.x + 1, SPRITE_CHAIN.y + 1 + lift, 1, 1, MAYOR_CHAIN)
+	elif _is_noble():
+		_draw_crown(SPRITE_CROWN.x, SPRITE_CROWN.y + lift)
 	if mind == Mind.CONFUSED:
 		var turn := int(_anim * 3.0)
 		for k in 4:
@@ -1207,7 +1222,9 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(-1, -10 + lift, 1, 8, CLERGY_STOLE)
 	else:
 		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else (
-			WATCH_CLOAK if role == CitizenProfile.Role.WATCHMAN else _tunic)
+			WATCH_CLOAK if role == CitizenProfile.Role.WATCHMAN else (
+			MAYOR_ROBE if role == CitizenProfile.Role.MAYOR else (
+			NOBLE_CAPE if role == CitizenProfile.Role.NOBLE else _tunic)))
 		if sick:
 			coat = coat.lerp(tint, SICK_CLOTH)
 		if top_only == 0:
@@ -1219,6 +1236,10 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 			_px(-2, -8 + lift, 4, 4, ENG_APRON)
 		elif role == CitizenProfile.Role.BELLKEEPER:
 			_px(1, -8 + lift, 1, 1, KEEPER_BADGE)
+		elif role == CitizenProfile.Role.MAYOR:
+			# The chain of office (v0.09): 3 px across the chest, dipping in the middle.
+			_px(-1, -9 + lift, 3, 1, MAYOR_CHAIN)
+			_px(0, -8 + lift, 1, 1, MAYOR_CHAIN)
 	var arm_y := -12 if running else -9
 	_px(-4, arm_y + lift, 1, 3, skin)
 	_px(3, arm_y + lift, 1, 3, skin)
@@ -1234,6 +1255,8 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(hx - 1, arm_y - 2 + lift, 3, 1, ENG_IRON)
 	else:
 		_px(-2, -13 + lift, 4, 1, _hair)
+	if role == CitizenProfile.Role.NOBLE:
+		_draw_crown(-1, -14 + lift)
 	if role == CitizenProfile.Role.WATCHMAN and state != State.DEAD:
 		# His lantern, hanging from the leading hand: an iron cap over a 1x2 glow.
 		var lx := 3 if f > 0 else -4
@@ -1354,6 +1377,22 @@ func _sprite_lantern() -> Vector2i:
 
 func _is_watchman() -> bool:
 	return not soldier and profile != null and profile.role == CitizenProfile.Role.WATCHMAN
+
+
+func _is_mayor() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.MAYOR
+
+
+func _is_noble() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.NOBLE
+
+
+## The Prince's gold crown (v0.09): a 3x1 band with three points over it, its left pixel at (x, y).
+func _draw_crown(x: int, y: int) -> void:
+	_px(x, y, 3, 1, NOBLE_CROWN)
+	_px(x, y - 1, 1, 1, NOBLE_CROWN)
+	_px(x + 1, y - 1, 1, 1, NOBLE_CROWN)
+	_px(x + 2, y - 1, 1, 1, NOBLE_CROWN)
 
 
 func _walk_rate() -> float:

@@ -145,6 +145,7 @@ static func _festival(m: MissionDef) -> ActDef:
 	a.intro_banner = "ACT II - THE FESTIVAL"
 	a.next = PackedStringArray(["judgement"])
 	a.make_town = _act2_town
+	a.director = FestivalDirector
 	a.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [ClockObjective.new(true, "Hold", "held")]
 		return out

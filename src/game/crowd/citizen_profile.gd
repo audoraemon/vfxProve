@@ -4,7 +4,9 @@ extends RefCounted
 ## and a few leisure spots near home. RoutineManager picks among these; Crowd.spawn() hands them out.
 
 ## WATCHMAN (v0.08): never dealt by SHARES -- The Warning's director appoints one at the Main Gate and sets his work.
-enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER, WATCHMAN }
+## MAYOR and NOBLE (v0.09) are never dealt either: The Long Night's festival makes a merchant the Mayor, and the Prince's
+## procession dresses the Prince as a noble.
+enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER, WATCHMAN, MAYOR, NOBLE }
 
 ## Each role's share of the town (the v0.04 spec's table). Farmers work the fields and mills outside the walls.
 const SHARES := [

@@ -17,10 +17,12 @@ enum Facing { SE, SW, NE, NW }
 const DIR_NAMES := ["south-east", "south-west", "north-east", "north-west"]
 ## Each citizen role's designs, in CitizenProfile.Role order: one look, or two picked by the person's look.
 const CITIZEN := [["resident_a", "resident_b"], ["merchant_a", "merchant_b"], ["craft_a", "craft_b"], ["laborer"],
-	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"], ["watchman"]]
+	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"], ["watchman"],
+	["mayor"], ["noble"]]
 ## Designs not generated yet that wear another's until they are: the watchman (v0.08) the bellkeeper's dark navy coat
-## and cap, the nearest to his dark cloak (Person draws his lantern over it).
-const STAND_INS := {"watchman": "bellkeeper"}
+## and cap, the nearest to his dark cloak (Person draws his lantern over it); the Mayor (v0.09) a merchant's, with
+## Person's gold chain over it, and the Prince's noble a resident's, with its crown.
+const STAND_INS := {"watchman": "bellkeeper", "mayor": "merchant_a", "noble": "resident_a"}
 ## Each soldier's design, in Person.Corps order.
 const SOLDIER := ["guard", "marshal", "escort", "rescue"]
 ## Stand-ins while a design is not generated yet.

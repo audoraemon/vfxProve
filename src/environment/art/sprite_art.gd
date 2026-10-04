@@ -276,6 +276,11 @@ static func sprite(n: String) -> Dictionary:
 		"strip": strip, "period": period, "region": Rect2(),
 		# Its procedural flames (a wall torch, the barracks' forge) stay lit over it: the sprite paints none of its own.
 		"keep_flames": bool(m.get("keep_flames", false)),
+		# A street torch's bowl rim (the procedural flame's base) or a street lamp's lantern glass (the procedural glow),
+		# in sprite px; damaged_shift: where they move to on the damaged still (its post leans). INF / Rect2(): none.
+		"flame": Vector2(m.flame[0], m.flame[1]) if m.has("flame") else Vector2.INF,
+		"glass": Rect2(m.glass[0], m.glass[1], m.glass[2], m.glass[3]) if m.has("glass") else Rect2(),
+		"damaged_shift": Vector2(m.damaged_shift[0], m.damaged_shift[1]) if m.has("damaged_shift") else Vector2.ZERO,
 	}
 	_sets[n] = built
 	return built

@@ -9,7 +9,7 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_1", "stall_1_red", "stall_1_blue", "stall_1_cream", "stall_2", "stall_2_red", "stall_2_blue",
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
-	"stall_12"]
+	"stall_12", "torch_post", "lamp_post"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -584,6 +584,39 @@ static func _flames(t) -> void:
 	cot._ready()
 	t.check(not is_instance_valid(cot._flame), "a cottage has no flame")
 	cot.free()
+	# Street torches and lamps: their sprites paint no flame or lit glass; the procedural flame (or the lantern's glow)
+	# burns over the sprite, on the bowl's rim (in the glass), and goes out when the post falls.
+	for tag in [&"", &"lamp"]:
+		var post := _make(Rect2(0, 0, 0.2, 0.2), 16.0 if tag == &"" else 18.0, K.TORCH, 5, &"decor", tag)
+		var label := "a lamp" if tag == &"lamp" else "a torch"
+		t.check(post.sprite.get("name", "") == ("lamp_post" if tag == &"lamp" else "torch_post") and post.sprite.keep_flames,
+			label + " post is a sprite that keeps its flame")
+		post._ready()
+		post._process(1.0 / 60.0)
+		t.check(is_instance_valid(post._flame) and post._flame.visible
+			and post._flame.get_index() > post._sprite_view.get_index(), label + "'s flame burns over its sprite")
+		var at: Vector2 = post.sprite.anchor
+		var want: Vector2 = (post.sprite.flame if tag == &"" else (post.sprite.glass as Rect2).position) - at
+		t.check(post._post_flame_tip() == want and want.y < -12.0,
+			"%s's flame sits on its sprite's %s, above the post's foot (%s)" % [label, "glass" if tag else "bowl", want])
+		post.crack()
+		post._process(1.0 / 60.0)
+		t.check(post.sprite_state() == &"damaged" and post._flame.visible
+			and post._post_flame_tip() == want + (post.sprite.damaged_shift as Vector2),
+			label + " damaged: still lit, its flame moved with the post's lean")
+		post.destroy(Vector2(-5, -5), &"blast")
+		post._process(1.0 / 60.0)
+		t.check(not post._flame.visible, label + " destroyed: its flame is out")
+		post.free()
+	# With sprites off a procedural post draws its own flame: its flame node stays hidden (no double flame).
+	SpriteArt.set_enabled(false)
+	var proc := _make(Rect2(0, 0, 0.2, 0.2), 16.0, K.TORCH, 5, &"decor")
+	proc._ready()
+	proc._process(1.0 / 60.0)
+	t.check(proc.sprite.is_empty() and is_instance_valid(proc._flame) and not proc._flame.visible,
+		"a procedural torch's flame node stays hidden: it draws its own flame")
+	proc.free()
+	SpriteArt.set_enabled(true)
 
 
 ## F7 turns every building's sprite off and on again.
@@ -640,7 +673,7 @@ static func _battered(sprites: bool) -> String:
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
-	for prefix in ["fountain", "well"]:
+	for prefix in ["fountain", "well", "torch_post", "lamp_post"]:
 		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)

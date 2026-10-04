@@ -245,8 +245,9 @@ func _ready() -> void:
 		_flame = Node2D.new()
 		_flame.draw.connect(_draw_flame)
 		add_child(_flame)
-		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do.
-		for tip in _flame_tips():
+		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do. A street
+		# torch or lamp has its own pool of light (_glow) already.
+		for tip in _flame_tips() if kind != Kind.TORCH else []:
 			var halo := QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(44, 30))
 			halo.set_param("color", TORCH_LIGHT)
 			halo.set_param("falloff", 1.8)
@@ -731,8 +732,10 @@ func _process(delta: float) -> void:
 			_spin_step = spin_step
 			_spin.queue_redraw()
 	if is_instance_valid(_flame):
-		_flame.visible = not destroyed and (sprite.is_empty() or bool(sprite.keep_flames))
-		var flame_step := int(_time * 8.0)
+		# A procedural street torch or lamp draws its own flame (_draw_torch): its flame node is for its sprite only.
+		var shown := bool(sprite.keep_flames) if not sprite.is_empty() else kind != Kind.TORCH
+		_flame.visible = not destroyed and shown
+		var flame_step := int(_time * (TORCH_FLICKER_HZ if kind == Kind.TORCH else 8.0))
 		if flame_step != _flame_step and not destroyed and not _unseen:
 			_flame_step = flame_step
 			_flame.queue_redraw()
@@ -1273,8 +1276,11 @@ func _draw_spin() -> void:
 	FarmArt.draw_spin(self, _spin, float(_spin_step) * step, Color(amb * t.r, amb * t.g, amb * t.b))
 
 
-## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace.
+## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace, a street
+## torch's bowl or lamp's lantern (_post_flame_tip()).
 func _flame_tips() -> Array[Vector2]:
+	if kind == Kind.TORCH:
+		return [_post_flame_tip()]
 	if art.get("torch", false):
 		return [StoneArt.torch_tip(self)]
 	if kind == Kind.BRIDGE:
@@ -1286,8 +1292,47 @@ func _flame_tips() -> Array[Vector2]:
 	return []
 
 
+## A street torch's flame base or a street lamp's lantern glass (its top left), local px: from its sprite (the manifest's
+## flame / glass point, moved with the damaged still's lean), else where the procedural post puts its cup.
+func _post_flame_tip() -> Vector2:
+	if sprite.is_empty():
+		return Vector2(0, -height - 2)
+	var shift: Vector2 = sprite.damaged_shift if sprite_state() == &"damaged" else Vector2.ZERO
+	var at: Vector2 = sprite.anchor
+	var p: Vector2 = sprite.flame if art_tag != &"lamp" else (sprite.glass as Rect2).position
+	if p == Vector2.INF:
+		return Vector2(0, -height - 2)
+	p += shift - at
+	if sprite.mirror:
+		var w := 1.0 if art_tag != &"lamp" else (sprite.glass as Rect2).size.x
+		p.x = -p.x - w
+	return p
+
+
+## A sprite street torch's flame (the procedural torch's, on its bowl's rim) or a sprite lamp's lantern glow (filling its
+## glass, the lantern's front corner bar over it), flickering as the procedural ones do.
+func _draw_post_flame() -> void:
+	var tip := _post_flame_tip()
+	if art_tag == &"lamp":
+		var glass: Rect2 = sprite.get("glass", Rect2())
+		var r := Rect2(tip, glass.size if glass.has_area() else Vector2(6, 9))
+		var g := int(_time * 6.0 + float(rng.seed % 5)) % 4
+		_flame.draw_rect(r, COL_FLAME[1] if g != 0 else COL_FLAME[2])
+		_flame.draw_rect(r.grow(-1.0), COL_FLAME[0])
+		_flame.draw_rect(Rect2(r.position + Vector2(floorf(r.size.x * 0.5), 0), Vector2(1, r.size.y)), COL_IRON_CUP)
+		return
+	var f := int(_time * TORCH_FLICKER_HZ + float(rng.seed % 5)) % 3
+	_flame.draw_rect(Rect2(tip + Vector2(-4, -5), Vector2(8, 5)), COL_FLAME[2])
+	_flame.draw_rect(Rect2(tip + Vector2(-3, -9 - f % 2), Vector2(6, 7)), COL_FLAME[1])
+	_flame.draw_rect(Rect2(tip + Vector2(-2 + (f % 2), -12 - f), Vector2(3, 6)), COL_FLAME[0])
+	_flame.draw_rect(Rect2(tip + Vector2(-1, -7), Vector2(2, 3)), Color.WHITE)
+
+
 ## The art's flames, flickering in 8 Hz steps, each a little out of step with the others.
 func _draw_flame() -> void:
+	if kind == Kind.TORCH:
+		_draw_post_flame()
+		return
 	var tips := _flame_tips()
 	for i in tips.size():
 		var tip: Vector2 = tips[i]

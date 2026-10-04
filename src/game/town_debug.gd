@@ -2,7 +2,8 @@ extends Node2D
 ## Debug scene for Kingdoms Amid Kataclysm: the town of Aldermere and its fortified Royal Citadel on the shared
 ## Battlefield, its people (110 citizens and 50 soldiers, --people=N to scale), and every power castable from
 ## the keyboard. No rules yet (milestone 3).
-## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] (screenshots), --citadel-test (scripted strikes on the Citadel, logged),
+## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] [--dim=0..1] (screenshots; --dim darkens
+## the scene as a power's dim does, to see the lights at dusk), --citadel-test (scripted strikes on the Citadel, logged),
 ## --crowd-test (scripted panic, logged), --bench [--only=<power key>] (frame times while that power plays
 ## beside the Citadel).
 
@@ -39,6 +40,9 @@ const TOWN_SHOTS := [
 	["town_corner_south.png", Vector2(16.0, 16.0), 1.0],
 	["town_corner_east.png", Vector2(16.0, -16.0), 1.0],
 	["town_east_quarter.png", Vector2(12.4, 0.6), 1.4],
+	# The market's north torches and the walkway lamp; the west street's lamps beside a market corner torch.
+	["town_torches.png", Vector2(1.4, -2.6), 2.2],
+	["town_lamps.png", Vector2(-6.0, 8.6), 2.2],
 ]
 ## [time, power key, ground point] for --citadel-test.
 const CITADEL_CASTS := [
@@ -97,6 +101,9 @@ func _ready() -> void:
 	await FxParts.prewarm(_bf.ctx.distort)
 	if "--capture-town" in args:
 		var frames := Battlefield.arg_value(args, "--frames")
+		var dim := Battlefield.arg_value(args, "--dim")
+		if dim != "":
+			_bf.ctx.impact.dim(float(dim), 100.0)
 		_capture_town(Battlefield.arg_value(args, "--only"), int(frames) if frames != "" else 1)
 	elif "--citadel-test" in args:
 		_citadel_test()

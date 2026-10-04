@@ -148,7 +148,8 @@ def write_manifest(man_path, name, entry):
     cur.update({k: v for k, v in entry.items() if v is not None})
     man[name] = cur
     text = "{\n" + ",\n".join("\t" + json.dumps(k) + ": " + json.dumps(v) for k, v in man.items()) + "\n}\n"
-    open(man_path, "w", encoding="utf-8").write(text)
+    open(man_path, "w", encoding="utf-8", newline="
+").write(text)
 
 
 def run(a, out_dir, manifest=True):

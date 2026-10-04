@@ -22,7 +22,7 @@ static func run(t) -> void:
 	var ids := []
 	for m in MissionBook.all():
 		ids.append(m.id)
-	t.check(ids.has(MissionBook.LAST_JUDGEMENT), "the book lists it (%s)" % [ids])
+	t.check(ids == ["warning", "long_night", "last_judgement"], "the book lists them lowest Tier first (%s)" % [ids])
 
 	# The Warning (v0.08 M4): Tier 1, its own small pool and an Unaware town, first on the board.
 	var w := MissionBook.warning()

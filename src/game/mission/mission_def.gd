@@ -21,7 +21,8 @@ var dp_capacity := 0
 ## The powers it allows; empty for every power.
 var pool := PackedStringArray()
 var clock := 360.0
-## The town's readiness: "" for the difficulty chosen on Prepare, "unaware" for The Warning's (v0.08 M4).
+## The town's readiness: "" for the difficulty chosen on Prepare, "unaware" for The Warning's (v0.08 M4), "night" for The
+## Long Night's first town (v0.09; each ActDef then sets its own).
 var profile := ""
 ## The intro's camera: from `intro_from` to `camera_at` (ground units); its banner.
 var intro_from := Vector2(2.7, 12.0)
@@ -36,6 +37,25 @@ var director: GDScript
 ## func() -> Array[Objective], each call a fresh set (objectives may keep state).
 var make_objectives: Callable
 var make_bonuses: Callable
+
+
+## A mission played in acts (v0.09, The Long Night): its ActDefs, the first one first. Empty for a single act.
+var acts: Array = []
+
+
+func has_acts() -> bool:
+	return not acts.is_empty()
+
+
+func first_act() -> ActDef:
+	return acts[0] if has_acts() else null
+
+
+func act(id: String) -> ActDef:
+	for a in acts:
+		if (a as ActDef).id == id:
+			return a
+	return null
 
 
 ## The primary objectives, fresh, in the order they decide the mission.
@@ -70,6 +90,6 @@ func chooses_difficulty() -> bool:
 
 ## The town's response for this mission: the difficulty chosen on Prepare, unless the mission sets its own.
 func response_profile(chosen: ResponseProfile.Tier) -> ResponseProfile:
-	if profile == "unaware":
+	if profile == "unaware" or profile == "night":
 		return ResponseProfile.unaware()
 	return ResponseProfile.for_tier(chosen)

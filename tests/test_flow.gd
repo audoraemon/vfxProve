@@ -32,7 +32,7 @@ static func run(t) -> void:
 		"all five screens are reachable (%d)" % reachable.size())
 
 	# The board's cards sit side by side inside the screen, above its hint, without touching (v0.08).
-	for count in [1, 2]:
+	for count in [1, 2, 3]:
 		var bad := 0
 		for i in count:
 			var r := MissionBoard.card_rect(i, count)

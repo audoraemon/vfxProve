@@ -11,6 +11,8 @@ signal action(name: String)
 const CARD := Vector2(300.0, 250.0)
 const CARD_GAP := 12.0
 const CARD_TOP := 48.0
+## The room kept at each side of the row of cards.
+const BOARD_MARGIN := 8.0
 ## The padding inside a card.
 const PAD := 10.0
 ## The Tier badge's plate, top-right on a card: tall enough for its digit.
@@ -60,11 +62,14 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 	return self
 
 
-## Where card `i` of `count` sits: side by side, the row centred on 320.
+## Where card `i` of `count` sits: side by side, the row centred on 320. A card narrows when `count` cards of CARD's width
+## would not fit the screen (v0.09: three missions).
 static func card_rect(i: int, count: int) -> Rect2:
-	var total := float(count) * CARD.x + float(maxi(count - 1, 0)) * CARD_GAP
+	var size := CARD
+	size.x = minf(CARD.x, floorf((640.0 - BOARD_MARGIN * 2.0 - float(maxi(count - 1, 0)) * CARD_GAP) / float(maxi(count, 1))))
+	var total := float(count) * size.x + float(maxi(count - 1, 0)) * CARD_GAP
 	var left := roundf(320.0 - total * 0.5)
-	return Rect2(Vector2(left + float(i) * (CARD.x + CARD_GAP), CARD_TOP), CARD)
+	return Rect2(Vector2(left + float(i) * (size.x + CARD_GAP), CARD_TOP), size)
 
 
 ## The card under a point, or -1.

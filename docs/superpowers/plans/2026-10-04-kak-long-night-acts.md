@@ -1565,3 +1565,23 @@ func report() -> Dictionary:
 | §3 ActDef, NightState, Rules per act, raise_profile, EventTimeline, the directors, the Interlude, the new roles | 1–4, 8–16 |
 | §4 the tests listed, the `night` scenario, the gates, the bench | 1–20 |
 | §6 open points | Global Constraints (assumed) |
+
+## Execution notes
+
+### M1 gate (at 0213f0b)
+
+- Tests `checks=1833 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `checks=54 failures=0`. FLOW plays a whole night, with a restart from Act I and from Act II.
+- All 10 exact behaviour checksums identical: the 5 town scenarios and the 5 Warning cases.
+- Mission test, three runs: buildings 57/55/53, citizens 180/189/190, escaped 0/1/1. The Warning unhindered: bell at 24.1.
+- `--scenario=night`, forced act outcomes, 8 runs, no SCRIPT ERROR:
+  - festival, Act I win, Act III win: won, A (16620)
+  - festival, Act I win, Act III lose: lost, C (5120)
+  - festival, Act I lose, Act III win: won, B (14120)
+  - festival, Act I lose, Act III lose: lost, D (2645)
+  - procession: A (16560), C (5085), B (14060), D (2585)
+- Captures checked: the interlude (the act result and two path cards) and the night's results.
+- Plan fixes made by the implementers:
+  - `SaveFile` appended to a copy of `paths_won` (it now reassigns).
+  - The first Prepare of a never-played night opened empty; `Game.starting_loadout()` now falls back to the night's default loadout.
+  - Prepare between acts showed Unaware; `ActDef.response_profile()` now returns the act's town.
+  - A stale `_play_ending` could emit for the wrong act; it is now guarded.

@@ -73,6 +73,8 @@ static func run(t) -> void:
 	_dead_before_events(t)
 	_tide(t)
 	_prince_freed(t)
+	_escaped_other_way(t)
+	_doom_before_judging(t)
 
 
 ## The Prince, six attendants and four escorts; a route of walkable points.
@@ -375,4 +377,48 @@ static func _prince_freed(t) -> void:
 	d._tick()
 	t.check(d.report().prince in ["unseen", "seen"] and PrinceObjective.new().check(rules) == Objective.Status.DONE,
 		"and the report and the objective still read it (%s)" % [d.report()])
+	_done(s)
+
+
+## He leaves the town some way other than the ship's gangway (a river boat, an exit he fled to): Crowd.escape without
+## `boarded` set. That is his escape, not his death: the act is lost.
+static func _escaped_other_way(t) -> void:
+	var s := _setup()
+	var d: ProcessionDirector = s.d
+	var rules: Rules = s.rules
+	var p := d.prince
+	_run(s, 1.0)
+	(s.field as EnemyField).remove(p)
+	(s.crowd as Crowd).escape(p)
+	t.check(not d.fallen(), "he is gone, not killed")
+	_run(s, DT * 2.0)
+	t.check(rules.finished and not rules.won and rules.over_reason == "sailed", "the act is lost (%s %s)" % [rules.won, rules.over_reason])
+	t.check(d.report().prince == "escaped" and rules.escaped_this_act() == 1, "and he escaped (%s)" % [d.report()])
+	_done(s)
+
+
+## A Silent Doom kill with a witness at 1.0 that lands between the crowd's step and the rules' (so the doomed are not yet
+## judged): the act is not won until his death is judged, and the bonus is not earned.
+static func _doom_before_judging(t) -> void:
+	var s := _setup()
+	var d: ProcessionDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var witness: Person = null
+	for c in crowd.citizens:
+		if c != d.prince and not d.attendants.has(c) and c.is_alive() and not c.inside:
+			witness = c
+			break
+	_to(s, 20.0)
+	_clear_round(s, d.prince.ground_pos, Crowd.DOOM_WITNESS + 1.0, [d.prince, witness])
+	witness.ground_pos = d.prince.ground_pos + Vector2(1.0, 0.0)
+	(s.field as EnemyField).kill(d.prince, &"doom", d.prince.ground_pos)
+	t.check(not crowd._doomed.is_empty(), "the doom is waiting to be judged")
+	rules.advance(DT)
+	t.check(not d.judged and not rules.finished, "rules step first: not judged, the act is not won yet")
+	_run(s, DT * 2.0)
+	var result := rules.result()
+	t.check(d.judged and not d.unseen and rules.finished and rules.won and rules.over_reason == "prince",
+		"judged seen, then won (%s %s)" % [d.unseen, rules.over_reason])
+	t.check(not result.bonuses[0].earned and d.report().prince == "seen", "the bonus is not earned (%s)" % [result.bonuses])
 	_done(s)

@@ -66,6 +66,7 @@ static func run(t) -> void:
 	_address(t)
 	_mayor_death(t)
 	_mayor_early_and_missing(t)
+	_mayor_and_goer_freed(t)
 	_clock(t)
 	_objectives(t)
 	_bell_quiet(t)
@@ -372,3 +373,27 @@ static func _bell_quiet(t) -> void:
 		var earned := bool(rules.result().bonuses[0].earned)
 		t.check(earned == (case != "rings_during"), "%s: earned on a win is %s" % [case, earned])
 		_done(s)
+
+
+## The Mayor and a goer killed and then freed (a killed citizen frees itself when its death fade ends) while the director,
+## the HUD's event strip and the count still hold them: the address and its end are dropped, nothing raises.
+static func _mayor_and_goer_freed(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var field: EnemyField = s.field
+	d.need = 1000
+	_run(s, 10.0)
+	var mayor := d.mayor
+	var goer: Person = d.goers[0]
+	field.kill(mayor, &"fire")
+	field.kill(goer, &"fire")
+	for p: Person in [mayor, goer]:
+		(s.crowd as Crowd).citizens.erase(p)
+		field.remove(p)
+		p.free()
+	t.check(d.timeline.upcoming(3).size() == 2 and d.count() >= 1, "freed: the strip lists bonfire and close, the count still reads")
+	_run(s, 40.0)
+	_run(s, 45.0)
+	t.check(d.timeline.upcoming(3).size() == 1 and "bonfire" in d.timeline.fired_ids() and not "address" in d.timeline.fired_ids(),
+		"past 0:45 and 1:30 the address is dropped and nothing raises (%s)" % [d.timeline.fired_ids()])
+	_done(s)

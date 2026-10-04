@@ -45,7 +45,7 @@ var escorts: Array[Person] = []
 ## The leg of the route he is walking to (an index into `route`).
 var leg := 0
 var route := PackedVector2Array()
-## Set by the act's events: he has boarded the ship; nobody has seen him since the alarm; the act has been judged.
+## Set by the act's events: he has got away (boarded the ship, or any other way out of the town); nobody has seen him since the alarm; the act has been judged.
 var boarded := false
 var unseen := true
 var judged := false
@@ -56,8 +56,8 @@ var onlookers: Array[Person] = []
 var _tick_in := 0.0
 ## Where he fell, waiting to be judged once the cast's other victims have fallen too.
 var _fell_at := Vector2.INF
-## A Prince was appointed (a town with no resident to spare has none).
-var _appointed := false
+## He was killed (not merely gone: boarding, or reaching an exit while fleeing, is his escape).
+var _dead := false
 
 
 func _begin() -> void:
@@ -65,14 +65,14 @@ func _begin() -> void:
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	route = _route()
 	# His events are dropped (and left off the strip) once he is dead, boarded, or if the town had nobody to be him.
-	var travelling := func() -> bool: return _up(prince) and not boarded
+	var travelling := func() -> bool: return WarningDirector._alive(prince) and not boarded
 	timeline.add(BLESSING_AT, "blessing", "The blessing", _bless, travelling)
 	timeline.add(SHIP_AT, "ship", "The ship docks", Callable(), travelling)
 	timeline.add(TIDE_AT, "tide", "The last tide", Callable(), travelling)
 	prince = _appoint_prince()
 	if prince == null:
 		return
-	_appointed = true
+	crowd.escaped.connect(_on_escaped)
 	crowd._field.enemy_killed.connect(_on_killed)
 	_place(prince, route[0])
 	_gather_attendants()
@@ -156,7 +156,7 @@ func _ring(center: Vector2, radius: float, i: int, n: int, turn: float) -> Vecto
 
 
 func frightened() -> bool:
-	return _up(prince) and prince.mind in FRIGHT
+	return WarningDirector._alive(prince) and prince.mind in FRIGHT
 
 
 ## The `i`th escort's post: on a ring round the Prince, closer while he is frightened.
@@ -183,19 +183,19 @@ func step(delta: float) -> void:
 
 ## One look at the party. Nothing happens once the Prince is dead or missing: the act's objectives judge that.
 func _tick() -> void:
-	if not _up(prince):
+	if not WarningDirector._alive(prince):
 		return
 	_walk()
 	for i in escorts.size():
-		var s = escorts[i]
-		if not _up(s):
+		var s := escorts[i]
+		if not WarningDirector._alive(s):
 			continue
 		var spot := _escort_spot(i)
 		if s.anchor.distance_to(spot) > ESCORT_MOVE:
 			s.send_to_post(spot, false, true)
 	for i in attendants.size():
-		var a = attendants[i]
-		if not _up(a) or not a.mind in WarningDirector.RESUMABLE:
+		var a := attendants[i]
+		if not WarningDirector._alive(a) or not a.mind in WarningDirector.RESUMABLE:
 			continue
 		a.mind = Person.Mind.CALM
 		a.stay_left = 1000.0
@@ -243,7 +243,7 @@ func _bless() -> void:
 	var steps := route[STEPS_LEG]
 	var pool: Array[Person] = []
 	for p in crowd.citizens:
-		if _up(p) and not p.inside and p.mind == Person.Mind.CALM and p != prince \
+		if WarningDirector._alive(p) and not p.inside and p.mind == Person.Mind.CALM and p != prince \
 				and not attendants.has(p) and p.ground_pos.distance_to(steps) <= ONLOOK_R:
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(steps) < b.ground_pos.distance_squared_to(steps))
@@ -262,9 +262,16 @@ func _board() -> void:
 
 
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
-	if e == prince and not judged and _fell_at == Vector2.INF:
+	if e == prince and not _dead:
+		_dead = true
 		_fell_at = e.ground_pos
 		killed_by = rules.credited_key(kind)
+
+
+## However he left the town (the ship, a river boat, an exit he fled to), he has got away.
+func _on_escaped(p: Person) -> void:
+	if p == prince:
+		boarded = true
 
 
 ## Judged after the death: nobody living near enough to see it (Crowd.nearest_witness) and it was unseen.
@@ -275,9 +282,9 @@ func _judge() -> void:
 	judged = true
 
 
-## He is dead (killed, not sailed).
+## He was killed.
 func fallen() -> bool:
-	return _appointed and not boarded and not _up(prince)
+	return _dead
 
 
 ## How the Prince's night ended, for the night's carry-over: "unseen" or "seen" for a death, else "escaped" (boarded, or
@@ -291,9 +298,5 @@ func report() -> Dictionary:
 func teardown() -> void:
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
 		crowd._field.enemy_killed.disconnect(_on_killed)
-
-
-## Alive, and not yet freed: a fallen citizen frees itself when its fade ends, and a boarded one at once, while the
-## director still holds them (WarningDirector._alive takes only a live object).
-static func _up(p: Variant) -> bool:
-	return is_instance_valid(p) and (p as Person).is_alive()
+	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
+		crowd.escaped.disconnect(_on_escaped)

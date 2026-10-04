@@ -1,6 +1,7 @@
 class_name PrinceObjective
 extends Objective
-## Act II-B's win (v0.09): the Prince is dead (ProcessionDirector). It is lost -- reason "sailed" -- if he boards the ship.
+## Act II-B's win (v0.09): the Prince is dead and his death judged, seen or not (ProcessionDirector). It is lost -- reason
+## "sailed" -- if he gets away: boards the ship, or leaves the town any other way.
 
 
 func _init() -> void:
@@ -15,7 +16,7 @@ func check(rules: Rules) -> Status:
 	if director.boarded:
 		reason = "sailed"
 		return Status.FAILED
-	if director.fallen():
+	if director.fallen() and director.judged:
 		reason = "prince"
 		return Status.DONE
 	return Status.PENDING

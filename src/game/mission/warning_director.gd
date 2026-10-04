@@ -219,8 +219,9 @@ func _on_cast(_slot: int, key: String, at: Vector2) -> void:
 		delayed_by[PowerBook.authority_of(key)] = true
 
 
-static func _alive(p: Person) -> bool:
-	return is_instance_valid(p) and p.is_alive()
+## Alive, and not freed: a fallen citizen frees itself when its fade ends, and the directors still hold it.
+static func _alive(p: Variant) -> bool:
+	return is_instance_valid(p) and (p as Person).is_alive()
 
 
 func marker() -> Vector2:

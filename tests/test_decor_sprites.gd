@@ -8,6 +8,9 @@ static func run(t) -> void:
 	_mapping(t)
 	_trees(t)
 	_missing(t)
+	_paint(t)
+	_runs(t)
+	_down(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -68,3 +71,51 @@ static func _missing(t) -> void:
 	t.check(DecorSprites.decor_set("rock_9").is_empty(), "a set without its PNG reads as missing")
 	_unfake(fakes)
 	DecorSprites._sets.erase("rock_9")
+
+
+static func _paint(t) -> void:
+	var fakes := _fake(["barrel_1"])
+	DecorSprites._sets["barrel_1"] = {"name": "barrel_1", "tex": _tex(10, 12), "size": Vector2(10, 12),
+		"anchor": Vector2(5, 11), "segment": 0.0}
+	ArtKit.begin()
+	t.check(DecorSprites.paint(Decor.Kind.BARREL, Vector2(2, 3), Vector2.ZERO, 5, Vector2.ZERO),
+		"a barrel with a set paints from it")
+	var s := ArtKit.segments()
+	t.check(s.size() == 1 and s[0][0] == "tex" and s[0][2] == 1, "one textured quad, no polygons")
+	ArtKit.begin()
+	t.check(not DecorSprites.paint(Decor.Kind.COW, Vector2(2, 3), Vector2.ZERO, 5, Vector2.ZERO),
+		"a kind without a set is left to the procedural art")
+	t.check(ArtKit.segments().is_empty(), "and queues nothing")
+	ArtKit.begin()
+	DecorSprites._sets.erase("barrel_1")
+	_unfake(fakes)
+
+
+static func _runs(t) -> void:
+	var fakes := _fake(["fence_x"])
+	DecorSprites._sets["fence_x"] = {"name": "fence_x", "tex": _tex(32, 20), "size": Vector2(32, 20),
+		"anchor": Vector2(0, 18), "segment": 1.0}
+	for c in [[Vector2(3.0, 0.0), 3], [Vector2(2.5, 0.0), 3], [Vector2(0.4, 0.0), 1], [Vector2(-2.0, 0.0), 2]]:
+		ArtKit.begin()
+		DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), c[0], 1, Vector2.ZERO)
+		var s := ArtKit.segments()
+		var quads: int = s[0][2] if s.size() == 1 else -1
+		t.check(quads == c[1], "a fence run of %s draws %d tiles (got %d)" % [c[0], c[1], quads])
+	ArtKit.begin()
+	DecorSprites._sets.erase("fence_x")
+	_unfake(fakes)
+
+
+static func _down(t) -> void:
+	# A felled decor oak shows its tree set's ruins (stump and log); a knocked-over barrel shows nothing.
+	ArtKit.begin()
+	var drew := DecorSprites.paint(Decor.Kind.OAK, Vector2(1, 1), Vector2.ZERO, 9, Vector2.ZERO, true)
+	var s := ArtKit.segments()
+	t.check(drew and s.size() == 1 and s[0][0] == "tex", "a down oak draws its set's stump")
+	var tree := DecorSprites.tree_set(Decor.Kind.OAK, 9)
+	t.check(s.size() == 1 and s[0][1] == tree.stills[&"ruins"], "the stump is the set's ruins still")
+	ArtKit.begin()
+
+
+static func _tex(w: int, h: int) -> Texture2D:
+	return ImageTexture.create_from_image(Image.create(w, h, false, Image.FORMAT_RGBA8))

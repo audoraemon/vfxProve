@@ -115,3 +115,43 @@ static func tree_set(kind: int, seed_value: int) -> Dictionary:
 	if pool.is_empty():
 		return {}
 	return SpriteArt.sprite(pool[ArtKit.pick(seed_value, SALT_TREE, pool.size())])
+
+
+## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down
+## tree shows its set's ruins; any other down piece with a set draws nothing. A run repeats its set's segment from
+## its back end, the last tile cut to the run's length.
+static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
+	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
+		var tr := tree_set(kind, seed_value)
+		if tr.is_empty():
+			return false
+		var still: Texture2D = tr.stills[&"ruins" if down else &"intact"]
+		ArtKit.tex(still, Rect2(Vector2.ZERO, tr.size), Iso.ground_to_screen(at) - origin - tr.anchor)
+		return true
+	var n := name_for(kind, seed_value, size)
+	if n == "":
+		return false
+	var d := decor_set(n)
+	if d.is_empty():
+		return false
+	if down:
+		return true
+	if kind in RUNS and d.segment > 0.0:
+		var length := size.length()
+		if length <= 0.0:
+			return true
+		var dir := size / length
+		var start := at
+		if dir.x < 0.0 or dir.y < 0.0:
+			start = at + size
+			dir = -dir
+		var count := ceili(length / d.segment - 0.001)
+		for i in count:
+			var w: float = d.size.x
+			if i == count - 1:
+				w = maxf(1.0, roundf(d.size.x * (length - d.segment * float(count - 1)) / d.segment))
+			var g: Vector2 = start + dir * d.segment * float(i)
+			ArtKit.tex(d.tex, Rect2(0, 0, w, d.size.y), Iso.ground_to_screen(g) - origin - d.anchor)
+		return true
+	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - d.anchor)
+	return true

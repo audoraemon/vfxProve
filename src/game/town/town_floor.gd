@@ -162,7 +162,6 @@ func _bake() -> void:
 	queue_redraw()
 
 
-
 ## F7 switched the art (ArtToggle): bake the floor again, so its baked decor and shrubs follow.
 func art_changed() -> void:
 	rebake()

@@ -503,6 +503,36 @@ static func _idle_strip(t) -> void:
 		f7._process(1.0 / 60.0)
 	t.check(f7.idle and not f7.is_processing(), "then it goes idle again")
 	f7.free()
+	# A sprite fountain draws (and idles) its own water: no procedural spin node, so it sleeps. With sprites off (F7)
+	# the procedural running water is back and keeps it awake; on again, the node goes and it sleeps again.
+	var fo := _make(Rect2(0, 0, 1.2, 1.2), 24.0, K.FOUNTAIN, 5, &"decor")
+	t.check(fo.sprite.get("name", "") == "fountain" and int(fo.sprite.frames) > 1, "the fountain's set is animated")
+	fo._ready()
+	for i in 4:
+		fo._process(1.0 / 60.0)
+	t.check(not is_instance_valid(fo._spin) and fo._sprite_view.playing, "a sprite fountain has no spin node, its view plays")
+	t.check(fo.idle and not fo.is_processing(), "and the fountain goes idle")
+	SpriteArt.set_enabled(false)
+	fo.refresh_sprite()
+	for i in 4:
+		fo._process(1.0 / 60.0)
+	t.check(is_instance_valid(fo._spin) and fo._spin.visible and fo._spin.get_index() == 0,
+		"F7 off: its procedural running water is back, under its other parts")
+	t.check(not fo.idle and fo.is_processing(), "and keeps it awake")
+	SpriteArt.set_enabled(true)
+	fo.refresh_sprite()
+	for i in 4:
+		fo._process(1.0 / 60.0)
+	t.check(not is_instance_valid(fo._spin) and fo.idle and not fo.is_processing(), "F7 on: the spin node goes, it sleeps again")
+	fo.free()
+	# A well never had running water: no spin node either way.
+	var wl := _make(Rect2(0, 0, 0.5, 0.5), 12.0, K.FOUNTAIN, 5, &"decor", &"well")
+	wl._ready()
+	SpriteArt.set_enabled(false)
+	wl.refresh_sprite()
+	t.check(wl.sprite.is_empty() and not is_instance_valid(wl._spin), "a procedural well has no spin node")
+	SpriteArt.set_enabled(true)
+	wl.free()
 	# The Citadel keep's banner-drop stills are plain: a keep showing them never animates.
 	var keep := _make(Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, 5, &"citadel")
 	t.check(keep.sprite.stills.has(&"intact_fallen") and int(keep.sprite.frames) > 1, "the citadel keep is animated")
@@ -610,6 +640,8 @@ static func _battered(sprites: bool) -> String:
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
+	for prefix in ["fountain", "well"]:
+		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)
 		var n := SpriteArt.name_for(s)

@@ -49,5 +49,7 @@
 	"stall_11_red": {"size": [69, 84], "footprint": [0.9, 0.7], "anchor": [39, 76], "height": 10, "seed": 11, "kind": "MARKET_STALL", "role": "market", "tag": "", "frames": 4, "fps": 4},
 	"stall_11_blue": {"size": [69, 84], "footprint": [0.9, 0.7], "anchor": [39, 76], "height": 10, "seed": 11, "kind": "MARKET_STALL", "role": "market", "tag": "", "frames": 4, "fps": 4},
 	"stall_11_cream": {"size": [69, 84], "footprint": [0.9, 0.7], "anchor": [39, 76], "height": 10, "seed": 11, "kind": "MARKET_STALL", "role": "market", "tag": "", "frames": 4, "fps": 4},
-	"stall_12": {"size": [69, 57], "footprint": [0.9, 0.7], "anchor": [26, 49], "height": 10, "seed": 12, "kind": "MARKET_STALL", "role": "market", "tag": "", "frames": 4, "fps": 4}
+	"stall_12": {"size": [69, 57], "footprint": [0.9, 0.7], "anchor": [26, 49], "height": 10, "seed": 12, "kind": "MARKET_STALL", "role": "market", "tag": "", "frames": 4, "fps": 4},
+	"fountain": {"size": [75, 98], "footprint": [1.2, 1.2], "anchor": [37, 93], "height": 24, "seed": 1, "kind": "FOUNTAIN", "role": "decor", "tag": "", "frames": 4, "fps": 6},
+	"well": {"size": [45, 60], "footprint": [0.5, 0.5], "anchor": [22, 54], "height": 12, "seed": 2, "kind": "FOUNTAIN", "role": "decor", "tag": "well"}
 }

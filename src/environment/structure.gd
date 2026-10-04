@@ -240,10 +240,7 @@ func _ready() -> void:
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
-	if art_tag == &"windmill" or art_tag == &"watermill" or (kind == Kind.FOUNTAIN and art_tag != &"well"):
-		_spin = Node2D.new()
-		_spin.draw.connect(_draw_spin)
-		add_child(_spin)
+	_sync_spin()
 	if not _flame_tips().is_empty():
 		_flame = Node2D.new()
 		_flame.draw.connect(_draw_flame)
@@ -443,6 +440,7 @@ func refresh_sprite() -> void:
 	_ruins_view = null
 	_top_view = null
 	_flag_view = null
+	_sync_spin()
 	wake()
 	_dirty = true
 	queue_redraw()
@@ -1245,6 +1243,22 @@ func _draw_banner() -> void:
 	var amb := maxf(lights.ambient, 0.35) if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
 	StoneArt.draw_banners(self, _banner, _time, Color(amb * t.r, amb * t.g, amb * t.b))
+
+
+## A mill's turning sails or wheel, or a fountain's running water: a node of its own only while the procedural art
+## draws it. A sprite set draws (and idles) its own, so a sprite building has none and can sleep (_can_idle()).
+func _sync_spin() -> void:
+	var wants := sprite.is_empty() and (art_tag == &"windmill" or art_tag == &"watermill" 		or (kind == Kind.FOUNTAIN and art_tag != &"well"))
+	if wants and not is_instance_valid(_spin):
+		_spin = Node2D.new()
+		_spin.draw.connect(_draw_spin)
+		add_child(_spin)
+		# Under the building's other parts, as when _ready() made it first (only a keep has a banner node before it).
+		move_child(_spin, 0)
+		_spin_step = -1
+	elif not wants and is_instance_valid(_spin):
+		_spin.queue_free()
+		_spin = null
 
 
 ## A mill's sails or wheel, turning a sixteenth of a turn (sails) or a twenty-fourth (the wheel) a step; a

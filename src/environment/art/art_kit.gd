@@ -98,6 +98,10 @@ static var _uvs := PackedVector2Array()
 static var _idx := PackedInt32Array()
 static var _line_pts := PackedVector2Array()
 static var _line_cols := PackedColorArray()
+## Drawing closed off by tex() calls, in call order: ["poly", idx, pts, cols, uvs] fills and
+## ["tex", texture, idx, pts, cols, uvs] textured quads (same-texture neighbours share one). flush() emits these, then
+## the open fills, then every line on top.
+static var _segs: Array = []
 ## While recording, every flush is also kept, so the drawing can be replayed without running the art again.
 static var _recording := false
 static var _rec: Array = []
@@ -148,10 +152,18 @@ static func begin() -> void:
 	_idx.clear()
 	_line_pts.clear()
 	_line_cols.clear()
+	_segs.clear()
 
 
 ## Hand what was collected to `ci` (fills, then lines on top) and start over.
 static func flush(ci: CanvasItem) -> void:
+	for s: Array in _segs:
+		if s[0] == "poly":
+			RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), s[1], s[2], s[3], s[4])
+		else:
+			RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), s[2], s[3], s[4], s[5],
+				PackedInt32Array(), PackedFloat32Array(), (s[1] as Texture2D).get_rid())
+	_segs.clear()
 	_emit(ci, [_idx, _pts, _cols, _uvs, _line_pts, _line_cols])
 	if _recording:
 		_rec.append([_idx, _pts, _cols, _uvs, _line_pts, _line_cols])
@@ -250,6 +262,54 @@ static func _emit(ci: CanvasItem, b: Array) -> void:
 		RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), b[0], b[1], b[2], b[3])
 	if not (b[4] as PackedVector2Array).is_empty():
 		ci.draw_multiline_colors(b[4], b[5], -1.0)
+
+
+## The textured rectangle `src` of `tex`, top-left at `dst` (px, in the flush target's space), tinted `c` (and by
+## color_mul), drawn in call order with the fills around it (decor sprites, DecorSprites). Not while recording.
+static func tex(t: Texture2D, src: Rect2, dst: Vector2, c := Color.WHITE) -> void:
+	if _recording:
+		push_error("ArtKit.tex: textured quads are not recorded")
+		return
+	if color_mul != Color.WHITE:
+		c = Color(c.r * color_mul.r, c.g * color_mul.g, c.b * color_mul.b, c.a)
+	_close_fills()
+	var seg: Array
+	if not _segs.is_empty() and _segs[-1][0] == "tex" and _segs[-1][1] == t:
+		seg = _segs[-1]
+	else:
+		seg = ["tex", t, PackedInt32Array(), PackedVector2Array(), PackedColorArray(), PackedVector2Array()]
+		_segs.append(seg)
+	var ts := Vector2(t.get_size())
+	var base := (seg[3] as PackedVector2Array).size()
+	var corners := [Vector2.ZERO, Vector2(src.size.x, 0), src.size, Vector2(0, src.size.y)]
+	for k in 4:
+		seg[3].append(dst + corners[k])
+		seg[4].append(c)
+		seg[5].append((src.position + corners[k]) / ts)
+	for k in [0, 1, 2, 0, 2, 3]:
+		seg[2].append(base + k)
+
+
+## Close the open fills into a "poly" segment (tex() keeps them under what it draws next).
+static func _close_fills() -> void:
+	if _idx.is_empty():
+		return
+	_segs.append(["poly", _idx, _pts, _cols, _uvs])
+	_idx = PackedInt32Array()
+	_pts = PackedVector2Array()
+	_cols = PackedColorArray()
+	_uvs = PackedVector2Array()
+
+
+## The pending segments, for tests: ["poly", vertex count] or ["tex", texture, quad count].
+static func segments() -> Array:
+	var out := []
+	for s: Array in _segs:
+		if s[0] == "poly":
+			out.append(["poly", (s[2] as PackedVector2Array).size()])
+		else:
+			out.append(["tex", s[1], (s[3] as PackedVector2Array).size() / 4])
+	return out
 
 
 ## One flat triangle or convex quad (3 or 4 points) in unlit colour `c`, lit by `code`. While wind_gain is set,

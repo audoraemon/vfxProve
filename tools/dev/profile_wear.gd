@@ -41,7 +41,6 @@ func _run() -> void:
 	for r in rounds:
 		if cast:
 			for slot in mission._rules.loadout.size():
-				mission._rules.dp = Rules.DP_MAX
 				mission._rules._cooldowns[slot] = 0.0
 				mission._rules._playing = null  # a stress test: casts overlap on purpose
 				var at: Vector2 = SPOTS[spot % SPOTS.size()]

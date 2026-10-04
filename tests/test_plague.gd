@@ -1,7 +1,8 @@
 extends RefCounted
-## v0.06 Pestilence: up to three caught at the cast; the sick slow down, pass it to those packed near them, and die
-## PLAGUE_LIFE later as ordinary deaths; never more than PLAGUE_MAX sick; soldiers immune; it spreads inside a shelter,
-## and one who dies in there is carried out first. The cast is no danger the town can see.
+## v0.06 Pestilence, retuned in v0.07.1: up to three caught at the cast, soldiers too; the sick slow down, pass it each
+## second to those packed near them, and die PLAGUE_LIFE (5 s) later as ordinary deaths -- a soldier's counted as a
+## soldier killed; never more than PLAGUE_MAX sick; it spreads inside a shelter, and one who dies in there is carried
+## out first. The cast is no danger the town can see.
 
 
 static func run(t) -> void:
@@ -22,7 +23,7 @@ static func run(t) -> void:
 		i += 1
 	var at := Vector2(0.8, 2.0)
 
-	# The cast: the three nearest healthy citizens; soldiers never.
+	# The cast: the three nearest healthy people, soldiers too.
 	var group: Array[Person] = []
 	for k in 5:
 		var p: Person = crowd.citizens[k]
@@ -31,9 +32,9 @@ static func run(t) -> void:
 	var soldier: Person = crowd.soldiers[0]
 	soldier.ground_pos = at
 	var victims := PestilenceFx.victims_at(field, at)
-	t.check(victims.size() == PestilenceFx.INFECT_MAX and soldier not in victims and group[4] not in victims,
-		"it catches the three nearest citizens")
-	t.check(not soldier.infect(30.0), "soldiers do not catch it")
+	t.check(victims.size() == PestilenceFx.INFECT_MAX and soldier in victims and group[3] not in victims
+		and group[4] not in victims, "it catches the three nearest people, soldiers too")
+	t.check(soldier.infect(PlagueManager.PLAGUE_LIFE) and soldier.sick_left > 0.0, "soldiers catch it (v0.07.1)")
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "pestilence")
 	t.check(crowd.threats.active_count() == 0, "the cast is no danger the town can see")
 
@@ -50,19 +51,41 @@ static func run(t) -> void:
 		var p: Person = crowd.citizens[10 + k]
 		p.ground_pos = sick.ground_pos + Vector2(-0.08 * k, 0.1)
 		group.append(p)
-	plague.step(PlagueManager.SPREAD_EVERY)
+	# Nothing spreads before SPREAD_EVERY has passed; the next step takes it past.
+	plague.step(PlagueManager.SPREAD_EVERY * 0.5)
+	var early := 0
+	for p in group:
+		if p != sick and p.sick_left > 0.0:
+			early += 1
+	t.check(early == 0, "nobody catches it before %.0f s have passed (%d did)" % [PlagueManager.SPREAD_EVERY, early])
+	plague.step(PlagueManager.SPREAD_EVERY * 0.6)
+	t.check(soldier in plague.sick, "a soldier infected outside the spread is on the sick list once a scan has run")
 	var caught := 0
 	for p in group:
 		if p != sick and p.sick_left > 0.0:
 			caught += 1
 	t.check(caught > 0 and caught < group.size() - 1, "a sick person passes it to some of those packed round it (%d of %d)"
 		% [caught, group.size() - 1])
+	# It passes to a soldier packed beside the sick, too.
+	var s2: Person = crowd.soldiers[1]
+	s2.ground_pos = sick.ground_pos + Vector2(0.05, -0.05)
+	for k in 20:
+		if s2.sick_left > 0.0:
+			break
+		plague._spread()
+	t.check(s2.sick_left > 0.0, "it spreads to soldiers")
 
-	# Deaths, as ordinary deaths.
+	# Deaths, 5 s after catching it, as ordinary deaths -- a soldier's too.
 	var killed := crowd.killed_citizens
+	var killed_soldiers := crowd.killed_soldiers
+	plague.step(PlagueManager.PLAGUE_LIFE - PlagueManager.SPREAD_EVERY - 0.5)
+	t.check(sick.is_alive(), "still alive just before its time")
+	plague.step(1.0)
+	t.check(not sick.is_alive(), "the sick die %.0f s after catching it" % PlagueManager.PLAGUE_LIFE)
 	plague.step(PlagueManager.PLAGUE_LIFE)
-	t.check(not sick.is_alive() and crowd.killed_citizens - killed >= 1 + caught and plague.deaths >= 1 + caught,
-		"the sick die %d s after catching it (%d dead)" % [roundi(PlagueManager.PLAGUE_LIFE), crowd.killed_citizens - killed])
+	t.check(crowd.killed_citizens - killed >= 1 + caught and plague.deaths >= 1 + caught,
+		"as ordinary deaths (%d dead)" % (crowd.killed_citizens - killed))
+	t.check(crowd.killed_soldiers - killed_soldiers >= 1, "a soldier dies of it too, counted as a soldier killed")
 
 	# Never more than PLAGUE_MAX sick.
 	var n := 0
@@ -91,7 +114,7 @@ static func run(t) -> void:
 		crowd.shelters._enter(p, shelter)
 		(crowd.shelters.shelters[shelter].inside as Array).append(p)
 	inside[0].infect(PlagueManager.PLAGUE_LIFE)
-	for k in 5:
+	for k in 3:
 		plague.step(PlagueManager.SPREAD_EVERY)
 	var caught_inside := 0
 	for p in inside.slice(1):

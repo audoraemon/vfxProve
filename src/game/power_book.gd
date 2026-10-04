@@ -1,52 +1,59 @@
 class_name PowerBook
 extends RefCounted
-## The draftable powers: Divine Power cost, cooldown (seconds), how they are aimed, their effect script and icons, and
-## their kind (v0.06: the draft's tabs).
-## Costs and cooldowns are the spec's starting values (§4.2); aim "drag" = press at the start point, drag the
-## direction, release. The two quiet powers (v0.05, "quiet") register no danger for the town and raise no alarm
-## when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight adds one alarm.
+## The draftable powers: Divine Power price, cooldown (seconds), how they are aimed, their effect script and icons, and
+## their Authority (v0.08: the draft's tabs).
+## Prices are the loadout budget (v0.08): a mission's draft may spend its Divine Power capacity on them, and nothing
+## is spent once the mission runs. Cooldowns follow spec §2's rule of thumb, the larger of the old cooldown and 3x
+## the old DP cost. Aim "drag" = press at the start point, drag the direction, release; aim "whisper" (v0.08) = press
+## on a person, drag to where they should go, release. The quiet powers (v0.05, "quiet") register no danger for the
+## town and raise no alarm when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight
+## adds one alarm.
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
-		"dp": 8, "cooldown": 15.0, "aim": "click", "shape": "up to 3 struck down, unseen", "quiet": true,
-		"kind": "quiet"},
+		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
+		"authority": "veil"},
+	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
+		"dp": 1, "cooldown": 8.0, "aim": "whisper",
+		"shape": "send one person somewhere, then they linger 8 s; not the same one again for 20 s", "quiet": true,
+		"authority": "dominion"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
-		"dp": 10, "cooldown": 25.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
-		"kind": "control"},
+		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
+		"authority": "dominion"},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
-		"dp": 10, "cooldown": 20.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
-		"kind": "quiet"},
+		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
+		"authority": "disorder"},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
-		"dp": 10, "cooldown": 20.0, "aim": "drag", "shape": "line + 8 fissures", "kind": "cataclysm"},
+		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
-		"dp": 12, "cooldown": 25.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
-		"kind": "quiet"},
+		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
+		"authority": "veil"},
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
-		"dp": 14, "cooldown": 30.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
-		"kind": "control"},
+		"dp": 2, "cooldown": 42.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
+		"authority": "passage"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
-		"dp": 15, "cooldown": 30.0, "aim": "click", "shape": "roaming vortex, 10 s", "kind": "cataclysm"},
+		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin"},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
-		"dp": 16, "cooldown": 40.0, "aim": "click", "shape": "a plague spreading through crowds", "quiet": true,
-		"kind": "curse"},
+		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
+		"authority": "lifedeath"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
-		"dp": 18, "cooldown": 35.0, "aim": "click", "shape": "cone, faces down-right on screen", "kind": "cataclysm"},
+		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
-		"dp": 20, "cooldown": 40.0, "aim": "drag", "shape": "moving wall", "kind": "cataclysm"},
+		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
-		"dp": 20, "cooldown": 45.0, "aim": "click", "shape": "pull field", "kind": "cataclysm"},
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "pull field", "authority": "ruin"},
 	{"key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd",
-		"dp": 22, "cooldown": 45.0, "aim": "drag", "shape": "moving lane", "kind": "cataclysm"},
+		"dp": 3, "cooldown": 66.0, "aim": "drag", "shape": "moving lane", "authority": "ruin"},
 	{"key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd",
-		"dp": 22, "cooldown": 45.0, "aim": "click", "shape": "random bombardment", "kind": "cataclysm"},
+		"dp": 3, "cooldown": 66.0, "aim": "click", "shape": "random bombardment", "authority": "ruin"},
 	{"key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd",
-		"dp": 25, "cooldown": 50.0, "aim": "click", "shape": "volcano + stone rain", "kind": "cataclysm"},
+		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "volcano + stone rain", "authority": "ruin"},
 	{"key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd",
-		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "8 punches + slam", "kind": "cataclysm"},
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "8 punches + slam", "authority": "ruin"},
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
-		"dp": 30, "cooldown": 60.0, "aim": "click", "shape": "burst + freeze + ice", "kind": "cataclysm"},
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "burst + freeze + ice", "authority": "ruin"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
-		"dp": 40, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "kind": "cataclysm"},
+		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
 const ICON_DIR := "res://assets/pixellab/icons/"
 ## Preview clips for the draft: each power recorded once from the sandbox (bash tools/capture.sh --capture-clip)
@@ -79,21 +86,30 @@ static func get_power(key: String) -> Dictionary:
 	return {}
 
 
-## The draft's tabs (v0.06): what a power is for.
-const KINDS := ["cataclysm", "control", "quiet", "curse"]
-const KIND_TITLES := ["CATACLYSM", "CONTROL", "QUIET", "CURSE"]
+## The Authorities (v0.08; before, the kinds): what a power commands, and the draft's tabs, in tab order.
+const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "disorder", "lifedeath"]
+## Their titles, index for index.
+const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DISORDER", "LIFE/DEATH"]
 
 
-static func of_kind(kind: String) -> PackedStringArray:
+## The keys of an Authority's powers, in book order.
+static func of_authority(authority: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	for p: Dictionary in POWERS:
-		if String(p.get("kind", "")) == kind:
+		if String(p.get("authority", "")) == authority:
 			out.append(p.key)
 	return out
 
 
-static func kind_of(key: String) -> String:
-	return String(get_power(key).get("kind", ""))
+## A power's Authority, or "" for an unknown key.
+static func authority_of(key: String) -> String:
+	return String(get_power(key).get("authority", ""))
+
+
+## An Authority's title ("LIFE/DEATH"), or "" for an unknown one.
+static func authority_title(authority: String) -> String:
+	var i := AUTHORITIES.find(authority)
+	return String(AUTHORITY_TITLES[i]) if i >= 0 else ""
 
 
 ## A quiet power (v0.05): its cast is no danger the town can see.
@@ -108,14 +124,19 @@ static func keys() -> PackedStringArray:
 	return out
 
 
-## 84x84 painted icon (Prepare cards).
+## 84x84 painted icon (Prepare cards), or null when it has not been painted yet.
 static func icon(key: String) -> Texture2D:
-	return load(ICON_DIR + key + ".png")
+	return _texture(ICON_DIR + key + ".png")
 
 
-## 42x42 copy for the HUD slots.
+## 42x42 copy for the HUD slots, or null when it has not been painted yet.
 static func hud_icon(key: String) -> Texture2D:
-	return load(ICON_DIR + "hud/" + key + ".png")
+	return _texture(ICON_DIR + "hud/" + key + ".png")
+
+
+## A texture that may not exist yet (a new power before its icon is painted): null rather than a load error.
+static func _texture(path: String) -> Texture2D:
+	return load(path) if ResourceLoader.exists(path) else null
 
 
 static func clip_path(key: String) -> String:

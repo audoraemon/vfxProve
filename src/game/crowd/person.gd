@@ -4,10 +4,10 @@ extends DummyEnemy
 ## lifts, with a brain that walks the town's paths. Citizens go calm -> panicked -> fleeing -> escaped, queueing
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
-enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED }
+enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED, WHISPERED }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
-enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED }
+enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED, WHISPERED }
 ## How much a citizen knows of the danger (v0.04's awareness levels; Emergency and Collapse come with the staged
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
@@ -79,10 +79,21 @@ const LURABLE := [Mind.CALM, Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
 ## Discord (v0.06): a confused citizen ambles at this share of a walk, under a violet swirl.
 const CONFUSED_PACE := 0.7
 const COL_DISCORD := Color("b070ff")
-## Pestilence (v0.06): the sick move at this share of their pace, tinged green, coughing up a green mote.
+## Mind Whisper (v0.08): the gold of the eye over a whispered citizen.
+const COL_WHISPER := Color("f0d070")
+## Mind Whisper (v0.08.1): seconds after a whisper wears off before the same person can be whispered to again. Counted
+## from when it wore off: counted from the cast it changes nothing, as a messenger's whispers already come ~24 s apart.
+const SHAKE_OFF := 20.0
+## Pestilence (v0.06): the sick move at this share of their pace; SICK_MOTE is the green the targeting preview rings them in.
 const SICK_PACE := 0.7
-const SICK_TINT := Color("7a9a4a")
 const SICK_MOTE := Color("a8d060")
+## Pestilence (v0.07.1): the sick go through these colours as death nears, one for each of SICK_STAGES steps: bright
+## green when caught, then yellow-green, amber, orange and red. Saturated, so they stay readable under the evening light.
+const SICK_COLORS: Array[Color] = [Color("8ee04a"), Color("d8e040"), Color("f0b030"), Color("f07028"), Color("e8302c")]
+const SICK_STAGES := 5
+## How strongly the sickness colours the skin, and the clothes (and a soldier's mail).
+const SICK_SKIN := 0.7
+const SICK_CLOTH := 0.7
 ## The town's responders dress for their duty (v0.05), so the player can pick them out: clergy in a cream robe with a
 ## gold stole, engineers in a leather apron and cap with a hammer, the bellkeeper in a navy coat with a brass badge.
 const CLERGY_ROBE := Color("e4dcc4")
@@ -93,6 +104,9 @@ const ENG_HAFT := Color("6b4428")
 const ENG_IRON := Color("a0a6ae")
 const KEEPER_COAT := Color("2c3a5c")
 const KEEPER_BADGE := Color("e0b84a")
+## The watchman (v0.08): a dark cloak, and a lit lantern in his leading hand.
+const WATCH_CLOAK := Color("2a2630")
+const WATCH_LANTERN := Color("ffd27a")
 const SOL_MAIL := Color("6a6f78")
 const SOL_MAIL_HI := Color("8d939c")
 const SOL_HELM := Color("484d56")
@@ -129,6 +143,9 @@ var assist_fire: Structure
 var assist_at_water := false
 var assist_full := false
 var assist_wait := 0.0
+## Kept on its fire through the evacuation (v0.08.2): an engineer, who works on while the town leaves, unlike the
+## fire brigade.
+var assist_stays := false
 ## Taking cover (v0.04 P2; ShelterManager runs it): the crowd's manager, the building sought or sheltered in, its
 ## door, and whether it is inside (hidden, out of every effect's reach, not stepped).
 var shelters: ShelterManager
@@ -173,9 +190,17 @@ var awareness := Awareness.UNAWARE
 var _observe_left := 0.0
 ## Pestilence (v0.06): seconds left to live, sick; 0 is healthy (PlagueManager spreads it and ends it).
 var sick_left := 0.0
+## Pestilence (v0.07.1): the seconds the sickness ran in all, from infect(), to tell how far along it is.
+var sick_total := 0.0
 ## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
 var _confused_left := 0.0
 var _was_fleeing := false
+## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
+var _whisper_left := 0.0
+var _whisper_fled := false
+## Mind Whisper (v0.08.1): seconds left of shaking the last whisper off (see SHAKE_OFF); 0 for anyone never whispered.
+## Counted down in tick(), so it runs on at any thinking rate, off screen or held still.
+var _shaken_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 ## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
@@ -300,6 +325,8 @@ func unhurried() -> bool:
 # --- Brain -------------------------------------------------------------------
 
 func tick(delta: float) -> void:
+	if _shaken_left > 0.0:
+		_shaken_left = maxf(_shaken_left - delta, 0.0)
 	if state == State.WANDER and not is_frozen():
 		_think_accum += delta
 		if _think_due:
@@ -367,6 +394,13 @@ func _think(delta: float) -> void:
 		_confused_left -= delta
 		if _confused_left <= 0.0:
 			_come_to()
+	elif mind == Mind.WHISPERED:
+		if _goal == Vector2.INF:
+			# There (or as near as the way allowed): stand and linger.
+			_idle = maxf(_idle, 0.1)
+			_whisper_left -= delta
+			if _whisper_left <= 0.0:
+				_wake()
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -478,7 +512,8 @@ func _pick_target() -> void:
 	if mind == Mind.PANIC:
 		_settle()
 		return
-	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY:
+	if mind == Mind.OBSERVE or mind == Mind.ASSIST or mind == Mind.SHELTER or mind == Mind.DUTY \
+			or mind == Mind.WHISPERED:
 		_target = ground_pos
 		return
 	if mind == Mind.FLEE:
@@ -526,14 +561,15 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 
 
 ## Something happened within sight or earshot at `from`: stop and look at it for a moment. Only a calm or recovering
-## citizen does; the frightened and the fleeing are past looking.
-func observe(from: Vector2) -> void:
+## citizen does; the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
+## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
+func observe(from: Vector2, seconds := -1.0) -> void:
 	if soldier or state == State.DEAD or not (mind == Mind.CALM or mind == Mind.RECOVER):
 		return
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
 	_threat = from
-	_observe_left = rng.randf_range(OBSERVE_SECONDS.x, OBSERVE_SECONDS.y)
+	_observe_left = seconds if seconds > 0.0 else rng.randf_range(OBSERVE_SECONDS.x, OBSERVE_SECONDS.y)
 	_goal = Vector2.INF
 	_path = PackedVector2Array()
 	_leg = 0
@@ -541,13 +577,29 @@ func observe(from: Vector2) -> void:
 	walk_speed = _mind_speed()
 
 
-## Pestilence (v0.06): catch the plague, with `seconds` to live. Soldiers, the dead and the already sick do not.
+## Pestilence (v0.06): catch the plague, with `seconds` to live. Soldiers too (v0.07.1); the dead and the already sick
+## do not.
 func infect(seconds: float) -> bool:
-	if soldier or state == State.DEAD or sick_left > 0.0:
+	if state == State.DEAD or sick_left > 0.0:
 		return false
 	sick_left = seconds
+	sick_total = seconds
 	walk_speed = _mind_speed()
 	return true
+
+
+## Pestilence (v0.07.1): 0 when healthy, else 1..SICK_STAGES by how much of the sickness has run.
+func sick_stage() -> int:
+	if sick_left <= 0.0 or state == State.DEAD:
+		return 0
+	var run := 1.0 - sick_left / maxf(sick_total, 0.001)
+	return clampi(1 + int(run * float(SICK_STAGES)), 1, SICK_STAGES)
+
+
+## Pestilence (v0.07.1): the sickness's colour now, green when caught to red near death; white when healthy.
+func sick_color() -> Color:
+	var stage := sick_stage()
+	return SICK_COLORS[stage - 1] if stage > 0 else Color.WHITE
 
 
 ## Discord (v0.06): forget everything for `seconds` -- duty, the day, even the way out -- and amble about where it
@@ -592,6 +644,58 @@ func lure(at: Vector2, seconds: float) -> bool:
 	walk_speed = _mind_speed()
 	set_goal(at)
 	return true
+
+
+## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
+## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
+## where a duty's manager takes it back. Soldiers, anyone inside and the dead do not hear it, nor (v0.08.1) anyone still
+## shaking the last one off; true when it did. One still under a whisper hears a new one -- the shake-off starts when
+## it wears off -- and keeps the flight it owes.
+func whisper(to: Vector2, linger: float) -> bool:
+	if soldier or inside or state == State.DEAD or shaken():
+		return false
+	if mind != Mind.WHISPERED:
+		_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
+	release_from_queue()
+	passing_gate = null
+	mind = Mind.WHISPERED
+	_whisper_left = linger
+	_confused_left = 0.0
+	_panic_left = 0.0
+	# Up from a stumble too: a whispered person never runs, so never stumbles, and the pose signatures count on it.
+	_stumble = 0.0
+	anchor = to
+	walk_speed = _mind_speed()
+	set_goal(to)
+	return true
+
+
+## Seconds of lingering left while whispered, else 0.
+func whispered_left() -> float:
+	return _whisper_left if mind == Mind.WHISPERED else 0.0
+
+
+## Mind Whisper (v0.08.1): a whisper let it go less than SHAKE_OFF seconds ago, and another would not take.
+func shaken() -> bool:
+	return _shaken_left > 0.0
+
+
+## The town is evacuating while it is whispered: it flees once the whisper wears off.
+func whisper_resume_flee() -> void:
+	_whisper_fled = true
+
+
+## The whisper wears off: flight again if it fled before (or the town evacuated meanwhile), else back to its day. It
+## shakes the whisper off for SHAKE_OFF seconds (v0.08.1).
+func _wake() -> void:
+	_whisper_left = 0.0
+	_shaken_left = SHAKE_OFF
+	if _whisper_fled:
+		_whisper_fled = false
+		mind = Mind.CALM
+		flee()
+	else:
+		_recover(rng.randf_range(1.0, 2.0))
 
 
 ## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is
@@ -665,6 +769,8 @@ func intent() -> Intent:
 			return Intent.SHELTER
 		Mind.CONFUSED:
 			return Intent.CONFUSED
+		Mind.WHISPERED:
+			return Intent.WHISPERED
 	return Intent.ROUTINE
 
 
@@ -688,12 +794,13 @@ func leave_shelter(evacuate: bool) -> void:
 
 
 ## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
-## (force).
-func assist(s: Structure, force := false) -> void:
+## or its engineer team (force); `stays` keeps it on through the evacuation (an engineer, v0.08.2).
+func assist(s: Structure, force := false, stays := false) -> void:
 	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE:
 		return
 	mind = Mind.ASSIST
 	assist_fire = s
+	assist_stays = stays
 	assist_at_water = false
 	assist_full = false
 	assist_wait = 0.0
@@ -705,6 +812,7 @@ func stand_down() -> void:
 	assist_fire = null
 	assist_full = false
 	assist_at_water = false
+	assist_stays = false
 	if mind == Mind.ASSIST:
 		if soldier:
 			send_to_post(post if post != Vector2.INF else ground_pos)  # a rescue squad back to its post (v0.07)
@@ -1041,24 +1149,27 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		lift += 2  # down on one knee
 	var f := _facing
 	var role := profile.role if profile != null else -1
-	# The plague (v0.06) greens the skin and the clothes.
+	# The plague (v0.06) greens the skin and the clothes, going red as death nears (v0.07.1).
 	var sick := sick_left > 0.0 and state != State.DEAD
-	var skin := _skin.lerp(SICK_TINT, 0.5) if sick else _skin
+	var tint := sick_color() if sick else Color.WHITE
+	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
+	var legs := CIT_LEGS.lerp(tint, SICK_CLOTH) if sick else CIT_LEGS
 	if role == CitizenProfile.Role.CLERGY:
 		# A robe to the ground (no legs showing), a gold stole down its front.
-		var robe := CLERGY_ROBE.lerp(SICK_TINT, 0.3) if sick else CLERGY_ROBE
+		var robe := CLERGY_ROBE.lerp(tint, SICK_CLOTH) if sick else CLERGY_ROBE
 		if top_only == 0:
 			_px(-3, -4 + lift, 6, 4, robe.darkened(0.14))
 		_px(-3, -10 + lift, 6, 6, robe)
 		_px(-3, -10 + lift, 6, 1, robe.lightened(0.2))
 		_px(-1, -10 + lift, 1, 8, CLERGY_STOLE)
 	else:
-		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else _tunic
+		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else (
+			WATCH_CLOAK if role == CitizenProfile.Role.WATCHMAN else _tunic)
 		if sick:
-			coat = coat.lerp(SICK_TINT, 0.3)
+			coat = coat.lerp(tint, SICK_CLOTH)
 		if top_only == 0:
-			_px(-2, -4 + lift, 2, 4 - step, CIT_LEGS)
-			_px(1, -4 + lift, 2, 3 + step, CIT_LEGS)
+			_px(-2, -4 + lift, 2, 4 - step, legs)
+			_px(1, -4 + lift, 2, 3 + step, legs)
 		_px(-3, -10 + lift, 6, 6, coat)
 		_px(-3, -10 + lift, 6, 1, coat.lightened(0.18))
 		if role == CitizenProfile.Role.ENGINEER:
@@ -1071,7 +1182,7 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	_px(-2, -13 + lift, 4, 3, skin)
 	if sick:
 		# A cough: a green mote drifting up from the mouth with its steps.
-		_px(2 if f > 0 else -3, -14 - int(_anim * 2.0) % 4 + lift, 1, 1, SICK_MOTE)
+		_px(2 if f > 0 else -3, -14 - int(_anim * 2.0) % 4 + lift, 1, 1, tint.lightened(0.35))
 	if role == CitizenProfile.Role.ENGINEER:
 		# A leather cap, and a hammer in the leading hand.
 		_px(-2, -14 + lift, 4, 2, ENG_CAP)
@@ -1080,6 +1191,11 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(hx - 1, arm_y - 2 + lift, 3, 1, ENG_IRON)
 	else:
 		_px(-2, -13 + lift, 4, 1, _hair)
+	if role == CitizenProfile.Role.WATCHMAN and state != State.DEAD:
+		# His lantern, hanging from the leading hand: an iron cap over a 1x2 glow.
+		var lx := 3 if f > 0 else -4
+		_px(lx, arm_y + 3 + lift, 1, 1, COL_DARK)
+		_px(lx, arm_y + 4 + lift, 1, 2, WATCH_LANTERN)
 	if state != State.DEAD or _char < 0.5:
 		_px(0 if f > 0 else -1, -12 + lift, 1, 1, COL_DARK)
 	if mind == Mind.CONFUSED and state != State.DEAD:
@@ -1088,21 +1204,32 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		for k in 4:
 			var a := float((turn + k) % 8) * TAU / 8.0
 			_px(roundi(cos(a) * 3.0), -17 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
+	if mind == Mind.WHISPERED and state != State.DEAD:
+		# Mind Whisper's glyph: a small gold eye over the head.
+		_px(-1, -17 + lift, 3, 1, COL_WHISPER)
+		_px(0, -18 + lift, 1, 3, COL_WHISPER)
 
 
 ## Town guard: mail, royal blue tabard, helmet, spear and shield.
 func _draw_soldier(lift: int, top_only: int) -> void:
 	var step := int(_anim * _walk_rate()) % 2 if state != State.DEAD and not is_frozen() else 0
 	var f := _facing
+	# The plague (v0.07.1) colours a soldier too.
+	var sick := sick_left > 0.0 and state != State.DEAD
+	var tint := sick_color() if sick else Color.WHITE
+	var mail := SOL_MAIL.lerp(tint, SICK_CLOTH) if sick else SOL_MAIL
+	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
 	if top_only == 0:
 		_px(-3, -5 + lift, 2, 5 - step, SOL_HELM)
 		_px(1, -5 + lift, 2, 4 + step, SOL_HELM)
-	_px(-4, -11 + lift, 8, 6, SOL_MAIL)
+	_px(-4, -11 + lift, 8, 6, mail)
 	_px(-4, -11 + lift, 8, 1, SOL_MAIL_HI)
 	var tabard := SOL_MARSHAL if corps == Corps.MARSHAL else (SOL_ESCORT if corps == Corps.ESCORT else SOL_TABARD)
+	if sick:
+		tabard = tabard.lerp(tint, SICK_CLOTH)
 	_px(-2, -9 + lift, 4, 4, tabard)
-	_px(-5, -10 + lift, 1, 3, _skin)
-	_px(4, -10 + lift, 1, 3, _skin)
+	_px(-5, -10 + lift, 1, 3, skin)
+	_px(4, -10 + lift, 1, 3, skin)
 	_px(-3, -15 + lift, 6, 4, SOL_HELM)
 	_px(-3, -15 + lift, 6, 1, SOL_MAIL_HI)
 	if state != State.DEAD or _char < 0.5:
@@ -1117,10 +1244,14 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 		_px(5 * f, -18 + lift, 1, 2, SOL_TIP)
 	_px(-5 * f, -10 + lift, 2 * f, 5, SOL_SHIELD)
 	_px(-4 * f, -8 + lift, 1, 1, SOL_GOLD)
+	if sick:
+		# A cough from under the helm.
+		_px(2 if f > 0 else -3, -16 - int(_anim * 2.0) % 4 + lift, 1, 1, tint.lightened(0.35))
 
 
 func _pose_signature() -> int:
-	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0)
+	return (1 if is_running() else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0) \
+		+ (5 if mind == Mind.WHISPERED else 0)
 
 
 ## DummyEnemy._art_signature(), folded ahead of time for a person on its feet with nothing lifting, freezing or
@@ -1138,10 +1269,12 @@ func _art_signature() -> int:
 	else:
 		rate = 5.0 if soldier else 6.0
 	var walk := int(_anim * rate) % 2 * 2 + (1 if _facing > 0 else 0)
-	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7.
-	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0)
-	# Sickness (v0.06) above the walk frames, so its tint shows the moment it is caught.
-	return (walk + (4 if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
+	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7. A
+	# whispered one (v0.08) neither runs nor stumbles (whisper() stands it up), so 5 is free too.
+	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0) \
+		+ (5 if mind == Mind.WHISPERED else 0)
+	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
+	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose
 
 
 ## _art_signature() for the people sprites: the frame (_sprite_pose()) and everything drawn over or around it, so a

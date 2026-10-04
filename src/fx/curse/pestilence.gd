@@ -1,21 +1,21 @@
 class_name PestilenceFx
 extends FxTimeline
-## Pestilence (v0.06): a green miasma settles on up to INFECT_MAX citizens within INFECT_R of the aim, nearest first,
+## Pestilence (v0.06): a green miasma settles on up to INFECT_MAX people within INFECT_R of the aim, nearest first,
 ## and they catch the plague (Person.infect(); PlagueManager spreads it and ends it). Quiet when cast: the sickness is
-## not seen as a danger, though every death it brings is an ordinary death. Soldiers do not catch it. The cast locks
-## the other slots for 0.8 s.
+## not seen as a danger, though every death it brings is an ordinary death. Soldiers catch it too (v0.07.1). The cast
+## locks the other slots for 0.8 s.
 
 const INFECT_MAX := 3
 const INFECT_R := 1.2
 const MIASMA := [Color("d0f090"), Color("90b050"), Color("5a7a30"), Color("2a3a18")]
 
 
-## Who it would infect at `at`: the nearest healthy citizens within reach, INFECT_MAX at most.
+## Who it would infect at `at`: the nearest healthy people within reach, soldiers too, INFECT_MAX at most.
 static func victims_at(field: EnemyField, at: Vector2) -> Array[Person]:
 	var out: Array[Person] = []
 	for e in field.in_radius(at, INFECT_R):
 		var p := e as Person
-		if p != null and not p.soldier and not p.inside and p.sick_left <= 0.0:
+		if p != null and not p.inside and p.sick_left <= 0.0:
 			out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))

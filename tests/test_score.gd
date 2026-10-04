@@ -52,8 +52,7 @@ static func run(t) -> void:
 			c.field.kill(p, &"nova")
 	rules.advance(0.1)
 	t.check(not rules.finished, "a razed town with the Citadel still up is not a win yet")
-	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, but the Temple's near edge is 3.5
-	# away, and a blast that took it down as well would pay its 8 DP into the 15 being measured here.
+	# Radius 3.0, not 4.0: every Citadel part is within 2.6 of the origin, and the Temple's near edge is 3.5 away.
 	while not town.citadel.is_fallen():
 		town.citadel.advance(1.01)
 		env.damage_radius(TownLayout.CITADEL_ORIGIN, 3.0, 400.0, &"nova")
@@ -62,10 +61,9 @@ static func run(t) -> void:
 		"the Citadel down with stability at zero wins it (%s)" % [ended])
 	t.near(rules.stability.total(), 0.0, 0.0001, "the city has fallen (%.3f)" % rules.stability.total())
 
-	# The score is the spec's arithmetic, line by line.
+	# The score is the spec's arithmetic, line by line (v0.08: no Divine Power term).
 	var seconds := int(roundf(rules.time_left))
-	var dp_left := int(floorf(rules.dp))
-	var expected := Rules.SCORE_WIN + seconds * Rules.SCORE_PER_SECOND + dp_left * Rules.SCORE_PER_DP \
+	var expected := Rules.SCORE_WIN + seconds * Rules.SCORE_PER_SECOND \
 		+ rules.buildings_down * Rules.SCORE_PER_BUILDING + crowd.killed_citizens * Rules.SCORE_PER_CITIZEN \
 		+ crowd.killed_soldiers * Rules.SCORE_PER_SOLDIER + rules.chains * Rules.SCORE_PER_CHAIN
 	t.check(rules.score() == expected, "the score adds up (%d, expected %d)" % [rules.score(), expected])
@@ -79,22 +77,32 @@ static func run(t) -> void:
 	_drop(c)
 
 	# --- The rank thresholds -------------------------------------------------------------------------
-	# Driven through the real score, one chain at a time: 300 points each, so the thresholds land exactly.
+	# Driven through the real score, chains (300 points each) and buildings (40 each), so each threshold lands exactly
+	# and one building less falls just under it.
 	var d := _mission()
 	rules = d.rules
-	rules.chains = 64
-	t.check(rules.score() == 19200 and rules.rank() == "S", "64 chains is 19,200 points and an S (%d, %s)" % [rules.score(), rules.rank()])
-	rules.chains = 63
-	t.check(rules.rank() == "A", "18,900 is an A (%s)" % rules.rank())
-	rules.chains = 48
-	t.check(rules.score() == 14400 and rules.rank() == "A", "14,400 is still an A (%d)" % rules.score())
-	rules.chains = 47
-	t.check(rules.rank() == "B", "14,100 is a B (%s)" % rules.rank())
-	rules.chains = 32
-	t.check(rules.score() == 9600 and rules.rank() == "B", "9,600 is still a B (%d)" % rules.score())
-	rules.chains = 16
-	t.check(rules.rank() == "C" and rules.score() == 4800, "4,800 is a C (%s)" % rules.rank())
+	rules.chains = 60
+	rules.buildings_down = 25
+	t.check(rules.score() == 19000 and rules.rank() == "S", "19,000 points is an S (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 24
+	t.check(rules.score() == 18960 and rules.rank() == "A", "18,960 is an A (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 46
+	rules.buildings_down = 10
+	t.check(rules.score() == 14200 and rules.rank() == "A", "14,200 is still an A (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 9
+	t.check(rules.score() == 14160 and rules.rank() == "B", "14,160 is a B (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 30
+	rules.buildings_down = 10
+	t.check(rules.score() == 9400 and rules.rank() == "B", "9,400 is still a B (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 9
+	t.check(rules.score() == 9360 and rules.rank() == "C", "9,360 is a C (%d, %s)" % [rules.score(), rules.rank()])
+	rules.chains = 14
+	rules.buildings_down = 10
+	t.check(rules.score() == 4600 and rules.rank() == "C", "4,600 is a C (%d, %s)" % [rules.score(), rules.rank()])
+	rules.buildings_down = 9
+	t.check(rules.score() == 4560 and rules.rank() == "D", "4,560 is a D (%d, %s)" % [rules.score(), rules.rank()])
 	rules.chains = 9
+	rules.buildings_down = 0
 	t.check(rules.rank() == "D", "2,700 is a D (%s)" % rules.rank())
 	_drop(d)
 

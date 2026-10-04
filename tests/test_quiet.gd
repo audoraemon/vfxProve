@@ -1,5 +1,5 @@
 extends RefCounted
-## v0.05 quiet powers. Silent Doom takes up to three people within reach of the aim; unseen, the town never knows (no
+## v0.05 quiet powers. Silent Doom takes everyone within reach of the aim (v0.07.1); unseen, the town never knows (no
 ## danger, no alarm), but a witness panics and the death raises the alarm. Blight ruins what a structure is for --
 ## a well's water, a gate (jammed for a while), the bell, the dock, the rite -- and adds a single alarm.
 
@@ -47,7 +47,7 @@ static func run(t) -> void:
 	var town: Town = made[5]
 	_clear_round(crowd)
 
-	# Who Silent Doom takes: the nearest, three at most, within reach.
+	# Who Silent Doom takes: everyone within reach, soldiers too (v0.07.1), and nobody beyond.
 	var at := Vector2(-4.0, 10.0)
 	var four: Array[Person] = []
 	for k in 4:
@@ -56,25 +56,30 @@ static func run(t) -> void:
 		four.append(p)
 	var far: Person = crowd.citizens[4]
 	far.ground_pos = at + Vector2(1.5, 0.0)
+	var soldier: Person = crowd.soldiers[0]
+	soldier.ground_pos = at + Vector2(0.0, 0.6)
 	var taken := SilentDoom.victims_at(field, at)
-	t.check(taken.size() == SilentDoom.VICTIMS and four[3] not in taken and four[0] in taken and far not in taken,
-		"Silent Doom takes the three nearest within reach")
+	t.check(taken.size() == 5 and four.all(func(p: Person) -> bool: return p in taken) and soldier in taken
+		and far not in taken, "Silent Doom takes everyone within reach, soldiers too, and nobody beyond")
+	t.check(taken[0] == four[0], "and the nearest comes first")
+	t.check(is_equal_approx(float(PowerBook.get_power("doom").cooldown), 10.0), "Silent Doom's cooldown is 10 s")
+	taken.erase(soldier)
+	soldier.ground_pos = Vector2(-27.0, 22.0)
 
 	# A quiet cast registers no danger.
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "doom")
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "blight")
 	t.check(crowd.threats.active_count() == 0, "a quiet cast is no danger the town can see")
 
-	# Unseen: three fall together (none witnesses another) and the town never knows.
-	four[3].ground_pos = Vector2(-27.0, 20.0)
+	# Unseen: four fall together (none witnesses another) and the town never knows.
 	far.ground_pos = Vector2(-27.0, 21.0)
 	var alarm := crowd.alarm
 	var killed := crowd.killed_citizens
 	for p in taken:
 		field.kill(p, &"doom", at)
 	crowd.advance(0.1)
-	t.check(crowd.killed_citizens == killed + 3 and crowd.alarm == alarm and crowd.threats.active_count() == 0
-		and crowd.alarms.stage == AlarmManager.Stage.NORMAL, "unseen, three die and the town never knows")
+	t.check(crowd.killed_citizens == killed + taken.size() and crowd.alarm == alarm and crowd.threats.active_count() == 0
+		and crowd.alarms.stage == AlarmManager.Stage.NORMAL, "unseen, all four die and the town never knows")
 
 	# Seen: a witness close by panics, and the death raises the alarm.
 	var victim: Person = crowd.citizens[10]
@@ -87,6 +92,76 @@ static func run(t) -> void:
 	crowd.advance(0.1)
 	t.check(crowd.alarm > alarm and witness.mind == Person.Mind.PANIC and crowd.threats.active_count() == 1,
 		"seen, the witness panics and the alarm rises (%.1f)" % crowd.alarm)
+
+	# Seen, several at once (v0.07.1): the victims are reacted to together, but each death still raises the alarm as if
+	# it fell alone, a witness among them flees from the nearest, and a soldier taken is counted as a soldier killed.
+	var site := Vector2(6.0, 10.0)
+	var fallen: Array[Person] = []
+	for k in 4:
+		var p: Person = crowd.citizens[20 + k]
+		p.ground_pos = site + Vector2(0.5 * float(k), 0.0)
+		fallen.append(p)
+	var guard: Person = crowd.soldiers[2]
+	guard.ground_pos = site + Vector2(0.75, -0.5)
+	fallen.append(guard)
+	var between: Person = crowd.citizens[30]
+	between.ground_pos = site + Vector2(0.7, 0.3)
+	between.shelters = null
+	between.mind = Person.Mind.CALM
+	alarm = crowd.alarm
+	killed = crowd.killed_citizens
+	var killed_soldiers := crowd.killed_soldiers
+	for p in fallen:
+		field.kill(p, &"doom", site)
+	crowd.advance(0.1)
+	var per_death := Crowd.ALARM_KILL * (1.0 if crowd.alarms.bell_rung else Crowd.UNWARNED_ALARM)
+	t.near(crowd.alarm - alarm, per_death * float(fallen.size()), 0.001,
+		"each of the %d seen deaths raises the alarm by %.3f (+%.3f)" % [fallen.size(), per_death, crowd.alarm - alarm])
+	t.check(between.mind == Person.Mind.PANIC, "a witness between the victims flees")
+	t.check(between._threat.is_equal_approx(fallen[1].ground_pos),
+		"from the nearest of them (%s)" % [between._threat])
+	t.check(crowd.killed_soldiers == killed_soldiers + 1 and crowd.killed_citizens == killed + 4,
+		"a soldier taken counts as a soldier killed (%d), the rest as citizens (%d)" % [crowd.killed_soldiers - killed_soldiers,
+		crowd.killed_citizens - killed])
+
+	# A boarding in the T_STRIKE between the cast and the fall is out of reach (v0.07.1): only the one in the open dies.
+	var ctx := FxContext.new()
+	ctx.env = env
+	ctx.field = field
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.overhead = Node2D.new()
+	var spot := Vector2(-4.0, 20.0)
+	var open_air: Person = crowd.citizens[40]
+	var boarding: Person = crowd.citizens[41]
+	open_air.ground_pos = spot
+	boarding.ground_pos = spot + Vector2(0.2, 0.0)
+	var doom := FxTimeline.cast(load("res://src/fx/quiet/silent_doom.gd"), ctx, spot, {}) as SilentDoom
+	boarding.inside = true
+	doom._process(SilentDoom.T_STRIKE + 0.01)
+	t.check(not open_air.is_alive() and boarding.is_alive(), "someone who boards a boat before the strike is not taken")
+	boarding.inside = false
+	ctx.overhead.free()
+
+	# The witness (v0.08, Crowd.nearest_witness()): the nearest living person within DOOM_WITNESS, never one inside or
+	# dead -- the rule above, and The Warning's relay.
+	_clear_round(crowd)
+	var scene := Vector2(8.0, 20.0)
+	var near_one: Person = crowd.citizens[60]
+	var farther: Person = crowd.soldiers[3]
+	var indoors: Person = crowd.citizens[61]
+	var corpse: Person = four[0]
+	near_one.ground_pos = scene + Vector2(1.0, 0.0)
+	farther.ground_pos = scene + Vector2(0.0, 1.5)
+	indoors.ground_pos = scene + Vector2(0.3, 0.0)
+	indoors.inside = true
+	corpse.ground_pos = scene + Vector2(0.0, 0.4)
+	t.check(not corpse.is_alive() and crowd.nearest_witness(scene) == near_one,
+		"the nearest witness is the nearer of two, past the one inside and the dead")
+	t.check(crowd.nearest_witness(scene, near_one) == farther, "a soldier witnesses too; `exclude` is passed over")
+	near_one.ground_pos = scene + Vector2(2.1, 0.0)
+	farther.ground_pos = scene + Vector2(0.0, -2.5)
+	t.check(crowd.nearest_witness(scene) == null, "nobody within %.1f: no witness" % Crowd.DOOM_WITNESS)
+	indoors.inside = false
 	_done(made)
 
 	# Blight: its target, its alarm, and what each loses.

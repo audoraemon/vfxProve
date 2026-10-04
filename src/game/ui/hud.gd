@@ -1,39 +1,47 @@
 class_name Hud
 extends Control
 ## The in-mission HUD (spec §5): the clock above, the objectives to the left, the city's state to the right,
-## banners across the middle, and the Divine Power bar with the four slots below. It reads Rules, Crowd and
+## banners across the middle, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
+## without a score (v0.08: The Warning) lists its objectives top left, and its director's marked person -- the
+## messenger -- wears a gold marker, or an arrow at the screen's edge points to him. It reads Rules, Crowd and
 ## the Citadel and changes nothing; it redraws only when what it shows has changed.
 
 ## How long one banner stays up.
 const BANNER_SECONDS := 2.2
-## A +DP popup drifts up for this long.
-const POPUP_SECONDS := 1.2
 ## A slot that refused a cast stays red for this long (spec §1; the buzz that goes with it is milestone 5's).
 const FLASH_SECONDS := 0.35
 ## The clock turns red and pulses under this many seconds (spec §5).
 const HURRY_AT := 30.0
 
 const SLOT_SIZE := 42.0
-const SLOT_GAP := 6.0
-## A slot is a card: the SLOT_SIZE icon on the left, the power's name and cost on the right.
-## Wide enough that every power's name fits in two lines: the longest line is "Judgement of", 75 px at
-## SIZE_SMALL, and at 112 the name wrapped to three and lost "Ancients". The row is 522 px, inside 640.
-const SLOT_W := 126.0
+const SLOT_GAP := 4.0
+## A slot is a compact card (v0.08: six fit across the screen): the SLOT_SIZE icon on the left, and beside it the
+## power's name on one line, cut to NAME_ROOM, over its cooldown. Six make a 620-px row inside 640.
+const SLOT_W := 100.0
+## How wide the name may run beside the icon, short of the card's right edge.
+const NAME_ROOM := SLOT_W - SLOT_SIZE - 6.0
 ## The screen width to lay out against before the Control has been sized (headless tests).
 const SCREEN_W := 640.0
-## Where the slot row sits.
-const SLOT_TOP := 312.0
+## Where the slot row sits: low, where the Divine Power bar was before v0.08.
+const SLOT_TOP := 316.0
 const STABILITY_BAR := Vector2(96.0, 5.0)
 ## The objectives, top left: sized for four lines of SIZE_SMALL text.
 const OBJECTIVE_PANEL := Rect2(2.0, 2.0, 236.0, 60.0)
 ## The stability bar's legend: a short name for each part and its colour's index, in the bar's own order.
 const LEGEND := [["Pop", 0], ["Infra", 1], ["Lead", 2], ["Mil", 3], ["Res", 4]]
-## The dark plate under a slot's hotkey and cost.
+## The dark plate under a slot's hotkey.
 const PLATE_H := 12.0
-const DP_BAR := Vector2(180.0, 7.0)
 ## The Banishing Rite's bar under the clock (v0.05).
 const RITE_BAR := Vector2(120.0, 4.0)
 const RITE_TOP := 30.0
+## The screen height to lay out against before the Control has been sized (headless tests).
+const SCREEN_H := 360.0
+## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
+const ROW_H := 13.0
+## The messenger's marker (v0.08): a gold chevron this far above his feet while he is on screen, else an arrow at the
+## screen's edge, this far in, pointing at him.
+const MARKER_LIFT := 26.0
+const EDGE_MARGIN := 10.0
 
 var _rules: Rules
 var _crowd: Crowd
@@ -41,17 +49,15 @@ var _town: Town
 var _aim: Targeting
 ## Banners waiting their turn: [text, seconds shown].
 var _banners: Array = []
-## Floating gains: [text, screen position, seconds shown].
-var _popups: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
 var _flash := PackedFloat32Array()
 ## What the last frame drew, so an unchanged HUD costs nothing.
 var _drawn := ""
-## The four slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
+## The slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
 ## _draw() can reach the draw list before the GPU has it -- which paints a solid white block, and because the
 ## HUD only redraws when something changes, the block stays white for the rest of the mission.
 var _slot_icons: Array[Texture2D] = []
-## The powers' names, taken once with their icons.
+## The powers' names, cut to one line of NAME_ROOM, taken once with their icons.
 var _slot_names: Array[String] = []
 
 
@@ -69,9 +75,8 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 		_slot_icons.append(PowerBook.hud_icon(_rules.key(i)))
 	_slot_names.clear()
 	for i in _rules.loadout.size():
-		_slot_names.append(String(_rules.power(i).get("name", "")))
+		_slot_names.append(UiTheme.fit(String(_rules.power(i).get("name", "")), NAME_ROOM))
 	_rules.banner.connect(push_banner)
-	_rules.dp_gained.connect(_on_dp_gained)
 	_rules.cast_refused.connect(_on_cast_refused)
 	return self
 
@@ -80,7 +85,7 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
-## Age the banners and popups, and redraw when anything on screen has changed.
+## Age the banners, and redraw when anything on screen has changed.
 func advance(delta: float) -> void:
 	# Only the one on screen (index 0, the only one _draw_banners() ever reads) ages: a banner waiting behind
 	# it must not lose part of its own showing to the time it spent queued.
@@ -88,20 +93,14 @@ func advance(delta: float) -> void:
 		_banners[0][1] += delta
 	while not _banners.is_empty() and float(_banners[0][1]) >= BANNER_SECONDS:
 		_banners.pop_front()
-	for p in _popups:
-		p[2] += delta
-	var kept: Array = []
-	for p in _popups:
-		if float(p[2]) < POPUP_SECONDS:
-			kept.append(p)
-	_popups = kept
 	var flashing := false
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners fade, popups drift, a refused slot burns red and the last half minute pulses: while any of those
-	# is on screen the HUD is an animation and redraws every frame. The rest of the time it is a still picture.
-	if flashing or not _banners.is_empty() or not _popups.is_empty() or _rules.time_left <= HURRY_AT:
+	# Banners fade, a refused slot burns red, the last half minute pulses and a marker follows its messenger (v0.08):
+	# while any of those is on screen the HUD is an animation and redraws every frame. The rest of the time it is a
+	# still picture.
+	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT or marker_shown():
 		_drawn = ""
 		queue_redraw()
 		return
@@ -117,6 +116,53 @@ func objective_text() -> String:
 	if is_instance_valid(_town) and is_instance_valid(_town.citadel):
 		left = _town.citadel.fraction()
 	return "Destroy the Royal Citadel - %d%% left" % roundi(left * 100.0)
+
+
+## The objective panel of a mission without a score (v0.08), as [text, mark] rows: each primary objective with a line
+## to show (mark ""), then each bonus -- "ok" while it holds, "x" once it has failed.
+func objective_rows() -> Array:
+	var rows := []
+	for o in _rules.objectives:
+		var s := o.hud_text(_rules)
+		if s != "":
+			rows.append([s, ""])
+	for b in _rules.bonuses:
+		rows.append([b.hud_text(_rules), "x" if b.check(_rules) == Objective.Status.FAILED else "ok"])
+	return rows
+
+
+## The mission's director marks someone (v0.08: The Warning's messenger).
+func marker_shown() -> bool:
+	return _rules.director != null and _rules.director.marker() != Vector2.INF
+
+
+## Where the marked person's feet are on the screen, or Vector2.INF with nobody marked. The world point goes through
+## the camera's canvas transform (none before the HUD is in a tree: headless tests).
+func marker_screen() -> Vector2:
+	if not marker_shown():
+		return Vector2.INF
+	var world := Iso.ground_to_screen(_rules.director.marker())
+	return (get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY) * world
+
+
+## Where the edge arrow for an off-screen `point` sits: on the line from the screen's centre to it, EDGE_MARGIN inside
+## the frame.
+func edge_arrow(point: Vector2) -> Vector2:
+	var view := _view()
+	var mid := view * 0.5
+	var d := point - mid
+	var half := mid - Vector2.ONE * EDGE_MARGIN
+	var k := 1.0
+	if absf(d.x) > half.x:
+		k = half.x / absf(d.x)
+	if absf(d.y) * k > half.y:
+		k = half.y / absf(d.y)
+	return mid + d * k
+
+
+## The screen's size: the Control's once laid out, else 640 x 360.
+func _view() -> Vector2:
+	return Vector2(size.x if size.x > 1.0 else SCREEN_W, size.y if size.y > 1.0 else SCREEN_H)
 
 
 ## The city's state, top right, as [text, colour] pieces: each figure wears the colour of the stability part it
@@ -141,7 +187,7 @@ func status_text() -> String:
 	return "   ".join(parts)
 
 
-## What a slot is: ready to cast, waiting out a cooldown, or unaffordable. Being the picked one is a separate
+## What a slot is: ready to cast, waiting out a cooldown, or waiting for the power now playing. Being the picked one is a separate
 ## question -- a picked slot still has to show its own cooldown, which it did not when this answered "picked".
 func slot_state(slot: int) -> String:
 	var reason := _rules.refusal(slot)
@@ -162,7 +208,7 @@ func slot_rect(i: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (SLOT_W + SLOT_GAP), SLOT_TOP), Vector2(SLOT_W, SLOT_SIZE))
 
 
-## The power's name in slot `i`, taken once in setup().
+## The power's name in slot `i` as its card shows it, cut to one line (taken once in setup()).
 func slot_name(i: int) -> String:
 	return _slot_names[i] if i >= 0 and i < _slot_names.size() else ""
 
@@ -191,21 +237,22 @@ func flashing(slot: int) -> bool:
 	return slot >= 0 and slot < _flash.size() and _flash[slot] > 0.0
 
 
-func _on_cast_refused(slot: int, _reason: String) -> void:
+func _on_cast_refused(slot: int, reason: String) -> void:
 	if slot >= 0 and slot < _flash.size():
 		_flash[slot] = FLASH_SECONDS
+	if reason == "nobody":
+		push_banner("NO ONE TO WHISPER TO")
+	elif reason == "shaken":
+		push_banner("THEY SHAKE OFF THE WHISPER")
 	UiSound.play(&"ui_buzz")
-
-
-func _on_dp_gained(amount: float, at: Vector2) -> void:
-	_popups.append(["+%.1f" % amount, Iso.ground_to_screen(at), 0.0])
 
 
 ## Everything the HUD shows, as one string. Cheap to build, and it means a still frame is not redrawn sixty
 ## times a second while a four-minute mission's effects are already busy.
 func _signature() -> String:
-	var out := "%s|%s|%s|%d|%d|%s" % [UiTheme.clock(_rules.time_left), objective_text(), status_text(),
-		roundi(_rules.dp * 2.0), roundi(_rules.stability.total() * 200.0), rite_text()]
+	var out := "%s|%s|%s|%d|%s" % [UiTheme.clock(_rules.time_left),
+		objective_text() if _rules.mission.scored else str(objective_rows()), status_text(),
+		roundi(_rules.stability.total() * 200.0), rite_text()]
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), "p" if is_picked(i) else ""]
 	return out
@@ -216,12 +263,15 @@ func _draw() -> void:
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
 	_draw_rite(w)
-	_draw_objectives()
+	if _rules.mission.scored:
+		_draw_objectives()
+	else:
+		_draw_rows()
 	_draw_status(w)
 	_draw_banners(w)
-	_draw_dp(w)
 	_draw_slots(w)
-	_draw_popups()
+	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
+	_draw_marker()
 
 
 func _draw_clock(w: float) -> void:
@@ -293,6 +343,51 @@ func _draw_objectives() -> void:
 	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
 
 
+## The objective panel of a mission without a score (v0.08): objective_rows(), each with its tick or cross after it.
+func _draw_rows() -> void:
+	var rows := objective_rows()
+	if rows.is_empty():
+		return
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0))
+	draw_rect(Rect2(2.0, 2.0, wide + 10.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
+	var y := 14.0
+	for row: Array in rows:
+		var text := String(row[0])
+		UiTheme.text(self, Vector2(6.0, y), text, UiTheme.SIZE_SMALL)
+		if String(row[1]) != "":
+			UiTheme.mark(self, Vector2(6.0 + UiTheme.width(text, UiTheme.SIZE_SMALL) + 5.0, y - 7.0), String(row[1]) == "ok")
+		y += ROW_H
+
+
+## The messenger's marker (v0.08): a gold chevron over him while he is on screen, else an arrow at the screen's edge
+## pointing his way.
+func _draw_marker() -> void:
+	var feet := marker_screen()
+	if feet == Vector2.INF:
+		return
+	var view := _view()
+	var tip := feet - Vector2(0.0, MARKER_LIFT)
+	var dark := Color(0.04, 0.04, 0.06, 0.9)
+	if Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(tip):
+		var down := PackedVector2Array([tip + Vector2(-5.0, -7.0), tip + Vector2(5.0, -7.0), tip])
+		draw_colored_polygon(down, UiTheme.COL_GOLD)
+		down.append(down[0])
+		draw_polyline(down, dark, -1.0)
+		return
+	var at := edge_arrow(tip)
+	var dir := (tip - view * 0.5).normalized()
+	var side := Vector2(-dir.y, dir.x)
+	# On a dark disc, so it stands out from the town's warm roofs and stalls.
+	draw_circle(at - dir * 5.0, 10.0, dark)
+	draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, UiTheme.COL_GOLD_DARK, -1.0)
+	var arrow := PackedVector2Array([at, at - dir * 10.0 + side * 6.0, at - dir * 10.0 - side * 6.0])
+	draw_colored_polygon(arrow, UiTheme.COL_GOLD)
+	arrow.append(arrow[0])
+	draw_polyline(arrow, dark, -1.0)
+
+
 func _draw_status(w: float) -> void:
 	var gap := UiTheme.width("   ", UiTheme.SIZE_SMALL)
 	var segs := status_segments()
@@ -325,16 +420,6 @@ func _draw_banners(w: float) -> void:
 	UiTheme.text(self, Vector2(x, 131.0), text, UiTheme.SIZE_BIG, col)
 
 
-func _draw_dp(w: float) -> void:
-	var at := Vector2(roundf((w - DP_BAR.x) * 0.5), 300.0)
-	draw_rect(Rect2(at - Vector2.ONE, DP_BAR + Vector2(2.0, 2.0)), Color(0, 0, 0, 0.7))
-	var frac := clampf(_rules.dp / Rules.DP_MAX, 0.0, 1.0)
-	var col := UiTheme.COL_DP if _rules.dp >= 20.0 else UiTheme.COL_DP_LOW
-	draw_rect(Rect2(at, Vector2(DP_BAR.x * frac, DP_BAR.y)), col)
-	UiTheme.text(self, Vector2(at.x + DP_BAR.x + 5.0, at.y + DP_BAR.y), "%d DP" % roundi(_rules.dp),
-		UiTheme.SIZE_SMALL)
-
-
 func _draw_slots(_w: float) -> void:
 	for i in _rules.loadout.size():
 		var box := slot_rect(i)
@@ -351,15 +436,12 @@ func _draw_slots(_w: float) -> void:
 			draw_texture_rect(icon, icon_box, false, Color.WHITE if usable else Color(0.45, 0.45, 0.5))
 		UiTheme.frame(self, box, is_picked(i))
 		_plate(icon_box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
-		# The name beside the icon, up to two lines; gold when focused, dim when it cannot be cast.
+		# The name beside the icon on one line, gold when focused, dim when it cannot be cast; its cooldown under it.
 		var tx := box.position.x + SLOT_SIZE + 4.0
 		var name_col := UiTheme.COL_GOLD if is_picked(i) else (UiTheme.COL_TEXT if usable else UiTheme.COL_DIM)
-		var lines := UiTheme.wrap(slot_name(i), SLOT_W - SLOT_SIZE - 8.0, UiTheme.SIZE_SMALL)
-		for k in mini(lines.size(), 2):
-			UiTheme.text(self, Vector2(tx, box.position.y + 12.0 + UiTheme.LINE_SMALL * float(k)), lines[k], UiTheme.SIZE_SMALL, name_col)
-		var cost := "%d DP" % _rules.cost(i)
-		UiTheme.text(self, Vector2(box.end.x - UiTheme.width(cost, UiTheme.SIZE_SMALL) - 4.0, box.end.y - 4.0), cost,
-			UiTheme.SIZE_SMALL, UiTheme.COL_BAD if state == "dp" else UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(tx, box.position.y + 14.0), slot_name(i), UiTheme.SIZE_SMALL, name_col)
+		UiTheme.text(self, Vector2(tx, box.position.y + 14.0 + UiTheme.LINE_SMALL),
+			PrepareScreen.cooldown_text(_rules.power(i)), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		if state == "busy":
 			# Another power is still playing: a light shade and its seconds left, in gold.
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE)), Color(0, 0, 0, 0.35))
@@ -380,14 +462,3 @@ func _plate(at: Vector2, label: String, col: Color) -> void:
 	var w := UiTheme.width(label, UiTheme.SIZE_SMALL)
 	draw_rect(Rect2(at, Vector2(w + 2.0, PLATE_H)), Color(0, 0, 0, 0.62))
 	UiTheme.text(self, at + Vector2(1.0, PLATE_H - 3.0), label, UiTheme.SIZE_SMALL, col)
-
-
-func _draw_popups() -> void:
-	for p in _popups:
-		var age := float(p[2])
-		var col := UiTheme.COL_DP
-		col.a = clampf((POPUP_SECONDS - age) / 0.5, 0.0, 1.0)
-		# The popup belongs to the place the DP came from, so its stored world pixel is put through the
-		# camera's transform: the HUD's own layer does not move with the camera.
-		var at: Vector2 = get_viewport().get_canvas_transform() * Vector2(p[1])
-		UiTheme.text(self, at - Vector2(0.0, age * 14.0), String(p[0]), UiTheme.SIZE_SMALL, col)

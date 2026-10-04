@@ -3,7 +3,8 @@ extends Node2D
 ## Aiming: which slot is picked, the area it would cover drawn on the ground, and the click or drag that turns
 ## into a cast. A child of Battlefield.ground_plane, so it draws in ground units and its circles come out as
 ## the right iso ellipses. It knows nothing about the mouse: Mission hands it ground positions, which is also
-## what makes it testable headless.
+## what makes it testable headless. Mind Whisper (v0.08) aims its own way: the press picks a citizen, the release
+## the spot they are sent to.
 
 ## The player picked another slot.
 signal picked(slot: int)
@@ -24,6 +25,8 @@ const DEFAULT_DIR := Vector2(1, 0)
 const AREAS := {
 	# SilentDoom.RADIUS; the people it would take are ringed (_draw())
 	"doom": {"shape": "circle", "r": 0.8},
+	# MindWhisperFx.PICK_R: who the press would whisper to
+	"whisper": {"shape": "circle", "r": 0.6},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())
@@ -65,6 +68,9 @@ var armed := false
 ## A drag power has the button down and is being aimed.
 var aiming := false
 
+## The citizen a held Mind Whisper press picked (v0.08), or null.
+var _whisper_target: Person
+
 var _rules: Rules
 var _crowd: Crowd
 ## Where the button went down (a cast lands here, not where it came up).
@@ -91,6 +97,7 @@ func pick(new_slot: int) -> void:
 	slot = new_slot
 	armed = false
 	aiming = false
+	_whisper_target = null
 	picked.emit(slot)
 	queue_redraw()
 
@@ -99,6 +106,7 @@ func unfocus() -> void:
 	slot = -1
 	armed = false
 	aiming = false
+	_whisper_target = null
 	picked.emit(slot)
 	queue_redraw()
 
@@ -107,10 +115,14 @@ func unfocus() -> void:
 func hover(ground: Vector2) -> void:
 	# Mission calls this every frame. A preview that has not moved is not redrawn: this node sits on the ground
 	# plane, and redrawing it re-batches the layer the whole town is drawn in.
-	if ground.is_equal_approx(_at):
+	# A held whisper is the exception: its line starts on someone walking, so it follows them every frame.
+	var held := _whisper_held()
+	if ground.is_equal_approx(_at) and not held:
 		return
 	_at = ground
-	if not aiming:
+	if held:
+		_press = _whisper_target.ground_pos
+	elif not aiming:
 		_press = ground
 	queue_redraw()
 
@@ -118,15 +130,27 @@ func hover(ground: Vector2) -> void:
 func press(ground: Vector2) -> void:
 	if slot < 0:
 		return
-	_press = ground
 	_at = ground
+	if _is_whisper():
+		# Mind Whisper: the press snaps to the citizen under it, and with nobody there -- or (v0.08.1) only someone
+		# still shaking the last whisper off -- nothing is armed. A slot that could not cast anyway names its own
+		# reason first, as a release would.
+		var who := MindWhisperFx.pick(_crowd._field, ground)
+		if who == null or who.shaken():
+			var why := _rules.refusal(slot)
+			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"))
+			queue_redraw()
+			return
+		_whisper_target = who
+		ground = who.ground_pos
+	_press = ground
 	armed = true
-	aiming = _is_drag()
+	aiming = _is_drag() or _is_whisper()
 	queue_redraw()
 
 
 ## The button came up: cast, unless the press was called off. A click power fires from where the button went
-## down; a drag power fires from there along the way it was dragged.
+## down; a drag power fires from there along the way it was dragged; a whisper from the citizen it picked.
 func release(ground: Vector2) -> void:
 	if not armed:
 		return
@@ -135,6 +159,21 @@ func release(ground: Vector2) -> void:
 	var extra := {}
 	if _is_drag():
 		extra["dir"] = aim_dir()
+	elif _is_whisper():
+		# A whisper goes out where the citizen is now, sending them to the release clamped to REACH and walkable
+		# ground. Someone who died or went in meanwhile can no longer hear it.
+		var hears := is_instance_valid(_whisper_target) and _whisper_target.is_alive() \
+			and not _whisper_target.inside and not _whisper_target.soldier
+		var who := _whisper_target if hears else null
+		_whisper_target = null
+		aiming = false
+		if who == null:
+			var why := _rules.refusal(slot)
+			_rules.refuse(slot, why if why != "" else "nobody")
+			queue_redraw()
+			return
+		_press = who.ground_pos
+		extra = {"to": MindWhisperFx.clamp_to(_crowd._grid, _press, ground), "target": who}
 	aiming = false
 	_rules.cast(slot, _press, extra)
 	queue_redraw()
@@ -146,6 +185,7 @@ func cancel() -> bool:
 	var had := armed
 	armed = false
 	aiming = false
+	_whisper_target = null
 	queue_redraw()
 	return had
 
@@ -171,6 +211,20 @@ static func lane_start(key: String, press: Vector2, dir: Vector2) -> Vector2:
 
 func _is_drag() -> bool:
 	return String(_rules.power(slot).get("aim", "click")) == "drag"
+
+
+func _is_whisper() -> bool:
+	return String(_rules.power(slot).get("aim", "click")) == "whisper"
+
+
+## The ring over whoever a Mind Whisper press would pick: red while they shake the last whisper off (v0.08.1).
+static func whisper_pick_color(who: Person) -> Color:
+	return COL_BAD if who.shaken() else COL_INNER
+
+
+## A Mind Whisper press is held on someone still there to hear it.
+func _whisper_held() -> bool:
+	return armed and is_instance_valid(_whisper_target)
 
 
 func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
@@ -223,6 +277,14 @@ func _draw() -> void:
 			# Who it would draw.
 			for p in WillOWisp.drawn(_crowd._field, _press):
 				_ring(p.ground_pos, 0.18, COL_FAINT)
+		"whisper":
+			if _whisper_held():
+				_whisper_line(_press, _at)
+			else:
+				# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
+				var who := MindWhisperFx.pick(_crowd._field, _press)
+				if who != null:
+					_ring(who.ground_pos, 0.2, whisper_pick_color(who))
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
 			var s := BlightFx.target(_crowd._env, _press)
@@ -242,11 +304,29 @@ func _draw() -> void:
 const SHADE := Color(0.05, 0.04, 0.02, 0.75)
 ## How far outside the bright line the dark one sits, in ground units (about two pixels).
 const SHADE_GAP := 0.05
+## Mind Whisper's dotted line, in dashes.
+const WHISPER_DASHES := 8
 
 
 func _ring(at: Vector2, r: float, col: Color) -> void:
 	draw_arc(at, r + SHADE_GAP, 0.0, TAU, 48, SHADE, -1.0)
 	draw_arc(at, r, 0.0, TAU, 48, col, -1.0)
+
+
+## Mind Whisper's held aim: a dotted line of WHISPER_DASHES dashes from the citizen to where they would be sent
+## (the release clamped to REACH and walkable ground), a ring there, and the stretch past REACH in red up to the
+## cursor.
+func _whisper_line(from: Vector2, to: Vector2) -> void:
+	var spot := MindWhisperFx.clamp_to(_crowd._grid, from, to)
+	var steps := WHISPER_DASHES * 2 - 1
+	for i in range(0, steps, 2):
+		var a := from.lerp(spot, float(i) / float(steps))
+		var b := from.lerp(spot, float(i + 1) / float(steps))
+		draw_line(a + Vector2(0.0, SHADE_GAP), b + Vector2(0.0, SHADE_GAP), SHADE, -1.0)
+		draw_line(a, b, COL_EDGE, -1.0)
+	_ring(spot, 0.25, COL_EDGE)
+	if from.distance_to(to) > MindWhisperFx.REACH:
+		draw_line(from + (to - from).limit_length(MindWhisperFx.REACH), to, COL_BAD, -1.0)
 
 
 func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) -> void:

@@ -82,3 +82,55 @@ static func run(t) -> void:
 		"a dead bellkeeper silences the bell (%s)" % [silenced])
 	crowd.clear()
 	(made[2] as Node).free()
+
+	# Held for a relay (v0.08, The Warning): a dead keeper neither silences the bell nor calls an escort; the bell waits
+	# for whoever the mission sends, who climbs ESCORT_CLIMB slower.
+	made = _crowd()
+	crowd = made[0]
+	bell = crowd.bell
+	bell.hold_on_death = true
+	silenced.clear()
+	var replaced := []
+	bell.silenced.connect(func(why: String) -> void: silenced.append(why))
+	bell.keeper_replaced.connect(func() -> void: replaced.append(true))
+	bell.call_keeper()
+	var dead_keeper := bell.keeper
+	(made[3] as EnemyField).kill(dead_keeper, &"test")
+	for k in 50:
+		bell.step(0.1)
+	t.check(bell.state == BellNetwork.State.CALLED and silenced.is_empty() and replaced.is_empty()
+		and bell.keeper == dead_keeper, "held, a dead keeper leaves the bell waiting: no silence, no escort")
+	var climb := bell.climb
+	var relay: Person = null
+	for p in crowd.citizens:
+		if p.is_alive() and p.profile != null and p.profile.role != CitizenProfile.Role.BELLKEEPER:
+			relay = p
+			break
+	var hand_before := Mission.bell_hand(bell)
+	relay.profile.role = CitizenProfile.Role.WATCHMAN
+	bell.replace_keeper(relay)
+	t.check(bell.keeper == relay and is_equal_approx(bell.climb, climb * BellNetwork.ESCORT_CLIMB)
+		and not bell.keeper_is_soldier and replaced.size() == 1 and relay.mind == Person.Mind.DUTY,
+		"a citizen sent in its place takes the rope, climbing x%.1f (%.1f s)" % [BellNetwork.ESCORT_CLIMB, bell.climb])
+	var hand_watch := Mission.bell_hand(bell)
+	bell.replace_keeper(crowd.soldiers[0])
+	t.check(is_equal_approx(bell.climb, climb * BellNetwork.ESCORT_CLIMB) and bell.keeper_is_soldier and replaced.size() == 2,
+		"a second stand-in is no slower still; a soldier is known as one")
+	t.check([hand_before, hand_watch, Mission.bell_hand(bell)] == ["THE BELLKEEPER", "THE WATCHMAN", "A SOLDIER"],
+		"the bell's banners name who holds the rope (%s, %s, %s)" % [hand_before, hand_watch, Mission.bell_hand(bell)])
+	crowd.clear()
+	(made[2] as Node).free()
+
+	# A dead keeper before the call, held: the call waits rather than silencing the bell.
+	made = _crowd()
+	crowd = made[0]
+	bell = crowd.bell
+	bell.hold_on_death = true
+	silenced.clear()
+	bell.silenced.connect(func(why: String) -> void: silenced.append(why))
+	(made[3] as EnemyField).kill(bell.keeper, &"test")
+	bell.call_keeper()
+	bell.step(0.1)
+	t.check(bell.state == BellNetwork.State.CALLED and silenced.is_empty(), "held, a call to a dead keeper waits too")
+	crowd.clear()
+	(made[2] as Node).free()

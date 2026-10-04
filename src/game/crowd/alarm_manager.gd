@@ -22,7 +22,8 @@ const CITY_ALARM_BELL := 25.0
 const CITY_DISTRICTS := 2
 const EVAC_BELL := 60.0
 const EVAC_NO_BELL := 90.0
-## Seconds after City Emergency before any evacuation: time for families to regroup and the bell to ring.
+## Seconds after City Emergency before any evacuation: time for families to regroup and the bell to ring. By default;
+## the profile sets it (ResponseProfile.regroup_seconds, v0.08.2: God-Resistant's town is quicker), as regroup_seconds.
 const REGROUP_SECONDS := 15.0
 const COLLAPSE_STABILITY := 0.25
 ## The last few stage changes, for the debug overlay: [clock, stage, reason].
@@ -31,6 +32,7 @@ const HISTORY := 5
 var stage := Stage.NORMAL
 var bell_rung := false
 var collapsed := false
+var regroup_seconds := REGROUP_SECONDS
 var history: Array = []
 ## When City Emergency began (-1: not yet).
 var _city_at := -1.0
@@ -82,7 +84,7 @@ func update(alarm: float, dangers: int, clock: float) -> void:
 	if alarm >= city_at or districts_in_emergency() >= CITY_DISTRICTS:
 		target = Stage.CITY_EMERGENCY
 		reason = "alarm %d" % roundi(alarm) if alarm >= city_at else "%d districts in emergency" % districts_in_emergency()
-	var regrouped := _city_at >= 0.0 and clock - _city_at >= REGROUP_SECONDS
+	var regrouped := _city_at >= 0.0 and clock - _city_at >= regroup_seconds
 	if regrouped and ((bell_rung and alarm >= EVAC_BELL) or alarm >= EVAC_NO_BELL):
 		target = Stage.EVACUATION
 		reason = "the bell rang, alarm %d" % roundi(alarm) if bell_rung and alarm < EVAC_NO_BELL else "alarm %d" % roundi(alarm)

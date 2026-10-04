@@ -1,6 +1,6 @@
 # Kingdoms Amid Kataclysm (KAK) — Version 0.07 Summary
 
-*Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `feat/vfx-proof`, tag `kak-v0.07`. v0.07 is the soldiers release. The town's 100 soldiers used to rally round the Citadel and wait to be hit; now most of them have a role:
+*Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `feat/vfx-proof`, tags `kak-v0.07` and `kak-v0.07.1`. v0.07 is the soldiers release; v0.07.1 retunes Pestilence and Silent Doom (§11). The town's 100 soldiers used to rally round the Citadel and wait to be hit; now most of them have a role:
 - **marshals** speed and steady the evacuation;
 - **escorts** guard the responders and take over their duties;
 - **rescue squads** dig survivors out of collapsed shelters and fight fires.
@@ -42,7 +42,7 @@ You are an ancient god who **manifests over one walled medieval town, Aldermere*
 | Difficulty (Prepare) | Left/Right, or the arrows |
 | Draft tab (Prepare) | Click a tab, or Tab / Shift-Tab; click a loadout slot to give its pick back |
 | FPS meter | F3 |
-| Behaviour overlay | F4 (intents, alarm stage and timeline, gate queues, the citizen under the mouse; v0.05 adds the tier, the bell, the rite, each engineer team's job with lines to its site, and the boats; v0.07 adds the marshals' speed at each way out, the escorts on each duty, and the rescue squads with the trapped, saved and lost) |
+| Behaviour overlay | F4 (intents, alarm stage and timeline, gate queues, the citizen under the mouse; v0.05 adds the tier, the bell, the rite, each engineer team's job with lines to its site, and the boats; v0.07 adds the marshals' speed at each way out, the escorts on each duty, and the rescue squads with the trapped, saved and lost; v0.07.1 adds the plague: sick, sick soldiers, dead, puffs) |
 
 ## 4. Rules and resources
 
@@ -83,7 +83,7 @@ You are an ancient god who **manifests over one walled medieval town, Aldermere*
 
 | Power | DP | Cooldown | Aim | Effect |
 |---|---|---|---|---|
-| Silent Doom | 8 | 15 s | click | Up to 3 people within 0.8 die under a dark wisp. Unseen, the town never knows; a witness within 2 panics and the deaths raise the alarm |
+| Silent Doom | 8 | **2.5 s** | click | **Everyone** within 0.8 dies under a dark wisp, soldiers too (v0.07.1; it was the nearest 3, every 15 s). Unseen, the town never knows; a witness within 2 panics and the deaths raise the alarm |
 | **Discord** (v0.06) | 10 | 20 s | click | Every citizen within 1.2 forgets what they were doing for 15 s and ambles under a violet swirl. Clergy leave the rite, the bellkeeper drops the climb, engineers down tools, fire crews leave, evacuees step out of the queue. Then they pick up again. Soldiers are unaffected |
 | Blight | 12 | 25 s | click | Rots the nearest useful structure within 1.0: a well or fountain gives no water, the bell cracks, a gate jams for 30 s, the dock stops the boats, the cathedral holds no rite. +1 alarm |
 
@@ -91,7 +91,7 @@ You are an ancient god who **manifests over one walled medieval town, Aldermere*
 
 | Power | DP | Cooldown | Aim | Effect |
 |---|---|---|---|---|
-| **Pestilence** | 16 | 40 s | click | Up to 3 citizens within 1.2 catch the plague. The sick slow to 70%, green and coughing, and die 30 s later. Every 3 s each passes it to each healthy citizen within 1.0 with a 30% chance, up to 60 sick. It spreads in shelters too. Soldiers are immune. The cast is quiet; the deaths are not |
+| **Pestilence** | 16 | 40 s | click | Up to 3 people within 1.2 catch the plague, soldiers too. The sick slow to 70% and **die 5 s later** (v0.07.1; it was 30 s). **Every second** each passes it to each healthy person within 1.0 with a 30% chance, up to 60 sick. It spreads in shelters too. The sick glow under their feet and are tinted green, yellow, amber, orange then red as death nears; each new case puffs green smoke. The cast is quiet; the deaths are not |
 
 **Aim previews:** every power shows what it would hit — rings on the people the Wisp would draw, Discord would take or Pestilence would infect; the thorn line; Blight's target outline; Silent Doom's victims. The default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and Nuclear Nova.
 
@@ -222,7 +222,7 @@ Soldiers sent to a role **run** there.
   - v0.07: **soldiers** (`--case=` marshals/nomarshals, escort/noescort, rescue/norescue: each role against doing without).
 - **Profilers:** `profile_view.gd`, `profile_wear.gd`.
 - **Art:** `tools/dev/make_power_icons.py` paints the procedural icons (Silent Doom, Blight, Will-o'-Wisp, Thornwall, Discord, Pestilence). The sandbox records the cataclysm powers' preview clips (`--capture-clip`); the town records the others (`behaviour_check --scenario=clip`).
-- **Tests:** 1035 automated checks (`tools/test.sh`).
+- **Tests:** 1065 automated checks (`tools/test.sh`).
 
 ## 11. The soldiers, measured (v0.07)
 
@@ -257,6 +257,37 @@ With the `soldiers` scenario: Prepared, seed 7, each role against the same soldi
   - Same siege, Prepared: the first Nova on the Citadel killed 42 soldiers (58 in v0.06), and by 120 s 74 were dead (89), leaving the Military part at 5% instead of broken.
   - **For the playtest:** this makes the win harder, as the soldiers were meant to. If it is too hard, make only the escorts a tier can use (1 at Organized, 8 at Prepared, 10 at God-Resistant) and let the other patrollers rally.
 
+### v0.07.1: Pestilence and Silent Doom retuned
+
+After playtest notes:
+- **Pestilence:** too slow to kill and too hard to see.
+- **Silent Doom:** too small to matter on a 15 s cooldown.
+
+**What changed:**
+- **Pestilence:**
+  - the sick die 5 s after catching it, not 30 s;
+  - the sickness spreads every second, not every 3 s;
+  - soldiers catch it, and a soldier who dies of it counts as a soldier killed;
+  - the sick are tinted in five steps from green to red, with a pulsing glow under their feet (all glows in two draw commands);
+  - each new case puffs green smoke, at most 40 puffs at once.
+- **Silent Doom:** a 2.5 s cooldown, and it takes everyone within 0.8, soldiers too. Anyone who has boarded a boat before the strike is spared.
+
+**Measured** with the `powers` scenario (Prepared, seed 7), against v0.07:
+
+| Case | v0.07 (30 s life, spread each 3 s) | v0.07.1 (5 s life, spread each 1 s) |
+|---|---|---|
+| Pestilence on the market at 26 s | 22 dead by 96 s | **4 dead, all by 36 s**; then it is gone |
+| Will-o'-Wisp, then Pestilence on the gathered crowd | 76 dead by 96 s | **25 dead, all within ~20 s** |
+
+- **The plague now kills fast but burns out.** The sick die before they meet many others, so it no longer sweeps a calm town. It is a burst on a packed crowd: a Wisp knot, a gate queue, the dock, a full shelter.
+- **Silent Doom is a sure strike on a crowd.** It is limited by DP, not by its cooldown: 8 DP against 0.5 DP a second.
+- **A seen Doom raises the alarm by its victims,** like any deaths. One seen strike on four or more can bring a district to Local Emergency on its own.
+- **Frame cost** (measured, not headless):
+  - **The market:** about 10.1 ms a frame.
+  - **About 60 sick on screen:** 11.7 ms, so glows, tints and puffs cost about 1.5 ms.
+  - **A seen Doom on 25 packed people with 40 watching:** the strike frame is about 22–28 ms. The witnesses' reactions are batched; before that it was 77–105 ms.
+  - **The mission bench:** equal to v0.07 within noise (108.8 against 108.3 fps).
+
 ### From v0.06: the new powers
 
 With the `powers` scenario: Prepared, seed 7, each power against doing without.
@@ -271,7 +302,7 @@ With the `powers` scenario: Prepared, seed 7, each power against doing without.
 
 **What the runs show:**
 - **Placement matters for Thornwall.** Dropped in the middle of a wide plaza, people simply walk round its ends and nothing changes. Across the gate's mouth, between the towers, it seals the gate.
-- **The Wisp-then-Pestilence combo is very strong:** 76 deaths for 26 DP, quietly until the first deaths at about 56 s. It is a candidate for the playtest.
+- **The Wisp-then-Pestilence combo was very strong:** 76 deaths for 26 DP, quietly until the first deaths at about 56 s. *v0.07.1 changed this; see above.*
   - Options: lower the cap (now 60 sick) or the spread chance (now 0.3), or lengthen the life before death (now 30 s).
 - **Pestilence's reach was widened while building it** (catch 1.2, spread 1.0, from 0.8 and 0.6). The real evacuation queue is sparse, and at the narrower reach it barely spread.
 

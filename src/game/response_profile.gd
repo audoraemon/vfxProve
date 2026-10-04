@@ -12,13 +12,17 @@ const BLURBS := [
 	"A sleepy settlement: no bell, fires fought late.",
 	"A watchful town: a bell and a fire brigade.",
 	"A kingdom ready for you: engineers, boats and a rite.",
-	"Everything, and faster.",
+	"Everything faster: evacuates sooner, big boats.",
 ]
 const DEFAULT := Tier.ORGANIZED
 ## Alarm stages, short enough for a Defense Profile line.
 const SHORT_STAGE := ["Normal", "Concern", "Local Em.", "City Em.", "Evac.", "Collapse"]
 
 var tier := DEFAULT
+## A profile's own name when a mission sets it rather than a tier (v0.08: "Unaware"); "" for the tier's name.
+var title := ""
+## Its own line for the Prepare screen when a mission sets it (v0.08); "" for the tier's BLURBS line.
+var note := ""
 ## The Bell Network (v0.05 M2): a bellkeeper who climbs the tower at the first Local Emergency, and how long the
 ## climb takes.
 var bell := true
@@ -28,11 +32,18 @@ var fire_crew := 4
 var fire_from := AlarmManager.Stage.LOCAL_EMERGENCY
 ## Engineers (M4): teams of two (0: none).
 var engineer_teams := 0
-## River boats at the dock (M5).
+## River boats at the dock (M5), and how many each sailing carries (v0.08.2: God-Resistant's are bigger).
 var boats := false
-## The Banishing Rite at the cathedral (M3), and how long it takes.
+var boat_load := 6
+## Seconds between two people through the postern down to the dock (v0.08.2; God-Resistant's is quicker).
+var postern_interval := 3.0
+## Seconds from City Emergency to the evacuation, for families to regroup (v0.08.2; God-Resistant's town is quicker).
+var regroup_seconds := 15.0
+## The Banishing Rite at the cathedral (M3), how long it takes, and how many clergy it calls (v0.08.2: God-Resistant
+## calls more of its clergy, so its ring is harder to scatter).
 var rite := false
 var rite_time := 45.0
+var rite_clergy := 4
 ## The soldiers' roles (v0.07): marshals at each way out at the evacuation, escorts for each responder on duty, and
 ## rescue squads of Crowd.RESCUE_SQUAD. Every tier has them; harder towns have more.
 var marshals_per_exit := 3
@@ -66,9 +77,23 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.boats = true
 			p.rite = true
 			p.rite_time = 35.0
+			p.boat_load = 10
+			p.postern_interval = 1.5
+			p.rite_clergy = 6
+			p.regroup_seconds = 8.0
 			p.marshals_per_exit = 5
 			p.escorts_per_duty = 2
 			p.rescue_squads = 5
+	return p
+
+
+## The Warning's town (v0.08, Tier 1): Organized's bell, fire brigade, marshals and rescue squads, but nobody escorts
+## its responders -- a town that has never had to guard its bellkeeper.
+static func unaware() -> ResponseProfile:
+	var p := for_tier(Tier.ORGANIZED)
+	p.title = "Unaware"
+	p.note = "An evening like any other: nobody guards the bell."
+	p.escorts_per_duty = 0
 	return p
 
 
@@ -78,7 +103,12 @@ static func tier_named(name: String) -> Tier:
 
 
 func tier_name() -> String:
-	return NAMES[tier]
+	return title if title != "" else NAMES[tier]
+
+
+## Its one line for the Prepare screen.
+func blurb() -> String:
+	return note if note != "" else BLURBS[tier]
 
 
 ## The Defense Profile: what the town will do, one short line each.
@@ -89,8 +119,8 @@ func lines() -> PackedStringArray:
 	if engineer_teams > 0:
 		out.append("Engineers: %d teams" % engineer_teams)
 	if boats:
-		out.append("River Evacuation")
+		out.append("River Boats x%d" % boat_load)
 	if rite:
-		out.append("Banishing Rite, %.0f s" % rite_time)
+		out.append("Banishing Rite x%d, %.0f s" % [rite_clergy, rite_time])
 	out.append("Marshals x%d, Escorts x%d, Rescue x%d" % [marshals_per_exit, escorts_per_duty, rescue_squads])
 	return out

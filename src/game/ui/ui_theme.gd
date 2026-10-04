@@ -11,8 +11,6 @@ const COL_GOLD := Color("d8b23a")
 const COL_GOLD_DARK := Color("7a5f18")
 const COL_PANEL := Color(0.04, 0.04, 0.06, 0.66)
 const COL_BAD := Color("c8342a")
-const COL_DP := Color("6fd0ff")
-const COL_DP_LOW := Color("ffb040")
 const COL_SHADOW := Color(0, 0, 0, 0.75)
 ## The five stability colours in the spec's order: population, infrastructure, leadership, military, resources.
 const STABILITY_COLS := [Color("7fc46a"), Color("c8a05a"), Color("d8b23a"), Color("c05a4a"), Color("6fa8c8")]
@@ -80,6 +78,26 @@ static func wrap(s: String, line_width: float, size := SIZE_BODY) -> PackedStrin
 	if line != "":
 		lines.append(line)
 	return lines
+
+
+## A name cut to one line of `room` px (v0.08: Prepare's loadout bar and the HUD's compact slots): whole if it fits,
+## else its first word, trimmed letter by letter until that fits.
+static func fit(s: String, room: float, size := SIZE_SMALL) -> String:
+	var out := s
+	if width(out, size) > room:
+		out = out.split(" ")[0]
+	while out.length() > 1 and width(out, size) > room:
+		out = out.substr(0, out.length() - 1)
+	return out
+
+
+## A tick (gold) or a cross (red) seven pixels square, its top-left at `at`: the font has no check-mark glyph (v0.08).
+static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
+	if ok:
+		on.draw_polyline(PackedVector2Array([at + Vector2(0, 4), at + Vector2(2, 6), at + Vector2(7, 0)]), COL_GOLD, -1.0)
+	else:
+		on.draw_line(at, at + Vector2(6, 6), COL_BAD, -1.0)
+		on.draw_line(at + Vector2(6, 0), at + Vector2(0, 6), COL_BAD, -1.0)
 
 
 ## The one gold frame every icon in the game wears: a bevel, four corner studs and a small diamond on top.

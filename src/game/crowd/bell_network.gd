@@ -5,12 +5,13 @@ extends RefCounted
 ## alarm jumps RING_ALARM, every citizen learns of the danger, and the town reaches City Emergency and Evacuation
 ## sooner (AlarmManager). A frightened bellkeeper abandons the climb and tries again RETRY seconds later; a dead one
 ## is replaced by one of its escorts if it has any (v0.07; a slower climb), else not; a fallen tower rings no more. An
-## Unprepared town (ResponseProfile.bell off) has no bellkeeper.
+## Unprepared town (ResponseProfile.bell off) has no bellkeeper. With hold_on_death (v0.08, The Warning) a dead keeper
+## neither silences the bell nor calls an escort: the bell waits for whoever the mission sends (replace_keeper()).
 
 signal climbing_started
 signal rung
 signal silenced(reason: String)
-## An escort took over from a fallen bellkeeper (v0.07).
+## Someone took over from a fallen bellkeeper: an escort (v0.07), or the citizen a mission sends (v0.08).
 signal keeper_replaced
 
 enum State { IDLE, CALLED, CLIMBING, WAITING, RUNG, SILENCED }
@@ -18,7 +19,7 @@ enum State { IDLE, CALLED, CLIMBING, WAITING, RUNG, SILENCED }
 const RING_ALARM := 20.0
 const RETRY := 10.0
 const FOOT_REACH := 0.8
-## An escort climbing in a fallen bellkeeper's place takes this much longer (v0.07).
+## Anyone climbing in a fallen bellkeeper's place takes this much longer (v0.07: an escort; v0.08: a citizen too).
 const ESCORT_CLIMB := 1.5
 
 var state := State.IDLE
@@ -26,8 +27,12 @@ var progress := 0.0
 var climb := 8.0
 var tower: Structure
 var keeper: Person
-## Whether an escort has taken the rope (v0.07; replace_keeper()).
+## Whether the one on the rope now is a soldier: an escort that took it over (v0.07; replace_keeper()).
 var keeper_is_soldier := false
+## Whether the dead keeper waits for replace_keeper() rather than silencing the bell or calling an escort (v0.08).
+var hold_on_death := false
+## Whether a stand-in has taken the rope: the slower climb applies once, however many fall (v0.08; replace_keeper()).
+var _replaced := false
 var foot := Vector2.INF
 var _crowd: Crowd
 var _retry_in := 0.0
@@ -55,7 +60,8 @@ func call_keeper() -> void:
 		return
 	if not _keeper_ok():
 		state = State.CALLED
-		_silence("the bellkeeper is dead")
+		if not hold_on_death:
+			_silence("the bellkeeper is dead")
 		return
 	_send()
 
@@ -82,6 +88,8 @@ func step(delta: float) -> void:
 		_silence("the bell is cracked")
 		return
 	if not _keeper_ok():
+		if hold_on_death:
+			return  # the mission sends someone (v0.08)
 		# An escort takes the rope (v0.07), else the bell is silenced.
 		var sub: Person = _crowd.escorts.bell_stand_in() if _crowd.escorts != null else null
 		if sub != null:
@@ -114,13 +122,14 @@ func step(delta: float) -> void:
 				_send()
 
 
-## An escort climbs in the fallen bellkeeper's place, ESCORT_CLIMB times slower (once, however many fall); the climb
-## starts over.
+## Someone climbs in the fallen bellkeeper's place -- an escort (v0.07), or the citizen a mission sends (v0.08) --
+## ESCORT_CLIMB times slower (once, however many fall); the climb starts over.
 func replace_keeper(p: Person) -> void:
 	keeper = p
-	if not keeper_is_soldier:
+	if not _replaced:
 		climb *= ESCORT_CLIMB
-	keeper_is_soldier = true
+	_replaced = true
+	keeper_is_soldier = p.soldier
 	progress = 0.0
 	state = State.CALLED
 	keeper.go_ring(foot)

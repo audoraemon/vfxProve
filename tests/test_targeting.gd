@@ -113,6 +113,8 @@ static func run(t) -> void:
 	t.check(far.mind == Person.Mind.PANIC, "and so does someone seven units down it")
 	t.check(bystander.mind == Person.Mind.CALM, "someone a street away does not")
 
+	_whisper(t, crowd, field, grid, env, town)
+
 	rules.free()
 	aim.free()
 	crowd.clear()
@@ -123,6 +125,81 @@ static func run(t) -> void:
 	town.free()
 	crowd.free()
 	world.free()
+
+
+## Mind Whisper's aim (v0.08 M3): the press picks a citizen or is refused, the release sends them, clamped to REACH.
+static func _whisper(t, crowd: Crowd, field: EnemyField, grid: WalkGrid, env: EnvironmentField, town: Town) -> void:
+	var rules := Rules.new().setup(PackedStringArray(["whisper", "heaven"]), null, env, field, crowd, town)
+	var casts: Array = []
+	var refused: Array = []
+	rules.caster = func(_script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
+		casts.append([ground, extra])
+		return null
+	rules.cast_refused.connect(func(s: int, why: String) -> void: refused.append([s, why]))
+	var aim := Targeting.new().setup(rules, crowd)
+	# A citizen out in the open, and walkable ground three units or more from anyone.
+	var c: Person = null
+	for p: Person in crowd.citizens.slice(10):
+		if p.is_alive() and not p.inside:
+			c = p
+			break
+	var empty := Vector2.INF
+	for i in 200:
+		var at := grid.nearest_walkable(Vector2(-20.0 + float(i % 20) * 2.0, -20.0 + float(i / 20) * 4.0))
+		if at != Vector2.INF and field.in_radius(at, 3.0).is_empty():
+			empty = at
+			break
+	t.check(c != null and empty != Vector2.INF, "a citizen to whisper to, and a spot three units from anyone")
+	t.near(float(Targeting.AREAS["whisper"].r), MindWhisperFx.PICK_R, 0.0001, "the whisper's ring is its PICK_R")
+
+	aim.pick(0)
+	aim.press(empty)
+	t.check(not aim.armed and not aim.aiming and refused == [[0, "nobody"]],
+		"a whisper pressed three units from anyone arms nothing and is refused with \"nobody\" (%s)" % [refused])
+	aim.release(empty + Vector2(2.0, 0.0))
+	t.check(casts.is_empty() and rules.cooldown_left(0) == 0.0, "and its release casts nothing")
+
+	aim.press(c.ground_pos + Vector2(0.3, 0.0))
+	t.check(aim.armed and aim.aiming, "a press on a citizen arms the whisper and starts aiming it")
+	var spot := grid.nearest_walkable(c.ground_pos + Vector2(4.0, 0.0))
+	aim.release(spot)
+	t.check(not aim.aiming, "and the release ends the aim")
+	t.check(casts.size() == 1 and casts[0][0] == c.ground_pos, "a release casts once, at the citizen (%s)" % [casts])
+	var extra: Dictionary = casts[0][1] if casts.size() == 1 else {}
+	t.check(extra.get("target") == c, "the cast names the citizen pressed on")
+	t.check(extra.has("to") and (extra.to as Vector2).distance_to(spot) < 0.01,
+		"and sends them to the walkable spot where the button came up (%s, %s)" % [extra.get("to"), spot])
+
+	rules._cooldowns[0] = 0.0
+	aim.pick(0)
+	aim.press(c.ground_pos)
+	aim.release(c.ground_pos + Vector2(20.0, 0.0))
+	var to: Vector2 = casts[1][1].to if casts.size() == 2 else Vector2.INF
+	t.check(to.distance_to(c.ground_pos) <= MindWhisperFx.REACH + 0.001 and grid.walkable(to),
+		"a release twenty units away sends them no further than REACH, on walkable ground (%.2f)"
+		% to.distance_to(c.ground_pos))
+
+	# The shake-off (v0.08.1): someone a whisper has just let go is ringed red, and a press on them is refused with
+	# "shaken" -- nothing armed, no cooldown spent; a release on someone who became shaken meanwhile is refused too.
+	rules._cooldowns[0] = 0.0
+	t.check(Targeting.whisper_pick_color(c) == Targeting.COL_INNER, "the preview rings a citizen who can hear it as usual")
+	c._shaken_left = Person.SHAKE_OFF
+	t.check(Targeting.whisper_pick_color(c) == Targeting.COL_BAD, "and one still shaking a whisper off in red")
+	refused.clear()
+	aim.pick(0)
+	aim.press(c.ground_pos)
+	t.check(not aim.armed and refused == [[0, "shaken"]] and casts.size() == 2 and rules.cooldown_left(0) == 0.0,
+		"a press on them arms nothing and is refused with \"shaken\", the cooldown untouched (%s)" % [refused])
+	c._shaken_left = 0.0
+	refused.clear()
+	aim.press(c.ground_pos)
+	c._shaken_left = Person.SHAKE_OFF
+	aim.release(c.ground_pos + Vector2(2.0, 0.0))
+	t.check(refused == [[0, "shaken"]] and casts.size() == 2 and rules.cooldown_left(0) == 0.0,
+		"a release on someone shaken since the press is refused the same way (%s)" % [refused])
+	c._shaken_left = 0.0
+	aim.free()
+	rules.free()
 
 
 ## One constant out of an effect's script, by name.

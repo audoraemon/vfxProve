@@ -197,6 +197,19 @@ static func run(t) -> void:
 	t.check(still < 15, "waiting for its route, a fleeing citizen keeps moving (%d still frames of 60)" % still)
 	r.free()
 
+	# Told how long to look (v0.08: the watchman staring at the falling star), it looks that long, not 1-3 s.
+	var looker := Person.new()
+	looker.rng.seed = 13
+	looker.bounds = TownLayout.MAP
+	looker.setup_person(false, Vector2(2.7, 2.0), grid)
+	looker.observe(Vector2(3.5, 2.0), 4.0)
+	var looked := 0.0
+	while looked < 10.0 and looker.mind == Person.Mind.OBSERVE:
+		looker.tick(1.0 / 60.0)
+		looked += 1.0 / 60.0
+	t.near(looked, 4.0, 0.1, "observe(at, 4 s) looks for 4 s (%.2f s)" % looked)
+	looker.free()
+
 	var calm := Person.new()
 	calm.setup_person(false, Vector2(2.7, 2.0), grid)
 	t.check(not calm.is_running(), "a calm citizen does not run")

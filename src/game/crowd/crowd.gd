@@ -63,7 +63,8 @@ const WATCH_HZ := 4.0
 ## stalled at every path waypoint; once they really ran (milestone 5) 42 escaped in the first 34 s against a
 ## loss limit of 38. At 2 s the gates are the bottleneck the spec describes: crowds pile up in front of them.
 const GATE_INTERVAL := 2.0
-## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace.
+## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace -- by
+## default; the profile sets it (ResponseProfile.postern_interval, v0.08.2).
 const POSTERN_INTERVAL := 3.0
 ## How far beyond a gate's footprint its queue reaches, so people are held just before the arch as well.
 const GATE_DOOR := 0.45
@@ -199,13 +200,16 @@ class ResponseDrawer extends Node2D:
 			crowd.engineers.draw(self)
 		if crowd.rescue != null and not ground:
 			crowd.rescue.draw(self)
+		if crowd.plague != null and ground:
+			crowd.plague.draw_ground(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
 		return crowd != null and ((crowd.bell != null and (crowd.bell.state == BellNetwork.State.CLIMBING
 			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
 			or (crowd.engineers != null and crowd.engineers.working())
-			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty()))
+			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty())
+			or (crowd.plague != null and crowd.plague.any_in_open()))
 
 
 class Ticker extends Node:
@@ -239,6 +243,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 
 
 func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
+	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
 		_grid.refresh(_town.postern)
@@ -304,6 +309,11 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+
+
+## The drawer over the people (z 60), where short-lived effects such as the plague's puffs go; null before spawn().
+func overlay() -> Node2D:
+	return _drawer if is_instance_valid(_drawer) else null
 
 
 func _response_drawer(label: String, z: int, on_ground: bool) -> ResponseDrawer:
@@ -674,7 +684,7 @@ func _gates() -> void:
 		var first := 0
 		# A blighted gate is jammed (v0.05): its crowd waits, nobody passes.
 		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted:
-			var interval := POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL
+			var interval := profile.postern_interval if gate.art_tag == &"postern" else GATE_INTERVAL
 			# Marshals at the mouth (v0.07) let them through faster.
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()
@@ -920,10 +930,15 @@ func _evacuate() -> void:
 			continue  # ShelterManager sends them to the gates
 		if p.mind == Person.Mind.DUTY:
 			continue  # the bellkeeper and the clergy stay at their duty (off_duty() sends them on after)
+		if p.mind == Person.Mind.ASSIST and p.assist_stays:
+			continue  # an engineer at a fire works on (v0.08.2), as at its other duties
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):
 				_households[p.profile.family] = _clock
+			continue
+		if p.mind == Person.Mind.WHISPERED:
+			p.whisper_resume_flee()  # Mind Whisper (v0.08): it lingers first, then flees
 			continue
 		p.flee()
 	var shouted := 0
@@ -1193,31 +1208,46 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_hear_alarm(ALARM_KILL)
 
 
+## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
+## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen.
+func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
+	var best: Person = null
+	var best_d := DOOM_WITNESS
+	for group: Array[Person] in [citizens, soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside:
+				continue
+			var d := p.ground_pos.distance_to(at)
+			if d <= best_d:
+				best = p
+				best_d = d
+	return best
+
+
 ## Silent Doom's dead (v0.05), judged after all of a cast's victims have fallen (so they never witness each other):
 ## nobody living within DOOM_WITNESS, and the town never knows; otherwise those near panic at a small danger and the
-## death raises the alarm like any other.
+## death raises the alarm like any other. The seen victims are reacted to together (v0.07.1): with no cap a cast can
+## take a crowd, and a witness among them would otherwise panic -- and plan a fresh path -- once for each.
 func _settle_doom() -> void:
 	if _doomed.is_empty():
 		return
 	var dead := _doomed
 	_doomed = []
+	var seen_at: Array[Vector2] = []
 	for v in dead:
 		if not is_instance_valid(v):
 			continue
 		var at := v.ground_pos
-		var seen := false
-		for p in citizens + soldiers:
-			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= DOOM_WITNESS:
-				seen = true
-				break
+		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
 		threats.register(at, 0.6, 0.3, 3.0, DOOM_WITNESS, DOOM_WITNESS + 1.0, &"doom")
-		var points: Array[Vector2] = [at]
-		_react(points, 0.6, DOOM_WITNESS + 1.0, at, &"doom")
+		seen_at.append(at)
 		if alarms.incident(at):
 			_investigate(at)
 		_hear_alarm(ALARM_KILL)
+	if not seen_at.is_empty():
+		_react(seen_at, 0.6, DOOM_WITNESS + 1.0, seen_at[0], &"doom")
 
 
 ## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.

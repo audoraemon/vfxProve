@@ -245,3 +245,6 @@ func teardown() -> void:
 		crowd._field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
+	# The bell waits for a relay only while the warning lives (v0.09: a crowd outlives an act).
+	if is_instance_valid(crowd) and crowd.bell != null:
+		crowd.bell.hold_on_death = false

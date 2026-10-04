@@ -109,6 +109,10 @@ var _playing: FxTimeline
 var _casts: Array[Dictionary] = []
 ## Seconds since the mission started, for the casts' grace window.
 var _elapsed := 0.0
+## The crowd's counts when this act began (v0.09): an act counts from its own start; a single mission starts from 0.
+var _escaped0 := 0
+var _citizens0 := 0
+var _soldiers0 := 0
 
 
 func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, field: EnemyField, crowd: Crowd,
@@ -123,6 +127,9 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	_field = field
 	_crowd = crowd
 	_town = town
+	_escaped0 = crowd.escaped_count
+	_citizens0 = crowd.killed_citizens
+	_soldiers0 = crowd.killed_soldiers
 	_cooldowns.resize(loadout.size())
 	_cooldowns.fill(0.0)
 	caster = func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
@@ -177,6 +184,19 @@ func crowd() -> Crowd:
 
 func town() -> Town:
 	return _town
+
+
+## Citizens who reached an exit, and the people killed, since this act began (v0.09).
+func escaped_this_act() -> int:
+	return _crowd.escaped_count - _escaped0
+
+
+func citizens_killed_this_act() -> int:
+	return _crowd.killed_citizens - _citizens0
+
+
+func soldiers_killed_this_act() -> int:
+	return _crowd.killed_soldiers - _soldiers0
 
 
 ## The power in a slot, or an empty dictionary for a slot nothing was drafted into.
@@ -356,6 +376,12 @@ func _check_end() -> void:
 				return
 
 
+## End the act now, as a tool or a test asks (v0.09); an act already over stays as it ended.
+func force_end(win: bool, reason: String) -> void:
+	if not finished:
+		_finish(win, reason)
+
+
 func _finish(win: bool, reason: String) -> void:
 	finished = true
 	won = win
@@ -366,8 +392,8 @@ func _finish(win: bool, reason: String) -> void:
 ## The mission's points (spec §4.4). The victory bonus and the seconds left are a winner's only:
 ## a mission lost to the escape would otherwise pay the player for losing it quickly.
 func score() -> int:
-	var total := buildings_down * SCORE_PER_BUILDING + _crowd.killed_citizens * SCORE_PER_CITIZEN \
-		+ _crowd.killed_soldiers * SCORE_PER_SOLDIER + chains * SCORE_PER_CHAIN
+	var total := buildings_down * SCORE_PER_BUILDING + citizens_killed_this_act() * SCORE_PER_CITIZEN \
+		+ soldiers_killed_this_act() * SCORE_PER_SOLDIER + chains * SCORE_PER_CHAIN
 	if won:
 		total += SCORE_WIN + int(roundf(time_left)) * SCORE_PER_SECOND
 	return total
@@ -389,9 +415,9 @@ func stat_lines() -> Array[Dictionary]:
 		lines.append({"label": "The city has fallen", "value": "", "points": SCORE_WIN})
 		lines.append({"label": "Time left", "value": UiTheme.clock(time_left), "points": int(roundf(time_left)) * SCORE_PER_SECOND})
 	lines.append({"label": "Buildings destroyed", "value": "%d" % buildings_down, "points": buildings_down * SCORE_PER_BUILDING})
-	lines.append({"label": "Citizens killed", "value": "%d" % _crowd.killed_citizens, "points": _crowd.killed_citizens * SCORE_PER_CITIZEN})
-	lines.append({"label": "Soldiers killed", "value": "%d" % _crowd.killed_soldiers, "points": _crowd.killed_soldiers * SCORE_PER_SOLDIER})
-	lines.append({"label": "Citizens escaped", "value": "%d" % _crowd.escaped_count, "points": 0})
+	lines.append({"label": "Citizens killed", "value": "%d" % citizens_killed_this_act(), "points": citizens_killed_this_act() * SCORE_PER_CITIZEN})
+	lines.append({"label": "Soldiers killed", "value": "%d" % soldiers_killed_this_act(), "points": soldiers_killed_this_act() * SCORE_PER_SOLDIER})
+	lines.append({"label": "Citizens escaped", "value": "%d" % escaped_this_act(), "points": 0})
 	lines.append({"label": "Chains", "value": "%d" % chains, "points": chains * SCORE_PER_CHAIN})
 	return lines
 

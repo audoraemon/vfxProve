@@ -6,10 +6,13 @@ extends RefCounted
 ## Points for each act won and each bonus earned, on top of the last act's score (the night's rank).
 const ACT_POINTS := 2000
 const BONUS_POINTS := 500
-## Act III's escape limit when the Prince escaped: the kingdom rallied.
-const PRINCE_ESCAPED_LIMIT := 40
-## Score floors for the night's rank, best first; under the last one is a D. Starting values, tuned in Task 19.
-const NIGHT_RANKS := [[20000, "S"], [15000, "A"], [10000, "B"], [5000, "C"]]
+## Act III's escape limit (the night's own: Last Judgement keeps Rules.ESCAPE_LIMIT), and when the Prince escaped: the
+## kingdom rallied.
+const ESCAPE_LIMIT := 90
+const PRINCE_ESCAPED_LIMIT := 72
+## Score floors for the night's rank, best first; under the last one is a D. Task 19: a policy night that wins all
+## three acts scored 26,700-28,000 (an A); S asks for more than that.
+const NIGHT_RANKS := [[30000, "S"], [24000, "A"], [15000, "B"], [7000, "C"]]
 
 ## One dictionary per act played: its Rules.result() plus "act" (the act's id).
 var results: Array[Dictionary] = []
@@ -60,7 +63,7 @@ func bonuses_earned() -> int:
 
 
 func escape_limit() -> int:
-	return PRINCE_ESCAPED_LIMIT if prince == "escaped" else Rules.ESCAPE_LIMIT
+	return PRINCE_ESCAPED_LIMIT if prince == "escaped" else ESCAPE_LIMIT
 
 
 func night_score(final_score: int) -> int:

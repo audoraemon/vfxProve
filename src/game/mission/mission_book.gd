@@ -85,7 +85,7 @@ static func long_night() -> MissionDef:
 	m.goal_label = "The night is yours"
 	m.lose = "The town holds until dawn"
 	m.slots = 4
-	m.dp_capacity = 10
+	m.dp_capacity = 14
 	m.clock = 120.0
 	m.profile = "night"
 	m.scored = true
@@ -190,8 +190,10 @@ static func _act3_town(n: NightState) -> ResponseProfile:
 	return ResponseProfile.for_tier(ResponseProfile.Tier.ORGANIZED)
 
 
+## Act III's clock is five minutes (v0.09 Task 19): breaking the whole city's stability with the night's DP took a
+## measured policy four to four and a half.
 static func _judgement(m: MissionDef) -> ActDef:
-	var a := _act(m, "judgement", "Act III: Judgement", 180.0)
+	var a := _act(m, "judgement", "Act III: Judgement", 300.0)
 	a.brief = PackedStringArray(["Dawn is coming.", "Bring the Citadel down before it does."])
 	a.goal = "Destroy the Citadel and break the city before dawn"
 	a.goal_label = "The city has fallen"

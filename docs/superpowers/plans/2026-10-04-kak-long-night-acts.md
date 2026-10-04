@@ -1641,3 +1641,100 @@ func report() -> Dictionary:
 - **Act III** (all 9 runs): the greedy caster takes the Citadel to 50% at 30 s and 0% at 60 s and the night is still lost on escapes (limit 50, or 40 after an escaped Prince). The policy cast heaven x3 or 4, nova x1 or 2, tornado x1 or 2.
 - **Task 19 findings** (not tuned here): the quiet Prince kill is unreachable for a player who cannot remove soldiers (Mind Whisper and Discord ignore soldiers; Silent Doom's 0.8 radius takes only those near the aim); and a Judgement won only by the Citadel's fall loses on escapes at these numbers.
 - The exact behaviour gates are unchanged: calm 60 -695580348, gates 619520995, fire -16560442, rite --interrupt -129298221, soldiers escort -935015846, warning none/doom/whisper/discord/mix -446012507/-999129915/442055066/-909358062/-430643507. No SCRIPT ERROR; the `resources still in use at exit` line is at HEAD too.
+
+### Task 19 balance
+
+Measured with `--scenario=night` (one run per line unless counted; four runs at a time on the laptop). The numbers changed:
+
+| Number | Before | After |
+|---|---|---|
+| `ProcessionDirector.ESCORT_R` | 1.6 | **2.5** (past `Crowd.DOOM_WITNESS` 2.0) |
+| the night's DP (`long_night().dp_capacity`) | 10 | **14** (4 slots kept) |
+| Act III's clock | 180 s | **300 s** |
+| Act III's escape limit | `Rules.ESCAPE_LIMIT` 50 | **`NightState.ESCAPE_LIMIT` 90** (new; Last Judgement keeps 50) |
+| `NightState.PRINCE_ESCAPED_LIMIT` | 40 | **72** (the spec's 4 : 5) |
+| `NightState.NIGHT_RANKS` | S 20000, A 15000, B 10000, C 5000 | **S 30000, A 24000, B 15000, C 7000** |
+
+Unchanged: `ESCORT_CLOSE` 0.8, `FESTIVAL_CROWD` 80, `FESTIVAL_NEED` 50, `JAM_SECONDS` 40, every event time, the Act I and Act II clocks (120 and 150 s), `ACT_POINTS`, `BONUS_POINTS`.
+
+Tool changes (`tools/dev/behaviour_check.gd`, the `night` scenario only):
+
+- Act III's policy aims each cast where it takes the most of what City Stability still counts (`_richest()`: each standing building and living person weighs its share of its part's breaking point; a broken part weighs nothing). `--act3-aim=fixed` keeps Task 18's eight fixed targets.
+- Its loadout is Heaven Splitter, Nuclear Nova, Judgement of the Ancients, Cinderfall Barrage (14 DP). `--act3-loadout=a,b,...` drafts others.
+- Act III reports every 15 s with stability's parts and the act's own escapes, and its end line has the time. The Procession's end line counts the looks with no soldier, and with nobody, within the witness distance.
+
+**The Procession (finding 1).** At 1.6 the policy never found the Prince alone (Task 18, 3 runs: no Doom, `sailed`). With the escort past the witness distance, the attendants are what stands between him and an unseen death, and Mind Whisper sends them off.
+
+- **2.5 (kept):** the Doom is cast in every run, at 128.7-134.8 s, on the dock's leg. It is unseen in 4 of 8 runs (`--act1=play`: 4 of 4; `--act1=win`: 0 of 2; `lose`, `skip`: seen). No soldier within 2.0 in 21-31% of looks; alone on 1 look per run. Act II is won `prince` every time (it was lost every time at 1.6).
+- **3.0 (tried):** unseen 3 of 6, Doom at 96-129 s, no soldier in 56-69% of looks, alone on 2-7 looks. No better for the bonus, and the escort barely walks with him, so 2.5 was kept.
+- A seen death is the policy casting on a look that was alone, and someone stepping within 2.0 during the 0.45 s strike.
+
+**Act III (finding 2).** At HEAD (10 DP, 180 s, limit 50) the Task 18 caster loses on escapes in every run (Organized, festival broken: lost at 88.7 s, stability 32%). Its eight fixed targets are rubble by about 75 s. With the escape limit at 999 and the act left to its clock, stability stalls at 21% (resources 18%, infrastructure 47%), so no number in the list lets that caster win. Aimed at what stability still counts, the same 9 DP reaches 4-6% at 180 s (limit 999). What the act needs (smart aim, limit 999, a 360 s clock):
+
+| Loadout | Organized (festival broken, or Prince unseen) | Prepared (Prince escaped or seen) |
+|---|---|---|
+| heaven, nova, tornado (9 DP) | won 321 s | 2% at 320 s (the rite took 40 s) |
+| heaven, nova, judgement (10 DP) | won 261 s forced; played nights won 321, 321 (festival), 321, 321 (Prince unseen) | lost on time (2%, 0%) |
+| heaven, nova, cinder (10 DP) | won 292 s | — |
+| heaven, dragon, tornado, nova (12 DP) | won 262 s | won 278 s |
+| heaven, nova, judgement, cinder (14 DP) | won 220 s forced; played 243 s (festival), 257 s (unseen) | escaped: won 306 s (plus 40 s of rite); seen: 1% at 320 s |
+
+The last 2-5% of stability takes 60-110 s of every run: the farm fields and barns outside the walls (the resources part). 14 DP with a 300 s clock:
+
+- wins every Organized path inside the clock, with the Dawn bonus most of the time;
+- keeps the night inside 6-10 minutes;
+- leaves Acts I and II alone: their 4 slots of quiet powers cost at most 9 DP.
+
+Escapes at the end of a won Act III: 56-75 in Organized towns, 86 after a held festival, 57-64 in Prepared ones. So the limit is 90, and 72 after an escaped Prince.
+
+**Final numbers, measured** (`--act1=play --act2=play --act3=play` unless shown):
+
+- **Festival, 3 runs:**
+  - Act I won `warning` at 13.8 s (Unseen).
+  - The Festival won `festival` at 95.6 s (the Mayor's Doom, 80 of 80).
+  - Act III (Organized) won `citadel` at 242.8 / 242.8 / 243.0 s: 70 escaped, stability 0%; casts heaven 9, nova 3, judgement 3, cinder 3.
+  - Night won: 26965 / 27045 / 27045 (an A). Play time 5.9 min.
+- **Procession, 3 runs:**
+  - Act I as above.
+  - The Procession won `prince` at 134.8 s, unseen.
+  - Act III (Organized) won `citadel` at 272.3 / 267.9 / 252.6 s: 65 / 73 / 71 escaped. Dawn earned in 2 of 3.
+  - Night won: 26730 / 27990 / 27490 (an A). Play time 7.0 / 6.9 / 6.7 min.
+- **Festival held** (`--act2=skip`): Act II lost `closed` at 150 s. Act III won at 224.9 s with 86 escaped. Night won: 25425 (an A).
+- **Prince escaped, Act II skipped:** Act II lost `sailed` at 141.6 s. Act III (Prepared, rallied) lost `escapes` at 120.6 s (75 of 72): 13795 (a C).
+- **Prince escaped / seen, forced** (`--act1=win --act2=lose --prince=...`): Act III lost `timeout`. The rite completed and took 40 s off the clock. Stability 1% (resources 13%), 60 / 57 escaped: 16290 / 16175 (a B).
+- **Doing nothing** (`--act1=skip --act2=skip --act3=skip`):
+  - Act I lost `bell` at 24.8 s each time.
+  - Procession: lost `sailed` at 142.8 s; Act III lost `timeout`; 0 (a D).
+  - Festival: **won by itself** at 16.5 s (point 1 below); Act III lost `escapes`; 2500 (a D).
+- **Acts and clocks:**
+  - Act I: 13.8 s played, 24.8 s left alone (120 s clock).
+  - The Festival: 95.6 s played, 150 s left alone after a won Act I.
+  - The Procession: 134.8 s played, 141-143 s left alone.
+  - Act III: 243-272 s played (300 s clock).
+  - A whole played night: 5.9-7.0 min; at most 9.5.
+
+**Not changed, for the user** (each with options):
+
+1. **The Festival breaks by itself after a lost Act I** (the bell rang; the town is Organized). `--act1=lose|skip --act2=skip` won Act II `festival` at 16.5-20.0 s with no cast, so a lost Act I hands the player Act II. Options:
+   - start the Festival's crowd calm in an Organized town (whatever carries the alarm over);
+   - count only goers who break after the act starts;
+   - accept it.
+2. **Silent Doom on the Mayor solos the Festival.** One 1-DP cast during his address breaks 80 of 80 goers (50 needed), seen or unseen, in every run. Options:
+   - only a seen death panics the crowd;
+   - raise `FESTIVAL_NEED` toward 80 (the Doom still breaks all 80);
+   - keep it as the act's intended window.
+3. **A Prepared Act III loses for the policy** (the Prince seen or escaped). The Banishing Rite completes and takes 40 s, and the policy never interrupts it. Options:
+   - an Act III clock of 330-360 s;
+   - a later `RITE_AT`;
+   - keep it (a human can Discord or Blight the clergy).
+4. **Act III's win is the whole city broken** (stability 0%, Last Judgement's rule). The farm hunt is a third of the act. Options:
+   - a night-only stability threshold (for example, the Citadel down and stability under 5%);
+   - weight Act III's pool toward area powers;
+   - keep 300 s.
+5. **`ESCORT_CLOSE` 0.8 equals Silent Doom's radius.** A Doom on a frightened Prince can take the closed-in escort with him, because victims do not witness one another. Not measured: no policy frightens him. Option: 1.0 (still "within 1.0", but outside the Doom's reach).
+
+**Gates after the change:**
+
+- Tests `checks=2060 failures=0`; digest `61267b7e90524d800bf1c3473a71146b`; crowd_check `-346732806`; FLOW `checks=54 failures=0`.
+- The 10 exact behaviour checksums are identical: calm 60 -695580348, gates 619520995, fire -16560442, rite --interrupt -129298221, soldiers escort -935015846, warning none/doom/whisper/discord/mix -446012507/-999129915/442055066/-909358062/-430643507.
+- Mission tests: buildings 55/51/52, citizens 191/186/194, escaped 1/1/1, stability 70/70/71%, citadel 50%. `--mission=warning`: `won=false reason=bell time=24.1`.

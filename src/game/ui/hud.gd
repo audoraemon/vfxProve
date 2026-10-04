@@ -144,8 +144,8 @@ func event_rows() -> Array:
 	return rows
 
 
-## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is 40 when the Prince escaped),
-## else the single missions' 50.
+## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is the night's own, lower when
+## the Prince escaped), else the single missions' 50.
 func escape_limit() -> int:
 	for o in _rules.objectives:
 		if o is EscapeLimitObjective:

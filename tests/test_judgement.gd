@@ -1,8 +1,8 @@
 extends RefCounted
 ## v0.09 Act III (JudgementDirector): the night's carry-overs at its start -- a broken festival's crowd fleeing into
 ## gates it jams, marshals already at the gates, a rallied or a leaderless Citadel, the Prince's escape cutting the
-## escape limit to 40 -- and its windows: the clergy gather at 1:30 (a Prepared town), the boats sail at 2:00, the last
-## ferry leaves at 2:30. The Dawn bonus falls once the clock is under 30 s.
+## escape limit to NightState.PRINCE_ESCAPED_LIMIT -- and its windows: the clergy gather at 1:30 (a Prepared town), the
+## boats sail at 2:00, the last ferry leaves at 2:30. The Dawn bonus falls once the clock is under 30 s.
 
 const DT := 0.1
 
@@ -155,7 +155,7 @@ static func _prince(t) -> void:
 	for o in (s.rules as Rules).objectives:
 		if o is EscapeLimitObjective:
 			limit = (o as EscapeLimitObjective).limit
-	t.check(limit == 40, "and Act III's escape limit is 40 (%d)" % limit)
+	t.check(limit == NightState.PRINCE_ESCAPED_LIMIT, "and Act III's escape limit is the lower one (%d)" % limit)
 	_done(s)
 
 	night = NightState.new()
@@ -290,8 +290,8 @@ static func _hud(t) -> void:
 	var rules := Rules.new().setup(PackedStringArray(["whisper"]), null, s.env, s.field, crowd, s.town, s.def)
 	var hud := Hud.new().setup(rules, crowd, s.town, null)
 	crowd.escaped_count = 15
-	t.check(hud.escape_limit() == 40 and rules.escaped_this_act() == 3,
-		"Act III after an escaped Prince counts its own escapes against 40 (%d of %d)" % [rules.escaped_this_act(), hud.escape_limit()])
+	t.check(hud.escape_limit() == NightState.PRINCE_ESCAPED_LIMIT and rules.escaped_this_act() == 3,
+		"Act III after an escaped Prince counts its own escapes against the lower limit (%d of %d)" % [rules.escaped_this_act(), hud.escape_limit()])
 	hud.free()
 	rules.teardown()
 	rules.free()

@@ -81,7 +81,11 @@ extends SceneTree
 ##          Silent Doom on the Mayor at 95 s then Discord on the densest cluster, the Procession Doom on the Prince when
 ##          nobody would see it (`--doom-seen` also dooms him, seen, on the dock's leg), Act III the greedy Last Judgement
 ##          caster; each act is drafted its own loadout. A played night skips the handover aid (its Heaven Splitter would fall
-##          on the Prince at the Citadel's door).
+##          on the Prince at the Citadel's door). Task 19: Act III's caster aims each cast where it takes the most of
+##          what City Stability still counts (_richest(); `--act3-aim=fixed` keeps Task 18's eight fixed targets), and
+##          `--act3-loadout=a,b,c` drafts Act III other powers; its reports carry stability's parts and the act's
+##          escapes, and the Procession's end line counts the looks with no soldier, and nobody, within the witness
+##          distance.
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -96,15 +100,17 @@ const FESTIVAL_LOOK_AT := Vector2(1.0, 4.0)
 const PROCESSION_SHOTS := [[65.0, 2.5, 0.0], [125.0, 1.6, 0.6]]
 
 ## What each act drafts when `night` plays it (v0.09 Task 18), simulating Prepare's re-draft between acts (each fits 4
-## slots and 10 DP). Act I's is the Warning's mix (3 DP); the Festival needs only the Mayor's Doom and a Discord (3 DP);
-## the Procession adds a Mind Whisper (4 DP); Act III is the three loudest it can afford (Heaven Splitter, Nuclear Nova,
-## Tornado Tempest: 2 + 4 + 3 = 9 DP).
+## slots and the night's DP). Act I's is the Warning's mix (3 DP); the Festival needs only the Mayor's Doom and a
+## Discord (3 DP); the Procession adds a Mind Whisper (4 DP); Act III is the four heaviest it can afford (Task 19:
+## Heaven Splitter, Nuclear Nova, Judgement of the Ancients, Cinderfall Barrage: 2 + 4 + 4 + 4 = 14 DP).
 const NIGHT_LOADOUTS := {"omen": ["whisper", "doom", "discord"], "festival": ["doom", "discord"],
-	"procession": ["whisper", "doom", "discord"], "judgement": ["heaven", "nova", "tornado"]}
+	"procession": ["whisper", "doom", "discord"], "judgement": ["heaven", "nova", "judgement", "cinder"]}
 ## The Festival's Silent Doom on the Mayor is cast from this second of the act (inside his address, 90 s to 120 s).
 const FESTIVAL_DOOM_AT := 95.0
 ## How far Mind Whisper sends an attendant of the Prince's from him (the Procession's policy), in ground units.
 const PROCESSION_SENT := 8.0
+## Act III's aim (Task 19, _richest()): how far round a point counts (ground units).
+const RICH_R := 3.0
 ## A policy looks at the town every this many frames (0.1 s at 60 fps), as the Warning's does.
 const LOOK_FRAMES := 6
 
@@ -1100,6 +1106,9 @@ func _loadout_for_next(outcome: Dictionary, path: String) -> PackedStringArray:
 	var id := path if path != "" and ids.has(path) else String(ids[0])
 	if String(outcome.get(id, "")) != "play":
 		return PackedStringArray()
+	var asked := Battlefield.arg_value(OS.get_cmdline_user_args(), "--act3-loadout")
+	if id == "judgement" and asked != "":
+		return PackedStringArray(asked.split(","))
 	return PackedStringArray(NIGHT_LOADOUTS[id])
 
 
@@ -1195,6 +1204,8 @@ func _play_procession() -> void:
 	var slots := _slots(rules)
 	var seen_ok := "--doom-seen" in OS.get_cmdline_user_args()
 	var casts := {}
+	# Looks taken while he walked; of them, with no soldier within Crowd.DOOM_WITNESS of him; with nobody (alone).
+	var looks := [0, 0, 0]
 	var frames := 0
 	var report_at := 15.0
 	var max_frames := int(rules.time_left * 2.0 * 60.0)
@@ -1207,11 +1218,19 @@ func _play_procession() -> void:
 		if t >= report_at:
 			report_at += 15.0
 			var w: Person = crowd.nearest_witness(p.ground_pos, p) if alive else null
-			print("BEHAVIOUR night play procession t=%d leg=%d prince=%s witness=%s" % [roundi(t), d.leg, _warning_mind(p),
-				("%s %.1f" % [_warning_who(w, crowd), w.ground_pos.distance_to(p.ground_pos)]) if w != null else "none"])
+			var near_now := _witnesses(crowd, p) if alive else Vector2i.ZERO
+			var seen_by := "none"
+			if w != null:
+				seen_by = "%s %.1f" % [_warning_who(w, crowd), w.ground_pos.distance_to(p.ground_pos)]
+			print("BEHAVIOUR night play procession t=%d leg=%d prince=%s witness=%s soldiers=%d citizens=%d" % [roundi(t),
+				d.leg, _warning_mind(p), seen_by, near_now.x, near_now.y])
 		if frames % LOOK_FRAMES != 0 or not alive:
 			continue
 		var alone: bool = _warning_alone(p, crowd)
+		var near := _witnesses(crowd, p)
+		looks[0] += 1
+		looks[1] += 1 if near.x == 0 else 0
+		looks[2] += 1 if alone else 0
 		if slots.has("doom") and rules.refusal(slots.doom) == "" and (alone or (seen_ok and d.leg >= ProcessionDirector.DOCK_LEG)):
 			if rules.cast(slots.doom, p.ground_pos, {}) != null:
 				casts["doom"] = int(casts.get("doom", 0)) + 1
@@ -1231,7 +1250,22 @@ func _play_procession() -> void:
 			casts["whisper"] = int(casts.get("whisper", 0)) + 1
 			print("BEHAVIOUR night play procession t=%.1f cast whisper on %s to %s" % [t, _warning_who(who, crowd),
 				to.snapped(Vector2(0.1, 0.1))])
-	print("BEHAVIOUR night play procession end prince=%s casts=%s" % [d.report().prince, casts])
+	print("BEHAVIOUR night play procession end prince=%s casts=%s looks=%d no_soldier=%d alone=%d" % [d.report().prince,
+		casts, looks[0], looks[1], looks[2]])
+
+
+## How many soldiers (x) and citizens (y) are within Crowd.DOOM_WITNESS of `of`, out of doors and alive.
+func _witnesses(crowd: Crowd, of: Person) -> Vector2i:
+	var n := Vector2i.ZERO
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and not p.inside \
+				and p.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS:
+			n.x += 1
+	for p in crowd.citizens:
+		if is_instance_valid(p) and p != of and p.is_alive() and not p.inside \
+				and p.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS:
+			n.y += 1
+	return n
 
 
 ## The nearest living citizen out of doors within Crowd.DOOM_WITNESS of `of` who is not shaking off a whisper, or null.
@@ -1251,30 +1285,91 @@ func _play_judgement() -> void:
 	var town: Town = mission._town
 	var d := rules.director
 	var casts := {}
+	var fixed := Battlefield.arg_value(OS.get_cmdline_user_args(), "--act3-aim") == "fixed"
 	var next := 0
 	var frames := 0
-	var report_at := 30.0
+	var report_at := 15.0
 	var max_frames := int(rules.time_left * 2.0 * 60.0)
 	while is_instance_valid(rules) and rules == mission._rules and not rules.finished and frames < max_frames:
 		await process_frame
 		frames += 1
 		var t := d.timeline.elapsed() if d != null else 0.0
 		if t >= report_at:
-			report_at += 30.0
-			print("BEHAVIOUR night play judgement t=%d citadel=%d%% escaped=%d buildings=%d stage=%s" % [roundi(t),
-				roundi(town.citadel.fraction() * 100.0), mission._crowd.escaped_count, rules.buildings_down,
-				mission._crowd.alarms.stage_name()])
+			report_at += 15.0
+			print("BEHAVIOUR night play judgement t=%d citadel=%d%% stability=%s escaped=%d buildings=%d stage=%s" % [
+				roundi(t), roundi(town.citadel.fraction() * 100.0), _stability(rules), rules.escaped_this_act(),
+				rules.buildings_down, mission._crowd.alarms.stage_name()])
 		if t < 5.0 or frames % LOOK_FRAMES != 0:
 			continue
 		for slot in rules.loadout.size():
 			if rules.refusal(slot) == "":
-				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()] if fixed \
+					else _richest(rules, mission._bf.ctx.env, mission._crowd)
 				next += 1
 				if rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()}) != null:
 					casts[rules.key(slot)] = int(casts.get(rules.key(slot), 0)) + 1
-					print("BEHAVIOUR night play judgement t=%.1f cast %s at %s" % [t, rules.key(slot), at])
+					print("BEHAVIOUR night play judgement t=%.1f cast %s at %s" % [t, rules.key(slot),
+						at.snapped(Vector2(0.1, 0.1))])
 				break
-	print("BEHAVIOUR night play judgement end citadel_fell=%s casts=%s" % [town.citadel.is_fallen(), casts])
+	print("BEHAVIOUR night play judgement end t=%.1f citadel_fell=%s stability=%s escaped=%d casts=%s" % [
+		d.timeline.elapsed() if d != null else 0.0, town.citadel.is_fallen(), _stability(rules),
+		rules.escaped_this_act(), casts])
+
+
+## Where a cast would take the most of what City Stability still counts (Act III's policy, Task 19): each standing
+## building and each living person out of doors weighs its share of its part's breaking point (Stability's own weights),
+## and a part already broken weighs nothing. The point is a building's centre or a person, whichever has the most within
+## RICH_R.
+func _richest(rules: Rules, env: EnvironmentField, crowd: Crowd) -> Vector2:
+	var st := rules.stability
+	var pts: Array[Vector2] = []
+	var ws: Array[float] = []
+	for b in env.structures():
+		if b.destroyed:
+			continue
+		var w := 0.0
+		if Stability.INFRA_ROLES.has(b.role) and st.infrastructure > 0.0:
+			w = Stability.W_INFRASTRUCTURE * b.footprint.get_area() / (st._infra_area * Stability.INFRASTRUCTURE_BROKEN)
+		elif Stability.RESOURCE_ROLES.has(b.role) and st.resources > 0.0:
+			w = Stability.W_RESOURCES / (float(st._resource_count) * Stability.RESOURCES_BROKEN)
+		elif b.role == &"barracks" and st._barracks_count > 0:
+			w = Stability.W_MILITARY * (1.0 - Stability.MILITARY_SOLDIER_SHARE) / float(st._barracks_count)
+		elif b.role == &"citadel" and st.leadership > 0.0:
+			w = Stability.W_LEADERSHIP * st.leadership
+		if w > 0.0:
+			pts.append(b.footprint.get_center())
+			ws.append(w)
+	var per_citizen := 0.0
+	if st.population > 0.0 and crowd.spawned_citizens > 0:
+		per_citizen = Stability.W_POPULATION / (float(crowd.spawned_citizens) * Stability.POPULATION_BROKEN)
+	var per_soldier := 0.0
+	if float(crowd.killed_soldiers) < float(crowd.spawned_soldiers) * Stability.SOLDIERS_BROKEN:
+		per_soldier = Stability.W_MILITARY * Stability.MILITARY_SOLDIER_SHARE \
+			/ (float(crowd.spawned_soldiers) * Stability.SOLDIERS_BROKEN)
+	for p in crowd.citizens + crowd.soldiers:
+		var w := per_soldier if is_instance_valid(p) and p.soldier else per_citizen
+		if w > 0.0 and is_instance_valid(p) and p.is_alive() and not p.inside:
+			pts.append(p.ground_pos)
+			ws.append(w)
+	var best := TownLayout.CITADEL_ORIGIN
+	var best_w := -1.0
+	for c in pts:
+		var sum := 0.0
+		for j in pts.size():
+			if pts[j].distance_squared_to(c) <= RICH_R * RICH_R:
+				sum += ws[j]
+		if sum > best_w:
+			best_w = sum
+			best = c
+	return best
+
+
+## City stability and its five parts, in percent: total (population, infrastructure, leadership, military, resources).
+func _stability(rules: Rules) -> String:
+	var s := rules.stability
+	return "%d%%(p%d i%d l%d m%d r%d)" % [roundi(s.total() * 100.0), roundi(s.population * 100.0),
+		roundi(s.infrastructure * 100.0), roundi(s.leadership * 100.0), roundi(s.military * 100.0),
+		roundi(s.resources * 100.0)]
 
 
 ## Act II-A's capture aid (v0.09 Task 13): a frame of the market at FESTIVAL_SHOTS' marks of the act -- the bonfires lit

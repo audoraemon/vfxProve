@@ -145,7 +145,7 @@ static func run(t) -> void:
 	t.check(not fixed_prep.mission.chooses_difficulty() and arrows == "",
 		"a mission with a fixed profile never offers the difficulty arrows ('%s')" % arrows)
 	fixed_prep.free()
-	# An act of the night (v0.09) is a MissionDef: Prepare drafts its 4 slots and 10 DP, and the night sets the town,
+	# An act of the night (v0.09) is a MissionDef: Prepare drafts its 4 slots and 14 DP (v0.09 Task 19), and the night sets the town,
 	# so there are no difficulty arrows.
 	var act_prep := PrepareScreen.new()
 	act_prep.setup(MissionBook.long_night().act("festival"), PackedStringArray())
@@ -154,8 +154,8 @@ static func run(t) -> void:
 		var r := PrepareScreen.arrow_rect(side)
 		for p in [r.get_center(), r.position + Vector2.ONE, r.end - Vector2.ONE]:
 			act_arrows += act_prep.hit(p)
-	t.check(act_prep.draft.slots == 4 and act_prep.draft.capacity == 10 and act_arrows == "",
-		"the Festival's draft has 4 slots, 10 DP and no difficulty arrows (%d, %d, '%s')"
+	t.check(act_prep.draft.slots == 4 and act_prep.draft.capacity == 14 and act_arrows == "",
+		"the Festival's draft has 4 slots, 14 DP and no difficulty arrows (%d, %d, '%s')"
 		% [act_prep.draft.slots, act_prep.draft.capacity, act_arrows])
 	act_prep.free()
 

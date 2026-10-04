@@ -13,7 +13,9 @@ extends MissionDirector
 const ATTENDANTS := 6
 const ESCORTS := 4
 ## How far round the Prince the escort stands (ESCORT_CLOSE while he is frightened) and the attendants walk, in ground units.
-const ESCORT_R := 1.6
+## A calm escort stands past Crowd.DOOM_WITNESS (v0.09 Task 19), so an unseen kill turns on his attendants, who can be
+## whispered away; a frightened one closes in to within it.
+const ESCORT_R := 2.5
 const ESCORT_CLOSE := 0.8
 const ATTEND_R := 1.2
 ## Seconds between the director's looks at the party, and how near a leg's point counts as arrived.

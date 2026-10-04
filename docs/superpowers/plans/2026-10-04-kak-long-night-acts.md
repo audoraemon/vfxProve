@@ -1738,3 +1738,35 @@ Escapes at the end of a won Act III: 56-75 in Organized towns, 86 after a held f
 - Tests `checks=2060 failures=0`; digest `61267b7e90524d800bf1c3473a71146b`; crowd_check `-346732806`; FLOW `checks=54 failures=0`.
 - The 10 exact behaviour checksums are identical: calm 60 -695580348, gates 619520995, fire -16560442, rite --interrupt -129298221, soldiers escort -935015846, warning none/doom/whisper/discord/mix -446012507/-999129915/442055066/-909358062/-430643507.
 - Mission tests: buildings 55/51/52, citizens 191/186/194, escaped 1/1/1, stability 70/70/71%, citadel 50%. `--mission=warning`: `won=false reason=bell time=24.1`.
+
+### Task 20 bench and final gates
+
+**Bench hook (`2e30dd4`).** `Mission._bench_jump()`: `--mission=long_night --bench --bench-act=festival|procession|judgement` runs `next_act()` until the named act, then waits `--bench-after=SECONDS` (default 50) before the 9-s timing, so the Festival's crowd is packed (it packs at 45 s). Night only: the bench of every other mission is untouched.
+
+**Last Judgement, `kak-v0.08.2` (scratch worktree, `.godot` copied, imported) against HEAD.** The machine was busy: other sessions' Godot windows, Chrome, Edge and screen sharing. After a minute or two of continuous load every run slowed to 25-35 fps whichever build it was, so four sets of six alternating pairs were taken (the fourth with 25-s rests) and the pairs where both builds read above 100 fps are used. Six quiet pairs (old, new, fps):
+
+| Pair | `kak-v0.08.2` | v0.09 |
+|---|---|---|
+| 1 | 135.3 | 139.9 |
+| 2 | 129.8 | 120.5 |
+| 3 | 128.3 | 125.0 |
+| 4 | 126.3 | 127.7 |
+| 5 | 136.2 | 133.3 |
+| 6 | 137.9 | 139.3 |
+| Mean | 132.3 | 131.0 |
+
+- **Delta -1.3 fps: within 5 fps.** The old build ran first in each of these pairs (a warm-up favours it). In the four fully noisy pairs of the first set (old / new: 33.0 / 35.1, 31.3 / 34.7, 29.6 / 31.0, 30.0 / 31.8) v0.09 read higher each time. Nothing was profiled or changed.
+- Draw calls 1050 -> 1008 and primitives 237,300 -> 214,900 (`kak-v0.08.2` predates the PixelLab art merged at `c09141b`).
+- **Festival, crowd packed** (`--bench-act=festival`, 50 s in): 118.6 / 117.3 / 124.9 fps, worst frames 25.1 / 45.4 / 15.2 ms, 1071 draw calls, 206k primitives. Last Judgement on HEAD run right after each: 137.1 / 137.6 / 140.3 fps. The packed Festival is about 17 fps under Last Judgement and draws about 63 more calls (the goers, the bonfires).
+- A worktree was used and removed (`git worktree remove --force`); `default_bus_layout.tres` did not change.
+
+**Final gates on `2e30dd4`** (code identical to `8c7f049` apart from the bench hook):
+- Tests `checks=2087 failures=0`, no SCRIPT ERROR or Parse Error.
+- Digest `61267b7e90524d800bf1c3473a71146b`; crowd_check `-346732806`.
+- The 10 exact behaviour checksums are identical: calm 60 -695580348, gates 619520995, fire -16560442, rite --interrupt -129298221, soldiers escort -935015846, warning none -446012507, doom -999129915, whisper 442055066, discord -909358062, mix -430643507.
+- FLOW `checks=62`: on the first set, with the machine busy, runs 1 and 2 each failed one step ("and then restarts the night from Act I (up: false, MISSION, fading true, act omen)", a fresh mission's shader prewarm outlasting the step's 10-s wait) and run 3 gave `failures=0`. Three more runs on the same tree: `checks=62 failures=0` each time. The step is load-sensitive (the final review had already raised its wait from 5 s to 10 s).
+- Mission test (Last Judgement), quiet machine, three runs: buildings 57/55/55, citizens 186/188/191, escaped 1/1/1, stability 69/69/70%, citadel 50%. Three runs taken earlier while the machine was loaded: citizens 182-183, stability 67-68%.
+- `--mission=warning --mission-test`: `won=false reason=bell time=24.1` three of three on a quiet machine (25.5-26.2 in runs taken under load: that test runs at the real frame rate).
+- Played nights (`--scenario=night --act1=play --act2=play --act3=play`), no SCRIPT ERROR:
+  - festival: Act I won 13.8 s, Festival won 95.6 s, Act III won (`citadel`): won, A, 26820;
+  - procession: Act I won 13.8 s, Prince killed unseen 134.8 s, Act III won (`citadel`): won, A, 27690.

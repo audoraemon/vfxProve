@@ -64,6 +64,11 @@ extends SceneTree
 ##          messenger is not shaking the last one off (v0.08.1: the aim rings him red); a line for every cast and every
 ##          change of phase or messenger, a report every 5 s, then the ending, the relays, Unseen and "Solved by".
 ##          v0.08.1 left Thornwall out of The Warning's pool, and its case with it; any other case is refused.
+##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
+##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
+##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
+##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited
+##          and every cooldown ready (a `handover` line)
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -106,6 +111,9 @@ func _run() -> void:
 		var case_arg := Battlefield.arg_value(args, "--case")
 		powers = PackedStringArray(WARNING_CASES.get(case_arg if case_arg != "" else "none", ["whisper"]))
 		mission.mission_id = MissionBook.WARNING
+	elif scenario == "night":
+		powers = PackedStringArray(["whisper", "doom", "discord"])
+		mission.mission_id = MissionBook.LONG_NIGHT
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -143,6 +151,8 @@ func _run() -> void:
 			await _gates("--hazard" in args, "--shots" in args)
 		"judgement":
 			await _judgement()
+		"night":
+			await _night()
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -985,6 +995,61 @@ func _bands(at: Vector2) -> String:
 				counts[k] = int(counts.get(k, 0)) + 1
 		parts.append("%d-%d:%s" % [b[0], mini(int(b[1]), 99), counts])
 	return " ".join(parts)
+
+
+## The Long Night (v0.09) forced through its acts, each ended as the command line asks (see the usage).
+func _night() -> void:
+	var args := OS.get_cmdline_user_args()
+	var path := Battlefield.arg_value(args, "--path")
+	path = path if path != "" else "festival"
+	var outcome := {"omen": Battlefield.arg_value(args, "--act1"), "festival": Battlefield.arg_value(args, "--act2"),
+		"procession": Battlefield.arg_value(args, "--act2"), "judgement": Battlefield.arg_value(args, "--act3")}
+	var done := [false]
+	var acts := [0]
+	mission.act_over.connect(func(r: Dictionary) -> void:
+		print("BEHAVIOUR night act=%s won=%s reason=%s time=%.1f" % [mission.act().id, r.won, r.reason, float(r.time)])
+		acts[0] += 1)
+	mission.finished.connect(func(r: Dictionary) -> void:
+		print("BEHAVIOUR night end won=%s reason=%s path=%s acts=%d score=%d rank=%s" % [r.won, r.reason, r.path,
+			(r.acts as Array).size(), int(r.score), r.rank])
+		done[0] = true)
+	var seen := -1
+	while not done[0]:
+		if acts[0] != seen:
+			seen = acts[0]
+			if seen > 0:
+				await _frames(10)
+				if seen == 1:
+					# Review focus 4: the act ends with the time scale dipped and a power still falling. Put in the
+					# world by the old act's caster: its Rules is over and refuses a cast, and the night has no Heaven.
+					Engine.time_scale = 0.3
+					var heaven := load(String(PowerBook.get_power("heaven").path)) as GDScript
+					mission._rules.caster.call(heaven, TownLayout.CITADEL_ORIGIN, {"dir": Vector2(1, 0)})
+				mission.next_act(PackedStringArray(), path)
+				if seen == 1:
+					var rules: Rules = mission._rules
+					var ready := true
+					for i in rules.loadout.size():
+						ready = ready and rules.cooldown_left(i) == 0.0
+					print("BEHAVIOUR night handover time_scale=%.2f buildings=%d cooldowns=%s" % [Engine.time_scale,
+						rules.buildings_down, "ready" if ready else "waiting"])
+				mission._intro_left = 0.0
+				mission._rules.set_process(true)
+			print("BEHAVIOUR night start act=%s town=%s" % [mission.act().id, mission._crowd.profile.tier_name()])
+			await _frames(60)
+			_force_act(String(outcome.get(mission.act().id, "")))
+		await _frames(1)
+
+
+## End the current act as asked: "win", "lose", or anything else to let it run.
+func _force_act(how: String) -> void:
+	var rules: Rules = mission._rules
+	if how == "win":
+		rules.force_end(true, "forced")
+	elif how == "lose":
+		if mission.act().id == "omen":
+			mission._crowd.ring_bell()  # a lost Act I is a rung bell, as the night reads it
+		rules.force_end(false, "forced")
 
 
 func _frames(n: int) -> void:

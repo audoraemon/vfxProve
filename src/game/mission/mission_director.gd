@@ -9,13 +9,18 @@ var crowd: Crowd
 var town: Town
 ## The battlefield's effect context, for the director's own effects (null in tests).
 var ctx: FxContext
+## The night this act belongs to (v0.09), or null for a single mission.
+var night: NightState
+## The act's timed events (v0.09), or null. Untyped until EventTimeline exists (Task 9 types it).
+var timeline = null
 
 
-func setup(r: Rules, c: Crowd, t: Town, x: FxContext) -> MissionDirector:
+func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> MissionDirector:
 	rules = r
 	crowd = c
 	town = t
 	ctx = x
+	night = n
 	_begin()
 	return self
 
@@ -38,6 +43,11 @@ func marker() -> Vector2:
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}
+
+
+## Virtual: what this act hands the next one, written into the night before the director is let go (v0.09).
+func carry(_n: NightState) -> void:
+	pass
 
 
 ## Virtual: let go of the world's signals.

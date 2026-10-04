@@ -26,6 +26,10 @@ const SALT_TOWNHOUSE := 91
 const SALT_STALL := 92
 const SALT_TREE := 93
 const SALT_OAK := 94
+## A town market stall's design walk over TownLayout.STALLS (_stall_design): the first of these steps prime to the
+## number of designs, and where the walk starts.
+const STALL_STEPS := [5, 7, 11, 13]
+const STALL_OFFSET := 3
 ## The longest piece a wall run is cut into (TownLayout.WALL_PIECE): a strip spans its period plus this.
 const STRIP_PIECE := 1.2
 
@@ -103,11 +107,31 @@ static func _have(n: String) -> String:
 
 ## A stall's sprite: its design, in the awning tint of its cloth when that tint exists.
 static func _stall_name(s: Structure) -> String:
-	var design := _pick_variant("stall", s.rng.seed, SALT_STALL)
+	var design := _stall_design(s)
 	if design == "":
 		return ""
 	var tinted: String = design + "_" + ["red", "blue", "cream"][int(s.art.get("cloth", 0)) % 3]
 	return tinted if manifest().has(tinted) else design
+
+
+## A stall's design. A town market stall (its plot one of TownLayout.STALLS, index i) takes design
+## STALL_STEP * i + STALL_OFFSET (mod the number of designs present): plots next to each other in the market are 1, 2
+## or 3 apart in that list (along a row, or down a column where a row is short), so with four or more designs and a
+## step prime to their count no two neighbours share one. It reads the layout only, so gameplay is untouched. Any
+## other stall picks its design from its seed.
+static func _stall_design(s: Structure) -> String:
+	var v := variants("stall")
+	if v.is_empty():
+		return ""
+	var i: int = TownLayout.STALLS.find(s.footprint)
+	if i < 0:
+		return _pick_variant("stall", s.rng.seed, SALT_STALL)
+	var step := 1
+	for c in STALL_STEPS:
+		if v.size() % c != 0:
+			step = c
+			break
+	return "stall_%d" % v[(i * step + STALL_OFFSET) % v.size()]
 
 
 ## The sprite that replaces `s`, or "" (only buildings with a set in the manifest are drawn from one).

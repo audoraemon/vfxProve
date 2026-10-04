@@ -5,7 +5,11 @@ const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
 	"citadel_wall", "citadel_wall_side", "citadel_gate", "town_tower", "town_tower_corner", "town_wall",
 	"town_postern", "town_gate", "town_tower_e", "town_tower_s", "town_tower_e_hi", "town_tower_s_hi",
-	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop", "bell_tower"]
+	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop", "bell_tower",
+	"stall_1", "stall_1_red", "stall_1_blue", "stall_1_cream", "stall_2", "stall_2_red", "stall_2_blue",
+	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
+	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
+	"stall_12"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -38,6 +42,25 @@ static func _fake(names: Array) -> Array:
 			added.append(n)
 	SpriteArt._variants_cache.clear()
 	return added
+
+
+## Take the manifest's real entries starting with `prefix` out (for checks on fake ones); _restore puts them back.
+static func _hide(prefix: String) -> Dictionary:
+	var m := SpriteArt.manifest()
+	var out := {}
+	for n: String in m.keys():
+		if n.begins_with(prefix):
+			out[n] = m[n]
+			m.erase(n)
+	SpriteArt._variants_cache.clear()
+	return out
+
+
+static func _restore(hidden: Dictionary) -> void:
+	var m := SpriteArt.manifest()
+	for n: String in hidden:
+		m[n] = hidden[n]
+	SpriteArt._variants_cache.clear()
 
 
 static func _unfake(added: Array) -> void:
@@ -83,13 +106,13 @@ static func _mapping(t) -> void:
 		[Rect2(0, 0, 1.1, 2.0), 34.0, K.GATE, &"gate", &"", "town_gate"],
 		[Rect2(0, 0, 1.15, 0.7), 34.0, K.GATE, &"gate", &"postern", "town_postern"],
 		[Rect2(0, 0, 4.4, 1.9), 36.0, K.BARRACKS, &"barracks", &"", "barracks"],
-		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", ""],
+		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", "stall"],
 	]
 	for c in cases:
 		var s := _make(c[0], c[1], c[2], 5, c[3], c[4])
 		var got := SpriteArt.name_for(s)
 		var want: String = c[5]
-		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse"] else got == want
+		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse", "stall"] else got == want
 		t.check(ok, "sprite for %s/%s/%s is '%s' (got '%s')" % [K.keys()[c[2]], c[3], c[4], want, got])
 		s.free()
 	_unfake(fakes)
@@ -110,11 +133,12 @@ static func _mapping(t) -> void:
 		looks[SpriteArt.name_for(th)] = true
 		th.free()
 	t.check(looks.has("townhouse_a") and looks.has("townhouse_b") and looks.size() == 2, "both townhouse looks appear")
-	# Market stalls stay procedural for now (user review 2026-10-04): every awning cloth, no sprite set.
+	# Market stalls (batch 3): every awning cloth draws a stall design's set.
 	for sd in [3, 4, 5]:
 		var st := _make(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, sd, &"market")
-		t.check(SpriteArt.name_for(st) == "" and SpriteArt.set_for(st).is_empty(),
-			"a stall with cloth %d stays procedural" % int(st.art.cloth))
+		var sn := SpriteArt.name_for(st)
+		t.check(sn.begins_with("stall_") and not SpriteArt.set_for(st).is_empty(),
+			"a stall with cloth %d draws a stall set (got '%s')" % [int(st.art.cloth), sn])
 		st.free()
 	for n in NAMES:
 		var m: Dictionary = SpriteArt.manifest().get(n, {})
@@ -585,6 +609,7 @@ static func _battered(sprites: bool) -> String:
 ## well, torch and lamp posts, tree and oak variants, bridge and dock, barn and mills, field crops. Each maps only
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
+	var hidden := _hide("stall_")
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)
 		var n := SpriteArt.name_for(s)
@@ -651,30 +676,44 @@ static func _batch3(t) -> void:
 	t.check(crops.size() == 2, "both crops appear")
 	_unfake(fakes)
 	t.check(not SpriteArt.manifest().has("stall_1") and not SpriteArt.manifest().has("barn"), "the fake entries were removed")
+	_restore(hidden)
 	_stall_variety(t)
 	_flat_sprites(t)
 
 
-## The town's stalls (TownLayout.STALLS) get seeds from the environment's rng in order (EnvironmentField.add_structure: rng.randi());
-## with ten designs they must not all look alike: more than six distinct ones.
+## The town's stalls (TownLayout.STALLS) with the real stall designs: each plot's design comes from its place in the
+## market, whatever its seed, so no two neighbouring stalls (side by side, or one behind the other: centres within 1.5)
+## share a design, and more than six designs show. Every stall draws a set that exists, in its cloth's tint when the
+## design is striped.
 static func _stall_variety(t) -> void:
-	var names := []
-	for n in 10:
-		names.append("stall_%d" % (n + 1))
-	var fakes := _fake(names)
-	var worst := 99
-	for env_seed in 12:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = env_seed + 1
-		var seen := {}
-		for i in TownLayout.STALLS.size():
-			var s := _make(TownLayout.STALLS[i], 10.0, K.MARKET_STALL, rng.randi(), &"market")
-			seen[SpriteArt.name_for(s)] = true
-			s.free()
-		worst = mini(worst, seen.size())
+	var designs: Array = SpriteArt.variants("stall")
+	t.check(designs.size() >= 7, "at least seven stall designs in the manifest (got %d)" % designs.size())
 	t.check(TownLayout.STALLS.size() >= 29, "the town has at least 29 stalls")
-	t.check(worst > 6, "the town stalls over ten designs show more than six distinct ones (fewest over 12 seeds: %d)" % worst)
-	_unfake(fakes)
+	var picked := []
+	var ok := true
+	for i in TownLayout.STALLS.size():
+		var a := _make(TownLayout.STALLS[i], 10.0, K.MARKET_STALL, 11 + i, &"market")
+		var b := _make(TownLayout.STALLS[i], 10.0, K.MARKET_STALL, 9001 + 7 * i, &"market")
+		var na := SpriteArt.name_for(a)
+		var base := SpriteArt._stall_design(a)
+		ok = ok and base == SpriteArt._stall_design(b) and SpriteArt.manifest().has(na) and na.begins_with(base)
+		ok = ok and not SpriteArt.sprite(na).is_empty()
+		picked.append(base)
+		a.free()
+		b.free()
+	t.check(ok, "a market stall's design depends on its plot only, and its set exists")
+	var clash := []
+	for i in TownLayout.STALLS.size():
+		for j in range(i + 1, TownLayout.STALLS.size()):
+			var ci: Vector2 = TownLayout.STALLS[i].get_center()
+			var cj: Vector2 = TownLayout.STALLS[j].get_center()
+			if ci.distance_to(cj) <= 1.5 and picked[i] == picked[j]:
+				clash.append("%d/%d %s" % [i, j, picked[i]])
+	t.check(clash.is_empty(), "no two neighbouring market stalls share a design (%s)" % [clash])
+	var seen := {}
+	for p in picked:
+		seen[p] = true
+	t.check(seen.size() > 6, "the market shows more than six designs (got %d)" % seen.size())
 
 
 ## Bridge, dock and fields are flat: with a sprite they stay on the ground layer, under the people who walk on them.

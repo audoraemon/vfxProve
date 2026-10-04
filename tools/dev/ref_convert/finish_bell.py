@@ -12,6 +12,7 @@ L_BRICK, L_MORT = (160, 150, 137), (92, 79, 74)
 R_BRICK, R_MORT = (101, 90, 101), (48, 40, 47)
 ARCH_L, ARCH_R = (196, 186, 170), (128, 116, 124)
 SOOT = (40, 32, 30)
+SLATE_C, BEAM_C = (52, 72, 132), (128, 84, 40)
 HOLE = (24, 20, 22)
 
 a = np.array(Image.open(S + "bell_retex.png").convert("RGBA"))
@@ -57,7 +58,7 @@ for pts in blobs(op & doorish, 30):                     # the door: a dark/wood 
     if np.mean(xs) < AX and max(ys) > AY - 40 and min(ys) > AY - Z_TOP:
         openings.append(pts)
 out = a.copy()
-for pts in openings:
+for pts in []:   # no arch frames (user review): the openings stay as in the reference
     m = np.zeros((h, w), bool)
     for y, x in pts:
         m[y, x] = True
@@ -130,42 +131,59 @@ for _ in range(5):
                 dmg[y, x, :3] = HOLE
 Image.fromarray(dmg, "RGBA").save(D + "damaged.png")
 
-# ---- 3. ruins: a jagged wall stump with rubble, fallen slates and beams round its foot ----------------------------
-STUMP = 28
-ru = intact.copy()
-ru[..., 3] = 0
+# ---- 3. ruins: a stump broken along whole brick courses, in a smooth mound of whole bricks ------------------------
+ROW, BRICK = 5, 8
+STUMP = 30
+ru = np.zeros_like(intact)
 for x in range(w):
-    top = int(base_y(x) - STUMP - (rng.randint(0, 10) if abs(x - AX) < HALF - 2 else 0))
     if abs(x - AX) >= HALF:
         continue
+    u = abs(x - AX)
+    course = int(u // BRICK)
+    step = (3 - (course * 5 + (1 if x < AX else 2)) % 4) * ROW      # 0..15 px, in whole courses
+    top = int(base_y(x) - STUMP - step)
     for y in range(max(top, 0), h):
         if intact[y, x, 3] > 0 and y <= base_y(x) + 6:
             ru[y, x] = dmg[y, x]
-    # broken top edge: a dark line with lighter broken brick under it
-    if 0 <= top < h and ru[top, x, 3] > 0:
-        ru[top, x, :3] = SOOT
-        if top + 1 < h:
-            ru[top + 1, x, :3] = ARCH_L if x < AX else ARCH_R
-# rubble: little stone blocks (2x2 / 3x2) piled in a band round the foot, plus slates and beams
-STONES = [L_BRICK, (140, 130, 118), R_BRICK, (120, 110, 104), ARCH_L]
-SLATE = [(44, 62, 120), (62, 86, 150)]
-BEAM = [(110, 70, 34), (146, 96, 46)]
-for _ in range(1100):
-    # a heap inside the plot's diamond, highest against the stump and spilling a little past the front corner
-    gx = rng.uniform(-1.0, 1.0)
-    x = int(AX + gx * (HALF - 2))
-    yb = base_y(x)
-    depth = rng.uniform(0, 1)
-    y = int(yb + 4 - depth * 9 - rng.uniform(0, 20) * (1 - abs(gx) ** 2) * (1 - depth) - rng.uniform(0, 5))
-    if not (0 <= x < w - 3 and 0 <= y < h - 3):
-        continue
-    r = rng.random()
-    col = SLATE[rng.randrange(2)] if r < 0.12 else (BEAM[rng.randrange(2)] if r < 0.2 else STONES[rng.randrange(5)])
-    bw, bh = (3, 1) if r < 0.2 else (rng.choice((2, 3)), 2)
-    for dy in range(bh):
-        for dx in range(bw):
-            ru[y + dy, x + dx, :3] = col if dy == 0 else tuple(int(c * 0.7) for c in col)
-            ru[y + dy, x + dx, 3] = 255
+# no banner scraps on the stump: blue pixels become the wall's brick colour
+rr = ru[..., :3].astype(int)
+bl = (ru[..., 3] > 0) & (rr[..., 2] > rr[..., 0] + 30) & (rr[..., 2] > rr[..., 1] + 15)
+for y, x in zip(*np.nonzero(bl)):
+    ru[y, x, :3] = L_BRICK if x < AX else R_BRICK
+# the heap: small iso stone blocks (lit top, lit left side, shaded right side, dark outline), stacked into a
+# rounded pile against the stump's foot, drawn back to front
+TOPC, LEFTC, RIGHTC = (176, 168, 156), (150, 140, 128), (98, 88, 98)
+OUTC = (40, 32, 34)
+blocks = []
+for _ in range(90):
+    gx = rng.uniform(-0.95, 0.95)
+    x = AX + gx * (HALF - 4)
+    hgt = 16 * (1 - gx * gx) ** 0.8
+    lift = rng.uniform(0, hgt)
+    y = base_y(x) + 4 - lift
+    blocks.append((y, x, rng.choice((2, 3, 3, 4))))
+blocks.sort()
+for y, x, s_ in blocks:
+    x, y = int(x), int(y)
+    # top face: a small diamond; sides below it
+    for dy in range(-s_ // 2, s_ // 2 + 1):
+        half = s_ - abs(dy) * 2
+        for dx in range(-half, half + 1):
+            yy, xx = y + dy, x + dx
+            if 0 <= yy < h and 0 <= xx < w:
+                ru[yy, xx, :3] = TOPC; ru[yy, xx, 3] = 255
+    for dz in range(1, s_ + 1):
+        for dx in range(-s_, s_ + 1):
+            yy = y + s_ // 2 + dz - (abs(dx) // 2)
+            xx = x + dx
+            if 0 <= yy < h and 0 <= xx < w:
+                ru[yy, xx, :3] = LEFTC if dx < 0 else RIGHTC; ru[yy, xx, 3] = 255
+    # outline this block against what is behind it
+    for dy in range(-s_ // 2 - 1, s_ + s_ // 2 + 2):
+        for dx in (-s_ - 1, s_ + 1):
+            yy, xx = y + dy - (abs(dx) // 2 if dy > s_ // 2 else 0), x + dx
+            if 0 <= yy < h and 0 <= xx < w and ru[yy, xx, 3] > 0:
+                ru[yy, xx, :3] = OUTC
 # dark outline round the ruins' silhouette, like every sprite
 al = ru[..., 3] > 0
 p = np.pad(al, 1)

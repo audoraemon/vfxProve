@@ -278,6 +278,7 @@ func _stage_shot(file: String) -> void:
 		for b: Structure in _town._built:
 			if is_instance_valid(b) and b.footprint == plot:
 				s = b
+				break
 		if s != null and file.ends_with("_damaged.png"):
 			s.crack()
 		elif s != null and file.ends_with("_ruins.png"):

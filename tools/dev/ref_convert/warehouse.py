@@ -2,18 +2,20 @@
 its crane (the user chose "Adapt the warehouse": no barn is drawn on the four sheets). No AI calls.
 
   barn       HOUSE / farm / "",          footprint 1.3 x 1.5 (TownLayout.BARNS), height 20. The warehouse's gable end
-             and a short stretch of its long side: the long side is cut down (the roof between its dormer and its
-             chimney comes out), the chimney goes (a barn never smokes), a big plank barn door on the gable.
+             and a short stretch of its long side: the long side is cut down (the roof between where its dormer
+             stood and its chimney comes out), the chimney goes (a barn never smokes), a big plank barn door on the
+             gable.
   carpenter  HOUSE / house / carpenter, footprint 2.3 x 1.15 (TownLayout.CARPENTER), height 20. The whole warehouse,
              its long side lengthened by a 13 px slice of roof so it reaches 2.3 cells, its chimney kept (it smokes, as
              the procedural carpenter does), a stack of planks against the long wall. The crane is dropped too: it
              stands outside the gable and would hang over the yard past the plot.
 
-What comes from the sheet: the roof (slates, ridge, rakes, dormer), the chimney and the gable's timber triangle above
-its tie beam. The sheet's walls are hidden behind crates, barrels, a lean-to, a lantern and the crane, and their stone
-door arch is not wanted, so the walls below are drawn clean in flat tones on the game's own iso geometry: a stone
-plinth, a sill, timber posts, plaster panels, a wall plate, doors and windows. The sheet draws at about 2.2:1; the
-roof is stretched to 2:1 (y x 1.11) as it is fitted, and the gable sets the scale (its run equals the gable face's).
+What comes from the sheet: the roof (slates, ridge, rakes; the dormer painted out), the chimney and the gable's timber
+triangle above its tie beam. The sheet's walls are hidden behind crates, barrels, a lean-to, a lantern and the crane,
+and their stone door arch is not wanted, so the walls below are drawn clean in flat tones on the game's own iso
+geometry: a stone plinth, a sill, timber posts, plaster panels, a wall plate, doors and windows. The sheet draws at
+about 2.2:1; the roof is stretched to 2:1 (y x 1.11) as it is fitted, and the gable sets the scale (its run equals the
+gable face's).
 
 Light from the left: the sheet lights from the right (the chimney's right face and the gable are its lit sides), so
 the barn (gable on its left face, the long side on its right) is the sheet mirrored. The carpenter's plot is wide (its
@@ -22,8 +24,8 @@ is relit: roof up, gable triangle down, chimney mirrored in place, and its walls
 
 States: intact, damaged (holes through the roof slates with charred rims, a scorch up the wall, the door hanging off
 one hinge), ruins (the approved batch 2 ruins of the closest set, placed on this plot: townhouse_b's for the barn,
-whose blue slate debris matches, unscaled and centred; the workshop's for the carpenter, the procedural carpenter's own
-art, scaled 0.85). The collapse is the engine's sink. No idle strip.
+whose blue slate debris matches, scaled 0.9 and centred; the workshop's for the carpenter, the procedural carpenter's
+own art, scaled 0.85). The collapse is the engine's sink. No idle strip.
 
 Usage (from anywhere):
   python tools/dev/ref_convert/warehouse.py [all | barn | carpenter] [--out <scratch dir>] [--debug <dir>]
@@ -55,7 +57,11 @@ STRETCH = 0.5 / AXIS_K                    # y stretch: the sheet's ~2.2:1 to the
 ROOF_POLY = [(93, 660), (134, 590), (276, 650), (229, 717), (98, 657)]
 GABLE_POLY = [(228, 717), (270, 653), (311, 690), (305, 695), (297, 696), (234, 721)]
 CHIMNEY = (227, 610, 252, 647)
-DORMER_U = 145.0                          # the roof slice cut for the barn starts past the dormer
+DORMER_U = 145.0                          # the barn's roof slice is cut from here (where the painted-out dormer stood)
+# The sheet's dormer (a crescent of blue flashing that reads as a stain at sprite size): painted out with the slates
+# DORMER_SHIFT along the roof (whole courses, no seam), before anything else.
+DORMER = (141, 635, 169, 669)
+DORMER_SHIFT = (40, 18)
 CARP_SLICE_U = 168.0                      # the carpenter's added slice of roof is copied from here back
 PAD = 6
 
@@ -79,7 +85,7 @@ CHAR = np.array([40, 30, 26.0])
 
 SETS = {
     # name: footprint, height, seed, kind, role, tag, ruins source, ruins scale
-    "barn": ([1.3, 1.5], 20, 70, "HOUSE", "farm", "", "townhouse_b", 1.0),
+    "barn": ([1.3, 1.5], 20, 70, "HOUSE", "farm", "", "townhouse_b", 0.9),
     "carpenter": ([2.3, 1.15], 20, 71, "HOUSE", "house", "carpenter", "workshop", 0.85),
 }
 WALL_H = {"barn": 23, "carpenter": 21}    # px from the ground to the eave, in the sprite
@@ -102,6 +108,9 @@ def slab(chimney=True, relit=False):
     """The sheet's roof, chimney (or not) and gable triangle; everything else cleared. relit: lit from the left in the
     sheet's orientation (the roof's front slope up, the gable down, the chimney mirrored in place)."""
     a = np.array(Image.open(C1).convert("RGBA").crop(BOX)).astype(float)
+    x0, y0, x1, y1 = DORMER[0] - BOX[0], DORMER[1] - BOX[1], DORMER[2] - BOX[0], DORMER[3] - BOX[1]
+    sx, sy = DORMER_SHIFT
+    a[y0:y1, x0:x1] = a[y0 + sy:y1 + sy, x0 + sx:x1 + sx]
     h, w = a.shape[:2]
     rgb = a[..., :3]
     blue = (a[..., 3] > 0) & (rgb[..., 2] > rgb[..., 0] + 12) & (rgb[..., 2] > 55)

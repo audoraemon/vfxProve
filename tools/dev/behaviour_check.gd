@@ -68,12 +68,13 @@ extends SceneTree
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
 ##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited
-##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a temporary test aid (v0.09
-##          Task 8, until M4's Procession decides it): the Prince's outcome is written into the night before Act II
-##          ends, so Act III's town can be raised by it. `--festival=broken|held` is a temporary test aid (v0.09): the
+##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a test aid (v0.09 Task 8):
+##          it overwrites what the Procession decided, once Act II-B is over, so Act III's town can be raised by any
+##          outcome even when the act was ended by force. `--festival=broken|held` is a temporary test aid (v0.09): the
 ##          festival state is written into the night before Act III starts, so it can shape the town. `--shots` (v0.09
 ##          Task 13) photographs Act II-A's market at 30, 50 and 95 s into it (captures/behaviour_festival_<s>.png, and
-##          the Mayor close up at 95 s); `--calm-handover` skips the dipped time scale and the falling Heaven Splitter,
+##          the Mayor close up at 95 s; Task 16: Act II-B's blessing and dock at 65 and 125 s,
+##          captures/behaviour_procession_<s>.png); `--calm-handover` skips the dipped time scale and the falling Heaven Splitter,
 ##          so Act II starts in a quiet town (for photographs).
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
@@ -84,6 +85,9 @@ const BURN_HOUSES := 6
 ## Seconds into Act II-A that `night --shots` photographs, and the ground point it looks at (the fountain).
 const FESTIVAL_SHOTS := [30.0, 50.0, 95.0]
 const FESTIVAL_LOOK_AT := Vector2(1.0, 4.0)
+## Seconds into Act II-B that `night --shots` photographs (the blessing, the dock), the zoom, and how far from the Prince
+## towards the boarding point the camera looks (0 on him, 1 at the ship).
+const PROCESSION_SHOTS := [[65.0, 2.5, 0.0], [125.0, 1.6, 0.6]]
 
 var mission: Mission
 
@@ -1017,7 +1021,13 @@ func _night() -> void:
 	var done := [false]
 	var acts := [0]
 	mission.act_over.connect(func(r: Dictionary) -> void:
-		print("BEHAVIOUR night act=%s won=%s reason=%s time=%.1f" % [mission.act().id, r.won, r.reason, float(r.time)])
+		print("BEHAVIOUR night act=%s won=%s reason=%s time=%.1f prince=%s" % [mission.act().id, r.won, r.reason, float(r.time),
+			mission.night().prince])
+		# Test aid: the Procession decides the Prince's outcome itself now; this forces it, over what it decided.
+		var prince := Battlefield.arg_value(OS.get_cmdline_user_args(), "--prince")
+		if prince != "" and mission.act().id == "procession":
+			mission.night().prince = prince
+			print("BEHAVIOUR night prince forced to %s" % prince)
 		acts[0] += 1)
 	mission.finished.connect(func(r: Dictionary) -> void:
 		print("BEHAVIOUR night end won=%s reason=%s path=%s acts=%d score=%d rank=%s" % [r.won, r.reason, r.path,
@@ -1048,6 +1058,8 @@ func _night() -> void:
 			print("BEHAVIOUR night start act=%s town=%s" % [mission.act().id, mission._crowd.profile.tier_name()])
 			if "--shots" in OS.get_cmdline_user_args() and mission.act().id == "festival":
 				_festival_shots()  # a coroutine left running beside the loop
+			if "--shots" in OS.get_cmdline_user_args() and mission.act().id == "procession":
+				_procession_shots()
 			await _frames(60)
 			_force_act(String(outcome.get(mission.act().id, "")))
 		await _frames(1)
@@ -1088,13 +1100,33 @@ func _festival_shots() -> void:
 			d.mayor.mind if d.mayor != null else "none"])
 
 
+## Act II-B's capture aid (v0.09 Task 16): a frame at PROCESSION_SHOTS' marks of the act, the camera near the Prince -- at the
+## steps for the blessing, at the dock for the ship -- with his leg and the onlookers at each.
+func _procession_shots() -> void:
+	var bf: Battlefield = mission._bf
+	var rules: Rules = mission._rules
+	for shot: Array in PROCESSION_SHOTS:
+		var mark: float = shot[0]
+		while is_instance_valid(rules) and not rules.finished and rules.director != null and rules.director.timeline.elapsed() < mark:
+			await process_frame
+		if not is_instance_valid(rules) or rules.finished:
+			return
+		var d := rules.director as ProcessionDirector
+		var look: Vector2 = d.route[d.route.size() - 1]
+		if is_instance_valid(d.prince):
+			look = d.prince.ground_pos.lerp(look, float(shot[2]))
+		bf.camera.zoom = Vector2.ONE * float(shot[1])
+		bf.camera.position = Iso.ground_to_screen(look).round()
+		await _frames(3)
+		await bf.save_capture("behaviour_procession_%d.png" % roundi(mark))
+		print("BEHAVIOUR night procession shot t=%d leg=%d prince=%s to_look=%.1f onlookers=%d escorts=%d" % [roundi(mark), d.leg,
+			d.prince.ground_pos if is_instance_valid(d.prince) else "gone", d.prince.ground_pos.distance_to(look) \
+			if is_instance_valid(d.prince) else -1.0, d.onlookers.size(), d.escorts.size()])
+
+
 ## End the current act as asked: "win", "lose", or anything else to let it run.
 func _force_act(how: String) -> void:
 	var rules: Rules = mission._rules
-	# Temporary test aid (v0.09 Task 8): the Prince's outcome, until M4's Procession sets it itself.
-	var prince := Battlefield.arg_value(OS.get_cmdline_user_args(), "--prince")
-	if prince != "" and mission.act().id == "procession":
-		mission.night().prince = prince
 	var festival := Battlefield.arg_value(OS.get_cmdline_user_args(), "--festival")
 	if festival != "":
 		mission.night().festival = festival

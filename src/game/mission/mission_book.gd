@@ -162,8 +162,9 @@ static func _festival(m: MissionDef) -> ActDef:
 static func _procession(m: MissionDef) -> ActDef:
 	var a := _act(m, "procession", "Act II: The Procession", 150.0)
 	a.brief = PackedStringArray(["The Prince leaves the Citadel for the ship.", "Stop him before he sails."])
-	a.goal = "Hold until the act ends"  # M4 replaces this placeholder
-	a.goal_label = "Hold"
+	a.goal = "Kill the Prince before he sails"
+	a.goal_label = "The Prince is dead"
+	a.lose = "The Prince boards the ship, or the last tide comes"
 	a.camera_at = TownLayout.CITADEL_ORIGIN.lerp(TownLayout.DOCK.get_center(), 0.3)
 	a.intro_from = TownLayout.CITADEL_ORIGIN
 	a.intro_banner = "ACT II - THE PROCESSION"
@@ -171,8 +172,12 @@ static func _procession(m: MissionDef) -> ActDef:
 	a.make_town = _act2_town
 	a.director = ProcessionDirector
 	a.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [ClockObjective.new(true, "Hold", "held")]
+		var out: Array[Objective] = [PrinceObjective.new(), ClockObjective.new(false, "The tide", "tide")]
 		return out
+	a.make_bonuses = func() -> Array[Objective]:
+		var out: Array[Objective] = [QuietSuccessionObjective.new()]
+		return out
+	a.events_text = PackedStringArray(["1:00 The blessing", "2:00 The ship docks", "2:30 The last tide"])
 	a.make_card_line = func(n: NightState) -> String:
 		return "The bell rang: his escort is wary." if n.bell_rang else "The Prince travels light."
 	return a

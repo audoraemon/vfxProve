@@ -70,8 +70,9 @@ extends SceneTree
 ##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited
 ##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a test aid (v0.09 Task 8):
 ##          it overwrites what the Procession decided, once Act II-B is over, so Act III's town can be raised by any
-##          outcome even when the act was ended by force. `--festival=broken|held` is a temporary test aid (v0.09): the
-##          festival state is written into the night before Act III starts, so it can shape the town. `--shots` (v0.09
+##          outcome even when the act was ended by force. `--festival=broken|held` is a test aid (v0.09): it
+##          overwrites what the Festival decided, once Act II-A is over, so Act III's town can be raised by any outcome
+##          even when the act was ended by force. `--shots` (v0.09
 ##          Task 13) photographs Act II-A's market at 30, 50 and 95 s into it (captures/behaviour_festival_<s>.png, and
 ##          the Mayor close up at 95 s; Task 16: Act II-B's blessing and dock at 65 and 125 s,
 ##          captures/behaviour_procession_<s>.png); `--calm-handover` skips the dipped time scale and the falling Heaven Splitter,
@@ -1028,6 +1029,10 @@ func _night() -> void:
 		if prince != "" and mission.act().id == "procession":
 			mission.night().prince = prince
 			print("BEHAVIOUR night prince forced to %s" % prince)
+		var festival := Battlefield.arg_value(OS.get_cmdline_user_args(), "--festival")
+		if festival != "" and mission.act().id == "festival":
+			mission.night().festival = festival
+			print("BEHAVIOUR night festival forced to %s" % festival)
 		acts[0] += 1)
 	mission.finished.connect(func(r: Dictionary) -> void:
 		print("BEHAVIOUR night end won=%s reason=%s path=%s acts=%d score=%d rank=%s" % [r.won, r.reason, r.path,
@@ -1127,9 +1132,6 @@ func _procession_shots() -> void:
 ## End the current act as asked: "win", "lose", or anything else to let it run.
 func _force_act(how: String) -> void:
 	var rules: Rules = mission._rules
-	var festival := Battlefield.arg_value(OS.get_cmdline_user_args(), "--festival")
-	if festival != "":
-		mission.night().festival = festival
 	if how == "win":
 		rules.force_end(true, "forced")
 	elif how == "lose":

@@ -56,8 +56,9 @@ const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
 ## People sprites: rows above the feet that stay with the legs when a laser cuts a person in two.
 const SPRITE_WAIST := 7.0
 ## Where the watchman's lantern hangs beside his sprite (v0.08), facing right: its iron cap, from his ground point,
-## just under the leading hand; mirrored facing left, and 3 px higher while he runs.
-const SPRITE_LANTERN := Vector2i(4, -8)
+## against the side of the coat at the leading hand; mirrored facing left. The sprite's arms swing within its frames
+## (they do not rise as the procedural ones do when running), so the lantern stays put.
+const SPRITE_LANTERN := Vector2i(3, -8)
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
@@ -1306,18 +1307,16 @@ func _sprite_signature() -> int:
 	sig = sig * 7 + int(state)
 	sig = sig * 131 + int(_draw_origin.y) + 64
 	# The overlays, each its own term: Discord's swirl, the cough, the sickness's stage (v0.07.1: its tint goes green
-	# to red), Mind Whisper's eye and the watchman's lantern (v0.08; it rises when he runs).
+	# to red) and Mind Whisper's eye (v0.08). The watchman's lantern goes with the facing, already in.
 	sig = sig * 9 + (1 + int(_anim * 3.0) % 8 if mind == Mind.CONFUSED else 0)
 	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
 	sig = sig * (SICK_STAGES + 1) + sick_stage()
-	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
-	return sig * 2 + (1 if _is_watchman() and is_running() else 0)
+	return sig * 2 + (1 if mind == Mind.WHISPERED else 0)
 
 
-## Where the watchman's lantern cap sits beside his sprite now (SPRITE_LANTERN, by facing and pace), from his feet.
+## Where the watchman's lantern cap sits beside his sprite now (SPRITE_LANTERN, by facing), from his feet.
 func _sprite_lantern() -> Vector2i:
-	return Vector2i(SPRITE_LANTERN.x if _facing > 0 else -SPRITE_LANTERN.x - 1,
-		SPRITE_LANTERN.y - (3 if is_running() else 0))
+	return Vector2i(SPRITE_LANTERN.x if _facing > 0 else -SPRITE_LANTERN.x - 1, SPRITE_LANTERN.y)
 
 
 func _is_watchman() -> bool:

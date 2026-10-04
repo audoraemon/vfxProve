@@ -187,7 +187,7 @@ static func _merged_looks(t) -> void:
 	var right := w._sprite_lantern()
 	w._facing = -1
 	var left := w._sprite_lantern()
-	t.check(right.x >= 4 and left.x == -right.x - 1 and right.y < -4 and right.y > -12
+	t.check(right.x >= 3 and left.x == -right.x - 1 and right.y < -4 and right.y > -12
 		and cell.has_point(Vector2(right)) and cell.has_point(Vector2(left) + Vector2(0, 2)),
 		"his lantern hangs beside the sprite at hand height, mirrored by facing (%s / %s)" % [right, left])
 	var sig_calm := w._art_signature()

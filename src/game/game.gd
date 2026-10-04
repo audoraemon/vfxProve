@@ -612,9 +612,151 @@ func _flow_test() -> void:
 	_open_pause()
 	on_action("pause:missions")
 	await get_tree().process_frame
+	await _flow_night(step)
 	(_screen_node as MissionBoard).action.emit("back")
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back from the board returns to the title")
 	step.call(Engine.time_scale == 1.0, "and time runs at normal speed")
 
 	print("FLOW result checks=%d failures=%d %s" % [count[0], fails.size(), ", ".join(fails)])
+
+
+## A mission is up and started, no fade running, and it is not `other`: a Restart has built the fresh one.
+func _mission_up(other: Mission) -> bool:
+	var up := screen == Screen.MISSION and is_instance_valid(_mission) and _mission != other
+	return up and _mission.started() and not _fading
+
+
+## The Long Night through the screens (v0.09), from the board: Act I won on its clock, the choice card, the re-draft,
+## Act II (one building counted once), Act III ended on its clock for the night's results; then a restart in Act I and
+## the way out through Pause. Ends on the board.
+func _flow_night(step: Callable) -> void:
+	var kit := MissionBook.long_night().default_loadout
+	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
+	var prep: PrepareScreen = _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and prep.mission.id == MissionBook.LONG_NIGHT
+		and prep.draft.slots == 4 and mission_id == MissionBook.LONG_NIGHT,
+		"picking The Long Night opens its draft, with 4 slots")
+	prep.draft.preselect(kit)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and loadout == kit
+		and _mission.act() != null and _mission.act().id == "omen" and _mission.night() != null,
+		"MANIFEST starts the night in Act I, The Omen (%s)" % ",".join(loadout))
+
+	# Act I wins on its clock, and the interlude after it is for that act.
+	_mission.rules().time_left = 0.01
+	var inter := await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	var card: InterludeScreen = _screen_node as InterludeScreen
+	step.call(inter and card != null and card.choices.size() == 2 and bool(result.get("won", false))
+		and is_instance_valid(_mission) and _mission.process_mode == Node.PROCESS_MODE_DISABLED,
+		"Act I ending opens the interlude with two choices, over the frozen town")
+	step.call(InterludeScreen.act_name(String(result.get("mission", ""))) == "Act I: The Omen"
+		and card != null and card.act_name(String(result.get("mission", ""))) == "Act I: The Omen",
+		"the interlude is for the act just played (%s)" % InterludeScreen.act_name(String(result.get("mission", ""))))
+	var night: NightState = _mission.night()
+	var same_night := true
+	for a: ActDef in _mission.next_choices():
+		same_night = same_night and a.night == night
+	step.call(same_night and night.results.size() == 1, "each act that may follow reads the night being played")
+
+	# The choice card: the Festival, then the re-draft with BEGIN, the same mission kept.
+	var first := _mission
+	card.choose("festival")
+	card.action.emit("draft")
+	await get_tree().process_frame
+	prep = _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and is_instance_valid(first)
+		and _mission == first and prep.mission.id == "festival",
+		"Choose powers shows the Festival's draft with BEGIN, the mission still alive")
+	prep.draft.preselect(kit)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "festival", 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	step.call(screen == Screen.MISSION and _mission == first and _mission.act().id == "festival"
+		and _mission.night().path == "festival", "BEGIN plays Act II, the Festival (path %s)" % _mission.night().path)
+
+	# One destroyed building counts once: only the act's own Rules is listening.
+	var houses: Array[Structure] = []
+	for s: Structure in _mission._town._built:
+		if s.kind == Structure.Kind.HOUSE and s.role == &"house":
+			houses.append(s)
+	var listening := 0
+	for c: Dictionary in _mission._bf.ctx.env.structure_destroyed.get_connections():
+		if (c.callable as Callable).get_object() is Rules:
+			listening += 1
+	var down0: int = _mission.rules().buildings_down
+	_mission.rules()._on_structure_destroyed(houses[0], &"stone")
+	step.call(not houses.is_empty() and listening == 1 and _mission.rules().buildings_down == down0 + 1 and down0 == 0,
+		"one building down counts once: %d Rules listening, buildings_down %d" % [listening, _mission.rules().buildings_down])
+
+	# Act II ends on its clock: the last choice is a single line, and Prepare for Act III.
+	_mission.rules().time_left = 0.01
+	inter = await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	card = _screen_node as InterludeScreen
+	step.call(inter and card != null and card.choices.size() == 1 and _mission.night().results.size() == 2
+		and InterludeScreen.act_name(String(result.get("mission", ""))) == "Act II: The Festival",
+		"Act II ending opens the interlude with one choice (%s)" % InterludeScreen.act_name(String(result.get("mission", ""))))
+	card.action.emit("draft")
+	await get_tree().process_frame
+	prep = _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and _mission == first,
+		"Choose powers shows Act III's draft with BEGIN")
+	prep.draft.preselect(kit)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "judgement", 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	step.call(screen == Screen.MISSION and _mission.act().id == "judgement", "BEGIN plays Act III, Judgement")
+
+	# Act III ends on its clock: the night's results.
+	_mission.rules().time_left = 0.01
+	var over := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var acts: Array = result.get("acts", [])
+	step.call(over and _screen_node is ResultsScreen and acts.size() == 3 and String(result.get("path", "")) == "festival"
+		and result.has("rank") and String(result.get("reason", "")) == "timeout" and not bool(result.get("won", true)),
+		"Act III ending reports the night: %d acts, path %s, rank %s, %s" % [acts.size(), result.get("path", "?"),
+		result.get("rank", "?"), result.get("reason", "?")])
+	on_action("results:missions")
+	await get_tree().process_frame
+	step.call(screen == Screen.BOARD and not is_instance_valid(_mission), "Missions from the night's results returns to the board")
+
+	# A restart in Act I is a fresh night, and so is one in Act II; Pause then Missions leaves it.
+	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	await _until(func() -> bool: return _mission_up(null), 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	var old := _mission
+	_open_pause()
+	on_action("pause:restart")
+	await _until(func() -> bool: return _mission_up(old), 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	step.call(_mission != old and _mission.act() != null and _mission.act().id == "omen" and _mission.night().results.is_empty(),
+		"Restart in Act I is a fresh night, Act I again (%s)" % _mission.act().id)
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	card = _screen_node as InterludeScreen
+	card.choose("procession")
+	card.action.emit("draft")
+	await get_tree().process_frame
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "procession", 5.0)
+	step.call(_mission.act().id == "procession" and _mission.night().path == "procession" and _mission.night().results.size() == 1,
+		"a night through the Procession (path %s)" % _mission.night().path)
+	old = _mission
+	_open_pause()
+	on_action("pause:restart")
+	await _until(func() -> bool: return _mission_up(old), 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	var live := 0
+	for c: Dictionary in _mission._bf.ctx.env.structure_destroyed.get_connections():
+		if (c.callable as Callable).get_object() is Rules:
+			live += 1
+	step.call(_mission != old and _mission.act().id == "omen" and _mission.night().results.is_empty()
+		and _mission.night().path == "" and live == 1 and _mission.rules().buildings_down == 0,
+		"Restart in Act II is a fresh night from Act I, one Rules listening (%s)" % _mission.act().id)
+	_open_pause()
+	on_action("pause:missions")
+	await get_tree().process_frame
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission)
+		and not is_instance_valid(_pause), "Missions from the pause menu leaves the night for the board")
 

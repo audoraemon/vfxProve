@@ -59,6 +59,7 @@ func tuning_key() -> String:
 
 
 func _ready() -> void:
+	add_to_group(&"decor_art")
 	self_modulate = ArtTuning.tint(tuning_key())
 	if kind in SWAYS:
 		material = wind_material()
@@ -75,6 +76,11 @@ func _ready() -> void:
 
 
 ## A blast reached it: char it, or knock it down when the hit is strong enough.
+## F7 switched the art (ArtToggle): draw again from the sprite or the polygons.
+func art_changed() -> void:
+	queue_redraw()
+
+
 func hit(amount: float, damage_kind: StringName) -> void:
 	if down:
 		return

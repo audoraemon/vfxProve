@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_paint(t)
 	_runs(t)
 	_down(t)
+	_toggle(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -115,6 +116,35 @@ static func _down(t) -> void:
 	var tree := DecorSprites.tree_set(Decor.Kind.OAK, 9)
 	t.check(s.size() == 1 and s[0][1] == tree.stills[&"ruins"], "the stump is the set's ruins still")
 	ArtKit.begin()
+
+
+static func _toggle(t) -> void:
+	# F7 reaches every decor drawer: live decor and the forest bands redraw, the floor re-bakes.
+	# The test runner's root is never inside a scene tree (see test_sprite_art _idle_clock_frozen), so _ready() is
+	# called by hand and nothing here uses get_tree().
+	var d := Decor.new().setup(Decor.Kind.BARREL, Vector2(1, 1), Vector2.ZERO, 3)
+	d._ready()
+	t.check(d.is_in_group(&"decor_art"), "a live decor piece listens for art changes")
+	t.check(d.has_method("art_changed"), "and has art_changed()")
+	d.free()
+	var band := ForestLayer.Band.new()
+	band._ready()
+	t.check(band.is_in_group(&"decor_art") and band.has_method("art_changed"), "a forest band listens for art changes")
+	band.free()
+	var floor_node := TownFloor.new()
+	floor_node._ready()
+	t.check(floor_node.is_in_group(&"decor_art"), "the floor listens for art changes")
+	t.check(floor_node.has_method("rebake") and floor_node.has_method("art_changed"), "the floor can re-bake")
+	floor_node.rebake()
+	t.check(floor_node.get_node_or_null("FloorBake") == null, "headless, a re-bake does nothing (no bake to redo)")
+	floor_node.free()
+	# Off the tree, F7 still flips the art without touching any group.
+	var toggle := ArtToggle.new()
+	var was := SpriteArt.on()
+	toggle.toggle()
+	t.check(SpriteArt.on() != was, "ArtToggle.toggle() flips the art off the tree")
+	toggle.toggle()
+	toggle.free()
 
 
 static func _tex(w: int, h: int) -> Texture2D:

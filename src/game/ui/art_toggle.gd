@@ -23,4 +23,7 @@ func toggle() -> void:
 		for s in env.structures():
 			if is_instance_valid(s):
 				s.refresh_sprite()
+	# Decor, the forest bands and the floor bake follow too (group "decor_art", art_changed()).
+	if is_inside_tree():
+		get_tree().call_group(&"decor_art", &"art_changed")
 	print("Building art: ", "sprites" if SpriteArt.on() else "procedural")

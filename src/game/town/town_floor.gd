@@ -131,6 +131,7 @@ var _origin := Vector2.ZERO
 
 
 func _ready() -> void:
+	add_to_group(&"decor_art")
 	var glints := RiverGlints.new()
 	glints.name = "RiverGlints"
 	add_child(glints)
@@ -159,6 +160,23 @@ func _bake() -> void:
 	_texture = vp.get_texture()
 	_origin = bounds.position
 	queue_redraw()
+
+
+
+## F7 switched the art (ArtToggle): bake the floor again, so its baked decor and shrubs follow.
+func art_changed() -> void:
+	rebake()
+
+
+## Frees the FloorBake viewport and bakes again. Headless there is no bake (`_texture` null), so nothing to redo.
+func rebake() -> void:
+	if _texture == null:
+		return
+	var old := get_node_or_null("FloorBake")
+	if old != null:
+		remove_child(old)
+		old.queue_free()
+	_bake()
 
 
 func _draw() -> void:
@@ -579,7 +597,11 @@ func _shrubs(ci: CanvasItem) -> void:
 					continue
 				var p := Iso.ground_to_screen(g).round()
 				ArtKit.begin()
-				if h % 5 == 0:
+				# A bush or flowers sprite set, when one exists (DecorSprites), stands in for the procedural shrub.
+				var sprite_kind := Decor.Kind.FLOWERS if h % 5 == 0 else Decor.Kind.BUSH
+				if DecorSprites.paint(sprite_kind, g, Vector2.ZERO, h, Vector2.ZERO):
+					pass
+				elif h % 5 == 0:
 					# A clump of flowers in one colour, among a little green.
 					PropArt.leafy(p + Vector2(0, -2), Vector2(4, 2.5), h, 5, ArtKit.OAK)
 					var col: Color = FLOWERS[h % FLOWERS.size()]

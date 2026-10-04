@@ -70,7 +70,8 @@ extends SceneTree
 ##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited
 ##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a temporary test aid (v0.09
 ##          Task 8, until M4's Procession decides it): the Prince's outcome is written into the night before Act II
-##          ends, so Act III's town can be raised by it.
+##          ends, so Act III's town can be raised by it. `--festival=broken|held` is a temporary test aid (v0.09): the
+##          festival state is written into the night before Act III starts, so it can shape the town.
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -1050,6 +1051,9 @@ func _force_act(how: String) -> void:
 	var prince := Battlefield.arg_value(OS.get_cmdline_user_args(), "--prince")
 	if prince != "" and mission.act().id == "procession":
 		mission.night().prince = prince
+	var festival := Battlefield.arg_value(OS.get_cmdline_user_args(), "--festival")
+	if festival != "":
+		mission.night().festival = festival
 	if how == "win":
 		rules.force_end(true, "forced")
 	elif how == "lose":

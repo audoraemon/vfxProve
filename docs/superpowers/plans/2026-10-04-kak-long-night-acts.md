@@ -1620,3 +1620,24 @@ func report() -> Dictionary:
   - The act is won only once his death is judged, so a seen doom kill can't earn the bonus.
   - `WarningDirector._alive(p: Variant)` no longer errors on a freed person: the Festival's Mayor and goers, and the boarded Prince.
   - The `--prince` and `--festival` aids apply on `act_over`.
+
+### Task 18 night scenario
+
+`--scenario=night --path=<festival|procession> --act1=play --act2=play --act3=play` plays each act with a scripted policy. Each act drafts its own loadout (the Prepare re-draft, passed to `next_act()`): Act I whisper, doom, discord (3 DP); the Festival doom, discord (3 DP); the Procession whisper, doom, discord (4 DP); Act III heaven, nova, tornado (9 DP). All casts go through `rules.cast()` when `refusal(slot) == ""`. A played night skips the handover aid (its Heaven Splitter falls on the Citadel and killed the Prince in his first seconds); the forced runs keep it. Policy casts run under wall-clock hitstop, so the scores differ a little from run to run (the act outcomes did not).
+
+- **Act I** (the Warning's `mix`): identical in all nine runs: whisper at 6.1 s, Silent Doom at 13.3 s on the watchman while alone, won `warning` at 13.8 s, Unseen, solved by VEIL.
+- **The Festival** (3 runs): Silent Doom on the Mayor at 95.1 s, the crowd panics (80 of 80 lost against 50 needed), Act II won `festival` at 95.6 s, in every run. The Discord was never cast: the act ends on the Mayor's death before the policy reaches it. Act III is then Organized.
+  - run 1: Act III lost `escapes`, night lost, B (12305)
+  - run 2: Act III lost `escapes`, night lost, B (12245)
+  - run 3: Act III lost `escapes`, night lost, B (12070)
+- **The Procession** (3 runs): the Prince is never alone. Four escort soldiers stay within 1.6 units of him (0.8 when frightened) and Silent Doom's witness distance is 2.0, so `nearest_witness(prince, prince) == null` never held and no Doom was cast. He boarded: Act II lost `sailed` at 141.6 s, prince `escaped`; Act III was then Prepared. The policy cast 17 Mind Whispers (an attendant or onlooker within 2 units of him, sent 8 units away).
+  - run 1: Act III lost `escapes` (36 escaped by 60 s), night lost, C (8080)
+  - run 2: Act III lost `escapes` (39 by 60 s), night lost, C (8085)
+  - run 3: Act III lost `escapes` (36 by 60 s), night lost, C (8055)
+- **The Procession with `--doom-seen`** (3 runs; an aid beyond the brief, to see the act's other end): Silent Doom on the Prince once on the dock's leg, with witnesses. Cast at 105.5 s, died seen, Act II won `prince` at 106.0 s, Act III Prepared; 14 Mind Whispers.
+  - run 1: Act III lost `escapes` (36 by 60 s), night lost, B (10110)
+  - run 2: Act III lost `escapes` (34 by 60 s), night lost, B (10465)
+  - run 3: Act III lost `escapes` (36 by 60 s), night lost, B (10110)
+- **Act III** (all 9 runs): the greedy caster takes the Citadel to 50% at 30 s and 0% at 60 s and the night is still lost on escapes (limit 50, or 40 after an escaped Prince). The policy cast heaven x3 or 4, nova x1 or 2, tornado x1 or 2.
+- **Task 19 findings** (not tuned here): the quiet Prince kill is unreachable for a player who cannot remove soldiers (Mind Whisper and Discord ignore soldiers; Silent Doom's 0.8 radius takes only those near the aim); and a Judgement won only by the Citadel's fall loses on escapes at these numbers.
+- The exact behaviour gates are unchanged: calm 60 -695580348, gates 619520995, fire -16560442, rite --interrupt -129298221, soldiers escort -935015846, warning none/doom/whisper/discord/mix -446012507/-999129915/442055066/-909358062/-430643507. No SCRIPT ERROR; the `resources still in use at exit` line is at HEAD too.

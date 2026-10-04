@@ -76,7 +76,12 @@ extends SceneTree
 ##          Task 13) photographs Act II-A's market at 30, 50 and 95 s into it (captures/behaviour_festival_<s>.png, and
 ##          the Mayor close up at 95 s; Task 16: Act II-B's blessing and dock at 65 and 125 s,
 ##          captures/behaviour_procession_<s>.png); `--calm-handover` skips the dipped time scale and the falling Heaven Splitter,
-##          so Act II starts in a quiet town (for photographs).
+##          so Act II starts in a quiet town (for photographs). `--act1|2|3=play` (Task 18) plays that act with a scripted
+##          policy instead of forcing it (see the NIGHT_LOADOUTS and _play_act()): Act I the Warning's mix, the Festival
+##          Silent Doom on the Mayor at 95 s then Discord on the densest cluster, the Procession Doom on the Prince when
+##          nobody would see it (`--doom-seen` also dooms him, seen, on the dock's leg), Act III the greedy Last Judgement
+##          caster; each act is drafted its own loadout. A played night skips the handover aid (its Heaven Splitter would fall
+##          on the Prince at the Citadel's door).
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -89,6 +94,19 @@ const FESTIVAL_LOOK_AT := Vector2(1.0, 4.0)
 ## Seconds into Act II-B that `night --shots` photographs (the blessing, the dock), the zoom, and how far from the Prince
 ## towards the boarding point the camera looks (0 on him, 1 at the ship).
 const PROCESSION_SHOTS := [[65.0, 2.5, 0.0], [125.0, 1.6, 0.6]]
+
+## What each act drafts when `night` plays it (v0.09 Task 18), simulating Prepare's re-draft between acts (each fits 4
+## slots and 10 DP). Act I's is the Warning's mix (3 DP); the Festival needs only the Mayor's Doom and a Discord (3 DP);
+## the Procession adds a Mind Whisper (4 DP); Act III is the three loudest it can afford (Heaven Splitter, Nuclear Nova,
+## Tornado Tempest: 2 + 4 + 3 = 9 DP).
+const NIGHT_LOADOUTS := {"omen": ["whisper", "doom", "discord"], "festival": ["doom", "discord"],
+	"procession": ["whisper", "doom", "discord"], "judgement": ["heaven", "nova", "tornado"]}
+## The Festival's Silent Doom on the Mayor is cast from this second of the act (inside his address, 90 s to 120 s).
+const FESTIVAL_DOOM_AT := 95.0
+## How far Mind Whisper sends an attendant of the Prince's from him (the Procession's policy), in ground units.
+const PROCESSION_SENT := 8.0
+## A policy looks at the town every this many frames (0.1 s at 60 fps), as the Warning's does.
+const LOOK_FRAMES := 6
 
 var mission: Mission
 
@@ -982,7 +1000,7 @@ func _warning_who(p: Person, crowd: Crowd) -> String:
 	return ("soldier#%d" % crowd.soldiers.find(p)) if p.soldier else ("citizen#%d" % crowd.citizens.find(p))
 
 
-func _warning_mind(p: Person) -> String:
+func _warning_mind(p: Variant) -> String:
 	if not is_instance_valid(p) or not p.is_alive():
 		return "DEAD"
 	return Person.Mind.keys()[p.mind]
@@ -1019,6 +1037,8 @@ func _night() -> void:
 	path = path if path != "" else "festival"
 	var outcome := {"omen": Battlefield.arg_value(args, "--act1"), "festival": Battlefield.arg_value(args, "--act2"),
 		"procession": Battlefield.arg_value(args, "--act2"), "judgement": Battlefield.arg_value(args, "--act3")}
+	# A played night has its own casts to hand over, and the aid's Heaven Splitter would fall on the Prince in his first second.
+	var calm_handover := "--calm-handover" in OS.get_cmdline_user_args() or "play" in outcome.values()
 	var done := [false]
 	var acts := [0]
 	mission.act_over.connect(func(r: Dictionary) -> void:
@@ -1044,13 +1064,13 @@ func _night() -> void:
 			seen = acts[0]
 			if seen > 0:
 				await _frames(10)
-				if seen == 1 and not "--calm-handover" in OS.get_cmdline_user_args():
+				if seen == 1 and not calm_handover:
 					# Review focus 4: the act ends with the time scale dipped and a power still falling. Put in the
 					# world by the old act's caster: its Rules is over and refuses a cast, and the night has no Heaven.
 					Engine.time_scale = 0.3
 					var heaven := load(String(PowerBook.get_power("heaven").path)) as GDScript
 					mission._rules.caster.call(heaven, TownLayout.CITADEL_ORIGIN, {"dir": Vector2(1, 0)})
-				mission.next_act(PackedStringArray(), path)
+				mission.next_act(_loadout_for_next(outcome, path), path)
 				if seen == 1:
 					var rules: Rules = mission._rules
 					var ready := true
@@ -1065,9 +1085,196 @@ func _night() -> void:
 				_festival_shots()  # a coroutine left running beside the loop
 			if "--shots" in OS.get_cmdline_user_args() and mission.act().id == "procession":
 				_procession_shots()
+			var how := String(outcome.get(mission.act().id, ""))
+			if how == "play":
+				_play_act(mission.act().id)  # a coroutine left running beside the loop, until the act is over
 			await _frames(60)
-			_force_act(String(outcome.get(mission.act().id, "")))
+			_force_act(how)
 		await _frames(1)
+
+
+## The loadout the next act is drafted when the policy plays it (Prepare's re-draft, simulated), else none: the act's own
+## default stands, as it did before the policies.
+func _loadout_for_next(outcome: Dictionary, path: String) -> PackedStringArray:
+	var ids := mission.act().next
+	var id := path if path != "" and ids.has(path) else String(ids[0])
+	if String(outcome.get(id, "")) != "play":
+		return PackedStringArray()
+	return PackedStringArray(NIGHT_LOADOUTS[id])
+
+
+## Play the act that is running with its scripted policy (`--actN=play`), until it is over.
+func _play_act(id: String) -> void:
+	match id:
+		"omen":
+			await _warning("mix")
+		"festival":
+			await _play_festival()
+		"procession":
+			await _play_procession()
+		"judgement":
+			await _play_judgement()
+
+
+## The act's powers by key, to their slots.
+func _slots(rules: Rules) -> Dictionary:
+	var slots := {}
+	for slot in rules.loadout.size():
+		if rules.key(slot) != "":
+			slots[rules.key(slot)] = slot
+	return slots
+
+
+## The Festival (Act II-A): from FESTIVAL_DOOM_AT, Silent Doom on the Mayor (a death the crowd panics at whether it is
+## seen or not); then Discord on the densest cluster of goers, whenever it is ready. `t` is the act's own clock.
+func _play_festival() -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as FestivalDirector
+	var slots := _slots(rules)
+	var casts := {}
+	var doom_done := false
+	var frames := 0
+	var report_at := 15.0
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	while is_instance_valid(rules) and rules == mission._rules and not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		var t := d.timeline.elapsed()
+		if t >= report_at:
+			report_at += 15.0
+			print("BEHAVIOUR night play festival t=%d lost=%d/%d mayor=%s" % [roundi(t), d.count(), d.need,
+				_warning_mind(d.mayor)])
+		if frames % LOOK_FRAMES != 0 or t < FESTIVAL_DOOM_AT:
+			continue
+		if not doom_done:
+			if not WarningDirector._alive(d.mayor):
+				doom_done = true  # nobody to doom (or the Mayor is dead already): on to the Discord
+			elif slots.has("doom") and rules.refusal(slots.doom) == "":
+				var at := d.mayor.ground_pos
+				if rules.cast(slots.doom, at, {}) != null:
+					doom_done = true
+					casts["doom"] = int(casts.get("doom", 0)) + 1
+					print("BEHAVIOUR night play festival t=%.1f cast doom at %s on the Mayor" % [t, at.snapped(Vector2(0.1, 0.1))])
+			continue
+		if slots.has("discord") and rules.refusal(slots.discord) == "":
+			var at := _densest(d.goers)
+			if at != Vector2.INF and rules.cast(slots.discord, at, {}) != null:
+				casts["discord"] = int(casts.get("discord", 0)) + 1
+				print("BEHAVIOUR night play festival t=%.1f cast discord at %s" % [t, at.snapped(Vector2(0.1, 0.1))])
+	print("BEHAVIOUR night play festival end lost=%d/%d casts=%s" % [d.count(), d.need, casts])
+
+
+## The centre of the thickest knot of these living people (those within DiscordFx.DISCORD_R of one of them), or INF.
+func _densest(people: Array[Person]) -> Vector2:
+	var best := Vector2.INF
+	var best_n := 0
+	for a in people:
+		if not WarningDirector._alive(a) or a.inside:
+			continue
+		var sum := Vector2.ZERO
+		var n := 0
+		for b in people:
+			if WarningDirector._alive(b) and not b.inside and b.ground_pos.distance_to(a.ground_pos) <= DiscordFx.DISCORD_R:
+				sum += b.ground_pos
+				n += 1
+		if n > best_n:
+			best_n = n
+			best = sum / float(n)
+	return best
+
+
+## The Procession (Act II-B): Silent Doom on the Prince whenever nobody would see it (now, nor where he will have walked
+## to), else Mind Whisper to send off whoever near him can hear it. His escort are soldiers, who hear neither Mind Whisper
+## nor Discord, so the nearest attendant or onlooker (a citizen) within sight of him is the one sent, PROCESSION_SENT
+## units straight away from him. `--doom-seen` (an aid for measuring the act's other end) also dooms him, seen, once he is
+## on the dock's leg.
+func _play_procession() -> void:
+	var rules: Rules = mission._rules
+	var crowd: Crowd = mission._crowd
+	var d := rules.director as ProcessionDirector
+	var slots := _slots(rules)
+	var seen_ok := "--doom-seen" in OS.get_cmdline_user_args()
+	var casts := {}
+	var frames := 0
+	var report_at := 15.0
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	while is_instance_valid(rules) and rules == mission._rules and not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		var t := d.timeline.elapsed()
+		var p: Variant = d.prince
+		var alive := WarningDirector._alive(p) and not d.boarded
+		if t >= report_at:
+			report_at += 15.0
+			var w: Person = crowd.nearest_witness(p.ground_pos, p) if alive else null
+			print("BEHAVIOUR night play procession t=%d leg=%d prince=%s witness=%s" % [roundi(t), d.leg, _warning_mind(p),
+				("%s %.1f" % [_warning_who(w, crowd), w.ground_pos.distance_to(p.ground_pos)]) if w != null else "none"])
+		if frames % LOOK_FRAMES != 0 or not alive:
+			continue
+		var alone: bool = _warning_alone(p, crowd)
+		if slots.has("doom") and rules.refusal(slots.doom) == "" and (alone or (seen_ok and d.leg >= ProcessionDirector.DOCK_LEG)):
+			if rules.cast(slots.doom, p.ground_pos, {}) != null:
+				casts["doom"] = int(casts.get("doom", 0)) + 1
+				print("BEHAVIOUR night play procession t=%.1f cast doom at %s on the Prince (%s, %s)" % [t,
+					p.ground_pos.snapped(Vector2(0.1, 0.1)), _warning_mind(p), "alone" if alone else "seen"])
+			continue
+		if alone or not slots.has("whisper") or rules.refusal(slots.whisper) != "":
+			continue
+		var who := _nearest_hearer(crowd, p)
+		if who == null:
+			continue  # only soldiers about him: nobody to send
+		var away: Vector2 = who.ground_pos - p.ground_pos
+		if away.length() < 0.1:
+			away = Vector2(1, 0)
+		var to := MindWhisperFx.clamp_to(crowd._grid, who.ground_pos, who.ground_pos + away.normalized() * PROCESSION_SENT)
+		if rules.cast(slots.whisper, who.ground_pos, {"to": to, "target": who}) != null:
+			casts["whisper"] = int(casts.get("whisper", 0)) + 1
+			print("BEHAVIOUR night play procession t=%.1f cast whisper on %s to %s" % [t, _warning_who(who, crowd),
+				to.snapped(Vector2(0.1, 0.1))])
+	print("BEHAVIOUR night play procession end prince=%s casts=%s" % [d.report().prince, casts])
+
+
+## The nearest living citizen out of doors within Crowd.DOOM_WITNESS of `of` who is not shaking off a whisper, or null.
+func _nearest_hearer(crowd: Crowd, of: Person) -> Person:
+	var best: Person = null
+	for c in crowd.citizens:
+		if is_instance_valid(c) and c != of and c.is_alive() and not c.inside and not c.shaken() \
+				and c.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS \
+				and (best == null or c.ground_pos.distance_squared_to(of.ground_pos) < best.ground_pos.distance_squared_to(of.ground_pos)):
+			best = c
+	return best
+
+
+## Act III: the Last Judgement's greedy caster, with this act's loadout (see _judgement()).
+func _play_judgement() -> void:
+	var rules: Rules = mission._rules
+	var town: Town = mission._town
+	var d := rules.director
+	var casts := {}
+	var next := 0
+	var frames := 0
+	var report_at := 30.0
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	while is_instance_valid(rules) and rules == mission._rules and not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		var t := d.timeline.elapsed() if d != null else 0.0
+		if t >= report_at:
+			report_at += 30.0
+			print("BEHAVIOUR night play judgement t=%d citadel=%d%% escaped=%d buildings=%d stage=%s" % [roundi(t),
+				roundi(town.citadel.fraction() * 100.0), mission._crowd.escaped_count, rules.buildings_down,
+				mission._crowd.alarms.stage_name()])
+		if t < 5.0 or frames % LOOK_FRAMES != 0:
+			continue
+		for slot in rules.loadout.size():
+			if rules.refusal(slot) == "":
+				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+				next += 1
+				if rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()}) != null:
+					casts[rules.key(slot)] = int(casts.get(rules.key(slot), 0)) + 1
+					print("BEHAVIOUR night play judgement t=%.1f cast %s at %s" % [t, rules.key(slot), at])
+				break
+	print("BEHAVIOUR night play judgement end citadel_fell=%s casts=%s" % [town.citadel.is_fallen(), casts])
 
 
 ## Act II-A's capture aid (v0.09 Task 13): a frame of the market at FESTIVAL_SHOTS' marks of the act -- the bonfires lit

@@ -68,7 +68,9 @@ extends SceneTree
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
 ##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited
-##          and every cooldown ready (a `handover` line)
+##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a temporary test aid (v0.09
+##          Task 8, until M4's Procession decides it): the Prince's outcome is written into the night before Act II
+##          ends, so Act III's town can be raised by it.
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
@@ -1044,6 +1046,10 @@ func _night() -> void:
 ## End the current act as asked: "win", "lose", or anything else to let it run.
 func _force_act(how: String) -> void:
 	var rules: Rules = mission._rules
+	# Temporary test aid (v0.09 Task 8): the Prince's outcome, until M4's Procession sets it itself.
+	var prince := Battlefield.arg_value(OS.get_cmdline_user_args(), "--prince")
+	if prince != "" and mission.act().id == "procession":
+		mission.night().prince = prince
 	if how == "win":
 		rules.force_end(true, "forced")
 	elif how == "lose":

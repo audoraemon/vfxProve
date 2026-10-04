@@ -102,6 +102,12 @@ static func tier_named(name: String) -> Tier:
 	return (i as Tier) if i >= 0 else DEFAULT
 
 
+## How ready the town is, as a rank (v0.09: a night's town is only ever raised): Unprepared 0, Unaware 1,
+## Organized 2, Prepared 3, God-Resistant 4.
+func level() -> int:
+	return 1 if title == "Unaware" else [0, 2, 3, 4][tier]
+
+
 func tier_name() -> String:
 	return title if title != "" else NAMES[tier]
 

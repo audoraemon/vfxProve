@@ -315,11 +315,17 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_pressing = false  # a press held over the old aim is not the new one's to release
 	_act = _def.act(id)
 	_act.night = _night
+	# The town rises to the act's (never lowers): what turned on is wired for its banners and announced.
+	var raised := _crowd.raise_profile(_act.town(_night))
+	_wire_responses()
 	Engine.time_scale = 1.0
 	_bf.ctx.impact.set_base_time_scale(1.0)
 	_ending = false
 	_build_act(powers if not powers.is_empty() else _act.default_loadout)
 	_begin_intro(_act)
+	if not raised.is_empty():
+		# After the act's own banner (the HUD queues them).
+		_rules.banner.emit("THE TOWN PREPARES: " + ", ".join(raised).to_upper())
 
 
 ## The acts that may follow the one being played (v0.09): two for the choice card, one, or none after the last act or

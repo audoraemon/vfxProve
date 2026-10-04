@@ -29,6 +29,8 @@ const SAIL := 3.0
 const FADE := 0.2
 
 var state := State.MOORED
+## Ended only because the town's profile has no boats (v0.09): Crowd.raise_profile() may run them after all.
+var off_by_profile := false
 ## How many a sailing carries: the profile's boat_load (v0.08.2).
 var capacity := LOAD
 var dock: Structure
@@ -71,6 +73,7 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid, field: EnemyFiel
 		spots = _spots(grid, r)
 	if not crowd.profile.boats or dock == null or board_at == Vector2.INF:
 		state = State.ENDED
+		off_by_profile = not crowd.profile.boats
 	return self
 
 

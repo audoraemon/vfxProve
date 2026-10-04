@@ -45,6 +45,8 @@ var places: Array[Vector2] = []
 var circle: Array = []
 ## The ring's glow, 0..1, easing in while the clergy chant and out after (Crowd's ResponseDrawer draws it).
 var glow := 0.0
+## Ended only because the town's profile has no rite (v0.09): Crowd.raise_profile() may hold one after all.
+var off_by_profile := false
 var _cool := 0.0
 var _crowd: Crowd
 
@@ -74,6 +76,7 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid) -> BanishingRite
 				places.append(w)
 	if not crowd.profile.rite or cathedral == null or centre == Vector2.INF or places.size() < NEED:
 		state = State.ENDED
+		off_by_profile = not crowd.profile.rite
 	return self
 
 

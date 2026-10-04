@@ -250,7 +250,10 @@ func _wire_responses() -> void:
 			_rules.banner.emit(what + " IS REBUILT"))
 	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED and _wire_once(_crowd.ferry):
 		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
-		_crowd.ferry.closed.connect(func(_why: String): _rules.banner.emit("THE BOATS ARE STOPPED"))
+		# Act III's last ferry announces itself (JudgementDirector's event), so it gets no second banner.
+		_crowd.ferry.closed.connect(func(why: String):
+			if why != "the last ferry":
+				_rules.banner.emit("THE BOATS ARE STOPPED"))
 	if _crowd.marshals != null and _wire_once(_crowd.marshals):
 		_crowd.marshals.posted.connect(func(): _rules.banner.emit("THE SOLDIERS TAKE THE GATES"))
 	if _crowd.rescue != null and _wire_once(_crowd.rescue):

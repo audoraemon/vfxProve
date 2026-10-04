@@ -30,10 +30,13 @@ func _begin() -> void:
 	elif n.prince == "unseen":
 		crowd.forgo_rally()
 	if crowd.rite != null and crowd.rite.state == BanishingRite.State.IDLE:
-		timeline.add(RITE_AT, "rite", "The clergy gather", func() -> void: crowd.rite.begin())
+		timeline.add(RITE_AT, "rite", "The clergy gather", func() -> void: crowd.rite.begin(),
+			func() -> bool: return crowd.rite.state == BanishingRite.State.IDLE)
 	if crowd.ferry != null and crowd.ferry.state != RiverFerry.State.ENDED:
-		timeline.add(BOATS_AT, "boats", "The boats sail", func() -> void: crowd.ferry.begin())
-		timeline.add(LAST_FERRY_AT, "last_ferry", "The last ferry leaves", func() -> void: crowd.ferry.close("the last ferry"))
+		timeline.add(BOATS_AT, "boats", "The boats sail", func() -> void: crowd.ferry.begin(),
+			func() -> bool: return crowd.ferry.state == RiverFerry.State.MOORED)
+		timeline.add(LAST_FERRY_AT, "last_ferry", "The last ferry leaves", func() -> void: crowd.ferry.close("the last ferry"),
+			func() -> bool: return crowd.ferry.state != RiverFerry.State.ENDED)
 
 
 func step(delta: float) -> void:

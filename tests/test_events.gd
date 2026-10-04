@@ -14,6 +14,7 @@ static func run(t) -> void:
 	s._callback(t)
 	s._late(t)
 	s._ties(t)
+	s._guarded(t)
 
 
 func _record(id: String, _label: String) -> void:
@@ -107,3 +108,32 @@ func _ties(t) -> void:
 		return ia < ib if ta == tb else ta < tb)
 	tl.step(20.0)
 	t.check(_seen == want, "events due together fire in the order they were added (%s)" % [_seen.slice(0, 8)])
+
+
+var _ok := true
+
+
+func _guard() -> bool:
+	return _ok
+
+
+func _guarded(t) -> void:
+	var tl := EventTimeline.new()
+	_seen.clear()
+	_calls = 0
+	_ok = true
+	tl.fired.connect(_record)
+	tl.add(10.0, "g", "Guarded", _count, _guard).add(20.0, "p", "Plain")
+	t.check(tl.upcoming(2).size() == 2, "a guard that holds leaves its event listed")
+	_ok = false
+	t.check(tl.upcoming(2).size() == 1 and tl.upcoming(2)[0].id == "p", "a guard that fails takes it off the list at once (%s)" % [tl.upcoming(2)])
+	tl.step(11.0)
+	t.check(_calls == 0 and _seen.is_empty() and tl.fired_ids().is_empty(), "and when due it runs nothing and says nothing (%d, %s)" % [_calls, _seen])
+	_ok = true
+	tl.step(10.0)
+	t.check(_calls == 0 and _seen == ["p"], "it stays dropped though the guard holds again; the others fire (%s)" % [_seen])
+	var held := EventTimeline.new()
+	_calls = 0
+	held.add(5.0, "h", "Held", _count, _guard)
+	held.step(6.0)
+	t.check(_calls == 1 and held.fired_ids() == PackedStringArray(["h"]), "a guard that holds lets it fire as before")

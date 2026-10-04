@@ -80,6 +80,7 @@ static func run(t) -> void:
 	_prince(t)
 	_events(t)
 	_close(t)
+	_phantoms(t)
 	_organized(t)
 	_cathedral_gone(t)
 	_dawn(t)
@@ -303,4 +304,26 @@ static func _hud(t) -> void:
 	hud2.free()
 	single.teardown()
 	single.free()
+	_done(s)
+
+
+## A response the alarm started on its own is no window: the strip drops it and no banner announces it.
+static func _phantoms(t) -> void:
+	var night := NightState.new()
+	night.prince = "seen"
+	var s := _setup(night)
+	var crowd: Crowd = s.crowd
+	var d := _start(s, night)
+	t.check(_ids(d).has("rite") and _ids(d).has("boats"), "both windows are listed to begin with (%s)" % [_ids(d)])
+	crowd.rite.begin()  # the alarm got there first
+	t.check(not _ids(d).has("rite") and _ids(d).has("boats"), "a rite already gathering leaves the strip (%s)" % [_ids(d)])
+	crowd.ferry.begin()
+	t.check(not _ids(d).has("boats") and _ids(d).has("last_ferry"), "so do boats already loading (%s)" % [_ids(d)])
+	_run(s, 91.0)
+	t.check(not (s.banners as Array).has("THE CLERGY GATHER"), "and at 1:30 no banner announces the rite (%s)" % [s.banners])
+	_run(s, 30.0)
+	t.check(not (s.banners as Array).has("THE BOATS SAIL"), "nor the boats at 2:00 (%s)" % [s.banners])
+	_run(s, 30.0)
+	t.check((s.banners as Array).has("THE LAST FERRY LEAVES") and crowd.ferry.state == RiverFerry.State.ENDED,
+		"the last ferry still leaves at 2:30 (%s)" % [s.banners])
 	_done(s)

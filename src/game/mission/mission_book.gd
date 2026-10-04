@@ -169,6 +169,7 @@ static func _procession(m: MissionDef) -> ActDef:
 	a.intro_banner = "ACT II - THE PROCESSION"
 	a.next = PackedStringArray(["judgement"])
 	a.make_town = _act2_town
+	a.director = ProcessionDirector
 	a.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [ClockObjective.new(true, "Hold", "held")]
 		return out

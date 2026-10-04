@@ -133,8 +133,23 @@ func _ready() -> void:
 	elif "--bench" in args:
 		# Both awaited: unawaited, quit()'s handful of frames beats bench()'s 9-second loop to
 		# get_tree().quit() and the run ends before a bench[...] line is ever printed.
-		await _bf.bench("mission")
+		var bench_act := Battlefield.arg_value(args, "--bench-act")
+		if bench_act != "":
+			await _bench_jump(bench_act, args)
+		await _bf.bench("mission" if bench_act == "" else "night-" + bench_act)
 		await _quit()
+
+
+## Bench aid (v0.09): `--mission=long_night --bench --bench-act=festival|procession|judgement` skips the acts before the
+## one named, then lets it run `--bench-after=SECONDS` (default 50) before the frames are timed, so the Festival's crowd
+## is packed round the bonfire (it packs at 45 s). A night-only hook: the bench of every other mission is untouched.
+func _bench_jump(act_id: String, args: PackedStringArray) -> void:
+	while _act != null and _act.id != act_id and not _act.is_last():
+		await get_tree().process_frame
+		next_act(PackedStringArray(), act_id)
+	var after := Battlefield.arg_value(args, "--bench-after")
+	var secs := float(after) if after != "" else 50.0
+	await get_tree().create_timer(secs).timeout
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.

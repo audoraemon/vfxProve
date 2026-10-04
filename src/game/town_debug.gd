@@ -39,6 +39,8 @@ const TOWN_SHOTS := [
 	["town_bell_tower.png", Vector2(7.55, 1.35), 1.3],
 	["town_corner_south.png", Vector2(16.0, 16.0), 1.0],
 	["town_corner_east.png", Vector2(16.0, -16.0), 1.0],
+	# The west branch's source: the cliff, its waterfall and the pool below (the overview's north-west bend).
+	["town_waterfall.png", Vector2(-27.6, -1.6), 1.6],
 	["town_east_quarter.png", Vector2(12.4, 0.6), 1.4],
 	# The market's north torches and the walkway lamp; the west street's lamps beside a market corner torch.
 	["town_torches.png", Vector2(1.4, -2.6), 2.2],

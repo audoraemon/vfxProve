@@ -473,17 +473,29 @@ func _waterfall(ci: CanvasItem, b: Rect2) -> void:
 		ci.draw_circle(p, rad, PEBBLE[2].darkened(0.1))
 		ci.draw_circle(p + Vector2(-0.08, -0.08), rad * 0.7, PEBBLE[1])
 		ci.draw_circle(p + Vector2(-0.14, -0.14), rad * 0.35, PEBBLE[0])
-	# Falling water: pale streaks from the cliff's lip down into foam.
-	var x0 := b.position.x + b.size.x * 0.25
-	var x1 := b.end.x - b.size.x * 0.25
-	ci.draw_rect(Rect2(x0, y - 0.7, x1 - x0, 1.6), Color("7cc0e8"))
-	for i in 9:
-		var x := lerpf(x0, x1, (float(i) + 0.5) / 9.0)
-		ci.draw_rect(Rect2(x, y - 0.7, 0.06, 1.4), Color(0.95, 0.98, 1.0, 0.8))
-	for i in 14:
+	# Falling water: a ragged sheet of pale water down over the cliff's lip, broken white streaks along the fall, and
+	# churned foam at its foot. Nothing evenly spaced: a regular comb of thin stripes aliased into a pale checkerboard
+	# at the overview's zoom.
+	var x0 := b.position.x + b.size.x * 0.3
+	var x1 := b.end.x - b.size.x * 0.3
+	var cols := 12
+	for i in cols:
+		var h := _hash(i * 31 + 7, 53)
+		var top := y - 0.75 + float(h % 4) * 0.06
+		var bottom := y + 0.15 + float(h % 3) * 0.08
+		var cx := lerpf(x0, x1, float(i) / float(cols))
+		ci.draw_rect(Rect2(cx, top, (x1 - x0) / float(cols) + 0.01, bottom - top), Color("6cb4e0"))
+	for i in 6:
+		var h := _hash(i * 19 + 11, 67)
+		var x := lerpf(x0 + 0.08, x1 - 0.2, (float(i) + float(h % 7) / 7.0) / 6.0)
+		var top := y - 0.7 + float(h % 5) * 0.08
+		ci.draw_rect(Rect2(x, top, 0.1, 0.35 + float(h % 4) * 0.14), Color(0.95, 0.98, 1.0, 0.75))
+	for i in 22:
 		var h := _hash(i * 7, 91)
-		ci.draw_circle(Vector2(lerpf(x0 - 0.3, x1 + 0.3, float(h % 97) / 97.0), y + 0.9 + float(h % 5) * 0.1), 0.12,
-			Color(0.95, 0.98, 1.0, 0.85))
+		var k := _hash(i * 5 + 3, 29)
+		var spread := 0.15 + float(k % 5) * 0.08
+		var p := Vector2(lerpf(x0 - spread, x1 + spread, float(h % 97) / 97.0), y + 0.1 + float(k % 7) * 0.11)
+		ci.draw_circle(p, 0.08 + float(h % 4) * 0.035, Color(0.95, 0.98, 1.0, 0.85) if k % 3 else Color("cfe8f4"))
 
 
 ## Pebbles along a bank from a to b, leaving a gap round the bridge at x = `gap_x`.

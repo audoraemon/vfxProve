@@ -60,8 +60,8 @@ const SPRITE_WAIST := 7.0
 ## (they do not rise as the procedural ones do when running), so the lantern stays put.
 const SPRITE_LANTERN := Vector2i(3, -8)
 ## Where the Mayor's chain lies across the stand-in sprite's chest, and the noble's crown sits on its head, from the
-## ground point: the chain's left pixel (3 across), and the crown's left pixel (a 3x1 band under 3 points).
-const SPRITE_CHAIN := Vector2i(-1, -11)
+## ground point: the chain's left pixel (3 across), and the crown's x and y for _draw_crown() (a 5x1 band under 3 points).
+const SPRITE_CHAIN := Vector2i(-1, -10)
 const SPRITE_CROWN := Vector2i(-1, -17)
 ## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
 ## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage and whisper terms.
@@ -1387,12 +1387,13 @@ func _is_noble() -> bool:
 	return not soldier and profile != null and profile.role == CitizenProfile.Role.NOBLE
 
 
-## The Prince's gold crown (v0.09): a 3x1 band with three points over it, its left pixel at (x, y).
+## The Prince's gold crown (v0.09): a 5x1 band centred on x + 1, with three points over it a pixel apart, so they read
+## as points and not a block (the band's left pixel is at x - 1, y).
 func _draw_crown(x: int, y: int) -> void:
-	_px(x, y, 3, 1, NOBLE_CROWN)
-	_px(x, y - 1, 1, 1, NOBLE_CROWN)
+	_px(x - 1, y, 5, 1, NOBLE_CROWN)
+	_px(x - 1, y - 1, 1, 1, NOBLE_CROWN)
 	_px(x + 1, y - 1, 1, 1, NOBLE_CROWN)
-	_px(x + 2, y - 1, 1, 1, NOBLE_CROWN)
+	_px(x + 3, y - 1, 1, 1, NOBLE_CROWN)
 
 
 func _walk_rate() -> float:

@@ -138,8 +138,9 @@ static func _act2_town(n: NightState) -> ResponseProfile:
 static func _festival(m: MissionDef) -> ActDef:
 	var a := _act(m, "festival", "Act II: The Festival", 150.0)
 	a.brief = PackedStringArray(["The market fills for the Feast of Lanterns.", "Break the festival."])
-	a.goal = "Hold until the act ends"  # M3 replaces this placeholder
-	a.goal_label = "Hold"
+	a.goal = "Break the festival before the guard closes the square"
+	a.goal_label = "The festival is broken"
+	a.lose = "The guard closes the square with the festival unbroken"
 	a.camera_at = TownLayout.MARKET_SQUARE.get_center()
 	a.intro_from = TownLayout.MARKET_SQUARE.get_center() + Vector2(0.0, 8.0)
 	a.intro_banner = "ACT II - THE FESTIVAL"
@@ -147,8 +148,12 @@ static func _festival(m: MissionDef) -> ActDef:
 	a.make_town = _act2_town
 	a.director = FestivalDirector
 	a.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [ClockObjective.new(true, "Hold", "held")]
+		var out: Array[Objective] = [FestivalObjective.new(), ClockObjective.new(false, "Square closes", "closed")]
 		return out
+	a.make_bonuses = func() -> Array[Objective]:
+		var out: Array[Objective] = [BellQuietObjective.new()]
+		return out
+	a.events_text = PackedStringArray(["0:45 The bonfire lights", "1:30 The Mayor's address", "2:30 The guard closes the square"])
 	a.make_card_line = func(n: NightState) -> String:
 		return "The bell rang: soldiers watch the square." if n.bell_rang else "The town suspects nothing."
 	return a

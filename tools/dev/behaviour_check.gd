@@ -71,12 +71,19 @@ extends SceneTree
 ##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a temporary test aid (v0.09
 ##          Task 8, until M4's Procession decides it): the Prince's outcome is written into the night before Act II
 ##          ends, so Act III's town can be raised by it. `--festival=broken|held` is a temporary test aid (v0.09): the
-##          festival state is written into the night before Act III starts, so it can shape the town.
+##          festival state is written into the night before Act III starts, so it can shape the town. `--shots` (v0.09
+##          Task 13) photographs Act II-A's market at 30, 50 and 95 s into it (captures/behaviour_festival_<s>.png, and
+##          the Mayor close up at 95 s); `--calm-handover` skips the dipped time scale and the falling Heaven Splitter,
+##          so Act II starts in a quiet town (for photographs).
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
 
 const SEED := 7
 ## How many houses `siege --burn` sets burning each time (v0.08.2).
 const BURN_HOUSES := 6
+
+## Seconds into Act II-A that `night --shots` photographs, and the ground point it looks at (the fountain).
+const FESTIVAL_SHOTS := [30.0, 50.0, 95.0]
+const FESTIVAL_LOOK_AT := Vector2(1.0, 4.0)
 
 var mission: Mission
 
@@ -1022,7 +1029,7 @@ func _night() -> void:
 			seen = acts[0]
 			if seen > 0:
 				await _frames(10)
-				if seen == 1:
+				if seen == 1 and not "--calm-handover" in OS.get_cmdline_user_args():
 					# Review focus 4: the act ends with the time scale dipped and a power still falling. Put in the
 					# world by the old act's caster: its Rules is over and refuses a cast, and the night has no Heaven.
 					Engine.time_scale = 0.3
@@ -1039,9 +1046,46 @@ func _night() -> void:
 				mission._intro_left = 0.0
 				mission._rules.set_process(true)
 			print("BEHAVIOUR night start act=%s town=%s" % [mission.act().id, mission._crowd.profile.tier_name()])
+			if "--shots" in OS.get_cmdline_user_args() and mission.act().id == "festival":
+				_festival_shots()  # a coroutine left running beside the loop
 			await _frames(60)
 			_force_act(String(outcome.get(mission.act().id, "")))
 		await _frames(1)
+
+
+## Act II-A's capture aid (v0.09 Task 13): a frame of the market at FESTIVAL_SHOTS' marks of the act -- the bonfires lit
+## and the crowd packing (0:30, 0:50), the Mayor on the fountain (1:35) -- and the festival's count at each.
+func _festival_shots() -> void:
+	var bf: Battlefield = mission._bf
+	var rules: Rules = mission._rules
+	for mark: float in FESTIVAL_SHOTS:
+		while is_instance_valid(rules) and not rules.finished and rules.director != null and rules.director.timeline.elapsed() < mark:
+			await process_frame
+		if not is_instance_valid(rules) or rules.finished:
+			return
+		bf.camera.zoom = Vector2.ONE * 1.5
+		bf.camera.position = Iso.ground_to_screen(FESTIVAL_LOOK_AT).round()
+		await _frames(3)
+		await bf.save_capture("behaviour_festival_%d.png" % roundi(mark))
+		var mayor := (rules.director as FestivalDirector).mayor
+		if mark == FESTIVAL_SHOTS[-1] and mayor != null:
+			# The address: a close-up of the Mayor himself, alone (the others hidden for the frame), to see his chain sit
+			# on the chest.
+			var hidden: Array[Person] = []
+			for p: Person in mission._crowd.citizens + mission._crowd.soldiers:
+				if is_instance_valid(p) and p != mayor and p.visible:
+					p.visible = false
+					hidden.append(p)
+			bf.camera.zoom = Vector2.ONE * 8.0
+			bf.camera.position = Iso.ground_to_screen(mayor.ground_pos).round() + Vector2(0.0, -10.0)
+			await _frames(3)
+			await bf.save_capture("behaviour_festival_%d_mayor.png" % roundi(mark))
+			for p in hidden:
+				if is_instance_valid(p):
+					p.visible = true
+		var d := rules.director as FestivalDirector
+		print("BEHAVIOUR night festival shot t=%d count=%d need=%d mayor=%s" % [roundi(mark), d.count(), d.need,
+			d.mayor.mind if d.mayor != null else "none"])
 
 
 ## End the current act as asked: "win", "lose", or anything else to let it run.

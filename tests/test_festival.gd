@@ -62,6 +62,13 @@ static func run(t) -> void:
 	_counting(t)
 	_guards(t)
 	_looks(t)
+	_bonfire(t)
+	_address(t)
+	_mayor_death(t)
+	_mayor_early_and_missing(t)
+	_clock(t)
+	_objectives(t)
+	_bell_quiet(t)
 
 
 ## Eighty goers, none of them a responder or the Mayor, each staying and walking to a spot in the square.
@@ -195,3 +202,173 @@ static func _looks(t) -> void:
 		"a Mayor and a noble in the town draw the stand-ins the atlas has (%s, %s)" % [m._design(), nb._design()])
 	for p in made:
 		p.free()
+
+
+## The banners a Rules sends, collected as it goes.
+static func _banners(s: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	(s.rules as Rules).banner.connect(func(text: String) -> void: out.append(text))
+	return out
+
+
+## 0:45: every calm goer is sent to a spot within PACK_R of the fountain.
+static func _bonfire(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var banners := _banners(s)
+	var fountain := TownLayout.FOUNTAIN.get_center()
+	_run(s, 44.0)
+	t.check(not d.timeline.fired_ids().has("bonfire") and banners.is_empty(), "nothing has lit at 0:44")
+	_run(s, 1.5)
+	t.check(d.timeline.fired_ids().has("bonfire") and banners.has("THE BONFIRE LIGHTS"), "the bonfire lights at 0:45 (%s)" % [banners])
+	var calm := 0
+	var packed := true
+	var goals := true
+	for p in d.goers:
+		if p.is_alive() and p.mind == Person.Mind.CALM:
+			calm += 1
+			packed = packed and p.anchor.distance_to(fountain) <= FestivalDirector.PACK_R + 0.5
+			goals = goals and (not p.has_goal() or p.goal().distance_to(fountain) <= FestivalDirector.PACK_R + 0.5)
+	t.check(calm >= 60, "most of the goers are calm at 0:46 (%d)" % calm)
+	t.check(packed and goals, "each calm goer's spot and goal lie within PACK_R + 0.5 of the fountain")
+	_done(s)
+
+
+## 1:30 the Mayor takes the fountain on duty and the calm goers look at him; at 2:00 he is let go.
+static func _address(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var banners := _banners(s)
+	var fountain := TownLayout.FOUNTAIN.get_center()
+	_run(s, 91.0)
+	t.check(banners.has("THE MAYOR'S ADDRESS"), "the address is announced at 1:30 (%s)" % [banners])
+	t.check(d.mayor.mind == Person.Mind.DUTY and d.mayor.anchor.distance_to(fountain) <= 2.0,
+		"the Mayor is on duty at the fountain (%s, %.2f away)" % [d.mayor.mind, d.mayor.anchor.distance_to(fountain)])
+	var looking := 0
+	for p in d.goers:
+		if p.mind == Person.Mind.OBSERVE:
+			looking += 1
+	t.check(looking >= 60, "the calm goers look at him (%d of %d)" % [looking, d.goers.size()])
+	_run(s, 30.0)
+	t.check(d.mayor.mind != Person.Mind.DUTY and banners.has("THE ADDRESS ENDS"),
+		"at 2:00 he is off duty (%s) and the end is announced" % d.mayor.mind)
+	_run(s, 30.0)
+	t.check(d.timeline.fired_ids().has("close") and not d.broken(), "the guard closes the square at 2:30, no callback")
+	_done(s)
+
+
+## The Mayor killed at 1:35: every living goer panics at once, the banner shows and the festival is broken.
+static func _mayor_death(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var banners := _banners(s)
+	var field: EnemyField = s.field
+	_run(s, 95.0)
+	t.check(not (s.rules as Rules).finished, "the act is still on at 1:35")
+	t.check(field.kill(d.mayor, &"fire"), "the Mayor dies")
+	_run(s, 0.1)
+	var living := 0
+	var panicking := 0
+	var shelter := 0
+	for p in d.goers:
+		if p.is_alive():
+			living += 1
+			if p.mind in FestivalDirector.BROKE_MINDS:
+				panicking += 1
+				shelter += int(p.mind == Person.Mind.SHELTER)
+	t.check(living > 0 and panicking == living and living - shelter > living / 2,
+		"every living goer is frightened -- panicking, or (as Person.panic() may) running for a roof (%d of %d, %d sheltering)" % [panicking, living, shelter])
+	t.check(banners.has("THE MAYOR FALLS - THE FEAST BREAKS"), "the banner shows (%s)" % [banners])
+	t.check(d.count() >= d.need and d.broken(), "the festival is broken: %d of %d" % [d.count(), d.need])
+	var rules: Rules = s.rules
+	t.check(rules.finished and rules.won and rules.over_reason == "festival", "and the act is won (%s %s)" % [rules.won, rules.over_reason])
+	t.check(d.report().festival == "broken", "the report says broken")
+	_done(s)
+
+
+## Review focus 1: the Mayor dead before his address (and none at all): the later events run quietly, nobody dead is sent.
+static func _mayor_early_and_missing(t) -> void:
+	for missing in [false, true]:
+		var s := _setup(NightState.new())
+		var d := _start(s, null)
+		var banners := _banners(s)
+		var field: EnemyField = s.field
+		d.need = 1000  # the act runs on whatever the panic breaks
+		_run(s, 10.0)
+		if missing:
+			d.mayor = null
+		else:
+			t.check(field.kill(d.mayor, &"fire"), "the Mayor dies at 0:10")
+			var panicked := 0
+			var living := 0
+			for p in d.goers:
+				if p.is_alive():
+					living += 1
+					if p.mind in FestivalDirector.BROKE_MINDS:
+						panicked += 1
+			t.check(living > 0 and panicked == living, "the panic happened at 0:10 (%d of %d)" % [panicked, living])
+			t.check(banners.has("THE MAYOR FALLS - THE FEAST BREAKS"), "with its banner")
+		_run(s, 125.0)
+		var ids := d.timeline.fired_ids()
+		t.check(ids.has("bonfire") and not ids.has("address") and not ids.has("address_end"),
+			"the bonfire lit, the address and its end were dropped (%s, missing=%s)" % [ids, missing])
+		t.check(not banners.has("THE MAYOR'S ADDRESS") and not banners.has("THE ADDRESS ENDS"), "and never shown")
+		t.check(d.mayor == null or (d.mayor.mind != Person.Mind.DUTY and not d.mayor.is_alive()), "nobody dead was sent anywhere")
+		t.check(not (s.rules as Rules).finished, "the act runs on to its clock")
+		_done(s)
+
+
+## The clock: 2:30 with the festival unbroken loses the act ("closed").
+static func _clock(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var rules: Rules = s.rules
+	_run(s, 149.0)
+	t.check(not rules.finished, "the square is open at 2:29")
+	_run(s, 2.0)
+	t.check(rules.finished and not rules.won and rules.over_reason == "closed", "at 2:30 it closes: lost (%s %s)" % [rules.won, rules.over_reason])
+	t.check(d.report().festival == "held", "the report says held")
+	_done(s)
+
+
+## The act's objectives, bonus and events as the book lists them, and the Festival objective's line.
+static func _objectives(t) -> void:
+	var def := MissionBook.long_night().act("festival")
+	var os := def.objectives()
+	t.check(os.size() == 2 and os[0] is FestivalObjective and os[1] is ClockObjective and os[1].reason == "closed",
+		"the act's objectives: the festival, then the clock (closed)")
+	var bs := def.bonuses()
+	t.check(bs.size() == 1 and bs[0] is BellQuietObjective and bs[0].label == "Before the bell" and bs[0].reason == "bell_quiet",
+		"one bonus, Before the bell")
+	t.check(def.events_text == PackedStringArray(["0:45 The bonfire lights", "1:30 The Mayor's address",
+		"2:30 The guard closes the square"]), "the card lists the three events (%s)" % [def.events_text])
+	t.check(def.card_line(NightState.new()) == "The town suspects nothing.", "the card line stays")
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var f := FestivalObjective.new()
+	t.check(f.label == "Break the festival" and f.reason == "festival", "label and reason")
+	t.check(f.check(s.rules) == Objective.Status.PENDING and f.hud_text(s.rules) == "Break the festival 0/%d" % d.need,
+		"pending, and the line counts (%s)" % f.hud_text(s.rules))
+	d.need = 0
+	t.check(f.check(s.rules) == Objective.Status.DONE, "done when the director says broken")
+	_done(s)
+
+
+## Before the bell: a bell already rung when the act first looks does not count against it; one that rings in the act does.
+static func _bell_quiet(t) -> void:
+	for case in ["rung_before", "rings_during", "never"]:
+		var s := _setup(NightState.new())
+		_start(s, null)
+		var crowd: Crowd = s.crowd
+		var rules: Rules = s.rules
+		var bonus := rules.bonuses[0]
+		if case == "rung_before":
+			crowd.bell.state = BellNetwork.State.RUNG
+		t.check(bonus.check(rules) == Objective.Status.PENDING, "%s: pending at the first look" % case)
+		if case == "rings_during":
+			crowd.bell.state = BellNetwork.State.RUNG
+			t.check(bonus.check(rules) == Objective.Status.FAILED, "it fails once the bell rings in the act")
+		rules.force_end(true, "forced")
+		var earned := bool(rules.result().bonuses[0].earned)
+		t.check(earned == (case != "rings_during"), "%s: earned on a win is %s" % [case, earned])
+		_done(s)

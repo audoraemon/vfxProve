@@ -169,6 +169,23 @@ static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, 
 			bad += " %s->%s" % [far, at]
 	t.check(bad == "", "an off-screen messenger's arrow sits on the frame, %d px in (bad:%s)" % [int(Hud.EDGE_MARGIN), bad])
 
+	# The event strip (v0.09): the next two timed events and their clocks; nothing with no timeline.
+	t.check(director.timeline == null and hud.event_rows() == [], "a mission with no timeline has no event strip (%s)" % [hud.event_rows()])
+	var timeline := EventTimeline.new()
+	timeline.add(45.0, "bonfire", "The bonfire lights").add(90.0, "bell", "The bell tolls").add(150.0, "dawn", "Dawn")
+	director.timeline = timeline
+	timeline.step(10.0)
+	t.check(hud.event_rows() == [["0:35", "The bonfire lights"], ["1:20", "The bell tolls"]],
+		"the strip shows the next two events with their clocks (%s)" % [hud.event_rows()])
+	timeline.step(40.0)
+	t.check(hud.event_rows() == [["0:40", "The bell tolls"], ["1:40", "Dawn"]],
+		"and moves on as they fire (%s)" % [hud.event_rows()])
+	var before := hud._signature()
+	timeline.step(1.0)
+	t.check(hud._signature() != before, "the strip is in the redraw signature")
+	director.timeline = null
+	t.check(hud.event_rows() == [], "and goes with the timeline")
+
 	hud.free()
 	rules.teardown()
 	rules.free()

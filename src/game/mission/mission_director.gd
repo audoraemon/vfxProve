@@ -11,8 +11,8 @@ var town: Town
 var ctx: FxContext
 ## The night this act belongs to (v0.09), or null for a single mission.
 var night: NightState
-## The act's timed events (v0.09), or null. Untyped until EventTimeline exists (Task 9 types it).
-var timeline = null
+## The act's timed events (v0.09), or null.
+var timeline: EventTimeline
 
 
 func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> MissionDirector:

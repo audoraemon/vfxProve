@@ -1251,7 +1251,8 @@ func _draw_banner() -> void:
 ## A mill's turning sails or wheel, or a fountain's running water: a node of its own only while the procedural art
 ## draws it. A sprite set draws (and idles) its own, so a sprite building has none and can sleep (_can_idle()).
 func _sync_spin() -> void:
-	var wants := sprite.is_empty() and (art_tag == &"windmill" or art_tag == &"watermill" 		or (kind == Kind.FOUNTAIN and art_tag != &"well"))
+	var wants := sprite.is_empty() and (art_tag == &"windmill" or art_tag == &"watermill"
+		or (kind == Kind.FOUNTAIN and art_tag != &"well"))
 	if wants and not is_instance_valid(_spin):
 		_spin = Node2D.new()
 		_spin.draw.connect(_draw_spin)

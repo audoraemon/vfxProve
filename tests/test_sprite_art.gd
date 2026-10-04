@@ -10,7 +10,7 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
 	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
-	"bridge_stone", "dock", "barn", "carpenter"]
+	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -79,8 +79,8 @@ static func _mapping(t) -> void:
 		[Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, &"house", &"", "cottage"],
 		[Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, &"house", &"townhouse", "townhouse"],
 		[Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, &"farm", &"", "barn"],
-		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", ""],
-		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", ""],
+		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", "windmill"],
+		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", "watermill"],
 		[Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, &"house", &"tavern", "tavern"],
 		[Rect2(0, 0, 1.5, 1.25), 20.0, K.HOUSE, &"house", &"smithy", "smithy"],
 		[Rect2(0, 0, 2.6, 1.5), 22.0, K.HOUSE, &"house", &"workshop", "workshop"],
@@ -398,9 +398,11 @@ static func _structure(t) -> void:
 	t.check(keep._sprite_view.still == &"damaged_fallen", "and cracked, it is the bannerless damaged keep")
 	keep.free()
 	cat.free()
+	var no_mill := _hide("windmill")
 	var proc := _make(Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, 8, &"farm", &"windmill")
 	t.check(proc.sprite.is_empty() and proc.sprite_state() == &"", "a building without a sprite keeps its art")
 	proc.free()
+	_restore(no_mill)
 	t.check(_battered(true) == _battered(false), "sprites on or off, the same hits leave the same buildings")
 	SpriteArt.set_enabled(true)
 	# The Citadel tags its keep and its gateway after making them; they still get their own sprites.
@@ -611,6 +613,40 @@ static func _idle_strip(t) -> void:
 		fo._process(1.0 / 60.0)
 	t.check(not is_instance_valid(fo._spin) and fo.idle and not fo.is_processing(), "F7 on: the spin node goes, it sleeps again")
 	fo.free()
+	# The mills (batch 3): the sprite's idle strip turns the sails or the wheel, so there is no procedural spin node and
+	# the mill sleeps; F7 off brings the procedural turning part back (awake), on again it goes and the mill sleeps.
+	for c in [[Rect2(0, 0, 0.9, 0.9), 60.0, &"windmill"], [Rect2(0, 0, 2.4, 1.9), 34.0, &"watermill"]]:
+		var mill := _make(c[0], c[1], K.HOUSE, 5, &"farm", c[2])
+		var m: Dictionary = SpriteArt.manifest().get(String(c[2]), {})
+		t.check(mill.sprite.get("name", "") == String(c[2]) and not mill.sprite.mirror, "the %s draws its set, unmirrored" % c[2])
+		var idle_tex: Texture2D = mill.sprite.get("idle")
+		t.check(int(mill.sprite.frames) > 1 and int(mill.sprite.frames) == int(m.get("frames", 0)) and idle_tex != null
+			and idle_tex.get_width() == int(m.size[0]) * int(m.frames) and idle_tex.get_height() == int(m.size[1]),
+			"the %s's idle strip has the manifest's %d frames" % [c[2], int(m.get("frames", 0))])
+		t.check(ChimneySmoke.tip_of(mill) == Vector2.INF, "the %s never smokes" % c[2])
+		mill._ready()
+		for i in 4:
+			mill._process(1.0 / 60.0)
+		t.check(not is_instance_valid(mill._spin) and _strip_on(mill._sprite_view),
+			"a sprite %s has no spin node; its view plays the turning strip" % c[2])
+		t.check(mill.idle and not mill.is_processing(), "and the %s goes idle" % c[2])
+		SpriteArt.set_enabled(false)
+		mill.refresh_sprite()
+		for i in 4:
+			mill._process(1.0 / 60.0)
+		t.check(is_instance_valid(mill._spin) and mill._spin.visible and not mill.idle and mill.is_processing(),
+			"F7 off: the procedural %s turns on its spin node and keeps it awake" % c[2])
+		SpriteArt.set_enabled(true)
+		mill.refresh_sprite()
+		for i in 4:
+			mill._process(1.0 / 60.0)
+		t.check(not is_instance_valid(mill._spin) and mill.idle and not mill.is_processing(),
+			"F7 on: the %s's spin node goes, it sleeps again" % c[2])
+		mill.crack()
+		mill._process(1.0 / 60.0)
+		t.check(mill._sprite_view.still == &"damaged" and not mill._sprite_view.playing,
+			"a cracked %s shows its damaged still, not turning" % c[2])
+		mill.free()
 	# A sprite tree's sway is stepped by its shader from the shared clock; it sleeps, forest tree and oak alike.
 	for tag in [&"", &"oak"]:
 		var tr := _make(Rect2(0, 0, 0.7, 0.7) if tag == &"" else Rect2(0, 0, 0.45, 0.45), 28.0, K.TREE, 5, &"decor", tag)
@@ -778,7 +814,8 @@ static func _battered(sprites: bool) -> String:
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
-	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock", "barn", "carpenter"]:
+	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock", "barn", "carpenter",
+			"windmill", "watermill"]:
 		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)

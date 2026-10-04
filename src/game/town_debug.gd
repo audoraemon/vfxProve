@@ -53,6 +53,11 @@ const TOWN_SHOTS := [
 	["town_carpenter_damaged.png", Vector2(11.2, 12.3), 1.6],
 	["town_barn_ruins.png", Vector2(-12.6, -28.4), 2.0],
 	["town_carpenter_ruins.png", Vector2(11.2, 12.3), 1.6],
+	# The mills (batch 3 sets), damaged and fallen (town_windmill / town_watermill above show them whole).
+	["town_windmill_damaged.png", Vector2(-10.0, -24.0), 1.0],
+	["town_watermill_damaged.png", Vector2(-4.0, 24.5), 1.0],
+	["town_windmill_ruins.png", Vector2(-10.0, -24.0), 1.0],
+	["town_watermill_ruins.png", Vector2(-4.0, 24.5), 1.0],
 	# The south road's stone bridge and the dock below the postern, people on them (_stage_shot); then cracked and
 	# fallen (kept last: they break the bridge and the dock for any shot after them).
 	["town_bridge.png", Vector2(2.7, 22.2), 1.3],
@@ -273,8 +278,15 @@ func _stage_shot(file: String) -> void:
 		s = _town.bridge
 	elif file.begins_with("town_dock"):
 		s = _town.dock
-	elif file.begins_with("town_barn") or file.begins_with("town_carpenter"):
-		var plot: Rect2 = TownLayout.BARNS[0] if file.begins_with("town_barn") else TownLayout.CARPENTER
+	elif file.begins_with("town_barn") or file.begins_with("town_carpenter") or file.begins_with("town_windmill") \
+			or file.begins_with("town_watermill"):
+		var plot: Rect2 = TownLayout.CARPENTER
+		if file.begins_with("town_barn"):
+			plot = TownLayout.BARNS[0]
+		elif file.begins_with("town_windmill"):
+			plot = TownLayout.WINDMILL
+		elif file.begins_with("town_watermill"):
+			plot = TownLayout.WATERMILL
 		for b: Structure in _town._built:
 			if is_instance_valid(b) and b.footprint == plot:
 				s = b

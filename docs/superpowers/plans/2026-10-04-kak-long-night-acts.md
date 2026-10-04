@@ -1602,3 +1602,9 @@ func report() -> Dictionary:
   - `raise_profile` skips a response whose building is gone (`_standing`).
   - `EventTimeline` gained a `when` guard, so a window the alarm already opened is dropped.
   - Marshals promoted after the evacuation began are not posted.
+
+### M3 gate (at 2f041b7)
+
+- Tests `checks=1996 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `54/0`. All 10 exact behaviour checksums identical.
+- Festival left to run (`--act2=skip`), three runs, all identical: Act II lost to the clock (reason `closed`, 150.0 s). The night was won with Act III forced: B (14475).
+- Live run with real effects (Task 13): the bonfires, the crowd packed round the fountain, the Mayor with his chain, and the event strip were captured and checked.

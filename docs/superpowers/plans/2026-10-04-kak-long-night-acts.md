@@ -1585,3 +1585,20 @@ func report() -> Dictionary:
   - The first Prepare of a never-played night opened empty; `Game.starting_loadout()` now falls back to the night's default loadout.
   - Prepare between acts showed Unaware; `ActDef.response_profile()` now returns the act's town.
   - A stale `_play_ending` could emit for the wrong act; it is now guarded.
+
+### M2 gate (at a2fc22f)
+
+- Tests `checks=1924 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `54/0`. All 10 exact behaviour checksums identical. Mission test in range.
+- Spec §2 rows (`--scenario=night`, forced outcomes, `--prince` / `--festival` aids). Each run lists the town at the start of Acts I, II and III:
+  - Act I won: Unaware, Unaware, Organized.
+  - Act I lost: Unaware, Organized, Organized.
+  - Festival broken or held: Act III Organized.
+  - Prince unseen: Act III Organized.
+  - Prince seen: Act III Prepared.
+  - Prince escaped: Act III Prepared.
+  - Prince escaped, Act III left to run: lost on escapes (limit 40), D.
+- Act III event strip captured by the Task 10 implementer (`act3_events_*.png`). It overlaps nothing.
+- Rulings made in M2:
+  - `raise_profile` skips a response whose building is gone (`_standing`).
+  - `EventTimeline` gained a `when` guard, so a window the alarm already opened is dropped.
+  - Marshals promoted after the evacuation began are not posted.

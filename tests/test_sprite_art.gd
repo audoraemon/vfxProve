@@ -9,7 +9,7 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_1", "stall_1_red", "stall_1_blue", "stall_1_cream", "stall_2", "stall_2_red", "stall_2_blue",
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
-	"stall_12", "torch_post", "lamp_post"]
+	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -525,6 +525,16 @@ static func _idle_strip(t) -> void:
 		fo._process(1.0 / 60.0)
 	t.check(not is_instance_valid(fo._spin) and fo.idle and not fo.is_processing(), "F7 on: the spin node goes, it sleeps again")
 	fo.free()
+	# A sprite tree sways on its view's own clock and sleeps under it, forest tree and town oak alike.
+	for tag in [&"", &"oak"]:
+		var tr := _make(Rect2(0, 0, 0.7, 0.7) if tag == &"" else Rect2(0, 0, 0.45, 0.45), 28.0, K.TREE, 5, &"decor", tag)
+		tr._ready()
+		for i in 4:
+			tr._process(1.0 / 60.0)
+		t.check(String(tr.sprite.get("name", "")).begins_with("oak_" if tag == &"oak" else "tree_")
+			and tr._sprite_view.playing and tr._sprite_view.is_processing(), "a sprite tree's view plays its sway")
+		t.check(tr.idle and not tr.is_processing(), "and the tree sleeps under it")
+		tr.free()
 	# A well never had running water: no spin node either way.
 	var wl := _make(Rect2(0, 0, 0.5, 0.5), 12.0, K.FOUNTAIN, 5, &"decor", &"well")
 	wl._ready()
@@ -673,7 +683,7 @@ static func _battered(sprites: bool) -> String:
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
-	for prefix in ["fountain", "well", "torch_post", "lamp_post"]:
+	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_"]:
 		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)
@@ -743,6 +753,7 @@ static func _batch3(t) -> void:
 	t.check(not SpriteArt.manifest().has("stall_1") and not SpriteArt.manifest().has("barn"), "the fake entries were removed")
 	_restore(hidden)
 	_stall_variety(t)
+	_tree_variety(t)
 	_flat_sprites(t)
 
 
@@ -779,6 +790,43 @@ static func _stall_variety(t) -> void:
 	for p in picked:
 		seen[p] = true
 	t.check(seen.size() > 6, "the market shows more than six designs (got %d)" % seen.size())
+
+
+## The town's trees with the real tree and oak sets: across the forest ring (60+) every forest variant shows and none
+## takes more than half, and the town's oaks show at least two designs; each draws a set that exists and idles (a crown
+## sway) yet sleeps like any quiet structure: its view steps the strip on its own.
+static func _tree_variety(t) -> void:
+	SpriteArt.set_enabled(true)
+	t.check(SpriteArt.variants("tree").size() >= 4 and SpriteArt.variants("oak").size() >= 2,
+		"tree and oak variants in the manifest (%s / %s)" % [SpriteArt.variants("tree"), SpriteArt.variants("oak")])
+	var env := EnvironmentField.new()
+	env.rng.seed = 7
+	var town := Town.new()
+	town.build(env)
+	var forest := {}
+	var oaks := {}
+	var n_forest := 0
+	var ok := true
+	for st in env.structures():
+		if st.kind != K.TREE:
+			continue
+		var n := SpriteArt.name_for(st)
+		ok = ok and n != "" and not SpriteArt.sprite(n).is_empty() and int(SpriteArt.sprite(n).frames) == 4
+		if st.art_tag == &"oak":
+			oaks[n] = oaks.get(n, 0) + 1
+		elif st.art_tag == &"":
+			forest[n] = forest.get(n, 0) + 1
+			n_forest += 1
+	t.check(ok, "every town tree draws a tree or oak set with a 4-frame sway")
+	t.check(n_forest >= 40, "the forest ring has 40+ trees (got %d)" % n_forest)
+	var most := 0
+	for k in forest:
+		most = maxi(most, forest[k])
+	t.check(forest.size() == SpriteArt.variants("tree").size() and most * 2 <= n_forest,
+		"every forest variant shows and none takes over: %s" % [forest])
+	t.check(oaks.size() >= 2, "the town's oaks show several designs: %s" % [oaks])
+	town.free()
+	env.free()
 
 
 ## Bridge, dock and fields are flat: with a sprite they stay on the ground layer, under the people who walk on them.

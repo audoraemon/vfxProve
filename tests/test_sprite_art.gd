@@ -450,7 +450,67 @@ static func _settled_paths(t) -> void:
 ## A playing view's idle strip is stepped by its shader from the shared idle clock (SpriteView.advance()) and its
 ## phase, so neither the view nor the structure under it processes. True when `v` plays its strip that way.
 static func _strip_on(v: SpriteView) -> bool:
-	return v.playing and not v.is_processing() and v.still == &"intact" 		and int(v.material.get_shader_parameter("idle_frames")) == int(v.sprite.frames)
+	return v.playing and not v.is_processing() and v.still == &"intact" \
+		and int(v.material.get_shader_parameter("idle_frames")) == int(v.sprite.frames)
+
+
+## The shared idle clock runs on the world's EnvironmentField (SpriteView.tick_clock()): a frozen mission
+## (Mission.set_frozen() disables its subtree) holds every idle strip, unfreezing resumes them, and a field that leaves
+## the tree gives the clock up to the next one. `frame` stands for one engine frame: the field processes unless an
+## ancestor disables it (the runner's root is not in a tree yet, so the engine's own can_process() cannot say).
+static func _idle_clock_frozen(t) -> void:
+	var holder := Node.new()
+	var env := EnvironmentField.new()
+	holder.add_child(env)
+	SpriteView._clock_owner = null
+	var frame := func() -> void:
+		if _would_process(env):
+			env._process(1.0 / 60.0)
+	var gate := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
+	gate._ready()
+	for i in 4:
+		gate._process(1.0 / 60.0)
+	var v := gate._sprite_view
+	var seen := {}
+	for i in 60:
+		frame.call()
+		seen[v.shown_frame()] = true
+	t.check(_strip_on(v) and seen.size() > 1, "the world's field steps the idle clock: the strip plays (%d frames)" % seen.size())
+	holder.process_mode = Node.PROCESS_MODE_DISABLED
+	var held := v.shown_frame()
+	var clock := SpriteView.idle_time
+	var same := true
+	for i in 60:
+		frame.call()
+		same = same and v.shown_frame() == held
+	t.check(same and SpriteView.idle_time == clock, "frozen with the mission's subtree, the strip holds its frame")
+	holder.process_mode = Node.PROCESS_MODE_INHERIT
+	seen.clear()
+	for i in 60:
+		frame.call()
+		seen[v.shown_frame()] = true
+	t.check(seen.size() > 1, "unfrozen, it plays again")
+	env._exit_tree()
+	t.check(SpriteView._clock_owner == null, "a field leaving the tree gives up the clock")
+	holder.free()
+	var next := EnvironmentField.new()
+	next._process(1.0 / 60.0)
+	t.check(SpriteView._clock_owner == next, "and the next field to tick takes it")
+	next.free()
+	SpriteView._clock_owner = null
+	gate.free()
+
+
+## Whether the engine would process `n`: the first ancestor (or itself) not inheriting decides; any mode but
+## DISABLED counts as running (the tree is never paused here, and nothing in these checks uses WHEN_PAUSED).
+static func _would_process(n: Node) -> bool:
+	while n != null:
+		if n.process_mode == Node.PROCESS_MODE_DISABLED:
+			return false
+		if n.process_mode != Node.PROCESS_MODE_INHERIT:
+			return true
+		n = n.get_parent()
+	return true
 
 
 ## True when `v` shows a held still: no idle strip in its shader.
@@ -494,6 +554,7 @@ static func _idle_strip(t) -> void:
 		gate._process(1.0 / 60.0)
 	t.check(gate.sprite_state() == &"intact" and _strip_on(v), "rebuilt, its view plays again")
 	gate.free()
+	_idle_clock_frozen(t)
 	# F7 on an idle animated building: a new view, animating again.
 	var f7 := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
 	f7._ready()
@@ -537,7 +598,7 @@ static func _idle_strip(t) -> void:
 		fo._process(1.0 / 60.0)
 	t.check(not is_instance_valid(fo._spin) and fo.idle and not fo.is_processing(), "F7 on: the spin node goes, it sleeps again")
 	fo.free()
-	# A sprite tree sways on its view's own clock and sleeps under it, forest tree and town oak alike.
+	# A sprite tree's sway is stepped by its shader from the shared clock; it sleeps, forest tree and oak alike.
 	for tag in [&"", &"oak"]:
 		var tr := _make(Rect2(0, 0, 0.7, 0.7) if tag == &"" else Rect2(0, 0, 0.45, 0.45), 28.0, K.TREE, 5, &"decor", tag)
 		tr._ready()
@@ -813,9 +874,9 @@ static func _stall_variety(t) -> void:
 	t.check(seen.size() > 6, "the market shows more than six designs (got %d)" % seen.size())
 
 
-## The town's trees with the real tree and oak sets: across the forest ring (60+) every forest variant shows and none
+## The town's trees with the real tree and oak sets: across the forest ring (40+) every forest variant shows and none
 ## takes more than half, and the town's oaks show at least two designs; each draws a set that exists and idles (a crown
-## sway) yet sleeps like any quiet structure: its view steps the strip on its own.
+## sway) yet sleeps like any quiet structure: its shader steps the strip from the shared idle clock.
 static func _tree_variety(t) -> void:
 	SpriteArt.set_enabled(true)
 	t.check(SpriteArt.variants("tree").size() >= 4 and SpriteArt.variants("oak").size() >= 2,

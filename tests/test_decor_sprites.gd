@@ -53,16 +53,39 @@ static func _mapping(t) -> void:
 	_unfake(fakes)
 
 
+static func _forest(stump: Texture2D = null) -> Array:
+	var fakes := _fake(["forest_oak_1", "forest_oak_2", "forest_pine_1"])
+	for n: String in ["forest_oak_1", "forest_oak_2", "forest_pine_1"]:
+		DecorSprites._sets[n] = {"name": n, "tex": _tex(40, 60), "stump": stump, "size": Vector2(40, 60),
+			"anchor": Vector2(20, 58), "segment": 0.0}
+	return fakes
+
+
+static func _unforest(fakes: Array) -> void:
+	for n: String in ["forest_oak_1", "forest_oak_2", "forest_pine_1"]:
+		DecorSprites._sets.erase(n)
+	_unfake(fakes)
+
+
 static func _trees(t) -> void:
-	# OAK and PINE use the batch 3 building sets: oaks over oak_* and the leafy tree_*, pines over the pine tree_*.
+	# OAK and PINE use forest-scale decor sets: forest_oak_<n> and forest_pine_<n>; none yet means procedural.
+	var fakes := _forest()
+	var seen := {}
 	for s in 16:
 		var oak: String = DecorSprites.tree_set(D.OAK, s * 31).get("name", "")
-		t.check(oak in DecorSprites.OAK_SETS, "a decor oak takes a leafy set (got '%s')" % oak)
+		t.check(oak.begins_with("forest_oak_"), "a decor oak takes a forest oak set (got '%s')" % oak)
+		seen[oak] = true
 		var pine: String = DecorSprites.tree_set(D.PINE, s * 31).get("name", "")
-		t.check(pine in DecorSprites.PINE_SETS, "a decor pine takes a pine set (got '%s')" % pine)
+		t.check(pine == "forest_pine_1", "a decor pine takes a forest pine set (got '%s')" % pine)
+	t.check(seen.size() == 2, "both oak variants appear over seeds")
 	SpriteArt.set_enabled(false)
 	t.check(DecorSprites.tree_set(D.OAK, 3).is_empty(), "F7 off: decor trees are procedural")
 	SpriteArt.set_enabled(true)
+	_unforest(fakes)
+	t.check(DecorSprites.tree_set(D.OAK, 3).is_empty(), "no forest sets: the decor oak is procedural")
+	ArtKit.begin()
+	t.check(not DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2.ZERO, 3, Vector2.ZERO), "and paint leaves it to DecorArt")
+	ArtKit.begin()
 
 
 static func _missing(t) -> void:
@@ -108,13 +131,29 @@ static func _runs(t) -> void:
 
 
 static func _down(t) -> void:
-	# A felled decor oak shows its tree set's ruins (stump and log); a knocked-over barrel shows nothing.
+	# A felled decor oak draws its set's stump texture; without one it is left to the procedural stump.
+	var stump := _tex(12, 8)
+	var fakes := _forest(stump)
 	ArtKit.begin()
-	var drew := DecorSprites.paint(Decor.Kind.OAK, Vector2(1, 1), Vector2.ZERO, 9, Vector2.ZERO, true)
+	var drew := DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2.ZERO, 9, Vector2.ZERO, true)
 	var s := ArtKit.segments()
 	t.check(drew and s.size() == 1 and s[0][0] == "tex", "a down oak draws its set's stump")
-	var tree := DecorSprites.tree_set(Decor.Kind.OAK, 9)
-	t.check(s.size() == 1 and s[0][1] == tree.stills[&"ruins"], "the stump is the set's ruins still")
+	t.check(s.size() == 1 and s[0][1] == stump, "the stump is the set's stump texture")
+	ArtKit.begin()
+	_unforest(fakes)
+	fakes = _forest()
+	t.check(not DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2.ZERO, 9, Vector2.ZERO, true),
+		"a down oak without a stump texture is left to the procedural stump")
+	t.check(ArtKit.segments().is_empty(), "and queues nothing")
+	_unforest(fakes)
+	ArtKit.begin()
+	var bfakes := _fake(["barrel_1"])
+	DecorSprites._sets["barrel_1"] = {"name": "barrel_1", "tex": _tex(10, 12), "size": Vector2(10, 12),
+		"anchor": Vector2(5, 11), "segment": 0.0}
+	t.check(DecorSprites.paint(Decor.Kind.BARREL, Vector2(1, 1), Vector2.ZERO, 9, Vector2.ZERO, true)
+		and ArtKit.segments().is_empty(), "a knocked-over barrel draws nothing")
+	DecorSprites._sets.erase("barrel_1")
+	_unfake(bfakes)
 	ArtKit.begin()
 
 

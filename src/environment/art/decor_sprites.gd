@@ -3,7 +3,8 @@ extends RefCounted
 ## Decor sprites (decor batch 4, docs/superpowers/specs/2026-10-05-decor-batch4-design.md): which decor piece draws
 ## from which sprite set, read from assets/pixellab/decor/manifest.json. A set is one still, intact.png, anchored at
 ## the piece's ground point ("anchor", sprite px). A run kind's set ("segment", ground units) repeats along the run.
-## Oaks and pines draw the batch 3 tree sets (SpriteArt). Shown while SpriteArt.on(): F7 switches decor too.
+## Oaks and pines draw forest-scale decor sets (forest_oak_<n>, forest_pine_<n>); until those exist they stay
+## procedural. Shown while SpriteArt.on(): F7 switches decor too.
 
 const DIR := "res://assets/pixellab/decor/"
 const MANIFEST := DIR + "manifest.json"
@@ -21,10 +22,6 @@ const BASE := {
 	Decor.Kind.BOAT: "boat", Decor.Kind.SHEEP: "sheep", Decor.Kind.COW: "cow", Decor.Kind.CART: "cart",
 	Decor.Kind.LOGS: "logs",
 }
-## The batch 3 tree sets a decor oak or pine picks from (SpriteArt names): leafy ones for oaks, pines for pines.
-const OAK_SETS := ["oak_1", "oak_2", "oak_3", "tree_1", "tree_3", "tree_4"]
-const PINE_SETS := ["tree_2", "tree_5"]
-
 static var _manifest := {}
 static var _loaded := false
 static var _sets := {}
@@ -48,7 +45,7 @@ static func reload() -> void:
 	_variants_cache.clear()
 
 
-## The set named `n`: {name, tex, size, anchor, segment}; {} when it is not in the manifest or its PNG is missing
+## The set named `n`: {name, tex, stump, size, anchor, segment}; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
 ## (warned once).
 static func decor_set(n: String) -> Dictionary:
 	if _sets.has(n):
@@ -62,8 +59,9 @@ static func decor_set(n: String) -> Dictionary:
 		return {}
 	var tex: Texture2D = load(path)
 	var size := Vector2(m.size[0], m.size[1]) if m.has("size") else Vector2(tex.get_size())
+	var stump_path := DIR + n + "/stump.png"
 	var built := {
-		"name": n, "tex": tex, "size": size,
+		"name": n, "tex": tex, "stump": load(stump_path) if ResourceLoader.exists(stump_path) else null, "size": size,
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
 		"segment": float(m.get("segment", 0.0)),
 	}
@@ -103,30 +101,30 @@ static func name_for(kind: int, seed_value: int, size: Vector2) -> String:
 	return "%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]]
 
 
-## A decor oak's or pine's batch 3 tree set (SpriteArt.sprite()), picked from the seed over the sets that exist;
-## {} while SpriteArt is off or none exist.
+## A decor oak's or pine's forest set: a variant of forest_oak / forest_pine picked from the seed; {} while
+## SpriteArt is off or the manifest has none (the tree stays procedural).
 static func tree_set(kind: int, seed_value: int) -> Dictionary:
 	if not SpriteArt.on():
 		return {}
-	var pool: Array = []
-	for n: String in (PINE_SETS if kind == Decor.Kind.PINE else OAK_SETS):
-		if not SpriteArt.sprite(n).is_empty():
-			pool.append(n)
-	if pool.is_empty():
+	var base := "forest_pine" if kind == Decor.Kind.PINE else "forest_oak"
+	var v := variants(base)
+	if v.is_empty():
 		return {}
-	return SpriteArt.sprite(pool[ArtKit.pick(seed_value, SALT_TREE, pool.size())])
+	return decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_TREE, v.size())]])
 
 
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down
-## tree shows its set's ruins; any other down piece with a set draws nothing. A run repeats its set's segment from
-## its back end, the last tile cut to the run's length.
+## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws nothing. A run repeats its set's
+## segment from its back end, the last tile cut to the run's length.
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
 	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
 		var tr := tree_set(kind, seed_value)
 		if tr.is_empty():
 			return false
-		var still: Texture2D = tr.stills[&"ruins" if down else &"intact"]
-		ArtKit.tex(still, Rect2(Vector2.ZERO, tr.size), Iso.ground_to_screen(at) - origin - tr.anchor)
+		var still: Texture2D = tr.stump if down else tr.tex
+		if still == null:
+			return false
+		ArtKit.tex(still, Rect2(Vector2.ZERO, still.get_size() if down else tr.size), Iso.ground_to_screen(at) - origin - tr.anchor)
 		return true
 	var n := name_for(kind, seed_value, size)
 	if n == "":

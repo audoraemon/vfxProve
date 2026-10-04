@@ -60,6 +60,26 @@ const SAMPLE_WARNING_RESULT := {
 	"goal": {"label": "Stop the warning", "done": true}, "bonuses": [{"label": "Unseen", "earned": true}],
 	"solved_by": ["VEIL"], "relays": 0,
 }
+## What --show=results-night displays (v0.09): a night won by the Festival path, Act III lost on its clock.
+const SAMPLE_NIGHT_RESULT := {
+	"mission": "long_night", "won": false, "reason": "timeout", "score": 11650, "rank": "B", "best": true,
+	"time": 421.0, "path": "festival",
+	"acts": [
+		{"act": "omen", "won": true, "reason": "warning", "bonuses": [{"label": "Unseen", "earned": true}], "time": 41.0},
+		{"act": "festival", "won": true, "reason": "festival", "bonuses": [{"label": "Bell silent", "earned": false}],
+			"time": 98.0},
+		{"act": "judgement", "won": false, "reason": "timeout", "bonuses": [{"label": "Quiet succession", "earned": false}],
+			"time": 180.0},
+	],
+	"lines": [
+		{"label": "Buildings destroyed", "value": "38", "points": 1520},
+		{"label": "Citizens killed", "value": "64", "points": 640},
+		{"label": "Soldiers killed", "value": "21", "points": 525},
+		{"label": "Citizens escaped", "value": "9", "points": 0},
+		{"label": "Chains", "value": "1", "points": 300},
+	],
+	"bonuses": [], "goal": {"label": "The night is yours", "done": false},
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
@@ -103,6 +123,14 @@ static func next_screen(action: String) -> int:
 	return int(FLOW.get(action, -1))
 
 
+## The loadout Prepare opens with for a mission: the last one drafted for it, and for the night (v0.09) -- never
+## played, or an old save with no section for it -- the night's default loadout. The other missions open empty.
+static func starting_loadout(from: SaveFile, id: String) -> PackedStringArray:
+	var kept := from.loadout_for(id)
+	var def := MissionBook.get_mission(id)
+	return def.default_loadout if kept.is_empty() and not def.acts.is_empty() else kept
+
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
@@ -111,7 +139,7 @@ func _ready() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	save = SaveFile.new().load_from(save_path)
 	mission_id = save.last_mission
-	loadout = save.loadout_for(mission_id)
+	loadout = starting_loadout(save, mission_id)
 	# For the photographs (v0.08): --mission=<id> puts that mission on the board, Prepare or a paused run, with its
 	# default loadout when nothing was drafted for it.
 	var wanted := Battlefield.arg_value(args, "--mission")
@@ -134,6 +162,9 @@ func _ready() -> void:
 				(_screen_node as PrepareScreen).preview(hover)
 		"results":
 			result = SAMPLE_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
+		"results-night":
+			result = SAMPLE_NIGHT_RESULT.duplicate(true)
 			go_to(Screen.RESULTS)
 		"results-warning":
 			result = SAMPLE_WARNING_RESULT.duplicate(true)
@@ -377,7 +408,7 @@ func _on_board_action(what: String, board: MissionBoard) -> void:
 	if what == "pick":
 		mission_id = board.chosen
 		save.last_mission = mission_id
-		loadout = save.loadout_for(mission_id)
+		loadout = starting_loadout(save, mission_id)
 		save.save_to(save_path)
 	on_action("board:" + what)
 
@@ -636,6 +667,7 @@ func _flow_night(step: Callable) -> void:
 	step.call(screen == Screen.PREPARE and prep != null and prep.mission.id == MissionBook.LONG_NIGHT
 		and prep.draft.slots == 4 and mission_id == MissionBook.LONG_NIGHT,
 		"picking The Long Night opens its draft, with 4 slots")
+	step.call(prep.draft.picks == kit, "its first Prepare opens on the night's default loadout (%s)" % ",".join(prep.draft.picks))
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)

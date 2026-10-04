@@ -3,6 +3,7 @@ extends Node
 ## Results (spec §5): the ending in gold for a win or red for a loss, the big rank letter, the score, NEW BEST!
 ## when it is one, the stat table with what each line was worth, and Replay / Change powers / Missions. A mission
 ## without a score (v0.08: The Warning) shows its goal and bonus ticked or crossed, the time and "Solved by" instead.
+## A night (v0.09: a result with acts) shows each act's mark and bonuses, the path and the night's total.
 ## It is drawn over the mission's frozen ruins, which Game keeps up underneath it.
 
 ## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08).
@@ -19,6 +20,8 @@ const PLAIN_L := 196.0
 const PLAIN_R := 444.0
 const PLAIN_TOP := 124.0
 const PLAIN_ROW := 22.0
+## A night's act table (v0.09): how far its bonus rows are indented.
+const BONUS_INDENT := 10.0
 ## What "Solved by" says when nothing solved it.
 const NOBODY := "-"
 
@@ -109,14 +112,11 @@ func _draw_ui() -> void:
 		_menu.draw_on(_ui, _hover)
 		return
 
-	# The rank on the left, big, with the score beside it.
-	var rank := String(_result.get("rank", "D"))
-	UiTheme.text(_ui, Vector2(64.0, 162.0), rank, UiTheme.SIZE_HUGE, UiTheme.COL_GOLD)
-	UiTheme.text(_ui, Vector2(66.0, 176.0), "RANK", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	UiTheme.text(_ui, Vector2(132.0, 102.0), "SCORE", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	UiTheme.text(_ui, Vector2(130.0, 132.0), thousands(int(_result.get("score", 0))), UiTheme.SIZE_TITLE)
-	if bool(_result.get("best", false)):
-		UiTheme.text(_ui, Vector2(132.0, 154.0), "NEW BEST!", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+	_draw_rank()
+	if _result.has("acts"):
+		_draw_night()
+		_menu.draw_on(_ui, _hover)
+		return
 
 	# The stat table: what happened, and what each line was worth.
 	var y := 100.0
@@ -139,6 +139,54 @@ func _draw_ui() -> void:
 	UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(sum, UiTheme.SIZE_SMALL), y + 4.0), sum, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 
 	_menu.draw_on(_ui, _hover)
+
+
+## The rank on the left, big, with the score beside it and NEW BEST! under it when it is one.
+func _draw_rank() -> void:
+	var rank := String(_result.get("rank", "D"))
+	UiTheme.text(_ui, Vector2(64.0, 162.0), rank, UiTheme.SIZE_HUGE, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(66.0, 176.0), "RANK", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(132.0, 102.0), "SCORE", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(130.0, 132.0), thousands(int(_result.get("score", 0))), UiTheme.SIZE_TITLE)
+	if bool(_result.get("best", false)):
+		UiTheme.text(_ui, Vector2(132.0, 154.0), "NEW BEST!", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+
+
+## The path's name for the night's results: "festival" -> "The Festival".
+static func path_name(path: String) -> String:
+	return "" if path == "" else "The " + path.capitalize()
+
+
+## A night (v0.09), on the right of the rank: one row per act -- its name, a tick or a cross, each of its bonuses
+## beneath with its own -- then the path taken and the night's total. Act III's own lines (seven rows, and its
+## "Citizens escaped" counts from its start alone) do not fit under the acts, so they are left to the total.
+func _draw_night() -> void:
+	var night := MissionBook.get_mission(String(_result.get("mission", MissionBook.LONG_NIGHT)))
+	var y := 100.0
+	for a: Dictionary in _result.get("acts", []):
+		var act := night.act(String(a.get("act", "")))
+		var called := act.name if act != null else String(a.get("act", ""))
+		var won := bool(a.get("won", false))
+		UiTheme.text(_ui, Vector2(TABLE_X, y), called, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT if won else UiTheme.COL_DIM)
+		UiTheme.mark(_ui, Vector2(POINTS_R - 7.0, y - 8.0), won)
+		y += ROW
+		for b: Dictionary in a.get("bonuses", []):
+			var earned := bool(b.get("earned", false))
+			UiTheme.text(_ui, Vector2(TABLE_X + BONUS_INDENT, y), String(b.get("label", "")), UiTheme.SIZE_SMALL,
+				UiTheme.COL_DIM)
+			UiTheme.mark(_ui, Vector2(POINTS_R - 7.0, y - 8.0), earned)
+			y += ROW
+	var path := path_name(String(_result.get("path", "")))
+	if path != "":
+		UiTheme.text(_ui, Vector2(TABLE_X, y), "Path", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(path, UiTheme.SIZE_SMALL), y), path, UiTheme.SIZE_SMALL,
+			UiTheme.COL_GOLD)
+		y += ROW
+	_ui.draw_line(Vector2(TABLE_X, y - 7.0), Vector2(POINTS_R, y - 7.0), UiTheme.COL_GOLD_DARK, -1.0)
+	var sum := thousands(int(_result.get("score", 0)))
+	UiTheme.text(_ui, Vector2(TABLE_X, y + 4.0), "Night total", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(sum, UiTheme.SIZE_SMALL), y + 4.0), sum, UiTheme.SIZE_SMALL,
+		UiTheme.COL_GOLD)
 
 
 ## An unscored mission (v0.08): the mission's name under the title, then its goal and each bonus with a tick or a

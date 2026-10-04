@@ -90,7 +90,8 @@ func choose(id: String) -> void:
 	push_warning("KAK has no mission called " + id)
 
 
-## The best result line on a card: a scored mission's best score and rank, else whether it was won (and its bonus).
+## The best result line on a card: a scored mission's best score and rank (a night's best rank, v0.09), else whether
+## it was won (and its bonus).
 func best_line(def: MissionDef) -> String:
 	var best := _save.best(def.id) if _save != null else {}
 	if def.scored:
@@ -105,10 +106,16 @@ func best_line(def: MissionDef) -> String:
 	return "Won"
 
 
-## An unscored mission's best as marks (v0.08): [["Won", won], [each bonus's label, earned]], drawn with a tick or a
-## cross each.
+## A mission's best as marks, each drawn with a tick or a cross. An unscored mission's (v0.08): [["Won", won],
+## [each bonus's label, earned]]. A night's (v0.09): [[each path's name, won by it]], "Festival" and "Procession".
 func best_marks(def: MissionDef) -> Array:
 	var best := _save.best(def.id) if _save != null else {}
+	if not def.acts.is_empty():
+		var won := PackedStringArray(best.get("paths_won", PackedStringArray()))
+		var paths := []
+		for id in (def.acts[0] as ActDef).next:
+			paths.append([String(id).capitalize(), won.has(id)])
+		return paths
 	var out := [["Won", bool(best.get("won", false))]]
 	for b in def.bonuses():
 		out.append([b.label, bool(best.get("bonus", false))])
@@ -215,19 +222,27 @@ func _draw_card(r: Rect2, def: MissionDef, on: bool) -> void:
 		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
 		y += UiTheme.LINE_BODY
 
-	# The foot of the card: the loadout, then the best result.
+	# The foot of the card, a rule over three rows so every card's rule sits at the same height: the loadout, the
+	# best result, and under a night's best rank its path marks (v0.09).
 	var loadout := "%d slots" % def.slots if def.dp_capacity == 0 else "%d slots · %d DP" % [def.slots, def.dp_capacity]
-	var foot := r.end.y - PAD - 2.0
-	_ui.draw_line(Vector2(x, foot - UiTheme.LINE_SMALL * 2.0 - 4.0), Vector2(r.end.x - PAD, foot - UiTheme.LINE_SMALL * 2.0 - 4.0),
-		UiTheme.COL_GOLD_DARK, -1.0)
-	UiTheme.text(_ui, Vector2(x, foot - UiTheme.LINE_SMALL), loadout, UiTheme.SIZE_SMALL, text_col)
-	if def.scored:
-		UiTheme.text(_ui, Vector2(x, foot), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	var night := not def.acts.is_empty()
+	var rule := r.end.y - PAD - 2.0 - UiTheme.LINE_SMALL * 3.0 - 4.0
+	var row_y := rule + 4.0 + UiTheme.LINE_SMALL
+	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, -1.0)
+	UiTheme.text(_ui, Vector2(x, row_y), loadout, UiTheme.SIZE_SMALL, text_col)
+	row_y += UiTheme.LINE_SMALL
+	if night:
+		UiTheme.text(_ui, Vector2(x, row_y), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+		row_y += UiTheme.LINE_SMALL
+		if _save == null or int(_save.best(def.id).get("best_score", 0)) <= 0:
+			return  # Never played: no paths to tick or cross yet.
+	elif def.scored:
+		UiTheme.text(_ui, Vector2(x, row_y), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
 		return
-	# An unscored mission (v0.08): "Won" and each bonus, each with a tick or a cross.
+	# Marks: an unscored mission's "Won" and each bonus (v0.08), or a night's paths, each with a tick or a cross.
 	for entry: Array in best_marks(def):
 		var label := String(entry[0])
-		UiTheme.text(_ui, Vector2(x, foot), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+		UiTheme.text(_ui, Vector2(x, row_y), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
 		x += UiTheme.width(label, UiTheme.SIZE_SMALL) + 5.0
-		UiTheme.mark(_ui, Vector2(x, foot - 7.0), bool(entry[1]))
+		UiTheme.mark(_ui, Vector2(x, row_y - 7.0), bool(entry[1]))
 		x += 7.0 + 14.0

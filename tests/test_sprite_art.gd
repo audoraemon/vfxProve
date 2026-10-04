@@ -10,7 +10,7 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
 	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
-	"bridge_stone", "dock"]
+	"bridge_stone", "dock", "barn", "carpenter"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -214,6 +214,18 @@ static func _sets(t) -> void:
 	var inn := _make(Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, 5, &"house", &"tavern")
 	t.check(ChimneySmoke.tip_of(inn) == Vector2.INF, "the tavern's smoke is in its sprite")
 	inn.free()
+	# The warehouse sets (batch 3): a barn has no chimney, as the procedural barn; the carpenter keeps the sheet's.
+	# Both stand unmirrored on their plots (the barn is drawn deep, the carpenter wide).
+	var barn := _make(Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, 5, &"farm")
+	barn.sprite = SpriteArt.set_for(barn)
+	t.check(not barn.sprite.is_empty() and not barn.sprite.mirror and ChimneySmoke.tip_of(barn) == Vector2.INF,
+		"a sprite barn stands unmirrored and never smokes")
+	barn.free()
+	var carp := _make(Rect2(0, 0, 2.3, 1.15), 20.0, K.HOUSE, 5, &"house", &"carpenter")
+	carp.sprite = SpriteArt.set_for(carp)
+	t.check(not carp.sprite.is_empty() and not carp.sprite.mirror and ChimneySmoke.tip_of(carp) != Vector2.INF,
+		"the sprite carpenter stands unmirrored and smokes from its chimney")
+	carp.free()
 	SpriteArt.set_enabled(false)
 	t.check(SpriteArt.set_for(wide).is_empty(), "with sprites off nothing gets a set")
 	SpriteArt.set_enabled(true)
@@ -766,7 +778,7 @@ static func _battered(sprites: bool) -> String:
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
-	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock"]:
+	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock", "barn", "carpenter"]:
 		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)

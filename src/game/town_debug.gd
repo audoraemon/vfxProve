@@ -46,6 +46,13 @@ const TOWN_SHOTS := [
 	# The forest ring outside the west wall, and the oaks between the west district's cottages.
 	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
 	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],
+	# The north-west farm's barn and the carpenter's workshop (the warehouse sets), each then damaged and fallen.
+	["town_barn.png", Vector2(-12.6, -28.4), 2.0],
+	["town_carpenter.png", Vector2(11.2, 12.3), 1.6],
+	["town_barn_damaged.png", Vector2(-12.6, -28.4), 2.0],
+	["town_carpenter_damaged.png", Vector2(11.2, 12.3), 1.6],
+	["town_barn_ruins.png", Vector2(-12.6, -28.4), 2.0],
+	["town_carpenter_ruins.png", Vector2(11.2, 12.3), 1.6],
 	# The south road's stone bridge and the dock below the postern, people on them (_stage_shot); then cracked and
 	# fallen (kept last: they break the bridge and the dock for any shot after them).
 	["town_bridge.png", Vector2(2.7, 22.2), 1.3],
@@ -266,6 +273,17 @@ func _stage_shot(file: String) -> void:
 		s = _town.bridge
 	elif file.begins_with("town_dock"):
 		s = _town.dock
+	elif file.begins_with("town_barn") or file.begins_with("town_carpenter"):
+		var plot: Rect2 = TownLayout.BARNS[0] if file.begins_with("town_barn") else TownLayout.CARPENTER
+		for b: Structure in _town._built:
+			if is_instance_valid(b) and b.footprint == plot:
+				s = b
+		if s != null and file.ends_with("_damaged.png"):
+			s.crack()
+		elif s != null and file.ends_with("_ruins.png"):
+			s.destroy(s.center(), &"stone")
+			await _bf.wait_frames(240)
+		return
 	if not is_instance_valid(s) or not is_instance_valid(_crowd):
 		return
 	var r := s.footprint

@@ -67,5 +67,9 @@
 	"barn": {"size": [108, 104], "footprint": [1.3, 1.5], "anchor": [52, 93], "height": 20, "seed": 70, "kind": "HOUSE", "role": "farm", "tag": ""},
 	"carpenter": {"size": [128, 110], "footprint": [2.3, 1.15], "anchor": [81, 99], "height": 20, "seed": 71, "kind": "HOUSE", "role": "house", "tag": "carpenter", "chimney": [84, 21]},
 	"windmill": {"size": [120, 149], "footprint": [0.9, 0.9], "anchor": [82, 138], "height": 60, "seed": 72, "kind": "HOUSE", "role": "farm", "tag": "windmill", "frames": 8, "fps": 16},
-	"watermill": {"size": [177, 118], "footprint": [2.4, 1.9], "anchor": [102, 107], "height": 34, "seed": 73, "kind": "HOUSE", "role": "farm", "tag": "watermill", "frames": 8, "fps": 21}
+	"watermill": {"size": [177, 118], "footprint": [2.4, 1.9], "anchor": [102, 107], "height": 34, "seed": 73, "kind": "HOUSE", "role": "farm", "tag": "watermill", "frames": 8, "fps": 21},
+	"field_0": {"size": [277, 158], "footprint": [5.0, 3.45], "anchor": [163, 147], "height": 3, "seed": 71, "kind": "FARM_FIELD", "role": "farm", "tag": "", "frames": 4, "fps": 3},
+	"field_0_2": {"size": [277, 158], "footprint": [5.0, 3.45], "anchor": [163, 147], "height": 3, "seed": 72, "kind": "FARM_FIELD", "role": "farm", "tag": "", "frames": 4, "fps": 3},
+	"field_1": {"size": [277, 158], "footprint": [5.0, 3.45], "anchor": [163, 147], "height": 3, "seed": 73, "kind": "FARM_FIELD", "role": "farm", "tag": ""},
+	"field_1_2": {"size": [277, 158], "footprint": [5.0, 3.45], "anchor": [163, 147], "height": 3, "seed": 74, "kind": "FARM_FIELD", "role": "farm", "tag": ""}
 }

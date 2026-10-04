@@ -26,6 +26,8 @@ const SALT_TOWNHOUSE := 91
 const SALT_STALL := 92
 const SALT_TREE := 93
 const SALT_OAK := 94
+## ArtKit.hash01 salt for the design of a field off the town's plots (SpriteView.SALT_PHASE is 95).
+const SALT_FIELD := 96
 ## A town market stall's design walk over TownLayout.STALLS (_stall_design): the first of these steps prime to the
 ## number of designs, and where the walk starts.
 const STALL_STEPS := [5, 7, 11, 13]
@@ -134,6 +136,21 @@ static func _stall_design(s: Structure) -> String:
 	return "stall_%d" % v[(i * step + STALL_OFFSET) % v.size()]
 
 
+## A field's sprite: its crop's set "field_<crop>" (none: procedural) or one of that crop's other designs
+## "field_<crop>_<n>" (rows the other way). A town field (its plot one of TownLayout.FIELDS, index i) takes design
+## i mod (designs): side-by-side plots are next to each other in that list, so two neighbouring fields of one crop never
+## look stamped. It reads the layout only, so gameplay is untouched. Any other field picks its design from its seed.
+static func _field_name(s: Structure) -> String:
+	var base := "field_%d" % int(s.art.get("crop", 0))
+	if not manifest().has(base):
+		return ""
+	var v := variants(base)
+	var n := v.size() + 1
+	var i: int = TownLayout.FIELDS.find(s.footprint)
+	var k := i % n if i >= 0 else ArtKit.pick(s.rng.seed, SALT_FIELD, n)
+	return base if k == 0 else "%s_%d" % [base, v[k - 1]]
+
+
 ## The sprite that replaces `s`, or "" (only buildings with a set in the manifest are drawn from one).
 static func name_for(s: Structure) -> String:
 	match s.kind:
@@ -213,7 +230,7 @@ static func name_for(s: Structure) -> String:
 			if s.art_tag == &"dock":
 				return _have("dock")
 		Structure.Kind.FARM_FIELD:
-			return _have("field_%d" % int(s.art.get("crop", 0)))
+			return _field_name(s)
 	return ""
 
 

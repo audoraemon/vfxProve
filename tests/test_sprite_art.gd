@@ -10,7 +10,7 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
 	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
-	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill"]
+	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -815,7 +815,7 @@ static func _battered(sprites: bool) -> String:
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
 	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock", "barn", "carpenter",
-			"windmill", "watermill"]:
+			"windmill", "watermill", "field_"]:
 		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)
@@ -873,7 +873,7 @@ static func _batch3(t) -> void:
 		oaks[name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, sd, &"decor", &"oak")] = true
 	t.check(trees.size() == 2 and trees.has("tree_1") and trees.has("tree_2"), "trees pick tree_1 / tree_2: %s" % [trees.keys()])
 	t.check(oaks.size() == 3 and oaks.has("oak_3"), "oaks pick oak_1..3: %s" % [oaks.keys()])
-	# Fields: the crop of the field's plan.
+	# Fields: the crop of the field's plan (its other designs hidden: the plain crop set).
 	var crops := {}
 	for sd in 40:
 		var f := _make(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, sd, &"farm")
@@ -887,6 +887,7 @@ static func _batch3(t) -> void:
 	_stall_variety(t)
 	_tree_variety(t)
 	_flat_sprites(t)
+	_fields(t)
 
 
 ## The town's stalls (TownLayout.STALLS) with the real stall designs: each plot's design comes from its place in the
@@ -982,16 +983,81 @@ static func _flat_sprites(t) -> void:
 	t.check(bool(bridge.sprite.keep_flames) and bridge._flame_tips().size() == 8,
 		"the sprite bridge keeps its eight procedural torch flames")
 	bridge.free()
-	var fakes := _fake(["field_0"])
-	# Borrow a real set's textures under the fake name so the field is truly sprite-drawn.
-	SpriteArt._sets["field_0"] = SpriteArt.sprite("smithy")
-	var f := _make(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, 5, &"farm")
-	f.art.crop = 0
-	f.refresh_sprite()
-	t.check(not f.sprite.is_empty(), "field_0 is drawn from a sprite")
-	t.check(f.z_index == -1 and f.walkable, "field_0 with a sprite stays on the ground layer, walkable")
-	f.free()
-	_unfake(fakes)
+	# Fields: the real sets on the town's plots, both crops and both depths (5 x 3.5 north, 5 x 3.4 south).
+	for i in [0, 1, 5, 7]:
+		var f := _make(TownLayout.FIELDS[i], 3.0, K.FARM_FIELD, 5, &"farm")
+		for crop in 2:
+			f.art.crop = crop
+			f.refresh_sprite()
+			var n := SpriteArt.name_for(f)
+			t.check(n.begins_with("field_%d" % crop) and not f.sprite.is_empty() and not f.sprite.mirror,
+				"field %d (crop %d) is drawn from its crop's set %s, unmirrored" % [i, crop, n])
+			t.check(f.z_index == -1 and f.walkable, "%s with a sprite stays on the ground layer, walkable" % n)
+			_below_person(t, f, n)
+		f.free()
+
+
+## The town's fields with the real field sets: each draws a set of its crop that exists; no two neighbouring fields of
+## one crop (side by side in a row) share a design; the wheat sways (a 4-frame strip at 3 fps, the manifest's frames
+## across its idle texture) and the field sleeps under it; cabbages are a still. A field never cracks: below the health
+## a building cracks at it shows its damaged still, and burnt flat its ruins at once (no collapse to fade in under).
+static func _fields(t) -> void:
+	SpriteArt.set_enabled(true)
+	var env := EnvironmentField.new()
+	env.rng.seed = 7
+	var town := Town.new()
+	town.build(env)
+	var fields: Array = env.structures().filter(func(s): return s.kind == K.FARM_FIELD)
+	t.check(fields.size() == TownLayout.FIELDS.size(), "the town has its %d fields" % TownLayout.FIELDS.size())
+	var ok := true
+	var designs := {}
+	for f: Structure in fields:
+		var n := SpriteArt.name_for(f)
+		ok = ok and n.begins_with("field_%d" % int(f.art.crop)) and not SpriteArt.sprite(n).is_empty()
+		designs[n] = true
+	t.check(ok, "every town field draws a set of its own crop")
+	t.check(designs.size() == 4, "both designs of both crops show: %s" % [designs.keys()])
+	var clash := []
+	for a: Structure in fields:
+		for b: Structure in fields:
+			if a.get_instance_id() < b.get_instance_id() and int(a.art.crop) == int(b.art.crop) 					and a.footprint.get_center().distance_to(b.footprint.get_center()) <= 7.5 					and SpriteArt.name_for(a) == SpriteArt.name_for(b):
+				clash.append("%s %s" % [a.footprint.position, b.footprint.position])
+	t.check(clash.is_empty(), "no two neighbouring fields of one crop share a design (%s)" % [clash])
+	town.free()
+	env.free()
+	for n in ["field_0", "field_0_2"]:
+		var m: Dictionary = SpriteArt.manifest()[n]
+		var sp := SpriteArt.sprite(n)
+		var idle_tex: Texture2D = sp.get("idle")
+		t.check(int(sp.frames) == 4 and is_equal_approx(float(sp.fps), 3.0) and idle_tex != null
+			and idle_tex.get_width() == int(m.size[0]) * 4 and idle_tex.get_height() == int(m.size[1]),
+			"%s sways: a 4-frame strip at 3 fps" % n)
+	for n in ["field_1", "field_1_2"]:
+		t.check(int(SpriteArt.sprite(n).frames) == 1, "%s (cabbages) is a still" % n)
+	var w := _make(TownLayout.FIELDS[2], 3.0, K.FARM_FIELD, 5, &"farm")
+	w.art.crop = 0
+	w.refresh_sprite()
+	w._ready()
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(_strip_on(w._sprite_view) and w.idle and not w.is_processing(), "a wheat field's view sways; the field sleeps")
+	w.damage(w.max_hp * 0.2, w.center(), &"stone")
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(w._cracks.is_empty() and w.sprite_state() == &"intact" and w._sprite_view.still == &"intact",
+		"lightly hurt, a field shows intact (it never cracks)")
+	w.damage(w.max_hp * 0.3, w.center(), &"stone")
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(w.sprite_state() == &"damaged" and w._sprite_view.still == &"damaged" and not w._sprite_view.playing,
+		"below %.0f%% health it shows its damaged still" % (Structure.CRACK_AT * 100.0))
+	w.destroy(w.center(), &"water")
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(w.sprite_state() == &"ruins" and is_instance_valid(w._ruins_view) and w._ruins_view.still == &"ruins"
+		and is_equal_approx(w._ruins_view.color.a, 1.0) and not w._sprite_view.visible,
+		"burnt flat, it shows its ruins at once")
+	w.free()
 
 
 ## A person standing on `s` (a sprite bridge or dock) draws above every view of it: in one world, the structure's

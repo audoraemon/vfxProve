@@ -63,6 +63,8 @@ const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
 const FLAT := [Kind.BRIDGE, Kind.FARM_FIELD]
 ## Nothing to crack on these.
 const NO_CRACKS := [Kind.FARM_FIELD, Kind.TREE]
+## A building cracks below this share of its health (a sprite field shows its damaged still).
+const CRACK_AT := 0.65
 ## Light buckets the redraw signature quantizes to. Faces are always shaded from the exact sampled
 ## light; these only decide how far the light has to move before a building rebuilds its drawing.
 const SIG_COLOR_STEPS := 48.0
@@ -298,7 +300,7 @@ func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 		destroy(source, damage_kind)
 		return
 	hit.emit(self, amount, damage_kind)
-	if hp < max_hp * 0.65:
+	if hp < max_hp * CRACK_AT:
 		crack()
 	for w in _windows:
 		if rng.randf() < 0.3:
@@ -448,14 +450,20 @@ func refresh_sprite() -> void:
 
 
 ## What a sprite building shows now: &"intact", &"damaged" (cracked), &"falling" (collapsing), &"cut" (a laser's stump;
-## only a laser leaves a building destroyed without a collapse) or &"ruins"; &"" without a sprite.
+## only a laser leaves a building destroyed without a collapse) or &"ruins"; &"" without a sprite. A field never cracks
+## nor collapses: it shows damaged (trampled, scorched) below the health a building cracks at, and its ruins at once
+## when it burns flat (_fall_apart()).
 func sprite_state() -> StringName:
 	if sprite.is_empty():
 		return &""
 	if destroyed:
+		if kind == Kind.FARM_FIELD:
+			return &"ruins"
 		if _collapse < 0.0:
 			return &"cut"
 		return &"falling" if _collapse < 1.0 else &"ruins"
+	if kind == Kind.FARM_FIELD:
+		return &"damaged" if hp < max_hp * CRACK_AT else &"intact"
 	return &"intact" if _cracks.is_empty() else &"damaged"
 
 
@@ -495,7 +503,9 @@ func _sync_sprite() -> void:
 		_ruins_view.queue_free()
 		_ruins_view = null
 	if is_instance_valid(_ruins_view):
-		_ruins_view.set_color(Color(self_modulate, clampf(_collapse * 3.0, 0.0, 1.0)))
+		# It fades in under a collapse; a field burnt flat has none and shows them at once.
+		var shown := 1.0 if _collapse < 0.0 else clampf(_collapse * 3.0, 0.0, 1.0)
+		_ruins_view.set_color(Color(self_modulate, shown))
 	var m := -1.0 if sprite.mirror else 1.0
 	_sprite_view.visible = state != &"ruins"
 	_sprite_view.set_color(self_modulate)
@@ -613,7 +623,8 @@ func _new_view() -> SpriteView:
 ## A sprite building's own drawing: its ground shadow while it stands, and the light handed to its views (they draw
 ## the sprite; see _sync_sprite()).
 func _draw_sprite_frame(light: Color) -> void:
-	if not destroyed:
+	# Fields lie flat and cast none, as the procedural ones.
+	if not destroyed and kind != Kind.FARM_FIELD:
 		_quad(_sprite_shadow(), SHADOW)
 	var amb := lights.ambient if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE

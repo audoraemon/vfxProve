@@ -58,6 +58,13 @@ const TOWN_SHOTS := [
 	["town_watermill_damaged.png", Vector2(-4.0, 24.5), 1.0],
 	["town_windmill_ruins.png", Vector2(-10.0, -24.0), 1.0],
 	["town_watermill_ruins.png", Vector2(-4.0, 24.5), 1.0],
+	# The farm fields (batch 3 sets) with farmers set down in them: the north fields by the windmill, the south wheat by
+	# the river, the south-east cabbages; then the north fields trampled (below 65% health) and burnt flat.
+	["town_fields_north.png", Vector2(-16.0, -25.0), 1.2],
+	["town_fields_south.png", Vector2(-16.5, 28.0), 1.2],
+	["town_fields_cabbage.png", Vector2(10.0, 28.0), 1.2],
+	["town_fields_damaged.png", Vector2(-16.0, -25.0), 1.2],
+	["town_fields_ruins.png", Vector2(-16.0, -25.0), 1.2],
 	# The south road's stone bridge and the dock below the postern, people on them (_stage_shot); then cracked and
 	# fallen (kept last: they break the bridge and the dock for any shot after them).
 	["town_bridge.png", Vector2(2.7, 22.2), 1.3],
@@ -274,6 +281,9 @@ func _capture_town(only := "", frames := 1) -> void:
 ## (they walk on from there), and for the _damaged / _ruins shots the structure cracked or brought down first.
 func _stage_shot(file: String) -> void:
 	var s: Structure = null
+	if file.begins_with("town_fields"):
+		await _stage_fields(file)
+		return
 	if file.begins_with("town_bridge"):
 		s = _town.bridge
 	elif file.begins_with("town_dock"):
@@ -311,6 +321,37 @@ func _stage_shot(file: String) -> void:
 		s.crack()
 	elif file.ends_with("_ruins.png"):
 		s.destroy(s.center(), &"stone")
+		await _bf.wait_frames(240)
+
+
+## Dev staging for the field shots: the fields round the shot's point get two farmers each, set down among the crops
+## (they walk on from there); _damaged drops them under 65% health (trampled), _ruins burns them flat.
+func _stage_fields(file: String) -> void:
+	var at: Vector2 = Vector2.ZERO
+	for shot in TOWN_SHOTS:
+		if shot[0] == file:
+			at = shot[1]
+	var fields: Array[Structure] = []
+	for b: Structure in _town._built:
+		if is_instance_valid(b) and b.kind == Structure.Kind.FARM_FIELD and b.footprint.get_center().distance_to(at) < 8.0:
+			fields.append(b)
+	var i := 0
+	for f in fields:
+		if file.ends_with("_damaged.png"):
+			f.hp = f.max_hp * 0.5
+			f.wake()
+		elif file.ends_with("_ruins.png"):
+			f.destroy(f.center(), &"stone")
+		if not is_instance_valid(_crowd):
+			continue
+		for k in 2:
+			if i >= _crowd.citizens.size():
+				break
+			var p: Person = _crowd.citizens[i]
+			p.ground_pos = f.footprint.position + f.footprint.size * Vector2(0.3 + 0.4 * k, 0.45 + 0.2 * k)
+			p._sync_position()
+			i += 1
+	if file.ends_with("_ruins.png"):
 		await _bf.wait_frames(240)
 
 

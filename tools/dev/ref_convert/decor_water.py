@@ -11,14 +11,15 @@ of the dock behind them they hide.
 
   ship    Decor.Kind.SHIP: DecorArt._ship's hull (the same sheer and lifts, 3.3 units stern to stem, deck 20 px above the
           water), drawn as clinker strakes under a light rail and a dark wale on its near (+y, lit) side, darker below
-          the bend; a planked deck (lit along its far edge, no bulwark there: the dock side) with a hatch, a raised stern castle with a railing, the
-          bowsprit, two masts (64 and 48 px) with gaff sails in panels (lit aft, shaded by the mast), a blue pennant,
-          and the stays as bare 1 px lines (no outline). Anchored at the hull's waterline centre (ground (0, 0) at the
-          water), as the procedural ship stands on SHIP_AT.
+          the bend; a planked deck (lit along its far edge, no bulwark there: the dock side) with a hatch, a raised
+          stern castle with a railing, the bowsprit, two masts (64 and 48 px) with gaff sails in panels (lit aft,
+          shaded by the mast), a blue pennant, and the stays as bare 1 px lines (no outline). Anchored at the hull's
+          waterline centre (ground (0, 0) at the water), as the procedural ship stands on SHIP_AT.
   boat_1  Decor.Kind.BOAT along ground x: DecorArt._boat's hull (1.5 units long, gunwale 12 px, its ends 3 px higher),
   boat_2  clinker strakes on the near side, the dark inside with ribs and two thwarts, a short mast (30 px) near the
           bow with its loading spar; boat_2 the same along ground y (its near side is then the shaded right face). The
-          procedural boat picks its axis from the seed; a set is picked by seed too. Anchored at the hull's waterline
+          procedural boat picks its axis from the seed; a sprite boat lies along the river holding it
+          (DecorSprites.name_for: boat_2 on TownLayout.RIVER_WEST, else boat_1). Anchored at the hull's waterline
           centre. Both draw at the procedural boat's ArtTuning scale (boat 1.12), like it.
 
 Usage (from anywhere):

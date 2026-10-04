@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_down(t)
 	_toggle(t)
 	_glow(t)
+	_boats(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -230,3 +231,29 @@ static func _glow(t) -> void:
 	t.check(lamp._glow.position == Vector2.ZERO, "and F7 moves the lamp's pool back")
 	SpriteArt.set_enabled(true)
 	lamp.free()
+
+
+static func _boats(t) -> void:
+	# A boat lies along the river holding it: boat_1 (along x) on TownLayout.RIVER, boat_2 (along y) on RIVER_WEST.
+	var fakes := _fake(["boat_1", "boat_2"])
+	var on_river := TownLayout.RIVER.get_center()
+	var on_west := TownLayout.RIVER_WEST.get_center()
+	var ok_x := true
+	var ok_y := true
+	for s in 16:
+		ok_x = ok_x and DecorSprites.name_for(D.BOAT, s * 131, Vector2.ZERO, on_river) == "boat_1"
+		ok_y = ok_y and DecorSprites.name_for(D.BOAT, s * 131, Vector2.ZERO, on_west) == "boat_2"
+	t.check(ok_x, "a boat on the river (along x) takes boat_1 for every seed")
+	t.check(ok_y, "a boat on the west river (along y) takes boat_2 for every seed")
+	var boats := 0
+	for d: Dictionary in TownDecor.spots():
+		if d.kind != D.BOAT:
+			continue
+		boats += 1
+		var want := "boat_2" if TownLayout.RIVER_WEST.has_point(d.at) else "boat_1"
+		t.check(TownLayout.RIVER.has_point(d.at) or TownLayout.RIVER_WEST.has_point(d.at),
+			"the town's boat at %s is on a river" % [d.at])
+		t.check(DecorSprites.name_for(D.BOAT, d.seed, d.size, d.at) == want,
+			"the town's boat at %s takes %s" % [d.at, want])
+	t.check(boats == 5, "the town has its five boats (got %d)" % boats)
+	_unfake(fakes)

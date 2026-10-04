@@ -87,11 +87,15 @@ static func variants(base: String) -> Array:
 
 
 ## The set a decor piece draws, or "" (procedural): off while SpriteArt is off; a run takes its direction's set; a
-## kind with one set takes its bare name, else a variant picked from the seed.
-static func name_for(kind: int, seed_value: int, size: Vector2) -> String:
+## boat standing at `at` lies along the river holding it (boat_2 along y on TownLayout.RIVER_WEST, else boat_1 along
+## x); a kind with one set takes its bare name, else a variant picked from the seed (a boat too, when `at` is INF).
+static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF) -> String:
 	if not SpriteArt.on() or not BASE.has(kind):
 		return ""
 	var base: String = BASE[kind]
+	if kind == Decor.Kind.BOAT and at != Vector2.INF:
+		var b := "boat_2" if TownLayout.RIVER_WEST.has_point(at) else "boat_1"
+		return b if manifest().has(b) else ""
 	if kind in RUNS:
 		var n := base + ("_x" if absf(size.x) >= absf(size.y) else "_y")
 		return n if manifest().has(n) else ""
@@ -138,7 +142,7 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			return false
 		ArtKit.tex(still, Rect2(Vector2.ZERO, still.get_size() if down else tr.size), Iso.ground_to_screen(at) - origin - tr.anchor)
 		return true
-	var n := name_for(kind, seed_value, size)
+	var n := name_for(kind, seed_value, size, at)
 	if n == "":
 		return false
 	var d := decor_set(n)

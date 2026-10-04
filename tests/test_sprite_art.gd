@@ -917,6 +917,7 @@ static func _tree_variety(t) -> void:
 ## burn over its piers); a field borrows a set's textures under a fake name.
 static func _flat_sprites(t) -> void:
 	SpriteArt.set_enabled(true)
+	# The bridge and dock use their real sets on purpose: a fake under a real name would leak into later tests.
 	var real := [
 		[TownLayout.BRIDGE, 6.0, &"bridge", &"stone", "bridge_stone"],
 		[TownLayout.DOCK, TownLayout.DOCK_H, &"dock", &"dock", "dock"],

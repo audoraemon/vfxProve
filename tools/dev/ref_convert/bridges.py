@@ -2,24 +2,28 @@
 pieces laid on the structures' own iso geometry, so their decks sit exactly where people walk.
 
   bridge_stone  BRIDGE / bridge / stone, footprint 2.0 x 7.6 (a span along ground y), deck HEIGHT 6 px above the ground
-                (PropArt._stone_bridge's deck): the paving is TownMap_Component3's cobbled tile (row 1, 6th), the side and
-                end walls TownMap_Component4's plain wall face (row 1, 2nd), the torch piers TownMap_Component3's bridge
+                (PropArt._stone_bridge's deck): the paving is TownMap_Component3's cobbled tile (row 1, 6th), the side
+                walls TownMap_Component4's plain wall face (row 1, 2nd), the torch piers TownMap_Component3's bridge
                 pier (row 2, 4th) with its painted flame cut at the bowl. Three low arches on the side wall (no ring of
                 arch stones), low stone parapets (4 px) both sides, eight piers where PropArt._bridge_posts puts them
-                (11 px above the deck): the engine's procedural flames burn on their bowls (keep_flames).
+                (11 px above the deck): the engine's procedural flames burn on their bowls (keep_flames). At each road
+                end a flight of STEPS steps (STEP_RISE px each) down to the ground, outside the footprint on the road,
+                so a walker coming off the road climbs instead of popping up a bare end wall.
   dock          BRIDGE / dock / dock, footprint 3.0 x 1.0 (along ground x), deck 3 px above the ground (TownLayout.DOCK_H):
-                the plank floor and its posts, crate and barrel from TownMap_Component3's dock (row 2, 5th).
+                drawn clean (the sheet's textures read as noise at this size): straight planks across it with even
+                seams in four wood tones taken from TownMap_Component3's dock floor (row 2, 5th), edge boards, round
+                posts at its corners and the middle of each long side, one crate.
 
-The sheet's bridge is a short hump with steps and its dock a squat platform; neither lies flat at the game's deck height
-nor at 7.6 / 3 cells. So each surface is sampled from the sheet through its own projection (the sheets draw at about
-2.5:1, the game at 2:1) and tiled along the run with mirrored repeats (no seam), and the cut pieces (piers, posts,
-crate, barrel) are fitted once and pasted. Light from the left: TownMap_Component3 lights from the right, so its pieces
-are mirrored; the wall face (TownMap_Component4) is lit from the left already, and the bridge's long side, a right
-face, takes it mirrored and shaded like the sheet wall's own end face.
+The sheet's bridge is a short hump with steps; it does not lie flat at the game's deck height nor at 7.6 cells. So each
+of its surfaces is sampled from the sheet through its own projection (the sheets draw at about 2.5:1, the game at 2:1)
+and tiled along the run with mirrored repeats (no seam), and the piers are fitted once and pasted. Light from the left:
+TownMap_Component3 lights from the right, so its pier is mirrored; the wall face (TownMap_Component4) is lit from the
+left already, and the bridge's long side, a right face, takes it mirrored and shaded like the sheet wall's end face.
+dock_whole_cut() is the rejected candidate of the dock review (the sheet dock cut whole with convert.py).
 
-States: intact, damaged (bridge: cracked deck stones, a broken stretch of each parapet, chipped side wall; dock: two
-missing planks, a broken board end and split planks), ruins (bridge: a broken stub at each bank, half an arch under
-each, the middle fallen away clean; dock: post stumps with two planks still on them). No idle strip.
+States: intact, damaged (bridge: cracked deck stones and steps, a broken stretch of each parapet, chipped side wall;
+dock: three boards gone, two split), ruins (bridge: a stub at each bank with its steps, half an arch under each, the
+middle fallen away clean; dock: clean post stumps and one plank). No idle strip.
 
 Usage (from anywhere):
   python tools/dev/ref_convert/bridges.py [all | bridge_stone | dock] [--out <scratch dir>]
@@ -48,7 +52,11 @@ LOW = -16.0                          # the walls reach this far below the ground
 PARA_T, PARA_H = 0.14, 4.0           # parapet thickness (units) and height above the deck (px)
 POST_IN, POST_UP = 0.08, 11.0        # piers: in from the corners (units), top above the deck (px)
 ARCHES = [(0.08 + 0.3 * k, 0.32 + 0.3 * k) for k in range(3)]   # along the run, fractions of BD
-ARCH_SPRING, ARCH_RISE = -10.0, 9.0  # z of the arch's sides' top and how much higher its crown is (px)
+ARCH_SPRING, ARCH_RISE = -10.0, 9.0
+# Steps at both road ends, outside the footprint on the road (the deck and the walkable cells are unchanged): STEPS
+# flights' treads STEP_RUN deep, each STEP_RISE px lower, down from the deck to the road.
+STEPS, STEP_RUN, STEP_RISE = 3, 0.2, 1.5
+NOSING = 0.045                       # a tread's light front edge (units)  # z of the arch's sides' top and how much higher its crown is (px)
 # The sheet wall face (TownMap_Component4, the plain wall): a clean patch of its long (left) face. Its courses slope
 # WALL_SLOPE px per px; WALL_TOP(x) is the face's top row at sheet column x.
 WALL_X0, WALL_X1, WALL_Y0, WALL_SLOPE = 345, 405, 118, 0.47
@@ -66,18 +74,11 @@ PIER_BOX, BOWL, PIER_SCALE = (846, 226, 884, 262), (864.5, 231.0), 0.5
 
 # --- the dock (PropArt._dock) ----------------------------------------------------------------------------------------
 DW, DD, DH = 3.0, 1.0, 3.0
-# The sheet dock's plank floor: its left, front and right deck corners (sheet px); a clean stretch of it (the rest has
-# the crane, crates and the lantern standing on it).
+# The sheet dock's plank floor: its left, front and right deck corners (sheet px) and a clean stretch of it (the rest
+# has the crane, crates and the lantern on it): the drawn dock's four wood tones come from there (dock_tones()).
 DECK_L, DECK_F, DECK_R = (1140.0, 291.0), (1208.0, 316.0), (1350.0, 247.0)
 DECK_P = (0.25, 0.97)                # across (left edge -> front edge), fractions
 DECK_Q = (0.03, 0.40)                # along (front -> right corner), fractions
-DECK_UNITS = 3.0                     # ground units the sheet deck's long edge covers: planks ~9 px
-POST_BOX = (1231, 281, 1249, 312)    # a front post (cap and shaft, the rope band in its middle)
-CRATE_BOX = (1273, 254, 1299, 280)
-BARREL_BOX = (1258, 207, 1281, 236)
-PIECE_SCALE = 0.5
-POSTS_X = (0.12, 1.0, 2.0, 2.88)
-POST_Y = (0.1, 0.9)
 POST_TOP, POST_BOT = 5.0, -6.0       # post top above the deck (px), bottom below the ground (into the water)
 DOCK_SAT, DOCK_VAL = 0.72, 0.88      # the sheet wood toned toward the town's timber
 FASCIA = 3.0                         # the deck's edge board (px)
@@ -250,41 +251,6 @@ class Tile:
         return grey + (c - grey) * TILE_SAT
 
 
-class Deck:
-    """The sheet dock's plank floor: deck(p, q), p across (its left edge -> front edge), q along (front -> right)."""
-
-    def __init__(self):
-        edge = np.hypot(DECK_R[0] - DECK_F[0], DECK_R[1] - DECK_F[1])
-        game = DECK_UNITS * np.hypot(32, 16)
-        self.img = blurred(load(C3), 0.45 * edge / game)
-
-    def __call__(self, p, q):
-        p = pingpong(p, *DECK_P)
-        q = pingpong(q, *DECK_Q)
-        x = DECK_L[0] + p * (DECK_F[0] - DECK_L[0]) + q * (DECK_R[0] - DECK_F[0])
-        y = DECK_L[1] + p * (DECK_F[1] - DECK_L[1]) + q * (DECK_R[1] - DECK_F[1])
-        return bilinear(self.img, x, y)
-
-
-def fit_piece(box, scale, mirror=True, drop_blue=True):
-    """A sheet piece cut at `box`: its main shape (blue water dropped), downscaled (premultiplied Lanczos, hard alpha),
-    mirrored to light from the left. Returns (RGBA uint8, the scale actually used per axis)."""
-    a = np.array(Image.open(C3).convert("RGBA").crop(box))
-    if drop_blue:
-        rgb = a[..., :3].astype(int)
-        blue = (rgb[..., 2] > rgb[..., 0] + 30) & (rgb[..., 2] > rgb[..., 1] + 5)
-        a[blue, 3] = 0
-    a = convert.keep_shapes(a)
-    h, w = a.shape[:2]
-    nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
-    small = Image.fromarray(a, "RGBA").convert("RGBa").resize((nw, nh), Image.LANCZOS).convert("RGBA")
-    out = np.array(small).astype(float)
-    out[..., 3] = np.where(out[..., 3] >= 110, 255, 0)
-    if mirror:
-        out = out[:, ::-1].copy()
-    return out, (nw / w, nh / h)
-
-
 def unglow(a):
     """Pixels the sprite shader would take for a flame (structure_sprite.gdshader glows()) toned down: only the
     procedural flames glow."""
@@ -334,8 +300,9 @@ def build_bridge(state):
     cop = wall.coping()
     pier, bowl = pier_piece()
     W, D, h = BW, BD, BH
-    A = (64 + 12 + PAD, int(16 * (W + D)) + int(h + POST_UP) + 10 + PAD)
-    cv = Canvas(int(A[0] + 32 * D + 12 + PAD), int(A[1] - LOW + PAD + 2), A, W, D)
+    run = STEPS * STEP_RUN
+    A = (64 + int(32 * run) + 12 + PAD, int(16 * (W + D)) + int(h + POST_UP) + 10 + PAD)
+    cv = Canvas(int(A[0] + 32 * (D + run) + 12 + PAD), int(A[1] - LOW + PAD + 2), A, W, D)
     rng = np.random.default_rng(91)
 
     # What stands: the whole run, or (ruins) a stub at each bank with the middle fallen away.
@@ -369,10 +336,29 @@ def build_bridge(state):
         joint = (gy % 0.35) < 0.045
         return cop * (0.82 if joint else 1.0)
 
+    def tread(edge_y):
+        def tex(gx, gy):
+            return cop * 0.95 if abs(gy - edge_y) < NOSING else deck(gx, gy)
+        return tex
+
+    def flight(far):
+        """The steps down to the road at one end: each a block from the ground to its tread, drawn back to front.
+        Light from the left: a riser (left face) lit like the end walls, a block's side (right face) shaded."""
+        ks = range(STEPS - 1, -1, -1) if far else range(STEPS)
+        for k in ks:
+            top = h - STEP_RISE * (k + 1)
+            if far:
+                y0, y1, edge = -STEP_RUN * (k + 1), -STEP_RUN * k, -STEP_RUN * (k + 1)
+            else:
+                y0, y1, edge = D + STEP_RUN * k, D + STEP_RUN * (k + 1), D + STEP_RUN * (k + 1)
+            cv.face_x(W, y0, y1, 0.0, top, lambda gy, z, i: wall(i, h + PARA_H - z, mirror=True) * WALL_SHADE)
+            if not far:
+                cv.face_y(y1, 0.0, W, 0.0, top, end)
+            cv.top(0.0, y0, W, y1, top, tread(edge))
+
+    flight(True)
     for y0, y1 in stubs:
         cv.face_x(W, y0, y1, LOW, h, side)
-        if y1 >= D:
-            cv.face_y(D, 0.0, W, LOW, h, end)
         cv.top(0.0, y0, W, y1, h, deck)
     if state == "ruins":
         # The far stub's broken end: a clean cut, a left face at y = 1.7 (the near stub's faces away).
@@ -418,6 +404,9 @@ def build_bridge(state):
             tip = cv.pt(c[0], c[1], h + POST_UP)
             cv.paste(pier, tip, bowl)
 
+    # the deck's own riser down to the near flight's top tread (the rest of the old end wall is gone)
+    cv.face_y(D, 0.0, W, h - STEP_RISE, h, end)
+    flight(False)
     a = cv.a
     if state == "damaged":
         crack_deck(cv, rng)
@@ -443,6 +432,15 @@ def crack_deck(cv, rng):
                 xi, yi = int(x) + dx, int(y) + k - 1
                 if a[yi, xi, 3] > 0:
                     a[yi, xi, :3] *= 0.55
+    # a crack across the near flight's treads and one through the far flight's
+    for gx0, gy0, top in ((0.5, BD + 0.1, BH - STEP_RISE), (1.3, BD + 0.3, BH - 2 * STEP_RISE), (0.9, -0.3, BH - 2 * STEP_RISE)):
+        x, y = cv.pt(gx0, gy0, top)
+        for k in range(9):
+            xi, yi = int(x), int(y)
+            if a[yi, xi, 3] > 0:
+                a[yi, xi, :3] = dark
+            x += 1
+            y += rng.choice([0, 0.5, 1])
     # cracks down the side wall (right face, shaded)
     for gy0, n in ((1.2, 9), (4.4, 12), (6.2, 8)):
         x, y = cv.pt(BW, gy0, BH - 1)
@@ -455,89 +453,161 @@ def crack_deck(cv, rng):
 
 
 # --- the dock -----------------------------------------------------------------------------------------------------------
+def dock_tones():
+    """Four wood tones from the sheet dock's plank floor (its clean stretch), darkest first: the means of its
+    lightness quartiles, muted toward the town's timber (DOCK_SAT, DOCK_VAL)."""
+    sheet = load(C3)
+    px = []
+    for p in np.linspace(DECK_P[0], DECK_P[1], 24):
+        for q in np.linspace(DECK_Q[0], DECK_Q[1], 40):
+            x = DECK_L[0] + p * (DECK_F[0] - DECK_L[0]) + q * (DECK_R[0] - DECK_F[0])
+            y = DECK_L[1] + p * (DECK_F[1] - DECK_L[1]) + q * (DECK_R[1] - DECK_F[1])
+            px.append(sheet[int(y), int(x), :3])
+    px = np.array(px)
+    lum = px.sum(1)
+    bins = np.digitize(lum, np.percentile(lum, [25, 50, 75]))
+    out = []
+    for k in range(4):
+        c = px[bins == k].mean(0)
+        g = c.mean()
+        out.append(np.round((g + (c - g) * DOCK_SAT) * DOCK_VAL))
+    return out
+
+
+# Plank tones along the dock (indices into dock_tones()), repeating: a fixed, even pattern, no noise.
+PLANK_SEQ = (2, 1, 2, 3, 1, 2, 1, 3, 2, 1, 3, 2)
+PLANK_W = 0.25                       # a plank's width along the dock (units)
+SEAM = 0.035                         # the dark gap between planks (units)
+DOCK_POSTS = ((0.12, 0.12), (1.5, 0.12), (2.88, 0.12), (0.12, 0.88), (1.5, 0.88), (2.88, 0.88))
+CRATE = (0.3, 0.3, 0.6, 0.6, 8.0)   # x0, y0, x1, y1 (units), height (px)
+
+
+def round_post(tones, rows, cut=False):
+    """A round post `rows` px tall plus its cap, lit from the left: a 5 px shaft (light, mid, mid, dark, darkest)
+    between 1 px outlines and a 2-row cap (a stump: a pale cut face)."""
+    ink = OUTLINE
+    shaft = [tones[3], tones[2], tones[2], tones[1], tones[0]]
+    w, h = 7, rows + 3
+    a = np.zeros((h, w, 4), float)
+    a[1:, :, 3] = 255
+    a[0, 1:6, 3] = 255
+    a[0, 1:6, :3] = ink
+    a[1:, 0, :3] = ink
+    a[1:, 6, :3] = ink
+    face = np.minimum(np.array(tones[3]) * (1.3 if cut else 1.1), 255)
+    a[1, 1:6, :3] = face
+    for y in range(2, h):
+        for k, c in enumerate(shaft):
+            a[y, 1 + k, :3] = c
+    if not cut:
+        a[2, 1:6, :3] = np.array(tones[2])
+        band = 3 + rows // 3
+        if band < h - 1:
+            a[band, 1:6, :3] = np.array(tones[0]) * 0.8
+    a[h - 1, :, :3] = ink
+    return a
+
+
 def build_dock(state):
-    deck_tex = Deck()
-    post, _ = fit_piece(POST_BOX, PIECE_SCALE)
-    crate, _ = fit_piece(CRATE_BOX, PIECE_SCALE)
-    barrel, _ = fit_piece(BARREL_BOX, PIECE_SCALE)
-    crate, barrel = unglow(crate), unglow(barrel)
+    """The drawn dock: straight planks across it with even seams in four sheet tones, edge boards, round posts at its
+    corners and the middle of each long side, one crate; light from the left."""
+    t = dock_tones()
+    ink = OUTLINE
     W, D, h = DW, DD, DH
     A = (int(32 * W) + 8 + PAD, int(16 * (W + D)) + 22 + PAD)
     cv = Canvas(int(A[0] + 32 * D + 8 + PAD), int(A[1] - POST_BOT + PAD + 2), A, W, D)
-    rng = np.random.default_rng(92)
-
-    edge = np.array(deck_tex(0.98, 0.2)) * 0.62
-    holes = []
+    holes, splits = [], []
     if state == "damaged":
-        holes = [(1.55, 1.82, 0.22, 1.01), (2.3, 2.55, 0.0, 0.55)]
+        holes = [(6, 0.32, 1.01), (7, 0.55, 1.01), (10, 0.0, 0.4)]      # (plank, y0, y1): boards gone
+        splits = [2, 9]                                                  # split along their middle
+
+    def plank(gx):
+        return min(int(gx / PLANK_W), len(PLANK_SEQ) - 1)
 
     def board(gx, gy):
-        if any(x0 <= gx < x1 and y0 <= gy < y1 for x0, x1, y0, y1 in holes):
+        i = plank(gx)
+        if any(i == k and y0 <= gy < y1 for k, y0, y1 in holes):
             return None
-        return deck_tex(gy / DD * (DECK_P[1] - DECK_P[0]) + DECK_P[0], gx / DECK_UNITS)
+        f = gx - i * PLANK_W
+        if f < SEAM:
+            return np.array(t[0]) * 0.7
+        if i in splits and abs(f - PLANK_W / 2) < 0.02 and 0.15 < gy < 0.85:
+            return np.array(t[0]) * 0.8
+        return t[PLANK_SEQ[i % len(PLANK_SEQ)]]
 
-    def fascia(g, z, i, shade):
-        seam = (i % 9) == 0
-        return edge * shade * (0.8 if seam else 1.0) * (0.9 if z < h - 1.5 else 1.0)
+    def front(g, z, i):                       # the long edge board (left face, lit)
+        k = plank(g)
+        if any(k == j and y1 > D for j, _, y1 in holes):
+            return None
+        if g - k * PLANK_W < SEAM:
+            return ink
+        return np.array(t[1]) * (1.0 if z >= h - 1.5 else 0.88)
 
-    def post_at(x, y, top):
-        """A post standing at (x, y): the piece's cap to its foot, cut to [POST_BOT, top] (z px)."""
-        foot = cv.pt(x, y, POST_BOT)
-        rows = int(round(top - POST_BOT)) + 3      # + its cap's top face
-        if state != "ruins":
-            p = post[:rows]
-        else:
-            # a stump: the post's lower part, its clean cut top a row of light wood
-            p = post[-rows:].copy()
-            cut = p[0, :, 3] > 0
-            p[0, cut, :3] = np.minimum(p[0, cut, :3] * 1.35 + 20, 255)
-        cv.paste(p, foot, (p.shape[1] / 2, p.shape[0]))
+    def end(g, z, i):                         # the end board (right face, shaded)
+        return np.array(t[0]) * (1.0 if z >= h - 1.5 else 0.88)
+
+    def post_at(x, y, top, cut=False):
+        p = round_post(t, int(round(top - POST_BOT)), cut)
+        cv.paste(p, cv.pt(x, y, POST_BOT), (3.5, p.shape[0]))
 
     if state == "ruins":
-        # Stumps: most posts snapped a little above the water, two planks still lying across the landward pair.
-        for x in POSTS_X:
-            for y in POST_Y:
-                if (x, y) in ((2.0, 0.1),):
-                    continue
-                post_at(x, y, -1.0 if x > 1.5 else 1.0)
-        for x0, x1 in ((0.0, 0.25), (0.88, 1.12)):
-            cv.face_y(DD, x0, x1, h - FASCIA, h, lambda g, z, i: fascia(g, z, i, 0.85))
-            cv.face_x(x1, 0.0, DD, h - FASCIA, h, lambda g, z, i: fascia(g, z, i, 0.7))
-            cv.top(x0, 0.0, x1, DD, h, board)
+        # Clean stumps a little above the water, one plank left lying across the two landward ones.
+        for x, y in DOCK_POSTS:
+            post_at(x, y, (h - 1.0) if x < 1.0 else 0.0, cut=True)
+        x0, x1 = 0.2, 0.2 + PLANK_W - SEAM          # half on the landward stumps: they show beside it
+        cv.face_y(D, x0, x1, h - FASCIA, h, lambda g, z, i: np.array(t[1]))
+        cv.face_x(x1, 0.0, D, h - FASCIA, h, end)
+        cv.top(x0, 0.0, x1, D, h, lambda gx, gy: t[2])
         return cv.a, A
 
-    for x in POSTS_X:
-        post_at(x, POST_Y[0], h + POST_TOP)
-    cv.face_y(DD, 0.0, DW, h - FASCIA, h, lambda g, z, i: fascia(g, z, i, 0.85))
-    cv.face_x(DW, 0.0, DD, h - FASCIA, h, lambda g, z, i: fascia(g, z, i, 0.7))
-    cv.top(0.0, 0.0, DW, DD, h, board)
-    if state == "damaged":
-        # the broken board's end hangs at the front: a notch out of the fascia below the hole
-        for x0, x1, y0, y1 in holes:
-            if y1 > DD:
-                cv.face_y(DD, x0, x1, h - FASCIA, h - FASCIA + 0.01, lambda g, z, i: None)
-                a = cv.a
-                for gx in np.arange(x0, x1, 1 / 32):
-                    xi, yi = cv.pt(gx, DD, h - 1)
-                    for k in range(int(FASCIA) + 1):
-                        yy = int(yi) + k - 1
-                        if 0 <= yy < a.shape[0]:
-                            a[yy, int(xi), 3] = 0
-    cv.paste(crate, cv.pt(0.45, 0.35, h), (crate.shape[1] / 2, crate.shape[0] - 3))
-    cv.paste(barrel, cv.pt(2.55, 0.35, h), (barrel.shape[1] / 2, barrel.shape[0] - 2))
-    for x in POSTS_X:
-        post_at(x, POST_Y[1], h + POST_TOP)
-    if state == "damaged":
-        a = cv.a
-        dark = np.array([40, 26, 18], float)
-        for gx0, gy0, n in ((0.8, 0.1, 10), (2.0, 0.5, 8), (1.2, 0.6, 7)):
-            x, y = cv.pt(gx0, gy0, h)
-            for _ in range(n):
-                if a[int(y), int(x), 3] > 0:
-                    a[int(y), int(x), :3] = dark
-                x += -1
-                y += 0.5
+    for x, y in DOCK_POSTS:
+        if y < 0.5:
+            post_at(x, y, h + POST_TOP)
+    cv.face_y(D, 0.0, W, h - FASCIA, h, front)
+    cv.face_x(W, 0.0, D, h - FASCIA, h, end)
+    cv.top(0.0, 0.0, W, D, h, board)
+    # the crate: lit top, lit left face, shaded right face, inked edges and a board line round its middle
+    x0, y0, x1, y1, ch = CRATE
+    e = 0.03
+
+    def crate_side(lo, hi, shade):
+        def tex(g, z, i):
+            if abs(z - h - ch / 2) < 0.5 or z > h + ch - 1 or g < lo + e or g > hi - e:
+                return ink
+            return np.array(t[shade])
+        return tex
+
+    cv.face_y(y1, x0, x1, h, h + ch, crate_side(x0, x1, 2))
+    cv.face_x(x1, y0, y1, h, h + ch, crate_side(y0, y1, 0))
+    cv.top(x0, y0, x1, y1, h + ch, lambda gx, gy: ink if min(gx - x0, x1 - gx, gy - y0, y1 - gy) < e
+           else np.minimum(np.array(t[3]) * 1.08, 255))
+    for x, y in DOCK_POSTS:
+        if y >= 0.5:
+            post_at(x, y, h + POST_TOP)
     return cv.a, A
+
+
+def dock_whole_cut(out_png):
+    """Candidate A of the dock review (not wired): the sheet dock cut whole with convert.py (its water, reeds and boat
+    dropped), mirrored and fitted to 3 x 1. Returns (canvas, the deck's front corner + 3 px: where the anchor goes)."""
+    box = (1120, 175, 1445, 425)
+    a = np.array(Image.open(C3).convert("RGBA").crop(box))
+    rgb = a[..., :3].astype(int)
+    drop = ((rgb[..., 2] > rgb[..., 0] + 30) & (rgb[..., 2] > rgb[..., 1] + 5)) | \
+           ((rgb[..., 1] > rgb[..., 0] + 10) & (rgb[..., 1] > rgb[..., 2] + 10))
+    a[drop, 3] = 0
+    a = convert.keep_shapes(a)
+    tmp = Path(tempfile.mkdtemp()) / "dock_cut.png"
+    Image.fromarray(a, "RGBA").save(tmp)
+    w, h = a.shape[1], a.shape[0]
+    c, _, info = convert.convert(str(tmp), (0, 0, w, h), (DW, DD), mirror=True, colors=32, measure="bbox")
+    s = info["scale"]
+    pad = 6
+    fx = round(w * s) - (DECK_F[0] - box[0]) * s + pad
+    fy = (DECK_F[1] - box[1]) * s + pad
+    c = unglow(c.astype(float)).astype(np.uint8)
+    Image.fromarray(c, "RGBA").save(out_png)
+    return c, (int(round(fx)), int(round(fy + DH)))
 
 
 # --- finish -------------------------------------------------------------------------------------------------------------
@@ -555,7 +625,10 @@ def outline(a):
 
 
 def finish(stills, colors):
-    """Unsharp, one shared median-cut palette over all states, then the 1 px outline. In: float RGBA arrays."""
+    """Unsharp, one shared median-cut palette over all states, then the 1 px outline. In: float RGBA arrays. A drawn
+    set (colors None) keeps its own few colours: outline only."""
+    if colors is None:
+        return [outline(np.where(st[..., 3:] > 0, st, 0)).astype(np.uint8) for st in stills]
     h = max(s.shape[0] for s in stills)
     w = sum(s.shape[1] for s in stills)
     strip = np.zeros((h, w, 4), np.uint8)
@@ -579,7 +652,7 @@ def finish(stills, colors):
 SETS = {
     # name: (builder, footprint, height, seed, tag, role, colours, harmonize)
     "bridge_stone": (build_bridge, [BW, BD], 6, 61, "stone", "bridge", 56, True),
-    "dock": (build_dock, [DW, DD], 3, 62, "dock", "dock", 40, False),
+    "dock": (build_dock, [DW, DD], 3, 62, "dock", "dock", None, False),
 }
 
 
@@ -589,10 +662,6 @@ def make(name, out_dir):
     anchor = None
     for st in ("intact", "damaged", "ruins"):
         a, A = build(st)
-        if name == "dock":
-            # the sheet's wood is a hot orange next to the town's timber: muted and a little darker
-            grey = a[..., :3].mean(-1, keepdims=True)
-            a[..., :3] = (grey + (a[..., :3] - grey) * DOCK_SAT) * DOCK_VAL
         raw[st] = a
         anchor = A
     done = finish([raw[s] for s in ("intact", "damaged", "ruins")], colors)

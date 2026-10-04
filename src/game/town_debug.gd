@@ -273,7 +273,8 @@ func _stage_shot(file: String) -> void:
 	for i in mini(n, _crowd.citizens.size()):
 		var p: Person = _crowd.citizens[i]
 		var k := (float(i) + 0.5) / float(n)
-		p.ground_pos = r.position + r.size * (Vector2(0.5 + 0.25 * (float(i % 2) - 0.5), k) if r.size.y > r.size.x 			else Vector2(k, 0.5))
+		p.ground_pos = r.position + r.size * (Vector2(0.5 + 0.25 * (float(i % 2) - 0.5), k) if r.size.y > r.size.x \
+			else Vector2(k, 0.5))
 		p._sync_position()
 	if file.ends_with("_damaged.png"):
 		s.crack()

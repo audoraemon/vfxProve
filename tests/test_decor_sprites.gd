@@ -51,6 +51,9 @@ static func _mapping(t) -> void:
 	t.check(DecorSprites.name_for(D.BARREL, 7, Vector2.ZERO) == "", "F7 off: every decor piece is procedural")
 	SpriteArt.set_enabled(true)
 	_unfake(fakes)
+	for n: String in ["barrel_1", "barrel_2", "crates_1", "crates_2", "bench_x", "bench_y", "table_1", "table_2",
+			"logs_1", "cart_1", "cart_2", "signpost"]:
+		t.check(not DecorSprites.decor_set(n).is_empty(), "decor set %s loads" % n)
 
 
 static func _forest(stump: Texture2D = null) -> Array:

@@ -1,3 +1,14 @@
 {
-	"barrel_1": {"size": [12, 15], "anchor": [6, 14]}
+	"barrel_1": {"size": [12, 15], "anchor": [6, 14]},
+	"barrel_2": {"size": [12, 16], "anchor": [6, 15]},
+	"crates_1": {"size": [22, 19], "anchor": [11, 18]},
+	"crates_2": {"size": [22, 24], "anchor": [11, 23]},
+	"bench_x": {"size": [28, 19], "anchor": [3, 7], "segment": 0.7},
+	"bench_y": {"size": [28, 19], "anchor": [25, 7], "segment": 0.7},
+	"table_1": {"size": [34, 24], "anchor": [17, 15]},
+	"table_2": {"size": [34, 24], "anchor": [17, 15]},
+	"logs_1": {"size": [23, 22], "anchor": [5, 19]},
+	"cart_1": {"size": [64, 56], "anchor": [23, 36]},
+	"cart_2": {"size": [64, 56], "anchor": [23, 36]},
+	"signpost": {"size": [30, 30], "anchor": [15, 29]}
 }

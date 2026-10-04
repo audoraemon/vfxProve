@@ -301,6 +301,19 @@ static func _close_fills() -> void:
 	_uvs = PackedVector2Array()
 
 
+## The last pending textured quad, for tests: [source rect (texture px), top-left (px)]; [] when there is none.
+static func last_quad() -> Array:
+	for i in range(_segs.size() - 1, -1, -1):
+		var seg: Array = _segs[i]
+		if seg[0] == "tex":
+			var uv: PackedVector2Array = seg[5]
+			var pts: PackedVector2Array = seg[3]
+			var ts := Vector2((seg[1] as Texture2D).get_size())
+			var n := uv.size()
+			return [Rect2(uv[n - 4] * ts, (uv[n - 2] - uv[n - 4]) * ts), pts[n - 4]]
+	return []
+
+
 ## The pending segments, for tests: ["poly", vertex count] or ["tex", texture, quad count].
 static func segments() -> Array:
 	var out := []

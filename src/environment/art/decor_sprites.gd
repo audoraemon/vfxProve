@@ -126,7 +126,8 @@ static func tree_set(kind: int, seed_value: int) -> Dictionary:
 
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down
 ## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws nothing. A run repeats its set's
-## segment from its back end, the last tile cut to the run's length.
+## segment from its back end, the last tile cut to the run's length (on its near side: the left of an x
+## set, the right of a y set).
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
 	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
 		var tr := tree_set(kind, seed_value)
@@ -155,12 +156,16 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			start = at + size
 			dir = -dir
 		var count := ceili(length / d.segment - 0.001)
+		# A set anchored on its right half runs leftward on screen (a "_y" set): its last tile keeps its right
+		# (near) columns, drawn where they sit in a whole tile; else it keeps its left ones.
+		var leftward: bool = d.anchor.x > d.size.x * 0.5
 		for i in count:
 			var w: float = d.size.x
 			if i == count - 1:
 				w = maxf(1.0, roundf(d.size.x * (length - d.segment * float(count - 1)) / d.segment))
+			var cut: float = d.size.x - w if leftward else 0.0
 			var g: Vector2 = start + dir * d.segment * float(i)
-			ArtKit.tex(d.tex, Rect2(0, 0, w, d.size.y), Iso.ground_to_screen(g) - origin - d.anchor)
+			ArtKit.tex(d.tex, Rect2(cut, 0, w, d.size.y), Iso.ground_to_screen(g) - origin - d.anchor + Vector2(cut, 0))
 		return true
 	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - d.anchor)
 	return true

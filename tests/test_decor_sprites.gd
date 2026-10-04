@@ -129,7 +129,25 @@ static func _runs(t) -> void:
 		var s := ArtKit.segments()
 		var quads: int = s[0][2] if s.size() == 1 else -1
 		t.check(quads == c[1], "a fence run of %s draws %d tiles (got %d)" % [c[0], c[1], quads])
+	# The last tile is cut on its near side, its kept columns where they sit in a whole tile: an x set keeps its
+	# left columns; a y set (anchored at its right, running down-left) its right ones.
 	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), Vector2(1.5, 0.0), 1, Vector2.ZERO)
+	var q := ArtKit.last_quad()
+	t.check(q.size() == 2 and q[0] == Rect2(0, 0, 16, 20) and q[1] == Iso.ground_to_screen(Vector2(6, 5)) - Vector2(0, 18),
+		"an x run's last tile keeps its left half (got %s)" % [q])
+	fakes.append_array(_fake(["fence_y"]))
+	DecorSprites._sets["fence_y"] = {"name": "fence_y", "tex": _tex(32, 20), "size": Vector2(32, 20),
+		"anchor": Vector2(32, 18), "segment": 1.0}
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), Vector2(0.0, 1.5), 1, Vector2.ZERO)
+	q = ArtKit.last_quad()
+	t.check(q.size() == 2 and q[0].position.x == 16.0 and q[0].size.x == 16.0,
+		"a y run's last tile keeps its right half (got %s)" % [q])
+	t.check(q.size() == 2 and q[1] == Iso.ground_to_screen(Vector2(5, 6)) - Vector2(32, 18) + Vector2(16, 0),
+		"and draws it where it sits in a whole tile (got %s)" % [q])
+	ArtKit.begin()
+	DecorSprites._sets.erase("fence_y")
 	DecorSprites._sets.erase("fence_x")
 	_unfake(fakes)
 

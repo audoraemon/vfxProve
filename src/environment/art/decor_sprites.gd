@@ -45,7 +45,8 @@ static func reload() -> void:
 	_variants_cache.clear()
 
 
-## The set named `n`: {name, tex, stump, size, anchor, segment}; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
+## The set named `n`: {name, tex, stump, size, anchor, segment, glow}; glow is the optional "glow" (sprite px from the
+## anchor: where a lamp's light pool sits), else zero; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
 ## (warned once).
 static func decor_set(n: String) -> Dictionary:
 	if _sets.has(n):
@@ -64,6 +65,7 @@ static func decor_set(n: String) -> Dictionary:
 		"name": n, "tex": tex, "stump": load(stump_path) if ResourceLoader.exists(stump_path) else null, "size": size,
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
 		"segment": float(m.get("segment", 0.0)),
+		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
 	}
 	_sets[n] = built
 	return built
@@ -99,6 +101,15 @@ static func name_for(kind: int, seed_value: int, size: Vector2) -> String:
 	if v.is_empty():
 		return ""
 	return "%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]]
+
+
+## Where a decor piece's light pool sits (Decor._glow; relative to its ground point, unscaled screen px): its set's
+## "glow" while it draws from a set, else its ground point (as the procedural lamp's).
+static func glow_offset(kind: int, seed_value: int, size: Vector2) -> Vector2:
+	var n := name_for(kind, seed_value, size)
+	if n == "":
+		return Vector2.ZERO
+	return decor_set(n).get("glow", Vector2.ZERO)
 
 
 ## A decor oak's or pine's forest set: a variant of forest_oak / forest_pine picked from the seed; {} while

@@ -12,6 +12,7 @@ static func run(t) -> void:
 	_runs(t)
 	_down(t)
 	_toggle(t)
+	_glow(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -52,7 +53,7 @@ static func _mapping(t) -> void:
 	SpriteArt.set_enabled(true)
 	_unfake(fakes)
 	for n: String in ["barrel_1", "barrel_2", "crates_1", "crates_2", "bench_x", "bench_y", "table_1", "table_2",
-			"logs_1", "cart_1", "cart_2", "signpost"]:
+			"logs_1", "cart_1", "cart_2", "signpost", "lamp_house", "bunting_x", "bunting_y"]:
 		t.check(not DecorSprites.decor_set(n).is_empty(), "decor set %s loads" % n)
 
 
@@ -191,3 +192,23 @@ static func _toggle(t) -> void:
 
 static func _tex(w: int, h: int) -> Texture2D:
 	return ImageTexture.create_from_image(Image.create(w, h, false, Image.FORMAT_RGBA8))
+
+
+## A lamp's light pool sits at its set's manifest "glow" (sprite px from the anchor), else at its ground point.
+static func _glow(t) -> void:
+	DecorSprites.reload()
+	var m: Dictionary = DecorSprites.manifest().get("lamp_house", {})
+	t.check(m.has("glow"), "lamp_house's manifest entry has a glow")
+	var want := Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2(-999, -999)
+	t.check(DecorSprites.decor_set("lamp_house").glow == want, "decor_set reads the glow from the manifest")
+	t.check(DecorSprites.decor_set("barrel_1").glow == Vector2.ZERO, "a set without a glow reads zero")
+	t.check(DecorSprites.glow_offset(D.LAMP, 3, Vector2.ZERO) == want, "a sprite lamp's glow offset is its set's")
+	var lamp := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	lamp._ready()
+	t.check(lamp._glow.position == want * ArtTuning.scale("lamp"), "the lamp's light pool moves to it")
+	SpriteArt.set_enabled(false)
+	t.check(DecorSprites.glow_offset(D.LAMP, 3, Vector2.ZERO) == Vector2.ZERO, "F7 off: the glow is at the ground point")
+	lamp.art_changed()
+	t.check(lamp._glow.position == Vector2.ZERO, "and F7 moves the lamp's pool back")
+	SpriteArt.set_enabled(true)
+	lamp.free()

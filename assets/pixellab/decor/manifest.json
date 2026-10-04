@@ -10,5 +10,8 @@
 	"logs_1": {"size": [23, 22], "anchor": [5, 19]},
 	"cart_1": {"size": [64, 56], "anchor": [23, 36]},
 	"cart_2": {"size": [64, 56], "anchor": [23, 36]},
-	"signpost": {"size": [30, 30], "anchor": [15, 29]}
+	"signpost": {"size": [30, 30], "anchor": [15, 29]},
+	"lamp_house": {"size": [17, 38], "anchor": [4, 37], "glow": [8, 0]},
+	"bunting_x": {"size": [32, 25], "anchor": [0, 18], "segment": 1.0},
+	"bunting_y": {"size": [32, 25], "anchor": [32, 18], "segment": 1.0}
 }

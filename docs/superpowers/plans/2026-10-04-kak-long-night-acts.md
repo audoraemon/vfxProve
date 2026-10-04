@@ -1608,3 +1608,15 @@ func report() -> Dictionary:
 - Tests `checks=1996 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `54/0`. All 10 exact behaviour checksums identical.
 - Festival left to run (`--act2=skip`), three runs, all identical: Act II lost to the clock (reason `closed`, 150.0 s). The night was won with Act III forced: B (14475).
 - Live run with real effects (Task 13): the bonfires, the crowd packed round the fountain, the Mayor with his chain, and the event strip were captured and checked.
+
+### M4 gate (at 0631256)
+
+- Tests `checks=2060 failures=0`; digest unchanged; crowd_check `-346732806`; FLOW `54/0`. All 10 exact behaviour checksums identical. Mission tests in range. The Warning unhindered: bell at 24.1.
+- Each path with Act II left to run (twice, identical):
+  - Festival: lost, `closed` at 150.0 s.
+  - Procession: lost, `sailed` at 136.4 s, prince `escaped`.
+- Rulings and fixes in M4:
+  - An escape of the Prince is not his death.
+  - The act is won only once his death is judged, so a seen doom kill can't earn the bonus.
+  - `WarningDirector._alive(p: Variant)` no longer errors on a freed person: the Festival's Mayor and goers, and the boarded Prince.
+  - The `--prince` and `--festival` aids apply on `act_over`.

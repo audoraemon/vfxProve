@@ -22,6 +22,10 @@ const FOOT_ROOM := 10.0
 const SALT_ROOF := 90
 ## ArtKit.hash01 salt for a townhouse's look.
 const SALT_TOWNHOUSE := 91
+## ArtKit.hash01 salts for a market stall's design, a tree's and an oak's variant (batch 3 sets).
+const SALT_STALL := 92
+const SALT_TREE := 93
+const SALT_OAK := 94
 ## The longest piece a wall run is cut into (TownLayout.WALL_PIECE): a strip spans its period plus this.
 const STRIP_PIECE := 1.2
 
@@ -31,6 +35,8 @@ static var _manifest := {}
 static var _loaded := false
 ## Built sprite sets by name ({} for one whose stills are missing).
 static var _sets := {}
+## Variant numbers found in the manifest per prefix ("stall" -> [1, 2, ...], ascending), built on first use.
+static var _variants_cache := {}
 
 
 static func on() -> bool:
@@ -62,6 +68,46 @@ static func manifest() -> Dictionary:
 static func reload() -> void:
 	_loaded = false
 	_sets.clear()
+	_variants_cache.clear()
+
+
+## The design numbers n of manifest entries "<prefix>_<n>" (digits only, so "stall_1_red" is not a design), ascending.
+## Cached per manifest load.
+static func variants(prefix: String) -> Array:
+	if _variants_cache.has(prefix):
+		return _variants_cache[prefix]
+	var out := []
+	var lead := prefix + "_"
+	for key: String in manifest():
+		if key.begins_with(lead):
+			var rest := key.trim_prefix(lead)
+			if rest.is_valid_int() and int(rest) > 0:
+				out.append(int(rest))
+	out.sort()
+	_variants_cache[prefix] = out
+	return out
+
+
+## "<prefix>_<n>" with n picked from the seed over the designs in the manifest, or "" when there are none.
+static func _pick_variant(prefix: String, seed_value: int, salt: int) -> String:
+	var v := variants(prefix)
+	if v.is_empty():
+		return ""
+	return "%s_%d" % [prefix, v[ArtKit.pick(seed_value, salt, v.size())]]
+
+
+## `n` when the manifest has it, else "" (the structure stays procedural).
+static func _have(n: String) -> String:
+	return n if manifest().has(n) else ""
+
+
+## A stall's sprite: its design, in the awning tint of its cloth when that tint exists.
+static func _stall_name(s: Structure) -> String:
+	var design := _pick_variant("stall", s.rng.seed, SALT_STALL)
+	if design == "":
+		return ""
+	var tinted: String = design + "_" + ["red", "blue", "cream"][int(s.art.get("cloth", 0)) % 3]
+	return tinted if manifest().has(tinted) else design
 
 
 ## The sprite that replaces `s`, or "" (only buildings with a set in the manifest are drawn from one).
@@ -69,8 +115,14 @@ static func name_for(s: Structure) -> String:
 	match s.kind:
 		Structure.Kind.HOUSE:
 			if s.role == &"farm":
-				# A barn; the windmill and watermill keep their turning procedural art.
-				return "barn" if s.art_tag == &"" else ""
+				match s.art_tag:
+					&"":
+						return _have("barn")
+					&"windmill":
+						return _have("windmill")
+					&"watermill":
+						return _have("watermill")
+				return ""
 			if s.role != &"house":
 				return ""
 			match s.art_tag:
@@ -85,7 +137,7 @@ static func name_for(s: Structure) -> String:
 				&"workshop":
 					return "workshop"
 				&"carpenter":
-					return "carpenter"
+					return _have("carpenter")
 		Structure.Kind.TEMPLE:
 			if s.art_tag == &"cathedral":
 				return "cathedral"
@@ -121,9 +173,23 @@ static func name_for(s: Structure) -> String:
 		Structure.Kind.BARRACKS:
 			return "barracks"
 		Structure.Kind.MARKET_STALL:
-			# Procedural for now (user review 2026-10-04: stalls too crowded and uniform). The PixelLab stalls are
-			# kept in assets/pixellab/buildings/stall_* for a later redo.
-			return ""
+			return _stall_name(s)
+		Structure.Kind.FOUNTAIN:
+			return _have("well" if s.art_tag == &"well" else "fountain")
+		Structure.Kind.TORCH:
+			return _have("lamp_post" if s.art_tag == &"lamp" else "torch_post")
+		Structure.Kind.TREE:
+			if s.art_tag == &"oak":
+				return _pick_variant("oak", s.rng.seed, SALT_OAK)
+			if s.art_tag == &"":
+				return _pick_variant("tree", s.rng.seed, SALT_TREE)
+		Structure.Kind.BRIDGE:
+			if s.art_tag == &"stone":
+				return _have("bridge_stone")
+			if s.art_tag == &"dock":
+				return _have("dock")
+		Structure.Kind.FARM_FIELD:
+			return _have("field_%d" % int(s.art.get("crop", 0)))
 	return ""
 
 

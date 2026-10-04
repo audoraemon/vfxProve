@@ -727,7 +727,7 @@ func _process(delta: float) -> void:
 			_banner_sig = banner_sig
 			_banner.queue_redraw()
 	if is_instance_valid(_spin):
-		_spin.visible = not destroyed
+		_spin.visible = not destroyed and sprite.is_empty()
 		var spin_step := int(_time * (FOUNTAIN_HZ if kind == Kind.FOUNTAIN else 8.0))
 		if spin_step != _spin_step and not destroyed and not _unseen:
 			_spin_step = spin_step

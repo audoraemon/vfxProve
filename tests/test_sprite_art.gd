@@ -14,6 +14,7 @@ static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: St
 
 static func run(t) -> void:
 	_mapping(t)
+	_batch3(t)
 	_doors(t)
 	_sets(t)
 	_view(t)
@@ -26,8 +27,30 @@ static func run(t) -> void:
 	SpriteArt.set_enabled(true)
 
 
+## Adds fake entries (name -> {}) to the cached manifest so mappings resolve without assets; returns the names
+## actually added, for _unfake(). Nothing may return or fail between the two, or the fakes leak into later tests.
+static func _fake(names: Array) -> Array:
+	var m := SpriteArt.manifest()
+	var added := []
+	for n: String in names:
+		if not m.has(n):
+			m[n] = {}
+			added.append(n)
+	SpriteArt._variants_cache.clear()
+	return added
+
+
+static func _unfake(added: Array) -> void:
+	var m := SpriteArt.manifest()
+	for n: String in added:
+		m.erase(n)
+		SpriteArt._sets.erase(n)
+	SpriteArt._variants_cache.clear()
+
+
 ## Which building gets which sprite, and the manifest behind them.
 static func _mapping(t) -> void:
+	var fakes := _fake(["barn", "carpenter"])
 	var cases := [
 		[Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, &"house", &"", "cottage"],
 		[Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, &"house", &"townhouse", "townhouse"],
@@ -69,6 +92,7 @@ static func _mapping(t) -> void:
 		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse"] else got == want
 		t.check(ok, "sprite for %s/%s/%s is '%s' (got '%s')" % [K.keys()[c[2]], c[3], c[4], want, got])
 		s.free()
+	_unfake(fakes)
 	# Cottages pick a roof from their seed: stable per seed, and both roofs appear.
 	var seen := {}
 	for sd in 40:
@@ -555,3 +579,121 @@ static func _battered(sprites: bool) -> String:
 			s.height, s.scorch, s.frost, s._cracks.size(), rubble, s._collapse, s.rng.state, s.position])
 		s.free()
 	return "\n".join(rows)
+
+
+## Batch 3 sets (docs/superpowers/specs/2026-10-04-ref-convert-batch3-design.md): stalls with a cloth tint, fountain and
+## well, torch and lamp posts, tree and oak variants, bridge and dock, barn and mills, field crops. Each maps only
+## when its set is in the manifest; a missing one falls back to "" (procedural).
+static func _batch3(t) -> void:
+	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
+		var s := _make(r, h, k, sd, role, tag)
+		var n := SpriteArt.name_for(s)
+		s.free()
+		return n
+	var fixed := [
+		[Rect2(0, 0, 0.6, 0.6), 24.0, K.FOUNTAIN, &"decor", &"", "fountain"],
+		[Rect2(0, 0, 0.6, 0.6), 12.0, K.FOUNTAIN, &"decor", &"well", "well"],
+		[Rect2(0, 0, 0.2, 0.2), 16.0, K.TORCH, &"decor", &"", "torch_post"],
+		[Rect2(0, 0, 0.2, 0.2), 18.0, K.TORCH, &"decor", &"lamp", "lamp_post"],
+		[Rect2(0, 0, 2.0, 1.0), 6.0, K.BRIDGE, &"bridge", &"stone", "bridge_stone"],
+		[Rect2(0, 0, 2.0, 1.0), 4.0, K.BRIDGE, &"dock", &"dock", "dock"],
+		[Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, &"farm", &"", "barn"],
+		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", "windmill"],
+		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", "watermill"],
+		[Rect2(0, 0, 2.3, 1.15), 20.0, K.HOUSE, &"house", &"carpenter", "carpenter"],
+	]
+	# Without the sets in the manifest every one of them stays procedural.
+	for c in fixed:
+		t.check(name_of.call(c[0], c[1], c[2], 5, c[3], c[4]) == "", "no '%s' set in the manifest: %s is procedural" % [c[5], K.keys()[c[2]]])
+	t.check(name_of.call(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, 5, &"market") == "", "no stall design: procedural")
+	t.check(name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, 5, &"decor") == "", "no tree variant: procedural")
+	t.check(name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, 5, &"decor", &"oak") == "", "no oak variant: procedural")
+	t.check(name_of.call(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, 5, &"farm") == "", "no field set: procedural")
+	var fakes := _fake(["stall_1", "stall_2", "stall_3", "stall_1_red", "stall_1_blue", "stall_2_cream",
+		"tree_1", "tree_2", "oak_1", "oak_2", "oak_3", "field_0", "field_1"])
+	for c in fixed:
+		fakes += _fake([c[5]])
+	for c in fixed:
+		var got: String = name_of.call(c[0], c[1], c[2], 5, c[3], c[4])
+		t.check(got == c[5], "%s/%s/%s maps to %s (got '%s')" % [K.keys()[c[2]], c[3], c[4], c[5], got])
+	# A tag with no mapping stays procedural even with every set present (a thorn bush is not an oak).
+	t.check(name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, 5, &"decor", &"thorns") == "", "thorns stay procedural")
+	# Stall: the design hashes the seed over the stall_<n> in the manifest (never over stall_<n>_<tint>); the cloth
+	# picks the tint when it exists and otherwise the plain design.
+	var designs := {}
+	var tints_ok := true
+	for sd in 120:
+		var s := _make(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, sd, &"market")
+		var n := SpriteArt.name_for(s)
+		var base := n.substr(0, 7)
+		designs[base] = true
+		var tinted: String = base + "_" + ["red", "blue", "cream"][int(s.art.cloth)]
+		tints_ok = tints_ok and (n == tinted if SpriteArt.manifest().has(tinted) else n == base)
+		tints_ok = tints_ok and base in ["stall_1", "stall_2", "stall_3"] and n == SpriteArt.name_for(s)
+		s.free()
+	t.check(tints_ok, "a stall takes its cloth's tint when that variant exists, else its plain design")
+	t.check(designs.size() == 3, "all three stall designs get used across seeds (got %d)" % designs.size())
+	# Trees: tree_<n> and oak_<n> only from their own lists.
+	var trees := {}
+	var oaks := {}
+	for sd in 80:
+		trees[name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, sd, &"decor")] = true
+		oaks[name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, sd, &"decor", &"oak")] = true
+	t.check(trees.size() == 2 and trees.has("tree_1") and trees.has("tree_2"), "trees pick tree_1 / tree_2: %s" % [trees.keys()])
+	t.check(oaks.size() == 3 and oaks.has("oak_3"), "oaks pick oak_1..3: %s" % [oaks.keys()])
+	# Fields: the crop of the field's plan.
+	var crops := {}
+	for sd in 40:
+		var f := _make(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, sd, &"farm")
+		t.check(SpriteArt.name_for(f) == "field_%d" % int(f.art.crop), "a field draws its crop's set")
+		crops[int(f.art.crop)] = true
+		f.free()
+	t.check(crops.size() == 2, "both crops appear")
+	_unfake(fakes)
+	t.check(not SpriteArt.manifest().has("stall_1") and not SpriteArt.manifest().has("barn"), "the fake entries were removed")
+	_stall_variety(t)
+	_flat_sprites(t)
+
+
+## The town's stalls (TownLayout.STALLS) get seeds from the environment's rng in order (EnvironmentField.add_structure: rng.randi());
+## with ten designs they must not all look alike: more than six distinct ones.
+static func _stall_variety(t) -> void:
+	var names := []
+	for n in 10:
+		names.append("stall_%d" % (n + 1))
+	var fakes := _fake(names)
+	var worst := 99
+	for env_seed in 12:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = env_seed + 1
+		var seen := {}
+		for i in TownLayout.STALLS.size():
+			var s := _make(TownLayout.STALLS[i], 10.0, K.MARKET_STALL, rng.randi(), &"market")
+			seen[SpriteArt.name_for(s)] = true
+			s.free()
+		worst = mini(worst, seen.size())
+	t.check(TownLayout.STALLS.size() >= 29, "the town has at least 29 stalls")
+	t.check(worst > 6, "the town stalls over ten designs show more than six distinct ones (fewest over 12 seeds: %d)" % worst)
+	_unfake(fakes)
+
+
+## Bridge, dock and fields are flat: with a sprite they stay on the ground layer, under the people who walk on them.
+static func _flat_sprites(t) -> void:
+	SpriteArt.set_enabled(true)
+	var cases := [
+		[Rect2(0, 0, 2.0, 1.0), 6.0, K.BRIDGE, &"bridge", &"stone", "bridge_stone"],
+		[Rect2(0, 0, 2.0, 1.0), 4.0, K.BRIDGE, &"dock", &"dock", "dock"],
+		[Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, &"farm", &"", "field_0"],
+	]
+	for c in cases:
+		var fakes := _fake([c[5]])
+		# Borrow a real set's textures under the fake name so the structure is truly sprite-drawn.
+		SpriteArt._sets[c[5]] = SpriteArt.sprite("smithy")
+		var d := _make(c[0], c[1], c[2], 5, c[3], c[4])
+		if c[2] == K.FARM_FIELD:
+			d.art.crop = 0
+			d.refresh_sprite()
+		t.check(not d.sprite.is_empty(), "%s is drawn from a sprite" % c[5])
+		t.check(d.z_index == -1 and d.walkable, "%s with a sprite stays on the ground layer, walkable" % c[5])
+		d.free()
+		_unfake(fakes)

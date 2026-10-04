@@ -21,15 +21,20 @@ static func run(t) -> void:
 	t.check(Game.next_screen("pause:missions") == Game.Screen.BOARD, "and the pause menu can go to the board")
 	t.check(Game.next_screen("pause:title") == -1, "but not to the title")
 	t.check(Game.next_screen("prepare:nonsense") == -1, "an action nobody offers leads nowhere")
+	# Between the acts of a night (v0.09): the interlude, its re-draft, and BEGIN back into the same town.
+	t.check(Game.next_screen("mission:act_over") == Game.Screen.INTERLUDE, "an act that is over leads to the interlude")
+	t.check(Game.next_screen("interlude:draft") == Game.Screen.PREPARE, "the interlude's Choose powers leads to Prepare")
+	t.check(Game.next_screen("interlude:missions") == Game.Screen.BOARD, "and its Missions to the board")
+	t.check(Game.next_screen("prepare:begin") == Game.Screen.MISSION, "BEGIN leads back into the mission")
 
 	# Every action in the table names a screen that exists, and every screen can be reached.
 	var reachable := {}
 	for action in Game.FLOW:
 		var to: int = Game.FLOW[action]
-		t.check(to >= 0 and to <= Game.Screen.RESULTS, "%s leads to a real screen (%d)" % [action, to])
+		t.check(to >= 0 and to < Game.Screen.size(), "%s leads to a real screen (%d)" % [action, to])
 		reachable[to] = true
-	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 5,
-		"all five screens are reachable (%d)" % reachable.size())
+	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 6,
+		"all six screens are reachable (%d)" % reachable.size())
 
 	# The board's cards sit side by side inside the screen, above its hint, without touching (v0.08).
 	for count in [1, 2, 3]:
@@ -43,3 +48,30 @@ static func run(t) -> void:
 					bad += 1
 		t.check(bad == 0, "%d board card(s) fit the screen without touching (%d)" % [count, bad])
 	t.near(MissionBoard.card_rect(0, 1).get_center().x, 320.0, 0.51, "one mission's card sits in the middle")
+
+	# The interlude (v0.09): with two acts to choose from, nothing is chosen until the player picks one, and Choose
+	# powers is refused until then; with one, it is chosen already. Its two cards fit the screen without touching.
+	var ln := MissionBook.long_night()
+	var two := InterludeScreen.new()
+	two.setup({"mission": "omen", "won": true, "goal": {"label": "Stop the warning", "done": true}, "bonuses": [],
+		"time": 21.4}, [ln.act("festival"), ln.act("procession")], NightState.new())
+	var emitted: Array[String] = []
+	two.action.connect(func(what: String) -> void: emitted.append(what))
+	t.check(two.chosen == "", "with two acts to choose from, none is chosen at first ('%s')" % two.chosen)
+	two.click(two.button_rect("draft").get_center())
+	t.check(two.chosen == "" and emitted.is_empty(), "Choose powers is refused while no act is chosen (%s)" % [emitted])
+	two.choose("procession")
+	t.check(two.chosen == "procession" and emitted.is_empty(), "choose() picks the Procession without leaving ('%s')" % two.chosen)
+	two.click(two.button_rect("draft").get_center())
+	t.check(",".join(emitted) == "draft", "then Choose powers goes (%s)" % [emitted])
+	two.click(two.button_rect("missions").get_center())
+	t.check(",".join(emitted) == "draft,missions", "and Missions goes to the board (%s)" % [emitted])
+	two.free()
+	var one := InterludeScreen.new()
+	one.setup({"mission": "festival", "won": true}, [ln.act("judgement")], NightState.new())
+	t.check(one.chosen == "judgement", "with one act to follow, it is chosen at setup ('%s')" % one.chosen)
+	one.free()
+	var a := InterludeScreen.card_rect(0, 2)
+	var b := InterludeScreen.card_rect(1, 2)
+	t.check(Rect2(0, 0, 640, 360).encloses(a) and Rect2(0, 0, 640, 360).encloses(b) and not a.intersects(b),
+		"the interlude's two cards fit the screen without touching (%s, %s)" % [a, b])

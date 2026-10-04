@@ -138,6 +138,11 @@ func _ready() -> void:
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works.
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	if _ending:
+		# A start during the ending's slow motion (v0.09): that ending lets go once its wait is over (_play_ending()), so
+		# the time scale it dipped is restored here.
+		_ending = false
+		_bf.ctx.impact.set_base_time_scale(1.0)
 	if _director != null:
 		_director.teardown()
 		if is_instance_valid(_rules):
@@ -324,7 +329,9 @@ func next_choices() -> Array:
 		return []
 	var out := []
 	for id in _act.next:
-		out.append(_def.act(id))
+		var a := _def.act(id)
+		a.night = _night  # the interlude's card line and objectives read the night so far
+		out.append(a)
 	return out
 
 
@@ -428,10 +435,15 @@ func _on_over(won: bool, reason: String) -> void:
 func _play_ending() -> void:
 	_ending = true
 	_aim.unfocus()
+	var ended := _rules
 	if not _scripted:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		await get_tree().create_timer(ENDING_SECONDS, true, false, true).timeout
+		if ended != _rules:
+			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
+			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.
+			return
 		_bf.ctx.impact.set_base_time_scale(1.0)
 	var res := _rules.result()
 	if _night == null:

@@ -216,18 +216,29 @@ func _sail() -> void:
 	sailed.emit(n)
 
 
-## The dock is gone: closed until it is rebuilt, or ended if blighted. The waiting crowd makes for the gates.
-func _stop() -> void:
+## The service ends for good (v0.09, Act III's last ferry): whoever is aboard sails, the waiting crowd makes for the
+## gates, and the boats take nobody more, though the dock stands.
+func close(reason: String) -> void:
+	if state == State.ENDED:
+		return
+	if not aboard.is_empty():
+		_sail()
+	_stop(reason)
+
+
+## The dock is gone: closed until it is rebuilt, or ended if blighted. The waiting crowd makes for the gates. With a
+## `reason` (close()) the service is ended whatever the dock's state.
+func _stop(reason := "") -> void:
 	var was_open := open()
 	var blighted := is_instance_valid(dock) and dock.blighted
-	state = State.ENDED if blighted or not is_instance_valid(dock) else State.CLOSED
+	state = State.ENDED if blighted or not is_instance_valid(dock) or reason != "" else State.CLOSED
 	for p in _waiting:
 		if is_instance_valid(p) and p.is_alive():
 			p.release_from_queue()
 			p.replan()
 	_waiting.clear()
 	if was_open:
-		closed.emit("the dock is sunk" if blighted else "the dock is destroyed")
+		closed.emit(reason if reason != "" else "the dock is sunk" if blighted else "the dock is destroyed")
 
 
 ## The ship on its trip: it slips downriver as it fades out, is gone, and fades back in as it returns.

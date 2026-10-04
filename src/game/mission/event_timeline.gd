@@ -10,8 +10,10 @@ var _elapsed := 0.0
 
 
 func add(at: float, id: String, label: String, fn := Callable()) -> EventTimeline:
-	_events.append({"at": at, "id": id, "label": label, "fn": fn, "done": false})
-	_events.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.at) < float(b.at))
+	_events.append({"at": at, "id": id, "label": label, "fn": fn, "done": false, "n": _events.size()})
+	# sort_custom is not stable: events due together keep the order they were added in.
+	_events.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a.n) < int(b.n) if is_equal_approx(float(a.at), float(b.at)) else float(a.at) < float(b.at))
 	return self
 
 

@@ -192,4 +192,9 @@ static func _judgement(m: MissionDef) -> ActDef:
 	a.make_act_objectives = func(n: NightState) -> Array[Objective]:
 		var out: Array[Objective] = [CitadelObjective.new(), EscapeLimitObjective.new(n.escape_limit()), ClockObjective.new()]
 		return out
+	a.make_act_bonuses = func(_n: NightState) -> Array[Objective]:
+		var out: Array[Objective] = [DawnObjective.new()]
+		return out
+	a.director = JudgementDirector
+	a.events_text = PackedStringArray(["1:30 The clergy gather (if Prepared)", "2:00 The boats sail", "2:30 The last ferry leaves"])
 	return a

@@ -144,6 +144,15 @@ func event_rows() -> Array:
 	return rows
 
 
+## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is 40 when the Prince escaped),
+## else the single missions' 50.
+func escape_limit() -> int:
+	for o in _rules.objectives:
+		if o is EscapeLimitObjective:
+			return (o as EscapeLimitObjective).limit
+	return Rules.ESCAPE_LIMIT
+
+
 ## The mission's director marks someone (v0.08: The Warning's messenger).
 func marker_shown() -> bool:
 	return _rules.director != null and _rules.director.marker() != Vector2.INF
@@ -375,8 +384,10 @@ func _draw_objectives() -> void:
 		draw_rect(Rect2(lx, 31.0, 5.0, 5.0), UiTheme.STABILITY_COLS[int(entry[1])])
 		UiTheme.text(self, Vector2(lx + 7.0, 38.0), String(entry[0]), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		lx += 7.0 + UiTheme.width(String(entry[0]), UiTheme.SIZE_SMALL) + 8.0
-	var escaped := "Escaped %d / %d" % [_crowd.escaped_count, Rules.ESCAPE_LIMIT]
-	var col := UiTheme.COL_BAD if _crowd.escaped_count >= Rules.ESCAPE_LIMIT - 8 else UiTheme.COL_DIM
+	var count := _rules.escaped_this_act()
+	var limit := escape_limit()
+	var escaped := "Escaped %d / %d" % [count, limit]
+	var col := UiTheme.COL_BAD if count >= limit - 8 else UiTheme.COL_DIM
 	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
 
 

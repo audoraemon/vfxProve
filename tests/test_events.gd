@@ -13,6 +13,7 @@ static func run(t) -> void:
 	s._upcoming(t)
 	s._callback(t)
 	s._late(t)
+	s._ties(t)
 
 
 func _record(id: String, _label: String) -> void:
@@ -87,3 +88,22 @@ func _late(t) -> void:
 	t.check(_seen.is_empty(), "adding does not fire")
 	tl.step(0.1)
 	t.check(_seen == ["late"], "an event added after its time fires on the next step (%s)" % [_seen])
+
+
+func _ties(t) -> void:
+	# sort_custom is not stable: events due together must still fire in the order they were added.
+	var tl := EventTimeline.new()
+	_seen.clear()
+	tl.fired.connect(_record)
+	var want: Array[String] = []
+	for i in 40:
+		want.append("e%d" % i)
+		tl.add(10.0 if i % 3 != 0 else 5.0, "e%d" % i, "E")
+	want.sort_custom(func(a: String, b: String) -> bool:
+		var ia := int(a.substr(1))
+		var ib := int(b.substr(1))
+		var ta := 5.0 if ia % 3 == 0 else 10.0
+		var tb := 5.0 if ib % 3 == 0 else 10.0
+		return ia < ib if ta == tb else ta < tb)
+	tl.step(20.0)
+	t.check(_seen == want, "events due together fire in the order they were added (%s)" % [_seen.slice(0, 8)])

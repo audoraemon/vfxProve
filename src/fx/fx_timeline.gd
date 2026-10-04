@@ -93,6 +93,13 @@ func _finish() -> void:
 	queue_free()
 
 
+## Cut the effect short now (v0.09: an act of the night ends with it still playing). Its remaining events never fire.
+## Virtual for an effect that leaves something in the world beyond its own nodes (Thornwall's brambles).
+func end_now() -> void:
+	if not finished:
+		_finish()
+
+
 func _exit_tree() -> void:
 	# Parents may be mid-teardown here, so never free immediately.
 	_free_tracked(true)

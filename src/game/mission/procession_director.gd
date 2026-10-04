@@ -302,3 +302,4 @@ func teardown() -> void:
 		crowd._field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
+	timeline = null  # its banner and guard lambdas hold this director: let both go

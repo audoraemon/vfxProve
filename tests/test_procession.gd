@@ -75,6 +75,8 @@ static func run(t) -> void:
 	_prince_freed(t)
 	_escaped_other_way(t)
 	_doom_before_judging(t)
+	_escort_balance(t)
+	_let_go(t)
 
 
 ## The Prince, six attendants and four escorts; a route of walkable points.
@@ -422,3 +424,21 @@ static func _doom_before_judging(t) -> void:
 		"judged seen, then won (%s %s)" % [d.unseen, rules.over_reason])
 	t.check(not result.bonuses[0].earned and d.report().prince == "seen", "the bonus is not earned (%s)" % [result.bonuses])
 	_done(s)
+
+
+## The escort's balance (v0.09 Task 19), pinned: a calm escort stands past the witness distance, so an unseen kill turns on
+## the attendants; a frightened one closes in to within reach of him.
+static func _escort_balance(t) -> void:
+	t.check(ProcessionDirector.ESCORT_R > Crowd.DOOM_WITNESS, "a calm escort stands past the witness distance (%.1f > %.1f)" %
+		[ProcessionDirector.ESCORT_R, Crowd.DOOM_WITNESS])
+	t.check(ProcessionDirector.ESCORT_CLOSE <= 1.0, "a frightened one closes within 1.0 (%.1f)" % ProcessionDirector.ESCORT_CLOSE)
+
+
+## The director is let go once the act is over (v0.09 final review): its timeline's lambdas no longer hold it.
+static func _let_go(t) -> void:
+	var s := _setup()
+	var w: WeakRef = weakref(s.d)
+	s.erase("d")
+	_run(s, 1.0)
+	_done(s)
+	t.check(w.get_ref() == null, "the Procession's director is freed after teardown")

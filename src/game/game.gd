@@ -325,11 +325,16 @@ func _faded_into_mission() -> void:
 
 
 ## On into the next act of the night, behind the same fade as a fresh mission: the same Mission node continues.
+## Prepare and the interlude ignore the player during the fade (v0.09 final review); should the night still be gone by
+## its end, the fade only lifts over whatever is up -- before, the act was begun on a freed mission and the black stayed.
 func _continue_night() -> void:
 	if _fading or not is_instance_valid(_mission):
 		return
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
+	if not _between_acts or not is_instance_valid(_mission):
+		await _fade_back_in()
+		return
 	if is_instance_valid(_screen_node):
 		_screen_node.queue_free()
 		_screen_node = null
@@ -340,8 +345,19 @@ func _continue_night() -> void:
 	Music.play(&"battle")
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await _fade_back_in()
+
+
+## The end of _continue_night()'s fade: like _faded_into_mission()'s, a Restart or MANIFEST pressed while it comes back
+## in is kept and run once it has.
+func _fade_back_in() -> void:
+	_fading_in = true
 	await _fader.fade_in(FADE_IN)
+	_fading_in = false
 	_fading = false
+	if _mission_queued:
+		_mission_queued = false
+		_faded_into_mission()
 
 
 ## The interlude over whatever is behind it, with the acts that may follow and the night so far.
@@ -357,6 +373,8 @@ func _show_interlude(choices: Array, night: NightState) -> void:
 
 
 func _on_interlude_action(what: String) -> void:
+	if _fading:
+		return  # BEGIN is carrying the night on: the interlude is on its way out
 	match what:
 		"draft":
 			_next_path = _interlude.chosen
@@ -415,7 +433,10 @@ func _on_board_action(what: String, board: MissionBoard) -> void:
 
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if _between_acts:
-		# The re-draft between acts (v0.09): BEGIN carries the night on, Back returns to the interlude.
+		# The re-draft between acts (v0.09): BEGIN carries the night on, Back returns to the interlude -- but not once
+		# BEGIN's fade is under way: Back, then Missions from the interlude, would free the night it is carrying on.
+		if _fading:
+			return
 		if what == "manifest":
 			loadout = prep.draft.picks
 			save.remember_loadout(mission_id, loadout)
@@ -718,7 +739,8 @@ func _flow_night(step: Callable) -> void:
 		if (c.callable as Callable).get_object() is Rules:
 			listening += 1
 	var down0: int = _mission.rules().buildings_down
-	_mission.rules()._on_structure_destroyed(houses[0], &"stone")
+	if not houses.is_empty():
+		_mission.rules()._on_structure_destroyed(houses[0], &"stone")
 	step.call(not houses.is_empty() and listening == 1 and _mission.rules().buildings_down == down0 + 1 and down0 == 0,
 		"one building down counts once: %d Rules listening, buildings_down %d" % [listening, _mission.rules().buildings_down])
 
@@ -737,6 +759,10 @@ func _flow_night(step: Callable) -> void:
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "judgement", 5.0)
+	# The festival held: Act III's director posts the marshals while the act is built, before its HUD exists -- the
+	# banner is held and shown after the intro's (v0.09 final review; before, it was lost).
+	var shown: PackedStringArray = _mission._hud.banners() if is_instance_valid(_mission._hud) else PackedStringArray()
+	step.call(shown.has("THE SOLDIERS TAKE THE GATES"), "the held festival's carry-over banner shows (%s)" % ", ".join(shown))
 	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
 	step.call(screen == Screen.MISSION and _mission.act().id == "judgement", "BEGIN plays Act III, Judgement")
 
@@ -786,9 +812,88 @@ func _flow_night(step: Callable) -> void:
 	step.call(_mission != old and _mission.act().id == "omen" and _mission.night().results.is_empty()
 		and _mission.night().path == "" and live == 1 and _mission.rules().buildings_down == 0,
 		"Restart in Act II is a fresh night from Act I, one Rules listening (%s)" % _mission.act().id)
+
+	# Review focus 2: Esc on the interlude leaves the night for the board.
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	(_screen_node as InterludeScreen).action.emit("missions")
+	await get_tree().process_frame
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission) and not _between_acts,
+		"Esc on the interlude returns to the board, the night gone")
+
+	# BEGIN, then Esc on Prepare and Esc on the interlude before its fade is out (v0.09 final review): both are ignored,
+	# and the night carries on into Act II. Before, they freed the mission under the fade, which stayed black for good.
+	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	await _until(func() -> bool: return _mission_up(null), 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _night_to_redraft("festival")
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	_on_prepare_action("back", _screen_node as PrepareScreen)
+	if _screen_node is InterludeScreen:
+		(_screen_node as InterludeScreen).action.emit("missions")
+	var in_act2 := func() -> bool:
+		return screen == Screen.MISSION and not _fading and is_instance_valid(_mission) and _mission.act().id == "festival"
+	var carried: bool = await _until(in_act2, 5.0)
+	step.call(carried and _fader.is_clear() and is_instance_valid(_mission) and _mission.act().id == "festival",
+		"Esc during BEGIN's fade is ignored: Act II begins and the fade clears (%s)" % Screen.keys()[screen])
+
+	# Review focus 2: Pause, then Change powers mid-night, in Act II: the night's own draft, nothing left of it.
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	_open_pause()
+	on_action("pause:change")
+	await get_tree().process_frame
+	var draft := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and draft != null and draft.mission.id == MissionBook.LONG_NIGHT
+		and draft.confirm_label != "BEGIN" and not is_instance_valid(_mission) and not _between_acts,
+		"Change powers in Act II opens the night's draft, the mission gone")
+
+	# The night gone some other way while BEGIN's fade is out: the fade lifts over what is up, and MANIFEST works again.
+	_on_prepare_action("manifest", draft)
+	await _until(func() -> bool: return _mission_up(null), 5.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _night_to_redraft("procession")
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	go_to(Screen.BOARD)
+	var lifted := await _until(func() -> bool: return not _fading, 3.0)
+	step.call(lifted and screen == Screen.BOARD and _fader.is_clear() and not is_instance_valid(_mission),
+		"a night gone during BEGIN's fade leaves the fade clear over the board")
+	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	# A fresh mission's shader prewarm took over 5 s on some runs this late in the test: the new waits allow 10.
+	var again := await _until(func() -> bool: return _mission_up(null), 10.0)
+	step.call(again and _mission.act().id == "omen", "and MANIFEST starts the night again (up: %s, %s, fading %s, act %s)" % [again,
+		Screen.keys()[screen], _fading, _mission.act().id if is_instance_valid(_mission) and _mission.act() != null else "-"])
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+
+	# Pause, then Restart while BEGIN's fade comes back in (v0.09 final review): kept, and run once the fade is over -- a
+	# fresh night from Act I, as from _faded_into_mission()'s fade-in.
+	await _night_to_redraft("festival")
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	var fading_in := await _until(func() -> bool: return _fading_in, 3.0)
+	var carrying := _mission
+	_open_pause()
+	on_action("pause:restart")
+	step.call(fading_in and _mission_queued and _mission == carrying,
+		"a Restart during BEGIN's fade-in is kept for when it ends (fading in: %s)" % fading_in)
+	var carried_id := carrying.get_instance_id()  # the lambda keeps the id: the night it carried is freed by the Restart
+	var restarted := await _until(func() -> bool: return _mission_up(null) and _mission.get_instance_id() != carried_id, 10.0)
+	step.call(restarted and _mission.act().id == "omen" and _mission.night().results.is_empty(),
+		"and then restarts the night from Act I (up: %s, %s, fading %s, act %s)" % [restarted, Screen.keys()[screen], _fading,
+		_mission.act().id if is_instance_valid(_mission) and _mission.act() != null else "-"])
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
 	_open_pause()
 	on_action("pause:missions")
 	await get_tree().process_frame
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission)
 		and not is_instance_valid(_pause), "Missions from the pause menu leaves the night for the board")
 
+
+## From Act I up and running: end it on its clock, choose `path` on the card and open the re-draft with BEGIN.
+func _night_to_redraft(path: String) -> void:
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	var card := _screen_node as InterludeScreen
+	card.choose(path)
+	card.action.emit("draft")
+	await get_tree().process_frame

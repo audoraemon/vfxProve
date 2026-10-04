@@ -86,6 +86,8 @@ static func run(t) -> void:
 	_dawn(t)
 	_bare(t)
 	_hud(t)
+	_card(t)
+	_let_go(t)
 
 
 static func _broken(t) -> void:
@@ -327,3 +329,32 @@ static func _phantoms(t) -> void:
 	t.check((s.banners as Array).has("THE LAST FERRY LEAVES") and crowd.ferry.state == RiverFerry.State.ENDED,
 		"the last ferry still leaves at 2:30 (%s)" % [s.banners])
 	_done(s)
+
+
+## The single "Next" line's words for Act III, by how Act II ended, and its windows marked for a Prepared town only -- an
+## Organized one has neither the rite nor the boats (v0.09 final review).
+static func _card(t) -> void:
+	var def := MissionBook.long_night().act("judgement")
+	t.check(def.events_text == PackedStringArray(["1:30 The clergy gather (if Prepared)", "2:00 The boats sail (if Prepared)",
+		"2:30 The last ferry leaves (if Prepared)"]), "every window reads (if Prepared) (%s)" % [def.events_text])
+	var lines := {}
+	for k: Array in [["festival", "broken"], ["festival", "held"], ["prince", "escaped"], ["prince", "seen"],
+			["prince", "unseen"], ["", ""]]:
+		var n := NightState.new()
+		if k[0] != "":
+			n.set(String(k[0]), String(k[1]))
+		var line := def.card_line(n)
+		t.check(line != "", "a card line for %s %s (%s)" % [k[0], k[1], line])
+		lines[line] = true
+	t.check(lines.size() == 6, "each outcome has its own line (%d)" % lines.size())
+
+
+## The director is let go once the act is over (v0.09 final review): its timeline's lambdas no longer hold it.
+static func _let_go(t) -> void:
+	var night := NightState.new()
+	var s := _setup(night)
+	var w: WeakRef = weakref(_start(s, night))
+	s.erase("d")
+	_run(s, 1.0)
+	_done(s)
+	t.check(w.get_ref() == null, "Act III's director is freed after teardown")

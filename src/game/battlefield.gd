@@ -180,6 +180,16 @@ func clear_effects() -> void:
 			c.queue_free()
 
 
+## End every power still playing (v0.09, between the acts of a night): each effect is cut short, freeing what it made,
+## so an old act's cast kills nobody in the next act, and the dim it cast is lifted. Fires on buildings and their smoke
+## (the structures' own particles in these layers) and ruins are the town's, not effects: they stay.
+func end_powers() -> void:
+	for c in ctx.overhead.get_children():
+		if c is FxTimeline:
+			(c as FxTimeline).end_now()
+	ctx.impact.dim(0.0, 100.0)
+
+
 ## Ground point under the mouse.
 func mouse_ground() -> Vector2:
 	return Iso.screen_to_ground(get_global_mouse_position())

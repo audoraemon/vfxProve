@@ -87,6 +87,9 @@ var _night: NightState
 var _act: ActDef
 ## The town's response managers whose banners are wired, by instance id: each is wired once (_wire_responses()).
 var _wired := {}
+## Banners raised while an act was being built, before its HUD was there to show them (v0.09: Act III's carry-overs --
+## SOLDIERS RALLY, THE SOLDIERS TAKE THE GATES): shown once its intro has begun (_show_held_banners()).
+var _held_banners: Array[String] = []
 var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
@@ -199,6 +202,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		BehaviourOverlay.shown = true
 	add_child(_overlay)
 	_begin_intro(play)
+	_show_held_banners()
 
 
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the
@@ -210,6 +214,10 @@ func _build_act(loadout: PackedStringArray) -> void:
 	add_child(_rules)
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
 	_rules.over.connect(_on_over)
+	# Nothing shows a banner until the HUD below is made: the director's setup and the town's responses may raise some.
+	var held: Array[String] = []
+	var hold := func(text: String) -> void: held.append(text)
+	_rules.banner.connect(hold)
 	if play.director != null:
 		_director = (play.director.new() as MissionDirector).setup(_rules, _crowd, _town, _bf.ctx, _night)
 		_rules.director = _director
@@ -227,6 +235,16 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_hud.name = "Hud"
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
+	_rules.banner.disconnect(hold)
+	_held_banners = held
+
+
+## The banners held while the act was built, after its intro's own (the HUD queues them).
+func _show_held_banners() -> void:
+	var held := _held_banners
+	_held_banners = []
+	for text in held:
+		_rules.banner.emit(text)
 
 
 ## The town's responses announce themselves on the banner. Each lambda reads `_rules` when it fires, so the act being
@@ -313,6 +331,9 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_director = null
 	_rules.teardown()
 	_rules.queue_free()
+	# Every power still playing ends here, with the act that cast it: an Act I Heaven Splitter must not fall on the
+	# Prince or the Mayor during Act II's intro (v0.09 final review).
+	_bf.end_powers()
 	_aim.queue_free()
 	_hud.queue_free()
 	_pressing = false  # a press held over the old aim is not the new one's to release
@@ -329,6 +350,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	if not raised.is_empty():
 		# After the act's own banner (the HUD queues them).
 		_rules.banner.emit("THE TOWN PREPARES: " + ", ".join(raised).to_upper())
+	_show_held_banners()
 
 
 ## The acts that may follow the one being played (v0.09): two for the choice card, one, or none after the last act or

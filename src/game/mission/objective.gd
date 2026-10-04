@@ -13,6 +13,12 @@ var label := ""
 var reason := ""
 
 
+## Virtual: a look at the mission as it begins (v0.09), from Rules.setup() -- before the intro, which holds the Rules but
+## not the town.
+func begin(_rules: Rules) -> void:
+	pass
+
+
 ## Virtual: where the objective stands now.
 func check(_rules: Rules) -> Status:
 	return Status.PENDING

@@ -31,12 +31,18 @@ var _menu: Menu
 var _hover := ""
 
 
+## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
+const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
+	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED"}
+
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:
 	if reason in ["warning", "omen"]:
 		return "THE WARNING DIES"  # (v0.08: the messenger killed unseen, or the omen faded with the bell silent)
 	if reason == "bell":
 		return "THE BELL TOLLS"
+	if ACT_TITLES.has(reason):
+		return String(ACT_TITLES[reason])
 	if won:
 		return "THE CITY HAS FALLEN"
 	return "THE PEOPLE ESCAPED" if reason == "escapes" else "MANIFESTATION ENDED"

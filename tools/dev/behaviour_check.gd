@@ -67,8 +67,8 @@ extends SceneTree
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
-##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited
-##          and every cooldown ready (a `handover` line). `--prince=unseen|seen|escaped` is a test aid (v0.09 Task 8):
+##          to 0.3 and a Heaven Splitter is still falling: the next act must start at 1.0 with nothing credited,
+##          every cooldown ready and no power still playing (a `handover` line). `--prince=unseen|seen|escaped` is a test aid (v0.09 Task 8):
 ##          it overwrites what the Procession decided, once Act II-B is over, so Act III's town can be raised by any
 ##          outcome even when the act was ended by force. `--festival=broken|held` is a test aid (v0.09): it
 ##          overwrites what the Festival decided, once Act II-A is over, so Act III's town can be raised by any outcome
@@ -1082,8 +1082,12 @@ func _night() -> void:
 					var ready := true
 					for i in rules.loadout.size():
 						ready = ready and rules.cooldown_left(i) == 0.0
-					print("BEHAVIOUR night handover time_scale=%.2f buildings=%d cooldowns=%s" % [Engine.time_scale,
-						rules.buildings_down, "ready" if ready else "waiting"])
+					# The old act's powers end with it (v0.09 final review): none of its effects is still playing.
+					var playing := 0
+					for c in mission._bf.ctx.overhead.get_children():
+						playing += 1 if c is FxTimeline and not (c as FxTimeline).finished else 0
+					print("BEHAVIOUR night handover time_scale=%.2f buildings=%d cooldowns=%s powers=%d" % [Engine.time_scale,
+						rules.buildings_down, "ready" if ready else "waiting", playing])
 				mission._intro_left = 0.0
 				mission._rules.set_process(true)
 			print("BEHAVIOUR night start act=%s town=%s" % [mission.act().id, mission._crowd.profile.tier_name()])

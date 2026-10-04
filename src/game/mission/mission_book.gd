@@ -210,5 +210,25 @@ static func _judgement(m: MissionDef) -> ActDef:
 		var out: Array[Objective] = [DawnObjective.new()]
 		return out
 	a.director = JudgementDirector
-	a.events_text = PackedStringArray(["1:30 The clergy gather (if Prepared)", "2:00 The boats sail", "2:30 The last ferry leaves"])
+	# Only a Prepared town has the rite and the boats (an Organized one has neither), so each window says so.
+	a.events_text = PackedStringArray(["1:30 The clergy gather (if Prepared)", "2:00 The boats sail (if Prepared)",
+		"2:30 The last ferry leaves (if Prepared)"])
+	a.make_card_line = _judgement_line
 	return a
+
+
+## Act III's line on the interlude (v0.09): how the town will meet the player, by how Act II ended.
+static func _judgement_line(n: NightState) -> String:
+	match n.prince:
+		"escaped":
+			return "The Prince escaped: the kingdom rallies and is ready."
+		"seen":
+			return "The Prince's death was seen: the town is ready for you."
+		"unseen":
+			return "The Prince is gone unseen: the town is leaderless."
+	match n.festival:
+		"broken":
+			return "The feast broke: its crowd still flees into the gates."
+		"held":
+			return "The feast held: the soldiers take the gates."
+	return "Dawn is coming."

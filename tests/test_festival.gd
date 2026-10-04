@@ -7,8 +7,9 @@ const DT := 0.1
 const R := CitizenProfile.Role
 
 
-## A town spawned Unaware and the Festival's Rules for `night`, with no director yet (see _start()).
-static func _setup(night: NightState) -> Dictionary:
+## A town spawned Unaware and the Festival's Rules for `night`, with no director yet (see _start()). `rung`: the bell has
+## rung before the act begins (Act I's alarm).
+static func _setup(night: NightState, rung := false) -> Dictionary:
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
@@ -20,6 +21,8 @@ static func _setup(night: NightState) -> Dictionary:
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
 	crowd.profile = ResponseProfile.unaware()
 	crowd.spawn()
+	if rung:
+		crowd.bell.state = BellNetwork.State.RUNG
 	var def := MissionBook.long_night().act("festival")
 	def.night = night
 	var rules := Rules.new().setup(def.default_loadout, null, env, field, crowd, town, def)
@@ -70,6 +73,9 @@ static func run(t) -> void:
 	_clock(t)
 	_objectives(t)
 	_bell_quiet(t)
+	_mayor_frightened(t)
+	_report_at_end(t)
+	_let_go(t)
 
 
 ## Eighty goers, none of them a responder or the Mayor, each staying and walking to a spot in the square.
@@ -355,24 +361,71 @@ static func _objectives(t) -> void:
 	_done(s)
 
 
-## Before the bell: a bell already rung when the act first looks does not count against it; one that rings in the act does.
+## Before the bell: a bell already rung when the act starts does not count against it; one that rings in the act does --
+## even before the act's first look (v0.09 final review: the intro holds the Rules, not the town, so a bell rung during
+## it was taken for Act I's).
 static func _bell_quiet(t) -> void:
-	for case in ["rung_before", "rings_during", "never"]:
-		var s := _setup(NightState.new())
+	for case in ["rung_before", "rings_in_intro", "rings_during", "never"]:
+		var s := _setup(NightState.new(), case == "rung_before")
 		_start(s, null)
 		var crowd: Crowd = s.crowd
 		var rules: Rules = s.rules
 		var bonus := rules.bonuses[0]
-		if case == "rung_before":
+		if case == "rings_in_intro":
 			crowd.bell.state = BellNetwork.State.RUNG
-		t.check(bonus.check(rules) == Objective.Status.PENDING, "%s: pending at the first look" % case)
+			t.check(bonus.check(rules) == Objective.Status.FAILED, "rung after the act began, before its first look: failed")
+		else:
+			t.check(bonus.check(rules) == Objective.Status.PENDING, "%s: pending at the first look" % case)
 		if case == "rings_during":
 			crowd.bell.state = BellNetwork.State.RUNG
 			t.check(bonus.check(rules) == Objective.Status.FAILED, "it fails once the bell rings in the act")
 		rules.force_end(true, "forced")
 		var earned := bool(rules.result().bonuses[0].earned)
-		t.check(earned == (case != "rings_during"), "%s: earned on a win is %s" % [case, earned])
+		t.check(earned == (case == "rung_before" or case == "never"), "%s: earned on a win is %s" % [case, earned])
 		_done(s)
+
+
+## A Mayor already frightened when his address falls due is not pulled back to the fountain on duty (v0.09 final review).
+static func _mayor_frightened(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	d.need = 1000  # the act runs on whatever the fright breaks
+	_run(s, 89.5)
+	t.check(WarningDirector._alive(d.mayor), "the Mayor lives at 1:29")
+	d.mayor.panic(d.mayor.ground_pos + Vector2(0.5, 0.0), 1.0, &"test")
+	var scared := d.mayor.mind
+	_run(s, 0.6)
+	t.check(not scared in WarningDirector.RESUMABLE and d.mayor.mind != Person.Mind.DUTY,
+		"frightened at 1:29 (%s), he is not on duty at 1:30 (%s)" % [Person.Mind.keys()[scared], Person.Mind.keys()[d.mayor.mind]])
+	_done(s)
+
+
+## The act's report is what stood when it ended (v0.09 final review): the slow-motion ending runs on for seconds before
+## Mission reads it, and a goer dying in it must not turn a closed square into a broken feast.
+static func _report_at_end(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var rules: Rules = s.rules
+	_run(s, 151.0)
+	t.check(rules.finished and rules.over_reason == "closed" and not d.broken(), "the square closes unbroken (%d of %d)" %
+		[d.count(), d.need])
+	var field: EnemyField = s.field
+	for p in d.goers:
+		if WarningDirector._alive(p):
+			field.kill(p, &"fire")
+	t.check(d.broken(), "every goer killed in the ending would break it now (%d)" % d.count())
+	t.check(rules.result().festival == "held", "but the act's result still says held (%s)" % rules.result().festival)
+	_done(s)
+
+
+## The director is let go once the act is over (v0.09 final review): its timeline's lambdas no longer hold it.
+static func _let_go(t) -> void:
+	var s := _setup(NightState.new())
+	var w: WeakRef = weakref(_start(s, null))
+	s.erase("d")
+	_run(s, 1.0)
+	_done(s)
+	t.check(w.get_ref() == null, "the Festival's director is freed after teardown")
 
 
 ## The Mayor and a goer killed and then freed (a killed citizen frees itself when its death fade ends) while the director,

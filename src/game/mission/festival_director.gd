@@ -34,6 +34,9 @@ var need := FESTIVAL_NEED
 var _broke := {}
 var _sample_in := 0.0
 var _fires: Array[FxTimeline] = []
+## The report as it stood when the act ended (empty until then): Mission reads it only after the slow-motion ending,
+## and a goer dying in that must not change how the act went.
+var _final := {}
 
 
 func _begin() -> void:
@@ -48,6 +51,7 @@ func _begin() -> void:
 	timeline.add(ADDRESS_AT + ADDRESS_SECONDS, "address_end", "The address ends", _address_ends, speaks)
 	timeline.add(CLOSE_AT, "close", "The guard closes the square")
 	crowd._field.enemy_killed.connect(_on_killed)
+	rules.over.connect(_on_over)
 	if night != null and night.bell_rang:
 		_post_guards()
 	if ctx != null:
@@ -129,9 +133,10 @@ func _address_spot() -> Vector2:
 	return free if free != Vector2.INF else at
 
 
-## The Mayor takes the fountain on duty and the calm goers turn to him.
+## The Mayor takes the fountain on duty and the calm goers turn to him -- unless he is already frightened (a fright, a
+## flight, a dash for shelter): he is not pulled back to speak.
 func _address() -> void:
-	if not WarningDirector._alive(mayor):
+	if not WarningDirector._alive(mayor) or not mayor.mind in WarningDirector.RESUMABLE:
 		return
 	var at := _address_spot()
 	mayor.go_duty(at)
@@ -192,12 +197,21 @@ func carry(n: NightState) -> void:
 
 
 func report() -> Dictionary:
+	if not _final.is_empty():
+		return _final
 	return {"festival": "broken" if broken() else "held", "festival_count": count()}
+
+
+func _on_over(_won: bool, _reason: String) -> void:
+	_final = report()
 
 
 func teardown() -> void:
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
 		crowd._field.enemy_killed.disconnect(_on_killed)
+	if is_instance_valid(rules) and rules.over.is_connected(_on_over):
+		rules.over.disconnect(_on_over)
+	timeline = null  # its banner and guard lambdas hold this director: let both go
 	for fire in _fires:
 		if is_instance_valid(fire) and not fire.finished:
 			fire._finish()

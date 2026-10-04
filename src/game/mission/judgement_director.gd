@@ -41,3 +41,7 @@ func _begin() -> void:
 
 func step(delta: float) -> void:
 	timeline.step(delta)
+
+
+func teardown() -> void:
+	timeline = null  # its banner and guard lambdas hold this director: let both go

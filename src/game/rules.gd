@@ -144,6 +144,8 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	_env.structure_restored.connect(_on_structure_restored)
 	stability.measure(_env, _crowd, _town.citadel)
 	_stability_dirty = false
+	for o in objectives + bonuses:
+		o.begin(self)
 	return self
 
 

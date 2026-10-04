@@ -34,3 +34,14 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
 2d/snap/snap_2d_vertices_to_pixel=true
+
+[autoload]
+
+IdleClock="*res://src/environment/art/idle_clock.gd"
+
+[shader_globals]
+
+idle_time={
+"type": "float",
+"value": 0.0
+}

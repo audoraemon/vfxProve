@@ -20,6 +20,14 @@ uniform vec2 frame_origin = vec2(0.0);
 uniform vec2 anchor = vec2(0.0);
 uniform vec2 corner_left = vec2(-32.0, -16.0);
 uniform vec2 corner_right = vec2(32.0, -16.0);
+// A playing idle strip (SpriteView.play_idle()): the frame is floor(idle_time * idle_fps + idle_phase) mod idle_frames,
+// stepped here from the shared clock so no view processes; the draw is frame 0's, shifted frame_w px per frame.
+// idle_frames 1: a plain still or a held frame.
+global uniform float idle_time;
+uniform int idle_frames = 1;
+uniform float idle_fps = 1.0;
+uniform float idle_phase = 0.0;
+uniform float frame_w = 0.0;
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -53,7 +61,12 @@ void vertex() {
 }
 
 void fragment() {
-	vec4 px = texture(TEXTURE, UV);
+	vec2 uv = UV;
+	if (idle_frames > 1) {
+		float f = mod(floor(idle_time * idle_fps + idle_phase), float(idle_frames));
+		uv.x += f * frame_w * TEXTURE_PIXEL_SIZE.x;
+	}
+	vec4 px = texture(TEXTURE, uv);
 	vec2 p = floor(UV / TEXTURE_PIXEL_SIZE) + 0.5 - frame_origin - anchor;
 	float line = ground_y(p.x) - cut_lift;
 	if ((cut_mode == 1 && p.y > line) || (cut_mode == -1 && p.y < line)) {

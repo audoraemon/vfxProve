@@ -520,7 +520,7 @@ func _sync_sprite() -> void:
 			_sprite_view.scale = Vector2(m, 1.0)
 			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
 		&"intact":
-			# The view steps its own idle strip (SpriteView.play_idle()), so the structure can sleep under it.
+			# The view's shader steps its idle strip from the shared clock (SpriteView.play_idle()): the structure sleeps.
 			_sprite_view.play_idle(_time)
 			_sprite_view.position = Vector2.ZERO
 			_sprite_view.scale = Vector2(m, 1.0)
@@ -566,7 +566,7 @@ func _sync_sprite() -> void:
 ## True when _sync_sprite() would hand its views exactly what they already show: the building is quiet (nothing
 ## falling, sliding off or cooling), has no banners mid-fall, and shows the state, tint and banners it showed at the
 ## last sync. Walls and towers on screen process every frame, and syncing each of them anyway cost ~5 us a frame apiece
-## (~0.25 ms a frame, -4 fps in the mission bench). An animated set's idle frames are no change here: its view steps
+## (~0.25 ms a frame, -4 fps in the mission bench). An animated set's idle frames are no change here: its shader steps
 ## them itself (SpriteView.play_idle()).
 func _sprite_settled() -> bool:
 	if not is_instance_valid(_sprite_view) or not _quiet() \
@@ -1117,7 +1117,7 @@ func wake() -> void:
 
 
 ## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch). A sprite's
-## idle strip is no such part: its view steps it on its own (SpriteView.play_idle()).
+## idle strip is no such part: its shader steps it from the shared clock (SpriteView.play_idle()).
 func _can_idle() -> bool:
 	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) \
 		and not is_instance_valid(_flame)

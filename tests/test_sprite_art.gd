@@ -438,17 +438,29 @@ static func _settled_paths(t) -> void:
 	smith.sprite = SpriteArt.sprite("smithy").duplicate()
 	t.check(int(smith.sprite.frames) > 1, "the smithy's set is animated")
 	smith._process(0.001)
-	var first := smith._sprite_view.frame
 	smith._process(0.001)
-	t.check(smith._sprite_settled() and smith._sprite_view.playing, "it settles while its view plays its idle strip")
-	smith._sprite_view._process(1.0 / float(smith.sprite.fps))
-	t.check(smith._sprite_view.frame == (first + 1) % int(smith.sprite.frames) and smith._sprite_settled(),
-		"its view steps to the next idle frame on its own; the structure stays settled")
+	t.check(smith._sprite_settled() and _strip_on(smith._sprite_view), "it settles while its view plays its idle strip")
+	var first := smith._sprite_view.shown_frame()
+	SpriteView.advance(1.0 / float(smith.sprite.fps))
+	t.check(smith._sprite_view.shown_frame() == (first + 1) % int(smith.sprite.frames) and smith._sprite_settled(),
+		"the shared idle clock steps its strip to the next frame; the structure stays settled")
 	smith.free()
 
 
-## A set with an idle strip (the town gate's swaying banners) steps it on its view's own clock, so the structure under
-## it sleeps like a still sprite's; a crack, its ruins or F7 stop or restart the view's animation.
+## A playing view's idle strip is stepped by its shader from the shared idle clock (SpriteView.advance()) and its
+## phase, so neither the view nor the structure under it processes. True when `v` plays its strip that way.
+static func _strip_on(v: SpriteView) -> bool:
+	return v.playing and not v.is_processing() and v.still == &"intact" 		and int(v.material.get_shader_parameter("idle_frames")) == int(v.sprite.frames)
+
+
+## True when `v` shows a held still: no idle strip in its shader.
+static func _strip_off(v: SpriteView) -> bool:
+	return not v.playing and not v.is_processing() and int(v.material.get_shader_parameter("idle_frames")) == 1
+
+
+## A set with an idle strip (the town gate's swaying banners) steps it from the shared idle clock in its shader, so
+## the structure under it sleeps like a still sprite's; a crack, its ruins or F7 stop or restart the view's animation.
+## Views take their phase from their structure's seed, so two gates do not step in step.
 static func _idle_strip(t) -> void:
 	SpriteArt.set_enabled(true)
 	var gate := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
@@ -458,29 +470,29 @@ static func _idle_strip(t) -> void:
 		gate._process(1.0 / 60.0)
 	var v := gate._sprite_view
 	t.check(gate.idle and not gate.is_processing(), "a quiet animated gate goes idle: it stops processing")
-	t.check(v.playing and v.is_processing() and v.still == &"intact", "while its view plays its idle strip")
+	t.check(_strip_on(v), "while its view plays its idle strip from the shared clock")
 	var seen := {}
 	for i in 60:
-		v._process(1.0 / 60.0)
-		seen[v.frame] = true
-	t.check(seen.size() == int(gate.sprite.frames), "in a second the view steps through all %d idle frames (%d)"
+		SpriteView.advance(1.0 / 60.0)
+		seen[v.shown_frame()] = true
+	t.check(seen.size() == int(gate.sprite.frames), "in a second the clock steps it through all %d idle frames (%d)"
 		% [int(gate.sprite.frames), seen.size()])
 	t.check(gate.idle and not gate.is_processing(), "and the gate sleeps through them")
 	gate.damage(gate.max_hp * 0.4, Vector2(-5, -5), &"blast")
 	t.check(gate.is_processing(), "a hit wakes it")
 	for i in 90:
 		gate._process(1.0 / 60.0)
-	t.check(gate.sprite_state() == &"damaged" and v.still == &"damaged" and not v.playing and not v.is_processing(),
+	t.check(gate.sprite_state() == &"damaged" and v.still == &"damaged" and _strip_off(v),
 		"cracked, its view shows the damaged still and stops animating")
 	gate.destroy(Vector2(-5, -5), &"blast")
 	for i in 120:
 		gate._process(1.0 / 60.0)
-	t.check(gate.sprite_state() == &"ruins" and not v.playing and not v.is_processing(),
+	t.check(gate.sprite_state() == &"ruins" and _strip_off(v),
 		"brought down, its view stops animating")
 	gate.restore()
 	for i in 4:
 		gate._process(1.0 / 60.0)
-	t.check(gate.sprite_state() == &"intact" and v.playing and v.is_processing(), "rebuilt, its view plays again")
+	t.check(gate.sprite_state() == &"intact" and _strip_on(v), "rebuilt, its view plays again")
 	gate.free()
 	# F7 on an idle animated building: a new view, animating again.
 	var f7 := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
@@ -497,7 +509,7 @@ static func _idle_strip(t) -> void:
 	f7.refresh_sprite()
 	t.check(f7.is_processing(), "F7 on wakes it")
 	f7._process(1.0 / 60.0)
-	t.check(is_instance_valid(f7._sprite_view) and f7._sprite_view.playing and f7._sprite_view.is_processing(),
+	t.check(is_instance_valid(f7._sprite_view) and _strip_on(f7._sprite_view),
 		"and its new view animates its idle strip again")
 	for i in 4:
 		f7._process(1.0 / 60.0)
@@ -532,9 +544,18 @@ static func _idle_strip(t) -> void:
 		for i in 4:
 			tr._process(1.0 / 60.0)
 		t.check(String(tr.sprite.get("name", "")).begins_with("oak_" if tag == &"oak" else "tree_")
-			and tr._sprite_view.playing and tr._sprite_view.is_processing(), "a sprite tree's view plays its sway")
+			and _strip_on(tr._sprite_view), "a sprite tree's view plays its sway")
 		t.check(tr.idle and not tr.is_processing(), "and the tree sleeps under it")
 		tr.free()
+	# Neighbouring trees sway out of step: each view's phase comes from its structure's seed.
+	var shown := {}
+	for sd in 8:
+		var tr := _make(Rect2(0, 0, 0.7, 0.7), 28.0, K.TREE, sd, &"decor")
+		tr._ready()
+		tr._process(1.0 / 60.0)
+		shown[tr._sprite_view.shown_frame()] = true
+		tr.free()
+	t.check(shown.size() >= 3, "eight trees at one moment show several sway frames (%d)" % shown.size())
 	# A well never had running water: no spin node either way.
 	var wl := _make(Rect2(0, 0, 0.5, 0.5), 12.0, K.FOUNTAIN, 5, &"decor", &"well")
 	wl._ready()

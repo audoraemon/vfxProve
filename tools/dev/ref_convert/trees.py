@@ -20,7 +20,7 @@ Greens: the sheet's yellow-lime highlights and teal shadows are pulled toward th
 
 Anchor: the trunk's foot stands at the plot's centre, which is 16 x size px above the footprint's front corner.
 
-States (trees have no cracks): damaged, a scorched and thinned crown (a few charred patches, bites out of its edge);
+States (trees have no cracks): damaged, a scorched and thinned crown (ragged charred patches, bites out of its edge);
 ruins, a stump with its cut face up and the trunk lying on the ground beside it, a tuft of its crown at the far end,
 clean. Idle: a crown sway, 4 frames at FPS: the crown's upper rows shift 1 px sideways (more of them the higher), out
 and back; the trunk and the lower crown stay still.
@@ -244,14 +244,16 @@ def damaged(a, info, seed):
     crown = al & (yy <= bot)
     ys, xs = np.nonzero(crown)
     lum = a[..., :3].astype(int).sum(-1)
-    # charred patches: 3-4 round ones, 4-6 px across, on the crown
-    for _ in range(int(rng.integers(3, 5))):
+    # charred patches: 4-5 ragged ones on the crown, denser at their middle and thinning out to scattered charred
+    # leaves at their rim; each charred pixel keeps 18% of its leaf (the clumps still read through the char)
+    for _ in range(int(rng.integers(4, 6))):
         i = int(rng.integers(len(ys)))
-        r = float(rng.uniform(2.5, 3.6))
-        m = crown & ((yy - ys[i]) ** 2 + (xx - xs[i]) ** 2 <= r * r)
+        r = float(rng.uniform(3.6, 5.0))
+        d = np.sqrt((yy - ys[i]) ** 2 + (xx - xs[i]) ** 2)
+        m = crown & (d <= r) & (rng.random((h, w)) < 0.45 + 0.55 * (1 - d / r))
         for j, (lo, hi) in enumerate(((0, 170), (170, 300), (300, 999))):
             sel = m & (lum >= lo) & (lum < hi)
-            out[sel, :3] = CHAR[j]
+            out[sel, :3] = (CHAR[j] * 0.82 + a[sel, :3] * 0.18).astype(np.uint8)
     # bites: 3 round gaps on the crown's edge (its upper half, and one side low), the leaves there gone
     edge_pts = []
     for y in range(top + (bot - top) // 3, bot - 2):

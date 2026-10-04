@@ -11,7 +11,7 @@ const KEEP_ALL := 0
 const KEEP_ABOVE := 1
 const KEEP_BELOW := -1
 ## The shared idle clock's shader global (project.godot [shader_globals]): seconds of game time, wrapped every
-## IDLE_WRAP seconds (a whole number of loops for every strip in the manifest: 4-6 frames at 3-8 fps).
+## IDLE_WRAP seconds (a whole number of loops for every strip in the manifest: 4-8 frames at 3-21 fps).
 const IDLE_TIME := &"idle_time"
 const IDLE_WRAP := 1440.0
 ## ArtKit.hash01 salt for a view's idle phase, from its structure's seed.

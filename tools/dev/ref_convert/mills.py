@@ -22,18 +22,20 @@ supersampled, each pixel taking the weighted majority colour of its 16 samples (
 never break up), then the 1 px outline. Never a bitmap rotation.
   sails  in the plane of the tower's left face (u = (1, 0.5), v = (0, -1) px, as the procedural sails and wheel),
          four stocks with a lattice of two columns by five rows of cloth on their trailing side; 8 frames over 90 deg
-         (the four sails are symmetric, so that is a whole turn's loop), 8 fps.
+         (the four sails are symmetric, so that is a whole turn's loop), 16 fps: 180 deg/s, the procedural speed.
   wheel  in the plane of the cottage's left wall, 0.06..0.28 cells out from it: back rim and dark inside, 16 boxed
          paddles, 8 spokes, front rim, iron hub; clipped at the race's water line plane by plane; 8 frames over 45 deg
-         (one spoke spacing, two paddle spacings), 8 fps, with foam at its foot and ripples in the race stepping on the
-         same 8-frame loop.
+         (one spoke spacing, two paddle spacings), 21 fps (118 deg/s; procedural 120), with foam at its foot and
+         ripples in the race stepping on the same 8-frame loop.
 Loop check: frame 8 (the one after the last) is drawn from its own angle, without wrapping it, and must equal frame 0.
 
 States: intact (frame 0 of the idle strip), damaged (still: the windmill's sails broken -- one snapped, one a stub, one
 with its cloth burnt out -- a hole through the cap and soot up the tower over the door; the watermill's wheel cracked,
-three paddles gone, a spoke snapped, a hole through the roof and soot over the door), ruins (the approved ruins of the
-closest set placed on the plot: town_tower's for the round tower, scaled 0.9 / 1.6 and snapped to its palette as the
-bell tower's; the tavern's for the red-tiled cottage, its footprint as wide, unscaled, centred). Collapse: the engine's.
+three paddles gone, a spoke snapped, a hole through the roof and soot over the door), ruins (drawn clean on the plot,
+no rubble spray: the windmill a burnt-out stump of its tower -- the near wall up to a stepped broken top with bare stone
+under it, the far wall's inside, a charred floor -- with one sail fallen across its foot; the watermill low burnt walls
+with stepped tops, a charred floor with two beams, the back half of the roof fallen in, the wheel's charred stub in the
+race). Collapse: the engine's.
 
 Usage (from anywhere):
   python tools/dev/ref_convert/mills.py [all | windmill | watermill] [--out <scratch dir>] [--debug <dir>]
@@ -57,7 +59,6 @@ SHEET = ROOT / "concepts" / "TOWN REF" / "TownMap_Component1.png"
 SHEET_BOX = (800, 570, 1090, 850)        # the combined mill (row 3, 3rd); its tones are picked from it
 SS = 4                                   # supersampling of the turning parts
 FRAMES = 8
-FPS = 8
 PAD = 6
 CW, CH = 320, 300                        # the roomy drawing canvas; the front corner A sits at A0
 A0 = (170, 230)
@@ -93,9 +94,10 @@ CHAR = warehouse.CHAR
 SHADE = warehouse.SHADE
 
 SETS = {
-    # name: footprint, height, seed, ruins source, ruins scale
-    "windmill": ([0.9, 0.9], 60, 72, "town_tower", 0.9 / 1.6),
-    "watermill": ([2.4, 1.9], 34, 73, "tavern", 1.0),
+    # name: footprint, height, seed, idle fps (the procedural turning speeds: sails 8 Hz x TAU/16 = 180 deg/s, here
+    # 8 frames over 90 deg at 16 fps; wheel 8 Hz x TAU/24 = 120 deg/s, here 8 frames over 45 deg at 21 fps = 118 deg/s)
+    "windmill": ([0.9, 0.9], 60, 72, 16),
+    "watermill": ([2.4, 1.9], 34, 73, 21),
 }
 
 # windmill geometry: tower base and top radius (cells), wall height and cap rise (px), sail length and width (px)
@@ -396,9 +398,104 @@ def sails(A, units, broken=False):
     return hi.down()
 
 
+def stump(c, A):
+    """The tower burnt out to a stump: the far wall's inside, a charred floor, the near wall up to a stepped broken
+    top (a band of bare stone under it where the plaster fell)."""
+    C = P(A, -0.45, -0.45, 0)
+    front_tops = [21, 26, 24, 17, 12, 9, 13, 18, 15, 11, 8, 10]
+    back_tops = [27, 31, 29, 24, 20, 17, 21, 26, 23, 19, 15, 17]
+
+    def top(n, tops):
+        phi = np.arcsin(np.clip(n, -1, 1)) + math.pi / 2
+        return np.asarray(tops, float)[np.minimum((phi / (math.pi / len(tops))).astype(int), len(tops) - 1)]
+
+    def arc(z, inset=0.0):
+        r = TW_RB + (TW_RT - TW_RB) * z / TW_H - inset
+        hx, hy = 32.0 * math.sqrt(2) * r, 16.0 * math.sqrt(2) * r
+        xs = np.arange(int(C[0] - hx) - 1, int(C[0] + hx) + 2)
+        n = (xs + 0.5 - C[0]) / hx
+        ok = np.abs(n) <= 1
+        return xs[ok], n[ok], hy
+
+    def put(xs, ys, rgb):
+        c[ys, xs, :3] = rgb
+        c[ys, xs, 3] = 255
+
+    # the far wall's inside, its left half in shade (it faces right)
+    for zi in range(3 * 4, int(max(back_tops) * 4) + 1):
+        z = zi / 4.0
+        xs, n, hy = arc(z, 0.07)
+        ys = np.floor(C[1] - z - hy * np.sqrt(1 - n * n)).astype(int)
+        tb = top(n, back_tops)
+        m = z <= tb
+        rgb = np.array([PLASTER_T[min(int(b) + 1, 4)] for b in _band(-n)])
+        rgb[z > tb - 1.0] = STONE_T[1]
+        put(xs[m], ys[m], rgb[m])
+    # the floor: charred debris inside the ring
+    xs, n, hy = arc(3.0, 0.07)
+    for x, nn in zip(xs, n):
+        h = hy * math.sqrt(1 - nn * nn)
+        for y in range(int(math.floor(C[1] - 3 - h)) + 1, int(math.floor(C[1] - 3 + h)) + 1):
+            beam = abs(((x - C[0]) - (y - C[1]) * 2.0) % 13.0 - 3.0) < 1.0
+            put(np.array([x]), np.array([y]), CHAR * 0.8 if beam else DEBRIS)
+    # the near wall, up to its broken top
+    for zi in range(0, int(max(front_tops) * 4) + 1):
+        z = zi / 4.0
+        xs, n, hy = arc(z)
+        ys = np.floor(C[1] - z + hy * np.sqrt(1 - n * n)).astype(int)
+        tf = top(n, front_tops)
+        m = z <= tf
+        band = _band(n)
+        if z < 7:
+            rgb = np.array([STONE_T[b if z < 6 else min(b + 1, 4)] for b in band])
+            if abs(z - 3.0) < 0.3 or z < 0.3:
+                rgb[:] = [STONE_T[min(b + 2, 4)] for b in band]
+        else:
+            rgb = np.array([PLASTER_T[b] for b in band])
+        bare = (z > tf - 3.0) & (z >= 7)
+        if bare.any():
+            rgb[bare] = np.array([STONE_T[min(b + 1, 4)] for b in band[bare]])
+        rgb[z > tf - 0.75] = STONE_T[0]
+        door = (n >= -0.52) & (n <= -0.2) & (z <= 11.0)
+        rgb[door] = CHAR * 0.6
+        put(xs[m], ys[m], rgb[m])
+    return c
+
+
+def fallen_sail(A):
+    """One sail lying on the ground across the tower's foot: stock, rails and crossbars, its cloth partly burnt."""
+    hi = Hi()
+    g0 = (-1.45, 0.16)
+
+    def Q(s, t):
+        return P(A, g0[0] + s / 32.0, g0[1] + t / 32.0, 0.6)
+
+    s0, w, L = 4.0, SAIL_W, SAIL_L * 0.92
+    span = (L - s0) / 5.0
+    for i in range(5):
+        for j in range(2):
+            if (i, j) in ((1, 1), (3, 0)):
+                continue
+            sa, sb = s0 + span * i, s0 + span * (i + 1)
+            ta, tb = -1.0 - (w - 1.0) * j / 2, -1.0 - (w - 1.0) * (j + 1) / 2
+            tone = CLOTH_SH if (i + j) % 3 else CLOTH_SH * 0.7 + CHAR * 0.3
+            hi.poly([Q(sa, ta), Q(sb, ta), Q(sb, tb), Q(sa, tb)], tone)
+    for t in (-1.0 - (w - 1.0) / 2, -w):
+        hi.bar(Q(s0, t), Q(L, t), 1.3, WOOD_DK, 2.2)
+    for i in range(6):
+        hi.bar(Q(s0 + span * i, -0.6), Q(s0 + span * i, -w - 0.5), 1.3, WOOD_DK, 2.2)
+    hi.bar(Q(0.0, 0.0), Q(L + 2.0, 0.0), 2.2, STOCK, 3.0)
+    hi.poly([Q(-1.0, -1.2), Q(-3.0, 0.2), Q(-1.0, 1.2)], STOCK, 3.0)      # its splintered root
+    return hi.down()
+
+
 def windmill(state, frame=0):
     c = np.zeros((CH, CW, 4))
     A = A0
+    if state == "ruins":
+        stump(c, A)
+        over(c, fallen_sail(A))
+        return c, A
     tower(c, A, state)
     over(c, cap(A, state))
     if state == "damaged":
@@ -489,9 +586,9 @@ def _water_fn(run, frame):
     return fn
 
 
-def wheel(A, units, broken=False):
+def wheel(A, units, broken=False, stub=False):
     """Three layers (back: rim and dark inside; mid: paddles; front: spokes, rim, hub), each clipped at its plane's
-    water line, composed back to front."""
+    water line, composed back to front. stub: only its lowest 11 px stand (the ruins), no hub."""
     W = SETS["watermill"][0][0]
     gx = -W + WHEEL_AT
     layers = []
@@ -517,7 +614,8 @@ def wheel(A, units, broken=False):
     R = WHEEL_R
     back = Hi()
     disk = [at(WHEEL_B, (R - 3) * math.cos(a), (R - 3) * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 40)]
-    back.poly(disk, WHEEL_IN)
+    if not stub:
+        back.poly(disk, WHEEL_IN)
     ring(back, WHEEL_B, R - 3, R, tone=WOOD_DK)
     layers.append((back, WHEEL_B))
     mid = Hi()
@@ -541,8 +639,9 @@ def wheel(A, units, broken=False):
                   1.8, WOOD, 2.5)
     ring(front, WHEEL_F, R - 3, R, skip=(13, 14) if broken else ())
     hub = at(WHEEL_F, 0, 0)
-    front.blob(hub, 3.4, 3.0, WOOD_DK, 4.0)
-    front.blob(hub, 1.5, 1.3, IRON, 5.0)
+    if not stub:
+        front.blob(hub, 3.4, 3.0, WOOD_DK, 4.0)
+        front.blob(hub, 1.5, 1.3, IRON, 5.0)
     layers.append((front, WHEEL_F))
     out = np.zeros((CH, CW, 4))
     for hi, c in layers:
@@ -551,6 +650,11 @@ def wheel(A, units, broken=False):
         wl = A[1] + ((xs - A[0]) / 32.0 + 2 * c) * 16.0 + 1.0     # the water line (z = -1) in plane c
         yy = np.arange(CH)[:, None] + 0.5
         img[yy > wl[None, :]] = 0
+        if stub:
+            img[yy < wl[None, :] - 11.0] = 0
+            al = img[..., 3] > 0
+            top = al & ~np.pad(al, ((1, 0), (0, 0)))[:-1]
+            img[top, :3] = CHAR * 0.8                            # the broken, charred top
         over(out, img)
     return out
 
@@ -573,8 +677,11 @@ def foam(c, A, frame):
     return c
 
 
-def watermill(state, frame=0):
+def watermill(state, frame=0, bare=False):
+    """bare: the building alone, without the race and wheel (for the base-corner check)."""
     W, D = SETS["watermill"][0]
+    if state == "ruins":
+        return watermill_ruins()
     o, wh, zr = WM_O, WM_WH, WM_ZR
     A = A0
     c = np.zeros((CH, CW, 4))
@@ -607,49 +714,96 @@ def watermill(state, frame=0):
         x = P(A, -W + 60 / 32.0, 0, 0)[0]
         yb = P(A, -W + 60 / 32.0, 0, 16)[1]
         c = warehouse.scorch(c, x - 7, x + 7, yb - 6, yb)
-    # the race: water sunk a px, its end and front kerbs; the wheel in it, foam at its foot, the front kerb over it
+    if not bare:
+        race(c, A, frame if not dmg else 0, wheel(A, frame if not dmg else 0, broken=dmg))
+    return c, A
+
+
+def race(c, A, frame, wheel_img, with_foam=True):
+    """The race: water sunk a px, its end and front kerbs; the wheel in it, foam at its foot, the front kerb over it."""
+    W = SETS["watermill"][0][0]
     r0, r1, rw = RACE
     rx0, rlen = -W + r0, r1 - r0
-    face(c, A, (rx0, 0, -1), (rlen, 0, 0), (0, rw, 0), _water_fn(rlen * 32.0, frame if not dmg else 0))
+    face(c, A, (rx0, 0, -1), (rlen, 0, 0), (0, rw, 0), _water_fn(rlen * 32.0, frame))
     face(c, A, (rx0 + rlen, 0, -1), (0, rw, 0), (0, 0, 3), _stone_fn(rw * 32.0, True, 6.0))
-    over(c, wheel(A, frame if not dmg else 0, broken=dmg))
-    foam(c, A, frame if not dmg else 0)
+    over(c, wheel_img)
+    if with_foam:
+        foam(c, A, frame)
     face(c, A, (rx0, rw, -1), (rlen, 0, 0), (0, 0, 3), _stone_fn(rlen * 32.0, False))
     face(c, A, (rx0, rw, 2), (rlen, 0, 0), (0, 0.06, 0), _stone_fn(rlen * 32.0, False, 99.0))
+    return c
+
+
+# --- ruins: drawn on the plot, clean (no rubble spray) ---------------------------------------------------------------
+DEBRIS = np.array([112, 90, 72.0])
+DEBRIS_DK = np.array([92, 72, 58.0])
+
+
+def _ruined(fn, run, height, tops, step=7.0):
+    """A wall's fn cut down to a stepped broken top (tops: px, one per `step` px along it), its top row charred."""
+    tops = np.asarray(tops, float)
+
+    def g(s, t):
+        rgb, keep = fn(s, t)
+        u, v = s * run, t * height
+        top = tops[np.minimum((u // step).astype(int), len(tops) - 1)]
+        keep = keep & (v <= top)
+        rgb[v > top - 1.0] = CHAR * 0.85
+        return rgb, keep
+    return g
+
+
+def _floor_fn(run):
+    def fn(s, t):
+        u = s * run
+        return _pick([((u % 9.0) < 1.0, DEBRIS_DK)], DEBRIS), np.ones(len(s), bool)
+    return fn
+
+
+def _inner_fn(shade):
+    def fn(s, t):
+        return _pick([(t < 0.2, STONE_T[2])], PLASTER_T[2]) * shade, np.ones(len(s), bool)
+    return fn
+
+
+def watermill_ruins():
+    """Low burnt walls with stepped broken tops (the back and west walls' insides showing), a charred floor, half the
+    roof fallen in from the back wall, and the wheel's stub in the race."""
+    W, D = SETS["watermill"][0]
+    A = A0
+    c = np.zeros((CH, CW, 4))
+    face(c, A, (-W, -D, 0.5), (W, 0, 0), (0, D, 0), _floor_fn(W * 32.0))
+    hb = 16.0
+    face(c, A, (-W, -D, 0), (W, 0, 0), (0, 0, hb),
+         _ruined(_inner_fn(0.85), W * 32.0, hb, [12, 15, 16, 13, 9, 11, 14, 10, 7, 9, 12]))
+    face(c, A, (-W, -D, 0), (0, D, 0), (0, 0, hb),
+         _ruined(_inner_fn(0.7), D * 32.0, hb, [13, 16, 12, 10, 8, 11, 9, 7, 6]))
+    # the roof's back half, fallen in: from the back wall's top down onto the floor, its lower edge broken
+    run, depth = (W - 0.75) * 32.0, D * 0.42
+
+    def roof(s, t):
+        rgb, keep = _roof_fn(run, depth * 32.0, False)(s, 1 - t)
+        edge = _noise(s * run / 5.0, np.zeros(len(s)))
+        rgb[t > 0.72 - 0.25 * edge] = CHAR * 0.85
+        return rgb, keep & ~(t > 0.82 - 0.25 * edge)
+    face(c, A, (-W + 0.3, -D + 0.06, 12.0), (W - 0.75, 0, 0), (0, depth, -10.0), roof)
+    hi = Hi()
+    for a, b in (((-2.0, -0.7, 1.5), (-1.3, -0.3, 1.5)), ((-1.0, -0.45, 1.5), (-0.45, -1.0, 2.5))):
+        hi.bar(P(A, *a), P(A, *b), 1.8, CHAR * 0.9)              # two charred beams lying on the floor
+    over(c, hi.down())
+    face(c, A, (0, 0, 0), (0, -D, 0), (0, 0, WM_WH),
+         _ruined(_wall_fn(D * 32.0, [D * 16.0], [(10, 15, 10, 15, "char")], True), D * 32.0, WM_WH,
+                 [17, 14, 11, 8, 10, 7, 9, 12, 6]))
+    left_open = [(18, 23, 10, 15, "char"), (34, 39, 10, 15, "char"), (57, 63, 3, 15, "char")]
+    face(c, A, (-W, 0, 0), (W, 0, 0), (0, 0, WM_WH),
+         _ruined(_wall_fn(W * 32.0, [25.6, 51.2], left_open, False), W * 32.0, WM_WH,
+                 [10, 8, 6, 9, 12, 8, 5, 7, 11, 9, 13, 16]))
+    race(c, A, 0, wheel(A, 0, broken=True, stub=True), with_foam=False)
     return c, A
 
 
 # --- sets ------------------------------------------------------------------------------------------------------------
 DRAW = {"windmill": windmill, "watermill": watermill}
-
-
-def ruins(name, shape, A):
-    """The source set's approved ruins on this plot: scaled k (palette snapped, outlined), footprint centres met."""
-    fp, _, _, src_name, k = SETS[name]
-    sm = convert.json.load(open(B / "manifest.json", encoding="utf-8"))[src_name]
-    src = Image.open(B / src_name / "ruins.png").convert("RGBA")
-    Ws, Ds = sm["footprint"]
-    As = sm["anchor"]
-    if abs(k - 1.0) > 1e-6:
-        nw, nh = round(src.width * k), round(src.height * k)
-        small = src.convert("RGBa").resize((nw, nh), Image.LANCZOS).convert("RGBA")
-        al = np.array(small.getchannel("A")) >= 120
-        pal = src.convert("RGB").quantize(colors=32, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-        q = small.convert("RGB").quantize(palette=pal, dither=Image.Dither.NONE).convert("RGB")
-        a = np.zeros((nh, nw, 4))
-        a[..., :3] = np.array(q)
-        a[..., 3] = np.where(al, 255, 0)
-        a = bridges.outline(a)
-    else:
-        a = np.array(src).astype(float)
-    W, D = fp
-    cx = A[0] + 16 * (D - W) - k * 16 * (Ds - Ws)
-    cy = A[1] - 8 * (W + D) + k * 8 * (Ws + Ds)
-    ox, oy = int(round(cx - As[0] * k)), int(round(cy - As[1] * k))
-    out = np.zeros(shape)
-    h, w = a.shape[:2]
-    out[oy:oy + h, ox:ox + w] = a
-    return out
 
 
 def loop_check(name):
@@ -660,14 +814,14 @@ def loop_check(name):
 
 
 def make(name, out_dir, debug=None):
-    fp, height, seed, _, _ = SETS[name]
+    fp, height, seed, fps = SETS[name]
     frames = []
     A = None
     for f in range(FRAMES):
         img, A = DRAW[name]("intact", f)
         frames.append(img)
     damaged, _ = DRAW[name]("damaged")
-    rn = ruins(name, frames[0].shape, A)
+    rn, _ = DRAW[name]("ruins")
     al = np.zeros(frames[0].shape[:2], bool)
     for v in frames + [damaged, rn]:
         al |= v[..., 3] > 0
@@ -676,8 +830,8 @@ def make(name, out_dir, debug=None):
     y1 = max(ys.max() + 1 + PAD, A[1] + 11)
     cut = lambda v: v[y0:y1, x0:x1]
     A = (int(A[0] - x0), int(A[1] - y0))
-    done = bridges.finish([cut(v) for v in frames] + [cut(damaged)], None)
-    stills = {"intact": done[0], "damaged": done[FRAMES], "ruins": np.clip(cut(rn), 0, 255).astype(np.uint8)}
+    done = bridges.finish([cut(v) for v in frames] + [cut(damaged), cut(rn)], None)
+    stills = {"intact": done[0], "damaged": done[FRAMES], "ruins": done[FRAMES + 1]}
     idle = np.concatenate(done[:FRAMES], 1)
     d = out_dir / name
     d.mkdir(parents=True, exist_ok=True)
@@ -686,9 +840,14 @@ def make(name, out_dir, debug=None):
     Image.fromarray(idle, "RGBA").save(d / "idle.png")
     h, w = done[0].shape[:2]
     diff = loop_check(name)
-    print(name, "size", [w, h], "anchor", list(A), "frames", FRAMES, "fps", FPS,
+    corners = warehouse.corner_errors(done[0].astype(float), A, fp)
+    if name == "watermill":
+        bare, _ = watermill("intact", 0, bare=True)
+        corners = {"with race": corners,
+                   "walls alone": warehouse.corner_errors(bridges.outline(cut(bare)), A, fp)}
+    print(name, "size", [w, h], "anchor", list(A), "frames", FRAMES, "fps", fps,
           "loop: frame %d vs frame 0 differs in %d px" % (FRAMES, diff),
-          "base corners off by", warehouse.corner_errors(done[0].astype(float), A, fp))
+          "base corners off by", corners)
     if debug:
         debug.mkdir(parents=True, exist_ok=True)
         sheet = np.zeros((h, w * 3 + 20, 4))
@@ -697,7 +856,7 @@ def make(name, out_dir, debug=None):
         warehouse._dbg(sheet, debug / (name + "_states.png"), 3)
         warehouse._dbg(idle.astype(float), debug / (name + "_idle.png"), 2)
     return {"size": [w, h], "footprint": fp, "anchor": list(A), "height": height, "seed": seed, "kind": "HOUSE",
-            "role": "farm", "tag": name, "frames": FRAMES, "fps": FPS}
+            "role": "farm", "tag": name, "frames": FRAMES, "fps": fps}
 
 
 if __name__ == "__main__":

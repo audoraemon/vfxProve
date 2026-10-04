@@ -61,5 +61,7 @@
 	"tree_5": {"size": [59, 61], "footprint": [0.7, 0.7], "anchor": [28, 51], "height": 32, "seed": 5, "kind": "TREE", "role": "decor", "tag": "", "frames": 4, "fps": 3},
 	"oak_1": {"size": [50, 66], "footprint": [0.45, 0.45], "anchor": [19, 56], "height": 27, "seed": 1, "kind": "TREE", "role": "decor", "tag": "oak", "frames": 4, "fps": 3},
 	"oak_2": {"size": [52, 63], "footprint": [0.45, 0.45], "anchor": [21, 53], "height": 27, "seed": 2, "kind": "TREE", "role": "decor", "tag": "oak", "frames": 4, "fps": 3},
-	"oak_3": {"size": [53, 57], "footprint": [0.45, 0.45], "anchor": [22, 47], "height": 25, "seed": 3, "kind": "TREE", "role": "decor", "tag": "oak", "frames": 4, "fps": 3}
+	"oak_3": {"size": [53, 57], "footprint": [0.45, 0.45], "anchor": [22, 47], "height": 25, "seed": 3, "kind": "TREE", "role": "decor", "tag": "oak", "frames": 4, "fps": 3},
+	"bridge_stone": {"size": [339, 206], "footprint": [2.0, 7.6], "anchor": [80, 184], "height": 6, "seed": 61, "kind": "BRIDGE", "role": "bridge", "tag": "stone", "keep_flames": true},
+	"dock": {"size": [152, 102], "footprint": [3.0, 1.0], "anchor": [108, 90], "height": 3, "seed": 62, "kind": "BRIDGE", "role": "dock", "tag": "dock"}
 }

@@ -9,7 +9,8 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_1", "stall_1_red", "stall_1_blue", "stall_1_cream", "stall_2", "stall_2_red", "stall_2_blue",
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
-	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3"]
+	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
+	"bridge_stone", "dock"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -765,7 +766,7 @@ static func _battered(sprites: bool) -> String:
 ## when its set is in the manifest; a missing one falls back to "" (procedural).
 static func _batch3(t) -> void:
 	var hidden := _hide("stall_")
-	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_"]:
+	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock"]:
 		hidden.merge(_hide(prefix))
 	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
 		var s := _make(r, h, k, sd, role, tag)
@@ -912,22 +913,62 @@ static func _tree_variety(t) -> void:
 
 
 ## Bridge, dock and fields are flat: with a sprite they stay on the ground layer, under the people who walk on them.
+## The bridge and dock draw their real sets (the town's own footprints, unmirrored; the bridge's procedural torch flames
+## burn over its piers); a field borrows a set's textures under a fake name.
 static func _flat_sprites(t) -> void:
 	SpriteArt.set_enabled(true)
-	var cases := [
-		[Rect2(0, 0, 2.0, 1.0), 6.0, K.BRIDGE, &"bridge", &"stone", "bridge_stone"],
-		[Rect2(0, 0, 2.0, 1.0), 4.0, K.BRIDGE, &"dock", &"dock", "dock"],
-		[Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, &"farm", &"", "field_0"],
+	var real := [
+		[TownLayout.BRIDGE, 6.0, &"bridge", &"stone", "bridge_stone"],
+		[TownLayout.DOCK, TownLayout.DOCK_H, &"dock", &"dock", "dock"],
 	]
-	for c in cases:
-		var fakes := _fake([c[5]])
-		# Borrow a real set's textures under the fake name so the structure is truly sprite-drawn.
-		SpriteArt._sets[c[5]] = SpriteArt.sprite("smithy")
-		var d := _make(c[0], c[1], c[2], 5, c[3], c[4])
-		if c[2] == K.FARM_FIELD:
-			d.art.crop = 0
-			d.refresh_sprite()
-		t.check(not d.sprite.is_empty(), "%s is drawn from a sprite" % c[5])
-		t.check(d.z_index == -1 and d.walkable, "%s with a sprite stays on the ground layer, walkable" % c[5])
+	for c in real:
+		var d := _make(c[0], c[1], K.BRIDGE, 5, c[2], c[3])
+		t.check(SpriteArt.name_for(d) == c[4] and not d.sprite.is_empty() and not d.sprite.mirror,
+			"%s is drawn from its own set, unmirrored" % c[4])
+		t.check(d.z_index == -1 and d.walkable, "%s with a sprite stays on the ground layer, walkable" % c[4])
+		_below_person(t, d, c[4])
 		d.free()
-		_unfake(fakes)
+	var bridge := _make(TownLayout.BRIDGE, 6.0, K.BRIDGE, 5, &"bridge", &"stone")
+	t.check(bool(bridge.sprite.keep_flames) and bridge._flame_tips().size() == 8,
+		"the sprite bridge keeps its eight procedural torch flames")
+	bridge.free()
+	var fakes := _fake(["field_0"])
+	# Borrow a real set's textures under the fake name so the field is truly sprite-drawn.
+	SpriteArt._sets["field_0"] = SpriteArt.sprite("smithy")
+	var f := _make(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, 5, &"farm")
+	f.art.crop = 0
+	f.refresh_sprite()
+	t.check(not f.sprite.is_empty(), "field_0 is drawn from a sprite")
+	t.check(f.z_index == -1 and f.walkable, "field_0 with a sprite stays on the ground layer, walkable")
+	f.free()
+	_unfake(fakes)
+
+
+## A person standing on `s` (a sprite bridge or dock) draws above every view of it: in one world, the structure's
+## views' final z (relative z added up) is below the person's, so the walkers stay in sight whatever the y-sort says.
+static func _below_person(t, s: Structure, n: String) -> void:
+	var world := Node2D.new()
+	world.add_child(s)
+	s._sync_sprite()
+	var p := Person.new()
+	p.ground_pos = s.footprint.get_center()
+	world.add_child(p)
+	var views := s.get_children().filter(func(v): return v is SpriteView)
+	var ok := not views.is_empty()
+	for v: SpriteView in views:
+		ok = ok and _final_z(v) < _final_z(p)
+	t.check(ok, "%s: its sprite draws below a person on it (z %s < %d)" % [n, views.map(_final_z), _final_z(p)])
+	world.remove_child(s)
+	p.free()
+	world.free()
+
+
+static func _final_z(n: Node) -> int:
+	var z := 0
+	var c: Node = n
+	while c is CanvasItem:
+		z += (c as CanvasItem).z_index
+		if not (c as CanvasItem).z_as_relative:
+			break
+		c = c.get_parent()
+	return z

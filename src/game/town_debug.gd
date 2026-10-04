@@ -46,6 +46,14 @@ const TOWN_SHOTS := [
 	# The forest ring outside the west wall, and the oaks between the west district's cottages.
 	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
 	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],
+	# The south road's stone bridge and the dock below the postern, people on them (_stage_shot); then cracked and
+	# fallen (kept last: they break the bridge and the dock for any shot after them).
+	["town_bridge.png", Vector2(2.7, 22.2), 1.3],
+	["town_dock.png", Vector2(-5.6, 20.0), 2.0],
+	["town_bridge_damaged.png", Vector2(2.7, 22.2), 1.3],
+	["town_dock_damaged.png", Vector2(-5.6, 20.0), 2.0],
+	["town_bridge_ruins.png", Vector2(2.7, 22.2), 1.3],
+	["town_dock_ruins.png", Vector2(-5.6, 20.0), 2.0],
 ]
 ## [time, power key, ground point] for --citadel-test.
 const CITADEL_CASTS := [
@@ -239,6 +247,7 @@ func _capture_town(only := "", frames := 1) -> void:
 			continue
 		_bf.camera.zoom = Vector2.ONE * float(shot[2])
 		_bf.camera.position = (Iso.ground_to_screen(shot[1]) + Vector2(0, -30)).round()
+		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
 		if frames <= 1:
 			await _bf.save_capture(shot[0])
@@ -247,6 +256,30 @@ func _capture_town(only := "", frames := 1) -> void:
 			await _bf.save_capture(String(shot[0]).replace(".png", "_%d.png" % i))
 			await _bf.wait_frames(15)
 	await _bf.quit()
+
+
+## Dev staging for the bridge and dock shots: a few citizens set down along the bridge's road or on the dock's planks
+## (they walk on from there), and for the _damaged / _ruins shots the structure cracked or brought down first.
+func _stage_shot(file: String) -> void:
+	var s: Structure = null
+	if file.begins_with("town_bridge"):
+		s = _town.bridge
+	elif file.begins_with("town_dock"):
+		s = _town.dock
+	if not is_instance_valid(s) or not is_instance_valid(_crowd):
+		return
+	var r := s.footprint
+	var n := 6 if s == _town.bridge else 3
+	for i in mini(n, _crowd.citizens.size()):
+		var p: Person = _crowd.citizens[i]
+		var k := (float(i) + 0.5) / float(n)
+		p.ground_pos = r.position + r.size * (Vector2(0.5 + 0.25 * (float(i % 2) - 0.5), k) if r.size.y > r.size.x 			else Vector2(k, 0.5))
+		p._sync_position()
+	if file.ends_with("_damaged.png"):
+		s.crack()
+	elif file.ends_with("_ruins.png"):
+		s.destroy(s.center(), &"stone")
+		await _bf.wait_frames(240)
 
 
 ## Scripted strikes on the Citadel: the titan's punches, a volcano beside it, then novas, the titan again and an

@@ -24,6 +24,12 @@ func town(n: NightState) -> ResponseProfile:
 	return make_town.call(n) if make_town.is_valid() else ResponseProfile.unaware()
 
 
+## The town this act will play, whatever difficulty is passed: the night sets it, so Prepare's strip between acts shows
+## the town the act really meets (a rung bell: Organized), not The Long Night's first, sleeping one.
+func response_profile(_chosen: ResponseProfile.Tier) -> ResponseProfile:
+	return town(night if night != null else NightState.new())
+
+
 func is_last() -> bool:
 	return next.is_empty()
 

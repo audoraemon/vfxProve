@@ -58,3 +58,21 @@ static func run(t) -> void:
 		if o is EscapeLimitObjective:
 			limit = (o as EscapeLimitObjective).limit
 	t.check(limit == 40, "Act III's escape limit is the night's (%d)" % limit)
+
+	# Prepare between acts (v0.09) shows the town the act will play: an act's response profile is its town for the
+	# night so far, whatever difficulty is passed; the mission itself still shows Unaware on the board and first Prepare.
+	var ln := MissionBook.long_night()
+	var fest := ln.act("festival")
+	fest.night = NightState.new()
+	fest.night.bell_rang = true
+	var warned := fest.response_profile(ResponseProfile.Tier.PREPARED)
+	t.check(warned.tier == ResponseProfile.Tier.ORGANIZED and warned.title == "",
+		"after a rung bell the Festival's Prepare shows Organized (%s)" % warned.tier_name())
+	fest.night = NightState.new()
+	t.check(fest.response_profile(ResponseProfile.Tier.ORGANIZED).tier_name() == "Unaware",
+		"with a quiet night it shows Unaware (%s)" % fest.response_profile(ResponseProfile.Tier.ORGANIZED).tier_name())
+	fest.night = null
+	t.check(fest.response_profile(ResponseProfile.Tier.ORGANIZED).tier_name() == "Unaware",
+		"and with no night yet, a fresh night's town")
+	t.check(ln.response_profile(ResponseProfile.Tier.PREPARED).tier_name() == "Unaware",
+		"the Long Night itself still shows Unaware on the board and the first Prepare")

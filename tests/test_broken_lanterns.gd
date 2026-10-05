@@ -85,6 +85,7 @@ static func run(t) -> void:
 	_prayers(t)
 	_knights(t)
 	_kneelers(t)
+	_kneel_topup(t)
 	_focus(t)
 
 
@@ -384,6 +385,72 @@ static func _kneelers(t) -> void:
 		else:
 			t.check(rules.won and d.last_kneelers == 0 and not earned, "drawn away first: won, without the bonus")
 		_done(s)
+
+
+## Task 8 fix: the kneelers are topped up every TICK. Few free at five drained, only those kneel; as the rest come back
+## out they are called up to KNEELERS, and the dead are replaced. The Vigil's walkers and a Faithful the god holds are
+## never taken, and every kneeler has a place of their own. (Breaks and deaths stir the crowd's minds even headless, so
+## the test calms the rest by hand before each look, standing for their coming back to their feet.)
+static func _kneel_topup(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	var crowd: Crowd = s.crowd
+	_away(d)
+	var walking := d.vigil.walkers()
+	var out: Array[Person] = []
+	var held: Array[Person] = []
+	for f in d.faithful:
+		if walking.has(f):
+			continue
+		if out.size() < 4 and not f.inside and f.mind in BrokenLanternsDirector.RESUMABLE:
+			out.append(f)
+		else:
+			f.inside = true
+			held.append(f)
+	for i in 5:
+		_break(d.shrines[i])
+	_run(s, BrokenLanternsDirector.DRAIN_SECONDS + 0.5)
+	var only_free := d.kneel_shrine == d.shrines[5] and not d.kneelers.is_empty() and d.kneelers.size() <= out.size()
+	for p in d.kneelers:
+		only_free = only_free and out.has(p)
+	t.check(only_free, "five drained with four Faithful out: only the free kneel (%d)" % d.kneelers.size())
+	for f in held:
+		f.inside = false
+	_calm(d, walking)
+	var held_by_god := held[0]
+	held_by_god.confuse(15.0)
+	_run(s, BrokenLanternsDirector.TICK + DT)
+	var room := {}  # place -> kneelers it still has room for (open ground may join two of the rings' places)
+	for place in d._kneel_places(d.kneel_shrine):
+		room[place] = int(room.get(place, 0)) + 1
+	var own_place := true
+	var busy_taken := false
+	for p in d.kneelers:
+		var at: Vector2 = d.praying[p][1]
+		room[at] = int(room.get(at, 0)) - 1
+		own_place = own_place and int(room[at]) >= 0
+		busy_taken = busy_taken or walking.has(p) or p == held_by_god
+	t.check(d.kneelers.size() == BrokenLanternsDirector.KNEELERS and own_place and not busy_taken,
+		"back out, the rest are called up to fifteen, each to a place of their own, nobody busy taken (%d)"
+		% d.kneelers.size())
+	var lost: Array[Person] = []
+	lost.assign(d.kneelers.slice(0, 3))
+	for v in lost:
+		crowd._field.kill(v, &"stone")
+	_calm(d, walking)
+	_run(s, BrokenLanternsDirector.TICK * 2.0 + DT)
+	var refilled := d.kneelers.size() == BrokenLanternsDirector.KNEELERS
+	for p in d.kneelers:
+		refilled = refilled and _alive(p) and not lost.has(p) and d.praying.has(p) and p != held_by_god
+	t.check(refilled, "kneelers killed are replaced by the free living (%d)" % d.kneelers.size())
+	_done(s)
+
+
+## The living Faithful not walking the Vigil, kneeling or held by the god, back on their feet (calm).
+static func _calm(d: BrokenLanternsDirector, walking: Array[Person]) -> void:
+	for f in d.faithful:
+		if _alive(f) and not walking.has(f) and not d.kneelers.has(f) and f.mind != Person.Mind.CONFUSED:
+			f.mind = Person.Mind.CALM
 
 
 ## Review focus 2 and 5: the last shrine already broken when the fifth drains; the Faithful run out.

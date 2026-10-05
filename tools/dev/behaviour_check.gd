@@ -59,7 +59,8 @@ extends SceneTree
 ##   lanterns  (v0.10 M3) Broken Lanterns, --case=none (nothing cast) or play (Heaven Splitter, Dragonfire Parade and
 ##          Silent Doom: lay the Splitter through two shrines where it can, else one, crossing the fewest people; doom
 ##          the called bellkeeper and the flame-bearer while a shrine drains; the Parade only when the Splitter would
-##          come too late for dawn). --seed= picks the town.
+##          come too late for dawn), or bonus (play, but the last shrine is struck only once ten kneel by it, or
+##          when dawn would come too soon to wait). --seed= picks the town.
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -130,6 +131,8 @@ const LANTERN_DIRS := 8
 ## The Dragonfire Parade burns a street, so the policy sends it only when the Splitter would come too late for the shrine
 ## it breaks to drain before dawn, with this many seconds to spare.
 const LANTERN_DRAGON_SPARE := 5.0
+## `bonus` waits for the kneelers only while the night still leaves this many seconds beyond a drain and that spare.
+const LANTERN_BONUS_SPARE := 10.0
 
 var mission: Mission
 
@@ -1014,7 +1017,8 @@ func _miras(which: String) -> void:
 ## else on one shrine's centre (its core kills the Knights beside it), turned whichever way crosses the fewest people:
 ## each seen death feeds the Gaze. The Dragonfire Parade burns a street, so it goes out only when the Splitter's
 ## cooldown would leave too little night for a shrine to drain, on the standing shrine with the fewest people near.
-## `none` casts nothing.
+## `bonus` plays the same, but holds its Ruin off the kneelers' shrine until ten kneel by it (Through the faithful), or
+## until dawn is too near to wait. `none` casts nothing.
 func _lanterns(which: String) -> void:
 	var rules: Rules = mission._rules
 	var d := rules.director as BrokenLanternsDirector
@@ -1035,13 +1039,17 @@ func _lanterns(which: String) -> void:
 			report_at += 10.0
 			print("BEHAVIOUR lanterns t=%d drained=%d broken=%d relit=%d praying=%d gaze=%d knights=%d" % [roundi(t),
 				d.drained_count(), d.drain_left.size(), d.relit, d.praying_count(), roundi(d.gaze.value), d.living_knights()])
-		if which != "play" or frames % LOOK_FRAMES != 0:
+		if not which in ["play", "bonus"] or frames % LOOK_FRAMES != 0:
 			continue
 		if _slot_ready(rules, slots, "doom"):
 			var mark := _lantern_doom_target(d, crowd)
 			if mark != null:
 				rules.cast(slots.doom, mark.ground_pos)
 				continue
+		if which == "bonus" and d.kneel_shrine != null and not d.kneel_shrine.destroyed \
+				and d.kneeling_near() < ThroughFaithfulObjective.NEED and rules.time_left \
+				> BrokenLanternsDirector.DRAIN_SECONDS + LANTERN_DRAGON_SPARE + LANTERN_BONUS_SPARE:
+			continue
 		if _slot_ready(rules, slots, "heaven"):
 			var line := _lantern_line(d, crowd)
 			if not line.is_empty():

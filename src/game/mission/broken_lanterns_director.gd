@@ -5,9 +5,10 @@ extends MissionDirector
 ## stayed broken DRAIN_SECONDS. The flame-bearer walks the Vigil round the six, turns aside for a broken shrine, and
 ## relights it if he reaches it first (it stands again). A drained shrine is gone for good. All six drained win the
 ## night. A death someone sees adds to Halcyon's Gaze, and the bell fills it. Faithful pray at the standing shrines, and
-## the prayer feeds the Gaze; at 1:30 four Lantern Knights come and guard the shrines; when five are drained, fifteen
-## Faithful kneel round the last one (the bonus, if the blow falls through ten of them). The shrines are this mission's
-## own: placed here, never in the shared town layout, and taken away with the town (Town._built).
+## the prayer feeds the Gaze; at 1:30 four Lantern Knights come and guard the shrines; when five are drained, up to
+## fifteen Faithful kneel round the last one, more coming as they are free (the bonus, if the blow falls through ten).
+## The shrines are this mission's own: placed here, never in the shared town layout, and taken away with the town
+## (Town._built).
 
 ## Where the six shrines stand, in the Vigil's order (ground units; each is moved to the nearest open ground). Each
 ## stands well beyond GUARD_REACH of the Temple's door, where the Knights come out, so no Knight guards one by
@@ -293,6 +294,7 @@ func _prayers_step(delta: float) -> void:
 	if _tick <= 0.0:
 		_tick = TICK
 		_tend_prayers()
+		_call_kneelers()
 		_tend_knights()
 	gaze.pray(praying_count(), delta * PRAYER_SCALE)
 	_kneeling_near = kneeling_near()
@@ -421,8 +423,8 @@ func kneeling_near() -> int:
 	return n
 
 
-## Five drained and the last shrine standing: KNEELERS Faithful kneel round it, once a night. They are whoever was
-## praying anywhere, and the nearest free others.
+## Five drained and the last shrine standing: it becomes the kneelers' shrine, once a night. Whoever was praying
+## anywhere is let go, free to kneel there with the others.
 func _maybe_kneel() -> void:
 	if kneel_shrine != null or drained.size() != shrines.size() - 1:
 		return
@@ -434,13 +436,34 @@ func _maybe_kneel() -> void:
 		return
 	kneel_shrine = last
 	praying.clear()
-	for place in _kneel_places(last):
-		var p := _free_faithful(last.center())
-		if p == null:
-			break
-		_send(p, last, place)
-		kneelers.append(p)
+	_call_kneelers()
 	rules.banner.emit("THE FAITHFUL KNEEL AT THE LAST LANTERN")
+
+
+## While the kneelers' shrine stands, each empty place round it (up to KNEELERS) takes the nearest free Faithful: at
+## five drained, then every TICK. So the dead are replaced, and those panicked, sheltering or held come to kneel once
+## back on their feet; the Vigil's walkers and anyone frightened or held are never taken (_free_faithful()).
+func _call_kneelers() -> void:
+	if kneel_shrine == null or kneel_shrine.destroyed:
+		return
+	var taken := {}  # place -> how many living kneelers hold it (open ground may join two places into one)
+	var living: Array[Person] = []
+	for p in kneelers:
+		if _alive(p) and praying.has(p):
+			living.append(p)
+			taken[praying[p][1]] = int(taken.get(praying[p][1], 0)) + 1
+	kneelers = living
+	for place in _kneel_places(kneel_shrine):
+		if kneelers.size() >= KNEELERS:
+			return
+		if int(taken.get(place, 0)) > 0:
+			taken[place] = int(taken[place]) - 1
+			continue
+		var p := _free_faithful(kneel_shrine.center())
+		if p == null:
+			return
+		_send(p, kneel_shrine, place)
+		kneelers.append(p)
 
 
 func _kneel_places(s: Structure) -> Array[Vector2]:

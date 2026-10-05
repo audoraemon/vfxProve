@@ -54,6 +54,8 @@ extends SceneTree
 ##   judgement (v0.08) Last Judgement played greedily with the default loadout: from 5 s, each slot is cast the moment
 ##          its rules allow it, at the next of a fixed ring of targets closing on the Citadel; a report every 30 s,
 ##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any)
+##   miras  (v0.10 M2) Mira's House, --case=none (nothing cast) or play (whisper the grieving in when nobody of the
+##          Faith watches the door; Discord on the nearest watcher).
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -150,6 +152,9 @@ func _run() -> void:
 		var case_arg := Battlefield.arg_value(args, "--case")
 		powers = PackedStringArray(WARNING_CASES.get(case_arg if case_arg != "" else "none", ["whisper"]))
 		mission.mission_id = MissionBook.WARNING
+	elif scenario == "miras":
+		powers = PackedStringArray(["whisper", "wisp", "discord"])
+		mission.mission_id = MissionBook.MIRAS_HOUSE
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
@@ -190,6 +195,8 @@ func _run() -> void:
 			await _gates("--hazard" in args, "--shots" in args)
 		"judgement":
 			await _judgement()
+		"miras":
+			await _miras(Battlefield.arg_value(args, "--case"))
 		"night":
 			await _night()
 		"warning":
@@ -904,6 +911,52 @@ const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whis
 	"mix": ["whisper", "discord", "doom"]}
 ## How far straight back toward the gate the whisper sends the messenger.
 const WARNING_WHISPER_BACK := 8.0
+
+
+## Mira's House (v0.10 M2), played by a simple policy: every tenth of a second, Discord on the nearest Faithful who can
+## see the door (when ready), else a whisper sending the nearest unread grieving citizen in reach to the door when nobody
+## of the Faith watches it. `none` casts nothing.
+func _miras(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as MirasHouseDirector
+	var slots := {}
+	for slot in rules.loadout.size():
+		if rules.key(slot) != "":
+			slots[rules.key(slot)] = slot
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	while not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t >= report_at:
+			report_at += 10.0
+			print("BEHAVIOUR miras t=%d believers=%d inside=%d gaze=%d reports=%d" % [roundi(t), d.believers_outside(),
+				d.inside().size(), roundi(d.gaze.value), d.reports_started])
+		if which != "play" or frames % 6 != 0:
+			continue
+		var watcher := d.faithful_seeing(d.door, MirasHouseDirector.SIGHT)
+		if watcher != null:
+			if slots.has("discord") and rules.refusal(slots.discord) == "":
+				rules.cast(slots.discord, watcher.ground_pos)
+			continue
+		if not slots.has("whisper") or rules.refusal(slots.whisper) != "":
+			continue
+		var best: Person = null
+		for g in d.grieving:
+			if not is_instance_valid(g) or not g.is_alive() or g.inside or d.believers.has(g) or g.shaken():
+				continue
+			if g.ground_pos.distance_to(d.door) > MindWhisperFx.REACH:
+				continue
+			if best == null or g.ground_pos.distance_to(d.door) < best.ground_pos.distance_to(d.door):
+				best = g
+		if best != null:
+			rules.cast(slots.whisper, best.ground_pos, {"target": best, "to": d.door})
+	var res := rules.result()
+	print("BEHAVIOUR miras result won=%s reason=%s time=%.1f believers=%d gaze=%d reports=%d" % [res.won, res.reason,
+		float(res.time), d.believers_outside(), roundi(d.gaze.value), d.reports_started])
 
 
 ## The Warning, played by one policy against the director's messenger (whoever carries the warning now: the

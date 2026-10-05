@@ -207,6 +207,12 @@ func _ready() -> void:
 			save.campaign = CampaignState.new()
 			save.campaign.ending = CampaignDef.FALSE_LANTERN
 			go_to(Screen.ENDING)
+		"miras":
+			# Mira's House as its intro lands (v0.10 M2), for the photograph of its HUD: the Gaze bar and the marks over the
+			# grieving (unpaused: the pause menu would cover them).
+			mission_id = MissionBook.MIRAS_HOUSE
+			loadout = MissionBook.miras_house().default_loadout
+			go_to(Screen.MISSION)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:

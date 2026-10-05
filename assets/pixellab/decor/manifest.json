@@ -27,5 +27,16 @@
 	"sheep_1": {"size": [32, 29], "anchor": [15, 28]},
 	"sheep_2": {"size": [32, 27], "anchor": [15, 26]},
 	"cow_1": {"size": [42, 46], "anchor": [18, 45]},
-	"cow_2": {"size": [43, 40], "anchor": [18, 39]}
+	"cow_2": {"size": [43, 40], "anchor": [18, 39]},
+	"bush_1": {"size": [20, 15], "anchor": [10, 14]},
+	"bush_2": {"size": [24, 13], "anchor": [12, 12]},
+	"bush_3": {"size": [14, 11], "anchor": [7, 10]},
+	"rock_1": {"size": [26, 23], "anchor": [11, 17]},
+	"rock_2": {"size": [28, 23], "anchor": [14, 17]},
+	"rock_3": {"size": [24, 24], "anchor": [14, 19]},
+	"flowers_1": {"size": [15, 9], "anchor": [7, 8]},
+	"flowers_2": {"size": [17, 10], "anchor": [8, 9]},
+	"flowers_3": {"size": [15, 9], "anchor": [7, 8]},
+	"reeds_1": {"size": [23, 30], "anchor": [11, 29]},
+	"reeds_2": {"size": [21, 30], "anchor": [10, 29]}
 }

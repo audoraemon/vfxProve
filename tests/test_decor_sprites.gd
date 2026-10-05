@@ -152,6 +152,17 @@ static func _paint(t) -> void:
 		"a barrel with a set paints from it")
 	var s := ArtKit.segments()
 	t.check(s.size() == 1 and s[0][0] == "tex" and s[0][2] == 1, "one textured quad, no polygons")
+	# A baked piece (origin zero) at a fractional ground point lands on whole pixels; a live one stays at -anchor.
+	var at := Vector2(2.31, 3.17)
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.BARREL, at, Vector2.ZERO, 5, Vector2.ZERO)
+	var q := ArtKit.last_quad()
+	t.check(q.size() == 2 and q[1] == q[1].round() and q[1].distance_to(Iso.ground_to_screen(at) - Vector2(5, 11)) <= 0.71,
+		"a baked still sits on the whole pixel nearest its point (got %s)" % [q])
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.BARREL, at, Vector2.ZERO, 5, Iso.ground_to_screen(at))
+	q = ArtKit.last_quad()
+	t.check(q.size() == 2 and q[1] == Vector2(-5, -11), "a live still sits at -anchor from its own point (got %s)" % [q])
 	ArtKit.begin()
 	t.check(not DecorSprites.paint(Decor.Kind.DOCK, Vector2(2, 3), Vector2.ZERO, 5, Vector2.ZERO),
 		"a kind without a set is left to the procedural art")

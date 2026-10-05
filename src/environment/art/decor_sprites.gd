@@ -231,5 +231,7 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 		return true
 	var flip := flipped(kind, seed_value)
 	var anchor: Vector2 = Vector2(d.size.x - d.anchor.x, d.anchor.y) if flip else d.anchor
-	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - anchor, Color.WHITE, flip)
+	# On whole pixels, as the procedural shrubs (TownFloor._shrubs rounds its point): a baked piece (origin zero) has a
+	# fractional ground point; a live one (origin its own ground point) is already whole.
+	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), (Iso.ground_to_screen(at) - origin - anchor).round(), Color.WHITE, flip)
 	return true

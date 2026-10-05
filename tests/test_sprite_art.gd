@@ -30,6 +30,7 @@ static func run(t) -> void:
 	_flames(t)
 	_toggle(t)
 	_bonfires(t)
+	_banners(t)
 	SpriteArt.set_enabled(true)
 
 
@@ -78,6 +79,20 @@ static func _bonfires(t) -> void:
 			"rebuilt, %s's flame plays again (state %s, still %s, playing %s)" % [n, tw.sprite_state(), v.still, v.playing])
 		tw.free()
 
+
+## Every set with a painted hanging banner but no idle strip of its own sways it (art animation round, Group A;
+## tools/dev/ref_convert/banner_sway.py). The citadel walls, the cathedral and the postern paint none.
+const BANNER_SETS := ["barracks"]
+
+
+static func _banners(t) -> void:
+	SpriteArt.set_enabled(true)
+	for n: String in BANNER_SETS:
+		var s := SpriteArt.sprite(n)
+		t.check(not s.is_empty() and int(s.frames) >= 4 and s.idle != null,
+			"%s has a banner sway idle strip (frames %s)" % [n, s.get("frames", 0)])
+	# The barracks' forge stays the procedural flame over the sprite.
+	t.check(bool(SpriteArt.sprite("barracks").get("keep_flames", false)), "the barracks keeps its procedural forge flame")
 
 ## Adds fake entries (name -> {}) to the cached manifest so mappings resolve without assets; returns the names
 ## actually added, for _unfake(). Nothing may return or fail between the two, or the fakes leak into later tests.

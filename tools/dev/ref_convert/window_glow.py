@@ -11,6 +11,9 @@ A lit pane is found in two steps (panes()):
      (RARE: plaster, beams, roof and stone are painted over hundreds of px). The grown region must fit a window
      (PANE_W x PANE_H, MAX_CLUSTER px) and be framed (_enclosed: dark on both sides of every row, above and below),
      else only its cores are kept. A pane with no core is seeded by a bright tone (SEED_*), and kept only if it fits.
+     A MID_BARS set (the tavern) frames its lit panes partly in mid-brown bars (its (134,67,39), luminance 84, just
+     over DARK): there a pane with a core may be framed by bars under MID_BAR that are also MID_MARGIN darker than its
+     darkest tone. A coreless pane keeps the dark rule, so a pale plaster or timber streak never passes on brown wood.
 Then:
   - flames are dropped: bonfire_flicker.flames() finds the baskets, the forge and the torches, and its whole flame box
     (grown by 1 px) is left out. That finder also matches warm stall awnings, so it is used only to exclude;
@@ -51,6 +54,9 @@ PANE_W, PANE_H = 6, 8   # a pane's largest bounds
 WHITE_L, WHITE_SAT = 200, 0.15   # a lamp's pale heart ((249,228,181), the keep slits' (249,239,203)) is a pane tone
 SEED_R, SEED_L = 220, 160   # a coreless pane's seed: this red and this bright (the tavern's (223,162,79))
 RARE = 40           # a pane tone is on this many px or fewer; plaster, beams, roof and stone are on hundreds
+MID_BARS = {"tavern"}   # sets whose cored panes may be framed by mid-brown bars (panes(mid_bars=True))
+MID_BAR = 100       # a mid-brown bar's luminance is under this (the tavern's (134,67,39) is 84; its timber 109 up)
+MID_MARGIN = 60     # and this much under the pane's darkest tone (its panes' darkest, (223,162,79), is 171)
 
 
 def frames_of(s, man):
@@ -104,13 +110,15 @@ def _enclosed(dark, pts):
     return bool(dark[max(0, y0 - 2):y0, x0:x1 + 1].any() and dark[y1 + 1:min(h, y1 + 3), x0:x1 + 1].any())
 
 
-def panes(a):
+def panes(a, mid_bars=False):
     """Bool mask of one frame's lit panes. The lamp-bright cores (windows()) are the seeds; a pane is a 4-connected
     region of cores and rare warm tones (PANE_*, RARE) that fits a window (PANE_W x PANE_H, MAX_CLUSTER px) and has a
     dark bar within 2 px on both sides of every row and column (_enclosed). A region that fails keeps only its cores.
     Every region needs a seed: a core, or a bright tone (R >= SEED_R, luminance >= SEED_L: the tavern's pale
     (252,226,146) panes have no core), and a region seeded only by such a tone counts only if it fits. So a pane grows
-    from its core over its own darker or paler tones; chimney brick, flowers and timber (never lamp-bright) do not."""
+    from its core over its own darker or paler tones; chimney brick, flowers and timber (never lamp-bright) do not.
+    mid_bars (a MID_BARS set): a region with a core that fails the dark frame may be framed by mid-brown bars instead
+    (luminance under MID_BAR and MID_MARGIN under the region's darkest pixel)."""
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     op = a[..., 3] > 0
     dark = op & (lum(a) < DARK)
@@ -127,6 +135,9 @@ def panes(a):
         ys = [p[0] for p in pts]; xs = [p[1] for p in pts]
         fits = (max(xs) - min(xs) < PANE_W and max(ys) - min(ys) < PANE_H and len(pts) <= MAX_CLUSTER
                 and _enclosed(dark, pts))
+        if not fits and mid_bars and any(core[p] for p in pts) and max(xs) - min(xs) < PANE_W                 and max(ys) - min(ys) < PANE_H and len(pts) <= MAX_CLUSTER:
+            bar = op & (L < min(MID_BAR, min(L[p] for p in pts) - MID_MARGIN))
+            fits = _enclosed(bar, pts)
         for p in pts:
             if fits or core[p]:
                 out[p] = True
@@ -135,10 +146,11 @@ def panes(a):
 
 def mask_of(s, man):
     fr = frames_of(s, man)
+    mid = s in MID_BARS
     keep = np.ones(fr[0].shape[:2], bool)
     flame = np.zeros_like(keep)
     for a in fr:
-        keep &= panes(a)
+        keep &= panes(a, mid)
         for f in flames(a):
             x0, y0, x1, y1 = f["box"]
             box = np.zeros_like(keep)

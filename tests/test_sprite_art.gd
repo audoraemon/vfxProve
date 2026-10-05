@@ -36,9 +36,10 @@ static func run(t) -> void:
 
 
 ## The sets with lit windows (Task 5 report): each has a glow_mask.png, holding at least this many window px. The
-## floors sit under the whole-pane masks (21, 22, 63, 64, 54, 84, 36) and above the lamp-core-only masks they replaced
-## (18, 16, 42, 42, 31, 28), so a regression to cores fails; the cathedral's specks are the same either way.
-const WINDOW_SETS := {"cottage_red": 20, "cottage_blue": 20, "townhouse_a": 57, "townhouse_b": 57, "tavern": 49,
+## floors sit under the whole-pane masks (21, 22, 63, 64, 60, 84, 36) and above the lamp-core-only masks they replaced
+## (18, 16, 42, 42, 31, 28), so a regression to cores fails; the cathedral's specks are the same either way. The
+## tavern's 60 counts the panes framed by mid-brown bars (window_glow.py MID_BARS, art polish); without them it is 54.
+const WINDOW_SETS := {"cottage_red": 20, "cottage_blue": 20, "townhouse_a": 57, "townhouse_b": 57, "tavern": 57,
 	"cathedral": 76, "citadel_keep": 32}
 
 

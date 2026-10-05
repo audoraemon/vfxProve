@@ -28,17 +28,54 @@ var down := false
 var parts: Array = []
 var _glow: QuadFx
 
-## Decor that moves in the wind (trees sway, bunting flutters; see ArtKit.wind_gain), and the one material they share.
-const SWAYS := [Kind.OAK, Kind.PINE, Kind.BUNTING]
-static var _wind: ShaderMaterial
+## Decor that moves in the wind (trees sway, bunting flutters, reeds and bushes stir; see ArtKit.wind_gain), and
+## decor that rides the water (rises and falls a whole pixel; its sprite only, see wind.gdshader).
+const SWAYS := [Kind.OAK, Kind.PINE, Kind.BUNTING, Kind.REEDS, Kind.BUSH, Kind.FLOWERS]
+const BOBS := [Kind.SHIP, Kind.BOAT]
+## Motion classes on the one wind shader: a sprite's top sways `sprite_sway` px; `bob` > 0 lifts the whole sprite
+## instead (px, overrides the sway). Trees sway as the forest does; plants stand lower and sway less.
+const MOTION := {
+	"tree": {"sprite_sway": 1.5, "bob": 0.0},
+	"plant": {"sprite_sway": 1.0, "bob": 0.0},
+	"bob": {"sprite_sway": 0.0, "bob": 1.0},
+}
+const PLANTS := [Kind.REEDS, Kind.BUSH, Kind.FLOWERS]
+## One shared material per motion class (MOTION's keys), made on first use.
+static var _motion: Dictionary = {}
 
 
-## The wind shader every swaying decor piece and the forest layer share; set its `wind` to 0 to still them all.
+## The wind shader every swaying tree, the bunting and the forest layer share (the "tree" class).
 static func wind_material() -> ShaderMaterial:
-	if _wind == null:
-		_wind = ShaderMaterial.new()
-		_wind.shader = preload("res://shaders/wind.gdshader")
-	return _wind
+	return _material("tree")
+
+
+## The shared material for a decor kind's motion class, or null for decor that stands still.
+static func material_for(k: int) -> ShaderMaterial:
+	if k in BOBS:
+		return _material("bob")
+	if k in PLANTS:
+		return _material("plant")
+	if k in SWAYS:
+		return _material("tree")
+	return null
+
+
+## Every motion class's material; set their `wind` to 0 to still all decor and the forest.
+static func motion_materials() -> Array[ShaderMaterial]:
+	var out: Array[ShaderMaterial] = []
+	for c: String in MOTION:
+		out.append(_material(c))
+	return out
+
+
+static func _material(c: String) -> ShaderMaterial:
+	if not _motion.has(c):
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/wind.gdshader")
+		for p: String in MOTION[c]:
+			m.set_shader_parameter(p, MOTION[c][p])
+		_motion[c] = m
+	return _motion[c]
 
 
 func setup(k: Kind, at_point: Vector2, extent: Vector2, s: int) -> Decor:
@@ -61,8 +98,7 @@ func tuning_key() -> String:
 func _ready() -> void:
 	add_to_group(&"decor_art")
 	self_modulate = ArtTuning.tint(tuning_key())
-	if kind in SWAYS:
-		material = wind_material()
+	material = material_for(kind)
 	if kind == Kind.LAMP:
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(46, 23))
 		_glow.set_param("color", Structure.TORCH_LIGHT)

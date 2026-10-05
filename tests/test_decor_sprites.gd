@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_herds(t)
 	_floor(t)
 	_real_trees(t)
+	_motion(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -591,3 +592,41 @@ static func _real_trees(t) -> void:
 	t.check(st.size() == 1 and st[0][1] == oak.stump and ArtKit.last_quad()[0] == Rect2(Vector2.ZERO, oak.size),
 		"a felled forest tree draws its whole stump texture at the same anchor")
 	ArtKit.begin()
+
+
+## Decor moves by material class (Decor.material_for): trees sway most, plants less, boats bob, the rest stand still.
+static func _motion(t) -> void:
+	var reeds := Decor.material_for(D.REEDS)
+	t.check(reeds != null and reeds == Decor.material_for(D.REEDS), "two reeds share one material")
+	t.check(Decor.material_for(D.BUSH) == reeds and Decor.material_for(D.FLOWERS) == reeds,
+		"bushes and flowers share the reeds' plant material")
+	var tree := Decor.material_for(D.OAK)
+	t.check(tree != null and tree != reeds, "a tree's material is not a plant's")
+	t.check(Decor.material_for(D.PINE) == tree and Decor.material_for(D.BUNTING) == tree, "pines and bunting sway as trees")
+	t.check(tree == Decor.wind_material(), "the tree material is the forest's wind material")
+	var bob := Decor.material_for(D.SHIP)
+	t.check(bob != null and bob == Decor.material_for(D.BOAT), "a ship and a boat share the bob material")
+	t.check(bob != tree and bob != reeds, "the bob material is its own")
+	t.check(Decor.material_for(D.BARREL) == null, "a barrel stands still (no material)")
+	t.check(Decor.material_for(D.DOCK) == null, "a dock stands still though it is on the water")
+	t.check(bob.shader == tree.shader and reeds.shader == tree.shader, "every class runs on the one wind shader")
+	t.check(float(bob.get_shader_parameter("bob")) > 0.0, "the bob material bobs")
+	t.check(float(tree.get_shader_parameter("bob")) == 0.0 and float(reeds.get_shader_parameter("bob")) == 0.0,
+		"trees and plants do not bob")
+	t.check(float(reeds.get_shader_parameter("sprite_sway")) < 1.5, "a plant sways less than a tree")
+	t.check(float(tree.get_shader_parameter("sprite_sway")) == 1.5, "a tree sways 1.5 px at its top")
+	for k: int in [D.REEDS, D.BUSH, D.FLOWERS, D.OAK, D.PINE, D.BUNTING]:
+		t.check(k in Decor.SWAYS, "%s sways" % Decor.Kind.keys()[k])
+	t.check(Decor.BOBS == [D.SHIP, D.BOAT], "ships and boats bob")
+	var live := Decor.new().setup(D.REEDS, Vector2(1, 1), Vector2.ZERO, 3)
+	live._ready()
+	t.check(live.material == reeds, "a live reed takes the plant material")
+	live.free()
+	live = Decor.new().setup(D.BOAT, Vector2(1, 1), Vector2.ZERO, 3)
+	live._ready()
+	t.check(live.material == bob, "a live boat takes the bob material")
+	live.free()
+	live = Decor.new().setup(D.BARREL, Vector2(1, 1), Vector2.ZERO, 3)
+	live._ready()
+	t.check(live.material == null, "a live barrel has no material")
+	live.free()

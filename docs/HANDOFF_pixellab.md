@@ -20,6 +20,7 @@
   - **Merge order:** `feat/ref-re-texture` → `feat/ref-batch3` → `feat/decor-batch4`, each into `feat/Develop-Main`. Pending the user's approval; do not merge before it.
   - **Worktrees:** `C:\BURIN_NITRO\Godot\GIT\vfxProve-ref3` (batch 3), `C:\BURIN_NITRO\Godot\GIT\vfxProve-decor` (batch 4).
   - **Checks at wrap-up:** tests `checks=2305` or more, `failures=0`; the digest is still `61267b7e90524d800bf1c3473a71146b`; no sprite over 5% glow.
+- **Then `feat/art-animation`** (2026-10-05, cut from `feat/Develop-Main` 30b435c, so it assumes those merges): animation, pushed. See "Art animation round" below.
   - **Tools:** `tools/dev/ref_convert/README.md`.
 
 ## Reference-converted batch 3 (`feat/ref-batch3`)
@@ -63,6 +64,30 @@ Spec: `docs/superpowers/specs/2026-10-05-decor-batch4-design.md`. Every `Decor.K
   - Reeds are 1.15x taller; `bush_2` blossoms are bright; rocks are bright against the dark forest; `cow_2` has a dark ear patch.
   - Procedural boats may still lie across the river (a pre-existing issue; sprite boats follow the river).
   - Code: `ArtKit.tex` tests cover segment structure only; `reload()` can free an in-use texture or atlas (tests and tools only); `flipped()`'s doc names a `_herd_pick` that does not exist; `decor.gd:47-53` has a displaced doc comment.
+
+## Art animation round (`feat/art-animation`)
+
+Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Worktree `C:\BURIN_NITRO\Godot\GIT\vfxProve-anim`, cut from `feat/Develop-Main` 30b435c. Free, no AI. The user approved groups A, B and D at their checkpoints; group C (animated decor) is finished and awaits review. Tool notes: the "Animation" section of `tools/dev/ref_convert/README.md`.
+
+- **What animates now (sprites on):**
+  - tower and keep bonfires flicker, and the barracks banner sways;
+  - lit windows flicker softly (cottages, townhouses, tavern, barracks, workshop, smithy, Citadel);
+  - boats and the ship bob; reeds, bushes, flowers and small shrubs sway with the wind;
+  - sheep and cows graze (1.5 fps), the scarecrow flutters, house lanterns and the ship's pennant move.
+- **Still static, and why:**
+  - **`citadel_gate` lanterns:** two small caged lanterns, glass with no open flame, so the flame finder skips them. They could flicker as lit glass through a window mask; not done.
+  - **Bell tower:** no fire (its warm pixels are gold trim) and it is a strip set.
+  - **Strip sets** (`town_wall`, `town_postern`, `town_gate`, `citadel_gate`, `bell_tower`): `window_glow.py` refuses them, since a piece draws more than one frame and the mask would stretch. The wall and postern torches stay the engine's `keep_flames`.
+  - Damaged, ruins and collapse stills; "under" decor pieces (they stay baked).
+- **Open minors worth knowing:**
+  - A few tavern front panes are core-only, so their flicker is weak. The `townhouse_a` and `_b` masks are identical (recolours).
+  - New tower strips run 6 fps, not the plan's 8, so adjacent towers flicker at one speed. The citadel_tower top brazier is clipped at y=0.
+  - Procedural-mode tower-top glow differs 0.1-0.2% from before (light timing of extra objects); draw-only.
+  - Plant layer: unstable sort on equal x+y; shrub-to-shrub order differs between bake and layer; short plants sway less.
+  - Meadow shrubs in front of an animal draw under it. About 44 live pieces near pastures, 20 of them trees by cascade (outside the mission bench view); watch the live-node count.
+  - The cow's half-way frame reuses the profile head; the scarecrow flutter is faint at 1x.
+- **Frame rate (measured):** about **3-4 fps** below `feat/Develop-Main` 30b435c in the mission bench (vsync off; 4 pairs 134.3 against 130.0; bisect medians 133.0, 131.8 at the end of D, 130.3 in full). Roughly 1.2 fps comes from the plant layer (+26 draw calls) and 1.5 from animated decor. **Borderline against the ~3 fps budget**; reported to the user, who decides. Two other Godot processes ran, so the numbers are noisy.
+- **Checks:** tests 2861 or more with `failures=0` at the last checkpoint; digest `61267b7e90524d800bf1c3473a71146b` unchanged (the digest does not build the town).
 
 ## Read next
 
@@ -129,6 +154,7 @@ Spec: `docs/superpowers/specs/2026-10-05-decor-batch4-design.md`. Every `Decor.K
 
 ## Open work (KAK Dev Ledger, https://claude.ai/artifact/6zL2bsrt3H1Vnehk1RkfiK)
 
+- **Art animation, needs the user:** review group C (animals, scarecrow, lantern, pennant) and decide on the 3-4 fps cost (about 1.2 plant layer, 1.5 animated decor; borderline against ~3). Then merge `feat/art-animation` into `feat/Develop-Main`, with a trial merge on a throwaway commit first. Optional: flicker the `citadel_gate` lanterns.
 - **Market stalls:** the PixelLab stalls were rejected (crowded, uniform produce) and are replaced on `feat/ref-batch3` by 12 converted designs. The old `stall_red` / `blue` / `cream` assets stay unused.
 - **`p05`, needs the user:** bring the PixelLab art into `feat/Develop-Main`, by merge or cherry-pick.
 - **Merge the reference work, needs the user's approval:** `feat/ref-re-texture` → `feat/ref-batch3` → `feat/decor-batch4`, in that order, into `feat/Develop-Main`. Run a trial merge on a throwaway commit first (memory note "Trial merge needs a commit").

@@ -11,9 +11,6 @@ A lit pane is found in two steps (panes()):
      (RARE: plaster, beams, roof and stone are painted over hundreds of px). The grown region must fit a window
      (PANE_W x PANE_H, MAX_CLUSTER px) and be framed (_enclosed: dark on both sides of every row, above and below),
      else only its cores are kept. A pane with no core is seeded by a bright tone (SEED_*), and kept only if it fits.
-     A MID_BARS set (the tavern) frames its lit panes partly in mid-brown bars (its (134,67,39), luminance 84, just
-     over DARK): there a pane with a core may be framed by bars under MID_BAR that are also MID_MARGIN darker than its
-     darkest tone. A coreless pane keeps the dark rule, so a pale plaster or timber streak never passes on brown wood.
 Then:
   - flames are dropped: bonfire_flicker.flames() finds the baskets, the forge and the torches, and its whole flame box
     (grown by 1 px) is left out. That finder also matches warm stall awnings, so it is used only to exclude;
@@ -21,6 +18,11 @@ Then:
   - a set with an idle strip is read from the strip's frame 0 (that is what its intact state shows; the keep's
     PixelLab strip differs from its still), and a pixel must pass in every frame of the strip, so a banner swaying
     over a window in one frame is never lit. Frames share the layout, so one mask fits all.
+A HAND_PANES set (the tavern) is not found but placed: its lit panes are hand-listed rectangles of glass (sprite px of
+the intact still, inside each window's frame), and every pixel in them that is warm and at least GLASS_L bright is lit,
+the cross bars and mullions (darker) left out. Its windows are columns of 1 px glass between bars, many of them framed
+by mid-brown bars or tinted a dim orange, so the finder lit only their lamp-bright cores. Panes painted dark or unlit
+are not listed; nor are the pale gable infill and the sunlit plaster corner.
 Strip sets (manifest "strip": the town wall and postern) are refused: a piece draws a region wider than one frame, so
 their mask lookup would stretch.
 
@@ -54,9 +56,24 @@ PANE_W, PANE_H = 6, 8   # a pane's largest bounds
 WHITE_L, WHITE_SAT = 200, 0.15   # a lamp's pale heart ((249,228,181), the keep slits' (249,239,203)) is a pane tone
 SEED_R, SEED_L = 220, 160   # a coreless pane's seed: this red and this bright (the tavern's (223,162,79))
 RARE = 40           # a pane tone is on this many px or fewer; plaster, beams, roof and stone are on hundreds
-MID_BARS = {"tavern"}   # sets whose cored panes may be framed by mid-brown bars (panes(mid_bars=True))
-MID_BAR = 100       # a mid-brown bar's luminance is under this (the tavern's (134,67,39) is 84; its timber 109 up)
-MID_MARGIN = 60     # and this much under the pane's darkest tone (its panes' darkest, (223,162,79), is 171)
+GLASS_L = 100       # a HAND_PANES pane's glass: its bars and mullions ((134,67,39) 84, (148,86,29) 98 and darker) sit below
+# Hand-placed lit panes, (x0, y0, x1, y1) inclusive, sprite px of the intact still: each window's glass inside its frame.
+HAND_PANES = {
+    "tavern": [
+        (44, 45, 46, 50),   # west dormer: two lights
+        (60, 54, 62, 58),   # east dormer: two lights
+        (42, 65, 46, 73),   # upper floor, west window: three lights (the outer one a dim orange)
+        (61, 75, 63, 81),   # upper floor, middle window: two lights (its west half painted dark: left out)
+        (43, 83, 45, 86),   # ground floor, west window
+        (87, 70, 88, 73),   # front gable window
+        (84, 82, 86, 85),   # front, west window: a yellow light and an orange one
+        (93, 86, 95, 90),   # front, middle window: an orange light and a yellow one
+        (109, 86, 111, 90),  # east face, the amber window under the roof
+        (117, 82, 119, 85),  # east face, upper middle window
+        (122, 79, 124, 85),  # east face, upper east window: a pale light and a yellow one
+        (122, 95, 123, 97),  # east face, ground-floor window
+    ],
+}
 
 
 def frames_of(s, man):
@@ -110,15 +127,13 @@ def _enclosed(dark, pts):
     return bool(dark[max(0, y0 - 2):y0, x0:x1 + 1].any() and dark[y1 + 1:min(h, y1 + 3), x0:x1 + 1].any())
 
 
-def panes(a, mid_bars=False):
+def panes(a):
     """Bool mask of one frame's lit panes. The lamp-bright cores (windows()) are the seeds; a pane is a 4-connected
     region of cores and rare warm tones (PANE_*, RARE) that fits a window (PANE_W x PANE_H, MAX_CLUSTER px) and has a
     dark bar within 2 px on both sides of every row and column (_enclosed). A region that fails keeps only its cores.
     Every region needs a seed: a core, or a bright tone (R >= SEED_R, luminance >= SEED_L: the tavern's pale
     (252,226,146) panes have no core), and a region seeded only by such a tone counts only if it fits. So a pane grows
-    from its core over its own darker or paler tones; chimney brick, flowers and timber (never lamp-bright) do not.
-    mid_bars (a MID_BARS set): a region with a core that fails the dark frame may be framed by mid-brown bars instead
-    (luminance under MID_BAR and MID_MARGIN under the region's darkest pixel)."""
+    from its core over its own darker or paler tones; chimney brick, flowers and timber (never lamp-bright) do not."""
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     op = a[..., 3] > 0
     dark = op & (lum(a) < DARK)
@@ -135,22 +150,33 @@ def panes(a, mid_bars=False):
         ys = [p[0] for p in pts]; xs = [p[1] for p in pts]
         fits = (max(xs) - min(xs) < PANE_W and max(ys) - min(ys) < PANE_H and len(pts) <= MAX_CLUSTER
                 and _enclosed(dark, pts))
-        if not fits and mid_bars and any(core[p] for p in pts) and max(xs) - min(xs) < PANE_W                 and max(ys) - min(ys) < PANE_H and len(pts) <= MAX_CLUSTER:
-            bar = op & (L < min(MID_BAR, min(L[p] for p in pts) - MID_MARGIN))
-            fits = _enclosed(bar, pts)
         for p in pts:
             if fits or core[p]:
                 out[p] = True
     return out
 
 
+def hand_mask(a, rects):
+    """Bool mask of one frame's hand-placed panes (HAND_PANES): the warm pixels at least GLASS_L bright in `rects`."""
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    glass = (a[..., 3] > 0) & (r > g) & (g > b) & (lum(a) >= GLASS_L)
+    box = np.zeros(glass.shape, bool)
+    for x0, y0, x1, y1 in rects:
+        box[y0:y1 + 1, x0:x1 + 1] = True
+    return glass & box
+
+
 def mask_of(s, man):
     fr = frames_of(s, man)
-    mid = s in MID_BARS
+    if s in HAND_PANES:
+        keep = np.ones(fr[0].shape[:2], bool)
+        for a in fr:
+            keep &= hand_mask(a, HAND_PANES[s])
+        return keep, len(HAND_PANES[s]), len(fr)
     keep = np.ones(fr[0].shape[:2], bool)
     flame = np.zeros_like(keep)
     for a in fr:
-        keep &= panes(a, mid)
+        keep &= panes(a)
         for f in flames(a):
             x0, y0, x1, y1 = f["box"]
             box = np.zeros_like(keep)

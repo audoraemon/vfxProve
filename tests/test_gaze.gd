@@ -40,6 +40,7 @@ static func run(t) -> void:
 	d.gaze.fill()
 	t.check(o.check(rules) == Objective.Status.FAILED and o.reason == "gaze", "a full Gaze fails the night")
 	t.check(MissionDirector.new().marks().is_empty(), "a director marks nobody by default")
+	t.check(not Hud.marks_shown(rules), "with nobody marked the HUD can stay a still picture")
 	t.check(ResultsScreen.title_for(false, "gaze") == "THE LANTERN LOOKS" and ResultsScreen.title_for(true, "believers")
 		== "THEY BELIEVE" and ResultsScreen.title_for(false, "few") == "TOO FEW BELIEVE", "the night's endings have titles")
 	rules.free()

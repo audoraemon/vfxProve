@@ -20,6 +20,8 @@ var route := PackedVector2Array()
 var leg := 0
 var active := false
 var finished := false
+## func(p: Person) -> bool: a walker busy elsewhere (v0.10: carrying a report to the Temple), not to be pulled back.
+var busy: Callable
 var _tick := 0.0
 
 
@@ -56,6 +58,8 @@ func step(delta: float) -> void:
 	if not _alive(bearer):
 		finish()
 		return
+	if busy.is_valid() and bool(busy.call(bearer)):
+		return  # carrying a report: the walk waits for him
 	_tick -= delta
 	if _tick > 0.0:
 		return
@@ -87,6 +91,8 @@ func _keep_acolytes() -> void:
 	for i in acolytes.size():
 		var a := acolytes[i]
 		if not _alive(a) or not (a.mind == Person.Mind.DUTY or a.mind in RESUMABLE):
+			continue
+		if busy.is_valid() and bool(busy.call(a)):
 			continue
 		var place := bearer.ground_pos + (ACOLYTE_OFFSETS[i % ACOLYTE_OFFSETS.size()] as Vector2)
 		if a.mind != Person.Mind.DUTY or a.anchor.distance_to(place) > ACOLYTE_DRIFT:

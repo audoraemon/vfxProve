@@ -116,6 +116,28 @@ static func _reading(t) -> void:
 		marked_believer = marked_believer or ((m[0] as Vector2) == g.ground_pos and (m[1] as Color) == MirasHouseDirector.MARK_BELIEVER)
 	t.check(marked_believer, "the Believer wears the ember mark")
 
+	# Any face of the house will do for a whisper (the drawn door may be on +x), and a Will-o'-Wisp at the door brings its
+	# lured in from the ring it stands them on.
+	var side := d.grieving[2]
+	_blind(d, d.door)
+	var east := Vector2(d.house.footprint.end.x + 0.3, d.house.footprint.get_center().y)
+	side.whisper(east, 8.0)
+	_arrive(side, east)
+	_run(s, DT * 2.0)
+	t.check(side.inside, "a whisper to the house's other face brings them in too")
+	var lured := d.grieving[3]
+	_blind(d, d.door)
+	lured.lure(d.door, 6.0)
+	_arrive(lured, d.door + Vector2(1.4, 0.0))
+	_run(s, DT * 2.0)
+	t.check(lured.inside, "a grieving citizen lured to the door goes in from the wisp's ring")
+	var looker := d.grieving[4]
+	_blind(d, d.door)
+	looker.observe(d.door + Vector2(12.0, 0.0), 5.0)
+	_arrive(looker, d.door)
+	_run(s, DT * 2.0)
+	t.check(not looker.inside, "one stopping at the door to look at something far off stays out")
+
 	# Review focus 5: a grieving citizen walking past on their own day does not go in.
 	var h := d.grieving[1]
 	_blind(d, d.door)

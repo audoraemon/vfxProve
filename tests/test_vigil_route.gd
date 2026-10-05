@@ -71,6 +71,23 @@ static func run(t) -> void:
 	t.check(v.finished and not v.active and bearer.mind != Person.Mind.DUTY and acolytes[1].mind != Person.Mind.DUTY,
 		"at the last point the walk is over and all three go back to their day")
 
+	# A walker busy elsewhere (a report to carry) is not pulled back beside the bearer.
+	var b3: Person = crowd.citizens[10]
+	var a3: Array[Person] = [crowd.citizens[12]]
+	var v3 := VigilRoute.new().setup(points, b3, a3)
+	v3.busy = func(p: Person) -> bool: return p == a3[0]
+	v3.start()
+	a3[0].go_duty(points[0] + Vector2(30.0, 0.0))
+	for i in roundi(VigilRoute.TICK / DT) + 1:
+		v3.step(DT)
+	t.check(a3[0].anchor.distance_to(points[0] + Vector2(30.0, 0.0)) < 0.01, "a busy acolyte keeps their own errand")
+	v3.busy = func(p: Person) -> bool: return p == b3
+	b3.go_duty(points[0] + Vector2(30.0, 0.0))
+	b3._goal = Vector2.INF
+	for i in roundi(VigilRoute.TICK / DT) + 1:
+		v3.step(DT)
+	t.check(b3.anchor.distance_to(points[0] + Vector2(30.0, 0.0)) < 0.01, "and so does a busy bearer")
+
 	var b2: Person = crowd.citizens[8]
 	var v2 := VigilRoute.new().setup(points, b2, [] as Array[Person])
 	v2.start()

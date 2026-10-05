@@ -108,7 +108,7 @@ func advance(delta: float) -> void:
 	# Banners fade, a refused slot burns red, the last half minute pulses and a marker follows its messenger (v0.08):
 	# while any of those is on screen the HUD is an animation and redraws every frame. The rest of the time it is a
 	# still picture.
-	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT or marker_shown():
+	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT or marker_shown() or marks_shown(_rules):
 		_drawn = ""
 		queue_redraw()
 		return
@@ -162,6 +162,11 @@ func escape_limit() -> int:
 ## The mission's director marks someone (v0.08: The Warning's messenger).
 func marker_shown() -> bool:
 	return _rules.director != null and _rules.director.marker() != Vector2.INF
+
+
+## The director marks people (v0.10): the marks follow them and the camera, so the HUD redraws every frame.
+static func marks_shown(rules: Rules) -> bool:
+	return rules != null and rules.director != null and not rules.director.marks().is_empty()
 
 
 ## How full Halcyon's Gaze is (v0.10), or -1.0 when the mission's director keeps none.

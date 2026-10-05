@@ -24,8 +24,9 @@ const MARK_GRIEVING := Color(0.85, 0.75, 0.45, 0.8)
 const MARK_BELIEVER := Color("ff9a3a")
 ## Minds a Faithful does not see from: the god's own holds.
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
-## Minds a person going in may be in: brought by the god (a whisper, or a lure's watching mind).
-const BROUGHT := [Person.Mind.WHISPERED, Person.Mind.OBSERVE]
+## How near a lure's light must stand to the house, and its lured to the house, for them to go in: a Will-o'-Wisp stands
+## its lured on a ring up to WillOWisp.RING.y from the light.
+const LURE_REACH := WillOWisp.RING.y + Person.GOAL_REACH
 ## 0:40 -- the Inquisitor searches the west quarter house by house, ending at Mira's: she stops VENN_STOP seconds at each
 ## of the VENN_HOUSES houses nearest the door (farthest first), and at Mira's, with anyone inside, she reports at once.
 const VENN_AT := 40.0
@@ -197,10 +198,10 @@ func _doors() -> void:
 	for p in grieving:
 		if not _alive(p) or p.inside or _reading.has(p):
 			continue
-		if p.ground_pos.distance_to(door) > DOOR_REACH:
+		if not _brought(p):
 			_turned.erase(p)
 			continue
-		if _turned.has(p) or not p.mind in BROUGHT:
+		if _turned.has(p):
 			continue
 		var seer := faithful_seeing(door, SIGHT)
 		if seer != null:
@@ -208,6 +209,24 @@ func _doors() -> void:
 			_report(seer)
 			continue
 		_enter(p)
+
+
+## Brought to the house by the god: whispered to any face of it (the drawn door may be on another face than `door`), or
+## lured to a light standing by it and watching it from the light's ring. A citizen who stops by the house to look at
+## something else is not.
+func _brought(p: Person) -> bool:
+	match p.mind:
+		Person.Mind.WHISPERED:
+			return _near_house(p.ground_pos, DOOR_REACH)
+		Person.Mind.OBSERVE:
+			return p._threat != Vector2.INF and _near_house(p._threat, LURE_REACH) and _near_house(p.ground_pos, LURE_REACH)
+	return false
+
+
+func _near_house(at: Vector2, reach: float) -> bool:
+	if at.distance_to(door) <= reach:
+		return true
+	return house != null and house.footprint.grow(reach).has_point(at)
 
 
 func _enter(p: Person) -> void:
@@ -437,6 +456,7 @@ func _vigil_passes() -> void:
 		var acolytes: Array[Person] = []
 		acolytes.assign(free.slice(1, 3))
 		vigil = VigilRoute.new().setup(route, free[0], acolytes)
+		vigil.busy = _carrying
 		vigil.start()
 	var walking := vigil.walkers() if vigil != null else ([] as Array[Person])
 	var lining: Array[Person] = []

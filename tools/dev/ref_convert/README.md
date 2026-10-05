@@ -123,7 +123,7 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Frames are dr
 - **`glow_mask.png` and `WINDOW_AMP`:** `SpriteArt` loads the optional mask. On the intact still and its idle strip, `structure_sprite.gdshader` multiplies masked pixels by `1 + WINDOW_AMP * flicker`, with `WINDOW_AMP = 0.15` (`sprite_view.gd`). Each 3x3 pixel cell has its own phase, so windows flicker apart. No mask, no change. Damaged and ruins stills never flicker.
 - **Decor manifest keys:** `frames` and `fps` on a decor set. `intact.png` is then a horizontal strip of `frames` equal-width frames, and `size` is one frame. Written by `decor_common.write_set`.
 - **Motion classes** (`Decor.material_for(kind)`, shared materials): `tree` (sway weight 1.5), `plant` (1.0, for reeds, bushes and flowers, which join `Decor.SWAYS`), and `bob` (ships and boats: a whole-pixel rise and fall, about a 3 s period, no shear).
-- **Plant layer:** baked low plants (small shrubs, flowerbeds, reeds) leave the floor bake and draw in wind bands, like `ForestLayer`. Only pieces nothing stands in front of go there, and a plant that must sort under a nearer one is moved in transitively.
+- **Plant layer:** low plants (the floor's meadow shrubs and flower clumps, and the baked reeds, bushes and flowers) leave the floor bake and draw in wind bands, like `ForestLayer`. Only pieces nothing stands in front of go there: a plant the bake paints something over (a garden plot, a moored boat, a rock) is marked "under" and stays in the bake, still, and so, transitively, does any plant behind an "under" plant that overlaps it.
 
 ### Rules
 

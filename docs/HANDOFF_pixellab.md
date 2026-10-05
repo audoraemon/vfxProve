@@ -16,11 +16,11 @@
   - Gameplay is unchanged: the same hits and the same crowd behave identically with sprites on or off (tests prove it). Speed is level or better (mission bench 116.7 / 114.6 fps sprites against 113.6 / 113.9 procedural).
 - **Checks at handoff:** `GODOT=... bash tools/test.sh` gives `checks=1473 failures=0` (the suite takes 150-270 s on the laptop; the runner's timeout is 400 s); `state_digest` = `61267b7e90524d800bf1c3473a71146b` (unchanged from before the work).
 - **PixelLab budget:** 81 generations left. Batches 3 and 4 cost none (see below).
-- **Later branches (2026-10-04 to 10-05), all free and all unmerged:** `feat/ref-re-texture` (the bell tower), then `feat/ref-batch3`, then `feat/decor-batch4`. Each is cut from the one before. They are pushed to `origin`.
-  - **Merge order:** `feat/ref-re-texture` → `feat/ref-batch3` → `feat/decor-batch4`, each into `feat/Develop-Main`. Pending the user's approval; do not merge before it.
+- **Later branches (2026-10-04 to 10-05), all free:** `feat/ref-re-texture` (the bell tower), then `feat/ref-batch3`, then `feat/decor-batch4`. Each is cut from the one before. They are pushed to `origin`.
+  - **Merged:** all three are in `feat/Develop-Main` at `30b435c` ("reference-converted art (bell tower, batch 3) and decor batch 4 into Develop-Main").
   - **Worktrees:** `C:\BURIN_NITRO\Godot\GIT\vfxProve-ref3` (batch 3), `C:\BURIN_NITRO\Godot\GIT\vfxProve-decor` (batch 4).
   - **Checks at wrap-up:** tests `checks=2305` or more, `failures=0`; the digest is still `61267b7e90524d800bf1c3473a71146b`; no sprite over 5% glow.
-- **Then `feat/art-animation`** (2026-10-05, cut from `feat/Develop-Main` 30b435c, so it assumes those merges): animation, pushed. See "Art animation round" below.
+- **Then `feat/art-animation`** (2026-10-05, cut from `feat/Develop-Main` 30b435c, which already contains those merges): animation, pushed. See "Art animation round" below.
   - **Tools:** `tools/dev/ref_convert/README.md`.
 
 ## Reference-converted batch 3 (`feat/ref-batch3`)
@@ -71,13 +71,14 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Worktree `C:\
 
 - **What animates now (sprites on):**
   - tower and keep bonfires flicker, and the barracks banner sways;
-  - lit windows flicker softly (cottages, townhouses, tavern, barracks, workshop, smithy, Citadel);
+  - lit windows flicker softly: `cottage_red`, `cottage_blue`, `townhouse_a`, `townhouse_b`, `tavern`, `cathedral` and `citadel_keep` (the sets with a `glow_mask.png`). Barracks, workshop and smithy have no mask (no lit panes beyond 0-5 px of forge rim), so they do not flicker;
   - boats and the ship bob; reeds, bushes, flowers and small shrubs sway with the wind;
   - sheep and cows graze (1.5 fps), the scarecrow flutters, house lanterns and the ship's pennant move.
 - **Still static, and why:**
   - **`citadel_gate` lanterns:** two small caged lanterns, glass with no open flame, so the flame finder skips them. They could flicker as lit glass through a window mask; not done.
-  - **Bell tower:** no fire (its warm pixels are gold trim) and it is a strip set.
-  - **Strip sets** (`town_wall`, `town_postern`, `town_gate`, `citadel_gate`, `bell_tower`): `window_glow.py` refuses them, since a piece draws more than one frame and the mask would stretch. The wall and postern torches stay the engine's `keep_flames`.
+  - **Bell tower:** no fire (its warm pixels are gold trim) and no lit panes, so no window mask.
+  - **Gates** (`town_gate`, `citadel_gate`): idle-strip sets with no lit panes found, so no window mask.
+  - **Strip sets** (`town_wall`, `town_postern`, the only sets with `"strip": true`): `window_glow.py` refuses them, since a piece draws more than one frame and the mask would stretch. The wall and postern torches stay the engine's `keep_flames`.
   - Damaged, ruins and collapse stills; "under" decor pieces (they stay baked).
 - **Open minors worth knowing:**
   - A few tavern front panes are core-only, so their flicker is weak. The `townhouse_a` and `_b` masks are identical (recolours).

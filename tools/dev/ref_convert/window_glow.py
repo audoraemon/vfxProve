@@ -2,10 +2,16 @@
 elsewhere). The sprite shader (structure_sprite.gdshader, window_flicker) flickers those pixels on the intact still and
 its idle strip.
 
-A window pixel is warm, bright lamp light with the window's dark bars and frame (luminance < DARK) in its 5x5
-neighbourhood. Warm and bright is the plan's rule (R >= 180, R > G > B, luminance >= 150) with three guards found on
-these sets: saturated ((R - B) / R >= SAT: no cream plaster), lamp-bright (R >= LAMP: no sandstone, sunlit wood or
-hay) and yellow-orange (G >= HUE * R: no red-orange roof-eave highlight). Then:
+A lit pane is found in two steps (panes()):
+  1. Cores (windows()): warm, bright lamp light with the window's dark bars and frame (luminance < DARK) in its 5x5
+     neighbourhood. Warm and bright is the plan's rule (R >= 180, R > G > B, luminance >= 150) with three guards found
+     on these sets: saturated ((R - B) / R >= SAT: no cream plaster), lamp-bright (R >= LAMP: no sandstone, sunlit
+     wood or hay) and yellow-orange (G >= HUE * R: no red-orange roof-eave highlight).
+  2. Panes: each core grows 4-connected over its pane's own tones (PANE_*, WHITE_*), which must be rare in the frame
+     (RARE: plaster, beams, roof and stone are painted over hundreds of px). The grown region must fit a window
+     (PANE_W x PANE_H, MAX_CLUSTER px) and be framed (_enclosed: dark on both sides of every row, above and below),
+     else only its cores are kept. A pane with no core is seeded by a bright tone (SEED_*), and kept only if it fits.
+Then:
   - flames are dropped: bonfire_flicker.flames() finds the baskets, the forge and the torches, and its whole flame box
     (grown by 1 px) is left out. That finder also matches warm stall awnings, so it is used only to exclude;
   - a cluster (8-connected) over MAX_CLUSTER px is a flame or a lit floor, not a window, and is dropped;
@@ -37,6 +43,14 @@ MAX_CLUSTER = 60    # bigger warm clusters are flames or lit floors
 LAMP = 240          # lamp-bright red: sandstone, pale wood and the barracks' hay stop near 235
 HUE = 0.55          # G / R: lamp light is yellow-orange; the roofs' red-orange eave highlight (247,129,60) is not
 SAT = 0.5           # (R - B) / R: lamp glow is saturated; cream plaster, pale wood and stone highlights are not
+# A pane's tones besides its core: saturated ones (the tavern's (223,162,79), (247,129,60)) or a pale heart:
+PANE_SAT = 0.5      # (R - B) / R: plaster and timber highlights (222,187,150), (189,158,125) are near 0.33
+PANE_HUE = 0.5      # G / R: the red roofs (173,68,41), (240,106,69) stay out
+PANE_L = 90         # the frame's bars sit below
+PANE_W, PANE_H = 6, 8   # a pane's largest bounds
+WHITE_L, WHITE_SAT = 200, 0.15   # a lamp's pale heart ((249,228,181), the keep slits' (249,239,203)) is a pane tone
+SEED_R, SEED_L = 220, 160   # a coreless pane's seed: this red and this bright (the tavern's (223,162,79))
+RARE = 40           # a pane tone is on this many px or fewer; plaster, beams, roof and stone are on hundreds
 
 
 def frames_of(s, man):
@@ -62,12 +76,69 @@ def windows(a):
     return warm & near
 
 
+def rare_tones(a):
+    """Bool mask of the frame's rare colours (on RARE px or fewer). A lit pane's tones are rare; plaster, beams, roof
+    and stone are each painted over hundreds of px."""
+    op = a[..., 3] > 0
+    key = (a[..., 0] << 16) | (a[..., 1] << 8) | a[..., 2]
+    _, inv, cnt = np.unique(key[op], return_inverse=True, return_counts=True)
+    out = np.zeros(op.shape, bool)
+    out[op] = cnt[inv] <= RARE
+    return out
+
+
+def _enclosed(dark, pts):
+    """Framed: each row of the region has a dark pixel within 2 px left and right of its span, and the region has one
+    within 2 px above and below it. A pane between bars passes; a roof eave or a door edge (dark on one side only)
+    does not."""
+    h, w = dark.shape
+    rows, cols = {}, {}
+    for y, x in pts:
+        rows.setdefault(y, []).append(x)
+        cols.setdefault(x, []).append(y)
+    for y, xs in rows.items():
+        x0, x1 = min(xs), max(xs)
+        if not (dark[y, max(0, x0 - 2):x0].any() and dark[y, x1 + 1:min(w, x1 + 3)].any()):
+            return False
+    y0, y1, x0, x1 = min(rows), max(rows), min(cols), max(cols)
+    return bool(dark[max(0, y0 - 2):y0, x0:x1 + 1].any() and dark[y1 + 1:min(h, y1 + 3), x0:x1 + 1].any())
+
+
+def panes(a):
+    """Bool mask of one frame's lit panes. The lamp-bright cores (windows()) are the seeds; a pane is a 4-connected
+    region of cores and rare warm tones (PANE_*, RARE) that fits a window (PANE_W x PANE_H, MAX_CLUSTER px) and has a
+    dark bar within 2 px on both sides of every row and column (_enclosed). A region that fails keeps only its cores.
+    Every region needs a seed: a core, or a bright tone (R >= SEED_R, luminance >= SEED_L: the tavern's pale
+    (252,226,146) panes have no core), and a region seeded only by such a tone counts only if it fits. So a pane grows
+    from its core over its own darker or paler tones; chimney brick, flowers and timber (never lamp-bright) do not."""
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    op = a[..., 3] > 0
+    dark = op & (lum(a) < DARK)
+    core = windows(a)
+    L = lum(a)
+    warm = op & rare_tones(a) & (r > g) & (g > b)
+    tone = warm & (((r - b >= PANE_SAT * r) & (g >= PANE_HUE * r) & (L >= PANE_L))
+                   | ((r >= LAMP) & (L >= WHITE_L) & (r - b >= WHITE_SAT * r)))
+    seed = core | (tone & (r >= SEED_R) & (L >= SEED_L))
+    out = np.zeros_like(core)
+    for pts in _components(tone | core, conn8=False):
+        if not any(seed[p] for p in pts):
+            continue                    # no lamp-bright pixel: brick, flowers, timber
+        ys = [p[0] for p in pts]; xs = [p[1] for p in pts]
+        fits = (max(xs) - min(xs) < PANE_W and max(ys) - min(ys) < PANE_H and len(pts) <= MAX_CLUSTER
+                and _enclosed(dark, pts))
+        for p in pts:
+            if fits or core[p]:
+                out[p] = True
+    return out
+
+
 def mask_of(s, man):
     fr = frames_of(s, man)
     keep = np.ones(fr[0].shape[:2], bool)
     flame = np.zeros_like(keep)
     for a in fr:
-        keep &= windows(a)
+        keep &= panes(a)
         for f in flames(a):
             x0, y0, x1, y1 = f["box"]
             box = np.zeros_like(keep)
@@ -91,9 +162,12 @@ def main():
     ap.add_argument("--dry", action="store_true")
     args = ap.parse_args()
     man = json.loads((B / "manifest.json").read_text())
-    for s in args.sets:
+    for s in args.sets:             # every name is checked before any file is written
+        if s not in man or not (B / s / "intact.png").exists():
+            sys.exit("%s is not a building set" % s)
         if man[s].get("strip"):
             sys.exit("%s is a strip set: its pieces draw regions wider than one frame, so a mask would stretch" % s)
+    for s in args.sets:
         m, n, nf = mask_of(s, man)
         h, w = m.shape
         assert [w, h] == [int(v) for v in man[s]["size"]], s

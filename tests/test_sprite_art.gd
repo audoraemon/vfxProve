@@ -35,9 +35,11 @@ static func run(t) -> void:
 	SpriteArt.set_enabled(true)
 
 
-## The sets with lit windows (Task 5 report): each has a glow_mask.png.
-const WINDOW_SETS := ["cottage_red", "cottage_blue", "townhouse_a", "townhouse_b", "tavern", "cathedral",
-	"citadel_keep"]
+## The sets with lit windows (Task 5 report): each has a glow_mask.png, holding at least this many window px. The
+## floors sit under the whole-pane masks (21, 22, 63, 64, 54, 84, 36) and above the lamp-core-only masks they replaced
+## (18, 16, 42, 42, 31, 28), so a regression to cores fails; the cathedral's specks are the same either way.
+const WINDOW_SETS := {"cottage_red": 20, "cottage_blue": 20, "townhouse_a": 57, "townhouse_b": 57, "tavern": 49,
+	"cathedral": 76, "citadel_keep": 32}
 
 
 ## Lit windows flicker (art animation round, Group B): a set's optional glow_mask.png marks its window pixels, and the
@@ -58,8 +60,8 @@ static func _window_mask(t) -> void:
 		for y in mi.get_height():
 			for x in mi.get_width():
 				lit += 1 if mi.get_pixel(x, y).a > 0.5 else 0
-		t.check(lit > 0 and float(lit) < float(mi.get_width() * mi.get_height()) * 0.02,
-			"%s's mask marks a few window pixels (%d)" % [n, lit])
+		t.check(lit >= int(WINDOW_SETS[n]) and float(lit) < float(mi.get_width() * mi.get_height()) * 0.02,
+			"%s's mask marks its window panes (%d px, floor %d)" % [n, lit, WINDOW_SETS[n]])
 	for n: String in ["town_wall", "town_postern"]:
 		t.check(SpriteArt.sprite(n).glow_mask == null, "strip set %s has no window mask (its lookup would stretch)" % n)
 	var img := Image.create(84, 76, false, Image.FORMAT_RGBA8)

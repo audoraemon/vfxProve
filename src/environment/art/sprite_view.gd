@@ -16,11 +16,12 @@ const IDLE_TIME := &"idle_time"
 const IDLE_WRAP := 1440.0
 ## ArtKit.hash01 salt for a view's idle phase, from its structure's seed.
 const SALT_PHASE := 95
-## How far a lit window's brightness wavers (structure_sprite.gdshader's window_amp): +-20%. The masks (Task 5) hold
-## only each pane's lamp-bright core, a few px at R 240-255, so brightening mostly stops at the clamp and the dim side
-## carries the flicker: at 0.12 the dusk shots stepped a pane by about 30-40 levels, barely readable; 0.2 reads at dusk
-## and stays a faint shimmer by day. The clamp still keeps every channel under max(r, g, b) * 1.2 and white.
-const WINDOW_AMP := 0.2
+## How far a lit window's brightness wavers (structure_sprite.gdshader's window_amp): +-15%. The masks (Task 5) hold
+## whole panes, their lamp-bright cores (R 240-255, mostly held by the clamp) and their mid tones (which brighten
+## freely). With cores only, 0.12 was barely readable and 0.2 needed; with whole panes 0.2 stepped a pane by up to 59
+## levels at dusk, more than a lamp gutters, and 0.15 steps it by up to 48: plain at dusk, a faint shimmer by day.
+## The clamp keeps every channel under max(r, g, b) * 1.15 and white.
+const WINDOW_AMP := 0.15
 
 ## The idle clock: game seconds. The world's EnvironmentField steps it from its _process delta (tick_clock()), so
 ## time scale, hit-stop, a paused tree and a frozen mission (Mission.set_frozen() disables its subtree) hold every

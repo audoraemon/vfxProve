@@ -145,4 +145,23 @@ static func run(t) -> void:
 	crowd._field.kill(second, &"doom")
 	_tick(v4)
 	t.check(v4.finished and v4.walkers().is_empty(), "with all three dead the Vigil is over")
+
+	# The flame passes to a busy acolyte (a report to carry): he keeps his errand, and the walk waits for him.
+	var b5: Person = crowd.citizens[20]
+	var carrier: Person = crowd.citizens[22]
+	var a5: Array[Person] = [carrier]
+	var v5 := VigilRoute.new().setup(points, b5, a5)
+	v5.pass_flame = true
+	v5.busy = func(p: Person) -> bool: return p == carrier
+	v5.start()
+	var errand := points[0] + Vector2(30.0, 0.0)
+	carrier.go_duty(errand)
+	crowd._field.kill(b5, &"doom")
+	_tick(v5)
+	t.check(v5.active and v5.bearer == carrier and carrier.anchor.distance_to(errand) < 0.01,
+		"a busy acolyte takes the flame but keeps his errand")
+	v5.busy = func(_p: Person) -> bool: return false
+	_arrive(carrier, errand)
+	_tick(v5)
+	t.check(carrier.anchor.distance_to(v5.goal()) < 0.01, "and walks the route once his errand is done")
 	_done(s)

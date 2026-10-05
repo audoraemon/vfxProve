@@ -122,7 +122,7 @@ func finish() -> void:
 
 
 ## The bearer is dead: with pass_flame, the first living acolyte takes the flame up and walks on (at once, if on his
-## feet); false when nobody can.
+## feet and not busy elsewhere, whose errand the flame waits on); false when nobody can.
 func _take_flame() -> bool:
 	if not pass_flame:
 		return false
@@ -132,7 +132,8 @@ func _take_flame() -> bool:
 		bearer = a
 		acolytes.erase(a)
 		_tick = 0.0
-		if a.mind == Person.Mind.DUTY or a.mind in RESUMABLE:
+		var errand := busy.is_valid() and bool(busy.call(a))
+		if not errand and (a.mind == Person.Mind.DUTY or a.mind in RESUMABLE):
 			a.go_duty(goal())
 		flame_passed.emit(a)
 		return true

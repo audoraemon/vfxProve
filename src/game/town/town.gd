@@ -141,7 +141,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		var lit := Color(GROUND_EVENING.r / EVENING.r, GROUND_EVENING.g / EVENING.g, GROUND_EVENING.b / EVENING.b)
 		for d in baked:
 			if d.get("live", false):
-				_stand_in(d).tint_mul = lit * (d.get("tint", Color.WHITE) as Color)
+				_stand_in(d, lit * (d.get("tint", Color.WHITE) as Color))
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = flat
@@ -169,10 +169,12 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 
 ## A live sprite_only Decor for a piece drawn elsewhere while sprites are off: a baked piece TownFloor.mark_live()
 ## marked (the floor, the plant layer and the forest leave it out while sprites are on), or a pile's animated part
-## (Decor.pile_parts_drawn). It shows while sprites are on. The placement data is untouched.
-func _stand_in(d: Dictionary) -> Decor:
+## (Decor.pile_parts_drawn). It shows while sprites are on. The placement data is untouched. `mul`: its tint_mul (a
+## baked piece's light), set before it joins the decor layer, whose _ready() (in the game) colours it.
+func _stand_in(d: Dictionary, mul := Color.WHITE) -> Decor:
 	var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
 	dec.sprite_only = true
+	dec.tint_mul = mul
 	_decor.append(dec)
 	if _decor_layer != null:
 		_decor_layer.add_child(dec)

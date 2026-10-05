@@ -34,7 +34,10 @@ var sprite_only := false
 var followers: Array[Decor] = []
 ## Multiplies the colour tuning: a baked piece's stand-in takes the floor's light (Town: GROUND_EVENING over the decor
 ## layer's EVENING, times the piece's own bake tint), so it matches the bake around it.
-var tint_mul := Color.WHITE
+var tint_mul := Color.WHITE:
+	set(v):
+		tint_mul = v
+		self_modulate = _tint()
 var _glow: QuadFx
 
 ## Decor that moves in the wind (trees sway, bunting flutters, reeds and bushes stir; see ArtKit.wind_gain), and
@@ -161,6 +164,7 @@ func _place_glow() -> void:
 ## F7 switched the art (ArtToggle): draw again from the sprite or the polygons.
 func art_changed() -> void:
 	_art_state()
+	self_modulate = _tint()
 	_place_glow()
 	queue_redraw()
 

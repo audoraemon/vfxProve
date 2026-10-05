@@ -1004,17 +1004,21 @@ static func _anim_cover(t) -> void:
 	TownFloor.mark_live(baked2)
 	t.check(not under.get("live", false) and TownFloor.bakes(under), "an animated piece marked under stays baked")
 	t.check(not front2.get("live", false), "and the fence in front of it stays baked")
-	# The town: each stand-in is lit as the bake around it.
+	# The town: each stand-in is lit as the bake around it, from the moment it joins the decor layer (in the game the
+	# layer is in the tree, so its _ready() runs inside add_child; here it never runs: the colour must not wait on it).
 	var env := EnvironmentField.new()
+	var world := Node2D.new()
+	env.world_parent = world
 	var ground := Node2D.new()
 	var town := Town.new()
 	town.build(env, ground)
+	t.check(town._decor_layer != null and town._decor.filter(func(d: Decor) -> bool: return d.sprite_only)
+		.all(func(d: Decor) -> bool: return d.get_parent() == town._decor_layer), "the stand-ins join the decor layer")
 	var stand := town._decor.filter(func(d: Decor) -> bool: return d.sprite_only)
 	var fences := stand.filter(func(d: Decor) -> bool: return d.kind == D.FENCE)
 	t.check(fences.size() > 0, "a pasture fence in front of its animals goes live (%d)" % fences.size())
 	var lit_ok := true
 	for d: Decor in stand:
-		d._ready()
 		var spot: Dictionary = {}
 		for b: Dictionary in town.floor_node.baked_decor + town.forest.trees:
 			if b.kind == d.kind and b.seed == d.seed_value and b.at == d.at:
@@ -1030,9 +1034,17 @@ static func _anim_cover(t) -> void:
 			drawn_trees += 1
 	t.check(stand.filter(func(d: Decor) -> bool: return d.kind in [D.OAK, D.PINE]).size() == drawn_trees,
 		"a tree that goes live is one the forest leaves out (%d)" % drawn_trees)
+	# The bug order (ready first, as add_child in the tree runs it, then the multiplier) colours it too.
+	var late := Decor.new().setup(D.FENCE, Vector2(1, 1), Vector2(1, 0), 4)
+	late._ready()
+	late.tint_mul = Color(0.5, 0.5, 0.5)
+	t.check(late.self_modulate.is_equal_approx(ArtTuning.tint("fence") * Color(0.5, 0.5, 0.5)),
+		"a multiplier set after _ready() still colours the piece")
+	late.free()
 	town.free()
 	env.clear()
 	env.free()
+	world.free()
 	ground.free()
 	_unanimate(names, fakes)
 	DecorSprites.reload()

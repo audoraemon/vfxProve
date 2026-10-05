@@ -97,7 +97,7 @@ func _make_faithful(p: Person) -> void:
 
 ## Makes `count` of `pool` Faithful, spread evenly through it by stride (the middle of each stretch, from the front).
 func _spread_faithful(pool: Array[Person], count: int) -> void:
-	if pool.is_empty():
+	if pool.is_empty() or count <= 0:
 		return
 	var stride := maxi(1, pool.size() / count)
 	var i := stride / 2

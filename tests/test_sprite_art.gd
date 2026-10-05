@@ -29,8 +29,133 @@ static func run(t) -> void:
 	_idle_strip(t)
 	_flames(t)
 	_toggle(t)
+	_bonfires(t)
+	_banners(t)
+	_window_mask(t)
 	SpriteArt.set_enabled(true)
 
+
+## The sets with lit windows (Task 5 report): each has a glow_mask.png, holding at least this many window px. The
+## floors sit under the whole-pane masks (21, 22, 63, 64, 95, 84, 36) and above the lamp-core-only masks they replaced
+## (18, 16, 42, 42, 31, 28), so a regression to cores fails; the cathedral's specks are the same either way. The
+## tavern's 95 are its hand-placed panes (window_glow.py HAND_PANES, art polish); the finder's mask had 54.
+const WINDOW_SETS := {"cottage_red": 20, "cottage_blue": 20, "townhouse_a": 57, "townhouse_b": 57, "tavern": 90,
+	"cathedral": 76, "citadel_keep": 32}
+
+
+## Lit windows flicker (art animation round, Group B): a set's optional glow_mask.png marks its window pixels, and the
+## view turns the flicker on for the intact still (or its idle strip) only, and only when the set has a mask.
+static func _window_mask(t) -> void:
+	t.check(SpriteArt.sprite("workshop").has("glow_mask"), "a set carries a glow_mask key")
+	t.check(SpriteArt.sprite("workshop").glow_mask == null, "and it is null without a glow_mask.png")
+	# Task 5's masks (tools/dev/ref_convert/window_glow.py): one frame in size, opaque on a handful of window pixels.
+	# The shader reads the alpha: the importer bleeds the white into the clear pixels' red.
+	for n: String in WINDOW_SETS:
+		var s := SpriteArt.sprite(n)
+		var m: Texture2D = s.get("glow_mask")
+		t.check(m != null and Vector2(m.get_size()) == Vector2(s.size), "%s has a window mask the size of a frame" % n)
+		if m == null:
+			continue
+		var mi := m.get_image()
+		var lit := 0
+		for y in mi.get_height():
+			for x in mi.get_width():
+				lit += 1 if mi.get_pixel(x, y).a > 0.5 else 0
+		t.check(lit >= int(WINDOW_SETS[n]) and float(lit) < float(mi.get_width() * mi.get_height()) * 0.02,
+			"%s's mask marks its window panes (%d px, floor %d)" % [n, lit, WINDOW_SETS[n]])
+	for n: String in ["town_wall", "town_postern"]:
+		t.check(SpriteArt.sprite(n).glow_mask == null, "strip set %s has no window mask (its lookup would stretch)" % n)
+	var img := Image.create(84, 76, false, Image.FORMAT_RGBA8)
+	var tex := ImageTexture.create_from_image(img)
+	var set := SpriteArt.sprite("cottage_red").duplicate()
+	set["glow_mask"] = tex
+	var v := SpriteView.new().setup(set, Vector2(-30.4, -15.2), Vector2(24.0, -12.0))
+	var mat := v.material as ShaderMaterial
+	t.check(is_equal_approx(float(mat.get_shader_parameter("window_amp")), SpriteView.WINDOW_AMP),
+		"the view hands the shader its window amplitude")
+	t.check(mat.get_shader_parameter("frame_size") == set.size, "and the frame size the mask is drawn at")
+	v.show_still(&"intact")
+	t.check(mat.get_shader_parameter("window_flicker") == true, "intact cottage with a mask flickers")
+	t.check(mat.get_shader_parameter("glow_mask") == tex, "through its mask")
+	v.show_still(&"damaged")
+	t.check(mat.get_shader_parameter("window_flicker") == false, "damaged still does not flicker")
+	v.show_still(&"ruins")
+	t.check(mat.get_shader_parameter("window_flicker") == false, "nor do the ruins")
+	set["glow_mask"] = null
+	v.show_still(&"intact")
+	t.check(mat.get_shader_parameter("window_flicker") == false, "no mask, no flicker")
+	v.free()
+	# A set with an idle strip flickers while the strip plays, and stops on a damaged still.
+	var tower := SpriteArt.sprite("town_tower").duplicate()
+	tower["glow_mask"] = tex
+	var w := SpriteView.new().setup(tower, Vector2(-16.0, -8.0), Vector2(16.0, -8.0))
+	var wm := w.material as ShaderMaterial
+	w.play_idle()
+	t.check(w.playing and wm.get_shader_parameter("window_flicker") == true, "a playing idle strip with a mask flickers")
+	w.show_still(&"damaged")
+	t.check(wm.get_shader_parameter("window_flicker") == false, "and stops when the tower is damaged")
+	w.free()
+
+
+## Every set with a fire basket animates its flame (art animation round, Group A).
+const BASKET_SETS := ["town_tower", "town_tower_corner", "town_tower_e", "town_tower_s", "town_tower_e_hi",
+	"town_tower_s_hi", "town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "town_gate",
+	"citadel_keep", "citadel_tower"]
+
+
+static func _bonfires(t) -> void:
+	SpriteArt.set_enabled(true)
+	for n: String in BASKET_SETS:
+		var s := SpriteArt.sprite(n)
+		t.check(not s.is_empty() and int(s.frames) >= 6 and s.idle != null,
+			"%s has a flame idle strip (frames %s)" % [n, s.get("frames", 0)])
+	# A tower that only now plays a strip (town_tower_s, _s_hi) and the keep, whose strip grew from 4 to 12 frames, keep
+	# their damaged and ruins stills and their sprites still settle (a KEEP never idles: its procedural banner node runs;
+	# _sprite_settled() is what spares it the per-frame sync): the view steps the strip from the shared clock, a crack
+	# stops it, brought down it stays stopped, rebuilt it plays again.
+	for spec: Array in [["town_tower_s", Rect2(0, 0, 1.6, 1.6), 46.0, &"tower", &"door_s"],
+			["town_tower_s_hi", Rect2(0, 0, 1.6, 1.6), 46.0, &"tower", &"door_s_hi"],
+			["citadel_keep", Rect2(0, 0, 2.0, 2.0), 118.0, &"citadel", &"keep"]]:
+		var n: String = spec[0]
+		var tw := _make(spec[1], spec[2], K.KEEP, 5, spec[3], spec[4])
+		t.check(tw.sprite.get("name", "") == n and tw.sprite.stills.has(&"damaged")
+			and tw.sprite.stills.has(&"ruins"), "%s keeps its damaged and ruins stills" % n)
+		tw._ready()
+		for i in 4:
+			tw._process(1.0 / 60.0)
+		t.check(tw._sprite_settled() and _strip_on(tw._sprite_view), "a quiet %s settles while its flame plays" % n)
+		tw.damage(tw.max_hp * 0.4, Vector2(-5, -5), &"blast")
+		for i in 90:
+			tw._process(1.0 / 60.0)
+		var v := tw._sprite_view
+		t.check(tw.sprite_state() == &"damaged" and v.still == &"damaged" and _strip_off(v),
+			"cracked, %s shows its damaged still and its flame stops" % n)
+		tw.destroy(Vector2(-5, -5), &"blast")
+		for i in 120:
+			tw._process(1.0 / 60.0)
+		t.check(tw.sprite_state() == &"ruins" and _strip_off(v), "brought down, %s's flame stops" % n)
+		tw.restore()
+		for i in 4:
+			tw._process(1.0 / 60.0)
+		v = tw._sprite_view
+		t.check(tw.sprite_state() == &"intact" and _strip_on(v) and tw._sprite_settled(),
+			"rebuilt, %s's flame plays again (state %s, still %s, playing %s)" % [n, tw.sprite_state(), v.still, v.playing])
+		tw.free()
+
+
+## Every set with a painted hanging banner but no idle strip of its own sways it (art animation round, Group A;
+## tools/dev/ref_convert/banner_sway.py). The citadel walls, the cathedral and the postern paint none.
+const BANNER_SETS := ["barracks"]
+
+
+static func _banners(t) -> void:
+	SpriteArt.set_enabled(true)
+	for n: String in BANNER_SETS:
+		var s := SpriteArt.sprite(n)
+		t.check(not s.is_empty() and int(s.frames) >= 4 and s.idle != null,
+			"%s has a banner sway idle strip (frames %s)" % [n, s.get("frames", 0)])
+	# The barracks' forge stays the procedural flame over the sprite.
+	t.check(bool(SpriteArt.sprite("barracks").get("keep_flames", false)), "the barracks keeps its procedural forge flame")
 
 ## Adds fake entries (name -> {}) to the cached manifest so mappings resolve without assets; returns the names
 ## actually added, for _unfake(). Nothing may return or fail between the two, or the fakes leak into later tests.

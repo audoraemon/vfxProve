@@ -262,6 +262,10 @@ static func sprite(n: String) -> Dictionary:
 			var p := DIR + n + "/" + String(extra) + ".png"
 			if ResourceLoader.exists(p):
 				stills[extra] = load(p)
+	# Its lit windows (art animation round, Group B): one frame's size, red > 0.5 on the pixels that flicker. None: no
+	# flicker.
+	var mask_path := DIR + n + "/glow_mask.png"
+	var glow_mask: Texture2D = load(mask_path) if ResourceLoader.exists(mask_path) else null
 	var size := Vector2(m.size[0], m.size[1])
 	var fp := Vector2(m.footprint[0], m.footprint[1])
 	var idle_path := DIR + n + "/idle.png"
@@ -293,6 +297,8 @@ static func sprite(n: String) -> Dictionary:
 		"strip": strip, "period": period, "region": Rect2(),
 		# Its procedural flames (a wall torch, the barracks' forge) stay lit over it: the sprite paints none of its own.
 		"keep_flames": bool(m.get("keep_flames", false)),
+		# Its window mask (structure_sprite.gdshader's glow_mask), or null.
+		"glow_mask": glow_mask,
 		# A street torch's bowl rim (the procedural flame's base) or a street lamp's lantern glass (the procedural glow),
 		# in sprite px; damaged_shift: where they move to on the damaged still (its post leans). INF / Rect2(): none.
 		"flame": Vector2(m.flame[0], m.flame[1]) if m.has("flame") else Vector2.INF,

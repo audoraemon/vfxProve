@@ -84,6 +84,11 @@ const SHADE_LINE := Color(0.08, 0.05, 0.04, 0.8)
 
 ## Multiplies every colour poly() and line() collect (ArtTuning's tint for baked decor); white leaves them as given.
 static var color_mul := Color.WHITE
+## Moves every textured quad tex() collects (its corners, in the flush target's space): a piece's tuned size about its
+## ground point, inside one batch (PlantLayer; the floor bake scales with draw_set_transform instead). Identity leaves
+## them where given; fills and lines never take it. Set it round the quads it is for and back to identity after; begin()
+## resets it too, so a stray one never reaches the next drawing.
+static var tex_xform := Transform2D.IDENTITY
 ## Wind (structure_art.gdshader and shaders/wind.gdshader move what carries a weight in UV.y). While wind_gain is not
 ## zero, each vertex drawn takes wind_gain x clamp((wind_from_y - y) / wind_span, 0, 1): no weight at the line
 ## wind_from_y, the full gain wind_span px beyond it (up for a positive span, down for a negative one). A positive
@@ -148,6 +153,7 @@ static func face_code(face: int) -> float:
 ## Start collecting a drawing (drops anything a previous draw left unflushed).
 static func begin() -> void:
 	wind_gain = 0.0
+	tex_xform = Transform2D.IDENTITY
 	_pts.clear()
 	_cols.clear()
 	_uvs.clear()
@@ -288,7 +294,7 @@ static func tex(t: Texture2D, src: Rect2, dst: Vector2, c := Color.WHITE, flip_h
 	_last_flip = flip_h
 	var corners := [Vector2.ZERO, Vector2(src.size.x, 0), src.size, Vector2(0, src.size.y)]
 	for k in 4:
-		seg[3].append(dst + corners[k])
+		seg[3].append(tex_xform * (dst + corners[k]))
 		seg[4].append(c)
 		# Flipped, each corner samples the source at its mirror column (left u <-> right u).
 		var u: Vector2 = corners[k]

@@ -13,11 +13,18 @@ static func run(t) -> void:
 	_down(t)
 	_toggle(t)
 	_glow(t)
+	_lamp_glass(t)
 	_boats(t)
 	_mirror(t)
 	_herds(t)
 	_floor(t)
 	_real_trees(t)
+	_motion(t)
+	_plants(t)
+	_anim(t)
+	_anim_cover(t)
+	_strips(t)
+	_real_boxes(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -373,6 +380,70 @@ static func _glow(t) -> void:
 	lamp.free()
 
 
+## A sprite house lantern lights its glass as the street lamp does (art polish): the manifest's "glass" rect (sprite
+## px from its top left, as lamp_post's) carries an undimmed lit-glass overlay over the painted glass, mirrored with a
+## mirrored piece. It hides when the lamp is knocked down, and there is none while sprites are off.
+static func _lamp_glass(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var m: Dictionary = DecorSprites.manifest().get("lamp_house", {})
+	t.check(m.has("glass"), "lamp_house's manifest entry has a glass rect")
+	var g: Array = m.get("glass", [0, 0, 0, 0])
+	var glass := Rect2(g[0], g[1], g[2], g[3])
+	var d := DecorSprites.decor_set("lamp_house")
+	t.check(d.get("glass") == glass, "decor_set reads the glass from the manifest")
+	t.check(DecorSprites.decor_set("barrel_1").get("glass") == Rect2(), "a set without glass reads an empty rect")
+	var want := Rect2(glass.position - (d.anchor as Vector2), glass.size)
+	t.check(DecorSprites.glass_rect(d, false) == want, "the glass sits at its rect, from the anchor")
+	var flip := DecorSprites.glass_rect(d, true)
+	t.check(flip == Rect2(Vector2((d.anchor as Vector2).x - glass.end.x, want.position.y), glass.size),
+		"a mirrored piece mirrors its glass (got %s)" % flip)
+	t.check(DecorSprites.glass_rect(DecorSprites.decor_set("barrel_1"), false) == Rect2(), "no glass, no rect")
+	# A lamp in a dimmed decor layer: its glass overlay shows at the rect, coloured and stepped by its shader (which
+	# writes its colour outright, so the layer's dimming never reaches it), with no per-frame work of its own.
+	var layer := Node2D.new()
+	layer.modulate = Color(0.3, 0.27, 0.24)
+	var lamp := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	layer.add_child(lamp)
+	lamp._ready()
+	var ov: Node2D = lamp._glass
+	t.check(ov != null and ov.visible, "a sprite lamp_house shows a glass overlay")
+	t.check(ov != null and ov.rect == want, "at its manifest glass rect (got %s)" % (ov.rect if ov else null))
+	t.check(ov != null and ov.scale == Vector2.ONE * ArtTuning.scale("lamp"), "scaled with the lamp's drawing")
+	t.check(ov != null and not ov.has_method("_process"), "the overlay does no per-frame work")
+	var mat := ov.material as ShaderMaterial if ov != null else null
+	t.check(mat != null and mat.shader == preload("res://shaders/lamp_glass.gdshader"), "it draws on the lamp glass shader")
+	if mat != null:
+		t.check(mat.get_shader_parameter("rect") == Vector4(want.position.x, want.position.y, want.size.x, want.size.y),
+			"the shader's rect is the glass")
+		t.check(mat.get_shader_parameter("core_color") == Structure.COL_FLAME[0]
+			and mat.get_shader_parameter("ring_color") == Structure.COL_FLAME[1]
+			and mat.get_shader_parameter("low_color") == Structure.COL_FLAME[2], "in the street lamp's flame colours")
+		t.check(is_equal_approx(float(mat.get_shader_parameter("hz")), Structure.LAMP_GLASS_HZ)
+			and is_equal_approx(float(mat.get_shader_parameter("phase")), 3.0), "stepping as a street lamp's glass does")
+	lamp.hit(Decor.KNOCK_AT, &"blast")
+	t.check(ov != null and not ov.visible, "knocked down, the overlay hides")
+	layer.free()
+	# Sprites off: none, on a new lamp or one switched by F7.
+	var on := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	on._ready()
+	SpriteArt.set_enabled(false)
+	on.art_changed()
+	t.check(on._glass == null or not on._glass.visible, "F7 off: the lamp has no glass overlay")
+	var off := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	off._ready()
+	t.check(off._glass == null or not off._glass.visible, "sprites off: a new lamp has no glass overlay")
+	SpriteArt.set_enabled(true)
+	on.art_changed()
+	t.check(on._glass != null and on._glass.visible, "F7 on again: the overlay is back")
+	on.free()
+	off.free()
+	var barrel := Decor.new().setup(D.BARREL, Vector2(1, 1), Vector2.ZERO, 3)
+	barrel._ready()
+	t.check(barrel._glass == null, "other decor has no glass overlay")
+	barrel.free()
+
+
 static func _boats(t) -> void:
 	# A boat lies along the river holding it: boat_1 (along x) on TownLayout.RIVER, boat_2 (along y) on RIVER_WEST.
 	var fakes := _fake(["boat_1", "boat_2"])
@@ -591,3 +662,573 @@ static func _real_trees(t) -> void:
 	t.check(st.size() == 1 and st[0][1] == oak.stump and ArtKit.last_quad()[0] == Rect2(Vector2.ZERO, oak.size),
 		"a felled forest tree draws its whole stump texture at the same anchor")
 	ArtKit.begin()
+
+
+## Decor moves by material class (Decor.material_for): trees sway most, plants less, boats bob, the rest stand still.
+static func _motion(t) -> void:
+	var reeds := Decor.material_for(D.REEDS)
+	t.check(reeds != null and reeds == Decor.material_for(D.REEDS), "two reeds share one material")
+	t.check(Decor.material_for(D.BUSH) == reeds and Decor.material_for(D.FLOWERS) == reeds,
+		"bushes and flowers share the reeds' plant material")
+	var tree := Decor.material_for(D.OAK)
+	t.check(tree != null and tree != reeds, "a tree's material is not a plant's")
+	t.check(Decor.material_for(D.PINE) == tree and Decor.material_for(D.BUNTING) == tree, "pines and bunting sway as trees")
+	t.check(tree == Decor.wind_material(), "the tree material is the forest's wind material")
+	var bob := Decor.material_for(D.SHIP)
+	t.check(bob != null and bob == Decor.material_for(D.BOAT), "a ship and a boat share the bob material")
+	t.check(bob != tree and bob != reeds, "the bob material is its own")
+	t.check(Decor.material_for(D.BARREL) == null, "a barrel stands still (no material)")
+	t.check(Decor.material_for(D.DOCK) == null, "a dock stands still though it is on the water")
+	t.check(bob.shader == tree.shader and reeds.shader == tree.shader, "every class runs on the one wind shader")
+	t.check(float(bob.get_shader_parameter("bob")) > 0.0, "the bob material bobs")
+	t.check(float(tree.get_shader_parameter("bob")) == 0.0 and float(reeds.get_shader_parameter("bob")) == 0.0,
+		"trees and plants do not bob")
+	t.check(float(reeds.get_shader_parameter("sprite_sway")) < 1.5, "a plant sways less than a tree")
+	t.check(float(tree.get_shader_parameter("sprite_sway")) == 1.5, "a tree sways 1.5 px at its top")
+	for k: int in [D.REEDS, D.BUSH, D.FLOWERS, D.OAK, D.PINE, D.BUNTING]:
+		t.check(k in Decor.SWAYS, "%s sways" % Decor.Kind.keys()[k])
+	t.check(Decor.BOBS == [D.SHIP, D.BOAT], "ships and boats bob")
+	var live := Decor.new().setup(D.REEDS, Vector2(1, 1), Vector2.ZERO, 3)
+	live._ready()
+	t.check(live.material == reeds, "a live reed takes the plant material")
+	live.free()
+	live = Decor.new().setup(D.BOAT, Vector2(1, 1), Vector2.ZERO, 3)
+	live._ready()
+	t.check(live.material == bob, "a live boat takes the bob material")
+	live.free()
+	live = Decor.new().setup(D.BARREL, Vector2(1, 1), Vector2.ZERO, 3)
+	live._ready()
+	t.check(live.material == null, "a live barrel has no material")
+	live.free()
+	# F7 off: a piece drawn procedurally takes no material (so it batches with its materialless neighbours), but
+	# trees and bunting keep the wind material their polygons sway with.
+	SpriteArt.set_enabled(false)
+	for k: int in [D.REEDS, D.BUSH, D.FLOWERS, D.SHIP, D.BOAT, D.SHEEP]:
+		live = Decor.new().setup(k, Vector2(1, 1), Vector2.ZERO, 3)
+		live._ready()
+		t.check(live.material == null, "F7 off: a procedural %s has no material" % Decor.Kind.keys()[k])
+		SpriteArt.set_enabled(true)
+		live.art_changed()
+		t.check(live.material != null, "F7 on again: the %s takes its material back" % Decor.Kind.keys()[k])
+		SpriteArt.set_enabled(false)
+		live.art_changed()
+		t.check(live.material == null, "and F7 off takes it away")
+		live.free()
+	for k: int in [D.OAK, D.PINE, D.BUNTING]:
+		live = Decor.new().setup(k, Vector2(1, 1), Vector2.ZERO, 3)
+		live._ready()
+		t.check(live.material == tree, "F7 off: a procedural %s keeps the wind material" % Decor.Kind.keys()[k])
+		live.free()
+	SpriteArt.set_enabled(true)
+	# Animals at one rate share one material, whatever their texture (frame_u is 1 / frames for every strip).
+	var sheep := Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1"))
+	t.check(sheep != null and sheep == Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_2"))
+		and sheep == Decor.material_for(D.COW, DecorSprites.decor_set("cow_1"))
+		and sheep == Decor.material_for(D.COW, DecorSprites.decor_set("cow_2")),
+		"sheep and cows at one rate share one material")
+	# Frames step on the idle clock (frozen with the mission), not TIME.
+	var code: String = preload("res://shaders/wind.gdshader").code
+	t.check(code.contains("global uniform float idle_time") and code.contains("idle_time * anim_fps"),
+		"decor frames step on the idle_time global")
+
+
+## Low plants leave the floor bake for the plant layer's wind bands while their sprites are on (Task 8): the baked
+## reeds, bushes and flowers, and the floor's meadow shrubs and flowerbeds. Rocks and the rest stay baked.
+static func _plants(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var reed := {}
+	var rock := {}
+	for d in TownDecor.spots():
+		if d.bake and d.kind == D.REEDS and reed.is_empty():
+			reed = d
+		if d.bake and d.kind == D.ROCK and rock.is_empty():
+			rock = d
+	t.check(not reed.is_empty() and not rock.is_empty(), "the town bakes a reed and a rock")
+	t.check(TownFloor.plant_in_layer(reed), "sprites on: a baked reed sways in the plant layer")
+	t.check(not TownFloor.plant_in_layer(rock), "sprites on: a baked rock stays in the floor")
+	var spots := TownFloor.shrub_spots()
+	t.check(spots.size() > 100, "the floor has its meadow shrubs (%d)" % spots.size())
+	t.check(TownFloor.shrub_spots().size() == spots.size(), "shrub_spots() is deterministic")
+	t.check(spots.all(func(s: Dictionary) -> bool: return s.base in ["shrub", "flowerbed"] and s.at is Vector2),
+		"each shrub spot is a shrub or a flowerbed at a ground point")
+	t.check(TownFloor.plant_in_layer(spots[0]), "sprites on: a floor shrub sways in the plant layer")
+	SpriteArt.set_enabled(false)
+	t.check(not TownFloor.plant_in_layer(reed) and not TownFloor.plant_in_layer(rock)
+		and not TownFloor.plant_in_layer(spots[0]), "sprites off: every plant stays in the floor bake")
+	SpriteArt.set_enabled(true)
+	# A plant the bake paints a baked piece over (a garden plot over a shrub; a rock in front of a reed) stays in the
+	# bake; a plant in front of the piece, or clear of it, sways.
+	var shrub: Dictionary = spots[0].duplicate()
+	var plot := {"kind": D.GARDEN, "at": shrub.at - Vector2(0.4, 0.4), "size": Vector2(0.8, 0.8), "seed": 1}
+	var far := {"kind": D.GARDEN, "at": shrub.at + Vector2(6, -6), "size": Vector2(0.8, 0.8), "seed": 1}
+	var reed_front: Dictionary = reed.duplicate()
+	reed_front.at = Vector2(rock.at) + Vector2(0.1, 0.1)
+	var reed_back: Dictionary = reed.duplicate()
+	reed_back.at = Vector2(rock.at) - Vector2(0.1, 0.1)
+	var free_shrub: Dictionary = spots[0].duplicate()
+	# In bake paint order (shrubs first, then baked pieces back to front), as the town passes them.
+	var marked: Array[Dictionary] = [shrub, reed_back, reed_front]
+	TownFloor.mark_under(marked, [plot, rock] as Array[Dictionary])
+	var clear: Array[Dictionary] = [free_shrub]
+	TownFloor.mark_under(clear, [far] as Array[Dictionary])
+	t.check(shrub.get("under", false) and not TownFloor.plant_in_layer(shrub),
+		"a shrub under a baked garden plot stays in the bake")
+	t.check(reed_back.get("under", false), "a reed behind a baked rock stays in the bake")
+	t.check(not reed_front.get("under", false) and TownFloor.plant_in_layer(reed_front), "a reed in front of the rock sways")
+	t.check(not free_shrub.get("under", false), "a shrub clear of every baked piece sways")
+	# The mark carries back through plants: a reed behind a reed the rock keeps in the bake stays in the bake too
+	# (in the layer it would paint over the front reed), though it never touches the rock.
+	var front: Dictionary = reed.duplicate()
+	front.at = Vector2(rock.at) - Vector2(0.1, 0.1)
+	var rock_box := TownFloor._cover_box(rock)
+	var front_box := TownFloor._plant_box(front)
+	var back := {}
+	for si in range(1, 16):
+		for ti in range(-15, 16):
+			var c: Dictionary = reed.duplicate()
+			c.at = Vector2(front.at) + Vector2(-0.1 * si, 0.1 * ti)
+			var cb := TownFloor._plant_box(c)
+			if back.is_empty() and (c.at as Vector2).x + (c.at as Vector2).y < (front.at as Vector2).x + (front.at as Vector2).y \
+					and cb.intersects(front_box) and not cb.intersects(rock_box):
+				back = c
+	t.check(not back.is_empty(), "a reed behind the front reed that misses the rock exists")
+	var chain: Array[Dictionary] = [back, front]
+	TownFloor.mark_under(chain, [rock] as Array[Dictionary])
+	t.check(front.get("under", false) and back.get("under", false),
+		"a reed behind a reed kept in the bake stays in the bake too")
+	# The set lookups can be forced past F7 (mark_under sizes its boxes from the sets whatever the art).
+	SpriteArt.set_enabled(false)
+	t.check(DecorSprites.plant_set(front).is_empty() and not DecorSprites.plant_set(front, true).is_empty(),
+		"a forced plant set lookup ignores F7")
+	t.check(DecorSprites.name_for(D.REEDS, 3, Vector2.ZERO, Vector2.INF, true) != "", "and so does a forced name_for")
+	SpriteArt.set_enabled(true)
+	# The town hands the layer every floor shrub spot and every baked low plant, back to front.
+	var env := EnvironmentField.new()
+	var ground := Node2D.new()
+	var town := Town.new()
+	town.build(env, ground)
+	var layer: PlantLayer = town.plant_layer
+	t.check(layer != null and ground.get_child_count() == 3 and ground.get_child(0) is TownFloor
+		and ground.get_child(1) is PlantLayer and ground.get_child(2) is ForestLayer,
+		"the floor, the plant layer, then the forest, under the ground plane")
+	var low := town.floor_node.baked_decor.filter(func(d: Dictionary) -> bool: return d.kind in Decor.PLANTS)
+	t.check(layer != null and layer.plants.size() == spots.size() + low.size(),
+		"the plant layer takes %d shrub spots and %d baked plants (got %d)"
+			% [spots.size(), low.size(), layer.plants.size() if layer != null else -1])
+	var sorted := true
+	if layer != null:
+		for i in range(1, layer.plants.size()):
+			var a: Vector2 = layer.plants[i - 1].at
+			var b: Vector2 = layer.plants[i].at
+			if a.x + a.y > b.x + b.y:
+				sorted = false
+	t.check(sorted, "the plant layer's pieces run back to front")
+	var under := layer.plants.filter(func(d: Dictionary) -> bool: return d.get("under", false)) if layer != null else []
+	t.check(under.size() > 0 and under.size() < layer.plants.size() / 5,
+		"a few plants stay in the bake under baked pieces (%d)" % under.size())
+	t.check(town.floor_node.shrubs.size() == spots.size() and town.floor_node.shrubs.all(func(s: Dictionary) -> bool:
+			return layer.plants.has(s)), "the floor and the layer share the town's shrub pieces")
+	t.check(not TownFloor.shrub_spots().any(func(s: Dictionary) -> bool: return s.has("under")),
+		"marking leaves shrub_spots() itself unmarked")
+	# A band batches by atlas where the order allows: plants clear of one another, interleaved low / reed / bush, are
+	# one segment per atlas, every piece drawn once.
+	var base_at := Vector2(-20, 20)
+	var mixed: Array = []
+	for i in 6:
+		var at := base_at + Vector2(i * 2.0, -i * 2.0)
+		match i % 3:
+			0:
+				mixed.append({"base": "shrub", "at": at, "seed": 11 + i})
+			1:
+				mixed.append({"kind": D.REEDS, "at": at, "size": Vector2.ZERO, "seed": 11 + i})
+			2:
+				mixed.append({"kind": D.BUSH, "at": at, "size": Vector2.ZERO, "seed": 11 + i})
+	var band := PlantLayer.Band.new()
+	band.plants = PlantLayer.painter_order(mixed)
+	ArtKit.begin()
+	band.queue()
+	var bsegs := ArtKit.segments()
+	t.check(bsegs.size() == 3 and bsegs.all(func(g: Array) -> bool: return g[0] == "tex" and g[2] == 2),
+		"six clear plants on three atlases are three textured segments of two (got %s)" % [bsegs])
+	# Overlapping plants on two atlases keep their back-to-front order: a shrub, a reed over it, a shrub over that.
+	var stack: Array = [
+		{"base": "shrub", "at": base_at, "seed": 5},
+		{"kind": D.REEDS, "at": base_at + Vector2(0.1, 0.1), "size": Vector2.ZERO, "seed": 5},
+		{"base": "shrub", "at": base_at + Vector2(0.2, 0.2), "seed": 6},
+	]
+	var ordered := PlantLayer.painter_order(stack)
+	t.check(ordered == stack, "overlapping plants on two atlases keep their back-to-front order")
+	band.plants = ordered
+	ArtKit.begin()
+	band.queue()
+	var ssegs := ArtKit.segments()
+	t.check(ssegs.size() == 3 and ssegs[0][1] == ssegs[2][1] and ssegs[1][1] != ssegs[0][1],
+		"and draw low, reed, low (got %s)" % [ssegs])
+	# The town's bands keep painter order for every overlapping pair, in few segments.
+	var inversions := 0
+	var segments := 0
+	# Off the scene tree the layer has not built its bands yet.
+	layer._ready()
+	for b in layer.get_children():
+		var ps: Array = (b as PlantLayer.Band).plants
+		var last := "?"
+		for i in ps.size():
+			var si := DecorSprites.plant_set(ps[i], true)
+			var a := DecorSprites.plant_atlas(si.name) if not si.is_empty() else ""
+			if a != last:
+				segments += 1
+				last = a
+			for j in range(i + 1, ps.size()):
+				var aj: Vector2 = ps[j].at
+				var ai: Vector2 = ps[i].at
+				if aj.x + aj.y < ai.x + ai.y and TownFloor._plant_box(ps[i]).intersects(TownFloor._plant_box(ps[j])):
+					inversions += 1
+	t.check(inversions == 0, "no band draws a plant before an overlapping plant behind it (%d)" % inversions)
+	# Coarse bands (PlantLayer.BAND) batch across more pieces: 26 segments in 6 bands (59 in 20 at the forest's band).
+	t.check(segments <= 30 and layer.get_child_count() <= 8, "the layer stays a few draw calls (%d segments in %d bands)"
+		% [segments, layer.get_child_count()])
+	# A piece left in the bake under a baked piece is not drawn by the layer too.
+	band.plants = [shrub]
+	ArtKit.begin()
+	band.queue()
+	t.check(ArtKit.segments().is_empty(), "a band leaves a plant marked under to the bake (got %s)" % [ArtKit.segments()])
+	ArtKit.begin()
+	band.free()
+	# A band draws its pieces from the plant atlases: a run of floor shrubs is one textured segment.
+	ArtKit.begin()
+	for i in 12:
+		DecorSprites.paint_plant(spots[i], DecorSprites.plant_set(spots[i]))
+	var segs := ArtKit.segments()
+	t.check(segs.size() == 1 and segs[0][0] == "tex" and segs[0][2] == 12,
+		"twelve floor shrubs and flowerbeds are one textured segment (one atlas, got %s)" % [segs])
+	ArtKit.begin()
+	# Drawn from its atlas, a plant still stands where its own sprite did.
+	var s0 := DecorSprites.plant_set(spots[0])
+	DecorSprites.paint_plant(spots[0], s0)
+	var q := ArtKit.last_quad()
+	t.check(q[0].size == s0.size and q[1] == (Iso.ground_to_screen(spots[0].at) - s0.anchor).round(),
+		"a shrub draws its atlas rect at its anchor (got %s)" % [q])
+	ArtKit.begin()
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()
+
+
+## A strip of `frames` frames, each w x h, side by side.
+static func _strip(frames: int, w: int, h: int) -> Texture2D:
+	return _tex(w * frames, h)
+
+
+## Fake animated sets for `names` (strips of 4 frames at 3 fps), in the set cache; returns what to undo.
+static func _animate(names: Array, w := 8, h := 6) -> Array:
+	var fakes := _fake(names)
+	for n: String in names:
+		DecorSprites._sets[n] = DecorSprites._build(n, {"frames": 4, "fps": 3, "size": [w, h], "anchor": [w / 2, h - 1]},
+			_strip(4, w, h))
+	return fakes
+
+
+static func _unanimate(names: Array, fakes: Array) -> void:
+	for n: String in names:
+		DecorSprites._sets.erase(n)
+	_unfake(fakes)
+
+
+## Animated decor (Group C): a set with "frames" > 1 is a horizontal strip, `size` one frame; the piece paints frame
+## 0's rect and the wind shader steps the frame on the idle clock. Such a piece is drawn live while sprites are on:
+## never in the floor bake, never in a pile.
+static func _anim(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	# Loading: frames and fps from the manifest; a still is one frame.
+	var a := DecorSprites._build("animtest_1", {"frames": 4, "fps": 3, "size": [8, 6], "anchor": [4, 5]}, _strip(4, 8, 6))
+	t.check(a.get("frames") == 4 and is_equal_approx(float(a.get("fps", 0.0)), 3.0),
+		"a strip set loads frames 4 at 3 fps (got %s)" % [a])
+	t.check(a.get("size") == Vector2(8, 6), "its size is one frame")
+	var b := DecorSprites._build("animtest_2", {"frames": 4, "fps": 3, "anchor": [4, 5]}, _strip(4, 8, 6))
+	t.check(b.get("size") == Vector2(8, 6),
+		"with no size, one frame is the strip's width over its frames (got %s)" % [b.get("size")])
+	t.check(DecorSprites.decor_set("barrel_1").get("frames") == 1, "a still set is one frame")
+	# animated(): by the piece's set.
+	var names := ["sheep_1", "sheep_2", "ship"]
+	var fakes := _animate(names)
+	var seed1 := TownDecor.SEED
+	var seed2 := TownDecor.SEED + 7919 * 2
+	t.check(DecorSprites.animated(D.SHEEP, seed1) and DecorSprites.animated(D.SHEEP, seed2),
+		"a sheep with a strip set is animated")
+	t.check(not DecorSprites.animated(D.BARREL, 7), "a barrel (barrel_1, a still) is not")
+	# The material: shared per (motion class, frames, fps), with the strip's uniforms.
+	var s1 := Decor.new().setup(D.SHEEP, Vector2(1, 1), Vector2.ZERO, seed1)
+	var s2 := Decor.new().setup(D.SHEEP, Vector2(3, 1), Vector2.ZERO, seed2)
+	s1._ready()
+	s2._ready()
+	var m := s1.material as ShaderMaterial
+	t.check(m != null and m == s2.material, "two animated sheep share one material")
+	t.check(m != null and m == Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1")),
+		"material_for(kind, set) gives it")
+	t.check(m != null and int(m.get_shader_parameter("anim_frames")) == 4
+		and is_equal_approx(float(m.get_shader_parameter("anim_fps")), 3.0)
+		and is_equal_approx(float(m.get_shader_parameter("frame_u")), 0.25),
+		"with anim_frames 4, anim_fps 3 and frame_u a quarter of the strip")
+	t.check(m != null and m.shader == Decor.wind_material().shader, "on the one wind shader")
+	t.check(Decor.material_for(D.SHEEP) == null, "a still sheep still has no material")
+	var ship := Decor.material_for(D.SHIP, DecorSprites.decor_set("ship"))
+	t.check(ship != null and ship != m and float(ship.get_shader_parameter("bob")) > 0.0
+		and int(ship.get_shader_parameter("anim_frames")) == 4, "an animated ship keeps its bob and steps frames")
+	t.check(ship != Decor.material_for(D.SHIP), "apart from the still ships' bob material")
+	var still_frames: Variant = Decor.material_for(D.SHIP).get_shader_parameter("anim_frames")
+	t.check(still_frames == null or int(still_frames) <= 1, "which steps no frames")
+	# It paints frame 0's rect from the strip.
+	ArtKit.begin()
+	DecorSprites.paint(D.SHEEP, Vector2(1, 1), Vector2.ZERO, seed1, Vector2.ZERO)
+	var q := ArtKit.last_quad()
+	t.check(q.size() == 2 and q[0] == Rect2(0, 0, 8, 6), "an animated piece paints frame 0's rect (got %s)" % [q])
+	ArtKit.begin()
+	# F7 off: procedural, no frames, no material.
+	SpriteArt.set_enabled(false)
+	t.check(not DecorSprites.animated(D.SHEEP, seed1), "F7 off: the sheep is not animated")
+	t.check(DecorSprites.animated(D.SHEEP, seed1, Vector2.ZERO, Vector2.INF, true), "unless forced")
+	t.check(not DecorSprites.paint(D.SHEEP, Vector2(1, 1), Vector2.ZERO, seed1, Vector2.ZERO),
+		"F7 off: the sheep is procedural")
+	s1.art_changed()
+	t.check(s1.material == null, "and F7 takes its animated material away")
+	SpriteArt.set_enabled(true)
+	s1.art_changed()
+	t.check(s1.material == m, "and gives it back")
+	s1.free()
+	s2.free()
+	# The town: its baked sheep stay in the spot data and the floor's list, but the floor leaves them to a live node.
+	var env := EnvironmentField.new()
+	var ground := Node2D.new()
+	var town := Town.new()
+	town.build(env, ground)
+	var baked_sheep := town.floor_node.baked_decor.filter(func(d: Dictionary) -> bool: return d.kind == D.SHEEP)
+	t.check(baked_sheep.size() > 0, "the town bakes sheep (%d)" % baked_sheep.size())
+	t.check(baked_sheep.all(func(d: Dictionary) -> bool: return not TownFloor.bakes(d)),
+		"sprites on: the floor bakes none of its animated sheep")
+	t.check(town.floor_node.baked_decor.any(func(d: Dictionary) -> bool: return d.kind == D.ROCK and TownFloor.bakes(d)),
+		"and still bakes its rocks")
+	var live := town._decor.filter(func(d: Decor) -> bool: return d.kind == D.SHEEP and d.sprite_only)
+	t.check(live.size() == baked_sheep.size(),
+		"a live sheep stands for each baked one (%d for %d)" % [live.size(), baked_sheep.size()])
+	for d: Decor in live:
+		d._ready()
+	t.check(live.all(func(d: Decor) -> bool: return d.visible and d.material == m),
+		"drawn, with the animated material")
+	t.check(live.all(func(d: Decor) -> bool: return not env.decor().has(d)),
+		"no gameplay decor (blasts never reach a baked piece)")
+	SpriteArt.set_enabled(false)
+	for d: Decor in live:
+		d.art_changed()
+	t.check(baked_sheep.all(func(d: Dictionary) -> bool: return TownFloor.bakes(d)), "F7 off: the floor bakes them again")
+	t.check(live.all(func(d: Decor) -> bool: return not d.visible), "and their live stand-ins hide")
+	SpriteArt.set_enabled(true)
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()
+	_unanimate(names, fakes)
+	# Piles: an animated part leaves its pile for a live node of its own, which falls with the pile.
+	var gnames := ["barrel_1", "barrel_2"]
+	var gfakes := _animate(gnames)
+	var pile := Decor.new().setup(D.PILE, Vector2(1, 1), Vector2.ZERO, 5)
+	pile.parts = [{"kind": D.BARREL, "at": Vector2(1, 1), "size": Vector2.ZERO, "seed": 5},
+		{"kind": D.CRATES, "at": Vector2(1.2, 1), "size": Vector2.ZERO, "seed": 6}]
+	var drawn := pile.pile_parts_drawn()
+	t.check(drawn.size() == 1 and drawn[0].kind == D.CRATES, "sprites on: a pile does not draw its animated barrel")
+	SpriteArt.set_enabled(false)
+	t.check(pile.pile_parts_drawn().size() == 2, "F7 off: it draws them all")
+	SpriteArt.set_enabled(true)
+	pile.free()
+	env = EnvironmentField.new()
+	ground = Node2D.new()
+	town = Town.new()
+	town.build(env, ground)
+	var piled := 0
+	var piles := town._decor.filter(func(d: Decor) -> bool: return d.kind == D.PILE)
+	for p: Decor in piles:
+		piled += p.parts.filter(func(x: Dictionary) -> bool: return x.kind == D.BARREL).size()
+	var lone := town._decor.filter(func(d: Decor) -> bool: return d.kind == D.BARREL and d.sprite_only)
+	t.check(piled > 0 and lone.size() == piled,
+		"each piled barrel gets a live node of its own (%d for %d)" % [lone.size(), piled])
+	var host: Decor = null
+	for p: Decor in piles:
+		if not p.followers.is_empty():
+			host = p
+			break
+	t.check(host != null, "a pile has live parts")
+	if host != null:
+		host.hit(Decor.KNOCK_AT, &"blast")
+		t.check(host.followers.all(func(f: Decor) -> bool: return f.down),
+			"knocked down, the pile takes its live parts down too")
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()
+	_unanimate(gnames, gfakes)
+	DecorSprites.reload()
+
+
+## A live animated piece sits over the whole bake, so what the bake painted over it goes live with it (TownFloor.
+## mark_live): a fence in front of a cow and overlapping it is live while sprites are on; one behind it or clear of it
+## stays baked. A piece mark_under() keeps under a cover stays baked and still. Stand-ins take the bake's light.
+static func _anim_cover(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var names := ["cow_1", "cow_2", "sheep_1", "sheep_2"]
+	var fakes := _animate(names)
+	var c := Vector2(10, 10)
+	var cow := {"kind": D.COW, "at": c, "size": Vector2.ZERO, "seed": 3, "bake": true}
+	var behind := {"kind": D.FENCE, "at": c + Vector2(-1.5, -0.6), "size": Vector2(1.5, 0), "seed": 4, "bake": true}
+	var front := {"kind": D.FENCE, "at": c + Vector2(-0.3, 0.6), "size": Vector2(1.5, 0), "seed": 5, "bake": true}
+	var clear := {"kind": D.FENCE, "at": c + Vector2(5, 5), "size": Vector2(1.5, 0), "seed": 6, "bake": true}
+	t.check(TownFloor._cover_box(behind).intersects(TownFloor._cover_box(cow)), "the fence behind overlaps the cow")
+	var baked: Array[Dictionary] = [behind, cow, front, clear]
+	TownFloor.mark_live(baked)
+	t.check(cow.get("live", false) and not TownFloor.bakes(cow), "sprites on: the animated cow is live")
+	t.check(front.get("live", false) and not TownFloor.bakes(front), "a fence in front of it, overlapping it, is live too")
+	t.check(not behind.get("live", false) and TownFloor.bakes(behind), "a fence behind it stays baked")
+	t.check(not clear.get("live", false) and TownFloor.bakes(clear), "a fence clear of it stays baked")
+	SpriteArt.set_enabled(false)
+	t.check(baked.all(func(d: Dictionary) -> bool: return TownFloor.bakes(d)), "F7 off: all four are baked")
+	SpriteArt.set_enabled(true)
+	# Under a cover: the animated piece stays baked, at frame 0, and covers nothing live.
+	var under := {"kind": D.COW, "at": c, "size": Vector2.ZERO, "seed": 3, "bake": true, "under": true}
+	var front2: Dictionary = front.duplicate()
+	front2.erase("live")
+	var baked2: Array[Dictionary] = [under, front2]
+	TownFloor.mark_live(baked2)
+	t.check(not under.get("live", false) and TownFloor.bakes(under), "an animated piece marked under stays baked")
+	t.check(not front2.get("live", false), "and the fence in front of it stays baked")
+	# The town: each stand-in is lit as the bake around it, from the moment it joins the decor layer (in the game the
+	# layer is in the tree, so its _ready() runs inside add_child; here it never runs: the colour must not wait on it).
+	var env := EnvironmentField.new()
+	var world := Node2D.new()
+	env.world_parent = world
+	var ground := Node2D.new()
+	var town := Town.new()
+	town.build(env, ground)
+	t.check(town._decor_layer != null and town._decor.filter(func(d: Decor) -> bool: return d.sprite_only)
+		.all(func(d: Decor) -> bool: return d.get_parent() == town._decor_layer), "the stand-ins join the decor layer")
+	var stand := town._decor.filter(func(d: Decor) -> bool: return d.sprite_only)
+	var fences := stand.filter(func(d: Decor) -> bool: return d.kind == D.FENCE)
+	t.check(fences.size() > 0, "a pasture fence in front of its animals goes live (%d)" % fences.size())
+	var lit_ok := true
+	for d: Decor in stand:
+		var spot: Dictionary = {}
+		for b: Dictionary in town.floor_node.baked_decor + town.forest.trees:
+			if b.kind == d.kind and b.seed == d.seed_value and b.at == d.at:
+				spot = b
+		var key := d.tuning_key()
+		var baked_col: Color = ArtTuning.tint(key) * (spot.get("tint", Color.WHITE) as Color) * Town.GROUND_EVENING
+		var live_col: Color = d.self_modulate * Town.EVENING
+		lit_ok = lit_ok and not spot.is_empty() and live_col.is_equal_approx(baked_col)
+	t.check(stand.size() > 0 and lit_ok, "every stand-in takes the baked tint (%d stand-ins)" % stand.size())
+	var drawn_trees := 0
+	for b: Dictionary in town.forest.trees:
+		if TownFloor.live_now(b):
+			drawn_trees += 1
+	t.check(stand.filter(func(d: Decor) -> bool: return d.kind in [D.OAK, D.PINE]).size() == drawn_trees,
+		"a tree that goes live is one the forest leaves out (%d)" % drawn_trees)
+	# The bug order (ready first, as add_child in the tree runs it, then the multiplier) colours it too.
+	var late := Decor.new().setup(D.FENCE, Vector2(1, 1), Vector2(1, 0), 4)
+	late._ready()
+	late.tint_mul = Color(0.5, 0.5, 0.5)
+	t.check(late.self_modulate.is_equal_approx(ArtTuning.tint("fence") * Color(0.5, 0.5, 0.5)),
+		"a multiplier set after _ready() still colours the piece")
+	late.free()
+	town.free()
+	env.clear()
+	env.free()
+	world.free()
+	ground.free()
+	_unanimate(names, fakes)
+	DecorSprites.reload()
+
+
+## The Group C strips (Task 11): the grazing animals, the scarecrow, the house lantern and the ship's pennant are
+## shipped as 4-frame strips: each set loads 4 frames at its rate, its texture is exactly 4 frames wide, and each draws
+## live (animated) while sprites are on, with its own frame_u. A mirrored sheep keeps the strip's material.
+static func _strips(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var want := {"sheep_1": 1.5, "sheep_2": 1.5, "cow_1": 1.5, "cow_2": 1.5, "scarecrow": 4.0, "lamp_house": 6.0,
+		"ship": 5.0}
+	for n: String in want:
+		var s := DecorSprites.decor_set(n)
+		t.check(not s.is_empty() and int(s.get("frames", 1)) == 4, "%s loads 4 frames (got %s)" % [n, s.get("frames")])
+		t.check(not s.is_empty() and is_equal_approx(float(s.get("fps", 0.0)), want[n]),
+			"%s steps at %s fps (got %s)" % [n, want[n], s.get("fps")])
+		var w := (s.get("tex") as Texture2D).get_width() if s.get("tex") != null else -1
+		t.check(not s.is_empty() and w == int((s.size as Vector2).x) * 4,
+			"%s's strip is 4 frames wide (%d = %s x 4)" % [n, w, s.get("size")])
+	# Every kind that draws these sets is animated, and a mirrored sheep draws the same strip material.
+	for k: int in [D.SHEEP, D.COW, D.SCARECROW, D.LAMP, D.SHIP]:
+		t.check(DecorSprites.animated(k, 1), "kind %d draws an animated set" % k)
+	var mirrored := -1
+	var plain := -1
+	for i in range(40):
+		var sd := TownDecor.SEED + i * 7919
+		if DecorSprites.name_for(D.SHEEP, sd, Vector2.ZERO) != "sheep_1":
+			continue
+		if DecorSprites.flipped(D.SHEEP, sd) and mirrored < 0:
+			mirrored = sd
+		elif not DecorSprites.flipped(D.SHEEP, sd) and plain < 0:
+			plain = sd
+	t.check(mirrored != -1 and plain != -1, "sheep_1 draws both mirrored and plain (%d, %d)" % [mirrored, plain])
+	t.check(DecorSprites.animated(D.SHEEP, mirrored) and DecorSprites.animated(D.SHEEP, plain),
+		"a mirrored sheep_1 is animated as a plain one")
+	var mat := Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1"))
+	t.check(mat != null and is_equal_approx(float(mat.get_shader_parameter("frame_u")), 0.25),
+		"sheep_1's material steps quarter-width frames")
+
+
+## mark_live() tests covers by the drawn sprites' boxes (TownFloor._live_box), not the generic canopy: a tree in front of
+## a grazing cow whose real box misses it stays baked even where TownDecor.SCREEN_BOX would reach it; a tree whose crown
+## overlaps the cow still goes live over it. The cow's own box is its set's, times its tuned scale.
+static func _real_boxes(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var c := Vector2(10, 10)
+	var cow := {"kind": D.COW, "at": c, "size": Vector2.ZERO, "seed": 3, "bake": true}
+	var cs := DecorSprites.decor_set(DecorSprites.name_for(D.COW, 3, Vector2.ZERO, c, true))
+	var cbox := TownFloor._live_box(cow)
+	t.check(not cs.is_empty() and is_equal_approx(cbox.size.x, cs.size.x * ArtTuning.scale("cow") + 2.0),
+		"the cow's live box is its set's width times its tuned scale (%s)" % [cbox])
+	# A tree in front (later in x + y), over a grid of offsets: one whose real box misses the cow while SCREEN_BOX
+	# would hit it, and one whose real box overlaps it.
+	var miss := {}
+	var hit := {}
+	for i in range(0, 25):
+		for j in range(0, 25):
+			var at := c + Vector2(i, j) * 0.125
+			if at.x + at.y <= c.x + c.y:
+				continue
+			var tree := {"kind": D.OAK, "at": at, "size": Vector2.ZERO, "seed": 11, "bake": true}
+			var real := TownFloor._live_box(tree)
+			var generic := Rect2(Iso.ground_to_screen(at) + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)
+			if miss.is_empty() and not real.intersects(cbox) and generic.intersects(cbox):
+				miss = tree
+			if hit.is_empty() and real.intersects(cbox):
+				hit = tree
+	t.check(not miss.is_empty(), "some tree in front misses the cow by its real box but not by SCREEN_BOX")
+	t.check(not hit.is_empty(), "some tree in front overlaps the cow by its real box")
+	if miss.is_empty() or hit.is_empty():
+		return
+	var baked: Array[Dictionary] = [cow, miss]
+	TownFloor.mark_live(baked)
+	t.check(cow.get("live", false), "the grazing cow is live")
+	t.check(not miss.get("live", false) and TownFloor.bakes(miss), "a tree whose real box misses it stays baked")
+	var cow2: Dictionary = cow.duplicate()
+	cow2.erase("live")
+	var baked2: Array[Dictionary] = [cow2, hit]
+	TownFloor.mark_live(baked2)
+	t.check(hit.get("live", false), "a tree whose crown overlaps it goes live over it")
+	# The live boxes hold with F7 off at build time (mark_live forces the sets).
+	SpriteArt.set_enabled(false)
+	t.check(not TownFloor._live_box(miss).is_equal_approx(
+		Rect2(Iso.ground_to_screen(miss.at) + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)),
+		"F7 off: a tree's live box is still its set's, not the generic canopy")
+	SpriteArt.set_enabled(true)

@@ -21,7 +21,7 @@ static func run(t) -> void:
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 3)
 	crowd.spawn(20, 10)
 	t.check(first == TownLayout.structures().size() + 9 + TownLayout.FOUNTAINS.size() + TownLayout.WELLS.size(), "the first town is complete (%d)" % first)
-	t.check(ground.get_child_count() == 2, "one floor and one forest under the ground plane")
+	t.check(ground.get_child_count() == 3, "one floor, one plant layer and one forest under the ground plane")
 
 	# Knock a few things down and hurt the Citadel, so the rebuild has state to clear.
 	env.damage_radius(Vector2(0.0, 2.0), 3.0, 99999.0, &"stone")
@@ -39,7 +39,7 @@ static func run(t) -> void:
 	t.check(env.structures().size() == first + 1, "the rebuilt town has the same buildings (%d)" % env.structures().size())
 	t.check(town.get_child_count() == 1, "one Citadel node after a rebuild (%d children)" % town.get_child_count())
 	t.check(town.citadel == first_citadel, "the same Citadel instance is rebuilt, so listeners stay wired")
-	t.check(ground.get_child_count() == 2, "and still one floor and one forest (%d)" % ground.get_child_count())
+	t.check(ground.get_child_count() == 3, "and still one floor, one plant layer and one forest (%d)" % ground.get_child_count())
 	t.near(town.citadel.fraction(), 1.0, 0.001, "the Citadel is whole again")
 	t.check(town.citadel.standing_parts() == 9 and town.citadel.parts.size() == 9, "with all nine parts")
 	var grid2 := WalkGrid.new().setup(env, town)

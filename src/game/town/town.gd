@@ -38,6 +38,8 @@ var smoke: ChimneySmoke
 ## Null when built without a ground plane (headless tests).
 var floor_node: TownFloor
 var forest: ForestLayer
+## The low plants that sway (PlantLayer), between the floor and the forest.
+var plant_layer: PlantLayer
 ## Everything this town put into the field, so teardown() can take exactly that back out.
 var _built: Array[Structure] = []
 var _decor: Array[Decor] = []
@@ -102,6 +104,9 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		_decor.append(dec)
 		if _decor_layer != null:
 			_decor_layer.add_child(dec)
+		for p: Dictionary in dec.parts:
+			if DecorSprites.animated(p.kind, p.seed, p.size, p.at, true):
+				dec.followers.append(_stand_in(p))
 	var houses: Array[Structure] = []
 	for s in _built:
 		if s.kind == Structure.Kind.HOUSE and s.role == &"house":
@@ -119,19 +124,61 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		var flat: Array[Dictionary] = []
 		for d in baked:
 			(trees if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE] else flat).append(d)
+		# The floor's shrubs and its baked reeds, bushes and flowers sway in the plant layer while their sprites are
+		# on (TownFloor.plant_in_layer); the floor bakes whichever the layer does not draw. Both share these pieces.
+		var shrubs: Array[Dictionary] = []
+		for s: Dictionary in TownFloor.shrub_spots():
+			shrubs.append(s.duplicate())
+		var plants: Array[Dictionary] = shrubs.duplicate()
+		for d in flat:
+			if d.kind in Decor.PLANTS:
+				plants.append(d)
+		# A plant a baked piece is painted over (a shrub under a garden plot) stays in the bake, still.
+		TownFloor.mark_under(plants, flat)
+		# Pieces drawn live while sprites are on (an animated set, and the baked pieces painted over it): each gets a
+		# live stand-in, and the floor, the plant layer and the forest leave it out while it shows.
+		TownFloor.mark_live(baked)
+		var lit := Color(GROUND_EVENING.r / EVENING.r, GROUND_EVENING.g / EVENING.g, GROUND_EVENING.b / EVENING.b)
+		for d in baked:
+			if d.get("live", false):
+				_stand_in(d, lit * (d.get("tint", Color.WHITE) as Color))
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = flat
+		floor_node.shrubs = shrubs
 		floor_node.tint = GROUND_EVENING
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
+		plants.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return (a.at as Vector2).x + (a.at as Vector2).y < (b.at as Vector2).x + (b.at as Vector2).y)
+		plant_layer = PlantLayer.new()
+		plant_layer.name = "Plants"
+		plant_layer.plants = plants
+		# Lit as the floor's texture is: the baked plants took its tint.
+		plant_layer.modulate = GROUND_EVENING
+		ground.add_child(plant_layer)
+		ground.move_child(plant_layer, 1)
 		forest = ForestLayer.new()
 		forest.name = "Forest"
 		forest.trees = trees
 		# Lit as the floor's texture is: the baked trees took its tint.
 		forest.modulate = GROUND_EVENING
 		ground.add_child(forest)
-		ground.move_child(forest, 1)
+		ground.move_child(forest, 2)
+
+
+## A live sprite_only Decor for a piece drawn elsewhere while sprites are off: a baked piece TownFloor.mark_live()
+## marked (the floor, the plant layer and the forest leave it out while sprites are on), or a pile's animated part
+## (Decor.pile_parts_drawn). It shows while sprites are on. The placement data is untouched. `mul`: its tint_mul (a
+## baked piece's light), set before it joins the decor layer, whose _ready() (in the game) colours it.
+func _stand_in(d: Dictionary, mul := Color.WHITE) -> Decor:
+	var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
+	dec.sprite_only = true
+	dec.tint_mul = mul
+	_decor.append(dec)
+	if _decor_layer != null:
+		_decor_layer.add_child(dec)
+	return dec
 
 
 ## Take this town out of the world: its buildings (the Citadel's parts included) leave the field, the floor is
@@ -247,3 +294,9 @@ func _free_floor() -> void:
 		else:
 			forest.free()
 	forest = null
+	if is_instance_valid(plant_layer):
+		if plant_layer.is_inside_tree():
+			plant_layer.queue_free()
+		else:
+			plant_layer.free()
+	plant_layer = null

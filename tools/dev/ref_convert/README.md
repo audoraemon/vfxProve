@@ -110,13 +110,13 @@ Run from the repo root. `GODOT` is the console exe (`Godot_v4.7.2-stable_win64_c
 GODOT=<console exe> bash tools/test.sh
 "$GODOT" --headless --path . -s tools/dev/state_digest.gd
 python tools/dev/check_sprite_glow.py
-SCENE=res://scenes/mission.tscn GODOT=<console exe> bash tools/capture.sh --bench
+"$GODOT" --path . --audio-driver Dummy --disable-vsync --scene res://scenes/mission.tscn -- --bench   # add --art=procedural after --bench for the procedural run; grep bench[mission]
 ```
 
 - **Tests:** need `failures=0`, and grep the output for `SCRIPT ERROR` (the runner does not count it). Check counts at wrap-up: batch 3 `2167`, decor `2305` or more.
 - **Digest:** must stay `61267b7e90524d800bf1c3473a71146b`.
 - **Glow:** no sprite over 5% glowing. `--masks DIR` writes a mask per sprite.
-- **Bench:** windowed mission bench, sprites against procedural (`-- --art=procedural`). Report medians over pairs; other Godot processes make it noisy, so note how many ran. Sprites should stay within ~3 fps of procedural.
+- **Bench:** the mission bench, sprites against procedural (`-- --bench --art=procedural`); grep the output for `bench[mission]`. Run 3 alternating pairs and report the medians; other Godot processes make it noisy, so note how many ran. `capture.sh --bench` is not used: it never passes `--disable-vsync`, so vsync caps it at about 142 fps and two runs read as equal. Sprites should stay within ~3 fps of procedural.
 
 ## Adding a new set
 

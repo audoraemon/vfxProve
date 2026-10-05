@@ -59,13 +59,13 @@ static func reload() -> void:
 	_atlases.clear()
 
 
-## The set named `n`: {name, tex, stump, size, anchor, segment, glow, end_post, footprint}, and for a tree set
-## (ATLASES) "src", its still's rect in "tex", its family's atlas (else tex is its intact.png, drawn whole); glow is the
-## optional "glow"
-## (sprite px from the anchor: where a lamp's light pool sits), else zero; end_post the optional "end_post" [x, y, w, h]
-## (a run's closing post: the sub-rect of the sprite drawn at the run's far end), else an empty Rect2; footprint the
-## optional "footprint" [w, d] (ground units: a garden still's plot), else zero; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
-## (warned once).
+## The set named `n`: {name, tex, stump, size, anchor, segment, glow, end_post}, and for a tree set (ATLASES) "src", its
+## still's rect in "tex", its family's atlas (else tex is its intact.png, drawn whole).
+## - glow: the optional "glow" (sprite px from the anchor: where a lamp's light pool sits), else zero.
+## - end_post: the optional "end_post" [x, y, w, h] (a run's closing post: the sub-rect of the sprite drawn at the
+##   run's far end), else an empty Rect2.
+## - stump: the optional stump.png (Texture2D or null).
+## {} when it is not in the manifest or its PNG is missing (warned once).
 static func decor_set(n: String) -> Dictionary:
 	if _sets.has(n):
 		return _sets[n]
@@ -85,7 +85,6 @@ static func decor_set(n: String) -> Dictionary:
 		"segment": float(m.get("segment", 0.0)),
 		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
 		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
-		"footprint": Vector2(m.footprint[0], m.footprint[1]) if m.has("footprint") else Vector2.ZERO,
 	}
 	var packed := _atlas_rect(n)
 	if packed.has("tex"):
@@ -204,7 +203,7 @@ static func _nearest_plot(base: String, size: Vector2) -> String:
 
 
 ## Whether a decor piece draws mirrored (a MIRRORED kind only). A town piece goes by its place in the decor order
-## (_order: see _herd_pick), any other seed by hash01(seed, SALT_VARIANT + 1) < 0.5.
+## (_order, as name_for picks a variant), any other seed by hash01(seed, SALT_VARIANT + 1) < 0.5.
 static func flipped(kind: int, seed_value: int) -> bool:
 	if not kind in MIRRORED:
 		return false
@@ -261,10 +260,10 @@ static func paint_named(base: String, at: Vector2, seed_value: int, origin: Vect
 
 
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down
-## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws nothing. A run repeats its set's
-## segment from its back end (the low end along its main axis), the last tile cut to the run's length (on its near
-## side: the left of an x set, the right of a y set); a set with an "end_post" closes the run with that post at its
-## far end. A MIRRORED kind faces either way by seed (its anchor mirrored with it).
+## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws
+## nothing. A run repeats its set's segment from its back end (the low end along its main axis), the last tile cut
+## to the run's length (on its near side: the left of an x set, the right of a y set); a set with an "end_post"
+## closes the run with that post at its far end. A MIRRORED kind faces either way by seed (its anchor mirrored with it).
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
 	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
 		var tr := tree_set(kind, seed_value, size.x)

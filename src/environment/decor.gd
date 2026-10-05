@@ -83,13 +83,13 @@ func _place_glow() -> void:
 		_glow.position = DecorSprites.glow_offset(kind, seed_value, size) * ArtTuning.scale(tuning_key())
 
 
-## A blast reached it: char it, or knock it down when the hit is strong enough.
 ## F7 switched the art (ArtToggle): draw again from the sprite or the polygons.
 func art_changed() -> void:
 	_place_glow()
 	queue_redraw()
 
 
+## A blast reached it: char it, or knock it down when the hit is strong enough.
 func hit(amount: float, damage_kind: StringName) -> void:
 	if down:
 		return

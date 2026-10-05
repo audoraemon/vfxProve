@@ -120,6 +120,9 @@ class DetailPaint extends Node2D:
 var tint := Color.WHITE
 ## Decor painted into the floor (TownDecor spots with `bake`), back to front.
 var baked_decor: Array[Dictionary] = []
+## The meadow shrubs this floor paints (shrub_spots() order); the town hands over its own copies, marked "under"
+## (mark_under()), and shares them with the plant layer. Empty: shrub_spots() itself.
+var shrubs: Array[Dictionary] = []
 ## Per meadow cell: 1 meadow, 2 forest floor, +4 on a trail. Filled while painting the ground, read by the detail.
 var _zones := PackedByteArray()
 var _zn := 0
@@ -128,6 +131,9 @@ var _texture: Texture2D
 var _yard_rects: Array[Rect2] = []
 ## Screen position of the baked texture's top-left corner.
 var _origin := Vector2.ZERO
+## shrub_spots(), worked out on first use (TownLayout is constant).
+static var _shrub_spots: Array[Dictionary] = []
+static var _shrubs_done := false
 
 
 func _ready() -> void:
@@ -232,7 +238,7 @@ func paint_ground(ci: CanvasItem) -> void:
 	_river(ci)
 
 
-func _hash(x: int, y: int) -> int:
+static func _hash(x: int, y: int) -> int:
 	return absi((x * 73856093) ^ (y * 19349663)) % 997
 
 
@@ -579,7 +585,39 @@ func paint_detail(ci: CanvasItem) -> void:
 
 ## Low shrubs and flower clumps over the house blocks' open ground, as thick as the reference's: painted into the
 ## floor, since they are too low to hide anyone. Buildings, gardens and trees stand over any that fall under them.
+## While their sprites are on they sway in the plant layer instead (plant_in_layer), and the bake leaves them out.
 func _shrubs(ci: CanvasItem) -> void:
+	for s: Dictionary in (shrubs if not shrubs.is_empty() else shrub_spots()):
+		if plant_in_layer(s):
+			continue
+		var g: Vector2 = s.at
+		var h: int = s.seed
+		var p := Iso.ground_to_screen(g).round()
+		ArtKit.begin()
+		# A floor shrub or flowerbed sprite set, when one exists (DecorSprites.paint_named), stands in for the
+		# procedural shrub: small sets at the procedural shrub's size (live bushes and flowers draw bigger ones).
+		if DecorSprites.paint_named(s.base, g, h, Vector2.ZERO):
+			pass
+		elif h % 5 == 0:
+			# A clump of flowers in one colour, among a little green.
+			PropArt.leafy(p + Vector2(0, -2), Vector2(4, 2.5), h, 5, ArtKit.OAK)
+			var col: Color = FLOWERS[h % FLOWERS.size()]
+			for k in 4:
+				ci.draw_rect(Rect2(p + Vector2(float((h + k * 7) % 7) - 3.0, float((h + k * 3) % 4) - 5.0), Vector2(1, 1)), col)
+		else:
+			var r := Vector2(4.0 + float(h % 4), 3.0 + float(h % 3))
+			PropArt.leafy(p + Vector2(0, -r.y * 0.6), r, h, 7, ArtKit.OAK)
+		ArtKit.flush(ci)
+
+
+## The floor's meadow shrubs over the house blocks, in paint order: {"base": "shrub" or "flowerbed", "at" (ground
+## units), "seed"} each, on a jittered SHRUB_STEP grid, SHRUB_CHANCE of its points, on open meadow only (_fixed_zone
+## 1). Deterministic; the floor bake and the plant layer both read it.
+static func shrub_spots() -> Array[Dictionary]:
+	if _shrubs_done:
+		return _shrub_spots
+	_shrubs_done = true
+	var yards := _yards()
 	var n := 0
 	for d: Rect2 in TownLayout.DISTRICTS:
 		var nx := int(d.size.x / SHRUB_STEP)
@@ -592,29 +630,147 @@ func _shrubs(ci: CanvasItem) -> void:
 					continue
 				var g := d.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * SHRUB_STEP \
 					+ (Vector2(float(h % 17) / 17.0, float(h % 13) / 13.0) - Vector2(0.5, 0.5)) * SHRUB_STEP * 0.8
-				if _zone(g) != 1:
+				# The house blocks lie inside the walls, where the zone does not hang on the painted meadow.
+				if _fixed_zone(g, yards) != 1:
 					continue
-				var p := Iso.ground_to_screen(g).round()
-				ArtKit.begin()
-				# A floor shrub or flowerbed sprite set, when one exists (DecorSprites.paint_named), stands in for the
-				# procedural shrub: small sets at the procedural shrub's size (live bushes and flowers draw bigger ones).
-				if DecorSprites.paint_named("flowerbed" if h % 5 == 0 else "shrub", g, h, Vector2.ZERO):
-					pass
-				elif h % 5 == 0:
-					# A clump of flowers in one colour, among a little green.
-					PropArt.leafy(p + Vector2(0, -2), Vector2(4, 2.5), h, 5, ArtKit.OAK)
-					var col: Color = FLOWERS[h % FLOWERS.size()]
-					for k in 4:
-						ci.draw_rect(Rect2(p + Vector2(float((h + k * 7) % 7) - 3.0, float((h + k * 3) % 4) - 5.0), Vector2(1, 1)), col)
-				else:
-					var r := Vector2(4.0 + float(h % 4), 3.0 + float(h % 3))
-					PropArt.leafy(p + Vector2(0, -r.y * 0.6), r, h, 7, ArtKit.OAK)
-				ArtKit.flush(ci)
+				_shrub_spots.append({"base": "flowerbed" if h % 5 == 0 else "shrub", "at": g, "seed": h})
+	return _shrub_spots
+
+
+## Whether a low plant sways in the plant layer (PlantLayer) rather than lying in the floor bake: while sprites are on,
+## a baked REEDS / BUSH / FLOWERS piece or a floor shrub spot (shrub_spots) that has a set (DecorSprites.plant_set).
+## F7 moves them between the two: the layer redraws and the floor re-bakes.
+## A piece marked "under" (mark_under()) stays in the bake: a baked piece the bake paints over it would otherwise draw
+## under it.
+static func plant_in_layer(d: Dictionary) -> bool:
+	return not d.get("under", false) and not DecorSprites.plant_set(d).is_empty() and not live_now(d)
+
+
+## Whether the floor bake paints baked piece `d` now: not while the plant layer draws it (plant_in_layer), nor while
+## a live stand-in does (live_now). F7 moves a piece between them: the floor re-bakes and the live node shows or hides.
+static func bakes(d: Dictionary) -> bool:
+	return not plant_in_layer(d) and not live_now(d)
+
+
+## Whether baked piece `d` is drawn by a live sprite_only Decor now (the town stands one for each piece mark_live()
+## marked): while sprites are on.
+static func live_now(d: Dictionary) -> bool:
+	return bool(d.get("live", false)) and SpriteArt.on()
+
+
+## Mark "live" the baked pieces drawn by a live node while sprites are on (Town stands a sprite_only Decor for each),
+## so an animated set's frames step: `baked` is every baked piece (trees too), back to front by x + y, as the town
+## sorts them, after mark_under().
+## - An animated piece (DecorSprites.animated, forced: F7 may turn sprites on later) goes live, unless mark_under()
+##   marked it "under": a baked piece covers it, so it stays baked, still, at frame 0.
+## - Then a live piece sits over the whole bake, so every baked piece painted after it that overlaps it goes live too
+##   (a pasture's front fence over a cow's feet), and on from there: y-sort then orders them as the bake did. A piece
+##   painted before it stays baked, under it, as it was. Boxes are the drawn sprites' (_live_box).
+## Deterministic, from the pieces alone; the placement data is untouched (the marks live on the town's own copies).
+static func mark_live(baked: Array[Dictionary]) -> void:
+	var live_boxes: Array[Rect2] = []
+	for d in baked:
+		var box := _live_box(d)
+		var live: bool = not d.get("under", false) and DecorSprites.animated(d.kind, d.seed, d.size, d.at, true)
+		if not live:
+			for b in live_boxes:
+				if b.intersects(box):
+					live = true
+					break
+		if live:
+			d["live"] = true
+			live_boxes.append(box)
+
+
+## A baked piece's screen box for mark_live(): the box its sprite is drawn in while sprites are on (its set's `size`
+## about its `anchor`, mirrored as paint() mirrors it, times its ArtTuning scale about the ground point; a tree's from
+## its forest or town tree set), grown a px for rounding. A run (fence, bunting) or a piece with no set keeps
+## _cover_box(), and a tree with no set the generous canopy TownDecor.SCREEN_BOX. Real boxes keep a tree whose crown
+## stands clear of an animal out of the live cascade (draw calls), while a crown that overlaps it still goes live.
+static func _live_box(d: Dictionary) -> Rect2:
+	var tree: bool = d.kind == Decor.Kind.OAK or d.kind == Decor.Kind.PINE
+	var s := {}
+	if tree:
+		s = DecorSprites.tree_set(d.kind, d.seed, (d.size as Vector2).x, true)
+	elif not d.kind in DecorSprites.RUNS:
+		var n := DecorSprites.name_for(d.kind, d.seed, d.size, d.at, true)
+		s = DecorSprites.decor_set(n) if n != "" else {}
+	var a := Iso.ground_to_screen(d.at)
+	if s.is_empty():
+		if tree:
+			return Rect2(a + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)
+		return _cover_box(d)
+	var size: Vector2 = s.size
+	var anchor: Vector2 = s.anchor
+	if DecorSprites.flipped(d.kind, d.seed):
+		anchor.x = size.x - anchor.x
+	var sc := ArtTuning.scale(String(Decor.Kind.keys()[d.kind]).to_lower())
+	return Rect2(a - anchor * sc, size * sc).grow(1.0)
+
+
+## Mark each low plant in `plants` "under" (it stays in the bake, still) when the bake would paint something over it
+## that the plant layer, drawn over the whole bake, would then sit under. `plants` are the shrub spots and the baked
+## REEDS / BUSH / FLOWERS in bake paint order (every shrub first, then the baked pieces back to front by x + y), as
+## the town passes them.
+## - A baked piece of `baked` the bake paints after the plant overlaps it: a shrub under a garden plot, reeds behind a
+##   moored boat or a rock. Trees and plants are no such cover: the forest layer stands over the plant layer.
+## - Then, to a fixed point, an "under" plant overlaps it that the bake paints after it: in the layer the plant would
+##   paint over that front plant. One pass from the front back reaches it, since a mark only spreads backwards.
+## Boxes are the sprite boxes, generous (a run's or a procedural piece's whole span, raised for its height).
+static func mark_under(plants: Array[Dictionary], baked: Array[Dictionary]) -> void:
+	var covers: Array = []
+	for o in baked:
+		if o.kind in Decor.PLANTS or o.kind in [Decor.Kind.OAK, Decor.Kind.PINE]:
+			continue
+		covers.append([o, _cover_box(o)])
+	var boxes: Array[Rect2] = []
+	for p in plants:
+		var box := _plant_box(p)
+		boxes.append(box)
+		if not box.has_area():
+			continue
+		var depth: float = (p.at as Vector2).x + (p.at as Vector2).y
+		for c: Array in covers:
+			var o: Dictionary = c[0]
+			if p.has("kind") and (o.at as Vector2).x + (o.at as Vector2).y < depth:
+				continue
+			if box.intersects(c[1]):
+				p["under"] = true
+				break
+	for i in range(plants.size() - 1, -1, -1):
+		if not plants[i].get("under", false):
+			continue
+		for j in i:
+			if not plants[j].get("under", false) and boxes[j].intersects(boxes[i]):
+				plants[j]["under"] = true
+
+
+## A low plant's screen box (its sprite's while sprites are on, a little grown for the tuned scale); empty with no set.
+static func _plant_box(p: Dictionary) -> Rect2:
+	var s := DecorSprites.plant_set(p, true)
+	if s.is_empty():
+		return Rect2()
+	return Rect2(Iso.ground_to_screen(p.at) - s.anchor, s.size).grow(2.0)
+
+
+## A baked piece's screen box, generously: its sprite's box when it has a still, and always its ground span raised by
+## 24 px (a run, a garden plot, a procedural piece).
+static func _cover_box(o: Dictionary) -> Rect2:
+	var a := Iso.ground_to_screen(o.at)
+	var box := Rect2(a, Vector2.ZERO).expand(Iso.ground_to_screen(o.at + o.size)).grow(4.0)
+	box = box.merge(Rect2(box.position - Vector2(0, 24), Vector2(box.size.x, 24)))
+	var n := DecorSprites.name_for(o.kind, o.seed, o.size, o.at, true)
+	var d := DecorSprites.decor_set(n) if n != "" else {}
+	if not d.is_empty() and not o.kind in DecorSprites.RUNS:
+		box = box.merge(Rect2(a - d.anchor, d.size))
+	return box
 
 
 ## Baked decor over the detail, back to front: trees, rocks, bushes, reeds and fences nothing ever stands in front of.
 func _paint_decor(ci: CanvasItem) -> void:
 	for d in baked_decor:
+		if not bakes(d):
+			continue
 		# The same tuning a live Decor takes: its size about its ground point, and its colour.
 		var key := String(Decor.Kind.keys()[d.kind]).to_lower()
 		var sc := ArtTuning.scale(key)
@@ -632,6 +788,20 @@ func _paint_decor(ci: CanvasItem) -> void:
 ## What lies at a ground point for detail: 0 nothing (water, roads, paving, trails, fields), 1 meadow,
 ## 2 forest floor, 3 the town's earth.
 func _zone(g: Vector2) -> int:
+	var z := _fixed_zone(g, _yard_rects)
+	if z >= 0:
+		return z
+	if _zn == 0:
+		return 2 if _forest(g) else 1
+	var i := clampi(floori((g.x - FILL.position.x) / CELL), 0, _zn - 1)
+	var j := clampi(floori((g.y - FILL.position.y) / CELL), 0, _zn - 1)
+	var c := _zones[j * _zn + i]
+	return 0 if c & 4 else (2 if c & 2 else 1)
+
+
+## _zone() where it does not hang on the painted meadow (water, fields, roads, and everything inside the walls, with
+## the house yards `yards`); -1 out in the meadow and the forest, where the painted cells decide.
+static func _fixed_zone(g: Vector2, yards: Array[Rect2]) -> int:
 	for river: Rect2 in TownLayout.RIVERS:
 		if river.grow(0.25).has_point(g):
 			return 0
@@ -650,19 +820,14 @@ func _zone(g: Vector2) -> int:
 		for plaza: Rect2 in TownLayout.GATE_PLAZAS:
 			if plaza.grow(0.3).has_point(g):
 				return 0
-		for y: Rect2 in _yard_rects:
+		for y: Rect2 in yards:
 			if y.has_point(g):
 				return 3
 		for d: Rect2 in TownLayout.DISTRICTS:
 			if d.grow(-0.2).has_point(g):
 				return 1
 		return 0
-	if _zn == 0:
-		return 2 if _forest(g) else 1
-	var i := clampi(floori((g.x - FILL.position.x) / CELL), 0, _zn - 1)
-	var j := clampi(floori((g.y - FILL.position.y) / CELL), 0, _zn - 1)
-	var z := _zones[j * _zn + i]
-	return 0 if z & 4 else (2 if z & 2 else 1)
+	return -1
 
 
 static func _near_polyline(g: Vector2, pts: Array, d: float) -> bool:

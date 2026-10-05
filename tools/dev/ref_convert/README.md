@@ -100,7 +100,39 @@ Each tree family (forest, town) is packed at load into one texture: stills side 
 - **Never re-run `convert.py` on `bell_tower`.** Normal mode would overwrite its hand-set size and anchor.
 - **Each decor set is its own texture**, except the tree atlas (horizontal, bottom-aligned for the wind shader). The textured-quad sway weight is the whole texture's `UV.y`.
 - **`stump.png` shares the intact canvas** and anchor, so a felled tree draws at the same point.
-- **Decor has no idle strips.** Flames, smoke, glows and banners stay procedural.
+- **Decor strips are the exception (art animation round, below).** Only a manifest `frames`/`fps` set animates; flames, smoke, glows and banners stay procedural.
+
+## Animation (`feat/art-animation`, free, no AI)
+
+Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Frames are drawn locally from the existing sprites and step in shaders on the shared idle clock.
+
+### Tools
+
+- **`bonfire_flicker.py <set>... [--check]`**: finds each painted fire-basket flame (warm, bright pixels grown from the pale core, held to the dark basket's columns) and redraws it as a 6-frame loop in the set's idle strip. Frame 6 equals frame 0, so the loop has no pop.
+  - `--check` verifies the written strips and manifest (loop, frame count, fps) and exits 1 on a failure. Run it after any edit.
+  - **Frames and fps:** a flame loop is 6 frames at 6 fps. A set that already has a banner strip of `n` frames becomes `lcm(n, 6)` frames when that is at most 12, with the flame pasted over every banner frame; otherwise the banner frames are re-timed to 6. `fps` keeps the banner's cycle time within 15%. A set with no strip gets a new 6-frame strip at 6 fps.
+  - The Citadel keep's strip is PixelLab's own; its flames are read from that strip's frame 0, not from the intact still.
+- **`banner_sway.py`**: the banners' sway strips (towers, and now the barracks banner). Citadel wall, wall-side, cathedral and postern have no banner.
+- **`window_glow.py <set>... [--dry]`**: writes `<set>/glow_mask.png`, one frame in size, white on the lit window panes and transparent elsewhere.
+  - **Masks:** a pane is a warm, lamp-bright core with dark bars round it, grown 4-connected over its own rare tones (a seeded, bounded flood fill) and kept only if it fits a window and is framed.
+  - **Guards:** saturation, lamp-brightness and yellow-orange tests drop cream plaster, sandstone and roof highlights; clusters over `MAX_CLUSTER` px are flames or lit floor and are dropped; flame boxes from `bonfire_flicker.flames()` are excluded; a set with an idle strip is read from frame 0 and a pixel must pass in every frame; set names are validated before anything is written; each set has a lower-bound pixel count in the tests.
+  - **It refuses strip sets** (manifest `strip`: the town wall and postern). A piece there draws a region wider than one frame, so the mask lookup would stretch.
+
+### Engine
+
+- **`glow_mask.png` and `WINDOW_AMP`:** `SpriteArt` loads the optional mask. On the intact still and its idle strip, `structure_sprite.gdshader` multiplies masked pixels by `1 + WINDOW_AMP * flicker`, with `WINDOW_AMP = 0.15` (`sprite_view.gd`). Each 3x3 pixel cell has its own phase, so windows flicker apart. No mask, no change. Damaged and ruins stills never flicker.
+- **Decor manifest keys:** `frames` and `fps` on a decor set. `intact.png` is then a horizontal strip of `frames` equal-width frames, and `size` is one frame. Written by `decor_common.write_set`.
+- **Motion classes** (`Decor.material_for(kind)`, shared materials): `tree` (sway weight 1.5), `plant` (1.0, for reeds, bushes and flowers, which join `Decor.SWAYS`), and `bob` (ships and boats: a whole-pixel rise and fall, about a 3 s period, no shear).
+- **Plant layer:** low plants (the floor's meadow shrubs and flower clumps, and the baked reeds, bushes and flowers) leave the floor bake and draw in wind bands, like `ForestLayer`. Only pieces nothing stands in front of go there: a plant the bake paints something over (a garden plot, a moored boat, a rock) is marked "under" and stays in the bake, still, and so, transitively, does any plant behind an "under" plant that overlaps it.
+
+### Rules
+
+- **Frame stepping runs on `idle_time`.** It freezes with the mission and follows time scale and hit-stop. Each piece has its own phase.
+- **Wind sway and bob run on `TIME`**, like the trees and bunting always did, so they keep moving on a frozen mission.
+- **Animated decor stays live.** It is never baked into the floor and never merged into a pile.
+- **The front covers go live.** Baked pieces in front of and overlapping an animated live piece also go live, so y-sort draws them over it. Pieces marked "under" stay baked and do not animate. Cover tests use each set's real drawn box.
+- **Live stand-ins take the bake tint** (`GROUND_EVENING` / `EVENING`), set before `add_child`, so they match the baked neighbours.
+- **F7 off** draws everything procedurally, exactly as before.
 
 ## Gates
 

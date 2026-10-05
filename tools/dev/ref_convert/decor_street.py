@@ -12,6 +12,8 @@ enough to carry one).
               light pool (a QuadFx on the ground, at the procedural lamp's ground point, 8 px left of its lantern)
               moves under this lantern: "glow" [8, 0] (the lantern's centre is 8.5 px right of the anchor; the pool
               stays on the ground).
+              A 4-frame strip at 6 fps (Group C): the flame in the glass (3 x 5 px) changes shape, the still's (0),
+              leaning left (1), sunk low (2), leaning right (3); never more than 7 amber px a frame.
   bunting_x   Decor.Kind.BUNTING along ground x (down-right on screen): one ground unit of string (32 px across,
   bunting_y   16 down, sagging 2 px between its ends) with six pennants hanging from it, blue and cream in turn
               (ArtKit.BANNER[0] and [2], as DecorArt._bunting), each lit on its left column and shaded on its right.
@@ -87,6 +89,15 @@ LAMP = [
     "o433210o.........",
     ".oooooo..........",
 ]
+# The flame's shapes in the glass (rows 10..14, columns 11..13 of LAMP), frame 0 the still's.
+FLAME = [
+    ("eae", "aca", "aca", "eae", "eee"),
+    ("aee", "cae", "aca", "eae", "eee"),
+    ("eee", "eae", "aca", "aca", "eae"),
+    ("eea", "eac", "aca", "eae", "eee"),
+]
+FLAME_ROW, FLAME_COL = 10, 11
+LAMP_FPS = 6.0
 LAMP_ANCHOR = (4, 37)
 LAMP_GLOW = (8, 0)        # the light pool: on the ground under the lantern (sprite px from the anchor)
 
@@ -117,13 +128,23 @@ def lamp_tones():
     return woods, iron, iron_lit
 
 
-def lamp():
+def lamp_rows(frame=0):
+    """LAMP with frame `frame`'s flame in its glass."""
+    rows = list(LAMP)
+    for j, flame in enumerate(FLAME[frame]):
+        r = rows[FLAME_ROW + j]
+        rows[FLAME_ROW + j] = r[:FLAME_COL] + flame + r[FLAME_COL + len(flame):]
+    return rows
+
+
+def lamp(frame=0):
     woods, iron, iron_lit = lamp_tones()
-    h, w = len(LAMP), len(LAMP[0])
+    rows = lamp_rows(frame)
+    h, w = len(rows), len(rows[0])
     pal = {str(k): woods[k] for k in range(5)}
     pal.update({"i": iron, "j": iron_lit, "c": FLAME_CORE, "a": FLAME_AMBER, "e": FLAME_DEEP, "o": OUTLINE})
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    for y, row in enumerate(LAMP):
+    for y, row in enumerate(rows):
         assert len(row) == w, "ragged row %d" % y
         for x, ch in enumerate(row):
             if ch != ".":
@@ -168,7 +189,7 @@ def bunting(along_y=False):
 
 
 SETS = {
-    "lamp": lambda: [("lamp_house",) + lamp() + (None, LAMP_GLOW)],
+    "lamp": lambda: [("lamp_house",) + decor_common.strip([lamp(k) for k in range(4)]) + (None, LAMP_GLOW)],
     "bunting": lambda: [("bunting_x",) + bunting() + (1.0, None), ("bunting_y",) + bunting(True) + (1.0, None)],
 }
 
@@ -185,7 +206,8 @@ def main():
                 img.save(Path(args.out) / (name + ".png"))
                 path = Path(args.out) / (name + ".png")
             else:
-                path = decor_common.write_set(name, img, anchor, segment, glow)
+                anim = {"frames": 4, "fps": LAMP_FPS} if name == "lamp_house" else {}
+                path = decor_common.write_set(name, img, anchor, segment, glow, **anim)
             print("%-12s %dx%d anchor %s%s%s -> %s" % (name, img.width, img.height, anchor,
                                                       "" if segment is None else " segment %s" % segment,
                                                       "" if glow is None else " glow %s" % (glow,), path))

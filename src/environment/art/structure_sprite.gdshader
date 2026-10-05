@@ -28,6 +28,15 @@ uniform int idle_frames = 1;
 uniform float idle_fps = 1.0;
 uniform float idle_phase = 0.0;
 uniform float frame_w = 0.0;
+// Lit windows flicker (art animation round, Group B): glow_mask (SpriteArt "glow_mask", one frame's size, opaque on
+// window pixels) marks them. Its alpha is read, not its red: the importer's fix_alpha_border bleeds the white into the
+// clear pixels' colour. SpriteView turns window_flicker on for the intact still or its idle strip only. Each 3 px cell
+// of window wavers on its own phase of the shared clock by up to window_amp, with a rare short dip.
+uniform sampler2D glow_mask : filter_nearest, repeat_disable;
+uniform bool window_flicker = false;
+uniform float window_amp = 0.12;
+// One frame's size (px): the mask's.
+uniform vec2 frame_size = vec2(1.0);
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -73,7 +82,25 @@ void fragment() {
 		discard;
 	}
 	vec3 c = px.rgb;
-	if (!glows(c)) {
+	// Classed before the flicker, so a dimmed window never drops into the lit, dimmed and charred path.
+	bool glow = glows(c);
+	if (window_flicker) {
+		// The pixel inside the drawn frame: a still's (or a held strip frame's) texel less its frame's origin; a playing
+		// strip draws frame 0's rect (frame_origin 0), so the unshifted UV is already inside frame 0, the same pixel
+		// every frame shows.
+		vec2 local = floor(UV / TEXTURE_PIXEL_SIZE) - frame_origin;
+		float m = texture(glow_mask, (local + 0.5) / frame_size).a;
+		if (m > 0.5) {
+			vec2 cell = floor(local / 3.0);
+			float ph = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831;
+			float f = 0.6 * sin(idle_time * 7.0 + ph) + 0.4 * sin(idle_time * 13.0 + ph * 1.7);
+			f -= step(0.97, fract(sin(floor(idle_time * 3.0) + ph) * 9871.0)) * 0.8;
+			// Never above the pixel's brightest channel x (1 + window_amp), nor past white.
+			float cap = min(max(px.r, max(px.g, px.b)) * (1.0 + window_amp), 1.0);
+			c = min(c * (1.0 + window_amp * f), vec3(cap));
+		}
+	}
+	if (!glow) {
 		vec3 lit = light_col * FACING;
 		lit = lit / (1.0 + lit);
 		float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));

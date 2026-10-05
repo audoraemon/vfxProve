@@ -43,6 +43,14 @@ OUTLINE = tuple(int(v) for v in convert.OUTLINE)
 # Fixed colours (none reaches check_sprite_glow's glow rule).
 CLOTH = ((166, 152, 124), (198, 186, 160), (226, 216, 192), (240, 233, 214))     # seam, shade, body, lit
 PENNANT = ((31, 69, 166), (53, 99, 200))                                         # ArtKit.BANNER[0], [1]
+# The ship is a 4-frame strip at 5 fps (Group C): only the pennant moves. A wave runs out along it (period
+# PENNANT_WAVE columns, a quarter a frame), each column lifted or dropped by round(amp * (wave now - wave at frame
+# 0)), the amp growing from 0 at the mast to PENNANT_AMP at the tip; its tip reaches out and draws back a px.
+SHIP_FPS = 5.0
+PENNANT_LEN = 11
+PENNANT_WAVE = 8.0
+PENNANT_AMP = 1.0
+PENNANT_REACH = (0, -1, 0, 1)
 ROPE = (58, 44, 32)
 WAKE = (190, 226, 246)
 
@@ -150,7 +158,14 @@ LIFT = [6.0, 0.0, 0.0, 2.0, 8.0]
 MASTS = [(-0.3, 64.0, 1.3), (0.65, 48.0, 0.9)]       # x, height above the deck, sail span (units toward the stern)
 
 
-def ship():
+def pennant_dy(i, frame):
+    """Column i's (1 at the mast) lift in frame `frame`: 0 in frame 0, so frame 0 is the still and frame 4 frame 0."""
+    a = PENNANT_AMP * i / PENNANT_LEN
+    ph = 2 * math.pi * i / PENNANT_WAVE
+    return int(round(a * (math.sin(ph - math.pi / 2 * frame) - math.sin(ph))))
+
+
+def ship(frame=0):
     cv = WaterCanvas()
     P = cv.iso
 
@@ -239,9 +254,10 @@ def ship():
     f = P(-0.3, 0, DECK + 64)
     fx, fy = math.floor(f[0]), math.floor(f[1])
     for j in range(5):
-        w = round(11 * (1 - abs(j - 2) / 3.0))
+        w = round((PENNANT_LEN + PENNANT_REACH[frame]) * (1 - abs(j - 2) / 3.0))
         for i in range(1, w + 1):
-            cv.put((np.floor(cv.cx) == fx + i) & (np.floor(cv.cy) == fy + j), PENNANT[1] if j < 2 else PENNANT[0])
+            cv.put((np.floor(cv.cx) == fx + i) & (np.floor(cv.cy) == fy + j + pennant_dy(i, frame)),
+                   PENNANT[1] if j < 2 else PENNANT[0])
     # Stays, bare: each masthead to the bowsprit's end and down to the stern.
     for x, tall, _span in MASTS:
         top_pt = P(x, 0, DECK + tall)
@@ -309,7 +325,7 @@ def boat(along_x):
 
 
 SETS = {
-    "ship": [("ship", ship)],
+    "ship": [("ship", lambda: decor_common.strip([ship(k) for k in range(4)]))],
     "boat": [("boat_1", lambda: boat(True)), ("boat_2", lambda: boat(False))],
 }
 
@@ -329,7 +345,8 @@ def main():
                 img.save(Path(a.out) / (name + ".png"))
                 print(name, img.size, anchor, "->", a.out)
             else:
-                print(name, img.size, anchor, "->", decor_common.write_set(name, img, anchor))
+                anim = {"frames": 4, "fps": SHIP_FPS} if name == "ship" else {}
+                print(name, img.size, anchor, "->", decor_common.write_set(name, img, anchor, **anim))
 
 
 if __name__ == "__main__":

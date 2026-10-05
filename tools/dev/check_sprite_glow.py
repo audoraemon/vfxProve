@@ -26,7 +26,7 @@ def main():
     paths += sorted(glob.glob("assets/pixellab/decor/*/intact.png"))
     for path in paths:
         name = "/".join(path.replace("\\", "/").split("/")[-2:])
-        if name.endswith(("reference.png", "style_ref.png")):
+        if name.endswith(("reference.png", "style_ref.png", "glow_mask.png")):  # glow_mask: a window mask, not art
             continue
         im = Image.open(path).convert("RGBA")
         px = im.load()

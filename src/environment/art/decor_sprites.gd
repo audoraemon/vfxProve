@@ -37,6 +37,12 @@ static var _variants_cache := {}
 ## side along x, bottom-aligned, so wind.gdshader's sway weight (1 - UV.y: the height in the texture) still grows from
 ## a tree's foot to its top.
 const ATLASES := {"forest": ["forest_oak", "forest_pine"], "town": ["town_oak", "town_pine"]}
+## The plant layer's sets (PlantLayer: the floor's meadow shrubs, the baked reeds, bushes and flowers) packed by
+## height into runtime atlases, so a band of them is a few draw calls, not one per piece. Built and drawn by the layer
+## only (paint_plant); decor_set() and live decor keep each set's own texture. wind.gdshader sways a quad by its height
+## in the texture, so a still shorter than its atlas sways that much less at its top (a 7 px flowerbed in the 10 px
+## low atlas: 0.7 of the plant material's sway): the families group the heights (7..10, 11..15, the 30 px reeds).
+const PLANT_ATLASES := {"plant_low": ["shrub", "flowerbed", "flowers"], "plant_bush": ["bush"], "plant_reeds": ["reeds"]}
 ## Built atlases: name -> {"tex": ImageTexture, "rects": {set name -> Rect2}} (kept here: ArtKit holds only RIDs).
 static var _atlases := {}
 
@@ -65,6 +71,9 @@ static func reload() -> void:
 ## - end_post: the optional "end_post" [x, y, w, h] (a run's closing post: the sub-rect of the sprite drawn at the
 ##   run's far end), else an empty Rect2.
 ## - stump: the optional stump.png (Texture2D or null).
+## - frames, fps: an animated set's intact.png is a horizontal strip of "frames" frames (default 1, a still), `size`
+##   one frame (with no "size": the strip's width over its frames); paint() draws frame 0's rect and wind.gdshader
+##   steps it at "fps" on the idle clock (Decor.material_for). Not for a tree set (an ATLASES family packs stills).
 ## {} when it is not in the manifest or its PNG is missing (warned once).
 static func decor_set(n: String) -> Dictionary:
 	if _sets.has(n):
@@ -76,22 +85,31 @@ static func decor_set(n: String) -> Dictionary:
 			push_warning("DecorSprites: missing " + path)
 		_sets[n] = {}
 		return {}
-	var tex: Texture2D = load(path)
-	var size := Vector2(m.size[0], m.size[1]) if m.has("size") else Vector2(tex.get_size())
+	var built := _build(n, m, load(path))
+	var packed := _atlas_rect(n)
+	if packed.has("tex"):
+		built.tex = packed.tex
+		built.src = packed.src
+		# An atlas packs stills: a strip's frames would step into its neighbours.
+		built.frames = 1
+	_sets[n] = built
+	return built
+
+
+## Set `n` from its manifest entry `m` and its intact texture (decor_set() without the cache, the stump aside).
+static func _build(n: String, m: Dictionary, tex: Texture2D) -> Dictionary:
+	var frames := maxi(int(m.get("frames", 1)), 1)
+	var size := Vector2(m.size[0], m.size[1]) if m.has("size") \
+		else Vector2(floorf(float(tex.get_width()) / float(frames)), tex.get_height())
 	var stump_path := DIR + n + "/stump.png"
-	var built := {
+	return {
 		"name": n, "tex": tex, "stump": load(stump_path) if ResourceLoader.exists(stump_path) else null, "size": size,
+		"frames": frames, "fps": float(m.get("fps", 0.0)),
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
 		"segment": float(m.get("segment", 0.0)),
 		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
 		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
 	}
-	var packed := _atlas_rect(n)
-	if packed.has("tex"):
-		built.tex = packed.tex
-		built.src = packed.src
-	_sets[n] = built
-	return built
 
 
 ## The atlas a tree set is packed in, {"tex", "src"} (its still's rect there), built on first use; {} for a set in no
@@ -110,7 +128,7 @@ static func _atlas(a: String) -> Dictionary:
 	if _atlases.has(a):
 		return _atlases[a]
 	var images := []
-	for base: String in ATLASES[a]:
+	for base: String in ATLASES.get(a, PLANT_ATLASES.get(a, [])):
 		for v: int in variants(base):
 			var n := "%s_%d" % [base, v]
 			var path := DIR + n + "/intact.png"
@@ -160,8 +178,9 @@ static func variants(base: String) -> Array:
 ## boat standing at `at` lies along the river holding it (boat_2 along y on TownLayout.RIVER_WEST, else boat_1 along
 ## x); a garden takes the garden_<n> whose "footprint" is nearest its plot; a kind with one set takes its bare name,
 ## else a variant picked from the seed (a boat too, when `at` is INF; a town sheep or cow by its decor order).
-static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF) -> String:
-	if not SpriteArt.on() or not BASE.has(kind):
+## `force` looks past F7 (the set the piece draws while sprites are on), for layout that must not hang on the art.
+static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF, force := false) -> String:
+	if (not force and not SpriteArt.on()) or not BASE.has(kind):
 		return ""
 	var base: String = BASE[kind]
 	if kind == Decor.Kind.BOAT and at != Vector2.INF:
@@ -220,6 +239,15 @@ static func _order(seed_value: int) -> int:
 	return d / 7919 if d >= 0 and d % 7919 == 0 else -1
 
 
+## Whether a decor piece draws an animated set (its set's "frames" > 1): while sprites are on (or `force`), such a piece
+## is drawn live (a Decor node on the wind shader's frame stepping), never baked into the floor nor merged into a pile.
+static func animated(kind: int, seed_value: int, size := Vector2.ZERO, at := Vector2.INF, force := false) -> bool:
+	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE or kind == Decor.Kind.PILE:
+		return false
+	var n := name_for(kind, seed_value, size, at, force)
+	return n != "" and int(decor_set(n).get("frames", 1)) > 1
+
+
 ## Where a decor piece's light pool sits (Decor._glow; relative to its ground point, unscaled screen px): its set's
 ## "glow" while it draws from a set, else its ground point (as the procedural lamp's).
 static func glow_offset(kind: int, seed_value: int, size: Vector2) -> Vector2:
@@ -233,8 +261,8 @@ static func glow_offset(kind: int, seed_value: int, size: Vector2) -> Vector2:
 ## with no height: PropArt.tree tall 46..64), or with a height `tall` (a town decor tree's size.x, 24..32: half the
 ## forest's) a town_oak / town_pine. {} while SpriteArt is off or the manifest has none of that family (the tree stays
 ## procedural, never drawn from the other family at twice or half its size).
-static func tree_set(kind: int, seed_value: int, tall := 0.0) -> Dictionary:
-	if not SpriteArt.on():
+static func tree_set(kind: int, seed_value: int, tall := 0.0, force := false) -> Dictionary:
+	if not force and not SpriteArt.on():
 		return {}
 	var base := ("town_" if tall > 0.0 else "forest_") + ("pine" if kind == Decor.Kind.PINE else "oak")
 	var v := variants(base)
@@ -247,16 +275,57 @@ static func tree_set(kind: int, seed_value: int, tall := 0.0) -> Dictionary:
 ## variant picked from the seed, anchored at `at` on whole pixels, and return true; false (draw nothing) while SpriteArt
 ## is off or the manifest has no such set, so the caller keeps its procedural art.
 static func paint_named(base: String, at: Vector2, seed_value: int, origin: Vector2) -> bool:
-	if not SpriteArt.on():
-		return false
-	var v := variants(base)
-	if v.is_empty():
-		return false
-	var d := decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]])
+	var d := named_set(base, seed_value)
 	if d.is_empty():
 		return false
 	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), (Iso.ground_to_screen(at) - origin - d.anchor).round())
 	return true
+
+
+## The "<base>_<n>" set paint_named() draws for `seed_value`; {} while SpriteArt is off (unless `force`) or the
+## manifest has none.
+static func named_set(base: String, seed_value: int, force := false) -> Dictionary:
+	if not force and not SpriteArt.on():
+		return {}
+	var v := variants(base)
+	if v.is_empty():
+		return {}
+	return decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]])
+
+
+## The set a plant-layer piece draws (TownFloor.plant_in_layer): a floor shrub spot {base, at, seed} its named set, a
+## REEDS / BUSH / FLOWERS piece {kind, at, size, seed} its decor set; {} for any other piece, while SpriteArt is off,
+## or with no set (the floor bake keeps it). `force`: the set it draws while sprites are on, whatever F7 says.
+static func plant_set(d: Dictionary, force := false) -> Dictionary:
+	if d.has("base"):
+		return named_set(d.base, d.seed, force)
+	if not d.get("kind", -1) in Decor.PLANTS:
+		return {}
+	var n := name_for(d.kind, d.seed, d.size, d.at, force)
+	return {} if n == "" else decor_set(n)
+
+
+## The PLANT_ATLASES atlas set `n` packs into, or "" for none.
+static func plant_atlas(n: String) -> String:
+	for a: String in PLANT_ATLASES:
+		for base: String in PLANT_ATLASES[a]:
+			if n.begins_with(base + "_"):
+				return a
+	return ""
+
+
+## Draw plant-layer piece `d` (screen px, origin zero) from its set `s` (plant_set), taking the set's rect in its
+## PLANT_ATLASES atlas: anchored at its ground point on whole pixels, as paint() and paint_named() place it.
+static func paint_plant(d: Dictionary, s: Dictionary) -> void:
+	var tex: Texture2D = s.tex
+	var src := Rect2(Vector2.ZERO, s.size)
+	var a := plant_atlas(s.name)
+	if a != "":
+		var at: Dictionary = _atlas(a)
+		if at.rects.has(s.name):
+			tex = at.tex
+			src = at.rects[s.name]
+	ArtKit.tex(tex, src, (Iso.ground_to_screen(d.at) - s.anchor).round())
 
 
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down

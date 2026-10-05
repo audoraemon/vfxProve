@@ -34,12 +34,12 @@ const POWERS := [
 		"authority": "dominion"},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
-		"authority": "disorder"},
+		"authority": "dominion"},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
-		"quiet": true, "alarm": 0.2, "authority": "disorder"},
+		"quiet": true, "alarm": 0.2, "authority": "dominion"},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
 		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
 		"authority": "veil"},
@@ -153,10 +153,11 @@ static func get_power(key: String) -> Dictionary:
 	return {}
 
 
+## Dominion holds what was Disorder too: to command a mind and to break one are the same Authority.
 ## The Authorities (v0.08; before, the kinds): what a power commands, and the draft's tabs, in tab order.
-const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "disorder", "death"]
+const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "death"]
 ## Their titles, index for index.
-const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DISORDER", "DEATH"]
+const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DEATH"]
 
 
 ## The keys of an Authority's powers, in book order.

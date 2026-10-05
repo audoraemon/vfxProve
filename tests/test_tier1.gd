@@ -74,7 +74,7 @@ static func run(t) -> void:
 	t.check(not a.is_alive() and not guard.is_alive() and a._kind == &"lightning" and smite.struck == 2 and b.is_alive(),
 		"the bolt takes whoever stands there, a soldier too, and nobody a step away")
 	t.check(not shed.destroyed and is_equal_approx(hp - shed.hp, SmiteFx.DAMAGE), "and deals a building one blow, not its fall (%.0f of %.0f)" % [hp - shed.hp, hp])
-	t.check(crowd.fires.is_burning(shed), "lightning may set it alight")
+	t.check(not crowd.fires.is_burning(shed) and Rules.POWER_KINDS["smite"].has(&"smite"), "and never sets it alight: fire is Ember's")
 	smite._process(3.0)
 	smite.free()
 	crowd.fires.clear()

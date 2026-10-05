@@ -644,7 +644,7 @@ func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
 	if kind == Kind.TREE:
 		# Felled: a stump among its leaves (the rubble), never sliced or slumped like a building.
 		_spawn_dust(0.4)
-		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone"]:
+		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone", &"smite", &"mob"]:
 			_spawn_fire(Vector2.ZERO, 2.0)
 	elif damage_kind == &"laser" and max_height > 20.0:
 		# Cut clean through: the top slides off and falls, a molten stump remains.
@@ -660,7 +660,7 @@ func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
 		var toward := damage_kind == &"gravity"
 		_spawn_debris(source, toward)
 		_spawn_dust(1.0)
-		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone"]:
+		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone", &"smite", &"mob"]:
 			_spawn_fire(Vector2.ZERO, 3.0)
 
 

@@ -44,7 +44,7 @@ const POWER_KINDS := {
 	"glacial": [&"ice"],
 	"solaris": [&"solaris", &"pit"],
 	"madness": [&"frenzy"],
-	"smite": [&"lightning"],
+	"smite": [&"lightning", &"smite"],
 	"ember": [&"fire"],
 	"deathmark": [&"deathmark"],
 	"voice": [&"frenzy"],

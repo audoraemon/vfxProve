@@ -77,8 +77,8 @@ static func run(t) -> void:
 	t.check(PowerBook.authority_of("whisper") == "dominion" and int(whisper.dp) == 1 and float(whisper.cooldown) == 8.0
 		and String(whisper.aim) == "whisper" and PowerBook.is_quiet("whisper") and whisper.name == "Mind Whisper",
 		"Mind Whisper: Dominion, 1 DP, 8 s, its own aim, quiet (%s)" % [whisper])
-	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "congregation", "oath", "echo", "turncoat",
-		"hatred", "priority", "verdict", "delusion", "voice", "schism"],
-		"Dominion holds Mind Whisper, the Will-o'-Wisp, Divine Congregation and the two of Tier 5 (%s)" % [PowerBook.of_authority("dominion")])
+	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "discord", "madness", "congregation", "oath",
+		"echo", "turncoat", "hatred", "priority", "verdict", "delusion", "voice", "schism"],
+		"Dominion holds the powers over minds, what was Disorder's among them (%s)" % [PowerBook.of_authority("dominion")])
 	t.check(PowerBook.icon("kettle") == null and PowerBook.hud_icon("kettle") == null,
 		"an icon that is not painted is null, not a load error")

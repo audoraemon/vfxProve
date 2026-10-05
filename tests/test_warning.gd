@@ -211,14 +211,14 @@ static func _endings(t) -> void:
 	rules = s.rules
 	var d: WarningDirector = s.d
 	rules.cast_made.emit(0, "discord", d.messenger.ground_pos)
-	rules.cast_made.emit(1, "wisp", d.messenger.ground_pos + Vector2(10.0, 0.0))
-	t.check(d.delayed_by.has("disorder") and not d.delayed_by.has("dominion"),
+	rules.cast_made.emit(1, "blight", d.messenger.ground_pos + Vector2(10.0, 0.0))
+	t.check(d.delayed_by.has("dominion") and not d.delayed_by.has("veil"),
 		"a cast at the messenger delays the warning; one 10 away does not (%s)" % [d.delayed_by])
 	rules.time_left = 0.01
 	_run(s, 0.1)
 	t.check(rules.finished and rules.won and rules.over_reason == "omen", "the omen fades: won (%s)" % rules.over_reason)
-	t.check(d.report().solved_by == PackedStringArray(["DISORDER"]), "solved by DISORDER (%s)" % [d.report()])
-	t.check(rules.result().get("solved_by") == PackedStringArray(["DISORDER"]), "and the results carry it")
+	t.check(d.report().solved_by == PackedStringArray(["DOMINION"]), "solved by DOMINION (%s)" % [d.report()])
+	t.check(rules.result().get("solved_by") == PackedStringArray(["DOMINION"]), "and the results carry it")
 	_done(s)
 
 

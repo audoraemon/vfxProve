@@ -2,7 +2,7 @@ class_name SmiteFx
 extends FxTimeline
 ## Smite (Ruin, Tier I): one bolt from the sky on one spot. T_STRIKE after the cast it lands: whoever stands within
 ## KILL_R is struck down (damage kind lightning), and whatever stands within HIT_R takes DAMAGE -- a blow to one
-## building, not its fall, though lightning may set it alight. Seen and heard like any stroke of Ruin, only small
+## building, not its fall, and never a fire (damage kind smite: fire is Ember's). Seen and heard like any stroke of Ruin, only small
 ## (PowerBook.REACH). Precise and cheap: for the bellkeeper on the stair, a rite's ring, a wall already cracked.
 
 const KILL_R := 0.6
@@ -34,7 +34,7 @@ func _strike() -> void:
 			continue
 		if ctx.field.kill(e, &"lightning", origin):
 			struck += 1
-	ctx.env.damage_radius(origin, HIT_R, DAMAGE, &"lightning")
+	ctx.env.damage_radius(origin, HIT_R, DAMAGE, &"smite")
 	ctx.play(&"hs_strike", origin, -3.0)
 	if not DominionParts.staged(self):
 		return

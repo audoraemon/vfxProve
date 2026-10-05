@@ -77,8 +77,6 @@ var _liners_left := 0.0
 var _reading := {}
 ## Persons turned away at the door, until they step away from it.
 var _turned := {}
-## Where people died this step, judged once the crowd has judged its own doomed.
-var _deaths: Array[Vector2] = []
 
 
 func _begin() -> void:
@@ -157,7 +155,7 @@ func _make_faithful(p: Person) -> void:
 
 func step(delta: float) -> void:
 	timeline.step(delta)
-	_judge_deaths()
+	gaze.judge_deaths(crowd)
 	_doors()
 	_read(delta)
 	for r in reports:
@@ -172,20 +170,8 @@ func step(delta: float) -> void:
 		_roof()
 
 
-
-
-## A death someone saw adds to the Gaze, judged once the cast's other victims are dead too.
-func _judge_deaths() -> void:
-	if _deaths.is_empty() or not crowd._doomed.is_empty():
-		return
-	for at in _deaths:
-		if crowd.nearest_witness(at) != null:
-			gaze.seen_death()
-	_deaths.clear()
-
-
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
-	_deaths.append(e.ground_pos)
+	gaze.note_death(e.ground_pos)
 	for r in reports:
 		r.on_killed(e)
 

@@ -44,3 +44,57 @@ static func run(t) -> void:
 	t.check(ResultsScreen.title_for(false, "gaze") == "THE LANTERN LOOKS" and ResultsScreen.title_for(true, "believers")
 		== "THEY BELIEVE" and ResultsScreen.title_for(false, "few") == "TOO FEW BELIEVE", "the night's endings have titles")
 	rules.free()
+	_deaths(t)
+
+
+static func _crowd() -> Dictionary:
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.profile = ResponseProfile.unaware()
+	crowd.spawn()
+	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd}
+
+
+static func _done(s: Dictionary) -> void:
+	(s.crowd as Crowd).clear()
+	(s.field as EnemyField).clear()
+	(s.field as EnemyField).free()
+	(s.env as EnvironmentField).clear()
+	(s.env as EnvironmentField).free()
+	(s.town as Town).free()
+	(s.crowd as Crowd).free()
+	(s.world as Node).free()
+
+
+## Seen deaths (v0.10 M3: judged by the Gaze itself, for every Night 2 director): a death with a living witness within
+## Crowd.DOOM_WITNESS adds SEEN_DEATH, once; an unseen one adds nothing; nothing is judged while a Silent Doom's victims
+## are still being judged (they never witness each other).
+static func _deaths(t) -> void:
+	var s := _crowd()
+	var crowd: Crowd = s.crowd
+	var g := GazeMeter.new()
+	var victim := crowd.citizens[3]
+	var witness := crowd.citizens[4]
+	witness.ground_pos = victim.ground_pos + Vector2(1.0, 0.0)
+	crowd._field.kill(victim, &"doom")
+	g.note_death(victim.ground_pos)
+	g.judge_deaths(crowd)
+	t.check(g.value == 0.0 and not crowd._doomed.is_empty(), "nothing is judged while a Silent Doom's victims still are")
+	crowd._settle_doom()
+	g.judge_deaths(crowd)
+	t.near(g.value, GazeMeter.SEEN_DEATH, 0.001, "a death someone saw adds 10")
+	g.judge_deaths(crowd)
+	t.near(g.value, GazeMeter.SEEN_DEATH, 0.001, "and is judged once")
+	g.note_death(Vector2(60.0, 60.0))
+	g.judge_deaths(crowd)
+	t.near(g.value, GazeMeter.SEEN_DEATH, 0.001, "a death nobody saw adds nothing")
+	g.judge_deaths(null)
+	t.near(g.value, GazeMeter.SEEN_DEATH, 0.001, "and without a crowd nothing is judged")
+	_done(s)

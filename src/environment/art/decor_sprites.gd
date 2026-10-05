@@ -3,8 +3,9 @@ extends RefCounted
 ## Decor sprites (decor batch 4, docs/superpowers/specs/2026-10-05-decor-batch4-design.md): which decor piece draws
 ## from which sprite set, read from assets/pixellab/decor/manifest.json. A set is one still, intact.png, anchored at
 ## the piece's ground point ("anchor", sprite px). A run kind's set ("segment", ground units) repeats along the run.
-## Oaks and pines draw forest-scale decor sets (forest_oak_<n>, forest_pine_<n>); until those exist they stay
-## procedural. Shown while SpriteArt.on(): F7 switches decor too.
+## Oaks and pines draw tree sets at the procedural tree's size (tree_set: forest_oak_<n> / forest_pine_<n>, and
+## town_oak_<n> / town_pine_<n> for the town's smaller decor trees, each family one runtime atlas); without them they
+## stay procedural. Shown while SpriteArt.on(): F7 switches decor too.
 
 const DIR := "res://assets/pixellab/decor/"
 const MANIFEST := DIR + "manifest.json"
@@ -31,6 +32,13 @@ static var _manifest := {}
 static var _loaded := false
 static var _sets := {}
 static var _variants_cache := {}
+## The tree families packed into one runtime atlas each (atlas name -> set bases): a forest band's oaks and pines then
+## draw from one texture, one draw call, instead of one each time the set changes. Each family's stills stand side by
+## side along x, bottom-aligned, so wind.gdshader's sway weight (1 - UV.y: the height in the texture) still grows from
+## a tree's foot to its top.
+const ATLASES := {"forest": ["forest_oak", "forest_pine"], "town": ["town_oak", "town_pine"]}
+## Built atlases: name -> {"tex": ImageTexture, "rects": {set name -> Rect2}} (kept here: ArtKit holds only RIDs).
+static var _atlases := {}
 
 
 static func manifest() -> Dictionary:
@@ -48,9 +56,12 @@ static func reload() -> void:
 	_loaded = false
 	_sets.clear()
 	_variants_cache.clear()
+	_atlases.clear()
 
 
-## The set named `n`: {name, tex, stump, size, anchor, segment, glow, end_post, footprint}; glow is the optional "glow"
+## The set named `n`: {name, tex, stump, size, anchor, segment, glow, end_post, footprint}, and for a tree set
+## (ATLASES) "src", its still's rect in "tex", its family's atlas (else tex is its intact.png, drawn whole); glow is the
+## optional "glow"
 ## (sprite px from the anchor: where a lamp's light pool sits), else zero; end_post the optional "end_post" [x, y, w, h]
 ## (a run's closing post: the sub-rect of the sprite drawn at the run's far end), else an empty Rect2; footprint the
 ## optional "footprint" [w, d] (ground units: a garden still's plot), else zero; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
@@ -76,8 +87,59 @@ static func decor_set(n: String) -> Dictionary:
 		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
 		"footprint": Vector2(m.footprint[0], m.footprint[1]) if m.has("footprint") else Vector2.ZERO,
 	}
+	var packed := _atlas_rect(n)
+	if packed.has("tex"):
+		built.tex = packed.tex
+		built.src = packed.src
 	_sets[n] = built
 	return built
+
+
+## The atlas a tree set is packed in, {"tex", "src"} (its still's rect there), built on first use; {} for a set in no
+## ATLASES family.
+static func _atlas_rect(n: String) -> Dictionary:
+	for a: String in ATLASES:
+		for base: String in ATLASES[a]:
+			if n.begins_with(base + "_"):
+				var at: Dictionary = _atlas(a)
+				return {"tex": at.tex, "src": at.rects[n]} if at.rects.has(n) else {}
+	return {}
+
+
+## Build atlas `a`: every variant of its families' stills, left to right with a 1 px gap, bottom-aligned.
+static func _atlas(a: String) -> Dictionary:
+	if _atlases.has(a):
+		return _atlases[a]
+	var images := []
+	for base: String in ATLASES[a]:
+		for v: int in variants(base):
+			var n := "%s_%d" % [base, v]
+			var path := DIR + n + "/intact.png"
+			if ResourceLoader.exists(path):
+				var im: Image = (load(path) as Texture2D).get_image()
+				if im != null:
+					im.convert(Image.FORMAT_RGBA8)
+					images.append([n, im])
+	var w := 0
+	var h := 0
+	for e: Array in images:
+		w += (e[1] as Image).get_width() + 1
+		h = maxi(h, (e[1] as Image).get_height())
+	var out := {"tex": null, "rects": {}}
+	if images.is_empty():
+		_atlases[a] = out
+		return out
+	var atlas := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var x := 0
+	for e: Array in images:
+		var im: Image = e[1]
+		var r := Rect2i(x, h - im.get_height(), im.get_width(), im.get_height())
+		atlas.blit_rect(im, Rect2i(Vector2i.ZERO, im.get_size()), r.position)
+		out.rects[e[0]] = Rect2(r)
+		x += im.get_width() + 1
+	out.tex = ImageTexture.create_from_image(atlas)
+	_atlases[a] = out
+	return out
 
 
 ## "<base>_<n>" variant numbers in the manifest, ascending (cached per load).
@@ -168,12 +230,14 @@ static func glow_offset(kind: int, seed_value: int, size: Vector2) -> Vector2:
 	return decor_set(n).get("glow", Vector2.ZERO)
 
 
-## A decor oak's or pine's forest set: a variant of forest_oak / forest_pine picked from the seed; {} while
-## SpriteArt is off or the manifest has none (the tree stays procedural).
-static func tree_set(kind: int, seed_value: int) -> Dictionary:
+## A decor oak's or pine's set, a variant picked from the seed: a forest_oak / forest_pine (the forest's trees, and any
+## with no height: PropArt.tree tall 46..64), or with a height `tall` (a town decor tree's size.x, 24..32: half the
+## forest's) a town_oak / town_pine. {} while SpriteArt is off or the manifest has none of that family (the tree stays
+## procedural, never drawn from the other family at twice or half its size).
+static func tree_set(kind: int, seed_value: int, tall := 0.0) -> Dictionary:
 	if not SpriteArt.on():
 		return {}
-	var base := "forest_pine" if kind == Decor.Kind.PINE else "forest_oak"
+	var base := ("town_" if tall > 0.0 else "forest_") + ("pine" if kind == Decor.Kind.PINE else "oak")
 	var v := variants(base)
 	if v.is_empty():
 		return {}
@@ -203,13 +267,16 @@ static func paint_named(base: String, at: Vector2, seed_value: int, origin: Vect
 ## far end. A MIRRORED kind faces either way by seed (its anchor mirrored with it).
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
 	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
-		var tr := tree_set(kind, seed_value)
+		var tr := tree_set(kind, seed_value, size.x)
 		if tr.is_empty():
 			return false
 		var still: Texture2D = tr.stump if down else tr.tex
 		if still == null:
 			return false
-		ArtKit.tex(still, Rect2(Vector2.ZERO, still.get_size() if down else tr.size), Iso.ground_to_screen(at) - origin - tr.anchor)
+		# On whole pixels: the forest's trees are baked pieces (origin zero) at fractional ground points.
+		var src: Rect2 = Rect2(Vector2.ZERO, still.get_size()) if down else tr.get("src", Rect2(Vector2.ZERO, tr.size))
+		ArtKit.tex(still, src,
+			(Iso.ground_to_screen(at) - origin - tr.anchor).round())
 		return true
 	var n := name_for(kind, seed_value, size, at)
 	if n == "":

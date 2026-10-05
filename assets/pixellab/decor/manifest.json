@@ -44,5 +44,15 @@
 	"shrub_3": {"size": [14, 10], "anchor": [7, 9]},
 	"flowerbed_1": {"size": [9, 7], "anchor": [4, 6]},
 	"flowerbed_2": {"size": [9, 7], "anchor": [4, 6]},
-	"flowerbed_3": {"size": [9, 7], "anchor": [4, 6]}
+	"flowerbed_3": {"size": [9, 7], "anchor": [4, 6]},
+	"forest_oak_1": {"size": [45, 58], "anchor": [23, 55]},
+	"forest_oak_2": {"size": [45, 53], "anchor": [24, 50]},
+	"forest_oak_3": {"size": [50, 63], "anchor": [24, 60]},
+	"forest_pine_1": {"size": [38, 62], "anchor": [19, 59]},
+	"forest_pine_2": {"size": [34, 55], "anchor": [16, 52]},
+	"town_oak_1": {"size": [25, 33], "anchor": [13, 30]},
+	"town_oak_2": {"size": [24, 30], "anchor": [12, 27]},
+	"town_oak_3": {"size": [27, 35], "anchor": [13, 32]},
+	"town_pine_1": {"size": [21, 35], "anchor": [10, 32]},
+	"town_pine_2": {"size": [18, 31], "anchor": [8, 28]}
 }

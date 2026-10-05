@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_mirror(t)
 	_herds(t)
 	_floor(t)
+	_real_trees(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -101,17 +102,41 @@ static func _gardens(t) -> void:
 
 
 static func _forest(stump: Texture2D = null) -> Array:
+	var hidden := _hide_trees()
 	var fakes := _fake(["forest_oak_1", "forest_oak_2", "forest_pine_1"])
 	for n: String in ["forest_oak_1", "forest_oak_2", "forest_pine_1"]:
 		DecorSprites._sets[n] = {"name": n, "tex": _tex(40, 60), "stump": stump, "size": Vector2(40, 60),
 			"anchor": Vector2(20, 58), "segment": 0.0}
-	return fakes
+	return [fakes, hidden]
 
 
 static func _unforest(fakes: Array) -> void:
 	for n: String in ["forest_oak_1", "forest_oak_2", "forest_pine_1"]:
 		DecorSprites._sets.erase(n)
-	_unfake(fakes)
+	_unfake(fakes[0])
+	_show_trees(fakes[1])
+
+
+## Take the real decor tree sets (forest_* and town_oak / town_pine) out of the cached manifest, so a test sees only
+## its fakes; returns them for _show_trees().
+static func _hide_trees() -> Dictionary:
+	var m := DecorSprites.manifest()
+	var out := {}
+	for n: String in m.keys():
+		if n.begins_with("forest_") or n.begins_with("town_oak_") or n.begins_with("town_pine_"):
+			out[n] = m[n]
+			m.erase(n)
+			DecorSprites._sets.erase(n)
+	DecorSprites._variants_cache.clear()
+	return out
+
+
+static func _show_trees(hidden: Dictionary) -> void:
+	var m := DecorSprites.manifest()
+	for n: String in hidden:
+		m[n] = hidden[n]
+		DecorSprites._sets.erase(n)
+	DecorSprites._variants_cache.clear()
 
 
 static func _trees(t) -> void:
@@ -128,11 +153,42 @@ static func _trees(t) -> void:
 	SpriteArt.set_enabled(false)
 	t.check(DecorSprites.tree_set(D.OAK, 3).is_empty(), "F7 off: decor trees are procedural")
 	SpriteArt.set_enabled(true)
-	_unforest(fakes)
+	# A town decor tree (its height in size.x, 24..32: TownDecor._houses) is half a forest tree's size: it takes a
+	# town_oak / town_pine set, and stays procedural without one (never a forest set at twice its size).
+	t.check(DecorSprites.tree_set(D.OAK, 3, 28.0).is_empty(), "no town sets: a town decor oak is procedural")
+	ArtKit.begin()
+	t.check(not DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2(28, 0), 3, Vector2.ZERO),
+		"and paint leaves it to DecorArt")
+	var tf := _fake(["town_oak_1", "town_pine_1"])
+	for n: String in ["town_oak_1", "town_pine_1"]:
+		DecorSprites._sets[n] = {"name": n, "tex": _tex(24, 32), "stump": null, "size": Vector2(24, 32),
+			"anchor": Vector2(12, 29), "segment": 0.0}
+	t.check(DecorSprites.tree_set(D.OAK, 3, 28.0).get("name", "") == "town_oak_1", "a town decor oak takes a town oak set")
+	t.check(DecorSprites.tree_set(D.PINE, 3, 28.0).get("name", "") == "town_pine_1", "a town decor pine takes a town pine set")
+	t.check(DecorSprites.tree_set(D.OAK, 3).get("name", "").begins_with("forest_oak_"), "a forest oak still takes a forest set")
+	ArtKit.begin()
+	t.check(DecorSprites.paint(D.PINE, Vector2(1, 1), Vector2(30, 0), 3, Iso.ground_to_screen(Vector2(1, 1)))
+		and ArtKit.last_quad()[0] == Rect2(0, 0, 24, 32), "paint draws a town tree from its town set")
+	# A baked forest tree (origin zero) at a fractional ground point lands on whole pixels.
+	var at := Vector2(2.31, 3.17)
+	ArtKit.begin()
+	DecorSprites.paint(D.OAK, at, Vector2.ZERO, 3, Vector2.ZERO)
+	var q := ArtKit.last_quad()
+	t.check(q.size() == 2 and q[1] == q[1].round() and q[1].distance_to(Iso.ground_to_screen(at) - Vector2(20, 58)) <= 0.71,
+		"a baked forest tree sits on the whole pixel nearest its point (got %s)" % [q])
+	ArtKit.begin()
+	for n: String in ["town_oak_1", "town_pine_1"]:
+		DecorSprites._sets.erase(n)
+	_unfake(tf)
+	var hidden: Dictionary = fakes[1]
+	_unfake(fakes[0])
+	for n: String in ["forest_oak_1", "forest_oak_2", "forest_pine_1"]:
+		DecorSprites._sets.erase(n)
 	t.check(DecorSprites.tree_set(D.OAK, 3).is_empty(), "no forest sets: the decor oak is procedural")
 	ArtKit.begin()
 	t.check(not DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2.ZERO, 3, Vector2.ZERO), "and paint leaves it to DecorArt")
 	ArtKit.begin()
+	_show_trees(hidden)
 
 
 static func _missing(t) -> void:
@@ -472,3 +528,66 @@ static func _floor(t) -> void:
 	ArtKit.begin()
 	DecorSprites._sets.erase("floortest_1")
 	_unfake(fakes)
+
+
+static func _real_trees(t) -> void:
+	# The real decor tree sets (decor_trees.py), at the procedural trees' size (PropArt.tree: the forest's tall
+	# 46..64, the town's 24..32), each with a stump on its own canvas.
+	DecorSprites.reload()
+	t.check(DecorSprites.variants("forest_oak").size() == 3 and DecorSprites.variants("forest_pine").size() == 2,
+		"three forest oak sets and two forest pine sets")
+	t.check(DecorSprites.variants("town_oak").size() == 3 and DecorSprites.variants("town_pine").size() == 2,
+		"three town oak sets and two town pine sets")
+	for base: String in ["forest_oak", "forest_pine", "town_oak", "town_pine"]:
+		for v: int in DecorSprites.variants(base):
+			var d := DecorSprites.decor_set("%s_%d" % [base, v])
+			var lo := 46.0 if base.begins_with("forest") else 24.0
+			t.check(not d.is_empty() and d.anchor.y >= lo and d.anchor.y <= lo * 1.3 + 2.0,
+				"%s_%d stands as tall as the procedural tree (anchor %s)" % [base, v, d.get("anchor")])
+			t.check(d.get("stump") != null and Vector2(d.stump.get_size()) == d.size,
+				"%s_%d has a stump on its own canvas" % [base, v])
+	# A forest band of oaks and pines queues textured quads only.
+	ArtKit.begin()
+	for i in 6:
+		DecorArt.tree(D.OAK if i % 2 == 0 else D.PINE, Vector2(i, i), Vector2.ZERO, i * 17, Vector2.ZERO,
+			ForestLayer.FOREST_CLUSTERS)
+	var polys := 0
+	for s: Array in ArtKit.segments():
+		if s[0] == "poly":
+			polys += 1
+	t.check(polys == 0, "with the tree sets present, forest trees queue sprites only")
+	var segs := ArtKit.segments()
+	t.check(segs.size() == 1 and segs[0][0] == "tex" and segs[0][2] == 6,
+		"a forest band of mixed oaks and pines is one textured segment (one atlas, got %s)" % [segs])
+	ArtKit.begin()
+	# Each family is one atlas: its stills side by side, bottom-aligned, each rect its set's size, none overlapping.
+	for a: String in DecorSprites.ATLASES:
+		var tex: Texture2D = null
+		var rects: Array[Rect2] = []
+		for base: String in DecorSprites.ATLASES[a]:
+			for v: int in DecorSprites.variants(base):
+				var d := DecorSprites.decor_set("%s_%d" % [base, v])
+				var r: Rect2 = d.get("src", Rect2())
+				if tex == null:
+					tex = d.tex
+				t.check(d.tex == tex, "%s_%d draws from the %s atlas" % [base, v, a])
+				t.check(r.size == d.size and r.end.y == float(tex.get_height()),
+					"%s_%d's rect is its size, standing on the atlas's bottom (got %s)" % [base, v, r])
+				for o: Rect2 in rects:
+					t.check(not o.intersects(r), "%s_%d's rect overlaps no other" % [base, v])
+				rects.append(r)
+	t.check(DecorSprites.decor_set("forest_oak_1").tex != DecorSprites.decor_set("town_oak_1").tex,
+		"the town's trees have their own atlas")
+	# Drawn from the atlas, a tree takes its rect; knocked down, its stump is still its own texture.
+	var oak := DecorSprites.tree_set(D.OAK, 5)
+	ArtKit.begin()
+	DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2.ZERO, 5, Vector2.ZERO)
+	var q := ArtKit.last_quad()
+	t.check(q[0] == oak.src and q[1] == (Iso.ground_to_screen(Vector2(1, 1)) - oak.anchor).round(),
+		"a forest tree draws its atlas rect at its anchor (got %s)" % [q])
+	ArtKit.begin()
+	DecorSprites.paint(D.OAK, Vector2(1, 1), Vector2.ZERO, 5, Vector2.ZERO, true)
+	var st := ArtKit.segments()
+	t.check(st.size() == 1 and st[0][1] == oak.stump and ArtKit.last_quad()[0] == Rect2(Vector2.ZERO, oak.size),
+		"a felled forest tree draws its whole stump texture at the same anchor")
+	ArtKit.begin()

@@ -668,7 +668,8 @@ static func _plants(t) -> void:
 	var reed_back: Dictionary = reed.duplicate()
 	reed_back.at = Vector2(rock.at) - Vector2(0.1, 0.1)
 	var free_shrub: Dictionary = spots[0].duplicate()
-	var marked: Array[Dictionary] = [shrub, reed_front, reed_back]
+	# In bake paint order (shrubs first, then baked pieces back to front), as the town passes them.
+	var marked: Array[Dictionary] = [shrub, reed_back, reed_front]
 	TownFloor.mark_under(marked, [plot, rock] as Array[Dictionary])
 	var clear: Array[Dictionary] = [free_shrub]
 	TownFloor.mark_under(clear, [far] as Array[Dictionary])
@@ -677,6 +678,32 @@ static func _plants(t) -> void:
 	t.check(reed_back.get("under", false), "a reed behind a baked rock stays in the bake")
 	t.check(not reed_front.get("under", false) and TownFloor.plant_in_layer(reed_front), "a reed in front of the rock sways")
 	t.check(not free_shrub.get("under", false), "a shrub clear of every baked piece sways")
+	# The mark carries back through plants: a reed behind a reed the rock keeps in the bake stays in the bake too
+	# (in the layer it would paint over the front reed), though it never touches the rock.
+	var front: Dictionary = reed.duplicate()
+	front.at = Vector2(rock.at) - Vector2(0.1, 0.1)
+	var rock_box := TownFloor._cover_box(rock)
+	var front_box := TownFloor._plant_box(front)
+	var back := {}
+	for si in range(1, 16):
+		for ti in range(-15, 16):
+			var c: Dictionary = reed.duplicate()
+			c.at = Vector2(front.at) + Vector2(-0.1 * si, 0.1 * ti)
+			var cb := TownFloor._plant_box(c)
+			if back.is_empty() and (c.at as Vector2).x + (c.at as Vector2).y < (front.at as Vector2).x + (front.at as Vector2).y \
+					and cb.intersects(front_box) and not cb.intersects(rock_box):
+				back = c
+	t.check(not back.is_empty(), "a reed behind the front reed that misses the rock exists")
+	var chain: Array[Dictionary] = [back, front]
+	TownFloor.mark_under(chain, [rock] as Array[Dictionary])
+	t.check(front.get("under", false) and back.get("under", false),
+		"a reed behind a reed kept in the bake stays in the bake too")
+	# The set lookups can be forced past F7 (mark_under sizes its boxes from the sets whatever the art).
+	SpriteArt.set_enabled(false)
+	t.check(DecorSprites.plant_set(front).is_empty() and not DecorSprites.plant_set(front, true).is_empty(),
+		"a forced plant set lookup ignores F7")
+	t.check(DecorSprites.name_for(D.REEDS, 3, Vector2.ZERO, Vector2.INF, true) != "", "and so does a forced name_for")
+	SpriteArt.set_enabled(true)
 	# The town hands the layer every floor shrub spot and every baked low plant, back to front.
 	var env := EnvironmentField.new()
 	var ground := Node2D.new()
@@ -699,29 +726,68 @@ static func _plants(t) -> void:
 				sorted = false
 	t.check(sorted, "the plant layer's pieces run back to front")
 	var under := layer.plants.filter(func(d: Dictionary) -> bool: return d.get("under", false)) if layer != null else []
-	t.check(under.size() > 0 and under.size() < layer.plants.size() / 10,
+	t.check(under.size() > 0 and under.size() < layer.plants.size() / 5,
 		"a few plants stay in the bake under baked pieces (%d)" % under.size())
 	t.check(town.floor_node.shrubs.size() == spots.size() and town.floor_node.shrubs.all(func(s: Dictionary) -> bool:
 			return layer.plants.has(s)), "the floor and the layer share the town's shrub pieces")
 	t.check(not TownFloor.shrub_spots().any(func(s: Dictionary) -> bool: return s.has("under")),
 		"marking leaves shrub_spots() itself unmarked")
-	# A band draws by atlas (low plants, then bushes, then reeds), so a band is a draw call per atlas, not one each
-	# time the atlas changes down the x + y order.
+	# A band batches by atlas where the order allows: plants clear of one another, interleaved low / reed / bush, are
+	# one segment per atlas, every piece drawn once.
+	var base_at := Vector2(-20, 20)
 	var mixed: Array = []
-	for d in layer.plants:
-		if TownFloor.plant_in_layer(d) and (d.has("base") or d.kind in [D.BUSH, D.REEDS]) and mixed.size() < 60:
-			mixed.append(d)
+	for i in 6:
+		var at := base_at + Vector2(i * 2.0, -i * 2.0)
+		match i % 3:
+			0:
+				mixed.append({"base": "shrub", "at": at, "seed": 11 + i})
+			1:
+				mixed.append({"kind": D.REEDS, "at": at, "size": Vector2.ZERO, "seed": 11 + i})
+			2:
+				mixed.append({"kind": D.BUSH, "at": at, "size": Vector2.ZERO, "seed": 11 + i})
 	var band := PlantLayer.Band.new()
-	band.plants = mixed
+	band.plants = PlantLayer.painter_order(mixed)
 	ArtKit.begin()
 	band.queue()
 	var bsegs := ArtKit.segments()
-	t.check(bsegs.size() <= DecorSprites.PLANT_ATLASES.size() and bsegs.all(func(g: Array) -> bool: return g[0] == "tex"),
-		"a band of mixed plants is one textured segment per atlas (got %d)" % bsegs.size())
-	var queued := 0
-	for g: Array in bsegs:
-		queued += g[2]
-	t.check(queued == mixed.size(), "and draws every piece once (%d of %d)" % [queued, mixed.size()])
+	t.check(bsegs.size() == 3 and bsegs.all(func(g: Array) -> bool: return g[0] == "tex" and g[2] == 2),
+		"six clear plants on three atlases are three textured segments of two (got %s)" % [bsegs])
+	# Overlapping plants on two atlases keep their back-to-front order: a shrub, a reed over it, a shrub over that.
+	var stack: Array = [
+		{"base": "shrub", "at": base_at, "seed": 5},
+		{"kind": D.REEDS, "at": base_at + Vector2(0.1, 0.1), "size": Vector2.ZERO, "seed": 5},
+		{"base": "shrub", "at": base_at + Vector2(0.2, 0.2), "seed": 6},
+	]
+	var ordered := PlantLayer.painter_order(stack)
+	t.check(ordered == stack, "overlapping plants on two atlases keep their back-to-front order")
+	band.plants = ordered
+	ArtKit.begin()
+	band.queue()
+	var ssegs := ArtKit.segments()
+	t.check(ssegs.size() == 3 and ssegs[0][1] == ssegs[2][1] and ssegs[1][1] != ssegs[0][1],
+		"and draw low, reed, low (got %s)" % [ssegs])
+	# The town's bands keep painter order for every overlapping pair, in few segments.
+	var inversions := 0
+	var segments := 0
+	# Off the scene tree the layer has not built its bands yet.
+	layer._ready()
+	for b in layer.get_children():
+		var ps: Array = (b as PlantLayer.Band).plants
+		var last := "?"
+		for i in ps.size():
+			var si := DecorSprites.plant_set(ps[i], true)
+			var a := DecorSprites.plant_atlas(si.name) if not si.is_empty() else ""
+			if a != last:
+				segments += 1
+				last = a
+			for j in range(i + 1, ps.size()):
+				var aj: Vector2 = ps[j].at
+				var ai: Vector2 = ps[i].at
+				if aj.x + aj.y < ai.x + ai.y and TownFloor._plant_box(ps[i]).intersects(TownFloor._plant_box(ps[j])):
+					inversions += 1
+	t.check(inversions == 0, "no band draws a plant before an overlapping plant behind it (%d)" % inversions)
+	t.check(segments < layer.get_child_count() * 4, "the bands stay a few segments each (%d for %d bands)"
+		% [segments, layer.get_child_count()])
 	# A piece left in the bake under a baked piece is not drawn by the layer too.
 	band.plants = [shrub]
 	ArtKit.begin()

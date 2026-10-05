@@ -646,20 +646,25 @@ static func plant_in_layer(d: Dictionary) -> bool:
 	return not d.get("under", false) and not DecorSprites.plant_set(d).is_empty()
 
 
-## Mark each low plant in `plants` (shrub spots and baked REEDS / BUSH / FLOWERS) "under" when a baked piece of
-## `baked` that the bake paints after it (the bake paints every shrub first, then its baked decor back to front by
-## x + y) overlaps it on screen: a shrub under a garden plot, reeds behind a moored boat or a rock. Those keep the bake's
-## order and stay still; the rest sway in the plant layer. Trees and plants never cover: the forest layer stands over
-## the plant layer, and plants sort among themselves. Boxes are the sprite boxes, generous (a run's or a procedural
-## piece's whole span, raised for its height).
+## Mark each low plant in `plants` "under" (it stays in the bake, still) when the bake would paint something over it
+## that the plant layer, drawn over the whole bake, would then sit under. `plants` are the shrub spots and the baked
+## REEDS / BUSH / FLOWERS in bake paint order (every shrub first, then the baked pieces back to front by x + y), as
+## the town passes them.
+## - A baked piece of `baked` the bake paints after the plant overlaps it: a shrub under a garden plot, reeds behind a
+##   moored boat or a rock. Trees and plants are no such cover: the forest layer stands over the plant layer.
+## - Then, to a fixed point, an "under" plant overlaps it that the bake paints after it: in the layer the plant would
+##   paint over that front plant. One pass from the front back reaches it, since a mark only spreads backwards.
+## Boxes are the sprite boxes, generous (a run's or a procedural piece's whole span, raised for its height).
 static func mark_under(plants: Array[Dictionary], baked: Array[Dictionary]) -> void:
 	var covers: Array = []
 	for o in baked:
 		if o.kind in Decor.PLANTS or o.kind in [Decor.Kind.OAK, Decor.Kind.PINE]:
 			continue
 		covers.append([o, _cover_box(o)])
+	var boxes: Array[Rect2] = []
 	for p in plants:
 		var box := _plant_box(p)
+		boxes.append(box)
 		if not box.has_area():
 			continue
 		var depth: float = (p.at as Vector2).x + (p.at as Vector2).y
@@ -670,14 +675,17 @@ static func mark_under(plants: Array[Dictionary], baked: Array[Dictionary]) -> v
 			if box.intersects(c[1]):
 				p["under"] = true
 				break
+	for i in range(plants.size() - 1, -1, -1):
+		if not plants[i].get("under", false):
+			continue
+		for j in i:
+			if not plants[j].get("under", false) and boxes[j].intersects(boxes[i]):
+				plants[j]["under"] = true
 
 
-## A low plant's screen box (its sprite's, a little grown for the tuned scale); empty with no set.
+## A low plant's screen box (its sprite's while sprites are on, a little grown for the tuned scale); empty with no set.
 static func _plant_box(p: Dictionary) -> Rect2:
-	var was := SpriteArt.on()
-	SpriteArt.set_enabled(true)
-	var s := DecorSprites.plant_set(p)
-	SpriteArt.set_enabled(was)
+	var s := DecorSprites.plant_set(p, true)
 	if s.is_empty():
 		return Rect2()
 	return Rect2(Iso.ground_to_screen(p.at) - s.anchor, s.size).grow(2.0)
@@ -689,11 +697,8 @@ static func _cover_box(o: Dictionary) -> Rect2:
 	var a := Iso.ground_to_screen(o.at)
 	var box := Rect2(a, Vector2.ZERO).expand(Iso.ground_to_screen(o.at + o.size)).grow(4.0)
 	box = box.merge(Rect2(box.position - Vector2(0, 24), Vector2(box.size.x, 24)))
-	var was := SpriteArt.on()
-	SpriteArt.set_enabled(true)
-	var n := DecorSprites.name_for(o.kind, o.seed, o.size, o.at)
+	var n := DecorSprites.name_for(o.kind, o.seed, o.size, o.at, true)
 	var d := DecorSprites.decor_set(n) if n != "" else {}
-	SpriteArt.set_enabled(was)
 	if not d.is_empty() and not o.kind in DecorSprites.RUNS:
 		box = box.merge(Rect2(a - d.anchor, d.size))
 	return box

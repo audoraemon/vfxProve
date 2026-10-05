@@ -166,8 +166,9 @@ static func variants(base: String) -> Array:
 ## boat standing at `at` lies along the river holding it (boat_2 along y on TownLayout.RIVER_WEST, else boat_1 along
 ## x); a garden takes the garden_<n> whose "footprint" is nearest its plot; a kind with one set takes its bare name,
 ## else a variant picked from the seed (a boat too, when `at` is INF; a town sheep or cow by its decor order).
-static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF) -> String:
-	if not SpriteArt.on() or not BASE.has(kind):
+## `force` looks past F7 (the set the piece draws while sprites are on), for layout that must not hang on the art.
+static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF, force := false) -> String:
+	if (not force and not SpriteArt.on()) or not BASE.has(kind):
 		return ""
 	var base: String = BASE[kind]
 	if kind == Decor.Kind.BOAT and at != Vector2.INF:
@@ -260,9 +261,10 @@ static func paint_named(base: String, at: Vector2, seed_value: int, origin: Vect
 	return true
 
 
-## The "<base>_<n>" set paint_named() draws for `seed_value`; {} while SpriteArt is off or the manifest has none.
-static func named_set(base: String, seed_value: int) -> Dictionary:
-	if not SpriteArt.on():
+## The "<base>_<n>" set paint_named() draws for `seed_value`; {} while SpriteArt is off (unless `force`) or the
+## manifest has none.
+static func named_set(base: String, seed_value: int, force := false) -> Dictionary:
+	if not force and not SpriteArt.on():
 		return {}
 	var v := variants(base)
 	if v.is_empty():
@@ -272,13 +274,13 @@ static func named_set(base: String, seed_value: int) -> Dictionary:
 
 ## The set a plant-layer piece draws (TownFloor.plant_in_layer): a floor shrub spot {base, at, seed} its named set, a
 ## REEDS / BUSH / FLOWERS piece {kind, at, size, seed} its decor set; {} for any other piece, while SpriteArt is off,
-## or with no set (the floor bake keeps it).
-static func plant_set(d: Dictionary) -> Dictionary:
+## or with no set (the floor bake keeps it). `force`: the set it draws while sprites are on, whatever F7 says.
+static func plant_set(d: Dictionary, force := false) -> Dictionary:
 	if d.has("base"):
-		return named_set(d.base, d.seed)
+		return named_set(d.base, d.seed, force)
 	if not d.get("kind", -1) in Decor.PLANTS:
 		return {}
-	var n := name_for(d.kind, d.seed, d.size, d.at)
+	var n := name_for(d.kind, d.seed, d.size, d.at, force)
 	return {} if n == "" else decor_set(n)
 
 

@@ -24,16 +24,20 @@ const PLAIN_ROW := 22.0
 const BONUS_INDENT := 10.0
 ## What "Solved by" says when nothing solved it.
 const NOBODY := "-"
+## The baseline of a campaign night's line, over the button.
+const CAMPAIGN_Y := 304.0
 
 var _result := {}
 var _ui: Control
 var _menu: Menu
 var _hover := ""
+## A campaign night's results (v0.10): one Continue, and a line on what the night did to the god's power.
+var campaign := false
 
 
 ## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
-	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED"}
+	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:
@@ -77,12 +81,21 @@ func setup(result: Dictionary) -> ResultsScreen:
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	_menu = Menu.row(["replay", "change", "missions"], ["Replay", "Change powers", "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
+	campaign = result.has("campaign")
+	if campaign:
+		_menu = Menu.row(["next"], ["Continue"], 320.0, PANEL.end.y - 28.0, 120.0)
+	else:
+		_menu = Menu.row(["replay", "change", "missions"], ["Replay", "Change powers", "Missions"], 320.0,
+			PANEL.end.y - 28.0, 120.0)
 	return self
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if campaign:
+			if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE]:
+				action.emit("next")
+			return
 		if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:
 			action.emit("replay")
 		elif event.physical_keycode == KEY_ESCAPE:
@@ -115,13 +128,13 @@ func _draw_ui() -> void:
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD if won else UiTheme.COL_BAD)
 	if not _result.has("score"):
 		_draw_unscored()
-		_menu.draw_on(_ui, _hover)
+		_draw_menu()
 		return
 
 	_draw_rank()
 	if _result.has("acts"):
 		_draw_night()
-		_menu.draw_on(_ui, _hover)
+		_draw_menu()
 		return
 
 	# The stat table: what happened, and what each line was worth.
@@ -144,7 +157,7 @@ func _draw_ui() -> void:
 	UiTheme.text(_ui, Vector2(TABLE_X, y + 4.0), "Total", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(sum, UiTheme.SIZE_SMALL), y + 4.0), sum, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 
-	_menu.draw_on(_ui, _hover)
+	_draw_menu()
 
 
 ## The rank on the left, big, with the score beside it and NEW BEST! under it when it is one.
@@ -229,3 +242,22 @@ func _plain_row(y: float, label: String, value: String, ok := false) -> void:
 			UiTheme.COL_GOLD)
 	else:
 		UiTheme.mark(_ui, Vector2(PLAIN_R - 7.0, y - 8.0), ok)
+
+
+## What a campaign night did to the god (v0.10): grown, bitten, or eaten.
+static func campaign_line(c: Dictionary) -> String:
+	if String(c.get("ending", "")) == CampaignDef.EATEN:
+		return "Halcyon has eaten you."
+	if bool(c.get("won", false)):
+		return "The god grows: +%d DP, %d DP now." % [int(c.get("dp_gain", 0)), int(c.get("dp", 0))]
+	return "Halcyon bites: %d DP now. Bites %d / %d." % [int(c.get("dp", 0)), int(c.get("bites", 0)), CampaignDef.MAX_BITES]
+
+
+## The buttons, and over them a campaign night's line.
+func _draw_menu() -> void:
+	if campaign:
+		var c: Dictionary = _result.campaign
+		var line := campaign_line(c)
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(line, UiTheme.SIZE_BODY) * 0.5), CAMPAIGN_Y), line,
+			UiTheme.SIZE_BODY, UiTheme.COL_GOLD if bool(c.get("won", false)) else UiTheme.COL_BAD)
+	_menu.draw_on(_ui, _hover)

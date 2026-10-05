@@ -5,7 +5,7 @@ extends Node
 ## string, and FLOW says where that leads. Keeping the flow as data is what makes it provable without
 ## building a single screen.
 
-enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE}
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING}
 
 ## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
 ## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
@@ -30,6 +30,16 @@ const FLOW := {
 	"interlude:draft": Screen.PREPARE,
 	"interlude:missions": Screen.BOARD,
 	"prepare:begin": Screen.MISSION,
+	# The Lantern campaign (v0.10): its night screen, the draft for tonight, the night's results leading on to the next
+	# night or the ending, and Pause's way back to the night screen.
+	"title:campaign": Screen.CAMPAIGN,
+	"campaign:draft": Screen.PREPARE,
+	"campaign:title": Screen.TITLE,
+	"prepare:campaign": Screen.CAMPAIGN,
+	"results:next": Screen.CAMPAIGN,
+	"results:ending": Screen.ENDING,
+	"pause:campaign": Screen.CAMPAIGN,
+	"ending:title": Screen.TITLE,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -116,6 +126,10 @@ var _between_acts := false
 var _next_path := ""
 ## The interlude, while it is up.
 var _interlude: InterludeScreen
+## True while the Lantern campaign is being played (v0.10), from its night screen until the title or the board: Prepare
+## drafts within the campaign's slots and budget, a finished night is recorded on it, and Pause and Results lead back to
+## its night screen.
+var _in_campaign := false
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -179,6 +193,20 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
+		"campaign":
+			if save.campaign == null:
+				save.campaign = CampaignState.new()
+			go_to(Screen.CAMPAIGN)
+		"campaign-choice":
+			# Night 2's three cards (v0.10), for the photograph; the save is not written.
+			save.campaign = CampaignState.new()
+			save.campaign.night = 1
+			save.campaign.dp = 8
+			go_to(Screen.CAMPAIGN)
+		"ending":
+			save.campaign = CampaignState.new()
+			save.campaign.ending = CampaignDef.FALSE_LANTERN
+			go_to(Screen.ENDING)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -202,6 +230,10 @@ func go_to(to: int) -> void:
 	_close_pause()
 	var from := screen
 	screen = to
+	if to == Screen.TITLE or to == Screen.BOARD:
+		_in_campaign = false
+	elif to == Screen.CAMPAIGN:
+		_in_campaign = true
 	# A hit dips Engine.time_scale and the battlefield's Impact restores it from its own _process. A mission
 	# freed mid-dip never restores it, and the whole game would stay in slow motion from then on.
 	Engine.time_scale = 1.0
@@ -243,6 +275,8 @@ func go_to(to: int) -> void:
 						act = a
 				prep.setup(act, loadout, save.difficulty)
 				prep.confirm_label = "BEGIN"
+			elif _in_campaign and save.campaign != null:
+				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
 				prep.setup(MissionBook.get_mission(mission_id), loadout, save.difficulty)
 			prep.action.connect(_on_prepare_action.bind(prep))
@@ -257,7 +291,7 @@ func go_to(to: int) -> void:
 			add_child(res)
 			res.setup(result)
 			UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
-			res.action.connect(func(what: String) -> void: on_action("results:" + what))
+			res.action.connect(func(what: String) -> void: on_action(_results_action(what)))
 			_screen_node = res
 		Screen.INTERLUDE:
 			# Like the results, over the frozen town (v0.09); the act's sting only when it has just ended, not on the
@@ -267,10 +301,24 @@ func go_to(to: int) -> void:
 				_show_interlude(_mission.next_choices(), _mission.night())
 			if from == Screen.MISSION:
 				UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
+		Screen.CAMPAIGN:
+			var night := CampaignScreen.new()
+			night.name = "Campaign"
+			add_child(night)
+			night.setup(save.campaign)
+			night.action.connect(_on_campaign_action.bind(night))
+			_screen_node = night
+		Screen.ENDING:
+			var end := EndingScreen.new()
+			end.name = "Ending"
+			add_child(end)
+			end.setup(save.campaign.ending, save.campaign.ending_fragment())
+			end.action.connect(func(what: String) -> void: on_action("ending:" + what))
+			_screen_node = end
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
-		Screen.TITLE, Screen.BOARD, Screen.PREPARE:
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING:
 			Music.play(&"theme")
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
@@ -388,6 +436,7 @@ func _build_mission() -> Mission:
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	mission.difficulty = save.difficulty
 	mission.mission_id = mission_id
+	mission.bell_rang = _in_campaign and save.campaign != null and save.campaign.bell_rang
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
 	mission.act_over.connect(_on_act_over)
@@ -405,8 +454,14 @@ func _build_mission() -> Mission:
 func _on_mission_finished(outcome: Dictionary) -> void:
 	_between_acts = false
 	result = outcome
-	result["best"] = save.record(mission_id, result)
-	save.remember_loadout(mission_id, loadout)
+	if _in_campaign and save.campaign != null:
+		# A campaign night is the campaign's (v0.10): The Warning and Last Judgement share their ids with the board, whose
+		# best results and drafted loadouts it must not touch.
+		result["campaign"] = save.campaign.record(mission_id, result)
+		result["best"] = false
+	else:
+		result["best"] = save.record(mission_id, result)
+		save.remember_loadout(mission_id, loadout)
 	save.save_to(save_path)
 	on_action("mission:over")
 
@@ -431,6 +486,33 @@ func _on_board_action(what: String, board: MissionBoard) -> void:
 	on_action("board:" + what)
 
 
+## The night screen's buttons (v0.10): on to Prepare for tonight's mission, with the loadout last drafted for it; a
+## fresh campaign; or back to the title, where the board's mission is the one last picked there.
+func _on_campaign_action(what: String, night: CampaignScreen) -> void:
+	match what:
+		"draft":
+			mission_id = night.chosen
+			loadout = save.loadout_for(mission_id)
+			if loadout.is_empty():
+				loadout = MissionBook.get_mission(mission_id).default_loadout
+			on_action("campaign:draft")
+		"restart":
+			save.campaign = CampaignState.new()
+			save.save_to(save_path)
+			go_to(Screen.CAMPAIGN)
+		"title":
+			mission_id = save.last_mission
+			loadout = starting_loadout(save, mission_id)
+			on_action("campaign:title")
+
+
+## A Results button's action (v0.10): a campaign night's Continue leads to the ending once the campaign has one.
+func _results_action(what: String) -> String:
+	if what == "next" and _in_campaign and save.campaign != null and save.campaign.ending != "":
+		return "results:ending"
+	return "results:" + what
+
+
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if _between_acts:
 		# The re-draft between acts (v0.09): BEGIN carries the night on, Back returns to the interlude -- but not once
@@ -445,9 +527,13 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		elif what == "back":
 			go_to(Screen.INTERLUDE)
 		return
+	if what == "back" and _in_campaign:
+		on_action("prepare:campaign")
+		return
 	if what == "manifest":
 		loadout = prep.draft.picks
-		save.remember_loadout(mission_id, loadout)
+		if not _in_campaign:
+			save.remember_loadout(mission_id, loadout)
 		save.difficulty = prep.difficulty
 		save.save_to(save_path)
 	on_action("prepare:" + what)
@@ -460,7 +546,7 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
-	_pause.setup()
+	_pause.setup(_in_campaign)
 	UiSound.play(&"ui_pause")
 	Music.set_ducked(true)
 	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
@@ -479,6 +565,12 @@ func _on_title_action(what: String) -> void:
 			get_tree().change_scene_to_file(SANDBOX_SCENE)
 		"quit":
 			get_tree().quit()
+		"campaign":
+			# A campaign that has reached its ending is over: Campaign begins a fresh one (review focus 3).
+			if save.campaign == null or save.campaign.ending != "":
+				save.campaign = CampaignState.new()
+				save.save_to(save_path)
+			on_action("title:campaign")
 		_:
 			on_action("title:" + what)
 
@@ -668,6 +760,8 @@ func _flow_test() -> void:
 	(_screen_node as MissionBoard).action.emit("back")
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back from the board returns to the title")
 	step.call(Engine.time_scale == 1.0, "and time runs at normal speed")
+
+	await _flow_campaign(step)
 
 	print("FLOW result checks=%d failures=%d %s" % [count[0], fails.size(), ", ".join(fails)])
 
@@ -897,3 +991,128 @@ func _night_to_redraft(path: String) -> void:
 	card.choose(path)
 	card.action.emit("draft")
 	await get_tree().process_frame
+
+
+## The Lantern campaign through the screens (v0.10), from the title: Night 1 won on its clock, Night 2's three cards
+## and the Theft placeholder held, Night 3's Festival lost on its clock (a bite, and the Theft ending), then the ending's
+## two pages; a fresh campaign after it; nights left unfinished (review focus 2); the board after the campaign (review
+## focus 5). Starts and ends on the title.
+func _flow_campaign(step: Callable) -> void:
+	var quiet := PackedStringArray(["whisper", "doom", "discord"])
+	var board_kit := save.loadout_for(MissionBook.WARNING)
+	(_screen_node as TitleScreen).action.emit("campaign")
+	var night := _screen_node as CampaignScreen
+	step.call(screen == Screen.CAMPAIGN and night != null and save.campaign != null and save.campaign.night == 0
+		and night.chosen == MissionBook.WARNING, "Campaign opens Night 1 of a fresh campaign, The Warning chosen")
+	night.click(night.button_rect("draft").get_center())
+	var prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and prep.mission.id == MissionBook.WARNING
+		and prep.draft.slots == 3 and prep.draft.capacity == 6, "its draft has the campaign's 3 slots and 6 DP")
+
+	# Review focus 2: Back from the draft records nothing.
+	_on_prepare_action("back", prep)
+	step.call(screen == Screen.CAMPAIGN and save.campaign.night == 0 and save.campaign.dp == 6,
+		"Back from a campaign draft returns to the night, nothing recorded")
+	(_screen_node as CampaignScreen).click((_screen_node as CampaignScreen).button_rect("draft").get_center())
+	prep = _screen_node as PrepareScreen
+	prep.draft.preselect(PackedStringArray(["whisper", "wisp"]))
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+
+	# Review focus 2: Restart and Pause, Campaign record nothing either.
+	var old := _mission
+	_open_pause()
+	on_action("pause:restart")
+	await _until(func() -> bool: return _mission_up(old), 10.0)
+	step.call(save.campaign.night == 0 and save.campaign.bites == 0, "Restart in a campaign night records nothing")
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	_open_pause()
+	on_action("pause:campaign")
+	await get_tree().process_frame
+	step.call(screen == Screen.CAMPAIGN and not is_instance_valid(_mission) and save.campaign.night == 0
+		and save.campaign.bites == 0, "Pause, Campaign leaves the night unplayed: no bite, the same night")
+
+	# Night 1 won on its clock.
+	night = _screen_node as CampaignScreen
+	night.click(night.button_rect("draft").get_center())
+	(_screen_node as PrepareScreen).draft.preselect(PackedStringArray(["whisper", "wisp"]))
+	_on_prepare_action("manifest", _screen_node as PrepareScreen)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var res := _screen_node as ResultsScreen
+	# A quiet omen earns The Warning's Unseen bonus: +1 DP on top of the win's 2.
+	var unseen := CampaignState._bonus_earned(result)
+	var dp1 := CampaignDef.START_DP + CampaignDef.WIN_DP + (CampaignDef.BONUS_DP if unseen else 0)
+	step.call(res != null and res.campaign and save.campaign.night == 1 and save.campaign.dp == dp1,
+		"Night 1 won: the results offer Continue, and the god has %d DP (%d, Unseen %s)" % [dp1, save.campaign.dp, unseen])
+	var reread := SaveFile.new().load_from(save_path)
+	step.call(reread.campaign != null and reread.campaign.night == 1 and reread.campaign.dp == dp1, "and the save holds it")
+	step.call(save.loadout_for(MissionBook.WARNING) == board_kit and not bool(result.get("best", false)),
+		"a campaign night leaves the board's Warning alone: its loadout %s, no NEW BEST" % [save.loadout_for(MissionBook.WARNING)])
+
+	# Night 2: three cards, the Theft placeholder held until dawn.
+	res.action.emit("next")
+	night = _screen_node as CampaignScreen
+	step.call(screen == Screen.CAMPAIGN and night != null and night.options.size() == 3 and night.chosen == "",
+		"Continue opens Night 2's three cards, none chosen")
+	night.choose(MissionBook.VIGIL_FLAME)
+	night.click(night.button_rect("draft").get_center())
+	prep = _screen_node as PrepareScreen
+	step.call(prep != null and prep.mission.id == MissionBook.VIGIL_FLAME and prep.draft.capacity == dp1
+		and not prep.draft.pool.has("heaven"), "the Vigil Flame's draft: the god's %d DP, the quiet pool" % dp1)
+	prep.draft.preselect(quiet)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	step.call(save.campaign.night == 2 and save.campaign.path() == CampaignDef.THEFT and save.campaign.dp == dp1 + 2
+		and String(result.get("reason", "")) == "held", "the night held: Night 3 next, on the Theft path, %d DP" % (dp1 + 2))
+
+	# Night 3: the Festival alone, in an unwarned town, lost on its clock.
+	(_screen_node as ResultsScreen).action.emit("next")
+	night = _screen_node as CampaignScreen
+	step.call(night != null and night.options.size() == 2, "Night 3 offers the Festival and the Procession")
+	night.choose(MissionBook.FEAST_FESTIVAL)
+	night.click(night.button_rect("draft").get_center())
+	prep = _screen_node as PrepareScreen
+	step.call(prep != null and prep.draft.slots == 4 and prep.draft.capacity == dp1 + 2, "with 4 slots and %d DP" % (dp1 + 2))
+	prep.draft.preselect(quiet)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	step.call(_mission.act() != null and _mission.act().id == "festival" and _mission.act().is_last()
+		and not _mission.night().bell_rang, "the Festival plays as a night of one act, its town unwarned")
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	step.call(save.campaign.bites == 1 and save.campaign.dp == dp1 + 1 and save.campaign.ending == CampaignDef.FALSE_LANTERN,
+		"the square closed: a bite, and the Theft path's ending (%s)" % save.campaign.ending)
+
+	# The ending's two pages, then the title.
+	(_screen_node as ResultsScreen).action.emit("next")
+	var end := _screen_node as EndingScreen
+	step.call(screen == Screen.ENDING and end != null and end.pages.size() == 2,
+		"Continue opens the ending: The Vision, then The False Lantern")
+	end.turn()
+	end.turn()
+	step.call(screen == Screen.TITLE and _screen_node is TitleScreen and not _in_campaign,
+		"turning its last page returns to the title, the campaign left")
+
+	# Review focus 3: after an ending, Campaign begins a fresh one.
+	(_screen_node as TitleScreen).action.emit("campaign")
+	step.call(screen == Screen.CAMPAIGN and save.campaign.night == 0 and save.campaign.ending == ""
+		and save.campaign.dp == CampaignDef.START_DP, "after an ending, Campaign begins a fresh one")
+
+	# Review focus 5: the board after the campaign drafts within its own mission's numbers.
+	(_screen_node as CampaignScreen).action.emit("title")
+	(_screen_node as TitleScreen).action.emit("play")
+	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
+	prep = _screen_node as PrepareScreen
+	step.call(prep != null and prep.draft.slots == 6 and prep.draft.capacity == 14 and not _in_campaign,
+		"the board after the campaign: Last Judgement's own 6 slots and 14 DP")
+	on_action("prepare:back")
+	(_screen_node as MissionBoard).action.emit("back")
+	step.call(screen == Screen.TITLE, "and back to the title")

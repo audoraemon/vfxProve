@@ -1,10 +1,10 @@
 class_name TitleScreen
 extends Node
 ## The title (spec §1, §5): "KINGDOMS AMID KATACLYSM" with "KAK" small, over the town of Aldermere drifting
-## slowly past, and three ways on: Play, the VFX Sandbox, Quit. The town is the real one, built without its
-## people -- nothing here needs a crowd, and nothing here should cost a frame.
+## slowly past, and four ways on: the Campaign (v0.10), the Missions board, the VFX Sandbox, Quit. The town is the
+## real one, built without its people -- nothing here needs a crowd, and nothing here should cost a frame.
 
-## "play", "sandbox" or "quit".
+## "campaign", "play" (the Missions board; also Enter), "sandbox" or "quit".
 signal action(name: String)
 
 ## One slow loop of the camera every 1 / DRIFT_SPEED seconds, this far each way (screen pixels).
@@ -44,7 +44,8 @@ func setup(best_score: int, best_rank: String) -> TitleScreen:
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	_menu = Menu.column(["play", "sandbox", "quit"], ["Play", "VFX Sandbox", "Quit"], 320.0, 206.0, 132.0)
+	_menu = Menu.column(["campaign", "play", "sandbox", "quit"], ["Campaign", "Missions", "VFX Sandbox", "Quit"], 320.0,
+		184.0, 132.0)
 	return self
 
 

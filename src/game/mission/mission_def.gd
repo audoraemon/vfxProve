@@ -88,8 +88,11 @@ func chooses_difficulty() -> bool:
 	return profile == ""
 
 
-## The town's response for this mission: the difficulty chosen on Prepare, unless the mission sets its own.
+## The town's response for this mission: the difficulty chosen on Prepare, unless the mission sets its own. A night
+## (v0.10) answers with its first act's town, which reads the night it is given: the campaign's Feast after a rung bell.
 func response_profile(chosen: ResponseProfile.Tier) -> ResponseProfile:
+	if profile == "night" and has_acts():
+		return first_act().response_profile(chosen)
 	if profile == "unaware" or profile == "night":
 		return ResponseProfile.unaware()
 	return ResponseProfile.for_tier(chosen)

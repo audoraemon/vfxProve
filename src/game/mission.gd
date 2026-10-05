@@ -79,6 +79,9 @@ var _overlay: BehaviourOverlay
 var difficulty := ResponseProfile.DEFAULT
 ## The mission to play (v0.08): Game sets it before start(); a standalone run reads --mission=<id>.
 var mission_id := MissionBook.LAST_JUDGEMENT
+## A night that starts with its town already warned (v0.10: the campaign's Feast after a rung Night 1). Game sets it
+## before start(); a mission without acts ignores it.
+var bell_rang := false
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
@@ -197,6 +200,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	var args := OS.get_cmdline_user_args()
 	_def = _mission_def(args)
 	_night = NightState.new() if _def.has_acts() else null
+	if _night != null:
+		_night.bell_rang = bell_rang
 	_act = _def.first_act() if _night != null else null
 	if _act != null:
 		_act.night = _night

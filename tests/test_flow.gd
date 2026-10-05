@@ -26,6 +26,15 @@ static func run(t) -> void:
 	t.check(Game.next_screen("interlude:draft") == Game.Screen.PREPARE, "the interlude's Choose powers leads to Prepare")
 	t.check(Game.next_screen("interlude:missions") == Game.Screen.BOARD, "and its Missions to the board")
 	t.check(Game.next_screen("prepare:begin") == Game.Screen.MISSION, "BEGIN leads back into the mission")
+	# The Lantern campaign (v0.10): the night screen, its draft, the night's results, Pause's way back, the ending.
+	t.check(Game.next_screen("title:campaign") == Game.Screen.CAMPAIGN, "Campaign leads to the night screen")
+	t.check(Game.next_screen("campaign:draft") == Game.Screen.PREPARE, "its Choose powers leads to Prepare")
+	t.check(Game.next_screen("campaign:title") == Game.Screen.TITLE, "and its Title to the title")
+	t.check(Game.next_screen("prepare:campaign") == Game.Screen.CAMPAIGN, "Back from a campaign draft returns to the night")
+	t.check(Game.next_screen("results:next") == Game.Screen.CAMPAIGN, "a campaign night's Continue leads to the next night")
+	t.check(Game.next_screen("results:ending") == Game.Screen.ENDING, "or to the ending")
+	t.check(Game.next_screen("pause:campaign") == Game.Screen.CAMPAIGN, "Pause can leave a night for the night screen")
+	t.check(Game.next_screen("ending:title") == Game.Screen.TITLE, "and the ending leads to the title")
 
 	# Every action in the table names a screen that exists, and every screen can be reached.
 	var reachable := {}
@@ -33,8 +42,8 @@ static func run(t) -> void:
 		var to: int = Game.FLOW[action]
 		t.check(to >= 0 and to < Game.Screen.size(), "%s leads to a real screen (%d)" % [action, to])
 		reachable[to] = true
-	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 6,
-		"all six screens are reachable (%d)" % reachable.size())
+	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 8,
+		"all eight screens are reachable (%d)" % reachable.size())
 
 	# The board's cards sit side by side inside the screen, above its hint, without touching (v0.08).
 	for count in [1, 2, 3]:

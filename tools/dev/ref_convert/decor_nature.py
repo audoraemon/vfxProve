@@ -21,6 +21,12 @@ shared convert.OUTLINE.
   flowers_1  Decor.Kind.FLOWERS: DecorArt._flowers (six 2 px blooms on 1 px stems over ~12 x 6): a low tuft of leaves
   flowers_2  with six or seven blooms, one colour a clump as the floor's procedural flowers (yellow, pink, cream with
   flowers_3  blue), each bloom lit on its top left. Colours are TownFloor.FLOWERS, muted under check_sprite_glow's rule.
+  shrub_1    The floor's baked meadow shrubs (TownFloor._shrubs, DecorSprites.paint_named): PropArt.leafy r 4..7 x 3..5,
+  shrub_2    ~8..13 px wide, drawn as the bushes (lobes, mound shading, dark rims) at that size. Live bushes keep bush_<n>.
+  shrub_3
+  flowerbed_1  The floor's flower clumps (TownFloor._shrubs: a leafy tuft r 4 x 2.5 with four 1 px flowers of one
+  flowerbed_2  colour, ~8 x 6): a lit leaf tuft and four 1 px blooms, yellow, pink or cream. Live flowers keep
+  flowerbed_3  flowers_<n>.
   reeds_1    Decor.Kind.REEDS: DecorArt._reeds (twelve blades over 14 px, 12..26 px tall, a cattail on every third):
              blades 14..28 px here (they read shorter than the procedural's polygons once the town is zoomed out);
   reeds_2    a low base of short leaves, tall blades (2 px at the foot, then 1 px; each one tone, the tones taking turns
@@ -31,7 +37,7 @@ shared convert.OUTLINE.
 Each is anchored at the ground point (the procedural `o`): x 0 of the drawing, the outline row under its foot.
 
 Usage (from anywhere):
-  python tools/dev/ref_convert/decor_nature.py [all | bush | rock | flowers | reeds] [--out <scratch dir>]
+  python tools/dev/ref_convert/decor_nature.py [all | bush | rock | flowers | reeds | shrub | flowerbed] [--out <scratch dir>]
       (--out: write PNGs there, no manifest)
 """
 import argparse
@@ -159,10 +165,26 @@ BUSHES = {
 BUSH_SCALE = 0.9
 
 
+# The floor's meadow shrubs (TownFloor._shrubs: PropArt.leafy r 4..7 x 3..5, about 8..13 px wide), drawn as the bushes
+# at their own size (scale 1); the floor bakes these, live bushes keep bush_<n>.
+SHRUBS = {
+    "shrub_1": dict(
+        lobes=((-1.5, -5.0, 2.4, 2.0), (1.8, -4.6, 2.2, 1.9), (-0.2, -2.6, 3.0, 2.0)),
+        mound=(0.0, -3.8, 4.2, 3.4), blossoms=()),
+    "shrub_2": dict(
+        lobes=((-2.0, -5.6, 2.6, 2.2), (2.2, -5.2, 2.6, 2.1), (-2.6, -2.6, 2.6, 2.0), (2.6, -2.6, 2.6, 2.0)),
+        mound=(0.0, -4.0, 5.0, 3.8), blossoms=()),
+    "shrub_3": dict(
+        lobes=((-2.5, -6.4, 2.8, 2.3), (2.5, -6.0, 2.8, 2.3), (-3.8, -3.0, 2.6, 2.2), (3.6, -3.0, 2.6, 2.2),
+               (0.0, -2.8, 3.0, 2.2)),
+        mound=(0.0, -4.5, 6.2, 4.4), blossoms=()),
+}
+
+
 def bush(name):
-    spec = BUSHES[name]
+    spec = BUSHES[name] if name in BUSHES else SHRUBS[name]
     p = Pix(LEAF_INK)
-    k = BUSH_SCALE
+    k = BUSH_SCALE if name in BUSHES else 1.0
     mcx, mcy, mrx, mry = (v * k for v in spec["mound"])
     for i, (cx, cy, rx, ry) in enumerate(tuple(v * k for v in lobe) for lobe in spec["lobes"]):
         x0, x1 = int(math.floor(cx - rx - 1)), int(math.ceil(cx + rx + 1))
@@ -326,6 +348,28 @@ def flowers(name):
     return p.drop().image()
 
 
+# The floor's flower clumps (TownFloor._shrubs: a small leafy tuft, r 4 x 2.5, with four 1 px flowers of one colour,
+# about 8 x 6): a leaf tuft lit on its left, four 1 px blooms (lit), one colour a clump.
+FLOWERBEDS = {
+    "flowerbed_1": ("yellow", ((-2, -4), (1, -5), (3, -3), (-1, -2))),
+    "flowerbed_2": ("pink", ((-3, -3), (0, -5), (2, -3), (-1, -2))),
+    "flowerbed_3": ("cream", ((-2, -5), (1, -4), (3, -2), (-3, -2))),
+}
+
+
+def flowerbed(name):
+    col, blooms = FLOWERBEDS[name]
+    p = Pix(LEAF_INK)
+    for y in range(-5, 0):
+        for x in range(-4, 5):
+            if in_ellipse(x, y, 0.3, -2.0, 3.8, 2.4):
+                v = lit(x, y, 0.3, -2.0, 3.8, 2.4)
+                p.put(x, y, LEAF[1] if v > 0.35 else LEAF[2] if v > -0.3 else LEAF[3])
+    for bx, by in blooms:
+        p.put(bx, by, BLOOM[col][0])
+    return p.drop().image()
+
+
 # --- reeds --------------------------------------------------------------------------------------------------------------
 # Blades (foot x, height, lean, back: drawn darker), back first; cattails (blade index); the base mound's half width.
 REEDS = {
@@ -385,6 +429,8 @@ SETS = {
     "rock": lambda: [(n, *rock(n)) for n in ROCKS],
     "flowers": lambda: [(n, *flowers(n)) for n in FLOWERS],
     "reeds": lambda: [(n, *reeds(n)) for n in REEDS],
+    "shrub": lambda: [(n, *bush(n)) for n in SHRUBS],
+    "flowerbed": lambda: [(n, *flowerbed(n)) for n in FLOWERBEDS],
 }
 
 

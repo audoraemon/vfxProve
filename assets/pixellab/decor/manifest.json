@@ -38,5 +38,11 @@
 	"flowers_2": {"size": [17, 10], "anchor": [8, 9]},
 	"flowers_3": {"size": [15, 9], "anchor": [7, 8]},
 	"reeds_1": {"size": [23, 30], "anchor": [11, 29]},
-	"reeds_2": {"size": [21, 30], "anchor": [10, 29]}
+	"reeds_2": {"size": [21, 30], "anchor": [10, 29]},
+	"shrub_1": {"size": [10, 8], "anchor": [5, 7]},
+	"shrub_2": {"size": [12, 9], "anchor": [6, 8]},
+	"shrub_3": {"size": [14, 10], "anchor": [7, 9]},
+	"flowerbed_1": {"size": [9, 7], "anchor": [4, 6]},
+	"flowerbed_2": {"size": [9, 7], "anchor": [4, 6]},
+	"flowerbed_3": {"size": [9, 7], "anchor": [4, 6]}
 }

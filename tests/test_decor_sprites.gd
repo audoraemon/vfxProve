@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_boats(t)
 	_mirror(t)
 	_herds(t)
+	_floor(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -426,3 +427,48 @@ static func _herds(t) -> void:
 	t.check(cows.size() >= 2 and names.size() == 2 and fl.size() == 2,
 		"the east pasture's own cows mix both designs and both facings (got %s)" % [cows])
 	t.check(not DecorSprites.flipped(D.BARREL, TownDecor.SEED + 7919), "a barrel never flips, town seed or not")
+
+
+## The floor's baked meadow shrubs draw the small shrub_<n> / flowerbed_<n> sets (DecorSprites.paint_named); live
+## bushes and flowers keep bush_<n> / flowers_<n>; with no such set the floor stays procedural.
+static func _floor(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	for s in 12:
+		t.check(DecorSprites.name_for(D.BUSH, s * 31 + 1, Vector2.ZERO).begins_with("bush_"), "a live bush takes a bush set")
+		t.check(DecorSprites.name_for(D.FLOWERS, s * 31 + 1, Vector2.ZERO).begins_with("flowers_"),
+			"live flowers take a flowers set")
+	t.check(not DecorSprites.variants("shrub").is_empty() and not DecorSprites.variants("flowerbed").is_empty(),
+		"the floor's shrub and flowerbed sets are in the manifest")
+	t.check(DecorSprites.variants("flowers") == [1, 2, 3], "flowerbed_<n> is not read as a flowers variant (got %s)"
+		% [DecorSprites.variants("flowers")])
+	var tx := _tex(10, 8)
+	var fakes := _fake(["floortest_1"])
+	DecorSprites._sets["floortest_1"] = {"name": "floortest_1", "tex": tx, "size": Vector2(10, 8), "anchor": Vector2(5, 7)}
+	var at := Vector2(4.37, 2.11)
+	ArtKit.begin()
+	t.check(DecorSprites.paint_named("floortest", at, 77, Vector2.ZERO), "a floor set paints by its base name")
+	var s := ArtKit.segments()
+	var q := ArtKit.last_quad()
+	t.check(s.size() == 1 and s[0][0] == "tex" and s[0][1] == tx, "from that set's texture")
+	t.check(q.size() == 2 and q[1] == (Iso.ground_to_screen(at) - Vector2(5, 7)).round(),
+		"at its anchor, on whole pixels (got %s)" % [q])
+	ArtKit.begin()
+	var drew := true
+	for seed_value in 20:
+		drew = DecorSprites.paint_named("shrub", at, seed_value, Vector2.ZERO) and drew
+	var names := {}
+	for seg: Array in ArtKit.segments():
+		names[(seg[1] as Texture2D).resource_path.get_base_dir().get_file()] = true
+	t.check(drew and names.keys().all(func(n: String) -> bool: return n.begins_with("shrub_")),
+		"the floor shrub path draws shrub_<n> sets (got %s)" % [names.keys()])
+	ArtKit.begin()
+	t.check(not DecorSprites.paint_named("nosuchset", at, 1, Vector2.ZERO) and ArtKit.segments().is_empty(),
+		"no set: nothing drawn, the floor keeps its procedural shrub")
+	SpriteArt.set_enabled(false)
+	ArtKit.begin()
+	t.check(not DecorSprites.paint_named("shrub", at, 1, Vector2.ZERO), "F7 off: the floor shrubs are procedural")
+	SpriteArt.set_enabled(true)
+	ArtKit.begin()
+	DecorSprites._sets.erase("floortest_1")
+	_unfake(fakes)

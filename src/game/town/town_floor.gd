@@ -596,9 +596,9 @@ func _shrubs(ci: CanvasItem) -> void:
 					continue
 				var p := Iso.ground_to_screen(g).round()
 				ArtKit.begin()
-				# A bush or flowers sprite set, when one exists (DecorSprites), stands in for the procedural shrub.
-				var sprite_kind := Decor.Kind.FLOWERS if h % 5 == 0 else Decor.Kind.BUSH
-				if DecorSprites.paint(sprite_kind, g, Vector2.ZERO, h, Vector2.ZERO):
+				# A floor shrub or flowerbed sprite set, when one exists (DecorSprites.paint_named), stands in for the
+				# procedural shrub: small sets at the procedural shrub's size (live bushes and flowers draw bigger ones).
+				if DecorSprites.paint_named("flowerbed" if h % 5 == 0 else "shrub", g, h, Vector2.ZERO):
 					pass
 				elif h % 5 == 0:
 					# A clump of flowers in one colour, among a little green.

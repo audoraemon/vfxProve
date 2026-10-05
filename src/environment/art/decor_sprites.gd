@@ -180,6 +180,22 @@ static func tree_set(kind: int, seed_value: int) -> Dictionary:
 	return decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_TREE, v.size())]])
 
 
+## Draw a "<base>_<n>" set that belongs to no decor kind (the floor's baked meadow shrubs: "shrub", "flowerbed"), its
+## variant picked from the seed, anchored at `at` on whole pixels, and return true; false (draw nothing) while SpriteArt
+## is off or the manifest has no such set, so the caller keeps its procedural art.
+static func paint_named(base: String, at: Vector2, seed_value: int, origin: Vector2) -> bool:
+	if not SpriteArt.on():
+		return false
+	var v := variants(base)
+	if v.is_empty():
+		return false
+	var d := decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]])
+	if d.is_empty():
+		return false
+	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), (Iso.ground_to_screen(at) - origin - d.anchor).round())
+	return true
+
+
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down
 ## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws nothing. A run repeats its set's
 ## segment from its back end (the low end along its main axis), the last tile cut to the run's length (on its near

@@ -73,3 +73,22 @@ static func run(t) -> void:
 	eaten.setup(CampaignDef.EATEN, "")
 	t.check(eaten.pages.size() == 1 and String(eaten.pages[0].title) == "Eaten", "Eaten has one page")
 	eaten.free()
+
+	# Results in a campaign: one Continue, and the line on what the night did.
+	var res := ResultsScreen.new()
+	res.setup({"mission": "warning", "won": true, "reason": "omen", "goal": {"label": "Stop the warning", "done": true},
+		"campaign": {"won": true, "dp_gain": 2, "dp": 8, "bites": 0, "ending": ""}})
+	t.check(res.campaign and res._menu.items.size() == 1 and String(res._menu.items[0].action) == "next",
+		"a campaign night's results offer one Continue")
+	res.free()
+	t.check(ResultsScreen.campaign_line({"won": true, "dp_gain": 3, "dp": 9}) == "The god grows: +3 DP, 9 DP now.",
+		"a won night's line")
+	t.check(ResultsScreen.campaign_line({"won": false, "dp": 5, "bites": 1}) == "Halcyon bites: 5 DP now. Bites 1 / 3.",
+		"a lost night's line")
+	t.check(ResultsScreen.campaign_line({"won": false, "dp": 4, "bites": 3, "ending": "eaten"}) == "Halcyon has eaten you.",
+		"the last bite's line")
+	var pause := PauseMenu.new()
+	pause.setup(true)
+	t.check(String(pause._menu.items[3].action) == "campaign" and String(pause._menu.items[3].label) == "Campaign",
+		"in a campaign, Pause's last button is Campaign")
+	pause.free()

@@ -5,7 +5,7 @@ extends Node
 ## string, and FLOW says where that leads. Keeping the flow as data is what makes it provable without
 ## building a single screen.
 
-enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE}
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING}
 
 ## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
 ## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
@@ -30,6 +30,16 @@ const FLOW := {
 	"interlude:draft": Screen.PREPARE,
 	"interlude:missions": Screen.BOARD,
 	"prepare:begin": Screen.MISSION,
+	# The Lantern campaign (v0.10): its night screen, the draft for tonight, the night's results leading on to the next
+	# night or the ending, and Pause's way back to the night screen.
+	"title:campaign": Screen.CAMPAIGN,
+	"campaign:draft": Screen.PREPARE,
+	"campaign:title": Screen.TITLE,
+	"prepare:campaign": Screen.CAMPAIGN,
+	"results:next": Screen.CAMPAIGN,
+	"results:ending": Screen.ENDING,
+	"pause:campaign": Screen.CAMPAIGN,
+	"ending:title": Screen.TITLE,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -116,6 +126,10 @@ var _between_acts := false
 var _next_path := ""
 ## The interlude, while it is up.
 var _interlude: InterludeScreen
+## True while the Lantern campaign is being played (v0.10), from its night screen until the title or the board: Prepare
+## drafts within the campaign's slots and budget, a finished night is recorded on it, and Pause and Results lead back to
+## its night screen.
+var _in_campaign := false
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -179,6 +193,20 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
+		"campaign":
+			if save.campaign == null:
+				save.campaign = CampaignState.new()
+			go_to(Screen.CAMPAIGN)
+		"campaign-choice":
+			# Night 2's three cards (v0.10), for the photograph; the save is not written.
+			save.campaign = CampaignState.new()
+			save.campaign.night = 1
+			save.campaign.dp = 8
+			go_to(Screen.CAMPAIGN)
+		"ending":
+			save.campaign = CampaignState.new()
+			save.campaign.ending = CampaignDef.FALSE_LANTERN
+			go_to(Screen.ENDING)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -202,6 +230,10 @@ func go_to(to: int) -> void:
 	_close_pause()
 	var from := screen
 	screen = to
+	if to == Screen.TITLE or to == Screen.BOARD:
+		_in_campaign = false
+	elif to == Screen.CAMPAIGN:
+		_in_campaign = true
 	# A hit dips Engine.time_scale and the battlefield's Impact restores it from its own _process. A mission
 	# freed mid-dip never restores it, and the whole game would stay in slow motion from then on.
 	Engine.time_scale = 1.0
@@ -243,6 +275,8 @@ func go_to(to: int) -> void:
 						act = a
 				prep.setup(act, loadout, save.difficulty)
 				prep.confirm_label = "BEGIN"
+			elif _in_campaign and save.campaign != null:
+				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
 				prep.setup(MissionBook.get_mission(mission_id), loadout, save.difficulty)
 			prep.action.connect(_on_prepare_action.bind(prep))
@@ -257,7 +291,7 @@ func go_to(to: int) -> void:
 			add_child(res)
 			res.setup(result)
 			UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
-			res.action.connect(func(what: String) -> void: on_action("results:" + what))
+			res.action.connect(func(what: String) -> void: on_action(_results_action(what)))
 			_screen_node = res
 		Screen.INTERLUDE:
 			# Like the results, over the frozen town (v0.09); the act's sting only when it has just ended, not on the
@@ -267,10 +301,24 @@ func go_to(to: int) -> void:
 				_show_interlude(_mission.next_choices(), _mission.night())
 			if from == Screen.MISSION:
 				UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
+		Screen.CAMPAIGN:
+			var night := CampaignScreen.new()
+			night.name = "Campaign"
+			add_child(night)
+			night.setup(save.campaign)
+			night.action.connect(_on_campaign_action.bind(night))
+			_screen_node = night
+		Screen.ENDING:
+			var end := EndingScreen.new()
+			end.name = "Ending"
+			add_child(end)
+			end.setup(save.campaign.ending, save.campaign.ending_fragment())
+			end.action.connect(func(what: String) -> void: on_action("ending:" + what))
+			_screen_node = end
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
-		Screen.TITLE, Screen.BOARD, Screen.PREPARE:
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING:
 			Music.play(&"theme")
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
@@ -388,6 +436,7 @@ func _build_mission() -> Mission:
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	mission.difficulty = save.difficulty
 	mission.mission_id = mission_id
+	mission.bell_rang = _in_campaign and save.campaign != null and save.campaign.bell_rang
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
 	mission.act_over.connect(_on_act_over)
@@ -405,6 +454,8 @@ func _build_mission() -> Mission:
 func _on_mission_finished(outcome: Dictionary) -> void:
 	_between_acts = false
 	result = outcome
+	if _in_campaign and save.campaign != null:
+		result["campaign"] = save.campaign.record(mission_id, result)
 	result["best"] = save.record(mission_id, result)
 	save.remember_loadout(mission_id, loadout)
 	save.save_to(save_path)
@@ -431,6 +482,33 @@ func _on_board_action(what: String, board: MissionBoard) -> void:
 	on_action("board:" + what)
 
 
+## The night screen's buttons (v0.10): on to Prepare for tonight's mission, with the loadout last drafted for it; a
+## fresh campaign; or back to the title, where the board's mission is the one last picked there.
+func _on_campaign_action(what: String, night: CampaignScreen) -> void:
+	match what:
+		"draft":
+			mission_id = night.chosen
+			loadout = save.loadout_for(mission_id)
+			if loadout.is_empty():
+				loadout = MissionBook.get_mission(mission_id).default_loadout
+			on_action("campaign:draft")
+		"restart":
+			save.campaign = CampaignState.new()
+			save.save_to(save_path)
+			go_to(Screen.CAMPAIGN)
+		"title":
+			mission_id = save.last_mission
+			loadout = starting_loadout(save, mission_id)
+			on_action("campaign:title")
+
+
+## A Results button's action (v0.10): a campaign night's Continue leads to the ending once the campaign has one.
+func _results_action(what: String) -> String:
+	if what == "next" and _in_campaign and save.campaign != null and save.campaign.ending != "":
+		return "results:ending"
+	return "results:" + what
+
+
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if _between_acts:
 		# The re-draft between acts (v0.09): BEGIN carries the night on, Back returns to the interlude -- but not once
@@ -444,6 +522,9 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 			on_action("prepare:begin")
 		elif what == "back":
 			go_to(Screen.INTERLUDE)
+		return
+	if what == "back" and _in_campaign:
+		on_action("prepare:campaign")
 		return
 	if what == "manifest":
 		loadout = prep.draft.picks
@@ -460,7 +541,7 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
-	_pause.setup()
+	_pause.setup(_in_campaign)
 	UiSound.play(&"ui_pause")
 	Music.set_ducked(true)
 	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
@@ -479,6 +560,12 @@ func _on_title_action(what: String) -> void:
 			get_tree().change_scene_to_file(SANDBOX_SCENE)
 		"quit":
 			get_tree().quit()
+		"campaign":
+			# A campaign that has reached its ending is over: Campaign begins a fresh one (review focus 3).
+			if save.campaign == null or save.campaign.ending != "":
+				save.campaign = CampaignState.new()
+				save.save_to(save_path)
+			on_action("title:campaign")
 		_:
 			on_action("title:" + what)
 

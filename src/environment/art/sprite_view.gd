@@ -10,6 +10,20 @@ const SHADER := preload("res://src/environment/art/structure_sprite.gdshader")
 const KEEP_ALL := 0
 const KEEP_ABOVE := 1
 const KEEP_BELOW := -1
+## The shared idle clock's shader global (project.godot [shader_globals]): seconds of game time, wrapped every
+## IDLE_WRAP seconds (a whole number of loops for every strip in the manifest: 4-8 frames at 3-21 fps).
+const IDLE_TIME := &"idle_time"
+const IDLE_WRAP := 1440.0
+## ArtKit.hash01 salt for a view's idle phase, from its structure's seed.
+const SALT_PHASE := 95
+
+## The idle clock: game seconds. The world's EnvironmentField steps it from its _process delta (tick_clock()), so
+## time scale, hit-stop, a paused tree and a frozen mission (Mission.set_frozen() disables its subtree) hold every
+## idle strip, as when each view stepped its own.
+static var idle_time := 0.0
+## The EnvironmentField that steps the clock: the first to tick, until it leaves the tree or is freed (release_clock()).
+## One owner, so two fields alive at once never step it twice a frame.
+static var _clock_owner: Object = null
 
 var sprite := {}
 var still := &"intact"
@@ -19,6 +33,12 @@ var color := Color.WHITE
 var _mat: ShaderMaterial
 ## The clip last handed to the shader (set_cut()); NAN until the first.
 var _cut := [NAN, NAN, NAN]
+## Playing the intact still's idle strip (play_idle()): the shader steps its frames from the shared idle clock
+## (IDLE_TIME) and this view's phase, so neither the view nor the Structure under it processes (Structure._can_idle()).
+var playing := false
+## Where in its loop this view's strip runs, in frames [0, frames): from its structure's seed, so neighbours (a forest's
+## trees) do not sway in step.
+var phase := 0.0
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -39,9 +59,73 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	return self
 
 
-## Show `st` (&"intact", &"damaged", &"ruins", or &"collapse", the set's generated collapse). The intact still loops
-## its idle strip's `frame_index` when the set has one; the collapse holds its last frame. Redraws only on a change.
+## Show `st` (&"intact", &"damaged", &"ruins", or &"collapse", the set's generated collapse), and stop playing the idle
+## strip (play_idle()). The intact still shows its idle strip's `frame_index` when the set has one; the collapse holds
+## its last frame. Redraws only on a change.
 func show_still(st: StringName, frame_index := 0) -> void:
+	_stop()
+	_show(st, frame_index)
+
+
+## The clock's step from `field` (EnvironmentField._process): it takes the clock when no live field holds it, and
+## only the holder advances it.
+static func tick_clock(field: Object, delta: float) -> void:
+	if not is_instance_valid(_clock_owner):
+		_clock_owner = field
+	if _clock_owner == field:
+		advance(delta)
+
+
+## `field` gives up the clock (it left the tree): the next field to tick takes it.
+static func release_clock(field: Object) -> void:
+	if _clock_owner == field:
+		_clock_owner = null
+
+
+## Advance the shared idle clock by `delta` game seconds and hand it to the shaders.
+static func advance(delta: float) -> void:
+	idle_time = fmod(idle_time + delta, IDLE_WRAP)
+	RenderingServer.global_shader_parameter_set(IDLE_TIME, idle_time)
+
+
+## Play the intact still's idle strip: the shader picks the frame from the shared idle clock (advance()) plus this
+## view's phase, its structure's seed hashed (SALT_PHASE), so the view needs no processing at all. `_t` (the structure's
+## time) is kept for callers; the clock is shared. A set without an idle strip just shows its intact still.
+func play_idle(_t := 0.0) -> void:
+	if frame_count(&"intact") <= 1:
+		show_still(&"intact")
+		return
+	if playing and still == &"intact":
+		return
+	var host := get_parent() as Structure
+	phase = ArtKit.hash01(host.rng.seed, SALT_PHASE) * float(sprite.frames) if host != null else 0.0
+	_show(&"intact", 0)
+	playing = true
+	_set_idle(int(sprite.frames))
+
+
+## The frame the shader shows now: the playing strip's from the idle clock and phase, else the still's.
+func shown_frame() -> int:
+	if not playing:
+		return frame
+	return posmod(int(floor(idle_time * float(sprite.fps) + phase)), int(sprite.frames))
+
+
+func _set_idle(frames: int) -> void:
+	_mat.set_shader_parameter("idle_frames", frames)
+	if frames > 1:
+		_mat.set_shader_parameter("idle_fps", float(sprite.fps))
+		_mat.set_shader_parameter("idle_phase", phase)
+		_mat.set_shader_parameter("frame_w", float((sprite.size as Vector2).x))
+
+
+func _stop() -> void:
+	if playing:
+		playing = false
+		_set_idle(1)
+
+
+func _show(st: StringName, frame_index: int) -> void:
 	var n := frame_count(st)
 	var f := 0
 	if n > 1:

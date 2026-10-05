@@ -59,6 +59,7 @@ func tuning_key() -> String:
 
 
 func _ready() -> void:
+	add_to_group(&"decor_art")
 	self_modulate = ArtTuning.tint(tuning_key())
 	if kind in SWAYS:
 		material = wind_material()
@@ -72,6 +73,20 @@ func _ready() -> void:
 		_glow.z_as_relative = false
 		_glow.z_index = -4
 		add_child(_glow)
+		_place_glow()
+
+
+## The lamp's light pool: under its sprite's lantern ("glow" in its decor set) while it draws from one, else at its
+## ground point; scaled with the drawing (ArtTuning).
+func _place_glow() -> void:
+	if is_instance_valid(_glow):
+		_glow.position = DecorSprites.glow_offset(kind, seed_value, size) * ArtTuning.scale(tuning_key())
+
+
+## F7 switched the art (ArtToggle): draw again from the sprite or the polygons.
+func art_changed() -> void:
+	_place_glow()
+	queue_redraw()
 
 
 ## A blast reached it: char it, or knock it down when the hit is strong enough.

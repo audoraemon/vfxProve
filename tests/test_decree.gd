@@ -48,7 +48,7 @@ static func run(t) -> void:
 		and PowerBook.authority_title("decree") == "DECREE",
 		"Decree holds four quiet powers at 1, 2, 3 and 5 DP, each with its effect, icons, clip and area (%s)" % [problems])
 	var modes: Array = PowerBook.get_power("abolition").modes
-	t.check(modes.size() == 3 and String(modes[0].key) == "clock" and String(modes[1].key) == "escape" and String(modes[2].key) == "ward",
+	t.check(PowerBook.get_power("belllies").modes.size() == 2 and modes.size() == 3 and String(modes[0].key) == "clock" and String(modes[1].key) == "escape" and String(modes[2].key) == "ward",
 		"Abolition's modes are the three laws")
 
 	var made := _setup()
@@ -98,25 +98,49 @@ static func run(t) -> void:
 	wall.free()
 
 	# --- The Bell Lies
-	var lie: BellLiesFx = FxTimeline.cast(load("res://src/fx/decree/the_bell_lies.gd"), ctx, at)
-	t.check(not crowd.is_bell_lying(), "The Bell Lies: the bell is true until the law lands")
-	lie._process(BellLiesFx.T_CAST + 0.05)
+	# The town has been warned: the bell rang true, and they are afraid.
 	crowd.add_alarm(30.0)
+	crowd.bell._ring()
 	var alarm := crowd.alarm
 	var scared: Person = crowd.citizens[6]
 	scared.ground_pos = at + Vector2(0.0, 5.0)
 	scared.mind = Person.Mind.PANIC
+	var lie: BellLiesFx = FxTimeline.cast(load("res://src/fx/decree/the_bell_lies.gd"), ctx, at)
+	t.check(not crowd.is_bell_lying() and crowd.alarms.bell_rung and lie.lies == 0, "The Bell Lies: the bell is true until the law lands")
+	lie._process(BellLiesFx.T_CAST + 0.05)
+	t.check(lie.mode == "well" and lie.lies == 1 and crowd.is_bell_lying() and is_equal_approx(crowd.alarm, alarm - Crowd.LIE_CALM)
+		and scared.fearless_left > 0.0 and scared.mind != Person.Mind.PANIC,
+		"it tolls all is well at once: the alarm falls and those who hear take heart (%.0f from %.0f)" % [crowd.alarm, alarm])
+	t.check(not crowd.alarms.bell_rung and crowd.bell.state == BellNetwork.State.WAITING and scared.awareness < Person.Awareness.EMERGENCY,
+		"and a warning already given is taken back: the town is as if its bell had never rung")
+	alarm = crowd.alarm
 	crowd.bell._ring()
-	t.check(crowd.is_bell_lying() and crowd.bell.lied == 1 and lie.lies == 1 and crowd.bell.state == BellNetwork.State.WAITING
-		and not crowd.alarms.bell_rung, "rung, it tolls all is well: the town is not warned, and the keeper must try again")
-	t.check(is_equal_approx(crowd.alarm, alarm - Crowd.LIE_CALM) and scared.fearless_left > 0.0 and scared.mind != Person.Mind.PANIC,
-		"the alarm falls and those who hear take heart (%.0f from %.0f)" % [crowd.alarm, alarm])
+	t.check(crowd.bell.lied == 1 and lie.lies == 2 and crowd.bell.state == BellNetwork.State.WAITING and not crowd.alarms.bell_rung
+		and is_equal_approx(crowd.alarm, alarm - Crowd.LIE_CALM), "rung again while it lies, it lies again, and the keeper must try again")
 	crowd._clock += BellLiesFx.LIE_TIME
 	lie._process(BellLiesFx.LIE_TIME + 2.0)
 	lie.free()
 	crowd.bell._ring()
 	t.check(not crowd.is_bell_lying() and crowd.bell.state == BellNetwork.State.RUNG and crowd.alarms.bell_rung and crowd.bell.lied == 1,
 		"after its time the bell rings true again")
+	# Call the Guard: the bell sends the soldiers to the wrong place.
+	var far := grid.nearest_walkable(at + Vector2(0.0, -7.0))
+	var call: BellLiesFx = FxTimeline.cast(load("res://src/fx/decree/the_bell_lies.gd"), ctx, far, {"mode": "guard"})
+	call._process(BellLiesFx.T_CAST + 0.05)
+	var going := 0
+	for s in crowd.soldiers:
+		if is_instance_valid(s) and s.held_by_will(Person.WILL_FIRM) and s.goal().distance_to(far) <= BellLiesFx.GUARD_RING + 1.5:
+			going += 1
+	var citizens_called := 0
+	for c in crowd.citizens:
+		if c.mind == Person.Mind.COMPELLED:
+			citizens_called += 1
+	t.check(call.mode == "guard" and call.called == going and going > 0 and going <= BellLiesFx.GUARDS and citizens_called == 0
+		and not crowd.is_bell_lying(), "Call the Guard: the bell sends soldiers, and only soldiers, running to the place (%d)" % going)
+	call._process(BellLiesFx.GUARD_TIME + 3.0)
+	call.free()
+	for s in crowd.soldiers:
+		s.release_compulsion()
 
 	# --- Magnify
 	for person in crowd.citizens:
@@ -172,7 +196,28 @@ static func run(t) -> void:
 	edict._process(AbolitionFx.T_DECREE + 0.05)
 	rules.advance(5.0)
 	t.check(edict.abolished and rules.is_abolished(Rules.LAW_CLOCK) and is_equal_approx(rules.time_left, clock - 1.0)
-		and banners.has("THE CLOCK IS ABOLISHED"), "the clock abolished: it does not run, and the night is told")
+		and banners.has("THE CLOCK IS ABOLISHED: TIME STANDS STILL"), "the clock abolished: it does not run, and the night is told")
+	var walker: Person = crowd.citizens[8]
+	walker.ground_pos = at + Vector2(2.0, 2.0)
+	walker.mind = Person.Mind.CALM
+	walker.set_goal(grid.nearest_walkable(at + Vector2(6.0, 2.0)))
+	var stood := walker.ground_pos
+	var town_clock := crowd._clock
+	for k in 30:
+		crowd.step_people(0.1)
+		crowd.advance(0.1)
+	t.check(crowd.is_frozen() and walker.ground_pos.is_equal_approx(stood) and is_equal_approx(crowd._clock, town_clock),
+		"and time stands still in the town: nobody moves, its own clock does not run")
+	var victim: Person = crowd.citizens[9]
+	victim.ground_pos = at + Vector2(3.0, 3.0)
+	made[3].kill(victim, &"lightning", victim.ground_pos)
+	t.check(not victim.is_alive(), "the god is not stopped: a blow struck meanwhile lands")
+	for k in 130:
+		crowd.advance(0.1)
+	for k in 10:
+		crowd.step_people(0.1)
+	t.check(not crowd.is_frozen() and crowd._clock > town_clock and not walker.ground_pos.is_equal_approx(stood),
+		"then time runs again and they walk on (%s)" % [walker.ground_pos - stood])
 	rules.advance(AbolitionFx.ABOLISH_TIME)
 	rules.advance(2.0)
 	t.check(not rules.is_abolished(Rules.LAW_CLOCK) and rules.time_left < clock - 2.5, "the law comes back by itself and the clock runs on")

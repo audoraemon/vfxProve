@@ -140,6 +140,12 @@ func replace_keeper(p: Person) -> void:
 var lied := 0
 
 
+## A bell that has rung is as if it had not (Crowd.unring_bell()): the keeper will try again.
+func unring() -> void:
+	if state == State.RUNG:
+		_wait()
+
+
 func _wait() -> void:
 	state = State.WAITING
 	_retry_in = RETRY

@@ -39,8 +39,9 @@ const POWERS := [
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
 		"authority": "dominion"},
 	{"key": "belllies", "name": "The Bell Lies", "path": "res://src/fx/decree/the_bell_lies.gd",
-		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "for 45 s the bell tolls all is well: no alarm, the town calms",
-		"quiet": true, "authority": "decree"},
+		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "the bell tolls all is well, now and for 45 s; or calls the guard to a place; Q/E",
+		"quiet": true, "authority": "decree", "modes": [
+			{"key": "well", "name": "ALL IS WELL"}, {"key": "guard", "name": "CALL THE GUARD", "area": {"r": 1.5}}]},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
@@ -122,7 +123,7 @@ const POWERS := [
 			{"key": "gather", "name": "GATHER"}, {"key": "return", "name": "RETURN"}, {"key": "silence", "name": "SILENCE"},
 			{"key": "judge", "name": "JUDGE"}]},
 	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
-		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law of the night is void for 15 s; Q/E picks it; once",
+		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
 		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
 			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},

@@ -42,7 +42,8 @@ const AREAS := {
 	"deathmark": {"shape": "circle", "r": 1.0},
 	# NoLeaveFx.RADIUS: the ground nobody may leave
 	"noleave": {"shape": "circle", "r": 3.0},
-	# The Bell Lies works at the Bell Tower wherever the click lands: the tower is ringed (_draw())
+	# The Bell Lies works at the Bell Tower wherever the click lands: the tower is ringed (_draw()); its Call the
+	# Guard mode marks where the soldiers are sent (the book's "area")
 	"belllies": {"shape": "circle", "r": 0.6},
 	# MagnifyFx.RADIUS
 	"magnify": {"shape": "circle", "r": 4.0},
@@ -482,6 +483,9 @@ func _draw() -> void:
 				_ring(_press, 0.3, COL_BAD)
 		"belllies":
 			_ring(TownLayout.BELL_TOWER.get_center(), 0.9, COL_DIVINE)
+			if String(mode().get("key", "")) == "guard":
+				# Where the guard would be sent.
+				_place_mark(_press, edge)
 		"deathmark":
 			var marked := DeathMarkFx.target_at(_crowd._field, _press)
 			if marked != null:

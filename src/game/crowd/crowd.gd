@@ -134,6 +134,8 @@ var madness: MadnessManager
 var _hush_until := -INF
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
 var _bell_lies_until := -INF
+## Seconds left of time standing still (freeze()).
+var _freeze_left := 0.0
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -528,16 +530,21 @@ func _process(delta: float) -> void:
 ## One frame of every person, citizens then soldiers: the order they were spawned, which was the order the engine
 ## processed them in when each processed itself.
 func step_people(delta: float) -> void:
+	# While time stands still (freeze()) the living do not move or think; the dead still fall.
+	var still := is_frozen()
 	for p in citizens:
-		if is_instance_valid(p) and not p.inside:
+		if is_instance_valid(p) and not p.inside and not (still and p.is_alive()):
 			p.frame(delta)
 	for p in soldiers:
-		if is_instance_valid(p):
+		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
 func advance(delta: float) -> void:
+	if _freeze_left > 0.0:
+		_freeze_left -= delta
+		return
 	_clock += delta
 	threats.step(delta)
 	_spread_fright()
@@ -946,6 +953,27 @@ func is_hushed() -> bool:
 	return _clock < _hush_until
 
 
+## Time stands still in the town for `seconds` (Abolition's clock): nobody alive moves or thinks, and nothing of the
+## town's own runs -- its clock, its fires, its bell, its sickness. What a power does to it meanwhile is still done.
+func freeze(seconds: float) -> void:
+	_freeze_left = maxf(_freeze_left, seconds)
+
+
+func is_frozen() -> bool:
+	return _freeze_left > 0.0
+
+
+## The warning is taken back (The Bell Lies): the town is as if its bell had never rung -- no citizen holds itself in
+## an emergency for the bell's sake, and the keeper is left to ring again.
+func unring_bell() -> void:
+	alarms.bell_rung = false
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive() and p.awareness == Person.Awareness.EMERGENCY:
+			p.awareness = Person.Awareness.CONCERNED
+	if bell != null:
+		bell.unring()
+
+
 ## For `seconds` the bell lies (The Bell Lies): rung, it tolls that all is well (false_bell()).
 func bell_lies(seconds: float) -> void:
 	_bell_lies_until = maxf(_bell_lies_until, _clock + seconds)
@@ -1294,6 +1322,7 @@ func clear() -> void:
 	_thorn_alarm_at = -INF
 	_hush_until = -INF
 	_bell_lies_until = -INF
+	_freeze_left = 0.0
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

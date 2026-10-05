@@ -198,13 +198,16 @@ func advance(delta: float) -> void:
 	_check_end()
 
 
-## Abolish a law of the mission for `seconds` (Abolition). LAW_CLOCK: the clock does not run. LAW_ESCAPE: whoever
+## Abolish a law of the mission for `seconds` (Abolition). LAW_CLOCK: the clock does not run, and time stands still
+## in the town (Crowd.freeze()). LAW_ESCAPE: whoever
 ## escapes meanwhile is not counted against the act's limit. LAW_WARD: the Citadel's ward -- the cap on what it can
 ## lose in a second -- is gone. The law comes back by itself when the time is up.
 func abolish(law: StringName, seconds: float) -> void:
 	if not law in LAWS or seconds <= 0.0:
 		return
 	_abolished[law] = maxf(float(_abolished.get(law, 0.0)), seconds)
+	if law == LAW_CLOCK and is_instance_valid(_crowd):
+		_crowd.freeze(seconds)  # with no clock, time itself stands still in the town
 	if law == LAW_WARD and _ward_budget < 0.0 and is_instance_valid(_town) and is_instance_valid(_town.citadel):
 		_ward_budget = _town.citadel.budget_per_second
 		_town.citadel.budget_per_second = WARD_GONE

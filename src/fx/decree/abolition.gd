@@ -2,18 +2,21 @@ class_name AbolitionFx
 extends FxTimeline
 ## Abolition (Decree, Tier V): one law of the night is struck out. The decree is spoken for T_DECREE; then, for
 ## ABOLISH_TIME, the law the cast's mode names does not hold (Rules.abolish()), and comes back by itself:
-##   CLOCK   the mission's clock does not run.
+##   CLOCK   the mission's clock does not run, and time stands still in the town: nobody alive moves or thinks,
+##           no fire spreads, no bell rings (Crowd.freeze()). The god is not stopped: what is cast meanwhile lands.
 ##   ESCAPE  whoever escapes the town is not counted against the act's limit.
 ##   WARD    the Citadel's ward is gone: nothing caps what it can lose in a second.
-## It touches nobody and breaks nothing itself; it only changes what the night allows. Quiet, but for the book
+## It hurts nobody and breaks nothing itself; it only changes what the night allows. Quiet, but for the book
 ## entry's "alarm" -- the town feels the law go. Once in a descent (the book's cooldown). The cast locks the other
 ## slots until the law is struck.
 
 const ABOLISH_TIME := 15.0
 const T_DECREE := 1.8
 const UP := 120.0
+## The cast over the world while time stands still.
+const STILL := Color(0.16, 0.2, 0.42, 0.42)
 const SIGNS := {"clock": DecreeParts.HOURGLASS, "escape": DominionParts.ARROW, "ward": DecreeParts.SHIELD}
-const WORDS := {"clock": "THE CLOCK IS ABOLISHED", "escape": "THE ESCAPE LIMIT IS ABOLISHED", "ward": "THE CITADEL'S WARD IS ABOLISHED"}
+const WORDS := {"clock": "THE CLOCK IS ABOLISHED: TIME STANDS STILL", "escape": "THE ESCAPE LIMIT IS ABOLISHED", "ward": "THE CITADEL'S WARD IS ABOLISHED"}
 
 ## The law struck out, and whether it is out now.
 var law := "clock"
@@ -79,6 +82,12 @@ func _strike() -> void:
 	lens.life = 0.92
 	DominionParts.pulse(self, origin, 9.0, DecreeParts.GILT, 0.9, 1.6)
 	_pulse_in = 3.0
+	if law == "clock":
+		# Time stopped: the colour goes out of the world, and comes back as the law does.
+		var veil := Veil.new()
+		veil.fx = self
+		veil.z_index = -1
+		track(veil, ctx.overhead)
 
 
 func _restore() -> void:
@@ -101,3 +110,19 @@ func _fx_process(delta: float) -> void:
 		_pulse_in = 3.0
 		DominionParts.pulse(self, origin, 5.0, DecreeParts.GILT, 0.35, 1.4)
 		DecreeParts.wave(self, origin, 5.0, 0.9, 0.03)
+
+
+## The cast over the world while time stands still: in as the clock is struck, out as it comes back.
+class Veil extends Node2D:
+	var fx: AbolitionFx
+
+	func _process(_delta: float) -> void:
+		if fx.t > T_DECREE + ABOLISH_TIME + 0.8:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var a := clampf(minf((fx.t - T_DECREE - 0.3) / 0.5, (T_DECREE + ABOLISH_TIME + 0.7 - fx.t) / 0.7), 0.0, 1.0)
+		if a > 0.0:
+			draw_rect(Rect2(-6000, -6000, 12000, 12000), Color(STILL, STILL.a * a))

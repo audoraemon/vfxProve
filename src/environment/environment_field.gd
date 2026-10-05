@@ -183,6 +183,8 @@ func _reindex() -> void:
 ## Wake every sleeping structure that has come into view (Structure.asleep): one loop here instead of every
 ## structure in town being processed each frame to find out it is still off screen.
 func _process(delta: float) -> void:
+	# The sprites' idle strips run on this field's time: frozen with the mission, stopped with it.
+	SpriteView.tick_clock(self, delta)
 	var v := Structure.view
 	tick_idle(delta, v)
 	if not v.has_area():
@@ -190,6 +192,10 @@ func _process(delta: float) -> void:
 	for s in _structures:
 		if s.asleep and not s.idle and is_instance_valid(s) and s.view_box().intersects(v):
 			s.wake()
+
+
+func _exit_tree() -> void:
+	SpriteView.release_clock(self)
 
 
 func _on_idled(s: Structure) -> void:

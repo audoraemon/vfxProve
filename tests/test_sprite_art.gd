@@ -5,7 +5,12 @@ const K := Structure.Kind
 const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", "citadel_keep", "citadel_tower",
 	"citadel_wall", "citadel_wall_side", "citadel_gate", "town_tower", "town_tower_corner", "town_wall",
 	"town_postern", "town_gate", "town_tower_e", "town_tower_s", "town_tower_e_hi", "town_tower_s_hi",
-	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop"]
+	"town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "townhouse_a", "townhouse_b", "barracks", "workshop", "bell_tower",
+	"stall_1", "stall_1_red", "stall_1_blue", "stall_1_cream", "stall_2", "stall_2_red", "stall_2_blue",
+	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
+	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
+	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
+	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -14,25 +19,68 @@ static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: St
 
 static func run(t) -> void:
 	_mapping(t)
+	_batch3(t)
 	_doors(t)
 	_sets(t)
 	_view(t)
 	_strip(t)
 	_structure(t)
 	_settled_paths(t)
+	_idle_strip(t)
 	_flames(t)
 	_toggle(t)
 	SpriteArt.set_enabled(true)
 
 
+## Adds fake entries (name -> {}) to the cached manifest so mappings resolve without assets; returns the names
+## actually added, for _unfake(). Nothing may return or fail between the two, or the fakes leak into later tests.
+static func _fake(names: Array) -> Array:
+	var m := SpriteArt.manifest()
+	var added := []
+	for n: String in names:
+		if not m.has(n):
+			m[n] = {}
+			added.append(n)
+	SpriteArt._variants_cache.clear()
+	return added
+
+
+## Take the manifest's real entries starting with `prefix` out (for checks on fake ones); _restore puts them back.
+static func _hide(prefix: String) -> Dictionary:
+	var m := SpriteArt.manifest()
+	var out := {}
+	for n: String in m.keys():
+		if n.begins_with(prefix):
+			out[n] = m[n]
+			m.erase(n)
+	SpriteArt._variants_cache.clear()
+	return out
+
+
+static func _restore(hidden: Dictionary) -> void:
+	var m := SpriteArt.manifest()
+	for n: String in hidden:
+		m[n] = hidden[n]
+	SpriteArt._variants_cache.clear()
+
+
+static func _unfake(added: Array) -> void:
+	var m := SpriteArt.manifest()
+	for n: String in added:
+		m.erase(n)
+		SpriteArt._sets.erase(n)
+	SpriteArt._variants_cache.clear()
+
+
 ## Which building gets which sprite, and the manifest behind them.
 static func _mapping(t) -> void:
+	var fakes := _fake(["barn", "carpenter"])
 	var cases := [
 		[Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, &"house", &"", "cottage"],
 		[Rect2(0, 0, 1.3, 0.95), 29.0, K.HOUSE, &"house", &"townhouse", "townhouse"],
 		[Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, &"farm", &"", "barn"],
-		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", ""],
-		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", ""],
+		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", "windmill"],
+		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", "watermill"],
 		[Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, &"house", &"tavern", "tavern"],
 		[Rect2(0, 0, 1.5, 1.25), 20.0, K.HOUSE, &"house", &"smithy", "smithy"],
 		[Rect2(0, 0, 2.6, 1.5), 22.0, K.HOUSE, &"house", &"workshop", "workshop"],
@@ -59,15 +107,16 @@ static func _mapping(t) -> void:
 		[Rect2(0, 0, 1.1, 2.0), 34.0, K.GATE, &"gate", &"", "town_gate"],
 		[Rect2(0, 0, 1.15, 0.7), 34.0, K.GATE, &"gate", &"postern", "town_postern"],
 		[Rect2(0, 0, 4.4, 1.9), 36.0, K.BARRACKS, &"barracks", &"", "barracks"],
-		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", ""],
+		[Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, &"market", &"", "stall"],
 	]
 	for c in cases:
 		var s := _make(c[0], c[1], c[2], 5, c[3], c[4])
 		var got := SpriteArt.name_for(s)
 		var want: String = c[5]
-		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse"] else got == want
+		var ok := got.begins_with(want + "_") if want in ["cottage", "townhouse", "stall"] else got == want
 		t.check(ok, "sprite for %s/%s/%s is '%s' (got '%s')" % [K.keys()[c[2]], c[3], c[4], want, got])
 		s.free()
+	_unfake(fakes)
 	# Cottages pick a roof from their seed: stable per seed, and both roofs appear.
 	var seen := {}
 	for sd in 40:
@@ -85,11 +134,12 @@ static func _mapping(t) -> void:
 		looks[SpriteArt.name_for(th)] = true
 		th.free()
 	t.check(looks.has("townhouse_a") and looks.has("townhouse_b") and looks.size() == 2, "both townhouse looks appear")
-	# Market stalls stay procedural for now (user review 2026-10-04): every awning cloth, no sprite set.
+	# Market stalls (batch 3): every awning cloth draws a stall design's set.
 	for sd in [3, 4, 5]:
 		var st := _make(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, sd, &"market")
-		t.check(SpriteArt.name_for(st) == "" and SpriteArt.set_for(st).is_empty(),
-			"a stall with cloth %d stays procedural" % int(st.art.cloth))
+		var sn := SpriteArt.name_for(st)
+		t.check(sn.begins_with("stall_") and not SpriteArt.set_for(st).is_empty(),
+			"a stall with cloth %d draws a stall set (got '%s')" % [int(st.art.cloth), sn])
 		st.free()
 	for n in NAMES:
 		var m: Dictionary = SpriteArt.manifest().get(n, {})
@@ -164,6 +214,18 @@ static func _sets(t) -> void:
 	var inn := _make(Rect2(0, 0, 2.4, 1.5), 30.0, K.HOUSE, 5, &"house", &"tavern")
 	t.check(ChimneySmoke.tip_of(inn) == Vector2.INF, "the tavern's smoke is in its sprite")
 	inn.free()
+	# The warehouse sets (batch 3): a barn has no chimney, as the procedural barn; the carpenter keeps the sheet's.
+	# Both stand unmirrored on their plots (the barn is drawn deep, the carpenter wide).
+	var barn := _make(Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, 5, &"farm")
+	barn.sprite = SpriteArt.set_for(barn)
+	t.check(not barn.sprite.is_empty() and not barn.sprite.mirror and ChimneySmoke.tip_of(barn) == Vector2.INF,
+		"a sprite barn stands unmirrored and never smokes")
+	barn.free()
+	var carp := _make(Rect2(0, 0, 2.3, 1.15), 20.0, K.HOUSE, 5, &"house", &"carpenter")
+	carp.sprite = SpriteArt.set_for(carp)
+	t.check(not carp.sprite.is_empty() and not carp.sprite.mirror and ChimneySmoke.tip_of(carp) != Vector2.INF,
+		"the sprite carpenter stands unmirrored and smokes from its chimney")
+	carp.free()
 	SpriteArt.set_enabled(false)
 	t.check(SpriteArt.set_for(wide).is_empty(), "with sprites off nothing gets a set")
 	SpriteArt.set_enabled(true)
@@ -336,9 +398,11 @@ static func _structure(t) -> void:
 	t.check(keep._sprite_view.still == &"damaged_fallen", "and cracked, it is the bannerless damaged keep")
 	keep.free()
 	cat.free()
+	var no_mill := _hide("windmill")
 	var proc := _make(Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, 8, &"farm", &"windmill")
 	t.check(proc.sprite.is_empty() and proc.sprite_state() == &"", "a building without a sprite keeps its art")
 	proc.free()
+	_restore(no_mill)
 	t.check(_battered(true) == _battered(false), "sprites on or off, the same hits leave the same buildings")
 	SpriteArt.set_enabled(true)
 	# The Citadel tags its keep and its gateway after making them; they still get their own sprites.
@@ -383,18 +447,244 @@ static func _settled_paths(t) -> void:
 	t.check(fell._sprite_view.visible and fell._sprite_view.still == &"intact" and not is_instance_valid(fell._ruins_view),
 		"rebuilt from settled ruins, it shows its intact still again and its ruins are gone")
 	fell.free()
-	# An animated set (the smithy's smoke) settles between its idle frames, and still steps to the next one.
+	# An animated set (the smithy's smoke) settles at once: its idle frames are its view's to step (_idle_strip()), so
+	# the structure's own time crossing an idle frame syncs nothing.
 	var smith := _make(Rect2(0, 0, 0.95, 0.75), 17.0, K.HOUSE, 5, &"house")
 	smith.sprite = SpriteArt.sprite("smithy").duplicate()
-	t.check(smith._sprite_frames == int(smith.sprite.frames) and smith._sprite_frames > 1, "the smithy's set is animated")
+	t.check(int(smith.sprite.frames) > 1, "the smithy's set is animated")
 	smith._process(0.001)
-	var first := smith._sprite_view.frame
 	smith._process(0.001)
-	t.check(smith._sprite_settled() and smith._sprite_view.frame == first,
-		"between its idle frames it is settled: its views are not synced every frame")
-	smith._process(1.0 / float(smith.sprite.fps))
-	t.check(smith._sprite_view.frame == (first + 1) % smith._sprite_frames, "on its next idle frame it syncs and steps")
+	t.check(smith._sprite_settled() and _strip_on(smith._sprite_view), "it settles while its view plays its idle strip")
+	var first := smith._sprite_view.shown_frame()
+	SpriteView.advance(1.0 / float(smith.sprite.fps))
+	t.check(smith._sprite_view.shown_frame() == (first + 1) % int(smith.sprite.frames) and smith._sprite_settled(),
+		"the shared idle clock steps its strip to the next frame; the structure stays settled")
 	smith.free()
+
+
+## A playing view's idle strip is stepped by its shader from the shared idle clock (SpriteView.advance()) and its
+## phase, so neither the view nor the structure under it processes. True when `v` plays its strip that way.
+static func _strip_on(v: SpriteView) -> bool:
+	return v.playing and not v.is_processing() and v.still == &"intact" \
+		and int(v.material.get_shader_parameter("idle_frames")) == int(v.sprite.frames)
+
+
+## The shared idle clock runs on the world's EnvironmentField (SpriteView.tick_clock()): a frozen mission
+## (Mission.set_frozen() disables its subtree) holds every idle strip, unfreezing resumes them, and a field that leaves
+## the tree gives the clock up to the next one. `frame` stands for one engine frame: the field processes unless an
+## ancestor disables it (the runner's root is not in a tree yet, so the engine's own can_process() cannot say).
+static func _idle_clock_frozen(t) -> void:
+	var holder := Node.new()
+	var env := EnvironmentField.new()
+	holder.add_child(env)
+	SpriteView._clock_owner = null
+	var frame := func() -> void:
+		if _would_process(env):
+			env._process(1.0 / 60.0)
+	var gate := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
+	gate._ready()
+	for i in 4:
+		gate._process(1.0 / 60.0)
+	var v := gate._sprite_view
+	var seen := {}
+	for i in 60:
+		frame.call()
+		seen[v.shown_frame()] = true
+	t.check(_strip_on(v) and seen.size() > 1, "the world's field steps the idle clock: the strip plays (%d frames)" % seen.size())
+	holder.process_mode = Node.PROCESS_MODE_DISABLED
+	var held := v.shown_frame()
+	var clock := SpriteView.idle_time
+	var same := true
+	for i in 60:
+		frame.call()
+		same = same and v.shown_frame() == held
+	t.check(same and SpriteView.idle_time == clock, "frozen with the mission's subtree, the strip holds its frame")
+	holder.process_mode = Node.PROCESS_MODE_INHERIT
+	seen.clear()
+	for i in 60:
+		frame.call()
+		seen[v.shown_frame()] = true
+	t.check(seen.size() > 1, "unfrozen, it plays again")
+	env._exit_tree()
+	t.check(SpriteView._clock_owner == null, "a field leaving the tree gives up the clock")
+	holder.free()
+	var next := EnvironmentField.new()
+	next._process(1.0 / 60.0)
+	t.check(SpriteView._clock_owner == next, "and the next field to tick takes it")
+	next.free()
+	SpriteView._clock_owner = null
+	gate.free()
+
+
+## Whether the engine would process `n`: the first ancestor (or itself) not inheriting decides; any mode but
+## DISABLED counts as running (the tree is never paused here, and nothing in these checks uses WHEN_PAUSED).
+static func _would_process(n: Node) -> bool:
+	while n != null:
+		if n.process_mode == Node.PROCESS_MODE_DISABLED:
+			return false
+		if n.process_mode != Node.PROCESS_MODE_INHERIT:
+			return true
+		n = n.get_parent()
+	return true
+
+
+## True when `v` shows a held still: no idle strip in its shader.
+static func _strip_off(v: SpriteView) -> bool:
+	return not v.playing and not v.is_processing() and int(v.material.get_shader_parameter("idle_frames")) == 1
+
+
+## A set with an idle strip (the town gate's swaying banners) steps it from the shared idle clock in its shader, so
+## the structure under it sleeps like a still sprite's; a crack, its ruins or F7 stop or restart the view's animation.
+## Views take their phase from their structure's seed, so two gates do not step in step.
+static func _idle_strip(t) -> void:
+	SpriteArt.set_enabled(true)
+	var gate := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
+	t.check(gate.sprite.get("name", "") == "town_gate" and int(gate.sprite.frames) > 1, "the town gate's set is animated")
+	gate._ready()
+	for i in 4:
+		gate._process(1.0 / 60.0)
+	var v := gate._sprite_view
+	t.check(gate.idle and not gate.is_processing(), "a quiet animated gate goes idle: it stops processing")
+	t.check(_strip_on(v), "while its view plays its idle strip from the shared clock")
+	var seen := {}
+	for i in 60:
+		SpriteView.advance(1.0 / 60.0)
+		seen[v.shown_frame()] = true
+	t.check(seen.size() == int(gate.sprite.frames), "in a second the clock steps it through all %d idle frames (%d)"
+		% [int(gate.sprite.frames), seen.size()])
+	t.check(gate.idle and not gate.is_processing(), "and the gate sleeps through them")
+	gate.damage(gate.max_hp * 0.4, Vector2(-5, -5), &"blast")
+	t.check(gate.is_processing(), "a hit wakes it")
+	for i in 90:
+		gate._process(1.0 / 60.0)
+	t.check(gate.sprite_state() == &"damaged" and v.still == &"damaged" and _strip_off(v),
+		"cracked, its view shows the damaged still and stops animating")
+	gate.destroy(Vector2(-5, -5), &"blast")
+	for i in 120:
+		gate._process(1.0 / 60.0)
+	t.check(gate.sprite_state() == &"ruins" and _strip_off(v),
+		"brought down, its view stops animating")
+	gate.restore()
+	for i in 4:
+		gate._process(1.0 / 60.0)
+	t.check(gate.sprite_state() == &"intact" and _strip_on(v), "rebuilt, its view plays again")
+	gate.free()
+	_idle_clock_frozen(t)
+	# F7 on an idle animated building: a new view, animating again.
+	var f7 := _make(Rect2(0, 0, 2.0, 1.1), 34.0, K.GATE, 5, &"gate")
+	f7._ready()
+	for i in 4:
+		f7._process(1.0 / 60.0)
+	t.check(f7.idle and f7._sprite_view.playing, "an idle animated gate")
+	SpriteArt.set_enabled(false)
+	f7.refresh_sprite()
+	for i in 4:
+		f7._process(1.0 / 60.0)
+	t.check(f7.sprite.is_empty() and not is_instance_valid(f7._sprite_view), "F7 off: its view is gone")
+	SpriteArt.set_enabled(true)
+	f7.refresh_sprite()
+	t.check(f7.is_processing(), "F7 on wakes it")
+	f7._process(1.0 / 60.0)
+	t.check(is_instance_valid(f7._sprite_view) and _strip_on(f7._sprite_view),
+		"and its new view animates its idle strip again")
+	for i in 4:
+		f7._process(1.0 / 60.0)
+	t.check(f7.idle and not f7.is_processing(), "then it goes idle again")
+	f7.free()
+	# A sprite fountain draws (and idles) its own water: no procedural spin node, so it sleeps. With sprites off (F7)
+	# the procedural running water is back and keeps it awake; on again, the node goes and it sleeps again.
+	var fo := _make(Rect2(0, 0, 1.2, 1.2), 24.0, K.FOUNTAIN, 5, &"decor")
+	t.check(fo.sprite.get("name", "") == "fountain" and int(fo.sprite.frames) > 1, "the fountain's set is animated")
+	fo._ready()
+	for i in 4:
+		fo._process(1.0 / 60.0)
+	t.check(not is_instance_valid(fo._spin) and fo._sprite_view.playing, "a sprite fountain has no spin node, its view plays")
+	t.check(fo.idle and not fo.is_processing(), "and the fountain goes idle")
+	SpriteArt.set_enabled(false)
+	fo.refresh_sprite()
+	for i in 4:
+		fo._process(1.0 / 60.0)
+	t.check(is_instance_valid(fo._spin) and fo._spin.visible and fo._spin.get_index() == 0,
+		"F7 off: its procedural running water is back, under its other parts")
+	t.check(not fo.idle and fo.is_processing(), "and keeps it awake")
+	SpriteArt.set_enabled(true)
+	fo.refresh_sprite()
+	for i in 4:
+		fo._process(1.0 / 60.0)
+	t.check(not is_instance_valid(fo._spin) and fo.idle and not fo.is_processing(), "F7 on: the spin node goes, it sleeps again")
+	fo.free()
+	# The mills (batch 3): the sprite's idle strip turns the sails or the wheel, so there is no procedural spin node and
+	# the mill sleeps; F7 off brings the procedural turning part back (awake), on again it goes and the mill sleeps.
+	for c in [[Rect2(0, 0, 0.9, 0.9), 60.0, &"windmill"], [Rect2(0, 0, 2.4, 1.9), 34.0, &"watermill"]]:
+		var mill := _make(c[0], c[1], K.HOUSE, 5, &"farm", c[2])
+		var m: Dictionary = SpriteArt.manifest().get(String(c[2]), {})
+		t.check(mill.sprite.get("name", "") == String(c[2]) and not mill.sprite.mirror, "the %s draws its set, unmirrored" % c[2])
+		var idle_tex: Texture2D = mill.sprite.get("idle")
+		t.check(int(mill.sprite.frames) > 1 and int(mill.sprite.frames) == int(m.get("frames", 0)) and idle_tex != null
+			and idle_tex.get_width() == int(m.size[0]) * int(m.frames) and idle_tex.get_height() == int(m.size[1]),
+			"the %s's idle strip has the manifest's %d frames" % [c[2], int(m.get("frames", 0))])
+		t.check(ChimneySmoke.tip_of(mill) == Vector2.INF, "the %s never smokes" % c[2])
+		mill._ready()
+		for i in 4:
+			mill._process(1.0 / 60.0)
+		t.check(not is_instance_valid(mill._spin) and _strip_on(mill._sprite_view),
+			"a sprite %s has no spin node; its view plays the turning strip" % c[2])
+		t.check(mill.idle and not mill.is_processing(), "and the %s goes idle" % c[2])
+		SpriteArt.set_enabled(false)
+		mill.refresh_sprite()
+		for i in 4:
+			mill._process(1.0 / 60.0)
+		t.check(is_instance_valid(mill._spin) and mill._spin.visible and not mill.idle and mill.is_processing(),
+			"F7 off: the procedural %s turns on its spin node and keeps it awake" % c[2])
+		SpriteArt.set_enabled(true)
+		mill.refresh_sprite()
+		for i in 4:
+			mill._process(1.0 / 60.0)
+		t.check(not is_instance_valid(mill._spin) and mill.idle and not mill.is_processing(),
+			"F7 on: the %s's spin node goes, it sleeps again" % c[2])
+		mill.crack()
+		mill._process(1.0 / 60.0)
+		t.check(mill._sprite_view.still == &"damaged" and not mill._sprite_view.playing,
+			"a cracked %s shows its damaged still, not turning" % c[2])
+		mill.free()
+	# A sprite tree's sway is stepped by its shader from the shared clock; it sleeps, forest tree and oak alike.
+	for tag in [&"", &"oak"]:
+		var tr := _make(Rect2(0, 0, 0.7, 0.7) if tag == &"" else Rect2(0, 0, 0.45, 0.45), 28.0, K.TREE, 5, &"decor", tag)
+		tr._ready()
+		for i in 4:
+			tr._process(1.0 / 60.0)
+		t.check(String(tr.sprite.get("name", "")).begins_with("oak_" if tag == &"oak" else "tree_")
+			and _strip_on(tr._sprite_view), "a sprite tree's view plays its sway")
+		t.check(tr.idle and not tr.is_processing(), "and the tree sleeps under it")
+		tr.free()
+	# Neighbouring trees sway out of step: each view's phase comes from its structure's seed.
+	var shown := {}
+	for sd in 8:
+		var tr := _make(Rect2(0, 0, 0.7, 0.7), 28.0, K.TREE, sd, &"decor")
+		tr._ready()
+		tr._process(1.0 / 60.0)
+		shown[tr._sprite_view.shown_frame()] = true
+		tr.free()
+	t.check(shown.size() >= 3, "eight trees at one moment show several sway frames (%d)" % shown.size())
+	# A well never had running water: no spin node either way.
+	var wl := _make(Rect2(0, 0, 0.5, 0.5), 12.0, K.FOUNTAIN, 5, &"decor", &"well")
+	wl._ready()
+	SpriteArt.set_enabled(false)
+	wl.refresh_sprite()
+	t.check(wl.sprite.is_empty() and not is_instance_valid(wl._spin), "a procedural well has no spin node")
+	SpriteArt.set_enabled(true)
+	wl.free()
+	# The Citadel keep's banner-drop stills are plain: a keep showing them never animates.
+	var keep := _make(Rect2(0, 0, 2.0, 2.0), 118.0, K.KEEP, 5, &"citadel")
+	t.check(keep.sprite.stills.has(&"intact_fallen") and int(keep.sprite.frames) > 1, "the citadel keep is animated")
+	keep._process(1.0 / 60.0)
+	t.check(keep._sprite_view.playing, "with its banners up its view plays")
+	keep.drop_banner()
+	for i in 60:
+		keep._process(1.0 / 60.0)
+	t.check(keep._sprite_view.still == &"intact_fallen" and not keep._sprite_view.playing,
+		"with its banners down it shows the bannerless still and stops animating")
+	keep.free()
 
 
 ## Wall torches and the barracks' forge keep their procedural flames over their sprites (the sprites paint none);
@@ -435,6 +725,39 @@ static func _flames(t) -> void:
 	cot._ready()
 	t.check(not is_instance_valid(cot._flame), "a cottage has no flame")
 	cot.free()
+	# Street torches and lamps: their sprites paint no flame or lit glass; the procedural flame (or the lantern's glow)
+	# burns over the sprite, on the bowl's rim (in the glass), and goes out when the post falls.
+	for tag in [&"", &"lamp"]:
+		var post := _make(Rect2(0, 0, 0.2, 0.2), 16.0 if tag == &"" else 18.0, K.TORCH, 5, &"decor", tag)
+		var label := "a lamp" if tag == &"lamp" else "a torch"
+		t.check(post.sprite.get("name", "") == ("lamp_post" if tag == &"lamp" else "torch_post") and post.sprite.keep_flames,
+			label + " post is a sprite that keeps its flame")
+		post._ready()
+		post._process(1.0 / 60.0)
+		t.check(is_instance_valid(post._flame) and post._flame.visible
+			and post._flame.get_index() > post._sprite_view.get_index(), label + "'s flame burns over its sprite")
+		var at: Vector2 = post.sprite.anchor
+		var want: Vector2 = (post.sprite.flame if tag == &"" else (post.sprite.glass as Rect2).position) - at
+		t.check(post._post_flame_tip() == want and want.y < -12.0,
+			"%s's flame sits on its sprite's %s, above the post's foot (%s)" % [label, "glass" if tag else "bowl", want])
+		post.crack()
+		post._process(1.0 / 60.0)
+		t.check(post.sprite_state() == &"damaged" and post._flame.visible
+			and post._post_flame_tip() == want + (post.sprite.damaged_shift as Vector2),
+			label + " damaged: still lit, its flame moved with the post's lean")
+		post.destroy(Vector2(-5, -5), &"blast")
+		post._process(1.0 / 60.0)
+		t.check(not post._flame.visible, label + " destroyed: its flame is out")
+		post.free()
+	# With sprites off a procedural post draws its own flame: its flame node stays hidden (no double flame).
+	SpriteArt.set_enabled(false)
+	var proc := _make(Rect2(0, 0, 0.2, 0.2), 16.0, K.TORCH, 5, &"decor")
+	proc._ready()
+	proc._process(1.0 / 60.0)
+	t.check(proc.sprite.is_empty() and is_instance_valid(proc._flame) and not proc._flame.visible,
+		"a procedural torch's flame node stays hidden: it draws its own flame")
+	proc.free()
+	SpriteArt.set_enabled(true)
 
 
 ## F7 turns every building's sprite off and on again.
@@ -484,3 +807,284 @@ static func _battered(sprites: bool) -> String:
 			s.height, s.scorch, s.frost, s._cracks.size(), rubble, s._collapse, s.rng.state, s.position])
 		s.free()
 	return "\n".join(rows)
+
+
+## Batch 3 sets (docs/superpowers/specs/2026-10-04-ref-convert-batch3-design.md): stalls with a cloth tint, fountain and
+## well, torch and lamp posts, tree and oak variants, bridge and dock, barn and mills, field crops. Each maps only
+## when its set is in the manifest; a missing one falls back to "" (procedural).
+static func _batch3(t) -> void:
+	var hidden := _hide("stall_")
+	for prefix in ["fountain", "well", "torch_post", "lamp_post", "tree_", "oak_", "bridge_stone", "dock", "barn", "carpenter",
+			"windmill", "watermill", "field_"]:
+		hidden.merge(_hide(prefix))
+	var name_of := func(r: Rect2, h: float, k: K, sd: int, role: StringName, tag := &"") -> String:
+		var s := _make(r, h, k, sd, role, tag)
+		var n := SpriteArt.name_for(s)
+		s.free()
+		return n
+	var fixed := [
+		[Rect2(0, 0, 0.6, 0.6), 24.0, K.FOUNTAIN, &"decor", &"", "fountain"],
+		[Rect2(0, 0, 0.6, 0.6), 12.0, K.FOUNTAIN, &"decor", &"well", "well"],
+		[Rect2(0, 0, 0.2, 0.2), 16.0, K.TORCH, &"decor", &"", "torch_post"],
+		[Rect2(0, 0, 0.2, 0.2), 18.0, K.TORCH, &"decor", &"lamp", "lamp_post"],
+		[Rect2(0, 0, 2.0, 1.0), 6.0, K.BRIDGE, &"bridge", &"stone", "bridge_stone"],
+		[Rect2(0, 0, 2.0, 1.0), 4.0, K.BRIDGE, &"dock", &"dock", "dock"],
+		[Rect2(0, 0, 1.3, 1.5), 20.0, K.HOUSE, &"farm", &"", "barn"],
+		[Rect2(0, 0, 0.9, 0.9), 60.0, K.HOUSE, &"farm", &"windmill", "windmill"],
+		[Rect2(0, 0, 2.4, 1.9), 34.0, K.HOUSE, &"farm", &"watermill", "watermill"],
+		[Rect2(0, 0, 2.3, 1.15), 20.0, K.HOUSE, &"house", &"carpenter", "carpenter"],
+	]
+	# Without the sets in the manifest every one of them stays procedural.
+	for c in fixed:
+		t.check(name_of.call(c[0], c[1], c[2], 5, c[3], c[4]) == "", "no '%s' set in the manifest: %s is procedural" % [c[5], K.keys()[c[2]]])
+	t.check(name_of.call(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, 5, &"market") == "", "no stall design: procedural")
+	t.check(name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, 5, &"decor") == "", "no tree variant: procedural")
+	t.check(name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, 5, &"decor", &"oak") == "", "no oak variant: procedural")
+	t.check(name_of.call(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, 5, &"farm") == "", "no field set: procedural")
+	var fakes := _fake(["stall_1", "stall_2", "stall_3", "stall_1_red", "stall_1_blue", "stall_2_cream",
+		"tree_1", "tree_2", "oak_1", "oak_2", "oak_3", "field_0", "field_1"])
+	for c in fixed:
+		fakes += _fake([c[5]])
+	for c in fixed:
+		var got: String = name_of.call(c[0], c[1], c[2], 5, c[3], c[4])
+		t.check(got == c[5], "%s/%s/%s maps to %s (got '%s')" % [K.keys()[c[2]], c[3], c[4], c[5], got])
+	# A tag with no mapping stays procedural even with every set present (a thorn bush is not an oak).
+	t.check(name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, 5, &"decor", &"thorns") == "", "thorns stay procedural")
+	# Stall: the design hashes the seed over the stall_<n> in the manifest (never over stall_<n>_<tint>); the cloth
+	# picks the tint when it exists and otherwise the plain design.
+	var designs := {}
+	var tints_ok := true
+	for sd in 120:
+		var s := _make(Rect2(0, 0, 0.9, 0.7), 10.0, K.MARKET_STALL, sd, &"market")
+		var n := SpriteArt.name_for(s)
+		var base := n.substr(0, 7)
+		designs[base] = true
+		var tinted: String = base + "_" + ["red", "blue", "cream"][int(s.art.cloth)]
+		tints_ok = tints_ok and (n == tinted if SpriteArt.manifest().has(tinted) else n == base)
+		tints_ok = tints_ok and base in ["stall_1", "stall_2", "stall_3"] and n == SpriteArt.name_for(s)
+		s.free()
+	t.check(tints_ok, "a stall takes its cloth's tint when that variant exists, else its plain design")
+	t.check(designs.size() == 3, "all three stall designs get used across seeds (got %d)" % designs.size())
+	# Trees: tree_<n> and oak_<n> only from their own lists.
+	var trees := {}
+	var oaks := {}
+	for sd in 80:
+		trees[name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, sd, &"decor")] = true
+		oaks[name_of.call(Rect2(0, 0, 0.3, 0.3), 25.0, K.TREE, sd, &"decor", &"oak")] = true
+	t.check(trees.size() == 2 and trees.has("tree_1") and trees.has("tree_2"), "trees pick tree_1 / tree_2: %s" % [trees.keys()])
+	t.check(oaks.size() == 3 and oaks.has("oak_3"), "oaks pick oak_1..3: %s" % [oaks.keys()])
+	# Fields: the crop of the field's plan (its other designs hidden: the plain crop set).
+	var crops := {}
+	for sd in 40:
+		var f := _make(Rect2(0, 0, 2.0, 1.0), 3.0, K.FARM_FIELD, sd, &"farm")
+		t.check(SpriteArt.name_for(f) == "field_%d" % int(f.art.crop), "a field draws its crop's set")
+		crops[int(f.art.crop)] = true
+		f.free()
+	t.check(crops.size() == 2, "both crops appear")
+	_unfake(fakes)
+	t.check(not SpriteArt.manifest().has("stall_1") and not SpriteArt.manifest().has("barn"), "the fake entries were removed")
+	_restore(hidden)
+	_stall_variety(t)
+	_tree_variety(t)
+	_flat_sprites(t)
+	_fields(t)
+
+
+## The town's stalls (TownLayout.STALLS) with the real stall designs: each plot's design comes from its place in the
+## market, whatever its seed, so no two neighbouring stalls (side by side, or one behind the other: centres within 1.5)
+## share a design, and more than six designs show. Every stall draws a set that exists, in its cloth's tint when the
+## design is striped.
+static func _stall_variety(t) -> void:
+	var designs: Array = SpriteArt.variants("stall")
+	t.check(designs.size() >= 7, "at least seven stall designs in the manifest (got %d)" % designs.size())
+	t.check(TownLayout.STALLS.size() >= 29, "the town has at least 29 stalls")
+	var picked := []
+	var ok := true
+	for i in TownLayout.STALLS.size():
+		var a := _make(TownLayout.STALLS[i], 10.0, K.MARKET_STALL, 11 + i, &"market")
+		var b := _make(TownLayout.STALLS[i], 10.0, K.MARKET_STALL, 9001 + 7 * i, &"market")
+		var na := SpriteArt.name_for(a)
+		var base := SpriteArt._stall_design(a)
+		ok = ok and base == SpriteArt._stall_design(b) and SpriteArt.manifest().has(na) and na.begins_with(base)
+		ok = ok and not SpriteArt.sprite(na).is_empty()
+		picked.append(base)
+		a.free()
+		b.free()
+	t.check(ok, "a market stall's design depends on its plot only, and its set exists")
+	var clash := []
+	for i in TownLayout.STALLS.size():
+		for j in range(i + 1, TownLayout.STALLS.size()):
+			var ci: Vector2 = TownLayout.STALLS[i].get_center()
+			var cj: Vector2 = TownLayout.STALLS[j].get_center()
+			if ci.distance_to(cj) <= 1.5 and picked[i] == picked[j]:
+				clash.append("%d/%d %s" % [i, j, picked[i]])
+	t.check(clash.is_empty(), "no two neighbouring market stalls share a design (%s)" % [clash])
+	var seen := {}
+	for p in picked:
+		seen[p] = true
+	t.check(seen.size() > 6, "the market shows more than six designs (got %d)" % seen.size())
+
+
+## The town's trees with the real tree and oak sets: across the forest ring (40+) every forest variant shows and none
+## takes more than half, and the town's oaks show at least two designs; each draws a set that exists and idles (a crown
+## sway) yet sleeps like any quiet structure: its shader steps the strip from the shared idle clock.
+static func _tree_variety(t) -> void:
+	SpriteArt.set_enabled(true)
+	t.check(SpriteArt.variants("tree").size() >= 4 and SpriteArt.variants("oak").size() >= 2,
+		"tree and oak variants in the manifest (%s / %s)" % [SpriteArt.variants("tree"), SpriteArt.variants("oak")])
+	var env := EnvironmentField.new()
+	env.rng.seed = 7
+	var town := Town.new()
+	town.build(env)
+	var forest := {}
+	var oaks := {}
+	var n_forest := 0
+	var ok := true
+	for st in env.structures():
+		if st.kind != K.TREE:
+			continue
+		var n := SpriteArt.name_for(st)
+		ok = ok and n != "" and not SpriteArt.sprite(n).is_empty() and int(SpriteArt.sprite(n).frames) == 4
+		if st.art_tag == &"oak":
+			oaks[n] = oaks.get(n, 0) + 1
+		elif st.art_tag == &"":
+			forest[n] = forest.get(n, 0) + 1
+			n_forest += 1
+	t.check(ok, "every town tree draws a tree or oak set with a 4-frame sway")
+	t.check(n_forest >= 40, "the forest ring has 40+ trees (got %d)" % n_forest)
+	var most := 0
+	for k in forest:
+		most = maxi(most, forest[k])
+	t.check(forest.size() == SpriteArt.variants("tree").size() and most * 2 <= n_forest,
+		"every forest variant shows and none takes over: %s" % [forest])
+	t.check(oaks.size() >= 2, "the town's oaks show several designs: %s" % [oaks])
+	town.free()
+	env.free()
+
+
+## Bridge, dock and fields are flat: with a sprite they stay on the ground layer, under the people who walk on them.
+## The bridge and dock draw their real sets (the town's own footprints, unmirrored; the bridge's procedural torch flames
+## burn over its piers); a field borrows a set's textures under a fake name.
+static func _flat_sprites(t) -> void:
+	SpriteArt.set_enabled(true)
+	# The bridge and dock use their real sets on purpose: a fake under a real name would leak into later tests.
+	var real := [
+		[TownLayout.BRIDGE, 6.0, &"bridge", &"stone", "bridge_stone"],
+		[TownLayout.DOCK, TownLayout.DOCK_H, &"dock", &"dock", "dock"],
+	]
+	for c in real:
+		var d := _make(c[0], c[1], K.BRIDGE, 5, c[2], c[3])
+		t.check(SpriteArt.name_for(d) == c[4] and not d.sprite.is_empty() and not d.sprite.mirror,
+			"%s is drawn from its own set, unmirrored" % c[4])
+		t.check(d.z_index == -1 and d.walkable, "%s with a sprite stays on the ground layer, walkable" % c[4])
+		_below_person(t, d, c[4])
+		d.free()
+	var bridge := _make(TownLayout.BRIDGE, 6.0, K.BRIDGE, 5, &"bridge", &"stone")
+	t.check(bool(bridge.sprite.keep_flames) and bridge._flame_tips().size() == 8,
+		"the sprite bridge keeps its eight procedural torch flames")
+	bridge.free()
+	# Fields: the real sets on the town's plots, both crops and both depths (5 x 3.5 north, 5 x 3.4 south).
+	for i in [0, 1, 5, 7]:
+		var f := _make(TownLayout.FIELDS[i], 3.0, K.FARM_FIELD, 5, &"farm")
+		for crop in 2:
+			f.art.crop = crop
+			f.refresh_sprite()
+			var n := SpriteArt.name_for(f)
+			t.check(n.begins_with("field_%d" % crop) and not f.sprite.is_empty() and not f.sprite.mirror,
+				"field %d (crop %d) is drawn from its crop's set %s, unmirrored" % [i, crop, n])
+			t.check(f.z_index == -1 and f.walkable, "%s with a sprite stays on the ground layer, walkable" % n)
+			_below_person(t, f, n)
+		f.free()
+
+
+## The town's fields with the real field sets: each draws a set of its crop that exists; no two neighbouring fields of
+## one crop (side by side in a row) share a design; the wheat sways (a 4-frame strip at 3 fps, the manifest's frames
+## across its idle texture) and the field sleeps under it; cabbages are a still. A field never cracks: below the health
+## a building cracks at it shows its damaged still, and burnt flat its ruins at once (no collapse to fade in under).
+static func _fields(t) -> void:
+	SpriteArt.set_enabled(true)
+	var env := EnvironmentField.new()
+	env.rng.seed = 7
+	var town := Town.new()
+	town.build(env)
+	var fields: Array = env.structures().filter(func(s): return s.kind == K.FARM_FIELD)
+	t.check(fields.size() == TownLayout.FIELDS.size(), "the town has its %d fields" % TownLayout.FIELDS.size())
+	var ok := true
+	var designs := {}
+	for f: Structure in fields:
+		var n := SpriteArt.name_for(f)
+		ok = ok and n.begins_with("field_%d" % int(f.art.crop)) and not SpriteArt.sprite(n).is_empty()
+		designs[n] = true
+	t.check(ok, "every town field draws a set of its own crop")
+	t.check(designs.size() == 4, "both designs of both crops show: %s" % [designs.keys()])
+	var clash := []
+	for a: Structure in fields:
+		for b: Structure in fields:
+			if a.get_instance_id() < b.get_instance_id() and int(a.art.crop) == int(b.art.crop) 					and a.footprint.get_center().distance_to(b.footprint.get_center()) <= 7.5 					and SpriteArt.name_for(a) == SpriteArt.name_for(b):
+				clash.append("%s %s" % [a.footprint.position, b.footprint.position])
+	t.check(clash.is_empty(), "no two neighbouring fields of one crop share a design (%s)" % [clash])
+	town.free()
+	env.free()
+	for n in ["field_0", "field_0_2"]:
+		var m: Dictionary = SpriteArt.manifest()[n]
+		var sp := SpriteArt.sprite(n)
+		var idle_tex: Texture2D = sp.get("idle")
+		t.check(int(sp.frames) == 4 and is_equal_approx(float(sp.fps), 3.0) and idle_tex != null
+			and idle_tex.get_width() == int(m.size[0]) * 4 and idle_tex.get_height() == int(m.size[1]),
+			"%s sways: a 4-frame strip at 3 fps" % n)
+	for n in ["field_1", "field_1_2"]:
+		t.check(int(SpriteArt.sprite(n).frames) == 1, "%s (cabbages) is a still" % n)
+	var w := _make(TownLayout.FIELDS[2], 3.0, K.FARM_FIELD, 5, &"farm")
+	w.art.crop = 0
+	w.refresh_sprite()
+	w._ready()
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(_strip_on(w._sprite_view) and w.idle and not w.is_processing(), "a wheat field's view sways; the field sleeps")
+	w.damage(w.max_hp * 0.2, w.center(), &"stone")
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(w._cracks.is_empty() and w.sprite_state() == &"intact" and w._sprite_view.still == &"intact",
+		"lightly hurt, a field shows intact (it never cracks)")
+	w.damage(w.max_hp * 0.3, w.center(), &"stone")
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(w.sprite_state() == &"damaged" and w._sprite_view.still == &"damaged" and not w._sprite_view.playing,
+		"below %.0f%% health it shows its damaged still" % (Structure.CRACK_AT * 100.0))
+	w.destroy(w.center(), &"water")
+	for i in 4:
+		w._process(1.0 / 60.0)
+	t.check(w.sprite_state() == &"ruins" and is_instance_valid(w._ruins_view) and w._ruins_view.still == &"ruins"
+		and is_equal_approx(w._ruins_view.color.a, 1.0) and not w._sprite_view.visible,
+		"burnt flat, it shows its ruins at once")
+	w.free()
+
+
+## A person standing on `s` (a sprite bridge or dock) draws above every view of it: in one world, the structure's
+## views' final z (relative z added up) is below the person's, so the walkers stay in sight whatever the y-sort says.
+static func _below_person(t, s: Structure, n: String) -> void:
+	var world := Node2D.new()
+	world.add_child(s)
+	s._sync_sprite()
+	var p := Person.new()
+	p.ground_pos = s.footprint.get_center()
+	world.add_child(p)
+	var views := s.get_children().filter(func(v): return v is SpriteView)
+	var ok := not views.is_empty()
+	for v: SpriteView in views:
+		ok = ok and _final_z(v) < _final_z(p)
+	t.check(ok, "%s: its sprite draws below a person on it (z %s < %d)" % [n, views.map(_final_z), _final_z(p)])
+	world.remove_child(s)
+	p.free()
+	world.free()
+
+
+static func _final_z(n: Node) -> int:
+	var z := 0
+	var c: Node = n
+	while c is CanvasItem:
+		z += (c as CanvasItem).z_index
+		if not (c as CanvasItem).z_as_relative:
+			break
+		c = c.get_parent()
+	return z

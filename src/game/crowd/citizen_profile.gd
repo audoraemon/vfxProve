@@ -7,6 +7,9 @@ extends RefCounted
 ## MAYOR and NOBLE (v0.09) are never dealt either: The Long Night's festival makes a merchant the Mayor, and the Prince's
 ## procession dresses the Prince as a noble.
 enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER, WATCHMAN, MAYOR, NOBLE }
+## Where a citizen stands with the gods (v0.10, the campaign's Night 2): one of Halcyon's Faithful, who report the god
+## at work; one of the grieving, who can be led to Mira's journal; or a Believer, who has read it.
+enum Faith { NONE, FAITHFUL, GRIEVING, BELIEVER }
 
 ## Each role's share of the town (the v0.04 spec's table). Farmers work the fields and mills outside the walls.
 const SHARES := [
@@ -33,6 +36,7 @@ var work := Vector2.INF
 var leisure := PackedVector2Array()
 ## Family group (-1: none); used from v0.04's P1.
 var family := -1
+var faith := Faith.NONE
 
 
 ## The role of the `i`-th of `n` citizens: every role gets round(share * n) (the last takes the remainder), dealt in

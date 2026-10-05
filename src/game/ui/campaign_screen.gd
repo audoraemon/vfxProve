@@ -24,6 +24,8 @@ const PAD := 8.0
 const ONE_Y := 210.0
 const HINT_Y := 310.0
 const BUTTONS_Y := 318.0
+## How long after the first press of "New campaign" a second one counts, so a double-click cannot start over.
+const CONFIRM_MS := 400
 
 ## The mission chosen for tonight ("" until a card is chosen); with one mission, that one from setup().
 var chosen := ""
@@ -32,6 +34,8 @@ var options: Array = []
 var selected := 0
 ## True once "New campaign" has been pressed once: the next press starts over, any other press forgets it.
 var confirming := false
+## When "New campaign" was first pressed (Time.get_ticks_msec()).
+var _confirm_ms := 0
 
 var _state: CampaignState
 var _ui: Control
@@ -126,9 +130,12 @@ func click(point: Vector2) -> void:
 func _press(what: String) -> void:
 	if what == "restart" and not confirming:
 		confirming = true
+		_confirm_ms = Time.get_ticks_msec()
 		UiSound.play(&"ui_buzz")
 		_ui.queue_redraw()
 		return
+	if what == "restart" and Time.get_ticks_msec() - _confirm_ms < CONFIRM_MS:
+		return  # the second click of a double-click
 	if what != "restart":
 		confirming = false
 	if what == "draft" and chosen == "":

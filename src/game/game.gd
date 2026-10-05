@@ -455,9 +455,13 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 	_between_acts = false
 	result = outcome
 	if _in_campaign and save.campaign != null:
+		# A campaign night is the campaign's (v0.10): The Warning and Last Judgement share their ids with the board, whose
+		# best results and drafted loadouts it must not touch.
 		result["campaign"] = save.campaign.record(mission_id, result)
-	result["best"] = save.record(mission_id, result)
-	save.remember_loadout(mission_id, loadout)
+		result["best"] = false
+	else:
+		result["best"] = save.record(mission_id, result)
+		save.remember_loadout(mission_id, loadout)
 	save.save_to(save_path)
 	on_action("mission:over")
 
@@ -528,7 +532,8 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		return
 	if what == "manifest":
 		loadout = prep.draft.picks
-		save.remember_loadout(mission_id, loadout)
+		if not _in_campaign:
+			save.remember_loadout(mission_id, loadout)
 		save.difficulty = prep.difficulty
 		save.save_to(save_path)
 	on_action("prepare:" + what)
@@ -994,6 +999,7 @@ func _night_to_redraft(path: String) -> void:
 ## focus 5). Starts and ends on the title.
 func _flow_campaign(step: Callable) -> void:
 	var quiet := PackedStringArray(["whisper", "doom", "discord"])
+	var board_kit := save.loadout_for(MissionBook.WARNING)
 	(_screen_node as TitleScreen).action.emit("campaign")
 	var night := _screen_node as CampaignScreen
 	step.call(screen == Screen.CAMPAIGN and night != null and save.campaign != null and save.campaign.night == 0
@@ -1009,7 +1015,7 @@ func _flow_campaign(step: Callable) -> void:
 		"Back from a campaign draft returns to the night, nothing recorded")
 	(_screen_node as CampaignScreen).click((_screen_node as CampaignScreen).button_rect("draft").get_center())
 	prep = _screen_node as PrepareScreen
-	prep.draft.preselect(quiet)
+	prep.draft.preselect(PackedStringArray(["whisper", "wisp"]))
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
@@ -1030,7 +1036,7 @@ func _flow_campaign(step: Callable) -> void:
 	# Night 1 won on its clock.
 	night = _screen_node as CampaignScreen
 	night.click(night.button_rect("draft").get_center())
-	(_screen_node as PrepareScreen).draft.preselect(quiet)
+	(_screen_node as PrepareScreen).draft.preselect(PackedStringArray(["whisper", "wisp"]))
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
@@ -1044,6 +1050,8 @@ func _flow_campaign(step: Callable) -> void:
 		"Night 1 won: the results offer Continue, and the god has %d DP (%d, Unseen %s)" % [dp1, save.campaign.dp, unseen])
 	var reread := SaveFile.new().load_from(save_path)
 	step.call(reread.campaign != null and reread.campaign.night == 1 and reread.campaign.dp == dp1, "and the save holds it")
+	step.call(save.loadout_for(MissionBook.WARNING) == board_kit and not bool(result.get("best", false)),
+		"a campaign night leaves the board's Warning alone: its loadout %s, no NEW BEST" % [save.loadout_for(MissionBook.WARNING)])
 
 	# Night 2: three cards, the Theft placeholder held until dawn.
 	res.action.emit("next")

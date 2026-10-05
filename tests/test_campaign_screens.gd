@@ -32,8 +32,11 @@ static func run(t) -> void:
 	night.click(night.button_rect("restart").get_center())
 	t.check(emitted.is_empty() and night.confirming, "New campaign asks again before it starts over")
 	night.click(night.button_rect("restart").get_center())
+	t.check(emitted.is_empty(), "a double-click on New campaign does not start over (%s)" % [emitted])
+	night._confirm_ms -= CampaignScreen.CONFIRM_MS + 1
+	night.click(night.button_rect("restart").get_center())
 	night.click(night.button_rect("draft").get_center())
-	t.check(",".join(emitted) == "restart,draft", "the second press starts over; Choose powers goes (%s)" % [emitted])
+	t.check(",".join(emitted) == "restart,draft", "a second press a moment later starts over; Choose powers goes (%s)" % [emitted])
 	night.free()
 
 	var one := CampaignScreen.new()

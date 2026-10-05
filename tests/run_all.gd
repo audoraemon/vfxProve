@@ -68,6 +68,7 @@ const SUITES := [
 	"res://tests/test_judgement.gd",
 	"res://tests/test_festival.gd",
 	"res://tests/test_procession.gd",
+	"res://tests/test_campaign.gd",
 ]
 
 var failures := 0

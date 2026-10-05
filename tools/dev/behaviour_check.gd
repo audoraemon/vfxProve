@@ -56,7 +56,10 @@ extends SceneTree
 ##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any)
 ##   miras  (v0.10 M2) Mira's House, --case=none (nothing cast) or play (whisper the grieving in when nobody of the
 ##          Faith watches the door; Discord on the nearest watcher).
-##   lanterns  (v0.10 M3) Broken Lanterns, --case=none (nothing cast) or play (Heaven Splitter, Dragonfire Parade and Silent Doom: break the standing shrine with the fewest Faithful near; doom the called bellkeeper, the bearer near a draining shrine, or the Knight in the way).
+##   lanterns  (v0.10 M3) Broken Lanterns, --case=none (nothing cast) or play (Heaven Splitter, Dragonfire Parade and
+##          Silent Doom: lay the Splitter through two shrines where it can, else one, crossing the fewest people; doom
+##          the called bellkeeper and the flame-bearer while a shrine drains; the Parade only when the Splitter would
+##          come too late for dawn). --seed= picks the town.
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -116,10 +119,17 @@ const PROCESSION_SENT := 8.0
 const RICH_R := 3.0
 ## A policy looks at the town every this many frames (0.1 s at 60 fps), as the Warning's does.
 const LOOK_FRAMES := 6
-## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts its Faithful, and how near a draining shrine the
-## flame-bearer may come before Silent Doom takes him.
+## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
-const LANTERN_BEARER_NEAR := 6.0
+## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
+## for one line to break both, and how many directions it weighs for a single shrine (over a half turn: the line runs
+## both ways).
+const HEAVEN_FX := preload("res://src/fx/set2/heaven_splitter.gd")
+const LANTERN_PAIR_REACH := 9.0
+const LANTERN_DIRS := 8
+## The Dragonfire Parade burns a street, so the policy sends it only when the Splitter would come too late for the shrine
+## it breaks to drain before dawn, with this many seconds to spare.
+const LANTERN_DRAGON_SPARE := 5.0
 
 var mission: Mission
 
@@ -997,9 +1007,13 @@ func _miras(which: String) -> void:
 		float(res.time), d.believers_outside(), roundi(d.gaze.value), d.reports_started])
 
 
-## Broken Lanterns (v0.10 M3), played by a simple policy every LOOK_FRAMES. Silent Doom takes the bellkeeper once he is
-## called; else the flame-bearer once he nears a draining shrine; else the Knight guarding the next shrine. Otherwise a
-## Heaven Splitter or a Dragonfire Parade lands on the standing, unguarded shrine with the fewest Faithful near it.
+## Broken Lanterns (v0.10 M3), played every LOOK_FRAMES the way a careful player would (Task 8). Silent Doom takes the
+## bellkeeper once he is called; else, while a shrine drains, the flame-bearer, wherever he is (the flame passes to an
+## acolyte, so up to three casts end the relighting). The Heaven Splitter's line breaks every unguarded shrine it
+## crosses, so it is laid through two standing shrines when two stand within one line's reach (from their midpoint),
+## else on one shrine's centre (its core kills the Knights beside it), turned whichever way crosses the fewest people:
+## each seen death feeds the Gaze. The Dragonfire Parade burns a street, so it goes out only when the Splitter's
+## cooldown would leave too little night for a shrine to drain, on the standing shrine with the fewest people near.
 ## `none` casts nothing.
 func _lanterns(which: String) -> void:
 	var rules: Rules = mission._rules
@@ -1028,13 +1042,16 @@ func _lanterns(which: String) -> void:
 			if mark != null:
 				rules.cast(slots.doom, mark.ground_pos)
 				continue
-		var target := _lantern_target(d)
-		if target == null:
-			continue
-		for key in ["heaven", "dragon"]:
-			if _slot_ready(rules, slots, key):
-				rules.cast(slots[key], target.center(), {"dir": Vector2(1, 0)})
-				break
+		if _slot_ready(rules, slots, "heaven"):
+			var line := _lantern_line(d, crowd)
+			if not line.is_empty():
+				rules.cast(slots.heaven, line[0], {"dir": line[1]})
+				continue
+		if _slot_ready(rules, slots, "dragon") and slots.has("heaven") and rules.cooldown_left(int(slots.heaven)) \
+				> rules.time_left - BrokenLanternsDirector.DRAIN_SECONDS - LANTERN_DRAGON_SPARE:
+			var target := _lantern_target(d, crowd)
+			if target != null:
+				rules.cast(slots.dragon, target.center())
 	var res := rules.result()
 	var bonus: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
 	print("BEHAVIOUR lanterns result won=%s reason=%s time=%.1f drained=%d relit=%d gaze=%d bonus=%s" % [res.won,
@@ -1045,32 +1062,78 @@ func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
 	return slots.has(key) and rules.refusal(int(slots[key])) == ""
 
 
-## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, the flame-bearer near a draining
-## shrine, or the Knight guarding the next shrine; else null.
+## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is
+## turned aside for a draining shrine; else null.
 func _lantern_doom_target(d: BrokenLanternsDirector, crowd: Crowd) -> Person:
 	var bell := crowd.bell
 	if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] \
 			and is_instance_valid(bell.keeper) and bell.keeper.is_alive():
 		return bell.keeper
 	var v := d.vigil
-	if v != null and v.active and v.detour != Vector2.INF and is_instance_valid(v.bearer) and v.bearer.is_alive() \
-			and v.bearer.ground_pos.distance_to(v.detour) <= LANTERN_BEARER_NEAR:
+	if v != null and v.active and v.detour != Vector2.INF and is_instance_valid(v.bearer) and v.bearer.is_alive():
 		return v.bearer
-	var target := _lantern_target(d, true)
-	if target != null and d.guarded(target):
-		return d.guard_of(target)
 	return null
 
 
-## The shrine the Broken Lanterns policy breaks next: of the standing ones (only unguarded ones, unless `guarded_too`),
-## the one with the fewest Faithful near; else null.
-func _lantern_target(d: BrokenLanternsDirector, guarded_too := false) -> Structure:
+## Where the Broken Lanterns policy lays its Heaven Splitter: [origin, direction], or [] with no shrine standing. A pair
+## of unguarded standing shrines within LANTERN_PAIR_REACH is struck from their midpoint along the line between them;
+## a single shrine from its centre, turned to the LANTERN_DIRS direction crossing the fewest people. The most shrines
+## win, then the fewest people in the line.
+func _lantern_line(d: BrokenLanternsDirector, crowd: Crowd) -> Array:
+	var standing := d.standing_shrines()
+	var best := []
+	var best_n := 0
+	var best_people := 0
+	for i in standing.size():
+		var a := standing[i]
+		for j in range(i + 1, standing.size()):
+			var b := standing[j]
+			if d.guarded(a) or d.guarded(b) or a.center().distance_to(b.center()) > LANTERN_PAIR_REACH:
+				continue
+			var mid := (a.center() + b.center()) * 0.5
+			var dir := (b.center() - a.center()).normalized()
+			var people := _lane_people(crowd, mid, dir)
+			if best.is_empty() or best_n < 2 or people < best_people:
+				best = [mid, dir]
+				best_n = 2
+				best_people = people
+		if best_n >= 2:
+			continue
+		for k in LANTERN_DIRS:
+			var dir := Vector2.from_angle(PI * float(k) / float(LANTERN_DIRS))
+			var people := _lane_people(crowd, a.center(), dir)
+			if best.is_empty() or people < best_people:
+				best = [a.center(), dir]
+				best_n = 1
+				best_people = people
+	return best
+
+
+## The living people out in the open that a Heaven Splitter from `origin` along `dir` strikes with its core and line.
+func _lane_people(crowd: Crowd, origin: Vector2, dir: Vector2) -> int:
+	var n := 0
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside:
+				continue
+			var rel := p.ground_pos - origin
+			if rel.length() <= HEAVEN_FX.CORE_KILL or (absf(rel.dot(dir)) <= HEAVEN_FX.LINE_LENGTH * 0.5
+					and absf(rel.dot(dir.orthogonal())) <= HEAVEN_FX.LINE_HALF_WIDTH + 0.2):
+				n += 1
+	return n
+
+
+## The shrine the Dragonfire Parade takes: the standing one with the fewest people within LANTERN_CROWD_R; else null.
+func _lantern_target(d: BrokenLanternsDirector, crowd: Crowd) -> Structure:
 	var best: Structure = null
 	var best_n := 0
 	for s in d.standing_shrines():
-		if not guarded_too and d.guarded(s):
-			continue
-		var n := d.faithful_near(s.center(), LANTERN_CROWD_R)
+		var n := 0
+		for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+			for p in group:
+				if is_instance_valid(p) and p.is_alive() and not p.inside \
+						and p.ground_pos.distance_to(s.center()) <= LANTERN_CROWD_R:
+					n += 1
 		if best == null or n < best_n:
 			best = s
 			best_n = n

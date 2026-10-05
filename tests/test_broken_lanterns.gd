@@ -225,7 +225,8 @@ static func _ending(t) -> void:
 	d5.faithful[6].ground_pos = victim.ground_pos + Vector2(1.0, 0.0)
 	(s5.crowd as Crowd)._field.kill(victim, &"doom")
 	_run(s5, DT * 3.0)
-	t.near(d5.gaze.value, GazeMeter.SEEN_DEATH, 0.001, "a seen death adds 10 to the Gaze")
+	t.near(d5.gaze.value, GazeMeter.SEEN_DEATH * BrokenLanternsDirector.SEEN_DEATH_SCALE, 0.001,
+		"a seen death adds SEEN_DEATH_SCALE of GazeMeter's 10 to the Gaze (%.2f)" % d5.gaze.value)
 	_done(s5)
 
 

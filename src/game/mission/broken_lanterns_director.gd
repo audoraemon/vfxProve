@@ -35,11 +35,17 @@ const MARK_DRAINING := Color("ff9a3a")
 ## Each shrine broken (spec §4.1): every standing shrine is topped up to PRAYERS Faithful sent to pray there, on a ring
 ## PRAY_RING round it. On their duty and within PRAY_REACH of their place, they pray. Prayer feeds Halcyon's Gaze
 ## (GazeMeter.pray()), scaled by PRAYER_SCALE: 1.0 is the spec's rate, and the scale is this mission's own lever for
-## balance, so M4's Gaze is untouched.
+## balance, so M4's Gaze is untouched. Task 8 measured it: three praying at each of two standing shrines already reach
+## PRAYER_CAP, so at 1.0 prayer alone fills the Gaze about 17 s after the first break, and at 0.2 or 0.1 prayer and the
+## seen deaths together still filled it before the sixth shrine could drain.
 const PRAYERS := 3
 const PRAY_RING := 1.0
 const PRAY_REACH := 0.6
-const PRAYER_SCALE := 1.0
+const PRAYER_SCALE := 0.05
+## A death someone sees adds this share of GazeMeter.SEEN_DEATH in this mission (LanternGaze): Ruin is loud, and one
+## Heaven Splitter kills ten to twenty people, nearly all seen (Task 8 measured it). GazeMeter's own number stays for
+## Mira's House and M4.
+const SEEN_DEATH_SCALE := 0.05
 ## When five are drained, KNEELERS Faithful kneel round the last standing shrine on these rings ([radius, places]), all
 ## within BONUS_REACH of it (ThroughFaithfulObjective).
 const KNEELERS := 15
@@ -83,7 +89,7 @@ var _tick := 0.0
 
 
 func _begin() -> void:
-	gaze = GazeMeter.new()
+	gaze = LanternGaze.new()
 	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
 	_place_shrines()
 	_choose_faithful()
@@ -499,3 +505,9 @@ func _guards(s: Structure) -> Array[Person]:
 func _guard_place(s: Structure, k: Person) -> Vector2:
 	var i := maxi(_guards(s).find(k), 0)
 	return _walkable(s.center() + (GUARD_OFFSETS[i % GUARD_OFFSETS.size()] as Vector2))
+
+
+## Broken Lanterns' Gaze: a seen death adds SEEN_DEATH_SCALE of GazeMeter.SEEN_DEATH; all else is GazeMeter's.
+class LanternGaze extends GazeMeter:
+	func seen_death() -> void:
+		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE)

@@ -90,6 +90,8 @@ static func decor_set(n: String) -> Dictionary:
 	if packed.has("tex"):
 		built.tex = packed.tex
 		built.src = packed.src
+		# An atlas packs stills: a strip's frames would step into its neighbours.
+		built.frames = 1
 	_sets[n] = built
 	return built
 

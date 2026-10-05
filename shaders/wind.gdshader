@@ -27,8 +27,9 @@ void vertex() {
 	if (TEXTURE_PIXEL_SIZE.x < 1.0) {
 		// A decor sprite's quad (ArtKit.tex): UV is the texture's, so the weight is the vertex's height in the sprite.
 		if (anim_frames > 1) {
-			// The node's own phase, the same at every corner (a hash: neighbours a few px apart step apart).
-			float aph = fract(sin(dot(floor(at), vec2(12.9898, 78.233))) * 43758.5453) * float(anim_frames);
+			// The node's own phase, the same at every corner (a hash: neighbours a few px apart step apart; folded to keep
+			// sin()'s argument small, where GPUs agree).
+			float aph = fract(sin(dot(mod(floor(at), 1024.0), vec2(12.9898, 78.233))) * 43758.5453) * float(anim_frames);
 			UV.x += mod(floor(idle_time * anim_fps + aph), float(anim_frames)) * frame_u;
 		}
 		if (bob > 0.0) {

@@ -643,14 +643,50 @@ static func shrub_spots() -> Array[Dictionary]:
 ## A piece marked "under" (mark_under()) stays in the bake: a baked piece the bake paints over it would otherwise draw
 ## under it.
 static func plant_in_layer(d: Dictionary) -> bool:
-	return not d.get("under", false) and not DecorSprites.plant_set(d).is_empty() 		and not (d.has("kind") and Decor.drawn_live(d))
+	return not d.get("under", false) and not DecorSprites.plant_set(d).is_empty() and not live_now(d)
 
 
 ## Whether the floor bake paints baked piece `d` now: not while the plant layer draws it (plant_in_layer), nor while
-## a live node does (Decor.drawn_live: sprites on and its set animated; the town stands a sprite_only Decor for it).
-## F7 moves a piece between them: the floor re-bakes and the live node shows or hides.
+## a live stand-in does (live_now). F7 moves a piece between them: the floor re-bakes and the live node shows or hides.
 static func bakes(d: Dictionary) -> bool:
-	return not plant_in_layer(d) and not Decor.drawn_live(d)
+	return not plant_in_layer(d) and not live_now(d)
+
+
+## Whether baked piece `d` is drawn by a live sprite_only Decor now (the town stands one for each piece mark_live()
+## marked): while sprites are on.
+static func live_now(d: Dictionary) -> bool:
+	return bool(d.get("live", false)) and SpriteArt.on()
+
+
+## Mark "live" the baked pieces drawn by a live node while sprites are on (Town stands a sprite_only Decor for each),
+## so an animated set's frames step: `baked` is every baked piece (trees too), back to front by x + y, as the town
+## sorts them, after mark_under().
+## - An animated piece (DecorSprites.animated, forced: F7 may turn sprites on later) goes live, unless mark_under()
+##   marked it "under": a baked piece covers it, so it stays baked, still, at frame 0.
+## - Then a live piece sits over the whole bake, so every baked piece painted after it that overlaps it goes live too
+##   (a pasture's front fence over a cow's feet), and on from there: y-sort then orders them as the bake did. A piece
+##   painted before it stays baked, under it, as it was. Boxes are generous (_cover_box; a tree's whole canopy).
+## Deterministic, from the pieces alone; the placement data is untouched (the marks live on the town's own copies).
+static func mark_live(baked: Array[Dictionary]) -> void:
+	var live_boxes: Array[Rect2] = []
+	for d in baked:
+		var box := _live_box(d)
+		var live: bool = not d.get("under", false) and DecorSprites.animated(d.kind, d.seed, d.size, d.at, true)
+		if not live:
+			for b in live_boxes:
+				if b.intersects(box):
+					live = true
+					break
+		if live:
+			d["live"] = true
+			live_boxes.append(box)
+
+
+## A baked piece's screen box for mark_live(): _cover_box(), and for a tree its generous canopy (TownDecor.SCREEN_BOX).
+static func _live_box(d: Dictionary) -> Rect2:
+	if d.kind == Decor.Kind.OAK or d.kind == Decor.Kind.PINE:
+		return Rect2(Iso.ground_to_screen(d.at) + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)
+	return _cover_box(d)
 
 
 ## Mark each low plant in `plants` "under" (it stays in the bake, still) when the bake would paint something over it

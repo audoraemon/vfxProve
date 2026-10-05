@@ -97,7 +97,6 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	for d in TownDecor.spots():
 		if d.bake and ground != null:
 			baked.append(d)
-			_stand_in(d)
 			continue
 		var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
 		dec.parts = d.get("parts", [])
@@ -106,9 +105,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		if _decor_layer != null:
 			_decor_layer.add_child(dec)
 		for p: Dictionary in dec.parts:
-			var f := _stand_in(p)
-			if f != null:
-				dec.followers.append(f)
+			if DecorSprites.animated(p.kind, p.seed, p.size, p.at, true):
+				dec.followers.append(_stand_in(p))
 	var houses: Array[Structure] = []
 	for s in _built:
 		if s.kind == Structure.Kind.HOUSE and s.role == &"house":
@@ -137,6 +135,13 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 				plants.append(d)
 		# A plant a baked piece is painted over (a shrub under a garden plot) stays in the bake, still.
 		TownFloor.mark_under(plants, flat)
+		# Pieces drawn live while sprites are on (an animated set, and the baked pieces painted over it): each gets a
+		# live stand-in, and the floor, the plant layer and the forest leave it out while it shows.
+		TownFloor.mark_live(baked)
+		var lit := Color(GROUND_EVENING.r / EVENING.r, GROUND_EVENING.g / EVENING.g, GROUND_EVENING.b / EVENING.b)
+		for d in baked:
+			if d.get("live", false):
+				_stand_in(d).tint_mul = lit * (d.get("tint", Color.WHITE) as Color)
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = flat
@@ -162,12 +167,10 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		ground.move_child(forest, 2)
 
 
-## A live sprite_only Decor for a piece drawn elsewhere (the floor bake, a pile) whose set is animated while sprites
-## are on (DecorSprites.animated, forced: F7 may turn them on later), so its frames step: the floor and the pile leave
-## it out while it shows (Decor.drawn_live). The placement data is untouched; null for a piece with a still set.
+## A live sprite_only Decor for a piece drawn elsewhere while sprites are off: a baked piece TownFloor.mark_live()
+## marked (the floor, the plant layer and the forest leave it out while sprites are on), or a pile's animated part
+## (Decor.pile_parts_drawn). It shows while sprites are on. The placement data is untouched.
 func _stand_in(d: Dictionary) -> Decor:
-	if not DecorSprites.animated(d.kind, d.seed, d.size, d.at, true):
-		return null
 	var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
 	dec.sprite_only = true
 	_decor.append(dec)

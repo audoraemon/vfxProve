@@ -32,6 +32,9 @@ var parts: Array = []
 var sprite_only := false
 ## A pile's animated parts, drawn by sprite_only nodes of their own: they char and fall with the pile.
 var followers: Array[Decor] = []
+## Multiplies the colour tuning: a baked piece's stand-in takes the floor's light (Town: GROUND_EVENING over the decor
+## layer's EVENING, times the piece's own bake tint), so it matches the bake around it.
+var tint_mul := Color.WHITE
 var _glow: QuadFx
 
 ## Decor that moves in the wind (trees sway, bunting flutters, reeds and bushes stir; see ArtKit.wind_gain), and
@@ -133,7 +136,7 @@ func tuning_key() -> String:
 
 func _ready() -> void:
 	add_to_group(&"decor_art")
-	self_modulate = ArtTuning.tint(tuning_key())
+	self_modulate = _tint()
 	_art_state()
 	if kind == Kind.LAMP:
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(46, 23))
@@ -162,15 +165,18 @@ func art_changed() -> void:
 	queue_redraw()
 
 
-## The material and, for a sprite_only stand-in, whether it shows: both follow the set the piece draws now.
+## The material and, for a sprite_only stand-in, whether it shows (while sprites are on): both follow the art now.
+## Trees and piles take their class material (a tree set is packed in an atlas: never a strip).
 func _art_state() -> void:
-	var n := DecorSprites.name_for(kind, seed_value, size, at) if kind != Kind.PILE else ""
+	var n := DecorSprites.name_for(kind, seed_value, size, at) if not kind in [Kind.PILE, Kind.OAK, Kind.PINE] else ""
 	material = material_for(kind, DecorSprites.decor_set(n) if n != "" else {})
 	if sprite_only:
-		visible = drawn_live({"kind": kind, "at": at, "size": size, "seed": seed_value})
-	for f in followers:
-		if is_instance_valid(f):
-			f._art_state()
+		visible = SpriteArt.on()
+
+
+## Its colour now: its tuning, times tint_mul, charred by char_amount.
+func _tint() -> Color:
+	return (ArtTuning.tint(tuning_key()) * tint_mul).lerp(Structure.COL_CHAR, char_amount * 0.7)
 
 
 ## Whether a piece ({kind, at, size, seed}) is drawn by a live node of its own now, not by the floor bake or a pile:
@@ -194,13 +200,13 @@ func hit(amount: float, damage_kind: StringName) -> void:
 			_glow.queue_free()
 	else:
 		char_amount = minf(char_amount + amount / CHAR_PER, 1.0)
-	self_modulate = ArtTuning.tint(tuning_key()).lerp(Structure.COL_CHAR, char_amount * 0.7)
+	self_modulate = _tint()
 	queue_redraw()
 	for f in followers:
 		if is_instance_valid(f):
 			f.down = down
 			f.char_amount = char_amount
-			f.self_modulate = ArtTuning.tint(f.tuning_key()).lerp(Structure.COL_CHAR, char_amount * 0.7)
+			f.self_modulate = f._tint()
 			f.queue_redraw()
 
 

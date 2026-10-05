@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_motion(t)
 	_plants(t)
 	_anim(t)
+	_anim_cover(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -969,4 +970,69 @@ static func _anim(t) -> void:
 	env.free()
 	ground.free()
 	_unanimate(gnames, gfakes)
+	DecorSprites.reload()
+
+
+## A live animated piece sits over the whole bake, so what the bake painted over it goes live with it (TownFloor.
+## mark_live): a fence in front of a cow and overlapping it is live while sprites are on; one behind it or clear of it
+## stays baked. A piece mark_under() keeps under a cover stays baked and still. Stand-ins take the bake's light.
+static func _anim_cover(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var names := ["cow_1", "cow_2", "sheep_1", "sheep_2"]
+	var fakes := _animate(names)
+	var c := Vector2(10, 10)
+	var cow := {"kind": D.COW, "at": c, "size": Vector2.ZERO, "seed": 3, "bake": true}
+	var behind := {"kind": D.FENCE, "at": c + Vector2(-1.5, -0.6), "size": Vector2(1.5, 0), "seed": 4, "bake": true}
+	var front := {"kind": D.FENCE, "at": c + Vector2(-0.3, 0.6), "size": Vector2(1.5, 0), "seed": 5, "bake": true}
+	var clear := {"kind": D.FENCE, "at": c + Vector2(5, 5), "size": Vector2(1.5, 0), "seed": 6, "bake": true}
+	t.check(TownFloor._cover_box(behind).intersects(TownFloor._cover_box(cow)), "the fence behind overlaps the cow")
+	var baked: Array[Dictionary] = [behind, cow, front, clear]
+	TownFloor.mark_live(baked)
+	t.check(cow.get("live", false) and not TownFloor.bakes(cow), "sprites on: the animated cow is live")
+	t.check(front.get("live", false) and not TownFloor.bakes(front), "a fence in front of it, overlapping it, is live too")
+	t.check(not behind.get("live", false) and TownFloor.bakes(behind), "a fence behind it stays baked")
+	t.check(not clear.get("live", false) and TownFloor.bakes(clear), "a fence clear of it stays baked")
+	SpriteArt.set_enabled(false)
+	t.check(baked.all(func(d: Dictionary) -> bool: return TownFloor.bakes(d)), "F7 off: all four are baked")
+	SpriteArt.set_enabled(true)
+	# Under a cover: the animated piece stays baked, at frame 0, and covers nothing live.
+	var under := {"kind": D.COW, "at": c, "size": Vector2.ZERO, "seed": 3, "bake": true, "under": true}
+	var front2: Dictionary = front.duplicate()
+	front2.erase("live")
+	var baked2: Array[Dictionary] = [under, front2]
+	TownFloor.mark_live(baked2)
+	t.check(not under.get("live", false) and TownFloor.bakes(under), "an animated piece marked under stays baked")
+	t.check(not front2.get("live", false), "and the fence in front of it stays baked")
+	# The town: each stand-in is lit as the bake around it.
+	var env := EnvironmentField.new()
+	var ground := Node2D.new()
+	var town := Town.new()
+	town.build(env, ground)
+	var stand := town._decor.filter(func(d: Decor) -> bool: return d.sprite_only)
+	var fences := stand.filter(func(d: Decor) -> bool: return d.kind == D.FENCE)
+	t.check(fences.size() > 0, "a pasture fence in front of its animals goes live (%d)" % fences.size())
+	var lit_ok := true
+	for d: Decor in stand:
+		d._ready()
+		var spot: Dictionary = {}
+		for b: Dictionary in town.floor_node.baked_decor + town.forest.trees:
+			if b.kind == d.kind and b.seed == d.seed_value and b.at == d.at:
+				spot = b
+		var key := d.tuning_key()
+		var baked_col: Color = ArtTuning.tint(key) * (spot.get("tint", Color.WHITE) as Color) * Town.GROUND_EVENING
+		var live_col: Color = d.self_modulate * Town.EVENING
+		lit_ok = lit_ok and not spot.is_empty() and live_col.is_equal_approx(baked_col)
+	t.check(stand.size() > 0 and lit_ok, "every stand-in takes the baked tint (%d stand-ins)" % stand.size())
+	var drawn_trees := 0
+	for b: Dictionary in town.forest.trees:
+		if TownFloor.live_now(b):
+			drawn_trees += 1
+	t.check(stand.filter(func(d: Decor) -> bool: return d.kind in [D.OAK, D.PINE]).size() == drawn_trees,
+		"a tree that goes live is one the forest leaves out (%d)" % drawn_trees)
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()
+	_unanimate(names, fakes)
 	DecorSprites.reload()

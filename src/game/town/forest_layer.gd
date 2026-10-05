@@ -46,6 +46,9 @@ class Band extends Node2D:
 	func _draw() -> void:
 		ArtKit.begin()
 		for d in trees:
+			# A tree painted over a live animated piece is drawn by a live stand-in instead (TownFloor.mark_live).
+			if TownFloor.live_now(d):
+				continue
 			# The tuning's colour; a tree's size is not tuned (a single batch takes no per-tree transform).
 			ArtKit.color_mul = ArtTuning.tint(String(Decor.Kind.keys()[d.kind]).to_lower())
 			DecorArt.tree(d.kind, d.at, d.size, d.seed, Vector2.ZERO, FOREST_CLUSTERS)

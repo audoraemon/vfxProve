@@ -32,6 +32,18 @@ static func _done(s: Dictionary) -> void:
 	(s.world as Node).free()
 
 
+static func _arrive(p: Person, at: Vector2) -> void:
+	p.ground_pos = at
+	p._goal = Vector2.INF
+	p._path = PackedVector2Array()
+
+
+## One look at the walk (VigilRoute.TICK), stepped at DT.
+static func _tick(v: VigilRoute) -> void:
+	for i in roundi(VigilRoute.TICK / DT) + 1:
+		v.step(DT)
+
+
 static func run(t) -> void:
 	var s := _crowd()
 	var crowd: Crowd = s.crowd
@@ -95,4 +107,42 @@ static func run(t) -> void:
 	for i in roundi(VigilRoute.TICK / DT) + 1:
 		v2.step(DT)
 	t.check(v2.finished and v2.walkers().is_empty(), "a dead bearer ends the Vigil")
+	# v0.10 M3, for Broken Lanterns: round again, turned aside, the flame passed on.
+	var b4: Person = crowd.citizens[14]
+	var first: Person = crowd.citizens[16]
+	var second: Person = crowd.citizens[18]
+	var a4: Array[Person] = [first, second]
+	var v4 := VigilRoute.new().setup(points, b4, a4)
+	v4.loop = true
+	v4.pass_flame = true
+	var passed: Array[Person] = []
+	v4.flame_passed.connect(func(p: Person) -> void: passed.append(p))
+	v4.start()
+	for pt in points:
+		_arrive(b4, pt)
+		_tick(v4)
+	t.check(v4.active and not v4.finished and v4.leg == 0 and b4.anchor.distance_to(points[0]) < 0.01,
+		"a looping Vigil goes round again from the first point")
+	var aside := grid.nearest_walkable(points[0] + Vector2(0.0, 3.0))
+	v4.divert(aside)
+	t.check(v4.detour == aside and v4.goal() == aside and b4.anchor.distance_to(aside) < 0.01,
+		"turned aside, the bearer makes for the place at once")
+	_arrive(b4, aside)
+	_tick(v4)
+	t.check(v4.detour == Vector2.INF and v4.leg == 0 and b4.anchor.distance_to(points[0]) < 0.01,
+		"there, he takes the route up where he left it")
+	v4.divert(aside)
+	v4.divert(Vector2.INF)
+	t.check(v4.detour == Vector2.INF and b4.anchor.distance_to(points[0]) < 0.01, "a detour called off sends him back to the route")
+	crowd._field.kill(b4, &"doom")
+	_tick(v4)
+	t.check(v4.active and v4.bearer == first and passed.size() == 1 and passed[0] == first
+		and first.mind == Person.Mind.DUTY and first.anchor.distance_to(v4.goal()) < 0.01,
+		"a dead bearer's flame passes to the first living acolyte, who walks on")
+	crowd._field.kill(first, &"doom")
+	_tick(v4)
+	t.check(v4.active and v4.bearer == second and passed.size() == 2, "and on again when that one falls")
+	crowd._field.kill(second, &"doom")
+	_tick(v4)
+	t.check(v4.finished and v4.walkers().is_empty(), "with all three dead the Vigil is over")
 	_done(s)

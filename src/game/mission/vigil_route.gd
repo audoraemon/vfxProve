@@ -2,8 +2,14 @@ class_name VigilRoute
 extends RefCounted
 ## The Vigil (v0.10, spec §4.1): a priest, the flame-bearer, walks a route point by point, two acolytes keeping beside
 ## him. A fright stops him; once on his feet again he takes the route up where he left it. At the last point the walk is
-## over and all three go back to their day; a dead bearer ends it at once. Mira's House walks it past her door; M3 and
-## M4 walk it round Halcyon's six wayside shrines.
+## over and all three go back to their day; a dead bearer ends it at once. Mira's House walks it past her door.
+## Broken Lanterns (M3) walks it round Halcyon's six wayside shrines and asks three things more, each off unless set:
+## the walk goes round again from the first point (`loop`); the bearer turns aside to one place, then takes the route up
+## where he left it (divert()); and a dead bearer's flame passes to the first living acolyte (`pass_flame`), so only all
+## three dead end the walk.
+
+## The flame passed to `to` (pass_flame).
+signal flame_passed(to: Person)
 
 ## How near a point counts as reached, and seconds between looks at the walk.
 const ARRIVE := 0.6
@@ -22,6 +28,12 @@ var active := false
 var finished := false
 ## func(p: Person) -> bool: a walker busy elsewhere (v0.10: carrying a report to the Temple), not to be pulled back.
 var busy: Callable
+## Round again from the first point after the last (v0.10 M3), rather than finishing.
+var loop := false
+## A dead bearer's flame passes to the first living acolyte (v0.10 M3), rather than ending the walk.
+var pass_flame := false
+## Where the bearer has turned aside to (divert()), or Vector2.INF while he walks the route.
+var detour := Vector2.INF
 var _tick := 0.0
 
 
@@ -52,10 +64,26 @@ func walkers() -> Array[Person]:
 	return out
 
 
+## Where the bearer is walking now: his detour, else the route's next point.
+func goal() -> Vector2:
+	return detour if detour != Vector2.INF else route[leg]
+
+
+## Turn the bearer aside to `at` (Vector2.INF: back to the route). On his way he makes for it at once; once there he
+## takes the route up where he left it.
+func divert(at: Vector2) -> void:
+	detour = at
+	if not active or not _alive(bearer) or bearer.mind != Person.Mind.DUTY:
+		return
+	if busy.is_valid() and bool(busy.call(bearer)):
+		return
+	bearer.go_duty(goal())
+
+
 func step(delta: float) -> void:
 	if not active:
 		return
-	if not _alive(bearer):
+	if not _alive(bearer) and not _take_flame():
 		finish()
 		return
 	if busy.is_valid() and bool(busy.call(bearer)):
@@ -66,15 +94,21 @@ func step(delta: float) -> void:
 	_tick = TICK
 	if bearer.mind != Person.Mind.DUTY:
 		if bearer.mind in RESUMABLE:
-			bearer.go_duty(route[leg])
+			bearer.go_duty(goal())
 		return
-	if bearer.ground_pos.distance_to(route[leg]) <= ARRIVE or not bearer.has_goal():
-		if bearer.ground_pos.distance_to(route[leg]) <= ARRIVE:
-			leg += 1
-			if leg >= route.size():
-				finish()
-				return
-		bearer.go_duty(route[leg])
+	var at := goal()
+	if bearer.ground_pos.distance_to(at) <= ARRIVE or not bearer.has_goal():
+		if bearer.ground_pos.distance_to(at) <= ARRIVE:
+			if detour != Vector2.INF:
+				detour = Vector2.INF
+			else:
+				leg += 1
+				if leg >= route.size():
+					if not loop:
+						finish()
+						return
+					leg = 0
+		bearer.go_duty(goal())
 	_keep_acolytes()
 
 
@@ -85,6 +119,24 @@ func finish() -> void:
 	for p in walkers():
 		if p.mind == Person.Mind.DUTY:
 			p.leave_shelter(false)
+
+
+## The bearer is dead: with pass_flame, the first living acolyte takes the flame up and walks on (at once, if on his
+## feet); false when nobody can.
+func _take_flame() -> bool:
+	if not pass_flame:
+		return false
+	for a in acolytes:
+		if not _alive(a):
+			continue
+		bearer = a
+		acolytes.erase(a)
+		_tick = 0.0
+		if a.mind == Person.Mind.DUTY or a.mind in RESUMABLE:
+			a.go_duty(goal())
+		flame_passed.emit(a)
+		return true
+	return false
 
 
 func _keep_acolytes() -> void:

@@ -5,9 +5,12 @@ extends RefCounted
 ## Prices are the loadout budget (v0.08): a mission's draft may spend its Divine Power capacity on them, and nothing
 ## is spent once the mission runs. Cooldowns follow spec §2's rule of thumb, the larger of the old cooldown and 3x
 ## the old DP cost. Aim "drag" = press at the start point, drag the direction, release; aim "whisper" (v0.08) = press
-## on a person, drag to where they should go, release. The quiet powers (v0.05, "quiet") register no danger for the
+## on a person, drag to where they should go, release; aim "two clicks" = one click for each of the power's two places
+## (Mirrorfold Passage, Divine Congregation). The quiet powers (v0.05, "quiet") register no danger for the
 ## town and raise no alarm when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight
-## adds one alarm.
+## adds one alarm; a quiet power with an "alarm" unsettles the town by that much when cast. A power with "modes" is cast
+## in one of them (Targeting: Q and E step through them; the effect is told which in extra["mode"]); a mode may aim
+## its own way ("aim") and cover its own ground ("area").
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
@@ -17,14 +20,33 @@ const POWERS := [
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
 		"shape": "send one person somewhere, then they linger 8 s; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion"},
+	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
+		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
+		"authority": "ruin"},
+	{"key": "ember", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
+		"dp": 1, "cooldown": 15.0, "aim": "click", "shape": "one spark that sets one building alight", "quiet": true,
+		"authority": "ruin"},
+	{"key": "deathmark", "name": "Death Mark", "path": "res://src/fx/death/death_mark.gd",
+		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
+		"quiet": true, "authority": "death"},
+	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
+		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
+		"quiet": true, "alarm": 0.5, "authority": "decree"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
 		"authority": "dominion"},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
-		"authority": "disorder"},
+		"authority": "dominion"},
+	{"key": "belllies", "name": "The Bell Lies", "path": "res://src/fx/decree/the_bell_lies.gd",
+		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "the bell tolls all is well, now and for 45 s; or calls the guard to a place; Q/E",
+		"quiet": true, "authority": "decree", "modes": [
+			{"key": "well", "name": "ALL IS WELL"}, {"key": "guard", "name": "CALL THE GUARD", "area": {"r": 1.5}}]},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
+	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
+		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
+		"quiet": true, "alarm": 0.2, "authority": "dominion"},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
 		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
 		"authority": "veil"},
@@ -35,9 +57,48 @@ const POWERS := [
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin"},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
-		"authority": "lifedeath"},
+		"authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin"},
+	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
+		"dp": 3, "cooldown": 54.0, "aim": "two clicks", "shape": "two faint mirrors: in at the first, out at the second, 30 s",
+		"quiet": true, "authority": "passage"},
+	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
+		"dp": 3, "cooldown": 75.0, "aim": "click", "shape": "doubles what is already there: fires, cracks, madness, spells",
+		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
+		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
+		"quiet": true, "alarm": 0.3, "authority": "dominion"},
+	{"key": "oath", "name": "Oathbound", "path": "res://src/fx/dominion/oathbound.gd",
+		"dp": 2, "cooldown": 45.0, "aim": "click", "shape": "binds up to four to stay, or to hold a place, 60 s; Q/E",
+		"quiet": true, "authority": "dominion", "modes": [
+			{"key": "remain", "name": "REMAIN"},
+			{"key": "hold", "name": "HOLD A PLACE", "aim": "two clicks", "area": {"shape": "pick"}}]},
+	{"key": "echo", "name": "Command Echo", "path": "res://src/fx/dominion/command_echo.gd",
+		"dp": 2, "cooldown": 45.0, "aim": "click", "shape": "a command planted in a few that passes from one to the next; Q/E",
+		"quiet": true, "alarm": 0.2, "authority": "dominion", "modes": [
+			{"key": "home", "name": "GO HOME"},
+			{"key": "go", "name": "GO THERE", "aim": "two clicks", "area": {"shape": "pick"}}]},
+	{"key": "turncoat", "name": "Turncoat", "path": "res://src/fx/dominion/turncoat.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "one turns on its own side: a soldier fights, another sabotages, 30 s",
+		"quiet": true, "authority": "dominion"},
+	{"key": "hatred", "name": "Manufactured Hatred", "path": "res://src/fx/dominion/manufactured_hatred.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "a group comes to hate one kind, and goes for them; Q/E picks whom",
+		"quiet": true, "alarm": 0.5, "authority": "dominion", "modes": [
+			{"key": "soldier", "name": "THE GUARD"}, {"key": "clergy", "name": "THE CLERGY"},
+			{"key": "engineer", "name": "THE ENGINEERS"}]},
+	{"key": "priority", "name": "Rewrite Priority", "path": "res://src/fx/dominion/rewrite_priority.gd",
+		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "a district puts one thing above all else, 25 s; Q/E picks it",
+		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
+			{"key": "work", "name": "WORK"}, {"key": "worship", "name": "WORSHIP"}, {"key": "hide", "name": "HIDE"},
+			{"key": "escape", "name": "ESCAPE"}, {"key": "ignore", "name": "IGNORE"}]},
+	{"key": "verdict", "name": "Mob Verdict", "path": "res://src/fx/dominion/mob_verdict.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "two clicks", "shape": "a district judges the one, or the building, of the first click",
+		"quiet": true, "alarm": 2.0, "authority": "dominion"},
+	{"key": "delusion", "name": "Collective Delusion", "path": "res://src/fx/dominion/collective_delusion.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district believes a danger that is not there, or that all is well",
+		"quiet": true, "authority": "dominion", "modes": [
+			{"key": "danger", "name": "FALSE DANGER"}, {"key": "calm", "name": "ALL IS WELL", "area": {"r": 7.0}}]},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
@@ -52,6 +113,26 @@ const POWERS := [
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "8 punches + slam", "authority": "ruin"},
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "burst + freeze + ice", "authority": "ruin"},
+	{"key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd",
+		"dp": 4, "cooldown": 105.0, "aim": "click", "shape": "5 s pillar of sunfire; leaves a pit that takes all who enter",
+		"authority": "ruin"},
+	{"key": "voice", "name": "Voice of God", "path": "res://src/fx/dominion/voice_of_god.gd",
+		"dp": 5, "cooldown": 180.0, "aim": "click", "shape": "one command the whole town obeys; Q/E picks it",
+		"quiet": true, "alarm": 6.0, "authority": "dominion", "modes": [
+			{"key": "kneel", "name": "KNEEL"}, {"key": "halt", "name": "HALT"}, {"key": "flee", "name": "FLEE"},
+			{"key": "gather", "name": "GATHER"}, {"key": "return", "name": "RETURN"}, {"key": "silence", "name": "SILENCE"},
+			{"key": "judge", "name": "JUDGE"}]},
+	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
+		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
+		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
+			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
+			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
+	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
+		"authority": "dominion", "modes": [
+			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
+			{"key": "custom", "name": "CUSTOM", "aim": "two clicks", "area": {"shape": "regions", "r": 5.0}},
+			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}}]},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -73,7 +154,8 @@ const REACH := {
 	"heaven": [6.0, 9.0, 0.5, 3.0], "tornado": [8.0, 11.0, 0.6, 10.0], "dragon": [8.0, 11.0, 0.6, 5.0],
 	"tsunami": [8.0, 12.0, 0.7, 5.0], "gravity": [6.0, 9.0, 0.6, 6.0], "laser": [7.0, 10.0, 0.6, 6.0],
 	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
-	"glacial": [8.0, 12.0, 0.7, 6.0], "nova": [40.0, 40.0, 1.0, 4.0],
+	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "smite": [5.0, 9.0, 0.4, 2.0], "schism": [14.0, 18.0, 0.8, 8.0],
+	"nova": [40.0, 40.0, 1.0, 4.0],
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -86,10 +168,12 @@ static func get_power(key: String) -> Dictionary:
 	return {}
 
 
+## Decree rules the rules themselves: what is allowed, what is true, what is law (prohibit, distort, abolish).
+## Dominion holds what was Disorder too: to command a mind and to break one are the same Authority.
 ## The Authorities (v0.08; before, the kinds): what a power commands, and the draft's tabs, in tab order.
-const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "disorder", "lifedeath"]
+const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "decree", "death"]
 ## Their titles, index for index.
-const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DISORDER", "LIFE/DEATH"]
+const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DECREE", "DEATH"]
 
 
 ## The keys of an Authority's powers, in book order.
@@ -106,7 +190,7 @@ static func authority_of(key: String) -> String:
 	return String(get_power(key).get("authority", ""))
 
 
-## An Authority's title ("LIFE/DEATH"), or "" for an unknown one.
+## An Authority's title ("DEATH"), or "" for an unknown one.
 static func authority_title(authority: String) -> String:
 	var i := AUTHORITIES.find(authority)
 	return String(AUTHORITY_TITLES[i]) if i >= 0 else ""

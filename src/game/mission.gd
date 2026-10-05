@@ -194,6 +194,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_crowd.name = "Crowd"
 	add_child(_crowd)
 	_crowd.setup(_bf.ctx.field, _bf.ctx.env, _town, _grid, _bf.ctx.world, seed_value)
+	_bf.ctx.crowd = _crowd
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()
@@ -233,6 +234,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.name = "Rules"
 	add_child(_rules)
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
+	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
 	# Nothing shows a banner until the HUD below is made: the director's setup and the town's responses may raise some.
 	var held: Array[String] = []

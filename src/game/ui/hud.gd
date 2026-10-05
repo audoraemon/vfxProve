@@ -279,7 +279,7 @@ func _signature() -> String:
 	if not events.is_empty():
 		out += "|" + str(events)
 	for i in _rules.loadout.size():
-		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), "p" if is_picked(i) else ""]
+		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
 
 
@@ -483,6 +483,8 @@ func _draw_slots(_w: float) -> void:
 		if icon != null:
 			draw_texture_rect(icon, icon_box, false, Color.WHITE if usable else Color(0.45, 0.45, 0.5))
 		UiTheme.frame(self, box, is_picked(i))
+		if is_picked(i):
+			_draw_modes(box)
 		_plate(icon_box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
 		# The name beside the icon on one line, gold when focused, dim when it cannot be cast; its cooldown under it.
 		var tx := box.position.x + SLOT_SIZE + 4.0
@@ -503,6 +505,27 @@ func _draw_slots(_w: float) -> void:
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
 			var secs := "%d" % ceili(left)
 			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(secs) * 0.5, 4.0), secs, UiTheme.SIZE_BODY)
+
+
+## The focused power's modes (Voice of God's commands, Divine Schism's ways to divide) in a row above its slot: the
+## picked one gold, with the keys that step through them.
+func _draw_modes(box: Rect2) -> void:
+	var modes := _aim.modes()
+	if modes.is_empty():
+		return
+	var labels: Array[String] = ["Q/E"]
+	for m: Dictionary in modes:
+		labels.append(String(m.name))
+	var total := 0.0
+	for l in labels:
+		total += UiTheme.width(l, UiTheme.SIZE_SMALL) + 6.0
+	var view_w := get_viewport_rect().size.x
+	var x := clampf(box.position.x, 2.0, maxf(view_w - total - 2.0, 2.0))
+	var y := box.position.y - PLATE_H - 3.0
+	for k in labels.size():
+		var col := UiTheme.COL_DIM if k == 0 else (UiTheme.COL_GOLD if k - 1 == _aim.mode_index() else UiTheme.COL_TEXT)
+		_plate(Vector2(x, y), labels[k], col)
+		x += UiTheme.width(labels[k], UiTheme.SIZE_SMALL) + 6.0
 
 
 ## A short label on a dark plate, `at` being the plate's top-left corner.

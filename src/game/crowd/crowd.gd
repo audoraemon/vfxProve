@@ -7,7 +7,13 @@ extends Node
 
 signal escaped(person: Person)
 signal alarm_changed(value: float)
+## The bell tolled a lie (The Bell Lies): at the tower.
+signal bell_lied(at: Vector2)
 signal rallied
+
+## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
+const LIE_CALM := 8.0
+const LIE_REASSURE := 8.0
 
 ## The town scale upgrade doubled the people along with the town (110 + 50 before).
 const CITIZENS := 220
@@ -122,6 +128,14 @@ var engineers: EngineerManager
 var ferry: RiverFerry
 ## Pestilence's spread (v0.06); made by spawn().
 var plague: PlagueManager
+## Madness Bloom's madness (a Disorder status); made by spawn().
+var madness: MadnessManager
+## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
+var _hush_until := -INF
+## Until when the bell lies (bell_lies()), on the crowd's clock.
+var _bell_lies_until := -INF
+## Seconds left of time standing still (freeze()).
+var _freeze_left := 0.0
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -206,6 +220,11 @@ class ResponseDrawer extends Node2D:
 			crowd.rescue.draw(self)
 		if crowd.plague != null and ground:
 			crowd.plague.draw_ground(self)
+		if crowd.madness != null:
+			if ground:
+				crowd.madness.draw_ground(self)
+			else:
+				crowd.madness.draw_over(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
@@ -213,7 +232,8 @@ class ResponseDrawer extends Node2D:
 			or crowd.bell.ring_show > 0.0)) or (crowd.rite != null and crowd.rite.glow > 0.0)
 			or (crowd.engineers != null and crowd.engineers.working())
 			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty())
-			or (crowd.plague != null and crowd.plague.any_in_open()))
+			or (crowd.plague != null and crowd.plague.any_in_open())
+			or (crowd.madness != null and crowd.madness.any_in_open()))
 
 
 class Ticker extends Node:
@@ -287,6 +307,7 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(_workshop), _workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
+	madness = MadnessManager.new().setup(self, _field, _seed + 43)
 	marshals = MarshalManager.new().setup(self, _town, _grid)
 	escorts = EscortManager.new().setup(self)
 	rescue = RescueManager.new().setup(self, _field)
@@ -407,6 +428,7 @@ func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	_field.add(p)
 	p.setup_person(is_soldier, at, _grid)
 	p.env = _env
+	p.field = _field
 	_parent.add_child(p)
 	return p
 
@@ -508,16 +530,21 @@ func _process(delta: float) -> void:
 ## One frame of every person, citizens then soldiers: the order they were spawned, which was the order the engine
 ## processed them in when each processed itself.
 func step_people(delta: float) -> void:
+	# While time stands still (freeze()) the living do not move or think; the dead still fall.
+	var still := is_frozen()
 	for p in citizens:
-		if is_instance_valid(p) and not p.inside:
+		if is_instance_valid(p) and not p.inside and not (still and p.is_alive()):
 			p.frame(delta)
 	for p in soldiers:
-		if is_instance_valid(p):
+		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
 func advance(delta: float) -> void:
+	if _freeze_left > 0.0:
+		_freeze_left -= delta
+		return
 	_clock += delta
 	threats.step(delta)
 	_spread_fright()
@@ -546,6 +573,8 @@ func advance(delta: float) -> void:
 		ferry.step(delta)
 	if plague != null:
 		plague.step(delta)
+	if madness != null:
+		madness.step(delta)
 	if marshals != null:
 		marshals.step(delta)
 	if escorts != null:
@@ -778,6 +807,8 @@ func _update_bed(delta: float) -> void:
 
 ## One voice from `p`, if the budget allows it.
 func _voice(p: Person, cue: StringName) -> void:
+	if is_hushed():
+		return
 	if _voice_tokens < 1.0:
 		return
 	_voice_tokens -= 1.0
@@ -800,7 +831,12 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
 	if PowerBook.is_quiet(key):
-		return  # nothing for the town to see (v0.05): Silent Doom and Blight report their own effects
+		# Nothing for the town to see (v0.05): Silent Doom and Blight report their own effects. A quiet power may still
+		# unsettle it a little (its book entry's "alarm": a congregation forming, a bloom of madness).
+		var unease := float(PowerBook.get_power(key).get("alarm", 0.0))
+		if unease > 0.0:
+			add_alarm(unease)
+		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key)
 	var points: Array[Vector2] = [ground]
@@ -826,6 +862,14 @@ static func _cast_radius(key: String) -> float:
 	if a.has("half"):
 		return float(a.half) + 1.0
 	return PANIC_CAST - Person.THREAT_MARGIN
+
+
+## Something frightening at `at` of `radius` (a maddened citizen turning on the crowd): a danger the town knows of for
+## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
+func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName) -> void:
+	threats.register(at, radius, severity, seconds, sight, sound, kind)
+	var points: Array[Vector2] = [at]
+	_react(points, radius, sound, at, kind)
 
 
 ## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look.
@@ -856,6 +900,9 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 
 ## Frights passed on: a moment after a citizen was frightened, the calm people beside it stop and look its way.
 func _spread_fright() -> void:
+	if is_hushed():
+		_spreads.clear()  # nobody can pass a fright on
+		return
 	var due: Array = []
 	var later: Array = []
 	for s in _spreads:
@@ -879,8 +926,9 @@ func _watch_threats() -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
-		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER):
-			continue
+		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER
+				or p.mind == Person.Mind.COMPELLED):
+			continue  # the compelled keep their survival (unless held absolutely: Person.panic())
 		for t in threats.nearby(p.ground_pos, Person.THREAT_MARGIN):
 			p.panic(t.at, float(t.radius), t.kind)
 			break
@@ -890,7 +938,61 @@ func _watch_threats() -> void:
 ## rung, only those nearby know, so it counts UNWARNED_ALARM of its worth (v0.05) -- a town kept from its bell
 ## mobilizes slower. Once the bell has rung, everything counts in full.
 func _hear_alarm(points: float) -> void:
+	if is_hushed():
+		return  # nobody can call for help
 	add_alarm(points if alarms.bell_rung else points * UNWARNED_ALARM)
+
+
+## Silence the town for `seconds` (Voice of God): no shouts, no fright passed from one to the next, no call for help
+## -- what happens raises no alarm and brings no one to look -- and no bell.
+func hush(seconds: float) -> void:
+	_hush_until = maxf(_hush_until, _clock + seconds)
+
+
+func is_hushed() -> bool:
+	return _clock < _hush_until
+
+
+## Time stands still in the town for `seconds` (Abolition's clock): nobody alive moves or thinks, and nothing of the
+## town's own runs -- its clock, its fires, its bell, its sickness. What a power does to it meanwhile is still done.
+func freeze(seconds: float) -> void:
+	_freeze_left = maxf(_freeze_left, seconds)
+
+
+func is_frozen() -> bool:
+	return _freeze_left > 0.0
+
+
+## The warning is taken back (The Bell Lies): the town is as if its bell had never rung -- no citizen holds itself in
+## an emergency for the bell's sake, and the keeper is left to ring again.
+func unring_bell() -> void:
+	alarms.bell_rung = false
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive() and p.awareness == Person.Awareness.EMERGENCY:
+			p.awareness = Person.Awareness.CONCERNED
+	if bell != null:
+		bell.unring()
+
+
+## For `seconds` the bell lies (The Bell Lies): rung, it tolls that all is well (false_bell()).
+func bell_lies(seconds: float) -> void:
+	_bell_lies_until = maxf(_bell_lies_until, _clock + seconds)
+
+
+func is_bell_lying() -> bool:
+	return _clock < _bell_lies_until
+
+
+## The bell tolls, and it says all is well: the town is not warned, its alarm falls by LIE_CALM, and every citizen
+## who hears it -- all of them -- takes heart for LIE_REASSURE (Person.reassure()).
+func false_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive():
+			p.reassure(LIE_REASSURE)
+	if sfx != null:
+		sfx.play(&"town_bell", at)
+	add_alarm(-LIE_CALM)
+	bell_lied.emit(at)
 
 
 func add_alarm(points: float) -> void:
@@ -1218,6 +1320,9 @@ func clear() -> void:
 	_jams.clear()
 	_held.clear()
 	_thorn_alarm_at = -INF
+	_hush_until = -INF
+	_bell_lies_until = -INF
+	_freeze_left = 0.0
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -1231,6 +1336,9 @@ func clear() -> void:
 	if plague != null:
 		plague.clear()
 	plague = null
+	if madness != null:
+		madness.clear()
+	madness = null
 	if marshals != null:
 		marshals.clear()
 	marshals = null
@@ -1263,7 +1371,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role != &"citadel":
 		_hear_alarm(ALARM_BUILDING)
 	var at := s.center()
-	if s.role != &"citadel" and alarms.incident(at):
+	if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
 		_investigate(at)
 	var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
 	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
@@ -1287,7 +1395,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"doom":
 		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
 		return
-	if alarms.incident(p.ground_pos):
+	if not is_hushed() and alarms.incident(p.ground_pos):
 		_investigate(p.ground_pos)
 	_hear_alarm(ALARM_KILL)
 

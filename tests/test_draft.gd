@@ -86,7 +86,7 @@ static func run(t) -> void:
 	for authority in PowerBook.AUTHORITIES:
 		most = maxi(most, PowerBook.of_authority(authority).size())
 	for i in most:
-		boxes.append(PrepareScreen.cell_rect(i))
+		boxes.append(PrepareScreen.cell_rect(i, most))
 	for i in d.slots:
 		boxes.append(PrepareScreen.slot_rect(i))
 	boxes.append(PrepareScreen.MANIFEST_RECT)
@@ -117,12 +117,12 @@ static func run(t) -> void:
 		and prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest",
 		"tabs, slots, MANIFEST and the open tab's cards answer the mouse")
 	# Tabs (v0.08): one per Authority with a power in the mission's pool, in AUTHORITIES order.
-	t.check(Array(prep.tabs()) == PowerBook.AUTHORITIES, "Last Judgement shows all six Authorities' tabs (%s)" % [prep.tabs()])
+	t.check(Array(prep.tabs()) == PowerBook.AUTHORITIES, "Last Judgement shows every Authority's tab (%s)" % [prep.tabs()])
 	prep.free()
 	var pooled_prep := PrepareScreen.new()
 	pooled_prep.setup(pooled, PackedStringArray())
-	t.check(pooled_prep.tabs() == PackedStringArray(["veil", "disorder"]),
-		"a pool of Silent Doom and Discord shows only Veil and Disorder (%s)" % [pooled_prep.tabs()])
+	t.check(pooled_prep.tabs() == PackedStringArray(["veil", "dominion"]),
+		"a pool of Silent Doom and Discord shows only Veil and Dominion (%s)" % [pooled_prep.tabs()])
 	t.check(pooled_prep.hit(PrepareScreen.tab_rect(1, 2).get_center()) == "tab:1"
 		and PrepareScreen.tab_rect(1, 2).end.x <= PrepareScreen.TAB_AT.x + PrepareScreen.TAB_ROW
 		and PrepareScreen.tab_rect(1, 2).size.x == 214.0,
@@ -172,7 +172,7 @@ static func run(t) -> void:
 	click.draft.preselect(PackedStringArray(["doom", "wisp", "discord", "heaven", "blight", "thorns"]))
 	click.set_tab(click.tabs().find("ruin"))
 	before = click.draft.picks.duplicate()
-	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("tornado")).get_center())
+	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("tornado"), click.shown().size()).get_center())
 	t.check(click.draft.picks == before and click.refused_reason == "No free slot",
 		"a card with no free slot is refused with its reason ('%s', %s)" % [click.refused_reason, click.draft.picks])
 	click.draft.preselect(PackedStringArray(["heaven"]))

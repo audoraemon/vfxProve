@@ -48,6 +48,8 @@ const LIGHT_HZ := 20.0
 const FOUNTAIN_HZ := 12.0
 ## A torch's flame and a lamp's glow flicker in steps this often.
 const TORCH_FLICKER_HZ := 12.0
+## A lit lantern's glass steps this often (draw_lamp_glass(), lamp_glass_step()).
+const LAMP_GLASS_HZ := 6.0
 ## Kinds with lit windows; the fantasy ones get framed windows (houses) or arrow slits (keeps).
 const WINDOWED := [Kind.TOWER, Kind.BLOCK, Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
 const FANTASY_WINDOWS := [Kind.KEEP, Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS]
@@ -1208,7 +1210,7 @@ func _draw_lamp(right_c: Color, left_c: Color) -> void:
 	draw_rect(Rect2(-2, -tall - 2, 13, 1), lit)
 	draw_rect(Rect2(2, -tall + 1, 2, 4), post)
 	# The lantern: a dark frame round a bright glow, flickering a little.
-	var f := int(_time * 6.0 + float(rng.seed % 5)) % 4
+	var f := lamp_glass_step(_time, rng.seed)
 	var l := Vector2(5, -tall + 2)
 	draw_rect(Rect2(l + Vector2(3, -1), Vector2(1, 2)), post)
 	draw_rect(Rect2(l, Vector2(8, 11)), right_c.darkened(0.55))
@@ -1328,16 +1330,29 @@ func _draw_post_flame() -> void:
 	if art_tag == &"lamp":
 		var glass: Rect2 = sprite.get("glass", Rect2())
 		var r := Rect2(tip, glass.size if glass.has_area() else Vector2(6, 9))
-		var g := int(_time * 6.0 + float(rng.seed % 5)) % 4
-		_flame.draw_rect(r, COL_FLAME[1] if g != 0 else COL_FLAME[2])
-		_flame.draw_rect(r.grow(-1.0), COL_FLAME[0])
-		_flame.draw_rect(Rect2(r.position + Vector2(floorf(r.size.x * 0.5), 0), Vector2(1, r.size.y)), COL_IRON_CUP)
+		draw_lamp_glass(_flame, r, lamp_glass_step(_time, rng.seed))
 		return
 	var f := int(_time * TORCH_FLICKER_HZ + float(rng.seed % 5)) % 3
 	_flame.draw_rect(Rect2(tip + Vector2(-4, -5), Vector2(8, 5)), COL_FLAME[2])
 	_flame.draw_rect(Rect2(tip + Vector2(-3, -9 - f % 2), Vector2(6, 7)), COL_FLAME[1])
 	_flame.draw_rect(Rect2(tip + Vector2(-2 + (f % 2), -12 - f), Vector2(3, 6)), COL_FLAME[0])
 	_flame.draw_rect(Rect2(tip + Vector2(-1, -7), Vector2(2, 3)), Color.WHITE)
+
+
+## A lit lantern's glass step at time `t` (s): one of four, at LAMP_GLASS_HZ, a lamp's `seed` % 5 out of step; step 0
+## burns low (draw_lamp_glass()).
+static func lamp_glass_step(t: float, seed_value: int) -> int:
+	return int(t * LAMP_GLASS_HZ + float(seed_value % 5)) % 4
+
+
+## Lit lantern glass filling `r` on `ci` (a sprite street lamp's, a sprite house lantern's: Decor): amber round a pale
+## core, deep orange on step 0, and with `bar` the lantern's front corner bar down its middle (a lamp_post seen corner
+## on; a house lantern faces front, its frame painted round the glass).
+static func draw_lamp_glass(ci: CanvasItem, r: Rect2, step: int, bar := true) -> void:
+	ci.draw_rect(r, COL_FLAME[1] if step != 0 else COL_FLAME[2])
+	ci.draw_rect(r.grow(-1.0), COL_FLAME[0])
+	if bar:
+		ci.draw_rect(Rect2(r.position + Vector2(floorf(r.size.x * 0.5), 0), Vector2(1, r.size.y)), COL_IRON_CUP)
 
 
 ## The art's flames, flickering in 8 Hz steps, each a little out of step with the others.

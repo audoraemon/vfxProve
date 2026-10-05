@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_down(t)
 	_toggle(t)
 	_glow(t)
+	_lamp_glass(t)
 	_boats(t)
 	_mirror(t)
 	_herds(t)
@@ -377,6 +378,67 @@ static func _glow(t) -> void:
 	t.check(lamp._glow.position == Vector2.ZERO, "and F7 moves the lamp's pool back")
 	SpriteArt.set_enabled(true)
 	lamp.free()
+
+
+## A sprite house lantern lights its glass as the street lamp does (art polish): the manifest's "glass" rect (sprite
+## px from its top left, as lamp_post's) carries an undimmed lit-glass overlay over the painted glass, mirrored with a
+## mirrored piece. It hides when the lamp is knocked down, and there is none while sprites are off.
+static func _lamp_glass(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var m: Dictionary = DecorSprites.manifest().get("lamp_house", {})
+	t.check(m.has("glass"), "lamp_house's manifest entry has a glass rect")
+	var g: Array = m.get("glass", [0, 0, 0, 0])
+	var glass := Rect2(g[0], g[1], g[2], g[3])
+	var d := DecorSprites.decor_set("lamp_house")
+	t.check(d.get("glass") == glass, "decor_set reads the glass from the manifest")
+	t.check(DecorSprites.decor_set("barrel_1").get("glass") == Rect2(), "a set without glass reads an empty rect")
+	var want := Rect2(glass.position - (d.anchor as Vector2), glass.size)
+	t.check(DecorSprites.glass_rect(d, false) == want, "the glass sits at its rect, from the anchor")
+	var flip := DecorSprites.glass_rect(d, true)
+	t.check(flip == Rect2(Vector2((d.anchor as Vector2).x - glass.end.x, want.position.y), glass.size),
+		"a mirrored piece mirrors its glass (got %s)" % flip)
+	t.check(DecorSprites.glass_rect(DecorSprites.decor_set("barrel_1"), false) == Rect2(), "no glass, no rect")
+	# A lamp in a dimmed decor layer: its glass overlay shows at the rect, undimmed.
+	var layer := Node2D.new()
+	layer.modulate = Color(0.3, 0.27, 0.24)
+	var lamp := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	layer.add_child(lamp)
+	lamp._ready()
+	var ov: Node2D = lamp._glass
+	t.check(ov != null and ov.visible, "a sprite lamp_house shows a glass overlay")
+	t.check(ov != null and ov.rect == want, "at its manifest glass rect (got %s)" % (ov.rect if ov else null))
+	t.check(ov != null and ov.scale == Vector2.ONE * ArtTuning.scale("lamp"), "scaled with the lamp's drawing")
+	if ov != null:
+		ov._process(0.0)
+		var lit: Color = layer.modulate * lamp.modulate * ov.modulate * ov.self_modulate
+		t.check(lit.is_equal_approx(Color.WHITE), "the overlay cancels the layer's dimming (got %s)" % lit)
+		var steps := {}
+		for i in 12:
+			ov._process(1.0 / 12.0)
+			steps[ov.step] = true
+		t.check(steps.size() > 1, "and it flickers as the street lamp's glass does")
+	lamp.hit(Decor.KNOCK_AT, &"blast")
+	t.check(ov != null and not ov.visible, "knocked down, the overlay hides")
+	layer.free()
+	# Sprites off: none, on a new lamp or one switched by F7.
+	var on := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	on._ready()
+	SpriteArt.set_enabled(false)
+	on.art_changed()
+	t.check(on._glass == null or not on._glass.visible, "F7 off: the lamp has no glass overlay")
+	var off := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
+	off._ready()
+	t.check(off._glass == null or not off._glass.visible, "sprites off: a new lamp has no glass overlay")
+	SpriteArt.set_enabled(true)
+	on.art_changed()
+	t.check(on._glass != null and on._glass.visible, "F7 on again: the overlay is back")
+	on.free()
+	off.free()
+	var barrel := Decor.new().setup(D.BARREL, Vector2(1, 1), Vector2.ZERO, 3)
+	barrel._ready()
+	t.check(barrel._glass == null, "other decor has no glass overlay")
+	barrel.free()
 
 
 static func _boats(t) -> void:

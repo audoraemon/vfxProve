@@ -36,7 +36,8 @@ def strip(frames):
     return out, (left, top)
 
 
-def write_set(name, img, anchor, segment=None, glow=None, end_post=None, footprint=None, frames=None, fps=None):
+def write_set(name, img, anchor, segment=None, glow=None, end_post=None, footprint=None, frames=None, fps=None,
+              glass=None):
     """Save `img` (PIL RGBA image; a strip of `frames` frames for an animated set) as DECOR/<name>/intact.png and
     insert or replace its manifest line."""
     out = DECOR / name
@@ -49,6 +50,8 @@ def write_set(name, img, anchor, segment=None, glow=None, end_post=None, footpri
         entry["segment"] = segment
     if glow is not None:
         entry["glow"] = [int(glow[0]), int(glow[1])]
+    if glass is not None:
+        entry["glass"] = [int(v) for v in glass]
     if end_post is not None:
         entry["end_post"] = [int(v) for v in end_post]
     if footprint is not None:

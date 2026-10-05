@@ -39,6 +39,40 @@ var tint_mul := Color.WHITE:
 		tint_mul = v
 		self_modulate = _tint()
 var _glow: QuadFx
+## A sprite lamp's lit glass (LampGlass), null for any other decor.
+var _glass: LampGlass
+
+
+## A sprite house lantern's lit glass, as a sprite street lamp's (Structure.draw_lamp_glass(): its colours and flicker)
+## over the glass the sprite paints: its set's "glass" (DecorSprites.glass_rect()). The decor layer dims with the
+## ambient light and this glass must not (the street lamps beside it do not dim), so it cancels the layer's modulate
+## with its own self_modulate. It flickers on its own, so it hides the strip's painted flame steps under it.
+class LampGlass extends Node2D:
+	## The glass, local px about the lamp's ground point (unscaled: the node takes the lamp's ArtTuning scale).
+	var rect := Rect2()
+	## Its flicker step now (Structure.lamp_glass_step()), and the clock and phase it steps on.
+	var step := -1
+	var seed_value := 0
+	var _time := 0.0
+
+	func _process(delta: float) -> void:
+		_time += delta
+		var lamp := get_parent() as CanvasItem
+		var layer := lamp.get_parent() as CanvasItem if lamp != null else null
+		var m := lamp.modulate if lamp != null else Color.WHITE
+		if layer != null:
+			m *= layer.modulate
+		var undim := Color(1.0 / maxf(m.r, 0.01), 1.0 / maxf(m.g, 0.01), 1.0 / maxf(m.b, 0.01), 1.0)
+		if not self_modulate.is_equal_approx(undim):
+			self_modulate = undim
+		var s := Structure.lamp_glass_step(_time, seed_value)
+		if s != step:
+			step = s
+			queue_redraw()
+
+	func _draw() -> void:
+		# A house lantern faces front, its iron painted round the glass: no corner bar down the middle.
+		Structure.draw_lamp_glass(self, rect, maxi(step, 0), false)
 
 ## Decor that moves in the wind (trees sway, bunting flutters, reeds and bushes stir; see ArtKit.wind_gain), and
 ## decor that rides the water (rises and falls a whole pixel; its sprite only, see wind.gdshader).
@@ -153,6 +187,10 @@ func _ready() -> void:
 		_glow.z_index = -4
 		add_child(_glow)
 		_place_glow()
+		_glass = LampGlass.new()
+		_glass.seed_value = seed_value
+		add_child(_glass)
+		_sync_glass()
 
 
 ## The lamp's light pool: under its sprite's lantern ("glow" in its decor set) while it draws from one, else at its
@@ -167,7 +205,22 @@ func art_changed() -> void:
 	_art_state()
 	self_modulate = _tint()
 	_place_glow()
+	_sync_glass()
 	queue_redraw()
+
+
+## The lamp's lit glass follows its sprite: at its set's glass while it draws from one and stands, else hidden (and not
+## processing).
+func _sync_glass() -> void:
+	if not is_instance_valid(_glass):
+		return
+	var n := DecorSprites.name_for(kind, seed_value, size, at) if not down else ""
+	var r := DecorSprites.glass_rect(DecorSprites.decor_set(n), DecorSprites.flipped(kind, seed_value)) if n != "" 		else Rect2()
+	_glass.rect = r
+	_glass.scale = Vector2.ONE * ArtTuning.scale(tuning_key())
+	_glass.visible = r.has_area()
+	_glass.set_process(_glass.visible)
+	_glass.queue_redraw()
 
 
 ## The material and, for a sprite_only stand-in, whether it shows (while sprites are on): both follow the art now.
@@ -210,6 +263,7 @@ func hit(amount: float, damage_kind: StringName) -> void:
 		down = true
 		if is_instance_valid(_glow):
 			_glow.queue_free()
+		_sync_glass()
 	else:
 		char_amount = minf(char_amount + amount / CHAR_PER, 1.0)
 	self_modulate = _tint()
@@ -218,6 +272,7 @@ func hit(amount: float, damage_kind: StringName) -> void:
 		if is_instance_valid(f):
 			f.down = down
 			f.char_amount = char_amount
+			f._sync_glass()
 			f.self_modulate = f._tint()
 			f.queue_redraw()
 

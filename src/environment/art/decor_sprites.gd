@@ -68,6 +68,8 @@ static func reload() -> void:
 ## The set named `n`: {name, tex, stump, size, anchor, segment, glow, end_post}, and for a tree set (ATLASES) "src", its
 ## still's rect in "tex", its family's atlas (else tex is its intact.png, drawn whole).
 ## - glow: the optional "glow" (sprite px from the anchor: where a lamp's light pool sits), else zero.
+## - glass: the optional "glass" [x, y, w, h] (a lantern's glass, sprite px from its top left, as the lamp_post
+##   building set's: Decor lights it, glass_rect()), else an empty Rect2.
 ## - end_post: the optional "end_post" [x, y, w, h] (a run's closing post: the sub-rect of the sprite drawn at the
 ##   run's far end), else an empty Rect2.
 ## - stump: the optional stump.png (Texture2D or null).
@@ -108,6 +110,7 @@ static func _build(n: String, m: Dictionary, tex: Texture2D) -> Dictionary:
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
 		"segment": float(m.get("segment", 0.0)),
 		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
+		"glass": Rect2(m.glass[0], m.glass[1], m.glass[2], m.glass[3]) if m.has("glass") else Rect2(),
 		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
 	}
 
@@ -255,6 +258,19 @@ static func glow_offset(kind: int, seed_value: int, size: Vector2) -> Vector2:
 	if n == "":
 		return Vector2.ZERO
 	return decor_set(n).get("glow", Vector2.ZERO)
+
+
+## Set `d`'s lantern glass (its "glass") where a piece drawing it shows it: relative to the piece's ground point,
+## unscaled px, as paint() places the sprite (its top left at -anchor), mirrored with a mirrored piece (`flip`). An
+## empty Rect2 for a set with no glass.
+static func glass_rect(d: Dictionary, flip: bool) -> Rect2:
+	var g: Rect2 = d.get("glass", Rect2())
+	if not g.has_area():
+		return Rect2()
+	var anchor: Vector2 = d.anchor
+	if flip:
+		return Rect2(Vector2(anchor.x - g.end.x, g.position.y - anchor.y), g.size)
+	return Rect2(g.position - anchor, g.size)
 
 
 ## A decor oak's or pine's set, a variant picked from the seed: a forest_oak / forest_pine (the forest's trees, and any

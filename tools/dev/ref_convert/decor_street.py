@@ -12,6 +12,9 @@ enough to carry one).
               light pool (a QuadFx on the ground, at the procedural lamp's ground point, 8 px left of its lantern)
               moves under this lantern: "glow" [8, 0] (the lantern's centre is 8.5 px right of the anchor; the pool
               stays on the ground).
+              "glass" [11, 10, 3, 5]: the lantern's glass (sprite px from its top left, as lamp_post's): Decor draws the
+              street lamp's undimmed lit glass over it (Structure.draw_lamp_glass), so the painted flame shows only
+              under it, and the strip's steps are covered by that glass's own flicker.
               A 4-frame strip at 6 fps (Group C): the flame in the glass (3 x 5 px) changes shape, the still's (0),
               leaning left (1), sunk low (2), leaning right (3); never more than 7 amber px a frame.
   bunting_x   Decor.Kind.BUNTING along ground x (down-right on screen): one ground unit of string (32 px across,
@@ -100,6 +103,7 @@ FLAME_ROW, FLAME_COL = 10, 11
 LAMP_FPS = 6.0
 LAMP_ANCHOR = (4, 37)
 LAMP_GLOW = (8, 0)        # the light pool: on the ground under the lantern (sprite px from the anchor)
+LAMP_GLASS = (FLAME_COL, FLAME_ROW, 3, 5)   # the glass Decor lights (the flame's cells; sprite px from the top left)
 
 # Bunting: ROPE and the pennant tones (lit, body, shade), from ArtKit.BANNER[0..2] and PropArt.ROPE.
 ROPE = (61, 41, 26)
@@ -206,7 +210,7 @@ def main():
                 img.save(Path(args.out) / (name + ".png"))
                 path = Path(args.out) / (name + ".png")
             else:
-                anim = {"frames": 4, "fps": LAMP_FPS} if name == "lamp_house" else {}
+                anim = {"frames": 4, "fps": LAMP_FPS, "glass": LAMP_GLASS} if name == "lamp_house" else {}
                 path = decor_common.write_set(name, img, anchor, segment, glow, **anim)
             print("%-12s %dx%d anchor %s%s%s -> %s" % (name, img.width, img.height, anchor,
                                                       "" if segment is None else " segment %s" % segment,

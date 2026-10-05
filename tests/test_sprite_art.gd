@@ -29,7 +29,49 @@ static func run(t) -> void:
 	_idle_strip(t)
 	_flames(t)
 	_toggle(t)
+	_bonfires(t)
 	SpriteArt.set_enabled(true)
+
+
+## Every set with a fire basket animates its flame (art animation round, Group A).
+const BASKET_SETS := ["town_tower", "town_tower_corner", "town_tower_e", "town_tower_s", "town_tower_e_hi",
+	"town_tower_s_hi", "town_tower_corner_e", "town_tower_corner_s", "town_tower_corner_e_s", "town_gate",
+	"citadel_keep", "citadel_tower"]
+
+
+static func _bonfires(t) -> void:
+	SpriteArt.set_enabled(true)
+	for n: String in BASKET_SETS:
+		var s := SpriteArt.sprite(n)
+		t.check(not s.is_empty() and int(s.frames) >= 6 and s.idle != null,
+			"%s has a flame idle strip (frames %s)" % [n, s.get("frames", 0)])
+	# A tower that only now plays a strip (town_tower_s) keeps its damaged and ruins stills and its sprite still settles
+	# (a KEEP never idles: its procedural banner node runs; _sprite_settled() is what spares it the per-frame sync):
+	# its view steps the strip from the shared clock, a crack stops it, rebuilt it plays again.
+	var tw := _make(Rect2(0, 0, 1.6, 1.6), 46.0, K.KEEP, 5, &"tower", &"door_s")
+	t.check(tw.sprite.get("name", "") == "town_tower_s" and tw.sprite.stills.has(&"damaged")
+		and tw.sprite.stills.has(&"ruins"), "the door_s tower's set keeps its damaged and ruins stills")
+	tw._ready()
+	for i in 4:
+		tw._process(1.0 / 60.0)
+	t.check(tw._sprite_settled() and _strip_on(tw._sprite_view), "a quiet door_s tower settles while its flame plays")
+	tw.damage(tw.max_hp * 0.4, Vector2(-5, -5), &"blast")
+	for i in 90:
+		tw._process(1.0 / 60.0)
+	var v := tw._sprite_view
+	t.check(tw.sprite_state() == &"damaged" and v.still == &"damaged" and _strip_off(v),
+		"cracked, it shows its damaged still and its flame stops")
+	tw.destroy(Vector2(-5, -5), &"blast")
+	for i in 120:
+		tw._process(1.0 / 60.0)
+	t.check(tw.sprite_state() == &"ruins" and _strip_off(v), "brought down, its flame stops")
+	tw.restore()
+	for i in 4:
+		tw._process(1.0 / 60.0)
+	v = tw._sprite_view
+	t.check(tw.sprite_state() == &"intact" and _strip_on(v) and tw._sprite_settled(),
+		"rebuilt, its flame plays again (state %s, still %s, playing %s)" % [tw.sprite_state(), v.still, v.playing])
+	tw.free()
 
 
 ## Adds fake entries (name -> {}) to the cached manifest so mappings resolve without assets; returns the names

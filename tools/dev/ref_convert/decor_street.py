@@ -4,8 +4,10 @@ enough to carry one).
 
   lamp_house  Decor.Kind.LAMP: DecorArt._lamp's post lamp (a post on a flared foot, a capped top, an arm reaching right
               on a brace, a lantern hanging from its end) in the batch 3 lamp_post set's tones: its wood (the warm
-              pixels' lightness quintiles, unmuted) and its lantern iron (its grey pixels). The glass is unlit: dark
-              blue-grey with a pale glint at its lit (left) edge, no painted glow; the glow stays Decor's QuadFx pool.
+              pixels' lightness quintiles, unmuted) and its lantern iron (its grey pixels). The glass is lit, in the flame
+              tones the lamp_post shows over its glass (Structure.COL_FLAME): a pale core, amber round it, deep orange
+              at the corners and the foot, inside the dark iron frame. No halo is painted outside the lantern: the
+              light round it is Decor's QuadFx ground pool.
               17 x 38 px (the procedural lamp is 15 x 36), anchored at the middle of the foot's base row. Decor's
               light pool (a QuadFx on the ground, at the procedural lamp's ground point, 8 px left of its lantern)
               moves under this lantern: "glow" [8, 0] (the lantern's centre is 8.5 px right of the anchor; the pool
@@ -37,11 +39,14 @@ import decor_common  # noqa: E402
 LAMP_POST = convert.ROOT / "assets" / "pixellab" / "buildings" / "lamp_post" / "intact.png"
 OUTLINE = tuple(int(v) for v in convert.OUTLINE)
 
-# Unlit lantern glass (fixed): dark blue-grey, a pale glint. Neither reaches check_sprite_glow's glow rule.
-GLASS = (34, 38, 48)
-GLINT = (92, 100, 112)
+# Lit lantern glass: Structure.COL_FLAME's tones (the lamp_post's keep_flames glass). Only the amber (a) meets
+# check_sprite_glow's glow rule: 6 px of the lamp's 271.
+FLAME_CORE = (255, 240, 176)   # COL_FLAME[0]
+FLAME_AMBER = (255, 176, 64)   # COL_FLAME[1]
+FLAME_DEEP = (214, 96, 26)     # COL_FLAME[2], darkened a little for the glass's edges
 
-# The lamp, light from the left. 0..4 wood (darkest..lightest), i iron, j its lit side, g glass, h glint, o outline.
+# The lamp, light from the left. 0..4 wood (darkest..lightest), i iron, j its lit side, glass c core, a amber,
+# e deep orange, o outline.
 LAMP = [
     "..oooo...........",
     ".o4443o..........",
@@ -53,11 +58,11 @@ LAMP = [
     "..o42o.....ojo...",
     "..o42o....ojjio..",
     "..o42o...ojjiiio.",
-    "..o42o...ojhggio.",
-    "..o42o...ojhggio.",
-    "..o42o...ojgggio.",
-    "..o42o...ojgggio.",
-    "..o42o...ojgggio.",
+    "..o42o...ojeaeio.",
+    "..o42o...ojacaio.",
+    "..o42o...ojacaio.",
+    "..o42o...ojeaeio.",
+    "..o42o...ojeeeio.",
     "..o42o...ojiiiio.",
     "..o42o....ooooo..",
     "..o42o...........",
@@ -116,7 +121,7 @@ def lamp():
     woods, iron, iron_lit = lamp_tones()
     h, w = len(LAMP), len(LAMP[0])
     pal = {str(k): woods[k] for k in range(5)}
-    pal.update({"i": iron, "j": iron_lit, "g": GLASS, "h": GLINT, "o": OUTLINE})
+    pal.update({"i": iron, "j": iron_lit, "c": FLAME_CORE, "a": FLAME_AMBER, "e": FLAME_DEEP, "o": OUTLINE})
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     for y, row in enumerate(LAMP):
         assert len(row) == w, "ragged row %d" % y

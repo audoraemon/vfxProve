@@ -106,6 +106,13 @@ static func _cast(t) -> void:
 	for sh in d.shrines:
 		reach = reach and grid.walkable(d.relight_point(sh)) and not grid.path(d.temple_door, d.relight_point(sh)).is_empty()
 	t.check(reach, "the bearer can walk from the Temple to every shrine's side")
+	var relight_ok := true
+	for sh in d.shrines:
+		var gap: float = sh.distance_to(d.relight_point(sh)) + VigilRoute.ARRIVE
+		relight_ok = relight_ok and gap <= BrokenLanternsDirector.RELIGHT_REACH
+		if gap > BrokenLanternsDirector.RELIGHT_REACH:
+			print("  relight gap %.3f (limit %.2f) at %s" % [gap, BrokenLanternsDirector.RELIGHT_REACH, sh.center()])
+	t.check(relight_ok, "arriving at the relight point (VigilRoute.ARRIVE short of it) is always within RELIGHT_REACH of the shrine")
 	var faithful_ok := d.faithful.size() >= BrokenLanternsDirector.FAITHFUL
 	for f in d.faithful:
 		faithful_ok = faithful_ok and f.profile.faith == CitizenProfile.Faith.FAITHFUL

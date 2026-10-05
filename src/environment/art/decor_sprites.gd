@@ -37,6 +37,12 @@ static var _variants_cache := {}
 ## side along x, bottom-aligned, so wind.gdshader's sway weight (1 - UV.y: the height in the texture) still grows from
 ## a tree's foot to its top.
 const ATLASES := {"forest": ["forest_oak", "forest_pine"], "town": ["town_oak", "town_pine"]}
+## The plant layer's sets (PlantLayer: the floor's meadow shrubs, the baked reeds, bushes and flowers) packed by
+## height into runtime atlases, so a band of them is a few draw calls, not one per piece. Built and drawn by the layer
+## only (paint_plant); decor_set() and live decor keep each set's own texture. wind.gdshader sways a quad by its height
+## in the texture, so a still shorter than its atlas sways that much less at its top (a 7 px flowerbed in the 10 px
+## low atlas: 0.7 of the plant material's sway): the families group the heights (7..10, 11..15, the 30 px reeds).
+const PLANT_ATLASES := {"plant_low": ["shrub", "flowerbed", "flowers"], "plant_bush": ["bush"], "plant_reeds": ["reeds"]}
 ## Built atlases: name -> {"tex": ImageTexture, "rects": {set name -> Rect2}} (kept here: ArtKit holds only RIDs).
 static var _atlases := {}
 
@@ -110,7 +116,7 @@ static func _atlas(a: String) -> Dictionary:
 	if _atlases.has(a):
 		return _atlases[a]
 	var images := []
-	for base: String in ATLASES[a]:
+	for base: String in ATLASES.get(a, PLANT_ATLASES.get(a, [])):
 		for v: int in variants(base):
 			var n := "%s_%d" % [base, v]
 			var path := DIR + n + "/intact.png"
@@ -247,16 +253,56 @@ static func tree_set(kind: int, seed_value: int, tall := 0.0) -> Dictionary:
 ## variant picked from the seed, anchored at `at` on whole pixels, and return true; false (draw nothing) while SpriteArt
 ## is off or the manifest has no such set, so the caller keeps its procedural art.
 static func paint_named(base: String, at: Vector2, seed_value: int, origin: Vector2) -> bool:
-	if not SpriteArt.on():
-		return false
-	var v := variants(base)
-	if v.is_empty():
-		return false
-	var d := decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]])
+	var d := named_set(base, seed_value)
 	if d.is_empty():
 		return false
 	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), (Iso.ground_to_screen(at) - origin - d.anchor).round())
 	return true
+
+
+## The "<base>_<n>" set paint_named() draws for `seed_value`; {} while SpriteArt is off or the manifest has none.
+static func named_set(base: String, seed_value: int) -> Dictionary:
+	if not SpriteArt.on():
+		return {}
+	var v := variants(base)
+	if v.is_empty():
+		return {}
+	return decor_set("%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]])
+
+
+## The set a plant-layer piece draws (TownFloor.plant_in_layer): a floor shrub spot {base, at, seed} its named set, a
+## REEDS / BUSH / FLOWERS piece {kind, at, size, seed} its decor set; {} for any other piece, while SpriteArt is off,
+## or with no set (the floor bake keeps it).
+static func plant_set(d: Dictionary) -> Dictionary:
+	if d.has("base"):
+		return named_set(d.base, d.seed)
+	if not d.get("kind", -1) in Decor.PLANTS:
+		return {}
+	var n := name_for(d.kind, d.seed, d.size, d.at)
+	return {} if n == "" else decor_set(n)
+
+
+## The PLANT_ATLASES atlas set `n` packs into, or "" for none.
+static func plant_atlas(n: String) -> String:
+	for a: String in PLANT_ATLASES:
+		for base: String in PLANT_ATLASES[a]:
+			if n.begins_with(base + "_"):
+				return a
+	return ""
+
+
+## Draw plant-layer piece `d` (screen px, origin zero) from its set `s` (plant_set), taking the set's rect in its
+## PLANT_ATLASES atlas: anchored at its ground point on whole pixels, as paint() and paint_named() place it.
+static func paint_plant(d: Dictionary, s: Dictionary) -> void:
+	var tex: Texture2D = s.tex
+	var src := Rect2(Vector2.ZERO, s.size)
+	var a := plant_atlas(s.name)
+	if a != "":
+		var at: Dictionary = _atlas(a)
+		if at.rects.has(s.name):
+			tex = at.tex
+			src = at.rects[s.name]
+	ArtKit.tex(tex, src, (Iso.ground_to_screen(d.at) - s.anchor).round())
 
 
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down

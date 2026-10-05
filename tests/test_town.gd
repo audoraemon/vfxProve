@@ -33,8 +33,9 @@ static func run(t) -> void:
 	var town2 := Town.new()
 	town2.build(env2, ground)
 	var floor_node: Node = town2.floor_node
-	t.check(floor_node != null and ground.get_child_count() == 2 and ground.get_child(0) is TownFloor
-		and ground.get_child(1) is ForestLayer, "the floor, then the forest layer over it, under the ground plane")
+	t.check(floor_node != null and ground.get_child_count() == 3 and ground.get_child(0) is TownFloor
+		and ground.get_child(1) is PlantLayer and ground.get_child(2) is ForestLayer,
+		"the floor, then the plant layer and the forest layer over it, under the ground plane")
 	t.check(not town2.forest.trees.is_empty() and town2.forest.trees.all(func(d): return d.kind in [Decor.Kind.OAK, Decor.Kind.PINE])
 		and not town2.floor_node.baked_decor.any(func(d): return d.kind in [Decor.Kind.OAK, Decor.Kind.PINE]),
 		"the baked trees go to the forest layer (%d), the rest stays in the floor" % town2.forest.trees.size())

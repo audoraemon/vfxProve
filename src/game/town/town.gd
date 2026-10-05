@@ -38,6 +38,8 @@ var smoke: ChimneySmoke
 ## Null when built without a ground plane (headless tests).
 var floor_node: TownFloor
 var forest: ForestLayer
+## The low plants that sway (PlantLayer), between the floor and the forest.
+var plant_layer: PlantLayer
 ## Everything this town put into the field, so teardown() can take exactly that back out.
 var _built: Array[Structure] = []
 var _decor: Array[Decor] = []
@@ -119,19 +121,40 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		var flat: Array[Dictionary] = []
 		for d in baked:
 			(trees if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE] else flat).append(d)
+		# The floor's shrubs and its baked reeds, bushes and flowers sway in the plant layer while their sprites are
+		# on (TownFloor.plant_in_layer); the floor bakes whichever the layer does not draw. Both share these pieces.
+		var shrubs: Array[Dictionary] = []
+		for s: Dictionary in TownFloor.shrub_spots():
+			shrubs.append(s.duplicate())
+		var plants: Array[Dictionary] = shrubs.duplicate()
+		for d in flat:
+			if d.kind in Decor.PLANTS:
+				plants.append(d)
+		# A plant a baked piece is painted over (a shrub under a garden plot) stays in the bake, still.
+		TownFloor.mark_under(plants, flat)
 		floor_node = TownFloor.new()
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = flat
+		floor_node.shrubs = shrubs
 		floor_node.tint = GROUND_EVENING
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
+		plants.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return (a.at as Vector2).x + (a.at as Vector2).y < (b.at as Vector2).x + (b.at as Vector2).y)
+		plant_layer = PlantLayer.new()
+		plant_layer.name = "Plants"
+		plant_layer.plants = plants
+		# Lit as the floor's texture is: the baked plants took its tint.
+		plant_layer.modulate = GROUND_EVENING
+		ground.add_child(plant_layer)
+		ground.move_child(plant_layer, 1)
 		forest = ForestLayer.new()
 		forest.name = "Forest"
 		forest.trees = trees
 		# Lit as the floor's texture is: the baked trees took its tint.
 		forest.modulate = GROUND_EVENING
 		ground.add_child(forest)
-		ground.move_child(forest, 1)
+		ground.move_child(forest, 2)
 
 
 ## Take this town out of the world: its buildings (the Citadel's parts included) leave the field, the floor is
@@ -247,3 +270,9 @@ func _free_floor() -> void:
 		else:
 			forest.free()
 	forest = null
+	if is_instance_valid(plant_layer):
+		if plant_layer.is_inside_tree():
+			plant_layer.queue_free()
+		else:
+			plant_layer.free()
+	plant_layer = null

@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_floor(t)
 	_real_trees(t)
 	_motion(t)
+	_plants(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -630,3 +631,120 @@ static func _motion(t) -> void:
 	live._ready()
 	t.check(live.material == null, "a live barrel has no material")
 	live.free()
+
+
+## Low plants leave the floor bake for the plant layer's wind bands while their sprites are on (Task 8): the baked
+## reeds, bushes and flowers, and the floor's meadow shrubs and flowerbeds. Rocks and the rest stay baked.
+static func _plants(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var reed := {}
+	var rock := {}
+	for d in TownDecor.spots():
+		if d.bake and d.kind == D.REEDS and reed.is_empty():
+			reed = d
+		if d.bake and d.kind == D.ROCK and rock.is_empty():
+			rock = d
+	t.check(not reed.is_empty() and not rock.is_empty(), "the town bakes a reed and a rock")
+	t.check(TownFloor.plant_in_layer(reed), "sprites on: a baked reed sways in the plant layer")
+	t.check(not TownFloor.plant_in_layer(rock), "sprites on: a baked rock stays in the floor")
+	var spots := TownFloor.shrub_spots()
+	t.check(spots.size() > 100, "the floor has its meadow shrubs (%d)" % spots.size())
+	t.check(TownFloor.shrub_spots().size() == spots.size(), "shrub_spots() is deterministic")
+	t.check(spots.all(func(s: Dictionary) -> bool: return s.base in ["shrub", "flowerbed"] and s.at is Vector2),
+		"each shrub spot is a shrub or a flowerbed at a ground point")
+	t.check(TownFloor.plant_in_layer(spots[0]), "sprites on: a floor shrub sways in the plant layer")
+	SpriteArt.set_enabled(false)
+	t.check(not TownFloor.plant_in_layer(reed) and not TownFloor.plant_in_layer(rock)
+		and not TownFloor.plant_in_layer(spots[0]), "sprites off: every plant stays in the floor bake")
+	SpriteArt.set_enabled(true)
+	# A plant the bake paints a baked piece over (a garden plot over a shrub; a rock in front of a reed) stays in the
+	# bake; a plant in front of the piece, or clear of it, sways.
+	var shrub: Dictionary = spots[0].duplicate()
+	var plot := {"kind": D.GARDEN, "at": shrub.at - Vector2(0.4, 0.4), "size": Vector2(0.8, 0.8), "seed": 1}
+	var far := {"kind": D.GARDEN, "at": shrub.at + Vector2(6, -6), "size": Vector2(0.8, 0.8), "seed": 1}
+	var reed_front: Dictionary = reed.duplicate()
+	reed_front.at = Vector2(rock.at) + Vector2(0.1, 0.1)
+	var reed_back: Dictionary = reed.duplicate()
+	reed_back.at = Vector2(rock.at) - Vector2(0.1, 0.1)
+	var free_shrub: Dictionary = spots[0].duplicate()
+	var marked: Array[Dictionary] = [shrub, reed_front, reed_back]
+	TownFloor.mark_under(marked, [plot, rock] as Array[Dictionary])
+	var clear: Array[Dictionary] = [free_shrub]
+	TownFloor.mark_under(clear, [far] as Array[Dictionary])
+	t.check(shrub.get("under", false) and not TownFloor.plant_in_layer(shrub),
+		"a shrub under a baked garden plot stays in the bake")
+	t.check(reed_back.get("under", false), "a reed behind a baked rock stays in the bake")
+	t.check(not reed_front.get("under", false) and TownFloor.plant_in_layer(reed_front), "a reed in front of the rock sways")
+	t.check(not free_shrub.get("under", false), "a shrub clear of every baked piece sways")
+	# The town hands the layer every floor shrub spot and every baked low plant, back to front.
+	var env := EnvironmentField.new()
+	var ground := Node2D.new()
+	var town := Town.new()
+	town.build(env, ground)
+	var layer: PlantLayer = town.plant_layer
+	t.check(layer != null and ground.get_child_count() == 3 and ground.get_child(0) is TownFloor
+		and ground.get_child(1) is PlantLayer and ground.get_child(2) is ForestLayer,
+		"the floor, the plant layer, then the forest, under the ground plane")
+	var low := town.floor_node.baked_decor.filter(func(d: Dictionary) -> bool: return d.kind in Decor.PLANTS)
+	t.check(layer != null and layer.plants.size() == spots.size() + low.size(),
+		"the plant layer takes %d shrub spots and %d baked plants (got %d)"
+			% [spots.size(), low.size(), layer.plants.size() if layer != null else -1])
+	var sorted := true
+	if layer != null:
+		for i in range(1, layer.plants.size()):
+			var a: Vector2 = layer.plants[i - 1].at
+			var b: Vector2 = layer.plants[i].at
+			if a.x + a.y > b.x + b.y:
+				sorted = false
+	t.check(sorted, "the plant layer's pieces run back to front")
+	var under := layer.plants.filter(func(d: Dictionary) -> bool: return d.get("under", false)) if layer != null else []
+	t.check(under.size() > 0 and under.size() < layer.plants.size() / 10,
+		"a few plants stay in the bake under baked pieces (%d)" % under.size())
+	t.check(town.floor_node.shrubs.size() == spots.size() and town.floor_node.shrubs.all(func(s: Dictionary) -> bool:
+			return layer.plants.has(s)), "the floor and the layer share the town's shrub pieces")
+	t.check(not TownFloor.shrub_spots().any(func(s: Dictionary) -> bool: return s.has("under")),
+		"marking leaves shrub_spots() itself unmarked")
+	# A band draws by atlas (low plants, then bushes, then reeds), so a band is a draw call per atlas, not one each
+	# time the atlas changes down the x + y order.
+	var mixed: Array = []
+	for d in layer.plants:
+		if TownFloor.plant_in_layer(d) and (d.has("base") or d.kind in [D.BUSH, D.REEDS]) and mixed.size() < 60:
+			mixed.append(d)
+	var band := PlantLayer.Band.new()
+	band.plants = mixed
+	ArtKit.begin()
+	band.queue()
+	var bsegs := ArtKit.segments()
+	t.check(bsegs.size() <= DecorSprites.PLANT_ATLASES.size() and bsegs.all(func(g: Array) -> bool: return g[0] == "tex"),
+		"a band of mixed plants is one textured segment per atlas (got %d)" % bsegs.size())
+	var queued := 0
+	for g: Array in bsegs:
+		queued += g[2]
+	t.check(queued == mixed.size(), "and draws every piece once (%d of %d)" % [queued, mixed.size()])
+	# A piece left in the bake under a baked piece is not drawn by the layer too.
+	band.plants = [shrub]
+	ArtKit.begin()
+	band.queue()
+	t.check(ArtKit.segments().is_empty(), "a band leaves a plant marked under to the bake (got %s)" % [ArtKit.segments()])
+	ArtKit.begin()
+	band.free()
+	# A band draws its pieces from the plant atlases: a run of floor shrubs is one textured segment.
+	ArtKit.begin()
+	for i in 12:
+		DecorSprites.paint_plant(spots[i], DecorSprites.plant_set(spots[i]))
+	var segs := ArtKit.segments()
+	t.check(segs.size() == 1 and segs[0][0] == "tex" and segs[0][2] == 12,
+		"twelve floor shrubs and flowerbeds are one textured segment (one atlas, got %s)" % [segs])
+	ArtKit.begin()
+	# Drawn from its atlas, a plant still stands where its own sprite did.
+	var s0 := DecorSprites.plant_set(spots[0])
+	DecorSprites.paint_plant(spots[0], s0)
+	var q := ArtKit.last_quad()
+	t.check(q[0].size == s0.size and q[1] == (Iso.ground_to_screen(spots[0].at) - s0.anchor).round(),
+		"a shrub draws its atlas rect at its anchor (got %s)" % [q])
+	ArtKit.begin()
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()

@@ -44,3 +44,41 @@ static func run(t) -> void:
 		"it is first in the book")
 	for key in w.default_loadout:
 		t.check(w.allows(key), "its default loadout is in its pool (%s)" % key)
+
+	# The Lantern campaign's missions (v0.10): found by their ids, never on the board.
+	var board := []
+	for m in MissionBook.all():
+		board.append(m.id)
+	for id in [MissionBook.MIRAS_HOUSE, MissionBook.VIGIL_FLAME, MissionBook.BROKEN_LANTERNS,
+			MissionBook.FEAST_FESTIVAL, MissionBook.FEAST_PROCESSION]:
+		t.check(MissionBook.get_mission(id).id == id, "the campaign's %s is found by its id" % id)
+		t.check(not board.has(id), "and it is not on the board (%s)" % id)
+	t.check(board == ["warning", "long_night", "last_judgement"], "the board lists what it did (%s)" % [board])
+
+	# Night 2's placeholders (M1): Tier 2, an Unaware town, unscored, held until dawn.
+	var mh := MissionBook.miras_house()
+	var held := []
+	for o in mh.objectives():
+		held.append(o.reason)
+	t.check(mh.tier == 2 and mh.profile == "unaware" and not mh.scored and mh.director == null and held == ["held"],
+		"Mira's House is a Tier 2 placeholder held until dawn (%s)" % [held])
+	t.check(Array(mh.powers()) == MissionBook.VIGIL_POOL and Array(MissionBook.vigil_flame().powers()) == MissionBook.VIGIL_POOL,
+		"Mira's House and the Vigil Flame draft from the quiet five (%s)" % [mh.powers()])
+	var bl := MissionBook.broken_lanterns()
+	t.check(bl.allows("thorns") and bl.allows("heaven") and bl.allows("gravity") and not bl.allows("nova"),
+		"Broken Lanterns adds four Ruin powers, not Nova")
+	t.check(ResultsScreen.title_for(true, "held") == "THE NIGHT PASSES", "a held night has its own title")
+
+	# Night 3, the Feast (v0.10): one of The Long Night's middle acts as a night of one act.
+	var fe := MissionBook.feast("festival")
+	t.check(fe.id == MissionBook.FEAST_FESTIVAL and fe.name == "The Festival" and fe.tier == 3 and fe.has_acts()
+		and fe.acts.size() == 1 and fe.first_act().id == "festival" and fe.first_act().is_last()
+		and fe.first_act().director == FestivalDirector, "the Feast's Festival is The Long Night's act, alone and last")
+	t.check(MissionBook.feast("procession").first_act().director == ProcessionDirector, "and so is the Procession")
+	var warned := NightState.new()
+	warned.bell_rang = true
+	fe.first_act().night = warned
+	t.check(fe.response_profile(ResponseProfile.DEFAULT).tier == ResponseProfile.Tier.ORGANIZED,
+		"after a rung bell the Feast's Prepare shows the Organized town")
+	t.check(MissionBook.long_night().response_profile(ResponseProfile.DEFAULT).tier_name() == "Unaware",
+		"The Long Night still opens on a sleeping town")

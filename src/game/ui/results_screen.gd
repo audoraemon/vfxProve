@@ -33,7 +33,7 @@ var _hover := ""
 
 ## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
-	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED"}
+	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

@@ -6,6 +6,15 @@ extends RefCounted
 const WARNING := "warning"
 const LONG_NIGHT := "long_night"
 const LAST_JUDGEMENT := "last_judgement"
+## The Lantern campaign's own missions (v0.10): Night 2's three, one per path, and Night 3's two Feast nights.
+const MIRAS_HOUSE := "miras_house"
+const VIGIL_FLAME := "vigil_flame"
+const BROKEN_LANTERNS := "broken_lanterns"
+const FEAST_FESTIVAL := "feast_festival"
+const FEAST_PROCESSION := "feast_procession"
+## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
+const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
+const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
 
 
 static func all() -> Array[MissionDef]:
@@ -13,12 +22,21 @@ static func all() -> Array[MissionDef]:
 	return out
 
 
-## The mission with this id; an unknown id gives Last Judgement.
+## The mission with this id, on the board or in the campaign; an unknown id gives Last Judgement.
 static func get_mission(id: String) -> MissionDef:
 	for m in all():
 		if m.id == id:
 			return m
+	for m in campaign_missions():
+		if m.id == id:
+			return m
 	return last_judgement()
+
+
+## The Lantern campaign's missions (v0.10): played from the campaign's night screen, never listed on the board.
+static func campaign_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [miras_house(), vigil_flame(), broken_lanterns(), feast("festival"), feast("procession")]
+	return out
 
 
 ## The Warning (v0.08 M4): a star falls over the Main Gate and a watchman runs to wake the bell; kill whoever carries
@@ -232,3 +250,72 @@ static func _judgement_line(n: NightState) -> String:
 		"held":
 			return "The feast held: the soldiers take the gates."
 	return "Dawn is coming."
+
+
+## Night 2 of the campaign, the Vigil (v0.10 M1): three placeholders held until dawn, one per path, with the spec's
+## briefs and pools. M2, M3 and M4 replace each with its real night.
+static func miras_house() -> MissionDef:
+	return _vigil(MIRAS_HOUSE, "Mira's House", PackedStringArray(["Her journal waits in a shuttered house.",
+		"Lead the grieving to it unseen."]), PackedStringArray(VIGIL_POOL))
+
+
+static func vigil_flame() -> MissionDef:
+	return _vigil(VIGIL_FLAME, "The Vigil Flame", PackedStringArray(["A priest carries Halcyon's flame.",
+		"A mortal hand must steal it."]), PackedStringArray(VIGIL_POOL))
+
+
+static func broken_lanterns() -> MissionDef:
+	return _vigil(BROKEN_LANTERNS, "Broken Lanterns", PackedStringArray(["Six shrines anchor the Lantern.",
+		"Break them before they are relit."]), PackedStringArray(VIGIL_POOL + RUIN_POOL))
+
+
+static func _vigil(id: String, name: String, brief: PackedStringArray, pool: PackedStringArray) -> MissionDef:
+	var m := MissionDef.new()
+	m.id = id
+	m.name = name
+	m.tier = 2
+	m.brief = brief
+	m.goal = "Hold until dawn: this night is still being built"
+	m.goal_label = "Dawn comes"
+	m.lose = "Nothing yet"
+	m.slots = 3
+	m.dp_capacity = 8
+	m.pool = pool
+	m.clock = 120.0
+	m.profile = "unaware"
+	m.intro_banner = name.to_upper()
+	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ClockObjective.new(true, "Dawn", "held")]
+		return out
+	return m
+
+
+## Night 3 of the campaign, the Feast of Lanterns (v0.10): one of The Long Night's middle acts played on its own, as a
+## night of one act. Its town comes from Night 1 through Mission.bell_rang; the act's rules are unchanged.
+static func feast(act_id: String) -> MissionDef:
+	var ln := long_night()
+	var a := ln.act(act_id)
+	a.next = PackedStringArray()
+	var m := MissionDef.new()
+	m.id = "feast_" + act_id
+	m.name = a.name.trim_prefix("Act II: ")
+	m.tier = 3
+	m.brief = a.brief
+	m.goal = a.goal
+	m.goal_label = a.goal_label
+	m.lose = a.lose
+	m.slots = 4
+	m.dp_capacity = 10
+	m.clock = a.clock
+	m.profile = "night"
+	m.scored = true
+	m.default_loadout = ln.default_loadout
+	m.intro_from = a.intro_from
+	m.camera_at = a.camera_at
+	a.intro_banner = "NIGHT 3 - " + m.name.to_upper()
+	m.intro_banner = a.intro_banner
+	m.acts = [a]
+	m.make_objectives = a.make_objectives
+	m.make_bonuses = a.make_bonuses
+	return m

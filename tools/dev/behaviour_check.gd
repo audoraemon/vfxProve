@@ -153,7 +153,7 @@ func _run() -> void:
 		powers = PackedStringArray(WARNING_CASES.get(case_arg if case_arg != "" else "none", ["whisper"]))
 		mission.mission_id = MissionBook.WARNING
 	elif scenario == "miras":
-		powers = PackedStringArray(["whisper", "wisp", "discord"])
+		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.MIRAS_HOUSE
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
@@ -913,9 +913,16 @@ const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whis
 const WARNING_WHISPER_BACK := 8.0
 
 
-## Mira's House (v0.10 M2), played by a simple policy: every tenth of a second, Discord on the nearest Faithful who can
-## see the door (when ready), else a whisper sending the nearest unread grieving citizen in reach to the door when nobody
-## of the Faith watches it. `none` casts nothing.
+## Mira's House (v0.10 M2), played by a simple policy with Mind Whisper, Silent Doom and Discord: every tenth of a
+## second, a report on its way is stopped first -- Silent Doom on a carrier nobody would see die, else a whisper sending
+## them away from the Temple, else Discord on them --
+## then Discord on the nearest Faithful within sight of the door (or walking up to it), else a whisper sending the
+## nearest unread grieving citizen in reach to the door. `none` casts nothing.
+## Nobody living would see `p` die (Silent Doom's witness rule), for the miras policy.
+func crowd_alone(p: Person) -> bool:
+	return mission._crowd.nearest_witness(p.ground_pos, p) == null
+
+
 func _miras(which: String) -> void:
 	var rules: Rules = mission._rules
 	var d := rules.director as MirasHouseDirector
@@ -937,10 +944,31 @@ func _miras(which: String) -> void:
 				d.inside().size(), roundi(d.gaze.value), d.reports_started])
 		if which != "play" or frames % 6 != 0:
 			continue
-		var watcher := d.faithful_seeing(d.door, MirasHouseDirector.SIGHT)
-		if watcher != null:
+		var stopped := false
+		for r: TempleReport in d.reports:
+			var c := r.carrier
+			if not is_instance_valid(c) or not c.is_alive() or c.mind == Person.Mind.CONFUSED:
+				continue
+			if slots.has("doom") and rules.refusal(slots.doom) == "" and crowd_alone(c):
+				rules.cast(slots.doom, c.ground_pos)
+				stopped = true
+				break
+			if slots.has("whisper") and rules.refusal(slots.whisper) == "" and not c.shaken() 					and c.mind != Person.Mind.WHISPERED:
+				var away := c.ground_pos + (c.ground_pos - d.temple_door).normalized() * MindWhisperFx.REACH
+				rules.cast(slots.whisper, c.ground_pos, {"target": c, "to": away})
+				stopped = true
+				break
 			if slots.has("discord") and rules.refusal(slots.discord) == "":
-				rules.cast(slots.discord, watcher.ground_pos)
+				rules.cast(slots.discord, c.ground_pos)
+				stopped = true
+				break
+		if stopped:
+			continue
+		var watcher := d.faithful_seeing(d.door, MirasHouseDirector.SIGHT + 1.5)
+		if watcher != null and slots.has("discord") and rules.refusal(slots.discord) == "":
+			rules.cast(slots.discord, watcher.ground_pos)
+			continue
+		if d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) != null:
 			continue
 		if not slots.has("whisper") or rules.refusal(slots.whisper) != "":
 			continue

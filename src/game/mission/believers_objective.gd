@@ -1,9 +1,9 @@
 class_name BelieversObjective
 extends Objective
 ## Mira's House (v0.10): at dawn, NEED Believers alive and out of the house win the night ("believers"); fewer lose it
-## ("few").
+## ("few"). Four, not the spec's starting five (Task 7: a scripted policy reached 3-7 Believers, most often 4).
 
-const NEED := 5
+const NEED := 4
 
 
 func _init() -> void:

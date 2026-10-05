@@ -11,13 +11,13 @@ extends MissionDirector
 ## Where Mira lived: her house is the one nearest this point (ground units).
 const MIRA_SPOT := Vector2(-12.0, 2.0)
 ## How many grieving there are, and how many Faithful besides the clergy.
-const GRIEVING := 10
-const FAITHFUL := 20
+const GRIEVING := 12
+const FAITHFUL := 12
 ## How near the door a person must stand to go in; how long a reading takes.
 const DOOR_REACH := 0.7
-const READ_SECONDS := 10.0
+const READ_SECONDS := 8.0
 ## How far a Faithful sees someone at the door, and hears a Believer crying out.
-const SIGHT := 4.0
+const SIGHT := 3.0
 const HEAR := 6.0
 ## The marks over the grieving and the Believers.
 const MARK_GRIEVING := Color(0.85, 0.75, 0.45, 0.8)
@@ -40,7 +40,7 @@ const SHOUT_OFF := Vector2(0.0, 3.0)
 ## 1:45 -- the Vigil passes the door, and Faithful line the street by it for VIGIL_SECONDS (offsets from the door).
 const VIGIL_AT := 105.0
 const VIGIL_SECONDS := 30.0
-const LINE_SPOTS := [Vector2(-1.5, 2.0), Vector2(1.5, 2.0), Vector2(-1.5, -2.0), Vector2(1.5, -2.0)]
+const LINE_SPOTS := [Vector2(-1.2, 1.5), Vector2(1.2, 1.5), Vector2(-1.2, -1.5), Vector2(1.2, -1.5)]
 ## The Vigil's way past the door (offsets from it).
 const VIGIL_ROUTE := [Vector2(6.0, -4.0), Vector2(0.0, -2.5), Vector2(0.0, 2.5), Vector2(6.0, 4.0)]
 ## 2:00 -- the priests burn the house.
@@ -52,7 +52,7 @@ const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, 
 var house: Structure
 var door := Vector2.INF
 var temple_door := Vector2.INF
-## The ten grieving, Believers among them once they have read.
+## The grieving, Believers among them once they have read.
 var grieving: Array[Person] = []
 var faithful: Array[Person] = []
 var believers: Array[Person] = []
@@ -115,7 +115,7 @@ func _walkable(g: Vector2) -> Vector2:
 	return w if w != Vector2.INF else g
 
 
-## The ten lay citizens nearest the door grieve; the clergy and FAITHFUL others, spread through the rest, are Halcyon's
+## The GRIEVING lay citizens nearest the door grieve; the clergy and FAITHFUL others, spread through the rest, are Halcyon's
 ## Faithful; the cleric nearest the Temple is the Inquisitor.
 func _choose_people() -> void:
 	var keeper: Person = crowd.bell.keeper if crowd.bell != null else null

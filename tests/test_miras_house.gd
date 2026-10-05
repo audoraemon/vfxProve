@@ -85,13 +85,13 @@ static func _cast(t) -> void:
 	t.check(d.house != null and d.house.kind == Structure.Kind.HOUSE and d.door != Vector2.INF
 		and d.door.distance_to(d.house.center()) < 3.0, "Mira's house is a west-quarter house with a door")
 	t.check(d.grieving.size() == MirasHouseDirector.GRIEVING and d.gaze != null and d.gaze.value == 0.0,
-		"ten grieving, and the Gaze at 0")
+		"the grieving chosen, and the Gaze at 0")
 	var faithful_ok := d.faithful.size() >= MirasHouseDirector.FAITHFUL
 	for f in d.faithful:
 		faithful_ok = faithful_ok and f.profile.faith == CitizenProfile.Faith.FAITHFUL and not d.grieving.has(f)
-	t.check(faithful_ok, "at least twenty Faithful, none of them grieving (%d)" % d.faithful.size())
+	t.check(faithful_ok, "the Faithful chosen, none of them grieving (%d)" % d.faithful.size())
 	t.check(d.venn != null and d.faithful.has(d.venn), "the Inquisitor is one of the Faithful")
-	t.check(d.marks().size() == MirasHouseDirector.GRIEVING, "the HUD marks the ten grieving")
+	t.check(d.marks().size() == MirasHouseDirector.GRIEVING, "the HUD marks the grieving")
 	t.check(d.timeline != null, "the night keeps a timeline for its windows")
 	_done(s)
 
@@ -210,9 +210,9 @@ static func _ending(t) -> void:
 	d.journal = d.grieving[0]
 	rules.time_left = DT
 	_run(s, DT * 2.0)
-	t.check(rules.finished and rules.won and rules.over_reason == "believers", "five Believers out at dawn win the night")
+	t.check(rules.finished and rules.won and rules.over_reason == "believers", "enough Believers out at dawn win the night")
 	var res := rules.result()
-	t.check(int(res.get("believers", -1)) == 5, "the results count them")
+	t.check(int(res.get("believers", -1)) == BelieversObjective.NEED, "the results count them")
 	var earned := []
 	for b: Dictionary in res.bonuses:
 		earned.append(bool(b.earned))
@@ -226,7 +226,7 @@ static func _ending(t) -> void:
 	(s2.rules as Rules).time_left = DT
 	_run(s2, DT * 2.0)
 	t.check((s2.rules as Rules).finished and not (s2.rules as Rules).won and (s2.rules as Rules).over_reason == "few",
-		"four at dawn lose it")
+		"one short at dawn loses it")
 	_done(s2)
 
 

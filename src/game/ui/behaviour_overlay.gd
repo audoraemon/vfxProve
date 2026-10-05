@@ -7,10 +7,11 @@ extends Node
 ## once shown.
 
 const TOGGLE_KEY := KEY_F4
-## Ring colours by Person.Intent: routine, observe, local flee, regroup, evacuate, reroute, recover, assist, shelter.
+## Ring colours by Person.Intent: routine, observe, local flee, regroup, evacuate, reroute, recover, assist, shelter,
+## confused, gather, frenzy.
 const INTENT_COLS := [Color("7fc46a"), Color("e8e2d0"), Color("ff8a3a"), Color("6fa8c8"), Color("c8342a"),
 	Color("d060e0"), Color("d8b23a"), Color("5ad0ff"), Color("b0b0ff"), Person.COL_DISCORD,
-	Person.COL_WHISPER]
+	Person.COL_WHISPER, Color("ffd86a"), Color("ff3838")]
 ## How near the mouse (ground units) a citizen must be to be the one described.
 const PICK_REACH := 1.5
 
@@ -102,6 +103,16 @@ func _draw_world(ci: CanvasItem) -> void:
 			continue
 		var at := Iso.ground_to_screen(p.ground_pos)
 		ci.draw_arc(at, 4.0, 0.0, TAU, 10, intent_color(p.intent()), 1.0)
+		# The compelled: the path to where they are drawn. The maddened: the value and its stage over the head.
+		if p.mind == Person.Mind.COMPELLED and p.goal() != Vector2.INF:
+			ci.draw_line(at, Iso.ground_to_screen(p.goal()), Color(INTENT_COLS[Person.Intent.GATHER], 0.5), 1.0)
+		_draw_statuses(ci, p, at)
+	if crowd.madness != null:
+		for l: Array in crowd.madness.links:
+			ci.draw_line(Iso.ground_to_screen(l[0]), Iso.ground_to_screen(l[1]), Color(0.8, 0.3, 0.6, 0.8), 1.0)
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FIGHT:
+			_draw_statuses(ci, p, Iso.ground_to_screen(p.ground_pos))
 	if crowd.engineers != null:
 		for team: Dictionary in crowd.engineers.teams:
 			if (team.job as Dictionary).is_empty():
@@ -121,6 +132,17 @@ func _draw_world(ci: CanvasItem) -> void:
 			var r := float(t.radius) * 32.0 * 1.414
 			ci.draw_arc(c, r, 0.0, TAU, 32, Color(1, 0.4, 0.2, 0.8), 1.0)
 			ci.draw_arc(c, float(t.sound) * 45.0, 0.0, TAU, 48, Color(1, 0.9, 0.4, 0.35), 1.0)
+
+
+## A status's value and stage over the head (madness), and a fighter's line to whom it is going for.
+func _draw_statuses(ci: CanvasItem, p: Person, at: Vector2) -> void:
+	if p.statuses.has(MadnessManager.STATUS):
+		var v: float = p.statuses[MadnessManager.STATUS]
+		var stage := MadnessManager.stage_of(v)
+		UiTheme.text(ci, at + Vector2(-10, -26), "%.2f %s" % [v, MadnessManager.STAGE_NAMES[stage]], UiTheme.SIZE_SMALL,
+			MadnessManager.COL_STAGES[stage])
+	if p.mind == Person.Mind.FIGHT and is_instance_valid(p.fight_target):
+		ci.draw_line(at, Iso.ground_to_screen(p.fight_target.ground_pos), Color(1, 0.2, 0.2, 0.8), 1.0)
 
 
 func _draw_panel(ci: Control) -> void:
@@ -180,6 +202,15 @@ func _draw_panel(ci: Control) -> void:
 				sick_soldiers += 1
 		lines.append(["Plague: %d sick (%d soldiers), %d dead, %d puffs" % [plague.sick.size(), sick_soldiers,
 			plague.deaths, plague.puffs_alive()], Person.SICK_MOTE])
+	if crowd.madness != null and not crowd.madness.afflicted.is_empty():
+		var m := crowd.madness
+		var by_stage := [0, 0, 0, 0]
+		for p: Person in m.afflicted:
+			if is_instance_valid(p) and p.is_alive():
+				by_stage[MadnessManager.stage_of(m.value_of(p))] += 1
+		lines.append(["Madness: %d afflicted (%d uneasy, %d disturbed, %d unstable, %d broken), %d broken in all, alarm +%.1f" % [
+			m.afflicted.size(), by_stage[0], by_stage[1], by_stage[2], by_stage[3], m.broken, m.alarm_generated],
+			MadnessManager.COL_STAGES[2]])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

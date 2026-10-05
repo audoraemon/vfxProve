@@ -2,15 +2,17 @@ extends Node2D
 ## VFX sandbox: iso floor, dummy enemies, effect picker, capture and bench modes. The world itself (layers, camera,
 ## sound, lights, buildings, units, glow, impact, flash) is the shared Battlefield.
 
-## Set 0: sci-fi city. Set 1: fantasy castle (KWAI). Tab switches set and rebuilds the map.
+## Set 0: sci-fi city. Set 1: fantasy castle (KWAI). Set 2: the same castle, for the divine powers. Tab switches set
+## and rebuilds the map.
 ## dim_scale: how strongly effects darken the world. zoom: camera push-in while a skill plays.
 const SETS := [
 	{"name": "Set1 Sci-Fi", "theme": "scifi", "clear": Color("07080d"), "dim_scale": 0.75, "zoom": 1.35},
 	{"name": "Set2 Fantasy", "theme": "fantasy", "clear": Color("2a2e24"), "dim_scale": 0.4, "zoom": 1.55},
+	{"name": "Set3 Divine", "theme": "fantasy", "clear": Color("2a2e24"), "dim_scale": 0.4, "zoom": 1.55},
 ]
 const FOCUS_IN := 0.45
 const FOCUS_OUT := 0.7
-## `lane`: cast with a drag direction.
+## `lane`: cast with a drag direction. `pair`: two clicks, one for each of its places (Mirrorfold Passage).
 const EFFECTS := [
 	{"set": 0, "key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd", "zoom": 1.2, "focus_up": -60.0},
 	{"set": 0, "key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd"},
@@ -25,6 +27,8 @@ const EFFECTS := [
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -10.0, "focus_px": Vector2(150, -20), "zoom": 0.8},
 	{"set": 1, "key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd", "focus_up": -16.0, "zoom": 2.2},
 	{"set": 1, "key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 2, "key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd", "focus_up": -30.0, "zoom": 0.8},
+	{"set": 2, "key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd", "pair": true, "focus_up": 0.0, "zoom": 1.0},
 ]
 
 ## Capture moments per effect (seconds from cast).
@@ -43,6 +47,12 @@ const CAPTURES := {
 	# The quiet powers (v0.05): Silent Doom on the trooper nearest the middle; Blight on a well set down there.
 	"doom": {"target": Vector2(0, 0), "times": [0.2, 0.45, 0.8, 1.2], "at_enemy": true, "snap": true},
 	"blight": {"target": Vector2(0, 0), "times": [0.3, 0.8, 1.2, 1.5], "well": true, "snap": true},
+	# The pillar gathering, landing, standing and lifting, then the pit left behind.
+	"solaris": {"target": Vector2(0, 0), "times": [0.7, 1.22, 1.45, 2.5, 4.5, 6.15, 6.5, 7.4, 8.4],
+		"after": [1.0, 1.3, 1.6, 2.0, 2.5, 4.0, 6.0, 9.0]},
+	# The way in above, the way out below; its clip is its first seconds, not the whole half-minute it lies there.
+	"mirror": {"target": Vector2(-1.8, -1.8), "to": Vector2(1.8, 1.8), "dir": Vector2(1, 1), "times": [0.3, 0.6, 3.0, 8.0, 29.6],
+		"clip_run": 10.0},
 }
 
 const ENEMY_COUNT := 40
@@ -63,6 +73,8 @@ var _hud: Label
 var _drag_preview: Node2D
 var _press_ground := Vector2.ZERO
 var _pressing := false
+## A two-click effect's first place, once clicked (Vector2.INF while not).
+var _first := Vector2.INF
 var _rng: RandomNumberGenerator
 var _active_fx: Array[FxTimeline] = []
 var _home_position := Vector2.ZERO
@@ -174,6 +186,8 @@ func _focus_camera(entry: Dictionary, fx: FxTimeline, ground: Vector2, extra: Di
 	var focus := ground
 	if entry.get("lane", false):
 		focus += (extra.get("dir", Vector2(1, 0)) as Vector2).normalized() * float(entry.get("focus_along", 4.0))
+	if entry.get("pair", false):
+		focus = (ground + MirrorfoldFx.exit_for(ground, extra.get("to", ground))) * 0.5
 	var target := Iso.ground_to_screen(focus) + Vector2(0, float(entry.get("focus_up", -40.0)))
 	target += entry.get("focus_px", Vector2.ZERO)
 	var zoom: float = entry.get("zoom", SETS[set_index].zoom)
@@ -214,6 +228,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				var i: int = event.physical_keycode - KEY_1
 				if i < _visible_effects().size():
 					selected = i
+					_first = Vector2.INF
 					_update_hud()
 			KEY_TAB:
 				set_index = (set_index + 1) % SETS.size()
@@ -235,9 +250,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pressing = false
 			_drag_preview.queue_redraw()
 			var extra := {}
+			if _visible_effects()[selected].get("pair", false):
+				# Two clicks: the first is the way in, the second the way out.
+				if _first == Vector2.INF:
+					_first = _press_ground
+					return
+				extra["to"] = _press_ground
+				cast(selected, _first, extra)
+				_first = Vector2.INF
+				return
 			if _visible_effects()[selected].get("lane", false):
 				var drag := _mouse_ground() - _press_ground
 				extra["dir"] = drag.normalized() if drag.length() >= LASER_DRAG_MIN else Vector2(1, 0)
+				extra["to"] = _mouse_ground()
 			cast(selected, _press_ground, extra)
 
 
@@ -259,15 +284,20 @@ func _process(delta: float) -> void:
 		var slack := FOLLOW_SLACK * _follow_slack
 		var chase := Vector2(signf(off.x) * maxf(absf(off.x) - slack.x, 0.0), signf(off.y) * maxf(absf(off.y) - slack.y, 0.0))
 		_camera.position = _camera.position.lerp(_camera.position + chase, minf(4.0 * real, 1.0))
-	if _pressing:
+	if _pressing or _first != Vector2.INF:
 		_drag_preview.queue_redraw()
 
 
 func _draw_drag_preview() -> void:
+	var col := Color(1, 0.35, 0.2, 0.9)
+	if _first != Vector2.INF:
+		# The first place of a two-click effect, and the line to where the second would go.
+		_drag_preview.draw_line(_first, _mouse_ground(), col, -1.0)
+		_drag_preview.draw_rect(Rect2(_first - Vector2(0.08, 0.08), Vector2(0.16, 0.16)), col)
+		return
 	if not _pressing or not _visible_effects()[selected].get("lane", false):
 		return
 	var to := _mouse_ground()
-	var col := Color(1, 0.35, 0.2, 0.9)
 	_drag_preview.draw_line(_press_ground, to, col, -1.0)
 	_drag_preview.draw_rect(Rect2(_press_ground - Vector2(0.08, 0.08), Vector2(0.16, 0.16)), col)
 
@@ -283,7 +313,7 @@ func _update_hud() -> void:
 		if i == 3 and list.size() > 4:
 			names.append("\n   ")
 	var slow := "  SLOW-MO x0.25" if ctx.impact.base_time_scale < 0.5 else ""
-	_hud.text = "%s:  %s\nLMB cast (lane skills: drag = direction)   TAB switch set   R respawn   SPACE slow-mo   WASD pan%s" % [
+	_hud.text = "%s:  %s\nLMB cast (lane skills: drag = direction; mirrors: click twice)   TAB switch set   R respawn   SPACE slow-mo   WASD pan%s" % [
 		SETS[set_index].name, "  ".join(names), slow]
 
 
@@ -311,6 +341,8 @@ func _capture_all(only: String) -> void:
 		var extra := {}
 		if plan.has("dir"):
 			extra["dir"] = plan.dir
+		if plan.has("to"):
+			extra["to"] = plan.to
 		var fx := _cast_entry(entry, _stage(plan), extra)
 		for time in plan.times:
 			while is_instance_valid(fx) and fx.t < time:
@@ -318,6 +350,12 @@ func _capture_all(only: String) -> void:
 			await _bf.save_capture("%s_%04d.png" % [key, int(time * 1000)])
 		while is_instance_valid(fx):
 			await get_tree().process_frame
+		# What the effect leaves behind (the Light of Solaris's pit), this long after it has ended.
+		var waited := 0.0
+		for later: float in plan.get("after", []):
+			await _bf.wait_frames(roundi((later - waited) * 60.0))
+			waited = later
+			await _bf.save_capture("%s_after_%02d.png" % [key, int(later)])
 	await _bf.quit()
 
 
@@ -359,6 +397,8 @@ func _capture_clips(only: String) -> void:
 		var extra := {}
 		if plan.has("dir"):
 			extra["dir"] = plan.dir
+		if plan.has("to"):
+			extra["to"] = plan.to
 		var cast_at := _stage(plan)
 		var fx := _cast_entry(entry, cast_at, extra)
 		if plan.get("snap", false):
@@ -368,7 +408,7 @@ func _capture_clips(only: String) -> void:
 			_camera.position = Iso.ground_to_screen(cast_at) + Vector2(0, float(entry.get("focus_up", -40.0)))
 			_camera.zoom = Vector2.ONE * float(entry.get("zoom", SETS[set_index].zoom))
 			_camera.reset_smoothing()
-		var run := fx.duration
+		var run: float = plan.get("clip_run", fx.duration)
 		var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false, Image.FORMAT_RGBA8)
 		for i in PowerBook.CLIP_FRAMES:
 			var at := run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)

@@ -42,8 +42,28 @@ const POWER_KINDS := {
 	"cinder": [&"cinder", &"stone"],
 	"judgement": [&"stone"],
 	"glacial": [&"ice"],
+	"solaris": [&"solaris", &"pit"],
+	"madness": [&"frenzy"],
+	"smite": [&"lightning", &"smite"],
+	"ember": [&"fire"],
+	"deathmark": [&"deathmark"],
+	"noleave": [],
+	"belllies": [],
+	"magnify": [&"magnify"],
+	"abolition": [],
+	"voice": [&"frenzy"],
+	"turncoat": [&"frenzy"],
+	"hatred": [&"frenzy"],
+	"verdict": [&"frenzy", &"mob"],
+	"schism": [&"frenzy"],
 	"nova": [&"nova"],
 }
+## The laws of a mission Abolition can void for a while (abolish()), and the Citadel's budget with its ward gone.
+const LAW_CLOCK := &"clock"
+const LAW_ESCAPE := &"escape"
+const LAW_WARD := &"ward"
+const LAWS := [LAW_CLOCK, LAW_ESCAPE, LAW_WARD]
+const WARD_GONE := 1000.0
 ## The roles that count as a building for the tally, the chain and the score. Decor (trees, torch posts) does
 ## not, and the Citadel's nine parts are not nine buildings -- the Citadel is its own objective.
 const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barracks", &"market", &"farm", &"bridge",
@@ -111,6 +131,9 @@ var _casts: Array[Dictionary] = []
 var _elapsed := 0.0
 ## The crowd's counts when this act began (v0.09): an act counts from its own start; a single mission starts from 0.
 var _escaped0 := 0
+## The laws abolished for now (abolish()): law -> seconds left. And the Citadel's ward as it was, to put back.
+var _abolished := {}
+var _ward_budget := -1.0
 var _citizens0 := 0
 var _soldiers0 := 0
 
@@ -161,7 +184,9 @@ func advance(delta: float) -> void:
 		_cooldowns[i] = maxf(0.0, _cooldowns[i] - delta)
 	_elapsed += delta
 	_forget_old_casts()
-	time_left = maxf(0.0, time_left - delta)
+	_step_abolished(delta)
+	if not is_abolished(LAW_CLOCK):
+		time_left = maxf(0.0, time_left - delta)
 	if _stability_dirty:
 		_stability_dirty = false
 		stability.measure(_env, _crowd, _town.citadel)
@@ -171,6 +196,37 @@ func advance(delta: float) -> void:
 	if director != null:
 		director.step(delta)
 	_check_end()
+
+
+## Abolish a law of the mission for `seconds` (Abolition). LAW_CLOCK: the clock does not run, and time stands still
+## in the town (Crowd.freeze()). LAW_ESCAPE: whoever
+## escapes meanwhile is not counted against the act's limit. LAW_WARD: the Citadel's ward -- the cap on what it can
+## lose in a second -- is gone. The law comes back by itself when the time is up.
+func abolish(law: StringName, seconds: float) -> void:
+	if not law in LAWS or seconds <= 0.0:
+		return
+	_abolished[law] = maxf(float(_abolished.get(law, 0.0)), seconds)
+	if law == LAW_CLOCK and is_instance_valid(_crowd):
+		_crowd.freeze(seconds)  # with no clock, time itself stands still in the town
+	if law == LAW_WARD and _ward_budget < 0.0 and is_instance_valid(_town) and is_instance_valid(_town.citadel):
+		_ward_budget = _town.citadel.budget_per_second
+		_town.citadel.budget_per_second = WARD_GONE
+
+
+func is_abolished(law: StringName) -> bool:
+	return _abolished.has(law)
+
+
+func _step_abolished(delta: float) -> void:
+	for law: StringName in _abolished.keys():
+		_abolished[law] = float(_abolished[law]) - delta
+		if float(_abolished[law]) > 0.0:
+			continue
+		_abolished.erase(law)
+		if law == LAW_WARD and _ward_budget >= 0.0:
+			if is_instance_valid(_town) and is_instance_valid(_town.citadel):
+				_town.citadel.budget_per_second = _ward_budget
+			_ward_budget = -1.0
 
 
 ## The manifestation is cut short by `seconds` (the clergy's Banishing Rite, v0.05). The clock never goes below
@@ -356,6 +412,8 @@ func _check_chain(c: Dictionary) -> void:
 
 
 func _on_escaped(_p: Person) -> void:
+	if is_abolished(LAW_ESCAPE):
+		_escaped0 += 1  # not counted against the act
 	_stability_dirty = true
 
 

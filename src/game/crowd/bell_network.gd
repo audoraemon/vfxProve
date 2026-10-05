@@ -136,12 +136,32 @@ func replace_keeper(p: Person) -> void:
 	keeper_replaced.emit()
 
 
+## How many times the bell has lied (The Bell Lies).
+var lied := 0
+
+
+## A bell that has rung is as if it had not (Crowd.unring_bell()): the keeper will try again.
+func unring() -> void:
+	if state == State.RUNG:
+		_wait()
+
+
 func _wait() -> void:
 	state = State.WAITING
 	_retry_in = RETRY
 
 
 func _ring() -> void:
+	if _crowd.is_hushed():
+		_wait()  # a silenced town's bell makes no sound: the keeper tries again
+		return
+	if _crowd.is_bell_lying():
+		# The bell lies: it tolls all is well, and the keeper, baffled, tries again.
+		lied += 1
+		ring_show = 3.0
+		_crowd.false_bell(tower.center())
+		_wait()
+		return
 	state = State.RUNG
 	ring_show = 3.0
 	_crowd.off_duty(keeper)

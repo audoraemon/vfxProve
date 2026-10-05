@@ -102,10 +102,23 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 
 
 ## Where the open tab's card `i` sits.
-static func cell_rect(i: int) -> Rect2:
+static func cell_rect(i: int, count := 0) -> Rect2:
 	var col := i % COLUMNS
 	var row := i / COLUMNS
-	return Rect2(GRID_AT + Vector2(float(col) * (CARD.x + GAP), float(row) * (CARD.y + GAP)), CARD)
+	var h := card_height(count)
+	return Rect2(GRID_AT + Vector2(float(col) * (CARD.x + GAP), float(row) * (h + GAP)), Vector2(CARD.x, h))
+
+
+## A card's height in a tab of `count` powers: CARD's own while they fit in ROWS rows; more than that and the rows
+## share the same room, each a little shorter (a tab of thirteen to fifteen: five rows).
+const ROWS := 4
+
+
+static func card_height(count: int) -> float:
+	var rows := ceili(float(count) / float(COLUMNS))
+	if rows <= ROWS:
+		return CARD.y
+	return floorf((float(ROWS) * CARD.y + float(ROWS - 1) * GAP - float(rows - 1) * GAP) / float(rows))
 
 
 ## Tab `i` of `count`: the tabs share TAB_ROW, each (432 - 4 x (count - 1)) / count wide.
@@ -175,7 +188,7 @@ func hit(point: Vector2) -> String:
 			return "tab:%d" % i
 	var keys := shown()
 	for i in keys.size():
-		if cell_rect(i).has_point(point):
+		if cell_rect(i, shown().size()).has_point(point):
 			return String(keys[i])
 	for i in draft.slots:
 		if slot_rect(i, draft.slots).has_point(point):
@@ -344,7 +357,7 @@ func _draw_tabs() -> void:
 			else UiTheme.COL_PANEL))
 		UiTheme.frame(_ui, r, open)
 		var keys := authority_keys(i)
-		# The count goes when it would not fit beside the title ("LIFE/DEATH" fills a sixth of the row).
+		# The count goes when it would not fit beside the title ("DOMINION" fills a sixth of the row).
 		var title := PowerBook.authority_title(all[i])
 		var label := "%s %d" % [title, keys.size()]
 		if UiTheme.width(label, UiTheme.SIZE_SMALL) > r.size.x - 10.0:
@@ -475,29 +488,32 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 
 func _draw_card(i: int, key: String) -> void:
 	var p := PowerBook.get_power(key)
-	var r := cell_rect(i)
+	var r := cell_rect(i, shown().size())
+	# A crowded tab's cards are shorter: a smaller icon, the lines closer.
+	var compact := r.size.y < CARD.y
+	var icon_px := r.size.y - 8.0 if compact else 42.0
 	var slot := draft.slot_of(key)
 	# A card that would not fit -- no free slot, or over the Divine Power -- is dimmed (v0.08); a picked one never is.
 	var refused := draft.refusal(key) != ""
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
 	var icon: Texture2D = _icons.get(key)
 	if icon != null:
-		_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(4, 4), Vector2(42, 42)), false,
+		_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(4, 4), Vector2(icon_px, icon_px)), false,
 			Color(1, 1, 1, 0.45) if refused else Color.WHITE)
 	# Gold for a picked card (spec §5), so the picks read at a glance across the grid.
 	UiTheme.frame(_ui, r, slot > 0)
-	var tx := r.position.x + 52.0
-	var ty := r.position.y + 13.0
-	var lines := UiTheme.wrap(String(p.name), CARD.x - 56.0, UiTheme.SIZE_SMALL)
+	var tx := r.position.x + icon_px + 10.0
+	var ty := r.position.y + (11.0 if compact else 13.0)
+	var lines := UiTheme.wrap(String(p.name), CARD.x - icon_px - 14.0, UiTheme.SIZE_SMALL)
 	for k in mini(lines.size(), 2):
 		UiTheme.text(_ui, Vector2(tx, ty), lines[k], UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if slot > 0 else (UiTheme.COL_DIM if refused else UiTheme.COL_TEXT))
-		ty += UiTheme.LINE_SMALL
+		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
 	var cost := "%d DP  %s" % [int(p.dp), cooldown_text(p)]
-	UiTheme.text(_ui, Vector2(tx, r.end.y - 5.0), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.
-		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - 5.0), "quiet",
+		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - (3.0 if compact else 5.0)), "quiet",
 			UiTheme.SIZE_SMALL, Color("9ab48a"))
 	if slot > 0:
 		# On the icon's corner, gold on dark like the HUD's hotkeys. Dark digits on a gold square picked up every

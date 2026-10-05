@@ -75,6 +75,8 @@ static func run(t) -> void:
 	_seen(t)
 	_gaze(t)
 	_ending(t)
+	_events(t)
+	_focus(t)
 
 
 static func _cast(t) -> void:
@@ -225,4 +227,123 @@ static func _ending(t) -> void:
 	_run(s2, DT * 2.0)
 	t.check((s2.rules as Rules).finished and not (s2.rules as Rules).won and (s2.rules as Rules).over_reason == "few",
 		"four at dawn lose it")
+	_done(s2)
+
+
+static func _events(t) -> void:
+	# 0:40 -- the Inquisitor searches; at Mira's door with someone inside, she reports at once.
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	t.check(d.timeline.upcoming(4).size() >= 3, "the night's windows are on the strip")
+	_run(s, MirasHouseDirector.VENN_AT + DT)
+	t.check(d.venn_searching and d.venn.mind == Person.Mind.DUTY, "at 0:40 the Inquisitor starts her search")
+	_blind(d, d.door)
+	_bring(d, d.grieving[0])
+	_run(s, DT * 2.0)
+	t.check(d.grieving[0].inside, "someone is inside")
+	d._venn_i = d._venn_houses.size() - 1
+	_arrive(d.venn, d.door)
+	d.venn.go_duty(d.door)
+	_arrive(d.venn, d.door)
+	_run(s, DT * 2.0)
+	t.check(d.reports.size() == 1 and d.reports[0].carrier == d.venn and not d.venn_searching,
+		"at Mira's door with someone inside, the Inquisitor reports")
+	_done(s)
+
+	# 1:15 -- a Believer cries out; whispered back in, no report.
+	var s2 := _setup()
+	var d2: MirasHouseDirector = s2.d
+	var b := d2.grieving[0]
+	b.profile.faith = CitizenProfile.Faith.BELIEVER
+	d2.believers.append(b)
+	_run(s2, MirasHouseDirector.SHOUT_AT + DT)
+	t.check(d2.shouter == b and b.mind == Person.Mind.DUTY and d2.marker() == b.ground_pos,
+		"at 1:15 the newest Believer runs out crying, and the HUD marks them")
+	_blind(d2, d2.door)
+	_bring(d2, b)
+	_run(s2, DT * 2.0)
+	t.check(b.inside and d2.shouter == null, "whispered back into the house, the cry is over")
+	_run(s2, 5.0)
+	t.check(d2.reports.is_empty(), "and nobody reports the cry (still reading inside)")
+	_done(s2)
+
+	# ... and left crying with a Faithful in earshot: a report.
+	var s3 := _setup()
+	var d3: MirasHouseDirector = s3.d
+	var b3 := d3.grieving[0]
+	d3.believers.append(b3)
+	_run(s3, MirasHouseDirector.SHOUT_AT + DT)
+	_run(s3, MirasHouseDirector.SHOUT_SECONDS - DT * 4.0)
+	var f3 := d3.faithful[2]
+	f3.ground_pos = b3.ground_pos + Vector2(3.0, 0.0)
+	f3.mind = Person.Mind.CALM
+	_run(s3, DT * 8.0)
+	t.check(d3.shouter == null and d3.reports.size() == 1, "a cry left 15 s with a Faithful in earshot is reported")
+	_done(s3)
+
+	# 1:45 -- the Vigil passes; liners stand by the door for 30 s.
+	var s4 := _setup()
+	var d4: MirasHouseDirector = s4.d
+	_run(s4, MirasHouseDirector.VIGIL_AT + DT)
+	t.check(d4.vigil != null and d4.vigil.active and d4.liners.size() > 0, "at 1:45 the Vigil sets out and Faithful line the street")
+	var lined := true
+	for f in d4.liners:
+		lined = lined and f.mind == Person.Mind.DUTY and f.anchor.distance_to(d4.door) <= MirasHouseDirector.SIGHT
+	t.check(lined, "each liner stands within sight of the door")
+	_run(s4, MirasHouseDirector.VIGIL_SECONDS)
+	t.check(d4.liners.is_empty(), "after 30 s the liners go back to their day")
+	_done(s4)
+
+	# 2:00 -- the house burns: everyone inside runs out, unconverted; nobody goes in; at dawn the roof falls.
+	var s5 := _setup()
+	var d5: MirasHouseDirector = s5.d
+	_run(s5, MirasHouseDirector.FIRE_AT - 3.0)
+	_blind(d5, d5.door)
+	var g5 := d5.grieving[0]
+	_bring(d5, g5)
+	_run(s5, DT * 2.0)
+	t.check(g5.inside, "a reader goes in at 1:57")
+	_run(s5, 3.0)
+	t.check(d5.burning and not g5.inside and not d5.believers.has(g5), "at 2:00 the fire drives them out, unread")
+	_blind(d5, d5.door)
+	_bring(d5, d5.grieving[1])
+	_run(s5, DT * 2.0)
+	t.check(not d5.grieving[1].inside, "nobody goes into a burning house")
+	(s5.rules as Rules).time_left = DT
+	_run(s5, DT * 2.0)
+	t.check(d5.roof_fallen and d5.house.destroyed, "at dawn the roof falls")
+	_done(s5)
+
+
+## Review focus 1 and 2: the people an event needs are gone; the house falls early with people inside.
+static func _focus(t) -> void:
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	(s.crowd as Crowd)._field.kill(d.venn, &"doom")
+	_run(s, MirasHouseDirector.SHOUT_AT + DT)
+	t.check(not d.venn_searching and d.shouter == null and d.reports.is_empty(),
+		"a dead Inquisitor never searches, and with no Believer out nobody cries")
+	_run(s, MirasHouseDirector.VIGIL_AT - MirasHouseDirector.SHOUT_AT)
+	var none_dead := true
+	for f in d.liners:
+		none_dead = none_dead and f.is_alive()
+	t.check(none_dead, "no dead Faithful lines the street")
+	_done(s)
+
+	var s2 := _setup()
+	var d2: MirasHouseDirector = s2.d
+	_blind(d2, d2.door)
+	_bring(d2, d2.grieving[0])
+	_run(s2, DT * 2.0)
+	d2.house.destroy(d2.house.center(), &"lightning")
+	_run(s2, DT * 2.0)
+	t.check(not d2.grieving[0].inside and d2.grieving[0].visible and d2.inside().is_empty(),
+		"a house destroyed early lets everyone inside out at the door")
+	_blind(d2, d2.door)
+	_bring(d2, d2.grieving[1])
+	_run(s2, DT * 2.0)
+	t.check(not d2.grieving[1].inside, "and nobody goes into its ruins")
+	(s2.rules as Rules).time_left = DT
+	_run(s2, DT * 2.0)
+	t.check(d2.roof_fallen, "dawn passes over the ruins quietly")
 	_done(s2)

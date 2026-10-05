@@ -26,6 +26,28 @@ const MARK_BELIEVER := Color("ff9a3a")
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 ## Minds a person going in may be in: brought by the god (a whisper, or a lure's watching mind).
 const BROUGHT := [Person.Mind.WHISPERED, Person.Mind.OBSERVE]
+## 0:40 -- the Inquisitor searches the west quarter house by house, ending at Mira's: she stops VENN_STOP seconds at each
+## of the VENN_HOUSES houses nearest the door (farthest first), and at Mira's, with anyone inside, she reports at once.
+const VENN_AT := 40.0
+const VENN_STOP := 3.0
+const VENN_REACH := 1.0
+const VENN_HOUSES := 6
+## 1:15 -- the newest Believer out runs into the street crying (SHOUT_OFF from the door); left SHOUT_SECONDS with a
+## Faithful within HEAR, it is reported.
+const SHOUT_AT := 75.0
+const SHOUT_SECONDS := 15.0
+const SHOUT_OFF := Vector2(0.0, 3.0)
+## 1:45 -- the Vigil passes the door, and Faithful line the street by it for VIGIL_SECONDS (offsets from the door).
+const VIGIL_AT := 105.0
+const VIGIL_SECONDS := 30.0
+const LINE_SPOTS := [Vector2(-1.5, 2.0), Vector2(1.5, 2.0), Vector2(-1.5, -2.0), Vector2(1.5, -2.0)]
+## The Vigil's way past the door (offsets from it).
+const VIGIL_ROUTE := [Vector2(6.0, -4.0), Vector2(0.0, -2.5), Vector2(0.0, 2.5), Vector2(6.0, 4.0)]
+## 2:00 -- the priests burn the house.
+const FIRE_AT := 120.0
+const FIRE_LEVEL := 0.6
+## Minds a searcher takes the search up again from.
+const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
 
 var house: Structure
 var door := Vector2.INF
@@ -41,6 +63,15 @@ var venn: Person
 var journal: Person
 var burning := false
 var roof_fallen := false
+var venn_searching := false
+var shouter: Person
+var vigil: VigilRoute
+var liners: Array[Person] = []
+var _venn_houses: Array[Vector2] = []
+var _venn_i := 0
+var _venn_wait := 0.0
+var _shout_left := 0.0
+var _liners_left := 0.0
 ## Person -> seconds of reading left, for everyone inside.
 var _reading := {}
 ## Persons turned away at the door, until they step away from it.
@@ -62,9 +93,6 @@ func _begin() -> void:
 	rules.banner.emit("LEAD THE GRIEVING TO MIRA'S HOUSE")
 
 
-## Task 5 fills this in with the night's windows.
-func _add_events() -> void:
-	pass
 
 
 func _find_house() -> Structure:
@@ -143,9 +171,6 @@ func step(delta: float) -> void:
 		_roof()
 
 
-## Task 5's windows, stepped each frame.
-func _step_events(_delta: float) -> void:
-	pass
 
 
 ## A death someone saw adds to the Gaze, judged once the cast's other victims are dead too.
@@ -194,9 +219,6 @@ func _enter(p: Person) -> void:
 	_entered(p)
 
 
-## Task 5: someone went in (the crying Believer whispered back resolves the cry).
-func _entered(_p: Person) -> void:
-	pass
 
 
 func _read(delta: float) -> void:
@@ -295,7 +317,180 @@ func report() -> Dictionary:
 func teardown() -> void:
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
 		crowd._field.enemy_killed.disconnect(_on_killed)
+	vigil = null
 	timeline = null
+
+
+func _add_events() -> void:
+	timeline.add(VENN_AT, "venn", "The Inquisitor searches", _venn_starts, func() -> bool: return _alive(venn))
+	timeline.add(SHOUT_AT, "shout", "A believer cries out", _shout, func() -> bool: return _newest_outside() != null)
+	timeline.add(VIGIL_AT, "vigil", "The Vigil passes", _vigil_passes)
+	timeline.add(FIRE_AT, "fire", "They burn her house", _burn, func() -> bool: return house != null and not house.destroyed)
+
+
+func _step_events(delta: float) -> void:
+	_venn_step(delta)
+	_shout_step(delta)
+	if vigil != null:
+		vigil.step(delta)
+	_liners_step(delta)
+	if not burning and house != null and house.destroyed:
+		_flush()  # destroyed before the fire (review focus 2)
+
+
+## The crying Believer whispered back in: the cry is over.
+func _entered(p: Person) -> void:
+	if p == shouter:
+		shouter = null
+
+
+func _venn_starts() -> void:
+	var near: Array[Structure] = []
+	for s: Structure in town._built:
+		if s.kind == Structure.Kind.HOUSE and s.role == &"house" and not s.destroyed and s != house \
+				and s.center().distance_to(door) <= 9.0:
+			near.append(s)
+	near.sort_custom(func(a: Structure, b: Structure) -> bool: return a.center().distance_to(door) > b.center().distance_to(door))
+	_venn_houses = []
+	for s in near.slice(maxi(0, near.size() - VENN_HOUSES)):
+		_venn_houses.append(_door_of(s))
+	_venn_houses.append(door)
+	_venn_i = 0
+	_venn_wait = 0.0
+	venn_searching = true
+	venn.go_duty(_venn_houses[0])
+
+
+func _venn_step(delta: float) -> void:
+	if not venn_searching:
+		return
+	if not _alive(venn) or _carrying(venn):
+		venn_searching = false
+		return
+	var goal := _venn_houses[_venn_i]
+	if venn.mind != Person.Mind.DUTY:
+		if venn.mind in RESUMABLE:
+			venn.go_duty(goal)
+		return
+	if venn.ground_pos.distance_to(goal) > VENN_REACH and venn.has_goal():
+		return
+	if goal == door and not _reading.is_empty():
+		venn_searching = false
+		_report(venn)
+		return
+	_venn_wait += delta
+	if _venn_wait >= VENN_STOP:
+		_venn_wait = 0.0
+		_venn_i = (_venn_i + 1) % _venn_houses.size()
+		venn.go_duty(_venn_houses[_venn_i])
+
+
+func _newest_outside() -> Person:
+	for i in range(believers.size() - 1, -1, -1):
+		var p := believers[i]
+		if _alive(p) and not p.inside:
+			return p
+	return null
+
+
+func _shout() -> void:
+	shouter = _newest_outside()
+	if shouter == null:
+		return
+	_shout_left = SHOUT_SECONDS
+	shouter.go_duty(_walkable(door + SHOUT_OFF))
+
+
+func _shout_step(delta: float) -> void:
+	if shouter == null:
+		return
+	if not _alive(shouter):
+		shouter = null
+		return
+	_shout_left -= delta
+	if _shout_left > 0.0:
+		return
+	var heard := faithful_seeing(shouter.ground_pos, HEAR)
+	if shouter.mind == Person.Mind.DUTY:
+		shouter.leave_shelter(false)
+	shouter = null
+	if heard != null:
+		_report(heard)
+
+
+## The flame-bearer and his acolytes: the clergy nearest the Temple (not the Inquisitor), else any Faithful.
+func _vigil_passes() -> void:
+	var free: Array[Person] = []
+	for f in faithful:
+		if _alive(f) and not f.inside and f != venn and not _carrying(f):
+			free.append(f)
+	free.sort_custom(func(a: Person, b: Person) -> bool:
+		var ca := a.profile.role == CitizenProfile.Role.CLERGY
+		var cb := b.profile.role == CitizenProfile.Role.CLERGY
+		if ca != cb:
+			return ca
+		return a.ground_pos.distance_to(temple_door) < b.ground_pos.distance_to(temple_door))
+	if not free.is_empty():
+		var route := PackedVector2Array()
+		for off in VIGIL_ROUTE:
+			route.append(_walkable(door + (off as Vector2)))
+		var acolytes: Array[Person] = []
+		acolytes.assign(free.slice(1, 3))
+		vigil = VigilRoute.new().setup(route, free[0], acolytes)
+		vigil.start()
+	var walking := vigil.walkers() if vigil != null else ([] as Array[Person])
+	var lining: Array[Person] = []
+	for f in free:
+		if not walking.has(f):
+			lining.append(f)
+	lining.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))
+	liners = []
+	for i in mini(LINE_SPOTS.size(), lining.size()):
+		lining[i].go_duty(_walkable(door + (LINE_SPOTS[i] as Vector2)))
+		liners.append(lining[i])
+	_liners_left = VIGIL_SECONDS
+
+
+func _liners_step(delta: float) -> void:
+	if liners.is_empty():
+		return
+	_liners_left -= delta
+	if _liners_left > 0.0:
+		return
+	for f in liners:
+		if _alive(f) and f.mind == Person.Mind.DUTY and not _carrying(f):
+			f.leave_shelter(false)
+	liners = []
+
+
+func _burn() -> void:
+	burning = true
+	if crowd.fires != null:
+		crowd.fires.ignite(house, FIRE_LEVEL)
+	_flush()
+
+
+## Everyone inside runs out at the door in a fright, unconverted if their reading was not done.
+func _flush() -> void:
+	burning = true
+	for p: Person in _reading.keys():
+		_reading.erase(p)
+		if not is_instance_valid(p):
+			continue
+		_exit(p)
+		p.panic(house.center() if house != null else door, 2.0)
+
+
+func _carrying(p: Person) -> bool:
+	for r in reports:
+		if r.carrier == p:
+			return true
+	return false
+
+
+## The HUD's arrow: the Believer crying in the street.
+func marker() -> Vector2:
+	return shouter.ground_pos if _alive(shouter) else Vector2.INF
 
 
 static func _alive(p: Variant) -> bool:

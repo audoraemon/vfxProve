@@ -213,6 +213,12 @@ func _ready() -> void:
 			mission_id = MissionBook.MIRAS_HOUSE
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
+		"lanterns":
+			# Broken Lanterns as its intro lands (v0.10 M3), for the photograph of the shrines, their marks, the Gaze bar and
+			# the objectives (unpaused, as Mira's House's).
+			mission_id = MissionBook.BROKEN_LANTERNS
+			loadout = MissionBook.broken_lanterns().default_loadout
+			go_to(Screen.MISSION)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:

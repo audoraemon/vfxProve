@@ -56,6 +56,7 @@ extends SceneTree
 ##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any)
 ##   miras  (v0.10 M2) Mira's House, --case=none (nothing cast) or play (whisper the grieving in when nobody of the
 ##          Faith watches the door; Discord on the nearest watcher).
+##   lanterns  (v0.10 M3) Broken Lanterns, --case=none (nothing cast) or play (Heaven Splitter, Dragonfire Parade and Silent Doom: break the standing shrine with the fewest Faithful near; doom the called bellkeeper, the bearer near a draining shrine, or the Knight in the way).
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -115,6 +116,10 @@ const PROCESSION_SENT := 8.0
 const RICH_R := 3.0
 ## A policy looks at the town every this many frames (0.1 s at 60 fps), as the Warning's does.
 const LOOK_FRAMES := 6
+## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts its Faithful, and how near a draining shrine the
+## flame-bearer may come before Silent Doom takes him.
+const LANTERN_CROWD_R := 3.0
+const LANTERN_BEARER_NEAR := 6.0
 
 var mission: Mission
 
@@ -155,6 +160,9 @@ func _run() -> void:
 	elif scenario == "miras":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.MIRAS_HOUSE
+	elif scenario == "lanterns":
+		powers = PackedStringArray(["heaven", "dragon", "doom"])
+		mission.mission_id = MissionBook.BROKEN_LANTERNS
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
@@ -197,6 +205,8 @@ func _run() -> void:
 			await _judgement()
 		"miras":
 			await _miras(Battlefield.arg_value(args, "--case"))
+		"lanterns":
+			await _lanterns(Battlefield.arg_value(args, "--case"))
 		"night":
 			await _night()
 		"warning":
@@ -985,6 +995,86 @@ func _miras(which: String) -> void:
 	var res := rules.result()
 	print("BEHAVIOUR miras result won=%s reason=%s time=%.1f believers=%d gaze=%d reports=%d" % [res.won, res.reason,
 		float(res.time), d.believers_outside(), roundi(d.gaze.value), d.reports_started])
+
+
+## Broken Lanterns (v0.10 M3), played by a simple policy every LOOK_FRAMES. Silent Doom takes the bellkeeper once he is
+## called; else the flame-bearer once he nears a draining shrine; else the Knight guarding the next shrine. Otherwise a
+## Heaven Splitter or a Dragonfire Parade lands on the standing, unguarded shrine with the fewest Faithful near it.
+## `none` casts nothing.
+func _lanterns(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as BrokenLanternsDirector
+	var crowd: Crowd = mission._crowd
+	var slots := {}
+	for slot in rules.loadout.size():
+		if rules.key(slot) != "":
+			slots[rules.key(slot)] = slot
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	while not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t >= report_at:
+			report_at += 10.0
+			print("BEHAVIOUR lanterns t=%d drained=%d broken=%d relit=%d praying=%d gaze=%d knights=%d" % [roundi(t),
+				d.drained_count(), d.drain_left.size(), d.relit, d.praying_count(), roundi(d.gaze.value), d.living_knights()])
+		if which != "play" or frames % LOOK_FRAMES != 0:
+			continue
+		if _slot_ready(rules, slots, "doom"):
+			var mark := _lantern_doom_target(d, crowd)
+			if mark != null:
+				rules.cast(slots.doom, mark.ground_pos)
+				continue
+		var target := _lantern_target(d)
+		if target == null:
+			continue
+		for key in ["heaven", "dragon"]:
+			if _slot_ready(rules, slots, key):
+				rules.cast(slots[key], target.center(), {"dir": Vector2(1, 0)})
+				break
+	var res := rules.result()
+	var bonus: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
+	print("BEHAVIOUR lanterns result won=%s reason=%s time=%.1f drained=%d relit=%d gaze=%d bonus=%s" % [res.won,
+		res.reason, float(res.time), d.drained_count(), d.relit, roundi(d.gaze.value), bonus])
+
+
+func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
+	return slots.has(key) and rules.refusal(int(slots[key])) == ""
+
+
+## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, the flame-bearer near a draining
+## shrine, or the Knight guarding the next shrine; else null.
+func _lantern_doom_target(d: BrokenLanternsDirector, crowd: Crowd) -> Person:
+	var bell := crowd.bell
+	if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] \
+			and is_instance_valid(bell.keeper) and bell.keeper.is_alive():
+		return bell.keeper
+	var v := d.vigil
+	if v != null and v.active and v.detour != Vector2.INF and is_instance_valid(v.bearer) and v.bearer.is_alive() \
+			and v.bearer.ground_pos.distance_to(v.detour) <= LANTERN_BEARER_NEAR:
+		return v.bearer
+	var target := _lantern_target(d, true)
+	if target != null and d.guarded(target):
+		return d.guard_of(target)
+	return null
+
+
+## The shrine the Broken Lanterns policy breaks next: of the standing ones (only unguarded ones, unless `guarded_too`),
+## the one with the fewest Faithful near; else null.
+func _lantern_target(d: BrokenLanternsDirector, guarded_too := false) -> Structure:
+	var best: Structure = null
+	var best_n := 0
+	for s in d.standing_shrines():
+		if not guarded_too and d.guarded(s):
+			continue
+		var n := d.faithful_near(s.center(), LANTERN_CROWD_R)
+		if best == null or n < best_n:
+			best = s
+			best_n = n
+	return best
 
 
 ## The Warning, played by one policy against the director's messenger (whoever carries the warning now: the

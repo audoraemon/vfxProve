@@ -15,7 +15,54 @@
   - **F7** in the mission or town debug flips buildings and people between the new and the old art. `-- --art=procedural` starts old; `-- --collapse=engine` swaps the generated collapses for the engine's sink.
   - Gameplay is unchanged: the same hits and the same crowd behave identically with sprites on or off (tests prove it). Speed is level or better (mission bench 116.7 / 114.6 fps sprites against 113.6 / 113.9 procedural).
 - **Checks at handoff:** `GODOT=... bash tools/test.sh` gives `checks=1473 failures=0` (the suite takes 150-270 s on the laptop; the runner's timeout is 400 s); `state_digest` = `61267b7e90524d800bf1c3473a71146b` (unchanged from before the work).
-- **PixelLab budget:** 81 generations left. A top-up is needed for batch 3.
+- **PixelLab budget:** 81 generations left. Batches 3 and 4 cost none (see below).
+- **Later branches (2026-10-04 to 10-05), all free and all unmerged:** `feat/ref-re-texture` (the bell tower), then `feat/ref-batch3`, then `feat/decor-batch4`. Each is cut from the one before. They are pushed to `origin`.
+  - **Merge order:** `feat/ref-re-texture` → `feat/ref-batch3` → `feat/decor-batch4`, each into `feat/Develop-Main`. Pending the user's approval; do not merge before it.
+  - **Worktrees:** `C:\BURIN_NITRO\Godot\GIT\vfxProve-ref3` (batch 3), `C:\BURIN_NITRO\Godot\GIT\vfxProve-decor` (batch 4).
+  - **Checks at wrap-up:** tests `checks=2305` or more, `failures=0`; the digest is still `61267b7e90524d800bf1c3473a71146b`; no sprite over 5% glow.
+  - **Tools:** `tools/dev/ref_convert/README.md`.
+
+## Reference-converted batch 3 (`feat/ref-batch3`)
+
+Spec: `docs/superpowers/specs/2026-10-04-ref-convert-batch3-design.md`. Sprites cut or drawn from the user's reference sheets (`concepts/TOWN REF/`), no AI. The user reviewed after each group. Collapse is the engine's sink; ruins are clean.
+
+- **Group 1:** market stalls (12 designs, striped ones in red, blue, cream; the design follows the plot's place in `TownLayout.STALLS`, so neighbours differ), the fountain and the well.
+  - This replaced the PixelLab stalls the user rejected. The old `stall_red` / `blue` / `cream` folders are unused.
+- **Group 2:** street torches and lamps (`keep_flames`: the engine's flame and glow burn on the sprite), and trees (`tree_1..5` forest and meadow, `oak_1..3` town), with a crown sway.
+- **Group 3:** the stone bridge (steps at both road ends) and the dock, drawn clean after the user's review. Both are flat and draw under people.
+- **Group 4:** barn and carpenter (from the timber warehouse), windmill and watermill (bodies drawn clean, sails and wheel turn), and four farm fields (wheat sways).
+- **Audit fixes (Task 15):** corner towers lose their painted torches and take the town tower's roof; the river waterfall was redrawn.
+- **Engine:**
+  - Idle strips run in the shader from a shared clock (`SpriteView`), so views need no processing; `EnvironmentField` owns the clock.
+  - `Structure._sync_spin` lets sprite mills and fountains sleep.
+  - Fields: damaged below `CRACK_AT`, ruins at once, no shadow.
+- **Minors, not fixed:** `convert.py` has an unused `harmonize` param and a corner check that swaps sides on long plots. Striped stall designs 1-3 and 11 show damage weakly; design 11 is tall (84 px). The carpenter is mostly hidden by the south corner tower. Drawn mills are less painterly than cut sets. The well's ruins read as a flat disc. Ring sprite trees are smaller and brighter than the decor forest beyond. `test_sprite_art.gd:1023` has tabs mid-line.
+
+## Decor batch 4 (`feat/decor-batch4`)
+
+Spec: `docs/superpowers/specs/2026-10-05-decor-batch4-design.md`. Every `Decor.Kind` now has a sprite set, free and no AI. Sets live in `assets/pixellab/decor/` (57 folders) with `manifest.json`.
+
+- **Now sprite (user OK'd groups 1 and 2; group 3 awaits review):**
+  - **Goods and water:** barrels, crates (single and stacked), benches, market tables, log piles, carts, signpost, house-front lamps (lit lanterns), bunting, the ship, the rowing boats.
+  - **Farm and animals:** fences (with a closing end post), house gardens (one still per plot size), scarecrow, sheep and cows (mixed by decor order, facing either way).
+  - **Nature and forest:** bushes, rocks, flowers, reeds, the floor's small meadow shrubs and flower clumps, and the forest and town decor oaks and pines.
+  - Almost all are drawn clean: cuts from the sheets were speckle at decor size.
+- **Still procedural (effects only):** smoke, flames, glows, banners' sway and the lamp light pool. The decor `DOCK` kind stays procedural; the dock is a Structure since batch 3.
+- **How it works:**
+  - `DecorSprites` (`src/environment/art/decor_sprites.gd`) maps a decor piece to a set; `DecorArt.paint()` and `DecorArt.tree()` queue textured quads (`ArtKit.tex`) instead of polygons. Runs (fence, bench, bunting) tile a set's `segment`.
+  - A down tree draws its `stump.png`; any other down piece draws nothing, as before.
+  - Colour tint, charring and wind apply as they do to polygons (`wind.gdshader` sways by the texture's `UV.y`).
+- **F7 covers decor:** live `Decor` nodes redraw, `TownFloor` re-bakes its detail layer (baked low decor and meadow shrubs), and `ForestLayer` redraws its bands. Cost: one hitch per toggle. After a toggle the floor is blank for one frame (minor).
+- **The forest ruling:** the batch 3 tree sets halved the forest's crown size and cost ~6 fps through extra draw calls. So decor oaks and pines do not reuse them. They have their own forest-scale sets (`forest_oak_<n>`, `forest_pine_<n>`; `town_oak_<n>`, `town_pine_<n>` for the smaller house-back trees), and each family is packed into one runtime atlas (horizontal, bottom-aligned) so a forest band is one draw call. Draw calls went 1205 → 1040.
+- **Speed:** within noise of procedural (decor 123.6 against batch 3 114.7 fps on the last pair; a noisy machine, 2-12 other Godot processes). Report medians.
+- **Open minors worth knowing:**
+  - The forest reads lighter and yellower than the procedural one, with slimmer pines. A felled stump splits a forest batch.
+  - Goods are darker and heavier than the stalls; the `cart_1` sacks read as white balls; crates are 1.25x tall.
+  - The `lamp_house` lantern dims with the decor layer at night while street lamp flames stay bright; its glow pool sits 8 px off the procedural one.
+  - Sprite fences are slimmer than the procedural ones; garden fence 8 px against 9; boats are darker; bunting is denser.
+  - Reeds are 1.15x taller; `bush_2` blossoms are bright; rocks are bright against the dark forest; `cow_2` has a dark ear patch.
+  - Procedural boats may still lie across the river (a pre-existing issue; sprite boats follow the river).
+  - Code: `ArtKit.tex` tests cover segment structure only; `reload()` can free an in-use texture or atlas (tests and tools only); `flipped()`'s doc names a `_herd_pick` that does not exist; `decor.gd:47-53` has a displaced doc comment.
 
 ## Read next
 
@@ -82,12 +129,12 @@
 
 ## Open work (KAK Dev Ledger, https://claude.ai/artifact/6zL2bsrt3H1Vnehk1RkfiK)
 
-- **Market stall redo (needs the user):** the stalls were switched back to procedural after the user's review (crowded, uniform produce). The `stall_*` assets are kept in `assets/pixellab/buildings/` but out of the manifest; restore the manifest entries and `SpriteArt.name_for` when redoing them.
+- **Market stalls:** the PixelLab stalls were rejected (crowded, uniform produce) and are replaced on `feat/ref-batch3` by 12 converted designs. The old `stall_red` / `blue` / `cream` assets stay unused.
 - **`p05`, needs the user:** bring the PixelLab art into `feat/Develop-Main`, by merge or cherry-pick.
-- **`p07`, needs the user and a top-up (batch 3):**
-  - carpenter, barn, bell tower, windmill, watermill;
-  - fountains, wells, torches, lamps, bridge, dock, decor;
-  - the workshop's collapse (and smoke).
+- **Merge the reference work, needs the user's approval:** `feat/ref-re-texture` → `feat/ref-batch3` → `feat/decor-batch4`, in that order, into `feat/Develop-Main`. Run a trial merge on a throwaway commit first (memory note "Trial merge needs a commit").
+- **Decor group 3 review:** the user has not yet signed off on nature and forest (bushes, rocks, flowers, reeds, forest trees). Send captures; the wrap-up docs are written, but the group is not approved.
+- **`p07`, mostly done without AI:** carpenter, barn, bell tower, windmill, watermill, fountains, wells, torches, lamps, bridge, dock and decor are all sprite now (batches 3 and 4).
+  - Still open: the workshop's collapse (and smoke).
   - 81 generations are left; a set costs 60-65.
   - The cathedral is capped near 256 px and undersized for its plot; generating it in two parts would fill the plot.
 - **Known and accepted:**

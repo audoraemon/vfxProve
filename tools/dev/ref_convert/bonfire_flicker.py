@@ -12,7 +12,7 @@ flame on that row.
 
 A set with an idle strip (the banners' sway) keeps it: each strip frame gets the flame frame pasted over its flame boxes.
 A strip of n != 6 frames becomes lcm(n, 6) frames cycling both when that is <= 12, else its banner frames are re-timed
-to 6; fps keeps the banner's cycle time within 15%. A set without a strip gets a new 6-frame strip at 8 fps.
+to 6; fps keeps the banner's cycle time within 15%. A set without a strip gets a new 6-frame strip at 6 fps.
 
 The Citadel keep's strip is PixelLab's own (its frame 0 is not its intact still): its flames are read from that frame 0.
 
@@ -36,7 +36,7 @@ from banner_sway import banners  # noqa: E402
 ROOT = Path(__file__).resolve().parents[3]
 B = ROOT / "assets" / "pixellab" / "buildings"
 FRAMES = 6          # the flame's loop
-NEW_FPS = 8         # a set that had no strip
+NEW_FPS = 6         # a set that had no strip: the towers' banner-sway speed, so the family flickers as one
 UP = 3              # the flame box reaches this far above the painted tips
 MIN_PX = 10         # smaller warm clusters are lit windows
 PIXELLAB_STRIPS = {"citadel_keep"}  # strips not built from the intact still: flames come from their frame 0
@@ -86,7 +86,9 @@ def flames(a):
     higher). Warm, bright pixels (R >= 200, R > G > B, R - B >= 60, luminance >= 110) are grown from a pale core
     (R >= 240, G >= 195), held to the columns of the dark basket under the core and to the rows above its foot. A core
     with no dark basket under it, a cluster under MIN_PX, or one without a deep-orange tip (R >= 220, G <= 140,
-    B <= 80) is no flame: lit windows and gold trim."""
+    B <= 80) is no flame: lit windows and gold trim. Tuned on the tower, gate and Citadel sets: elsewhere it also
+    matches warm stall awnings and similar warm areas (stall_7, stall_11), so callers outside those sets (Task 5's
+    window_glow.py) must add their own guards."""
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     op = a[..., 3] > 0
     L = lum(a)
@@ -163,7 +165,6 @@ def _beside(a, mask, y, x):
 def flame_frame(a, fl, f):
     """Frame f of the flicker drawn on the still `a` (RGBA int array); f = 0 (or 6) is `a` itself."""
     o = a.copy()
-    L = lum(a)
     for fi, fm in enumerate(fl):
         paint, mask = fm["paint"], fm["mask"]
         x0, y0, x1, y1 = fm["box"]

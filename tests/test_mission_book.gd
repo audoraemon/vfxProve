@@ -84,6 +84,7 @@ static func run(t) -> void:
 		"Broken Lanterns is Tier 2, Unaware, on 3:00: won by six drained, lost to the bell, the Gaze or dawn (%s)" % [bl_reasons])
 	t.check(bl_dp <= 5 and Array(bl.default_loadout).all(func(k: String) -> bool: return bl.allows(k)),
 		"its default loadout is in its pool and fits a bitten Night 2's 5 DP (%d)" % bl_dp)
+	t.check(bl.bonuses().size() == 1 and bl.bonuses()[0].label == "Through the faithful", "one bonus, Through the faithful")
 	t.check(ResultsScreen.title_for(true, "held") == "THE NIGHT PASSES", "a held night has its own title")
 
 	# Night 3, the Feast (v0.10): one of The Long Night's middle acts as a night of one act.

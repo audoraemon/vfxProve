@@ -4,8 +4,9 @@ extends MissionDirector
 ## town. Break them before the Vigil relights them, and drink what was in them. A broken shrine is drained once it has
 ## stayed broken DRAIN_SECONDS. The flame-bearer walks the Vigil round the six, turns aside for a broken shrine, and
 ## relights it if he reaches it first (it stands again). A drained shrine is gone for good. All six drained win the
-## night. A death someone sees adds to Halcyon's Gaze, and the bell fills it. Task 6 adds the Faithful's prayer at the
-## standing shrines, the Lantern Knights at 1:30 and the kneelers at the last shrine. The shrines are this mission's
+## night. A death someone sees adds to Halcyon's Gaze, and the bell fills it. Faithful pray at the standing shrines, and
+## the prayer feeds the Gaze; at 1:30 four Lantern Knights come and guard the shrines; when five are drained, fifteen
+## Faithful kneel round the last one (the bonus, if the blow falls through ten of them). The shrines are this mission's
 ## own: placed here, never in the shared town layout, and taken away with the town (Town._built).
 
 ## Where the six shrines stand, in the Vigil's order (ground units; each is moved to the nearest open ground). Each
@@ -31,6 +32,30 @@ const CAMERA_AT := Vector2(1.0, 2.0)
 const MARK_LIT := Color(0.95, 0.82, 0.42, 0.9)
 const MARK_DRAINING := Color("ff9a3a")
 
+## Each shrine broken (spec §4.1): every standing shrine is topped up to PRAYERS Faithful sent to pray there, on a ring
+## PRAY_RING round it. On their duty and within PRAY_REACH of their place, they pray. Prayer feeds Halcyon's Gaze
+## (GazeMeter.pray()), scaled by PRAYER_SCALE: 1.0 is the spec's rate, and the scale is this mission's own lever for
+## balance, so M4's Gaze is untouched.
+const PRAYERS := 3
+const PRAY_RING := 1.0
+const PRAY_REACH := 0.6
+const PRAYER_SCALE := 1.0
+## When five are drained, KNEELERS Faithful kneel round the last standing shrine on these rings ([radius, places]), all
+## within BONUS_REACH of it (ThroughFaithfulObjective).
+const KNEELERS := 15
+const KNEEL_RINGS := [[1.0, 6], [1.7, 9]]
+const BONUS_REACH := 2.0
+## 1:30 -- KNIGHTS Lantern Knights come from the Temple and guard the standing shrines, each at one of a shrine's
+## GUARD_OFFSETS places. A shrine with a living Knight within GUARD_REACH takes no damage.
+const KNIGHTS_AT := 90.0
+const KNIGHTS := 4
+const GUARD_REACH := 1.5
+const GUARD_OFFSETS := [Vector2(0.8, -0.6), Vector2(-0.8, -0.6)]
+## Seconds between the director's looks at its prayers and Knights.
+const TICK := 0.5
+## Minds a prayer is sent back from (back on their feet). A Faithful in one of these, or on a duty, can be called.
+const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
+
 var shrines: Array[Structure] = []
 var vigil: VigilRoute
 var temple_door := Vector2.INF
@@ -42,6 +67,19 @@ var drained := {}
 var relit := 0
 ## Shrine -> where the bearer stands to relight it.
 var _relight_at := {}
+
+## Person -> [Structure, Vector2]: the Faithful sent to pray, at which shrine, and where.
+var praying := {}
+var kneelers: Array[Person] = []
+## The shrine the kneelers ring, once five are drained.
+var kneel_shrine: Structure
+var knights: Array[Person] = []
+## Knight -> the shrine he guards.
+var guarding := {}
+## Kneelers within BONUS_REACH of the last shrine when it last broke, counted the step before the blow.
+var last_kneelers := 0
+var _kneeling_near := 0
+var _tick := 0.0
 
 
 func _begin() -> void:
@@ -228,7 +266,7 @@ func marker() -> Vector2:
 
 
 func report() -> Dictionary:
-	return {"drained": drained.size(), "relit": relit}
+	return {"drained": drained.size(), "relit": relit, "knights": living_knights()}
 
 
 func teardown() -> void:
@@ -240,27 +278,224 @@ func teardown() -> void:
 	timeline = null
 
 
-## Task 6 fills these in: the Lantern Knights' event; prayer and the Knights, each step; a shrine broken, relit or
-## drained; and the Knights' guard.
 func _add_events() -> void:
-	pass
+	timeline.add(KNIGHTS_AT, "knights", "The Lantern Knights", _knights_come)
 
 
-func _prayers_step(_delta: float) -> void:
-	pass
+func _prayers_step(delta: float) -> void:
+	_tick -= delta
+	if _tick <= 0.0:
+		_tick = TICK
+		_tend_prayers()
+		_tend_knights()
+	gaze.pray(praying_count(), delta * PRAYER_SCALE)
+	_kneeling_near = kneeling_near()
 
 
-func _broke(_s: Structure) -> void:
-	pass
+## The shrine's prayers are let go (its kneelers stay by it), and every standing shrine is topped up.
+func _broke(s: Structure) -> void:
+	last_kneelers = _kneeling_near if s == kneel_shrine else 0
+	for k: Variant in praying.keys():
+		if praying[k][0] != s or kneelers.has(k):
+			continue
+		praying.erase(k)
+		if _alive(k) and (k as Person).mind == Person.Mind.DUTY:
+			(k as Person).leave_shelter(false)
+	_call_prayers()
 
 
 func _relit(_s: Structure) -> void:
-	pass
+	_maybe_kneel()
 
 
 func _drained_one(_s: Structure) -> void:
-	pass
+	_maybe_kneel()
 
 
-func guarded(_s: Structure) -> bool:
-	return false
+## A living Lantern Knight stands within GUARD_REACH of the shrine.
+func guarded(s: Structure) -> bool:
+	return guard_of(s) != null
+
+
+func guard_of(s: Structure) -> Person:
+	for k in knights:
+		if _alive(k) and s.distance_to(k.ground_pos) <= GUARD_REACH:
+			return k
+	return null
+
+
+func living_knights() -> int:
+	var n := 0
+	for k in knights:
+		n += 1 if _alive(k) else 0
+	return n
+
+
+func faithful_near(at: Vector2, reach: float) -> int:
+	var n := 0
+	for f in faithful:
+		n += 1 if _alive(f) and not f.inside and f.ground_pos.distance_to(at) <= reach else 0
+	return n
+
+
+## Each standing shrine is topped up to PRAYERS living Faithful sent to pray there, the nearest free ones first.
+func _call_prayers() -> void:
+	for s in standing_shrines():
+		var have := 0
+		for k: Variant in praying.keys():
+			if praying[k][0] == s and _alive(k):
+				have += 1
+		for i in range(have, PRAYERS):
+			var p := _free_faithful(s.center())
+			if p == null:
+				return
+			_send(p, s, _ring(s, PRAY_RING, i, PRAYERS))
+
+
+## The living Faithful nearest `at` who is free to be sent: out in the open, not walking the Vigil, not already sent,
+## and on their day or back on their feet (or on a duty: a prayer whose shrine fell). Null when there is nobody.
+func _free_faithful(at: Vector2) -> Person:
+	var walking: Array[Person] = vigil.walkers() if vigil != null else ([] as Array[Person])
+	var best: Person = null
+	for f in faithful:
+		if not _alive(f) or f.inside or praying.has(f) or walking.has(f):
+			continue
+		if not (f.mind in RESUMABLE or f.mind == Person.Mind.DUTY):
+			continue
+		if best == null or f.ground_pos.distance_to(at) < best.ground_pos.distance_to(at):
+			best = f
+	return best
+
+
+func _send(p: Person, s: Structure, spot: Vector2) -> void:
+	praying[p] = [s, spot]
+	p.go_duty(spot)
+
+
+## The i-th of n places on a ring of radius r round the shrine, on open ground.
+func _ring(s: Structure, r: float, i: int, n: int) -> Vector2:
+	return _walkable(s.center() + Vector2.from_angle(TAU * float(i) / float(n) + 0.4) * r)
+
+
+## The dead are let go; those back on their feet are sent to their places again.
+func _tend_prayers() -> void:
+	for k: Variant in praying.keys():
+		if not _alive(k):
+			praying.erase(k)
+			continue
+		var p := k as Person
+		if p.mind in RESUMABLE:
+			var e: Array = praying[k]
+			p.go_duty(e[1])
+
+
+## The Faithful praying now: alive and out, on their duty within PRAY_REACH of their place, at a standing shrine.
+func praying_count() -> int:
+	var n := 0
+	for k: Variant in praying.keys():
+		if not _alive(k):
+			continue
+		var p := k as Person
+		var e: Array = praying[k]
+		var spot: Vector2 = e[1]
+		if not p.inside and p.mind == Person.Mind.DUTY and not (e[0] as Structure).destroyed \
+				and p.ground_pos.distance_to(spot) <= PRAY_REACH:
+			n += 1
+	return n
+
+
+## Kneelers alive and out within BONUS_REACH of the last shrine.
+func kneeling_near() -> int:
+	if kneel_shrine == null:
+		return 0
+	var n := 0
+	for p in kneelers:
+		if _alive(p) and not p.inside and p.ground_pos.distance_to(kneel_shrine.center()) <= BONUS_REACH:
+			n += 1
+	return n
+
+
+## Five drained and the last shrine standing: KNEELERS Faithful kneel round it, once a night. They are whoever was
+## praying anywhere, and the nearest free others.
+func _maybe_kneel() -> void:
+	if kneel_shrine != null or drained.size() != shrines.size() - 1:
+		return
+	var last: Structure = null
+	for s in shrines:
+		if not drained.has(s):
+			last = s
+	if last == null or last.destroyed:
+		return
+	kneel_shrine = last
+	praying.clear()
+	for place in _kneel_places(last):
+		var p := _free_faithful(last.center())
+		if p == null:
+			break
+		_send(p, last, place)
+		kneelers.append(p)
+	rules.banner.emit("THE FAITHFUL KNEEL AT THE LAST LANTERN")
+
+
+func _kneel_places(s: Structure) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for ring: Array in KNEEL_RINGS:
+		for i in int(ring[1]):
+			out.append(_ring(s, float(ring[0]), i, int(ring[1])))
+	return out
+
+
+## 1:30 -- the Lantern Knights come from the Temple's door: soldiers with three times a soldier's health, who guard the
+## standing shrines.
+func _knights_come() -> void:
+	for i in KNIGHTS:
+		var k := crowd.add_soldier(_walkable(temple_door + Vector2(float(i) - float(KNIGHTS - 1) * 0.5, 0.6)))
+		k.corps = Person.Corps.KNIGHT
+		k.health = Person.HEALTH_KNIGHT
+		knights.append(k)
+	_tend_knights()
+
+
+## Each living Knight to a standing shrine. One whose shrine fell goes to the standing shrine with the fewest Knights
+## (the nearest of those). One taken off his place (an investigation) is sent back to it.
+func _tend_knights() -> void:
+	var standing := standing_shrines()
+	for k in knights:
+		if not _alive(k):
+			continue
+		var s: Structure = guarding.get(k)
+		if s == null or s.destroyed:
+			guarding.erase(k)
+			s = _least_guarded(standing, k)
+			if s == null:
+				continue
+			guarding[k] = s
+		var place := _guard_place(s, k)
+		if k.mind == Person.Mind.POST and k.anchor.distance_to(place) > 0.3:
+			k.send_to_post(place, false, true)
+
+
+func _least_guarded(standing: Array[Structure], k: Person) -> Structure:
+	var best: Structure = null
+	var best_n := 0
+	for s in standing:
+		var n := _guards(s).size()
+		if best == null or n < best_n \
+				or (n == best_n and s.center().distance_to(k.ground_pos) < best.center().distance_to(k.ground_pos)):
+			best = s
+			best_n = n
+	return best
+
+
+## The living Knights guarding `s`, in the order they came.
+func _guards(s: Structure) -> Array[Person]:
+	var out: Array[Person] = []
+	for k in knights:
+		if _alive(k) and guarding.get(k) == s:
+			out.append(k)
+	return out
+
+
+func _guard_place(s: Structure, k: Person) -> Vector2:
+	var i := maxi(_guards(s).find(k), 0)
+	return _walkable(s.center() + (GUARD_OFFSETS[i % GUARD_OFFSETS.size()] as Vector2))

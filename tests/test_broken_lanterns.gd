@@ -82,6 +82,10 @@ static func run(t) -> void:
 	_drain(t)
 	_relight(t)
 	_ending(t)
+	_prayers(t)
+	_knights(t)
+	_kneelers(t)
+	_focus(t)
 
 
 static func _cast(t) -> void:
@@ -223,3 +227,203 @@ static func _ending(t) -> void:
 	_run(s5, DT * 3.0)
 	t.near(d5.gaze.value, GazeMeter.SEEN_DEATH, 0.001, "a seen death adds 10 to the Gaze")
 	_done(s5)
+
+
+## Each shrine broken: PRAYERS Faithful to each standing shrine; at their places they pray, feeding the Gaze up to its
+## cap; a held or frightened mind does not pray; one back on its feet goes back; a broken shrine keeps nobody praying.
+static func _prayers(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	_away(d)
+	t.check(d.praying.is_empty(), "nobody prays before a shrine breaks")
+	_break(d.shrines[0])
+	var per := {}
+	var sent_ok := true
+	for k: Variant in d.praying.keys():
+		var e: Array = d.praying[k]
+		per[e[0]] = int(per.get(e[0], 0)) + 1
+		sent_ok = sent_ok and d.faithful.has(k) and not d.vigil.walkers().has(k) and (k as Person).mind == Person.Mind.DUTY
+	sent_ok = sent_ok and not per.has(d.shrines[0])
+	for i in range(1, 6):
+		sent_ok = sent_ok and int(per.get(d.shrines[i], 0)) == BrokenLanternsDirector.PRAYERS
+	t.check(sent_ok, "a shrine broken sends three Faithful to each standing shrine (%s)" % [per.values()])
+	for k: Variant in d.praying.keys():
+		_arrive(k as Person, d.praying[k][1])
+	_run(s, DT)
+	t.check(d.praying_count() == 5 * BrokenLanternsDirector.PRAYERS, "at their places they pray (%d)" % d.praying_count())
+	var g0 := d.gaze.value
+	_run(s, 1.0)
+	t.near(d.gaze.value - g0, GazeMeter.PRAYER_CAP * BrokenLanternsDirector.PRAYER_SCALE, 0.05,
+		"fifteen at prayer feed the Gaze at its cap")
+	var ps: Array = d.praying.keys()
+	for i in range(2, ps.size()):
+		(ps[i] as Person).confuse(15.0)
+	_run(s, DT)
+	t.check(d.praying_count() == 2, "a mind the god holds does not pray (%d)" % d.praying_count())
+	var p0 := ps[0] as Person
+	p0.mind = Person.Mind.PANIC
+	t.check(d.praying_count() == 1, "nor a frightened one")
+	p0.mind = Person.Mind.RECOVER
+	_run(s, BrokenLanternsDirector.TICK + DT)
+	t.check(p0.mind == Person.Mind.DUTY and p0.anchor.distance_to(d.praying[p0][1]) < 0.01,
+		"back on their feet, a prayer goes back to their place")
+	_break(d.shrines[2])
+	var on_broken := 0
+	var per2 := {}
+	for k: Variant in d.praying.keys():
+		var sh: Structure = d.praying[k][0]
+		on_broken += 1 if sh.destroyed else 0
+		if _alive(k):
+			per2[sh] = int(per2.get(sh, 0)) + 1
+	t.check(on_broken == 0, "nobody is left praying at a broken shrine")
+	var full := d.standing_shrines().size() == 4
+	for sh in d.standing_shrines():
+		full = full and int(per2.get(sh, 0)) == BrokenLanternsDirector.PRAYERS
+	t.check(full, "the standing four are topped up to three each")
+	_done(s)
+
+
+## 1:30: the Knights come and guard; a guarded shrine takes no blow; its Knight killed first, it breaks; a Knight whose
+## shrine fell guards another; with fewer standing shrines they double up, with none they guard nothing (review focus 3).
+static func _knights(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	var crowd: Crowd = s.crowd
+	_away(d)
+	var before := crowd.soldiers.size()
+	d.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
+	t.check(d.knights.size() == BrokenLanternsDirector.KNIGHTS and crowd.soldiers.size() == before + BrokenLanternsDirector.KNIGHTS
+		and (s.banners as Array).has("THE LANTERN KNIGHTS"), "1:30: four Lantern Knights come from the Temple")
+	var kn_ok := true
+	var guarded_shrines := {}
+	for k in d.knights:
+		var sh: Structure = d.guarding.get(k)
+		kn_ok = kn_ok and k.soldier and k.corps == Person.Corps.KNIGHT and is_equal_approx(k.health, Person.HEALTH_KNIGHT) \
+			and k.mind == Person.Mind.POST and sh != null and not sh.destroyed \
+			and sh.distance_to(k.anchor) <= BrokenLanternsDirector.GUARD_REACH
+		if sh != null:
+			guarded_shrines[sh] = true
+	t.check(kn_ok and guarded_shrines.size() == BrokenLanternsDirector.KNIGHTS,
+		"each is sent to guard a different standing shrine (%d)" % guarded_shrines.size())
+	var k0 := d.knights[0]
+	var sh0: Structure = d.guarding[k0]
+	_arrive(k0, k0.anchor)
+	_break(sh0)
+	t.check(not sh0.destroyed and sh0.hp == sh0.max_hp and d.guarded(sh0) and d.guard_of(sh0) == k0,
+		"a Knight beside it, the shrine shrugs off the blow")
+	crowd._field.kill(k0, &"lightning")
+	_break(sh0)
+	t.check(sh0.destroyed and d.draining(sh0), "its Knight struck down first, the shrine breaks")
+	var k1 := d.knights[1]
+	var sh1: Structure = d.guarding[k1]
+	_break(sh1)
+	_run(s, BrokenLanternsDirector.TICK + DT)
+	var now: Structure = d.guarding.get(k1)
+	t.check(sh1.destroyed and now != null and now != sh1 and not now.destroyed and now.distance_to(k1.anchor) <= BrokenLanternsDirector.GUARD_REACH,
+		"a Knight not yet at his shrine when it falls goes to guard another")
+	t.check(d.living_knights() == BrokenLanternsDirector.KNIGHTS - 1, "the HUD's count of Knights alive")
+	_done(s)
+
+	var s2 := _setup()
+	var d2: BrokenLanternsDirector = s2.d
+	_away(d2)
+	for i in 4:
+		_break(d2.shrines[i])
+	d2.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
+	var per := {}
+	for k in d2.knights:
+		var sh: Structure = d2.guarding.get(k)
+		if sh != null:
+			per[sh] = int(per.get(sh, 0)) + 1
+	t.check(per.size() == 2 and per.values().all(func(n: int) -> bool: return n == 2),
+		"two shrines standing: the four Knights guard them two by two (%s)" % [per.values()])
+	_done(s2)
+
+	var s3 := _setup()
+	var d3: BrokenLanternsDirector = s3.d
+	_away(d3)
+	for sh in d3.shrines:
+		_break(sh)
+	d3.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
+	_run(s3, BrokenLanternsDirector.TICK + DT)
+	t.check(d3.knights.size() == BrokenLanternsDirector.KNIGHTS and d3.guarding.is_empty(),
+		"with no shrine standing, the Knights come and guard nothing")
+	_done(s3)
+
+
+## Five drained: the kneelers ring the last shrine within BONUS_REACH. Broken with ten or more still there, the bonus;
+## drawn away first, none.
+static func _kneelers(t) -> void:
+	for drawn_away in [false, true]:
+		var s := _setup()
+		var d: BrokenLanternsDirector = s.d
+		var rules: Rules = s.rules
+		_away(d)
+		for i in 5:
+			_break(d.shrines[i])
+		_run(s, BrokenLanternsDirector.DRAIN_SECONDS + 0.5)
+		var last := d.shrines[5]
+		var placed := d.drained_count() == 5 and d.kneel_shrine == last and d.kneelers.size() == BrokenLanternsDirector.KNEELERS
+		for p in d.kneelers:
+			var spot: Vector2 = d.praying[p][1]
+			placed = placed and spot.distance_to(last.center()) <= BrokenLanternsDirector.BONUS_REACH
+		t.check(placed and (s.banners as Array).has("THE FAITHFUL KNEEL AT THE LAST LANTERN"),
+			"five drained: fifteen Faithful kneel round the last shrine (%d)" % d.kneelers.size())
+		for p in d.kneelers:
+			var spot: Vector2 = d.praying[p][1]
+			_arrive(p, spot if not drawn_away else last.center() + Vector2(5.0, 0.0))
+		_run(s, DT)
+		_break(last)
+		_run(s, BrokenLanternsDirector.DRAIN_SECONDS + 0.5)
+		var res := rules.result()
+		var earned: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
+		if not drawn_away:
+			t.check(rules.won and d.last_kneelers >= ThroughFaithfulObjective.NEED and earned,
+				"struck through ten or more kneelers: won, and Through the faithful (%d)" % d.last_kneelers)
+		else:
+			t.check(rules.won and d.last_kneelers == 0 and not earned, "drawn away first: won, without the bonus")
+		_done(s)
+
+
+## Review focus 2 and 5: the last shrine already broken when the fifth drains; the Faithful run out.
+static func _focus(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	_away(d)
+	for i in 5:
+		_break(d.shrines[i])
+	_run(s, 10.0)
+	_break(d.shrines[5])
+	_run(s, BrokenLanternsDirector.DRAIN_SECONDS - 10.0 + 0.5)
+	t.check(d.drained_count() == 5 and d.draining(d.shrines[5]) and d.kneel_shrine == null and d.kneelers.is_empty(),
+		"the last shrine already broken when the fifth drains: nobody kneels")
+	_arrive(d.vigil.bearer, d.relight_point(d.shrines[5]))
+	_run(s, DT * 2.0)
+	t.check(not d.shrines[5].destroyed and d.kneel_shrine == d.shrines[5] and d.kneelers.size() == BrokenLanternsDirector.KNEELERS,
+		"relit, the kneelers come then")
+	_done(s)
+
+	var s2 := _setup()
+	var d2: BrokenLanternsDirector = s2.d
+	_away(d2)
+	var walking := d2.vigil.walkers()
+	for f in d2.faithful:
+		if not walking.has(f):
+			f.inside = true
+	_break(d2.shrines[0])
+	t.check(d2.praying.is_empty(), "with no Faithful free, a break sends nobody")
+	for f in d2.faithful:
+		f.inside = false
+	_break(d2.shrines[1])
+	var victims: Array[Person] = []
+	for k: Variant in d2.praying.keys():
+		if d2.praying[k][0] == d2.shrines[2]:
+			victims.append(k as Person)
+	for v in victims:
+		(s2.crowd as Crowd)._field.kill(v, &"stone")
+	_run(s2, BrokenLanternsDirector.TICK + DT)
+	var ghosts := 0
+	for k: Variant in d2.praying.keys():
+		ghosts += 0 if _alive(k) else 1
+	t.check(victims.size() == BrokenLanternsDirector.PRAYERS and ghosts == 0, "prayers killed at their shrine leave no ghosts")
+	_done(s2)

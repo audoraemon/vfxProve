@@ -297,6 +297,9 @@ static func broken_lanterns() -> MissionDef:
 		var out: Array[Objective] = [ShrinesObjective.new(), BellSilentObjective.new(), GazeObjective.new(),
 			ClockObjective.new(false, "Dawn", "relit")]
 		return out
+	m.make_bonuses = func() -> Array[Objective]:
+		var out: Array[Objective] = [ThroughFaithfulObjective.new()]
+		return out
 	return m
 
 

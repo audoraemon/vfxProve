@@ -10,8 +10,9 @@ extends Node2D
 
 ## The pieces: shrub spots {base, at, seed} and baked plants {kind, at, size, seed, ...}, sorted back to front.
 var plants: Array[Dictionary] = []
-## Each band spans this much of x + y (ground units), as the forest's.
-const BAND := ForestLayer.BAND
+## Each band spans this much of x + y (ground units): four forest bands. The layer lies wholly under the world, so
+## bands buy only culling, no sorting; coarse ones let painter_order() batch across more pieces (fewer draw calls).
+const BAND := ForestLayer.BAND * 4.0
 
 
 func _ready() -> void:

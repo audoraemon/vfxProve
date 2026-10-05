@@ -52,8 +52,9 @@ const MOTION := {
 	"bob": {"sprite_sway": 0.0, "bob": 1.0},
 }
 const PLANTS := [Kind.REEDS, Kind.BUSH, Kind.FLOWERS]
-## One shared material per motion class (MOTION's keys), made on first use; and per (class, frames, fps, frame width)
-## for an animated set ("<class>|<frames>|<fps>|<frame_u>"; class "still" for kinds that do not move otherwise).
+## One shared material per motion class (MOTION's keys), made on first use; and per (class, frames, fps) for an
+## animated set ("<class>|<frames>|<fps>"; class "still" for kinds that do not move otherwise), so sheep and cows at
+## one rate share one. A strip is exactly frames x frame width wide (test_decor_sprites), so frame_u = 1 / frames.
 static var _motion: Dictionary = {}
 
 
@@ -64,16 +65,16 @@ static func wind_material() -> ShaderMaterial:
 
 ## The shared material for a decor kind's motion class, or null for decor that stands still. With `s`, the decor set
 ## the piece draws (DecorSprites.decor_set): an animated one (frames > 1) gets the class's motion plus frame stepping
-## (wind.gdshader: anim_frames, anim_fps, frame_u, on the idle clock), one material per class, frames, fps and frame
-## width; a still set changes nothing.
+## (wind.gdshader: anim_frames, anim_fps, frame_u, on the idle clock), one material per class, frames and fps; a still
+## set changes nothing.
 static func material_for(k: int, s: Dictionary = {}) -> ShaderMaterial:
 	var c := _class(k)
 	var frames := int(s.get("frames", 1))
 	if frames <= 1 or s.get("tex") == null:
 		return null if c == "" else _material(c)
 	var fps := float(s.get("fps", 0.0))
-	var frame_u: float = (s.size as Vector2).x / float((s.tex as Texture2D).get_width())
-	var key := "%s|%d|%s|%s" % [c if c != "" else "still", frames, fps, frame_u]
+	var frame_u := 1.0 / float(frames)
+	var key := "%s|%d|%s" % [c if c != "" else "still", frames, fps]
 	if not _motion.has(key):
 		var m := ShaderMaterial.new()
 		m.shader = preload("res://shaders/wind.gdshader")
@@ -170,10 +171,17 @@ func art_changed() -> void:
 
 
 ## The material and, for a sprite_only stand-in, whether it shows (while sprites are on): both follow the art now.
-## Trees and piles take their class material (a tree set is packed in an atlas: never a strip).
+## Trees and bunting keep their wind material either way (as before sprites: their polygons carry wind weights; a
+## tree set is packed in an atlas, never a strip). Any other piece takes one only while it draws from a set (sprites
+## on); drawn procedurally it has none, so it batches with the materialless decor around it.
 func _art_state() -> void:
 	var n := DecorSprites.name_for(kind, seed_value, size, at) if not kind in [Kind.PILE, Kind.OAK, Kind.PINE] else ""
-	material = material_for(kind, DecorSprites.decor_set(n) if n != "" else {})
+	if n != "":
+		material = material_for(kind, DecorSprites.decor_set(n))
+	elif kind in [Kind.OAK, Kind.PINE, Kind.BUNTING]:
+		material = material_for(kind)
+	else:
+		material = null
 	if sprite_only:
 		visible = SpriteArt.on()
 

@@ -635,6 +635,36 @@ static func _motion(t) -> void:
 	live._ready()
 	t.check(live.material == null, "a live barrel has no material")
 	live.free()
+	# F7 off: a piece drawn procedurally takes no material (so it batches with its materialless neighbours), but
+	# trees and bunting keep the wind material their polygons sway with.
+	SpriteArt.set_enabled(false)
+	for k: int in [D.REEDS, D.BUSH, D.FLOWERS, D.SHIP, D.BOAT, D.SHEEP]:
+		live = Decor.new().setup(k, Vector2(1, 1), Vector2.ZERO, 3)
+		live._ready()
+		t.check(live.material == null, "F7 off: a procedural %s has no material" % Decor.Kind.keys()[k])
+		SpriteArt.set_enabled(true)
+		live.art_changed()
+		t.check(live.material != null, "F7 on again: the %s takes its material back" % Decor.Kind.keys()[k])
+		SpriteArt.set_enabled(false)
+		live.art_changed()
+		t.check(live.material == null, "and F7 off takes it away")
+		live.free()
+	for k: int in [D.OAK, D.PINE, D.BUNTING]:
+		live = Decor.new().setup(k, Vector2(1, 1), Vector2.ZERO, 3)
+		live._ready()
+		t.check(live.material == tree, "F7 off: a procedural %s keeps the wind material" % Decor.Kind.keys()[k])
+		live.free()
+	SpriteArt.set_enabled(true)
+	# Animals at one rate share one material, whatever their texture (frame_u is 1 / frames for every strip).
+	var sheep := Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1"))
+	t.check(sheep != null and sheep == Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_2"))
+		and sheep == Decor.material_for(D.COW, DecorSprites.decor_set("cow_1"))
+		and sheep == Decor.material_for(D.COW, DecorSprites.decor_set("cow_2")),
+		"sheep and cows at one rate share one material")
+	# Frames step on the idle clock (frozen with the mission), not TIME.
+	var code: String = preload("res://shaders/wind.gdshader").code
+	t.check(code.contains("global uniform float idle_time") and code.contains("idle_time * anim_fps"),
+		"decor frames step on the idle_time global")
 
 
 ## Low plants leave the floor bake for the plant layer's wind bands while their sprites are on (Task 8): the baked
@@ -790,7 +820,8 @@ static func _plants(t) -> void:
 				if aj.x + aj.y < ai.x + ai.y and TownFloor._plant_box(ps[i]).intersects(TownFloor._plant_box(ps[j])):
 					inversions += 1
 	t.check(inversions == 0, "no band draws a plant before an overlapping plant behind it (%d)" % inversions)
-	t.check(segments < layer.get_child_count() * 4, "the bands stay a few segments each (%d for %d bands)"
+	# Coarse bands (PlantLayer.BAND) batch across more pieces: 26 segments in 6 bands (59 in 20 at the forest's band).
+	t.check(segments <= 30 and layer.get_child_count() <= 8, "the layer stays a few draw calls (%d segments in %d bands)"
 		% [segments, layer.get_child_count()])
 	# A piece left in the bake under a baked piece is not drawn by the layer too.
 	band.plants = [shrub]

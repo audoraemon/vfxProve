@@ -86,7 +86,8 @@ const SHADE_LINE := Color(0.08, 0.05, 0.04, 0.8)
 static var color_mul := Color.WHITE
 ## Moves every textured quad tex() collects (its corners, in the flush target's space): a piece's tuned size about its
 ## ground point, inside one batch (PlantLayer; the floor bake scales with draw_set_transform instead). Identity leaves
-## them where given; fills and lines never take it. Set it round the quads it is for and back to identity after.
+## them where given; fills and lines never take it. Set it round the quads it is for and back to identity after; begin()
+## resets it too, so a stray one never reaches the next drawing.
 static var tex_xform := Transform2D.IDENTITY
 ## Wind (structure_art.gdshader and shaders/wind.gdshader move what carries a weight in UV.y). While wind_gain is not
 ## zero, each vertex drawn takes wind_gain x clamp((wind_from_y - y) / wind_span, 0, 1): no weight at the line
@@ -152,6 +153,7 @@ static func face_code(face: int) -> float:
 ## Start collecting a drawing (drops anything a previous draw left unflushed).
 static func begin() -> void:
 	wind_gain = 0.0
+	tex_xform = Transform2D.IDENTITY
 	_pts.clear()
 	_cols.clear()
 	_uvs.clear()

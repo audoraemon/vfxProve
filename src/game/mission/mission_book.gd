@@ -252,11 +252,27 @@ static func _judgement_line(n: NightState) -> String:
 	return "Dawn is coming."
 
 
-## Night 2 of the campaign, the Vigil (v0.10 M1): three placeholders held until dawn, one per path, with the spec's
-## briefs and pools. M2, M3 and M4 replace each with its real night.
+## Night 2 of the campaign, the Vigil (v0.10): one mission per path. Mira's House (the Faith path, M2) leads five of the
+## grieving to Mira's journal unseen, before dawn (MirasHouseDirector); the Vigil Flame and Broken Lanterns are still
+## M1's placeholders held until dawn, with the spec's briefs and pools, until M4 and M3 build them.
 static func miras_house() -> MissionDef:
-	return _vigil(MIRAS_HOUSE, "Mira's House", PackedStringArray(["Her journal waits in a shuttered house.",
+	var m := _vigil(MIRAS_HOUSE, "Mira's House", PackedStringArray(["Her journal waits in a shuttered house.",
 		"Lead the grieving to it unseen."]), PackedStringArray(VIGIL_POOL))
+	m.goal = "Lead five of the grieving to Mira's journal, unseen, before dawn"
+	m.goal_label = "Five believe"
+	m.lose = "The Lantern looks, or fewer than five believe by dawn"
+	m.clock = 150.0
+	m.camera_at = MirasHouseDirector.MIRA_SPOT
+	m.intro_from = MirasHouseDirector.MIRA_SPOT + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "wisp", "discord"])
+	m.director = MirasHouseDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new()]
+		return out
+	m.make_bonuses = func() -> Array[Objective]:
+		var out: Array[Objective] = [PureFaithObjective.new(), JournalObjective.new()]
+		return out
+	return m
 
 
 static func vigil_flame() -> MissionDef:

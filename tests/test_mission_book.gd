@@ -57,11 +57,17 @@ static func run(t) -> void:
 
 	# Night 2's placeholders (M1): Tier 2, an Unaware town, unscored, held until dawn.
 	var mh := MissionBook.miras_house()
-	var held := []
+	var mh_reasons := []
 	for o in mh.objectives():
+		mh_reasons.append(o.reason)
+	t.check(mh.tier == 2 and mh.profile == "unaware" and not mh.scored and mh.director == MirasHouseDirector
+		and mh_reasons == ["gaze", "believers"] and is_equal_approx(mh.clock, 150.0),
+		"Mira's House is Tier 2, Unaware, on 2:30, lost to the Gaze, won by Believers (%s)" % [mh_reasons])
+	var vf := MissionBook.vigil_flame()
+	var held := []
+	for o in vf.objectives():
 		held.append(o.reason)
-	t.check(mh.tier == 2 and mh.profile == "unaware" and not mh.scored and mh.director == null and held == ["held"],
-		"Mira's House is a Tier 2 placeholder held until dawn (%s)" % [held])
+	t.check(vf.director == null and held == ["held"], "the Vigil Flame is still a placeholder held until dawn")
 	t.check(Array(mh.powers()) == MissionBook.VIGIL_POOL and Array(MissionBook.vigil_flame().powers()) == MissionBook.VIGIL_POOL,
 		"Mira's House and the Vigil Flame draft from the quiet five (%s)" % [mh.powers()])
 	var bl := MissionBook.broken_lanterns()

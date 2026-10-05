@@ -1345,14 +1345,13 @@ static func lamp_glass_step(t: float, seed_value: int) -> int:
 	return int(t * LAMP_GLASS_HZ + float(seed_value % 5)) % 4
 
 
-## Lit lantern glass filling `r` on `ci` (a sprite street lamp's, a sprite house lantern's: Decor): amber round a pale
-## core, deep orange on step 0, and with `bar` the lantern's front corner bar down its middle (a lamp_post seen corner
-## on; a house lantern faces front, its frame painted round the glass).
-static func draw_lamp_glass(ci: CanvasItem, r: Rect2, step: int, bar := true) -> void:
+## A sprite street lamp's lit glass filling `r` on `ci`: amber round a pale core, deep orange on step 0, the lantern's
+## front corner bar down its middle (a lamp_post seen corner on). A sprite house lantern (Decor.LampGlass) takes the same
+## colours and steps in lamp_glass.gdshader, without the bar: it faces front, its iron painted round the glass.
+static func draw_lamp_glass(ci: CanvasItem, r: Rect2, step: int) -> void:
 	ci.draw_rect(r, COL_FLAME[1] if step != 0 else COL_FLAME[2])
 	ci.draw_rect(r.grow(-1.0), COL_FLAME[0])
-	if bar:
-		ci.draw_rect(Rect2(r.position + Vector2(floorf(r.size.x * 0.5), 0), Vector2(1, r.size.y)), COL_IRON_CUP)
+	ci.draw_rect(Rect2(r.position + Vector2(floorf(r.size.x * 0.5), 0), Vector2(1, r.size.y)), COL_IRON_CUP)
 
 
 ## The art's flames, flickering in 8 Hz steps, each a little out of step with the others.

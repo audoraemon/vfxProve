@@ -43,36 +43,44 @@ var _glow: QuadFx
 var _glass: LampGlass
 
 
-## A sprite house lantern's lit glass, as a sprite street lamp's (Structure.draw_lamp_glass(): its colours and flicker)
-## over the glass the sprite paints: its set's "glass" (DecorSprites.glass_rect()). The decor layer dims with the
-## ambient light and this glass must not (the street lamps beside it do not dim), so it cancels the layer's modulate
-## with its own self_modulate. It flickers on its own, so it hides the strip's painted flame steps under it.
+## A sprite house lantern's lit glass, as a sprite street lamp's (Structure.draw_lamp_glass(): its colours, and its
+## flicker, Structure.lamp_glass_step()) over the glass the sprite paints: its set's "glass" (DecorSprites.glass_rect()).
+## One quad, coloured by lamp_glass.gdshader on the idle clock: no per-frame work. The shader writes its colour
+## outright, so the decor layer's dimming (its modulate) never reaches it: it glows as the street lamps beside it do.
+## It flickers on its own, so it covers the strip's painted flame steps under it.
 class LampGlass extends Node2D:
+	const SHADER := preload("res://shaders/lamp_glass.gdshader")
+	## One material per (rect, phase): the town's lamps share a few.
+	static var _materials := {}
 	## The glass, local px about the lamp's ground point (unscaled: the node takes the lamp's ArtTuning scale).
 	var rect := Rect2()
-	## Its flicker step now (Structure.lamp_glass_step()), and the clock and phase it steps on.
-	var step := -1
-	var seed_value := 0
-	var _time := 0.0
+	## Its steps' phase: the lamp's seed % 5, as a street lamp's.
+	var phase := 0
 
-	func _process(delta: float) -> void:
-		_time += delta
-		var lamp := get_parent() as CanvasItem
-		var layer := lamp.get_parent() as CanvasItem if lamp != null else null
-		var m := lamp.modulate if lamp != null else Color.WHITE
-		if layer != null:
-			m *= layer.modulate
-		var undim := Color(1.0 / maxf(m.r, 0.01), 1.0 / maxf(m.g, 0.01), 1.0 / maxf(m.b, 0.01), 1.0)
-		if not self_modulate.is_equal_approx(undim):
-			self_modulate = undim
-		var s := Structure.lamp_glass_step(_time, seed_value)
-		if s != step:
-			step = s
-			queue_redraw()
+	## Show the glass at `r` (an empty rect hides it).
+	func place(r: Rect2) -> void:
+		rect = r
+		visible = r.has_area()
+		material = glass_material(r, phase) if visible else null
+		queue_redraw()
+
+	static func glass_material(r: Rect2, ph: int) -> ShaderMaterial:
+		var key := "%s|%d" % [r, ph]
+		if not _materials.has(key):
+			var m := ShaderMaterial.new()
+			m.shader = SHADER
+			m.set_shader_parameter("rect", Vector4(r.position.x, r.position.y, r.size.x, r.size.y))
+			m.set_shader_parameter("hz", Structure.LAMP_GLASS_HZ)
+			m.set_shader_parameter("phase", float(ph))
+			m.set_shader_parameter("core_color", Structure.COL_FLAME[0])
+			m.set_shader_parameter("ring_color", Structure.COL_FLAME[1])
+			m.set_shader_parameter("low_color", Structure.COL_FLAME[2])
+			_materials[key] = m
+		return _materials[key]
 
 	func _draw() -> void:
-		# A house lantern faces front, its iron painted round the glass: no corner bar down the middle.
-		Structure.draw_lamp_glass(self, rect, maxi(step, 0), false)
+		if rect.has_area():
+			draw_rect(rect, Color.WHITE)
 
 ## Decor that moves in the wind (trees sway, bunting flutters, reeds and bushes stir; see ArtKit.wind_gain), and
 ## decor that rides the water (rises and falls a whole pixel; its sprite only, see wind.gdshader).
@@ -188,7 +196,7 @@ func _ready() -> void:
 		add_child(_glow)
 		_place_glow()
 		_glass = LampGlass.new()
-		_glass.seed_value = seed_value
+		_glass.phase = posmod(seed_value, 5)
 		add_child(_glass)
 		_sync_glass()
 
@@ -209,18 +217,14 @@ func art_changed() -> void:
 	queue_redraw()
 
 
-## The lamp's lit glass follows its sprite: at its set's glass while it draws from one and stands, else hidden (and not
-## processing).
+## The lamp's lit glass follows its sprite: at its set's glass while it draws from one and stands, else hidden.
 func _sync_glass() -> void:
 	if not is_instance_valid(_glass):
 		return
 	var n := DecorSprites.name_for(kind, seed_value, size, at) if not down else ""
 	var r := DecorSprites.glass_rect(DecorSprites.decor_set(n), DecorSprites.flipped(kind, seed_value)) if n != "" 		else Rect2()
-	_glass.rect = r
 	_glass.scale = Vector2.ONE * ArtTuning.scale(tuning_key())
-	_glass.visible = r.has_area()
-	_glass.set_process(_glass.visible)
-	_glass.queue_redraw()
+	_glass.place(r)
 
 
 ## The material and, for a sprite_only stand-in, whether it shows (while sprites are on): both follow the art now.

@@ -399,7 +399,8 @@ static func _lamp_glass(t) -> void:
 	t.check(flip == Rect2(Vector2((d.anchor as Vector2).x - glass.end.x, want.position.y), glass.size),
 		"a mirrored piece mirrors its glass (got %s)" % flip)
 	t.check(DecorSprites.glass_rect(DecorSprites.decor_set("barrel_1"), false) == Rect2(), "no glass, no rect")
-	# A lamp in a dimmed decor layer: its glass overlay shows at the rect, undimmed.
+	# A lamp in a dimmed decor layer: its glass overlay shows at the rect, coloured and stepped by its shader (which
+	# writes its colour outright, so the layer's dimming never reaches it), with no per-frame work of its own.
 	var layer := Node2D.new()
 	layer.modulate = Color(0.3, 0.27, 0.24)
 	var lamp := Decor.new().setup(D.LAMP, Vector2(1, 1), Vector2.ZERO, 3)
@@ -409,15 +410,17 @@ static func _lamp_glass(t) -> void:
 	t.check(ov != null and ov.visible, "a sprite lamp_house shows a glass overlay")
 	t.check(ov != null and ov.rect == want, "at its manifest glass rect (got %s)" % (ov.rect if ov else null))
 	t.check(ov != null and ov.scale == Vector2.ONE * ArtTuning.scale("lamp"), "scaled with the lamp's drawing")
-	if ov != null:
-		ov._process(0.0)
-		var lit: Color = layer.modulate * lamp.modulate * ov.modulate * ov.self_modulate
-		t.check(lit.is_equal_approx(Color.WHITE), "the overlay cancels the layer's dimming (got %s)" % lit)
-		var steps := {}
-		for i in 12:
-			ov._process(1.0 / 12.0)
-			steps[ov.step] = true
-		t.check(steps.size() > 1, "and it flickers as the street lamp's glass does")
+	t.check(ov != null and not ov.has_method("_process"), "the overlay does no per-frame work")
+	var mat := ov.material as ShaderMaterial if ov != null else null
+	t.check(mat != null and mat.shader == preload("res://shaders/lamp_glass.gdshader"), "it draws on the lamp glass shader")
+	if mat != null:
+		t.check(mat.get_shader_parameter("rect") == Vector4(want.position.x, want.position.y, want.size.x, want.size.y),
+			"the shader's rect is the glass")
+		t.check(mat.get_shader_parameter("core_color") == Structure.COL_FLAME[0]
+			and mat.get_shader_parameter("ring_color") == Structure.COL_FLAME[1]
+			and mat.get_shader_parameter("low_color") == Structure.COL_FLAME[2], "in the street lamp's flame colours")
+		t.check(is_equal_approx(float(mat.get_shader_parameter("hz")), Structure.LAMP_GLASS_HZ)
+			and is_equal_approx(float(mat.get_shader_parameter("phase")), 3.0), "stepping as a street lamp's glass does")
 	lamp.hit(Decor.KNOCK_AT, &"blast")
 	t.check(ov != null and not ov.visible, "knocked down, the overlay hides")
 	layer.free()

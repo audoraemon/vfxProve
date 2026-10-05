@@ -261,8 +261,8 @@ static func glow_offset(kind: int, seed_value: int, size: Vector2) -> Vector2:
 ## with no height: PropArt.tree tall 46..64), or with a height `tall` (a town decor tree's size.x, 24..32: half the
 ## forest's) a town_oak / town_pine. {} while SpriteArt is off or the manifest has none of that family (the tree stays
 ## procedural, never drawn from the other family at twice or half its size).
-static func tree_set(kind: int, seed_value: int, tall := 0.0) -> Dictionary:
-	if not SpriteArt.on():
+static func tree_set(kind: int, seed_value: int, tall := 0.0, force := false) -> Dictionary:
+	if not force and not SpriteArt.on():
 		return {}
 	var base := ("town_" if tall > 0.0 else "forest_") + ("pine" if kind == Decor.Kind.PINE else "oak")
 	var v := variants(base)

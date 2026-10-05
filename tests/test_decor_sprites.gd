@@ -23,6 +23,7 @@ static func run(t) -> void:
 	_anim(t)
 	_anim_cover(t)
 	_strips(t)
+	_real_boxes(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -1057,7 +1058,7 @@ static func _anim_cover(t) -> void:
 static func _strips(t) -> void:
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
-	var want := {"sheep_1": 2.5, "sheep_2": 2.5, "cow_1": 2.5, "cow_2": 2.5, "scarecrow": 4.0, "lamp_house": 6.0,
+	var want := {"sheep_1": 1.5, "sheep_2": 1.5, "cow_1": 1.5, "cow_2": 1.5, "scarecrow": 4.0, "lamp_house": 6.0,
 		"ship": 5.0}
 	for n: String in want:
 		var s := DecorSprites.decor_set(n)
@@ -1086,3 +1087,52 @@ static func _strips(t) -> void:
 	var mat := Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1"))
 	t.check(mat != null and is_equal_approx(float(mat.get_shader_parameter("frame_u")), 0.25),
 		"sheep_1's material steps quarter-width frames")
+
+
+## mark_live() tests covers by the drawn sprites' boxes (TownFloor._live_box), not the generic canopy: a tree in front of
+## a grazing cow whose real box misses it stays baked even where TownDecor.SCREEN_BOX would reach it; a tree whose crown
+## overlaps the cow still goes live over it. The cow's own box is its set's, times its tuned scale.
+static func _real_boxes(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var c := Vector2(10, 10)
+	var cow := {"kind": D.COW, "at": c, "size": Vector2.ZERO, "seed": 3, "bake": true}
+	var cs := DecorSprites.decor_set(DecorSprites.name_for(D.COW, 3, Vector2.ZERO, c, true))
+	var cbox := TownFloor._live_box(cow)
+	t.check(not cs.is_empty() and is_equal_approx(cbox.size.x, cs.size.x * ArtTuning.scale("cow") + 2.0),
+		"the cow's live box is its set's width times its tuned scale (%s)" % [cbox])
+	# A tree in front (later in x + y), over a grid of offsets: one whose real box misses the cow while SCREEN_BOX
+	# would hit it, and one whose real box overlaps it.
+	var miss := {}
+	var hit := {}
+	for i in range(0, 25):
+		for j in range(0, 25):
+			var at := c + Vector2(i, j) * 0.125
+			if at.x + at.y <= c.x + c.y:
+				continue
+			var tree := {"kind": D.OAK, "at": at, "size": Vector2.ZERO, "seed": 11, "bake": true}
+			var real := TownFloor._live_box(tree)
+			var generic := Rect2(Iso.ground_to_screen(at) + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)
+			if miss.is_empty() and not real.intersects(cbox) and generic.intersects(cbox):
+				miss = tree
+			if hit.is_empty() and real.intersects(cbox):
+				hit = tree
+	t.check(not miss.is_empty(), "some tree in front misses the cow by its real box but not by SCREEN_BOX")
+	t.check(not hit.is_empty(), "some tree in front overlaps the cow by its real box")
+	if miss.is_empty() or hit.is_empty():
+		return
+	var baked: Array[Dictionary] = [cow, miss]
+	TownFloor.mark_live(baked)
+	t.check(cow.get("live", false), "the grazing cow is live")
+	t.check(not miss.get("live", false) and TownFloor.bakes(miss), "a tree whose real box misses it stays baked")
+	var cow2: Dictionary = cow.duplicate()
+	cow2.erase("live")
+	var baked2: Array[Dictionary] = [cow2, hit]
+	TownFloor.mark_live(baked2)
+	t.check(hit.get("live", false), "a tree whose crown overlaps it goes live over it")
+	# The live boxes hold with F7 off at build time (mark_live forces the sets).
+	SpriteArt.set_enabled(false)
+	t.check(not TownFloor._live_box(miss).is_equal_approx(
+		Rect2(Iso.ground_to_screen(miss.at) + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)),
+		"F7 off: a tree's live box is still its set's, not the generic canopy")
+	SpriteArt.set_enabled(true)

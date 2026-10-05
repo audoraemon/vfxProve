@@ -16,7 +16,7 @@ the mirrored ground point (so those are lit from the right, as the procedural an
 
 Anchored at the ground point (the procedural `o`): x 0 of the drawing, the row under the hooves.
 
-Each set is a 4-frame strip at 2.5 fps (Group C: wind.gdshader steps it on the idle clock, each animal at its own
+Each set is a 4-frame strip at 1.5 fps (a 2.7 s loop) (Group C: wind.gdshader steps it on the idle clock, each animal at its own
 phase), grazing: frame 0 is the still; the head dips to the grass (1), holds there chewing (2), and is on its way back
 up (3) while the tail flicks. sheep_2, whose still grazes, dips a px lower (1), chews (2) and lifts its head a little
 (3). Every frame keeps frame 0's box, so the anchor and size stay the still's.
@@ -146,7 +146,7 @@ HEAD_CHEW = HEAD_DOWN[:7] + [  # chewing: the jaw drops a px forward
     "..gfFFn.",
     "...gfff.",
 ]
-FPS = 2.5
+FPS = 1.5
 # Frames: (head stamp, its top-left), per still. The grazing sheep's forelegs stay stepped out under its head.
 SHEEP_POSES = {
     False: ((HEAD_UP, (7, -27)), (HEAD_DOWN, (9, -14)), (HEAD_CHEW, (9, -14)), (HEAD_UP, (7, -21))),

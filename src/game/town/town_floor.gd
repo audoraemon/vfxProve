@@ -665,7 +665,7 @@ static func live_now(d: Dictionary) -> bool:
 ##   marked it "under": a baked piece covers it, so it stays baked, still, at frame 0.
 ## - Then a live piece sits over the whole bake, so every baked piece painted after it that overlaps it goes live too
 ##   (a pasture's front fence over a cow's feet), and on from there: y-sort then orders them as the bake did. A piece
-##   painted before it stays baked, under it, as it was. Boxes are generous (_cover_box; a tree's whole canopy).
+##   painted before it stays baked, under it, as it was. Boxes are the drawn sprites' (_live_box).
 ## Deterministic, from the pieces alone; the placement data is untouched (the marks live on the town's own copies).
 static func mark_live(baked: Array[Dictionary]) -> void:
 	var live_boxes: Array[Rect2] = []
@@ -682,11 +682,30 @@ static func mark_live(baked: Array[Dictionary]) -> void:
 			live_boxes.append(box)
 
 
-## A baked piece's screen box for mark_live(): _cover_box(), and for a tree its generous canopy (TownDecor.SCREEN_BOX).
+## A baked piece's screen box for mark_live(): the box its sprite is drawn in while sprites are on (its set's `size`
+## about its `anchor`, mirrored as paint() mirrors it, times its ArtTuning scale about the ground point; a tree's from
+## its forest or town tree set), grown a px for rounding. A run (fence, bunting) or a piece with no set keeps
+## _cover_box(), and a tree with no set the generous canopy TownDecor.SCREEN_BOX. Real boxes keep a tree whose crown
+## stands clear of an animal out of the live cascade (draw calls), while a crown that overlaps it still goes live.
 static func _live_box(d: Dictionary) -> Rect2:
-	if d.kind == Decor.Kind.OAK or d.kind == Decor.Kind.PINE:
-		return Rect2(Iso.ground_to_screen(d.at) + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)
-	return _cover_box(d)
+	var tree: bool = d.kind == Decor.Kind.OAK or d.kind == Decor.Kind.PINE
+	var s := {}
+	if tree:
+		s = DecorSprites.tree_set(d.kind, d.seed, (d.size as Vector2).x, true)
+	elif not d.kind in DecorSprites.RUNS:
+		var n := DecorSprites.name_for(d.kind, d.seed, d.size, d.at, true)
+		s = DecorSprites.decor_set(n) if n != "" else {}
+	var a := Iso.ground_to_screen(d.at)
+	if s.is_empty():
+		if tree:
+			return Rect2(a + TownDecor.SCREEN_BOX.position, TownDecor.SCREEN_BOX.size)
+		return _cover_box(d)
+	var size: Vector2 = s.size
+	var anchor: Vector2 = s.anchor
+	if DecorSprites.flipped(d.kind, d.seed):
+		anchor.x = size.x - anchor.x
+	var sc := ArtTuning.scale(String(Decor.Kind.keys()[d.kind]).to_lower())
+	return Rect2(a - anchor * sc, size * sc).grow(1.0)
 
 
 ## Mark each low plant in `plants` "under" (it stays in the bake, still) when the bake would paint something over it

@@ -35,11 +35,33 @@ static func run(t) -> void:
 	SpriteArt.set_enabled(true)
 
 
+## The sets with lit windows (Task 5 report): each has a glow_mask.png.
+const WINDOW_SETS := ["cottage_red", "cottage_blue", "townhouse_a", "townhouse_b", "tavern", "cathedral",
+	"citadel_keep"]
+
+
 ## Lit windows flicker (art animation round, Group B): a set's optional glow_mask.png marks its window pixels, and the
 ## view turns the flicker on for the intact still (or its idle strip) only, and only when the set has a mask.
 static func _window_mask(t) -> void:
-	t.check(SpriteArt.sprite("cottage_red").has("glow_mask"), "a set carries a glow_mask key")
-	t.check(SpriteArt.sprite("cottage_red").glow_mask == null, "and it is null without a glow_mask.png")
+	t.check(SpriteArt.sprite("workshop").has("glow_mask"), "a set carries a glow_mask key")
+	t.check(SpriteArt.sprite("workshop").glow_mask == null, "and it is null without a glow_mask.png")
+	# Task 5's masks (tools/dev/ref_convert/window_glow.py): one frame in size, opaque on a handful of window pixels.
+	# The shader reads the alpha: the importer bleeds the white into the clear pixels' red.
+	for n: String in WINDOW_SETS:
+		var s := SpriteArt.sprite(n)
+		var m: Texture2D = s.get("glow_mask")
+		t.check(m != null and Vector2(m.get_size()) == Vector2(s.size), "%s has a window mask the size of a frame" % n)
+		if m == null:
+			continue
+		var mi := m.get_image()
+		var lit := 0
+		for y in mi.get_height():
+			for x in mi.get_width():
+				lit += 1 if mi.get_pixel(x, y).a > 0.5 else 0
+		t.check(lit > 0 and float(lit) < float(mi.get_width() * mi.get_height()) * 0.02,
+			"%s's mask marks a few window pixels (%d)" % [n, lit])
+	for n: String in ["town_wall", "town_postern"]:
+		t.check(SpriteArt.sprite(n).glow_mask == null, "strip set %s has no window mask (its lookup would stretch)" % n)
 	var img := Image.create(84, 76, false, Image.FORMAT_RGBA8)
 	var tex := ImageTexture.create_from_image(img)
 	var set := SpriteArt.sprite("cottage_red").duplicate()

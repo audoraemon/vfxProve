@@ -28,9 +28,10 @@ uniform int idle_frames = 1;
 uniform float idle_fps = 1.0;
 uniform float idle_phase = 0.0;
 uniform float frame_w = 0.0;
-// Lit windows flicker (art animation round, Group B): glow_mask (SpriteArt "glow_mask", one frame's size, red > 0.5 on
-// window pixels) marks them; SpriteView turns window_flicker on for the intact still or its idle strip only. Each
-// 3 px cell of window wavers on its own phase of the shared clock by up to window_amp, with a rare short dip.
+// Lit windows flicker (art animation round, Group B): glow_mask (SpriteArt "glow_mask", one frame's size, opaque on
+// window pixels) marks them. Its alpha is read, not its red: the importer's fix_alpha_border bleeds the white into the
+// clear pixels' colour. SpriteView turns window_flicker on for the intact still or its idle strip only. Each 3 px cell
+// of window wavers on its own phase of the shared clock by up to window_amp, with a rare short dip.
 uniform sampler2D glow_mask : filter_nearest, repeat_disable;
 uniform bool window_flicker = false;
 uniform float window_amp = 0.12;
@@ -88,7 +89,7 @@ void fragment() {
 		// strip draws frame 0's rect (frame_origin 0), so the unshifted UV is already inside frame 0, the same pixel
 		// every frame shows.
 		vec2 local = floor(UV / TEXTURE_PIXEL_SIZE) - frame_origin;
-		float m = texture(glow_mask, (local + 0.5) / frame_size).r;
+		float m = texture(glow_mask, (local + 0.5) / frame_size).a;
 		if (m > 0.5) {
 			vec2 cell = floor(local / 3.0);
 			float ph = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831;

@@ -98,7 +98,7 @@ static func variants(base: String) -> Array:
 ## The set a decor piece draws, or "" (procedural): off while SpriteArt is off; a run takes its direction's set; a
 ## boat standing at `at` lies along the river holding it (boat_2 along y on TownLayout.RIVER_WEST, else boat_1 along
 ## x); a garden takes the garden_<n> whose "footprint" is nearest its plot; a kind with one set takes its bare name,
-## else a variant picked from the seed (a boat too, when `at` is INF).
+## else a variant picked from the seed (a boat too, when `at` is INF; a town sheep or cow by its decor order).
 static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF) -> String:
 	if not SpriteArt.on() or not BASE.has(kind):
 		return ""
@@ -116,6 +116,11 @@ static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.IN
 	var v := variants(base)
 	if v.is_empty():
 		return ""
+	# A town's animals take turns down the decor order (with flipped(): variant i % n, facing (i / n) % 2), so a
+	# pasture's few cows, every third piece of its herd, never all come out alike; seed chance did that.
+	var i := _order(seed_value) if kind in MIRRORED else -1
+	if i >= 0:
+		return "%s_%d" % [base, v[i % v.size()]]
 	return "%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]]
 
 
@@ -134,6 +139,24 @@ static func _nearest_plot(base: String, size: Vector2) -> String:
 			best_d = d
 			best = n
 	return best
+
+
+## Whether a decor piece draws mirrored (a MIRRORED kind only). A town piece goes by its place in the decor order
+## (_order: see _herd_pick), any other seed by hash01(seed, SALT_VARIANT + 1) < 0.5.
+static func flipped(kind: int, seed_value: int) -> bool:
+	if not kind in MIRRORED:
+		return false
+	var i := _order(seed_value)
+	if i >= 0:
+		return (i / maxi(variants(BASE[kind]).size(), 1)) % 2 == 1
+	return ArtKit.hash01(seed_value, SALT_VARIANT + 1) < 0.5
+
+
+## A town decor piece's place in TownDecor.spots() order, read back from its seed (TownDecor._add seeds piece i with
+## SEED + i * 7919); -1 for a seed not made that way.
+static func _order(seed_value: int) -> int:
+	var d := seed_value - TownDecor.SEED
+	return d / 7919 if d >= 0 and d % 7919 == 0 else -1
 
 
 ## Where a decor piece's light pool sits (Decor._glow; relative to its ground point, unscaled screen px): its set's
@@ -206,7 +229,7 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 		if post.has_area():
 			ArtKit.tex(d.tex, post, Iso.ground_to_screen(start + dir * length) - origin - d.anchor + post.position)
 		return true
-	var flip: bool = kind in MIRRORED and ArtKit.hash01(seed_value, SALT_VARIANT + 1) < 0.5
+	var flip := flipped(kind, seed_value)
 	var anchor: Vector2 = Vector2(d.size.x - d.anchor.x, d.anchor.y) if flip else d.anchor
 	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - anchor, Color.WHITE, flip)
 	return true

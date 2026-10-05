@@ -15,6 +15,7 @@ static func run(t) -> void:
 	_glow(t)
 	_boats(t)
 	_mirror(t)
+	_herds(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -377,3 +378,40 @@ static func _mirror(t) -> void:
 	DecorSprites._sets.erase("sheep_1")
 	DecorSprites._sets.erase("barrel_1")
 	_unfake(fakes)
+
+
+## The town's own sheep and cows (TownDecor.spots(), piles' parts too) show every design and both facings: a pasture's
+## few cows are mixed by their place in the decor order, not left to seed chance.
+static func _herds(t) -> void:
+	SpriteArt.set_enabled(true)
+	DecorSprites.reload()
+	var seen := {D.SHEEP: {}, D.COW: {}}
+	var flips := {D.SHEEP: {}, D.COW: {}}
+	var pieces := []
+	for d: Dictionary in TownDecor.spots():
+		pieces.append(d)
+		pieces.append_array(d.get("parts", []))
+	for d: Dictionary in pieces:
+		if d.kind in seen:
+			seen[d.kind][DecorSprites.name_for(d.kind, d.seed, d.size, d.at)] = true
+			flips[d.kind][DecorSprites.flipped(d.kind, d.seed)] = true
+	for k: int in seen:
+		var base: String = DecorSprites.BASE[k]
+		var want := {}
+		for v: int in DecorSprites.variants(base):
+			want["%s_%d" % [base, v]] = true
+		t.check(want.size() == 2 and seen[k].size() == want.size() and seen[k].keys().all(func(n): return want.has(n)),
+			"the town's %s show both designs (got %s)" % [base, seen[k].keys()])
+		t.check(flips[k].size() == 2, "the town's %s face both ways (got %s)" % [base, flips[k].keys()])
+	var cows := []
+	for d: Dictionary in pieces:
+		if d.kind == D.COW and TownLayout.PASTURES[1].has_point(d.at):
+			cows.append([DecorSprites.name_for(d.kind, d.seed, d.size, d.at), DecorSprites.flipped(d.kind, d.seed)])
+	var names := {}
+	var fl := {}
+	for c: Array in cows:
+		names[c[0]] = true
+		fl[c[1]] = true
+	t.check(cows.size() >= 2 and names.size() == 2 and fl.size() == 2,
+		"the east pasture's own cows mix both designs and both facings (got %s)" % [cows])
+	t.check(not DecorSprites.flipped(D.BARREL, TownDecor.SEED + 7919), "a barrel never flips, town seed or not")

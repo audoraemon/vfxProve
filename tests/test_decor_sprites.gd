@@ -53,9 +53,48 @@ static func _mapping(t) -> void:
 	t.check(DecorSprites.name_for(D.BARREL, 7, Vector2.ZERO) == "", "F7 off: every decor piece is procedural")
 	SpriteArt.set_enabled(true)
 	_unfake(fakes)
+	_gardens(t)
 	for n: String in ["barrel_1", "barrel_2", "crates_1", "crates_2", "bench_x", "bench_y", "table_1", "table_2",
-			"logs_1", "cart_1", "cart_2", "signpost", "lamp_house", "bunting_x", "bunting_y"]:
+			"logs_1", "cart_1", "cart_2", "signpost", "lamp_house", "bunting_x", "bunting_y", "fence_x", "fence_y",
+			"garden_1", "garden_2", "garden_3", "garden_4", "scarecrow"]:
 		t.check(not DecorSprites.decor_set(n).is_empty(), "decor set %s loads" % n)
+
+
+## A garden is a still per plot size (TownLayout's gardens come in four): GARDEN is not a run; it takes the
+## garden_<n> whose manifest "footprint" is nearest its plot.
+static func _gardens(t) -> void:
+	t.check(not (D.GARDEN in DecorSprites.RUNS), "a garden is not a run")
+	# Two fake plots stand in for the shipped garden sets (kept aside and put back after).
+	var m := DecorSprites.manifest()
+	var kept := {}
+	for n: String in m.keys():
+		if n.begins_with("garden_"):
+			kept[n] = m[n]
+			m.erase(n)
+	m["garden_1"] = {"footprint": [1.0, 0.45]}
+	m["garden_2"] = {"footprint": [0.45, 1.0]}
+	DecorSprites._variants_cache.clear()
+	t.check(DecorSprites.name_for(D.GARDEN, 3, Vector2(1.0, 0.45)) == "garden_1", "a 1 x 0.45 garden takes garden_1")
+	t.check(DecorSprites.name_for(D.GARDEN, 3, Vector2(0.95, 0.45)) == "garden_1",
+		"a 0.95 x 0.45 garden takes the nearest plot, garden_1")
+	var seen := {}
+	for s in 16:
+		seen[DecorSprites.name_for(D.GARDEN, s * 977, Vector2(0.45, 0.95))] = true
+	t.check(seen.keys() == ["garden_2"], "a 0.45 x 0.95 garden takes garden_2 for every seed (got %s)" % [seen.keys()])
+	m.erase("garden_1")
+	m.erase("garden_2")
+	m.merge(kept)
+	DecorSprites._variants_cache.clear()
+	# The shipped sets match the town's four plot sizes exactly.
+	var sizes := {}
+	for g: Rect2 in TownLayout.gardens():
+		sizes[g.size] = true
+	t.check(sizes.size() == 4, "the town's gardens come in four sizes (got %s)" % [sizes.keys()])
+	for size: Vector2 in sizes:
+		var n := DecorSprites.name_for(D.GARDEN, 1, size)
+		var f: Variant = DecorSprites.manifest().get(n, {}).get("footprint", null)
+		t.check(f != null and Vector2(f[0], f[1]).is_equal_approx(size),
+			"the town's %s garden has a set of its size (got '%s')" % [size, n])
 
 
 static func _forest(stump: Texture2D = null) -> Array:
@@ -147,6 +186,37 @@ static func _runs(t) -> void:
 		"a y run's last tile keeps its right half (got %s)" % [q])
 	t.check(q.size() == 2 and q[1] == Iso.ground_to_screen(Vector2(5, 6)) - Vector2(32, 18) + Vector2(16, 0),
 		"and draws it where it sits in a whole tile (got %s)" % [q])
+	# A run closes with its set's "end_post" (a sub-rect of the sprite) at its far end: tiles + 1 quads.
+	DecorSprites._sets["fence_x"]["end_post"] = Rect2(0, 2, 3, 16)
+	for c in [[Vector2(1.5, 0.0), 2], [Vector2(-2.0, 0.0), 2], [Vector2(0.4, 0.0), 1]]:
+		ArtKit.begin()
+		DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), c[0], 1, Vector2.ZERO)
+		var s := ArtKit.segments()
+		var quads: int = s[0][2] if s.size() == 1 else -1
+		t.check(quads == c[1] + 1, "a fence run of %s with an end post draws %d quads (got %d)" % [c[0], c[1] + 1, quads])
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), Vector2(1.5, 0.0), 1, Vector2.ZERO)
+	q = ArtKit.last_quad()
+	t.check(q.size() == 2 and q[0].is_equal_approx(Rect2(0, 2, 3, 16))
+		and q[1].is_equal_approx(Iso.ground_to_screen(Vector2(6.5, 5)) - Vector2(0, 18) + Vector2(0, 2)),
+		"the end post is drawn last, at the run's far end (got %s)" % [q])
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), Vector2(-1.5, 0.0), 1, Vector2.ZERO)
+	q = ArtKit.last_quad()
+	t.check(q.size() == 2 and q[1].is_equal_approx(Iso.ground_to_screen(Vector2(5, 5)) - Vector2(0, 18) + Vector2(0, 2)),
+		"a reversed run's end post stands at its near end, `at` (got %s)" % [q])
+	DecorSprites._sets["fence_x"].erase("end_post")
+	# A slanted run starts from its back end along its main axis: (0.4, -0.1) runs along x from `at`, though y falls.
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), Vector2(0.4, -0.1), 1, Vector2.ZERO)
+	q = ArtKit.last_quad()
+	t.check(q.size() == 2 and q[1] == Iso.ground_to_screen(Vector2(5, 5)) - Vector2(0, 18),
+		"a slanted x run tiles from its x start (got %s)" % [q])
+	ArtKit.begin()
+	DecorSprites.paint(Decor.Kind.FENCE, Vector2(5, 5), Vector2(-0.1, 0.4), 1, Vector2.ZERO)
+	q = ArtKit.last_quad()
+	t.check(q.size() == 2 and q[1].is_equal_approx(Iso.ground_to_screen(Vector2(5, 5)) - Vector2(32, 18) + Vector2(q[0].position.x, 0)),
+		"a slanted y run tiles from its y start (got %s)" % [q])
 	ArtKit.begin()
 	DecorSprites._sets.erase("fence_y")
 	DecorSprites._sets.erase("fence_x")

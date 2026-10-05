@@ -11,8 +11,9 @@ const MANIFEST := DIR + "manifest.json"
 ## ArtKit.pick salts: a decor piece's variant, a decor tree's set.
 const SALT_VARIANT := 97
 const SALT_TREE := 98
-## Kinds drawn as a run from `at` to `at + size`, one set per run direction ("<base>_x" / "<base>_y").
-const RUNS := [Decor.Kind.FENCE, Decor.Kind.BUNTING, Decor.Kind.BENCH, Decor.Kind.GARDEN]
+## Kinds drawn as a run from `at` to `at + size`, one set per run direction ("<base>_x" / "<base>_y"). A GARDEN is
+## not a run: its plots come in four fixed sizes, each a still (garden_<n>, picked by its manifest "footprint").
+const RUNS := [Decor.Kind.FENCE, Decor.Kind.BUNTING, Decor.Kind.BENCH]
 ## Each kind's set base name; DOCK has none (the dock is a Structure since batch 3).
 const BASE := {
 	Decor.Kind.BARREL: "barrel", Decor.Kind.CRATES: "crates", Decor.Kind.BENCH: "bench", Decor.Kind.FENCE: "fence",
@@ -45,8 +46,10 @@ static func reload() -> void:
 	_variants_cache.clear()
 
 
-## The set named `n`: {name, tex, stump, size, anchor, segment, glow}; glow is the optional "glow" (sprite px from the
-## anchor: where a lamp's light pool sits), else zero; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
+## The set named `n`: {name, tex, stump, size, anchor, segment, glow, end_post, footprint}; glow is the optional "glow"
+## (sprite px from the anchor: where a lamp's light pool sits), else zero; end_post the optional "end_post" [x, y, w, h]
+## (a run's closing post: the sub-rect of the sprite drawn at the run's far end), else an empty Rect2; footprint the
+## optional "footprint" [w, d] (ground units: a garden still's plot), else zero; stump is the optional stump.png (Texture2D or null); {} when it is not in the manifest or its PNG is missing
 ## (warned once).
 static func decor_set(n: String) -> Dictionary:
 	if _sets.has(n):
@@ -66,6 +69,8 @@ static func decor_set(n: String) -> Dictionary:
 		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
 		"segment": float(m.get("segment", 0.0)),
 		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
+		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
+		"footprint": Vector2(m.footprint[0], m.footprint[1]) if m.has("footprint") else Vector2.ZERO,
 	}
 	_sets[n] = built
 	return built
@@ -88,7 +93,8 @@ static func variants(base: String) -> Array:
 
 ## The set a decor piece draws, or "" (procedural): off while SpriteArt is off; a run takes its direction's set; a
 ## boat standing at `at` lies along the river holding it (boat_2 along y on TownLayout.RIVER_WEST, else boat_1 along
-## x); a kind with one set takes its bare name, else a variant picked from the seed (a boat too, when `at` is INF).
+## x); a garden takes the garden_<n> whose "footprint" is nearest its plot; a kind with one set takes its bare name,
+## else a variant picked from the seed (a boat too, when `at` is INF).
 static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.INF) -> String:
 	if not SpriteArt.on() or not BASE.has(kind):
 		return ""
@@ -99,12 +105,31 @@ static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.IN
 	if kind in RUNS:
 		var n := base + ("_x" if absf(size.x) >= absf(size.y) else "_y")
 		return n if manifest().has(n) else ""
+	if kind == Decor.Kind.GARDEN:
+		return _nearest_plot(base, size)
 	if manifest().has(base):
 		return base
 	var v := variants(base)
 	if v.is_empty():
 		return ""
 	return "%s_%d" % [base, v[ArtKit.pick(seed_value, SALT_VARIANT, v.size())]]
+
+
+## The "<base>_<n>" set whose manifest "footprint" is nearest `size` (summed side differences; ties to the lower n),
+## or "" when none has one.
+static func _nearest_plot(base: String, size: Vector2) -> String:
+	var best := ""
+	var best_d := INF
+	for v: int in variants(base):
+		var n := "%s_%d" % [base, v]
+		var f: Variant = manifest()[n].get("footprint", null)
+		if f == null:
+			continue
+		var d := absf(float(f[0]) - size.x) + absf(float(f[1]) - size.y)
+		if d < best_d:
+			best_d = d
+			best = n
+	return best
 
 
 ## Where a decor piece's light pool sits (Decor._glow; relative to its ground point, unscaled screen px): its set's
@@ -130,8 +155,9 @@ static func tree_set(kind: int, seed_value: int) -> Dictionary:
 
 ## Draw a decor piece from its sprite (ArtKit.tex) and return true; false leaves it to DecorArt's polygons. A down
 ## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws nothing. A run repeats its set's
-## segment from its back end, the last tile cut to the run's length (on its near side: the left of an x
-## set, the right of a y set).
+## segment from its back end (the low end along its main axis), the last tile cut to the run's length (on its near
+## side: the left of an x set, the right of a y set); a set with an "end_post" closes the run with that post at its
+## far end.
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
 	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
 		var tr := tree_set(kind, seed_value)
@@ -156,7 +182,9 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			return true
 		var dir := size / length
 		var start := at
-		if dir.x < 0.0 or dir.y < 0.0:
+		# The back end is the low end along the run's main axis (the axis that picked its set), so a slanted run's
+		# tiles step the way its sprite runs.
+		if (dir.x < 0.0) if absf(dir.x) >= absf(dir.y) else (dir.y < 0.0):
 			start = at + size
 			dir = -dir
 		var count := ceili(length / d.segment - 0.001)
@@ -170,6 +198,9 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 			var cut: float = d.size.x - w if leftward else 0.0
 			var g: Vector2 = start + dir * d.segment * float(i)
 			ArtKit.tex(d.tex, Rect2(cut, 0, w, d.size.y), Iso.ground_to_screen(g) - origin - d.anchor + Vector2(cut, 0))
+		var post: Rect2 = d.get("end_post", Rect2())
+		if post.has_area():
+			ArtKit.tex(d.tex, post, Iso.ground_to_screen(start + dir * length) - origin - d.anchor + post.position)
 		return true
 	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - d.anchor)
 	return true

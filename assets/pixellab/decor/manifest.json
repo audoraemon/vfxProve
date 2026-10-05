@@ -16,5 +16,12 @@
 	"bunting_y": {"size": [32, 25], "anchor": [32, 18], "segment": 1.0},
 	"ship": {"size": [141, 144], "anchor": [64, 109]},
 	"boat_1": {"size": [55, 65], "anchor": [27, 50]},
-	"boat_2": {"size": [55, 65], "anchor": [28, 50]}
+	"boat_2": {"size": [55, 65], "anchor": [28, 50]},
+	"fence_x": {"size": [16, 17], "anchor": [1, 14], "segment": 0.5, "end_post": [0, 0, 3, 15]},
+	"fence_y": {"size": [16, 17], "anchor": [14, 14], "segment": 0.5, "end_post": [13, 0, 3, 15]},
+	"garden_1": {"size": [46, 31], "anchor": [14, 7], "footprint": [1.0, 0.45]},
+	"garden_2": {"size": [44, 30], "anchor": [14, 7], "footprint": [0.95, 0.45]},
+	"garden_3": {"size": [46, 31], "anchor": [31, 7], "footprint": [0.45, 1.0]},
+	"garden_4": {"size": [44, 30], "anchor": [30, 7], "footprint": [0.45, 0.95]},
+	"scarecrow": {"size": [28, 37], "anchor": [14, 36]}
 }

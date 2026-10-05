@@ -32,7 +32,6 @@ const MARK_LIT := Color(0.95, 0.82, 0.42, 0.9)
 const MARK_DRAINING := Color("ff9a3a")
 
 var shrines: Array[Structure] = []
-var faithful: Array[Person] = []
 var vigil: VigilRoute
 var temple_door := Vector2.INF
 ## Broken shrines not yet drained -> seconds left before they are.
@@ -69,36 +68,14 @@ func _place_shrines() -> void:
 		_relight_at[s] = _walkable(at + RELIGHT_OFF)
 
 
-func _walkable(g: Vector2) -> Vector2:
-	var w := crowd._grid.nearest_walkable(g) if crowd._grid != null else g
-	return w if w != Vector2.INF else g
-
-
 ## The clergy, and FAITHFUL lay citizens spread through the rest, are Halcyon's Faithful.
 func _choose_faithful() -> void:
-	var keeper: Person = crowd.bell.keeper if crowd.bell != null else null
 	var lay: Array[Person] = []
-	for p in crowd.citizens:
-		if not _alive(p) or p.profile == null or p.inside or p == keeper:
-			continue
-		if p.profile.role == CitizenProfile.Role.CLERGY:
-			_make_faithful(p)
-		elif not p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
-			lay.append(p)
-	if lay.is_empty():
-		return
-	var stride := maxi(1, lay.size() / FAITHFUL)
-	var i := stride / 2
-	var added := 0
-	while i < lay.size() and added < FAITHFUL:
-		_make_faithful(lay[i])
-		added += 1
-		i += stride
-
-
-func _make_faithful(p: Person) -> void:
-	p.profile.faith = CitizenProfile.Faith.FAITHFUL
-	faithful.append(p)
+	var clergy: Array[Person] = []
+	_sort_citizens(clergy, lay)
+	for p in clergy:
+		_make_faithful(p)
+	_spread_faithful(lay, FAITHFUL)
 
 
 ## The flame-bearer and his two acolytes are the clergy nearest the Temple's door (else any Faithful). They walk the six
@@ -255,8 +232,7 @@ func report() -> Dictionary:
 
 
 func teardown() -> void:
-	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
-		crowd._field.enemy_killed.disconnect(_on_killed)
+	_unhook_kills(_on_killed)
 	for s in shrines:
 		if is_instance_valid(s) and s.broken.is_connected(_on_broken):
 			s.broken.disconnect(_on_broken)
@@ -288,7 +264,3 @@ func _drained_one(_s: Structure) -> void:
 
 func guarded(_s: Structure) -> bool:
 	return false
-
-
-static func _alive(p: Variant) -> bool:
-	return is_instance_valid(p) and (p as Person).is_alive()

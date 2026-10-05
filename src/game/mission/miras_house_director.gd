@@ -55,7 +55,6 @@ var door := Vector2.INF
 var temple_door := Vector2.INF
 ## The grieving, Believers among them once they have read.
 var grieving: Array[Person] = []
-var faithful: Array[Person] = []
 var believers: Array[Person] = []
 var reports: Array[TempleReport] = []
 var reports_started := 0
@@ -109,48 +108,25 @@ func _door_of(s: Structure) -> Vector2:
 	return _walkable(s.center() + Vector2(0.0, s.footprint.size.y * 0.5 + 0.5))
 
 
-func _walkable(g: Vector2) -> Vector2:
-	var w := crowd._grid.nearest_walkable(g) if crowd._grid != null else g
-	return w if w != Vector2.INF else g
-
-
 ## The GRIEVING lay citizens nearest the door grieve; the clergy and FAITHFUL others, spread through the rest, are Halcyon's
 ## Faithful; the cleric nearest the Temple is the Inquisitor.
 func _choose_people() -> void:
-	var keeper: Person = crowd.bell.keeper if crowd.bell != null else null
 	var lay: Array[Person] = []
 	var clergy: Array[Person] = []
-	for p in crowd.citizens:
-		if not _alive(p) or p.profile == null or p.inside or p == keeper:
-			continue
-		if p.profile.role == CitizenProfile.Role.CLERGY:
-			clergy.append(p)
-		elif not p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
-			lay.append(p)
+	_sort_citizens(clergy, lay)
 	lay.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))
 	for i in mini(GRIEVING, lay.size()):
 		lay[i].profile.faith = CitizenProfile.Faith.GRIEVING
 		grieving.append(lay[i])
 	for p in clergy:
 		_make_faithful(p)
-	var rest := lay.slice(GRIEVING)
-	if not rest.is_empty():
-		var stride := maxi(1, rest.size() / FAITHFUL)
-		var i := stride / 2
-		var added := 0
-		while i < rest.size() and added < FAITHFUL:
-			_make_faithful(rest[i])
-			added += 1
-			i += stride
+	var rest: Array[Person] = []
+	rest.assign(lay.slice(GRIEVING))
+	_spread_faithful(rest, FAITHFUL)
 	var pool := clergy if not clergy.is_empty() else faithful
 	for p in pool:
 		if venn == null or p.ground_pos.distance_to(temple_door) < venn.ground_pos.distance_to(temple_door):
 			venn = p
-
-
-func _make_faithful(p: Person) -> void:
-	p.profile.faith = CitizenProfile.Faith.FAITHFUL
-	faithful.append(p)
 
 
 func step(delta: float) -> void:
@@ -320,8 +296,7 @@ func report() -> Dictionary:
 
 
 func teardown() -> void:
-	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
-		crowd._field.enemy_killed.disconnect(_on_killed)
+	_unhook_kills(_on_killed)
 	vigil = null
 	timeline = null
 
@@ -499,5 +474,3 @@ func marker() -> Vector2:
 	return shouter.ground_pos if _alive(shouter) else Vector2.INF
 
 
-static func _alive(p: Variant) -> bool:
-	return is_instance_valid(p) and (p as Person).is_alive()

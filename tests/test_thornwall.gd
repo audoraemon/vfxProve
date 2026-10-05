@@ -86,4 +86,14 @@ static func run(t) -> void:
 	t.check(not is_instance_valid(target) or not env.structures().has(target), "and clears a segment in %d s" % roundi(EngineerManager.CLEAR_TIME))
 	fx._process(ThornwallFx.THORN_TIME + 0.1)
 	fx.free()
+
+	# Cut short (v0.09: the act that cast it is over, Battlefield.end_powers()): the brambles go with it.
+	fx = FxTimeline.cast(load("res://src/fx/control/thornwall.gd"), ctx, at, {"dir": Vector2(1, 0)})
+	t.check(not grid.walkable(rects[2].get_center()), "a fresh wall closes the street")
+	fx.end_now()
+	var cut := true
+	for s in env.structures():
+		cut = cut and s.role != &"thorns"
+	t.check(fx.finished and cut and grid.walkable(rects[2].get_center()), "ended now, it is finished and the street opens")
+	fx.free()
 	_done(made)

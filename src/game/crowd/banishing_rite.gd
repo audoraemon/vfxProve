@@ -18,7 +18,8 @@ enum State { IDLE, GATHERING, CHANTING, COOLDOWN, DONE, ENDED }
 
 const NEED := 3
 const HOLD := 2
-## Clergy called to the steps: the first NEED to arrive start it, the others help hold it.
+## Clergy called to the steps: the first NEED to arrive start it, the others help hold it. This many by default; the
+## profile sets it (ResponseProfile.rite_clergy, v0.08.2: God-Resistant calls more).
 const CALL := 4
 const PENALTY := 40.0
 const COOLDOWN := 30.0
@@ -44,6 +45,8 @@ var places: Array[Vector2] = []
 var circle: Array = []
 ## The ring's glow, 0..1, easing in while the clergy chant and out after (Crowd's ResponseDrawer draws it).
 var glow := 0.0
+## Ended only because the town's profile has no rite (v0.09): Crowd.raise_profile() may hold one after all.
+var off_by_profile := false
 var _cool := 0.0
 var _crowd: Crowd
 
@@ -58,15 +61,22 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid) -> BanishingRite
 	if cathedral != null:
 		var c := Vector2(cathedral.center().x, cathedral.footprint.end.y + FRONT)
 		centre = c if grid.walkable(c) else grid.nearest_walkable(c)
-		# A shallow arc facing the doors: the outer places a little nearer the cathedral.
-		for k in [1, 2, 0, 3]:
-			var off := float(k) - 1.5
+		# A shallow arc facing the doors: the outer places a little nearer the cathedral. One place for each cleric the
+		# profile calls (v0.08.2; CALL, 4, before), the middle ones first.
+		var n: int = crowd.profile.rite_clergy
+		var mid := (float(n) - 1.0) * 0.5
+		var order := range(n)
+		order.sort_custom(func(a: int, b: int) -> bool:
+			return absf(a - mid) < absf(b - mid) or (absf(a - mid) == absf(b - mid) and a < b))
+		for k in order:
+			var off := float(k) - mid
 			var g := centre + Vector2(off * PLACE_GAP, -absf(off) * 0.2)
 			var w := g if grid.walkable(g) else grid.nearest_walkable(g)
 			if w != Vector2.INF:
 				places.append(w)
 	if not crowd.profile.rite or cathedral == null or centre == Vector2.INF or places.size() < NEED:
 		state = State.ENDED
+		off_by_profile = not crowd.profile.rite
 	return self
 
 

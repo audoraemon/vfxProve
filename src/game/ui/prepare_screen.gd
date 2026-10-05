@@ -48,6 +48,9 @@ var tab := 0
 ## Why the last pick (or MANIFEST) was refused, shown in the panel's hint line for REFUSE_SECONDS; "" for none.
 var refused_reason := ""
 var _refuse_left := 0.0
+## What the confirm button says: MANIFEST for a mission, BEGIN for the next act of a night (v0.09), whose powers are
+## drafted again between the acts.
+var confirm_label := "MANIFEST"
 ## The difficulty chosen here (v0.05), and the town responses it brings (the Defense Profile strip at the bottom).
 var difficulty := ResponseProfile.DEFAULT
 ## The bottom strip: the difficulty selector on the left, the Defense Profile beside it.
@@ -532,7 +535,7 @@ func _draw_loadout() -> void:
 	var full := draft.can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
 	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))
 	UiTheme.frame(_ui, MANIFEST_RECT, full and _hover == "manifest")
-	var label := "MANIFEST"
+	var label := confirm_label
 	var size := UiTheme.SIZE_BIG if UiTheme.width(label, UiTheme.SIZE_BIG) <= MANIFEST_RECT.size.x - 6.0 else UiTheme.SIZE_BODY
 	UiTheme.text(_ui, Vector2(roundf(MANIFEST_RECT.get_center().x - UiTheme.width(label, size) * 0.5),
 		MANIFEST_RECT.position.y + 19.0), label, size, UiTheme.COL_GOLD if full else UiTheme.COL_DIM)

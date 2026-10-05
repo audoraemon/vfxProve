@@ -12,6 +12,8 @@ const SUITES := [
 	"res://tests/test_art_kit.gd",
 	"res://tests/test_town_decor.gd",
 	"res://tests/test_art_tuning.gd",
+	"res://tests/test_sprite_art.gd",
+	"res://tests/test_people_art.gd",
 	"res://tests/test_town_layout.gd",
 	"res://tests/test_citadel.gd",
 	"res://tests/test_town.gd",
@@ -67,6 +69,12 @@ const SUITES := [
 	"res://tests/test_mission_book.gd",
 	"res://tests/test_whisper.gd",
 	"res://tests/test_warning.gd",
+	"res://tests/test_night.gd",
+	"res://tests/test_raise.gd",
+	"res://tests/test_events.gd",
+	"res://tests/test_judgement.gd",
+	"res://tests/test_festival.gd",
+	"res://tests/test_procession.gd",
 ]
 
 var failures := 0

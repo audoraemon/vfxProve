@@ -5,8 +5,10 @@ extends Node2D
 ## middle button and zooms with the wheel. R starts a fresh mission. Milestone 4 puts the Title, Prepare,
 ## Pause and Results screens around this.
 
-## The run is over, with everything the Results screen shows (Rules.result()).
+## The run is over, with everything the Results screen shows (Rules.result(); for a night, NightState.result()).
 signal finished(result: Dictionary)
+## An act of the night is over and another follows (v0.09): its Rules.result(). next_act() plays the next one.
+signal act_over(result: Dictionary)
 ## Esc with nothing to cancel: whoever owns this mission decides what that means.
 signal pause_pressed
 ## The effect shaders are compiled and the mission can start. start() before this would clear the effect
@@ -80,6 +82,14 @@ var mission_id := MissionBook.LAST_JUDGEMENT
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
+## A mission played in acts (v0.09): the night so far and the act being played; both null for a single mission.
+var _night: NightState
+var _act: ActDef
+## The town's response managers whose banners are wired, by instance id: each is wired once (_wire_responses()).
+var _wired := {}
+## Banners raised while an act was being built, before its HUD was there to show them (v0.09: Act III's carry-overs --
+## SOLDIERS RALLY, THE SOLDIERS TAKE THE GATES): shown once its intro has begun (_show_held_banners()).
+var _held_banners: Array[String] = []
 var _pressing := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
@@ -123,14 +133,34 @@ func _ready() -> void:
 	elif "--bench" in args:
 		# Both awaited: unawaited, quit()'s handful of frames beats bench()'s 9-second loop to
 		# get_tree().quit() and the run ends before a bench[...] line is ever printed.
-		await _bf.bench("mission")
+		var bench_act := Battlefield.arg_value(args, "--bench-act")
+		if bench_act != "":
+			await _bench_jump(bench_act, args)
+		await _bf.bench("mission" if bench_act == "" else "night-" + bench_act)
 		await _quit()
+
+
+## Bench aid (v0.09): `--mission=long_night --bench --bench-act=festival|procession|judgement` skips the acts before the
+## one named, then lets it run `--bench-after=SECONDS` (default 50) before the frames are timed, so the Festival's crowd
+## is packed round the bonfire (it packs at 45 s). A night-only hook: the bench of every other mission is untouched.
+func _bench_jump(act_id: String, args: PackedStringArray) -> void:
+	while _act != null and _act.id != act_id and not _act.is_last():
+		await get_tree().process_frame
+		next_act(PackedStringArray(), act_id)
+	var after := Battlefield.arg_value(args, "--bench-after")
+	var secs := float(after) if after != "" else 50.0
+	await get_tree().create_timer(secs).timeout
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works.
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	if _ending:
+		# A start during the ending's slow motion (v0.09): that ending lets go once its wait is over (_play_ending()), so
+		# the time scale it dipped is restored here.
+		_ending = false
+		_bf.ctx.impact.set_base_time_scale(1.0)
 	if _director != null:
 		_director.teardown()
 		if is_instance_valid(_rules):
@@ -166,55 +196,48 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()
 	_def = _mission_def(args)
+	_night = NightState.new() if _def.has_acts() else null
+	_act = _def.first_act() if _night != null else null
+	if _act != null:
+		_act.night = _night
+	var play: MissionDef = _act if _act != null else _def
 	var tier := difficulty
 	if autostart and Battlefield.arg_value(args, "--difficulty") != "":
 		tier = ResponseProfile.tier_named(Battlefield.arg_value(args, "--difficulty"))
-	_crowd.profile = _def.response_profile(tier)
+	_crowd.profile = _act.town(_night) if _act != null else _def.response_profile(tier)
 	var wanted := Battlefield.arg_value(args, "--people")
 	var people := int(wanted) if wanted != "" else PEOPLE
 	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
 	_crowd.spawn(citizens, people - citizens)
 
+	_wired.clear()
+	_build_act(powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args()))
+	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
+	_overlay.name = "BehaviourOverlay"
+	if "--behaviour" in OS.get_cmdline_user_args():
+		BehaviourOverlay.shown = true
+	add_child(_overlay)
+	_begin_intro(play)
+	_show_held_banners()
+
+
+## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the
+## nodes are made in is Last Judgement's and The Warning's since v0.08 -- their instance order feeds the staggers.
+func _build_act(loadout: PackedStringArray) -> void:
+	var play: MissionDef = _act if _act != null else _def
 	_rules = Rules.new()
 	_rules.name = "Rules"
 	add_child(_rules)
-	var loadout := powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args())
-	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, _def)
+	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
 	_rules.over.connect(_on_over)
-	if _def.director != null:
-		_director = (_def.director.new() as MissionDirector).setup(_rules, _crowd, _town, _bf.ctx)
+	# Nothing shows a banner until the HUD below is made: the director's setup and the town's responses may raise some.
+	var held: Array[String] = []
+	var hold := func(text: String) -> void: held.append(text)
+	_rules.banner.connect(hold)
+	if play.director != null:
+		_director = (play.director.new() as MissionDirector).setup(_rules, _crowd, _town, _bf.ctx, _night)
 		_rules.director = _director
-	_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
-	if _crowd.bell != null:
-		_crowd.bell.climbing_started.connect(func():
-			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
-		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
-		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
-		_crowd.bell.keeper_replaced.connect(func():
-			_rules.banner.emit(bell_hand(_crowd.bell) + " TAKES THE BELL ROPE"))
-	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty():
-		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
-		_crowd.engineers.rebuilt.connect(func(s: Structure):
-			var what := "THE DOCK" if s.role == &"dock" else ("THE BRIDGE" if s.kind == Structure.Kind.BRIDGE else
-				("THE POSTERN" if s.art_tag == &"postern" else
-				("THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")))
-			_rules.banner.emit(what + " IS REBUILT"))
-	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED:
-		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
-		_crowd.ferry.closed.connect(func(_why: String): _rules.banner.emit("THE BOATS ARE STOPPED"))
-	if _crowd.marshals != null:
-		_crowd.marshals.posted.connect(func(): _rules.banner.emit("THE SOLDIERS TAKE THE GATES"))
-	if _crowd.rescue != null:
-		_crowd.rescue.first_rescue.connect(func(): _rules.banner.emit("SURVIVORS DUG FROM THE RUBBLE"))
-	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED:
-		var rite := _crowd.rite
-		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))
-		rite.started.connect(func(): _rules.banner.emit("THE BANISHING RITE BEGINS"))
-		rite.broken.connect(func(_why: String): _rules.banner.emit("THE RITE IS BROKEN"))
-		rite.ended.connect(func(_why: String): _rules.banner.emit("THE RITE IS ENDED"))
-		rite.completed.connect(func():
-			_rules.lose_time(BanishingRite.PENALTY)
-			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(BanishingRite.PENALTY)))
+	_wire_responses()
 
 	_aim = Targeting.new()
 	_aim.name = "Targeting"
@@ -228,26 +251,145 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_hud.name = "Hud"
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
-	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
-	_overlay.name = "BehaviourOverlay"
-	if "--behaviour" in OS.get_cmdline_user_args():
-		BehaviourOverlay.shown = true
-	add_child(_overlay)
+	_rules.banner.disconnect(hold)
+	_held_banners = held
 
+
+## The banners held while the act was built, after its intro's own (the HUD queues them).
+func _show_held_banners() -> void:
+	var held := _held_banners
+	_held_banners = []
+	for text in held:
+		_rules.banner.emit(text)
+
+
+## The town's responses announce themselves on the banner. Each lambda reads `_rules` when it fires, so the act being
+## played shows it; each manager is wired once (v0.09: an act after the first, or a raised town, calls this again).
+func _wire_responses() -> void:
+	if _wire_once(_crowd):
+		_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
+	if _crowd.bell != null and _wire_once(_crowd.bell):
+		_crowd.bell.climbing_started.connect(func():
+			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
+		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
+		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
+		_crowd.bell.keeper_replaced.connect(func():
+			_rules.banner.emit(bell_hand(_crowd.bell) + " TAKES THE BELL ROPE"))
+	if _crowd.engineers != null and not _crowd.engineers.teams.is_empty() and _wire_once(_crowd.engineers):
+		_crowd.engineers.turned_out.connect(func(): _rules.banner.emit("THE ENGINEERS TURN OUT"))
+		_crowd.engineers.rebuilt.connect(func(s: Structure):
+			var what := "THE DOCK" if s.role == &"dock" else ("THE BRIDGE" if s.kind == Structure.Kind.BRIDGE else
+				("THE POSTERN" if s.art_tag == &"postern" else
+				("THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")))
+			_rules.banner.emit(what + " IS REBUILT"))
+	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED and _wire_once(_crowd.ferry):
+		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
+		# Act III's last ferry announces itself (JudgementDirector's event), so it gets no second banner.
+		_crowd.ferry.closed.connect(func(why: String):
+			if why != "the last ferry":
+				_rules.banner.emit("THE BOATS ARE STOPPED"))
+	if _crowd.marshals != null and _wire_once(_crowd.marshals):
+		_crowd.marshals.posted.connect(func(): _rules.banner.emit("THE SOLDIERS TAKE THE GATES"))
+	if _crowd.rescue != null and _wire_once(_crowd.rescue):
+		_crowd.rescue.first_rescue.connect(func(): _rules.banner.emit("SURVIVORS DUG FROM THE RUBBLE"))
+	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED and _wire_once(_crowd.rite):
+		var rite := _crowd.rite
+		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))
+		rite.started.connect(func(): _rules.banner.emit("THE BANISHING RITE BEGINS"))
+		rite.broken.connect(func(_why: String): _rules.banner.emit("THE RITE IS BROKEN"))
+		rite.ended.connect(func(_why: String): _rules.banner.emit("THE RITE IS ENDED"))
+		rite.completed.connect(func():
+			_rules.lose_time(BanishingRite.PENALTY)
+			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(BanishingRite.PENALTY)))
+
+
+## True the first time a manager is asked about, and marks it wired.
+func _wire_once(manager: Object) -> bool:
+	var id := manager.get_instance_id()
+	if _wired.has(id):
+		return false
+	_wired[id] = true
+	return true
+
+
+## The camera, the intro sweep and its banner for the mission or act about to be played.
+func _begin_intro(play: MissionDef) -> void:
 	if _scripted:
 		# The scripted runs time their casts from the first frame and frame the town the way milestone 3 did,
 		# so their captures and numbers stay comparable: no intro for them.
 		_intro_left = 0.0
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
-		var framed := Vector2(0, -2) if _def.id == MissionBook.LAST_JUDGEMENT else _def.camera_at
+		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera_at
 		_bf.camera.position = Iso.ground_to_screen(framed).round()
 	else:
 		_intro_left = INTRO_SECONDS
 		_rules.set_process(false)  # the clock waits for the camera
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
-		_bf.camera.position = Iso.ground_to_screen(_def.intro_from).round()
-		if _def.intro_banner != "":
-			_rules.banner.emit(_def.intro_banner)
+		_bf.camera.position = Iso.ground_to_screen(play.intro_from).round()
+		if play.intro_banner != "":
+			_rules.banner.emit(play.intro_banner)
+
+
+## The next act of the night (v0.09), in the same town: the old act's director hands over what it carries and lets go,
+## the old Rules let go of the world, and the act chosen (`path` after a choice card, else the only one) begins with a
+## fresh Rules, director, aim and HUD -- every cooldown ready -- after its own intro sweep.
+func next_act(powers: PackedStringArray, path := "") -> void:
+	if _night == null or _act == null or _act.is_last():
+		return
+	var ids := _act.next
+	var id := path if path != "" and ids.has(path) else String(ids[0])
+	if ids.size() > 1:
+		_night.path = id
+	if _director != null:
+		_director.carry(_night)
+		_director.teardown()
+		_rules.director = null
+	_director = null
+	_rules.teardown()
+	_rules.queue_free()
+	# Every power still playing ends here, with the act that cast it: an Act I Heaven Splitter must not fall on the
+	# Prince or the Mayor during Act II's intro (v0.09 final review).
+	_bf.end_powers()
+	_aim.queue_free()
+	_hud.queue_free()
+	_pressing = false  # a press held over the old aim is not the new one's to release
+	_act = _def.act(id)
+	_act.night = _night
+	# The town rises to the act's (never lowers): what turned on is wired for its banners and announced.
+	var raised := _crowd.raise_profile(_act.town(_night))
+	_wire_responses()
+	Engine.time_scale = 1.0
+	_bf.ctx.impact.set_base_time_scale(1.0)
+	_ending = false
+	_build_act(powers if not powers.is_empty() else _act.default_loadout)
+	_begin_intro(_act)
+	if not raised.is_empty():
+		# After the act's own banner (the HUD queues them).
+		_rules.banner.emit("THE TOWN PREPARES: " + ", ".join(raised).to_upper())
+	_show_held_banners()
+
+
+## The acts that may follow the one being played (v0.09): two for the choice card, one, or none after the last act or
+## for a single mission.
+func next_choices() -> Array:
+	if _night == null or _act == null or _act.is_last():
+		return []
+	var out := []
+	for id in _act.next:
+		var a := _def.act(id)
+		a.night = _night  # the interlude's card line and objectives read the night so far
+		out.append(a)
+	return out
+
+
+## The night being played (v0.09), or null for a single mission.
+func night() -> NightState:
+	return _night
+
+
+## The act being played (v0.09), or null for a single mission.
+func act() -> ActDef:
+	return _act
 
 
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
@@ -324,6 +466,8 @@ func _on_over(won: bool, reason: String) -> void:
 	_rules.banner.emit(ResultsScreen.title_for(won, reason))
 	if _scripted:
 		# The scripted runs have no Results screen to show, so they keep printing what they found.
+		if _act != null:
+			print("MISSION act=%s won=%s reason=%s time=%.1f" % [_act.id, won, reason, float(_rules.result().time)])
 		if _rules.mission.scored:
 			print("MISSION result won=%s reason=%s score=%d rank=%s" % [won, reason, _rules.score(), _rules.rank()])
 			for line: Dictionary in _rules.stat_lines():
@@ -338,12 +482,25 @@ func _on_over(won: bool, reason: String) -> void:
 func _play_ending() -> void:
 	_ending = true
 	_aim.unfocus()
+	var ended := _rules
 	if not _scripted:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		await get_tree().create_timer(ENDING_SECONDS, true, false, true).timeout
+		if ended != _rules:
+			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
+			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.
+			return
 		_bf.ctx.impact.set_base_time_scale(1.0)
-	finished.emit(_rules.result())
+	var res := _rules.result()
+	if _night == null:
+		finished.emit(res)
+		return
+	_night.record(_act.id, res, _crowd)
+	if _act.is_last():
+		finished.emit(_night.result(res, _def.id))
+	else:
+		act_over.emit(res)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -407,7 +564,8 @@ func _process(delta: float) -> void:
 		_intro_left = maxf(0.0, _intro_left - delta)
 		var k := 1.0 - _intro_left / INTRO_SECONDS
 		var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
-		_bf.camera.position = Iso.ground_to_screen(_def.intro_from.lerp(_def.camera_at, smooth)).round()
+		var play: MissionDef = _act if _act != null else _def
+		_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera_at, smooth)).round()
 		_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
 			_rules.set_process(true)

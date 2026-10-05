@@ -1,0 +1,21 @@
+{
+	"_note": "PixelLab character ids of the people designs (size 16, standard mode, low top-down). Add animations or directions with: python tools/dev/pixellab_api.py char-anim --id <id> --template <template> --out <dir>; then import with tools/dev/make_people_atlas.py --import <design>=<dir>.",
+	"resident_a": "205910da-3ed9-4ab9-b1c3-2263fa632ee7",
+	"resident_b": "c96909d2-3c57-4a50-ab51-69ff07ce8d5c",
+	"merchant_a": "bc27b5a4-5ebc-4858-92a2-f4eaaaf13e75",
+	"merchant_b": "49250f4e-6a60-4c8a-8eed-df43dab3fce5",
+	"craft_a": "cdcc8e70-a828-47e5-94a3-9f5fc2801401",
+	"craft_b": "5d1f1039-97b5-4970-9667-27ddbeb7af23",
+	"laborer": "e4aa0246-4ce9-4e33-aff8-f5378167afd6",
+	"clergy": "fccf9349-607e-4448-aea1-31725c8fb57c",
+	"caregiver_a": "84a65599-8c26-4df8-8e6f-603b4b44ebb9",
+	"caregiver_b": "7f5c0cce-0514-4f01-9768-25cd3cd01f6f",
+	"farmer": "0b2d388b-9e50-46e5-9213-bea9957a9ac8",
+	"bellkeeper": "cb7bc68e-8058-4f8e-a92f-2445c251d2d7",
+	"engineer": "c41ec230-6494-441a-94fe-d46f478d3d24",
+	"guard": "8264ef94-26ac-4052-bc40-41b951a6deac",
+	"marshal": "a3122700-f4fd-4652-84ff-098c2db4a99a",
+	"escort": "549ef66a-6647-4035-9cdb-0839379a2caf",
+	"rescue": "414fb657-9e17-4a36-a50d-ed44664b8c3e",
+	"_rejected": {"rescue_first": "adc96ded-c8d1-421c-bbc7-344b7117e40d"}
+}

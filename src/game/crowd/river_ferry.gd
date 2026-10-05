@@ -3,7 +3,7 @@ extends RefCounted
 ## The river boats (v0.05): from the Evacuation stage the ship moored at the dock ferries people away -- a third way
 ## out besides the two roads. Evacuees who choose the dock (EvacuationManager scores it like a gate, by the route
 ## there and the crowd already waiting) wait on the bank in a crowd that forms behind the pier; the one at its head
-## steps aboard every LOAD_TIME / LOAD seconds. Full -- or LOAD_TIME after the first stepped aboard with nobody left
+## steps aboard every LOAD_TIME / capacity seconds. Full -- or LOAD_TIME after the first stepped aboard with nobody left
 ## waiting -- the ship sails: everyone aboard has escaped, and it is back TRIP seconds later. A destroyed dock stops the service until the
 ## engineers rebuild it; a blighted one ends it for good. Either way those still waiting go for the gates. Only towns
 ## whose profile has boats run one.
@@ -15,6 +15,7 @@ signal closed(reason: String)
 ## MOORED until the Evacuation stage; CLOSED while the dock lies destroyed; ENDED for good.
 enum State { MOORED, LOADING, AWAY, CLOSED, ENDED }
 
+## A sailing's load by default; the profile sets it (ResponseProfile.boat_load, v0.08.2), as capacity.
 const LOAD := 6
 const LOAD_TIME := 4.0
 const TRIP := 12.0
@@ -28,6 +29,10 @@ const SAIL := 3.0
 const FADE := 0.2
 
 var state := State.MOORED
+## Ended only because the town's profile has no boats (v0.09): Crowd.raise_profile() may run them after all.
+var off_by_profile := false
+## How many a sailing carries: the profile's boat_load (v0.08.2).
+var capacity := LOAD
 var dock: Structure
 ## Where people step aboard: the pier's end beside the ship. EvacuationManager's boat exit.
 var board_at := Vector2.INF
@@ -51,6 +56,7 @@ var _field: EnemyField
 func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid, field: EnemyField) -> RiverFerry:
 	_crowd = crowd
 	_field = field
+	capacity = crowd.profile.boat_load
 	for s in env.structures():
 		if s.role == &"dock":
 			dock = s
@@ -67,6 +73,7 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid, field: EnemyFiel
 		spots = _spots(grid, r)
 	if not crowd.profile.boats or dock == null or board_at == Vector2.INF:
 		state = State.ENDED
+		off_by_profile = not crowd.profile.boats
 	return self
 
 
@@ -147,14 +154,14 @@ func step(delta: float) -> void:
 	_board_in -= delta
 	if _loading >= 0.0:
 		_loading += delta
-	if _board_in <= 0.0 and aboard.size() < LOAD and not _waiting.is_empty():
+	if _board_in <= 0.0 and aboard.size() < capacity and not _waiting.is_empty():
 		var head := _waiting[0]
 		if head.queue_spot == spots[0] and head.ground_pos.distance_to(board_at) <= BOARD_REACH:
 			_board(head)
 			# Marshals at the dock (v0.07) see them aboard faster.
 			var speed := _crowd.marshals.speed_at(board_at) if _crowd.marshals != null else 1.0
-			_board_in = LOAD_TIME / float(LOAD) / speed
-	if aboard.size() >= LOAD or (_loading >= LOAD_TIME and not aboard.is_empty() and _waiting.is_empty()):
+			_board_in = LOAD_TIME / float(capacity) / speed
+	if aboard.size() >= capacity or (_loading >= LOAD_TIME and not aboard.is_empty() and _waiting.is_empty()):
 		_sail()
 
 
@@ -209,18 +216,29 @@ func _sail() -> void:
 	sailed.emit(n)
 
 
-## The dock is gone: closed until it is rebuilt, or ended if blighted. The waiting crowd makes for the gates.
-func _stop() -> void:
+## The service ends for good (v0.09, Act III's last ferry): whoever is aboard sails, the waiting crowd makes for the
+## gates, and the boats take nobody more, though the dock stands.
+func close(reason: String) -> void:
+	if state == State.ENDED:
+		return
+	if not aboard.is_empty():
+		_sail()
+	_stop(reason)
+
+
+## The dock is gone: closed until it is rebuilt, or ended if blighted. The waiting crowd makes for the gates. With a
+## `reason` (close()) the service is ended whatever the dock's state.
+func _stop(reason := "") -> void:
 	var was_open := open()
 	var blighted := is_instance_valid(dock) and dock.blighted
-	state = State.ENDED if blighted or not is_instance_valid(dock) else State.CLOSED
+	state = State.ENDED if blighted or not is_instance_valid(dock) or reason != "" else State.CLOSED
 	for p in _waiting:
 		if is_instance_valid(p) and p.is_alive():
 			p.release_from_queue()
 			p.replan()
 	_waiting.clear()
 	if was_open:
-		closed.emit("the dock is sunk" if blighted else "the dock is destroyed")
+		closed.emit(reason if reason != "" else "the dock is sunk" if blighted else "the dock is destroyed")
 
 
 ## The ship on its trip: it slips downriver as it fades out, is gone, and fades back in as it returns.

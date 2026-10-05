@@ -34,6 +34,8 @@ const PLATE_H := 12.0
 ## The Banishing Rite's bar under the clock (v0.05).
 const RITE_BAR := Vector2(120.0, 4.0)
 const RITE_TOP := 30.0
+## The act's next timed events (v0.09), centred under the clock and the rite's bar: one line each.
+const EVENTS_TOP := 44.0
 ## The screen height to lay out against before the Control has been sized (headless tests).
 const SCREEN_H := 360.0
 ## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
@@ -129,6 +131,26 @@ func objective_rows() -> Array:
 	for b in _rules.bonuses:
 		rows.append([b.hud_text(_rules), "x" if b.check(_rules) == Objective.Status.FAILED else "ok"])
 	return rows
+
+
+## The act's next two timed events (v0.09) as [clock, label] rows, e.g. ["0:23", "The bonfire lights"]; empty for a
+## mission whose director keeps no timeline.
+func event_rows() -> Array:
+	var rows := []
+	if _rules.director == null or _rules.director.timeline == null:
+		return rows
+	for e: Dictionary in _rules.director.timeline.upcoming(2):
+		rows.append([UiTheme.clock(float(e["in"])), String(e["label"])])
+	return rows
+
+
+## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is the night's own, lower when
+## the Prince escaped), else the single missions' 50.
+func escape_limit() -> int:
+	for o in _rules.objectives:
+		if o is EscapeLimitObjective:
+			return (o as EscapeLimitObjective).limit
+	return Rules.ESCAPE_LIMIT
 
 
 ## The mission's director marks someone (v0.08: The Warning's messenger).
@@ -253,6 +275,9 @@ func _signature() -> String:
 	var out := "%s|%s|%s|%d|%s" % [UiTheme.clock(_rules.time_left),
 		objective_text() if _rules.mission.scored else str(objective_rows()), status_text(),
 		roundi(_rules.stability.total() * 200.0), rite_text()]
+	var events := event_rows()
+	if not events.is_empty():
+		out += "|" + str(events)
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
@@ -263,6 +288,7 @@ func _draw() -> void:
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
 	_draw_rite(w)
+	_draw_events(w)
 	if _rules.mission.scored:
 		_draw_objectives()
 	else:
@@ -313,6 +339,26 @@ func _draw_rite(w: float) -> void:
 		draw_rect(Rect2(at, Vector2(roundf(RITE_BAR.x * rite.fraction()), RITE_BAR.y)), UiTheme.COL_GOLD)
 
 
+## The next timed events (v0.09), centred on a plate under the clock: the time dim, the label light.
+func _draw_events(w: float) -> void:
+	var rows := event_rows()
+	if rows.is_empty():
+		return
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]) + "  " + String(row[1]), UiTheme.SIZE_SMALL))
+	# The plate starts 4 px above EVENTS_TOP, just under the rite's plate (which ends at 39 while it chants).
+	var top := EVENTS_TOP - 4.0
+	draw_rect(Rect2(roundf((w - wide) * 0.5) - 4.0, top, wide + 8.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
+	var y := top + 12.0
+	for row: Array in rows:
+		var clock := String(row[0])
+		var x := roundf((w - wide) * 0.5)
+		UiTheme.text(self, Vector2(x, y), clock, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(x + UiTheme.width(clock + "  ", UiTheme.SIZE_SMALL), y), String(row[1]), UiTheme.SIZE_SMALL)
+		y += ROW_H
+
+
 func _draw_objectives() -> void:
 	draw_rect(OBJECTIVE_PANEL, UiTheme.COL_PANEL)
 	UiTheme.text(self, Vector2(6.0, 14.0), objective_text(), UiTheme.SIZE_SMALL)
@@ -338,8 +384,10 @@ func _draw_objectives() -> void:
 		draw_rect(Rect2(lx, 31.0, 5.0, 5.0), UiTheme.STABILITY_COLS[int(entry[1])])
 		UiTheme.text(self, Vector2(lx + 7.0, 38.0), String(entry[0]), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		lx += 7.0 + UiTheme.width(String(entry[0]), UiTheme.SIZE_SMALL) + 8.0
-	var escaped := "Escaped %d / %d" % [_crowd.escaped_count, Rules.ESCAPE_LIMIT]
-	var col := UiTheme.COL_BAD if _crowd.escaped_count >= Rules.ESCAPE_LIMIT - 8 else UiTheme.COL_DIM
+	var count := _rules.escaped_this_act()
+	var limit := escape_limit()
+	var escaped := "Escaped %d / %d" % [count, limit]
+	var col := UiTheme.COL_BAD if count >= limit - 8 else UiTheme.COL_DIM
 	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
 
 

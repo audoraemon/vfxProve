@@ -19,6 +19,9 @@ const WEIGHTS := {
 	CitizenProfile.Role.ENGINEER: [0.15, 0.75, 0.1, 0.0],
 	# The watchman (v0.08) keeps his gate: work is the gate post his appointment gives him.
 	CitizenProfile.Role.WATCHMAN: [0.1, 0.9, 0.0, 0.0],
+	# The Mayor and the Prince (v0.09) are placed by The Long Night's directors; these only keep pick() whole.
+	CitizenProfile.Role.MAYOR: [0.3, 0.6, 0.1, 0.0],
+	CitizenProfile.Role.NOBLE: [0.9, 0.0, 0.1, 0.0],
 }
 ## How long a citizen stays (seconds, min and max) at each kind of place.
 const STAY := [Vector2(10, 30), Vector2(25, 60), Vector2(8, 25), Vector2(5, 12)]

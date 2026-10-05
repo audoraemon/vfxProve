@@ -178,3 +178,97 @@ static func run(t) -> void:
 	e.step(EngineerManager.REPLACE + 1.0)
 	t.check(e.teams.size() == 1, "but not once the workshop has fallen")
 	_done(made)
+
+	_fires(t)
+
+
+## v0.08.2: a team with nothing to mend fights the nearest fire, through the evacuation too, and goes back to
+## mending when there is a job.
+static func _fires(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var e := crowd.engineers
+	var fm := crowd.fires
+	e.begin()
+	e.step(0.1)
+	var idle := true
+	for team in e.teams:
+		idle = idle and team.job.is_empty() and (team.members[0] as Person).mind == Person.Mind.DUTY
+	t.check(idle and e.jobs().is_empty(), "with nothing to mend and nothing burning, the teams stand by")
+
+	var house := _house(env, e.base)
+	fm.ignite(house, 0.4)
+	t.check(e.jobs().is_empty(), "a burning house is no job to mend")
+	e.step(EngineerManager.RETHINK)
+	var all_on := true
+	for team in e.teams:
+		for p in team.members:
+			var m: Person = p
+			all_on = all_on and m.mind == Person.Mind.ASSIST and m.assist_fire == house and m.assist_stays \
+				and (fm.fires[house].responders as Array).has(m)
+	t.check(all_on, "with nothing to mend, every team turns out to the fire")
+	var water := fm.nearest_water(house.center())
+	var first: Person = e.teams[0].members[0]
+	t.check(first.goal().distance_to(water.center()) < 2.5, "and fetches water like the brigade")
+	e.step(0.5)
+	t.check(first.mind == Person.Mind.ASSIST, "the team leaves them to their round between rethinks")
+
+	# The evacuation: the brigade stands down, the engineers fight on.
+	var brigade: Person = null
+	for p in crowd.citizens:
+		if p.profile != null and p.profile.role != CitizenProfile.Role.ENGINEER and p.mind == Person.Mind.CALM:
+			brigade = p
+			break
+	brigade.assist(house)
+	(fm.fires[house].responders as Array).append(brigade)
+	crowd.alarms.stage = AlarmManager.Stage.EVACUATION
+	crowd._evacuate()
+	fm._tend_responders(0.1)
+	t.check(brigade.mind != Person.Mind.ASSIST and first.mind == Person.Mind.ASSIST,
+		"at the evacuation the brigade stands down and runs, the engineers fight on")
+
+	# A job: one team leaves the fire to mend it; the other stays on.
+	var shack := _house(env, Vector2(-10, 5))
+	shack.hp = shack.max_hp * 0.4
+	e.step(EngineerManager.RETHINK)
+	var mending: Dictionary = {}
+	var firefighting: Dictionary = {}
+	for team in e.teams:
+		if not team.job.is_empty() and team.job.target == shack:
+			mending = team
+		elif team.job.is_empty():
+			firefighting = team
+	var back := not mending.is_empty()
+	if back:
+		for p in mending.members:
+			back = back and (p as Person).mind == Person.Mind.DUTY and (p as Person).assist_fire == null \
+				and (p as Person).anchor in mending.spots
+	t.check(back, "a job to mend calls the first team free back off the fire")
+	t.check(not firefighting.is_empty() and (firefighting.members[0] as Person).mind == Person.Mind.ASSIST,
+		"the other team stays at the fire")
+
+	# Out: they come back to the workshop.
+	fm.fires[house].intensity = 0.05
+	fm.douse(house)
+	e.step(0.1)
+	var home := not firefighting.is_empty()
+	if home:
+		for i in firefighting.members.size():
+			var m: Person = firefighting.members[i]
+			home = home and m.mind == Person.Mind.DUTY and m.anchor == firefighting.spots[i] \
+				and m.anchor.distance_to(e.base) < 1.0
+	t.check(home, "the fire out, the team goes back to the workshop, on call")
+	_done(made)
+
+	# An Organized town has no engineers: its fires are the brigade's alone (crowd_check and the Organized checksums).
+	made = _crowd(ResponseProfile.Tier.ORGANIZED)
+	crowd = made[0]
+	crowd.fires.ignite(_house(made[1], Vector2(0, 0)), 0.4)
+	crowd.engineers.begin()
+	crowd.engineers.step(EngineerManager.RETHINK)
+	var assisting := 0
+	for p in crowd.citizens:
+		assisting += 1 if p.mind == Person.Mind.ASSIST else 0
+	t.check(assisting == 0, "an Organized town sends no engineers to a fire")
+	_done(made)

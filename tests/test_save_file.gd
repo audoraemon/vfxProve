@@ -99,6 +99,72 @@ static func run(t) -> void:
 	t.check(resaved.best_score == 9000 and resaved.loadout_for(lj) == PackedStringArray(["nova"]),
 		"and it survives being saved in the new form (%d, %s)" % [resaved.best_score, resaved.loadout_for(lj)])
 
+	# The Long Night (v0.09): a won night is a new best by a new path as well as by a better score; a lost one adds no path.
+	var ln := "long_night"
+	var night := SaveFile.new()
+	var acts := [{"act": "omen", "won": true}, {"act": "festival", "won": true}, {"act": "judgement", "won": true}]
+	t.check(night.best(ln).paths_won.is_empty(), "a night never played has won no path")
+	t.check(night.record(ln, {"score": 12000, "rank": "B", "won": true, "path": "festival", "acts": acts}),
+		"a won night is a new best")
+	t.check(night.best(ln).paths_won == PackedStringArray(["festival"]),
+		"and its path is won (%s)" % [night.best(ln).paths_won])
+	t.check(night.record(ln, {"score": 12000, "rank": "B", "won": true, "path": "procession", "acts": acts}),
+		"the same score on the Procession is a new best: a new path")
+	t.check(night.best(ln).paths_won == PackedStringArray(["festival", "procession"]) and int(night.best(ln).best_score) == 12000,
+		"with both paths won and the score unchanged (%s, %d)" % [night.best(ln).paths_won, int(night.best(ln).best_score)])
+	t.check(not night.record(ln, {"score": 9000, "rank": "C", "won": true, "path": "festival", "acts": acts}),
+		"a lower score on a known path is not")
+	t.check(night.record(ln, {"score": 16000, "rank": "A", "won": true, "path": "festival", "acts": acts})
+		and night.best(ln).best_rank == "A", "a higher one on a known path is, with its rank")
+	t.check(night.best(ln).paths_won.size() == 2, "and a known path is not added twice (%s)" % [night.best(ln).paths_won])
+	var lost := SaveFile.new()
+	t.check(lost.record(ln, {"score": 4000, "rank": "D", "won": false, "path": "festival", "acts": acts})
+		and lost.best(ln).paths_won.is_empty(), "a lost night adds no path (%s)" % [lost.best(ln).paths_won])
+	t.check(not lost.record(ln, {"score": 3000, "rank": "D", "won": false, "path": "procession", "acts": acts}),
+		"and a lost night with a lower score is not a new best")
+	var pathless := SaveFile.new()
+	pathless.record(ln, {"score": 5000, "rank": "C", "won": true, "acts": acts})
+	t.check(pathless.best(ln).paths_won.is_empty(), "a won result with no path adds none")
+	night.save_to(path)
+	var night_back := SaveFile.new().load_from(path)
+	t.check(night_back.best(ln).paths_won == PackedStringArray(["festival", "procession"])
+		and night_back.best(ln).best_rank == "A", "the paths won come back from the file (%s)" % [night_back.best(ln).paths_won])
+	# A hand-edited paths_won that is not a list reads as none.
+	var odd := ConfigFile.new()
+	odd.set_value("mission." + ln, "paths_won", 7)
+	odd.save(path)
+	t.check(SaveFile.new().load_from(path).best(ln).paths_won.is_empty(), "a paths_won that is not a list reads as none")
+
+	# Review focus 5: a save from before the night has no section for it. Nothing is won, there is no loadout, the
+	# board says "Not yet played", and the first Prepare opens on the night's default loadout.
+	var before := ConfigFile.new()
+	before.set_value("kak", "last_mission", "warning")
+	before.set_value("mission.warning", "won", true)
+	before.save(path)
+	var old_save := SaveFile.new().load_from(path)
+	t.check(old_save.best(ln).paths_won.is_empty() and old_save.loadout_for(ln).is_empty() and int(old_save.best(ln).best_score) == 0,
+		"a save with no night section has no paths won and no loadout (%s)" % [old_save.best(ln)])
+	var board := MissionBoard.new().setup(old_save, "warning")
+	t.check(board.best_line(MissionBook.long_night()) == "Not yet played",
+		"the night's card says Not yet played (%s)" % board.best_line(MissionBook.long_night()))
+	t.check(Game.starting_loadout(old_save, ln) == MissionBook.long_night().default_loadout
+		and not Game.starting_loadout(old_save, ln).is_empty(),
+		"and its first Prepare opens on the night's default loadout (%s)" % [Game.starting_loadout(old_save, ln)])
+	old_save.remember_loadout(ln, PackedStringArray(["doom"]))
+	t.check(Game.starting_loadout(old_save, ln) == PackedStringArray(["doom"]), "then on the one drafted last")
+	t.check(Game.starting_loadout(old_save, lj).is_empty(), "the other missions still open empty")
+	# The night's card: its best rank, then a tick or a cross for each path.
+	var marks := MissionBoard.new().setup(night_back, ln)
+	t.check(marks.best_line(MissionBook.long_night()) == "Best 16,000  A", "a played night's card shows its best (%s)" % marks.best_line(MissionBook.long_night()))
+	t.check(marks.best_marks(MissionBook.long_night()) == [["Festival", true], ["Procession", true]],
+		"and both paths ticked (%s)" % [marks.best_marks(MissionBook.long_night())])
+	var half := SaveFile.new()
+	half.record(ln, {"score": 12000, "rank": "B", "won": true, "path": "festival", "acts": acts})
+	t.check(MissionBoard.new().setup(half, ln).best_marks(MissionBook.long_night()) == [["Festival", true], ["Procession", false]],
+		"a night won by the Festival alone ticks it and crosses the Procession")
+	marks.free()
+	board.free()
+
 	# A damaged file reads as a fresh one instead of raising. `\x00\x01` is not a valid GDScript string
 	# escape (only `\uXXXX` is), so the raw bytes are appended after the text instead.
 	var f := FileAccess.open(path, FileAccess.WRITE)

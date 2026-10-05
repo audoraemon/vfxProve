@@ -2220,3 +2220,30 @@ static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
   - crowd_check `-346732806 alive=220 escaped=0`;
   - FLOW `checks=34 failures=0`;
   - exact checksums unchanged: `calm --seconds=60` -695580348, `gates` 619520995, `fire` -16560442, `rite --interrupt` -129298221, `soldiers --case=escort` -935015846.
+
+### v0.08.2: the worst-frame profile (item 4)
+
+- **Method.** A scratch copy of the tree (a detached worktree in the scratchpad, `.godot` copied in) with timers around every
+  `_process` and `_draw` that runs in the mission (people, crowd, structures, environment, HUD, lights, town floor,
+  chimneys, ...), each crowd manager's `step()`, `Crowd`'s per-frame helpers, `Person._think`, the unit tick and refresh,
+  and `WalkGrid.path()`. A scratch SceneTree script ran the mission's `--bench` and recorded per frame the wall time, those
+  timers, and `RenderingServer.viewport_get_measured_render_time_cpu/gpu`. Nothing of it is in the repository.
+  (`Performance.TIME_PROCESS` is useless per frame here: it updates about once a second.)
+- **The average frame** (about 9.5 ms, 105 fps, during the bench): scripts 4.0 ms (people 1.9: unit tick 0.6, think 0.3,
+  refresh 0.3; crowd 0.6, of which the gates 0.2 and escapes 0.1; structures' draw 0.5; environment 0.35; structures 0.25;
+  HUD 0.2), render CPU 4.4 ms, render GPU 0.8 ms, and 1.1 ms not under any timer (engine work, waits).
+- **The worst frames** (18-24 ms; three runs): the worst one or two of each run had **6.5-10 ms of wall time outside every
+  timer and the render**, and in the same frames every hooked script ran 1.5-2.5x its usual time at once (people 4-5 ms
+  instead of 1.9). That is the process being held up as a whole (the machine had Chrome, Edge and three other Godot
+  processes running), not one cost of the game. Frames of 14-16 ms are the same picture, smaller.
+- **What does come from the code, and is periodic:** RoutineManager sends calm citizens on (HZ 1, a slice a frame); in about
+  two frames a second the slice holds a long A* route, and `WalkGrid.path()` takes 1.4-2 ms in that frame (17 such frames in
+  9 s, mean frame 10.4-11.6 ms against 9.5). It raises the 99th percentile, not the worst frame.
+- **Ruled out:** shader compiles (no render-CPU outlier in the bench window: render CPU stays 3.5-8 ms), garbage collection
+  (GDScript counts references; no stall pattern), the enemy field's purge (once a second, under 0.05 ms), the crowd's managers
+  (each under 0.05 ms a frame on average, the gates and escapes included), and vsync (`--disable-vsync`: 112.6 / 112.1 /
+  114.8 fps, worst 18.7 / 26.1 / 18.0 ms, against 113.6 / 111.5 / 113.6 and 16.8 / 16.8 / 15.0 with it).
+- **Not fixed.** Spreading the routine's route planning over frames would change when people set off, and so every exact
+  checksum; the rest is not the game's. The v0.07 bump (12-13 to 15-16 ms) is most likely the same machine effect: the
+  worst frame tracks how busy the laptop is, and v0.07's new managers cost almost nothing per frame.
+- Bench at the end of v0.08.2 (same busy machine): 111.4 / 110.8 / 114.6 fps, worst 17.2 / 18.2 / 17.9 ms, 1050 draw calls.

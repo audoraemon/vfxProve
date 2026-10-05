@@ -72,6 +72,12 @@ func _wither_away() -> void:
 	segments.clear()
 
 
+## Cut short (FxTimeline.end_now()): the brambles go with it, or they would block the way for good.
+func end_now() -> void:
+	_wither_away()
+	super()
+
+
 ## The brambles grow up out of the ground, and sink back as they wither.
 func _fx_process(_delta: float) -> void:
 	var k := minf(clampf(t / GROW, 0.05, 1.0), clampf((duration - t) / WITHER, 0.05, 1.0))

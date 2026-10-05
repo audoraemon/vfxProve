@@ -78,6 +78,7 @@ static func run(t) -> void:
 	_endings(t)
 	_interruptions(t)
 	_bonus(t)
+	_teardown_releases_the_bell(t)
 
 
 ## The watchman, the omen, the run, the re-aim and the delivery.
@@ -269,4 +270,15 @@ static func _bonus(t) -> void:
 	crowd.alarms.update(crowd.alarm, 0, 0.0)
 	t.check(crowd.alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY and unseen.check(rules) == Objective.Status.FAILED,
 		"failed at Local Emergency (%s)" % crowd.alarms.stage_name())
+	_done(s)
+
+
+## v0.09: the bell waits for a relay only while the warning lives; tearing the director down lets it fall silent
+## with its keeper again.
+static func _teardown_releases_the_bell(t) -> void:
+	var s := _setup()
+	var crowd: Crowd = s.crowd
+	t.check(crowd.bell.hold_on_death, "the warning holds the bell while it lives")
+	(s.d as WarningDirector).teardown()
+	t.check(not crowd.bell.hold_on_death, "and lets it go when it is torn down")
 	_done(s)

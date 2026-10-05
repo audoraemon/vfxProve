@@ -145,6 +145,16 @@ func bar_postern() -> void:
 	postern.walkable = false
 	_env.reindex()
 
+
+## The town gets its river boats after all (v0.09, Crowd.raise_profile()): the barred postern opens again, the inverse
+## of bar_postern() -- the barring never changed its art, so it is drawn as it was. The caller re-stamps the walk grid.
+func open_postern() -> void:
+	if not is_instance_valid(postern) or postern.walkable or postern.destroyed:
+		return
+	postern.walkable = true
+	_env.reindex()
+
+
 func teardown() -> void:
 	if _env.structure_destroyed.is_connected(_on_structure_destroyed):
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)

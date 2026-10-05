@@ -10,7 +10,9 @@ extends RefCounted
 ## its fallen towers and walls stay down. Once the town evacuates the gates are left alone: a fallen gate lets the
 ## crowd out with no queue, and a rebuilt one would hold it back. A team that loses a member takes one of its escorts
 ## in the place (v0.07); with none it is lost, and the workshop sends out another REPLACE seconds later while it
-## stands. Only towns whose profile has engineer_teams have engineers.
+## stands. Only towns whose profile has engineer_teams have engineers. A team with nothing to mend fights the nearest
+## fire within FIRE_REACH (v0.08.2; FireManager.enlist()), through the evacuation too, where the fire brigade stands
+## down; a job to do calls it back at the next rethink.
 
 signal turned_out
 signal rebuilt(s: Structure)
@@ -38,6 +40,8 @@ const SITE_OUT := 0.45
 ## Teams rethink their jobs this often.
 const RETHINK := 2.0
 const SWITCH_MARGIN := 20.0
+## How far from the team a fire may be for a team with nothing to mend to go and fight it (v0.08.2).
+const FIRE_REACH := 30.0
 ## Minds a member can be called from (and goes back to work from after a fright).
 const AVAILABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
 
@@ -212,7 +216,7 @@ func _assign(rethink: bool) -> void:
 				best_score = sc
 				best = job
 		if best.is_empty():
-			if team.job.is_empty():
+			if team.job.is_empty() and not _fight_fire(team):
 				_stand_by(team)
 			continue
 		if team.job.is_empty() or (best.target != team.job.target and best_score > score(team.job, from) + SWITCH_MARGIN):
@@ -240,7 +244,37 @@ func _take(team: Dictionary, job: Dictionary) -> void:
 	team.working = false
 	team.spots = _spots(job.site)
 	for i in team.members.size():
-		_send(team.members[i], team.spots[i])
+		var p = team.members[i]
+		if is_instance_valid(p) and (p as Person).mind == Person.Mind.ASSIST:
+			(p as Person).stand_down()  # off the fire: there is mending to do (v0.08.2)
+		_send(p, team.spots[i])
+
+
+## Nothing to mend (v0.08.2): the team fights the nearest fire it can, each member on its crew, and comes back to the
+## workshop when it is out. True while the team is at a fire, or has just been sent to one.
+func _fight_fire(team: Dictionary) -> bool:
+	if _crowd.fires == null:
+		return false
+	var fire: Structure = null
+	for p in team.members:
+		if is_instance_valid(p) and (p as Person).is_alive() and (p as Person).mind == Person.Mind.ASSIST \
+				and _crowd.fires.is_burning((p as Person).assist_fire):
+			fire = (p as Person).assist_fire  # one of them is at it already: the other joins
+			break
+	if fire == null:
+		fire = _crowd.fires.nearest_fightable(_where(team), FIRE_REACH)
+	if fire == null:
+		return false
+	team.spots = _spots(base) if base != Vector2.INF else team.spots
+	var sent := false
+	for p in team.members:
+		if not is_instance_valid(p) or not (p as Person).is_alive():
+			continue
+		var m: Person = p
+		if m.mind != Person.Mind.ASSIST and (m.mind == Person.Mind.DUTY or m.mind in AVAILABLE or m.soldier):
+			_crowd.fires.enlist(m, fire, true)
+		sent = sent or m.mind == Person.Mind.ASSIST
+	return sent
 
 
 ## The two places at a site: the site and one beside it.
@@ -277,7 +311,9 @@ func _work(team: Dictionary, delta: float) -> void:
 	for i in team.members.size():
 		var p: Person = team.members[i]
 		var spot: Vector2 = team.spots[i] if i < team.spots.size() else base
-		if p.mind != Person.Mind.DUTY:
+		if p.mind == Person.Mind.ASSIST:
+			ready = false  # at a fire (v0.08.2): FireManager runs its round, a job calls it back (_take())
+		elif p.mind != Person.Mind.DUTY:
 			# Frightened off (or busy elsewhere): back to it once calm again.
 			if (p.mind in AVAILABLE or p.soldier) and spot != Vector2.INF:
 				p.go_duty(spot)

@@ -12,4 +12,4 @@ func _init(most := Rules.ESCAPE_LIMIT) -> void:
 
 
 func check(rules: Rules) -> Status:
-	return Status.FAILED if rules.crowd().escaped_count >= limit else Status.PENDING
+	return Status.FAILED if rules.escaped_this_act() >= limit else Status.PENDING

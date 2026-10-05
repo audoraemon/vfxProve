@@ -219,8 +219,9 @@ func _on_cast(_slot: int, key: String, at: Vector2) -> void:
 		delayed_by[PowerBook.authority_of(key)] = true
 
 
-static func _alive(p: Person) -> bool:
-	return is_instance_valid(p) and p.is_alive()
+## Alive, and not freed: a fallen citizen frees itself when its fade ends, and the directors still hold it.
+static func _alive(p: Variant) -> bool:
+	return is_instance_valid(p) and (p as Person).is_alive()
 
 
 func marker() -> Vector2:
@@ -245,3 +246,6 @@ func teardown() -> void:
 		crowd._field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
+	# The bell waits for a relay only while the warning lives (v0.09: a crowd outlives an act).
+	if is_instance_valid(crowd) and crowd.bell != null:
+		crowd.bell.hold_on_death = false

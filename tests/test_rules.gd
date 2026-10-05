@@ -181,6 +181,7 @@ static func run(t) -> void:
 	crowd.free()
 	world.free()
 	_surge(t, loadout)
+	_per_act(t, loadout)
 
 
 
@@ -239,3 +240,62 @@ static func _surge(t, loadout: PackedStringArray) -> void:
 	env.clear()
 	env.free()
 	town.free()
+
+
+
+## v0.09: a Rules built on a crowd that has already lived through an act counts from its own start, and a tool
+## can end the act.
+static func _per_act(t, loadout: PackedStringArray) -> void:
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, WalkGrid.new().setup(env, town), world, 5)
+	crowd.escaped_count = 7
+	crowd.killed_citizens = 3
+	crowd.killed_soldiers = 2
+	var rules := Rules.new().setup(loadout, null, env, field, crowd, town)
+	t.check(rules.escaped_this_act() == 0 and rules.citizens_killed_this_act() == 0
+		and rules.soldiers_killed_this_act() == 0,
+		"a new act starts from zero (%d, %d, %d)" % [rules.escaped_this_act(), rules.citizens_killed_this_act(),
+		rules.soldiers_killed_this_act()])
+	t.check(rules.score() == 0, "and the score counts none of the earlier act's kills (%d)" % rules.score())
+	crowd.escaped_count += 2
+	crowd.killed_citizens += 1
+	crowd.killed_soldiers += 1
+	t.check(rules.escaped_this_act() == 2 and rules.citizens_killed_this_act() == 1
+		and rules.soldiers_killed_this_act() == 1,
+		"later escapes and kills count (%d, %d, %d)" % [rules.escaped_this_act(), rules.citizens_killed_this_act(),
+		rules.soldiers_killed_this_act()])
+	t.check(rules.score() == Rules.SCORE_PER_CITIZEN + Rules.SCORE_PER_SOLDIER,
+		"the score counts only the new ones (%d)" % rules.score())
+	var escaped_line := ""
+	for l in rules.stat_lines():
+		if l.label == "Citizens escaped":
+			escaped_line = String(l.value)
+	t.check(escaped_line == "2", "the table's escapes are this act's (%s)" % escaped_line)
+	t.check(EscapeLimitObjective.new(2).check(rules) == Objective.Status.FAILED,
+		"a limit of 2 is met by two escapes")
+	t.check(EscapeLimitObjective.new(3).check(rules) == Objective.Status.PENDING,
+		"a limit of 3 is not")
+	var overs: Array = []
+	rules.over.connect(func(won: bool, reason: String) -> void: overs.append([won, reason]))
+	rules.force_end(true, "test")
+	t.check(rules.finished and rules.won and rules.over_reason == "test" and overs.size() == 1,
+		"force_end ends the act as asked, once (%s)" % [overs])
+	rules.force_end(false, "again")
+	t.check(rules.won and rules.over_reason == "test" and overs.size() == 1,
+		"a second force_end does nothing")
+	rules.teardown()
+	rules.free()
+	crowd.clear()
+	field.clear()
+	field.free()
+	env.clear()
+	env.free()
+	town.free()
+	crowd.free()
+	world.free()

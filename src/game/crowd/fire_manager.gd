@@ -38,6 +38,10 @@ var _step_in := 0.0
 var _recruit_in := 0.0
 ## True while the fire deals its own damage, so that damage never re-ignites anything.
 var _burning_now := false
+## How many fires have ended so far (v0.08.2, for the behaviour reports): put out by the water, or with their
+## building fallen while it burned.
+var doused_out := 0
+var burned_down := 0
 
 
 func setup(crowd: Crowd, env: EnvironmentField, seed_value: int) -> FireManager:
@@ -127,6 +131,10 @@ func _windy(g: Vector2) -> bool:
 func _put_out(s: Structure, doused: bool) -> void:
 	if not fires.has(s):
 		return
+	if doused:
+		doused_out += 1
+	else:
+		burned_down += 1
 	for p in fires[s].responders:
 		if is_instance_valid(p) and p.mind == Person.Mind.ASSIST:
 			p.stand_down()
@@ -151,6 +159,22 @@ func water_points() -> Array[Structure]:
 		if s.kind == Structure.Kind.FOUNTAIN and not s.destroyed and not s.blighted:
 			out.append(s)
 	return out
+
+
+## The nearest fire to `from`, within `reach`, that can still be fought: not past ABANDON, with water to fetch
+## (v0.08.2, for the engineers); null when there is none.
+func nearest_fightable(from: Vector2, reach: float) -> Structure:
+	var best: Structure = null
+	var best_d := INF
+	for s: Structure in fires.keys():
+		if not is_instance_valid(s) or s.destroyed or float(fires[s].intensity) >= ABANDON \
+				or nearest_water(s.center()) == null:
+			continue
+		var d := s.center().distance_to(from)
+		if d <= reach and d < best_d:
+			best_d = d
+			best = s
+	return best
 
 
 func nearest_water(g: Vector2) -> Structure:
@@ -188,12 +212,13 @@ func _recruit() -> void:
 			_go_to_water(pool[k], s)
 
 
-## A rescue squad's soldier turns out to the fire on `s` (RescueManager, v0.07): on its crew whatever the brigade's
-## numbers.
-func enlist(p: Person, s: Structure) -> void:
+## A rescue squad's soldier (RescueManager, v0.07), or an engineer with nothing to mend (EngineerManager, v0.08.2),
+## turns out to the fire on `s`: on its crew whatever the brigade's numbers. `stays` keeps it on through the
+## evacuation, when the brigade and the squads stand down.
+func enlist(p: Person, s: Structure, stays := false) -> void:
 	if not fires.has(s) or not is_instance_valid(p) or not p.is_alive():
 		return
-	p.assist(s, true)
+	p.assist(s, true, stays)
 	if p.mind != Person.Mind.ASSIST:
 		return
 	if not (fires[s].responders as Array).has(p):
@@ -210,7 +235,7 @@ func _tend_responders(delta: float) -> void:
 		for p in fires[s].responders.duplicate():
 			if not is_instance_valid(p) or p.mind != Person.Mind.ASSIST or p.assist_fire != s:
 				continue
-			if evacuating or float(fires[s].intensity) >= ABANDON:
+			if (evacuating and not p.assist_stays) or float(fires[s].intensity) >= ABANDON:
 				p.stand_down()
 				continue
 			if p.has_goal():

@@ -70,6 +70,9 @@ func setup(env: EnvironmentField, at: Vector2, shake: CameraShake = null) -> Cit
 	# Art only: the keep flies the flag, and the south wall (facing the market) is the Citadel's gateway.
 	keep.art_tag = &"keep"
 	parts[5].art_tag = &"gate"
+	# Their sprites (the PixelLab proof) were picked before the tags: pick again.
+	keep.refresh_sprite()
+	parts[5].refresh_sprite()
 	return self
 
 

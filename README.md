@@ -75,9 +75,9 @@ The approved effects are becoming a one-mission game (spec: `docs/superpowers/sp
 | `R` | restart with a fresh mission |
 | `Esc` | cancel an aim in progress, else quit; Title from the board, the board from Prepare, pause in a mission, resume from pause, the board from Results |
 
-**Versions:** v0.08 (tag `kak-v0.08`) adds the mission board (The Warning, Tier 1; Last Judgement, Tier 5), Divine Power as a loadout budget with up to six slots, and Mind Whisper. Each version is described in `docs/KAK_Version_0.0N_Summary.md` (latest: `docs/KAK_Version_0.08_Summary.md`).
+**Versions:** v0.09 (tag `kak-v0.09`) adds **The Long Night** (Tier 3), a mission in three acts on one town: The Omen, then the Festival or the Procession, then Judgement, with an interlude and a re-draft between acts, timed events, and a rank and save for the night. v0.08 (tag `kak-v0.08`) added the mission board (The Warning, Tier 1; Last Judgement, Tier 5), Divine Power as a loadout budget with up to six slots, and Mind Whisper. Each version is described in `docs/KAK_Version_0.0N_Summary.md` (latest: `docs/KAK_Version_0.09_Summary.md`).
 
-The mission, loadout, seed and population can be set on the command line: `-- --mission=warning --loadout=whisper,doom,discord --seed=7 --people=80`. Last Judgement's default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and Nuclear Nova; The Warning's is Mind Whisper, Silent Doom and Discord. A mission ends with a banner and the Results screen.
+The mission, loadout, seed and population can be set on the command line: `-- --mission=warning --loadout=whisper,doom,discord --seed=7 --people=80` (`--mission=long_night` plays the night). Last Judgement's default loadout is Heaven Splitter, Tsunami Breaker, Cinderfall Barrage and Nuclear Nova; The Warning's is Mind Whisper, Silent Doom and Discord. A mission ends with a banner and the Results screen.
 
 ```bash
 SCENE=res://scenes/mission.tscn bash tools/capture.sh --mission-test   # scripted mission; logs MISSION test ... (add --mission=warning for The Warning)

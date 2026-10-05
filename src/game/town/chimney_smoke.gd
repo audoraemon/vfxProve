@@ -32,7 +32,19 @@ func wisp_count() -> int:
 
 
 func _smokes(h: Structure) -> bool:
-	return is_instance_valid(h) and not h.destroyed and h._collapse < 0.0 and HouseArt.chimney_top(h) != Vector2.INF
+	return is_instance_valid(h) and not h.destroyed and h._collapse < 0.0 and tip_of(h) != Vector2.INF
+
+
+## Where a house's smoke leaves its chimney (px from its front corner; INF for none): its sprite's chimney when it is
+## drawn from a sprite (whose own smoke, if drawn in, means none here), else the procedural art's.
+static func tip_of(h: Structure) -> Vector2:
+	if h.sprite.is_empty():
+		return HouseArt.chimney_top(h)
+	var c: Vector2 = h.sprite.chimney
+	if c == Vector2.INF:
+		return c
+	var at: Vector2 = h.sprite.anchor
+	return Vector2((c.x - at.x) * (-1.0 if h.sprite.mirror else 1.0), c.y - at.y)
 
 
 func _process(delta: float) -> void:
@@ -48,7 +60,7 @@ func _draw() -> void:
 		var h := _houses[i]
 		if not _smokes(h):
 			continue
-		var tip := h.position + HouseArt.chimney_top(h) - position
+		var tip := h.position + tip_of(h) - position
 		var phase := float(i * 37 % 100) / 100.0 * CYCLE
 		for k in PUFFS:
 			var t := fposmod(_time + phase + k * CYCLE / PUFFS, CYCLE) / CYCLE

@@ -63,7 +63,8 @@ const WATCH_HZ := 4.0
 ## stalled at every path waypoint; once they really ran (milestone 5) 42 escaped in the first 34 s against a
 ## loss limit of 38. At 2 s the gates are the bottleneck the spec describes: crowds pile up in front of them.
 const GATE_INTERVAL := 2.0
-## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace.
+## The postern down to the dock (v0.05) is a narrow door: one person this often, about the boats' own pace -- by
+## default; the profile sets it (ResponseProfile.postern_interval, v0.08.2).
 const POSTERN_INTERVAL := 3.0
 ## How far beyond a gate's footprint its queue reaches, so people are held just before the arch as well.
 const GATE_DOOR := 0.45
@@ -143,6 +144,10 @@ var _households := {}
 var _doomed: Array[Person] = []
 ## Blighted gates -> the clock they free themselves at.
 var _jams := {}
+## Gates held shut (v0.09, hold_gate()) -> the clock they let people through again.
+var _held := {}
+## Where the engineers work from, found by spawn() (v0.09: raise_profile() may appoint them later).
+var _workshop := Vector2.INF
 ## When the last thorn wall's alarm was raised.
 var _thorn_alarm_at := -INF
 var spawned_soldiers := 0
@@ -252,6 +257,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 
 
 func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
+	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
 		_grid.refresh(_town.postern)
@@ -286,9 +292,9 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	var keeper := _appoint_bellkeeper(anchors)
 	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
 	rite = BanishingRite.new().setup(self, _env, _grid)
-	var workshop := _nearest_of(anchors.get("craft", []), Vector2(TownLayout.WORKSHOP.get_center().x,
+	_workshop = _nearest_of(anchors.get("craft", []), Vector2(TownLayout.WORKSHOP.get_center().x,
 		TownLayout.WORKSHOP.end.y + 0.35))
-	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(workshop), workshop)
+	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(_workshop), _workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
 	madness = MadnessManager.new().setup(self, _field, _seed + 43)
@@ -694,9 +700,10 @@ func _gates() -> void:
 		# passer must be gone" condition to also satisfy, only the interval -- and that alone still limits the
 		# gate to one release per GATE_INTERVAL.
 		var first := 0
-		# A blighted gate is jammed (v0.05): its crowd waits, nobody passes.
-		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted:
-			var interval := POSTERN_INTERVAL if gate.art_tag == &"postern" else GATE_INTERVAL
+		# A blighted gate is jammed (v0.05), a held one too (v0.09): its crowd waits, nobody passes.
+		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted \
+				and _clock >= float(_held.get(gate, -1.0)):
+			var interval := profile.postern_interval if gate.art_tag == &"postern" else GATE_INTERVAL
 			# Marshals at the mouth (v0.07) let them through faster.
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()
@@ -973,6 +980,8 @@ func _evacuate() -> void:
 			continue  # ShelterManager sends them to the gates
 		if p.mind == Person.Mind.DUTY:
 			continue  # the bellkeeper and the clergy stay at their duty (off_duty() sends them on after)
+		if p.mind == Person.Mind.ASSIST and p.assist_stays:
+			continue  # an engineer at a fire works on (v0.08.2), as at its other duties
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):
@@ -1150,6 +1159,84 @@ func rally() -> void:
 	rallied.emit()
 
 
+## Raise the town's readiness mid-mission (v0.09, between the acts of a night): never lower. Responses the old profile
+## lacked turn on -- the rite, the boats (and the postern), the engineers, more marshals -- unless their building is
+## gone (a fallen or defiled cathedral, a ruined or defiled dock: that response stays ended); ones already due by the
+## alarm stage start at once. The rescue squads are not raised: RescueManager groups its squads at setup. Returns what
+## turned on.
+func raise_profile(p: ResponseProfile) -> PackedStringArray:
+	var on := PackedStringArray()
+	if p.level() <= profile.level():
+		return on
+	profile = p
+	alarms.regroup_seconds = p.regroup_seconds
+	if bell != null and bell.state in [BellNetwork.State.IDLE, BellNetwork.State.WAITING]:
+		bell.climb = p.bell_climb
+	if p.rite and rite != null and rite.off_by_profile and _standing(rite.cathedral):
+		rite = BanishingRite.new().setup(self, _env, _grid)
+		if rite.state != BanishingRite.State.ENDED:
+			on.append("rite")
+	if p.boats and ferry != null and ferry.off_by_profile and _standing(ferry.dock):
+		if is_instance_valid(_town.postern) and not _town.postern.walkable and not _town.postern.destroyed:
+			_town.open_postern()
+			_grid.refresh(_town.postern)
+		ferry = RiverFerry.new().setup(self, _env, _grid, _field)
+		if ferry.state != RiverFerry.State.ENDED:
+			evac.add_boat_exit(ferry.board_at, ferry)
+			on.append("boats")
+	if p.engineer_teams > 0 and engineers != null and engineers.teams.is_empty():
+		engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(_workshop), _workshop)
+		if not engineers.teams.is_empty():
+			on.append("engineers")
+	if _raise_marshals() > 0:
+		on.append("marshals")
+	if alarms.stage >= AlarmManager.Stage.CITY_EMERGENCY:
+		if on.has("rite"):
+			rite.begin()
+		if on.has("engineers"):
+			engineers.begin()
+	if alarms.stage >= AlarmManager.Stage.EVACUATION:
+		if on.has("boats"):
+			ferry.begin()
+		if marshals != null:
+			marshals.begin()
+	return on
+
+
+## A response's building is there to use (raise_profile()): found, standing and not blighted.
+static func _standing(s: Structure) -> bool:
+	return is_instance_valid(s) and not s.destroyed and not s.blighted
+
+
+## More marshals for a raised profile: soldiers on the walls without a role take it, in post order, up to the new count.
+func _raise_marshals() -> int:
+	var exits := 2 + (2 if profile.boats else 0)
+	var want := profile.marshals_per_exit * exits
+	var have := 0
+	for p in soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL:
+			have += 1
+	var added := 0
+	for i in range(POST_YARD, mini(POST_YARD + POST_WALLS, soldiers.size())):
+		if have + added >= want:
+			break
+		var p := soldiers[i]
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
+			p.corps = Person.Corps.MARSHAL
+			added += 1
+	return added
+
+
+## Hold a gate shut for `seconds` (v0.09: the festival's crowd jams the gates): its queue waits, nobody passes.
+func hold_gate(g: Structure, seconds: float) -> void:
+	_held[g] = _clock + seconds
+
+
+## The leaderless town (v0.09: the Prince died unseen): the soldiers never rally on the Citadel.
+func forgo_rally() -> void:
+	_rallied = true
+
+
 func clear() -> void:
 	if is_instance_valid(_ticker):
 		if _ticker.is_inside_tree():
@@ -1174,6 +1261,7 @@ func clear() -> void:
 	_households.clear()
 	_doomed.clear()
 	_jams.clear()
+	_held.clear()
 	_thorn_alarm_at = -INF
 	_hush_until = -INF
 	_investigating.clear()

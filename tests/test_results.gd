@@ -18,6 +18,18 @@ static func run(t) -> void:
 		and ResultsScreen.solved_text({"won": false, "solved_by": PackedStringArray(["VEIL"])}) == ResultsScreen.NOBODY,
 		"Solved by lists the Authorities of a win, and nobody for a loss or none")
 
+	# The night (v0.09): its path is named for the table; the other endings read as before.
+	t.check(ResultsScreen.path_name("festival") == "The Festival" and ResultsScreen.path_name("procession") == "The Procession"
+		and ResultsScreen.path_name("") == "", "a night's path is named (%s)" % ResultsScreen.path_name("festival"))
+	t.check(ResultsScreen.title_for(true, "citadel") == "THE CITY HAS FALLEN", "the night's win reads as Last Judgement's")
+	# Act II's endings have their own words on the act-end banner (v0.09 final review): a won Festival or Procession no
+	# longer reads THE CITY HAS FALLEN, nor a lost one MANIFESTATION ENDED.
+	for k: Array in [[true, "festival", "THE FEAST IS BROKEN"], [false, "closed", "THE SQUARE IS CLOSED"],
+			[true, "prince", "THE PRINCE IS DEAD"], [false, "sailed", "THE PRINCE HAS SAILED"],
+			[false, "tide", "THE TIDE HAS TURNED"]]:
+		var title := ResultsScreen.title_for(bool(k[0]), String(k[1]))
+		t.check(title == String(k[2]), "Act II's %s reads %s (%s)" % [k[1], k[2], title])
+
 	t.check(ResultsScreen.thousands(12450) == "12,450", "scores get a thousands comma (%s)" % ResultsScreen.thousands(12450))
 	t.check(ResultsScreen.thousands(999) == "999" and ResultsScreen.thousands(0) == "0", "small ones do not")
 	t.check(ResultsScreen.thousands(1234567) == "1,234,567", "and big ones get every comma (%s)" % ResultsScreen.thousands(1234567))

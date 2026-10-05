@@ -55,6 +55,22 @@ const SORT_REACH := 3.0
 const SORT_HZ := 10.0
 ## A person's sprite on screen, relative to its feet: wide enough for a spear, tall enough for a helmet.
 const SPRITE_BOX := Rect2(-6.0, -18.0, 12.0, 19.0)
+## People sprites: rows above the feet that stay with the legs when a laser cuts a person in two.
+const SPRITE_WAIST := 7.0
+## Where the watchman's lantern hangs beside his sprite (v0.08), facing right: its iron cap, from his ground point,
+## against the side of the coat at the leading hand; mirrored facing left. The sprite's arms swing within its frames
+## (they do not rise as the procedural ones do when running), so the lantern stays put.
+const SPRITE_LANTERN := Vector2i(3, -8)
+## Where the Mayor's chain lies across the stand-in sprite's chest, and the noble's crown sits on its head, from the
+## ground point: the chain's left pixel (3 across), and the crown's x and y for _draw_crown() (a 5x1 band under 3 points).
+const SPRITE_CHAIN := Vector2i(-1, -10)
+const SPRITE_CROWN := Vector2i(-1, -17)
+## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
+## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage and whisper terms.
+const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
+const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2
+## A lightning hit's blue flash (DummyEnemy._tint's).
+const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -129,6 +145,11 @@ const KEEPER_BADGE := Color("e0b84a")
 ## The watchman (v0.08): a dark cloak, and a lit lantern in his leading hand.
 const WATCH_CLOAK := Color("2a2630")
 const WATCH_LANTERN := Color("ffd27a")
+## The Mayor (v0.09): a dark red robe and a gold chain of office. The Prince's noble: a purple cape and a gold crown.
+const MAYOR_ROBE := Color("7a1e22")
+const MAYOR_CHAIN := Color("e0b84a")
+const NOBLE_CAPE := Color("4a2a6a")
+const NOBLE_CROWN := Color("e8c24a")
 const SOL_MAIL := Color("6a6f78")
 const SOL_MAIL_HI := Color("8d939c")
 const SOL_HELM := Color("484d56")
@@ -165,6 +186,9 @@ var assist_fire: Structure
 var assist_at_water := false
 var assist_full := false
 var assist_wait := 0.0
+## Kept on its fire through the evacuation (v0.08.2): an engineer, who works on while the town leaves, unlike the
+## fire brigade.
+var assist_stays := false
 ## Taking cover (v0.04 P2; ShelterManager runs it): the crowd's manager, the building sought or sheltered in, its
 ## door, and whether it is inside (hidden, out of every effect's reach, not stepped).
 var shelters: ShelterManager
@@ -260,6 +284,16 @@ var _whisper_fled := false
 var _shaken_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
+## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
+## toward the back of the screen (a back view), and which of a role's two looks it wears (hashed from its home or
+## post, never drawn from rng; -1 until first drawn).
+var _stride := false
+var _back := false
+var _look := -1.0
+## The design _design() picked, its PeopleArt.info() table, and what it was picked for (manifest load, role, corps).
+var _design_key := -1
+var _design_name := ""
+var _design_info: Array
 
 var _path := PackedVector2Array()
 var _leg := 0
@@ -385,7 +419,16 @@ func tick(delta: float) -> void:
 			_think(_think_accum)
 			_think_accum = 0.0
 		_think_due = not _think_due
+	var before := ground_pos
 	super(delta)
+	_track_stride(ground_pos - before)
+
+
+## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
+func _track_stride(d: Vector2) -> void:
+	_stride = d.length_squared() > 1e-10
+	if _stride and absf(d.x + d.y) > 1e-6:
+		_back = d.x + d.y < 0.0
 
 
 func _think(delta: float) -> void:
@@ -1103,13 +1146,14 @@ func leave_shelter(evacuate: bool) -> void:
 
 
 ## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
-## (force).
-func assist(s: Structure, force := false) -> void:
+## or its engineer team (force); `stays` keeps it on through the evacuation (an engineer, v0.08.2).
+func assist(s: Structure, force := false, stays := false) -> void:
 	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
 			or held_by_will(WILL_FIRM):
 		return
 	mind = Mind.ASSIST
 	assist_fire = s
+	assist_stays = stays
 	assist_at_water = false
 	assist_full = false
 	assist_wait = 0.0
@@ -1121,6 +1165,7 @@ func stand_down() -> void:
 	assist_fire = null
 	assist_full = false
 	assist_at_water = false
+	assist_stays = false
 	if mind == Mind.ASSIST:
 		if soldier:
 			send_to_post(post if post != Vector2.INF else ground_pos)  # a rescue squad back to its post (v0.07)
@@ -1345,7 +1390,9 @@ func _draw_body(lift: int, top_only: int) -> void:
 		# On its knees: the body down, no legs under it.
 		lift += 3
 		top_only = 1
-	if soldier:
+	if SpriteArt.on() and PeopleArt.ready():
+		_draw_sprite(lift, top_only)
+	elif soldier:
 		_draw_soldier(lift, top_only)
 	else:
 		_draw_citizen(lift, top_only)
@@ -1384,6 +1431,147 @@ func _mark_signature() -> int:
 		+ (8 if compel_pose == &"kneel" else 0) + 16 * (side % 3) + (64 if marked and int(_anim * 2.0) % 2 == 1 else 0)
 
 
+## With the people sprites, the shadow comes from the atlas's white square: an untextured rect between two atlas draws
+## would split the crowd into a draw batch a person (+~190 calls in the mission bench).
+func _draw_shadow(r: Rect2, c: Color) -> void:
+	if SpriteArt.on() and PeopleArt.ready():
+		draw_texture_rect_region(PeopleArt.atlas(), r, PeopleArt.white_rect(), c)
+	else:
+		super(r, c)
+
+
+## A death with no effect of its own (the quiet powers, the plague): with the people sprites, the body falls and lies
+## (its death animation) where the procedural one left a dark smear.
+func _draw_corpse() -> void:
+	if SpriteArt.on() and PeopleArt.ready():
+		_draw_body(0, 0)
+	else:
+		super()
+
+
+## The design it wears (PeopleArt): its role's or its corps', the look hashed once from where it lives.
+func _design() -> String:
+	if _look < 0.0:
+		_look = ArtKit.hash01(int(anchor.x * 64.0) * 73856093 ^ int(anchor.y * 64.0) * 19349663, 7)
+	var role := profile.role if profile != null else 0
+	var key := ((PeopleArt.generation * 64 + role) * 16 + corps) * 2 + (1 if soldier else 0)
+	if key != _design_key:
+		_design_key = key
+		_design_name = PeopleArt.design_for(soldier, role, corps, _look)
+		_design_info = PeopleArt.info(_design_name)
+	return _design_name
+
+
+## The people sprite's [animation, facing, frame] for what it is doing: its fall when dead, still while frozen, on one
+## knee in a stumble, running when lifted, knocked or frightened, walking when it stepped, else idle; facing the way it
+## last stepped. Stumble and death hold their last frame.
+func _sprite_pose() -> Array:
+	var code := _sprite_pose_code()
+	return [PeopleArt.ANIMS[code >> 2 & 7], code & 3, code >> 5]
+
+
+## _sprite_pose() folded into one int, frame << 5 | ANIMS index << 2 | facing: every person on screen asks for it every
+## frame (_sprite_signature()), so it allocates nothing and reads its frame counts from the cached design table.
+func _sprite_pose_code() -> int:
+	var facing: int
+	if _back:
+		facing = PeopleArt.Facing.NE if _facing > 0 else PeopleArt.Facing.NW
+	else:
+		facing = PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
+	var anim := 0
+	var t := _anim
+	if state == State.DEAD:
+		anim = 4
+		t = _dead_time
+	elif _frozen > 0.0:
+		return facing
+	elif _stumble > 0.0:
+		anim = 3
+		t = STUMBLE_SECONDS - _stumble
+	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
+		anim = 2
+	elif _stride:
+		# is_frozen() and is_running(), inline: it is not dead here.
+		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
+	var frame := int(t * PeopleArt.FPS_AT[anim])
+	if anim >= 3:
+		_design()
+		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
+	return frame << 5 | anim << 2 | facing
+
+
+## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way
+## DummyEnemy._tint() colours the procedural body — a hit's flash, ice, gravity's void, a char, sickness (v0.07.1: the
+## stage's colour, sick_color(), as strongly as _draw_citizen() lerps the clothes and skin to it).
+func _sprite_tint() -> Color:
+	if _flash > 0.0:
+		if _kind == &"lightning" and int(_flash * 40.0) % 2 == 0:
+			return Color(COL_LIGHTNING_FLASH, 1.0)
+		return Color(1.0, 1.0, 1.0, 1.0)
+	if is_frozen():
+		return Color(COL_ICE, 0.6 * clampf(_frozen, 0.0, 1.0))
+	if _kind == &"gravity" and state == State.DEAD:
+		return Color(COL_VOID, _char * 0.8)
+	if _char > 0.0:
+		return Color(COL_CHAR, _char * 0.85)
+	if sick_left > 0.0 and state != State.DEAD:
+		return Color(sick_color(), SICK_CLOTH)
+	return Color(0.0, 0.0, 0.0, 0.0)
+
+
+## The person drawn from the people atlas: the frame for what it does (_sprite_pose()) with its feet on its ground
+## point, its white silhouette over it at the strength of whatever tints it, then the cough, the watchman's lantern,
+## Discord's swirl and Mind Whisper's eye, placed for the sprite's taller body.
+## The atlas and the default shader are every person's, so the whole crowd stays one draw batch.
+func _draw_sprite(lift: int, top_only: int) -> void:
+	# PeopleArt.frame_rect(), silhouette_rect() and foot(), from the design's cached table (PeopleArt.info()).
+	_design()
+	var code := _sprite_pose_code()
+	var row := (code >> 2 & 7) * 4 + (code & 3)
+	var n: int = _design_info[4][row]
+	var cell: Vector2 = _design_info[3]
+	var off := Vector2(((code >> 5) % n) * cell.x, row * cell.y)
+	var src := Rect2(_design_info[0] + off, cell)
+	var sil := Rect2(_design_info[1] + off, cell)
+	var foot: Vector2 = _design_info[2]
+	var dst := Rect2(Vector2(-foot.x, -foot.y + lift), src.size)
+	if top_only != 0:
+		# The laser's cut: only what is above the waist slides off; DummyEnemy draws the legs left standing.
+		var keep := maxf(foot.y - SPRITE_WAIST, 1.0)
+		src.size.y = keep
+		sil.size.y = keep
+		dst.size.y = keep
+	var atlas := PeopleArt.atlas()
+	draw_texture_rect_region(atlas, dst, src)
+	var tint := _sprite_tint()
+	if tint.a > 0.01:
+		draw_texture_rect_region(atlas, dst, sil, tint)
+	if state == State.DEAD:
+		return
+	if sick_left > 0.0:
+		_px(2 if _facing > 0 else -3, -16 - int(_anim * 2.0) % 4 + lift, 1, 1, sick_color().lightened(0.35))
+	if _is_watchman():
+		# His lantern (v0.08), hanging from the leading hand beside the sprite: an iron cap over a 1x2 glow.
+		var at := _sprite_lantern()
+		_px(at.x, at.y + lift, 1, 1, COL_DARK)
+		_px(at.x, at.y + 1 + lift, 1, 2, WATCH_LANTERN)
+	elif _is_mayor():
+		# His chain of office (v0.09) over the merchant standing in for him: 3 px across the chest, dipping in the middle.
+		_px(SPRITE_CHAIN.x, SPRITE_CHAIN.y + lift, 3, 1, MAYOR_CHAIN)
+		_px(SPRITE_CHAIN.x + 1, SPRITE_CHAIN.y + 1 + lift, 1, 1, MAYOR_CHAIN)
+	elif _is_noble():
+		_draw_crown(SPRITE_CROWN.x, SPRITE_CROWN.y + lift)
+	if mind == Mind.CONFUSED:
+		var turn := int(_anim * 3.0)
+		for k in 4:
+			var a := float((turn + k) % 8) * TAU / 8.0
+			_px(roundi(cos(a) * 3.0), -22 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
+	if mind == Mind.WHISPERED:
+		# Mind Whisper's glyph (v0.08): a small gold eye over the head.
+		_px(-1, -22 + lift, 3, 1, COL_WHISPER)
+		_px(0, -23 + lift, 1, 3, COL_WHISPER)
+
+
 ## Townsfolk: bare head, tunic, no armour. Smaller than the soldiers so a crowd reads at a glance.
 func _draw_citizen(lift: int, top_only: int) -> void:
 	var running := is_running()
@@ -1407,7 +1595,9 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(-1, -10 + lift, 1, 8, CLERGY_STOLE)
 	else:
 		var coat := KEEPER_COAT if role == CitizenProfile.Role.BELLKEEPER else (
-			WATCH_CLOAK if role == CitizenProfile.Role.WATCHMAN else _tunic)
+			WATCH_CLOAK if role == CitizenProfile.Role.WATCHMAN else (
+			MAYOR_ROBE if role == CitizenProfile.Role.MAYOR else (
+			NOBLE_CAPE if role == CitizenProfile.Role.NOBLE else _tunic)))
 		if sick:
 			coat = coat.lerp(tint, SICK_CLOTH)
 		if top_only == 0:
@@ -1419,6 +1609,10 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 			_px(-2, -8 + lift, 4, 4, ENG_APRON)
 		elif role == CitizenProfile.Role.BELLKEEPER:
 			_px(1, -8 + lift, 1, 1, KEEPER_BADGE)
+		elif role == CitizenProfile.Role.MAYOR:
+			# The chain of office (v0.09): 3 px across the chest, dipping in the middle.
+			_px(-1, -9 + lift, 3, 1, MAYOR_CHAIN)
+			_px(0, -8 + lift, 1, 1, MAYOR_CHAIN)
 	var arm_y := -12 if running else -9
 	_px(-4, arm_y + lift, 1, 3, skin)
 	_px(3, arm_y + lift, 1, 3, skin)
@@ -1434,6 +1628,8 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		_px(hx - 1, arm_y - 2 + lift, 3, 1, ENG_IRON)
 	else:
 		_px(-2, -13 + lift, 4, 1, _hair)
+	if role == CitizenProfile.Role.NOBLE:
+		_draw_crown(-1, -14 + lift)
 	if role == CitizenProfile.Role.WATCHMAN and state != State.DEAD:
 		# His lantern, hanging from the leading hand: an iron cap over a 1x2 glow.
 		var lx := 3 if f > 0 else -4
@@ -1506,6 +1702,8 @@ func _pose_signature() -> int:
 ## flashing it: the same integer, so it redraws exactly when it did, for a fraction of the work. Every person
 ## on screen asks this every frame.
 func _art_signature() -> int:
+	if SpriteArt.on() and PeopleArt.ready():
+		return _sprite_signature()
 	if state != State.WANDER or _lift != 0.0 or _frozen > 0.0 or _flash > 0.0:
 		return super() + _mark_signature() * SIG_MARK
 	var running := is_running()
@@ -1522,6 +1720,59 @@ func _art_signature() -> int:
 	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
 	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose \
 		+ _mark_signature() * SIG_MARK
+
+
+## _art_signature() for the people sprites: the frame (_sprite_pose()) and everything drawn over or around it, so a
+## person redraws exactly when its picture changes. Folded with multiplies, like the procedural one.
+func _sprite_signature() -> int:
+	if state == State.DEAD:
+		return super._art_signature()
+	var code := _sprite_pose_code()
+	var sig: int = (code >> 2 & 7) * 4 + (code & 3)
+	sig = sig * 16 + (code >> 5) % 16
+	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED:
+		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
+		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
+		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
+			+ (1 if mind == Mind.WHISPERED else 0)
+	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
+	sig = sig * 97 + int(round(_lift))
+	sig = sig * 97 + int(_frozen * 8.0)
+	sig = sig * 97 + int(_flash * 40.0)
+	sig = sig * 7 + int(state)
+	sig = sig * 131 + int(_draw_origin.y) + 64
+	# The overlays, each its own term: Discord's swirl, the cough, the sickness's stage (v0.07.1: its tint goes green
+	# to red) and Mind Whisper's eye (v0.08). The watchman's lantern goes with the facing, already in.
+	sig = sig * 9 + (1 + int(_anim * 3.0) % 8 if mind == Mind.CONFUSED else 0)
+	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
+	sig = sig * (SICK_STAGES + 1) + sick_stage()
+	return sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+
+
+## Where the watchman's lantern cap sits beside his sprite now (SPRITE_LANTERN, by facing), from his feet.
+func _sprite_lantern() -> Vector2i:
+	return Vector2i(SPRITE_LANTERN.x if _facing > 0 else -SPRITE_LANTERN.x - 1, SPRITE_LANTERN.y)
+
+
+func _is_watchman() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.WATCHMAN
+
+
+func _is_mayor() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.MAYOR
+
+
+func _is_noble() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.NOBLE
+
+
+## The Prince's gold crown (v0.09): a 5x1 band centred on x + 1, with three points over it a pixel apart, so they read
+## as points and not a block (the band's left pixel is at x - 1, y).
+func _draw_crown(x: int, y: int) -> void:
+	_px(x - 1, y, 5, 1, NOBLE_CROWN)
+	_px(x - 1, y - 1, 1, 1, NOBLE_CROWN)
+	_px(x + 1, y - 1, 1, 1, NOBLE_CROWN)
+	_px(x + 3, y - 1, 1, 1, NOBLE_CROWN)
 
 
 func _walk_rate() -> float:

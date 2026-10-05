@@ -97,6 +97,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	for d in TownDecor.spots():
 		if d.bake and ground != null:
 			baked.append(d)
+			_stand_in(d)
 			continue
 		var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
 		dec.parts = d.get("parts", [])
@@ -104,6 +105,10 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		_decor.append(dec)
 		if _decor_layer != null:
 			_decor_layer.add_child(dec)
+		for p: Dictionary in dec.parts:
+			var f := _stand_in(p)
+			if f != null:
+				dec.followers.append(f)
 	var houses: Array[Structure] = []
 	for s in _built:
 		if s.kind == Structure.Kind.HOUSE and s.role == &"house":
@@ -155,6 +160,20 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		forest.modulate = GROUND_EVENING
 		ground.add_child(forest)
 		ground.move_child(forest, 2)
+
+
+## A live sprite_only Decor for a piece drawn elsewhere (the floor bake, a pile) whose set is animated while sprites
+## are on (DecorSprites.animated, forced: F7 may turn them on later), so its frames step: the floor and the pile leave
+## it out while it shows (Decor.drawn_live). The placement data is untouched; null for a piece with a still set.
+func _stand_in(d: Dictionary) -> Decor:
+	if not DecorSprites.animated(d.kind, d.seed, d.size, d.at, true):
+		return null
+	var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
+	dec.sprite_only = true
+	_decor.append(dec)
+	if _decor_layer != null:
+		_decor_layer.add_child(dec)
+	return dec
 
 
 ## Take this town out of the world: its buildings (the Citadel's parts included) leave the field, the floor is

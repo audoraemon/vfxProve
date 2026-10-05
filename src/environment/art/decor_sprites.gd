@@ -71,6 +71,9 @@ static func reload() -> void:
 ## - end_post: the optional "end_post" [x, y, w, h] (a run's closing post: the sub-rect of the sprite drawn at the
 ##   run's far end), else an empty Rect2.
 ## - stump: the optional stump.png (Texture2D or null).
+## - frames, fps: an animated set's intact.png is a horizontal strip of "frames" frames (default 1, a still), `size`
+##   one frame (with no "size": the strip's width over its frames); paint() draws frame 0's rect and wind.gdshader
+##   steps it at "fps" on the idle clock (Decor.material_for). Not for a tree set (an ATLASES family packs stills).
 ## {} when it is not in the manifest or its PNG is missing (warned once).
 static func decor_set(n: String) -> Dictionary:
 	if _sets.has(n):
@@ -82,22 +85,29 @@ static func decor_set(n: String) -> Dictionary:
 			push_warning("DecorSprites: missing " + path)
 		_sets[n] = {}
 		return {}
-	var tex: Texture2D = load(path)
-	var size := Vector2(m.size[0], m.size[1]) if m.has("size") else Vector2(tex.get_size())
-	var stump_path := DIR + n + "/stump.png"
-	var built := {
-		"name": n, "tex": tex, "stump": load(stump_path) if ResourceLoader.exists(stump_path) else null, "size": size,
-		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
-		"segment": float(m.get("segment", 0.0)),
-		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
-		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
-	}
+	var built := _build(n, m, load(path))
 	var packed := _atlas_rect(n)
 	if packed.has("tex"):
 		built.tex = packed.tex
 		built.src = packed.src
 	_sets[n] = built
 	return built
+
+
+## Set `n` from its manifest entry `m` and its intact texture (decor_set() without the cache, the stump aside).
+static func _build(n: String, m: Dictionary, tex: Texture2D) -> Dictionary:
+	var frames := maxi(int(m.get("frames", 1)), 1)
+	var size := Vector2(m.size[0], m.size[1]) if m.has("size") \
+		else Vector2(floorf(float(tex.get_width()) / float(frames)), tex.get_height())
+	var stump_path := DIR + n + "/stump.png"
+	return {
+		"name": n, "tex": tex, "stump": load(stump_path) if ResourceLoader.exists(stump_path) else null, "size": size,
+		"frames": frames, "fps": float(m.get("fps", 0.0)),
+		"anchor": Vector2(m.anchor[0], m.anchor[1]) if m.has("anchor") else Vector2(roundf(size.x * 0.5), size.y - 2.0),
+		"segment": float(m.get("segment", 0.0)),
+		"glow": Vector2(m.glow[0], m.glow[1]) if m.has("glow") else Vector2.ZERO,
+		"end_post": Rect2(m.end_post[0], m.end_post[1], m.end_post[2], m.end_post[3]) if m.has("end_post") else Rect2(),
+	}
 
 
 ## The atlas a tree set is packed in, {"tex", "src"} (its still's rect there), built on first use; {} for a set in no
@@ -225,6 +235,15 @@ static func flipped(kind: int, seed_value: int) -> bool:
 static func _order(seed_value: int) -> int:
 	var d := seed_value - TownDecor.SEED
 	return d / 7919 if d >= 0 and d % 7919 == 0 else -1
+
+
+## Whether a decor piece draws an animated set (its set's "frames" > 1): while sprites are on (or `force`), such a piece
+## is drawn live (a Decor node on the wind shader's frame stepping), never baked into the floor nor merged into a pile.
+static func animated(kind: int, seed_value: int, size := Vector2.ZERO, at := Vector2.INF, force := false) -> bool:
+	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE or kind == Decor.Kind.PILE:
+		return false
+	var n := name_for(kind, seed_value, size, at, force)
+	return n != "" and int(decor_set(n).get("frames", 1)) > 1
 
 
 ## Where a decor piece's light pool sits (Decor._glow; relative to its ground point, unscaled screen px): its set's

@@ -26,6 +26,12 @@ var down := false
 ## A PILE's pieces, back to front: {"kind", "at", "size", "seed"} each (TownDecor merges goods standing together
 ## into one node, one draw call instead of one each).
 var parts: Array = []
+## A stand-in for a piece drawn elsewhere while sprites are off: a baked piece (TownFloor) or a pile's part whose set
+## is animated (DecorSprites.animated). It shows only while that set is drawn, and is no gameplay decor (the town
+## never hands it to EnvironmentField: a blast reaches it only through the pile it belongs to, see `followers`).
+var sprite_only := false
+## A pile's animated parts, drawn by sprite_only nodes of their own: they char and fall with the pile.
+var followers: Array[Decor] = []
 var _glow: QuadFx
 
 ## Decor that moves in the wind (trees sway, bunting flutters, reeds and bushes stir; see ArtKit.wind_gain), and
@@ -40,7 +46,8 @@ const MOTION := {
 	"bob": {"sprite_sway": 0.0, "bob": 1.0},
 }
 const PLANTS := [Kind.REEDS, Kind.BUSH, Kind.FLOWERS]
-## One shared material per motion class (MOTION's keys), made on first use.
+## One shared material per motion class (MOTION's keys), made on first use; and per (class, frames, fps, frame width)
+## for an animated set ("<class>|<frames>|<fps>|<frame_u>"; class "still" for kinds that do not move otherwise).
 static var _motion: Dictionary = {}
 
 
@@ -49,15 +56,41 @@ static func wind_material() -> ShaderMaterial:
 	return _material("tree")
 
 
-## The shared material for a decor kind's motion class, or null for decor that stands still.
-static func material_for(k: int) -> ShaderMaterial:
+## The shared material for a decor kind's motion class, or null for decor that stands still. With `s`, the decor set
+## the piece draws (DecorSprites.decor_set): an animated one (frames > 1) gets the class's motion plus frame stepping
+## (wind.gdshader: anim_frames, anim_fps, frame_u, on the idle clock), one material per class, frames, fps and frame
+## width; a still set changes nothing.
+static func material_for(k: int, s: Dictionary = {}) -> ShaderMaterial:
+	var c := _class(k)
+	var frames := int(s.get("frames", 1))
+	if frames <= 1 or s.get("tex") == null:
+		return null if c == "" else _material(c)
+	var fps := float(s.get("fps", 0.0))
+	var frame_u: float = (s.size as Vector2).x / float((s.tex as Texture2D).get_width())
+	var key := "%s|%d|%s|%s" % [c if c != "" else "still", frames, fps, frame_u]
+	if not _motion.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/wind.gdshader")
+		var still := {"sprite_sway": 0.0, "bob": 0.0}
+		var motion: Dictionary = MOTION.get(c, still)
+		for p: String in motion:
+			m.set_shader_parameter(p, motion[p])
+		m.set_shader_parameter("anim_frames", frames)
+		m.set_shader_parameter("anim_fps", fps)
+		m.set_shader_parameter("frame_u", frame_u)
+		_motion[key] = m
+	return _motion[key]
+
+
+## A kind's motion class (MOTION's keys), or "" for one that stands still.
+static func _class(k: int) -> String:
 	if k in BOBS:
-		return _material("bob")
+		return "bob"
 	if k in PLANTS:
-		return _material("plant")
+		return "plant"
 	if k in SWAYS:
-		return _material("tree")
-	return null
+		return "tree"
+	return ""
 
 
 ## Every motion class's material; set their `wind` to 0 to still all decor and the forest.
@@ -65,6 +98,9 @@ static func motion_materials() -> Array[ShaderMaterial]:
 	var out: Array[ShaderMaterial] = []
 	for c: String in MOTION:
 		out.append(_material(c))
+	for key: String in _motion:
+		if not MOTION.has(key):
+			out.append(_motion[key])
 	return out
 
 
@@ -98,7 +134,7 @@ func tuning_key() -> String:
 func _ready() -> void:
 	add_to_group(&"decor_art")
 	self_modulate = ArtTuning.tint(tuning_key())
-	material = material_for(kind)
+	_art_state()
 	if kind == Kind.LAMP:
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(46, 23))
 		_glow.set_param("color", Structure.TORCH_LIGHT)
@@ -121,8 +157,31 @@ func _place_glow() -> void:
 
 ## F7 switched the art (ArtToggle): draw again from the sprite or the polygons.
 func art_changed() -> void:
+	_art_state()
 	_place_glow()
 	queue_redraw()
+
+
+## The material and, for a sprite_only stand-in, whether it shows: both follow the set the piece draws now.
+func _art_state() -> void:
+	var n := DecorSprites.name_for(kind, seed_value, size, at) if kind != Kind.PILE else ""
+	material = material_for(kind, DecorSprites.decor_set(n) if n != "" else {})
+	if sprite_only:
+		visible = drawn_live({"kind": kind, "at": at, "size": size, "seed": seed_value})
+	for f in followers:
+		if is_instance_valid(f):
+			f._art_state()
+
+
+## Whether a piece ({kind, at, size, seed}) is drawn by a live node of its own now, not by the floor bake or a pile:
+## sprites are on and its set is animated (DecorSprites.animated).
+static func drawn_live(d: Dictionary) -> bool:
+	return DecorSprites.animated(d.kind, d.seed, d.size, d.at)
+
+
+## A pile's parts it draws itself: all but those drawn live (drawn_live), each by a sprite_only node of its own.
+func pile_parts_drawn() -> Array:
+	return parts.filter(func(p: Dictionary) -> bool: return not drawn_live(p))
 
 
 ## A blast reached it: char it, or knock it down when the hit is strong enough.
@@ -137,6 +196,12 @@ func hit(amount: float, damage_kind: StringName) -> void:
 		char_amount = minf(char_amount + amount / CHAR_PER, 1.0)
 	self_modulate = ArtTuning.tint(tuning_key()).lerp(Structure.COL_CHAR, char_amount * 0.7)
 	queue_redraw()
+	for f in followers:
+		if is_instance_valid(f):
+			f.down = down
+			f.char_amount = char_amount
+			f.self_modulate = ArtTuning.tint(f.tuning_key()).lerp(Structure.COL_CHAR, char_amount * 0.7)
+			f.queue_redraw()
 
 
 func _draw() -> void:
@@ -147,7 +212,7 @@ func _draw() -> void:
 	ArtKit.begin()
 	if kind == Kind.PILE:
 		# Each piece in its own colour tuning (a pile only holds pieces drawn at their own size).
-		for p: Dictionary in parts:
+		for p: Dictionary in pile_parts_drawn():
 			ArtKit.color_mul = ArtTuning.tint(String(Kind.keys()[p.kind]).to_lower())
 			DecorArt.paint(p.kind, p.at, p.size, p.seed, position, down)
 		ArtKit.color_mul = Color.WHITE

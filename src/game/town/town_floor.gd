@@ -643,7 +643,14 @@ static func shrub_spots() -> Array[Dictionary]:
 ## A piece marked "under" (mark_under()) stays in the bake: a baked piece the bake paints over it would otherwise draw
 ## under it.
 static func plant_in_layer(d: Dictionary) -> bool:
-	return not d.get("under", false) and not DecorSprites.plant_set(d).is_empty()
+	return not d.get("under", false) and not DecorSprites.plant_set(d).is_empty() 		and not (d.has("kind") and Decor.drawn_live(d))
+
+
+## Whether the floor bake paints baked piece `d` now: not while the plant layer draws it (plant_in_layer), nor while
+## a live node does (Decor.drawn_live: sprites on and its set animated; the town stands a sprite_only Decor for it).
+## F7 moves a piece between them: the floor re-bakes and the live node shows or hides.
+static func bakes(d: Dictionary) -> bool:
+	return not plant_in_layer(d) and not Decor.drawn_live(d)
 
 
 ## Mark each low plant in `plants` "under" (it stays in the bake, still) when the bake would paint something over it
@@ -707,7 +714,7 @@ static func _cover_box(o: Dictionary) -> Rect2:
 ## Baked decor over the detail, back to front: trees, rocks, bushes, reeds and fences nothing ever stands in front of.
 func _paint_decor(ci: CanvasItem) -> void:
 	for d in baked_decor:
-		if plant_in_layer(d):
+		if not bakes(d):
 			continue
 		# The same tuning a live Decor takes: its size about its ground point, and its colour.
 		var key := String(Decor.Kind.keys()[d.kind]).to_lower()

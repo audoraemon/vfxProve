@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_real_trees(t)
 	_motion(t)
 	_plants(t)
+	_anim(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -814,3 +815,158 @@ static func _plants(t) -> void:
 	env.clear()
 	env.free()
 	ground.free()
+
+
+## A strip of `frames` frames, each w x h, side by side.
+static func _strip(frames: int, w: int, h: int) -> Texture2D:
+	return _tex(w * frames, h)
+
+
+## Fake animated sets for `names` (strips of 4 frames at 3 fps), in the set cache; returns what to undo.
+static func _animate(names: Array, w := 8, h := 6) -> Array:
+	var fakes := _fake(names)
+	for n: String in names:
+		DecorSprites._sets[n] = DecorSprites._build(n, {"frames": 4, "fps": 3, "size": [w, h], "anchor": [w / 2, h - 1]},
+			_strip(4, w, h))
+	return fakes
+
+
+static func _unanimate(names: Array, fakes: Array) -> void:
+	for n: String in names:
+		DecorSprites._sets.erase(n)
+	_unfake(fakes)
+
+
+## Animated decor (Group C): a set with "frames" > 1 is a horizontal strip, `size` one frame; the piece paints frame
+## 0's rect and the wind shader steps the frame on the idle clock. Such a piece is drawn live while sprites are on:
+## never in the floor bake, never in a pile.
+static func _anim(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	# Loading: frames and fps from the manifest; a still is one frame.
+	var a := DecorSprites._build("animtest_1", {"frames": 4, "fps": 3, "size": [8, 6], "anchor": [4, 5]}, _strip(4, 8, 6))
+	t.check(a.get("frames") == 4 and is_equal_approx(float(a.get("fps", 0.0)), 3.0),
+		"a strip set loads frames 4 at 3 fps (got %s)" % [a])
+	t.check(a.get("size") == Vector2(8, 6), "its size is one frame")
+	var b := DecorSprites._build("animtest_2", {"frames": 4, "fps": 3, "anchor": [4, 5]}, _strip(4, 8, 6))
+	t.check(b.get("size") == Vector2(8, 6),
+		"with no size, one frame is the strip's width over its frames (got %s)" % [b.get("size")])
+	t.check(DecorSprites.decor_set("barrel_1").get("frames") == 1, "a still set is one frame")
+	# animated(): by the piece's set.
+	var names := ["sheep_1", "sheep_2", "ship"]
+	var fakes := _animate(names)
+	var seed1 := TownDecor.SEED
+	var seed2 := TownDecor.SEED + 7919 * 2
+	t.check(DecorSprites.animated(D.SHEEP, seed1) and DecorSprites.animated(D.SHEEP, seed2),
+		"a sheep with a strip set is animated")
+	t.check(not DecorSprites.animated(D.BARREL, 7), "a barrel (barrel_1, a still) is not")
+	# The material: shared per (motion class, frames, fps), with the strip's uniforms.
+	var s1 := Decor.new().setup(D.SHEEP, Vector2(1, 1), Vector2.ZERO, seed1)
+	var s2 := Decor.new().setup(D.SHEEP, Vector2(3, 1), Vector2.ZERO, seed2)
+	s1._ready()
+	s2._ready()
+	var m := s1.material as ShaderMaterial
+	t.check(m != null and m == s2.material, "two animated sheep share one material")
+	t.check(m != null and m == Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1")),
+		"material_for(kind, set) gives it")
+	t.check(m != null and int(m.get_shader_parameter("anim_frames")) == 4
+		and is_equal_approx(float(m.get_shader_parameter("anim_fps")), 3.0)
+		and is_equal_approx(float(m.get_shader_parameter("frame_u")), 0.25),
+		"with anim_frames 4, anim_fps 3 and frame_u a quarter of the strip")
+	t.check(m != null and m.shader == Decor.wind_material().shader, "on the one wind shader")
+	t.check(Decor.material_for(D.SHEEP) == null, "a still sheep still has no material")
+	var ship := Decor.material_for(D.SHIP, DecorSprites.decor_set("ship"))
+	t.check(ship != null and ship != m and float(ship.get_shader_parameter("bob")) > 0.0
+		and int(ship.get_shader_parameter("anim_frames")) == 4, "an animated ship keeps its bob and steps frames")
+	t.check(ship != Decor.material_for(D.SHIP), "apart from the still ships' bob material")
+	var still_frames: Variant = Decor.material_for(D.SHIP).get_shader_parameter("anim_frames")
+	t.check(still_frames == null or int(still_frames) <= 1, "which steps no frames")
+	# It paints frame 0's rect from the strip.
+	ArtKit.begin()
+	DecorSprites.paint(D.SHEEP, Vector2(1, 1), Vector2.ZERO, seed1, Vector2.ZERO)
+	var q := ArtKit.last_quad()
+	t.check(q.size() == 2 and q[0] == Rect2(0, 0, 8, 6), "an animated piece paints frame 0's rect (got %s)" % [q])
+	ArtKit.begin()
+	# F7 off: procedural, no frames, no material.
+	SpriteArt.set_enabled(false)
+	t.check(not DecorSprites.animated(D.SHEEP, seed1), "F7 off: the sheep is not animated")
+	t.check(DecorSprites.animated(D.SHEEP, seed1, Vector2.ZERO, Vector2.INF, true), "unless forced")
+	t.check(not DecorSprites.paint(D.SHEEP, Vector2(1, 1), Vector2.ZERO, seed1, Vector2.ZERO),
+		"F7 off: the sheep is procedural")
+	s1.art_changed()
+	t.check(s1.material == null, "and F7 takes its animated material away")
+	SpriteArt.set_enabled(true)
+	s1.art_changed()
+	t.check(s1.material == m, "and gives it back")
+	s1.free()
+	s2.free()
+	# The town: its baked sheep stay in the spot data and the floor's list, but the floor leaves them to a live node.
+	var env := EnvironmentField.new()
+	var ground := Node2D.new()
+	var town := Town.new()
+	town.build(env, ground)
+	var baked_sheep := town.floor_node.baked_decor.filter(func(d: Dictionary) -> bool: return d.kind == D.SHEEP)
+	t.check(baked_sheep.size() > 0, "the town bakes sheep (%d)" % baked_sheep.size())
+	t.check(baked_sheep.all(func(d: Dictionary) -> bool: return not TownFloor.bakes(d)),
+		"sprites on: the floor bakes none of its animated sheep")
+	t.check(town.floor_node.baked_decor.any(func(d: Dictionary) -> bool: return d.kind == D.ROCK and TownFloor.bakes(d)),
+		"and still bakes its rocks")
+	var live := town._decor.filter(func(d: Decor) -> bool: return d.kind == D.SHEEP and d.sprite_only)
+	t.check(live.size() == baked_sheep.size(),
+		"a live sheep stands for each baked one (%d for %d)" % [live.size(), baked_sheep.size()])
+	for d: Decor in live:
+		d._ready()
+	t.check(live.all(func(d: Decor) -> bool: return d.visible and d.material == m),
+		"drawn, with the animated material")
+	t.check(live.all(func(d: Decor) -> bool: return not env.decor().has(d)),
+		"no gameplay decor (blasts never reach a baked piece)")
+	SpriteArt.set_enabled(false)
+	for d: Decor in live:
+		d.art_changed()
+	t.check(baked_sheep.all(func(d: Dictionary) -> bool: return TownFloor.bakes(d)), "F7 off: the floor bakes them again")
+	t.check(live.all(func(d: Decor) -> bool: return not d.visible), "and their live stand-ins hide")
+	SpriteArt.set_enabled(true)
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()
+	_unanimate(names, fakes)
+	# Piles: an animated part leaves its pile for a live node of its own, which falls with the pile.
+	var gnames := ["barrel_1", "barrel_2"]
+	var gfakes := _animate(gnames)
+	var pile := Decor.new().setup(D.PILE, Vector2(1, 1), Vector2.ZERO, 5)
+	pile.parts = [{"kind": D.BARREL, "at": Vector2(1, 1), "size": Vector2.ZERO, "seed": 5},
+		{"kind": D.CRATES, "at": Vector2(1.2, 1), "size": Vector2.ZERO, "seed": 6}]
+	var drawn := pile.pile_parts_drawn()
+	t.check(drawn.size() == 1 and drawn[0].kind == D.CRATES, "sprites on: a pile does not draw its animated barrel")
+	SpriteArt.set_enabled(false)
+	t.check(pile.pile_parts_drawn().size() == 2, "F7 off: it draws them all")
+	SpriteArt.set_enabled(true)
+	pile.free()
+	env = EnvironmentField.new()
+	ground = Node2D.new()
+	town = Town.new()
+	town.build(env, ground)
+	var piled := 0
+	var piles := town._decor.filter(func(d: Decor) -> bool: return d.kind == D.PILE)
+	for p: Decor in piles:
+		piled += p.parts.filter(func(x: Dictionary) -> bool: return x.kind == D.BARREL).size()
+	var lone := town._decor.filter(func(d: Decor) -> bool: return d.kind == D.BARREL and d.sprite_only)
+	t.check(piled > 0 and lone.size() == piled,
+		"each piled barrel gets a live node of its own (%d for %d)" % [lone.size(), piled])
+	var host: Decor = null
+	for p: Decor in piles:
+		if not p.followers.is_empty():
+			host = p
+			break
+	t.check(host != null, "a pile has live parts")
+	if host != null:
+		host.hit(Decor.KNOCK_AT, &"blast")
+		t.check(host.followers.all(func(f: Decor) -> bool: return f.down),
+			"knocked down, the pile takes its live parts down too")
+	town.free()
+	env.clear()
+	env.free()
+	ground.free()
+	_unanimate(gnames, gfakes)
+	DecorSprites.reload()

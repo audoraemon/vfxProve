@@ -20,6 +20,15 @@ const POWERS := [
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
 		"shape": "send one person somewhere, then they linger 8 s; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion"},
+	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
+		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
+		"authority": "ruin"},
+	{"key": "ember", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
+		"dp": 1, "cooldown": 15.0, "aim": "click", "shape": "one spark that sets one building alight", "quiet": true,
+		"authority": "ruin"},
+	{"key": "deathmark", "name": "Death Mark", "path": "res://src/fx/death/death_mark.gd",
+		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
+		"quiet": true, "authority": "death"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
 		"authority": "dominion"},
@@ -41,7 +50,7 @@ const POWERS := [
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin"},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
-		"authority": "lifedeath"},
+		"authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin"},
 	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
@@ -130,7 +139,7 @@ const REACH := {
 	"heaven": [6.0, 9.0, 0.5, 3.0], "tornado": [8.0, 11.0, 0.6, 10.0], "dragon": [8.0, 11.0, 0.6, 5.0],
 	"tsunami": [8.0, 12.0, 0.7, 5.0], "gravity": [6.0, 9.0, 0.6, 6.0], "laser": [7.0, 10.0, 0.6, 6.0],
 	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
-	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "schism": [14.0, 18.0, 0.8, 8.0],
+	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "smite": [5.0, 9.0, 0.4, 2.0], "schism": [14.0, 18.0, 0.8, 8.0],
 	"nova": [40.0, 40.0, 1.0, 4.0],
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
@@ -145,9 +154,9 @@ static func get_power(key: String) -> Dictionary:
 
 
 ## The Authorities (v0.08; before, the kinds): what a power commands, and the draft's tabs, in tab order.
-const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "disorder", "lifedeath"]
+const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "disorder", "death"]
 ## Their titles, index for index.
-const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DISORDER", "LIFE/DEATH"]
+const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DISORDER", "DEATH"]
 
 
 ## The keys of an Authority's powers, in book order.
@@ -164,7 +173,7 @@ static func authority_of(key: String) -> String:
 	return String(get_power(key).get("authority", ""))
 
 
-## An Authority's title ("LIFE/DEATH"), or "" for an unknown one.
+## An Authority's title ("DEATH"), or "" for an unknown one.
 static func authority_title(authority: String) -> String:
 	var i := AUTHORITIES.find(authority)
 	return String(AUTHORITY_TITLES[i]) if i >= 0 else ""

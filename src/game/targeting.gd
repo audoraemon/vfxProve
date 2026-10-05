@@ -34,6 +34,12 @@ const AREAS := {
 	"doom": {"shape": "circle", "r": 0.8},
 	# MindWhisperFx.PICK_R: who the press would whisper to
 	"whisper": {"shape": "circle", "r": 0.6},
+	# SmiteFx.KILL_R
+	"smite": {"shape": "circle", "r": 0.6},
+	# EmberFx.REACH; the building it would light is outlined (_draw())
+	"ember": {"shape": "circle", "r": 1.0},
+	# DeathMarkFx.PICK_R; whom it would mark is ringed (_draw())
+	"deathmark": {"shape": "circle", "r": 1.0},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())
@@ -457,6 +463,19 @@ func _draw() -> void:
 				var who := MindWhisperFx.pick(_crowd._field, _press)
 				if who != null:
 					_ring(who.ground_pos, 0.2, whisper_pick_color(who))
+		"ember":
+			# What it would light, or a red ring for nothing that burns in reach.
+			var burns := EmberFx.target(_crowd._env, _press)
+			if burns != null:
+				var box := burns.footprint.grow(0.08)
+				draw_polyline(PackedVector2Array([box.position, Vector2(box.end.x, box.position.y), box.end,
+					Vector2(box.position.x, box.end.y), box.position]), COL_INNER, -1.0)
+			else:
+				_ring(_press, 0.3, COL_BAD)
+		"deathmark":
+			var marked := DeathMarkFx.target_at(_crowd._field, _press)
+			if marked != null:
+				_ring(marked.ground_pos, 0.25, COL_MAD)
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
 			var s := BlightFx.target(_crowd._env, _press)

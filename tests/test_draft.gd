@@ -86,7 +86,7 @@ static func run(t) -> void:
 	for authority in PowerBook.AUTHORITIES:
 		most = maxi(most, PowerBook.of_authority(authority).size())
 	for i in most:
-		boxes.append(PrepareScreen.cell_rect(i))
+		boxes.append(PrepareScreen.cell_rect(i, most))
 	for i in d.slots:
 		boxes.append(PrepareScreen.slot_rect(i))
 	boxes.append(PrepareScreen.MANIFEST_RECT)
@@ -172,7 +172,7 @@ static func run(t) -> void:
 	click.draft.preselect(PackedStringArray(["doom", "wisp", "discord", "heaven", "blight", "thorns"]))
 	click.set_tab(click.tabs().find("ruin"))
 	before = click.draft.picks.duplicate()
-	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("tornado")).get_center())
+	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("tornado"), click.shown().size()).get_center())
 	t.check(click.draft.picks == before and click.refused_reason == "No free slot",
 		"a card with no free slot is refused with its reason ('%s', %s)" % [click.refused_reason, click.draft.picks])
 	click.draft.preselect(PackedStringArray(["heaven"]))

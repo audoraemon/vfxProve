@@ -537,7 +537,8 @@ func _think(delta: float) -> void:
 
 
 func _mind_speed() -> float:
-	return _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0)
+	# A status may slow it too (Death Mark's "slow": the share of its pace it keeps).
+	return _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * float(statuses.get(&"slow", 1.0))
 
 
 func _base_speed() -> float:
@@ -980,6 +981,8 @@ func hurt(amount: float, by: Person) -> void:
 	if state == State.DEAD:
 		return
 	health -= amount
+	if statuses.has(&"frail"):
+		health = 0.0  # the frail fall to any blow (Death Mark)
 	flash(0.08)
 	if by != null and is_instance_valid(by):
 		var away := ground_pos - by.ground_pos

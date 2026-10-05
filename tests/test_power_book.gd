@@ -8,12 +8,12 @@ const V07_COOLDOWNS := {
 	"cinder": 50.0, "judgement": 60.0, "glacial": 60.0, "nova": 120.0,
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
-const NEW_IN_08 := ["whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
+const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 31, "31 powers")
+	t.check(PowerBook.POWERS.size() == 34, "34 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -38,7 +38,7 @@ static func run(t) -> void:
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "wisp", "discord", "heaven", "madness", "blight", "thorns", "tornado",
+	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "wisp", "discord", "heaven", "madness", "blight", "thorns", "tornado",
 		"pestilence", "dragon", "mirror", "congregation", "oath", "echo", "turncoat", "hatred", "priority", "verdict", "delusion",
 		"tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "schism", "nova"],
@@ -47,7 +47,7 @@ static func run(t) -> void:
 	for key in PowerBook.keys():
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
-	t.check(quiet == ["doom", "whisper", "wisp", "discord", "madness", "blight", "thorns", "pestilence", "mirror", "congregation", "oath", "echo",
+	t.check(quiet == ["doom", "whisper", "ember", "deathmark", "wisp", "discord", "madness", "blight", "thorns", "pestilence", "mirror", "congregation", "oath", "echo",
 		"turncoat", "hatred", "priority", "verdict", "delusion", "voice"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var authorities_ok := true
@@ -57,7 +57,7 @@ static func run(t) -> void:
 		"every power has a known Authority, and every Authority a title")
 	t.check(Array(PowerBook.of_authority("veil")) == ["doom", "blight"] and PowerBook.authority_of("nova") == "ruin",
 		"powers by Authority (veil: %s)" % [PowerBook.of_authority("veil")])
-	t.check(PowerBook.authority_title("lifedeath") == "LIFE/DEATH" and PowerBook.authority_title("nope") == "",
+	t.check(PowerBook.authority_title("death") == "DEATH" and Array(PowerBook.of_authority("death")) == ["deathmark", "pestilence"] and PowerBook.authority_title("nope") == "",
 		"an Authority's title, and none for a stranger")
 
 	# v0.08 prices and cooldowns (spec §2): a price of 1 to 4 DP from the loadout budget, and a cooldown never shorter

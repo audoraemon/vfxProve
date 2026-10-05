@@ -27,6 +27,10 @@ func _initialize() -> void:
 	_save(_sign(DominionParts.ARROW, Color(1.0, 0.95, 0.75), Color(0.08, 0.07, 0.1), 85), "priority")
 	_save(_sign(DominionParts.BLADE, Color(1.0, 0.3, 0.25), Color(0.12, 0.03, 0.04), 86), "verdict")
 	_save(_sign(DominionParts.EYE, Color(0.6, 0.85, 1.0), Color(0.04, 0.06, 0.12), 87), "delusion")
+	# Tier I of Ruin and Death.
+	_save(_sign([0b00010, 0b00100, 0b01110, 0b00100, 0b01000], Color(0.7, 0.88, 1.0), Color(0.04, 0.06, 0.12), 88), "smite")
+	_save(_sign(DominionParts.FLAME, Color(1.0, 0.62, 0.2), Color(0.12, 0.05, 0.03), 89), "ember")
+	_save(_sign(DeathMarkFx.SKULL, Color(0.85, 0.8, 0.95), Color(0.06, 0.04, 0.09), 90), "deathmark")
 	print("wrote ", ProjectSettings.globalize_path(OUT))
 	quit()
 

@@ -11,6 +11,8 @@ const WALK_SPEED := 0.6
 const KNOCK_DECAY := 8.0
 const MIN_PULL_DIST := 0.15
 const DEATH_FADE := 1.6
+## How long one killed by a Death Mark lies where it fell before it fades, for the town to find.
+const BODY_HOLD := 20.0
 ## How often a unit re-reads the light around it. Pixel art tints in steps anyway, and with 160 people this
 ## sampling was the biggest thing left in the crowd's frame.
 const LIGHT_HZ := 20.0
@@ -240,10 +242,12 @@ func _tick_death(delta: float) -> void:
 		_:
 			pass
 	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else (1.0 if _kind == &"pit" else 0.6))
-	modulate.a = clampf(1.0 - (_dead_time - fade_start) / (DEATH_FADE - fade_start), 0.0, 1.0)
+	# The marked lie there a while first.
+	var hold := BODY_HOLD if _kind == &"deathmark" else 0.0
+	modulate.a = clampf(1.0 - (_dead_time - hold - fade_start) / (DEATH_FADE - fade_start), 0.0, 1.0)
 	if _kind == &"gravity" and _dead_time > 0.3:
 		modulate.a = 0.0
-	if _dead_time >= DEATH_FADE and is_inside_tree():
+	if _dead_time >= DEATH_FADE + hold and is_inside_tree():
 		queue_free()
 
 

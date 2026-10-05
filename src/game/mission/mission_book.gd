@@ -253,8 +253,8 @@ static func _judgement_line(n: NightState) -> String:
 
 
 ## Night 2 of the campaign, the Vigil (v0.10): one mission per path. Mira's House (the Faith path, M2) leads four of the
-## grieving to Mira's journal unseen, before dawn (MirasHouseDirector); the Vigil Flame and Broken Lanterns are still
-## M1's placeholders held until dawn, with the spec's briefs and pools, until M4 and M3 build them.
+## grieving to Mira's journal unseen, before dawn (MirasHouseDirector); Broken Lanterns (the Ruin path) is M3's; the
+## Vigil Flame is still M1's placeholder held until dawn, with the spec's brief and pool, until M4 builds it.
 static func miras_house() -> MissionDef:
 	var m := _vigil(MIRAS_HOUSE, "Mira's House", PackedStringArray(["Her journal waits in a shuttered house.",
 		"Lead the grieving to it unseen."]), PackedStringArray(VIGIL_POOL))
@@ -280,9 +280,24 @@ static func vigil_flame() -> MissionDef:
 		"A mortal hand must steal it."]), PackedStringArray(VIGIL_POOL))
 
 
+## Night 2 of the campaign, the Ruin path (v0.10 M3): break Halcyon's six wayside shrines and let them drain before the
+## Vigil relights them (BrokenLanternsDirector). The default loadout costs 5 DP, so it fits a Night 2 after a bite.
 static func broken_lanterns() -> MissionDef:
-	return _vigil(BROKEN_LANTERNS, "Broken Lanterns", PackedStringArray(["Six shrines anchor the Lantern.",
+	var m := _vigil(BROKEN_LANTERNS, "Broken Lanterns", PackedStringArray(["Six shrines anchor the Lantern.",
 		"Break them before they are relit."]), PackedStringArray(VIGIL_POOL + RUIN_POOL))
+	m.goal = "Break Halcyon's six shrines, and let them drain before the Vigil relights them"
+	m.goal_label = "The lanterns are dark"
+	m.lose = "The bell tolls, the Lantern looks, or dawn finds a shrine still lit"
+	m.clock = 180.0
+	m.camera_at = BrokenLanternsDirector.CAMERA_AT
+	m.intro_from = BrokenLanternsDirector.CAMERA_AT + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["heaven", "doom", "discord"])
+	m.director = BrokenLanternsDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ShrinesObjective.new(), BellSilentObjective.new(), GazeObjective.new(),
+			ClockObjective.new(false, "Dawn", "relit")]
+		return out
+	return m
 
 
 static func _vigil(id: String, name: String, brief: PackedStringArray, pool: PackedStringArray) -> MissionDef:

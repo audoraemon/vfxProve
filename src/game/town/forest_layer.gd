@@ -36,6 +36,13 @@ func _ready() -> void:
 class Band extends Node2D:
 	var trees: Array = []
 
+	func _ready() -> void:
+		add_to_group(&"decor_art")
+
+	## F7 switched the art (ArtToggle): draw the band again, from the tree sets or the polygons.
+	func art_changed() -> void:
+		queue_redraw()
+
 	func _draw() -> void:
 		ArtKit.begin()
 		for d in trees:

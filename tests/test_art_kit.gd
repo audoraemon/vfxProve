@@ -85,3 +85,26 @@ static func run(t) -> void:
 		cloths[st.art.cloth] = true
 		st.free()
 	t.check(cloths.size() == 3, "stalls come in all three cloths")
+	_tex(t)
+
+
+## Textured quads keep painter order with the polygons around them, and same-texture neighbours share one batch.
+static func _tex(t) -> void:
+	var a := ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RGBA8))
+	var b := ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RGBA8))
+	ArtKit.begin()
+	ArtKit.poly(PackedVector2Array([Vector2(0, 0), Vector2(4, 0), Vector2(0, 4)]), Color.RED, 0.0)
+	ArtKit.tex(a, Rect2(0, 0, 4, 4), Vector2(1, 1))
+	ArtKit.tex(a, Rect2(0, 0, 4, 4), Vector2(5, 1))
+	ArtKit.tex(b, Rect2(0, 0, 2, 4), Vector2(9, 1))
+	ArtKit.poly(PackedVector2Array([Vector2(0, 0), Vector2(4, 0), Vector2(0, 4)]), Color.BLUE, 0.0)
+	ArtKit.tex(a, Rect2(0, 0, 4, 4), Vector2(1, 9))
+	var s := ArtKit.segments()
+	t.check(s.size() == 5, "poly, tex a x2, tex b, poly, tex a: five segments in call order (got %d)" % s.size())
+	t.check(s[0][0] == "poly" and s[1][0] == "tex" and s[1][2] == 2, "the first two a-quads share one batch")
+	t.check(s[2][0] == "tex" and s[2][1] == b and s[3][0] == "poly" and s[4][1] == a,
+		"a later a-quad after a polygon starts a new batch (painter order kept)")
+	var node := Node2D.new()
+	ArtKit.flush(node)
+	t.check(ArtKit.segments().is_empty(), "flush hands every segment over and starts over")
+	node.free()

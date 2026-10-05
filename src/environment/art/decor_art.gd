@@ -14,6 +14,8 @@ const LOG_END := Color("d9b27a")
 
 
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> void:
+	if DecorSprites.paint(kind, at, size, seed_value, origin, down):
+		return
 	var o := Iso.ground_to_screen(at) - origin
 	if down:
 		if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
@@ -73,6 +75,8 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 ## layer draws its hundreds with fewer leaf clusters (`clusters`).
 static func tree(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2,
 		clusters := PropArt.OAK_CLUSTERS) -> void:
+	if DecorSprites.paint(kind, at, size, seed_value, origin):
+		return
 	var tall := size.x if size.x > 0.0 else 46.0 + ArtKit.hash01(seed_value, 3) * 18.0
 	PropArt.tree(Iso.ground_to_screen(at) - origin, tall, 0 if kind == Decor.Kind.OAK else 1, seed_value, clusters)
 

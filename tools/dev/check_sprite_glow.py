@@ -1,5 +1,6 @@
-"""How much of each building sprite the sprite shader treats as glowing (lit windows, fires): those pixels skip the dim,
-the effects' light and the char. The rule is structure_sprite.gdshader's glows(); change both together.
+"""How much of each building sprite and decor set (assets/pixellab/decor/*/intact.png) the sprite shader treats as
+glowing (lit windows, fires): those pixels skip the dim, the effects' light and the char. The rule is
+structure_sprite.gdshader's glows(); change both together.
 Exits 1 if a sprite glows over MAX_SHARE, which means the rule is catching its walls, not its windows.
 Usage (from the project root): python tools/dev/check_sprite_glow.py [--masks DIR]   (--masks: a PNG per sprite, glow in magenta)
 """
@@ -21,7 +22,9 @@ def glows(r, g, b):
 def main():
     masks = sys.argv[sys.argv.index("--masks") + 1] if "--masks" in sys.argv else None
     bad = 0
-    for path in sorted(glob.glob("assets/pixellab/buildings/*/*.png")):
+    paths = sorted(glob.glob("assets/pixellab/buildings/*/*.png"))
+    paths += sorted(glob.glob("assets/pixellab/decor/*/intact.png"))
+    for path in paths:
         name = "/".join(path.replace("\\", "/").split("/")[-2:])
         if name.endswith(("reference.png", "style_ref.png")):
             continue

@@ -2,7 +2,8 @@ extends Node2D
 ## Debug scene for Kingdoms Amid Kataclysm: the town of Aldermere and its fortified Royal Citadel on the shared
 ## Battlefield, its people (110 citizens and 50 soldiers, --people=N to scale), and every power castable from
 ## the keyboard. No rules yet (milestone 3).
-## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] (screenshots), --citadel-test (scripted strikes on the Citadel, logged),
+## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] [--dim=0..1] (screenshots; --dim darkens
+## the scene as a power's dim does, to see the lights at dusk), --citadel-test (scripted strikes on the Citadel, logged),
 ## --crowd-test (scripted panic, logged), --bench [--only=<power key>] (frame times while that power plays
 ## beside the Citadel).
 
@@ -38,7 +39,42 @@ const TOWN_SHOTS := [
 	["town_bell_tower.png", Vector2(7.55, 1.35), 1.3],
 	["town_corner_south.png", Vector2(16.0, 16.0), 1.0],
 	["town_corner_east.png", Vector2(16.0, -16.0), 1.0],
+	# The west branch's source: the cliff, its waterfall and the pool below (the overview's north-west bend).
+	["town_waterfall.png", Vector2(-27.6, -1.6), 1.6],
 	["town_east_quarter.png", Vector2(12.4, 0.6), 1.4],
+	# The market's north torches and the walkway lamp; the west street's lamps beside a market corner torch.
+	["town_torches.png", Vector2(1.4, -2.6), 2.2],
+	["town_lamps.png", Vector2(-6.0, 8.6), 2.2],
+	# The forest ring outside the west wall, and the oaks between the west district's cottages.
+	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
+	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],
+	# The north-west farm's barn and the carpenter's workshop (the warehouse sets), each then damaged and fallen.
+	["town_barn.png", Vector2(-12.6, -28.4), 2.0],
+	["town_carpenter.png", Vector2(11.2, 12.3), 1.6],
+	["town_barn_damaged.png", Vector2(-12.6, -28.4), 2.0],
+	["town_carpenter_damaged.png", Vector2(11.2, 12.3), 1.6],
+	["town_barn_ruins.png", Vector2(-12.6, -28.4), 2.0],
+	["town_carpenter_ruins.png", Vector2(11.2, 12.3), 1.6],
+	# The mills (batch 3 sets), damaged and fallen (town_windmill / town_watermill above show them whole).
+	["town_windmill_damaged.png", Vector2(-10.0, -24.0), 1.0],
+	["town_watermill_damaged.png", Vector2(-4.0, 24.5), 1.0],
+	["town_windmill_ruins.png", Vector2(-10.0, -24.0), 1.0],
+	["town_watermill_ruins.png", Vector2(-4.0, 24.5), 1.0],
+	# The farm fields (batch 3 sets) with farmers set down in them: the north fields by the windmill, the south wheat by
+	# the river, the south-east cabbages; then the north fields trampled (below 65% health) and burnt flat.
+	["town_fields_north.png", Vector2(-16.0, -25.0), 1.2],
+	["town_fields_south.png", Vector2(-16.5, 28.0), 1.2],
+	["town_fields_cabbage.png", Vector2(10.0, 28.0), 1.2],
+	["town_fields_damaged.png", Vector2(-16.0, -25.0), 1.2],
+	["town_fields_ruins.png", Vector2(-16.0, -25.0), 1.2],
+	# The south road's stone bridge and the dock below the postern, people on them (_stage_shot); then cracked and
+	# fallen (kept last: they break the bridge and the dock for any shot after them).
+	["town_bridge.png", Vector2(2.7, 22.2), 1.3],
+	["town_dock.png", Vector2(-5.6, 20.0), 2.0],
+	["town_bridge_damaged.png", Vector2(2.7, 22.2), 1.3],
+	["town_dock_damaged.png", Vector2(-5.6, 20.0), 2.0],
+	["town_bridge_ruins.png", Vector2(2.7, 22.2), 1.3],
+	["town_dock_ruins.png", Vector2(-5.6, 20.0), 2.0],
 ]
 ## [time, power key, ground point] for --citadel-test.
 const CITADEL_CASTS := [
@@ -97,6 +133,9 @@ func _ready() -> void:
 	await FxParts.prewarm(_bf.ctx.distort)
 	if "--capture-town" in args:
 		var frames := Battlefield.arg_value(args, "--frames")
+		var dim := Battlefield.arg_value(args, "--dim")
+		if dim != "":
+			_bf.ctx.impact.dim(float(dim), 100.0)
 		_capture_town(Battlefield.arg_value(args, "--only"), int(frames) if frames != "" else 1)
 	elif "--citadel-test" in args:
 		_citadel_test()
@@ -229,6 +268,7 @@ func _capture_town(only := "", frames := 1) -> void:
 			continue
 		_bf.camera.zoom = Vector2.ONE * float(shot[2])
 		_bf.camera.position = (Iso.ground_to_screen(shot[1]) + Vector2(0, -30)).round()
+		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
 		if frames <= 1:
 			await _bf.save_capture(shot[0])
@@ -237,6 +277,84 @@ func _capture_town(only := "", frames := 1) -> void:
 			await _bf.save_capture(String(shot[0]).replace(".png", "_%d.png" % i))
 			await _bf.wait_frames(15)
 	await _bf.quit()
+
+
+## Dev staging for the bridge and dock shots: a few citizens set down along the bridge's road or on the dock's planks
+## (they walk on from there), and for the _damaged / _ruins shots the structure cracked or brought down first.
+func _stage_shot(file: String) -> void:
+	var s: Structure = null
+	if file.begins_with("town_fields"):
+		await _stage_fields(file)
+		return
+	if file.begins_with("town_bridge"):
+		s = _town.bridge
+	elif file.begins_with("town_dock"):
+		s = _town.dock
+	elif file.begins_with("town_barn") or file.begins_with("town_carpenter") or file.begins_with("town_windmill") \
+			or file.begins_with("town_watermill"):
+		var plot: Rect2 = TownLayout.CARPENTER
+		if file.begins_with("town_barn"):
+			plot = TownLayout.BARNS[0]
+		elif file.begins_with("town_windmill"):
+			plot = TownLayout.WINDMILL
+		elif file.begins_with("town_watermill"):
+			plot = TownLayout.WATERMILL
+		for b: Structure in _town._built:
+			if is_instance_valid(b) and b.footprint == plot:
+				s = b
+				break
+		if s != null and file.ends_with("_damaged.png"):
+			s.crack()
+		elif s != null and file.ends_with("_ruins.png"):
+			s.destroy(s.center(), &"stone")
+			await _bf.wait_frames(240)
+		return
+	if not is_instance_valid(s) or not is_instance_valid(_crowd):
+		return
+	var r := s.footprint
+	var n := 6 if s == _town.bridge else 3
+	for i in mini(n, _crowd.citizens.size()):
+		var p: Person = _crowd.citizens[i]
+		var k := (float(i) + 0.5) / float(n)
+		p.ground_pos = r.position + r.size * (Vector2(0.5 + 0.25 * (float(i % 2) - 0.5), k) if r.size.y > r.size.x \
+			else Vector2(k, 0.5))
+		p._sync_position()
+	if file.ends_with("_damaged.png"):
+		s.crack()
+	elif file.ends_with("_ruins.png"):
+		s.destroy(s.center(), &"stone")
+		await _bf.wait_frames(240)
+
+
+## Dev staging for the field shots: the fields round the shot's point get two farmers each, set down among the crops
+## (they walk on from there); _damaged drops them under 65% health (trampled), _ruins burns them flat.
+func _stage_fields(file: String) -> void:
+	var at: Vector2 = Vector2.ZERO
+	for shot in TOWN_SHOTS:
+		if shot[0] == file:
+			at = shot[1]
+	var fields: Array[Structure] = []
+	for b: Structure in _town._built:
+		if is_instance_valid(b) and b.kind == Structure.Kind.FARM_FIELD and b.footprint.get_center().distance_to(at) < 8.0:
+			fields.append(b)
+	var i := 0
+	for f in fields:
+		if file.ends_with("_damaged.png"):
+			f.hp = f.max_hp * 0.5
+			f.wake()
+		elif file.ends_with("_ruins.png"):
+			f.destroy(f.center(), &"stone")
+		if not is_instance_valid(_crowd):
+			continue
+		for k in 2:
+			if i >= _crowd.citizens.size():
+				break
+			var p: Person = _crowd.citizens[i]
+			p.ground_pos = f.footprint.position + f.footprint.size * Vector2(0.3 + 0.4 * k, 0.45 + 0.2 * k)
+			p._sync_position()
+			i += 1
+	if file.ends_with("_ruins.png"):
+		await _bf.wait_frames(240)
 
 
 ## Scripted strikes on the Citadel: the titan's punches, a volcano beside it, then novas, the titan again and an

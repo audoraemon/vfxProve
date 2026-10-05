@@ -63,6 +63,8 @@ const WALKABLE := [Kind.GATE, Kind.BRIDGE, Kind.FARM_FIELD]
 const FLAT := [Kind.BRIDGE, Kind.FARM_FIELD]
 ## Nothing to crack on these.
 const NO_CRACKS := [Kind.FARM_FIELD, Kind.TREE]
+## A building cracks below this share of its health (a sprite field shows its damaged still).
+const CRACK_AT := 0.65
 ## Light buckets the redraw signature quantizes to. Faces are always shaded from the exact sampled
 ## light; these only decide how far the light has to move before a building rebuilds its drawing.
 const SIG_COLOR_STEPS := 48.0
@@ -103,10 +105,7 @@ var _art_key := 0
 var art_tag := &""
 ## Sprite set from setup() (SpriteArt.set_for, the PixelLab proof): when it has one, the building is drawn from it by
 ## its SpriteViews instead of its procedural art. Only the drawing changes; its state and rng stream never do.
-var sprite := {}:
-	set(value):
-		sprite = value
-		_sprite_frames = int(value.get("frames", 1))
+var sprite := {}
 ## Its sprite's views: the building; its ruins, under it while it falls and after; a top a laser sliced off; the keep's
 ## banners while they fall (drop_banner()).
 var _sprite_view: SpriteView
@@ -160,10 +159,6 @@ var _banner_fall := -1.0
 var _synced_state := &""
 var _synced_mod := Color.WHITE
 var _synced_fallen := false
-## The idle frame the views were last synced on, and sprite.frames, read once as the set is handed over (sprite's
-## setter), not out of the dictionary every frame.
-var _synced_step := -1
-var _sprite_frames := 1
 ## Which SHAKE_HZ step the current jitter belongs to (-1 = not shaking).
 var _shake_step := -1
 ## Last drawn banner state, the same idea as _drawn_sig for the keep's banner.
@@ -247,16 +242,14 @@ func _ready() -> void:
 		_banner = Node2D.new()
 		_banner.draw.connect(_draw_banner)
 		add_child(_banner)
-	if art_tag == &"windmill" or art_tag == &"watermill" or (kind == Kind.FOUNTAIN and art_tag != &"well"):
-		_spin = Node2D.new()
-		_spin.draw.connect(_draw_spin)
-		add_child(_spin)
+	_sync_spin()
 	if not _flame_tips().is_empty():
 		_flame = Node2D.new()
 		_flame.draw.connect(_draw_flame)
 		add_child(_flame)
-		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do.
-		for tip in _flame_tips():
+		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do. A street
+		# torch or lamp has its own pool of light (_glow) already.
+		for tip in _flame_tips() if kind != Kind.TORCH else []:
 			var halo := QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(44, 30))
 			halo.set_param("color", TORCH_LIGHT)
 			halo.set_param("falloff", 1.8)
@@ -307,7 +300,7 @@ func damage(amount: float, source: Vector2, damage_kind: StringName) -> void:
 		destroy(source, damage_kind)
 		return
 	hit.emit(self, amount, damage_kind)
-	if hp < max_hp * 0.65:
+	if hp < max_hp * CRACK_AT:
 		crack()
 	for w in _windows:
 		if rng.randf() < 0.3:
@@ -450,20 +443,27 @@ func refresh_sprite() -> void:
 	_ruins_view = null
 	_top_view = null
 	_flag_view = null
+	_sync_spin()
 	wake()
 	_dirty = true
 	queue_redraw()
 
 
 ## What a sprite building shows now: &"intact", &"damaged" (cracked), &"falling" (collapsing), &"cut" (a laser's stump;
-## only a laser leaves a building destroyed without a collapse) or &"ruins"; &"" without a sprite.
+## only a laser leaves a building destroyed without a collapse) or &"ruins"; &"" without a sprite. A field never cracks
+## nor collapses: it shows damaged (trampled, scorched) below the health a building cracks at, and its ruins at once
+## when it burns flat (_fall_apart()).
 func sprite_state() -> StringName:
 	if sprite.is_empty():
 		return &""
 	if destroyed:
+		if kind == Kind.FARM_FIELD:
+			return &"ruins"
 		if _collapse < 0.0:
 			return &"cut"
 		return &"falling" if _collapse < 1.0 else &"ruins"
+	if kind == Kind.FARM_FIELD:
+		return &"damaged" if hp < max_hp * CRACK_AT else &"intact"
 	return &"intact" if _cracks.is_empty() else &"damaged"
 
 
@@ -503,7 +503,9 @@ func _sync_sprite() -> void:
 		_ruins_view.queue_free()
 		_ruins_view = null
 	if is_instance_valid(_ruins_view):
-		_ruins_view.set_color(Color(self_modulate, clampf(_collapse * 3.0, 0.0, 1.0)))
+		# It fades in under a collapse; a field burnt flat has none and shows them at once.
+		var shown := 1.0 if _collapse < 0.0 else clampf(_collapse * 3.0, 0.0, 1.0)
+		_ruins_view.set_color(Color(self_modulate, shown))
 	var m := -1.0 if sprite.mirror else 1.0
 	_sprite_view.visible = state != &"ruins"
 	_sprite_view.set_color(self_modulate)
@@ -527,8 +529,14 @@ func _sync_sprite() -> void:
 			_sprite_view.position = Vector2.ZERO
 			_sprite_view.scale = Vector2(m, 1.0)
 			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
-		&"intact", &"damaged":
-			_sprite_view.show_still(state, int(_time * float(sprite.fps)))
+		&"intact":
+			# The view's shader steps its idle strip from the shared clock (SpriteView.play_idle()): the structure sleeps.
+			_sprite_view.play_idle(_time)
+			_sprite_view.position = Vector2.ZERO
+			_sprite_view.scale = Vector2(m, 1.0)
+			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
+		&"damaged":
+			_sprite_view.show_still(state)
 			_sprite_view.position = Vector2.ZERO
 			_sprite_view.scale = Vector2(m, 1.0)
 			_sprite_view.set_cut(SpriteView.KEEP_ALL, 0.0)
@@ -566,22 +574,19 @@ func _sync_sprite() -> void:
 
 
 ## True when _sync_sprite() would hand its views exactly what they already show: the building is quiet (nothing
-## falling, sliding off or cooling), has no banners mid-fall, and shows the idle frame, state, tint and banners it
-## showed at the last sync. Walls and towers on screen process every frame, and syncing each of them anyway cost ~5 us a
-## frame apiece (~0.25 ms a frame, -4 fps in the mission bench); an animated set (a smoking chimney) synced every frame
-## between its idle frames cost ~12 us a frame apiece.
+## falling, sliding off or cooling), has no banners mid-fall, and shows the state, tint and banners it showed at the
+## last sync. Walls and towers on screen process every frame, and syncing each of them anyway cost ~5 us a frame apiece
+## (~0.25 ms a frame, -4 fps in the mission bench). An animated set's idle frames are no change here: its shader steps
+## them itself (SpriteView.play_idle()).
 func _sprite_settled() -> bool:
 	if not is_instance_valid(_sprite_view) or not _quiet() \
 			or (_banner_fall >= 0.0 and _banner_fall < BANNER_FALL_TIME):
 		_synced_state = &""
 		return false
-	# An animated set (sprite.frames > 1) changes only on its next idle frame, _sync_sprite()'s int(_time * fps).
-	var step := int(_time * float(sprite.fps)) if _sprite_frames > 1 else 0
 	var state := sprite_state()
 	var fallen := _banner_fall >= 0.0
-	if step == _synced_step and state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
+	if state == _synced_state and self_modulate == _synced_mod and fallen == _synced_fallen:
 		return true
-	_synced_step = step
 	_synced_state = state
 	_synced_mod = self_modulate
 	_synced_fallen = fallen
@@ -618,7 +623,8 @@ func _new_view() -> SpriteView:
 ## A sprite building's own drawing: its ground shadow while it stands, and the light handed to its views (they draw
 ## the sprite; see _sync_sprite()).
 func _draw_sprite_frame(light: Color) -> void:
-	if not destroyed:
+	# Fields lie flat and cast none, as the procedural ones.
+	if not destroyed and kind != Kind.FARM_FIELD:
 		_quad(_sprite_shadow(), SHADOW)
 	var amb := lights.ambient if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
@@ -731,14 +737,16 @@ func _process(delta: float) -> void:
 			_banner_sig = banner_sig
 			_banner.queue_redraw()
 	if is_instance_valid(_spin):
-		_spin.visible = not destroyed
+		_spin.visible = not destroyed and sprite.is_empty()
 		var spin_step := int(_time * (FOUNTAIN_HZ if kind == Kind.FOUNTAIN else 8.0))
 		if spin_step != _spin_step and not destroyed and not _unseen:
 			_spin_step = spin_step
 			_spin.queue_redraw()
 	if is_instance_valid(_flame):
-		_flame.visible = not destroyed and (sprite.is_empty() or bool(sprite.keep_flames))
-		var flame_step := int(_time * 8.0)
+		# A procedural street torch or lamp draws its own flame (_draw_torch): its flame node is for its sprite only.
+		var shown := bool(sprite.keep_flames) if not sprite.is_empty() else kind != Kind.TORCH
+		_flame.visible = not destroyed and shown
+		var flame_step := int(_time * (TORCH_FLICKER_HZ if kind == Kind.TORCH else 8.0))
 		if flame_step != _flame_step and not destroyed and not _unseen:
 			_flame_step = flame_step
 			_flame.queue_redraw()
@@ -1119,10 +1127,11 @@ func wake() -> void:
 		set_process(true)
 
 
-## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch).
+## In view, quiet, and with no part that steps with time (a banner, sails, a fountain, flames, a torch). A sprite's
+## idle strip is no such part: its shader steps it from the shared clock (SpriteView.play_idle()).
 func _can_idle() -> bool:
 	return _quiet() and not kind in NEVER_IDLE and not is_instance_valid(_banner) and not is_instance_valid(_spin) \
-		and not is_instance_valid(_flame) and (sprite.is_empty() or int(sprite.frames) <= 1)
+		and not is_instance_valid(_flame)
 
 
 func _go_idle() -> void:
@@ -1250,6 +1259,23 @@ func _draw_banner() -> void:
 	StoneArt.draw_banners(self, _banner, _time, Color(amb * t.r, amb * t.g, amb * t.b))
 
 
+## A mill's turning sails or wheel, or a fountain's running water: a node of its own only while the procedural art
+## draws it. A sprite set draws (and idles) its own, so a sprite building has none and can sleep (_can_idle()).
+func _sync_spin() -> void:
+	var wants := sprite.is_empty() and (art_tag == &"windmill" or art_tag == &"watermill"
+		or (kind == Kind.FOUNTAIN and art_tag != &"well"))
+	if wants and not is_instance_valid(_spin):
+		_spin = Node2D.new()
+		_spin.draw.connect(_draw_spin)
+		add_child(_spin)
+		# Under the building's other parts, as when _ready() made it first (only a keep has a banner node before it).
+		move_child(_spin, 0)
+		_spin_step = -1
+	elif not wants and is_instance_valid(_spin):
+		_spin.queue_free()
+		_spin = null
+
+
 ## A mill's sails or wheel, turning a sixteenth of a turn (sails) or a twenty-fourth (the wheel) a step; a
 ## fountain's running water.
 func _draw_spin() -> void:
@@ -1262,8 +1288,11 @@ func _draw_spin() -> void:
 	FarmArt.draw_spin(self, _spin, float(_spin_step) * step, Color(amb * t.r, amb * t.g, amb * t.b))
 
 
-## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace.
+## Where this structure's art has flames: a wall torch, the bridge's corner torches, the forge's furnace, a street
+## torch's bowl or lamp's lantern (_post_flame_tip()).
 func _flame_tips() -> Array[Vector2]:
+	if kind == Kind.TORCH:
+		return [_post_flame_tip()]
 	if art.get("torch", false):
 		return [StoneArt.torch_tip(self)]
 	if kind == Kind.BRIDGE:
@@ -1275,8 +1304,47 @@ func _flame_tips() -> Array[Vector2]:
 	return []
 
 
+## A street torch's flame base or a street lamp's lantern glass (its top left), local px: from its sprite (the manifest's
+## flame / glass point, moved with the damaged still's lean), else where the procedural post puts its cup.
+func _post_flame_tip() -> Vector2:
+	if sprite.is_empty():
+		return Vector2(0, -height - 2)
+	var shift: Vector2 = sprite.damaged_shift if sprite_state() == &"damaged" else Vector2.ZERO
+	var at: Vector2 = sprite.anchor
+	var p: Vector2 = sprite.flame if art_tag != &"lamp" else (sprite.glass as Rect2).position
+	if p == Vector2.INF:
+		return Vector2(0, -height - 2)
+	p += shift - at
+	if sprite.mirror:
+		var w := 1.0 if art_tag != &"lamp" else (sprite.glass as Rect2).size.x
+		p.x = -p.x - w
+	return p
+
+
+## A sprite street torch's flame (the procedural torch's, on its bowl's rim) or a sprite lamp's lantern glow (filling its
+## glass, the lantern's front corner bar over it), flickering as the procedural ones do.
+func _draw_post_flame() -> void:
+	var tip := _post_flame_tip()
+	if art_tag == &"lamp":
+		var glass: Rect2 = sprite.get("glass", Rect2())
+		var r := Rect2(tip, glass.size if glass.has_area() else Vector2(6, 9))
+		var g := int(_time * 6.0 + float(rng.seed % 5)) % 4
+		_flame.draw_rect(r, COL_FLAME[1] if g != 0 else COL_FLAME[2])
+		_flame.draw_rect(r.grow(-1.0), COL_FLAME[0])
+		_flame.draw_rect(Rect2(r.position + Vector2(floorf(r.size.x * 0.5), 0), Vector2(1, r.size.y)), COL_IRON_CUP)
+		return
+	var f := int(_time * TORCH_FLICKER_HZ + float(rng.seed % 5)) % 3
+	_flame.draw_rect(Rect2(tip + Vector2(-4, -5), Vector2(8, 5)), COL_FLAME[2])
+	_flame.draw_rect(Rect2(tip + Vector2(-3, -9 - f % 2), Vector2(6, 7)), COL_FLAME[1])
+	_flame.draw_rect(Rect2(tip + Vector2(-2 + (f % 2), -12 - f), Vector2(3, 6)), COL_FLAME[0])
+	_flame.draw_rect(Rect2(tip + Vector2(-1, -7), Vector2(2, 3)), Color.WHITE)
+
+
 ## The art's flames, flickering in 8 Hz steps, each a little out of step with the others.
 func _draw_flame() -> void:
+	if kind == Kind.TORCH:
+		_draw_post_flame()
+		return
 	var tips := _flame_tips()
 	for i in tips.size():
 		var tip: Vector2 = tips[i]

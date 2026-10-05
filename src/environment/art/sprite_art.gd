@@ -22,6 +22,16 @@ const FOOT_ROOM := 10.0
 const SALT_ROOF := 90
 ## ArtKit.hash01 salt for a townhouse's look.
 const SALT_TOWNHOUSE := 91
+## ArtKit.hash01 salts for a market stall's design, a tree's and an oak's variant (batch 3 sets).
+const SALT_STALL := 92
+const SALT_TREE := 93
+const SALT_OAK := 94
+## ArtKit.hash01 salt for the design of a field off the town's plots (SpriteView.SALT_PHASE is 95).
+const SALT_FIELD := 96
+## A town market stall's design walk over TownLayout.STALLS (_stall_design): the first of these steps prime to the
+## number of designs, and where the walk starts.
+const STALL_STEPS := [5, 7, 11, 13]
+const STALL_OFFSET := 3
 ## The longest piece a wall run is cut into (TownLayout.WALL_PIECE): a strip spans its period plus this.
 const STRIP_PIECE := 1.2
 
@@ -31,6 +41,8 @@ static var _manifest := {}
 static var _loaded := false
 ## Built sprite sets by name ({} for one whose stills are missing).
 static var _sets := {}
+## Variant numbers found in the manifest per prefix ("stall" -> [1, 2, ...], ascending), built on first use.
+static var _variants_cache := {}
 
 
 static func on() -> bool:
@@ -62,6 +74,81 @@ static func manifest() -> Dictionary:
 static func reload() -> void:
 	_loaded = false
 	_sets.clear()
+	_variants_cache.clear()
+
+
+## The design numbers n of manifest entries "<prefix>_<n>" (digits only, so "stall_1_red" is not a design), ascending.
+## Cached per manifest load.
+static func variants(prefix: String) -> Array:
+	if _variants_cache.has(prefix):
+		return _variants_cache[prefix]
+	var out := []
+	var lead := prefix + "_"
+	for key: String in manifest():
+		if key.begins_with(lead):
+			var rest := key.trim_prefix(lead)
+			if rest.is_valid_int() and int(rest) > 0:
+				out.append(int(rest))
+	out.sort()
+	_variants_cache[prefix] = out
+	return out
+
+
+## "<prefix>_<n>" with n picked from the seed over the designs in the manifest, or "" when there are none.
+static func _pick_variant(prefix: String, seed_value: int, salt: int) -> String:
+	var v := variants(prefix)
+	if v.is_empty():
+		return ""
+	return "%s_%d" % [prefix, v[ArtKit.pick(seed_value, salt, v.size())]]
+
+
+## `n` when the manifest has it, else "" (the structure stays procedural).
+static func _have(n: String) -> String:
+	return n if manifest().has(n) else ""
+
+
+## A stall's sprite: its design, in the awning tint of its cloth when that tint exists.
+static func _stall_name(s: Structure) -> String:
+	var design := _stall_design(s)
+	if design == "":
+		return ""
+	var tinted: String = design + "_" + ["red", "blue", "cream"][int(s.art.get("cloth", 0)) % 3]
+	return tinted if manifest().has(tinted) else design
+
+
+## A stall's design. A town market stall (its plot one of TownLayout.STALLS, index i) takes design
+## STALL_STEP * i + STALL_OFFSET (mod the number of designs present): plots next to each other in the market are 1, 2
+## or 3 apart in that list (along a row, or down a column where a row is short), so with four or more designs and a
+## step prime to their count no two neighbours share one. It reads the layout only, so gameplay is untouched. Any
+## other stall picks its design from its seed.
+static func _stall_design(s: Structure) -> String:
+	var v := variants("stall")
+	if v.is_empty():
+		return ""
+	var i: int = TownLayout.STALLS.find(s.footprint)
+	if i < 0:
+		return _pick_variant("stall", s.rng.seed, SALT_STALL)
+	var step := 1
+	for c in STALL_STEPS:
+		if v.size() % c != 0:
+			step = c
+			break
+	return "stall_%d" % v[(i * step + STALL_OFFSET) % v.size()]
+
+
+## A field's sprite: its crop's set "field_<crop>" (none: procedural) or one of that crop's other designs
+## "field_<crop>_<n>" (rows the other way). A town field (its plot one of TownLayout.FIELDS, index i) takes design
+## i mod (designs): side-by-side plots are next to each other in that list, so two neighbouring fields of one crop never
+## look stamped. It reads the layout only, so gameplay is untouched. Any other field picks its design from its seed.
+static func _field_name(s: Structure) -> String:
+	var base := "field_%d" % int(s.art.get("crop", 0))
+	if not manifest().has(base):
+		return ""
+	var v := variants(base)
+	var n := v.size() + 1
+	var i: int = TownLayout.FIELDS.find(s.footprint)
+	var k := i % n if i >= 0 else ArtKit.pick(s.rng.seed, SALT_FIELD, n)
+	return base if k == 0 else "%s_%d" % [base, v[k - 1]]
 
 
 ## The sprite that replaces `s`, or "" (only buildings with a set in the manifest are drawn from one).
@@ -69,8 +156,14 @@ static func name_for(s: Structure) -> String:
 	match s.kind:
 		Structure.Kind.HOUSE:
 			if s.role == &"farm":
-				# A barn; the windmill and watermill keep their turning procedural art.
-				return "barn" if s.art_tag == &"" else ""
+				match s.art_tag:
+					&"":
+						return _have("barn")
+					&"windmill":
+						return _have("windmill")
+					&"watermill":
+						return _have("watermill")
+				return ""
 			if s.role != &"house":
 				return ""
 			match s.art_tag:
@@ -85,7 +178,7 @@ static func name_for(s: Structure) -> String:
 				&"workshop":
 					return "workshop"
 				&"carpenter":
-					return "carpenter"
+					return _have("carpenter")
 		Structure.Kind.TEMPLE:
 			if s.art_tag == &"cathedral":
 				return "cathedral"
@@ -121,9 +214,23 @@ static func name_for(s: Structure) -> String:
 		Structure.Kind.BARRACKS:
 			return "barracks"
 		Structure.Kind.MARKET_STALL:
-			# Procedural for now (user review 2026-10-04: stalls too crowded and uniform). The PixelLab stalls are
-			# kept in assets/pixellab/buildings/stall_* for a later redo.
-			return ""
+			return _stall_name(s)
+		Structure.Kind.FOUNTAIN:
+			return _have("well" if s.art_tag == &"well" else "fountain")
+		Structure.Kind.TORCH:
+			return _have("lamp_post" if s.art_tag == &"lamp" else "torch_post")
+		Structure.Kind.TREE:
+			if s.art_tag == &"oak":
+				return _pick_variant("oak", s.rng.seed, SALT_OAK)
+			if s.art_tag == &"":
+				return _pick_variant("tree", s.rng.seed, SALT_TREE)
+		Structure.Kind.BRIDGE:
+			if s.art_tag == &"stone":
+				return _have("bridge_stone")
+			if s.art_tag == &"dock":
+				return _have("dock")
+		Structure.Kind.FARM_FIELD:
+			return _field_name(s)
 	return ""
 
 
@@ -186,6 +293,11 @@ static func sprite(n: String) -> Dictionary:
 		"strip": strip, "period": period, "region": Rect2(),
 		# Its procedural flames (a wall torch, the barracks' forge) stay lit over it: the sprite paints none of its own.
 		"keep_flames": bool(m.get("keep_flames", false)),
+		# A street torch's bowl rim (the procedural flame's base) or a street lamp's lantern glass (the procedural glow),
+		# in sprite px; damaged_shift: where they move to on the damaged still (its post leans). INF / Rect2(): none.
+		"flame": Vector2(m.flame[0], m.flame[1]) if m.has("flame") else Vector2.INF,
+		"glass": Rect2(m.glass[0], m.glass[1], m.glass[2], m.glass[3]) if m.has("glass") else Rect2(),
+		"damaged_shift": Vector2(m.damaged_shift[0], m.damaged_shift[1]) if m.has("damaged_shift") else Vector2.ZERO,
 	}
 	_sets[n] = built
 	return built

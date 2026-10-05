@@ -16,6 +16,7 @@ signal restored(s: Structure)
 enum Kind {
 	TOWER, BLOCK, WALL, CRATES, KEEP, CASTLE_WALL, HOUSE, TORCH,
 	TEMPLE, BARRACKS, MARKET_STALL, GATE, BRIDGE, FARM_FIELD, TREE, FOUNTAIN,
+	SHRINE,
 }
 
 const RUBBLE_H := 5.0
@@ -35,6 +36,10 @@ const COL_IRON_CUP := Color("3a3230")
 ## A street lamp's post height, px (the reference's lamps stand about twice a person's height).
 const LAMP_H := 34.0
 const TORCH_LIGHT := Color(1.0, 0.55, 0.22)
+## The wayside shrine (v0.10 M3, Broken Lanterns). Its health is a stone post's: sturdier than a torch, under a house,
+## and every Ruin power in the night's pool breaks it in one blow. COL_NICHE is its lantern niche's dark.
+const SHRINE_HP := 40.0
+const COL_NICHE := Color("1a1410")
 ## Seconds a dropped banner takes to fall and fade.
 const BANNER_FALL_TIME := 1.0
 ## The shake jitter is re-rolled this many times a second instead of every frame. A 1-2 px pixel-art shudder
@@ -208,7 +213,7 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", t
 	max_hp = {Kind.TOWER: 160.0, Kind.BLOCK: 110.0, Kind.WALL: 60.0, Kind.CRATES: 30.0,
 		Kind.KEEP: 180.0, Kind.CASTLE_WALL: 90.0, Kind.HOUSE: 50.0, Kind.TORCH: 10.0,
 		Kind.TEMPLE: 200.0, Kind.BARRACKS: 150.0, Kind.MARKET_STALL: 25.0, Kind.GATE: 120.0,
-		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0, Kind.FOUNTAIN: 80.0}[k]
+		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0, Kind.FOUNTAIN: 80.0, Kind.SHRINE: SHRINE_HP}[k]
 	hp = max_hp
 	walkable = k in WALKABLE
 	z_index = -1 if k in FLAT else 0
@@ -830,6 +835,8 @@ func _palette() -> Array:
 			return [Color("9a7a4c"), Color("7c6038"), Color("604a2c")]
 		Kind.FOUNTAIN:
 			return [Color("b4aca8"), Color("9f9796"), Color("7f797d")]
+		Kind.SHRINE:
+			return [Color("a49c90"), Color("8a8378"), Color("6e685f")]
 		Kind.FARM_FIELD:
 			return [Color("c9a94f"), Color("7a5c3a"), Color("634a2f")]
 		Kind.TREE:
@@ -1083,6 +1090,13 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 		Kind.CRATES:
 			draw_line(_s[3].lerp(_s[2], 0.5), _s[3].lerp(_s[2], 0.5) + Vector2(0, -height), left_c.darkened(0.3), -1.0)
 			draw_line(_s[1].lerp(_s[2], 0.5), _s[1].lerp(_s[2], 0.5) + Vector2(0, -height), right_c.darkened(0.3), -1.0)
+		Kind.SHRINE:
+			# A lantern niche in the front face, its flame lit while the shrine stands, under a capstone.
+			var niche := (_s[3].lerp(_s[2], 0.5) + Vector2(0, -height * 0.62)).round()
+			draw_rect(Rect2(niche + Vector2(-2, -4), Vector2(4, 5)), COL_NICHE)
+			draw_rect(Rect2(niche + Vector2(-1, -3), Vector2(2, 3)), COL_FLAME[1])
+			draw_rect(Rect2(niche + Vector2(-1, -2), Vector2(1, 1)), COL_FLAME[0])
+			draw_rect(Rect2(roof + Vector2(-6, -2), Vector2(12, 2)), top_c.lightened(0.12))
 
 
 ## One flat-coloured polygon, star-shaped about its vertices' average (a rubble chunk, a heap's jagged top), as a

@@ -16,6 +16,11 @@ the mirrored ground point (so those are lit from the right, as the procedural an
 
 Anchored at the ground point (the procedural `o`): x 0 of the drawing, the row under the hooves.
 
+Each set is a 4-frame strip at 2.5 fps (Group C: wind.gdshader steps it on the idle clock, each animal at its own
+phase), grazing: frame 0 is the still; the head dips to the grass (1), holds there chewing (2), and is on its way back
+up (3) while the tail flicks. sheep_2, whose still grazes, dips a px lower (1), chews (2) and lifts its head a little
+(3). Every frame keeps frame 0's box, so the anchor and size stay the still's.
+
 Usage (from anywhere):
   python tools/dev/ref_convert/decor_animals.py [all | sheep | cow] [--out <scratch dir>]
       (--out: write PNGs there, no manifest)
@@ -137,6 +142,19 @@ HEAD_DOWN = [  # grazing: the head hangs forward from the shoulder, its muzzle a
     "..gfFnF.",
     "...gff..",
 ]
+HEAD_CHEW = HEAD_DOWN[:7] + [  # chewing: the jaw drops a px forward
+    "..gfFFn.",
+    "...gfff.",
+]
+FPS = 2.5
+# Frames: (head stamp, its top-left), per still. The grazing sheep's forelegs stay stepped out under its head.
+SHEEP_POSES = {
+    False: ((HEAD_UP, (7, -27)), (HEAD_DOWN, (9, -14)), (HEAD_CHEW, (9, -14)), (HEAD_UP, (7, -21))),
+    True: ((HEAD_DOWN, (9, -14)), (HEAD_DOWN, (9, -13)), (HEAD_CHEW, (9, -13)), (HEAD_DOWN, (9, -17))),
+}
+TAIL_FLICK = 3          # the frame the tail flicks on
+# The sheep's tail flicked up off the rump: a wool tuft (lit top, shaded under) over its top-left.
+SHEEP_TAIL = ((-13, -19, 1), (-12, -19, 0), (-14, -18, 1), (-13, -18, 2), (-14, -17, 3))
 
 
 def sheep_cmap():
@@ -144,7 +162,7 @@ def sheep_cmap():
             "E": SKIN[2], "e": EYE, "n": SKIN[3]}
 
 
-def sheep(grazing):
+def sheep(grazing, frame=0):
     p = Pix()
     # legs: far pair (shaded) behind, near pair (lit left column) in front; 2 px, hooves the bottom two rows
     legs = ((-4, False), (6, False), (-8, True), (3, True))
@@ -179,10 +197,11 @@ def sheep(grazing):
                 k += 1
             p.put(x, y, WOOL[min(k, 4)])
     cm = sheep_cmap()
-    if grazing:
-        p.stamp(9, -14, HEAD_DOWN, cm)
-    else:
-        p.stamp(7, -27, HEAD_UP, cm)
+    head, (hx, hy) = SHEEP_POSES[grazing][frame]
+    p.stamp(hx, hy, head, cm)
+    if frame == TAIL_FLICK:
+        for x, y, k in SHEEP_TAIL:
+            p.put(x, y, WOOL[k])
     return p.image()
 
 
@@ -230,7 +249,32 @@ COW_HEAD = [
 ]
 
 
-def cow(pied):
+# Grazing (Group C): the head hangs muzzle-down in front of the forelegs, its poll (horns, ear) at the top, the
+# forehead its right edge, the jaw its left.
+COW_HEAD_DOWN = [
+    "Hh..EE...",
+    ".HhaaEb..",
+    "..aaaaab.",
+    ".baaaaab.",
+    ".baeaaab.",
+    ".baaaaab.",
+    "..baaaab.",
+    "..baaaab.",
+    "...baaab.",
+    "...bMMMb.",
+    "...MMMMM.",
+    "...MMnMm.",
+    "....mmm..",
+]
+# Poses per frame: (head stamp, its top-left), or None for the still's (cow_1 raised, cow_2 level). The head drops to
+# the grass (1), a px lower chewing (2), half way back up (3).
+COW_POSES = {
+    False: (None, (COW_HEAD_DOWN, (14, -16)), (COW_HEAD_DOWN, (14, -15)), (COW_HEAD, (13, -30))),
+    True: (None, (COW_HEAD_DOWN, (15, -16)), (COW_HEAD_DOWN, (15, -15)), (COW_HEAD, (14, -28))),
+}
+
+
+def cow(pied, frame=0):
     p = Pix()
     coat = WHITE if pied else HIDE
     spot = PIED if pied else WHITE
@@ -272,17 +316,40 @@ def cow(pied):
                     under = y >= COW_Y1 - 1 or x >= COW_X1 - 1
                     p.put(x, y, spot[2] if under else spot[0] if top else spot[1])
     # the tail: down the rump from its top, a dark tuft at the end
-    for y in range(-31, -18):
-        p.put(COW_X0 - 1, y, coat[2] if pied else HIDE[2])
-    for y in range(-19, -16):
-        p.put(COW_X0 - 1, y, PIED[2] if pied else HIDE[3])
-        p.put(COW_X0 - 2, y, PIED[1] if pied else HIDE[3])
+    if frame == TAIL_FLICK:
+        # flicked: the lower half kicks out a px and up, its tuft swung over the hock
+        for y in range(-31, -25):
+            p.put(COW_X0 - 1, y, coat[2] if pied else HIDE[2])
+        for y in range(-25, -22):
+            p.put(COW_X0 - 2, y, coat[2] if pied else HIDE[2])
+        for y in range(-23, -20):
+            p.put(COW_X0 - 2, y, PIED[2] if pied else HIDE[3])
+            p.put(COW_X0 - 1, y, PIED[1] if pied else HIDE[3])
+    else:
+        for y in range(-31, -18):
+            p.put(COW_X0 - 1, y, coat[2] if pied else HIDE[2])
+        for y in range(-19, -16):
+            p.put(COW_X0 - 1, y, PIED[2] if pied else HIDE[3])
+            p.put(COW_X0 - 2, y, PIED[1] if pied else HIDE[3])
     # neck and head
     cm = {"a": coat[1], "b": coat[2], "c": coat[3], "E": coat[2], "H": HORN[0], "h": HORN[1], "M": MUZZLE[0],
           "m": MUZZLE[1], "e": EYE, "n": (150, 104, 96)}
     if pied:
         cm.update({"a": WHITE[1], "b": PIED[1], "c": PIED[2], "E": PIED[1]})
-    if pied:
+    pose = COW_POSES[pied][frame]
+    if pose is not None:
+        # lowered: a thick neck out of the chest, down and forward to the head's poll (its lit edge the left, shaded
+        # on the right, as the raised neck), then the head
+        head, (hx, hy) = pose
+        y0, y1 = -32, hy + 2
+        for y in range(y0, y1 + 1):
+            t = (y - y0) / float(max(y1 - y0, 1))
+            xl = int(round(12 + (hx + 2 - 12) * t))
+            xr = int(round(18 + (hx + 5 - 18) * t))
+            for x in range(xl, xr + 1):
+                p.put(x, y, coat[0] if x == xl else coat[2] if x >= xr - 1 else coat[1])
+        p.stamp(hx, hy, head, cm)
+    elif pied:
         # level: a thick neck forward from the shoulder, the head held at the body's top
         for y in range(-33, -24):
             for x in range(10 + (y + 33) // 3, 18):
@@ -300,9 +367,14 @@ def cow(pied):
     return p.image()
 
 
+def strip(fn, *args):
+    """The 4-frame grazing strip of fn(*args, frame), lined up on the anchor (decor_common.strip)."""
+    return decor_common.strip([fn(*args, k) for k in range(4)])
+
+
 SETS = {
-    "sheep": lambda: [("sheep_1",) + sheep(False), ("sheep_2",) + sheep(True)],
-    "cow": lambda: [("cow_1",) + cow(False), ("cow_2",) + cow(True)],
+    "sheep": lambda: [("sheep_1",) + strip(sheep, False), ("sheep_2",) + strip(sheep, True)],
+    "cow": lambda: [("cow_1",) + strip(cow, False), ("cow_2",) + strip(cow, True)],
 }
 
 
@@ -318,8 +390,8 @@ def main():
                 path = Path(args.out) / (name + ".png")
                 img.save(path)
             else:
-                path = decor_common.write_set(name, img, anchor)
-            print("%-8s %dx%d anchor %s -> %s" % (name, img.width, img.height, anchor, path))
+                path = decor_common.write_set(name, img, anchor, frames=4, fps=FPS)
+            print("%-8s %dx%d (4 frames at %s fps) anchor %s -> %s" % (name, img.width, img.height, FPS, anchor, path))
 
 
 if __name__ == "__main__":

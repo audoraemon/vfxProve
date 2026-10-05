@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_plants(t)
 	_anim(t)
 	_anim_cover(t)
+	_strips(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -1048,3 +1049,40 @@ static func _anim_cover(t) -> void:
 	ground.free()
 	_unanimate(names, fakes)
 	DecorSprites.reload()
+
+
+## The Group C strips (Task 11): the grazing animals, the scarecrow, the house lantern and the ship's pennant are
+## shipped as 4-frame strips: each set loads 4 frames at its rate, its texture is exactly 4 frames wide, and each draws
+## live (animated) while sprites are on, with its own frame_u. A mirrored sheep keeps the strip's material.
+static func _strips(t) -> void:
+	DecorSprites.reload()
+	SpriteArt.set_enabled(true)
+	var want := {"sheep_1": 2.5, "sheep_2": 2.5, "cow_1": 2.5, "cow_2": 2.5, "scarecrow": 4.0, "lamp_house": 6.0,
+		"ship": 5.0}
+	for n: String in want:
+		var s := DecorSprites.decor_set(n)
+		t.check(not s.is_empty() and int(s.get("frames", 1)) == 4, "%s loads 4 frames (got %s)" % [n, s.get("frames")])
+		t.check(not s.is_empty() and is_equal_approx(float(s.get("fps", 0.0)), want[n]),
+			"%s steps at %s fps (got %s)" % [n, want[n], s.get("fps")])
+		var w := (s.get("tex") as Texture2D).get_width() if s.get("tex") != null else -1
+		t.check(not s.is_empty() and w == int((s.size as Vector2).x) * 4,
+			"%s's strip is 4 frames wide (%d = %s x 4)" % [n, w, s.get("size")])
+	# Every kind that draws these sets is animated, and a mirrored sheep draws the same strip material.
+	for k: int in [D.SHEEP, D.COW, D.SCARECROW, D.LAMP, D.SHIP]:
+		t.check(DecorSprites.animated(k, 1), "kind %d draws an animated set" % k)
+	var mirrored := -1
+	var plain := -1
+	for i in range(40):
+		var sd := TownDecor.SEED + i * 7919
+		if DecorSprites.name_for(D.SHEEP, sd, Vector2.ZERO) != "sheep_1":
+			continue
+		if DecorSprites.flipped(D.SHEEP, sd) and mirrored < 0:
+			mirrored = sd
+		elif not DecorSprites.flipped(D.SHEEP, sd) and plain < 0:
+			plain = sd
+	t.check(mirrored != -1 and plain != -1, "sheep_1 draws both mirrored and plain (%d, %d)" % [mirrored, plain])
+	t.check(DecorSprites.animated(D.SHEEP, mirrored) and DecorSprites.animated(D.SHEEP, plain),
+		"a mirrored sheep_1 is animated as a plain one")
+	var mat := Decor.material_for(D.SHEEP, DecorSprites.decor_set("sheep_1"))
+	t.check(mat != null and is_equal_approx(float(mat.get_shader_parameter("frame_u")), 0.25),
+		"sheep_1's material steps quarter-width frames")

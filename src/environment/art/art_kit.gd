@@ -105,6 +105,8 @@ static var _segs: Array = []
 ## While recording, every flush is also kept, so the drawing can be replayed without running the art again.
 static var _recording := false
 static var _rec: Array = []
+## The flip_h of the last tex() call (last_flip(), for tests).
+static var _last_flip := false
 
 
 ## A stable number in [0, 1) for this seed and salt. Different salts give independent choices.
@@ -153,6 +155,7 @@ static func begin() -> void:
 	_line_pts.clear()
 	_line_cols.clear()
 	_segs.clear()
+	_last_flip = false
 
 
 ## Hand what was collected to `ci` (fills, then lines on top) and start over.
@@ -265,8 +268,9 @@ static func _emit(ci: CanvasItem, b: Array) -> void:
 
 
 ## The textured rectangle `src` of `tex`, top-left at `dst` (px, in the flush target's space), tinted `c` (and by
-## color_mul), drawn in call order with the fills around it (decor sprites, DecorSprites). Not while recording.
-static func tex(t: Texture2D, src: Rect2, dst: Vector2, c := Color.WHITE) -> void:
+## color_mul), drawn in call order with the fills around it (decor sprites, DecorSprites). `flip_h` mirrors it left to
+## right in the same rect (its left and right u swap). Not while recording.
+static func tex(t: Texture2D, src: Rect2, dst: Vector2, c := Color.WHITE, flip_h := false) -> void:
 	if _recording:
 		push_error("ArtKit.tex: textured quads are not recorded")
 		return
@@ -281,11 +285,16 @@ static func tex(t: Texture2D, src: Rect2, dst: Vector2, c := Color.WHITE) -> voi
 		_segs.append(seg)
 	var ts := Vector2(t.get_size())
 	var base := (seg[3] as PackedVector2Array).size()
+	_last_flip = flip_h
 	var corners := [Vector2.ZERO, Vector2(src.size.x, 0), src.size, Vector2(0, src.size.y)]
 	for k in 4:
 		seg[3].append(dst + corners[k])
 		seg[4].append(c)
-		seg[5].append((src.position + corners[k]) / ts)
+		# Flipped, each corner samples the source at its mirror column (left u <-> right u).
+		var u: Vector2 = corners[k]
+		if flip_h:
+			u.x = src.size.x - u.x
+		seg[5].append((src.position + u) / ts)
 	for k in [0, 1, 2, 0, 2, 3]:
 		seg[2].append(base + k)
 
@@ -301,7 +310,8 @@ static func _close_fills() -> void:
 	_uvs = PackedVector2Array()
 
 
-## The last pending textured quad, for tests: [source rect (texture px), top-left (px)]; [] when there is none.
+## The last pending textured quad, for tests: [source rect (texture px; a flipped quad's too), top-left (px)]; [] when
+## there is none.
 static func last_quad() -> Array:
 	for i in range(_segs.size() - 1, -1, -1):
 		var seg: Array = _segs[i]
@@ -310,8 +320,13 @@ static func last_quad() -> Array:
 			var pts: PackedVector2Array = seg[3]
 			var ts := Vector2((seg[1] as Texture2D).get_size())
 			var n := uv.size()
-			return [Rect2(uv[n - 4] * ts, (uv[n - 2] - uv[n - 4]) * ts), pts[n - 4]]
+			return [Rect2(uv[n - 4] * ts, (uv[n - 2] - uv[n - 4]) * ts).abs(), pts[n - 4]]
 	return []
+
+
+## The flip_h of the last tex() call, for tests (false after begin()).
+static func last_flip() -> bool:
+	return _last_flip
 
 
 ## The pending segments, for tests: ["poly", vertex count] or ["tex", texture, quad count].

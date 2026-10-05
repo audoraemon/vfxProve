@@ -23,5 +23,9 @@
 	"garden_2": {"size": [44, 30], "anchor": [14, 7], "footprint": [0.95, 0.45]},
 	"garden_3": {"size": [46, 31], "anchor": [31, 7], "footprint": [0.45, 1.0]},
 	"garden_4": {"size": [44, 30], "anchor": [30, 7], "footprint": [0.45, 0.95]},
-	"scarecrow": {"size": [28, 37], "anchor": [14, 36]}
+	"scarecrow": {"size": [28, 37], "anchor": [14, 36]},
+	"sheep_1": {"size": [32, 29], "anchor": [15, 28]},
+	"sheep_2": {"size": [32, 27], "anchor": [15, 26]},
+	"cow_1": {"size": [42, 46], "anchor": [18, 45]},
+	"cow_2": {"size": [43, 40], "anchor": [18, 39]}
 }

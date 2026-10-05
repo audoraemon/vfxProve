@@ -14,6 +14,10 @@ const SALT_TREE := 98
 ## Kinds drawn as a run from `at` to `at + size`, one set per run direction ("<base>_x" / "<base>_y"). A GARDEN is
 ## not a run: its plots come in four fixed sizes, each a still (garden_<n>, picked by its manifest "footprint").
 const RUNS := [Decor.Kind.FENCE, Decor.Kind.BUNTING, Decor.Kind.BENCH]
+## Kinds drawn mirrored (facing the other way) for half the seeds: ArtKit.hash01(seed, SALT_VARIANT + 1) < 0.5. Their
+## sets face right, lit from the left; a mirrored one is lit from the right (as the procedural animals, which do not
+## shade by facing).
+const MIRRORED := [Decor.Kind.SHEEP, Decor.Kind.COW]
 ## Each kind's set base name; DOCK has none (the dock is a Structure since batch 3).
 const BASE := {
 	Decor.Kind.BARREL: "barrel", Decor.Kind.CRATES: "crates", Decor.Kind.BENCH: "bench", Decor.Kind.FENCE: "fence",
@@ -157,7 +161,7 @@ static func tree_set(kind: int, seed_value: int) -> Dictionary:
 ## tree shows its set's stump texture, or is left to the procedural stump; any other down piece with a set draws nothing. A run repeats its set's
 ## segment from its back end (the low end along its main axis), the last tile cut to the run's length (on its near
 ## side: the left of an x set, the right of a y set); a set with an "end_post" closes the run with that post at its
-## far end.
+## far end. A MIRRORED kind faces either way by seed (its anchor mirrored with it).
 static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, down := false) -> bool:
 	if kind == Decor.Kind.OAK or kind == Decor.Kind.PINE:
 		var tr := tree_set(kind, seed_value)
@@ -202,5 +206,7 @@ static func paint(kind: int, at: Vector2, size: Vector2, seed_value: int, origin
 		if post.has_area():
 			ArtKit.tex(d.tex, post, Iso.ground_to_screen(start + dir * length) - origin - d.anchor + post.position)
 		return true
-	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - d.anchor)
+	var flip: bool = kind in MIRRORED and ArtKit.hash01(seed_value, SALT_VARIANT + 1) < 0.5
+	var anchor: Vector2 = Vector2(d.size.x - d.anchor.x, d.anchor.y) if flip else d.anchor
+	ArtKit.tex(d.tex, Rect2(Vector2.ZERO, d.size), Iso.ground_to_screen(at) - origin - anchor, Color.WHITE, flip)
 	return true

@@ -14,6 +14,7 @@ static func run(t) -> void:
 	_toggle(t)
 	_glow(t)
 	_boats(t)
+	_mirror(t)
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
 
@@ -48,7 +49,7 @@ static func _mapping(t) -> void:
 	t.check(DecorSprites.name_for(D.LAMP, 1, Vector2.ZERO) == "lamp_house", "a house-front lamp maps to lamp_house")
 	t.check(DecorSprites.name_for(D.FENCE, 1, Vector2(2.0, 0.0)) == "fence_x", "an x-run fence takes fence_x")
 	t.check(DecorSprites.name_for(D.FENCE, 1, Vector2(0.0, -1.5)) == "fence_y", "a -y run fence takes fence_y")
-	t.check(DecorSprites.name_for(D.COW, 1, Vector2.ZERO) == "", "a kind with no set stays procedural")
+	t.check(DecorSprites.name_for(D.DOCK, 1, Vector2.ZERO) == "", "a kind with no set stays procedural")
 	SpriteArt.set_enabled(false)
 	t.check(DecorSprites.name_for(D.BARREL, 7, Vector2.ZERO) == "", "F7 off: every decor piece is procedural")
 	SpriteArt.set_enabled(true)
@@ -151,7 +152,7 @@ static func _paint(t) -> void:
 	var s := ArtKit.segments()
 	t.check(s.size() == 1 and s[0][0] == "tex" and s[0][2] == 1, "one textured quad, no polygons")
 	ArtKit.begin()
-	t.check(not DecorSprites.paint(Decor.Kind.COW, Vector2(2, 3), Vector2.ZERO, 5, Vector2.ZERO),
+	t.check(not DecorSprites.paint(Decor.Kind.DOCK, Vector2(2, 3), Vector2.ZERO, 5, Vector2.ZERO),
 		"a kind without a set is left to the procedural art")
 	t.check(ArtKit.segments().is_empty(), "and queues nothing")
 	ArtKit.begin()
@@ -326,4 +327,53 @@ static func _boats(t) -> void:
 		t.check(DecorSprites.name_for(D.BOAT, d.seed, d.size, d.at) == want,
 			"the town's boat at %s takes %s" % [d.at, want])
 	t.check(boats == 5, "the town has its five boats (got %d)" % boats)
+	_unfake(fakes)
+
+
+## Sheep and cows (DecorSprites.MIRRORED) face either way by seed: the quad's UVs swap left and right, the drawn rect
+## stays, and the anchor's x mirrors so the ground point holds. Other kinds never flip.
+static func _mirror(t) -> void:
+	t.check(D.SHEEP in DecorSprites.MIRRORED and D.COW in DecorSprites.MIRRORED, "sheep and cows are mirrored kinds")
+	var tx := _tex(12, 9)
+	ArtKit.begin()
+	ArtKit.tex(tx, Rect2(2, 1, 4, 3), Vector2(10, 20), Color.WHITE, true)
+	var q := ArtKit.last_quad()
+	t.check(ArtKit.last_flip(), "a flip_h quad reports its flip")
+	t.check(q.size() == 2 and q[0].is_equal_approx(Rect2(2, 1, 4, 3)) and q[1] == Vector2(10, 20),
+		"a flipped quad keeps its source rect and top-left (got %s)" % [q])
+	var segs: Array = ArtKit._segs
+	var uv: PackedVector2Array = segs[-1][5]
+	t.check(uv[0].x > uv[1].x and is_equal_approx(uv[0].x * 12.0, 6.0) and is_equal_approx(uv[1].x * 12.0, 2.0),
+		"flip_h swaps the left and right u (got %s)" % [uv])
+	ArtKit.tex(tx, Rect2(2, 1, 4, 3), Vector2(10, 20))
+	t.check(not ArtKit.last_flip(), "a plain quad does not flip")
+	var fakes := _fake(["sheep_1", "barrel_1"])
+	DecorSprites._sets["sheep_1"] = {"name": "sheep_1", "tex": _tex(12, 9), "size": Vector2(12, 9),
+		"anchor": Vector2(4, 8), "segment": 0.0}
+	DecorSprites._sets["barrel_1"] = {"name": "barrel_1", "tex": _tex(10, 12), "size": Vector2(10, 12),
+		"anchor": Vector2(5, 11), "segment": 0.0}
+	var flips := {}
+	var placed := true
+	var g := Iso.ground_to_screen(Vector2(1, 1))
+	for s in 32:
+		ArtKit.begin()
+		DecorSprites.paint(Decor.Kind.SHEEP, Vector2(1, 1), Vector2.ZERO, s * 131, Vector2.ZERO)
+		var f := ArtKit.last_flip()
+		flips[f] = true
+		q = ArtKit.last_quad()
+		if DecorSprites.name_for(D.SHEEP, s * 131, Vector2.ZERO) == "sheep_1":
+			var want := g - (Vector2(12 - 4, 8) if f else Vector2(4, 8))
+			placed = placed and q.size() == 2 and q[1] == want
+			placed = placed and f == (ArtKit.hash01(s * 131, DecorSprites.SALT_VARIANT + 1) < 0.5)
+	t.check(flips.size() == 2, "sheep face both ways over seeds")
+	t.check(placed, "a flipped sheep's anchor mirrors (x = size.x - anchor.x), flipped for half the seeds' hash")
+	var barrel_flips := {}
+	for s in 32:
+		ArtKit.begin()
+		DecorSprites.paint(Decor.Kind.BARREL, Vector2(1, 1), Vector2.ZERO, s * 131, Vector2.ZERO)
+		barrel_flips[ArtKit.last_flip()] = true
+	t.check(barrel_flips.keys() == [false], "a barrel never flips")
+	ArtKit.begin()
+	DecorSprites._sets.erase("sheep_1")
+	DecorSprites._sets.erase("barrel_1")
 	_unfake(fakes)

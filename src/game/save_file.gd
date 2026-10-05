@@ -6,6 +6,7 @@ extends RefCounted
 ## never fatal -- a player with a corrupted save should lose their best score, not the game.
 ##   [kak]                 difficulty, last_mission
 ##   [mission.<id>]        best_score, best_rank, won, bonus, last_loadout, paths_won
+##   [campaign]            night, dp, bites, tally_<path>, last_path, bell_rang, nights_won, ending (v0.10)
 ## paths_won (v0.09) is the paths of the Long Night that were won: a night won by a new path is a new best.
 ## A save from before v0.08 kept best_score, best_rank and last_loadout in [kak]: they are Last Judgement's.
 
@@ -20,6 +21,8 @@ const NO_RANK := "-"
 var difficulty := ResponseProfile.DEFAULT
 ## The mission last picked on the board (v0.08), for the board's selection and Prepare.
 var last_mission := MissionBook.LAST_JUDGEMENT
+## The Lantern campaign begun or ended (v0.10), or null when none was ever begun.
+var campaign: CampaignState
 ## Last Judgement's best, for the Title (read-only).
 var best_score: int:
 	get:
@@ -47,6 +50,7 @@ func load_from(path := PATH) -> SaveFile:
 	# Before v0.08 the one mission's numbers sat in [kak].
 	if not cfg.has_section(MISSION_SECTION + MissionBook.LAST_JUDGEMENT):
 		_read(cfg, SECTION, MissionBook.LAST_JUDGEMENT)
+	campaign = CampaignState.read(cfg)
 	return self
 
 
@@ -59,6 +63,8 @@ func save_to(path := PATH) -> void:
 		var section: String = MISSION_SECTION + id
 		for key in ["best_score", "best_rank", "won", "bonus", "last_loadout", "paths_won"]:
 			cfg.set_value(section, key, entry[key])
+	if campaign != null:
+		campaign.write(cfg)
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("KAK could not write its save file (%d): %s" % [err, path])

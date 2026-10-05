@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_growth(t)
 	_paths(t)
 	_branches(t)
+	_save(t)
 
 
 static func _won(bonus := false) -> Dictionary:
@@ -148,3 +149,34 @@ static func _branches(t) -> void:
 		dps.append(r.dp)
 	t.check(dps == [6, 8, 10, 12] and r.night == CampaignDef.FINALE and r.slots() == 6,
 		"a Ruin run that wins every night: %s DP, then the finale with 6 slots" % [dps])
+
+
+## The campaign's section of the save file (spec §6): a round trip keeps everything, no section means no campaign, and a
+## damaged section is pulled back into range (review focus 3).
+static func _save(t) -> void:
+	var path := "user://test_campaign.cfg"
+	var s := CampaignState.new()
+	s.record("warning", _lost("bell"))
+	s.record("vigil_flame", _won(true))
+	var save := SaveFile.new()
+	save.campaign = s
+	save.save_to(path)
+	var c := SaveFile.new().load_from(path).campaign
+	t.check(c != null and c.night == 2 and c.dp == 8 and c.bites == 1 and c.bell_rang and int(c.tally["theft"]) == 1
+		and c.last_path == "theft" and c.nights_won == 1 and c.ending == "",
+		"a campaign survives the save file (night %d, dp %d)" % [c.night if c else -1, c.dp if c else -1])
+	t.check(SaveFile.new().load_from("user://no_such_campaign.cfg").campaign == null, "no save file: no campaign")
+	SaveFile.new().save_to(path)
+	t.check(SaveFile.new().load_from(path).campaign == null, "a save without a campaign has none")
+	var cfg := ConfigFile.new()
+	cfg.set_value(CampaignState.SECTION, "night", 9)
+	cfg.set_value(CampaignState.SECTION, "dp", -3)
+	cfg.set_value(CampaignState.SECTION, "bites", 7)
+	cfg.set_value(CampaignState.SECTION, "tally_ruin", -2)
+	cfg.set_value(CampaignState.SECTION, "last_path", "nonsense")
+	cfg.set_value(CampaignState.SECTION, "ending", "nonsense")
+	var d := CampaignState.read(cfg)
+	t.check(d.night == CampaignDef.FINALE and d.dp == CampaignDef.MIN_DP and d.bites == CampaignDef.MAX_BITES
+		and int(d.tally["ruin"]) == 0 and d.last_path == "" and d.ending == "eaten",
+		"a damaged campaign is pulled back into range, and three bites read as Eaten")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

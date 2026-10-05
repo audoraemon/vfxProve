@@ -3,6 +3,9 @@ extends RefCounted
 ## Where a Lantern campaign stands (v0.10, spec §3): the night to play next, the Divine Power the god has regained,
 ## Halcyon's bites, the path tally, and Night 1's bell. record() takes each night's result and moves the campaign on.
 
+## The save file's section for the campaign (spec §6).
+const SECTION := "campaign"
+
 ## The night to play next, from 0 (Night 1).
 var night := 0
 ## The loadout budget the god has regained.
@@ -109,3 +112,37 @@ static func _bonus_earned(result: Dictionary) -> bool:
 		if bool((b as Dictionary).get("earned", false)):
 			return true
 	return false
+
+
+func write(cfg: ConfigFile) -> void:
+	cfg.set_value(SECTION, "night", night)
+	cfg.set_value(SECTION, "dp", dp)
+	cfg.set_value(SECTION, "bites", bites)
+	for p in CampaignDef.PATHS:
+		cfg.set_value(SECTION, "tally_" + p, int(tally.get(p, 0)))
+	cfg.set_value(SECTION, "last_path", last_path)
+	cfg.set_value(SECTION, "bell_rang", bell_rang)
+	cfg.set_value(SECTION, "nights_won", nights_won)
+	cfg.set_value(SECTION, "ending", ending)
+
+
+## A campaign from the save file, or null when it holds none. Values out of range are pulled back in, so a hand-edited
+## or older file cannot put the campaign on a night that does not exist; three bites with no ending read as Eaten.
+static func read(cfg: ConfigFile) -> CampaignState:
+	if not cfg.has_section(SECTION):
+		return null
+	var s := CampaignState.new()
+	s.night = clampi(int(cfg.get_value(SECTION, "night", 0)), 0, CampaignDef.FINALE)
+	s.dp = maxi(int(cfg.get_value(SECTION, "dp", CampaignDef.START_DP)), CampaignDef.MIN_DP)
+	s.bites = clampi(int(cfg.get_value(SECTION, "bites", 0)), 0, CampaignDef.MAX_BITES)
+	for p in CampaignDef.PATHS:
+		s.tally[p] = maxi(int(cfg.get_value(SECTION, "tally_" + p, 0)), 0)
+	var lp := String(cfg.get_value(SECTION, "last_path", ""))
+	s.last_path = lp if CampaignDef.PATHS.has(lp) else ""
+	s.bell_rang = bool(cfg.get_value(SECTION, "bell_rang", false))
+	s.nights_won = maxi(int(cfg.get_value(SECTION, "nights_won", 0)), 0)
+	var e := String(cfg.get_value(SECTION, "ending", ""))
+	s.ending = e if CampaignDef.ENDINGS.has(e) else ""
+	if s.bites >= CampaignDef.MAX_BITES and s.ending == "":
+		s.ending = CampaignDef.EATEN
+	return s

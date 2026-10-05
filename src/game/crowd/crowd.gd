@@ -1173,7 +1173,9 @@ func ring_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
 	alarms.update(alarm, threats.active_count(), _clock)
 
 
-## A district's first local emergency: the two nearest patrolling soldiers go to look, and return after a while.
+## A district's first local emergency: the two nearest patrolling soldiers go to look, and return after a while. A Lantern
+## Knight (v0.10 M3) never does: _prune_soldiers() slides the soldiers added after the spawn down the roster, into the
+## patrols' index range, so the range alone no longer says who patrols.
 func _investigate(at: Vector2) -> void:
 	if _rallied:
 		return
@@ -1182,7 +1184,7 @@ func _investigate(at: Vector2) -> void:
 	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
 		var p := soldiers[i]
 		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST \
-				and not (escorts != null and escorts.guarding(p)):
+				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)):
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(at) < b.ground_pos.distance_to(at))
 	var spot := at if _grid.walkable(at) else _grid.nearest_walkable(at)

@@ -16,6 +16,8 @@ const IDLE_TIME := &"idle_time"
 const IDLE_WRAP := 1440.0
 ## ArtKit.hash01 salt for a view's idle phase, from its structure's seed.
 const SALT_PHASE := 95
+## How far a lit window's brightness wavers (structure_sprite.gdshader's window_amp): +-12%.
+const WINDOW_AMP := 0.12
 
 ## The idle clock: game seconds. The world's EnvironmentField steps it from its _process delta (tick_clock()), so
 ## time scale, hit-stop, a paused tree and a frozen mission (Mission.set_frozen() disables its subtree) hold every
@@ -39,6 +41,8 @@ var playing := false
 ## Where in its loop this view's strip runs, in frames [0, frames): from its structure's seed, so neighbours (a forest's
 ## trees) do not sway in step.
 var phase := 0.0
+## The window flicker last handed to the shader (_set_flicker()): on for the intact still or its strip with a mask.
+var _flicker := false
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -56,6 +60,8 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	_mat.set_shader_parameter("corner_left", a if a.x < b.x else b)
 	_mat.set_shader_parameter("corner_right", b if a.x < b.x else a)
 	_mat.set_shader_parameter("anchor", sprite.anchor)
+	_mat.set_shader_parameter("window_amp", WINDOW_AMP)
+	_mat.set_shader_parameter("frame_size", sprite.size)
 	return self
 
 
@@ -119,6 +125,17 @@ func _set_idle(frames: int) -> void:
 		_mat.set_shader_parameter("frame_w", float((sprite.size as Vector2).x))
 
 
+## Lit windows flicker (the shader's window_flicker) on the intact still or its idle strip of a set with a glow mask.
+## Only a change reaches the material: a structure syncs its sprite every frame.
+func _set_flicker(on: bool) -> void:
+	if on == _flicker:
+		return
+	_flicker = on
+	if on:
+		_mat.set_shader_parameter("glow_mask", sprite.glow_mask)
+	_mat.set_shader_parameter("window_flicker", on)
+
+
 func _stop() -> void:
 	if playing:
 		playing = false
@@ -126,6 +143,7 @@ func _stop() -> void:
 
 
 func _show(st: StringName, frame_index: int) -> void:
+	_set_flicker(st == &"intact" and sprite.get("glow_mask") != null)
 	var n := frame_count(st)
 	var f := 0
 	if n > 1:

@@ -31,7 +31,45 @@ static func run(t) -> void:
 	_toggle(t)
 	_bonfires(t)
 	_banners(t)
+	_window_mask(t)
 	SpriteArt.set_enabled(true)
+
+
+## Lit windows flicker (art animation round, Group B): a set's optional glow_mask.png marks its window pixels, and the
+## view turns the flicker on for the intact still (or its idle strip) only, and only when the set has a mask.
+static func _window_mask(t) -> void:
+	t.check(SpriteArt.sprite("cottage_red").has("glow_mask"), "a set carries a glow_mask key")
+	t.check(SpriteArt.sprite("cottage_red").glow_mask == null, "and it is null without a glow_mask.png")
+	var img := Image.create(84, 76, false, Image.FORMAT_RGBA8)
+	var tex := ImageTexture.create_from_image(img)
+	var set := SpriteArt.sprite("cottage_red").duplicate()
+	set["glow_mask"] = tex
+	var v := SpriteView.new().setup(set, Vector2(-30.4, -15.2), Vector2(24.0, -12.0))
+	var mat := v.material as ShaderMaterial
+	t.check(is_equal_approx(float(mat.get_shader_parameter("window_amp")), SpriteView.WINDOW_AMP),
+		"the view hands the shader its window amplitude")
+	t.check(mat.get_shader_parameter("frame_size") == set.size, "and the frame size the mask is drawn at")
+	v.show_still(&"intact")
+	t.check(mat.get_shader_parameter("window_flicker") == true, "intact cottage with a mask flickers")
+	t.check(mat.get_shader_parameter("glow_mask") == tex, "through its mask")
+	v.show_still(&"damaged")
+	t.check(mat.get_shader_parameter("window_flicker") == false, "damaged still does not flicker")
+	v.show_still(&"ruins")
+	t.check(mat.get_shader_parameter("window_flicker") == false, "nor do the ruins")
+	set["glow_mask"] = null
+	v.show_still(&"intact")
+	t.check(mat.get_shader_parameter("window_flicker") == false, "no mask, no flicker")
+	v.free()
+	# A set with an idle strip flickers while the strip plays, and stops on a damaged still.
+	var tower := SpriteArt.sprite("town_tower").duplicate()
+	tower["glow_mask"] = tex
+	var w := SpriteView.new().setup(tower, Vector2(-16.0, -8.0), Vector2(16.0, -8.0))
+	var wm := w.material as ShaderMaterial
+	w.play_idle()
+	t.check(w.playing and wm.get_shader_parameter("window_flicker") == true, "a playing idle strip with a mask flickers")
+	w.show_still(&"damaged")
+	t.check(wm.get_shader_parameter("window_flicker") == false, "and stops when the tower is damaged")
+	w.free()
 
 
 ## Every set with a fire basket animates its flame (art animation round, Group A).

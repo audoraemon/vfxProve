@@ -854,6 +854,39 @@ func reassure(seconds: float) -> void:
 		_recover(rng.randf_range(0.5, 1.5))
 
 
+## Whatever holds this person now holds it `k` times as long (Magnify): confusion, a compulsion, a fight, fearing
+## nothing, a whisper's linger, a panic, a badge; a sickness runs its course `k` times as fast. Generic: it knows no
+## power by name. True when there was anything to magnify.
+func magnify(k: float) -> bool:
+	if inside or state == State.DEAD or k <= 0.0:
+		return false
+	var any := false
+	if sick_left > 0.0:
+		sick_left /= k
+		any = true
+	if _confused_left > 0.0:
+		_confused_left *= k
+		any = true
+	if mind == Mind.COMPELLED and _compel_left > 0.0:
+		_compel_left *= k
+		any = true
+	if mind == Mind.FIGHT and _fight_left > 0.0:
+		_fight_left *= k
+		any = true
+	if fearless_left > 0.0:
+		fearless_left *= k
+		any = true
+	if _whisper_left > 0.0:
+		_whisper_left *= k
+		any = true
+	if _panic_left > 0.0:
+		_panic_left *= k
+		any = true
+	if badge_left > 0.0:
+		badge_left *= k
+	return any
+
+
 ## A badge over the head for `seconds`: `glyph` in `color` (a side's mark, the silenced, the condemned).
 func set_badge(glyph: Array[int], color: Color, seconds: float) -> void:
 	badge_glyph = glyph

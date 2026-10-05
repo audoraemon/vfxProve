@@ -29,12 +29,18 @@ const POWERS := [
 	{"key": "deathmark", "name": "Death Mark", "path": "res://src/fx/death/death_mark.gd",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
+	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
+		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
+		"quiet": true, "alarm": 0.5, "authority": "decree"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
 		"authority": "dominion"},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
 		"authority": "dominion"},
+	{"key": "belllies", "name": "The Bell Lies", "path": "res://src/fx/decree/the_bell_lies.gd",
+		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "for 45 s the bell tolls all is well: no alarm, the town calms",
+		"quiet": true, "authority": "decree"},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
@@ -56,6 +62,9 @@ const POWERS := [
 	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
 		"dp": 3, "cooldown": 54.0, "aim": "two clicks", "shape": "two faint mirrors: in at the first, out at the second, 30 s",
 		"quiet": true, "authority": "passage"},
+	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
+		"dp": 3, "cooldown": 75.0, "aim": "click", "shape": "doubles what is already there: fires, cracks, madness, spells",
+		"quiet": true, "alarm": 1.0, "authority": "decree"},
 	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
 		"quiet": true, "alarm": 0.3, "authority": "dominion"},
@@ -112,6 +121,11 @@ const POWERS := [
 			{"key": "kneel", "name": "KNEEL"}, {"key": "halt", "name": "HALT"}, {"key": "flee", "name": "FLEE"},
 			{"key": "gather", "name": "GATHER"}, {"key": "return", "name": "RETURN"}, {"key": "silence", "name": "SILENCE"},
 			{"key": "judge", "name": "JUDGE"}]},
+	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
+		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law of the night is void for 15 s; Q/E picks it; once",
+		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
+			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
+			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
 	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
 		"authority": "dominion", "modes": [
@@ -153,11 +167,12 @@ static func get_power(key: String) -> Dictionary:
 	return {}
 
 
+## Decree rules the rules themselves: what is allowed, what is true, what is law (prohibit, distort, abolish).
 ## Dominion holds what was Disorder too: to command a mind and to break one are the same Authority.
 ## The Authorities (v0.08; before, the kinds): what a power commands, and the draft's tabs, in tab order.
-const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "death"]
+const AUTHORITIES := ["ruin", "veil", "dominion", "passage", "decree", "death"]
 ## Their titles, index for index.
-const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DEATH"]
+const AUTHORITY_TITLES := ["RUIN", "VEIL", "DOMINION", "PASSAGE", "DECREE", "DEATH"]
 
 
 ## The keys of an Authority's powers, in book order.

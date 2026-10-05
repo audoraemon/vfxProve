@@ -40,6 +40,14 @@ const AREAS := {
 	"ember": {"shape": "circle", "r": 1.0},
 	# DeathMarkFx.PICK_R; whom it would mark is ringed (_draw())
 	"deathmark": {"shape": "circle", "r": 1.0},
+	# NoLeaveFx.RADIUS: the ground nobody may leave
+	"noleave": {"shape": "circle", "r": 3.0},
+	# The Bell Lies works at the Bell Tower wherever the click lands: the tower is ringed (_draw())
+	"belllies": {"shape": "circle", "r": 0.6},
+	# MagnifyFx.RADIUS
+	"magnify": {"shape": "circle", "r": 4.0},
+	# Abolition voids a law of the whole night: the mark is only where the click lands
+	"abolition": {"shape": "circle", "r": 0.6},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())
@@ -472,6 +480,8 @@ func _draw() -> void:
 					Vector2(box.position.x, box.end.y), box.position]), COL_INNER, -1.0)
 			else:
 				_ring(_press, 0.3, COL_BAD)
+		"belllies":
+			_ring(TownLayout.BELL_TOWER.get_center(), 0.9, COL_DIVINE)
 		"deathmark":
 			var marked := DeathMarkFx.target_at(_crowd._field, _press)
 			if marked != null:

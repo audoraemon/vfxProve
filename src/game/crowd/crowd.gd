@@ -7,7 +7,13 @@ extends Node
 
 signal escaped(person: Person)
 signal alarm_changed(value: float)
+## The bell tolled a lie (The Bell Lies): at the tower.
+signal bell_lied(at: Vector2)
 signal rallied
+
+## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
+const LIE_CALM := 8.0
+const LIE_REASSURE := 8.0
 
 ## The town scale upgrade doubled the people along with the town (110 + 50 before).
 const CITIZENS := 220
@@ -126,6 +132,8 @@ var plague: PlagueManager
 var madness: MadnessManager
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
+## Until when the bell lies (bell_lies()), on the crowd's clock.
+var _bell_lies_until := -INF
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -938,6 +946,27 @@ func is_hushed() -> bool:
 	return _clock < _hush_until
 
 
+## For `seconds` the bell lies (The Bell Lies): rung, it tolls that all is well (false_bell()).
+func bell_lies(seconds: float) -> void:
+	_bell_lies_until = maxf(_bell_lies_until, _clock + seconds)
+
+
+func is_bell_lying() -> bool:
+	return _clock < _bell_lies_until
+
+
+## The bell tolls, and it says all is well: the town is not warned, its alarm falls by LIE_CALM, and every citizen
+## who hears it -- all of them -- takes heart for LIE_REASSURE (Person.reassure()).
+func false_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
+	for p in citizens:
+		if is_instance_valid(p) and p.is_alive():
+			p.reassure(LIE_REASSURE)
+	if sfx != null:
+		sfx.play(&"town_bell", at)
+	add_alarm(-LIE_CALM)
+	bell_lied.emit(at)
+
+
 func add_alarm(points: float) -> void:
 	var before := alarm
 	alarm = clampf(alarm + points, 0.0, 100.0)
@@ -1264,6 +1293,7 @@ func clear() -> void:
 	_held.clear()
 	_thorn_alarm_at = -INF
 	_hush_until = -INF
+	_bell_lies_until = -INF
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

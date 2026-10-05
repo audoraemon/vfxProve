@@ -22,6 +22,9 @@ var rng: RandomNumberGenerator
 ## The town's crowd, for an effect that changes how the town itself behaves (Voice of God's Silence); null in the
 ## sandbox and in tests that have none.
 var crowd: Crowd
+## The mission's rules, for an effect that changes the mission itself (Abolition); null in the sandbox and in tests
+## that have none.
+var rules: Rules
 ## func(color: Color, seconds: float)
 var flash: Callable
 

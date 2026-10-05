@@ -13,6 +13,8 @@ var ctx: FxContext
 var night: NightState
 ## The act's timed events (v0.09), or null.
 var timeline: EventTimeline
+## Halcyon's Gaze (v0.10), for the campaign's Night 2 missions; null elsewhere.
+var gaze: GazeMeter
 
 
 func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> MissionDirector:
@@ -38,6 +40,12 @@ func step(_delta: float) -> void:
 ## The ground point the HUD marks (The Warning's messenger), or Vector2.INF for none.
 func marker() -> Vector2:
 	return Vector2.INF
+
+
+## Ground points the HUD marks with a small coloured diamond over the head (v0.10: Mira's House's grieving and
+## Believers), as [Vector2, Color] pairs; none by default.
+func marks() -> Array:
+	return []
 
 
 ## What the director adds to the results (The Warning's "solved_by").

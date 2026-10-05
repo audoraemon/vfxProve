@@ -21,10 +21,11 @@ const CITIZEN := [["resident_a", "resident_b"], ["merchant_a", "merchant_b"], ["
 	["mayor"], ["noble"]]
 ## Designs not generated yet that wear another's until they are: the watchman (v0.08) the bellkeeper's dark navy coat
 ## and cap, the nearest to his dark cloak (Person draws his lantern over it); the Mayor (v0.09) a merchant's, with
-## Person's gold chain over it, and the Prince's noble a resident's, with its crown.
-const STAND_INS := {"watchman": "bellkeeper", "mayor": "merchant_a", "noble": "resident_a"}
+## Person's gold chain over it, and the Prince's noble a resident's, with its crown; and the Lantern Knight (v0.10 M3)
+## an escort's white tabard until M5's PixelLab pass.
+const STAND_INS := {"watchman": "bellkeeper", "mayor": "merchant_a", "noble": "resident_a", "knight": "escort"}
 ## Each soldier's design, in Person.Corps order.
-const SOLDIER := ["guard", "marshal", "escort", "rescue"]
+const SOLDIER := ["guard", "marshal", "escort", "rescue", "knight"]
 ## Stand-ins while a design is not generated yet.
 const FALLBACK_CITIZEN := "resident_a"
 const FALLBACK_SOLDIER := "guard"

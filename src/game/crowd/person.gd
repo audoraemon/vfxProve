@@ -14,8 +14,8 @@ enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER,
 ## alarm).
 enum Awareness { UNAWARE, CONCERNED, THREATENED, EMERGENCY, COLLAPSE }
 ## A soldier's role (v0.07): none (the Citadel's guard and anyone over the profile's counts), marshal at a way out,
-## escort for a responder, or rescue squad.
-enum Corps { NONE, MARSHAL, ESCORT, RESCUE }
+## escort for a responder, or rescue squad; v0.10 M3's Lantern Knight, Broken Lanterns' shrine guard.
+enum Corps { NONE, MARSHAL, ESCORT, RESCUE, KNIGHT }
 
 const PANIC_SPEED := 1.6
 const FLEE_SPEED := 1.2
@@ -122,6 +122,8 @@ const SOLDIER_BLOW := 0.5
 ## Health, for blows (hurt()): a citizen falls to three frenzied blows, a soldier to twice as many.
 const HEALTH_CITIZEN := 1.0
 const HEALTH_SOLDIER := 2.0
+## A Lantern Knight's (v0.10 M3): three times a soldier's.
+const HEALTH_KNIGHT := HEALTH_SOLDIER * 3.0
 ## Whom a fighter may go for (fight()): anyone near (a maddened frenzy); only hostiles, the fighting citizens (a
 ## soldier engaging one); only its given target, the fight ending with it (Voice of God's Judge); only the other side
 ## (Divine Schism); only its own kind, soldier against soldiers and citizen against citizens (Turncoat); only those of
@@ -162,6 +164,8 @@ const SOL_TIP := Color("b8bcc4")
 const SOL_MARSHAL := Color("a02424")
 const SOL_ESCORT := Color("e4e0d6")
 const SOL_SHOVEL := Color("8a8e96")
+## A Lantern Knight's gold tabard (v0.10 M3).
+const SOL_KNIGHT := Color("e0b84a")
 
 var mind := Mind.CALM
 var soldier := false
@@ -1704,7 +1708,8 @@ func _draw_soldier(lift: int, top_only: int) -> void:
 		_px(1, -5 + lift, 2, 4 + step, SOL_HELM)
 	_px(-4, -11 + lift, 8, 6, mail)
 	_px(-4, -11 + lift, 8, 1, SOL_MAIL_HI)
-	var tabard := SOL_MARSHAL if corps == Corps.MARSHAL else (SOL_ESCORT if corps == Corps.ESCORT else SOL_TABARD)
+	var tabard := SOL_MARSHAL if corps == Corps.MARSHAL else (SOL_ESCORT if corps == Corps.ESCORT
+		else (SOL_KNIGHT if corps == Corps.KNIGHT else SOL_TABARD))
 	if sick:
 		tabard = tabard.lerp(tint, SICK_CLOTH)
 	_px(-2, -9 + lift, 4, 4, tabard)

@@ -433,6 +433,15 @@ func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	return p
 
 
+## A soldier come mid-mission (v0.10 M3: Broken Lanterns' Lantern Knights), standing at `at` as its post: one of the
+## town's soldiers from now on, after those spawned, with no corps until its caller gives it one.
+func add_soldier(at: Vector2) -> Person:
+	var p := _add_person(true, at)
+	p.post = at
+	soldiers.append(p)
+	return p
+
+
 ## The soldiers' roles (v0.07), from their posts (_soldier_posts() lays them out yard, walls, Citadel, patrols): the
 ## barracks yard's first profile.rescue_squads x RESCUE_SQUAD form the rescue squads, the walls' first
 ## profile.marshals_per_exit x ways out become marshals, and the patrols escort the responders. The Citadel's guard and

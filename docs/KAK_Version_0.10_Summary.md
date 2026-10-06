@@ -293,14 +293,14 @@ Measured on the BURIN_NITRO laptop at each milestone. "Exact" checksums are the 
 | FLOW | 62 checks | 82 | 82 | 82 | 82 | **86 / 0** |
 | Exact checksums (10) | v0.09's list | = | **moved** (VFX merge) | = | = | **=** |
 
-**Gates (final code tree `b7aa1fb`, controller fills in):** tests `checks=<N> failures=<N>`; FLOW `checks=<N> failures=<N>`; digest, crowd_check and the ten exact checksums `<unchanged | what moved>`; mission test `<buildings / citizens / escaped / stability>`.
+**Gates (final code tree `b7aa1fb`, M5 plus the art polish merged):** tests `checks=3626 failures=0`; FLOW `checks=86 failures=0`; digest `61267b7e90524d800bf1c3473a71146b`, crowd_check `-346732806` and the ten exact checksums unchanged from the VFX-merge baseline; mission test buildings 53 / citizens 191 / escaped 1 / stability 70% / citadel 50%, and `--mission=warning` `won=false reason=bell time=24.1`.
 
 The M5 column is the final tidy-up commit `f0e75d1`, before the last merge of `feat/Develop-Main`'s art polish. The tests, digest, crowd_check, FLOW, Mira's House and Broken Lanterns references were run there; the ten exact checksums and the forced nights were run at `f95991c`, and no code that could move them changed after it. The tests of the merged art and VFX work are in these counts, so the campaign's share is not the difference from 2087.
 
 **The ten exact checksums.** Through M1 they were `kak-v0.09`'s: `calm --seconds=60` −695580348, `gates` 619520995, `fire` −16560442, `rite --interrupt` −129298221, `soldiers --case=escort` −935015846, and The Warning's `none` −446012507, `doom` −999129915, `whisper` 442055066, `discord` −909358062, `mix` −430643507. **They moved once**, with the VFX merge (M2), to a new baseline that held through M5: `calm` −355092532, `gates` 589794389, `fire` 250399241, `rite --interrupt` −948525703, `soldiers --case=escort` −778609674, `warning` `none` −489775734, `doom` −905773030, `whisper` −588314462, `discord` −997640091, `mix` −206935500. The state digest and crowd_check did not move.
 
 **The campaign's own references** (exact):
-- **Mira's House** `--scenario=miras --case=play`: `won=false reason=gaze time=94.9 believers=3 gaze=100 reports=3`, checksum −200101558. M2's gate on the merged tree read `time=143.0 believers=5`; from M3's first task on it is this line, and it held through M5.
+- **Mira's House** `--scenario=miras --case=play`: `won=false reason=gaze time=94.9 believers=3 gaze=100 reports=3`, checksum −200101558. M2's merged-tree gate read `time=143.0 believers=5`, but that run used `--seed=2`; this line is the default seed's, recorded from M3's first task, and it held unchanged through M5.
 - **Broken Lanterns** `--scenario=lanterns --case=none --seed=1`: `won=false reason=relit time=180.0 drained=0`, checksum 424350965. Its `play` runs vary from run to run (the hit-stop runs on the wall clock), so they are judged on the outcome: won, six drained.
 - **The Vigil Flame** `--scenario=flame`: outcomes only. `none` loses to the Gaze on seeds 1–3; `play` wins at least 2 of 3.
 - **The forced nights** `--scenario=night --path=festival|procession --act1=win --act2=win --act3=win`: −139363489 and −441164656.

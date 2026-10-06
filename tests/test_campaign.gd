@@ -179,4 +179,24 @@ static func _save(t) -> void:
 	t.check(d.night == CampaignDef.FINALE and d.dp == CampaignDef.MIN_DP and d.bites == CampaignDef.MAX_BITES
 		and int(d.tally["ruin"]) == 0 and d.last_path == "" and d.ending == "eaten",
 		"a damaged campaign is pulled back into range, and three bites read as Eaten")
+	# v0.10 M5: a hand-edited budget above anything a campaign can reach is pulled back (review focus 4).
+	var hi := ConfigFile.new()
+	hi.set_value(CampaignState.SECTION, "dp", 99)
+	t.check(CampaignDef.MAX_DP == 15 and CampaignState.read(hi).dp == CampaignDef.MAX_DP,
+		"a budget past every bonus reads as %d (%d)" % [CampaignDef.MAX_DP, CampaignState.read(hi).dp])
+	# The ending, once seen, stays seen through the save.
+	var e := CampaignState.new()
+	e.ending = CampaignDef.FALSE_LANTERN
+	e.ending_seen = true
+	var ecfg := ConfigFile.new()
+	e.write(ecfg)
+	t.check(CampaignState.read(ecfg).ending_seen, "an ending seen is remembered")
+	# Review focus 4: a save from before M5 that reached its ending has no ending_seen: owed, so shown once more.
+	var old := ConfigFile.new()
+	old.set_value(CampaignState.SECTION, "ending", CampaignDef.NEW_FAITH)
+	t.check(CampaignState.read(old).ending == CampaignDef.NEW_FAITH and not CampaignState.read(old).ending_seen,
+		"an older save's ending reads as not yet seen")
+	var none := ConfigFile.new()
+	none.set_value(CampaignState.SECTION, "ending_seen", true)
+	t.check(not CampaignState.read(none).ending_seen, "and a campaign with no ending has nothing seen")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

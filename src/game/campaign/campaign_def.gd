@@ -21,6 +21,9 @@ const BONUS_DP := 1
 const BITE_DP := 1
 const MIN_DP := 4
 const MAX_BITES := 3
+## The most Divine Power a campaign can hold (v0.10 M5): every night before the finale won with its bonus. A save that
+## says more was edited by hand, and is pulled back to it.
+const MAX_DP := START_DP + FINALE * (WIN_DP + BONUS_DP)
 ## The nights in order: the Awakening Tier, the slots, the memory fragment shown before it (CampaignText.FRAGMENTS), and
 ## the missions it offers, {mission, path}: one, or a choice card. Night 4 is the finale, on the Ruin path only.
 const NIGHTS := [

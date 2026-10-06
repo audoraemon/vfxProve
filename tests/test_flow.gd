@@ -35,6 +35,7 @@ static func run(t) -> void:
 	t.check(Game.next_screen("results:ending") == Game.Screen.ENDING, "or to the ending")
 	t.check(Game.next_screen("pause:campaign") == Game.Screen.CAMPAIGN, "Pause can leave a night for the night screen")
 	t.check(Game.next_screen("ending:title") == Game.Screen.TITLE, "and the ending leads to the title")
+	t.check(Game.next_screen("title:ending") == Game.Screen.ENDING, "an ending not yet seen opens from the title (v0.10 M5)")
 
 	# Every action in the table names a screen that exists, and every screen can be reached.
 	var reachable := {}

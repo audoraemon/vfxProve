@@ -79,6 +79,14 @@ static func _alive(p: Variant) -> bool:
 	return is_instance_valid(p) and (p as Person).is_alive()
 
 
+## The first of the director's tags labelled `label`, or null.
+static func _tag(d: MissionDirector, label: String) -> MapTag:
+	for m in d.tags():
+		if m.label == label:
+			return m
+	return null
+
+
 static func run(t) -> void:
 	_cast(t)
 	_drain(t)
@@ -90,6 +98,7 @@ static func run(t) -> void:
 	_kneel_topup(t)
 	_focus(t)
 	_lines(t)
+	_freed(t)
 
 
 static func _cast(t) -> void:
@@ -125,11 +134,20 @@ static func _cast(t) -> void:
 		"the Vigil sets out round the six shrines, looping, the flame passing on")
 	t.check(d.gaze != null and d.gaze.value == 0.0 and d.drain_left.is_empty() and d.drained_count() == 0,
 		"the Gaze at 0, nothing broken")
-	var lit := d.tags().size() == 6
-	for m in d.tags():
-		lit = lit and m.color == BrokenLanternsDirector.MARK_LIT
-	t.check(lit, "the HUD marks the six standing shrines")
-	t.check(d.marker() == Vector2.INF and d.timeline != null, "no arrow yet, and a timeline for the night's windows")
+	var lit := 0
+	var first_six := true
+	var tags := d.tags()
+	for i in tags.size():
+		var m := tags[i]
+		lit += 1 if m.label == "LANTERN" and m.color == BrokenLanternsDirector.MARK_LIT and m.edge \
+			and m.rise == BrokenLanternsDirector.SHRINE_H else 0
+		if i < 6:
+			first_six = first_six and m.rise == BrokenLanternsDirector.SHRINE_H
+	t.check(lit == 6, "the HUD names the six standing shrines, each pointed at from the edge")
+	t.check(first_six, "the shrines come first, so a crowded view keeps their labels (review focus 1)")
+	var bearer := _tag(d, "FLAME-BEARER")
+	t.check(bearer != null and bearer.at == d.vigil.bearer.ground_pos and not bearer.edge and d.hint_phase() == ""
+		and d.timeline != null, "the flame-bearer is named, no arrow yet; the hint's own line; a timeline for the windows")
 	_done(s)
 
 
@@ -142,14 +160,18 @@ static func _drain(t) -> void:
 	_break(sh)
 	t.check(sh.destroyed and d.draining(sh) and not d.is_drained(sh), "a broken shrine starts draining")
 	t.check(rules.buildings_down == 0, "and is not counted as a building")
-	var ember := false
-	for m in d.tags():
-		ember = ember or (m.at == sh.center() and m.color == BrokenLanternsDirector.MARK_DRAINING)
-	t.check(ember, "the HUD marks it draining")
+	var left := "DRAINING %d" % ceili(float(d.drain_left[sh]))
+	var ember := _tag(d, left)
+	t.check(left == "DRAINING 20" and ember != null and ember.at == sh.center()
+		and ember.color == BrokenLanternsDirector.MARK_DRAINING and ember.edge, "the HUD shows it draining, 20 s left")
 	_run(s, BrokenLanternsDirector.DRAIN_SECONDS - 1.0)
 	t.check(d.draining(sh) and d.drained_count() == 0, "still draining after 19 s")
 	_run(s, 1.5)
 	t.check(d.is_drained(sh) and d.drained_count() == 1 and not d.draining(sh), "drained after 20 s broken")
+	var untagged := true
+	for m in d.tags():
+		untagged = untagged and m.at != sh.center()
+	t.check(untagged, "a drained shrine has no tag")
 	t.check(ShrinesObjective.new().hud_text(rules) == "Shrines drained 1 / 6" and (s.banners as Array).has("A LANTERN IS DRAINED (1 / 6)"),
 		"the objective and a banner count it")
 	_arrive(d.vigil.bearer, d.relight_point(sh))
@@ -166,13 +188,13 @@ static func _relight(t) -> void:
 	_away(d)
 	var sh := d.shrines[1]
 	_break(sh)
-	t.check(d.vigil.detour.distance_to(d.relight_point(sh)) < 0.01 and d.marker() == d.vigil.bearer.ground_pos,
+	t.check(d.vigil.detour.distance_to(d.relight_point(sh)) < 0.01 and _tag(d, "FLAME-BEARER").edge,
 		"the flame-bearer turns aside for the broken shrine, and the HUD points at him")
 	_arrive(d.vigil.bearer, d.relight_point(sh))
 	_run(s, DT * 2.0)
 	t.check(not sh.destroyed and sh.hp == sh.max_hp and not d.draining(sh) and d.relit == 1
 		and banners.has("THE FLAME RELIGHTS A LANTERN"), "reaching it before it drains, he relights it: it stands again")
-	t.check(d.vigil.detour == Vector2.INF and d.marker() == Vector2.INF and d.standing_shrines().has(sh),
+	t.check(d.vigil.detour == Vector2.INF and not _tag(d, "FLAME-BEARER").edge and d.standing_shrines().has(sh),
 		"he goes back to his round; the relit shrine stands")
 	_away(d)
 	_run(s, 5.0)
@@ -188,7 +210,7 @@ static func _relight(t) -> void:
 	for p in d.vigil.walkers():
 		(s.crowd as Crowd)._field.kill(p, &"doom")
 	_run(s, VigilRoute.TICK * 3.0)
-	t.check(not d.vigil.active and d.marker() == Vector2.INF, "with all three dead the Vigil is over")
+	t.check(not d.vigil.active and _tag(d, "FLAME-BEARER") == null, "with all three dead the Vigil is over, and nobody is the flame-bearer")
 	_run(s, BrokenLanternsDirector.DRAIN_SECONDS)
 	t.check(d.is_drained(sh), "and nobody relights the shrine")
 	_done(s)
@@ -317,15 +339,31 @@ static func _knights(t) -> void:
 			guarded_shrines[sh] = true
 	t.check(kn_ok and guarded_shrines.size() == BrokenLanternsDirector.KNIGHTS,
 		"each is sent to guard a different standing shrine (%d)" % guarded_shrines.size())
+	var knight_tags := 0
+	for m in d.tags():
+		knight_tags += 1 if m.label == "KNIGHT" and m.color == BrokenLanternsDirector.MARK_KNIGHT and not m.edge else 0
+	t.check(knight_tags == BrokenLanternsDirector.KNIGHTS and d.hint_phase() == "knights",
+		"each Knight is named, and the hint says how to get past them")
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	t.check(hud.hint_text() == MissionHints.line(MissionBook.BROKEN_LANTERNS, "knights")
+		and hud.hint_text() != MissionHints.line(MissionBook.BROKEN_LANTERNS), "the HUD shows the Knights' line, not the mission's own")
+	hud.free()
 	var k0 := d.knights[0]
 	var sh0: Structure = d.guarding[k0]
 	_arrive(k0, k0.anchor)
 	_break(sh0)
 	t.check(not sh0.destroyed and sh0.hp == sh0.max_hp and d.guarded(sh0) and d.guard_of(sh0) == k0,
 		"a Knight beside it, the shrine shrugs off the blow")
+	var guarded_tag := _tag(d, "GUARDED")
+	t.check(guarded_tag != null and guarded_tag.at == sh0.center() and guarded_tag.color == BrokenLanternsDirector.MARK_KNIGHT,
+		"the shrine he stands by shows GUARDED")
 	crowd._field.kill(k0, &"lightning")
 	_break(sh0)
 	t.check(sh0.destroyed and d.draining(sh0), "its Knight struck down first, the shrine breaks")
+	var still := 0
+	for m in d.tags():
+		still += 1 if m.label == "KNIGHT" else 0
+	t.check(still == BrokenLanternsDirector.KNIGHTS - 1, "a Knight struck down is no longer tagged (review focus 2)")
 	var k1 := d.knights[1]
 	var sh1: Structure = d.guarding[k1]
 	_break(sh1)
@@ -527,4 +565,36 @@ static func _lines(t) -> void:
 	d.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
 	t.check(lines.size() == 2 and lines[1] == CampaignText.cael_line(MissionBook.BROKEN_LANTERNS, "knights"),
 		"as the Knights come, he speaks again (%s)" % [lines])
+	_done(s)
+
+
+## A body is freed once its death fade ends, and the HUD asks for the tags every frame: a Knight or the flame-bearer freed
+## is no longer tagged, the shrine he guarded is a LANTERN again, and nothing is raised for the freed body.
+static func _freed(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	_away(d)
+	d.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
+	var k0 := d.knights[0]
+	var sh0: Structure = d.guarding[k0]
+	_arrive(k0, k0.anchor)
+	t.check(_tag(d, "GUARDED") != null and _tag(d, "GUARDED").at == sh0.center() and _tag(d, "FLAME-BEARER") != null,
+		"a Knight at his shrine: GUARDED, and the flame-bearer named")
+	k0.free()
+	var knight_tags := 0
+	var unguarded := false
+	for m in d.tags():
+		knight_tags += 1 if m.label == "KNIGHT" else 0
+		unguarded = unguarded or (m.label == "LANTERN" and m.at == sh0.center())
+	t.check(knight_tags == BrokenLanternsDirector.KNIGHTS - 1 and unguarded and _tag(d, "GUARDED") == null
+		and d.living_knights() == BrokenLanternsDirector.KNIGHTS - 1 and d.hint_phase() == "knights",
+		"a Knight's body freed: no tag, his shrine a LANTERN again, the others still tagged")
+	d.vigil.bearer.free()
+	t.check(_tag(d, "FLAME-BEARER") == null and _tag(d, "LANTERN") != null,
+		"the flame-bearer's body freed: no tag, and the rest are still made")
+	for k in d.knights:
+		if _alive(k):
+			k.free()
+	t.check(d.living_knights() == 0 and _tag(d, "KNIGHT") == null and d.hint_phase() == "" and d.tags().size() == 6,
+		"every Knight's body freed: no Knight tags, no hint phase, and the six shrines still tagged")
 	_done(s)

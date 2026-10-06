@@ -32,6 +32,8 @@ const CAMERA_AT := Vector2(1.0, 2.0)
 ## The marks over the shrines: standing (Halcyon's gold), and broken but not yet drained (ember).
 const MARK_LIT := Color(0.95, 0.82, 0.42, 0.9)
 const MARK_DRAINING := Color("ff9a3a")
+## The Knights' steel blue (v0.10 M6, spec §4.2): a Knight's tag, and a shrine one guards.
+const MARK_KNIGHT := Color("8fb8e8")
 
 ## Each shrine broken (spec §4.1): every standing shrine is topped up to PRAYERS Faithful sent to pray there, on a ring
 ## PRAY_RING round it. On their duty and within PRAY_REACH of their place, they pray. Prayer feeds Halcyon's Gaze
@@ -241,22 +243,32 @@ func standing_shrines() -> Array[Structure]:
 	return out
 
 
-## The tags (v0.10 M6): the standing shrines, and the broken ones still draining.
+## The tags (v0.10 M6, spec §4.2), the most important first:
+## - each standing shrine: GUARDED while a Knight guards it, else LANTERN;
+## - each broken one draining, with its whole seconds left;
+## - all of those pointed at from the edge;
+## - the flame-bearer, pointed at while he is on his way to relight one;
+## - each living Knight.
+## A drained shrine has none.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for s in shrines:
 		if not s.destroyed:
-			out.append(MapTag.person(s.center(), MARK_LIT))
+			var g := guarded(s)
+			out.append(MapTag.place(s.center(), MARK_KNIGHT if g else MARK_LIT, "GUARDED" if g else "LANTERN", SHRINE_H))
 		elif drain_left.has(s):
-			out.append(MapTag.person(s.center(), MARK_DRAINING))
+			out.append(MapTag.place(s.center(), MARK_DRAINING, "DRAINING %d" % ceili(float(drain_left[s])), SHRINE_H))
+	if vigil != null and vigil.active and _alive(vigil.bearer):
+		out.append(MapTag.person(vigil.bearer.ground_pos, MARK_LIT, "FLAME-BEARER", vigil.detour != Vector2.INF))
+	for k in knights:
+		if _alive(k):
+			out.append(MapTag.person(k.ground_pos, MARK_KNIGHT, "KNIGHT"))
 	return out
 
 
-## The HUD's arrow: the flame-bearer, while he is on his way to relight a shrine.
-func marker() -> Vector2:
-	if vigil == null or not vigil.active or vigil.detour == Vector2.INF or not _alive(vigil.bearer):
-		return Vector2.INF
-	return vigil.bearer.ground_pos
+## The hint's phase (v0.10 M6, spec §4.2): "knights" while a Lantern Knight lives, else "".
+func hint_phase() -> String:
+	return "knights" if living_knights() > 0 else ""
 
 
 func report() -> Dictionary:

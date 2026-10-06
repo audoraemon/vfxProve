@@ -614,6 +614,12 @@ static func _loose_ends(t) -> void:
 	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.2)
 	t.check(d.swap_seen and not d.reports.is_empty() and d.reports[0].carrier == aco and is_equal_approx(aco.pace, own),
 		"the acolyte who saw the swap runs at his own pace (%.2f, own %.2f)" % [aco.pace, own])
+	# The bearer then falls with the report still on the road: the flame passes to the carrier, who is not slowed to the
+	# Vigil's pace (he is off the Vigil).
+	(s.crowd as Crowd)._field.kill(d.vigil.bearer, &"doom")
+	_run(s, VigilRoute.TICK + DT)
+	t.check(d.vigil.bearer == aco and d._carrying(aco) and is_equal_approx(aco.pace, own),
+		"the flame passing to him on the road does not slow him (%.2f, own %.2f)" % [aco.pace, own])
 	_done(s)
 
 	var s2 := _setup()

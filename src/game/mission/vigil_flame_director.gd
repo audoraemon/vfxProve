@@ -151,8 +151,11 @@ func _start_vigil() -> void:
 
 
 ## The bearer keeps BEARER_LEAD of his slowest living acolyte's pace; an acolyte taking the flame up keeps to the same rule
-## for the one left, so the Vigil stays together to the end.
+## for the one left, so the Vigil stays together to the end. One carrying a report to the Temple (the swap's seer, taking
+## the flame up on the road) is off the Vigil, and runs at the pace he has (v0.10 M5).
 func _pace_bearer() -> void:
+	if _carrying(vigil.bearer):
+		return
 	for a in vigil.acolytes:
 		if _alive(a):
 			vigil.bearer.pace = minf(vigil.bearer.pace, a.pace * BEARER_LEAD)

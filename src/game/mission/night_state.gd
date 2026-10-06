@@ -13,6 +13,8 @@ const PRINCE_ESCAPED_LIMIT := 72
 ## Score floors for the night's rank, best first; under the last one is a D. Task 19: a policy night that wins all
 ## three acts scored 26,700-28,000 (an A); S asks for more than that.
 const NIGHT_RANKS := [[30000, "S"], [24000, "A"], [15000, "B"], [7000, "C"]]
+## The best rank a night with any act lost can reach (v0.09.1): S and A need all three acts.
+const LOST_ACT_CAP := "B"
 
 ## One dictionary per act played: its Rules.result() plus "act" (the act's id).
 var results: Array[Dictionary] = []
@@ -77,9 +79,29 @@ static func rank_for(score: int) -> String:
 	return "D"
 
 
+## True when any act played this night was lost.
+func lost_an_act() -> bool:
+	return acts_won() < results.size()
+
+
+## The night's rank for its score (v0.09.1): with an act lost it ranks as if it scored no more than LOST_ACT_CAP's floor,
+## so it is at most that rank and anything below it is unchanged.
+func rank(score: int) -> String:
+	return rank_for(mini(score, _floor_of(LOST_ACT_CAP)) if lost_an_act() else score)
+
+
+## The lowest score that earns `wanted` (NIGHT_RANKS), or 0 for a D.
+static func _floor_of(wanted: String) -> int:
+	for r: Array in NIGHT_RANKS:
+		if String(r[1]) == wanted:
+			return int(r[0])
+	return 0
+
+
 ## The night's result for the Results screen and the save: the last act decides won and reason; the score is the night's.
 ## `final` is the last act's Rules.result(), already recorded with record().
 ## An unscored night (v0.10 M5: the campaign's Feast, one act) has no score, rank or table: its goal is the act's own.
+## A scored night with an act lost ranks no higher than LOST_ACT_CAP (v0.09.1).
 func result(final: Dictionary, mission_id: String, scored := true) -> Dictionary:
 	var acts := []
 	var time := 0.0
@@ -93,6 +115,6 @@ func result(final: Dictionary, mission_id: String, scored := true) -> Dictionary
 			"goal": final.get("goal", {"label": "The night is yours", "done": bool(final.get("won", false))})}
 	var score := night_score(int(final.get("score", 0)))
 	return {"mission": mission_id, "won": bool(final.get("won", false)), "reason": String(final.get("reason", "")),
-		"time": time, "acts": acts, "path": path, "score": score, "rank": rank_for(score),
+		"time": time, "acts": acts, "path": path, "score": score, "rank": rank(score),
 		"lines": final.get("lines", []), "bonuses": final.get("bonuses", []),
 		"goal": {"label": "The night is yours", "done": bool(final.get("won", false))}}

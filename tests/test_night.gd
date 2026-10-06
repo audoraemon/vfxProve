@@ -7,7 +7,24 @@ static func run(t) -> void:
 	var m := MissionBook.long_night()
 	t.check(m.id == "long_night" and m.tier == 3 and m.has_acts() and not m.chooses_difficulty(),
 		"The Long Night is a Tier 3 mission in acts, its town set by the night")
-	t.check(m.slots == 4 and m.dp_capacity == 14 and m.powers() == PowerBook.keys(), "4 slots, 14 DP, every power")
+	# v0.09.1 per-act DP: the god grows through the night. The night itself (the board card, the first Prepare) shows
+	# Act I's budget; each act has its own.
+	t.check(m.slots == 3 and m.dp_capacity == 6 and m.powers() == PowerBook.keys(),
+		"the night opens on Act I's 3 slots and 6 DP, every power (%d, %d)" % [m.slots, m.dp_capacity])
+	var budgets := {}
+	for a: ActDef in m.acts:
+		budgets[a.id] = [a.slots, a.dp_capacity]
+	t.check(budgets == {"omen": [3, 6], "festival": [4, 10], "procession": [4, 10], "judgement": [4, 14]},
+		"Act I 3 slots / 6 DP, Act II 4 / 10, Act III 4 / 14 (%s)" % [budgets])
+	var kit_dp := 0
+	for key in m.default_loadout:
+		kit_dp += int(PowerBook.get_power(key).dp)
+	t.check(m.default_loadout.size() <= 3 and kit_dp <= 6, "the night's default loadout fits Act I (%d DP)" % kit_dp)
+	t.check(MissionBoard.loadout_line(m) == "3–4 slots · 6 DP rising to 14"
+		and MissionBoard.loadout_line(MissionBook.warning()) == "3 slots · 6 DP",
+		"the board card says the budget grows ('%s')" % MissionBoard.loadout_line(m))
+	t.check(UiTheme.width(MissionBoard.loadout_line(m), UiTheme.SIZE_SMALL)
+		<= MissionBoard.card_rect(0, 3).size.x - MissionBoard.PAD * 2.0, "and the line fits a card of three")
 	var first := m.first_act()
 	t.check(first.id == "omen" and Array(first.next) == ["festival", "procession"], "Act I leads to a choice of two")
 	t.check(Array(m.act("festival").next) == ["judgement"] and Array(m.act("procession").next) == ["judgement"],
@@ -50,6 +67,48 @@ static func run(t) -> void:
 		and is_equal_approx(float(fr.time), 96.0) and (fr.acts as Array).size() == 1,
 		"an unscored night of one act: its own goal, bonus and time, no rank (%s)" % [fr.keys()])
 	t.check(n.result(final, "long_night").has("rank"), "The Long Night keeps its rank")
+
+	# v0.09.1: losing an act caps the night's rank at B; S and A need all three acts. 30000 is an S's floor.
+	var lost := NightState.new()
+	lost.record("omen", {"won": true, "time": 20.0, "bonuses": []}, null)
+	lost.record("festival", {"won": false, "time": 150.0, "bonuses": []}, null)
+	var last := {"won": true, "reason": "citadel", "time": 250.0, "score": 30000 - 2 * NightState.ACT_POINTS,
+		"lines": [], "bonuses": []}
+	lost.record("judgement", last, null)
+	var capped := lost.result(last, "long_night")
+	t.check(int(capped.score) == 30000 and String(capped.rank) == "B",
+		"an act lost at 30000 points: a B, not an S (%d, %s)" % [int(capped.score), capped.rank])
+	var all_won := NightState.new()
+	all_won.record("omen", {"won": true, "time": 20.0, "bonuses": []}, null)
+	all_won.record("festival", {"won": true, "time": 95.0, "bonuses": []}, null)
+	var last3 := last.duplicate()
+	last3.score = 30000 - 3 * NightState.ACT_POINTS
+	all_won.record("judgement", last3, null)
+	var full := all_won.result(last3, "long_night")
+	t.check(int(full.score) == 30000 and String(full.rank) == "S", "all three won at 30000: an S (%d, %s)"
+		% [int(full.score), full.rank])
+	var low := NightState.new()
+	low.record("omen", {"won": false, "time": 25.0, "bonuses": []}, null)
+	var c_final := {"won": false, "reason": "timeout", "time": 300.0, "score": 8000, "lines": [], "bonuses": []}
+	low.record("judgement", c_final, null)
+	t.check(String(low.result(c_final, "long_night").rank) == NightState.rank_for(low.night_score(8000)),
+		"under a B the cap changes nothing (%s)" % low.result(c_final, "long_night").rank)
+	var feast_lost := NightState.new()
+	var fl := {"won": false, "reason": "closed", "time": 150.0, "bonuses": [], "goal": {"label": "x", "done": false}}
+	feast_lost.record("festival", fl, null)
+	t.check(not feast_lost.result(fl, "feast_festival", false).has("rank"), "an unscored night still has no rank")
+
+	# v0.09.1: the Banishing Rite costs 20 s in The Long Night's acts, BanishingRite.PENALTY (40) everywhere else.
+	for row in [[m.act("judgement"), 20.0], [m.act("festival"), 20.0], [MissionBook.last_judgement(), BanishingRite.PENALTY],
+			[MissionBook.warning(), BanishingRite.PENALTY]]:
+		var rules := Rules.new()
+		rules.mission = row[0]
+		rules.time_left = 100.0
+		var cost := rules.banish()
+		t.check(is_equal_approx(cost, float(row[1])) and is_equal_approx(rules.time_left, 100.0 - float(row[1])),
+			"a completed rite in %s takes %d s (%.1f, %.1f left)" % [(row[0] as MissionDef).id, roundi(float(row[1])), cost,
+			rules.time_left])
+		rules.free()
 
 	# The town each act wants: Act I asleep; a rung bell wakes Act II; the Procession's outcome sets Act III.
 	var asleep := NightState.new()

@@ -15,6 +15,9 @@ const FEAST_PROCESSION := "feast_procession"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
+## Seconds a completed Banishing Rite takes off the clock in The Long Night's acts (v0.09.1); every other mission keeps
+## BanishingRite.PENALTY.
+const NIGHT_RITE_PENALTY := 20.0
 
 
 static func all() -> Array[MissionDef]:
@@ -92,7 +95,9 @@ static func last_judgement() -> MissionDef:
 
 
 ## The Long Night (v0.09, Tier 3): three acts in one town. Act I is The Warning; the choice card picks the Festival
-## or the Procession; Act III is Judgement in the town the night has made. M1's middle acts are placeholders.
+## or the Procession; Act III is Judgement in the town the night has made. v0.09.1: the god grows through the night --
+## each act has its own slots and DP (Act I 3 / 6, as The Warning; Act II 4 / 10; Act III 4 / 14), and the night itself
+## (the board card, the first Prepare) shows Act I's.
 static func long_night() -> MissionDef:
 	var m := MissionDef.new()
 	m.id = LONG_NIGHT
@@ -102,8 +107,8 @@ static func long_night() -> MissionDef:
 	m.goal = "Stop the warning, strike the town's heart, then bring the Citadel down by dawn"
 	m.goal_label = "The night is yours"
 	m.lose = "The town holds until dawn"
-	m.slots = 4
-	m.dp_capacity = 14
+	m.slots = 3
+	m.dp_capacity = 6
 	m.clock = 120.0
 	m.profile = "night"
 	m.scored = true
@@ -116,15 +121,16 @@ static func long_night() -> MissionDef:
 	return m
 
 
-## An act with the night's loadout rules.
-static func _act(m: MissionDef, id: String, name: String, clock: float) -> ActDef:
+## An act with the night's loadout rules, and its own `slots` and `dp` (v0.09.1); the rite costs NIGHT_RITE_PENALTY.
+static func _act(m: MissionDef, id: String, name: String, clock: float, slots: int, dp: int) -> ActDef:
 	var a := ActDef.new()
 	a.id = id
 	a.name = name
 	a.tier = m.tier
-	a.slots = m.slots
-	a.dp_capacity = m.dp_capacity
+	a.slots = slots
+	a.dp_capacity = dp
 	a.clock = clock
+	a.rite_penalty = NIGHT_RITE_PENALTY
 	a.profile = "night"
 	a.default_loadout = m.default_loadout
 	return a
@@ -132,7 +138,7 @@ static func _act(m: MissionDef, id: String, name: String, clock: float) -> ActDe
 
 static func _omen(m: MissionDef) -> ActDef:
 	var w := warning()
-	var a := _act(m, "omen", "Act I: The Omen", 120.0)
+	var a := _act(m, "omen", "Act I: The Omen", 120.0, w.slots, w.dp_capacity)
 	a.brief = w.brief
 	a.goal = w.goal
 	a.goal_label = w.goal_label
@@ -154,7 +160,7 @@ static func _act2_town(n: NightState) -> ResponseProfile:
 
 
 static func _festival(m: MissionDef) -> ActDef:
-	var a := _act(m, "festival", "Act II: The Festival", 150.0)
+	var a := _act(m, "festival", "Act II: The Festival", 150.0, 4, 10)
 	a.brief = PackedStringArray(["The market fills for the Feast of Lanterns.", "Break the festival."])
 	a.goal = "Break the festival before the guard closes the square"
 	a.goal_label = "The festival is broken"
@@ -178,7 +184,7 @@ static func _festival(m: MissionDef) -> ActDef:
 
 
 static func _procession(m: MissionDef) -> ActDef:
-	var a := _act(m, "procession", "Act II: The Procession", 150.0)
+	var a := _act(m, "procession", "Act II: The Procession", 150.0, 4, 10)
 	a.brief = PackedStringArray(["The Prince leaves the Citadel for the ship.", "Stop him before he sails."])
 	a.goal = "Kill the Prince before he sails"
 	a.goal_label = "The Prince is dead"
@@ -211,7 +217,7 @@ static func _act3_town(n: NightState) -> ResponseProfile:
 ## Act III's clock is five minutes (v0.09 Task 19): breaking the whole city's stability with the night's DP took a
 ## measured policy four to four and a half.
 static func _judgement(m: MissionDef) -> ActDef:
-	var a := _act(m, "judgement", "Act III: Judgement", 300.0)
+	var a := _act(m, "judgement", "Act III: Judgement", 300.0, 4, 14)
 	a.brief = PackedStringArray(["Dawn is coming.", "Bring the Citadel down before it does."])
 	a.goal = "Destroy the Citadel and break the city before dawn"
 	a.goal_label = "The city has fallen"

@@ -237,6 +237,14 @@ func lose_time(seconds: float) -> void:
 	time_left = maxf(0.0, time_left - seconds)
 
 
+## The clergy's Banishing Rite is complete: the clock loses the mission's rite_penalty (v0.09.1: 20 s in The Long Night's
+## acts, BanishingRite.PENALTY elsewhere). Returns the seconds lost, for the banner.
+func banish() -> float:
+	var seconds := mission.rite_penalty if mission != null else BanishingRite.PENALTY
+	lose_time(seconds)
+	return seconds
+
+
 ## The mission's crowd and town, for its objectives and its director (v0.08).
 func crowd() -> Crowd:
 	return _crowd

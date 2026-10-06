@@ -857,8 +857,8 @@ func _flow_night(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
 	var prep: PrepareScreen = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and prep.mission.id == MissionBook.LONG_NIGHT
-		and prep.draft.slots == 4 and mission_id == MissionBook.LONG_NIGHT,
-		"picking The Long Night opens its draft, with 4 slots")
+		and prep.draft.slots == 3 and prep.draft.capacity == 6 and mission_id == MissionBook.LONG_NIGHT,
+		"picking The Long Night opens its draft on Act I's 3 slots and 6 DP (v0.09.1)")
 	step.call(prep.draft.picks == kit, "its first Prepare opens on the night's default loadout (%s)" % ",".join(prep.draft.picks))
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
@@ -891,8 +891,8 @@ func _flow_night(step: Callable) -> void:
 	await get_tree().process_frame
 	prep = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and is_instance_valid(first)
-		and _mission == first and prep.mission.id == "festival",
-		"Choose powers shows the Festival's draft with BEGIN, the mission still alive")
+		and _mission == first and prep.mission.id == "festival" and prep.draft.slots == 4 and prep.draft.capacity == 10,
+		"Choose powers shows the Festival's draft with BEGIN and Act II's 4 slots and 10 DP, the mission still alive")
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "festival", 5.0)
@@ -925,8 +925,8 @@ func _flow_night(step: Callable) -> void:
 	card.action.emit("draft")
 	await get_tree().process_frame
 	prep = _screen_node as PrepareScreen
-	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and _mission == first,
-		"Choose powers shows Act III's draft with BEGIN")
+	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and _mission == first
+		and prep.draft.slots == 4 and prep.draft.capacity == 14, "Choose powers shows Act III's draft with BEGIN, 4 slots and 14 DP")
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "judgement", 5.0)

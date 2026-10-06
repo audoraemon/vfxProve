@@ -2,7 +2,9 @@ class_name FestivalDirector
 extends MissionDirector
 ## Act II-A of The Long Night (v0.09): the Feast of Lanterns. FESTIVAL_CROWD citizens fill the market square and stay;
 ## bonfires light it; the Mayor is among them. The festival is broken when FESTIVAL_NEED of the goers are dead or have
-## broken and fled (a fright, flight or a dash for shelter). If the bell rang in Act I, GUARDS soldiers watch the square.
+## broken (a fright or a dash for shelter). If the bell rang in Act I, GUARDS soldiers watch the square.
+## v0.09.1 "Calm the feast": a warned town still holds its feast -- only a fright from the god breaks a goer, never the
+## town's own alarm or evacuation.
 
 ## Citizens who come to the square, and how many of them must be dead or broken to break the festival. Tuned in Task 19.
 const FESTIVAL_CROWD := 80
@@ -16,8 +18,12 @@ const GUARDS := 6
 ## Roles that never come: the town's responders, the Mayor and the Prince.
 const SKIP_ROLES := [CitizenProfile.Role.BELLKEEPER, CitizenProfile.Role.WATCHMAN, CitizenProfile.Role.CLERGY,
 	CitizenProfile.Role.ENGINEER, CitizenProfile.Role.MAYOR, CitizenProfile.Role.NOBLE]
-## What a goer is doing when the festival has lost it: afraid, running, or running for a roof.
-const BROKE_MINDS := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
+## What a goer is doing when the festival has lost it: afraid, or running for a roof. Both come only from a fright
+## (Person.panic(): a power's danger, a seen death, a collapse or a fire the god caused, the Mayor's death).
+## v0.09.1 "Calm the feast": FLEE is not here -- a citizen flees only when the town itself sends it (its evacuation, a
+## household leaving, a shelter emptied for the gates), so a goer the town sends away does not count; one the god
+## frightened first is counted already.
+const BROKE_MINDS := [Person.Mind.PANIC, Person.Mind.SHELTER]
 
 ## The act's windows, in seconds from its start: the bonfire lights and the crowd packs round the fountain, the Mayor
 ## speaks from it for ADDRESS_SECONDS, and the guard closes the square (the act's clock ends it).
@@ -27,6 +33,10 @@ const ADDRESS_SECONDS := 30.0
 const CLOSE_AT := 150.0
 ## Where the Mayor stands to speak, from the fountain's centre (clear of its footprint, on the side the camera sees).
 const ADDRESS_OFFSET := Vector2(0.9, 0.9)
+## How far from the fountain's centre the Mayor's death frightens goers, in ground units (v0.09.1: a big push, not the
+## whole feast), and its banner.
+const MAYOR_PANIC_R := 8.0
+const MAYOR_BANNER := "THE MAYOR FALLS - PANIC AT THE FOUNTAIN"
 
 var goers: Array[Person] = []
 var mayor: Person
@@ -152,15 +162,17 @@ func _address_ends() -> void:
 		crowd.off_duty(mayor)
 
 
-## The Mayor dies: the feast breaks at once, every living goer panics where the Mayor fell.
+## The Mayor dies: every living goer within MAYOR_PANIC_R of the fountain panics where he fell, and is broken (v0.09.1:
+## the rest of the feast stays).
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 	if e != mayor or e == null:
 		return
+	var c := TownLayout.FOUNTAIN.get_center()
 	for p in goers:
-		if WarningDirector._alive(p):
+		if WarningDirector._alive(p) and p.ground_pos.distance_to(c) <= MAYOR_PANIC_R:
 			p.panic(e.ground_pos, 1.0, &"mayor")
 			_broke[p] = true
-	rules.banner.emit("THE MAYOR FALLS - THE FEAST BREAKS")
+	rules.banner.emit(MAYOR_BANNER)
 
 
 func step(delta: float) -> void:

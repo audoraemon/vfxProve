@@ -68,6 +68,7 @@ static func run(t) -> void:
 	_bonfire(t)
 	_address(t)
 	_mayor_death(t)
+	_mayor_reach(t)
 	_mayor_early_and_missing(t)
 	_mayor_and_goer_freed(t)
 	_clock(t)
@@ -76,6 +77,7 @@ static func run(t) -> void:
 	_mayor_frightened(t)
 	_report_at_end(t)
 	_let_go(t)
+	_warned(t)
 
 
 ## Eighty goers, none of them a responder or the Mayor, each staying and walking to a spot in the square.
@@ -264,7 +266,8 @@ static func _address(t) -> void:
 	_done(s)
 
 
-## The Mayor killed at 1:35: every living goer panics at once, the banner shows and the festival is broken.
+## The Mayor killed at 1:35, in his address: every goer within MAYOR_PANIC_R of the fountain panics at once (v0.09.1),
+## the banner shows, and enough of the crowd stands that near for the festival to break.
 static func _mayor_death(t) -> void:
 	var s := _setup(NightState.new())
 	var d := _start(s, null)
@@ -272,21 +275,21 @@ static func _mayor_death(t) -> void:
 	var field: EnemyField = s.field
 	_run(s, 95.0)
 	t.check(not (s.rules as Rules).finished, "the act is still on at 1:35")
+	var reached := _within(d.goers, TownLayout.FOUNTAIN.get_center(), FestivalDirector.MAYOR_PANIC_R)
 	t.check(field.kill(d.mayor, &"fire"), "the Mayor dies")
 	_run(s, 0.1)
-	var living := 0
 	var panicking := 0
 	var shelter := 0
-	for p in d.goers:
-		if p.is_alive():
-			living += 1
-			if p.mind in FestivalDirector.BROKE_MINDS:
-				panicking += 1
-				shelter += int(p.mind == Person.Mind.SHELTER)
-	t.check(living > 0 and panicking == living and living - shelter > living / 2,
-		"every living goer is frightened -- panicking, or (as Person.panic() may) running for a roof (%d of %d, %d sheltering)" % [panicking, living, shelter])
-	t.check(banners.has("THE MAYOR FALLS - THE FEAST BREAKS"), "the banner shows (%s)" % [banners])
-	t.check(d.count() >= d.need and d.broken(), "the festival is broken: %d of %d" % [d.count(), d.need])
+	for p in reached:
+		if p.is_alive() and p.mind in FestivalDirector.BROKE_MINDS:
+			panicking += 1
+			shelter += int(p.mind == Person.Mind.SHELTER)
+	t.check(not reached.is_empty() and panicking == reached.size() and panicking - shelter > panicking / 2,
+		"every goer within %.0f of the fountain is frightened -- panicking, or (as Person.panic() may) running for a roof (%d of %d, %d sheltering)"
+		% [FestivalDirector.MAYOR_PANIC_R, panicking, reached.size(), shelter])
+	t.check(banners.has(FestivalDirector.MAYOR_BANNER), "the banner shows (%s)" % [banners])
+	t.check(d.count() == reached.size() and d.count() >= d.need and d.broken(),
+		"the festival is broken: %d of %d" % [d.count(), d.need])
 	var rules: Rules = s.rules
 	t.check(rules.finished and rules.won and rules.over_reason == "festival", "and the act is won (%s %s)" % [rules.won, rules.over_reason])
 	t.check(d.report().festival == "broken", "the report says broken")
@@ -305,16 +308,16 @@ static func _mayor_early_and_missing(t) -> void:
 		if missing:
 			d.mayor = null
 		else:
+			var reached := _within(d.goers, TownLayout.FOUNTAIN.get_center(), FestivalDirector.MAYOR_PANIC_R)
 			t.check(field.kill(d.mayor, &"fire"), "the Mayor dies at 0:10")
 			var panicked := 0
-			var living := 0
-			for p in d.goers:
-				if p.is_alive():
-					living += 1
-					if p.mind in FestivalDirector.BROKE_MINDS:
-						panicked += 1
-			t.check(living > 0 and panicked == living, "the panic happened at 0:10 (%d of %d)" % [panicked, living])
-			t.check(banners.has("THE MAYOR FALLS - THE FEAST BREAKS"), "with its banner")
+			for p in reached:
+				if p.is_alive() and p.mind in FestivalDirector.BROKE_MINDS:
+					panicked += 1
+			t.check(not reached.is_empty() and panicked == reached.size() and d.count() == reached.size(),
+				"the panic happened at 0:10, to the goers near the fountain (%d of %d, count %d)" % [panicked, reached.size(),
+				d.count()])
+			t.check(banners.has(FestivalDirector.MAYOR_BANNER), "with its banner")
 		_run(s, 125.0)
 		var ids := d.timeline.fired_ids()
 		t.check(ids.has("bonfire") and not ids.has("address") and not ids.has("address_end"),
@@ -450,3 +453,104 @@ static func _mayor_and_goer_freed(t) -> void:
 	t.check(d.timeline.upcoming(3).size() == 1 and "bonfire" in d.timeline.fired_ids() and not "address" in d.timeline.fired_ids(),
 		"past 0:45 and 1:30 the address is dropped and nothing raises (%s)" % [d.timeline.fired_ids()])
 	_done(s)
+
+
+## The living goers within `r` of `at`.
+static func _within(goers: Array[Person], at: Vector2, r: float) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in goers:
+		if WarningDirector._alive(p) and p.ground_pos.distance_to(at) <= r:
+			out.append(p)
+	return out
+
+
+## v0.09.1 "Mayor's death breaks less": his death frightens the goers within MAYOR_PANIC_R of the fountain, not all 80.
+static func _mayor_reach(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	d.need = 1000  # the act runs on whatever the fright breaks
+	var c := TownLayout.FOUNTAIN.get_center()
+	var near: Person = d.goers[0]
+	var far: Person = d.goers[1]
+	near.ground_pos = c + Vector2(5.0, 0.0)
+	far.ground_pos = c + Vector2(0.0, -12.0)
+	var inside := _within(d.goers, c, FestivalDirector.MAYOR_PANIC_R)
+	var outside: Array[Person] = []
+	for p in d.goers:
+		if WarningDirector._alive(p) and not inside.has(p):
+			outside.append(p)
+	(s.field as EnemyField).kill(d.mayor, &"fire")
+	var broke := d.broke_list()
+	t.check(broke.has(near) and near.mind in FestivalDirector.BROKE_MINDS,
+		"a goer 5 units from the fountain is frightened (%s)" % Person.Mind.keys()[near.mind])
+	t.check(not broke.has(far) and not far.mind in FestivalDirector.BROKE_MINDS,
+		"a goer 12 units away is not (%s)" % Person.Mind.keys()[far.mind])
+	var wrong := 0
+	for p in inside:
+		wrong += int(not broke.has(p))
+	for p in outside:
+		wrong += int(broke.has(p))
+	t.check(wrong == 0 and broke.size() == inside.size() and not outside.is_empty(),
+		"every goer within %.0f is broken and none beyond (%d in, %d out, %d wrong)" % [FestivalDirector.MAYOR_PANIC_R,
+		inside.size(), outside.size(), wrong])
+	_done(s)
+
+
+## v0.09.1 "Calm the feast": a warned town still holds its feast -- goers count as broken only through a fright from
+## the god, not through the town's own alarm or evacuation. A town Act I warned (the bell rang, the alarm it left,
+## Organized), left alone, and with its own alarm driven to the evacuation: both hold to the clock. Under Heaven
+## Splitters through the square it breaks as an unwarned town does (review focus 3).
+static func _warned(t) -> void:
+	for case in ["alone", "evacuation"]:
+		var n := NightState.new()
+		n.bell_rang = true
+		var s := _warned_town(n)
+		var crowd: Crowd = s.crowd
+		var d := _start(s, n)
+		var rules: Rules = s.rules
+		if case == "evacuation":
+			crowd.add_alarm(45.0)  # the town's own: City Emergency, then (after its regroup) the evacuation
+			_run(s, 40.0)
+			var fleeing := 0
+			for p in d.goers:
+				fleeing += int(WarningDirector._alive(p) and p.mind == Person.Mind.FLEE)
+			t.check(crowd.alarms.stage >= AlarmManager.Stage.EVACUATION and fleeing > 0,
+				"the warned town evacuates, goers among them (%s, %d fleeing)" % [crowd.alarms.stage_name(), fleeing])
+		_run(s, 151.0 - d.timeline.elapsed())
+		t.check(rules.finished and not rules.won and rules.over_reason == "closed" and d.count() < d.need,
+			"%s: the warned feast holds to the clock (%s %s, %d of %d)" % [case, rules.won, rules.over_reason, d.count(),
+			d.need])
+		_done(s)
+	var counts := {}
+	for warned in [false, true]:
+		var n := NightState.new()
+		n.bell_rang = warned
+		var s := _warned_town(n) if warned else _setup(n)
+		var d := _start(s, n)
+		var rules: Rules = s.rules
+		_run(s, 50.0)  # the bonfire has drawn them to the fountain
+		# Across the fountain, down it, then corner to corner. (No effects run here, so nobody dies: only the fright counts.)
+		var after: Array[int] = []
+		for dir in [Vector2(1.0, 0.0), Vector2(0.0, 1.0), Vector2(1.0, 1.0).normalized()]:
+			(s.crowd as Crowd).on_cast(Targeting.lane_start("heaven", TownLayout.FOUNTAIN.get_center(), dir), dir,
+				float(Targeting.AREAS.heaven.length), "heaven")
+			_run(s, 0.5)
+			after.append(d.count())
+		counts[warned] = after
+		if warned:
+			t.check(rules.finished and rules.won and rules.over_reason == "festival" and d.broken(),
+				"Heaven Splitters through the warned square break it (%s of %d)" % [after, d.need])
+		_done(s)
+	t.check(counts[true] == counts[false] and counts[true][0] > 0,
+		"each Splitter breaks as many goers in the warned town as in a sleeping one (%s, %s)" % [counts[true], counts[false]])
+
+
+## A town Act I warned, for the Festival: the bell rang, the alarm a lost Act I leaves (the night scenario: 20), and
+## the act's town (Organized).
+static func _warned_town(n: NightState) -> Dictionary:
+	var s := _setup(n, true)
+	var crowd: Crowd = s.crowd
+	crowd.ring_bell()
+	crowd.add_alarm(20.0)
+	crowd.raise_profile((s.def as ActDef).town(n))
+	return s

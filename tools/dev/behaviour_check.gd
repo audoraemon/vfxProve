@@ -61,6 +61,10 @@ extends SceneTree
 ##          the called bellkeeper and the flame-bearer while a shrine drains; the Parade only when the Splitter would
 ##          come too late for dawn), or bonus (play, but the last shrine is struck only once ten kneel by it, or
 ##          when dawn would come too soon to wait). --seed= picks the town.
+##   flame  (v0.10 M4) The Vigil Flame, --case=none (nothing cast) or play (Mind Whisper, Discord, Will-o'-Wisp: Discord on
+##          the Faithful watching the lantern, then Wren whispered to it; with the flame, a wisp to draw off a beam
+##          coming at him, else a whisper out of its way; Discord at the Temple's door in the last 20 s). --seed= picks
+##          the town.
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -133,6 +137,12 @@ const LANTERN_DIRS := 8
 const LANTERN_DRAGON_SPARE := 5.0
 ## `bonus` waits for the kneelers only while the night still leaves this many seconds beyond a drain and that spare.
 const LANTERN_BONUS_SPARE := 10.0
+## The Vigil Flame policy (v0.10 M4): how near the lantern a Faithful counts as a watcher of the swap (Crowd.DOOM_WITNESS
+## and a margin for his walk), how near a beam may come to Wren before the policy acts, and how far it moves him or the
+## beam.
+const FLAME_WATCH_R := 3.0
+const FLAME_DANGER := 4.5
+const FLAME_DODGE := 5.0
 
 var mission: Mission
 
@@ -176,6 +186,9 @@ func _run() -> void:
 	elif scenario == "lanterns":
 		powers = PackedStringArray(["heaven", "dragon", "doom"])
 		mission.mission_id = MissionBook.BROKEN_LANTERNS
+	elif scenario == "flame":
+		powers = PackedStringArray(["whisper", "discord", "wisp"])
+		mission.mission_id = MissionBook.VIGIL_FLAME
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
@@ -220,6 +233,8 @@ func _run() -> void:
 			await _miras(Battlefield.arg_value(args, "--case"))
 		"lanterns":
 			await _lanterns(Battlefield.arg_value(args, "--case"))
+		"flame":
+			await _flame(Battlefield.arg_value(args, "--case"))
 		"night":
 			await _night()
 		"warning":
@@ -1146,6 +1161,102 @@ func _lantern_target(d: BrokenLanternsDirector, crowd: Crowd) -> Structure:
 			best = s
 			best_n = n
 	return best
+
+
+## The Vigil Flame (v0.10 M4), played every LOOK_FRAMES by a simple policy with Mind Whisper, Discord and Will-o'-Wisp.
+## Before the swap: Discord on the Faithful watching the lantern (other than the bearer), then, nobody watching, a
+## whisper sending Wren to it. With the flame: a beam within FLAME_DANGER of Wren is drawn off by a Will-o'-Wisp on its
+## far side, else a whisper sends Wren FLAME_DODGE out of its way; in the clock's last 20 s, Discord at the Temple's door
+## gives the searching beam a noise far from him. `none` casts nothing.
+func _flame(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as VigilFlameDirector
+	var slots := {}
+	for slot in rules.loadout.size():
+		if rules.key(slot) != "":
+			slots[rules.key(slot)] = slot
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	while not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t >= report_at:
+			report_at += 10.0
+			print("BEHAVIOUR flame t=%d phase=%s touches=%d praying=%d reports=%d gaze=%d beams=%d" % [roundi(t),
+				_flame_phase(d), d.touches, d.praying_count(), d.reports_started, roundi(d.gaze.value), d.searchlight.beams()])
+		if which != "play" or frames % LOOK_FRAMES != 0:
+			continue
+		if not d.appeared or not is_instance_valid(d.wren) or not d.wren.is_alive() or d.home:
+			continue
+		if not d.swapped:
+			_flame_swap(rules, d, slots)
+		else:
+			_flame_carry(rules, d, slots)
+	var res := rules.result()
+	var bonus: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
+	print("BEHAVIOUR flame result won=%s reason=%s time=%.1f swapped=%s seen=%s touches=%d gaze=%d bonus=%s" % [res.won,
+		res.reason, float(res.time), d.swapped, d.swap_seen, d.touches, roundi(d.gaze.value), bonus])
+
+
+func _flame_phase(d: VigilFlameDirector) -> String:
+	if d.home:
+		return "home"
+	if d.swapped:
+		return "carry"
+	if d.swapping:
+		return "swap"
+	return "watch" if d.appeared else "wait"
+
+
+## Before the swap: Discord on the watchers (their middle), then Wren whispered to the lantern.
+func _flame_swap(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void:
+	var lantern := d.flame_at()
+	if lantern == Vector2.INF or d.swapping:
+		return
+	var bearer: Person = d.vigil.bearer if d.vigil != null else null
+	var watchers: Array[Person] = []
+	for f in d.faithful:
+		if f != bearer and d.faithful_seeing(f.ground_pos, 0.01, bearer) == f and f.ground_pos.distance_to(lantern) <= FLAME_WATCH_R:
+			watchers.append(f)
+	if not watchers.is_empty():
+		if _slot_ready(rules, slots, "discord"):
+			var mid := Vector2.ZERO
+			for f in watchers:
+				mid += f.ground_pos
+			rules.cast(slots.discord, mid / float(watchers.size()))
+		return
+	var w := d.wren
+	if w.mind != Person.Mind.WHISPERED and not w.shaken() and _slot_ready(rules, slots, "whisper"):
+		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": lantern})
+
+
+## With the flame: Discord at the Temple's door in the last 20 s; else, a beam closing on Wren drawn off by a wisp, or
+## Wren whispered out of its way.
+func _flame_carry(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void:
+	var w := d.wren
+	var light := d.searchlight
+	if rules.time_left <= Searchlight.SEARCH_LAST + 1.0 and _slot_ready(rules, slots, "discord"):
+		rules.cast(slots.discord, d.temple_door)
+		return
+	var near_i := -1
+	for i in light.beams():
+		var gap := light.aim(i).distance_to(w.ground_pos)
+		if gap <= FLAME_DANGER and (near_i < 0 or gap < light.aim(near_i).distance_to(w.ground_pos)):
+			near_i = i
+	if near_i < 0:
+		return
+	var beam := light.aim(near_i)
+	var off := (beam - w.ground_pos).normalized() if beam.distance_to(w.ground_pos) > 0.01 else Vector2.RIGHT
+	if light.decoy_beam < 0 and _slot_ready(rules, slots, "wisp"):
+		rules.cast(slots.wisp, beam + off * FLAME_DODGE)
+		return
+	if w.mind == Person.Mind.WHISPERED or w.shaken() or not _slot_ready(rules, slots, "whisper"):
+		return
+	var to := mission._crowd._grid.nearest_walkable(w.ground_pos - off * FLAME_DODGE)
+	rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": to if to != Vector2.INF else w.ground_pos})
 
 
 ## The Warning, played by one policy against the director's messenger (whoever carries the warning now: the

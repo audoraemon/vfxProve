@@ -137,9 +137,14 @@ func _ready() -> void:
 		# Both awaited: unawaited, quit()'s handful of frames beats bench()'s 9-second loop to
 		# get_tree().quit() and the run ends before a bench[...] line is ever printed.
 		var bench_act := Battlefield.arg_value(args, "--bench-act")
+		var label := "mission"
 		if bench_act != "":
 			await _bench_jump(bench_act, args)
-		await _bf.bench("mission" if bench_act == "" else "night-" + bench_act)
+			label = "night-" + bench_act
+		elif "--bench-beams" in args:
+			await _bench_beams(args)
+			label = "flame-beams"
+		await _bf.bench(label)
 		await _quit()
 
 
@@ -153,6 +158,17 @@ func _bench_jump(act_id: String, args: PackedStringArray) -> void:
 	var after := Battlefield.arg_value(args, "--bench-after")
 	var secs := float(after) if after != "" else 50.0
 	await get_tree().create_timer(secs).timeout
+
+
+## Bench aid (v0.10 M4, spec §7): `--mission=vigil_flame --bench --bench-beams` lights Halcyon's Searchlight with both
+## beams at once (VigilFlameDirector.bench_beams()), then lets it sweep `--bench-after=SECONDS` (default 5) so the dim,
+## the cones and the pools are up before the frames are timed. The Vigil Flame only: every other bench is untouched.
+func _bench_beams(args: PackedStringArray) -> void:
+	var d := _director as VigilFlameDirector
+	if d != null:
+		d.bench_beams()
+	var after := Battlefield.arg_value(args, "--bench-after")
+	await get_tree().create_timer(float(after) if after != "" else 5.0).timeout
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.

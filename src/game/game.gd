@@ -219,6 +219,14 @@ func _ready() -> void:
 			mission_id = MissionBook.BROKEN_LANTERNS
 			loadout = MissionBook.broken_lanterns().default_loadout
 			go_to(Screen.MISSION)
+		"flame", "flame-beams":
+			# The Vigil Flame as its intro lands (v0.10 M4), for the photograph of the Vigil, its marks and the objectives;
+			# flame-beams lights the Searchlight's two beams at once (VigilFlameDirector.bench_beams()) for the cones,
+			# the pools of light and the dim (unpaused, as Mira's House's). Both wait two seconds, not one: the intro's
+			# camera has landed and the director is ticking, so the marks sit on the Vigil.
+			mission_id = MissionBook.VIGIL_FLAME
+			loadout = MissionBook.vigil_flame().default_loadout
+			go_to(Screen.MISSION)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -228,7 +236,10 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		await get_tree().create_timer(1.0).timeout
+		if show == "flame-beams" and is_instance_valid(_mission) and _mission.rules() != null \
+				and _mission.rules().director is VigilFlameDirector:
+			(_mission.rules().director as VigilFlameDirector).bench_beams()
+		await get_tree().create_timer(2.0 if show.begins_with("flame") else 1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		await _quit_cleanly()
 	elif "--flow-test" in args:

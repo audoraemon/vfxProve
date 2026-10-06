@@ -45,7 +45,7 @@ const WREN_PACE := 0.75
 const ROUTE_AT := 90.0
 const HOME_REACH := 1.0
 ## Where the camera opens: by the Temple, where the Vigil sets out.
-const CAMERA_AT := Vector2(3.0, -2.0)
+const CAMERA_AT := Vector2(1.5, -8.0)
 ## The marks: Wren, the real flame (in its lantern, or fallen), and Mira's shrine.
 const MARK_WREN := Color("8fe0ff")
 const MARK_FLAME := Color(0.95, 0.82, 0.42, 0.9)

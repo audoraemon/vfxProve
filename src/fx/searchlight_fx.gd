@@ -11,13 +11,13 @@ extends FxTimeline
 
 ## The spire's lamp: how far above the Temple's ground point it stands (screen pixels), its glow's radius, and the
 ## cone's half-width at the lamp.
-const SPIRE_PX := 96.0
+const SPIRE_PX := 140.0
 const SPIRE_GLOW_PX := 22.0
 const LAMP_HALF := 2.0
 ## The cones: additive gold, brighter at the lamp than at the foot.
 const COL_CONE := Color(1.0, 0.84, 0.45)
-const CONE_TOP_A := 0.28
-const CONE_FOOT_A := 0.08
+const CONE_TOP_A := 0.4
+const CONE_FOOT_A := 0.12
 ## The pools of light on the ground (and in the LightField).
 const COL_POOL := Color(1.0, 0.86, 0.52)
 const POOL_INTENSITY := 1.0

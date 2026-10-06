@@ -10,8 +10,9 @@ extends MissionDirector
 ##   Crowd.DOOM_WITNESS of him as it is done, not held by the god, sees it (Silent Doom's witness rule) and runs to the
 ##   Temple to report it (TempleReport); a report reaching the Temple fills Halcyon's Gaze. Left WREN_OWN_AFTER seconds
 ##   without a whisper, Wren tries the swap himself.
-## - 1:30: a suspicious priest sends the Vigil straight back to the Temple. The bearer reaching it with the real flame
-##   keeps it, and the night is lost.
+## - 1:30: a suspicious priest sends the Vigil straight back to the Temple -- but only while the flame is still in its
+##   lantern; swapped before then, the Vigil keeps circling. The bearer reaching the Temple with the real flame keeps it,
+##   and the night is lost.
 ## - The flame home: Wren carries it to Mira's shrine at the west forest edge; there it relights with the god's own
 ##   flame and the night is won. Wren dead, or dawn first, loses it. A death someone sees adds to the Gaze, and the bell
 ##   fills it.
@@ -43,8 +44,8 @@ const SWAP_HOLD := 1.6
 const SWAP_SECONDS := 3.0
 ## Wren with the flame walks carefully: the share of his own pace he keeps.
 const WREN_PACE := 0.5
-## 1:30 -- the route shortens, straight back to the Temple; the bearer within HOME_REACH of its door with the real flame
-## keeps it.
+## 1:30 -- while the flame is still in its lantern, the route shortens, straight back to the Temple; the bearer within
+## HOME_REACH of its door with the real flame keeps it. Swapped before then, the event is dropped.
 const ROUTE_AT := 90.0
 const HOME_REACH := 1.0
 ## Where the camera opens: by the Temple, where the Vigil sets out.
@@ -211,7 +212,9 @@ func _wren_comes() -> void:
 	_say("wren")
 
 
-## 1:30 -- a suspicious priest sends the Vigil straight back to the Temple.
+## 1:30 -- a suspicious priest sends the Vigil straight back to the Temple, but only while the flame is still in its
+## lantern: the event's guard (see _begin()) lets it fire only with the Vigil still walking and the flame not yet swapped,
+## and a swap before 1:30 drops it for good.
 func _route_home() -> void:
 	homeward = true
 	vigil.shorten_to(temple_door)

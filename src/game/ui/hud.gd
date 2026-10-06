@@ -1,7 +1,8 @@
 class_name Hud
 extends Control
 ## The in-mission HUD (spec §5): the clock above, the objectives to the left, the city's state to the right,
-## banners across the middle, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
+## banners across the middle, Cael's lines (v0.10 M5, spec §5.2: what a Night 2 director has him say) on a plate of their
+## own under them, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
 ## without a score (v0.08: The Warning) lists its objectives top left, and its director's marked person -- the
 ## messenger -- wears a gold marker, or an arrow at the screen's edge points to him. It reads Rules, Crowd and
 ## the Citadel and changes nothing; it redraws only when what it shows has changed.
@@ -103,7 +104,7 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
-## Age the banners, and redraw when anything on screen has changed.
+## Age the banners and Cael's lines, and redraw when anything on screen has changed.
 func advance(delta: float) -> void:
 	_age(_banners, delta, BANNER_SECONDS)
 	_age(_subtitles, delta, SUBTITLE_SECONDS)
@@ -111,10 +112,11 @@ func advance(delta: float) -> void:
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners fade, a refused slot burns red, the last half minute pulses and a marker follows its messenger (v0.08):
-	# while any of those is on screen the HUD is an animation and redraws every frame. The rest of the time it is a
-	# still picture.
-	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT 			or marker_shown() or marks_shown(_rules):
+	# Banners and Cael's lines fade, a refused slot burns red, the last half minute pulses and a marker follows its
+	# messenger (v0.08): while any of those is on screen the HUD is an animation and redraws every frame. The rest of the
+	# time it is a still picture.
+	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT \
+			or marker_shown() or marks_shown(_rules):
 		_drawn = ""
 		queue_redraw()
 		return
@@ -558,7 +560,8 @@ func _draw_banners(w: float) -> void:
 
 
 ## Cael's line under the banner's bar (v0.10 M5): on a dark plate, his name small in gold, then the line in the body's
-## light text; it comes up over 0.2 s and fades over its last 0.4 s.
+## light text; it comes up over 0.2 s and fades over its last 0.4 s, the words' shadows with them (UiTheme.text()'s
+## `shadow_a`).
 func _draw_subtitle(w: float) -> void:
 	if _subtitles.is_empty():
 		return
@@ -573,8 +576,8 @@ func _draw_subtitle(w: float) -> void:
 	gold.a = fade
 	var body := UiTheme.COL_TEXT
 	body.a = fade
-	UiTheme.text(self, Vector2(x, SUBTITLE_TOP + 12.0), who, UiTheme.SIZE_SMALL, gold)
-	UiTheme.text(self, Vector2(x + who_w + SUBTITLE_GAP, SUBTITLE_TOP + 13.0), text, UiTheme.SIZE_BODY, body)
+	UiTheme.text(self, Vector2(x, SUBTITLE_TOP + 12.0), who, UiTheme.SIZE_SMALL, gold, fade)
+	UiTheme.text(self, Vector2(x + who_w + SUBTITLE_GAP, SUBTITLE_TOP + 13.0), text, UiTheme.SIZE_BODY, body, fade)
 
 
 func _draw_slots(_w: float) -> void:

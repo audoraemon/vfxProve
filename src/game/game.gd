@@ -51,6 +51,11 @@ const FADE_OUT := 0.25
 const FADE_IN := 0.35
 ## Where --flow-test keeps its save, so a scripted run never touches the player's best score.
 const FLOW_TEST_SAVE := "user://test_flow.cfg"
+## Where --show=<screen> writes its save (v0.10 M5 final review). A sample builds a state of its own -- --show=ending a
+## campaign that has ended, --show=campaign-choice one on Night 2 -- and the first key pressed on it (Enter on the ending,
+## MANIFEST after a card) writes the save, which would have replaced the player's real campaign with the sample. Under
+## --show the screens still open on the player's own save, but write to this file instead; nothing ever reads it back.
+const SHOW_SAVE := "user://test_show.cfg"
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -103,7 +108,7 @@ const SAMPLE_FEAST_RESULT := {
 
 var screen := Screen.TITLE
 var save: SaveFile
-## Where the save file lives: the real one, or FLOW_TEST_SAVE under --flow-test.
+## Where the save file lives: the real one, FLOW_TEST_SAVE under --flow-test, or SHOW_SAVE under --show.
 var save_path := SaveFile.PATH
 ## The four powers the player drafted, kept so Replay can run them again.
 var loadout := PackedStringArray()
@@ -147,6 +152,13 @@ static func next_screen(action: String) -> int:
 	return int(FLOW.get(action, -1))
 
 
+## The file a run writes its save to: `current`, unless a --show sample is up (v0.10 M5 final review), which writes to
+## SHOW_SAVE: a key pressed on a photographed screen must never reach the player's own save. Any --show value counts, so
+## a sample added later is covered without anyone remembering to list it.
+static func save_path_for(show: String, current: String) -> String:
+	return SHOW_SAVE if show != "" else current
+
+
 ## The loadout Prepare opens with for a mission: the last one drafted for it, and for the night (v0.09) -- never
 ## played, or an old save with no section for it -- the night's default loadout. The other missions open empty.
 static func starting_loadout(from: SaveFile, id: String) -> PackedStringArray:
@@ -176,6 +188,8 @@ func _ready() -> void:
 	_fader.name = "Fader"
 	add_child(_fader)
 	var show := Battlefield.arg_value(args, "--show")
+	# The screen opens on the player's own save, read above; what it writes goes elsewhere (v0.10 M5 final review).
+	save_path = save_path_for(show, save_path)
 	match show:
 		"board":
 			go_to(Screen.BOARD)
@@ -211,7 +225,7 @@ func _ready() -> void:
 				save.campaign = CampaignState.new()
 			go_to(Screen.CAMPAIGN)
 		"campaign-choice":
-			# Night 2's three cards (v0.10), for the photograph; the save is not written.
+			# Night 2's three cards (v0.10), for the photograph; the player's save is not written (SHOW_SAVE).
 			save.campaign = CampaignState.new()
 			save.campaign.night = 1
 			save.campaign.dp = 8
@@ -254,7 +268,14 @@ func _ready() -> void:
 				and _mission.rules().director is VigilFlameDirector:
 			(_mission.rules().director as VigilFlameDirector).bench_beams()
 		if show == "cael" and is_instance_valid(_mission) and is_instance_valid(_mission._hud):
-			# Cael's line under its event's banner (v0.10 M5), for the photograph of the subtitle.
+			# Cael's line under its event's banner (v0.10 M5), for the photograph of the subtitle. The HUD shows one
+			# banner at a time and the mission's own come first (its name, then its goal): wait them out, or the
+			# event's would queue behind them and the line would be photographed under the wrong banner. (Bounded in
+			# frames, so a HUD that never empties still gets its photograph.)
+			for _frame in 1200:
+				if _mission._hud.banners().is_empty():
+					break
+				await get_tree().process_frame
 			_mission._hud.push_banner("THE INQUISITOR SEARCHES")
 			_mission._hud.push_subtitle(CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn"))
 		await get_tree().create_timer(2.0 if show.begins_with("flame") else 1.0).timeout

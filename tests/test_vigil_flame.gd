@@ -1,9 +1,10 @@
 extends RefCounted
 ## v0.10 M4 The Vigil Flame (VigilFlameDirector). The flame-bearer walks the Vigil's route with two acolytes; at 0:50
 ## Wren comes to watch the lantern; whispered to it he swaps the real flame in 3 s, seen if a Faithful other than the
-## bearer stands within Crowd.DOOM_WITNESS; left alone 30 s he tries it himself; at 1:30 the route shortens and the
-## bearer home with the real flame loses; Wren carrying the flame to Mira's shrine wins. Task 5 adds Phase 2: the
-## Searchlight, its touches, the Faithful's prayer in it, noise and the decoy, and the bonus.
+## bearer stands within Crowd.DOOM_WITNESS; left alone 30 s he tries it himself; at 1:30, while the flame is still in its
+## lantern, the route shortens and the bearer home with the real flame loses; Wren carrying the flame to Mira's shrine
+## wins. Task 5 adds Phase 2: the Searchlight, its touches, the Faithful's prayer in it, noise and the decoy, and the
+## bonus.
 
 const DT := 0.05
 ## Where the tests stage the swap and park watchers: beyond every beam's reach (Searchlight.FAR + POOL_R from the
@@ -609,6 +610,11 @@ static func _loose_ends(t) -> void:
 	_clear_watchers(d)
 	var aco := d.vigil.acolytes[0]
 	var own := float(d._walk_pace[aco])
+	# The pace kept for him is a citizen's own (Person.PACE_RANGE), taken before the Vigil slowed him: a slowed one is at
+	# most 1.2 x VIGIL_PACE, so this fails if the snapshot is taken after the slowing, whatever the restore then does.
+	t.check(own >= Person.PACE_RANGE.x and own > aco.pace,
+		"the pace kept for an acolyte is his own, from before the Vigil slowed him (own %.2f, now %.2f, least %.2f)"
+		% [own, aco.pace, Person.PACE_RANGE.x])
 	_arrive(aco, OUT + Vector2(0.0, 1.0))
 	_bring_wren(d)
 	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.2)

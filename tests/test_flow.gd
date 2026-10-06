@@ -37,6 +37,23 @@ static func run(t) -> void:
 	t.check(Game.next_screen("ending:title") == Game.Screen.TITLE, "and the ending leads to the title")
 	t.check(Game.next_screen("title:ending") == Game.Screen.ENDING, "an ending not yet seen opens from the title (v0.10 M5)")
 
+	# A --show sample never writes the player's save (v0.10 M5 final review): --show=ending, campaign-choice and the
+	# rest build a state of their own, and the first key pressed on one -- Enter on the ending, MANIFEST after a card --
+	# used to write it over the player's real campaign. Every sample writes to a throwaway file instead; an ordinary
+	# run is untouched.
+	var leaking := PackedStringArray()
+	for sample in ["board", "prepare", "results", "results-night", "results-feast", "results-warning", "interlude",
+			"pause", "campaign", "campaign-choice", "ending", "miras", "cael", "lanterns", "flame", "flame-beams",
+			"some-later-sample"]:
+		if Game.save_path_for(sample, SaveFile.PATH) != Game.SHOW_SAVE:
+			leaking.append(sample)
+	t.check(leaking.is_empty(),
+		"every --show sample writes its throwaway save, not the player's (leaking: %s)" % ", ".join(leaking))
+	t.check(Game.save_path_for("", SaveFile.PATH) == SaveFile.PATH, "a run with no sample writes the real save")
+	t.check(Game.save_path_for("", Game.FLOW_TEST_SAVE) == Game.FLOW_TEST_SAVE, "and --flow-test keeps its own file")
+	t.check(Game.SHOW_SAVE != SaveFile.PATH and Game.SHOW_SAVE != Game.FLOW_TEST_SAVE,
+		"the samples' throwaway is a file of its own")
+
 	# Every action in the table names a screen that exists, and every screen can be reached.
 	var reachable := {}
 	for action in Game.FLOW:

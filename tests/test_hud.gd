@@ -117,6 +117,15 @@ static func run(t) -> void:
 	hud.advance(0.2)
 	t.check(hud.subtitles().is_empty(), "and goes when its time is up")
 	t.check(Hud.SUBTITLE_SECONDS > Hud.BANNER_SECONDS, "a line, a sentence to read, stays longer than a banner")
+	# Its words fade with their plate, shadow and all (v0.10 M5 final review): a label's black shadow is COL_SHADOW as
+	# drawn everywhere, scaled by the fade the line is drawn with -- else a bare black copy of the words shows before the
+	# plate is up and stays after it has gone.
+	t.check(UiTheme.shadow_color() == UiTheme.COL_SHADOW and UiTheme.shadow_color(1.0) == UiTheme.COL_SHADOW,
+		"a label's shadow is COL_SHADOW unless it is told to fade")
+	var faded := UiTheme.shadow_color(0.4)
+	t.check(UiTheme.shadow_color(0.0).a == 0.0 and is_equal_approx(faded.a, UiTheme.COL_SHADOW.a * 0.4)
+		and faded.r == UiTheme.COL_SHADOW.r and faded.g == UiTheme.COL_SHADOW.g and faded.b == UiTheme.COL_SHADOW.b,
+		"and a faded one is the same black, less opaque, gone with the words (%s)" % faded)
 
 	# Six powers (v0.08): six compact slots across the 640-px screen, none touching, each found by the mouse.
 	var six_rules := Rules.new().setup(PackedStringArray(["doom", "heaven", "wisp", "thorns", "discord", "blight"]), null,

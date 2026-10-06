@@ -52,9 +52,16 @@ static func clock(seconds: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-## Text with a hard black shadow one pixel down-right, which is how every label in this game is drawn.
-static func text(on: CanvasItem, at: Vector2, s: String, size := SIZE_BODY, col := COL_TEXT) -> void:
-	on.draw_string(font(), at + Vector2.ONE, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, COL_SHADOW)
+## The text shadow's colour: COL_SHADOW, its opacity scaled by `fade` (v0.10 M5), for text that is fading in or out.
+static func shadow_color(fade := 1.0) -> Color:
+	return Color(COL_SHADOW.r, COL_SHADOW.g, COL_SHADOW.b, COL_SHADOW.a * fade)
+
+
+## Text with a hard black shadow one pixel down-right, which is how every label in this game is drawn. Text whose colour
+## fades passes the same fade as `shadow_a` (v0.10 M5: Cael's lines), or its shadow shows bare before the words come up and
+## stays behind as they go.
+static func text(on: CanvasItem, at: Vector2, s: String, size := SIZE_BODY, col := COL_TEXT, shadow_a := 1.0) -> void:
+	on.draw_string(font(), at + Vector2.ONE, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, shadow_color(shadow_a))
 	on.draw_string(font(), at, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 

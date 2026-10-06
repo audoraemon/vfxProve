@@ -6,7 +6,7 @@ extends RefCounted
 ## never fatal -- a player with a corrupted save should lose their best score, not the game.
 ##   [kak]                 difficulty, last_mission
 ##   [mission.<id>]        best_score, best_rank, won, bonus, last_loadout, paths_won
-##   [campaign]            night, dp, bites, tally_<path>, last_path, bell_rang, nights_won, ending (v0.10)
+##   [campaign]            night, dp, bites, tally_<path>, last_path, bell_rang, nights_won, ending, ending_seen (v0.10)
 ## paths_won (v0.09) is the paths of the Long Night that were won: a night won by a new path is a new best.
 ## A save from before v0.08 kept best_score, best_rank and last_loadout in [kak]: they are Last Judgement's.
 

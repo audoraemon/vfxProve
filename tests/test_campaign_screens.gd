@@ -61,7 +61,8 @@ static func run(t) -> void:
 			for i in count:
 				var def := cs.mission(String((cs.options()[i] as Dictionary).mission))
 				var lay := CampaignScreen.card_layout(def, cs, CampaignScreen.card_rect(i, count))
-				if (lay.goal as PackedStringArray).is_empty() or (lay.goal as PackedStringArray)[0] == "" 						or float(lay.goal_end) > float(lay.line_top) - UiTheme.LINE_SMALL:
+				if (lay.goal as PackedStringArray).is_empty() or (lay.goal as PackedStringArray)[0] == "" \
+						or float(lay.goal_end) > float(lay.line_top) - UiTheme.LINE_SMALL:
 					cramped.append("%s %.0f/%.0f" % [def.id, float(lay.goal_end), float(lay.line_top)])
 	t.check(cramped.is_empty(), "every card shows its goal, clear of Cael's line (cramped: %s)" % ", ".join(cramped))
 	night.free()

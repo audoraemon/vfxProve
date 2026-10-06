@@ -53,7 +53,9 @@ extends SceneTree
 ##            rescue / norescue      the cathedral filled to its capacity, then it falls: trapped, saved, lost every 5 s to 80 s
 ##   judgement (v0.08) Last Judgement played greedily with the default loadout: from 5 s, each slot is cast the moment
 ##          its rules allow it, at the next of a fixed ring of targets closing on the Citadel; a report every 30 s,
-##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any)
+##          then when the Citadel fell, the ending, escapes, buildings, the score and the DP left at the end (if any);
+##          `--aim=rich` (v0.10 M5) aims each cast as Act III's caster does (_richest()); the start line prints the
+##          loadout's cost against the campaign's Night 4 budget (12 DP, 6 slots).
 ##   miras  (v0.10 M2) Mira's House, --case=none (nothing cast) or play (whisper the grieving in when nobody of the
 ##          Faith watches the door; Discord on the nearest watcher).
 ##   lanterns  (v0.10 M3) Broken Lanterns, --case=none (nothing cast) or play (Heaven Splitter, Dragonfire Parade and
@@ -65,6 +67,10 @@ extends SceneTree
 ##          to draw bystanders off the lantern, one Discord on the bearer and the acolytes, then Wren whispered to it;
 ##          with the flame, reading the beams' paths ahead, a wisp to draw off a beam coming at him, else a whisper
 ##          out of its way; Discord at the Temple's door in the last 20 s). --seed= picks the town.
+##   feast  (v0.10 M5) the campaign's Night 3 alone, at its 4 slots and 10 DP: `--path=festival|procession` (the
+##          Festival unless it says the Procession), `--bell=rang` for a town Night 1 warned, `--case=none` (nothing cast)
+##          or `play` (the night's act policy, as `night --act2=play`). It drafts NIGHT_LOADOUTS[path], or `--loadout=`.
+##          Prints the loadout's cost against the budget, then the result. --seed= picks the town.
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -157,6 +163,12 @@ const FLAME_STEP := 0.5
 const FLAME_DIRS := 8
 ## How far inside Discord's reach the policy keeps those it means to take, for their walk while the cast lands.
 const FLAME_DISCORD_MARGIN := 0.2
+## The campaign's Night 3 (v0.10 M5, spec §4.2): its slots, and the budget of a run that won Nights 1 and 2 with no bonus.
+const FEAST_SLOTS := 4
+const FEAST_DP := CampaignDef.START_DP + 2 * CampaignDef.WIN_DP
+## Night 4, Last Judgement in the campaign (spec §4.3): its slots, and the budget of a run that won Nights 1-3, no bonus.
+const FINALE_SLOTS := 6
+const FINALE_DP := CampaignDef.START_DP + 3 * CampaignDef.WIN_DP
 
 var mission: Mission
 
@@ -203,6 +215,11 @@ func _run() -> void:
 	elif scenario == "flame":
 		powers = PackedStringArray(["whisper", "discord", "wisp"])
 		mission.mission_id = MissionBook.VIGIL_FLAME
+	elif scenario == "feast":
+		var wanted := Battlefield.arg_value(args, "--loadout")
+		powers = PackedStringArray(wanted.split(",")) if wanted != "" else PackedStringArray(NIGHT_LOADOUTS[_feast_path()])
+		mission.mission_id = "feast_" + _feast_path()
+		mission.bell_rang = Battlefield.arg_value(args, "--bell") == "rang"
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
@@ -249,6 +266,8 @@ func _run() -> void:
 			await _lanterns(Battlefield.arg_value(args, "--case"))
 		"flame":
 			await _flame(Battlefield.arg_value(args, "--case"))
+		"feast":
+			await _feast(Battlefield.arg_value(args, "--case"))
 		"night":
 			await _night()
 		"warning":
@@ -930,6 +949,8 @@ func _judgement() -> void:
 	var t := 0.0
 	var frames := 0
 	var report_at := 30.0
+	var rich := Battlefield.arg_value(OS.get_cmdline_user_args(), "--aim") == "rich"
+	print("BEHAVIOUR judgement start aim=%s %s" % ["rich" if rich else "ring", _budget(rules, FINALE_SLOTS, FINALE_DP)])
 	while not rules.finished and frames < JUDGEMENT_MAX_FRAMES:
 		await process_frame
 		frames += 1
@@ -938,7 +959,8 @@ func _judgement() -> void:
 			continue
 		for slot in rules.loadout.size():
 			if rules.refusal(slot) == "":
-				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+				var at: Vector2 = _richest(rules, mission._bf.ctx.env, mission._crowd) if rich \
+					else JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
 				next += 1
 				rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()})
 				break
@@ -1534,6 +1556,45 @@ func _bands(at: Vector2) -> String:
 	return " ".join(parts)
 
 
+## The Feast's act (`--path=`): the Festival unless it says the Procession.
+func _feast_path() -> String:
+	return "procession" if Battlefield.arg_value(OS.get_cmdline_user_args(), "--path") == "procession" else "festival"
+
+
+## The campaign's Night 3 alone (v0.10 M5): nothing cast, or the act played by the night's policy; then its result.
+func _feast(which: String) -> void:
+	var path := _feast_path()
+	print("BEHAVIOUR feast start path=%s bell=%s town=%s %s" % [path, mission.bell_rang, mission._crowd.profile.tier_name(),
+		_budget(mission._rules, FEAST_SLOTS, FEAST_DP)])
+	var done := [false]
+	mission.finished.connect(func(r: Dictionary) -> void:
+		print("BEHAVIOUR feast result won=%s reason=%s time=%.1f bonuses=%s" % [r.won, r.reason, float(r.time), _earned(r)])
+		done[0] = true)
+	if which == "play":
+		_play_act(path)  # a coroutine left running beside the loop, until the act is over
+	while not done[0]:
+		await _frames(1)
+
+
+## The drafted loadout against a budget: "loadout=a,b dp=3/10 slots=2/4 fits=true".
+func _budget(rules: Rules, slots: int, dp: int) -> String:
+	var keys := PackedStringArray()
+	var cost := 0
+	for i in rules.loadout.size():
+		keys.append(rules.key(i))
+		cost += int(rules.power(i).get("dp", 0))
+	return "loadout=%s dp=%d/%d slots=%d/%d fits=%s" % [",".join(keys), cost, dp, keys.size(), slots,
+		cost <= dp and keys.size() <= slots]
+
+
+## Each bonus of a result and whether it was earned: "Before the bell:yes".
+func _earned(r: Dictionary) -> String:
+	var out := PackedStringArray()
+	for b: Dictionary in r.get("bonuses", []):
+		out.append("%s:%s" % [b.get("label", ""), "yes" if bool(b.get("earned", false)) else "no"])
+	return ",".join(out)
+
+
 ## The Long Night (v0.09) forced through its acts, each ended as the command line asks (see the usage).
 func _night() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -1672,6 +1733,13 @@ func _play_festival() -> void:
 			if at != Vector2.INF and rules.cast(slots.discord, at, {}) != null:
 				casts["discord"] = int(casts.get("discord", 0)) + 1
 				print("BEHAVIOUR night play festival t=%.1f cast discord at %s" % [t, at.snapped(Vector2(0.1, 0.1))])
+		# A Heaven Splitter, when the draft has one (v0.10 M5: the Feast's richer policy within 10 DP), at the densest knot
+		# of goers. The night's own Festival loadout has none, so `night` plays as before.
+		if slots.has("heaven") and rules.refusal(slots.heaven) == "":
+			var hat := _densest(d.goers)
+			if hat != Vector2.INF and rules.cast(slots.heaven, hat, {"dir": Vector2(1, 0)}) != null:
+				casts["heaven"] = int(casts.get("heaven", 0)) + 1
+				print("BEHAVIOUR night play festival t=%.1f cast heaven at %s" % [t, hat.snapped(Vector2(0.1, 0.1))])
 	print("BEHAVIOUR night play festival end lost=%d/%d casts=%s" % [d.count(), d.need, casts])
 
 

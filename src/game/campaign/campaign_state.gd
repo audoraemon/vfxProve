@@ -20,6 +20,9 @@ var bell_rang := false
 var nights_won := 0
 ## "" while the campaign runs, else the ending it reached (CampaignDef.ENDINGS).
 var ending := ""
+## The ending has been shown (v0.10 M5): until it has -- the game quit on the last night's Results -- Campaign shows it
+## before it starts afresh.
+var ending_seen := false
 
 
 func slots() -> int:
@@ -124,16 +127,18 @@ func write(cfg: ConfigFile) -> void:
 	cfg.set_value(SECTION, "bell_rang", bell_rang)
 	cfg.set_value(SECTION, "nights_won", nights_won)
 	cfg.set_value(SECTION, "ending", ending)
+	cfg.set_value(SECTION, "ending_seen", ending_seen)
 
 
 ## A campaign from the save file, or null when it holds none. Values out of range are pulled back in, so a hand-edited
 ## or older file cannot put the campaign on a night that does not exist; three bites with no ending read as Eaten.
+## A budget is held between the floor and MAX_DP.
 static func read(cfg: ConfigFile) -> CampaignState:
 	if not cfg.has_section(SECTION):
 		return null
 	var s := CampaignState.new()
 	s.night = clampi(int(cfg.get_value(SECTION, "night", 0)), 0, CampaignDef.FINALE)
-	s.dp = maxi(int(cfg.get_value(SECTION, "dp", CampaignDef.START_DP)), CampaignDef.MIN_DP)
+	s.dp = clampi(int(cfg.get_value(SECTION, "dp", CampaignDef.START_DP)), CampaignDef.MIN_DP, CampaignDef.MAX_DP)
 	s.bites = clampi(int(cfg.get_value(SECTION, "bites", 0)), 0, CampaignDef.MAX_BITES)
 	for p in CampaignDef.PATHS:
 		s.tally[p] = maxi(int(cfg.get_value(SECTION, "tally_" + p, 0)), 0)
@@ -145,4 +150,5 @@ static func read(cfg: ConfigFile) -> CampaignState:
 	s.ending = e if CampaignDef.ENDINGS.has(e) else ""
 	if s.bites >= CampaignDef.MAX_BITES and s.ending == "":
 		s.ending = CampaignDef.EATEN
+	s.ending_seen = s.ending != "" and bool(cfg.get_value(SECTION, "ending_seen", false))
 	return s

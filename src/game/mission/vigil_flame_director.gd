@@ -10,8 +10,9 @@ extends MissionDirector
 ##   Crowd.DOOM_WITNESS of him as it is done, not held by the god, sees it (Silent Doom's witness rule) and runs to the
 ##   Temple to report it (TempleReport); a report reaching the Temple fills Halcyon's Gaze. Left WREN_OWN_AFTER seconds
 ##   without a whisper, Wren tries the swap himself.
-## - 1:30: a suspicious priest sends the Vigil straight back to the Temple. The bearer reaching it with the real flame
-##   keeps it, and the night is lost.
+## - 1:30: a suspicious priest sends the Vigil straight back to the Temple -- but only while the flame is still in its
+##   lantern; swapped before then, the Vigil keeps circling. The bearer reaching the Temple with the real flame keeps it,
+##   and the night is lost.
 ## - The flame home: Wren carries it to Mira's shrine at the west forest edge; there it relights with the god's own
 ##   flame and the night is won. Wren dead, or dawn first, loses it. A death someone sees adds to the Gaze, and the bell
 ##   fills it.
@@ -43,8 +44,8 @@ const SWAP_HOLD := 1.6
 const SWAP_SECONDS := 3.0
 ## Wren with the flame walks carefully: the share of his own pace he keeps.
 const WREN_PACE := 0.5
-## 1:30 -- the route shortens, straight back to the Temple; the bearer within HOME_REACH of its door with the real flame
-## keeps it.
+## 1:30 -- while the flame is still in its lantern, the route shortens, straight back to the Temple; the bearer within
+## HOME_REACH of its door with the real flame keeps it. Swapped before then, the event is dropped.
 const ROUTE_AT := 90.0
 const HOME_REACH := 1.0
 ## Where the camera opens: by the Temple, where the Vigil sets out.
@@ -104,6 +105,8 @@ var praying := {}
 var benching := false
 var _in_light := false
 var _fx: SearchlightFx
+## The Vigil's walkers' own paces, before VIGIL_PACE (v0.10 M5): one who saw the swap runs to the Temple at his own.
+var _walk_pace := {}
 
 
 func _begin() -> void:
@@ -118,7 +121,8 @@ func _begin() -> void:
 	timeline = EventTimeline.new()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	timeline.add(WREN_AT, "wren", "A boy watches the lantern", _wren_comes)
-	timeline.add(ROUTE_AT, "route", "The route shortens", _route_home, func() -> bool: return vigil != null and vigil.active)
+	# Once the flame is gone, the suspicious priest has nothing to bring home (v0.10 M5).
+	timeline.add(ROUTE_AT, "route", "The route shortens", _route_home, func() -> bool: return vigil != null and vigil.active and not swapped)
 	_add_events()
 	rules.banner.emit("STEAL HALCYON'S FLAME")
 
@@ -140,6 +144,7 @@ func _start_vigil() -> void:
 	vigil.busy = _carrying
 	vigil.flame_passed.connect(_on_flame_passed)
 	for p in vigil.walkers():
+		_walk_pace[p] = p.pace
 		p.pace *= VIGIL_PACE
 	_pace_bearer()
 	vigil.start()
@@ -147,8 +152,11 @@ func _start_vigil() -> void:
 
 
 ## The bearer keeps BEARER_LEAD of his slowest living acolyte's pace; an acolyte taking the flame up keeps to the same rule
-## for the one left, so the Vigil stays together to the end.
+## for the one left, so the Vigil stays together to the end. One carrying a report to the Temple (the swap's seer, taking
+## the flame up on the road) is off the Vigil, and runs at the pace he has (v0.10 M5).
 func _pace_bearer() -> void:
+	if _carrying(vigil.bearer):
+		return
 	for a in vigil.acolytes:
 		if _alive(a):
 			vigil.bearer.pace = minf(vigil.bearer.pace, a.pace * BEARER_LEAD)
@@ -156,7 +164,8 @@ func _pace_bearer() -> void:
 
 func _on_flame_passed(_to: Person) -> void:
 	_pace_bearer()
-	rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME")
+	if not swapped:
+		rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME")  # after the swap it is a false flame (v0.10 M5)
 
 
 func step(delta: float) -> void:
@@ -200,9 +209,12 @@ func _wren_comes() -> void:
 	appeared = true
 	_appeared_at = timeline.elapsed()
 	_tick = 0.0
+	_say("wren")
 
 
-## 1:30 -- a suspicious priest sends the Vigil straight back to the Temple.
+## 1:30 -- a suspicious priest sends the Vigil straight back to the Temple, but only while the flame is still in its
+## lantern: the event's guard (see _begin()) lets it fire only with the Vigil still walking and the flame not yet swapped,
+## and a swap before 1:30 drops it for good.
 func _route_home() -> void:
 	homeward = true
 	vigil.shorten_to(temple_door)
@@ -248,6 +260,8 @@ func _swap() -> void:
 	var seer := faithful_seeing(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null)
 	if seer != null:
 		swap_seen = true
+		if _walk_pace.has(seer):
+			seer.pace = float(_walk_pace[seer])  # off the Vigil, he runs at his own pace (v0.10 M5)
 		_report(seer, temple_door)
 	rules.banner.emit("THE FLAME IS TAKEN")
 	wren.pace *= WREN_PACE
@@ -363,6 +377,7 @@ func _add_events() -> void:
 func _phase2_begin() -> void:
 	searchlight.light()
 	rules.banner.emit("THE SPIRE FLARES")
+	_say("light")
 	_show_light()
 
 

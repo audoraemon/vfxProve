@@ -163,6 +163,8 @@ func _drain(delta: float) -> void:
 		drain_left.erase(s)
 		drained[s] = true
 		rules.banner.emit("A LANTERN IS DRAINED (%d / %d)" % [drained.size(), shrines.size()])
+		if drained.size() == 1:
+			_say("drained")  # Cael, at the first only (spec §5.2)
 		_drained_one(s)
 		_sync_detour()
 
@@ -467,6 +469,7 @@ func _knights_come() -> void:
 		k.health = Person.HEALTH_KNIGHT
 		knights.append(k)
 	_tend_knights()
+	_say("knights")
 
 
 ## Each living Knight to a standing shrine. One whose shrine fell goes to the standing shrine with the fewest Knights

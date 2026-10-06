@@ -1,13 +1,19 @@
 class_name Hud
 extends Control
 ## The in-mission HUD (spec §5): the clock above, the objectives to the left, the city's state to the right,
-## banners across the middle, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
+## banners across the middle, Cael's lines (v0.10 M5, spec §5.2: what a Night 2 director has him say) on a plate of their
+## own under them, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
 ## without a score (v0.08: The Warning) lists its objectives top left, and its director's marked person -- the
 ## messenger -- wears a gold marker, or an arrow at the screen's edge points to him. It reads Rules, Crowd and
 ## the Citadel and changes nothing; it redraws only when what it shows has changed.
 
 ## How long one banner stays up.
 const BANNER_SECONDS := 2.2
+## Cael's lines (v0.10 M5, spec §5.2): how long one stays up (longer than a banner: it is a sentence to read), the top of
+## its plate (just under the banner's bar, 116 to 136), and the gap between his name and the line.
+const SUBTITLE_SECONDS := 4.0
+const SUBTITLE_TOP := 140.0
+const SUBTITLE_GAP := 6.0
 ## A slot that refused a cast stays red for this long (spec §1; the buzz that goes with it is milestone 5's).
 const FLASH_SECONDS := 0.35
 ## The clock turns red and pulses under this many seconds (spec §5).
@@ -39,9 +45,11 @@ const EVENTS_TOP := 44.0
 ## Halcyon's Gaze under the clock (v0.10), where the Banishing Rite's bar would sit (an Unaware town has no rite).
 const GAZE_BAR := Vector2(120.0, 4.0)
 const GAZE_TOP := 30.0
-## How far above a marked person's feet their mark sits, and its half size (v0.10).
+## How far above a marked person's feet their mark sits, its half size, and its dark edge (v0.10; M5 doubled it and gave
+## it an edge, so it reads on the cobbles, and draws it first, under the rest of the HUD).
 const MARK_LIFT := 22.0
-const MARK_R := 2.0
+const MARK_R := 4.0
+const MARK_EDGE := Color(0.04, 0.04, 0.06, 0.9)
 ## The screen height to lay out against before the Control has been sized (headless tests).
 const SCREEN_H := 360.0
 ## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
@@ -57,6 +65,8 @@ var _town: Town
 var _aim: Targeting
 ## Banners waiting their turn: [text, seconds shown].
 var _banners: Array = []
+## Cael's lines waiting their turn (v0.10 M5): [text, seconds shown].
+var _subtitles: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
 var _flash := PackedFloat32Array()
 ## What the last frame drew, so an unchanged HUD costs nothing.
@@ -85,6 +95,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	for i in _rules.loadout.size():
 		_slot_names.append(UiTheme.fit(String(_rules.power(i).get("name", "")), NAME_ROOM))
 	_rules.banner.connect(push_banner)
+	_rules.subtitle.connect(push_subtitle)
 	_rules.cast_refused.connect(_on_cast_refused)
 	return self
 
@@ -93,22 +104,19 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
-## Age the banners, and redraw when anything on screen has changed.
+## Age the banners and Cael's lines, and redraw when anything on screen has changed.
 func advance(delta: float) -> void:
-	# Only the one on screen (index 0, the only one _draw_banners() ever reads) ages: a banner waiting behind
-	# it must not lose part of its own showing to the time it spent queued.
-	if not _banners.is_empty():
-		_banners[0][1] += delta
-	while not _banners.is_empty() and float(_banners[0][1]) >= BANNER_SECONDS:
-		_banners.pop_front()
+	_age(_banners, delta, BANNER_SECONDS)
+	_age(_subtitles, delta, SUBTITLE_SECONDS)
 	var flashing := false
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners fade, a refused slot burns red, the last half minute pulses and a marker follows its messenger (v0.08):
-	# while any of those is on screen the HUD is an animation and redraws every frame. The rest of the time it is a
-	# still picture.
-	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT or marker_shown() or marks_shown(_rules):
+	# Banners and Cael's lines fade, a refused slot burns red, the last half minute pulses and a marker follows its
+	# messenger (v0.08): while any of those is on screen the HUD is an animation and redraws every frame. The rest of the
+	# time it is a still picture.
+	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT \
+			or marker_shown() or marks_shown(_rules):
 		_drawn = ""
 		queue_redraw()
 		return
@@ -116,6 +124,16 @@ func advance(delta: float) -> void:
 	if now != _drawn:
 		_drawn = now
 		queue_redraw()
+
+
+## Ages the one on screen of a queue of [text, seconds shown] and lets go of those whose time is up. Only the one on screen
+## (index 0, the only one drawn) ages: one waiting behind it must not lose part of its own showing to the time it spent
+## queued.
+static func _age(queue: Array, delta: float, seconds: float) -> void:
+	if not queue.is_empty():
+		queue[0][1] += delta
+	while not queue.is_empty() and float(queue[0][1]) >= seconds:
+		queue.pop_front()
 
 
 ## "Destroy the Royal Citadel - 60% left", the spec's objective line.
@@ -185,15 +203,23 @@ func _draw_gaze(w: float) -> void:
 	draw_rect(Rect2(at, Vector2(roundf(GAZE_BAR.x * f), GAZE_BAR.y)), UiTheme.COL_GOLD.lerp(UiTheme.COL_BAD, f))
 
 
-## A small diamond over each person the director marks (v0.10).
+## A small diamond over each person the director marks (v0.10), edged dark.
 func _draw_marks() -> void:
 	if _rules.director == null:
 		return
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
 	for m: Array in _rules.director.marks():
 		var c: Vector2 = (xf * Iso.ground_to_screen(m[0] as Vector2) - Vector2(0.0, MARK_LIFT)).round()
-		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -MARK_R), c + Vector2(MARK_R, 0), c + Vector2(0, MARK_R),
-			c + Vector2(-MARK_R, 0)]), m[1] as Color)
+		var shape := mark_shape(c)
+		draw_colored_polygon(shape, m[1] as Color)
+		shape.append(shape[0])
+		draw_polyline(shape, MARK_EDGE, 1.0)
+
+
+## The diamond a mark is drawn as, centred on `c` (screen pixels).
+static func mark_shape(c: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([c + Vector2(0.0, -MARK_R), c + Vector2(MARK_R, 0.0), c + Vector2(0.0, MARK_R),
+		c + Vector2(-MARK_R, 0.0)])
 
 
 ## Where the marked person's feet are on the screen, or Vector2.INF with nobody marked. The world point goes through
@@ -292,6 +318,28 @@ func banners() -> PackedStringArray:
 	return out
 
 
+## Cael's line (v0.10 M5): queued behind any still showing, as banners are.
+func push_subtitle(text: String) -> void:
+	_subtitles.append([text, 0.0])
+
+
+func subtitles() -> PackedStringArray:
+	var out := PackedStringArray()
+	for s in _subtitles:
+		out.append(String(s[0]))
+	return out
+
+
+## Who speaks, as the HUD names him.
+static func speaker() -> String:
+	return CampaignText.SPEAKER.to_upper()
+
+
+## How wide a line is on screen: his name, the gap, then the line.
+static func subtitle_width(text: String) -> float:
+	return UiTheme.width(speaker(), UiTheme.SIZE_SMALL) + SUBTITLE_GAP + UiTheme.width(text, UiTheme.SIZE_BODY)
+
+
 ## Is this slot still red from a cast it could not take?
 func flashing(slot: int) -> bool:
 	return slot >= 0 and slot < _flash.size() and _flash[slot] > 0.0
@@ -322,6 +370,9 @@ func _signature() -> String:
 
 
 func _draw() -> void:
+	# The marks over people (v0.10) are drawn first (M5), so they sit under every other HUD element -- the clock, the bars,
+	# the events, the objectives, the status, the banners, Cael's plate, the slots and the marker -- and never hide one.
+	_draw_marks()
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
@@ -334,9 +385,9 @@ func _draw() -> void:
 		_draw_rows()
 	_draw_status(w)
 	_draw_banners(w)
+	_draw_subtitle(w)
 	_draw_slots(w)
 	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
-	_draw_marks()
 	_draw_marker()
 
 
@@ -506,6 +557,27 @@ func _draw_banners(w: float) -> void:
 	edge.a = fade
 	draw_rect(bar, edge, false, -1.0)
 	UiTheme.text(self, Vector2(x, 131.0), text, UiTheme.SIZE_BIG, col)
+
+
+## Cael's line under the banner's bar (v0.10 M5): on a dark plate, his name small in gold, then the line in the body's
+## light text; it comes up over 0.2 s and fades over its last 0.4 s, the words' shadows with them (UiTheme.text()'s
+## `shadow_a`).
+func _draw_subtitle(w: float) -> void:
+	if _subtitles.is_empty():
+		return
+	var text := String(_subtitles[0][0])
+	var age := float(_subtitles[0][1])
+	var fade := clampf((SUBTITLE_SECONDS - age) / 0.4, 0.0, 1.0) * clampf(age / 0.2, 0.0, 1.0)
+	var who := speaker()
+	var who_w := UiTheme.width(who, UiTheme.SIZE_SMALL)
+	var x := roundf((w - subtitle_width(text)) * 0.5)
+	draw_rect(Rect2(x - 6.0, SUBTITLE_TOP, subtitle_width(text) + 12.0, 17.0), Color(0.03, 0.03, 0.05, 0.72 * fade))
+	var gold := UiTheme.COL_GOLD
+	gold.a = fade
+	var body := UiTheme.COL_TEXT
+	body.a = fade
+	UiTheme.text(self, Vector2(x, SUBTITLE_TOP + 12.0), who, UiTheme.SIZE_SMALL, gold, fade)
+	UiTheme.text(self, Vector2(x + who_w + SUBTITLE_GAP, SUBTITLE_TOP + 13.0), text, UiTheme.SIZE_BODY, body, fade)
 
 
 func _draw_slots(_w: float) -> void:

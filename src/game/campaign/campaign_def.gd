@@ -21,6 +21,10 @@ const BONUS_DP := 1
 const BITE_DP := 1
 const MIN_DP := 4
 const MAX_BITES := 3
+## The most Divine Power a campaign can hold (v0.10 M5): every night, the finale's too, won with its bonus -- at most 15
+## going into the finale, and 18 once it is won (17 with no bonus), which is what the Kataclysm saves. A save that says
+## more was edited by hand, and is pulled back to it; no real campaign is cut.
+const MAX_DP := START_DP + (FINALE + 1) * (WIN_DP + BONUS_DP)
 ## The nights in order: the Awakening Tier, the slots, the memory fragment shown before it (CampaignText.FRAGMENTS), and
 ## the missions it offers, {mission, path}: one, or a choice card. Night 4 is the finale, on the Ruin path only.
 const NIGHTS := [

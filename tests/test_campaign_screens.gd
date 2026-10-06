@@ -37,6 +37,34 @@ static func run(t) -> void:
 	night.click(night.button_rect("restart").get_center())
 	night.click(night.button_rect("draft").get_center())
 	t.check(",".join(emitted) == "restart,draft", "a second press a moment later starts over; Choose powers goes (%s)" % [emitted])
+
+	# v0.10 M5: a card chosen before (Back from the draft, Pause > Campaign) is chosen again; a pick tonight does not offer
+	# chooses nothing.
+	var back := CampaignScreen.new()
+	back.setup(s, MissionBook.VIGIL_FLAME)
+	t.check(back.chosen == MissionBook.VIGIL_FLAME and back.selected == 1, "a card chosen before is chosen again (%s)" % back.chosen)
+	back.free()
+	var stray := CampaignScreen.new()
+	stray.setup(s, MissionBook.LAST_JUDGEMENT)
+	t.check(stray.chosen == "" and stray.selected == 0, "a mission tonight does not offer chooses nothing")
+	stray.free()
+
+	# Spec §5.3 (v0.10 M5): every card shows its mission's goal, clear of Cael's line at its foot -- Night 2's three and
+	# Night 3's two, in a sleeping and a warned town (review focus 5).
+	var cramped := PackedStringArray()
+	for n in [1, 2]:
+		for rang in [false, true]:
+			var cs := CampaignState.new()
+			cs.night = n
+			cs.bell_rang = rang
+			var count := cs.options().size()
+			for i in count:
+				var def := cs.mission(String((cs.options()[i] as Dictionary).mission))
+				var lay := CampaignScreen.card_layout(def, cs, CampaignScreen.card_rect(i, count))
+				if (lay.goal as PackedStringArray).is_empty() or (lay.goal as PackedStringArray)[0] == "" \
+						or float(lay.goal_end) > float(lay.line_top) - UiTheme.LINE_SMALL:
+					cramped.append("%s %.0f/%.0f" % [def.id, float(lay.goal_end), float(lay.line_top)])
+	t.check(cramped.is_empty(), "every card shows its goal, clear of Cael's line (cramped: %s)" % ", ".join(cramped))
 	night.free()
 
 	var one := CampaignScreen.new()
@@ -77,6 +105,19 @@ static func run(t) -> void:
 	t.check(eaten.pages.size() == 1 and String(eaten.pages[0].title) == "Eaten", "Eaten has one page")
 	eaten.free()
 
+	# The ending's last page closes on the campaign (v0.10 M5): the god's title, the nights won, the bites.
+	var ts := CampaignState.new()
+	ts.tally["theft"] = 1
+	ts.last_path = "theft"
+	ts.nights_won = 2
+	ts.bites = 1
+	t.check(EndingScreen.summary_text(ts) == "The Deceiver   Nights won 2   Bites 1 / 3",
+		"the closing line: %s" % EndingScreen.summary_text(ts))
+	var told := EndingScreen.new()
+	told.setup(CampaignDef.FALSE_LANTERN, "vision", EndingScreen.summary_text(ts))
+	t.check(told.summary == EndingScreen.summary_text(ts) and told.pages.size() == 2, "the ending keeps it for its last page")
+	told.free()
+
 	# Results in a campaign: one Continue, and the line on what the night did.
 	var res := ResultsScreen.new()
 	res.setup({"mission": "warning", "won": true, "reason": "omen", "goal": {"label": "Stop the warning", "done": true},
@@ -90,6 +131,16 @@ static func run(t) -> void:
 		"a lost night's line")
 	t.check(ResultsScreen.campaign_line({"won": false, "dp": 4, "bites": 3, "ending": "eaten"}) == "Halcyon has eaten you.",
 		"the last bite's line")
+	# v0.10 M5: the Feast's results -- its own goal and bonus, the time, no rank and no "Solved by" (it has none); The
+	# Warning still says what solved it.
+	var feast := {"mission": "feast_festival", "won": true, "reason": "festival", "time": 96.0,
+		"goal": {"label": "The festival is broken", "done": true}, "bonuses": [{"label": "Before the bell", "earned": true}]}
+	t.check(ResultsScreen.plain_rows(feast) == [["The festival is broken", "", true], ["Before the bell", "", true],
+		["Time", "1:36", false]], "the Feast's rows (%s)" % [ResultsScreen.plain_rows(feast)])
+	t.check(ResultsScreen.title_for(true, "festival") == "THE FEAST IS BROKEN"
+		and MissionBook.get_mission("feast_festival").name == "The Festival", "named the Festival, not Act II")
+	t.check((ResultsScreen.plain_rows(Game.SAMPLE_WARNING_RESULT).back() as Array) == ["Solved by", "VEIL", false],
+		"The Warning still says what solved it")
 	var pause := PauseMenu.new()
 	pause.setup(true)
 	t.check(String(pause._menu.items[3].action) == "campaign" and String(pause._menu.items[3].label) == "Campaign",

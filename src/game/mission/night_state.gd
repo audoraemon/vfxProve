@@ -79,13 +79,18 @@ static func rank_for(score: int) -> String:
 
 ## The night's result for the Results screen and the save: the last act decides won and reason; the score is the night's.
 ## `final` is the last act's Rules.result(), already recorded with record().
-func result(final: Dictionary, mission_id: String) -> Dictionary:
+## An unscored night (v0.10 M5: the campaign's Feast, one act) has no score, rank or table: its goal is the act's own.
+func result(final: Dictionary, mission_id: String, scored := true) -> Dictionary:
 	var acts := []
 	var time := 0.0
 	for r in results:
 		acts.append({"act": r.act, "won": bool(r.get("won", false)), "reason": String(r.get("reason", "")),
 			"bonuses": r.get("bonuses", []), "time": float(r.get("time", 0.0))})
 		time += float(r.get("time", 0.0))
+	if not scored:
+		return {"mission": mission_id, "won": bool(final.get("won", false)), "reason": String(final.get("reason", "")),
+			"time": time, "acts": acts, "path": path, "bonuses": final.get("bonuses", []),
+			"goal": final.get("goal", {"label": "The night is yours", "done": bool(final.get("won", false))})}
 	var score := night_score(int(final.get("score", 0)))
 	return {"mission": mission_id, "won": bool(final.get("won", false)), "reason": String(final.get("reason", "")),
 		"time": time, "acts": acts, "path": path, "score": score, "rank": rank_for(score),

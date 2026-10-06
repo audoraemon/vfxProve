@@ -1,8 +1,8 @@
 extends RefCounted
-## v0.10 Mira's House (MirasHouseDirector): ten grieving near her door, Halcyon's Faithful about the town; a grieving
-## citizen whispered or lured to the door goes in, reads for 10 s and comes out a Believer; a Faithful who sees someone
-## go in turns them away and reports, one who sees a Believer come out reports; a report delivered, a seen death or the
-## bell fills the Gaze; five Believers out at dawn win.
+## v0.10 Mira's House (MirasHouseDirector): GRIEVING (12) grieving near her door, Halcyon's Faithful about the town; a
+## grieving citizen whispered or lured to the door goes in, reads for READ_SECONDS (8 s) and comes out a Believer; a
+## Faithful who sees someone go in turns them away and reports, one who sees a Believer come out reports; a report
+## delivered, a seen death or the bell fills the Gaze; BelieversObjective.NEED (4) Believers out at dawn win.
 
 const DT := 0.05
 
@@ -26,8 +26,10 @@ static func _setup() -> Dictionary:
 	rules.director = director
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
+	var lines := []
+	rules.subtitle.connect(func(text: String) -> void: lines.append(text))
 	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd, "rules": rules,
-		"d": director, "banners": banners}
+		"d": director, "banners": banners, "lines": lines}
 
 
 static func _done(s: Dictionary) -> void:
@@ -77,6 +79,8 @@ static func run(t) -> void:
 	_ending(t)
 	_events(t)
 	_focus(t)
+	_lines(t)
+	_loose_ends(t)
 
 
 static func _cast(t) -> void:
@@ -105,11 +109,11 @@ static func _reading(t) -> void:
 	_run(s, DT * 2.0)
 	t.check(g.inside and not g.visible and d.inside().has(g), "a whispered grieving citizen at the door goes in")
 	_run(s, MirasHouseDirector.READ_SECONDS - 1.0)
-	t.check(g.inside and d.believers.is_empty(), "still reading after 9 s")
+	t.check(g.inside and d.believers.is_empty(), "still reading a second short of READ_SECONDS")
 	_blind(d, d.door)
 	_run(s, 1.5)
 	t.check(not g.inside and g.visible and d.believers.has(g) and g.profile.faith == CitizenProfile.Faith.BELIEVER
-		and d.journal == g and d.believers_outside() == 1, "after 10 s they come out a Believer, carrying the journal")
+		and d.journal == g and d.believers_outside() == 1, "after READ_SECONDS they come out a Believer, carrying the journal")
 	t.check(d.reports.is_empty(), "nobody of the Faith saw")
 	var marked_believer := false
 	for m: Array in d.marks():
@@ -368,4 +372,50 @@ static func _focus(t) -> void:
 	(s2.rules as Rules).time_left = DT
 	_run(s2, DT * 2.0)
 	t.check(d2.roof_fallen, "dawn passes over the ruins quietly")
+	_done(s2)
+
+
+## Cael's lines (v0.10 M5, spec §5.2): as the Inquisitor sets out, and as the house burns. Review focus 2: a dead
+## Inquisitor never searches, and he does not name her.
+static func _lines(t) -> void:
+	var s := _setup()
+	var lines: Array = s.lines
+	_run(s, MirasHouseDirector.VENN_AT + DT)
+	t.check(lines == [CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn")],
+		"as the Inquisitor sets out, Cael names her (%s)" % [lines])
+	_run(s, MirasHouseDirector.FIRE_AT - MirasHouseDirector.VENN_AT)
+	t.check(lines.size() == 2 and lines[1] == CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "fire"),
+		"as the house burns, he speaks again (%s)" % [lines])
+	_done(s)
+
+	var s2 := _setup()
+	var d2: MirasHouseDirector = s2.d
+	(s2.crowd as Crowd)._field.kill(d2.venn, &"doom")
+	_run(s2, MirasHouseDirector.VENN_AT + DT)
+	t.check((s2.lines as Array).is_empty(), "with the Inquisitor dead, nothing is said of her (%s)" % [s2.lines])
+	_done(s2)
+
+
+## v0.10 M5: the Inquisitor already running to the Temple at 0:40 is not turned to her search, and Cael does not name her
+## (review focus 2); with no Faithful free, the Vigil does not pass.
+static func _loose_ends(t) -> void:
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	# Far from the Temple, so the report is still on its way at 0:40 (nobody walks in a headless test).
+	_arrive(d.venn, d.door + Vector2(2.0, 0.0))
+	d._report(d.venn, d.temple_door)
+	_run(s, MirasHouseDirector.VENN_AT + DT)
+	t.check(not d.venn_searching and d.reports.size() == 1 and d.reports[0].carrier == d.venn
+		and d.venn.anchor.distance_to(d.temple_door) < 0.5 and not d.timeline.fired_ids().has("venn")
+		and (s.lines as Array).is_empty(), "an Inquisitor carrying a report runs on to the Temple, unsearching, unnamed")
+	_done(s)
+
+	var s2 := _setup()
+	var d2: MirasHouseDirector = s2.d
+	for f in d2.faithful:
+		if f != d2.venn:  # the Inquisitor never walks the Vigil; she stays out for her own search
+			f.inside = true
+	_run(s2, MirasHouseDirector.VIGIL_AT + DT)
+	t.check(d2.vigil == null and not (s2.banners as Array).has("THE VIGIL PASSES"),
+		"with no Faithful free, the Vigil does not pass and no banner says it does")
 	_done(s2)

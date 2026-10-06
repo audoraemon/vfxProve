@@ -5,15 +5,18 @@ Cutting them from the sheets (TownMap_Component1..3: the crates and barrels by t
 stall goods row, the carts row, Component3's signpost and logs) at the procedural sizes gives mottled brown noise:
 the sheet's grain and shading survive the downscale as speckle, and the logs and signpost bring their grass along.
 So every set is drawn on a fixed pattern instead, lit from the left, in the sheet barrel's wood tones (its lightness
-quintiles, muted toward the town's timber like the drawn dock: bridges.DOCK_SAT, DOCK_VAL) with a 1 px dark outline.
+quintiles, muted toward the town's timber like the drawn dock: bridges.DOCK_SAT, DOCK_VAL), lifted GOODS_LIFT of the
+way toward the market stalls' timber (stall_timber(): the stall_<n> sprites' warm wood, quintile for quintile) so the
+goods read as light as the stalls they stand by, with a 1 px outline softened to a dark brown (INK_MIX of the wood it
+rings, as convert.py softens a converted sprite's outline) rather than near-black.
 
   barrel_1  Decor.Kind.BARREL. A pixel map: a lid with a light rim, staves in a fixed light-to-dark pattern, two
             iron hoops. 12 x 15 px (the procedural barrel is 10 x 13), anchored at the middle of its base row.
   barrel_2  BARREL's other variant: a taller cask that bulges between three hoops. 12 x 16 px.
-  crates_1  Decor.Kind.CRATES, one crate: a box 5/16 units a side, 7 px tall: board sides (light rail and corner
+  crates_1  Decor.Kind.CRATES, one crate: a box 5/16 units a side, 6 px tall (~1.1x the procedural crate's height): board sides (light rail and corner
             posts, a dark seam halfway), a lid with one seam. Anchored at its front (bottom) corner, as DecorArt._crate stands `at` (the crate runs back
             from it).
-  crates_2  CRATES' other variant, the procedural stack: the same crate with a smaller one (4/16, 6 px) on top,
+  crates_2  CRATES' other variant, the procedural stack: the same crate with a smaller one (4/16, 4 px) on top,
             toward the back.
   bench_x   Decor.Kind.BENCH running along ground x (down-right on screen): a plank seat 11/16 units long on two
   bench_y   trestle legs; bench_y the same along ground y (down-left), its long side the shaded one. Anchored at the
@@ -23,7 +26,8 @@ quintiles, muted toward the town's timber like the drawn dock: bridges.DOCK_SAT,
   logs_1    Decor.Kind.LOGS: three, two and one logs lying along ground x, their cut ends (rings) to the camera.
             Anchored under the middle of the front log, as DecorArt.log_pile.
   cart_1    Decor.Kind.CART: DecorArt._cart's handcart (plank bed between two spoked wheels, shafts forward along
-  cart_2    ground x) loaded with sacks (cart_1) or pumpkins (cart_2). Anchored under the middle of the bed.
+  cart_2    ground x) loaded with burlap sacks (cart_1: each an oval body lit from the left with a fold line, a
+            tied neck and a tuft, in tan and burlap tones) or pumpkins (cart_2). Anchored under the middle of the bed.
   signpost  Decor.Kind.SIGNPOST: DecorArt._signpost's layout (a post 28 px high, an arrow board pointing right and a
             lower one pointing left, both facing the camera), each board with a light top edge and a dark line of
             lettering. Anchored at the foot of the post.
@@ -48,6 +52,10 @@ C2 = convert.ROOT / "concepts" / "TOWN REF" / "TownMap_Component2.png"
 BARREL_BOX = (896, 520, 935, 578)    # the sheet barrel (no neighbours in the box)
 WOOD_FROM = 35                       # wood tones: the sheet barrel's pixels lighter than this percentile
 SAT, VAL = 0.72, 0.88                # as bridges.DOCK_SAT, DOCK_VAL: sheet wood toned toward the town's timber
+STALLS = convert.ROOT / "assets" / "pixellab" / "buildings"
+STALL_DESIGNS = range(1, 13)         # stall_1..stall_12 (their intact sprites): the market timber the goods match
+GOODS_LIFT = 0.55                    # how far the goods' wood moves from the sheet barrel's toward the stalls' timber
+INK_MIX = 0.35                       # a goods outline pixel: this much of the wood it rings, the rest convert.OUTLINE
 OUTLINE = tuple(int(v) for v in convert.OUTLINE)
 U = 1.0 / 16.0                       # drawing grid (ground units): 2 px across, 1 px down on screen
 
@@ -57,7 +65,9 @@ JUG = ((124, 66, 44), (160, 88, 56), (192, 118, 76))           # clay: dark, bod
 APPLE = ((128, 40, 32), (170, 54, 42), (204, 86, 62))
 LEAF = (82, 112, 46)
 BREAD = ((150, 100, 50), (190, 140, 74), (220, 176, 108))
-SACK = ((150, 134, 102), (196, 180, 144), (224, 212, 182))      # rim, body, highlight
+# Burlap sacks: shade rim, shade, body, lit; the twine at the neck.
+SACK = ((112, 86, 56), (148, 116, 76), (178, 146, 98), (204, 176, 126))
+TWINE = (84, 60, 38)
 PUMPKIN = ((150, 72, 30), (196, 102, 40), (224, 136, 64))
 
 # The barrel, light from the left. 0..4 wood (darkest..lightest), i iron hoop, j hoop's lit left end, o outline.
@@ -101,10 +111,31 @@ CASK = [
 CASK_ANCHOR = (6, 15)
 
 
-def sheet_tones():
+def stall_timber():
+    """The market stalls' timber: five tones (darkest first), the lightness quintiles of the stall_<n> sprites' warm
+    wood pixels (hue 22..40 deg, saturation 0.4..0.85, value 0.25..0.9: posts, counters and crates; not the awnings,
+    the produce or the outline)."""
+    px = []
+    for n in STALL_DESIGNS:
+        a = np.array(Image.open(STALLS / ("stall_%d" % n) / "intact.png").convert("RGBA")).astype(float)
+        px.append(a[a[..., 3] > 200][:, :3])
+    p = np.concatenate(px) / 255.0
+    mx, mn = p.max(1), p.min(1)
+    d = mx - mn + 1e-9
+    r, g, b = p.T
+    h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60
+    s = d / np.maximum(mx, 1e-9)
+    w = p[(h > 22) & (h < 40) & (s > 0.4) & (s < 0.85) & (mx > 0.25) & (mx < 0.9)] * 255.0
+    wl = w.sum(1)
+    bins = np.digitize(wl, np.percentile(wl, [20, 40, 60, 80]))
+    return [w[bins == k].mean(0) for k in range(5)]
+
+
+def sheet_tones(lift=GOODS_LIFT):
     """Five wood tones (darkest first) and the iron (dark, lit) from the sheet barrel's opaque pixels: the wood is its
-    warm pixels above the lightness WOOD_FROM percentile (below are seams and outline), split in quintiles; the iron
-    is its grey (low-saturation) dark pixels."""
+    warm pixels above the lightness WOOD_FROM percentile (below are seams and outline), split in quintiles, then moved
+    `lift` of the way toward the stalls' timber (stall_timber(), tone for tone); the iron is its grey
+    (low-saturation) dark pixels. lift 0 gives the sheet barrel's tones alone (the drawn ship keeps those)."""
     a = np.array(Image.open(C2).convert("RGBA").crop(BARREL_BOX)).astype(float)
     px = a[a[..., 3] > 200][:, :3]
     lum = px.sum(1)
@@ -118,23 +149,54 @@ def sheet_tones():
         return tuple(int(v) for v in np.round((g + (c - g) * SAT) * VAL))
 
     woods = [tone(wood[bins == k].mean(0)) for k in range(5)]
+    if lift:
+        woods = [tuple(int(v) for v in np.round(np.array(c) + (t - np.array(c)) * lift))
+                 for c, t in zip(woods, stall_timber())]
     grey = px[(sat < 0.45) & (lum > 60)]
     iron = tone(grey.mean(0))
     iron_lit = tuple(int(v) for v in np.minimum(np.array(iron) * 1.5 + 10, 255))
     return woods, iron, iron_lit
 
 
+def soft_ink(rgb, body, ring):
+    """Colour the outline pixels `ring` (h, w bools) a dark brown: convert.OUTLINE with INK_MIX of the mean of their
+    4-neighbours in `body` (the piece's own pixels); a ring pixel touching none keeps OUTLINE. rgb (h, w, 3) floats,
+    changed in place."""
+    pad = np.pad(rgb, ((1, 1), (1, 1), (0, 0)))
+    pb = np.pad(body, 1).astype(float)
+    acc = np.zeros_like(rgb)
+    n = np.zeros(body.shape)
+    H, W = body.shape
+    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        m = pb[1 + dy:1 + dy + H, 1 + dx:1 + dx + W]
+        acc += pad[1 + dy:1 + dy + H, 1 + dx:1 + dx + W] * m[..., None]
+        n += m
+    near = ring & (n > 0)
+    rgb[near] = np.array(OUTLINE, float) * (1 - INK_MIX) + acc[near] / n[near][:, None] * INK_MIX
+    rgb[ring & ~near] = OUTLINE
+
+
 def from_map(rows, woods, iron, iron_lit):
+    """A pixel map (0..4 wood, i/j iron, 'o' the outline, softened by soft_ink) to an RGBA image."""
     h, w = len(rows), len(rows[0])
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     pal = {str(k): woods[k] for k in range(5)}
-    pal.update({"i": iron, "j": iron_lit, "o": OUTLINE})
+    pal.update({"i": iron, "j": iron_lit})
+    rgb = np.zeros((h, w, 3))
+    al = np.zeros((h, w), bool)
+    ink = np.zeros((h, w), bool)
     for y, row in enumerate(rows):
         assert len(row) == w, "ragged row %d" % y
         for x, ch in enumerate(row):
-            if ch != ".":
-                img.putpixel((x, y), pal[ch] + (255,))
-    return img
+            if ch == "o":
+                ink[y, x] = True
+            elif ch != ".":
+                rgb[y, x] = pal[ch]
+                al[y, x] = True
+    soft_ink(rgb, al, ink)
+    out = np.zeros((h, w, 4), np.uint8)
+    out[..., :3] = np.round(rgb).astype(np.uint8)
+    out[..., 3] = np.where(al | ink, 255, 0)
+    return Image.fromarray(out, "RGBA")
 
 
 def barrel():
@@ -148,16 +210,18 @@ def cask():
 class Canvas:
     """A drawing surface in screen px, the piece's ground point at pixel corner (OX, OY). Fills test pixel centres, so
     2:1 edges through whole-pixel corners (ground points on the U grid) step cleanly. finish() rings the silhouette
-    with the outline and crops it."""
+    with the outline and crops it. `lift` sets its wood (sheet_tones), `soft` its outline (soft_ink, else
+    convert.OUTLINE)."""
 
-    def __init__(self, w=120, h=100, ox=60, oy=80):
+    def __init__(self, w=120, h=100, ox=60, oy=80, lift=GOODS_LIFT, soft=True):
         self.rgb = np.zeros((h, w, 3))
         self.a = np.zeros((h, w), bool)
         self.o = (ox, oy)
         ys, xs = np.mgrid[0:h, 0:w]
         self.cx = xs + 0.5 - ox
         self.cy = ys + 0.5 - oy
-        self.wood = sheet_tones()[0]
+        self.wood = sheet_tones(lift)[0]
+        self.soft = soft
 
     @staticmethod
     def iso(gx, gy, z=0.0):
@@ -236,12 +300,16 @@ class Canvas:
                 y0 += sy
 
     def finish(self):
-        """Ring the silhouette with the outline (4-neighbours), crop, and return (image, anchor)."""
+        """Ring the silhouette with the outline (4-neighbours; soft_ink while `soft`), crop, and return (image,
+        anchor)."""
         a = self.a
         p = np.pad(a, 1)
         ring = ~a & (p[:-2, 1:-1] | p[2:, 1:-1] | p[1:-1, :-2] | p[1:-1, 2:])
         rgb = self.rgb.copy()
-        rgb[ring] = OUTLINE
+        if self.soft:
+            soft_ink(rgb, a, ring)
+        else:
+            rgb[ring] = OUTLINE
         alpha = a | ring
         ys, xs = np.nonzero(alpha)
         y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
@@ -275,7 +343,7 @@ def _crate(cv, fx, fy, s, h, lift):
     cv.box(fx - s, fy - s, fx, fy, lift, lift + h, top=lid, left=side(3, 4), right=side(1, 2))
 
 
-CRATE_H = 7
+CRATE_H = 6                          # ~1.1x the procedural crate's screen height (DecorArt._crate: 0.28 side, 5.6 px)
 
 
 def crates(stacked):
@@ -405,6 +473,41 @@ def _wheel(cv, c, R, dark):
     cv.put(r <= 1.8, np.array(w[4], float) * shade)
 
 
+# cart_1's load: four sacks standing in the bed (ground x, y units; z px above the bed's top), back pair first.
+SACKS = ((-4 * U, -2 * U, 3), (3 * U, -3 * U, 3), (-1 * U, 2 * U, 2), (5 * U, 1 * U, 2))
+SACK_R = (5.5, 4.5)                  # a sack body's half width and half height (px)
+# Its neck: a tuft over a band of twine, stamped centred over the body's top (l lit burlap, a body, b shade, t twine).
+SACK_NECK = ["l.b", "lab", "ttt"]
+
+
+def _sack(cv, c):
+    """A burlap sack standing at screen px `c` (its body's centre): an oval body in SACK's tones, lit from the upper
+    left (its lit cap, body, a shaded lower right and a darker rim there), a fold line down its front, and a neck tied
+    with twine under a tuft. Where it stands over a sack painted before it, a dark burlap edge parts the two."""
+    rx, ry = SACK_R
+    x, y = cv.cx - c[0], cv.cy - c[1]
+    body = (x / rx) ** 2 + (y / ry) ** 2 <= 1.0
+    lit = (-0.55 * x / rx - 0.83 * y / ry)
+    rim = body & (((x + 0.6) / (rx - 0.6)) ** 2 + ((y + 0.6) / (ry - 0.6)) ** 2 > 1.0) & (lit < 0.0)
+    k = np.where(lit > 0.45, 3, np.where(lit > -0.3, 2, 1))
+    cx0, cy0 = math.floor(c[0]), math.floor(c[1])
+    neck = np.zeros_like(body)
+    oy, ox = cv.o[1] + cy0 - int(ry) - 3, cv.o[0] + cx0 - 1
+    for j, row in enumerate(SACK_NECK):
+        for i, ch in enumerate(row):
+            neck[oy + j, ox + i] = ch != "."
+    shape = body | neck
+    p = np.pad(shape, 1)
+    edge = ~shape & (p[:-2, 1:-1] | p[2:, 1:-1] | p[1:-1, :-2] | p[1:-1, 2:]) & cv.a
+    cv.put(edge, SACK[0])
+    cv.put(body, np.array(SACK, float)[k])
+    cv.put(rim, SACK[0])
+    # the fold: a short slanting crease down from the neck toward the lower left
+    cv.line((cx0 + 1, cy0 - int(ry) + 2), (cx0 - 1, cy0 + 1), SACK[1])
+    pal = {"l": SACK[3], "a": SACK[2], "b": SACK[1], "t": TWINE}
+    cv.pixels((cx0 - 1, cy0 - int(ry) - 3), SACK_NECK, pal)
+
+
 def cart(load):
     """DecorArt._cart: a plank bed (x +-7/16, y +-4/16 units, sides 10..21 px) on two wheels (radius 9 px at
     y +-5/16), shafts forward along +x to the ground; its load inside."""
@@ -422,12 +525,8 @@ def cart(load):
     cv.face((-bl, bw), (-bl, -bw), z0, z1, lambda u, z: 1)
     cv.top(-bl, -bw, bl, bw, z0 + 1, lambda gx, gy: np.where((np.floor(gy / U) % 2) == 0, 0, 1))
     if load == "sacks":
-        for x, y, zz in ((-3 * U, -2 * U, 4), (2 * U, -2 * U, 4), (-1 * U, 1 * U, 3), (4 * U, 1 * U, 3)):
-            c = P(x, y, z1 + zz)
-            cv.ellipse(c, 6.0, 5.0, SACK[0])
-            cv.ellipse((c[0] - 0.5, c[1] + 0.2), 5.0, 4.0, SACK[1])
-            cv.ellipse((c[0] - 2.0, c[1] - 1.5), 2.2, 1.6, SACK[2])
-            cv.line((c[0] - 1, c[1] - 5), (c[0] + 1, c[1] - 5), SACK[0])
+        for x, y, zz in SACKS:
+            _sack(cv, P(x, y, z1 + zz))
     else:
         for x, y in ((-4 * U, -2 * U), (0, -2 * U), (4 * U, -2 * U), (-2 * U, 1 * U), (2 * U, 1 * U), (6 * U, 1 * U)):
             c = P(x, y, z1 + 3)

@@ -100,6 +100,33 @@ static func run(t) -> void:
 		"a whisper at someone shaken flashes its slot and says so (%s)" % [hud.banners()])
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
 
+	# Cael's lines (v0.10 M5): a queue of their own beside the banners, each up SUBTITLE_SECONDS in turn (review focus 1:
+	# two close together and a banner with them -- none lost, none cut short, the banners at their own pace).
+	rules.banner.emit("THE INQUISITOR SEARCHES")
+	rules.subtitle.emit("Venn. She lit Mira's pyre.")
+	rules.subtitle.emit("They're burning her again. Get them out.")
+	t.check(hud.banners().size() == 1 and hud.subtitles() == PackedStringArray(["Venn. She lit Mira's pyre.",
+		"They're burning her again. Get them out."]), "a line shows beside its banner, the next waits (%s)" % [hud.subtitles()])
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	t.check(hud.banners().is_empty() and hud.subtitles().size() == 2, "a line outlasts its banner")
+	hud.advance(Hud.SUBTITLE_SECONDS - Hud.BANNER_SECONDS)
+	t.check(hud.subtitles() == PackedStringArray(["They're burning her again. Get them out."]),
+		"then gives way to the next (%s)" % [hud.subtitles()])
+	hud.advance(Hud.SUBTITLE_SECONDS - 0.1)
+	t.check(hud.subtitles().size() == 1, "which lost none of its own time waiting")
+	hud.advance(0.2)
+	t.check(hud.subtitles().is_empty(), "and goes when its time is up")
+	t.check(Hud.SUBTITLE_SECONDS > Hud.BANNER_SECONDS, "a line, a sentence to read, stays longer than a banner")
+	# Its words fade with their plate, shadow and all (v0.10 M5 final review): a label's black shadow is COL_SHADOW as
+	# drawn everywhere, scaled by the fade the line is drawn with -- else a bare black copy of the words shows before the
+	# plate is up and stays after it has gone.
+	t.check(UiTheme.shadow_color() == UiTheme.COL_SHADOW and UiTheme.shadow_color(1.0) == UiTheme.COL_SHADOW,
+		"a label's shadow is COL_SHADOW unless it is told to fade")
+	var faded := UiTheme.shadow_color(0.4)
+	t.check(UiTheme.shadow_color(0.0).a == 0.0 and is_equal_approx(faded.a, UiTheme.COL_SHADOW.a * 0.4)
+		and faded.r == UiTheme.COL_SHADOW.r and faded.g == UiTheme.COL_SHADOW.g and faded.b == UiTheme.COL_SHADOW.b,
+		"and a faded one is the same black, less opaque, gone with the words (%s)" % faded)
+
 	# Six powers (v0.08): six compact slots across the 640-px screen, none touching, each found by the mouse.
 	var six_rules := Rules.new().setup(PackedStringArray(["doom", "heaven", "wisp", "thorns", "discord", "blight"]), null,
 		env, field, crowd, town)
@@ -118,6 +145,13 @@ static func run(t) -> void:
 		% [six_bad, six.slot_rect(0).position.x, six.slot_rect(5).end.x])
 	six.free()
 	six_rules.free()
+
+	# The marks over people (v0.10; M5 made them bigger and outlined, so they read on the cobbles): a diamond MARK_R each
+	# way from its centre.
+	var shape := Hud.mark_shape(Vector2(100.0, 100.0))
+	t.check(Hud.MARK_R >= 4.0 and shape.size() == 4 and shape[0] == Vector2(100.0, 100.0 - Hud.MARK_R)
+		and shape[2] == Vector2(100.0, 100.0 + Hud.MARK_R) and Hud.MARK_EDGE.a > 0.5,
+		"a mark is a diamond %d px each way, with a dark edge (%s)" % [int(Hud.MARK_R), shape])
 
 	# The Warning (v0.08): the objective panel in place of the Citadel's, the messenger's marker and its edge arrow.
 	_warning(t, env, field, crowd, town)

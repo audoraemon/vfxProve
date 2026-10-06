@@ -4,7 +4,8 @@ shader_type canvas_item;
 // negative one a ripple (cloth, flags), mostly up and down along the edge. Offsets are whole pixels, and the phase
 // comes from where the vertex's node stands, so neighbours do not move in step. `wind` 0 stills everything.
 // A textured quad (ArtKit.tex, a decor sprite) carries the texture's UV instead: it sways by its height in the sprite,
-// `sprite_sway` px at its top (per material: Decor.MOTION), or with `bob` > 0 the whole quad rises and falls that many
+// `sprite_sway` px at its top (per material: Decor.MOTION; 1.5 for trees and plants, so even a short plant's top
+// rounds to a full px step), or with `bob` > 0 the whole quad rises and falls that many
 // px instead (a boat on the water; no shear). Untextured (procedural) pieces move as before, whatever the material.
 // An animated decor set (DecorSprites: a horizontal strip, `anim_frames` frames each `frame_u` wide in UV) draws frame
 // 0's rect; its quad's UVs step along the strip to frame floor(idle_time * anim_fps + phase) mod anim_frames. The

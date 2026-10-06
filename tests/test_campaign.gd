@@ -179,4 +179,39 @@ static func _save(t) -> void:
 	t.check(d.night == CampaignDef.FINALE and d.dp == CampaignDef.MIN_DP and d.bites == CampaignDef.MAX_BITES
 		and int(d.tally["ruin"]) == 0 and d.last_path == "" and d.ending == "eaten",
 		"a damaged campaign is pulled back into range, and three bites read as Eaten")
+	# v0.10 M5: a hand-edited budget above anything a campaign can reach is pulled back (review focus 4).
+	var hi := ConfigFile.new()
+	hi.set_value(CampaignState.SECTION, "dp", 99)
+	t.check(CampaignDef.MAX_DP == 18 and CampaignState.read(hi).dp == CampaignDef.MAX_DP,
+		"a budget past every bonus reads as %d (%d)" % [CampaignDef.MAX_DP, CampaignState.read(hi).dp])
+	# ... but never a real campaign (final review): the finale won with its bonus saves 18 DP, three more than the 15 it was
+	# played with, and the Kataclysm must read back as it was saved. A finale won with no bonus saves 17.
+	for bonus in [true, false]:
+		var finale := CampaignState.new()
+		for id in ["warning", "broken_lanterns", "feast_festival"]:
+			finale.record(id, _won(true))
+		t.check(finale.dp == 15 and finale.night == CampaignDef.FINALE,
+			"three nights won with their bonus reach the finale at 15 DP")
+		finale.record("last_judgement", _won(bonus))
+		var won_cfg := ConfigFile.new()
+		finale.write(won_cfg)
+		var won_read := CampaignState.read(won_cfg)
+		t.check(finale.ending == "kataclysm" and finale.dp == (18 if bonus else 17) and won_read.dp == finale.dp
+			and won_read.ending == "kataclysm",
+			"a won finale (bonus %s) saves %d DP and reads back as saved (%d)" % [bonus, finale.dp, won_read.dp])
+	# The ending, once seen, stays seen through the save.
+	var e := CampaignState.new()
+	e.ending = CampaignDef.FALSE_LANTERN
+	e.ending_seen = true
+	var ecfg := ConfigFile.new()
+	e.write(ecfg)
+	t.check(CampaignState.read(ecfg).ending_seen, "an ending seen is remembered")
+	# Review focus 4: a save from before M5 that reached its ending has no ending_seen: owed, so shown once more.
+	var old := ConfigFile.new()
+	old.set_value(CampaignState.SECTION, "ending", CampaignDef.NEW_FAITH)
+	t.check(CampaignState.read(old).ending == CampaignDef.NEW_FAITH and not CampaignState.read(old).ending_seen,
+		"an older save's ending reads as not yet seen")
+	var none := ConfigFile.new()
+	none.set_value(CampaignState.SECTION, "ending_seen", true)
+	t.check(not CampaignState.read(none).ending_seen, "and a campaign with no ending has nothing seen")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

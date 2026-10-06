@@ -21,14 +21,16 @@ read as one fence.
   scarecrow  Decor.Kind.SCARECROW: DecorArt._scarecrow's figure (a post, a patched shirt with straw hands on a cross
              bar, trousers, a straw head with button eyes, a wide-brimmed hat) as a pixel map, light from the left,
              ringed with the outline. Anchored at the post's foot. A 4-frame strip at 4 fps (Group C): the shirt's
-             hem and the sleeves' hanging edges flutter, each column's bottom row a px longer or shorter in a ripple
-             that runs left to right with the wind (frame 0 the still: no ripple).
+             hem and the sleeves' hanging edges flutter, each column up to 2 px longer or shorter in a smooth ripple
+             that runs left to right with the wind (RIPPLE_AMP, RIPPLE_WAVE: reads at 1x); the hat brim, the head and
+             the hands stay still (frame 0 the still: no ripple).
 
 Usage (from anywhere):
   python tools/dev/ref_convert/decor_farm.py [all | fence | garden | scarecrow] [--out <scratch dir>]
       (--out: write PNGs there, no manifest)
 """
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -90,11 +92,16 @@ EYE = (42, 28, 20)
 SCARECROW_FPS = 4.0
 
 
+RIPPLE_WAVE = 8          # the hem's wave: its period (columns); it runs a quarter period a frame
+RIPPLE_AMP = 1.0         # its height (px): a column moves round(amp * (wave now - wave at frame 0)), up to +-2
+
+
 def ripple(i, f):
-    """A cloth column's hem change in frame f (rows: +1 longer, -1 shorter, 0 none): a wave of period 4 columns
-    running right a column a frame, less its frame 0 shape, so frame 0 is the still and frame 4 frame 0."""
-    w = (0, 1, 0, -1)
-    return max(-1, min(1, w[(i - f) % 4] - w[i % 4]))
+    """A cloth column's hem change in frame f (rows: positive longer, negative shorter, 0 none, within +-2): a sine
+    wave of RIPPLE_WAVE columns running right a quarter period a frame, less its frame 0 shape, so frame 0 is the
+    still and frame 4 frame 0; neighbouring columns step at most a px or two, so the hem stays a clean wave."""
+    ph = 2 * math.pi * i / RIPPLE_WAVE
+    return max(-2, min(2, int(round(RIPPLE_AMP * (math.sin(ph - math.pi / 2 * f) - math.sin(ph))))))
 
 
 class Strip:
@@ -259,17 +266,20 @@ def scarecrow(frame=0):
     rect(12, -22, 1, 2, lambda i, j: wd[2] if j == 0 else wd[0])
     # the shirt: lit left columns, shaded right, a hem row; a patch on its right side. Each column runs down to its
     # hem, which the flutter moves a row (a shorter column leaves the post or the belt showing under it).
-    def cloth(x0, y0, w, h, fn, ripple_at):
+    def cloth(x0, y0, w, h, fn, ripple_at, keep=1):
+        """Columns down to their hems; a shorter column keeps at least `keep` rows (a sleeve its arm row)."""
         for i in range(w):
-            r = ripple(ripple_at + i, frame)
+            r = max(ripple(ripple_at + i, frame), keep - h)
             for j in range(h + min(r, 0)):
                 px(x0 + i, y0 + j, fn(i, j, j == h - 1 + min(r, 0)))
 
     def hem_drops(x0, y0, w, h, fn, ripple_at):
-        """The rows a longer column hangs below its hem (after what it hangs over)."""
+        """The rows a longer column hangs below its hem (after what it hangs over): its hem row moved down, the row
+        between in the cloth's body."""
         for i in range(w):
-            if ripple(ripple_at + i, frame) > 0:
-                px(x0 + i, y0 + h, fn(i, h, True))
+            r = ripple(ripple_at + i, frame)
+            for k in range(r):
+                px(x0 + i, y0 + h + k, fn(i, h - 2 if k < r - 1 else h, k == r - 1))
 
     def shirt(i, j, hem):
         return CLOTH[2] if hem else CLOTH[0] if i < 2 else CLOTH[2] if i > 8 else CLOTH[1]
@@ -282,8 +292,9 @@ def scarecrow(frame=0):
     cloth(-5, -23, 11, 10, shirt, 4)
     rect(1, -20, 3, 3, lambda i, j: PATCH[0] if (i, j) == (0, 0) else PATCH[1])
     px(-1, -21, CLOTH[2]); px(-1, -18, CLOTH[2]); px(-1, -15, CLOTH[2])      # buttons down the post's line
-    # sleeves: 4 px each side, rows -23..-21
-    cloth(-9, -23, 4, 3, sleeve_l, 0)
+    # sleeves: 4 px each side, rows -23..-21; their ripples set so each outer end swings the full 2 px (the left
+    # one hangs lower, the right one lifts)
+    cloth(-9, -23, 4, 3, sleeve_l, 6)
     cloth(6, -23, 4, 3, sleeve_r, 15)
     # straw hands, frayed below
     rect(-12, -23, 3, 3, lambda i, j: STRAW[0] if j == 0 else STRAW[1])
@@ -292,7 +303,7 @@ def scarecrow(frame=0):
     # a straw belt, then the trousers: two legs either side of the post, lit left
     rect(-5, -13, 11, 1, lambda i, j: STRAW[1] if i < 6 else STRAW[2])
     hem_drops(-5, -23, 11, 10, shirt, 4)
-    hem_drops(-9, -23, 4, 3, sleeve_l, 0)
+    hem_drops(-9, -23, 4, 3, sleeve_l, 6)
     hem_drops(6, -23, 4, 3, sleeve_r, 15)
     rect(-4, -12, 3, 6, lambda i, j: TROUSERS[0] if i == 0 else TROUSERS[1])
     rect(2, -12, 3, 6, lambda i, j: TROUSERS[1] if i == 0 else TROUSERS[2])

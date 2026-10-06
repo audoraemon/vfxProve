@@ -1,9 +1,10 @@
 extends RefCounted
 ## v0.10 M4 The Vigil Flame (VigilFlameDirector). The flame-bearer walks the Vigil's route with two acolytes; at 0:50
 ## Wren comes to watch the lantern; whispered to it he swaps the real flame in 3 s, seen if a Faithful other than the
-## bearer stands within Crowd.DOOM_WITNESS; left alone 30 s he tries it himself; at 1:30 the route shortens and the
-## bearer home with the real flame loses; Wren carrying the flame to Mira's shrine wins. Task 5 adds Phase 2: the
-## Searchlight, its touches, the Faithful's prayer in it, noise and the decoy, and the bonus.
+## bearer stands within Crowd.DOOM_WITNESS; left alone 30 s he tries it himself; at 1:30, while the flame is still in its
+## lantern, the route shortens and the bearer home with the real flame loses; Wren carrying the flame to Mira's shrine
+## wins. Task 5 adds Phase 2: the Searchlight, its touches, the Faithful's prayer in it, noise and the decoy, and the
+## bonus.
 
 const DT := 0.05
 ## Where the tests stage the swap and park watchers: beyond every beam's reach (Searchlight.FAR + POOL_R from the
@@ -33,8 +34,10 @@ static func _setup() -> Dictionary:
 	rules.director = director
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
+	var lines := []
+	rules.subtitle.connect(func(text: String) -> void: lines.append(text))
 	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd, "rules": rules,
-		"d": director, "banners": banners}
+		"d": director, "banners": banners, "lines": lines}
 
 
 static func _done(s: Dictionary) -> void:
@@ -127,6 +130,8 @@ static func run(t) -> void:
 	_heard(t)
 	_bonus(t)
 	_teardown(t)
+	_lines(t)
+	_loose_ends(t)
 
 
 static func _cast(t) -> void:
@@ -287,13 +292,19 @@ static func _route(t) -> void:
 		and ResultsScreen.title_for(false, "kept") == "THE FLAME IS KEPT", "the bearer home with the real flame: the night is lost")
 	_done(s)
 
+	# The route shortens only while the flame is still in its lantern (v0.10 M5), so the Vigil is already on its way home when
+	# Wren takes the flame, and the bearer reaches the Temple with the false one.
 	var s2 := _setup()
 	var d2: VigilFlameDirector = s2.d
-	_do_swap(s2)
+	_wren_now(d2)
 	d2.timeline.step(VigilFlameDirector.ROUTE_AT)
+	_bearer_out(s2)
+	_clear_watchers(d2)
+	_bring_wren(d2)
+	_run(s2, VigilFlameDirector.SWAP_SECONDS + 0.2)
 	_arrive(d2.vigil.bearer, d2.temple_door)
 	_run(s2, DT)
-	t.check(d2.homeward and not d2.kept and not (s2.rules as Rules).finished, "home with the false flame, nothing is lost")
+	t.check(d2.swapped and d2.homeward and not d2.kept and not (s2.rules as Rules).finished, "home with the false flame, nothing is lost")
 	_done(s2)
 
 
@@ -561,3 +572,70 @@ static func _teardown(t) -> void:
 		and not (s.crowd as Crowd)._field.enemy_killed.is_connected(d._on_killed),
 		"let go mid-search: the light out, the prayers released, the world's signals let go")
 	_done(s)
+
+
+## Cael's lines (v0.10 M5, spec §5.2): as Wren comes, and as the light wakes at the swap. Review focus 2: with nobody
+## left to be Wren, nothing is said of the boy.
+static func _lines(t) -> void:
+	var s := _setup()
+	var lines: Array = s.lines
+	_wren_now(s.d)
+	t.check(lines == [CampaignText.cael_line(MissionBook.VIGIL_FLAME, "wren")], "as Wren comes, Cael speaks (%s)" % [lines])
+	_done(s)
+
+	var s2 := _setup()
+	_do_swap(s2)
+	var lines2: Array = s2.lines
+	t.check(lines2.size() == 2 and lines2[1] == CampaignText.cael_line(MissionBook.VIGIL_FLAME, "light"),
+		"as the swap wakes the light, he speaks again (%s)" % [lines2])
+	_done(s2)
+
+	var s3 := _setup()
+	var d3: VigilFlameDirector = s3.d
+	for p in (s3.crowd as Crowd).citizens:
+		if not d3.faithful.has(p):
+			p.inside = true
+	_wren_now(d3)
+	t.check(d3.no_wren and (s3.lines as Array).is_empty(), "with nobody to be Wren, nothing is said of him (%s)" % [s3.lines])
+	_done(s3)
+
+
+## v0.10 M5: the Faithful who sees the swap runs to the Temple at his own pace, not the Vigil's; after the swap there is
+## no route home and no acolyte "taking up the flame" -- the flame is gone.
+static func _loose_ends(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	_wren_now(d)
+	_bearer_out(s)
+	_clear_watchers(d)
+	var aco := d.vigil.acolytes[0]
+	var own := float(d._walk_pace[aco])
+	# The pace kept for him is a citizen's own (Person.PACE_RANGE), taken before the Vigil slowed him: a slowed one is at
+	# most 1.2 x VIGIL_PACE, so this fails if the snapshot is taken after the slowing, whatever the restore then does.
+	t.check(own >= Person.PACE_RANGE.x and own > aco.pace,
+		"the pace kept for an acolyte is his own, from before the Vigil slowed him (own %.2f, now %.2f, least %.2f)"
+		% [own, aco.pace, Person.PACE_RANGE.x])
+	_arrive(aco, OUT + Vector2(0.0, 1.0))
+	_bring_wren(d)
+	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.2)
+	t.check(d.swap_seen and not d.reports.is_empty() and d.reports[0].carrier == aco and is_equal_approx(aco.pace, own),
+		"the acolyte who saw the swap runs at his own pace (%.2f, own %.2f)" % [aco.pace, own])
+	# The bearer then falls with the report still on the road: the flame passes to the carrier, who is not slowed to the
+	# Vigil's pace (he is off the Vigil).
+	(s.crowd as Crowd)._field.kill(d.vigil.bearer, &"doom")
+	_run(s, VigilRoute.TICK + DT)
+	t.check(d.vigil.bearer == aco and d._carrying(aco) and is_equal_approx(aco.pace, own),
+		"the flame passing to him on the road does not slow him (%.2f, own %.2f)" % [aco.pace, own])
+	_done(s)
+
+	var s2 := _setup()
+	var d2: VigilFlameDirector = s2.d
+	var banners: Array = s2.banners
+	_do_swap(s2)
+	d2.timeline.step(VigilFlameDirector.ROUTE_AT)
+	_run(s2, DT)
+	t.check(not d2.homeward and not banners.has("THE ROUTE SHORTENS"), "after the swap the route never shortens")
+	(s2.crowd as Crowd)._field.kill(d2.vigil.bearer, &"doom")
+	_run(s2, VigilRoute.TICK + DT)
+	t.check(not banners.has("AN ACOLYTE TAKES UP THE FLAME"), "nor does an acolyte take up a flame that is false")
+	_done(s2)

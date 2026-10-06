@@ -17,6 +17,8 @@ signal surged
 signal chained(at: Vector2)
 ## Something worth a line across the middle of the screen.
 signal banner(text: String)
+## Cael speaks (v0.10 M5, spec §5.2): a line of his, shown under the banners (the HUD's subtitle).
+signal subtitle(text: String)
 ## The mission ended. reason: "citadel" (won), "escapes" or "timeout".
 signal over(won: bool, reason: String)
 

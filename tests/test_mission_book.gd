@@ -101,6 +101,8 @@ static func run(t) -> void:
 		and fe.acts.size() == 1 and fe.first_act().id == "festival" and fe.first_act().is_last()
 		and fe.first_act().director == FestivalDirector, "the Feast's Festival is The Long Night's act, alone and last")
 	t.check(MissionBook.feast("procession").first_act().director == ProcessionDirector, "and so is the Procession")
+	t.check(not fe.scored and not MissionBook.feast("procession").scored and MissionBook.long_night().scored,
+		"the Feast is an unscored night (v0.10 M5); The Long Night is still scored")
 	var warned := NightState.new()
 	warned.bell_rang = true
 	fe.first_act().night = warned

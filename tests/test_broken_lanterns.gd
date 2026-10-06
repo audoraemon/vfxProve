@@ -30,8 +30,10 @@ static func _setup() -> Dictionary:
 	rules.director = director
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
+	var lines := []
+	rules.subtitle.connect(func(text: String) -> void: lines.append(text))
 	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd, "rules": rules,
-		"d": director, "banners": banners}
+		"d": director, "banners": banners, "lines": lines}
 
 
 static func _done(s: Dictionary) -> void:
@@ -87,6 +89,7 @@ static func run(t) -> void:
 	_kneelers(t)
 	_kneel_topup(t)
 	_focus(t)
+	_lines(t)
 
 
 static func _cast(t) -> void:
@@ -502,3 +505,26 @@ static func _focus(t) -> void:
 		ghosts += 0 if _alive(k) else 1
 	t.check(victims.size() == BrokenLanternsDirector.PRAYERS and ghosts == 0, "prayers killed at their shrine leave no ghosts")
 	_done(s2)
+
+
+## Cael's lines (v0.10 M5, spec §5.2): at the first shrine drained (review focus 3: once a night, never at a later one),
+## and as the Knights come.
+static func _lines(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	var lines: Array = s.lines
+	_away(d)
+	_break(d.shrines[0])
+	_run(s, BrokenLanternsDirector.DRAIN_SECONDS - 1.0)
+	t.check(lines.is_empty(), "nothing while the first shrine drains (%s)" % [lines])
+	_run(s, 1.5)
+	t.check(lines == [CampaignText.cael_line(MissionBook.BROKEN_LANTERNS, "drained")],
+		"the first shrine drained, Cael speaks (%s)" % [lines])
+	_away(d)
+	_break(d.shrines[1])
+	_run(s, BrokenLanternsDirector.DRAIN_SECONDS + 0.5)
+	t.check(d.drained_count() == 2 and lines.size() == 1, "the second says nothing more (%d drained, %s)" % [d.drained_count(), lines])
+	d.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
+	t.check(lines.size() == 2 and lines[1] == CampaignText.cael_line(MissionBook.BROKEN_LANTERNS, "knights"),
+		"as the Knights come, he speaks again (%s)" % [lines])
+	_done(s)

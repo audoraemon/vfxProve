@@ -13,14 +13,18 @@ of the dock behind them they hide.
           water), drawn as clinker strakes under a light rail and a dark wale on its near (+y, lit) side, darker below
           the bend; a planked deck (lit along its far edge, no bulwark there: the dock side) with a hatch, a raised
           stern castle with a railing, the bowsprit, two masts (64 and 48 px) with gaff sails in panels (lit aft,
-          shaded by the mast), a blue pennant, and the stays as bare 1 px lines (no outline). Anchored at the hull's
+          shaded by the mast), a blue pennant, and the procedural ship's rigging as clean 1 px rope lines (no
+          outline), the same in every frame: each mast's forestay to the bowsprit's end (over the sails) and a
+          shroud to either rail (the far one behind the sails), the main mast's backstay to the stern behind its
+          sail (the fore mast's would run level across both sails, so it has none). Anchored at the hull's
           waterline centre (ground (0, 0) at the water), as the procedural ship stands on SHIP_AT.
   boat_1  Decor.Kind.BOAT along ground x: DecorArt._boat's hull (1.5 units long, gunwale 12 px, its ends 3 px higher),
   boat_2  clinker strakes on the near side, the dark inside with ribs and two thwarts, a short mast (30 px) near the
           bow with its loading spar; boat_2 the same along ground y (its near side is then the shaded right face). The
           procedural boat picks its axis from the seed; a sprite boat lies along the river holding it
           (DecorSprites.name_for: boat_2 on TownLayout.RIVER_WEST, else boat_1). Anchored at the hull's waterline
-          centre. Both draw at the procedural boat's ArtTuning scale (boat 1.12), like it.
+          centre. Both draw at the procedural boat's ArtTuning scale (boat 1.12), like it. Their wood is lifted
+          (BOAT_LIFT) toward the procedural boat's brightness; the ship keeps the sheet barrel's tones.
 
 Usage (from anywhere):
   python tools/dev/ref_convert/decor_water.py [all | ship | boat] [--out <scratch dir>]   (--out: PNGs only)
@@ -52,15 +56,20 @@ PENNANT_WAVE = 8.0
 PENNANT_AMP = 1.0
 PENNANT_REACH = (0, -1, 0, 1)
 ROPE = (58, 44, 32)
+SHROUD_DROP = 6.0                    # a shroud leaves its mast this many px under the masthead
+SHROUD_AFT = 0.12                    # and comes down to the rail this far aft of the mast (units)
 WAKE = (190, 226, 246)
+# The rowing boats' wood: the sheet barrel's tones lifted this far toward the stalls' timber (decor_goods.sheet_tones),
+# so at the river's zoom (0.5) they read about as light as the procedural boat (ArtKit.WOOD); the ship keeps lift 0.
+BOAT_LIFT = 0.5
 
 
 class WaterCanvas(decor_goods.Canvas):
     """decor_goods.Canvas plus screen-space polygons, bare pixels (no outline ring: ropes, the wake) and per-pixel
     alpha (the wake is see-through)."""
 
-    def __init__(self, w=220, h=200, ox=100, oy=150):
-        super().__init__(w, h, ox, oy)
+    def __init__(self, w=220, h=200, ox=100, oy=150, lift=0.0):
+        super().__init__(w, h, ox, oy, lift=lift, soft=False)
         self.bare = np.zeros_like(self.a)
         self.alpha = np.ones(self.a.shape)
         self.under = []                      # (mask, rgb, alpha): painted after the outline, on clear pixels only
@@ -94,6 +103,23 @@ class WaterCanvas(decor_goods.Canvas):
         self.bare |= new
         self.alpha[new] = alpha
         self.rgb[before] = keep[before]      # never paint over what is there
+
+    def rope_line(self, p0, p1, col, alpha=1.0, keep=None):
+        """A 1 px rope drawn over what is there (rigging seen across the sails, as the procedural ship draws it): on
+        clear pixels a bare line (no outline ring) at `alpha`; over the drawing, `col` blended in by `alpha` (the
+        pixel stays opaque). Pixels in `keep` (a mask: the pennant) are left alone."""
+        before = self.a.copy()
+        old = self.rgb.copy()
+        self.a = np.zeros_like(before)
+        self.line(p0, p1, col)
+        line = self.a if keep is None else self.a & ~keep
+        self.a, self.rgb = before | line, old
+        new = line & ~before
+        over = line & before
+        self.rgb[new] = col
+        self.bare |= new
+        self.alpha[new] = alpha
+        self.rgb[over] = old[over] * (1.0 - alpha) + np.array(col, float) * alpha
 
     def under_line(self, p0, p1, col, alpha):
         """A 1 px see-through line (the wake) painted after the outline ring, only where nothing else is."""
@@ -253,16 +279,28 @@ def ship(frame=0):
     # The pennant at the main masthead.
     f = P(-0.3, 0, DECK + 64)
     fx, fy = math.floor(f[0]), math.floor(f[1])
+    pennant = np.zeros_like(cv.a)
     for j in range(5):
         w = round((PENNANT_LEN + PENNANT_REACH[frame]) * (1 - abs(j - 2) / 3.0))
         for i in range(1, w + 1):
-            cv.put((np.floor(cv.cx) == fx + i) & (np.floor(cv.cy) == fy + j + pennant_dy(i, frame)),
-                   PENNANT[1] if j < 2 else PENNANT[0])
-    # Stays, bare: each masthead to the bowsprit's end and down to the stern.
+            m = (np.floor(cv.cx) == fx + i) & (np.floor(cv.cy) == fy + j + pennant_dy(i, frame))
+            cv.put(m, PENNANT[1] if j < 2 else PENNANT[0])
+            pennant |= m
+    # The rigging, 1 px ropes as the procedural ship's, the same in every frame (only the pennant moves, and it stays
+    # over them). Behind the sails (bare, the sails' pixels win): each mast's shroud to the far rail, and the main
+    # mast's backstay down to the stern (it lies in the sails' plane). The fore mast has no stay to the stern: from
+    # its masthead that stay ran level across both sails (the stern is as high on screen as the fore top), so its
+    # shrouds hold it aft. Then over everything: each shroud to the near rail and each forestay to the bowsprit's end
+    # (both diagonal).
+    for x, tall, _span in MASTS:
+        cv.bare_line(P(x, 0, DECK + tall - SHROUD_DROP), P(x - SHROUD_AFT, -HW * 0.85, DECK - 1), ROPE, 0.8)
+    main_x, main_tall, _span = MASTS[0]
+    cv.bare_line(P(main_x, 0, DECK + main_tall), P(-HL, 0, DECK + 12), ROPE, 0.8)
     for x, tall, _span in MASTS:
         top_pt = P(x, 0, DECK + tall)
-        cv.bare_line(top_pt, sprit, ROPE)
-        cv.bare_line(top_pt, P(-HL, 0, DECK + 12), ROPE, 0.8)
+        cv.rope_line(P(x, 0, DECK + tall - SHROUD_DROP), P(x - SHROUD_AFT, HW * 0.97, DECK + 1), ROPE, 0.9,
+                     keep=pennant)
+        cv.rope_line(top_pt, sprit, ROPE, 1.0, keep=pennant)
     # The wake along the near waterline, see-through.
     cv.under_line(P(-HL + 0.1, HW * 0.75, 0), P(HL, HW * 0.3, 0), WAKE, 0.7)
     cv.under_line(P(HL + 0.1, 0.1, 0), P(HL + 0.35, 0.25, 0), WAKE, 0.6)
@@ -274,7 +312,7 @@ BHL, BHW, GUN = 0.75, 0.32, 12.0
 
 
 def boat(along_x):
-    cv = WaterCanvas(140, 120, 70, 90)
+    cv = WaterCanvas(140, 120, 70, 90, lift=BOAT_LIFT)
 
     def P(u, v, z):
         return cv.iso(u, v, z) if along_x else cv.iso(v, u, z)

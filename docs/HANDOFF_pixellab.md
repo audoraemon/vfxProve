@@ -73,7 +73,7 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Worktree `C:\
   - tower and keep bonfires flicker, and the barracks banner sways;
   - lit windows flicker softly: `cottage_red`, `cottage_blue`, `townhouse_a`, `townhouse_b`, `tavern`, `cathedral` and `citadel_keep` (the sets with a `glow_mask.png`). Barracks, workshop and smithy have no mask (no lit panes beyond 0-5 px of forge rim), so they do not flicker;
   - boats and the ship bob; reeds, bushes, flowers and small shrubs sway with the wind;
-  - sheep and cows graze (1.5 fps), the scarecrow flutters, house lanterns and the ship's pennant move.
+  - sheep and cows graze (1.5 fps), the scarecrow flutters and the ship's pennant moves; house lanterns flicker through their lit glass overlay (`lamp_house` itself is a still since art polish 2: its old strip only changed under that glass).
 - **Still static, and why:**
   - **`citadel_gate` lanterns:** two small caged lanterns, glass with no open flame, so the flame finder skips them. They could flicker as lit glass through a window mask; not done.
   - **Bell tower:** no fire (its warm pixels are gold trim) and no lit panes, so no window mask.

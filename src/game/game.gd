@@ -40,6 +40,8 @@ const FLOW := {
 	"results:ending": Screen.ENDING,
 	"pause:campaign": Screen.CAMPAIGN,
 	"ending:title": Screen.TITLE,
+	# An ending not yet seen (v0.10 M5: the game quit on the last night's Results) opens from the title's Campaign.
+	"title:ending": Screen.ENDING,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -49,6 +51,11 @@ const FADE_OUT := 0.25
 const FADE_IN := 0.35
 ## Where --flow-test keeps its save, so a scripted run never touches the player's best score.
 const FLOW_TEST_SAVE := "user://test_flow.cfg"
+## Where --show=<screen> writes its save (v0.10 M5 final review). A sample builds a state of its own -- --show=ending a
+## campaign that has ended, --show=campaign-choice one on Night 2 -- and the first key pressed on it (Enter on the ending,
+## MANIFEST after a card) writes the save, which would have replaced the player's real campaign with the sample. Under
+## --show the screens still open on the player's own save, but write to this file instead; nothing ever reads it back.
+const SHOW_SAVE := "user://test_show.cfg"
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -90,10 +97,18 @@ const SAMPLE_NIGHT_RESULT := {
 	],
 	"bonuses": [], "goal": {"label": "The night is yours", "done": false},
 }
+## What --show=results-feast displays (v0.10 M5): the campaign's Feast won by breaking the festival, its bonus earned.
+const SAMPLE_FEAST_RESULT := {
+	"mission": "feast_festival", "won": true, "reason": "festival", "time": 96.0, "path": "",
+	"acts": [{"act": "festival", "won": true, "reason": "festival", "bonuses": [{"label": "Before the bell", "earned": true}],
+		"time": 96.0}],
+	"goal": {"label": "The festival is broken", "done": true}, "bonuses": [{"label": "Before the bell", "earned": true}],
+	"campaign": {"won": true, "dp_gain": 3, "dp": 13, "bites": 0, "ending": ""},
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
-## Where the save file lives: the real one, or FLOW_TEST_SAVE under --flow-test.
+## Where the save file lives: the real one, FLOW_TEST_SAVE under --flow-test, or SHOW_SAVE under --show.
 var save_path := SaveFile.PATH
 ## The four powers the player drafted, kept so Replay can run them again.
 var loadout := PackedStringArray()
@@ -137,6 +152,13 @@ static func next_screen(action: String) -> int:
 	return int(FLOW.get(action, -1))
 
 
+## The file a run writes its save to: `current`, unless a --show sample is up (v0.10 M5 final review), which writes to
+## SHOW_SAVE: a key pressed on a photographed screen must never reach the player's own save. Any --show value counts, so
+## a sample added later is covered without anyone remembering to list it.
+static func save_path_for(show: String, current: String) -> String:
+	return SHOW_SAVE if show != "" else current
+
+
 ## The loadout Prepare opens with for a mission: the last one drafted for it, and for the night (v0.09) -- never
 ## played, or an old save with no section for it -- the night's default loadout. The other missions open empty.
 static func starting_loadout(from: SaveFile, id: String) -> PackedStringArray:
@@ -166,6 +188,8 @@ func _ready() -> void:
 	_fader.name = "Fader"
 	add_child(_fader)
 	var show := Battlefield.arg_value(args, "--show")
+	# The screen opens on the player's own save, read above; what it writes goes elsewhere (v0.10 M5 final review).
+	save_path = save_path_for(show, save_path)
 	match show:
 		"board":
 			go_to(Screen.BOARD)
@@ -179,6 +203,9 @@ func _ready() -> void:
 			go_to(Screen.RESULTS)
 		"results-night":
 			result = SAMPLE_NIGHT_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
+		"results-feast":
+			result = SAMPLE_FEAST_RESULT.duplicate(true)
 			go_to(Screen.RESULTS)
 		"results-warning":
 			result = SAMPLE_WARNING_RESULT.duplicate(true)
@@ -198,7 +225,7 @@ func _ready() -> void:
 				save.campaign = CampaignState.new()
 			go_to(Screen.CAMPAIGN)
 		"campaign-choice":
-			# Night 2's three cards (v0.10), for the photograph; the save is not written.
+			# Night 2's three cards (v0.10), for the photograph; the player's save is not written (SHOW_SAVE).
 			save.campaign = CampaignState.new()
 			save.campaign.night = 1
 			save.campaign.dp = 8
@@ -207,9 +234,10 @@ func _ready() -> void:
 			save.campaign = CampaignState.new()
 			save.campaign.ending = CampaignDef.FALSE_LANTERN
 			go_to(Screen.ENDING)
-		"miras":
+		"miras", "cael":
 			# Mira's House as its intro lands (v0.10 M2), for the photograph of its HUD: the Gaze bar and the marks over the
-			# grieving (unpaused: the pause menu would cover them).
+			# grieving (unpaused: the pause menu would cover them). cael (v0.10 M5) is the same, with Venn's banner and
+			# Cael's line under it.
 			mission_id = MissionBook.MIRAS_HOUSE
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
@@ -239,6 +267,17 @@ func _ready() -> void:
 		if show == "flame-beams" and is_instance_valid(_mission) and _mission.rules() != null \
 				and _mission.rules().director is VigilFlameDirector:
 			(_mission.rules().director as VigilFlameDirector).bench_beams()
+		if show == "cael" and is_instance_valid(_mission) and is_instance_valid(_mission._hud):
+			# Cael's line under its event's banner (v0.10 M5), for the photograph of the subtitle. The HUD shows one
+			# banner at a time and the mission's own come first (its name, then its goal): wait them out, or the
+			# event's would queue behind them and the line would be photographed under the wrong banner. (Bounded in
+			# frames, so a HUD that never empties still gets its photograph.)
+			for _frame in 1200:
+				if _mission._hud.banners().is_empty():
+					break
+				await get_tree().process_frame
+			_mission._hud.push_banner("THE INQUISITOR SEARCHES")
+			_mission._hud.push_subtitle(CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn"))
 		await get_tree().create_timer(2.0 if show.begins_with("flame") else 1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		await _quit_cleanly()
@@ -253,6 +292,11 @@ func go_to(to: int) -> void:
 	_close_pause()
 	var from := screen
 	screen = to
+	# Leaving the campaign (v0.10 M5), whichever way -- its Title, or its ending: the board's own mission and loadout come
+	# back, so Missions opens on the last board pick rather than the campaign's last night.
+	if (to == Screen.TITLE or to == Screen.BOARD) and _in_campaign:
+		mission_id = save.last_mission
+		loadout = starting_loadout(save, mission_id)
 	if to == Screen.TITLE or to == Screen.BOARD:
 		_in_campaign = false
 	elif to == Screen.CAMPAIGN:
@@ -328,15 +372,15 @@ func go_to(to: int) -> void:
 			var night := CampaignScreen.new()
 			night.name = "Campaign"
 			add_child(night)
-			night.setup(save.campaign)
+			night.setup(save.campaign, mission_id)
 			night.action.connect(_on_campaign_action.bind(night))
 			_screen_node = night
 		Screen.ENDING:
 			var end := EndingScreen.new()
 			end.name = "Ending"
 			add_child(end)
-			end.setup(save.campaign.ending, save.campaign.ending_fragment())
-			end.action.connect(func(what: String) -> void: on_action("ending:" + what))
+			end.setup(save.campaign.ending, save.campaign.ending_fragment(), EndingScreen.summary_text(save.campaign))
+			end.action.connect(_on_ending_action)
 			_screen_node = end
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
@@ -510,7 +554,7 @@ func _on_board_action(what: String, board: MissionBoard) -> void:
 
 
 ## The night screen's buttons (v0.10): on to Prepare for tonight's mission, with the loadout last drafted for it; a
-## fresh campaign; or back to the title, where the board's mission is the one last picked there.
+## fresh campaign; or back to the title (go_to() puts the board's mission back).
 func _on_campaign_action(what: String, night: CampaignScreen) -> void:
 	match what:
 		"draft":
@@ -524,8 +568,6 @@ func _on_campaign_action(what: String, night: CampaignScreen) -> void:
 			save.save_to(save_path)
 			go_to(Screen.CAMPAIGN)
 		"title":
-			mission_id = save.last_mission
-			loadout = starting_loadout(save, mission_id)
 			on_action("campaign:title")
 
 
@@ -534,6 +576,14 @@ func _results_action(what: String) -> String:
 	if what == "next" and _in_campaign and save.campaign != null and save.campaign.ending != "":
 		return "results:ending"
 	return "results:" + what
+
+
+## The ending's last page turned, or Esc (v0.10 M5): the ending has been seen, so Campaign next begins afresh.
+func _on_ending_action(what: String) -> void:
+	if save.campaign != null and not save.campaign.ending_seen:
+		save.campaign.ending_seen = true
+		save.save_to(save_path)
+	on_action("ending:" + what)
 
 
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
@@ -589,6 +639,10 @@ func _on_title_action(what: String) -> void:
 		"quit":
 			get_tree().quit()
 		"campaign":
+			# An ending not yet seen (v0.10 M5: the game quit on the last night's Results) is shown first.
+			if save.campaign != null and save.campaign.ending != "" and not save.campaign.ending_seen:
+				on_action("title:ending")
+				return
 			# A campaign that has reached its ending is over: Campaign begins a fresh one (review focus 3).
 			if save.campaign == null or save.campaign.ending != "":
 				save.campaign = CampaignState.new()
@@ -1083,6 +1137,12 @@ func _flow_campaign(step: Callable) -> void:
 		"Continue opens Night 2's three cards, none chosen")
 	night.choose(MissionBook.VIGIL_FLAME)
 	night.click(night.button_rect("draft").get_center())
+	# v0.10 M5: Back from the draft keeps tonight's card chosen.
+	_on_prepare_action("back", _screen_node as PrepareScreen)
+	night = _screen_node as CampaignScreen
+	step.call(screen == Screen.CAMPAIGN and night != null and night.chosen == MissionBook.VIGIL_FLAME,
+		"Back from the draft keeps the Vigil Flame chosen (%s)" % (night.chosen if night != null else "-"))
+	night.click(night.button_rect("draft").get_center())
 	prep = _screen_node as PrepareScreen
 	step.call(prep != null and prep.mission.id == MissionBook.VIGIL_FLAME and prep.draft.capacity == dp1
 		and not prep.draft.pool.has("heaven"), "the Vigil Flame's draft: the god's %d DP, the quiet pool" % dp1)
@@ -1126,6 +1186,18 @@ func _flow_campaign(step: Callable) -> void:
 	end.turn()
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen and not _in_campaign,
 		"turning its last page returns to the title, the campaign left")
+	step.call(mission_id == save.last_mission and loadout == starting_loadout(save, mission_id) and save.campaign.ending_seen,
+		"leaving by the ending puts the board's own mission back (%s), the ending seen" % mission_id)
+
+	# v0.10 M5: an ending never seen (the game quit on the last Results) opens from Campaign before a fresh one.
+	save.campaign.ending_seen = false
+	(_screen_node as TitleScreen).action.emit("campaign")
+	var owed := _screen_node as EndingScreen
+	step.call(screen == Screen.ENDING and owed != null and owed.pages.size() == 2 and owed.summary != "",
+		"an ending left unseen opens from Campaign, with its closing line")
+	owed.action.emit("title")
+	step.call(screen == Screen.TITLE and save.campaign.ending_seen and save.campaign.ending == CampaignDef.FALSE_LANTERN,
+		"and once seen it is done")
 
 	# Review focus 3: after an ending, Campaign begins a fresh one.
 	(_screen_node as TitleScreen).action.emit("campaign")

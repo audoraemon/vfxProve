@@ -16,9 +16,10 @@ extends MissionDirector
 ##   flame and the night is won. Wren dead, or dawn first, loses it. A death someone sees adds to the Gaze, and the bell
 ##   fills it.
 ## - Phase 2: from the swap until the flame is home, Halcyon's Searchlight (Searchlight, drawn by SearchlightFx) sweeps
-##   the town from the Temple's spire: one beam, a second 30 s on, a Will-o'-Wisp a decoy, and in the clock's last 20 s
-##   a beam stopping to search at the latest noise (any cast but a whisper, any death). A beam touching Wren adds
-##   TOUCH_GAZE (two fill the Gaze); a Faithful it touches stops and prays.
+##   out from the Temple's spire, in and out of the town and past its walls (up to Searchlight.FAR + POOL_R, 28 units):
+##   one beam, a second 30 s on, a Will-o'-Wisp a decoy, and in the clock's last 20 s a beam stopping to search
+##   at the latest noise (any cast but a whisper, any death). A beam touching Wren adds TOUCH_GAZE (two fill the Gaze);
+##   a Faithful it touches stops and prays.
 
 ## Mira's shrine at the west forest edge, outside the west wall (ground units; moved to the nearest open ground), and how
 ## near Wren must bring the flame.
@@ -137,13 +138,25 @@ func _start_vigil() -> void:
 	vigil.loop = true
 	vigil.pass_flame = true
 	vigil.busy = _carrying
-	vigil.flame_passed.connect(func(_to: Person) -> void: rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME"))
+	vigil.flame_passed.connect(_on_flame_passed)
 	for p in vigil.walkers():
 		p.pace *= VIGIL_PACE
-	for a in acolytes:
-		vigil.bearer.pace = minf(vigil.bearer.pace, a.pace * BEARER_LEAD)
+	_pace_bearer()
 	vigil.start()
 	_lantern = vigil.bearer.ground_pos
+
+
+## The bearer keeps BEARER_LEAD of his slowest living acolyte's pace; an acolyte taking the flame up keeps to the same rule
+## for the one left, so the Vigil stays together to the end.
+func _pace_bearer() -> void:
+	for a in vigil.acolytes:
+		if _alive(a):
+			vigil.bearer.pace = minf(vigil.bearer.pace, a.pace * BEARER_LEAD)
+
+
+func _on_flame_passed(_to: Person) -> void:
+	_pace_bearer()
+	rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME")
 
 
 func step(delta: float) -> void:

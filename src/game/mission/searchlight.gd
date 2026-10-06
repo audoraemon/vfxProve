@@ -1,8 +1,9 @@
 class_name Searchlight
 extends RefCounted
 ## Halcyon's Searchlight (v0.10 M4, spec §4.1, the Vigil Flame's Phase 2): beams of gold light from the Temple's spire.
-## Each beam is a pool of light on the ground, POOL_R round, swept about the town on a slow, predictable path: turning
-## round the spire at SPIN while reaching in and out between NEAR and FAR over REACH_PERIOD. One beam lights first, a
+## Each beam is a pool of light on the ground, POOL_R round, swept out from the spire on a slow, predictable path: turning
+## round it at SPIN while reaching in and out between NEAR and FAR over REACH_PERIOD, so at its farthest it lights the
+## ground past the town's walls, up to FAR + POOL_R (28 units) from the spire. One beam lights first, a
 ## second SECOND_AFTER later, turning the other way. A Will-o'-Wisp is a decoy (lure()): the beam nearest it goes to it
 ## and stays DECOY_SECONDS. In the clock's last SEARCH_LAST seconds a beam stops to search at the latest noise (hear():
 ## the director hears casts and deaths), and a newer noise moves it. A beam moves at most BEAM_SPEED, so it slides

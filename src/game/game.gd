@@ -1092,8 +1092,9 @@ func _flow_campaign(step: Callable) -> void:
 	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
 	(_mission.rules().director as VigilFlameDirector).home = true
 	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
-	# The flame home with no beam ever on Wren earns its bonus (Task 5): +1 DP on top of the win's 2.
-	var dp2 := dp1 + CampaignDef.WIN_DP + (CampaignDef.BONUS_DP if CampaignState._bonus_earned(result) else 0)
+	# The flame home with no beam ever on Wren (the light never wakes here) earns Unseen hands: +1 DP on top of the win's 2,
+	# expected outright, so a bonus that went missing would fail this step rather than be read back from the result.
+	var dp2 := dp1 + CampaignDef.WIN_DP + CampaignDef.BONUS_DP
 	step.call(save.campaign.night == 2 and save.campaign.path() == CampaignDef.THEFT and save.campaign.dp == dp2
 		and String(result.get("reason", "")) == "flame", "the flame home: Night 3 next, on the Theft path, %d DP" % dp2)
 

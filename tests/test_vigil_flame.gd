@@ -166,6 +166,10 @@ static func _cast(t) -> void:
 		"no arrow yet; the strip shows Wren coming and the route shortening")
 	t.check(OUT.distance_to(d.searchlight.spire) > Searchlight.FAR + Searchlight.POOL_R
 		and AWAY.distance_to(d.searchlight.spire) > Searchlight.FAR + Searchlight.POOL_R, "the tests' staging lies beyond the light")
+	# A beam must be able to keep to its path (the tests aim at it): it outruns the fastest the sweep ever moves it, the
+	# spin at the far reach plus the reach swinging in and out.
+	var sweep_max := Searchlight.SPIN * Searchlight.FAR + (Searchlight.FAR - Searchlight.NEAR) * PI / Searchlight.REACH_PERIOD
+	t.check(Searchlight.BEAM_SPEED > sweep_max, "a beam outruns its own sweep (%.1f over %.1f)" % [Searchlight.BEAM_SPEED, sweep_max])
 	_done(s)
 
 
@@ -365,10 +369,16 @@ static func _focus(t) -> void:
 	_bearer_out(s)
 	_clear_watchers(d)
 	var acolyte: Person = d.vigil.acolytes[0]
+	var trailing: Person = d.vigil.acolytes[1]
+	# The acolyte who will take the flame up is the brisker of the two: his own pace would leave the other behind.
+	acolyte.pace = 1.0
+	trailing.pace = 0.4
 	crowd._field.kill(d.vigil.bearer, &"doom")
 	_run(s, VigilRoute.TICK + DT)
 	t.check(d.vigil.bearer == acolyte and (s.banners as Array).has("AN ACOLYTE TAKES UP THE FLAME"),
 		"the bearer struck down, an acolyte takes up the flame")
+	t.check(acolyte.pace <= trailing.pace * VigilFlameDirector.BEARER_LEAD + 0.001,
+		"the new bearer too walks a step slower than the acolyte left (%.2f vs %.2f)" % [acolyte.pace, trailing.pace])
 	_arrive(acolyte, OUT + Vector2(2.0, 0.0))
 	_run(s, DT)
 	var fell := acolyte.ground_pos

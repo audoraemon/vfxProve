@@ -44,9 +44,11 @@ const EVENTS_TOP := 44.0
 ## Halcyon's Gaze under the clock (v0.10), where the Banishing Rite's bar would sit (an Unaware town has no rite).
 const GAZE_BAR := Vector2(120.0, 4.0)
 const GAZE_TOP := 30.0
-## How far above a marked person's feet their mark sits, and its half size (v0.10).
+## How far above a marked person's feet their mark sits, its half size, and its dark edge (v0.10; M5 doubled it and gave
+## it an edge, so it reads on the cobbles, and draws it under the banners and the slots).
 const MARK_LIFT := 22.0
-const MARK_R := 2.0
+const MARK_R := 4.0
+const MARK_EDGE := Color(0.04, 0.04, 0.06, 0.9)
 ## The screen height to lay out against before the Control has been sized (headless tests).
 const SCREEN_H := 360.0
 ## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
@@ -199,15 +201,23 @@ func _draw_gaze(w: float) -> void:
 	draw_rect(Rect2(at, Vector2(roundf(GAZE_BAR.x * f), GAZE_BAR.y)), UiTheme.COL_GOLD.lerp(UiTheme.COL_BAD, f))
 
 
-## A small diamond over each person the director marks (v0.10).
+## A small diamond over each person the director marks (v0.10), edged dark.
 func _draw_marks() -> void:
 	if _rules.director == null:
 		return
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
 	for m: Array in _rules.director.marks():
 		var c: Vector2 = (xf * Iso.ground_to_screen(m[0] as Vector2) - Vector2(0.0, MARK_LIFT)).round()
-		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -MARK_R), c + Vector2(MARK_R, 0), c + Vector2(0, MARK_R),
-			c + Vector2(-MARK_R, 0)]), m[1] as Color)
+		var shape := mark_shape(c)
+		draw_colored_polygon(shape, m[1] as Color)
+		shape.append(shape[0])
+		draw_polyline(shape, MARK_EDGE, 1.0)
+
+
+## The diamond a mark is drawn as, centred on `c` (screen pixels).
+static func mark_shape(c: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([c + Vector2(0.0, -MARK_R), c + Vector2(MARK_R, 0.0), c + Vector2(0.0, MARK_R),
+		c + Vector2(-MARK_R, 0.0)])
 
 
 ## Where the marked person's feet are on the screen, or Vector2.INF with nobody marked. The world point goes through
@@ -369,11 +379,12 @@ func _draw() -> void:
 	else:
 		_draw_rows()
 	_draw_status(w)
+	# The marks over people (v0.10) go under the banners and the slots (M5): they never hide one.
+	_draw_marks()
 	_draw_banners(w)
 	_draw_subtitle(w)
 	_draw_slots(w)
 	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
-	_draw_marks()
 	_draw_marker()
 
 

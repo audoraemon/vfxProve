@@ -137,6 +137,13 @@ static func run(t) -> void:
 	six.free()
 	six_rules.free()
 
+	# The marks over people (v0.10; M5 made them bigger and outlined, so they read on the cobbles): a diamond MARK_R each
+	# way from its centre.
+	var shape := Hud.mark_shape(Vector2(100.0, 100.0))
+	t.check(Hud.MARK_R >= 4.0 and shape.size() == 4 and shape[0] == Vector2(100.0, 100.0 - Hud.MARK_R)
+		and shape[2] == Vector2(100.0, 100.0 + Hud.MARK_R) and Hud.MARK_EDGE.a > 0.5,
+		"a mark is a diamond %d px each way, with a dark edge (%s)" % [int(Hud.MARK_R), shape])
+
 	# The Warning (v0.08): the objective panel in place of the Citadel's, the messenger's marker and its edge arrow.
 	_warning(t, env, field, crowd, town)
 

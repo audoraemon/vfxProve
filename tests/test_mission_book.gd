@@ -75,6 +75,7 @@ static func run(t) -> void:
 		"the Vigil Flame is Tier 2, Unaware, on 3:00: lost to the Gaze, won by the flame home, lost at dawn (%s)" % [vf_reasons])
 	t.check(vf_dp <= 5 and Array(vf.default_loadout).all(func(k: String) -> bool: return vf.allows(k)),
 		"its default loadout is in its pool and fits a bitten Night 2's 5 DP (%d)" % vf_dp)
+	t.check(vf.bonuses().size() == 1 and vf.bonuses()[0].label == "Unseen hands", "one bonus, Unseen hands")
 	t.check(Array(mh.powers()) == MissionBook.VIGIL_POOL and Array(MissionBook.vigil_flame().powers()) == MissionBook.VIGIL_POOL,
 		"Mira's House and the Vigil Flame draft from the quiet five (%s)" % [mh.powers()])
 	var bl := MissionBook.broken_lanterns()

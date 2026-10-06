@@ -292,6 +292,9 @@ static func vigil_flame() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new(), ClockObjective.new(false, "Dawn", "late")]
 		return out
+	m.make_bonuses = func() -> Array[Objective]:
+		var out: Array[Objective] = [UnseenHandsObjective.new()]
+		return out
 	return m
 
 

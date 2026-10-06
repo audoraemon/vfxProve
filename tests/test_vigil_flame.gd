@@ -121,6 +121,12 @@ static func run(t) -> void:
 	_carry(t)
 	_ending(t)
 	_focus(t)
+	_light(t)
+	_touches(t)
+	_prayer(t)
+	_heard(t)
+	_bonus(t)
+	_teardown(t)
 
 
 static func _cast(t) -> void:
@@ -401,3 +407,143 @@ static func _focus(t) -> void:
 	t.check(d3.no_wren and d3.wren == null and (s3.rules as Rules).finished and (s3.rules as Rules).over_reason == "wren",
 		"with nobody left to be Wren, the night is lost")
 	_done(s3)
+
+
+## The swap wakes the Searchlight: one beam, a second 30 s on, the strip's search in the clock's last 20 s.
+static func _light(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	var banners: Array = s.banners
+	_do_swap(s)
+	t.check(d.searchlight.on and d.searchlight.beams() == 1 and banners.has("THE SPIRE FLARES"),
+		"the swap wakes the Searchlight: one beam")
+	_run(s, Searchlight.SECOND_AFTER)
+	t.check(d.searchlight.beams() == 2 and banners.has("A SECOND BEAM"), "30 s on, a second")
+	(s.rules as Rules).time_left = Searchlight.SEARCH_LAST
+	d.timeline.step(200.0)
+	_run(s, DT)
+	t.check(banners.has("THE LIGHT SEARCHES"), "in the last 20 s the light searches")
+	_done(s)
+
+
+## A beam on Wren adds TOUCH_GAZE once each time he comes into the light (review focus 4: a beam resting on him counts
+## once); found twice, the Gaze is full.
+static func _touches(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	_do_swap(s)
+	var w := d.wren
+	_arrive(w, d.searchlight.aim(0))
+	_run(s, DT)
+	t.check(d.touches == 1 and is_equal_approx(d.gaze.value, VigilFlameDirector.TOUCH_GAZE)
+		and (s.banners as Array).has("THE LIGHT FINDS THE BOY"), "a beam touching Wren adds 50 to the Gaze")
+	for i in 20:
+		_arrive(w, d.searchlight.aim(0))
+		_run(s, DT)
+	t.check(d.touches == 1 and is_equal_approx(d.gaze.value, VigilFlameDirector.TOUCH_GAZE),
+		"a beam resting on him counts once, until he leaves the light")
+	_arrive(w, OUT)
+	_run(s, DT)
+	_arrive(w, d.searchlight.aim(0))
+	_run(s, DT)
+	t.check(d.touches == 2 and d.gaze.is_full() and (s.rules as Rules).finished and (s.rules as Rules).over_reason == "gaze",
+		"found twice, the Gaze is full: the night is lost")
+	_done(s)
+
+
+## A Faithful a beam touches stops and prays PRAY_SECONDS where he stands, feeding the Gaze; one held does not.
+static func _prayer(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	_do_swap(s)
+	var free: Array[Person] = []
+	for x in d.faithful:
+		if not d.vigil.walkers().has(x):
+			free.append(x)
+	var f := free[0]
+	_arrive(f, d.searchlight.aim(0))
+	_run(s, DT)
+	t.check(d.praying.has(f) and f.mind == Person.Mind.DUTY and f.anchor.distance_to(f.ground_pos) < 0.01
+		and d.praying_count() == 1, "a Faithful the beam touches stops and prays where he stands")
+	var g0 := d.gaze.value
+	_run(s, 1.0)
+	t.near(d.gaze.value - g0, GazeMeter.PRAYER_PER_SECOND * VigilFlameDirector.PRAYER_SCALE, 0.06, "his prayer feeds the Gaze")
+	_run(s, VigilFlameDirector.PRAY_SECONDS)
+	t.check(not d.praying.has(f) and f.mind != Person.Mind.DUTY, "his prayer done, he goes back to his day")
+	var h := free[1]
+	h.confuse(15.0)
+	_arrive(h, d.searchlight.aim(0))
+	_run(s, DT)
+	t.check(not d.praying.has(h), "one held by Discord does not pray")
+	_done(s)
+
+
+## What the light hears: a cast (even before it wakes), not a whisper; a Will-o'-Wisp is a decoy and a noise; a death
+## is a noise.
+static func _heard(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var at := Vector2(4.0, 6.0)
+	rules.cast(_slot(rules, "discord"), at)
+	t.check(d.searchlight.noise == at, "a cast is a noise, heard even before the light wakes")
+	var c: Person = crowd.citizens[3]
+	rules.cast(_slot(rules, "whisper"), c.ground_pos, {"target": c, "to": c.ground_pos + Vector2(1.0, 0.0)})
+	t.check(d.searchlight.noise == at, "a Mind Whisper is unheard")
+	_do_swap(s)
+	var lure_at := d.searchlight.aim(0) + Vector2(3.0, 0.0)
+	rules.cast(_slot(rules, "wisp"), lure_at)
+	t.check(d.searchlight.decoy_beam == 0 and d.searchlight.decoy == lure_at and d.searchlight.noise == lure_at,
+		"a Will-o'-Wisp is a decoy the beam follows, and a noise")
+	var victim: Person = null
+	for p in crowd.citizens:
+		if _alive(p) and p != d.wren and not p.inside:
+			victim = p
+			break
+	crowd._field.kill(victim, &"doom")
+	t.check(d.searchlight.noise == victim.ground_pos, "a death is a noise")
+	_done(s)
+
+
+## Home with no beam ever on Wren: won, with Unseen hands, and the light dies; found once on the way: won without it.
+static func _bonus(t) -> void:
+	for touched in [false, true]:
+		var s := _setup()
+		var d: VigilFlameDirector = s.d
+		var rules: Rules = s.rules
+		_do_swap(s)
+		if touched:
+			_arrive(d.wren, d.searchlight.aim(0))
+			_run(s, DT)
+		_arrive(d.wren, d.shrine)
+		_run(s, DT)
+		var res := rules.result()
+		var earned: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
+		if not touched:
+			t.check(rules.won and earned and res.bonuses[0].label == "Unseen hands" and not d.searchlight.on,
+				"home unseen by any beam: won, and Unseen hands; the light dies")
+		else:
+			t.check(rules.won and not earned and int(res.get("touches", 0)) == 1, "found once on the way: won, without the bonus")
+		_done(s)
+
+
+## Review focus 5: let go mid-Phase 2, the light is out, the prayers get up, and the world's signals are let go.
+static func _teardown(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	var rules: Rules = s.rules
+	_do_swap(s)
+	var f: Person = null
+	for x in d.faithful:
+		if not d.vigil.walkers().has(x):
+			f = x
+			break
+	_arrive(f, d.searchlight.aim(0))
+	_run(s, DT)
+	d.teardown()
+	t.check(not d.searchlight.on and d.praying.is_empty() and f.mind != Person.Mind.DUTY
+		and not rules.cast_made.is_connected(d._on_cast)
+		and not (s.crowd as Crowd)._field.enemy_killed.is_connected(d._on_killed),
+		"let go mid-search: the light out, the prayers released, the world's signals let go")
+	_done(s)

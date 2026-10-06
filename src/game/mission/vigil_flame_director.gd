@@ -15,7 +15,10 @@ extends MissionDirector
 ## - The flame home: Wren carries it to Mira's shrine at the west forest edge; there it relights with the god's own
 ##   flame and the night is won. Wren dead, or dawn first, loses it. A death someone sees adds to the Gaze, and the bell
 ##   fills it.
-## - Phase 2 (Task 5): from the swap until the flame is home, Halcyon's Searchlight sweeps the town.
+## - Phase 2: from the swap until the flame is home, Halcyon's Searchlight (Searchlight, drawn by SearchlightFx) sweeps
+##   the town from the Temple's spire: one beam, a second 30 s on, a Will-o'-Wisp a decoy, and in the clock's last 20 s
+##   a beam stopping to search at the latest noise (any cast but a whisper, any death). A beam touching Wren adds
+##   TOUCH_GAZE (two fill the Gaze); a Faithful it touches stops and prays.
 
 ## Mira's shrine at the west forest edge, outside the west wall (ground units; moved to the nearest open ground), and how
 ## near Wren must bring the flame.
@@ -54,6 +57,16 @@ const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, 
 ## A death someone sees adds this share of GazeMeter.SEEN_DEATH in this mission (FlameGaze): Task 7's lever, so the
 ## shared GazeMeter stays as Mira's House and Broken Lanterns have it.
 const SEEN_DEATH_SCALE := 1.0
+## Phase 2 (spec §4.1): a beam touching Wren adds TOUCH_GAZE, once each time he comes into the light (two fill the Gaze).
+## A Faithful a beam touches stops and prays PRAY_SECONDS where he stands; on his duty within PRAY_REACH of that spot
+## he prays, feeding the Gaze (GazeMeter.pray(), scaled by PRAYER_SCALE: Task 7's lever for this mission alone). The
+## Vigil's walkers and report carriers never stop to pray.
+const TOUCH_GAZE := GazeMeter.SEARCHLIGHT
+const PRAY_SECONDS := 5.0
+const PRAY_REACH := 0.6
+const PRAYER_SCALE := 1.0
+## Casts the light does not hear: a Mind Whisper speaks in the mind.
+const UNHEARD := ["whisper"]
 
 var vigil: VigilRoute
 var temple_door := Vector2.INF
@@ -81,6 +94,13 @@ var homeward := false
 var _lantern := Vector2.INF
 var _appeared_at := 0.0
 var _tick := 0.0
+## Phase 2: how many times a beam has found Wren; the Faithful at prayer in the light -> [seconds left, where they
+## kneel]; the bench's light, with no quarry (bench_beams()).
+var touches := 0
+var praying := {}
+var benching := false
+var _in_light := false
+var _fx: SearchlightFx
 
 
 func _begin() -> void:
@@ -295,40 +315,136 @@ func marker() -> Vector2:
 
 
 func report() -> Dictionary:
-	return {"swapped": swapped, "seen": swap_seen, "reports": reports_started, "home": home}
+	return {"swapped": swapped, "seen": swap_seen, "reports": reports_started, "home": home, "touches": touches}
 
 
 func teardown() -> void:
 	_unhook_kills(_on_killed)
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
+		rules.cast_made.disconnect(_on_cast)
 	_phase2_end()
+	if is_instance_valid(_fx):
+		_fx.end_now()
+	_fx = null
+	if ctx != null and ctx.impact != null:
+		ctx.impact.dim(0.0, 4.0)
 	vigil = null
 	timeline = null
 
 
-## Task 5 fills these in: Phase 2's Searchlight -- listening for casts, the strip's search, the light lit at the swap
-## and stepped, a noise heard, and the light put out.
 func _listen() -> void:
-	pass
+	rules.cast_made.connect(_on_cast)
 
 
+## The strip's search: in the clock's last Searchlight.SEARCH_LAST seconds, while the light is awake.
 func _add_events() -> void:
-	pass
+	timeline.add(maxf(rules.time_left - Searchlight.SEARCH_LAST, 0.0), "search", "The light searches", Callable(),
+		func() -> bool: return searchlight.on)
 
 
+## The real flame leaves the lantern: the spire flares and the Searchlight wakes, one beam.
 func _phase2_begin() -> void:
-	pass
+	searchlight.light()
+	rules.banner.emit("THE SPIRE FLARES")
+	_show_light()
 
 
-func _phase2_step(_delta: float) -> void:
-	pass
+func _phase2_step(delta: float) -> void:
+	if not searchlight.on:
+		return
+	var had := searchlight.beams()
+	searchlight.step(delta, rules.time_left)
+	if searchlight.beams() > had:
+		rules.banner.emit("A SECOND BEAM")
+	if benching:
+		return
+	_touch()
+	_pray(delta)
 
 
-func _noise(_at: Vector2) -> void:
-	pass
+## A noise at `at` (any cast but a whisper, any death): where a searching beam stops in the clock's last seconds.
+func _noise(at: Vector2) -> void:
+	searchlight.hear(at)
 
 
+## The light put out (the flame home, or the director let go): the beams die, the Faithful at prayer get up, and the
+## drawing fades the dim away (SearchlightFx).
 func _phase2_end() -> void:
-	pass
+	searchlight.put_out()
+	for k: Variant in praying.keys():
+		if _alive(k) and (k as Person).mind == Person.Mind.DUTY:
+			(k as Person).leave_shelter(false)
+	praying.clear()
+	_in_light = false
+
+
+## A cast the light hears (Rules.cast_made): a noise, unless UNHEARD; a Will-o'-Wisp a decoy too.
+func _on_cast(_slot: int, key: String, at: Vector2) -> void:
+	if key in UNHEARD:
+		return
+	_noise(at)
+	if key == "wisp":
+		searchlight.lure(at)
+
+
+## The Searchlight drawn, when the director has the battlefield's effects (never in tests).
+func _show_light() -> void:
+	if ctx != null and ctx.overhead != null and not is_instance_valid(_fx):
+		_fx = FxTimeline.cast(SearchlightFx, ctx, searchlight.spire, {"light": searchlight}) as SearchlightFx
+
+
+## A beam coming onto Wren adds TOUCH_GAZE, once each time he comes into the light.
+func _touch() -> void:
+	var lit := _alive(wren) and not wren.inside and searchlight.touches(wren.ground_pos)
+	if lit and not _in_light:
+		touches += 1
+		gaze.add(TOUCH_GAZE)
+		rules.banner.emit("THE LIGHT FINDS THE BOY")
+	_in_light = lit
+
+
+## The Faithful a beam touches stop and pray where they stand for PRAY_SECONDS; at prayer they feed the Gaze. The Vigil's
+## walkers, report carriers and anyone held, frightened or busy elsewhere do not stop.
+func _pray(delta: float) -> void:
+	var walking: Array[Person] = vigil.walkers() if vigil != null else ([] as Array[Person])
+	for f in faithful:
+		if praying.has(f) or not _alive(f) or f.inside or f.mind in BLIND or walking.has(f) or _carrying(f):
+			continue
+		if not (f.mind in RESUMABLE or f.mind == Person.Mind.DUTY):
+			continue
+		if searchlight.touches(f.ground_pos):
+			praying[f] = [PRAY_SECONDS, f.ground_pos]
+			f.go_duty(f.ground_pos)
+	for k: Variant in praying.keys():
+		var e: Array = praying[k]
+		e[0] = float(e[0]) - delta
+		if _alive(k) and float(e[0]) > 0.0:
+			continue
+		praying.erase(k)
+		if _alive(k) and (k as Person).mind == Person.Mind.DUTY:
+			(k as Person).leave_shelter(false)
+	gaze.pray(praying_count(), delta * PRAYER_SCALE)
+
+
+## The Faithful at prayer now: alive and out, on their duty within PRAY_REACH of where they knelt.
+func praying_count() -> int:
+	var n := 0
+	for k: Variant in praying.keys():
+		if not _alive(k):
+			continue
+		var p := k as Person
+		var spot: Vector2 = praying[k][1]
+		if not p.inside and p.mind == Person.Mind.DUTY and p.ground_pos.distance_to(spot) <= PRAY_REACH:
+			n += 1
+	return n
+
+
+## The bench and the photograph (v0.10 M4, spec §7): the Searchlight lit at once with both beams, sweeping with no
+## quarry. Nothing it touches counts and no Faithful prays, so the night runs on.
+func bench_beams() -> void:
+	benching = true
+	searchlight.light(Searchlight.SECOND_AFTER)
+	_show_light()
 
 
 ## The Vigil Flame's Gaze: a seen death adds SEEN_DEATH_SCALE of GazeMeter.SEEN_DEATH; all else is GazeMeter's.

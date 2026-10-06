@@ -1006,9 +1006,9 @@ func _night_to_redraft(path: String) -> void:
 
 
 ## The Lantern campaign through the screens (v0.10), from the title: Night 1 won on its clock, Night 2's three cards
-## and the Theft placeholder held, Night 3's Festival lost on its clock (a bite, and the Theft ending), then the ending's
-## two pages; a fresh campaign after it; nights left unfinished (review focus 2); the board after the campaign (review
-## focus 5). Starts and ends on the title.
+## and the Vigil Flame won with its flame home, Night 3's Festival lost on its clock (a bite, and the Theft ending),
+## then the ending's two pages; a fresh campaign after it; nights left unfinished (review focus 2); the board after the
+## campaign (review focus 5). Starts and ends on the title.
 func _flow_campaign(step: Callable) -> void:
 	var quiet := PackedStringArray(["whisper", "doom", "discord"])
 	var board_kit := save.loadout_for(MissionBook.WARNING)
@@ -1065,7 +1065,7 @@ func _flow_campaign(step: Callable) -> void:
 	step.call(save.loadout_for(MissionBook.WARNING) == board_kit and not bool(result.get("best", false)),
 		"a campaign night leaves the board's Warning alone: its loadout %s, no NEW BEST" % [save.loadout_for(MissionBook.WARNING)])
 
-	# Night 2: three cards, the Theft placeholder held until dawn.
+	# Night 2: three cards, the Vigil Flame won by bringing its flame home.
 	res.action.emit("next")
 	night = _screen_node as CampaignScreen
 	step.call(screen == Screen.CAMPAIGN and night != null and night.options.size() == 3 and night.chosen == "",
@@ -1079,10 +1079,12 @@ func _flow_campaign(step: Callable) -> void:
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
-	_mission.rules().time_left = 0.01
+	(_mission.rules().director as VigilFlameDirector).home = true
 	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
-	step.call(save.campaign.night == 2 and save.campaign.path() == CampaignDef.THEFT and save.campaign.dp == dp1 + 2
-		and String(result.get("reason", "")) == "held", "the night held: Night 3 next, on the Theft path, %d DP" % (dp1 + 2))
+	# The flame home with no beam ever on Wren earns its bonus (Task 5): +1 DP on top of the win's 2.
+	var dp2 := dp1 + CampaignDef.WIN_DP + (CampaignDef.BONUS_DP if CampaignState._bonus_earned(result) else 0)
+	step.call(save.campaign.night == 2 and save.campaign.path() == CampaignDef.THEFT and save.campaign.dp == dp2
+		and String(result.get("reason", "")) == "flame", "the flame home: Night 3 next, on the Theft path, %d DP" % dp2)
 
 	# Night 3: the Festival alone, in an unwarned town, lost on its clock.
 	(_screen_node as ResultsScreen).action.emit("next")
@@ -1091,7 +1093,7 @@ func _flow_campaign(step: Callable) -> void:
 	night.choose(MissionBook.FEAST_FESTIVAL)
 	night.click(night.button_rect("draft").get_center())
 	prep = _screen_node as PrepareScreen
-	step.call(prep != null and prep.draft.slots == 4 and prep.draft.capacity == dp1 + 2, "with 4 slots and %d DP" % (dp1 + 2))
+	step.call(prep != null and prep.draft.slots == 4 and prep.draft.capacity == dp2, "with 4 slots and %d DP" % dp2)
 	prep.draft.preselect(quiet)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
@@ -1100,7 +1102,7 @@ func _flow_campaign(step: Callable) -> void:
 		and not _mission.night().bell_rang, "the Festival plays as a night of one act, its town unwarned")
 	_mission.rules().time_left = 0.01
 	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
-	step.call(save.campaign.bites == 1 and save.campaign.dp == dp1 + 1 and save.campaign.ending == CampaignDef.FALSE_LANTERN,
+	step.call(save.campaign.bites == 1 and save.campaign.dp == dp2 - CampaignDef.BITE_DP and save.campaign.ending == CampaignDef.FALSE_LANTERN,
 		"the square closed: a bite, and the Theft path's ending (%s)" % save.campaign.ending)
 
 	# The ending's two pages, then the title.

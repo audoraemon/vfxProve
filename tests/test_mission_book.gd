@@ -55,7 +55,7 @@ static func run(t) -> void:
 		t.check(not board.has(id), "and it is not on the board (%s)" % id)
 	t.check(board == ["warning", "long_night", "last_judgement"], "the board lists what it did (%s)" % [board])
 
-	# Night 2's placeholders (M1): Tier 2, an Unaware town, unscored, held until dawn.
+	# Night 2's three missions (M2-M4): Tier 2, an Unaware town, unscored.
 	var mh := MissionBook.miras_house()
 	var mh_reasons := []
 	for o in mh.objectives():
@@ -64,10 +64,17 @@ static func run(t) -> void:
 		and mh_reasons == ["gaze", "believers"] and is_equal_approx(mh.clock, 150.0),
 		"Mira's House is Tier 2, Unaware, on 2:30, lost to the Gaze, won by Believers (%s)" % [mh_reasons])
 	var vf := MissionBook.vigil_flame()
-	var held := []
+	var vf_reasons := []
 	for o in vf.objectives():
-		held.append(o.reason)
-	t.check(vf.director == null and held == ["held"], "the Vigil Flame is still a placeholder held until dawn")
+		vf_reasons.append(o.reason)
+	var vf_dp := 0
+	for key in vf.default_loadout:
+		vf_dp += int(PowerBook.get_power(key).dp)
+	t.check(vf.tier == 2 and vf.profile == "unaware" and not vf.scored and vf.director == VigilFlameDirector
+		and vf_reasons == ["gaze", "flame", "late"] and is_equal_approx(vf.clock, 180.0),
+		"the Vigil Flame is Tier 2, Unaware, on 3:00: lost to the Gaze, won by the flame home, lost at dawn (%s)" % [vf_reasons])
+	t.check(vf_dp <= 5 and Array(vf.default_loadout).all(func(k: String) -> bool: return vf.allows(k)),
+		"its default loadout is in its pool and fits a bitten Night 2's 5 DP (%d)" % vf_dp)
 	t.check(Array(mh.powers()) == MissionBook.VIGIL_POOL and Array(MissionBook.vigil_flame().powers()) == MissionBook.VIGIL_POOL,
 		"Mira's House and the Vigil Flame draft from the quiet five (%s)" % [mh.powers()])
 	var bl := MissionBook.broken_lanterns()

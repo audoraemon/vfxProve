@@ -253,8 +253,8 @@ static func _judgement_line(n: NightState) -> String:
 
 
 ## Night 2 of the campaign, the Vigil (v0.10): one mission per path. Mira's House (the Faith path, M2) leads four of the
-## grieving to Mira's journal unseen, before dawn (MirasHouseDirector); Broken Lanterns (the Ruin path) is M3's; the
-## Vigil Flame is still M1's placeholder held until dawn, with the spec's brief and pool, until M4 builds it.
+## grieving to Mira's journal unseen, before dawn (MirasHouseDirector); Broken Lanterns (the Ruin path) is M3's, and the
+## Vigil Flame (the Theft path) M4's.
 static func miras_house() -> MissionDef:
 	var m := _vigil(MIRAS_HOUSE, "Mira's House", PackedStringArray(["Her journal waits in a shuttered house.",
 		"Lead the grieving to it unseen."]), PackedStringArray(VIGIL_POOL))
@@ -275,9 +275,24 @@ static func miras_house() -> MissionDef:
 	return m
 
 
+## Night 2 of the campaign, the Theft path (v0.10 M4): Wren swaps Halcyon's flame out of the Vigil's lantern unseen and
+## carries it to Mira's shrine under the Searchlight (VigilFlameDirector). The default loadout costs 5 DP, so it fits a
+## Night 2 after a bite.
 static func vigil_flame() -> MissionDef:
-	return _vigil(VIGIL_FLAME, "The Vigil Flame", PackedStringArray(["A priest carries Halcyon's flame.",
+	var m := _vigil(VIGIL_FLAME, "The Vigil Flame", PackedStringArray(["A priest carries Halcyon's flame.",
 		"A mortal hand must steal it."]), PackedStringArray(VIGIL_POOL))
+	m.goal = "Have Wren swap Halcyon's flame unseen, and carry it to Mira's shrine under the searchlight"
+	m.goal_label = "The flame is stolen"
+	m.lose = "The Lantern looks, Wren dies, the flame goes home to the Temple, or dawn comes first"
+	m.clock = 180.0
+	m.camera_at = VigilFlameDirector.CAMERA_AT
+	m.intro_from = VigilFlameDirector.CAMERA_AT + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "discord", "wisp"])
+	m.director = VigilFlameDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new(), ClockObjective.new(false, "Dawn", "late")]
+		return out
+	return m
 
 
 ## Night 2 of the campaign, the Ruin path (v0.10 M3): break Halcyon's six wayside shrines and let them drain before the

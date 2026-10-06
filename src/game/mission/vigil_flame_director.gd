@@ -88,7 +88,7 @@ func _begin() -> void:
 	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
 	shrine = _walkable(MIRA_SHRINE)
 	searchlight = Searchlight.new().setup(TownLayout.TEMPLE.get_center())
-	_choose_faithful()
+	_choose_faithful(FAITHFUL)
 	_start_vigil()
 	crowd._field.enemy_killed.connect(_on_killed)
 	_listen()
@@ -100,34 +100,18 @@ func _begin() -> void:
 	rules.banner.emit("STEAL HALCYON'S FLAME")
 
 
-## The clergy, and FAITHFUL lay citizens spread through the rest, are Halcyon's Faithful.
-func _choose_faithful() -> void:
-	var lay: Array[Person] = []
-	var clergy: Array[Person] = []
-	_sort_citizens(clergy, lay)
-	for p in clergy:
-		_make_faithful(p)
-	_spread_faithful(lay, FAITHFUL)
-
-
 ## The flame-bearer and his two acolytes are the clergy nearest the Temple's door (else any Faithful). They walk the six
 ## shrines' route round and round at VIGIL_PACE, the flame passing on if the bearer falls.
 func _start_vigil() -> void:
-	var pool: Array[Person] = faithful.duplicate()
-	pool.sort_custom(func(a: Person, b: Person) -> bool:
-		var ca := a.profile.role == CitizenProfile.Role.CLERGY
-		var cb := b.profile.role == CitizenProfile.Role.CLERGY
-		if ca != cb:
-			return ca
-		return a.ground_pos.distance_to(temple_door) < b.ground_pos.distance_to(temple_door))
-	if pool.is_empty():
+	var walkers := _vigil_walkers(faithful.duplicate(), temple_door)
+	if walkers.is_empty():
 		return
 	var route := PackedVector2Array()
 	for spot: Vector2 in BrokenLanternsDirector.SHRINE_SPOTS:
 		route.append(_walkable(_walkable(spot) + BrokenLanternsDirector.RELIGHT_OFF))
 	var acolytes: Array[Person] = []
-	acolytes.assign(pool.slice(1, 3))
-	vigil = VigilRoute.new().setup(route, pool[0], acolytes)
+	acolytes.assign(walkers.slice(1))
+	vigil = VigilRoute.new().setup(route, walkers[0], acolytes)
 	vigil.loop = true
 	vigil.pass_flame = true
 	vigil.busy = _carrying

@@ -374,19 +374,14 @@ func _vigil_passes() -> void:
 	for f in faithful:
 		if _alive(f) and not f.inside and f != venn and not _carrying(f):
 			free.append(f)
-	free.sort_custom(func(a: Person, b: Person) -> bool:
-		var ca := a.profile.role == CitizenProfile.Role.CLERGY
-		var cb := b.profile.role == CitizenProfile.Role.CLERGY
-		if ca != cb:
-			return ca
-		return a.ground_pos.distance_to(temple_door) < b.ground_pos.distance_to(temple_door))
-	if not free.is_empty():
+	var walkers := _vigil_walkers(free, temple_door)
+	if not walkers.is_empty():
 		var route := PackedVector2Array()
 		for off in VIGIL_ROUTE:
 			route.append(_walkable(door + (off as Vector2)))
 		var acolytes: Array[Person] = []
-		acolytes.assign(free.slice(1, 3))
-		vigil = VigilRoute.new().setup(route, free[0], acolytes)
+		acolytes.assign(walkers.slice(1))
+		vigil = VigilRoute.new().setup(route, walkers[0], acolytes)
 		vigil.busy = _carrying
 		vigil.start()
 	var walking := vigil.walkers() if vigil != null else ([] as Array[Person])

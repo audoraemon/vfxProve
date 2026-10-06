@@ -114,6 +114,31 @@ func _spread_faithful(pool: Array[Person], count: int) -> void:
 		i += stride
 
 
+## Makes every cleric, and `count` of the other lay citizens spread through the rest, Halcyon's Faithful (v0.10: Broken
+## Lanterns, the Vigil Flame).
+func _choose_faithful(count: int) -> void:
+	var lay: Array[Person] = []
+	var clergy: Array[Person] = []
+	_sort_citizens(clergy, lay)
+	for p in clergy:
+		_make_faithful(p)
+	_spread_faithful(lay, count)
+
+
+## The Vigil's walkers (v0.10): sorts `pool` in place, the clergy first and each nearest the Temple's door `door` first,
+## and returns the first three: the flame-bearer, then his two acolytes (fewer if the pool is short, none if empty).
+func _vigil_walkers(pool: Array[Person], door: Vector2) -> Array[Person]:
+	pool.sort_custom(func(a: Person, b: Person) -> bool:
+		var ca := a.profile.role == CitizenProfile.Role.CLERGY
+		var cb := b.profile.role == CitizenProfile.Role.CLERGY
+		if ca != cb:
+			return ca
+		return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))
+	var out: Array[Person] = []
+	out.assign(pool.slice(0, 3))
+	return out
+
+
 ## Lets go of `handler` as the field's enemy_killed listener, if it is still one (for teardown()).
 func _unhook_kills(handler: Callable) -> void:
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(handler):

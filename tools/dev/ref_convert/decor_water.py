@@ -14,9 +14,9 @@ of the dock behind them they hide.
           the bend; a planked deck (lit along its far edge, no bulwark there: the dock side) with a hatch, a raised
           stern castle with a railing, the bowsprit, two masts (64 and 48 px) with gaff sails in panels (lit aft,
           shaded by the mast), a blue pennant, and the procedural ship's rigging as clean 1 px rope lines (no
-          outline), the same in every frame: each mast's forestay to the bowsprit's end and backstay to the stern,
-          drawn across the sails as the procedural ship draws them, and a shroud to either rail (the far one behind
-          the sails). Anchored at the hull's
+          outline), the same in every frame: each mast's forestay to the bowsprit's end (over the sails) and a
+          shroud to either rail (the far one behind the sails), the main mast's backstay to the stern behind its
+          sail (the fore mast's would run level across both sails, so it has none). Anchored at the hull's
           waterline centre (ground (0, 0) at the water), as the procedural ship stands on SHIP_AT.
   boat_1  Decor.Kind.BOAT along ground x: DecorArt._boat's hull (1.5 units long, gunwale 12 px, its ends 3 px higher),
   boat_2  clinker strakes on the near side, the dark inside with ribs and two thwarts, a short mast (30 px) near the
@@ -287,18 +287,20 @@ def ship(frame=0):
             cv.put(m, PENNANT[1] if j < 2 else PENNANT[0])
             pennant |= m
     # The rigging, 1 px ropes as the procedural ship's, the same in every frame (only the pennant moves, and it stays
-    # over them): each mast's shroud to the far rail first, behind the sails (bare, under what is drawn), then over
-    # everything the shroud to the near rail, the forestay from its masthead to the bowsprit's end and the backstay
-    # down to the stern.
+    # over them). Behind the sails (bare, the sails' pixels win): each mast's shroud to the far rail, and the main
+    # mast's backstay down to the stern (it lies in the sails' plane). The fore mast has no stay to the stern: from
+    # its masthead that stay ran level across both sails (the stern is as high on screen as the fore top), so its
+    # shrouds hold it aft. Then over everything: each shroud to the near rail and each forestay to the bowsprit's end
+    # (both diagonal).
     for x, tall, _span in MASTS:
-        top_pt = P(x, 0, DECK + tall)
         cv.bare_line(P(x, 0, DECK + tall - SHROUD_DROP), P(x - SHROUD_AFT, -HW * 0.85, DECK - 1), ROPE, 0.8)
+    main_x, main_tall, _span = MASTS[0]
+    cv.bare_line(P(main_x, 0, DECK + main_tall), P(-HL, 0, DECK + 12), ROPE, 0.8)
     for x, tall, _span in MASTS:
         top_pt = P(x, 0, DECK + tall)
         cv.rope_line(P(x, 0, DECK + tall - SHROUD_DROP), P(x - SHROUD_AFT, HW * 0.97, DECK + 1), ROPE, 0.9,
                      keep=pennant)
         cv.rope_line(top_pt, sprit, ROPE, 1.0, keep=pennant)
-        cv.rope_line(top_pt, P(-HL, 0, DECK + 12), ROPE, 0.8, keep=pennant)
     # The wake along the near waterline, see-through.
     cv.under_line(P(-HL + 0.1, HW * 0.75, 0), P(HL, HW * 0.3, 0), WAKE, 0.7)
     cv.under_line(P(HL + 0.1, 0.1, 0), P(HL + 0.35, 0.25, 0), WAKE, 0.6)

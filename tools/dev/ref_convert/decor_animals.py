@@ -287,8 +287,8 @@ COW_HEAD_MID = [
 # half way (1), reaches the grass and chews there (2), and is half way back up (3, the same head as 1, the tail
 # flicking): still, half, down, half, so the loop runs smoothly both ways.
 COW_POSES = {
-    False: (None, (COW_HEAD_MID, (13, -32)), (COW_HEAD_DOWN, (14, -15)), (COW_HEAD_MID, (13, -32))),
-    True: (None, (COW_HEAD_MID, (14, -30)), (COW_HEAD_DOWN, (15, -15)), (COW_HEAD_MID, (14, -30))),
+    False: (None, (COW_HEAD_MID, (13, -27)), (COW_HEAD_DOWN, (14, -15)), (COW_HEAD_MID, (13, -27))),
+    True: (None, (COW_HEAD_MID, (14, -26)), (COW_HEAD_DOWN, (15, -15)), (COW_HEAD_MID, (14, -26))),
 }
 
 

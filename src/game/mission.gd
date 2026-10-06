@@ -520,7 +520,7 @@ func _play_ending() -> void:
 		return
 	_night.record(_act.id, res, _crowd)
 	if _act.is_last():
-		finished.emit(_night.result(res, _def.id))
+		finished.emit(_night.result(res, _def.id, _def.scored))
 	else:
 		act_over.emit(res)
 

@@ -39,6 +39,17 @@ static func run(t) -> void:
 	t.check(int(r.score) == n.night_score(9000) and String(r.rank) == NightState.rank_for(int(r.score)),
 		"scored as the night, not the last act")
 	t.check(String(r.reason) == "citadel", "and ends on the last act's reason")
+	# v0.10 M5: a night of one unscored act (the campaign's Feast) has the act's own goal, bonuses and time, and no rank.
+	var one := NightState.new()
+	var act := {"won": true, "reason": "festival", "time": 96.0, "bonuses": [{"label": "Before the bell", "earned": true}],
+		"goal": {"label": "The festival is broken", "done": true}}
+	one.record("festival", act, null)
+	var fr := one.result(act, "feast_festival", false)
+	t.check(not fr.has("score") and not fr.has("rank") and fr.won and String(fr.reason) == "festival"
+		and String(fr.goal.label) == "The festival is broken" and (fr.bonuses as Array).size() == 1
+		and is_equal_approx(float(fr.time), 96.0) and (fr.acts as Array).size() == 1,
+		"an unscored night of one act: its own goal, bonus and time, no rank (%s)" % [fr.keys()])
+	t.check(n.result(final, "long_night").has("rank"), "The Long Night keeps its rank")
 
 	# The town each act wants: Act I asleep; a rung bell wakes Act II; the Procession's outcome sets Act III.
 	var asleep := NightState.new()

@@ -92,6 +92,14 @@ const SAMPLE_NIGHT_RESULT := {
 	],
 	"bonuses": [], "goal": {"label": "The night is yours", "done": false},
 }
+## What --show=results-feast displays (v0.10 M5): the campaign's Feast won by breaking the festival, its bonus earned.
+const SAMPLE_FEAST_RESULT := {
+	"mission": "feast_festival", "won": true, "reason": "festival", "time": 96.0, "path": "",
+	"acts": [{"act": "festival", "won": true, "reason": "festival", "bonuses": [{"label": "Before the bell", "earned": true}],
+		"time": 96.0}],
+	"goal": {"label": "The festival is broken", "done": true}, "bonuses": [{"label": "Before the bell", "earned": true}],
+	"campaign": {"won": true, "dp_gain": 3, "dp": 13, "bites": 0, "ending": ""},
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
@@ -181,6 +189,9 @@ func _ready() -> void:
 			go_to(Screen.RESULTS)
 		"results-night":
 			result = SAMPLE_NIGHT_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
+		"results-feast":
+			result = SAMPLE_FEAST_RESULT.duplicate(true)
 			go_to(Screen.RESULTS)
 		"results-warning":
 			result = SAMPLE_WARNING_RESULT.duplicate(true)

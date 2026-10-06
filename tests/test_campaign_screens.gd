@@ -130,6 +130,16 @@ static func run(t) -> void:
 		"a lost night's line")
 	t.check(ResultsScreen.campaign_line({"won": false, "dp": 4, "bites": 3, "ending": "eaten"}) == "Halcyon has eaten you.",
 		"the last bite's line")
+	# v0.10 M5: the Feast's results -- its own goal and bonus, the time, no rank and no "Solved by" (it has none); The
+	# Warning still says what solved it.
+	var feast := {"mission": "feast_festival", "won": true, "reason": "festival", "time": 96.0,
+		"goal": {"label": "The festival is broken", "done": true}, "bonuses": [{"label": "Before the bell", "earned": true}]}
+	t.check(ResultsScreen.plain_rows(feast) == [["The festival is broken", "", true], ["Before the bell", "", true],
+		["Time", "1:36", false]], "the Feast's rows (%s)" % [ResultsScreen.plain_rows(feast)])
+	t.check(ResultsScreen.title_for(true, "festival") == "THE FEAST IS BROKEN"
+		and MissionBook.get_mission("feast_festival").name == "The Festival", "named the Festival, not Act II")
+	t.check((ResultsScreen.plain_rows(Game.SAMPLE_WARNING_RESULT).back() as Array) == ["Solved by", "VEIL", false],
+		"The Warning still says what solved it")
 	var pause := PauseMenu.new()
 	pause.setup(true)
 	t.check(String(pause._menu.items[3].action) == "campaign" and String(pause._menu.items[3].label) == "Campaign",

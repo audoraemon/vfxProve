@@ -345,6 +345,7 @@ static func _vigil(id: String, name: String, brief: PackedStringArray, pool: Pac
 
 ## Night 3 of the campaign, the Feast of Lanterns (v0.10): one of The Long Night's middle acts played on its own, as a
 ## night of one act. Its town comes from Night 1 through Mission.bell_rang; the act's rules are unchanged.
+## Its results are its act's own (an unscored night): a one-act night cannot reach the three-act ranks.
 static func feast(act_id: String) -> MissionDef:
 	var ln := long_night()
 	var a := ln.act(act_id)
@@ -361,7 +362,7 @@ static func feast(act_id: String) -> MissionDef:
 	m.dp_capacity = 10
 	m.clock = a.clock
 	m.profile = "night"
-	m.scored = true
+	m.scored = false  # one act, unscored (v0.10 M5): the campaign never used the score
 	m.default_loadout = ln.default_loadout
 	m.intro_from = a.intro_from
 	m.camera_at = a.camera_at

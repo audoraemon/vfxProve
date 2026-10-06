@@ -211,25 +211,36 @@ func _draw_night() -> void:
 		UiTheme.COL_GOLD)
 
 
+## An unscored result's rows (v0.08; v0.10 M5 the Feast's too), as [label, value, ok]: the goal and each bonus with a tick
+## or a cross (value ""), the time, and "Solved by" only when the result says what solved it (The Warning's).
+static func plain_rows(result: Dictionary) -> Array:
+	var goal: Dictionary = result.get("goal", {})
+	var rows := [[String(goal.get("label", "")), "", bool(goal.get("done", false))]]
+	for b: Dictionary in result.get("bonuses", []):
+		rows.append([String(b.get("label", "")), "", bool(b.get("earned", false))])
+	rows.append(["Time", UiTheme.clock(float(result.get("time", 0.0))), false])
+	if result.has("solved_by"):
+		rows.append(["Solved by", solved_text(result), false])
+	return rows
+
+
 ## An unscored mission (v0.08): the mission's name under the title, then its goal and each bonus with a tick or a
-## cross, the time it took, "Solved by", and NEW BEST! when it is one.
+## cross, the time it took, "Solved by" when the result has it (v0.10 M5), and NEW BEST! when it is one.
 func _draw_unscored() -> void:
 	var called := MissionBook.get_mission(String(_result.get("mission", ""))).name
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(called, UiTheme.SIZE_BODY) * 0.5), 84.0), called,
 		UiTheme.SIZE_BODY, UiTheme.COL_DIM)
 	var y := PLAIN_TOP
-	var goal: Dictionary = _result.get("goal", {})
-	_plain_row(y, String(goal.get("label", "")), "", bool(goal.get("done", false)))
-	y += PLAIN_ROW
-	for b: Dictionary in _result.get("bonuses", []):
-		_plain_row(y, String(b.get("label", "")), "", bool(b.get("earned", false)))
+	var rows := plain_rows(_result)
+	var ticks := 1 + (_result.get("bonuses", []) as Array).size()
+	for i in rows.size():
+		if i == ticks:
+			# The rule between the ticked rows and the figures.
+			_ui.draw_line(Vector2(PLAIN_L, y - 13.0), Vector2(PLAIN_R, y - 13.0), UiTheme.COL_GOLD_DARK, -1.0)
+			y += 4.0
+		var row: Array = rows[i]
+		_plain_row(y, String(row[0]), String(row[1]), bool(row[2]))
 		y += PLAIN_ROW
-	_ui.draw_line(Vector2(PLAIN_L, y - 13.0), Vector2(PLAIN_R, y - 13.0), UiTheme.COL_GOLD_DARK, -1.0)
-	y += 4.0
-	_plain_row(y, "Time", UiTheme.clock(float(_result.get("time", 0.0))))
-	y += PLAIN_ROW
-	_plain_row(y, "Solved by", solved_text(_result))
-	y += PLAIN_ROW
 	if bool(_result.get("best", false)):
 		var best := "NEW BEST!"
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_BIG) * 0.5), y + 10.0), best,

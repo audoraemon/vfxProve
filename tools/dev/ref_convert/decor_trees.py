@@ -10,10 +10,9 @@ the bounding box of its polygons) and kept at native scale.
   town_oak_1..3     the town's decor trees behind the houses (TownDecor._houses: their height in size.x, 24..32; the
   town_pine_1..2    procedural tree 20..27 px wide): the same cuts at 26, 29, 32 (oaks) and 28, 32 px (pines)
 
-Forest greens (forest_* only; the town trees keep trees.tone's greens): after the fit, forest_shade() takes the
-leaves darker and less yellow, toward the procedural forest (ArtKit.OAK / PINE, hue ~100..120, saturation ~0.5): the
-hue pulled FOREST_HUE_PULL of the way to FOREST_HUE, saturation times FOREST_SAT, value times FOREST_VAL. It maps
-colour to colour, so the fitted palette stays as clean as it was; the stump is cut before it (its bark unchanged).
+Greens: after the fit every set's leaves go through trees.shade_greens() (darker and less yellow, toward the
+procedural forest; the same shift the batch 3 building trees take, so all trees match in hue). The stump is cut
+before it, from the fitted greens (its bark samples unchanged).
 
 Anchor: the trunk's foot (convert's anchor: the lowest body row's middle), the tree's ground point, as the procedural
 tree's base. The canvas is cropped round the tree (1 px margin) and ends 2 px under the foot.
@@ -55,37 +54,6 @@ SETS = {
     "town_pine_1": ("tree_2", 32),
     "town_pine_2": ("pine_cone", 28),
 }
-
-
-FOREST_HUE, FOREST_HUE_PULL = 112.0, 0.45
-FOREST_SAT, FOREST_VAL = 0.78, 0.9
-
-
-def forest_shade(c):
-    """A forest tree's leaves (green pixels: hue 55..175, saturation over 0.15) darker and less yellow (see the module
-    doc); other pixels (trunk, outline) untouched. c: an RGBA uint8 array, returned changed."""
-    rgb = c[..., :3].astype(float) / 255.0
-    mx, mn = rgb.max(-1), rgb.min(-1)
-    d = mx - mn
-    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-    safe = np.where(d > 0, d, 1.0)
-    h = np.where(mx == r, ((g - b) / safe) % 6, np.where(mx == g, (b - r) / safe + 2, (r - g) / safe + 4)) * 60.0
-    s = np.where(mx > 0, d / np.where(mx > 0, mx, 1.0), 0.0)
-    leaf = (c[..., 3] > 0) & (d > 0) & (h >= 55) & (h <= 175) & (s > 0.15)
-    h2 = h + (FOREST_HUE - h) * FOREST_HUE_PULL
-    s2 = s * FOREST_SAT
-    v2 = mx * FOREST_VAL
-    # HSV back to RGB
-    hp = (h2 % 360) / 60.0
-    cc = v2 * s2
-    x = cc * (1 - np.abs(hp % 2 - 1))
-    z = np.zeros_like(cc)
-    conds = [hp < 1, hp < 2, hp < 3, hp < 4, hp < 5, hp >= 5]
-    out = np.stack([np.select(conds, q) for q in ([cc, x, z, z, x, cc], [x, cc, cc, x, z, z], [z, z, x, cc, cc, x])], -1)
-    out += (v2 - cc)[..., None]
-    c = c.copy()
-    c[leaf, :3] = np.clip(np.round(out[leaf] * 255.0), 0, 255).astype(np.uint8)
-    return c
 
 
 def cut_cone():
@@ -181,8 +149,7 @@ def stump(c, anchor):
 def build(name, tmp):
     c, anchor = fit(name, tmp)
     st = stump(c, anchor)                # from the fitted greens: the stump's bark samples stay as they were
-    if name.startswith("forest_"):
-        c = forest_shade(c)
+    c = trees.shade_greens(c)
     path = decor_common.write_set(name, Image.fromarray(c, "RGBA"), anchor)
     Image.fromarray(st, "RGBA").save(path.parent / "stump.png")
     al = c[..., 3] > 0
@@ -199,8 +166,7 @@ def preview(names, out):
         for n in names:
             c, anchor = fit(n, tmp)
             st = stump(c, anchor)
-            if n.startswith("forest_"):
-                c = forest_shade(c)
+            c = trees.shade_greens(c)
             both = np.concatenate([c, np.zeros((c.shape[0], 4, 4), np.uint8), st], 1)
             im = Image.fromarray(both, "RGBA")
             bg = Image.new("RGBA", im.size, (96, 120, 64, 255))

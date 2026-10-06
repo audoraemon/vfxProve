@@ -17,6 +17,10 @@ as for the street posts). It makes the forest trees 46-58 px tall and 34-43 px w
 they stand as tall as the procedural town oak (1.8 x 25..29 = 45-52 px).
 
 Greens: the sheet's yellow-lime highlights and teal shadows are pulled toward the town's leaf greens (GREEN_PULL) and a little muted, as the town's olive greens.
+Then (art polish 2) every finished still and the idle strip go through shade_greens(): the leaves darker and less
+yellow, as the decor forest's, so every tree in the town matches in hue. The states are made from the fitted greens
+first (the char, bites and ruins come out as before); only green pixels change (the crown, the ruins' tuft), never the
+trunk, stump, log or char.
 
 Anchor: the trunk's foot stands at the plot's centre, which is 16 x size px above the footprint's front corner.
 
@@ -149,6 +153,41 @@ def tone(a):
     a = a.copy()
     a[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
     return a
+
+
+SHADE_HUE, SHADE_HUE_PULL = 112.0, 0.45
+SHADE_SAT, SHADE_VAL = 0.78, 0.9
+
+
+def shade_greens(c):
+    """Leaves (green pixels: hue 55..175, saturation over 0.15) darker and less yellow, toward the procedural forest
+    (ArtKit.OAK / PINE: hue ~100..120, saturation ~0.5): the hue pulled SHADE_HUE_PULL of the way to SHADE_HUE,
+    saturation times SHADE_SAT, value times SHADE_VAL. Bark, char, the cut face and the outline (not green) are
+    untouched. A colour-to-colour map, so a fitted palette stays clean. Shared by every tree set (trees.py's tree_n /
+    oak_n states and idle, decor_trees.py's forest and town sets) so all trees match in hue. c: an RGBA uint8 array,
+    returned changed (a copy)."""
+    rgb = c[..., :3].astype(float) / 255.0
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    d = mx - mn
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    safe = np.where(d > 0, d, 1.0)
+    h = np.where(mx == r, ((g - b) / safe) % 6, np.where(mx == g, (b - r) / safe + 2, (r - g) / safe + 4)) * 60.0
+    s = np.where(mx > 0, d / np.where(mx > 0, mx, 1.0), 0.0)
+    leaf = (c[..., 3] > 0) & (d > 0) & (h >= 55) & (h <= 175) & (s > 0.15)
+    h2 = h + (SHADE_HUE - h) * SHADE_HUE_PULL
+    s2 = s * SHADE_SAT
+    v2 = mx * SHADE_VAL
+    # HSV back to RGB
+    hp = (h2 % 360) / 60.0
+    cc = v2 * s2
+    x = cc * (1 - np.abs(hp % 2 - 1))
+    z = np.zeros_like(cc)
+    conds = [hp < 1, hp < 2, hp < 3, hp < 4, hp < 5, hp >= 5]
+    out = np.stack([np.select(conds, q) for q in ([cc, x, z, z, x, cc], [x, cc, cc, x, z, z], [z, z, x, cc, cc, x])], -1)
+    out += (v2 - cc)[..., None]
+    c = c.copy()
+    c[leaf, :3] = np.clip(np.round(out[leaf] * 255.0), 0, 255).astype(np.uint8)
+    return c
 
 
 def _from_hls(h, l, s):
@@ -344,10 +383,10 @@ def build(name, tmp):
     used = max(int(np.nonzero((c[..., 3] > 0).any(0))[0].max()), int(np.nonzero((rn[..., 3] > 0).any(0))[0].max()))
     W = used + 3
     c, rn = c[:, :W], rn[:, :W]
-    Image.fromarray(c, "RGBA").save(d / "intact.png")
-    Image.fromarray(damaged(c, info, seed), "RGBA").save(d / "damaged.png")
-    Image.fromarray(rn, "RGBA").save(d / "ruins.png")
-    Image.fromarray(sway(c, info), "RGBA").save(d / "idle.png")
+    Image.fromarray(shade_greens(c), "RGBA").save(d / "intact.png")
+    Image.fromarray(shade_greens(damaged(c, info, seed)), "RGBA").save(d / "damaged.png")
+    Image.fromarray(shade_greens(rn), "RGBA").save(d / "ruins.png")
+    Image.fromarray(shade_greens(sway(c, info)), "RGBA").save(d / "idle.png")
     H = c.shape[0]
     print("%s: scale %.3f size %s anchor %s foot %s crown rows %d-%d" % (name, info["scale"], [W, H], list(anchor),
                                                                        info["foot"], info["top"], info["crown_bot"]))

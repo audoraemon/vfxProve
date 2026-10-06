@@ -62,9 +62,10 @@ const ROW_H := 13.0
 ## screen's edge, this far in, pointing at him.
 const MARKER_LIFT := 26.0
 const EDGE_MARGIN := 10.0
-## The tags' arrows keep to a frame (v0.10 M6): EDGE_MARGIN in from the screen's sides, below the clock and the Gaze bar
-## (TAG_TOP) and just above the slot row, so a tag under the clock or under a slot is pointed at, and no arrow covers either.
-const TAG_TOP := 40.0
+## The tags' arrows keep to a frame (v0.10 M6): EDGE_MARGIN in from the screen's sides, below the clock, the Gaze bar and the
+## events plate (TAG_TOP, clear of a two-row plate, which ends at 71, and of an up arrow's disc, 5 px above its tip) and just
+## above the slot row, so a tag under any of them is pointed at, and no arrow is covered.
+const TAG_TOP := 78.0
 ## How to win (v0.10 M6, spec §3): a line under the objectives, wrapped to HINT_W, at most HINT_LINES lines, pale gold.
 const HINT_W := 228.0
 const HINT_LINES := 3

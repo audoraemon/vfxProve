@@ -118,12 +118,12 @@ static func _edge(t) -> void:
 		and not Hud.tag_frame(VIEW).has_point(Vector2(5.0, 180.0)), "the frame holds the middle, not the margin or beyond")
 
 
-## The arrows' frame (v0.10 M6): below the clock and the Gaze bar, above the slot row. A tag under the slot row or under
+## The arrows' frame (v0.10 M6): below the clock, the Gaze bar and the events plate, above the slot row. A tag under the slot row or under
 ## the clock is pointed at from inside it; a plain tag there still shows.
 static func _frame(t) -> void:
 	var f := Hud.tag_frame(VIEW)
 	t.check(f.position == Vector2(Hud.EDGE_MARGIN, Hud.TAG_TOP) and f.end.y <= Hud.SLOT_TOP and f.end.x == VIEW.x - Hud.EDGE_MARGIN,
-		"the arrows' frame: in from the sides, below the clock, above the slots (%s)" % f)
+		"the arrows' frame: in from the sides, below the clock and the events plate, above the slots (%s)" % f)
 	var low := Transform2D(0.0, Vector2(320.0, 350.0) - Iso.ground_to_screen(Vector2.ZERO))
 	var under := Hud.tag_layout(_tags([MapTag.place(Vector2.ZERO, Color.GOLD, "LANTERN"), MapTag.person(Vector2.ZERO, Color.RED)]),
 		low, VIEW)
@@ -132,6 +132,6 @@ static func _frame(t) -> void:
 	var high := Transform2D(0.0, Vector2(320.0, 30.0) - Iso.ground_to_screen(Vector2.ZERO))
 	var over := Hud.tag_layout(_tags([MapTag.place(Vector2.ZERO, Color.GOLD, "TEMPLE")]), high, VIEW)
 	t.check(String(over[0].mode) == "arrow" and absf((over[0].arrow as Vector2).y - Hud.TAG_TOP) < 0.01,
-		"a place under the clock is pointed at from just below it")
+		"a place under the clock is pointed at from just below the events plate")
 	t.check(Hud.edge_point(Vector2(900.0, 180.0), VIEW) == Vector2(VIEW.x - Hud.EDGE_MARGIN, 180.0),
 		"The Warning's marker keeps its own frame: the whole screen, EDGE_MARGIN in")

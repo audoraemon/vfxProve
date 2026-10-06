@@ -70,6 +70,24 @@ static func _alive(p: Variant) -> bool:
 	return is_instance_valid(p) and (p as Person).is_alive()
 
 
+## The first of the director's tags labelled `label`, or null.
+static func _tag(d: MissionDirector, label: String) -> MapTag:
+	for m in d.tags():
+		if m.label == label:
+			return m
+	return null
+
+
+## The HUD shows the Vigil Flame's `phase` line under the objectives, not the mission's own: the director's phase word
+## is a real MissionHints key (v0.10 M6).
+static func _hint_is(s: Dictionary, phase: String) -> bool:
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	var line := MissionHints.line(MissionBook.VIGIL_FLAME, phase)
+	var ok := line != "" and hud.hint_text() == line and line != MissionHints.line(MissionBook.VIGIL_FLAME)
+	hud.free()
+	return ok
+
+
 static func _slot(rules: Rules, key: String) -> int:
 	for i in rules.loadout.size():
 		if rules.key(i) == key:
@@ -131,6 +149,8 @@ static func run(t) -> void:
 	_bonus(t)
 	_teardown(t)
 	_lines(t)
+	_tags(t)
+	_freed_bearer(t)
 	_loose_ends(t)
 
 
@@ -162,13 +182,14 @@ static func _cast(t) -> void:
 	t.check(reach, "Mira's shrine stands at the west edge, and Wren can walk to it from anywhere on the route")
 	t.check(d.gaze != null and d.gaze.value == 0.0 and d.wren == null and not d.appeared and not d.swapped
 		and d.searchlight != null and not d.searchlight.on, "the Gaze at 0, no Wren yet, the light asleep")
-	var marks := d.tags()
-	t.check(marks.size() == 2 and marks[0].color == VigilFlameDirector.MARK_SHRINE
-		and marks[1].at == d.vigil.bearer.ground_pos and marks[1].color == VigilFlameDirector.MARK_FLAME,
-		"the HUD marks Mira's shrine and the lantern")
+	var tags := d.tags()
+	t.check(tags.size() == 2 and tags[0].label == "HALCYON'S FLAME" and tags[0].at == d.vigil.bearer.ground_pos
+		and tags[0].color == VigilFlameDirector.MARK_FLAME and tags[0].edge and tags[1].label == "MIRA'S SHRINE"
+		and tags[1].at == d.shrine and tags[1].color == VigilFlameDirector.MARK_SHRINE and tags[1].edge,
+		"the HUD names the flame and Mira's shrine, both pointed at from the edge")
 	var next := d.timeline.upcoming(2)
-	t.check(d.marker() == Vector2.INF and next.size() == 2 and next[0].id == "wren" and next[1].id == "route",
-		"no arrow yet; the strip shows Wren coming and the route shortening")
+	t.check(d.hint_phase() == "" and next.size() == 2 and next[0].id == "wren" and next[1].id == "route",
+		"before Wren, the mission's own line; the strip shows Wren coming and the route shortening")
 	t.check(OUT.distance_to(d.searchlight.spire) > Searchlight.FAR + Searchlight.POOL_R
 		and AWAY.distance_to(d.searchlight.spire) > Searchlight.FAR + Searchlight.POOL_R, "the tests' staging lies beyond the light")
 	# A beam must be able to keep to its path (the tests aim at it): it outruns the fastest the sweep ever moves it, the
@@ -188,10 +209,10 @@ static func _wren(t) -> void:
 	_run(s, VigilFlameDirector.TICK + DT)
 	t.check(w.mind == Person.Mind.DUTY and absf(w.anchor.distance_to(d.flame_at()) - VigilFlameDirector.WATCH_DIST) < 1.0,
 		"he keeps watch a few steps from the lantern (%.1f)" % w.anchor.distance_to(d.flame_at()))
-	var seen := false
-	for m in d.tags():
-		seen = seen or (m.at == w.ground_pos and m.color == VigilFlameDirector.MARK_WREN)
-	t.check(seen and d.marker() == w.ground_pos, "the HUD marks him, and points at him")
+	var wt := _tag(d, "WREN")
+	t.check(wt != null and wt.at == w.ground_pos and wt.color == VigilFlameDirector.MARK_WREN and wt.edge
+		and d.hint_phase() == "wren", "the HUD names him and points at him; the hint says whisper him to the flame")
+	t.check(_hint_is(s, "wren"), "and the HUD shows that line, under the objectives")
 	_done(s)
 
 
@@ -305,6 +326,8 @@ static func _route(t) -> void:
 	_arrive(d2.vigil.bearer, d2.temple_door)
 	_run(s2, DT)
 	t.check(d2.swapped and d2.homeward and not d2.kept and not (s2.rules as Rules).finished, "home with the false flame, nothing is lost")
+	t.check(d2.hint_phase() == "carry" and _tag(d2, "TEMPLE") == null,
+		"swapped on the way home: the hint says carry it, and the Temple is not tagged (it holds only the false flame)")
 	_done(s2)
 
 
@@ -326,6 +349,7 @@ static func _carry(t) -> void:
 		and (s.banners as Array).has("MIRA'S SHRINE BURNS AGAIN") and ResultsScreen.title_for(true, "flame") == "THE FLAME IS STOLEN",
 		"the flame at Mira's shrine wins the night")
 	t.check(bool(rules.result().get("home", false)) and bool(rules.result().get("swapped", false)), "the results report it")
+	t.check(_tag(d, "WREN") == null, "the flame home, Wren is no longer tagged")
 	_done(s)
 
 
@@ -598,6 +622,83 @@ static func _lines(t) -> void:
 	_wren_now(d3)
 	t.check(d3.no_wren and (s3.lines as Array).is_empty(), "with nobody to be Wren, nothing is said of him (%s)" % [s3.lines])
 	_done(s3)
+
+
+## v0.10 M6 (spec §4.3): while Wren may be seen taking it, each Faithful near enough to see him is marked red, never the
+## bearer; the Temple is tagged while the Vigil takes the real flame home; once swapped the hint says carry it, and the
+## flame's and the Temple's tags go; dead, Wren is not tagged (review focus 2).
+static func _tags(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	_wren_now(d)
+	_bearer_out(s)
+	_clear_watchers(d)
+	_bring_wren(d)
+	var reds := 0
+	for m in d.tags():
+		reds += 1 if m.color == VigilFlameDirector.MARK_WATCHED and m.label == "" else 0
+	t.check(reds == 0, "the bearer alone by Wren: nobody marked red")
+	var acolyte := d.vigil.acolytes[0]
+	_arrive(acolyte, d.wren.ground_pos + Vector2(0.5, 0.0))
+	var marked := false
+	for m in d.tags():
+		marked = marked or (m.at == acolyte.ground_pos and m.color == VigilFlameDirector.MARK_WATCHED and m.label == "")
+	t.check(marked, "an acolyte beside him: marked red, a witness")
+	d.timeline.step(VigilFlameDirector.ROUTE_AT - VigilFlameDirector.WREN_AT)
+	var temple := _tag(d, "TEMPLE")
+	t.check(d.homeward and temple != null and temple.at == d.temple_door and temple.edge and d.hint_phase() == "homeward",
+		"the Vigil turned for home: the Temple is tagged, and the hint says hurry")
+	t.check(_hint_is(s, "homeward"), "and the HUD shows that line")
+	(s.crowd as Crowd)._field.kill(d.wren, &"doom")
+	t.check(_tag(d, "WREN") == null, "dead, Wren is not tagged (review focus 2)")
+	_done(s)
+
+	var s2 := _setup()
+	var d2: VigilFlameDirector = s2.d
+	_do_swap(s2)
+	t.check(d2.swapped and d2.hint_phase() == "carry" and _tag(d2, "HALCYON'S FLAME") == null and _tag(d2, "TEMPLE") == null
+		and _tag(d2, "MIRA'S SHRINE") != null and _tag(d2, "WREN") != null,
+		"swapped: the hint says carry it home; Wren and Mira's shrine stay tagged, the lantern's flame does not")
+	t.check(_hint_is(s2, "carry"), "and the HUD shows that line")
+	_arrive(d2.vigil.acolytes[0], d2.wren.ground_pos + Vector2(0.5, 0.0))
+	var late := 0
+	for m in d2.tags():
+		late += 1 if m.color == VigilFlameDirector.MARK_WATCHED and m.label == "" else 0
+	t.check(late == 0, "the flame taken, a Faithful beside Wren is no witness: nobody is marked red")
+	_done(s2)
+
+
+## v0.10 M6: the whole Vigil fallen and the last bearer's body freed, the witnesses are still tagged and the swap still
+## judged (a freed person passed on as a Person would abort both calls).
+static func _freed_bearer(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	var crowd: Crowd = s.crowd
+	_wren_now(d)
+	_bearer_out(s)
+	_clear_watchers(d)
+	var walkers := d.vigil.walkers()
+	for p in walkers:
+		crowd._field.kill(p, &"doom")
+	_run(s, VigilRoute.TICK * 3.0)
+	var last := d.vigil.bearer
+	t.check(not d.vigil.active and is_instance_valid(last) and not walkers.is_empty(),
+		"the whole Vigil has fallen; the lantern lies where the last bearer fell")
+	last.free()
+	var f: Person = null
+	for p in d.faithful:
+		if is_instance_valid(p) and p.is_alive() and not walkers.has(p):
+			f = p
+			break
+	_bring_wren(d)
+	_arrive(f, d.wren.ground_pos + Vector2(0.5, 0.0))
+	var red := false
+	for m in d.tags():
+		red = red or (m.at == f.ground_pos and m.color == VigilFlameDirector.MARK_WATCHED and m.label == "")
+	t.check(red, "the last bearer's body freed: the Faithful beside Wren is still tagged a witness")
+	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.2)
+	t.check(d.swapped and d.swap_seen, "and the swap is still seen")
+	_done(s)
 
 
 ## v0.10 M5: the Faithful who sees the swap runs to the Temple at his own pace, not the Vigil's; after the swap there is

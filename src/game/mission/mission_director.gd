@@ -163,7 +163,7 @@ func _unhook_kills(handler: Callable) -> void:
 
 ## The nearest Faithful within `reach` of `at` who is out in the open, alive, not held by the god and not `exclude`
 ## (v0.10: who sees what the god does); else null.
-func faithful_seeing(at: Vector2, reach: float, exclude: Person = null) -> Person:
+func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null) -> Person:
 	var best: Person = null
 	for f in faithful:
 		if _sees(f, at, reach, exclude) and (best == null or f.ground_pos.distance_to(at) < best.ground_pos.distance_to(at)):
@@ -173,7 +173,7 @@ func faithful_seeing(at: Vector2, reach: float, exclude: Person = null) -> Perso
 
 ## Every Faithful who would see `at` from within `reach`, as faithful_seeing() judges, but `exclude`, in the order of
 ## `faithful` (v0.10 M6: the watchers the HUD marks red).
-func watchers(at: Vector2, reach: float, exclude: Person = null) -> Array[Person]:
+func watchers(at: Vector2, reach: float, exclude: Variant = null) -> Array[Person]:
 	var out: Array[Person] = []
 	for f in faithful:
 		if _sees(f, at, reach, exclude):
@@ -181,10 +181,10 @@ func watchers(at: Vector2, reach: float, exclude: Person = null) -> Array[Person
 	return out
 
 
-## `f` would see `at`: alive, out in the open, not held by the god, not `exclude`, and within `reach` (v0.10 M6). `f` is a
-## Variant, as _alive()'s `p`: a Faithful's body is freed once their death fade ends, and a freed one cannot be passed
-## through a typed parameter.
-func _sees(f: Variant, at: Vector2, reach: float, exclude: Person) -> bool:
+## `f` would see `at`: alive, out in the open, not held by the god, not `exclude`, and within `reach` (v0.10 M6). `f` and
+## `exclude` are Variants because either may be a body already freed after its death fade, and a freed person passed on
+## as a Person aborts the call.
+func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
 	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude and f.ground_pos.distance_to(at) <= reach
 
 

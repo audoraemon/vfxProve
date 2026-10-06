@@ -54,6 +54,8 @@ const CAMERA_AT := Vector2(1.5, -8.0)
 const MARK_WREN := Color("8fe0ff")
 const MARK_FLAME := Color(0.95, 0.82, 0.42, 0.9)
 const MARK_SHRINE := Color("ff9a3a")
+## The red of the Temple's tag and of each witness's (v0.10 M6, spec §4.3).
+const MARK_WATCHED := Color("c8342a")
 ## Seconds between the director's looks at Wren's errand.
 const TICK := 0.5
 ## Minds Wren picks his errand up again from.
@@ -331,19 +333,38 @@ func wren_lost() -> bool:
 	return no_wren or (appeared and not _alive(wren))
 
 
-## The tags (v0.10 M6): Mira's shrine, the real flame while in its lantern, and Wren once he has come.
+## The tags (v0.10 M6, spec §4.3), the most important first:
+## - Wren, from his coming until the flame is home;
+## - the real flame while it is still in its lantern;
+## - Mira's shrine;
+## - all of those pointed at from the edge;
+## - the Temple while the Vigil takes the real flame home;
+## - while Wren may yet be seen taking the flame, a red diamond on each Faithful near enough to see him (never the
+##   bearer, who is robbed).
 func tags() -> Array[MapTag]:
-	var out: Array[MapTag] = [MapTag.person(shrine, MARK_SHRINE)]
+	var out: Array[MapTag] = []
+	var with_us := appeared and _alive(wren) and not wren.inside
+	if with_us and not home:
+		out.append(MapTag.person(wren.ground_pos, MARK_WREN, "WREN", true))
 	if not swapped and _lantern != Vector2.INF:
-		out.append(MapTag.person(_lantern, MARK_FLAME))
-	if appeared and _alive(wren) and not wren.inside:
-		out.append(MapTag.person(wren.ground_pos, MARK_WREN))
+		out.append(MapTag.person(_lantern, MARK_FLAME, "HALCYON'S FLAME", true))
+	out.append(MapTag.place(shrine, MARK_SHRINE, "MIRA'S SHRINE"))
+	if homeward and not swapped:
+		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
+	if with_us and not swapped:
+		for f in watchers(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null):
+			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
 	return out
 
 
-## The HUD's arrow: Wren, once he has come, until the flame is home.
-func marker() -> Vector2:
-	return wren.ground_pos if appeared and _alive(wren) and not home else Vector2.INF
+## The hint's phase (v0.10 M6, spec §4.3): "carry" once the flame is swapped, else "homeward" while the Vigil goes home,
+## else "wren" once he has come; "" before.
+func hint_phase() -> String:
+	if swapped:
+		return "carry"
+	if homeward:
+		return "homeward"
+	return "wren" if appeared else ""
 
 
 func report() -> Dictionary:

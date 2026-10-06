@@ -17,6 +17,12 @@ var timeline: EventTimeline
 var gaze: GazeMeter
 ## Halcyon's Faithful (v0.10), for the campaign's Night 2 missions: the people the director chose with _make_faithful().
 var faithful: Array[Person] = []
+## Reports of the god at work on their way to the Temple (v0.10: Mira's House, the Vigil Flame), and how many began.
+var reports: Array[TempleReport] = []
+var reports_started := 0
+
+## Minds a Faithful does not see from (v0.10): the god's own holds.
+const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 
 
 func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> MissionDirector:
@@ -112,3 +118,42 @@ func _spread_faithful(pool: Array[Person], count: int) -> void:
 func _unhook_kills(handler: Callable) -> void:
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(handler):
 		crowd._field.enemy_killed.disconnect(handler)
+
+
+## The nearest Faithful within `reach` of `at` who is out in the open, alive, not held by the god and not `exclude`
+## (v0.10: who sees what the god does); else null.
+func faithful_seeing(at: Vector2, reach: float, exclude: Person = null) -> Person:
+	var best: Person = null
+	for f in faithful:
+		if not _alive(f) or f.inside or f.mind in BLIND or f == exclude:
+			continue
+		var d := f.ground_pos.distance_to(at)
+		if d <= reach and (best == null or d < best.ground_pos.distance_to(at)):
+			best = f
+	return best
+
+
+## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.
+func _report(seer: Person, door: Vector2) -> void:
+	if _carrying(seer):
+		return
+	reports.append(TempleReport.new(seer, door))
+	reports_started += 1
+	rules.banner.emit("A FAITHFUL RUNS TO THE TEMPLE")
+
+
+## Each report runs on; one delivered fills the Gaze. Reports delivered or ended are let go.
+func _step_reports(delta: float) -> void:
+	for r in reports:
+		r.step(delta, crowd)
+		if r.delivered:
+			gaze.fill()
+	reports.assign(reports.filter(func(r: TempleReport) -> bool: return r.is_open()))
+
+
+## `p` is carrying a report to the Temple.
+func _carrying(p: Person) -> bool:
+	for r in reports:
+		if r.carrier == p:
+			return true
+	return false

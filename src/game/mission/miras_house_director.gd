@@ -22,8 +22,6 @@ const HEAR := 6.0
 ## The marks over the grieving and the Believers.
 const MARK_GRIEVING := Color(0.85, 0.75, 0.45, 0.8)
 const MARK_BELIEVER := Color("ff9a3a")
-## Minds a Faithful does not see from: the god's own holds.
-const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 ## How near a lure's light must stand to the house, and its lured to the house, for them to go in: a Will-o'-Wisp stands
 ## its lured on a ring up to WillOWisp.RING.y from the light.
 const LURE_REACH := WillOWisp.RING.y + Person.GOAL_REACH
@@ -56,8 +54,6 @@ var temple_door := Vector2.INF
 ## The grieving, Believers among them once they have read.
 var grieving: Array[Person] = []
 var believers: Array[Person] = []
-var reports: Array[TempleReport] = []
-var reports_started := 0
 var venn: Person
 ## The last Believer to finish reading: the journal goes with them.
 var journal: Person
@@ -134,11 +130,7 @@ func step(delta: float) -> void:
 	gaze.judge_deaths(crowd)
 	_doors()
 	_read(delta)
-	for r in reports:
-		r.step(delta, crowd)
-		if r.delivered:
-			gaze.fill()
-	reports.assign(reports.filter(func(r: TempleReport) -> bool: return r.is_open()))
+	_step_reports(delta)
 	_step_events(delta)
 	if crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
 		gaze.fill()
@@ -168,7 +160,7 @@ func _doors() -> void:
 		var seer := faithful_seeing(door, SIGHT)
 		if seer != null:
 			_turned[p] = true
-			_report(seer)
+			_report(seer, temple_door)
 			continue
 		_enter(p)
 
@@ -228,17 +220,7 @@ func _exit(p: Person) -> void:
 	p.leave_shelter(false)
 	var seer := faithful_seeing(door, SIGHT)
 	if seer != null:
-		_report(seer)
-
-
-## A Faithful runs to the Temple, unless already carrying a report.
-func _report(seer: Person) -> void:
-	for r in reports:
-		if r.carrier == seer:
-			return
-	reports.append(TempleReport.new(seer, temple_door))
-	reports_started += 1
-	rules.banner.emit("A FAITHFUL RUNS TO THE TEMPLE")
+		_report(seer, temple_door)
 
 
 ## Dawn: the roof falls on whoever is still inside, and the house is gone.
@@ -255,18 +237,6 @@ func _roof() -> void:
 	_reading.clear()
 	if house != null and not house.destroyed:
 		house.destroy(house.center(), &"fire")
-
-
-## The nearest Faithful within `reach` of `at` who is out in the open, alive, and not held by the god; else null.
-func faithful_seeing(at: Vector2, reach: float) -> Person:
-	var best: Person = null
-	for f in faithful:
-		if not _alive(f) or f.inside or f.mind in BLIND:
-			continue
-		var d := f.ground_pos.distance_to(at)
-		if d <= reach and (best == null or d < best.ground_pos.distance_to(at)):
-			best = f
-	return best
 
 
 func believers_outside() -> int:
@@ -356,7 +326,7 @@ func _venn_step(delta: float) -> void:
 		return
 	if goal == door and not _reading.is_empty():
 		venn_searching = false
-		_report(venn)
+		_report(venn, temple_door)
 		return
 	_venn_wait += delta
 	if _venn_wait >= VENN_STOP:
@@ -395,7 +365,7 @@ func _shout_step(delta: float) -> void:
 		shouter.leave_shelter(false)
 	shouter = null
 	if heard != null:
-		_report(heard)
+		_report(heard, temple_door)
 
 
 ## The flame-bearer and his acolytes: the clergy nearest the Temple (not the Inquisitor), else any Faithful.
@@ -460,13 +430,6 @@ func _flush() -> void:
 			continue
 		_exit(p)
 		p.panic(house.center() if house != null else door, 2.0)
-
-
-func _carrying(p: Person) -> bool:
-	for r in reports:
-		if r.carrier == p:
-			return true
-	return false
 
 
 ## The HUD's arrow: the Believer crying in the street.

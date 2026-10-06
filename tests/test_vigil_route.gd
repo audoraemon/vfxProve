@@ -164,4 +164,19 @@ static func run(t) -> void:
 	_arrive(carrier, errand)
 	_tick(v5)
 	t.check(carrier.anchor.distance_to(v5.goal()) < 0.01, "and walks the route once his errand is done")
+
+	# v0.10 M4, for the Vigil Flame: the route shortened, straight to one place, where the walk ends.
+	var b6: Person = crowd.citizens[24]
+	var a6: Array[Person] = [crowd.citizens[26]]
+	var v6 := VigilRoute.new().setup(points, b6, a6)
+	v6.loop = true
+	v6.start()
+	var home := grid.nearest_walkable(points[0] + Vector2(0.0, -3.0))
+	v6.shorten_to(home)
+	t.check(v6.route.size() == 1 and v6.route[0] == home and v6.leg == 0 and not v6.loop and v6.detour == Vector2.INF
+		and b6.mind == Person.Mind.DUTY and b6.anchor.distance_to(home) < 0.01,
+		"the route shortened, the bearer makes straight for the one place")
+	_arrive(b6, home)
+	_tick(v6)
+	t.check(v6.finished and not v6.active, "and there the walk is over")
 	_done(s)

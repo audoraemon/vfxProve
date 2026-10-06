@@ -7,6 +7,7 @@ extends RefCounted
 ## the walk goes round again from the first point (`loop`); the bearer turns aside to one place, then takes the route up
 ## where he left it (divert()); and a dead bearer's flame passes to the first living acolyte (`pass_flame`), so only all
 ## three dead end the walk.
+## The Vigil Flame (M4) shortens it: straight back to the Temple, where it ends (shorten_to()).
 
 ## The flame passed to `to` (pass_flame).
 signal flame_passed(to: Person)
@@ -78,6 +79,15 @@ func divert(at: Vector2) -> void:
 	if busy.is_valid() and bool(busy.call(bearer)):
 		return
 	bearer.go_duty(goal())
+
+
+## Send the walk straight to `at`, where it ends (v0.10 M4: the Vigil Flame's suspicious priest turns it home). It no
+## longer loops, and any detour is called off; on his way, the bearer makes for `at` at once.
+func shorten_to(at: Vector2) -> void:
+	route = PackedVector2Array([at])
+	leg = 0
+	loop = false
+	divert(Vector2.INF)
 
 
 func step(delta: float) -> void:

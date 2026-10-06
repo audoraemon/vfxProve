@@ -315,7 +315,7 @@ func tour() -> Array:
 	if temple_door != Vector2.INF:
 		out.append([temple_door, "The Temple. Faithful who see you run here."])
 	if _alive(venn):
-		out.append([venn.ground_pos, "Venn, the Inquisitor. She searches from 0:40."])
+		out.append([venn.ground_pos, "Venn, the Inquisitor. Soon she searches the houses."])
 	return out
 
 

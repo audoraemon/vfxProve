@@ -121,7 +121,7 @@ static func _stops(t) -> void:
 	t.check(stops.size() == 3 and stops[0][0] == m.door and stops[1][0] == m.temple_door
 		and stops[2][0] == m.venn.ground_pos and String(stops[0][1]) == "Mira's house. Her journal is inside."
 		and String(stops[1][1]) == "The Temple. Faithful who see you run here."
-		and String(stops[2][1]) == "Venn, the Inquisitor. She searches from 0:40.",
+		and String(stops[2][1]) == "Venn, the Inquisitor. Soon she searches the houses.",
 		"Mira's House tours her door, the Temple and the Inquisitor")
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
 	hud.set_caption("Mira's house. Her journal is inside.")
@@ -139,7 +139,7 @@ static func _stops(t) -> void:
 	t.check(bs.size() == 3 and bs[0][0] == b.standing_shrines()[0].center() and bs[1][0] == b.vigil.bearer.ground_pos
 		and bs[2][0] == b.temple_door and String(bs[0][1]) == "A lantern. Break it, then let it drain."
 		and String(bs[1][1]) == "The flame-bearer relights broken lanterns."
-		and String(bs[2][1]) == "Lantern Knights come out at 1:30.",
+		and String(bs[2][1]) == "The Temple. Lantern Knights come out of it later.",
 		"Broken Lanterns tours a lantern, the flame-bearer and the Temple")
 	_done(s2)
 

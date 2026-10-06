@@ -280,7 +280,7 @@ func tour() -> Array:
 	if vigil != null and _alive(vigil.bearer):
 		out.append([vigil.bearer.ground_pos, "The flame-bearer relights broken lanterns."])
 	if temple_door != Vector2.INF:
-		out.append([temple_door, "Lantern Knights come out at 1:30."])
+		out.append([temple_door, "The Temple. Lantern Knights come out of it later."])
 	return out
 
 

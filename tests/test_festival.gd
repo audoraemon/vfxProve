@@ -72,6 +72,7 @@ static func run(t) -> void:
 	_mayor_early_and_missing(t)
 	_mayor_and_goer_freed(t)
 	_clock(t)
+	_hint_clears_events(t)
 	_objectives(t)
 	_bell_quiet(t)
 	_mayor_frightened(t)
@@ -340,6 +341,32 @@ static func _clock(t) -> void:
 	_run(s, 2.0)
 	t.check(rules.finished and not rules.won and rules.over_reason == "closed", "at 2:30 it closes: lost (%s %s)" % [rules.won, rules.over_reason])
 	t.check(d.report().festival == "held", "the report says held")
+	_done(s)
+
+
+## v0.10 M6 final review: the festival's three unscored objective rows put the how-to-win plate at y 50, where the events
+## plate's two long rows (from about 90 s) used to run into it; the plate now starts 4 px below the events plate.
+static func _hint_clears_events(t) -> void:
+	var s := _setup(NightState.new())
+	_start(s, null)
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	var w := Hud.SCREEN_W
+	var natural := hud.hint_top()
+	t.check(hud.hint_text() != "" and hud.objective_rows().size() == 3 and natural == 50.0,
+		"the festival's hint sits under three unscored rows at the start (%s, %s)" % [hud.hint_text(), natural])
+	var started := hud.hint_rect()
+	t.check(not started.intersects(hud.events_rect(w)), "and clears the events plate (%s, %s)" % [started, hud.events_rect(w)])
+	_run(s, 95.0)
+	var rows := hud.event_rows()
+	var labels := []
+	for row: Array in rows:
+		labels.append(String(row[1]))
+	t.check(labels.has("The guard closes the square"), "by 95 s the events plate shows the guard's close (%s)" % [rows])
+	var events := hud.events_rect(w)
+	var plate := hud.hint_rect()
+	t.check(events.size != Vector2.ZERO and hud.hint_top() >= events.end.y + 4.0 and not plate.intersects(events),
+		"the hint plate starts 4 px below the events plate and the two do not meet (hint %s, events %s)" % [plate, events])
+	hud.free()
 	_done(s)
 
 

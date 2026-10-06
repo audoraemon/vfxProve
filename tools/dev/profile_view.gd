@@ -46,7 +46,7 @@ func _run() -> void:
 	while not mission.is_prewarmed or not mission.started():
 		await process_frame
 	# Past the intro, as a player would be, with the clock running.
-	mission._intro_left = 0.0
+	mission.skip_intro()
 	mission._rules.set_process(true)
 	var bf: Battlefield = mission._bf
 	bf.camera.zoom = Vector2.ONE * zoom

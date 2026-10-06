@@ -5,7 +5,10 @@ extends Control
 ## own under them, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
 ## without a score (v0.08: The Warning) lists its objectives top left, and its director's marked person -- the
 ## messenger -- wears a gold marker, or an arrow at the screen's edge points to him. It reads Rules, Crowd and
-## the Citadel and changes nothing; it redraws only when what it shows has changed.
+## the Citadel and changes nothing; it redraws only when what it shows has changed. v0.10 M6 adds the objective's
+## clarity: the director's tags (a labelled diamond over each person or place worth finding, or an arrow at the screen's
+## edge, kept to a frame; drawn first, under the HUD's own panels), the how-to-win plate under the objectives, and the
+## intro tour's caption above the slots.
 
 ## How long one banner stays up.
 const BANNER_SECONDS := 2.2
@@ -46,8 +49,8 @@ const EVENTS_TOP := 44.0
 const GAZE_BAR := Vector2(120.0, 4.0)
 const GAZE_TOP := 30.0
 ## A tag's diamond (v0.10's marks; M6's tags, MapTag): its half size unless the tag sets its own, and its dark edge (M5
-## doubled it and gave it an edge, so it reads on the cobbles). Tags are drawn first, under the rest of the HUD; their
-## edge arrows last, over it.
+## doubled it and gave it an edge, so it reads on the cobbles). Tags are drawn first, under the rest of the HUD, and their
+## edge arrows right after them, also under the HUD's panels; The Warning's marker draws last, over the slots.
 const MARK_R := 4.0
 const MARK_EDGE := Color(0.04, 0.04, 0.06, 0.9)
 ## A tag's label (v0.10 M6) stands this far above its diamond; an edge arrow's label starts this far in from its tip, past
@@ -203,13 +206,54 @@ static func hint_lines(text: String) -> PackedStringArray:
 	return UiTheme.wrap(text, HINT_W, UiTheme.SIZE_SMALL).slice(0, HINT_LINES)
 
 
+## How wide the how-to-win plate is as drawn (v0.10 M6): its widest line plus the plate's padding; 0 for no lines.
+static func hint_width(lines: PackedStringArray) -> float:
+	if lines.is_empty():
+		return 0.0
+	var wide := 0.0
+	for l in lines:
+		wide = maxf(wide, UiTheme.width(l, UiTheme.SIZE_SMALL))
+	return wide + 10.0
+
+
+## The events plate's rectangle on a screen `w` wide (v0.10 M6; factored out of _draw_events() so the how-to-win plate can
+## keep clear of it): centred under the clock, `Rect2()` when it has no rows.
+func events_rect(w: float) -> Rect2:
+	var rows := event_rows()
+	if rows.is_empty():
+		return Rect2()
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]) + "  " + String(row[1]), UiTheme.SIZE_SMALL))
+	# The plate starts 4 px above EVENTS_TOP, just under the rite's plate (which ends at 39 while it chants).
+	return Rect2(roundf((w - wide) * 0.5) - 4.0, EVENTS_TOP - 4.0, wide + 8.0, 5.0 + ROW_H * float(rows.size()))
+
+
 ## Where the how-to-win plate starts (v0.10 M6): under the objective panel of a scored mission, else under the objective
-## rows (at the top with none).
+## rows (at the top with none) -- and, when that would run it into the events plate (the events plate's left edge short
+## of this plate's right edge, the two sharing some height, a 4 px margin counted), 4 px below the events plate instead.
+## Read only, from the same data _draw() uses.
 func hint_top() -> float:
-	if _rules.mission.scored:
-		return OBJECTIVE_PANEL.end.y + 4.0
-	var rows := objective_rows().size()
-	return 2.0 + (5.0 + ROW_H * float(rows) + 4.0 if rows > 0 else 0.0)
+	var top := OBJECTIVE_PANEL.end.y + 4.0
+	if not _rules.mission.scored:
+		var rows := objective_rows().size()
+		top = 2.0 + (5.0 + ROW_H * float(rows) + 4.0 if rows > 0 else 0.0)
+	var lines := hint_lines(hint_text())
+	var events := events_rect(_view().x)
+	if lines.is_empty() or events.size == Vector2.ZERO:
+		return top
+	var high := top + 5.0 + UiTheme.LINE_SMALL * float(lines.size())
+	if events.position.x < 2.0 + hint_width(lines) and top - 4.0 < events.end.y and high + 4.0 > events.position.y:
+		return events.end.y + 4.0
+	return top
+
+
+## Where the how-to-win plate is drawn (v0.10 M6); `Rect2()` for no line.
+func hint_rect() -> Rect2:
+	var lines := hint_lines(hint_text())
+	if lines.is_empty():
+		return Rect2()
+	return Rect2(2.0, hint_top(), hint_width(lines), 5.0 + UiTheme.LINE_SMALL * float(lines.size()))
 
 
 ## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is the night's own, lower when
@@ -618,13 +662,10 @@ func _draw_events(w: float) -> void:
 	var rows := event_rows()
 	if rows.is_empty():
 		return
-	var wide := 0.0
-	for row: Array in rows:
-		wide = maxf(wide, UiTheme.width(String(row[0]) + "  " + String(row[1]), UiTheme.SIZE_SMALL))
-	# The plate starts 4 px above EVENTS_TOP, just under the rite's plate (which ends at 39 while it chants).
-	var top := EVENTS_TOP - 4.0
-	draw_rect(Rect2(roundf((w - wide) * 0.5) - 4.0, top, wide + 8.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
-	var y := top + 12.0
+	var plate := events_rect(w)
+	draw_rect(plate, UiTheme.COL_PANEL)
+	var wide := plate.size.x - 8.0
+	var y := plate.position.y + 12.0
 	for row: Array in rows:
 		var clock := String(row[0])
 		var x := roundf((w - wide) * 0.5)
@@ -688,12 +729,9 @@ func _draw_hint() -> void:
 	var lines := hint_lines(hint_text())
 	if lines.is_empty():
 		return
-	var wide := 0.0
-	for l in lines:
-		wide = maxf(wide, UiTheme.width(l, UiTheme.SIZE_SMALL))
-	var top := hint_top()
-	draw_rect(Rect2(2.0, top, wide + 10.0, 5.0 + UiTheme.LINE_SMALL * float(lines.size())), UiTheme.COL_PANEL)
-	var y := top + 12.0
+	var plate := hint_rect()
+	draw_rect(plate, UiTheme.COL_PANEL)
+	var y := plate.position.y + 12.0
 	for l in lines:
 		UiTheme.text(self, Vector2(6.0, y), l, UiTheme.SIZE_SMALL, HINT_COL)
 		y += UiTheme.LINE_SMALL

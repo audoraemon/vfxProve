@@ -1254,11 +1254,14 @@ func rally() -> void:
 
 
 ## Whether `p` stands on the rally ring (v0.09.1): a living soldier without a role, rallied, and within RING_RADIUS +
-## RING_REACH of the Citadel.
-func on_ring(p: Person) -> bool:
-	return is_instance_valid(p) and p.soldier and p.is_alive() and p.corps == Person.Corps.NONE \
-		and p.mind == Person.Mind.RALLY \
-		and p.ground_pos.distance_to(TownLayout.CITADEL_ORIGIN) <= RING_RADIUS + RING_REACH
+## RING_REACH of the Citadel. Untyped: `soldiers` can still hold one freed since the last _prune_soldiers(), and a typed
+## parameter would raise on it before is_instance_valid() could look.
+func on_ring(p: Variant) -> bool:
+	if not is_instance_valid(p):
+		return false
+	var s := p as Person
+	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and s.mind == Person.Mind.RALLY \
+		and s.ground_pos.distance_to(TownLayout.CITADEL_ORIGIN) <= RING_RADIUS + RING_REACH
 
 
 ## How many soldiers stand on the rally ring (v0.09.1): the Citadel's garrison, asked once per hit on it.

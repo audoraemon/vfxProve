@@ -356,6 +356,7 @@ static func feast(act_id: String) -> MissionDef:
 	var ln := long_night()
 	var a := ln.act(act_id)
 	a.next = PackedStringArray()
+	a.rite_penalty = BanishingRite.PENALTY  # the 20 s rite is The Long Night's (v0.09.1): the campaign keeps 40
 	var m := MissionDef.new()
 	m.id = "feast_" + act_id
 	m.name = a.name.trim_prefix("Act II: ")

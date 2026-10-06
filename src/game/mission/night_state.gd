@@ -13,7 +13,8 @@ const PRINCE_ESCAPED_LIMIT := 72
 ## Score floors for the night's rank, best first; under the last one is a D. Task 19: a policy night that wins all
 ## three acts scored 26,700-28,000 (an A); S asks for more than that.
 const NIGHT_RANKS := [[30000, "S"], [24000, "A"], [15000, "B"], [7000, "C"]]
-## The best rank a night with any act lost can reach (v0.09.1): S and A need all three acts.
+## The best rank a night with any act lost can reach (v0.09.1): S and A need all three acts. It must be one of
+## NIGHT_RANKS' ranks: rank() caps the score at its floor, and a rank not listed there has none (it would cap to a D).
 const LOST_ACT_CAP := "B"
 
 ## One dictionary per act played: its Rules.result() plus "act" (the act's id).

@@ -124,6 +124,7 @@ static func run(t) -> void:
 	_done(made)
 	_no_refill(t)
 	_garrison(t)
+	_freed(t)
 
 
 ## The first living soldier of `corps`.
@@ -193,4 +194,35 @@ static func _garrison(t) -> void:
 		"rallied, the soldiers who reach the ring garrison it (%d, %d before they arrived)" % [n, walking])
 	t.near(citadel.garrison_cut(), minf(float(n) * Citadel.GARRISON_STEP, Citadel.GARRISON_CAP), 0.0001,
 		"the Citadel reads the ring's count (cut %.2f)" % citadel.garrison_cut())
+	_done(made)
+
+
+## A soldier freed while still on the roster (its death fade ended before _prune_soldiers() ran): the Citadel's next
+## look at its garrison and the next refill pass it by, with no typed-argument error (v0.09.1 Task 3 review).
+static func _freed(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	crowd.rally()
+	ring(crowd)
+	var standing := on_ring(crowd)
+	var gone: Person = standing[0]
+	field.kill(gone, &"test")
+	field.remove(gone)
+	gone.free()
+	var freed := 0
+	for i in crowd.soldiers.size():
+		freed += int(not is_instance_valid(crowd.soldiers[i]))
+	t.check(freed == 1, "the freed soldier is still on the roster (%d)" % freed)
+	t.check(crowd.ring_count() == standing.size() - 1,
+		"the ring counts the rest (%d of %d)" % [crowd.ring_count(), standing.size() - 1])
+	var marshal := first_of(crowd, Person.Corps.MARSHAL)
+	var post := marshal.post
+	field.kill(marshal, &"test")
+	var took := 0
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL and p.post == post:
+			took += 1
+	t.check(took == 1 and crowd.ring_count() == standing.size() - 2,
+		"a dead marshal is still replaced from the ring (%d, ring %d)" % [took, crowd.ring_count()])
 	_done(made)

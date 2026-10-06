@@ -61,10 +61,10 @@ extends SceneTree
 ##          the called bellkeeper and the flame-bearer while a shrine drains; the Parade only when the Splitter would
 ##          come too late for dawn), or bonus (play, but the last shrine is struck only once ten kneel by it, or
 ##          when dawn would come too soon to wait). --seed= picks the town.
-##   flame  (v0.10 M4) The Vigil Flame, --case=none (nothing cast) or play (Mind Whisper, Discord, Will-o'-Wisp: Discord on
-##          the Faithful watching the lantern, then Wren whispered to it; with the flame, a wisp to draw off a beam
-##          coming at him, else a whisper out of its way; Discord at the Temple's door in the last 20 s). --seed= picks
-##          the town.
+##   flame  (v0.10 M4) The Vigil Flame, --case=none (nothing cast) or play (Mind Whisper, Discord, Will-o'-Wisp: a wisp
+##          to draw bystanders off the lantern, one Discord on the bearer and the acolytes, then Wren whispered to it;
+##          with the flame, reading the beams' paths ahead, a wisp to draw off a beam coming at him, else a whisper
+##          out of its way; Discord at the Temple's door in the last 20 s). --seed= picks the town.
 ##   warning (v0.08 M5) The Warning played against its messenger, one case per Authority, --case= one of:
 ##            none       nothing cast (the bell should ring at about 0:25)
 ##            doom       Silent Doom on the messenger whenever nobody would see it (now, nor where he falls)
@@ -138,11 +138,25 @@ const LANTERN_DRAGON_SPARE := 5.0
 ## `bonus` waits for the kneelers only while the night still leaves this many seconds beyond a drain and that spare.
 const LANTERN_BONUS_SPARE := 10.0
 ## The Vigil Flame policy (v0.10 M4): how near the lantern a Faithful counts as a watcher of the swap (Crowd.DOOM_WITNESS
-## and a margin for his walk), how near a beam may come to Wren before the policy acts, and how far it moves him or the
-## beam.
+## and a margin for his walk), how far from the Temple's door Wren must be for its Discord (its searching beam must not
+## find him), and how far the policy moves him, or a wisp from a beam.
 const FLAME_WATCH_R := 3.0
 const FLAME_DANGER := 4.5
 const FLAME_DODGE := 5.0
+## Bystanders this near the lantern, going about their day, could wander into the swap: a wisp FLAME_STRAY_LURE beyond
+## them (well within its reach of them all) draws them off first.
+const FLAME_STRAY_R := 5.0
+const FLAME_STRAY_LURE := 3.0
+## The carry reads the beams' paths ahead: FLAME_LOOKAHEAD seconds for a beam coming onto Wren (within POOL_R and
+## FLAME_MARGIN), FLAME_PLAN for where a whisper sends him (his walk there and his linger), in FLAME_STEP steps; it
+## weighs FLAME_DIRS spots round him (or round the beam, for a wisp).
+const FLAME_LOOKAHEAD := 3.0
+const FLAME_MARGIN := 1.0
+const FLAME_PLAN := 12.0
+const FLAME_STEP := 0.5
+const FLAME_DIRS := 8
+## How far inside Discord's reach the policy keeps those it means to take, for their walk while the cast lands.
+const FLAME_DISCORD_MARGIN := 0.2
 
 var mission: Mission
 
@@ -1164,10 +1178,10 @@ func _lantern_target(d: BrokenLanternsDirector, crowd: Crowd) -> Structure:
 
 
 ## The Vigil Flame (v0.10 M4), played every LOOK_FRAMES by a simple policy with Mind Whisper, Discord and Will-o'-Wisp.
-## Before the swap: Discord on the Faithful watching the lantern (other than the bearer), then, nobody watching, a
-## whisper sending Wren to it. With the flame: a beam within FLAME_DANGER of Wren is drawn off by a Will-o'-Wisp on its
-## far side, else a whisper sends Wren FLAME_DODGE out of its way; in the clock's last 20 s, Discord at the Temple's door
-## gives the searching beam a noise far from him. `none` casts nothing.
+## Before the swap (_flame_swap): bystanders drawn off by a wisp, the bearer and his acolytes held by one Discord, then
+## Wren whispered to the lantern. With the flame (_flame_carry): a beam due to come onto Wren drawn off by a wisp, else
+## Wren whispered out of its way; in the clock's last 20 s, Discord at the Temple's door gives the searching beam a
+## noise far from him. `none` casts nothing.
 func _flame(which: String) -> void:
 	var rules: Rules = mission._rules
 	var d := rules.director as VigilFlameDirector
@@ -1211,52 +1225,183 @@ func _flame_phase(d: VigilFlameDirector) -> String:
 	return "watch" if d.appeared else "wait"
 
 
-## Before the swap: Discord on the watchers (their middle), then Wren whispered to the lantern.
+## Before the swap: the Faithful who could see it are the acolytes (wherever they are: they walk back to the bearer's
+## side) and anyone else within FLAME_WATCH_R of the lantern. Bystanders going about their day within FLAME_STRAY_R
+## are drawn off by a Will-o'-Wisp beyond them; once one Discord can take the watchers and, while he walks on, the
+## bearer, it does (it blinds them and holds the lantern still); with nobody left to see, Wren is whispered to the
+## lantern.
 func _flame_swap(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void:
 	var lantern := d.flame_at()
 	if lantern == Vector2.INF or d.swapping:
 		return
-	var bearer: Person = d.vigil.bearer if d.vigil != null else null
+	var bearer: Person = d.vigil.bearer if d.vigil != null and MissionDirector._alive(d.vigil.bearer) else null
+	var walking: Array[Person] = d.vigil.walkers() if d.vigil != null and d.vigil.active else ([] as Array[Person])
 	var watchers: Array[Person] = []
+	var strays := Vector2.ZERO
+	var n_strays := 0
 	for f in d.faithful:
-		if f != bearer and d.faithful_seeing(f.ground_pos, 0.01, bearer) == f and f.ground_pos.distance_to(lantern) <= FLAME_WATCH_R:
+		if f == bearer or d.faithful_seeing(f.ground_pos, 0.01, bearer) != f:
+			continue
+		var gap := f.ground_pos.distance_to(lantern)
+		if walking.has(f) or gap <= FLAME_WATCH_R:
 			watchers.append(f)
-	if not watchers.is_empty():
-		if _slot_ready(rules, slots, "discord"):
-			var mid := Vector2.ZERO
-			for f in watchers:
-				mid += f.ground_pos
-			rules.cast(slots.discord, mid / float(watchers.size()))
-		return
+		if not walking.has(f) and f.mind in Person.LURABLE and gap <= FLAME_STRAY_R:
+			strays += f.ground_pos
+			n_strays += 1
 	var w := d.wren
+	if n_strays > 0 and _slot_ready(rules, slots, "wisp"):
+		strays /= float(n_strays)
+		var from := strays - lantern if strays.distance_to(lantern) > 0.5 else lantern - w.ground_pos
+		var away := from.normalized() if from.length() > 0.01 else Vector2.RIGHT
+		var lure := mission._crowd._grid.nearest_walkable(strays + away * FLAME_STRAY_LURE)
+		rules.cast(slots.wisp, lure if lure != Vector2.INF else strays + away * FLAME_STRAY_LURE)
+		return
+	var held := bearer == null or bearer.mind in MissionDirector.BLIND
+	if not watchers.is_empty() or not held:
+		var take: Array[Vector2] = []
+		if not held:
+			take.append(lantern)
+		for f in watchers:
+			take.append(f.ground_pos)
+		var mid := Vector2.ZERO
+		for at in take:
+			mid += at / float(take.size())
+		var one := true
+		for at in take:
+			one = one and at.distance_to(mid) <= DiscordFx.DISCORD_R - FLAME_DISCORD_MARGIN
+		if one and _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, mid)
+			return
+		if not watchers.is_empty():
+			return
 	if w.mind != Person.Mind.WHISPERED and not w.shaken() and _slot_ready(rules, slots, "whisper"):
 		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": lantern})
 
 
-## With the flame: Discord at the Temple's door in the last 20 s; else, a beam closing on Wren drawn off by a wisp, or
-## Wren whispered out of its way.
+## With the flame: Discord at the Temple's door in the last 20 s (the searching beam's noise, far from Wren); else, a
+## beam due to come within FLAME_MARGIN of Wren on his way in the next FLAME_LOOKAHEAD seconds (its sweep is slow and
+## plain to see) is drawn off by a Will-o'-Wisp beyond it where the fewest Faithful stand (the drawn kneel in its
+## light), or Wren is whispered out of its way, if that is safer than walking on over FLAME_PLAN seconds (a whispered
+## boy strolls there, then lingers): where he stands, or one of FLAME_DIRS spots half FLAME_DODGE or FLAME_DODGE round
+## him; of those the beams keep clear of him, the one that costs him the least time to Mira's shrine, else the clearest.
 func _flame_carry(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void:
 	var w := d.wren
 	var light := d.searchlight
-	if rules.time_left <= Searchlight.SEARCH_LAST + 1.0 and _slot_ready(rules, slots, "discord"):
+	if rules.time_left <= Searchlight.SEARCH_LAST + 1.0 and w.ground_pos.distance_to(d.temple_door) > FLAME_DANGER \
+			and _slot_ready(rules, slots, "discord"):
 		rules.cast(slots.discord, d.temple_door)
 		return
-	var near_i := -1
-	for i in light.beams():
-		var gap := light.aim(i).distance_to(w.ground_pos)
-		if gap <= FLAME_DANGER and (near_i < 0 or gap < light.aim(near_i).distance_to(w.ground_pos)):
-			near_i = i
-	if near_i < 0:
+	if _flame_clear(light, w, Vector2.INF, FLAME_LOOKAHEAD) > Searchlight.POOL_R + FLAME_MARGIN:
 		return
-	var beam := light.aim(near_i)
-	var off := (beam - w.ground_pos).normalized() if beam.distance_to(w.ground_pos) > 0.01 else Vector2.RIGHT
+	var grid := mission._crowd._grid
 	if light.decoy_beam < 0 and _slot_ready(rules, slots, "wisp"):
-		rules.cast(slots.wisp, beam + off * FLAME_DODGE)
-		return
+		var beam := light.aim(_flame_threat(light, w))
+		var lure := Vector2.INF
+		var fewest := 0
+		for k in FLAME_DIRS:
+			var at := grid.nearest_walkable(beam + Vector2.from_angle(TAU * float(k) / float(FLAME_DIRS)) * FLAME_DODGE)
+			if at == Vector2.INF or at.distance_to(w.ground_pos) < FLAME_DODGE + Searchlight.POOL_R:
+				continue
+			var n := 0
+			for f in d.faithful:
+				if MissionDirector._alive(f) and f.ground_pos.distance_to(at) <= WillOWisp.LURE_REACH:
+					n += 1
+			if lure == Vector2.INF or n < fewest:
+				lure = at
+				fewest = n
+		if lure != Vector2.INF:
+			rules.cast(slots.wisp, lure)
+			return
 	if w.mind == Person.Mind.WHISPERED or w.shaken() or not _slot_ready(rules, slots, "whisper"):
 		return
-	var to := mission._crowd._grid.nearest_walkable(w.ground_pos - off * FLAME_DODGE)
-	rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": to if to != Vector2.INF else w.ground_pos})
+	var walk_on := _flame_clear(light, w, Vector2.INF, FLAME_PLAN)
+	var spots: Array[Vector2] = [w.ground_pos]
+	for reach: float in [FLAME_DODGE * 0.5, FLAME_DODGE]:
+		for k in FLAME_DIRS:
+			var to := grid.nearest_walkable(w.ground_pos + Vector2.from_angle(TAU * float(k) / float(FLAME_DIRS)) * reach)
+			if to != Vector2.INF:
+				spots.append(to)
+	var stroll := DummyEnemy.WALK_SPEED * w.pace
+	var run := Person.PANIC_SPEED * w.pace
+	var best := Vector2.INF
+	var best_clear := 0.0
+	var best_cost := 0.0
+	for to in spots:
+		var clear := _flame_clear(light, w, to, FLAME_PLAN)
+		if clear <= walk_on:
+			continue
+		var cost := w.ground_pos.distance_to(to) / stroll + MindWhisperFx.LINGER + to.distance_to(d.shrine) / run
+		var safe := clear > Searchlight.POOL_R + FLAME_MARGIN
+		var was_safe := best_clear > Searchlight.POOL_R + FLAME_MARGIN
+		var better := (not was_safe and clear > best_clear) if not safe else (not was_safe or cost < best_cost)
+		if best == Vector2.INF or better:
+			best = to
+			best_clear = clear
+			best_cost = cost
+	if best != Vector2.INF:
+		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": best})
+
+
+## Where Wren will be `ahead` seconds on: whispered to `to` (Vector2.INF: not), strolling straight there; else walking
+## his own path at his duty's pace, or standing while off his duty.
+func _flame_wren_at(w: Person, to: Vector2, ahead: float) -> Vector2:
+	if to != Vector2.INF:
+		var stroll := DummyEnemy.WALK_SPEED * w.pace * ahead
+		return w.ground_pos.move_toward(to, stroll)
+	if w.mind != Person.Mind.DUTY:
+		return w.ground_pos
+	var left := w.walk_speed * ahead
+	var at := w.ground_pos
+	for k in range(w._leg, w._path.size()):
+		var leg := at.distance_to(w._path[k])
+		if leg >= left:
+			return at.move_toward(w._path[k], left)
+		left -= leg
+		at = w._path[k]
+	return at
+
+
+## Where beam i's pool will be `ahead` seconds on, read off its plain path: on its decoy while that holds it, at the
+## searched noise, else on its sweep; Vector2.INF while it is not yet lit.
+func _flame_beam_at(light: Searchlight, i: int, ahead: float) -> Vector2:
+	if ahead <= 0.0:
+		return light.aim(i)
+	if i == light.decoy_beam and ahead < light.decoy_left:
+		return light.decoy
+	if i == light.search_beam:
+		return light.noise
+	var t := light.beam_age(i) + ahead
+	return light.sweep_point(i, t) if light.on and t >= 0.0 else Vector2.INF
+
+
+## How near any beam's pool comes to Wren over the next `ahead` seconds, whispered to `to` or (Vector2.INF) not.
+func _flame_clear(light: Searchlight, w: Person, to: Vector2, ahead: float) -> float:
+	var out := INF
+	var t := 0.0
+	while t <= ahead:
+		var at := _flame_wren_at(w, to, t)
+		for i in Searchlight.MAX_BEAMS:
+			var p := _flame_beam_at(light, i, t)
+			if p != Vector2.INF:
+				out = minf(out, p.distance_to(at))
+		t += FLAME_STEP
+	return out
+
+
+## The lit beam that comes nearest Wren on his way over the next FLAME_LOOKAHEAD seconds.
+func _flame_threat(light: Searchlight, w: Person) -> int:
+	var best := 0
+	var best_gap := INF
+	for i in light.beams():
+		var t := 0.0
+		while t <= FLAME_LOOKAHEAD:
+			var p := _flame_beam_at(light, i, t)
+			var gap := p.distance_to(_flame_wren_at(w, Vector2.INF, t)) if p != Vector2.INF else INF
+			if gap < best_gap:
+				best = i
+				best_gap = gap
+			t += FLAME_STEP
+	return best
 
 
 ## The Warning, played by one policy against the director's messenger (whoever carries the warning now: the

@@ -16,8 +16,8 @@ const POOL_R := 2.0
 ## and back over REACH_PERIOD seconds.
 const SPIN := TAU / 40.0
 const NEAR := 5.0
-const FAR := 18.0
-const REACH_PERIOD := 26.0
+const FAR := 26.0
+const REACH_PERIOD := 30.0
 ## Where each beam's sweep starts (radians from ground +x: PI / 2 points from the spire towards the market) and which
 ## way it turns.
 const START := [PI * 0.5, -PI * 0.5]
@@ -30,7 +30,7 @@ const SEARCH_LAST := 20.0
 const DECOY_SECONDS := 5.0
 ## The fastest a beam's pool moves (ground units a second): faster than its sweep, so it can catch a decoy or a noise
 ## and catch its sweep up again.
-const BEAM_SPEED := 6.0
+const BEAM_SPEED := 8.0
 
 var spire := Vector2.ZERO
 var on := false

@@ -22,12 +22,14 @@ extends MissionDirector
 
 ## Mira's shrine at the west forest edge, outside the west wall (ground units; moved to the nearest open ground), and how
 ## near Wren must bring the flame.
-const MIRA_SHRINE := Vector2(-17.6, 12.0)
+const MIRA_SHRINE := Vector2(-17.6, 5.0)
 const SHRINE_REACH := 1.0
 ## How many Faithful there are besides the clergy (spec §4.1: about 20 devout citizens).
 const FAITHFUL := 20
-## The Vigil's solemn pace: the share of their own pace its three walk at.
+## The Vigil's solemn pace: the share of their own pace its three walk at. The bearer keeps BEARER_LEAD of his slowest
+## acolyte's pace, so both keep beside him (each makes for his side again only every VigilRoute.TICK).
 const VIGIL_PACE := 0.5
+const BEARER_LEAD := 0.85
 ## 0:50 -- Wren comes to watch the lantern, keeping WATCH_DIST from it; left WREN_OWN_AFTER seconds without a whisper,
 ## he tries the swap himself.
 const WREN_AT := 50.0
@@ -39,7 +41,7 @@ const SWAP_REACH := 1.0
 const SWAP_HOLD := 1.6
 const SWAP_SECONDS := 3.0
 ## Wren with the flame walks carefully: the share of his own pace he keeps.
-const WREN_PACE := 0.75
+const WREN_PACE := 0.5
 ## 1:30 -- the route shortens, straight back to the Temple; the bearer within HOME_REACH of its door with the real flame
 ## keeps it.
 const ROUTE_AT := 90.0
@@ -64,7 +66,7 @@ const SEEN_DEATH_SCALE := 1.0
 const TOUCH_GAZE := GazeMeter.SEARCHLIGHT
 const PRAY_SECONDS := 5.0
 const PRAY_REACH := 0.6
-const PRAYER_SCALE := 1.0
+const PRAYER_SCALE := 0.5
 ## Casts the light does not hear: a Mind Whisper speaks in the mind.
 const UNHEARD := ["whisper"]
 
@@ -138,6 +140,8 @@ func _start_vigil() -> void:
 	vigil.flame_passed.connect(func(_to: Person) -> void: rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME"))
 	for p in vigil.walkers():
 		p.pace *= VIGIL_PACE
+	for a in acolytes:
+		vigil.bearer.pace = minf(vigil.bearer.pace, a.pace * BEARER_LEAD)
 	vigil.start()
 	_lantern = vigil.bearer.ground_pos
 

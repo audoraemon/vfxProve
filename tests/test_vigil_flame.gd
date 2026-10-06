@@ -8,8 +8,8 @@ extends RefCounted
 const DT := 0.05
 ## Where the tests stage the swap and park watchers: beyond every beam's reach (Searchlight.FAR + POOL_R from the
 ## spire), so nothing the light does there is an accident.
-const OUT := Vector2(-12.0, 12.0)
-const AWAY := Vector2(16.0, 14.0)
+const OUT := Vector2(-20.0, 18.0)
+const AWAY := Vector2(22.0, 16.0)
 
 
 static func _setup() -> Dictionary:
@@ -147,6 +147,10 @@ static func _cast(t) -> void:
 	for p in d.vigil.walkers():
 		slow = slow and p.pace <= Person.PACE_RANGE.y * VigilFlameDirector.VIGIL_PACE + 0.001
 	t.check(slow, "its three walk at the Vigil's solemn pace")
+	var beside := d.vigil.acolytes.size() == 2
+	for a in d.vigil.acolytes:
+		beside = beside and d.vigil.bearer.pace <= a.pace * VigilFlameDirector.BEARER_LEAD + 0.001
+	t.check(beside, "the bearer walks a step slower than his slowest acolyte, so both keep beside him")
 	var reach := grid.walkable(d.shrine) and d.shrine.distance_to(VigilFlameDirector.MIRA_SHRINE) < 2.0 and d.shrine.x < -12.0
 	for pt in d.vigil.route:
 		reach = reach and not grid.path(pt, d.shrine).is_empty()

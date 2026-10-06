@@ -683,8 +683,12 @@ static func _motion(t) -> void:
 	t.check(float(bob.get_shader_parameter("bob")) > 0.0, "the bob material bobs")
 	t.check(float(tree.get_shader_parameter("bob")) == 0.0 and float(reeds.get_shader_parameter("bob")) == 0.0,
 		"trees and plants do not bob")
-	t.check(float(reeds.get_shader_parameter("sprite_sway")) < 1.5, "a plant sways less than a tree")
 	t.check(float(tree.get_shader_parameter("sprite_sway")) == 1.5, "a tree sways 1.5 px at its top")
+	# Offsets round to whole px: a plant's top must reach a full px step even short in a taller plant atlas (a 7 px
+	# flowerbed in the 10 px low atlas sways at 0.7 of the material), and no more than a tree's.
+	var plant_sway := float(reeds.get_shader_parameter("sprite_sway"))
+	t.check(plant_sway * 0.7 >= 1.0, "a short plant's top steps a full px (sway %s x 0.7)" % plant_sway)
+	t.check(plant_sway <= 1.5, "a plant sways no more than a tree (%s)" % plant_sway)
 	for k: int in [D.REEDS, D.BUSH, D.FLOWERS, D.OAK, D.PINE, D.BUNTING]:
 		t.check(k in Decor.SWAYS, "%s sways" % Decor.Kind.keys()[k])
 	t.check(Decor.BOBS == [D.SHIP, D.BOAT], "ships and boats bob")
@@ -1148,14 +1152,15 @@ static func _anim_cover(t) -> void:
 	DecorSprites.reload()
 
 
-## The Group C strips (Task 11): the grazing animals, the scarecrow, the house lantern and the ship's pennant are
-## shipped as 4-frame strips: each set loads 4 frames at its rate, its texture is exactly 4 frames wide, and each draws
-## live (animated) while sprites are on, with its own frame_u. A mirrored sheep keeps the strip's material.
+## The Group C strips (Task 11): the grazing animals, the scarecrow and the ship's pennant are shipped as 4-frame
+## strips: each set loads 4 frames at its rate, its texture is exactly 4 frames wide, and each draws live (animated)
+## while sprites are on, with its own frame_u. A mirrored sheep keeps the strip's material. The house lantern was a
+## strip too, but its frames differed only under its lit glass overlay (art polish 2): it is a still now, with no
+## material, and stays a live node with its glass (TownDecor never bakes a lamp).
 static func _strips(t) -> void:
 	DecorSprites.reload()
 	SpriteArt.set_enabled(true)
-	var want := {"sheep_1": 1.5, "sheep_2": 1.5, "cow_1": 1.5, "cow_2": 1.5, "scarecrow": 4.0, "lamp_house": 6.0,
-		"ship": 5.0}
+	var want := {"sheep_1": 1.5, "sheep_2": 1.5, "cow_1": 1.5, "cow_2": 1.5, "scarecrow": 4.0, "ship": 5.0}
 	for n: String in want:
 		var s := DecorSprites.decor_set(n)
 		t.check(not s.is_empty() and int(s.get("frames", 1)) == 4, "%s loads 4 frames (got %s)" % [n, s.get("frames")])
@@ -1165,8 +1170,16 @@ static func _strips(t) -> void:
 		t.check(not s.is_empty() and w == int((s.size as Vector2).x) * 4,
 			"%s's strip is 4 frames wide (%d = %s x 4)" % [n, w, s.get("size")])
 	# Every kind that draws these sets is animated, and a mirrored sheep draws the same strip material.
-	for k: int in [D.SHEEP, D.COW, D.SCARECROW, D.LAMP, D.SHIP]:
+	for k: int in [D.SHEEP, D.COW, D.SCARECROW, D.SHIP]:
 		t.check(DecorSprites.animated(k, 1), "kind %d draws an animated set" % k)
+	var lamp_set := DecorSprites.decor_set("lamp_house")
+	t.check(int(lamp_set.get("frames", 0)) == 1 and not DecorSprites.animated(D.LAMP, 1),
+		"the house lantern is a still (its strip only stepped under the glass overlay)")
+	t.check(Decor.material_for(D.LAMP, lamp_set) == null, "a still lantern takes no material")
+	t.check(lamp_set.get("glass", Rect2()).has_area(), "the still lantern keeps its glass rect")
+	var lamp_spots := TownDecor.spots().filter(func(d: Dictionary) -> bool: return d.kind == D.LAMP)
+	t.check(not lamp_spots.is_empty() and lamp_spots.all(func(d: Dictionary) -> bool: return not d.bake),
+		"every lamp stays a live node (none baked)")
 	var mirrored := -1
 	var plain := -1
 	for i in range(40):

@@ -79,7 +79,7 @@ Each set is one folder with `intact.png` (plus `stump.png` for trees). The manif
 | Script | Sets |
 |---|---|
 | `decor_goods.py` | `barrel_1..2`, `crates_1..2`, `bench_x/_y`, `table_1..2`, `logs_1`, `cart_1..2`, `signpost` |
-| `decor_street.py` | `lamp_house` (lit lantern, `glow`), `bunting_x/_y` (segment 1.0) |
+| `decor_street.py` | `lamp_house` (lit lantern, a still: `glow`, `glass`), `bunting_x/_y` (segment 1.0) |
 | `decor_water.py` | `ship`, `boat_1` (along x), `boat_2` (along y) |
 | `decor_farm.py` | `fence_x/_y` (segment 0.5, `end_post`), `garden_1..4` (by plot size), `scarecrow` |
 | `decor_animals.py` | `sheep_1..2`, `cow_1..2` (face right; the engine mirrors half) |
@@ -122,7 +122,7 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Frames are dr
 
 - **`glow_mask.png` and `WINDOW_AMP`:** `SpriteArt` loads the optional mask. On the intact still and its idle strip, `structure_sprite.gdshader` multiplies masked pixels by `1 + WINDOW_AMP * flicker`, with `WINDOW_AMP = 0.15` (`sprite_view.gd`). Each 3x3 pixel cell has its own phase, so windows flicker apart. No mask, no change. Damaged and ruins stills never flicker.
 - **Decor manifest keys:** `frames` and `fps` on a decor set. `intact.png` is then a horizontal strip of `frames` equal-width frames, and `size` is one frame. Written by `decor_common.write_set`.
-- **Motion classes** (`Decor.material_for(kind)`, shared materials): `tree` (sway weight 1.5), `plant` (1.0, for reeds, bushes and flowers, which join `Decor.SWAYS`), and `bob` (ships and boats: a whole-pixel rise and fall, about a 3 s period, no shear).
+- **Motion classes** (`Decor.material_for(kind)`, shared materials): `tree` (sway weight 1.5), `plant` (1.5 since art polish 2, for reeds, bushes and flowers, which join `Decor.SWAYS`: at 1.0 the rounded offset left short plants still much of the time), and `bob` (ships and boats: a whole-pixel rise and fall, about a 3 s period, no shear).
 - **Plant layer:** low plants (the floor's meadow shrubs and flower clumps, and the baked reeds, bushes and flowers) leave the floor bake and draw in wind bands, like `ForestLayer`. Only pieces nothing stands in front of go there: a plant the bake paints something over (a garden plot, a moored boat, a rock) is marked "under" and stays in the bake, still, and so, transitively, does any plant behind an "under" plant that overlaps it.
 
 ### Rules

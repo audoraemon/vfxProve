@@ -17,8 +17,10 @@ the mirrored ground point (so those are lit from the right, as the procedural an
 Anchored at the ground point (the procedural `o`): x 0 of the drawing, the row under the hooves.
 
 Each set is a 4-frame strip at 1.5 fps (a 2.7 s loop) (Group C: wind.gdshader steps it on the idle clock, each animal at its own
-phase), grazing: frame 0 is the still; the head dips to the grass (1), holds there chewing (2), and is on its way back
-up (3) while the tail flicks. sheep_2, whose still grazes, dips a px lower (1), chews (2) and lifts its head a little
+phase), grazing: frame 0 is the still. A sheep's head dips to the grass (1), holds there chewing (2), and is on its
+way back up (3) while the tail flicks. A cow's head dips half way, angled about 45 degrees down (1: COW_HEAD_MID, not
+the profile head moved down), reaches the grass (2) and is half way back up (3: the same head, the tail flicking).
+sheep_2, whose still grazes, dips a px lower (1), chews (2) and lifts its head a little
 (3). Every frame keeps frame 0's box, so the anchor and size stay the still's.
 
 Usage (from anywhere):
@@ -266,11 +268,27 @@ COW_HEAD_DOWN = [
     "...MMnMm.",
     "....mmm..",
 ]
-# Poses per frame: (head stamp, its top-left), or None for the still's (cow_1 raised, cow_2 level). The head drops to
-# the grass (1), a px lower chewing (2), half way back up (3).
+# Half way (frames 1 and 3): the head angled down about 45 degrees, its poll (horns, ear) at the top left, the
+# forehead the long upper-right edge sloping to the muzzle at the bottom right, the jaw the lower-left edge.
+COW_HEAD_MID = [
+    "Hh.EE......",
+    ".HhaEb.....",
+    "..aaaaab...",
+    ".baeaaaab..",
+    ".baaaaaaab.",
+    "..baaaaaab.",
+    "...baaaaab.",
+    "....baaaMM.",
+    ".....bMMMM.",
+    "......MnMm.",
+    ".......mm..",
+]
+# Poses per frame: (head stamp, its top-left), or None for the still's (cow_1 raised, cow_2 level). The head dips
+# half way (1), reaches the grass and chews there (2), and is half way back up (3, the same head as 1, the tail
+# flicking): still, half, down, half, so the loop runs smoothly both ways.
 COW_POSES = {
-    False: (None, (COW_HEAD_DOWN, (14, -16)), (COW_HEAD_DOWN, (14, -15)), (COW_HEAD, (13, -30))),
-    True: (None, (COW_HEAD_DOWN, (15, -16)), (COW_HEAD_DOWN, (15, -15)), (COW_HEAD, (14, -28))),
+    False: (None, (COW_HEAD_MID, (13, -27)), (COW_HEAD_DOWN, (14, -15)), (COW_HEAD_MID, (13, -27))),
+    True: (None, (COW_HEAD_MID, (14, -26)), (COW_HEAD_DOWN, (15, -15)), (COW_HEAD_MID, (14, -26))),
 }
 
 

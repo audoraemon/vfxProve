@@ -13,10 +13,12 @@ enough to carry one).
               moves under this lantern: "glow" [8, 0] (the lantern's centre is 8.5 px right of the anchor; the pool
               stays on the ground).
               "glass" [11, 10, 3, 5]: the lantern's glass (sprite px from its top left, as lamp_post's): Decor draws the
-              street lamp's undimmed lit glass over it (Structure.draw_lamp_glass), so the painted flame shows only
-              under it, and the strip's steps are covered by that glass's own flicker.
-              A 4-frame strip at 6 fps (Group C): the flame in the glass (3 x 5 px) changes shape, the still's (0),
-              leaning left (1), sunk low (2), leaning right (3); never more than 7 amber px a frame.
+              street lamp's undimmed lit glass over it (Decor.LampGlass), which covers the painted flame whole and
+              flickers on its own shader clock.
+              A still (art polish 2): it was a 4-frame strip whose frames differed only inside the glass, so the
+              overlay hid every step. As a still it draws no frames and takes no material; the lamp is a live node
+              either way (TownDecor never bakes a LAMP, and it is never a pile part), with its light pool and glass.
+              The painted flame (FLAME, 3 x 5 px) is what a lamp shows were the overlay ever missing.
   bunting_x   Decor.Kind.BUNTING along ground x (down-right on screen): one ground unit of string (32 px across,
   bunting_y   16 down, sagging 2 px between its ends) with six pennants hanging from it, blue and cream in turn
               (ArtKit.BANNER[0] and [2], as DecorArt._bunting), each lit on its left column and shaded on its right.
@@ -92,15 +94,9 @@ LAMP = [
     "o433210o.........",
     ".oooooo..........",
 ]
-# The flame's shapes in the glass (rows 10..14, columns 11..13 of LAMP), frame 0 the still's.
-FLAME = [
-    ("eae", "aca", "aca", "eae", "eee"),
-    ("aee", "cae", "aca", "eae", "eee"),
-    ("eee", "eae", "aca", "aca", "eae"),
-    ("eea", "eac", "aca", "eae", "eee"),
-]
+# The flame in the glass (rows 10..14, columns 11..13 of LAMP).
+FLAME = ("eae", "aca", "aca", "eae", "eee")
 FLAME_ROW, FLAME_COL = 10, 11
-LAMP_FPS = 6.0
 LAMP_ANCHOR = (4, 37)
 LAMP_GLOW = (8, 0)        # the light pool: on the ground under the lantern (sprite px from the anchor)
 LAMP_GLASS = (FLAME_COL, FLAME_ROW, 3, 5)   # the glass Decor lights (the flame's cells; sprite px from the top left)
@@ -132,18 +128,18 @@ def lamp_tones():
     return woods, iron, iron_lit
 
 
-def lamp_rows(frame=0):
-    """LAMP with frame `frame`'s flame in its glass."""
+def lamp_rows():
+    """LAMP with the flame in its glass."""
     rows = list(LAMP)
-    for j, flame in enumerate(FLAME[frame]):
+    for j, flame in enumerate(FLAME):
         r = rows[FLAME_ROW + j]
         rows[FLAME_ROW + j] = r[:FLAME_COL] + flame + r[FLAME_COL + len(flame):]
     return rows
 
 
-def lamp(frame=0):
+def lamp():
     woods, iron, iron_lit = lamp_tones()
-    rows = lamp_rows(frame)
+    rows = lamp_rows()
     h, w = len(rows), len(rows[0])
     pal = {str(k): woods[k] for k in range(5)}
     pal.update({"i": iron, "j": iron_lit, "c": FLAME_CORE, "a": FLAME_AMBER, "e": FLAME_DEEP, "o": OUTLINE})
@@ -193,7 +189,7 @@ def bunting(along_y=False):
 
 
 SETS = {
-    "lamp": lambda: [("lamp_house",) + decor_common.strip([lamp(k) for k in range(4)]) + (None, LAMP_GLOW)],
+    "lamp": lambda: [("lamp_house",) + lamp() + (None, LAMP_GLOW)],
     "bunting": lambda: [("bunting_x",) + bunting() + (1.0, None), ("bunting_y",) + bunting(True) + (1.0, None)],
 }
 
@@ -210,8 +206,8 @@ def main():
                 img.save(Path(args.out) / (name + ".png"))
                 path = Path(args.out) / (name + ".png")
             else:
-                anim = {"frames": 4, "fps": LAMP_FPS, "glass": LAMP_GLASS} if name == "lamp_house" else {}
-                path = decor_common.write_set(name, img, anchor, segment, glow, **anim)
+                glass = {"glass": LAMP_GLASS} if name == "lamp_house" else {}
+                path = decor_common.write_set(name, img, anchor, segment, glow, **glass)
             print("%-12s %dx%d anchor %s%s%s -> %s" % (name, img.width, img.height, anchor,
                                                       "" if segment is None else " segment %s" % segment,
                                                       "" if glow is None else " glow %s" % (glow,), path))

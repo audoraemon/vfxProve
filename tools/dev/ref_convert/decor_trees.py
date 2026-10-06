@@ -10,6 +10,10 @@ the bounding box of its polygons) and kept at native scale.
   town_oak_1..3     the town's decor trees behind the houses (TownDecor._houses: their height in size.x, 24..32; the
   town_pine_1..2    procedural tree 20..27 px wide): the same cuts at 26, 29, 32 (oaks) and 28, 32 px (pines)
 
+Greens: after the fit every set's leaves go through trees.shade_greens() (darker and less yellow, toward the
+procedural forest; the same shift the batch 3 building trees take, so all trees match in hue). The stump is cut
+before it, from the fitted greens (its bark samples unchanged).
+
 Anchor: the trunk's foot (convert's anchor: the lowest body row's middle), the tree's ground point, as the procedural
 tree's base. The canvas is cropped round the tree (1 px margin) and ends 2 px under the foot.
 
@@ -144,7 +148,8 @@ def stump(c, anchor):
 
 def build(name, tmp):
     c, anchor = fit(name, tmp)
-    st = stump(c, anchor)
+    st = stump(c, anchor)                # from the fitted greens: the stump's bark samples stay as they were
+    c = trees.shade_greens(c)
     path = decor_common.write_set(name, Image.fromarray(c, "RGBA"), anchor)
     Image.fromarray(st, "RGBA").save(path.parent / "stump.png")
     al = c[..., 3] > 0
@@ -161,6 +166,7 @@ def preview(names, out):
         for n in names:
             c, anchor = fit(n, tmp)
             st = stump(c, anchor)
+            c = trees.shade_greens(c)
             both = np.concatenate([c, np.zeros((c.shape[0], 4, 4), np.uint8), st], 1)
             im = Image.fromarray(both, "RGBA")
             bg = Image.new("RGBA", im.size, (96, 120, 64, 255))

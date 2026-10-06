@@ -187,6 +187,10 @@ static func _cast(t) -> void:
 		and tags[0].color == VigilFlameDirector.MARK_FLAME and tags[0].edge and tags[1].label == "MIRA'S SHRINE"
 		and tags[1].at == d.shrine and tags[1].color == VigilFlameDirector.MARK_SHRINE and tags[1].edge,
 		"the HUD names the flame and Mira's shrine, both pointed at from the edge")
+	# The flame's tag follows its bearer between the director's steps (it does not step during the intro's tour).
+	_arrive(d.vigil.bearer, OUT)
+	var flame := _tag(d, "HALCYON'S FLAME")
+	t.check(flame != null and flame.at == OUT, "the flame's tag follows its bearer even between the director's steps")
 	var next := d.timeline.upcoming(2)
 	t.check(d.hint_phase() == "" and next.size() == 2 and next[0].id == "wren" and next[1].id == "route",
 		"before Wren, the mission's own line; the strip shows Wren coming and the route shortening")

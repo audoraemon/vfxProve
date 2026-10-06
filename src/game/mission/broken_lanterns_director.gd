@@ -271,6 +271,19 @@ func hint_phase() -> String:
 	return "knights" if living_knights() > 0 else ""
 
 
+## The tour (v0.10 M6, spec §5): a lantern, the flame-bearer, the Temple the Knights come out of.
+func tour() -> Array:
+	var out := []
+	var standing := standing_shrines()
+	if not standing.is_empty():
+		out.append([standing[0].center(), "A lantern. Break it, then let it drain."])
+	if vigil != null and _alive(vigil.bearer):
+		out.append([vigil.bearer.ground_pos, "The flame-bearer relights broken lanterns."])
+	if temple_door != Vector2.INF:
+		out.append([temple_door, "Lantern Knights come out at 1:30."])
+	return out
+
+
 func report() -> Dictionary:
 	return {"drained": drained.size(), "relit": relit, "knights": living_knights()}
 

@@ -38,6 +38,9 @@ const INTRO_SECONDS := 2.0
 const INTRO_FROM_ZOOM := ZOOM_MIN
 ## How close the camera rests for play.
 const PLAY_ZOOM := 0.6
+## The tour's stops sit this far below the screen's centre (v0.10 M6, screen px at PLAY_ZOOM), so a stop and its labels
+## stay clear of the banners' bar and Cael's plate above the middle.
+const TOUR_RAISE := 50.0
 
 ## The ending plays out in slow motion before the results: the last blow lands, the dust settles, then the
 ## numbers (playtest note 5: three seconds between the mission's end and the results). Real seconds, and the
@@ -104,6 +107,9 @@ var autostart := true
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
 var _intro_left := 0.0
+## The intro's tour of a Night 2 mission's key places (v0.10 M6, spec §5), played in place of the sweep; null for a
+## sweep, or once the camera has landed.
+var _tour: IntroTour
 ## True from the last blow to Results: the slow-motion ending is playing out (note 9).
 var _ending := false
 ## Seconds until the battle's layers are next fed how far the city has fallen.
@@ -338,15 +344,18 @@ func _begin_intro(play: MissionDef) -> void:
 	if _scripted:
 		# The scripted runs time their casts from the first frame and frame the town the way milestone 3 did,
 		# so their captures and numbers stay comparable: no intro for them.
+		_tour = null
 		_intro_left = 0.0
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
 		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera_at
 		_bf.camera.position = Iso.ground_to_screen(framed).round()
 	else:
-		_intro_left = INTRO_SECONDS
 		_rules.set_process(false)  # the clock waits for the camera
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
 		_bf.camera.position = Iso.ground_to_screen(play.intro_from).round()
+		var stops: Array = _director.tour() if _director != null else []
+		_tour = IntroTour.new().setup(play.intro_from, raised(stops), play.camera_at) if not stops.is_empty() else null
+		_intro_left = _tour.seconds() if _tour != null else INTRO_SECONDS
 		if play.intro_banner != "":
 			_rules.banner.emit(play.intro_banner)
 
@@ -421,6 +430,48 @@ func rules() -> Rules:
 
 func in_intro() -> bool:
 	return _intro_left > 0.0
+
+
+## The intro is a tour of the mission's key places (v0.10 M6), not the sweep.
+func touring() -> bool:
+	return in_intro() and _tour != null
+
+
+## Ends the intro at once (v0.10 M6): the sweep or the tour lands, and the clock starts.
+func skip_intro() -> void:
+	if in_intro():
+		_land()
+
+
+## The intro is over (v0.10 M6): the camera rests on the mission's own spot, the tour's caption goes, and the clock starts.
+func _land() -> void:
+	var play: MissionDef = _act if _act != null else _def
+	_intro_left = 0.0
+	_tour = null
+	_bf.camera.position = Iso.ground_to_screen(play.camera_at).round()
+	_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
+	if is_instance_valid(_hud):
+		_hud.set_caption("")
+	_rules.set_process(true)
+
+
+## A press that skips the tour (v0.10 M6, spec §5): Space, Enter or a left click, pressed -- not an echo, nor a release.
+static func skips_tour(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo and event.physical_keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if event is InputEventMouseButton:
+		return event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	return false
+
+
+## The tour's stops with the camera looking TOUR_RAISE above each (v0.10 M6): each ground point moved up the screen by
+## TOUR_RAISE at PLAY_ZOOM, its caption kept.
+static func raised(stops: Array) -> Array:
+	var out := []
+	for s: Array in stops:
+		var up := Iso.ground_to_screen(s[0] as Vector2) - Vector2(0.0, TOUR_RAISE / PLAY_ZOOM)
+		out.append([Iso.screen_to_ground(up), s[1]])
+	return out
 
 
 ## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08).
@@ -530,6 +581,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _ending:
 		return  # the mission is over; nothing to aim or pause
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
+		if touring() and skips_tour(event):
+			get_viewport().set_input_as_handled()
+			skip_intro()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var i := SLOT_KEYS.find(event.physical_keycode)
@@ -583,13 +637,19 @@ func _process(delta: float) -> void:
 			Music.set_intensity(1.0 - _rules.stability.total())
 	if _intro_left > 0.0:
 		_intro_left = maxf(0.0, _intro_left - delta)
-		var k := 1.0 - _intro_left / INTRO_SECONDS
-		var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
-		var play: MissionDef = _act if _act != null else _def
-		_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera_at, smooth)).round()
-		_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
+		if _tour != null:
+			_tour.step(delta)
+			_bf.camera.position = Iso.ground_to_screen(_tour.camera()).round()
+			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, _tour.zoom_k())
+			_hud.set_caption(_tour.caption())
+		else:
+			var k := 1.0 - _intro_left / INTRO_SECONDS
+			var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
+			var play: MissionDef = _act if _act != null else _def
+			_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera_at, smooth)).round()
+			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
-			_rules.set_process(true)
+			_land()
 		return  # the camera is the intro's until it lands: no panning, no aiming
 	var pan := Battlefield.key_pan_dir()
 	if pan != Vector2.ZERO:

@@ -255,6 +255,11 @@ func _ready() -> void:
 			mission_id = MissionBook.VIGIL_FLAME
 			loadout = MissionBook.vigil_flame().default_loadout
 			go_to(Screen.MISSION)
+		"tour":
+			# Mira's House on its tour (v0.10 M6), for the photograph of a stop's caption among its tags.
+			mission_id = MissionBook.MIRAS_HOUSE
+			loadout = MissionBook.miras_house().default_loadout
+			go_to(Screen.MISSION)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -264,6 +269,17 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
+		if show in ["miras", "cael", "lanterns", "flame", "flame-beams"] and is_instance_valid(_mission):
+			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
+			await _until(func() -> bool: return _mission.started(), 10.0)
+			_mission.skip_intro()
+		if show in ["miras", "lanterns", "flame", "flame-beams"] and is_instance_valid(_mission) and is_instance_valid(_mission._hud):
+			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
+			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)
+			for _frame in 1200:
+				if _mission._hud.banners().is_empty():
+					break
+				await get_tree().process_frame
 		if show == "flame-beams" and is_instance_valid(_mission) and _mission.rules() != null \
 				and _mission.rules().director is VigilFlameDirector:
 			(_mission.rules().director as VigilFlameDirector).bench_beams()
@@ -278,7 +294,12 @@ func _ready() -> void:
 				await get_tree().process_frame
 			_mission._hud.push_banner("THE INQUISITOR SEARCHES")
 			_mission._hud.push_subtitle(CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn"))
-		await get_tree().create_timer(2.0 if show.begins_with("flame") else 1.0).timeout
+		var wait := 1.0
+		if show.begins_with("flame"):
+			wait = 2.0
+		elif show == "tour":
+			wait = IntroTour.MOVE_SECONDS * 2.0 + IntroTour.HOLD_SECONDS + 0.4  # held at the second stop
+		await get_tree().create_timer(wait).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		await _quit_cleanly()
 	elif "--flow-test" in args:
@@ -688,6 +709,13 @@ func _until(cond: Callable, seconds: float) -> bool:
 	return true
 
 
+## Waits out the mission's intro (FLOW). A Night 2 mission's tour (v0.10 M6) is skipped at once, as a player would.
+func _past_intro() -> void:
+	if is_instance_valid(_mission) and _mission.touring():
+		_mission.skip_intro()
+	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+
+
 ## The whole screen flow, driven without a mouse -- the part nobody could click through while it was being
 ## built. One FLOW line per step, then one FLOW result line:
 ##   /f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --scene res://scenes/game.tscn -- --flow-test
@@ -805,7 +833,7 @@ func _flow_test() -> void:
 	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and loadout == kit
 		and _mission.rules().mission.id == MissionBook.WARNING,
 		"MANIFEST starts The Warning with its default loadout (%s)" % ",".join(loadout))
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	_mission.rules().time_left = 0.01
 	var faded := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
 	step.call(faded and _screen_node is ResultsScreen and String(result.get("reason", "")) == "omen"
@@ -821,7 +849,7 @@ func _flow_test() -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	_mission.rules().time_left = 0.01
 	var ending := await _until(func() -> bool: return _mission._ending, 3.0)
 	var ended := _mission.rules()
@@ -839,6 +867,7 @@ func _flow_test() -> void:
 	step.call(Engine.time_scale == 1.0, "and time runs at normal speed")
 
 	await _flow_campaign(step)
+	await _flow_tour(step)
 
 	print("FLOW result checks=%d failures=%d %s" % [count[0], fails.size(), ", ".join(fails)])
 
@@ -863,7 +892,7 @@ func _flow_night(step: Callable) -> void:
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and is_instance_valid(_mission) and _mission.started(), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	step.call(screen == Screen.MISSION and is_instance_valid(_mission) and loadout == kit
 		and _mission.act() != null and _mission.act().id == "omen" and _mission.night() != null,
 		"MANIFEST starts the night in Act I, The Omen (%s)" % ",".join(loadout))
@@ -896,7 +925,7 @@ func _flow_night(step: Callable) -> void:
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "festival", 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	step.call(screen == Screen.MISSION and _mission == first and _mission.act().id == "festival"
 		and _mission.night().path == "festival", "BEGIN plays Act II, the Festival (path %s)" % _mission.night().path)
 
@@ -934,7 +963,7 @@ func _flow_night(step: Callable) -> void:
 	# banner is held and shown after the intro's (v0.09 final review; before, it was lost).
 	var shown: PackedStringArray = _mission._hud.banners() if is_instance_valid(_mission._hud) else PackedStringArray()
 	step.call(shown.has("THE SOLDIERS TAKE THE GATES"), "the held festival's carry-over banner shows (%s)" % ", ".join(shown))
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	step.call(screen == Screen.MISSION and _mission.act().id == "judgement", "BEGIN plays Act III, Judgement")
 
 	# Act III ends on its clock: the night's results.
@@ -953,12 +982,12 @@ func _flow_night(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	await _until(func() -> bool: return _mission_up(null), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	var old := _mission
 	_open_pause()
 	on_action("pause:restart")
 	await _until(func() -> bool: return _mission_up(old), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	step.call(_mission != old and _mission.act() != null and _mission.act().id == "omen" and _mission.night().results.is_empty(),
 		"Restart in Act I is a fresh night, Act I again (%s)" % _mission.act().id)
 	_mission.rules().time_left = 0.01
@@ -975,7 +1004,7 @@ func _flow_night(step: Callable) -> void:
 	_open_pause()
 	on_action("pause:restart")
 	await _until(func() -> bool: return _mission_up(old), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	var live := 0
 	for c: Dictionary in _mission._bf.ctx.env.structure_destroyed.get_connections():
 		if (c.callable as Callable).get_object() is Rules:
@@ -997,7 +1026,7 @@ func _flow_night(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	await _until(func() -> bool: return _mission_up(null), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	await _night_to_redraft("festival")
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	_on_prepare_action("back", _screen_node as PrepareScreen)
@@ -1010,7 +1039,7 @@ func _flow_night(step: Callable) -> void:
 		"Esc during BEGIN's fade is ignored: Act II begins and the fade clears (%s)" % Screen.keys()[screen])
 
 	# Review focus 2: Pause, then Change powers mid-night, in Act II: the night's own draft, nothing left of it.
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	_open_pause()
 	on_action("pause:change")
 	await get_tree().process_frame
@@ -1022,7 +1051,7 @@ func _flow_night(step: Callable) -> void:
 	# The night gone some other way while BEGIN's fade is out: the fade lifts over what is up, and MANIFEST works again.
 	_on_prepare_action("manifest", draft)
 	await _until(func() -> bool: return _mission_up(null), 5.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	await _night_to_redraft("procession")
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	go_to(Screen.BOARD)
@@ -1035,7 +1064,7 @@ func _flow_night(step: Callable) -> void:
 	var again := await _until(func() -> bool: return _mission_up(null), 10.0)
 	step.call(again and _mission.act().id == "omen", "and MANIFEST starts the night again (up: %s, %s, fading %s, act %s)" % [again,
 		Screen.keys()[screen], _fading, _mission.act().id if is_instance_valid(_mission) and _mission.act() != null else "-"])
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 
 	# Pause, then Restart while BEGIN's fade comes back in (v0.09 final review): kept, and run once the fade is over -- a
 	# fresh night from Act I, as from _faded_into_mission()'s fade-in.
@@ -1052,7 +1081,7 @@ func _flow_night(step: Callable) -> void:
 	step.call(restarted and _mission.act().id == "omen" and _mission.night().results.is_empty(),
 		"and then restarts the night from Act I (up: %s, %s, fading %s, act %s)" % [restarted, Screen.keys()[screen], _fading,
 		_mission.act().id if is_instance_valid(_mission) and _mission.act() != null else "-"])
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	_open_pause()
 	on_action("pause:missions")
 	await get_tree().process_frame
@@ -1095,7 +1124,7 @@ func _flow_campaign(step: Callable) -> void:
 	prep.draft.preselect(PackedStringArray(["whisper", "wisp"]))
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 
 	# Review focus 2: Restart and Pause, Campaign record nothing either.
 	var old := _mission
@@ -1103,7 +1132,7 @@ func _flow_campaign(step: Callable) -> void:
 	on_action("pause:restart")
 	await _until(func() -> bool: return _mission_up(old), 10.0)
 	step.call(save.campaign.night == 0 and save.campaign.bites == 0, "Restart in a campaign night records nothing")
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	_open_pause()
 	on_action("pause:campaign")
 	await get_tree().process_frame
@@ -1116,7 +1145,7 @@ func _flow_campaign(step: Callable) -> void:
 	(_screen_node as PrepareScreen).draft.preselect(PackedStringArray(["whisper", "wisp"]))
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	_mission.rules().time_left = 0.01
 	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
 	var res := _screen_node as ResultsScreen
@@ -1149,7 +1178,7 @@ func _flow_campaign(step: Callable) -> void:
 	prep.draft.preselect(quiet)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	(_mission.rules().director as VigilFlameDirector).home = true
 	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
 	# The flame home with no beam ever on Wren (the light never wakes here) earns Unseen hands: +1 DP on top of the win's 2,
@@ -1169,7 +1198,7 @@ func _flow_campaign(step: Callable) -> void:
 	prep.draft.preselect(quiet)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
-	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
+	await _past_intro()
 	step.call(_mission.act() != null and _mission.act().id == "festival" and _mission.act().is_last()
 		and not _mission.night().bell_rang, "the Festival plays as a night of one act, its town unwarned")
 	_mission.rules().time_left = 0.01
@@ -1214,3 +1243,40 @@ func _flow_campaign(step: Callable) -> void:
 	on_action("prepare:back")
 	(_screen_node as MissionBoard).action.emit("back")
 	step.call(screen == Screen.TITLE, "and back to the title")
+
+
+## v0.10 M6 (spec §5; review focus 4 and 5): Mira's House opens on its tour -- the clock waiting, a caption up -- and a
+## Space press lands it at once: the caption gone, nothing cast, the clock running. A restart tours again from the top.
+func _flow_tour(step: Callable) -> void:
+	_in_campaign = false
+	mission_id = MissionBook.MIRAS_HOUSE
+	loadout = MissionBook.miras_house().default_loadout
+	go_to(Screen.MISSION)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await get_tree().process_frame
+	var clock0 := _mission.rules().time_left
+	step.call(_mission.touring() and _mission._hud.caption() != "", "Mira's House opens on its tour, a caption up")
+	var space := InputEventKey.new()
+	space.physical_keycode = KEY_SPACE
+	space.pressed = true
+	Input.parse_input_event(space)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var cooling := false
+	for i in _mission.rules().loadout.size():
+		cooling = cooling or _mission.rules().cooldown_left(i) > 0.0
+	step.call(not _mission.in_intro() and _mission._hud.caption() == "" and not cooling,
+		"Space lands it: no caption, nothing cast")
+	await get_tree().create_timer(0.5).timeout
+	step.call(_mission.rules().time_left < clock0, "and the clock runs (%.2f)" % _mission.rules().time_left)
+	var old := _mission
+	_open_pause()
+	on_action("pause:restart")
+	await _until(func() -> bool: return _mission_up(old), 10.0)
+	await get_tree().process_frame
+	step.call(_mission.touring() and _mission._hud.caption() != "", "a restart tours again from the top")
+	_mission.skip_intro()
+	step.call(not _mission.in_intro() and _mission._hud.caption() == "", "and lands at once when skipped")
+	_open_pause()
+	on_action("pause:missions")
+	await get_tree().process_frame

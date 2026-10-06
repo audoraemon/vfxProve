@@ -66,6 +66,9 @@ const EDGE_MARGIN := 10.0
 const HINT_W := 228.0
 const HINT_LINES := 3
 const HINT_COL := Color("e8d690")
+## The tour's caption (v0.10 M6, spec §5): its plate's top, above the slot row (SLOT_TOP), and the word under it.
+const CAPTION_TOP := 262.0
+const SKIP_TEXT := "SPACE TO SKIP"
 
 var _rules: Rules
 var _crowd: Crowd
@@ -88,6 +91,8 @@ var _slot_names: Array[String] = []
 ## The tags' layout for the frame being drawn (v0.10 M6, tag_layout()): placed by _draw_tags() and shared with
 ## _draw_tag_arrows(), so the arrows' labels keep clear of the map's.
 var _layout: Array = []
+## The tour's caption on screen (v0.10 M6); "" for none.
+var _caption := ""
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -475,6 +480,28 @@ static func subtitle_width(text: String) -> float:
 	return UiTheme.width(speaker(), UiTheme.SIZE_SMALL) + SUBTITLE_GAP + UiTheme.width(text, UiTheme.SIZE_BODY)
 
 
+## The tour's caption (v0.10 M6): Mission sets it every frame of the tour, and clears it when the camera lands.
+func set_caption(text: String) -> void:
+	_caption = text
+
+
+## The tour's caption on screen now (v0.10 M6); "" for none.
+func caption() -> String:
+	return _caption
+
+
+## The tour's caption (v0.10 M6) on a dark plate centred above the slot row, with SKIP_TEXT dim under it.
+func _draw_caption(w: float) -> void:
+	if _caption == "":
+		return
+	var tw := UiTheme.width(_caption, UiTheme.SIZE_BODY)
+	var sw := UiTheme.width(SKIP_TEXT, UiTheme.SIZE_SMALL)
+	var plate_w := maxf(tw, sw) + 16.0
+	draw_rect(Rect2(roundf((w - plate_w) * 0.5), CAPTION_TOP, plate_w, 32.0), Color(0.03, 0.03, 0.05, 0.78))
+	UiTheme.text(self, Vector2(roundf((w - tw) * 0.5), CAPTION_TOP + 14.0), _caption, UiTheme.SIZE_BODY)
+	UiTheme.text(self, Vector2(roundf((w - sw) * 0.5), CAPTION_TOP + 27.0), SKIP_TEXT, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
 ## Is this slot still red from a cast it could not take?
 func flashing(slot: int) -> bool:
 	return slot >= 0 and slot < _flash.size() and _flash[slot] > 0.0
@@ -500,6 +527,7 @@ func _signature() -> String:
 	if not events.is_empty():
 		out += "|" + str(events)
 	out += "|" + hint_text()
+	out += "|" + _caption
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
@@ -523,6 +551,7 @@ func _draw() -> void:
 	_draw_status(w)
 	_draw_banners(w)
 	_draw_subtitle(w)
+	_draw_caption(w)
 	_draw_slots(w)
 	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
 	_draw_marker()

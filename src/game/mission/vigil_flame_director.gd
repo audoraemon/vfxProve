@@ -335,7 +335,8 @@ func wren_lost() -> bool:
 
 ## The tags (v0.10 M6, spec §4.3), the most important first:
 ## - Wren, from his coming until the flame is home;
-## - the real flame while it is still in its lantern;
+## - the real flame while it is still in its lantern: on its living bearer wherever he walks now (the director does not
+##   step during the intro, so `_lantern` would lag behind him), else where the last bearer fell;
 ## - Mira's shrine;
 ## - all of those pointed at from the edge;
 ## - the Temple while the Vigil takes the real flame home;
@@ -346,8 +347,10 @@ func tags() -> Array[MapTag]:
 	var with_us := appeared and _alive(wren) and not wren.inside
 	if with_us and not home:
 		out.append(MapTag.person(wren.ground_pos, MARK_WREN, "WREN", true))
-	if not swapped and _lantern != Vector2.INF:
-		out.append(MapTag.person(_lantern, MARK_FLAME, "HALCYON'S FLAME", true))
+	if not swapped:
+		var flame := vigil.bearer.ground_pos if vigil != null and vigil.active and _alive(vigil.bearer) else _lantern
+		if flame != Vector2.INF:
+			out.append(MapTag.person(flame, MARK_FLAME, "HALCYON'S FLAME", true))
 	out.append(MapTag.place(shrine, MARK_SHRINE, "MIRA'S SHRINE"))
 	if homeward and not swapped:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
@@ -365,6 +368,18 @@ func hint_phase() -> String:
 	if homeward:
 		return "homeward"
 	return "wren" if appeared else ""
+
+
+## The tour (v0.10 M6, spec §5): the flame on its bearer, Mira's shrine, the Temple.
+func tour() -> Array:
+	var out := []
+	if vigil != null and _alive(vigil.bearer):
+		out.append([vigil.bearer.ground_pos, "Halcyon's flame, carried by the Vigil."])
+	if shrine != Vector2.INF:
+		out.append([shrine, "Mira's shrine. The flame must come here."])
+	if temple_door != Vector2.INF:
+		out.append([temple_door, "The Temple. The flame must not go home."])
+	return out
 
 
 func report() -> Dictionary:

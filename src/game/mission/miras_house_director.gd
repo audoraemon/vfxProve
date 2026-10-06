@@ -262,9 +262,10 @@ func inside() -> Array[Person]:
 ## The tags (v0.10 M6, spec §4.1), the most important first:
 ## - the house, named, outlined and pointed at from the edge, until it is destroyed;
 ## - its door, clear or watched, until it burns;
-## - each report's runner and, while one runs, the Temple, pointed at from the edge;
+## - each report's runner, pointed at from the edge;
 ## - the crying Believer, pointed at;
 ## - the Inquisitor, pointed at while she searches;
+## - the Temple, pointed at from the edge, while a report runs;
 ## - a red diamond on each Faithful watching the door (but her);
 ## - the grieving, and the Believers among them.
 func tags() -> Array[MapTag]:
@@ -283,15 +284,14 @@ func tags() -> Array[MapTag]:
 		if r.is_open() and _alive(r.carrier):
 			out.append(MapTag.person(r.carrier.ground_pos, MARK_WATCHED, "TO THE TEMPLE", true))
 			running = true
-	if running:
-		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if _alive(shouter):
 		out.append(MapTag.person(shouter.ground_pos, MARK_BELIEVER, "CRYING OUT", true))
 	if _alive(venn) and not venn.inside:
 		out.append(MapTag.person(venn.ground_pos, MARK_VENN, "INQUISITOR", venn_searching))
+	if running:
+		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if open:
-		# A freed Inquisitor cannot be passed through watchers()'s typed `exclude`; a fallen one is no watcher anyway.
-		for f in watchers(door, SIGHT, venn if _alive(venn) else null):
+		for f in watchers(door, SIGHT, venn):
 			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
 	for p in grieving:
 		if _alive(p) and not p.inside:
@@ -305,6 +305,18 @@ func hint_phase() -> String:
 	if burning or roof_fallen:
 		return "burning"
 	return "four" if believers_outside() >= BelieversObjective.NEED else ""
+
+
+## The tour (v0.10 M6, spec §5): her door, the Temple, the Inquisitor.
+func tour() -> Array:
+	var out := []
+	if door != Vector2.INF:
+		out.append([door, "Mira's house. Her journal is inside."])
+	if temple_door != Vector2.INF:
+		out.append([temple_door, "The Temple. Faithful who see you run here."])
+	if _alive(venn):
+		out.append([venn.ground_pos, "Venn, the Inquisitor. She searches from 0:40."])
+	return out
 
 
 func report() -> Dictionary:

@@ -62,6 +62,12 @@ func hint_phase() -> String:
 	return ""
 
 
+## Virtual (v0.10 M6, spec §5): the stops of the camera's tour before the clock starts, as [ground point, caption] pairs;
+## none by default, and then the intro is the sweep. A stop with no one to show is left out.
+func tour() -> Array:
+	return []
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

@@ -443,6 +443,12 @@ static func _tags(t) -> void:
 	var temple := _tag(d, "TEMPLE")
 	t.check(runner != null and runner.at == f.ground_pos and runner.edge and temple != null and temple.at == d.temple_door
 		and temple.edge, "a report on its way: the runner and the Temple, both pointed at from the edge")
+	# The Temple is listed after the Inquisitor (spec §4.1's order).
+	var order := PackedStringArray()
+	for m in d.tags():
+		if m.label in ["INQUISITOR", "TEMPLE"]:
+			order.append(m.label)
+	t.check(order == PackedStringArray(["INQUISITOR", "TEMPLE"]), "the Temple is listed after the Inquisitor (%s)" % order)
 	d.reports.clear()
 	t.check(_tag(d, "TO THE TEMPLE") == null and _tag(d, "TEMPLE") == null, "no report running: neither")
 	var g := d.grieving[0]
@@ -498,6 +504,19 @@ static func _freed(t) -> void:
 	d.venn.free()
 	t.check(_tag(d, "DOOR - WATCHED") != null and _tag(d, "INQUISITOR") == null,
 		"the Inquisitor's body freed too: the tags are still made, the door watched, and no one is named")
+	# A runner struck down, and a grieving body freed: their tags go.
+	var runner: Person = by[1]
+	d._report(runner, d.temple_door)
+	(s.crowd as Crowd)._field.kill(runner, &"fire")
+	t.check(_tag(d, "TO THE TEMPLE") == null and _tag(d, "TEMPLE") == null, "a runner struck down: no runner, no Temple")
+	var grieving_before := 0
+	for m in d.tags():
+		grieving_before += 1 if m.color == MirasHouseDirector.MARK_GRIEVING else 0
+	d.grieving[0].free()
+	var grieving_after := 0
+	for m in d.tags():
+		grieving_after += 1 if m.color == MirasHouseDirector.MARK_GRIEVING else 0
+	t.check(grieving_after == grieving_before - 1, "a grieving body freed: one fewer grieving tag")
 	_done(s)
 
 

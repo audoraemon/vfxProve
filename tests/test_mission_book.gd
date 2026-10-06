@@ -101,6 +101,11 @@ static func run(t) -> void:
 		and fe.acts.size() == 1 and fe.first_act().id == "festival" and fe.first_act().is_last()
 		and fe.first_act().director == FestivalDirector, "the Feast's Festival is The Long Night's act, alone and last")
 	t.check(MissionBook.feast("procession").first_act().director == ProcessionDirector, "and so is the Procession")
+	t.check(is_equal_approx(fe.first_act().rite_penalty, BanishingRite.PENALTY)
+		and is_equal_approx(MissionBook.feast("procession").first_act().rite_penalty, BanishingRite.PENALTY)
+		and is_equal_approx(MissionBook.long_night().act("festival").rite_penalty, MissionBook.NIGHT_RITE_PENALTY),
+		"the Feast keeps the 40 s rite; The Long Night's act has 20 (%.0f, %.0f)" % [fe.first_act().rite_penalty,
+		MissionBook.long_night().act("festival").rite_penalty])
 	t.check(not fe.scored and not MissionBook.feast("procession").scored and MissionBook.long_night().scored,
 		"the Feast is an unscored night (v0.10 M5); The Long Night is still scored")
 	var warned := NightState.new()

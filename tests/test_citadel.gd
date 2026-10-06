@@ -62,6 +62,43 @@ static func run(t) -> void:
 	env.clear()
 	env.free()
 	c.free()
+	_garrison(t)
+
+
+## The garrison (v0.09.1): each soldier on the rally ring cuts what a hit on a part takes by GARRISON_STEP, up to
+## GARRISON_CAP -- and a fully garrisoned Citadel still falls.
+static func _garrison(t) -> void:
+	var env := EnvironmentField.new()
+	var c := Citadel.new().setup(env, TownLayout.CITADEL_ORIGIN)
+	var ring := [0]
+	c.garrison = func() -> int: return ring[0]
+	t.check(is_equal_approx(Citadel.GARRISON_STEP, 0.02) and is_equal_approx(Citadel.GARRISON_CAP, 0.30),
+		"a step of 2%%, capped at 30%%")
+	for n in [0, 1, 5, 14]:
+		ring[0] = n
+		var before := c.health
+		c.keep.damage(50.0, c.origin, &"orbital")
+		t.near(before - c.health, 50.0 * (1.0 - minf(n * 0.02, 0.30)), 0.0001,
+			"%d on the ring: a 50 hit takes %.1f" % [n, before - c.health])
+		c.advance(1.0)
+	ring[0] = 20
+	t.near(c.garrison_cut(), 0.30, 0.00001, "20 on the ring cut exactly 30%")
+	ring[0] = 60
+	t.near(c.garrison_cut(), 0.30, 0.00001, "and no more for 60")
+	var before := c.health
+	c.keep.damage(50.0, c.origin, &"orbital")
+	t.near(before - c.health, 35.0, 0.0001, "a 50 hit takes 35 under the full garrison")
+	# Review Focus 2: under the full garrison, enough damage still brings it down.
+	var blows := 0
+	while not c.is_fallen() and blows < 40:
+		c.advance(1.0)
+		env.damage_radius(c.origin, 4.0, 99999.0, &"nova")
+		blows += 1
+	t.check(c.is_fallen() and c.keep.destroyed and c.fraction() == 0.0,
+		"a fully garrisoned Citadel still falls (%d great blows)" % blows)
+	env.clear()
+	env.free()
+	c.free()
 
 
 static func _indices(c: Citadel, list: Array) -> Array:

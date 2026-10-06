@@ -83,6 +83,9 @@ const QUEUE_SPACING := 0.34
 const QUEUE_DEPTH0 := 2.2
 ## Where the soldiers ring the Citadel.
 const RING_RADIUS := 3.4
+## A rallied soldier this far past RING_RADIUS still stands on the ring (v0.09.1): it garrisons the Citadel
+## (Citadel.garrison) and is the reserve a dead marshal, escort or rescuer is replaced from (_refill()).
+const RING_REACH := 1.0
 ## Voices: at most this many a second across the whole town, refilling steadily, so 160 people can never drown
 ## the powers. A cast is heard from at most VOICES_PER_CAST of the people it frightened, the nearest first.
 const VOICE_BUDGET := 4.0
@@ -263,6 +266,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
 		town.citadel.fallen.connect(_on_citadel_fallen)
+		town.citadel.garrison = ring_count  # (v0.09.1) the Citadel asks once per hit
 	return self
 
 
@@ -444,10 +448,12 @@ func add_soldier(at: Vector2) -> Person:
 
 ## The soldiers' roles (v0.07), from their posts (_soldier_posts() lays them out yard, walls, Citadel, patrols): the
 ## barracks yard's first profile.rescue_squads x RESCUE_SQUAD form the rescue squads, the walls' first
-## profile.marshals_per_exit x ways out become marshals, and the patrols escort the responders. The Citadel's guard and
-## anyone over the counts keep v0.06's ways (posts, the rally). Each remembers its post.
+## profile.marshals_per_exit x ways out become marshals, and the patrols' first escort_cap() escort the responders. The
+## Citadel's guard and anyone over the counts keep v0.06's ways (posts, investigations, the rally). Each remembers its
+## post.
 func _assign_corps() -> void:
 	var exits := 2 + (2 if profile.boats else 0)
+	var cap := escort_cap(profile)
 	for i in soldiers.size():
 		var p := soldiers[i]
 		p.post = p.anchor
@@ -458,7 +464,14 @@ func _assign_corps() -> void:
 			if i - POST_YARD < profile.marshals_per_exit * exits:
 				p.corps = Person.Corps.MARSHAL
 		elif i >= POST_YARD + POST_WALLS + POST_CITADEL:
-			p.corps = Person.Corps.ESCORT
+			if i - (POST_YARD + POST_WALLS + POST_CITADEL) < cap:
+				p.corps = Person.Corps.ESCORT
+
+
+## How many escorts a town keeps (v0.09.1: by need): escorts_per_duty for each duty EscortManager can give them -- the
+## bell, the rite and each engineer team the profile has. The other patrols keep no role, and rally.
+static func escort_cap(pr: ResponseProfile) -> int:
+	return pr.escorts_per_duty * ((1 if pr.bell else 0) + (1 if pr.rite else 0) + pr.engineer_teams)
 
 
 ## The spec's posting: the yard, the wall towers and gates, the Citadel, and street patrols in pairs.
@@ -848,6 +861,17 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key)
+	var points := cast_points(ground, dir, length, radius)
+	for point in points:
+		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
+			StringName(key))
+	_react(points, radius, float(reach[1]), ground, StringName(key))
+
+
+## Where a cast of danger `radius` at `ground` is a threat (on_cast()): there, or for a lane power (`dir` set, `length`
+## above zero) a point every `radius` (at least 1) along its lane and one at its end. Read by the Festival's director
+## too (v0.09.1), for the goers a cast breaks.
+static func cast_points(ground: Vector2, dir: Vector2, length: float, radius: float) -> Array[Vector2]:
 	var points: Array[Vector2] = [ground]
 	if dir != Vector2.ZERO and length > 0.0:
 		var step := maxf(radius, 1.0)
@@ -857,10 +881,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 			points.append(ground + unit * along)
 			along += step
 		points.append(ground + unit * length)
-	for point in points:
-		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
-			StringName(key))
-	_react(points, radius, float(reach[1]), ground, StringName(key))
+	return points
 
 
 ## A cast's danger radius: its area on the ground (Targeting.AREAS), or v0.03's fright less the margin.
@@ -1048,6 +1069,8 @@ func _evacuate() -> void:
 			continue  # the bellkeeper and the clergy stay at their duty (off_duty() sends them on after)
 		if p.mind == Person.Mind.ASSIST and p.assist_stays:
 			continue  # an engineer at a fire works on (v0.08.2), as at its other duties
+		if p.engineer_duty:
+			continue  # an engineer on its team, frightened or waiting at home, goes back to it when calm (v0.09.1)
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):
@@ -1103,7 +1126,18 @@ func _regroup() -> void:
 ## Someone's duty is done (the bell rung, the rite over): to the gates if the town is evacuating, else home to wait
 ## with the family.
 func off_duty(p: Person) -> void:
-	if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.DUTY:
+	if not is_instance_valid(p) or not p.is_alive():
+		return
+	var on_team := p.engineer_duty
+	p.engineer_duty = false
+	if p.mind != Person.Mind.DUTY:
+		if on_team and _fled_all and not p.soldier and (p.mind in EngineerManager.AVAILABLE
+				or p.mind == Person.Mind.PANIC or p.mind == Person.Mind.ASSIST):
+			# An engineer frightened off its team (or at a fire), whose team now stands down after the evacuation: to
+			# the gates with the rest (v0.09.1), as one on duty would be.
+			if p.mind == Person.Mind.ASSIST:
+				p.stand_down()
+			p.flee()
 		return
 	if p.soldier:
 		p.send_to_post(p.post if p.post != Vector2.INF else p.ground_pos)  # back to its post (v0.07)
@@ -1227,11 +1261,61 @@ func rally() -> void:
 	rallied.emit()
 
 
+## Whether `p` stands on the rally ring (v0.09.1): a living soldier without a role, rallied, and within RING_RADIUS +
+## RING_REACH of the Citadel. Untyped: `soldiers` can still hold one freed since the last _prune_soldiers(), and a typed
+## parameter would raise on it before is_instance_valid() could look.
+func on_ring(p: Variant) -> bool:
+	if not is_instance_valid(p):
+		return false
+	var s := p as Person
+	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and s.mind == Person.Mind.RALLY \
+		and s.ground_pos.distance_to(TownLayout.CITADEL_ORIGIN) <= RING_RADIUS + RING_REACH
+
+
+## How many soldiers stand on the rally ring (v0.09.1): the Citadel's garrison, asked once per hit on it.
+func ring_count() -> int:
+	if not _rallied:
+		return 0
+	var n := 0
+	for p in soldiers:
+		if on_ring(p):
+			n += 1
+	return n
+
+
+## The reserve (v0.09.1): once the soldiers have rallied, a marshal, escort or rescuer killed is replaced by the living
+## soldier on the ring nearest it. That soldier takes the role and the dead one's post, and the role's manager puts it
+## to work: a marshal at its way out, an escort on the duty it guarded (or one short of escorts), a rescuer in its squad.
+## One replacement for each death; with the ring empty, nobody.
+func _refill(dead: Person) -> void:
+	if not _rallied or not dead.corps in [Person.Corps.MARSHAL, Person.Corps.ESCORT, Person.Corps.RESCUE]:
+		return
+	var best: Person = null
+	for p in soldiers:
+		if on_ring(p) and (best == null
+				or p.ground_pos.distance_squared_to(dead.ground_pos) < best.ground_pos.distance_squared_to(dead.ground_pos)):
+			best = p
+	if best == null:
+		return
+	best.corps = dead.corps
+	best.post = dead.post
+	match dead.corps:
+		Person.Corps.MARSHAL:
+			if marshals != null:
+				marshals.refill(best, dead)
+		Person.Corps.ESCORT:
+			if escorts != null:
+				escorts.refill(best, dead)
+		Person.Corps.RESCUE:
+			if rescue != null:
+				rescue.refill(best, dead)
+
+
 ## Raise the town's readiness mid-mission (v0.09, between the acts of a night): never lower. Responses the old profile
 ## lacked turn on -- the rite, the boats (and the postern), the engineers, more marshals -- unless their building is
 ## gone (a fallen or defiled cathedral, a ruined or defiled dock: that response stays ended); ones already due by the
-## alarm stage start at once. The rescue squads are not raised: RescueManager groups its squads at setup. Returns what
-## turned on.
+## alarm stage start at once. The escorts follow the new duties (v0.09.1, _raise_escorts(); not announced). The rescue
+## squads are not raised: RescueManager groups its squads at setup. Returns what turned on.
 func raise_profile(p: ResponseProfile) -> PackedStringArray:
 	var on := PackedStringArray()
 	if p.level() <= profile.level():
@@ -1263,6 +1347,7 @@ func raise_profile(p: ResponseProfile) -> PackedStringArray:
 			rite.begin()
 		if on.has("engineers"):
 			engineers.begin()
+	_raise_escorts()  # (unannounced: the duties that need them are)
 	if alarms.stage >= AlarmManager.Stage.EVACUATION:
 		if on.has("boats"):
 			ferry.begin()
@@ -1291,6 +1376,26 @@ func _raise_marshals() -> int:
 		var p := soldiers[i]
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
 			p.corps = Person.Corps.MARSHAL
+			added += 1
+	return added
+
+
+## More escorts for a raised profile (v0.09.1): patrols without a role take it, in post order, up to the new
+## escort_cap().
+func _raise_escorts() -> int:
+	var want := escort_cap(profile)
+	var have := 0
+	for p in soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.ESCORT:
+			have += 1
+	var added := 0
+	var first := POST_YARD + POST_WALLS + POST_CITADEL
+	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
+		if have + added >= want:
+			break
+		var p := soldiers[i]
+		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
+			p.corps = Person.Corps.ESCORT
 			added += 1
 	return added
 
@@ -1401,6 +1506,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 		return
 	if p.soldier:
 		killed_soldiers += 1
+		_refill(p)
 	else:
 		killed_citizens += 1
 	if kind == &"doom":

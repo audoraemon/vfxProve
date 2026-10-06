@@ -2,11 +2,12 @@ class_name BanishingRite
 extends RefCounted
 ## The Banishing Rite (v0.05): the town's answer to its god. At City Emergency the clergy gather on the cathedral's
 ## steps; once NEED of them stand in the ring they chant for the profile's rite_time, with a golden ring on the
-## steps and a bar on the HUD. Finished, it pushes the god out of the mortal realm sooner: Mission takes PENALTY
-## seconds off the manifestation (completed). The rite breaks -- its progress lost -- when fewer than HOLD clergy
-## are left in the ring (killed or frightened away) or the cathedral falls under MIN_HP of its health; the clergy
-## still on the steps regather COOLDOWN seconds later. A fallen or blighted cathedral, or fewer than NEED clergy
-## alive, ends it for good. Only Prepared towns and up (ResponseProfile.rite) hold one, and it is done once.
+## steps and a bar on the HUD. Finished, it pushes the god out of the mortal realm sooner: Mission takes the mission's
+## rite_penalty off the manifestation (completed) -- PENALTY seconds, 20 in The Long Night's acts (v0.09.1). The rite
+## breaks -- its progress lost -- when fewer than HOLD clergy are left in the ring (killed or frightened away) or the
+## cathedral falls under MIN_HP of its health; the clergy still on the steps regather COOLDOWN seconds later. A fallen or
+## blighted cathedral, or fewer than NEED clergy alive, ends it for good. Only Prepared towns and up
+## (ResponseProfile.rite) hold one, and it is done once.
 
 signal gathering
 signal started
@@ -21,6 +22,7 @@ const HOLD := 2
 ## Clergy called to the steps: the first NEED to arrive start it, the others help hold it. This many by default; the
 ## profile sets it (ResponseProfile.rite_clergy, v0.08.2: God-Resistant calls more).
 const CALL := 4
+## Seconds a completed rite takes off the clock, unless the mission sets its own (MissionDef.rite_penalty).
 const PENALTY := 40.0
 const COOLDOWN := 30.0
 const MIN_HP := 0.5

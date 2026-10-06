@@ -180,6 +180,9 @@ static func run(t) -> void:
 	_done(made)
 
 	_fires(t)
+	_fire_before_mending(t)
+	_return_after_fright(t)
+	_freed_member(t)
 
 
 ## v0.08.2: a team with nothing to mend fights the nearest fire, through the evacuation too, and goes back to
@@ -228,8 +231,9 @@ static func _fires(t) -> void:
 	t.check(brigade.mind != Person.Mind.ASSIST and first.mind == Person.Mind.ASSIST,
 		"at the evacuation the brigade stands down and runs, the engineers fight on")
 
-	# A job: one team leaves the fire to mend it; the other stays on.
-	var shack := _house(env, Vector2(-10, 5))
+	# A job that outranks a fire (v0.09.1: a house no longer does; here the bridge): one team leaves the fire to mend
+	# it; the other stays on.
+	var shack := (made[5] as Town).bridge
 	shack.hp = shack.max_hp * 0.4
 	e.step(EngineerManager.RETHINK)
 	var mending: Dictionary = {}
@@ -271,4 +275,195 @@ static func _fires(t) -> void:
 	for p in crowd.citizens:
 		assisting += 1 if p.mind == Person.Mind.ASSIST else 0
 	t.check(assisting == 0, "an Organized town sends no engineers to a fire")
+	_done(made)
+
+
+## v0.09.1: a burning building outranks mending a damaged house, so a team with nothing better to do fights the fire
+## even while houses wait; a gate, the bridge or the dock being rebuilt (and the Citadel, a Thornwall and the landmarks)
+## still come first.
+static func _fire_before_mending(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var town: Town = made[5]
+	var e := crowd.engineers
+	var fm := crowd.fires
+	var damaged := _house(env, e.base)
+	damaged.hp = damaged.max_hp * 0.4
+	var burning := _other_house(env, e.base, damaged)
+	fm.ignite(burning, 0.4)
+	e.begin()
+	e.step(0.1)
+	var at_fire := 0
+	for team in e.teams:
+		var m: Person = team.members[0]
+		if team.job.is_empty() and m.mind == Person.Mind.ASSIST and m.assist_fire == burning:
+			at_fire += 1
+	t.check(e.jobs().size() == 1 and e.jobs()[0].target == damaged and at_fire == e.teams.size(),
+		"with a damaged house and a burning one in reach, the idle teams go to the fire (%d of %d)" % [at_fire, e.teams.size()])
+	t.check(damaged.hp == damaged.max_hp * 0.4, "and the house waits")
+
+	# The fire out, the house is mended after all.
+	fm.fires[burning].intensity = 0.05
+	fm.douse(burning)
+	for k in 6:
+		e.step(EngineerManager.RETHINK)
+	var mending := 0
+	for team in e.teams:
+		mending += 1 if not team.job.is_empty() and team.job.target == damaged else 0
+	t.check(mending == 1, "the fire out, a team goes back to mend the house")
+	_done(made)
+
+	# A team already mending a house leaves it for a fire at the next rethink.
+	made = _crowd()
+	crowd = made[0]
+	env = made[1]
+	e = crowd.engineers
+	fm = crowd.fires
+	damaged = _house(env, e.base)
+	damaged.hp = damaged.max_hp * 0.4
+	e.begin()
+	e.step(0.1)
+	var on_house: Dictionary = {}
+	for team in e.teams:
+		if not team.job.is_empty() and team.job.target == damaged:
+			on_house = team
+	t.check(not on_house.is_empty(), "a team starts mending the damaged house")
+	burning = _other_house(env, e.base, damaged)
+	fm.ignite(burning, 0.4)
+	e.step(EngineerManager.RETHINK)
+	t.check(on_house.job.is_empty() and (on_house.members[0] as Person).mind == Person.Mind.ASSIST
+		and (on_house.members[0] as Person).assist_fire == burning, "at the next rethink it leaves the house for the fire")
+	_done(made)
+
+	# A rebuild keeps its priority over the fire and the house: one team takes the fallen gate, the other the fire.
+	made = _crowd()
+	crowd = made[0]
+	env = made[1]
+	town = made[5]
+	e = crowd.engineers
+	fm = crowd.fires
+	damaged = _house(env, e.base)
+	damaged.hp = damaged.max_hp * 0.4
+	burning = _other_house(env, e.base, damaged)
+	fm.ignite(burning, 0.4)
+	var gate: Structure = null
+	for g in town.gates:
+		if g.footprint == TownLayout.MAIN_GATE:
+			gate = g
+	gate.destroy(gate.center(), &"nova")
+	e.begin()
+	e.step(0.1)
+	var on_gate := 0
+	var on_fire := 0
+	for team in e.teams:
+		on_gate += 1 if not team.job.is_empty() and team.job.target == gate and team.job.rebuild else 0
+		on_fire += 1 if team.job.is_empty() and (team.members[0] as Person).mind == Person.Mind.ASSIST else 0
+	t.check(on_gate == 1 and on_fire == 1, "a fallen gate is rebuilt before the fire is fought (%d on it, %d at the fire)"
+		% [on_gate, on_fire])
+	_done(made)
+
+
+## A house within FIRE_REACH of `near` that is not `not_this`.
+static func _other_house(env: EnvironmentField, near: Vector2, not_this: Structure) -> Structure:
+	for s in env.structures():
+		if s.role == &"house" and s.art_tag == &"" and s != not_this and s.center().distance_to(near) < EngineerManager.FIRE_REACH:
+			return s
+	return null
+
+
+## v0.09.1: an engineer frightened off its team goes back to it once calm, in the evacuation too (it used to run for
+## the gates and be lost). When its team is lost, the one left flees as before.
+static func _return_after_fright(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var e := crowd.engineers
+	var house := _house(env, e.base)
+	house.hp = house.max_hp * 0.4
+	e.begin()
+	e.step(0.1)
+	var team: Dictionary = {}
+	for tm in e.teams:
+		if not tm.job.is_empty():
+			team = tm
+	var m: Person = team.members[0]
+	var job: Dictionary = team.job
+	# Frightened just as the evacuation is called.
+	m.shelters = null
+	m.panic(m.ground_pos + Vector2(0.5, 0), 1.0, &"heaven")
+	t.check(m.mind == Person.Mind.PANIC, "(set-up) the engineer is frightened")
+	crowd.alarms.stage = AlarmManager.Stage.EVACUATION
+	crowd._evacuate()
+	t.check(m.mind == Person.Mind.PANIC, "frightened as the town evacuates, an engineer is not sent to the gates")
+	m._recover(0.5)
+	e.step(0.1)
+	t.check(m.mind == Person.Mind.DUTY and m.anchor == team.spots[0] and team.job == job,
+		"it calms and goes back to its team's job, not to flight")
+
+	# Frightened during the evacuation, it still goes back.
+	m.panic(m.ground_pos + Vector2(0.5, 0), 1.0, &"heaven")
+	t.check(m.mind == Person.Mind.PANIC, "(set-up) frightened again, after the evacuation was called")
+	m._recover(0.5)
+	e.step(0.1)
+	t.check(m.mind == Person.Mind.DUTY and team.job == job, "frightened after the evacuation, it goes back too")
+
+	# Out of a shelter it ran into while the town evacuates.
+	m.mind = Person.Mind.SHELTER
+	m.leave_shelter(true)
+	t.check(m.mind != Person.Mind.FLEE, "out of a shelter during the evacuation it does not flee")
+	e.step(0.1)
+	t.check(m.mind == Person.Mind.DUTY, "and goes back to its team")
+
+	# A citizen who is no engineer is sent to the gates from the same states.
+	var other: Person = null
+	for p in crowd.citizens:
+		if p.profile != null and p.profile.role != CitizenProfile.Role.ENGINEER:
+			other = p
+			break
+	other.mind = Person.Mind.SHELTER
+	other.leave_shelter(true)
+	t.check(other.mind == Person.Mind.FLEE, "anyone else out of a shelter during the evacuation flees")
+
+	# The team stands down (a member dies after the evacuation): the one left, recovering, flees as before.
+	var partner: Person = team.members[1]
+	m._recover(5.0)
+	(made[3] as EnemyField).kill(partner, &"test")
+	e.step(0.1)
+	t.check(m.mind == Person.Mind.FLEE, "when its team is lost in the evacuation, the one left flees")
+	_done(made)
+
+
+## v0.09.1 final review: an engineer killed before City Emergency frees itself when its death fade ends, and stays on
+## its team until the next step's _check_losses(). The turn-out puts every living member on duty, passes the freed one
+## by, and still announces itself.
+static func _freed_member(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var e := crowd.engineers
+	var victim: Person = e.teams[0].members[0]
+	t.check(field.kill(victim, &"test"), "(set-up) an engineer dies before City Emergency")
+	crowd.citizens.erase(victim)
+	field.remove(victim)
+	victim.free()
+	var out := []
+	e.turned_out.connect(func() -> void: out.append(true))
+	e.begin()
+	var living := 0
+	var flagged := 0
+	for team in e.teams:
+		for p in team.members:
+			if is_instance_valid(p):
+				living += 1
+				flagged += int((p as Person).engineer_duty)
+	t.check(e.active and out.size() == 1, "the engineers still turn out (active %s, turned_out %d)" % [e.active, out.size()])
+	t.check(living == 3 and flagged == living, "every living member is on duty (%d of %d)" % [flagged, living])
+	e.step(0.1)
+	var whole := true
+	for team in e.teams:
+		for p in team.members:
+			whole = whole and is_instance_valid(p) and (p as Person).is_alive()
+	t.check(whole and not e.teams.is_empty(),
+		"the next step writes the broken team off or fills its place, without a freed member (%d teams)" % e.teams.size())
 	_done(made)

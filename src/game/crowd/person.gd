@@ -193,6 +193,9 @@ var assist_wait := 0.0
 ## Kept on its fire through the evacuation (v0.08.2): an engineer, who works on while the town leaves, unlike the
 ## fire brigade.
 var assist_stays := false
+## On an engineer team while the engineers are out (v0.09.1; EngineerManager sets it): a fright or a shelter never sends it
+## to the gates for good, it goes back to its team once calm. Cleared when its team stands down (Crowd.off_duty()).
+var engineer_duty := false
 ## Taking cover (v0.04 P2; ShelterManager runs it): the crowd's manager, the building sought or sheltered in, its
 ## door, and whether it is inside (hidden, out of every effect's reach, not stepped).
 var shelters: ShelterManager
@@ -1175,10 +1178,11 @@ func seek_shelter(s: Structure, door: Vector2) -> void:
 	set_goal(door)
 
 
-## Out of cover (or giving up on it): to the gates if the town is evacuating, else back to its day.
+## Out of cover (or giving up on it): to the gates if the town is evacuating, else back to its day. An engineer on its
+## team goes back to it either way (v0.09.1).
 func leave_shelter(evacuate: bool) -> void:
 	shelter = null
-	if evacuate:
+	if evacuate and not engineer_duty:
 		mind = Mind.CALM
 		flee()
 	else:

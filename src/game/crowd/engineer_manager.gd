@@ -13,6 +13,12 @@ extends RefCounted
 ## stands. Only towns whose profile has engineer_teams have engineers. A team with nothing to mend fights the nearest
 ## fire within FIRE_REACH (v0.08.2; FireManager.enlist()), through the evacuation too, where the fire brigade stands
 ## down; a job to do calls it back at the next rethink.
+## Fire before mending (v0.09.1): a burning building within FIRE_REACH outranks mending a house, so a team whose best
+## job is a house fights the fire instead (or leaves its house for it, at a rethink); the Citadel, the ways out (a gate,
+## the bridge or the dock rebuilt or mended), a Thornwall and the landmarks (PRIORITY 60 and up) still come first.
+## Return after a fright (v0.09.1): while the engineers are out each member is Person.engineer_duty, so a fright or a
+## shelter never sends it to the gates (Crowd._evacuate(), Person.leave_shelter()): it goes back to its team once calm
+## (_work()). Only when its team is lost does one left flee (Crowd.off_duty()).
 
 signal turned_out
 signal rebuilt(s: Structure)
@@ -81,6 +87,8 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid, town: Town, engi
 
 func _team(members: Array) -> Dictionary:
 	_next_id += 1
+	if active:
+		_on_duty(members)
 	return {"id": _next_id, "members": members, "job": {}, "spots": [], "progress": 0.0, "working": false}
 
 
@@ -90,7 +98,18 @@ func begin() -> void:
 		return
 	active = true
 	_think_in = 0.0
+	for team in teams:
+		_on_duty(team.members)
 	turned_out.emit()
+
+
+## Every living member of `members` is on its team's duty (Person.engineer_duty). One killed before City Emergency may
+## be freed already (its death fade ended) and is passed by: the next step's _check_losses() writes its team off or
+## fills its place.
+func _on_duty(members: Array) -> void:
+	for p in members:
+		if is_instance_valid(p) and (p as Person).is_alive():
+			(p as Person).engineer_duty = true
 
 
 func step(delta: float) -> void:
@@ -215,8 +234,16 @@ func _assign(rethink: bool) -> void:
 			if sc > best_score:
 				best_score = sc
 				best = job
+		# A burning building outranks mending a house (v0.09.1): a team with nothing to do, or whose best job is a house
+		# (it may be mending that one), fights the fire. Anything of PRIORITY above a house's, a way out above all, is
+		# taken as before.
+		var house_or_nothing: bool = best.is_empty() or best.type == Job.HOUSE
+		if house_or_nothing and (team.job.is_empty() or team.job.type == Job.HOUSE) and _fight_fire(team):
+			team.job = {}
+			team.working = false
+			continue
 		if best.is_empty():
-			if team.job.is_empty() and not _fight_fire(team):
+			if team.job.is_empty():
 				_stand_by(team)
 			continue
 		if team.job.is_empty() or (best.target != team.job.target and best_score > score(team.job, from) + SWITCH_MARGIN):
@@ -265,7 +292,6 @@ func _fight_fire(team: Dictionary) -> bool:
 		fire = _crowd.fires.nearest_fightable(_where(team), FIRE_REACH)
 	if fire == null:
 		return false
-	team.spots = _spots(base) if base != Vector2.INF else team.spots
 	var sent := false
 	for p in team.members:
 		if not is_instance_valid(p) or not (p as Person).is_alive():
@@ -274,6 +300,8 @@ func _fight_fire(team: Dictionary) -> bool:
 		if m.mind != Person.Mind.ASSIST and (m.mind == Person.Mind.DUTY or m.mind in AVAILABLE or m.soldier):
 			_crowd.fires.enlist(m, fire, true)
 		sent = sent or m.mind == Person.Mind.ASSIST
+	if sent and base != Vector2.INF:
+		team.spots = _spots(base)  # where it goes back to when the fire is out (and not before: it may be mid-job)
 	return sent
 
 
@@ -385,6 +413,7 @@ func _check_losses() -> void:
 				var sub: Person = _crowd.escorts.engineer_stand_in(team) if _crowd.escorts != null else null
 				if sub != null:
 					team.members[i] = sub
+					sub.engineer_duty = true
 					var spot: Vector2 = team.spots[i] if i < team.spots.size() else base
 					if spot != Vector2.INF:
 						sub.go_duty(spot)

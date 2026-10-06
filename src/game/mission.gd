@@ -321,8 +321,7 @@ func _wire_responses() -> void:
 		rite.broken.connect(func(_why: String): _rules.banner.emit("THE RITE IS BROKEN"))
 		rite.ended.connect(func(_why: String): _rules.banner.emit("THE RITE IS ENDED"))
 		rite.completed.connect(func():
-			_rules.lose_time(BanishingRite.PENALTY)
-			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(BanishingRite.PENALTY)))
+			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(_rules.banish())))
 
 
 ## True the first time a manager is asked about, and marks it wired.

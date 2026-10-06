@@ -116,10 +116,11 @@ const FESTIVAL_LOOK_AT := Vector2(1.0, 4.0)
 ## towards the boarding point the camera looks (0 on him, 1 at the ship).
 const PROCESSION_SHOTS := [[65.0, 2.5, 0.0], [125.0, 1.6, 0.6]]
 
-## What each act drafts when `night` plays it (v0.09 Task 18), simulating Prepare's re-draft between acts (each fits 4
-## slots and the night's DP). Act I's is the Warning's mix (3 DP); the Festival needs only the Mayor's Doom and a
-## Discord (3 DP); the Procession adds a Mind Whisper (4 DP); Act III is the four heaviest it can afford (Task 19:
-## Heaven Splitter, Nuclear Nova, Judgement of the Ancients, Cinderfall Barrage: 2 + 4 + 4 + 4 = 14 DP).
+## What each act drafts when `night` plays it (v0.09 Task 18), simulating Prepare's re-draft between acts (each fits its
+## act's slots and DP, v0.09.1: Act I 3 / 6, Act II 4 / 10, Act III 4 / 14). Act I's is the Warning's mix (3 DP); the
+## Festival needs only the Mayor's Doom and a Discord (3 DP); the Procession adds a Mind Whisper (4 DP); Act III is the
+## four heaviest it can afford (Task 19: Heaven Splitter, Nuclear Nova, Judgement of the Ancients, Cinderfall Barrage:
+## 2 + 4 + 4 + 4 = 14 DP).
 const NIGHT_LOADOUTS := {"omen": ["whisper", "doom", "discord"], "festival": ["doom", "discord"],
 	"procession": ["whisper", "doom", "discord"], "judgement": ["heaven", "nova", "judgement", "cinder"]}
 ## The Festival's Silent Doom on the Mayor is cast from this second of the act (inside his address, 90 s to 120 s).

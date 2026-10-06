@@ -72,6 +72,24 @@ static func card_rect(i: int, count: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (size.x + CARD_GAP), CARD_TOP), size)
 
 
+## The loadout row at the foot of a card: "3 slots · 6 DP" ("4 slots" with no budget). A night whose acts grow the
+## budget (v0.09.1) shows the slots' range and the DP it starts with and rises to: "3–4 slots · 6 DP rising to 14".
+static func loadout_line(def: MissionDef) -> String:
+	var lo := def.slots
+	var hi := def.slots
+	var top := def.dp_capacity
+	for a: MissionDef in def.acts:
+		lo = mini(lo, a.slots)
+		hi = maxi(hi, a.slots)
+		top = maxi(top, a.dp_capacity)
+	var slots := "%d slots" % hi if lo == hi else "%d–%d slots" % [lo, hi]
+	if def.dp_capacity == 0:
+		return slots
+	if top == def.dp_capacity:
+		return "%s · %d DP" % [slots, def.dp_capacity]
+	return "%s · %d DP rising to %d" % [slots, def.dp_capacity, top]
+
+
 ## The card under a point, or -1.
 func hit(point: Vector2) -> int:
 	for i in missions.size():
@@ -224,7 +242,7 @@ func _draw_card(r: Rect2, def: MissionDef, on: bool) -> void:
 
 	# The foot of the card, a rule over three rows so every card's rule sits at the same height: the loadout, the
 	# best result, and under a night's best rank its path marks (v0.09).
-	var loadout := "%d slots" % def.slots if def.dp_capacity == 0 else "%d slots · %d DP" % [def.slots, def.dp_capacity]
+	var loadout := loadout_line(def)
 	var night := not def.acts.is_empty()
 	var rule := r.end.y - PAD - 2.0 - UiTheme.LINE_SMALL * 3.0 - 4.0
 	var row_y := rule + 4.0 + UiTheme.LINE_SMALL

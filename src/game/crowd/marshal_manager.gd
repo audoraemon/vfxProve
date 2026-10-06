@@ -5,7 +5,7 @@ extends RefCounted
 ## either side of the crowd's head. Each way out takes the nearest of the marshals not yet posted. Each living marshal
 ## within REACH of a way out makes it SPEED faster (speed_at(): a gate lets the next one through sooner, the boat takes
 ## them aboard sooner), and a confused evacuee near one is brought round within STEADY_TIME. Kill them or knock them
-## away and the way out slows again.
+## away and the way out slows again -- until a soldier from the rally ring takes a dead one's place (refill(), v0.09.1).
 
 signal posted
 
@@ -69,7 +69,6 @@ func begin() -> void:
 	for e in exits():
 		var mouth: Vector2 = e[0]
 		var out_dir: Vector2 = e[1]
-		var side := Vector2(-out_dir.y, out_dir.x)
 		var mine: Array = []
 		pool.sort_custom(func(a: Person, b: Person) -> bool:
 			return a.ground_pos.distance_squared_to(mouth) < b.ground_pos.distance_squared_to(mouth))
@@ -77,17 +76,69 @@ func begin() -> void:
 			if pool.is_empty():
 				break
 			var p: Person = pool.pop_front()
-			var sgn := -1.0 if j % 2 == 0 else 1.0
-			var spot := mouth - out_dir * BACK + side * sgn * (FLANK + FLANK_STEP * float(j / 2))
-			if not _grid.walkable(spot):
-				var near := _grid.nearest_walkable(spot, 3)
-				spot = near if near != Vector2.INF else mouth
-			p.send_to_post(spot, false, true)  # at a run
+			p.send_to_post(_spot(mouth, out_dir, j), false, true)  # at a run
 			mine.append(p)
 			sent += 1
 		posts[mouth] = mine
 	if sent > 0:
 		posted.emit()
+
+
+## Where the `j`-th marshal at a way out stands: either side of its mouth, each next pair farther out.
+func _spot(mouth: Vector2, out_dir: Vector2, j: int) -> Vector2:
+	var side := Vector2(-out_dir.y, out_dir.x)
+	var sgn := -1.0 if j % 2 == 0 else 1.0
+	var spot := mouth - out_dir * BACK + side * sgn * (FLANK + FLANK_STEP * float(j / 2))
+	if not _grid.walkable(spot):
+		var near := _grid.nearest_walkable(spot, 3)
+		spot = near if near != Vector2.INF else mouth
+	return spot
+
+
+## A soldier from the rally ring takes the dead marshal `dead`'s place (Crowd._refill(), v0.09.1). Before the evacuation
+## it runs to the dead one's post on the walls (begin() pools it with the rest); after, it takes the dead one's place at
+## its way out, or the nearest way out short of marshals -- or, none short, its post.
+func refill(p: Person, dead: Person) -> void:
+	if not active:
+		p.send_to_post(p.post, false, true)
+		return
+	var per := _crowd.profile.marshals_per_exit
+	var at: Array = []
+	var slot := -1
+	for e in exits():
+		var j := (posts.get(e[0], []) as Array).find(dead)
+		if j >= 0:
+			at = e
+			slot = j
+			break
+	if at.is_empty():
+		var best_d := INF
+		for e in exits():
+			var mine: Array = posts.get(e[0], [])
+			var living := 0
+			for m in mine:
+				living += 1 if is_instance_valid(m) and (m as Person).is_alive() else 0
+			var d := p.ground_pos.distance_to(e[0])
+			if living < per and d < best_d:
+				best_d = d
+				at = e
+	if at.is_empty():
+		p.send_to_post(p.post, false, true)
+		return
+	var mine: Array = posts.get(at[0], [])
+	if slot < 0:
+		# The first place a fallen marshal left, else a new one.
+		for j in mine.size():
+			if not is_instance_valid(mine[j]) or not (mine[j] as Person).is_alive():
+				slot = j
+				break
+	if slot < 0:
+		slot = mine.size()
+		mine.append(p)
+	else:
+		mine[slot] = p
+	posts[at[0]] = mine
+	p.send_to_post(_spot(at[0], at[1], slot), false, true)  # at a run
 
 
 ## How much faster the way out at `mouth` runs: 1 + SPEED for each living marshal within REACH of it, once the

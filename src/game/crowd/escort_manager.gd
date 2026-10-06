@@ -7,8 +7,9 @@ extends RefCounted
 ## escort comes to within STEADY_TIME; a bellkeeper killed before the bell rang is replaced by an escort
 ## (bell_stand_in(); BellNetwork climbs it slower), an engineer by one of its team's (engineer_stand_in()). A duty is
 ## given its escorts_per_duty escorts once, over its whole life: one that falls, or takes a fallen responder's place, is
-## not replaced from the town's other escorts -- the counter to a guarded duty is to kill its escorts first. When a duty
-## ends its escorts go back to their posts.
+## not replaced from the town's other escorts -- the counter to a guarded duty is to kill its escorts first. Once the
+## soldiers have rallied, though, a fallen escort is replaced from the rally ring (refill(), v0.09.1). When a duty ends
+## its escorts go back to their posts.
 
 ## How near its charge an escort keeps (the point it stands round is re-set when its place is farther than this).
 const REACH := 1.5
@@ -136,6 +137,44 @@ func _free_nearest(point: Vector2) -> Person:
 		if best == null or p.ground_pos.distance_squared_to(point) < best.ground_pos.distance_squared_to(point):
 			best = p
 	return best
+
+
+## A soldier from the rally ring takes the dead escort `dead`'s place (Crowd._refill(), v0.09.1): on the duty `dead`
+## guarded, or else the nearest duty with fewer living escorts than escorts_per_duty (counted as given to it), running
+## to its charge; with no duty short, back to its post, free for the next.
+func refill(p: Person, dead: Person) -> void:
+	var duties := _duties()
+	var key := ""
+	var slot := -1
+	for k in guards:
+		var j := (guards[k] as Array).find(dead)
+		if j >= 0 and duties.has(k):
+			key = k
+			slot = j
+			break
+	if key == "":
+		var per := _crowd.profile.escorts_per_duty
+		var best_d := INF
+		for k in duties:
+			var living := 0
+			for g in guards.get(k, []):
+				living += 1 if is_instance_valid(g) and (g as Person).is_alive() else 0
+			var d := p.ground_pos.distance_to(duties[k].point)
+			if living < per and d < best_d:
+				best_d = d
+				key = k
+		if key == "":
+			p.send_to_post(p.post, false, true)
+			return
+		_assigned[key] = int(_assigned.get(key, 0)) + 1
+	var mine: Array = guards.get(key, [])
+	if slot < 0:
+		slot = mine.size()
+		mine.append(p)
+	else:
+		mine[slot] = p
+	guards[key] = mine
+	p.send_to_post(_crowd._spot_near(duties[key].point + OFFSETS[slot % OFFSETS.size()], 0.2), false, true)  # at a run
 
 
 func _release(mine: Array) -> void:

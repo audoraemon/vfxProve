@@ -60,11 +60,11 @@ static func run(t) -> void:
 	# Unaware to Organized: the responders get their escorts; nothing new turns on.
 	made = _crowd(ResponseProfile.Tier.ORGANIZED, true)
 	crowd = made[0]
-	t.check(crowd.profile.escorts_per_duty == 0 and crowd.rite.off_by_profile and crowd.ferry.off_by_profile,
-		"an Unaware town has no escorts, and no rite or boats by its profile")
+	t.check(crowd.profile.escorts_per_duty == 0 and crowd.rite.off_by_profile and crowd.ferry.off_by_profile
+		and _count(crowd, Person.Corps.ESCORT) == 0, "an Unaware town has no escorts, and no rite or boats by its profile")
 	on = crowd.raise_profile(ResponseProfile.for_tier(ResponseProfile.Tier.ORGANIZED))
-	t.check(crowd.profile.escorts_per_duty == 1 and crowd.profile.tier_name() == "Organized",
-		"raised to Organized, its responders are escorted")
+	t.check(crowd.profile.escorts_per_duty == 1 and crowd.profile.tier_name() == "Organized"
+		and _count(crowd, Person.Corps.ESCORT) == 1, "raised to Organized, its responders are escorted (v0.09.1: by 1)")
 	t.check(on.is_empty(), "and nothing new turns on (%s)" % [on])
 	_done(made)
 
@@ -89,9 +89,11 @@ static func run(t) -> void:
 	t.check(marshals == 4 * 4, "4 marshals for each of 4 ways out (%d)" % marshals)
 	var rescue := _count(crowd, Person.Corps.RESCUE)
 	t.check(rescue == 3 * Crowd.RESCUE_SQUAD, "the rescue squads are not raised (%d)" % rescue)
+	var escorts := _count(crowd, Person.Corps.ESCORT)
+	t.check(escorts == 2 * (1 + 1 + 2), "the escorts are raised to what Prepared's duties use (v0.09.1: %d)" % escorts)
 	# Raised again to the same level: nothing more.
-	t.check(crowd.raise_profile(_prepared()).is_empty() and _count(crowd, Person.Corps.MARSHAL) == 16,
-		"raised again to Prepared, nothing more turns on")
+	t.check(crowd.raise_profile(_prepared()).is_empty() and _count(crowd, Person.Corps.MARSHAL) == 16
+		and _count(crowd, Person.Corps.ESCORT) == escorts, "raised again to Prepared, nothing more turns on")
 	_done(made)
 
 	# Responses already due: at City Emergency the rite gathers and the engineers turn out at once.

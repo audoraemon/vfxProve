@@ -21,6 +21,9 @@ var dp_capacity := 0
 ## The powers it allows; empty for every power.
 var pool := PackedStringArray()
 var clock := 360.0
+## Seconds a completed Banishing Rite takes off the clock (v0.09.1: The Long Night's acts take 20, every other mission
+## BanishingRite.PENALTY).
+var rite_penalty := BanishingRite.PENALTY
 ## The town's readiness: "" for the difficulty chosen on Prepare, "unaware" for The Warning's (v0.08 M4), "night" for The
 ## Long Night's first town (v0.09; each ActDef then sets its own).
 var profile := ""

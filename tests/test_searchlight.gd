@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_decoy(t)
 	_search(t)
 	_out(t)
+	_cone(t)
 
 
 static func _sweep(t) -> void:
@@ -130,3 +131,14 @@ static func _out(t) -> void:
 	t.check(not l.on and l.beams() == 0 and l.aim(0) == Vector2.INF and not l.touches(at), "put out, the beams die")
 	_run(l, 1.0)
 	t.check(l.beams() == 0 and l.age > 0.0, "and stepping it does nothing")
+
+
+## The cone SearchlightFx draws: from the lamp, narrow, down onto its pool's two sides across the beam.
+static func _cone(t) -> void:
+	var top := Vector2(0.0, -200.0)
+	var pts := SearchlightFx.cone_points(top, Vector2.ZERO, Searchlight.POOL_R)
+	var semi := Iso.radius_to_screen(Searchlight.POOL_R)
+	t.check(pts.size() == 4 and pts[0].distance_to(top) <= SearchlightFx.LAMP_HALF + 0.001
+		and pts[1].distance_to(top) <= SearchlightFx.LAMP_HALF + 0.001, "the cone starts narrow at the lamp")
+	t.check(absf(pts[2].distance_to(pts[3]) - semi.x * 2.0) < 0.01 and ((pts[2] + pts[3]) * 0.5).length() < 0.01,
+		"and spans its pool's width across the beam, centred on the pool")

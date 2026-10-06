@@ -35,7 +35,16 @@ var _cones: Node2D
 var _glow: QuadFx
 var _pools: Array[QuadFx] = []
 var _dust: Array[PixelParticles] = []
+## The light's own fade (the glow and the dim), and each beam's: a beam comes up when it lights and fades when it goes
+## out (the light put out, or the beam count dropping), with where it last lit so a fading beam stays put.
 var _fade := 0.0
+var _beam_fade: Array[float] = [0.0, 0.0]
+var _last: Array[Vector2] = []
+
+
+## One frame of a beam's fade: up while lit, down while not, over FADE_SECONDS. Pure, for the tests.
+static func fade_step(current: float, lit: bool, delta: float) -> float:
+	return move_toward(current, 1.0 if lit else 0.0, delta / FADE_SECONDS)
 
 
 ## The cone from the lamp at `top` (screen) onto a pool of ground radius `r` at ground `aim`: the lamp's two sides,
@@ -62,6 +71,7 @@ func _build() -> void:
 	track(_cones, ctx.overhead)
 	if light == null:
 		return
+	_last = [light.spire, light.spire]
 	_glow = FxParts.bloom(self, _lamp(), SPIRE_GLOW_PX, COL_CONE, 0.0)
 	for i in Searchlight.MAX_BEAMS:
 		var q := FxParts.quad(self, FxParts.SH_LIGHT, Vector2.ONE * Searchlight.POOL_R * 2.0, ctx.ground)
@@ -94,11 +104,13 @@ func _fx_process(delta: float) -> void:
 		_glow.set_param("intensity", _fade * (0.85 + 0.15 * sin(t * 2.4)))
 	for i in _pools.size():
 		var lit := i < light.beams()
-		var at := _lit_at(i)
-		_pools[i].position = at
-		_pools[i].set_param("intensity", POOL_INTENSITY * _fade if lit else 0.0)
+		if lit:
+			_last[i] = light.aim(i)  # a beam fading out keeps the place it last lit
+		_beam_fade[i] = fade_step(_beam_fade[i], lit, delta)
+		_pools[i].position = _last[i]
+		_pools[i].set_param("intensity", POOL_INTENSITY * _beam_fade[i])
 		_dust[i].emitting = lit
-		_dust[i].position = Iso.ground_to_screen(at)
+		_dust[i].position = Iso.ground_to_screen(_last[i])
 	_cones.queue_redraw()
 
 
@@ -109,9 +121,9 @@ func end_now() -> void:
 	super.end_now()
 
 
-## Where beam i's pool is, or the spire while the beam is not lit (its light then has no intensity).
+## Where beam i's pool is: where it is now while lit, else where it last was (the spire before its first lighting).
 func _lit_at(i: int) -> Vector2:
-	return light.aim(i) if i < light.beams() else light.spire
+	return light.aim(i) if i < light.beams() else _last[i]
 
 
 func _lamp() -> Vector2:
@@ -119,11 +131,13 @@ func _lamp() -> Vector2:
 
 
 func _draw_cones() -> void:
-	if light == null or _fade <= 0.0:
+	if light == null:
 		return
 	var top := _lamp()
-	var top_c := Color(COL_CONE, CONE_TOP_A * _fade)
-	var foot_c := Color(COL_CONE, CONE_FOOT_A * _fade)
-	for i in light.beams():
-		_cones.draw_polygon(cone_points(top, light.aim(i), Searchlight.POOL_R),
+	for i in _pools.size():
+		if _beam_fade[i] <= 0.0:
+			continue
+		var top_c := Color(COL_CONE, CONE_TOP_A * _beam_fade[i])
+		var foot_c := Color(COL_CONE, CONE_FOOT_A * _beam_fade[i])
+		_cones.draw_polygon(cone_points(top, _last[i], Searchlight.POOL_R),
 			PackedColorArray([top_c, top_c, foot_c, foot_c]))

@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_search(t)
 	_out(t)
 	_cone(t)
+	_fade(t)
 
 
 static func _sweep(t) -> void:
@@ -142,3 +143,22 @@ static func _cone(t) -> void:
 		and pts[1].distance_to(top) <= SearchlightFx.LAMP_HALF + 0.001, "the cone starts narrow at the lamp")
 	t.check(absf(pts[2].distance_to(pts[3]) - semi.x * 2.0) < 0.01 and ((pts[2] + pts[3]) * 0.5).length() < 0.01,
 		"and spans its pool's width across the beam, centred on the pool")
+
+
+## A beam's alpha ramps over FADE_SECONDS, up when it lights and down when it goes out, rather than stepping.
+static func _fade(t) -> void:
+	var a := 0.0
+	var steps: Array[float] = []
+	for i in 10:
+		a = SearchlightFx.fade_step(a, true, 0.05)
+		steps.append(a)
+	t.check(steps[0] > 0.0 and steps[0] < 0.1 and steps[9] > steps[0] and steps[9] < 1.0,
+		"a beam lighting comes up in steps, not at once (%s)" % steps[0])
+	for i in 20:
+		a = SearchlightFx.fade_step(a, true, 0.05)
+	t.near(a, 1.0, 0.0001, "and reaches full after FADE_SECONDS")
+	var down := SearchlightFx.fade_step(a, false, 0.05)
+	t.check(down > 0.0 and down < a, "a beam going out dims by a step, not to nothing")
+	for i in 20:
+		down = SearchlightFx.fade_step(down, false, 0.05)
+	t.near(down, 0.0, 0.0001, "and is gone after FADE_SECONDS")

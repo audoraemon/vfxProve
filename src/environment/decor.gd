@@ -47,7 +47,7 @@ var _glass: LampGlass
 ## flicker, Structure.lamp_glass_step()) over the glass the sprite paints: its set's "glass" (DecorSprites.glass_rect()).
 ## One quad, coloured by lamp_glass.gdshader on the idle clock: no per-frame work. The shader writes its colour
 ## outright, so the decor layer's dimming (its modulate) never reaches it: it glows as the street lamps beside it do.
-## It flickers on its own, so it covers the strip's painted flame steps under it.
+## It flickers on its own over the painted flame under it (lamp_house is a still: a strip's steps would be hidden).
 class LampGlass extends Node2D:
 	const SHADER := preload("res://shaders/lamp_glass.gdshader")
 	## One material per (rect, phase): the town's lamps share a few.
@@ -87,10 +87,13 @@ class LampGlass extends Node2D:
 const SWAYS := [Kind.OAK, Kind.PINE, Kind.BUNTING, Kind.REEDS, Kind.BUSH, Kind.FLOWERS]
 const BOBS := [Kind.SHIP, Kind.BOAT]
 ## Motion classes on the one wind shader: a sprite's top sways `sprite_sway` px; `bob` > 0 lifts the whole sprite
-## instead (px, overrides the sway). Trees sway as the forest does; plants stand lower and sway less.
+## instead (px, overrides the sway). Trees sway as the forest does. Plants take the same 1.5 px: the shader rounds the
+## offset to whole px, so at 1.0 a plant's top stepped a px only while |sin| > 0.5, and a short plant in a taller plant
+## atlas (PlantLayer: a 7 px flowerbed in the 10 px low atlas, weight 0.7) only while |sin| > 0.71, so short plants
+## stirred less than tall ones; at 1.5 every plant's top takes a full px step either way most of the cycle.
 const MOTION := {
 	"tree": {"sprite_sway": 1.5, "bob": 0.0},
-	"plant": {"sprite_sway": 1.0, "bob": 0.0},
+	"plant": {"sprite_sway": 1.5, "bob": 0.0},
 	"bob": {"sprite_sway": 0.0, "bob": 1.0},
 }
 const PLANTS := [Kind.REEDS, Kind.BUSH, Kind.FLOWERS]

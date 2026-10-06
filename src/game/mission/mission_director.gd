@@ -166,12 +166,26 @@ func _unhook_kills(handler: Callable) -> void:
 func faithful_seeing(at: Vector2, reach: float, exclude: Person = null) -> Person:
 	var best: Person = null
 	for f in faithful:
-		if not _alive(f) or f.inside or f.mind in BLIND or f == exclude:
-			continue
-		var d := f.ground_pos.distance_to(at)
-		if d <= reach and (best == null or d < best.ground_pos.distance_to(at)):
+		if _sees(f, at, reach, exclude) and (best == null or f.ground_pos.distance_to(at) < best.ground_pos.distance_to(at)):
 			best = f
 	return best
+
+
+## Every Faithful who would see `at` from within `reach`, as faithful_seeing() judges, but `exclude`, in the order of
+## `faithful` (v0.10 M6: the watchers the HUD marks red).
+func watchers(at: Vector2, reach: float, exclude: Person = null) -> Array[Person]:
+	var out: Array[Person] = []
+	for f in faithful:
+		if _sees(f, at, reach, exclude):
+			out.append(f)
+	return out
+
+
+## `f` would see `at`: alive, out in the open, not held by the god, not `exclude`, and within `reach` (v0.10 M6). `f` is a
+## Variant, as _alive()'s `p`: a Faithful's body is freed once their death fade ends, and a freed one cannot be passed
+## through a typed parameter.
+func _sees(f: Variant, at: Vector2, reach: float, exclude: Person) -> bool:
+	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude and f.ground_pos.distance_to(at) <= reach
 
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.

@@ -22,6 +22,12 @@ const HEAR := 6.0
 ## The marks over the grieving and the Believers.
 const MARK_GRIEVING := Color(0.85, 0.75, 0.45, 0.8)
 const MARK_BELIEVER := Color("ff9a3a")
+## The tags' other colours (v0.10 M6, spec §4.1): the house's gold; its door clear (green) or watched (red), the red a
+## runner, the Temple and each watcher share; the Inquisitor's violet.
+const MARK_HOUSE := Color("d8b23a")
+const MARK_CLEAR := Color("7fc46a")
+const MARK_WATCHED := Color("c8342a")
+const MARK_VENN := Color("c070ff")
 ## How near a lure's light must stand to the house, and its lured to the house, for them to go in: a Will-o'-Wisp stands
 ## its lured on a ring up to WillOWisp.RING.y from the light.
 const LURE_REACH := WillOWisp.RING.y + Person.GOAL_REACH
@@ -253,13 +259,52 @@ func inside() -> Array[Person]:
 	return out
 
 
-## The tags (v0.10 M6): the grieving, and the Believers among them.
+## The tags (v0.10 M6, spec §4.1), the most important first:
+## - the house, named, outlined and pointed at from the edge, until it is destroyed;
+## - its door, clear or watched, until it burns;
+## - each report's runner and, while one runs, the Temple, pointed at from the edge;
+## - the crying Believer, pointed at;
+## - the Inquisitor, pointed at while she searches;
+## - a red diamond on each Faithful watching the door (but her);
+## - the grieving, and the Believers among them.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
+	if house != null and not house.destroyed:
+		var h := MapTag.place(house.center(), MARK_HOUSE, "MIRA'S HOUSE", house.height)
+		h.outline = house.footprint
+		out.append(h)
+	var open := not burning and not roof_fallen
+	if open:
+		var watched := faithful_seeing(door, SIGHT) != null
+		out.append(MapTag.place(door, MARK_WATCHED if watched else MARK_CLEAR,
+			"DOOR - WATCHED" if watched else "DOOR - CLEAR", 0.0, false))
+	var running := false
+	for r in reports:
+		if r.is_open() and _alive(r.carrier):
+			out.append(MapTag.person(r.carrier.ground_pos, MARK_WATCHED, "TO THE TEMPLE", true))
+			running = true
+	if running:
+		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
+	if _alive(shouter):
+		out.append(MapTag.person(shouter.ground_pos, MARK_BELIEVER, "CRYING OUT", true))
+	if _alive(venn) and not venn.inside:
+		out.append(MapTag.person(venn.ground_pos, MARK_VENN, "INQUISITOR", venn_searching))
+	if open:
+		# A freed Inquisitor cannot be passed through watchers()'s typed `exclude`; a fallen one is no watcher anyway.
+		for f in watchers(door, SIGHT, venn if _alive(venn) else null):
+			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
 	for p in grieving:
 		if _alive(p) and not p.inside:
 			out.append(MapTag.person(p.ground_pos, MARK_BELIEVER if believers.has(p) else MARK_GRIEVING))
 	return out
+
+
+## The hint's phase (v0.10 M6, spec §4.1): "burning" once the house burns or falls, else "four" with four or more
+## Believers out, else "".
+func hint_phase() -> String:
+	if burning or roof_fallen:
+		return "burning"
+	return "four" if believers_outside() >= BelieversObjective.NEED else ""
 
 
 func report() -> Dictionary:
@@ -435,10 +480,3 @@ func _flush() -> void:
 			continue
 		_exit(p)
 		p.panic(house.center() if house != null else door, 2.0)
-
-
-## The HUD's arrow: the Believer crying in the street.
-func marker() -> Vector2:
-	return shouter.ground_pos if _alive(shouter) else Vector2.INF
-
-

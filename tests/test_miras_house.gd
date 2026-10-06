@@ -71,6 +71,14 @@ static func _bring(d: MirasHouseDirector, g: Person) -> void:
 	_arrive(g, d.door)
 
 
+## The first of the director's tags labelled `label`, or null.
+static func _tag(d: MissionDirector, label: String) -> MapTag:
+	for m in d.tags():
+		if m.label == label:
+			return m
+	return null
+
+
 static func run(t) -> void:
 	_cast(t)
 	_reading(t)
@@ -80,6 +88,8 @@ static func run(t) -> void:
 	_events(t)
 	_focus(t)
 	_lines(t)
+	_tags(t)
+	_freed(t)
 	_loose_ends(t)
 
 
@@ -95,7 +105,10 @@ static func _cast(t) -> void:
 		faithful_ok = faithful_ok and f.profile.faith == CitizenProfile.Faith.FAITHFUL and not d.grieving.has(f)
 	t.check(faithful_ok, "the Faithful chosen, none of them grieving (%d)" % d.faithful.size())
 	t.check(d.venn != null and d.faithful.has(d.venn), "the Inquisitor is one of the Faithful")
-	t.check(d.tags().size() == MirasHouseDirector.GRIEVING, "the HUD marks the grieving")
+	var grieving_tags := 0
+	for m in d.tags():
+		grieving_tags += 1 if m.color == MirasHouseDirector.MARK_GRIEVING else 0
+	t.check(grieving_tags == MirasHouseDirector.GRIEVING, "the HUD marks the grieving")
 	t.check(d.timeline != null, "the night keeps a timeline for its windows")
 	_done(s)
 
@@ -283,7 +296,7 @@ static func _events(t) -> void:
 	b.profile.faith = CitizenProfile.Faith.BELIEVER
 	d2.believers.append(b)
 	_run(s2, MirasHouseDirector.SHOUT_AT + DT)
-	t.check(d2.shouter == b and b.mind == Person.Mind.DUTY and d2.marker() == b.ground_pos,
+	t.check(d2.shouter == b and b.mind == Person.Mind.DUTY and _tag(d2, "CRYING OUT") != null and _tag(d2, "CRYING OUT").at == b.ground_pos,
 		"at 1:15 the newest Believer runs out crying, and the HUD marks them")
 	_blind(d2, d2.door)
 	_bring(d2, b)
@@ -394,6 +407,98 @@ static func _lines(t) -> void:
 	_run(s2, MirasHouseDirector.VENN_AT + DT)
 	t.check((s2.lines as Array).is_empty(), "with the Inquisitor dead, nothing is said of her (%s)" % [s2.lines])
 	_done(s2)
+
+
+## v0.10 M6 (spec §4.1): the map's tags -- the house first, named, outlined and pointed at from the edge; its door clear
+## or watched, a red diamond on each watcher; the Inquisitor, pointed at while she searches; a runner and the Temple
+## while a report runs; the crying Believer, pointed at; no door once the house burns, no house once it falls; nobody
+## dead is tagged (review focus 2); the hint's phases, as the HUD shows them.
+static func _tags(t) -> void:
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	var house: MapTag = d.tags()[0]
+	t.check(house.label == "MIRA'S HOUSE" and house.at == d.house.center() and house.rise == d.house.height
+		and house.edge and house.outline == d.house.footprint and house.color == MirasHouseDirector.MARK_HOUSE,
+		"the house comes first: named, outlined, pointed at from the edge")
+	_blind(d, d.door)
+	var door := _tag(d, "DOOR - CLEAR")
+	t.check(door != null and door.at == d.door and not door.edge and door.color == MirasHouseDirector.MARK_CLEAR,
+		"no Faithful in sight: the door is clear")
+	var f: Person = null
+	for p in d.faithful:
+		if p != d.venn and p.is_alive():
+			f = p
+			break
+	_arrive(f, d.door + Vector2(1.0, 0.0))
+	var red := false
+	for m in d.tags():
+		red = red or (m.at == f.ground_pos and m.color == MirasHouseDirector.MARK_WATCHED and m.label == "")
+	t.check(_tag(d, "DOOR - WATCHED") != null and _tag(d, "DOOR - CLEAR") == null and red,
+		"a Faithful by it: the door is watched, and the watcher marked red")
+	var venn := _tag(d, "INQUISITOR")
+	t.check(venn != null and venn.at == d.venn.ground_pos and venn.color == MirasHouseDirector.MARK_VENN and not venn.edge,
+		"the Inquisitor is named; no arrow before her search")
+	d._report(f, d.temple_door)
+	var runner := _tag(d, "TO THE TEMPLE")
+	var temple := _tag(d, "TEMPLE")
+	t.check(runner != null and runner.at == f.ground_pos and runner.edge and temple != null and temple.at == d.temple_door
+		and temple.edge, "a report on its way: the runner and the Temple, both pointed at from the edge")
+	d.reports.clear()
+	t.check(_tag(d, "TO THE TEMPLE") == null and _tag(d, "TEMPLE") == null, "no report running: neither")
+	var g := d.grieving[0]
+	d.believers.append(g)
+	d.shouter = g
+	var cry := _tag(d, "CRYING OUT")
+	t.check(cry != null and cry.at == g.ground_pos and cry.edge and d.marker() == Vector2.INF,
+		"the crying Believer is tagged and pointed at (the director keeps no marker of its own)")
+	(s.crowd as Crowd)._field.kill(g, &"fire")
+	t.check(_tag(d, "CRYING OUT") == null, "dead, they are not tagged (review focus 2)")
+	t.check(d.hint_phase() == "", "fewer than four believe: the mission's own line")
+	for i in range(1, 1 + BelieversObjective.NEED):
+		d.believers.append(d.grieving[i])
+	t.check(d.hint_phase() == "four", "four Believers out: the hint says keep them")
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	t.check(hud.hint_text() == MissionHints.line(MissionBook.MIRAS_HOUSE, "four") and hud.hint_top() > Hud.ROW_H,
+		"the HUD shows the phase's line, under the objective rows")
+	hud.free()
+	_run(s, MirasHouseDirector.VENN_AT + DT)
+	t.check(d.venn_searching and _tag(d, "INQUISITOR") != null and _tag(d, "INQUISITOR").edge,
+		"searching, the Inquisitor is pointed at from the edge")
+	(s.crowd as Crowd)._field.kill(d.venn, &"fire")
+	t.check(_tag(d, "INQUISITOR") == null, "struck down, she is not tagged (review focus 2)")
+	d._burn()
+	t.check(_tag(d, "DOOR - CLEAR") == null and _tag(d, "DOOR - WATCHED") == null and d.hint_phase() == "burning",
+		"the house burning: no door, and the hint says so")
+	d.house.destroy(d.house.center(), &"fire")
+	t.check(_tag(d, "MIRA'S HOUSE") == null, "the house gone, its tag goes")
+	_done(s)
+
+
+## v0.10 M6 (review focus 2): a Faithful who has fallen is no watcher; once their body is freed (as it is when the death
+## fade ends) they are still none, and neither they nor a freed Inquisitor stops the rest being seen or the tags being
+## made -- the HUD asks for them every frame. A headless test frees no body by itself, so this one frees them by hand.
+static func _freed(t) -> void:
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	_blind(d, d.door)
+	var by: Array[Person] = []
+	for p in d.faithful:
+		if p != d.venn and by.size() < 2:
+			by.append(p)
+	for p in by:
+		_arrive(p, d.door + Vector2(1.0, 0.0))
+	t.check(d.watchers(d.door, MirasHouseDirector.SIGHT, d.venn).size() == 2, "two Faithful by the door: two watchers")
+	(s.crowd as Crowd)._field.kill(by[0], &"fire")
+	var alone := d.watchers(d.door, MirasHouseDirector.SIGHT, d.venn)
+	t.check(alone.size() == 1 and alone[0] == by[1], "one has fallen: the other watches alone")
+	by[0].free()
+	var still := d.watchers(d.door, MirasHouseDirector.SIGHT)
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == by[1] and still.size() == 1 and still[0] == by[1],
+		"a freed body ahead of them in the list: the other is still seen, and nothing is raised")
+	d.venn.free()
+	t.check(_tag(d, "DOOR - WATCHED") != null and _tag(d, "INQUISITOR") == null,
+		"the Inquisitor's body freed too: the tags are still made, the door watched, and no one is named")
+	_done(s)
 
 
 ## v0.10 M5: the Inquisitor already running to the Temple at 0:40 is not turned to her search, and Cael does not name her

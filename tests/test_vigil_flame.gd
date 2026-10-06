@@ -33,8 +33,10 @@ static func _setup() -> Dictionary:
 	rules.director = director
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
+	var lines := []
+	rules.subtitle.connect(func(text: String) -> void: lines.append(text))
 	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd, "rules": rules,
-		"d": director, "banners": banners}
+		"d": director, "banners": banners, "lines": lines}
 
 
 static func _done(s: Dictionary) -> void:
@@ -127,6 +129,7 @@ static func run(t) -> void:
 	_heard(t)
 	_bonus(t)
 	_teardown(t)
+	_lines(t)
 
 
 static func _cast(t) -> void:
@@ -561,3 +564,29 @@ static func _teardown(t) -> void:
 		and not (s.crowd as Crowd)._field.enemy_killed.is_connected(d._on_killed),
 		"let go mid-search: the light out, the prayers released, the world's signals let go")
 	_done(s)
+
+
+## Cael's lines (v0.10 M5, spec §5.2): as Wren comes, and as the light wakes at the swap. Review focus 2: with nobody
+## left to be Wren, nothing is said of the boy.
+static func _lines(t) -> void:
+	var s := _setup()
+	var lines: Array = s.lines
+	_wren_now(s.d)
+	t.check(lines == [CampaignText.cael_line(MissionBook.VIGIL_FLAME, "wren")], "as Wren comes, Cael speaks (%s)" % [lines])
+	_done(s)
+
+	var s2 := _setup()
+	_do_swap(s2)
+	var lines2: Array = s2.lines
+	t.check(lines2.size() == 2 and lines2[1] == CampaignText.cael_line(MissionBook.VIGIL_FLAME, "light"),
+		"as the swap wakes the light, he speaks again (%s)" % [lines2])
+	_done(s2)
+
+	var s3 := _setup()
+	var d3: VigilFlameDirector = s3.d
+	for p in (s3.crowd as Crowd).citizens:
+		if not d3.faithful.has(p):
+			p.inside = true
+	_wren_now(d3)
+	t.check(d3.no_wren and (s3.lines as Array).is_empty(), "with nobody to be Wren, nothing is said of him (%s)" % [s3.lines])
+	_done(s3)

@@ -200,6 +200,7 @@ func _wren_comes() -> void:
 	appeared = true
 	_appeared_at = timeline.elapsed()
 	_tick = 0.0
+	_say("wren")
 
 
 ## 1:30 -- a suspicious priest sends the Vigil straight back to the Temple.
@@ -363,6 +364,7 @@ func _add_events() -> void:
 func _phase2_begin() -> void:
 	searchlight.light()
 	rules.banner.emit("THE SPIRE FLARES")
+	_say("light")
 	_show_light()
 
 

@@ -26,8 +26,10 @@ static func _setup() -> Dictionary:
 	rules.director = director
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
+	var lines := []
+	rules.subtitle.connect(func(text: String) -> void: lines.append(text))
 	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd, "rules": rules,
-		"d": director, "banners": banners}
+		"d": director, "banners": banners, "lines": lines}
 
 
 static func _done(s: Dictionary) -> void:
@@ -77,6 +79,7 @@ static func run(t) -> void:
 	_ending(t)
 	_events(t)
 	_focus(t)
+	_lines(t)
 
 
 static func _cast(t) -> void:
@@ -368,4 +371,25 @@ static func _focus(t) -> void:
 	(s2.rules as Rules).time_left = DT
 	_run(s2, DT * 2.0)
 	t.check(d2.roof_fallen, "dawn passes over the ruins quietly")
+	_done(s2)
+
+
+## Cael's lines (v0.10 M5, spec §5.2): as the Inquisitor sets out, and as the house burns. Review focus 2: a dead
+## Inquisitor never searches, and he does not name her.
+static func _lines(t) -> void:
+	var s := _setup()
+	var lines: Array = s.lines
+	_run(s, MirasHouseDirector.VENN_AT + DT)
+	t.check(lines == [CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn")],
+		"as the Inquisitor sets out, Cael names her (%s)" % [lines])
+	_run(s, MirasHouseDirector.FIRE_AT - MirasHouseDirector.VENN_AT)
+	t.check(lines.size() == 2 and lines[1] == CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "fire"),
+		"as the house burns, he speaks again (%s)" % [lines])
+	_done(s)
+
+	var s2 := _setup()
+	var d2: MirasHouseDirector = s2.d
+	(s2.crowd as Crowd)._field.kill(d2.venn, &"doom")
+	_run(s2, MirasHouseDirector.VENN_AT + DT)
+	t.check((s2.lines as Array).is_empty(), "with the Inquisitor dead, nothing is said of her (%s)" % [s2.lines])
 	_done(s2)

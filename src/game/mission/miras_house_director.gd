@@ -309,6 +309,7 @@ func _venn_starts() -> void:
 	_venn_wait = 0.0
 	venn_searching = true
 	venn.go_duty(_venn_houses[0])
+	_say("venn")
 
 
 func _venn_step(delta: float) -> void:
@@ -414,6 +415,7 @@ func _burn() -> void:
 	if crowd.fires != null:
 		crowd.fires.ignite(house, FIRE_LEVEL)
 	_flush()
+	_say("fire")
 
 
 ## Everyone inside runs out at the door in a fright, unconverted if their reading was not done.

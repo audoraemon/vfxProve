@@ -130,6 +130,7 @@ static func run(t) -> void:
 	_bonus(t)
 	_teardown(t)
 	_lines(t)
+	_loose_ends(t)
 
 
 static func _cast(t) -> void:
@@ -290,13 +291,19 @@ static func _route(t) -> void:
 		and ResultsScreen.title_for(false, "kept") == "THE FLAME IS KEPT", "the bearer home with the real flame: the night is lost")
 	_done(s)
 
+	# The route shortens only while the flame is still in its lantern (v0.10 M5), so the Vigil is already on its way home when
+	# Wren takes the flame, and the bearer reaches the Temple with the false one.
 	var s2 := _setup()
 	var d2: VigilFlameDirector = s2.d
-	_do_swap(s2)
+	_wren_now(d2)
 	d2.timeline.step(VigilFlameDirector.ROUTE_AT)
+	_bearer_out(s2)
+	_clear_watchers(d2)
+	_bring_wren(d2)
+	_run(s2, VigilFlameDirector.SWAP_SECONDS + 0.2)
 	_arrive(d2.vigil.bearer, d2.temple_door)
 	_run(s2, DT)
-	t.check(d2.homeward and not d2.kept and not (s2.rules as Rules).finished, "home with the false flame, nothing is lost")
+	t.check(d2.swapped and d2.homeward and not d2.kept and not (s2.rules as Rules).finished, "home with the false flame, nothing is lost")
 	_done(s2)
 
 
@@ -590,3 +597,33 @@ static func _lines(t) -> void:
 	_wren_now(d3)
 	t.check(d3.no_wren and (s3.lines as Array).is_empty(), "with nobody to be Wren, nothing is said of him (%s)" % [s3.lines])
 	_done(s3)
+
+
+## v0.10 M5: the Faithful who sees the swap runs to the Temple at his own pace, not the Vigil's; after the swap there is
+## no route home and no acolyte "taking up the flame" -- the flame is gone.
+static func _loose_ends(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	_wren_now(d)
+	_bearer_out(s)
+	_clear_watchers(d)
+	var aco := d.vigil.acolytes[0]
+	var own := float(d._walk_pace[aco])
+	_arrive(aco, OUT + Vector2(0.0, 1.0))
+	_bring_wren(d)
+	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.2)
+	t.check(d.swap_seen and not d.reports.is_empty() and d.reports[0].carrier == aco and is_equal_approx(aco.pace, own),
+		"the acolyte who saw the swap runs at his own pace (%.2f, own %.2f)" % [aco.pace, own])
+	_done(s)
+
+	var s2 := _setup()
+	var d2: VigilFlameDirector = s2.d
+	var banners: Array = s2.banners
+	_do_swap(s2)
+	d2.timeline.step(VigilFlameDirector.ROUTE_AT)
+	_run(s2, DT)
+	t.check(not d2.homeward and not banners.has("THE ROUTE SHORTENS"), "after the swap the route never shortens")
+	(s2.crowd as Crowd)._field.kill(d2.vigil.bearer, &"doom")
+	_run(s2, VigilRoute.TICK + DT)
+	t.check(not banners.has("AN ACOLYTE TAKES UP THE FLAME"), "nor does an acolyte take up a flame that is false")
+	_done(s2)

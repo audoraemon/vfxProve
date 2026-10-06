@@ -104,6 +104,8 @@ var praying := {}
 var benching := false
 var _in_light := false
 var _fx: SearchlightFx
+## The Vigil's walkers' own paces, before VIGIL_PACE (v0.10 M5): one who saw the swap runs to the Temple at his own.
+var _walk_pace := {}
 
 
 func _begin() -> void:
@@ -118,7 +120,8 @@ func _begin() -> void:
 	timeline = EventTimeline.new()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	timeline.add(WREN_AT, "wren", "A boy watches the lantern", _wren_comes)
-	timeline.add(ROUTE_AT, "route", "The route shortens", _route_home, func() -> bool: return vigil != null and vigil.active)
+	# Once the flame is gone, the suspicious priest has nothing to bring home (v0.10 M5).
+	timeline.add(ROUTE_AT, "route", "The route shortens", _route_home, func() -> bool: return vigil != null and vigil.active and not swapped)
 	_add_events()
 	rules.banner.emit("STEAL HALCYON'S FLAME")
 
@@ -140,6 +143,7 @@ func _start_vigil() -> void:
 	vigil.busy = _carrying
 	vigil.flame_passed.connect(_on_flame_passed)
 	for p in vigil.walkers():
+		_walk_pace[p] = p.pace
 		p.pace *= VIGIL_PACE
 	_pace_bearer()
 	vigil.start()
@@ -156,7 +160,8 @@ func _pace_bearer() -> void:
 
 func _on_flame_passed(_to: Person) -> void:
 	_pace_bearer()
-	rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME")
+	if not swapped:
+		rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME")  # after the swap it is a false flame (v0.10 M5)
 
 
 func step(delta: float) -> void:
@@ -249,6 +254,8 @@ func _swap() -> void:
 	var seer := faithful_seeing(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null)
 	if seer != null:
 		swap_seen = true
+		if _walk_pace.has(seer):
+			seer.pace = float(_walk_pace[seer])  # off the Vigil, he runs at his own pace (v0.10 M5)
 		_report(seer, temple_door)
 	rules.banner.emit("THE FLAME IS TAKEN")
 	wren.pace *= WREN_PACE

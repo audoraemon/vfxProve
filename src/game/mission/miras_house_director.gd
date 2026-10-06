@@ -272,9 +272,9 @@ func teardown() -> void:
 
 
 func _add_events() -> void:
-	timeline.add(VENN_AT, "venn", "The Inquisitor searches", _venn_starts, func() -> bool: return _alive(venn))
+	timeline.add(VENN_AT, "venn", "The Inquisitor searches", _venn_starts, func() -> bool: return _alive(venn) and not _carrying(venn))
 	timeline.add(SHOUT_AT, "shout", "A believer cries out", _shout, func() -> bool: return _newest_outside() != null)
-	timeline.add(VIGIL_AT, "vigil", "The Vigil passes", _vigil_passes)
+	timeline.add(VIGIL_AT, "vigil", "The Vigil passes", _vigil_passes, func() -> bool: return not _free_faithful().is_empty())
 	timeline.add(FIRE_AT, "fire", "They burn her house", _burn, func() -> bool: return house != null and not house.destroyed)
 
 
@@ -369,12 +369,19 @@ func _shout_step(delta: float) -> void:
 		_report(heard, temple_door)
 
 
-## The flame-bearer and his acolytes: the clergy nearest the Temple (not the Inquisitor), else any Faithful.
-func _vigil_passes() -> void:
+## The Faithful free to walk the Vigil or line the street (v0.10 M5): alive, out, not the Inquisitor, not carrying a
+## report.
+func _free_faithful() -> Array[Person]:
 	var free: Array[Person] = []
 	for f in faithful:
 		if _alive(f) and not f.inside and f != venn and not _carrying(f):
 			free.append(f)
+	return free
+
+
+## The flame-bearer and his acolytes: the clergy nearest the Temple (not the Inquisitor), else any Faithful.
+func _vigil_passes() -> void:
+	var free := _free_faithful()
 	var walkers := _vigil_walkers(free, temple_door)
 	if not walkers.is_empty():
 		var route := PackedVector2Array()

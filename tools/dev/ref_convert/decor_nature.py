@@ -11,11 +11,13 @@ shared convert.OUTLINE.
   bush_1     Decor.Kind.BUSH: DecorArt._bush(o, seed, 1.2) (PropArt.leafy, r 8.4 x 6.6 about 6.6 px up: ~20 x 15): a
   bush_2     mound of round leaf lobes, back to front, each shaded about its own centre and the whole mound lit from the
   bush_3     upper left; a front lobe throws a dark rim on the lobes behind it. bush_1 the full round mound; bush_2 a
-             wider, lower one with a few cream blossoms (as the sheet's flowering bushes); bush_3 a smaller round one
+             wider, lower one with four 1 px blossoms in a soft muted cream-pink (BLOSSOM: as the sheet's flowering
+             bushes, toned down so they sit in a lit town scene without popping); bush_3 a smaller round one
              (~3/4: the floor's meadow shrubs, TownFloor._shrubs, r 4..7 x 3..5, draw these sets too). Laid out a
              little large and drawn at BUSH_SCALE (0.9).
   rock_1     Decor.Kind.ROCK: DecorArt._rock's blocky boulders (TownDecor footprint 28 x 18): each a block with a pale
-  rock_2     top, a mid left face and a dark right face (TownFloor.PEBBLE spread to five steps), its own outline, a lit
+  rock_2     top, a mid left face and a dark right face (TownFloor.PEBBLE spread to five steps, then darkened and
+             greyed toward the procedural rocks as they read in the forest: STONE_DIM, STONE_GREY), its own outline, a lit
   rock_3     front-left top edge, a crack, moss on some tops. rock_1 a big boulder and a small one in front; rock_2
              three; rock_3 one tall boulder and a pebble.
   flowers_1  Decor.Kind.FLOWERS: DecorArt._flowers (six 2 px blooms on 1 px stems over ~12 x 6): a low tuft of leaves
@@ -61,7 +63,18 @@ LEAF_INK = (14, 32, 12)
 REED = ((156, 176, 68), (122, 152, 50), (90, 122, 40), (64, 94, 32))
 CATTAIL = ((132, 88, 50), (100, 64, 36), (74, 46, 28))
 # Rock: TownFloor.PEBBLE (a8a49c / 8e8a82 / 76726c) spread to five steps: lit edge, top, left face, right face, crack.
-STONE = ((196, 192, 182), (168, 164, 156), (142, 138, 130), (114, 110, 104), (86, 82, 78))
+# Then darkened (STONE_DIM) and greyed (STONE_GREY of the way to each tone's own grey), so the drawn rocks sit as dark
+# and as neutral as the procedural ones against the forest floor; the lit edge a little more (STONE_EDGE).
+STONE_PEBBLE = ((196, 192, 182), (168, 164, 156), (142, 138, 130), (114, 110, 104), (86, 82, 78))
+STONE_DIM, STONE_GREY, STONE_EDGE = 0.86, 0.5, 0.92
+
+
+def _stone(c, k):
+    g = sum(c) / 3.0
+    return tuple(int(round((v + (g - v) * STONE_GREY) * STONE_DIM * (STONE_EDGE if k == 0 else 1.0))) for v in c)
+
+
+STONE = tuple(_stone(c, k) for k, c in enumerate(STONE_PEBBLE))
 MOSS = ((132, 150, 58), (104, 124, 48), (80, 98, 40))
 # Blooms (TownFloor.FLOWERS, muted under check_sprite_glow's rule): [lit, shade] per colour.
 BLOOM = {
@@ -70,6 +83,8 @@ BLOOM = {
     "cream": ((238, 232, 214), (204, 196, 176)),
     "blue": ((176, 206, 236), (132, 164, 204)),
 }
+# bush_2's blossoms: a soft muted cream-pink, [lit, shade].
+BLOSSOM = ((214, 190, 182), (190, 164, 158))
 LIGHT = (-0.55, -0.83)    # up and to the left
 
 
@@ -153,7 +168,7 @@ BUSHES = {
         lobes=((-4.0, -9.5, 3.8, 3.0), (3.0, -10.0, 3.8, 3.0), (-8.5, -6.0, 3.2, 2.8), (9.0, -6.0, 3.2, 2.8),
                (-1.0, -7.0, 3.8, 3.0), (-5.0, -3.5, 3.8, 2.8), (4.5, -3.5, 3.8, 2.8)),
         mound=(0.0, -6.0, 12.0, 6.0),
-        blossoms=((-5, -11), (2, -12), (-8, -7), (-2, -8), (5, -8), (-5, -4))),
+        blossoms=((-5, -11), (3, -12), (-7, -7), (5, -8))),
     "bush_3": dict(
         lobes=((-2.5, -8.5, 3.2, 2.6), (3.0, -8.0, 3.2, 2.6), (-4.0, -4.5, 3.2, 2.8), (3.5, -4.5, 3.2, 2.8),
                (0.0, -3.0, 3.4, 2.4)),
@@ -211,9 +226,7 @@ def bush(name):
         p.put(nx, ny, LEAF[4])
     for bx, by in ((int(round(x * k)), int(round(y * k))) for x, y in spec["blossoms"]):
         lit_side = lit(bx, by, mcx, mcy, mrx, mry) > -0.15
-        c = BLOOM["cream"]
-        p.put(bx, by, c[0] if lit_side else c[1])
-        p.put(bx + 1, by, c[1])
+        p.put(bx, by, BLOSSOM[0] if lit_side else BLOSSOM[1])
     return p.drop().image()
 
 

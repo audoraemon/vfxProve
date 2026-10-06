@@ -1061,6 +1061,8 @@ func _evacuate() -> void:
 			continue  # the bellkeeper and the clergy stay at their duty (off_duty() sends them on after)
 		if p.mind == Person.Mind.ASSIST and p.assist_stays:
 			continue  # an engineer at a fire works on (v0.08.2), as at its other duties
+		if p.engineer_duty:
+			continue  # an engineer on its team, frightened or waiting at home, goes back to it when calm (v0.09.1)
 		if p.mind == Person.Mind.REGROUP and p.profile != null:
 			# A household waiting at home leaves together (_tend_households()).
 			if not _households.has(p.profile.family):
@@ -1116,7 +1118,18 @@ func _regroup() -> void:
 ## Someone's duty is done (the bell rung, the rite over): to the gates if the town is evacuating, else home to wait
 ## with the family.
 func off_duty(p: Person) -> void:
-	if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.DUTY:
+	if not is_instance_valid(p) or not p.is_alive():
+		return
+	var on_team := p.engineer_duty
+	p.engineer_duty = false
+	if p.mind != Person.Mind.DUTY:
+		if on_team and _fled_all and not p.soldier and (p.mind in EngineerManager.AVAILABLE
+				or p.mind == Person.Mind.PANIC or p.mind == Person.Mind.ASSIST):
+			# An engineer frightened off its team (or at a fire), whose team now stands down after the evacuation: to
+			# the gates with the rest (v0.09.1), as one on duty would be.
+			if p.mind == Person.Mind.ASSIST:
+				p.stand_down()
+			p.flee()
 		return
 	if p.soldier:
 		p.send_to_post(p.post if p.post != Vector2.INF else p.ground_pos)  # back to its post (v0.07)

@@ -125,3 +125,41 @@ static func run(t) -> void:
 	t.check(not inside[0].inside and not inside[0].is_alive(), "and one who dies in there is carried out first")
 	crowd.clear()
 	world.free()
+	_reach(t)
+
+
+## v0.09.1: the sick infect anyone within SPREAD_R (1.5), so it jumps a gap the old reach (1) could not, but still dies
+## out in thin streets: someone at 1.4 catches it, someone at 1.6 does not.
+static func _reach(t) -> void:
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.spawn()
+	var plague := crowd.plague
+	var i := 0
+	for p in crowd.citizens + crowd.soldiers:
+		p.ground_pos = Vector2(-27.0 + float(i % 20) * 4.0, -27.0 + float(i / 20) * 4.0)  # far apart: nobody else is near
+		i += 1
+	t.near(PlagueManager.SPREAD_R, 1.5, 0.0001, "pestilence reaches 1.5 units (v0.09.1)")
+	var at := Vector2(0.0, 2.0)
+	var sick: Person = crowd.citizens[0]
+	var near: Person = crowd.citizens[1]
+	var far: Person = crowd.citizens[2]
+	sick.ground_pos = at
+	near.ground_pos = at + Vector2(1.4, 0.0)
+	far.ground_pos = at + Vector2(-1.6, 0.0)  # 1.6 from the sick, 3.0 from the other one it will catch
+	sick.infect(PlagueManager.PLAGUE_LIFE)
+	plague.step(PlagueManager.SCAN_EVERY)
+	# The chance is SPREAD_CHANCE a second: enough seconds that someone in reach is certain to be caught.
+	for k in 40:
+		plague._spread()
+	t.check(near.sick_left > 0.0, "someone 1.4 away catches it")
+	t.check(far.sick_left <= 0.0, "someone 1.6 away does not")
+	crowd.clear()
+	world.free()

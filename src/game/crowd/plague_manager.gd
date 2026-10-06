@@ -1,8 +1,9 @@
 class_name PlagueManager
 extends RefCounted
 ## Pestilence (v0.06): the sick (Person.sick_left) die PLAGUE_LIFE after they caught it, and every SPREAD_EVERY seconds
-## each one gives it to each healthy person within SPREAD_R with SPREAD_CHANCE -- so a packed gate queue, the dock's
-## crowd or a full shelter spreads it fast -- up to PLAGUE_MAX sick at once. People sheltering together pass it on
+## each one gives it to each healthy person within SPREAD_R (1.5 since v0.09.1, from 1.0: it jumps through crowds, yet
+## dies out in thin streets) with SPREAD_CHANCE -- so a packed gate queue, the dock's crowd or a full shelter spreads it
+## fast -- up to PLAGUE_MAX sick at once. People sheltering together pass it on
 ## inside; one who dies in there is carried out first, to be seen. Soldiers catch it too (v0.07.1). A plague death is an
 ## ordinary death (damage kind plague): it counts, raises the alarm and is an incident.
 ## Looks (v0.07.1): the sick are tinted by stage (Person.sick_color()), a glow pulses under each (draw_ground()), and
@@ -10,7 +11,8 @@ extends RefCounted
 
 const PLAGUE_LIFE := 5.0
 const SPREAD_EVERY := 1.0
-const SPREAD_R := 1.0
+## How near a healthy person must be to a sick one to catch it (ground units; 1.5 since v0.09.1).
+const SPREAD_R := 1.5
 const SPREAD_CHANCE := 0.3
 const PLAGUE_MAX := 60
 ## How often the town is searched for the newly sick (the effect's infections); the sick list itself is kept every frame.

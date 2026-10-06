@@ -62,6 +62,9 @@ const ROW_H := 13.0
 ## screen's edge, this far in, pointing at him.
 const MARKER_LIFT := 26.0
 const EDGE_MARGIN := 10.0
+## The tags' arrows keep to a frame (v0.10 M6): EDGE_MARGIN in from the screen's sides, below the clock and the Gaze bar
+## (TAG_TOP) and just above the slot row, so a tag under the clock or under a slot is pointed at, and no arrow covers either.
+const TAG_TOP := 40.0
 ## How to win (v0.10 M6, spec §3): a line under the objectives, wrapped to HINT_W, at most HINT_LINES lines, pale gold.
 const HINT_W := 228.0
 const HINT_LINES := 3
@@ -269,14 +272,17 @@ func _draw_tags() -> void:
 			_plate((e.label as Rect2).position, t.label, t.color)
 
 
-## The tags off screen (v0.10 M6): an arrow at the edge for each, its label beside it. Drawn last, over the HUD.
+## The tags outside the frame (v0.10 M6): an arrow at the frame's edge for each, its label beside it. Every arrow first, then
+## every shown label, so no arrow's disc clips a label. Drawn straight after the tags, under the HUD's panels, so the
+## objectives, the hint and the status stay readable (their plates are translucent: an arrow behind one shows through).
 func _draw_tag_arrows() -> void:
 	for e: Dictionary in _layout:
-		if String(e.mode) != "arrow":
-			continue
-		var t: MapTag = e.tag
-		_draw_arrow(e.arrow, e.dir, t.color, t.color.darkened(0.4))
-		if bool(e.show):
+		if String(e.mode) == "arrow":
+			var t: MapTag = e.tag
+			_draw_arrow(e.arrow, e.dir, t.color, t.color.darkened(0.4))
+	for e: Dictionary in _layout:
+		if String(e.mode) == "arrow" and bool(e.show):
+			var t: MapTag = e.tag
 			_plate((e.label as Rect2).position, t.label, t.color)
 
 
@@ -299,9 +305,10 @@ static func tag_point(t: MapTag, xf: Transform2D) -> Vector2:
 	return (xf * (Iso.ground_to_screen(t.at) - Vector2(0.0, t.rise)) - Vector2(0.0, t.lift)).round()
 
 
-## A screen point is in the frame, EDGE_MARGIN in from its edge (v0.10 M6).
-static func on_screen(c: Vector2, view: Vector2) -> bool:
-	return Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(c)
+## The frame the tags' arrows keep to on a screen `view` wide and tall (v0.10 M6).
+static func tag_frame(view: Vector2) -> Rect2:
+	var bottom := minf(SLOT_TOP, view.y) - 4.0
+	return Rect2(EDGE_MARGIN, TAG_TOP, view.x - 2.0 * EDGE_MARGIN, maxf(bottom - TAG_TOP, 1.0))
 
 
 ## A label's plate (v0.10 M6): its words' width and a pixel each side, PLATE_H tall -- the one measure tag_layout() and
@@ -319,9 +326,10 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 
 ## Where each tag goes this frame (v0.10 M6, spec §2.3), in the tags' order, as {tag, c, mode, arrow, dir, label, show}.
 ## - `c`: its diamond's centre on screen.
-## - `mode`: "map" for its diamond where it is -- anywhere inside the screen for a tag without `edge`, and EDGE_MARGIN in
-##   from the edge for one with it; "arrow" for a tag with `edge` nearer the edge than that or off screen, an arrow at the
-##   edge (`arrow` is its tip and `dir` its heading); "" for a tag without `edge` off screen (only its outline may show).
+## - `mode`: "map" for its diamond where it is -- anywhere inside the screen for a tag without `edge`, and inside
+##   tag_frame() for one with it; "arrow" for a tag with `edge` outside the frame (off screen, under the clock, or under
+##   the slot row), an arrow on the frame's edge (`arrow` is its tip and `dir` its heading); "" for a tag without `edge`
+##   off screen (only its outline may show).
 ## - `label`: its label's plate.
 ## - `show`: the label is drawn. Not when it has none, nor when its plate would overlap one placed before it: a director
 ##   lists its most important tags first, so a crowded view keeps their labels.
@@ -329,17 +337,18 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> Array:
 	var out := []
 	var placed: Array[Rect2] = []
+	var frame := tag_frame(view)
 	for t in tags:
 		if not t.valid():
 			continue
 		var c := tag_point(t, xf)
 		var e := {"tag": t, "c": c, "mode": "", "arrow": Vector2.INF, "dir": Vector2.ZERO, "label": Rect2(), "show": false}
-		if on_screen(c, view) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
+		if frame.has_point(c) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
 			e.mode = "map"
 			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
 		elif t.edge:
-			var tip := edge_point(c, view)
-			var d := (c - view * 0.5).normalized()
+			var tip := frame_point(c, frame)
+			var d := (c - frame.get_center()).normalized()
 			var reach := ARROW_REACH + absf(d.x) * plate_size(t.label).x * 0.5 \
 				+ absf(d.y) * PLATE_H * 0.5
 			e.mode = "arrow"
@@ -373,11 +382,16 @@ func edge_arrow(point: Vector2) -> Vector2:
 	return edge_point(point, _view())
 
 
-## edge_arrow() for a screen `view` wide and tall (v0.10 M6: static, for tag_layout()).
+## edge_arrow() for a screen `view` wide and tall (v0.10 M6: static, on the whole screen, EDGE_MARGIN in).
 static func edge_point(point: Vector2, view: Vector2) -> Vector2:
-	var mid := view * 0.5
+	return frame_point(point, Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN))
+
+
+## Where the arrow for a point outside `frame` sits (v0.10 M6): on the line from the frame's centre to it, on the frame's edge.
+static func frame_point(point: Vector2, frame: Rect2) -> Vector2:
+	var mid := frame.get_center()
 	var d := point - mid
-	var half := mid - Vector2.ONE * EDGE_MARGIN
+	var half := frame.size * 0.5
 	var k := 1.0
 	if absf(d.x) > half.x:
 		k = half.x / absf(d.x)
@@ -534,9 +548,11 @@ func _signature() -> String:
 
 
 func _draw() -> void:
-	# The tags on the map (v0.10; M6) are drawn first, so they sit under every other HUD element -- the clock, the bars,
-	# the events, the objectives, the status, the banners, Cael's plate, the slots and the marker -- and never hide one.
+	# The tags on the map (v0.10; M6) and their edge arrows are drawn first, so they sit under every other HUD element --
+	# the clock, the bars, the events, the objectives, the status, the banners, Cael's plate, the slots and the marker --
+	# and never hide one.
 	_draw_tags()
+	_draw_tag_arrows()
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
@@ -555,8 +571,6 @@ func _draw() -> void:
 	_draw_slots(w)
 	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
 	_draw_marker()
-	# Last of all, the tags' edge arrows (v0.10 M6), as the marker's.
-	_draw_tag_arrows()
 
 
 func _draw_clock(w: float) -> void:

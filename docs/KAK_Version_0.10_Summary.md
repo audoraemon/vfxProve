@@ -522,7 +522,7 @@ Rulings the controller made while the build ran, with what it costs if one was w
 
 ## 17. What comes next
 
-**Known next: M6, objective clarity.** The user's playtest of Mira's House asked for it: markers, labels, edge arrows and a how-to-win line, so that a player can see what a night asks for and where. It is planned as M6 and not started. It is HUD work, on `hud.gd`, which M5's marks and subtitle already extended.
+**Objective clarity (M6)** is built: see the section above. Anything it leaves is in its milestone ledger.
 
 Also open:
 - **Art for the story:** panels for the fragments and endings, portraits for Mira, Cael, Halcyon and Odran, the sprites and looks the build stands in for (Venn, Wren, the Believer, the wayside shrine, the Knight's own sprite).
@@ -530,6 +530,22 @@ Also open:
 - **Ruins and the dead carried between nights,** the holy city and capital maps, and Tier 4.
 - **Resonance and the Awakening Trials,** which v0.09's summary expected in v0.10 and the v0.10 spec moved later; the campaign save they were to share is now in.
 - **A name for Halcyon.**
+
+## M6: Objective clarity
+
+M6 makes a night's goal readable on screen: the map says where, a line under the objectives says how, and Night 2 opens on a short tour. It is text and drawn shapes only, and read-only: no rule, number or timing of any mission changed, and the behaviour checksums are as they were.
+
+- **The map's tags.** Each Night 2 mission shows its objectives on the map as small coloured diamonds with a label, and an arrow at the screen's edge for anything out of view. A label never hides another: when two would overlap, the first listed is kept, and a director lists its most important first.
+  - *Mira's House:* her house (outlined, with its door "WATCHED" in red or "CLEAR" in gold), the Temple while a report runs, the running reporter ("TO THE TEMPLE"), the one crying out, Venn ("INQUISITOR", with an arrow while she searches), a red diamond on each Faithful watching the door, and the grieving and the Believers among them.
+  - *Broken Lanterns:* each shrine ("LANTERN", or "GUARDED" while a Knight stands over it, or "DRAINING" with its seconds left, all with an arrow), the flame-bearer while he goes to relight one, and each living Knight.
+  - *The Vigil Flame:* Wren, Halcyon's flame wherever it is carried, Mira's shrine, the Temple while the Vigil takes the flame home, and a red diamond on each Faithful close enough to see Wren take it.
+  - The arrows keep to a frame: in from the screen's sides, below the clock and the Gaze bar, and above the slot row. So a tag under the clock or under a slot is pointed at, not hidden, and an arrow covers neither. Arrows are drawn under the HUD's panels, so the objective rows, the hint and the status stay readable; each arrow is drawn before any label, so no arrow clips one. The Warning's own messenger arrow is unchanged.
+- **How to win.** Under the objectives, a pale-gold line (at most three lines) says how to win, for every mission and every act of The Long Night. It follows the mission's phase: Mira's House changes it once four believe and again when her house burns; Broken Lanterns once a Knight is out; The Vigil Flame when Wren comes, when the Vigil turns for home and once the flame is swapped. It names the tag colours it speaks of ("gold", "red", "blue", "orange").
+- **The tour.** Each Night 2 mission opens on three stops, each with a one-line caption centred above the slots and a "Space to skip" word under it: Mira's House shows her door, the Temple and Venn; Broken Lanterns a lantern, the flame-bearer and the Temple the Knights come out of; The Vigil Flame the flame on its bearer, Mira's shrine and the Temple. A stop with no one to show is left out, and a mission with no stops plays the old sweep. Space, Enter or a click skips it; that press casts nothing and opens nothing, and Esc still pauses. A restart plays the tour again.
+- **For the board missions.** `MissionDirector.tags()` replaces v0.10's `marks()`. A board mission's director can override `tags()`, `hint_phase()` and `tour()`; the defaults are no tags, no phase and no stops.
+- **Photos.** `--show=miras`, `--show=lanterns`, `--show=flame` and `--show=tour` photograph the tags, the plate and the tour caption; the play photos skip the tour and wait out the opening banners.
+
+Gates: filled in at landing.
 
 ## 18. Pushed
 

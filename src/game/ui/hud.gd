@@ -45,7 +45,7 @@ const EVENTS_TOP := 44.0
 const GAZE_BAR := Vector2(120.0, 4.0)
 const GAZE_TOP := 30.0
 ## How far above a marked person's feet their mark sits, its half size, and its dark edge (v0.10; M5 doubled it and gave
-## it an edge, so it reads on the cobbles, and draws it under the banners and the slots).
+## it an edge, so it reads on the cobbles, and draws it first, under the rest of the HUD).
 const MARK_LIFT := 22.0
 const MARK_R := 4.0
 const MARK_EDGE := Color(0.04, 0.04, 0.06, 0.9)
@@ -368,6 +368,9 @@ func _signature() -> String:
 
 
 func _draw() -> void:
+	# The marks over people (v0.10) are drawn first (M5), so they sit under every other HUD element -- the clock, the bars,
+	# the events, the objectives, the status, the banners, Cael's plate, the slots and the marker -- and never hide one.
+	_draw_marks()
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
@@ -379,8 +382,6 @@ func _draw() -> void:
 	else:
 		_draw_rows()
 	_draw_status(w)
-	# The marks over people (v0.10) go under the banners and the slots (M5): they never hide one.
-	_draw_marks()
 	_draw_banners(w)
 	_draw_subtitle(w)
 	_draw_slots(w)

@@ -21,8 +21,9 @@ const SKIP_ROLES := [CitizenProfile.Role.BELLKEEPER, CitizenProfile.Role.WATCHMA
 ## What a goer is doing when the festival has lost it: afraid, or running for a roof. Both come only from a fright
 ## (Person.panic(): a power's danger, a seen death, a collapse or a fire the god caused, the Mayor's death).
 ## v0.09.1 "Calm the feast": FLEE is not here -- a citizen flees only when the town itself sends it (its evacuation, a
-## household leaving, a shelter emptied for the gates), so a goer the town sends away does not count; one the god
-## frightened first is counted already.
+## household leaving, a shelter emptied for the gates), so a goer the town sends away does not count, nor once it is
+## out of town (_on_escaped()); one the god frightened first is counted already. A fleeing goer is past a fright
+## (Person.panic()), so the god breaks it by casting within reach of it (_on_cast()).
 const BROKE_MINDS := [Person.Mind.PANIC, Person.Mind.SHELTER]
 
 ## The act's windows, in seconds from its start: the bonfire lights and the crowd packs round the fountain, the Mayor
@@ -42,6 +43,9 @@ var goers: Array[Person] = []
 var mayor: Person
 var need := FESTIVAL_NEED
 var _broke := {}
+## Goers who got away unbroken (v0.09.1, _on_escaped()): left the feast, not lost to it. Keyed by the goer, which is
+## freed once it is out.
+var _left := {}
 var _sample_in := 0.0
 var _fires: Array[FxTimeline] = []
 ## The report as it stood when the act ended (empty until then): Mission reads it only after the slow-motion ending,
@@ -61,6 +65,8 @@ func _begin() -> void:
 	timeline.add(ADDRESS_AT + ADDRESS_SECONDS, "address_end", "The address ends", _address_ends, speaks)
 	timeline.add(CLOSE_AT, "close", "The guard closes the square")
 	crowd._field.enemy_killed.connect(_on_killed)
+	crowd.escaped.connect(_on_escaped)
+	rules.cast_made.connect(_on_cast)
 	rules.over.connect(_on_over)
 	if night != null and night.bell_rang:
 		_post_guards()
@@ -185,10 +191,50 @@ func step(delta: float) -> void:
 				_broke[p] = true
 
 
-## Goers dead, freed or broken: the festival's losses.
+## Someone out of town (Crowd.escaped: a gate or a boat; v0.09.1 final review). A goer that gets away unbroken has
+## left the feast and never counts (count()); one the god broke first still does.
+func _on_escaped(p: Person) -> void:
+	if not _broke.has(p):
+		_left[p] = true
+
+
+## A cast (Rules.cast_made; v0.09.1 final review): every living goer within its danger is broken, whatever it was doing
+## -- a fleeing goer is past the fright (Person.panic()) that breaks the rest. The danger is the one Crowd.on_cast()
+## registers: Crowd._cast_radius() plus Person.THREAT_MARGIN round the cast, or round each of its points along a lane
+## power's lane (as Targeting hands it on). A quiet power registers none; its kills count as deaths.
+func _on_cast(_slot: int, key: String, at: Vector2) -> void:
+	if PowerBook.is_quiet(key):
+		return
+	var radius := Crowd._cast_radius(key)
+	var a: Dictionary = Targeting.AREAS.get(key, {})
+	var points: Array[Vector2] = [at]
+	if String(a.get("shape", "")) == "lane":
+		var dir := _cast_dir()
+		points = Crowd.cast_points(Targeting.lane_start(key, at, dir), dir, float(a.length), radius)
+	var reach := radius + Person.THREAT_MARGIN
+	for p in goers:
+		if not WarningDirector._alive(p):
+			continue
+		for point in points:
+			if p.ground_pos.distance_to(point) <= reach:
+				_broke[p] = true
+				break
+
+
+## The aim of the cast just made: its effect's "dir" (a drag's, a scripted cast's), else an undragged aim's
+## (Targeting.DEFAULT_DIR).
+func _cast_dir() -> Vector2:
+	var fx: Variant = rules._playing  # untyped: a test's caster may hand back nothing
+	var dir: Vector2 = (fx as FxTimeline).extra.get("dir", Vector2.ZERO) if is_instance_valid(fx) else Vector2.ZERO
+	return dir.normalized() if dir != Vector2.ZERO else Targeting.DEFAULT_DIR
+
+
+## Goers dead, freed or broken: the festival's losses. A goer that left the town unbroken is none of them (_left).
 func count() -> int:
 	var n := 0
 	for p in goers:
+		if _left.has(p):
+			continue
 		if not is_instance_valid(p) or not p.is_alive() or _broke.has(p):
 			n += 1
 	return n
@@ -223,8 +269,12 @@ func _on_over(_won: bool, _reason: String) -> void:
 func teardown() -> void:
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
 		crowd._field.enemy_killed.disconnect(_on_killed)
+	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
+		crowd.escaped.disconnect(_on_escaped)
 	if is_instance_valid(rules) and rules.over.is_connected(_on_over):
 		rules.over.disconnect(_on_over)
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
+		rules.cast_made.disconnect(_on_cast)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
 	for fire in _fires:
 		if is_instance_valid(fire) and not fire.finished:

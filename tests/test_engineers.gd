@@ -182,6 +182,7 @@ static func run(t) -> void:
 	_fires(t)
 	_fire_before_mending(t)
 	_return_after_fright(t)
+	_freed_member(t)
 
 
 ## v0.08.2: a team with nothing to mend fights the nearest fire, through the evacuation too, and goes back to
@@ -430,4 +431,39 @@ static func _return_after_fright(t) -> void:
 	(made[3] as EnemyField).kill(partner, &"test")
 	e.step(0.1)
 	t.check(m.mind == Person.Mind.FLEE, "when its team is lost in the evacuation, the one left flees")
+	_done(made)
+
+
+## v0.09.1 final review: an engineer killed before City Emergency frees itself when its death fade ends, and stays on
+## its team until the next step's _check_losses(). The turn-out puts every living member on duty, passes the freed one
+## by, and still announces itself.
+static func _freed_member(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var e := crowd.engineers
+	var victim: Person = e.teams[0].members[0]
+	t.check(field.kill(victim, &"test"), "(set-up) an engineer dies before City Emergency")
+	crowd.citizens.erase(victim)
+	field.remove(victim)
+	victim.free()
+	var out := []
+	e.turned_out.connect(func() -> void: out.append(true))
+	e.begin()
+	var living := 0
+	var flagged := 0
+	for team in e.teams:
+		for p in team.members:
+			if is_instance_valid(p):
+				living += 1
+				flagged += int((p as Person).engineer_duty)
+	t.check(e.active and out.size() == 1, "the engineers still turn out (active %s, turned_out %d)" % [e.active, out.size()])
+	t.check(living == 3 and flagged == living, "every living member is on duty (%d of %d)" % [flagged, living])
+	e.step(0.1)
+	var whole := true
+	for team in e.teams:
+		for p in team.members:
+			whole = whole and is_instance_valid(p) and (p as Person).is_alive()
+	t.check(whole and not e.teams.is_empty(),
+		"the next step writes the broken team off or fills its place, without a freed member (%d teams)" % e.teams.size())
 	_done(made)

@@ -861,6 +861,17 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key)
+	var points := cast_points(ground, dir, length, radius)
+	for point in points:
+		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
+			StringName(key))
+	_react(points, radius, float(reach[1]), ground, StringName(key))
+
+
+## Where a cast of danger `radius` at `ground` is a threat (on_cast()): there, or for a lane power (`dir` set, `length`
+## above zero) a point every `radius` (at least 1) along its lane and one at its end. Read by the Festival's director
+## too (v0.09.1), for the goers a cast breaks.
+static func cast_points(ground: Vector2, dir: Vector2, length: float, radius: float) -> Array[Vector2]:
 	var points: Array[Vector2] = [ground]
 	if dir != Vector2.ZERO and length > 0.0:
 		var step := maxf(radius, 1.0)
@@ -870,10 +881,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 			points.append(ground + unit * along)
 			along += step
 		points.append(ground + unit * length)
-	for point in points:
-		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
-			StringName(key))
-	_react(points, radius, float(reach[1]), ground, StringName(key))
+	return points
 
 
 ## A cast's danger radius: its area on the ground (Targeting.AREAS), or v0.03's fright less the margin.

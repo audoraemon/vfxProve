@@ -78,6 +78,8 @@ static func run(t) -> void:
 	_report_at_end(t)
 	_let_go(t)
 	_warned(t)
+	_left_town(t)
+	_fleeing_under_cast(t)
 
 
 ## Eighty goers, none of them a responder or the Mayor, each staying and walking to a spot in the square.
@@ -554,3 +556,96 @@ static func _warned_town(n: NightState) -> Dictionary:
 	crowd.add_alarm(20.0)
 	crowd.raise_profile((s.def as ActDef).town(n))
 	return s
+
+
+## Escape a goer for real and free it, as its frame's end would: `walk` sends it out an exit through Crowd._escapes()
+## (fleeing, standing at its goal), otherwise Crowd.escape() carries it off as a river boat does.
+static func _escape(s: Dictionary, p: Person, walk: bool) -> void:
+	var crowd: Crowd = s.crowd
+	if walk:
+		if p.mind != Person.Mind.FLEE:
+			p.flee()
+		p._goal = p.ground_pos
+		crowd._escapes()
+	else:
+		(s.field as EnemyField).remove(p)
+		crowd.escape(p)
+	if is_instance_valid(p):
+		p.free()
+
+
+## v0.09.1 final review: a goer the town evacuates out of a gate (or onto a boat) has left the feast, and does not count
+## against it; one the god broke first still counts when it gets away, by boat or out a gate.
+static func _left_town(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var crowd: Crowd = s.crowd
+	d.need = 1000
+	var calm: Person = d.goers[0]
+	var walker: Person = d.goers[1]
+	var boated: Person = d.goers[2]
+	var gated: Person = d.goers[3]
+	var escaped0 := crowd.escaped_count
+	_escape(s, calm, false)
+	_escape(s, walker, true)
+	t.check(crowd.escaped_count == escaped0 + 2 and not is_instance_valid(calm) and not is_instance_valid(walker),
+		"(set-up) two unbroken goers get away, by boat and out a gate, and are freed (%d)" % (crowd.escaped_count - escaped0))
+	t.check(d.count() == 0 and not d.broken(), "goers the town sends away have left the feast: none count (%d)" % d.count())
+	for p in [boated, gated]:
+		p.shelters = null
+		p.panic(p.ground_pos + Vector2(0.5, 0.0), 1.0, &"test")
+	d._sample_in = 0.0
+	d.step(0.0)
+	t.check(d.broke_list().has(boated) and d.broke_list().has(gated), "(set-up) two goers frightened by the god are broken")
+	_escape(s, boated, false)
+	_escape(s, gated, true)  # it flees on from its fright and walks out
+	t.check(not is_instance_valid(boated) and not is_instance_valid(gated) and d.count() == 2,
+		"a goer the god broke still counts once it gets away (%d)" % d.count())
+	d.teardown()
+	t.check(not crowd.escaped.is_connected(d._on_escaped) and not (s.rules as Rules).cast_made.is_connected(d._on_cast),
+		"teardown lets go of the crowd's escapes and the casts")
+	_done(s)
+
+
+## v0.09.1 final review: a fleeing goer is past being frightened (Person.panic()), so a cast the town can see breaks
+## every living goer within its danger -- Crowd._cast_radius() plus Person.THREAT_MARGIN of the points Crowd.on_cast()
+## takes, along a lane power's lane -- whatever it was doing. A quiet power breaks nobody by itself.
+static func _fleeing_under_cast(t) -> void:
+	var s := _setup(NightState.new())
+	var d := _start(s, null)
+	var rules: Rules = s.rules
+	d.need = 1000
+	rules.loadout = PackedStringArray(["heaven", "doom"])
+	rules._cooldowns = PackedFloat32Array([0.0, 0.0])
+	var casts: Array[FxTimeline] = []
+	rules.caster = func(_sc: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		var fx := FxTimeline.new()
+		fx.origin = g
+		fx.extra = e
+		casts.append(fx)
+		return fx
+	var at := TownLayout.FOUNTAIN.get_center() + Vector2(0.0, -14.0)
+	var dir := Vector2(0.0, 1.0)  # down the lane, not Targeting.DEFAULT_DIR: the cast's own aim is read
+	var reach := Crowd._cast_radius("heaven") + Person.THREAT_MARGIN
+	var near: Person = d.goers[0]
+	var far: Person = d.goers[1]
+	near.ground_pos = at + dir * 4.5  # within reach of the lane's far half, beyond a point's reach of the press
+	far.ground_pos = at + Vector2(reach + 0.5, 0.0)  # beside the press, across the lane: out of reach
+	for p in [near, far]:
+		p.flee()
+	t.check(near.mind == Person.Mind.FLEE and far.mind == Person.Mind.FLEE and near.ground_pos.distance_to(at) > reach,
+		"(set-up) two goers flee, one down the lane and one beside it")
+	for p in d.goers:
+		if p != near and p != far and p.ground_pos.distance_to(at) < 12.0:
+			p.ground_pos = TownLayout.FOUNTAIN.get_center()  # nobody else near the lane
+	rules.cast(1, near.ground_pos, {})
+	t.check(d.broke_list().is_empty(), "a quiet power (Silent Doom) on a fleeing goer breaks nobody (%d)" % d.broke_list().size())
+	rules._playing = null  # the one power at a time: let the next go out
+	t.check(rules.cast(0, at, {"dir": dir}) != null, "(set-up) a Heaven Splitter goes out")
+	t.check(d.broke_list().has(near) and near.mind == Person.Mind.FLEE,
+		"a fleeing goer within its lane's danger is broken by it (%s)" % Person.Mind.keys()[near.mind])
+	t.check(not d.broke_list().has(far) and d.count() == 1,
+		"one fleeing beyond it is not (count %d)" % d.count())
+	_done(s)
+	for fx in casts:
+		fx.free()

@@ -88,8 +88,7 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid, town: Town, engi
 func _team(members: Array) -> Dictionary:
 	_next_id += 1
 	if active:
-		for p in members:
-			(p as Person).engineer_duty = true
+		_on_duty(members)
 	return {"id": _next_id, "members": members, "job": {}, "spots": [], "progress": 0.0, "working": false}
 
 
@@ -100,9 +99,17 @@ func begin() -> void:
 	active = true
 	_think_in = 0.0
 	for team in teams:
-		for p in team.members:
-			(p as Person).engineer_duty = true
+		_on_duty(team.members)
 	turned_out.emit()
+
+
+## Every living member of `members` is on its team's duty (Person.engineer_duty). One killed before City Emergency may
+## be freed already (its death fade ended) and is passed by: the next step's _check_losses() writes its team off or
+## fills its place.
+func _on_duty(members: Array) -> void:
+	for p in members:
+		if is_instance_valid(p) and (p as Person).is_alive():
+			(p as Person).engineer_duty = true
 
 
 func step(delta: float) -> void:

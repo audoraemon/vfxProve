@@ -207,9 +207,10 @@ func _ready() -> void:
 			save.campaign = CampaignState.new()
 			save.campaign.ending = CampaignDef.FALSE_LANTERN
 			go_to(Screen.ENDING)
-		"miras":
+		"miras", "cael":
 			# Mira's House as its intro lands (v0.10 M2), for the photograph of its HUD: the Gaze bar and the marks over the
-			# grieving (unpaused: the pause menu would cover them).
+			# grieving (unpaused: the pause menu would cover them). cael (v0.10 M5) is the same, with Venn's banner and
+			# Cael's line under it.
 			mission_id = MissionBook.MIRAS_HOUSE
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
@@ -239,6 +240,10 @@ func _ready() -> void:
 		if show == "flame-beams" and is_instance_valid(_mission) and _mission.rules() != null \
 				and _mission.rules().director is VigilFlameDirector:
 			(_mission.rules().director as VigilFlameDirector).bench_beams()
+		if show == "cael" and is_instance_valid(_mission) and is_instance_valid(_mission._hud):
+			# Cael's line under its event's banner (v0.10 M5), for the photograph of the subtitle.
+			_mission._hud.push_banner("THE INQUISITOR SEARCHES")
+			_mission._hud.push_subtitle(CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn"))
 		await get_tree().create_timer(2.0 if show.begins_with("flame") else 1.0).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		await _quit_cleanly()

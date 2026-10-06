@@ -1,8 +1,8 @@
 class_name CampaignText
 extends RefCounted
 ## The Lantern campaign's words (v0.10, spec §5), kept apart from its logic so a writing change never touches it: Cael's
-## memory fragments, the choice cards' lines, the titles a path gives the god, and the endings. Every name is a
-## placeholder the user may change.
+## memory fragments, his lines during the Night 2 missions, the choice cards' lines, the titles a path gives the god, and
+## the endings. Every name is a placeholder the user may change.
 
 ## Cael's memory fragments by id: shown on the night screen before the night that names them (CampaignDef.NIGHTS), and
 ## The Vision before the Faith and Theft endings.
@@ -23,6 +23,16 @@ const CARD_LINES := {
 	"vigil_flame": "He gave this town his light. Take it back.",
 	"broken_lanterns": "Break his lanterns. Let him feel how small his town is.",
 }
+## Cael's lines during the Night 2 missions (spec §5.2), by mission and by the event that brings them: each is shown as a
+## subtitle under the banners when its event happens (MissionDirector._say()). A mission or event with no line has none.
+const CAEL_LINES := {
+	"miras_house": {"venn": "Venn. She lit Mira's pyre.", "fire": "They're burning her again. Get them out."},
+	"vigil_flame": {"wren": "The boy wants that lantern. Let him have it.",
+		"light": "He's looking. Don't let him see the boy."},
+	"broken_lanterns": {"drained": "Feel that? That was his.", "knights": "Odran's knights. He's frightened."},
+}
+## Who speaks in a mission: the HUD names him before each line.
+const SPEAKER := "Cael"
 ## The god's title by its strongest path; "" before any path night.
 const TITLES := {"": "The Forgotten", "faith": "The Prophet's God", "theft": "The Deceiver", "ruin": "The Kataclysm"}
 ## A path's name on its card.
@@ -38,3 +48,9 @@ const ENDINGS := {
 		"you. Was this what she prayed for?", "note": ""},
 	"eaten": {"title": "Eaten", "text": "He found us. I'm sorry, Mira.", "note": ""},
 }
+
+
+## Cael's line for `event` in the mission `mission_id`, or "" when he has none.
+static func cael_line(mission_id: String, event: String) -> String:
+	var lines: Dictionary = CAEL_LINES.get(mission_id, {})
+	return String(lines.get(event, ""))

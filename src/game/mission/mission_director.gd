@@ -71,6 +71,16 @@ func teardown() -> void:
 	pass
 
 
+## Cael speaks (v0.10 M5, spec §5.2): his line for `event` in this mission (CampaignText.CAEL_LINES), shown under the
+## banners; nothing when he has none for it.
+func _say(event: String) -> void:
+	if rules == null or rules.mission == null:
+		return
+	var text := CampaignText.cael_line(rules.mission.id, event)
+	if text != "":
+		rules.subtitle.emit(text)
+
+
 ## A point of walkable ground at or near `g` (`g` itself when the town has no walk grid, or none is free).
 func _walkable(g: Vector2) -> Vector2:
 	var w := crowd._grid.nearest_walkable(g) if crowd._grid != null else g

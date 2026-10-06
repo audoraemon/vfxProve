@@ -100,6 +100,24 @@ static func run(t) -> void:
 		"a whisper at someone shaken flashes its slot and says so (%s)" % [hud.banners()])
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
 
+	# Cael's lines (v0.10 M5): a queue of their own beside the banners, each up SUBTITLE_SECONDS in turn (review focus 1:
+	# two close together and a banner with them -- none lost, none cut short, the banners at their own pace).
+	rules.banner.emit("THE INQUISITOR SEARCHES")
+	rules.subtitle.emit("Venn. She lit Mira's pyre.")
+	rules.subtitle.emit("They're burning her again. Get them out.")
+	t.check(hud.banners().size() == 1 and hud.subtitles() == PackedStringArray(["Venn. She lit Mira's pyre.",
+		"They're burning her again. Get them out."]), "a line shows beside its banner, the next waits (%s)" % [hud.subtitles()])
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	t.check(hud.banners().is_empty() and hud.subtitles().size() == 2, "a line outlasts its banner")
+	hud.advance(Hud.SUBTITLE_SECONDS - Hud.BANNER_SECONDS)
+	t.check(hud.subtitles() == PackedStringArray(["They're burning her again. Get them out."]),
+		"then gives way to the next (%s)" % [hud.subtitles()])
+	hud.advance(Hud.SUBTITLE_SECONDS - 0.1)
+	t.check(hud.subtitles().size() == 1, "which lost none of its own time waiting")
+	hud.advance(0.2)
+	t.check(hud.subtitles().is_empty(), "and goes when its time is up")
+	t.check(Hud.SUBTITLE_SECONDS > Hud.BANNER_SECONDS, "a line, a sentence to read, stays longer than a banner")
+
 	# Six powers (v0.08): six compact slots across the 640-px screen, none touching, each found by the mouse.
 	var six_rules := Rules.new().setup(PackedStringArray(["doom", "heaven", "wisp", "thorns", "discord", "blight"]), null,
 		env, field, crowd, town)

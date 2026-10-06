@@ -8,6 +8,11 @@ extends Control
 
 ## How long one banner stays up.
 const BANNER_SECONDS := 2.2
+## Cael's lines (v0.10 M5, spec §5.2): how long one stays up (longer than a banner: it is a sentence to read), the top of
+## its plate (just under the banner's bar, 116 to 136), and the gap between his name and the line.
+const SUBTITLE_SECONDS := 4.0
+const SUBTITLE_TOP := 140.0
+const SUBTITLE_GAP := 6.0
 ## A slot that refused a cast stays red for this long (spec §1; the buzz that goes with it is milestone 5's).
 const FLASH_SECONDS := 0.35
 ## The clock turns red and pulses under this many seconds (spec §5).
@@ -57,6 +62,8 @@ var _town: Town
 var _aim: Targeting
 ## Banners waiting their turn: [text, seconds shown].
 var _banners: Array = []
+## Cael's lines waiting their turn (v0.10 M5): [text, seconds shown].
+var _subtitles: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
 var _flash := PackedFloat32Array()
 ## What the last frame drew, so an unchanged HUD costs nothing.
@@ -85,6 +92,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	for i in _rules.loadout.size():
 		_slot_names.append(UiTheme.fit(String(_rules.power(i).get("name", "")), NAME_ROOM))
 	_rules.banner.connect(push_banner)
+	_rules.subtitle.connect(push_subtitle)
 	_rules.cast_refused.connect(_on_cast_refused)
 	return self
 
@@ -95,12 +103,8 @@ func _process(delta: float) -> void:
 
 ## Age the banners, and redraw when anything on screen has changed.
 func advance(delta: float) -> void:
-	# Only the one on screen (index 0, the only one _draw_banners() ever reads) ages: a banner waiting behind
-	# it must not lose part of its own showing to the time it spent queued.
-	if not _banners.is_empty():
-		_banners[0][1] += delta
-	while not _banners.is_empty() and float(_banners[0][1]) >= BANNER_SECONDS:
-		_banners.pop_front()
+	_age(_banners, delta, BANNER_SECONDS)
+	_age(_subtitles, delta, SUBTITLE_SECONDS)
 	var flashing := false
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
@@ -108,7 +112,7 @@ func advance(delta: float) -> void:
 	# Banners fade, a refused slot burns red, the last half minute pulses and a marker follows its messenger (v0.08):
 	# while any of those is on screen the HUD is an animation and redraws every frame. The rest of the time it is a
 	# still picture.
-	if flashing or not _banners.is_empty() or _rules.time_left <= HURRY_AT or marker_shown() or marks_shown(_rules):
+	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT 			or marker_shown() or marks_shown(_rules):
 		_drawn = ""
 		queue_redraw()
 		return
@@ -116,6 +120,16 @@ func advance(delta: float) -> void:
 	if now != _drawn:
 		_drawn = now
 		queue_redraw()
+
+
+## Ages the one on screen of a queue of [text, seconds shown] and lets go of those whose time is up. Only the one on screen
+## (index 0, the only one drawn) ages: one waiting behind it must not lose part of its own showing to the time it spent
+## queued.
+static func _age(queue: Array, delta: float, seconds: float) -> void:
+	if not queue.is_empty():
+		queue[0][1] += delta
+	while not queue.is_empty() and float(queue[0][1]) >= seconds:
+		queue.pop_front()
 
 
 ## "Destroy the Royal Citadel - 60% left", the spec's objective line.
@@ -292,6 +306,28 @@ func banners() -> PackedStringArray:
 	return out
 
 
+## Cael's line (v0.10 M5): queued behind any still showing, as banners are.
+func push_subtitle(text: String) -> void:
+	_subtitles.append([text, 0.0])
+
+
+func subtitles() -> PackedStringArray:
+	var out := PackedStringArray()
+	for s in _subtitles:
+		out.append(String(s[0]))
+	return out
+
+
+## Who speaks, as the HUD names him.
+static func speaker() -> String:
+	return CampaignText.SPEAKER.to_upper()
+
+
+## How wide a line is on screen: his name, the gap, then the line.
+static func subtitle_width(text: String) -> float:
+	return UiTheme.width(speaker(), UiTheme.SIZE_SMALL) + SUBTITLE_GAP + UiTheme.width(text, UiTheme.SIZE_BODY)
+
+
 ## Is this slot still red from a cast it could not take?
 func flashing(slot: int) -> bool:
 	return slot >= 0 and slot < _flash.size() and _flash[slot] > 0.0
@@ -334,6 +370,7 @@ func _draw() -> void:
 		_draw_rows()
 	_draw_status(w)
 	_draw_banners(w)
+	_draw_subtitle(w)
 	_draw_slots(w)
 	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
 	_draw_marks()
@@ -506,6 +543,26 @@ func _draw_banners(w: float) -> void:
 	edge.a = fade
 	draw_rect(bar, edge, false, -1.0)
 	UiTheme.text(self, Vector2(x, 131.0), text, UiTheme.SIZE_BIG, col)
+
+
+## Cael's line under the banner's bar (v0.10 M5): on a dark plate, his name small in gold, then the line in the body's
+## light text; it comes up over 0.2 s and fades over its last 0.4 s.
+func _draw_subtitle(w: float) -> void:
+	if _subtitles.is_empty():
+		return
+	var text := String(_subtitles[0][0])
+	var age := float(_subtitles[0][1])
+	var fade := clampf((SUBTITLE_SECONDS - age) / 0.4, 0.0, 1.0) * clampf(age / 0.2, 0.0, 1.0)
+	var who := speaker()
+	var who_w := UiTheme.width(who, UiTheme.SIZE_SMALL)
+	var x := roundf((w - subtitle_width(text)) * 0.5)
+	draw_rect(Rect2(x - 6.0, SUBTITLE_TOP, subtitle_width(text) + 12.0, 17.0), Color(0.03, 0.03, 0.05, 0.72 * fade))
+	var gold := UiTheme.COL_GOLD
+	gold.a = fade
+	var body := UiTheme.COL_TEXT
+	body.a = fade
+	UiTheme.text(self, Vector2(x, SUBTITLE_TOP + 12.0), who, UiTheme.SIZE_SMALL, gold)
+	UiTheme.text(self, Vector2(x + who_w + SUBTITLE_GAP, SUBTITLE_TOP + 13.0), text, UiTheme.SIZE_BODY, body)
 
 
 func _draw_slots(_w: float) -> void:

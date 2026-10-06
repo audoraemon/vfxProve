@@ -62,6 +62,10 @@ const ROW_H := 13.0
 ## screen's edge, this far in, pointing at him.
 const MARKER_LIFT := 26.0
 const EDGE_MARGIN := 10.0
+## How to win (v0.10 M6, spec §3): a line under the objectives, wrapped to HINT_W, at most HINT_LINES lines, pale gold.
+const HINT_W := 228.0
+const HINT_LINES := 3
+const HINT_COL := Color("e8d690")
 
 var _rules: Rules
 var _crowd: Crowd
@@ -175,6 +179,30 @@ func event_rows() -> Array:
 	return rows
 
 
+## The how-to-win line for the mission or act being played, in its director's phase (v0.10 M6, MissionHints); "" for
+## none.
+func hint_text() -> String:
+	if _rules == null or _rules.mission == null:
+		return ""
+	return MissionHints.line(_rules.mission.id, _rules.director.hint_phase() if _rules.director != null else "")
+
+
+## The how-to-win line as drawn (v0.10 M6): wrapped to HINT_W, at most HINT_LINES lines; none for no line.
+static func hint_lines(text: String) -> PackedStringArray:
+	if text == "":
+		return PackedStringArray()
+	return UiTheme.wrap(text, HINT_W, UiTheme.SIZE_SMALL).slice(0, HINT_LINES)
+
+
+## Where the how-to-win plate starts (v0.10 M6): under the objective panel of a scored mission, else under the objective
+## rows (at the top with none).
+func hint_top() -> float:
+	if _rules.mission.scored:
+		return OBJECTIVE_PANEL.end.y + 4.0
+	var rows := objective_rows().size()
+	return 2.0 + (5.0 + ROW_H * float(rows) + 4.0 if rows > 0 else 0.0)
+
+
 ## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is the night's own, lower when
 ## the Prince escaped), else the single missions' 50.
 func escape_limit() -> int:
@@ -210,25 +238,29 @@ func _draw_gaze(w: float) -> void:
 	draw_rect(Rect2(at, Vector2(roundf(GAZE_BAR.x * f), GAZE_BAR.y)), UiTheme.COL_GOLD.lerp(UiTheme.COL_BAD, f))
 
 
-## The tags on the map (v0.10 M6, spec §2.3): each one's footprint outline, then, while on screen, its diamond and its
-## label. Lays the frame's tags out first (tag_layout()).
+## The tags on the map (v0.10 M6, spec §2.3): each one's footprint outline and, while on screen, its diamond, then the
+## labels kept for them, after every diamond so that no tag's diamond or outline hides another's label. Lays the frame's
+## tags out first (tag_layout()).
 func _draw_tags() -> void:
 	_layout = []
 	if _rules.director == null:
 		return
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
 	_layout = tag_layout(_rules.director.tags(), xf, _view())
+	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
+	# earlier one.
 	for e: Dictionary in _layout:
 		var t: MapTag = e.tag
 		if t.outline.has_area():
 			_draw_outline(t.outline, xf, t.color)
-		if String(e.mode) != "map":
-			continue
-		var shape := mark_shape(e.c, t.size)
-		draw_colored_polygon(shape, t.color)
-		shape.append(shape[0])
-		draw_polyline(shape, MARK_EDGE, 1.0)
-		if bool(e.show):
+		if String(e.mode) == "map":
+			var shape := mark_shape(e.c, t.size)
+			draw_colored_polygon(shape, t.color)
+			shape.append(shape[0])
+			draw_polyline(shape, MARK_EDGE, 1.0)
+	for e: Dictionary in _layout:
+		if String(e.mode) == "map" and bool(e.show):
+			var t: MapTag = e.tag
 			_plate((e.label as Rect2).position, t.label, t.color)
 
 
@@ -267,20 +299,27 @@ static func on_screen(c: Vector2, view: Vector2) -> bool:
 	return Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(c)
 
 
+## A label's plate (v0.10 M6): its words' width and a pixel each side, PLATE_H tall -- the one measure tag_layout() and
+## _plate() share, so a plate is drawn exactly where the layout placed it.
+static func plate_size(text: String) -> Vector2:
+	return Vector2(UiTheme.width(text, UiTheme.SIZE_SMALL) + 2.0, PLATE_H)
+
+
 ## A label's plate (v0.10 M6): as wide as its words, PLATE_H tall, centred on `centre` and kept inside the screen.
 static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
-	var box := Vector2(UiTheme.width(text, UiTheme.SIZE_SMALL) + 2.0, PLATE_H)
+	var box := plate_size(text)
 	var at := (centre - box * 0.5).round()
 	return Rect2(at.clamp(Vector2.ZERO, (view - box).max(Vector2.ZERO)), box)
 
 
 ## Where each tag goes this frame (v0.10 M6, spec §2.3), in the tags' order, as {tag, c, mode, arrow, dir, label, show}.
 ## - `c`: its diamond's centre on screen.
-## - `mode`: "map" on screen; "arrow" off screen with an edge arrow (`arrow` is its tip and `dir` its heading); "" off
-##   screen without one (only its outline may show).
+## - `mode`: "map" for its diamond where it is -- anywhere inside the screen for a tag without `edge`, and EDGE_MARGIN in
+##   from the edge for one with it; "arrow" for a tag with `edge` nearer the edge than that or off screen, an arrow at the
+##   edge (`arrow` is its tip and `dir` its heading); "" for a tag without `edge` off screen (only its outline may show).
 ## - `label`: its label's plate.
-## - `show`: the label is drawn. Not when it has none, nor when its plate would overlap one placed before it (review focus
-##   1), which is why a director lists its most important tags first.
+## - `show`: the label is drawn. Not when it has none, nor when its plate would overlap one placed before it: a director
+##   lists its most important tags first, so a crowded view keeps their labels.
 ## A tag at no point is left out.
 static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> Array:
 	var out := []
@@ -290,13 +329,13 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> A
 			continue
 		var c := tag_point(t, xf)
 		var e := {"tag": t, "c": c, "mode": "", "arrow": Vector2.INF, "dir": Vector2.ZERO, "label": Rect2(), "show": false}
-		if on_screen(c, view):
+		if on_screen(c, view) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
 			e.mode = "map"
 			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
 		elif t.edge:
 			var tip := edge_point(c, view)
 			var d := (c - view * 0.5).normalized()
-			var reach := ARROW_REACH + absf(d.x) * (UiTheme.width(t.label, UiTheme.SIZE_SMALL) + 2.0) * 0.5 \
+			var reach := ARROW_REACH + absf(d.x) * plate_size(t.label).x * 0.5 \
 				+ absf(d.y) * PLATE_H * 0.5
 			e.mode = "arrow"
 			e.arrow = tip
@@ -460,6 +499,7 @@ func _signature() -> String:
 	var events := event_rows()
 	if not events.is_empty():
 		out += "|" + str(events)
+	out += "|" + hint_text()
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
@@ -479,6 +519,7 @@ func _draw() -> void:
 		_draw_objectives()
 	else:
 		_draw_rows()
+	_draw_hint()
 	_draw_status(w)
 	_draw_banners(w)
 	_draw_subtitle(w)
@@ -596,6 +637,22 @@ func _draw_rows() -> void:
 		if String(row[1]) != "":
 			UiTheme.mark(self, Vector2(6.0 + UiTheme.width(text, UiTheme.SIZE_SMALL) + 5.0, y - 7.0), String(row[1]) == "ok")
 		y += ROW_H
+
+
+## The how-to-win line (v0.10 M6) on its own dark plate under the objectives, in HINT_COL.
+func _draw_hint() -> void:
+	var lines := hint_lines(hint_text())
+	if lines.is_empty():
+		return
+	var wide := 0.0
+	for l in lines:
+		wide = maxf(wide, UiTheme.width(l, UiTheme.SIZE_SMALL))
+	var top := hint_top()
+	draw_rect(Rect2(2.0, top, wide + 10.0, 5.0 + UiTheme.LINE_SMALL * float(lines.size())), UiTheme.COL_PANEL)
+	var y := top + 12.0
+	for l in lines:
+		UiTheme.text(self, Vector2(6.0, y), l, UiTheme.SIZE_SMALL, HINT_COL)
+		y += UiTheme.LINE_SMALL
 
 
 ## The messenger's marker (v0.08): a gold chevron over him while he is on screen, else an arrow at the screen's edge
@@ -742,6 +799,5 @@ func _draw_modes(box: Rect2) -> void:
 
 ## A short label on a dark plate, `at` being the plate's top-left corner.
 func _plate(at: Vector2, label: String, col: Color) -> void:
-	var w := UiTheme.width(label, UiTheme.SIZE_SMALL)
-	draw_rect(Rect2(at, Vector2(w + 2.0, PLATE_H)), Color(0, 0, 0, 0.62))
+	draw_rect(Rect2(at, plate_size(label)), Color(0, 0, 0, 0.62))
 	UiTheme.text(self, at + Vector2(1.0, PLATE_H - 3.0), label, UiTheme.SIZE_SMALL, col)

@@ -29,6 +29,9 @@ static func run(t) -> void:
 
 	t.check(hud.objective_text().contains("Royal Citadel") and hud.objective_text().contains("100%"),
 		"the objective names the Citadel and what is left of it (%s)" % hud.objective_text())
+	# How to win (v0.10 M6): Last Judgement's line, under its objective panel.
+	t.check(hud.hint_text() == MissionHints.line(MissionBook.LAST_JUDGEMENT) and hud.hint_text() != ""
+		and hud.hint_top() == Hud.OBJECTIVE_PANEL.end.y + 4.0, "the how-to-win line, under the objectives (%s)" % hud.hint_text())
 	t.check(hud.status_text().contains(str(Crowd.CITIZENS)) and hud.status_text().contains(str(Crowd.SOLDIERS)),
 		"the status line counts the living (%s)" % hud.status_text())
 	# The five-colour bar has a legend, and the figures top right wear the colour of the part they drive.

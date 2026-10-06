@@ -1,7 +1,8 @@
 extends RefCounted
 ## v0.10 M6 the map's tags (spec §2): MapTag's three kinds; where the HUD puts a tag's diamond and its label, and off
-## screen its arrow; labels never overlap (the first placed stays, review focus 1) and stay inside the screen; a tag
-## without a label or a point shows none.
+## screen its arrow; labels never overlap, the first listed being the one kept (a director lists its most important tags
+## first, so a crowded view keeps their labels) and they stay inside the screen; a tag without a label or a point shows
+## none; a plain tag shows anywhere on screen, one with an arrow takes its arrow at the rim; one measure for a plate.
 
 const VIEW := Vector2(640.0, 360.0)
 ## The camera for these checks: the ground's origin at the screen's centre, no zoom.
@@ -60,7 +61,7 @@ static func _labels(t) -> void:
 	var lay := Hud.tag_layout(_tags([bare, a, b]), xf, VIEW)
 	t.check(lay.size() == 3 and String(lay[0].mode) == "map" and not bool(lay[0].show), "a bare tag shows no label")
 	t.check(bool(lay[1].show) and not bool(lay[2].show) and String(lay[2].mode) == "map",
-		"two labels at one point: the first stays, the second is left out, its diamond still shown (review focus 1)")
+		"two labels at one point: the first listed stays, the second is left out, its diamond still shown")
 	var r: Rect2 = lay[1].label
 	var c: Vector2 = lay[1].c
 	t.check(r.end.y <= c.y - a.size and absf(r.get_center().x - c.x) <= 1.0
@@ -75,6 +76,27 @@ static func _labels(t) -> void:
 		"a label by the screen's edge is kept inside it (%s)" % lr)
 	t.check(Hud.tag_layout(_tags([MapTag.person(Vector2.INF, Color.RED, "X")]), xf, VIEW).is_empty(),
 		"a tag at no point is left out")
+	# The first-listed label is kept whatever its length: the same two the other way round keep the other one.
+	var flipped := Hud.tag_layout(_tags([b, a]), xf, VIEW)
+	t.check(bool(flipped[0].show) and not bool(flipped[1].show) and (flipped[0].tag as MapTag).label == "TO THE TEMPLE",
+		"the first-listed label is the one kept, whatever its length")
+	# A partial overlap counts, and a label left out blocks nothing: `high` overlaps only the dropped `mid`.
+	var low := MapTag.person(Vector2.ZERO, Color.RED, "INQUISITOR")
+	var mid := MapTag.person(Vector2.ZERO, Color.RED, "INQUISITOR")
+	mid.lift += 6.0
+	var high := MapTag.person(Vector2.ZERO, Color.RED, "INQUISITOR")
+	high.lift += 14.0
+	var stack := Hud.tag_layout(_tags([low, mid, high]), xf, VIEW)
+	t.check(bool(stack[0].show) and not bool(stack[1].show) and bool(stack[2].show),
+		"a partial overlap counts, and a label left out blocks nothing")
+	# By the screen's very edge a plain tag still shows; one with an arrow takes its arrow.
+	var rim := Transform2D(0.0, Vector2(5.0, 180.0) - Iso.ground_to_screen(Vector2.ZERO))
+	var rimmed := Hud.tag_layout(_tags([MapTag.person(Vector2.ZERO, Color.RED), MapTag.person(Vector2.ZERO, Color.RED, "WREN", true)]),
+		rim, VIEW)
+	t.check(String(rimmed[0].mode) == "map" and String(rimmed[1].mode) == "arrow",
+		"by the screen's very edge a plain tag still shows; one with an arrow takes its arrow")
+	t.check(Hud.plate_size("WREN") == Vector2(UiTheme.width("WREN", UiTheme.SIZE_SMALL) + 2.0, Hud.PLATE_H),
+		"one plate measure: the words' width and a pixel each side")
 
 
 static func _edge(t) -> void:

@@ -57,6 +57,11 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## Virtual (v0.10 M6, spec §3): the phase whose how-to-win line the HUD shows (MissionHints), "" for the mission's own.
+func hint_phase() -> String:
+	return ""
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

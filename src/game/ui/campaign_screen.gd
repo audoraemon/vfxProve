@@ -2,7 +2,7 @@ class_name CampaignScreen
 extends Node
 ## The Lantern campaign between nights (v0.10, spec §4-§5): where the campaign stands -- the night and its Tier, the
 ## god's Divine Power and slots, Halcyon's bites, the title its path has given it -- Cael's memory fragment for tonight,
-## and tonight's mission: one line, or a choice card per mission. "Choose powers" goes on to Prepare with `chosen`;
+## and tonight's mission: one line, or a choice card per mission, with its goal and Cael's line. "Choose powers" goes on to Prepare with `chosen`;
 ## "New campaign" asks twice before it starts over; "Title", or Esc, leaves.
 
 ## "draft" (on to Prepare with `chosen`), "restart" (on the second press) or "title".
@@ -69,13 +69,20 @@ static func card_line(def: MissionDef, s: CampaignState) -> String:
 	return ""
 
 
-func setup(state: CampaignState) -> CampaignScreen:
+## `pick` (v0.10 M5) is the mission chosen before, back from the draft or Pause > Campaign: chosen again if tonight
+## offers it.
+func setup(state: CampaignState, pick := "") -> CampaignScreen:
 	_state = state
 	options = []
 	for o: Dictionary in state.options():
 		options.append(state.mission(String(o.mission)))
 	if options.size() == 1:
 		chosen = (options[0] as MissionDef).id
+	elif pick != "":
+		for i in options.size():
+			if (options[i] as MissionDef).id == pick:
+				selected = i
+				chosen = pick
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -228,8 +235,21 @@ func _centred(s: String, y: float, size: int, col: Color) -> void:
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(s, size) * 0.5), y), s, size, col)
 
 
-## One card, top to bottom: the mission's name, its path, its brief, then Cael's line in gold at the foot. The chosen
-## card wears the bright frame; the one the keyboard is on is lit.
+## A card's words laid out in `r` (v0.10 M5, spec §5.3): the goal's lines under the name and the path, and Cael's line at
+## the foot. `goal_end` is the last goal line's baseline and `line_top` the first of Cael's, so a test can see they never
+## meet.
+static func card_layout(def: MissionDef, s: CampaignState, r: Rect2) -> Dictionary:
+	var room := r.size.x - PAD * 2.0
+	var goal := UiTheme.wrap(def.goal, room, UiTheme.SIZE_SMALL)
+	var line := UiTheme.wrap(card_line(def, s), room, UiTheme.SIZE_SMALL)
+	var goal_top := r.position.y + PAD + 12.0 + UiTheme.LINE_BODY + UiTheme.LINE_SMALL + 4.0
+	var line_top := r.end.y - PAD - UiTheme.LINE_SMALL * float(maxi(line.size() - 1, 0))
+	return {"goal": goal, "line": line, "goal_top": goal_top,
+		"goal_end": goal_top + UiTheme.LINE_SMALL * float(maxi(goal.size() - 1, 0)), "line_top": line_top}
+
+
+## One card, top to bottom: the mission's name, its path, its goal, then Cael's line in gold at the foot (spec §5.3). The
+## chosen card wears the bright frame; the one the keyboard is on is lit.
 func _draw_card(r: Rect2, def: MissionDef, i: int) -> void:
 	var on := def.id == chosen
 	_ui.draw_rect(r, Color(0.12, 0.1, 0.05, 0.95) if on else (Color(0.1, 0.09, 0.07, 0.9) if i == selected
@@ -244,14 +264,13 @@ func _draw_card(r: Rect2, def: MissionDef, i: int) -> void:
 	var p := CampaignDef.path_of(_state.night, def.id)
 	if p != "":
 		UiTheme.text(_ui, Vector2(x, y), String(CampaignText.PATH_NAMES.get(p, "")), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	y += UiTheme.LINE_SMALL + 4.0
+	var lay := card_layout(def, _state, r)
 	var text_col := UiTheme.COL_TEXT if on or i == selected else UiTheme.COL_DIM
-	for k in mini(def.brief.size(), 2):
-		for line in UiTheme.wrap(def.brief[k], room, UiTheme.SIZE_SMALL):
-			UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_SMALL, text_col)
-			y += UiTheme.LINE_SMALL
-	var meet := UiTheme.wrap(card_line(def, _state), room, UiTheme.SIZE_SMALL)
-	var foot := r.end.y - PAD - UiTheme.LINE_SMALL * float(maxi(meet.size() - 1, 0))
-	for line in meet:
+	y = float(lay.goal_top)
+	for line: String in lay.goal:
+		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_SMALL, text_col)
+		y += UiTheme.LINE_SMALL
+	var foot := float(lay.line_top)
+	for line: String in lay.line:
 		UiTheme.text(_ui, Vector2(x, foot), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 		foot += UiTheme.LINE_SMALL

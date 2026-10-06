@@ -96,12 +96,14 @@ func _send(p: Person, at: Vector2) -> void:
 	p.walk_to(at)
 
 
-## The bell rang in Act I: soldiers with no role, nearest the square, stand watch in it.
+## The bell rang in Act I: soldiers with no role, nearest the square, stand watch in it -- GUARDS more than are posted
+## there already (v0.09.1: patrols without a role now, some posted in the square, who are not taken).
 func _post_guards() -> void:
 	var c := TownLayout.MARKET_SQUARE.get_center()
 	var pool: Array[Person] = []
 	for s in crowd.soldiers:
-		if WarningDirector._alive(s) and s.corps == Person.Corps.NONE and s.mind == Person.Mind.POST:
+		if WarningDirector._alive(s) and s.corps == Person.Corps.NONE and s.mind == Person.Mind.POST \
+				and not TownLayout.MARKET_SQUARE.has_point(s.anchor):
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
 	for s in pool.slice(0, GUARDS):

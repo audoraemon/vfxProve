@@ -1,7 +1,9 @@
 extends RefCounted
 ## v0.07 Marshals: at the evacuation the soldiers from the walls take the ways out, profile.marshals_per_exit each;
 ## each one standing near a way out makes it SPEED faster; a confused evacuee near one comes to within STEADY_TIME;
-## killed, a way out slows again.
+## killed, a way out slows again -- until a soldier from the rally ring takes the dead one's place (v0.09.1).
+
+const CorpsTest := preload("res://tests/test_corps.gd")
 
 
 static func _crowd(tier := ResponseProfile.Tier.PREPARED) -> Array:
@@ -84,5 +86,62 @@ static func run(t) -> void:
 	for p: Person in m.posts[mouth]:
 		field.kill(p, &"test")
 	t.near(m.speed_at(mouth), 1.0, 0.001, "killed, the way out slows again")
+	crowd.clear()
+	(made[2] as Node).free()
+	_reserve(t)
+
+
+## The reserve (v0.09.1): once the soldiers have rallied, a marshal killed is replaced by the nearest soldier on the ring.
+## At its way out it takes the dead one's place there; on the walls before the evacuation, the evacuation posts it.
+static func _reserve(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var m := crowd.marshals
+	crowd.rally()
+	CorpsTest.ring(crowd)
+	# On the walls, before the evacuation.
+	var dead: Person = CorpsTest.first_of(crowd, Person.Corps.MARSHAL)
+	var ring := CorpsTest.on_ring(crowd)
+	field.kill(dead, &"test")
+	var wall: Person = null
+	for p in ring:
+		if p.corps == Person.Corps.MARSHAL:
+			wall = p
+	t.check(wall != null and wall.post == dead.post and wall.mind == Person.Mind.POST and wall.hurrying
+		and wall.goal().distance_to(dead.post) < 0.3, "a marshal killed on the walls: a soldier from the ring runs to its post")
+	crowd.alarms.stage = AlarmManager.Stage.CITY_EMERGENCY
+	crowd._on_stage(AlarmManager.Stage.EVACUATION, "test")
+	var posted := false
+	for mine: Array in m.posts.values():
+		posted = posted or mine.has(wall)
+	t.check(posted, "and the evacuation posts it at a way out")
+
+	# At a way out.
+	var mouth: Vector2 = m.exits()[0][0]
+	var mine: Array = m.posts[mouth]
+	var per := crowd.profile.marshals_per_exit
+	t.check(mine.size() == per, "%d marshals at the Main Gate" % mine.size())
+	for p: Person in mine:
+		p.ground_pos = p.goal()
+		p._goal = Vector2.INF
+		p._path = PackedVector2Array()
+	var full := m.speed_at(mouth)
+	var fallen: Person = mine[1]
+	var spot := fallen.ground_pos
+	ring = CorpsTest.on_ring(crowd)
+	field.kill(fallen, &"test")
+	var reserve: Person = null
+	for p in ring:
+		if p.corps == Person.Corps.MARSHAL:
+			reserve = p
+	mine = m.posts[mouth]
+	t.check(reserve != null and reserve.post == fallen.post and mine.size() == per and mine[1] == reserve
+		and not mine.has(fallen), "a marshal killed at the gate: the reserve takes its place in the gate's marshals")
+	t.check(reserve != null and reserve.hurrying and reserve.goal().distance_to(spot) < 0.5,
+		"and runs to where it stood")
+	reserve.ground_pos = reserve.goal()
+	reserve._goal = Vector2.INF
+	t.near(m.speed_at(mouth), full, 0.001, "there, the gate runs at its full pace again (x%.2f)" % m.speed_at(mouth))
 	crowd.clear()
 	(made[2] as Node).free()

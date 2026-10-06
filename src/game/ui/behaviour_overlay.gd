@@ -2,9 +2,9 @@ class_name BehaviourOverlay
 extends Node
 ## F4 (v0.04 debug): what the town's people are thinking. In the world, a ring under every citizen in its intent's
 ## colour; on screen, the alarm stage, the bell, the last stage changes, each gate's queue and the route score an
-## average evacuee gives it, the plague while anyone is sick, and for the citizen nearest the mouse its role, intent,
-## awareness, the dangers near it and a line to where it is going. Hidden until asked for; stays shown for the run
-## once shown.
+## average evacuee gives it, the garrison on the Citadel's ring (v0.09.1), the plague while anyone is sick, and for
+## the citizen nearest the mouse its role, intent, awareness, the dangers near it and a line to where it is going.
+## Hidden until asked for; stays shown for the run once shown.
 
 const TOGGLE_KEY := KEY_F4
 ## Ring colours by Person.Intent: routine, observe, local flee, regroup, evacuate, reroute, recover, assist, shelter,
@@ -194,6 +194,9 @@ func _draw_panel(ci: Control) -> void:
 				digging += 1
 		lines.append(["Rescue: %d squads, %d digging; trapped %d, saved %d, lost %d" % [crowd.rescue.squads.size(), digging,
 			crowd.rescue.trapped.size(), crowd.rescue.rescued, crowd.rescue.died], Color("c0a070")])
+	var ring := crowd.ring_count()
+	if ring > 0:
+		lines.append(["Garrison -%d%%: %d on the ring" % [roundi(Citadel.cut_for(ring) * 100.0), ring], Color("b8bcc4")])
 	if crowd.plague != null and not crowd.plague.sick.is_empty():
 		var plague := crowd.plague
 		var sick_soldiers := 0

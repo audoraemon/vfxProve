@@ -2,7 +2,9 @@ extends RefCounted
 ## v0.07 Escorts: the patrol soldiers guard the responders on duty -- the bellkeeper, the clergy's rite, each engineer
 ## team -- profile.escorts_per_duty each; a bellkeeper killed before the bell rang is replaced by an escort (a slower
 ## climb), an engineer by one of its team's; a guarded responder confused near its escort comes to sooner; when the
-## duty ends they go back to their posts.
+## duty ends they go back to their posts. Once the soldiers have rallied, an escort killed is replaced from the ring.
+
+const CorpsTest := preload("res://tests/test_corps.gd")
 
 
 static func _crowd(tier := ResponseProfile.Tier.PREPARED) -> Array:
@@ -127,6 +129,43 @@ static func run(t) -> void:
 	_top_up(t)
 	_silenced(t)
 	_hurry(t)
+	_reserve(t)
+
+
+## The reserve (v0.09.1): once the soldiers have rallied, an escort killed on duty is replaced by the nearest soldier on
+## the ring -- it takes the role and the dead one's post, and the duty's guard is whole again with it.
+static func _reserve(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var esc := crowd.escorts
+	var per := crowd.profile.escorts_per_duty
+	var bell := crowd.bell
+	bell.call_keeper()
+	esc.step(1.0)
+	crowd.rally()
+	CorpsTest.ring(crowd)
+	var ring := CorpsTest.on_ring(crowd)
+	var dead: Person = (esc.guards["bell"] as Array)[0]
+	var nearest: Person = ring[0]
+	for p in ring:
+		if p.ground_pos.distance_to(dead.ground_pos) < nearest.ground_pos.distance_to(dead.ground_pos):
+			nearest = p
+	field.kill(dead, &"test")
+	t.check(nearest.corps == Person.Corps.ESCORT and nearest.post == dead.post and not crowd.on_ring(nearest),
+		"an escort killed on duty: the nearest soldier on the ring takes its role and its post")
+	var guards: Array = esc.guards["bell"]
+	t.check(guards.has(nearest) and not guards.has(dead) and guards.size() == per and esc.guarding(nearest),
+		"and guards the bell in its place")
+	t.check(nearest.mind == Person.Mind.POST and nearest.hurrying
+		and nearest.goal().distance_to(bell.keeper.ground_pos) <= EscortManager.REACH + 0.5,
+		"running to the bellkeeper")
+	esc.step(1.0)
+	guards = esc.guards["bell"]
+	t.check(guards.has(nearest) and guards.size() == per and CorpsTest.on_ring(crowd).size() == ring.size() - 1,
+		"the duty keeps it, and is not topped up past its %d; the ring is one fewer" % per)
+	crowd.clear()
+	(made[2] as Node).free()
 
 
 ## Notes every soldier guarding the bell in `ever`.

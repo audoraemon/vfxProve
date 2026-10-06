@@ -2,9 +2,9 @@ class_name Citadel
 extends Node
 ## The Royal Citadel: a fortress of nine real buildings (4 corner towers, 4 curtain walls, the central keep) sharing
 ## one hidden health pool. It loses at most `budget_per_second` of its health in any rolling second, so no single
-## strike flattens it. Every 10% lost collapses the standing outer part nearest the blow; the keep falls last, at 0%.
-## Hits show before anything falls: parts shake, crack and scorch; courtyard fires start at 40% and the keep's
-## banner falls at 20%.
+## strike flattens it, and the soldiers rallied on its ring take a share of every hit off (v0.09.1). Every 10% lost
+## collapses the standing outer part nearest the blow; the keep falls last, at 0%. Hits show before anything falls:
+## parts shake, crack and scorch; courtyard fires start at 40% and the keep's banner falls at 20%.
 
 signal health_changed(fraction: float)
 ## Every part as it collapses, the keep included (last).
@@ -26,6 +26,10 @@ const BANNER_AT := 0.2
 ## Courtyard spots (relative to the keep's centre) that catch fire at FIRE_AT.
 const FIRE_POINTS := [Vector2(-1.7, -1.3), Vector2(1.6, 1.3), Vector2(-1.5, 1.4)]
 const FIRE_SECONDS := 120.0
+## The garrison (v0.09.1): each soldier on the rally ring cuts what a hit on a part takes by GARRISON_STEP, up to
+## GARRISON_CAP -- so the Citadel always falls to enough damage.
+const GARRISON_STEP := 0.02
+const GARRISON_CAP := 0.30
 
 var max_health := 1000.0
 ## Largest share of max_health lost in any rolling second.
@@ -36,6 +40,9 @@ var origin := Vector2.ZERO
 ## NW, NE, SW, SE towers, then N, S, W, E walls, then the keep.
 var parts: Array[Structure] = []
 var keep: Structure
+## How many soldiers stand on its rally ring: func() -> int, asked once per hit (Crowd.setup() wires Crowd.ring_count;
+## the Town builds the Citadel before there is a crowd). Unset, or its crowd gone, there is no garrison.
+var garrison := Callable()
 
 var _env: EnvironmentField
 var _shake: CameraShake
@@ -137,10 +144,21 @@ func _budget_left() -> float:
 	return max_health * budget_per_second - used
 
 
-## Every hit on any part lands here instead of on the part's own health.
+## The share of a hit the garrison takes off now: GARRISON_STEP for each soldier on the ring, at most GARRISON_CAP.
+func garrison_cut() -> float:
+	return cut_for(garrison.call() if garrison.is_valid() else 0)
+
+
+## The garrison's cut for `ring` soldiers on the ring.
+static func cut_for(ring: int) -> float:
+	return minf(float(ring) * GARRISON_STEP, GARRISON_CAP)
+
+
+## Every hit on any part lands here instead of on the part's own health, less the garrison's cut.
 func _on_part_hit(part: Structure, amount: float, source: Vector2, kind: StringName) -> void:
 	if _fallen:
 		return
+	amount *= 1.0 - garrison_cut()
 	part.mark_hit(minf(amount / part.max_hp, 1.0) * 0.25, kind)
 	var loss := minf(amount, _budget_left())
 	if loss <= 0.0:

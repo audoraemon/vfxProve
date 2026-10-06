@@ -1,7 +1,9 @@
 extends RefCounted
 ## v0.07 Rescue squads: a collapsing shelter traps some of those inside instead of killing them all; a squad from the
 ## barracks goes to the rubble and digs one out every DIG_TIME; the untended die after TRAPPED_LIFE; an idle squad
-## turns out to a fire.
+## turns out to a fire. Once the soldiers have rallied, a rescuer killed is replaced from the ring (v0.09.1).
+
+const CorpsTest := preload("res://tests/test_corps.gd")
 
 
 static func _crowd(tier := ResponseProfile.Tier.ORGANIZED) -> Array:
@@ -136,5 +138,53 @@ static func run(t) -> void:
 	var crew: int = (crowd.fires.fires[house].responders as Array).size()
 	crowd.fires.enlist(r.squads[0].members[0], house)
 	t.check((crowd.fires.fires[house].responders as Array).size() == crew, "a soldier enlisted twice is on the crew once")
+	crowd.clear()
+	(made[2] as Node).free()
+	_reserve(t)
+
+
+## The reserve (v0.09.1): once the soldiers have rallied, a rescuer killed is replaced by the nearest soldier on the
+## ring; its squad is whole again and digs with it.
+static func _reserve(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var r := crowd.rescue
+	var s: Structure = crowd.shelters.shelters.keys()[0]
+	_shelter(crowd, s, 10)
+	s.destroy(s.center(), &"nova")
+	crowd.shelters._step_in = 0.0
+	crowd.shelters.step(0.3)
+	r.step(0.6)
+	var squad: Dictionary = {}
+	for sq in r.squads:
+		if sq.site == s:
+			squad = sq
+	t.check(not squad.is_empty() and r.trapped_at(s) >= 2, "a squad goes to dig %d out" % r.trapped_at(s))
+	crowd.rally()
+	CorpsTest.ring(crowd)
+	var first: Person = squad.members[0]
+	var ring := CorpsTest.on_ring(crowd)
+	field.kill(first, &"test")
+	var reserve: Person = squad.members[0]
+	t.check(reserve != first and ring.has(reserve) and reserve.corps == Person.Corps.RESCUE and reserve.post == first.post
+		and r._living(squad).size() == Crowd.RESCUE_SQUAD, "a rescuer killed: a soldier from the ring makes its squad whole")
+	t.check(reserve.mind == Person.Mind.POST and reserve.hurrying and reserve.goal().distance_to(squad.spot) <= 1.0,
+		"and runs to the rubble")
+	# The whole squad lost and made up from the ring: the reserves dig on their own.
+	for k in range(1, Crowd.RESCUE_SQUAD):
+		field.kill(squad.members[k], &"test")
+	var reserves := true
+	for m in squad.members:
+		reserves = reserves and ring.has(m) and (m as Person).is_alive()
+	t.check(reserves and squad.site == s, "every rescuer replaced, the squad keeps its site")
+	for m in squad.members:
+		var p: Person = m
+		p.ground_pos = p.goal()
+		p._goal = Vector2.INF
+		p._path = PackedVector2Array()
+	var rescued := r.rescued
+	r.step(RescueManager.DIG_TIME + 0.1)
+	t.check(r.rescued == rescued + 1, "and the reserves dig one out")
 	crowd.clear()
 	(made[2] as Node).free()

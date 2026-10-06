@@ -4,7 +4,8 @@ extends RefCounted
 ## traps TRAPPED_SHARE of those inside under its rubble instead of killing them (ShelterManager hands them over:
 ## trap()); they live TRAPPED_LIFE. The nearest free squad runs to the rubble and, with one of them within DIG_REACH,
 ## digs one out every DIG_TIME; the freed come out at the rubble's edge, frightened. Untended, the trapped die there. A
-## squad with nothing to dig turns out to the nearest fire (FireManager.enlist()) until the town evacuates.
+## squad with nothing to dig turns out to the nearest fire (FireManager.enlist()) until the town evacuates. Once the
+## soldiers have rallied, a rescuer killed is replaced from the rally ring (refill(), v0.09.1).
 
 signal first_rescue
 
@@ -158,6 +159,26 @@ func _assign() -> void:
 				_crowd.fires.enlist(p, fire)
 			elif p.mind != Person.Mind.POST or p.anchor != p.post:
 				p.send_to_post(p.post if p.post != Vector2.INF else p.ground_pos)
+
+
+## A soldier from the rally ring takes the dead rescuer `dead`'s place in its squad (Crowd._refill(), v0.09.1), and runs
+## to the squad's work: the rubble it digs, the fire its crew fights, or else its post.
+func refill(p: Person, dead: Person) -> void:
+	for sq in squads:
+		var i := (sq.members as Array).find(dead)
+		if i < 0:
+			continue
+		sq.members[i] = p
+		if sq.site != null:
+			p.send_to_post(_crowd._spot_near(sq.spot + Vector2(0.4 * float(i), 0.0), 0.15), false, true)  # at a run
+			return
+		for m in _living(sq):
+			if (m as Person).mind == Person.Mind.ASSIST and (m as Person).assist_fire != null:
+				_crowd.fires.enlist(p, (m as Person).assist_fire)
+				if p.mind == Person.Mind.ASSIST:
+					return
+		break
+	p.send_to_post(p.post, false, true)
 
 
 func _nearest_fire(from: Vector2) -> Structure:

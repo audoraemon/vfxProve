@@ -241,13 +241,14 @@ func standing_shrines() -> Array[Structure]:
 	return out
 
 
-func marks() -> Array:
-	var out := []
+## The tags (v0.10 M6): the standing shrines, and the broken ones still draining.
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
 	for s in shrines:
 		if not s.destroyed:
-			out.append([s.center(), MARK_LIT])
+			out.append(MapTag.person(s.center(), MARK_LIT))
 		elif drain_left.has(s):
-			out.append([s.center(), MARK_DRAINING])
+			out.append(MapTag.person(s.center(), MARK_DRAINING))
 	return out
 
 

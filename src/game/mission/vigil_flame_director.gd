@@ -331,12 +331,13 @@ func wren_lost() -> bool:
 	return no_wren or (appeared and not _alive(wren))
 
 
-func marks() -> Array:
-	var out := [[shrine, MARK_SHRINE]]
+## The tags (v0.10 M6): Mira's shrine, the real flame while in its lantern, and Wren once he has come.
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = [MapTag.person(shrine, MARK_SHRINE)]
 	if not swapped and _lantern != Vector2.INF:
-		out.append([_lantern, MARK_FLAME])
+		out.append(MapTag.person(_lantern, MARK_FLAME))
 	if appeared and _alive(wren) and not wren.inside:
-		out.append([wren.ground_pos, MARK_WREN])
+		out.append(MapTag.person(wren.ground_pos, MARK_WREN))
 	return out
 
 

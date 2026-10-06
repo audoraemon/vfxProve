@@ -45,11 +45,15 @@ const EVENTS_TOP := 44.0
 ## Halcyon's Gaze under the clock (v0.10), where the Banishing Rite's bar would sit (an Unaware town has no rite).
 const GAZE_BAR := Vector2(120.0, 4.0)
 const GAZE_TOP := 30.0
-## How far above a marked person's feet their mark sits, its half size, and its dark edge (v0.10; M5 doubled it and gave
-## it an edge, so it reads on the cobbles, and draws it first, under the rest of the HUD).
-const MARK_LIFT := 22.0
+## A tag's diamond (v0.10's marks; M6's tags, MapTag): its half size unless the tag sets its own, and its dark edge (M5
+## doubled it and gave it an edge, so it reads on the cobbles). Tags are drawn first, under the rest of the HUD; their
+## edge arrows last, over it.
 const MARK_R := 4.0
 const MARK_EDGE := Color(0.04, 0.04, 0.06, 0.9)
+## A tag's label (v0.10 M6) stands this far above its diamond; an edge arrow's label starts this far in from its tip, past
+## the arrow's disc.
+const LABEL_GAP := 2.0
+const ARROW_REACH := 17.0
 ## The screen height to lay out against before the Control has been sized (headless tests).
 const SCREEN_H := 360.0
 ## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
@@ -77,6 +81,9 @@ var _drawn := ""
 var _slot_icons: Array[Texture2D] = []
 ## The powers' names, cut to one line of NAME_ROOM, taken once with their icons.
 var _slot_names: Array[String] = []
+## The tags' layout for the frame being drawn (v0.10 M6, tag_layout()): placed by _draw_tags() and shared with
+## _draw_tag_arrows(), so the arrows' labels keep clear of the map's.
+var _layout: Array = []
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -116,7 +123,7 @@ func advance(delta: float) -> void:
 	# messenger (v0.08): while any of those is on screen the HUD is an animation and redraws every frame. The rest of the
 	# time it is a still picture.
 	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT \
-			or marker_shown() or marks_shown(_rules):
+			or marker_shown() or tags_shown(_rules):
 		_drawn = ""
 		queue_redraw()
 		return
@@ -182,9 +189,9 @@ func marker_shown() -> bool:
 	return _rules.director != null and _rules.director.marker() != Vector2.INF
 
 
-## The director marks people (v0.10): the marks follow them and the camera, so the HUD redraws every frame.
-static func marks_shown(rules: Rules) -> bool:
-	return rules != null and rules.director != null and not rules.director.marks().is_empty()
+## The director tags something (v0.10 M6): the tags follow people and the camera, so the HUD redraws every frame.
+static func tags_shown(rules: Rules) -> bool:
+	return rules != null and rules.director != null and not rules.director.tags().is_empty()
 
 
 ## How full Halcyon's Gaze is (v0.10), or -1.0 when the mission's director keeps none.
@@ -203,23 +210,108 @@ func _draw_gaze(w: float) -> void:
 	draw_rect(Rect2(at, Vector2(roundf(GAZE_BAR.x * f), GAZE_BAR.y)), UiTheme.COL_GOLD.lerp(UiTheme.COL_BAD, f))
 
 
-## A small diamond over each person the director marks (v0.10), edged dark.
-func _draw_marks() -> void:
+## The tags on the map (v0.10 M6, spec §2.3): each one's footprint outline, then, while on screen, its diamond and its
+## label. Lays the frame's tags out first (tag_layout()).
+func _draw_tags() -> void:
+	_layout = []
 	if _rules.director == null:
 		return
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	for m: Array in _rules.director.marks():
-		var c: Vector2 = (xf * Iso.ground_to_screen(m[0] as Vector2) - Vector2(0.0, MARK_LIFT)).round()
-		var shape := mark_shape(c)
-		draw_colored_polygon(shape, m[1] as Color)
+	_layout = tag_layout(_rules.director.tags(), xf, _view())
+	for e: Dictionary in _layout:
+		var t: MapTag = e.tag
+		if t.outline.has_area():
+			_draw_outline(t.outline, xf, t.color)
+		if String(e.mode) != "map":
+			continue
+		var shape := mark_shape(e.c, t.size)
+		draw_colored_polygon(shape, t.color)
 		shape.append(shape[0])
 		draw_polyline(shape, MARK_EDGE, 1.0)
+		if bool(e.show):
+			_plate((e.label as Rect2).position, t.label, t.color)
 
 
-## The diamond a mark is drawn as, centred on `c` (screen pixels).
-static func mark_shape(c: Vector2) -> PackedVector2Array:
-	return PackedVector2Array([c + Vector2(0.0, -MARK_R), c + Vector2(MARK_R, 0.0), c + Vector2(0.0, MARK_R),
-		c + Vector2(-MARK_R, 0.0)])
+## The tags off screen (v0.10 M6): an arrow at the edge for each, its label beside it. Drawn last, over the HUD.
+func _draw_tag_arrows() -> void:
+	for e: Dictionary in _layout:
+		if String(e.mode) != "arrow":
+			continue
+		var t: MapTag = e.tag
+		_draw_arrow(e.arrow, e.dir, t.color, t.color.darkened(0.4))
+		if bool(e.show):
+			_plate((e.label as Rect2).position, t.label, t.color)
+
+
+## A ground footprint's outline (v0.10 M6): its diamond on the ground, through the camera `xf`, 1 px in `col`.
+func _draw_outline(r: Rect2, xf: Transform2D, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for g: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y), r.position]:
+		pts.append((xf * Iso.ground_to_screen(g)).round())
+	draw_polyline(pts, col, 1.0)
+
+
+## The diamond a tag is drawn as, centred on `c` (screen pixels), `r` each way.
+static func mark_shape(c: Vector2, r := MARK_R) -> PackedVector2Array:
+	return PackedVector2Array([c + Vector2(0.0, -r), c + Vector2(r, 0.0), c + Vector2(0.0, r), c + Vector2(-r, 0.0)])
+
+
+## Where a tag's diamond sits on screen (v0.10 M6): its ground point raised `rise` world pixels, through the camera `xf`,
+## then `lift` screen pixels up.
+static func tag_point(t: MapTag, xf: Transform2D) -> Vector2:
+	return (xf * (Iso.ground_to_screen(t.at) - Vector2(0.0, t.rise)) - Vector2(0.0, t.lift)).round()
+
+
+## A screen point is in the frame, EDGE_MARGIN in from its edge (v0.10 M6).
+static func on_screen(c: Vector2, view: Vector2) -> bool:
+	return Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(c)
+
+
+## A label's plate (v0.10 M6): as wide as its words, PLATE_H tall, centred on `centre` and kept inside the screen.
+static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
+	var box := Vector2(UiTheme.width(text, UiTheme.SIZE_SMALL) + 2.0, PLATE_H)
+	var at := (centre - box * 0.5).round()
+	return Rect2(at.clamp(Vector2.ZERO, (view - box).max(Vector2.ZERO)), box)
+
+
+## Where each tag goes this frame (v0.10 M6, spec §2.3), in the tags' order, as {tag, c, mode, arrow, dir, label, show}.
+## - `c`: its diamond's centre on screen.
+## - `mode`: "map" on screen; "arrow" off screen with an edge arrow (`arrow` is its tip and `dir` its heading); "" off
+##   screen without one (only its outline may show).
+## - `label`: its label's plate.
+## - `show`: the label is drawn. Not when it has none, nor when its plate would overlap one placed before it (review focus
+##   1), which is why a director lists its most important tags first.
+## A tag at no point is left out.
+static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> Array:
+	var out := []
+	var placed: Array[Rect2] = []
+	for t in tags:
+		if not t.valid():
+			continue
+		var c := tag_point(t, xf)
+		var e := {"tag": t, "c": c, "mode": "", "arrow": Vector2.INF, "dir": Vector2.ZERO, "label": Rect2(), "show": false}
+		if on_screen(c, view):
+			e.mode = "map"
+			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
+		elif t.edge:
+			var tip := edge_point(c, view)
+			var d := (c - view * 0.5).normalized()
+			var reach := ARROW_REACH + absf(d.x) * (UiTheme.width(t.label, UiTheme.SIZE_SMALL) + 2.0) * 0.5 \
+				+ absf(d.y) * PLATE_H * 0.5
+			e.mode = "arrow"
+			e.arrow = tip
+			e.dir = d
+			e.label = label_rect(t.label, tip - d * reach, view)
+		if String(e.mode) != "" and t.label != "":
+			var r: Rect2 = e.label
+			var clear := true
+			for p in placed:
+				clear = clear and not r.intersects(p)
+			if clear:
+				placed.append(r)
+				e.show = true
+		out.append(e)
+	return out
 
 
 ## Where the marked person's feet are on the screen, or Vector2.INF with nobody marked. The world point goes through
@@ -234,7 +326,11 @@ func marker_screen() -> Vector2:
 ## Where the edge arrow for an off-screen `point` sits: on the line from the screen's centre to it, EDGE_MARGIN inside
 ## the frame.
 func edge_arrow(point: Vector2) -> Vector2:
-	var view := _view()
+	return edge_point(point, _view())
+
+
+## edge_arrow() for a screen `view` wide and tall (v0.10 M6: static, for tag_layout()).
+static func edge_point(point: Vector2, view: Vector2) -> Vector2:
 	var mid := view * 0.5
 	var d := point - mid
 	var half := mid - Vector2.ONE * EDGE_MARGIN
@@ -370,9 +466,9 @@ func _signature() -> String:
 
 
 func _draw() -> void:
-	# The marks over people (v0.10) are drawn first (M5), so they sit under every other HUD element -- the clock, the bars,
+	# The tags on the map (v0.10; M6) are drawn first, so they sit under every other HUD element -- the clock, the bars,
 	# the events, the objectives, the status, the banners, Cael's plate, the slots and the marker -- and never hide one.
-	_draw_marks()
+	_draw_tags()
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
@@ -389,6 +485,8 @@ func _draw() -> void:
 	_draw_slots(w)
 	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
 	_draw_marker()
+	# Last of all, the tags' edge arrows (v0.10 M6), as the marker's.
+	_draw_tag_arrows()
 
 
 func _draw_clock(w: float) -> void:
@@ -508,23 +606,25 @@ func _draw_marker() -> void:
 		return
 	var view := _view()
 	var tip := feet - Vector2(0.0, MARKER_LIFT)
-	var dark := Color(0.04, 0.04, 0.06, 0.9)
 	if Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(tip):
 		var down := PackedVector2Array([tip + Vector2(-5.0, -7.0), tip + Vector2(5.0, -7.0), tip])
 		draw_colored_polygon(down, UiTheme.COL_GOLD)
 		down.append(down[0])
-		draw_polyline(down, dark, -1.0)
+		draw_polyline(down, MARK_EDGE, -1.0)
 		return
-	var at := edge_arrow(tip)
-	var dir := (tip - view * 0.5).normalized()
+	_draw_arrow(edge_arrow(tip), (tip - view * 0.5).normalized(), UiTheme.COL_GOLD, UiTheme.COL_GOLD_DARK)
+
+
+## An arrow at the screen's edge (v0.08's marker; v0.10 M6's tags): `col` on a dark disc ringed in `ring`, its tip at
+## `at`, pointing along `dir`. On a dark disc, so it stands out from the town's warm roofs and stalls.
+func _draw_arrow(at: Vector2, dir: Vector2, col: Color, ring: Color) -> void:
 	var side := Vector2(-dir.y, dir.x)
-	# On a dark disc, so it stands out from the town's warm roofs and stalls.
-	draw_circle(at - dir * 5.0, 10.0, dark)
-	draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, UiTheme.COL_GOLD_DARK, -1.0)
+	draw_circle(at - dir * 5.0, 10.0, MARK_EDGE)
+	draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, -1.0)
 	var arrow := PackedVector2Array([at, at - dir * 10.0 + side * 6.0, at - dir * 10.0 - side * 6.0])
-	draw_colored_polygon(arrow, UiTheme.COL_GOLD)
+	draw_colored_polygon(arrow, col)
 	arrow.append(arrow[0])
-	draw_polyline(arrow, dark, -1.0)
+	draw_polyline(arrow, MARK_EDGE, -1.0)
 
 
 func _draw_status(w: float) -> void:

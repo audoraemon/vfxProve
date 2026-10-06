@@ -253,11 +253,12 @@ func inside() -> Array[Person]:
 	return out
 
 
-func marks() -> Array:
-	var out := []
+## The tags (v0.10 M6): the grieving, and the Believers among them.
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
 	for p in grieving:
 		if _alive(p) and not p.inside:
-			out.append([p.ground_pos, MARK_BELIEVER if believers.has(p) else MARK_GRIEVING])
+			out.append(MapTag.person(p.ground_pos, MARK_BELIEVER if believers.has(p) else MARK_GRIEVING))
 	return out
 
 

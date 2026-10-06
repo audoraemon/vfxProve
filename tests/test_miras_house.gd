@@ -95,7 +95,7 @@ static func _cast(t) -> void:
 		faithful_ok = faithful_ok and f.profile.faith == CitizenProfile.Faith.FAITHFUL and not d.grieving.has(f)
 	t.check(faithful_ok, "the Faithful chosen, none of them grieving (%d)" % d.faithful.size())
 	t.check(d.venn != null and d.faithful.has(d.venn), "the Inquisitor is one of the Faithful")
-	t.check(d.marks().size() == MirasHouseDirector.GRIEVING, "the HUD marks the grieving")
+	t.check(d.tags().size() == MirasHouseDirector.GRIEVING, "the HUD marks the grieving")
 	t.check(d.timeline != null, "the night keeps a timeline for its windows")
 	_done(s)
 
@@ -116,8 +116,8 @@ static func _reading(t) -> void:
 		and d.journal == g and d.believers_outside() == 1, "after READ_SECONDS they come out a Believer, carrying the journal")
 	t.check(d.reports.is_empty(), "nobody of the Faith saw")
 	var marked_believer := false
-	for m: Array in d.marks():
-		marked_believer = marked_believer or ((m[0] as Vector2) == g.ground_pos and (m[1] as Color) == MirasHouseDirector.MARK_BELIEVER)
+	for m in d.tags():
+		marked_believer = marked_believer or (m.at == g.ground_pos and m.color == MirasHouseDirector.MARK_BELIEVER)
 	t.check(marked_believer, "the Believer wears the ember mark")
 
 	# Any face of the house will do for a whisper (the drawn door may be on +x), and a Will-o'-Wisp at the door brings its

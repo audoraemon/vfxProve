@@ -125,9 +125,9 @@ static func _cast(t) -> void:
 		"the Vigil sets out round the six shrines, looping, the flame passing on")
 	t.check(d.gaze != null and d.gaze.value == 0.0 and d.drain_left.is_empty() and d.drained_count() == 0,
 		"the Gaze at 0, nothing broken")
-	var lit := d.marks().size() == 6
-	for m: Array in d.marks():
-		lit = lit and (m[1] as Color) == BrokenLanternsDirector.MARK_LIT
+	var lit := d.tags().size() == 6
+	for m in d.tags():
+		lit = lit and m.color == BrokenLanternsDirector.MARK_LIT
 	t.check(lit, "the HUD marks the six standing shrines")
 	t.check(d.marker() == Vector2.INF and d.timeline != null, "no arrow yet, and a timeline for the night's windows")
 	_done(s)
@@ -143,8 +143,8 @@ static func _drain(t) -> void:
 	t.check(sh.destroyed and d.draining(sh) and not d.is_drained(sh), "a broken shrine starts draining")
 	t.check(rules.buildings_down == 0, "and is not counted as a building")
 	var ember := false
-	for m: Array in d.marks():
-		ember = ember or ((m[0] as Vector2) == sh.center() and (m[1] as Color) == BrokenLanternsDirector.MARK_DRAINING)
+	for m in d.tags():
+		ember = ember or (m.at == sh.center() and m.color == BrokenLanternsDirector.MARK_DRAINING)
 	t.check(ember, "the HUD marks it draining")
 	_run(s, BrokenLanternsDirector.DRAIN_SECONDS - 1.0)
 	t.check(d.draining(sh) and d.drained_count() == 0, "still draining after 19 s")

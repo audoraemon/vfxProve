@@ -50,10 +50,11 @@ func marker() -> Vector2:
 	return Vector2.INF
 
 
-## Ground points the HUD marks with a small coloured diamond over the head (v0.10: Mira's House's grieving and
-## Believers), as [Vector2, Color] pairs; none by default.
-func marks() -> Array:
-	return []
+## What the HUD points out on the map (v0.10 M6, spec §2.2): MapTags, the most important first -- a label that would
+## overlap one before it is left out. None by default. Only reads: it changes nothing and draws no random numbers.
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	return out
 
 
 ## What the director adds to the results (The Warning's "solved_by").

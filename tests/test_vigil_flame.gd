@@ -162,9 +162,9 @@ static func _cast(t) -> void:
 	t.check(reach, "Mira's shrine stands at the west edge, and Wren can walk to it from anywhere on the route")
 	t.check(d.gaze != null and d.gaze.value == 0.0 and d.wren == null and not d.appeared and not d.swapped
 		and d.searchlight != null and not d.searchlight.on, "the Gaze at 0, no Wren yet, the light asleep")
-	var marks := d.marks()
-	t.check(marks.size() == 2 and (marks[0][1] as Color) == VigilFlameDirector.MARK_SHRINE
-		and (marks[1][0] as Vector2) == d.vigil.bearer.ground_pos and (marks[1][1] as Color) == VigilFlameDirector.MARK_FLAME,
+	var marks := d.tags()
+	t.check(marks.size() == 2 and marks[0].color == VigilFlameDirector.MARK_SHRINE
+		and marks[1].at == d.vigil.bearer.ground_pos and marks[1].color == VigilFlameDirector.MARK_FLAME,
 		"the HUD marks Mira's shrine and the lantern")
 	var next := d.timeline.upcoming(2)
 	t.check(d.marker() == Vector2.INF and next.size() == 2 and next[0].id == "wren" and next[1].id == "route",
@@ -189,8 +189,8 @@ static func _wren(t) -> void:
 	t.check(w.mind == Person.Mind.DUTY and absf(w.anchor.distance_to(d.flame_at()) - VigilFlameDirector.WATCH_DIST) < 1.0,
 		"he keeps watch a few steps from the lantern (%.1f)" % w.anchor.distance_to(d.flame_at()))
 	var seen := false
-	for m: Array in d.marks():
-		seen = seen or ((m[0] as Vector2) == w.ground_pos and (m[1] as Color) == VigilFlameDirector.MARK_WREN)
+	for m in d.tags():
+		seen = seen or (m.at == w.ground_pos and m.color == VigilFlameDirector.MARK_WREN)
 	t.check(seen and d.marker() == w.ground_pos, "the HUD marks him, and points at him")
 	_done(s)
 
@@ -214,8 +214,8 @@ static func _swap(t) -> void:
 		and d.wren.pace <= Person.PACE_RANGE.y * VigilFlameDirector.WREN_PACE + 0.001,
 		"and carries it carefully toward Mira's shrine")
 	var lantern_marked := false
-	for m: Array in d.marks():
-		lantern_marked = lantern_marked or (m[1] as Color) == VigilFlameDirector.MARK_FLAME
+	for m in d.tags():
+		lantern_marked = lantern_marked or m.color == VigilFlameDirector.MARK_FLAME
 	t.check(not lantern_marked, "the HUD no longer marks the lantern")
 	_done(s)
 
@@ -397,8 +397,8 @@ static func _focus(t) -> void:
 		crowd._field.kill(p, &"doom")
 	_run(s, VigilRoute.TICK * 2.0)
 	var marked := false
-	for m: Array in d.marks():
-		marked = marked or ((m[0] as Vector2) == fell and (m[1] as Color) == VigilFlameDirector.MARK_FLAME)
+	for m in d.tags():
+		marked = marked or (m.at == fell and m.color == VigilFlameDirector.MARK_FLAME)
 	t.check(not d.vigil.active and d.flame_at() == fell and marked,
 		"all three dead, the lantern lies where its last bearer fell, still marked")
 	_bring_wren(d)

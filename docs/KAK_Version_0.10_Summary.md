@@ -545,7 +545,7 @@ M6 makes a night's goal readable on screen: the map says where, a line under the
 - **For the board missions.** `MissionDirector.tags()` replaces v0.10's `marks()`. A board mission's director can override `tags()`, `hint_phase()` and `tour()`; the defaults are no tags, no phase and no stops.
 - **Photos.** `--show=miras`, `--show=lanterns`, `--show=flame` and `--show=tour` photograph the tags, the plate and the tour caption; the play photos skip the tour and wait out the opening banners.
 
-Gates: filled in at landing.
+Gates (at 4694b1c, M6 on top of v0.09.1): tests 3835 checks, 0 failures; FLOW 91 checks, 0 failures; the state digest and crowd_check unchanged; the seven unmoved behaviour checksums exact, and `gates`, `fire` and `rite --interrupt` equal to v0.09.1's own (927388410, 243410460, -555358538); Mira's House -200101558 and Broken Lanterns 424350965 exact, the Vigil Flame and the Feast with the same results. The mission tests stay within their usual few-people spread.
 
 ## 18. Pushed
 

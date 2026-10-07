@@ -94,6 +94,7 @@ const SUITES := [
 	"res://tests/test_board_tags.gd",
 	"res://tests/test_mission_hints.gd",
 	"res://tests/test_intro_tour.gd",
+	"res://tests/test_tiers.gd",
 ]
 
 var failures := 0

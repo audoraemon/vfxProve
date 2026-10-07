@@ -7,6 +7,7 @@ extends RefCounted
 ##   [kak]                 difficulty, last_mission
 ##   [mission.<id>]        best_score, best_rank, won, bonus, last_loadout, paths_won
 ##   [campaign]            night, dp, bites, tally_<path>, last_path, bell_rang, nights_won, ending, ending_seen (v0.10)
+##   [descend]             night, believers, open_tier, cleared, dp_bought, slot_bought, unlocked, fastest, most_wishes (v0.11)
 ## paths_won (v0.09) is the paths of the Long Night that were won: a night won by a new path is a new best.
 ## A save from before v0.08 kept best_score, best_rank and last_loadout in [kak]: they are Last Judgement's.
 
@@ -23,6 +24,9 @@ var difficulty := ResponseProfile.DEFAULT
 var last_mission := MissionBook.LAST_JUDGEMENT
 ## The Lantern campaign begun or ended (v0.10), or null when none was ever begun.
 var campaign: CampaignState
+## The tier board (v0.11 M1): its nights, believers, open tiers, cleared missions, upgrades and bests. Never null: a fresh
+## board until a file says otherwise.
+var descend := DescendState.new()
 ## Last Judgement's best, for the Title (read-only).
 var best_score: int:
 	get:
@@ -43,7 +47,8 @@ func load_from(path := PATH) -> SaveFile:
 	difficulty = clampi(int(cfg.get_value(SECTION, "difficulty", ResponseProfile.DEFAULT)), 0,
 		ResponseProfile.NAMES.size() - 1) as ResponseProfile.Tier
 	var wanted := String(cfg.get_value(SECTION, "last_mission", MissionBook.LAST_JUDGEMENT))
-	last_mission = wanted if MissionBook.get_mission(wanted).id == wanted else MissionBook.LAST_JUDGEMENT
+	var known := MissionBook.get_mission(wanted).id == wanted or TierBook.has(wanted)
+	last_mission = wanted if known else MissionBook.LAST_JUDGEMENT
 	for section in cfg.get_sections():
 		if section.begins_with(MISSION_SECTION):
 			_read(cfg, section, section.trim_prefix(MISSION_SECTION))
@@ -51,6 +56,9 @@ func load_from(path := PATH) -> SaveFile:
 	if not cfg.has_section(MISSION_SECTION + MissionBook.LAST_JUDGEMENT):
 		_read(cfg, SECTION, MissionBook.LAST_JUDGEMENT)
 	campaign = CampaignState.read(cfg)
+	descend = DescendState.read(cfg)
+	if not cfg.has_section(DescendState.SECTION):
+		descend.carry_over(self)  # a v0.10 save: its board wins open their ★ missions (spec §3.5)
 	return self
 
 
@@ -65,6 +73,7 @@ func save_to(path := PATH) -> void:
 			cfg.set_value(section, key, entry[key])
 	if campaign != null:
 		campaign.write(cfg)
+	descend.write(cfg)
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("KAK could not write its save file (%d): %s" % [err, path])

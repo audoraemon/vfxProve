@@ -6,8 +6,15 @@ extends Node
 ## screen change, so a sting started on one screen finishes on the next.
 
 ## Every interface cue, so a test can prove each one exists.
-const CUES := [&"ui_hover", &"ui_click", &"ui_focus", &"ui_buzz", &"ui_pause", &"ui_manifest", &"ui_win", &"ui_lose"]
+const CUES := [&"ui_hover", &"ui_click", &"ui_focus", &"ui_buzz", &"ui_pause", &"ui_manifest", &"ui_win", &"ui_lose",
+	&"ui_back", &"ui_mode", &"ui_resume", &"ui_ready", &"ui_notice", &"ui_surge"]
 const POOL := 6
+## How many of the cues last asked for `asked` keeps.
+const ASKED_SIZE := 32
+
+## The cues last asked for, newest last. Kept headless too, where nothing plays, so a test can tell which sound the
+## interface would have made.
+static var asked: Array[StringName] = []
 
 static var _node: UiSound
 
@@ -19,6 +26,9 @@ var _pending: Array = []
 
 ## Play an interface cue. Safe from anywhere, including before the pool exists.
 static func play(cue: StringName, db_offset := 0.0) -> void:
+	asked.append(cue)
+	if asked.size() > ASKED_SIZE:
+		asked.pop_front()
 	if DisplayServer.get_name() == "headless":
 		return  # no audio to play, and a pool made during the headless test suite would outlive it and leak
 	if not Sfx.CATALOG.has(cue):

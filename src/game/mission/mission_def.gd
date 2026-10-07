@@ -40,6 +40,17 @@ var director: GDScript
 ## func() -> Array[Objective], each call a fresh set (objectives may keep state).
 var make_objectives: Callable
 var make_bonuses: Callable
+## The board's town readiness for its tier (v0.11 M1, spec §4), as ResponseProfile.level(): the town is at least this ready,
+## whatever the mission sets; -1 off the board.
+var tier_floor := -1
+## How much slower the director's timeline runs (v0.11 M1, spec §7.2): a board mission's tier clock over its own, so its
+## windows still fall inside the night; 1 off the board.
+var stretch := 1.0
+## func(director: MissionDirector) -> void: a board version's tuning of its director before its setup (v0.11 M1: the
+## Festival's raised need); unset elsewhere.
+var tune: Callable
+## The tags the mission declares for the wishes to filter on (v0.11 M1, spec §5.1): "unaware_town", "spares_houses".
+var mission_tags := PackedStringArray()
 
 
 ## A mission played in acts (v0.09, The Long Night): its ActDefs, the first one first. Empty for a single act.
@@ -86,16 +97,35 @@ func allows(key: String) -> bool:
 	return powers().has(key)
 
 
-## Prepare's difficulty picker applies: the mission does not set the town's readiness itself.
+## Prepare's difficulty picker applies: the mission does not set the town's readiness itself, nor does its board tier
+## (v0.11 M1, spec §4: board missions drop the picker).
 func chooses_difficulty() -> bool:
-	return profile == ""
+	return profile == "" and tier_floor < 0
 
 
 ## The town's response for this mission: the difficulty chosen on Prepare, unless the mission sets its own. A night
 ## (v0.10) answers with its first act's town, which reads the night it is given: the campaign's Feast after a rung bell.
+## On the board (v0.11 M1) the tier's readiness is a floor: raised to, never lowered.
 func response_profile(chosen: ResponseProfile.Tier) -> ResponseProfile:
+	var own: ResponseProfile
 	if profile == "night" and has_acts():
-		return first_act().response_profile(chosen)
-	if profile == "unaware" or profile == "night":
-		return ResponseProfile.unaware()
-	return ResponseProfile.for_tier(chosen)
+		own = first_act().response_profile(chosen)
+	elif profile == "unaware" or profile == "night":
+		own = ResponseProfile.unaware()
+	elif tier_floor >= 0:
+		own = ResponseProfile.for_level(tier_floor)
+	else:
+		own = ResponseProfile.for_tier(chosen)
+	return own.at_least(tier_floor)
+
+
+## The mission's director, made and tuned but not yet set up (v0.11 M1): its timeline's stretch, and any tuning a board
+## version asks for, are in place before its _begin() runs. Null for a mission without one.
+func make_director() -> MissionDirector:
+	if director == null:
+		return null
+	var d := director.new() as MissionDirector
+	d.stretch = stretch
+	if tune.is_valid():
+		tune.call(d)
+	return d

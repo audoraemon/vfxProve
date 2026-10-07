@@ -87,7 +87,7 @@ func _begin() -> void:
 	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
 	_choose_people()
 	crowd._field.enemy_killed.connect(_on_killed)
-	timeline = EventTimeline.new()
+	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	_add_events()
 	rules.banner.emit("LEAD THE GRIEVING TO MIRA'S HOUSE")

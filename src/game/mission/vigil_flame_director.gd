@@ -120,7 +120,7 @@ func _begin() -> void:
 	_start_vigil()
 	crowd._field.enemy_killed.connect(_on_killed)
 	_listen()
-	timeline = EventTimeline.new()
+	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	timeline.add(WREN_AT, "wren", "A boy watches the lantern", _wren_comes)
 	# Once the flame is gone, the suspicious priest has nothing to bring home (v0.10 M5).
@@ -410,9 +410,10 @@ func _listen() -> void:
 	rules.cast_made.connect(_on_cast)
 
 
-## The strip's search: in the clock's last Searchlight.SEARCH_LAST seconds, while the light is awake.
+## The strip's search: in the clock's last Searchlight.SEARCH_LAST seconds, while the light is awake (v0.11 M1: in the
+## timeline's own seconds, which a board mission stretches).
 func _add_events() -> void:
-	timeline.add(maxf(rules.time_left - Searchlight.SEARCH_LAST, 0.0), "search", "The light searches", Callable(),
+	timeline.add(maxf(rules.time_left - Searchlight.SEARCH_LAST, 0.0) / stretch, "search", "The light searches", Callable(),
 		func() -> bool: return searchlight.on)
 
 

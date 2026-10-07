@@ -20,6 +20,9 @@ var faithful: Array[Person] = []
 ## Reports of the god at work on their way to the Temple (v0.10: Mira's House, the Vigil Flame), and how many began.
 var reports: Array[TempleReport] = []
 var reports_started := 0
+## How much slower the director's timeline runs (v0.11 M1, spec ยง7.2): MissionDef.stretch, set before setup(); 1 off the
+## board.
+var stretch := 1.0
 
 ## Minds a Faithful does not see from (v0.10): the god's own holds.
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
@@ -92,6 +95,12 @@ func _say(event: String) -> void:
 func _walkable(g: Vector2) -> Vector2:
 	var w := crowd._grid.nearest_walkable(g) if crowd._grid != null else g
 	return w if w != Vector2.INF else g
+
+
+## A fresh timeline for the director's events (v0.11 M1): stretched by `stretch`, so a board mission's windows fall inside
+## its longer night. Off the board it is EventTimeline.new()'s own.
+func _new_timeline() -> EventTimeline:
+	return EventTimeline.new().stretched(stretch)
 
 
 ## Whether `p` still stands in the world: neither freed nor dead.

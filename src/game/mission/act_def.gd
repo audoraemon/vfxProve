@@ -20,8 +20,10 @@ var events_text := PackedStringArray()
 var night: NightState
 
 
+## The town this act wants (v0.09), at least as ready as the board's tier sets (v0.11 M1, tier_floor).
 func town(n: NightState) -> ResponseProfile:
-	return make_town.call(n) if make_town.is_valid() else ResponseProfile.unaware()
+	var own: ResponseProfile = make_town.call(n) if make_town.is_valid() else ResponseProfile.unaware()
+	return own.at_least(tier_floor)
 
 
 ## The town this act will play, whatever difficulty is passed: the night sets it, so Prepare's strip between acts shows

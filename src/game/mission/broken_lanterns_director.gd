@@ -98,7 +98,7 @@ func _begin() -> void:
 	_choose_faithful(FAITHFUL)
 	_start_vigil()
 	crowd._field.enemy_killed.connect(_on_killed)
-	timeline = EventTimeline.new()
+	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	_add_events()
 	rules.banner.emit("BREAK THE SIX LANTERNS")

@@ -14,7 +14,7 @@ const LAST_FERRY_AT := 150.0
 
 
 func _begin() -> void:
-	timeline = EventTimeline.new()
+	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	var n := night if night != null else NightState.new()
 	if n.festival == "broken":

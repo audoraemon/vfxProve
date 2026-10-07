@@ -11,6 +11,9 @@ enum Status { PENDING, DONE, FAILED }
 var label := ""
 ## The ending this objective gives the mission when it decides it: "citadel", "escapes", "timeout", "warning", ...
 var reason := ""
+## A limit on the main objective alone (v0.11 M1: the board's Festival, its square closing before dawn): once a board night's
+## main objective is done, a deadline no longer applies (Rules._check_caught()).
+var deadline := false
 
 
 ## Virtual: a look at the mission as it begins (v0.09), from Rules.setup() -- before the intro, which holds the Rules but

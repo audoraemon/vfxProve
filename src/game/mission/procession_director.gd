@@ -69,7 +69,7 @@ var _dead := false
 
 
 func _begin() -> void:
-	timeline = EventTimeline.new()
+	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	route = _route()
 	# His events are dropped (and left off the strip) once he is dead, boarded, or if the town had nobody to be him.

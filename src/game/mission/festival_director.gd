@@ -46,6 +46,8 @@ const MARK_MAYOR := Color("ff9a3a")
 var goers: Array[Person] = []
 var mayor: Person
 var need := FESTIVAL_NEED
+## How many come to the square (v0.11 M1: the board's Festival raises it with the need, TierBook.FESTIVAL_CROWD).
+var crowd_size := FESTIVAL_CROWD
 var _broke := {}
 ## Goers who got away unbroken (v0.09.1, _on_escaped()): left the feast, not lost to it. Keyed by the goer, which is
 ## freed once it is out.
@@ -58,7 +60,7 @@ var _final := {}
 
 
 func _begin() -> void:
-	timeline = EventTimeline.new()
+	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	mayor = _appoint_mayor()
 	_gather()
@@ -104,7 +106,7 @@ func _gather() -> void:
 				and p.mind in WarningDirector.RESUMABLE:
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
-	for p in pool.slice(0, FESTIVAL_CROWD):
+	for p in pool.slice(0, crowd_size):
 		goers.append(p)
 		_send(p, crowd._spot_near(c, TownLayout.MARKET_SQUARE.size.x * 0.4))
 

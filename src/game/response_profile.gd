@@ -108,6 +108,27 @@ func level() -> int:
 	return 1 if title == "Unaware" else [0, 2, 3, 4][tier]
 
 
+## The profile for a readiness rank (v0.11 M1: a board tier's floor), level() turned back: 0 Unprepared, 1 Unaware,
+## 2 Organized, 3 Prepared, 4 and above God-Resistant.
+static func for_level(rank: int) -> ResponseProfile:
+	match rank:
+		0:
+			return for_tier(Tier.UNPREPARED)
+		1:
+			return unaware()
+		2:
+			return for_tier(Tier.ORGANIZED)
+		3:
+			return for_tier(Tier.PREPARED)
+	return for_tier(Tier.GOD_RESISTANT)
+
+
+## This profile, or `rank`'s when this one is less ready (v0.11 M1, spec §4: a mission may raise its tier's town, never lower
+## it). A rank below 0 leaves it as it is.
+func at_least(rank: int) -> ResponseProfile:
+	return self if rank < 0 or level() >= rank else for_level(rank)
+
+
 func tier_name() -> String:
 	return title if title != "" else NAMES[tier]
 

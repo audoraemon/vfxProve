@@ -262,8 +262,9 @@ func _build_act(loadout: PackedStringArray) -> void:
 	var held: Array[String] = []
 	var hold := func(text: String) -> void: held.append(text)
 	_rules.banner.connect(hold)
-	if play.director != null:
-		_director = (play.director.new() as MissionDirector).setup(_rules, _crowd, _town, _bf.ctx, _night)
+	var made := play.make_director()
+	if made != null:
+		_director = made.setup(_rules, _crowd, _town, _bf.ctx, _night)
 		_rules.director = _director
 	_wire_responses()
 

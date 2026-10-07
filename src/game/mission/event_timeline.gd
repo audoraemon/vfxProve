@@ -7,6 +7,20 @@ signal fired(id: String, label: String)
 
 var _events: Array[Dictionary] = []
 var _elapsed := 0.0
+## How many times slower the timeline's own seconds run than the night's (v0.11 M1, stretched()): an event `at` seconds in,
+## and every wait a director measures with elapsed(), comes that many times later in real seconds. 1 off the board.
+var _scale := 1.0
+
+
+## A timeline whose events and elapsed() run `factor` times slower than real time (v0.11 M1, spec §7.2: a board mission's
+## windows stretched to its tier's longer clock). 1 leaves it as it was.
+func stretched(factor: float) -> EventTimeline:
+	_scale = maxf(factor, 0.01)
+	return self
+
+
+func stretch_factor() -> float:
+	return _scale
 
 
 ## `when`, if given, is asked as the event falls due: false and the event is dropped without a word (no callback, no
@@ -21,7 +35,7 @@ func add(at: float, id: String, label: String, fn := Callable(), when := Callabl
 
 
 func step(delta: float) -> void:
-	_elapsed += delta
+	_elapsed += delta / _scale
 	for e in _events:
 		if bool(e.done) or float(e.at) > _elapsed:
 			continue
@@ -38,7 +52,8 @@ func upcoming(n := 2) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for e in _events:
 		if not bool(e.done) and out.size() < n and _applies(e):
-			out.append({"at": e.at, "id": e.id, "label": e.label, "in": maxf(float(e.at) - _elapsed, 0.0)})
+			out.append({"at": float(e.at) * _scale, "id": e.id, "label": e.label,
+				"in": maxf((float(e.at) - _elapsed) * _scale, 0.0)})
 	return out
 
 
@@ -48,6 +63,22 @@ func fired_ids() -> PackedStringArray:
 		if bool(e.done) and not bool(e.skipped):
 			out.append(String(e.id))
 	return out
+
+
+## The event `id` has come, fired or dropped by its guard (v0.11 M1: EventObjective's deadline); false for none.
+func has_come(id: String) -> bool:
+	for e in _events:
+		if String(e.id) == id:
+			return bool(e.done)
+	return false
+
+
+## Real seconds until the event `id` comes (v0.11 M1); 0 once it has, or for no such event.
+func seconds_to(id: String) -> float:
+	for e in _events:
+		if String(e.id) == id and not bool(e.done):
+			return maxf((float(e.at) - _elapsed) * _scale, 0.0)
+	return 0.0
 
 
 ## Does the event still apply (no guard, or the guard says so)?

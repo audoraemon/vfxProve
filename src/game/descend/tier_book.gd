@@ -32,6 +32,11 @@ const TYPES := {"warning": "Intercept", "miras_house": "Cult", "broken_lanterns"
 	"festival": "Break", "procession": "Kill", "last_judgement": "Destroy", "long_night": "Three acts"}
 ## The tags a mission declares for the wishes to filter on (spec §5.1): a wish listing one of them is never drawn there.
 const MISSION_TAGS := {"warning": ["unaware_town"], "miras_house": ["spares_houses"]}
+## The board's Festival (spec §7.2): the need rises to FESTIVAL_NEED, more come (FESTIVAL_CROWD) so it can be met, and the
+## guard closes the square at FESTIVAL_CLOSE, before dawn.
+const FESTIVAL_NEED := 80
+const FESTIVAL_CROWD := 120
+const FESTIVAL_CLOSE := 270.0
 
 
 ## A tier's entry in `table`, tiers counted from 1 (outside 1-5, the nearest tier's).
@@ -107,3 +112,111 @@ static func mission_tags(id: String) -> PackedStringArray:
 ## Believers paid on `tier` for `base` (spec §4): times the tier's multiplier, rounded.
 static func believers(base: int, tier: int) -> int:
 	return roundi(float(base) * multiplier(tier))
+
+
+## A board mission (v0.11 M1, spec §4, §7.2): the ★ mission `id` at its tier.
+## - The tier's clock (The Long Night keeps its acts').
+## - Its readiness as a floor.
+## - The base slots and DP plus `state`'s upgrades (MAX_SLOTS at most).
+## - Its event times stretched to the longer clock.
+## - No bonuses: the wishes take their place.
+## - Its mission tags, and at GAZE_TIER the Gaze objective.
+## Null for an id not on the board. MissionBook's own missions are fresh copies each call, so nothing here reaches them.
+static func board(id: String, state: DescendState = null) -> MissionDef:
+	var tier := tier_of(id)
+	if tier == 0:
+		return null
+	var m: MissionDef = _from_act(id) if id == "festival" or id == "procession" else MissionBook.get_mission(id)
+	var own_clock := m.clock
+	m.tier = tier
+	m.tier_floor = readiness(tier)
+	m.make_bonuses = Callable()
+	m.mission_tags = mission_tags(id)
+	_budget(m, tier, state)
+	if not m.has_acts():
+		m.clock = clock(tier)
+		m.stretch = m.clock / own_clock
+	match id:
+		"festival":
+			_festival(m)
+		"last_judgement":
+			m.goal = "Destroy the Citadel and break the city before dawn"
+	if tier >= GAZE_TIER:
+		_gaze(m)
+	return m
+
+
+## The tier's slots and DP plus the upgrades bought, for the mission and each of its acts, which take its tier and floor.
+static func _budget(m: MissionDef, tier: int, state: DescendState) -> void:
+	m.slots = mini(slots(tier) + (state.slot_bought if state != null else 0), MAX_SLOTS)
+	m.dp_capacity = dp(tier) + (state.dp_bought if state != null else 0)
+	for a: ActDef in m.acts:
+		a.tier = tier
+		a.tier_floor = m.tier_floor
+		a.slots = m.slots
+		a.dp_capacity = m.dp_capacity
+
+
+## The Festival or the Procession as a mission of its own (spec §8 rows 12 and 16): The Long Night's act -- its director,
+## objectives and windows -- on a night of its own, in a town the floor raises. Its id is the act's.
+static func _from_act(id: String) -> MissionDef:
+	var a := MissionBook.long_night().act(id)
+	var m := MissionDef.new()
+	m.id = id
+	m.name = a.name.trim_prefix("Act II: ")
+	m.brief = a.brief
+	m.goal = a.goal
+	m.goal_label = a.goal_label
+	m.lose = a.lose
+	m.clock = a.clock
+	m.profile = "unaware"
+	m.pool = a.pool
+	m.default_loadout = a.default_loadout
+	m.intro_from = a.intro_from
+	m.camera_at = a.camera_at
+	m.intro_banner = m.name.to_upper()
+	m.director = a.director
+	m.make_objectives = a.make_objectives
+	return m
+
+
+## The board's Festival (spec §7.2): its windows stretched to the 4:30 close, the need and the crowd raised before the
+## director gathers it, and the close a deadline -- dawn is the tier's.
+static func _festival(m: MissionDef) -> void:
+	m.stretch = FESTIVAL_CLOSE / FestivalDirector.CLOSE_AT
+	m.goal = "Break the festival before the guard closes the square at %s" % UiTheme.clock(FESTIVAL_CLOSE)
+	m.tune = func(d: MissionDirector) -> void:
+		var f := d as FestivalDirector
+		if f != null:
+			f.need = FESTIVAL_NEED
+			f.crowd_size = FESTIVAL_CROWD
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [FestivalObjective.new(), EventObjective.new("close", "Square closes", "closed")]
+		return out
+
+
+## Halcyon's Gaze in a Tier 5 mission (spec §4): a GazeObjective after its own objectives, in the mission and in each act. It
+## waits while the director has no Gaze; the night's Descent gives one to a director that keeps none.
+static func _gaze(m: MissionDef) -> void:
+	m.make_objectives = _with_gaze(m.make_objectives)
+	for a: ActDef in m.acts:
+		a.make_objectives = _with_gaze(a.make_objectives)
+		if a.make_act_objectives.is_valid():
+			a.make_act_objectives = _with_gaze_for_night(a.make_act_objectives)
+
+
+static func _with_gaze(make: Callable) -> Callable:
+	return func() -> Array[Objective]:
+		var out: Array[Objective] = []
+		if make.is_valid():
+			out.assign(make.call())
+		out.append(GazeObjective.new())
+		return out
+
+
+static func _with_gaze_for_night(make: Callable) -> Callable:
+	return func(n: NightState) -> Array[Objective]:
+		var out: Array[Objective] = []
+		out.assign(make.call(n))
+		out.append(GazeObjective.new())
+		return out

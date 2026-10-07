@@ -19,7 +19,7 @@ const LINES := {
 	"omen": WARNING_LINE,
 	"omen.relay": WARNING_RELAY,
 	"omen.bell": WARNING_BELL,
-	"festival": "Break the festival: kill or scatter fifty of its crowd (gold) before the guard closes the square.",
+	"festival": "Break the festival: kill or scatter enough of its crowd (gold) before the guard closes the square.",
 	"festival.packed": "The bonfire packs the crowd (gold) round the fountain: one strike there breaks many.",
 	"festival.address": "The Mayor (orange) speaks from the fountain. Kill him and the crowd round it panics.",
 	"procession": "Kill the Prince (gold) before he boards. If no one near (red) sees it, the town is left leaderless.",

@@ -21,6 +21,9 @@ signal banner(text: String)
 signal subtitle(text: String)
 ## The mission ended. reason: "citadel" (won), "escapes" or "timeout".
 signal over(won: bool, reason: String)
+## A board night's main objective is done (v0.11 M1, spec §6): the night goes on -- the clock running, every way of losing
+## still there -- until the god ascends or is caught.
+signal main_won
 
 ## The manifestation's length in seconds (spec §1 had 4:00; six minutes since the town scale upgrade tripled the town).
 const MISSION_SECONDS := 360.0
@@ -66,6 +69,8 @@ const LAW_ESCAPE := &"escape"
 const LAW_WARD := &"ward"
 const LAWS := [LAW_CLOCK, LAW_ESCAPE, LAW_WARD]
 const WARD_GONE := 1000.0
+## The banner when a board night's main objective is done (v0.11 M1, spec §6).
+const MAIN_BANNER := "THE NIGHT IS YOURS"
 ## The roles that count as a building for the tally, the chain and the score. Decor (trees, torch posts) does
 ## not, and the Citadel's nine parts are not nine buildings -- the Citadel is its own objective.
 const BUILDING_ROLES := [&"house", &"wall", &"tower", &"gate", &"temple", &"barracks", &"market", &"farm", &"bridge",
@@ -113,6 +118,19 @@ var mission: MissionDef
 var objectives: Array[Objective] = []
 var bonuses: Array[Objective] = []
 var director: MissionDirector
+## The board's night (v0.11 M1): its Tier 5 Gaze, its wishes, and whether this act holds the win (Descent.holds()); null off
+## the board.
+var descent: Descent
+## The main objective is done (v0.11 M1, spec §6), and the seconds into the act it was.
+var main_done := false
+var main_time := 0.0
+## The god ascended (spec §6); or, caught after the main objective, why the night ended ("dawn", "bell", "gaze", ...).
+var ascended := false
+var caught := ""
+## Where the last cast landed (v0.11 M1: the ascent rises over it); Vector2.INF before any.
+var last_cast := Vector2.INF
+## The objective that did the main objective, while the night is held.
+var _main: Objective
 
 ## How a cast reaches the world: func(script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline.
 ## Set in setup() to go through FxTimeline.cast; tests replace it so they need no effects.
@@ -197,6 +215,8 @@ func advance(delta: float) -> void:
 			_crowd.order_collapses()
 	if director != null:
 		director.step(delta)
+	if descent != null:
+		descent.step(self, delta)
 	_check_end()
 
 
@@ -341,6 +361,7 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
 		"until": _elapsed + CAST_GRACE})
+	last_cast = ground
 	cast_made.emit(slot, String(p.key), ground)
 	return fx
 
@@ -432,18 +453,67 @@ func _on_citadel_health(_fraction: float) -> void:
 
 
 ## The mission's primary objectives decide it, in their order (v0.08): the first DONE wins, the first FAILED loses.
-## Last Judgement lists the Citadel first, so a city that falls on the last tick of the clock still counts.
+## Last Judgement lists the Citadel first, so a city that falls on the last tick of the clock still counts. On the tier
+## board (v0.11 M1, spec §6) the first DONE holds the night instead (_hold()), and from then on _check_caught() decides.
 func _check_end() -> void:
 	if finished:
+		return
+	if main_done:
+		_check_caught()
 		return
 	for o in objectives:
 		match o.check(self):
 			Objective.Status.DONE:
+				if descent != null and descent.holds(mission):
+					_hold(o)
+					return
 				_finish(true, o.reason)
 				return
 			Objective.Status.FAILED:
 				_finish(false, o.reason)
 				return
+
+
+## A board night's main objective is done (v0.11 M1, spec §6): its banner, and the night held open for the wishes.
+func _hold(o: Objective) -> void:
+	main_done = true
+	main_time = _elapsed
+	_main = o
+	banner.emit(MAIN_BANNER)
+	main_won.emit()
+
+
+## After the main objective (spec §6): dawn, or any primary objective failing but the main one and a deadline on it, ends
+## the night, the main win standing.
+func _check_caught() -> void:
+	if time_left <= 0.0:
+		_catch("dawn")
+		return
+	for o in objectives:
+		if o == _main or o.deadline:
+			continue
+		if o.check(self) == Objective.Status.FAILED:
+			_catch(o.reason)
+			return
+
+
+func _catch(why: String) -> void:
+	caught = why
+	_finish(true, _main.reason)
+
+
+## The god ascends (v0.11 M1, spec §6): a held night ends at once, won. False when there is nothing to ascend from.
+func ascend() -> bool:
+	if finished or not main_done:
+		return false
+	ascended = true
+	_finish(true, _main.reason)
+	return true
+
+
+## Seconds since the act started (v0.11 M1: a board night's time to its main objective).
+func elapsed() -> float:
+	return _elapsed
 
 
 ## End the act now, as a tool or a test asks (v0.09); an act already over stays as it ended.

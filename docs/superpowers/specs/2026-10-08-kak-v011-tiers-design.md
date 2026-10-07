@@ -177,8 +177,8 @@ Believers carry over between missions. They are added to only when banked (§6).
   - Pause > Missions abandons the night without counting it.
 - **Main objective done:**
   - The banner `THE NIGHT IS YOURS` shows.
-  - An **ASCEND** plate appears above the slots, which can be clicked; a key does the same, chosen in M1's plan to clash
-    with nothing.
+  - An **ASCEND** plate appears above the slots, which can be clicked, or the **F** key does the same
+    (nothing else in a mission uses it).
   - The clock keeps running, and every way of losing still applies.
   - The how-to-win line switches to the open wishes, or to "Ascend when you are ready" if there are none.
 - **Ascending:**

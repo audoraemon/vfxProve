@@ -339,7 +339,7 @@ func wren_lost() -> bool:
 ##   step during the intro, so `_lantern` would lag behind him), else where the last bearer fell;
 ## - Mira's shrine;
 ## - all of those pointed at from the edge;
-## - the Temple while the Vigil takes the real flame home;
+## - the Temple while the Vigil takes the real flame home (going_home());
 ## - while Wren may yet be seen taking the flame, a red diamond on each Faithful near enough to see him (never the
 ##   bearer, who is robbed).
 func tags() -> Array[MapTag]:
@@ -352,7 +352,7 @@ func tags() -> Array[MapTag]:
 		if flame != Vector2.INF:
 			out.append(MapTag.person(flame, MARK_FLAME, "HALCYON'S FLAME", true))
 	out.append(MapTag.place(shrine, MARK_SHRINE, "MIRA'S SHRINE"))
-	if homeward and not swapped:
+	if going_home():
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if with_us and not swapped:
 		for f in watchers(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null):
@@ -360,12 +360,18 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## The hint's phase (v0.10 M6, spec §4.3): "carry" once the flame is swapped, else "homeward" while the Vigil goes home,
-## else "wren" once he has come; "" before.
+## The Vigil is taking the real flame home (v0.10 M6): the route has shortened, the flame is still in its lantern, and a
+## living bearer still carries it -- once the whole Vigil has fallen, nobody is going home.
+func going_home() -> bool:
+	return homeward and not swapped and vigil != null and vigil.active and _alive(vigil.bearer)
+
+
+## The hint's phase (v0.10 M6, spec §4.3): "carry" once the flame is swapped, else "homeward" while the Vigil goes home
+## (going_home()), else "wren" once he has come; "" before.
 func hint_phase() -> String:
 	if swapped:
 		return "carry"
-	if homeward:
+	if going_home():
 		return "homeward"
 	return "wren" if appeared else ""
 

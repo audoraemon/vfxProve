@@ -1,6 +1,8 @@
 # KAK v0.10 M6: Objective Clarity (design)
 
-Date: 2026-10-07. Status: approved in chat ("yes please" to the three-part design). Builds on
+Date: 2026-10-07. Status: approved in chat ("yes please" to the three-part design); landed as `kak-v010-m6`. The
+words below are as shipped: the final review dropped elapsed times ("0:50") from three strings, since they sit beside a
+countdown clock. Builds on
 `2026-10-05-kak-v010-lantern-campaign-design.md`.
 
 ## 1. Why
@@ -88,7 +90,7 @@ carry edge arrows instead.
 | `miras_house.burning` | Her house burns: no one can go in now. Keep your Believers (orange) alive until dawn. |
 | `broken_lanterns` | Break a lantern (gold), then keep the flame-bearer off it for 20 s while it drains. Drain all six. |
 | `broken_lanterns.knights` | A Knight (blue) shields the lantern he guards. Draw him off or kill him, then strike. |
-| `vigil_flame` | At 0:50 the boy Wren comes for the flame (gold). Its acolytes would see him: draw them off first. |
+| `vigil_flame` | Soon the boy Wren comes for the flame (gold). Its acolytes would see him: draw them off first. |
 | `vigil_flame.wren` | Whisper Wren (blue) to the flame (gold) while no Faithful but its bearer is near him (red). |
 | `vigil_flame.homeward` | The Vigil turns for home: have the flame swapped before its bearer reaches the Temple. |
 | `vigil_flame.carry` | Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight. |
@@ -173,11 +175,11 @@ The tags are listed in order, most important first, because label overlap keeps 
   - Mira's House:
     1. the door, "Mira's house. Her journal is inside.";
     2. the Temple's door, "The Temple. Faithful who see you run here.";
-    3. Venn, "Venn, the Inquisitor. She searches from 0:40.".
+    3. Venn, "Venn, the Inquisitor. Soon she searches the houses.".
   - Broken Lanterns:
     1. the first standing shrine, "A lantern. Break it, then let it drain.";
     2. the flame-bearer, "The flame-bearer relights broken lanterns.";
-    3. the Temple's door, "Lantern Knights come out at 1:30.".
+    3. the Temple's door, "The Temple. Lantern Knights come out of it later.".
   - The Vigil Flame:
     1. the lantern, "Halcyon's flame, carried by the Vigil.";
     2. Mira's shrine, "Mira's shrine. The flame must come here.";

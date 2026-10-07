@@ -90,6 +90,7 @@ static func run(t) -> void:
 	_lines(t)
 	_tags(t)
 	_freed(t)
+	_venn_watching(t)
 	_loose_ends(t)
 
 
@@ -523,6 +524,20 @@ static func _freed(t) -> void:
 	for m in d.tags():
 		grieving_after += 1 if m.color == MirasHouseDirector.MARK_GRIEVING else 0
 	t.check(grieving_after == grieving_before - 1, "a grieving body freed: one fewer grieving tag")
+	_done(s)
+
+
+## v0.10 M6: the Inquisitor alone by the door -- no watcher's red diamond, so her own tag says she is watching, and the door
+## reads watched; stepped away, she is the Inquisitor again and the door is clear.
+static func _venn_watching(t) -> void:
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	_blind(d, d.door)
+	_arrive(d.venn, d.door + Vector2(1.0, 0.0))
+	t.check(_tag(d, "INQUISITOR - WATCHING") != null and _tag(d, "DOOR - WATCHED") != null and _tag(d, "INQUISITOR") == null,
+		"the Inquisitor alone by the door: she is named as watching, and the door is watched")
+	_arrive(d.venn, d.door + Vector2(MirasHouseDirector.SIGHT + 8.0, 0.0))
+	t.check(_tag(d, "INQUISITOR") != null and _tag(d, "DOOR - CLEAR") != null, "stepped away: the Inquisitor, and the door clear")
 	_done(s)
 
 

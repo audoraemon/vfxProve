@@ -264,7 +264,8 @@ func inside() -> Array[Person]:
 ## - its door, clear or watched, until it burns;
 ## - each report's runner, pointed at from the edge;
 ## - the crying Believer, pointed at;
-## - the Inquisitor, pointed at while she searches;
+## - the Inquisitor, pointed at while she searches, and named as watching while she can see the door (she wears her own
+##   violet, not a watcher's red);
 ## - the Temple, pointed at from the edge, while a report runs;
 ## - a red diamond on each Faithful watching the door (but her);
 ## - the grieving, and the Believers among them.
@@ -287,7 +288,8 @@ func tags() -> Array[MapTag]:
 	if _alive(shouter):
 		out.append(MapTag.person(shouter.ground_pos, MARK_BELIEVER, "CRYING OUT", true))
 	if _alive(venn) and not venn.inside:
-		out.append(MapTag.person(venn.ground_pos, MARK_VENN, "INQUISITOR", venn_searching))
+		var eyes := open and _sees(venn, door, SIGHT, null)
+		out.append(MapTag.person(venn.ground_pos, MARK_VENN, "INQUISITOR - WATCHING" if eyes else "INQUISITOR", venn_searching))
 	if running:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if open:

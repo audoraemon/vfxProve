@@ -151,6 +151,7 @@ static func run(t) -> void:
 	_lines(t)
 	_tags(t)
 	_freed_bearer(t)
+	_fallen_homeward(t)
 	_loose_ends(t)
 
 
@@ -702,6 +703,22 @@ static func _freed_bearer(t) -> void:
 	t.check(red, "the last bearer's body freed: the Faithful beside Wren is still tagged a witness")
 	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.2)
 	t.check(d.swapped and d.swap_seen, "and the swap is still seen")
+	_done(s)
+
+
+## v0.10 M6: the route has shortened, then the whole Vigil falls before the swap -- nobody is going home, so the Temple is
+## not tagged and the hint no longer says hurry.
+static func _fallen_homeward(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	var crowd: Crowd = s.crowd
+	d.timeline.step(VigilFlameDirector.ROUTE_AT)
+	t.check(d.homeward and _tag(d, "TEMPLE") != null and d.hint_phase() == "homeward", "the Vigil turned for home: the Temple")
+	for p in d.vigil.walkers():
+		crowd._field.kill(p, &"doom")
+	_run(s, VigilRoute.TICK * 3.0)
+	t.check(not d.vigil.active and _tag(d, "TEMPLE") == null and d.hint_phase() != "homeward",
+		"the whole Vigil fallen: no Temple tag, and the hint no longer says hurry (%s)" % d.hint_phase())
 	_done(s)
 
 

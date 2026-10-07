@@ -20,7 +20,7 @@ var faithful: Array[Person] = []
 ## Reports of the god at work on their way to the Temple (v0.10: Mira's House, the Vigil Flame), and how many began.
 var reports: Array[TempleReport] = []
 var reports_started := 0
-## How much slower the director's timeline runs (v0.11 M1, spec ยง7.2): MissionDef.stretch, set before setup(); 1 off the
+## How much slower the director's timeline runs (v0.11 M1, spec §7.2): MissionDef.stretch, set before setup(); 1 off the
 ## board.
 var stretch := 1.0
 

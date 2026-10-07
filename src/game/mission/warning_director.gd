@@ -46,6 +46,10 @@ var killed_by := ""
 ## Authority -> true for every power cast near the warning while it lived.
 var delayed_by := {}
 var gate_spot := Vector2.INF
+## Where the watchman keeps his post, snapped to walkable ground in gate_spot, and the gate's name for the star's banner
+## (v0.11 M1: the board's three stars fall over three gates). Set before setup(); the Main Gate's by default.
+var post := GATE_SPOT
+var post_name := "THE MAIN GATE"
 ## The star has fallen (it falls at OMEN_AT whatever the phase: a relay before it skips the stare, not the omen).
 var omen_fallen := false
 var _clock := 0.0
@@ -55,8 +59,8 @@ var _fell_at := Vector2.INF
 
 
 func _begin() -> void:
-	var free := crowd._grid.nearest_walkable(GATE_SPOT) if crowd._grid != null else GATE_SPOT
-	gate_spot = free if free != Vector2.INF else GATE_SPOT
+	var free := crowd._grid.nearest_walkable(post) if crowd._grid != null else post
+	gate_spot = free if free != Vector2.INF else post
 	if crowd.bell != null:
 		crowd.bell.hold_on_death = true
 	watchman = _appoint_watchman()
@@ -123,7 +127,7 @@ func _omen() -> void:
 		phase = Phase.STARE
 	if ctx != null:
 		FxTimeline.cast(FallingStarFx, ctx, gate_spot + Vector2(0.0, 0.8))
-	rules.banner.emit("A STAR FALLS OVER THE MAIN GATE")
+	rules.banner.emit("A STAR FALLS OVER %s" % post_name)
 	rules.banner.emit("STOP THE WARNING")
 	if phase == Phase.STARE and _alive(watchman):
 		watchman.observe(gate_spot + Vector2(0.0, 0.8), STARE)

@@ -16,6 +16,7 @@ const LINES := {
 	"warning": WARNING_LINE,
 	"warning.relay": WARNING_RELAY,
 	"warning.bell": WARNING_BELL,
+	"warning.waiting": "That warning is dead. Watch the next star's gate (gold): its watchman runs when it falls.",
 	"omen": WARNING_LINE,
 	"omen.relay": WARNING_RELAY,
 	"omen.bell": WARNING_BELL,

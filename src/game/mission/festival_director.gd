@@ -297,7 +297,7 @@ func hint_phase() -> String:
 ## The tour (board tags, spec §4): the fountain, then the Mayor.
 func tour() -> Array:
 	var out := []
-	out.append([TownLayout.FOUNTAIN.get_center(), "The Feast of Lanterns. Break fifty of its crowd."])
+	out.append([TownLayout.FOUNTAIN.get_center(), "The Feast of Lanterns. Break %s of its crowd." % need])
 	if WarningDirector._alive(mayor):
 		out.append([mayor.ground_pos, "The Mayor. Mid-feast he speaks from the fountain."])
 	return out

@@ -137,6 +137,8 @@ static func board(id: String, state: DescendState = null) -> MissionDef:
 		m.clock = clock(tier)
 		m.stretch = m.clock / own_clock
 	match id:
+		"warning":
+			_warning(m)
 		"festival":
 			_festival(m)
 		"last_judgement":
@@ -192,6 +194,20 @@ static func _festival(m: MissionDef) -> void:
 			f.crowd_size = FESTIVAL_CROWD
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [FestivalObjective.new(), EventObjective.new("close", "Square closes", "closed")]
+		return out
+
+
+## The board's Warning (spec §7.2): three stars, three runners (StarfallDirector), all three to stop. No stretch: the stars
+## keep the spec's own times.
+static func _warning(m: MissionDef) -> void:
+	m.director = StarfallDirector
+	m.stretch = 1.0
+	m.brief = PackedStringArray(["Three stars fall through the night.", "Each sends a runner to wake the bell."])
+	m.goal = "Stop all three warnings before the bell tolls"
+	m.goal_label = "The warnings die"
+	m.lose = "The bell tolls, or dawn comes with a warning alive"
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [StarsObjective.new(), BellSilentObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 
 

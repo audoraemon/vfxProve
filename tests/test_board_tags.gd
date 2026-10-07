@@ -169,6 +169,14 @@ static func _last_judgement(t) -> void:
 	t.check(_tag(d, "BANISHING RITE") == null and _tag(d, "BOATS") == null and d.hint_phase() == "" and d.tour().is_empty(),
 		"no rite, no boats; the mission's line; no tour (the sweep plays)")
 	t.check(_reads_only(d, crowd), "its tags draw no random number")
+	# The tags draw on their own layer behind the HUD: the Citadel always tagged, the HUD itself stays a still picture.
+	var hud := Hud.new().setup(s.rules, crowd, town, null)
+	hud.advance(0.016)
+	hud.advance(0.016)
+	t.check(Hud.tags_shown(s.rules) and hud._tag_layer != null and hud._tag_layer.get_parent() == hud
+		and hud._tag_layer.show_behind_parent and hud._drawn != "",
+		"the tags have a layer behind the HUD, and the HUD keeps its still picture (%s)" % hud._drawn.left(20))
+	hud.free()
 	crowd.rite.begin()
 	var rite := _tag(d, "BANISHING RITE")
 	t.check(crowd.rite.state == BanishingRite.State.GATHERING and rite != null and rite.edge and d.hint_phase() == "rite",

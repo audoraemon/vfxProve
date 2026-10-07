@@ -97,6 +97,13 @@ var _slot_names: Array[String] = []
 var _layout: Array = []
 ## The tour's caption on screen (v0.10 M6); "" for none.
 var _caption := ""
+## The tags' own layer (board tags): a child drawn behind the HUD, so the tags under its panels can follow the camera
+## every frame while the rest of the HUD stays a still picture (a whole-HUD redraw a frame cost Last Judgement, which
+## always tags its Citadel, ~0.7 ms). It redraws only when what it shows has changed (_tag_signature()).
+var _tag_layer: Control
+var _tags_drawn := ""
+## What the drawing helpers draw on: the HUD, or the tag layer while it draws (_draw_tag_layer()).
+var _canvas: CanvasItem = self
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -117,6 +124,14 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	_rules.banner.connect(push_banner)
 	_rules.subtitle.connect(push_subtitle)
 	_rules.cast_refused.connect(_on_cast_refused)
+	if _tag_layer == null:
+		_tag_layer = Control.new()
+		_tag_layer.name = "Tags"
+		_tag_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_tag_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tag_layer.show_behind_parent = true  # under every panel of the HUD, as the tags were drawn first
+		_tag_layer.draw.connect(_draw_tag_layer)
+		add_child(_tag_layer)
 	return self
 
 
@@ -132,11 +147,15 @@ func advance(delta: float) -> void:
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners and Cael's lines fade, a refused slot burns red, the last half minute pulses and the tags follow their people
-	# and the camera (v0.10 M6): while any of those is on screen the HUD is an animation and redraws every frame. The rest
-	# of the time it is a still picture.
-	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT \
-			or tags_shown(_rules):
+	# The tags follow their people and the camera (v0.10 M6): their own layer redraws whenever a tag or the camera has
+	# changed, and once more as the last goes (board tags).
+	var tags_now := _tag_signature()
+	if tags_now != _tags_drawn and _tag_layer != null:
+		_tags_drawn = tags_now
+		_tag_layer.queue_redraw()
+	# Banners and Cael's lines fade, a refused slot burns red and the last half minute pulses: while any of those is on
+	# screen the HUD is an animation and redraws every frame. The rest of the time it is a still picture.
+	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT:
 		_drawn = ""
 		queue_redraw()
 		return
@@ -262,7 +281,7 @@ func escape_limit() -> int:
 	return Rules.ESCAPE_LIMIT
 
 
-## The director tags something (v0.10 M6): the tags follow people and the camera, so the HUD redraws every frame.
+## The director tags something (v0.10 M6): the tags follow people and the camera, so their layer redraws every frame.
 static func tags_shown(rules: Rules) -> bool:
 	return rules != null and rules.director != null and not rules.director.tags().is_empty()
 
@@ -300,9 +319,9 @@ func _draw_tags() -> void:
 			_draw_outline(t.outline, xf, t.color)
 		if String(e.mode) == "map":
 			var shape := mark_shape(e.c, t.size)
-			draw_colored_polygon(shape, t.color)
+			_canvas.draw_colored_polygon(shape, t.color)
 			shape.append(shape[0])
-			draw_polyline(shape, MARK_EDGE, 1.0)
+			_canvas.draw_polyline(shape, MARK_EDGE, 1.0)
 	for e: Dictionary in _layout:
 		if String(e.mode) == "map" and bool(e.show):
 			var t: MapTag = e.tag
@@ -328,7 +347,7 @@ func _draw_outline(r: Rect2, xf: Transform2D, col: Color) -> void:
 	var pts := PackedVector2Array()
 	for g: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y), r.position]:
 		pts.append((xf * Iso.ground_to_screen(g)).round())
-	draw_polyline(pts, col, 1.0)
+	_canvas.draw_polyline(pts, col, 1.0)
 
 
 ## The diamond a tag is drawn as, centred on `c` (screen pixels), `r` each way.
@@ -564,12 +583,32 @@ func _signature() -> String:
 	return out
 
 
-func _draw() -> void:
-	# The tags on the map (v0.10; M6) and their edge arrows are drawn first, so they sit under every other HUD element --
-	# the clock, the bars, the events, the objectives, the status, the banners, Cael's plate and the slots -- and never
-	# hide one.
+## What the tag layer shows, in short (board tags): the camera, the screen and every tag's fields -- everything
+## tag_layout() lays the tags out from. "" with nothing tagged.
+func _tag_signature() -> String:
+	if _rules.director == null:
+		return ""
+	var tags := _rules.director.tags()
+	if tags.is_empty():
+		return ""
+	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var out := "%s|%s" % [xf, _view()]
+	for t in tags:
+		out += "|%s%s%s%s%s%s%s%s%s" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid()]
+	return out
+
+
+## The tag layer's drawing (board tags): the tags on the map (v0.10; M6) and their edge arrows. The layer sits behind the
+## HUD, so they sit under every other HUD element -- the clock, the bars, the events, the objectives, the status, the
+## banners, Cael's plate and the slots -- and never hide one.
+func _draw_tag_layer() -> void:
+	_canvas = _tag_layer
 	_draw_tags()
 	_draw_tag_arrows()
+	_canvas = self
+
+
+func _draw() -> void:
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_draw_clock(w)
@@ -711,12 +750,12 @@ func _draw_hint() -> void:
 ## `at`, pointing along `dir`. On a dark disc, so it stands out from the town's warm roofs and stalls.
 func _draw_arrow(at: Vector2, dir: Vector2, col: Color, ring: Color) -> void:
 	var side := Vector2(-dir.y, dir.x)
-	draw_circle(at - dir * 5.0, 10.0, MARK_EDGE)
-	draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, -1.0)
+	_canvas.draw_circle(at - dir * 5.0, 10.0, MARK_EDGE)
+	_canvas.draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, -1.0)
 	var arrow := PackedVector2Array([at, at - dir * 10.0 + side * 6.0, at - dir * 10.0 - side * 6.0])
-	draw_colored_polygon(arrow, col)
+	_canvas.draw_colored_polygon(arrow, col)
 	arrow.append(arrow[0])
-	draw_polyline(arrow, MARK_EDGE, -1.0)
+	_canvas.draw_polyline(arrow, MARK_EDGE, -1.0)
 
 
 func _draw_status(w: float) -> void:
@@ -834,5 +873,5 @@ func _draw_modes(box: Rect2) -> void:
 
 ## A short label on a dark plate, `at` being the plate's top-left corner.
 func _plate(at: Vector2, label: String, col: Color) -> void:
-	draw_rect(Rect2(at, plate_size(label)), Color(0, 0, 0, 0.62))
-	UiTheme.text(self, at + Vector2(1.0, PLATE_H - 3.0), label, UiTheme.SIZE_SMALL, col)
+	_canvas.draw_rect(Rect2(at, plate_size(label)), Color(0, 0, 0, 0.62))
+	UiTheme.text(_canvas, at + Vector2(1.0, PLATE_H - 3.0), label, UiTheme.SIZE_SMALL, col)

@@ -32,6 +32,7 @@ func setup(campaign := false) -> PauseMenu:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
+		UiSound.play(&"ui_resume")
 		action.emit("resume")
 
 
@@ -46,7 +47,8 @@ func _on_gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var a := _menu.at(event.position)
 		if a != "":
-			UiSound.play(&"ui_click")
+			# Resume is ui_pause turned upward; every other button leaves the mission, and clicks.
+			UiSound.play(&"ui_resume" if a == "resume" else &"ui_click")
 			action.emit(a)
 
 

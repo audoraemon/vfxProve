@@ -103,6 +103,37 @@ static func run(t) -> void:
 		"a whisper at someone shaken flashes its slot and says so (%s)" % [hud.banners()])
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
 
+	# What the HUD sounds (the GodotSfxr cues): a banner rings ui_notice as it comes on screen, not while it waits.
+	UiSound.asked.clear()
+	rules.banner.emit("ONE")
+	rules.banner.emit("TWO")
+	hud.advance(0.0)
+	t.check(_heard() == "ui_notice", "a banner rings as it shows, the next waits its turn (%s)" % _heard())
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	t.check(_heard() == "ui_notice,ui_notice", "and rings when its turn comes (%s)" % _heard())
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	# A refused whisper's banner comes with the buzz, and rings nothing more.
+	UiSound.asked.clear()
+	rules.refuse(1, "nobody")
+	hud.advance(0.0)
+	t.check(_heard() == "ui_buzz", "a refused cast's banner only buzzes (%s)" % _heard())
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	# The Divine Surge rings ui_surge, and its banner (sent straight after, as Rules does) is quiet; the next one rings.
+	UiSound.asked.clear()
+	rules.surged.emit()
+	rules.banner.emit("DIVINE SURGE")
+	rules.banner.emit("AFTER")
+	hud.advance(0.0)
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	t.check(_heard() == "ui_surge,ui_notice", "the surge rings once and the banner after it rings its own (%s)" % _heard())
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	# Slots that come off their cooldowns on the same frame ring ui_ready once.
+	UiSound.asked.clear()
+	rules.recharged.emit(0)
+	rules.recharged.emit(2)
+	t.check(_heard() == "ui_ready", "two slots back at once ring once (%s)" % _heard())
+	UiSound.asked.clear()
+
 	# Cael's lines (v0.10 M5): a queue of their own beside the banners, each up SUBTITLE_SECONDS in turn (review focus 1:
 	# two close together and a banner with them -- none lost, none cut short, the banners at their own pace).
 	rules.banner.emit("THE INQUISITOR SEARCHES")
@@ -217,3 +248,8 @@ static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, 
 	hud.free()
 	rules.teardown()
 	rules.free()
+
+
+## The interface cues asked for since the test last cleared them, in order.
+static func _heard() -> String:
+	return ",".join(PackedStringArray(UiSound.asked))

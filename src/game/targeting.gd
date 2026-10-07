@@ -202,6 +202,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.physical_keycode == KEY_Q or event.physical_keycode == KEY_E:
 		step_mode(-1 if event.physical_keycode == KEY_Q else 1)
+		UiSound.play(&"ui_mode")
 		get_viewport().set_input_as_handled()
 
 

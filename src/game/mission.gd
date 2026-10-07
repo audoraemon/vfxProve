@@ -588,16 +588,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var i := SLOT_KEYS.find(event.physical_keycode)
 		if i >= 0 and i < _rules.loadout.size():
-			_aim.pick(i)
+			_pick(i)
 		elif event.physical_keycode == KEY_R:
 			start(PackedStringArray(), Time.get_ticks_usec())
 		elif event.physical_keycode == KEY_ESCAPE:
 			# Esc first calls off a held press, then unfocuses the power. With nothing focused it is the
 			# pause menu's -- or, for a mission running on its own with no Game around it, still the way out.
 			if _aim.cancel():
-				pass  # a held press was called off
+				UiSound.play(&"ui_back")  # a held press was called off
 			elif _aim.slot >= 0:
 				_aim.unfocus()
+				UiSound.play(&"ui_back")
 			elif autostart:
 				_quit()
 			else:
@@ -611,20 +612,32 @@ func _unhandled_input(event: InputEvent) -> void:
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
+		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.
+		var focused := _aim.slot >= 0
 		if not _aim.cancel():
 			_aim.unfocus()
+		if focused:
+			UiSound.play(&"ui_back")
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# A click on a HUD slot focuses that power instead of casting into the town under it.
 			var on_slot := _hud.slot_at(event.position)
 			if on_slot >= 0 and on_slot < _rules.loadout.size():
-				_aim.pick(on_slot)
+				_pick(on_slot)
 				return
 			_pressing = true
 			_aim.press(_bf.mouse_ground())
 		elif _pressing:
 			_pressing = false
 			_aim.release(_bf.mouse_ground())
+
+
+## Focus a slot by its key or its card. The focused one's own again lets it go (Targeting.pick), and that is the
+## player letting go, so it sounds as Esc and a right-click do. A cast lets go too, but quietly: the power is heard.
+func _pick(i: int) -> void:
+	if i == _aim.slot:
+		UiSound.play(&"ui_back")
+	_aim.pick(i)
 
 
 func _process(delta: float) -> void:

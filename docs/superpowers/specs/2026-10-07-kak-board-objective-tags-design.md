@@ -120,3 +120,7 @@ Phases:
   - the 12 behaviour checksums;
   - FLOW.
 - **The campaign Feast:** still wins 6/6.
+- **The mission bench (Last Judgement):** 137.0 fps against 137.8 at `fdea830`, over six alternating pairs.
+  - The tags draw on their own child layer behind the HUD (`Hud._tag_layer`).
+  - The layer redraws only when a tag or the camera changes (`Hud._tag_signature()`).
+  - Before this, the always-present Citadel tag redrew the whole HUD every frame: about 140 against 128 fps.

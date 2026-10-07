@@ -5,12 +5,12 @@ extends RefCounted
 ## The spec's table: [key, line].
 const SPEC := [
 	# The board missions' (board tags, spec §3).
-	["warning", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue), or outlast the omen."],
+	["warning", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["warning.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
-	["warning.bell", "The bell is called. Kill its ringer (gold) unseen before the bell tolls, or outlast the omen."],
-	["omen", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue), or outlast the omen."],
+	["warning.bell", "The bell is called. Kill its ringer (gold) unseen before the bell tolls."],
+	["omen", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["omen.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
-	["omen.bell", "The bell is called. Kill its ringer (gold) unseen before the bell tolls, or outlast the omen."],
+	["omen.bell", "The bell is called. Kill its ringer (gold) unseen before the bell tolls."],
 	["festival", "Break the festival: kill or scatter fifty of its crowd (gold) before the guard closes the square."],
 	["festival.packed", "The bonfire packs the crowd (gold) round the fountain: one strike there breaks many."],
 	["festival.address", "The Mayor (orange) speaks from the fountain. Kill him and the crowd round it panics."],

@@ -2,8 +2,8 @@ extends RefCounted
 ## v0.08 The Warning (WarningDirector): a star falls over the Main Gate at 0:02, the watchman stares at it for 4 s,
 ## then runs to the bellkeeper -- wherever the keeper is -- to tell them, and the bell is called; with the keeper dead
 ## he climbs the tower himself. Killing the messenger unseen wins, a seen death passes the warning to the witness, the
-## bell ringing loses, and the omen fading at 0:00 wins. Fright, Discord and Mind Whisper interrupt the errand until
-## the messenger is back on its feet.
+## bell ringing loses, and dawn with the warning alive loses too (v0.11 M1, spec §7.3: no waiting). Fright, Discord and
+## Mind Whisper interrupt the errand until the messenger is back on its feet.
 
 const DT := 0.05
 
@@ -208,7 +208,7 @@ static func _relay(t) -> void:
 	_done(s)
 
 
-## The bell rings: lost. The omen fades with the bell silent: won, credited to the Authorities that delayed it.
+## The bell rings: lost. Dawn with the warning alive: lost too (v0.11 M1, spec §7.3), its delays still reported.
 static func _endings(t) -> void:
 	var s := _setup()
 	var rules: Rules = s.rules
@@ -226,9 +226,10 @@ static func _endings(t) -> void:
 		"a cast at the messenger delays the warning; one 10 away does not (%s)" % [d.delayed_by])
 	rules.time_left = 0.01
 	_run(s, 0.1)
-	t.check(rules.finished and rules.won and rules.over_reason == "omen", "the omen fades: won (%s)" % rules.over_reason)
-	t.check(d.report().solved_by == PackedStringArray(["DOMINION"]), "solved by DOMINION (%s)" % [d.report()])
-	t.check(rules.result().get("solved_by") == PackedStringArray(["DOMINION"]), "and the results carry it")
+	t.check(rules.finished and not rules.won and rules.over_reason == "dawn",
+		"no waiting (v0.11 M1, spec §7.3): dawn with the warning alive loses (%s)" % rules.over_reason)
+	t.check(d.report().solved_by == PackedStringArray(["DOMINION"]), "the delays are still reported (%s)" % [d.report()])
+	t.check(ResultsScreen.solved_text(rules.result()) == ResultsScreen.NOBODY, "but a loss is solved by nobody")
 	_done(s)
 
 

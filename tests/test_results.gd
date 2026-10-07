@@ -13,6 +13,7 @@ static func run(t) -> void:
 		"The Warning's wins read THE WARNING DIES (%s, %s)" % [ResultsScreen.title_for(true, "warning"),
 		ResultsScreen.title_for(true, "omen")])
 	t.check(ResultsScreen.title_for(false, "bell") == "THE BELL TOLLS", "and its loss THE BELL TOLLS")
+	t.check(ResultsScreen.title_for(false, "dawn") == "DAWN COMES", "dawn with the warning alive reads DAWN COMES (v0.11 M1)")
 	t.check(ResultsScreen.solved_text({"won": true, "solved_by": PackedStringArray(["VEIL", "DISORDER"])}) == "VEIL, DISORDER"
 		and ResultsScreen.solved_text({"won": true, "solved_by": PackedStringArray()}) == ResultsScreen.NOBODY
 		and ResultsScreen.solved_text({"won": false, "solved_by": PackedStringArray(["VEIL"])}) == ResultsScreen.NOBODY,

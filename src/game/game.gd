@@ -820,8 +820,8 @@ func _flow_test() -> void:
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Missions from the pause menu opens the board")
 	step.call(not is_instance_valid(_pause) and not is_instance_valid(_mission), "and the pause menu and mission are gone")
 
-	# The Warning (v0.08): picked by its id, its default loadout manifested, won when the omen fades -- an unscored
-	# result -- and Missions goes back to the board.
+	# The Warning (v0.08): picked by its id, its default loadout manifested, won by stopping the warning (v0.11 M1, spec
+	# §7.3: the omen fading no longer wins) -- an unscored result -- and Missions goes back to the board.
 	var kit := MissionBook.warning().default_loadout
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -834,11 +834,11 @@ func _flow_test() -> void:
 		and _mission.rules().mission.id == MissionBook.WARNING,
 		"MANIFEST starts The Warning with its default loadout (%s)" % ",".join(loadout))
 	await _past_intro()
-	_mission.rules().time_left = 0.01
+	(_mission.rules().director as WarningDirector).warning_dead = true
 	var faded := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
-	step.call(faded and _screen_node is ResultsScreen and String(result.get("reason", "")) == "omen"
+	step.call(faded and _screen_node is ResultsScreen and String(result.get("reason", "")) == "warning"
 		and bool(result.get("won", false)) and not result.has("score"),
-		"the omen fading wins it, on unscored results (%s)" % result.get("reason", "?"))
+		"stopping the warning wins it, on unscored results (%s)" % result.get("reason", "?"))
 	on_action("results:missions")
 	await get_tree().process_frame
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission),
@@ -897,8 +897,8 @@ func _flow_night(step: Callable) -> void:
 		and _mission.act() != null and _mission.act().id == "omen" and _mission.night() != null,
 		"MANIFEST starts the night in Act I, The Omen (%s)" % ",".join(loadout))
 
-	# Act I wins on its clock, and the interlude after it is for that act.
-	_mission.rules().time_left = 0.01
+	# Act I wins by stopping the warning (v0.11 M1: its clock no longer wins), and the interlude after it is for that act.
+	(_mission.rules().director as WarningDirector).warning_dead = true
 	var inter := await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
 	var card: InterludeScreen = _screen_node as InterludeScreen
 	step.call(inter and card != null and card.choices.size() == 2 and bool(result.get("won", false))
@@ -1099,7 +1099,7 @@ func _night_to_redraft(path: String) -> void:
 	await get_tree().process_frame
 
 
-## The Lantern campaign through the screens (v0.10), from the title: Night 1 won on its clock, Night 2's three cards
+## The Lantern campaign through the screens (v0.10), from the title: Night 1 won by stopping the warning, Night 2's three cards
 ## and the Vigil Flame won with its flame home, Night 3's Festival lost on its clock (a bite, and the Theft ending),
 ## then the ending's two pages; a fresh campaign after it; nights left unfinished (review focus 2); the board after the
 ## campaign (review focus 5). Starts and ends on the title.
@@ -1139,14 +1139,14 @@ func _flow_campaign(step: Callable) -> void:
 	step.call(screen == Screen.CAMPAIGN and not is_instance_valid(_mission) and save.campaign.night == 0
 		and save.campaign.bites == 0, "Pause, Campaign leaves the night unplayed: no bite, the same night")
 
-	# Night 1 won on its clock.
+	# Night 1 won by stopping the warning (v0.11 M1, spec §7.3: dawn no longer wins it).
 	night = _screen_node as CampaignScreen
 	night.click(night.button_rect("draft").get_center())
 	(_screen_node as PrepareScreen).draft.preselect(PackedStringArray(["whisper", "wisp"]))
 	_on_prepare_action("manifest", _screen_node as PrepareScreen)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
-	_mission.rules().time_left = 0.01
+	(_mission.rules().director as WarningDirector).warning_dead = true
 	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
 	var res := _screen_node as ResultsScreen
 	# A quiet omen earns The Warning's Unseen bonus: +1 DP on top of the win's 2.

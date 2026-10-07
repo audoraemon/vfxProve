@@ -180,8 +180,8 @@ static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, 
 	rules.director = director
 	var hud := Hud.new().setup(rules, crowd, town, null)
 	var rows := hud.objective_rows()
-	t.check(rows == [["Stop the warning", ""], ["Omen fades 2:00", ""], ["Unseen", "ok"]],
-		"The Warning's panel: the warning, the omen's clock, and Unseen ticked (%s)" % [rows])
+	t.check(rows == [["Stop the warning", ""], ["Dawn 2:00", ""], ["Unseen", "ok"]],
+		"The Warning's panel: the warning, dawn's clock (v0.11 M1), and Unseen ticked (%s)" % [rows])
 	for i in AlarmManager.LOCAL_EVENTS:
 		crowd.alarms.incident(TownLayout.MARKET_SQUARE.get_center())
 	crowd.alarms.update(crowd.alarm, 0, 0.0)

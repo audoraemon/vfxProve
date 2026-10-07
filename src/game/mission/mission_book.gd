@@ -43,17 +43,18 @@ static func campaign_missions() -> Array[MissionDef]:
 
 
 ## The Warning (v0.08 M4): a star falls over the Main Gate and a watchman runs to wake the bell; kill whoever carries
-## the warning unseen, or hold it off until the omen fades (WarningDirector). v0.08.1 left Thornwall out of its pool: a
-## 3-unit wall is walked round in at most 1.5 s, once a mission -- a Last Judgement tool (gates, evacuees).
+## the warning unseen (WarningDirector). v0.08.1 left Thornwall out of its pool: a 3-unit wall is walked round in at most
+## 1.5 s, once a mission -- a Last Judgement tool (gates, evacuees). v0.11 M1 (no waiting, spec §7.3): holding the warning
+## off until the omen fades no longer wins; dawn with the warning alive loses, as any other dawn does.
 static func warning() -> MissionDef:
 	var m := MissionDef.new()
 	m.id = WARNING
 	m.name = "The Warning"
 	m.tier = 1
 	m.brief = PackedStringArray(["A star falls over the Main Gate.", "A watchman runs to wake the bell."])
-	m.goal = "Stop the warning before the bell tolls, or until the omen fades"
+	m.goal = "Stop the warning before the bell tolls"
 	m.goal_label = "Stop the warning"
-	m.lose = "The bell tolls before the omen fades"
+	m.lose = "The bell tolls, or dawn comes with the warning alive"
 	m.slots = 3
 	m.dp_capacity = 6
 	m.pool = PackedStringArray(["whisper", "doom", "wisp", "discord"])
@@ -66,7 +67,7 @@ static func warning() -> MissionDef:
 	m.director = WarningDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [WarningObjective.new(), BellSilentObjective.new(),
-			ClockObjective.new(true, "Omen fades", "omen")]
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	m.make_bonuses = func() -> Array[Objective]:
 		var out: Array[Objective] = [UnseenObjective.new()]

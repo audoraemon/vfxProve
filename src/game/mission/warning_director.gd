@@ -4,8 +4,8 @@ extends MissionDirector
 ## stares at it for STARE seconds, then runs (a DUTY, at the run) to the bellkeeper -- wherever the keeper is now,
 ## re-aimed every RETARGET -- to tell them. The keeper climbs and rings the bell, and the mission is lost. The player
 ## wins by killing whoever carries the warning (the messenger) with nobody living near enough to see it
-## (Crowd.DOOM_WITNESS), or by holding the warning off until the omen fades. A death that is seen passes the warning to
-## the nearest witness, who runs on with it. If the keeper is dead, the messenger climbs the tower in their place.
+## (Crowd.DOOM_WITNESS); dawn with the warning alive loses (v0.11 M1, spec §7.3: no waiting). A death that is seen
+## passes the warning to the nearest witness, who runs on with it. If the keeper is dead, the messenger climbs the tower in their place.
 ## The bell holds for the relay (BellNetwork.hold_on_death) rather than falling silent when its keeper dies.
 ##
 ## A frightened, confused (Discord) or whispered messenger drops the errand and picks it up again once back on its

@@ -39,7 +39,7 @@ static func run(t) -> void:
 	var w_reasons := []
 	for o in w.objectives():
 		w_reasons.append(o.reason)
-	t.check(w_reasons == ["warning", "bell", "omen"], "its objectives in order (%s)" % [w_reasons])
+	t.check(w_reasons == ["warning", "bell", "dawn"], "its objectives in order: no win at the clock's end (v0.11 M1) (%s)" % [w_reasons])
 	t.check(w.bonuses().size() == 1 and w.bonuses()[0].label == "Unseen", "one bonus, Unseen")
 	t.check(MissionBook.all()[0].id == MissionBook.WARNING and MissionBook.get_mission(MissionBook.WARNING).id == "warning",
 		"it is first in the book")

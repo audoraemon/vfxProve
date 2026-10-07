@@ -36,11 +36,13 @@ var campaign := false
 
 
 ## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
+## v0.11 M1: "dawn" is The Warning's loss at the clock's end (no waiting, spec §7.3) and a board night caught by dawn.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
 	"gaze": "THE LANTERN LOOKS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
 	"drained": "THE LANTERNS ARE DARK", "relit": "THE LANTERNS BURN ON", "flame": "THE FLAME IS STOLEN",
-	"kept": "THE FLAME IS KEPT", "wren": "THE BOY IS DEAD", "late": "DAWN FINDS THE FLAME"}
+	"kept": "THE FLAME IS KEPT", "wren": "THE BOY IS DEAD", "late": "DAWN FINDS THE FLAME",
+	"dawn": "DAWN COMES"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

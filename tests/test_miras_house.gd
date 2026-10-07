@@ -2,7 +2,7 @@ extends RefCounted
 ## v0.10 Mira's House (MirasHouseDirector): GRIEVING (12) grieving near her door, Halcyon's Faithful about the town; a
 ## grieving citizen whispered or lured to the door goes in, reads for READ_SECONDS (8 s) and comes out a Believer; a
 ## Faithful who sees someone go in turns them away and reports, one who sees a Believer come out reports; a report
-## delivered, a seen death or the bell fills the Gaze; BelieversObjective.NEED (4) Believers out at dawn win.
+## delivered, a seen death or the bell fills the Gaze; BelieversObjective.NEED (4) Believers out win at once (v0.11 M1, spec §7.3).
 
 const DT := 0.05
 
@@ -243,14 +243,19 @@ static func _ending(t) -> void:
 	var s := _setup()
 	var d: MirasHouseDirector = s.d
 	var rules: Rules = s.rules
-	for i in BelieversObjective.NEED:
+	for i in BelieversObjective.NEED - 1:
 		var g := d.grieving[i]
 		g.profile.faith = CitizenProfile.Faith.BELIEVER
 		d.believers.append(g)
-	d.journal = d.grieving[0]
-	rules.time_left = DT
 	_run(s, DT * 2.0)
-	t.check(rules.finished and rules.won and rules.over_reason == "believers", "enough Believers out at dawn win the night")
+	t.check(not rules.finished, "three Believers out: the night goes on")
+	var fourth := d.grieving[BelieversObjective.NEED - 1]
+	fourth.profile.faith = CitizenProfile.Faith.BELIEVER
+	d.believers.append(fourth)
+	d.journal = d.grieving[0]
+	_run(s, DT * 2.0)
+	t.check(rules.finished and rules.won and rules.over_reason == "believers" and rules.time_left > 100.0,
+		"no waiting (v0.11 M1, spec §7.3): the fourth Believer out wins at once (%.1f s before dawn)" % rules.time_left)
 	var res := rules.result()
 	t.check(int(res.get("believers", -1)) == BelieversObjective.NEED, "the results count them")
 	var earned := []
@@ -474,6 +479,7 @@ static func _tags(t) -> void:
 	t.check(hud.hint_text() == MissionHints.line(MissionBook.MIRAS_HOUSE, "four") and hud.hint_top() > Hud.ROW_H,
 		"the HUD shows the phase's line, under the objective rows")
 	hud.free()
+	d.believers.clear()  # (v0.11 M1: four out would win the night at once, so the search is looked at without them)
 	_run(s, MirasHouseDirector.VENN_AT + DT)
 	t.check(d.venn_searching and _tag(d, "INQUISITOR") != null and _tag(d, "INQUISITOR").edge,
 		"searching, the Inquisitor is pointed at from the edge")

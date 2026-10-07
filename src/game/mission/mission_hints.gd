@@ -5,9 +5,9 @@ extends RefCounted
 ## logic, as CampaignText is, so a writing change never touches it. The colours named are the map tags' (spec §4).
 
 ## The Warning's lines, which its act in The Long Night shares (board tags: the colours are its tags').
-const WARNING_LINE := "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue), or outlast the omen."
+const WARNING_LINE := "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."
 const WARNING_RELAY := "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."
-const WARNING_BELL := "The bell is called. Kill its ringer (gold) unseen before the bell tolls, or outlast the omen."
+const WARNING_BELL := "The bell is called. Kill its ringer (gold) unseen before the bell tolls."
 ## Last Judgement's lines for the rite and the fallen Citadel, which Judgement (its act in The Long Night) shares.
 const RITE_LINE := "The clergy gather for the Banishing Rite (red). Break it, or it cuts your time short."
 ## Lines by the played mission's or act's id, and by "<id>.<phase>" for a phase's own. The Feast plays The Long Night's

@@ -30,6 +30,11 @@ const RETARGET_MOVE := 0.3
 const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
 ## Minds a relay leaves alone: the god's own hold on the witness wears off first.
 const HELD := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
+## The map tags' colours (board tags, spec §2): the warning's carrier gold, the bellkeeper steel blue, the tower and
+## anyone near enough to see the carrier die red.
+const MARK_MESSENGER := Color("d8b23a")
+const MARK_KEEPER := Color("8fb8e8")
+const MARK_WATCHED := Color("c8342a")
 
 var phase := Phase.OMEN
 var watchman: Person
@@ -224,8 +229,65 @@ static func _alive(p: Variant) -> bool:
 	return is_instance_valid(p) and (p as Person).is_alive()
 
 
-func marker() -> Vector2:
-	return messenger.ground_pos if _alive(messenger) and not warning_dead else Vector2.INF
+## The map tags (board tags, spec §2), most important first:
+## - whoever carries the warning, pointed at from the edge: WATCHMAN before he runs, BELLKEEPER once the keeper has it,
+##   else MESSENGER (in place of v0.08's marker);
+## - the bellkeeper while someone else carries it, pointed at while the messenger runs to him;
+## - the bell tower, while it stands;
+## - from the run on, a red diamond on each person near enough to see the carrier die (Crowd.nearest_witness()'s rule).
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if phase == Phase.OVER or warning_dead or not _alive(messenger):
+		return out
+	var bell := crowd.bell
+	var keeper: Person = bell.keeper if bell != null and _alive(bell.keeper) else null
+	var label := "MESSENGER"
+	if messenger == keeper:
+		label = "BELLKEEPER"
+	elif phase == Phase.OMEN or phase == Phase.STARE:
+		label = "WATCHMAN"
+	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
+	if keeper != null and keeper != messenger and not keeper.inside:
+		out.append(MapTag.person(keeper.ground_pos, MARK_KEEPER, "BELLKEEPER", phase == Phase.RUN))
+	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed:
+		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
+	if phase == Phase.RUN or phase == Phase.DELIVERED:
+		for p in witnesses():
+			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+	return out
+
+
+## Everyone who would see the messenger die where they stand: living, out of doors, within Crowd.DOOM_WITNESS (the rule
+## Crowd.nearest_witness() judges by). Only reads.
+func witnesses() -> Array[Person]:
+	var out: Array[Person] = []
+	if not _alive(messenger):
+		return out
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside \
+					and p.ground_pos.distance_to(messenger.ground_pos) <= Crowd.DOOM_WITNESS:
+				out.append(p)
+	return out
+
+
+## The hint's phase (board tags, spec §3): "bell" once the warning has reached the bell, "relay" while a witness carries
+## it on, else "".
+func hint_phase() -> String:
+	if phase == Phase.DELIVERED:
+		return "bell"
+	return "relay" if phase == Phase.RUN and relays > 0 else ""
+
+
+## The tour (board tags, spec §4): the watchman at the gate, then the bellkeeper.
+func tour() -> Array:
+	var out := []
+	if _alive(watchman):
+		out.append([watchman.ground_pos, "The watchman. When the star falls, he runs to warn the town."])
+	var bell := crowd.bell
+	if bell != null and _alive(bell.keeper):
+		out.append([bell.keeper.ground_pos, "The bellkeeper. Once warned, he rings the bell, and you lose."])
+	return out
 
 
 ## "Solved by": a kill's Authority, else -- the omen faded -- the Authorities that delayed the warning (v0.08; shown,

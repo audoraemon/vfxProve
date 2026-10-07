@@ -8,7 +8,8 @@ static func run(t) -> void:
 	t.check(lj != null and lj.id == "last_judgement" and lj.tier == 5 and lj.scored, "Last Judgement is a scored Tier 5")
 	t.near(lj.clock, Rules.MISSION_SECONDS, 0.001, "on today's clock")
 	t.check(lj.powers() == PowerBook.keys(), "every power is in its pool")
-	t.check(lj.chooses_difficulty() and lj.director == null, "the player picks its difficulty, and it has no director")
+	t.check(lj.chooses_difficulty() and lj.director == LastJudgementDirector,
+		"the player picks its difficulty, and its director only tags (board tags)")
 	t.check(lj.response_profile(ResponseProfile.Tier.PREPARED).tier == ResponseProfile.Tier.PREPARED,
 		"its town is the chosen tier")
 	var reasons := []

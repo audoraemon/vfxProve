@@ -461,8 +461,8 @@ static func _tags(t) -> void:
 	d.believers.append(g)
 	d.shouter = g
 	var cry := _tag(d, "CRYING OUT")
-	t.check(cry != null and cry.at == g.ground_pos and cry.edge and d.marker() == Vector2.INF,
-		"the crying Believer is tagged and pointed at (the director keeps no marker of its own)")
+	t.check(cry != null and cry.at == g.ground_pos and cry.edge,
+		"the crying Believer is tagged and pointed at")
 	(s.crowd as Crowd)._field.kill(g, &"fire")
 	t.check(_tag(d, "CRYING OUT") == null, "dead, they are not tagged (review focus 2)")
 	t.check(d.hint_phase() == "", "fewer than four believe: the mission's own line")

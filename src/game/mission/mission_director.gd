@@ -1,8 +1,8 @@
 class_name MissionDirector
 extends RefCounted
 ## A mission's own actors and setup (v0.08): Rules steps it every frame of the mission, just before the objectives are
-## checked, so it pauses and freezes with the mission. Last Judgement has none; The Warning's runs the omen, the
-## watchman and the relay (WarningDirector).
+## checked, so it pauses and freezes with the mission. The Warning's runs the omen, the watchman and the relay
+## (WarningDirector); Last Judgement's only points out the Citadel and the town's ways out (LastJudgementDirector).
 
 var rules: Rules
 var crowd: Crowd
@@ -43,11 +43,6 @@ func _begin() -> void:
 ## Virtual: one step of the mission.
 func step(_delta: float) -> void:
 	pass
-
-
-## The ground point the HUD marks (The Warning's messenger), or Vector2.INF for none.
-func marker() -> Vector2:
-	return Vector2.INF
 
 
 ## What the HUD points out on the map (v0.10 M6, spec §2.2): MapTags, the most important first -- a label that would

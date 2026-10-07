@@ -70,6 +70,14 @@ static func _clear_round(s: Dictionary, at: Vector2, reach: float, keep: Array) 
 					else at + Vector2(reach + 6.0, 0.0)
 
 
+## The director's tag labelled `label` (board tags), or null.
+static func _tag(d: MissionDirector, label: String) -> MapTag:
+	for m in d.tags():
+		if m.label == label:
+			return m
+	return null
+
+
 static func run(t) -> void:
 	_route(t)
 	_keeper_dead(t)
@@ -94,7 +102,8 @@ static func _route(t) -> void:
 	t.check(w != null and w.ground_pos.distance_to(WarningDirector.GATE_SPOT) <= 1.5,
 		"he stands at the Main Gate (%.2f from it)" % w.ground_pos.distance_to(WarningDirector.GATE_SPOT))
 	t.check(w != keeper and keeper != null and crowd.bell.hold_on_death, "he is not the bellkeeper, and the bell holds")
-	t.check(d.marker() == w.ground_pos, "the marker is on him")
+	t.check(_tag(d, "WATCHMAN") != null and _tag(d, "WATCHMAN").at == w.ground_pos and _tag(d, "WATCHMAN").edge,
+		"he is tagged, and pointed at (board tags)")
 
 	_run(s, 1.9)
 	t.check(banners.is_empty() and d.phase == WarningDirector.Phase.OMEN, "nothing before 0:02 (%s)" % [banners])
@@ -120,7 +129,8 @@ static func _route(t) -> void:
 	_run(s, 0.6)
 	t.check(crowd.bell.state == BellNetwork.State.CALLED and keeper.mind == Person.Mind.DUTY,
 		"told, the keeper is called to the tower (%s)" % BellNetwork.State.keys()[crowd.bell.state])
-	t.check(d.messenger == keeper and d.phase == WarningDirector.Phase.DELIVERED and d.marker() == keeper.ground_pos,
+	t.check(d.messenger == keeper and d.phase == WarningDirector.Phase.DELIVERED and _tag(d, "BELLKEEPER") != null
+		and _tag(d, "BELLKEEPER").at == keeper.ground_pos and _tag(d, "BELLKEEPER").edge and _tag(d, "MESSENGER") == null,
 		"and carries the warning now")
 	t.check(w.mind == Person.Mind.RECOVER or w.mind == Person.Mind.REGROUP, "the watchman is off duty (%s)" %
 		Person.Mind.keys()[w.mind])
@@ -167,7 +177,7 @@ static func _unseen_kill(t) -> void:
 	t.check(rules.finished and rules.won and rules.over_reason == "warning", "and the mission is won (%s)" % rules.over_reason)
 	t.check(d.killed_by == "" and (d.report().solved_by as PackedStringArray).is_empty(),
 		"no cast in a test: nothing is credited (%s)" % [d.report()])
-	t.check(d.marker() == Vector2.INF, "and the marker is gone")
+	t.check(d.tags().is_empty() and d.hint_phase() == "", "and nothing is tagged")
 	_done(s)
 
 

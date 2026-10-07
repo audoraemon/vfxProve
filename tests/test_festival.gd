@@ -364,8 +364,11 @@ static func _hint_clears_events(t) -> void:
 	t.check(labels.has("The guard closes the square"), "by 95 s the events plate shows the guard's close (%s)" % [rows])
 	var events := hud.events_rect(w)
 	var plate := hud.hint_rect()
-	t.check(events.size != Vector2.ZERO and hud.hint_top() >= events.end.y + 4.0 and not plate.intersects(events),
-		"the hint plate starts 4 px below the events plate and the two do not meet (hint %s, events %s)" % [plate, events])
+	# Board tags: in the Mayor's address the hint is his line, which may be narrow enough to stay beside the plate.
+	var beside := plate.end.x <= events.position.x
+	t.check(events.size != Vector2.ZERO and (beside or hud.hint_top() >= events.end.y + 4.0) and not plate.intersects(events),
+		"the hint plate stays beside the events plate or starts 4 px below it, and the two do not meet (hint %s, events %s)"
+		% [plate, events])
 	hud.free()
 	_done(s)
 

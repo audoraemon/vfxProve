@@ -3,9 +3,8 @@ extends Control
 ## The in-mission HUD (spec §5): the clock above, the objectives to the left, the city's state to the right,
 ## banners across the middle, Cael's lines (v0.10 M5, spec §5.2: what a Night 2 director has him say) on a plate of their
 ## own under them, and the slots below (v0.08: no Divine Power bar -- none is spent in a mission). A mission
-## without a score (v0.08: The Warning) lists its objectives top left, and its director's marked person -- the
-## messenger -- wears a gold marker, or an arrow at the screen's edge points to him. It reads Rules, Crowd and
-## the Citadel and changes nothing; it redraws only when what it shows has changed. v0.10 M6 adds the objective's
+## without a score (v0.08: The Warning) lists its objectives top left. It reads Rules, Crowd and the Citadel and
+## changes nothing; it redraws only when what it shows has changed. v0.10 M6 adds the objective's
 ## clarity: the director's tags (a labelled diamond over each person or place worth finding, or an arrow at the screen's
 ## edge, kept to a frame; drawn first, under the HUD's own panels), the how-to-win plate under the objectives, and the
 ## intro tour's caption above the slots.
@@ -50,7 +49,7 @@ const GAZE_BAR := Vector2(120.0, 4.0)
 const GAZE_TOP := 30.0
 ## A tag's diamond (v0.10's marks; M6's tags, MapTag): its half size unless the tag sets its own, and its dark edge (M5
 ## doubled it and gave it an edge, so it reads on the cobbles). Tags are drawn first, under the rest of the HUD, and their
-## edge arrows right after them, also under the HUD's panels; The Warning's marker draws last, over the slots.
+## edge arrows right after them, also under the HUD's panels.
 const MARK_R := 4.0
 const MARK_EDGE := Color(0.04, 0.04, 0.06, 0.9)
 ## A tag's label (v0.10 M6) stands this far above its diamond; an edge arrow's label starts this far in from its tip, past
@@ -61,9 +60,7 @@ const ARROW_REACH := 17.0
 const SCREEN_H := 360.0
 ## A mission without a score (v0.08: The Warning) lists its objectives top left instead, one row this tall each.
 const ROW_H := 13.0
-## The messenger's marker (v0.08): a gold chevron this far above his feet while he is on screen, else an arrow at the
-## screen's edge, this far in, pointing at him.
-const MARKER_LIFT := 26.0
+## How far in from the screen's sides the tags' arrows keep.
 const EDGE_MARGIN := 10.0
 ## The tags' arrows keep to a frame (v0.10 M6): EDGE_MARGIN in from the screen's sides, below the clock, the Gaze bar and the
 ## events plate (TAG_TOP, clear of a two-row plate, which ends at 71, and of an up arrow's disc, 5 px above its tip) and just
@@ -135,11 +132,11 @@ func advance(delta: float) -> void:
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
-	# Banners and Cael's lines fade, a refused slot burns red, the last half minute pulses and a marker follows its
-	# messenger (v0.08): while any of those is on screen the HUD is an animation and redraws every frame. The rest of the
-	# time it is a still picture.
+	# Banners and Cael's lines fade, a refused slot burns red, the last half minute pulses and the tags follow their people
+	# and the camera (v0.10 M6): while any of those is on screen the HUD is an animation and redraws every frame. The rest
+	# of the time it is a still picture.
 	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT \
-			or marker_shown() or tags_shown(_rules):
+			or tags_shown(_rules):
 		_drawn = ""
 		queue_redraw()
 		return
@@ -263,11 +260,6 @@ func escape_limit() -> int:
 		if o is EscapeLimitObjective:
 			return (o as EscapeLimitObjective).limit
 	return Rules.ESCAPE_LIMIT
-
-
-## The mission's director marks someone (v0.08: The Warning's messenger).
-func marker_shown() -> bool:
-	return _rules.director != null and _rules.director.marker() != Vector2.INF
 
 
 ## The director tags something (v0.10 M6): the tags follow people and the camera, so the HUD redraws every frame.
@@ -410,26 +402,6 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> A
 				e.show = true
 		out.append(e)
 	return out
-
-
-## Where the marked person's feet are on the screen, or Vector2.INF with nobody marked. The world point goes through
-## the camera's canvas transform (none before the HUD is in a tree: headless tests).
-func marker_screen() -> Vector2:
-	if not marker_shown():
-		return Vector2.INF
-	var world := Iso.ground_to_screen(_rules.director.marker())
-	return (get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY) * world
-
-
-## Where the edge arrow for an off-screen `point` sits: on the line from the screen's centre to it, EDGE_MARGIN inside
-## the frame.
-func edge_arrow(point: Vector2) -> Vector2:
-	return edge_point(point, _view())
-
-
-## edge_arrow() for a screen `view` wide and tall (v0.10 M6: static, on the whole screen, EDGE_MARGIN in).
-static func edge_point(point: Vector2, view: Vector2) -> Vector2:
-	return frame_point(point, Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN))
 
 
 ## Where the arrow for a point outside `frame` sits (v0.10 M6): on the line from the frame's centre to it, on the frame's edge.
@@ -594,8 +566,8 @@ func _signature() -> String:
 
 func _draw() -> void:
 	# The tags on the map (v0.10; M6) and their edge arrows are drawn first, so they sit under every other HUD element --
-	# the clock, the bars, the events, the objectives, the status, the banners, Cael's plate, the slots and the marker --
-	# and never hide one.
+	# the clock, the bars, the events, the objectives, the status, the banners, Cael's plate and the slots -- and never
+	# hide one.
 	_draw_tags()
 	_draw_tag_arrows()
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
@@ -614,8 +586,6 @@ func _draw() -> void:
 	_draw_subtitle(w)
 	_draw_caption(w)
 	_draw_slots(w)
-	# Last, over the slots and banners: an arrow for someone below the screen lands on the slot row.
-	_draw_marker()
 
 
 func _draw_clock(w: float) -> void:
@@ -737,24 +707,7 @@ func _draw_hint() -> void:
 		y += UiTheme.LINE_SMALL
 
 
-## The messenger's marker (v0.08): a gold chevron over him while he is on screen, else an arrow at the screen's edge
-## pointing his way.
-func _draw_marker() -> void:
-	var feet := marker_screen()
-	if feet == Vector2.INF:
-		return
-	var view := _view()
-	var tip := feet - Vector2(0.0, MARKER_LIFT)
-	if Rect2(Vector2.ZERO, view).grow(-EDGE_MARGIN).has_point(tip):
-		var down := PackedVector2Array([tip + Vector2(-5.0, -7.0), tip + Vector2(5.0, -7.0), tip])
-		draw_colored_polygon(down, UiTheme.COL_GOLD)
-		down.append(down[0])
-		draw_polyline(down, MARK_EDGE, -1.0)
-		return
-	_draw_arrow(edge_arrow(tip), (tip - view * 0.5).normalized(), UiTheme.COL_GOLD, UiTheme.COL_GOLD_DARK)
-
-
-## An arrow at the screen's edge (v0.08's marker; v0.10 M6's tags): `col` on a dark disc ringed in `ring`, its tip at
+## An arrow at the screen's edge (v0.10 M6's tags): `col` on a dark disc ringed in `ring`, its tip at
 ## `at`, pointing along `dir`. On a dark disc, so it stands out from the town's warm roofs and stalls.
 func _draw_arrow(at: Vector2, dir: Vector2, col: Color, ring: Color) -> void:
 	var side := Vector2(-dir.y, dir.x)

@@ -91,6 +91,8 @@ static func last_judgement() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [CitadelObjective.new(), EscapeLimitObjective.new(), ClockObjective.new()]
 		return out
+	# It runs no actors: it only tags the Citadel and the ways out (board tags).
+	m.director = LastJudgementDirector
 	return m
 
 

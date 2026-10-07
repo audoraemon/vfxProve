@@ -38,6 +38,10 @@ const ADDRESS_OFFSET := Vector2(0.9, 0.9)
 ## whole feast), and its banner.
 const MAYOR_PANIC_R := 8.0
 const MAYOR_BANNER := "THE MAYOR FALLS - PANIC AT THE FOUNTAIN"
+## The map tags' colours (board tags, spec §2): the feast and its goers gold, the Mayor orange.
+const MARK_FEAST := Color("d8b23a")
+const MARK_GOER := Color(0.85, 0.75, 0.45, 0.8)
+const MARK_MAYOR := Color("ff9a3a")
 
 var goers: Array[Person] = []
 var mayor: Person
@@ -254,6 +258,47 @@ func broke_list() -> Array[Person]:
 
 func carry(n: NightState) -> void:
 	n.festival_broke = broke_list()
+
+
+## The act's clock (seconds from its start), 0 once the director has let go.
+func _elapsed() -> float:
+	return timeline.elapsed() if timeline != null else 0.0
+
+
+## The map tags (board tags, spec §2), most important first:
+## - the Mayor, pointed at from the edge while he speaks;
+## - the feast at the fountain, pointed at from the edge, until it is broken;
+## - a gold diamond on each goer still to break (out, alive, neither broken nor gone).
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if WarningDirector._alive(mayor) and not mayor.inside:
+		out.append(MapTag.person(mayor.ground_pos, MARK_MAYOR, "MAYOR", hint_phase() == "address"))
+	if broken():
+		return out
+	var rise := town.fountain.height if town != null and is_instance_valid(town.fountain) else 0.0
+	out.append(MapTag.place(TownLayout.FOUNTAIN.get_center(), MARK_FEAST, "THE FEAST", rise))
+	for p in goers:
+		if WarningDirector._alive(p) and not p.inside and not _broke.has(p) and not _left.has(p):
+			out.append(MapTag.pip(p.ground_pos, MARK_GOER))
+	return out
+
+
+## The hint's phase (board tags, spec §3): "address" while the Mayor speaks, else "packed" once the bonfire is lit,
+## else "".
+func hint_phase() -> String:
+	var t := _elapsed()
+	if t >= ADDRESS_AT and t < ADDRESS_AT + ADDRESS_SECONDS and WarningDirector._alive(mayor):
+		return "address"
+	return "packed" if t >= BONFIRE_AT else ""
+
+
+## The tour (board tags, spec §4): the fountain, then the Mayor.
+func tour() -> Array:
+	var out := []
+	out.append([TownLayout.FOUNTAIN.get_center(), "The Feast of Lanterns. Break fifty of its crowd."])
+	if WarningDirector._alive(mayor):
+		out.append([mayor.ground_pos, "The Mayor. Mid-feast he speaks from the fountain."])
+	return out
 
 
 func report() -> Dictionary:

@@ -188,23 +188,14 @@ static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, 
 	t.check(hud.objective_rows()[2] == ["Unseen", "x"], "and Unseen crossed after Local Emergency (%s)" % [hud.objective_rows()])
 	crowd.alarms.reset()
 
-	# Out of a tree there is no camera: the marker is the messenger's feet in world pixels.
-	t.check(director.messenger != null and hud.marker_shown()
-		and hud.marker_screen() == Iso.ground_to_screen(director.messenger.ground_pos),
-		"the marker sits on the messenger (%s)" % hud.marker_screen())
+	# Board tags: the messenger is a tag, pointed at from the edge (in place of v0.08's marker), and the HUD follows it.
+	var first: MapTag = director.tags()[0] if not director.tags().is_empty() else null
+	t.check(director.messenger != null and Hud.tags_shown(rules) and first != null and first.edge
+		and first.at == director.messenger.ground_pos, "the messenger is tagged first, and pointed at")
 	var messenger := director.messenger
 	director.messenger = null
-	t.check(not hud.marker_shown() and hud.marker_screen() == Vector2.INF, "and is gone with no messenger")
+	t.check(not Hud.tags_shown(rules), "and nothing is tagged with no messenger")
 	director.messenger = messenger
-	var inside := Rect2(Vector2.ONE * Hud.EDGE_MARGIN, Vector2(Hud.SCREEN_W, Hud.SCREEN_H) - Vector2.ONE * Hud.EDGE_MARGIN * 2.0)
-	var bad := ""
-	for far: Vector2 in [Vector2(5000.0, -3000.0), Vector2(-900.0, 180.0), Vector2(320.0, 2000.0), Vector2(-40.0, -40.0)]:
-		var at := hud.edge_arrow(far)
-		var on_edge := is_equal_approx(at.x, inside.position.x) or is_equal_approx(at.x, inside.end.x) \
-			or is_equal_approx(at.y, inside.position.y) or is_equal_approx(at.y, inside.end.y)
-		if not inside.grow(0.01).has_point(at) or not on_edge:
-			bad += " %s->%s" % [far, at]
-	t.check(bad == "", "an off-screen messenger's arrow sits on the frame, %d px in (bad:%s)" % [int(Hud.EDGE_MARGIN), bad])
 
 	# The event strip (v0.09): the next two timed events and their clocks; nothing with no timeline.
 	t.check(director.timeline == null and hud.event_rows() == [], "a mission with no timeline has no event strip (%s)" % [hud.event_rows()])

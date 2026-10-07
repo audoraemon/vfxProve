@@ -40,6 +40,12 @@ const SHIP_AT := 120.0
 const TIDE_AT := 150.0
 const STEPS_LEG := 1
 const DOCK_LEG := 3
+## The map tags' colours (board tags, spec §2): the Prince gold, the cathedral steps orange, his escort steel blue, and
+## the ship and anyone near enough to see him die red.
+const MARK_PRINCE := Color("d8b23a")
+const MARK_STEPS := Color("ff9a3a")
+const MARK_ESCORT := Color("8fb8e8")
+const MARK_WATCHED := Color("c8342a")
 
 var prince: Person
 var attendants: Array[Person] = []
@@ -287,6 +293,70 @@ func _judge() -> void:
 ## He was killed.
 func fallen() -> bool:
 	return _dead
+
+
+## Still on his way: alive, and not yet gone.
+func under_way() -> bool:
+	return WarningDirector._alive(prince) and not boarded
+
+
+## Everyone who would see the Prince die where they stand: living, out of doors, within Crowd.DOOM_WITNESS (the rule
+## Crowd.nearest_witness() judges by). Only reads.
+func witnesses() -> Array[Person]:
+	var out: Array[Person] = []
+	if not WarningDirector._alive(prince):
+		return out
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if is_instance_valid(p) and p != prince and p.is_alive() and not p.inside \
+					and p.ground_pos.distance_to(prince.ground_pos) <= Crowd.DOOM_WITNESS:
+				out.append(p)
+	return out
+
+
+## The map tags (board tags, spec §2), most important first, while he is on his way:
+## - the Prince, pointed at from the edge;
+## - the ship at the boarding point;
+## - the cathedral steps, until he has left them;
+## - a red diamond on each person near enough to see him die, and a blue one on each escort further off.
+func tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if not under_way() or route.is_empty():
+		return out
+	out.append(MapTag.person(prince.ground_pos, MARK_PRINCE, "PRINCE", true))
+	out.append(MapTag.place(route[route.size() - 1], MARK_WATCHED, "THE SHIP", 0.0, false))
+	if leg <= STEPS_LEG:
+		out.append(MapTag.place(route[STEPS_LEG], MARK_STEPS, "CATHEDRAL STEPS", 0.0, false))
+	var seeing := witnesses()
+	for p in seeing:
+		out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+	for s in escorts:
+		if WarningDirector._alive(s) and not s.inside and not seeing.has(s):
+			out.append(MapTag.person(s.ground_pos, MARK_ESCORT))
+	return out
+
+
+## The hint's phase (board tags, spec §3): "blessing" while he holds at the steps for it (there, in its window), "dock"
+## once he is on the dock's leg, else "".
+func hint_phase() -> String:
+	if not under_way() or timeline == null:
+		return ""
+	if leg >= DOCK_LEG:
+		return "dock"
+	var t := timeline.elapsed()
+	var at_steps := leg == STEPS_LEG and prince.ground_pos.distance_to(route[STEPS_LEG]) <= ARRIVE * 2.0
+	return "blessing" if at_steps and t >= BLESSING_AT and t < BLESSING_AT + BLESSING_SECONDS else ""
+
+
+## The tour (board tags, spec §4): the Prince, the cathedral steps, the dock.
+func tour() -> Array:
+	var out := []
+	if under_way():
+		out.append([prince.ground_pos, "The Prince leaves the Citadel for his ship."])
+	if route.size() > DOCK_LEG:
+		out.append([route[STEPS_LEG], "The cathedral steps. He stops here to be blessed."])
+		out.append([route[route.size() - 1], "The dock. Once his ship is in, he boards."])
+	return out
 
 
 ## How the Prince's night ended, for the night's carry-over: "unseen" or "seen" for a death, else "escaped" (boarded, or

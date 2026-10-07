@@ -41,3 +41,7 @@ idle_time={
 "type": "float",
 "value": 0.0
 }
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_sfxr/plugin.cfg")

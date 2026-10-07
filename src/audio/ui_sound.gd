@@ -1,6 +1,7 @@
 class_name UiSound
 extends Node
-## Interface sounds (spec §8: synthesized like the effect audio). They are not in the world, so they are not
+## Interface sounds (spec §8: synthesized like the effect audio; nine of them are made with GodotSfxr, see
+## tools/audio/sfxr_bake.gd). They are not in the world, so they are not
 ## positional, and they cannot hang off a battlefield -- the title, the draft and the results have none. One
 ## small pool of players under the scene tree's root, made the first time a sound plays and kept across every
 ## screen change, so a sting started on one screen finishes on the next.

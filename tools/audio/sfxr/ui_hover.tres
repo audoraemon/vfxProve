@@ -1,0 +1,32 @@
+[gd_resource type="AudioStreamWAV" format=4]
+
+[ext_resource type="Script" path="res://addons/godot_sfxr/SfxrAudioStream.gd" id="1_sfxr"]
+
+[resource]
+data = PackedByteArray("AQIEBggKDA0ODg8QERITFBUWFg355NTKx8fJzM3Ozc3LysnIyMrjCi9IVFdiWVJMSUhHRkZFREM5D9qwlo2Plp+mq66vsLGys7S1x/YpUGVrZ2BXUU1KSUhIR0ZFQyn2xqSTkJWepqywsrOztLW2t7zeEkBdampkXFRPTEpJSUhHRkU7Et+1nJOVnKSrsLO0tbW2t7i6y/grUGVrZ2BYUU1KSUlISEdFQyr4yaiYlZqiqa+ztba3t7i5ur/gEz9caGljW1NOS0lISEdHRkQ7E+C4n5eYn6eus7W3uLi5uru8zfkqT2NpZV5WUExJSEdHRkVEQin5y6ubmJ2krLK1t7i5ubq7vMHhEz5aZmdhWVJMSUhHRkZFREM5E+G6opmboqqwtbi5ubq7u72+zvkqTWFmY1xUTkpHRkZFRURDQCj5zK2dm5+nrrS3ubq7u7y9vsPiEzxYZGReV1BLSEZFRURDQkE4EuK8pZyepKyyt7m7u7y8vb7Az/opS15kYFlSTEhGRUREQ0JBPyf5zq+gnaKpsLa5u7y8vb6/wMTjEjtVYWJcVE5JRkRDQ0JCQUA3EuO9p5+gp660ubu9vb6+v8DB0fonSVxhXldQSkZEQ0JCQUA/PSb6z7GjoKSrsri7vb6+v7/AwcbkEjlTXl9ZUkxHREJCQUFAPz41EeS/qaGjqbC2u72+v7/AwcLD0vomR1leW1VOSERCQUFAPz8+OyX60LOloqeutbq9v8DAwcHCw8flEThRXFxXUElFQkFAPz8+PTw0EeTBrKSmrLO5vcDBwcLCw8TF1PolRFVaV1FKRUE/Pj09PDw7OCP607eqp6yyub7BwsPExMXGx8vmEDRMVlZRS0VAPjw8Ozs6OTgwEObGsqussri+wsTFxsbHx8jJ1/siP09UUUtFQDw7Ojk5ODc2NSH61r2wrrK4vsLFx8jIyMnKy8/oDzFGUFBMRUA8OTg3NzY2NTQtD+jKuLGyt77DxsjJysrLzMzN2vsgO0pOS0ZAOzg2NTU0NDMyMR772cK2tLi9w8fKy8zMzc3Oz9PqDi1BSkpGQDs3NTMzMjIxMTApDerOvbe4vcPIy83Ozs/P0NHS3fsdNkRHRUA7NjMyMTEwMC8uLRz73Me8ur7DyMzO0NDR0dLS09bsDSk7Q0RAOzYyMC8vLi4tLSwmDOzSw72/w8jMz9HS09PT1NXW4PwbMT5BPzo1MS8tLSwsKysqKRr84MzCwcTIzdDT1NXV1dbW19ruDCU2PT06NTEuLCsqKiopKCgiC+7XycTFyc3R1NbW19fY2Nna4/wYLTg7OTUwLSopKCgoJycmJRf849HIx8rO0tXX2NnZ2trb297vCiIxNzc0MCwpJyYmJiUlJCQfCvDbz8rLztPW2drb29zc3N3e5vwWKDI1My8rKCYlJCQjIyIiIRX85tbOzc/T19rc3d3e3t7f3+LxCR4rMTEuKickIyIiISEhICAbCfHf1NDR1Njb3d/f4ODg4eHi6f0TIywuLSkmIyEgIB8fHx4eHRL96dvV09XZ3N/g4eLi4uLj4+XzCBomKysoJSIgHh4dHR0cHBsYCPPj2tfX2t3g4uPk5OTk5eXm7P0RHiYoJyQhHh0cGxsbGxoaGRD97ODb2tve4ePl5ebm5ufn6On1BxYgJCUiIB0bGhkZGRkYGBcUB/Xo4N3d4OLl5ufo6Ojp6enq7/4OGiAiIR4cGhgXFxcXFhYWFQ3+7+bh4OHk5ujp6urq6+vr7O33BhMbHh4cGhgWFRUVFBQUFBMRBvfs5ePk5ujq6+zs7O3t7e3u8v4LFRobGhgWFRQTExISEhIREQv+8+vn5ufp6+3u7u7v7+/v8PH4BQ8VGBgXFRMSEREQEBAQEA8NBPnw6+nq6+3v8PDx8fHx8fLy9f4JEBQVFBMREA8PDg4ODg4NDQj+9vDt7O3v8PHy8/Pz8/P09PX6BAsQEhIRDw4NDQwMDAwMCwsKA/v18fDw8fLz9PX19fX19fb2+P8GCw4PDg0MCwsKCgoKCgkJCQb/+fXz8/P09fb39/f39/j4+Pj8AwcKDAwLCgkICAgICAgHBwcGAv359/b29/j4+fn5+fn6+vr6+/8EBwgJCAgHBgYGBgYFBQUFBQP//Pr5+fn6+/v7+/v8/Pz8/Pz+AQQFBQUFBQQEBAQDAwMDAwMDAf79/Pz8/f39/f3+/v7+/v7+/v8BAgICAgICAgEBAQEBAQEBAQH///////8B")
+script = ExtResource("1_sfxr")
+wave/type = 0
+sample_params/sound_vol = 0.43
+sample_params/sample_rate = 44100.0
+envelope/attack_time = 0.021
+envelope/sustain_time = 0.072746
+envelope/punch_time = 0.1
+envelope/decay_time = 0.105
+frequency/start_frequency = 0.576238
+frequency/min_freq_cutoff = 0.0
+frequency/slide = 0.0
+frequency/delta_slide = 0.0
+vibrato/depth = 0.0
+vibrato/speed = 0.0
+arpeggiation/frequency_mult = 0.0
+arpeggiation/change_speed = 0.0
+duty_cycle/duty_cycle = 0.0
+duty_cycle/sweep = 0.0
+retrigger/rate = 0.0
+flanger/offset = 0.0
+flanger/sweep = 0.0
+low_pass_filter/cutoff_frequency = 0.4
+low_pass_filter/cutoff_sweep = 0.0
+low_pass_filter/resonance = 0.0
+high_pass_filter/cutoff_frequency = 0.15
+high_pass_filter/cutoff_sweep = 0.0

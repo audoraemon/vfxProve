@@ -170,10 +170,13 @@ All shaders are drawn once at startup (`FxParts.prewarm`) — without it the Com
 
 ### Interface sounds made with GodotSfxr
 
-[GodotSfxr](https://github.com/tomeyro/godot-sfxr) (MIT, `addons/godot_sfxr`, enabled in the project) is an sfxr synth inside the editor. Six interface cues are made with it:
+[GodotSfxr](https://github.com/tomeyro/godot-sfxr) (MIT, `addons/godot_sfxr`, enabled in the project) is an sfxr synth inside the editor. Nine interface cues are made with it; `synth.py` no longer makes any of them:
 
 | Cue | When it plays | Sound |
 |---|---|---|
+| `ui_hover` | the pointer moves onto a menu item | a tiny rounded chip blip, D6 |
+| `ui_click` | a menu item is clicked | a punchy G5 "boop" that sags a little |
+| `ui_buzz` | a cast is refused, or a choice cannot be taken | a low warbling buzz falling a fifth, E3 to A2, fading out |
 | `ui_back` | Esc, a right-click or the slot's key again lets go of a power or a held press | `ui_focus` backwards: a sine falling 1400 to 650 Hz |
 | `ui_mode` | Q or E steps a power's modes | a tiny chip blip up a fifth |
 | `ui_resume` | the pause menu closes back into the mission | `ui_pause` turned upward: 440 then 660 Hz |
@@ -192,7 +195,7 @@ Each one's source is an `SfxrAudioStream` resource in `tools/audio/sfxr/`. To ch
 "$GODOT" --headless --editor --path . --import
 ```
 
-The bake writes `assets/audio/ui/<cue>.wav`, which the game plays like every other cue. The game never loads the addon. Without `--only` it bakes all six. `--rebuild` builds each from its settings first, and saves that back into the resource. The bake refuses a sound that clips: lower its `sample_params/sound_vol`.
+The bake writes `assets/audio/ui/<cue>.wav`, which the game plays like every other cue. The game never loads the addon. Without `--only` it bakes all nine. `--rebuild` builds each from its settings first, and saves that back into the resource. The bake refuses a sound that clips: lower its `sample_params/sound_vol`.
 
 A new sfxr sound needs its resource in `tools/audio/sfxr/`, an entry in `Sfx.CATALOG` and `UiSound.CUES`, and a call to `UiSound.play()`.
 

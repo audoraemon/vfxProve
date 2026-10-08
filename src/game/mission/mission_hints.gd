@@ -50,9 +50,9 @@ const LINES := {
 	"tax_collector.hiding": "Alarmed, he hides in the counting-house. Set it alight to smoke him out, or wait for him.",
 	"tax_collector.safe": "His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in.",
 	"tax_collector.next": "One down. The next collector (gold) leaves the counting-house soon: be ready for him.",
-	"spoiled_harvest": "Set the open granary (gold) alight before its carters (red) empty it to the Citadel.",
-	"spoiled_harvest.sealed": "The granaries are sealed. The first opens soon: be ready to set it alight.",
-	"spoiled_harvest.burning": "It burns. Keep it burning 10 s, or bring it down, before the fire crews put it out.",
+	"spoiled_harvest": "Remove a granary's watchman (red), then keep it burning 10 s before its carters (blue) empty it.",
+	"spoiled_harvest.watchman": "The watchman (red) puts the fire out within 3 s. Strike him down, scare him off or whisper him away first.",
+	"spoiled_harvest.burning": "It burns, with no one to put it out. Keep it burning 10 s, or bring it down, before a new watchman comes.",
 }
 
 

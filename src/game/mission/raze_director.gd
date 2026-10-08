@@ -2,9 +2,10 @@ class_name RazeDirector
 extends MissionDirector
 ## The Raze type (v0.11 M2, spec §7.1), generalised from Last Judgement's director: destroy the named structures. A target
 ## counts as razed once destroyed or -- with `spoil_seconds` above 0 -- once it has burned that long in all, and stays razed.
-## A target may stand sealed: stone to every power (Structure.damage_filter: it only shakes) and any fire on it smothered at
-## once, until the mission opens it. A subclass names the targets and runs the town's answer (HarvestDirector: the carts). Last
-## Judgement keeps its own director: the Citadel's nine parts judge themselves.
+## A subclass may seal a target (optional, off by default: nothing is sealed unless seal() is called): stone to every power
+## (Structure.damage_filter: it only shakes) and any fire on it smothered at once, until unseal(). A subclass names the targets
+## and runs the town's answer (HarvestDirector: the watchmen and the carts). Last Judgement keeps its own director: the
+## Citadel's nine parts judge themselves.
 
 ## The map tags' colours (v0.11 M2): an open target gold, a burning one orange, a sealed one grey; danger red.
 const MARK_TARGET := Color("d8b23a")
@@ -47,6 +48,12 @@ func is_sealed(s: Structure) -> bool:
 ## Structure.damage_filter for a sealed target (v0.11 M2): the blow only shakes it.
 func _sealed_hit(s: Structure, _amount: float, _source: Vector2, _kind: StringName) -> void:
 	s.shake(SEALED_SHAKE)
+
+
+## `s`'s burning so far is forgotten (v0.11 M2): a fire beaten out for good (HarvestDirector's watchman) leaves nothing toward
+## its spoiling.
+func forget_burn(s: Structure) -> void:
+	_burned.erase(s)
 
 
 ## Whether `s` has been razed (v0.11 M2).

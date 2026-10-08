@@ -92,8 +92,8 @@ static func tax_collector() -> MissionDef:
 	return m
 
 
-## Spoiled Harvest (v0.11 M2, Tier 1, spec §8 row 3): spoil three granaries, each sealed until its doors open, before its
-## carts empty it to the Citadel (HarvestDirector).
+## Spoiled Harvest (v0.11 M2, Tier 1, spec §8 row 3, reshaped by the controller's Task 3 fix-round ruling): spoil three
+## granaries, each watched by a man who beats out its fire, before their carts empty them to the Citadel (HarvestDirector).
 static func spoiled_harvest() -> MissionDef:
 	var m := _tier1(SPOILED_HARVEST, "Spoiled Harvest", PackedStringArray(["Carts empty the granaries to the Citadel.",
 		"Spoil the harvest before they do."]))

@@ -85,8 +85,9 @@ extends SceneTree
 ##          Doom on the bellkeeper once called; else Silent Doom on the first collector in the street with nobody but those
 ##          who would fall with him near enough to see it; else Mind Whisper sends a lone onlooker away). --seed= picks the
 ##          town; --board plays the board's version (its wishes heard) and stops at the main objective.
-##   harvest  (v0.11 M2) Spoiled Harvest, --case=none or play (Ember on each open granary not alight; Silent Doom on a carter
-##          walking to a granary with two loads or fewer left). --seed=, --board as tax.
+##   harvest  (v0.11 M2) Spoiled Harvest, --case=none or play (the granaries in the order their carts would empty them: Silent
+##          Doom on a watchman on guard, then Ember on the granary; with nothing else, Silent Doom on a carter walking to a
+##          granary with two loads or fewer left). --seed=, --board as tax.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -1245,9 +1246,11 @@ func _tax(which: String) -> void:
 		int(r.killed), int(r.seen), int(r.alarms), String(r.target)])
 
 
-## Spoiled Harvest (v0.11 M2), played every LOOK_FRAMES: Ember on the first open granary not yet spoiled nor alight; else, a
-## granary down to two loads or fewer, Silent Doom on its carter nearest its door who is walking to it (empty-handed). `none`
-## casts nothing.
+## Spoiled Harvest (v0.11 M2, the Task 3 fix round: watchmen, no seal), played every LOOK_FRAMES. The granaries in the order
+## their carts would empty them (fewest loads first), the first that can be acted on: its watchman on guard, Silent Doom on him;
+## else it not alight, Ember on it; one burning with no one to beat it out is left to burn. With nothing else to do, a granary
+## down to two loads or fewer, Silent Doom on its carter nearest its door who is walking to it (empty-handed). `none` casts
+## nothing.
 func _harvest(which: String) -> void:
 	var rules: Rules = mission._rules
 	var d := rules.director as HarvestDirector
@@ -1263,32 +1266,52 @@ func _harvest(which: String) -> void:
 		t += mission.get_process_delta_time()
 		if t >= report_at:
 			report_at += 10.0
-			var left := []
-			for s in d.targets:
-				left.append("x" if d.razed(s) else ("s" if d.is_sealed(s) else str(int(d.loads[s]))))
-			print("BEHAVIOUR harvest t=%d granaries=%s spoiled=%d" % [roundi(t), ",".join(left), d.razed_count()])
+			print("BEHAVIOUR harvest t=%d granaries=%s spoiled=%d" % [roundi(t), _harvest_states(d), d.razed_count()])
 		if which != "play" or frames % LOOK_FRAMES != 0:
 			continue
-		var lit := false
-		for s in d.opened:
-			if not d.razed(s) and not d.burning(s) and _slot_ready(rules, slots, "ember"):
+		var order := d.targets.duplicate()
+		order.sort_custom(func(a: Structure, b: Structure) -> bool: return int(d.loads[a]) < int(d.loads[b]))
+		var cast := false
+		for s: Structure in order:
+			if d.razed(s):
+				continue
+			if d.guarding(s):
+				if _slot_ready(rules, slots, "doom"):
+					print("BEHAVIOUR harvest t=%.1f doom the watchman of the %s granary" % [t, HarvestDirector.STORE_NAMES[d.targets.find(s)]])
+					rules.cast(slots.doom, d.watchman(s).ground_pos)
+					cast = true
+					break
+			elif not d.burning(s) and _slot_ready(rules, slots, "ember"):
+				print("BEHAVIOUR harvest t=%.1f ember the %s granary" % [t, HarvestDirector.STORE_NAMES[d.targets.find(s)]])
 				rules.cast(slots.ember, s.center())
-				lit = true
+				cast = true
 				break
-		if lit or not _slot_ready(rules, slots, "doom"):
+		if cast or not _slot_ready(rules, slots, "doom"):
 			continue
-		for s in d.opened:
+		for s in order:
 			if d.razed(s) or int(d.loads[s]) > 2:
 				continue
 			var mark: Person = null
 			for c: Variant in d.carters[s]:
-				if WarningDirector._alive(c) and not d._hauling.has((c as Person).get_instance_id()) \
-						and (mark == null or (c as Person).ground_pos.distance_to(d.doors[s]) < mark.ground_pos.distance_to(d.doors[s])):
+				if WarningDirector._alive(c) and not d._hauling.has((c as Person).get_instance_id()) 						and (mark == null or (c as Person).ground_pos.distance_to(d.doors[s]) < mark.ground_pos.distance_to(d.doors[s])):
 					mark = c
 			if mark != null:
 				rules.cast(slots.doom, mark.ground_pos)
 				break
 	print("BEHAVIOUR harvest result %s spoiled=%d emptied=%s" % [_outcome(rules), d.razed_count(), d.emptied != null])
+
+
+## Each granary's state for the harvest reports (v0.11 M2): x spoiled; else its loads left, then g (watchman on guard), a (alive
+## but away) or - (none), then * while it burns: "5g,4-*,x".
+func _harvest_states(d: HarvestDirector) -> String:
+	var out := PackedStringArray()
+	for s in d.targets:
+		if d.razed(s):
+			out.append("x")
+			continue
+		out.append("%d%s%s" % [int(d.loads[s]), "g" if d.guarding(s) else ("a" if d.watchman(s) != null else "-"),
+			"*" if d.burning(s) else ""])
+	return ",".join(out)
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

@@ -26,7 +26,11 @@ GPT = ["gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchto
        "gpt_inn", "gpt_shophouse", "gpt_guildhall", "gpt_markethall", "gpt_weighhouse", "gpt_fishmarket",
        "gpt_bakery", "gpt_butcher", "gpt_brewery", "gpt_tannery", "gpt_dyers", "gpt_weavers",
        "gpt_potter", "gpt_cooper", "gpt_masonyard", "gpt_lumberyard", "gpt_charcoal", "gpt_glassworks",
-       "gpt_granary", "gpt_warehouse", "gpt_orchard", "gpt_vineyard", "gpt_beehives", "gpt_dovecote"]
+       "gpt_granary", "gpt_warehouse", "gpt_orchard", "gpt_vineyard", "gpt_beehives", "gpt_dovecote",
+       "gpt_cistern", "gpt_aqueduct", "gpt_washhouse", "gpt_latrine", "gpt_sluice", "gpt_footbridge",
+       "gpt_manor", "gpt_patrician", "gpt_rowhouses", "gpt_tenement", "gpt_shacks", "gpt_hut",
+       "gpt_monument", "gpt_noticeboard", "gpt_crierstage", "gpt_grandstand", "gpt_tiltbarrier", "gpt_playstage",
+       "gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse"]
 
 
 def luma(rgb):

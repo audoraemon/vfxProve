@@ -123,7 +123,8 @@ var baked_decor: Array[Dictionary] = []
 ## The meadow shrubs this floor paints (shrub_spots() order); the town hands over its own copies, marked "under"
 ## (mark_under()), and shares them with the plant layer. Empty: shrub_spots() itself.
 var shrubs: Array[Dictionary] = []
-## Ground kept bare (Town.keep_clear, dev only): no rocky outcrop is painted on it. Empty in the game.
+## Ground kept bare (Town.keep_clear, dev only): no rocky outcrop, meadow trail or field's tilled ground is painted on
+## it. Empty in the game.
 var keep_clear: Array[Rect2] = []
 ## Per meadow cell: 1 meadow, 2 forest floor, +4 on a trail. Filled while painting the ground, read by the detail.
 var _zones := PackedByteArray()
@@ -216,7 +217,8 @@ func paint_ground(ci: CanvasItem) -> void:
 		_yard(ci, h, EARTH)
 	# Tilled ground round every field and farmhouse.
 	for f: Rect2 in TownLayout.FIELDS:
-		_patches(ci, f.grow(0.5), DIRT, 0.3)
+		if not _kept_clear(f):
+			_patches(ci, f.grow(0.5), DIRT, 0.3)
 	for b: Rect2 in TownLayout.BARNS + [TownLayout.WINDMILL, TownLayout.WATERMILL]:
 		_patches(ci, b.grow(0.6), DIRT, 0.3)
 	for o: Array in OUTCROPS:
@@ -226,7 +228,7 @@ func paint_ground(ci: CanvasItem) -> void:
 		if not bare:
 			_outcrop(ci, o[0], o[1])
 	for tr in TRAILS:
-		_trail(ci, tr, 0.34)
+		_trail(ci, tr, 0.34, true)
 	for tr in ROAD_TRAILS:
 		_trail(ci, tr, 0.5)
 	_patches(ci, TownLayout.BARRACKS_YARD, SAND, 0.3)
@@ -411,8 +413,17 @@ func _outcrop(ci: CanvasItem, c: Vector2, rad: float) -> void:
 		ci.draw_circle(p + Vector2(0.1, 0.1) * s.z * 2.0, s.z * 0.35, ROCKY[3])
 
 
-## A dirt trail: overlapping discs of ragged size along a polyline, dark rim first, then the lighter tread.
-func _trail(ci: CanvasItem, pts: Array, width: float) -> void:
+## Whether `r` touches the ground kept bare (keep_clear: the dev showcase only).
+func _kept_clear(r: Rect2) -> bool:
+	for k: Rect2 in keep_clear:
+		if k.intersects(r):
+			return true
+	return false
+
+
+## A dirt trail: overlapping discs of ragged size along a polyline, dark rim first, then the lighter tread. `clearable`:
+## none of it on the ground kept bare (keep_clear; a meadow trail, not a road).
+func _trail(ci: CanvasItem, pts: Array, width: float, clearable := false) -> void:
 	for pass_i in 2:
 		for k in pts.size() - 1:
 			var a: Vector2 = pts[k]
@@ -420,6 +431,8 @@ func _trail(ci: CanvasItem, pts: Array, width: float) -> void:
 			var steps := maxi(int(a.distance_to(b) / 0.14), 1)
 			for i in steps + 1:
 				var p := a.lerp(b, float(i) / steps)
+				if clearable and not keep_clear.is_empty() and _kept_clear(Rect2(p, Vector2.ZERO).grow(width)):
+					continue
 				var h := _hash(roundi(p.x * 37.0), roundi(p.y * 41.0))
 				var r := width * (0.85 + float(h % 23) / 23.0 * 0.35)
 				if pass_i == 0:

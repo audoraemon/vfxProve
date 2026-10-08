@@ -557,9 +557,10 @@ def roof_mask(a, fam, mat):
     return out
 
 
-def match(a, knobs, light=False, glow=True, ref=None):
+def match(a, knobs, light=False, glow=True, ref=None, keep=None):
     """One still (float or uint8 RGBA) through the pass. Returns (uint8 RGBA, lit-window mask). glow=False: no lit
-    windows (a ruin's fallen lamp is not lit). ref: the set's intact (raw, same canvas) when this is its damaged."""
+    windows (a ruin's fallen lamp is not lit). ref: the set's intact (raw, same canvas) when this is its damaged.
+    keep: pixels never re-drawn as roof courses (painted water, whose blue passes for slate)."""
     base, outl, ramp = palette()
     a = np.where(a[..., 3:] > 0, np.clip(np.asarray(a, float), 0, 255), 0)
     al = a[..., 3] > 0
@@ -575,6 +576,8 @@ def match(a, knobs, light=False, glow=True, ref=None):
                 sm = roof_mask(a, fam0, mat)
                 if r is not None:
                     sm &= roof_mask(r, rfam, mat)
+                if keep is not None:
+                    sm &= ~keep
                 if sm.sum() < SLATE_MIN:
                     continue
                 a = courses(a, sm, mat, knobs.get("tile", {}).get(mat, 1.0), r, rfam if r is not None else fam0)

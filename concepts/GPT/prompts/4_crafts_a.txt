@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) BAKERY: a cream plaster cottage with timber framing, red tile roof and a chimney; a round domed stone bread oven built onto its right side with its own small chimney; a bread bench out front.
+2 (top middle) BUTCHER: a two-storey cream plaster house with timber framing, its gable to the street, red tile roof and a chimney; the ground floor is an open shop front with a counter under a small red tile hood; a plank cold store lean-to with a slate roof on the right; a chopping block.
+3 (top right) BREWERY: a large cream plaster building with timber framing and a red tile roof; a tall square wooden malt kiln cowl with a pointed red tile cap and a smaller louvred vent on the ridge; a chimney; two big upright wooden vats on the right and a stack of lying barrels in front.
+4 (bottom left) TANNERY: a cream plaster workshop with timber framing and a slate roof; an open work shed on posts with a slate lean-to roof on the right; two wooden frames with stretched hides in front; three wooden tanning vats.
+5 (bottom middle) DYERS' WORKS: a cream plaster workshop with timber framing, red tile roof and a chimney; two tall wooden drying racks on the right hung with long dyed cloths; two dye vats in front.
+6 (bottom right) WEAVERS' HALL: a long two-storey hall of cream plaster with timber framing and a slate roof with two dormers and a chimney; a wide band of many small windows across the upper floor on both visible sides.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

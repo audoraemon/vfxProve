@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) STABLES / LIVERY: a long cream plaster and timber stable with a red tile roof and a hayloft dormer; an open row of four stalls under a red tile lean-to on posts at the front with wooden stall partitions.
+2 (top middle) COVERED WAGON: a wooden wagon with four spoked wheels, a cream canvas cover on hoops and two shafts at the front. (Mirroring gives the other facing, so no lettering.)
+3 (top right) HAND CART: a small two-wheeled wooden hand cart with low sides, two handles and a sack in it.
+4 (bottom left) HARBOUR CRANE: a timber crane house with a slate roof on a stone quay, a big wooden treadwheel on its front, a mast and a long jib reaching over the water with a rope and a hanging crate; a bollard.
+5 (bottom middle) FERRY LANDING: a wooden jetty on piles from a stone bank into the water, a flat wooden ferry raft with low rails and a punt pole, and a small ferryman's hut with a red tile roof on the bank.
+6 (bottom right) LIVESTOCK PENS: two pens of wooden post-and-rail fencing with a gate gap; a slate lean-to shelter on posts with a plank back wall; a water trough and a hay heap.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

@@ -125,3 +125,6 @@ if __name__ == "__main__":
         sheet.alpha_composite(t, (x, y))
     sheet.save(os.path.join(here, "blockouts_defence.png"))
     print(sheet.size)
+    # sheets 1-12 (blockouts/<n>_<name>.png), their prompts (prompts/) and blockouts/overview.png
+    import blockout_sheets
+    blockout_sheets.build_all(here, os.path.join(here, "blockouts_defence.png"))

@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) PLAZA MONUMENT: a stepped warm grey stone plinth with a tall pedestal and cornice, carrying a stone statue of a standing hero.
+2 (top middle) NOTICE BOARD: a wooden board on two posts with a small red tile roof; a few paper notices pinned on it.
+3 (top right) TOWN CRIER'S PLATFORM: a raised wooden platform with steps at the front, a rail on three sides and a tall pole with a pennant.
+4 (bottom left) TOURNAMENT GRANDSTAND: four tiers of wooden benches rising to a plank back wall, under a red tile canopy on posts; two banner poles with pennants.
+5 (bottom middle) TILT BARRIER: one segment of a wooden jousting barrier: posts, a top rail and a board panel. It must tile end to end along its length, so keep both ends cut straight and identical.
+6 (bottom right) PLAY STAGE: a raised wooden stage with a tall plank back wall and two side wings, a cloth backdrop, a red tile canopy on two front posts and steps at the side.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

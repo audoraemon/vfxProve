@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) CISTERN TOWER: a square warm grey stone tower carrying a round wooden water tank with a slate cone roof; an iron pipe down the right side into a stone trough.
+2 (top middle) AQUEDUCT SEGMENT: one stone arch with a half pier at each end and a water channel along the top; it must tile end to end along its length, so keep both ends cut straight and identical.
+3 (top right) WASH HOUSE: a red tile roof on wooden posts over a low stone platform at the water's edge, with a plank back wall; stone steps down into the water; a stone washing trough and a wash tub.
+4 (bottom left) LATRINE SHED: a small plank shed with a red tile mono-pitch roof, a dark door and a stone step; a vent pipe.
+5 (bottom middle) SLUICE GATE: a stone-lined water channel with two stone piers; a wooden gate board across the channel raised by two rack posts under a wooden lifting beam with a winch drum.
+6 (bottom right) FOOTBRIDGE: a narrow wooden plank footbridge on two stone abutments and a central pair of posts over a stream, with simple wooden handrails.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

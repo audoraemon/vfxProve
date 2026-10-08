@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) NOBLE MANOR: a three-storey warm grey stone manor with a big slate roof, three dormers, two tall chimneys and a round stair tower with a slate cone at the front corner; an open porch and front steps; a walled garden on the left with a gateway, a tree and two hedges.
+2 (top middle) PATRICIAN TOWNHOUSE: a tall narrow townhouse with a stone ground floor and two jettied upper floors of cream plaster and dark timber framing; red tile roof with its gable to the street, a side dormer and a chimney; a door and a shop window.
+3 (top right) TERRACED ROW: three attached cream plaster and timber-framed houses in a row, alternating red and slate roofs, chimney stacks on the party walls, a dormer on the middle house; each has a door and a step. The left and right ends are plain party walls so the row can touch its neighbours.
+4 (bottom left) SLUM TENEMENT: a tall leaning three-storey tenement of patched plaster and crooked timbers with a slate roof and a chimney, propped up by two wooden beams on the right; a plank lean-to with a red tile roof at the front.
+5 (bottom middle) SLUM SHACKS: two small plank shacks with mono-pitch roofs (one red tile, one slate), a stove pipe, a plank awning between them, a crate, a barrel and a short fence.
+6 (bottom right) SUBURB HUT: a small cream plaster hut with low walls under a big steep thatch roof and a small stone chimney; a woodpile and a low wattle fence.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

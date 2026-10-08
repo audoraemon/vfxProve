@@ -1,0 +1,99 @@
+DETAIL PASS on the image you just made (same chat). Keep every building exactly where and how it is: same silhouettes, wall heights, roof shapes and pitch, footprints, sizes, colours, outlines and isometric angle. Do not redraw from scratch, do not move or resize anything, do not change the layout. The grey label numbers must not appear.
+
+Add finer surface detail only, in the same chunky pixel style and muted palette as image 2: individual roof tiles or slates in courses with a few chipped or mossy ones; timber grain and joints; stone courses with a few cracks; plaster patches; window frames and shutters with warm amber glow; plank doors with iron hinges; small props where they fit. Keep the light from the upper LEFT (left walls lighter, right walls darker).
+
+OUTPUT: same layout, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+
+Extra detail per building — use only the block for the sheet you are working on:
+
+
+[1_defence_b]
+1: a portcullis grid half raised in the arch, a coat-of-arms shield over the gate, arrow slits, a banner pole on one cone.
+2: planks and iron bands on the drawbridge, chain pulleys over the gate, a small window in each turret, ripples on the moat.
+3: plank lines and nails on the platform, iron bolts on the beam, a coiled rope, a bucket under the steps.
+4: a hanging lantern under the arch, a district sign board over the arch, worn paving stones, a small shuttered window in the guard room.
+
+[2_faith]
+1: a bronze bell in the cote, a wooden door with iron hinges in the porch, two small rectangular windows with amber glow, a few gravestones beside it.
+2: monks' cell windows in a row, a herb bed in the court, a bell in the tower, a chimney stack with smoke stains.
+3: moss on the wall top, a few wildflowers, a wrought-iron gate between the piers, a skull carving over the ossuary door.
+4: two rows of small windows with amber glow, a hanging sign with a cross, a bench by the porch, laundry on a line.
+5: a warning clapper bell on the post, patched plaster, a shuttered window, a wicket gate in the fence gap.
+6: steam drifting from the vents, a firewood stack by the furnace, a towel rail and buckets by the door, a hanging bath sign.
+
+[3_trade]
+1: a painted sign board on the post, flower boxes under the windows, a lantern by the door, hay spilling from the stable doors.
+2: goods on the counter (cloth bolts, jars), a hanging shop sign, shutters folded open, a small window with amber glow upstairs.
+3: a guild coat-of-arms on the gable, a banner over the door, carved step tops, iron lanterns either side of the door.
+4: baskets and produce on the tables, cloth hangings between some posts, sacks and crates, a hanging market bell.
+5: sacks on one scale pan, a clerk's desk and ledger, a town seal over the door, stacked iron weights.
+6: silver fish on the tables, ice and wet planks, baskets of fish, a hanging fish sign, gulls on the ridge.
+
+[4_crafts_a]
+1: loaves on the bench, a bread peel leaning by the oven, firewood stack, a pretzel-shaped hanging sign.
+2: hams and sausages hanging from the iron rail, a cleaver on the block, a pig sign, sawdust on the floor.
+3: iron hoops on vats and barrels, a hop garland over the door, steam from the cowl, sacks of malt.
+4: brown liquid in the vats, scraping tools, hides drying on the frames, a stack of bark.
+5: cloths in deep red, blue and yellow on the racks, coloured liquid in the vats, stirring poles, stained ground.
+6: warm amber light in the window band, a loom visible through a window, a cloth bale on a hoist, a guild sign.
+
+[5_crafts_b]
+1: terracotta pots and jugs on the shelf, a potter's wheel, a stack of firewood by the stoke hole, broken shards.
+2: iron hoops on every barrel, a hoop stack on the wall, a shaving horse, wood shavings.
+3: chisels and mallets on a block, a half-carved statue, stone dust, a ladder.
+4: a long two-man saw in the log, bark and sawdust piles, an axe in a chopping block, rope-tied plank bundles.
+5: thin smoke from the top hole, turf patches on the mound, a rake and shovel, a log seat by the hut.
+6: an orange glow in the furnace mouth, glass bottles in the crates, smoke from the cone top, a firewood heap.
+
+[6_food]
+1: vertical plank lines, grain sacks by the steps, a cat on the steps, iron hinges on the door.
+2: a pulley wheel on the hoist beam, open loading doors with sacks inside, mooring rings on the quay, rope coils.
+3: red and yellow fruit in the crowns, fallen fruit in the basket, a few windfalls on the ground.
+4: dark purple grape bunches under the leaves, a wicker basket at one row end, curled tendrils.
+5: coiled straw texture on the skeps, tiny entrance holes, a few bees, flowers at the bench foot.
+6: rows of small flight holes under the eaves, doves on the roof and lantern, a weather vane.
+
+[7_water]
+1: iron hoops on the tank, water dribbling into the trough, a ladder up the tower, a small door.
+2: stone courses, moss and water stains under the channel, water visible in the channel; keep both ends identical.
+3: washing boards, linen drying on a line, buckets, soap suds in the water by the steps.
+4: a crescent cut in the door, plank grain, a bucket beside it.
+5: water pouring under the gate, an iron winch handle, iron bands on the gate, moss on the piers.
+6: plank gaps, a rope tied to a rail, ripples round the posts, reeds at the banks.
+
+[8_housing]
+1: a coat of arms over the porch, flower beds in the garden, a gravel path, banners on the stair tower.
+2: carved jetty brackets, flower boxes, a hanging lantern, decorative timber patterns on the gable.
+3: different colours of window shutters per house, a hanging sign on one, a bench, keep both end walls plain.
+4: patched plaster and boards, washing lines between windows, missing roof slates, rubbish in the corner.
+5: mismatched boards, sacking over a window, a cooking pot, patched roof.
+6: thick straw texture on the thatch, a chicken, a water butt, smoke from the chimney.
+
+[9_public]
+1: a bronze plaque on the pedestal, a laurel wreath, pigeons, worn steps.
+2: pinned papers and a wanted poster, iron nails, a small lantern hook.
+3: a hand bell hanging on the pole, plank lines, a town banner colour on the pennant.
+4: striped cloth hangings on the front edge, heraldic shields on the posts, cushions on the top tier.
+5: a painted cloth drape over the panel in two colours, keep both ends identical.
+6: a painted backdrop, props on the stage (a crown, a chest), a curtain rope, lanterns along the front edge.
+
+[10_civic_b]
+1: a small bell, a slate board by the door, children's satchels on a bench.
+2: amber glow in the tall windows, a carved book emblem over the door, iron lanterns.
+3: a bench inside, climbing roses on two posts, a carved ring beam.
+4: thick straw thatch with a ridge pattern, a pitchfork, a hay bale, chickens.
+5: lily pads and a few orange fish in the water, reeds, a small fishing net.
+6: turf on the mound, an iron-banded door, straw bales by the entrance.
+
+[11_transport]
+1: horse heads looking out of two stalls, hay in the loft door, saddles on a rail, a water bucket.
+2: spokes and iron tyres on the wheels, rope ties on the canvas, a lantern and a bucket hanging at the back.
+3: spoked wheels, a second sack, a shovel.
+4: spokes and treads on the wheel, a rope drum, pulley at the jib tip, water ripples.
+5: a rope from the raft to the mooring post, a fare box on the hut, a lantern on the jetty.
+6: two sheep and a pig, straw on the ground, a gate latch, a feed bucket.
+
+[12_small]
+1: a carved distance number and arrow (keep them unreadable), moss at the base.
+2: a small carved figure under the roof, flowers on the base, weathered wood.
+3: worn step edges, a lamp bracket on one wall, moss in the joints.

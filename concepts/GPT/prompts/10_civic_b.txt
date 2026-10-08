@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) SCHOOL HOUSE: a cream plaster schoolhouse with timber framing and a red tile roof; a small wooden bell cote on the ridge; a chimney; an open porch over the door with a step.
+2 (top middle) LIBRARY / SCRIPTORIUM: a tall warm grey stone hall with a slate roof, stone buttresses and tall narrow rectangular windows; a round stone stair turret with a slate cone at the back corner; a small door with a step.
+3 (top right) GARDEN PAVILION: an open octagonal pavilion of wooden posts on a low stone base under a red tile pointed roof with a finial.
+4 (bottom left) THATCHED FARMHOUSE: a long low cream plaster farmhouse with timber framing under a big steep thatch roof with a stone chimney; a plank lean-to with a slate roof on the right; a water butt and a fence.
+5 (bottom middle) FISHPOND: a rectangular pond with a low warm grey stone rim, reeds at two corners and a stone step.
+6 (bottom right) ICE HOUSE: a round grass-and-earth mound with a vent on top and a small stone entrance with a slate roof and a dark arched door at the front.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

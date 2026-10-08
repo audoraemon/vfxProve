@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) PARISH CHAPEL: a warm grey stone nave with a slate roof, a lower stone chancel at the back, a small stone porch at the front; a stone bell cote on the ridge with one bell in its opening and a tiny iron cross.
+2 (top middle) MONASTERY: a U-shaped range of warm grey stone buildings with red tile roofs round a paved cloister court; a square stone tower with a slate pyramid roof; a covered walk on wooden posts with a red tile lean-to roof along the three inner sides; a small garden and a well in the court.
+3 (top right) GRAVEYARD: a low warm grey stone wall round a rectangle with a gap and two gate piers at the front; rows of small grey headstones and a few stone crosses; a tiny stone ossuary chapel with a slate roof; one dark yew tree.
+4 (bottom left) HOSPITAL / ALMSHOUSE: a long two-storey ward hall of cream plaster with dark brown timber framing; a big red tile roof with three dormers and two stone chimneys; a small open timber porch over the door.
+5 (bottom middle) LEPER HOUSE: a small cream plaster cottage with timber framing and a red tile roof, a stone chimney and a plank lean-to with a slate roof; a wooden fence round its yard with a gap for the gate; a water barrel and a post with a hanging bell.
+6 (bottom right) BATHHOUSE: a warm grey stone hall with a red tile roof and two wooden louvred roof vents on the ridge; a lower stone furnace room on the right with a slate lean-to roof and a tall stone chimney.
+
+OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.

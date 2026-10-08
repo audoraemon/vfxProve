@@ -33,8 +33,8 @@ scorch up a wall (warehouse.scorch, darker) and a door or shutter hanging off it
 
 Ruins: the approved ruins of the closest existing set scaled onto the plot (the batch 3 method, warehouse.ruins):
 the tavern's for the town hall (timber, the same plot); the town tower's (stone, as the bell tower's) for the stone
-buildings: the armoury and the courthouse (1.0) and the jail and the treasury (0.7), each scaled so the tower's 1.6
-diamond is at most its plot's width ((W + D) / 3.2, capped at 1), its fallen blue banner painted out (no_banner).
+buildings (the armoury, the courthouse, the jail and the treasury), filling each plot (filled_ruins: scaled to the
+plot's short side and laid twice along its long side), its fallen blue banner painted out (no_banner).
 The watchtower's are local: its four leg stumps and the cabin fallen on its side behind them. Reused ruins go through
 the style match's lock and outline only (they are already in the game's style); the watchtower's get the whole pass.
 
@@ -75,18 +75,18 @@ SETS = {
                          seed=80, kind="HOUSE", role="house", tag="tavern", chimney=(275, 52), ruins=("tavern", 1.0)),
     "gpt_armoury": dict(cell=(1, 0), L=(623, 336), F=(939, 493), R=(1094, 416), k=1.0, fp=[2.6, 1.5], height=22,
                         seed=81, kind="HOUSE", role="house", tag="workshop", chimney=(771, 102),
-                        ruins=("town_tower", 1.0)),
+                        ruins=("town_tower", "fill")),
     "gpt_jail": dict(cell=(2, 0), L=(1200, 398), F=(1361, 481), R=(1497, 416), k=1.0, fp=[1.3, 0.95], height=29,
                      seed=82, kind="HOUSE", role="house", tag="townhouse", chimney=(1385, 220),
-                     ruins=("town_tower", 0.7)),
+                     ruins=("town_tower", "fill")),
     "gpt_courthouse": dict(cell=(0, 1), L=(72, 784), F=(346, 904), R=(551, 818), k=1.16, fp=[2.4, 1.6], height=30,
                            seed=83, kind="HOUSE", role="house", tag="tavern", chimney=(409, 572),
-                           ruins=("town_tower", 1.0)),
+                           ruins=("town_tower", "fill")),
     "gpt_watchtower": dict(cell=(1, 1), L=(726, 848), F=(824, 901), R=(924, 844), k=1.0, fp=[0.95, 0.75], height=19,
                            seed=84, kind="HOUSE", role="house", tag="", chimney=None, ruins=None),
     "gpt_treasury": dict(cell=(2, 1), L=(1168, 816), F=(1356, 916), R=(1521, 836), k=1.0, fp=[1.3, 0.95], height=28,
                          seed=85, kind="HOUSE", role="house", tag="townhouse", chimney=(1441, 632),
-                         ruins=("town_tower", 0.7)),
+                         ruins=("town_tower", "fill")),
 }
 
 
@@ -320,7 +320,10 @@ def watchtower_damage(c, tf):
 # --- ruins ---------------------------------------------------------------------------------------------------------
 
 def borrowed_ruins(src_name, k, fp, A, shape):
-    """The approved ruins of `src_name`, scaled k, their footprint's centre on this plot's (warehouse.ruins)."""
+    """The approved ruins of `src_name`, scaled k, their footprint's centre on this plot's (warehouse.ruins). k "fill":
+    filled_ruins()."""
+    if k == "fill":
+        return filled_ruins(src_name, fp, A, shape)
     man = json.load(open(B / "manifest.json", encoding="utf-8"))
     sm = man[src_name]
     src = Image.fromarray(no_banner(np.array(Image.open(B / src_name / "ruins.png").convert("RGBA"))), "RGBA")
@@ -349,6 +352,51 @@ def borrowed_ruins(src_name, k, fp, A, shape):
     ox, oy = ox + xs.min(), oy + ys.min()
     h, w = a.shape[:2]
     out[oy:oy + h, ox:ox + w] = a
+    return out
+
+
+def scaled_ruins(src_name, k):
+    """(RGBA float array, anchor) of `src_name`'s approved ruins, banner painted out, scaled k at native pixels: a
+    premultiplied Lanczos, snapped back to the source's own 32 colours, outlined (as bell_ruins_from_tower.py)."""
+    man = json.load(open(B / "manifest.json", encoding="utf-8"))
+    As = man[src_name]["anchor"]
+    src = Image.fromarray(no_banner(np.array(Image.open(B / src_name / "ruins.png").convert("RGBA"))), "RGBA")
+    if k == 1.0:
+        return np.array(src).astype(float), (float(As[0]), float(As[1]))
+    nw, nh = round(src.width * k), round(src.height * k)
+    small = src.convert("RGBa").resize((nw, nh), Image.LANCZOS).convert("RGBA")
+    al = np.array(small.getchannel("A")) >= 120
+    pal = src.convert("RGB").quantize(colors=32, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    q = small.convert("RGB").quantize(palette=pal, dither=Image.Dither.NONE).convert("RGB")
+    a = np.zeros((nh, nw, 4))
+    a[..., :3] = np.array(q)
+    a[..., 3] = np.where(al, 255, 0)
+    return bridges.outline(a), (As[0] * k, As[1] * k)
+
+
+def filled_ruins(src_name, fp, A, shape):
+    """A square set's ruins (the town tower's, footprint S x S) filling a W x D plot: scaled to the plot's short side
+    (k = min(W, D) / S) and laid twice along its long side, one copy at the plot's front corner and one at the far end
+    of the long side, the far one drawn first. So the rubble covers the whole diamond, at the tower's own pixel size
+    and light, and reads as one long ruined building of two bays."""
+    man = json.load(open(B / "manifest.json", encoding="utf-8"))
+    S = man[src_name]["footprint"][0]
+    W, D = fp
+    short = min(W, D)
+    a, As = scaled_ruins(src_name, short / S)
+    # offsets of the copies' front corners from the plot's: along the W edge (up-left) or the D edge (up-right)
+    step = np.array([-32.0, -16.0]) if W >= D else np.array([32.0, -16.0])
+    offs = [abs(W - D), 0.0] if abs(W - D) > 1e-6 else [0.0]
+    out = np.zeros(shape)
+    ys, xs = np.nonzero(a[..., 3] > 0)
+    box = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    h, w = box.shape[:2]
+    for o in offs:                       # far copy first: the near one draws over it
+        fx, fy = np.array(A, float) + step * o
+        ox, oy = int(round(fx - As[0])) + xs.min(), int(round(fy - As[1])) + ys.min()
+        on = box[..., 3] > 0
+        region = out[oy:oy + h, ox:ox + w]
+        region[on] = box[on]
     return out
 
 
@@ -446,7 +494,7 @@ def make(name, out_dir, debug=None):
     # in the game's style, so they get only its palette lock, speck clean and outline
     knobs, st_after = style_match.tune(crop["intact"])
     intact, lit = style_match.match(crop["intact"], knobs)
-    done = [intact, style_match.match(crop["damaged"], knobs)[0],
+    done = [intact, style_match.match(crop["damaged"], knobs, ref=crop["intact"])[0],
             style_match.match(crop["ruins"], knobs, light=bool(spec["ruins"]), glow=False)[0]]
     d = out_dir / name
     d.mkdir(parents=True, exist_ok=True)
@@ -457,11 +505,16 @@ def make(name, out_dir, debug=None):
         o = np.zeros(intact.shape, np.uint8)
         o[lit] = (255, 255, 255, 255)
         Image.fromarray(o, "RGBA").save(gm)
-    elif gm.exists():
-        gm.unlink()
-    print("  style match: lift %.2f amount %.2f sat x%.2f; edge %.3f lum %.3f outline %.3f colours %d sat %.3f; "
-          "%d lit px" % (knobs["lift"], knobs["amount"], knobs["glob"], st_after["edge"], st_after["lum"],
-                         st_after["outline"], st_after["colours"], st_after["sat"], int(lit.sum())))
+    else:                   # no lit windows: no mask, nor its import file
+        for f in (gm, d / "glow_mask.png.import"):
+            if f.exists():
+                f.unlink()
+    roof = " ".join("%s x%.2f/x%.2f" % (("red", "slate")[m == style_match.ss.BLUE], g[0], g[1])
+                    for m, g in sorted(knobs["roof"].items()))
+    print("  style match: lift %.2f amount %.2f sat x%.2f roof %s; edge %.3f lum %.3f outline %.3f colours %d "
+          "sat %.3f; %d lit px" % (knobs["lift"], knobs["amount"], knobs["glob"], roof or "-", st_after["edge"],
+                                   st_after["lum"], st_after["outline"], st_after["colours"], st_after["sat"],
+                                   int(lit.sum())))
     h, w = done[0].shape[:2]
     fe = {k2: (round(float(v[0]), 1), round(float(v[1]), 1)) for k2, v in info["fit_errors"].items()}
     nb = nearest_base_errors(done[0], A, spec["fp"])

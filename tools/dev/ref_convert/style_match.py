@@ -77,6 +77,10 @@ COURSE = {ss.BLUE: dict(p=4, light=1.16, dark=0.72, keep=0.5, joint=0, joint_dar
                         mottle=(ss.GREY,), hole=120),
           ss.RED: dict(p=5, light=1.12, dark=0.7, keep=0.3, joint=6, joint_dark=0.8, var=0.05,
                        mottle=(ss.GREY, ss.TIMBER, ss.GREEN), hole=40)}
+# The red roofs' own treatment (their course re-draw, and their value, saturation and course contrast fitted to the
+# reference roofs) is off: the user chose the first pass's red roofs (a15e79e), which keep the painted tiles. True
+# brings it back; the slate's re-draw and fit stay on either way.
+RED_ROOFS = False
 SLATE_MIN = 400         # a roof piece smaller than this (px) is a banner, a shield or a flower box, not a roof
 SLATE_CLOSE = 2         # roof_mask()'s closing radius
 TILE_GAIN = (0.2, 3.0)  # the red courses' contrast bounds (tune() fits it to the reference roofs' edge contrast)
@@ -442,6 +446,11 @@ def slate_planes(L, m):
     return np.where(vote >= 0, 1, -1)
 
 
+def roof_materials():
+    """The roof materials the pass re-draws and fits: the slate, and the red tiles only with RED_ROOFS."""
+    return [m for m in COURSE if m != ss.RED or RED_ROOFS]
+
+
 def courses(a, m, mat, contrast=1.0, ref=None, fam=None):
     """A roof (mask m, material mat) re-drawn as courses, as the in-game roofs are (COURSE[mat]): the tone is the
     roof's own colour per face, the painting's light across the face kept at `keep` (its mottling and speckle go);
@@ -562,7 +571,7 @@ def match(a, knobs, light=False, glow=True, ref=None):
             if ref is not None:
                 r, rfam, _, _ = _prep(ref, knobs)
             fam0 = fam
-            for mat in COURSE:
+            for mat in roof_materials():
                 sm = roof_mask(a, fam0, mat)
                 if r is not None:
                     sm &= roof_mask(r, rfam, mat)
@@ -633,6 +642,8 @@ def _roofs(intact, k, img, rounds):
         rs = roof_stats(img)
         moved = False
         for m, (lr, sr, er) in ref.items():
+            if m not in roof_materials():
+                continue
             if m not in rs or rs[m][2] < ROOF_MIN or (m not in roof and abs(rs[m][0] - lr) > ROOF_NEAR):
                 continue                # no roof of that material (the armoury's reds are its dark shed timber)
             L, S, _, E = rs[m]

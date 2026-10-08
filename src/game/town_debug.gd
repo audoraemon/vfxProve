@@ -53,6 +53,7 @@ const TOWN_SHOTS := [
 	["showcase_overview.png", Vector2.INF, 0.6],
 	["showcase_overview_2.png", Vector2.INF, 0.6],
 	["showcase_overview_3.png", Vector2.INF, 0.6],
+	["showcase_overview_4.png", Vector2.INF, 0.6],
 	["showcase_housing.png", Vector2.INF, 1.6],
 	["showcase_faith.png", Vector2.INF, 1.6],
 	["showcase_trade.png", Vector2.INF, 1.6],

@@ -208,12 +208,12 @@ WATER_SETS = {
                          seed=117, chimney=None, ruins=STONE, water=True, **SHOW),
     "gpt_washhouse": dict(cell=2, L=(1111, 339), F=(1485, 526), R=(1760, 388), k=1.0, fp=[2.1, 1.55], height=20,
                           seed=118, chimney=None, ruins=TIMBER, water=True, **SHOW),
-    "gpt_latrine": dict(cell=3, L=(110, 787), F=(212, 838), R=(336, 776), k=1.0, fp=[0.45, 0.55], height=19,
-                        seed=119, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_latrine": dict(cell=3, L=(110, 787), F=(212, 838), R=(336, 776), k=1.0, fp=[0.45, 0.55], grow=1.3,
+                        height=19, seed=119, chimney=None, ruins=TIMBER, **SHOW),
     "gpt_sluice": dict(cell=4, L=(623, 767), F=(776, 844), R=(1120, 672), k=1.0, fp=[0.8, 1.8], height=25,
                        seed=120, chimney=None, ruins=STONE, water=True, **SHOW),
-    "gpt_footbridge": dict(cell=5, L=(1096, 737), F=(1447, 912), R=(1775, 748), k=1.0, fp=[1.6, 1.5], height=18,
-                           seed=121, chimney=None, ruins=TIMBER, water=True, **SHOW),
+    "gpt_footbridge": dict(cell=5, L=(1096, 737), F=(1447, 912), R=(1775, 748), k=1.0, fp=[1.6, 1.5], grow=1.3,
+                           height=18, seed=121, chimney=None, ruins=TIMBER, water=True, **SHOW),
 }
 HOUSING_SETS = {
     "gpt_manor": dict(cell=0, L=(-9, 357), F=(426, 574), R=(655, 460), k=1.0, fp=[3.54, 1.86], height=42,
@@ -230,10 +230,10 @@ HOUSING_SETS = {
                     seed=127, chimney=(1492, 616), ruins=TIMBER, **SHOW),
 }
 PUBLIC_SETS = {
-    "gpt_monument": dict(cell=0, L=(129, 358), F=(321, 454), R=(512, 358), k=1.0, fp=[0.9, 0.9], height=52,
-                         seed=128, chimney=None, ruins=CRACKED, **SHOW),
-    "gpt_noticeboard": dict(cell=1, L=(739, 369), F=(894, 447), R=(907, 440), k=1.0, fp=[0.72, 0.06], height=26,
-                            seed=129, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_monument": dict(cell=0, L=(129, 358), F=(321, 454), R=(512, 358), k=1.0, fp=[0.9, 0.9], grow=1.3,
+                         height=52, seed=128, chimney=None, ruins=CRACKED, crack=(5, 0.95, 2), **SHOW),
+    "gpt_noticeboard": dict(cell=1, L=(739, 369), F=(894, 447), R=(907, 440), k=1.0, fp=[0.72, 0.06], grow=1.3,
+                            height=26, seed=129, chimney=None, ruins=TIMBER, **SHOW),
     "gpt_crierstage": dict(cell=2, L=(1106, 400), F=(1255, 474), R=(1481, 361), k=1.0, fp=[0.8, 1.22], height=40,
                            seed=130, chimney=None, ruins=TIMBER, **SHOW),
     "gpt_grandstand": dict(cell=3, L=(50, 746), F=(399, 921), R=(545, 848), k=1.0, fp=[2.4, 1.0], height=50,
@@ -248,14 +248,14 @@ CIVIC_B_SETS = {
                        seed=134, chimney=(268, 75), ruins=TIMBER, **SHOW),
     "gpt_library": dict(cell=1, L=(534, 417), F=(866, 583), R=(1093, 469), k=1.0, fp=[2.04, 1.4], height=34,
                         seed=135, chimney=None, ruins=STONE, **SHOW),
-    "gpt_pavilion": dict(cell=2, L=(1146, 455), F=(1349, 556), R=(1553, 455), k=1.0, fp=[0.92, 0.92], height=18,
-                         seed=136, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_pavilion": dict(cell=2, L=(1146, 455), F=(1349, 556), R=(1553, 455), k=1.0, fp=[0.92, 0.92], grow=1.3,
+                         height=18, seed=136, chimney=None, ruins=TIMBER, **SHOW),
     "gpt_farmhouse": dict(cell=3, L=(13, 805), F=(383, 991), R=(586, 890), k=1.0, fp=[2.15, 1.17], height=16,
                           seed=137, chimney=(286, 550), ruins=TIMBER, **SHOW),
     "gpt_fishpond": dict(cell=4, L=(589, 840), F=(864, 977), R=(1088, 866), k=1.0, fp=[1.5, 1.22], height=4,
                          seed=138, chimney=None, ruins=CRACKED, water=True, **SHOW),
-    "gpt_icehouse": dict(cell=5, L=(1055, 878), F=(1320, 1010), R=(1599, 870), k=1.0, fp=[1.08, 1.14], height=22,
-                         seed=139, chimney=None, ruins=STONE, **SHOW),
+    "gpt_icehouse": dict(cell=5, L=(1055, 878), F=(1320, 1010), R=(1599, 870), k=1.0, fp=[1.08, 1.14], grow=1.3,
+                         height=22, seed=139, chimney=None, ruins=STONE, **SHOW),
 }
 # The sets that repeat along x (laid end to end in the showcase to show the seam).
 REPEATS = ["gpt_aqueduct", "gpt_tiltbarrier"]
@@ -273,13 +273,23 @@ CIVIC_B_SMOKE = []
 # each stands on its own small plot (the showcase also lays the wagon a second time on its plot turned, so it draws
 # mirrored: both facings). BROKEN: a prop's ruins still is the prop itself broken (broken_prop(): its top `frac` gone,
 # burnt, sagging `sag` px at its front end, a few pieces on the ground).
-# The small sheet is painted far larger than its blockouts' people: the milestone and the wayside cross are scaled by
-# height instead, to about knee height (6 px; a game person is about 17) and 1.5 people (26 px) over the middle of
-# their bases, and their footprints shrink with them (blockout 0.3 x 0.24 x 0.374, 0.4 x 0.4 x 0.607). The alley steps
-# fit their blockout's footprint at its own height (walls 32 px). The ferry landing, the crane and the drawbridge keep
+# `grow`: the plot is the blockout's footprint times this, so the painting (fitted to its plot) is drawn that much
+# larger or smaller than its blockout. The milestone and the wayside cross stand about twice their true size, so they
+# read: 12 px and 48 px over the middle of their bases (a game person is about 17; at the blockout's own footprint
+# they would be 16 and 43 px): grow 0.745 and 1.121. The alley steps fit their blockout at its own height (walls 32).
+# The wagon and the hand cart break cleanly (WRECK: wreck_damaged(), wreck_ruins()): a broken wheel and a tilted bed,
+# then the cart down on one side with that wheel off and lying beside it, in their own wood. `shade` darkens the
+# wagon's wood and the right (shaded) side of its cover (shade()). The ferry landing, the crane and the drawbridge keep
 # their water and quays (water=True), the district gate its paving.
 def BROKEN(frac, sag=0):
     return ("broken", (frac, sag))
+
+
+def WRECK(wheel, side, tilt, drop):
+    """A cart's clean wreck: `wheel` its box on the sheet (x0, y0, x1, y1), the wheel that breaks and comes off; `side`
+    the end it stands at ("left" / "right"), where the bed tilts `tilt` px (damaged) and drops `drop` x the wheel's
+    height (ruins)."""
+    return ("wreck", dict(wheel=wheel, side=side, tilt=tilt, drop=drop))
 
 
 TRANSPORT_SETS = {
@@ -287,9 +297,10 @@ TRANSPORT_SETS = {
     "gpt_stables": dict(cell=0, L=(34, 299), F=(389, 476), R=(619, 361), k=1.0, fp=[2.2, 1.43], height=16, seed=140,
                         chimney=(416, 64), ruins=TIMBER, **SHOW),
     "gpt_wagon": dict(cell=1, L=(710, 374), F=(1031, 535), R=(1147, 477), k=1.0, fp=[1.35, 0.48], height=19,
-                      seed=141, chimney=None, ruins=BROKEN(0.55, 3), **SHOW),
+                      seed=141, chimney=None, ruins=WRECK((853, 383, 925, 472), "right", 4, 0.55),
+                      shade=dict(wood=0.8, cover=0.66), **SHOW),
     "gpt_handcart": dict(cell=2, L=(1315, 390), F=(1504, 484), R=(1588, 442), k=1.0, fp=[0.9, 0.4], height=9,
-                         seed=142, chimney=None, ruins=BROKEN(0.35, 2), **SHOW),
+                         seed=142, chimney=None, ruins=WRECK((1338, 340, 1412, 433), "left", 3, 0.4), **SHOW),
     "gpt_crane": dict(cell=3, L=(36, 728), F=(336, 878), R=(567, 763), k=1.0, fp=[1.95, 1.5], height=25, seed=143,
                       chimney=None, ruins=TIMBER, water=True, **SHOW),
     "gpt_ferry": dict(cell=4, L=(582, 714), F=(887, 866), R=(1149, 735), k=1.0, fp=[2.1, 1.8], height=15, seed=144,
@@ -308,10 +319,10 @@ DEFENCE_B_SETS = {
                              seed=149, chimney=None, ruins=STONE, **SHOW),
 }
 SMALL_SETS = {
-    "gpt_milestone": dict(cell=0, L=(125, 581), F=(254, 646), R=(357, 594), k=1.0, fp=[0.11, 0.09], height=6,
-                          seed=150, chimney=None, ruins=BROKEN(0.45), **SHOW),
-    "gpt_waysidecross": dict(cell=1, L=(705, 593), F=(855, 668), R=(1005, 593), k=1.0, fp=[0.24, 0.24], height=26,
-                             seed=151, chimney=None, ruins=BROKEN(0.6), **SHOW),
+    "gpt_milestone": dict(cell=0, L=(125, 581), F=(254, 646), R=(357, 594), k=1.0, fp=[0.3, 0.24], grow=0.745,
+                          height=12, seed=150, chimney=None, ruins=BROKEN(0.45), **SHOW),
+    "gpt_waysidecross": dict(cell=1, L=(705, 593), F=(855, 668), R=(1005, 593), k=1.0, fp=[0.4, 0.4], grow=1.121,
+                             height=48, seed=151, chimney=None, ruins=BROKEN(0.6), **SHOW),
     "gpt_alleysteps": dict(cell=2, L=(1320, 543), F=(1589, 677), R=(1887, 528), k=1.0, fp=[0.9, 1.0], height=32,
                            seed=152, chimney=None, ruins=STONE, **SHOW),
 }
@@ -342,6 +353,11 @@ SHEETS = {
 }
 # name -> its set's spec, "sheet" (its SHEETS key) added
 SETS = {n: dict(v, sheet=k) for k, sh in SHEETS.items() for n, v in sh["sets"].items()}
+# The six smallest batch-2 pieces (scale .131-.150) match their blockouts (painted height 1.05-1.71 x the blockout's)
+# and are small by design: grow 1.3 (the 1.3x art rule) so they read. `grow` scales the plot, and so the painting.
+for _s in SETS.values():
+    if "grow" in _s:
+        _s["fp"] = [round(v * _s["grow"], 3) for v in _s["fp"]]
 
 
 # --- cut -----------------------------------------------------------------------------------------------------------
@@ -559,7 +575,7 @@ def water_mask(a):
     return grown & (a[..., 3] > 0)
 
 
-def cracks(img, A, fp, n, seed, dark=0.8):
+def cracks(img, A, fp, n, seed, dark=0.8, wide=2, steps=(5, 9)):
     """Clean cracks across the lower stone of a piece with no ruin (a pond's rim, a monument's plinth): `n` jagged
     lines of dark pixels, each a run of short steps from a point on the plot's diamond, fixed by `seed`, drawn only on
     opaque pixels (2 px wide, a lighter shadow below), wide enough to survive the speck clean."""
@@ -578,7 +594,7 @@ def cracks(img, A, fp, n, seed, dark=0.8):
         p = A + u * np.array([-32.0, -16.0]) + v * np.array([32.0, -16.0])
         p = p + np.array([0.0, -rng.uniform(1, 4)])
         ang = rng.uniform(-2.2, -0.9)
-        for _ in range(int(rng.randint(5, 9))):
+        for _ in range(int(rng.randint(*steps))):
             ang += rng.uniform(-0.6, 0.6)
             step = rng.uniform(2.0, 3.5)
             q = p + step * np.array([np.cos(ang), np.sin(ang)])
@@ -586,8 +602,9 @@ def cracks(img, A, fp, n, seed, dark=0.8):
                 x, y = np.round(p + (q - p) * t).astype(int)
                 if 0 <= y < h - 1 and 0 <= x < w - 1 and al[y, x]:
                     out[y, x, :3] = out[y, x, :3] * (1 - dark) + CHAR * dark
-                    if al[y, x + 1]:
-                        out[y, x + 1, :3] = out[y, x + 1, :3] * (1 - dark) + CHAR * dark
+                    for k in range(1, wide):
+                        if x + k < w and al[y, x + k]:
+                            out[y, x + k, :3] = out[y, x + k, :3] * (1 - dark) + CHAR * dark
                     if al[y + 1, x]:
                         out[y + 1, x, :3] = out[y + 1, x, :3] * 0.6 + CHAR * 0.4
             p = q
@@ -662,6 +679,99 @@ def broken_prop(img, A, fp, frac, sag=0, seed=0):
         out[y0:y0 + h, x0:x0 + w, 3] = 255
         out[y0 + h, x0:x0 + w, :3] = CHAR
         out[y0 + h, x0:x0 + w, 3] = 255
+    return out
+
+
+def shade(img, wood=1.0, cover=1.0):
+    """A prop's tones evened toward the town's: its wood (warm, saturated px) times `wood`, and its pale canvas cover
+    darkened from its left edge (lit) to `cover` x at its right edge (the shaded side)."""
+    out = img.copy()
+    rgb = out[..., :3]
+    al = out[..., 3] > 0
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1), 0)
+    pale = al & (mn > 130) & (sat < 0.32)
+    woody = al & ~pale & (sat > 0.3) & (rgb[..., 0] > rgb[..., 2])
+    out[woody, :3] *= wood
+    ys, xs = np.nonzero(pale)
+    if xs.size:
+        x0, x1 = np.percentile(xs, 2), np.percentile(xs, 98)
+        f = 1.0 - (1.0 - cover) * np.clip((xs - x0) / max(x1 - x0, 1), 0, 1)
+        out[ys, xs, :3] *= f[:, None]
+    return out
+
+
+def _wheel(img, wb):
+    """The wheel in box `wb` (sprite px x0, y0, x1, y1): the opaque px inside the box's ellipse, and the ellipse."""
+    h, w = img.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w]
+    cx, cy = (wb[0] + wb[2]) / 2, (wb[1] + wb[3]) / 2
+    rx, ry = (wb[2] - wb[0]) / 2 + 0.5, (wb[3] - wb[1]) / 2 + 0.5
+    return (img[..., 3] > 0) & (((xs - cx) / rx) ** 2 + ((ys - cy) / ry) ** 2 <= 1.0), (cx, cy, rx, ry)
+
+
+def _tilt(img, x_from, x_to, drop):
+    """Columns moved down: 0 px at x_from, rising to `drop` px at x_to and beyond (either direction)."""
+    out = np.zeros_like(img)
+    for x in range(img.shape[1]):
+        t = float(np.clip((x - x_from) / (x_to - x_from), 0, 1)) if x_to != x_from else 1.0
+        d = int(round(drop * t))
+        if d <= 0:
+            out[:, x] = img[:, x]
+        else:
+            out[d:, x] = img[:-d, x]
+    return out
+
+
+def wreck_damaged(img, wb, side, tilt):
+    """A cart's damaged still, clean (no char): its wheel broken (the rim and spokes of its lower half and outer side gone)
+    and its bed tilted `tilt` px down toward that wheel's end, resting on the broken rim."""
+    out = img.copy()
+    m, (cx, cy, rx, ry) = _wheel(img, wb)
+    h, w = img.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w]
+    ang = np.degrees(np.arctan2(ys - cy, (xs - cx) * (1 if side == "right" else -1)))
+    out[m & (ang > -10) & (ang < 140), 3] = 0
+    out[out[..., 3] == 0, :3] = 0
+    xs_al = np.nonzero((img[..., 3] > 0).any(0))[0]
+    far, near = (xs_al.min(), xs_al.max()) if side == "right" else (xs_al.max(), xs_al.min())
+    return _tilt(out, (far + near) / 2.0, near, tilt)
+
+
+def wreck_ruins(img, wb, side, drop):
+    """A cart's ruins, clean: that wheel off, the bed down on its end (`drop` x the wheel's height there, nothing at
+    the far end), and the wheel lying flat on the ground beyond that end. Where the wheel was: its lower half goes
+    (open ground under the bed), its upper half takes the side board behind it (the same row, a wheel's width further
+    along the cart)."""
+    m, (cx, cy, rx, ry) = _wheel(img, wb)
+    body = img.copy()
+    al = img[..., 3] > 0
+    inward = -1 if side == "right" else 1
+    w = img.shape[1]
+    for y, x in zip(*np.nonzero(m)):
+        if y >= cy:
+            body[y, x] = 0
+            continue
+        xs_ = int(round(x + inward * 2 * rx))
+        if 0 <= xs_ < w and al[y, xs_] and not m[y, xs_]:
+            body[y, x] = img[y, xs_]
+        else:
+            body[y, x] = 0
+    xs_al = np.nonzero(al.any(0))[0]
+    far, near = (xs_al.min(), xs_al.max()) if side == "right" else (xs_al.max(), xs_al.min())
+    out = _tilt(body, far, near, int(round(drop * 2 * ry)))
+    ys, xs = np.nonzero(m)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    wheel = img[y0:y1, x0:x1].copy()
+    wheel[~m[y0:y1, x0:x1], 3] = 0
+    im = Image.fromarray(np.clip(wheel, 0, 255).astype(np.uint8), "RGBA")
+    im = im.resize((im.width, max(2, round(im.height * 0.4))), Image.NEAREST)
+    flat = np.array(im).astype(float)
+    fh, fw = flat.shape[:2]
+    gx = int(round(cx + (1 if side == "right" else -1) * (rx * 0.5 + fw / 2) - fw / 2))
+    gy = int(round(cy + ry - fh + 5))
+    on = flat[..., 3] > 0
+    out[gy:gy + fh, gx:gx + fw][on] = flat[on]
     return out
 
 
@@ -1070,18 +1180,29 @@ def nearest_base_errors(img, A, fp):
 def make(name, out_dir, debug=None):
     spec = SETS[name]
     native, A, tf, info = fit(spec)
+    if spec.get("shade"):
+        native = shade(native, **spec["shade"])
     native, A, tf = pad_to(native, A, tf)
     shift = (0, 0)
     if spec["sheet"] != "defence":       # the defence plots are its main bodies, measured by hand
         A, shift = recentre(native, A, spec["fp"])
+    wreck = spec["ruins"][1] if spec["ruins"] and spec["ruins"][0] == "wreck" else None
+    if wreck:
+        wb = np.array([*tf(wreck["wheel"][:2]), *tf(wreck["wheel"][2:])])
     if spec["ruins"] == CRACKED:
-        dam = cracks(native, A, spec["fp"], 4, spec["seed"])
+        n, dark, wide = spec.get("crack", (4, 0.8, 2))
+        dam = cracks(native, A, spec["fp"], n, spec["seed"], dark=dark, wide=wide,
+                     steps=(7, 11) if "crack" in spec else (5, 9))
+    elif wreck:
+        dam = wreck_damaged(native, wb, wreck["side"], wreck["tilt"])
     else:
         dam = damaged(name, native, tf, A)
     st = {"intact": native, "damaged": dam}
     if spec["ruins"] == CRACKED:
         more = cracks(dam, A, spec["fp"], 6, spec["seed"] + 1000, dark=0.75)
         st["ruins"] = broken_statue(more) if name == "gpt_monument" else more
+    elif wreck:
+        st["ruins"] = wreck_ruins(native, wb, wreck["side"], wreck["drop"])
     elif spec["ruins"] and spec["ruins"][0] == "broken":
         frac, sag = spec["ruins"][1]
         st["ruins"] = broken_prop(native, A, spec["fp"], frac, sag, spec["seed"])
@@ -1107,7 +1228,7 @@ def make(name, out_dir, debug=None):
     # painted water (a channel, a pond, a quay's stream) keeps its surface: its blue is not re-drawn as slate courses
     keep = water_mask(crop["intact"]) if spec.get("water") else None
     # a cracked or broken ruin is the painting itself: the whole pass, its knobs and light from the intact
-    own_ruins = spec["ruins"] == CRACKED or bool(spec["ruins"]) and spec["ruins"][0] == "broken"
+    own_ruins = spec["ruins"] == CRACKED or bool(spec["ruins"]) and spec["ruins"][0] in ("broken", "wreck")
     intact, lit = style_match.match(crop["intact"], knobs, glow=glow, keep=keep)
     done = [intact, style_match.match(crop["damaged"], knobs, ref=crop["intact"], glow=glow, keep=keep)[0],
             style_match.match(crop["ruins"], knobs, ref=crop["intact"] if own_ruins else None,

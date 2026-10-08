@@ -10,7 +10,8 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
 	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
-	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2"]
+	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2",
+	"gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -32,7 +33,53 @@ static func run(t) -> void:
 	_bonfires(t)
 	_banners(t)
 	_window_mask(t)
+	_gpt_proof(t)
 	SpriteArt.set_enabled(true)
+
+
+## The GPT buildings proof (GptProof): each of its six plots draws its gpt_* set while sprites are on, a plot that
+## is not in the table keeps its own set, and with sprites off every one falls back to the procedural art. The plots
+## are the town's own (a layout change would orphan a row), and each set stands on its plot as its footprint says.
+static func _gpt_proof(t) -> void:
+	var town := {}
+	for d in TownLayout.structures():
+		town[d.rect] = d
+	for row: Array in GptProof.PLOTS:
+		var plot: Rect2 = row[0]
+		var want: String = row[1]
+		var found := {}
+		for r: Rect2 in town:
+			if r.position.distance_to(plot.position) <= GptProof.SLACK and r.size.distance_to(plot.size) <= GptProof.SLACK:
+				found = town[r]
+		t.check(not found.is_empty(), "the %s plot %s is one of the town's" % [want, plot])
+		if found.is_empty():
+			continue
+		var s := _make(found.rect, found.height, found.kind, 5, found.role, found.tag)
+		SpriteArt.set_enabled(true)
+		var sp := SpriteArt.set_for(s)
+		t.check(SpriteArt.name_for(s) == want and sp.get("name", "") == want,
+			"the plot %s draws %s (got '%s')" % [plot, want, SpriteArt.name_for(s)])
+		var fp: Vector2 = SpriteArt.sprite(want).footprint
+		var deep := plot.size.y > plot.size.x
+		t.check(sp.get("mirror", false) == deep and is_equal_approx(maxf(fp.x, fp.y), maxf(plot.size.x, plot.size.y)),
+			"%s stands on its plot%s" % [want, " mirrored" if deep else ""])
+		var m: Dictionary = SpriteArt.manifest()[want]
+		t.check(Structure.Kind.keys().find(m.kind) == found.kind and m.role == String(found.role) 				and m.tag == String(found.tag), "%s's manifest names the structure it draws on" % want)
+		SpriteArt.set_enabled(false)
+		t.check(SpriteArt.set_for(s).is_empty(), "with sprites off the %s plot is procedural again" % want)
+		SpriteArt.set_enabled(true)
+		s.free()
+		var sset := SpriteArt.sprite(want)
+		for st in SpriteArt.STILLS:
+			t.check(sset.get("stills", {}).get(st) is Texture2D, "%s loads its %s still" % [want, st])
+	# The same structure one step off its plot keeps its own set.
+	var inn := _make(Rect2(-9.5, -7.6, 2.4, 1.5), 30.0, K.HOUSE, 5, &"house", &"tavern")
+	t.check(SpriteArt.name_for(inn) == "tavern", "a tavern off the proof's plots stays the tavern")
+	inn.free()
+	# Smoke: a set with a chimney smokes from it; the watchtower has none.
+	var jail := _make(Rect2(-8.4, 1.3796573, 1.3, 0.95), 29.0, K.HOUSE, 5, &"house", &"townhouse")
+	t.check(ChimneySmoke.tip_of(jail) != Vector2.INF, "the jail smokes from its chimney")
+	jail.free()
 
 
 ## The sets with lit windows (Task 5 report): each has a glow_mask.png, holding at least this many window px. The

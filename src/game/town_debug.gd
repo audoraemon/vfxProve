@@ -45,6 +45,11 @@ const TOWN_SHOTS := [
 	# The market's north torches and the walkway lamp; the west street's lamps beside a market corner torch.
 	["town_torches.png", Vector2(1.4, -2.6), 2.2],
 	["town_lamps.png", Vector2(-6.0, 8.6), 2.2],
+	# The GPT buildings proof (GptProof): the courthouse, jail, treasury and watchtower west of the market; the town
+	# hall by the Citadel's lane; the armoury on the workshop's plot, by the barracks.
+	["town_gpt_proof.png", Vector2(-7.9, 0.6), 1.4],
+	["town_gpt_proof_north.png", Vector2(-8.4, -6.85), 1.6],
+	["town_gpt_proof_east.png", Vector2(11.5, -0.55), 1.6],
 	# The forest ring outside the west wall, and the oaks between the west district's cottages.
 	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
 	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],

@@ -268,6 +268,62 @@ HOUSING_SMOKE = [(860, 538, 930, 586, "all"), (862, 586, 890, 594, "clear"),
 PUBLIC_SMOKE = [(120, 538, 168, 625, "white"), (1173, 596, 1192, 682, "white")]
 CIVIC_B_SMOKE = []
 
+# Batch 3 of the showcase: the transport, defence_b and small sheets (white ground: regions(); the defence_b sheet has
+# four pieces, the small one three). L F R from gpt_locate.py, then recentre(). The wagon and the hand cart are props:
+# each stands on its own small plot (the showcase also lays the wagon a second time on its plot turned, so it draws
+# mirrored: both facings). BROKEN: a prop's ruins still is the prop itself broken (broken_prop(): its top `frac` gone,
+# burnt, sagging `sag` px at its front end, a few pieces on the ground).
+# The small sheet is painted far larger than its blockouts' people: the milestone and the wayside cross are scaled by
+# height instead, to about knee height (6 px; a game person is about 17) and 1.5 people (26 px) over the middle of
+# their bases, and their footprints shrink with them (blockout 0.3 x 0.24 x 0.374, 0.4 x 0.4 x 0.607). The alley steps
+# fit their blockout's footprint at its own height (walls 32 px). The ferry landing, the crane and the drawbridge keep
+# their water and quays (water=True), the district gate its paving.
+def BROKEN(frac, sag=0):
+    return ("broken", (frac, sag))
+
+
+TRANSPORT_SETS = {
+    # (its chimney is the painting's own: the blockout has none)
+    "gpt_stables": dict(cell=0, L=(34, 299), F=(389, 476), R=(619, 361), k=1.0, fp=[2.2, 1.43], height=16, seed=140,
+                        chimney=(416, 64), ruins=TIMBER, **SHOW),
+    "gpt_wagon": dict(cell=1, L=(710, 374), F=(1031, 535), R=(1147, 477), k=1.0, fp=[1.35, 0.48], height=19,
+                      seed=141, chimney=None, ruins=BROKEN(0.55, 3), **SHOW),
+    "gpt_handcart": dict(cell=2, L=(1315, 390), F=(1504, 484), R=(1588, 442), k=1.0, fp=[0.9, 0.4], height=9,
+                         seed=142, chimney=None, ruins=BROKEN(0.35, 2), **SHOW),
+    "gpt_crane": dict(cell=3, L=(36, 728), F=(336, 878), R=(567, 763), k=1.0, fp=[1.95, 1.5], height=25, seed=143,
+                      chimney=None, ruins=TIMBER, water=True, **SHOW),
+    "gpt_ferry": dict(cell=4, L=(582, 714), F=(887, 866), R=(1149, 735), k=1.0, fp=[2.1, 1.8], height=15, seed=144,
+                      chimney=None, ruins=TIMBER, water=True, **SHOW),
+    "gpt_pens": dict(cell=5, L=(1186, 713), F=(1514, 877), R=(1713, 777), k=1.0, fp=[2.04, 1.24], height=14,
+                     seed=145, chimney=None, ruins=TIMBER, **SHOW),
+}
+DEFENCE_B_SETS = {
+    "gpt_barbican": dict(cell=0, L=(28, 379), F=(414, 572), R=(546, 506), k=1.0, fp=[2.58, 0.88], height=34,
+                         seed=146, chimney=None, ruins=STONE, **SHOW),
+    "gpt_drawbridge": dict(cell=1, L=(523, 417), F=(874, 592), R=(1146, 456), k=1.0, fp=[2.3, 1.78], height=32,
+                           seed=147, chimney=None, ruins=STONE, water=True, **SHOW),
+    "gpt_gallows": dict(cell=2, L=(1080, 521), F=(1281, 621), R=(1518, 502), k=1.0, fp=[1.2, 1.42], height=50,
+                        seed=148, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_districtgate": dict(cell=3, L=(31, 910), F=(270, 1030), R=(583, 873), k=1.0, fp=[1.6, 2.1], height=51,
+                             seed=149, chimney=None, ruins=STONE, **SHOW),
+}
+SMALL_SETS = {
+    "gpt_milestone": dict(cell=0, L=(125, 581), F=(254, 646), R=(357, 594), k=1.0, fp=[0.11, 0.09], height=6,
+                          seed=150, chimney=None, ruins=BROKEN(0.45), **SHOW),
+    "gpt_waysidecross": dict(cell=1, L=(705, 593), F=(855, 668), R=(1005, 593), k=1.0, fp=[0.24, 0.24], height=26,
+                             seed=151, chimney=None, ruins=BROKEN(0.6), **SHOW),
+    "gpt_alleysteps": dict(cell=2, L=(1320, 543), F=(1589, 677), R=(1887, 528), k=1.0, fp=[0.9, 1.0], height=32,
+                           seed=152, chimney=None, ruins=STONE, **SHOW),
+}
+# (not smoke: the white ground seen between the wagon's and the hand cart's spokes, under the crane's jib and between
+# the gallows' uprights; "sky" clears near-white only, so the canvas, the quay's stone and the rope stay)
+TRANSPORT_SMOKE = [(745, 335, 812, 418, "sky"), (853, 383, 925, 472, "sky"), (1338, 340, 1412, 433, "sky"),
+                   (75, 490, 335, 600, "sky")]
+DEFENCE_B_SMOKE = [(1285, 190, 1425, 395, "sky")]
+SMALL_SMOKE = []
+# The props laid a second time, mirrored (the showcase's MIRRORS).
+MIRRORS = ["gpt_wagon"]
+
 # A sheet: its source (in concepts/GPT), its grid (cols, rows), the painted smoke to strip, and its sets.
 SHEETS = {
     "defence": dict(src="defence_sheet_v1.webp", grid=(3, 2), smoke=[], sets=DEFENCE_SETS),
@@ -280,6 +336,9 @@ SHEETS = {
     "housing": dict(src="housing_sheet_v1.png", grid=None, smoke=HOUSING_SMOKE, sets=HOUSING_SETS),
     "public": dict(src="public_sheet_v1.png", grid=None, smoke=PUBLIC_SMOKE, sets=PUBLIC_SETS),
     "civic_b": dict(src="civic_b_sheet_v1.png", grid=None, smoke=CIVIC_B_SMOKE, sets=CIVIC_B_SETS),
+    "transport": dict(src="transport_sheet_v1.png", grid=None, smoke=TRANSPORT_SMOKE, sets=TRANSPORT_SETS),
+    "defence_b": dict(src="defence_b_sheet_v1.png", grid=None, smoke=DEFENCE_B_SMOKE, sets=DEFENCE_B_SETS, n=4),
+    "small": dict(src="small_sheet_v1.png", grid=None, smoke=SMALL_SMOKE, sets=SMALL_SETS, n=3),
 }
 # name -> its set's spec, "sheet" (its SHEETS key) added
 SETS = {n: dict(v, sheet=k) for k, sh in SHEETS.items() for n, v in sh["sets"].items()}
@@ -336,6 +395,9 @@ def strip_smoke(a, boxes):
         m = is_smoke(sub[..., :3]) & (sub[..., 3] > 0)
         if mode == "all":
             sub[..., 3] = 0
+        elif mode == "sky":             # near-white only (the background's own test): between spokes, under a jib
+            rgb = sub[..., :3].astype(int)
+            sub[(rgb.min(-1) > 225) & (rgb.max(-1) - rgb.min(-1) < 26), 3] = 0
         elif mode == "white":           # sky seen through a gap the border flood cannot reach
             rgb = sub[..., :3].astype(int)
             sub[(rgb.min(-1) > 150) & (rgb.max(-1) - rgb.min(-1) < 40), 3] = 0
@@ -376,11 +438,12 @@ def regions(key):
         dy = max(0, max(p[1], q[1]) - min(p[3], q[3]))
         return dx * dx + dy * dy
 
+    n = SHEETS[key].get("n", 6)
     by_size = sorted(range(len(comps)), key=lambda i: -len(comps[i][0]))
-    six = by_size[:6]
-    assert len(comps[six[5]][0]) > 20000 and (len(comps) == 6 or len(comps[by_size[6]][0]) < 5000),         "not six buildings on %s" % key
+    six = by_size[:n]
+    assert len(comps[six[-1]][0]) > 15000 and (len(comps) == n or len(comps[by_size[n]][0]) < 5000),         "not %d buildings on %s" % (n, key)
     groups = {k: [k] for k in six}
-    for i in by_size[6:]:
+    for i in by_size[n:]:
         groups[min(six, key=lambda k: dist(box[i], box[k]))].append(i)
     order = sorted(six, key=lambda k: box[k][3])
     rows = [sorted(order[:3], key=lambda k: box[k][0]), sorted(order[3:], key=lambda k: box[k][0])]
@@ -555,6 +618,53 @@ def broken_statue(img, frac=0.42):
     return out
 
 
+def broken_prop(img, A, fp, frac, sag=0, seed=0):
+    """A prop's ruins still: the prop itself broken and burnt. Its top `frac` of its height goes (a wagon's cover, a
+    cart's load, a milestone's head, a cross's arms and roof), the new top row charred; the rest darkened a third of
+    the way to char; its front end (right of its middle) sagging up to `sag` px (a broken axle); and three pieces of
+    what fell lying on the plot in front of it, sized to the prop."""
+    out = img.copy()
+    al = img[..., 3] > 0
+    ys, xs = np.nonzero(al)
+    y_top, y_bot = ys.min(), ys.max()
+    cut = int(round(y_top + frac * (y_bot - y_top)))
+    row = np.nonzero(al[cut + 3])[0]          # the pieces are what stays: the bed's planks, the stone, the post
+    piece = img[cut + 3, row[len(row) // 2], :3].copy() if row.size else np.array(CHAR, float)
+    out[:cut] = 0
+    op = out[..., 3] > 0
+    out[op, :3] = out[op, :3] * 0.7 + np.array(CHAR) * 0.3
+    for y in (cut, cut + 1):
+        m = out[y, :, 3] > 0
+        out[y, m, :3] = out[y, m, :3] * 0.35 + np.array(CHAR) * 0.65
+    if sag:
+        x0, x1 = xs.min(), xs.max()
+        mid = (x0 + x1) / 2.0
+        moved = np.zeros_like(out)
+        for x in range(x0, x1 + 1):
+            d = int(round(sag * max(0.0, (x - mid) / max(x1 - mid, 1))))
+            if d == 0:
+                moved[:, x] = out[:, x]
+            else:
+                moved[d:, x] = out[:-d, x]
+        out = moved
+    W, D = fp
+    span = max(4.0, (xs.max() - xs.min()) * 0.5)
+    sz = max(2, int(round(span / 8)))
+    rng = np.random.RandomState(seed)
+    Af = np.array(A, float)
+    for i in range(3):
+        u, v = rng.uniform(0.2, 0.8) * W, rng.uniform(0.2, 0.8) * D
+        x0, y0 = np.round(Af + u * np.array([-32.0, -16.0]) + v * np.array([32.0, -16.0])).astype(int)
+        x0 += int((i - 1) * span * 0.6)
+        y0 += 2
+        w, h = sz + (i % 2), max(1, sz - 1)
+        out[y0:y0 + h, x0:x0 + w, :3] = piece * 0.8 + np.array(CHAR) * 0.2
+        out[y0:y0 + h, x0:x0 + w, 3] = 255
+        out[y0 + h, x0:x0 + w, :3] = CHAR
+        out[y0 + h, x0:x0 + w, 3] = 255
+    return out
+
+
 def pad_to(img, A, tf, m=50):
     out = np.pad(img, ((m, m), (m, m), (0, 0)))
     return out, A + m, (lambda p: tf(p) + m)
@@ -596,7 +706,7 @@ def roof_holes(c, holes, roof=None):
     return out
 
 
-def scorch(img, x0, x1, y_top, y_bot):
+def scorch(img, x0, x1, y_top, y_bot, skip=None):
     """warehouse.scorch, darker: soot up a wall from a burnt opening, darkest low in the middle, fading up and out in
     three clean steps (these walls are pale and busy, so the lightest step still reads)."""
     out = img.copy()
@@ -605,7 +715,7 @@ def scorch(img, x0, x1, y_top, y_bot):
         t = (y_bot - y) / max(y_bot - y_top, 1)
         width = half * (1.0 - 0.45 * t)
         for x in range(int(x0), int(x1) + 1):
-            if out[y, x, 3] == 0 or abs(x - mid) > width:
+            if out[y, x, 3] == 0 or abs(x - mid) > width or skip is not None and skip[y, x]:
                 continue
             k = abs(x - mid) / max(width, 1)
             f = round((0.12 + 0.6 * min(1.0, 0.75 * t + 0.6 * k)) * 3) / 3
@@ -713,8 +823,9 @@ def auto_damage(c, A, fp, water=None):
             holes.append((x, float(np.median(near)), rx, rx * 0.58, sl))
         out = roof_holes(out, holes, roof)
     best, bx = -1, None
+    wall = al & ~roof if water is None else al & ~roof & ~water      # no scorch up painted water
     for x in range(int(sx0 + 0.15 * (sx1 - sx0)), int(sx0 + 0.5 * (sx1 - sx0)) + 1):
-        col = al[:, x] & ~roof[:, x]
+        col = wall[:, x]
         ys_c = np.nonzero(col)[0]
         if ys_c.size == 0:
             continue
@@ -726,12 +837,13 @@ def auto_damage(c, A, fp, water=None):
     if bx is not None and best > 6:
         x, top, bot = bx
         half = int(np.clip(2 + 1.5 * min(W, D), 3, 6))
-        out = scorch(out, x - half, x + half, bot - 0.6 * (bot - top), bot)
+        out = scorch(out, x - half, x + half, bot - 0.6 * (bot - top), bot, water)
         if roof.sum() <= 150:          # no tiles to hole: a second scorch across the middle
             xm = int((sx0 + sx1) / 2) + half * 2
             ys_m = np.nonzero(al[:, xm])[0]
             if ys_m.size:
-                out = scorch(out, xm - half, xm + half, ys_m.min() + 0.3 * (ys_m.max() - ys_m.min()), ys_m.max())
+                out = scorch(out, xm - half, xm + half, ys_m.min() + 0.3 * (ys_m.max() - ys_m.min()), ys_m.max(),
+                             water)
     return out
 
 
@@ -970,6 +1082,9 @@ def make(name, out_dir, debug=None):
     if spec["ruins"] == CRACKED:
         more = cracks(dam, A, spec["fp"], 6, spec["seed"] + 1000, dark=0.75)
         st["ruins"] = broken_statue(more) if name == "gpt_monument" else more
+    elif spec["ruins"] and spec["ruins"][0] == "broken":
+        frac, sag = spec["ruins"][1]
+        st["ruins"] = broken_prop(native, A, spec["fp"], frac, sag, spec["seed"])
     elif spec["ruins"] and spec["ruins"][0] == "low":
         st["ruins"] = low_ruins(spec["ruins"][1], spec["fp"], A, native.shape)
     elif spec["ruins"]:
@@ -991,10 +1106,12 @@ def make(name, out_dir, debug=None):
     glow = spec["ruins"] not in (GARDEN, CRACKED) and not spec.get("water")
     # painted water (a channel, a pond, a quay's stream) keeps its surface: its blue is not re-drawn as slate courses
     keep = water_mask(crop["intact"]) if spec.get("water") else None
+    # a cracked or broken ruin is the painting itself: the whole pass, its knobs and light from the intact
+    own_ruins = spec["ruins"] == CRACKED or bool(spec["ruins"]) and spec["ruins"][0] == "broken"
     intact, lit = style_match.match(crop["intact"], knobs, glow=glow, keep=keep)
     done = [intact, style_match.match(crop["damaged"], knobs, ref=crop["intact"], glow=glow, keep=keep)[0],
-            style_match.match(crop["ruins"], knobs, ref=crop["intact"] if spec["ruins"] == CRACKED else None,
-                              light=bool(spec["ruins"]) and spec["ruins"] != CRACKED, glow=False, keep=keep)[0]]
+            style_match.match(crop["ruins"], knobs, ref=crop["intact"] if own_ruins else None,
+                              light=bool(spec["ruins"]) and not own_ruins, glow=False, keep=keep)[0]]
     d = out_dir / name
     d.mkdir(parents=True, exist_ok=True)
     for state, img in zip(("intact", "damaged", "ruins"), done):

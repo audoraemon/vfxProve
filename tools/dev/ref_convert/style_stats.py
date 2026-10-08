@@ -30,7 +30,10 @@ GPT = ["gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchto
        "gpt_cistern", "gpt_aqueduct", "gpt_washhouse", "gpt_latrine", "gpt_sluice", "gpt_footbridge",
        "gpt_manor", "gpt_patrician", "gpt_rowhouses", "gpt_tenement", "gpt_shacks", "gpt_hut",
        "gpt_monument", "gpt_noticeboard", "gpt_crierstage", "gpt_grandstand", "gpt_tiltbarrier", "gpt_playstage",
-       "gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse"]
+       "gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse",
+       "gpt_stables", "gpt_wagon", "gpt_handcart", "gpt_crane", "gpt_ferry", "gpt_pens",
+       "gpt_barbican", "gpt_drawbridge", "gpt_gallows", "gpt_districtgate",
+       "gpt_milestone", "gpt_waysidecross", "gpt_alleysteps"]
 
 
 def luma(rgb):

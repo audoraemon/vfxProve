@@ -19,7 +19,8 @@ extends Node
 ##
 ## Each plot is a real Structure, kind HOUSE and role "showcase" (no rules, homes, smoke or chores count it), carrying
 ## the set it draws as GptProof.SHOWCASE_META (SpriteArt.name_for asks GptProof.set_for first). The sets that repeat
-## along x (REPEATS: the aqueduct, the tilt barrier) stand as REPEAT_COPIES copies end to end, to show their seam.
+## along x (REPEATS: the aqueduct, the tilt barrier) stand as REPEAT_COPIES copies end to end, to show their seam;
+## the wagon (MIRRORS) stands a second time on its plot turned, so it draws mirrored: both facings.
 ## `--showcase-state=damaged` cracks every showcase building, `ruins` brings them down (their fall plays once at the
 ## start). F9 shows or hides the name under each plot (town_debug.gd).
 ##
@@ -72,10 +73,19 @@ const ROWS := [
 		["gpt_monument", "gpt_noticeboard", "gpt_crierstage", "gpt_grandstand", "gpt_tiltbarrier", "gpt_playstage"]],
 	["civic_b", "workshop",
 		["gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse"]],
+	["transport", "barn",
+		["gpt_stables", "gpt_wagon", "gpt_handcart", "gpt_crane", "gpt_ferry", "gpt_pens"]],
+	["defence_b", "town_gate",
+		["gpt_barbican", "gpt_drawbridge", "gpt_gallows", "gpt_districtgate"]],
+	["small", "lamp_post",
+		["gpt_milestone", "gpt_waysidecross", "gpt_alleysteps"]],
 ]
 ## The sets that tile along x, and how many copies of each stand end to end.
 const REPEATS := ["gpt_aqueduct", "gpt_tiltbarrier"]
 const REPEAT_COPIES := 3
+## The props that also stand a second time on their plot turned (W and D swapped), so the engine draws them mirrored
+## (SpriteArt.set_for): both facings. The wagon (gpt_convert.MIRRORS).
+const MIRRORS := ["gpt_wagon"]
 const STATES := ["intact", "damaged", "ruins"]
 const LABEL_SIZE := 9
 
@@ -113,8 +123,9 @@ static func obstacles() -> Array[Rect2]:
 	return out
 
 
-## The screen box (px, relative to the plot's front corner on screen) of set `n`'s drawn pixels, all three stills.
-static func sprite_box(n: String) -> Rect2:
+## The screen box (px, relative to the plot's front corner on screen) of set `n`'s drawn pixels, all three stills;
+## `mirror`: drawn mirrored (scale.x = -1 about its anchor).
+static func sprite_box(n: String, mirror := false) -> Rect2:
 	var sp := SpriteArt.sprite(n)
 	var box := Rect2()
 	var first := true
@@ -123,12 +134,22 @@ static func sprite_box(n: String) -> Rect2:
 		var used := Rect2(tex.get_image().get_used_rect())
 		box = used if first else box.merge(used)
 		first = false
-	return Rect2(box.position - (sp.anchor as Vector2), box.size)
+	var rel := Rect2(box.position - (sp.anchor as Vector2), box.size)
+	if mirror:
+		rel.position.x = -rel.end.x
+	return rel
 
 
-## A plot's screen box (world px): its set's box at its front corner.
+## Whether set `n` stands mirrored on `rect` (SpriteArt.set_for's rule: a wide sprite on a deep plot, or the reverse).
+static func mirrored(rect: Rect2, n: String) -> bool:
+	var f: Array = SpriteArt.manifest()[n].footprint
+	var fp := Vector2(float(f[0]), float(f[1]))
+	return not is_equal_approx(fp.x, fp.y) and (fp.x >= fp.y) != (rect.size.x >= rect.size.y)
+
+
+## A plot's screen box (world px): its set's box at its front corner (mirrored as it draws there).
 static func screen_box(rect: Rect2, n: String) -> Rect2:
-	var b := sprite_box(n)
+	var b := sprite_box(n, mirrored(rect, n))
 	return Rect2(Iso.ground_to_screen(rect.end) + b.position, b.size)
 
 
@@ -152,8 +173,8 @@ static func row_order() -> Array:
 
 
 ## The layout items: per row, its game building then its sets largest plot first; a repeating set is one item of
-## REPEAT_COPIES copies end to end along x. {row, sets (one per copy, back to front), fp (the whole), box (screen px
-## from the front corner, all copies)}.
+## REPEAT_COPIES copies end to end along x, and a MIRRORS prop is followed by itself turned (mirrored). {row, sets (one
+## per copy, back to front), fp (the whole), box (screen px from the front corner, all copies), mirror}.
 static func _items() -> Array[Dictionary]:
 	var man := SpriteArt.manifest()
 	var out: Array[Dictionary] = []
@@ -178,12 +199,16 @@ static func _items() -> Array[Dictionary]:
 			var copies: Array = []
 			copies.resize(k)
 			copies.fill(n)
-			out.append({"row": row[0], "sets": copies, "fp": Vector2(fp.x * k, fp.y), "box": box})
+			out.append({"row": row[0], "sets": copies, "fp": Vector2(fp.x * k, fp.y), "box": box, "mirror": false})
+			if n in MIRRORS:
+				out.append({"row": row[0], "sets": [n], "fp": Vector2(fp.y, fp.x), "box": sprite_box(n, true),
+					"mirror": true})
 	return out
 
 
-## Every plot, back to front: {rect, set, row, height, group, page}. A plot is its set's own footprint, wide (W along
-## x, D along y) as the set is drawn, so nothing is mirrored; the copies of a repeating set share a group and touch.
+## Every plot, back to front: {rect, set, row, height, group, page, mirror}. A plot is its set's own footprint, wide
+## (W along x, D along y) as the set is drawn, so nothing is mirrored but a MIRRORS prop's second plot (D x W); the
+## copies of a repeating set share a group and touch.
 ## The meadow holds about thirty buildings laid out this way, so the rows fill pages: a row that does not fit what is
 ## left of a page starts the next one (pages() counts them; the town debug scene shows one at a time). Computed once
 ## (the sprites' boxes read their stills).
@@ -217,11 +242,11 @@ static func plots() -> Array[Dictionary]:
 		for k in placed.size():
 			var it: Dictionary = items[start + k]
 			var whole: Rect2 = placed[k]
-			var w: float = man[it.sets[0]].footprint[0]
+			var w: float = whole.size.x / it.sets.size()
 			for j in it.sets.size():
 				var r := Rect2(whole.position.x + w * j, whole.position.y, w, whole.size.y)
 				out.append({"rect": r, "set": it.sets[j], "row": it.row, "group": group, "page": page,
-					"height": float(man[it.sets[j]].get("height", 20))})
+					"height": float(man[it.sets[j]].get("height", 20)), "mirror": it.mirror})
 			group += 1
 		start = end
 	_cache = out
@@ -476,7 +501,7 @@ func _draw_labels() -> void:
 		var r: Rect2 = p.rect
 		# on the plot's middle, a little below it
 		var at := Iso.ground_to_screen(r.get_center()) + Vector2(0, 14)
-		var text: String = p.set
+		var text: String = p.set + (" (mirrored)" if p.mirror else "")
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE).x
 		labels.draw_rect(Rect2(at + Vector2(-w * 0.5 - 2, -LABEL_SIZE), Vector2(w + 4, LABEL_SIZE + 3)),
 			Color(0, 0, 0, 0.55))

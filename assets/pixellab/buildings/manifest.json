@@ -131,5 +131,18 @@
 	"gpt_pavilion": {"size": [58, 84], "footprint": [0.92, 0.92], "anchor": [28, 73], "height": 18, "seed": 136, "kind": "HOUSE", "role": "showcase", "tag": ""},
 	"gpt_farmhouse": {"size": [118, 105], "footprint": [2.15, 1.17], "anchor": [73, 94], "height": 16, "seed": 137, "kind": "HOUSE", "role": "showcase", "tag": "", "chimney": [55, 12]},
 	"gpt_fishpond": {"size": [89, 69], "footprint": [1.5, 1.22], "anchor": [48, 58], "height": 4, "seed": 138, "kind": "HOUSE", "role": "showcase", "tag": ""},
-	"gpt_icehouse": {"size": [88, 71], "footprint": [1.08, 1.14], "anchor": [43, 60], "height": 22, "seed": 139, "kind": "HOUSE", "role": "showcase", "tag": ""}
+	"gpt_icehouse": {"size": [88, 71], "footprint": [1.08, 1.14], "anchor": [43, 60], "height": 22, "seed": 139, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_stables": {"size": [123, 110], "footprint": [2.2, 1.43], "anchor": [73, 99], "height": 16, "seed": 140, "kind": "HOUSE", "role": "showcase", "tag": "", "chimney": [81, 15]},
+	"gpt_wagon": {"size": [61, 61], "footprint": [1.35, 0.48], "anchor": [45, 50], "height": 19, "seed": 141, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_handcart": {"size": [49, 44], "footprint": [0.9, 0.4], "anchor": [32, 33], "height": 9, "seed": 142, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_crane": {"size": [120, 100], "footprint": [1.95, 1.5], "anchor": [68, 89], "height": 25, "seed": 143, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_ferry": {"size": [129, 87], "footprint": [2.1, 1.8], "anchor": [69, 76], "height": 15, "seed": 144, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_pens": {"size": [115, 85], "footprint": [2.04, 1.24], "anchor": [70, 74], "height": 14, "seed": 145, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_barbican": {"size": [126, 137], "footprint": [2.58, 0.88], "anchor": [90, 126], "height": 34, "seed": 146, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_drawbridge": {"size": [152, 121], "footprint": [2.3, 1.78], "anchor": [84, 110], "height": 32, "seed": 147, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_gallows": {"size": [90, 103], "footprint": [1.2, 1.42], "anchor": [41, 92], "height": 50, "seed": 148, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_districtgate": {"size": [138, 128], "footprint": [1.6, 2.1], "anchor": [61, 117], "height": 51, "seed": 149, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_milestone": {"size": [19, 26], "footprint": [0.11, 0.09], "anchor": [10, 15], "height": 6, "seed": 150, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_waysidecross": {"size": [26, 48], "footprint": [0.24, 0.24], "anchor": [13, 37], "height": 26, "seed": 151, "kind": "HOUSE", "role": "showcase", "tag": ""},
+	"gpt_alleysteps": {"size": [77, 81], "footprint": [0.9, 1.0], "anchor": [37, 70], "height": 32, "seed": 152, "kind": "HOUSE", "role": "showcase", "tag": ""}
 }

@@ -20,7 +20,10 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"gpt_cistern", "gpt_aqueduct", "gpt_washhouse", "gpt_latrine", "gpt_sluice", "gpt_footbridge",
 	"gpt_manor", "gpt_patrician", "gpt_rowhouses", "gpt_tenement", "gpt_shacks", "gpt_hut",
 	"gpt_monument", "gpt_noticeboard", "gpt_crierstage", "gpt_grandstand", "gpt_tiltbarrier", "gpt_playstage",
-	"gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse"]
+	"gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse",
+	"gpt_stables", "gpt_wagon", "gpt_handcart", "gpt_crane", "gpt_ferry", "gpt_pens",
+	"gpt_barbican", "gpt_drawbridge", "gpt_gallows", "gpt_districtgate",
+	"gpt_milestone", "gpt_waysidecross", "gpt_alleysteps"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -49,7 +52,7 @@ static func run(t) -> void:
 
 ## The GPT buildings proof (GptProof) and its showcase district (GptShowcase, dev only): the town's own plots no longer
 ## draw a proof set (PLOTS is empty); every gpt_* set stands in the showcase on a plot of its own footprint (a repeating
-## set in copies end to end), unmirrored, in its regions, clear of the town's ground and of every other plot, and no
+## set in copies end to end), unmirrored (but a MIRRORS prop's second plot, turned), in its regions, clear of the town's ground and of every other plot, and no
 ## sprite overlaps another on screen; a showcase structure draws its set while sprites are on and the procedural art
 ## with them off; the sets with a chimney smoke from it.
 static func _gpt_showcase(t) -> void:
@@ -62,14 +65,14 @@ static func _gpt_showcase(t) -> void:
 	for n: String in NAMES:
 		if n.begins_with("gpt_"):
 			sets += 1
-			var want := GptShowcase.REPEAT_COPIES if n in GptShowcase.REPEATS else 1
+			var want := (GptShowcase.REPEAT_COPIES if n in GptShowcase.REPEATS else 1) 				+ (1 if n in GptShowcase.MIRRORS else 0)
 			t.check(shown.get(n, 0) == want, "the showcase shows %s %d time(s) (got %d)" % [n, want, shown.get(n, 0)])
 	var refs := 0
 	for row: Array in GptShowcase.ROWS:
 		refs += 1
 		t.check(shown.get(row[1], 0) == 1 and not String(row[1]).begins_with("gpt_"),
 			"the %s row has the game's own %s" % [row[0], row[1]])
-	var extra := GptShowcase.REPEATS.size() * (GptShowcase.REPEAT_COPIES - 1)
+	var extra := GptShowcase.REPEATS.size() * (GptShowcase.REPEAT_COPIES - 1) + GptShowcase.MIRRORS.size()
 	t.check(plots.size() == sets + extra + refs, "%d converted sets (%d extra copies) and %d of the game's own (%d plots)"
 		% [sets, extra, refs, plots.size()])
 	# Rows: tallest category first; each row's first plot is its game building.
@@ -98,6 +101,8 @@ static func _gpt_showcase(t) -> void:
 	for i in plots.size():
 		var r: Rect2 = plots[i].rect
 		var fp: Vector2 = SpriteArt.sprite(plots[i].set).footprint
+		if plots[i].mirror:          # a MIRRORS prop's second plot: its footprint turned
+			fp = Vector2(fp.y, fp.x)
 		var inside := false
 		for reg: Rect2 in GptShowcase.REGIONS:
 			inside = inside or reg.encloses(r)
@@ -129,8 +134,10 @@ static func _gpt_showcase(t) -> void:
 		for st in SpriteArt.STILLS:
 			var u := Rect2((sp.stills[st] as Texture2D).get_image().get_used_rect())
 			used = u if st == SpriteArt.STILLS[0] else used.merge(u)
-		boxes.append(Rect2(Iso.ground_to_screen((p.rect as Rect2).end) - (sp.anchor as Vector2) + used.position,
-			used.size))
+		var rel := Rect2(used.position - (sp.anchor as Vector2), used.size)
+		if p.mirror:                  # drawn with scale.x = -1 about its anchor
+			rel.position.x = -rel.end.x
+		boxes.append(Rect2(Iso.ground_to_screen((p.rect as Rect2).end) + rel.position, rel.size))
 	var overlaps := []
 	for i in plots.size():
 		for j in range(i + 1, plots.size()):
@@ -159,8 +166,9 @@ static func _gpt_showcase(t) -> void:
 		SpriteArt.set_enabled(true)
 		s.refresh_sprite()
 		var sp := SpriteArt.set_for(s)
-		t.check(SpriteArt.name_for(s) == want and sp.get("name", "") == want and not sp.get("mirror", true),
-			"the showcase plot %s draws %s unmirrored (got '%s')" % [p.rect, want, SpriteArt.name_for(s)])
+		t.check(SpriteArt.name_for(s) == want and sp.get("name", "") == want and sp.get("mirror", not p.mirror) == p.mirror,
+			"the showcase plot %s draws %s %s (got '%s')" % [p.rect, want, "mirrored" if p.mirror else "unmirrored",
+			SpriteArt.name_for(s)])
 		if want.begins_with("gpt_"):
 			var m: Dictionary = SpriteArt.manifest()[want]
 			t.check(m.kind == "HOUSE" and m.role == "showcase" and m.tag == "", "%s's manifest is a showcase house" % want)

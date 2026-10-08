@@ -5,7 +5,10 @@ extends Node2D
 ## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] [--dim=0..1] (screenshots; --dim darkens
 ## the scene as a power's dim does, to see the lights at dusk), --citadel-test (scripted strikes on the Citadel, logged),
 ## --crowd-test (scripted panic, logged), --bench [--only=<power key>] (frame times while that power plays
-## beside the Citadel).
+## beside the Citadel), --no-showcase (leaves out the GPT showcase district east and north of the walls, GptShowcase:
+## on by default here and only here), --showcase-state=damaged|ruins (its buildings cracked or fallen),
+## --showcase-page=N (which page of its rows: the meadow holds about thirty buildings at a time). F9 shows or hides
+## the showcase's labels, F10 shows its next page.
 
 ## The spec's crowd: 110 citizens and 50 soldiers. --people=N scales both for benching.
 const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
@@ -45,6 +48,24 @@ const TOWN_SHOTS := [
 	# The market's north torches and the walkway lamp; the west street's lamps beside a market corner torch.
 	["town_torches.png", Vector2(1.4, -2.6), 2.2],
 	["town_lamps.png", Vector2(-6.0, 8.6), 2.2],
+	# The GPT showcase district (GptShowcase): all of it, then each category's row (Vector2.INF: framed on the row's
+	# sprites, GptShowcase.shot_frame, the zoom fitting them, at most this one). Later batches add their rows' shots here.
+	["showcase_overview.png", Vector2.INF, 0.6],
+	["showcase_overview_2.png", Vector2.INF, 0.6],
+	["showcase_overview_3.png", Vector2.INF, 0.6],
+	["showcase_overview_4.png", Vector2.INF, 0.6],
+	["showcase_housing.png", Vector2.INF, 1.6],
+	["showcase_faith.png", Vector2.INF, 1.6],
+	["showcase_trade.png", Vector2.INF, 1.6],
+	["showcase_food.png", Vector2.INF, 1.6],
+	["showcase_public.png", Vector2.INF, 1.6],
+	["showcase_defence.png", Vector2.INF, 1.6],
+	["showcase_crafts.png", Vector2.INF, 1.6],
+	["showcase_civic_b.png", Vector2.INF, 1.6],
+	["showcase_water.png", Vector2.INF, 1.6],
+	["showcase_transport.png", Vector2.INF, 1.6],
+	["showcase_defence_b.png", Vector2.INF, 1.6],
+	["showcase_small.png", Vector2.INF, 1.6],
 	# The forest ring outside the west wall, and the oaks between the west district's cottages.
 	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
 	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],
@@ -100,6 +121,9 @@ var _bf: Battlefield
 var _town: Town
 var _grid: WalkGrid
 var _crowd: Crowd
+## The GPT showcase district (dev only), or null with --no-showcase, and the page of it shown.
+var _showcase: GptShowcase
+var _showcase_page := 1
 var _selected := 0
 var _pressing := false
 var _press_ground := Vector2.ZERO
@@ -161,15 +185,28 @@ func _rebuild(seed_value: int) -> void:
 			_crowd.queue_free()
 		else:
 			_crowd.free()
+	if is_instance_valid(_showcase):
+		_showcase.teardown()
+		_showcase.queue_free()
+		_showcase = null
+	var args := OS.get_cmdline_user_args()
 	# The city to build: --city=<id>, Aldermere by default.
-	var city := Battlefield.arg_value(OS.get_cmdline_user_args(), "--city")
+	var city := Battlefield.arg_value(args, "--city")
 	City.use(StringName(city) if city != "" else &"aldermere")
 	_bf.ctx.field.bounds = City.current().map()
+	# The GPT showcase district is laid out round Aldermere's walls (TownLayout): Aldermere only.
+	var showcase := GptShowcase.wanted(args) and City.current().id() == &"aldermere"
 	_town = Town.new()
 	_town.name = "Town"
+	if showcase:
+		_town.keep_clear = GptShowcase.clear_rects()
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_town.sfx = _bf.ctx.sfx
+	if showcase:
+		# After the town: every town building keeps its seed; before the walk grid, which then walks round it.
+		_showcase_page = GptShowcase.page_arg(args)
+		_build_showcase()
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
 	_crowd = Crowd.new()
 	_crowd.name = "Crowd"
@@ -201,6 +238,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_selected = i
 		elif event.physical_keycode == KEY_R:
 			_rebuild(Time.get_ticks_usec())
+		elif event.physical_keycode == KEY_F9 and is_instance_valid(_showcase):
+			_showcase.toggle_labels()
+		elif event.physical_keycode == KEY_F10 and is_instance_valid(_showcase):
+			_show_page(_showcase_page % GptShowcase.pages() + 1)
 		elif event.physical_keycode == KEY_ESCAPE:
 			_bf.quit()
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
@@ -261,6 +302,23 @@ func _update_hud() -> void:
 
 # --- Scripted runs ---------------------------------------------------------
 
+## The showcase district's page `_showcase_page`, built into the field (after the town).
+func _build_showcase() -> void:
+	_showcase = GptShowcase.new()
+	_showcase.name = "GptShowcase"
+	add_child(_showcase)
+	_showcase.build(_bf.ctx.env, self, GptShowcase.state_arg(OS.get_cmdline_user_args()), _showcase_page)
+
+
+## The showcase's page `page` instead of the one shown (its buildings taken out of the field, the other's put in; the
+## walk grid keeps the first page's, which only matters to a citizen walking out into the meadow).
+func _show_page(page: int) -> void:
+	_showcase.teardown(_bf.ctx.env)
+	_showcase.queue_free()
+	_showcase_page = page
+	_build_showcase()
+
+
 ## Every TOWN_SHOTS shot, or with `only` just the one whose file name starts with it (e.g. town_overview). With
 ## `frames` above 1, each shot is saved that many times a quarter of a second apart (name_0.png, name_1.png...), to
 ## show what moves.
@@ -269,8 +327,20 @@ func _capture_town(only := "", frames := 1) -> void:
 	for shot in TOWN_SHOTS:
 		if only != "" and not String(shot[0]).begins_with(only):
 			continue
-		_bf.camera.zoom = Vector2.ONE * float(shot[2])
-		_bf.camera.position = (Iso.ground_to_screen(shot[1]) + Vector2(0, -30)).round()
+		var at: Vector2 = shot[1]
+		if not at.is_finite():
+			var row := String(shot[0]).trim_prefix("showcase_").trim_suffix(".png")
+			if is_instance_valid(_showcase) and GptShowcase.shot_page(row) != _showcase_page:
+				_show_page(GptShowcase.shot_page(row))
+				await _bf.wait_frames(10)
+			var frame := GptShowcase.shot_frame(row)
+			var vp := get_viewport().get_visible_rect().size
+			_bf.camera.zoom = Vector2.ONE * minf(float(shot[2]), minf(vp.x / (frame.size.x + 60.0),
+				vp.y / (frame.size.y + 60.0)))
+			_bf.camera.position = frame.get_center().round()
+		else:
+			_bf.camera.zoom = Vector2.ONE * float(shot[2])
+			_bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
 		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
 		if frames <= 1:

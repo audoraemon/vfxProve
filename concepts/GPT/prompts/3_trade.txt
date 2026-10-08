@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) COACHING INN: an L-shaped two-storey inn of cream plaster and dark timber framing with red tile roofs, two dormers and two chimneys; a long low stable wing on the left with a slate roof and three open dark stable doors; a tall post with a hanging inn sign; a water trough.
+2 (top middle) MERCHANT SHOP-HOUSE: a narrow two-storey house with its gable to the street, cream plaster and timber framing, jettied upper floor, slate roof and a chimney; the ground floor is an open shop front with a wooden counter under a red tile awning on two posts; a crate and a barrel outside.
+3 (top right) GUILD HALL: a warm grey stone hall with a tall stepped stone gable facing the street, a red tile roof, a dormer and a chimney; a rectangular plank door at the top of stone steps; two windows above the door.
+4 (bottom left) COVERED MARKET HALL: a big red tile hip roof on stout wooden posts over a low stone floor, open on all sides, with a small louvred wooden lantern on the ridge; wooden market stall tables under the roof.
+5 (bottom middle) WEIGH HOUSE: a warm grey stone house with a slate roof and a chimney; a slate awning on two wooden posts in front; beside it in the open a tall wooden beam-scale frame with a crossbeam and two hanging iron pans; iron weights on the ground.
+6 (bottom right) FISH MARKET: an open slate roof on six wooden posts over wooden fish tables; another table in front, a water tub, a barrel and a crate.
+
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

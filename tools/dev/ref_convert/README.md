@@ -26,6 +26,7 @@ Each set has `intact.png`, `damaged.png`, `ruins.png`, and often `idle.png` (a s
 | `trees.py` | `tree_1..5` (forest, meadow), `oak_1..3` (town garden); crown-sway idle |
 | `bridges.py` | `bridge_stone` (sheet surfaces laid on the iso geometry, 8 torch piers, end steps), `dock` (drawn clean) |
 | `warehouse.py` | `barn`, `carpenter` from the timber warehouse, crane dropped |
+| `gpt_convert.py` | The ChatGPT sheets, one `SHEETS` entry each (GPT buildings proof; plots in `src/environment/art/gpt_proof.gd`): `gpt_townhall`, `gpt_armoury`, `gpt_jail`, `gpt_courthouse`, `gpt_watchtower`, `gpt_treasury` from `concepts/GPT/defence_sheet_v1.webp`; `gpt_chapel`, `gpt_monastery`, `gpt_graveyard`, `gpt_hospital`, `gpt_leperhouse`, `gpt_bathhouse` from `concepts/GPT/faith_sheet_v1.webp` |
 | `mills.py` | `windmill`, `watermill`: bodies drawn clean, sails and wheel rasterised per frame (never a bitmap rotation) |
 | `fields.py` | `field_0`, `field_0_2` (wheat, sway), `field_1`, `field_1_2` (cabbage) |
 | `corner_roof.py` | Gives the corner towers town_tower's roof. Runs once; it refuses a set whose torches are gone |
@@ -117,6 +118,9 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Frames are dr
   - **Masks:** a pane is a warm, lamp-bright core with dark bars round it, grown 4-connected over its own rare tones (a seeded, bounded flood fill) and kept only if it fits a window and is framed.
   - **Guards:** saturation, lamp-brightness and yellow-orange tests drop cream plaster, sandstone and roof highlights; clusters over `MAX_CLUSTER` px are flames or lit floor and are dropped; flame boxes from `bonfire_flicker.flames()` are excluded; a set with an idle strip is read from frame 0 and a pixel must pass in every frame; set names are validated before anything is written; each set has a lower-bound pixel count in the tests.
   - **It refuses strip sets** (manifest `strip`: the town wall and postern). A piece there draws a region wider than one frame, so the mask lookup would stretch.
+  - `window_glow.lit(frames)` is the finder alone; `style_match.py` runs it on a converted sprite before its palette lock.
+- **`style_stats.py [<set>...] [--state] [--dir]`**: the style numbers of intact stills (outline luminance, edge contrast, distinct colours, saturation, luminance) and each set's dominant material against the references.
+- **`style_match.py [--palette]`**: the style match pass, `gpt_convert.py`'s final step: saturation per material, local contrast, a lock to the game palette (`game_palette.png`, rebuilt from the reference sets with `--palette`) within each pixel's material, speck clean, darker eaves, the in-game outline colours and the lit-window ramp (it writes the `gpt_*` glow masks).
 
 ### Engine
 

@@ -56,7 +56,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	if env.lights != null:
 		env.lights.tint = EVENING
-	for d in TownLayout.structures():
+	var city := City.current()
+	for d in city.structures():
 		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
 		_built.append(s)
 		if s.art_tag == &"postern":
@@ -78,15 +79,15 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		citadel = Citadel.new()
 		citadel.name = "Citadel"
 		add_child(citadel)
-	citadel.setup(env, TownLayout.CITADEL_ORIGIN, shake)
+	citadel.setup(env, city.citadel_origin(), shake)
 	_built.append_array(citadel.parts)
 	# Built last so every other building keeps the seed it had before the fountain existed.
-	for f: Rect2 in TownLayout.FOUNTAINS:
+	for f: Rect2 in city.fountains():
 		var built := env.add_structure(f, 24.0, Structure.Kind.FOUNTAIN, &"decor")
 		_built.append(built)
 		if fountain == null:
 			fountain = built
-	for w: Rect2 in TownLayout.WELLS:
+	for w: Rect2 in city.wells():
 		_built.append(env.add_structure(w, 12.0, Structure.Kind.FOUNTAIN, &"decor", &"well"))
 	var baked: Array[Dictionary] = []
 	if env.world_parent != null:

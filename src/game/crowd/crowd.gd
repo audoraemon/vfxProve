@@ -306,8 +306,8 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	var keeper := _appoint_bellkeeper(anchors)
 	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
 	rite = BanishingRite.new().setup(self, _env, _grid)
-	_workshop = _nearest_of(anchors.get("craft", []), Vector2(TownLayout.WORKSHOP.get_center().x,
-		TownLayout.WORKSHOP.end.y + 0.35))
+	var workshop := City.current().landmark(&"workshop")
+	_workshop = _nearest_of(anchors.get("craft", []), Vector2(workshop.get_center().x, workshop.end.y + 0.35))
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(_workshop), _workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
@@ -362,10 +362,10 @@ func _nearest(pts: Array[Vector2], to: Vector2) -> Vector2:
 	return best
 
 
-## TownLayout.anchors(), each point moved onto the nearest walkable cell.
+## The city's anchors(), each point moved onto the nearest walkable cell.
 func _snapped_anchors() -> Dictionary:
 	var out := {}
-	var raw := TownLayout.anchors()
+	var raw := City.current().anchors()
 	for k in raw:
 		var pts: Array[Vector2] = []
 		for g: Vector2 in raw[k]:
@@ -478,7 +478,7 @@ static func escort_cap(pr: ResponseProfile) -> int:
 func _soldier_posts(count: int) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for i in POST_YARD:
-		out.append(_spot_near(TownLayout.BARRACKS_YARD.get_center(), 1.4))
+		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
 	var guard_spots: Array[Vector2] = []
 	for s in _env.structures():
 		if s.role == &"tower" or s.role == &"gate":
@@ -488,11 +488,12 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 		out.append(_spot_near(about, 1.2))
 	for i in POST_CITADEL:
 		var a := TAU * float(i) / float(POST_CITADEL)
-		out.append(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.8))
+		out.append(_spot_near(City.current().citadel_origin() + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.8))
 	# Pairs walk the streets inside the walls; their posts are points spread along each street's centre line.
 	var streets: Array[Rect2] = []
-	for road: Rect2 in TownLayout.ROADS:
-		if TownLayout.TOWN.encloses(road):
+	var town := City.current().town()
+	for road: Rect2 in City.current().roads():
+		if town.encloses(road):
 			streets.append(road)
 	for i in POST_PATROL:
 		var road := streets[(i / 2) % streets.size()]
@@ -503,7 +504,7 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 	while out.size() > count:
 		out.pop_back()
 	while out.size() < count:
-		out.append(_spot_near(TownLayout.BARRACKS_YARD.get_center(), 1.4))
+		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
 	return out
 
 
@@ -1015,7 +1016,7 @@ func is_bell_lying() -> bool:
 
 ## The bell tolls, and it says all is well: the town is not warned, its alarm falls by LIE_CALM, and every citizen
 ## who hears it -- all of them -- takes heart for LIE_REASSURE (Person.reassure()).
-func false_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
+func false_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
 			p.reassure(LIE_REASSURE)
@@ -1197,7 +1198,7 @@ func _appoint_bellkeeper(anchors: Dictionary) -> Person:
 
 ## The Bell Tower rings (BellNetwork): every citizen learns of the danger, and the town calls City Emergency and the
 ## evacuation sooner.
-func ring_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
+func ring_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
 	alarms.bell_rung = true
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
@@ -1255,9 +1256,9 @@ func rally() -> void:
 	for i in living.size():
 		var p := living[i]
 		var a := TAU * float(i) / float(maxi(living.size(), 1))
-		p.send_to_post(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
+		p.send_to_post(_spot_near(City.current().citadel_origin() + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
 	if sfx != null:
-		sfx.play(&"sol_rally", TownLayout.CITADEL_ORIGIN)
+		sfx.play(&"sol_rally", City.current().citadel_origin())
 	rallied.emit()
 
 
@@ -1269,7 +1270,7 @@ func on_ring(p: Variant) -> bool:
 		return false
 	var s := p as Person
 	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and s.mind == Person.Mind.RALLY \
-		and s.ground_pos.distance_to(TownLayout.CITADEL_ORIGIN) <= RING_RADIUS + RING_REACH
+		and s.ground_pos.distance_to(City.current().citadel_origin()) <= RING_RADIUS + RING_REACH
 
 
 ## How many soldiers stand on the rally ring (v0.09.1): the Citadel's garrison, asked once per hit on it.

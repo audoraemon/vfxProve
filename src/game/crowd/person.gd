@@ -529,7 +529,7 @@ func _think(delta: float) -> void:
 		Mind.CALM:
 			# A citizen with a day of its own goes where RoutineManager sends it; one made on its own strolls.
 			if profile == null and _goal == Vector2.INF and rng.randf() < STROLL_CHANCE:
-				set_goal(TownLayout.MARKET_SQUARE.get_center() if rng.randf() < 0.5 else anchor)
+				set_goal(City.current().landmark(&"market_square").get_center() if rng.randf() < 0.5 else anchor)
 		Mind.HOLD:
 			_idle = maxf(_idle, 0.2)
 	_sort_in -= delta

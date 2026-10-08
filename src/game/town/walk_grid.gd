@@ -16,7 +16,7 @@ var version := 0
 
 var _env: EnvironmentField
 var _bridge: Structure
-## TownLayout.blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
+## The city's blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
 ## far too slow to redo each time a building falls (a Cinderfall felling a dozen trees at once hitched ~100 ms).
 var _blockers: Array[Rect2] = []
 
@@ -24,7 +24,8 @@ var _blockers: Array[Rect2] = []
 func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	_env = env
 	_bridge = town.bridge
-	var m := TownLayout.MAP
+	var city := City.current()
+	var m := city.map()
 	grid.region = Rect2i(Vector2i(floori(m.position.x / CELL), floori(m.position.y / CELL)),
 		Vector2i(roundi(m.size.x / CELL), roundi(m.size.y / CELL)))
 	grid.cell_size = Vector2(CELL, CELL)
@@ -32,10 +33,10 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	grid.update()
-	for r: Rect2 in TownLayout.RIVERS:
+	for r: Rect2 in city.rivers():
 		stamp(r, true)
 	# A garden or a yard closes every cell it touches, so nobody is drawn walking through its fence or props.
-	for g in TownLayout.blockers():
+	for g in city.blockers():
 		_blockers.append(g.grow(CELL * 0.5))
 	for g in _blockers:
 		stamp(g, true)
@@ -116,7 +117,7 @@ func path(from: Vector2, to: Vector2) -> PackedVector2Array:
 ## The closest exit there is still a route to, or Vector2.INF when the town is sealed.
 func nearest_exit(from: Vector2) -> Vector2:
 	var exits: Array[Vector2] = []
-	for e: Vector2 in TownLayout.EXITS:
+	for e: Vector2 in City.current().exits():
 		exits.append(e)
 	exits.sort_custom(func(a: Vector2, b: Vector2): return a.distance_squared_to(from) < b.distance_squared_to(from))
 	for e in exits:
@@ -174,7 +175,7 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	stamp(s.footprint.grow(BODY), false)
 	# Freeing a footprint can free cells a standing neighbour or the river still needs, so put those back...
 	var area := s.footprint.grow(BODY + CELL)
-	for r: Rect2 in TownLayout.RIVERS:
+	for r: Rect2 in City.current().rivers():
 		if area.intersects(r):
 			stamp(area.intersection(r), true)
 	for other in _env.structures():

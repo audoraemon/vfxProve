@@ -28,7 +28,7 @@ const SALT_TREE := 93
 const SALT_OAK := 94
 ## ArtKit.hash01 salt for the design of a field off the town's plots (SpriteView.SALT_PHASE is 95).
 const SALT_FIELD := 96
-## A town market stall's design walk over TownLayout.STALLS (_stall_design): the first of these steps prime to the
+## A town market stall's design walk over the city's stalls() (_stall_design): the first of these steps prime to the
 ## number of designs, and where the walk starts.
 const STALL_STEPS := [5, 7, 11, 13]
 const STALL_OFFSET := 3
@@ -116,7 +116,7 @@ static func _stall_name(s: Structure) -> String:
 	return tinted if manifest().has(tinted) else design
 
 
-## A stall's design. A town market stall (its plot one of TownLayout.STALLS, index i) takes design
+## A stall's design. A town market stall (its plot one of the city's stalls(), index i) takes design
 ## STALL_STEP * i + STALL_OFFSET (mod the number of designs present): plots next to each other in the market are 1, 2
 ## or 3 apart in that list (along a row, or down a column where a row is short), so with four or more designs and a
 ## step prime to their count no two neighbours share one. It reads the layout only, so gameplay is untouched. Any
@@ -125,7 +125,7 @@ static func _stall_design(s: Structure) -> String:
 	var v := variants("stall")
 	if v.is_empty():
 		return ""
-	var i: int = TownLayout.STALLS.find(s.footprint)
+	var i: int = City.current().stalls().find(s.footprint)
 	if i < 0:
 		return _pick_variant("stall", s.rng.seed, SALT_STALL)
 	var step := 1
@@ -137,7 +137,7 @@ static func _stall_design(s: Structure) -> String:
 
 
 ## A field's sprite: its crop's set "field_<crop>" (none: procedural) or one of that crop's other designs
-## "field_<crop>_<n>" (rows the other way). A town field (its plot one of TownLayout.FIELDS, index i) takes design
+## "field_<crop>_<n>" (rows the other way). A town field (its plot one of the city's fields(), index i) takes design
 ## i mod (designs): side-by-side plots are next to each other in that list, so two neighbouring fields of one crop never
 ## look stamped. It reads the layout only, so gameplay is untouched. Any other field picks its design from its seed.
 static func _field_name(s: Structure) -> String:
@@ -146,7 +146,7 @@ static func _field_name(s: Structure) -> String:
 		return ""
 	var v := variants(base)
 	var n := v.size() + 1
-	var i: int = TownLayout.FIELDS.find(s.footprint)
+	var i: int = City.current().fields().find(s.footprint)
 	var k := i % n if i >= 0 else ArtKit.pick(s.rng.seed, SALT_FIELD, n)
 	return base if k == 0 else "%s_%d" % [base, v[k - 1]]
 

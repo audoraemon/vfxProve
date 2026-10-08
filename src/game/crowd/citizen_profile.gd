@@ -16,7 +16,7 @@ const SHARES := [
 	[Role.RESIDENT, 0.30], [Role.MERCHANT, 0.15], [Role.CRAFT, 0.15], [Role.LABORER, 0.08], [Role.CLERGY, 0.04],
 	[Role.CAREGIVER, 0.18], [Role.FARMER, 0.10],
 ]
-## Where each working role works (TownLayout.anchors() kinds).
+## Where each working role works (the city's anchors() kinds).
 const WORK := {
 	Role.MERCHANT: ["stall", "tavern"], Role.CRAFT: ["craft"], Role.LABORER: ["stall", "dock"],
 	Role.CLERGY: ["cathedral"], Role.FARMER: ["field", "mill"], Role.BELLKEEPER: ["bell"], Role.ENGINEER: ["craft"],

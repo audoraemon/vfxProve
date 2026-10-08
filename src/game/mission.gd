@@ -136,7 +136,7 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
-	_bf.ctx.field.bounds = TownLayout.MAP
+	_bf.ctx.field.bounds = City.current().map()
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -342,7 +342,7 @@ func _wire_responses() -> void:
 		_crowd.engineers.rebuilt.connect(func(s: Structure):
 			var what := "THE DOCK" if s.role == &"dock" else ("THE BRIDGE" if s.kind == Structure.Kind.BRIDGE else
 				("THE POSTERN" if s.art_tag == &"postern" else
-				("THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")))
+				("THE MAIN GATE" if s.footprint == City.current().landmark(&"main_gate") else "THE SIDE GATE")))
 			_rules.banner.emit(what + " IS REBUILT"))
 	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED and _wire_once(_crowd.ferry):
 		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
@@ -609,7 +609,7 @@ static func blight_banner(s: Structure) -> String:
 		return "BLIGHT - THE DOCK ROTS"
 	if s.kind == Structure.Kind.GATE:
 		var which := "THE POSTERN" if s.art_tag == &"postern" else (
-			"THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")
+			"THE MAIN GATE" if s.footprint == City.current().landmark(&"main_gate") else "THE SIDE GATE")
 		return "BLIGHT - %s IS JAMMED" % which
 	return "BLIGHT - THE %s IS POISONED" % ("WELL" if s.art_tag == &"well" else "FOUNTAIN")
 
@@ -783,7 +783,7 @@ func _mission_test() -> void:
 	if judgement:
 		# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
 		_aim.pick(3)
-		_aim.hover(TownLayout.CITADEL_ORIGIN)
+		_aim.hover(City.current().citadel_origin())
 	var casts := TEST_CASTS.duplicate() if judgement else []
 	var shots := TEST_SHOTS.duplicate() if judgement else WARNING_SHOTS.duplicate()
 	var looks := [] if judgement else WARNING_LOOK_AWAY.duplicate()

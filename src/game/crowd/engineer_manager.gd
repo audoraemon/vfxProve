@@ -177,7 +177,7 @@ func _site(rect: Rect2) -> Vector2:
 	var sides := [Vector2(c.x, rect.end.y + SITE_OUT), Vector2(c.x, rect.position.y - SITE_OUT),
 		Vector2(rect.end.x + SITE_OUT, c.y), Vector2(rect.position.x - SITE_OUT, c.y)]
 	var best := Vector2.INF
-	var middle := TownLayout.MARKET_SQUARE.get_center()
+	var middle := City.current().landmark(&"market_square").get_center()
 	for g: Vector2 in sides:
 		var w := g if _grid.walkable(g) else _grid.nearest_walkable(g, 3)
 		if w != Vector2.INF and (best == Vector2.INF or w.distance_squared_to(middle) < best.distance_squared_to(middle)):

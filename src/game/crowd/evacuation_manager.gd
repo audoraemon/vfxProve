@@ -62,7 +62,7 @@ func setup(crowd: Crowd, grid: WalkGrid, town: Town, seed_value: int) -> Evacuat
 	_w = r.size.x
 	_h = r.size.y
 	_town = town
-	for e: Vector2 in TownLayout.EXITS:
+	for e: Vector2 in City.current().exits():
 		_add_exit(e)
 	_rebuild_all()
 	return self
@@ -147,7 +147,7 @@ func score(p: Person, i: int) -> float:
 		s += boat * ferry.waiting()
 	var gate: Structure = gates[i]
 	# A gate's crowd and danger only count for those still inside the walls: outside, the gate is behind them.
-	if is_instance_valid(gate) and not gate.destroyed and TownLayout.TOWN.has_point(p.ground_pos):
+	if is_instance_valid(gate) and not gate.destroyed and City.current().town().has_point(p.ground_pos):
 		# A slower door (the postern) makes each person ahead a longer wait.
 		var slow := _crowd.profile.postern_interval / Crowd.GATE_INTERVAL if gate.art_tag == &"postern" else 1.0
 		s += CONGESTION * slow * _crowd.waiting_at(gate)

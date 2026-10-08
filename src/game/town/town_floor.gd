@@ -85,14 +85,14 @@ class RiverGlints extends Node2D:
 			queue_redraw()
 
 	func _draw() -> void:
-		var r := TownLayout.RIVER
+		var r := City.current().landmark(&"river")
 		for i in 200:
 			var h := (i * 7919 + 13) % 997
 			var y := r.position.y + 0.15 + float(h % 61) / 61.0 * (r.size.y - 0.3)
 			var x := r.position.x - 8.0 + fposmod(float(h) * 0.53 + _time * (0.5 + float(h % 5) * 0.1), r.size.x + 16.0)
 			draw_rect(Rect2(x, y, 0.3 + float(h % 3) * 0.12, 0.04), Color(0.82, 0.94, 1.0, 0.6))
 		# The west branch flows south, down to the main river.
-		var w := TownLayout.RIVER_WEST
+		var w := City.current().landmark(&"river_west")
 		for i in 60:
 			var h := (i * 6151 + 29) % 997
 			var x := w.position.x + 0.15 + float(h % 43) / 43.0 * (w.size.x - 0.3)
@@ -131,9 +131,12 @@ var _texture: Texture2D
 var _yard_rects: Array[Rect2] = []
 ## Screen position of the baked texture's top-left corner.
 var _origin := Vector2.ZERO
-## shrub_spots(), worked out on first use (TownLayout is constant).
+## shrub_spots(), worked out on first use (the layout is constant; cached for the first city that asks).
 static var _shrub_spots: Array[Dictionary] = []
 static var _shrubs_done := false
+## The active city's ground the floor asks about per cell (_geo()), read once per city.
+static var _geo_city: CityDef = null
+static var _geo_cache := {}
 
 
 func _ready() -> void:
@@ -203,19 +206,20 @@ static func _iso_bounds(r: Rect2) -> Rect2:
 # --- Ground-unit layer ------------------------------------------------------------------
 
 func paint_ground(ci: CanvasItem) -> void:
+	var geo := _geo()
 	_meadow(ci)
 	# Inside the walls the lanes are cobbled; the house blocks are worn ground, and each house stands in its own small
 	# packed-earth yard, as in the reference.
-	_paving(ci, TownLayout.TOWN, COBBLE, COBBLE_MORTAR, 0.2)
-	for d: Rect2 in TownLayout.DISTRICTS:
+	_paving(ci, geo.town, COBBLE, COBBLE_MORTAR, 0.2)
+	for d: Rect2 in geo.districts:
 		_yard(ci, d.grow(-0.12), BLOCK)
 	_yard_rects = _yards()
 	for h: Rect2 in _yard_rects:
 		_yard(ci, h, EARTH)
 	# Tilled ground round every field and farmhouse.
-	for f: Rect2 in TownLayout.FIELDS:
+	for f: Rect2 in geo.fields:
 		_patches(ci, f.grow(0.5), DIRT, 0.3)
-	for b: Rect2 in TownLayout.BARNS + [TownLayout.WINDMILL, TownLayout.WATERMILL]:
+	for b: Rect2 in geo.farm:
 		_patches(ci, b.grow(0.6), DIRT, 0.3)
 	for o: Array in OUTCROPS:
 		_outcrop(ci, o[0], o[1])
@@ -223,17 +227,18 @@ func paint_ground(ci: CanvasItem) -> void:
 		_trail(ci, tr, 0.34)
 	for tr in ROAD_TRAILS:
 		_trail(ci, tr, 0.5)
-	_patches(ci, TownLayout.BARRACKS_YARD, SAND, 0.3)
-	_paving(ci, TownLayout.MARKET_SQUARE, FLAG, FLAG_MORTAR, 0.42)
-	_paving(ci, TownLayout.CITADEL_COURT, FLAG, FLAG_MORTAR, 0.42)
-	_paving(ci, TownLayout.FOUNTAIN_PLAZA, FLAG, FLAG_MORTAR, 0.42)
+	for y: Rect2 in geo.yards:
+		_patches(ci, y, SAND, 0.3)
+	for p: Rect2 in geo.plazas:
+		_paving(ci, p, FLAG, FLAG_MORTAR, 0.42)
 	# The ground inside each gate, where the crowd queues, is cobbled like the streets.
-	for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+	var gate_plazas: Array = geo.gate_plazas
+	for plaza: Rect2 in gate_plazas:
 		_paving(ci, plaza.grow(0.3), COBBLE, COBBLE_MORTAR, 0.2)
-	# The gate plazas are the crowd's queue ground and stay open (TownLayout.queue_fans()): dressed on the floor
+	# The gate plazas are the crowd's queue ground and stay open (the city's queue_fans()): dressed on the floor
 	# instead, with a paved rosette and the ruts carts have worn towards each gate.
-	for i in TownLayout.GATE_PLAZAS.size():
-		_ruts(ci, TownLayout.GATE_PLAZAS[i], i)
+	for i in gate_plazas.size():
+		_ruts(ci, gate_plazas[i], i)
 		_rosette(ci, ROSETTES[i][0], ROSETTES[i][1])
 	_river(ci)
 
@@ -284,9 +289,10 @@ func _meadow(ci: CanvasItem) -> void:
 
 ## Forest floor in a ring round the walls (farmland beyond it), north of the river and off the two roads.
 func _forest(g: Vector2) -> bool:
-	if g.y > TownLayout.RIVER.position.y:
+	var geo := _geo()
+	if g.y > (geo.river as Rect2).position.y:
 		return false
-	var t := TownLayout.TOWN
+	var t: Rect2 = geo.town
 	if (g.x > t.end.x and absf(g.y - 9.0) < 1.5) or (g.y > t.end.y and absf(g.x - 2.7) < 1.5):
 		return false
 	var edge := _noise(g * 1.7) * 1.4
@@ -309,12 +315,10 @@ func _patches(ci: CanvasItem, r: Rect2, pal: Array, cell: float) -> void:
 ## Every house's yard: its footprint grown a little (the Temple, the tavern and the blacksmith too).
 static func _yards() -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	for h: Rect2 in TownLayout.houses():
+	var city := City.current()
+	for h: Rect2 in city.houses():
 		out.append(h.grow(0.22))
-	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.SMITHY.grow(0.3), TownLayout.WORKSHOP.grow(0.3),
-		TownLayout.CARPENTER.grow(0.3), TownLayout.CARPENTER_YARD.grow(0.2)])
-	for t: Rect2 in TownLayout.TAVERNS:
-		out.append(t.grow(0.3))
+	out.append_array(city.floor_areas().get(&"building_yards", []))
 	return out
 
 
@@ -465,7 +469,7 @@ func _paving(ci: CanvasItem, r: Rect2, pal: Array, mortar: Color, stone: float) 
 ## Water in bands, lighter at the edges and deep in the middle, with dark wet banks and pebbles along them: the
 ## south river across the whole drawn width, and the west branch from its source down to it.
 func _river(ci: CanvasItem) -> void:
-	var r := TownLayout.RIVER
+	var r := City.current().landmark(&"river")
 	var x0 := FILL.position.x
 	var w := FILL.size.x
 	ci.draw_rect(Rect2(x0, r.position.y, w, r.size.y), WATER[0])
@@ -473,7 +477,7 @@ func _river(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(x0, r.position.y + r.size.y * 0.35, w, r.size.y * 0.3), WATER[2])
 	ci.draw_rect(Rect2(x0, r.position.y - 0.1, w, 0.1), BANK)
 	ci.draw_rect(Rect2(x0, r.end.y, w, 0.1), BANK)
-	var b := TownLayout.RIVER_WEST
+	var b := City.current().landmark(&"river_west")
 	var bx0 := FILL.position.x
 	var bw := b.end.x - bx0
 	ci.draw_rect(Rect2(bx0, b.position.y, bw, b.size.y), WATER[0])
@@ -619,7 +623,7 @@ static func shrub_spots() -> Array[Dictionary]:
 	_shrubs_done = true
 	var yards := _yards()
 	var n := 0
-	for d: Rect2 in TownLayout.DISTRICTS:
+	for d: Rect2 in City.current().districts():
 		var nx := int(d.size.x / SHRUB_STEP)
 		var ny := int(d.size.y / SHRUB_STEP)
 		for j in ny:
@@ -802,32 +806,51 @@ func _zone(g: Vector2) -> int:
 ## _zone() where it does not hang on the painted meadow (water, fields, roads, and everything inside the walls, with
 ## the house yards `yards`); -1 out in the meadow and the forest, where the painted cells decide.
 static func _fixed_zone(g: Vector2, yards: Array[Rect2]) -> int:
-	for river: Rect2 in TownLayout.RIVERS:
+	var geo := _geo()
+	for river: Rect2 in geo.rivers:
 		if river.grow(0.25).has_point(g):
 			return 0
-	for f: Rect2 in TownLayout.FIELDS:
+	for f: Rect2 in geo.fields:
 		if f.grow(0.5).has_point(g):
 			return 0
-	if g.x < TownLayout.RIVER_WEST.end.x + 1.4 and absf(g.y - TownLayout.RIVER_WEST.position.y) < 1.6:
+	var west: Rect2 = geo.river_west
+	if west.has_area() and g.x < west.end.x + 1.4 and absf(g.y - west.position.y) < 1.6:
 		return 0
-	for road: Rect2 in TownLayout.ROADS:
+	for road: Rect2 in geo.roads:
 		if road.grow(0.15).has_point(g):
 			return 0
-	if TownLayout.TOWN.has_point(g):
-		if TownLayout.MARKET_SQUARE.has_point(g) or TownLayout.CITADEL_COURT.has_point(g) \
-				or TownLayout.BARRACKS_YARD.has_point(g) or TownLayout.FOUNTAIN_PLAZA.has_point(g):
-			return 0
-		for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+	if (geo.town as Rect2).has_point(g):
+		for open: Rect2 in geo.open:
+			if open.has_point(g):
+				return 0
+		for plaza: Rect2 in geo.gate_plazas:
 			if plaza.grow(0.3).has_point(g):
 				return 0
 		for y: Rect2 in yards:
 			if y.has_point(g):
 				return 3
-		for d: Rect2 in TownLayout.DISTRICTS:
+		for d: Rect2 in geo.districts:
 			if d.grow(-0.2).has_point(g):
 				return 1
 		return 0
 	return -1
+
+
+## The active city's ground, as the per-cell tests read it: worked out once per city (City.current()).
+static func _geo() -> Dictionary:
+	var city := City.current()
+	if city != _geo_city:
+		_geo_city = city
+		var areas := city.floor_areas()
+		var plazas: Array = areas.get(&"plazas", [])
+		var yards: Array = areas.get(&"yards", [])
+		_geo_cache = {
+			town = city.town(), districts = city.districts(), rivers = city.rivers(), fields = city.fields(),
+			roads = city.roads(), river = city.landmark(&"river"), river_west = city.landmark(&"river_west"),
+			plazas = plazas, yards = yards, open = plazas + yards, gate_plazas = areas.get(&"gate_plazas", []),
+			farm = areas.get(&"farm", []),
+		}
+	return _geo_cache
 
 
 static func _near_polyline(g: Vector2, pts: Array, d: float) -> bool:

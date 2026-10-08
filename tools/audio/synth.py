@@ -930,28 +930,13 @@ def laser_depart(rng, dur):
 # Interface (KAK milestone 5): short, dry, and plainly not part of the world.
 # --------------------------------------------------------------------------
 
-def ui_hover(rng, dur):
-    n = int(round(dur * SR))
-    return sine(1800.0, n) * decay(n, 0.012) * attack(n, 0.002) * 0.5
-
-
-def ui_click(rng, dur):
-    n = int(round(dur * SR))
-    body = sine(ramp(900.0, 520.0, n, "exp"), n) * decay(n, 0.03)
-    tick = highpass(noise(n, rng), 3000.0) * decay(n, 0.004)
-    return (body + tick * 0.4) * attack(n, 0.001)
-
+# ui_hover, ui_click and ui_buzz (and six newer interface cues) are made with GodotSfxr instead: their sources are
+# in tools/audio/sfxr/ and tools/audio/sfxr_bake.gd writes their WAVs, so this script leaves those files alone.
 
 def ui_focus(rng, dur):
     n = int(round(dur * SR))
     tone = sine(ramp(700.0, 1400.0, n, "exp"), n) + 0.3 * sine(ramp(1400.0, 2800.0, n, "exp"), n)
     return tone * adsr(n, 0.004, 0.03, 0.4, 0.04)
-
-
-def ui_buzz(rng, dur):
-    n = int(round(dur * SR))
-    tone = lowpass(square(110.0, n, 0.3) + 0.5 * square(116.0, n, 0.3), 1800.0)
-    return saturate(tone * 0.6, 2.0) * adsr(n, 0.005, 0.05, 0.7, 0.06)
 
 
 def ui_pause(rng, dur):
@@ -1256,8 +1241,7 @@ for _v in range(1, 4):
 for _v in range(1, 4):
     CUES[f"laser_sizzle_{_v}"] = ("laser", lambda rng, dur, v=_v: laser_sizzle(rng, dur, v), 0.3, False)
 for _name, _fn, _dur in (
-    ("ui_hover", ui_hover, 0.06), ("ui_click", ui_click, 0.12), ("ui_focus", ui_focus, 0.1),
-    ("ui_buzz", ui_buzz, 0.25), ("ui_pause", ui_pause, 0.25), ("ui_manifest", ui_manifest, 1.6),
+    ("ui_focus", ui_focus, 0.1), ("ui_pause", ui_pause, 0.25), ("ui_manifest", ui_manifest, 1.6),
     ("ui_win", ui_win, 2.4), ("ui_lose", ui_lose, 2.2),
 ):
     CUES[_name] = ("ui", _fn, _dur, False)

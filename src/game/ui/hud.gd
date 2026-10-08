@@ -94,8 +94,13 @@ var _rules: Rules
 var _crowd: Crowd
 var _town: Town
 var _aim: Targeting
-## Banners waiting their turn: [text, seconds shown].
+## Banners waiting their turn: [text, seconds shown, heard]. A banner rings ui_notice as it comes on screen, unless it
+## came with a sound of its own.
 var _banners: Array = []
+## The frame a slot last rang ui_ready on, so slots coming back on the same frame ring once.
+var _ready_rang := -1
+## The Divine Surge rings ui_surge, and Rules sends its banner straight after: that next banner stays quiet.
+var _quiet_next_banner := false
 ## Cael's lines waiting their turn (v0.10 M5): [text, seconds shown].
 var _subtitles: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
@@ -145,6 +150,8 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	_rules.banner.connect(push_banner)
 	_rules.subtitle.connect(push_subtitle)
 	_rules.cast_refused.connect(_on_cast_refused)
+	_rules.recharged.connect(_on_recharged)
+	_rules.surged.connect(_on_surged)
 	if _tag_layer == null:
 		_tag_layer = Control.new()
 		_tag_layer.name = "Tags"
@@ -166,6 +173,9 @@ func advance(delta: float) -> void:
 	_age(_subtitles, delta, SUBTITLE_SECONDS)
 	if _rise_at != Vector2.INF:
 		_rise_age += delta / maxf(Engine.time_scale, 0.001)  # real seconds, through the ascent's slow motion
+	if not _banners.is_empty() and not bool(_banners[0][2]):
+		_banners[0][2] = true
+		UiSound.play(&"ui_notice")
 	var flashing := false
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
@@ -610,8 +620,10 @@ func slot_at(point: Vector2) -> int:
 	return -1
 
 
-func push_banner(text: String) -> void:
-	_banners.append([text, 0.0])
+## `quiet`: the banner comes with its own sound (a refused cast's buzz), so it does not ring ui_notice as well.
+func push_banner(text: String, quiet := false) -> void:
+	_banners.append([text, 0.0, quiet or _quiet_next_banner])
+	_quiet_next_banner = false
 
 
 func banners() -> PackedStringArray:
@@ -674,10 +686,22 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 	if slot >= 0 and slot < _flash.size():
 		_flash[slot] = FLASH_SECONDS
 	if reason == "nobody":
-		push_banner("NO ONE TO WHISPER TO")
+		push_banner("NO ONE TO WHISPER TO", true)
 	elif reason == "shaken":
-		push_banner("THEY SHAKE OFF THE WHISPER")
+		push_banner("THEY SHAKE OFF THE WHISPER", true)
 	UiSound.play(&"ui_buzz")
+
+
+func _on_recharged(_slot: int) -> void:
+	var frame := Engine.get_process_frames()
+	if frame != _ready_rang:
+		_ready_rang = frame
+		UiSound.play(&"ui_ready")
+
+
+func _on_surged() -> void:
+	UiSound.play(&"ui_surge")
+	_quiet_next_banner = true
 
 
 ## Everything the HUD shows, as one string. Cheap to build, and it means a still frame is not redrawn sixty

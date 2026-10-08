@@ -1,0 +1,32 @@
+[gd_resource type="AudioStreamWAV" format=4]
+
+[ext_resource type="Script" path="res://addons/godot_sfxr/SfxrAudioStream.gd" id="1_sfxr"]
+
+[resource]
+data = PackedByteArray("AQIDBQYHCAgJCgsLCf3w6Obm6Ojo5+bl5eTk4+Pi4uHh4eDg4N/f39/e3t7S0tPU1e0mVGhoYFdSUE9OTT8K1ru2vcXLzc7Ozs/Q0dHS09TV1tbX2NnZ2tvb3N3d3t7f4OD4MF1wcGhfWldWVlVHEt/EwMbO09XW1tbW19jZ2drb29zd3d7f3+Dg4eLi4+Pk5OXl/DNfcnJqYVxZWFhXSRXjycTK0tfZ2tnZ2trb3N3d3t/f4ODh4eLj4+Tk5eXm5ufn6P40X3FxaWFcWVhXVkkW5cvGzNTZ29vb29zc3d7e3+Dg4eHi4uPj5OTl5ebm5+fo6On/NF5wcGhgW1hXVlVIF+bMyM7V2tzd3Nzd3d7f3+Dh4eLi4+Pk5OXl5ubn5+jo6Onp/zNcbm5mXllXVlVURxbmzsnP1tvd3d3d3t7f4ODh4eLi4+Pk5OXl5ubn5+jo6enp6v8yW2xsZF1YVVRTUkYW58/K0Nfc3t7e3t7f4ODh4eLj4+Tk5eXm5ufn5+jo6enq6ur/MVlqamJbVlRTUlFEFufQy9HY3d/f39/f4ODh4uLj4+Tk5eXm5ufn5+jo6enq6urr/zBXaGhgWVRSUVBPQxXo0c3S2d3f4N/f4ODh4uLj4+Tk5eXm5ufn6Ojo6enq6urr6/8vVWZmXldSUE9PTkIV6NLO09re4ODg4ODh4uLj4+Tk5eXm5ufn6Ojo6enq6uvr6+z/LlRkZF1VUU9OTUxAFOnTz9Ta3+Hh4eHh4uLj4+Tk5eXm5ufn6Ojp6enq6uvr6+zs/y1SYmFbVE9NTEtKPxTp1NDV29/h4uHh4uLj4+Tl5eXm5ufn6Ojp6enq6uvr6+zs7f8sUF9fWVJNS0pKST4U6tXR1tzg4uLi4uLj4+Tl5ebm5+fn6Ojp6erq6uvr6+zs7e3/K05dXVdQTElJSEc8E+rW0tfd4ePj4+Pj5OTl5ebm5+fo6Ojp6erq6uvr7Ozs7e3t/ypMW1tVTkpIR0ZFOxPr19PY3uLj5OPj5OTl5ebm5+fo6Onp6erq6+vr7Ozs7e3t7v8pS1lZU0xIRkVFRDkS69jU2d7i5OTk5OTl5ebm5+fo6Onp6erq6+vr7Ozt7e3u7u7/KElXV1FKRkREQ0I4EuzZ1drf4+Xl5eXl5ubn5+jo6enp6urr6+vs7Ozt7e3u7u7v/ydGVFROSERCQUBANhHt2tfb4OTm5ubm5ufn6Ojp6enq6uvr6+zs7O3t7u7u7+/v8P8mRFFQS0VBPz8+PTQQ7dvY3OLl5+fn5+fo6Onp6erq6+vr7Ozt7fkcKRP56eXn6+7v7+/v7+/w8PDx8fHy8vLy+x08TU9KREA7Hvrm4OPo6+3t7e3t7e7u7+/v7/Dw8PHxBCdBS0pEPzwwDvDh4OTo6+zs7Ozs7e3u7u7v7+/w8PD0EDBDSEU/OzgiAejg4ebq7Ozs7Ozs7e3u7u7v7+/w8PD7GzdERUA7ODEU9eTg4+jr7Ozs7Ozt7e7u7u/v7/Dw8PEGJjtDQTw4NScH7eLh5ens7e3t7e3t7u7u7+/v8PDw8fYRLj5BPTg1MRv76OLj6Ovt7e3t7e7u7u/v7/Dw8PDx8f4cND4+OTUyKg7z5ePm6u3u7u7u7u7v7+/w8PDw8fHx8wklNz06NjIvIAPt5OTo7O7u7u7u7+/v8PDw8fHx8fLy+BMsODo3Mi8rFPnp5Ofq7e/v7+/v7/Dw8PHx8fHy8vLzAhwwODczLy0jCfLn5uns7/Dw7/Dw8PDx8fHy8vLy8/P2CyQyNjQvLCoZ/+3n6Ovu8PDw8PDw8fHx8vLy8vPz8/P7FCkzNDAsKiQP9+rn6u3w8fHx8fHx8fLy8vPz8/Pz9PUEHCwyMS0pJx0F8unp7O/x8fHx8fLy8vLz8/Pz9PT09PgNIi4wLSknJBT87unr7vDy8vLy8vLz8/Pz9PT09PT19f4UJi0tKickHgr27Ort8PLz8/Pz8/Pz8/T09PT19fX19wYbKCwqJyQiFwLy7Ozv8fPz8/Pz8/T09PT19fX19fb2+g4fKCknJCEeD/vv7O7x8/T09PT09PT19fX19fb29vb3ARQiJyckIR8ZB/bu7vDy9PT09PT19fX19fb29vb29/f5CBkjJSQhHh0S//Pu7/L09fX19fX19fb29vb29/f39/f9DhwjIyEeHBkK+vHv8fP19vb29vb29vb39/f39/f4+PgDEx0hIB4bGhME9vHx8/X29vb29vb39/f39/f4+Pj4+PsIFh4fHRsZFw399PHy9Pb39/f39/f39/j4+Pj4+Pn5+f8NGB0dGxgXEwf68/L09vf39/f3+Pj4+Pj4+fn5+fn5+gQRGRsaGBYVDgL38/T19/j4+Pj4+Pj5+fn5+fn5+fr6/AgTGBkXFRQSCf329PX3+Pn5+fn5+fn5+fn6+vr6+vr6AQwUFxYVExIOBPr29ff4+fn5+fn5+vr6+vr6+vr6+/v8BA4TFRQSERAK//n29/j5+vr6+vr6+vr6+/v7+/v7+/v+Bw8SEhEQDw0F/fj3+Pn6+vv7+/v7+/v7+/v7+/v8/PwCCQ8QEA8ODQkC+/j4+fr7+/v7+/v7+/z8/Pz8/Pz8/P0ECg4ODQwMCwb/+/n6+/v8/Pz8/Pz8/Pz8/Pz8/P39/f8GCgwMCwoKCAP9+/r7/Pz8/Pz8/Pz9/f39/f39/f39/QIGCQoKCQgIBQH9+/v8/f39/f39/f39/f39/f3+/v7+/wMGCAgHBwYGA//9/Pz9/f7+/v7+/v7+/v7+/v7+/v7+AQMFBgYFBQUEAf79/f7+/v7+/v7+/v7+/v7+////////AQMEBAQDAwMC//7+/v7/////////////////////////AQICAgIBAQEB/////////////////wE=")
+script = ExtResource("1_sfxr")
+wave/type = 0
+sample_params/sound_vol = 0.32
+sample_params/sample_rate = 44100.0
+envelope/attack_time = 0.021
+envelope/sustain_time = 0.089095
+envelope/punch_time = 0.2
+envelope/decay_time = 0.115022
+frequency/start_frequency = 0.504085
+frequency/min_freq_cutoff = 0.0
+frequency/slide = 0.0
+frequency/delta_slide = 0.0
+vibrato/depth = 0.0
+vibrato/speed = 0.0
+arpeggiation/frequency_mult = 0.608581
+arpeggiation/change_speed = 0.783413
+duty_cycle/duty_cycle = 0.5
+duty_cycle/sweep = 0.0
+retrigger/rate = 0.0
+flanger/offset = 0.0
+flanger/sweep = 0.0
+low_pass_filter/cutoff_frequency = 0.5
+low_pass_filter/cutoff_sweep = 0.0
+low_pass_filter/resonance = 0.0
+high_pass_filter/cutoff_frequency = 0.15
+high_pass_filter/cutoff_sweep = 0.0

@@ -13,6 +13,8 @@ signal cast_made(slot: int, key: String, at: Vector2)
 signal cast_refused(slot: int, reason: String)
 ## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
 signal surged
+## A slot's cooldown ran out: it can be cast again. Not sent for the Divine Surge's reset, which is surged.
+signal recharged(slot: int)
 ## One cast destroyed six buildings or killed twenty-five people.
 signal chained(at: Vector2)
 ## Something worth a line across the middle of the screen.
@@ -201,7 +203,10 @@ func advance(delta: float) -> void:
 	if finished:
 		return
 	for i in _cooldowns.size():
-		_cooldowns[i] = maxf(0.0, _cooldowns[i] - delta)
+		var was := _cooldowns[i]
+		_cooldowns[i] = maxf(0.0, was - delta)
+		if was > 0.0 and _cooldowns[i] == 0.0:
+			recharged.emit(i)
 	_elapsed += delta
 	_forget_old_casts()
 	_step_abolished(delta)

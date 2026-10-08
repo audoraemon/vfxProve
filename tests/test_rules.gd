@@ -64,12 +64,17 @@ static func run(t) -> void:
 		"a refused cast reaches nothing and says why (%s)" % [refused])
 
 	# The cooldown runs off, and the clock runs down.
+	var recharged: Array = []
+	rules.recharged.connect(func(slot: int): recharged.append(slot))
 	rules.advance(29.0)
 	t.near(rules.cooldown_left(0), 1.0, 0.0001, "the cooldown counts down (%.1f)" % rules.cooldown_left(0))
 	t.check(rules.refusal(0) == "cooldown", "and still refuses with a second to go")
+	t.check(recharged.is_empty(), "a slot still cooling says nothing (%s)" % [recharged])
 	rules.advance(1.0)
 	t.check(rules.cooldown_left(0) == 0.0 and rules.refusal(0) == "", "then the slot is ready again")
+	t.check(recharged == [0], "and says so, once: the HUD rings ui_ready on it (%s)" % [recharged])
 	rules.advance(10.0)
+	t.check(recharged == [0], "a ready slot says nothing more (%s)" % [recharged])
 	t.near(rules.time_left, 360.0 - 40.0, 0.0001, "the clock has run 40 s (%.1f)" % rules.time_left)
 
 	# Casting is never refused for Divine Power (v0.08): the Nova, the Barrage and the Tsunami go out back to back,
@@ -201,6 +206,12 @@ static func _surge(t, loadout: PackedStringArray) -> void:
 	rules.surged.connect(func(): surges.append(true))
 	var banners: Array = []
 	rules.banner.connect(func(text: String): banners.append(text))
+	var recharged: Array = []
+	rules.recharged.connect(func(slot: int): recharged.append(slot))
+	# The order the HUD counts on: it rings ui_surge on surged and keeps the banner that follows quiet.
+	var order: Array = []
+	rules.surged.connect(func(): order.append("surged"))
+	rules.banner.connect(func(text: String): order.append(text))
 	var temple: Structure = null
 	var house: Structure = null
 	for s in env.structures():
@@ -219,6 +230,8 @@ static func _surge(t, loadout: PackedStringArray) -> void:
 		"the Temple's fall resets both cooldowns (%.1f, %.1f)" % [rules.cooldown_left(0), rules.cooldown_left(3)])
 	t.check(surges.size() == 1 and rules.surged_once and banners.has("DIVINE SURGE"),
 		"and is a Divine Surge, announced (%d, %s)" % [surges.size(), banners])
+	t.check(order == ["surged", "DIVINE SURGE"], "surged comes first, its banner straight after (%s)" % [order])
+	t.check(recharged.is_empty(), "the surge's reset is not a recharge: it rings ui_surge, not ui_ready (%s)" % [recharged])
 	# Once a mission. The town has one Temple, so its fall is reported a second time to stand in for another.
 	rules.cast(0, Vector2.ZERO, {"dir": Vector2(1, 0)})
 	var left := rules.cooldown_left(0)

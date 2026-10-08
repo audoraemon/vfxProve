@@ -14,6 +14,7 @@ const FEAST_FESTIVAL := "feast_festival"
 const FEAST_PROCESSION := "feast_procession"
 ## The tier board's own missions (v0.11 M2): Tier 1's four new ones.
 const TAX_COLLECTOR := "tax_collector"
+const SPOILED_HARVEST := "spoiled_harvest"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -51,7 +52,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
-	var out: Array[MissionDef] = [tax_collector()]
+	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest()]
 	return out
 
 
@@ -87,6 +88,24 @@ static func tax_collector() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [AssassinateObjective.new("Kill the collectors", "collector", "taxes"),
 			BellSilentObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Spoiled Harvest (v0.11 M2, Tier 1, spec §8 row 3): spoil three granaries, each sealed until its doors open, before its
+## carts empty it to the Citadel (HarvestDirector).
+static func spoiled_harvest() -> MissionDef:
+	var m := _tier1(SPOILED_HARVEST, "Spoiled Harvest", PackedStringArray(["Carts empty the granaries to the Citadel.",
+		"Spoil the harvest before they do."]))
+	m.goal = "Spoil the three granaries before their carts empty them"
+	m.goal_label = "The harvest is spoiled"
+	m.lose = "A granary is emptied, or dawn comes"
+	m.camera_at = Vector2(1.0, 8.0)
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["ember", "doom", "discord"])
+	m.director = HarvestDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [RazeObjective.new("Granaries spoiled", "spoiled"), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

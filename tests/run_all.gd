@@ -106,6 +106,7 @@ const SUITES := [
 	"res://tests/test_descend_screens.gd",
 	"res://tests/test_tier1_groundwork.gd",
 	"res://tests/test_tax_collector.gd",
+	"res://tests/test_spoiled_harvest.gd",
 ]
 
 var failures := 0

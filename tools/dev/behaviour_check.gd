@@ -85,6 +85,8 @@ extends SceneTree
 ##          Doom on the bellkeeper once called; else Silent Doom on the first collector in the street with nobody but those
 ##          who would fall with him near enough to see it; else Mind Whisper sends a lone onlooker away). --seed= picks the
 ##          town; --board plays the board's version (its wishes heard) and stops at the main objective.
+##   harvest  (v0.11 M2) Spoiled Harvest, --case=none or play (Ember on each open granary not alight; Silent Doom on a carter
+##          walking to a granary with two loads or fewer left). --seed=, --board as tax.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -233,6 +235,9 @@ func _run() -> void:
 	elif scenario == "tax":
 		powers = PackedStringArray(["doom", "whisper", "discord"])
 		mission.mission_id = MissionBook.TAX_COLLECTOR
+	elif scenario == "harvest":
+		powers = PackedStringArray(["ember", "doom", "discord"])
+		mission.mission_id = MissionBook.SPOILED_HARVEST
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -282,6 +287,8 @@ func _run() -> void:
 			await _night()
 		"tax":
 			await _tax(Battlefield.arg_value(args, "--case"))
+		"harvest":
+			await _harvest(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1236,6 +1243,52 @@ func _tax(which: String) -> void:
 	var r := d.report()
 	print("BEHAVIOUR tax result %s states=%s killed=%d seen=%d alarms=%d target=%s" % [_outcome(rules), _tax_states(d),
 		int(r.killed), int(r.seen), int(r.alarms), String(r.target)])
+
+
+## Spoiled Harvest (v0.11 M2), played every LOOK_FRAMES: Ember on the first open granary not yet spoiled nor alight; else, a
+## granary down to two loads or fewer, Silent Doom on its carter nearest its door who is walking to it (empty-handed). `none`
+## casts nothing.
+func _harvest(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as HarvestDirector
+	var slots := _slots(rules)
+	_board_line()
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	while not rules.finished and not rules.main_done and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t >= report_at:
+			report_at += 10.0
+			var left := []
+			for s in d.targets:
+				left.append("x" if d.razed(s) else ("s" if d.is_sealed(s) else str(int(d.loads[s]))))
+			print("BEHAVIOUR harvest t=%d granaries=%s spoiled=%d" % [roundi(t), ",".join(left), d.razed_count()])
+		if which != "play" or frames % LOOK_FRAMES != 0:
+			continue
+		var lit := false
+		for s in d.opened:
+			if not d.razed(s) and not d.burning(s) and _slot_ready(rules, slots, "ember"):
+				rules.cast(slots.ember, s.center())
+				lit = true
+				break
+		if lit or not _slot_ready(rules, slots, "doom"):
+			continue
+		for s in d.opened:
+			if d.razed(s) or int(d.loads[s]) > 2:
+				continue
+			var mark: Person = null
+			for c: Variant in d.carters[s]:
+				if WarningDirector._alive(c) and not d._hauling.has((c as Person).get_instance_id()) \
+						and (mark == null or (c as Person).ground_pos.distance_to(d.doors[s]) < mark.ground_pos.distance_to(d.doors[s])):
+					mark = c
+			if mark != null:
+				rules.cast(slots.doom, mark.ground_pos)
+				break
+	print("BEHAVIOUR harvest result %s spoiled=%d emptied=%s" % [_outcome(rules), d.razed_count(), d.emptied != null])
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

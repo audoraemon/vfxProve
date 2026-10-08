@@ -115,7 +115,8 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
   - **Three granary stores:** the dwellings nearest (-9.0, 12.0), (12.0, 12.0) and (12.0, -12.0), named the south-west,
     south-east and north-east granaries. All three are far from the Citadel.
   - **The carters:** for each granary, the two lay citizens nearest the Citadel's gate.
-- **Main objective:** spoil all three granaries. A granary is spoiled once it has burned 15 s in all, or is destroyed.
+- **Main objective:** spoil all three granaries. A granary is spoiled once it has burned 10 s in all, or is destroyed
+  (the controller's Task 3 ruling: a 50-hp house burns down in about 13 s, so the first guess of 15 s could never be reached).
   - **Won** the moment the third is spoiled.
   - **Lost** the moment any granary is emptied ("A GRANARY IS EMPTIED": a store emptied cannot be spoiled), or at dawn.
 - **People and behaviour:**
@@ -130,14 +131,15 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
 
   | Time | Event |
   |---|---|
-  | 0:45 | "The south-west granary opens" |
-  | 1:45 | "The south-east granary opens" |
-  | 2:45 | "The north-east granary opens" |
-  | ~3:30 | Left alone, the south-west granary is emptied: lost |
+  | 1:00 | "The south-west granary opens" |
+  | 2:00 | "The south-east granary opens" |
+  | 3:00 | "The north-east granary opens" |
+  | ~2:15 | Left alone, the south-west granary is emptied: lost |
   | 5:00 | Dawn |
 
-  Each open granary empties about 2:45 after it opens (first load at about +33 s). The longest wait is 60 s, between
-  openings, and only when the player has already spoiled every open granary.
+  Each open granary empties about 1:15 after it opens (first load at about +15 s). The longest wait is 60 s, the first
+  and between openings, and only when the player has already spoiled every open granary. (Task 3 tuned the openings from
+  0:45, 1:45 and 2:45 so the scripted clear lands at about 3:10, inside 3-4 minutes.)
 - **Tags:** each granary, orange:
   - sealed: GRANARY - OPENS IN 0:58 (the time left to its opening), grey;
   - open: GRANARY - 3 LEFT, gold, with an edge arrow;
@@ -151,15 +153,17 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
   |---|---|
   | `sealed` | The granaries are sealed. The first opens soon: be ready to set it alight. |
   | (none) | Set the open granary (gold) alight before its carters (red) empty it to the Citadel. |
-  | `burning` | It burns. Keep it burning 15 s, or bring it down, before the fire crews put it out. |
+  | `burning` | It burns. Keep it burning 10 s, or bring it down, before the fire crews put it out. |
 - **Tour:**
-  1. "The south-west granary. Its doors open at 0:45."
-  2. "The south-east granary. Its doors open at 1:45."
-  3. "The north-east granary. Its doors open at 2:45."
+  1. "The south-west granary. Its doors open at 1:00."
+  2. "The south-east granary. Its doors open at 2:00."
+  3. "The north-east granary. Its doors open at 3:00."
   4. "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled."
 - **Mission tags:** `unaware_town` (derived).
 - **Results:** "THE HARVEST IS SPOILED" (`spoiled`), "A GRANARY IS EMPTIED" (`emptied`).
-- **First guesses** (tune order): OPEN_AT 45 / 105 / 165, SPOIL 15, LOADS 5, CARTERS 2.
+- **Numbers:** first guesses OPEN_AT 45 / 105 / 165, SPOIL 15, LOADS 5, CARTERS 2. Task 3 set SPOIL to 10 (the ruling) and
+  OPEN_AT to 60 / 120 / 180 (its report has the runs). Tune in this order if the scripted clear misses 3-4 minutes:
+  OPEN_AT (the first at most 60, no gap over 60), LOADS, CARTERS (SPOIL stays 10).
 
 ## 3. The Lost Lamb (Escort, new type)
 
@@ -332,8 +336,8 @@ These are the details the v0.11 spec left open. The controller records them as r
    the Citadel. Quiet powers never alarm the collectors.
 7. **Raze:** Raze is generalised as a new `RazeDirector` base (targets, a spoil time, sealing). Last Judgement's and
    Judgement's directors are left as they are (the Citadel judges itself), so their references hold.
-8. **Sealed granaries:** they are dwellings, sealed until their doors open at 0:45, 1:45 and 2:45. While sealed, powers only
-   shake them and fire is smothered. "Spoiled" means burned 15 s in all, or destroyed. The first granary emptied loses at
+8. **Sealed granaries:** they are dwellings, sealed until their doors open at 1:00, 2:00 and 3:00. While sealed, powers only
+   shake them and fire is smothered. "Spoiled" means burned 10 s in all, or destroyed. The first granary emptied loses at
    once.
 9. **Carters:** two lay citizens per granary, from near the Citadel. A load is counted when it is taken at the granary,
    which is what empties it. Felled carters are not replaced.

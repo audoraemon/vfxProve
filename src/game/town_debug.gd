@@ -116,7 +116,6 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
-	_bf.ctx.field.bounds = TownLayout.MAP
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"
@@ -162,6 +161,10 @@ func _rebuild(seed_value: int) -> void:
 			_crowd.queue_free()
 		else:
 			_crowd.free()
+	# The city to build: --city=<id>, Aldermere by default.
+	var city := Battlefield.arg_value(OS.get_cmdline_user_args(), "--city")
+	City.use(StringName(city) if city != "" else &"aldermere")
+	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
 	_town.name = "Town"
 	add_child(_town)

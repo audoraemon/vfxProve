@@ -17,6 +17,11 @@ static func run(t) -> void:
 	_lists(t, c)
 	_floor_areas(t, c)
 	_fresh_copies(t)
+	_leak(t)
+	_no_hardcoded(t)
+	_capital_stub(t)
+	_missions_choose(t)
+	City.use(&"aldermere")
 
 
 ## Every landmark name Aldermere answers to is the TownLayout constant of that name.
@@ -113,3 +118,54 @@ static func _points(src: Array) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	out.assign(src)
 	return out
+
+
+## A capital build then an Aldermere build gives exactly Aldermere (no state carried over), the floor's cached shrubs too.
+static func _leak(t) -> void:
+	City.use(&"aldermere")
+	var fresh := City.current().structures()
+	var shrubs := TownFloor.shrub_spots().duplicate(true)
+	City.use(&"capital")
+	t.check(City.current().id() == &"capital", "City.use(&\"capital\") makes the capital the active city")
+	t.check(TownFloor.shrub_spots().is_empty(), "the (empty) capital has no shrubs of Aldermere's")
+	City.use(&"aldermere")
+	t.check(City.current().structures() == fresh, "Aldermere rebuilds identically after another city")
+	t.check(not shrubs.is_empty() and TownFloor.shrub_spots() == shrubs, "Aldermere's shrubs come back after the capital")
+
+
+## Shared code reads the active city, never Aldermere's constants (Aldermere-only directors excepted).
+static func _no_hardcoded(t) -> void:
+	const SHARED := ["res://src/game/town/town.gd", "res://src/game/town/town_floor.gd",
+		"res://src/game/town/town_decor.gd", "res://src/game/town/walk_grid.gd",
+		"res://src/game/crowd/crowd.gd", "res://src/game/crowd/evacuation_manager.gd",
+		"res://src/game/crowd/alarm_manager.gd", "res://src/game/crowd/citizen_profile.gd"]
+	for p: String in SHARED:
+		var src := FileAccess.get_file_as_string(p)
+		var n := src.count("TownLayout.") - src.count("TownLayout.Prop")
+		t.check(n == 0, "%s reads no TownLayout constants (found %d)" % [p, n])
+
+
+## The capital stub answers every CityDef method with empty data, so building it crashes nothing.
+static func _capital_stub(t) -> void:
+	var c := City.by_id(&"capital")
+	t.check(c is CityDef and c.id() == &"capital", "the capital stub's id")
+	t.check(c.structures().is_empty() and c.houses().is_empty() and c.taverns().is_empty()
+		and c.pastures().is_empty() and c.market_piles().is_empty() and c.torches().is_empty(), "the capital stub is empty")
+	t.check(c.ship_at() == Vector2.INF and c.citadel_origin() == Vector2.INF, "the capital stub has no ship, no Citadel")
+	var a := c.floor_areas()
+	for k: StringName in [&"plazas", &"yards", &"gate_plazas", &"building_yards", &"farm"]:
+		t.check(a.has(k) and (a[k] as Array).is_empty(), "the capital stub's floor area %s is empty" % k)
+	t.check(City.by_id(&"aldermere") is AldermereCity, "by_id aldermere")
+
+
+## Every mission names its city, Aldermere by default, and the mission and town debug scenes use it before building.
+static func _missions_choose(t) -> void:
+	t.check(MissionDef.new().city == &"aldermere", "a mission is played in Aldermere by default")
+	for m: MissionDef in MissionBook.all() + MissionBook.campaign_missions():
+		t.check(m.city == &"aldermere", "%s is played in Aldermere" % m.id)
+	var mission := FileAccess.get_file_as_string("res://src/game/mission.gd")
+	t.check(mission.contains("City.use(_def.city)") and mission.find("City.use(_def.city)") < mission.find("_town = Town.new()"),
+		"Mission uses its def's city before building the town")
+	var debug := FileAccess.get_file_as_string("res://src/game/town_debug.gd")
+	t.check(debug.contains("--city") and debug.contains("City.use(") and debug.find("City.use(") < debug.find("_town = Town.new()"),
+		"town debug takes --city and uses it before building")

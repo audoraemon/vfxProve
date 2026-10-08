@@ -318,7 +318,7 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 ## The Scale reference's countryside: the dock with the ship moored at it and rowing boats on the rivers, fenced
 ## pastures with sheep and cows, and carts by the farms.
 static func _countryside(out: Array[Dictionary]) -> void:
-	# The dock itself is a structure since v0.05 (TownLayout.DOCK); the ship lies moored beside it.
+	# The dock itself is a structure since v0.05 (the city's &"dock" landmark); the ship lies moored beside it.
 	_add(out, Decor.Kind.SHIP, City.current().ship_at())
 	for g in [Vector2(-11.0, 21.4), Vector2(7.8, 22.6), Vector2(-20.5, 22.0), Vector2(-28.2, 9.0), Vector2(14.0, 21.2)]:
 		_add(out, Decor.Kind.BOAT, g)

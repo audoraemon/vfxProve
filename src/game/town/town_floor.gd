@@ -131,9 +131,9 @@ var _texture: Texture2D
 var _yard_rects: Array[Rect2] = []
 ## Screen position of the baked texture's top-left corner.
 var _origin := Vector2.ZERO
-## shrub_spots(), worked out on first use (the layout is constant; cached for the first city that asks).
+## shrub_spots(), worked out on first use per city (rebuilt when City.current() is another city object, as _geo()).
 static var _shrub_spots: Array[Dictionary] = []
-static var _shrubs_done := false
+static var _shrubs_city: CityDef = null
 ## The active city's ground the floor asks about per cell (_geo()), read once per city.
 static var _geo_city: CityDef = null
 static var _geo_cache := {}
@@ -618,12 +618,14 @@ func _shrubs(ci: CanvasItem) -> void:
 ## units), "seed"} each, on a jittered SHRUB_STEP grid, SHRUB_CHANCE of its points, on open meadow only (_fixed_zone
 ## 1). Deterministic; the floor bake and the plant layer both read it.
 static func shrub_spots() -> Array[Dictionary]:
-	if _shrubs_done:
+	var city := City.current()
+	if city == _shrubs_city:
 		return _shrub_spots
-	_shrubs_done = true
+	_shrubs_city = city
+	_shrub_spots = []
 	var yards := _yards()
 	var n := 0
-	for d: Rect2 in City.current().districts():
+	for d: Rect2 in city.districts():
 		var nx := int(d.size.x / SHRUB_STEP)
 		var ny := int(d.size.y / SHRUB_STEP)
 		for j in ny:

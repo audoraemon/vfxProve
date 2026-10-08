@@ -227,6 +227,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 				n.queue_free()
 			else:
 				n.free()
+	var args := OS.get_cmdline_user_args()
+	_def = _mission_def(args)
+	# The mission's city is the active one before anything is built (the town, the walk grid and the crowd read it).
+	City.use(_def.city)
+	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
 	_town.name = "Town"
 	add_child(_town)
@@ -239,8 +244,6 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.ctx.crowd = _crowd
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
-	var args := OS.get_cmdline_user_args()
-	_def = _mission_def(args)
 	var on_board := _on_board(args)
 	if autostart and wants_board(args):
 		# A scripted run's --board (v0.11 M1): the night's seed is the first night's, as a fresh god's.

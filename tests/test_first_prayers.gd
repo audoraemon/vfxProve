@@ -11,6 +11,8 @@ const DT := 0.05
 static func run(t) -> void:
 	_setup(t)
 	_pray(t)
+	_praying_tag(t)
+	_dawn(t)
 	_win(t)
 	_market(t)
 	_priests(t)
@@ -142,6 +144,51 @@ static func _pray(t) -> void:
 	_run(s, 1.5)
 	t.check(not a.inside and d.believers.has(a) and a.profile.faith == CitizenProfile.Faith.BELIEVER and b.inside,
 		"out a Believer, and the next goes in")
+	_done(s)
+
+
+## While someone prays the shrine's tag counts the seconds left, as Broken Lanterns' DRAINING does (controller ruling, Task 5
+## review): whole seconds, rounded up, and the shrine's name again once he is out.
+static func _praying_tag(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	_blind(d)
+	var a: Person = d.grieving[0]
+	_bring(d, a)
+	_run(s, DT * 2.0)
+	_run(s, 2.5)
+	var labels := _labels(d)
+	var left := FirstPrayersDirector.PRAY_SECONDS - DT * 2.0 - 2.5
+	t.check(a.inside and labels.has("PRAYING %d" % ceili(left)) and not labels.has("OLD WELL SHRINE") and labels.has("DOOR - CLEAR"),
+		"praying, the shrine's tag counts the seconds left: PRAYING %d (%s)" % [ceili(left), labels])
+	_run(s, FirstPrayersDirector.PRAY_SECONDS)
+	labels = _labels(d)
+	t.check(not a.inside and labels.has("OLD WELL SHRINE") and not labels.has("PRAYING %d" % ceili(left)),
+		"and out again, the shrine has its name back (%s)" % [labels])
+	_done(s)
+
+
+## Dawn (controller ruling, Task 5 review): a won night is held to dawn on the tier board, so the roof does not fall -- the post
+## stands (a blow only shakes it) and a prayer in progress goes on and ends a Believer, though nobody goes in after dawn.
+static func _dawn(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var rules: Rules = s.rules
+	_blind(d)
+	var a: Person = d.grieving[0]
+	var b: Person = d.grieving[1]
+	_bring(d, a)
+	_run(s, DT * 2.0)
+	rules.time_left = DT
+	_run(s, DT * 3.0)
+	t.check(d.roof_fallen and a.inside and a.is_alive() and not d.house.destroyed,
+		"dawn: nobody falls with the roof, and the shrine post stands")
+	_bring(d, b)
+	_run(s, DT * 2.0)
+	t.check(not b.inside, "but after dawn nobody more goes in")
+	d.step(FirstPrayersDirector.PRAY_SECONDS)
+	t.check(not a.inside and a.is_alive() and d.believers.has(a) and a.profile.faith == CitizenProfile.Faith.BELIEVER
+		and not d.house.destroyed, "the prayer in progress goes on: out a Believer")
 	_done(s)
 
 

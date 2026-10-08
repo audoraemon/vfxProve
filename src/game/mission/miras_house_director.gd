@@ -270,6 +270,14 @@ func inside() -> Array[Person]:
 	return out
 
 
+## The seconds the soonest reading inside has left (v0.11 M2: First Prayers' shrine counts them down); INF when nobody is inside.
+func reading_left() -> float:
+	var least := INF
+	for p: Variant in _reading.keys():
+		least = minf(least, float(_reading[p]))
+	return least
+
+
 ## The tags (v0.10 M6, spec §4.1), the most important first:
 ## - the house, named (_house_label()), outlined and pointed at from the edge, until it is destroyed;
 ## - its door, clear or watched, until it burns;

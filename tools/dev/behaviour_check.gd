@@ -1173,18 +1173,10 @@ func _faith_guard(rules: Rules, slots: Dictionary, d: MirasHouseDirector, w: Per
 	return ""
 
 
-## The seconds a prayer has left, the least of those inside; INF when nobody prays (First Prayers' policy, v0.11 M2).
-func _prayer_left(d: MirasHouseDirector) -> float:
-	var least := INF
-	for p: Variant in d._reading.keys():
-		least = minf(least, float(d._reading[p]))
-	return least
-
-
 ## The door matters to the prayers policy (v0.11 M2): a Believer is about to come out (within PRAYERS_EXIT), or nobody prays and
 ## one of the poor stands within a hop of it, ready to go in. A Faithful by the door is worth a Discord only then.
 func _prayers_door_matters(d: MirasHouseDirector) -> bool:
-	var left := _prayer_left(d)
+	var left := d.reading_left()
 	if left != INF:
 		return left <= PRAYERS_EXIT
 	for g in d.grieving:
@@ -1199,7 +1191,7 @@ func _prayers_door_matters(d: MirasHouseDirector) -> bool:
 ## in the market's window or the priests' (the director's), counting PRAYERS_WALK for his walk and PRAYERS_SLACK after the window
 ## for them to leave.
 func _prayers_ready(d: MirasHouseDirector) -> bool:
-	var left := _prayer_left(d)
+	var left := d.reading_left()
 	if left != INF and left > PRAYERS_WALK:
 		return false
 	var fp := d as FirstPrayersDirector

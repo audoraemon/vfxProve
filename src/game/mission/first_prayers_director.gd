@@ -42,9 +42,17 @@ func _opening_banner() -> String:
 	return "LEAD THE POOR TO THE OLD WELL"
 
 
-## What the shrine's tag says (v0.11 M2).
+## What the shrine's tag says (v0.11 M2): its name, or while someone prays the seconds left, as Broken Lanterns' DRAINING counts
+## them (whole seconds, rounded up).
 func _house_label() -> String:
-	return "OLD WELL SHRINE"
+	var left := reading_left()
+	return "OLD WELL SHRINE" if left == INF else "PRAYING %d" % ceili(left)
+
+
+## Dawn (v0.11 M2): on the tier board a won night is held to dawn, so the roof of Mira's House does not fall here. Nobody goes in
+## after it, but a prayer in progress goes on and the shrine post stands (a blow only shakes it).
+func _roof() -> void:
+	roof_fallen = true
 
 
 ## The old well shrine, raised at the market's edge (v0.11 M2): a shrine post a blow only shakes. The town takes it away with

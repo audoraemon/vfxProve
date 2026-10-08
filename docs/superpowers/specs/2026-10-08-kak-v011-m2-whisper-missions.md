@@ -291,7 +291,8 @@ arrives one granary at a time.
   The longest waits are 40 s (the Faithful at the door, which Discord or a lure can cut short) and 32 s (one praying
   before the next).
 - **Tags** (Mira's, renamed):
-  - OLD WELL SHRINE, gold, outlined, with an edge arrow.
+  - OLD WELL SHRINE, gold, outlined, with an edge arrow. While someone prays it reads PRAYING n (whole seconds left, rounded up).
+    At dawn the roof does not fall: the post stands and a prayer in progress ends.
   - DOOR - CLEAR (green) or DOOR - WATCHED (red).
   - TO THE TEMPLE, red with an edge arrow, on each runner. TEMPLE, red, while a report runs.
   - A red diamond on each Faithful watching the door.

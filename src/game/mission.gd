@@ -94,6 +94,9 @@ var board := false
 var descend: DescendState
 ## The seed the board night's wishes are drawn from (Descent.seed_for()): Game sets it, and an R restart keeps it.
 var wish_seed := 0
+## The loadout start() was last given (v0.11 M1): an R restart passes none and replays this one, not the mission's default
+## (which on the board would hand out locked powers and drop what the player drafted).
+var _drafted := PackedStringArray()
 ## The board night being played (v0.11 M1), or null off the board.
 var _descent: Descent
 ## The mission being played, and its director (null for a mission without scripted actors).
@@ -190,8 +193,11 @@ func _bench_beams(args: PackedStringArray) -> void:
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
-## default four, so a standalone run still works.
+## default four, so a standalone run still works -- or, once a loadout has been drafted, to that loadout (the R restart).
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	if powers.is_empty():
+		powers = _drafted
+	_drafted = powers
 	if _ending:
 		# A start during the ending's slow motion (v0.09): that ending lets go once its wait is over (_play_ending()), so
 		# the time scale it dipped is restored here.

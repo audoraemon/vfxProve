@@ -183,8 +183,8 @@ func _draw_cell(i: int, key: String) -> void:
 	UiTheme.frame(_ui, r, owned or (can and _hover == key))
 	var price := "Unlocked" if owned else "%d" % DescendState.unlock_price(key)
 	var price_w := UiTheme.width(price, UiTheme.SIZE_SMALL)
-	var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - price_w - 14.0)
-	UiTheme.text(_ui, r.position + Vector2(4.0, 14.0), name, UiTheme.SIZE_SMALL,
+	var power_name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - price_w - 14.0)
+	UiTheme.text(_ui, r.position + Vector2(4.0, 14.0), power_name, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if owned else (UiTheme.COL_TEXT if can else UiTheme.COL_DIM))
 	UiTheme.text(_ui, Vector2(r.end.x - 4.0 - price_w, r.position.y + 14.0), price, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if owned else UiTheme.COL_DIM)

@@ -11,6 +11,7 @@ const DT := 0.05
 static func run(t) -> void:
 	_pool(t)
 	_rescue(t)
+	_rally(t)
 	_early(t)
 	_mercy(t)
 	_family(t)
@@ -143,6 +144,40 @@ static func _rescue(t) -> void:
 	(stopped.field as EnemyField).kill(k.soldier, &"doom")
 	t.check(k.check(stopped.rules) == Objective.Status.DONE, "the soldier dead: granted")
 	_done(stopped)
+
+
+## Final review, item 1: the town's rally (City Emergency, the first Citadel hit, Judgement's start) sends every corps-less
+## soldier to the ring, an engaged rescuer included. That is the town's order, not the god's: the wish stays pending and he
+## is sent back on his errand. Only the god's own effects turn him.
+static func _rally(t) -> void:
+	var s := _world()
+	var w := _wish(s, "child") as RescueWish
+	w.engage()
+	w.step(s.rules, DT)
+	t.check(w.soldier.mind == Person.Mind.DUTY, "(set-up) the engaged soldier is on his errand")
+	(s.crowd as Crowd).rally()
+	t.check(w.soldier.mind == Person.Mind.RALLY, "(set-up) the rally sent him to the ring")
+	t.check(w.check(s.rules) == Objective.Status.PENDING, "the town's rally does not grant the rescue")
+	w.step(s.rules, RescueWish.RETARGET)
+	t.check(w.soldier.mind == Person.Mind.DUTY and w.soldier.goal().distance_to(w.child.ground_pos) < 1.5
+		and w.check(s.rules) == Objective.Status.PENDING, "he is back on his errand toward the child, the wish still pending")
+	_arrive(w.soldier, w.child.ground_pos)
+	w.step(s.rules, RescueWish.RETARGET)
+	w.soldier.send_to_post(Vector2.ZERO)
+	t.check(w.check(s.rules) == Objective.Status.PENDING, "a POST order is no turning either")
+	w.step(s.rules, RescueWish.RETARGET)
+	t.check(w.dragging and w.soldier.mind == Person.Mind.DUTY and w.soldier.goal().distance_to(RescueWish.GATE) < 1.5,
+		"back on his errand with the child, he drags them to the gate")
+	_done(s)
+
+	for m: int in [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.WHISPERED, Person.Mind.COMPELLED]:
+		var o := _world()
+		var x := _wish(o, "child") as RescueWish
+		x.engage()
+		x.step(o.rules, DT)
+		x.soldier.mind = m as Person.Mind
+		t.check(x.check(o.rules) == Objective.Status.DONE, "the god's own effect (mind %d) turns him: granted" % m)
+		_done(o)
 
 
 ## The controller's ruling: engagement is judged first. The soldier felled before the wish is engaged engages it and grants

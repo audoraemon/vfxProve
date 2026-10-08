@@ -13,7 +13,7 @@ const OUT := Vector2(-20.0, 18.0)
 const AWAY := Vector2(22.0, 16.0)
 
 
-static func _setup() -> Dictionary:
+static func _setup(board := false) -> Dictionary:
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
@@ -27,10 +27,10 @@ static func _setup() -> Dictionary:
 	crowd.spawn()
 	# The town's alarm hushed: deaths in a test never call the bellkeeper (the bell's own case sets it rung).
 	crowd.hush(9999.0)
-	var def := MissionBook.vigil_flame()
+	var def := TierBook.board("vigil_flame") if board else MissionBook.vigil_flame()
 	var rules := Rules.new().setup(def.default_loadout, null, env, field, crowd, town, def)
 	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
-	var director := (def.director.new() as MissionDirector).setup(rules, crowd, town, null) as VigilFlameDirector
+	var director := (def.make_director() if board else def.director.new() as MissionDirector).setup(rules, crowd, town, null) as VigilFlameDirector
 	rules.director = director
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
@@ -138,6 +138,7 @@ static func run(t) -> void:
 	_wren(t)
 	_swap(t)
 	_own_try(t)
+	_board_wren(t)
 	_route(t)
 	_carry(t)
 	_ending(t)
@@ -303,6 +304,24 @@ static func _own_try(t) -> void:
 	_run(s2, VigilFlameDirector.WREN_OWN_AFTER + 1.0)
 	t.check(not d2.attempting, "and never tries on his own")
 	_done(s2)
+
+
+## Final review, item 3 (the user's rule: no wait over 60 s): on the board the other events stretch with the clock, but Wren's
+## arrival (WREN_AT) and his own-try wait (WREN_OWN_AFTER) run in real seconds.
+static func _board_wren(t) -> void:
+	var s := _setup(true)
+	var d: VigilFlameDirector = s.d
+	t.check(d.stretch > 1.5 and d.timeline.stretch_factor() == d.stretch, "(set-up) the board's Vigil Flame stretches its timeline (x%.2f)" % d.stretch)
+	t.near(d.timeline.seconds_to("route"), VigilFlameDirector.ROUTE_AT * d.stretch, 0.01, "the other events keep their stretch (the route)")
+	_run(s, VigilFlameDirector.WREN_AT - 1.0)
+	t.check(not d.appeared, "on the board Wren has not come at 0:49")
+	_run(s, 1.0 + DT * 2.0)
+	t.check(d.appeared and d.wren != null, "and comes at 0:50, not at %.0f s" % (VigilFlameDirector.WREN_AT * d.stretch))
+	_run(s, VigilFlameDirector.WREN_OWN_AFTER - 1.0)
+	t.check(not d.attempting, "left alone, he only watches until 30 s after")
+	_run(s, 1.0 + VigilFlameDirector.TICK + DT)
+	t.check(d.attempting and (s.banners as Array).has("THE BOY TRIES FOR THE LANTERN"), "and tries the lantern himself 30 s after he came")
+	_done(s)
 
 
 static func _route(t) -> void:

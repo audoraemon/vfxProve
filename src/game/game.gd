@@ -1062,7 +1062,11 @@ func _flow_results(step: Callable) -> void:
 	var prep := _screen_node as PrepareScreen
 	step.call(prep != null and prep.draft.capacity == TierBook.dp(1) + 1,
 		"The Warning's Prepare now has %d DP" % (prep.draft.capacity if prep != null else 0))
-	prep.draft.preselect(MissionBook.warning().default_loadout)
+	# (drafted in a different order from the default, so the R restart below can tell the draft from it)
+	var reversed := PackedStringArray()
+	for key in MissionBook.warning().default_loadout:
+		reversed.insert(0, key)
+	prep.draft.preselect(reversed)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
@@ -1074,6 +1078,15 @@ func _flow_results(step: Callable) -> void:
 	await _past_intro()
 	step.call(save.descend.night == 1 and _wish_ids() == heard,
 		"a restart banks nothing and hears the same wishes (%s)" % ", ".join(heard))
+	var r := InputEventKey.new()
+	r.physical_keycode = KEY_R
+	r.pressed = true
+	var drafted := _mission.rules().loadout.duplicate()
+	_mission._unhandled_input(r)
+	await _past_intro()
+	step.call(loadout != MissionBook.warning().default_loadout and Array(drafted) == Array(loadout)
+		and Array(_mission.rules().loadout) == Array(loadout) and _wish_ids() == heard and save.descend.night == 1,
+		"R restarts the night with the drafted loadout (%s) and the same wishes, not the default" % ", ".join(_mission.rules().loadout))
 	for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
 		w.warning_dead = true
 	await _until(func() -> bool: return _mission.rules().main_done, 3.0)

@@ -27,12 +27,19 @@ static func _results(t) -> void:
 		"the main objective banked; a granted wish lost to dawn; a failed one; one never answered (%s)" % [rows])
 	t.check(Array(ResultsScreen.summary_lines(RESULT)) == ["Believers +10, 35 now", "Night 3", "Whisper 1 / 1 cleared: Omen is open",
 		"New best: Fastest clear 3:21"], "the believers, the night, the tier's progress, the best (%s)" % [ResultsScreen.summary_lines(RESULT)])
+	t.check(ResultsScreen.caught_line(RESULT) == "Caught: dawn came. The night's main win stands.",
+		"a caught night says why, and that its win stands (%s)" % ResultsScreen.caught_line(RESULT))
+	var saw := RESULT.duplicate(true)
+	saw.descend.lost_text = "lost: Halcyon saw you"
+	t.check(ResultsScreen.caught_line(saw) == "Caught: Halcyon saw you. The night's main win stands.", "whatever caught it")
 	var won := RESULT.duplicate(true)
 	won.descend.ascended = true
+	t.check(ResultsScreen.caught_line(won) == "", "an ascended night has no such line")
 	won.descend.wishes[0].lost = false
 	t.check(ResultsScreen.descend_rows(won)[1] == ["Burn the moneylender's house", "+10", "ok", ""], "ascended: the wish banked")
 	var lost := {"mission": "warning", "won": false, "reason": "bell", "goal": {"label": "The warnings die", "done": false},
 		"descend": {"main": false, "main_reward": 10, "wishes": [], "bank": {"believers": 0, "total": 5, "night": 4}}}
+	t.check(ResultsScreen.caught_line(lost) == "", "a lost night was not caught after a win")
 	t.check(ResultsScreen.descend_rows(lost) == [["The warnings die", "", "x", ""]]
 		and ResultsScreen.summary_lines(lost)[0] == "Believers +0, 5 now", "a loss: the main objective crossed, nothing banked")
 	var screen := ResultsScreen.new().setup(RESULT)

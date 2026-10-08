@@ -4,6 +4,9 @@ extends RefCounted
 ## mission's primary objectives decide it in list order -- the first to report DONE wins it, the first to report FAILED
 ## loses it (Rules._check_end()) -- so a mission can be won more than one way (The Warning: kill the messenger unseen,
 ## or outlast the omen). Bonus objectives only report in the results.
+## v0.11 M1: that is off the tier board. On the board the first DONE is the night's main objective and does not end it: the
+## night is held open (Rules._hold()) until the god ascends or is caught (Rules._check_caught(): dawn, or any other primary
+## objective failing but the main one and a `deadline`), the main win standing. Later milestones' objectives read this.
 
 enum Status { PENDING, DONE, FAILED }
 

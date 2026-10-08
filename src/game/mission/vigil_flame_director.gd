@@ -33,7 +33,8 @@ const FAITHFUL := 20
 const VIGIL_PACE := 0.5
 const BEARER_LEAD := 0.85
 ## 0:50 -- Wren comes to watch the lantern, keeping WATCH_DIST from it; left WREN_OWN_AFTER seconds without a whisper,
-## he tries the swap himself.
+## he tries the swap himself. Both run in real seconds whatever the board stretch (v0.11 M1: nothing of the player's can
+## move until he comes, so no wait over 60 s).
 const WREN_AT := 50.0
 const WATCH_DIST := 3.0
 const WREN_OWN_AFTER := 30.0
@@ -122,7 +123,7 @@ func _begin() -> void:
 	_listen()
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
-	timeline.add(WREN_AT, "wren", "A boy watches the lantern", _wren_comes)
+	timeline.add(WREN_AT / stretch, "wren", "A boy watches the lantern", _wren_comes)  # (real seconds: the timeline's are stretched)
 	# Once the flame is gone, the suspicious priest has nothing to bring home (v0.10 M5).
 	timeline.add(ROUTE_AT, "route", "The route shortens", _route_home, func() -> bool: return vigil != null and vigil.active and not swapped)
 	_add_events()
@@ -282,7 +283,7 @@ func _wren_step(delta: float) -> void:
 	if swapped and not wren.inside and wren.ground_pos.distance_to(shrine) <= SHRINE_REACH:
 		_flame_home()
 		return
-	if not swapped and not whispered and not attempting and timeline.elapsed() - _appeared_at >= WREN_OWN_AFTER:
+	if not swapped and not whispered and not attempting and (timeline.elapsed() - _appeared_at) * stretch >= WREN_OWN_AFTER:
 		attempting = true
 		_tick = 0.0
 		rules.banner.emit("THE BOY TRIES FOR THE LANTERN")

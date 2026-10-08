@@ -295,8 +295,9 @@ func tour() -> Array:
 	return out
 
 
-## "Solved by": a kill's Authority, else -- the omen faded -- the Authorities that delayed the warning (v0.08; shown,
-## not saved: Resonance comes in v0.09).
+## "Solved by": a kill's Authority (v0.08; shown, not saved). v0.11 M1: the omen no longer fades into a win (spec §7.3: dawn
+## with the warning alive loses), so the Authorities that only delayed a warning still alive are reported for the record
+## alone -- a lost night shows NOBODY (ResultsScreen.solved_text()).
 func report() -> Dictionary:
 	var by := PackedStringArray()
 	if warning_dead and killed_by != "":

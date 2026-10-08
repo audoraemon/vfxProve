@@ -13,10 +13,16 @@ const STARS := [
 	[180.0, Vector2(14.5, 9.0), "THE SIDE GATE"],
 ]
 
+## How long after one warning is stopped the next star falls at the latest (v0.11 M1, the no-wait-over-60-s rule): a later
+## star falls at its scheduled time or this long after the previous warning was stopped, whichever is sooner.
+const STOP_WAIT := 30.0
+
 ## The three warnings, in the order their stars fall; each is set up when its time comes (its `rules` is null until then).
 var stars: Array[WarningDirector] = []
 ## Seconds into the night.
 var _clock := 0.0
+## The night's second each star's warning was first seen stopped, or -1 while it has not been (v0.11 M1); one per star.
+var _stopped_at: Array[float] = []
 
 
 func _begin() -> void:
@@ -25,19 +31,32 @@ func _begin() -> void:
 		w.post = s[1]
 		w.post_name = String(s[2])
 		stars.append(w)
+		_stopped_at.append(-1.0)
 
 
-## Sets up each star's warning OMEN_AT before it falls -- unless it is already stopped -- and steps those set up.
+## Sets up each star's warning OMEN_AT before it falls -- unless it is already stopped -- and steps those set up. The
+## second a warning is first seen stopped is kept: the next star falls no later than STOP_WAIT after it.
 func step(delta: float) -> void:
 	_clock += delta
 	for i in stars.size():
 		var w := stars[i]
 		if w.rules == null:
-			if not w.warning_dead and _clock >= float(STARS[i][0]) - WarningDirector.OMEN_AT:
+			if not w.warning_dead and _clock >= fall_at(i) - WarningDirector.OMEN_AT:
 				w.reserved = _reserved_for(w)
 				w.setup(rules, crowd, town, ctx, night)
 		else:
 			w.step(delta)
+		if w.warning_dead and _stopped_at[i] < 0.0:
+			_stopped_at[i] = _clock
+
+
+## The second into the night star `i` falls (v0.11 M1): its scheduled time, or STOP_WAIT after the previous warning was stopped
+## if that is sooner. A previous warning not yet stopped never brings it forward, and the first star is never earlier.
+func fall_at(i: int) -> float:
+	var at := float(STARS[i][0])
+	if i > 0 and _stopped_at[i - 1] >= 0.0:
+		at = minf(at, _stopped_at[i - 1] + STOP_WAIT)
+	return at
 
 
 ## Who a star about to be set up must leave alone (v0.11 M1): this director's reserved people -- the wishers and wish

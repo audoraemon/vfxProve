@@ -2,11 +2,12 @@ class_name RescueWish
 extends Wish
 ## "Save my child" (v0.11 M1, spec §5.3, Rescue): a timed wish. It waits until the player engages it -- the child's or the
 ## soldier's tag clicked, or a power cast within ENGAGE_REACH of either -- then a soldier walks to the child and drags them
-## toward the Citadel's gate. Stop him (dead) or turn him (off his duty: frightened, confused, held) within SECONDS, the
-## child alive, and it is granted. The child dying, the gate reached, or the time run out fails it. Unengaged, it waits as
-## long as the night lasts. Engagement is judged first: the soldier felled by the god's own cast before it was engaged
-## engages it and grants it; felled any other way before, it fails with no reward. The child is a lay citizen of the
-## wisher's household (CitizenProfile.family: the town has no ages).
+## toward the Citadel's gate. Stop him (dead) or turn him (frightened, fleeing, confused, whispered or compelled: the god's
+## own effects) within SECONDS, the child alive, and it is granted. A town order (the rally ring, a post) is not the god's
+## doing: it sends him back on his errand and the wish stays pending. The child dying, the gate reached, or the time run
+## out fails it. Unengaged, it waits as long as the night lasts. Engagement is judged first: the soldier felled by the
+## god's own cast before it was engaged engages it and grants it; felled any other way before, it fails with no reward. The
+## child is a lay citizen of the wisher's household (CitizenProfile.family: the town has no ages).
 
 ## How long the soldier has to reach the gate once engaged.
 const SECONDS := 45.0
@@ -15,6 +16,9 @@ const ENGAGE_REACH := 2.0
 ## The Citadel's gate the child is dragged to (snapped to walkable ground), and how near counts as there.
 const GATE := Vector2(-10.5, -7.6)
 const GATE_REACH := 1.0
+## The minds that are the god's own doing (v0.11 M1): a soldier in one of them has been turned. Every other mind off his
+## duty is the town's order (RALLY, POST, HOLD, ...), which the wish answers by sending him back on his errand.
+const TURNED := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.CONFUSED, Person.Mind.WHISPERED, Person.Mind.COMPELLED]
 ## How near the soldier must come to take the child, and how often the pair are re-aimed.
 const TAKE_REACH := 0.9
 const RETARGET := 0.5
@@ -136,9 +140,12 @@ func step(_rules: Rules, delta: float) -> void:
 		soldier.go_duty(child.ground_pos)
 		_started = soldier.mind == Person.Mind.DUTY
 		return
-	if soldier.mind != Person.Mind.DUTY:
-		return
 	_retarget_in = RETARGET
+	if soldier.mind != Person.Mind.DUTY:
+		# The town's order took him off the errand (turned by the god, he is left be): back to it, toward the child or the gate.
+		if not _turned():
+			soldier.go_duty(_gate if dragging else child.ground_pos)
+		return
 	if not dragging and soldier.ground_pos.distance_to(child.ground_pos) <= TAKE_REACH:
 		dragging = true
 	if dragging:
@@ -160,11 +167,16 @@ func _act(rules: Rules) -> Status:
 		return Status.DONE
 	if not engaged:
 		return Status.PENDING
-	if _started and soldier.mind != Person.Mind.DUTY:
+	if _started and _turned():
 		return Status.DONE
 	if dragging and soldier.ground_pos.distance_to(_gate) <= GATE_REACH:
 		return Status.FAILED
 	return Status.FAILED if seconds_left <= 0.0 else Status.PENDING
+
+
+## Whether the soldier has been turned by the god's own effect (v0.11 M1): his mind is one of TURNED.
+func _turned() -> bool:
+	return TURNED.has(soldier.mind)
 
 
 ## Once ended, whoever is still on its errand is let go (Crowd.off_duty()): the child home, the soldier to his post.

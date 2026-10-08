@@ -8,6 +8,7 @@ const DT := 0.05
 
 static func run(t) -> void:
 	_stars(t)
+	_chain(t)
 	_bell(t)
 	_forced(t)
 	_runners(t)
@@ -105,6 +106,68 @@ static func _stars(t) -> void:
 	t.check(rules.finished and rules.won and rules.over_reason == "warning" and d.report().stopped == 3,
 		"all three stopped: won (%s)" % rules.over_reason)
 	_done(s)
+
+
+## Final review, item 3 (the user's rule: no wait over 60 s): a later star falls at its scheduled time or STOP_WAIT after the
+## previous warning was stopped, whichever is sooner -- its omen still first. A star not yet stopped never brings the next forward.
+static func _chain(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	d._clock = 7.95
+	_run(s, 0.1)
+	var first := d.stars[0]
+	d._clock = 19.9
+	first.warning_dead = true
+	first.phase = WarningDirector.Phase.OVER
+	_run(s, 0.2)  # (stopped at 0:20)
+	d._clock = 46.0
+	_run(s, 0.1)
+	t.check(d.stars[1].rules == null, "star 0 stopped at 0:20: star 1 is not set up at 0:46, its omen's lead (%s) not yet come" % [d.stars[1].rules])
+	_run(s, 2.5)
+	t.check(d.stars[1].rules != null and not d.stars[1].omen_fallen, "its watchman is appointed at 0:48 (the omen first)")
+	_run(s, 2.0)
+	t.check(d.stars[1].omen_fallen and (s.banners as Array).has("A STAR FALLS OVER THE MAIN GATE"),
+		"and its star falls by 0:50, not 1:30")
+	var at: float = d._clock
+	d.stars[1].warning_dead = true
+	d.stars[1].phase = WarningDirector.Phase.OVER
+	_run(s, DT)  # (stopped just after 0:50)
+	d._clock = at + 26.0
+	_run(s, 0.2)
+	t.check(d.stars[2].rules == null, "star 1 stopped at once: star 2 is not set up before its lead")
+	_run(s, 2.5)
+	t.check(d.stars[2].rules != null and not d.stars[2].omen_fallen, "star 2's watchman is appointed 28 s after")
+	_run(s, 2.0)
+	t.check(d.stars[2].omen_fallen and d._clock < at + 31.0 and (s.banners as Array).has("A STAR FALLS OVER THE SIDE GATE"),
+		"and its star falls within 30 s of the stop, not at 3:00 (%.1f s after)" % (d._clock - at))
+	_done(s)
+
+	# A star running, not yet stopped, never brings the next forward.
+	var run := _world()
+	var e: StarfallDirector = run.d
+	e._clock = 7.95
+	_run(run, 0.1)
+	e._clock = 60.0
+	_run(run, 0.1)
+	t.check(e.stars[1].rules == null and not e.stars[0].warning_dead, "star 0 still running at 1:00: star 1 waits for its time")
+	e._clock = 87.9
+	_run(run, 0.2)
+	t.check(e.stars[1].rules != null, "and comes at 1:30 as scheduled")
+	_done(run)
+
+	# A stop late in the night does not push the next star past its schedule.
+	var late := _world()
+	var l: StarfallDirector = late.d
+	l._clock = 7.95
+	_run(late, 0.1)
+	l._clock = 79.9
+	l.stars[0].warning_dead = true
+	l.stars[0].phase = WarningDirector.Phase.OVER
+	_run(late, 0.2)
+	l._clock = 87.9
+	_run(late, 0.2)
+	t.check(l.stars[1].rules != null, "stopped at 1:20, star 1 falls at its scheduled 1:30, not 30 s after")
+	_done(late)
 
 
 static func _bell(t) -> void:

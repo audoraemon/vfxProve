@@ -56,7 +56,7 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:
 	if reason in ["warning", "omen"]:
-		return "THE WARNING DIES"  # (v0.08: the messenger killed unseen, or the omen faded with the bell silent)
+		return "THE WARNING DIES"  # (v0.08: the messenger killed unseen, or the omen faded with the bell silent; the board's: all three stars stopped)
 	if reason == "bell":
 		return "THE BELL TOLLS"
 	if ACT_TITLES.has(reason):
@@ -308,6 +308,17 @@ static func descend_rows(result: Dictionary) -> Array:
 	return rows
 
 
+## The line under a caught board night's title (v0.11 M1, spec §6): why the night ended after its main objective, from the
+## reason Descent already lost its wishes to ("lost: dawn came" reads "Caught: dawn came."), and that the win stands. "" for
+## an ascended night, a lost one, or any result off the board.
+static func caught_line(result: Dictionary) -> String:
+	var d: Dictionary = result.get("descend", {})
+	var why := String(d.get("lost_text", "")).trim_prefix("lost: ")
+	if not bool(d.get("main", false)) or bool(d.get("ascended", false)) or String(d.get("caught", "")) == "" or why == "":
+		return ""
+	return "Caught: %s. The night's main win stands." % why
+
+
 ## A board night's lines under its rows (v0.11 M1, spec §6): the believers banked and the new total, the night, the tier's
 ## progress, and each best beaten.
 static func summary_lines(result: Dictionary) -> PackedStringArray:
@@ -331,6 +342,10 @@ func _draw_descend() -> void:
 		TierBook.tier_name(int(d.get("tier", 1)))]
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(called, UiTheme.SIZE_BODY) * 0.5), 84.0), called, UiTheme.SIZE_BODY,
 		UiTheme.COL_DIM)
+	var caught := caught_line(_result)
+	if caught != "":
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(caught, UiTheme.SIZE_SMALL) * 0.5), 98.0), caught, UiTheme.SIZE_SMALL,
+			UiTheme.COL_BAD)
 	var y := DESCEND_TOP
 	for row: Array in descend_rows(_result):
 		_descend_row(y, row)

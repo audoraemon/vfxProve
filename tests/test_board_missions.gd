@@ -92,6 +92,9 @@ static func _defs(t) -> void:
 			ok = ok and is_equal_approx(def.clock, TierBook.clock(tier))
 		t.check(ok, "%s at Tier %d: its clock, readiness and budget, no bonuses, no difficulty" % [id, tier])
 	t.check(TierBook.board("feast_festival") == null and TierBook.board("nowhere") == null, "no board version off the board")
+	# (an id MissionBook does not know falls back to Last Judgement there: the board refuses that silently wrong mission)
+	t.check(TierBook.checked(MissionBook.last_judgement(), "warning") == null and TierBook.checked(null, "warning") == null
+		and TierBook.checked(MissionBook.warning(), "warning") != null, "a mission built for another id is refused, not served")
 	t.check(TierBook.board("miras_house").response_profile(ResponseProfile.DEFAULT).tier_name() == "Organized"
 		and TierBook.board("warning").response_profile(ResponseProfile.DEFAULT).tier_name() == "Unaware"
 		and TierBook.board("last_judgement").response_profile(ResponseProfile.Tier.UNPREPARED).tier_name() == "God-Resistant",

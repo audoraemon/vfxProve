@@ -126,7 +126,9 @@ static func board(id: String, state: DescendState = null) -> MissionDef:
 	var tier := tier_of(id)
 	if tier == 0:
 		return null
-	var m: MissionDef = _from_act(id) if id == "festival" or id == "procession" else MissionBook.get_mission(id)
+	var m: MissionDef = checked(_from_act(id) if id == "festival" or id == "procession" else MissionBook.get_mission(id), id)
+	if m == null:
+		return null
 	var own_clock := m.clock
 	m.tier = tier
 	m.tier_floor = readiness(tier)
@@ -146,6 +148,15 @@ static func board(id: String, state: DescendState = null) -> MissionDef:
 	if tier >= GAZE_TIER:
 		_gaze(m)
 	return m
+
+
+## `m` when it really is the mission `id` (v0.11 M1), else an error and null: MissionBook.get_mission() falls back to Last
+## Judgement for an id it does not know, which would put a board id on the wrong mission without a word.
+static func checked(m: MissionDef, id: String) -> MissionDef:
+	if m != null and m.id == id:
+		return m
+	push_error("TierBook: no mission built for the board id '%s' (got '%s')" % [id, m.id if m != null else "null"])
+	return null
 
 
 ## The tier's slots and DP plus the upgrades bought, for the mission and each of its acts, which take its tier and floor.

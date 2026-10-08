@@ -25,7 +25,7 @@ const SPEC := [
 	["last_judgement.rite", "The clergy gather for the Banishing Rite (red). Break it, or it cuts your time short."],
 	["last_judgement.fallen", "The Citadel is down. Break the city's stability before time runs out. Fifty escaping loses it."],
 	["miras_house", "Whisper a grieving (gold) to Mira's door while no Faithful (red) watches. Four must believe by dawn."],
-	["miras_house.four", "Four believe. Keep the Believers (orange) alive until dawn, and the Gaze from filling."],
+	["miras_house.four", "Four believe. The night is won: ascend, or keep the Gaze from filling until dawn."],
 	["miras_house.burning", "Her house burns: no one can go in now. Keep your Believers (orange) alive until dawn."],
 	["broken_lanterns", "Break a lantern (gold), then keep the flame-bearer off it for 20 s while it drains. Drain all six."],
 	["broken_lanterns.knights", "A Knight (blue) shields the lantern he guards. Draw him off or kill him, then strike."],

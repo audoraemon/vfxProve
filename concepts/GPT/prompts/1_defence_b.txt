@@ -10,4 +10,4 @@ BUILDINGS (by label number):
 3 (top right) GALLOWS: a raised wooden scaffold platform with wooden steps at the front and a plain rail at the back; two heavy wooden uprights with a crossbeam and braces; a dark trapdoor; one rope hanging from the beam.
 4 (bottom left) DISTRICT GATE: a freestanding stone gateway over a paved street; two square stone piers with a round arch; a small plastered guard room with timber framing on top under a red tile roof.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

@@ -12,4 +12,4 @@ BUILDINGS (by label number):
 5 (bottom middle) FERRY LANDING: a wooden jetty on piles from a stone bank into the water, a flat wooden ferry raft with low rails and a punt pole, and a small ferryman's hut with a red tile roof on the bank.
 6 (bottom right) LIVESTOCK PENS: two pens of wooden post-and-rail fencing with a gate gap; a slate lean-to shelter on posts with a plank back wall; a water trough and a hay heap.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

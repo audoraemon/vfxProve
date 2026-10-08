@@ -10,6 +10,6 @@ BUILDINGS (by label number):
 3 (top right) GARDEN PAVILION: an open octagonal pavilion of wooden posts on a low stone base under a red tile pointed roof with a finial.
 4 (bottom left) THATCHED FARMHOUSE: a long low cream plaster farmhouse with timber framing under a big steep thatch roof with a stone chimney; a plank lean-to with a slate roof on the right; a water butt and a fence.
 5 (bottom middle) FISHPOND: a rectangular pond with a low warm grey stone rim, reeds at two corners and a stone step.
-6 (bottom right) ICE HOUSE: a round grass-and-earth mound with a vent on top and a small stone entrance with a slate roof and a dark arched door at the front.
+6 (bottom right) ICE HOUSE: a round grass-and-earth mound with a vent on top and a small stone entrance with a slate roof and a dark rectangular plank door at the front.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

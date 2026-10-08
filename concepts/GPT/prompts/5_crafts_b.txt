@@ -10,6 +10,6 @@ BUILDINGS (by label number):
 3 (top right) MASON'S YARD: an open lean-to shed with a red tile roof on posts against a plank back wall; stacks of cut pale stone blocks; a wooden jib crane with braces, a rope and a stone block hanging from it, and a windlass drum.
 4 (bottom left) LUMBER YARD: an open sawpit shed: a slate roof on four posts over a dark pit with a log on trestles; two pyramids of lying logs; a stack of sawn planks.
 5 (bottom middle) CHARCOAL KILN: a round earth-and-turf mound with a smoke hole on top; a small A-frame thatch hut for the burner with a dark door; a short pile of split wood.
-6 (bottom right) GLASSWORKS: a warm grey stone workshop with a slate roof; a tall tapering cone furnace chimney of brick and stone on the right with a small arched furnace mouth at its foot; crates of glass in front.
+6 (bottom right) GLASSWORKS: a warm grey stone workshop with a slate roof; a tall tapering cone furnace chimney of brick and stone on the right with a small rectangular furnace mouth at its foot; crates of glass in front.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

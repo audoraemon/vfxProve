@@ -12,4 +12,4 @@ BUILDINGS (by label number):
 5 (bottom middle) LEPER HOUSE: a small cream plaster cottage with timber framing and a red tile roof, a stone chimney and a plank lean-to with a slate roof; a wooden fence round its yard with a gap for the gate; a water barrel and a post with a hanging bell.
 6 (bottom right) BATHHOUSE: a warm grey stone hall with a red tile roof and two wooden louvred roof vents on the ridge; a lower stone furnace room on the right with a slate lean-to roof and a tall stone chimney.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

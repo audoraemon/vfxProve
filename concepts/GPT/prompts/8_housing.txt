@@ -12,4 +12,4 @@ BUILDINGS (by label number):
 5 (bottom middle) SLUM SHACKS: two small plank shacks with mono-pitch roofs (one red tile, one slate), a stove pipe, a plank awning between them, a crate, a barrel and a short fence.
 6 (bottom right) SUBURB HUT: a small cream plaster hut with low walls under a big steep thatch roof and a small stone chimney; a woodpile and a low wattle fence.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

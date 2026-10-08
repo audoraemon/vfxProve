@@ -12,4 +12,4 @@ BUILDINGS (by label number):
 5 (bottom middle) BEEHIVES: five straw bee skeps in a row on a wooden bench, in front of a low stone bee wall with a slate coping.
 6 (bottom right) DOVECOTE: a round warm grey stone dovecote with a string course, a red tile cone roof and a small wooden lantern on top with its own red cone; a small door at the base.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

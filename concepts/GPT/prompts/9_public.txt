@@ -12,4 +12,4 @@ BUILDINGS (by label number):
 5 (bottom middle) TILT BARRIER: one segment of a wooden jousting barrier: posts, a top rail and a board panel. It must tile end to end along its length, so keep both ends cut straight and identical.
 6 (bottom right) PLAY STAGE: a raised wooden stage with a tall plank back wall and two side wings, a cloth backdrop, a red tile canopy on two front posts and steps at the side.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

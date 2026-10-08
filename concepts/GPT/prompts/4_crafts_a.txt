@@ -12,4 +12,4 @@ BUILDINGS (by label number):
 5 (bottom middle) DYERS' WORKS: a cream plaster workshop with timber framing, red tile roof and a chimney; two tall wooden drying racks on the right hung with long dyed cloths; two dye vats in front.
 6 (bottom right) WEAVERS' HALL: a long two-storey hall of cream plaster with timber framing and a slate roof with two dormers and a chimney; a wide band of many small windows across the upper floor on both visible sides.
 
-OUTPUT: same layout as image 1, white or transparent background, no ground, no grass, no shadows, no text or numbers.
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

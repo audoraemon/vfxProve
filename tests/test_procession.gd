@@ -75,6 +75,7 @@ static func run(t) -> void:
 	_prince_freed(t)
 	_escaped_other_way(t)
 	_doom_before_judging(t)
+	_bless_reserved(t)
 	_escort_balance(t)
 	_let_go(t)
 
@@ -423,6 +424,34 @@ static func _doom_before_judging(t) -> void:
 	t.check(d.judged and not d.unseen and rules.finished and rules.won and rules.over_reason == "prince",
 		"judged seen, then won (%s %s)" % [d.unseen, rules.over_reason])
 	t.check(not result.bonuses[0].earned and d.report().prince == "seen", "the bonus is not earned (%s)" % [result.bonuses])
+	_done(s)
+
+
+## The blessing leaves a wish's people alone (v0.11 M1): a reserved citizen by the steps is never frozen as an onlooker.
+static func _bless_reserved(t) -> void:
+	var s := _setup()
+	var d: ProcessionDirector = s.d
+	var steps := d.route[ProcessionDirector.STEPS_LEG]
+	_to(s, 30.0)
+	_arrive(d.prince)
+	_to(s, 59.0)
+	var crowd: Crowd = s.crowd
+	var near := 0
+	var wisher: Person = null
+	for c in crowd.citizens:
+		if near < 12 and c != d.prince and not d.attendants.has(c) and is_instance_valid(c) and c.is_alive() and not c.inside:
+			c.ground_pos = steps + Vector2.from_angle(float(near)) * 3.0 if near > 0 else steps
+			c.mind = Person.Mind.CALM
+			c._goal = Vector2.INF
+			c._path = PackedVector2Array()
+			if near == 0:
+				wisher = c
+			near += 1
+	d.reserved.append(wisher)
+	_to(s, 60.5)
+	t.check(near == 12 and "blessing" in d.timeline.fired_ids() and d.onlookers.size() == ProcessionDirector.ONLOOKERS
+		and not d.onlookers.has(wisher) and wisher.mind == Person.Mind.CALM,
+		"the blessing's onlookers never include a reserved wisher, though nearest the steps (%d onlookers)" % d.onlookers.size())
 	_done(s)
 
 

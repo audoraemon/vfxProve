@@ -752,6 +752,9 @@ func _flow_test() -> void:
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Play opens the mission board")
 	step.call(Music.current() == &"theme", "the board plays the theme")
 	await _flow_board(step)
+	await _flow_ascend(step)
+	on_action("results:missions")
+	await get_tree().process_frame
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -908,6 +911,50 @@ func _flow_board(step: Callable) -> void:
 	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 1 Whisper mission",
 		"Omen is locked: its rule shows, and Mira's House cannot be picked (%s)" % board.lock_line())
 	board.open_tab(1)
+
+
+## v0.11 M1 (spec §4, §5.1, §6): The Warning from the board's card.
+## - Prepare has no difficulty picker, Tier 1's 3 slots and 6 DP, and refuses the locked powers.
+## - The town prays during the intro.
+## - F before the main objective does nothing (review focus 4).
+## - Its three warnings stopped: THE NIGHT IS YOURS, the ASCEND plate up, the clock running on.
+## - F ascends to the results. Ends on the results.
+func _flow_ascend(step: Callable) -> void:
+	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
+	var prep := _screen_node as PrepareScreen
+	step.call(prep != null and prep.draft.slots == 3 and prep.draft.capacity == 6 and not prep.mission.chooses_difficulty()
+		and prep.draft.locked.has("tsunami") and prep.draft.locked.size() == 23,
+		"its Prepare: Tier 1's 3 slots and 6 DP, no difficulty, the locked powers greyed")
+	prep.draft.preselect(MissionBook.warning().default_loadout)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await get_tree().process_frame
+	var heard := _mission.descent().wishes.size() if _mission.descent() != null else 0
+	step.call(heard > 0 and heard <= TierBook.wishes(1) and _mission._hud.praying, "the town prays during the intro: %d wishes" % heard)
+	await _past_intro()
+	var f := InputEventKey.new()
+	f.physical_keycode = KEY_F
+	f.pressed = true
+	Input.parse_input_event(f)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	step.call(not _mission.rules().finished and not _mission.rules().main_done and not _mission._hud.praying,
+		"F before the main objective does nothing")
+	for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
+		w.warning_dead = true
+	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
+	await get_tree().process_frame
+	var clock0 := _mission.rules().time_left
+	step.call(_mission._hud.banners().has(Rules.MAIN_BANNER) and _mission._hud.ascend_shown() and not _mission.rules().finished,
+		"the warnings stopped: THE NIGHT IS YOURS, the ASCEND plate up")
+	await get_tree().create_timer(0.5).timeout
+	step.call(_mission.rules().time_left < clock0 and not _mission.rules().finished,
+		"and the clock runs on (%.2f)" % _mission.rules().time_left)
+	Input.parse_input_event(f)
+	var up := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var d: Dictionary = result.get("descend", {})
+	step.call(up and bool(d.get("ascended", false)) and bool(d.get("main", false)) and bool(result.get("won", false)),
+		"F ascends: the results, won")
 
 
 ## The steps from before the tier board (FLOW, v0.11 M1) play Last Judgement, The Long Night and their drafts as a veteran

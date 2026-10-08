@@ -10,6 +10,10 @@ const WARNING_RELAY := "Someone saw: a witness (gold) carries the warning on. St
 const WARNING_BELL := "The bell is called. Kill its ringer (gold) unseen before the bell tolls."
 ## Last Judgement's lines for the rite and the fallen Citadel, which Judgement (its act in The Long Night) shares.
 const RITE_LINE := "The clergy gather for the Banishing Rite (red). Break it, or it cuts your time short."
+## Once a board night's main objective is done (v0.11 M1, spec §6): the open wishes, or the ascent when none is open. Kept
+## out of LINES: they belong to no mission, and replace any.
+const WISHES_LINE := "Grant the wishes still open (blue), or ascend when you are ready: press F."
+const ASCEND_LINE := "Ascend when you are ready: press F."
 ## Lines by the played mission's or act's id, and by "<id>.<phase>" for a phase's own. The Feast plays The Long Night's
 ## act, so it has the act's line.
 const LINES := {

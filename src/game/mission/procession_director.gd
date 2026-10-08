@@ -252,7 +252,7 @@ func _bless() -> void:
 	var pool: Array[Person] = []
 	for p in crowd.citizens:
 		if WarningDirector._alive(p) and not p.inside and p.mind == Person.Mind.CALM and p != prince \
-				and not attendants.has(p) and p.ground_pos.distance_to(steps) <= ONLOOK_R:
+				and not attendants.has(p) and not reserved.has(p) and p.ground_pos.distance_to(steps) <= ONLOOK_R:
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(steps) < b.ground_pos.distance_squared_to(steps))
 	for p in pool.slice(0, ONLOOKERS):

@@ -73,6 +73,22 @@ const HINT_COL := Color("e8d690")
 ## The tour's caption (v0.10 M6, spec §5): its plate's top, above the slot row (SLOT_TOP), and the word under it.
 const CAPTION_TOP := 262.0
 const SKIP_TEXT := "SPACE TO SKIP"
+## The wishes (v0.11 M1, spec §5.2): a row each under the how-to-win plate, ROW_H tall, with an open box (WISH_BOX square), a
+## tick once granted, or a cross and the words struck through once failed.
+const WISH_BOX := 7.0
+## The ASCEND plate (spec §6): centred above the slot row, clear of a focused power's modes; its word and its key.
+const ASCEND_SIZE := Vector2(96.0, 20.0)
+const ASCEND_TOP := 272.0
+const ASCEND_TEXT := "ASCEND"
+const ASCEND_KEY := "F"
+## The town prays (spec §5.1): the plate over the wishes heard during the night's first intro, its top and its title.
+const PRAYERS_TOP := 166.0
+const PRAYERS_TITLE := "THE TOWN PRAYS..."
+## The ascent (spec §6): a pale gold column rising over the god's last cast spot for RISE_SECONDS of real time.
+const RISE_SECONDS := 2.0
+const RISE_COL := Color(1.0, 0.93, 0.7)
+## How near a click must come to a waiting wish's tag to engage it (spec §5.2).
+const ENGAGE_PX := 8.0
 
 var _rules: Rules
 var _crowd: Crowd
@@ -104,6 +120,11 @@ var _tag_layer: Control
 var _tags_drawn := ""
 ## What the drawing helpers draw on: the HUD, or the tag layer while it draws (_draw_tag_layer()).
 var _canvas: CanvasItem = self
+## The night's first intro is up (v0.11 M1): Mission sets it, and the prayers plate shows the wishes heard.
+var praying := false
+## The ascent's column (v0.11 M1): its ground point (Vector2.INF for none) and its real seconds so far.
+var _rise_at := Vector2.INF
+var _rise_age := 0.0
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -143,6 +164,8 @@ func _process(delta: float) -> void:
 func advance(delta: float) -> void:
 	_age(_banners, delta, BANNER_SECONDS)
 	_age(_subtitles, delta, SUBTITLE_SECONDS)
+	if _rise_at != Vector2.INF:
+		_rise_age += delta / maxf(Engine.time_scale, 0.001)  # real seconds, through the ascent's slow motion
 	var flashing := false
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
@@ -155,7 +178,7 @@ func advance(delta: float) -> void:
 		_tag_layer.queue_redraw()
 	# Banners and Cael's lines fade, a refused slot burns red and the last half minute pulses: while any of those is on
 	# screen the HUD is an animation and redraws every frame. The rest of the time it is a still picture.
-	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT:
+	if flashing or not _banners.is_empty() or not _subtitles.is_empty() or _rules.time_left <= HURRY_AT or rising():
 		_drawn = ""
 		queue_redraw()
 		return
@@ -207,12 +230,24 @@ func event_rows() -> Array:
 	return rows
 
 
-## The how-to-win line for the mission or act being played, in its director's phase (v0.10 M6, MissionHints); "" for
-## none.
+## The how-to-win line for the mission or act being played, in its director's phase (v0.10 M6, MissionHints); once a board
+## night's main objective is done (v0.11 M1, spec §6), the open wishes' or the ascent's; "" for none.
 func hint_text() -> String:
 	if _rules == null or _rules.mission == null:
 		return ""
+	if _rules.main_done:
+		return MissionHints.WISHES_LINE if _open_wishes() else MissionHints.ASCEND_LINE
 	return MissionHints.line(_rules.mission.id, _rules.director.hint_phase() if _rules.director != null else "")
+
+
+## A wish of the night is still open (v0.11 M1).
+func _open_wishes() -> bool:
+	if _rules.descent == null:
+		return false
+	for w in _rules.descent.wishes:
+		if w.status == Objective.Status.PENDING:
+			return true
+	return false
 
 
 ## The how-to-win line as drawn (v0.10 M6): wrapped to HINT_W, at most HINT_LINES lines; none for no line.
@@ -272,6 +307,82 @@ func hint_rect() -> Rect2:
 	return Rect2(2.0, hint_top(), hint_width(lines), 5.0 + UiTheme.LINE_SMALL * float(lines.size()))
 
 
+## The wishes heard (v0.11 M1, spec §5.2) as [text, state] rows, state "open", "granted" or "failed"; none off the board.
+func wish_rows() -> Array:
+	var rows := []
+	if _rules == null or _rules.descent == null:
+		return rows
+	for w in _rules.descent.wishes:
+		rows.append([w.hud_text(_rules), Wish.state_name(w.status)])
+	return rows
+
+
+## Where the wishes' rows start (v0.11 M1): under the how-to-win plate, or where it would be with no line.
+func wishes_top() -> float:
+	var hint := hint_rect()
+	return hint.end.y + 4.0 if hint.size != Vector2.ZERO else hint_top()
+
+
+## The ASCEND plate is up (spec §6): a board night's main objective done, the night not over.
+func ascend_shown() -> bool:
+	return _rules != null and _rules.descent != null and _rules.main_done and not _rules.finished
+
+
+func ascend_rect() -> Rect2:
+	return Rect2(roundf((_view().x - ASCEND_SIZE.x) * 0.5), ASCEND_TOP, ASCEND_SIZE.x, ASCEND_SIZE.y)
+
+
+## Everything on the map's tag layer (v0.11 M1): the director's tags, then the wishes' (spec §5.1), so a crowded view keeps
+## the mission's own labels.
+func all_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if _rules == null:
+		return out
+	if _rules.director != null:
+		out.append_array(_rules.director.tags())
+	if _rules.descent != null:
+		out.append_array(_rules.descent.tags())
+	return out
+
+
+## The waiting timed wish whose tag is within ENGAGE_PX of the screen point `point` (spec §5.2: clicking its tag engages it),
+## as its index among the night's wishes; -1 for none.
+func wish_at(point: Vector2) -> int:
+	if _rules == null or _rules.descent == null:
+		return -1
+	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var wishes := _rules.descent.wishes
+	for i in wishes.size():
+		if not wishes[i].waiting():
+			continue
+		for tag in wishes[i].tags():
+			if tag.valid() and tag_point(tag, xf).distance_to(point) <= ENGAGE_PX:
+				return i
+	return -1
+
+
+## The ascent begins (v0.11 M1, spec §6): a column of light over the ground point `at`.
+func rise(at: Vector2) -> void:
+	_rise_at = at
+	_rise_age = 0.0
+
+
+func rising() -> bool:
+	return _rise_at != Vector2.INF and _rise_age < RISE_SECONDS
+
+
+## The Gaze bar shows (v0.11 M1): the director keeps a Gaze, and the Banishing Rite is not showing in its place (review
+## focus 1: a Tier 5 town has the rite, and both sit under the clock).
+func gaze_bar_shown() -> bool:
+	return gaze_of(_rules) >= 0.0 and rite_text() == ""
+
+
+## "Gaze 12%" for a scored mission's panel (v0.11 M1: Tier 5's Gaze in Last Judgement and Act III); "" with no Gaze.
+func gaze_readout() -> String:
+	var f := gaze_of(_rules)
+	return "" if f < 0.0 else "Gaze %d%%" % roundi(f * 100.0)
+
+
 ## The escapes that lose this act (v0.09): its EscapeLimitObjective's limit (Act III's is the night's own, lower when
 ## the Prince escaped), else the single missions' 50.
 func escape_limit() -> int:
@@ -281,9 +392,13 @@ func escape_limit() -> int:
 	return Rules.ESCAPE_LIMIT
 
 
-## The director tags something (v0.10 M6): the tags follow people and the camera, so their layer redraws every frame.
+## Something is tagged (v0.10 M6; v0.11 M1 the wishes too): the tags follow people and the camera, so their layer redraws.
 static func tags_shown(rules: Rules) -> bool:
-	return rules != null and rules.director != null and not rules.director.tags().is_empty()
+	if rules == null:
+		return false
+	if rules.director != null and not rules.director.tags().is_empty():
+		return true
+	return rules.descent != null and not rules.descent.tags().is_empty()
 
 
 ## How full Halcyon's Gaze is (v0.10), or -1.0 when the mission's director keeps none.
@@ -295,7 +410,7 @@ static func gaze_of(rules: Rules) -> float:
 
 func _draw_gaze(w: float) -> void:
 	var f := gaze_of(_rules)
-	if f < 0.0:
+	if not gaze_bar_shown():
 		return
 	var at := Vector2(roundf((w - GAZE_BAR.x) * 0.5), GAZE_TOP)
 	draw_rect(Rect2(at, GAZE_BAR), Color(0, 0, 0, 0.6))
@@ -307,10 +422,8 @@ func _draw_gaze(w: float) -> void:
 ## tags out first (tag_layout()).
 func _draw_tags() -> void:
 	_layout = []
-	if _rules.director == null:
-		return
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	_layout = tag_layout(_rules.director.tags(), xf, _view())
+	_layout = tag_layout(all_tags(), xf, _view())
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
 	# earlier one.
 	for e: Dictionary in _layout:
@@ -578,6 +691,7 @@ func _signature() -> String:
 		out += "|" + str(events)
 	out += "|" + hint_text()
 	out += "|" + _caption
+	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
@@ -586,9 +700,7 @@ func _signature() -> String:
 ## What the tag layer shows, in short (board tags): the camera, the screen and every tag's fields -- everything
 ## tag_layout() lays the tags out from. "" with nothing tagged.
 func _tag_signature() -> String:
-	if _rules.director == null:
-		return ""
-	var tags := _rules.director.tags()
+	var tags := all_tags()
 	if tags.is_empty():
 		return ""
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
@@ -611,6 +723,7 @@ func _draw_tag_layer() -> void:
 func _draw() -> void:
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
+	_draw_rise()
 	_draw_clock(w)
 	_draw_rite(w)
 	_draw_gaze(w)
@@ -620,10 +733,13 @@ func _draw() -> void:
 	else:
 		_draw_rows()
 	_draw_hint()
+	_draw_wishes()
 	_draw_status(w)
 	_draw_banners(w)
 	_draw_subtitle(w)
+	_draw_prayers(w)
 	_draw_caption(w)
+	_draw_ascend()
 	_draw_slots(w)
 
 
@@ -713,6 +829,11 @@ func _draw_objectives() -> void:
 	var escaped := "Escaped %d / %d" % [count, limit]
 	var col := UiTheme.COL_BAD if count >= limit - 8 else UiTheme.COL_DIM
 	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
+	var gaze := gaze_readout()
+	if gaze != "":
+		# Tier 5's Gaze (v0.11 M1) beside the escapes, readable while the rite's plate takes the bar's place.
+		UiTheme.text(self, Vector2(OBJECTIVE_PANEL.end.x - 6.0 - UiTheme.width(gaze, UiTheme.SIZE_SMALL), 54.0), gaze,
+			UiTheme.SIZE_SMALL, UiTheme.COL_GOLD.lerp(UiTheme.COL_BAD, gaze_of(_rules)))
 
 
 ## The objective panel of a mission without a score (v0.08): objective_rows(), each with its tick or cross after it.
@@ -744,6 +865,86 @@ func _draw_hint() -> void:
 	for l in lines:
 		UiTheme.text(self, Vector2(6.0, y), l, UiTheme.SIZE_SMALL, HINT_COL)
 		y += UiTheme.LINE_SMALL
+
+
+## The wishes' rows (v0.11 M1, spec §5.2) on a plate under the how-to-win line: an open box, a tick once granted, a cross and
+## the words struck through once failed.
+func _draw_wishes() -> void:
+	var rows := wish_rows()
+	if rows.is_empty():
+		return
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL))
+	var top := wishes_top()
+	draw_rect(Rect2(2.0, top, wide + 22.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
+	var y := top + 12.0
+	for row: Array in rows:
+		var text := String(row[0])
+		var state := String(row[1])
+		var box := Vector2(6.0, y - 8.0)
+		if state == "granted":
+			UiTheme.mark(self, box, true)
+		elif state == "failed":
+			UiTheme.mark(self, box, false)
+		else:
+			draw_rect(Rect2(box, Vector2(WISH_BOX - 1.0, WISH_BOX - 1.0)), Wish.COLOR, false, -1.0)
+		var col := Wish.COLOR if state == "open" else (UiTheme.COL_GOLD if state == "granted" else UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(18.0, y), text, UiTheme.SIZE_SMALL, col)
+		if state == "failed":
+			draw_line(Vector2(18.0, y - 4.0), Vector2(18.0 + UiTheme.width(text, UiTheme.SIZE_SMALL), y - 4.0), UiTheme.COL_DIM, -1.0)
+		y += ROW_H
+
+
+## The town prays (v0.11 M1, spec §5.1): during the night's first intro, a plate in the middle of the screen with
+## PRAYERS_TITLE over the wishes heard; none when no wish was.
+func _draw_prayers(w: float) -> void:
+	if not praying:
+		return
+	var rows := wish_rows()
+	if rows.is_empty():
+		return
+	var wide := UiTheme.width(PRAYERS_TITLE, UiTheme.SIZE_BODY)
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL))
+	draw_rect(Rect2(roundf((w - wide) * 0.5) - 8.0, PRAYERS_TOP, wide + 16.0, 22.0 + UiTheme.LINE_SMALL * float(rows.size())),
+		Color(0.03, 0.03, 0.05, 0.78))
+	UiTheme.text(self, Vector2(roundf((w - UiTheme.width(PRAYERS_TITLE, UiTheme.SIZE_BODY)) * 0.5), PRAYERS_TOP + 14.0),
+		PRAYERS_TITLE, UiTheme.SIZE_BODY, Wish.COLOR)
+	var y := PRAYERS_TOP + 16.0 + UiTheme.LINE_SMALL
+	for row: Array in rows:
+		var text := String(row[0])
+		UiTheme.text(self, Vector2(roundf((w - UiTheme.width(text, UiTheme.SIZE_SMALL)) * 0.5), y), text, UiTheme.SIZE_SMALL)
+		y += UiTheme.LINE_SMALL
+
+
+## The ASCEND plate (v0.11 M1, spec §6): a gold-framed button above the slots, its key on a plate beside the word.
+func _draw_ascend() -> void:
+	if not ascend_shown():
+		return
+	var r := ascend_rect()
+	draw_rect(r, Color(0.12, 0.1, 0.04, 0.92))
+	UiTheme.frame(self, r, true)
+	var word_w := UiTheme.width(ASCEND_TEXT, UiTheme.SIZE_BODY)
+	var x := roundf(r.get_center().x - (word_w + 6.0 + plate_size(ASCEND_KEY).x) * 0.5)
+	UiTheme.text(self, Vector2(x, r.position.y + 14.0), ASCEND_TEXT, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
+	_plate(Vector2(x + word_w + 6.0, r.position.y + 4.0), ASCEND_KEY, UiTheme.COL_TEXT)
+
+
+## The ascent's light (v0.11 M1, spec §6): a pale gold column over its ground point, growing to the top of the screen over
+## the first half of RISE_SECONDS and fading over all of it, three widths brightening to its core.
+func _draw_rise() -> void:
+	if not rising():
+		return
+	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var foot := (xf * Iso.ground_to_screen(_rise_at)).round()
+	var k := clampf(_rise_age / RISE_SECONDS, 0.0, 1.0)
+	var top := lerpf(foot.y, 0.0, minf(k * 2.0, 1.0))
+	for i in 3:
+		var half := (9.0 - float(i) * 3.0) * (1.0 - k * 0.5)
+		var col := RISE_COL
+		col.a = (0.16 + 0.18 * float(i)) * (1.0 - k)
+		draw_rect(Rect2(foot.x - half, top, half * 2.0, maxf(foot.y - top, 1.0)), col)
 
 
 ## An arrow at the screen's edge (v0.10 M6's tags): `col` on a dark disc ringed in `ring`, its tip at

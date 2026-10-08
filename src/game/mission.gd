@@ -265,6 +265,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		BehaviourOverlay.shown = true
 	add_child(_overlay)
 	_begin_intro(play)
+	if _descent != null and not _scripted and is_instance_valid(_hud):
+		_hud.praying = true  # the town prays during the night's first intro (v0.11 M1, spec §5.1)
 	_show_held_banners()
 
 
@@ -460,6 +462,9 @@ func descent() -> Descent:
 func ascend() -> bool:
 	if not started() or _ending or in_intro() or _descent == null or not _rules.main_done or _rules.finished:
 		return false
+	if is_instance_valid(_hud):
+		var play: MissionDef = _act if _act != null else _def
+		_hud.rise(_rules.last_cast if _rules.last_cast != Vector2.INF else play.camera_at)
 	return _rules.ascend()
 
 
@@ -500,6 +505,7 @@ func _land() -> void:
 	_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
+		_hud.praying = false
 	_rules.set_process(true)
 
 
@@ -693,6 +699,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			_aim.unfocus()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			# The ASCEND plate (v0.11 M1, spec §6) and a waiting wish's tag (§5.2) answer a click before anything is cast.
+			if _hud.ascend_shown() and _hud.ascend_rect().has_point(event.position):
+				ascend()
+				return
+			var wish := _hud.wish_at(event.position)
+			if wish >= 0 and _descent != null and _descent.engage(wish):
+				UiSound.play(&"ui_click")
+				return
 			# A click on a HUD slot focuses that power instead of casting into the town under it.
 			var on_slot := _hud.slot_at(event.position)
 			if on_slot >= 0 and on_slot < _rules.loadout.size():

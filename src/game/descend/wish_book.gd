@@ -5,7 +5,7 @@ extends RefCounted
 ## a mission with too few eligible wishes offers what it can, possibly none.
 
 
-## The pool at M1 (spec §5.3), in the spec's order; the Rescue, Mercy and family wishes join it later in M1.
+## The pool at M1 (spec §5.3), in the spec's order.
 static func pool() -> Array[WishDef]:
 	var out: Array[WishDef] = [
 		WishDef.make("moneylender", "Burn the moneylender's house", "ruin", 10, RuinWish,
@@ -14,7 +14,10 @@ static func pool() -> Array[WishDef]:
 		WishDef.make("tax_collector", "Strike down the cruel tax collector", "punish", 10, PunishWish,
 			{"label": "TAX COLLECTOR", "unseen": false}),
 		WishDef.make("informer", "Kill the informer, unseen", "punish", 15, PunishWish, {"label": "INFORMER", "unseen": true}),
+		WishDef.make("child", "Save my child", "rescue", 15, RescueWish, {}, PackedStringArray(["unaware_town"])),
+		WishDef.make("brother", "Lead my brother out", "mercy", 10, MercyWish),
 		WishDef.make("sign", "Show me a sign", "sign", 5, SignWish),
+		WishDef.make("family", "Show yourself to my family", "sign", 10, FamilyWish),
 	]
 	return out
 

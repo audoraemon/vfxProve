@@ -121,7 +121,9 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 				dec.followers.append(_stand_in(p))
 	var houses: Array[Structure] = []
 	for s in _built:
-		if s.kind == Structure.Kind.HOUSE and s.role == &"house":
+		# The cottages, and the capital's ChatGPT plots whose type smokes (BuildingTypes: their art has a chimney key).
+		if (s.kind == Structure.Kind.HOUSE and s.role == &"house") \
+				or (s.role == CapitalPlots.ROLE and bool(BuildingTypes.info(s.art_tag).get("smokes", false))):
 			houses.append(s)
 	smoke = ChimneySmoke.new().setup(houses)
 	smoke.name = "ChimneySmoke"

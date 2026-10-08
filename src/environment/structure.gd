@@ -216,9 +216,18 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", t
 		Kind.KEEP: 180.0, Kind.CASTLE_WALL: 90.0, Kind.HOUSE: 50.0, Kind.TORCH: 10.0,
 		Kind.TEMPLE: 200.0, Kind.BARRACKS: 150.0, Kind.MARKET_STALL: 25.0, Kind.GATE: 120.0,
 		Kind.BRIDGE: 140.0, Kind.FARM_FIELD: 20.0, Kind.TREE: 30.0, Kind.FOUNTAIN: 80.0, Kind.SHRINE: SHRINE_HP}[k]
-	hp = max_hp
 	walkable = k in WALKABLE
-	z_index = -1 if k in FLAT else 0
+	var flat := k in FLAT
+	# A ChatGPT plot (the capital's, role CapitalPlots.ROLE) takes its building type's health, and whether people walk
+	# over it and it lies flat (BuildingTypes). Aldermere has none.
+	if role == CapitalPlots.ROLE:
+		var type := BuildingTypes.info(tag_value)
+		if not type.is_empty():
+			max_hp = type.hp
+			walkable = type.walkable
+			flat = type.flat
+	hp = max_hp
+	z_index = -1 if flat else 0
 	var g0 := rect.position
 	var g2 := rect.end
 	var front := Iso.ground_to_screen(g2)
@@ -654,7 +663,8 @@ func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
 		_spawn_dust(0.4)
 		return
 	_build_rubble()
-	if kind == Kind.TREE:
+	# A ChatGPT orchard (role CapitalPlots.ROLE) is a set with its own ruins: it sinks into them as a building does.
+	if kind == Kind.TREE and role != CapitalPlots.ROLE:
 		# Felled: a stump among its leaves (the rubble), never sliced or slumped like a building.
 		_spawn_dust(0.4)
 		if not damage_kind in [&"gravity", &"ice", &"water", &"wind", &"stone", &"smite", &"mob", &"magnify"]:

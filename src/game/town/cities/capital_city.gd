@@ -507,8 +507,8 @@ func gardens() -> Array[Rect2]:
 ## Props lining the streets inside both rings, as at Aldermere (TownLayout.street_props()): each {"rect", "kind" (a
 ## TownLayout.Prop), "along_y"}, every TownLayout.STREET_PROP_STEP along each side of each street, in the margin before
 ## the houses, clear of junctions, squares, gates and their queues, every building, garden, torch and fountain, and
-## only against a building's front (PROP_BACK behind both its ends lies in a building or garden), never across the
-## mouth of an alley people walk into; a spot that is not clear is skipped. Worked out once.
+## only against a building's front (PROP_BACK behind both its ends and its middle lies in a building or garden), never
+## across the mouth of an alley people walk into; a spot that is not clear is skipped. Worked out once.
 func street_props() -> Array[Dictionary]:
 	if _props_done:
 		return _props.duplicate(true)
@@ -519,7 +519,9 @@ func street_props() -> Array[Dictionary]:
 		var r: Rect2 = d.rect
 		var grow := 0.03 if d.role in [&"house", CapitalPlots.ROLE] else (0.5 if d.kind == Structure.Kind.GATE else 0.3)
 		clear_of.append(r.grow(grow))
-		if not d.kind in Structure.WALKABLE:
+		var walked: bool = d.kind in Structure.WALKABLE or (d.role == CapitalPlots.ROLE
+			and bool(BuildingTypes.info(d.tag).get("walkable", false)))
+		if not walked:
 			backs.append(r)
 	for g: Rect2 in gardens():
 		clear_of.append(g.grow(0.03))
@@ -557,14 +559,18 @@ func street_props() -> Array[Dictionary]:
 						at = Vector2(r.position.x + k - dims.x * 0.5, y)
 					k += TownLayout.STREET_PROP_STEP
 					var rect := Rect2(at, dims)
-					# Its back edge's two ends, a little in from them, then PROP_BACK further from the street.
+					# Its back edge's two ends, a little in from them, and its middle, then PROP_BACK further from the
+					# street: a long prop whose middle faces an alley mouth is not against a front.
 					var away := Vector2(side, 0.0) if along_y else Vector2(0.0, side)
 					var edge := (rect.end.x if side > 0.0 else rect.position.x) if along_y \
 						else (rect.end.y if side > 0.0 else rect.position.y)
-					var ends := [Vector2(edge, rect.position.y + 0.05), Vector2(edge, rect.end.y - 0.05)] if along_y \
-						else [Vector2(rect.position.x + 0.05, edge), Vector2(rect.end.x - 0.05, edge)]
-					var against := _in_rects(ends[0] + away * PROP_BACK, backs) \
-						and _in_rects(ends[1] + away * PROP_BACK, backs)
+					var mid := rect.get_center()
+					var samples := [Vector2(edge, rect.position.y + 0.05), Vector2(edge, mid.y),
+						Vector2(edge, rect.end.y - 0.05)] if along_y \
+						else [Vector2(rect.position.x + 0.05, edge), Vector2(mid.x, edge), Vector2(rect.end.x - 0.05, edge)]
+					var against := true
+					for g: Vector2 in samples:
+						against = against and _in_rects(g + away * PROP_BACK, backs)
 					if against and _prop_clear(rect, road, streets, clear_of, inner):
 						_props.append({"rect": rect, "kind": kind, "along_y": along_y})
 						clear_of.append(rect.grow(0.5))

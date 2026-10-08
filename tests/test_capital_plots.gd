@@ -78,7 +78,7 @@ static func _sets_table(t) -> void:
 	for k: String in gpt:
 		var row: Array = CapitalPlots.SETS.get(StringName(k), [])
 		var fp: Array = man[k].footprint
-		t.check(row.size() == 3 and (row[0] as Vector2).is_equal_approx(Vector2(fp[0], fp[1]))
+		t.check(row.size() == 2 and (row[0] as Vector2).is_equal_approx(Vector2(fp[0], fp[1]))
 			and is_equal_approx(row[1], float(man[k].height)), "%s keeps its blockout footprint and height" % k)
 	t.check(CapitalPlots.PROPS == [&"gpt_wagon", &"gpt_handcart"], "the props are the wagon and the hand cart")
 
@@ -194,7 +194,8 @@ static func _art(t, c: CapitalCity) -> void:
 		if d.role != CapitalPlots.ROLE:
 			continue
 		var row: Array = CapitalPlots.SETS[d.tag]
-		if not ((d.rect as Rect2).size.is_equal_approx(row[0]) and is_equal_approx(d.height, row[1]) and d.kind == row[2]):
+		if not ((d.rect as Rect2).size.is_equal_approx(row[0]) and is_equal_approx(d.height, row[1])
+				and d.kind == BuildingTypes.info(d.tag).kind):
 			exact = false
 			bad = String(d.tag)
 		var s := Structure.new().setup(d.rect, d.height, d.kind, 1, d.role, d.tag)

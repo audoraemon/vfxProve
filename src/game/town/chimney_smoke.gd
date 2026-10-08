@@ -39,7 +39,8 @@ func _smokes(h: Structure) -> bool:
 ## drawn from a sprite (whose own smoke, if drawn in, means none here), else the procedural art's.
 static func tip_of(h: Structure) -> Vector2:
 	if h.sprite.is_empty():
-		return HouseArt.chimney_top(h)
+		# Drawn procedurally, only a house has a chimney (a ChatGPT armoury or monastery without its sprite has none).
+		return HouseArt.chimney_top(h) if h.kind == Structure.Kind.HOUSE else Vector2.INF
 	var c: Vector2 = h.sprite.chimney
 	if c == Vector2.INF:
 		return c

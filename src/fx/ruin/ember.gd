@@ -1,7 +1,7 @@
 class_name EmberFx
 extends FxTimeline
 ## Ember (Ruin, Tier I): one spark. It drifts down for T_LAND onto the nearest thing that burns within REACH of the
-## click -- a house, a stall, a tree, the barracks, the cathedral (FireManager.BURNABLE) -- and sets it alight at
+## click -- a house, a stall, a tree, the barracks, the cathedral (FireManager.burns()) -- and sets it alight at
 ## START_LEVEL. From there the fire is the town's own: it grows, spreads on the wind, and draws the fire brigade and
 ## the engineers away from whatever else they were doing. Nobody sees one spark fall: quiet when cast; the fire is
 ## seen. With nothing that burns in reach it gutters out on the ground.
@@ -23,7 +23,7 @@ static func target(env: EnvironmentField, at: Vector2) -> Structure:
 	var best: Structure = null
 	var best_d := REACH
 	for s in env.near(at, REACH):
-		if not is_instance_valid(s) or s.destroyed or not s.kind in FireManager.BURNABLE:
+		if not is_instance_valid(s) or s.destroyed or not FireManager.burns(s):
 			continue
 		var d := s.distance_to(at)
 		if d <= best_d:

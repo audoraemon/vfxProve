@@ -29,6 +29,14 @@ static func fits(s: Structure, role: String) -> bool:
 	return false
 
 
+## Its target building (v0.11 M2), set aside from the director's own choices.
+func places() -> Array[Structure]:
+	var out: Array[Structure] = []
+	if is_instance_valid(target):
+		out.append(target)
+	return out
+
+
 func _act(_rules: Rules) -> Status:
 	return Status.DONE if is_instance_valid(target) and target.destroyed else Status.PENDING
 

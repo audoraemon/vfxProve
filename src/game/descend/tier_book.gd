@@ -31,7 +31,11 @@ const GAZE_SHARE := 0.05
 const TYPES := {"warning": "Intercept", "miras_house": "Cult", "broken_lanterns": "Anchors", "vigil_flame": "Cult",
 	"festival": "Break", "procession": "Kill", "last_judgement": "Destroy", "long_night": "Three acts"}
 ## The tags a mission declares for the wishes to filter on (spec §5.1): a wish listing one of them is never drawn there.
-const MISSION_TAGS := {"warning": ["unaware_town"], "miras_house": ["spares_houses"]}
+## unaware_town is not declared: board() derives it from the town's readiness (v0.11 M2).
+const MISSION_TAGS := {"miras_house": ["spares_houses"]}
+## The tag every board mission in an Unaware town carries (v0.11 M2), and that readiness on ResponseProfile.level()'s scale.
+const UNAWARE_TAG := "unaware_town"
+const UNAWARE_LEVEL := 1
 ## The board's Festival (spec §7.2): the need rises to FESTIVAL_NEED, more come (FESTIVAL_CROWD) so it can be met, and the
 ## guard closes the square at FESTIVAL_CLOSE, before dawn.
 const FESTIVAL_NEED := 80
@@ -134,6 +138,9 @@ static func board(id: String, state: DescendState = null) -> MissionDef:
 	m.tier_floor = readiness(tier)
 	m.make_bonuses = Callable()
 	m.mission_tags = mission_tags(id)
+	# (v0.11 M2) Every Unaware board mission carries unaware_town, so the wishes that cannot sit in a sleeping town stay out.
+	if m.response_profile(ResponseProfile.DEFAULT).level() <= UNAWARE_LEVEL and not m.mission_tags.has(UNAWARE_TAG):
+		m.mission_tags.append(UNAWARE_TAG)
 	_budget(m, tier, state)
 	if not m.has_acts():
 		m.clock = clock(tier)

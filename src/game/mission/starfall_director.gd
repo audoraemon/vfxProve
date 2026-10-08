@@ -119,11 +119,14 @@ func hint_phase() -> String:
 	return "waiting" if stopped() > 0 and next_star() >= 0 else ""
 
 
-## The tour (v0.11 M1): the three gates the stars fall over, then the bellkeeper.
+## The tour (v0.11 M1): the three gates the stars fall over, then the bellkeeper. v0.11 M2 (M1 final review): the first star
+## falls at its time; a later one may fall sooner (STOP_WAIT), so it falls "by" its time.
 func tour() -> Array:
 	var out := []
-	for s: Array in STARS:
-		out.append([_walkable(s[1]), "%s. A star falls here at %s." % [String(s[2]).capitalize(), UiTheme.clock(float(s[0]))]])
+	for i in STARS.size():
+		var s: Array = STARS[i]
+		out.append([_walkable(s[1]), "%s. A star falls here %s %s." % [String(s[2]).capitalize(), "at" if i == 0 else "by",
+			UiTheme.clock(float(s[0]))]])
 	var bell := crowd.bell
 	if bell != null and _alive(bell.keeper):
 		out.append([bell.keeper.ground_pos, "The bellkeeper. Warned, he rings the bell, and you lose."])

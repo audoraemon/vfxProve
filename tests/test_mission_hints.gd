@@ -60,6 +60,8 @@ static func run(t) -> void:
 				played.append(a)
 		else:
 			played.append(m)
+	for m in MissionBook.tier_missions():
+		played.append(m)
 	var missing := PackedStringArray()
 	for m in played:
 		if MissionHints.line(m.id) == "":

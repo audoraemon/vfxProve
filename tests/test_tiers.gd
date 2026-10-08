@@ -33,8 +33,8 @@ static func _table(t) -> void:
 		and TierBook.believers(5, 4) == 13, "believers times the multiplier, rounded")
 	t.check(TierBook.type_of("warning") == "Intercept" and TierBook.type_of("last_judgement") == "Destroy"
 		and TierBook.type_of("nowhere") == "", "each card's type")
-	t.check(Array(TierBook.mission_tags("warning")) == ["unaware_town"] and Array(TierBook.mission_tags("miras_house")) == ["spares_houses"]
-		and TierBook.mission_tags("festival").is_empty(), "the mission tags the wishes filter on")
+	t.check(TierBook.mission_tags("warning").is_empty() and Array(TierBook.mission_tags("miras_house")) == ["spares_houses"]
+		and TierBook.mission_tags("festival").is_empty(), "the mission tags declared (v0.11 M2: unaware_town is derived in board())")
 
 
 static func _unlock(t) -> void:

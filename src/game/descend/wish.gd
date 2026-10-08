@@ -51,6 +51,13 @@ func people() -> Array[Person]:
 	return out
 
 
+## The buildings the wish sets aside (v0.11 M2): RuinWish's target. The Descent reserves them on the director
+## (MissionDirector.reserved_places).
+func places() -> Array[Structure]:
+	var out: Array[Structure] = []
+	return out
+
+
 ## Virtual: one frame of the night, while the wish is open.
 func step(_rules: Rules, _delta: float) -> void:
 	pass

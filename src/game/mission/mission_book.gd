@@ -33,6 +33,9 @@ static func get_mission(id: String) -> MissionDef:
 	for m in campaign_missions():
 		if m.id == id:
 			return m
+	for m in tier_missions():
+		if m.id == id:
+			return m
 	return last_judgement()
 
 
@@ -40,6 +43,30 @@ static func get_mission(id: String) -> MissionDef:
 static func campaign_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [miras_house(), vigil_flame(), broken_lanterns(), feast("festival"), feast("procession")]
 	return out
+
+
+## The tier board's own missions (v0.11 M2 on), each made at its tier's numbers -- clock, town, slots and DP, no bonuses -- so
+## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
+## campaign's.
+static func tier_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = []
+	return out
+
+
+## A Tier 1 (Whisper) mission's frame (v0.11 M2, spec §4): an Unaware town, 3 slots and 6 DP, a 5:00 clock, no bonuses, every
+## power allowed (the board's draft locks what the god has not unlocked).
+static func _tier1(id: String, name: String, brief: PackedStringArray) -> MissionDef:
+	var m := MissionDef.new()
+	m.id = id
+	m.name = name
+	m.tier = 1
+	m.brief = brief
+	m.slots = 3
+	m.dp_capacity = 6
+	m.clock = 300.0
+	m.profile = "unaware"
+	m.intro_banner = name.to_upper()
+	return m
 
 
 ## The Warning (v0.08 M4): a star falls over the Main Gate and a watchman runs to wake the bell; kill whoever carries

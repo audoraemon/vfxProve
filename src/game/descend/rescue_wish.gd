@@ -16,9 +16,11 @@ const ENGAGE_REACH := 2.0
 ## The Citadel's gate the child is dragged to (snapped to walkable ground), and how near counts as there.
 const GATE := Vector2(-10.5, -7.6)
 const GATE_REACH := 1.0
-## The minds that are the god's own doing (v0.11 M1): a soldier in one of them has been turned. Every other mind off his
-## duty is the town's order (RALLY, POST, HOLD, ...), which the wish answers by sending him back on his errand.
-const TURNED := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.CONFUSED, Person.Mind.WHISPERED, Person.Mind.COMPELLED]
+## The minds that are the god's own doing (v0.11 M1): a soldier in one of them has been turned -- v0.11 M2 (M1 final review):
+## fighting too, as Turncoat and Manufactured Hatred make him. Every other mind off his duty is the town's order (RALLY, POST,
+## HOLD, ...), which the wish answers by sending him back on his errand.
+const TURNED := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.CONFUSED, Person.Mind.WHISPERED, Person.Mind.COMPELLED,
+	Person.Mind.FIGHT]
 ## How near the soldier must come to take the child, and how often the pair are re-aimed.
 const TAKE_REACH := 0.9
 const RETARGET := 0.5

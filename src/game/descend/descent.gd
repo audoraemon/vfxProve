@@ -60,7 +60,7 @@ func holds(m: MissionDef) -> bool:
 
 ## An act is being built (Mission._build_act(), once its director is made and before its setup()): the first act hears the
 ## wishes (spec §5.1), and the director reserves their people, so nothing it gathers or appoints in its own setup() --
-## escorts, attendants, a mayor, the Faithful -- is a wisher or a wish target. Safe to call again: the wishes are heard once.
+## escorts, attendants, a mayor, the Faithful -- is a wisher or a wish target. Safe to call again: the wishes are heard once. Its buildings too (v0.11 M2: Wish.places()), so no granary or debtor's house is a wish's.
 func reserve(rules: Rules, director: MissionDirector) -> void:
 	_crowd = rules.crowd()
 	if not _heard:
@@ -71,6 +71,9 @@ func reserve(rules: Rules, director: MissionDirector) -> void:
 			for p in w.people():
 				if not director.reserved.has(p):
 					director.reserved.append(p)
+			for s in w.places():
+				if not director.reserved_places.has(s):
+					director.reserved_places.append(s)
 
 
 ## An act begins (Mission._build_act(), once its director is set up): its Rules step this night and pass its casts to the

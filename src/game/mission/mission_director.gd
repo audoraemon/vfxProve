@@ -27,6 +27,10 @@ var stretch := 1.0
 ## falling. A director that appoints someone mid-night skips them (StarfallDirector's later watchmen). Empty off the board.
 var reserved: Array[Person] = []
 
+## Buildings the night has set aside (v0.11 M2): every wish's target building (Wish.places()). A director choosing a building
+## for its own use -- a granary, a debtor's house -- skips them (_house_near()). Empty off the board.
+var reserved_places: Array[Structure] = []
+
 ## Minds a Faithful does not see from (v0.10): the god's own holds.
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 
@@ -104,6 +108,104 @@ func _walkable(g: Vector2) -> Vector2:
 ## its longer night. Off the board it is EventTimeline.new()'s own.
 func _new_timeline() -> EventTimeline:
 	return EventTimeline.new().stretched(stretch)
+
+
+## `p` may be gathered or appointed by this director (v0.11 M2): standing (_alive()), out of doors and not reserved. A Variant,
+## as `p` may be a body already freed after its death fade.
+func _eligible(p: Variant) -> bool:
+	return _alive(p) and not (p as Person).inside and not reserved.has(p)
+
+
+## The `count` free soldiers nearest `at`, nearest first (v0.11 M2): eligible, of no corps, none of `exclude`; fewer when the
+## town has fewer.
+func _free_soldiers(at: Vector2, count: int, exclude: Array = []) -> Array[Person]:
+	var pool: Array[Person] = []
+	for s in crowd.soldiers:
+		if _eligible(s) and s.corps == Person.Corps.NONE and not exclude.has(s):
+			pool.append(s)
+	pool.sort_custom(func(a: Person, b: Person) -> bool:
+		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+	var out: Array[Person] = []
+	out.assign(pool.slice(0, count))
+	return out
+
+
+## The `count` lay citizens nearest `at`, nearest first (v0.11 M2): eligible, of no faith, of no role in Wish.NOT_LAY (the
+## town's responders and the directors' own people), none of `exclude`.
+func _lay_near(at: Vector2, count: int, exclude: Array = []) -> Array[Person]:
+	var pool: Array[Person] = []
+	for p in crowd.citizens:
+		if _eligible(p) and p.profile != null and p.profile.faith == CitizenProfile.Faith.NONE and not p.profile.role in Wish.NOT_LAY \
+				and not exclude.has(p):
+			pool.append(p)
+	pool.sort_custom(func(a: Person, b: Person) -> bool:
+		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+	var out: Array[Person] = []
+	out.assign(pool.slice(0, count))
+	return out
+
+
+## The eligible citizen of `role` nearest `at`, none of `exclude` (v0.11 M2: the tax collector, a resident; the acolyte, a
+## cleric); null for none.
+func _citizen_near(at: Vector2, role: CitizenProfile.Role, exclude: Array = []) -> Person:
+	var best: Person = null
+	for p in crowd.citizens:
+		if _eligible(p) and p.profile != null and p.profile.role == role and not exclude.has(p) \
+				and (best == null or p.ground_pos.distance_squared_to(at) < best.ground_pos.distance_squared_to(at)):
+			best = p
+	return best
+
+
+## The standing dwelling nearest `at` (v0.11 M2: RuinWish.fits(s, "house")), not reserved and none of `exclude`; null for none.
+func _house_near(at: Vector2, exclude: Array = []) -> Structure:
+	var best: Structure = null
+	for s: Structure in town._built:
+		if not is_instance_valid(s) or s.destroyed or not RuinWish.fits(s, "house") or reserved_places.has(s) or exclude.has(s):
+			continue
+		if best == null or s.center().distance_squared_to(at) < best.center().distance_squared_to(at):
+			best = s
+	return best
+
+
+## A building's front (v0.11 M2): free ground just off its +y face, where Mira's door is.
+func _front_of(s: Structure) -> Vector2:
+	return _walkable(s.center() + Vector2(0.0, s.footprint.size.y * 0.5 + 0.5))
+
+
+## `p` goes indoors at `s` (v0.11 M2, as Mira's readers do): hidden, out of the field and untouchable until brought out. With
+## `s` null (a Citadel's gate), where `p` stands.
+func _take_inside(p: Person, s: Structure) -> void:
+	p.inside = true
+	p.visible = false
+	if s != null:
+		p.ground_pos = s.center()
+	crowd._field.remove(p)
+
+
+## `p` comes out at `at` (v0.11 M2), back in the field.
+func _bring_out(p: Person, at: Vector2) -> void:
+	p.inside = false
+	p.visible = true
+	p.ground_pos = at
+	crowd._field.add(p)
+
+
+## `p` set down at `at` before the first frame, with whatever walk its routine gave it dropped, and kept there (v0.11 M2, the
+## Procession's way with its Prince).
+func _set_down(p: Person, at: Vector2) -> void:
+	p.ground_pos = at
+	p.anchor = at
+	p._goal = Vector2.INF
+	p._path = PackedVector2Array()
+	p._target = at
+	p.last_place = RoutineManager.Place.LEISURE
+	p.stay_left = 1000.0
+
+
+## The `i`th of `n` places on a ring of `radius` round `center`, on walkable ground; `turn` offsets the ring (v0.11 M2, the
+## Procession's ring).
+func _ring_spot(center: Vector2, radius: float, i: int, n: int, turn := 0.0) -> Vector2:
+	return _walkable(center + Vector2.from_angle(turn + TAU * float(i) / float(maxi(n, 1))) * radius)
 
 
 ## Whether `p` still stands in the world: neither freed nor dead.

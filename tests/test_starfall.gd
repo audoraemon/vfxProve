@@ -78,7 +78,9 @@ static func _stars(t) -> void:
 	t.check(next.size() == 1 and next[0].at == StarfallDirector.STARS[0][1] and next[0].edge, "the first star's gate is pointed at")
 	var stops := d.tour()
 	t.check(stops.size() == 4 and String(stops[0][1]) == "The Postern. A star falls here at 0:10."
-		and String(stops[2][1]) == "The Side Gate. A star falls here at 3:00.", "the tour: the three gates, then the bellkeeper")
+		and String(stops[1][1]) == "The Main Gate. A star falls here by 1:30."
+		and String(stops[2][1]) == "The Side Gate. A star falls here by 3:00.",
+		"the tour: the three gates -- the later stars 'by' their time, as they may fall sooner (v0.11 M2) -- then the bellkeeper")
 	t.check(rules.objectives[0].hud_text(rules) == "Warnings stopped 0 / 3", "the HUD counts them")
 	d._clock = 7.95
 	_run(s, 0.1)

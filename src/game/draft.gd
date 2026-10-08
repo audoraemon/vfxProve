@@ -13,6 +13,9 @@ var capacity := 0
 var pool := PackedStringArray()
 ## The picked power keys, in slot order.
 var picks := PackedStringArray()
+## Powers the god has not unlocked (v0.11 M1, spec §3.4): the board's draft shows them greyed with their price and refuses
+## them; empty off the board.
+var locked := PackedStringArray()
 
 
 ## The draft for a mission: its slots, its DP capacity and the powers it allows.
@@ -36,14 +39,17 @@ func toggle(key: String) -> String:
 	return why
 
 
-## Why a power that is not picked cannot be added: "pool" (not a power, or not the mission's), "slots" (every slot
-## is taken), "dp" (its price would go over the Divine Power), or "" when it fits. A picked power gives "".
+## Why a power that is not picked cannot be added: "pool" (not a power, or not the mission's), "locked" (v0.11 M1: not yet
+## unlocked on the board), "slots" (every slot is taken), "dp" (its price would go over the Divine Power), or "" when it fits.
+## A picked power gives "".
 func refusal(key: String) -> String:
 	if picks.has(key):
 		return ""
 	var p := PowerBook.get_power(key)
 	if p.is_empty() or not (pool.is_empty() or pool.has(key)):
 		return "pool"
+	if locked.has(key):
+		return "locked"
 	if picks.size() >= slots:
 		return "slots"
 	if capacity > 0 and spent() + int(p.dp) > capacity:

@@ -1,56 +1,52 @@
 class_name MissionBoard
 extends Node
-## The mission board (v0.08), between the Title and Prepare: one card per mission, lowest Tier first -- its name and
-## Tier, its brief, its goal, its loadout and the best result the save holds for it. The selected card wears the
-## bright gold frame; the mouse or Left and Right move it, a click or Enter picks it, Esc goes back to the title.
+## The tier board (v0.11 M1, spec §3.1), between the Title and Prepare, in place of v0.08's board of three cards.
+## - Five tabs, one per Awakening Tier, and the open tab's missions as cards: name, type, two-line brief, best result, and a
+##   tick once cleared.
+## - A locked tier shows a padlock and its rule.
+## - The header holds the night to come, the believers and an Upgrades button.
+## - Input: the mouse, Left and Right choose a card; Tab or 1-5 a tier; a click or Enter picks the card (an open tier's
+##   only); U opens the Upgrades; Esc goes back to the title.
 
-## "pick" (the player chose `chosen`) or "back" (Esc).
+## "pick" (the player chose `chosen`), "upgrades" or "back" (Esc).
 signal action(name: String)
 
-## One card, the gap between cards, and the top of the row; the row is centred on the screen.
-const CARD := Vector2(300.0, 250.0)
-const CARD_GAP := 12.0
-const CARD_TOP := 48.0
-## The room kept at each side of the row of cards.
+## The tabs' row under the title: five tabs sharing the screen less its margins.
+const TAB_TOP := 34.0
+const TAB_H := 18.0
+const TAB_GAP := 4.0
 const BOARD_MARGIN := 8.0
-## The padding inside a card.
+## A card at most CARD wide, the gap between cards, the top of their row (centred on the screen), and a card's padding.
+const CARD := Vector2(300.0, 230.0)
+const CARD_GAP := 12.0
+const CARD_TOP := 62.0
 const PAD := 10.0
-## The Tier badge's plate, top-right on a card: tall enough for its digit.
-const BADGE_H := 18.0
-## The badge's digit is drawn from these 5 x 7 bitmaps, DIGIT_PX screen pixels a cell: the pixel font's 5 is round at
-## the top-left like an S, and "TIER 5" read "TIER S" at every size it has.
-const DIGITS := [
-	[".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."],
-	["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
-	[".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
-	["####.", "....#", "....#", ".###.", "....#", "....#", "####."],
-	["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
-	["#####", "#....", "#....", "####.", "....#", "....#", "####."],
-	[".###.", "#....", "#....", "####.", "#...#", "#...#", ".###."],
-	["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
-	[".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
-	[".###.", "#...#", "#...#", ".####", "....#", "....#", ".###."],
-]
-const DIGIT_PX := 2.0
+## The header's Upgrades button.
+const UPGRADES_RECT := Rect2(548.0, 8.0, 84.0, 20.0)
 
 ## The mission picked, once "pick" is emitted.
 var chosen := ""
-## The missions, lowest Tier first, and the selected one's index.
-var missions: Array[MissionDef] = []
+## The tier whose tab is open (1-5), and the selected card on it.
+var tier := 1
 var selected := 0
 
 var _save: SaveFile
 var _ui: Control
+var _hover := ""
+## Each board mission's def, for its card's words (built once).
+var _defs := {}
 
 
 func setup(save: SaveFile, current: String) -> MissionBoard:
 	_save = save
-	missions = MissionBook.all()
-	missions.sort_custom(func(a: MissionDef, b: MissionDef) -> bool: return a.tier < b.tier)
+	for id in TierBook.all():
+		_defs[id] = TierBook.board(id)
+	tier = 1
 	selected = 0
-	for i in missions.size():
-		if missions[i].id == current:
-			selected = i
+	var at := TierBook.tier_of(current)
+	if at > 0 and _state().is_open(at):
+		tier = at
+		selected = maxi(TierBook.missions(at).find(current), 0)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -62,8 +58,22 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 	return self
 
 
-## Where card `i` of `count` sits: side by side, the row centred on 320. A card narrows when `count` cards of CARD's width
-## would not fit the screen (v0.09: three missions).
+## The board's state: the save's, or a fresh one with no save.
+func _state() -> DescendState:
+	if _save == null:
+		_save = SaveFile.new()
+	return _save.descend
+
+
+## Tab `i` (from 0): the five share the screen less its margins.
+static func tab_rect(i: int) -> Rect2:
+	var count := TierBook.NAMES.size()
+	var w := floorf((640.0 - BOARD_MARGIN * 2.0 - TAB_GAP * float(count - 1)) / float(count))
+	return Rect2(Vector2(BOARD_MARGIN + float(i) * (w + TAB_GAP), TAB_TOP), Vector2(w, TAB_H))
+
+
+## Where card `i` of `count` sits: side by side, the row centred on 320; a card narrows when `count` of CARD's width would
+## not fit (five missions a tier from M6).
 static func card_rect(i: int, count: int) -> Rect2:
 	var size := CARD
 	size.x = minf(CARD.x, floorf((640.0 - BOARD_MARGIN * 2.0 - float(maxi(count - 1, 0)) * CARD_GAP) / float(maxi(count, 1))))
@@ -72,195 +82,214 @@ static func card_rect(i: int, count: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (size.x + CARD_GAP), CARD_TOP), size)
 
 
-## The loadout row at the foot of a card: "3 slots · 6 DP" ("4 slots" with no budget). A night whose acts grow the
-## budget (v0.09.1) shows the slots' range and the DP it starts with and rises to: "3–4 slots · 6 DP rising to 14".
-static func loadout_line(def: MissionDef) -> String:
-	var lo := def.slots
-	var hi := def.slots
-	var top := def.dp_capacity
-	for a: MissionDef in def.acts:
-		lo = mini(lo, a.slots)
-		hi = maxi(hi, a.slots)
-		top = maxi(top, a.dp_capacity)
-	var slots := "%d slots" % hi if lo == hi else "%d–%d slots" % [lo, hi]
-	if def.dp_capacity == 0:
-		return slots
-	if top == def.dp_capacity:
-		return "%s · %d DP" % [slots, def.dp_capacity]
-	return "%s · %d DP rising to %d" % [slots, def.dp_capacity, top]
+## The open tab's missions, by id.
+func missions() -> PackedStringArray:
+	return TierBook.missions(tier)
 
 
-## The card under a point, or -1.
-func hit(point: Vector2) -> int:
-	for i in missions.size():
-		if card_rect(i, missions.size()).has_point(point):
-			return i
-	return -1
+## The open tier's rule while it is locked (spec §3.1: "Clear 3 Omen missions"); "" while open.
+func lock_line() -> String:
+	return "" if _state().is_open(tier) else DescendState.lock_text(tier)
 
 
-## Pick a mission by id, as a click on its card would: for the FLOW test and --show=board.
+## The header's line (spec §3.1): the night about to be played, and the believers.
+func header_text() -> String:
+	return "Night %d   Believers %d" % [_state().night + 1, _state().believers]
+
+
+## A card's best (spec §3.1, §3.5): "Not yet cleared", or "Cleared" with its fastest clear and most wishes when it has them.
+func best_line(id: String) -> String:
+	var s := _state()
+	if not s.cleared.has(id):
+		return "Not yet cleared"
+	var parts := PackedStringArray(["Cleared"])
+	if s.fastest.has(id):
+		parts.append("best %s" % UiTheme.clock(float(s.fastest[id])))
+	if int(s.most_wishes.get(id, 0)) > 0:
+		parts.append("wishes %d" % int(s.most_wishes[id]))
+	return "  ".join(parts)
+
+
+## Opens tier `t`'s tab -- locked or not: a locked one shows its rule -- on its first card.
+func open_tab(t: int) -> void:
+	t = clampi(t, 1, TierBook.NAMES.size())
+	if t == tier:
+		return
+	tier = t
+	selected = 0
+	UiSound.play(&"ui_click")
+	_redraw()
+
+
+## Picks a mission by id, as a click on its card would (the FLOW test, --show): its tier's tab opens, and the mission is
+## picked only when that tier is open.
 func choose(id: String) -> void:
-	for i in missions.size():
-		if missions[i].id == id:
-			selected = i
-			_pick()
-			return
-	push_warning("KAK has no mission called " + id)
+	var t := TierBook.tier_of(id)
+	if t == 0:
+		push_warning("KAK has no board mission called " + id)
+		return
+	tier = t
+	selected = maxi(TierBook.missions(t).find(id), 0)
+	if _state().is_open(t):
+		_pick()
+	else:
+		_redraw()
 
 
-## The best result line on a card: a scored mission's best score and rank (a night's best rank, v0.09), else whether
-## it was won (and its bonus).
-func best_line(def: MissionDef) -> String:
-	var best := _save.best(def.id) if _save != null else {}
-	if def.scored:
-		var score := int(best.get("best_score", 0))
-		return "Best %s  %s" % [ResultsScreen.thousands(score), String(best.get("best_rank", ""))] if score > 0 \
-			else "Not yet played"
-	if not bool(best.get("won", false)):
-		return "Not yet won"
-	var bonuses := def.bonuses()
-	if bool(best.get("bonus", false)) and not bonuses.is_empty():
-		return "Won, " + bonuses[0].label
-	return "Won"
-
-
-## A mission's best as marks, each drawn with a tick or a cross. An unscored mission's (v0.08): [["Won", won],
-## [each bonus's label, earned]]. A night's (v0.09): [[each path's name, won by it]], "Festival" and "Procession".
-func best_marks(def: MissionDef) -> Array:
-	var best := _save.best(def.id) if _save != null else {}
-	if not def.acts.is_empty():
-		var won := PackedStringArray(best.get("paths_won", PackedStringArray()))
-		var paths := []
-		for id in (def.acts[0] as ActDef).next:
-			paths.append([String(id).capitalize(), won.has(id)])
-		return paths
-	var out := [["Won", bool(best.get("won", false))]]
-	for b in def.bonuses():
-		out.append([b.label, bool(best.get("bonus", false))])
-	return out
+## What is under a point: "upgrades", "tab:<tier>", "card:<i>" (the open tier's), or "".
+func hit(point: Vector2) -> String:
+	if UPGRADES_RECT.has_point(point):
+		return "upgrades"
+	for i in TierBook.NAMES.size():
+		if tab_rect(i).has_point(point):
+			return "tab:%d" % (i + 1)
+	var ids := missions()
+	for i in ids.size():
+		if card_rect(i, ids.size()).has_point(point):
+			return "card:%d" % i
+	return ""
 
 
 func _pick() -> void:
-	chosen = missions[selected].id
+	if not _state().is_open(tier) or missions().is_empty():
+		return
+	chosen = missions()[selected]
 	UiSound.play(&"ui_manifest")
-	if _ui != null:
-		_ui.queue_redraw()
+	_redraw()
 	action.emit("pick")
 
 
 func _select(i: int) -> void:
-	if missions.is_empty():
+	var ids := missions()
+	if ids.is_empty():
 		return
-	i = posmod(i, missions.size())
+	i = posmod(i, ids.size())
 	if i != selected:
 		selected = i
 		UiSound.play(&"ui_hover")
+		_redraw()
+
+
+func _redraw() -> void:
+	if _ui != null:
 		_ui.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.physical_keycode == KEY_ESCAPE:
+		var key: int = event.physical_keycode
+		if key == KEY_ESCAPE:
 			UiSound.play(&"ui_click")
 			action.emit("back")
-		elif event.physical_keycode == KEY_LEFT:
+		elif key == KEY_U:
+			UiSound.play(&"ui_click")
+			action.emit("upgrades")
+		elif key == KEY_LEFT:
 			_select(selected - 1)
-		elif event.physical_keycode == KEY_RIGHT:
+		elif key == KEY_RIGHT:
 			_select(selected + 1)
-		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and not missions.is_empty():
+		elif key == KEY_TAB:
+			open_tab(posmod(tier - 1 + (-1 if event.shift_pressed else 1), TierBook.NAMES.size()) + 1)
+		elif key >= KEY_1 and key <= KEY_5:
+			open_tab(key - KEY_1 + 1)
+		elif key in [KEY_ENTER, KEY_KP_ENTER]:
 			_pick()
 
 
 func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var h := hit(event.position)
-		if h >= 0:
-			_select(h)
+		if h != _hover:
+			_hover = h
+			if h.begins_with("card:"):
+				_select(int(h.substr(5)))
+			_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var h := hit(event.position)
-		if h >= 0:
-			selected = h
+		if h == "upgrades":
+			UiSound.play(&"ui_click")
+			action.emit("upgrades")
+		elif h.begins_with("tab:"):
+			open_tab(int(h.substr(4)))
+		elif h.begins_with("card:"):
+			selected = int(h.substr(5))
 			_pick()
 
 
 func _draw_ui() -> void:
 	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
-	UiTheme.text(_ui, Vector2(8, 24), "CHOOSE A MANIFESTATION", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
-	for i in missions.size():
-		_draw_card(card_rect(i, missions.size()), missions[i], i == selected)
-	var hint := "Left and Right to choose, Enter to prepare, Esc for the title"
+	UiTheme.text(_ui, Vector2(8, 24), "THE TIERS", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+	var head := header_text()
+	UiTheme.text(_ui, Vector2(UPGRADES_RECT.position.x - 10.0 - UiTheme.width(head, UiTheme.SIZE_SMALL), 22.0), head,
+		UiTheme.SIZE_SMALL)
+	_ui.draw_rect(UPGRADES_RECT, Color(0.04, 0.04, 0.06, 0.85))
+	UiTheme.frame(_ui, UPGRADES_RECT, _hover == "upgrades")
+	UiTheme.text(_ui, Vector2(roundf(UPGRADES_RECT.get_center().x - UiTheme.width("Upgrades") * 0.5), UPGRADES_RECT.position.y + 14.0),
+		"Upgrades", UiTheme.SIZE_BODY, UiTheme.COL_GOLD if _hover == "upgrades" else UiTheme.COL_TEXT)
+	for i in TierBook.NAMES.size():
+		_draw_tab(i)
+	if _state().is_open(tier):
+		var ids := missions()
+		for i in ids.size():
+			_draw_card(card_rect(i, ids.size()), ids[i], i == selected)
+	else:
+		_draw_locked()
+	var hint := "Left and Right: missions   Tab or number keys: tiers   Enter: prepare   U: upgrades   Esc: title"
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), 322.0), hint,
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 
 
-## A digit from DIGITS, its top-left at `at`, with the one-pixel shadow every label wears.
-func _digit(at: Vector2, n: int, col: Color) -> void:
-	var rows: Array = DIGITS[clampi(n, 0, 9)]
-	for layer: Array in [[Vector2.ONE, UiTheme.COL_SHADOW], [Vector2.ZERO, col]]:
-		for y in rows.size():
-			var row := String(rows[y])
-			for x in row.length():
-				if row[x] == "#":
-					_ui.draw_rect(Rect2(at + layer[0] + Vector2(float(x), float(y)) * DIGIT_PX, Vector2.ONE * DIGIT_PX),
-						layer[1])
+## Tab `i`: "WHISPER", gold-framed while open; a locked tier's dim, with a padlock.
+func _draw_tab(i: int) -> void:
+	var r := tab_rect(i)
+	var open := i + 1 == tier
+	var unlocked := _state().is_open(i + 1)
+	_ui.draw_rect(r, Color(0.12, 0.1, 0.05, 0.95) if open else (Color(0.1, 0.09, 0.07, 0.9) if _hover == "tab:%d" % (i + 1)
+		else UiTheme.COL_PANEL))
+	UiTheme.frame(_ui, r, open)
+	# No digit in the label: the pixel font's 5 reads as an S ("S ASCENDANCE"); the keys 1-5 are in the hint.
+	var label := TierBook.tier_name(i + 1).to_upper()
+	UiTheme.text(_ui, Vector2(r.position.x + 5.0, r.end.y - 5.0), label, UiTheme.SIZE_SMALL,
+		UiTheme.COL_GOLD if open and unlocked else (UiTheme.COL_TEXT if unlocked else UiTheme.COL_DIM))
+	if not unlocked:
+		_padlock(Vector2(r.end.x - 12.0, r.position.y + 6.0), 1.0, UiTheme.COL_DIM)
 
 
-## One card, top to bottom: the name and its Tier badge, the brief, the goal, the loadout, the best result.
-func _draw_card(r: Rect2, def: MissionDef, on: bool) -> void:
+## A padlock drawn in lines, its body's top-left at `at`, `k` times its small size.
+func _padlock(at: Vector2, k: float, col: Color) -> void:
+	_ui.draw_arc(at + Vector2(3.5, 0.0) * k, 2.5 * k, PI, TAU, 8, col, maxf(k, 1.0))
+	_ui.draw_rect(Rect2(at, Vector2(7.0, 6.0) * k), col)
+
+
+## A locked tier's body (spec §3.1): a large padlock and the rule that opens it.
+func _draw_locked() -> void:
+	_padlock(Vector2(306.0, 140.0), 4.0, UiTheme.COL_GOLD_DARK)
+	var rule := lock_line()
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(rule, UiTheme.SIZE_BIG) * 0.5), 196.0), rule, UiTheme.SIZE_BIG,
+		UiTheme.COL_GOLD)
+
+
+## One card, top to bottom: its name and a tick once cleared, its type, its brief, then under a rule its best.
+func _draw_card(r: Rect2, id: String, on: bool) -> void:
+	var def: MissionDef = _defs.get(id)
 	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if on else UiTheme.COL_PANEL)
 	UiTheme.frame(_ui, r, on)
 	var x := r.position.x + PAD
 	var room := r.size.x - PAD * 2.0
 	var text_col := UiTheme.COL_TEXT if on else UiTheme.COL_DIM
-
-	# "TIER" in the font, its digit from DIGITS beside it.
-	var word_w := UiTheme.width("TIER", UiTheme.SIZE_SMALL)
-	var digit_w := 5.0 * DIGIT_PX
-	var plate := Rect2(Vector2(r.end.x - PAD - word_w - digit_w - 15.0, r.position.y + PAD),
-		Vector2(word_w + digit_w + 15.0, BADGE_H))
-	_ui.draw_rect(plate, Color(0.04, 0.04, 0.06, 0.92))
-	UiTheme.frame(_ui, plate, on)
-	var badge_col := UiTheme.COL_GOLD if on else UiTheme.COL_DIM
-	UiTheme.text(_ui, plate.position + Vector2(5.0, 13.0), "TIER", UiTheme.SIZE_SMALL, badge_col)
-	_digit(plate.position + Vector2(10.0 + word_w, 2.0), def.tier, badge_col)
-
 	var y := r.position.y + PAD + 14.0
-	for line in UiTheme.wrap(def.name, plate.position.x - x - 6.0, UiTheme.SIZE_BIG):
+	for line in UiTheme.wrap(def.name, room - 12.0, UiTheme.SIZE_BIG):
 		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BIG, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
 		y += UiTheme.LINE_BODY + 3.0
-	y += 8.0
+	if _state().cleared.has(id):
+		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)
+	UiTheme.text(_ui, Vector2(x, y), TierBook.type_of(id).to_upper(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	y += UiTheme.LINE_SMALL + 8.0
 	for brief in def.brief:
 		for line in UiTheme.wrap(brief, room, UiTheme.SIZE_BODY):
 			UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
 			y += UiTheme.LINE_BODY
-	y += 10.0
-	UiTheme.text(_ui, Vector2(x, y), "GOAL", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
-	y += UiTheme.LINE_SMALL + 2.0
-	for line in UiTheme.wrap(def.goal, room, UiTheme.SIZE_BODY):
-		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
-		y += UiTheme.LINE_BODY
-
-	# The foot of the card, a rule over three rows so every card's rule sits at the same height: the loadout, the
-	# best result, and under a night's best rank its path marks (v0.09).
-	var loadout := loadout_line(def)
-	var night := not def.acts.is_empty()
-	var rule := r.end.y - PAD - 2.0 - UiTheme.LINE_SMALL * 3.0 - 4.0
-	var row_y := rule + 4.0 + UiTheme.LINE_SMALL
+	var rule := r.end.y - PAD - UiTheme.LINE_SMALL - 6.0
 	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, -1.0)
-	UiTheme.text(_ui, Vector2(x, row_y), loadout, UiTheme.SIZE_SMALL, text_col)
-	row_y += UiTheme.LINE_SMALL
-	if night:
-		UiTheme.text(_ui, Vector2(x, row_y), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
-		row_y += UiTheme.LINE_SMALL
-		if _save == null or int(_save.best(def.id).get("best_score", 0)) <= 0:
-			return  # Never played: no paths to tick or cross yet.
-	elif def.scored:
-		UiTheme.text(_ui, Vector2(x, row_y), best_line(def), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
-		return
-	# Marks: an unscored mission's "Won" and each bonus (v0.08), or a night's paths, each with a tick or a cross.
-	for entry: Array in best_marks(def):
-		var label := String(entry[0])
-		UiTheme.text(_ui, Vector2(x, row_y), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
-		x += UiTheme.width(label, UiTheme.SIZE_SMALL) + 5.0
-		UiTheme.mark(_ui, Vector2(x, row_y - 7.0), bool(entry[1]))
-		x += 7.0 + 14.0
+	UiTheme.text(_ui, Vector2(x, rule + 4.0 + UiTheme.LINE_SMALL), best_line(id), UiTheme.SIZE_SMALL,
+		UiTheme.COL_GOLD if on else UiTheme.COL_DIM)

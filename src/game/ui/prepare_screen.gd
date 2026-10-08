@@ -24,7 +24,8 @@ const TAB_GAP := 4.0
 ## How long a refused pick's reason stays in the panel's hint line (v0.08).
 const REFUSE_SECONDS := 1.5
 ## What the panel says when a pick is refused, by Draft.refusal()'s answer.
-const REFUSALS := {"dp": "Not enough Divine Power", "slots": "No free slot", "pool": "Not a power of this mission"}
+const REFUSALS := {"dp": "Not enough Divine Power", "slots": "No free slot", "pool": "Not a power of this mission",
+	"locked": "Locked: unlock it on the Upgrades screen"}
 ## And when MANIFEST is pressed with nothing picked.
 const REFUSE_EMPTY := "Pick at least one power"
 ## The loadout bar under the grid: the mission's slots, then MANIFEST. SLOT is a slot's size when there are four.
@@ -78,9 +79,12 @@ var _clip_frame := 0
 var _held := false
 
 
-func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfile.DEFAULT) -> PrepareScreen:
+## `locked` (v0.11 M1): on the board, the powers not yet unlocked, greyed and refused; empty elsewhere.
+func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfile.DEFAULT,
+		locked := PackedStringArray()) -> PrepareScreen:
 	mission = def
 	draft = Draft.new().for_mission(mission)
+	draft.locked = locked
 	draft.preselect(preselect)
 	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
 	tab = maxi(tabs().find(PowerBook.authority_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
@@ -509,7 +513,10 @@ func _draw_card(i: int, key: String) -> void:
 		UiTheme.text(_ui, Vector2(tx, ty), lines[k], UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if slot > 0 else (UiTheme.COL_DIM if refused else UiTheme.COL_TEXT))
 		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
+	# A locked power (v0.11 M1, spec §3.4) shows its unlocking price instead.
 	var cost := "%d DP  %s" % [int(p.dp), cooldown_text(p)]
+	if draft.locked.has(key):
+		cost = "Locked: %d" % DescendState.unlock_price(key)
 	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.

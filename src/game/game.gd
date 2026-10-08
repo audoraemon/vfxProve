@@ -192,6 +192,9 @@ func _ready() -> void:
 	save_path = save_path_for(show, save_path)
 	match show:
 		"board":
+			# A fresh god's board (v0.11 M1): Whisper open, the rest locked, nothing cleared -- not the player's carried-over
+			# save, which may have opened Omen. The player's own save is not written (SHOW_SAVE).
+			save.descend = DescendState.new()
 			go_to(Screen.BOARD)
 		"prepare":
 			go_to(Screen.PREPARE)
@@ -737,6 +740,8 @@ func _flow_test() -> void:
 	on_action("title:play")
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Play opens the mission board")
 	step.call(Music.current() == &"theme", "the board plays the theme")
+	await _flow_board(step)
+	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
 		and (_screen_node as PrepareScreen).mission.id == MissionBook.LAST_JUDGEMENT
@@ -876,6 +881,29 @@ func _flow_test() -> void:
 func _mission_up(other: Mission) -> bool:
 	var up := screen == Screen.MISSION and is_instance_valid(_mission) and _mission != other
 	return up and _mission.started() and not _fading
+
+
+## v0.11 M1 (spec §3.1-§3.2): on a fresh save the tier board opens on Whisper, The Warning its one card; Omen is locked,
+## its rule shown, and its missions cannot be picked. Ends on the board, Whisper open.
+func _flow_board(step: Callable) -> void:
+	var board := _screen_node as MissionBoard
+	step.call(board != null and board.tier == 1 and Array(board.missions()) == ["warning"] and save.descend.open_tier == 1,
+		"a fresh board opens on Whisper, The Warning its only card")
+	board.open_tab(2)
+	board.choose(MissionBook.MIRAS_HOUSE)
+	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 1 Whisper mission",
+		"Omen is locked: its rule shows, and Mira's House cannot be picked (%s)" % board.lock_line())
+	board.open_tab(1)
+
+
+## The steps from before the tier board (FLOW, v0.11 M1) play Last Judgement, The Long Night and their drafts as a veteran
+## god would: every tier open, every power unlocked, no upgrades bought (so the tiers' own budgets are checked).
+func _veteran() -> void:
+	save.descend.open_tier = TierBook.NAMES.size()
+	save.descend.dp_bought = 0
+	save.descend.slot_bought = 0
+	for key in save.descend.locked():
+		save.descend.unlocked.append(key)
 
 
 ## The Long Night through the screens (v0.09), from the board: Act I won on its clock, the choice card, the re-draft,

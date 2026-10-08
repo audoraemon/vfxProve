@@ -145,24 +145,13 @@ static func run(t) -> void:
 	t.check(old_save.best(ln).paths_won.is_empty() and old_save.loadout_for(ln).is_empty() and int(old_save.best(ln).best_score) == 0,
 		"a save with no night section has no paths won and no loadout (%s)" % [old_save.best(ln)])
 	var board := MissionBoard.new().setup(old_save, "warning")
-	t.check(board.best_line(MissionBook.long_night()) == "Not yet played",
-		"the night's card says Not yet played (%s)" % board.best_line(MissionBook.long_night()))
+	t.check(board.best_line(ln) == "Not yet cleared", "the night's card says Not yet cleared (%s)" % board.best_line(ln))
 	t.check(Game.starting_loadout(old_save, ln) == MissionBook.long_night().default_loadout
 		and not Game.starting_loadout(old_save, ln).is_empty(),
 		"and its first Prepare opens on the night's default loadout (%s)" % [Game.starting_loadout(old_save, ln)])
 	old_save.remember_loadout(ln, PackedStringArray(["doom"]))
 	t.check(Game.starting_loadout(old_save, ln) == PackedStringArray(["doom"]), "then on the one drafted last")
 	t.check(Game.starting_loadout(old_save, lj).is_empty(), "the other missions still open empty")
-	# The night's card: its best rank, then a tick or a cross for each path.
-	var marks := MissionBoard.new().setup(night_back, ln)
-	t.check(marks.best_line(MissionBook.long_night()) == "Best 16,000  A", "a played night's card shows its best (%s)" % marks.best_line(MissionBook.long_night()))
-	t.check(marks.best_marks(MissionBook.long_night()) == [["Festival", true], ["Procession", true]],
-		"and both paths ticked (%s)" % [marks.best_marks(MissionBook.long_night())])
-	var half := SaveFile.new()
-	half.record(ln, {"score": 12000, "rank": "B", "won": true, "path": "festival", "acts": acts})
-	t.check(MissionBoard.new().setup(half, ln).best_marks(MissionBook.long_night()) == [["Festival", true], ["Procession", false]],
-		"a night won by the Festival alone ticks it and crosses the Procession")
-	marks.free()
 	board.free()
 
 	# A damaged file reads as a fresh one instead of raising. `\x00\x01` is not a valid GDScript string

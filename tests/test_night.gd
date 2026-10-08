@@ -20,11 +20,6 @@ static func run(t) -> void:
 	for key in m.default_loadout:
 		kit_dp += int(PowerBook.get_power(key).dp)
 	t.check(m.default_loadout.size() <= 3 and kit_dp <= 6, "the night's default loadout fits Act I (%d DP)" % kit_dp)
-	t.check(MissionBoard.loadout_line(m) == "3–4 slots · 6 DP rising to 14"
-		and MissionBoard.loadout_line(MissionBook.warning()) == "3 slots · 6 DP",
-		"the board card says the budget grows ('%s')" % MissionBoard.loadout_line(m))
-	t.check(UiTheme.width(MissionBoard.loadout_line(m), UiTheme.SIZE_SMALL)
-		<= MissionBoard.card_rect(0, 3).size.x - MissionBoard.PAD * 2.0, "and the line fits a card of three")
 	var first := m.first_act()
 	t.check(first.id == "omen" and Array(first.next) == ["festival", "procession"], "Act I leads to a choice of two")
 	t.check(Array(m.act("festival").next) == ["judgement"] and Array(m.act("procession").next) == ["judgement"],

@@ -46,6 +46,10 @@ var _decor: Array[Decor] = []
 var _decor_layer: DecorLayer
 ## Plays each collapse (collapse_cue()). Set by whoever builds the town on a battlefield; null in tests.
 var sfx: Sfx
+## Ground kept bare (dev only: the town debug scene's GPT showcase district, GptShowcase). Set before build(): no decor
+## or rocky outcrop is laid inside, and the trees and fields standing on it are taken out again once built (built
+## first, so every other building keeps its seed). Empty everywhere else: the game and the tests never set it.
+var keep_clear: Array[Rect2] = []
 
 var _env: EnvironmentField
 
@@ -72,6 +76,11 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			bridge = s
 	if postern != null:
 		gates.append(postern)
+	if not keep_clear.is_empty():
+		for s in _built.duplicate():
+			if s.kind in [Structure.Kind.TREE, Structure.Kind.FARM_FIELD] and _kept_clear_rect(s.footprint):
+				_built.erase(s)
+				env.remove(s, false)
 	# One Citadel node for the life of this town: setup() resets its state, so a rebuild reuses it instead of
 	# orphaning the old node — and anything connected to its signals stays connected.
 	if not is_instance_valid(citadel):
@@ -95,6 +104,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		_decor_layer.lights = env.lights
 		env.world_parent.add_child(_decor_layer)
 	for d in TownDecor.spots():
+		if not keep_clear.is_empty() and _kept_clear_rect(Rect2(d.at - d.size.abs(), d.size.abs() * 2.0)):
+			continue
 		if d.bake and ground != null:
 			baked.append(d)
 			continue
@@ -146,6 +157,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		floor_node.name = "TownFloor"
 		floor_node.baked_decor = flat
 		floor_node.shrubs = shrubs
+		floor_node.keep_clear = keep_clear
 		floor_node.tint = GROUND_EVENING
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
@@ -165,6 +177,14 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		forest.modulate = GROUND_EVENING
 		ground.add_child(forest)
 		ground.move_child(forest, 2)
+
+
+## Whether `r` touches the ground kept bare (keep_clear).
+func _kept_clear_rect(r: Rect2) -> bool:
+	for k: Rect2 in keep_clear:
+		if k.intersects(r, true):
+			return true
+	return false
 
 
 ## A live sprite_only Decor for a piece drawn elsewhere while sprites are off: a baked piece TownFloor.mark_live()

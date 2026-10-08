@@ -123,6 +123,8 @@ var baked_decor: Array[Dictionary] = []
 ## The meadow shrubs this floor paints (shrub_spots() order); the town hands over its own copies, marked "under"
 ## (mark_under()), and shares them with the plant layer. Empty: shrub_spots() itself.
 var shrubs: Array[Dictionary] = []
+## Ground kept bare (Town.keep_clear, dev only): no rocky outcrop is painted on it. Empty in the game.
+var keep_clear: Array[Rect2] = []
 ## Per meadow cell: 1 meadow, 2 forest floor, +4 on a trail. Filled while painting the ground, read by the detail.
 var _zones := PackedByteArray()
 var _zn := 0
@@ -218,7 +220,11 @@ func paint_ground(ci: CanvasItem) -> void:
 	for b: Rect2 in TownLayout.BARNS + [TownLayout.WINDMILL, TownLayout.WATERMILL]:
 		_patches(ci, b.grow(0.6), DIRT, 0.3)
 	for o: Array in OUTCROPS:
-		_outcrop(ci, o[0], o[1])
+		var bare := false
+		for k: Rect2 in keep_clear:
+			bare = bare or k.grow(o[1]).has_point(o[0])
+		if not bare:
+			_outcrop(ci, o[0], o[1])
 	for tr in TRAILS:
 		_trail(ci, tr, 0.34)
 	for tr in ROAD_TRAILS:

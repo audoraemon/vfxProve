@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://wrjrs5nn1wv"
-path="res://.godot/imported/glow_mask.png-cf899e3bef4ef3a27ddae6c94c081ed0.ctex"
+uid="uid://dtck2of3fqh7l"
+path="res://.godot/imported/ruins.png-d352f448696e82a7ace913cee8e86241.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixellab/buildings/gpt_jail/glow_mask.png"
-dest_files=["res://.godot/imported/glow_mask.png-cf899e3bef4ef3a27ddae6c94c081ed0.ctex"]
+source_file="res://assets/pixellab/buildings/gpt_vineyard/ruins.png"
+dest_files=["res://.godot/imported/ruins.png-d352f448696e82a7ace913cee8e86241.ctex"]
 
 [params]
 

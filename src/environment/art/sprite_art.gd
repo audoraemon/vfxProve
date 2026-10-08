@@ -153,9 +153,10 @@ static func _field_name(s: Structure) -> String:
 
 ## The sprite that replaces `s`, or "" (only buildings with a set in the manifest are drawn from one).
 static func name_for(s: Structure) -> String:
-	# The GPT buildings proof (GptProof): six plots draw a ChatGPT building's set instead, while sprites are on.
+	# The GPT buildings proof (GptProof): a showcase structure (GptShowcase, dev only) or a proof plot draws its
+	# ChatGPT building's set instead, while sprites are on.
 	if on():
-		var proof := GptProof.set_for_plot(s.footprint)
+		var proof := GptProof.set_for(s)
 		if proof != "" and manifest().has(proof):
 			return proof
 	match s.kind:

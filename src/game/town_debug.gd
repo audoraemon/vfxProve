@@ -5,7 +5,9 @@ extends Node2D
 ## Flags after `--`: --capture-town [--only=<shot file prefix>] [--frames=N] [--dim=0..1] (screenshots; --dim darkens
 ## the scene as a power's dim does, to see the lights at dusk), --citadel-test (scripted strikes on the Citadel, logged),
 ## --crowd-test (scripted panic, logged), --bench [--only=<power key>] (frame times while that power plays
-## beside the Citadel).
+## beside the Citadel), --no-showcase (leaves out the GPT showcase district east and north of the walls, GptShowcase:
+## on by default here and only here), --showcase-state=damaged|ruins (its buildings cracked or fallen). F9 shows or
+## hides the showcase's labels.
 
 ## The spec's crowd: 110 citizens and 50 soldiers. --people=N scales both for benching.
 const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
@@ -45,15 +47,14 @@ const TOWN_SHOTS := [
 	# The market's north torches and the walkway lamp; the west street's lamps beside a market corner torch.
 	["town_torches.png", Vector2(1.4, -2.6), 2.2],
 	["town_lamps.png", Vector2(-6.0, 8.6), 2.2],
-	# The GPT buildings proof (GptProof): the courthouse, jail, treasury and watchtower west of the market; the town
-	# hall by the Citadel's lane; the armoury on the workshop's plot, by the barracks.
-	["town_gpt_proof.png", Vector2(-7.9, 0.6), 1.4],
-	["town_gpt_proof_north.png", Vector2(-8.4, -6.85), 1.6],
-	["town_gpt_proof_east.png", Vector2(11.5, -0.55), 1.6],
-	# Its faith sheet: the monastery, the bathhouse, the graveyard and the chapel east of the market and the cathedral;
-	# the leper house and the hospital (on the carpenter's plot) in the south-east.
-	["town_gpt_faith.png", Vector2(7.1, -2.9), 0.9],
-	["town_gpt_faith_south.png", Vector2(10.8, 12.4), 1.4],
+	# The GPT showcase district (GptShowcase): all of it, then each category's row (Vector2.INF: the point is the row's
+	# middle, GptShowcase.shot_point). Later batches add their rows' shots here.
+	["showcase_overview.png", Vector2.INF, 0.32],
+	["showcase_defence.png", Vector2.INF, 1.2],
+	["showcase_faith.png", Vector2.INF, 0.9],
+	["showcase_trade.png", Vector2.INF, 1.1],
+	["showcase_crafts.png", Vector2.INF, 0.75],
+	["showcase_food.png", Vector2.INF, 1.3],
 	# The forest ring outside the west wall, and the oaks between the west district's cottages.
 	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
 	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],
@@ -109,6 +110,8 @@ var _bf: Battlefield
 var _town: Town
 var _grid: WalkGrid
 var _crowd: Crowd
+## The GPT showcase district (dev only), or null with --no-showcase.
+var _showcase: GptShowcase
 var _selected := 0
 var _pressing := false
 var _press_ground := Vector2.ZERO
@@ -171,11 +174,24 @@ func _rebuild(seed_value: int) -> void:
 			_crowd.queue_free()
 		else:
 			_crowd.free()
+	if is_instance_valid(_showcase):
+		_showcase.teardown()
+		_showcase.queue_free()
+		_showcase = null
+	var args := OS.get_cmdline_user_args()
 	_town = Town.new()
 	_town.name = "Town"
+	if GptShowcase.wanted(args):
+		_town.keep_clear = GptShowcase.clear_rects()
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_town.sfx = _bf.ctx.sfx
+	if GptShowcase.wanted(args):
+		# After the town: every town building keeps its seed; before the walk grid, which then walks round it.
+		_showcase = GptShowcase.new()
+		_showcase.name = "GptShowcase"
+		add_child(_showcase)
+		_showcase.build(_bf.ctx.env, self, GptShowcase.state_arg(args))
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
 	_crowd = Crowd.new()
 	_crowd.name = "Crowd"
@@ -207,6 +223,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_selected = i
 		elif event.physical_keycode == KEY_R:
 			_rebuild(Time.get_ticks_usec())
+		elif event.physical_keycode == KEY_F9 and is_instance_valid(_showcase):
+			_showcase.toggle_labels()
 		elif event.physical_keycode == KEY_ESCAPE:
 			_bf.quit()
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
@@ -275,8 +293,11 @@ func _capture_town(only := "", frames := 1) -> void:
 	for shot in TOWN_SHOTS:
 		if only != "" and not String(shot[0]).begins_with(only):
 			continue
+		var at: Vector2 = shot[1]
+		if not at.is_finite():
+			at = GptShowcase.shot_point(String(shot[0]).trim_prefix("showcase_").trim_suffix(".png"))
 		_bf.camera.zoom = Vector2.ONE * float(shot[2])
-		_bf.camera.position = (Iso.ground_to_screen(shot[1]) + Vector2(0, -30)).round()
+		_bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
 		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
 		if frames <= 1:

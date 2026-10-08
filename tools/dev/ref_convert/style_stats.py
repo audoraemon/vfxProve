@@ -22,7 +22,11 @@ ROOT = Path(__file__).resolve().parents[3]
 B = ROOT / "assets" / "pixellab" / "buildings"
 REFS = ["townhouse_a", "townhouse_b", "tavern", "cottage_red", "workshop", "barracks"]
 GPT = ["gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury",
-       "gpt_chapel", "gpt_monastery", "gpt_graveyard", "gpt_hospital", "gpt_leperhouse", "gpt_bathhouse"]
+       "gpt_chapel", "gpt_monastery", "gpt_graveyard", "gpt_hospital", "gpt_leperhouse", "gpt_bathhouse",
+       "gpt_inn", "gpt_shophouse", "gpt_guildhall", "gpt_markethall", "gpt_weighhouse", "gpt_fishmarket",
+       "gpt_bakery", "gpt_butcher", "gpt_brewery", "gpt_tannery", "gpt_dyers", "gpt_weavers",
+       "gpt_potter", "gpt_cooper", "gpt_masonyard", "gpt_lumberyard", "gpt_charcoal", "gpt_glassworks",
+       "gpt_granary", "gpt_warehouse", "gpt_orchard", "gpt_vineyard", "gpt_beehives", "gpt_dovecote"]
 
 
 def luma(rgb):

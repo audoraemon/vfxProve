@@ -1,27 +1,22 @@
-"""ChatGPT-painted building sheets (concepts/GPT/*_sheet_v1.webp) as game sprite sets, for the GPT buildings proof
-(src/environment/art/gpt_proof.gd puts each on one existing plot; art only). No AI calls: cut, fit, draw.
+"""ChatGPT-painted building sheets (concepts/GPT/*_sheet_v1.*) as game sprite sets for the GPT buildings proof. They
+are shown in the dev showcase district (src/game/town/gpt_showcase.gd, the town debug scene only), each on a plot of
+its own footprint. No AI calls: cut, fit, draw.
 
-Each sheet is one SHEETS entry: its source file, its grid, the painted smoke to strip, and its sets (grid cell,
-footprint corners, plot footprint, height, kind, role, tag, chimney, ruins). Every sheet is a 3 x 2 grid on a
-transparent or white ground, painted at about 3-4x game size from the blockouts in concepts/GPT/, lit from the left
-and in the game's orientation (a wide building's long side is its left face), so nothing is mirrored.
+Each sheet is one SHEETS entry: its source file, its grid (3 x 2, or None for a sheet whose buildings are found as
+connected shapes: regions()), the painted smoke to strip, and its sets (cell, footprint corners, footprint, height,
+chimney, ruins). Every sheet is painted at about 3-4x game size from its blockout (concepts/GPT/blockouts/,
+blockout_sheets.py), lit from the left and in the game's orientation (a wide building's long side is its left face),
+so nothing is mirrored. Every set's manifest entry is kind HOUSE, role "showcase", no tag.
 
-  defence (defence_sheet_v1.webp, from blockouts_defence.png)
-  set              sheet cell     plot (gpt_proof.gd)                          structure drawn on
-  gpt_townhall     top-left       TAVERNS[0]  2.4 x 1.5                         HOUSE / house / tavern     h 30
-  gpt_armoury      top-middle     WORKSHOP    2.6 x 1.5                         HOUSE / house / workshop   h 22
-  gpt_jail         top-right      townhouse   1.3 x 0.95 at (-8.4, 1.38)        HOUSE / house / townhouse  h 29
-  gpt_courthouse   bottom-left    TAVERNS[1]  1.6 x 2.4 (drawn 2.4 x 1.6, mirrored on the deep plot)  tavern  h 30
-  gpt_watchtower   bottom-middle  cottage     0.95 x 0.75 at (-8.28, 3.27)      HOUSE / house / ""         h 19
-  gpt_treasury     bottom-right   townhouse   1.3 x 0.95 at (-10.39, -0.38)     HOUSE / house / townhouse  h 28
+  defence  (defence_sheet_v1.webp)  gpt_townhall gpt_armoury gpt_jail gpt_courthouse gpt_watchtower gpt_treasury
+  faith    (faith_sheet_v1.webp)    gpt_chapel gpt_monastery gpt_graveyard gpt_hospital gpt_leperhouse gpt_bathhouse
+  trade    (trade_sheet_v1.png)     gpt_inn gpt_shophouse gpt_guildhall gpt_markethall gpt_weighhouse gpt_fishmarket
+  crafts_a (crafts_a_sheet_v1.png)  gpt_bakery gpt_butcher gpt_brewery gpt_tannery gpt_dyers gpt_weavers
+  crafts_b (crafts_b_sheet_v1.png)  gpt_potter gpt_cooper gpt_masonyard gpt_lumberyard gpt_charcoal gpt_glassworks
+  food     (food_sheet_v1.png)      gpt_granary gpt_warehouse gpt_orchard gpt_vineyard gpt_beehives gpt_dovecote
 
-  faith (faith_sheet_v1.webp, white ground, from blockouts/2_faith.png)
-  gpt_chapel       top-left       townhouse   1.3 x 0.95 at (5.33, -10.9)       HOUSE / house / townhouse  h 29
-  gpt_monastery    top-middle     TAVERNS[2]  2.8 x 1.8                         HOUSE / house / tavern     h 30
-  gpt_graveyard    top-right      townhouse   0.95 x 1.3 at (3.53, -7.5) (drawn 1.3 x 0.95, mirrored)   townhouse h 28
-  gpt_hospital     bottom-left    CARPENTER   2.3 x 1.15                        HOUSE / house / carpenter  h 20
-  gpt_leperhouse   bottom-middle  townhouse   0.95 x 1.3 at (7.44, 10.3) (drawn 1.3 x 0.95, mirrored)   townhouse h 29
-  gpt_bathhouse    bottom-right   townhouse   1.3 x 0.95 at (7.1, -4.0)         HOUSE / house / townhouse  h 28
+Footprints: the defence sets' are their blockouts' main bodies, their corners measured by hand; every other set's
+footprint is its blockout's whole ground box and its corners are that box carried onto the painting by gpt_locate.py.
 
 Cut: the background goes (alpha below 128, then near-white flooded in from the border, so interior whites such as
 the clock face stay); smoke painted on a sheet goes too (pale grey px in its smoke boxes: cleared above a chimney,
@@ -39,7 +34,8 @@ buildings' colours, the lit windows on their ramp (and glow_mask.png); its knobs
 all three stills. Corner errors print for the three fitted corners
 and, as convert.py reports them, the nearest base pixel to each side corner.
 
-Damaged (drawn locally, batch 3 style): holes through the roof (charred rim, dark loft, rafters, sooted tiles), a
+Damaged (drawn locally, batch 3 style; the sets without a DAMAGE row place theirs from the sprite: auto_damage()):
+holes through the roof (charred rim, dark loft, rafters, sooted tiles), a
 scorch up a wall (warehouse.scorch, darker) and a door or shutter hanging off its hinge. Clean shapes, no noise.
 
 Ruins: the approved ruins of the closest existing set scaled onto the plot (the batch 3 method, warehouse.ruins):
@@ -48,6 +44,10 @@ buildings (the armoury, the courthouse, the jail and the treasury), filling each
 plot's short side and laid twice along its long side), its fallen blue banner painted out (no_banner).
 The watchtower's are local: its four leg stumps and the cabin fallen on its side behind them. Reused ruins go through
 the style match's lock and outline only (they are already in the game's style); the watchtower's get the whole pass.
+
+Open structures and yards (the market hall, the fish market, the timber, mason's and cooper's yards, the charcoal
+kiln, the orchard, the vineyard, the beehives) fall to a clean low ruin instead (low_ruins(): a cleared bed, burnt
+stumps round it, two fallen beams; one look per family, timber or garden).
 
 No idle strips; the collapse is the engine's sink. A set whose building has a chimney gets a chimney key (its top's
 middle) so ChimneySmoke rises from it; the watchtower, the chapel and the graveyard have none.
@@ -78,50 +78,117 @@ PAD = 6
 CHAR = warehouse.CHAR
 TIMBER_DK = warehouse.TIMBER_DK
 
-# Per set: cell (col, row), corners L F R (sheet px), y stretch k, footprint [W, D] (its plot's), height, seed, kind,
-# role, tag, chimney top (sheet px) or None, ruins (source set, scale or "fill") or None for a local ruin.
+# Per set: cell ((col, row) on a gridded sheet, the regions() index on the others), corners L F R (sheet px), y
+# stretch k, footprint [W, D] (its showcase plot's: the footprint its blockout used), height, seed, kind, role, tag,
+# chimney top (sheet px) or None, ruins: (source set, scale or "fill"), ("low", family) for a clean low ruin
+# (low_ruins()), or None for a local ruin. Every set is drawn in the dev showcase district (src/game/town/
+# gpt_showcase.gd) on a plot of its own footprint: kind HOUSE, role "showcase", no tag.
+SHOW = dict(kind="HOUSE", role="showcase", tag="")
+# The defence sheet: its corners are measured by hand on the main building (the armoury's R behind its shed, the
+# watchtower's on its leg plinths), so its footprints are the blockouts' main bodies (make_blockouts.py).
 DEFENCE_SETS = {
-    "gpt_townhall": dict(cell=(0, 0), L=(73, 324), F=(337, 455), R=(511, 365), k=1.0, fp=[2.4, 1.5], height=30,
-                         seed=80, kind="HOUSE", role="house", tag="tavern", chimney=(275, 52), ruins=("tavern", 1.0)),
-    "gpt_armoury": dict(cell=(1, 0), L=(623, 336), F=(939, 493), R=(1094, 416), k=1.0, fp=[2.6, 1.5], height=22,
-                        seed=81, kind="HOUSE", role="house", tag="workshop", chimney=(771, 102),
-                        ruins=("town_tower", "fill")),
-    "gpt_jail": dict(cell=(2, 0), L=(1200, 398), F=(1361, 481), R=(1497, 416), k=1.0, fp=[1.3, 0.95], height=29,
-                     seed=82, kind="HOUSE", role="house", tag="townhouse", chimney=(1385, 220),
-                     ruins=("town_tower", "fill")),
-    "gpt_courthouse": dict(cell=(0, 1), L=(72, 784), F=(346, 904), R=(551, 818), k=1.16, fp=[2.4, 1.6], height=30,
-                           seed=83, kind="HOUSE", role="house", tag="tavern", chimney=(409, 572),
-                           ruins=("town_tower", "fill")),
-    "gpt_watchtower": dict(cell=(1, 1), L=(726, 848), F=(824, 901), R=(924, 844), k=1.0, fp=[0.95, 0.75], height=19,
-                           seed=84, kind="HOUSE", role="house", tag="", chimney=None, ruins=None),
-    "gpt_treasury": dict(cell=(2, 1), L=(1168, 816), F=(1356, 916), R=(1521, 836), k=1.0, fp=[1.3, 0.95], height=28,
-                         seed=85, kind="HOUSE", role="house", tag="townhouse", chimney=(1441, 632),
-                         ruins=("town_tower", "fill")),
+    "gpt_townhall": dict(cell=(0, 0), L=(73, 324), F=(337, 455), R=(511, 365), k=1.0, fp=[2.4, 1.5], height=34,
+                         seed=80, chimney=(275, 52), ruins=("tavern", 1.0), **SHOW),
+    "gpt_armoury": dict(cell=(1, 0), L=(623, 336), F=(939, 493), R=(1094, 416), k=1.0, fp=[2.3, 1.2], height=22,
+                        seed=81, chimney=(771, 102), ruins=("town_tower", "fill"), **SHOW),
+    "gpt_jail": dict(cell=(2, 0), L=(1200, 398), F=(1361, 481), R=(1497, 416), k=1.0, fp=[1.1, 0.9], height=20,
+                     seed=82, chimney=(1385, 220), ruins=("town_tower", "fill"), **SHOW),
+    "gpt_courthouse": dict(cell=(0, 1), L=(72, 784), F=(346, 904), R=(551, 818), k=1.16, fp=[2.2, 1.5], height=26,
+                           seed=83, chimney=(409, 572), ruins=("town_tower", "fill"), **SHOW),
+    "gpt_watchtower": dict(cell=(1, 1), L=(726, 848), F=(824, 901), R=(924, 844), k=1.0, fp=[0.8, 0.8], height=46,
+                           seed=84, chimney=None, ruins=None, **SHOW),
+    "gpt_treasury": dict(cell=(2, 1), L=(1168, 816), F=(1356, 916), R=(1521, 836), k=1.0, fp=[1.2, 1.2], height=18,
+                         seed=85, chimney=(1441, 632), ruins=("town_tower", "fill"), **SHOW),
 }
-# The faith sheet. L and R are the building's outer base corners and F is where their edges meet: empty ground in
-# front of the monastery's open cloister and of the bathhouse's furnace annex; the chapel's porch stands just outside
-# its diamond (as the jail's stocks do). All six fall to the town tower's stone rubble filling the plot (the tavern's
-# timber ruins scaled down to a townhouse plot break up into specks).
+# The faith sheet and the four below: L F R are the blockout's ground box (every point at most 6 px up: walls,
+# posts, plinths, yards, props) carried onto the painting by gpt_locate.py (the blockout's silhouette fitted onto the
+# painted one), so each plot is the whole footprint its blockout used, porches, yards and props included.
 FAITH_SETS = {
-    "gpt_chapel": dict(cell=(0, 0), L=(33, 394), F=(241, 502), R=(386, 430), k=1.0, fp=[1.3, 0.95], height=29,
-                       seed=86, kind="HOUSE", role="house", tag="townhouse", chimney=None,
-                       ruins=("town_tower", "fill")),
-    "gpt_monastery": dict(cell=(1, 0), L=(466, 403), F=(746, 550), R=(962, 428), k=0.92, fp=[2.8, 1.8], height=30,
-                          seed=87, kind="HOUSE", role="house", tag="tavern", chimney=(828, 160),
-                          ruins=("town_tower", "fill")),
-    "gpt_graveyard": dict(cell=(2, 0), L=(994, 454), F=(1253, 587), R=(1431, 494), k=0.97, fp=[1.3, 0.95],
-                          height=28, seed=88, kind="HOUSE", role="house", tag="townhouse", chimney=None,
-                          ruins=("town_tower", "fill")),
-    "gpt_hospital": dict(cell=(0, 1), L=(48, 811), F=(360, 974), R=(483, 913), k=1.0, fp=[2.3, 1.15], height=20,
-                         seed=89, kind="HOUSE", role="house", tag="carpenter", chimney=(215, 533),
-                         ruins=("town_tower", "fill")),
-    "gpt_leperhouse": dict(cell=(1, 1), L=(535, 872), F=(763, 985), R=(954, 885), k=1.0, fp=[1.3, 0.95], height=29,
-                           seed=90, kind="HOUSE", role="house", tag="townhouse", chimney=(780, 655),
-                           ruins=("town_tower", "fill")),
-    "gpt_bathhouse": dict(cell=(2, 1), L=(1008, 873), F=(1279, 1014), R=(1436, 932), k=0.96, fp=[1.3, 0.95],
-                          height=28, seed=91, kind="HOUSE", role="house", tag="townhouse", chimney=(1346, 676),
-                          ruins=("town_tower", "fill")),
+    "gpt_chapel": dict(cell=(0, 0), L=(-27, 402), F=(227, 529), R=(383, 451), k=1.0, fp=[2.05, 1.26], height=22,
+                       seed=86, chimney=None, ruins=("town_tower", "fill"), **SHOW),
+    "gpt_monastery": dict(cell=(1, 0), L=(471, 404), F=(747, 542), R=(976, 427), k=1.0, fp=[2.4, 2.0], height=26,
+                          seed=87, chimney=(828, 160), ruins=("town_tower", "fill"), **SHOW),
+    "gpt_graveyard": dict(cell=(2, 0), L=(970, 439), F=(1250, 580), R=(1454, 478), k=1.0, fp=[2.09, 1.52],
+                          height=14, seed=88, chimney=None, ruins=("town_tower", "fill"), **SHOW),
+    "gpt_hospital": dict(cell=(0, 1), L=(-41, 820), F=(310, 995), R=(497, 902), k=1.0, fp=[2.8, 1.49], height=30,
+                         seed=89, chimney=(215, 533), ruins=("town_tower", "fill"), **SHOW),
+    "gpt_leperhouse": dict(cell=(1, 1), L=(505, 850), F=(778, 987), R=(979, 886), k=1.0, fp=[1.9, 1.4], height=16,
+                           seed=90, chimney=(780, 655), ruins=("town_tower", "fill"), **SHOW),
+    "gpt_bathhouse": dict(cell=(2, 1), L=(968, 864), F=(1274, 1017), R=(1455, 927), k=1.0, fp=[2.1, 1.24],
+                          height=20, seed=91, chimney=(1346, 676), ruins=("town_tower", "fill"), **SHOW),
 }
+STONE = ("town_tower", "fill")
+TIMBER = ("low", "timber")
+GARDEN = ("low", "garden")
+# Batch 1 of the showcase: the trade, crafts and food sheets (white ground, not gridded: regions()).
+TRADE_SETS = {
+    "gpt_inn": dict(cell=0, L=(-50, 327), F=(341, 523), R=(579, 404), k=1.0, fp=[3.3, 2.0], height=30, seed=92,
+                    chimney=(312, 52), ruins=STONE, **SHOW),
+    "gpt_shophouse": dict(cell=1, L=(617, 471), F=(754, 539), R=(976, 428), k=1.0, fp=[1.0, 1.62], height=30,
+                          seed=93, chimney=(894, 135), ruins=STONE, **SHOW),
+    "gpt_guildhall": dict(cell=2, L=(1145, 429), F=(1325, 519), R=(1581, 390), k=1.0, fp=[1.4, 2.0], height=30,
+                          seed=94, chimney=(1382, 59), ruins=STONE, **SHOW),
+    "gpt_markethall": dict(cell=3, L=(51, 740), F=(362, 895), R=(543, 805), k=1.0, fp=[2.4, 1.4], height=20,
+                           seed=95, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_weighhouse": dict(cell=4, L=(647, 799), F=(875, 913), R=(1075, 814), k=1.0, fp=[1.7, 1.49], height=24,
+                           seed=96, chimney=(921, 560), ruins=STONE, **SHOW),
+    "gpt_fishmarket": dict(cell=5, L=(1123, 775), F=(1390, 909), R=(1602, 803), k=1.0, fp=[1.8, 1.43], height=14,
+                           seed=97, chimney=None, ruins=TIMBER, **SHOW),
+}
+CRAFTS_A_SETS = {
+    "gpt_bakery": dict(cell=0, L=(88, 379), F=(324, 498), R=(492, 414), k=1.0, fp=[1.66, 1.17], height=18, seed=98,
+                       chimney=(248, 149), ruins=STONE, **SHOW),
+    "gpt_butcher": dict(cell=1, L=(584, 385), F=(824, 505), R=(993, 420), k=1.0, fp=[1.7, 1.2], height=26, seed=99,
+                        chimney=(781, 112), ruins=STONE, **SHOW),
+    "gpt_brewery": dict(cell=2, L=(1046, 364), F=(1355, 519), R=(1557, 418), k=1.0, fp=[2.32, 1.51], height=24,
+                        seed=100, chimney=(1408, 160), ruins=STONE, **SHOW),
+    # (its chimney is the painting's own: the blockout has none)
+    "gpt_tannery": dict(cell=3, L=(-9, 815), F=(295, 968), R=(531, 850), k=1.0, fp=[1.98, 1.53], height=16,
+                        seed=101, chimney=(335, 612), ruins=STONE, **SHOW),
+    "gpt_dyers": dict(cell=4, L=(571, 787), F=(846, 925), R=(1007, 844), k=1.0, fp=[2.2, 1.29], height=20, seed=102,
+                      chimney=(828, 612), ruins=STONE, **SHOW),
+    "gpt_weavers": dict(cell=5, L=(1093, 807), F=(1365, 943), R=(1518, 866), k=1.0, fp=[2.2, 1.24], height=30,
+                        seed=103, chimney=(1339, 562), ruins=STONE, **SHOW),
+}
+CRAFTS_B_SETS = {
+    "gpt_potter": dict(cell=0, L=(62, 312), F=(344, 453), R=(522, 364), k=1.0, fp=[1.76, 1.11], height=16, seed=104,
+                       chimney=(232, 80), ruins=STONE, **SHOW),
+    "gpt_cooper": dict(cell=1, L=(610, 327), F=(863, 454), R=(1086, 342), k=1.0, fp=[1.52, 1.34], height=14,
+                       seed=105, chimney=(913, 128), ruins=TIMBER, **SHOW),
+    "gpt_masonyard": dict(cell=2, L=(1143, 310), F=(1448, 463), R=(1660, 357), k=1.0, fp=[1.72, 1.19], height=16,
+                          seed=106, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_lumberyard": dict(cell=3, L=(7, 754), F=(319, 911), R=(528, 806), k=1.0, fp=[2.05, 1.37], height=16,
+                           seed=107, chimney=None, ruins=TIMBER, **SHOW),
+    "gpt_charcoal": dict(cell=4, L=(596, 784), F=(874, 923), R=(1076, 822), k=1.0, fp=[1.92, 1.39], height=18,
+                         seed=108, chimney=(791, 681), ruins=TIMBER, **SHOW),
+    "gpt_glassworks": dict(cell=5, L=(1167, 777), F=(1496, 942), R=(1666, 856), k=1.0, fp=[2.47, 1.28], height=22,
+                           seed=109, chimney=(1537, 579), ruins=STONE, **SHOW),
+}
+FOOD_SETS = {
+    # (its chimney is the painting's own: the blockout has none)
+    "gpt_granary": dict(cell=0, L=(77, 439), F=(268, 534), R=(456, 441), k=1.0, fp=[1.21, 1.19], height=26,
+                        seed=110, chimney=(281, 150), ruins=STONE, **SHOW),
+    "gpt_warehouse": dict(cell=1, L=(531, 413), F=(803, 549), R=(1097, 402), k=1.0, fp=[1.9, 2.05], height=40,
+                          seed=111, chimney=(853, 7), ruins=STONE, **SHOW),
+    "gpt_orchard": dict(cell=2, L=(1122, 467), F=(1382, 598), R=(1642, 467), k=1.0, fp=[1.5, 1.5], height=25,
+                        seed=112, chimney=None, ruins=GARDEN, **SHOW),
+    "gpt_vineyard": dict(cell=3, L=(27, 762), F=(375, 936), R=(579, 833), k=1.0, fp=[1.83, 1.08], height=14,
+                         seed=113, chimney=None, ruins=GARDEN, **SHOW),
+    "gpt_beehives": dict(cell=4, L=(642, 784), F=(959, 942), R=(1038, 902), k=1.0, fp=[1.6, 0.4], height=18,
+                         seed=114, chimney=None, ruins=GARDEN, **SHOW),
+    "gpt_dovecote": dict(cell=5, L=(1240, 878), F=(1380, 948), R=(1525, 876), k=1.0, fp=[0.88, 0.91], height=30,
+                         seed=115, chimney=None, ruins=STONE, **SHOW),
+}
+# Their painted smoke ("all": every pixel in the box goes, it is above the vent; "clear": the pale grey only, where it
+# crosses a roof; "flue": darkened inside the vent): the bakery's oven, the brewery's kiln cowl, the charcoal kiln's
+# vent and the glassworks' cone.
+CRAFTS_A_SMOKE = [(418, 192, 480, 266, "all"), (410, 266, 438, 276, "flue"),
+                  (1258, 8, 1322, 40, "all"), (1258, 40, 1322, 72, "clear")]
+CRAFTS_B_SMOKE = [(775, 558, 875, 668, "all"), (785, 668, 815, 692, "flue"),
+                  (1505, 462, 1612, 557, "all"), (1510, 557, 1562, 580, "flue")]
+TRADE_SMOKE = []
+# (not smoke: the white ground seen between the orchard's four crowns, which the border flood cannot reach)
+FOOD_SMOKE = [(1310, 315, 1385, 385, "white")]
 # Its painted smoke (x0, y0, x1, y1 sheet px; "clear" above a chimney, "flue" inside it): the monastery's chimney,
 # the bathhouse's tall chimney (and the wisp beside it) and its left roof vent.
 FAITH_SMOKE = [(812, 120, 848, 157, "clear"), (812, 157, 848, 168, "flue"),
@@ -132,6 +199,10 @@ FAITH_SMOKE = [(812, 120, 848, 157, "clear"), (812, 157, 848, 168, "flue"),
 SHEETS = {
     "defence": dict(src="defence_sheet_v1.webp", grid=(3, 2), smoke=[], sets=DEFENCE_SETS),
     "faith": dict(src="faith_sheet_v1.webp", grid=(3, 2), smoke=FAITH_SMOKE, sets=FAITH_SETS),
+    "trade": dict(src="trade_sheet_v1.png", grid=None, smoke=TRADE_SMOKE, sets=TRADE_SETS),
+    "crafts_a": dict(src="crafts_a_sheet_v1.png", grid=None, smoke=CRAFTS_A_SMOKE, sets=CRAFTS_A_SETS),
+    "crafts_b": dict(src="crafts_b_sheet_v1.png", grid=None, smoke=CRAFTS_B_SMOKE, sets=CRAFTS_B_SETS),
+    "food": dict(src="food_sheet_v1.png", grid=None, smoke=FOOD_SMOKE, sets=FOOD_SETS),
 }
 # name -> its set's spec, "sheet" (its SHEETS key) added
 SETS = {n: dict(v, sheet=k) for k, sh in SHEETS.items() for n, v in sh["sets"].items()}
@@ -186,7 +257,12 @@ def strip_smoke(a, boxes):
     for x0, y0, x1, y1, mode in boxes:
         sub = a[y0:y1, x0:x1]
         m = is_smoke(sub[..., :3]) & (sub[..., 3] > 0)
-        if mode == "clear":
+        if mode == "all":
+            sub[..., 3] = 0
+        elif mode == "white":           # sky seen through a gap the border flood cannot reach
+            rgb = sub[..., :3].astype(int)
+            sub[(rgb.min(-1) > 150) & (rgb.max(-1) - rgb.min(-1) < 40), 3] = 0
+        elif mode == "clear":
             sub[m, 3] = 0
         else:
             sub[m, :3] = np.round(np.array(CHAR) * 0.6).astype(np.uint8)
@@ -207,16 +283,49 @@ def sheet(key):
     return _SHEETS[key]
 
 
+def regions(key):
+    """A sheet that is not cleanly gridded (grid None): its six buildings, each a list of indices into its shapes, in
+    blockout order. The six biggest shapes are the buildings (each painting is one connected shape: the orchard's
+    crowns overlap, the vineyard's rows share their posts); every other shape (a prop, a bird, a bee) goes to the
+    building whose box is nearest. Blockout rows are bottom-aligned: the three with the highest bottoms are the top
+    row; each row runs left to right."""
+    if ("regions", key) in _COMPS:
+        return _COMPS[("regions", key)]
+    comps = _COMPS[key]
+    box = [(c[1].min(), c[0].min(), c[1].max(), c[0].max()) for c in comps]
+
+    def dist(p, q):
+        dx = max(0, max(p[0], q[0]) - min(p[2], q[2]))
+        dy = max(0, max(p[1], q[1]) - min(p[3], q[3]))
+        return dx * dx + dy * dy
+
+    by_size = sorted(range(len(comps)), key=lambda i: -len(comps[i][0]))
+    six = by_size[:6]
+    assert len(comps[six[5]][0]) > 20000 and (len(comps) == 6 or len(comps[by_size[6]][0]) < 5000),         "not six buildings on %s" % key
+    groups = {k: [k] for k in six}
+    for i in by_size[6:]:
+        groups[min(six, key=lambda k: dist(box[i], box[k]))].append(i)
+    order = sorted(six, key=lambda k: box[k][3])
+    rows = [sorted(order[:3], key=lambda k: box[k][0]), sorted(order[3:], key=lambda k: box[k][0])]
+    out = [sorted(groups[k]) for r in rows for k in r]
+    _COMPS[("regions", key)] = out
+    return out
+
+
 def cut(cell, key):
-    """The cell's building on its sheet's full canvas: its largest shape and the detached props in its cell."""
+    """The cell's building on its sheet's full canvas: its largest shape and the detached props in its cell. `cell` is
+    (col, row) of a gridded sheet, or the index into regions() of one that is not."""
     a = sheet(key)
     h, w = a.shape[:2]
     grid = SHEETS[key]["grid"]
-    cw, ch = w / grid[0], h / grid[1]
     if key not in _COMPS:
         _COMPS[key] = _label(a[..., 3] > 0)
-    # a shape belongs to the cell its middle lies in (the watchtower's flag pokes into the row above)
-    mine = [c for c in _COMPS[key] if int(c[1].mean() // cw) == cell[0] and int(c[0].mean() // ch) == cell[1]]
+    if grid is None:
+        mine = [_COMPS[key][i] for i in regions(key)[cell]]
+    else:
+        cw, ch = w / grid[0], h / grid[1]
+        # a shape belongs to the cell its middle lies in (the watchtower's flag pokes into the row above)
+        mine = [c for c in _COMPS[key] if int(c[1].mean() // cw) == cell[0] and int(c[0].mean() // ch) == cell[1]]
     big = max(mine, key=lambda c: len(c[0]))
     keep = np.zeros((h, w), bool)
     for ys, xs in mine:
@@ -364,9 +473,11 @@ DAMAGE = {
 }
 
 
-def damaged(name, c, tf):
-    d = DAMAGE[name]
+def damaged(name, c, tf, A=None):
     s = SETS[name]
+    if name not in DAMAGE:
+        return auto_damage(c, A, s["fp"])
+    d = DAMAGE[name]
     holes = []
     for (hx, hy, rx, ry, sl) in d["holes"]:
         p = tf((hx, hy))
@@ -383,6 +494,53 @@ def damaged(name, c, tf):
     if name == "gpt_watchtower":
         out = watchtower_damage(out, tf)
     del s
+    return out
+
+
+def auto_damage(c, A, fp):
+    """The showcase sets' damage, placed from the sprite itself (the same three marks as DAMAGE's, no door): two holes
+    through the roof tiles, a third and two thirds of the way across the roof, at the median height of the tiles in
+    that column (sized to the plot), and a scorch up the wall column with the most plain wall under the roof, in the
+    left half of the sprite (from its lowest pixel up 60% of its wall). A sprite without roof tiles (the orchard, the
+    vineyard) gets the scorch twice, its crowns or vines charred instead."""
+    out = c.copy()
+    al = c[..., 3] > 0
+    roof = roof_mask(c)
+    W, D = fp
+    xs_al = np.nonzero(al.any(0))[0]
+    sx0, sx1 = xs_al.min(), xs_al.max()
+    if roof.sum() > 150:
+        ys, xs = np.nonzero(roof)
+        x0, x1 = xs.min(), xs.max()
+        holes = []
+        for f, r, sl in ((0.33, 1.0, 1), (0.68, 0.75, -1)):
+            x = int(round(x0 + f * (x1 - x0)))
+            near = ys[np.abs(xs - x) <= 1]
+            if near.size < 6:
+                continue
+            rx = float(np.clip(2.0 * (W + D), 3.5, 7.5)) * r
+            holes.append((x, float(np.median(near)), rx, rx * 0.58, sl))
+        out = roof_holes(out, holes, roof)
+    best, bx = -1, None
+    for x in range(int(sx0 + 0.15 * (sx1 - sx0)), int(sx0 + 0.5 * (sx1 - sx0)) + 1):
+        col = al[:, x] & ~roof[:, x]
+        ys_c = np.nonzero(col)[0]
+        if ys_c.size == 0:
+            continue
+        rs = np.nonzero(roof[:, x])[0]
+        top = rs.max() + 1 if rs.size else ys_c.min()
+        n = int((col[top:]).sum())
+        if n > best:
+            best, bx = n, (x, top, ys_c.max())
+    if bx is not None and best > 6:
+        x, top, bot = bx
+        half = int(np.clip(2 + 1.5 * min(W, D), 3, 6))
+        out = scorch(out, x - half, x + half, bot - 0.6 * (bot - top), bot)
+        if roof.sum() <= 150:          # no tiles to hole: a second scorch across the middle
+            xm = int((sx0 + sx1) / 2) + half * 2
+            ys_m = np.nonzero(al[:, xm])[0]
+            if ys_m.size:
+                out = scorch(out, xm - half, xm + half, ys_m.min() + 0.3 * (ys_m.max() - ys_m.min()), ys_m.max())
     return out
 
 
@@ -463,7 +621,9 @@ def filled_ruins(src_name, fp, A, shape):
     a, As = scaled_ruins(src_name, short / S)
     # offsets of the copies' front corners from the plot's: along the W edge (up-left) or the D edge (up-right)
     step = np.array([-32.0, -16.0]) if W >= D else np.array([32.0, -16.0])
-    offs = [abs(W - D), 0.0] if abs(W - D) > 1e-6 else [0.0]
+    long_ = max(W, D)
+    n = int(np.ceil(long_ / short - 1e-6))
+    offs = list(np.linspace(long_ - short, 0.0, n)) if n > 1 else [0.0]
     out = np.zeros(shape)
     ys, xs = np.nonzero(a[..., 3] > 0)
     box = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
@@ -474,6 +634,61 @@ def filled_ruins(src_name, fp, A, shape):
         on = box[..., 3] > 0
         region = out[oy:oy + h, ox:ox + w]
         region[on] = box[on]
+    return out
+
+
+# A clean low ruin's colours per family: its cleared bed (two tones in courses), the burnt posts or stakes.
+LOW = {"timber": dict(bed=(104, 84, 62), bed2=(90, 72, 54), post=(84, 60, 42), tall=(3, 8), step=0.55),
+       "garden": dict(bed=(98, 88, 58), bed2=(84, 76, 50), post=(92, 70, 46), tall=(2, 5), step=0.45)}
+
+
+def low_ruins(family, fp, A, shape):
+    """A clean low ruin for an open structure (a market hall, a timber yard, a garden): its plot cleared to a bed of
+    earth in courses, burnt stumps of its posts (or stakes) round the bed's edge, short and charred on top, and two
+    fallen beams across it. Drawn from the plot alone, flat colours, no noise: the style match pass outlines it."""
+    c = LOW[family]
+    out = np.zeros(shape)
+    W, D = fp
+    A = np.array(A, float)
+    eu, ev = np.array([-32.0, -16.0]), np.array([32.0, -16.0])
+
+    def p(u, v):
+        return A + u * eu + v * ev
+    i = 0.12
+    im = Image.new("RGBA", (shape[1], shape[0]), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(im)
+    bed = [tuple(p(i, i)), tuple(p(W - i, i)), tuple(p(W - i, D - i)), tuple(p(i, D - i))]
+    dr.polygon(bed, fill=c["bed"] + (255,))
+    a = np.array(im).astype(float)
+    ys, xs = np.nonzero(a[..., 3] > 0)
+    stripe = ((ys + (xs // 2)) // 3) % 2 == 0        # courses along the left face's slope
+    a[ys[stripe], xs[stripe], :3] = c["bed2"]
+    out[a[..., 3] > 0] = a[a[..., 3] > 0]
+    # two fallen beams lying across the bed
+    for (u0, v0, u1, v1) in ((0.25, 0.3, 0.8, 0.55), (0.55, 0.2, 0.35, 0.8)):
+        q0, q1 = p(u0 * W, v0 * D), p(u1 * W, v1 * D)
+        n = int(max(abs(q1 - q0))) + 1
+        for t in np.linspace(0, 1, n):
+            x, y = np.round(q0 + (q1 - q0) * t).astype(int)
+            out[y, x] = list(np.array(TIMBER_DK) * 0.85) + [255]
+            out[y + 1, x] = list(np.array(CHAR) * 0.9) + [255]
+    # the stumps round the edge, back ones first
+    posts = []
+    for (ua, va, ub, vb) in ((i, i, W - i, i), (W - i, i, W - i, D - i), (i, D - i, W - i, D - i), (i, i, i, D - i)):
+        L = abs(ub - ua) + abs(vb - va)
+        n = max(2, int(round(L / c["step"])) + 1)
+        for t in np.linspace(0, 1, n):
+            posts.append((ua + (ub - ua) * t, va + (vb - va) * t))
+    posts = sorted(set((round(u, 3), round(v, 3)) for u, v in posts), key=lambda q: -(q[0] + q[1]))
+    lo, hi = c["tall"]
+    for k, (u, v) in enumerate(posts):
+        x, y = np.round(p(u, v)).astype(int)
+        h = lo + (k * 7 + 3) % (hi - lo + 1)
+        for dy in range(h):
+            out[y - dy, x] = list(np.array(c["post"]) * 1.15) + [255]
+            out[y - dy, x + 1] = list(np.array(c["post"]) * 0.8) + [255]
+        out[y - h, x:x + 2] = list(np.array(CHAR) * 0.8) + [255]
+        out[y - h + 1, x:x + 2] = list(np.array(CHAR)) + [255]
     return out
 
 
@@ -553,9 +768,11 @@ def make(name, out_dir, debug=None):
     spec = SETS[name]
     native, A, tf, info = fit(spec)
     native, A, tf = pad_to(native, A, tf)
-    dam = damaged(name, native, tf)
+    dam = damaged(name, native, tf, A)
     st = {"intact": native, "damaged": dam}
-    if spec["ruins"]:
+    if spec["ruins"] and spec["ruins"][0] == "low":
+        st["ruins"] = low_ruins(spec["ruins"][1], spec["fp"], A, native.shape)
+    elif spec["ruins"]:
         st["ruins"] = borrowed_ruins(spec["ruins"][0], spec["ruins"][1], spec["fp"], A, native.shape)
     else:
         st["ruins"] = watchtower_ruins(native, tf, A, spec["fp"])
@@ -570,8 +787,10 @@ def make(name, out_dir, debug=None):
     # the final step: the style match pass (style_match.py), its knobs tuned on the intact; reused ruins are already
     # in the game's style, so they get only its palette lock, speck clean and outline
     knobs, st_after = style_match.tune(crop["intact"])
-    intact, lit = style_match.match(crop["intact"], knobs)
-    done = [intact, style_match.match(crop["damaged"], knobs, ref=crop["intact"])[0],
+    # a garden has no windows: its fruit and straw would pass for lamp light
+    glow = spec["ruins"] != GARDEN
+    intact, lit = style_match.match(crop["intact"], knobs, glow=glow)
+    done = [intact, style_match.match(crop["damaged"], knobs, ref=crop["intact"], glow=glow)[0],
             style_match.match(crop["ruins"], knobs, light=bool(spec["ruins"]), glow=False)[0]]
     d = out_dir / name
     d.mkdir(parents=True, exist_ok=True)

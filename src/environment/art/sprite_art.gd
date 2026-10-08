@@ -159,6 +159,10 @@ static func name_for(s: Structure) -> String:
 		var proof := GptProof.set_for(s)
 		if proof != "" and manifest().has(proof):
 			return proof
+	# A ChatGPT building on one of a city's plots (the capital's, CapitalPlots: role "gpt") draws the set it is tagged
+	# with. Aldermere has none.
+	if s.role == CapitalPlots.ROLE:
+		return _have(String(s.art_tag)) if String(s.art_tag).begins_with("gpt_") else ""
 	match s.kind:
 		Structure.Kind.HOUSE:
 			if s.role == &"farm":

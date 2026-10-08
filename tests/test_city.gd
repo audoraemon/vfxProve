@@ -127,7 +127,21 @@ static func _leak(t) -> void:
 	var shrubs := TownFloor.shrub_spots().duplicate(true)
 	City.use(&"capital")
 	t.check(City.current().id() == &"capital", "City.use(&\"capital\") makes the capital the active city")
-	t.check(TownFloor.shrub_spots() != shrubs, "the capital has no shrubs of Aldermere's")
+	# The capital's shrubs are its own: none stands where one of Aldermere's does, and each lies in one of its blocks.
+	var capital_shrubs := TownFloor.shrub_spots()
+	var shared := 0
+	var at := {}
+	for s: Dictionary in shrubs:
+		at[s.at] = true
+	var in_blocks := true
+	for s: Dictionary in capital_shrubs:
+		shared += 1 if at.has(s.at) else 0
+		var any := false
+		for d: Rect2 in City.current().districts():
+			any = any or d.grow(0.5).has_point(s.at)
+		in_blocks = in_blocks and any
+	t.check(not capital_shrubs.is_empty() and shared == 0, "the capital has none of Aldermere's shrubs (%d shared)" % shared)
+	t.check(in_blocks, "every capital shrub lies in one of the capital's house blocks")
 	City.use(&"aldermere")
 	t.check(City.current().structures() == fresh, "Aldermere rebuilds identically after another city")
 	t.check(not shrubs.is_empty() and TownFloor.shrub_spots() == shrubs, "Aldermere's shrubs come back after the capital")
@@ -145,12 +159,12 @@ static func _no_hardcoded(t) -> void:
 		t.check(n == 0, "%s reads no TownLayout constants (found %d)" % [p, n])
 
 
-## The capital (CapitalCity, tests/test_capital.gd) is made by City.by_id; until its buildings land it has none.
+## The capital (CapitalCity, tests/test_capital.gd and tests/test_capital_plots.gd) is made by City.by_id.
 static func _capital_stub(t) -> void:
 	var c := City.by_id(&"capital")
 	t.check(c is CapitalCity and c.id() == &"capital", "the capital's id")
-	t.check(c.houses().is_empty() and c.taverns().is_empty() and c.pastures().is_empty() and c.market_piles().is_empty(),
-		"the capital has no buildings yet")
+	t.check(not c.houses().is_empty() and not c.taverns().is_empty(), "the capital has its houses and taverns")
+	t.check(c.pastures().is_empty() and c.market_piles().is_empty(), "the capital has no pastures or market piles yet")
 	t.check(c.ship_at() == Vector2.INF, "the capital has no ship")
 	t.check(c.landmark(&"royal_keep").has_point(c.citadel_origin()), "the capital's Citadel stands in the Royal Keep")
 	var a := c.floor_areas()

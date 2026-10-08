@@ -288,8 +288,9 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 				_add(out, Decor.Kind.REEDS, g)
 			x += 0.32
 			i += 1
+	# (only where the city has a west branch: the capital has none, and has_area() keeps its reeds off the origin)
 	var y := west.position.y
-	while y < river.position.y:
+	while west.has_area() and y < river.position.y:
 		var g := Vector2(west.end.x + 0.3 + (_h(i, 51) - 0.5) * 0.12, y + _h(i, 50) * 0.3)
 		if _h(i, 52) < 0.9 and _outside_ok(g, solid, 0.25):
 			_add(out, Decor.Kind.REEDS, g)

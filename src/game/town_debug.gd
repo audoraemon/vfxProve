@@ -32,6 +32,12 @@ const TOWN_SHOTS := [
 	["capital_overview.png", Vector2(0, 0), 0.17],
 	# Its east stone bridge and the footbridge, between the two wall rings.
 	["capital_bridges.png", Vector2(9, 8), 0.6],
+	# The old town's ring (the Keep, the noble, civic and guild quarters, the Great Market, the old town houses), the
+	# harbour district and its quay, and the new town's ring south of the river (crafts, new town, tanners, poor and road
+	# quarters).
+	["capital_old_town.png", Vector2(-3, -13), 0.5],
+	["capital_harbour.png", Vector2(28, -9), 0.75],
+	["capital_south.png", Vector2(-4, 23), 0.5],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],

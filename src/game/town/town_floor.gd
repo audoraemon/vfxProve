@@ -95,8 +95,10 @@ class RiverGlints extends Node2D:
 			var y := r.position.y + 0.15 + float(h % 61) / 61.0 * (r.size.y - 0.3)
 			var x := r.position.x - 8.0 + fposmod(float(h) * 0.53 + _time * (0.5 + float(h % 5) * 0.1), r.size.x + 16.0)
 			draw_rect(Rect2(x, y, 0.3 + float(h % 3) * 0.12, 0.04), Color(0.82, 0.94, 1.0, 0.6))
-		# The west branch flows south, down to the main river.
+		# The west branch flows south, down to the main river (a city without one, the capital, has none to draw).
 		var w := City.current().landmark(&"river_west")
+		if not w.has_area():
+			return
 		for i in 60:
 			var h := (i * 6151 + 29) % 997
 			var x := w.position.x + 0.15 + float(h % 43) / 43.0 * (w.size.x - 0.3)

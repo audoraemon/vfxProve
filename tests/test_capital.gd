@@ -222,8 +222,9 @@ static func _builds(t) -> void:
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
-	t.check(env.structures().size() == City.current().structures().size() + town.citadel.parts.size(),
-		"every capital structure is built, and the Citadel")
+	t.check(env.structures().size() == City.current().structures().size() + town.citadel.parts.size()
+		+ City.current().fountains().size() + City.current().wells().size(),
+		"every capital structure is built, and the Citadel, the fountains and the wells")
 	var keep := City.current().landmark(&"royal_keep")
 	var on_hill := true
 	for s: Structure in town.citadel.parts:

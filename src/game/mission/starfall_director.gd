@@ -47,9 +47,10 @@ func _reserved_for(next: WarningDirector) -> Array[Person]:
 	for w in stars:
 		if w == next or w.rules == null or w.warning_dead:
 			continue
-		for p: Person in [w.watchman, w.messenger]:
+		# Variants: a runner killed on an earlier star may be freed by now (_alive() rules the same way).
+		for p: Variant in [w.watchman, w.messenger]:
 			if is_instance_valid(p) and not out.has(p):
-				out.append(p)
+				out.append(p as Person)
 	return out
 
 

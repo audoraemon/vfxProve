@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_bell(t)
 	_forced(t)
 	_runners(t)
+	_runners_freed(t)
 	_single(t)
 
 
@@ -162,6 +163,26 @@ static func _runners(t) -> void:
 	(s.field as EnemyField).kill(second.messenger, &"doom")
 	_run(s, DT)
 	t.check(second.warning_dead and not first.warning_dead and d.stopped() == 1, "one kill stops only one warning")
+	_done(s)
+
+
+## A runner killed on an earlier star and freed after its fade is simply skipped when the next star is set up (and the log
+## stays clean: no freed body is put in a typed array).
+static func _runners_freed(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	d._clock = 7.95
+	_run(s, 0.1)
+	var first := d.stars[0]
+	var gone := first.watchman
+	t.check(first.rules != null and is_instance_valid(gone), "star 0 is set up with a watchman")
+	(s.crowd as Crowd).citizens.erase(gone)
+	gone.free()
+	t.check(not is_instance_valid(first.watchman), "its watchman is freed (a fade ended)")
+	d._clock = 87.9
+	_run(s, 0.2)
+	var second := d.stars[1]
+	t.check(second.rules != null and is_instance_valid(second.watchman), "star 1 is set up all the same, with a watchman of its own")
 	_done(s)
 
 

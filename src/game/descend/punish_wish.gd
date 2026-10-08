@@ -13,11 +13,10 @@ var _seen := false
 
 
 func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:
-	if not super(crowd, town, rng, taken):
+	# Two people or none: checked before either is taken, so a failed choose leaves nobody in `taken`.
+	if Wish.lay(crowd, taken).size() < 2 or not super(crowd, town, rng, taken):
 		return false
 	target = Wish.pick_lay(crowd, rng, taken)
-	if target == null:
-		return false
 	crowd._field.enemy_killed.connect(_on_killed)
 	return true
 

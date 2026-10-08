@@ -37,6 +37,11 @@ static func run(t) -> void:
 	t.check(Game.next_screen("ending:title") == Game.Screen.TITLE, "and the ending leads to the title")
 	t.check(Game.next_screen("title:ending") == Game.Screen.ENDING, "an ending not yet seen opens from the title (v0.10 M5)")
 
+	# The tier board (v0.11 M1): the Upgrades from the board's header and from the results, and back to the board.
+	t.check(Game.next_screen("board:upgrades") == Game.Screen.UPGRADES, "the board's Upgrades button opens the Upgrades")
+	t.check(Game.next_screen("results:upgrades") == Game.Screen.UPGRADES, "and so do the results'")
+	t.check(Game.next_screen("upgrades:back") == Game.Screen.BOARD, "whose Back is the board")
+
 	# A --show sample never writes the player's save (v0.10 M5 final review): --show=ending, campaign-choice and the
 	# rest build a state of their own, and the first key pressed on one -- Enter on the ending, MANIFEST after a card --
 	# used to write it over the player's real campaign. Every sample writes to a throwaway file instead; an ordinary
@@ -60,8 +65,8 @@ static func run(t) -> void:
 		var to: int = Game.FLOW[action]
 		t.check(to >= 0 and to < Game.Screen.size(), "%s leads to a real screen (%d)" % [action, to])
 		reachable[to] = true
-	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 8,
-		"all eight screens are reachable (%d)" % reachable.size())
+	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 9,
+		"all nine screens are reachable, the Upgrades too (v0.11 M1) (%d)" % reachable.size())
 
 	# The board's cards sit side by side inside the screen, above its hint, without touching (v0.08).
 	for count in [1, 2, 3]:

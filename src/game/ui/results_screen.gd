@@ -6,7 +6,8 @@ extends Node
 ## A night (v0.09: a result with acts) shows each act's mark and bonuses, the path and the night's total.
 ## It is drawn over the mission's frozen ruins, which Game keeps up underneath it.
 
-## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08).
+## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08); a board night's
+## also "upgrades" (v0.11 M1).
 signal action(name: String)
 
 const PANEL := Rect2(36.0, 20.0, 568.0, 320.0)
@@ -27,12 +28,20 @@ const NOBODY := "-"
 ## The baseline of a campaign night's line, over the button.
 const CAMPAIGN_Y := 304.0
 
+## A board night's table (v0.11 M1): its labels' left edge, its values' and marks' right edge, the first row and the step.
+const DESCEND_L := 120.0
+const DESCEND_R := 520.0
+const DESCEND_TOP := 112.0
+const DESCEND_ROW := 18.0
+
 var _result := {}
 var _ui: Control
 var _menu: Menu
 var _hover := ""
 ## A campaign night's results (v0.10): one Continue, and a line on what the night did to the god's power.
 var campaign := false
+## A board night's results (v0.11 M1, spec §6): Board, Again and Upgrades, and the night's rows and lines.
+var descend := false
 
 
 ## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
@@ -87,8 +96,11 @@ func setup(result: Dictionary) -> ResultsScreen:
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
 	campaign = result.has("campaign")
+	descend = result.has("descend") and not campaign
 	if campaign:
 		_menu = Menu.row(["next"], ["Continue"], 320.0, PANEL.end.y - 28.0, 120.0)
+	elif descend:
+		_menu = Menu.row(["missions", "replay", "upgrades"], ["Board", "Again", "Upgrades"], 320.0, PANEL.end.y - 28.0, 120.0)
 	else:
 		_menu = Menu.row(["replay", "change", "missions"], ["Replay", "Change powers", "Missions"], 320.0,
 			PANEL.end.y - 28.0, 120.0)
@@ -131,6 +143,10 @@ func _draw_ui() -> void:
 	var title := title_for(won, String(_result.get("reason", "")))
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 60.0), title,
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD if won else UiTheme.COL_BAD)
+	if descend:
+		_draw_descend()
+		_draw_menu()
+		return
 	if not _result.has("score"):
 		_draw_unscored()
 		_draw_menu()
@@ -267,6 +283,87 @@ static func campaign_line(c: Dictionary) -> String:
 	if bool(c.get("won", false)):
 		return "The god grows: +%d DP, %d DP now." % [int(c.get("dp_gain", 0)), int(c.get("dp", 0))]
 	return "Halcyon bites: %d DP now. Bites %d / %d." % [int(c.get("dp", 0)), int(c.get("bites", 0)), CampaignDef.MAX_BITES]
+
+
+## A board night's rows (v0.11 M1, spec §6) as [label, value, mark, note]:
+## - the main objective: its believers and a tick, or a cross;
+## - each wish granted (its believers, a tick), lost (struck through, the reason in `note`), failed (a cross, unanswered) or
+##   never answered ("open").
+static func descend_rows(result: Dictionary) -> Array:
+	var d: Dictionary = result.get("descend", {})
+	var goal: Dictionary = result.get("goal", {})
+	var main := bool(d.get("main", false))
+	var rows := [[String(goal.get("label", "")), ("+%d" % int(d.get("main_reward", 0))) if main else "", "ok" if main else "x", ""]]
+	for w: Dictionary in d.get("wishes", []):
+		var text := String(w.get("text", ""))
+		var state := String(w.get("state", "open"))
+		if state == "granted" and bool(w.get("lost", false)):
+			rows.append([text, "", "lost", String(d.get("lost_text", ""))])
+		elif state == "granted":
+			rows.append([text, "+%d" % int(w.get("reward", 0)), "ok", ""])
+		elif state == "failed":
+			rows.append([text, "", "x", Wish.UNANSWERED])
+		else:
+			rows.append([text, "", "open", ""])
+	return rows
+
+
+## A board night's lines under its rows (v0.11 M1, spec §6): the believers banked and the new total, the night, the tier's
+## progress, and each best beaten.
+static func summary_lines(result: Dictionary) -> PackedStringArray:
+	var d: Dictionary = result.get("descend", {})
+	var bank: Dictionary = d.get("bank", {})
+	var out := PackedStringArray()
+	out.append("Believers +%d, %d now" % [int(bank.get("believers", d.get("earned", 0))), int(bank.get("total", 0))])
+	out.append("Night %d" % int(bank.get("night", 0)))
+	if String(bank.get("progress", "")) != "":
+		out.append(String(bank.get("progress", "")))
+	for b in bank.get("bests", PackedStringArray()):
+		out.append("New best: " + String(b))
+	return out
+
+
+## A board night (v0.11 M1, spec §6): the mission and its tier under the title, its rows, a rule, then its lines.
+func _draw_descend() -> void:
+	var d: Dictionary = _result.get("descend", {})
+	var def := TierBook.board(String(_result.get("mission", "")))
+	var called := "%s  -  %s" % [def.name if def != null else String(_result.get("mission", "")),
+		TierBook.tier_name(int(d.get("tier", 1)))]
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(called, UiTheme.SIZE_BODY) * 0.5), 84.0), called, UiTheme.SIZE_BODY,
+		UiTheme.COL_DIM)
+	var y := DESCEND_TOP
+	for row: Array in descend_rows(_result):
+		_descend_row(y, row)
+		y += DESCEND_ROW
+	_ui.draw_line(Vector2(DESCEND_L, y - 10.0), Vector2(DESCEND_R, y - 10.0), UiTheme.COL_GOLD_DARK, -1.0)
+	y += 4.0
+	var lines := summary_lines(_result)
+	for i in lines.size():
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[i], UiTheme.SIZE_BODY) * 0.5), y), lines[i], UiTheme.SIZE_BODY,
+			UiTheme.COL_GOLD if i == 0 or lines[i].begins_with("New best") else UiTheme.COL_TEXT)
+		y += UiTheme.LINE_BODY
+
+
+## One board row, `y` its baseline: the label (struck through when lost, dim when unanswered), its note in red before the
+## right edge, then its value or its mark at the right edge.
+func _descend_row(y: float, row: Array) -> void:
+	var label := String(row[0])
+	var value := String(row[1])
+	var mark := String(row[2])
+	var note := String(row[3])
+	var dim := mark == "lost" or mark == "open"
+	UiTheme.text(_ui, Vector2(DESCEND_L, y), label, UiTheme.SIZE_BODY, UiTheme.COL_DIM if dim else UiTheme.COL_TEXT)
+	if mark == "lost":
+		_ui.draw_line(Vector2(DESCEND_L, y - 5.0), Vector2(DESCEND_L + UiTheme.width(label, UiTheme.SIZE_BODY), y - 5.0),
+			UiTheme.COL_DIM, -1.0)
+	if note != "":
+		UiTheme.text(_ui, Vector2(DESCEND_R - 12.0 - UiTheme.width(note, UiTheme.SIZE_SMALL), y), note, UiTheme.SIZE_SMALL,
+			UiTheme.COL_BAD)
+	if value != "":
+		UiTheme.text(_ui, Vector2(DESCEND_R - UiTheme.width(value, UiTheme.SIZE_BODY) - (12.0 if mark == "ok" else 0.0), y),
+			value, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
+	if mark == "ok" or mark == "x":
+		UiTheme.mark(_ui, Vector2(DESCEND_R - 7.0, y - 8.0), mark == "ok")
 
 
 ## The buttons, and over them a campaign night's line.

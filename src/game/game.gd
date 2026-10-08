@@ -5,7 +5,7 @@ extends Node
 ## string, and FLOW says where that leads. Keeping the flow as data is what makes it provable without
 ## building a single screen.
 
-enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING}
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES}
 
 ## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
 ## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
@@ -42,6 +42,10 @@ const FLOW := {
 	"ending:title": Screen.TITLE,
 	# An ending not yet seen (v0.10 M5: the game quit on the last night's Results) opens from the title's Campaign.
 	"title:ending": Screen.ENDING,
+	# The tier board (v0.11 M1): the Upgrades, from the board's header and from a board night's results; back to the board.
+	"board:upgrades": Screen.UPGRADES,
+	"results:upgrades": Screen.UPGRADES,
+	"upgrades:back": Screen.BOARD,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -412,10 +416,17 @@ func go_to(to: int) -> void:
 			end.setup(save.campaign.ending, save.campaign.ending_fragment(), EndingScreen.summary_text(save.campaign))
 			end.action.connect(_on_ending_action)
 			_screen_node = end
+		Screen.UPGRADES:
+			var up := UpgradesScreen.new()
+			up.name = "Upgrades"
+			add_child(up)
+			up.setup(save.descend)
+			up.action.connect(_on_upgrades_action)
+			_screen_node = up
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
-		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING:
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES:
 			Music.play(&"theme")
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
@@ -561,6 +572,14 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 		# best results and drafted loadouts it must not touch.
 		result["campaign"] = save.campaign.record(mission_id, result)
 		result["best"] = false
+	elif result.has("descend"):
+		# A board night (v0.11 M1, spec §3.3, §6): banked on the tier board -- the night counted, its believers added, its
+		# mission cleared and its bests kept. record() still runs so the title's best score and rank keep updating, but
+		# its NEW BEST is not shown: the board's results have their own bests (controller ruling, Task 11).
+		(result.descend as Dictionary)["bank"] = save.descend.bank(mission_id, result.descend)
+		save.record(mission_id, result)
+		result["best"] = false
+		save.remember_loadout(mission_id, loadout)
 	else:
 		result["best"] = save.record(mission_id, result)
 		save.remember_loadout(mission_id, loadout)
@@ -619,6 +638,14 @@ func _on_ending_action(what: String) -> void:
 		save.campaign.ending_seen = true
 		save.save_to(save_path)
 	on_action("ending:" + what)
+
+
+## The Upgrades screen (v0.11 M1): each purchase is saved at once; Back is the tier board.
+func _on_upgrades_action(what: String) -> void:
+	if what == "bought":
+		save.save_to(save_path)
+	elif what == "back":
+		on_action("upgrades:back")
 
 
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
@@ -753,8 +780,7 @@ func _flow_test() -> void:
 	step.call(Music.current() == &"theme", "the board plays the theme")
 	await _flow_board(step)
 	await _flow_ascend(step)
-	on_action("results:missions")
-	await get_tree().process_frame
+	await _flow_results(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -955,6 +981,78 @@ func _flow_ascend(step: Callable) -> void:
 	var d: Dictionary = result.get("descend", {})
 	step.call(up and bool(d.get("ascended", false)) and bool(d.get("main", false)) and bool(result.get("won", false)),
 		"F ascends: the results, won")
+
+
+## v0.11 M1 (spec §3.3-§3.4, §6; review focus 3).
+## - The ascended Warning's results bank it: Night 1, its believers, The Warning cleared, Omen open; the save holds them.
+## - Upgrades from the results buys the first +1 DP, saved at once; Back is the board, and The Warning's Prepare has 7 DP.
+## - A restart banks nothing and hears the same wishes.
+## - A night caught by dawn after its main objective banks the main win, its granted wish lost.
+## Ends on the board.
+func _flow_results(step: Callable) -> void:
+	var res := _screen_node as ResultsScreen
+	var d: Dictionary = result.get("descend", {})
+	var bank: Dictionary = d.get("bank", {})
+	var earned := int(d.get("earned", 0))
+	step.call(res != null and res.descend and save.descend.night == 1 and earned >= 10 and save.descend.believers == earned
+		and save.descend.cleared.has(MissionBook.WARNING) and save.descend.open_tier == 2 and int(bank.get("opened", 0)) == 2,
+		"the results bank the night: Night 1, %d believers, The Warning cleared, Omen open" % earned)
+	var reread := SaveFile.new().load_from(save_path)
+	step.call(reread.descend.night == 1 and reread.descend.believers == earned and reread.descend.open_tier == 2
+		and reread.descend.cleared.has(MissionBook.WARNING), "and the save holds them")
+	res.action.emit("upgrades")
+	var up := _screen_node as UpgradesScreen
+	step.call(screen == Screen.UPGRADES and up != null, "Upgrades from the results opens the Upgrades")
+	save.descend.believers += DescendState.DP_STEP  # (a fixture: one night need not pay for the first +1 DP)
+	var purse := save.descend.believers
+	up.click(up.button_rect("dp").get_center())
+	step.call(save.descend.dp_bought == 1 and save.descend.believers == purse - DescendState.DP_STEP
+		and SaveFile.new().load_from(save_path).descend.dp_bought == 1, "a click buys the first +1 DP for 25, saved at once")
+	up.action.emit("back")
+	var board := _screen_node as MissionBoard
+	step.call(screen == Screen.BOARD and board != null and save.descend.is_open(2), "Back is the tier board, Omen open")
+	board.choose(MissionBook.WARNING)
+	var prep := _screen_node as PrepareScreen
+	step.call(prep != null and prep.draft.capacity == TierBook.dp(1) + 1,
+		"The Warning's Prepare now has %d DP" % (prep.draft.capacity if prep != null else 0))
+	prep.draft.preselect(MissionBook.warning().default_loadout)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _past_intro()
+	var heard := _wish_ids()
+	var old := _mission
+	_open_pause()
+	on_action("pause:restart")
+	await _until(func() -> bool: return _mission_up(old), 10.0)
+	await _past_intro()
+	step.call(save.descend.night == 1 and _wish_ids() == heard,
+		"a restart banks nothing and hears the same wishes (%s)" % ", ".join(heard))
+	for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
+		w.warning_dead = true
+	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
+	var wishes := _mission.descent().wishes
+	if not wishes.is_empty():
+		wishes[0].status = Objective.Status.DONE
+	var total := save.descend.believers
+	_mission.rules().time_left = 0.01
+	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var caught: Dictionary = result.get("descend", {})
+	var rows: Array = caught.get("wishes", [])
+	step.call(String(caught.get("caught", "")) == "dawn" and bool(result.get("won", false)) and int(caught.get("earned", 0)) == 10
+		and save.descend.believers == total + 10 and save.descend.night == 2
+		and (rows.is_empty() or bool((rows[0] as Dictionary).get("lost", false))),
+		"caught by dawn after the main objective: its 10 believers banked, the granted wish lost")
+	(_screen_node as ResultsScreen).action.emit("missions")
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Board from the results returns to the tier board")
+
+
+## The night's wishes by id, in the order heard (FLOW, v0.11 M1).
+func _wish_ids() -> PackedStringArray:
+	var out := PackedStringArray()
+	if is_instance_valid(_mission) and _mission.descent() != null:
+		for w in _mission.descent().wishes:
+			out.append(w.def.id)
+	return out
 
 
 ## The steps from before the tier board (FLOW, v0.11 M1) play Last Judgement, The Long Night and their drafts as a veteran

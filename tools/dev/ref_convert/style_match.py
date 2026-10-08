@@ -69,20 +69,26 @@ FAMILY_OK = {ss.GREY: (ss.GREY,), ss.RED: (ss.RED,), ss.TIMBER: (ss.TIMBER, ss.C
              ss.GREEN: (ss.GREEN, ss.TIMBER, ss.GREY), ss.BLUE: (ss.BLUE, ss.GREY)}
 DULL = 0.32             # swatches below this saturation are candidates for a grey px
 CLEAR_V = 0.2           # a px darker than this has no clear material: any swatch
-SLATE_P = 4             # a slate course's height (px): townhouse_b's
-SLATE_LIGHT, SLATE_DARK = 1.16, 0.72    # a course's top row and bottom line against its tone
-SLATE_MIN = 400         # a slate piece smaller than this (px) is a banner or a shield, not a roof
-SLATE_HOLE = 120        # slate_mask(): a mottle up to this size inside the slate is slate
-SLATE_CLOSE = 2         # slate_mask()'s closing radius
+# Roof courses per material (courses()): course height p (px), its top row and bottom line against the tone, the
+# share of the painting's light kept, tiles (joint length, its darkness, a fixed tone step) and roof_mask()'s mottles
+# (the materials a small piece inside the roof may be, up to `hole` px). Slate: townhouse_b's 4 px courses. Red
+# tiles: townhouse_a's and the tavern's 5 px rows of flat tiles with short joints.
+COURSE = {ss.BLUE: dict(p=4, light=1.16, dark=0.72, keep=0.5, joint=0, joint_dark=1.0, var=0.0,
+                        mottle=(ss.GREY,), hole=120),
+          ss.RED: dict(p=5, light=1.12, dark=0.7, keep=0.3, joint=6, joint_dark=0.8, var=0.05,
+                       mottle=(ss.GREY, ss.TIMBER, ss.GREEN), hole=40)}
+SLATE_MIN = 400         # a roof piece smaller than this (px) is a banner, a shield or a flower box, not a roof
+SLATE_CLOSE = 2         # roof_mask()'s closing radius
+TILE_GAIN = (0.2, 3.0)  # the red courses' contrast bounds (tune() fits it to the reference roofs' edge contrast)
 SLATE_SMOOTH = 5        # the light across a slate face: its luminance smoothed over this radius
-SLATE_KEEP = 0.5        # and kept at this share (the rest is the face's mean colour: no brown blotches)
+
 # Reference roofs per material for the roof shade (tune()): their roof px's mean luminance and saturation
 ROOF_REFS = {ss.RED: ["tavern", "townhouse_a", "cottage_red"],
              ss.BLUE: ["townhouse_b", "cottage_blue", "barn", "carpenter"]}
 ROOF_TOL = 0.02         # tune() shades a roof until its luminance is within this of the reference
-ROOF_ROUNDS = 4
-ROOF_DETAIL = 2.0       # roof_shade(): a brightened red roof's extra local contrast, per unit of value gain
-ROOF_GAIN = (0.6, 1.8)   # the roof shade's gain bounds
+ROOF_ROUNDS = 8
+SLATE_S_TOL = 0.05      # the slate's saturation is fitted only to within this
+ROOF_GAIN = (0.6, 2.2)   # the roof shade's gain bounds
 ROOF_MIN = 300          # a roof material on fewer px is left alone
 ROOF_NEAR = 0.1         # nor one whose luminance is further than this from the reference roofs': it is not a roof
 SLATE_R, SLATE_VOTE = 3, 3      # slate_planes(): the smoothing radius, then the vote's
@@ -380,19 +386,12 @@ def roof_shade(a, fam, gains):
         m = (fam == k) & (a[..., 3] > 0)
         rgb = np.clip(a[..., :3][m] * lg, 0, 255)
         out[..., :3][m] = set_hsv(rgb, np.full(len(rgb), sg))
-        if k == ss.RED and lg > 1.0:
-            # a brightened roof keeps its tile lines: the lock's few bright reds would merge them, so its local
-            # contrast (against the 3 x 3 mean of the roof) grows with the gain
-            L = ss.luma(out[..., :3])
-            loc = _mean_in(L, m, 1)
-            d = ROOF_DETAIL * (lg - 1.0)
-            kk = np.clip(L + d * (L - loc), 0, None) / np.maximum(L, 1e-3)
-            out[..., :3][m] = np.clip(out[..., :3][m] * kk[m][:, None], 0, 255)
     return out
 
 
 def roof_stats(img):
-    """{material: (mean luminance, mean saturation, px)} of an output's roof px (red, slate; not the outline)."""
+    """{material: (mean luminance, mean saturation, px, edge contrast)} of an output's roof px (red, slate; not the
+    outline). Edge contrast as style_stats': mean |delta luminance| to the right neighbour, both roof px."""
     a = img.astype(float)
     al = a[..., 3] > 0
     f, _ = materials(a)
@@ -402,7 +401,10 @@ def roof_stats(img):
         m = (f == k) & ~ring
         if m.any():
             rgb = a[..., :3][m]
-            out[k] = (float(ss.luma(rgb).mean()), float(ss.hsv(rgb)[1].mean()), int(m.sum()))
+            L = ss.luma(a[..., :3])
+            pair = m[:, :-1] & m[:, 1:]
+            edge = float(np.abs(L[:, 1:] - L[:, :-1])[pair].mean()) if pair.any() else 0.0
+            out[k] = (float(ss.luma(rgb).mean()), float(ss.hsv(rgb)[1].mean()), int(m.sum()), edge)
     return out
 
 
@@ -410,13 +412,14 @@ _ROOF_REF = None
 
 
 def roof_refs():
-    """{material: (luminance, saturation)}: the reference roofs' (ROOF_REFS), each set weighted alike."""
+    """{material: (luminance, saturation, edge contrast)}: the reference roofs' (ROOF_REFS), each set weighted
+    alike."""
     global _ROOF_REF
     if _ROOF_REF is None:
         _ROOF_REF = {}
         for k, names in ROOF_REFS.items():
             st = [roof_stats(ss.load(n))[k] for n in names]
-            _ROOF_REF[k] = (float(np.mean([q[0] for q in st])), float(np.mean([q[1] for q in st])))
+            _ROOF_REF[k] = tuple(float(np.mean([q[i] for q in st])) for i in (0, 1, 3))
     return _ROOF_REF
 
 
@@ -439,24 +442,37 @@ def slate_planes(L, m):
     return np.where(vote >= 0, 1, -1)
 
 
-def slate(a, m, ref=None, fam=None):
-    """The slate (mask m) re-drawn as courses, as the in-game slate roofs are: the tone is the slate's own, smoothed
-    over SLATE_SMOOTH px within its face (the mottling goes, the light across the face stays), and each SLATE_P px
-    course has a light top row and a dark bottom line, the course lines parallel to the face's eave (slate_planes()).
-    `ref`: the same canvas's intact at the same stage; a damaged still keeps its soot and char as the ratio of its
-    luminance to the intact's."""
+def courses(a, m, mat, contrast=1.0, ref=None, fam=None):
+    """A roof (mask m, material mat) re-drawn as courses, as the in-game roofs are (COURSE[mat]): the tone is the
+    roof's own colour per face, the painting's light across the face kept at `keep` (its mottling and speckle go);
+    each course of `p` px has a light top row and a dark bottom line, parallel to the face's eave (slate_planes());
+    tiles (`joint` px long, staggered by half a tile per course) get a dark joint in the course's middle rows and a
+    fixed tone step of up to `var`. `contrast` scales every step (tune() fits it to the reference roofs' edge
+    contrast). `ref`: the same canvas's intact at the same stage; a damaged still keeps its soot and char as the
+    ratio of its luminance to the intact's."""
     if not m.any():
         return a
+    c = COURSE[mat]
     out = a.copy()
     L = ss.luma(a[..., :3])
     pl = slate_planes(L if ref is None else ss.luma(ref[..., :3]), m)
     h, w = m.shape
     ys, xs = np.mgrid[0:h, 0:w]
     v = np.where(pl > 0, ys - xs // 2, ys + (xs + 1) // 2)
-    phase = v % SLATE_P
+    P = c["p"]
+    phase = v % P
+    row = v // P
     shade = np.ones((h, w))
-    shade[phase == 0] = SLATE_LIGHT
-    shade[phase == SLATE_P - 1] = SLATE_DARK
+    shade[phase == 0] = 1 + (c["light"] - 1) * contrast
+    shade[phase == P - 1] = 1 - (1 - c["dark"]) * contrast
+    if c["joint"]:
+        J = c["joint"]
+        u = xs + (row % 2) * (J // 2)
+        tile = u // J
+        mid = (phase > 0) & (phase < P - 1)
+        shade[mid & (u % J == 0)] *= 1 - (1 - c["joint_dark"]) * contrast
+        step = (((tile * 7 + row * 13) % 5) - 2) / 2.0         # a fixed per-tile step in -1..1, no noise field
+        shade *= 1 + c["var"] * contrast * step
     src = a if ref is None else ref
     Ls = ss.luma(src[..., :3])
     tone = np.zeros((h, w, 3))
@@ -464,12 +480,11 @@ def slate(a, m, ref=None, fam=None):
         face = m & (pl == sgn)
         if not face.any():
             continue
-        # the face's own colour, its light across the face kept at SLATE_KEEP of the painting's (smoothed)
-        pure = face if fam is None or not (face & (fam == ss.BLUE)).any() else face & (fam == ss.BLUE)
-        col = src[..., :3][pure].mean(0)       # the slate's own px, not the painting's grey and brown mottles
+        pure = face if fam is None or not (face & (fam == mat)).any() else face & (fam == mat)
+        col = src[..., :3][pure].mean(0)       # the roof's own px, not the painting's mottles and moss
         lf = max(float(ss.luma(col[None])[0]), 1e-3)
         var = _mean_in(Ls, face, SLATE_SMOOTH) / lf
-        tone[face] = col[None, :] * (1 + SLATE_KEEP * (var[face] - 1))[:, None]
+        tone[face] = col[None, :] * (1 + c["keep"] * (var[face] - 1))[:, None]
     rgb = tone * shade[..., None]
     if ref is not None:
         Lr = ss.luma(ref[..., :3])
@@ -490,16 +505,17 @@ def _prep(a, knobs):
     return a, fam, clear, a0
 
 
-def slate_mask(a, fam):
-    """The slate a still re-draws: slate material closed over SLATE_CLOSE px (the painting's grey and dark mottles
-    inside it are slate too), opaque, not the outline. A damaged still's holes and char keep their darkness through
-    slate()'s ratio to the intact."""
+def roof_mask(a, fam, mat):
+    """The roof of material `mat` a still re-draws: that material closed over SLATE_CLOSE px (the painting's mottles
+    and moss inside it are roof too), opaque, not the outline. A damaged still's holes and char keep their darkness
+    through courses()'s ratio to the intact."""
+    c = COURSE[mat]
     al = a[..., 3] > 0
     r = SLATE_CLOSE
     # the roofs' slate: big pieces of slate material only (a banner or a shield under the eave is a small one, and
     # the closing below must not reach it from the roof)
     blue = np.zeros_like(al)
-    for pts in _components(al & (fam == ss.BLUE), conn8=True):
+    for pts in _components(al & (fam == mat), conn8=True):
         if len(pts) >= SLATE_MIN:
             ys, xs = zip(*pts)
             blue[list(ys), list(xs)] = True
@@ -508,16 +524,16 @@ def slate_mask(a, fam):
     closed = _box((al & ~grown).astype(float), r) < 0.5
     ring = outline_ring(al)
     m = al & ((grown & closed) | blue) & ~ring
-    # the painting's larger mottles: a non-slate piece (not the outline) under SLATE_HOLE px, nearly all of whose
+    # the painting's larger mottles: a non-roof piece (not the outline) under its `hole` px, nearly all of whose
     # neighbours are slate, is slate (a wall or a gable below the roof is one big piece and stays)
     for pts in _components(al & ~m & ~ring, conn8=False):
-        if len(pts) >= SLATE_HOLE:
+        if len(pts) >= c["hole"]:
             continue
         hole = np.zeros_like(m)
         ys, xs = zip(*pts)
         hole[list(ys), list(xs)] = True
-        if (fam[hole] == ss.GREY).mean() < 0.5:
-            continue                    # a mottle is grey: a chimney, a dormer or a gable's timbers stay
+        if not np.isin(fam[hole], c["mottle"]).mean() >= 0.5:
+            continue                    # only the painting's mottles: a chimney, a dormer or a gable's timbers stay
         if a[..., :3][hole].max(-1).mean() < CLEAR_V * 255:
             continue                    # a damaged roof's hole: char, not slate
         rim = (_box(hole.astype(float), 1) > 0) & ~hole & al & ~ring
@@ -541,16 +557,20 @@ def match(a, knobs, light=False, glow=True, ref=None):
     lit = np.zeros(al.shape, bool)
     if not light:
         a, fam, clear, a0 = _prep(a, knobs)
-        if knobs.get("slate", True):
-            sm = slate_mask(a, fam)
+        if knobs.get("courses", True):
+            r = rfam = None
             if ref is not None:
                 r, rfam, _, _ = _prep(ref, knobs)
-                sm &= slate_mask(r, rfam)
-                a = slate(a, sm, r, rfam)
-            else:
-                a = slate(a, sm, fam=fam)
-            fam = np.where(sm, ss.BLUE, fam)        # the re-drawn slate locks to the slate blues, mottles too
-            clear = clear | (sm & (a[..., :3].max(-1) >= CLEAR_V * 255))   # a damaged slate's char stays char
+            fam0 = fam
+            for mat in COURSE:
+                sm = roof_mask(a, fam0, mat)
+                if r is not None:
+                    sm &= roof_mask(r, rfam, mat)
+                if sm.sum() < SLATE_MIN:
+                    continue
+                a = courses(a, sm, mat, knobs.get("tile", {}).get(mat, 1.0), r, rfam if r is not None else fam0)
+                fam = np.where(sm, mat, fam)    # the re-drawn roof locks to its own material, mottles too
+                clear = clear | (sm & (a[..., :3].max(-1) >= CLEAR_V * 255))   # a damaged roof's char stays char
         if glow:
             # never on a roof: its eave highlights next to a dark tile line pass the finder's test
             # read before the lift and the contrast (a lifted bench or weapon rack passes for lamp light)
@@ -578,14 +598,15 @@ def score(img):
     return abs(st["edge"] - EDGE_TARGET) + 2.0 * max(0.0, lo - st["lum"], st["lum"] - hi), st
 
 
-def _grid(intact, fac, glob, roof):
+def _grid(intact, fac, glob, roof, tile=None):
     """The (lift, amount) grid with the saturation rounds (see tune()): (knobs, stats, image)."""
     mat_ref = refs()[1]
+    tile = tile or {}
     for _ in range(SAT_ROUNDS):
         best = None
         for lift in LIFTS:
             for amount in AMOUNTS:
-                k = {"fac": fac, "glob": glob, "lift": lift, "amount": amount, "roof": roof}
+                k = {"fac": fac, "glob": glob, "lift": lift, "amount": amount, "roof": roof, "tile": tile}
                 img, _ = match(intact, k)
                 c, st = score(img)
                 c += 0.01 * abs(lift - 1.0) + 0.002 * amount
@@ -602,38 +623,49 @@ def _grid(intact, fac, glob, roof):
 
 
 def _roofs(intact, k, img, rounds):
-    """Shade each roof material toward the reference roofs' luminance and saturation (roof_refs()), measured on the
-    output, for up to `rounds` rounds: (knobs, image)."""
+    """Shade each roof material toward the reference roofs' luminance and saturation, and fit the red
+    courses' contrast to their roof edge contrast (roof_refs(); the slate keeps its own), measured on the output, up to
+    `rounds` rounds: (knobs, image). Within ROOF_TOL / 2 of each it stops."""
     ref = roof_refs()
     roof = dict(k["roof"])
+    tile = dict(k.get("tile", {}))
     for _ in range(rounds):
         rs = roof_stats(img)
         moved = False
-        for m, (lr, sr) in ref.items():
+        for m, (lr, sr, er) in ref.items():
             if m not in rs or rs[m][2] < ROOF_MIN or (m not in roof and abs(rs[m][0] - lr) > ROOF_NEAR):
                 continue                # no roof of that material (the armoury's reds are its dark shed timber)
-            L, S, _ = rs[m]
-            if abs(L - lr) <= ROOF_TOL * 0.5 and abs(S - sr) <= 2 * ROOF_TOL:
+            L, S, _, E = rs[m]
+            # the slate's saturation only toward SLATE_S_TOL of the reference, in half steps: the palette's few slate
+            # blues make its response coarse, and a saturation gain darkens (set_hsv keeps the value, not luminance)
+            s_tol = ROOF_TOL * 0.5 if m == ss.RED else SLATE_S_TOL
+            fit_s = abs(S - sr) > s_tol
+            fit_e = m == ss.RED and abs(E - er) > ROOF_TOL * 0.25
+            if abs(L - lr) <= ROOF_TOL * 0.5 and not fit_s and not fit_e:
                 continue
+            damp = 1.0 if m == ss.RED else 0.5
             lg, sg = roof.get(m, (1.0, 1.0))
-            roof[m] = (float(np.clip(lg * lr / max(L, 1e-3), *ROOF_GAIN)), float(np.clip(sg * sr / max(S, 1e-3), *ROOF_GAIN)))
+            roof[m] = (float(np.clip(lg * (lr / max(L, 1e-3)) ** damp, *ROOF_GAIN)),
+                       float(np.clip(sg * (sr / max(S, 1e-3)) ** damp, *ROOF_GAIN)) if fit_s else sg)
+            if fit_e:
+                tile[m] = float(np.clip(tile.get(m, 1.0) * er / max(E, 1e-3), *TILE_GAIN))
             moved = True
         if not moved:
             break
-        k = dict(k, roof=dict(roof))
+        k = dict(k, roof=dict(roof), tile=dict(tile))
         img, _ = match(intact, k)
     return k, img
 
 
 def tune(intact):
     """The set's knobs: saturation factors from the intact, then (lift, amount) off the fixed grid that lands its
-    edge contrast nearest EDGE_TARGET with its mean luminance in LUM_BAND (ties: the smaller change), then the roof
-    shade toward the reference roofs; the grid again with that shade, and the shade again."""
+    edge contrast nearest EDGE_TARGET with its mean luminance in LUM_BAND (ties: the smaller change), then the roofs
+    (shade and course contrast) toward the reference roofs; the grid again with them, and the roofs again."""
     fac, glob = sat_factors(intact)
     k, st, img = _grid(intact, fac, glob, {})
     k, img = _roofs(intact, k, img, ROOF_ROUNDS)
-    k, st, img = _grid(intact, fac, k["glob"], k["roof"])
-    k, img = _roofs(intact, k, img, 2)
+    k, st, img = _grid(intact, fac, k["glob"], k["roof"], k.get("tile"))
+    k, img = _roofs(intact, k, img, ROOF_ROUNDS)
     return k, ss.stats(img)
 
 

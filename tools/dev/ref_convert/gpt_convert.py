@@ -509,7 +509,8 @@ def make(name, out_dir, debug=None):
         for f in (gm, d / "glow_mask.png.import"):
             if f.exists():
                 f.unlink()
-    roof = " ".join("%s x%.2f/x%.2f" % (("red", "slate")[m == style_match.ss.BLUE], g[0], g[1])
+    roof = " ".join("%s x%.2f/x%.2f c%.2f" % (("red", "slate")[m == style_match.ss.BLUE], g[0], g[1],
+                                             knobs.get("tile", {}).get(m, 1.0))
                     for m, g in sorted(knobs["roof"].items()))
     print("  style match: lift %.2f amount %.2f sat x%.2f roof %s; edge %.3f lum %.3f outline %.3f colours %d "
           "sat %.3f; %d lit px" % (knobs["lift"], knobs["amount"], knobs["glob"], roof or "-", st_after["edge"],

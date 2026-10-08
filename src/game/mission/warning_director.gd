@@ -69,13 +69,14 @@ func _begin() -> void:
 	rules.cast_made.connect(_on_cast)
 
 
-## The citizen standing nearest the Main Gate (not the bellkeeper, the clergy or the engineers) keeps the gate tonight.
+## The citizen standing nearest the gate (not the bellkeeper, the clergy, the engineers or anyone reserved -- a wisher, a
+## wish target, an earlier star's runner) keeps the gate tonight.
 ## Null in a town with nobody to spare.
 func _appoint_watchman() -> Person:
 	var keeper: Person = crowd.bell.keeper if crowd.bell != null else null
 	var best: Person = null
 	for p in crowd.citizens:
-		if not _alive(p) or p.profile == null or p.inside or p == keeper:
+		if not _alive(p) or p.profile == null or p.inside or p == keeper or reserved.has(p):
 			continue
 		if p.profile.role in [CitizenProfile.Role.CLERGY, CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
 			continue

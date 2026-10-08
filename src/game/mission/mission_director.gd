@@ -23,6 +23,9 @@ var reports_started := 0
 ## How much slower the director's timeline runs (v0.11 M1, spec §7.2): MissionDef.stretch, set before setup(); 1 off the
 ## board.
 var stretch := 1.0
+## People the night has set aside (v0.11 M1, spec §5): every wisher and wish target, and the runners of the stars already
+## falling. A director that appoints someone mid-night skips them (StarfallDirector's later watchmen). Empty off the board.
+var reserved: Array[Person] = []
 
 ## Minds a Faithful does not see from (v0.10): the god's own holds.
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]

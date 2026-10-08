@@ -34,9 +34,23 @@ func step(delta: float) -> void:
 		var w := stars[i]
 		if w.rules == null:
 			if not w.warning_dead and _clock >= float(STARS[i][0]) - WarningDirector.OMEN_AT:
+				w.reserved = _reserved_for(w)
 				w.setup(rules, crowd, town, ctx, night)
 		else:
 			w.step(delta)
+
+
+## Who a star about to be set up must leave alone (v0.11 M1): this director's reserved people -- the wishers and wish
+## targets -- and the watchman and messenger of every star already set up and still alive, so one kill never ends two.
+func _reserved_for(next: WarningDirector) -> Array[Person]:
+	var out: Array[Person] = reserved.duplicate()
+	for w in stars:
+		if w == next or w.rules == null or w.warning_dead:
+			continue
+		for p: Person in [w.watchman, w.messenger]:
+			if is_instance_valid(p) and not out.has(p):
+				out.append(p)
+	return out
 
 
 ## How many warnings have been stopped (killed unseen with their messenger).

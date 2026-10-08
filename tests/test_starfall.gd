@@ -10,6 +10,7 @@ static func run(t) -> void:
 	_stars(t)
 	_bell(t)
 	_forced(t)
+	_runners(t)
 	_single(t)
 
 
@@ -133,6 +134,34 @@ static func _forced(t) -> void:
 	d2.teardown()
 	t.check((s2.crowd as Crowd).bell.hold_on_death == false, "teardown lets the bell go")
 	_done(s2)
+	_done(s)
+
+
+## Earlier stars' runners are reserved (preflight ruling): star 0 still running at 88 s, with its watchman standing at star 1's
+## gate, does not lend him to star 1; and one kill stops only one warning.
+static func _runners(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	d._clock = 7.95
+	_run(s, 0.1)
+	var first := d.stars[0]
+	var lent := first.watchman
+	t.check(first.rules != null and is_instance_valid(lent) and not first.warning_dead, "star 0 is set up and running")
+	d._clock = 87.9
+	lent.ground_pos = StarfallDirector.STARS[1][1]
+	_run(s, 0.2)
+	var second := d.stars[1]
+	t.check(second.rules != null and is_instance_valid(second.watchman) and second.watchman != first.watchman
+		and second.watchman != first.messenger, "star 1's watchman is not star 0's watchman or messenger")
+	t.check(first.watchman == lent and first.messenger == lent, "and star 0 still has its own")
+	var at := second.messenger.ground_pos
+	for group: Array[Person] in [(s.crowd as Crowd).citizens, (s.crowd as Crowd).soldiers]:
+		for p in group:
+			if is_instance_valid(p) and p != second.messenger and p.ground_pos.distance_to(at) <= Crowd.DOOM_WITNESS + 1.0:
+				p.ground_pos = at + Vector2(Crowd.DOOM_WITNESS + 6.0, 0.0)
+	(s.field as EnemyField).kill(second.messenger, &"doom")
+	_run(s, DT)
+	t.check(second.warning_dead and not first.warning_dead and d.stopped() == 1, "one kill stops only one warning")
 	_done(s)
 
 

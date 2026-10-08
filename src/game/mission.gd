@@ -47,6 +47,9 @@ const TOUR_RAISE := 50.0
 ## time scale the world runs at meanwhile.
 const ENDING_SECONDS := 3.0
 const ENDING_TIME_SCALE := 0.3
+## The ascent's slow motion (v0.11 M1, spec §6: about 2 s) in place of the ending's ENDING_SECONDS, and its banner.
+const ASCEND_SECONDS := 2.0
+const ASCEND_BANNER := "YOU ASCEND"
 
 ## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
 ## Spaced so each power has finished before the next is cast (Rules.busy_left()): Heaven 8.5 s, Cinderfall 12,
@@ -85,6 +88,14 @@ var mission_id := MissionBook.LAST_JUDGEMENT
 ## A night that starts with its town already warned (v0.10: the campaign's Feast after a rung Night 1). Game sets it
 ## before start(); a mission without acts ignores it.
 var bell_rang := false
+## A night on the tier board (v0.11 M1): Game sets it before start() for every mission played outside the campaign. The
+## mission is then TierBook.board()'s version with `descend`'s upgrades, and its night has a Descent.
+var board := false
+var descend: DescendState
+## The seed the board night's wishes are drawn from (Descent.seed_for()): Game sets it, and an R restart keeps it.
+var wish_seed := 0
+## The board night being played (v0.11 M1), or null off the board.
+var _descent: Descent
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
@@ -191,6 +202,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		if is_instance_valid(_rules):
 			_rules.director = null  # already let go: the old rules' teardown below must not do it twice
 	_director = null
+	if _descent != null:
+		_descent.release()
+		_descent = null
 	_bf.reset(seed_value)
 	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay]:
 		if is_instance_valid(n):
@@ -221,6 +235,12 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_town.sfx = _bf.ctx.sfx
 	var args := OS.get_cmdline_user_args()
 	_def = _mission_def(args)
+	var on_board := _on_board(args)
+	if autostart and wants_board(args):
+		# A scripted run's --board (v0.11 M1): the night's seed is the first night's, as a fresh god's.
+		wish_seed = Descent.seed_for(descend.night if descend != null else 0, _def.id)
+	# A board night (v0.11 M1): its wishes, its Tier 5 Gaze and its ascent, handed to each act's Rules in _build_act().
+	_descent = Descent.new().setup(_def, wish_seed) if on_board and TierBook.has(_def.id) else null
 	_night = NightState.new() if _def.has_acts() else null
 	if _night != null:
 		_night.bell_rang = bell_rang
@@ -264,8 +284,13 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.banner.connect(hold)
 	var made := play.make_director()
 	if made != null:
+		if _descent != null:
+			# Before the director's setup() gathers or appoints anyone: the wishes are heard and their people reserved first.
+			_descent.reserve(_rules, made)
 		_director = made.setup(_rules, _crowd, _town, _bf.ctx, _night)
 		_rules.director = _director
+	if _descent != null:
+		_descent.attach(_rules, _director)
 	_wire_responses()
 
 	_aim = Targeting.new()
@@ -376,6 +401,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 		_director.teardown()
 		_rules.director = null
 	_director = null
+	if _descent != null:
+		_descent.next_act(_rules)  # its seconds count toward the night's time
 	_rules.teardown()
 	_rules.queue_free()
 	# Every power still playing ends here, with the act that cast it: an Act I Heaven Splitter must not fall on the
@@ -421,6 +448,26 @@ func night() -> NightState:
 ## The act being played (v0.09), or null for a single mission.
 func act() -> ActDef:
 	return _act
+
+
+## The board night being played (v0.11 M1), or null.
+func descent() -> Descent:
+	return _descent
+
+
+## The god ascends (v0.11 M1, spec §6): once a board night's main objective is done, F (or the ASCEND plate) ends it, won.
+## False when there is nothing to ascend from: off the board, before the main objective, in the intro or the ending.
+func ascend() -> bool:
+	if not started() or _ending or in_intro() or _descent == null or not _rules.main_done or _rules.finished:
+		return false
+	return _rules.ascend()
+
+
+## The ascent's key (spec §6): F pressed -- not an echo, nor a release. Nothing else in a mission uses it.
+static func ascends(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo and event.physical_keycode == KEY_F
+	return false
 
 
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
@@ -475,10 +522,30 @@ static func raised(stops: Array) -> Array:
 	return out
 
 
-## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08).
+## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08); on the board, its
+## tier's version (v0.11 M1).
 func _mission_def(args: PackedStringArray) -> MissionDef:
 	var wanted_mission := Battlefield.arg_value(args, "--mission") if autostart else ""
-	return MissionBook.get_mission(wanted_mission if wanted_mission != "" else mission_id)
+	return def_for(wanted_mission if wanted_mission != "" else mission_id, _on_board(args), descend)
+
+
+## The mission for `id` (v0.11 M1): on the board, its tier's version (TierBook.board(), with `state`'s upgrades); else
+## MissionBook's -- the campaign's, a standalone run's, a scripted run's.
+static func def_for(id: String, on_board: bool, state: DescendState) -> MissionDef:
+	if on_board and TierBook.has(id):
+		return TierBook.board(id, state)
+	return MissionBook.get_mission(id)
+
+
+## This is a board night (v0.11 M1): Game said so, or a standalone run was given --board.
+func _on_board(args: PackedStringArray) -> bool:
+	return board or (autostart and wants_board(args))
+
+
+## The command line asks for the board's version of the mission (v0.11 M1): `--mission=<id> --board --mission-test` (or --bench)
+## plays the tier's clock, readiness and budget, its wishes and its ascent, as Game does.
+static func wants_board(args: PackedStringArray) -> bool:
+	return "--board" in args
 
 
 ## The drafted loadout: the command line's, or the mission's default. _ready() asks before start() has chosen the
@@ -536,7 +603,7 @@ static func blight_banner(s: Structure) -> String:
 
 
 func _on_over(won: bool, reason: String) -> void:
-	_rules.banner.emit(ResultsScreen.title_for(won, reason))
+	_rules.banner.emit(ASCEND_BANNER if _rules.ascended else ResultsScreen.title_for(won, reason))
 	if _scripted:
 		# The scripted runs have no Results screen to show, so they keep printing what they found.
 		if _act != null:
@@ -559,7 +626,8 @@ func _play_ending() -> void:
 	if not _scripted:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
-		await get_tree().create_timer(ENDING_SECONDS, true, false, true).timeout
+		var wait := ASCEND_SECONDS if _rules.ascended else ENDING_SECONDS
+		await get_tree().create_timer(wait, true, false, true).timeout
 		if ended != _rules:
 			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
 			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.
@@ -567,13 +635,20 @@ func _play_ending() -> void:
 		_bf.ctx.impact.set_base_time_scale(1.0)
 	var res := _rules.result()
 	if _night == null:
-		finished.emit(res)
+		finished.emit(_with_descent(res))
 		return
 	_night.record(_act.id, res, _crowd)
 	if _act.is_last():
-		finished.emit(_night.result(res, _def.id, _def.scored))
+		finished.emit(_with_descent(_night.result(res, _def.id, _def.scored)))
 	else:
 		act_over.emit(res)
+
+
+## A board night's result (v0.11 M1) with its Descent's report merged in ("descend"); any other as it is.
+func _with_descent(res: Dictionary) -> Dictionary:
+	if _descent != null:
+		res.merge(_descent.report(_rules))
+	return res
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -592,6 +667,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_aim.pick(i)
 		elif event.physical_keycode == KEY_R:
 			start(PackedStringArray(), Time.get_ticks_usec())
+		elif ascends(event):
+			ascend()
 		elif event.physical_keycode == KEY_ESCAPE:
 			# Esc first calls off a held press, then unfocuses the power. With nothing focused it is the
 			# pause menu's -- or, for a mission running on its own with no Game around it, still the way out.

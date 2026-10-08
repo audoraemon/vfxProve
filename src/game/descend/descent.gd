@@ -58,19 +58,11 @@ func holds(m: MissionDef) -> bool:
 	return not (m is ActDef) or (m as ActDef).is_last()
 
 
-## An act begins (Mission._build_act()): its Rules step this night and pass its casts to the wishes; at Tier 5 a director
-## with no Gaze of its own gets the night's, one Gaze for every act; the first act hears the wishes (spec §5.1), and every
-## act's director reserves the wishes' people.
-func attach(rules: Rules, director: MissionDirector) -> void:
-	rules.descent = self
+## An act is being built (Mission._build_act(), once its director is made and before its setup()): the first act hears the
+## wishes (spec §5.1), and the director reserves their people, so nothing it gathers or appoints in its own setup() --
+## escorts, attendants, a mayor, the Faithful -- is a wisher or a wish target. Safe to call again: the wishes are heard once.
+func reserve(rules: Rules, director: MissionDirector) -> void:
 	_crowd = rules.crowd()
-	if not rules.cast_made.is_connected(_on_cast):
-		rules.cast_made.connect(_on_cast)
-	if tier >= TierBook.GAZE_TIER and director != null and (director.gaze == null or director.gaze == gaze):
-		if gaze == null:
-			gaze = TierGaze.new()
-			_crowd._field.enemy_killed.connect(_on_killed)
-		director.gaze = gaze
 	if not _heard:
 		_heard = true
 		hear(rules.crowd(), rules.town())
@@ -79,6 +71,21 @@ func attach(rules: Rules, director: MissionDirector) -> void:
 			for p in w.people():
 				if not director.reserved.has(p):
 					director.reserved.append(p)
+
+
+## An act begins (Mission._build_act(), once its director is set up): its Rules step this night and pass its casts to the
+## wishes; at Tier 5 a director with no Gaze of its own gets the night's, one Gaze for every act. It reserves the wishes'
+## people too (reserve()), for a director that was not given them before its setup().
+func attach(rules: Rules, director: MissionDirector) -> void:
+	reserve(rules, director)
+	rules.descent = self
+	if not rules.cast_made.is_connected(_on_cast):
+		rules.cast_made.connect(_on_cast)
+	if tier >= TierBook.GAZE_TIER and director != null and (director.gaze == null or director.gaze == gaze):
+		if gaze == null:
+			gaze = TierGaze.new()
+			_crowd._field.enemy_killed.connect(_on_killed)
+		director.gaze = gaze
 
 
 ## The town prays (spec §5.1): TierBook.wishes(tier) wishes drawn with the night's seed, filtered by the mission's tags and by

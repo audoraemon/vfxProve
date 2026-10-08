@@ -112,11 +112,12 @@ static func _alive(p: Variant) -> bool:
 
 
 ## Sorts the living citizens a Night 2 director may cast, into `clergy` and `lay`, in the crowd's order. Left out are the
-## bell's keeper, anyone inside, and (from `lay`) the engineers and the bellkeeper.
+## bell's keeper, anyone inside, anyone reserved (v0.11 M1: a wisher or a wish target), and (from `lay`) the engineers and the
+## bellkeeper.
 func _sort_citizens(clergy: Array[Person], lay: Array[Person]) -> void:
 	var keeper: Person = crowd.bell.keeper if crowd.bell != null else null
 	for p in crowd.citizens:
-		if not _alive(p) or p.profile == null or p.inside or p == keeper:
+		if not _alive(p) or p.profile == null or p.inside or p == keeper or reserved.has(p):
 			continue
 		if p.profile.role == CitizenProfile.Role.CLERGY:
 			clergy.append(p)

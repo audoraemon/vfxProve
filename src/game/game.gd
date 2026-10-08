@@ -167,6 +167,12 @@ static func starting_loadout(from: SaveFile, id: String) -> PackedStringArray:
 	return def.default_loadout if kept.is_empty() and not def.acts.is_empty() else kept
 
 
+## The powers the draft greys and refuses (v0.11 M1, spec §3.4): on the board those not yet unlocked; none in the campaign,
+## which keeps its own DP rules.
+static func locked_for(from: SaveFile, in_campaign: bool) -> PackedStringArray:
+	return PackedStringArray() if in_campaign else from.descend.locked()
+
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
@@ -364,12 +370,12 @@ func go_to(to: int) -> void:
 				for a: ActDef in next:
 					if a.id == _next_path:
 						act = a
-				prep.setup(act, loadout, save.difficulty)
+				prep.setup(act, loadout, save.difficulty, locked_for(save, _in_campaign))
 				prep.confirm_label = "BEGIN"
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
-				prep.setup(MissionBook.get_mission(mission_id), loadout, save.difficulty)
+				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty, locked_for(save, false))
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:
@@ -527,6 +533,11 @@ func _build_mission() -> Mission:
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	mission.difficulty = save.difficulty
 	mission.mission_id = mission_id
+	# Outside the campaign every mission is a board night (v0.11 M1): its tier's version, the god's upgrades, and wishes
+	# drawn from the nights played -- the same again on a Restart, redrawn once a night is counted.
+	mission.board = not _in_campaign
+	mission.descend = save.descend
+	mission.wish_seed = Descent.seed_for(save.descend.night, mission_id)
 	mission.bell_rang = _in_campaign and save.campaign != null and save.campaign.bell_rang
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
@@ -825,8 +836,8 @@ func _flow_test() -> void:
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Missions from the pause menu opens the board")
 	step.call(not is_instance_valid(_pause) and not is_instance_valid(_mission), "and the pause menu and mission are gone")
 
-	# The Warning (v0.08): picked by its id, its default loadout manifested, won by stopping the warning (v0.11 M1, spec
-	# §7.3: the omen fading no longer wins) -- an unscored result -- and Missions goes back to the board.
+	# The board's Warning (v0.11 M1): three stars; all three stopped holds the night, and ascending ends it, won. Its default
+	# loadout is manifested; the result is unscored (spec §7.3: the omen fading no longer wins), and Missions goes back to the board.
 	var kit := MissionBook.warning().default_loadout
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -839,11 +850,14 @@ func _flow_test() -> void:
 		and _mission.rules().mission.id == MissionBook.WARNING,
 		"MANIFEST starts The Warning with its default loadout (%s)" % ",".join(loadout))
 	await _past_intro()
-	(_mission.rules().director as WarningDirector).warning_dead = true
+	for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
+		w.warning_dead = true
+	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
+	_mission.ascend()
 	var faded := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
 	step.call(faded and _screen_node is ResultsScreen and String(result.get("reason", "")) == "warning"
-		and bool(result.get("won", false)) and not result.has("score"),
-		"stopping the warning wins it, on unscored results (%s)" % result.get("reason", "?"))
+		and bool(result.get("won", false)) and not result.has("score") and result.has("descend"),
+		"stopping the three warnings and ascending wins the board's Warning (%s)" % result.get("reason", "?"))
 	on_action("results:missions")
 	await get_tree().process_frame
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission),
@@ -914,8 +928,8 @@ func _flow_night(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.LONG_NIGHT)
 	var prep: PrepareScreen = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and prep.mission.id == MissionBook.LONG_NIGHT
-		and prep.draft.slots == 3 and prep.draft.capacity == 6 and mission_id == MissionBook.LONG_NIGHT,
-		"picking The Long Night opens its draft on Act I's 3 slots and 6 DP (v0.09.1)")
+		and prep.draft.slots == 6 and prep.draft.capacity == 16 and mission_id == MissionBook.LONG_NIGHT,
+		"picking The Long Night opens its draft on Tier 5's 6 slots and 16 DP (v0.11 M1)")
 	step.call(prep.draft.picks == kit, "its first Prepare opens on the night's default loadout (%s)" % ",".join(prep.draft.picks))
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
@@ -948,8 +962,8 @@ func _flow_night(step: Callable) -> void:
 	await get_tree().process_frame
 	prep = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and is_instance_valid(first)
-		and _mission == first and prep.mission.id == "festival" and prep.draft.slots == 4 and prep.draft.capacity == 10,
-		"Choose powers shows the Festival's draft with BEGIN and Act II's 4 slots and 10 DP, the mission still alive")
+		and _mission == first and prep.mission.id == "festival" and prep.draft.slots == 6 and prep.draft.capacity == 16,
+		"Choose powers shows the Festival's draft with BEGIN and the tier's 6 slots and 16 DP, the mission still alive")
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "festival", 5.0)
@@ -983,7 +997,7 @@ func _flow_night(step: Callable) -> void:
 	await get_tree().process_frame
 	prep = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and prep.confirm_label == "BEGIN" and _mission == first
-		and prep.draft.slots == 4 and prep.draft.capacity == 14, "Choose powers shows Act III's draft with BEGIN, 4 slots and 14 DP")
+		and prep.draft.slots == 6 and prep.draft.capacity == 16, "Choose powers shows Act III's draft with BEGIN, the tier's 6 slots and 16 DP")
 	prep.draft.preselect(kit)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return screen == Screen.MISSION and not _fading and _mission.act().id == "judgement", 5.0)
@@ -1266,8 +1280,8 @@ func _flow_campaign(step: Callable) -> void:
 	(_screen_node as TitleScreen).action.emit("play")
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	prep = _screen_node as PrepareScreen
-	step.call(prep != null and prep.draft.slots == 6 and prep.draft.capacity == 14 and not _in_campaign,
-		"the board after the campaign: Last Judgement's own 6 slots and 14 DP")
+	step.call(prep != null and prep.draft.slots == 6 and prep.draft.capacity == 16 and not _in_campaign,
+		"the board after the campaign: Last Judgement at Tier 5, 6 slots and 16 DP")
 	on_action("prepare:back")
 	(_screen_node as MissionBoard).action.emit("back")
 	step.call(screen == Screen.TITLE, "and back to the title")

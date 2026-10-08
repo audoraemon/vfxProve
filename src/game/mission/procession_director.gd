@@ -123,7 +123,7 @@ func _residents() -> Array[Person]:
 	var pool: Array[Person] = []
 	for p in crowd.citizens:
 		if WarningDirector._alive(p) and p.profile != null and not p.inside \
-				and p.profile.role == CitizenProfile.Role.RESIDENT:
+				and p.profile.role == CitizenProfile.Role.RESIDENT and not reserved.has(p):
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(TownLayout.CITADEL_ORIGIN) < b.ground_pos.distance_squared_to(TownLayout.CITADEL_ORIGIN))
@@ -153,7 +153,7 @@ func _gather_escorts() -> void:
 	var first := Crowd.POST_YARD + Crowd.POST_WALLS
 	for i in range(first, mini(first + Crowd.POST_CITADEL, crowd.soldiers.size())):
 		var s := crowd.soldiers[i]
-		if escorts.size() < ESCORTS and WarningDirector._alive(s) and s.corps == Person.Corps.NONE:
+		if escorts.size() < ESCORTS and WarningDirector._alive(s) and s.corps == Person.Corps.NONE and not reserved.has(s):
 			escorts.append(s)
 			_send_escort(s, escorts.size() - 1)
 
@@ -196,7 +196,7 @@ func _tick() -> void:
 	_walk()
 	for i in escorts.size():
 		var s := escorts[i]
-		if not WarningDirector._alive(s):
+		if not WarningDirector._alive(s) or reserved.has(s):  # (v0.11 M1: a wish's soldier is not his to post)
 			continue
 		var spot := _escort_spot(i)
 		if s.anchor.distance_to(spot) > ESCORT_MOVE:

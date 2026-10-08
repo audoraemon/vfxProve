@@ -89,7 +89,7 @@ func _appoint_mayor() -> Person:
 	var c := TownLayout.MARKET_SQUARE.get_center()
 	for p in crowd.citizens:
 		if WarningDirector._alive(p) and p.profile != null and not p.inside \
-				and p.profile.role == CitizenProfile.Role.MERCHANT \
+				and p.profile.role == CitizenProfile.Role.MERCHANT and not reserved.has(p) \
 				and (best == null or p.profile.home.distance_to(c) < best.profile.home.distance_to(c)):
 			best = p
 	if best != null:
@@ -103,7 +103,7 @@ func _gather() -> void:
 	var pool: Array[Person] = []
 	for p in crowd.citizens:
 		if WarningDirector._alive(p) and p.profile != null and not p.inside and not p.profile.role in SKIP_ROLES \
-				and p.mind in WarningDirector.RESUMABLE:
+				and p.mind in WarningDirector.RESUMABLE and not reserved.has(p):
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
 	for p in pool.slice(0, crowd_size):
@@ -125,7 +125,7 @@ func _post_guards() -> void:
 	var pool: Array[Person] = []
 	for s in crowd.soldiers:
 		if WarningDirector._alive(s) and s.corps == Person.Corps.NONE and s.mind == Person.Mind.POST \
-				and not TownLayout.MARKET_SQUARE.has_point(s.anchor):
+				and not reserved.has(s) and not TownLayout.MARKET_SQUARE.has_point(s.anchor):
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
 	for s in pool.slice(0, GUARDS):

@@ -5,10 +5,24 @@ extends RefCounted
 ## Citadel's gate, which loses the night: the collector at 0:45, each deputy at his own time or CHAIN_WAIT after the one
 ## before him dies, whichever is sooner (smoked out sooner still by a power cast at the door while none is out). A loud power
 ## near one, a guard felled or a fright sends him to hide 30 s; a house he is in set alight or brought down flushes him out
-## (review focus 4). All three dead wins; a seen kill makes the guards cry murder and calls the bellkeeper. Reserved people
-## and places are never taken (review focus 1); freed bodies and the town's rally are borne (review focus 2, 3).
+## (review focus 4) -- a collector out or hiding, never one still waiting, who sets out at his own time (fix round). All three
+## dead wins; one escaping the town counts as safe; a seen kill makes the guards cry murder and calls the bellkeeper. Reserved
+## people and places are never taken (review focus 1); freed bodies and the town's rally are borne (review focus 2, 3); with no
+## hideout the targets still are three different people (fix round).
 
 const DT := 0.05
+
+
+## A bare AssassinateDirector with no hideout (v0.11 M2 fix round): three targets with no stops, the Citadel's gate their safe
+## place. They wait out of doors, still eligible, so only AssassinateDirector._appointed() keeps them apart.
+class NoHideout:
+	extends AssassinateDirector
+
+	func _plan() -> void:
+		safe_at = TaxCollectorDirector.CITADEL_GATE
+		for i in 3:
+			var stops: Array[Structure] = []
+			_add_quarry("TARGET", 45.0 + 60.0 * float(i), stops, 1)
 
 
 static func run(t) -> void:
@@ -19,14 +33,16 @@ static func run(t) -> void:
 	_smoked(t)
 	_alarm(t)
 	_flushed(t)
+	_lost(t)
 	_kill(t)
 	_freed(t)
 	_rallied(t)
 	_reserved(t)
+	_plain(t)
 	_mission(t)
 
 
-static func _world(loadout := PackedStringArray(), reserve := false) -> Dictionary:
+static func _world(loadout := PackedStringArray(), reserve := false, plain := false) -> Dictionary:
 	var def := MissionBook.tax_collector()
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -43,7 +59,7 @@ static func _world(loadout := PackedStringArray(), reserve := false) -> Dictiona
 	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
-	var director := def.make_director() as TaxCollectorDirector
+	var director: AssassinateDirector = NoHideout.new() if plain else def.make_director() as AssassinateDirector
 	var held := {}
 	if reserve:
 		held = _hold_back(director, crowd, town)
@@ -55,7 +71,7 @@ static func _world(loadout := PackedStringArray(), reserve := false) -> Dictiona
 
 ## Sets aside, before the director is set up (as Descent does): the resident who would be the tax collector, the soldier
 ## nearest the counting-house, and the collector's first debtor's house. Returns them.
-static func _hold_back(d: TaxCollectorDirector, crowd: Crowd, town: Town) -> Dictionary:
+static func _hold_back(d: AssassinateDirector, crowd: Crowd, town: Town) -> Dictionary:
 	var shop: Structure = null
 	for s: Structure in town._built:
 		if s.art_tag == TaxCollectorDirector.COUNTING_TAG:
@@ -168,6 +184,11 @@ static func _setup(t) -> void:
 			houses.append(h)
 	t.check(stops_ok and d.quarries[0].stops.size() == 3 and d.quarries[1].stops.size() == 2 and d.quarries[2].stops.size() == 3,
 		"each collector's round of debtors (3, 2, 3), all different houses")
+	var paths_ok := true
+	for q in d.quarries:
+		for door in q.stop_doors:
+			paths_ok = paths_ok and not (s.crowd as Crowd)._grid.path(d.hide_door, door).is_empty()
+	t.check(paths_ok, "every debtor's door has a way to it from the counting-house's (a walled-in yard is passed over)")
 	t.check(d.safe_at.distance_to(TaxCollectorDirector.CITADEL_GATE) <= 1.5, "their safe place is the Citadel's gate")
 	var up := d.timeline.upcoming(3)
 	t.check(up.size() == 3 and String(up[0].id) == "out_0" and is_equal_approx(float(up[0].at), TaxCollectorDirector.SET_OUT_AT[0])
@@ -357,16 +378,35 @@ static func _flushed(t) -> void:
 	var s := _world()
 	var d: TaxCollectorDirector = s.d
 	(s.crowd as Crowd).fires.ignite(d.hideout, 0.6)
-	_run(s, DT * 2.0)
-	var out := true
+	_run(s, 2.0)
+	var waiting := true
 	for q in d.quarries:
-		out = out and not q.target.inside and q.state != AssassinateDirector.State.WAITING and q.target.is_alive()
-	t.check(out, "the counting-house alight flushes all three out, alive (review focus 4)")
-	_run(s, AssassinateDirector.TICK + DT)
+		waiting = waiting and q.target.inside and q.state == AssassinateDirector.State.WAITING and q.target.is_alive()
+	t.check(waiting, "the counting-house alight flushes out none still waiting: one fire never sets the whole night out")
+	_run(s, TaxCollectorDirector.SET_OUT_AT[0] - d._clock + DT * 2.0)
 	var q0 := d.quarries[0]
-	t.check(q0.state == AssassinateDirector.State.FLEEING and q0.target.goal().distance_to(d.safe_at) < 0.5,
-		"frightened, with no counting-house to hide in, they run for the Citadel")
+	t.check(q0.state != AssassinateDirector.State.WAITING and not q0.target.inside and q0.target.is_alive()
+		and d.quarries[1].state == AssassinateDirector.State.WAITING and d.quarries[1].target.inside,
+		"the collector sets out at his own time all the same, and his deputies wait on")
 	_done(s)
+
+	var h := _world()
+	var dh: TaxCollectorDirector = h.d
+	var qh := dh.quarries[0]
+	dh._set_out(qh)
+	dh._alarm(qh)
+	_arrive(qh.target, dh.hide_door)
+	_run(h, AssassinateDirector.TICK + DT)
+	var hid := qh.state == AssassinateDirector.State.HIDING and qh.target.inside
+	(h.crowd as Crowd).fires.ignite(dh.hideout, 0.6)
+	_run(h, DT * 2.0)
+	t.check(hid and not qh.target.inside and qh.state != AssassinateDirector.State.HIDING and qh.target.is_alive()
+		and dh.quarries[1].state == AssassinateDirector.State.WAITING and dh.quarries[1].target.inside,
+		"hiding there, the collector is flushed out alive (review focus 4); his deputies stay in")
+	_run(h, AssassinateDirector.TICK + DT)
+	t.check(qh.state == AssassinateDirector.State.FLEEING and qh.target.goal().distance_to(dh.safe_at) < 0.5,
+		"frightened, with no counting-house to hide in, he runs for the Citadel")
+	_done(h)
 
 	var v := _world()
 	var dv: TaxCollectorDirector = v.d
@@ -379,6 +419,24 @@ static func _flushed(t) -> void:
 	t.check(not qv.target.inside and qv.leg == 1 and qv.target.is_alive(),
 		"a debtor's house brought down flushes him out alive, and that debtor is done")
 	_done(v)
+
+
+static func _lost(t) -> void:
+	var s := _world()
+	var d: TaxCollectorDirector = s.d
+	var crowd: Crowd = s.crowd
+	var rules: Rules = s.rules
+	var q := d.quarries[0]
+	d._set_out(q)
+	var who := q.target
+	crowd._field.remove(who)
+	crowd.escape(who)
+	who.free()  # Crowd.escape() only queues the free: a headless test frees the body itself
+	_run(s, DT)
+	t.check(q.state == AssassinateDirector.State.SAFE and not q.dead and d.any_safe() and rules.finished and not rules.won
+		and rules.over_reason == "taxes" and String(d.report().target) == "escaped" and d.tags().is_empty(),
+		"a collector gone out of the town (his body freed at once) counts as escaped: the night is lost")
+	_done(s)
 
 
 static func _kill(t) -> void:
@@ -484,6 +542,21 @@ static func _reserved(t) -> void:
 		ok = ok and q.target != held.resident and not q.guards.has(held.soldier) and not q.stops.has(held.house)
 	t.check(ok and d.quarries[0].stops.size() == 3,
 		"a reserved resident is never a collector, a reserved soldier never a guard, a reserved house never a debtor's")
+	_done(s)
+
+
+static func _plain(t) -> void:
+	var s := _world(PackedStringArray(), false, true)
+	var d: AssassinateDirector = s.d
+	var who: Array = []
+	var ok := d.quarries.size() == 3 and d.hideout == null
+	for q in d.quarries:
+		ok = ok and q.target != null and not q.target.inside and not who.has(q.target)
+		who.append(q.target)
+	var labels := _labels(d)
+	t.check(ok and not labels.is_empty() and labels[0] == "TARGET",
+		"with no hideout the targets wait out of doors, still eligible, yet each is a different person, tagged on him (%s)"
+		% [labels])
 	_done(s)
 
 

@@ -54,8 +54,9 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
   - **Alarmed:** a loud power cast within 4 units of a collector in the street, one of his guards falling (unless with him,
     in the same blow), or a fright sends him to hide in the counting-house for 30 s. Then he takes his rounds up at the
     next debtor.
-  - **Flushed:** the house a collector is in set alight or destroyed sends him out of it in a fright (the counting-house:
-    every collector in it).
+  - **Flushed:** the house a collector is in set alight or destroyed sends him out of it in a fright. For the
+    counting-house that means those out on their rounds who hide there; those still waiting to set out stay in, and set
+    out at their own time or by the chain, so one fire never sets the whole night out at once.
   - **No hiding place:** once the counting-house is gone, an alarm sends him running for the Citadel.
   - **Unseen:** each death is judged as the Prince's is. If anyone living stands within 2 units of where he falls (once a
     Doom's other victims have fallen), the guards cry murder and the bellkeeper is called. On the board the night is then
@@ -322,11 +323,13 @@ These are the details the v0.11 spec left open. The controller records them as r
    bellkeeper. The type is generic (`AssassinateDirector`: N targets with schedules), so The Informer and The Bishop can
    reuse it. Nothing makes a target untouchable in the street: that would add a new kind of protection the code does not
    have.
-5. **Stand-ins:** the counting-house is the workshop hall. The debtors are the dwellings nearest three fixed spots. The tax
-   collector is a resident made a noble, so his cape and crown pick him out.
-6. **Alarm:** a loud (not quiet) power cast within 4 units of him in the street, a guard falling, or a fright sends him to
-   hide 30 s. A fire on, or the fall of, the house he is in flushes him out. With the counting-house gone, an alarm sends him
-   to the Citadel. Quiet powers never alarm him.
+5. **Stand-ins:** the counting-house is the workshop hall. Each collector's debtors are the dwellings nearest his fixed
+   spots whose doors the street reaches. The tax collector and his two deputies are residents made nobles, so their capes
+   and crowns pick them out.
+6. **Alarm:** a loud (not quiet) power cast within 4 units of a collector in the street, one of his guards falling, or a
+   fright sends that collector to hide 30 s. A fire on, or the fall of, the house a collector is in flushes him out (but
+   never the collectors still waiting in the counting-house). With the counting-house gone, an alarm sends a collector to
+   the Citadel. Quiet powers never alarm the collectors.
 7. **Raze:** Raze is generalised as a new `RazeDirector` base (targets, a spoil time, sealing). Last Judgement's and
    Judgement's directors are left as they are (the Citadel judges itself), so their references hold.
 8. **Sealed granaries:** they are dwellings, sealed until their doors open at 0:45, 1:45 and 2:45. While sealed, powers only

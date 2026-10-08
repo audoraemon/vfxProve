@@ -5,8 +5,9 @@ extends AssassinateDirector
 ## capes and crowns pick them out -- count in the counting-house (the workshop hall, east quarter) with their guards at its
 ## door. The collector walks his round of three debtors' houses from 0:45; each deputy walks his own two at his own time, or
 ## CHAIN_WAIT after the one before him dies, whichever is sooner. 25 s indoors at each debtor, then each takes the taxes to
-## the Citadel's gate, which loses the night. Alarmed one hides 30 s in the counting-house. All three dead wins; a seen kill
-## calls the bell (AssassinateDirector._judge()).
+## the Citadel's gate, which loses the night. Alarmed one hides 30 s in the counting-house; set alight, it flushes out only
+## those hiding there, and those still waiting stay in. All three dead wins; a seen kill calls the bell
+## (AssassinateDirector._judge()).
 
 ## The counting-house is the building with this art tag (v0.11 M2).
 const COUNTING_TAG := &"workshop"
@@ -71,7 +72,7 @@ func _counting_house() -> Structure:
 
 ## The resident nearest the counting-house's door not yet a collector, made a noble for the night (v0.11 M2).
 func _appoint_target(_q: Quarry) -> Person:
-	var p := _citizen_near(hide_door, CitizenProfile.Role.RESIDENT)
+	var p := _citizen_near(hide_door, CitizenProfile.Role.RESIDENT, _appointed())
 	if p != null:
 		p.profile.role = CitizenProfile.Role.NOBLE
 	return p

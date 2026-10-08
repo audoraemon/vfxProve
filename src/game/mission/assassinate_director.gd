@@ -2,16 +2,17 @@ class_name AssassinateDirector
 extends MissionDirector
 ## The Assassinate type (v0.11 M2, spec §7.1, generalised by the controller's Task 2 ruling to N targets): named targets walk
 ## their rounds of stops on a schedule, a few soldiers about each; find them and kill them all. Every target starts indoors at
-## the hideout. Each sets out at his own time -- or, after the first, `chain_wait` seconds after the one before him dies,
-## whichever is sooner (the board Warning's stars' rule: no idle wait over 60 s) -- and sooner still if a power is
-## cast by the hideout's door while none is out. At each stop he goes indoors for `visit_seconds`, untouchable, then walks on;
+## the hideout (with none, out of doors where the safe place is). Each sets out at his own time -- or, after the first, `chain_wait` seconds after the one before him dies,
+## whichever is sooner (the board Warning's stars' rule: no idle wait over 60 s) -- and sooner still if a power is cast by
+## the hideout's door while none is out. At each stop he goes indoors for `visit_seconds`, untouchable, then walks on;
 ## after the last he walks to the safe place, and reaching it is his escape (AssassinateObjective fails). Alarmed -- a loud
 ## power cast within `alarm_reach` of him in the street, a guard felled, a fright -- he makes for the hideout and hides
 ## `hide_seconds`, then takes his round up at the stop he was walking to; with the hideout gone he makes for the safe place
-## instead. A house he is in set alight or brought down flushes him out in a fright. Each death is judged as the Procession's
-## Prince's: unseen when nobody living stands within Crowd.DOOM_WITNESS once a cast's other victims have fallen; seen, the
-## guards cry murder and the bellkeeper is called. A subclass names the places, the targets and the numbers in _plan()
-## (TaxCollectorDirector).
+## instead. A house he is in set alight or brought down flushes him out in a fright -- a target out on his round or hiding;
+## one still waiting at the hideout stays in and sets out at his time (the controller's Task 2 fix ruling). Each death is
+## judged as the Procession's Prince's: unseen when nobody living stands within Crowd.DOOM_WITNESS once a cast's other
+## victims have fallen; seen, the guards cry murder and the bellkeeper is called. A subclass names the places, the targets and
+## the numbers in _plan() (TaxCollectorDirector).
 
 ## What a target is doing (v0.11 M2): waiting indoors at the hideout, walking his round, indoors at a stop, fleeing to hide,
 ## hiding, safe (escaped), dead.
@@ -191,10 +192,20 @@ func _house_reached(spot: Vector2, from: Vector2, exclude: Array = []) -> Struct
 	return null
 
 
-## Virtual (v0.11 M2): who target `q` is tonight (eligible: never reserved, never a target already appointed, who is indoors);
-## null for none. The base takes the resident nearest the hideout's door.
+## Virtual (v0.11 M2): who target `q` is tonight; null for none. Never reserved, and never a target already appointed
+## (_appointed(): a subclass passes it on too, as a target without a hideout waits out of doors, still eligible). The base takes
+## the resident nearest the hideout's door.
 func _appoint_target(_q: Quarry) -> Person:
-	return _citizen_near(hide_door, CitizenProfile.Role.RESIDENT)
+	return _citizen_near(hide_door, CitizenProfile.Role.RESIDENT, _appointed())
+
+
+## The targets appointed so far (v0.11 M2), for _appoint_target() to leave out.
+func _appointed() -> Array:
+	var out: Array = []
+	for q in quarries:
+		if q.target != null:
+			out.append(q.target)
+	return out
 
 
 ## Virtual (v0.11 M2): the night's opening banner.
@@ -287,10 +298,13 @@ func _lost(q: Quarry) -> void:
 	rules.banner.emit(_safe_banner())
 
 
-## `q` indoors (v0.11 M2): the house alight or fallen flushes him out in a fright (a stop's visit then counts as done, and a
-## target still waiting is out with the rest); else his time there runs down and he walks on. Waiting for his time, he stays.
+## `q` indoors (v0.11 M2): waiting for his time, he stays -- even in a hideout alight or fallen, so one fire never sets the
+## whole night out at once (the controller's Task 2 fix ruling). Visiting or hiding, the house alight or fallen flushes him out
+## in a fright (a stop's visit then counts as done); else his time there runs down and he walks on.
 func _indoors(q: Quarry, delta: float) -> void:
 	var was := q.state
+	if was == State.WAITING:
+		return
 	var house := q.inside_of
 	if not is_instance_valid(house) or house.destroyed or _burning(house):
 		var from := house.center() if is_instance_valid(house) else q.target.ground_pos
@@ -299,8 +313,6 @@ func _indoors(q: Quarry, delta: float) -> void:
 			q.leg += 1
 		q.state = State.WALKING
 		q.target.panic(from, 2.0)
-		return
-	if was == State.WAITING:
 		return
 	q.indoors_left -= delta
 	if q.indoors_left > 0.0:
@@ -602,7 +614,7 @@ func tags() -> Array[MapTag]:
 	for q in walking:
 		out.append(_target_tag(q))
 	if walking.is_empty() and next != null:
-		out.append(MapTag.place(hide_door, MARK_TARGET, next.label + " - INSIDE", 0.0, true))
+		out.append(_target_tag(next))
 	if _hideout_stands():
 		out.append(MapTag.place(hideout.center(), MARK_PLACE, hideout_label, hideout.height, false))
 	for q in walking:
@@ -623,7 +635,7 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## `q`'s own tag (v0.11 M2): on him in the street, over the door he is behind indoors.
+## `q`'s own tag (v0.11 M2): on him out of doors, over the door he is behind indoors.
 func _target_tag(q: Quarry) -> MapTag:
 	if q.target.inside:
 		return MapTag.place(_door_in(q), MARK_TARGET, q.label + " - INSIDE", 0.0, true)

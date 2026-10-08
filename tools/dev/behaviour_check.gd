@@ -1214,7 +1214,8 @@ func _tax(which: String) -> void:
 		if which != "play" or frames % LOOK_FRAMES != 0:
 			continue
 		var bell := crowd.bell
-		if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] 				and WarningDirector._alive(bell.keeper) and _slot_ready(rules, slots, "doom"):
+		if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] \
+				and WarningDirector._alive(bell.keeper) and _slot_ready(rules, slots, "doom"):
 			rules.cast(slots.doom, bell.keeper.ground_pos)
 			continue
 		for q in d.quarries:

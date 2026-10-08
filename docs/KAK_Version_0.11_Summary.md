@@ -135,4 +135,4 @@ The references that were expected to move did not: no scripted run reaches the c
 
 `--show=tiers` (the board part-way up), `--show=upgrades`, `--show=results-descend` and `--show=ascend` (the board's Warning with its main objective done) photograph the board, the Upgrades, a caught night's results and the ASCEND night.
 
-Gates: filled in at landing.
+Gates (at 8d31813, M1 merged with Develop-Main's ui sounds): tests 4218 checks, 0 failures; FLOW 109 checks, 0 failures; the state digest and crowd_check unchanged; every exact behaviour checksum unchanged, including the five Warning cases and Mira's House (the no-waiting changes moved none of them: no scripted run reaches dawn with the warning alive or a fourth Believer); Broken Lanterns 424350965, the Vigil Flame and the Feast with the same results; the board Warning's scripted run (--board --mission-test) plays its stars cleanly. Bench, one mission per tier, board version against 92e0dcc (medians of three, noisy machine): The Warning 121 vs 121 fps, Mira's House 103 vs 109, the Vigil Flame 106 vs 109, Last Judgement 105 vs 109 (+20 draw calls): the wish tags and the board HUD cost about 0.3-0.6 ms a frame.

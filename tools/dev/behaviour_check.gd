@@ -89,6 +89,10 @@ extends SceneTree
 ##          Doom on a watchman on guard, then Ember on the granary; spare time, Silent Doom on the watchmen of the next
 ##          granary when its grain is due within HARVEST_PRE; with nothing else, Silent Doom on a carter walking to a granary
 ##          with two loads or fewer left). --seed=, --board as tax.
+##   lamb   (v0.11 M2) The Lost Lamb, --case=none or play (Discord frees him from a seizer, else Silent Doom on the seizer
+##          once he is clear of its blast; Discord on a soldier about to see him; Mind Whisper leads him, re-aimed while he
+##          walks, toward a spot four units short of the gate, then, once the watch is changing or gone, through it; the
+##          result line gives the longest idle stretch). --seed=, --board as tax.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -144,6 +148,14 @@ const TAX_MARGIN := 0.2
 ## The harvest policy clears the next granary's watchmen when its grain is due within this many seconds (v0.11 M2): sooner, the relief
 ## (HarvestDirector.RELIEF_AFTER) walks in before the fire has burned its 10 s.
 const HARVEST_PRE := 20.0
+## The Lost Lamb policy (v0.11 M2): where it holds him for the watch's change, relative to the west gate's mouth, and how far
+## beyond SIGHT it reads a soldier as about to see him.
+const LAMB_WAIT := Vector2(0.0, -4.0)
+const LAMB_WARN := 2.0
+## The Lost Lamb policy sends the next whisper once he is within this of where the last sent him, and Silent Doom on his seizer
+## only with him this much beyond its radius from the seizer, or the same cast would take him too (v0.11 M2).
+const LAMB_AHEAD := 5.0
+const LAMB_CLEAR := 0.4
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -243,6 +255,9 @@ func _run() -> void:
 	elif scenario == "harvest":
 		powers = PackedStringArray(["ember", "doom", "discord"])
 		mission.mission_id = MissionBook.SPOILED_HARVEST
+	elif scenario == "lamb":
+		powers = PackedStringArray(["whisper", "discord", "doom"])
+		mission.mission_id = MissionBook.LOST_LAMB
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -294,6 +309,8 @@ func _run() -> void:
 			await _tax(Battlefield.arg_value(args, "--case"))
 		"harvest":
 			await _harvest(Battlefield.arg_value(args, "--case"))
+		"lamb":
+			await _lamb(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1328,6 +1345,108 @@ func _harvest_states(d: HarvestDirector) -> String:
 		out.append("%s:%d%s%s" % [str(int(d.loads[s])) if d.has_grain(s) else "e", on, "+%d" % off if off > 0 else "",
 			"*" if d.burning(s) else ""])
 	return ",".join(out)
+
+
+## The Lost Lamb (v0.11 M2), played every LOOK_FRAMES: held, Discord on his seizer (turned, he lets go), else Silent Doom on
+## him -- once he has fallen LAMB_CLEAR beyond its radius behind the seizer, or the cast would take him too; else Discord on the
+## nearest soldier set to watch for him within SIGHT + LAMB_WARN; else, whenever Mind Whisper is ready and he is not shaking one
+## off, a whisper (see _lamb_act()): through the gate once the watch is away or gone, else toward LAMB_WAIT short of the gate's
+## mouth, at most REACH at a time. `none` casts nothing. The result line counts the longest stretch between two casts of the
+## scripted player as `idle` (the no-waiting rule: 45 s or less), and each report says who seized him and where.
+func _lamb(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as EscortDirector
+	var slots := _slots(rules)
+	_board_line()
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	var wait_at := d._walkable(d.gate_at + LAMB_WAIT)
+	var acts := {"last": 0.0, "longest": 0.0}
+	var seized := 0
+	while not rules.finished and not rules.main_done and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if d.seizures != seized and WarningDirector._alive(d.seizer) and WarningDirector._alive(d.charge):
+			seized = d.seizures
+			print("BEHAVIOUR lamb t=%.1f seized by %s at (%.1f, %.1f), %.1f from the Temple" % [t, _lamb_who(d, d.seizer),
+				d.charge.ground_pos.x, d.charge.ground_pos.y, d.charge.ground_pos.distance_to(d.return_to)])
+		if t >= report_at:
+			report_at += 10.0
+			var gap := d.charge.ground_pos.distance_to(d.gate_at) if WarningDirector._alive(d.charge) else -1.0
+			print("BEHAVIOUR lamb t=%d held=%s seizures=%d gate=%.1f watch_away=%s hunters=%d" % [roundi(t), d.held, d.seizures,
+				gap, d.watch_away, d.hunters.size()])
+		if which != "play" or frames % LOOK_FRAMES != 0 or not WarningDirector._alive(d.charge):
+			continue
+		var lamb := d.charge
+		var did := ""
+		if lamb.inside:
+			continue
+		if d.held and WarningDirector._alive(d.seizer):
+			var s := d.seizer as Person
+			if _slot_ready(rules, slots, "discord"):
+				rules.cast(slots.discord, s.ground_pos)
+				did = "discord his seizer"
+			elif _slot_ready(rules, slots, "doom") and lamb.ground_pos.distance_to(s.ground_pos) > SilentDoom.RADIUS + LAMB_CLEAR:
+				rules.cast(slots.doom, s.ground_pos)
+				did = "doom his seizer"
+		else:
+			did = _lamb_act(rules, slots, d, lamb, wait_at)
+		if did != "":
+			print("BEHAVIOUR lamb t=%.1f %s (he is %.1f, %.1f)" % [t, did, lamb.ground_pos.x, lamb.ground_pos.y])
+			acts.longest = maxf(float(acts.longest), t - float(acts.last))
+			acts.last = t
+	acts.longest = maxf(float(acts.longest), t - float(acts.last))
+	print("BEHAVIOUR lamb result %s seizures=%d out=%s idle=%.0f" % [_outcome(rules), d.seizures, d.escaped, float(acts.longest)])
+
+
+## Which of the director's soldiers `v` is, for the Lost Lamb reports (v0.11 M2): "watch", "patrol 1" (the first beat), "searcher".
+func _lamb_who(d: EscortDirector, v: Variant) -> String:
+	if d.watch.has(v):
+		return "the watch"
+	if d.hunters.has(v):
+		return "a searcher"
+	for k in d.patrols.size():
+		if (d.patrols[k] as Array).has(v):
+			return "patrol %d" % (k + 1)
+	return "a soldier"
+
+
+## One look of the Lost Lamb policy with him free (v0.11 M2): what it cast, or "". Discord on the nearest soldier about to see him,
+## else a whisper for him: while he is whispered, only once he is within LAMB_AHEAD of where he was sent (so the next whisper
+## carries him on without a stop, and without the shake-off that follows a whisper let run out). It sends him through the gate
+## once the watch is away or gone, else toward LAMB_WAIT (`wait_at`) short of it.
+func _lamb_act(rules: Rules, slots: Dictionary, d: EscortDirector, lamb: Person, wait_at: Vector2) -> String:
+	var threat: Person = null
+	for v: Variant in d._watchers():
+		if not d._watching(v):
+			continue
+		var p := v as Person
+		if d.watch.has(p) and d.watch_away:
+			continue
+		var gap := p.ground_pos.distance_to(lamb.ground_pos)
+		if gap <= EscortDirector.SIGHT + LAMB_WARN and (threat == null or gap < threat.ground_pos.distance_to(lamb.ground_pos)):
+			threat = p
+	if threat != null and _slot_ready(rules, slots, "discord"):
+		rules.cast(slots.discord, threat.ground_pos)
+		return "discord a soldier about to see him"
+	if not _slot_ready(rules, slots, "whisper") or lamb.shaken():
+		return ""
+	if lamb.mind == Person.Mind.WHISPERED and lamb.goal() != Vector2.INF and lamb.ground_pos.distance_to(lamb.goal()) > LAMB_AHEAD:
+		return ""
+	var near_gate := lamb.ground_pos.distance_to(d.gate_at) <= EscortDirector.NEAR_GATE
+	var to := wait_at
+	if near_gate and (d.watch_away or not d._watch_standing()):
+		to = d.exit_at
+	elif lamb.ground_pos.distance_to(wait_at) <= 1.0:
+		return ""
+	var hop := to - lamb.ground_pos
+	if hop.length() > MindWhisperFx.REACH - 0.5:
+		to = d._walkable(lamb.ground_pos + hop.normalized() * (MindWhisperFx.REACH - 0.5))
+	rules.cast(slots.whisper, lamb.ground_pos, {"target": lamb, "to": to})
+	return "whisper him to (%.1f, %.1f)" % [to.x, to.y]
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

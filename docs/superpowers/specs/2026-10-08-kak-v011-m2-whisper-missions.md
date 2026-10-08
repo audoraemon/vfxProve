@@ -189,13 +189,15 @@ arrives one granary at a time.
 - **Brief:** "A runaway acolyte hides from the Temple." / "Lead him out through the west gate."
 - **Card type:** Protect. **Id:** `lost_lamb`.
 - **Map:**
-  - **The acolyte:** the cleric nearest the north-east fountain, set down there at (11.4, -10.0). He moves at 0.6 of his pace.
+  - **The acolyte:** the cleric nearest the north-east fountain, set down there at (11.4, -10.0). He moves at 0.4 of his pace
+    (first guess 0.6; see the tuning note below).
   - **The west gate:** the Main Gate, on screen the lower-left wall (Decision 10). Its way out is (2.7, 17.6) on the south
     road.
   - **The gate's watch:** the two free soldiers nearest the gate's mouth, posted at (2.0, 14.6) and (3.4, 14.6).
   - **Two patrols** of two soldiers each:
     - one walks the south street from (-6.0, 9.0) to (10.0, 9.0) and back;
-    - one walks the market's street from (2.7, -4.0) to (2.7, 8.0) and back.
+    - one walks the market's street from (2.7, 0.0) to (2.7, 8.0) and back (first guess: from (2.7, -4.0), which is beside
+      the Temple's door, where a seizure was lost in seconds).
   - **The Temple's door** at (0.8, -5.0).
 - **Main objective:** lead him out. **Won** the moment he reaches the way out. **Lost** if he is taken back to the
   Temple's door ("THE LAMB IS TAKEN BACK"), if he dies ("THE ACOLYTE IS DEAD"), or at dawn.
@@ -203,22 +205,24 @@ arrives one granary at a time.
   - **The god's hand:** he moves only by the god's hand, a Mind Whisper or a Will-o'-Wisp's lure. Otherwise he holds where
     he was left.
   - **Seized:** any of the watch, the patrols or the searchers within 2.5 units seizes him on sight. A seizer held by
-    Discord or a whisper, or turned, sees nothing. The seizer marches him back toward the Temple's door.
+    Discord or a whisper, or turned, sees nothing. A soldier the town has taken (the rally, a marshal's post, a fight) is
+    left to it and seizes no one. The seizer marches him back toward the Temple's door.
   - **Freed:** felling the seizer frees the acolyte where he stands. So does turning him, or a town order taking him off
     the errand. A whisper on the acolyte alone does not free him.
   - **The watch change:** 30 s after the acolyte first comes within 6 units of the gate's mouth, the watch walks to the
-    guardhouse (6 units east along the wall) for 15 s. While they are gone the gate is clear. From then on the change repeats
-    every 45 s. The god can also clear the gate by acting on the watch.
-  - **Searchers:** at 1:30 the Temple sends two soldiers (the free soldiers nearest its door) after him. They walk to wherever
+    guardhouse (6 units east along the wall) for 25 s (first guess 15 s; at his slow pace he needs the time to pass). While
+    they are gone the gate is clear. From then on the change repeats every 45 s. The god can also clear the gate by acting
+    on the watch.
+  - **Searchers:** at 2:30 (first guess 1:30) the Temple sends two soldiers (the free soldiers nearest its door) after him. They walk to wherever
     he is and seize him on sight. Left alone, he is taken back long before dawn.
 - **Timeline:**
 
   | Time | Event |
   |---|---|
   | 0:00 | He hides by the north-east fountain. The patrols walk their beats. |
-  | 1:30 | "The Temple sends searchers" |
-  | +30 s after he first nears the gate | "The watch changes": the gate is clear for 15 s, every 45 s |
-  | ~2:30 | Left alone, he is seized and marched back (lost by about 2:50) |
+  | 2:30 | "The Temple sends searchers" |
+  | +30 s after he first nears the gate | "The watch changes": the gate is clear for 25 s, every 45 s |
+  | ~2:40 | Left alone, he is seized and marched back (lost by about 2:55) |
   | 5:00 | Dawn |
 
   The longest wait is 30 s, at the gate. It starts when the player brings him there.
@@ -239,11 +243,17 @@ arrives one granary at a time.
 - **Tour:**
   1. "The runaway acolyte hides by the north-east fountain."
   2. "The west gate. Its watch changes soon after he draws near."
-  3. "The Temple. At 1:30 it sends searchers after him."
+  3. "The Temple. At 2:30 it sends searchers after him."
 - **Mission tags:** `unaware_town` (derived).
 - **Results:** "THE LAMB IS FREE" (`out`), "THE LAMB IS TAKEN BACK" (`taken`), "THE ACOLYTE IS DEAD" (`lamb`).
 - **First guesses** (tune order): CHARGE_PACE 0.6, the start spot, SIGHT 2.5, HUNT_AT 90, WATCH_CHANGE 30 / WATCH_GAP 15 /
   WATCH_CYCLE 45, the beats.
+- **Tuning (Task 4):** the first guesses lost: the market patrol's north end sat beside the Temple's door, and the searchers
+  at 1:30 reached him while he was still near it, so a seizure was lost in seconds. As shipped: CHARGE_PACE 0.4 (a slower
+  march in a seizer's tow too: more time to answer it), the market patrol from (2.7, 0.0), HUNT_AT 150, WATCH_GAP 25. SIGHT,
+  the start spot, WATCH_CHANGE 30 and WATCH_CYCLE 45 stand. The wait for the watch stays 30 s and the gap plus the change is
+  55 s: no wait passes a minute. Measured: the scripted player clears it in 2:22-3:40 (see the Task 4 report), and left alone
+  he is taken back at about 2:55.
 
 ## 4. First Prayers (Convert, generalised from Mira's House)
 
@@ -367,11 +377,12 @@ These are the details the v0.11 spec left open. The controller records them as r
     in an Unaware town (no boats), and the Side Gate is on the right.
 11. **Seizing:** the acolyte moves only by the god's hand and holds where left. He is seized on sight (2.5 units) by the
     patrols, the gate's watch and the searchers. A seizer in a blind mind (`MissionDirector.BLIND`) or a turned one
-    (`RescueWish.TURNED`) never seizes. He is freed when the seizer is felled, turned, or taken off the errand by a town
+    (`RescueWish.TURNED`) never seizes, nor does a soldier the rally or the marshals have taken (Decision 20), nor does one
+    see him while he shelters indoors. He is freed when the seizer is felled, turned, or taken off the errand by a town
     order. A whisper on him alone does not free him.
 12. **The watch change** starts 30 s after he first comes within 6 units of the gate, so the wait starts when the player
-    engages. The watch is away 15 s and the change repeats every 45 s.
-13. **The searchers** set out at 1:30, so doing nothing loses well before dawn.
+    engages. The watch is away 25 s and the change repeats every 45 s.
+13. **The searchers** set out at 2:30, so doing nothing loses well before dawn (at about 2:55).
 14. **Convert:** Convert is generalised by subclassing `MirasHouseDirector`. It gains `need`, `read_seconds` and
     `one_at_a_time` (defaults: 4, 8, false) and an `_opening_banner()` hook. `BelieversObjective` reads `need` from the
     director. Mira's House plays exactly as before.

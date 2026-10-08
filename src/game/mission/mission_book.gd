@@ -15,6 +15,7 @@ const FEAST_PROCESSION := "feast_procession"
 ## The tier board's own missions (v0.11 M2): Tier 1's four new ones.
 const TAX_COLLECTOR := "tax_collector"
 const SPOILED_HARVEST := "spoiled_harvest"
+const LOST_LAMB := "lost_lamb"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -52,7 +53,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
-	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest()]
+	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb()]
 	return out
 
 
@@ -107,6 +108,25 @@ static func spoiled_harvest() -> MissionDef:
 	m.director = HarvestDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [RazeObjective.new("Granaries spoiled", "spoiled"), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Lost Lamb (v0.11 M2, Tier 1, spec §8 row 4): lead a runaway acolyte out through the west gate past the patrols, the
+## watch and the Temple's searchers (LostLambDirector).
+static func lost_lamb() -> MissionDef:
+	var m := _tier1(LOST_LAMB, "The Lost Lamb", PackedStringArray(["A runaway acolyte hides from the Temple.",
+		"Lead him out through the west gate."]))
+	m.goal = "Lead the runaway acolyte out through the west gate"
+	m.goal_label = "The lamb is free"
+	m.lose = "He is taken back to the Temple, he dies, or dawn comes"
+	m.camera_at = LostLambDirector.START.lerp(LostLambDirector.GATE_MOUTH, 0.3)
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])
+	m.director = LostLambDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Lead the acolyte out", "out", "taken", "lamb"),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

@@ -54,6 +54,10 @@ const LINES := {
 	"spoiled_harvest.empty": "No grain yet: fire on an empty granary does nothing. Clear its watchmen (red) shortly before the grain comes.",
 	"spoiled_harvest.watchman": "A watchman (red) puts the fire out within 3 s. Strike down, scare off or whisper away every one first.",
 	"spoiled_harvest.burning": "It burns, with no one to put it out. Keep it burning 10 s, or bring it down, before a new watchman comes.",
+	"lost_lamb": "Whisper the acolyte (blue) to the west gate. Soldiers (red) seize him on sight: keep him clear.",
+	"lost_lamb.caught": "He is caught. Kill or turn the soldier taking him back (red) before they reach the Temple.",
+	"lost_lamb.gate": "The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off.",
+	"lost_lamb.clear": "The watch is changing. Send him through the gate now.",
 }
 
 

@@ -85,9 +85,10 @@ extends SceneTree
 ##          Doom on the bellkeeper once called; else Silent Doom on the first collector in the street with nobody but those
 ##          who would fall with him near enough to see it; else Mind Whisper sends a lone onlooker away). --seed= picks the
 ##          town; --board plays the board's version (its wishes heard) and stops at the main objective.
-##   harvest  (v0.11 M2) Spoiled Harvest, --case=none or play (the granaries in the order their carts would empty them: Silent
-##          Doom on a watchman on guard, then Ember on the granary; with nothing else, Silent Doom on a carter walking to a
-##          granary with two loads or fewer left). --seed=, --board as tax.
+##   harvest  (v0.11 M2) Spoiled Harvest, --case=none or play (the granaries with their grain in, fewest loads first: Silent
+##          Doom on a watchman on guard, then Ember on the granary; spare time, Silent Doom on the watchmen of the next
+##          granary when its grain is due within HARVEST_PRE; with nothing else, Silent Doom on a carter walking to a granary
+##          with two loads or fewer left). --seed=, --board as tax.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -140,6 +141,9 @@ const RICH_R := 3.0
 const LOOK_FRAMES := 6
 ## The tax policy's margin beyond Crowd.DOOM_WITNESS for an onlooker's walk (v0.11 M2, _tax_unseen()).
 const TAX_MARGIN := 0.2
+## The harvest policy clears the next granary's watchmen when its grain is due within this many seconds (v0.11 M2): sooner, the relief
+## (HarvestDirector.RELIEF_AFTER) walks in before the fire has burned its 10 s.
+const HARVEST_PRE := 20.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -1246,10 +1250,11 @@ func _tax(which: String) -> void:
 		int(r.killed), int(r.seen), int(r.alarms), String(r.target)])
 
 
-## Spoiled Harvest (v0.11 M2, the Task 3 fix round: watchmen, no seal), played every LOOK_FRAMES. The granaries in the order
-## their carts would empty them (fewest loads first), the first that can be acted on: its watchman on guard, Silent Doom on him;
-## else it not alight, Ember on it; one burning with no one to beat it out is left to burn. With nothing else to do, a granary
-## down to two loads or fewer, Silent Doom on its carter nearest its door who is walking to it (empty-handed). `none` casts
+## Spoiled Harvest (v0.11 M2, Task 3 fix round 2: watchmen, grain arriving one granary at a time), played every LOOK_FRAMES.
+## The granaries with their grain in, fewest loads first, the first that can be acted on: a watchman on guard, Silent Doom on
+## him; none on guard and it not alight, Ember on it. With nothing else to do, the next granary whose grain is due within
+## HARVEST_PRE: Silent Doom on a watchman of its on guard (cleared much earlier, a relief walks in). With nothing else, a granary
+## down to two loads or fewer, Silent Doom on its carter nearest his door who is walking to it (empty-handed). `none` casts
 ## nothing.
 func _harvest(which: String) -> void:
 	var rules: Rules = mission._rules
@@ -1273,23 +1278,32 @@ func _harvest(which: String) -> void:
 		order.sort_custom(func(a: Structure, b: Structure) -> bool: return int(d.loads[a]) < int(d.loads[b]))
 		var cast := false
 		for s: Structure in order:
-			if d.razed(s):
+			if d.razed(s) or not d.has_grain(s):
 				continue
+			var name := String(HarvestDirector.STORE_NAMES[d.targets.find(s)])
 			if d.guarding(s):
 				if _slot_ready(rules, slots, "doom"):
-					print("BEHAVIOUR harvest t=%.1f doom the watchman of the %s granary" % [t, HarvestDirector.STORE_NAMES[d.targets.find(s)]])
-					rules.cast(slots.doom, d.watchman(s).ground_pos)
+					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary" % [t, name])
+					rules.cast(slots.doom, d.guards(s)[0].ground_pos)
 					cast = true
 					break
 			elif not d.burning(s) and _slot_ready(rules, slots, "ember"):
-				print("BEHAVIOUR harvest t=%.1f ember the %s granary" % [t, HarvestDirector.STORE_NAMES[d.targets.find(s)]])
+				print("BEHAVIOUR harvest t=%.1f ember the %s granary" % [t, name])
 				rules.cast(slots.ember, s.center())
 				cast = true
 				break
+		if not cast and _slot_ready(rules, slots, "doom"):
+			for s: Structure in order:
+				if not d.razed(s) and not d.has_grain(s) and d.grain_left(s) <= HARVEST_PRE and d.guarding(s):
+					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary (grain in %.0f s)" % [t,
+						HarvestDirector.STORE_NAMES[d.targets.find(s)], d.grain_left(s)])
+					rules.cast(slots.doom, d.guards(s)[0].ground_pos)
+					cast = true
+					break
 		if cast or not _slot_ready(rules, slots, "doom"):
 			continue
 		for s in order:
-			if d.razed(s) or int(d.loads[s]) > 2:
+			if d.razed(s) or not d.has_grain(s) or int(d.loads[s]) > 2:
 				continue
 			var mark: Person = null
 			for c: Variant in d.carters[s]:
@@ -1301,15 +1315,17 @@ func _harvest(which: String) -> void:
 	print("BEHAVIOUR harvest result %s spoiled=%d emptied=%s" % [_outcome(rules), d.razed_count(), d.emptied != null])
 
 
-## Each granary's state for the harvest reports (v0.11 M2): x spoiled; else its loads left, then g (watchman on guard), a (alive
-## but away) or - (none), then * while it burns: "5g,4-*,x".
+## Each granary's state for the harvest reports (v0.11 M2): x spoiled; else its loads left (e for an empty one waiting for its
+## grain), then how many watchmen are on guard and how many are away ("2" or "1+1"), then * while it burns: "5:2,e:1+1,e:2".
 func _harvest_states(d: HarvestDirector) -> String:
 	var out := PackedStringArray()
 	for s in d.targets:
 		if d.razed(s):
 			out.append("x")
 			continue
-		out.append("%d%s%s" % [int(d.loads[s]), "g" if d.guarding(s) else ("a" if d.watchman(s) != null else "-"),
+		var on := d.guards(s).size()
+		var off := d.watchmen(s).size() - on
+		out.append("%s:%d%s%s" % [str(int(d.loads[s])) if d.has_grain(s) else "e", on, "+%d" % off if off > 0 else "",
 			"*" if d.burning(s) else ""])
 	return ",".join(out)
 

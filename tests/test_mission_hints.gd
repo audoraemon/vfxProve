@@ -40,8 +40,9 @@ const SPEC := [
 	["tax_collector.safe", "His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in."],
 	["tax_collector.next", "One down. The next collector (gold) leaves the counting-house soon: be ready for him."],
 	# Spoiled Harvest (v0.11 M2).
-	["spoiled_harvest", "Remove a granary's watchman (red), then keep it burning 10 s before its carters (blue) empty it."],
-	["spoiled_harvest.watchman", "The watchman (red) puts the fire out within 3 s. Strike him down, scare him off or whisper him away first."],
+	["spoiled_harvest", "Strike down a granary's two watchmen (red), then keep it burning 10 s before its carter (blue) empties it."],
+	["spoiled_harvest.empty", "No grain yet: fire on an empty granary does nothing. Clear its watchmen (red) shortly before the grain comes."],
+	["spoiled_harvest.watchman", "A watchman (red) puts the fire out within 3 s. Strike down, scare off or whisper away every one first."],
 	["spoiled_harvest.burning", "It burns, with no one to put it out. Keep it burning 10 s, or bring it down, before a new watchman comes."],
 ]
 

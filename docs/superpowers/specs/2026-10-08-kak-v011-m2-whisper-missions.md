@@ -109,70 +109,80 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
 
 ## 2. Spoiled Harvest (Raze, generalised)
 
-Reshaped by the controller's Task 3 fix-round ruling (work, not waiting): no seal; each granary has a watchman.
+Reshaped by the controller's Task 3 fix-round rulings (work, not waiting): no seal; two watchmen at each granary; the grain
+arrives one granary at a time.
 
 - **Brief:** "Carts empty the granaries to the Citadel." / "Spoil the harvest before they do."
 - **Card type:** Destroy. **Id:** `spoiled_harvest`.
 - **Map:**
   - **Three granary stores:** the dwellings nearest (-9.0, 12.0), (12.0, 12.0) and (12.0, -12.0), named the south-west,
-    south-east and north-east granaries. All three are far from the Citadel, and all three are open to the god from the start.
-  - **The watchmen:** at each granary's door stands a watchman, the lay citizen nearest it.
-  - **The carters:** for each granary, the lay citizen nearest the Citadel's gate not already at work.
+    south-east and north-east granaries. All three are far from the Citadel.
+  - **The watchmen:** at each granary's door stand two watchmen, one either side of it (further apart than one Silent Doom
+    reaches), each the lay citizen nearest his post. They are there from the start.
+  - **The carter:** for each granary, the lay citizen nearest the Citadel's gate not already at work.
 - **Main objective:** spoil all three granaries. A granary is spoiled once it has burned 10 s in all, or is destroyed
   (the controller's Task 3 ruling: a 50-hp house burns down in about 13 s, so the first guess of 15 s could never be reached).
   - **Won** the moment the third is spoiled.
   - **Lost** the moment any granary is emptied ("A GRANARY IS EMPTIED": a store emptied cannot be spoiled), or at dawn.
 - **People and behaviour:**
-  - **The watchman:** while he is alive, out of doors, at his post and calm (not frightened, fleeing, confused, whispered,
-    compelled or fighting), he holds his post while his granary burns and beats the fire out after 3 s. What it had burned is
-    forgotten. The god must first remove him (strike him down, scare him off, whisper him away, Discord him), then keep the
-    fire burning 10 s in all, or bring the granary down.
-  - **His return:** a watchman off his post who is calm again is sent back to it 20 s after he left; a fallen one is replaced
-    by the nearest lay citizen 30 s after he fell.
-  - **The carts:** at 0:30, 1:30 and 2:30 a granary's carter sets out from the Citadel's gate for its door. He takes a load at
-    the granary and carries it to the Citadel's gate, again and again. Each granary holds 6 loads, and taking the last empties it.
+  - **The grain:** a granary holds nothing to spoil until its grain arrives. Fire on an empty granary is put out at once and
+    counts for nothing, and its fall is not judged until the grain is in (the grain then arrives in a ruin: spoiled). The
+    first granary's grain arrives at 1:00. Each next arrives at its own time (2:00, 3:00) or 45 s after the one before it is
+    spoiled, whichever is sooner; the one before it still standing never brings it forward, and a late spoiling never delays it.
+  - **The watchmen:** while one is alive, out of doors, at his post and calm (not frightened, fleeing, confused, whispered,
+    compelled or fighting), he holds his post while his granary burns (a fire there does not frighten him) and the fire is
+    beaten out after 3 s; what it had burned is forgotten. The god must remove every one of them (strike them down, whisper
+    them away, Discord them; a killing next to the other usually frightens him off for a while), then keep the fire burning 10 s
+    in all, or bring the granary down.
+  - **Return and relief:** a watchman off his post who is calm again is sent back to it 20 s after he left; a fallen one is
+    replaced by the nearest free lay citizen 30 s after he fell, so clearing a granary long before its grain is undone.
+  - **The carts:** the moment a granary's grain is in, its carter sets out from the Citadel's gate for its door. He takes a
+    load at the granary and carries it to the Citadel's gate, again and again. Each granary holds 5 loads, and taking the last
+    empties it. Doing nothing loses at about 3:10-3:45 (the carter's round trips vary with who he is).
   - **The god's hand:** a frightened, whispered or confused carter is left be, and takes his errand up again after.
-  - **Felled carters** are not replaced. A spoiled granary's carters and watchman go home.
+  - **Felled carters** are not replaced. A spoiled granary's carter and watchmen go home.
   - **Fire:** the town answers a fire as it always does. Its fire crews douse it, and that is the Raze type's "repair crews".
 - **Timeline:**
 
   | Time | Event |
   |---|---|
-  | 0:30 | "The south-west granary's carts set out" |
-  | 1:30 | "The south-east granary's carts set out" |
-  | 2:30 | "The north-east granary's carts set out" |
-  | ~3:30 | Left alone, the south-west granary is emptied: lost |
+  | 1:00 | "Grain arrives at the south-west granary" |
+  | 2:00 | "Grain arrives at the south-east granary" (sooner: 45 s after the south-west is spoiled) |
+  | 3:00 | "Grain arrives at the north-east granary" (sooner: 45 s after the south-east is spoiled) |
+  | ~3:10-3:45 | Left alone, the south-west granary is emptied: lost |
   | 5:00 | Dawn |
 
-  There is no idle wait: every granary can be worked on from the first second. The timed waits are 30 s (the first carts),
-  60 s (between carts), 20 s (a watchman's return) and 30 s (a relief). Measured (Task 3 fix round): the scripted player,
-  cooldown-limited (Silent Doom 10 s, Ember 15 s), clears all three in about 0:42, below the 3-4 minute target; see the
-  Task 3 report for the numbers and the options.
-- **Tags:** each granary, gold:
-  - carts still to come: GRANARY - CARTS IN 0:12 (the time left to them), with an edge arrow;
-  - carts out: GRANARY - 3 LEFT;
+  There is always something to do: the next granary's watchmen can be dealt with before its grain arrives, but the relief
+  (30 s) undoes it if done too early. The longest stretch with nothing to do is 40 s at the start (the player clears the
+  first granary's watchmen in the last 20 s); the chain's gaps are 25 s. Measured (Task 3 fix round 2): the scripted player
+  clears all three in 3:02-3:10 (182-190 s), and the first guesses (grain at 0:30, 1:30, 2:30, 6 loads) in 2:32.
+- **Tags:** each granary:
+  - empty: GRANARY - EMPTY, GRAIN IN 0:58 (the time left to its grain), grey, with an edge arrow;
+  - grain in: GRANARY - 3 LEFT, gold;
   - burning: GRANARY - BURNING 9, orange;
   - spoiled: untagged.
 
   A red diamond labelled WATCHMAN on each watchman on guard (a small red mark while he is away), and a steel-blue diamond on
-  each carter.
+  the carter.
 - **Hint phases:**
 
   | Phase | Line |
   |---|---|
-  | (none) | Remove a granary's watchman (red), then keep it burning 10 s before its carters (blue) empty it. |
-  | `watchman` | The watchman (red) puts the fire out within 3 s. Strike him down, scare him off or whisper him away first. |
+  | (none) | Strike down a granary's two watchmen (red), then keep it burning 10 s before its carter (blue) empties it. |
+  | `empty` | No grain yet: fire on an empty granary does nothing. Clear its watchmen (red) shortly before the grain comes. |
+  | `watchman` | A watchman (red) puts the fire out within 3 s. Strike down, scare off or whisper away every one first. |
   | `burning` | It burns, with no one to put it out. Keep it burning 10 s, or bring it down, before a new watchman comes. |
 - **Tour:**
-  1. "The south-west granary. Its watchman puts out fires. Its carts set out at 0:30."
-  2. "The south-east granary. Its watchman puts out fires. Its carts set out at 1:30."
-  3. "The north-east granary. Its watchman puts out fires. Its carts set out at 2:30."
+  1. "The south-west granary. Its watchmen put out fires. Its grain arrives by 1:00."
+  2. "The south-east granary. Its watchmen put out fires. Its grain arrives by 2:00."
+  3. "The north-east granary. Its watchmen put out fires. Its grain arrives by 3:00."
   4. "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled."
 - **Mission tags:** `unaware_town` (derived).
 - **Results:** "THE HARVEST IS SPOILED" (`spoiled`), "A GRANARY IS EMPTIED" (`emptied`).
-- **Numbers:** first guesses CART_AT 30 / 90 / 150, SPOIL 10 (the ruling), LOADS 5, CARTERS 1, SMOTHER_AFTER 3, RETURN_AFTER 20,
-  RELIEF_AFTER 30. Task 3's fix round set LOADS to 6 so that doing nothing loses at about 3:30. Tune in this order if the
-  scripted clear misses 3-4 minutes: CART_AT, RELIEF_AFTER, RETURN_AFTER, the watchmen per granary (SPOIL stays 10).
+- **Numbers:** first guesses GRAIN_AT 30 / 90 / 150, CHAIN_AFTER 45, SPOIL 10 (the ruling), LOADS 6, CARTERS 1, WATCHMEN 2,
+  SMOTHER_AFTER 3, RETURN_AFTER 20, RELIEF_AFTER 30. Fix round 2 set GRAIN_AT to 60 / 120 / 180 and LOADS to 5 (the first
+  guesses cleared in 2:32). Tune in this order if the scripted clear misses 3-4 minutes: GRAIN_AT, CHAIN_AFTER (30-45),
+  RELIEF_AFTER, LOADS (SPOIL stays 10, and the 20 s return and the fearless watchman stay).
 
 ## 3. The Lost Lamb (Escort, new type)
 
@@ -345,13 +355,14 @@ These are the details the v0.11 spec left open. The controller records them as r
    the Citadel. Quiet powers never alarm the collectors.
 7. **Raze:** Raze is generalised as a new `RazeDirector` base (targets, a spoil time, sealing). Last Judgement's and
    Judgement's directors are left as they are (the Citadel judges itself), so their references hold.
-8. **Watchmen, not seals:** the granaries are dwellings, all open to the god from the start. Each has a watchman who beats
-   out its fire after 3 s while he is alive, out of doors, at his post and calm (a fire at his granary does not frighten him);
-   the god removes him first. A watchman returns 20 s after a fright and a relief comes 30 s after one falls. "Spoiled" means
-   burned 10 s in all, or destroyed. The first granary emptied loses at once. The Raze base keeps an optional seal that no
-   mission uses.
-9. **Carters:** one lay citizen per granary, from near the Citadel, setting out at 0:30, 1:30 and 2:30. A load is counted when it
-   is taken at the granary, which is what empties it. Felled carters are not replaced.
+8. **Watchmen and grain, not seals:** the granaries are dwellings, empty until their grain arrives (1:00, then 2:00 and 3:00, or
+   45 s after the one before is spoiled, whichever is sooner); fire on an empty one does nothing. Each has two watchmen from
+   the start, who beat out its fire after 3 s while they are alive, out of doors, at their posts and calm (a fire at their
+   granary does not frighten them); the god removes every one first. A watchman returns 20 s after a fright and a relief
+   comes 30 s after one falls. "Spoiled" means burned 10 s in all, or destroyed once the grain is in. The first granary
+   emptied loses at once. The Raze base keeps an optional seal that no mission uses.
+9. **Carters:** one lay citizen per granary, from near the Citadel, setting out the moment the granary's grain arrives. A load is
+   counted when it is taken at the granary, which is what empties it. Felled carters are not replaced.
 10. **The west gate:** "the west gate" is the Main Gate, which stands on the lower-left wall on screen. The postern is barred
     in an Unaware town (no boats), and the Side Gate is on the right.
 11. **Seizing:** the acolyte moves only by the god's hand and holds where left. He is seized on sight (2.5 units) by the

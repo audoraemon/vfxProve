@@ -86,6 +86,12 @@ func lost_reason() -> String:
 	return ""
 
 
+## Virtual (v0.11 M2): whether `s` can be spoiled yet. A target that cannot (HarvestDirector's granary before its grain comes)
+## is as good as sealed: any fire on it is put out at once, nothing it burns counts, and its fall is not judged until it can.
+func _spoilable(_s: Structure) -> bool:
+	return true
+
+
 ## Virtual (v0.11 M2): `s` has just been razed.
 func _on_razed(_s: Structure) -> void:
 	pass
@@ -98,16 +104,18 @@ func step(delta: float) -> void:
 	_judge_targets(delta)
 
 
-## Each target not yet razed (v0.11 M2): one fallen is razed (a sealed one is stone to every power, but the director leaves
-## none to stand sealed with its building gone); a sealed one's fire is smothered; an open one is razed once it has burned
-## `spoil_seconds` in all.
+## Each target not yet razed (v0.11 M2): one fallen is razed once it can be spoiled (a sealed one is stone to every power, but
+## the director leaves none to stand sealed with its building gone); a sealed one's fire, or that of one not yet spoilable, is
+## smothered; an open one is razed once it has burned `spoil_seconds` in all.
 func _judge_targets(delta: float) -> void:
 	for s in targets:
 		if _razed.has(s):
 			continue
+		var ready := _spoilable(s)
 		if not is_instance_valid(s) or s.destroyed:
-			_raze(s)
-		elif _sealed.has(s):
+			if ready:
+				_raze(s)
+		elif _sealed.has(s) or not ready:
 			if burning(s):
 				crowd.fires._put_out(s, true)
 		elif burning(s):

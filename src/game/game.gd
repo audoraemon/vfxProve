@@ -110,6 +110,19 @@ const SAMPLE_FEAST_RESULT := {
 	"campaign": {"won": true, "dp_gain": 3, "dp": 13, "bites": 0, "ending": ""},
 }
 
+## What --show=results-descend displays (v0.11 M1): the board's Warning caught by dawn after its main objective -- its 10
+## believers banked, a granted wish lost, one failed -- and Omen opened by the clear.
+const SAMPLE_DESCEND_RESULT := {
+	"mission": "warning", "won": true, "reason": "warning", "time": 214.0, "goal": {"label": "The warnings die", "done": true},
+	"bonuses": [],
+	"descend": {"tier": 1, "main": true, "main_time": 201.0, "main_reward": 10, "ascended": false, "caught": "dawn",
+		"lost_text": "lost: dawn came", "earned": 10, "kept": 0,
+		"wishes": [{"text": "Burn the moneylender's house", "reward": 10, "state": "granted", "lost": true},
+			{"text": "Show me a sign", "reward": 5, "state": "failed", "lost": false}],
+		"bank": {"believers": 10, "total": 10, "night": 1, "cleared": true, "first_clear": true, "opened": 2,
+			"progress": "Whisper 1 / 1 cleared: Omen is open", "bests": ["Fastest clear 3:21"]}},
+}
+
 var screen := Screen.TITLE
 var save: SaveFile
 ## Where the save file lives: the real one, FLOW_TEST_SAVE under --flow-test, or SHOW_SAVE under --show.
@@ -273,6 +286,34 @@ func _ready() -> void:
 			mission_id = MissionBook.MIRAS_HOUSE
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
+		"tiers":
+			# The tier board part-way up (v0.11 M1): Whisper and Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
+			save.descend = DescendState.new()
+			save.descend.cleared = PackedStringArray(["warning", "miras_house", "broken_lanterns"])
+			save.descend.fastest = {"warning": 192.0}
+			save.descend.most_wishes = {"warning": 2}
+			save.descend.believers = 64
+			save.descend.night = 5
+			save.descend.refresh_open()
+			mission_id = MissionBook.VIGIL_FLAME
+			go_to(Screen.BOARD)
+		"upgrades":
+			# The Upgrades with a purse (v0.11 M1), one +1 DP and one power bought, for the photograph (SHOW_SAVE).
+			save.descend = DescendState.new()
+			save.descend.believers = 165
+			save.descend.dp_bought = 1
+			go_to(Screen.UPGRADES)
+			# One power bought on the screen itself (45 believers), so its cell reads "Unlocked" in the photograph.
+			(_screen_node as UpgradesScreen).buy("pestilence")
+		"results-descend":
+			result = SAMPLE_DESCEND_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
+		"ascend":
+			# The board's Warning with its main objective done (v0.11 M1), for the photograph of THE NIGHT IS YOURS, the ASCEND
+			# plate, the wishes' rows and their tags.
+			mission_id = MissionBook.WARNING
+			loadout = MissionBook.warning().default_loadout
+			go_to(Screen.MISSION)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -293,6 +334,12 @@ func _ready() -> void:
 				if _mission._hud.banners().is_empty():
 					break
 				await get_tree().process_frame
+		if show == "ascend" and is_instance_valid(_mission):
+			await _until(func() -> bool: return _mission.started(), 10.0)
+			_mission.skip_intro()
+			for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
+				w.warning_dead = true
+			await _until(func() -> bool: return _mission.rules().main_done, 3.0)
 		if show == "flame-beams" and is_instance_valid(_mission) and _mission.rules() != null \
 				and _mission.rules().director is VigilFlameDirector:
 			(_mission.rules().director as VigilFlameDirector).bench_beams()

@@ -520,8 +520,10 @@ func _draw_card(i: int, key: String) -> void:
 	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.
-		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - (3.0 if compact else 5.0)), "quiet",
-			UiTheme.SIZE_SMALL, Color("9ab48a"))
+		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1).
+		var lift := UiTheme.LINE_SMALL if draft.locked.has(key) else 0.0
+		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - (3.0 if compact else 5.0) - lift),
+			"quiet", UiTheme.SIZE_SMALL, Color("9ab48a"))
 	if slot > 0:
 		# On the icon's corner, gold on dark like the HUD's hotkeys. Dark digits on a gold square picked up every
 		# label's one-pixel shadow and read as 8, and a badge in the card's top-right corner covered long names.

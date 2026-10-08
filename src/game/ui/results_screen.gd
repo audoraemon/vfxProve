@@ -29,8 +29,8 @@ const NOBODY := "-"
 const CAMPAIGN_Y := 304.0
 
 ## A board night's table (v0.11 M1): its labels' left edge, its values' and marks' right edge, the first row and the step.
-const DESCEND_L := 120.0
-const DESCEND_R := 520.0
+const DESCEND_L := 100.0
+const DESCEND_R := 540.0
 const DESCEND_TOP := 112.0
 const DESCEND_ROW := 18.0
 

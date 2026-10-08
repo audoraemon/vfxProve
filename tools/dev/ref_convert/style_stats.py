@@ -21,7 +21,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[3]
 B = ROOT / "assets" / "pixellab" / "buildings"
 REFS = ["townhouse_a", "townhouse_b", "tavern", "cottage_red", "workshop", "barracks"]
-GPT = ["gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury"]
+GPT = ["gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury",
+       "gpt_chapel", "gpt_monastery", "gpt_graveyard", "gpt_hospital", "gpt_leperhouse", "gpt_bathhouse"]
 
 
 def luma(rgb):

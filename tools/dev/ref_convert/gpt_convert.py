@@ -1,10 +1,12 @@
-"""The six ChatGPT defence buildings (concepts/GPT/defence_sheet_v1.webp) as game sprite sets, for the GPT buildings
-proof (src/environment/art/gpt_proof.gd puts each on one existing plot; art only). No AI calls: cut, fit, draw.
+"""ChatGPT-painted building sheets (concepts/GPT/*_sheet_v1.webp) as game sprite sets, for the GPT buildings proof
+(src/environment/art/gpt_proof.gd puts each on one existing plot; art only). No AI calls: cut, fit, draw.
 
-The sheet is a 3 x 2 grid on a transparent (or white) ground, painted at about 3-4x game size from the blockouts in
-concepts/GPT/blockouts_defence.png, lit from the left and in the game's orientation (a wide building's long side is
-its left face), so nothing is mirrored.
+Each sheet is one SHEETS entry: its source file, its grid, the painted smoke to strip, and its sets (grid cell,
+footprint corners, plot footprint, height, kind, role, tag, chimney, ruins). Every sheet is a 3 x 2 grid on a
+transparent or white ground, painted at about 3-4x game size from the blockouts in concepts/GPT/, lit from the left
+and in the game's orientation (a wide building's long side is its left face), so nothing is mirrored.
 
+  defence (defence_sheet_v1.webp, from blockouts_defence.png)
   set              sheet cell     plot (gpt_proof.gd)                          structure drawn on
   gpt_townhall     top-left       TAVERNS[0]  2.4 x 1.5                         HOUSE / house / tavern     h 30
   gpt_armoury      top-middle     WORKSHOP    2.6 x 1.5                         HOUSE / house / workshop   h 22
@@ -13,9 +15,18 @@ its left face), so nothing is mirrored.
   gpt_watchtower   bottom-middle  cottage     0.95 x 0.75 at (-8.28, 3.27)      HOUSE / house / ""         h 19
   gpt_treasury     bottom-right   townhouse   1.3 x 0.95 at (-10.39, -0.38)     HOUSE / house / townhouse  h 28
 
+  faith (faith_sheet_v1.webp, white ground, from blockouts/2_faith.png)
+  gpt_chapel       top-left       townhouse   1.3 x 0.95 at (5.33, -10.9)       HOUSE / house / townhouse  h 29
+  gpt_monastery    top-middle     TAVERNS[2]  2.8 x 1.8                         HOUSE / house / tavern     h 30
+  gpt_graveyard    top-right      townhouse   0.95 x 1.3 at (3.53, -7.5) (drawn 1.3 x 0.95, mirrored)   townhouse h 28
+  gpt_hospital     bottom-left    CARPENTER   2.3 x 1.15                        HOUSE / house / carpenter  h 20
+  gpt_leperhouse   bottom-middle  townhouse   0.95 x 1.3 at (7.44, 10.3) (drawn 1.3 x 0.95, mirrored)   townhouse h 29
+  gpt_bathhouse    bottom-right   townhouse   1.3 x 0.95 at (7.1, -4.0)         HOUSE / house / townhouse  h 28
+
 Cut: the background goes (alpha below 128, then near-white flooded in from the border, so interior whites such as
-the clock face stay); the cell's largest shape is kept with every detached piece in the same cell of at least
-MIN_PROP px (barrels, the stocks, the coin chest).
+the clock face stay); smoke painted on a sheet goes too (pale grey px in its smoke boxes: cleared above a chimney,
+darkened to the flue inside it), as ChimneySmoke draws the smoke; the cell's largest shape is kept with every detached
+piece in the same cell of at least MIN_PROP px (barrels, the stocks, the coin chest).
 
 Fit: each building's footprint diamond is measured on the sheet by hand (its base corners L, F, R: left, front,
 right; for the armoury R is the diamond's corner behind the shed, for the watchtower the outer corners of its leg
@@ -39,10 +50,10 @@ The watchtower's are local: its four leg stumps and the cabin fallen on its side
 the style match's lock and outline only (they are already in the game's style); the watchtower's get the whole pass.
 
 No idle strips; the collapse is the engine's sink. A set whose building has a chimney gets a chimney key (its top's
-middle) so ChimneySmoke rises from it; the watchtower has none.
+middle) so ChimneySmoke rises from it; the watchtower, the chapel and the graveyard have none.
 
 Usage (from anywhere):
-  python tools/dev/ref_convert/gpt_convert.py [all | <set> ...] [--out <scratch dir>] [--debug <dir>]
+  python tools/dev/ref_convert/gpt_convert.py [all | <sheet> | <set> ...] [--out <scratch dir>] [--debug <dir>]
 """
 import argparse
 import json
@@ -61,16 +72,15 @@ import warehouse  # noqa: E402
 
 ROOT = convert.ROOT
 B = convert.B
-SHEET = ROOT / "concepts" / "GPT" / "defence_sheet_v1.webp"
-GRID = (3, 2)
+GPT = ROOT / "concepts" / "GPT"
 MIN_PROP = 40
 PAD = 6
 CHAR = warehouse.CHAR
 TIMBER_DK = warehouse.TIMBER_DK
 
-# name: cell (col, row), corners L F R (sheet px), y stretch, footprint [W, D], height, seed, kind, role, tag,
-#       chimney top (sheet px) or None, ruins (source set, scale) or None for the local ruin
-SETS = {
+# Per set: cell (col, row), corners L F R (sheet px), y stretch k, footprint [W, D] (its plot's), height, seed, kind,
+# role, tag, chimney top (sheet px) or None, ruins (source set, scale or "fill") or None for a local ruin.
+DEFENCE_SETS = {
     "gpt_townhall": dict(cell=(0, 0), L=(73, 324), F=(337, 455), R=(511, 365), k=1.0, fp=[2.4, 1.5], height=30,
                          seed=80, kind="HOUSE", role="house", tag="tavern", chimney=(275, 52), ruins=("tavern", 1.0)),
     "gpt_armoury": dict(cell=(1, 0), L=(623, 336), F=(939, 493), R=(1094, 416), k=1.0, fp=[2.6, 1.5], height=22,
@@ -88,6 +98,43 @@ SETS = {
                          seed=85, kind="HOUSE", role="house", tag="townhouse", chimney=(1441, 632),
                          ruins=("town_tower", "fill")),
 }
+# The faith sheet. L and R are the building's outer base corners and F is where their edges meet: empty ground in
+# front of the monastery's open cloister and of the bathhouse's furnace annex; the chapel's porch stands just outside
+# its diamond (as the jail's stocks do). All six fall to the town tower's stone rubble filling the plot (the tavern's
+# timber ruins scaled down to a townhouse plot break up into specks).
+FAITH_SETS = {
+    "gpt_chapel": dict(cell=(0, 0), L=(33, 394), F=(241, 502), R=(386, 430), k=1.0, fp=[1.3, 0.95], height=29,
+                       seed=86, kind="HOUSE", role="house", tag="townhouse", chimney=None,
+                       ruins=("town_tower", "fill")),
+    "gpt_monastery": dict(cell=(1, 0), L=(466, 403), F=(746, 550), R=(962, 428), k=0.92, fp=[2.8, 1.8], height=30,
+                          seed=87, kind="HOUSE", role="house", tag="tavern", chimney=(828, 160),
+                          ruins=("town_tower", "fill")),
+    "gpt_graveyard": dict(cell=(2, 0), L=(994, 454), F=(1253, 587), R=(1431, 494), k=0.97, fp=[1.3, 0.95],
+                          height=28, seed=88, kind="HOUSE", role="house", tag="townhouse", chimney=None,
+                          ruins=("town_tower", "fill")),
+    "gpt_hospital": dict(cell=(0, 1), L=(48, 811), F=(360, 974), R=(483, 913), k=1.0, fp=[2.3, 1.15], height=20,
+                         seed=89, kind="HOUSE", role="house", tag="carpenter", chimney=(215, 533),
+                         ruins=("town_tower", "fill")),
+    "gpt_leperhouse": dict(cell=(1, 1), L=(535, 872), F=(763, 985), R=(954, 885), k=1.0, fp=[1.3, 0.95], height=29,
+                           seed=90, kind="HOUSE", role="house", tag="townhouse", chimney=(780, 655),
+                           ruins=("town_tower", "fill")),
+    "gpt_bathhouse": dict(cell=(2, 1), L=(1008, 873), F=(1279, 1014), R=(1436, 932), k=0.96, fp=[1.3, 0.95],
+                          height=28, seed=91, kind="HOUSE", role="house", tag="townhouse", chimney=(1346, 676),
+                          ruins=("town_tower", "fill")),
+}
+# Its painted smoke (x0, y0, x1, y1 sheet px; "clear" above a chimney, "flue" inside it): the monastery's chimney,
+# the bathhouse's tall chimney (and the wisp beside it) and its left roof vent.
+FAITH_SMOKE = [(812, 120, 848, 157, "clear"), (812, 157, 848, 168, "flue"),
+               (1325, 565, 1435, 670, "clear"), (1334, 670, 1362, 690, "flue"), (1366, 720, 1405, 792, "clear"),
+               (1140, 570, 1200, 625, "clear")]
+
+# A sheet: its source (in concepts/GPT), its grid (cols, rows), the painted smoke to strip, and its sets.
+SHEETS = {
+    "defence": dict(src="defence_sheet_v1.webp", grid=(3, 2), smoke=[], sets=DEFENCE_SETS),
+    "faith": dict(src="faith_sheet_v1.webp", grid=(3, 2), smoke=FAITH_SMOKE, sets=FAITH_SETS),
+}
+# name -> its set's spec, "sheet" (its SHEETS key) added
+SETS = {n: dict(v, sheet=k) for k, sh in SHEETS.items() for n, v in sh["sets"].items()}
 
 
 # --- cut -----------------------------------------------------------------------------------------------------------
@@ -128,30 +175,48 @@ def background(a):
     return bg | (np.array(m)[1:-1, 1:-1] == 128)
 
 
-_SHEET = None
-_COMPS = None
+def is_smoke(rgb):
+    """Pale grey: the painted smoke's colour (the stone, plaster and chimney caps round it are warmer or darker)."""
+    rgb = rgb.astype(int)
+    return (rgb.min(-1) > 140) & (rgb.max(-1) - rgb.min(-1) < 24)
 
 
-def sheet():
-    global _SHEET
-    if _SHEET is None:
-        a = np.array(Image.open(SHEET).convert("RGBA"))
+def strip_smoke(a, boxes):
+    """The painted smoke in `boxes` gone: cleared above a chimney ("clear"), the flue's dark inside it ("flue")."""
+    for x0, y0, x1, y1, mode in boxes:
+        sub = a[y0:y1, x0:x1]
+        m = is_smoke(sub[..., :3]) & (sub[..., 3] > 0)
+        if mode == "clear":
+            sub[m, 3] = 0
+        else:
+            sub[m, :3] = np.round(np.array(CHAR) * 0.6).astype(np.uint8)
+    return a
+
+
+_SHEETS = {}
+_COMPS = {}
+
+
+def sheet(key):
+    if key not in _SHEETS:
+        sh = SHEETS[key]
+        a = np.array(Image.open(GPT / sh["src"]).convert("RGBA"))
         a[background(a), 3] = 0
         a[a[..., 3] > 0, 3] = 255
-        _SHEET = a
-    return _SHEET
+        _SHEETS[key] = strip_smoke(a, sh["smoke"])
+    return _SHEETS[key]
 
 
-def cut(cell):
-    """The cell's building on the full sheet's canvas: its largest shape and the detached props in its cell."""
-    global _COMPS
-    a = sheet()
+def cut(cell, key):
+    """The cell's building on its sheet's full canvas: its largest shape and the detached props in its cell."""
+    a = sheet(key)
     h, w = a.shape[:2]
-    cw, ch = w / GRID[0], h / GRID[1]
-    if _COMPS is None:
-        _COMPS = _label(a[..., 3] > 0)
+    grid = SHEETS[key]["grid"]
+    cw, ch = w / grid[0], h / grid[1]
+    if key not in _COMPS:
+        _COMPS[key] = _label(a[..., 3] > 0)
     # a shape belongs to the cell its middle lies in (the watchtower's flag pokes into the row above)
-    mine = [c for c in _COMPS if int(c[1].mean() // cw) == cell[0] and int(c[0].mean() // ch) == cell[1]]
+    mine = [c for c in _COMPS[key] if int(c[1].mean() // cw) == cell[0] and int(c[0].mean() // ch) == cell[1]]
     big = max(mine, key=lambda c: len(c[0]))
     keep = np.zeros((h, w), bool)
     for ys, xs in mine:
@@ -166,7 +231,7 @@ def cut(cell):
 
 def fit(spec):
     """(native RGBA float array, anchor (x, y) float, transform sheet px -> sprite px, info)."""
-    a = cut(spec["cell"])
+    a = cut(spec["cell"], spec["sheet"])
     W, D = spec["fp"]
     L, F, R = (np.array(spec[c], float) for c in "LFR")
     k = spec["k"]
@@ -284,6 +349,18 @@ DAMAGE = {
                            scorch=None, hang=None),
     "gpt_treasury": dict(holes=[(1290, 700, 6.0, 3.5, 1)],
                          scorch=(1226, 740, 850, 7), hang=((1404, 805, 1432, 888), 5, "left")),
+    "gpt_chapel": dict(holes=[(160, 265, 4.5, 2.6, 1)],
+                       scorch=(150, 340, 425, 4), hang=((172, 432, 195, 488), 4, "right")),
+    "gpt_monastery": dict(holes=[(590, 250, 6.5, 3.8, 1), (860, 250, 5.0, 3.0, -1)],
+                          scorch=(765, 400, 470, 5), hang=((752, 468, 778, 520), 4, "right")),
+    "gpt_graveyard": dict(holes=[(1360, 370, 3.0, 1.8, -1)],
+                          scorch=(1378, 420, 470, 3), hang=((1125, 455, 1170, 525), 4, "left")),
+    "gpt_hospital": dict(holes=[(130, 640, 6.5, 3.8, 1), (300, 700, 5.0, 3.0, 1)],
+                         scorch=(285, 830, 900, 5), hang=((166, 832, 190, 892), 4, "right")),
+    "gpt_leperhouse": dict(holes=[(690, 700, 4.5, 2.6, 1)],
+                           scorch=(718, 790, 850, 4), hang=((642, 818, 668, 878), 4, "right")),
+    "gpt_bathhouse": dict(holes=[(1120, 690, 5.0, 3.0, 1), (1240, 740, 4.0, 2.4, 1)],
+                          scorch=(1188, 840, 940, 4), hang=((1105, 830, 1130, 925), 4, "right")),
 }
 
 
@@ -560,7 +637,10 @@ if __name__ == "__main__":
     dbg_dir = Path(args.debug) if args.debug else None
     if dbg_dir:
         dbg_dir.mkdir(parents=True, exist_ok=True)
-    for n in (list(SETS) if args.what == ["all"] else args.what):
+    names = []
+    for w in args.what:
+        names += list(SETS) if w == "all" else list(SHEETS[w]["sets"]) if w in SHEETS else [w]
+    for n in names:
         entry, _, _ = make(n, Path(args.out) if args.out else B, dbg_dir)
         if not args.out:
             convert.write_manifest(B / "manifest.json", n, entry)

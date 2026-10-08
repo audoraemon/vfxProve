@@ -26,7 +26,7 @@ Each set has `intact.png`, `damaged.png`, `ruins.png`, and often `idle.png` (a s
 | `trees.py` | `tree_1..5` (forest, meadow), `oak_1..3` (town garden); crown-sway idle |
 | `bridges.py` | `bridge_stone` (sheet surfaces laid on the iso geometry, 8 torch piers, end steps), `dock` (drawn clean) |
 | `warehouse.py` | `barn`, `carpenter` from the timber warehouse, crane dropped |
-| `gpt_convert.py` | `gpt_townhall`, `gpt_armoury`, `gpt_jail`, `gpt_courthouse`, `gpt_watchtower`, `gpt_treasury` from the ChatGPT sheet `concepts/GPT/defence_sheet_v1.webp` (GPT buildings proof; plots in `src/environment/art/gpt_proof.gd`) |
+| `gpt_convert.py` | The ChatGPT sheets, one `SHEETS` entry each (GPT buildings proof; plots in `src/environment/art/gpt_proof.gd`): `gpt_townhall`, `gpt_armoury`, `gpt_jail`, `gpt_courthouse`, `gpt_watchtower`, `gpt_treasury` from `concepts/GPT/defence_sheet_v1.webp`; `gpt_chapel`, `gpt_monastery`, `gpt_graveyard`, `gpt_hospital`, `gpt_leperhouse`, `gpt_bathhouse` from `concepts/GPT/faith_sheet_v1.webp` |
 | `mills.py` | `windmill`, `watermill`: bodies drawn clean, sails and wheel rasterised per frame (never a bitmap rotation) |
 | `fields.py` | `field_0`, `field_0_2` (wheat, sway), `field_1`, `field_1_2` (cabbage) |
 | `corner_roof.py` | Gives the corner towers town_tower's roof. Runs once; it refuses a set whose torches are gone |

@@ -50,6 +50,10 @@ const TOWN_SHOTS := [
 	["town_gpt_proof.png", Vector2(-7.9, 0.6), 1.4],
 	["town_gpt_proof_north.png", Vector2(-8.4, -6.85), 1.6],
 	["town_gpt_proof_east.png", Vector2(11.5, -0.55), 1.6],
+	# Its faith sheet: the monastery, the bathhouse, the graveyard and the chapel east of the market and the cathedral;
+	# the leper house and the hospital (on the carpenter's plot) in the south-east.
+	["town_gpt_faith.png", Vector2(7.1, -2.9), 0.9],
+	["town_gpt_faith_south.png", Vector2(10.8, 12.4), 1.4],
 	# The forest ring outside the west wall, and the oaks between the west district's cottages.
 	["town_forest.png", Vector2(-18.2, -4.0), 1.4],
 	["town_oaks.png", Vector2(-10.0, 4.5), 1.6],

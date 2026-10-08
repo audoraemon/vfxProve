@@ -11,7 +11,8 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
 	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
 	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2",
-	"gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury"]
+	"gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury",
+	"gpt_chapel", "gpt_monastery", "gpt_graveyard", "gpt_hospital", "gpt_leperhouse", "gpt_bathhouse"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -37,10 +38,18 @@ static func run(t) -> void:
 	SpriteArt.set_enabled(true)
 
 
-## The GPT buildings proof (GptProof): each of its six plots draws its gpt_* set while sprites are on, a plot that
+## The GPT buildings proof (GptProof): each of its plots draws its gpt_* set while sprites are on, a plot that
 ## is not in the table keeps its own set, and with sprites off every one falls back to the procedural art. The plots
 ## are the town's own (a layout change would orphan a row), and each set stands on its plot as its footprint says.
 static func _gpt_proof(t) -> void:
+	# Both sheets: the six defence sets and the six faith sets, each on its own plot.
+	var drawn := {}
+	for row: Array in GptProof.PLOTS:
+		drawn[row[1]] = true
+	for want: String in ["gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury",
+			"gpt_chapel", "gpt_monastery", "gpt_graveyard", "gpt_hospital", "gpt_leperhouse", "gpt_bathhouse"]:
+		t.check(drawn.has(want), "the proof draws %s on a plot" % want)
+	t.check(GptProof.PLOTS.size() == 12 and drawn.size() == 12, "twelve plots, twelve sets")
 	var town := {}
 	for d in TownLayout.structures():
 		town[d.rect] = d
@@ -80,6 +89,18 @@ static func _gpt_proof(t) -> void:
 	var jail := _make(Rect2(-8.4, 1.3796573, 1.3, 0.95), 29.0, K.HOUSE, 5, &"house", &"townhouse")
 	t.check(ChimneySmoke.tip_of(jail) != Vector2.INF, "the jail smokes from its chimney")
 	jail.free()
+	# The faith sheet's painted smoke is stripped: the monastery, the hospital and the bathhouse smoke through
+	# ChimneySmoke from their chimneys (the leper house from its own); the chapel and the graveyard have none.
+	for row: Array in GptProof.PLOTS:
+		var want: String = row[1]
+		var smokes := want in ["gpt_monastery", "gpt_hospital", "gpt_bathhouse", "gpt_leperhouse"]
+		if not smokes and not (want in ["gpt_chapel", "gpt_graveyard"]):
+			continue
+		var m: Dictionary = SpriteArt.manifest()[want]
+		var h := _make(row[0], float(m.height), K.HOUSE, 5, &"house", StringName(m.tag))
+		t.check((ChimneySmoke.tip_of(h) != Vector2.INF) == smokes,
+			"%s %s" % [want, "smokes from its chimney" if smokes else "has no chimney"])
+		h.free()
 
 
 ## The sets with lit windows (Task 5 report): each has a glow_mask.png, holding at least this many window px. The

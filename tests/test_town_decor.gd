@@ -87,9 +87,12 @@ static func run(t) -> void:
 	var smoker: Structure = null
 	for st in env.structures():
 		# A sprite with its smoke drawn in (the PixelLab proof's tavern and smithy) smokes on its own. The sprite
-		# workshop is an open pavilion with no chimney, so it is the one house left out; every other must smoke.
+		# workshop is an open pavilion with no chimney, so it is left out, as are the GPT proof's chimneyless
+		# buildings (GptProof: the watchtower, the chapel, the graveyard); every other must smoke.
+		var bare: bool = not st.sprite.is_empty() and st.sprite.get("chimney", Vector2.INF) == Vector2.INF \
+				and (st.art_tag == &"workshop" or GptProof.set_for_plot(st.footprint) != "")
 		if st.kind == Structure.Kind.HOUSE and st.role == &"house" and not st.sprite.get("own_smoke", false) \
-				and not (st.art_tag == &"workshop" and not st.sprite.is_empty()):
+				and not bare:
 			houses += 1
 			if smoker == null:
 				smoker = st

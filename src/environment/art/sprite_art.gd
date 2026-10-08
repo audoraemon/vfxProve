@@ -231,6 +231,9 @@ static func name_for(s: Structure) -> String:
 			if s.art_tag == &"":
 				return _pick_variant("tree", s.rng.seed, SALT_TREE)
 		Structure.Kind.BRIDGE:
+			# A bridge tagged with a ChatGPT set (the capital's footbridge: gpt_footbridge) draws that set.
+			if String(s.art_tag).begins_with("gpt_"):
+				return _have(String(s.art_tag))
 			if s.art_tag == &"stone":
 				return _have("bridge_stone")
 			if s.art_tag == &"dock":

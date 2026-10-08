@@ -127,7 +127,7 @@ static func _leak(t) -> void:
 	var shrubs := TownFloor.shrub_spots().duplicate(true)
 	City.use(&"capital")
 	t.check(City.current().id() == &"capital", "City.use(&\"capital\") makes the capital the active city")
-	t.check(TownFloor.shrub_spots().is_empty(), "the (empty) capital has no shrubs of Aldermere's")
+	t.check(TownFloor.shrub_spots() != shrubs, "the capital has no shrubs of Aldermere's")
 	City.use(&"aldermere")
 	t.check(City.current().structures() == fresh, "Aldermere rebuilds identically after another city")
 	t.check(not shrubs.is_empty() and TownFloor.shrub_spots() == shrubs, "Aldermere's shrubs come back after the capital")
@@ -145,16 +145,17 @@ static func _no_hardcoded(t) -> void:
 		t.check(n == 0, "%s reads no TownLayout constants (found %d)" % [p, n])
 
 
-## The capital stub answers every CityDef method with empty data, so building it crashes nothing.
+## The capital (CapitalCity, tests/test_capital.gd) is made by City.by_id; until its buildings land it has none.
 static func _capital_stub(t) -> void:
 	var c := City.by_id(&"capital")
-	t.check(c is CityDef and c.id() == &"capital", "the capital stub's id")
-	t.check(c.structures().is_empty() and c.houses().is_empty() and c.taverns().is_empty()
-		and c.pastures().is_empty() and c.market_piles().is_empty() and c.torches().is_empty(), "the capital stub is empty")
-	t.check(c.ship_at() == Vector2.INF and c.citadel_origin() == Vector2.INF, "the capital stub has no ship, no Citadel")
+	t.check(c is CapitalCity and c.id() == &"capital", "the capital's id")
+	t.check(c.houses().is_empty() and c.taverns().is_empty() and c.pastures().is_empty() and c.market_piles().is_empty(),
+		"the capital has no buildings yet")
+	t.check(c.ship_at() == Vector2.INF, "the capital has no ship")
+	t.check(c.landmark(&"royal_keep").has_point(c.citadel_origin()), "the capital's Citadel stands in the Royal Keep")
 	var a := c.floor_areas()
 	for k: StringName in [&"plazas", &"yards", &"gate_plazas", &"building_yards", &"farm"]:
-		t.check(a.has(k) and (a[k] as Array).is_empty(), "the capital stub's floor area %s is empty" % k)
+		t.check(a.has(k), "the capital's floor area %s" % k)
 	t.check(City.by_id(&"aldermere") is AldermereCity, "by_id aldermere")
 
 

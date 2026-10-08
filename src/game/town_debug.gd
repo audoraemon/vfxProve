@@ -28,6 +28,10 @@ const CLEAR := Color("6e8230")
 ## [file, ground point to look at, zoom] for --capture-town.
 const TOWN_SHOTS := [
 	["town_overview.png", Vector2(0, 2), 0.3],
+	# The whole capital (--city=capital): its 80x80 map at a glance.
+	["capital_overview.png", Vector2(0, 0), 0.17],
+	# Its east stone bridge and the footbridge, between the two wall rings.
+	["capital_bridges.png", Vector2(9, 8), 0.6],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],

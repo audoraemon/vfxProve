@@ -31,6 +31,8 @@ func setup(best_score: int, best_rank: String) -> TitleScreen:
 	_bf.name = "Backdrop"
 	add_child(_bf)
 	_bf.reset(7)
+	# The title's backdrop is always Aldermere, whichever city a session played last.
+	City.use(&"aldermere")
 	_town = Town.new()
 	_town.name = "Town"
 	add_child(_town)

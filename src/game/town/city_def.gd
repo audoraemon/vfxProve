@@ -33,5 +33,6 @@ func landmark(name: StringName) -> Rect2: return Rect2()   # empty Rect2 = unkno
 ##   &"yards"          sanded working yards, open ground (the barracks yard);
 ##   &"gate_plazas"    cobbled queue ground inside each gate, one cart-rut salt and rosette per index;
 ##   &"building_yards" packed-earth yards round the landmark buildings, already grown to their painted size;
-##   &"farm"           farm buildings with tilled ground round them (barns, the mills).
+##   &"farm"           farm buildings with tilled ground round them (barns, the mills);
+##   &"paved"          cobbled ground beyond town(), treated as inside the walls (the capital's second wall ring).
 func floor_areas() -> Dictionary: return {}

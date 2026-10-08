@@ -225,7 +225,8 @@ static func _houses(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 ## Bunting strung between the market's torch posts, across its north and south edges.
 static func _market(out: Array[Dictionary]) -> void:
 	var t: Array = City.current().torches()
-	var pairs := [[t[0], t[1]], [t[2], t[3]]]
+	# The first four torches are the market's corners; a city with fewer has no market bunting.
+	var pairs := [[t[0], t[1]], [t[2], t[3]]] if t.size() >= 4 else []
 	for pr in pairs:
 		# Tied to the facing sides of the two posts: the cells the posts block, but not inside them.
 		var a: Vector2 = pr[0] + Vector2(0.25, 0.1)
@@ -319,7 +320,8 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 ## pastures with sheep and cows, and carts by the farms.
 static func _countryside(out: Array[Dictionary]) -> void:
 	# The dock itself is a structure since v0.05 (the city's &"dock" landmark); the ship lies moored beside it.
-	_add(out, Decor.Kind.SHIP, City.current().ship_at())
+	if City.current().ship_at().is_finite():
+		_add(out, Decor.Kind.SHIP, City.current().ship_at())
 	for g in [Vector2(-11.0, 21.4), Vector2(7.8, 22.6), Vector2(-20.5, 22.0), Vector2(-28.2, 9.0), Vector2(14.0, 21.2)]:
 		_add(out, Decor.Kind.BOAT, g)
 	var n := 0

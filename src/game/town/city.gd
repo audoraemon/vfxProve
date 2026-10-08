@@ -25,7 +25,7 @@ static func by_id(id: StringName) -> CityDef:
 		&"aldermere":
 			return AldermereCity.new()
 		&"capital":
-			return load("res://src/game/town/cities/capital_city.gd").new()
+			return CapitalCity.new()
 		_:
 			push_error("City.by_id: unknown city '%s'; using Aldermere" % id)
 			return AldermereCity.new()

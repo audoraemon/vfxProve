@@ -223,34 +223,73 @@ static func wall_pieces(r: Rect2) -> Array[Rect2]:
 
 ## The four corner towers, centred 0.3 inside each corner so they stand mostly out of it.
 static func corner_towers() -> Array[Rect2]:
-	var h := CORNER_TOWER * 0.5
-	var out: Array[Rect2] = []
-	for c: Vector2 in [TOWN.position, Vector2(TOWN.end.x, TOWN.position.y), TOWN.end, Vector2(TOWN.position.x, TOWN.end.y)]:
-		var centre := c + (TOWN.get_center() - c).sign() * 0.3
-		out.append(Rect2(centre - Vector2(h, h), Vector2(CORNER_TOWER, CORNER_TOWER)))
-	return out
+	return ring_corner_towers(TOWN)
 
 
 ## Towers along the runs, at TOWER_AT from each run's middle, moved along the wall off any street that ends there,
 ## and left out where a gatehouse stands.
 static func wall_towers() -> Array[Rect2]:
+	return ring_wall_towers(TOWN, ROADS, _gate_blocks(), TOWER_AT)
+
+
+## The wall runs between the towers and gatehouses: each side's band, less whatever stands on it.
+static func walls() -> Array[Rect2]:
+	return ring_walls(TOWN, ROADS, _rect_array(GATE_TOWERS), _rect_array([MAIN_GATE, SIDE_GATE]), TOWER_AT)
+
+
+## A town tower's art tag (ring_door_tag()) against Aldermere's two gatehouses.
+static func door_tag(r: Rect2, runs: Array[Rect2]) -> StringName:
+	return ring_door_tag(r, runs, _rect_array([MAIN_GATE, SIDE_GATE]))
+
+
+## Aldermere's gate towers then gatehouses: what a wall tower keeps clear of.
+static func _gate_blocks() -> Array[Rect2]:
+	return _rect_array(GATE_TOWERS + [MAIN_GATE, SIDE_GATE])
+
+
+static func _rect_array(a: Array) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	out.assign(a)
+	return out
+
+
+# --- Wall rings: the same walls, towers and gatehouses round any rect (Aldermere's TOWN, the capital's two rings) --
+
+## The four corner towers of the ring `ring`, centred 0.3 inside each corner so they stand mostly out of it.
+static func ring_corner_towers(ring: Rect2) -> Array[Rect2]:
+	var h := CORNER_TOWER * 0.5
+	var out: Array[Rect2] = []
+	for c: Vector2 in [ring.position, Vector2(ring.end.x, ring.position.y), ring.end, Vector2(ring.position.x, ring.end.y)]:
+		var centre := c + (ring.get_center() - c).sign() * 0.3
+		out.append(Rect2(centre - Vector2(h, h), Vector2(CORNER_TOWER, CORNER_TOWER)))
+	return out
+
+
+## Towers along the ring's runs, at `tower_at` from each run's middle, moved along the wall off any of `roads` (rects)
+## that ends there, and left out where one of `gate_blocks` (gatehouses and their towers) stands, or where the offset
+## would reach a corner tower (a short run).
+static func ring_wall_towers(ring: Rect2, roads: Array, gate_blocks: Array[Rect2], tower_at: Array) -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	var h := WALL_TOWER * 0.5
 	var mid := WALL_T * 0.5
-	for off: float in TOWER_AT:
+	var centre := ring.get_center()
+	for off: float in tower_at:
 		for side in 4:
+			var half: float = (ring.size.x if side % 2 == 0 else ring.size.y) * 0.5
+			if absf(off) > half - CORNER_TOWER - WALL_TOWER:
+				continue
 			for nudge: float in [0.0, -1.4, 1.4]:
 				var o := off + nudge
-				var c: Vector2 = [Vector2(o, TOWN.position.y + mid), Vector2(TOWN.position.x + mid, o),
-					Vector2(o, TOWN.end.y - mid), Vector2(TOWN.end.x - mid, o)][side]
+				var c: Vector2 = [Vector2(centre.x + o, ring.position.y + mid), Vector2(ring.position.x + mid, centre.y + o),
+					Vector2(centre.x + o, ring.end.y - mid), Vector2(ring.end.x - mid, centre.y + o)][side]
 				var r := Rect2(c - Vector2(h, h), Vector2(WALL_TOWER, WALL_TOWER))
 				var on_road := false
-				for road: Rect2 in ROADS:
+				for road: Rect2 in roads:
 					on_road = on_road or road.grow(0.3).intersects(r)
 				if on_road:
 					continue
 				var clear := true
-				for g: Rect2 in GATE_TOWERS + [MAIN_GATE, SIDE_GATE]:
+				for g: Rect2 in gate_blocks:
 					clear = clear and not g.grow(0.6).intersects(r)
 				if clear:
 					out.append(r)
@@ -258,15 +297,17 @@ static func wall_towers() -> Array[Rect2]:
 	return out
 
 
-## The wall runs between the towers and gatehouses: each side's band, less whatever stands on it.
-static func walls() -> Array[Rect2]:
+## The ring's wall runs between the towers and gatehouses: each side's band, less whatever stands on it.
+static func ring_walls(ring: Rect2, roads: Array, gate_towers: Array[Rect2], gates: Array[Rect2],
+		tower_at: Array) -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	var blocking: Array[Rect2] = corner_towers() + wall_towers()
-	for g: Rect2 in GATE_TOWERS + [MAIN_GATE, SIDE_GATE]:
+	var blocks: Array[Rect2] = gate_towers + gates
+	var blocking: Array[Rect2] = ring_corner_towers(ring) + ring_wall_towers(ring, roads, blocks, tower_at)
+	for g: Rect2 in blocks:
 		blocking.append(g)
 	var bands := [
-		Rect2(TOWN.position.x, TOWN.position.y, TOWN.size.x, WALL_T), Rect2(TOWN.position.x, TOWN.end.y - WALL_T, TOWN.size.x, WALL_T),
-		Rect2(TOWN.position.x, TOWN.position.y, WALL_T, TOWN.size.y), Rect2(TOWN.end.x - WALL_T, TOWN.position.y, WALL_T, TOWN.size.y),
+		Rect2(ring.position.x, ring.position.y, ring.size.x, WALL_T), Rect2(ring.position.x, ring.end.y - WALL_T, ring.size.x, WALL_T),
+		Rect2(ring.position.x, ring.position.y, WALL_T, ring.size.y), Rect2(ring.end.x - WALL_T, ring.position.y, WALL_T, ring.size.y),
 	]
 	for band: Rect2 in bands:
 		var along_x := band.size.x >= band.size.y
@@ -288,26 +329,73 @@ static func walls() -> Array[Rect2]:
 	return out
 
 
-## A town tower's art tag: which of its two visible faces a wall walk enters, so its sprite shows a doorway there.
+## A gatehouse in the ring's wall at `at` (a point on or near one of its sides): {gate, towers}. The gate is 2.0 along
+## the wall and 1.1 across it, on the wall band's middle, between two WALL_TOWER towers (as Aldermere's Main Gate).
+static func ring_gatehouse(ring: Rect2, at: Vector2) -> Dictionary:
+	var mid := WALL_T * 0.5
+	var d := [absf(at.y - ring.position.y), absf(at.x - ring.position.x), absf(at.y - ring.end.y), absf(at.x - ring.end.x)]
+	var side := d.find(d.min())
+	var t := WALL_TOWER
+	var towers: Array[Rect2] = []
+	var gate: Rect2
+	if side % 2 == 0:
+		var y: float = (ring.position.y + mid) if side == 0 else (ring.end.y - mid)
+		gate = Rect2(at.x - 1.0, y - 0.55, 2.0, 1.1)
+		towers.append(Rect2(at.x - 1.0 - t, y - t * 0.5, t, t))
+		towers.append(Rect2(at.x + 1.0, y - t * 0.5, t, t))
+	else:
+		var x: float = (ring.position.x + mid) if side == 1 else (ring.end.x - mid)
+		gate = Rect2(x - 0.55, at.y - 1.0, 1.1, 2.0)
+		towers.append(Rect2(x - t * 0.5, at.y - 1.0 - t, t, t))
+		towers.append(Rect2(x - t * 0.5, at.y + 1.0, t, t))
+	return {"gate": gate, "towers": towers}
+
+
+## A ring tower's art tag: which of its two visible faces a wall walk enters, so its sprite shows a doorway there.
 ## On screen a tower shows its south side (the left face) and its east side (the right face); walls and gates meeting
 ## its west or north side join hidden faces. A wall run (the postern is a piece of one) enters at the wall's walk
-## height (LOW); a gatehouse at its higher walkway (HIGH, "_hi"). The tag is "door_" + the east part ("e" / "e_hi")
-## then the south part ("s" / "s_hi"), joined by "_": "door_e", "door_s_hi", "door_e_s", "door_e_hi_s". A tower
-## joined on no visible face keeps "". Art only: SpriteArt.name_for maps it to town_tower[_corner]_<suffix>.
-static func door_tag(r: Rect2, runs: Array[Rect2]) -> StringName:
+## height (LOW); a gatehouse (one of `gates`) at its higher walkway (HIGH, "_hi"). The tag is "door_" + the east part
+## ("e" / "e_hi") then the south part ("s" / "s_hi"), joined by "_": "door_e", "door_s_hi", "door_e_s",
+## "door_e_hi_s". A tower joined on no visible face keeps "". Art only: SpriteArt.name_for maps it to
+## town_tower[_corner]_<suffix>.
+static func ring_door_tag(r: Rect2, runs: Array[Rect2], gates: Array[Rect2]) -> StringName:
 	var parts: Array[String] = []
 	for face in ["e", "s"]:
 		var low := false
 		var high := false
 		for w: Rect2 in runs:
 			low = low or _meets(r, w, face)
-		for g: Rect2 in [MAIN_GATE, SIDE_GATE]:
+		for g: Rect2 in gates:
 			high = high or _meets(r, g, face)
 		if high:
 			parts.append(face + "_hi")
 		elif low:
 			parts.append(face)
 	return &"" if parts.is_empty() else StringName("door_" + "_".join(PackedStringArray(parts)))
+
+
+## A wall ring's structures, laid out as structures() lays out Aldermere's: the runs in pieces (the piece holding
+## `postern_at` a postern gate), the corner towers, the wall towers, the gate towers, then the gatehouses (each tagged
+## `gate_tags[i]` where given).
+static func ring_structures(ring: Rect2, roads: Array, gate_towers: Array[Rect2], gates: Array[Rect2], tower_at: Array,
+		postern_at := Vector2.INF, gate_tags: Array[StringName] = []) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var runs := ring_walls(ring, roads, gate_towers, gates, tower_at)
+	for r: Rect2 in runs:
+		for piece in wall_pieces(r):
+			if piece.has_point(postern_at):
+				_add(out, piece, 34.0, Structure.Kind.GATE, &"gate", &"postern")
+			else:
+				_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
+	for r: Rect2 in ring_corner_towers(ring):
+		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower", ring_door_tag(r, runs, gates))
+	for r: Rect2 in ring_wall_towers(ring, roads, gate_towers + gates, tower_at):
+		_add(out, r, 46.0, Structure.Kind.KEEP, &"tower", ring_door_tag(r, runs, gates))
+	for r: Rect2 in gate_towers:
+		_add(out, r, 52.0, Structure.Kind.KEEP, &"tower", ring_door_tag(r, runs, gates))
+	for i in gates.size():
+		_add(out, gates[i], 34.0, Structure.Kind.GATE, &"gate", gate_tags[i] if i < gate_tags.size() else &"")
+	return out
 
 
 ## Whether `o` stands against tower `r`'s east ("e": o starts at r's east edge, overlapping it in y) or south ("s")
@@ -321,22 +409,9 @@ static func _meets(r: Rect2, o: Rect2, face: String) -> bool:
 
 ## Every building except the Citadel and the fountains, as {rect, height, kind, role, tag}.
 static func structures() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	var runs := walls()
-	for r: Rect2 in runs:
-		for piece in wall_pieces(r):
-			if piece.has_point(POSTERN_AT):
-				_add(out, piece, 34.0, Structure.Kind.GATE, &"gate", &"postern")
-			else:
-				_add(out, piece, 34.0, Structure.Kind.CASTLE_WALL, &"wall")
-	for r: Rect2 in corner_towers():
-		_add(out, r, 50.0, Structure.Kind.KEEP, &"tower", door_tag(r, runs))
-	for r: Rect2 in wall_towers():
-		_add(out, r, 46.0, Structure.Kind.KEEP, &"tower", door_tag(r, runs))
-	for r: Rect2 in GATE_TOWERS:
-		_add(out, r, 52.0, Structure.Kind.KEEP, &"tower", door_tag(r, runs))
-	_add(out, MAIN_GATE, 34.0, Structure.Kind.GATE, &"gate")
-	_add(out, SIDE_GATE, 34.0, Structure.Kind.GATE, &"gate")
+	# The walls, towers and gatehouses (ring_structures(), shared with the capital's rings).
+	var out := ring_structures(TOWN, ROADS, _rect_array(GATE_TOWERS), _rect_array([MAIN_GATE, SIDE_GATE]), TOWER_AT,
+		POSTERN_AT)
 	_add(out, TEMPLE, 56.0, Structure.Kind.TEMPLE, &"temple", &"cathedral")
 	_add(out, BARRACKS, 36.0, Structure.Kind.BARRACKS, &"barracks")
 	for r: Rect2 in STALLS:

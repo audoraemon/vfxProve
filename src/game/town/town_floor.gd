@@ -11,8 +11,12 @@ extends Node2D
 ## pebbles on top. It used to be ~10k rects replayed every frame. The river's glints are a small child node that
 ## redraws on its own. Without a renderer (headless) nothing is baked and the floor paints itself directly.
 
-## Drawn area: past the map so zoomed-out views rarely show the void.
-const FILL := Rect2(-34, -34, 68, 68)
+## Drawn area: past the map by this much (Aldermere: Rect2(-34, -34, 68, 68)), so zoomed-out views rarely show the
+## void. _fill() is the active city's.
+const FILL_MARGIN := 4.0
+## Screen-pixel tufts, flowers and pebbles over Aldermere's drawn area; a larger city gets as many per cell.
+const DETAIL_COUNT := 62000
+const DETAIL_AREA := 68.0 * 68.0
 ## How far out from the walls the forest ring reaches (ground units): the reference's woods fill nearly all the land
 ## its fields leave.
 const FOREST_OUT := 11.0
@@ -152,7 +156,7 @@ func _ready() -> void:
 
 
 func _bake() -> void:
-	var bounds := _iso_bounds(FILL)
+	var bounds := _iso_bounds(_fill())
 	var vp := SubViewport.new()
 	vp.name = "FloorBake"
 	vp.size = Vector2i(ceili(bounds.size.x), ceili(bounds.size.y))
@@ -214,6 +218,8 @@ func paint_ground(ci: CanvasItem) -> void:
 	# Inside the walls the lanes are cobbled; the house blocks are worn ground, and each house stands in its own small
 	# packed-earth yard, as in the reference.
 	_paving(ci, geo.town, COBBLE, COBBLE_MORTAR, 0.2)
+	for r: Rect2 in geo.paved:
+		_paving(ci, r, COBBLE, COBBLE_MORTAR, 0.2)
 	for d: Rect2 in geo.districts:
 		_yard(ci, d.grow(-0.12), BLOCK)
 	_yard_rects = _yards()
@@ -246,6 +252,9 @@ func paint_ground(ci: CanvasItem) -> void:
 	# The gate plazas are the crowd's queue ground and stay open (the city's queue_fans()): dressed on the floor
 	# instead, with a paved rosette and the ruts carts have worn towards each gate.
 	for i in gate_plazas.size():
+		# The ruts and rosettes are drawn for Aldermere's two plazas (ROSETTES): only a plaza holding its rosette gets them.
+		if i >= ROSETTES.size() or not (gate_plazas[i] as Rect2).has_point(ROSETTES[i][0]):
+			continue
 		_ruts(ci, gate_plazas[i], i)
 		_rosette(ci, ROSETTES[i][0], ROSETTES[i][1])
 	_river(ci)
@@ -281,12 +290,12 @@ func _octave(p: Vector2, salt: int) -> float:
 
 ## Meadow (or forest floor) in organic patches: noise quantized into the palette, cell by cell.
 func _meadow(ci: CanvasItem) -> void:
-	var n := int(FILL.size.x / CELL)
+	var n := int(_fill().size.x / CELL)
 	_zn = n
 	_zones.resize(n * n)
 	for j in n:
 		for i in n:
-			var g := FILL.position + Vector2(i, j) * CELL
+			var g := _fill().position + Vector2(i, j) * CELL
 			var c := g + Vector2(CELL, CELL) * 0.5
 			var forest := _forest(c)
 			_zones[j * n + i] = 2 if forest else 1
@@ -450,10 +459,10 @@ func _trail(ci: CanvasItem, pts: Array, width: float, clearable := false) -> voi
 func _mark_trail(p: Vector2, r: float) -> void:
 	if _zn == 0:
 		return
-	var i0 := maxi(floori((p.x - r - FILL.position.x) / CELL), 0)
-	var i1 := mini(floori((p.x + r - FILL.position.x) / CELL), _zn - 1)
-	var j0 := maxi(floori((p.y - r - FILL.position.y) / CELL), 0)
-	var j1 := mini(floori((p.y + r - FILL.position.y) / CELL), _zn - 1)
+	var i0 := maxi(floori((p.x - r - _fill().position.x) / CELL), 0)
+	var i1 := mini(floori((p.x + r - _fill().position.x) / CELL), _zn - 1)
+	var j0 := maxi(floori((p.y - r - _fill().position.y) / CELL), 0)
+	var j1 := mini(floori((p.y + r - _fill().position.y) / CELL), _zn - 1)
 	for j in range(j0, j1 + 1):
 		for i in range(i0, i1 + 1):
 			_zones[j * _zn + i] |= 4
@@ -489,24 +498,33 @@ func _paving(ci: CanvasItem, r: Rect2, pal: Array, mortar: Color, stone: float) 
 ## south river across the whole drawn width, and the west branch from its source down to it.
 func _river(ci: CanvasItem) -> void:
 	var r := City.current().landmark(&"river")
-	var x0 := FILL.position.x
-	var w := FILL.size.x
+	var x0 := _fill().position.x
+	var w := _fill().size.x
 	ci.draw_rect(Rect2(x0, r.position.y, w, r.size.y), WATER[0])
 	ci.draw_rect(Rect2(x0, r.position.y + r.size.y * 0.15, w, r.size.y * 0.7), WATER[1])
 	ci.draw_rect(Rect2(x0, r.position.y + r.size.y * 0.35, w, r.size.y * 0.3), WATER[2])
 	ci.draw_rect(Rect2(x0, r.position.y - 0.1, w, 0.1), BANK)
 	ci.draw_rect(Rect2(x0, r.end.y, w, 0.1), BANK)
+	# Any other water of the city's (the capital's harbour basin), banded the same way.
+	for o: Rect2 in _geo().rivers:
+		if o == r or o == City.current().landmark(&"river_west"):
+			continue
+		ci.draw_rect(o, WATER[0])
+		ci.draw_rect(o.grow(-minf(o.size.x, o.size.y) * 0.15), WATER[1])
+		ci.draw_rect(o.grow(-minf(o.size.x, o.size.y) * 0.35), WATER[2])
 	var b := City.current().landmark(&"river_west")
-	var bx0 := FILL.position.x
-	var bw := b.end.x - bx0
-	ci.draw_rect(Rect2(bx0, b.position.y, bw, b.size.y), WATER[0])
-	ci.draw_rect(Rect2(b.position.x + b.size.x * 0.15, b.position.y, b.size.x * 0.7, b.size.y), WATER[1])
-	ci.draw_rect(Rect2(b.position.x + b.size.x * 0.35, b.position.y, b.size.x * 0.3, b.size.y), WATER[2])
-	ci.draw_rect(Rect2(b.end.x, b.position.y, 0.1, b.size.y), BANK)
+	if b.has_area():
+		var bx0 := _fill().position.x
+		var bw := b.end.x - bx0
+		ci.draw_rect(Rect2(bx0, b.position.y, bw, b.size.y), WATER[0])
+		ci.draw_rect(Rect2(b.position.x + b.size.x * 0.15, b.position.y, b.size.x * 0.7, b.size.y), WATER[1])
+		ci.draw_rect(Rect2(b.position.x + b.size.x * 0.35, b.position.y, b.size.x * 0.3, b.size.y), WATER[2])
+		ci.draw_rect(Rect2(b.end.x, b.position.y, 0.1, b.size.y), BANK)
 	for bank_y: float in [r.position.y - 0.12, r.end.y + 0.12]:
-		_pebbles(ci, Vector2(x0, bank_y), Vector2(FILL.end.x, bank_y), 2.7)
-	_pebbles(ci, Vector2(b.end.x + 0.12, b.position.y), Vector2(b.end.x + 0.12, r.position.y), -100.0)
-	_waterfall(ci, b)
+		_pebbles(ci, Vector2(x0, bank_y), Vector2(_fill().end.x, bank_y), 2.7)
+	if b.has_area():
+		_pebbles(ci, Vector2(b.end.x + 0.12, b.position.y), Vector2(b.end.x + 0.12, r.position.y), -100.0)
+		_waterfall(ci, b)
 
 
 ## The west branch's source: a band of grey cliff across its head, and white water falling from it into a pool.
@@ -514,7 +532,7 @@ func _waterfall(ci: CanvasItem, b: Rect2) -> void:
 	var y := b.position.y
 	for i in 26:
 		var h := _hash(i * 13 + 5, 77)
-		var p := Vector2(FILL.position.x + float(i) / 26.0 * (b.end.x + 1.2 - FILL.position.x), y - 0.35 - float(h % 5) * 0.12)
+		var p := Vector2(_fill().position.x + float(i) / 26.0 * (b.end.x + 1.2 - _fill().position.x), y - 0.35 - float(h % 5) * 0.12)
 		var rad := 0.35 + float(h % 4) * 0.12
 		ci.draw_circle(p, rad, PEBBLE[2].darkened(0.1))
 		ci.draw_circle(p + Vector2(-0.08, -0.08), rad * 0.7, PEBBLE[1])
@@ -566,13 +584,13 @@ func _pebbles(ci: CanvasItem, a: Vector2, b: Vector2, gap_x: float) -> void:
 
 ## Tufts, flowers and pebbles in screen pixels over the meadow and the town's earth; none on water, roads or paving.
 func paint_detail(ci: CanvasItem) -> void:
-	var count := 62000
+	var count := roundi(DETAIL_COUNT * _fill().get_area() / DETAIL_AREA)
 	for i in count:
 		var hx := _hash(i * 3 + 1, i * 7 + 5)
 		var hy := _hash(i * 11 + 3, i * 5 + 9)
 		var hz := _hash(i * 13 + 7, i * 17 + 1)
-		var g := FILL.position + Vector2((float(hx) + float(hz % 10) / 10.0) / 997.0 * FILL.size.x,
-			(float(hy) + float(hz % 7) / 7.0) / 997.0 * FILL.size.y)
+		var g := _fill().position + Vector2((float(hx) + float(hz % 10) / 10.0) / 997.0 * _fill().size.x,
+			(float(hy) + float(hz % 7) / 7.0) / 997.0 * _fill().size.y)
 		var zone := _zone(g)
 		if zone == 0:
 			continue
@@ -818,8 +836,8 @@ func _zone(g: Vector2) -> int:
 		return z
 	if _zn == 0:
 		return 2 if _forest(g) else 1
-	var i := clampi(floori((g.x - FILL.position.x) / CELL), 0, _zn - 1)
-	var j := clampi(floori((g.y - FILL.position.y) / CELL), 0, _zn - 1)
+	var i := clampi(floori((g.x - _fill().position.x) / CELL), 0, _zn - 1)
+	var j := clampi(floori((g.y - _fill().position.y) / CELL), 0, _zn - 1)
 	var c := _zones[j * _zn + i]
 	return 0 if c & 4 else (2 if c & 2 else 1)
 
@@ -840,7 +858,7 @@ static func _fixed_zone(g: Vector2, yards: Array[Rect2]) -> int:
 	for road: Rect2 in geo.roads:
 		if road.grow(0.15).has_point(g):
 			return 0
-	if (geo.town as Rect2).has_point(g):
+	if (geo.town as Rect2).has_point(g) or _paved(g):
 		for open: Rect2 in geo.open:
 			if open.has_point(g):
 				return 0
@@ -857,6 +875,19 @@ static func _fixed_zone(g: Vector2, yards: Array[Rect2]) -> int:
 	return -1
 
 
+## The drawn area: the active city's map, FILL_MARGIN past it.
+static func _fill() -> Rect2:
+	return _geo().fill
+
+
+## Whether `g` is on the city's extra paved ground (floor_areas() &"paved": none at Aldermere).
+static func _paved(g: Vector2) -> bool:
+	for r: Rect2 in _geo().paved:
+		if r.has_point(g):
+			return true
+	return false
+
+
 ## The active city's ground, as the per-cell tests read it: worked out once per city (City.current()).
 static func _geo() -> Dictionary:
 	var city := City.current()
@@ -869,7 +900,7 @@ static func _geo() -> Dictionary:
 			town = city.town(), districts = city.districts(), rivers = city.rivers(), fields = city.fields(),
 			roads = city.roads(), river = city.landmark(&"river"), river_west = city.landmark(&"river_west"),
 			plazas = plazas, yards = yards, open = plazas + yards, gate_plazas = areas.get(&"gate_plazas", []),
-			farm = areas.get(&"farm", []),
+			farm = areas.get(&"farm", []), paved = areas.get(&"paved", []), fill = city.map().grow(FILL_MARGIN),
 		}
 	return _geo_cache
 

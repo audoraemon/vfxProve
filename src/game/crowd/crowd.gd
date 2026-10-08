@@ -301,7 +301,8 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
 	_assign_corps()
-	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
+	var no_stalls: Array[Vector2] = []
+	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", no_stalls))
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
 	var keeper := _appoint_bellkeeper(anchors)
 	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
@@ -495,7 +496,8 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 	for road: Rect2 in City.current().roads():
 		if town.encloses(road):
 			streets.append(road)
-	for i in POST_PATROL:
+	# A city with no street inside its walls has no patrols (their posts go to the barracks yard below).
+	for i in (POST_PATROL if not streets.is_empty() else 0):
 		var road := streets[(i / 2) % streets.size()]
 		var along := (float((i / 2) / streets.size()) + 0.5) / ceilf(float(POST_PATROL / 2) / streets.size())
 		var point := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \

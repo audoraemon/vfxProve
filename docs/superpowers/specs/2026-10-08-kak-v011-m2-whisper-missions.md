@@ -271,7 +271,8 @@ arrives one granary at a time.
   - **Lost** if the Lantern looks (a full Gaze), or if fewer than three believe at dawn.
 - **People and behaviour** (Mira's rules unless said):
   - **Praying:** a poor citizen whispered to the shrine's door (or lured to a light by it) goes down the old well's steps
-    and prays, hidden, for 25 s. He comes out a Believer. Only one prays at a time: the next waits at the door.
+    and prays, hidden, for 32 s (first guess 25 s; tuned, see below). He comes out a Believer. Only one prays at a time: the next
+    waits at the door.
   - **Turned away:** a Faithful within 3 units of the door who sees someone go in turns them away and runs to the Temple to
     report it. One who sees a Believer come out lets them go, and runs to report. A report that reaches the Temple fills
     the Gaze.
@@ -287,7 +288,7 @@ arrives one granary at a time.
   | 2:30 | "The priests come to the well": up to two more stand there for 40 s |
   | 5:00 | Dawn: too few believe, lost |
 
-  The longest waits are 40 s (the Faithful at the door, which Discord or a lure can cut short) and 25 s (one praying
+  The longest waits are 40 s (the Faithful at the door, which Discord or a lure can cut short) and 32 s (one praying
   before the next).
 - **Tags** (Mira's, renamed):
   - OLD WELL SHRINE, gold, outlined, with an edge arrow.
@@ -309,6 +310,12 @@ arrives one granary at a time.
 - **Results:** "THEY BELIEVE" (`believers`), "TOO FEW BELIEVE" (`few`), "THE LANTERN LOOKS" (`gaze`). All three titles exist
   already.
 - **First guesses** (tune order): PRAY 25, the poor's spot, MARKET_AT 75 / PRIESTS_AT 150 (each 40 s), FAITHFUL 3 + 3.
+- **Tuning (Task 5):** doing nothing loses "too few believe" at dawn (5:00), all three seeds. With the first guesses the scripted
+  player (Mira's policy, taught to deal with the Faithful at the door and to hold a prayer that would end in a window) wins 3/3 in
+  108-181 s (median 151 s: too fast), so only PRAY_SECONDS moved: 40 s gave 242-270 s (median 242 s: too slow), 32 s gives
+  148-222 s (median 219 s), the longest stretch between two casts 35 s. The other numbers stand as guessed. With no one to stop
+  them, a Faithful is within 3 units of the door 55% of the night (the two windows are 80 s of the 300); the scripted player
+  brings it to 22-33%.
 
 ## 5. New wishes for Tier 1
 
@@ -386,10 +393,10 @@ These are the details the v0.11 spec left open. The controller records them as r
     engages. The watch is away 25 s and the change repeats every 45 s.
 13. **The searchers** set out at 2:30, so doing nothing loses well before dawn (at about 2:55).
 14. **Convert:** Convert is generalised by subclassing `MirasHouseDirector`. It gains `need`, `read_seconds` and
-    `one_at_a_time` (defaults: 4, 8, false) and an `_opening_banner()` hook. `BelieversObjective` reads `need` from the
-    director. Mira's House plays exactly as before.
+    `one_at_a_time` (defaults: 4, 8, false) and `_opening_banner()` and `_house_label()` hooks (the tags stay Mira's own; the
+    shrine is named through the label). `BelieversObjective` reads `need` from the director. Mira's House plays exactly as before.
 15. **The old well shrine:** a drawn stone shrine post (`Structure.Kind.SHRINE`, Broken Lanterns' shape) at the market's west
-    edge. It cannot be destroyed. People led there pray hidden ("down the well's steps") for 25 s, one at a time.
+    edge. It cannot be destroyed. People led there pray hidden ("down the well's steps") for 32 s (tuned from 25 s), one at a time.
 16. **Few Faithful:** three clergy and three lay citizens, and no Inquisitor. The two events (the market at 1:15, the
     priests at 2:30) reuse the Vigil's line of Faithful at the door, 40 s each.
 17. **`unaware_town`** is derived in `TierBook.board()` from the board mission's readiness (Unaware or lower), not declared

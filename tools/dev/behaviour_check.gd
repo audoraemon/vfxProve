@@ -93,6 +93,11 @@ extends SceneTree
 ##          once he is clear of its blast; Discord on a soldier about to see him; Mind Whisper leads him, re-aimed while he
 ##          walks, toward a spot four units short of the gate, then, once the watch is changing or gone, through it; the
 ##          result line gives the longest idle stretch). --seed=, --board as tax.
+##   prayers  (v0.11 M2) First Prayers, --case=none or play (as miras, whose policy it shares: a report stopped first; a Faithful by
+##          the door dealt with when it matters -- Silent Doom if unseen, else Discord, else a whisper sending him away; then Mind
+##          Whisper sends the nearest of the poor toward the shrine's door, at most REACH at a time, the last hop only when the
+##          prayer inside is nearly over and his own would not end in a window of Faithful at the door; the result line gives
+##          the longest idle stretch, and a line says how long the door was watched). --seed=, --board as tax.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -156,6 +161,13 @@ const LAMB_WARN := 2.0
 ## only with him this much beyond its radius from the seizer, or the same cast would take him too (v0.11 M2).
 const LAMB_AHEAD := 5.0
 const LAMB_CLEAR := 0.4
+## How far from the shrine's door one of the poor must still be for the prayers policy to send him while someone prays (v0.11 M2).
+const PRAYERS_FAR := 6.0
+## The prayers policy (v0.11 M2) guards the door from this many seconds before a prayer ends, allows PRAYERS_WALK for one of
+## the poor to reach it, and waits PRAYERS_SLACK after a window of Faithful at the door for them to leave.
+const PRAYERS_EXIT := 12.0
+const PRAYERS_WALK := 8.0
+const PRAYERS_SLACK := 4.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -258,6 +270,9 @@ func _run() -> void:
 	elif scenario == "lamb":
 		powers = PackedStringArray(["whisper", "discord", "doom"])
 		mission.mission_id = MissionBook.LOST_LAMB
+	elif scenario == "prayers":
+		powers = PackedStringArray(["whisper", "doom", "discord"])
+		mission.mission_id = MissionBook.FIRST_PRAYERS
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -311,6 +326,8 @@ func _run() -> void:
 			await _harvest(Battlefield.arg_value(args, "--case"))
 		"lamb":
 			await _lamb(Battlefield.arg_value(args, "--case"))
+		"prayers":
+			await _prayers(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1028,78 +1045,172 @@ const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whis
 const WARNING_WHISPER_BACK := 8.0
 
 
-## Mira's House (v0.10 M2), played by a simple policy with Mind Whisper, Silent Doom and Discord: every tenth of a
-## second, a report on its way is stopped first -- Silent Doom on a carrier nobody would see die, else a whisper sending
-## them away from the Temple, else Discord on them --
-## then Discord on the nearest Faithful within sight of the door (or walking up to it), else a whisper sending the
-## nearest unread grieving citizen in reach to the door. `none` casts nothing.
-## Nobody living would see `p` die (Silent Doom's witness rule), for the miras policy.
+## Nobody living would see `p` die (Silent Doom's witness rule), for the miras and prayers policies.
 func crowd_alone(p: Person) -> bool:
 	return mission._crowd.nearest_witness(p.ground_pos, p) == null
 
 
+## Mira's House (v0.10 M2), played by a simple policy with Mind Whisper, Silent Doom and Discord: every tenth of a
+## second, a report on its way is stopped first -- Silent Doom on a carrier nobody would see die, else a whisper sending
+## them away from the Temple, else Discord on them --
+## then Discord on the nearest Faithful within sight of the door (or walking up to it), else a whisper sending the
+## nearest unread grieving citizen in reach to the door. `none` casts nothing. (v0.11 M2: the policy is _faith_night()'s,
+## shared with First Prayers; Mira's own numbers are unchanged.)
 func _miras(which: String) -> void:
+	await _faith_night("miras", which, false)
+
+
+## First Prayers (v0.11 M2), played as the miras policy plays Mira's House (_faith_night() with `fetch`): a report on its way
+## stopped first; then, when the door matters (_prayers_door_matters()), a Faithful by it dealt with -- Silent Doom if no one
+## would see him fall, else Discord, else a whisper sending him away; then, the door unwatched, a whisper sending the nearest of
+## the poor (not praying, not a Believer, not shaking a whisper off) toward the door, at most REACH at a time: the last hop only
+## when _prayers_ready(), and while someone prays only from PRAYERS_FAR off. `none` casts nothing.
+func _prayers(which: String) -> void:
+	await _faith_night("prayers", which, true)
+
+
+## The Faith missions' shared scenario (v0.11 M2): the policy of Mira's House (v0.10 M2) played every LOOK_FRAMES by
+## _faith_look(), with `fetch` for First Prayers' poor, who must be walked to the door from afar, one at a time. First Prayers
+## prints each cast; the result line adds the longest stretch between two casts of the scripted player as `idle` (the
+## no-waiting rule: 45 s or less).
+func _faith_night(label: String, which: String, fetch: bool) -> void:
 	var rules: Rules = mission._rules
 	var d := rules.director as MirasHouseDirector
-	var slots := {}
-	for slot in rules.loadout.size():
-		if rules.key(slot) != "":
-			slots[rules.key(slot)] = slot
+	var slots := _slots(rules)
+	_board_line()
 	var max_frames := int(rules.time_left * 2.0 * 60.0)
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
-	while not rules.finished and frames < max_frames:
+	var acts := {"last": 0.0, "longest": 0.0}
+	var watched := 0
+	while not rules.finished and not rules.main_done and frames < max_frames:
 		await process_frame
 		frames += 1
 		t += mission.get_process_delta_time()
+		watched += 1 if d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) != null else 0
 		if t >= report_at:
 			report_at += 10.0
-			print("BEHAVIOUR miras t=%d believers=%d inside=%d gaze=%d reports=%d" % [roundi(t), d.believers_outside(),
+			print("BEHAVIOUR %s t=%d believers=%d inside=%d gaze=%d reports=%d" % [label, roundi(t), d.believers_outside(),
 				d.inside().size(), roundi(d.gaze.value), d.reports_started])
-		if which != "play" or frames % 6 != 0:
+		if which != "play" or frames % LOOK_FRAMES != 0:
 			continue
-		var stopped := false
-		for r: TempleReport in d.reports:
-			var c := r.carrier
-			if not is_instance_valid(c) or not c.is_alive() or c.mind == Person.Mind.CONFUSED:
-				continue
-			if slots.has("doom") and rules.refusal(slots.doom) == "" and crowd_alone(c):
-				rules.cast(slots.doom, c.ground_pos)
-				stopped = true
-				break
-			if slots.has("whisper") and rules.refusal(slots.whisper) == "" and not c.shaken() 					and c.mind != Person.Mind.WHISPERED:
-				var away := c.ground_pos + (c.ground_pos - d.temple_door).normalized() * MindWhisperFx.REACH
-				rules.cast(slots.whisper, c.ground_pos, {"target": c, "to": away})
-				stopped = true
-				break
-			if slots.has("discord") and rules.refusal(slots.discord) == "":
-				rules.cast(slots.discord, c.ground_pos)
-				stopped = true
-				break
-		if stopped:
+		var did := _faith_look(rules, slots, d, fetch)
+		if did == "":
 			continue
-		var watcher := d.faithful_seeing(d.door, MirasHouseDirector.SIGHT + 1.5)
-		if watcher != null and slots.has("discord") and rules.refusal(slots.discord) == "":
-			rules.cast(slots.discord, watcher.ground_pos)
+		if fetch:
+			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
+		acts.longest = maxf(float(acts.longest), t - float(acts.last))
+		acts.last = t
+	acts.longest = maxf(float(acts.longest), t - float(acts.last))
+	if fetch:
+		print("BEHAVIOUR %s the door was watched %d%% of the night" % [label, roundi(100.0 * float(watched) / float(maxi(frames, 1)))])
+	print("BEHAVIOUR %s result %s believers=%d gaze=%d reports=%d idle=%.0f" % [label, _outcome(rules), d.believers_outside(),
+		roundi(d.gaze.value), d.reports_started, float(acts.longest)])
+
+
+## One look of the Faith policy (v0.11 M2, Mira's since v0.10): a report on its way stopped first (Silent Doom on a carrier
+## nobody would see die, else a whisper sending them away from the Temple, else Discord); then the nearest Faithful within
+## SIGHT + 1.5 of the door dealt with (_faith_guard()); then, the door unwatched, a whisper for the nearest of the grieving not yet
+## read, to the door: within REACH of it (Mira's), or with `fetch` (First Prayers) from anywhere, at most REACH - 0.5 at a time,
+## the whispered and those praying left alone, and the last hop only when _prayers_ready(). What it cast, or "" (a cast the rules
+## refuse, or none, is "").
+func _faith_look(rules: Rules, slots: Dictionary, d: MirasHouseDirector, fetch: bool) -> String:
+	for r: TempleReport in d.reports:
+		var c := r.carrier
+		if not is_instance_valid(c) or not c.is_alive() or c.mind == Person.Mind.CONFUSED:
 			continue
-		if d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) != null:
+		if _slot_ready(rules, slots, "doom") and crowd_alone(c):
+			return "doom a runner to the Temple" if rules.cast(slots.doom, c.ground_pos) != null else ""
+		if _slot_ready(rules, slots, "whisper") and not c.shaken() and c.mind != Person.Mind.WHISPERED:
+			var away := c.ground_pos + (c.ground_pos - d.temple_door).normalized() * MindWhisperFx.REACH
+			return "whisper a runner away from the Temple" if rules.cast(slots.whisper, c.ground_pos, {"target": c, "to": away}) != null \
+				else ""
+		if _slot_ready(rules, slots, "discord"):
+			return "discord a runner to the Temple" if rules.cast(slots.discord, c.ground_pos) != null else ""
+	var watcher := d.faithful_seeing(d.door, MirasHouseDirector.SIGHT + 1.5)
+	if watcher != null and (not fetch or _prayers_door_matters(d)):
+		var guarded := _faith_guard(rules, slots, d, watcher, fetch)
+		if guarded != "":
+			return guarded
+	if d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) != null or not _slot_ready(rules, slots, "whisper"):
+		return ""
+	var best: Person = null
+	for g in d.grieving:
+		if not is_instance_valid(g) or not g.is_alive() or g.inside or d.believers.has(g) or g.shaken():
 			continue
-		if not slots.has("whisper") or rules.refusal(slots.whisper) != "":
+		if fetch and (g.mind == Person.Mind.WHISPERED or (not d.inside().is_empty() and g.ground_pos.distance_to(d.door) < PRAYERS_FAR)):
 			continue
-		var best: Person = null
-		for g in d.grieving:
-			if not is_instance_valid(g) or not g.is_alive() or g.inside or d.believers.has(g) or g.shaken():
-				continue
-			if g.ground_pos.distance_to(d.door) > MindWhisperFx.REACH:
-				continue
-			if best == null or g.ground_pos.distance_to(d.door) < best.ground_pos.distance_to(d.door):
-				best = g
-		if best != null:
-			rules.cast(slots.whisper, best.ground_pos, {"target": best, "to": d.door})
-	var res := rules.result()
-	print("BEHAVIOUR miras result won=%s reason=%s time=%.1f believers=%d gaze=%d reports=%d" % [res.won, res.reason,
-		float(res.time), d.believers_outside(), roundi(d.gaze.value), d.reports_started])
+		if not fetch and g.ground_pos.distance_to(d.door) > MindWhisperFx.REACH:
+			continue
+		if best == null or g.ground_pos.distance_to(d.door) < best.ground_pos.distance_to(d.door):
+			best = g
+	if best == null:
+		return ""
+	var to := d.door
+	var hop := to - best.ground_pos
+	if fetch and hop.length() > MindWhisperFx.REACH - 0.5:
+		to = d._walkable(best.ground_pos + hop.normalized() * (MindWhisperFx.REACH - 0.5))
+	elif fetch and not _prayers_ready(d):
+		return ""
+	if rules.cast(slots.whisper, best.ground_pos, {"target": best, "to": to}) == null:
+		return ""
+	return "whisper one of the poor (%.1f, %.1f) to (%.1f, %.1f)" % [best.ground_pos.x, best.ground_pos.y, to.x, to.y]
+
+
+## A Faithful `w` by the door, dealt with (v0.11 M2): Discord on him (Mira's). With `fetch` (First Prayers, whose Faithful stay
+## few) Silent Doom first when nobody would see him fall, and a whisper sending him away when Discord is not ready. What it
+## cast, or "".
+func _faith_guard(rules: Rules, slots: Dictionary, d: MirasHouseDirector, w: Person, fetch: bool) -> String:
+	if fetch and _slot_ready(rules, slots, "doom") and crowd_alone(w):
+		return "doom a Faithful by the door" if rules.cast(slots.doom, w.ground_pos) != null else ""
+	if _slot_ready(rules, slots, "discord"):
+		return "discord a Faithful by the door" if rules.cast(slots.discord, w.ground_pos) != null else ""
+	if fetch and _slot_ready(rules, slots, "whisper") and not w.shaken() and w.mind != Person.Mind.WHISPERED:
+		var away := w.ground_pos + (w.ground_pos - d.door).normalized() * (MindWhisperFx.REACH - 0.5)
+		return "whisper a Faithful away from the door" if rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": away}) != null \
+			else ""
+	return ""
+
+
+## The seconds a prayer has left, the least of those inside; INF when nobody prays (First Prayers' policy, v0.11 M2).
+func _prayer_left(d: MirasHouseDirector) -> float:
+	var least := INF
+	for p: Variant in d._reading.keys():
+		least = minf(least, float(d._reading[p]))
+	return least
+
+
+## The door matters to the prayers policy (v0.11 M2): a Believer is about to come out (within PRAYERS_EXIT), or nobody prays and
+## one of the poor stands within a hop of it, ready to go in. A Faithful by the door is worth a Discord only then.
+func _prayers_door_matters(d: MirasHouseDirector) -> bool:
+	var left := _prayer_left(d)
+	if left != INF:
+		return left <= PRAYERS_EXIT
+	for g in d.grieving:
+		if is_instance_valid(g) and g.is_alive() and not g.inside and not d.believers.has(g) \
+				and g.ground_pos.distance_to(d.door) <= MindWhisperFx.REACH:
+			return true
+	return false
+
+
+## The prayers policy sends one of the poor the last hop to the door only when the prayer inside is within PRAYERS_WALK of its end
+## (the next waits there and his whisper wears off) and when his prayer would not end with Faithful crowding the door (v0.11 M2):
+## in the market's window or the priests' (the director's), counting PRAYERS_WALK for his walk and PRAYERS_SLACK after the window
+## for them to leave.
+func _prayers_ready(d: MirasHouseDirector) -> bool:
+	var left := _prayer_left(d)
+	if left != INF and left > PRAYERS_WALK:
+		return false
+	var fp := d as FirstPrayersDirector
+	if fp == null:
+		return true
+	var ends := fp.timeline.elapsed() + maxf(PRAYERS_WALK, left if left != INF else 0.0) + fp.read_seconds
+	for w: Array in [[FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.MARKET_SECONDS],
+			[FirstPrayersDirector.PRIESTS_AT, FirstPrayersDirector.PRIESTS_SECONDS]]:
+		if ends >= float(w[0]) and ends <= float(w[0]) + float(w[1]) + PRAYERS_SLACK:
+			return false
+	return true
 
 
 ## Broken Lanterns (v0.10 M3), played every LOOK_FRAMES the way a careful player would (Task 8). Silent Doom takes the

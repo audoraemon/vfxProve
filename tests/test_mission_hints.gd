@@ -49,6 +49,9 @@ const SPEC := [
 	["lost_lamb.caught", "He is caught. Discord the soldier taking him back (red), or strike once the acolyte is clear of him, before the Temple."],
 	["lost_lamb.gate", "The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off."],
 	["lost_lamb.clear", "The watch is changing. Send him through the gate now."],
+	# First Prayers (v0.11 M2).
+	["first_prayers", "Whisper the poor (gold) to the old well shrine while no Faithful (red) watches. Three must pray."],
+	["first_prayers.watched", "Faithful (red) crowd the shrine's door. Draw them off, or let them go before you send anyone in."],
 ]
 
 

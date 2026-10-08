@@ -108,6 +108,7 @@ const SUITES := [
 	"res://tests/test_tax_collector.gd",
 	"res://tests/test_spoiled_harvest.gd",
 	"res://tests/test_lost_lamb.gd",
+	"res://tests/test_first_prayers.gd",
 ]
 
 var failures := 0

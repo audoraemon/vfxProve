@@ -78,6 +78,12 @@ var _liners_left := 0.0
 var _reading := {}
 ## Persons turned away at the door, until they step away from it.
 var _turned := {}
+## How many Believers out win the night (v0.11 M2: First Prayers needs three); BelieversObjective reads it.
+var need := BelieversObjective.NEED
+## Seconds a reading takes (v0.11 M2: First Prayers' prayer is longer).
+var read_seconds := READ_SECONDS
+## Only one inside at a time (v0.11 M2: the old well shrine): the next waits at the door until it is free.
+var one_at_a_time := false
 
 
 func _begin() -> void:
@@ -90,9 +96,12 @@ func _begin() -> void:
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	_add_events()
-	rules.banner.emit("LEAD THE GRIEVING TO MIRA'S HOUSE")
+	rules.banner.emit(_opening_banner())
 
 
+## The night's opening banner (v0.11 M2: a subclass names its own).
+func _opening_banner() -> String:
+	return "LEAD THE GRIEVING TO MIRA'S HOUSE"
 
 
 func _find_house() -> Structure:
@@ -163,6 +172,8 @@ func _doors() -> void:
 			continue
 		if _turned.has(p):
 			continue
+		if one_at_a_time and not _reading.is_empty():
+			continue  # (v0.11 M2) the next waits at the door
 		var seer := faithful_seeing(door, SIGHT)
 		if seer != null:
 			_turned[p] = true
@@ -194,7 +205,7 @@ func _enter(p: Person) -> void:
 	p.visible = false
 	p.ground_pos = house.center() if house != null else door
 	crowd._field.remove(p)
-	_reading[p] = READ_SECONDS
+	_reading[p] = read_seconds
 	_entered(p)
 
 
@@ -260,7 +271,7 @@ func inside() -> Array[Person]:
 
 
 ## The tags (v0.10 M6, spec §4.1), the most important first:
-## - the house, named, outlined and pointed at from the edge, until it is destroyed;
+## - the house, named (_house_label()), outlined and pointed at from the edge, until it is destroyed;
 ## - its door, clear or watched, until it burns;
 ## - each report's runner, pointed at from the edge;
 ## - the crying Believer, pointed at;
@@ -272,7 +283,7 @@ func inside() -> Array[Person]:
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if house != null and not house.destroyed:
-		var h := MapTag.place(house.center(), MARK_HOUSE, "MIRA'S HOUSE", house.height)
+		var h := MapTag.place(house.center(), MARK_HOUSE, _house_label(), house.height)
 		h.outline = house.footprint
 		out.append(h)
 	var open := not burning and not roof_fallen
@@ -301,12 +312,17 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## What the house's tag says (v0.11 M2: a subclass names its own place).
+func _house_label() -> String:
+	return "MIRA'S HOUSE"
+
+
 ## The hint's phase (v0.10 M6, spec §4.1): "burning" once the house burns or falls, else "four" with four or more
 ## Believers out, else "".
 func hint_phase() -> String:
 	if burning or roof_fallen:
 		return "burning"
-	return "four" if believers_outside() >= BelieversObjective.NEED else ""
+	return "four" if believers_outside() >= need else ""
 
 
 ## The tour (v0.10 M6, spec §5): her door, the Temple, the Inquisitor.

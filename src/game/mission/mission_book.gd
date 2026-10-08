@@ -16,6 +16,7 @@ const FEAST_PROCESSION := "feast_procession"
 const TAX_COLLECTOR := "tax_collector"
 const SPOILED_HARVEST := "spoiled_harvest"
 const LOST_LAMB := "lost_lamb"
+const FIRST_PRAYERS := "first_prayers"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -53,7 +54,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
-	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb()]
+	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers()]
 	return out
 
 
@@ -127,6 +128,24 @@ static func lost_lamb() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [EscortObjective.new("Lead the acolyte out", "out", "taken", "lamb"),
 			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## First Prayers (v0.11 M2, Tier 1, spec §8 row 5): lead three of the poor to the old well shrine by the market, unseen by
+## Halcyon's few Faithful (FirstPrayersDirector, Mira's House's Convert).
+static func first_prayers() -> MissionDef:
+	var m := _tier1(FIRST_PRAYERS, "First Prayers", PackedStringArray(["The poor have no shrine of their own.",
+		"Lead three to the old well, unseen."]))
+	m.goal = "Lead three of the poor to the old well shrine, unseen"
+	m.goal_label = "Three believe"
+	m.lose = "The Lantern looks, or fewer than three believe by dawn"
+	m.camera_at = FirstPrayersDirector.SHRINE_AT
+	m.intro_from = FirstPrayersDirector.SHRINE_AT + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
+	m.director = FirstPrayersDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new()]
 		return out
 	return m
 

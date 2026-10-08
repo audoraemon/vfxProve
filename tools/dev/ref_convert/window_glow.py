@@ -173,6 +173,14 @@ def mask_of(s, man):
         for a in fr:
             keep &= hand_mask(a, HAND_PANES[s])
         return keep, len(HAND_PANES[s]), len(fr)
+    m, n = lit(fr)
+    return m, n, len(fr)
+
+
+def lit(fr):
+    """(bool mask, window count) of the lit panes over frames `fr` (RGBA int arrays of one layout): a pixel must be a
+    pane in every frame, flames are left out, and clusters over MAX_CLUSTER px are dropped. style_match.py also runs
+    this on a converted sprite's full-colour image, before its palette lock."""
     keep = np.ones(fr[0].shape[:2], bool)
     flame = np.zeros_like(keep)
     for a in fr:
@@ -191,7 +199,7 @@ def mask_of(s, man):
         n += 1
         for p in pts:
             out[p] = True
-    return out, n, len(fr)
+    return out, n
 
 
 def main():

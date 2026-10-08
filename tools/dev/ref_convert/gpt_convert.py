@@ -21,18 +21,22 @@ Fit: each building's footprint diamond is measured on the sheet by hand (its bas
 right; for the armoury R is the diamond's corner behind the shed, for the watchtower the outer corners of its leg
 plinths). The scale makes the diamond 32 * (W + D) px wide for the plot's footprint; Y_STRETCH evens out a building
 painted flatter than 2:1 (the courthouse). The anchor is the least-squares fit of the three corners to the plot's
-diamond, so a building whose proportions differ a little from its plot's splits the difference. Then the convert
-pipeline: premultiplied Lanczos, hard alpha (>= 110), unsharp mask, one shared median-cut palette (COLORS) over the
-intact and damaged stills, the 1 px dark outline (bridges.finish). Corner errors print for the three fitted corners
+diamond, so a building whose proportions differ a little from its plot's splits the difference. Premultiplied Lanczos,
+hard alpha (>= 110). The final step is the style match pass (style_match.py): saturation per material, local
+contrast, the lock to the game palette (game_palette.png), the speck clean, the eaves and the outline in the in-game
+buildings' colours, the lit windows on their ramp (and glow_mask.png); its knobs are tuned on the intact and used on
+all three stills. Corner errors print for the three fitted corners
 and, as convert.py reports them, the nearest base pixel to each side corner.
 
 Damaged (drawn locally, batch 3 style): holes through the roof (charred rim, dark loft, rafters, sooted tiles), a
 scorch up a wall (warehouse.scorch, darker) and a door or shutter hanging off its hinge. Clean shapes, no noise.
 
 Ruins: the approved ruins of the closest existing set scaled onto the plot (the batch 3 method, warehouse.ruins):
-the tavern's for the town hall (timber, the same plot); the workshop's for the armoury (its own plot, 1.0), the
-courthouse (0.95) and the treasury (0.6); the town tower's for the jail (0.7). The watchtower's are local: its four
-leg stumps and the cabin fallen on its side behind them.
+the tavern's for the town hall (timber, the same plot); the town tower's (stone, as the bell tower's) for the stone
+buildings: the armoury and the courthouse (1.0) and the jail and the treasury (0.7), each scaled so the tower's 1.6
+diamond is at most its plot's width ((W + D) / 3.2, capped at 1), its fallen blue banner painted out (no_banner).
+The watchtower's are local: its four leg stumps and the cabin fallen on its side behind them. Reused ruins go through
+the style match's lock and outline only (they are already in the game's style); the watchtower's get the whole pass.
 
 No idle strips; the collapse is the engine's sink. A set whose building has a chimney gets a chimney key (its top's
 middle) so ChimneySmoke rises from it; the watchtower has none.
@@ -52,6 +56,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bridges  # noqa: E402
 import convert  # noqa: E402
+import style_match  # noqa: E402
 import warehouse  # noqa: E402
 
 ROOT = convert.ROOT
@@ -59,7 +64,6 @@ B = convert.B
 SHEET = ROOT / "concepts" / "GPT" / "defence_sheet_v1.webp"
 GRID = (3, 2)
 MIN_PROP = 40
-COLORS = 64
 PAD = 6
 CHAR = warehouse.CHAR
 TIMBER_DK = warehouse.TIMBER_DK
@@ -71,18 +75,18 @@ SETS = {
                          seed=80, kind="HOUSE", role="house", tag="tavern", chimney=(275, 52), ruins=("tavern", 1.0)),
     "gpt_armoury": dict(cell=(1, 0), L=(623, 336), F=(939, 493), R=(1094, 416), k=1.0, fp=[2.6, 1.5], height=22,
                         seed=81, kind="HOUSE", role="house", tag="workshop", chimney=(771, 102),
-                        ruins=("workshop", 1.0)),
+                        ruins=("town_tower", 1.0)),
     "gpt_jail": dict(cell=(2, 0), L=(1200, 398), F=(1361, 481), R=(1497, 416), k=1.0, fp=[1.3, 0.95], height=29,
                      seed=82, kind="HOUSE", role="house", tag="townhouse", chimney=(1385, 220),
                      ruins=("town_tower", 0.7)),
     "gpt_courthouse": dict(cell=(0, 1), L=(72, 784), F=(346, 904), R=(551, 818), k=1.16, fp=[2.4, 1.6], height=30,
                            seed=83, kind="HOUSE", role="house", tag="tavern", chimney=(409, 572),
-                           ruins=("workshop", 0.95)),
+                           ruins=("town_tower", 1.0)),
     "gpt_watchtower": dict(cell=(1, 1), L=(726, 848), F=(824, 901), R=(924, 844), k=1.0, fp=[0.95, 0.75], height=19,
                            seed=84, kind="HOUSE", role="house", tag="", chimney=None, ruins=None),
     "gpt_treasury": dict(cell=(2, 1), L=(1168, 816), F=(1356, 916), R=(1521, 836), k=1.0, fp=[1.3, 0.95], height=28,
                          seed=85, kind="HOUSE", role="house", tag="townhouse", chimney=(1441, 632),
-                         ruins=("workshop", 0.6)),
+                         ruins=("town_tower", 0.7)),
 }
 
 
@@ -319,7 +323,7 @@ def borrowed_ruins(src_name, k, fp, A, shape):
     """The approved ruins of `src_name`, scaled k, their footprint's centre on this plot's (warehouse.ruins)."""
     man = json.load(open(B / "manifest.json", encoding="utf-8"))
     sm = man[src_name]
-    src = Image.open(B / src_name / "ruins.png").convert("RGBA")
+    src = Image.fromarray(no_banner(np.array(Image.open(B / src_name / "ruins.png").convert("RGBA"))), "RGBA")
     Ws, Ds = sm["footprint"]
     As = sm["anchor"]
     if k != 1.0:
@@ -346,6 +350,31 @@ def borrowed_ruins(src_name, k, fp, A, shape):
     h, w = a.shape[:2]
     out[oy:oy + h, ox:ox + w] = a
     return out
+
+
+BANNER_SHIFT = 28       # px: the stone a fallen banner is painted over with is copied from this far to its right
+
+
+def no_banner(a):
+    """A reused ruins still without the stray banner (the town tower's blue one lies on its rubble): each row of the
+    banner's span (its blue px, b > r + 25 and b > g, first to last per row, 1 px more around) is painted over with
+    the stone BANNER_SHIFT px to its right. No blue: unchanged."""
+    a = a.copy()
+    r, g, b = (a[..., i].astype(int) for i in range(3))
+    op = a[..., 3] > 0
+    blue = op & (b > r + 25) & (b > g)
+    if not blue.any():
+        return a
+    m = np.zeros_like(op)
+    for y in np.unique(np.nonzero(blue)[0]):
+        xs = np.nonzero(blue[y])[0]
+        m[y, xs.min():xs.max() + 1] = True
+    grown = m.copy()
+    grown[1:] |= m[:-1]; grown[:-1] |= m[1:]; grown[:, 1:] |= m[:, :-1]; grown[:, :-1] |= m[:, 1:]
+    ys, xs = np.nonzero(grown & op)
+    assert (a[ys, xs + BANNER_SHIFT, 3] > 0).all(), "the banner's patch source runs off the rubble"
+    a[ys, xs] = a[ys, xs + BANNER_SHIFT]
+    return a
 
 
 def watchtower_ruins(c, tf, A, fp):
@@ -413,15 +442,26 @@ def make(name, out_dir, debug=None):
     y1 = max(ys.max() + 1 + PAD, int(A[1]) + 11)
     crop = {k2: v[y0:y1, x0:x1] for k2, v in st.items()}
     A = (int(A[0] - x0), int(A[1] - y0))
-    done = bridges.finish([crop["intact"], crop["damaged"]], COLORS)
-    if spec["ruins"]:
-        done.append(np.clip(crop["ruins"], 0, 255).astype(np.uint8))
-    else:
-        done += bridges.finish([crop["ruins"]], 32)
+    # the final step: the style match pass (style_match.py), its knobs tuned on the intact; reused ruins are already
+    # in the game's style, so they get only its palette lock, speck clean and outline
+    knobs, st_after = style_match.tune(crop["intact"])
+    intact, lit = style_match.match(crop["intact"], knobs)
+    done = [intact, style_match.match(crop["damaged"], knobs)[0],
+            style_match.match(crop["ruins"], knobs, light=bool(spec["ruins"]), glow=False)[0]]
     d = out_dir / name
     d.mkdir(parents=True, exist_ok=True)
     for state, img in zip(("intact", "damaged", "ruins"), done):
         Image.fromarray(img, "RGBA").save(d / (state + ".png"))
+    gm = d / "glow_mask.png"
+    if lit.any():           # window_glow.py's convention: white where lit, one frame in size, transparent elsewhere
+        o = np.zeros(intact.shape, np.uint8)
+        o[lit] = (255, 255, 255, 255)
+        Image.fromarray(o, "RGBA").save(gm)
+    elif gm.exists():
+        gm.unlink()
+    print("  style match: lift %.2f amount %.2f sat x%.2f; edge %.3f lum %.3f outline %.3f colours %d sat %.3f; "
+          "%d lit px" % (knobs["lift"], knobs["amount"], knobs["glob"], st_after["edge"], st_after["lum"],
+                         st_after["outline"], st_after["colours"], st_after["sat"], int(lit.sum())))
     h, w = done[0].shape[:2]
     fe = {k2: (round(float(v[0]), 1), round(float(v[1]), 1)) for k2, v in info["fit_errors"].items()}
     nb = nearest_base_errors(done[0], A, spec["fp"])

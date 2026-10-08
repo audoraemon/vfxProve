@@ -118,6 +118,9 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Frames are dr
   - **Masks:** a pane is a warm, lamp-bright core with dark bars round it, grown 4-connected over its own rare tones (a seeded, bounded flood fill) and kept only if it fits a window and is framed.
   - **Guards:** saturation, lamp-brightness and yellow-orange tests drop cream plaster, sandstone and roof highlights; clusters over `MAX_CLUSTER` px are flames or lit floor and are dropped; flame boxes from `bonfire_flicker.flames()` are excluded; a set with an idle strip is read from frame 0 and a pixel must pass in every frame; set names are validated before anything is written; each set has a lower-bound pixel count in the tests.
   - **It refuses strip sets** (manifest `strip`: the town wall and postern). A piece there draws a region wider than one frame, so the mask lookup would stretch.
+  - `window_glow.lit(frames)` is the finder alone; `style_match.py` runs it on a converted sprite before its palette lock.
+- **`style_stats.py [<set>...] [--state] [--dir]`**: the style numbers of intact stills (outline luminance, edge contrast, distinct colours, saturation, luminance) and each set's dominant material against the references.
+- **`style_match.py [--palette]`**: the style match pass, `gpt_convert.py`'s final step: saturation per material, local contrast, a lock to the game palette (`game_palette.png`, rebuilt from the reference sets with `--palette`) within each pixel's material, speck clean, darker eaves, the in-game outline colours and the lit-window ramp (it writes the `gpt_*` glow masks).
 
 ### Engine
 

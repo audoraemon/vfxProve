@@ -11,6 +11,8 @@ const SEEN := [[&"citadel", &""], [&"temple", &"cathedral"], [&"town_hall", &"gp
 	[&"market_hall", &"gpt_markethall"]]
 ## Landmark names the capital has no equivalent for; their callers check has_area().
 const NO_EQUIVALENT := [&"river_west", &"watermill"]
+## How far a piece of the new town's river wall (a wall, a gatehouse, a wall tower) may reach into the water.
+const RING_WET := 0.5
 
 
 static func run(t) -> void:
@@ -99,21 +101,37 @@ static func _in_map(t, c: CapitalCity, all: Array[Dictionary]) -> void:
 	var out := 0
 	var wet := 0
 	var first := ""
+	var deep := 0.0
+	var deep_corner := 0.0
+	var deepest := ""
 	for d: Dictionary in all:
 		var r: Rect2 = d.rect
 		if not c.map().encloses(r):
 			out += 1
-		# The bridges stand on the water; so do the new town's river wall and its gatehouses' towers (Task 6's ring,
-		# its north wall on the river's edge, tests/test_capital.gd), which no plot is.
-		if d.kind == Structure.Kind.BRIDGE or d.kind in [Structure.Kind.CASTLE_WALL, Structure.Kind.GATE] \
-				or (d.kind == Structure.Kind.KEEP and d.role == &"tower" and d.tag != &"bell_tower"):
+		if d.kind == Structure.Kind.BRIDGE:
 			continue
+		# The new town's river wall stands on the river's edge (Task 6's ring): its walls, gatehouses and towers may
+		# reach a little way into the water, a corner tower by its own reach past the wall line (TownLayout.WALL_T),
+		# the rest by at most RING_WET. No plot may.
+		var ring: bool = d.kind in [Structure.Kind.CASTLE_WALL, Structure.Kind.GATE] 			or (d.kind == Structure.Kind.KEEP and d.role == &"tower" and d.tag != &"bell_tower")
 		for w: Rect2 in c.rivers():
-			if w.intersects(r):
+			if not w.intersects(r):
+				continue
+			var cut := w.intersection(r)
+			var depth := minf(cut.size.x, cut.size.y)
+			if not ring:
 				wet += 1
 				first = "%s %s" % [d.tag, r]
+			elif is_equal_approx(r.size.x, TownLayout.CORNER_TOWER) and is_equal_approx(r.size.y, TownLayout.CORNER_TOWER):
+				deep_corner = maxf(deep_corner, depth)
+			elif depth > deep:
+				deep = depth
+				deepest = "%s %s" % [Structure.Kind.keys()[d.kind], r]
 	t.check(out == 0, "every capital structure lies inside the map (%d out)" % out)
 	t.check(wet == 0, "only bridges (and the river wall) stand on the water (%d; %s)" % [wet, first])
+	t.check(deep <= RING_WET + 0.001, "the river wall's pieces reach at most %.1f into the water (%.2f, %s)"
+		% [RING_WET, deep, deepest])
+	t.check(deep_corner <= TownLayout.WALL_T + 0.001, "its corner towers at most their reach past the wall (%.2f)" % deep_corner)
 
 
 ## No building stands on a street: only the walls' gatehouses and the bridges meet the roads (Task 6 checks the walls).

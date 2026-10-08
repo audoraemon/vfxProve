@@ -112,6 +112,42 @@ const WINDMILL := Rect2(-11.9, -24.9, 0.9, 0.9)
 const WATERMILL := Rect2(-6.9, 25.0, 2.4, 1.9)
 ## Fenced pastures with sheep and cows: north, and east of the Side Gate's road.
 const PASTURES := [Rect2(-9.8, -26.8, 5.8, 5.0), Rect2(18.5, 1.5, 7.0, 5.5)]
+## The countryside the floor and decor dress Aldermere with (AldermereCity hands these over; they were TownFloor's and
+## TownDecor's own lists until the capital).
+## Decorative dirt trails through the meadow, forest and farms (ground units), all clear of the walls and the river.
+const TRAILS := [
+	[Vector2(-26, -19.5), Vector2(-18, -18.8), Vector2(-10, -20.2), Vector2(-2, -19.2), Vector2(6, -20.4),
+		Vector2(14, -19.0), Vector2(26, -20.0)],
+	[Vector2(-3.0, -19.4), Vector2(-3.5, -24.0), Vector2(-2.5, -29.5)],
+	[Vector2(-14.0, -19.2), Vector2(-14.8, -23.5), Vector2(-15.5, -29.5)],
+	[Vector2(-19.5, -26), Vector2(-20.2, -18), Vector2(-19.0, -10), Vector2(-20.5, -4), Vector2(-19.4, 4),
+		Vector2(-20.2, 12), Vector2(-19.2, 17.5)],
+	[Vector2(19.5, -26), Vector2(20.2, -18), Vector2(19.0, -10), Vector2(20.4, -2), Vector2(19.4, 0.6)],
+	[Vector2(-26, 29.5), Vector2(-12, 29.0), Vector2(1.5, 29.4)],
+	[Vector2(4.0, 29.4), Vector2(14, 29.0), Vector2(26, 29.6)],
+	[Vector2(17.2, 11.4), Vector2(22, 11.8), Vector2(27, 11.2)],
+]
+## Roads outside the walls, painted as trails 0.5 wide: the south road to the bridge and on from its far end, the east
+## road.
+const ROAD_TRAILS := [
+	[Vector2(2.7, 16.2), Vector2(2.7, 18.8)],
+	[Vector2(2.7, 25.8), Vector2(2.8, 27.5), Vector2(2.6, 30.0)],
+	[Vector2(16.2, 9.0), Vector2(22, 9.1), Vector2(30, 8.9)],
+]
+## Grey rocky outcrops in the woods, as the reference's cliffs break its forest: [centre, radius] in ground units,
+## clear of the trails, fields, pastures and river.
+const OUTCROPS := [
+	[Vector2(-26.5, -22.0), 1.8], [Vector2(-25.5, -9.0), 2.0], [Vector2(8.5, -22.5), 1.4], [Vector2(25.0, -12.0), 2.0],
+	[Vector2(26.5, 21.0), 1.6],
+]
+## Each gate plaza's rosette (centre, radius): inside its queue fan, where no house stands, and clear of the barracks
+## yard.
+const ROSETTES := [[Vector2(2.7, 12.55), 1.49], [Vector2(12.2, 9.9), 1.3]]
+## Rowing boats on the rivers, the scarecrows on the field edges, the signposts by the roads and the carts by the farms.
+const BOATS := [Vector2(-11.0, 21.4), Vector2(7.8, 22.6), Vector2(-20.5, 22.0), Vector2(-28.2, 9.0), Vector2(14.0, 21.2)]
+const SCARECROWS := [Vector2(-16.0, -24.0), Vector2(2.5, -24.0), Vector2(8.5, 28.9), Vector2(-14.5, 28.9)]
+const SIGNPOSTS := [Vector2(21.0, 10.9), Vector2(4.6, 27.0)]
+const CARTS := [Vector2(-1.0, 27.6), Vector2(22.0, 12.6), Vector2(-15.5, -21.5)]
 ## The postern (v0.05): a small door in the south wall where the long west street meets it, the way down to the
 ## dock. It is the wall piece standing on this point, built as a gate instead (so every building keeps its seed),
 ## and open only in a town with river boats (Crowd.spawn() bars it otherwise).

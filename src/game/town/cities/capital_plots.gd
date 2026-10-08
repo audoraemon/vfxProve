@@ -94,8 +94,13 @@ const SETS := {
 ## The sets people live in (their fronts are homes, CapitalCity.anchors()).
 const HOMES := [&"gpt_manor", &"gpt_patrician", &"gpt_rowhouses", &"gpt_tenement", &"gpt_shacks", &"gpt_hut",
 	&"gpt_shophouse", &"gpt_farmhouse"]
-## The salt a block's row offsets are hashed with (ArtKit.hash01).
+## The salt a block's row offsets are hashed with (ArtKit.hash01), and its plots' jitter and gaps (row() `jitter`).
 const SALT_ROW := 7121
+const SALT_JITTER_X := 7331
+const SALT_JITTER_Y := 7457
+const SALT_SKIP := 7583
+## With a jitter, the share of plots (times the jitter) left empty, so the rows open up here and there.
+const SKIP_SHARE := 0.25
 
 
 ## The structure for set `set_name` with its footprint's back corner at `at`: {rect, height, kind, role, tag}.
@@ -115,8 +120,11 @@ static func plotted_sets() -> Array[StringName]:
 
 ## Fills `block` with plots of size `plot` in rows, `gap` apart both ways: as many columns and rows as fit, the rows
 ## centred down the block, each row slid along x within the block's spare width by its own hash of `seed_value` (so
-## the rows of a block do not line up like a chessboard). Deterministic; every plot lies inside the block.
-static func row(block: Rect2, plot: Vector2, gap: float, seed_value: int) -> Array[Rect2]:
+## the rows of a block do not line up like a chessboard). With a `jitter` (0..1), each plot also moves up to
+## jitter * gap / 2 either way on both axes (so neighbours keep at least (1 - jitter) * gap apart) and about
+## jitter * SKIP_SHARE of them are left out: a loose, uneven quarter rather than a lattice. Deterministic; every plot
+## lies inside the block.
+static func row(block: Rect2, plot: Vector2, gap: float, seed_value: int, jitter := 0.0) -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	var cols := floori((block.size.x + gap) / (plot.x + gap) + 0.0001)
 	var rows := floori((block.size.y + gap) / (plot.y + gap) + 0.0001)
@@ -127,6 +135,14 @@ static func row(block: Rect2, plot: Vector2, gap: float, seed_value: int) -> Arr
 	for j in rows:
 		var x := block.position.x + spare.x * ArtKit.hash01(seed_value, SALT_ROW + j)
 		for i in cols:
-			out.append(Rect2(x + i * (plot.x + gap), y, plot.x, plot.y))
+			var r := Rect2(x + i * (plot.x + gap), y, plot.x, plot.y)
+			if jitter > 0.0:
+				var k := j * 1000 + i
+				if ArtKit.hash01(seed_value, SALT_SKIP + k) < jitter * SKIP_SHARE:
+					continue
+				var off := Vector2(ArtKit.hash01(seed_value, SALT_JITTER_X + k) - 0.5,
+					ArtKit.hash01(seed_value, SALT_JITTER_Y + k) - 0.5) * gap * jitter
+				r.position = (r.position + off).clamp(block.position, block.end - plot)
+			out.append(r)
 		y += plot.y + gap
 	return out

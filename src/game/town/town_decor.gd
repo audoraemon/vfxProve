@@ -1,6 +1,8 @@
 class_name TownDecor
 extends RefCounted
-## Where Aldermere's decor goes, as pure data: {kind, at, size, seed, bake}. Deterministic.
+## Where the active city's decor goes, as pure data: {kind, at, size, seed, bake}. Deterministic. The countryside's
+## outcrops, trails, boats, scarecrows, signposts and carts are the city's (CityDef). "Inside the walls" is the city's
+## town() and its paved ground beyond it (floor_areas() &"paved", the capital's second ring), with that ring's wall.
 ## - Inside the walls it only stands where people already cannot walk: on walk-grid cells a building blocks,
 ##   hugging houses, the Temple and the barracks.
 ## - Outside it keeps at least ROAD_CLEAR from the roads and both exits, and out of the river, the fields and the
@@ -11,6 +13,8 @@ extends RefCounted
 ## Cell size and body margin the walk grid blocks buildings by (WalkGrid.CELL, WalkGrid.BODY).
 const CELL := 0.5
 const BODY := 0.15
+## The wall band round a city's paved ground (floor_areas() &"paved" is its ring's inside, within the wall).
+const PAVED_WALL := 0.7
 const ROAD_CLEAR := 1.0
 ## How far from a road (and exit) a piece has to be before it can be baked into the floor.
 const BAKE_CLEAR := 1.4
@@ -267,7 +271,7 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 		return Decor.Kind.FLOWERS if roll < 0.3 and not _forest(g) and not TownFloor.on_outcrop(g) else -1)
 	# Boulders heaped on the rocky outcrops.
 	var boulder := 0
-	for o: Array in TownFloor.OUTCROPS:
+	for o: Array in _geo().outcrops:
 		var c: Vector2 = o[0]
 		var rad: float = o[1]
 		for j in int(rad * 4.0):
@@ -297,7 +301,7 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 		y += 0.32
 		i += 1
 	# Short fence runs beside the trails.
-	for tr: Array in TownFloor.TRAILS:
+	for tr: Array in _geo().trails:
 		for k in tr.size() - 1:
 			var a: Vector2 = tr[k]
 			var b: Vector2 = tr[k + 1]
@@ -309,10 +313,10 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 			if _h(k * 7 + i, 61) < 0.55 and _outside_ok(start, solid, 0.2) and _outside_ok(start + run, solid, 0.2) \
 					and _outside_ok(start + run * 0.5, solid, 0.2):
 				_add(out, Decor.Kind.FENCE, start, run)
-	for g in [Vector2(-16.0, -24.0), Vector2(2.5, -24.0), Vector2(8.5, 28.9), Vector2(-14.5, 28.9)]:
+	for g in City.current().scarecrows():
 		if _outside_ok(g, solid, 0.0, false):
 			_add(out, Decor.Kind.SCARECROW, g)
-	for g in [Vector2(21.0, 10.9), Vector2(4.6, 27.0)]:
+	for g in City.current().signposts():
 		if _outside_ok(g, solid, 0.0):
 			_add(out, Decor.Kind.SIGNPOST, g)
 
@@ -323,7 +327,7 @@ static func _countryside(out: Array[Dictionary]) -> void:
 	# The dock itself is a structure since v0.05 (the city's &"dock" landmark); the ship lies moored beside it.
 	if City.current().ship_at().is_finite():
 		_add(out, Decor.Kind.SHIP, City.current().ship_at())
-	for g in [Vector2(-11.0, 21.4), Vector2(7.8, 22.6), Vector2(-20.5, 22.0), Vector2(-28.2, 9.0), Vector2(14.0, 21.2)]:
+	for g in City.current().boats():
 		_add(out, Decor.Kind.BOAT, g)
 	var n := 0
 	for p: Rect2 in City.current().pastures():
@@ -344,7 +348,7 @@ static func _countryside(out: Array[Dictionary]) -> void:
 				floorf(i / 3.0) + 0.2 + _h(n, 71) * 0.6)
 			var cow := n % 3 == 0 and p.position.x > 0.0
 			_add(out, Decor.Kind.COW if cow else Decor.Kind.SHEEP, at)
-	for g in [Vector2(-1.0, 27.6), Vector2(22.0, 12.6), Vector2(-15.5, -21.5)]:
+	for g in City.current().carts():
 		_add(out, Decor.Kind.CART, g)
 
 
@@ -365,11 +369,12 @@ static func _scatter(out: Array[Dictionary], solid: Array[Rect2], area: Rect2, s
 			_add(out, kind, g)
 
 
-## Outside the walls, off the roads, the exits, the rivers and the fields' tilled ground, clear of trails (by
-## `trail_gap`) and of every building. `farm` false lets a piece stand on a field's tilled edge (the scarecrows).
+## Outside the walls, off the roads (and the dirt roads beyond them), the exits, the rivers and the fields' tilled
+## ground, clear of trails (by `trail_gap`) and of every building. `farm` false lets a piece stand on a field's tilled
+## edge (the scarecrows).
 static func _outside_ok(g: Vector2, solid: Array[Rect2], trail_gap: float, farm := true) -> bool:
 	var geo := _geo()
-	if (geo.town as Rect2).grow(0.9).has_point(g):
+	if _walled(g, 0.9):
 		return false
 	for r: Rect2 in geo.rivers:
 		if r.grow(0.12).has_point(g):
@@ -383,6 +388,10 @@ static func _outside_ok(g: Vector2, solid: Array[Rect2], trail_gap: float, farm 
 	for ex: Vector2 in geo.exits:
 		if g.distance_to(ex) < ROAD_CLEAR:
 			return false
+	# A dirt road keeps ROAD_CLEAR past a 0.5-wide road's edge (Aldermere's lie on its road rects, so they add nothing).
+	for tr: Dictionary in geo.road_trails:
+		if TownFloor._near_polyline(g, tr.points, ROAD_CLEAR + tr.width - 0.5):
+			return false
 	if (geo.bridge as Rect2).grow(0.4).has_point(g):
 		return false
 	for p: Rect2 in geo.keep_off:
@@ -390,7 +399,7 @@ static func _outside_ok(g: Vector2, solid: Array[Rect2], trail_gap: float, farm 
 			return false
 	if _inside_any(g, solid, 0.45):
 		return false
-	for tr: Array in TownFloor.TRAILS:
+	for tr: Array in geo.trails:
 		if trail_gap > 0.0 and TownFloor._near_polyline(g, tr, trail_gap):
 			return false
 	return true
@@ -408,9 +417,22 @@ static func _geo() -> Dictionary:
 		_geo_cache = {
 			town = city.town(), rivers = city.rivers(), fields = city.fields(), roads = city.roads(),
 			exits = city.exits(), bridge = city.landmark(&"bridge"), river = city.landmark(&"river"),
-			keep_off = keep_off,
+			keep_off = keep_off, outcrops = city.outcrops(), trails = city.trails(), road_trails = city.road_trails(),
+			paved = city.floor_areas().get(&"paved", []),
 		}
 	return _geo_cache
+
+
+## Whether `g` is inside the walls, the city's town() grown by `margin`, or its paved ground with that ring's wall,
+## grown the same.
+static func _walled(g: Vector2, margin: float) -> bool:
+	var geo := _geo()
+	if (geo.town as Rect2).grow(margin).has_point(g):
+		return true
+	for p: Rect2 in geo.paved:
+		if p.grow(PAVED_WALL + margin).has_point(g):
+			return true
+	return false
 
 
 static func _forest(g: Vector2) -> bool:
@@ -418,7 +440,7 @@ static func _forest(g: Vector2) -> bool:
 	if g.y > (geo.river as Rect2).position.y:
 		return false
 	var t: Rect2 = geo.town
-	if (g.x > t.end.x and absf(g.y - 9.0) < 1.5) or (g.y > t.end.y and absf(g.x - 2.7) < 1.5):
+	if TownFloor.in_forest_gap(g):
 		return false
 	var out := maxf(maxf(t.position.x - g.x, g.x - t.end.x), maxf(t.position.y - g.y, g.y - t.end.y))
 	return out > 2.2 and out < TownFloor.FOREST_OUT
@@ -564,9 +586,8 @@ static func _overlaps(e: Array, box: Rect2) -> bool:
 ## floor's deeper gold; unlike a live piece, a blast neither chars it nor knocks it flat.
 static func _bake_low(out: Array[Dictionary], built: Array[Dictionary]) -> void:
 	var low: Array[int] = []
-	var town := City.current().town()
 	for i in out.size():
-		if LOW_BOX.has(out[i].kind) and town.grow(1.0).has_point(out[i].at):
+		if LOW_BOX.has(out[i].kind) and _walled(out[i].at, 1.0):
 			low.append(i)
 	# Everything else that is live goes in the index first; then each low piece, back to front, joins it if it has
 	# to stay live.
@@ -590,10 +611,9 @@ static func _bake_low(out: Array[Dictionary], built: Array[Dictionary]) -> void:
 ## stands at, and sorts by, its front piece.
 static func _merge_piles(out: Array[Dictionary], built: Array[Dictionary]) -> Array[Dictionary]:
 	var goods: Array[int] = []
-	var town := City.current().town()
 	for i in out.size():
 		var d := out[i]
-		if not d.bake and d.kind in PILE_KINDS and town.has_point(d.at) \
+		if not d.bake and d.kind in PILE_KINDS and _walled(d.at, 0.0) \
 				and ArtTuning.scale(String(Decor.Kind.keys()[d.kind]).to_lower()) == 1.0:
 			goods.append(i)
 	goods.sort_custom(func(a: int, b: int) -> bool: return _sort_y(out[a].at) < _sort_y(out[b].at))
@@ -668,7 +688,7 @@ static func _between(index: Dictionary, box: Rect2, y0: float, y1: float, skip: 
 static func _bakeable(d: Dictionary, boxes: Array[Rect2]) -> bool:
 	var g: Vector2 = d.at
 	var geo := _geo()
-	if (geo.town as Rect2).grow(1.0).has_point(g) or d.kind in [Decor.Kind.BUNTING, Decor.Kind.LAMP]:
+	if _walled(g, 1.0) or d.kind in [Decor.Kind.BUNTING, Decor.Kind.LAMP]:
 		return false
 	for road: Rect2 in geo.roads:
 		if road.grow(BAKE_CLEAR).has_point(g):

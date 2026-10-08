@@ -121,10 +121,53 @@ func floor_areas() -> Dictionary:
 	farm.append_array([TownLayout.WINDMILL, TownLayout.WATERMILL])
 	var plazas: Array[Rect2] = [TownLayout.MARKET_SQUARE, TownLayout.CITADEL_COURT, TownLayout.FOUNTAIN_PLAZA]
 	var yards: Array[Rect2] = [TownLayout.BARRACKS_YARD]
+	var crossings: Array[Rect2] = [TownLayout.BRIDGE]
 	return {
 		&"plazas": plazas, &"yards": yards, &"gate_plazas": _rects(TownLayout.GATE_PLAZAS),
-		&"building_yards": building_yards, &"farm": farm,
+		&"building_yards": building_yards, &"farm": farm, &"crossings": crossings,
 	}
+
+
+func trails() -> Array:
+	return TownLayout.TRAILS.duplicate(true)
+
+
+func road_trails() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for line: Array in TownLayout.ROAD_TRAILS:
+		out.append({"points": line.duplicate(), "width": 0.5})
+	return out
+
+
+func outcrops() -> Array:
+	return TownLayout.OUTCROPS.duplicate(true)
+
+
+## The Main Gate's plaza (its ruts north-south, down the plaza's middle) and the Side Gate's (west-east, along the east
+## road at y 9).
+func rosettes() -> Array[Dictionary]:
+	var r: Array = TownLayout.ROSETTES
+	var out: Array[Dictionary] = [
+		{"at": r[0][0], "radius": r[0][1], "along_y": true, "across": (TownLayout.GATE_PLAZAS[0] as Rect2).get_center().x},
+		{"at": r[1][0], "radius": r[1][1], "along_y": false, "across": 9.0},
+	]
+	return out
+
+
+func boats() -> Array[Vector2]:
+	return _points(TownLayout.BOATS)
+
+
+func scarecrows() -> Array[Vector2]:
+	return _points(TownLayout.SCARECROWS)
+
+
+func signposts() -> Array[Vector2]:
+	return _points(TownLayout.SIGNPOSTS)
+
+
+func carts() -> Array[Vector2]:
+	return _points(TownLayout.CARTS)
 
 
 func citadel_origin() -> Vector2:
@@ -133,6 +176,12 @@ func citadel_origin() -> Vector2:
 
 func landmark(name: StringName) -> Rect2:
 	return LANDMARKS.get(name, Rect2())
+
+
+static func _points(src: Array) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	out.assign(src)
+	return out
 
 
 ## A fresh typed copy of one of TownLayout's (untyped, read-only) Rect2 constants.

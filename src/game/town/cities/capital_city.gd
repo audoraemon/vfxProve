@@ -181,13 +181,14 @@ const GPT_PLOTS := [
 ## The craft sets whose fronts are workplaces (anchors' "craft").
 const CRAFTS := [&"gpt_bakery", &"gpt_butcher", &"gpt_brewery", &"gpt_tannery", &"gpt_dyers", &"gpt_weavers",
 	&"gpt_potter", &"gpt_cooper", &"gpt_masonyard", &"gpt_lumberyard", &"gpt_glassworks"]
-## How each walled district's house blocks are filled (CapitalPlots.row()): [plot, gap, townhouses]. Districts not
-## listed (the Royal Keep, the cathedral square) take no houses.
+## How each walled district's house blocks are filled (CapitalPlots.row()): [plot, gap, townhouses, jitter (none when
+## left out)]. Districts not listed (the Royal Keep, the cathedral square) take no houses. The poor quarter's cottages
+## are jittered and gapped, so they crowd in unevenly rather than stand in a lattice.
 const HOUSING := {
 	&"noble_quarter": [Vector2(1.3, 0.95), 1.2, true], &"guild_quarter": [Vector2(1.3, 0.95), 0.8, true],
 	&"great_market": [Vector2(1.3, 0.95), 0.8, true], &"old_town_houses": [Vector2(1.3, 0.95), 0.6, true],
 	&"crafts_quarter": [Vector2(0.95, 0.75), 0.7, false], &"new_town": [Vector2(1.3, 0.95), 0.8, true],
-	&"tanners_dyers": [Vector2(0.95, 0.75), 0.9, false], &"poor_quarter": [Vector2(0.95, 0.75), 0.6, false],
+	&"tanners_dyers": [Vector2(0.95, 0.75), 0.9, false], &"poor_quarter": [Vector2(0.95, 0.75), 0.6, false, 0.6],
 	&"road_quarter": [Vector2(0.95, 0.75), 0.7, false],
 }
 ## How far a house keeps from every other building, yard and square, and from the streets; how far inside its ring's
@@ -250,6 +251,50 @@ const BLOCK_MIN := 1.0
 ## How deep the cobbled queue ground inside each gatehouse is, and its gap from the gate towers.
 const GATE_PLAZA := Vector2(3.6, 2.6)
 const GATE_PLAZA_GAP := 0.6
+
+## The countryside (CityDef's trails(), road_trails() and the rest), all outside both rings.
+## Meadow trails through the woods north of the old town, and the west meadow above the river.
+const TRAILS := [
+	[Vector2(-22, -34.5), Vector2(-12, -35.2), Vector2(-2, -34.4), Vector2(8, -35.0), Vector2(16, -34.0),
+		Vector2(21, -32.4), Vector2(28, -32.6), Vector2(34, -32.4), Vector2(39.5, -33.2)],
+	[Vector2(-39.5, -4.0), Vector2(-33.0, -5.2), Vector2(-27.5, -3.6)],
+]
+## The dirt roads beyond the walls: [polyline, width]. The avenues' and the harbour lane's outside stretches (the south
+## road from the barbican, the west road to the west gate, the cross avenue from the harbour gate, the ferry lane), and
+## the farm tracks from the south road to the west farms and the south-east fields, and the monastery's track up from
+## the west road.
+const AVENUE_TRAIL := 0.85
+const TRACK := 0.5
+const ROAD_TRAILS := [
+	[[Vector2(7.0, 34.6), Vector2(7.0, 40.0)], AVENUE_TRAIL],
+	[[Vector2(-40.0, -13.0), Vector2(-24.6, -13.0)], AVENUE_TRAIL],
+	[[Vector2(18.4, -9.0), Vector2(34.6, -9.0)], AVENUE_TRAIL],
+	[[Vector2(31.0, -8.5), Vector2(31.0, -2.6)], TRACK],
+	[[Vector2(6.2, 38.8), Vector2(-28.5, 38.8), Vector2(-33.0, 36.0), Vector2(-33.9, 32.0), Vector2(-33.9, 28.8)], TRACK],
+	[[Vector2(7.8, 38.8), Vector2(21.5, 38.8), Vector2(23.0, 36.4), Vector2(29.5, 35.9), Vector2(29.5, 26.2)], TRACK],
+	[[Vector2(-33.6, -14.0), Vector2(-33.0, -20.0), Vector2(-33.6, -26.0), Vector2(-33.2, -30.0), Vector2(-33.2, -33.8)],
+		TRACK],
+]
+## Rocky outcrops in the woods and on the monastery's hill: [centre, radius].
+const OUTCROPS := [
+	[Vector2(35.5, -37.0), 1.6], [Vector2(-27.0, -37.2), 1.6], [Vector2(-29.0, -21.5), 1.6], [Vector2(12.0, -37.0), 1.4],
+	[Vector2(37.5, -17.0), 1.5],
+]
+## Rowing boats on the river, clear of the bridges, and in the harbour basin.
+const BOATS := [Vector2(-31.0, 8.2), Vector2(-22.5, 9.8), Vector2(-5.5, 10.4), Vector2(9.0, 8.0), Vector2(27.5, 4.0),
+	Vector2(35.0, 12.5)]
+## Scarecrows between the fields, signposts at the west road's track, the south road and the harbour, carts by the farms
+## and on the quay.
+const SCARECROWS := [Vector2(-37.2, 16.7), Vector2(-37.2, 29.7), Vector2(27.0, 30.7), Vector2(32.5, 30.7)]
+const SIGNPOSTS := [Vector2(-36.5, -15.4), Vector2(9.3, 36.6), Vector2(33.2, -11.2)]
+const CARTS := [Vector2(-33.0, 19.8), Vector2(26.6, 24.6), Vector2(21.4, -4.4)]
+## Street props and cottage gardens (TownLayout's sizes and steps): a garden keeps GARDEN_CLEAR from every building but
+## its own cottage, so a walkable cell stays between; SALT_PROP and SALT_GARDEN hash their rolls.
+const GARDEN_CLEAR := 0.6
+const SALT_PROP := 8111
+## How far behind a street prop (away from its street) a building must stand at both its ends.
+const PROP_BACK := 1.0
+const SALT_GARDEN := 8237
 
 
 func id() -> StringName:
@@ -362,7 +407,8 @@ func houses() -> Array[Rect2]:
 				continue
 			for block: Rect2 in _blocks(row[1]):
 				n += 1
-				for h: Rect2 in CapitalPlots.row(block.grow(-HOUSE_STREET_CLEAR), style[0], style[1], n):
+				var jitter: float = style[3] if style.size() > 3 else 0.0
+				for h: Rect2 in CapitalPlots.row(block.grow(-HOUSE_STREET_CLEAR), style[0], style[1], n, jitter):
 					var ok := inside[0].encloses(h) or inside[1].encloses(h)
 					for k: Rect2 in keep_off:
 						ok = ok and not k.intersects(h)
@@ -397,9 +443,188 @@ func taverns() -> Array[Rect2]:
 
 
 ## Ground people walk round besides the buildings: the working yards (the tavern's patio, the smithy's and the
-## carpenter's yards), as at Aldermere.
+## carpenter's yards), the cottage gardens and the street props, as at Aldermere.
 func blockers() -> Array[Rect2]:
-	return [TAVERN_PATIO, SMITHY_YARD, CARPENTER_YARD]
+	var out: Array[Rect2] = [TAVERN_PATIO, SMITHY_YARD, CARPENTER_YARD]
+	out.append_array(gardens())
+	for p: Dictionary in street_props():
+		out.append(p.rect)
+	return out
+
+
+## Fenced vegetable gardens beside the cottages (not the townhouses), as at Aldermere (TownLayout.gardens()): a plot
+## along one of a cottage's sides, those facing the camera first, on its house block, TownLayout.GARDEN_STREET_CLEAR
+## from the streets, out of the gates' queue fans, GARDEN_CLEAR from every other building and square, and clear of the
+## other gardens. Worked out once.
+func gardens() -> Array[Rect2]:
+	if _gardens_done:
+		return _gardens.duplicate()
+	_gardens_done = true
+	var others: Array[Rect2] = []
+	for d: Dictionary in structures():
+		others.append(d.rect)
+	others.append_array(_fixed_ground())
+	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
+		others.append(Rect2(r.position + CITADEL_ORIGIN, r.size))
+	var blocks: Array[Rect2] = []
+	for d: Rect2 in districts():
+		blocks.append(d.grow(-0.05))
+	var streets := roads()
+	var hs := houses()
+	for i in hs.size():
+		var h := hs[i]
+		if _townhouse.get(h, false) or ArtKit.hash01(SALT_GARDEN, i * 2) > TownLayout.GARDEN_CHANCE:
+			continue
+		var long_x := minf(h.size.x + 0.2, TownLayout.GARDEN_LONG)
+		var long_y := minf(h.size.y + 0.2, TownLayout.GARDEN_LONG)
+		var gap := TownLayout.GARDEN_GAP
+		var short := TownLayout.GARDEN_SHORT
+		var sides := [
+			Rect2(Vector2(h.position.x - 0.05, h.end.y + gap), Vector2(long_x, short)),
+			Rect2(Vector2(h.end.x + gap, h.position.y - 0.05), Vector2(short, long_y)),
+			Rect2(Vector2(h.position.x - 0.05, h.position.y - gap - short), Vector2(long_x, short)),
+			Rect2(Vector2(h.position.x - gap - short, h.position.y - 0.05), Vector2(short, long_y)),
+		]
+		var order := [0, 1, 3, 2] if ArtKit.hash01(SALT_GARDEN, i * 2 + 1) < 0.5 else [1, 0, 3, 2]
+		for k in 4:
+			var plot: Rect2 = sides[order[k]]
+			var ok := false
+			for bl in blocks:
+				ok = ok or bl.encloses(plot)
+			for road: Rect2 in streets:
+				ok = ok and not road.grow(TownLayout.GARDEN_STREET_CLEAR).intersects(plot)
+			ok = ok and not _in_fan(plot.grow(0.1))
+			for o in others:
+				ok = ok and not o.grow(0.1 if o == h else GARDEN_CLEAR).intersects(plot)
+			for g in _gardens:
+				ok = ok and not g.grow(0.45).intersects(plot)
+			if ok:
+				_gardens.append(plot)
+				break
+	return _gardens.duplicate()
+
+
+## Props lining the streets inside both rings, as at Aldermere (TownLayout.street_props()): each {"rect", "kind" (a
+## TownLayout.Prop), "along_y"}, every TownLayout.STREET_PROP_STEP along each side of each street, in the margin before
+## the houses, clear of junctions, squares, gates and their queues, every building, garden, torch and fountain, and
+## only against a building's front (PROP_BACK behind both its ends lies in a building or garden), never across the
+## mouth of an alley people walk into; a spot that is not clear is skipped. Worked out once.
+func street_props() -> Array[Dictionary]:
+	if _props_done:
+		return _props.duplicate(true)
+	_props_done = true
+	var clear_of: Array[Rect2] = []
+	var backs: Array[Rect2] = []
+	for d: Dictionary in structures():
+		var r: Rect2 = d.rect
+		var grow := 0.03 if d.role in [&"house", CapitalPlots.ROLE] else (0.5 if d.kind == Structure.Kind.GATE else 0.3)
+		clear_of.append(r.grow(grow))
+		if not d.kind in Structure.WALKABLE:
+			backs.append(r)
+	for g: Rect2 in gardens():
+		clear_of.append(g.grow(0.03))
+		backs.append(g)
+	for r: Rect2 in _fixed_ground():
+		clear_of.append(r.grow(0.3))
+	for p: Vector2 in torches():
+		clear_of.append(Rect2(p, Vector2(0.2, 0.2)).grow(0.3))
+	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
+		clear_of.append(Rect2(r.position + CITADEL_ORIGIN, r.size).grow(0.3))
+	var streets := roads()
+	var n := 0
+	for inner: Rect2 in [INNER.grow(-TownLayout.WALL_T - 0.4), OUTER.grow(-TownLayout.WALL_T - 0.4)]:
+		for road: Rect2 in streets:
+			var along_y := road.size.y > road.size.x
+			var r := road.intersection(inner)
+			if r.size.x <= 0.0 or r.size.y <= 0.0:
+				continue
+			var length := r.size.y if along_y else r.size.x
+			for side: float in [-1.0, 1.0]:
+				var k := TownLayout.STREET_PROP_STEP * (0.25 if side < 0.0 else 0.75)
+				while k < length:
+					n += 1
+					var kind := TownLayout._prop_kind(ArtKit.hash01(SALT_PROP, n), along_y)
+					var size: Vector2 = TownLayout.PROP_SIZE[kind]
+					var dims := Vector2(size.y, size.x) if along_y else size
+					var at: Vector2
+					if along_y:
+						var x := r.position.x - TownLayout.STREET_PROP_GAP - dims.x if side < 0.0 \
+							else r.end.x + TownLayout.STREET_PROP_GAP
+						at = Vector2(x, r.position.y + k - dims.y * 0.5)
+					else:
+						var y := r.position.y - TownLayout.STREET_PROP_GAP - dims.y if side < 0.0 \
+							else r.end.y + TownLayout.STREET_PROP_GAP
+						at = Vector2(r.position.x + k - dims.x * 0.5, y)
+					k += TownLayout.STREET_PROP_STEP
+					var rect := Rect2(at, dims)
+					# Its back edge's two ends, a little in from them, then PROP_BACK further from the street.
+					var away := Vector2(side, 0.0) if along_y else Vector2(0.0, side)
+					var edge := (rect.end.x if side > 0.0 else rect.position.x) if along_y \
+						else (rect.end.y if side > 0.0 else rect.position.y)
+					var ends := [Vector2(edge, rect.position.y + 0.05), Vector2(edge, rect.end.y - 0.05)] if along_y \
+						else [Vector2(rect.position.x + 0.05, edge), Vector2(rect.end.x - 0.05, edge)]
+					var against := _in_rects(ends[0] + away * PROP_BACK, backs) \
+						and _in_rects(ends[1] + away * PROP_BACK, backs)
+					if against and _prop_clear(rect, road, streets, clear_of, inner):
+						_props.append({"rect": rect, "kind": kind, "along_y": along_y})
+						clear_of.append(rect.grow(0.5))
+	return _props.duplicate(true)
+
+
+## Each gate's queue fan, as at Aldermere (TownLayout.queue_fans()): from the doorway into the ring out to the last
+## queue row, widening as the rows do, grown by `margin`; in gate order (gate_plazas()).
+func queue_fans(margin := 0.3) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for ring: Array in _rings():
+		for at: Vector2 in ring[1]:
+			var gate: Rect2 = TownLayout.ring_gatehouse(ring[0], at).gate
+			var dir := -_inward(ring[0], at)
+			var side := Vector2(-dir.y, dir.x)
+			var face := gate.get_center() - dir * (absf(gate.size.dot(dir)) * 0.5 + Crowd.GATE_DOOR)
+			var far := Crowd.QUEUE_DEPTH0 + Crowd.QUEUE_REACH
+			var near_half := 1.2 + margin
+			var far_half := 1.2 + far * 0.6 + margin
+			out.append(PackedVector2Array([face + dir * margin + side * near_half, face + dir * margin - side * near_half,
+				face - dir * (far + margin) - side * far_half, face - dir * (far + margin) + side * far_half]))
+	return out
+
+
+func trails() -> Array:
+	return TRAILS.duplicate(true)
+
+
+func road_trails() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for row: Array in ROAD_TRAILS:
+		out.append({"points": (row[0] as Array).duplicate(), "width": row[1]})
+	return out
+
+
+func outcrops() -> Array:
+	return OUTCROPS.duplicate(true)
+
+
+func boats() -> Array[Vector2]:
+	return _vectors(BOATS)
+
+
+func scarecrows() -> Array[Vector2]:
+	return _vectors(SCARECROWS)
+
+
+func signposts() -> Array[Vector2]:
+	return _vectors(SIGNPOSTS)
+
+
+func carts() -> Array[Vector2]:
+	return _vectors(CARTS)
+
+
+## The roads' gaps (CityDef's), and the harbour district: its quays and streets stay open ground.
+func forest_gaps() -> Array[Rect2]:
+	var out := super.forest_gaps()
+	out.append(landmark(&"harbour_district"))
+	return out
 
 
 ## Where citizens go about their day, by kind, as Aldermere's anchors (TownLayout.anchors()): "home" in front of each
@@ -521,6 +746,7 @@ func floor_areas() -> Dictionary:
 		&"plazas": plazas, &"yards": yards, &"gate_plazas": gate_plazas(),
 		&"building_yards": building_yards, &"farm": farm,
 		&"paved": [OUTER.grow(-TownLayout.WALL_T)] as Array[Rect2],
+		&"crossings": _typed(BRIDGES + [FOOTBRIDGE]),
 	}
 
 
@@ -536,6 +762,11 @@ static var _townhouse := {}
 static var _buildings_cache: Array[Dictionary] = []
 static var _rings_cache: Array[Dictionary] = []
 static var _landmarks := {}
+static var _gardens: Array[Rect2] = []
+static var _gardens_done := false
+static var _props: Array[Dictionary] = []
+static var _props_done := false
+static var _fans: Array[PackedVector2Array] = []
 
 
 ## The walls, towers and gatehouses of both rings, old town first.
@@ -599,6 +830,44 @@ func _blocks(area: Rect2) -> Array[Rect2]:
 		if r.size.x >= BLOCK_MIN and r.size.y >= BLOCK_MIN:
 			out.append(r)
 	return out
+
+
+static func _vectors(src: Array) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	out.assign(src)
+	return out
+
+
+static func _in_rects(g: Vector2, rects: Array[Rect2]) -> bool:
+	for r in rects:
+		if r.has_point(g):
+			return true
+	return false
+
+
+## Whether `r` reaches into a gate's queue fan (queue_fans(), worked out once).
+func _in_fan(r: Rect2) -> bool:
+	if _fans.is_empty():
+		_fans = queue_fans()
+	var poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+	for fan in _fans:
+		if not Geometry2D.intersect_polygons(poly, fan).is_empty():
+			return true
+	return false
+
+
+## A street prop's spot is clear: inside its ring, out of the queue fans, clear of everything in `clear_of`, and of
+## every other street by a junction's width (TownLayout.STREET_TREE_JUNCTION).
+func _prop_clear(rect: Rect2, road: Rect2, streets: Array, clear_of: Array[Rect2], inner: Rect2) -> bool:
+	if not inner.encloses(rect) or _in_fan(rect.grow(0.3)):
+		return false
+	for c in clear_of:
+		if c.intersects(rect):
+			return false
+	for other: Rect2 in streets:
+		if other.grow(0.05 if other == road else TownLayout.STREET_TREE_JUNCTION).intersects(rect):
+			return false
+	return true
 
 
 static func _typed(src: Array) -> Array[Rect2]:

@@ -3,7 +3,7 @@ extends MissionDirector
 ## The Escort type (v0.11 M2, spec §7.1): lead a charge out past the watch. The charge holds where the god last left him -- he
 ## moves by the god's hand alone, Mind Whisper or a Will-o'-Wisp's lure -- and escapes at the way out. Soldiers set to watch
 ## for him seize him on sight (SIGHT): the patrols walking their beats, the watch at the gate and, from `hunt_at`, searchers
-## walking to wherever he is. Only those four are the director's: a soldier the town has taken (the rally, a marshal's post, a
+## walking to wherever he is. Only those three groups are the director's: a soldier the town has taken (the rally, a marshal's post, a
 ## fight -- his mind not his post's nor the errand's, or a corps) is left to it and sees nothing, and so is one held by the god
 ## (MissionDirector.BLIND) or turned (RescueWish.TURNED). A seizer marches him back to `return_to`, and reaching it loses the
 ## night; the seizer felled, turned, or taken off the errand by the town lets him go where he stands. The watch at the gate
@@ -96,6 +96,7 @@ func _begin() -> void:
 	charge.pace *= charge_pace
 	_hold_at = at
 	charge.go_duty(at)
+	crowd.escaped.connect(_on_escaped)
 	var used: Array = [charge]
 	watch = _free_soldiers(gate_at, watch_posts.size(), used)
 	used.append_array(watch)
@@ -111,12 +112,12 @@ func _begin() -> void:
 	rules.banner.emit(_opening_banner())
 
 
-## Virtual: the mission's places and numbers.
+## Virtual (v0.11 M2): the mission's places and numbers.
 func _plan() -> void:
 	pass
 
 
-## Virtual: who the charge is (eligible: never reserved); null for none. The base takes the lay citizen nearest his start.
+## Virtual (v0.11 M2): who the charge is (eligible: never reserved); null for none. The base takes the lay citizen nearest his start.
 func _appoint_charge() -> Person:
 	var near := _lay_near(charge_start, 1)
 	return near[0] if not near.is_empty() else null
@@ -179,7 +180,7 @@ func step(delta: float) -> void:
 	_step_hunters()
 
 
-## Free: sheltering indoors, nothing; at the way out he escapes; seen, he is seized; near the gate, the watch's change starts
+## Free (v0.11 M2): sheltering indoors, nothing; at the way out he escapes; seen, he is seized; near the gate, the watch's change starts
 ## its clock; back on his feet he holds where he stands.
 func _step_free() -> void:
 	if charge.inside:
@@ -200,7 +201,7 @@ func _step_free() -> void:
 		charge.go_duty(_hold_at)
 
 
-## Held: the seizer gone, turned or off his errand frees him; the seizer at `return_to` with him in tow, he is taken back;
+## Held (v0.11 M2): the seizer gone, turned or off his errand frees him; the seizer at `return_to` with him in tow, he is taken back;
 ## else the seizer walks on and he trails him (a whisper may pull him away a while; it does not free him).
 func _step_held() -> void:
 	if not _alive(seizer) or (seizer as Person).mind != Person.Mind.DUTY:
@@ -239,7 +240,7 @@ func _watching(v: Variant) -> bool:
 	return not p.inside and p.corps == Person.Corps.NONE and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS)
 
 
-## Every soldier set to watch for him: the watch, the patrols, the searchers (untyped: any may be freed).
+## Every soldier set to watch for him (v0.11 M2): the watch, the patrols, the searchers (untyped: any may be freed).
 func _watchers() -> Array:
 	var out: Array = watch.duplicate()
 	for squad: Array in patrols:
@@ -270,7 +271,7 @@ func _release() -> void:
 	rules.banner.emit(_freed_banner())
 
 
-## Out: he leaves the town by the escape path (Crowd.escape() frees him at once).
+## Out (v0.11 M2): he leaves the town by the escape path (Crowd.escape() frees him at once).
 func _escape() -> void:
 	escaped = true
 	rules.banner.emit(_escape_banner())
@@ -278,7 +279,22 @@ func _escape() -> void:
 	crowd.escape(charge)
 
 
-## The watch's change, once its clock has started: away WATCH_GAP, then back, the next change WATCH_CYCLE after this one.
+## However he left the town (v0.11 M2, the controller's Task 4 fix ruling) -- the way out, an exit he fled to, a river boat --
+## he has got away, as the Procession's Prince has: the crowd's own exit logic carries him off, and that is his escape, not his
+## death. Not twice: _escape() has already said so. A seizer is let go.
+func _on_escaped(p: Person) -> void:
+	if p != charge or escaped or taken:
+		return
+	escaped = true
+	if held:
+		held = false
+		if _alive(seizer) and (seizer as Person).mind == Person.Mind.DUTY:
+			crowd.off_duty(seizer)
+		seizer = null
+	rules.banner.emit(_escape_banner())
+
+
+## The watch's change (v0.11 M2), once its clock has started: away WATCH_GAP, then back, the next change WATCH_CYCLE after this one.
 func _watch_step(delta: float) -> void:
 	if change_in < 0.0:
 		return
@@ -295,7 +311,7 @@ func _watch_step(delta: float) -> void:
 		rules.banner.emit(_change_banner())
 
 
-## Each watchman to his post, or to the guardhouse while the watch is away; one reserved, of a corps, or in a mind not his own
+## Each watchman (v0.11 M2) to his post, or to the guardhouse while the watch is away; one reserved, of a corps, or in a mind not his own
 ## is left be.
 func _step_watch_posts() -> void:
 	for i in watch.size():
@@ -310,7 +326,7 @@ func _step_watch_posts() -> void:
 			w.send_to_post(spot, false, watch_away)
 
 
-## Each patrol along its beat: its first soldier on his own post leads; at a beat's point, on to the next (round and round).
+## Each patrol along its beat (v0.11 M2): its first soldier on his own post leads; at a beat's point, on to the next (round and round).
 func _step_patrols() -> void:
 	for k in patrols.size():
 		var squad: Array = patrols[k]
@@ -334,19 +350,24 @@ func _step_patrols() -> void:
 				(v as Person).send_to_post(spot)
 
 
-## `v` stands on his own post: alive, not reserved, of no corps, in a mind of POST_MINDS (a seizer, on duty, is not).
+## `v` stands on his own post (v0.11 M2): alive, not reserved, of no corps, in a mind of POST_MINDS (a seizer, on duty, is not).
 func _on_post(v: Variant) -> bool:
 	return _alive(v) and not reserved.has(v) and (v as Person).corps == Person.Corps.NONE and (v as Person).mind in POST_MINDS
 
 
-## The searchers set out: the free soldiers nearest `return_to`, not already watching for him.
+## The searchers set out (v0.11 M2, the controller's Task 4 fix ruling): the free soldiers nearest `return_to`, not already
+## watching for him, and at their posts (POST_MINDS) -- never one on the rally's ring or under another town order, which the
+## director leaves to the town.
 func _hunt() -> void:
-	hunters = _free_soldiers(return_to, hunt_size, _watchers())
+	hunters.clear()
+	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
+		if p.mind in POST_MINDS and hunters.size() < hunt_size:
+			hunters.append(p)
 	for h in hunters:
 		h.go_duty(charge.ground_pos)
 
 
-## Each searcher kept walking to where he is now (one in a mind not his own is left be).
+## Each searcher kept walking to where he is now (v0.11 M2; one in a mind not his own is left be).
 func _step_hunters() -> void:
 	for v: Variant in hunters:
 		if not _alive(v) or v == seizer:
@@ -422,6 +443,8 @@ func report() -> Dictionary:
 	return {"seizures": seizures, "out": escaped}
 
 
-## Lets go of the timeline (v0.11 M2).
+## Lets go of the crowd's exits and the timeline (v0.11 M2).
 func teardown() -> void:
+	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
+		crowd.escaped.disconnect(_on_escaped)
 	timeline = null  # its banner and guard lambdas hold this director: let both go

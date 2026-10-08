@@ -189,7 +189,7 @@ arrives one granary at a time.
 - **Brief:** "A runaway acolyte hides from the Temple." / "Lead him out through the west gate."
 - **Card type:** Protect. **Id:** `lost_lamb`.
 - **Map:**
-  - **The acolyte:** the cleric nearest the north-east fountain, set down there at (11.4, -10.0). He moves at 0.4 of his pace
+  - **The acolyte:** the cleric nearest the north-east fountain, set down there at (11.4, -10.0). He moves at 0.385 of his pace
     (first guess 0.6; see the tuning note below).
   - **The west gate:** the Main Gate, on screen the lower-left wall (Decision 10). Its way out is (2.7, 17.6) on the south
     road.
@@ -213,7 +213,8 @@ arrives one granary at a time.
     guardhouse (6 units east along the wall) for 25 s (first guess 15 s; at his slow pace he needs the time to pass). While
     they are gone the gate is clear. From then on the change repeats every 45 s. The god can also clear the gate by acting
     on the watch.
-  - **Searchers:** at 2:30 (first guess 1:30) the Temple sends two soldiers (the free soldiers nearest its door) after him. They walk to wherever
+  - **Searchers:** at 2:30 (first guess 1:30) the Temple sends two soldiers (the free soldiers nearest its door that stand at their posts, never one the town's
+    rally has taken) after him. They walk to wherever
     he is and seize him on sight. Left alone, he is taken back long before dawn.
 - **Timeline:**
 
@@ -236,8 +237,8 @@ arrives one granary at a time.
 
   | Phase | Line |
   |---|---|
-  | (none) | Whisper the acolyte (blue) to the west gate. Soldiers (red) seize him on sight: keep him clear. |
-  | `caught` | He is caught. Kill or turn the soldier taking him back (red) before they reach the Temple. |
+  | (none) | Whisper the acolyte (blue) toward the west gate, and again before he stops. Soldiers (red) seize him on sight. |
+  | `caught` | He is caught. Discord the soldier taking him back (red), or strike once the acolyte is clear of him, before the Temple. |
   | `gate` | The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off. |
   | `clear` | The watch is changing. Send him through the gate now. |
 - **Tour:**
@@ -249,10 +250,10 @@ arrives one granary at a time.
 - **First guesses** (tune order): CHARGE_PACE 0.6, the start spot, SIGHT 2.5, HUNT_AT 90, WATCH_CHANGE 30 / WATCH_GAP 15 /
   WATCH_CYCLE 45, the beats.
 - **Tuning (Task 4):** the first guesses lost: the market patrol's north end sat beside the Temple's door, and the searchers
-  at 1:30 reached him while he was still near it, so a seizure was lost in seconds. As shipped: CHARGE_PACE 0.4 (a slower
+  at 1:30 reached him while he was still near it, so a seizure was lost in seconds. As shipped: CHARGE_PACE 0.385 (a slower
   march in a seizer's tow too: more time to answer it), the market patrol from (2.7, 0.0), HUNT_AT 150, WATCH_GAP 25. SIGHT,
   the start spot, WATCH_CHANGE 30 and WATCH_CYCLE 45 stand. The wait for the watch stays 30 s and the gap plus the change is
-  55 s: no wait passes a minute. Measured: the scripted player clears it in 2:22-3:40 (see the Task 4 report), and left alone
+  55 s: no wait passes a minute. Measured: the scripted player clears it in 3:20-3:36 (200-216 s; see the Task 4 report), and left alone
   he is taken back at about 2:55.
 
 ## 4. First Prayers (Convert, generalised from Mira's House)
@@ -379,7 +380,8 @@ These are the details the v0.11 spec left open. The controller records them as r
     patrols, the gate's watch and the searchers. A seizer in a blind mind (`MissionDirector.BLIND`) or a turned one
     (`RescueWish.TURNED`) never seizes, nor does a soldier the rally or the marshals have taken (Decision 20), nor does one
     see him while he shelters indoors. He is freed when the seizer is felled, turned, or taken off the errand by a town
-    order. A whisper on him alone does not free him.
+    order. A whisper on him alone does not free him. However the crowd carries him off (a gate he fled to, a river boat), it counts as
+    his escape, the win, not his death.
 12. **The watch change** starts 30 s after he first comes within 6 units of the gate, so the wait starts when the player
     engages. The watch is away 25 s and the change repeats every 45 s.
 13. **The searchers** set out at 2:30, so doing nothing loses well before dawn (at about 2:55).

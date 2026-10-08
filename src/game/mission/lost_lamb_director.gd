@@ -18,8 +18,8 @@ const TEMPLE_DOOR := Vector2(0.8, -5.0)
 ## (2.7, -4.0), beside the Temple's door, where a seizure was lost in seconds, to (2.7, 0.0)).
 const BEATS := [[Vector2(-6.0, 9.0), Vector2(10.0, 9.0)], [Vector2(2.7, 0.0), Vector2(2.7, 8.0)]]
 ## The numbers (spec §3), tuned against the scripted player (Task 4's behaviour gate) from the first guesses: his pace 0.6 of
-## a citizen's became 0.4 (his march in a seizer's tow slows with it: time to answer the seizer), the searchers' 1:30 became 2:30.
-const CHARGE_PACE := 0.4
+## a citizen's became 0.385 (his march in a seizer's tow slows with it: time to answer the seizer), the searchers' 1:30 became 2:30.
+const CHARGE_PACE := 0.385
 const PATROL_SIZE := 2
 const HUNT_AT := 150.0
 const HUNTERS := 2
@@ -48,7 +48,7 @@ func _plan() -> void:
 	return_label = "TEMPLE"
 
 
-## The cleric nearest the north-east fountain.
+## The cleric nearest the north-east fountain (v0.11 M2).
 func _appoint_charge() -> Person:
 	return _citizen_near(START, CitizenProfile.Role.CLERGY)
 
@@ -83,7 +83,7 @@ func _escape_banner() -> String:
 	return "THE LAMB IS OUT"
 
 
-## The tour (spec §3): him, the west gate, the Temple.
+## The tour (v0.11 M2, spec §3): him, the west gate, the Temple.
 func tour() -> Array:
 	var out := []
 	if _alive(charge):

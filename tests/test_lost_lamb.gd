@@ -22,6 +22,8 @@ static func run(t) -> void:
 	_freed(t)
 	_rallied(t)
 	_orders(t)
+	_rallied_hunt(t)
+	_carried(t)
 	_hidden(t)
 	_dead(t)
 	_lured(t)
@@ -211,6 +213,7 @@ static func _escape(t) -> void:
 	_run(s, EscortDirector.TICK + DT)
 	t.check(d.escaped and rules.finished and rules.won and rules.over_reason == "out" and (s.banners as Array).has("THE LAMB IS OUT"),
 		"at the way out he escapes: won")
+	t.check((s.banners as Array).count("THE LAMB IS OUT") == 1, "and the crowd's word of it does not say it twice")
 	d.charge.free()  # (Crowd.escape() frees the body at once; a test frees it by hand)
 	d.step(EscortDirector.TICK + DT)
 	t.check(d.tags().is_empty() and d.hint_phase() == "" and bool(d.report().out) and not d.charge_lost() and d.tour().size() == 2,
@@ -331,6 +334,71 @@ static func _searchers(t) -> void:
 	t.check(d.held and d.seizer == h and (s.banners as Array).has("THE LAMB IS CAUGHT") and _labels(d).count("SEARCHER") == 1
 		and _labels(d).has("TAKING HIM BACK"),
 		"a searcher in sight seizes him")
+	_done(s)
+
+
+## The searchers come only from soldiers at their posts (the controller's Task 4 fix ruling): after the town's rally the free
+## soldiers stand on its ring, and none of them is sent after him; one back on his post is.
+static func _rallied_hunt(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	var crowd: Crowd = s.crowd
+	_clear_watchers(d)
+	crowd.rally()
+	_run(s, LostLambDirector.HUNT_AT + DT * 2.0)
+	t.check(crowd.ring_count() > 0 and d.hunters.is_empty() and (s.banners as Array).has("THE TEMPLE SENDS SEARCHERS"),
+		"after the rally nobody on its ring is sent: no searchers")
+	_done(s)
+	s = _world()
+	d = s.d
+	crowd = s.crowd
+	_clear_watchers(d)
+	crowd.rally()
+	var back: Person = null
+	for p in crowd.soldiers:
+		if not d._watchers().has(p) and p.corps == Person.Corps.NONE and p.mind == Person.Mind.RALLY:
+			back = p
+			break
+	back.send_to_post(back.ground_pos)
+	_run(s, LostLambDirector.HUNT_AT + DT * 2.0)
+	t.check(d.hunters.size() == 1 and d.hunters[0] == back and back.mind == Person.Mind.DUTY,
+		"one soldier back on his post is the only searcher")
+	_done(s)
+
+
+## The crowd's own exit logic carries him off (a gate he fled to, a boat): that is his escape, the win, not his death (the
+## controller's Task 4 fix ruling; the Procession's Prince is judged the same way).
+static func _carried(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	_clear_watchers(d)
+	var lamb: Person = d.charge
+	lamb.mind = Person.Mind.FLEE
+	lamb.ground_pos = d.exit_at + Vector2(0.0, 6.0)
+	lamb._goal = lamb.ground_pos
+	crowd.advance(DT)
+	t.check(d.escaped and (s.banners as Array).has("THE LAMB IS OUT") and crowd.escaped_count == 1,
+		"fleeing to an exit, the crowd carries him off: he is out")
+	lamb.free()  # (the crowd frees the body a frame later)
+	_run(s, EscortDirector.TICK + DT)
+	t.check(rules.finished and rules.won and rules.over_reason == "out" and not d.charge_lost() and d.tags().is_empty()
+		and bool(d.report().out), "and the night is won, not lost with him dead")
+	_done(s)
+	s = _world()
+	d = s.d
+	crowd = s.crowd
+	_clear_watchers(d)
+	var p: Person = d.patrols[0][0]
+	_arrive(p, d.charge.ground_pos + Vector2(1.0, 0.0))
+	_run(s, EscortDirector.TICK + DT)
+	var seizer := p
+	d.charge.mind = Person.Mind.FLEE
+	d.charge._goal = d.charge.ground_pos
+	crowd.advance(DT)
+	t.check(d.held == false and d.escaped and seizer.mind == Person.Mind.POST and d.seizer == null,
+		"carried off in a seizer's hands, he is out and his seizer is let go")
 	_done(s)
 
 

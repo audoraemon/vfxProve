@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) GRANARY: a wooden plank granary raised on six mushroom-shaped staddle stones, with a red tile roof and a door; loose stone steps that stop short of the door.
+2 (top middle) DOCK WAREHOUSE: a tall three-storey warehouse of cream plaster and dark timber framing with a slate roof, its gable to the quay; a stack of loading doors up the front; a hoist beam under the gable with a rope and a hanging crate; a stone quay edge and water in front; a crate and a bollard.
+3 (top right) ORCHARD: four round fruit trees in a square block; a wooden ladder leaning against one tree; a basket.
+4 (bottom left) VINEYARD: four rows of wooden stakes with a wire along the top and green vines trained along each row.
+5 (bottom middle) BEEHIVES: five straw bee skeps in a row on a wooden bench, in front of a low stone bee wall with a slate coping.
+6 (bottom right) DOVECOTE: a round warm grey stone dovecote with a string course, a red tile cone roof and a small wooden lantern on top with its own red cone; a small door at the base.
+
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

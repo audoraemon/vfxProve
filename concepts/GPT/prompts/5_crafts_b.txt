@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) POTTER: a cream plaster cottage with timber framing, a red tile roof and a chimney; a round brick-and-stone kiln with a domed top and a short flue on the right, with a small stoke hole; a plank shelf of pots in front.
+2 (top middle) COOPER'S YARD: a small open-fronted plank workshop with a slate roof and a chimney; two pyramids of lying wooden barrels, two upright barrels and a pile of staves.
+3 (top right) MASON'S YARD: an open lean-to shed with a red tile roof on posts against a plank back wall; stacks of cut pale stone blocks; a wooden jib crane with braces, a rope and a stone block hanging from it, and a windlass drum.
+4 (bottom left) LUMBER YARD: an open sawpit shed: a slate roof on four posts over a dark pit with a log on trestles; two pyramids of lying logs; a stack of sawn planks.
+5 (bottom middle) CHARCOAL KILN: a round earth-and-turf mound with a smoke hole on top; a small A-frame thatch hut for the burner with a dark door; a short pile of split wood.
+6 (bottom right) GLASSWORKS: a warm grey stone workshop with a slate roof; a tall tapering cone furnace chimney of brick and stone on the right with a small rectangular furnace mouth at its foot; crates of glass in front.
+
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

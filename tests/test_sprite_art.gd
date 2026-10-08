@@ -10,7 +10,20 @@ const NAMES := ["cottage_red", "cottage_blue", "tavern", "smithy", "cathedral", 
 	"stall_2_cream", "stall_3", "stall_3_red", "stall_3_blue", "stall_3_cream", "stall_4", "stall_5", "stall_6",
 	"stall_7", "stall_8", "stall_9", "stall_10", "stall_11", "stall_11_red", "stall_11_blue", "stall_11_cream",
 	"stall_12", "torch_post", "lamp_post", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "oak_1", "oak_2", "oak_3",
-	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2"]
+	"bridge_stone", "dock", "barn", "carpenter", "windmill", "watermill", "field_0", "field_0_2", "field_1", "field_1_2",
+	"gpt_townhall", "gpt_armoury", "gpt_jail", "gpt_courthouse", "gpt_watchtower", "gpt_treasury",
+	"gpt_chapel", "gpt_monastery", "gpt_graveyard", "gpt_hospital", "gpt_leperhouse", "gpt_bathhouse",
+	"gpt_inn", "gpt_shophouse", "gpt_guildhall", "gpt_markethall", "gpt_weighhouse", "gpt_fishmarket",
+	"gpt_bakery", "gpt_butcher", "gpt_brewery", "gpt_tannery", "gpt_dyers", "gpt_weavers",
+	"gpt_potter", "gpt_cooper", "gpt_masonyard", "gpt_lumberyard", "gpt_charcoal", "gpt_glassworks",
+	"gpt_granary", "gpt_warehouse", "gpt_orchard", "gpt_vineyard", "gpt_beehives", "gpt_dovecote",
+	"gpt_cistern", "gpt_aqueduct", "gpt_washhouse", "gpt_latrine", "gpt_sluice", "gpt_footbridge",
+	"gpt_manor", "gpt_patrician", "gpt_rowhouses", "gpt_tenement", "gpt_shacks", "gpt_hut",
+	"gpt_monument", "gpt_noticeboard", "gpt_crierstage", "gpt_grandstand", "gpt_tiltbarrier", "gpt_playstage",
+	"gpt_school", "gpt_library", "gpt_pavilion", "gpt_farmhouse", "gpt_fishpond", "gpt_icehouse",
+	"gpt_stables", "gpt_wagon", "gpt_handcart", "gpt_crane", "gpt_ferry", "gpt_pens",
+	"gpt_barbican", "gpt_drawbridge", "gpt_gallows", "gpt_districtgate",
+	"gpt_milestone", "gpt_waysidecross", "gpt_alleysteps"]
 
 
 static func _make(rect: Rect2, h: float, kind: Structure.Kind, sd: int, role: StringName, tag := &"") -> Structure:
@@ -32,7 +45,221 @@ static func run(t) -> void:
 	_bonfires(t)
 	_banners(t)
 	_window_mask(t)
+	_gpt_showcase(t)
+	_showcase_where(t)
 	SpriteArt.set_enabled(true)
+
+
+## The GPT buildings proof (GptProof) and its showcase district (GptShowcase, dev only): the town's own plots no longer
+## draw a proof set (PLOTS is empty); every gpt_* set stands in the showcase on a plot of its own footprint (a repeating
+## set in copies end to end), unmirrored (but a MIRRORS prop's second plot, turned), in its regions, clear of the town's ground and of every other plot, and no
+## sprite overlaps another on screen; a showcase structure draws its set while sprites are on and the procedural art
+## with them off; the sets with a chimney smoke from it.
+static func _gpt_showcase(t) -> void:
+	t.check(GptProof.PLOTS.is_empty(), "no town plot draws a proof set any more")
+	var plots := GptShowcase.plots()
+	var shown := {}
+	for p: Dictionary in plots:
+		shown[p.set] = int(shown.get(p.set, 0)) + 1
+	var sets := 0
+	for n: String in NAMES:
+		if n.begins_with("gpt_"):
+			sets += 1
+			var want := (GptShowcase.REPEAT_COPIES if n in GptShowcase.REPEATS else 1) 				+ (1 if n in GptShowcase.MIRRORS else 0)
+			t.check(shown.get(n, 0) == want, "the showcase shows %s %d time(s) (got %d)" % [n, want, shown.get(n, 0)])
+	var refs := 0
+	for row: Array in GptShowcase.ROWS:
+		refs += 1
+		t.check(shown.get(row[1], 0) == 1 and not String(row[1]).begins_with("gpt_"),
+			"the %s row has the game's own %s" % [row[0], row[1]])
+	var extra := GptShowcase.REPEATS.size() * (GptShowcase.REPEAT_COPIES - 1) + GptShowcase.MIRRORS.size()
+	t.check(plots.size() == sets + extra + refs, "%d converted sets (%d extra copies) and %d of the game's own (%d plots)"
+		% [sets, extra, refs, plots.size()])
+	# Rows: tallest category first; each row's first plot is its game building.
+	var order := GptShowcase.row_order()
+	var tallest := []
+	for row: Array in order:
+		var tall := 0.0
+		for n: String in [row[1]] + row[2]:
+			tall = maxf(tall, -GptShowcase.sprite_box(n).position.y)
+		tallest.append(tall)
+	var sorted_ok := true
+	for i in range(1, tallest.size()):
+		sorted_ok = sorted_ok and tallest[i] <= tallest[i - 1]
+	t.check(sorted_ok, "the rows run tallest category first (%s)" % [tallest])
+	var firsts := {}
+	for p: Dictionary in plots:
+		if not firsts.has(p.row):
+			firsts[p.row] = p.set
+	for row: Array in GptShowcase.ROWS:
+		t.check(firsts.get(row[0], "") == row[1], "the %s row starts with %s" % [row[0], row[1]])
+	var placed := true
+	var apart := true
+	var touching := true
+	var obs := GptShowcase.obstacles()
+	var bad := []
+	for i in plots.size():
+		var r: Rect2 = plots[i].rect
+		var fp: Vector2 = SpriteArt.sprite(plots[i].set).footprint
+		if plots[i].mirror:          # a MIRRORS prop's second plot: its footprint turned
+			fp = Vector2(fp.y, fp.x)
+		var inside := false
+		for reg: Rect2 in GptShowcase.REGIONS:
+			inside = inside or reg.encloses(r)
+		var free := true
+		for o: Rect2 in obs:
+			free = free and not o.intersects(r)
+		if not (r.size.is_equal_approx(fp) and TownLayout.MAP.encloses(r) and inside and free):
+			placed = false
+			bad.append(plots[i].set)
+		for j in range(i + 1, plots.size()):
+			var q: Rect2 = plots[j].rect
+			if plots[j].group == plots[i].group or plots[j].page != plots[i].page:
+				continue
+			apart = apart and not r.grow(GptShowcase.GAP * 0.5 - 0.001).intersects(q.grow(GptShowcase.GAP * 0.5 - 0.001))
+		if i > 0 and plots[i - 1].group == plots[i].group:
+			var prev: Rect2 = plots[i - 1].rect
+			touching = touching and is_equal_approx(prev.end.x, r.position.x) and is_equal_approx(prev.position.y,
+				r.position.y)
+	t.check(placed, "each plot is its set's own footprint, inside a showcase region, clear of the walls, rivers, roads "
+		+ "and farms (%s)" % [bad])
+	t.check(apart, "every two plots stand at least %.1f apart" % GptShowcase.GAP)
+	t.check(touching, "a repeating set's copies stand end to end")
+	# On screen: each sprite's box (the drawn pixels of its three stills at its plot's front corner, worked out here
+	# from the stills themselves) overlaps no other plot's, nor the farmhouses' and the windmill's near it.
+	var boxes: Array[Rect2] = []
+	for p: Dictionary in plots:
+		var sp := SpriteArt.sprite(p.set)
+		var used := Rect2()
+		for st in SpriteArt.STILLS:
+			var u := Rect2((sp.stills[st] as Texture2D).get_image().get_used_rect())
+			used = u if st == SpriteArt.STILLS[0] else used.merge(u)
+		var rel := Rect2(used.position - (sp.anchor as Vector2), used.size)
+		if p.mirror:                  # drawn with scale.x = -1 about its anchor
+			rel.position.x = -rel.end.x
+		boxes.append(Rect2(Iso.ground_to_screen((p.rect as Rect2).end) + rel.position, rel.size))
+	var overlaps := []
+	for i in plots.size():
+		for j in range(i + 1, plots.size()):
+			if plots[i].group != plots[j].group and plots[i].page == plots[j].page and boxes[i].intersects(boxes[j]):
+				overlaps.append("%s/%s" % [plots[i].set, plots[j].set])
+		for o: Array in GptShowcase.DRAWN_OBSTACLES:
+			if GptShowcase.screen_box(o[0], o[1]).intersects(boxes[i]):
+				overlaps.append("%s/%s" % [plots[i].set, o[1]])
+	t.check(overlaps.is_empty(), "no showcase sprite overlaps another on its page's screen (%s)" % [overlaps])
+	# A row stands on one page; the pages run 1, 2, ... with no gap.
+	var row_pages := {}
+	var one_page := true
+	for p: Dictionary in plots:
+		one_page = one_page and row_pages.get(p.row, p.page) == p.page
+		row_pages[p.row] = p.page
+	t.check(one_page, "each row stands on one page")
+	for pg in range(1, GptShowcase.pages() + 1):
+		t.check(pg in row_pages.values(), "page %d has rows" % pg)
+	for row: Array in GptShowcase.ROWS:
+		var p := GptShowcase.shot_point(row[0])
+		t.check(TownLayout.MAP.has_point(p) and not TownLayout.TOWN.has_point(p), "the %s shot looks outside the walls" % row[0])
+	for p: Dictionary in plots:
+		var want: String = p.set
+		var s := _make(p.rect, p.height, K.HOUSE, 5, GptShowcase.ROLE)
+		s.set_meta(GptProof.SHOWCASE_META, want)
+		SpriteArt.set_enabled(true)
+		s.refresh_sprite()
+		var sp := SpriteArt.set_for(s)
+		t.check(SpriteArt.name_for(s) == want and sp.get("name", "") == want and sp.get("mirror", not p.mirror) == p.mirror,
+			"the showcase plot %s draws %s %s (got '%s')" % [p.rect, want, "mirrored" if p.mirror else "unmirrored",
+			SpriteArt.name_for(s)])
+		if want.begins_with("gpt_"):
+			var m: Dictionary = SpriteArt.manifest()[want]
+			t.check(m.kind == "HOUSE" and m.role == "showcase" and m.tag == "", "%s's manifest is a showcase house" % want)
+			t.check((ChimneySmoke.tip_of(s) != Vector2.INF) == m.has("chimney"),
+				"%s %s" % [want, "smokes from its chimney" if m.has("chimney") else "has no chimney"])
+			var sset := SpriteArt.sprite(want)
+			for st in SpriteArt.STILLS:
+				t.check(sset.get("stills", {}).get(st) is Texture2D, "%s loads its %s still" % [want, st])
+		SpriteArt.set_enabled(false)
+		t.check(SpriteArt.set_for(s).is_empty(), "with sprites off the %s plot is procedural again" % want)
+		SpriteArt.set_enabled(true)
+		s.free()
+	# A plain house on a showcase plot (no meta) is not a showcase building.
+	var plain := _make(plots[1].rect, 20.0, K.HOUSE, 5, &"house")
+	t.check(GptProof.set_for(plain) == "", "a structure without the showcase meta draws no proof set")
+	plain.free()
+	# The painted smoke is stripped from the crafts and housing sheets: the bakery, the brewery, the charcoal kiln, the
+	# glassworks, the shacks and the hut smoke through ChimneySmoke from their chimney keys.
+	for n: String in ["gpt_bakery", "gpt_brewery", "gpt_charcoal", "gpt_glassworks", "gpt_shacks", "gpt_hut"]:
+		t.check(SpriteArt.manifest()[n].has("chimney"), "%s smokes from a chimney key" % n)
+
+
+## Where the showcase appears: never in TownLayout, never in a town the game, the mission or the tests build (Town
+## with no keep_clear), and in the town debug scene's town only, which is the only script besides its own that names
+## GptShowcase (the game, the mission and the dev checks never build it).
+static func _showcase_where(t) -> void:
+	var in_layout := false
+	for d in TownLayout.structures():
+		in_layout = in_layout or d.role == GptShowcase.ROLE
+	t.check(not in_layout, "TownLayout has no showcase plot")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var in_town := 0
+	var trees_there := 0
+	for s in env.structures():
+		if s.role == GptShowcase.ROLE or s.has_meta(GptProof.SHOWCASE_META):
+			in_town += 1
+		if s.kind == K.TREE:
+			for a: Rect2 in GptShowcase.clear_rects():
+				if a.intersects(s.footprint, true):
+					trees_there += 1
+	t.check(in_town == 0, "a plain town has no showcase building")
+	t.check(trees_there > 0, "and keeps its trees on the showcase's ground (%d)" % trees_there)
+	town.teardown()
+	town.free()
+	# The town debug scene's way: the ground kept clear, the town built, then the showcase.
+	var env2 := EnvironmentField.new()
+	var town2 := Town.new()
+	town2.keep_clear = GptShowcase.clear_rects()
+	town2.build(env2)
+	var sc := GptShowcase.new().build(env2)
+	var shown := 0
+	var blocked := 0
+	for s in env2.structures():
+		if s.role == GptShowcase.ROLE and s.has_meta(GptProof.SHOWCASE_META):
+			shown += 1
+		elif s.kind in [K.TREE, K.FARM_FIELD]:
+			for a: Rect2 in GptShowcase.clear_rects():
+				if a.intersects(s.footprint, true):
+					blocked += 1
+	var first_page := 0
+	for p: Dictionary in GptShowcase.plots():
+		first_page += 1 if p.page == 1 else 0
+	t.check(shown == first_page and shown > 0, "the debug scene's town shows every plot of the first page (%d)" % shown)
+	t.check(blocked == 0, "no tree or field stands on the showcase's ground")
+	var decor_there := 0
+	for dec in env2.decor():
+		for a: Rect2 in GptShowcase.REGIONS:
+			if a.has_point(dec.at):
+				decor_there += 1
+	t.check(decor_there == 0, "no decor stands on the showcase's ground")
+	t.check(GptShowcase.wanted(PackedStringArray()) and not GptShowcase.wanted(PackedStringArray(["--no-showcase"])),
+		"the debug scene shows it unless --no-showcase")
+	sc.teardown()
+	sc.free()
+	town2.teardown()
+	town2.free()
+	# Only the debug scene (and the showcase itself) names it: not the game, the mission, the tests' towns or the checks.
+	var users := []
+	for dir in ["res://src", "res://tools/dev"]:
+		_scan_for(dir, "GptShowcase.new(", users)
+	t.check(users == ["res://src/game/town_debug.gd"], "only town_debug.gd builds the showcase (%s)" % [users])
+
+
+static func _scan_for(dir: String, word: String, out: Array) -> void:
+	for f in DirAccess.get_files_at(dir):
+		if f.ends_with(".gd") and FileAccess.get_file_as_string(dir + "/" + f).contains(word):
+			out.append(dir + "/" + f)
+	for d in DirAccess.get_directories_at(dir):
+		_scan_for(dir + "/" + d, word, out)
 
 
 ## The sets with lit windows (Task 5 report): each has a glow_mask.png, holding at least this many window px. The

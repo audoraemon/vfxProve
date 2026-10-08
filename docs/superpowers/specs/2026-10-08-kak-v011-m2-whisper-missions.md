@@ -22,67 +22,89 @@ M1's final review.
 
 ## 1. The Tax Collector (Assassinate, new type)
 
-- **Brief:** "The tax collector makes his rounds tonight." / "Strike him down before the taxes reach the Citadel."
+Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in sequence, not one.
+
+- **Brief:** "The tax collector and his deputies make their rounds." / "Strike all three down before the taxes reach the
+  Citadel."
 - **Card type:** Kill. **Id:** `tax_collector`.
 - **Map:**
   - **The counting-house:** the workshop hall in the east quarter (art tag `workshop`), tagged COUNTING-HOUSE.
-  - **The tax collector:** the resident nearest its door, made a noble. He wears the noble's cape and crown, so he stands out.
-  - **His two guards:** the two free soldiers nearest the counting-house.
-  - **Three debtors:** the dwellings nearest (6.5, 11.5), (-8.0, 11.5) and (-10.0, 2.5). That is the south-east quarter by
-    the gate plaza, the south-west quarter and the west quarter.
-  - **His safe place:** the Citadel's gate at (-10.5, -7.6).
-- **Main objective:** kill the tax collector (any way). **Won** the moment he dies. **Lost** when he reaches the Citadel's
-  gate with the taxes ("THE TAXES ARE IN"), when the bell tolls, or at dawn.
+  - **The collectors:** the tax collector and his two deputies, the three residents nearest its door, each made a noble.
+    They wear the noble's cape and crown, so they stand out.
+  - **Their guards:** the free soldiers nearest the counting-house: two for the collector, one for each deputy.
+  - **Their debtors:** each collector's own round, the dwellings nearest these spots whose doors the street reaches (a house
+    walled in by its neighbours is passed over):
+    - the collector: (6.5, 11.5), (-8.0, 11.5), (-10.0, 2.5), the south-east quarter by the gate plaza, the south-west and
+      the west;
+    - the first deputy: (6.0, -10.4), (-3.4, -10.4), the north-east and north-west blocks;
+    - the second deputy: (6.2, 5.4), (-3.5, 12.5), (-7.6, 5.4), the east block by the barracks, the south quarter and the
+      west.
+  - **Their safe place:** the Citadel's gate at (-10.5, -7.6) (`RescueWish.GATE`).
+- **Main objective:** kill all three collectors (any way). **Won** the moment the third dies. **Lost** when any reaches the
+  Citadel's gate with the taxes ("THE TAXES ARE IN"), when the bell tolls, or at dawn.
 - **People and behaviour:**
-  - **Inside:** he starts in the counting-house, counting the take. Indoors he is hidden and cannot be touched.
-  - **His rounds:** at 0:45 he sets out. He walks to each debtor's door in turn, goes in to collect for 25 s, then walks on.
-    After the third he walks to the Citadel's gate.
-  - **Smoked out:** a power cast within 4 units of the counting-house's door before 0:45 sends him out at once.
-  - **His guards** walk 0.6 units from him, inside Silent Doom's reach. A Doom that takes him takes them too.
-  - **Alarmed:** a loud power cast within 4 units of him while he is in the street, a guard falling, or a fright sends him
-    to hide in the counting-house for 30 s. Then he takes his rounds up at the next debtor.
-  - **Flushed:** the house he is in set alight or destroyed sends him out of it in a fright.
+  - **Inside:** all three start in the counting-house, counting the take. Indoors they are hidden and cannot be touched.
+  - **Their rounds:** the collector sets out at 0:45. Each deputy sets out at his own time (1:45, 2:45) or 45 s after the
+    collector before him dies, whichever is sooner (the board Warning's stars' rule: no idle wait over 60 s). One still
+    alive never holds the next back: at his own time the next sets out all the same. Each walks to each of his debtors'
+    doors in turn, goes in to collect for 15 s, then walks on. After his last he walks to the Citadel's gate.
+  - **Smoked out:** a power cast within 4 units of the counting-house's door while no collector is out sends the next one
+    out at once.
+  - **Their guards** walk 0.6 units from their collector, inside Silent Doom's reach. A Doom that takes him takes them too.
+  - **Alarmed:** a loud power cast within 4 units of a collector in the street, one of his guards falling (unless with him,
+    in the same blow), or a fright sends him to hide in the counting-house for 30 s. Then he takes his rounds up at the
+    next debtor.
+  - **Flushed:** the house a collector is in set alight or destroyed sends him out of it in a fright (the counting-house:
+    every collector in it).
   - **No hiding place:** once the counting-house is gone, an alarm sends him running for the Citadel.
-  - **Unseen:** his death is judged as the Prince's is. If anyone living stands within 2 units of where he falls (once a
+  - **Unseen:** each death is judged as the Prince's is. If anyone living stands within 2 units of where he falls (once a
     Doom's other victims have fallen), the guards cry murder and the bellkeeper is called. On the board the night is then
     caught by the bell (wishes lost) unless the god ascends first or stops the bellkeeper (Decision 3).
-- **Timeline:**
+- **Timeline** (left alone, seeds 1-3):
 
   | Time | Event |
   |---|---|
   | 0:00 | Counting in the counting-house |
   | 0:45 | "The tax collector sets out", or earlier if smoked out |
-  | ~0:55-1:20 | First debtor: 25 s indoors |
-  | ~1:45-2:30 | Second debtor |
-  | ~2:35-3:15 | Third debtor |
-  | ~3:30 | Reaches the Citadel's gate: lost |
+  | ~0:55-1:10 | His first debtor: 15 s indoors |
+  | 1:45 | "A deputy sets out" (sooner: 45 s after the collector dies) |
+  | ~2:22-2:34 | The collector reaches the Citadel's gate: lost |
+  | 2:45 | "A deputy sets out" (sooner: 45 s after the first deputy dies) |
   | 5:00 | Dawn |
 
-  The rounds stretch by 30 s for each alarm. The longest wait is 45 s, at the start, and smoking him out cuts it short.
+  A round stretches by 30 s for each alarm. The longest waits are 45 s, at the start (smoking him out cuts it short), and
+  45 s between one collector's death and the next one's setting out.
 - **Tags:**
-  - TAX COLLECTOR on him, gold, with an edge arrow. While he is indoors it reads TAX COLLECTOR - INSIDE over that door.
+  - TAX COLLECTOR or DEPUTY on each collector out, gold, with an edge arrow. While one is indoors it reads TAX COLLECTOR -
+    INSIDE (DEPUTY - INSIDE) over that door. With none out, the next one is tagged so over the counting-house's door.
   - COUNTING-HOUSE, orange.
-  - DEBTOR on the house he is heading to or inside, orange.
-  - CITADEL, red, once he heads there.
-  - A red diamond on everyone who would see a Silent Doom on him (within 2 units, beyond the Doom's 0.8). A blue diamond on
-    each guard, who would fall with him.
-- **Hint phases:**
+  - DEBTOR on the house each collector out is heading to or inside, orange (with none out, the next one's first).
+  - CITADEL, red, once one heads there.
+  - NEXT COLLECTOR, orange, at the counting-house's door while one is out and another still waits (as the Warning's NEXT
+    STAR).
+  - A red diamond on everyone who would see a Silent Doom on a collector in the street (within 2 units, beyond the Doom's
+    0.8). A blue diamond on each guard, who would fall with him.
+- **Hint phases** (for the first collector out, else the next one waiting):
 
   | Phase | Line |
   |---|---|
-  | (none) | Kill the tax collector (gold) in the street. If no one near (red) sees it, the guards raise no cry. |
-  | `inside` | He is indoors (gold). He comes out to walk to the next debtor (orange): be ready. |
+  | (none) | Kill each collector (gold) in the street. If no one near (red) sees it, the guards raise no cry. |
+  | `inside` | He is indoors (gold). He comes out to walk to his next debtor (orange): be ready. |
   | `hiding` | Alarmed, he hides in the counting-house. Set it alight to smoke him out, or wait for him. |
   | `safe` | His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in. |
+  | `next` | One down. The next collector (gold) leaves the counting-house soon: be ready for him. |
+- **HUD:** "Kill the collectors: 1 / 3", with ", he hides" or ", rounds done" for the first collector out.
 - **Tour:**
-  1. "The counting-house. At 0:45 the tax collector sets out on his rounds."
+  1. "The counting-house. The tax collector sets out at 0:45, his deputies by 1:45 and 2:45."
   2. "His first debtor. He goes in to collect, then walks on."
-  3. "The Citadel. Once his rounds are done he takes the taxes in."
+  3. "The Citadel. A collector whose rounds are done takes the taxes in."
 - **Mission tags:** `unaware_town` (derived), `hunts_tax_collector`. The second keeps the wish "Strike down the cruel tax
   collector" away.
-- **Results:** "THE TAX COLLECTOR IS DEAD" (`collector`), "THE TAXES ARE IN" (`taxes`).
-- **First guesses** (tune in this order if the scripted clear misses 3-4 minutes): SET_OUT_AT 45 (at most 60), VISIT 25,
-  HIDE 30, ALARM_REACH 4.0, GUARD_R 0.6, the debtor spots.
+- **Results:** "THE COLLECTORS ARE DEAD" (`collector`), "THE TAXES ARE IN" (`taxes`).
+- **Numbers:** first guesses SET_OUT_AT 45 / 105 / 165, CHAIN_WAIT 40, VISIT 25, HIDE 30, ALARM_REACH 4.0, GUARDS 2 / 1 / 1,
+  GUARD_R 0.6, the second deputy with two debtors. Task 2 tuned CHAIN_WAIT to 45, VISIT to 15 and gave the second deputy a
+  third debtor (its report has the runs). Tune in this order if the scripted clear misses 3-4 minutes: SET_OUT_AT (the
+  first at most 60), CHAIN_WAIT (30-50), VISIT, HIDE, ALARM_REACH, GUARDS / GUARD_R, the debtor spots.
 
 ## 2. Spoiled Harvest (Raze, generalised)
 
@@ -291,10 +313,15 @@ These are the details the v0.11 spec left open. The controller records them as r
 3. **Unseen, for the Tax Collector:** it is not a bonus (ruling 6). A seen kill makes the guards cry murder and calls the
    bellkeeper. The kill still wins (the main objective is "kill him"). On the board the bell tolling after it catches the
    night and loses the wishes, unless the god ascends or stops the bellkeeper first. So "unseen" protects the night's wishes.
-4. **The Tax Collector's length:** its 3-4 minutes is his rounds' length (out at 0:45, at the Citadel about 3:30). A seen
-   strike on his first street leg can end it at about 1:00. The designed play is the unseen one, and the scripted player
-   plays that. Nothing makes him untouchable in the street, because that would add a new kind of protection the code
-   does not have.
+4. **The Tax Collector's length** (rewritten by the controller's Task 2 ruling, which overrides the first text): one
+   target could be killed at about 1:00, against the user's rule of at least five minutes of play with a 3-4 minute main
+   objective. So the night has three targets in sequence -- the tax collector and his two deputies, each on his own round
+   with his own guards -- and the main objective is all three dead. Each deputy sets out at his own time (1:45, 2:45) or a
+   chain wait after the one before him dies, whichever is sooner; the chain wait is tunable 30-50 s (45 s as tuned), so no
+   idle wait passes 60 s. Any one reaching the Citadel's gate still loses the night, and a seen kill still calls the
+   bellkeeper. The type is generic (`AssassinateDirector`: N targets with schedules), so The Informer and The Bishop can
+   reuse it. Nothing makes a target untouchable in the street: that would add a new kind of protection the code does not
+   have.
 5. **Stand-ins:** the counting-house is the workshop hall. The debtors are the dwellings nearest three fixed spots. The tax
    collector is a resident made a noble, so his cape and crown pick him out.
 6. **Alarm:** a loud (not quiet) power cast within 4 units of him in the street, a guard falling, or a fright sends him to
@@ -340,7 +367,8 @@ These are the details the v0.11 spec left open. The controller records them as r
     are exact references. `--board` is accepted too, and stops at the main objective.
 25. **The scripted gate:** the scripted player wins at least 2 of seeds 1-3, and the median time to the main objective of its
     wins is 180-240 s. Each mission names the knobs to tune if not.
-26. **Results titles** for the new reasons are as listed in §1-§4.
+26. **Results titles** for the new reasons are as listed in §1-§4 (The Tax Collector's win reads "THE COLLECTORS ARE
+    DEAD").
 27. **The Warning's tour:** the first star "at 0:10", the later two "by".
 28. **Five cards on the Whisper tab** are 115 px wide. A card's best line wraps above its rule when it does not fit.
 29. **FLOW:** the board and results steps change for Tier 1's five missions, and one step is added (The Tax Collector from

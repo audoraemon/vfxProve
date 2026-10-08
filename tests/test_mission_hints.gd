@@ -33,6 +33,12 @@ const SPEC := [
 	["vigil_flame.wren", "Whisper Wren (blue) to the flame (gold) while no Faithful but its bearer is near him (red)."],
 	["vigil_flame.homeward", "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple."],
 	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight."],
+	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
+	["tax_collector", "Kill each collector (gold) in the street. If no one near (red) sees it, the guards raise no cry."],
+	["tax_collector.inside", "He is indoors (gold). He comes out to walk to his next debtor (orange): be ready."],
+	["tax_collector.hiding", "Alarmed, he hides in the counting-house. Set it alight to smoke him out, or wait for him."],
+	["tax_collector.safe", "His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in."],
+	["tax_collector.next", "One down. The next collector (gold) leaves the counting-house soon: be ready for him."],
 ]
 
 

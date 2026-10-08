@@ -81,6 +81,10 @@ extends SceneTree
 ##          messenger is not shaking the last one off (v0.08.1: the aim rings him red); a line for every cast and every
 ##          change of phase or messenger, a report every 5 s, then the ending, the relays, Unseen and "Solved by".
 ##          v0.08.1 left Thornwall out of The Warning's pool, and its case with it; any other case is refused.
+##   tax    (v0.11 M2) The Tax Collector (three collectors, one after another), --case=none (nothing cast) or play (Silent
+##          Doom on the bellkeeper once called; else Silent Doom on the first collector in the street with nobody but those
+##          who would fall with him near enough to see it; else Mind Whisper sends a lone onlooker away). --seed= picks the
+##          town; --board plays the board's version (its wishes heard) and stops at the main objective.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -131,6 +135,8 @@ const PROCESSION_SENT := 8.0
 const RICH_R := 3.0
 ## A policy looks at the town every this many frames (0.1 s at 60 fps), as the Warning's does.
 const LOOK_FRAMES := 6
+## The tax policy's margin beyond Crowd.DOOM_WITNESS for an onlooker's walk (v0.11 M2, _tax_unseen()).
+const TAX_MARGIN := 0.2
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -224,6 +230,9 @@ func _run() -> void:
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
+	elif scenario == "tax":
+		powers = PackedStringArray(["doom", "whisper", "discord"])
+		mission.mission_id = MissionBook.TAX_COLLECTOR
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -271,6 +280,8 @@ func _run() -> void:
 			await _feast(Battlefield.arg_value(args, "--case"))
 		"night":
 			await _night()
+		"tax":
+			await _tax(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1120,6 +1131,110 @@ func _lanterns(which: String) -> void:
 
 func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
 	return slots.has(key) and rules.refusal(int(slots[key])) == ""
+
+
+## A scenario's outcome (v0.11 M2): off the board, how the mission ended; with --board, a held night's main objective counts
+## as won, at its own time.
+func _outcome(rules: Rules) -> String:
+	if rules.main_done:
+		return "won=true reason=%s time=%.1f" % [rules._main.reason, rules.main_time]
+	var res := rules.result()
+	return "won=%s reason=%s time=%.1f" % [res.won, res.reason, float(res.time)]
+
+
+## The board's night (v0.11 M2, --board): its tier and the wishes heard, printed before the scripted player starts.
+func _board_line() -> void:
+	var night := mission.descent()
+	if night == null:
+		return
+	var heard := PackedStringArray()
+	for w in night.wishes:
+		heard.append(w.def.id)
+	print("BEHAVIOUR board tier=%d wishes=%s" % [night.tier, ",".join(heard)])
+
+
+## The bell's state by name, or "none" for a town without one (v0.11 M2 reports).
+func _bell_state(crowd: Crowd) -> String:
+	return BellNetwork.State.keys()[crowd.bell.state] if crowd.bell != null else "none"
+
+
+## Each collector's state by its initial (W waiting, A walking, V visiting, F fleeing, H hiding, S safe, D dead) and leg, in
+## order (v0.11 M2 tax reports): "A1 W0 W0".
+func _tax_states(d: AssassinateDirector) -> String:
+	var out := PackedStringArray()
+	for q in d.quarries:
+		out.append("%s%d" % ["WAVFHSD"[q.state], q.leg])
+	return " ".join(out)
+
+
+## A Silent Doom cast on `p` now would go unseen (v0.11 M2, the tax policy): everyone else out of doors either falls with him
+## (within SilentDoom.RADIUS of him now) or stays beyond Crowd.DOOM_WITNESS (and TAX_MARGIN) of where he falls T_STRIKE later,
+## both now and where they will be then (each read along his heading at his pace, as _warning_alone() reads the messenger).
+func _tax_unseen(p: Person, crowd: Crowd) -> bool:
+	var fall := p.ground_pos + _tax_lead(p)
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for o in group:
+			if not is_instance_valid(o) or o == p or not o.is_alive() or o.inside:
+				continue
+			if o.ground_pos.distance_to(p.ground_pos) <= SilentDoom.RADIUS:
+				continue
+			var reach := Crowd.DOOM_WITNESS + TAX_MARGIN
+			if o.ground_pos.distance_to(fall) <= reach or (o.ground_pos + _tax_lead(o)).distance_to(fall) <= reach:
+				return false
+	return true
+
+
+## How far `p` walks in a Silent Doom's T_STRIKE (v0.11 M2): along his heading at his pace while he has somewhere to go.
+func _tax_lead(p: Person) -> Vector2:
+	return _warning_heading(p) * p.walk_speed * SilentDoom.T_STRIKE if p.has_goal() else Vector2.ZERO
+
+
+## The Tax Collector (v0.11 M2), played every LOOK_FRAMES: Silent Doom on the bellkeeper once he is called (a seen death
+## elsewhere would ring the bell); else, for the first collector in the street with nobody but those within SilentDoom.RADIUS
+## of him (who fall with him) near enough to see, Silent Doom on him; else, for the first with one lone onlooker -- a citizen,
+## not shaking off a whisper -- that onlooker whispered six units away from him. `none` casts nothing.
+func _tax(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as AssassinateDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	_board_line()
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	while not rules.finished and not rules.main_done and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t >= report_at:
+			report_at += 10.0
+			print("BEHAVIOUR tax t=%d states=%s killed=%d witnesses=%d bell=%s" % [roundi(t), _tax_states(d), d.killed(),
+				d.witnesses().size(), _bell_state(crowd)])
+		if which != "play" or frames % LOOK_FRAMES != 0:
+			continue
+		var bell := crowd.bell
+		if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] 				and WarningDirector._alive(bell.keeper) and _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, bell.keeper.ground_pos)
+			continue
+		for q in d.quarries:
+			if q.dead or not WarningDirector._alive(q.target) or q.target.inside:
+				continue
+			var seeing := d.witnesses(q)
+			if _tax_unseen(q.target, crowd):
+				if _slot_ready(rules, slots, "doom"):
+					print("BEHAVIOUR tax t=%.1f doom %s" % [t, q.label])
+					rules.cast(slots.doom, q.target.ground_pos)
+					break
+				continue
+			if seeing.size() == 1 and not seeing[0].soldier and not seeing[0].shaken() and _slot_ready(rules, slots, "whisper"):
+				var lone := seeing[0]
+				var away := lone.ground_pos + (lone.ground_pos - q.target.ground_pos).normalized() * 6.0
+				rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": away})
+				break
+	var r := d.report()
+	print("BEHAVIOUR tax result %s states=%s killed=%d seen=%d alarms=%d target=%s" % [_outcome(rules), _tax_states(d),
+		int(r.killed), int(r.seen), int(r.alarms), String(r.target)])
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

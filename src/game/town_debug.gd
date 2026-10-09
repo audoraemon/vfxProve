@@ -383,6 +383,8 @@ func _show_page(page: int) -> void:
 ## show what moves.
 func _capture_town(only := "", frames := 1) -> void:
 	_hud.visible = false
+	# The floor paints its border band a little after the town is built (TownFloor.BAND_DELAY, then a frame a piece).
+	await get_tree().create_timer(TownFloor.BAND_DELAY + 2.0).timeout
 	for shot in TOWN_SHOTS:
 		if only != "" and not String(shot[0]).begins_with(only):
 			continue

@@ -783,6 +783,11 @@ func step_people(delta: float) -> void:
 	BenchProf.add(&"people", t0)
 
 
+## How many citizens the gates examined in the last frame, gate by gate (Task 14's test): only the fleeing and the
+## passing are looked at.
+var gate_visits := 0
+
+
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
 func advance(delta: float) -> void:
 	if _freeze_left > 0.0:
@@ -922,6 +927,14 @@ func waiting_at(gate: Structure) -> int:
 
 
 func _gates() -> void:
+	# Only the fleeing and those a gate has let through matter to any gate (Task 14): found once a frame, in the
+	# citizens' order, so every gate below sees them as it saw them in the whole list -- a calm town's gates look at
+	# nobody. Nothing a gate does makes anyone flee or pass but the fleeing, so the list holds for every gate.
+	var moving: Array[Person] = []
+	for p in citizens:
+		if is_instance_valid(p) and (p.passing_gate != null or p.mind == Person.Mind.FLEE):
+			moving.append(p)
+	gate_visits = 0
 	for gate in _town.gates:
 		if not is_instance_valid(gate) or gate.destroyed:
 			_release_all(gate)
@@ -938,8 +951,8 @@ func _gates() -> void:
 		# Each person this gate has released keeps its own pass until it is through (more than a third of the
 		# way past the doorway's centre line), dead, no longer fleeing, or has wandered off -- unlike the old
 		# single shared pass, several can be on their way out at once, so a slow one never looks like a jam.
-		for p in citizens:
-			if not is_instance_valid(p) or p.passing_gate != gate:
+		for p in moving:
+			if p.passing_gate != gate:
 				continue
 			var rel := p.ground_pos - centre
 			if rel.dot(outward) > 0.3 or not p.is_alive() or p.mind != Person.Mind.FLEE \
@@ -947,8 +960,9 @@ func _gates() -> void:
 				p.passing_gate = null
 		# The waiting crowd: fleeing, in front of the doorway, not yet released.
 		var crowd_here: Array[Person] = []
-		for p in citizens:
-			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.FLEE or p.passing_gate == gate:
+		for p in moving:
+			gate_visits += 1
+			if not p.is_alive() or p.mind != Person.Mind.FLEE or p.passing_gate == gate:
 				continue
 			var rel := p.ground_pos - centre
 			var in_front := rel.dot(outward) <= 0.0 \

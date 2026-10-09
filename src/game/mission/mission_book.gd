@@ -197,7 +197,7 @@ static func bell_ringers() -> MissionDef:
 	return m
 
 
-## Market Panic (v0.11 M3, Tier 2, mission spec §2 and §8 row 9): scatter a night fair at the north-east fountain -- three crowds
+## Market Panic (v0.11 M3, Tier 2, mission spec §2 and §8 row 9): scatter a night fair at the north-east fountain -- four crowds
 ## walking in, wardens steadying them -- before the guard closes the market (MarketPanicDirector, a smaller Festival).
 static func market_panic() -> MissionDef:
 	var m := _tier2(MARKET_PANIC, "Market Panic", PackedStringArray(["A night fair fills the north-east square.",

@@ -110,8 +110,8 @@ extends SceneTree
 ##          fountain first; else, once no crowd is still to come, Heaven Splitter through the fair with no warden on guard and
 ##          six or more goers, along the ground axis that takes more, or along five or more walkers no warden steadies; else Smite
 ##          on the densest knot of three or more unsteadied goers, or on the goer nearest the fountain; else Silent Doom on a
-##          warden on guard, to clear the cover before the next crowd; the result line gives the longest idle stretch). --seed=,
-##          --board as ringers.
+##          warden on guard, to clear the cover before the next crowd; the result line gives the longest idle stretch). Hit-stop is
+##          off for it (Impact.hitstop_enabled), so two runs of a seed give the same checksum. --seed=, --board as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -322,6 +322,8 @@ func _run() -> void:
 		powers = PackedStringArray(["heaven", "doom", "smite"])
 		mission.mission_id = MissionBook.MARKET_PANIC
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
+	if scenario == "panic":
+		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
@@ -1817,9 +1819,10 @@ func _panic(which: String) -> void:
 
 ## One look of Market Panic's policy (v0.11 M3): what was cast, or "" for nothing. The first that applies: Silent Doom on a warden
 ## on guard who steadies PANIC_WARD_CROWD or more goers; Heaven Splitter through the fair, or along the walkers, but only once no
-## crowd is still to come (a loud splitter into the first crowd brings the Organized town's evacuation, and the crowds to come go
-## with the town); Smite on the densest knot of PANIC_KNOT or more goers no warden steadies; Smite on the goer nearest the fountain
-## (a bolt kills whoever it strikes, steadied or not); and Silent Doom on a warden on guard, to clear the cover before the next crowd.
+## crowd is still to come (a loud splitter into the first crowd brings the Organized town's evacuation, which sends the goers not on
+## duty out of the town unbroken: free of that rule the same runs lost at 35 of 36); Smite on the densest knot of PANIC_KNOT or more
+## goers no warden steadies; Smite on the goer nearest the fountain (a bolt kills whoever it strikes, steadied or not); and Silent
+## Doom on a warden on guard, to clear the cover before the next crowd.
 func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> String:
 	if d.timeline.elapsed() < PANIC_SETTLE:
 		return ""

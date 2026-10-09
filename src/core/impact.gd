@@ -9,6 +9,9 @@ const POST_SHADER := preload("res://shaders/impact_post.gdshader")
 var base_time_scale := 1.0
 ## Scales every effect's darkening request (daylight maps dim far less).
 var dim_scale := 1.0
+## Whether a hit freezes the game (hitstop()). On in the game. A scripted scenario turns it off (v0.11 M3): hit-stop ends on the
+## wall clock, so how many simulated frames it covers moves with the machine's speed and a replay of the same seed drifts.
+var hitstop_enabled := true
 
 var _post: ColorRect
 var _mat: ShaderMaterial
@@ -49,8 +52,10 @@ func set_base_time_scale(value: float) -> void:
 	Sfx.speed = value
 
 
-## Freeze gameplay for `real_seconds` (scaled down to `scale`, not fully stopped).
+## Freeze gameplay for `real_seconds` (scaled down to `scale`, not fully stopped); nothing while hitstop_enabled is off.
 func hitstop(real_seconds: float, scale := 0.04) -> void:
+	if not hitstop_enabled:
+		return
 	_hitstop_until = maxi(_hitstop_until, Time.get_ticks_msec() + int(real_seconds * 1000.0))
 	_hitstop_scale = scale
 	Engine.time_scale = base_time_scale * scale

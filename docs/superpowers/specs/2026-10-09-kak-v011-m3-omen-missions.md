@@ -158,56 +158,61 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
   - **The fair:** the north-east fountain (`TownLayout.FOUNTAINS[1]`, centre (11.4, -10.0)), its plaza
     (`TownLayout.FOUNTAIN_PLAZA`) and the east street beside it. Tagged THE FAIR. It is not the market square: the Festival
     keeps that.
-  - **Spread out:** goers stand within PACK_R (4.5) of the fountain on walkable ground (`Crowd._spot_near()`), among the
-    plaza, the street and the gaps between houses. One Heaven Splitter (a strip 10 long and 6.4 wide) cannot take a whole
-    crowd.
+  - **Spread out:** goers stand within FAIR_R (5.5) of the fountain on walkable ground, among the plaza, the street and the
+    gaps between houses. One Heaven Splitter (a strip 10 long and 6.4 wide) cannot take a whole crowd.
   - **A bonfire** beside the fountain (the existing `BonfireFx`).
-  - **The wardens' posts:** either side of the fountain, 1.5 from its centre on walkable ground. They stand 3 apart, more
-    than one Silent Doom takes.
+  - **The wardens' posts:** three, evenly round the fountain, 1.5 from its centre on walkable ground. They stand 2.6 apart,
+    more than one Silent Doom takes.
   - **Where the crowds come from:**
     - the north-east quarter round the fair (11.4, -10.0);
     - the cathedral's street by the market's north-east corner (4.5, -4.0);
-    - the workshops and the smithy (12.0, 1.0).
-  - **The camera** rests at (10.0, -8.0). The fountain is at the centre. Both later sources are on screen: one at the
-    left, below the HUD stack, and one at the bottom.
-- **Claims:** 42 lay citizens as goers (three crowds of 14, calm). Two wardens, the lay citizens nearest their posts, and
-  their reliefs. No soldiers, no buildings.
-- **Main objective:** break 30 of the 42 goers.
+    - the workshops and the smithy (12.0, 1.0);
+    - the east tavern (8.75, 2.75).
+  - **The camera** rests at (10.0, -8.0). The fountain is at the centre. The three later sources are on screen, none in the
+    HUD stack's corner: the cathedral's street at the left, the east tavern at the lower left, the workshops at the bottom.
+- **Claims:** 44 lay citizens as goers (four crowds of 11, calm), appointed as the night begins. Three wardens, the lay
+  citizens nearest their posts, and their reliefs. No soldiers, no buildings.
+- **Main objective:** break 36 of the 44 goers.
   - Broken is the Festival's rule: dead, frightened by the god (panic, or a dash for shelter), or standing in a loud
     cast's danger. A goer who leaves the town unbroken never counts.
-  - **Won** the moment the 30th breaks.
-  - **Lost** when the guard closes the market at 4:30.
+  - **Won** the moment the 36th breaks.
+  - **Lost** when the guard closes the market at 5:00.
 - **People and behaviour** (the Festival's rules unless said):
-  - **Three crowds:**
-    - the first, the 14 nearest the fountain, walks in at 0:00 and is there in about 10 s;
-    - the second comes at 1:30, and the third at 2:45, or 45 s after the crowd before is scattered (10 of its 14 broken),
-      whichever is sooner;
+  - **Four crowds:**
+    - the first, the 11 nearest the fountain, walks in at 0:00 and is there in about 10 s;
+    - the second comes at 1:15, the third at 2:30 and the fourth at 3:40, or 45 s after the crowd before is wholly gone
+      (every one of it broken, dead or out of the town), whichever is sooner;
     - each walks in at a stroll, about 20 s, then takes its place at the fair.
-  - **The wardens:** two watchmen (cloak and lantern) keep the fair.
+  - **The wardens:** three watchmen (cloak and lantern) keep the fair.
     - **On guard:** alive, out of doors, within 2.5 of his post, and calm (Spoiled Harvest's `GUARD_MINDS`).
     - **Fearless on guard:** a fright does not move him. The god's holds still take him: a kill, a whisper, Discord.
-    - **Steadying:** while a warden is on guard, a fright breaks no goer within WARD_R (4) of him. Deaths still count.
+    - **Steadying:** while a warden is on guard, a fright breaks no goer within WARD_R (5.5) of him. Deaths still count.
     - **Return and relief** (Spoiled Harvest's rules): a warden off his post and calm again goes back 20 s after he left.
-      A fallen one is replaced by the nearest free lay citizen 30 s after he fell. Clearing the wardens too early is undone.
+      A fallen one is replaced by the nearest free lay citizen with a way to the post, 30 s after he fell. Clearing the
+      wardens too early is undone.
   - **Catch them on the way:** a walker not yet within WARD_R of a warden on guard breaks as any goer does.
   - **Goers hold to the fair:** once a goer reaches the fair, the town's regroup and evacuation do not take him. He stays
-    until he breaks or the market closes. Crowds still to come gather from whoever is calm, regrouping citizens too. The
-    Organized town's bell may ring; it loses nothing here.
+    until he breaks or the market closes. The Organized town's bell may ring; it loses nothing here.
+  - **Crowds to come wait on duty:** each crowd's people are appointed as the night begins and stand on duty round their
+    source until their crowd sets out. They are held fearless, so a loud cast or a seen death near a source does not turn them
+    into the town's flight, and the regroup and the evacuation pass them by. A death still takes one; one lost there is not
+    sent and counts for nothing. They are not goers, and no tag marks them, until they set out.
   - **No Mayor, no address:** the Festival's own events and square guards stay off.
 - **Timeline** (left alone):
 
   | Time | Event |
   |---|---|
   | 0:00 | "THE NIGHT FAIR". The first crowd walks in. |
-  | 1:30 | "More come to the fair", from the cathedral's street (sooner: 45 s after the first crowd is scattered) |
-  | 2:45 | "More come to the fair", from the workshops (sooner: 45 s after the second is scattered) |
-  | 4:30 | "The guard closes the market": lost unless 30 have broken |
+  | 1:15 | "More come to the fair", from the cathedral's street (sooner: 45 s after the first crowd is gone) |
+  | 2:30 | "More come to the fair", from the workshops (sooner: 45 s after the second is gone) |
+  | 3:40 | "More come to the fair", from the east tavern (sooner: 45 s after the third is gone) |
+  | 5:00 | "The guard closes the market": lost unless 36 have broken |
   | 5:30 | Dawn |
 
-- **Longest wait:** 45 s between one crowd scattered and the next setting out. Its walk-in is about 20 s more, and those
+- **Longest wait:** 45 s between one crowd gone and the next setting out. Its walk-in is about 20 s more, and those
   walkers can be struck on the way. There is no wait at the start.
 - **Tags:**
-  - THE FAIR - 12 / 30 at the fountain, gold, with an edge arrow.
+  - THE FAIR - 12 / 36 at the fountain, gold, with an edge arrow.
   - WARDEN on each warden on guard, red. A small red mark on one away from his post.
   - A gold diamond on each goer not yet broken, walkers too.
   - NEXT CROWD at the next crowd's source until it sets out, orange.
@@ -215,39 +220,43 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
 
   | Phase | Line |
   |---|---|
-  | (none) | Strike down the wardens (red), then scatter the crowd (gold). Thirty must break before the market closes. |
-  | `steadied` | A warden (red) steadies the crowd near him: frights break no one there. Remove both first. |
+  | (none) | Strike down the wardens (red), then scatter the crowd (gold). Thirty-six must break before the market closes. |
+  | `steadied` | A warden (red) steadies the crowd near him: frights break no one there. Remove them all first. |
   | `open` | No warden stands. Strike the crowd (gold) now, before a new warden comes. |
   | `coming` | More come to the fair (gold). Strike them on the way, away from the wardens, or when they arrive. |
 
-- **HUD:** "Scatter the fair 12/30", and the deadline row "Market closes 3:12".
+- **HUD:** "Scatter the fair 12/36", and the deadline row "Market closes 3:12".
 - **Tour:**
   1. "The night fair at the north-east fountain. Its wardens (red) keep the crowd calm."
-  2. "More come from the cathedral's street by 1:30."
-  3. "More come from the workshops by 2:45. The guard closes the market at 4:30."
+  2. "More come from the cathedral's street by 1:15."
+  3. "More come from the workshops by 2:30."
+  4. "More come from the east tavern by 3:40. The guard closes the market at 5:00."
 - **Mission tags:** none.
 - **Results:** "THE FAIR IS SCATTERED" (`fair`), "THE MARKET IS CLOSED" (`market_closed`).
-- **Numbers** (first guesses): WAVE 14, WAVE_NEED 10, NEED 30, WAVE_AT 0 / 90 / 165, CHAIN 45, WARDENS 2, WARD_R 4, PACK_R
-  4.5, RETURN 20, RELIEF 30, CLOSE_AT 270. Tune in this order: CHAIN (30-45), WAVE_AT, WARDENS (2-3), WARD_R, PACK_R, NEED.
-  RETURN and RELIEF stay at Spoiled Harvest's.
-- **Scripted policy** (`--scenario=panic`, loadout Heaven Splitter, Silent Doom, Smite: 4 DP). Every LOOK_FRAMES, the first
-  that applies:
+- **Numbers** (tuned by Task 3's gate; the first guesses were three crowds of 14, WAVE_NEED 10, NEED 30, WAVE_AT 0 / 90 / 165,
+  WARDENS 2, WARD_R 4, PACK_R 4.5, CLOSE_AT 270): WAVE 11, WAVE_NEED 11 (a crowd is gone when all of it is), NEED 36,
+  WAVE_AT 0 / 75 / 150 / 220, CHAIN 45, WARDENS 3, WARD_R 5.5, FAIR_R 5.5, RETURN 20, RELIEF 30, MARKET_CLOSE 300. RETURN and
+  RELIEF stay at Spoiled Harvest's. Its gate: none loses 3 of 3, play wins 3 of 3 at 3:13-3:25 (median 3:16), the longest
+  idle 21 s.
+- **Scripted policy** (`--scenario=panic`, loadout Heaven Splitter, Silent Doom, Smite: 4 DP; hit-stop off, so a seed
+  replays exactly). Every LOOK_FRAMES, after the first crowd has had 10 s to take its places, the first that applies:
   1. A warden on guard within WARD_R of four or more unbroken goers, and Doom is ready: Doom him (the one nearest the
      fountain first).
-  2. No warden on guard, six or more unbroken goers within PACK_R, and Heaven is ready: Heaven Splitter through the
-     fountain, along whichever of the two axes covers more of them.
-  3. Five or more unbroken walkers inside one Heaven strip, none within WARD_R of a warden on guard, and Heaven is ready:
-     Heaven along them.
-  4. Smite is ready: Smite the densest knot of three or more unbroken goers with no warden on guard within WARD_R.
-
-  Expected clear: about 3:10-3:40.
+  2. No crowd still to come (a loud splitter early brings the town's evacuation, which sends the goers not on duty out
+     unbroken), no warden on guard, six or more unbroken goers within FAIR_R, and Heaven is ready: Heaven Splitter through
+     the fountain, along whichever of the two axes covers more of them.
+  3. No crowd still to come, five or more unbroken walkers inside one Heaven strip, none within WARD_R of a warden on
+     guard, and Heaven is ready: Heaven along them.
+  4. Smite is ready: Smite the densest knot of three or more unbroken goers with no warden on guard within WARD_R; else the
+     goer nearest the fountain (a bolt kills whoever it strikes).
+  5. Doom is ready and a warden stands on guard: Doom him, to clear the cover before the next crowd.
 - **How it differs from the Festival** (M2 lesson 10):
   - **Another place:** the north-east fountain, not the market square.
-  - **Smaller:** 42 goers in three crowds of 14, against 120 at once.
+  - **Smaller:** 44 goers in four crowds of 11, against 120 at once.
   - **Its own opposition:** wardens who steady the crowd, with returns and reliefs.
   - **Crowds come in:** the player can catch them on the way.
   - **No Mayor:** no address, no fountain push.
-  - **Its own close:** the market guard at 4:30, inside a 5:30 night.
+  - **Its own close:** the market guard at 5:00, inside a 5:30 night.
 
 ## 3. The Informer (Assassinate, reused)
 
@@ -455,21 +464,22 @@ wrong.
     gains two virtual hooks: `_gather()` and `_may_break(goer)`, which answers true. `FestivalObjective` takes its label and
     reason. The subclass is `MarketPanicDirector`. The Festival, the Feast and The Long Night's act play exactly as before.
     Cost if wrong: a few more knobs on a shared director.
-13. **The place:** the north-east fountain and its plaza, a night fair. Goers spread within 4.5 of the fountain. Cost if
-    wrong: a crowd too packed or too thin; PACK_R is a tuning knob.
-14. **Three crowds:** 14 each, from (11.4, -10.0), (4.5, -4.0) and (12.0, 1.0). The first walks in at 0:00. The next come
-    at 1:30 and 2:45, or 45 s after the crowd before is scattered (10 of 14). Cost if wrong: one tuning round.
-15. **The need:** 30 of 42, by the Festival's rule of broken. Cost if wrong: one tuning round.
-16. **The wardens:** two watchmen at posts either side of the fountain. On guard and fearless, each steadies the goers
-    within 4: frights break no one there, deaths still count. Return 20 s, relief 30 s. Spoiled Harvest's `Watch` record
+13. **The place:** the north-east fountain and its plaza, a night fair. Goers spread within 5.5 of the fountain. Cost if
+    wrong: a crowd too packed or too thin; FAIR_R is a tuning knob.
+14. **Four crowds:** 11 each, from (11.4, -10.0), (4.5, -4.0), (12.0, 1.0) and (8.75, 2.75). The first walks in at 0:00. The
+    next come at 1:15, 2:30 and 3:40, or 45 s after the crowd before is wholly gone. All are appointed as the night begins
+    and wait on duty round their source (Task 3's fix round). Cost if wrong: one tuning round.
+15. **The need:** 36 of 44, by the Festival's rule of broken. Cost if wrong: one tuning round.
+16. **The wardens:** three watchmen at posts evenly round the fountain. On guard and fearless, each steadies the goers
+    within 5.5: frights break no one there, deaths still count. Return 20 s, relief 30 s. Spoiled Harvest's `Watch` record
     and its tick move to a shared helper only if Spoiled Harvest's six references stay exact; otherwise Market Panic copies
     the rule. Cost if wrong: a second copy of a small rule.
-17. **The close:** "The guard closes the market" at 4:30 is a deadline (`EventObjective`), as the board Festival's square.
+17. **The close:** "The guard closes the market" at 5:00 is a deadline (`EventObjective`), as the board Festival's square.
     Doing nothing loses then. Cost: none.
 18. **No Mayor:** no address, no fountain push. One bonfire burns by the fountain. Cost: none.
 19. **Goers hold to the fair:** once at the fair, the town's regroup and evacuation do not take a goer. Market Panic has no
     bell loss. Cost if wrong: without the hold, one bloody strike can bring City Emergency and empty the fair, leaving the
-    night unwinnable.
+    night unwinnable. The crowds still to come are held the same way (Task 3's fix round): a loud cast must not empty one.
 20. **The Informer, the code:** `InformerDirector` extends `AssassinateDirector`, with one quarry and no guards. The base
     gains three switches whose defaults keep The Tax Collector exact:
     - a per-quarry `scheduled` flag (false: no set-out on the strip);

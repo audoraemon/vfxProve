@@ -1,9 +1,10 @@
 extends RefCounted
-## Capital polish 2: the Keep's gate and steps, and its service yard.
+## Capital polish 2: the Keep's gate and steps, its service yard and the south district gate.
 ##   - The barbican is the Keep's gatehouse at the head of the avenue from the cathedral square, the watchtower beside
 ##     it on the same line. Its arch is a walkable passage (BuildingTypes.PASSAGE) between solid towers: no crowd gate.
 ##   - Both alley steps stand at the gate's foot as one flight of two pieces up to it: their stairs are walked over,
 ##     their cheeks are solid.
+##   - The district gate stands across a real lane, its paving carrying the lane through.
 ##   - The Keep's service yard, the paving east of the Keep inside the old town's wall: royal stables and horse pens, a
 ##     granary, a well, the wagon (both facings) and hand carts parked, wood piles, barrels and crates; stable hands
 ##     work there.
@@ -16,6 +17,7 @@ static func run(t) -> void:
 		return
 	_passages(t)
 	_keep_gate(t, c)
+	_district_gate(t, c)
 	_keep_yard(t, c)
 	_walk(t, c)
 	_stable_hands(t, c)
@@ -27,6 +29,20 @@ static func _plots(c: CapitalCity, tag: StringName) -> Array[Rect2]:
 	for d: Dictionary in c.structures():
 		if d.tag == tag:
 			out.append(d.rect)
+	return out
+
+
+## The road rects of the lanes (LANE_W wide).
+static func _lanes(c: CapitalCity) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var lines: Array = []
+	for line: Array in CapitalCity.LANES:
+		lines.append(line)
+	for line: Array in lines:
+		for k in line.size() - 1:
+			var a: Vector2 = line[k]
+			var b: Vector2 = line[k + 1]
+			out.append(Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs()).grow(CapitalCity.LANE_W * 0.5))
 	return out
 
 
@@ -87,6 +103,22 @@ static func _keep_gate(t, c: CapitalCity) -> void:
 	t.check(kinds, "the Keep's gate is a passage, not a crowd gate (the Keep is no way out)")
 
 
+## The district gate stands across a lane: the lane runs through it, under its arch.
+static func _district_gate(t, c: CapitalCity) -> void:
+	var dg := _plots(c, &"gpt_districtgate")
+	t.check(dg.size() == 1, "one district gate (%d)" % dg.size())
+	if dg.size() != 1:
+		return
+	var g := dg[0]
+	var across := false
+	for lane: Rect2 in _lanes(c):
+		if lane.size.y > lane.size.x and g.position.x <= lane.position.x and g.end.x >= lane.end.x \
+				and lane.position.y < g.position.y - 0.5 and lane.end.y > g.end.y + 0.5:
+			across = true
+	t.check(across, "the district gate stands across a lane, which runs on beyond both its ends (%s)" % g)
+	t.check(c.landmark(&"new_town_wall").encloses(g), "in the new town")
+
+
 ## The Keep's service yard: inside the old town, east of the Keep's gate; its buildings, carts, well and decor in it.
 static func _keep_yard(t, c: CapitalCity) -> void:
 	var y := CapitalCity.KEEP_YARD
@@ -133,7 +165,7 @@ static func _keep_yard(t, c: CapitalCity) -> void:
 
 
 ## Through the real town and walk grid: the passages are walked, the cheeks are not; a walk up the avenue climbs the
-## steps and passes the arch; the decor keeps off the cheeks only.
+## steps and passes the arch; the lane runs through the district gate; the decor keeps off the cheeks only.
 static func _walk(t, c: CapitalCity) -> void:
 	City.use(&"capital")
 	var env := EnvironmentField.new()
@@ -179,6 +211,18 @@ static func _walk(t, c: CapitalCity) -> void:
 	t.check(not path.is_empty() and on_steps and in_arch, "a walk up the avenue climbs the steps and passes the arch (%s)"
 		% [path])
 	t.check(not town.gates.has(_structure(env, gate[0])), "the Keep's gate is not one of the town's crowd gates")
+	# The lane runs on through the district gate.
+	var dg := _plots(c, &"gpt_districtgate")
+	if dg.size() == 1:
+		var g := dg[0]
+		var x := g.get_center().x
+		var cut: Array = []
+		var y := g.position.y - 0.75
+		while y <= g.end.y + 0.75:
+			if not grid.walkable(Vector2(x, y)):
+				cut.append(y)
+			y += 0.25
+		t.check(cut.is_empty(), "the lane runs on through the district gate (cut at %s)" % [cut])
 	# The decor keeps off the cheeks, never the passages.
 	var solid := TownDecor._solid_rects(c.structures())
 	var sides := BuildingTypes.cheeks(&"gpt_barbican", gate[0])

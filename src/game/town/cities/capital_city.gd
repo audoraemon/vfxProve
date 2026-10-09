@@ -141,6 +141,9 @@ const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.
 ## the gate's front down the avenue, their stair on the arch's west cell and their solid block on its east one.
 const KEEP_GATE := Vector2(2.58, -22.88)
 const KEEP_STEPS := Vector2(3.5, -22.0)
+## The district gate's back corner (polish 2): across the lane between the poor and the road quarters, its arch on the
+## lane, which runs on beyond both its ends.
+const DISTRICT_GATE := Vector2(-4.8, 27.0)
 ## The Keep's service yard (polish 2): the paving east of the Keep inside the old town's wall, between the Keep's gate
 ## and the wall patrols' loop. The royal stables and horse pens along its north side under the wall, a granary, a well,
 ## the wagon (both ways round) and hand carts parked (GPT_PLOTS); wood piles by the stables, barrels and crates by the
@@ -241,9 +244,10 @@ const GPT_PLOTS := [
 	[&"gpt_shacks", Vector2(-21.0, 23.6)], [&"gpt_shacks", Vector2(-19.2, 23.6)], [&"gpt_shacks", Vector2(-10.6, 31.2)],
 	[&"gpt_latrine", Vector2(-17.0, 23.6)], [&"gpt_latrine", Vector2(-8.6, 31.5)],
 	[&"gpt_noticeboard", Vector2(-14.0, 23.6)],
-	# Road quarter: the coaching inn, stables, livestock pens, the district gate.
+	# Road quarter: the coaching inn, stables, livestock pens; the district gate across the lane between it and the
+	# poor quarter (polish 2), the lane running on through its arch (DISTRICT_GATE).
 	[&"gpt_inn", Vector2(-3.0, 23.5)], [&"gpt_stables", Vector2(9.0, 23.5)], [&"gpt_pens", Vector2(12.0, 23.5)],
-	[&"gpt_districtgate", Vector2(15.5, 23.5)],
+	[&"gpt_districtgate", DISTRICT_GATE],
 	# Monastery hill: monastery, graveyard, chapel; the leper house far off; a wayside cross and a milestone by the west
 	# road.
 	[&"gpt_monastery", Vector2(-36.0, -36.0)], [&"gpt_graveyard", Vector2(-32.5, -36.0)],

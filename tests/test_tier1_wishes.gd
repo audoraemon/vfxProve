@@ -91,7 +91,7 @@ static func _pool(t) -> void:
 	for k in range(1, 41):
 		var r := RandomNumberGenerator.new()
 		r.seed = k
-		for w in WishBook.draw(WishBook.pool(), 3, PackedStringArray([TierBook.UNAWARE_TAG, "hunts_tax_collector"]), s.crowd, s.town, r):
+		for w in WishBook.draw(WishBook.pool_for(1), 3, PackedStringArray([TierBook.UNAWARE_TAG, "hunts_tax_collector"]), s.crowd, s.town, r):
 			heard[w.def.id] = true
 			w.release()
 	t.check(heard.has("bailiff") and heard.has("neighbours") and not heard.has("tax_collector") and not heard.has("child"),

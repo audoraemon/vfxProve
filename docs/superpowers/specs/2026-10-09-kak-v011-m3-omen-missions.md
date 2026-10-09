@@ -408,11 +408,11 @@ The pool grows from 10 to 12. Both new wishes clash with `unaware_town`, so they
 | Free the pressed man | Rescue | Once engaged (his tag or a soldier's clicked, or a cast within 2 of any of them), two soldiers walk to the wisher's son and march him to the barracks' door. Kill or turn both within 45 s, the son alive. | 15 | a lay citizen of the wisher's household living at least 15 units from the barracks' door, with at most 40 units of street to it, and two free soldiers; `unaware_town` |
 
 - **Scare off the bully:**
-  - Tag BULLY.
+  - Tag BULLY, pointed at from the edge (he walks the town).
   - Granted the moment he is frightened. The town's own flight (`FLEE`) does not count.
   - Failed if he dies first, or leaves the town.
 - **Free the pressed man:**
-  - Tags PRESSED MAN and PRESS-GANG (on each soldier).
+  - Tags PRESSED MAN (always pointed at from the edge) and PRESS-GANG (on each soldier; pointed at once engaged).
   - "Turned" is `RescueWish.TURNED`, as Save my child.
   - Failed when the son dies, reaches the barracks' door, or the 45 s run out.
   - The barracks' door is the front of `TownLayout.BARRACKS`, in its yard.
@@ -543,8 +543,9 @@ wrong.
     against the left HUD stack. Cost if wrong: a photo-round move, which moves that scenario's own references once (as
     Spoiled Harvest's did in M2).
 31. **The new wishes:** "Scare off the bully, unharmed" (a new Fright kind, 10) and "Free the pressed man" (Rescue, 15).
-    Both clash with `unaware_town`. The pool grows from 10 to 12, so Tier 1's seeded draws change; the tests that pin a draw
-    are updated. Cost if wrong: a re-pin of those tests.
+    Both clash with `unaware_town`. The pool grows from 10 to 12, but Tier 1's seeded draws do not change (controller ruling 3):
+    `WishDef.min_tier` and `WishBook.pool_for(tier)` leave the two out of a Tier 1 night's draw before it shuffles. Only the
+    tests that pin the pool's contents change. Cost: none.
 32. **Free the pressed man:** the son lives at least 15 units from the barracks' door, with at most 40 units of street;
     the two free soldiers nearest him march him; 45 s; turning is `RescueWish.TURNED`. It shares `RescueWish`'s code (a
     soldier list and a goal), so Save my child plays as before. Cost if wrong: a subclass instead of a generalisation.

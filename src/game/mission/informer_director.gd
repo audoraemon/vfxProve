@@ -1,17 +1,18 @@
 class_name InformerDirector
 extends AssassinateDirector
 ## The Informer (v0.11 M3, Tier 2, mission spec §3; Assassinate, reused): an informer carries the god's believers' names to the
-## Temple. He keeps to cellars and back lanes -- indoors, untouchable and untagged -- until the player has worked through his three
-## contacts, the chandler, the weaver and the carpenter, each a lay citizen kept on duty at his house's door with his COMPANY about
-## him. Word reaches each contact when the informer visits: the chandler at VISIT_AT[0], each next at his own time or CHAIN_WAIT
-## after the one before is turned, whichever is sooner. A Mind Whisper on the contact after his visit, while no one else out of
-## doors within SPEAK_SEEN sees it (held minds see nothing), turns him: he names the next contact, and the third names the hiding
-## place -- the informer bursts out of the carpenter's house and runs for the Temple's door, and AssassinateDirector's rules hold
-## with no guards (a loud power within ALARM_REACH or a fright sends him back in to hide HIDE_SECONDS; fire on the house flushes
-## him out; with it alight or down, an alarm sends him on). Any death of his wins. The names reach the Temple -- he gets in, or
-## FOUND_LIMIT passes after the third visit without him found -- and the night is lost; so it is, "THE TRAIL GOES COLD", when a
-## contact dies, or is gone from the town, before he is turned. Every contact is tagged DO NOT KILL from the start (the
-## controller's Task 4 ruling): the one to work on bright and pointed at, the others pale.
+## Temple. He keeps to cellars and back lanes -- indoors, untouchable and untagged -- until the player has worked through his four
+## contacts, the chandler, the weaver, the potter and the carpenter, each a lay citizen kept on duty at his house's door (a quiet
+## one: the controller's Task 4 fix ruling) with his COMPANY about him. Word reaches each contact when the informer visits: the
+## chandler at VISIT_AT[0], each next at his own time or CHAIN_WAIT after the one before is turned, whichever is sooner. A Mind
+## Whisper on the contact after his visit, while no one else out of doors within SPEAK_SEEN sees it (held minds see nothing), turns
+## him: he names the next contact, and the last names the hiding place -- the informer bursts out of the carpenter's house and runs
+## for the Temple's door, and AssassinateDirector's rules hold with no guards (a loud power within ALARM_REACH or a fright sends him
+## back in to hide HIDE_SECONDS; fire on the house flushes him out; with it alight or down, an alarm sends him on). Any death of his
+## wins. The names reach the Temple -- he gets in, or FOUND_LIMIT passes after the last visit without him found, well before dawn
+## -- and the night is lost; so it is, "THE TRAIL GOES COLD", when a contact dies, or is gone from the town, before he is turned.
+## Every contact is tagged DO NOT KILL from the start (the controller's Task 4 ruling): the one to work on bright and pointed at,
+## the others pale.
 
 ## One contact (v0.11 M3): a plain record, so the director holds no cycle.
 class Contact:
@@ -34,34 +35,40 @@ class Contact:
 	var turned_at := -1.0
 
 
-## The contacts' points, in the order he visits them (v0.11 M3, Decision 22): east of the market by the cathedral's street, the
-## south-west quarter, the south-east quarter by the carpenter's yard.
-const CONTACT_SPOTS := [Vector2(5.5, -3.0), Vector2(-9.0, 12.0), Vector2(12.0, 12.0)]
+## The contacts' points, in the order he visits them (v0.11 M3, Decision 22): behind the Temple to the north-east, the south-west
+## quarter by the west wall, the south quarter west of the Main Gate's road, and east of it toward the carpenter's yard -- each a
+## dwelling whose door stands in a quiet lane, clear of the soldiers' posts on ten towns of ten (the controller's Task 4 fix ruling:
+## the spec's first chandler and weaver doors, by the market's corner and among the south-west's idlers, had four to six passers-by
+## within SPEAK_SEEN at almost every moment, so an unseen whisper meant waiting on the traffic; its carpenter's door, by the
+## south-east tower, had a wall post within sight on two towns of ten).
+const CONTACT_SPOTS := [Vector2(6.0, -12.4), Vector2(-13.7, 12.6), Vector2(-1.4, 13.8), Vector2(6.2, 13.8)]
 ## The contacts' trades, in the same order (v0.11 M3).
-const TRADES := ["chandler", "weaver", "carpenter"]
+const TRADES := ["chandler", "weaver", "potter", "carpenter"]
+## The strip's words for the later contacts, not yet known by trade (v0.11 M3).
+const ORDINALS := ["second", "third", "fourth", "fifth"]
 ## Where the informer lodges -- the resident nearest it, in the dwelling nearest it (v0.11 M3).
 const LODGING_AT := Vector2(-3.5, -12.0)
 ## The Temple's door, where he takes the names (v0.11 M3): The Lost Lamb's.
 const TEMPLE_DOOR := LostLambDirector.TEMPLE_DOOR
-## Mission spec §3's numbers, tuned by Task 4's gate in its order -- COMPANY (2-3), CHAIN_WAIT (30-45), VISIT_AT, the carpenter's
-## point in CONTACT_SPOTS (the chase), HIDE_SECONDS -- in two rounds: COMPANY 3 -> 2, then VISIT_AT 45 / 115 / 180 -> 60 / 130 /
-## 195; CHAIN_WAIT stays at its 45 s cap (v0.11 M3). When word reaches each contact at the latest: the first wait is 60 s, the
-## user's limit for a timed wait.
-const VISIT_AT := [60.0, 130.0, 195.0]
+## Mission spec §3's numbers (v0.11 M3), tuned by Task 4's gate in its order: COMPANY (2-3), CHAIN_WAIT (30-45), VISIT_AT, the
+## carpenter's point in CONTACT_SPOTS (the chase), HIDE_SECONDS. When word reaches each contact at the latest: the first wait 45 s,
+## the last visit at 4:05, so doing nothing loses at 5:05 (FOUND_LIMIT after it), before dawn.
+const VISIT_AT := [45.0, 115.0, 180.0, 245.0]
 ## How long after one contact is turned word reaches the next at the latest (v0.11 M3, the chain rule).
 const CHAIN_WAIT := 45.0
-## How many stand with each contact, and how far from his door (v0.11 M3; Task 4's gate: 2, from 3).
-const COMPANY := 2
+## How many stand with each contact, and how far from his door (v0.11 M3).
+const COMPANY := 3
 const COMPANY_R := 1.2
 ## How near an onlooker sees a whisper on a contact (v0.11 M3).
 const SPEAK_SEEN := 2.0
-## How long after the third visit the names reach the Temple by the back lanes (v0.11 M3).
+## How long after the last visit the names reach the Temple by the back lanes (v0.11 M3).
 const FOUND_LIMIT := 60.0
 ## How long he hides once alarmed, and how near a loud cast alarms him (v0.11 M3).
 const HIDE_SECONDS := 20.0
 const ALARM_REACH := 4.0
-## Where the camera rests (v0.11 M3, Decision 30): the chandler by the centre and the Temple's door above him; the weaver's arrow
-## on the left edge below the HUD stack, the carpenter's on the bottom edge.
+## Where the camera rests (v0.11 M3, Decision 30): the Temple's door above the centre and the chandler at the top right; once each
+## is the one to work on, the weaver's and the potter's arrows on the left edge below the HUD stack, and the carpenter at the bottom
+## left corner.
 const CAMERA_AT := Vector2(4.0, -2.0)
 ## The tag of the contact to work on before word reaches him is grey (v0.11 M3); once it has, orange (MARK_PLACE).
 const MARK_WAITING := Color("9a948a")
@@ -90,7 +97,7 @@ func _plan() -> void:
 	var houses: Array = []
 	var claimed: Array = []
 	for i in CONTACT_SPOTS.size():
-		var h := _house_reached(CONTACT_SPOTS[i], temple, houses)
+		var h := _contact_house(CONTACT_SPOTS[i], temple, houses)
 		if h == null:
 			continue
 		houses.append(h)
@@ -105,7 +112,7 @@ func _plan() -> void:
 		c.man = crew[0]
 		_hold_place(crew[0], c.door)
 		for k in range(1, crew.size()):
-			var spot := _ring_spot(c.door, COMPANY_R, k - 1, crew.size() - 1)
+			var spot := _company_spot(c, k - 1, crew.size() - 1)
 			c.company.append(crew[k])
 			c.spots.append(spot)
 			_hold_place(crew[k], spot)
@@ -148,6 +155,41 @@ func _begin() -> void:
 			func() -> bool: return not found and not cold and quarries[0].state != State.SAFE)
 
 
+## The dwelling for the contact near `spot` (v0.11 M3, the controller's Task 4 fix ruling: quiet doors): as _house_reached() picks,
+## but passing over any whose door a soldier's post watches (_watched()) -- a soldier hears no whisper and feels no Discord, so one
+## standing guard there would see every whisper on the contact all night (a wall post by the first carpenter's door did); the
+## nearest reachable one when every house tried is watched, and null for none.
+func _contact_house(spot: Vector2, from: Vector2, exclude: Array) -> Structure:
+	var skip := exclude.duplicate()
+	var first: Structure = null
+	for i in HOUSE_TRIES:
+		var h := _house_reached(spot, from, skip)
+		if h == null:
+			break
+		if first == null:
+			first = h
+		if not _watched(_open_door(h, from)):
+			return h
+		skip.append(h)
+	return first
+
+
+## Some living soldier's post lies within SPEAK_SEEN of `door` (v0.11 M3). Only reads.
+func _watched(door: Vector2) -> bool:
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.post != Vector2.INF and p.post.distance_to(door) <= SPEAK_SEEN:
+			return true
+	return false
+
+
+## The `k`th of `n` spots for `c`'s company (v0.11 M3, pre-flight cosmetic 7): COMPANY_R from his door on a half ring facing the
+## street, away from his house. A full ring round the door puts about one spot in three inside the house, and the walk grid snaps it
+## off behind the house or down the lane, out of his sight (the potter's door put one 2.06 from him).
+func _company_spot(c: Contact, k: int, n: int) -> Vector2:
+	var out := (c.door - c.house.center()).angle()
+	return _walkable(c.door + Vector2.from_angle(out + PI * ((float(k) + 0.5) / float(maxi(n, 1)) - 0.5)) * COMPANY_R)
+
+
 ## The resident nearest his lodging, none of the contacts nor their company (v0.11 M3, mission spec §3).
 func _appoint_target(_q: Quarry) -> Person:
 	return _citizen_near(LODGING_AT, CitizenProfile.Role.RESIDENT, _appointed() + _claimed())
@@ -174,11 +216,11 @@ func _opening_banner() -> String:
 
 
 ## The strip's and the banner's words when word reaches contact `i` (v0.11 M3): the chandler by name; the later ones are not yet
-## known, so "his second contact", "his third".
+## known, so "his second contact", "his third", "his fourth".
 func _visit_label(i: int) -> String:
 	if i == 0:
 		return "Word reaches the %s" % contacts[i].trade
-	return "Word reaches his %s contact" % ["second", "third"][mini(i, 2) - 1]
+	return "Word reaches his %s contact" % ORDINALS[mini(i, ORDINALS.size()) - 1]
 
 
 ## Word reaches contact `i` (v0.11 M3): he can be turned now. The last one's visit starts the names' deadline, which the strip shows.
@@ -441,13 +483,14 @@ func hint_phase() -> String:
 	return "waiting" if c != null and not c.word else ""
 
 
-## The tour (mission spec §3, the controller's ruling on Decision 26): the first contact, with the plain warning not to kill him;
-## the Temple.
+## The tour (mission spec §3, the controller's ruling on Decision 26): the first contact -- how many there are, and the plain warning
+## not to kill him; the Temple.
 func tour() -> Array:
 	var out := []
 	if not contacts.is_empty() and _alive(contacts[0].man):
-		out.append([(contacts[0].man as Person).ground_pos, "The %s, the informer's first contact. Word reaches him at %s. Turn him with a whisper: do not kill him." % [
-			contacts[0].trade, UiTheme.clock(float(VISIT_AT[0]))]])
+		var many: String = ["no", "one", "two", "three", "four", "five"][mini(contacts.size(), 5)]
+		out.append([(contacts[0].man as Person).ground_pos, "The %s, first of the informer's %s contacts. Word reaches him at %s. Turn him with a whisper: do not kill him." % [
+			contacts[0].trade, many, UiTheme.clock(float(VISIT_AT[0]))]])
 	out.append([safe_at, "The Temple. The informer takes your believers' names here."])
 	return out
 

@@ -1,12 +1,12 @@
 extends RefCounted
-## v0.11 M3 The Informer (mission spec §3, InformerDirector, AssassinateDirector reused): three contacts kept at their houses' doors,
-## each with his company; the informer indoors in his lodging, untagged and untouchable; word reaches each contact at his visit
-## (the next at its time, or CHAIN_WAIT after the one before is turned); a whisper on a contact with word, unseen -- held minds see
-## nothing; a confused contact can be whispered -- turns him and names the next; the third names the hiding place and the informer
-## runs for the Temple, hiding when alarmed (AssassinateDirector's rules, no guards). A contact dead (or gone from the town) before
-## he is turned loses the night, and every contact's tag, the hint and the tour warn of it from the start (the controller's Task 4
-## ruling: all three tagged, the one to work on bright and the others pale); the names reach the Temple FOUND_LIMIT after the third
-## visit, or when he gets in. Freed bodies are borne (review focus 4); the tags, hints, tour, titles, camera and the numbers.
+## v0.11 M3 The Informer (mission spec §3, InformerDirector, AssassinateDirector reused): four contacts kept at their houses' (quiet)
+## doors, each with his company; the informer indoors in his lodging, untagged and untouchable; word reaches each contact at his
+## visit (the next at its time, or CHAIN_WAIT after the one before is turned); a whisper on a contact with word, unseen -- held minds
+## see nothing; a confused contact can be whispered -- turns him and names the next; the last names the hiding place and the
+## informer runs for the Temple, hiding when alarmed (AssassinateDirector's rules, no guards). A contact dead (or gone from the town)
+## before he is turned loses the night, and every contact's tag, the hint and the tour warn of it from the start (the controller's
+## Task 4 rulings: all tagged, the one to work on bright and the others pale); the names reach the Temple FOUND_LIMIT after the last
+## visit, before dawn, or when he gets in. Freed bodies are borne (review focus 4); the tags, hints, tour, titles, camera, numbers.
 
 const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_names(t)
 	_warn(t)
 	_tagged(t)
+	_unwatched(t)
 	_freed(t)
 
 
@@ -70,7 +71,8 @@ static func _setup(t) -> void:
 	var q := d.quarries[0]
 	var seen := {}
 	var houses := []
-	var ok := d.contacts.size() == 3 and d.lodging != null and d.hideout == d.contacts[2].house and q.guards.is_empty()
+	var ok := d.contacts.size() == InformerDirector.CONTACT_SPOTS.size() and d.lodging != null \
+		and d.hideout == d.contacts[d.contacts.size() - 1].house and q.guards.is_empty()
 	for c in d.contacts:
 		var man := c.man as Person
 		houses.append(c.house)
@@ -81,8 +83,8 @@ static func _setup(t) -> void:
 			var p := v as Person
 			ok = ok and p.ground_pos.distance_to(man.ground_pos) <= Crowd.DOOM_WITNESS and p.mind == Person.Mind.DUTY and not seen.has(p)
 			seen[p] = true
-	t.check(ok and seen.size() == 3 * (1 + InformerDirector.COMPANY) and not seen.has(q.target) and not houses.has(d.lodging),
-		"three contacts at their doors with COMPANY each, all on duty there: %d lay citizens, four houses" % seen.size())
+	t.check(ok and seen.size() == 4 * (1 + InformerDirector.COMPANY) and not seen.has(q.target) and not houses.has(d.lodging),
+		"four contacts at their doors with COMPANY each, all on duty there: %d lay citizens, five houses" % seen.size())
 	t.check(q.target.inside and q.target.ground_pos == d.lodging.center() and q.state == AssassinateDirector.State.WAITING
 		and not Kit.labels(d).has("INFORMER") and not Kit.labels(d).has("INFORMER - INSIDE"),
 		"the informer waits indoors in his lodging, untouchable and untagged")
@@ -92,10 +94,11 @@ static func _setup(t) -> void:
 		and q.target.mind == Person.Mind.DUTY,
 		"the town's regroup and evacuation pass the contacts, their company and the hidden informer by (review focus 6)")
 	var ids := []
-	for e in d.timeline.upcoming(4):
+	for e in d.timeline.upcoming(5):
 		ids.append(e.id)
-	t.check(ids == ["visit_0", "visit_1", "visit_2", "names"] and Kit.labels(d)[0] == "NO WORD YET - DO NOT KILL",
-		"the strip: three visits and the names' deadline; the chandler's tag first (%s)" % [ids])
+	t.check(ids == ["visit_0", "visit_1", "visit_2", "visit_3", "names"] and Kit.labels(d)[0] == "NO WORD YET - DO NOT KILL"
+		and float(InformerDirector.VISIT_AT[3]) + InformerDirector.FOUND_LIMIT < MissionBook.informer().clock,
+		"the strip: four visits and the names' deadline, before dawn; the chandler's tag first (%s)" % [ids])
 	var clear := Kit.clear_of_stack(d.safe_at, InformerDirector.CAMERA_AT)
 	for c in d.contacts:
 		clear = clear and Kit.clear_of_stack(c.door, InformerDirector.CAMERA_AT)
@@ -133,7 +136,7 @@ static func _turn(t) -> void:
 	_whisper(s, c)
 	var shown := d.timeline.seconds_to("visit_1")
 	t.check(c.turned and d.contacts[1].known and (s.banners as Array).has("THE CHANDLER NAMES THE WEAVER")
-		and shown <= InformerDirector.CHAIN_WAIT + 0.1 and d.hud_line() == "Find the informer: contacts turned 1 / 3"
+		and shown <= InformerDirector.CHAIN_WAIT + 0.1 and d.hud_line() == "Find the informer: contacts turned 1 / %d" % d.contacts.size()
 		and Kit.labels(d)[0] == "NO WORD YET - DO NOT KILL",
 		"whispered unseen after his visit, the chandler names the weaver; the strip shows his visit within CHAIN_WAIT (%.1f s)" % shown)
 	Kit.run_for(s, InformerDirector.CHAIN_WAIT + DT * 2.0)
@@ -219,7 +222,7 @@ static func _cold(t) -> void:
 	# The ruling: the carpenter, not yet named, is tagged from the start, so his death loses the night too -- warned.
 	var b := _world()
 	var e: InformerDirector = b.d
-	var carpenter := e.contacts[2].man as Person
+	var carpenter := e.contacts[e.contacts.size() - 1].man as Person
 	var warned := false
 	for m in _contact_tags(e):
 		warned = warned or m.at.distance_to(carpenter.ground_pos) < 0.01
@@ -256,7 +259,7 @@ static func _names(t) -> void:
 	t.check(absf(shown - InformerDirector.FOUND_LIMIT) < 0.1 and before and main.check(s.rules) == Objective.Status.FAILED
 		and main.reason == "names" and (s.banners as Array).has("THE NAMES REACH THE TEMPLE")
 		and ResultsScreen.title_for(false, "names") == "THE NAMES REACH THE TEMPLE",
-		"not found FOUND_LIMIT after the third visit, the names reach the Temple (the strip counted it down from the visit)")
+		"not found FOUND_LIMIT after the last visit, the names reach the Temple (the strip counted it down from the visit)")
 	Kit.done(s)
 	var b := _world()
 	var e: InformerDirector = b.d
@@ -277,7 +280,7 @@ static func _warn(t) -> void:
 		"the hint (from the first second), the tour and the contact's tag say plainly: turn him, do not kill him (ruling on Decision 26)")
 	d._visit(0)
 	t.check(Kit.labels(d)[0] == "CONTACT - DO NOT KILL", "and so does his tag once word has reached him")
-	t.check(stops.size() == 2 and String(stops[0][1]) == "The chandler, the informer's first contact. Word reaches him at %s. Turn him with a whisper: do not kill him." % UiTheme.clock(float(InformerDirector.VISIT_AT[0]))
+	t.check(stops.size() == 2 and String(stops[0][1]) == "The chandler, first of the informer's four contacts. Word reaches him at %s. Turn him with a whisper: do not kill him." % UiTheme.clock(float(InformerDirector.VISIT_AT[0]))
 		and String(stops[1][1]) == "The Temple. The informer takes your believers' names here.", "the tour (%s)" % [stops])
 	var missing := []
 	for phase: String in ["", "waiting", "found", "hiding", "running"]:
@@ -288,34 +291,60 @@ static func _warn(t) -> void:
 	Kit.done(s)
 
 
-## The controller's Task 4 ruling: all three contacts are tagged from the start -- the one to work on bright and pointed at from the
+## The controller's Task 4 rulings: all four contacts are tagged from the start -- the one to work on bright and pointed at from the
 ## edge (grey NO WORD YET before his visit, orange CONTACT once word has reached him), the others pale NO WORD YET, not pointed at;
 ## a turned contact loses his tag, and the next is the bright one.
 static func _tagged(t) -> void:
 	var s := _world()
 	var d: InformerDirector = s.d
 	var tags := _contact_tags(d)
-	var on := tags.size() == 3
-	for i in mini(tags.size(), 3):
+	var on := tags.size() == 4 and tags[0].label == "NO WORD YET - DO NOT KILL" and tags[0].edge \
+		and tags[0].color == InformerDirector.MARK_WAITING
+	for i in tags.size():
 		on = on and tags[i].at.distance_to((d.contacts[i].man as Person).ground_pos) < 0.01
-	t.check(on and tags[0].label == "NO WORD YET - DO NOT KILL" and tags[0].edge and tags[0].color == InformerDirector.MARK_WAITING
-		and tags[1].label == "NO WORD YET - DO NOT KILL" and not tags[1].edge and tags[1].color == InformerDirector.MARK_PALE
-		and tags[2].label == "NO WORD YET - DO NOT KILL" and not tags[2].edge and tags[2].color == InformerDirector.MARK_PALE,
-		"from the start all three contacts are tagged DO NOT KILL: the chandler grey and pointed at, the weaver and the carpenter pale")
+		if i > 0:
+			on = on and tags[i].label == "NO WORD YET - DO NOT KILL" and not tags[i].edge and tags[i].color == InformerDirector.MARK_PALE
+	t.check(on, "from the start all four contacts are tagged DO NOT KILL: the chandler grey and pointed at, the other three pale")
 	t.check(InformerDirector.MARK_PALE.a < InformerDirector.MARK_WAITING.a, "pale is fainter than the chandler's grey")
 	d._visit(0)
 	tags = _contact_tags(d)
-	t.check(tags.size() == 3 and tags[0].label == "CONTACT - DO NOT KILL" and tags[0].color == AssassinateDirector.MARK_PLACE
-		and tags[0].edge and tags[1].color == InformerDirector.MARK_PALE and tags[2].color == InformerDirector.MARK_PALE,
+	t.check(tags.size() == 4 and tags[0].label == "CONTACT - DO NOT KILL" and tags[0].color == AssassinateDirector.MARK_PLACE
+		and tags[0].edge and tags[1].color == InformerDirector.MARK_PALE and tags[3].color == InformerDirector.MARK_PALE,
 		"word at the chandler: his tag orange CONTACT; the others still pale NO WORD YET")
 	_clear(d, d.contacts[0])
 	_whisper(s, d.contacts[0])
 	tags = _contact_tags(d)
-	t.check(d.contacts[0].turned and tags.size() == 2
+	t.check(d.contacts[0].turned and tags.size() == 3
 		and tags[0].at.distance_to((d.contacts[1].man as Person).ground_pos) < 0.01 and tags[0].edge
-		and tags[0].color == InformerDirector.MARK_WAITING and tags[1].color == InformerDirector.MARK_PALE,
-		"the chandler turned loses his tag; the weaver is the bright one, the carpenter still pale")
+		and tags[0].color == InformerDirector.MARK_WAITING and tags[1].color == InformerDirector.MARK_PALE
+		and tags[2].color == InformerDirector.MARK_PALE,
+		"the chandler turned loses his tag; the weaver is the bright one, the potter and the carpenter still pale")
 	Kit.done(s)
+
+
+## The controller's Task 4 fix ruling (quiet doors): no contact's door is one a soldier's post watches -- a soldier hears no whisper
+## and feels no Discord, so standing guard there he would see every whisper on the contact all night. A soldier posted by the
+## chandler's door before the night begins sends the chandler to another house.
+static func _unwatched(t) -> void:
+	var s := _world()
+	var d: InformerDirector = s.d
+	var door := d.contacts[0].door
+	var house := d.contacts[0].house
+	var clear := true
+	for c in d.contacts:
+		clear = clear and not d._watched(c.door)
+	Kit.done(s)
+	var post := func(_e: MissionDirector, r: Rules) -> void:
+		var g: Person = r._crowd.soldiers[0]
+		g.post = door + Vector2(1.0, 0.0)
+		g.anchor = g.post
+		g.ground_pos = g.post
+	var b := Kit.world(MissionBook.informer(), null, post)
+	var e: InformerDirector = b.d
+	t.check(clear and e.contacts[0].house != house and not e._watched(e.contacts[0].door)
+		and e.contacts[0].door.distance_to(door) > InformerDirector.SPEAK_SEEN,
+		"no contact's door is watched by a soldier's post; one posted by the chandler's door sends him to another house")
+	Kit.done(b)
 
 
 static func _freed(t) -> void:

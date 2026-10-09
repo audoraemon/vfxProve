@@ -265,71 +265,85 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
 ## 3. The Informer (Assassinate, reused)
 
 M2 lesson 1: one target in the open dies at about 1:00. So the informer cannot be reached until the player has worked
-through his three contacts. They are the night's paced items, on the chain rule. The final kill is a short chase.
+through his four contacts. They are the night's paced items, on the chain rule. The final kill is a short chase.
 
 - **Brief:** "An informer carries your believers' names." / "Find him through his contacts. Kill him."
 - **Card type:** Kill. **Id:** `informer`.
 - **Map:**
   - **The Temple's door** at (0.8, -5.0) (The Lost Lamb's `TEMPLE_DOOR`): where he takes the names. Tagged TEMPLE.
-  - **Three contacts.** Each is the lay citizen nearest his point, set down at the door of the dwelling nearest it whose
-    door the street reaches (`_house_reached()`), and kept there:
-    1. **the chandler**, at (5.5, -3.0): east of the market, by the cathedral's street;
-    2. **the weaver**, at (-9.0, 12.0): the south-west quarter;
-    3. **the carpenter**, at (12.0, 12.0): the south-east quarter by the carpenter's yard, about 28 units of street from the
-       Temple's door.
-  - **Each contact's company:** the COMPANY (3) lay citizens nearest him, set down 1.2 from him (inside 2 units' sight) and
-    kept there.
+  - **Four contacts.** Each is the lay citizen nearest his house's door, set down there and kept there. His house is the
+    dwelling nearest his point whose door the street reaches (`_house_reached()`) and no soldier's post watches (none within
+    2 units of the door: a soldier hears no whisper and feels no Discord). Every door stands in a quiet lane (Task 4's fix
+    ruling):
+    1. **the chandler**, at (6.0, -12.4): behind the Temple to the north-east;
+    2. **the weaver**, at (-13.7, 12.6): the south-west quarter by the west wall;
+    3. **the potter**, at (-1.4, 13.8): the south quarter, west of the Main Gate's road;
+    4. **the carpenter**, at (6.2, 13.8): east of the Main Gate's road, toward the carpenter's yard, about 20 units of street
+       from the Temple's door.
+  - **Each contact's company:** the COMPANY (3) lay citizens nearest him, set down 1.2 from his door on a half ring facing the
+    street (inside 2 units' sight), and kept there.
   - **The informer:** the resident nearest (-3.5, -12.0), behind the Temple. He is taken inside the dwelling nearest that
-    point at the start, and is never tagged until he is found.
-  - **The camera** rests at (4.0, -2.0). The chandler is by the centre and the Temple's door above him. Once named, the
-    weaver's tag points from the left edge (below the HUD stack) and the carpenter's from the bottom edge.
-- **Claims:** 13 lay citizens (3 contacts, 9 company, the informer) and four dwellings (the contacts' houses and his
+    point at the start, and is never tagged until he is found. He waits there on duty, so an evacuation never sends him
+    running.
+  - **The camera** rests at (4.0, -2.0). The Temple's door is above the centre and the chandler at the top right. The
+    weaver's and the potter's tags point from the left edge, below the HUD stack. The carpenter's door shows at the bottom
+    left.
+- **Claims:** 17 lay citizens (4 contacts, 12 company, the informer) and five dwellings (the contacts' houses and his
   lodging). No soldiers.
 - **Main objective:** kill the informer before he reaches the Temple.
   - **Won** the moment he dies, any way.
-  - **Lost** when the names reach the Temple (he reaches its door, or 60 s pass after his third visit without him found),
-    when a contact dies before he is turned ("THE TRAIL GOES COLD"), when the bell tolls, or at dawn.
+  - **Lost** when:
+    - the names reach the Temple (he reaches its door, or 60 s pass after his fourth visit without him found);
+    - a contact dies before he is turned, or leaves the town ("THE TRAIL GOES COLD");
+    - the bell tolls;
+    - dawn comes.
 - **People and behaviour:**
   - **Hidden:** the informer keeps to cellars and back lanes. He is indoors, untouchable and untagged, and moves from house
     to house unseen. No power reaches him until he is found. Fire or the fall of a house he is in does not bring him out.
   - **His visits:** word reaches a contact when the informer comes to his house:
     - the chandler at 0:45;
     - the second contact at 1:55, or 45 s after the chandler is turned, whichever is sooner;
-    - the third at 3:00, or 45 s after the second is turned, whichever is sooner.
+    - the third at 3:00, or 45 s after the second is turned, whichever is sooner;
+    - the fourth at 4:05, or 45 s after the third is turned, whichever is sooner.
 
     Before his visit, a contact knows nothing.
   - **Turning a contact:** cast Mind Whisper on him after the visit, while no one else out of doors within 2 units sees it.
-    People held by Discord or a whisper see nothing. A turned contact names the next contact, who is tagged ("THE CHANDLER
-    NAMES THE WEAVER"). The third names the informer's hiding place.
+    People held by Discord or a whisper see nothing. A turned contact names the next contact ("THE CHANDLER NAMES THE
+    WEAVER"). The last names the informer's hiding place.
     - **A whisper someone sees** is no use. Mind Whisper's own rule lets the same contact be whispered again 20 s later.
     - **Discord:** a contact held by Discord can still be whispered, and turned.
+    - **Only his own whisper counts:** one cast beside him (on a companion at his elbow) while an older whisper still holds
+      him neither turns him nor reads as seen.
   - **The company** stand by their contact. Whispered away, each walks back once the whisper's linger ends, so clearing
     them too early is undone.
-  - **A contact dead before he is turned** takes the trail with him: the night is lost.
-  - **Found:** the informer bursts out of the third contact's house ("THE INFORMER IS FOUND") and runs on duty for the
-    Temple's door, about 17 s away. AssassinateDirector's rules then hold, with no guards:
+  - **A contact dead before he is turned** takes the trail with him: the night is lost. So does one gone from the town.
+  - **Found:** the informer bursts out of the last contact's house ("THE INFORMER IS FOUND") and runs on duty for the
+    Temple's door, about 20 units of street (some 13 s). AssassinateDirector's rules then hold, with no guards:
     - a loud power within 4 of him, or a fright, sends him back into that house to hide 20 s;
     - fire on that house flushes him out; with it burning or fallen, an alarm sends him on toward the Temple;
     - any death wins. A seen death makes the guards cry murder and calls the bellkeeper. On the board the bell after the
       kill catches the night and loses the wishes, unless the god ascends or stops the bellkeeper first.
-  - **Not found in time:** 60 s after his third visit, the names reach the Temple by the back lanes.
+  - **Not found in time:** 60 s after his fourth visit, the names reach the Temple by the back lanes.
   - **The Organized town:** a seen death by a contact counts toward a Local Emergency. Four, and the bellkeeper climbs.
 - **Timeline** (left alone):
 
   | Time | Event |
   |---|---|
-  | 0:00 | "FIND THE INFORMER". The chandler is marked. |
+  | 0:00 | "FIND THE INFORMER". All four contacts are marked DO NOT KILL; the chandler is the one to work on. |
   | 0:45 | "Word reaches the chandler" |
   | 1:55 | "Word reaches his second contact" (sooner: 45 s after the chandler is turned) |
   | 3:00 | "Word reaches his third contact" (sooner: 45 s after the second is turned) |
-  | 4:00 | "THE NAMES REACH THE TEMPLE": lost (60 s after the third visit) |
+  | 4:05 | "Word reaches his fourth contact" (sooner: 45 s after the third is turned) |
+  | 5:05 | "THE NAMES REACH THE TEMPLE": lost (60 s after the fourth visit) |
   | 5:30 | Dawn |
 
 - **Longest waits:** 45 s to the first visit, and 45 s between a contact turned and the next visit. In both, the next
-  contact's company can be dealt with. The 60 s after the third visit is time to act in, not a wait.
-- **Tags:**
-  - CONTACT on the contact to turn now, orange, with an edge arrow. CONTACT - NO WORD YET, grey, with an edge arrow, before
-    his visit. Turned contacts lose their tag.
+  contact's company can be dealt with. The 60 s after the fourth visit is time to act in, not a wait.
+- **Tags** (Task 4's rulings: every contact whose death loses the night is warned from the start):
+  - The contact to turn now has a tag with an edge arrow. Before his visit it is grey, "NO WORD YET - DO NOT KILL". Once word
+    reaches him it is orange, "CONTACT - DO NOT KILL".
+  - Each later contact has a pale tag with no arrow: "NO WORD YET - DO NOT KILL", or "CONTACT - DO NOT KILL" if word reaches
+    him first. Turned contacts lose their tag.
   - A red diamond on everyone who would see a whisper on him (within 2, not held).
   - Once found: INFORMER, gold, with an edge arrow; INFORMER - INSIDE over the house's door while he hides; TEMPLE at the
     door, red; a red diamond on whoever would see a Doom on him.
@@ -337,34 +351,39 @@ through his three contacts. They are the night's paced items, on the chain rule.
 
   | Phase | Line |
   |---|---|
-  | `waiting` | Word has not reached the contact (grey) yet. Get his company (red) away before it does. |
+  | `waiting` | Word has not reached the contact (grey) yet. Get his company (red) away before it does. Do not kill a contact. |
   | (none) | Whisper the contact (orange) while no one (red) sees. He names the next. Do not kill a contact. |
   | `found` | He is found and runs for the Temple (red). Kill him before he gets in. Unseen, no cry is raised. |
   | `hiding` | Alarmed, he hides. Set the house alight to smoke him out, or wait for him. |
   | `running` | No hiding place: he runs for the Temple (red). Kill him before he gets in. |
 
   `running` is AssassinateDirector's phase from M2's final review (alarmed, with the hideout alight or fallen).
-- **HUD:** "Find the informer: contacts turned 1 / 3". Once found: "Kill the informer", with ", he hides" while he hides and
+- **HUD:** "Find the informer: contacts turned 1 / 4". Once found: "Kill the informer", with ", he hides" while he hides and
   ", he runs for the Temple" while he flees with no hiding place.
 - **Tour:**
-  1. "The chandler, the informer's first contact. Word reaches him at 0:45."
+  1. "The chandler, first of the informer's four contacts. Word reaches him at 0:45. Turn him with a whisper: do not kill
+     him."
   2. "The Temple. The informer takes your believers' names here."
 - **Mission tags:** `hunts_informer`. It keeps the wish "Kill the informer, unseen" away.
 - **Results:** "THE INFORMER IS DEAD" (`informer`), "THE NAMES REACH THE TEMPLE" (`names`), "THE TRAIL GOES COLD" (`cold`).
-- **Numbers** (first guesses): VISIT_AT 45 / 115 / 180, CHAIN 45, COMPANY 3, SPEAK_SEEN 2, FOUND_LIMIT 60, HIDE 20,
-  ALARM_REACH 4. Tune in this order: COMPANY (2-3), CHAIN (30-45), VISIT_AT, the carpenter's point (the chase), HIDE.
+- **Numbers** (tuned by Task 4's gate, its fix round): VISIT_AT 45 / 115 / 180 / 245, CHAIN 45, COMPANY 3, SPEAK_SEEN 2,
+  FOUND_LIMIT 60, HIDE 20, ALARM_REACH 4. Tune in this order: COMPANY (2-3), CHAIN (30-45), VISIT_AT, the carpenter's point
+  (the chase), HIDE.
 - **Scripted policy** (`--scenario=informer`, loadout Mind Whisper, Discord, Silent Doom: 4 DP). Every LOOK_FRAMES, the first
   that applies:
   1. The bellkeeper is called and Doom is ready: Doom him.
   2. The informer is found and out of doors: Doom him when the kill would go unseen, or whatever the witnesses once he is
-     within 8 of the Temple's door.
+     within 8 of the Temple's door. Never while a contact stands close enough to fall with him.
   3. The current contact has word:
      - no onlooker: whisper him three units off;
-     - one or two onlookers: whisper the nearest (not a soldier, not shaking off a whisper) eight units away;
-     - three or more, and Discord is ready: Discord on the contact's spot, then whisper him.
-  4. The current contact's visit is within 18 s: whisper his company away, one per whisper.
+     - Mind Whisper and Discord both ready: Discord where it holds every onlooker, or all but one a whisper can send off;
+       the whisper follows;
+     - else: whisper one onlooker eight units away (his company and those standing still first; not a soldier, not one
+       shaking off a whisper).
+  4. The current contact's visit is within 18 s: whisper his company away, one per whisper, only while the whisper will be
+     ready again when word comes.
 
-  It never Dooms a contact. Expected clear: about 3:20-3:40.
+  It never Dooms a contact. Clear (Task 4's gate): 3:11-3:28, median 3:11.
 - **How it differs from The Tax Collector:** one hidden target found by work, not three walking in the open. The paced items
   are the contacts. The quarry shows only for a short chase at the end.
 
@@ -492,26 +511,33 @@ wrong.
     - an optional HUD line from the director (`AssassinateObjective` shows it when given).
 
     Cost if wrong: a fork of the Assassinate code.
-21. **Hidden until found:** the informer is indoors, untouchable and untagged until his third contact is turned. He moves
-    between houses unseen. This is what keeps the kill from coming at about 1:00 (M2 lesson 1). Cost if wrong: a player
-    never sees the quarry until the end; the tour and hints must say so plainly.
-22. **The contacts:** the chandler (5.5, -3.0), the weaver (-9.0, 12.0) and the carpenter (12.0, 12.0), each set down at
-    his house's door. Only the chandler is known at the start; each names the next. Cost if wrong: a contact in a quiet
-    spot is too easy; move his point.
-23. **Visits and the chain:** word reaches them at 0:45, 1:55 and 3:00, or 45 s after the contact before is turned,
-    whichever is sooner. A contact can be turned only after his visit. Cost if wrong: one tuning round.
+21. **Hidden until found:** the informer is indoors, untouchable and untagged until his last contact is turned. He moves
+    between houses unseen, on duty, so an evacuation never sends him running. This is what keeps the kill from coming at
+    about 1:00 (M2 lesson 1). Cost if wrong: a player never sees the quarry until the end; the tour and hints must say so
+    plainly.
+22. **The contacts:** four (Task 4's fix ruling: a fourth item, as Market Panic's fourth crowd): the chandler (6.0, -12.4),
+    the weaver (-13.7, 12.6), the potter (-1.4, 13.8) and the carpenter (6.2, 13.8). Each is set down at his house's door,
+    a quiet one that no soldier's post watches. The spec's first chandler (5.5, -3.0) and weaver (-9.0, 12.0) stood among
+    four to six passers-by within 2 units at almost every moment, so an unseen whisper meant waiting on the traffic. Its
+    first carpenter (12.0, 12.0) had a south-east tower's post within sight on two towns of ten. All four are tagged DO NOT
+    KILL from the start; each names the next. Cost if wrong: a contact in a quiet spot is too easy; move his point.
+23. **Visits and the chain:** word reaches them at 0:45, 1:55, 3:00 and 4:05, or 45 s after the contact before is turned,
+    whichever is sooner. A contact can be turned only after his visit. With quiet doors the clear is held by the chain
+    (four items, 45 s apart), about 3:10. Cost if wrong: one tuning round.
 24. **Turning:** a Mind Whisper on the contact while no one else out of doors within 2 sees it (held minds see nothing). A
     contact held by Discord can still be whispered and turned. Cost if wrong: if the engine will not whisper a confused
     person, the scripted policy drops its Discord step.
-25. **The company:** three per contact, set down 1.2 from him. They walk back after a whisper. There is no relief. Cost if
-    wrong: COMPANY is the first tuning knob (2-3).
-26. **A dead contact** before he is turned loses the night ("THE TRAIL GOES COLD"). Cost if wrong: harsh for a stray
-    strike; the hint says "Do not kill a contact".
-27. **The chase:** found, he runs from the carpenter's house to the Temple's door, about 17 s, with no guards. He hides 20 s
-    when alarmed. Any kill wins; a seen kill calls the bellkeeper. Cost if wrong: a chase too short; move the third
-    contact or give him one guard.
-28. **Not found in time:** 60 s after the third visit, the names reach the Temple by the back lanes, so doing nothing loses
-    at 4:00. Cost: none.
+25. **The company:** three per contact, set down 1.2 from his door on a half ring facing the street (a full ring put some
+    inside the house, snapped out of his sight). They walk back after a whisper. There is no relief. Cost if wrong: COMPANY
+    is the first tuning knob (2-3).
+26. **A dead contact** before he is turned loses the night ("THE TRAIL GOES COLD"), and so does one gone from the town (no
+    silent lock until the names' deadline). Every contact's tag, the hint and the tour warn of it from the start. Cost if
+    wrong: harsh for a stray strike; the hint says "Do not kill a contact".
+27. **The chase:** found, he runs from the carpenter's house to the Temple's door, about 20 units of street (some 13 s),
+    with no guards. He hides 20 s when alarmed. Any kill wins; a seen kill calls the bellkeeper. Cost if wrong: a chase
+    too short; move the last contact or give him one guard.
+28. **Not found in time:** 60 s after the fourth visit, the names reach the Temple by the back lanes, so doing nothing loses
+    at 5:05, before dawn. Cost: none.
 29. **Informer's tag:** `hunts_informer`; the wish "Kill the informer, unseen" clashes with it. Cost: none.
 30. **Camera spots:** The Bell-Ringers (6.0, -5.0), Market Panic (10.0, -8.0), The Informer (4.0, -2.0), each checked
     against the left HUD stack. Cost if wrong: a photo-round move, which moves that scenario's own references once (as

@@ -14,7 +14,62 @@ static func run(t) -> void:
 	_camera(t)
 	_glints(t)
 	_border_trees(t)
+	_keep_gate(t, c)
 	City.use(&"aldermere")
+
+
+static func _plots(c: CapitalCity, tag: StringName) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for d: Dictionary in c.structures():
+		if d.tag == tag:
+			out.append(d.rect)
+	return out
+
+
+## The Keep's gate and steps are gone (unused sets); the watchtower stands on the Keep's wall line, its guards at its
+## foot; a few trees stand on the paving between the Keep and the garden lawn, the drill yard and the royal garden as
+## they were.
+static func _keep_gate(t, c: CapitalCity) -> void:
+	for k: StringName in [&"gpt_barbican", &"gpt_alleysteps"]:
+		t.check(_plots(c, k).is_empty() and k in CapitalPlots.UNUSED, "%s is no longer placed, and listed unused" % k)
+	t.check(BuildingTypes.PASSAGE.has(&"gpt_barbican") and BuildingTypes.PASSAGE.has(&"gpt_alleysteps"),
+		"the passage plumbing stays")
+	var tower := _plots(c, &"gpt_watchtower")
+	t.check(tower.size() == 1, "one watchtower (%d)" % tower.size())
+	if tower.size() != 1:
+		return
+	var w := tower[0]
+	var o := c.citadel_origin()
+	var se := Rect2(Citadel.TOWERS[3].position + o, Citadel.TOWERS[3].size)
+	var south := Rect2(Citadel.WALLS[1].position + o, Citadel.WALLS[1].size)
+	t.check(w.position.y < south.end.y and w.end.y > south.position.y and w.position.x >= se.end.x
+		and w.position.x - se.end.x <= 1.0, "the watchtower stands on the Keep's south wall line beside its tower (%s)" % w)
+	t.check(c.landmark(&"royal_keep").encloses(w), "in the Royal Keep")
+	# No soldier is posted inside it (the Citadel's rally ring passes close by).
+	var inside := 0
+	var posts := c.soldier_posts()
+	for k: String in posts:
+		for p: Vector2 in posts[k]:
+			if w.grow(WalkGrid.BODY + 0.1).has_point(p):
+				inside += 1
+	t.check(inside == 0, "no soldier is posted on the watchtower (%d)" % inside)
+	var guards := 0
+	for p: Vector2 in posts.walls:
+		if p.y > w.end.y and p.y < w.end.y + 0.8 and absf(p.x - w.get_center().x) < 1.2:
+			guards += 1
+	t.check(guards == 2 and c.soldiers() == 180, "the Keep's two guards stand at the watchtower's foot (%d, %d soldiers)"
+		% [guards, c.soldiers()])
+	# Item 8: trees on the paving south of the Keep, round the watchtower.
+	var trees := 0
+	var grounds := CapitalCity.KEEP_GROUNDS
+	for d: Dictionary in c.court_decor():
+		if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE] and grounds.has_point(d.at):
+			trees += 1
+	t.check(trees >= 3, "a few trees stand on the Keep's paving (%d)" % trees)
+	t.check(grounds.encloses(w) and c.landmark(&"royal_keep").grow(0.01).encloses(grounds),
+		"the Keep's grounds hold the watchtower, inside the Royal Keep")
+	t.check(not grounds.intersects(CapitalCity.DRILL_YARD) and not grounds.intersects(CapitalCity.ROYAL_GARDEN),
+		"the drill yard and the royal garden are left as they were")
 
 
 ## Both cities draw a border band about 12 cells deep; a city that says nothing draws none.

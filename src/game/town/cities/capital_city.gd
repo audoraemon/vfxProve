@@ -138,12 +138,17 @@ const DRILL_RANKS := [3.0, 1.8]
 const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
 	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
 	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15}
-## The Keep's gate (polish 2): the barbican's back corner, at the head of the avenue up from the cathedral square (its
-## south edge on the avenue's end), placed so its arch (BuildingTypes.PASSAGE) opens two walk cells of the avenue and
-## its towers close the cells either side. The alley steps' back corner: two pieces, one in front of the other, from
-## the gate's front down the avenue, their stair on the arch's west cell and their solid block on its east one.
-const KEEP_GATE := Vector2(2.58, -22.88)
-const KEEP_STEPS := Vector2(3.5, -22.0)
+## The Keep's grounds (polish 3): the paving south-east of the Keep, between it, the avenue's head and the service
+## yard, where the Keep's gate stood in polish 2 (the barbican and the alley steps are unused since: CapitalPlots.UNUSED).
+## The watchtower stands on the Keep's wall line (WATCHTOWER, its back corner: in line with the Citadel's south wall,
+## east of its south-east tower, clear of the rally ring's posts), its two guards at its foot; trees round it
+## (KEEP_DECOR, carried with the courtyard's: court_decor()).
+const KEEP_GROUNDS := Rect2(2.9, -25.0, 3.6, 4.0)
+const WATCHTOWER := Vector2(3.6, -24.2)
+const KEEP_DECOR := [
+	[Decor.Kind.OAK, Vector2(5.65, -24.55), Vector2(28.0, 0.0)], [Decor.Kind.PINE, Vector2(6.15, -23.15), Vector2(26.0, 0.0)],
+	[Decor.Kind.OAK, Vector2(5.75, -21.7), Vector2(26.0, 0.0)],
+]
 ## The district gate's back corner (polish 2): across the lane between the poor and the road quarters, its arch on the
 ## lane, which runs on beyond both its ends.
 const DISTRICT_GATE := Vector2(-4.8, 27.0)
@@ -198,13 +203,11 @@ const NORTH_QUAY := -2.0
 ## By district (spec §1). The landmarks that must be seen (the Citadel's keep, the cathedral, the town hall, the market
 ## hall) have nothing taller just in front of them (tests/test_capital_plots.gd).
 const GPT_PLOTS := [
-	# Royal Keep: armoury and treasury before the barracks. The barbican is the Keep's gate (polish 2), at the head of
-	# the avenue up from the cathedral square, its arch over the avenue (KEEP_GATE: a passage, BuildingTypes.PASSAGE,
-	# no crowd gate), the watchtower beside it on its line, and both alley steps at its foot (KEEP_STEPS) as one flight
-	# up to it. (No drawbridge gatehouse: no gate of the capital faces open water. CapitalPlots.UNUSED.)
+	# Royal Keep: armoury and treasury before the barracks; the watchtower on the Keep's wall line (polish 3:
+	# WATCHTOWER). (No gatehouse of its own: the barbican and the alley steps stood at the avenue's head in polish 2 and
+	# are unused since; no drawbridge either, as no gate of the capital faces open water. CapitalPlots.UNUSED.)
 	[&"gpt_armoury", Vector2(-7.8, -23.5)], [&"gpt_treasury", Vector2(-5.0, -23.5)],
-	[&"gpt_barbican", KEEP_GATE], [&"gpt_watchtower", KEEP_GATE + Vector2(2.78, 0.0)],
-	[&"gpt_alleysteps", KEEP_STEPS], [&"gpt_alleysteps", KEEP_STEPS + Vector2(0.0, 1.0)],
+	[&"gpt_watchtower", WATCHTOWER],
 	# The Keep's service yard (KEEP_YARD): two royal stables and the horse pens along its north side, the granary, the
 	# wagon parked both ways round (turned, it draws mirrored: CapitalPlots.TURNS) and two hand carts.
 	[&"gpt_stables", Vector2(6.9, -28.1)], [&"gpt_stables", Vector2(9.6, -28.1)], [&"gpt_pens", Vector2(12.3, -28.1)],
@@ -642,7 +645,7 @@ func blockers() -> Array[Rect2]:
 
 
 ## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear; then the service
-## yard's (KEEP_YARD, polish 2), then the cathedral close's (CLOSE_DECOR).
+## yard's (KEEP_YARD, polish 2), then the cathedral close's (CLOSE_DECOR), then the Keep's grounds' (KEEP_DECOR, polish 3).
 func court_decor() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row: Array in GARDEN_DECOR:
@@ -654,6 +657,8 @@ func court_decor() -> Array[Dictionary]:
 	for row: Array in YARD_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
 	for row: Array in CLOSE_DECOR:
+		out.append({"kind": row[0], "at": row[1], "size": row[2]})
+	for row: Array in KEEP_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": row[2]})
 	return out
 
@@ -986,8 +991,8 @@ func soldiers() -> int:
 ##   "yard"     the Keep's garrison in the barracks yard (POSTS_YARD; its first are the rescue squads), its last at
 ##              the drill yard's drill spots (drill_spots());
 ##   "walls"    two guards inside every gate of both rings, the exits' gates first (the west gate, the harbour gate, the
-##              barbican), two more outside the barbican, two at the Keep's barbican and two at its drawbridge
-##              gatehouse, two at each end of every bridge, and the harbour watch on the quays (HARBOUR_WATCH);
+##              barbican), two more outside the barbican, two at the Keep's watchtower (polish 3), two at each end
+##              of every bridge, and the harbour watch on the quays (HARBOUR_WATCH);
 ##   "citadel"  the Keep's garrison round the Citadel, on the rally ring (POSTS_CITADEL);
 ##   "patrol"   the wall patrols, in pairs at their loops' starts (patrol_loops()), then street patrols in pairs along
 ##              the streets inside both rings (STREET_PAIRS).
@@ -1027,6 +1032,11 @@ func soldier_posts() -> Dictionary:
 			var r: Rect2 = d.rect
 			walls.append(Vector2(r.position.x + 0.4, r.end.y + 0.45))
 			walls.append(Vector2(r.end.x - 0.4, r.end.y + 0.45))
+		elif d.tag == &"gpt_watchtower":
+			# The Keep's two guards (polish 3: the barbican's, once), either side of the watchtower's foot.
+			var r: Rect2 = d.rect
+			walls.append(Vector2(r.position.x - 0.3, r.end.y + 0.45))
+			walls.append(Vector2(r.end.x + 0.3, r.end.y + 0.45))
 	for r: Rect2 in BRIDGES:
 		var cx := r.get_center().x
 		var half := r.size.x * 0.5 + BRIDGE_GUARD_SIDE

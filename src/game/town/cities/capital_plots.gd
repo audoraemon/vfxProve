@@ -15,9 +15,11 @@ const ROLE := &"gpt"
 ## their facings read, as the showcase shows them (GptShowcase.MIRRORS). Every other set stands unturned: its mirrored
 ## painting would be lit from the right. The wagon and the hand cart stand parked in the Keep's service yard (polish 2).
 const TURNS := [&"gpt_wagon"]
-## Sets the capital no longer places (polish 1): the footbridge (its third crossing is the stone bridge set) and the
-## drawbridge (no gate of the capital faces open water: its river gates land the stone bridges).
-const UNUSED := [&"gpt_footbridge", &"gpt_drawbridge"]
+## Sets the capital no longer places: the footbridge (polish 1: its third crossing is the stone bridge set), the
+## drawbridge (no gate of the capital faces open water: its river gates land the stone bridges), and the barbican and
+## both alley steps (polish 3: the Keep's gate at the avenue's head read as a gatehouse in a lawn; their passages,
+## BuildingTypes.PASSAGE, stay for a later use).
+const UNUSED := [&"gpt_footbridge", &"gpt_drawbridge", &"gpt_barbican", &"gpt_alleysteps"]
 
 const SETS := {
 	&"gpt_alleysteps": [Vector2(0.9, 1.0), 32.0],

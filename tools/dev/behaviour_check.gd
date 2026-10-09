@@ -98,6 +98,11 @@ extends SceneTree
 ##          Whisper sends the nearest of the poor toward the shrine's door, at most REACH at a time, the last hop only when the
 ##          prayer inside is nearly over and his own would not end in a window of Faithful at the door; the result line gives
 ##          the longest idle stretch, and a line says how long the door was watched). --seed=, --board as tax.
+##   ringers  (v0.11 M3) The Bell-Ringers, --case=none (nothing cast) or play (Silent Doom on the town's bellkeeper once called;
+##          else on a carrier whose death would go unseen; else on the midpoint of two mates standing close, when it takes both and
+##          no one else; else Mind Whisper sends the nearest of one or two witnesses, none a soldier, six units off; else Discord on
+##          a carrier near the bell's foot or on the rope; never a loud power; the result line gives the longest idle stretch).
+##          --seed= picks the town; --board plays the board's version (its wishes heard) and stops at the main objective.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -168,6 +173,10 @@ const PRAYERS_FAR := 6.0
 const PRAYERS_EXIT := 12.0
 const PRAYERS_WALK := 8.0
 const PRAYERS_SLACK := 4.0
+## The Bell-Ringers' policy (v0.11 M3): how near two mates stand for one Silent Doom at their midpoint.
+const RINGERS_PAIR := 1.6
+## The Bell-Ringers' policy (v0.11 M3): how near the bell's foot a carrier draws Discord.
+const RINGERS_DISCORD := 8.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -273,6 +282,9 @@ func _run() -> void:
 	elif scenario == "prayers":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.FIRST_PRAYERS
+	elif scenario == "ringers":
+		powers = PackedStringArray(["doom", "whisper", "discord"])
+		mission.mission_id = MissionBook.BELL_RINGERS
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -328,6 +340,8 @@ func _run() -> void:
 			await _lamb(Battlefield.arg_value(args, "--case"))
 		"prayers":
 			await _prayers(Battlefield.arg_value(args, "--case"))
+		"ringers":
+			await _ringers(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1550,6 +1564,101 @@ func _lamb_act(rules: Rules, slots: Dictionary, d: EscortDirector, lamb: Person,
 		to = d._walkable(lamb.ground_pos + hop.normalized() * (MindWhisperFx.REACH - 0.5))
 	rules.cast(slots.whisper, lamb.ground_pos, {"target": lamb, "to": to})
 	return "whisper him to (%.1f, %.1f)" % [to.x, to.y]
+
+
+## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its
+## main objective is done, every LOOK_FRAMES with `play` the policy's move (`act.call()`: what it cast, or ""), printed; a report
+## every 10 s (`state.call()`); then the result, with the longest stretch between two casts as `idle` (the gate: 45 s or less).
+## `none` casts nothing.
+func _scripted(label: String, which: String, act: Callable, state: Callable) -> void:
+	var rules: Rules = mission._rules
+	_board_line()
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var t := 0.0
+	var frames := 0
+	var report_at := 10.0
+	var acts := {"last": 0.0, "longest": 0.0}
+	while not rules.finished and not rules.main_done and frames < max_frames:
+		await process_frame
+		frames += 1
+		t += mission.get_process_delta_time()
+		if t >= report_at:
+			report_at += 10.0
+			print("BEHAVIOUR %s t=%d %s" % [label, roundi(t), String(state.call())])
+		if which != "play" or frames % LOOK_FRAMES != 0:
+			continue
+		var did := String(act.call())
+		if did != "":
+			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
+			acts.longest = maxf(float(acts.longest), t - float(acts.last))
+			acts.last = t
+	acts.longest = maxf(float(acts.longest), t - float(acts.last))
+	print("BEHAVIOUR %s result %s %s idle=%.0f" % [label, _outcome(rules), String(state.call()), float(acts.longest)])
+
+
+## The Bell-Ringers (v0.11 M3), with mission spec §1's policy (_ringers_act()).
+func _ringers(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as BellRingersDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("ringers", which, func() -> String: return _ringers_act(rules, slots, d, crowd),
+		func() -> String: return "stopped=%d relays=%d running=%d phase=%s bell=%s" % [d.stopped(), int(d.report().relays),
+			d.running().size(), d.hint_phase(), _bell_state(crowd)])
+
+
+## One look of The Bell-Ringers' policy (v0.11 M3): what was cast, or "" for nothing.
+func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd) -> String:
+	var bell := crowd.bell
+	if d.called() and _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, bell.keeper.ground_pos)
+		return "doom the bellkeeper"
+	var going := d.running()
+	for r in going:
+		if WarningDirector._alive(r.messenger) and not r.messenger.inside and _tax_unseen(r.messenger, crowd) \
+				and _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, r.messenger.ground_pos)
+			return "doom the ringer"
+	for r in going:
+		var pair := r.mates_with()
+		if pair.size() >= 2 and pair[0].ground_pos.distance_to(pair[1].ground_pos) <= RINGERS_PAIR and _slot_ready(rules, slots, "doom"):
+			var mid := (pair[0].ground_pos + pair[1].ground_pos) * 0.5
+			if _ringers_only(crowd, mid, [pair[0], pair[1]]):
+				rules.cast(slots.doom, mid)
+				return "doom both mates"
+	for r in going:
+		if not WarningDirector._alive(r.messenger) or r.messenger.inside:
+			continue
+		var seeing := r.witnesses()
+		var soldier := false
+		var lone: Person = null
+		for p in seeing:
+			soldier = soldier or p.soldier
+			if not p.shaken() and (lone == null or p.ground_pos.distance_to(r.messenger.ground_pos)
+					< lone.ground_pos.distance_to(r.messenger.ground_pos)):
+				lone = p
+		if seeing.size() <= 2 and not soldier and lone != null and _slot_ready(rules, slots, "whisper"):
+			var away := lone.ground_pos + (lone.ground_pos - r.messenger.ground_pos).normalized() * 6.0
+			rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": away})
+			return "whisper a witness off"
+	for r in going:
+		if bell == null or not WarningDirector._alive(r.messenger) or r.messenger.inside:
+			continue
+		if (r.messenger.ground_pos.distance_to(bell.foot) <= RINGERS_DISCORD or bell.keeper == r.messenger) \
+				and _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, r.messenger.ground_pos)
+			return "discord the ringer"
+	return ""
+
+
+## Everyone a Silent Doom at `at` would take is one of `who` (v0.11 M3: both mates, and no one else).
+func _ringers_only(crowd: Crowd, at: Vector2, who: Array) -> bool:
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= SilentDoom.RADIUS \
+					and not who.has(p):
+				return false
+	return true
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

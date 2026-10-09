@@ -209,11 +209,12 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 
 
 ## Judged after the death, once a cast's other victims are dead too (as Crowd._settle_doom()): nobody living near, and
-## the warning dies; else the nearest witness carries it on -- to the keeper, or up the tower if the keeper is dead.
+## the warning dies; else the nearest witness carries it on -- to the keeper, or up the tower if the keeper is dead. v0.11 M3: the
+## witness is _relay_witness()'s.
 func _judge() -> void:
 	var at := _fell_at
 	_fell_at = Vector2.INF
-	var witness := crowd.nearest_witness(at)
+	var witness := _relay_witness(at)
 	if witness == null:
 		warning_dead = true
 		phase = Phase.OVER
@@ -225,6 +226,12 @@ func _judge() -> void:
 	phase = Phase.RUN
 	_retarget_in = RETARGET
 	_run(true)
+
+
+## Virtual (v0.11 M3): who carries the warning on from a death seen at `at` -- the nearest witness (Crowd.nearest_witness()); null
+## for none, and the warning dies. The Bell-Ringers' RingerDirector passes over the people the other warnings own.
+func _relay_witness(at: Vector2) -> Person:
+	return crowd.nearest_witness(at)
 
 
 func _on_cast(_slot: int, key: String, at: Vector2) -> void:

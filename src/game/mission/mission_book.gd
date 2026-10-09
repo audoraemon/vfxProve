@@ -58,7 +58,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
-	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers()]
+	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers()]
 	return out
 
 
@@ -168,6 +168,31 @@ static func first_prayers() -> MissionDef:
 	m.director = FirstPrayersDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new()]
+		return out
+	return m
+
+
+## The Bell-Ringers (v0.11 M3, Tier 2, mission spec §1 and §8 row 8): three watch posts each send a ringer for the bell, his mates
+## at his heels; stop all three warnings before the bell tolls (BellRingersDirector). Blight and The Bell Lies are left out of its
+## pool: either silences the bell outright.
+static func bell_ringers() -> MissionDef:
+	var m := _tier2(BELL_RINGERS, "The Bell-Ringers", PackedStringArray(["Three watch posts guard the walls.",
+		"Stop their ringers before the bell."]))
+	m.goal = "Stop the ringers of all three watch posts before the bell tolls"
+	m.goal_label = "The ringers are stopped"
+	m.lose = "The bell tolls, or dawn comes"
+	var pool := PackedStringArray()
+	for key in PowerBook.keys():
+		if not key in BellRingersDirector.LEFT_OUT:
+			pool.append(key)
+	m.pool = pool
+	m.camera_at = BellRingersDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "whisper", "discord"])
+	m.director = BellRingersDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [StarsObjective.new("Stop the ringers", "ringers", "Ringers stopped"), BellSilentObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

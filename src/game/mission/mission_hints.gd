@@ -61,6 +61,12 @@ const LINES := {
 	"lost_lamb.clear": "The watch is changing. Send him through the gate now.",
 	"first_prayers": "Whisper the poor (gold) to the old well shrine while no Faithful (red) watches. Three must pray.",
 	"first_prayers.watched": "Faithful (red) crowd the shrine's door. Draw them off, or let them go before you send anyone in.",
+	"bell_ringers": "Kill each ringer (gold) where no one (red) sees, before he climbs the bell tower. His mate runs with him.",
+	"bell_ringers.mates": "His mate (red) would see him die and run on. Draw him off or strike him first.",
+	"bell_ringers.relay": "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near.",
+	"bell_ringers.climbing": "He climbs the bell (gold). Pull him off with a whisper or a fright, or kill him unseen before the bar fills.",
+	"bell_ringers.bell": "The town calls its bellkeeper (blue). Stop him before the bell tolls.",
+	"bell_ringers.waiting": "That warning is dead. The next post (gold) sends its ringer soon. A loud power near a post sends him at once.",
 }
 
 

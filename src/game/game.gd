@@ -162,6 +162,8 @@ var _interlude: InterludeScreen
 ## drafts within the campaign's slots and budget, a finished night is recorded on it, and Pause and Results lead back to
 ## its night screen.
 var _in_campaign := false
+## --dev (capital plan, Task 15): the board shows its DEV tab, the dev-only missions (MissionBook.dev_missions()).
+var dev := false
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -193,6 +195,7 @@ static func locked_for(from: SaveFile, in_campaign: bool) -> PackedStringArray:
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
+	dev = "--dev" in args
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
@@ -406,6 +409,7 @@ func go_to(to: int) -> void:
 		Screen.BOARD:
 			var board := MissionBoard.new()
 			board.name = "Board"
+			board.dev = dev
 			add_child(board)
 			board.setup(save, mission_id)
 			board.action.connect(_on_board_action.bind(board))
@@ -426,7 +430,9 @@ func go_to(to: int) -> void:
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
-				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty, locked_for(save, false))
+				# A dev mission (the board's DEV tab) is no tier's: every power is open to it.
+				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty,
+					locked_for(save, not TierBook.has(mission_id)))
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:

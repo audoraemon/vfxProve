@@ -14,6 +14,8 @@ const FEAST_FESTIVAL := "feast_festival"
 const FEAST_PROCESSION := "feast_procession"
 ## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
 const CAPITAL_SANDBOX := "capital_sandbox"
+## Where the sandbox's intro sweep starts: the new town's street south of the eastern stone bridge.
+const CAPITAL_INTRO_FROM := Vector2(4.0, 16.0)
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -47,8 +49,10 @@ static func dev_missions() -> Array[MissionDef]:
 	return out
 
 
-## The capital's sandbox (Task 13 stub, for the bench; Task 15 finishes it): the capital, every power, no objectives but
-## a free-play clock like Last Judgement's skirmish. The camera rests on the market square, the town's busiest.
+## The capital's sandbox (capital plan, Tasks 13 and 15): the capital, every power, no objectives but a free-play clock
+## like Last Judgement's skirmish (won when it runs out). Dev-only: --mission=capital_sandbox, or the board's DEV tab
+## (--dev). Its intro sweeps in from the new town over the eastern stone bridge, past the old town's river gate, and
+## rests on the great market, the town's busiest (where the bench looks).
 static func capital_sandbox() -> MissionDef:
 	var m := MissionDef.new()
 	m.id = CAPITAL_SANDBOX
@@ -62,7 +66,7 @@ static func capital_sandbox() -> MissionDef:
 	m.city = &"capital"
 	m.clock = Rules.MISSION_SECONDS
 	m.camera_at = CapitalCity.MARKET_SQUARE.get_center()
-	m.intro_from = CapitalCity.MARKET_SQUARE.get_center() + Vector2(0.0, 6.0)
+	m.intro_from = CAPITAL_INTRO_FROM
 	m.default_loadout = PackedStringArray(Mission.DEFAULT_LOADOUT)
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]

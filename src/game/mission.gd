@@ -806,7 +806,15 @@ func _process(delta: float) -> void:
 
 
 func _pan(by: Vector2) -> void:
-	_bf.camera.position = (_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX)
+	var limits := pan_limits()
+	_bf.camera.position = (_bf.camera.position + by).clamp(limits.position, limits.end)
+
+
+## Where the camera may pan (screen px): PAN_MIN to PAN_MAX for Aldermere's 60-unit map, grown in proportion for a larger
+## city (the capital's 80: Task 15), so its far districts can be reached.
+static func pan_limits() -> Rect2:
+	var k := City.current().map().size.x / TownLayout.MAP.size.x
+	return Rect2(PAN_MIN * k, (PAN_MAX - PAN_MIN) * k)
 
 
 ## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line. The

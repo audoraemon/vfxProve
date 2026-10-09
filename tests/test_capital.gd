@@ -35,6 +35,89 @@ static func _sandbox(t) -> void:
 		listed = listed or d.id == MissionBook.CAPITAL_SANDBOX
 	t.check(not listed and not TierBook.has(MissionBook.CAPITAL_SANDBOX),
 		"capital_sandbox is dev-only: not on the board or in the campaign")
+	# Task 15: a free-play clock like Last Judgement's skirmish (won, not lost, when it runs out), six slots, no
+	# objective beyond it, and its own intro: in the capital, over the river onto the old town -- not Aldermere's.
+	var objectives: Array[Objective] = m.make_objectives.call()
+	t.check(m.clock == Rules.MISSION_SECONDS and m.slots == 6 and objectives.size() == 1 and objectives[0] is ClockObjective
+		and (objectives[0] as ClockObjective).succeeds, "capital_sandbox is free play on Last Judgement's clock")
+	var aldermere := MissionDef.new()
+	t.check(m.camera_at != aldermere.camera_at and m.intro_from != aldermere.intro_from
+		and CapitalCity.INNER.has_point(m.camera_at) and CapitalCity.MAP.has_point(m.intro_from)
+		and m.intro_from.y > CapitalCity.RIVER.end.y,
+		"its intro sweeps from beyond the river (%s) onto the old town (%s), not Aldermere's" % [m.intro_from, m.camera_at])
+	# Picked from the board (a dev entry), the board's def is MissionBook's: no tier, no wishes.
+	t.check(Mission.def_for(MissionBook.CAPITAL_SANDBOX, true, DescendState.new()).id == MissionBook.CAPITAL_SANDBOX,
+		"picked on the board, the sandbox is played as itself")
+	City.use(&"aldermere")
+	t.check(Mission.pan_limits() == Rect2(Mission.PAN_MIN, Mission.PAN_MAX - Mission.PAN_MIN), "Aldermere pans as before")
+	City.use(&"capital")
+	var reach := Mission.pan_limits()
+	t.check(reach.encloses(Rect2(Mission.PAN_MIN, Mission.PAN_MAX - Mission.PAN_MIN))
+		and reach.has_point(Iso.ground_to_screen(Vector2(-36.0, -36.0))) and reach.has_point(Iso.ground_to_screen(Vector2(30.0, 36.0))),
+		"the capital pans far enough to reach the monastery hill and the south-east fields (%s)" % reach)
+	City.use(&"aldermere")
+	_round_trip(t)
+
+
+## The sandbox builds the capital, and once it ends a mission in Aldermere builds Aldermere exactly as before (Review
+## Focus 1): the town, its people, its gates and the crowd's city-set rates, built and torn down as Mission does.
+static func _round_trip(t) -> void:
+	var before := _built_print(MissionBook.last_judgement())
+	var cap := _build_for(MissionBook.capital_sandbox())
+	t.check(City.current() is CapitalCity and (cap.crowd as Crowd).citizens.size() == City.current().citizens()
+		and Person.offscreen_every == City.current().offscreen_every(),
+		"the sandbox builds the capital and its crowd (%d citizens)" % (cap.crowd as Crowd).citizens.size())
+	_tear_down(cap)
+	var after := _built_print(MissionBook.last_judgement())
+	t.check(City.current().id() == &"aldermere" and after == before,
+		"after the sandbox, Last Judgement builds Aldermere identically (%s / %s)" % [before, after])
+
+
+## The world a mission builds for `def` (Mission.start()'s order: the city first, then the town, the grid and the crowd).
+static func _build_for(def: MissionDef) -> Dictionary:
+	City.use(def.city)
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = City.current().map()
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.spawn()
+	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd}
+
+
+## Mission.start()'s teardown of the last mission's world.
+static func _tear_down(b: Dictionary) -> void:
+	(b.town as Town).teardown()
+	(b.crowd as Crowd).clear()
+	(b.world as Node).free()
+	(b.town as Node).free()
+	(b.crowd as Node).free()
+
+
+## An md5 of what `def`'s mission builds: every structure, every person's place and job, the gates, the walk grid on a
+## lattice, and the crowd's city-set rates.
+static func _built_print(def: MissionDef) -> String:
+	var b := _build_for(def)
+	var rows := PackedStringArray()
+	for st: Structure in (b.env as EnvironmentField).structures():
+		rows.append("%s/%d/%s/%s" % [st.footprint, st.kind, st.role, st.art_tag])
+	var crowd: Crowd = b.crowd
+	for p: Person in crowd.citizens + crowd.soldiers:
+		rows.append("%s/%s/%s" % [p.ground_pos, p.profile.job if p.profile != null else "", p.anchor])
+	for g: Structure in (b.town as Town).gates:
+		rows.append("gate %s" % g.footprint)
+	var grid: WalkGrid = b.grid
+	var walk := ""
+	for i in 400:
+		walk += "1" if grid.walkable(Vector2(-29.5 + float(i % 20) * 3.0, -29.5 + float(i / 20) * 3.0)) else "0"
+	rows.append(walk)
+	rows.append("%s/%d/%s" % [crowd.gate_interval, Person.offscreen_every, crowd.post_counts])
+	_tear_down(b)
+	return "|".join(rows).md5_text()
 
 
 static func _water(t, c: CapitalCity) -> void:

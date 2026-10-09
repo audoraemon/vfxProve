@@ -132,15 +132,15 @@ static func _draw(t) -> void:
 		clashed = clashed or _ids(drawn).has("moneylender")
 		_release(drawn)
 	t.check(not clashed, "a wish that clashes with the mission's tags is never drawn")
-	var all := WishBook.draw(WishBook.pool(), 10, PackedStringArray(), s.crowd, s.town, _rng(4))
+	var all := WishBook.draw(WishBook.pool(), WishBook.pool().size() + 2, PackedStringArray(), s.crowd, s.town, _rng(4))
 	var people := []
 	var shared := false
 	for w in all:
-		for p: Variant in [w.wisher, w.get("target")]:
-			if p != null:
-				shared = shared or people.has(p)
-				people.append(p)
-	t.check(all.size() == WishBook.pool().size() and not shared, "asked for more than there are, it offers what it can; none share")
+		for p: Variant in w.people():
+			shared = shared or people.has(p)
+			people.append(p)
+	t.check(all.size() == WishBook.pool().size() and WishBook.pool().size() == 10 and not shared,
+		"asked for more than there are (v0.11 M2: the ten), it offers what it can; none share a person")
 	_release(all)
 	for st: Structure in (s.town as Town)._built:
 		if RuinWish.fits(st, "house"):

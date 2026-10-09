@@ -6,7 +6,7 @@ extends RefCounted
 var id := ""
 ## "Burn the moneylender's house": the HUD's line, and the results'.
 var text := ""
-## "ruin", "punish", "rescue", "mercy" or "sign".
+## "ruin", "punish", "rescue", "mercy", "sign" or (v0.11 M2) "faith".
 var kind := ""
 var reward := 0
 ## A Wish script (RuinWish, PunishWish, ...), made fresh for each night the wish is heard.

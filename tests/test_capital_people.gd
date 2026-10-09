@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_spawn(t, built)
 	_reachable(t, built)
 	_calm(t, built)
+	(built.crowd as Crowd).clear()  # also puts Person.offscreen_every back to Aldermere's
 	(built.world as Node).free()
 	(built.town as Node).free()
 	City.use(&"aldermere")

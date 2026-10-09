@@ -1021,7 +1021,8 @@ func _gates() -> void:
 func _heading_through(p: Person, gate: Structure, spots: Array[Vector2]) -> bool:
 	if not p.has_goal():
 		return p.queue_spot != Vector2.INF and spots.has(p.queue_spot)
-	BenchProf.count(&"heading_checks")
+	if BenchProf.on:
+		BenchProf.count(&"heading_checks")
 	return p.path_crosses(gate.footprint.grow(GATE_DOOR), GATE_AHEAD)
 
 
@@ -1739,6 +1740,8 @@ func clear() -> void:
 	_spots.clear()
 	_loops.clear()
 	gate_interval = GATE_INTERVAL
+	# The city's LOD rate goes with its crowd: nothing built after this one inherits it (setup() sets it again).
+	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	post_counts = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
 	_city_posts = false
 	alarm = 0.0

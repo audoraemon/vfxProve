@@ -278,6 +278,7 @@ static func _reach(t) -> void:
 		t.check(empty.is_empty(), "from the exit %s every district holds reachable ground (%s)" % [e, empty])
 	print("capital reachability: %d exits, %d anchors, %d citizens, %d soldiers, %d targets in all; all reachable: %s"
 		% [exits.size(), n_anchor, crowd.citizens.size(), crowd.soldiers.size(), targets.size(), all_ok])
+	crowd.clear()  # also puts Person.offscreen_every back to Aldermere's
 	world.free()
 	town.free()
 	City.use(&"aldermere")

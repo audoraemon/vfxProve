@@ -414,7 +414,8 @@ func frame(delta: float) -> void:
 	elif _offscreen_delta > 0.0:
 		delta += _offscreen_delta
 		_offscreen_delta = 0.0
-	BenchProf.count(&"people_ticked")
+	if BenchProf.on:
+		BenchProf.count(&"people_ticked")
 	tick(delta)
 	_refresh(delta)
 

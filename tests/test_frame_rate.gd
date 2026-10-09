@@ -12,8 +12,14 @@ static func run(t) -> void:
 	_offscreen(t, b)
 	_long_steps(t, b)
 	_evac_at_30(t, b)
+	(b.crowd as Crowd).clear()
+	t.check(Person.offscreen_every == Person.OFFSCREEN_EVERY,
+		"a capital crowd torn down leaves Person.offscreen_every at Aldermere's %d (%d)" % [Person.OFFSCREEN_EVERY,
+			Person.offscreen_every])
 	(b.world as Node).free()
 	(b.town as Node).free()
+	Person.offscreen_every = Person.OFFSCREEN_EVERY
+	Person.frame_no = -1
 	City.use(&"aldermere")
 
 
@@ -61,41 +67,44 @@ static func _offscreen(t, b: Dictionary) -> void:
 		"the capital's people off screen update half as often (every %d frames)" % (Person.OFFSCREEN_EVERY * 2))
 	var view := Person.view
 	Person.view = Rect2(-100000.0, -100000.0, 10.0, 10.0)  # the camera far away: nobody on screen
-	var ticked := 0
+	# Twelve successive frames (Person.frame_no: the test runner never advances the engine's own count), the people
+	# stepped as the crowd's ticker steps them.
 	var frames := 12
-	for k in frames:
-		BenchProf.reset()
-		BenchProf.on = true
-		crowd.step_people(1.0 / 60.0)
-		BenchProf.on = false
-		ticked += int(BenchProf._count.get(&"people_ticked", 0))
-	var n := crowd.citizens.size() + crowd.soldiers.size()
-	var share := float(ticked) / float(frames * n)
+	var everyone := _out_of_doors(crowd.citizens + crowd.soldiers)
+	var n := everyone.size()
+	var share := float(_ticks(everyone, frames)) / float(frames * n)
 	t.check(share > 0.12 and share < 0.22,
 		"off screen, a capital frame steps about a sixth of its %d calm people (%.2f), not a third" % [n, share])
-	# The fleeing keep Aldermere's rate: at 6 the capital's evacuation jammed at its gates.
+	# The fleeing keep Aldermere's rate: at 6 the capital's evacuation jammed at its gates. Counted over the citizens alone.
 	for p: Person in crowd.citizens:
 		p.mind = Person.Mind.FLEE
-	BenchProf.reset()
-	BenchProf.on = true
-	crowd.step_people(1.0 / 60.0)
-	BenchProf.on = false
-	var fled := float(BenchProf._count.get(&"people_ticked", 0) - _soldiers_ticked(crowd)) / crowd.citizens.size()
+	var fleeing := _out_of_doors(crowd.citizens)
+	var fled := float(_ticks(fleeing, frames)) / float(frames * fleeing.size())
 	for p: Person in crowd.citizens:
 		p.mind = Person.Mind.CALM
 	Person.view = view
-	t.check(fled > 0.25 and fled < 0.42, "off screen, the fleeing still step every 3rd frame (%.2f)" % fled)
+	t.check(fled > 0.28 and fled < 0.39, "off screen, the fleeing still step every 3rd frame (%.2f)" % fled)
 
 
-## How many soldiers stepped in the frame just run: those whose stagger falls on it, at the rate their state asks.
-static func _soldiers_ticked(crowd: Crowd) -> int:
-	var n := 0
-	var f := Engine.get_process_frames()
-	for p: Person in crowd.soldiers:
-		var every := Person.offscreen_every if p.unhurried() else Person.OFFSCREEN_EVERY
-		if (f + p.stagger_key()) % every == 0:
-			n += 1
-	return n
+## Those the crowd's ticker steps (nobody indoors).
+static func _out_of_doors(people: Array) -> Array:
+	return people.filter(func(p: Person) -> bool: return is_instance_valid(p) and not p.inside)
+
+
+## How many of `people` stepped over `frames` successive frames: each one's frame() run once a frame, as the crowd's
+## ticker runs it, and its steps counted where frame() counts them (BenchProf's people_ticked).
+static func _ticks(people: Array, frames: int) -> int:
+	var ticked := 0
+	for f in frames:
+		Person.frame_no = 1000 + f
+		BenchProf.reset()
+		BenchProf.on = true
+		for p: Person in people:
+			p.frame(1.0 / 60.0)
+		BenchProf.on = false
+		ticked += int(BenchProf._count.get(&"people_ticked", 0))
+	Person.frame_no = -1
+	return ticked
 
 
 ## A step longer than twice the arrival reach (DummyEnemy.ARRIVE): an off-screen runner at 30 fps steps every 3rd frame, a

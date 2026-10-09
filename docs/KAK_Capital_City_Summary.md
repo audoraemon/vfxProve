@@ -11,19 +11,21 @@ The capital is a second, river-port city about twice the size of Aldermere. Alde
 
 **Size and layout**
 - Map: 80×80.
-- Water: a river and a harbour basin, crossed by two stone bridges and a footbridge.
+- Water: a river and a harbour basin, crossed by three stone bridges.
 - Walls: two rings, with 9 gates including the south barbican, the west gate and a harbour gate.
 - Districts: 18.
 
 **Buildings**
-- 71 of the 73 ChatGPT building sets stand on 132 plots. The other two, the wagon and hand cart, are props.
+- 69 of the 73 ChatGPT building sets are placed. The wagon and hand cart are props; the footbridge and drawbridge are unused (the third crossing is a stone bridge, and no gate faces open water).
+- Water-side sets (crane, ferry landing, dock warehouses, wash houses, sluice) have their painted water cut out and stand over the real river (`cut_water` in `gpt_convert.py`, `BuildingTypes.OVER_WATER`).
+- The Keep courtyard: a royal garden (fountain, monument, pavilion, paths, hedges, flowers, benches) and a drill yard where Keep soldiers drill at practice dummies.
 - 162 houses.
 - The existing town sets: cathedral, barracks, taverns, smithy, stalls and farms.
 
 **People**
 - 422 citizens with routines: bread queue, wash houses, harbour, market and chapels.
 - 5 new roles: baker, washer, dockworker, monk and beggar. Monks count as clergy.
-- 182 soldiers: the Keep garrison, gates, patrols on both wall rings, the harbour and the bridges.
+- 180 soldiers: the Keep garrison, gates, patrols on both wall rings, the harbour and the bridges.
 
 **Evacuation**
 - Each district leaves by its own exits.
@@ -52,20 +54,20 @@ The capital is a second, river-port city about twice the size of Aldermere. Alde
 - The `--dev` flag shows a DEV tab on the mission board (or press D).
 - Desktop shortcuts: `KAK Tests\4 Capital\`, with Town and Mission.
 
-## Gates (final, HEAD abfae36)
+## Gates (HEAD after polish 1)
 
 | Check | Result |
 |---|---|
-| Full suite | 5967 checks, 0 failures, 0 SCRIPT ERROR |
+| Full suite | 6142 checks, 0 failures, 0 SCRIPT ERROR |
 | FLOW | 109 checks, 0 failures |
 | Aldermere digest | `61267b7e90524d800bf1c3473a71146b` (unchanged) |
 | crowd_check | `-346732806` (unchanged) |
 | Behaviour checksums | calm, gates, fire, rite, boats, clip, powers, soldiers, warning and miras all unchanged |
-| capital_calm | `-370675099` |
-| capital_evac | `-870513036` |
+| capital_calm | `-302692572` |
+| capital_evac | `-799281245` |
 | Reachability | 1461 targets from every exit, all reachable; all 18 districts |
-| Evacuation, 60 fps | 419 of 422 escape, 0 stuck, 0 in the river |
-| Evacuation, 30 fps | 419 of 422 escape, 0 stuck, 0 in the river |
+| Evacuation, 60 fps | 417 of 422 escape; 1 pushed against a wall cell and stuck; one person on the falling bridge wades ashore in 4 frames |
+| Evacuation, 30 fps | 416 of 422 escape, 0 stuck, 0 in the river |
 
 ## Bench
 
@@ -80,13 +82,11 @@ Medians of 3 alternating pairs. Another session's Godot was open in most runs, s
 ## Accepted gaps and choices
 
 **Art gaps** (nothing generated):
-- a long footbridge;
 - an aqueduct end piece;
-- a dry-ground gatehouse and drawbridge;
+- training dummies, weapon racks and true hedges (the drill yard uses scarecrows; the garden uses bushes);
 - a ragged look for beggars.
 
 **Placement compromises:**
-- The drawbridge's moat sits on dry ground in the Keep.
 - The barbican set is a Keep outwork.
 - The district gate is a freestanding arch.
 - The new town's corner towers stand 0.7 cells into the river.

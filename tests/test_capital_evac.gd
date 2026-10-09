@@ -391,6 +391,8 @@ static func _evacuation(t, b: Dictionary) -> void:
 	print("capital evac: the cut bridge's users rerouted over another crossing or to the ferry %d, calm stragglers %d, stuck %d, in the river %d"
 		% [other, calmed, stuck.size(), violations.size()])
 	t.check(users.size() >= 10, "the east bridge was in use when it fell (%d users)" % users.size())
+	# A few stragglers are the known bug; many would be a new failure hiding behind it.
+	t.check(calmed <= 5, "at most 5 of its users are calm stragglers (%d)" % calmed)
 	t.check(not_rerouted.is_empty() and other >= 3,
 		"its users reroute to another crossing or the ferry (%d did; not rerouted %s)" % [other, not_rerouted.slice(0, 5)])
 	t.check(stuck.is_empty(), "nobody is stuck for %d s (%d: %s)" % [STUCK_SECONDS, stuck.size(), stuck.values().slice(0, 5)])

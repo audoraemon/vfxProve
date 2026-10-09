@@ -195,5 +195,5 @@ static func _calm(t, b: Dictionary) -> void:
 		calm = calm and is_instance_valid(p) and p.mind != Person.Mind.FLEE
 	print("capital calm minute: arrivals %s" % [arrived])
 	for k: String in places:
-		t.check(int(arrived.get(k, 0)) >= 1, "in a calm minute someone arrives at the %s (%d)" % [k, int(arrived.get(k, 0))])
+		t.check(int(arrived.get(k, 0)) >= 3, "in a calm minute at least three arrive at the %s (%d)" % [k, int(arrived.get(k, 0))])
 	t.check(calm, "the capital stays calm")

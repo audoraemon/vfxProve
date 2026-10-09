@@ -205,6 +205,10 @@ var inside := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
+## The city's water (CityDef.rivers()), read again whenever the city changes: nobody steps off dry ground into it
+## (_step_blocked()).
+static var _rivers: Array[Rect2] = []
+static var _rivers_of: CityDef
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0
 ## This person's spot in a gate's waiting crowd, or Vector2.INF. While set, it walks there and stands; the gate
@@ -571,6 +575,14 @@ func _base_speed() -> float:
 ## Whether it is on its way somewhere (a goal it has not reached).
 func has_goal() -> bool:
 	return _goal != Vector2.INF
+
+
+## Whether the path ahead (the waypoint it is walking to and the `ahead` after it) runs through `r`.
+func path_crosses(r: Rect2, ahead: int) -> bool:
+	for k in range(maxi(_leg - 1, 0), mini(_leg + ahead, _path.size())):
+		if r.has_point(_path[k]):
+			return true
+	return false
 
 
 ## Walk to `g` along the grid's path. A goal inside a building routes to its doorstep.
@@ -1322,11 +1334,39 @@ func _plan_exit() -> void:
 	elif grid != null:
 		exit = grid.nearest_exit(ground_pos)
 	if exit == Vector2.INF:
-		# Sealed in: mill about and try again shortly.
+		# Sealed in: mill about and try again shortly -- or, stranded in the river (a bridge fell under it), first make
+		# for the nearest dry ground.
 		_repath_in = 1.5
+		if grid != null and not grid.walkable(ground_pos) and _in_river(ground_pos):
+			var land := grid.nearest_walkable(ground_pos)
+			if land != Vector2.INF:
+				_target = land
+				return
 		_drift()
 		return
 	set_goal(exit)
+
+
+static func _in_river(g: Vector2) -> bool:
+	if City.active != _rivers_of:
+		_rivers_of = City.current()
+		_rivers = _rivers_of.rivers()
+	for r: Rect2 in _rivers:
+		if r.has_point(g):
+			return true
+	return false
+
+
+## The base unit's rule (a building's margin), and never off dry ground into the water -- a river cell the walk grid
+## keeps closed: a straight walk to a target (a scurry, a drift, a queue spot) can cut a bank's corner. One standing in
+## the water (a bridge fell under it) may step anyway, and wades out.
+func _step_blocked(step: Vector2) -> bool:
+	if super(step):
+		return true
+	if grid == null:
+		return false
+	var to := ground_pos + step
+	return not grid.walkable(to) and _in_river(to) and grid.walkable(ground_pos)
 
 
 ## Soldiers only: stand at `at` (its starting post, or a slot on the Citadel's rally ring), at a walk or, `hurried`

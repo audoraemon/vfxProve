@@ -143,8 +143,9 @@ func jobs() -> Array:
 	if is_instance_valid(_town):
 		if not _evacuating():
 			routes.append_array(_town.gates)
-		if is_instance_valid(_town.bridge):
-			routes.append(_town.bridge)
+		for b in _town.bridges:
+			if is_instance_valid(b):
+				routes.append(b)
 		if is_instance_valid(_town.dock):
 			routes.append(_town.dock)
 	for s in routes:

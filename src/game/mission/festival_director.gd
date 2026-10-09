@@ -17,7 +17,7 @@ const SAMPLE := 0.25
 const GUARDS := 6
 ## Roles that never come: the town's responders, the Mayor and the Prince.
 const SKIP_ROLES := [CitizenProfile.Role.BELLKEEPER, CitizenProfile.Role.WATCHMAN, CitizenProfile.Role.CLERGY,
-	CitizenProfile.Role.ENGINEER, CitizenProfile.Role.MAYOR, CitizenProfile.Role.NOBLE]
+	CitizenProfile.Role.ENGINEER, CitizenProfile.Role.MAYOR, CitizenProfile.Role.NOBLE, CitizenProfile.Role.MONK]
 ## What a goer is doing when the festival has lost it: afraid, or running for a roof. Both come only from a fright
 ## (Person.panic(): a power's danger, a seen death, a collapse or a fire the god caused, the Mayor's death).
 ## v0.09.1 "Calm the feast": FLEE is not here -- a citizen flees only when the town itself sends it (its evacuation, a

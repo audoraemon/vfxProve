@@ -13,6 +13,9 @@ const CONGESTION := 0.5
 ## Per person waiting at the dock: the boat carries RiverFerry.LOAD every LOAD_TIME + TRIP seconds, slower than a gate.
 const BOAT_CONGESTION := 0.7
 const HAZARD := 4.0
+## A city with ways out by district (CityDef.district_exits(), the capital): an exit not among a citizen's district's
+## costs this much more, so it is taken only when its own are cut off or much worse.
+const DISTRICT_DETOUR := 20.0
 const HAZARD_GATE := 20.0
 ## Route steps (walk cells) sampled for danger from where a person stands.
 const ROUTE_STEPS := 24
@@ -51,6 +54,8 @@ var _threat_epoch := -1
 var _due := 0.0
 var _at := 0
 var _clock := 0.0
+## District name -> its exits (CityDef.district_exits()); empty: any exit.
+var _district_exits := {}
 
 
 func setup(crowd: Crowd, grid: WalkGrid, town: Town, seed_value: int) -> EvacuationManager:
@@ -62,6 +67,7 @@ func setup(crowd: Crowd, grid: WalkGrid, town: Town, seed_value: int) -> Evacuat
 	_w = r.size.x
 	_h = r.size.y
 	_town = town
+	_district_exits = City.current().district_exits()
 	for e: Vector2 in City.current().exits():
 		_add_exit(e)
 	_rebuild_all()
@@ -154,6 +160,10 @@ func score(p: Person, i: int) -> float:
 		if _known_unsafe(p, gate.center() - Crowd.outward_of(gate) * Crowd.QUEUE_DEPTH0):
 			s += HAZARD_GATE
 	s += HAZARD * _route_danger(p, i)
+	if not _district_exits.is_empty() and i != boat_exit and p.profile != null:
+		var mine: Array = _district_exits.get(p.profile.district, [])
+		if not mine.is_empty() and not exits[i] in mine:
+			s += DISTRICT_DETOUR
 	if _crowd.alarms.stage == AlarmManager.Stage.COLLAPSE:
 		s *= 1.0 + _rng.randf() * COLLAPSE_NOISE
 	return s

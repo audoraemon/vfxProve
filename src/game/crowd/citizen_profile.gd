@@ -82,3 +82,8 @@ static func role_for(i: int, n: int) -> Role:
 
 func works() -> bool:
 	return work != Vector2.INF
+
+
+## Whether `r` is a cleric: the clergy, or the capital's monks (clergy wherever the clergy are told apart).
+static func is_clergy(r: int) -> bool:
+	return r == Role.CLERGY or r == Role.MONK

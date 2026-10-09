@@ -18,7 +18,7 @@ const GATHER_SPACING := 0.45
 ## How firmly it holds (Person.WILL_FIRM .. WILL_ABSOLUTE).
 const MOVEMENT_PRIORITY := 0.8
 ## Who may resist, by what they are (MadnessManager.kind_of()): the chance, times RESISTANCE_MULTIPLIER.
-const RESISTANCE := {&"soldier": 1.0, &"clergy": 0.35, &"bellkeeper": 0.5, &"engineer": 0.5}
+const RESISTANCE := {&"soldier": 1.0, &"clergy": 0.35, &"monk": 0.35, &"bellkeeper": 0.5, &"engineer": 0.5}
 const RESISTANCE_MULTIPLIER := 1.0
 ## What the cast unsettles the town by (read by Crowd.on_cast() from the book entry).
 const ALARM_GENERATED := 0.3

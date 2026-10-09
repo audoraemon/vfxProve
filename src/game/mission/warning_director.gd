@@ -78,7 +78,7 @@ func _appoint_watchman() -> Person:
 	for p in crowd.citizens:
 		if not _alive(p) or p.profile == null or p.inside or p == keeper or reserved.has(p):
 			continue
-		if p.profile.role in [CitizenProfile.Role.CLERGY, CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
+		if CitizenProfile.is_clergy(p.profile.role) or p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
 			continue
 		if best == null or p.ground_pos.distance_to(gate_spot) < best.ground_pos.distance_to(gate_spot):
 			best = p

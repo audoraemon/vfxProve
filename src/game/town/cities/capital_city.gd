@@ -274,6 +274,23 @@ const DISTRICT_TABLE := [
 	[&"suburbs", Rect2(-30, 34, 36, 6), &"outside"],
 	[&"tournament_field", Rect2(6, 34, 16, 6), &"outside"],
 ]
+## The garrison (soldier_posts()): the Keep's yard and Citadel ring; how far inside a gate its two guards stand and how
+## far apart; how far beside a bridge its bank guards stand; the harbour watch on the quays; the wall loops
+## (patrol_loops(): how far inside the wall's face, a point about every LOOP_STEP, walkers per ring, the old town's
+## first) and the street patrols' pairs.
+const POSTS_YARD := 24
+const POSTS_CITADEL := 30
+const GUARD_IN := 1.6
+const GUARD_SIDE := 1.4
+const BRIDGE_GUARD_SIDE := 1.0
+const HARBOUR_WATCH := [Vector2(19.6, -8.0), Vector2(21.0, -2.9), Vector2(24.0, -2.9), Vector2(27.2, -2.9),
+	Vector2(28.7, -4.0), Vector2(33.3, -4.0), Vector2(30.2, -8.0), Vector2(36.0, -6.0)]
+const LOOP_IN := 1.0
+const LOOP_STEP := 3.0
+const LOOP_WALKERS := [24, 20]
+const STREET_PAIRS := 20
+## One person through a gate this often (gate_interval()).
+const GATE_INTERVAL := 1.0
 ## A house block narrower than this either way is left as street.
 const BLOCK_MIN := 1.0
 ## How deep the cobbled queue ground inside each gatehouse is, and its gap from the gate towers.
@@ -437,7 +454,7 @@ func houses() -> Array[Rect2]:
 				n += 1
 				var jitter: float = style[3] if style.size() > 3 else 0.0
 				for h: Rect2 in CapitalPlots.row(block.grow(-HOUSE_STREET_CLEAR), style[0], style[1], n, jitter):
-					var ok := inside[0].encloses(h) or inside[1].encloses(h)
+					var ok := (inside[0].encloses(h) or inside[1].encloses(h)) and not _in_fan(h)
 					for k: Rect2 in keep_off:
 						ok = ok and not k.intersects(h)
 					if ok:
@@ -760,9 +777,156 @@ func citizens() -> int:
 	return n
 
 
-## Aldermere's 100 until the capital's own garrison (Task 12).
+## The garrison: every post soldier_posts() lays out, about 180.
 func soldiers() -> int:
-	return Crowd.SOLDIERS
+	var n := 0
+	var posts := soldier_posts()
+	for k: String in posts:
+		n += (posts[k] as Array).size()
+	return n
+
+
+## Where the soldiers stand (spec section 3), by the crowd's groups (CityDef.soldier_posts()):
+##   "yard"     the Keep's garrison drilling in the barracks yard (POSTS_YARD; its first are the rescue squads);
+##   "walls"    two guards inside every gate of both rings, the exits' gates first (the west gate, the harbour gate, the
+##              barbican), two more outside the barbican, two at the Keep's barbican and two at its drawbridge
+##              gatehouse, two at each end of every bridge, and the harbour watch on the quays (HARBOUR_WATCH);
+##   "citadel"  the Keep's garrison round the Citadel, on the rally ring (POSTS_CITADEL);
+##   "patrol"   the wall patrols, in pairs at their loops' starts (patrol_loops()), then street patrols in pairs along
+##              the streets inside both rings (STREET_PAIRS).
+## Worked out once.
+func soldier_posts() -> Dictionary:
+	if not _posts.is_empty():
+		return _posts.duplicate(true)
+	var yard: Array[Vector2] = []
+	var cols := 8
+	for k in POSTS_YARD:
+		yard.append(BARRACKS_YARD.position + Vector2(0.35 + (k % cols) * (BARRACKS_YARD.size.x - 0.7) / (cols - 1),
+			0.4 + (k / cols) * 0.6))
+	var walls: Array[Vector2] = []
+	var gates: Array = []  # [ring, gate point], the exits' gates first
+	for k in [0, 4]:
+		gates.append([INNER, INNER_GATES[k]])
+	gates.append([OUTER, OUTER_GATES[3]])
+	for k in [1, 2, 3]:
+		gates.append([INNER, INNER_GATES[k]])
+	for k in [0, 1, 2]:
+		gates.append([OUTER, OUTER_GATES[k]])
+	for g: Array in gates:
+		var inward := _inward(g[0], g[1])
+		var mid := _wall_mid(g[0], g[1])
+		var side := Vector2(-inward.y, inward.x)
+		for sgn: float in [-1.0, 1.0]:
+			walls.append(mid + inward * GUARD_IN + side * GUARD_SIDE * sgn)
+	var barbican: Vector2 = OUTER_GATES[3]
+	var b_out := -_inward(OUTER, barbican)
+	for sgn: float in [-1.0, 1.0]:
+		walls.append(_wall_mid(OUTER, barbican) + b_out * GUARD_IN + Vector2(-b_out.y, b_out.x) * GUARD_SIDE * sgn)
+	for d: Dictionary in _buildings():
+		if d.tag in [&"gpt_barbican", &"gpt_drawbridge"]:
+			var r: Rect2 = d.rect
+			walls.append(Vector2(r.position.x + 0.4, r.end.y + 0.45))
+			walls.append(Vector2(r.end.x - 0.4, r.end.y + 0.45))
+	for r: Rect2 in BRIDGES + [FOOTBRIDGE]:
+		var cx := r.get_center().x
+		var half := r.size.x * 0.5 + BRIDGE_GUARD_SIDE
+		# The north end on the bank beside the bridge, the south end just inside the new town's gate.
+		walls.append(Vector2(cx - half, RIVER.position.y - 1.0))
+		walls.append(Vector2(cx + half, RIVER.position.y - 1.0))
+		walls.append(Vector2(cx - 0.5, OUTER.position.y + 1.3))
+		walls.append(Vector2(cx + 0.5, OUTER.position.y + 1.3))
+	walls.append_array(_vectors(HARBOUR_WATCH))
+	var citadel: Array[Vector2] = []
+	for k in POSTS_CITADEL:
+		var a := TAU * float(k) / float(POSTS_CITADEL)
+		citadel.append(CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * Crowd.RING_RADIUS)
+	var patrol: Array[Vector2] = []
+	for loop: Dictionary in patrol_loops():
+		var points: Array = loop.points
+		var pairs := int(loop.walkers) / 2
+		for k in pairs:
+			var at: Vector2 = points[CityDef.loop_start(k, pairs, points.size())]
+			patrol.append(at)
+			patrol.append(at)
+	var streets: Array[Rect2] = []
+	for ring: Rect2 in [INNER, OUTER]:
+		for road: Rect2 in roads():
+			var r := road.intersection(ring.grow(-TownLayout.WALL_T - 1.0))
+			if r.size.x > 2.0 or r.size.y > 2.0:
+				streets.append(r)
+	for i in STREET_PAIRS:
+		var road := streets[i % streets.size()]
+		var along := (float(i / streets.size()) + 0.5) / ceilf(float(STREET_PAIRS) / streets.size())
+		var at := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \
+			else Vector2(lerpf(road.position.x, road.end.x, along), road.get_center().y)
+		patrol.append(at)
+		patrol.append(at)
+	_posts = {"yard": yard, "walls": walls, "citadel": citadel, "patrol": patrol}
+	return _posts.duplicate(true)
+
+
+## The wall patrols' loops: one just inside each ring's wall (LOOP_IN from its inner face), a point about every
+## LOOP_STEP round it, clockwise on the plan from the north-west corner; walked in pairs by LOOP_WALKERS of each ring.
+func patrol_loops() -> Array:
+	var out: Array = []
+	for k in 2:
+		var ring: Rect2 = [INNER, OUTER][k]
+		var r := ring.grow(-TownLayout.WALL_T - LOOP_IN)
+		var corners := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
+		var points: Array[Vector2] = []
+		for c in 4:
+			var a: Vector2 = corners[c]
+			var b: Vector2 = corners[(c + 1) % 4]
+			var n := maxi(1, roundi(a.distance_to(b) / LOOP_STEP))
+			for j in n:
+				points.append(a.lerp(b, float(j) / float(n)))
+		out.append({"points": points, "walkers": LOOP_WALKERS[k]})
+	return out
+
+
+## Each district's ways out (spec section 3): the new town's quarters by the barbican and the south road only; the old
+## town by its west gate, over the bridges to the barbican, or (its east side and the guilds) the harbour gate to the
+## ferry; the harbour by its ferry, or back through the town; the countryside by whichever road or landing serves it.
+func district_exits() -> Dictionary:
+	var ex := exits()
+	var south: Vector2 = ex[0]
+	var west: Vector2 = ex[1]
+	var ferry: Vector2 = ex[2]
+	return {
+		&"royal_keep": [west, south], &"noble_quarter": [west, south], &"cathedral_square": [west, south, ferry],
+		&"guild_quarter": [ferry, south, west], &"great_market": [west, south], &"old_town_houses": [south, ferry, west],
+		&"harbour_district": [ferry, south], &"crafts_quarter": [south], &"new_town": [south], &"tanners_dyers": [south],
+		&"poor_quarter": [south], &"road_quarter": [south], &"monastery_hill": [west], &"northern_woods": [ferry, west],
+		&"west_farms": [south], &"south_east_fields": [south], &"suburbs": [south], &"tournament_field": [south],
+	}
+
+
+## A ring gate's way out is away from its ring: the old town's west gate west, its river gates south over the bridges,
+## its harbour gate east; the new town's river gates north over the bridges and the barbican south. A gate's crowd waits
+## on its ring's side, so the old town queues for the bridges and the new town for the barbican, while those coming off
+## a bridge into the new town walk straight on. INF for anything else.
+func gate_outward(gate: Rect2) -> Vector2:
+	if _outward.is_empty():
+		for ring: Array in _rings():
+			for at: Vector2 in ring[1]:
+				_outward[TownLayout.ring_gatehouse(ring[0], at).gate] = -_inward(ring[0], at)
+	return _outward.get(gate, Vector2.INF)
+
+
+## The capital's gatehouses are wide double gates: two pass in the time Aldermere's lets one (Crowd.GATE_INTERVAL).
+func gate_interval() -> float:
+	return GATE_INTERVAL
+
+
+## A bridge falls into the water and closes it; its ends on the banks and in the gates stay open ground.
+func fallen_bridge(footprint: Rect2) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for r: Rect2 in rivers():
+		if r.intersects(footprint):
+			out.append(r.intersection(footprint))
+	if out.is_empty():
+		out.append(footprint)
+	return out
 
 
 ## Torch posts: the market square's four corners first (TownDecor strings bunting between them), then two inside
@@ -861,6 +1025,8 @@ static var _gardens_done := false
 static var _props: Array[Dictionary] = []
 static var _props_done := false
 static var _fans: Array[PackedVector2Array] = []
+static var _posts := {}
+static var _outward := {}
 
 
 ## The walls, towers and gatehouses of both rings, old town first.

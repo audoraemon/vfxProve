@@ -8,6 +8,10 @@ extends SceneTree
 ##   capital_calm  the calm scenario in the capital (City.use(&"capital"), its ~420 citizens dealt by district): where
 ##          citizens are every 20 s, and arrivals at its routine places (the bread queue, the wash houses, the harbour,
 ##          the chapels) over the run
+##   capital_evac  (the capital) after 20 s of calm, an alarm in the old town houses (a district in emergency, the bell,
+##          the alarm to 100) and its evacuation; 10 s in, the east stone bridge brought down. Every 10 s over 180 s: the
+##          stage, evacuees by way out, those waiting at gates, escapes, crossings of each bridge, the cut bridge's users
+##          rerouted, anyone standing still 10 s (not waiting at a gate), anyone ever in the river; when the town cleared
 ##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
 ##   gates  an evacuation called after 20 s of calm; --hazard puts a lasting danger on the Main Gate's approach at
@@ -174,6 +178,10 @@ const FEAST_DP := CampaignDef.START_DP + 2 * CampaignDef.WIN_DP
 const FINALE_SLOTS := 6
 const FINALE_DP := CampaignDef.START_DP + 3 * CampaignDef.WIN_DP
 
+## The capital's evacuation (capital_evac): how long it runs after the alarm, and when the east stone bridge falls.
+const CAPITAL_EVAC_SECONDS := 180.0
+const CAPITAL_CUT_AT := 10.0
+
 var mission: Mission
 
 
@@ -227,7 +235,7 @@ func _run() -> void:
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
-	elif scenario == "capital_calm":
+	elif scenario == "capital_calm" or scenario == "capital_evac":
 		City.use(&"capital")
 		mission.city = &"capital"
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
@@ -238,6 +246,8 @@ func _run() -> void:
 			await _calm(seconds, "--shots" in args)
 		"capital_calm":
 			await _capital_calm(seconds)
+		"capital_evac":
+			await _capital_evac(seconds if Battlefield.arg_value(args, "--seconds") != "" else CAPITAL_EVAC_SECONDS)
 		"strike":
 			await _strike("--shots" in args)
 		"escalate":
@@ -335,6 +345,123 @@ func _capital_calm(seconds: float) -> void:
 		if roundi(t) % 20 == 0:
 			print("BEHAVIOUR capital_calm t=%d %s" % [roundi(t), _places()])
 	print("BEHAVIOUR capital_calm arrivals %s" % [arrived])
+
+
+## The capital's evacuation (Task 12): an alarm in the old town houses after 20 s of calm, the east stone bridge cut at
+## CAPITAL_CUT_AT, reported every 10 s. A user of the cut bridge is one standing on it or with it on its path when it
+## falls; it has rerouted once it crosses another bridge, makes for the ferry or the west road, or has escaped.
+func _capital_evac(seconds: float) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var town: Town = mission._town
+	var grid: WalkGrid = mission._grid
+	var c := City.current() as CapitalCity
+	var ex := c.exits()
+	print("BEHAVIOUR capital_evac city=%s citizens=%d soldiers=%d" % [c.id(), crowd.citizens.size(), crowd.soldiers.size()])
+	var old_town := c.landmark(&"old_town_houses")
+	for k in AlarmManager.LOCAL_EVENTS:
+		crowd.alarms.incident(old_town.get_center())
+	crowd.alarms.bell_rung = true
+	crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+	crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+	crowd.add_alarm(100.0)
+	var names := {CapitalCity.BRIDGES[0]: "west", CapitalCity.BRIDGES[1]: "east", CapitalCity.FOOTBRIDGE: "foot"}
+	var cut_rect: Rect2 = CapitalCity.BRIDGES[1]
+	var crossed := {}  # person -> {bridge name: frame first on it}
+	var users: Array = []
+	var still := {}  # person -> [where, since]
+	var stuck := {}
+	var river := 0
+	var caught := {}  # person -> frame it reached dry ground (-1: still in the water)
+	var cleared := -1.0
+	var frame := 0
+	var t := 0.0
+	while t < seconds:
+		await process_frame
+		frame += 1
+		t = frame / 60.0
+		if frame == roundi(CAPITAL_CUT_AT * 60.0):
+			for st: Structure in town.bridges:
+				if st.footprint == cut_rect:
+					for p: Person in crowd.citizens:
+						if is_instance_valid(p) and p.is_alive() and (cut_rect.has_point(p.ground_pos)
+								or p.path_crosses(cut_rect, 1000)):
+							users.append(p)
+							if CapitalCity.RIVER.has_point(p.ground_pos) and cut_rect.has_point(p.ground_pos):
+								caught[p] = -1
+					st.destroy(st.center(), &"nova")
+			print("BEHAVIOUR capital_evac t=%d east bridge down, users %d (on its water %d)" % [roundi(t), users.size(),
+				caught.size()])
+		var living := 0
+		for p: Person in crowd.citizens:
+			if not is_instance_valid(p) or not p.is_alive():
+				continue
+			# Those staying at a duty (the engineers' teams, the clergy and the bellkeeper) are not evacuees.
+			living += 0 if p.inside or p.engineer_duty or p.mind == Person.Mind.DUTY 				or p.profile.role == CitizenProfile.Role.ENGINEER else 1
+			var g := p.ground_pos
+			for r: Rect2 in names:
+				if r.has_point(g):
+					var seen: Dictionary = crossed.get(p, {})
+					if not seen.has(names[r]):
+						seen[names[r]] = frame
+					crossed[p] = seen
+			if not grid.walkable(g) and (CapitalCity.RIVER.has_point(g) or CapitalCity.HARBOUR.has_point(g)):
+				if not caught.has(p) or int(caught[p]) >= 0:
+					river += 1  # in the water, and not one wading out from the fallen span
+			elif caught.has(p) and int(caught[p]) < 0:
+				caught[p] = frame
+			if p.mind == Person.Mind.FLEE and p.queue_spot == Vector2.INF and p.passing_gate == null:
+				var e: Array = still.get(p, [])
+				if e.is_empty() or (e[0] as Vector2).distance_to(g) > 0.5:
+					still[p] = [g, frame]
+				elif frame - int(e[1]) > 10 * 60:
+					stuck[p] = true
+			else:
+				still.erase(p)
+		if cleared < 0.0 and living == 0:
+			cleared = t
+		if frame % 600 != 0:
+			continue
+		var by_exit := {}
+		var waiting := 0
+		for p: Person in crowd.citizens:
+			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.FLEE:
+				continue
+			var i := ex.find(p.goal())
+			var k: String = ["south", "west", "ferry"][i] if i >= 0 else ("boat" if crowd.evac.is_boat_exit(p.goal()) else "none")
+			by_exit[k] = int(by_exit.get(k, 0)) + 1
+			waiting += 1 if p.queue_spot != Vector2.INF else 0
+		var over := {}
+		for p in crossed:
+			for n: String in crossed[p]:
+				over[n] = int(over.get(n, 0)) + 1
+		var rerouted := 0
+		var cut_frame := roundi(CAPITAL_CUT_AT * 60.0)
+		for p in users:
+			if not is_instance_valid(p) or not crowd.citizens.has(p):
+				rerouted += 1
+				continue
+			var seen: Dictionary = crossed.get(p, {})
+			var other := false
+			for n: String in seen:
+				other = other or (n != "east" and int(seen[n]) > cut_frame)
+			if other or p.goal() == ex[1] or p.goal() == ex[2] or crowd.evac.is_boat_exit(p.goal()):
+				rerouted += 1
+		print("BEHAVIOUR capital_evac t=%d stage=%s evacuees in town %d by exit %s waiting %d escaped %d dead %d crossed %s users %d rerouted %d stuck %d river %d" % [
+			roundi(t), crowd.alarms.stage_name(), living, by_exit, waiting, crowd.escaped_count, crowd.killed_citizens,
+			over, users.size(), rerouted, stuck.size(), river])
+	var ashore := 0.0
+	for p in caught:
+		ashore = maxf(ashore, (int(caught[p]) - roundi(CAPITAL_CUT_AT * 60.0)) / 60.0 if int(caught[p]) >= 0 else INF)
+	var left := []
+	for p: Person in crowd.citizens:
+		if is_instance_valid(p) and p.is_alive():
+			left.append("%s%s %s %s" % [p.profile.job, " (%s)" % CitizenProfile.Role.keys()[p.profile.role].to_lower()
+				if p.profile.role != CitizenProfile.JOBS[p.profile.job][0] else "",
+				Person.Mind.keys()[p.mind], p.ground_pos.snapped(Vector2(0.1, 0.1))])
+	print("BEHAVIOUR capital_evac cleared=%s escaped=%d left=%d %s stuck=%d river=%d caught on the span %d, ashore within %.1f s"
+		% ["%.1f" % cleared if cleared >= 0.0 else "no", crowd.escaped_count, left.size(), left, stuck.size(), river,
+		caught.size(), ashore])
 
 
 func _strike(shots: bool) -> void:

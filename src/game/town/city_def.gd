@@ -20,6 +20,29 @@ func spawn_roles() -> Dictionary: return {}
 ## How many citizens and soldiers a crowd spawns by default (Crowd.spawn(), Mission, town_debug).
 func citizens() -> int: return Crowd.CITIZENS
 func soldiers() -> int: return Crowd.SOLDIERS
+## The soldiers' posts in the crowd's post order (Crowd._soldier_posts()), by group: {"yard", "walls", "citadel",
+## "patrol"} -> Array of Vector2. The yard's first give the rescue squads, the walls' first the marshals, the Citadel's
+## ring is the rally's, the patrols' first the escorts and the investigators. Empty: Aldermere's own posting
+## (Crowd.POST_YARD and the rest).
+func soldier_posts() -> Dictionary: return {}
+## Wall patrol loops: each {"points": Array of Vector2, a closed loop, "walkers": n}, walked in pairs by the first
+## patrols in order (loop_start() is where each pair starts). None by default: every patrol holds its post.
+func patrol_loops() -> Array: return []
+## Each district's ways out, district name (a landmark()) -> the exits() its people make for (others only if those
+## cannot be reached or are much worse, EvacuationManager.DISTRICT_DETOUR). Empty: any exit.
+func district_exits() -> Dictionary: return {}
+## One person through a gate this often (Crowd's gates; the postern keeps its own pace).
+func gate_interval() -> float: return Crowd.GATE_INTERVAL
+## The way out through the gate standing on `gate`: the side its crowd waits on is the other. Vector2.INF: the old rule
+## (Crowd.outward_of(), from the town's middle at the origin).
+func gate_outward(_gate: Rect2) -> Vector2: return Vector2.INF
+## The ground a fallen bridge on `footprint` closes (WalkGrid): by default all of it, as at Aldermere.
+func fallen_bridge(footprint: Rect2) -> Array[Rect2]: return [footprint]
+
+
+## Where pair `k` of `pairs` walking a loop of `n` points starts: evenly spaced round it.
+static func loop_start(k: int, pairs: int, n: int) -> int:
+	return (k * n) / maxi(pairs, 1)
 func street_props() -> Array[Dictionary]: return []
 func gardens() -> Array[Rect2]: return []
 func queue_fans(margin := 0.3) -> Array[PackedVector2Array]: return []

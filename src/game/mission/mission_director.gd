@@ -119,7 +119,7 @@ func _sort_citizens(clergy: Array[Person], lay: Array[Person]) -> void:
 	for p in crowd.citizens:
 		if not _alive(p) or p.profile == null or p.inside or p == keeper or reserved.has(p):
 			continue
-		if p.profile.role == CitizenProfile.Role.CLERGY:
+		if CitizenProfile.is_clergy(p.profile.role):
 			clergy.append(p)
 		elif not p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
 			lay.append(p)
@@ -159,8 +159,8 @@ func _choose_faithful(count: int) -> void:
 ## and returns the first three: the flame-bearer, then his two acolytes (fewer if the pool is short, none if empty).
 func _vigil_walkers(pool: Array[Person], door: Vector2) -> Array[Person]:
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
-		var ca := a.profile.role == CitizenProfile.Role.CLERGY
-		var cb := b.profile.role == CitizenProfile.Role.CLERGY
+		var ca := CitizenProfile.is_clergy(a.profile.role)
+		var cb := CitizenProfile.is_clergy(b.profile.role)
 		if ca != cb:
 			return ca
 		return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))

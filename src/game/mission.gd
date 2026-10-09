@@ -586,7 +586,7 @@ func _loadout(args: PackedStringArray) -> PackedStringArray:
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
-	if is_instance_valid(_town) and is_instance_valid(_rules) and s == _town.bridge:
+	if is_instance_valid(_town) and is_instance_valid(_rules) and s in _town.bridges:
 		_rules.banner.emit("THE BRIDGE HAS FALLEN")
 
 

@@ -25,6 +25,13 @@ const POST_YARD := 30
 const POST_WALLS := 30
 const POST_CITADEL := 20
 const POST_PATROL := 20
+## A city's own posting (CityDef.soldier_posts()): how far each post is spread, how near its point a wall patrol must be
+## to have arrived, and how long it stands there before walking on to its loop's next point.
+const CITY_POST_SPREAD := 0.25
+const LOOP_REACH := 0.6
+const LOOP_PAUSE := 2.0
+## How many waypoints ahead a city's faced gate (CityDef.gate_outward()) looks for itself on a waiting person's path.
+const GATE_AHEAD := 24
 ## A rescue squad's size (v0.07).
 const RESCUE_SQUAD := 3
 const ALARM_BUILDING := 2.0
@@ -196,6 +203,15 @@ var _fled_all := false
 var _citadel_hit := false
 ## Seconds until EnemyField.purge() runs again (about once a second; mirrors the gate clock's pacing).
 var _purge_in := 1.0
+## The soldiers' post groups' sizes, in post order (yard, walls, Citadel, patrols): Aldermere's POST_* constants, or the
+## city's own (CityDef.soldier_posts()), and whether it is the city's.
+var post_counts: Array[int] = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
+## One person through a gate this often: GATE_INTERVAL, or the city's (CityDef.gate_interval()), read at spawn().
+var gate_interval := GATE_INTERVAL
+var _city_posts := false
+## The wall patrols walking their loops (CityDef.patrol_loops()): [soldier, the loop's points (walkable), the point it
+## is walking to or standing at, its loop's index, when it reached that point (-1: not yet)].
+var _loops: Array = []
 ## Steps the people (see Ticker).
 var _ticker: Ticker
 
@@ -312,9 +328,11 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 		p.anchor = at
 		p.profile = profile
 		citizens.append(p)
+	gate_interval = City.current().gate_interval()
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
 	_assign_corps()
+	_start_loops()
 	var no_stalls: Array[Vector2] = []
 	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", no_stalls))
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
@@ -558,20 +576,88 @@ func add_soldier(at: Vector2) -> Person:
 ## Citadel's guard and anyone over the counts keep v0.06's ways (posts, investigations, the rally). Each remembers its
 ## post.
 func _assign_corps() -> void:
-	var exits := 2 + (2 if profile.boats else 0)
+	var exits := _marshal_exits()
 	var cap := escort_cap(profile)
+	var yard := post_counts[0]
+	var walls := post_counts[1]
+	var patrols_from := post_counts[0] + post_counts[1] + post_counts[2]
 	for i in soldiers.size():
 		var p := soldiers[i]
 		p.post = p.anchor
-		if i < POST_YARD:
+		if i < yard:
 			if i < profile.rescue_squads * RESCUE_SQUAD:
 				p.corps = Person.Corps.RESCUE
-		elif i < POST_YARD + POST_WALLS:
-			if i - POST_YARD < profile.marshals_per_exit * exits:
+		elif i < yard + walls:
+			if i - yard < profile.marshals_per_exit * exits:
 				p.corps = Person.Corps.MARSHAL
-		elif i >= POST_YARD + POST_WALLS + POST_CITADEL:
-			if i - (POST_YARD + POST_WALLS + POST_CITADEL) < cap:
+		elif i >= patrols_from:
+			if i - patrols_from < cap:
 				p.corps = Person.Corps.ESCORT
+
+
+## How many ways out the marshals man: Aldermere's two gates (and the postern and the dock with the boats); a city
+## with its own posting, every gate (and the dock with the boats).
+func _marshal_exits() -> int:
+	if _city_posts:
+		return _town.gates.size() + (1 if profile.boats else 0)
+	return 2 + (2 if profile.boats else 0)
+
+
+## The wall patrols' loops (CityDef.patrol_loops()): the first patrols, in pairs from evenly spaced starts, each loop's
+## points snapped to open ground.
+func _start_loops() -> void:
+	_loops.clear()
+	var i := post_counts[0] + post_counts[1] + post_counts[2]
+	var loops := City.current().patrol_loops()
+	for k in loops.size():
+		var points: Array[Vector2] = []
+		for g: Vector2 in loops[k].points:
+			var w := _grid.nearest_walkable(g)
+			points.append(w if w != Vector2.INF else g)
+		var pairs := int(loops[k].walkers) / 2
+		for pair in pairs:
+			var at := CityDef.loop_start(pair, pairs, points.size())
+			for m in 2:
+				if i < soldiers.size():
+					_loops.append([soldiers[i], points, at, k, -1.0])
+					i += 1
+
+
+## Which wall patrol loop `p` walks (its index in CityDef.patrol_loops()), or -1.
+func loop_of(p: Person) -> int:
+	for e in _loops:
+		if e[0] == p:
+			return e[3]
+	return -1
+
+
+## The wall patrols walk on: one at its point (and without a role, at its post, not looking at an incident, the town
+## not rallied) stands LOOP_PAUSE, then makes for the loop's next point, which becomes its post.
+func _walk_loops() -> void:
+	for e in _loops:
+		if not is_instance_valid(e[0]):
+			continue
+		var p: Person = e[0]
+		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal():
+			continue
+		var points: Array[Vector2] = e[1]
+		if p.ground_pos.distance_to(points[e[2]]) > LOOP_REACH or _looking(p):
+			e[4] = -1.0
+			continue
+		if float(e[4]) < 0.0:
+			e[4] = _clock
+		elif _clock - float(e[4]) >= LOOP_PAUSE:
+			e[2] = (int(e[2]) + 1) % points.size()
+			e[4] = -1.0
+			p.post = points[e[2]]
+			p.send_to_post(p.post)
+
+
+func _looking(p: Person) -> bool:
+	for e in _investigating:
+		if e[0] == p:
+			return true
+	return false
 
 
 ## How many escorts a town keeps (v0.09.1: by need): escorts_per_duty for each duty EscortManager can give them -- the
@@ -580,8 +666,14 @@ static func escort_cap(pr: ResponseProfile) -> int:
 	return pr.escorts_per_duty * ((1 if pr.bell else 0) + (1 if pr.rite else 0) + pr.engineer_teams)
 
 
-## The spec's posting: the yard, the wall towers and gates, the Citadel, and street patrols in pairs.
+## The spec's posting: the yard, the wall towers and gates, the Citadel, and street patrols in pairs. A city with its own
+## posting (CityDef.soldier_posts()) lays out its groups instead (_city_soldier_posts()).
 func _soldier_posts(count: int) -> Array[Vector2]:
+	var groups := City.current().soldier_posts()
+	_city_posts = not groups.is_empty()
+	if _city_posts:
+		return _city_soldier_posts(groups, count)
+	post_counts = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
 	var out: Array[Vector2] = []
 	for i in POST_YARD:
 		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
@@ -608,6 +700,23 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 		var point := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \
 			else Vector2(lerpf(road.position.x, road.end.x, along), road.get_center().y)
 		out.append(_spot_near(point, 0.8))
+	while out.size() > count:
+		out.pop_back()
+	while out.size() < count:
+		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
+	return out
+
+
+## A city's own posting, its groups in post order (yard, walls, Citadel, patrols), each post spread a little; cut short
+## or filled up in the barracks yard to `count`, as Aldermere's is.
+func _city_soldier_posts(groups: Dictionary, count: int) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	post_counts = []
+	for k: String in ["yard", "walls", "citadel", "patrol"]:
+		var list: Array = groups.get(k, [])
+		post_counts.append(list.size())
+		for g: Vector2 in list:
+			out.append(_spot_near(g, CITY_POST_SPREAD))
 	while out.size() > count:
 		out.pop_back()
 	while out.size() < count:
@@ -723,6 +832,8 @@ func advance(delta: float) -> void:
 	_free_jams()
 	_tend_households()
 	_return_investigators()
+	if not _loops.is_empty():
+		_walk_loops()
 	_gates()
 	_escapes()
 	_prune_soldiers()
@@ -771,6 +882,9 @@ func queue_spots(gate: Structure) -> Array[Vector2]:
 ## The way out through a gate: straight across the wall it stands in, away from the town. (Its centre's direction
 ## from the town's middle only works for a gate in the middle of its wall; the Side Gate is not.)
 static func outward_of(gate: Structure) -> Vector2:
+	var o := City.current().gate_outward(gate.footprint)
+	if o != Vector2.INF:
+		return o  # a city whose gates face their own way (the capital's two rings)
 	var c := gate.center()
 	if absf(c.x) > absf(c.y):
 		return Vector2(signf(c.x), 0.0)
@@ -796,6 +910,9 @@ func _gates() -> void:
 			continue  # a barred postern
 		var centre := gate.center()
 		var outward := outward_of(gate)
+		# A city whose gates face their own way (CityDef.gate_outward()) has gates close together: each holds only those
+		# whose way out runs through it (_heading_through()).
+		var faced := City.current().gate_outward(gate.footprint) != Vector2.INF
 		var spots := queue_spots(gate)
 		var face := centre - outward * (absf(gate.footprint.size.dot(outward)) * 0.5 + GATE_DOOR)
 		# Each person this gate has released keeps its own pass until it is through (more than a third of the
@@ -816,6 +933,8 @@ func _gates() -> void:
 			var rel := p.ground_pos - centre
 			var in_front := rel.dot(outward) <= 0.0 \
 				and p.ground_pos.distance_to(face) <= QUEUE_DEPTH0 + QUEUE_REACH + 0.5
+			if in_front and faced and not _heading_through(p, gate, spots):
+				in_front = false
 			if in_front:
 				crowd_here.append(p)
 			elif spots.has(p.queue_spot):
@@ -848,7 +967,7 @@ func _gates() -> void:
 		# A blighted gate is jammed (v0.05), a held one too (v0.09): its crowd waits, nobody passes.
 		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted \
 				and _clock >= float(_held.get(gate, -1.0)):
-			var interval := profile.postern_interval if gate.art_tag == &"postern" else GATE_INTERVAL
+			var interval := profile.postern_interval if gate.art_tag == &"postern" else gate_interval
 			# Marshals at the mouth (v0.07) let them through faster.
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()
@@ -860,6 +979,14 @@ func _gates() -> void:
 			if p.queue_since < 0.0:
 				p.queue_since = _clock
 			p.queue_spot = spots[mini(slot, spots.size() - 1)]
+
+
+## Whether `p` is on its way through `gate`: the gate lies within GATE_AHEAD waypoints of its path. While it has no
+## path (planning anew), it keeps the place it holds in this gate's crowd, if any.
+func _heading_through(p: Person, gate: Structure, spots: Array[Vector2]) -> bool:
+	if not p.has_goal():
+		return p.queue_spot != Vector2.INF and spots.has(p.queue_spot)
+	return p.path_crosses(gate.footprint.grow(GATE_DOOR), GATE_AHEAD)
 
 
 ## A gate that fell lets its whole crowd go, waiting or already walking through it.
@@ -1321,9 +1448,9 @@ func ring_bell(at := City.current().landmark(&"bell_tower").get_center()) -> voi
 func _investigate(at: Vector2) -> void:
 	if _rallied:
 		return
-	var first := POST_YARD + POST_WALLS + POST_CITADEL
+	var first := post_counts[0] + post_counts[1] + post_counts[2]
 	var pool: Array[Person] = []
-	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
+	for i in range(first, mini(first + post_counts[3], soldiers.size())):
 		var p := soldiers[i]
 		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST \
 				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)):
@@ -1471,14 +1598,14 @@ static func _standing(s: Structure) -> bool:
 
 ## More marshals for a raised profile: soldiers on the walls without a role take it, in post order, up to the new count.
 func _raise_marshals() -> int:
-	var exits := 2 + (2 if profile.boats else 0)
+	var exits := _marshal_exits()
 	var want := profile.marshals_per_exit * exits
 	var have := 0
 	for p in soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL:
 			have += 1
 	var added := 0
-	for i in range(POST_YARD, mini(POST_YARD + POST_WALLS, soldiers.size())):
+	for i in range(post_counts[0], mini(post_counts[0] + post_counts[1], soldiers.size())):
 		if have + added >= want:
 			break
 		var p := soldiers[i]
@@ -1497,8 +1624,8 @@ func _raise_escorts() -> int:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.ESCORT:
 			have += 1
 	var added := 0
-	var first := POST_YARD + POST_WALLS + POST_CITADEL
-	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
+	var first := post_counts[0] + post_counts[1] + post_counts[2]
+	for i in range(first, mini(first + post_counts[3], soldiers.size())):
 		if have + added >= want:
 			break
 		var p := soldiers[i]
@@ -1574,6 +1701,10 @@ func clear() -> void:
 	rescue = null
 	_gate_next.clear()
 	_spots.clear()
+	_loops.clear()
+	gate_interval = GATE_INTERVAL
+	post_counts = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
+	_city_posts = false
 	alarm = 0.0
 	escaped_count = 0
 	killed_citizens = 0
@@ -1601,8 +1732,8 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
 	var points: Array[Vector2] = [at]
 	_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
-	if is_instance_valid(_town) and s == _town.bridge:
-		# The south route just closed: everyone already walking it needs a new plan.
+	if is_instance_valid(_town) and s in _town.bridges:
+		# A way over the river just closed: everyone already walking needs a new plan.
 		for p in citizens:
 			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE:
 				p.replan()

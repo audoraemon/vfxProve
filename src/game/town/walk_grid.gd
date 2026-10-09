@@ -1,8 +1,8 @@
 class_name WalkGrid
 extends RefCounted
 ## Where the people of Aldermere may walk: an A* grid over the map at half-unit cells. A standing building
-## blocks, its rubble does not, the river blocks except where the bridge still stands, and a fallen bridge
-## closes the water under it. The grid is patched in place when a building falls, never rebuilt.
+## blocks, its rubble does not, the river blocks except where a bridge still stands, and a fallen bridge
+## closes the water under it (CityDef.fallen_bridge(): Aldermere's whole footprint, the capital's water only). The grid is patched in place when a building falls, never rebuilt.
 
 const CELL := 0.5
 ## People are about this wide, so a footprint is grown by it before being stamped solid.
@@ -15,7 +15,8 @@ var grid := AStarGrid2D.new()
 var version := 0
 
 var _env: EnvironmentField
-var _bridge: Structure
+## The town's crossings (Town.bridges).
+var _bridges: Array[Structure] = []
 ## The city's blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
 ## far too slow to redo each time a building falls (a Cinderfall felling a dozen trees at once hitched ~100 ms).
 var _blockers: Array[Rect2] = []
@@ -23,7 +24,7 @@ var _blockers: Array[Rect2] = []
 
 func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	_env = env
-	_bridge = town.bridge
+	_bridges = town.bridges.duplicate()
 	var city := City.current()
 	var m := city.map()
 	grid.region = Rect2i(Vector2i(floori(m.position.x / CELL), floori(m.position.y / CELL)),
@@ -142,7 +143,19 @@ func stamp(rect: Rect2, solid: bool) -> void:
 func _apply(s: Structure) -> void:
 	if not is_instance_valid(s) or s.destroyed or s.walkable:
 		return
-	stamp(s.footprint.grow(BODY), true)
+	stamp(solid_rect(s.footprint), true)
+
+
+## The ground a footprint closes: grown by a body's width, and at least a cell across each way, so that something
+## thinner (a fence, a notice board, a sliver of wall: none at Aldermere) still closes the cells it stands in, as it
+## blocks the people walking into it.
+static func solid_rect(footprint: Rect2) -> Rect2:
+	var r := footprint.grow(BODY)
+	if r.size.x < CELL:
+		r = r.grow_individual((CELL - r.size.x) * 0.5, 0.0, (CELL - r.size.x) * 0.5, 0.0)
+	if r.size.y < CELL:
+		r = r.grow_individual(0.0, (CELL - r.size.y) * 0.5, 0.0, (CELL - r.size.y) * 0.5)
+	return r
 
 
 ## A standing building people walk over — a gate, the bridge, a field: its own footprint is open again,
@@ -167,20 +180,21 @@ func _reopen(s: Structure) -> void:
 	_on_destroyed(s, &"")
 
 
-## A building fell: its ground opens up (rubble is walkable), except the bridge, whose fall closes the river.
+## A building fell: its ground opens up (rubble is walkable), except a bridge, whose fall closes the river.
 func _on_destroyed(s: Structure, _kind: StringName) -> void:
-	if s == _bridge:
-		stamp(s.footprint, true)
+	if s in _bridges:
+		for r: Rect2 in City.current().fallen_bridge(s.footprint):
+			stamp(r, true)
 		return
-	stamp(s.footprint.grow(BODY), false)
+	stamp(solid_rect(s.footprint), false)
 	# Freeing a footprint can free cells a standing neighbour or the river still needs, so put those back...
-	var area := s.footprint.grow(BODY + CELL)
+	var area := solid_rect(s.footprint).grow(CELL)
 	for r: Rect2 in City.current().rivers():
 		if area.intersects(r):
 			stamp(area.intersection(r), true)
 	for other in _env.structures():
 		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
-				and other.footprint.grow(BODY).intersects(area):
+				and solid_rect(other.footprint).intersects(area):
 			_apply(other)
 	for g in _blockers:
 		if g.intersects(area):

@@ -28,7 +28,11 @@ const GROUND_EVENING := Color(1.06, 0.92, 0.74)
 const DOCK_HP := 80.0
 
 var citadel: Citadel
+## The last bridge built (Aldermere's one bridge; the capital's last footbridge span).
 var bridge: Structure
+## Every crossing over the water, in build order: each BRIDGE-kind structure but the dock whose footprint meets a
+## river (Aldermere: its one bridge). A fallen one closes the water under it (WalkGrid, CityDef.fallen_bridge()).
+var bridges: Array[Structure] = []
 ## The river boats' landing (v0.05), and the postern in the south wall that leads down to it (also in gates, last).
 var dock: Structure
 var postern: Structure
@@ -75,6 +79,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			s.hp = DOCK_HP
 		elif s.kind == Structure.Kind.BRIDGE:
 			bridge = s
+			if _over_water(s.footprint):
+				bridges.append(s)
 	if postern != null:
 		gates.append(postern)
 	if not keep_clear.is_empty():
@@ -234,6 +240,7 @@ func teardown() -> void:
 	_built.clear()
 	gates.clear()
 	bridge = null
+	bridges.clear()
 	dock = null
 	postern = null
 	fountain = null
@@ -323,3 +330,10 @@ func _free_floor() -> void:
 		else:
 			plant_layer.free()
 	plant_layer = null
+
+
+static func _over_water(r: Rect2) -> bool:
+	for w: Rect2 in City.current().rivers():
+		if w.intersects(r):
+			return true
+	return false

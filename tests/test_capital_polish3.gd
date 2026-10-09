@@ -17,7 +17,78 @@ static func run(t) -> void:
 	_keep_gate(t, c)
 	_dummies(t, c)
 	_house_mix(t, c)
+	_avenues(t, c)
 	City.use(&"aldermere")
+
+
+## Item 4: trees and lamp posts line the avenues at a regular step, beside them, never on them; the larger leftover
+## strips are small gardens (flower beds, benches, a tree) or market corners (stalls, crates); the shrubs are thinner
+## there, and none grows in a garden or corner.
+static func _avenues(t, c: CapitalCity) -> void:
+	var line := c.avenue_decor()
+	var trees := 0
+	var lamps := 0
+	var off := 0
+	var streets: Array = c.roads()
+	for d: Dictionary in line:
+		if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE]:
+			trees += 1
+		elif d.kind == Decor.Kind.LAMP:
+			lamps += 1
+		var on := false
+		var near := false
+		for r: Rect2 in streets:
+			on = on or r.has_point(d.at)
+			near = near or r.grow(0.6).has_point(d.at)
+		off += 1 if on or not near else 0
+	t.check(trees >= 15 and lamps >= 8, "trees and lamps line the avenues (%d trees, %d lamps)" % [trees, lamps])
+	t.check(off == 0, "each stands beside a street, not on one (%d off)" % off)
+	var apart := true
+	for i in line.size():
+		for j in range(i + 1, line.size()):
+			apart = apart and (line[i].at as Vector2).distance_to(line[j].at) >= 0.8
+	t.check(apart, "no two of them crowd each other")
+	var all_decor := c.court_decor()
+	for d: Dictionary in line:
+		t.check(all_decor.has(d), "the avenue pieces are part of the city's own decor")
+		break
+	# The pockets.
+	var gardens := 0
+	var corners := 0
+	var built := c.structures()
+	for p: Array in CapitalCity.POCKETS:
+		var r: Rect2 = p[0]
+		t.check(_district(c, r) != &"", "pocket %s lies in a walled district" % r)
+		var kinds := {}
+		for d: Dictionary in all_decor:
+			if r.grow(0.05).has_point(d.at):
+				kinds[d.kind] = int(kinds.get(d.kind, 0)) + 1
+		var stalls := 0
+		var clash := 0
+		for d: Dictionary in built:
+			if r.encloses(d.rect) and d.kind == Structure.Kind.MARKET_STALL:
+				stalls += 1
+			elif (d.rect as Rect2).intersects(r) and d.kind != Structure.Kind.MARKET_STALL:
+				clash += 1
+		t.check(clash == 0, "nothing else stands in pocket %s (%d)" % [r, clash])
+		if p[1] == &"garden":
+			gardens += 1
+			t.check(kinds.has(Decor.Kind.FLOWERS) and kinds.has(Decor.Kind.BENCH)
+				and (kinds.has(Decor.Kind.OAK) or kinds.has(Decor.Kind.PINE)), "garden %s: beds, a bench, a tree (%s)" % [r, kinds])
+		else:
+			corners += 1
+			t.check(stalls >= 1 and stalls <= 2 and (kinds.has(Decor.Kind.CRATES) or kinds.has(Decor.Kind.BARREL)),
+				"market corner %s: one or two stalls and crates (%d, %s)" % [r, stalls, kinds])
+	t.check(gardens >= 4 and corners >= 3, "small gardens and market corners (%d, %d)" % [gardens, corners])
+	t.check(c.shrub_chance() < TownFloor.SHRUB_CHANCE * 0.6 and AldermereCity.new().shrub_chance() == TownFloor.SHRUB_CHANCE,
+		"the capital's shrubs are thinned out; Aldermere's are not")
+	City.use(&"capital")
+	var in_pockets := 0
+	for s: Dictionary in TownFloor.shrub_spots():
+		for p: Array in CapitalCity.POCKETS:
+			if (p[0] as Rect2).has_point(s.at):
+				in_pockets += 1
+	t.check(in_pockets == 0, "no shrub grows in a garden or a market corner (%d)" % in_pockets)
 
 
 ## The house blocks' GPT housing sets by district (item 5): patrician houses in the noble quarter and by the Keep,

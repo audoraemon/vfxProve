@@ -306,10 +306,13 @@ static func _market(t, c: CapitalCity) -> void:
 		var any := false
 		for p: Rect2 in plazas:
 			any = any or p.encloses(st)
+		# (polish 3: or in a market corner)
+		for p: Array in CapitalCity.POCKETS:
+			any = any or (p[1] == &"market" and (p[0] as Rect2).encloses(st))
 		on = on and any
 		for f: Rect2 in c.fountains():
 			on = on and not f.grow(0.6).intersects(st)
-	t.check(on, "every stall stands on a market square, clear of the fountains")
+	t.check(on, "every stall stands on a market square or in a market corner, clear of the fountains")
 	var built := 0
 	for d: Dictionary in c.structures():
 		built += 1 if d.kind == Structure.Kind.MARKET_STALL and d.role == &"market" else 0

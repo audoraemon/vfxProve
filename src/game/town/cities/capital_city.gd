@@ -140,10 +140,29 @@ const DRILL_DECOR := [
 ## Where the drilling soldiers stand: one before each dummy, DRILL_RANKS cells west of it, facing it (polish 3: two
 ## rows of soldiers, each facing its row of dummies).
 const DRILL_RANKS := [1.5]
-## The ground each kind of courtyard piece closes to walkers, about its point (a bench's along its size).
+## The ground each kind of courtyard piece closes to walkers, about its point (a bench's along its size); a piece's
+## own "half" overrides it (the avenues' trees close only their trunks).
 const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
 	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
-	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15}
+	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15, Decor.Kind.LAMP: 0.1}
+## The avenues (polish 3): trees and lamp posts in turn along both sides of every avenue inside the walls, every
+## AVENUE_STEP, AVENUE_OUT past the avenue's edge (avenue_decor()); a spot that is not clear is skipped, so the rest
+## keep the step. A tree closes only its trunk (AVENUE_TRUNK).
+const AVENUE_STEP := 2.5
+const AVENUE_OUT := 0.3
+const AVENUE_TRUNK := 0.12
+## The larger leftover strips between the avenues (polish 3): [the pocket's open ground, &"garden" or &"market"]. A
+## pocket garden: flower beds, a bench or two and a tree; a market corner: one or two stalls (stalls(), after the
+## plaza's) and crates and barrels. The capital's shrubs are thinned (SHRUB_CHANCE) and none grows in a pocket.
+const POCKETS := [
+	[Rect2(5.25, -21.0, 2.0, 3.5), &"garden"], [Rect2(5.25, -15.0, 2.0, 4.75), &"garden"],
+	[Rect2(-9.0, -16.75, 2.5, 2.5), &"garden"], [Rect2(-18.25, -18.25, 2.25, 1.75), &"garden"],
+	[Rect2(9.5, -2.5, 3.75, 2.0), &"garden"], [Rect2(5.25, -2.5, 2.0, 2.0), &"garden"],
+	[Rect2(10.75, 16.75, 2.5, 2.0), &"garden"], [Rect2(2.25, 28.25, 2.75, 1.5), &"garden"],
+	[Rect2(-1.25, -2.5, 3.25, 2.75), &"market"], [Rect2(-9.0, -7.75, 2.25, 1.5), &"market"],
+	[Rect2(-18.25, 15.5, 2.25, 3.75), &"market"], [Rect2(8.25, 25.75, 3.25, 3.5), &"market"],
+]
+const SHRUB_CHANCE := 0.35
 ## The Keep's grounds (polish 3): the paving south-east of the Keep, between it, the avenue's head and the service
 ## yard, where the Keep's gate stood in polish 2 (the barbican and the alley steps are unused since: CapitalPlots.UNUSED).
 ## The watchtower stands on the Keep's wall line (WATCHTOWER, its back corner: in line with the Citadel's south wall,
@@ -753,6 +772,149 @@ func stalls() -> Array[Rect2]:
 	# The pilgrim plaza's (polish 2), after the market's, so theirs keep their rows' seeds.
 	for i in PLAZA_STALL_ROWS.size():
 		out.append_array(CapitalPlots.row(PLAZA_STALL_ROWS[i], STALL, STALL_GAP, STALL_ROWS.size() + i + 1))
+	# The market corners' (polish 3), after the plaza's: one or two along each corner's back edge.
+	var k := STALL_ROWS.size() + PLAZA_STALL_ROWS.size()
+	for p: Array in POCKETS:
+		if p[1] == &"market":
+			k += 1
+			out.append_array(CapitalPlots.row(_corner_row(p[0]), STALL, STALL_GAP, k))
+	return out
+
+
+## A market corner's stall row: along its back edge, room for two stalls at most.
+static func _corner_row(r: Rect2) -> Rect2:
+	return Rect2(r.position + Vector2(0.15, 0.15), Vector2(minf(r.size.x - 0.3, STALL.x * 2.0 + STALL_GAP), STALL.y))
+
+
+## The pockets' pieces (POCKETS), in order: a garden's tree in its back corner, flower beds along its back half, a
+## bench (two in a deep one) before them and a lamp post at its front; a market corner's crates and barrels before
+## and beside its stalls (stalls()).
+func pocket_decor() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for p: Array in POCKETS:
+		var r: Rect2 = p[0]
+		var o := r.position
+		var s := r.size
+		if p[1] == &"garden":
+			out.append({"kind": Decor.Kind.OAK, "at": o + Vector2(0.4, 0.4), "size": Vector2(27.0, 0.0)})
+			var beds := maxi(1, floori((s.x - 0.9) / 0.6))
+			for i in beds:
+				out.append({"kind": Decor.Kind.FLOWERS, "at": o + Vector2(1.0 + i * 0.6, 0.45), "size": Vector2.ZERO})
+			for i in maxi(1, floori((s.y - 0.9) / 0.7)):
+				out.append({"kind": Decor.Kind.FLOWERS, "at": o + Vector2(0.4, 1.1 + i * 0.7), "size": Vector2.ZERO})
+			out.append({"kind": Decor.Kind.BENCH, "at": o + Vector2(s.x * 0.5 - 0.2, s.y * 0.5 + 0.1),
+				"size": Vector2(0.7, 0.0)})
+			if s.y >= 3.0:
+				out.append({"kind": Decor.Kind.BENCH, "at": o + Vector2(s.x * 0.5 - 0.2, s.y - 0.5), "size": Vector2(0.7, 0.0)})
+			out.append({"kind": Decor.Kind.LAMP, "at": o + Vector2(s.x - 0.25, s.y - 0.25), "size": Vector2.ZERO})
+		else:
+			var row := _corner_row(r)
+			out.append({"kind": Decor.Kind.CRATES, "at": Vector2(row.position.x + 0.3, row.end.y + 0.55), "size": Vector2.ZERO})
+			out.append({"kind": Decor.Kind.BARREL, "at": Vector2(row.position.x + 0.75, row.end.y + 0.45), "size": Vector2.ZERO})
+			if s.x >= 2.5:
+				out.append({"kind": Decor.Kind.BARREL, "at": Vector2(r.end.x - 0.3, row.end.y + 0.5), "size": Vector2.ZERO})
+			if s.y >= 2.5:
+				out.append({"kind": Decor.Kind.CRATES, "at": Vector2(r.end.x - 0.4, r.end.y - 0.4), "size": Vector2.ZERO})
+	return out
+
+
+## The avenues' trees and lamp posts (AVENUE_STEP): along both sides of each avenue's stretch inside a wall ring,
+## AVENUE_OUT past its edge, a tree and a lamp in turn, each where it is clear -- of every building (and its walk), the
+## squares, yards and gate plazas, the queue fans, the other streets' crossings, the street props, gardens, torches,
+## fountains and wells, every routine place and soldier's post, and the city's other pieces. Worked out once.
+func avenue_decor() -> Array[Dictionary]:
+	if _avenue_done:
+		return _avenue.duplicate(true)
+	_avenue_done = true
+	var solid: Array[Rect2] = []
+	for d: Dictionary in structures():
+		solid.append((d.rect as Rect2).grow(0.15))
+	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
+		solid.append(Rect2(r.position + CITADEL_ORIGIN, r.size).grow(0.3))
+	for r: Rect2 in _fixed_ground():
+		solid.append(r.grow(0.4))
+	for g: Rect2 in gardens():
+		solid.append(g.grow(0.3))
+	for p: Dictionary in street_props():
+		solid.append((p.rect as Rect2).grow(0.35))
+	for p: Array in POCKETS:
+		solid.append((p[0] as Rect2).grow(0.3))
+	var points: Array[Vector2] = []
+	points.append_array(torches())
+	var an := anchors()
+	for k: String in an:
+		points.append_array(an[k])
+	var posts := soldier_posts()
+	for k: String in posts:
+		points.append_array(posts[k])
+	for loop: Dictionary in patrol_loops():
+		points.append_array(loop.points)
+	var others: Array[Vector2] = []
+	for row: Array in GARDEN_DECOR + DRILL_DECOR + YARD_DECOR + CLOSE_DECOR + KEEP_DECOR:
+		others.append(row[1])
+	for d: Dictionary in pocket_decor():
+		others.append(d.at)
+	var streets := roads()
+	var n := 0
+	for ring: Rect2 in [INNER.grow(-TownLayout.WALL_T - 0.4), OUTER.grow(-TownLayout.WALL_T - 0.4)]:
+		for line: Array in AVENUES:
+			var segs: Array = []
+			_segments(segs, line, AVENUE_W)
+			for road: Rect2 in segs:
+				var r := road.intersection(ring)
+				if r.size.x <= 0.0 or r.size.y <= 0.0:
+					continue
+				var along_y := r.size.y > r.size.x
+				var length := r.size.y if along_y else r.size.x
+				for side: float in [-1.0, 1.0]:
+					var k := AVENUE_STEP * 0.5
+					var turn := 0
+					while k < length:
+						var at := Vector2(r.position.x - AVENUE_OUT if side < 0.0 else r.end.x + AVENUE_OUT, r.position.y + k) 							if along_y else Vector2(r.position.x + k, r.position.y - AVENUE_OUT if side < 0.0 else r.end.y + AVENUE_OUT)
+						k += AVENUE_STEP
+						turn += 1
+						if not _avenue_clear(at, road, streets, solid, points, others, ring):
+							continue
+						others.append(at)
+						n += 1
+						if turn % 2 == 1:
+							_avenue.append({"kind": Decor.Kind.OAK if n % 3 else Decor.Kind.PINE, "at": at,
+								"size": Vector2(25.0 + float(n % 4) * 1.5, 0.0), "half": AVENUE_TRUNK})
+						else:
+							_avenue.append({"kind": Decor.Kind.LAMP, "at": at, "size": Vector2.ZERO})
+	return _avenue.duplicate(true)
+
+
+## Whether an avenue piece may stand at `at` beside `road` (avenue_decor()).
+func _avenue_clear(at: Vector2, road: Rect2, streets: Array, solid: Array[Rect2], points: Array[Vector2],
+		others: Array[Vector2], ring: Rect2) -> bool:
+	if not ring.has_point(at) or _in_fan(Rect2(at - Vector2(0.25, 0.25), Vector2(0.5, 0.5))):
+		return false
+	for s: Rect2 in streets:
+		if s.grow(0.05 if s == road or s.encloses(road) or road.encloses(s) else 0.6).has_point(at):
+			return false
+	for r: Rect2 in solid:
+		if r.has_point(at):
+			return false
+	for p: Vector2 in points:
+		if p.distance_to(at) < 0.45:
+			return false
+	for p: Vector2 in others:
+		if p.distance_to(at) < 0.8:
+			return false
+	return true
+
+
+## Thinner shrubs than Aldermere's (polish 3).
+func shrub_chance() -> float:
+	return SHRUB_CHANCE
+
+
+## No shrub in a pocket garden or a market corner (POCKETS).
+func shrub_clear() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for p: Array in POCKETS:
+		out.append((p[0] as Rect2).grow(0.2))
 	return out
 
 
@@ -785,7 +947,8 @@ func blockers() -> Array[Rect2]:
 
 
 ## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear; then the service
-## yard's (KEEP_YARD, polish 2), then the cathedral close's (CLOSE_DECOR), then the Keep's grounds' (KEEP_DECOR, polish 3).
+## yard's (KEEP_YARD, polish 2), then the cathedral close's (CLOSE_DECOR), then the Keep's grounds' (KEEP_DECOR), the
+## pockets' (pocket_decor()) and the avenues' (avenue_decor(), polish 3).
 func court_decor() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row: Array in GARDEN_DECOR:
@@ -800,6 +963,8 @@ func court_decor() -> Array[Dictionary]:
 		out.append({"kind": row[0], "at": row[1], "size": row[2]})
 	for row: Array in KEEP_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": row[2]})
+	out.append_array(pocket_decor())
+	out.append_array(avenue_decor())
 	return out
 
 
@@ -807,7 +972,7 @@ func court_decor() -> Array[Dictionary]:
 func court_blockers() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for d: Dictionary in court_decor():
-		var half: float = COURT_HALF[d.kind]
+		var half: float = d.get("half", COURT_HALF[d.kind])
 		var r := Rect2(d.at, Vector2.ZERO).grow(half)
 		if d.kind == Decor.Kind.BENCH:
 			r = r.merge(Rect2(d.at + d.size, Vector2.ZERO).grow(half))
@@ -1397,6 +1562,8 @@ static var _gardens: Array[Rect2] = []
 static var _gardens_done := false
 static var _props: Array[Dictionary] = []
 static var _props_done := false
+static var _avenue: Array[Dictionary] = []
+static var _avenue_done := false
 static var _fans: Array[PackedVector2Array] = []
 static var _posts := {}
 static var _outward := {}

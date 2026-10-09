@@ -115,6 +115,13 @@ func forest_gaps() -> Array[Rect2]:
 func border() -> float: return 0.0
 
 
+## The floor's meadow shrubs over the house blocks (TownFloor.shrub_spots()): the share of their grid's points that
+## get one (Aldermere's TownFloor.SHRUB_CHANCE by default), and ground where none grows (none by default). The capital
+## thins them and keeps them out of its pocket gardens and market corners (polish 3).
+func shrub_chance() -> float: return TownFloor.SHRUB_CHANCE
+func shrub_clear() -> Array[Rect2]: return []
+
+
 ## Ground where no tree stands at all, forest or meadow (TownDecor): none by default. The capital keeps its aqueduct's
 ## arches clear (polish 2).
 func tree_clear() -> Array[Rect2]: return []

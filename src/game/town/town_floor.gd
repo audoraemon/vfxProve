@@ -1054,6 +1054,8 @@ static func shrub_spots() -> Array[Dictionary]:
 	_shrubs_city = city
 	_shrub_spots = []
 	var yards := _yards()
+	var chance := city.shrub_chance()
+	var clear := city.shrub_clear()
 	var n := 0
 	for d: Rect2 in city.districts():
 		var nx := int(d.size.x / SHRUB_STEP)
@@ -1062,12 +1064,17 @@ static func shrub_spots() -> Array[Dictionary]:
 			for i in nx:
 				n += 1
 				var h := _hash(n * 7 + 3, n * 13 + 11)
-				if float(h % 100) / 100.0 > SHRUB_CHANCE:
+				if float(h % 100) / 100.0 > chance:
 					continue
 				var g := d.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * SHRUB_STEP \
 					+ (Vector2(float(h % 17) / 17.0, float(h % 13) / 13.0) - Vector2(0.5, 0.5)) * SHRUB_STEP * 0.8
 				# The house blocks lie inside the walls, where the zone does not hang on the painted meadow.
 				if _fixed_zone(g, yards) != 1:
+					continue
+				var bare := false
+				for r: Rect2 in clear:
+					bare = bare or r.has_point(g)
+				if bare:
 					continue
 				_shrub_spots.append({"base": "flowerbed" if h % 5 == 0 else "shrub", "at": g, "seed": h})
 	return _shrub_spots

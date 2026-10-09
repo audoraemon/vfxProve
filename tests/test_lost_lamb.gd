@@ -118,6 +118,10 @@ static func _setup(t) -> void:
 		_arrive(w, w.anchor)  # (headless tests never walk: the watch set down at its posts)
 	t.check(_labels(d) == ["ACOLYTE", "WEST GATE - WATCHED", "PATROL", "PATROL"] and d.hint_phase() == "",
 		"tagged: the acolyte, the watched gate, each patrol (%s)" % [_labels(d)])
+	var gate_edged := false
+	for tag in d.tags():
+		gate_edged = gate_edged or (tag.label.begins_with("WEST GATE") and tag.edge)
+	t.check(gate_edged, "the way out is pointed at from the screen's edge, the gate being far from the acolyte (v0.11 M2, Task 8 fix)")
 	var up := d.timeline.upcoming(1)
 	t.check(not up.is_empty() and String(up[0].id) == "hunt" and is_equal_approx(float(up[0].at), LostLambDirector.HUNT_AT),
 		"the searchers set out at 2:30")

@@ -50,7 +50,7 @@ The pool grows from 8 to 10. Both new wishes may be heard in an Unaware town.
 | Stop the bailiff | Rescue | Once engaged (as Save my child is: a click on his or the home's tag, or a cast within 2 units of either), the bailiff walks from his post to the wisher's home. Kill him, turn him, or keep him from the door for 50 s | 15 | a lay citizen with a home, and a free soldier at least 20 units from its door with no more than 40 units of street to it; no clash |
 | Let my neighbours believe | Faith | Whisper three of the wisher's neighbours (marked) to within 2 units of the wisher; each one believes | 10 | three lay citizens living within 8 of the wisher's home, not of the household, each with a route to the wisher; no clash |
 
-- **The bailiff** fails when he reaches the door. The 50 s is only a cap: he starts at least 20 units away with at most 40 units of street to walk, which is about 15 s after a click and never over 25 s in the seeded towns tried, so the HUD shows the act ("Stop the bailiff before he reaches the door") and no countdown. His route is bounded as well as his distance, because with the distance alone one seeded town sent him 67 units round the streets, 50 s, and the cap would have granted the wish for doing nothing.
+- **The bailiff** fails when he reaches the door. The 50 s is only a cap: he starts at least 20 units away with at most 40 units of street to walk, which is about 16 s after a click (the median of sixteen seeded towns) and 24 s at the slowest of twenty-four, so the HUD shows the act ("Stop the bailiff before he reaches the door") and no countdown. His route is bounded as well as his distance, because with the distance alone one seeded town sent him 67 units round the streets, 50 s, and the cap would have granted the wish for doing nothing.
 - **Let my neighbours believe** fails when a neighbour dies before believing.
 - **Strike down the cruel tax collector** now clashes with `hunts_tax_collector`, which The Tax Collector declares, so it is never heard on that night.
 
@@ -66,11 +66,11 @@ Each mission's scenario is `--scenario=tax|harvest|lamb|prayers --case=none|play
 | Scenario | `none` (idle) | `play` (the scripted player) |
 |---|---|---|
 | tax | lost, the taxes are in, 146.2 / 142.1 / 153.5 s: -382910780 / 144915864 / -495264161 | won 2 of 3 (lost seed 1 at 228.9 s with two killed), 162.8 / 214.5 s, median 188.7 s: -642476028 / 659379666 / 458371431 |
-| harvest | lost, a granary is emptied, 190.2 / 193.3 / 226.8 s: -399014068 / 547259992 / -90944872 | won 3 of 3, 182.2 / 182.2 / 190.0 s, median 182.2 s: -410228006 / 426542593 / 887534191 |
+| harvest | lost, a granary is emptied, 194.3 / 208.8 / 229.9 s: -631739367 / -407285158 / -195261095 | won 3 of 3, 182.2 / 189.2 / 189.2 s, median 189.2 s: 829609058 / -598442619 / 421108438 |
 | lamb | lost, taken back, 177.6 / 173.4 / 170.4 s: -774246491 / -260547435 / -995215745 | won 3 of 3, 216.0 / 200.0 / 214.4 s, median 214.4 s: -768056610 / -739644497 / -418653026 |
 | prayers | lost, too few believe, 300.0 s all three: 388017594 / -661342052 / -200623714 | won 3 of 3, 222.1 / 218.9 / 147.8 s, median 218.9 s: -911582887 / -560981669 / -817014552 |
 
-The scripted gate for each mission: `play` wins at least 2 of seeds 1-3, the median time to the main objective of its wins is 180-240 s (the user's 3-4 minutes), `none` loses, and an acting player's longest idle stretch is under 45 s (measured: Spoiled Harvest 40 s, First Prayers 35 s, The Lost Lamb 27 s). The idle player's First Prayers loses only at dawn: no win waits for dawn, and only doing nothing loses late. The prayers `none` checksums moved once, when dawn stopped dropping the roof on a prayer in progress; their outcome did not.
+The scripted gate for each mission: `play` wins at least 2 of seeds 1-3, the median time to the main objective of its wins is 180-240 s (the user's 3-4 minutes), `none` loses, and an acting player's longest idle stretch is under 45 s (measured: Spoiled Harvest 40 s, First Prayers 35 s, The Lost Lamb 27 s). The idle player's First Prayers loses only at dawn: no win waits for dawn, and only doing nothing loses late. The prayers `none` checksums moved once, when dawn stopped dropping the roof on a prayer in progress; their outcome did not. The harvest checksums moved once too, when its camera moved (below): the simulation reads what is in view (a person orders itself against its neighbours only on screen), so another camera is another run. The outcomes held: `none` still loses 3 of 3 (it was 190.2 / 193.3 / 226.8 s, checksums -399014068 / 547259992 / -90944872) and `play` still wins 3 of 3 (it was 182.2 / 182.2 / 190.0 s, median 182.2 s, -410228006 / 426542593 / 887534191); the median is now 189.2 s, further inside the 180-240 s window.
 
 ### Rulings made in M2
 
@@ -115,7 +115,9 @@ The mission spec's Decisions 1-29 and the plan's 30-33, numbered after M1's thir
 `--show=board`, `--show=tiers` (Whisper's tab, three of its five cleared; `--mission=vigil_flame` opens Wrath's instead) and `--show=tax_collector|spoiled_harvest|lost_lamb|first_prayers` photograph the board and each new mission's board night, with the tour skipped and the opening banners waited out.
 
 - **Best lines:** a card's best, "Cleared  best 3:12  wishes 2", wraps between its parts and never inside one, so "best 3:12" stays whole and the double spaces survive; and the five cards' rules sit at one height, lifted by the row's most best lines, so a two-line best on The Warning does not leave its rule a line above its neighbours'.
-- Nothing else was moved: the four mission photographs show their tags, hints and wishes clear. As in every mission, a world tag can pass under the HUD's panels and timeline strip.
+- **The Lost Lamb's WEST GATE tag** has an edge arrow. The gate is some 28 units from the acolyte, so it is off screen at the opening camera, and the first photograph showed no sign of it; now "WEST GATE - WATCHED" and its arrow show at the screen's left edge.
+- **Spoiled Harvest's camera** moves from (1, 8) to (-9, 13.5). At the old spot the first granary, the one whose grain comes at 0:55, sat under the left HUD stack (objectives, hint, wishes), tag and watchmen both; now its tag and its two watchmen are clear of the stack and the other two granaries' tags show at the right.
+- The Tax Collector and First Prayers photographs needed nothing: their tags, hints and wishes read clear. As in every mission, a world tag can still pass under the HUD's panels and timeline strip (the INFORMER wish tag under the strip in the tax photograph).
 
 Gates: filled in at landing.
 

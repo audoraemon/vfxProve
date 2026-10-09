@@ -22,7 +22,8 @@ const CARD_GAP := 12.0
 const CARD_TOP := 62.0
 const PAD := 10.0
 ## The most lines a card's brief may wrap to (v0.11 M2): five cards a tab are 115 px wide, and seven lines end above the rule
-## of a best line that wraps to two (card 230 high: two name lines, the type, then 15 px a line).
+## in the worst case, a best that wraps to three lines (a cleared card with a wide time and wishes; card 230 high: two name
+## lines, the type, then 15 px a line, which leaves 5 px).
 const BRIEF_LINES := 7
 ## The header's Upgrades button.
 const UPGRADES_RECT := Rect2(548.0, 8.0, 84.0, 20.0)

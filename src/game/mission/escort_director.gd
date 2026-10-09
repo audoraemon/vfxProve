@@ -393,7 +393,7 @@ func charge_lost() -> bool:
 
 ## The map tags (v0.11 M2), most important first, while he is in the town:
 ## - him, pointed at from the edge (red and CAUGHT while held);
-## - the way out, clear (green) or watched (red);
+## - the way out, clear (green) or watched (red), pointed at from the edge (v0.11 M2, Task 8 fix: it lies out of sight of the charge);
 ## - his seizer, pointed at, and the Temple, while he is held;
 ## - each searcher, pointed at;
 ## - a red diamond on each patrol soldier (the first labelled PATROL) and each watchman at the gate.
@@ -407,7 +407,7 @@ func tags() -> Array[MapTag]:
 		out.append(MapTag.person(charge.ground_pos, MARK_CHARGE, charge_label, true))
 	var clear := watch_away or not _watch_standing()
 	out.append(MapTag.place(exit_at, MARK_CLEAR if clear else MARK_WATCHED, exit_label + (" - CLEAR" if clear else " - WATCHED"),
-		0.0, false))
+		0.0, true))
 	if held and _alive(seizer):
 		out.append(MapTag.person((seizer as Person).ground_pos, MARK_WATCHED, "TAKING HIM BACK", true))
 		out.append(MapTag.place(return_to, MARK_WATCHED, return_label))

@@ -103,7 +103,8 @@ static func spoiled_harvest() -> MissionDef:
 	m.goal = "Spoil the three granaries before their carts empty them"
 	m.goal_label = "The harvest is spoiled"
 	m.lose = "A granary is emptied, or dawn comes"
-	m.camera_at = Vector2(1.0, 8.0)
+	# On the first granary (v0.11 M2, Task 8): at (1, 8) its tag and watchmen sat under the HUD's left stack of objectives and hints.
+	m.camera_at = Vector2(-9.0, 13.5)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["ember", "doom", "discord"])
 	m.director = HarvestDirector

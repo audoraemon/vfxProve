@@ -115,6 +115,9 @@ arrives one granary at a time.
 - **Brief:** "Carts empty the granaries to the Citadel." / "Spoil the harvest before they do."
 - **Card type:** Destroy. **Id:** `spoiled_harvest`.
 - **Map:**
+  - **The camera** rests at (-9.0, 13.5) (Task 8: from (1.0, 8.0), where the first granary sat under the left HUD stack). The
+    simulation reads what is in view, so the scenario's checksums moved with it (the v0.11 summary has the new ones); the
+    scripted player now clears in 182.2 / 189.2 / 189.2 s.
   - **Three granary stores:** the dwellings nearest (-9.0, 12.0), (12.0, 12.0) and (12.0, -12.0), named the south-west,
     south-east and north-east granaries. All three are far from the Citadel.
   - **The watchmen:** at each granary's door stand two watchmen, one either side of it (further apart than one Silent Doom
@@ -229,7 +232,8 @@ arrives one granary at a time.
   The longest wait is 30 s, at the gate. It starts when the player brings him there.
 - **Tags:**
   - ACOLYTE, blue, with an edge arrow. While seized it reads ACOLYTE - CAUGHT, red.
-  - WEST GATE - WATCHED (red) or WEST GATE - CLEAR (green) at the way out.
+  - WEST GATE - WATCHED (red) or WEST GATE - CLEAR (green) at the way out, with an edge arrow (Task 8: it is some 28 units from
+    the acolyte, off screen from his side).
   - TAKING HIM BACK, red with an edge arrow, on the seizer. TEMPLE, red, while he is held.
   - SEARCHER, red with an edge arrow, on each searcher.
   - PATROL, red, on each patrol's first soldier. A red diamond on every other patrol soldier and on the watch.

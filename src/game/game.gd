@@ -111,7 +111,7 @@ const SAMPLE_FEAST_RESULT := {
 }
 
 ## What --show=results-descend displays (v0.11 M1): the board's Warning caught by dawn after its main objective -- its 10
-## believers banked, a granted wish lost, one failed -- and Omen opened by the clear.
+## believers banked, a granted wish lost, one failed -- and Whisper 1 / 3 (v0.11 M2: two more clears open Omen).
 const SAMPLE_DESCEND_RESULT := {
 	"mission": "warning", "won": true, "reason": "warning", "time": 214.0, "goal": {"label": "The warnings die", "done": true},
 	"bonuses": [],
@@ -119,8 +119,8 @@ const SAMPLE_DESCEND_RESULT := {
 		"lost_text": "lost: dawn came", "earned": 10, "kept": 0,
 		"wishes": [{"text": "Burn the moneylender's house", "reward": 10, "state": "granted", "lost": true},
 			{"text": "Show me a sign", "reward": 5, "state": "failed", "lost": false}],
-		"bank": {"believers": 10, "total": 10, "night": 1, "cleared": true, "first_clear": true, "opened": 2,
-			"progress": "Whisper 1 / 1 cleared: Omen is open", "bests": ["Fastest clear 3:21"]}},
+		"bank": {"believers": 10, "total": 10, "night": 1, "cleared": true, "first_clear": true, "opened": 0,
+			"progress": "Whisper 1 / 3 cleared: 2 more open Omen", "bests": ["Fastest clear 3:21"]}},
 }
 
 var screen := Screen.TITLE
@@ -287,9 +287,9 @@ func _ready() -> void:
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
 		"tiers":
-			# The tier board part-way up (v0.11 M1): Whisper and Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
+			# The tier board part-way up (v0.11 M1, M2): three of Whisper and both of Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
 			save.descend = DescendState.new()
-			save.descend.cleared = PackedStringArray(["warning", "miras_house", "broken_lanterns"])
+			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns"])
 			save.descend.fastest = {"warning": 192.0}
 			save.descend.most_wishes = {"warning": 2}
 			save.descend.believers = 64
@@ -828,6 +828,7 @@ func _flow_test() -> void:
 	await _flow_board(step)
 	await _flow_ascend(step)
 	await _flow_results(step)
+	await _flow_tier1(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -973,15 +974,15 @@ func _mission_up(other: Mission) -> bool:
 	return up and _mission.started() and not _fading
 
 
-## v0.11 M1 (spec §3.1-§3.2): on a fresh save the tier board opens on Whisper, The Warning its one card; Omen is locked,
+## v0.11 M1 (spec §3.1-§3.2), v0.11 M2: on a fresh save the tier board opens on Whisper, its five cards; Omen is locked,
 ## its rule shown, and its missions cannot be picked. Ends on the board, Whisper open.
 func _flow_board(step: Callable) -> void:
 	var board := _screen_node as MissionBoard
-	step.call(board != null and board.tier == 1 and Array(board.missions()) == ["warning"] and save.descend.open_tier == 1,
-		"a fresh board opens on Whisper, The Warning its only card")
+	step.call(board != null and board.tier == 1 and Array(board.missions()) == Array(TierBook.missions(1)) and board.missions().size() == 5
+		and save.descend.open_tier == 1, "a fresh board opens on Whisper: The Warning and the four new missions")
 	board.open_tab(2)
 	board.choose(MissionBook.MIRAS_HOUSE)
-	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 1 Whisper mission",
+	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 3 Whisper missions",
 		"Omen is locked: its rule shows, and Mira's House cannot be picked (%s)" % board.lock_line())
 	board.open_tab(1)
 
@@ -1031,7 +1032,7 @@ func _flow_ascend(step: Callable) -> void:
 
 
 ## v0.11 M1 (spec §3.3-§3.4, §6; review focus 3).
-## - The ascended Warning's results bank it: Night 1, its believers, The Warning cleared, Omen open; the save holds them.
+## - The ascended Warning's results bank it: Night 1, its believers, The Warning cleared, Whisper 1 / 3; the save holds them.
 ## - Upgrades from the results buys the first +1 DP, saved at once; Back is the board, and The Warning's Prepare has 7 DP.
 ## - A restart banks nothing and hears the same wishes.
 ## - A night caught by dawn after its main objective banks the main win, its granted wish lost.
@@ -1042,10 +1043,11 @@ func _flow_results(step: Callable) -> void:
 	var bank: Dictionary = d.get("bank", {})
 	var earned := int(d.get("earned", 0))
 	step.call(res != null and res.descend and save.descend.night == 1 and earned >= 10 and save.descend.believers == earned
-		and save.descend.cleared.has(MissionBook.WARNING) and save.descend.open_tier == 2 and int(bank.get("opened", 0)) == 2,
-		"the results bank the night: Night 1, %d believers, The Warning cleared, Omen open" % earned)
+		and save.descend.cleared.has(MissionBook.WARNING) and save.descend.open_tier == 1 and int(bank.get("opened", 0)) == 0
+		and String(bank.get("progress", "")) == "Whisper 1 / 3 cleared: 2 more open Omen",
+		"the results bank the night: Night 1, %d believers, The Warning cleared, Whisper 1 / 3 (v0.11 M2)" % earned)
 	var reread := SaveFile.new().load_from(save_path)
-	step.call(reread.descend.night == 1 and reread.descend.believers == earned and reread.descend.open_tier == 2
+	step.call(reread.descend.night == 1 and reread.descend.believers == earned and reread.descend.open_tier == 1
 		and reread.descend.cleared.has(MissionBook.WARNING), "and the save holds them")
 	res.action.emit("upgrades")
 	var up := _screen_node as UpgradesScreen
@@ -1057,7 +1059,7 @@ func _flow_results(step: Callable) -> void:
 		and SaveFile.new().load_from(save_path).descend.dp_bought == 1, "a click buys the first +1 DP for 25, saved at once")
 	up.action.emit("back")
 	var board := _screen_node as MissionBoard
-	step.call(screen == Screen.BOARD and board != null and save.descend.is_open(2), "Back is the tier board, Omen open")
+	step.call(screen == Screen.BOARD and board != null and not save.descend.is_open(2), "Back is the tier board, Omen still locked")
 	board.choose(MissionBook.WARNING)
 	var prep := _screen_node as PrepareScreen
 	step.call(prep != null and prep.draft.capacity == TierBook.dp(1) + 1,
@@ -1104,6 +1106,40 @@ func _flow_results(step: Callable) -> void:
 		"caught by dawn after the main objective: its 10 believers banked, the granted wish lost")
 	(_screen_node as ResultsScreen).action.emit("missions")
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Board from the results returns to the tier board")
+
+
+## v0.11 M2: a new Tier 1 mission from the board -- The Tax Collector. Its Prepare has Tier 1's DP plus the one bought; its
+## night is the board's version with its director up (three collectors, each with his guards), and no wish's person is a
+## collector or a guard (the wishes are reserved first); Pause > Missions abandons it without counting the night. Ends on the
+## board.
+func _flow_tier1(step: Callable) -> void:
+	var nights := save.descend.night
+	(_screen_node as MissionBoard).choose(MissionBook.TAX_COLLECTOR)
+	var prep := _screen_node as PrepareScreen
+	var dp := prep.draft.capacity if prep != null else 0
+	prep.draft.preselect(MissionBook.tax_collector().default_loadout)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _past_intro()
+	var d := _mission.rules().director as TaxCollectorDirector
+	var clash := false
+	var targets := 0
+	var guards := 0
+	if d != null and _mission.descent() != null:
+		for q in d.quarries:
+			targets += int(q.target != null)
+			guards += q.guards.size()
+		for w in _mission.descent().wishes:
+			for p in w.people():
+				for q in d.quarries:
+					clash = clash or p == q.target or q.guards.has(p)
+	var up := d != null and targets == TaxCollectorDirector.ROUNDS.size() and guards > 0 and not clash \
+		and dp == TierBook.dp(1) + 1 and _mission.rules().mission.tier == 1
+	_open_pause()
+	on_action("pause:missions")
+	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+	step.call(up and screen == Screen.BOARD and save.descend.night == nights,
+		"The Tax Collector from the board: its three collectors up with guards, no wish's person a collector or a guard; abandoned, uncounted")
 
 
 ## The night's wishes by id, in the order heard (FLOW, v0.11 M1).

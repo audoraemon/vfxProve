@@ -8,14 +8,15 @@ extends Wish
 ## my child's: the bailiff felled by the god's own cast before it was engaged engages and grants it; felled by any other hand
 ## before, it fails.
 
-## How long he has to reach the door once engaged (v0.11 M2).
+## The most time he has to reach the door once engaged (v0.11 M2): a cap, not a countdown the player is shown -- from MIN_WALK he
+## reaches it in about 16 s (the median of sixteen seeded towns), so a bailiff left alone is at the door long before it runs out.
 const SECONDS := 50.0
 ## How near a cast must land to the bailiff or the home to engage the wish (v0.11 M2).
 const ENGAGE_REACH := 2.0
 ## How near the door counts as there (v0.11 M2).
 const HOME_REACH := 1.0
-## How far from the home he starts at least (v0.11 M2).
-const MIN_WALK := 10.0
+## How far from the home he starts at least (v0.11 M2): 20 units is a walk of some 16 s after engagement, fair for a click.
+const MIN_WALK := 20.0
 ## How often he is re-aimed (v0.11 M2).
 const RETARGET := 0.5
 
@@ -176,10 +177,10 @@ func check(rules: Rules) -> Status:
 	return s
 
 
-## "Stop the bailiff (+15) 0:50", the clock once engaged (v0.11 M2).
+## "Stop the bailiff before he reaches the door (+15)": the act, with no countdown (v0.11 M2: SECONDS is only a cap, which he
+## never nears).
 func hud_text(_rules: Rules) -> String:
-	var clock := " %s" % UiTheme.clock(seconds_left) if engaged and status == Status.PENDING else ""
-	return "%s (+%d)%s" % [def.text, reward, clock]
+	return "%s before he reaches the door (+%d)" % [def.text, reward]
 
 
 ## BAILIFF on him (edged once engaged), HOME on the door (v0.11 M2).

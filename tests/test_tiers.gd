@@ -20,15 +20,17 @@ static func _table(t) -> void:
 			TierBook.wishes(tier), TierBook.multiplier(tier)])
 	t.check(rows == [[1, 3, 6, 300.0, 2, 1.0], [2, 3, 8, 330.0, 2, 1.5], [3, 4, 10, 360.0, 3, 2.0], [4, 5, 13, 390.0, 3, 2.5],
 		[4, 6, 16, 420.0, 3, 3.0]], "each tier's readiness, slots, DP, clock, wishes and multiplier (spec §4) (%s)" % [rows])
-	t.check(Array(TierBook.missions(1)) == ["warning"] and Array(TierBook.missions(2)) == ["miras_house", "broken_lanterns"]
+	t.check(Array(TierBook.missions(1)) == ["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
+		and Array(TierBook.missions(2)) == ["miras_house", "broken_lanterns"]
 		and Array(TierBook.missions(3)) == ["vigil_flame", "festival"] and Array(TierBook.missions(4)) == ["procession"]
-		and Array(TierBook.missions(5)) == ["last_judgement", "long_night"], "the eight ★ missions on their tiers (spec §8)")
-	t.check(TierBook.all().size() == 8 and TierBook.tier_of("festival") == 3 and TierBook.tier_of("feast_festival") == 0
-		and not TierBook.has("feast_festival") and TierBook.has("long_night"), "found by id; the campaign's Feast is not one")
+		and Array(TierBook.missions(5)) == ["last_judgement", "long_night"], "Whisper complete (v0.11 M2); the ★ missions on theirs (spec §8)")
+	t.check(TierBook.all().size() == 12 and TierBook.tier_of("festival") == 3 and TierBook.tier_of("feast_festival") == 0
+		and not TierBook.has("feast_festival") and TierBook.has("long_night") and TierBook.tier_of("lost_lamb") == 1,
+		"found by id; the campaign's Feast is not one")
 	var needs := []
 	for tier in range(1, 6):
 		needs.append(TierBook.need(tier))
-	t.check(needs == [1, 2, 2, 1, 2], "while tiers are short, all of a tier's missions open the next (%s)" % [needs])
+	t.check(needs == [3, 2, 2, 1, 2], "Whisper needs three of its five (v0.11 M2); the short tiers still need all (%s)" % [needs])
 	t.check(TierBook.believers(10, 1) == 10 and TierBook.believers(15, 2) == 23 and TierBook.believers(10, 5) == 30
 		and TierBook.believers(5, 4) == 13, "believers times the multiplier, rounded")
 	t.check(TierBook.type_of("warning") == "Intercept" and TierBook.type_of("last_judgement") == "Destroy"
@@ -40,10 +42,12 @@ static func _table(t) -> void:
 static func _unlock(t) -> void:
 	var s := DescendState.new()
 	t.check(s.open_tier == 1 and s.is_open(1) and not s.is_open(2) and not s.is_open(0), "Tier 1 is open from the start")
-	t.check(DescendState.lock_text(2) == "Clear 1 Whisper mission" and DescendState.lock_text(3) == "Clear 2 Omen missions",
+	t.check(DescendState.lock_text(2) == "Clear 3 Whisper missions" and DescendState.lock_text(3) == "Clear 2 Omen missions",
 		"a locked tier's rule (%s; %s)" % [DescendState.lock_text(2), DescendState.lock_text(3)])
 	s.cleared.append("warning")
-	t.check(s.refresh_open() == 2 and s.open_tier == 2, "The Warning cleared opens Omen")
+	t.check(s.refresh_open() == 0 and s.open_tier == 1, "The Warning alone no longer opens Omen (v0.11 M2: Whisper has five)")
+	s.cleared.append_array(PackedStringArray(["tax_collector", "spoiled_harvest"]))
+	t.check(s.refresh_open() == 2 and s.open_tier == 2, "three of Whisper's five open it")
 	s.cleared.append("miras_house")
 	t.check(s.refresh_open() == 0 and s.open_tier == 2, "one of Omen's two does not open Wrath")
 	s.cleared.append("broken_lanterns")
@@ -51,9 +55,9 @@ static func _unlock(t) -> void:
 	s.cleared.clear()
 	t.check(s.refresh_open() == 0 and s.open_tier == 3, "a tier never closes again")
 	var far := DescendState.new()
-	far.cleared = PackedStringArray(["warning", "miras_house", "broken_lanterns", "vigil_flame", "festival", "procession"])
+	far.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb", "miras_house", "broken_lanterns", "vigil_flame", "festival", "procession"])
 	t.check(far.refresh_open() == 5 and far.open_tier == 5, "tiers open one after another, up to Ascendance")
-	t.check(far.progress_line(1) == "Whisper 1 / 1 cleared: Omen is open" and s.progress_line(3) == "Wrath 0 / 2 cleared: 2 more open Reckoning"
+	t.check(far.progress_line(1) == "Whisper 3 / 3 cleared: Omen is open" and s.progress_line(3) == "Wrath 0 / 2 cleared: 2 more open Reckoning"
 		and far.progress_line(5) == "Ascendance 0 / 2 cleared", "the results' tier line (%s; %s)" % [far.progress_line(1), s.progress_line(3)])
 	var one := DescendState.new()
 	one.cleared.append("warning")
@@ -88,8 +92,8 @@ static func _prices(t) -> void:
 static func _bank(t) -> void:
 	var s := DescendState.new()
 	var won := s.bank("warning", {"main": true, "main_time": 200.0, "earned": 10, "kept": 0})
-	t.check(s.night == 1 and s.believers == 10 and s.cleared.has("warning") and bool(won.first_clear) and int(won.opened) == 2
-		and String(won.progress) == "Whisper 1 / 1 cleared: Omen is open", "a night won: counted, banked, cleared, Omen open (%s)" % [won])
+	t.check(s.night == 1 and s.believers == 10 and s.cleared.has("warning") and bool(won.first_clear) and int(won.opened) == 0
+		and String(won.progress) == "Whisper 1 / 3 cleared: 2 more open Omen", "a night won: counted, banked, cleared (%s)" % [won])
 	t.check(Array(won.bests) == ["Fastest clear 3:20"] and is_equal_approx(float(s.fastest.warning), 200.0), "its time is a best")
 	var lost := s.bank("warning", {"main": false, "main_time": 0.0, "earned": 0, "kept": 0})
 	t.check(s.night == 2 and s.believers == 10 and not bool(lost.cleared) and (lost.bests as PackedStringArray).is_empty()
@@ -107,7 +111,7 @@ static func _save(t) -> void:
 	var save := SaveFile.new()
 	save.descend.night = 4
 	save.descend.believers = 77
-	save.descend.cleared = PackedStringArray(["warning", "miras_house"])
+	save.descend.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb", "miras_house"])
 	save.descend.dp_bought = 2
 	save.descend.slot_bought = 1
 	save.descend.unlocked = PackedStringArray(["tsunami"])
@@ -117,7 +121,7 @@ static func _save(t) -> void:
 	save.last_mission = "festival"
 	save.save_to(path)
 	var back := SaveFile.new().load_from(path).descend
-	t.check(back.night == 4 and back.believers == 77 and Array(back.cleared) == ["warning", "miras_house"] and back.open_tier == 2
+	t.check(back.night == 4 and back.believers == 77 and Array(back.cleared) == ["warning", "tax_collector", "lost_lamb", "miras_house"] and back.open_tier == 2
 		and back.dp_bought == 2 and back.slot_bought == 1 and Array(back.unlocked) == ["tsunami"]
 		and is_equal_approx(float(back.fastest.warning), 190.5) and int(back.most_wishes.warning) == 2, "the board comes back from the file")
 	t.check(SaveFile.new().load_from(path).last_mission == "festival", "a board id is a mission the board remembers")
@@ -145,8 +149,9 @@ static func _save(t) -> void:
 	old.set_value("mission.long_night", "won", false)
 	old.save(path)
 	var carried := SaveFile.new().load_from(path).descend
-	t.check(Array(carried.cleared) == ["warning", "last_judgement"] and carried.open_tier == 2 and carried.fastest.is_empty()
-		and carried.night == 0 and carried.believers == 0, "a v0.10 save's wins carry over as cleared, Omen open, no time (%s)" % [carried.cleared])
+	t.check(Array(carried.cleared) == ["warning", "last_judgement"] and carried.open_tier == 1 and carried.fastest.is_empty()
+		and carried.night == 0 and carried.believers == 0,
+		"a v0.10 save's wins carry over as cleared, no time; one of Whisper's three leaves Omen locked (v0.11 M2) (%s)" % [carried.cleared])
 	var with := ConfigFile.new()
 	with.set_value("mission.warning", "won", true)
 	with.set_value("descend", "night", 1)

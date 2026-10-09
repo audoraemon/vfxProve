@@ -21,6 +21,9 @@ const CARD := Vector2(300.0, 230.0)
 const CARD_GAP := 12.0
 const CARD_TOP := 62.0
 const PAD := 10.0
+## The most lines a card's brief may wrap to (v0.11 M2): five cards a tab are 115 px wide, and seven lines end above the rule
+## of a best line that wraps to two (card 230 high: two name lines, the type, then 15 px a line).
+const BRIEF_LINES := 7
 ## The header's Upgrades button.
 const UPGRADES_RECT := Rect2(548.0, 8.0, 84.0, 20.0)
 
@@ -108,6 +111,21 @@ func best_line(id: String) -> String:
 	if int(s.most_wishes.get(id, 0)) > 0:
 		parts.append("wishes %d" % int(s.most_wishes[id]))
 	return "  ".join(parts)
+
+
+## A card's brief wrapped to `room`, line by line (v0.11 M2: Whisper's five cards are 115 px wide).
+func brief_lines(id: String, room: float) -> PackedStringArray:
+	var out := PackedStringArray()
+	var def: MissionDef = _defs.get(id)
+	if def != null:
+		for brief in def.brief:
+			out.append_array(UiTheme.wrap(brief, room, UiTheme.SIZE_BODY))
+	return out
+
+
+## A card's best line wrapped to `room` (v0.11 M2: Whisper's five cards are 115 px wide).
+func best_lines(id: String, room: float) -> PackedStringArray:
+	return UiTheme.wrap(best_line(id), room, UiTheme.SIZE_SMALL)
 
 
 ## Opens tier `t`'s tab -- locked or not: a locked one shows its rule -- on its first card.
@@ -285,11 +303,12 @@ func _draw_card(r: Rect2, id: String, on: bool) -> void:
 		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)
 	UiTheme.text(_ui, Vector2(x, y), TierBook.type_of(id).to_upper(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
 	y += UiTheme.LINE_SMALL + 8.0
-	for brief in def.brief:
-		for line in UiTheme.wrap(brief, room, UiTheme.SIZE_BODY):
-			UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
-			y += UiTheme.LINE_BODY
-	var rule := r.end.y - PAD - UiTheme.LINE_SMALL - 6.0
+	for line in brief_lines(id, room):
+		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
+		y += UiTheme.LINE_BODY
+	var best := best_lines(id, room)
+	var rule := r.end.y - PAD - UiTheme.LINE_SMALL * float(best.size()) - 6.0
 	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, -1.0)
-	UiTheme.text(_ui, Vector2(x, rule + 4.0 + UiTheme.LINE_SMALL), best_line(id), UiTheme.SIZE_SMALL,
-		UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	for i in best.size():
+		UiTheme.text(_ui, Vector2(x, rule + 4.0 + UiTheme.LINE_SMALL * float(i + 1)), best[i], UiTheme.SIZE_SMALL,
+			UiTheme.COL_GOLD if on else UiTheme.COL_DIM)

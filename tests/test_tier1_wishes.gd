@@ -100,7 +100,7 @@ static func _bailiff(t) -> void:
 	var s := _world()
 	var w := _wish(s, "bailiff") as BailiffWish
 	t.check(w != null and w.bailiff.soldier and w.bailiff.corps == Person.Corps.NONE
-		and w.bailiff.ground_pos.distance_to(w.home) >= BailiffWish.MIN_WALK - 0.01, "a free soldier at least 10 units from the wisher's home")
+		and w.bailiff.ground_pos.distance_to(w.home) >= BailiffWish.MIN_WALK - 0.01, "a free soldier at least 20 units from the wisher's home (v0.11 M2: a ~15 s walk)")
 	t.check(w.timed() and w.waiting() and w.check(s.rules) == Objective.Status.PENDING and _labels(w) == ["BAILIFF", "HOME", Wish.WISHER_LABEL],
 		"it waits, unengaged; the bailiff, the home and the wisher tagged (%s)" % [_labels(w)])
 	w.on_cast("doom", w.home + Vector2(BailiffWish.ENGAGE_REACH + 1.0, 0.0))
@@ -108,7 +108,9 @@ static func _bailiff(t) -> void:
 	w.on_cast("doom", w.home + Vector2(BailiffWish.ENGAGE_REACH - 0.2, 0.0))
 	t.check(w.engaged and w.bailiff.mind == Person.Mind.DUTY and w.bailiff.goal().distance_to(w.home) < 1.0 and not w.engage(),
 		"a cast by the home engages it: the bailiff sets out for it; once only")
-	t.check(w.hud_text(s.rules) == "Stop the bailiff (+0) 0:50", "its clock shows (%s)" % w.hud_text(s.rules))
+	t.check(w.hud_text(s.rules) == "Stop the bailiff before he reaches the door (+0)",
+		"the HUD shows the act, no countdown it never reaches (%s)" % w.hud_text(s.rules))
+	t.check(BailiffWish.MIN_WALK == 20.0 and BailiffWish.SECONDS == 50.0, "he walks at least 20 units; 50 s is only the cap")
 	w.bailiff.mind = Person.Mind.FIGHT
 	t.check(w.check(s.rules) == Objective.Status.DONE and w.bailiff.mind != Person.Mind.DUTY, "turned (to fight): granted")
 	w.release()

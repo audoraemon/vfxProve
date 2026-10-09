@@ -24,8 +24,8 @@ M1's final review.
 
 Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in sequence, not one.
 
-- **Brief:** "The tax collector and his deputies make their rounds." / "Strike all three down before the taxes reach the
-  Citadel."
+- **Brief:** "Three tax collectors make their rounds." / "Kill them before the taxes arrive." (Task 7: the first wording ran ten
+  lines in a Whisper card, 115 px wide, and overran its best line; a card's brief may wrap to seven.)
 - **Card type:** Kill. **Id:** `tax_collector`.
 - **Map:**
   - **The counting-house:** the workshop hall in the east quarter (art tag `workshop`), tagged COUNTING-HOUSE.
@@ -324,7 +324,7 @@ The pool grows from 8 to 10. Both new wishes may be heard in an Unaware town.
 
 | Wish | Kind | Act | Reward | Needs / clashes |
 |---|---|---|---|---|
-| Stop the bailiff | Rescue | Once engaged (his tag or the home's clicked, or a cast within 2 of either), the bailiff walks from his post to the wisher's home. Kill him, turn him, or keep him from the door for 50 s. | 15 | a lay citizen with a home, and a free soldier at least 10 units from it; — |
+| Stop the bailiff | Rescue | Once engaged (his tag or the home's clicked, or a cast within 2 of either), the bailiff walks from his post to the wisher's home. Kill him, turn him, or keep him from the door for 50 s. | 15 | a lay citizen with a home, and a free soldier at least 20 units from it; — |
 | Let my neighbours believe | Faith | Whisper three of the wisher's neighbours (marked) to within 2 units of the wisher. Each one believes. | 10 | three lay citizens living within 8 of the wisher's home, not of the household; — |
 
 - **"Strike down the cruel tax collector"** now also clashes with `hunts_tax_collector`, so it is never heard on The Tax
@@ -408,8 +408,10 @@ These are the details the v0.11 spec left open. The controller records them as r
     `_house_near()` all skip reserved people and places, so a new director cannot forget.
 20. **Town-wide orders:** the new directors leave alone a soldier the rally or the marshals have taken (his mind is not on
     post or calm, or his corps is not none). They tolerate the loss and do not fight the order.
-21. **Stop the bailiff:** 50 s is how long he has. The wish is granted when he is killed, turned, or still short of the door
-    at 50 s, and failed when he reaches it. It is engaged as Save my child is.
+21. **Stop the bailiff:** 50 s is the most time he has, a cap. The wish is granted when he is killed, turned, or still short of
+    the door at 50 s, and failed when he reaches it. It is engaged as Save my child is. The controller's ruling after Task 6: he
+    starts at least 20 units from the door (a walk of about 16 s after a click-engage, the median of sixteen seeded towns), and
+    the HUD shows the act ("Stop the bailiff before he reaches the door") rather than a 0:50 countdown he never nears.
 22. **Let my neighbours believe:** the neighbours live within 8 of the home and are not of the household. Each counts once
     whispered to within 2 of the wisher.
 23. **Tax collector clash:** the tax collector wish clashes with The Tax Collector (mission tag `hunts_tax_collector`).

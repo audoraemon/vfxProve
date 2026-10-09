@@ -38,15 +38,16 @@ static func _tabs(t) -> void:
 	var board := MissionBoard.new().setup(save, "warning")
 	var picked := []
 	board.action.connect(func(what: String) -> void: picked.append(what))
-	t.check(board.tier == 1 and Array(board.missions()) == ["warning"] and board.lock_line() == ""
-		and board.header_text() == "Night 1   Believers 0", "a fresh board: Whisper, The Warning, Night 1 (%s)" % board.header_text())
+	t.check(board.tier == 1 and Array(board.missions()) == ["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
+		and board.lock_line() == "" and board.header_text() == "Night 1   Believers 0",
+		"a fresh board: Whisper's five, Night 1 (%s)" % board.header_text())
 	board.open_tab(2)
-	t.check(board.tier == 2 and board.lock_line() == "Clear 1 Whisper mission", "Omen is locked, its rule shown")
+	t.check(board.tier == 2 and board.lock_line() == "Clear 3 Whisper missions", "Omen is locked, its rule shown")
 	board.choose("miras_house")
 	t.check(picked.is_empty() and board.chosen == "" and board.tier == 2, "a locked mission cannot be picked")
 	board.choose("warning")
 	t.check(picked == ["pick"] and board.chosen == "warning" and board.tier == 1, "an open one is")
-	save.descend.cleared.append("warning")
+	save.descend.cleared.append_array(PackedStringArray(["warning", "tax_collector", "spoiled_harvest"]))
 	save.descend.refresh_open()
 	board.choose("broken_lanterns")
 	t.check(board.chosen == "broken_lanterns" and board.lock_line() == "", "Omen open: its mission picked")

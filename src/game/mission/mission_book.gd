@@ -78,8 +78,8 @@ static func _tier1(id: String, name: String, brief: PackedStringArray) -> Missio
 ## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector). A seen
 ## kill still counts, but calls the bell.
 static func tax_collector() -> MissionDef:
-	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["The tax collector and his deputies make their rounds.",
-		"Strike all three down before the taxes reach the Citadel."]))
+	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
+		"Kill them before the taxes arrive."]))
 	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
 	m.goal_label = "The collectors are dead"
 	m.lose = "A collector reaches the Citadel, the bell tolls, or dawn comes"

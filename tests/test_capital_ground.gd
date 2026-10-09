@@ -98,9 +98,14 @@ static func _capital_data(t, c: CapitalCity) -> void:
 		if not d.kind in Structure.WALKABLE:
 			solid.append(d.rect)
 	var bad: Array = []
+	var gallows := Rect2()
+	for d: Dictionary in c.structures():
+		if d.tag == &"gpt_gallows":
+			gallows = d.rect
 	for o: Array in c.outcrops():
 		for s: Rect2 in solid:
-			if s.grow(o[1]).has_point(o[0]):
+			# (polish 3: gallows hill is the one outcrop with a building on it, the gallows)
+			if s.grow(o[1]).has_point(o[0]) and not (o[0] == CapitalCity.GALLOWS_HILL and s == gallows):
 				bad.append(o[0])
 	for tr: Array in c.trails():
 		for p: Vector2 in tr:

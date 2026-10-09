@@ -18,7 +18,64 @@ static func run(t) -> void:
 	_dummies(t, c)
 	_house_mix(t, c)
 	_avenues(t, c)
+	_south(t, c)
 	City.use(&"aldermere")
+
+
+## Item 6: outside the walls to the south -- a hamlet of huts with its well, the gallows on its rocky hill, the
+## tournament field's grandstands facing the fenced tilt yard, and more fields and barns; the south road to the
+## barbican kept clear.
+static func _south(t, c: CapitalCity) -> void:
+	var suburbs := c.landmark(&"suburbs")
+	var lists := c.landmark(&"tournament_field")
+	var huts := 0
+	var stands := 0
+	var tilts: Array[Rect2] = []
+	var gallows := Rect2()
+	for d: Dictionary in c.structures():
+		var r: Rect2 = d.rect
+		if d.tag == &"gpt_hut" and suburbs.encloses(r):
+			huts += 1
+		elif d.tag == &"gpt_grandstand" and lists.encloses(r):
+			stands += 1
+		elif d.tag == &"gpt_tiltbarrier":
+			tilts.append(r)
+		elif d.tag == &"gpt_gallows":
+			gallows = r
+	t.check(huts >= 10, "a hamlet of huts in the suburbs (%d)" % huts)
+	var well := false
+	for w: Rect2 in c.wells():
+		well = well or suburbs.encloses(w)
+	t.check(well, "the hamlet has a well")
+	var on_hill := false
+	for o: Array in c.outcrops():
+		on_hill = on_hill or ((o[0] as Vector2).distance_to(gallows.get_center()) < 1.0 and float(o[1]) >= 1.0)
+	t.check(suburbs.encloses(gallows) and on_hill, "the gallows stands on its rocky hill (%s)" % gallows)
+	var line := tilts.size() >= 5
+	for r: Rect2 in tilts:
+		line = line and is_equal_approx(r.position.y, tilts[0].position.y) and lists.encloses(r)
+	t.check(stands >= 2 and line, "the tournament field: %d grandstands, a run of %d tilt barriers" % [stands, tilts.size()])
+	var fences := 0
+	for d: Dictionary in c.court_decor():
+		if d.kind == Decor.Kind.FENCE and lists.has_point(d.at):
+			fences += 1
+	t.check(fences >= 2, "the tilt yard is fenced (%d runs)" % fences)
+	t.check(c.fields().size() >= CapitalCity.FIELDS.size() and c.fields().size() >= 13 and CapitalCity.BARNS.size() >= 4,
+		"more fields and barns (%d fields, %d barns)" % [c.fields().size(), CapitalCity.BARNS.size()])
+	var walled := false
+	for f: Rect2 in c.fields():
+		walled = walled or f.intersects(CapitalCity.OUTER.grow(0.5)) or f.intersects(CapitalCity.INNER.grow(0.5))
+	t.check(not walled, "every field lies outside the walls")
+	# The south road from the map's edge to the barbican stays clear.
+	var road := Rect2(5.2, 34.6, 3.6, 5.4)
+	var blocked := 0
+	for d: Dictionary in c.structures():
+		if (d.rect as Rect2).intersects(road):
+			blocked += 1
+	for d: Dictionary in c.court_decor():
+		if road.has_point(d.at):
+			blocked += 1
+	t.check(blocked == 0, "the south road to the barbican is clear (%d in the way)" % blocked)
 
 
 ## Item 4: trees and lamp posts line the avenues at a regular step, beside them, never on them; the larger leftover

@@ -73,18 +73,33 @@ const CARPENTER_YARD := Rect2(-17.1, 13.9, 0.9, 0.7)
 const SMITHY := Rect2(-23.8, 16.2, 1.5, 1.25)
 const SMITHY_YARD := Rect2(-23.7, 17.65, 1.3, 0.55)
 const WORKSHOP := Rect2(-21.5, 16.2, 2.6, 1.5)
-## The farms: fields, farmhouses (Aldermere's barn) and the windmill, in the west farms and the south-east fields.
+## The farms: fields, farmhouses (Aldermere's barn) and the windmill, in the west farms and the south-east fields;
+## and (polish 3) two fields and a barn in the suburbs beside gallows hill, one more field and barn at the west farms'
+## south end, two more fields and a barn at the south-east fields' south end.
 const FIELDS := [
 	Rect2(-39.5, 13.0, 4.5, 3.4), Rect2(-34.6, 13.0, 3.6, 3.4), Rect2(-39.5, 17.0, 4.5, 3.4), Rect2(-39.5, 26.0, 4.5, 3.4),
 	Rect2(-39.5, 30.0, 4.5, 3.4), Rect2(24.0, 27.0, 5.0, 3.4), Rect2(30.0, 27.0, 5.0, 3.4), Rect2(24.0, 31.0, 5.0, 3.4),
 	Rect2(30.0, 31.0, 5.0, 3.4),
+	Rect2(-24.4, 35.0, 4.0, 2.7), Rect2(-19.8, 35.0, 4.0, 2.7), Rect2(-39.5, 34.2, 4.5, 3.2), Rect2(24.4, 37.0, 4.0, 2.4),
+	Rect2(31.0, 36.6, 4.5, 3.0),
 ]
-const BARNS := [Rect2(-34.0, 21.0, 1.3, 1.5), Rect2(28.0, 23.8, 1.3, 1.5)]
+const BARNS := [Rect2(-34.0, 21.0, 1.3, 1.5), Rect2(28.0, 23.8, 1.3, 1.5), Rect2(-15.0, 35.2, 1.3, 1.5),
+	Rect2(-38.4, 37.9, 1.3, 1.5), Rect2(36.4, 36.8, 1.3, 1.5)]
 const WINDMILL := Rect2(-36.0, 23.0, 0.9, 0.9)
 ## The fountains (the Great Market's, the civic square's) and the wells.
 const FOUNTAINS := [Rect2(-5.0, -3.0, 1.2, 1.2), Rect2(5.5, -17.0, 1.2, 1.2)]
 const WELLS := [Rect2(-27.5, 19.6, 0.5, 0.5), Rect2(-16.5, 28.0, 0.5, 0.5), Rect2(16.0, 28.5, 0.5, 0.5),
-	Rect2(9.0, 0.6, 0.5, 0.5), KEEP_YARD_WELL, PLAZA_WELL]
+	Rect2(9.0, 0.6, 0.5, 0.5), KEEP_YARD_WELL, PLAZA_WELL, SUBURB_WELL]
+## The suburbs' hamlet well (polish 3), on its little square between the huts.
+const SUBURB_WELL := Rect2(-4.3, 37.1, 0.5, 0.5)
+## Gallows hill (polish 3): the gallows on a rocky outcrop at the suburbs' west end (OUTCROPS).
+const GALLOWS_HILL := Vector2(-26.8, 36.0)
+## The tournament field (polish 3): the tilt yard's fences either side of the tilt barrier, and gear by the play stage.
+const LISTS_DECOR := [
+	[Decor.Kind.FENCE, Vector2(9.4, 36.5), Vector2(6.4, 0.0)], [Decor.Kind.FENCE, Vector2(9.4, 37.7), Vector2(6.4, 0.0)],
+	[Decor.Kind.BARREL, Vector2(16.6, 37.3), Vector2.ZERO], [Decor.Kind.BARREL, Vector2(16.95, 37.45), Vector2.ZERO],
+	[Decor.Kind.CRATES, Vector2(18.7, 37.1), Vector2.ZERO],
+]
 ## The Keep's courtyard (polish 1): the paved yard inside the old town's north-west walls, between the wall patrols'
 ## loop and the noble quarter, the barracks at its east end. Its west half is the royal garden: lawn, gravel paths
 ## crossing at a fountain, hedges, flower beds, benches and trees (court_decor()), the monument and the pavilion
@@ -144,7 +159,7 @@ const DRILL_RANKS := [1.5]
 ## own "half" overrides it (the avenues' trees close only their trunks).
 const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
 	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
-	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15, Decor.Kind.LAMP: 0.1}
+	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15, Decor.Kind.LAMP: 0.1, Decor.Kind.FENCE: 0.1}
 ## The avenues (polish 3): trees and lamp posts in turn along both sides of every avenue inside the walls, every
 ## AVENUE_STEP, AVENUE_OUT past the avenue's edge (avenue_decor()); a spot that is not clear is skipped, so the rest
 ## keep the step. A tree closes only its trunk (AVENUE_TRUNK).
@@ -331,15 +346,22 @@ const GPT_PLOTS := [
 	[&"gpt_vineyard", Vector2(24.0, 21.5)], [&"gpt_vineyard", Vector2(26.2, 21.5)], [&"gpt_vineyard", Vector2(28.4, 21.5)],
 	[&"gpt_beehives", Vector2(31.0, 20.0)], [&"gpt_dovecote", Vector2(33.5, 20.0)], [&"gpt_granary", Vector2(35.0, 20.0)],
 	[&"gpt_orchard", Vector2(31.0, 23.0)], [&"gpt_orchard", Vector2(33.0, 23.0)], [&"gpt_farmhouse", Vector2(36.0, 23.0)],
-	# Suburbs and gallows hill: huts, the gallows.
-	[&"gpt_gallows", Vector2(-26.0, 36.0)], [&"gpt_hut", Vector2(-20.0, 35.5)], [&"gpt_hut", Vector2(-18.0, 35.5)],
-	[&"gpt_hut", Vector2(-16.0, 35.5)], [&"gpt_hut", Vector2(-11.0, 36.5)], [&"gpt_hut", Vector2(-9.0, 36.5)],
-	[&"gpt_hut", Vector2(-2.0, 35.5)],
-	# Tournament field: grandstand, the tilt barrier (a run of segments along x), a play stage.
-	[&"gpt_grandstand", Vector2(12.0, 35.0)], [&"gpt_tiltbarrier", Vector2(10.0, 37.5)],
-	[&"gpt_tiltbarrier", Vector2(11.2, 37.5)], [&"gpt_tiltbarrier", Vector2(12.4, 37.5)],
-	[&"gpt_tiltbarrier", Vector2(13.6, 37.5)], [&"gpt_tiltbarrier", Vector2(14.8, 37.5)],
-	[&"gpt_playstage", Vector2(18.0, 35.5)],
+	# Suburbs and gallows hill (polish 3): the gallows on its rocky hill at the west end (GALLOWS_HILL), the fields and
+	# the barn beside it (FIELDS, BARNS), then a hamlet of huts in two rows round its well (SUBURB_WELL), clear of the
+	# south road.
+	[&"gpt_gallows", GALLOWS_HILL - Vector2(0.6, 0.7)],
+	[&"gpt_hut", Vector2(-12.6, 35.0)], [&"gpt_hut", Vector2(-10.6, 35.0)], [&"gpt_hut", Vector2(-8.6, 35.0)],
+	[&"gpt_hut", Vector2(-6.6, 35.0)], [&"gpt_hut", Vector2(-4.6, 35.0)], [&"gpt_hut", Vector2(-2.4, 35.0)],
+	[&"gpt_hut", Vector2(-0.4, 35.0)], [&"gpt_hut", Vector2(1.6, 35.0)],
+	[&"gpt_hut", Vector2(-11.6, 36.8)], [&"gpt_hut", Vector2(-9.4, 36.8)], [&"gpt_hut", Vector2(-7.2, 36.8)],
+	[&"gpt_hut", Vector2(-2.0, 36.8)], [&"gpt_hut", Vector2(0.2, 36.8)], [&"gpt_hut", Vector2(2.4, 36.8)],
+	# Tournament field (polish 3): two grandstands side by side facing the tilt yard (a run of tilt barriers along x
+	# between two fences: LISTS_DECOR), the play stage at its east end.
+	[&"gpt_grandstand", Vector2(9.6, 35.0)], [&"gpt_grandstand", Vector2(12.6, 35.0)],
+	[&"gpt_tiltbarrier", Vector2(9.6, 37.1)], [&"gpt_tiltbarrier", Vector2(10.8, 37.1)],
+	[&"gpt_tiltbarrier", Vector2(12.0, 37.1)], [&"gpt_tiltbarrier", Vector2(13.2, 37.1)],
+	[&"gpt_tiltbarrier", Vector2(14.4, 37.1)],
+	[&"gpt_playstage", Vector2(16.8, 35.2)],
 ]
 ## The craft sets whose fronts are workplaces (anchors' "craft").
 const CRAFTS := [&"gpt_bakery", &"gpt_butcher", &"gpt_brewery", &"gpt_tannery", &"gpt_dyers", &"gpt_weavers",
@@ -502,14 +524,15 @@ const ROAD_TRAILS := [
 ## Rocky outcrops in the woods and on the monastery's hill: [centre, radius].
 const OUTCROPS := [
 	[Vector2(35.5, -37.0), 1.6], [Vector2(-27.0, -37.2), 1.6], [Vector2(-29.0, -21.5), 1.6], [Vector2(12.0, -37.0), 1.4],
-	[Vector2(37.5, -17.0), 1.5], [AQUEDUCT_SPRING, 0.6],
+	[Vector2(37.5, -17.0), 1.5], [AQUEDUCT_SPRING, 0.6], [GALLOWS_HILL, 1.4],
 ]
 ## Rowing boats on the river, clear of the bridges, and in the harbour basin.
 const BOATS := [Vector2(-31.0, 8.2), Vector2(-22.5, 9.8), Vector2(-5.5, 10.4), Vector2(9.0, 8.0), Vector2(27.5, 4.0),
 	Vector2(35.0, 12.5)]
 ## Scarecrows between the fields, signposts at the west road's track, the south road and the harbour, carts by the farms
 ## and on the quay.
-const SCARECROWS := [Vector2(-37.2, 16.7), Vector2(-37.2, 29.7), Vector2(27.0, 30.7), Vector2(32.5, 30.7)]
+const SCARECROWS := [Vector2(-37.2, 16.7), Vector2(-37.2, 29.7), Vector2(27.0, 30.7), Vector2(32.5, 30.7),
+	Vector2(-24.7, 36.4), Vector2(-15.6, 36.4), Vector2(-37.2, 37.7), Vector2(24.1, 38.2), Vector2(35.8, 38.0)]
 const SIGNPOSTS := [Vector2(-36.5, -15.4), Vector2(9.3, 36.6), Vector2(33.2, -11.2)]
 const CARTS := [Vector2(-33.0, 19.8), Vector2(26.6, 24.6), Vector2(21.4, -4.4)]
 ## Street props and cottage gardens (TownLayout's sizes and steps): a garden keeps GARDEN_CLEAR from every building but
@@ -850,7 +873,7 @@ func avenue_decor() -> Array[Dictionary]:
 	for loop: Dictionary in patrol_loops():
 		points.append_array(loop.points)
 	var others: Array[Vector2] = []
-	for row: Array in GARDEN_DECOR + DRILL_DECOR + YARD_DECOR + CLOSE_DECOR + KEEP_DECOR:
+	for row: Array in GARDEN_DECOR + DRILL_DECOR + YARD_DECOR + CLOSE_DECOR + KEEP_DECOR + LISTS_DECOR:
 		others.append(row[1])
 	for d: Dictionary in pocket_decor():
 		others.append(d.at)
@@ -948,7 +971,7 @@ func blockers() -> Array[Rect2]:
 
 ## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear; then the service
 ## yard's (KEEP_YARD, polish 2), then the cathedral close's (CLOSE_DECOR), then the Keep's grounds' (KEEP_DECOR), the
-## pockets' (pocket_decor()) and the avenues' (avenue_decor(), polish 3).
+## tournament field's (LISTS_DECOR), the pockets' (pocket_decor()) and the avenues' (avenue_decor(), polish 3).
 func court_decor() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row: Array in GARDEN_DECOR:
@@ -963,6 +986,8 @@ func court_decor() -> Array[Dictionary]:
 		out.append({"kind": row[0], "at": row[1], "size": row[2]})
 	for row: Array in KEEP_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": row[2]})
+	for row: Array in LISTS_DECOR:
+		out.append({"kind": row[0], "at": row[1], "size": row[2]})
 	out.append_array(pocket_decor())
 	out.append_array(avenue_decor())
 	return out
@@ -974,7 +999,7 @@ func court_blockers() -> Array[Rect2]:
 	for d: Dictionary in court_decor():
 		var half: float = d.get("half", COURT_HALF[d.kind])
 		var r := Rect2(d.at, Vector2.ZERO).grow(half)
-		if d.kind == Decor.Kind.BENCH:
+		if d.kind in [Decor.Kind.BENCH, Decor.Kind.FENCE]:
 			r = r.merge(Rect2(d.at + d.size, Vector2.ZERO).grow(half))
 		out.append(r)
 	return out

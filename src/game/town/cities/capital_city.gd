@@ -84,6 +84,59 @@ const WINDMILL := Rect2(-36.0, 23.0, 0.9, 0.9)
 const FOUNTAINS := [Rect2(-5.0, -3.0, 1.2, 1.2), Rect2(5.5, -17.0, 1.2, 1.2)]
 const WELLS := [Rect2(-27.5, 19.6, 0.5, 0.5), Rect2(-16.5, 28.0, 0.5, 0.5), Rect2(16.0, 28.5, 0.5, 0.5),
 	Rect2(9.0, 0.6, 0.5, 0.5)]
+## The Keep's courtyard (polish 1): the paved yard inside the old town's north-west walls, between the wall patrols'
+## loop and the noble quarter, the barracks at its east end. Its west half is the royal garden: lawn, gravel paths
+## crossing at a fountain, hedges, flower beds, benches and trees (court_decor()), the monument and the pavilion
+## (GPT_PLOTS); the townsfolk do not draw water there. Its east half is the garrison's drill yard, left paved: the
+## practice dummies (scarecrows: batch 4 has no dummy, target or weapon rack), barrels, crates, logs and a table, and
+## DRILL_SPOTS, where the last of the Keep's yard posts stand facing a dummy.
+const KEEP_COURT := Rect2(-23.3, -29.3, 15.1, 8.3)
+const ROYAL_GARDEN := Rect2(-21.8, -27.8, 6.2, 6.4)
+const DRILL_YARD := Rect2(-15.0, -27.8, 6.6, 6.4)
+const GARDEN_FOUNTAIN := Rect2(-19.3, -25.2, 1.2, 1.2)
+## The gravel paths: the four arms of the garden's cross from the fountain (the east arm runs on into the drill yard),
+## and their width.
+const GARDEN_PATHS := [
+	[Vector2(-21.6, -24.6), Vector2(-19.6, -24.6)], [Vector2(-17.8, -24.6), Vector2(-15.2, -24.6)],
+	[Vector2(-18.7, -25.5), Vector2(-18.7, -26.2)], [Vector2(-18.7, -23.7), Vector2(-18.7, -21.3)],
+]
+const GARDEN_PATH_W := 0.26
+## The garden's pieces: [kind, at, size]. Hedges (bushes) along its north, west and east edges, flower beds, benches
+## either side of its south path, trees in the quiet corners.
+const GARDEN_DECOR := [
+	[Decor.Kind.BUSH, Vector2(-21.4, -27.45)], [Decor.Kind.BUSH, Vector2(-20.85, -27.45)],
+	[Decor.Kind.BUSH, Vector2(-20.3, -27.45)], [Decor.Kind.BUSH, Vector2(-19.75, -27.45)],
+	[Decor.Kind.BUSH, Vector2(-17.65, -27.45)], [Decor.Kind.BUSH, Vector2(-17.1, -27.45)],
+	[Decor.Kind.BUSH, Vector2(-16.55, -27.45)], [Decor.Kind.BUSH, Vector2(-16.0, -27.45)],
+	[Decor.Kind.BUSH, Vector2(-21.45, -26.85)], [Decor.Kind.BUSH, Vector2(-21.45, -26.3)],
+	[Decor.Kind.BUSH, Vector2(-21.45, -25.75)],
+	[Decor.Kind.BUSH, Vector2(-15.95, -26.85)], [Decor.Kind.BUSH, Vector2(-15.95, -26.3)],
+	[Decor.Kind.BUSH, Vector2(-15.95, -25.75)],
+	[Decor.Kind.BUSH, Vector2(-15.95, -23.45)], [Decor.Kind.BUSH, Vector2(-15.95, -22.9)],
+	[Decor.Kind.BUSH, Vector2(-15.95, -22.35)], [Decor.Kind.BUSH, Vector2(-15.95, -21.8)],
+	[Decor.Kind.FLOWERS, Vector2(-20.6, -26.45)], [Decor.Kind.FLOWERS, Vector2(-20.05, -26.05)],
+	[Decor.Kind.FLOWERS, Vector2(-20.6, -25.75)], [Decor.Kind.FLOWERS, Vector2(-17.3, -23.35)],
+	[Decor.Kind.FLOWERS, Vector2(-16.8, -22.9)], [Decor.Kind.FLOWERS, Vector2(-17.35, -22.45)],
+	[Decor.Kind.FLOWERS, Vector2(-20.1, -23.3)], [Decor.Kind.FLOWERS, Vector2(-19.95, -22.4)],
+	[Decor.Kind.BENCH, Vector2(-19.25, -23.6), Vector2(0.0, 0.7)], [Decor.Kind.BENCH, Vector2(-18.15, -23.6), Vector2(0.0, 0.7)],
+	[Decor.Kind.OAK, Vector2(-16.9, -26.6), Vector2(30.0, 0.0)], [Decor.Kind.OAK, Vector2(-16.5, -21.95), Vector2(27.0, 0.0)],
+	[Decor.Kind.PINE, Vector2(-21.1, -23.75), Vector2(28.0, 0.0)],
+]
+## The drill yard's pieces: the dummies in a column by the barracks, the drill's gear along its north edge and in its
+## south-west corner.
+const DRILL_DUMMIES := [Vector2(-9.4, -26.6), Vector2(-9.4, -25.4), Vector2(-9.4, -24.2), Vector2(-9.4, -23.0)]
+const DRILL_DECOR := [
+	[Decor.Kind.BARREL, Vector2(-14.6, -27.3)], [Decor.Kind.BARREL, Vector2(-14.15, -27.45)],
+	[Decor.Kind.CRATES, Vector2(-13.5, -27.4)], [Decor.Kind.LOGS, Vector2(-12.4, -27.5)],
+	[Decor.Kind.TABLE, Vector2(-10.9, -27.45)], [Decor.Kind.CRATES, Vector2(-14.6, -21.9)],
+	[Decor.Kind.BARREL, Vector2(-14.1, -21.8)],
+]
+## Where the drilling soldiers stand: two before each dummy, DRILL_RANKS cells west of it.
+const DRILL_RANKS := [3.0, 1.8]
+## The ground each kind of courtyard piece closes to walkers, about its point (a bench's along its size).
+const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
+	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
+	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15}
 ## Every ChatGPT plot: [set, its footprint's back corner]. The set's footprint and height come from CapitalPlots.SETS.
 ## By district (spec §1). The landmarks that must be seen (the Citadel's keep, the cathedral, the town hall, the market
 ## hall) have nothing taller just in front of them (tests/test_capital_plots.gd).
@@ -93,22 +146,23 @@ const GPT_PLOTS := [
 	[&"gpt_armoury", Vector2(-7.8, -23.5)], [&"gpt_treasury", Vector2(-5.0, -23.5)],
 	[&"gpt_watchtower", Vector2(6.6, -28.2)], [&"gpt_drawbridge", Vector2(5.8, -26.6)],
 	[&"gpt_barbican", Vector2(5.3, -22.4)],
-	# The palace gardens north-west, inside the old town's wall: ice house, orchard.
-	[&"gpt_icehouse", Vector2(-22.0, -27.8)], [&"gpt_orchard", Vector2(-19.4, -27.6)],
-	# Noble quarter: the manor and its garden (pavilion, fishpond), library, school, patrician townhouses, and a
-	# street of them between the west road and the cross avenue.
+	# The royal garden, the Keep courtyard's west half (KEEP_COURT): the monument at the head of its north path, the
+	# pavilion in its south-west corner.
+	[&"gpt_monument", Vector2(-19.285, -27.75)], [&"gpt_pavilion", Vector2(-21.5, -23.0)],
+	# Noble quarter: the manor and its garden (the ice house by the fishpond that gives it its ice), library, school,
+	# patrician townhouses, and a street of them between the west road and the cross avenue.
 	[&"gpt_manor", Vector2(-22.3, -20.6)], [&"gpt_library", Vector2(-17.9, -20.6)], [&"gpt_school", Vector2(-15.0, -20.6)],
 	[&"gpt_patrician", Vector2(-12.8, -20.6)], [&"gpt_patrician", Vector2(-11.6, -20.6)],
-	[&"gpt_patrician", Vector2(-10.4, -20.6)], [&"gpt_pavilion", Vector2(-22.3, -17.6)],
+	[&"gpt_patrician", Vector2(-10.4, -20.6)], [&"gpt_icehouse", Vector2(-22.3, -17.6)],
 	[&"gpt_fishpond", Vector2(-20.4, -17.4)],
 	[&"gpt_patrician", Vector2(-19.0, -11.6)], [&"gpt_patrician", Vector2(-17.8, -11.6)],
 	[&"gpt_patrician", Vector2(-16.6, -11.6)], [&"gpt_patrician", Vector2(-15.4, -11.6)],
 	[&"gpt_patrician", Vector2(-14.2, -11.6)], [&"gpt_patrician", Vector2(-13.0, -11.6)],
 	[&"gpt_patrician", Vector2(-11.8, -11.6)], [&"gpt_patrician", Vector2(-10.6, -11.6)],
-	# Cathedral and civic square: town hall, courthouse and monument east of the cathedral, the jail and its notice
-	# board west of it, alley steps down to the cross avenue.
+	# Cathedral and civic square: town hall and courthouse east of the cathedral, the jail and its notice board west of
+	# it, alley steps down to the cross avenue.
 	[&"gpt_townhall", Vector2(-1.2, -20.8)], [&"gpt_courthouse", Vector2(-1.0, -18.6)],
-	[&"gpt_monument", Vector2(-0.6, -16.0)], [&"gpt_jail", Vector2(-8.7, -18.6)],
+	[&"gpt_jail", Vector2(-8.7, -18.6)],
 	[&"gpt_noticeboard", Vector2(-8.6, -16.5)], [&"gpt_alleysteps", Vector2(1.2, -11.5)],
 	# Guild quarter: the guild hall, the weavers' hall, shop-houses.
 	[&"gpt_guildhall", Vector2(9.0, -20.6)], [&"gpt_weavers", Vector2(11.0, -20.6)],
@@ -161,8 +215,9 @@ const GPT_PLOTS := [
 	[&"gpt_monastery", Vector2(-36.0, -36.0)], [&"gpt_graveyard", Vector2(-32.5, -36.0)],
 	[&"gpt_chapel", Vector2(-36.0, -32.4)], [&"gpt_leperhouse", Vector2(-38.5, -26.0)],
 	[&"gpt_waysidecross", Vector2(-30.0, -15.0)], [&"gpt_milestone", Vector2(-35.0, -11.7)],
-	# West farms: a farmhouse and orchards by the fields.
+	# West farms: a farmhouse and orchards by the fields (the third, once in the Keep's courtyard, below the other two).
 	[&"gpt_farmhouse", Vector2(-34.5, 17.5)], [&"gpt_orchard", Vector2(-34.4, 26.4)], [&"gpt_orchard", Vector2(-32.6, 26.4)],
+	[&"gpt_orchard", Vector2(-32.6, 28.3)],
 	# South-east fields: vineyard rows, beehives, dovecote, granary, orchards, a farmhouse.
 	[&"gpt_vineyard", Vector2(24.0, 20.0)], [&"gpt_vineyard", Vector2(26.2, 20.0)], [&"gpt_vineyard", Vector2(28.4, 20.0)],
 	[&"gpt_vineyard", Vector2(24.0, 21.5)], [&"gpt_vineyard", Vector2(26.2, 21.5)], [&"gpt_vineyard", Vector2(28.4, 21.5)],
@@ -481,8 +536,9 @@ func fields() -> Array[Rect2]:
 	return _typed(FIELDS)
 
 
+## The Great Market's and the civic square's fountains, then the royal garden's.
 func fountains() -> Array[Rect2]:
-	return _typed(FOUNTAINS)
+	return _typed(FOUNTAINS + [GARDEN_FOUNTAIN])
 
 
 func wells() -> Array[Rect2]:
@@ -494,12 +550,46 @@ func taverns() -> Array[Rect2]:
 
 
 ## Ground people walk round besides the buildings: the working yards (the tavern's patio, the smithy's and the
-## carpenter's yards), the cottage gardens and the street props, as at Aldermere.
+## carpenter's yards), the cottage gardens and the street props, as at Aldermere; then the Keep courtyard's pieces.
 func blockers() -> Array[Rect2]:
 	var out: Array[Rect2] = [TAVERN_PATIO, SMITHY_YARD, CARPENTER_YARD]
 	out.append_array(gardens())
 	for p: Dictionary in street_props():
 		out.append(p.rect)
+	out.append_array(court_blockers())
+	return out
+
+
+## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear.
+func court_decor() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for row: Array in GARDEN_DECOR:
+		out.append({"kind": row[0], "at": row[1], "size": row[2] if row.size() > 2 else Vector2.ZERO})
+	for g: Vector2 in DRILL_DUMMIES:
+		out.append({"kind": Decor.Kind.SCARECROW, "at": g, "size": Vector2.ZERO})
+	for row: Array in DRILL_DECOR:
+		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
+	return out
+
+
+## The ground each courtyard piece closes (COURT_HALF about its point; a bench along its length).
+func court_blockers() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for d: Dictionary in court_decor():
+		var half: float = COURT_HALF[d.kind]
+		var r := Rect2(d.at, Vector2.ZERO).grow(half)
+		if d.kind == Decor.Kind.BENCH:
+			r = r.merge(Rect2(d.at + d.size, Vector2.ZERO).grow(half))
+		out.append(r)
+	return out
+
+
+## The drill: for each dummy, DRILL_RANKS west of it, a spot facing it.
+func drill_spots() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for g: Vector2 in DRILL_DUMMIES:
+		for off: float in DRILL_RANKS:
+			out.append({"at": g - Vector2(off, 0.0), "face": g})
 	return out
 
 
@@ -749,7 +839,7 @@ func anchors() -> Dictionary:
 	for pl: Rect2 in gate_plazas():
 		out.gate.append(pl.get_center())
 	out.harbour.append(DOCK_WAIT.get_center())
-	for w: Rect2 in fountains() + wells():
+	for w: Rect2 in _typed(FOUNTAINS) + wells():
 		out.water.append(Vector2(w.get_center().x, w.end.y + 0.3))
 		out.water.append(Vector2(w.end.x + 0.3, w.get_center().y))
 	for f: Rect2 in FIELDS:
@@ -793,7 +883,8 @@ func soldiers() -> int:
 
 
 ## Where the soldiers stand (spec section 3), by the crowd's groups (CityDef.soldier_posts()):
-##   "yard"     the Keep's garrison drilling in the barracks yard (POSTS_YARD; its first are the rescue squads);
+##   "yard"     the Keep's garrison in the barracks yard (POSTS_YARD; its first are the rescue squads), its last at
+##              the drill yard's drill spots (drill_spots());
 ##   "walls"    two guards inside every gate of both rings, the exits' gates first (the west gate, the harbour gate, the
 ##              barbican), two more outside the barbican, two at the Keep's barbican and two at its drawbridge
 ##              gatehouse, two at each end of every bridge, and the harbour watch on the quays (HARBOUR_WATCH);
@@ -806,9 +897,12 @@ func soldier_posts() -> Dictionary:
 		return _posts.duplicate(true)
 	var yard: Array[Vector2] = []
 	var cols := 8
-	for k in POSTS_YARD:
+	var drills := drill_spots()
+	for k in POSTS_YARD - drills.size():
 		yard.append(BARRACKS_YARD.position + Vector2(0.35 + (k % cols) * (BARRACKS_YARD.size.x - 0.7) / (cols - 1),
 			0.4 + (k / cols) * 0.6))
+	for d: Dictionary in drills:
+		yard.append(d.at)
 	var walls: Array[Vector2] = []
 	var gates: Array = []  # [ring, gate point], the exits' gates first
 	for k in [0, 4]:
@@ -997,6 +1091,7 @@ func landmark(name: StringName) -> Rect2:
 			&"temple": CATHEDRAL, &"barracks": BARRACKS, &"barracks_yard": BARRACKS_YARD, &"workshop": WORKSHOP,
 			&"smithy": SMITHY, &"smithy_yard": SMITHY_YARD, &"carpenter": CARPENTER, &"carpenter_yard": CARPENTER_YARD,
 			&"tavern_patio": TAVERN_PATIO, &"bell_tower": BELL_TOWER, &"windmill": WINDMILL,
+			&"keep_court": KEEP_COURT, &"royal_garden": ROYAL_GARDEN, &"drill_yard": DRILL_YARD,
 		}
 		for row: Array in DISTRICT_TABLE:
 			_landmarks[row[0]] = row[1]
@@ -1017,7 +1112,16 @@ func floor_areas() -> Dictionary:
 		&"building_yards": building_yards, &"farm": farm,
 		&"paved": [OUTER.grow(-TownLayout.WALL_T)] as Array[Rect2],
 		&"crossings": _typed(BRIDGES + [FOOTBRIDGE]),
+		&"lawns": [ROYAL_GARDEN] as Array[Rect2], &"paths": _garden_paths(),
 	}
+
+
+## The garden's gravel paths, as the floor paints them: {points, width}.
+func _garden_paths() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for line: Array in GARDEN_PATHS:
+		out.append({"points": line.duplicate(), "width": GARDEN_PATH_W})
+	return out
 
 
 # --- Helpers ---------------------------------------------------------------------------------------------

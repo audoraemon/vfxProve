@@ -38,6 +38,13 @@ const TOWN_SHOTS := [
 	["capital_old_town.png", Vector2(-3, -13), 0.5],
 	["capital_harbour.png", Vector2(28, -9), 0.75],
 	["capital_south.png", Vector2(-4, 23), 0.5],
+	# Polish 1: the Keep's courtyard (the royal garden and the drill yard), the third crossing, the harbour's quay (the
+	# crane, the ferry landing, the dock warehouses), the wash houses on the north bank and the sluice.
+	["capital_keep_court.png", Vector2(-15.5, -24.5), 1.0],
+	["capital_third_bridge.png", Vector2(14, 8), 1.0],
+	["capital_quay.png", Vector2(29, -3), 0.9],
+	["capital_wash.png", Vector2(-1, 5.5), 0.7],
+	["capital_sluice.png", Vector2(-27.6, 5.5), 1.3],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],

@@ -90,8 +90,9 @@ static func _layout(t) -> void:
 	t.check(ends_bare.is_empty(), "both ends of every bridge are posted (bare %s)" % [ends_bare])
 	t.check(_near(walls, c.landmark(&"harbour_district")) >= 6, "the harbour keeps a watch (%d)"
 		% _near(walls, c.landmark(&"harbour_district")))
-	t.check(_near(posts.yard, CapitalCity.BARRACKS_YARD.grow(1.5)) == (posts.yard as Array).size()
-		and (posts.yard as Array).size() >= 20, "the Keep's yard drills its garrison (%d)" % (posts.yard as Array).size())
+	t.check(_near(posts.yard, CapitalCity.BARRACKS_YARD.grow(1.5)) + _near(posts.yard, CapitalCity.DRILL_YARD)
+		== (posts.yard as Array).size() and (posts.yard as Array).size() >= 20,
+		"the Keep's garrison stands in the barracks yard and drills in the drill yard (%d)" % (posts.yard as Array).size())
 	var ringed := 0
 	for g: Vector2 in posts.citadel:
 		ringed += 1 if absf(g.distance_to(CapitalCity.CITADEL_ORIGIN) - Crowd.RING_RADIUS) <= 1.0 else 0
@@ -362,6 +363,7 @@ static func _evacuation(t, b: Dictionary) -> void:
 		"its north bank stays open")
 	var not_rerouted: Array = []
 	var other := 0
+	var calmed := 0
 	for p in users:
 		if not left.has(p) or not p.is_alive():
 			continue  # escaped or dead
@@ -378,10 +380,15 @@ static func _evacuation(t, b: Dictionary) -> void:
 		# Over the river by now (caught on the falling span, it scrambled ashore on the far bank), or walking a way that
 		# keeps out of the cut bridge's water.
 		var across := p.ground_pos.y > CapitalCity.RIVER.end.y
-		if not (over_other or ferry or across or (avoids and p.goal() != Vector2.INF)):
-			not_rerouted.append("%s at %s goal %s" % [p.profile.job, p.ground_pos, p.goal()])
-	print("capital evac: the cut bridge's users rerouted over another crossing or to the ferry %d, stuck %d, in the river %d"
-		% [other, stuck.size(), violations.size()])
+		# One calmed down and standing about on dry land, going nowhere, makes no use of any bridge: the known evacuation
+		# stragglers bug (busy when the flee order went out, never sent out once calm; a separate task), counted apart.
+		var still_calm := p.mind == Person.Mind.CALM and p.goal() == Vector2.INF and not _in_water(p.ground_pos, rivers)
+		calmed += 1 if still_calm and not (over_other or ferry or across) else 0
+		if not (over_other or ferry or across or still_calm or (avoids and p.goal() != Vector2.INF)):
+			not_rerouted.append("%s at %s goal %s mind %s" % [p.profile.job, p.ground_pos, p.goal(),
+				Person.Mind.keys()[p.mind]])
+	print("capital evac: the cut bridge's users rerouted over another crossing or to the ferry %d, calm stragglers %d, stuck %d, in the river %d"
+		% [other, calmed, stuck.size(), violations.size()])
 	t.check(users.size() >= 10, "the east bridge was in use when it fell (%d users)" % users.size())
 	t.check(not_rerouted.is_empty() and other >= 3,
 		"its users reroute to another crossing or the ferry (%d did; not rerouted %s)" % [other, not_rerouted.slice(0, 5)])

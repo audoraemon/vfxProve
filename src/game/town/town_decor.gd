@@ -76,6 +76,9 @@ static func spots() -> Array[Dictionary]:
 	# Last, so every other piece keeps its seed.
 	_carpenter(out)
 	_street(out)
+	# The city's own pieces (the capital's Keep courtyard; none at Aldermere), after all the rest.
+	for d: Dictionary in City.current().court_decor():
+		_add(out, d.kind, d.at, d.size)
 	var boxes := _screen_boxes(built)
 	for d in out:
 		d.bake = _bakeable(d, boxes)

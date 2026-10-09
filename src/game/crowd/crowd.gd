@@ -580,19 +580,26 @@ func add_soldier(at: Vector2) -> Person:
 ## barracks yard's first profile.rescue_squads x RESCUE_SQUAD form the rescue squads, the walls' first
 ## profile.marshals_per_exit x ways out become marshals, and the patrols' first escort_cap() escort the responders. The
 ## Citadel's guard and anyone over the counts keep v0.06's ways (posts, investigations, the rally). Each remembers its
-## post.
+## post. The yard's last, on a city's drill spots, drill there (Person.drill_face).
 func _assign_corps() -> void:
 	var exits := _marshal_exits()
 	var cap := escort_cap(profile)
 	var yard := post_counts[0]
 	var walls := post_counts[1]
 	var patrols_from := post_counts[0] + post_counts[1] + post_counts[2]
+	# A city's drill spots are its yard's last posts (CityDef.drill_spots()): those soldiers face their dummies.
+	var drills: Array[Dictionary] = []
+	if _city_posts:
+		drills = City.current().drill_spots()
+	var drill_from := yard - drills.size()
 	for i in soldiers.size():
 		var p := soldiers[i]
 		p.post = p.anchor
 		if i < yard:
 			if i < profile.rescue_squads * RESCUE_SQUAD:
 				p.corps = Person.Corps.RESCUE
+			elif i >= drill_from:
+				p.drill_face = drills[i - drill_from].face
 		elif i < yard + walls:
 			if i - yard < profile.marshals_per_exit * exits:
 				p.corps = Person.Corps.MARSHAL

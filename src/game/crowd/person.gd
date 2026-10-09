@@ -172,6 +172,8 @@ var soldier := false
 ## A soldier's role (v0.07; Crowd._assign_corps()) and the post it was given at spawn, which it goes back to.
 var corps := Corps.NONE
 var post := Vector2.INF
+## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
+var drill_face := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
@@ -662,6 +664,13 @@ func _pick_target() -> void:
 		# At its post (the reach _think() re-paths beyond): shifting about it is at a walk again. A goal dropped short of
 		# the post (the way closed) is not an arrival: the re-path keeps the run.
 		hurrying = false
+		if drill_face != Vector2.INF and anchor == post and corps == Corps.NONE:
+			# At drill: it stands on its spot facing its dummy instead of shifting about.
+			_target = anchor
+			var d := drill_face - ground_pos
+			_facing = 1 if d.x - d.y > 0.0 else -1
+			_back = d.x + d.y < 0.0
+			return
 	_drift()
 
 

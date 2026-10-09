@@ -217,6 +217,11 @@ func paint_ground(ci: CanvasItem) -> void:
 		_trail(ci, tr, 0.34, true)
 	for tr: Dictionary in geo.road_trails:
 		_trail(ci, tr.points, tr.width)
+	# A city's lawns inside the walls (the capital's royal garden) and the gravel paths across them.
+	for l: Rect2 in geo.lawns:
+		_patches(ci, l, GRASS, 0.25)
+	for p: Dictionary in geo.paths:
+		_trail(ci, p.points, p.width)
 	for y: Rect2 in geo.yards:
 		_patches(ci, y, SAND, 0.3)
 	for p: Rect2 in geo.plazas:
@@ -974,6 +979,10 @@ static func _fixed_zone(g: Vector2, yards: Array[Rect2]) -> int:
 		for d: Rect2 in geo.districts:
 			if d.grow(-0.2).has_point(g):
 				return 1
+		# A lawn's tufts grow as the meadow's do, off its paths (the painted cells decide).
+		for l: Rect2 in geo.lawns:
+			if l.has_point(g):
+				return -1
 		return 0
 	return -1
 
@@ -1005,7 +1014,8 @@ static func _geo() -> Dictionary:
 			plazas = plazas, yards = yards, open = plazas + yards, gate_plazas = areas.get(&"gate_plazas", []),
 			farm = areas.get(&"farm", []), paved = areas.get(&"paved", []), fill = city.map().grow(FILL_MARGIN),
 			trails = city.trails(), road_trails = city.road_trails(), outcrops = city.outcrops(),
-			rosettes = city.rosettes(), forest_gaps = city.forest_gaps(),
+			rosettes = city.rosettes(), forest_gaps = city.forest_gaps(), lawns = areas.get(&"lawns", []),
+			paths = areas.get(&"paths", []),
 		}
 		var crossings: Array[float] = []
 		for c: Rect2 in areas.get(&"crossings", []):

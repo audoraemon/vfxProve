@@ -231,7 +231,7 @@ static func _districts(t, c: CapitalCity) -> void:
 	var want := {
 		&"gpt_armoury": &"royal_keep", &"gpt_treasury": &"royal_keep", &"gpt_manor": &"noble_quarter",
 		&"gpt_library": &"noble_quarter", &"gpt_school": &"noble_quarter", &"gpt_townhall": &"cathedral_square",
-		&"gpt_courthouse": &"cathedral_square", &"gpt_jail": &"cathedral_square", &"gpt_monument": &"cathedral_square",
+		&"gpt_courthouse": &"cathedral_square", &"gpt_jail": &"cathedral_square",
 		&"gpt_guildhall": &"guild_quarter", &"gpt_weavers": &"guild_quarter", &"gpt_markethall": &"great_market",
 		&"gpt_weighhouse": &"great_market", &"gpt_crierstage": &"great_market", &"gpt_hospital": &"old_town_houses",
 		&"gpt_bathhouse": &"old_town_houses", &"gpt_cistern": &"old_town_houses", &"gpt_crane": &"harbour_district",

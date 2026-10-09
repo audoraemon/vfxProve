@@ -68,8 +68,18 @@ func landmark(name: StringName) -> Rect2: return Rect2()   # empty Rect2 = unkno
 ##   &"building_yards" packed-earth yards round the landmark buildings, already grown to their painted size;
 ##   &"farm"           farm buildings with tilled ground round them (barns, the mills);
 ##   &"paved"          cobbled ground beyond town(), treated as inside the walls (the capital's second wall ring);
-##   &"crossings"      the bridges over the river, where its banks get no pebbles.
+##   &"crossings"      the bridges over the river, where its banks get no pebbles;
+##   &"lawns"          grass inside the walls (the capital's royal garden), meadow tufts on it;
+##   &"paths"          gravel paths, each {points: polyline, width}, painted as dirt over the lawns and paving.
 func floor_areas() -> Dictionary: return {}
+## Decor the city lays out itself (the capital's Keep courtyard): each {kind (Decor.Kind), at, size}, carried by
+## TownDecor after every other piece, so the others keep their seeds; and the ground each piece closes to walkers (also
+## in blockers()). None by default.
+func court_decor() -> Array[Dictionary]: return []
+func court_blockers() -> Array[Rect2]: return []
+## Soldiers drilling: each {at, face}, the last of soldier_posts()' "yard" posts in order; the soldier posted there
+## stands still at it, facing `face` (a practice dummy), while it holds its post. None by default.
+func drill_spots() -> Array[Dictionary]: return []
 
 ## The countryside the floor and decor dress the city with (none by default):
 func trails() -> Array: return []                          # meadow trails, polylines of Vector2 (fenced, clearable)

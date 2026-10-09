@@ -12,6 +12,9 @@ extends CityDef
 ## (OUTER), crossed by three stone bridges, each landing at a gatehouse in both rings.
 
 const MAP := Rect2(-40, -40, 80, 80)
+## The border band drawn past the map's edge (border(), polish 3): distant meadow and woods, the river and the harbour
+## basin carried out through it.
+const BORDER := 12.0
 ## The Great River, a band across the whole map, and the harbour basin it widens into east of the old town.
 const RIVER := Rect2(-40, 6, 80, 6)
 const HARBOUR := Rect2(22, -2, 18, 20)
@@ -477,6 +480,11 @@ func id() -> StringName:
 
 func map() -> Rect2:
 	return MAP
+
+
+## The country past the map's edge (polish 3): BORDER deep on every side.
+func border() -> float:
+	return BORDER
 
 
 ## The old town's wall ring: the walled core the crowd's patrols and the floor's cobbles keep to.

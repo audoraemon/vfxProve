@@ -737,6 +737,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
+		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
+		_pan(Vector2.ZERO)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.
@@ -809,8 +811,15 @@ func _process(delta: float) -> void:
 
 
 func _pan(by: Vector2) -> void:
+	_bf.camera.position = clamp_view(_bf.camera.position + by, _bf.camera.zoom.x, get_viewport().get_visible_rect().size)
+
+
+## Where the camera may rest at `zoom` with a view `view` px across (polish 3): inside pan_limits(), and close enough to
+## the middle that the view stays on the drawn ground (TownFloor.keep_in_view(): the map and its border band), so the
+## clear colour never shows at any zoom a player has.
+static func clamp_view(pos: Vector2, zoom: float, view: Vector2) -> Vector2:
 	var limits := pan_limits()
-	_bf.camera.position = (_bf.camera.position + by).clamp(limits.position, limits.end)
+	return TownFloor.keep_in_view(pos.clamp(limits.position, limits.end), zoom, view)
 
 
 ## Where the camera may pan (screen px): PAN_MIN to PAN_MAX for Aldermere's 60-unit map, grown in proportion for a larger

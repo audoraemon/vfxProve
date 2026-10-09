@@ -3,6 +3,8 @@ extends CityDef
 ## Aldermere through the shared city format: every method hands back TownLayout's own data (its constants, or its
 ## static functions' results) unchanged, in the same order, as fresh copies.
 
+## How deep the country drawn past its map's edge is (border()).
+const BORDER := 12.0
 const LANDMARKS := {
 	&"market_square": TownLayout.MARKET_SQUARE, &"temple": TownLayout.TEMPLE,
 	&"citadel_court": TownLayout.CITADEL_COURT, &"bell_tower": TownLayout.BELL_TOWER, &"dock": TownLayout.DOCK,
@@ -21,6 +23,11 @@ func id() -> StringName:
 
 func map() -> Rect2:
 	return TownLayout.MAP
+
+
+## Its border band (polish 3): the meadow and woods past its map's edge, as the capital's.
+func border() -> float:
+	return BORDER
 
 
 func town() -> Rect2:

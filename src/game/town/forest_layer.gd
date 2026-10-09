@@ -49,8 +49,11 @@ class Band extends Node2D:
 			# A tree painted over a live animated piece is drawn by a live stand-in instead (TownFloor.mark_live).
 			if TownFloor.live_now(d):
 				continue
-			# The tuning's colour; a tree's size is not tuned (a single batch takes no per-tree transform).
+			# The tuning's colour, times a border band tree's fade ("tint": TownDecor.border_trees()); a tree's size is not
+			# tuned (a single batch takes no per-tree transform).
 			ArtKit.color_mul = ArtTuning.tint(String(Decor.Kind.keys()[d.kind]).to_lower())
+			if d.has("tint"):
+				ArtKit.color_mul *= d.tint as Color
 			DecorArt.tree(d.kind, d.at, d.size, d.seed, Vector2.ZERO, FOREST_CLUSTERS)
 		ArtKit.color_mul = Color.WHITE
 		ArtKit.flush(self)

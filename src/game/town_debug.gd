@@ -52,7 +52,18 @@ const TOWN_SHOTS := [
 	["capital_district_gate.png", Vector2(-4.0, 28.0), 1.2],
 	["capital_close.png", Vector2(-3.0, -13.5), 1.0],
 	["capital_aqueduct.png", Vector2(22.0, -28.5), 0.75],
+	# Polish 3: the map's edge as far as a player can pan each way at the mission's furthest zoom (an _edge_ shot's
+	# camera is clamped as the mission's is, Mission.clamp_view()), and the river's west end running on into the band.
+	["capital_edge_n.png", Vector2(0, -70), 0.5],
+	["capital_edge_e.png", Vector2(70, 0), 0.5],
+	["capital_edge_s.png", Vector2(0, 70), 0.5],
+	["capital_edge_w.png", Vector2(-70, 0), 0.5],
+	["capital_edge_river_w.png", Vector2(-70, 9), 0.6],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
+	["town_edge_n.png", Vector2(0, -70), 0.5],
+	["town_edge_e.png", Vector2(70, 0), 0.5],
+	["town_edge_s.png", Vector2(0, 70), 0.5],
+	["town_edge_w.png", Vector2(-70, 0), 0.5],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],
 	["town_main_gate.png", Vector2(2.7, 16.0), 1.0],
@@ -275,6 +286,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
+		_pan(Vector2.ZERO)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true
@@ -302,8 +314,10 @@ func _process(delta: float) -> void:
 	_update_hud()
 
 
+## Panned within PAN_MIN..PAN_MAX, the view kept on the drawn ground (TownFloor.keep_in_view(), polish 3).
 func _pan(by: Vector2) -> void:
-	_bf.camera.position = (_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX)
+	_bf.camera.position = TownFloor.keep_in_view((_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX), _bf.camera.zoom.x,
+		get_viewport().get_visible_rect().size)
 
 
 func _draw_drag_line() -> void:
@@ -367,6 +381,9 @@ func _capture_town(only := "", frames := 1) -> void:
 		else:
 			_bf.camera.zoom = Vector2.ONE * float(shot[2])
 			_bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
+			if String(shot[0]).contains("_edge_"):
+				_bf.camera.position = Mission.clamp_view(Iso.ground_to_screen(at), float(shot[2]),
+					get_viewport().get_visible_rect().size).round()
 		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
 		if frames <= 1:

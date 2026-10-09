@@ -107,6 +107,13 @@ func forest_gaps() -> Array[Rect2]:
 	return out
 
 
+## The country drawn past the map's edge on every side, this many ground units deep (polish 3): TownFloor paints it
+## (distant meadow and woods, the water and roads that leave the map carried on through it) and the forest layer
+## stands its trees (TownDecor.border_trees()); the camera keeps the view on it (Mission.clamp_view()). Drawing only:
+## no walk grid, structure, decor node or random draw. 0 by default: the floor's own FILL_MARGIN only.
+func border() -> float: return 0.0
+
+
 ## Ground where no tree stands at all, forest or meadow (TownDecor): none by default. The capital keeps its aqueduct's
 ## arches clear (polish 2).
 func tree_clear() -> Array[Rect2]: return []

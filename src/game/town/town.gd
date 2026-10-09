@@ -183,11 +183,35 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		ground.move_child(plant_layer, 1)
 		forest = ForestLayer.new()
 		forest.name = "Forest"
-		forest.trees = trees
+		forest.trees = _with_border(trees)
 		# Lit as the floor's texture is: the baked trees took its tint.
 		forest.modulate = GROUND_EVENING
 		ground.add_child(forest)
 		ground.move_child(forest, 2)
+
+
+## The forest layer's trees, `trees` (back to front by x + y) with the border band's (TownDecor.border_trees(), polish 3)
+## merged in by x + y: a stable merge, so the town's own trees keep their order among themselves (the band's stand only
+## past the floor's fill, out of their way).
+static func _with_border(trees: Array[Dictionary]) -> Array[Dictionary]:
+	var band := TownDecor.border_trees()
+	if band.is_empty():
+		return trees
+	band.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a.at as Vector2).x + (a.at as Vector2).y < (b.at as Vector2).x + (b.at as Vector2).y)
+	var out: Array[Dictionary] = []
+	var i := 0
+	var j := 0
+	while i < trees.size() or j < band.size():
+		var take_band := i >= trees.size() or (j < band.size()
+			and (band[j].at as Vector2).x + (band[j].at as Vector2).y < (trees[i].at as Vector2).x + (trees[i].at as Vector2).y)
+		if take_band:
+			out.append(band[j])
+			j += 1
+		else:
+			out.append(trees[i])
+			i += 1
+	return out
 
 
 ## Whether `r` touches the ground kept bare (keep_clear).

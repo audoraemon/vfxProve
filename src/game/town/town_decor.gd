@@ -58,9 +58,21 @@ const TREE_CROWN_LOW := 10.0
 const TREE_CROWN_HALF := 26.0
 const TREE_CROWN_UP := 16.0
 
+## The border band's trees (border_trees()): the grid's step and salt, the share of its points that get a tree in the
+## band's woods and on its meadow, and the colour the furthest of them fade to (the band's ground fades to
+## TownFloor.HAZE).
+const BORDER_STEP := 1.05
+const BORDER_SALT := 9133
+const BORDER_WOODS := 0.8
+const BORDER_MEADOW := 0.1
+const BORDER_FADE := Color(0.74, 0.8, 0.7)
+
 ## The active city's ground the per-point tests read (_geo()), worked out once per city.
 static var _geo_city: CityDef = null
 static var _geo_cache := {}
+## border_trees(), worked out once per city.
+static var _border_city: CityDef = null
+static var _border_trees: Array[Dictionary] = []
 
 
 static func spots() -> Array[Dictionary]:
@@ -380,6 +392,49 @@ static func _scatter(out: Array[Dictionary], solid: Array[Rect2], area: Rect2, s
 			if not _far_from_others(out, g, 0.55):
 				continue
 			_add(out, kind, g)
+
+
+## The border band's trees (polish 3, CityDef.border()): on a jittered BORDER_STEP grid over the drawn ground past the
+## floor's fill, BORDER_WOODS of the points in the band's woods (TownFloor.band_forest()) and BORDER_MEADOW out on its
+## meadow, off the water and its banks and the roads carried out through the band; each faded as the band's ground is
+## ("tint"). Never part of spots(): drawn only by the forest layer, so no other piece's seed, no walk grid, no decor
+## node and no random draw moves. Deterministic, worked out once per city.
+static func border_trees() -> Array[Dictionary]:
+	var city := City.current()
+	if city == _border_city:
+		return _border_trees.duplicate(true)
+	_border_city = city
+	_border_trees = []
+	var fill := city.map().grow(TownFloor.FILL_MARGIN)
+	var outer := TownFloor.drawn_area()
+	var roads := TownFloor.border_roads()
+	var nx := int(outer.size.x / BORDER_STEP)
+	var ny := int(outer.size.y / BORDER_STEP)
+	for j in ny:
+		for i in nx:
+			var n := j * 1000 + i
+			var g := outer.position + Vector2((i + 0.2 + _h(n, BORDER_SALT) * 0.6) * BORDER_STEP,
+				(j + 0.2 + _h(n, BORDER_SALT + 1) * 0.6) * BORDER_STEP)
+			if fill.grow(0.3).has_point(g) or not outer.grow(-0.2).has_point(g):
+				continue
+			var wet := false
+			for o: Vector2 in [Vector2.ZERO, Vector2(0.8, 0.8), Vector2(-0.8, -0.8), Vector2(0.8, -0.8), Vector2(-0.8, 0.8)]:
+				wet = wet or TownFloor.wet(g + o)
+			if wet:
+				continue
+			var forest := TownFloor.band_forest(g)
+			if _h(n, BORDER_SALT + 2) > (BORDER_WOODS if forest else BORDER_MEADOW):
+				continue
+			var near_road := false
+			for e: Array in roads:
+				near_road = near_road or TownFloor._near_polyline(g, e[0], float(e[1]) + 0.7)
+			if near_road:
+				continue
+			var pine := _h(n, BORDER_SALT + 3) < (FOREST_PINES if forest else 0.25)
+			_border_trees.append({"kind": Decor.Kind.PINE if pine else Decor.Kind.OAK, "at": g, "size": Vector2.ZERO,
+				"seed": BORDER_SALT + n * 7919, "bake": true,
+				"tint": Color.WHITE.lerp(BORDER_FADE, TownFloor.band_haze(g) / TownFloor.HAZE_MAX)})
+	return _border_trees.duplicate(true)
 
 
 ## Outside the walls, off the roads (and the dirt roads beyond them), the exits, the rivers and the fields' tilled

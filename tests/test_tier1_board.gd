@@ -255,4 +255,29 @@ static func _best(t) -> void:
 			long[id] = brief.size()
 	t.check(long.is_empty(), "each of the five cards' briefs wraps to %d lines or fewer, clear of its best line (over: %s)" % [
 		MissionBoard.BRIEF_LINES, long])
+	# The row's rules sit level (v0.11 M2, Task 8): one card's best taking two lines lifts every card's rule to the row's most,
+	# and a card's brief ends above the rule in the worst case, every card cleared with a wide best and wishes.
+	var rows := board.best_rows()
+	var lifted := 0
+	for id in board.missions():
+		lifted = maxi(lifted, board.best_lines(id, room).size())
+	t.check(rows == lifted and rows >= 2 and rows == board.best_rows(), "the row's rule is lifted by its most best lines (%d / %d)" % [rows, lifted])
+	var rules := {}
+	for i in 5:
+		rules[MissionBoard.rule_y(MissionBoard.card_rect(i, 5), rows)] = true
+	t.check(rules.size() == 1, "all five cards' rules sit at one height (%s)" % [rules.keys()])
+	save.descend.cleared = PackedStringArray(board.missions())
+	for id in board.missions():
+		save.descend.fastest[id] = 345.0
+		save.descend.most_wishes[id] = 2
+	var worst := board.best_rows()
+	var tight := {}
+	for i in 5:
+		var id := board.missions()[i]
+		var r := MissionBoard.card_rect(i, 5)
+		var bottom := board.brief_bottom(id, r)
+		if bottom + 2.0 > MissionBoard.rule_y(r, worst):
+			tight[id] = "%.0f vs %.0f" % [bottom, MissionBoard.rule_y(r, worst)]
+	t.check(worst <= 3 and tight.is_empty(), "every card cleared with a wide best: %d best lines, each brief ends clear above the rule (%s)" % [
+		worst, tight])
 	board.free()

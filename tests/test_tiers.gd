@@ -60,10 +60,11 @@ static func _unlock(t) -> void:
 	t.check(far.progress_line(1) == "Whisper 3 / 3 cleared: Omen is open" and s.progress_line(3) == "Wrath 0 / 2 cleared: 2 more open Reckoning"
 		and far.progress_line(5) == "Ascendance 0 / 2 cleared", "the results' tier line (%s; %s)" % [far.progress_line(1), s.progress_line(3)])
 	var one := DescendState.new()
-	one.cleared.append("warning")
+	one.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb"])
 	one.refresh_open()
 	one.cleared.append("miras_house")
-	t.check(one.progress_line(2) == "Omen 1 / 2 cleared: one more opens Wrath", "one more (%s)" % one.progress_line(2))
+	t.check(one.open_tier == 2 and one.progress_line(2) == "Omen 1 / 2 cleared: one more opens Wrath",
+		"three of Whisper open Omen; one of its two, one more (%s)" % one.progress_line(2))
 
 
 static func _prices(t) -> void:
@@ -125,6 +126,18 @@ static func _save(t) -> void:
 		and back.dp_bought == 2 and back.slot_bought == 1 and Array(back.unlocked) == ["tsunami"]
 		and is_equal_approx(float(back.fastest.warning), 190.5) and int(back.most_wishes.warning) == 2, "the board comes back from the file")
 	t.check(SaveFile.new().load_from(path).last_mission == "festival", "a board id is a mission the board remembers")
+
+	# An M1 save (v0.11 M2, Task 8): Omen was opened by The Warning alone. Whisper now wants three, but a tier never closes
+	# again, so the saved open tier stands and the one clear stays cleared.
+	var m1 := ConfigFile.new()
+	m1.set_value("descend", "night", 3)
+	m1.set_value("descend", "open_tier", 2)
+	m1.set_value("descend", "cleared", ["warning"])
+	m1.save(path)
+	var kept := SaveFile.new().load_from(path).descend
+	t.check(kept.open_tier == 2 and kept.is_open(2) and not kept.is_open(3) and Array(kept.cleared) == ["warning"]
+		and kept.cleared_in(1) == 1 and kept.progress_line(1) == "Whisper 1 / 3 cleared: Omen is open",
+		"an M1 save (Omen open on The Warning alone) keeps Omen open under the three-clear rule (%d, %s)" % [kept.open_tier, kept.cleared])
 
 	var odd := ConfigFile.new()
 	odd.set_value("descend", "night", -3)

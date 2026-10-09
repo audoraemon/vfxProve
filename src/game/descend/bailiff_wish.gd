@@ -2,11 +2,11 @@ class_name BailiffWish
 extends Wish
 ## "Stop the bailiff" (v0.11 M2, mission spec §5, Rescue): a timed wish. It waits until engaged -- the bailiff's or the home's
 ## tag clicked, or a power cast within ENGAGE_REACH of either -- then the bailiff, a free soldier at least MIN_WALK from the
-## wisher's home, walks there to seize what they owe. Stop him (dead), turn him (RescueWish.TURNED: the god's own effects), or
-## keep him from the door until SECONDS run out, and it is granted. His reaching the door fails it; so does the wisher dying
-## (Wish). A town order taking him off the errand (the rally, a post) sends him back on it. Engagement is judged first, as Save
-## my child's: the bailiff felled by the god's own cast before it was engaged engages and grants it; felled by any other hand
-## before, it fails.
+## wisher's home and no more than MAX_ROUTE of street from it, walks there to seize what they owe. Stop him (dead), turn him
+## (RescueWish.TURNED: the god's own effects), or keep him from the door until SECONDS run out, and it is granted. His reaching
+## the door fails it; so does the wisher dying (Wish). A town order taking him off the errand (the rally, a post) sends him back
+## on it. Engagement is judged first, as Save my child's: the bailiff felled by the god's own cast before it was engaged engages
+## and grants it; felled by any other hand before, it fails.
 
 ## The most time he has to reach the door once engaged (v0.11 M2): a cap, not a countdown the player is shown -- from MIN_WALK he
 ## reaches it in about 16 s (the median of sixteen seeded towns), so a bailiff left alone is at the door long before it runs out.
@@ -17,6 +17,10 @@ const ENGAGE_REACH := 2.0
 const HOME_REACH := 1.0
 ## How far from the home he starts at least (v0.11 M2): 20 units is a walk of some 16 s after engagement, fair for a click.
 const MIN_WALK := 20.0
+## How long his route to the door may be at most, in units of path (v0.11 M2, Task 8): a courtyard's winding street can make a
+## 20-unit distance a long walk, and one the 50 s cap would run out on grants the wish for doing nothing. About 40 units is a
+## walk of some 30 s after engagement.
+const MAX_ROUTE := 40.0
 ## How often he is re-aimed (v0.11 M2).
 const RETARGET := 0.5
 
@@ -67,8 +71,8 @@ func choose(crowd: Crowd, _town: Town, rng: RandomNumberGenerator, taken: Array)
 	return false
 
 
-## The free soldier nearest `door` at least MIN_WALK from it with a route to it: alive, out of doors, of no corps, not in
-## `taken`; null for none. The route is asked from the door, where a shut-in courtyard fails at once.
+## The free soldier nearest `door` at least MIN_WALK from it, with a route to it of at most MAX_ROUTE: alive, out of doors, of
+## no corps, not in `taken`; null for none. The route is asked from the door, where a shut-in courtyard fails at once.
 static func _bailiff_for(crowd: Crowd, door: Vector2, taken: Array) -> Person:
 	var free: Array[Person] = []
 	for v: Variant in crowd.soldiers:
@@ -79,9 +83,21 @@ static func _bailiff_for(crowd: Crowd, door: Vector2, taken: Array) -> Person:
 			free.append(s)
 	free.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))
 	for s in free:
-		if crowd._grid == null or not crowd._grid.path(door, s.ground_pos).is_empty():
+		if crowd._grid == null or route_length(crowd._grid, door, s.ground_pos) <= MAX_ROUTE:
 			return s
 	return null
+
+
+## How far the street runs from `from` to `to` (v0.11 M2, Task 8): the length of the grid's route, with the hops to and from its
+## ends; INF when there is no route.
+static func route_length(grid: WalkGrid, from: Vector2, to: Vector2) -> float:
+	var route := grid.path(from, to)
+	if route.is_empty():
+		return INF
+	var length := from.distance_to(route[0]) + route[route.size() - 1].distance_to(to)
+	for i in range(1, route.size()):
+		length += route[i - 1].distance_to(route[i])
+	return length
 
 
 ## The wisher and the bailiff, if his body is still there (v0.11 M2).

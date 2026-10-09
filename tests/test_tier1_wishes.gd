@@ -5,6 +5,8 @@ extends RefCounted
 ## an Unaware town; the tax collector wish is never heard on The Tax Collector's night.
 
 const DT := 0.05
+## The most seconds an engaged bailiff may take to reach the door (v0.11 M2, Task 8).
+const WALK_SECONDS := 30.0
 
 
 static func run(t) -> void:
@@ -14,6 +16,7 @@ static func run(t) -> void:
 	_neighbours(t)
 	_routes(t)
 	_walks(t)
+	_walk_bound(t)
 	_freed(t)
 
 
@@ -245,6 +248,39 @@ static func _walks(t) -> void:
 			"engaged, he walks to the door and the wish fails at %.1f s (seed %d)" % [clock, n])
 		w.release()
 		_done(s)
+
+
+## The route bound (v0.11 M2, Task 8): the bailiff's walk is long enough to be a chore and short enough that the 50 s cap never
+## grants the wish for doing nothing -- an engaged bailiff reaches the door inside WALK_SECONDS on every seed, over a route of at
+## most BailiffWish.MAX_ROUTE units, however winding the streets.
+static func _walk_bound(t) -> void:
+	var slowest := 0.0
+	var longest := 0.0
+	var tried := 0
+	var late: Array[int] = []
+	for n in range(1, 25):
+		var s := _world()
+		var w := _wish(s, "bailiff", n) as BailiffWish
+		if w == null:
+			_done(s)
+			continue
+		tried += 1
+		longest = maxf(longest, BailiffWish.route_length((s.crowd as Crowd)._grid, w.bailiff.ground_pos, w.home))
+		w.engage()
+		var clock := 0.0
+		while clock < BailiffWish.SECONDS and w.check(s.rules) == Objective.Status.PENDING:
+			(s.crowd as Crowd).advance(DT)
+			w.bailiff.tick(DT)
+			w.step(s.rules, DT)
+			clock += DT
+		if w.check(s.rules) != Objective.Status.FAILED or clock > WALK_SECONDS:
+			late.append(n)
+		slowest = maxf(slowest, clock)
+		w.release()
+		_done(s)
+	t.check(tried >= 20 and late.is_empty() and longest <= BailiffWish.MAX_ROUTE + 0.01,
+		"an engaged bailiff reaches the door within %d s over at most %d units, on every seed: slowest %.1f s, longest route %.1f, over on seeds %s (%d tried)" % [
+		int(WALK_SECONDS), int(BailiffWish.MAX_ROUTE), slowest, longest, late, tried])
 
 
 ## A body is freed after its death fade, and an escaped one at once: both wishes hold their people through it.

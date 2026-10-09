@@ -1,6 +1,123 @@
 # Kingdoms Amid Kataclysm (KAK) — Version 0.11 Summary
 
-*Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `claude/lantern-campaign-spec` (from the v0.10 line plus the v0.09.1 board-tag work at `92e0dcc`). v0.11 is **The Tiers**: the board of single missions becomes the god's five Awakening Tiers, each night hears the town's wishes, ends in an ascent and pays believers that buy the god's upgrades. It is built in milestones: M1 the framework, then M2-M6 one tier at a time (25 missions in all). Design: `docs/superpowers/specs/2026-10-08-kak-v011-tiers-design.md`. Plan: `docs/superpowers/plans/2026-10-08-kak-v011-m1-framework.md`.*
+*Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `claude/lantern-campaign-spec` (from the v0.10 line plus the v0.09.1 board-tag work at `92e0dcc`). v0.11 is **The Tiers**: the board of single missions becomes the god's five Awakening Tiers, each night hears the town's wishes, ends in an ascent and pays believers that buy the god's upgrades. It is built in milestones: M1 the framework, then M2-M6 one tier at a time (25 missions in all). Design: `docs/superpowers/specs/2026-10-08-kak-v011-tiers-design.md`. Plan: `docs/superpowers/plans/2026-10-08-kak-v011-m1-framework.md`. M2 (Whisper): Tier 1's four new missions; mission spec `docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, plan `docs/superpowers/plans/2026-10-08-kak-v011-m2-whisper.md`.*
+
+## M2: Whisper
+
+M2 completes Tier 1. Whisper has five missions: The Warning and four new ones, each a night of 5:00 in an Unaware town, 3 slots and 6 DP (plus the upgrades), two wishes and ×1 believers. It adds two new mission types (Assassinate and Escort), generalises two (Raze and Convert), adds two wishes, and carries two items over from M1's final review. It adds no art: the old well shrine is Broken Lanterns' drawn shrine post, the collectors wear the noble's cape and crown, and every other stand-in is an existing building or person named by a map tag. Mission spec: `docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`.
+
+### Whisper's five
+
+| Mission | Card type | Main objective | The twist |
+|---|---|---|---|
+| The Warning | Intercept | Stop all three warnings | Three stars, each sending a runner; a later star falls sooner once the one before is stopped |
+| The Tax Collector | Kill | Kill the tax collector and his two deputies | They are indoors until their time and hide when alarmed; a kill anyone sees raises the cry of murder and calls the bellkeeper; one reaching the Citadel's gate loses the night |
+| Spoiled Harvest | Destroy | Spoil three granaries (burned 10 s in all, or brought down) | A granary has nothing to spoil until its grain arrives; two watchmen beat out its fire while they stand; carts empty it one load at a time |
+| The Lost Lamb | Protect | Lead a runaway acolyte out through the west gate | He moves only by Mind Whisper; any soldier who sees him seizes him and marches him back to the Temple; the gate's watch changes, and at 2:30 the Temple sends searchers |
+| First Prayers | Cult | Three of the poor pray at the old well shrine and come out Believers, unseen | One prays at a time for 32 s; a Faithful who sees someone go in turns them away and runs to report it; the Gaze fills |
+
+**Tier 2 now opens at three cleared.** Tier 1 has five missions, so Omen takes the full rule of three; M1's "all of them, until M6" no longer applies to Whisper. A tier never closes: a save that opened Omen on The Warning alone (an M1 save) keeps it open, and a test pins that. A **v0.10 carry-over** now reads Whisper 1 / 3 with Omen locked ("Clear 3 Whisper missions"): its won Warning counts as one of the three, and it no longer opens Omen by itself.
+
+### The new types
+
+- **Assassinate** (`AssassinateDirector`, for N targets). Each target starts indoors at a hideout, untouchable, and sets out at his own time or a short chain wait after the one before him dies, whichever is sooner. On his round he walks to each of his debtors' doors, goes in for a while, then walks on, and after the last he makes for his safe place, which loses the night. A few soldiers walk with him, inside Silent Doom's reach. A loud power near him, a guard falling or a fright sends him to hide in his hideout for 30 s; a fire there, or its fall, flushes him out (only those out or hiding, never those still waiting to set out); with the hideout gone an alarm sends him running for his safe place. A power cast at the hideout's door while none is out smokes the next one out at once. Each death is judged as the Prince's is: if anyone living stands within 2 units, the guards cry murder and the bellkeeper is called. On the board the bell tolling after that catches the night and loses the wishes, unless the god ascends or stops the bellkeeper first. The Tax Collector's three collectors (the tax collector and two deputies, the three residents nearest the counting-house, made nobles) walk their own debtors from the counting-house, the workshop hall; later tiers' The Informer and The Bishop can reuse the director.
+- **Escort** (`EscortDirector`, one charge). The charge (the acolyte, the cleric nearest the north-east fountain) moves only by the god's hand, a Mind Whisper or a Will-o'-Wisp's lure, and holds where he is left. Soldiers set to watch for him seize him on sight within 2.5 units and march him back to the Temple's door: the gate's watch, two patrols, and from 2:30 two searchers. A seizer under Discord or a whisper, a turned one, and one the town has taken (the rally, a marshal's post, a fight) sees nothing. Felling the seizer, or turning him, or a town order taking him off the errand, frees the acolyte. The watch changes 30 s after he first comes within 6 units of the gate (away 25 s, then every 45 s), so the wait starts when the player engages. The way out is the Main Gate, on the lower-left wall on screen. However the crowd carries him off, a gate he fled to included, counts as his escape.
+- **Raze, generalised** (`RazeDirector`, targets and a spoil time; Spoiled Harvest is `HarvestDirector`). The base keeps an optional seal, a target that only shakes and smothers its fire, which no mission uses: Spoiled Harvest's granaries are not sealed but empty until their grain arrives (fire on an empty one is put out at once and counts for nothing), and each has two watchmen who beat out its fire after 3 s while they stand out of doors, at their posts and calm. The god must remove every watchman, then keep the fire burning 10 s in all, or bring the granary down. A watchman who left his post calm is sent back after 20 s; a fallen one is replaced after 30 s, so clearing a granary long before its grain is undone. The carts: the moment a granary's grain is in, its carter sets out from the Citadel's gate and takes a load at the granary, again and again; five loads empty it, and the first granary emptied loses the night. Last Judgement's and Judgement's directors are left as they are, so their references hold.
+- **Convert, generalised** (`MirasHouseDirector`, with `FirstPrayersDirector` its subclass). The Mira's House director gains three numbers, `need`, `read_seconds` and `one_at_a_time` (defaults 4, 8 and false), and two label hooks; Mira's House plays exactly as before. First Prayers needs 3, prayers last 32 s and only one prays at a time. The old well shrine is a drawn stone shrine post (`Structure.Kind.SHRINE`) at the market's west edge, which cannot be destroyed (a blow only shakes it); a poor citizen led to its door goes down the well's steps and prays hidden. With few Faithful (3 clergy and 3 lay citizens, no Inquisitor), the market fills at 1:15 and the priests come at 2:30, each putting a line of Faithful at the door for 40 s. At dawn the post stands and a prayer in progress ends a Believer; the shrine's tag counts the prayer down ("PRAYING 21").
+
+### Each mission's timeline
+
+- **The Tax Collector:** 0:45 the tax collector sets out (sooner if smoked out); the deputies at 1:45 and 2:45, or 45 s after the one before dies; each collects 15 s at each debtor, then makes for the Citadel; left alone the first is there at about 2:25 and the night is lost. Longest wait: 45 s, at the start and between a death and the next setting out.
+- **Spoiled Harvest:** grain arrives at 1:00, 2:00 and 3:00, or 45 s after the granary before is spoiled; left alone the first granary is emptied between 3:10 and 3:45. Longest wait: 60 s to the first grain, with its watchmen to deal with meanwhile (the longest stretch with nothing to do is 40 s).
+- **The Lost Lamb:** he hides by the north-east fountain with the patrols on their beats; the watch changes 30 s after he first nears the gate; the searchers set out at 2:30; left alone he is taken back at about 2:55. Longest wait: 30 s, at the gate.
+- **First Prayers:** the market fills at 1:15 and the priests come at 2:30; doing nothing loses at dawn, 5:00, with too few believing. Longest waits: 40 s (the Faithful at the door, which Discord or a lure can cut short) and 32 s (one praying before the next).
+
+No timed wait passes 60 s, and a test pins every one. The tuning numbers, as shipped:
+
+| Mission | Numbers |
+|---|---|
+| The Tax Collector | set out 0:45 / 1:45 / 2:45, chain wait 45 s, 15 s indoors at a debtor, hide 30 s, alarm reach 4, guards 2 / 1 / 1 |
+| Spoiled Harvest | grain 1:00 / 2:00 / 3:00, chain 45 s, spoil 10 s, 5 loads, 2 watchmen a granary, smother after 3 s, return 20 s, relief 30 s |
+| The Lost Lamb | pace 0.385 of a walk, sight 2.5, searchers at 2:30, watch change 30 s, away 25 s, cycle 45 s |
+| First Prayers | prayer 32 s, market 1:15, priests 2:30 (40 s each), 3 clergy and 3 lay Faithful, 3 must pray |
+
+### The wishes
+
+The pool grows from 8 to 10. Both new wishes may be heard in an Unaware town.
+
+| Wish | Kind | Act | Reward | Needs / clashes |
+|---|---|---|---|---|
+| Stop the bailiff | Rescue | Once engaged (as Save my child is: a click on his or the home's tag, or a cast within 2 units of either), the bailiff walks from his post to the wisher's home. Kill him, turn him, or keep him from the door for 50 s | 15 | a lay citizen with a home, and a free soldier at least 20 units from its door with no more than 40 units of street to it; no clash |
+| Let my neighbours believe | Faith | Whisper three of the wisher's neighbours (marked) to within 2 units of the wisher; each one believes | 10 | three lay citizens living within 8 of the wisher's home, not of the household, each with a route to the wisher; no clash |
+
+- **The bailiff** fails when he reaches the door. The 50 s is only a cap: he starts at least 20 units away with at most 40 units of street to walk, which is about 15 s after a click and never over 25 s in the seeded towns tried, so the HUD shows the act ("Stop the bailiff before he reaches the door") and no countdown. His route is bounded as well as his distance, because with the distance alone one seeded town sent him 67 units round the streets, 50 s, and the cap would have granted the wish for doing nothing.
+- **Let my neighbours believe** fails when a neighbour dies before believing.
+- **Strike down the cruel tax collector** now clashes with `hunts_tax_collector`, which The Tax Collector declares, so it is never heard on that night.
+
+### The carried items
+
+- **FIGHT turns a soldier.** A soldier turned by a fight power (Turncoat, Manufactured Hatred) is the god's own doing, so `RescueWish.TURNED` gains `Person.Mind.FIGHT`: Save my child is granted, and Stop the bailiff uses the same list.
+- **The Warning's tour says "by".** Its later stars can fall sooner, so the tour reads "The Main Gate. A star falls here by 1:30." and "The Side Gate. A star falls here by 3:00."; the first star still reads "at 0:10".
+
+### References
+
+Each mission's scenario is `--scenario=tax|harvest|lamb|prayers --case=none|play [--seed=N] [--board]`; it runs the `MissionBook` version (the same director, clock and town, no wishes), so its checksums are exact references. `--board` is accepted too and stops at the main objective. **Every M1 reference is unchanged.** The 24 new ones, seeds 1-3 (a rendered run equals a headless one):
+
+| Scenario | `none` (idle) | `play` (the scripted player) |
+|---|---|---|
+| tax | lost, the taxes are in, 146.2 / 142.1 / 153.5 s: -382910780 / 144915864 / -495264161 | won 2 of 3 (lost seed 1 at 228.9 s with two killed), 162.8 / 214.5 s, median 188.7 s: -642476028 / 659379666 / 458371431 |
+| harvest | lost, a granary is emptied, 190.2 / 193.3 / 226.8 s: -399014068 / 547259992 / -90944872 | won 3 of 3, 182.2 / 182.2 / 190.0 s, median 182.2 s: -410228006 / 426542593 / 887534191 |
+| lamb | lost, taken back, 177.6 / 173.4 / 170.4 s: -774246491 / -260547435 / -995215745 | won 3 of 3, 216.0 / 200.0 / 214.4 s, median 214.4 s: -768056610 / -739644497 / -418653026 |
+| prayers | lost, too few believe, 300.0 s all three: 388017594 / -661342052 / -200623714 | won 3 of 3, 222.1 / 218.9 / 147.8 s, median 218.9 s: -911582887 / -560981669 / -817014552 |
+
+The scripted gate for each mission: `play` wins at least 2 of seeds 1-3, the median time to the main objective of its wins is 180-240 s (the user's 3-4 minutes), `none` loses, and an acting player's longest idle stretch is under 45 s (measured: Spoiled Harvest 40 s, First Prayers 35 s, The Lost Lamb 27 s). The idle player's First Prayers loses only at dawn: no win waits for dawn, and only doing nothing loses late. The prayers `none` checksums moved once, when dawn stopped dropping the roof on a prayer in progress; their outcome did not.
+
+### Rulings made in M2
+
+The mission spec's Decisions 1-29 and the plan's 30-33, numbered after M1's thirty.
+
+31. The ids are `tax_collector`, `spoiled_harvest`, `lost_lamb` and `first_prayers`, built in `MissionBook.tier_missions()` at Tier 1's numbers (5:00, Unaware, 3 / 6, no bonuses), so the board needs no per-mission branch and they have no stretch; they are not in `all()` or the campaign.
+32. Whisper has five missions, so Omen opens at three cleared; a save that opened Omen on The Warning alone keeps it open.
+33. "Unseen" is no bonus: a seen kill calls the bellkeeper and still wins; on the board the bell tolling after it catches the night and loses the wishes, unless the god ascends or stops the bellkeeper first.
+34. The Tax Collector has three targets in sequence (the collector and two deputies), each deputy out at his own time (1:45, 2:45) or 45 s after the one before dies; any one at the Citadel's gate loses the night, and `AssassinateDirector` is generic for N targets.
+35. The counting-house is the workshop hall; each collector's debtors are the dwellings nearest his fixed spots whose doors the street reaches; the collectors are residents made nobles.
+36. A loud power within 4 units of a collector in the street, a guard falling or a fright sends him to hide 30 s; a fire on, or the fall of, the house he is in flushes him out (never those waiting in the counting-house); with no hiding place an alarm sends him to the Citadel; quiet powers never alarm.
+37. Raze is a new `RazeDirector` base (targets, a spoil time, an optional seal); Last Judgement's and Judgement's directors are left as they are.
+38. Granaries are dwellings, empty until their grain arrives (1:00, 2:00, 3:00, or 45 s after the one before is spoiled); each has two watchmen who beat out its fire after 3 s while calm and at their posts; "spoiled" is burned 10 s in all or destroyed once the grain is in; the first granary emptied loses at once.
+39. One carter a granary from near the Citadel, setting out when its grain arrives; a load is counted when it is taken; felled carters are not replaced.
+40. "The west gate" is the Main Gate, on the lower-left wall on screen; the postern is barred in an Unaware town and the Side Gate is on the right.
+41. The acolyte moves only by the god's hand and is seized on sight (2.5 units) by the patrols, the gate's watch and the searchers; a blind, turned or town-ordered soldier never seizes; he is freed when the seizer is felled, turned or taken off the errand; the crowd carrying him off is his escape.
+42. The watch change starts 30 s after he first comes within 6 units of the gate, so the wait starts when the player engages; the watch is away 25 s and the change repeats every 45 s.
+43. The searchers set out at 2:30, so doing nothing loses well before dawn, at about 2:55.
+44. Convert is generalised by subclassing `MirasHouseDirector`: `need`, `read_seconds` and `one_at_a_time` (defaults 4, 8, false) and two label hooks, and Mira's House plays exactly as before.
+45. The old well shrine is a drawn stone shrine post that cannot be destroyed; people led to it pray hidden for 32 s, one at a time; at dawn the post stands and a prayer in progress ends.
+46. First Prayers has few Faithful (3 clergy, 3 lay, no Inquisitor); the market (1:15) and the priests (2:30) each put a line at the door for 40 s.
+47. `unaware_town` is derived in `TierBook.board()` from a board mission's readiness, declared per mission nowhere; The Warning's entry goes.
+48. Every wish's target building is reserved on the director, so no director makes it a granary or a debtor's house.
+49. `MissionDirector`'s eligibility helpers skip reserved people and places, so a new director cannot forget.
+50. The new directors leave alone a soldier the rally or the marshals have taken, and tolerate the loss rather than fight the order.
+51. Stop the bailiff: 50 s is a cap; granted when he is killed, turned or still short of the door at 50 s, failed at the door; he starts at least 20 units away with at most 40 units of street, and the HUD shows the act, not a countdown.
+52. Let my neighbours believe: the neighbours live within 8 of the home and are not of the household; each counts once whispered to within 2 of the wisher.
+53. The tax collector wish clashes with The Tax Collector (`hunts_tax_collector`).
+54. The behaviour scenarios run the `MissionBook` versions, so their checksums are exact references; `--board` stops at the main objective.
+55. The scripted gate: wins at least 2 of seeds 1-3, median clear 180-240 s, and no idle stretch over 45 s for an acting player.
+56. The new results titles are THE COLLECTORS ARE DEAD, THE TAXES ARE IN, THE HARVEST IS SPOILED, A GRANARY IS EMPTIED, THE LAMB IS FREE, THE LAMB IS TAKEN BACK and THE ACOLYTE IS DEAD.
+57. The Warning's tour reads "at 0:10" for the first star and "by" for the later two.
+58. Five cards a tab are 115 px wide: a card's brief wraps to seven lines at most, its best line wraps between its parts, and the row's rules sit level.
+59. FLOW's board and results steps change for Tier 1's five missions and one step is added (The Tax Collector from the board, then abandoned through Pause): 109 to 110.
+60. The directors are `AssassinateDirector` / `TaxCollectorDirector`, `RazeDirector` / `HarvestDirector`, `EscortDirector` / `LostLambDirector` and `FirstPrayersDirector`; the objectives `AssassinateObjective`, `RazeObjective` and `EscortObjective`; the wishes `BailiffWish` and `NeighboursWish`.
+61. A generic objective takes its label and its reasons in `_init()`, so later tiers' missions of its type reuse it.
+62. The board's Tier 1 list changes once, after all four missions exist; until then each was tested and played through its `MissionBook` version.
+63. Each new results title is a reason in `ResultsScreen.ACT_TITLES`, added in the mission's own task.
+
+### Photographs and drawing fixes
+
+`--show=board`, `--show=tiers` (Whisper's tab, three of its five cleared; `--mission=vigil_flame` opens Wrath's instead) and `--show=tax_collector|spoiled_harvest|lost_lamb|first_prayers` photograph the board and each new mission's board night, with the tour skipped and the opening banners waited out.
+
+- **Best lines:** a card's best, "Cleared  best 3:12  wishes 2", wraps between its parts and never inside one, so "best 3:12" stays whole and the double spaces survive; and the five cards' rules sit at one height, lifted by the row's most best lines, so a two-line best on The Warning does not leave its rule a line above its neighbours'.
+- Nothing else was moved: the four mission photographs show their tags, hints and wishes clear. As in every mission, a world tag can pass under the HUD's panels and timeline strip.
+
+Gates: filled in at landing.
 
 ## M1: The Tiers framework
 

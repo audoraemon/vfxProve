@@ -60,6 +60,8 @@ const FLOW_TEST_SAVE := "user://test_flow.cfg"
 ## MANIFEST after a card) writes the save, which would have replaced the player's real campaign with the sample. Under
 ## --show the screens still open on the player's own save, but write to this file instead; nothing ever reads it back.
 const SHOW_SAVE := "user://test_show.cfg"
+## The new Tier 1 missions' photographs (v0.11 M2): each its board night as the tour lands, its tags and HUD in view.
+const TIER1_SHOWS := ["tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -288,6 +290,7 @@ func _ready() -> void:
 			go_to(Screen.MISSION)
 		"tiers":
 			# The tier board part-way up (v0.11 M1, M2): three of Whisper and both of Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
+			# It opens on Whisper's tab, its five cards with the ticks and the best lines; --mission=vigil_flame opens Wrath's instead.
 			save.descend = DescendState.new()
 			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns"])
 			save.descend.fastest = {"warning": 192.0}
@@ -295,7 +298,8 @@ func _ready() -> void:
 			save.descend.believers = 64
 			save.descend.night = 5
 			save.descend.refresh_open()
-			mission_id = MissionBook.VIGIL_FLAME
+			if wanted == "":
+				mission_id = MissionBook.WARNING
 			go_to(Screen.BOARD)
 		"upgrades":
 			# The Upgrades with a purse (v0.11 M1), one +1 DP and one power bought, for the photograph (SHOW_SAVE).
@@ -314,6 +318,11 @@ func _ready() -> void:
 			mission_id = MissionBook.WARNING
 			loadout = MissionBook.warning().default_loadout
 			go_to(Screen.MISSION)
+		"tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers":
+			# A new Tier 1 mission's board night (v0.11 M2), for the photograph of its tags, its how-to-win line and its wishes.
+			mission_id = show
+			loadout = MissionBook.get_mission(show).default_loadout
+			go_to(Screen.MISSION)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -323,11 +332,12 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if show in ["miras", "cael", "lanterns", "flame", "flame-beams"] and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
-		if show in ["miras", "lanterns", "flame", "flame-beams"] and is_instance_valid(_mission) and is_instance_valid(_mission._hud):
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS) and is_instance_valid(_mission) \
+				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)
 			for _frame in 1200:

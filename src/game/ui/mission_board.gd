@@ -100,17 +100,23 @@ func header_text() -> String:
 	return "Night %d   Believers %d" % [_state().night + 1, _state().believers]
 
 
-## A card's best (spec §3.1, §3.5): "Not yet cleared", or "Cleared" with its fastest clear and most wishes when it has them.
-func best_line(id: String) -> String:
+## A card's best, part by part (spec §3.1, §3.5; v0.11 M2, Task 8): "Not yet cleared", or "Cleared" with its fastest clear and most
+## wishes when it has them.
+func best_parts(id: String) -> PackedStringArray:
 	var s := _state()
 	if not s.cleared.has(id):
-		return "Not yet cleared"
+		return PackedStringArray(["Not yet cleared"])
 	var parts := PackedStringArray(["Cleared"])
 	if s.fastest.has(id):
 		parts.append("best %s" % UiTheme.clock(float(s.fastest[id])))
 	if int(s.most_wishes.get(id, 0)) > 0:
 		parts.append("wishes %d" % int(s.most_wishes[id]))
-	return "  ".join(parts)
+	return parts
+
+
+## A card's best (spec §3.1, §3.5): its parts, two spaces apart.
+func best_line(id: String) -> String:
+	return "  ".join(best_parts(id))
 
 
 ## A card's brief wrapped to `room`, line by line (v0.11 M2: Whisper's five cards are 115 px wide).
@@ -123,9 +129,56 @@ func brief_lines(id: String, room: float) -> PackedStringArray:
 	return out
 
 
-## A card's best line wrapped to `room` (v0.11 M2: Whisper's five cards are 115 px wide).
+## A card's best wrapped to `room` (v0.11 M2: Whisper's five cards are 115 px wide), between its parts and never inside one, so
+## "best 3:12" stays whole and the two spaces between parts survive on a line. A part wider than `room` wraps by its words.
 func best_lines(id: String, room: float) -> PackedStringArray:
-	return UiTheme.wrap(best_line(id), room, UiTheme.SIZE_SMALL)
+	var lines := PackedStringArray()
+	var line := ""
+	for part in best_parts(id):
+		if UiTheme.width(part, UiTheme.SIZE_SMALL) > room:
+			if line != "":
+				lines.append(line)
+				line = ""
+			lines.append_array(UiTheme.wrap(part, room, UiTheme.SIZE_SMALL))
+			continue
+		var tried := part if line == "" else line + "  " + part
+		if line != "" and UiTheme.width(tried, UiTheme.SIZE_SMALL) > room:
+			lines.append(line)
+			line = part
+		else:
+			line = tried
+	if line != "":
+		lines.append(line)
+	return lines
+
+
+## The most lines any card of the open tab's best takes (v0.11 M2, Task 8). Every card's rule is lifted by this many, so the rules
+## of a row sit level, a short best on one card and a long one beside it.
+func best_rows() -> int:
+	var ids := missions()
+	var room := card_rect(0, ids.size()).size.x - PAD * 2.0
+	var rows := 1
+	for id in ids:
+		rows = maxi(rows, best_lines(id, room).size())
+	return rows
+
+
+## The y of the rule above a card's best, when `rows` lines of it sit under it (v0.11 M2, Task 8).
+static func rule_y(r: Rect2, rows: int) -> float:
+	return r.end.y - PAD - UiTheme.LINE_SMALL * float(rows) - 6.0
+
+
+## The y of the first line of a card's brief (v0.11 M2, Task 8): under its name, however many lines that wraps to, and its type.
+func brief_top(id: String, r: Rect2) -> float:
+	var def: MissionDef = _defs.get(id)
+	var names := UiTheme.wrap(def.name, r.size.x - PAD * 2.0 - 12.0, UiTheme.SIZE_BIG).size()
+	return r.position.y + PAD + 14.0 + (UiTheme.LINE_BODY + 3.0) * float(names) + UiTheme.LINE_SMALL + 8.0
+
+
+## Where a card's brief ends (v0.11 M2, Task 8): its last line's baseline and a few pixels of descender.
+func brief_bottom(id: String, r: Rect2) -> float:
+	var room := r.size.x - PAD * 2.0
+	return brief_top(id, r) + UiTheme.LINE_BODY * float(maxi(brief_lines(id, room).size() - 1, 0)) + 3.0
 
 
 ## Opens tier `t`'s tab -- locked or not: a locked one shows its rule -- on its first card.
@@ -248,8 +301,9 @@ func _draw_ui() -> void:
 		_draw_tab(i)
 	if _state().is_open(tier):
 		var ids := missions()
+		var rows := best_rows()
 		for i in ids.size():
-			_draw_card(card_rect(i, ids.size()), ids[i], i == selected)
+			_draw_card(card_rect(i, ids.size()), ids[i], i == selected, rows)
 	else:
 		_draw_locked()
 	var hint := "Left and Right: missions   Tab or number keys: tiers   Enter: prepare   U: upgrades   Esc: title"
@@ -287,8 +341,9 @@ func _draw_locked() -> void:
 		UiTheme.COL_GOLD)
 
 
-## One card, top to bottom: its name and a tick once cleared, its type, its brief, then under a rule its best.
-func _draw_card(r: Rect2, id: String, on: bool) -> void:
+## One card, top to bottom: its name and a tick once cleared, its type, its brief, then under a rule its best. `rows` is the most
+## lines any card of the row has for its best (v0.11 M2, Task 8), so the rules sit level.
+func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 	var def: MissionDef = _defs.get(id)
 	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if on else UiTheme.COL_PANEL)
 	UiTheme.frame(_ui, r, on)
@@ -302,12 +357,12 @@ func _draw_card(r: Rect2, id: String, on: bool) -> void:
 	if _state().cleared.has(id):
 		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)
 	UiTheme.text(_ui, Vector2(x, y), TierBook.type_of(id).to_upper(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
-	y += UiTheme.LINE_SMALL + 8.0
+	y = brief_top(id, r)
 	for line in brief_lines(id, room):
 		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
 		y += UiTheme.LINE_BODY
 	var best := best_lines(id, room)
-	var rule := r.end.y - PAD - UiTheme.LINE_SMALL * float(best.size()) - 6.0
+	var rule := rule_y(r, maxi(rows, best.size()))
 	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, -1.0)
 	for i in best.size():
 		UiTheme.text(_ui, Vector2(x, rule + 4.0 + UiTheme.LINE_SMALL * float(i + 1)), best[i], UiTheme.SIZE_SMALL,

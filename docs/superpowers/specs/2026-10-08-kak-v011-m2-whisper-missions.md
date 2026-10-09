@@ -324,7 +324,7 @@ The pool grows from 8 to 10. Both new wishes may be heard in an Unaware town.
 
 | Wish | Kind | Act | Reward | Needs / clashes |
 |---|---|---|---|---|
-| Stop the bailiff | Rescue | Once engaged (his tag or the home's clicked, or a cast within 2 of either), the bailiff walks from his post to the wisher's home. Kill him, turn him, or keep him from the door for 50 s. | 15 | a lay citizen with a home, and a free soldier at least 20 units from it; — |
+| Stop the bailiff | Rescue | Once engaged (his tag or the home's clicked, or a cast within 2 of either), the bailiff walks from his post to the wisher's home. Kill him, turn him, or keep him from the door for 50 s. | 15 | a lay citizen with a home, and a free soldier at least 20 units from it with no more than 40 units of street to it; — |
 | Let my neighbours believe | Faith | Whisper three of the wisher's neighbours (marked) to within 2 units of the wisher. Each one believes. | 10 | three lay citizens living within 8 of the wisher's home, not of the household; — |
 
 - **"Strike down the cruel tax collector"** now also clashes with `hunts_tax_collector`, so it is never heard on The Tax
@@ -411,7 +411,10 @@ These are the details the v0.11 spec left open. The controller records them as r
 21. **Stop the bailiff:** 50 s is the most time he has, a cap. The wish is granted when he is killed, turned, or still short of
     the door at 50 s, and failed when he reaches it. It is engaged as Save my child is. The controller's ruling after Task 6: he
     starts at least 20 units from the door (a walk of about 16 s after a click-engage, the median of sixteen seeded towns), and
-    the HUD shows the act ("Stop the bailiff before he reaches the door") rather than a 0:50 countdown he never nears.
+    the HUD shows the act ("Stop the bailiff before he reaches the door") rather than a 0:50 countdown he never nears. Task 8
+    bounds the route as well: no more than 40 units of street (`BailiffWish.MAX_ROUTE`), because with the distance alone one
+    seeded town sent him 67 units round the streets, 49.8 s, and the cap granted the wish for doing nothing; a test walks
+    twenty-four seeded towns, all inside 30 s (the slowest 24.1 s).
 22. **Let my neighbours believe:** the neighbours live within 8 of the home and are not of the household. Each counts once
     whispered to within 2 of the wisher.
 23. **Tax collector clash:** the tax collector wish clashes with The Tax Collector (mission tag `hunts_tax_collector`).
@@ -422,6 +425,8 @@ These are the details the v0.11 spec left open. The controller records them as r
 26. **Results titles** for the new reasons are as listed in §1-§4 (The Tax Collector's win reads "THE COLLECTORS ARE
     DEAD").
 27. **The Warning's tour:** the first star "at 0:10", the later two "by".
-28. **Five cards on the Whisper tab** are 115 px wide. A card's best line wraps above its rule when it does not fit.
+28. **Five cards on the Whisper tab** are 115 px wide. A card's best line wraps above its rule when it does not fit, between
+    its parts ("Cleared", "best 3:12", "wishes 2") and never inside one, and the row's rules sit level, lifted by the card with
+    the most best lines (Task 8).
 29. **FLOW:** the board and results steps change for Tier 1's five missions, and one step is added (The Tax Collector from
     the board, then abandoned through Pause). FLOW goes from 109 to 110.

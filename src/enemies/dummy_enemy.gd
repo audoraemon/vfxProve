@@ -16,6 +16,8 @@ const BODY_HOLD := 20.0
 ## How often a unit re-reads the light around it. Pixel art tints in steps anyway, and with 160 people this
 ## sampling was the biggest thing left in the crowd's frame.
 const LIGHT_HZ := 20.0
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 
 const COL_SHADOW := Color(0, 0, 0, 0.4)
 const COL_DARK := Color("1c1f2a")
@@ -450,6 +452,16 @@ func _px(x: int, y: int, w: int, h: int, c: Color) -> void:
 
 
 func _draw() -> void:
+	if BenchProf.on:
+		var t0 := BenchProf.begin()
+		_draw_all()
+		BenchProf.add(&"people_draw", t0)
+		BenchProf.count(&"people_drawn")
+		return
+	_draw_all()
+
+
+func _draw_all() -> void:
 	draw_set_transform(_draw_origin)
 	if state == State.DEAD:
 		match _kind:

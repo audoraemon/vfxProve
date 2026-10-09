@@ -12,6 +12,8 @@ const VIGIL_FLAME := "vigil_flame"
 const BROKEN_LANTERNS := "broken_lanterns"
 const FEAST_FESTIVAL := "feast_festival"
 const FEAST_PROCESSION := "feast_procession"
+## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
+const CAPITAL_SANDBOX := "capital_sandbox"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -33,7 +35,39 @@ static func get_mission(id: String) -> MissionDef:
 	for m in campaign_missions():
 		if m.id == id:
 			return m
+	for m in dev_missions():
+		if m.id == id:
+			return m
 	return last_judgement()
+
+
+## Dev-only missions (the capital plan): reached by id (--mission=<id>), never listed on the board or in the campaign.
+static func dev_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [capital_sandbox()]
+	return out
+
+
+## The capital's sandbox (Task 13 stub, for the bench; Task 15 finishes it): the capital, every power, no objectives but
+## a free-play clock like Last Judgement's skirmish. The camera rests on the market square, the town's busiest.
+static func capital_sandbox() -> MissionDef:
+	var m := MissionDef.new()
+	m.id = CAPITAL_SANDBOX
+	m.name = "Capital Sandbox"
+	m.tier = 5
+	m.brief = PackedStringArray(["The capital, its two rings and its river.", "Free play."])
+	m.goal = "Free play"
+	m.goal_label = "Free play"
+	m.lose = "The time runs out"
+	m.slots = 6
+	m.city = &"capital"
+	m.clock = Rules.MISSION_SECONDS
+	m.camera_at = CapitalCity.MARKET_SQUARE.get_center()
+	m.intro_from = CapitalCity.MARKET_SQUARE.get_center() + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(Mission.DEFAULT_LOADOUT)
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]
+		return out
+	return m
 
 
 ## The Lantern campaign's missions (v0.10): played from the campaign's night screen, never listed on the board.

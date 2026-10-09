@@ -4,6 +4,7 @@ extends Node2D
 ## a few pale puffs per chimney rise, drift and fade on a loop, each chimney out of step with the rest. A house
 ## that falls stops smoking. It dims with the ambient light like everything else.
 
+const BenchProf := preload("res://src/core/bench_prof.gd")
 const STEP := 0.125
 ## Seconds a puff takes to rise and vanish, how high it goes (px) and how far it drifts.
 const CYCLE := 2.8
@@ -56,6 +57,12 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	var t0 := BenchProf.begin()
+	_draw_all()
+	BenchProf.add(&"smoke_draw", t0)
+
+
+func _draw_all() -> void:
 	var amb := maxf(lights.ambient, 0.3) if lights else 1.0
 	for i in _houses.size():
 		var h := _houses[i]

@@ -4,6 +4,8 @@ extends Node2D
 ## camera with shake, positional sound, lights, destructible buildings, units, screen glow, impact post and
 ## screen flash, all wired into one FxContext. The VFX sandbox and the KAK game each add one as a child.
 
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 var ctx := FxContext.new()
 ## Seeds unit spawns and effect randomness; reseeded by reset().
 var rng := RandomNumberGenerator.new()
@@ -236,6 +238,17 @@ func bench(label: String, seconds := 9.0) -> void:
 	# Draw calls and primitives do not depend on how busy the machine is, so they compare across runs when fps won't.
 	var calls := 0.0
 	var prims := 0.0
+	# --bench-prof (capital plan, Task 13): each system's share of the frame (BenchProf), the engine's own process
+	# time, and the renderer's CPU and GPU time. Off by default: the timers cost a little themselves.
+	var prof := "--bench-prof" in OS.get_cmdline_user_args()
+	var vp := get_viewport().get_viewport_rid()
+	var process_ms := 0.0
+	var render_cpu := 0.0
+	var render_gpu := 0.0
+	if prof:
+		RenderingServer.viewport_set_measure_render_time(vp, true)
+		BenchProf.reset()
+		BenchProf.on = true
 	var last := Time.get_ticks_usec()
 	var start := last
 	while Time.get_ticks_usec() - start < int(seconds * 1_000_000.0):
@@ -249,9 +262,17 @@ func bench(label: String, seconds := 9.0) -> void:
 		frames += 1
 		calls += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		prims += Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
+		if prof:
+			process_ms += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+			render_cpu += RenderingServer.viewport_get_measured_render_time_cpu(vp)
+			render_gpu += RenderingServer.viewport_get_measured_render_time_gpu(vp)
 	print("bench[%s] frames=%d avg_ms=%.2f avg_fps=%.1f worst_ms=%.2f min_fps=%.1f draw_calls=%d primitives=%d" % [
 		label, frames, total / frames, 1000.0 * frames / total, worst, 1000.0 / worst, roundi(calls / frames),
 		roundi(prims / frames)])
+	if prof:
+		BenchProf.on = false
+		print("prof[%s] process=%.2fms render_cpu=%.2fms render_gpu=%.2fms %s" % [label, process_ms / frames,
+			render_cpu / frames, render_gpu / frames, BenchProf.report(frames)])
 
 
 ## Stop voices and effects before quitting so the audio server does not leak playbacks.

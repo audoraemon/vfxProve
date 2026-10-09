@@ -331,6 +331,7 @@ static var view := Rect2()
 ## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
 ## screen at play zoom, and nobody can see a stride or a light reading there.
 const OFFSCREEN_EVERY := 3
+
 ## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
 ## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
 ## halves most of the crowd's cost there. Anyone frightened, fleeing, knocked, pulled, stumbling or held at a gate
@@ -407,6 +408,7 @@ func frame(delta: float) -> void:
 	elif _offscreen_delta > 0.0:
 		delta += _offscreen_delta
 		_offscreen_delta = 0.0
+	BenchProf.count(&"people_ticked")
 	tick(delta)
 	_refresh(delta)
 

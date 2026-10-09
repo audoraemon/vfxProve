@@ -5,6 +5,8 @@ extends RefCounted
 ## closes the water under it (CityDef.fallen_bridge(): Aldermere's whole footprint, the capital's water only). The grid is patched in place when a building falls, never rebuilt.
 
 const CELL := 0.5
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 ## People are about this wide, so a footprint is grown by it before being stamped solid.
 const BODY := 0.15
 ## How far nearest_walkable() and path() will look for a free cell beside a blocked goal.
@@ -112,6 +114,12 @@ func path(from: Vector2, to: Vector2) -> PackedVector2Array:
 	var goal := nearest_walkable(to)
 	if start == Vector2.INF or goal == Vector2.INF:
 		return PackedVector2Array()
+	if BenchProf.on:
+		var t0 := BenchProf.begin()
+		var out := grid.get_point_path(world_to_id(start), world_to_id(goal))
+		BenchProf.add(&"paths", t0)
+		BenchProf.count(&"path_calls")
+		return out
 	return grid.get_point_path(world_to_id(start), world_to_id(goal))
 
 

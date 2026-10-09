@@ -5,6 +5,8 @@ extends Node
 ## ring it. Everyone is an ordinary unit in EnemyField, so every effect kills, knocks, pulls, freezes and lifts
 ## them as it does the sandbox's troopers. Numbers are the spec's starting values (§3).
 
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 signal escaped(person: Person)
 signal alarm_changed(value: float)
 ## The bell tolled a lie (The Bell Lies): at the tower.
@@ -771,12 +773,14 @@ func _process(delta: float) -> void:
 func step_people(delta: float) -> void:
 	# While time stands still (freeze()) the living do not move or think; the dead still fall.
 	var still := is_frozen()
+	var t0 := BenchProf.begin()
 	for p in citizens:
 		if is_instance_valid(p) and not p.inside and not (still and p.is_alive()):
 			p.frame(delta)
 	for p in soldiers:
 		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
+	BenchProf.add(&"people", t0)
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
@@ -784,6 +788,12 @@ func advance(delta: float) -> void:
 	if _freeze_left > 0.0:
 		_freeze_left -= delta
 		return
+	var t0 := BenchProf.begin()
+	_advance(delta)
+	BenchProf.add(&"crowd", t0)
+
+
+func _advance(delta: float) -> void:
 	_clock += delta
 	threats.step(delta)
 	_spread_fright()
@@ -792,10 +802,16 @@ func advance(delta: float) -> void:
 		_watch_in = 1.0 / WATCH_HZ
 		_watch_threats()
 	if routine != null:
+		var t_routine := BenchProf.begin()
 		routine.step(delta)
+		BenchProf.add(&"routine", t_routine)
 	if evac != null:
+		var t_evac := BenchProf.begin()
 		evac.step(delta)
+		BenchProf.add(&"evac", t_evac)
+	var t_fires := BenchProf.begin()
 	fires.step(delta)
+	BenchProf.add(&"fires", t_fires)
 	if shelters != null:
 		shelters.step(delta)
 	_stage_in -= delta
@@ -833,8 +849,12 @@ func advance(delta: float) -> void:
 	_tend_households()
 	_return_investigators()
 	if not _loops.is_empty():
+		var t_loops := BenchProf.begin()
 		_walk_loops()
+		BenchProf.add(&"loops", t_loops)
+	var t_gates := BenchProf.begin()
 	_gates()
+	BenchProf.add(&"gates", t_gates)
 	_escapes()
 	_prune_soldiers()
 	_voice_tokens = minf(VOICE_BUDGET, _voice_tokens + VOICE_BUDGET * delta)
@@ -986,6 +1006,7 @@ func _gates() -> void:
 func _heading_through(p: Person, gate: Structure, spots: Array[Vector2]) -> bool:
 	if not p.has_goal():
 		return p.queue_spot != Vector2.INF and spots.has(p.queue_spot)
+	BenchProf.count(&"heading_checks")
 	return p.path_crosses(gate.footprint.grow(GATE_DOOR), GATE_AHEAD)
 
 

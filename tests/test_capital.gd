@@ -17,10 +17,24 @@ static func run(t) -> void:
 	_districts(t, cap)
 	_floor(t, cap)
 	_builds(t)
+	_sandbox(t)
 	var title := FileAccess.get_file_as_string("res://src/game/ui/title_screen.gd")
 	t.check(title.contains("City.use(&\"aldermere\")") and title.find("City.use(&\"aldermere\")") < title.find("Town.new()"),
 		"the title screen's backdrop is always Aldermere")
 	City.use(&"aldermere")
+
+
+## The bench's capital mission (Task 13 stub; Task 15 finishes it): reached by id, played in the capital, every power,
+## and kept off the board and the campaign.
+static func _sandbox(t) -> void:
+	var m := MissionBook.get_mission(MissionBook.CAPITAL_SANDBOX)
+	t.check(m.id == MissionBook.CAPITAL_SANDBOX and m.city == &"capital" and m.pool.is_empty(),
+		"capital_sandbox is a mission in the capital with every power")
+	var listed := false
+	for d: MissionDef in MissionBook.all() + MissionBook.campaign_missions():
+		listed = listed or d.id == MissionBook.CAPITAL_SANDBOX
+	t.check(not listed and not TierBook.has(MissionBook.CAPITAL_SANDBOX),
+		"capital_sandbox is dev-only: not on the board or in the campaign")
 
 
 static func _water(t, c: CapitalCity) -> void:

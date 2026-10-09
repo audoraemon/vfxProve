@@ -180,6 +180,8 @@ static var wind := 1.0
 ## A structure whose screen box (_view_box) is off screen updates every OFFSCREEN_EVERY frames with the time it
 ## skipped, and draws nothing until it is seen again (_unseen): most of the town is off screen at play zoom.
 const OFFSCREEN_EVERY := 4
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 const VIEW_BOX_MARGIN := 64.0
 var _view_box := Rect2()
 var _offscreen_delta := 0.0
@@ -688,6 +690,16 @@ func _fall_apart(source: Vector2, damage_kind: StringName) -> void:
 
 
 func _process(delta: float) -> void:
+	if BenchProf.on:
+		var t0 := BenchProf.begin()
+		_step(delta)
+		BenchProf.add(&"structures", t0)
+		BenchProf.count(&"structures_processing")
+		return
+	_step(delta)
+
+
+func _step(delta: float) -> void:
 	if view.has_area() and not view.intersects(_view_box):
 		if _quiet():
 			_unseen = true
@@ -886,6 +898,16 @@ func _face_color(base: Color, normal: Vector2, light: Color, dir: Vector2) -> Co
 
 
 func _draw() -> void:
+	if BenchProf.on:
+		var t0 := BenchProf.begin()
+		_draw_all()
+		BenchProf.add(&"structures_draw", t0)
+		BenchProf.count(&"structures_drawn")
+		return
+	_draw_all()
+
+
+func _draw_all() -> void:
 	var light := lights.sample(center()) if lights else Color.BLACK
 	var dir := lights.sample_dir(center()) if lights else Vector2.ZERO
 	if not sprite.is_empty():

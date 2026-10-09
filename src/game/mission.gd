@@ -166,6 +166,7 @@ func _ready() -> void:
 		elif "--bench-beams" in args:
 			await _bench_beams(args)
 			label = "flame-beams"
+		label += await _bench_view(args)
 		await _bf.bench(label)
 		await _quit()
 
@@ -180,6 +181,30 @@ func _bench_jump(act_id: String, args: PackedStringArray) -> void:
 	var after := Battlefield.arg_value(args, "--bench-after")
 	var secs := float(after) if after != "" else 50.0
 	await get_tree().create_timer(secs).timeout
+
+
+## Bench aid (capital plan, Task 13; Review Focus 5): `--bench-zoom=Z` rests the camera at zoom Z where the mission
+## framed it (ZOOM_MIN, 0.5, is as far out as a player can go); `--bench-zoomed-out` frames the whole map (City.map()) at
+## whatever zoom fits it, every building and person in view -- the worst case for draw calls. A second is let pass first
+## so what came into view has woken. Returns the label's suffix ("" for the mission's own view).
+func _bench_view(args: PackedStringArray) -> String:
+	var suffix := ""
+	if "--bench-zoomed-out" in args:
+		var m := City.current().map()
+		var box := Rect2(Iso.ground_to_screen(m.position), Vector2.ZERO)
+		for c in [m.position + Vector2(m.size.x, 0.0), m.position + Vector2(0.0, m.size.y), m.end]:
+			box = box.expand(Iso.ground_to_screen(c))
+		var seen := get_viewport().get_visible_rect().size
+		_bf.camera.zoom = Vector2.ONE * minf(seen.x / box.size.x, seen.y / box.size.y)
+		_bf.camera.position = box.get_center().round()
+		suffix = "-whole"
+	elif Battlefield.arg_value(args, "--bench-zoom") != "":
+		_bf.camera.zoom = Vector2.ONE * float(Battlefield.arg_value(args, "--bench-zoom"))
+		suffix = "-z" + Battlefield.arg_value(args, "--bench-zoom")
+	else:
+		return suffix
+	await get_tree().create_timer(1.0).timeout
+	return suffix
 
 
 ## Bench aid (v0.10 M4, spec §7): `--mission=vigil_flame --bench --bench-beams` lights Halcyon's Searchlight with both

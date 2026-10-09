@@ -195,6 +195,16 @@ func stopped() -> int:
 	return n
 
 
+## StarsObjective's count (v0.11 M3 final review): the warnings stopped, of the posts'.
+func stars_stopped() -> int:
+	return stopped()
+
+
+## StarsObjective's count (v0.11 M3 final review): one warning for each post.
+func stars_total() -> int:
+	return ringers.size()
+
+
 ## The warnings out of doors and alive, in the posts' order (v0.11 M3).
 func running() -> Array[RingerDirector]:
 	var out: Array[RingerDirector] = []

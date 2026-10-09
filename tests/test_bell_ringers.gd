@@ -13,11 +13,23 @@ const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 
+## A director keeping a count of warnings of its own (v0.11 M3 final review): StarsObjective reads any director's, not a list of types.
+class Counted:
+	extends MissionDirector
+
+	func stars_stopped() -> int:
+		return 2
+
+	func stars_total() -> int:
+		return 5
+
+
 static func run(t) -> void:
 	_setup(t)
 	_set_out(t)
 	_chain(t)
 	_relay(t)
+	_passed_over(t)
 	_rope(t)
 	_recall(t)
 	_two(t)
@@ -137,6 +149,16 @@ static func _set_out(t) -> void:
 		var gap := (v as Person).ground_pos.distance_to(r.watchman.ground_pos)
 		apart = apart and not (v as Person).inside and gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS
 	t.check(apart, "his mates out with him, beyond one Silent Doom of him, within sight: one strike at the door never ends it")
+	var formed := true
+	for i in range(1, d.ringers.size()):
+		var o := d.ringers[i]
+		o.set_out()
+		formed = formed and o.mates.size() == RingerDirector.MATES
+		for v: Variant in o.mates:
+			var gap := (v as Person).ground_pos.distance_to(o.watchman.ground_pos)
+			formed = formed and gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS
+		formed = formed and (o.mates[0] as Person).ground_pos.distance_to((o.mates[1] as Person).ground_pos) > SilentDoom.RADIUS
+	t.check(formed, "at the south-west and the east doors too, the mates stand beyond one Silent Doom of the ringer and of each other")
 	Kit.run_for(s, RingerDirector.OUT_PAUSE + WarningDirector.RETARGET + DT * 2.0)
 	t.check(r.phase == WarningDirector.Phase.RUN and r.messenger.mind == Person.Mind.DUTY
 		and r.messenger.goal().distance_to(bell.foot) < 0.6, "after OUT_PAUSE the ringer runs for the bell's foot, not the bellkeeper")
@@ -183,6 +205,54 @@ static func _relay(t) -> void:
 		and (s.banners as Array).has("THE WARNING PASSES ON") and d.hint_phase() == "relay",
 		"one strike never ends it: a mate beside him saw, and carries the warning on")
 	Kit.done(s)
+
+
+## The relay passes over the fleeing and the reserved (v0.11 M3 final review): a citizen already running for the gates would carry
+## the warning out of the town, and a wish's people belong to their wish; with only such ones in sight the death goes unseen, and
+## neither is marked as a witness. A carrier gone out of the town alive (Crowd.escape(): his body freed at once, and no fall) takes
+## the warning with him: it is dead, not running for ever.
+static func _passed_over(t) -> void:
+	var s := _world()
+	var d: BellRingersDirector = s.d
+	var crowd: Crowd = s.crowd
+	var r := d.ringers[0]
+	d._send(0)
+	Kit.run_for(s, RingerDirector.OUT_PAUSE + DT * 4.0)
+	var carrier := r.messenger
+	var crews := d.claimed_besides(-1)
+	var free: Array[Person] = []
+	for p in crowd.citizens:
+		if MissionDirector._alive(p) and not p.inside and p != carrier and not crews.has(p) and not r.mates.has(p):
+			free.append(p)
+		if free.size() == 2:
+			break
+	var runner := free[0]
+	var wisher := free[1]
+	_clear_round(s, carrier, [])
+	Kit.arrive(runner, carrier.ground_pos + Vector2(1.2, 0.0))
+	Kit.arrive(wisher, carrier.ground_pos + Vector2(-1.2, 0.0))
+	runner.flee()
+	r.reserved.append(wisher)
+	var marked := r.witnesses()
+	crowd._field.kill(carrier, &"doom")
+	Kit.run_for(s, DT * 2.0)
+	t.check(runner.mind == Person.Mind.FLEE and not marked.has(runner) and not marked.has(wisher) and r.warning_dead and r.relays == 0
+		and r.messenger != runner and r.messenger != wisher,
+		"only a fleeing citizen and a wish's man in sight: neither marked, neither carries it on, and the warning dies")
+	Kit.done(s)
+	var u := _world()
+	var e: BellRingersDirector = u.d
+	var q := e.ringers[0]
+	e._send(0)
+	Kit.run_for(u, RingerDirector.OUT_PAUSE + DT * 4.0)
+	var gone := q.messenger
+	(u.crowd as Crowd)._field.remove(gone)
+	(u.crowd as Crowd).escape(gone)
+	gone.free()  # Crowd.escape() only queues the free: a headless test frees the body itself
+	Kit.run_for(u, DT * 2.0)
+	t.check(q.warning_dead and q.tags().is_empty() and e.stopped() == 1 and e.running().is_empty() and e.hint_phase() == "waiting",
+		"a carrier gone out of the town alive takes the warning with him: dead and counted, the hint on the next post")
+	Kit.done(u)
 
 
 static func _rope(t) -> void:
@@ -285,8 +355,9 @@ static func _ends(t) -> void:
 	t.check(o.check(rules) == Objective.Status.DONE and o.reason == "ringers" and o.hud_text(rules) == "Ringers stopped 3 / 3",
 		"all three stopped: the main objective is done")
 	t.check(StarsObjective.new().label == "Stop the warnings" and StarsObjective.new().reason == "warning"
-		and StarsObjective.tally(MissionDirector.new()) == Vector2i.ZERO and StarsObjective.tally(null) == Vector2i.ZERO,
-		"StarsObjective keeps the board Warning's words; another director counts nothing")
+		and StarsObjective.tally(MissionDirector.new()) == Vector2i.ZERO and StarsObjective.tally(null) == Vector2i.ZERO
+		and StarsObjective.tally(Counted.new()) == Vector2i(2, 5) and StarsObjective.tally(d) == Vector2i(3, 3),
+		"StarsObjective keeps the board Warning's words; it reads a director's own count, and one that keeps none counts nothing")
 	(s.crowd as Crowd).bell.state = BellNetwork.State.RUNG
 	t.check(BellSilentObjective.new().check(rules) == Objective.Status.FAILED, "the bell tolling loses, whoever rang it")
 	t.check(ResultsScreen.title_for(true, "ringers") == "THE RINGERS ARE STOPPED" and ResultsScreen.title_for(false, "bell") == "THE BELL TOLLS"

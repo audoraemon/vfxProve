@@ -81,6 +81,16 @@ func stopped() -> int:
 	return n
 
 
+## StarsObjective's count (v0.11 M3 final review): the warnings stopped, of the night's stars.
+func stars_stopped() -> int:
+	return stopped()
+
+
+## StarsObjective's count (v0.11 M3 final review): one warning for each star.
+func stars_total() -> int:
+	return stars.size()
+
+
 ## The warning running now: the latest star set up whose warning lives; null between stars.
 func running() -> WarningDirector:
 	for i in range(stars.size() - 1, -1, -1):

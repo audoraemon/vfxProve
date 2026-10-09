@@ -31,6 +31,9 @@ var reserved: Array[Person] = []
 ## for its own use -- a granary, a debtor's house -- skips them (_house_near()). Empty off the board.
 var reserved_places: Array[Structure] = []
 
+## The town was evacuating at this director's last look (v0.11 M3 final review): see _evacuation_began().
+var _saw_evacuation := false
+
 ## Minds a Faithful does not see from (v0.10): the god's own holds.
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 
@@ -71,6 +74,17 @@ func hint_phase() -> String:
 ## none by default, and then the intro is the sweep. A stop with no one to show is left out.
 func tour() -> Array:
 	return []
+
+
+## Virtual (v0.11 M3 final review): how many of the night's warnings are stopped, and how many it has in all, for StarsObjective
+## (the board Warning's stars, The Bell-Ringers' posts). None by default.
+func stars_stopped() -> int:
+	return 0
+
+
+## Virtual (v0.11 M3 final review): see stars_stopped().
+func stars_total() -> int:
+	return 0
 
 
 ## What the director adds to the results (The Warning's "solved_by").
@@ -340,3 +354,26 @@ func _carrying(p: Person) -> bool:
 		if r.carrier == p:
 			return true
 	return false
+
+
+## True once, at the director's first look after the town began to evacuate (v0.11 M3 final review): a director keeping its own
+## people at their places calls back then the ones the evacuation sent running (_keep_from_flight()).
+func _evacuation_began() -> bool:
+	if _saw_evacuation or crowd == null or not crowd._fled_all:
+		return false
+	_saw_evacuation = true
+	return true
+
+
+## `p`, one of the director's own people kept at his place for the night, is kept out of the town's flight (v0.11 M3 final review):
+## a whisper the evacuation found him under (Person.whisper_resume_flee()) ends with him back on his feet, not running for the
+## gates; and, at the first look after the evacuation began (`evacuating`), one it sent running -- he was going about his day,
+## recovering or looking on, and Person.go_duty() refuses a fleeing man -- stops, back on his feet, for the caller to put on duty
+## again, as Mind Whisper takes a fleeing man (Person.whisper()). A god's own flight (Rewrite Priority's "escape") later is let be.
+static func _keep_from_flight(p: Person, evacuating: bool) -> void:
+	if p.mind == Person.Mind.WHISPERED:
+		p._whisper_fled = false
+	elif evacuating and p.mind == Person.Mind.FLEE:
+		p.release_from_queue()
+		p.passing_gate = null
+		p.mind = Person.Mind.CALM

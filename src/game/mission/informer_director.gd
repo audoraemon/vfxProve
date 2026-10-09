@@ -26,8 +26,6 @@ class Contact:
 	var man: Variant = null
 	var company: Array = []
 	var spots: Array[Vector2] = []
-	## The player has his name: the chandler from the start, each next once the one before names him.
-	var known := false
 	## Word has reached him, and when; he is turned, and when (-1 until then).
 	var word := false
 	var word_at := -1.0
@@ -120,7 +118,6 @@ func _plan() -> void:
 			_hold_place(crew[k], spot)
 		contacts.append(c)
 	if not contacts.is_empty():
-		contacts[0].known = true
 		hideout = contacts[contacts.size() - 1].house
 	lodging = _house_near(LODGING_AT, houses)
 	safe_at = TEMPLE_DOOR
@@ -280,27 +277,33 @@ func _names_in() -> void:
 
 
 ## The contacts not yet turned, and their company, are kept at their places (v0.11 M3, Decision 25): one moved off (a whisper, a
-## fright) walks back once on his own feet. There is no relief for one who falls. A contact gone from the town without a death
-## (Crowd.escape(): his body freed at once) takes the trail with him as a dead one does, so the night ends at once instead of
-## waiting out the names' deadline with nothing left to do.
+## fright) walks back once on his own feet, and none is let flee the town (the final review: at the first look after it began to
+## evacuate, the ones it sent running are called back; a whisper it found one under ends with him on his feet). There is no relief
+## for one who falls. A contact gone from the town without a death (Crowd.escape(): his body freed at once) takes the trail with
+## him as a dead one does, so the night ends at once instead of waiting out the names' deadline with nothing left to do.
 func _keep() -> void:
+	var evacuating := _evacuation_began()
 	for c in contacts:
 		if c.turned:
 			continue
 		if not _alive(c.man):
 			_go_cold()
 			return
-		_back_to(c.man, c.door)
+		_back_to(c.man, c.door, evacuating)
 		for k in c.company.size():
-			_back_to(c.company[k], c.spots[k])
+			_back_to(c.company[k], c.spots[k], evacuating)
 
 
-## `v` goes back to `at`, on duty, if he stands out of doors on his own feet away from it (v0.11 M3).
-func _back_to(v: Variant, at: Vector2) -> void:
+## `v` goes back to `at`, on duty, if he stands out of doors on his own feet away from it (v0.11 M3); first he is kept from the
+## town's flight (the final review, MissionDirector._keep_from_flight(): `evacuating` at the first look after it began).
+func _back_to(v: Variant, at: Vector2, evacuating := false) -> void:
 	if not _alive(v):
 		return
 	var p := v as Person
-	if p.inside or not (p.mind in WarningDirector.RESUMABLE or p.mind == Person.Mind.DUTY):
+	if p.inside:
+		return
+	_keep_from_flight(p, evacuating)
+	if not (p.mind in WarningDirector.RESUMABLE or p.mind == Person.Mind.DUTY):
 		return
 	if p.mind != Person.Mind.DUTY or p.anchor.distance_to(at) > GUARD_MOVE:
 		p.go_duty(at)
@@ -338,7 +341,6 @@ func _turn(c: Contact) -> void:
 	var i := contacts.find(c)
 	if i + 1 < contacts.size():
 		var next := contacts[i + 1]
-		next.known = true
 		rules.banner.emit("THE %s NAMES THE %s" % [c.trade.to_upper(), next.trade.to_upper()])
 		timeline.expect("visit_%d" % (i + 1), visit_at(i + 1))
 	else:
@@ -376,6 +378,11 @@ func _go_cold() -> void:
 		return
 	cold = true
 	rules.banner.emit("THE TRAIL GOES COLD")
+
+
+## His seen death cries murder in the town's words (v0.11 M3 final review): he has no guards to cry it.
+func _seen_banner() -> String:
+	return "THE TOWN CRIES MURDER"
 
 
 ## The night is lost: a contact died, or left the town, before he was turned (v0.11 M3).
@@ -430,11 +437,11 @@ func hud_line() -> String:
 
 ## The map tags (v0.11 M3, mission spec §3, the controller's Task 4 ruling), most important first. Before he is found: the contact
 ## to work on, pointed at from the edge -- orange "CONTACT - DO NOT KILL" once word has reached him, grey "NO WORD YET - DO NOT
-## KILL" before -- and a red diamond on everyone who would see a whisper on him; then each contact after him, pale, unpointed
-## ("NO WORD YET - DO NOT KILL", or "CONTACT - DO NOT KILL" should word reach him first), so every contact whose death loses the
-## night is warned from the start. Once found: the informer, pointed at (INFORMER, or INFORMER - INSIDE over the door while he
-## hides), the Temple's door (red, pointed at) and a red diamond on whoever would see a Doom on him. None once the trail is cold,
-## the names are in, or he is dead.
+## KILL" before -- and a red diamond on everyone who would see a whisper on him; then each contact after him, pale, unpointed, "NO
+## WORD YET - DO NOT KILL" (the final review: so too one whose visit has come, as he cannot be worked yet), so every contact whose
+## death loses the night is warned from the start. Once found: the informer, pointed at (INFORMER, or INFORMER - INSIDE over the
+## door while he hides), the Temple's door (red, pointed at) and a red diamond on whoever would see a Doom on him. None once the
+## trail is cold, the names are in, or he is dead.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if cold or any_safe() or quarries.is_empty():
@@ -462,9 +469,10 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## A contact's tag words (v0.11 M3, the controller's Task 4 ruling): each says plainly not to kill him.
+## A contact's tag words (v0.11 M3, the controller's Task 4 ruling): each says plainly not to kill him; CONTACT only for the one to
+## work on now once word has reached him (the final review: a later one, past his visit, cannot be worked yet).
 func _contact_label(c: Contact) -> String:
-	return "CONTACT - DO NOT KILL" if c.word else "NO WORD YET - DO NOT KILL"
+	return "CONTACT - DO NOT KILL" if c.word and c == contact_now() else "NO WORD YET - DO NOT KILL"
 
 
 ## The hint's phase (v0.11 M3): before he is found, "waiting" while word has not reached the contact to work on, else ""; once

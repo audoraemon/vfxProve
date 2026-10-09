@@ -61,7 +61,7 @@ const SPEC := [
 	["bell_ringers.bell", "The town calls its bellkeeper (blue). Stop him before the bell tolls."],
 	["bell_ringers.waiting", "That warning is dead. The next post (gold) sends its ringer soon. A loud power near a post sends him at once."],
 	# Market Panic (v0.11 M3).
-	["market_panic", "Strike down the wardens (red), then scatter the crowd (gold). Thirty-six must break; the waiting count if struck down."],
+	["market_panic", "Strike the wardens (red), then scatter the crowd (gold). Thirty-six must break; crowds still waiting count if struck down."],
 	["market_panic.steadied", "A warden (red) steadies the crowd near him: frights break no one there. Remove them all first."],
 	["market_panic.open", "No warden stands. Strike the crowd (gold) now, before a new warden comes."],
 	["market_panic.coming", "More come to the fair (gold). Strike them on the way, away from the wardens, or when they arrive."],

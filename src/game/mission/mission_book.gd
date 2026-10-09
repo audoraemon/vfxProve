@@ -225,7 +225,7 @@ static func informer() -> MissionDef:
 		"Find him by his contacts. Kill him."]))
 	m.goal = "Find the informer through his four contacts, and kill him before the names reach the Temple"
 	m.goal_label = "The informer is dead"
-	m.lose = "The names reach the Temple, a contact dies before he is turned, the bell tolls, or dawn comes"
+	m.lose = "The names reach the Temple, a contact dies or leaves the town before he is turned, the bell tolls, or dawn comes"
 	m.camera_at = InformerDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])

@@ -1112,14 +1112,15 @@ func _flow_results(step: Callable) -> void:
 		wishes[0].status = Objective.Status.DONE
 	var total := save.descend.believers
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var over := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
 	var caught: Dictionary = result.get("descend", {})
 	var rows: Array = caught.get("wishes", [])
 	step.call(String(caught.get("caught", "")) == "dawn" and bool(result.get("won", false)) and int(caught.get("earned", 0)) == 10
 		and save.descend.believers == total + 10 and save.descend.night == 2
 		and (rows.is_empty() or bool((rows[0] as Dictionary).get("lost", false))),
 		"caught by dawn after the main objective: its 10 believers banked, the granted wish lost")
-	(_screen_node as ResultsScreen).action.emit("missions")
+	if over and _screen_node is ResultsScreen:  # (v0.11 M3 final review: no results, no cast on a freed or other screen)
+		(_screen_node as ResultsScreen).action.emit("missions")
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Board from the results returns to the tier board")
 
 
@@ -1181,13 +1182,16 @@ func _flow_tier2(step: Callable) -> void:
 	f.pressed = true
 	Input.parse_input_event(f)
 	var shown := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
-	var bank: Dictionary = (result.get("descend", {}) as Dictionary).get("bank", {})
-	step.call(up and shown and bool(result.get("won", false)) and save.descend.cleared.has(MissionBook.BELL_RINGERS)
+	var desc: Dictionary = result.get("descend", {})
+	var bank: Dictionary = desc.get("bank", {})
+	step.call(up and shown and bool(result.get("won", false)) and bool(desc.get("ascended", false))
+		and save.descend.cleared.has(MissionBook.BELL_RINGERS)
 		and String(bank.get("progress", "")) == "Omen 1 / 3 cleared: 2 more open Wrath",
 		"The Bell-Ringers from the board: Tier 2's budget, three posts; stopped and ascended, the results read Omen 1 / 3 (%s)" % String(
 		bank.get("progress", "")))
-	(_screen_node as ResultsScreen).action.emit("missions")
-	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+	if shown and _screen_node is ResultsScreen:  # (v0.11 M3 final review: no results, no cast on a freed or other screen)
+		(_screen_node as ResultsScreen).action.emit("missions")
+		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 
 
 ## The night's wishes by id, in the order heard (FLOW, v0.11 M1).

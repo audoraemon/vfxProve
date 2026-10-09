@@ -162,7 +162,8 @@ static func _ruin(t) -> void:
 	t.check(w != null and RuinWish.fits(w.target, "house") and w.target.art_tag in [&"", &"townhouse"], "the moneylender's is a dwelling")
 	var tags := w.tags()
 	t.check(tags.size() == 2 and tags[0].label == "MONEYLENDER" and tags[0].color == Wish.COLOR and tags[0].at == w.target.center()
-		and tags[1].label == Wish.WISHER_LABEL and tags[1].at == w.wisher.ground_pos, "its house and its wisher are tagged in blue")
+		and tags[0].edge and tags[1].label == Wish.WISHER_LABEL and tags[1].at == w.wisher.ground_pos,
+		"its house (pointed at from the edge: v0.11 M3 final review) and its wisher are tagged in blue")
 	t.check(w.check(s.rules) == Objective.Status.PENDING and w.hud_text(s.rules) == "Burn the moneylender's house (+0)", "open")
 	w.target.destroyed = true
 	t.check(w.check(s.rules) == Objective.Status.DONE and w.tags().is_empty(), "destroyed: granted, its tags gone")

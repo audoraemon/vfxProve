@@ -41,8 +41,10 @@ func _act(_rules: Rules) -> Status:
 	return Status.DONE if is_instance_valid(target) and target.destroyed else Status.PENDING
 
 
+## Its building's tag, pointed at from the screen's edge (v0.11 M3 final review: an off-screen wish house was pointed at by
+## nothing), until it is down.
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if is_instance_valid(target) and not target.destroyed:
-		out.append(MapTag.place(target.center(), COLOR, String(def.params.get("label", "")), target.height, false))
+		out.append(MapTag.place(target.center(), COLOR, String(def.params.get("label", "")), target.height, true))
 	return out

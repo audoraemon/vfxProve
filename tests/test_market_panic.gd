@@ -21,6 +21,8 @@ static func run(t) -> void:
 	_crowds(t)
 	_scattered(t)
 	_evacuated(t)
+	_walking(t)
+	_unsent(t)
 	_stray(t)
 	_hold(t)
 	_ends(t)
@@ -44,8 +46,10 @@ static func _setup(t) -> void:
 		var p := v as Person
 		var spot: Vector2 = d._spots[p.get_instance_id()]
 		ok = ok and p.profile.faith == CitizenProfile.Faith.NONE and not p.soldier
-		ok = ok and spot.distance_to(MarketPanicDirector.HEART) <= MarketPanicDirector.FAIR_R + 0.01
-	t.check(ok, "no Mayor; the first crowd of WAVE lay citizens walks in at once, each to a spot within FAIR_R of the fountain")
+		ok = ok and spot.distance_to(MarketPanicDirector.HEART) <= MarketPanicDirector.FAIR_R + 0.01 and d._reaches(p, spot)
+		ok = ok and p.mind == Person.Mind.DUTY and p.anchor.distance_to(spot) < 0.01
+	t.check(ok, "no Mayor; the first crowd of WAVE lay citizens walks in at once, on duty, each to a spot within FAIR_R of the fountain"
+		+ " with a way to it")
 	var apart := true
 	var lay := true
 	for i in d.wards.size():
@@ -119,6 +123,26 @@ static func _relief(t) -> void:
 		and (s.banners as Array).has("A NEW WARDEN TAKES THE POST") and not d.goers.has(fresh),
 		"a fallen warden is replaced RELIEF_AFTER after, by a lay citizen not at the fair")
 	Kit.done(s)
+	# The final review: end to end, the lay citizen nearest a fallen warden's post, shut in behind the houses, is passed over.
+	var u := _world()
+	var e: MarketPanicDirector = u.d
+	var v := e.wards[2]
+	var shut := Vector2(6.78, -10.23)  # behind the houses west of the fair: no cell of the walk grid (_scattered())
+	var penned: Person = e._lay_near(v.post, 1, e._busy())[0]
+	Kit.arrive(penned, shut)
+	var away := e._walkable(Vector2(0.0, 0.0))
+	for k in 60:
+		var nearer: Person = e._lay_near(v.post, 1, e._busy() + [penned])[0]
+		if nearer.ground_pos.distance_to(v.post) >= shut.distance_to(v.post):
+			break
+		Kit.arrive(nearer, away)
+	var first_pick := e._lay_near(v.post, 1, e._busy())[0] == penned
+	Kit.free_body(u, v.man as Person)
+	Kit.run_for(u, HarvestDirector.RELIEF_AFTER + MarketPanicDirector.TICK + DT)
+	t.check(first_pick and MissionDirector._alive(v.man) and v.man != penned and penned.profile.role != CitizenProfile.Role.WATCHMAN
+		and e._reaches(v.man as Person, v.post),
+		"the nearest lay citizen to a fallen warden's post, shut in a yard, is passed over: the relief is one with a way to it")
+	Kit.done(u)
 
 
 ## The crowds to come are appointed as the night begins and wait on duty at their sources (Task 3's fix round).
@@ -216,9 +240,83 @@ static func _evacuated(t) -> void:
 	var walking := d.walkers()
 	var all_walk := true
 	for v: Variant in second:
-		all_walk = all_walk and walking.has(v) and (v as Person).mind == Person.Mind.CALM and (v as Person).fearless_left == 0.0
+		all_walk = all_walk and walking.has(v) and (v as Person).mind == Person.Mind.DUTY and (v as Person).fearless_left == 0.0
 	t.check(d.wave_out[1] >= 0.0 and second.size() == MarketPanicDirector.WAVE and all_walk and d.waiting_goers().size() > 0,
 		"the town evacuated after the first crowd: the second still walks in with its %d, no longer held" % MarketPanicDirector.WAVE)
+	Kit.done(s)
+
+
+## The town evacuates while a crowd walks in (v0.11 M3 final review): the walkers are on duty, so the evacuation passes them by and
+## every one of them reaches the fair. A goer at the fair whispered at that moment, and one waiting at his stand, wake back on their
+## feet and hold to their places; one at the fair recovering at that moment, sent running, is called back to his spot.
+static func _walking(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var crowd: Crowd = s.crowd
+	var first: Array = d.waves[0]
+	for w in d.wards:
+		Kit.arrive(w.man as Person, w.post + Vector2(0.0, 12.0))  # off their posts: no warden steadies anyone
+	d._send_wave(1)
+	Kit.run_for(s, 1.0)
+	var heard := first[0] as Person
+	var shaken := first[1] as Person
+	var waiter := (d.waves[2] as Array)[0] as Person
+	for g: Person in [heard, shaken]:
+		Kit.arrive(g, d._spots[g.get_instance_id()])
+	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
+	var held := heard.mind == Person.Mind.DUTY and shaken.mind == Person.Mind.DUTY
+	heard.whisper(heard.ground_pos + Vector2(1.5, 0.0), 3.0)
+	waiter.whisper(waiter.ground_pos + Vector2(1.5, 0.0), 3.0)
+	shaken._recover(2.0)
+	crowd._evacuate()
+	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
+	var second: Array = d.waves[1]
+	var on_way := true
+	for v: Variant in second:
+		var p := v as Person
+		on_way = on_way and p.mind == Person.Mind.DUTY and p.anchor.distance_to(d._spots[p.get_instance_id()]) < 0.01
+	t.check(held and on_way and shaken.mind == Person.Mind.DUTY
+		and shaken.anchor.distance_to(d._spots[shaken.get_instance_id()]) < 0.01,
+		"the town evacuates as the second crowd walks in: every walker still on duty for his spot; one recovering at the fair called back")
+	for v: Variant in second:
+		Kit.arrive(v as Person, d._spots[(v as Person).get_instance_id()])
+	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
+	var there := true
+	for v: Variant in second:
+		var p := v as Person
+		there = there and d._arrived.has(p.get_instance_id()) and p.mind == Person.Mind.DUTY
+	t.check(there and d.unbroken().size() == MarketPanicDirector.WAVE * 2 and d.count() == 0,
+		"all %d of the second crowd reach the fair and hold to it" % MarketPanicDirector.WAVE)
+	heard._wake()
+	waiter._wake()
+	var woke := heard.mind != Person.Mind.FLEE and waiter.mind != Person.Mind.FLEE
+	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
+	t.check(woke and heard.mind == Person.Mind.DUTY and heard.anchor.distance_to(d._spots[heard.get_instance_id()]) < 0.01
+		and waiter.mind == Person.Mind.DUTY and d.is_waiting(waiter),
+		"a goer at the fair and one at his stand, whispered as the town evacuated, wake on their feet and go back, not out of the town")
+	Kit.done(s)
+
+
+## A goer his crowd could not send as it set out -- whispered or confused then -- is sent once back on his feet (v0.11 M3 final
+## review), on duty to a spot of his own, so the hint never waits on "coming" for him.
+static func _unsent(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var late := (d.waves[1] as Array)[0] as Person
+	late.whisper(late.ground_pos + Vector2(1.5, 0.0), 3.0)
+	d._send_wave(1)
+	var skipped := not d._spots.has(late.get_instance_id())
+	late._wake()
+	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
+	var spot: Vector2 = d._spots.get(late.get_instance_id(), Vector2.INF)
+	t.check(skipped and late.mind == Person.Mind.DUTY and spot.distance_to(MarketPanicDirector.HEART) <= MarketPanicDirector.FAIR_R + 0.01
+		and late.anchor.distance_to(spot) < 0.01, "a goer whispered as his crowd set out is sent to his own spot once on his feet")
+	for v: Variant in d.goers:
+		var p := v as Person
+		if not d.is_waiting(p):
+			Kit.arrive(p, d._spots[p.get_instance_id()])
+	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
+	t.check(d.walkers().is_empty() and d.hint_phase() != "coming", "and once he is there the hint no longer says more are coming")
 	Kit.done(s)
 
 
@@ -234,7 +332,8 @@ static func _stray(t) -> void:
 	for i in n:
 		crowd._field.kill(third[i] as Person, &"fire")
 	Kit.run_for(s, DT * 2.0)
-	t.check(d.count() == n and d.wave_out[2] < 0.0 and d.scattered_at[2] < 0.0 and d.waiting_goers().size() == MarketPanicDirector.WAVE * 3 - n,
+	t.check(d.count() == n and d.wave_out[2] < 0.0 and d.scattered_at[2] < 0.0
+		and d.waiting_goers().size() == MarketPanicDirector.WAVE * 3 - n,
 		"%d of the third crowd struck down where they waited: the fair's broken count rises by %d" % [n, n])
 	for i in range(1, MarketPanicDirector.SOURCES.size()):
 		d._send_wave(i)
@@ -362,6 +461,8 @@ static func _texts(t) -> void:
 		if line == "" or (phase != "" and line == MissionHints.line("market_panic")):
 			missing.append(phase)
 	t.check(missing.is_empty(), "a hint line for every phase (missing: %s)" % [missing])
+	t.check(MissionHints.line("market_panic").contains("Thirty-six") and MarketPanicDirector.FAIR_NEED == 36,
+		"the hint's \"Thirty-six\" is FAIR_NEED in words: retune one, reword the other")
 	Kit.done(s)
 
 

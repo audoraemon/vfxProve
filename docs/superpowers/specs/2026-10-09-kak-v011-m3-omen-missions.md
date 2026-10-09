@@ -69,7 +69,8 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
     - A mate follows while on his own feet. Frightened, whispered or confused, he falls behind. Back on his feet, he runs to
       catch up.
   - **The relay:** a seen death passes the warning to the nearest witness, who runs on with it. That is usually a mate. So
-    one strike never stops a warning while his mates are by him.
+    one strike never stops a warning while his mates are by him. The relay passes over anyone fleeing the town and a wish's
+    people (the final review), and a carrier gone out of the town alive takes his warning with him: it is dead.
   - **The god's hand:** a frightened, confused or whispered carrier drops the errand and takes it up again once back on his
     feet (`WarningDirector.RESUMABLE`).
   - **Ringing it himself:** a carrier who reaches the bell's foot takes the rope (`BellNetwork.replace_keeper()`), whether
@@ -182,7 +183,8 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
     - the first, the 11 nearest the fountain, walks in at 0:00 and is there in about 10 s;
     - the second comes at 1:15, the third at 2:30 and the fourth at 3:40, or 45 s after the crowd before is wholly gone
       (every one of it broken, dead or out of the town), whichever is sooner;
-    - each walks in at a stroll, about 20 s, then takes its place at the fair.
+    - each walks in on duty, about 15 s, then takes its place at the fair (the final review: on duty, so the town's evacuation
+      passes the walkers by, as it passes the waiting and the arrived; each walks to a spot he has a way to).
   - **The wardens:** three watchmen (cloak and lantern) keep the fair.
     - **On guard:** alive, out of doors, within 2.5 of his post, and calm (Spoiled Harvest's `GUARD_MINDS`).
     - **Fearless on guard:** a fright does not move him. The god's holds still take him: a kill, a whisper, Discord.
@@ -212,7 +214,7 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
   | 5:00 | "The guard closes the market": lost unless 36 have broken |
   | 5:30 | Dawn |
 
-- **Longest wait:** 45 s between one crowd gone and the next setting out. Its walk-in is about 20 s more, and those
+- **Longest wait:** 45 s between one crowd gone and the next setting out. Its walk-in is about 15 s more, and those
   walkers can be struck on the way. There is no wait at the start.
 - **Tags:**
   - THE FAIR - 12 / 36 at the fountain, gold, with an edge arrow.
@@ -224,7 +226,7 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
 
   | Phase | Line |
   |---|---|
-  | (none) | Strike down the wardens (red), then scatter the crowd (gold). Thirty-six must break; the waiting count if struck down. |
+  | (none) | Strike the wardens (red), then scatter the crowd (gold). Thirty-six must break; crowds still waiting count if struck down. |
   | `steadied` | A warden (red) steadies the crowd near him: frights break no one there. Remove them all first. |
   | `open` | No warden stands. Strike the crowd (gold) now, before a new warden comes. |
   | `coming` | More come to the fair (gold). Strike them on the way, away from the wardens, or when they arrive. |
@@ -322,8 +324,9 @@ through his four contacts. They are the night's paced items, on the chain rule. 
     Temple's door, about 20 units of street (some 13 s). AssassinateDirector's rules then hold, with no guards:
     - a loud power within 4 of him, or a fright, sends him back into that house to hide 20 s;
     - fire on that house flushes him out; with it burning or fallen, an alarm sends him on toward the Temple;
-    - any death wins. A seen death makes the guards cry murder and calls the bellkeeper. On the board the bell after the
-      kill catches the night and loses the wishes, unless the god ascends or stops the bellkeeper first.
+    - any death wins. A seen death makes the town cry murder ("THE TOWN CRIES MURDER": he has no guards) and calls the
+      bellkeeper. On the board the bell after the kill catches the night and loses the wishes, unless the god ascends or
+      stops the bellkeeper first.
   - **Not found in time:** 60 s after his fourth visit, the names reach the Temple by the back lanes.
   - **The Organized town:** a seen death by a contact counts toward a Local Emergency. Four, and the bellkeeper climbs.
 - **Timeline** (left alone):

@@ -3,17 +3,19 @@ extends FestivalDirector
 ## Market Panic (v0.11 M3, Tier 2, mission spec §2; Break, generalised from the Festival): a night fair at the north-east fountain
 ## (TownLayout.FOUNTAINS[1]). Four crowds of WAVE lay citizens come to it -- the first, the WAVE nearest the fountain, at the
 ## start; the others from SOURCES[1..3] at WAVE_AT[1..3], or CHAIN after the crowd before is scattered (WAVE_NEED of it gone:
-## broken, dead or out of the town), whichever is sooner -- each strolling to a spot within FAIR_R of the fountain. Every crowd's
-## people are appointed when the night begins and the ones still to come wait on duty round their source, so the town's regroup
-## and evacuation (a loud cast, a seen kill) cannot empty a later crowd. They are goers from the start, as the Festival's are: one
+## broken, dead or out of the town), whichever is sooner -- each bound for a spot within FAIR_R of the fountain. Every crowd's
+## people are appointed when the night begins and the ones still to come wait on duty round their source, so the town's regroup and
+## evacuation (a loud cast, a seen kill) cannot empty a later crowd. They are goers from the start, as the Festival's are: one
 ## killed while he waits counts toward the need, and a crowd wholly gone before its time is scattered and its chain moves on; but
-## while he waits he is held, and no fright or loud cast's danger breaks him (_may_break()). Once there a goer holds to the fair (on duty at his spot: the town's regroup and evacuation pass him by) until he
-## breaks or the market closes. WARDENS wardens -- watchmen at posts evenly round the fountain -- keep it: on guard (alive, out of
-## doors, at his post, calm) a warden is fearless and steadies every goer within WARD_R: they are held fearless too and
-## _may_break() says no, so a fright breaks none of them; a death still counts. A warden off his post goes back RETURN_AFTER
-## after he left, once calm; a fallen one is replaced RELIEF_AFTER after he fell (Spoiled Harvest's rule, copied with its numbers:
-## Decision 16). Breaking FAIR_NEED of the goers by the Festival's rule wins (FestivalObjective); the guard closing the market at
-## MARKET_CLOSE loses (EventObjective). No Mayor, no address; one bonfire by the fountain.
+## while he waits he is held, and no fright or loud cast's danger breaks him (_may_break()). Each walks in on duty, and once there
+## holds to the fair on duty at his spot, so the town's regroup and evacuation pass him by (the final review: one whispered or sent
+## running as it evacuates is kept from its flight), until he breaks or the market closes. WARDENS wardens -- watchmen at posts
+## evenly round the fountain -- keep it: on guard (alive, out of doors, at his post, calm) a warden is fearless and steadies every
+## goer within WARD_R: they are held fearless too and _may_break() says no, so a fright breaks none of them; a death still counts.
+## A warden off his post goes back RETURN_AFTER after he left, once calm; a fallen one is replaced RELIEF_AFTER after he fell
+## (Spoiled Harvest's rule, copied with its numbers: Decision 16). Breaking FAIR_NEED of the goers by the Festival's rule wins
+## (FestivalObjective); the guard closing the market at MARKET_CLOSE loses (EventObjective). No Mayor, no address; one bonfire by
+## the fountain.
 
 ## One warden's post (v0.11 M3): a plain record, so the director holds no cycle.
 class Ward:
@@ -143,31 +145,42 @@ func _appoint(i: int) -> void:
 		k += 1
 
 
-## Crowd `i` sets out (v0.11 M3, Decision 14): its people who still stand, out of doors, unbroken, and on duty or calm, each strolling
-## to his spot within FAIR_R of the fountain. Once only. Their waiting ends: a fright can take them now.
+## Crowd `i` sets out (v0.11 M3, Decision 14): its people who still stand, out of doors, unbroken, and on duty or calm, each walking
+## on duty to his spot within FAIR_R of the fountain (the final review: so the town's regroup and evacuation pass the walkers by, as
+## they pass the waiting and the arrived). Once only. Their waiting ends -- a fright can take them now -- for those indoors too; one
+## who cannot be sent now (indoors, whispered, confused) is sent once he is out and on his feet (_hold_fair()).
 func _send_wave(i: int) -> void:
 	if wave_out[i] >= 0.0:
 		return
 	wave_out[i] = _clock
 	for v: Variant in waves[i]:
+		if is_instance_valid(v):
+			_stands.erase((v as Person).get_instance_id())
 		if not _alive(v) or (v as Person).inside:
 			continue
 		var p := v as Person
-		_stands.erase(p.get_instance_id())
 		if _broke.has(p) or (p.mind != Person.Mind.DUTY and not p.mind in WarningDirector.RESUMABLE):
 			continue
 		if p.fearless_left <= HarvestDirector.HOLD_POST:
 			p.fearless_left = 0.0
-		var spot := _fair_spot()
-		_spots[p.get_instance_id()] = spot
-		_send(p, spot)
+		_to_fair(p)
 
 
-## A spot within FAIR_R of the fountain on walkable ground (v0.11 M3: the plaza, the street and the gaps between houses).
-func _fair_spot() -> Vector2:
+## Goer `p` walks on duty to his spot at the fair (v0.11 M3 final review), drawn now if he has none yet (_fair_spot()).
+func _to_fair(p: Person) -> void:
+	var id := p.get_instance_id()
+	if not _spots.has(id):
+		_spots[id] = _fair_spot(p)
+	p.go_duty(_spots[id])
+
+
+## A spot within FAIR_R of the fountain on walkable ground (v0.11 M3: the plaza, the street and the gaps between houses) that `p`
+## has a way on foot to (the final review: a goer walks in on duty, and one bound for a yard shut behind the houses would stand
+## short of it for good, where a calm stroller drifted on); the fountain's nearest ground if none of the tries is.
+func _fair_spot(p: Person) -> Vector2:
 	for attempt in 12:
 		var spot := HEART + Vector2(crowd._rng.randf_range(-FAIR_R, FAIR_R), crowd._rng.randf_range(-FAIR_R, FAIR_R))
-		if spot.distance_to(HEART) <= FAIR_R and (crowd._grid == null or crowd._grid.walkable(spot)):
+		if spot.distance_to(HEART) <= FAIR_R and (crowd._grid == null or crowd._grid.walkable(spot)) and _reaches(p, spot):
 			return spot
 	return _walkable(HEART)
 
@@ -190,7 +203,8 @@ func _make_warden(w: Ward, p: Person) -> void:
 
 
 ## One step (v0.11 M3): the Festival's (the timeline, and who has broken), the crowds' chain, the wardens every frame, and every
-## TICK the steadied goers held, those at the fair kept there and those still to come kept at their stands.
+## TICK the steadied goers held, those at the fair kept there and those still to come kept at their stands -- at the first look
+## after the town began to evacuate, the ones it sent running called back (the final review).
 func step(delta: float) -> void:
 	_clock += delta
 	super(delta)
@@ -201,9 +215,10 @@ func step(delta: float) -> void:
 		_tick_in = TICK
 	_ward(delta, looking)
 	if looking:
+		var evacuating := _evacuation_began()
 		_steady()
-		_hold_fair()
-		_hold_waiting()
+		_hold_fair(evacuating)
+		_hold_waiting(evacuating)
 
 
 ## Each crowd with WAVE_NEED of it gone (broken, dead or out of the town; all of it, if it came short) is scattered, and the strip
@@ -211,8 +226,8 @@ func step(delta: float) -> void:
 ## before its time (struck down where it waited) never sets out, and scatters at once.
 func _chain() -> void:
 	for i in SOURCES.size():
-		var need := mini(WAVE_NEED, (waves[i] as Array).size())
-		if scattered_at[i] < 0.0 and wave_count(i) + wave_left(i) >= need:
+		var gone := mini(WAVE_NEED, (waves[i] as Array).size())
+		if scattered_at[i] < 0.0 and wave_count(i) + wave_left(i) >= gone:
 			scattered_at[i] = _clock
 			if wave_out[i] < 0.0:
 				wave_out[i] = _clock
@@ -355,31 +370,35 @@ func _steady() -> void:
 			p.fearless_left = 0.0
 
 
-## The goers at the fair hold to it (v0.11 M3, Decision 19): one who has reached his spot is put on duty there -- the town's
-## regroup takes only the calm, and its evacuation passes those on duty by -- and, moved off it (a whisper, a fright) but unbroken
-## and back on his feet, walks back. A walker the town sent home (regrouping) is sent on to the fair again.
-func _hold_fair() -> void:
+## The goers who have set out hold to the fair (v0.11 M3, Decision 19): one who has reached his spot is kept on duty there -- the
+## town's regroup takes only the calm, and its evacuation passes those on duty by -- and, moved off it (a whisper, a fright) but
+## unbroken and back on his feet, walks back; a walker moved off his way walks on, and one his crowd could not send as it set out
+## is sent now (the final review). None is let flee the town: `evacuating`, at the first look after it began, calls back the ones
+## it sent running, and a whisper it found one under ends with him on his feet (MissionDirector._keep_from_flight()).
+func _hold_fair(evacuating := false) -> void:
 	for v: Variant in goers:
 		if not _alive(v) or _broke.has(v) or _left.has(v) or (v as Person).inside or is_waiting(v as Person):
 			continue
 		var p := v as Person
+		_keep_from_flight(p, evacuating)
 		var id := p.get_instance_id()
-		var spot: Vector2 = _spots.get(id, HEART)
+		if not _spots.has(id):
+			if p.mind in WarningDirector.RESUMABLE:
+				_to_fair(p)
+			continue
+		var spot: Vector2 = _spots[id]
 		if not _arrived.has(id):
 			if p.ground_pos.distance_to(spot) <= ARRIVE or (not p.has_goal() and p.ground_pos.distance_to(HEART) <= FAIR_R + 1.0):
 				_arrived[id] = true
-			else:
-				if p.mind == Person.Mind.REGROUP:
-					_send(p, spot)
-				continue
 		if p.mind in WarningDirector.RESUMABLE or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(spot) > 0.3):
 			p.go_duty(spot)
 
 
 ## The people waiting for their crowd to set out stay at their stands (v0.11 M3): they are held fearless (HOLD_POST past the next
 ## look, as a warden is), so a loud cast or a seen death near a source frightens none of them into the town's flight; one moved off
-## his stand by a whisper and back on his feet walks back. A death still takes him.
-func _hold_waiting() -> void:
+## his stand by a whisper and back on his feet walks back, and none is let flee the town (`evacuating`: as _hold_fair()). A death
+## still takes him.
+func _hold_waiting(evacuating := false) -> void:
 	for i in range(1, SOURCES.size()):
 		if wave_out[i] >= 0.0:
 			continue
@@ -390,6 +409,7 @@ func _hold_waiting() -> void:
 			var stand: Vector2 = _stands.get(p.get_instance_id(), Vector2.INF)
 			if stand == Vector2.INF:
 				continue
+			_keep_from_flight(p, evacuating)
 			p.fearless_left = maxf(p.fearless_left, HarvestDirector.HOLD_POST)
 			if p.mind in WarningDirector.RESUMABLE or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(stand) > 0.3):
 				p.go_duty(stand)

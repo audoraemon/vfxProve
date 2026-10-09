@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_seen(t)
 	_found(t)
 	_cold(t)
+	_evacuated(t)
 	_names(t)
 	_warn(t)
 	_tagged(t)
@@ -141,7 +142,7 @@ static func _turn(t) -> void:
 	_clear(d, c)
 	_whisper(s, c)
 	var shown := d.timeline.seconds_to("visit_1")
-	t.check(c.turned and d.contacts[1].known and (s.banners as Array).has("THE CHANDLER NAMES THE WEAVER")
+	t.check(c.turned and d.contact_now() == d.contacts[1] and (s.banners as Array).has("THE CHANDLER NAMES THE WEAVER")
 		and shown <= InformerDirector.CHAIN_WAIT + 0.1 and d.hud_line() == "Find the informer: contacts turned 1 / %d" % d.contacts.size()
 		and Kit.labels(d)[0] == "NO WORD YET - DO NOT KILL",
 		"whispered unseen after his visit, the chandler names the weaver; the strip shows his visit within CHAIN_WAIT (%.1f s)" % shown)
@@ -252,6 +253,39 @@ static func _cold(t) -> void:
 	Kit.done(g)
 
 
+## The town evacuates (v0.11 M3 final review): a contact whispered at that moment -- before his visit, so it turns no one -- wakes
+## back on his feet and goes back to his door, not out of the town; one of his company recovering then, sent running, is called back
+## to his place; the trail holds. Once the informer is found, an evacuation does not send him for the gates: on duty, he runs on for
+## the Temple.
+static func _evacuated(t) -> void:
+	var s := _world()
+	var d: InformerDirector = s.d
+	var crowd: Crowd = s.crowd
+	var c := d.contacts[0]
+	var man := c.man as Person
+	var mate := c.company[0] as Person
+	man.whisper(man.ground_pos + Vector2(1.5, 0.0), MindWhisperFx.LINGER)
+	mate._recover(2.0)
+	crowd._evacuate()
+	Kit.run_for(s, AssassinateDirector.TICK * 2.0)
+	var back := mate.mind == Person.Mind.DUTY and mate.anchor.distance_to(c.spots[0]) < 0.01
+	man._wake()
+	var woke := man.mind != Person.Mind.FLEE
+	Kit.run_for(s, AssassinateDirector.TICK * 2.0)
+	t.check(back and woke and man.mind == Person.Mind.DUTY and man.anchor.distance_to(c.door) < 0.01 and not d.cold,
+		"the town evacuates: the contact, whispered then, wakes and goes back to his door; his company is called back; the trail holds")
+	Kit.done(s)
+	var b := _world()
+	var e: InformerDirector = b.d
+	_turn_all(b, e)
+	var q := e.quarries[0]
+	(b.crowd as Crowd)._evacuate()
+	Kit.run_for(b, AssassinateDirector.TICK * 2.0)
+	t.check(e.found and q.state == AssassinateDirector.State.WALKING and q.target.mind == Person.Mind.DUTY
+		and q.target.goal().distance_to(e.safe_at) < 0.6, "found, then the town evacuates: the informer runs on for the Temple, not the gates")
+	Kit.done(b)
+
+
 static func _names(t) -> void:
 	var s := _world()
 	var d: InformerDirector = s.d
@@ -294,6 +328,8 @@ static func _warn(t) -> void:
 		if line == "" or (phase != "" and line == MissionHints.line("informer")):
 			missing.append(phase)
 	t.check(missing.is_empty(), "a hint line for every phase (missing: %s)" % [missing])
+	t.check(d._seen_banner() == "THE TOWN CRIES MURDER" and MissionBook.informer().lose.contains("a contact dies or leaves the town"),
+		"his seen death cries murder in the town's words (he has no guards); the loss names a contact leaving the town")
 	Kit.done(s)
 
 
@@ -326,6 +362,14 @@ static func _tagged(t) -> void:
 		and tags[2].color == InformerDirector.MARK_PALE,
 		"the chandler turned loses his tag; the weaver is the bright one, the potter and the carpenter still pale")
 	Kit.done(s)
+	var b := _world()
+	var e: InformerDirector = b.d
+	e._visit(0)
+	e._visit(1)
+	tags = _contact_tags(e)
+	t.check(e.contacts[1].word and tags[1].label == "NO WORD YET - DO NOT KILL" and tags[1].color == InformerDirector.MARK_PALE,
+		"word at the weaver before the chandler is turned: he cannot be worked yet, so his pale tag still reads NO WORD YET")
+	Kit.done(b)
 
 
 ## The controller's Task 4 fix ruling (quiet doors): no contact's door is one a soldier's post watches -- a soldier hears no whisper

@@ -78,6 +78,9 @@ static func _waits(t) -> void:
 		if float(chains[k]) > 45.0:
 			long.append(k)
 	t.check(long.is_empty(), "no timed wait in Omen's new missions runs over 60 s, and no chain over 45 s (over: %s)" % [long])
+	t.check(is_equal_approx(float(BellRingersDirector.SET_OUT_AT[0]), 40.0) and is_equal_approx(float(MarketPanicDirector.WAVE_AT[0]), 0.0)
+		and is_equal_approx(float(InformerDirector.VISIT_AT[0]), 45.0),
+		"the first waits pinned (v0.11 M3 final review): the first ringer at 0:40, the first crowd at once, the first visit at 0:45")
 
 
 ## The people and the buildings `d` has claimed (v0.11 M3).

@@ -194,7 +194,7 @@ const PRAYERS_SLACK := 4.0
 const RINGERS_PAIR := 1.6
 ## The Bell-Ringers' policy (v0.11 M3): how near the bell's foot a carrier draws Discord.
 const RINGERS_DISCORD := 8.0
-## The Bell-Ringers' policy (v0.11 M3, fix round 1): how far Mind Whisper sends a mate, a witness or a door's watcher off.
+## The Bell-Ringers' policy (v0.11 M3): how far Mind Whisper sends a mate, a witness or a door's watcher off.
 const RINGERS_SEND := 6.0
 ## The Bell-Ringers' policy (v0.11 M3): how many seconds before a post sends its ringer it clears that door of watchers.
 const RINGERS_PREP := 20.0
@@ -208,12 +208,15 @@ const RINGERS_QUIET_DIRS := 8
 const RINGERS_QUIET_CLEAR := 3.0
 ## The Bell-Ringers' policy (v0.11 M3): a lone carrier is whispered aside only if Silent Doom is ready within this many seconds.
 const RINGERS_DOOM_SOON := 5.0
-## Market Panic's policy (v0.11 M3): goers a warden must steady to draw Silent Doom; goers round the fountain, and walkers in a
-## strip, for a Heaven Splitter; goers in a knot for Smite; the directions tried for the walkers' strip.
+## Market Panic's policy (v0.11 M3): how many goers a warden must steady to draw Silent Doom.
 const PANIC_WARD_CROWD := 4
+## Market Panic's policy (v0.11 M3): how many goers round the fountain draw a Heaven Splitter.
 const PANIC_PACK := 6
+## Market Panic's policy (v0.11 M3): how many walkers in one strip draw a Heaven Splitter.
 const PANIC_WALKERS := 5
+## Market Panic's policy (v0.11 M3): how many goers in a knot draw Smite.
 const PANIC_KNOT := 3
+## Market Panic's policy (v0.11 M3): the directions tried for the walkers' strip.
 const PANIC_DIRS := 8
 ## Market Panic's policy (v0.11 M3): seconds the first crowd is given to take its places before the player acts (mission spec §2:
 ## "there in about 10 s"); at the first look the goers stand in a clump round the fountain, where one Silent Doom takes ten of them.
@@ -1666,7 +1669,7 @@ func _ringers(which: String) -> void:
 			d.running().size(), d.hint_phase(), _bell_state(crowd)])
 
 
-## One look of The Bell-Ringers' policy (v0.11 M3; fix round 1, as a player plays it): what was cast, or "" for nothing. The first
+## One look of The Bell-Ringers' policy (v0.11 M3, as a player plays it): what was cast, or "" for nothing. The first
 ## that applies: Silent Doom on the town's bellkeeper once called; Silent Doom on a carrier whose death would go unseen; Silent Doom
 ## on his mates -- both at once, or one -- where it takes no one else; Mind Whisper sends a mate with him off, or one of one or two
 ## other witnesses (none a soldier); Mind Whisper sends a carrier left without his mates to a quiet spot (_ringers_quiet()) when
@@ -1733,7 +1736,7 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 	return _ringers_prep(rules, slots, d, crowd, doom, whisper)
 
 
-## Between ringers (v0.11 M3, fix round 1): the next post's door cleared of watchers in the last RINGERS_PREP seconds before its
+## Between ringers (v0.11 M3): the next post's door cleared of watchers in the last RINGERS_PREP seconds before its
 ## ringer comes out -- a citizen within RINGERS_DOOR_R of it whispered away, else a soldier there struck down by Silent Doom where
 ## no one sees him fall -- each power only while it will be ready again when he comes out. What was cast, or "".
 func _ringers_prep(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd, doom: bool, whisper: bool) -> String:
@@ -1838,8 +1841,9 @@ func _panic(which: String) -> void:
 
 ## One look of Market Panic's policy (v0.11 M3): what was cast, or "" for nothing. The first that applies: Silent Doom on a warden
 ## on guard who steadies PANIC_WARD_CROWD or more goers; Heaven Splitter through the fair, or along the walkers, but only once no
-## crowd is still to come (a loud splitter into the first crowd brings the Organized town's evacuation, which sends the goers not on
-## duty out of the town unbroken: free of that rule the same runs lost at 35 of 36); Smite on the densest knot of PANIC_KNOT or more
+## crowd is still to come (Task 3's rule: a loud splitter into the first crowd brought the Organized town's evacuation, which then
+## sent the goers off duty out of the town unbroken, and free of it the same runs lost at 35 of 36; the final review keeps every
+## goer in the town, and the rule stands as tuned); Smite on the densest knot of PANIC_KNOT or more
 ## goers no warden steadies; Smite on the goer nearest the fountain (a bolt kills whoever it strikes, steadied or not); and Silent
 ## Doom on a warden on guard, to clear the cover before the next crowd.
 func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> String:

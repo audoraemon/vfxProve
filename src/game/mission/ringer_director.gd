@@ -136,14 +136,15 @@ func _others() -> Array:
 
 ## Who carries the warning on from a death seen at `at` (v0.11 M3, controller ruling): the nearest living witness out of doors
 ## within Crowd.DOOM_WITNESS (Crowd.nearest_witness()'s rule) who is none of the other warnings' people -- so one kill never
-## stops two warnings, and no man takes orders from two directors; null for none, and the warning dies.
+## stops two warnings, and no man takes orders from two directors -- nor (the final review, _passed_over()) one fleeing the town
+## or reserved; null for none, and the warning dies.
 func _relay_witness(at: Vector2) -> Person:
 	var others := _others()
 	var best: Person = null
 	var best_d := Crowd.DOOM_WITNESS
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or not p.is_alive() or p.inside or others.has(p):
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or others.has(p) or _passed_over(p):
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:
@@ -153,21 +154,32 @@ func _relay_witness(at: Vector2) -> Person:
 
 
 ## Everyone who would see the carrier die and carry the warning on (v0.11 M3): WarningDirector's witnesses but the other
-## warnings' people, whom the relay passes over (_relay_witness()). Only reads.
+## warnings' people and those the relay passes over (_relay_witness()). Only reads.
 func witnesses() -> Array[Person]:
 	var others := _others()
 	var out: Array[Person] = []
 	for p in super():
-		if not others.has(p):
+		if not others.has(p) and not _passed_over(p):
 			out.append(p)
 	return out
 
 
-## One step (v0.11 M3): nothing while they wait inside; else The Warning's step, then the rope lost while he was pulled off
-## (back to the foot, to wait his turn), the bell given back once the warning dies, and every MATE_TICK a look at the mates.
+## The relay never picks `p` (v0.11 M3 final review): one fleeing the town would carry the warning out of it, never to the bell,
+## and one reserved belongs to his wish. Only reads.
+func _passed_over(p: Person) -> bool:
+	return p.mind == Person.Mind.FLEE or reserved.has(p)
+
+
+## One step (v0.11 M3): nothing while they wait inside; else a carrier gone with no fall to judge -- out of the town alive, his body
+## freed at once (Crowd.escape()) -- takes the warning with him (the final review: it dies, not running for ever); The Warning's
+## step, then the rope lost while he was pulled off (back to the foot, to wait his turn), the bell given back once the warning
+## dies, and every MATE_TICK a look at the mates.
 func step(delta: float) -> void:
 	if waiting:
 		return
+	if phase != Phase.OVER and _fell_at == Vector2.INF and not is_instance_valid(messenger):
+		warning_dead = true
+		phase = Phase.OVER
 	super(delta)
 	var bell := crowd.bell
 	if phase == Phase.DELIVERED and bell != null and _alive(messenger) and bell.keeper != messenger \
@@ -211,7 +223,7 @@ func _stand_down_mates() -> void:
 ## falls behind, and runs to catch up once back on his feet. A mate who now carries the warning is no longer a mate.
 func _step_mates() -> void:
 	mates = mates.filter(func(v: Variant) -> bool: return is_instance_valid(v) and v != messenger)
-	if (phase != Phase.RUN and phase != Phase.DELIVERED) or not _alive(messenger) or messenger.inside:
+	if (phase != Phase.RUN and phase != Phase.DELIVERED) or not _alive(messenger) or messenger.inside or _goal() == Vector2.INF:
 		return
 	var ahead := _goal() - messenger.ground_pos
 	var dir := ahead.normalized() if ahead.length() > 0.01 else Vector2.UP

@@ -48,6 +48,16 @@ static func _clear_round(s: Dictionary, c: Person, spare: Array) -> void:
 				Kit.arrive(p, c.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * 6.0)
 
 
+## The length of the walk grid's way from `from` to `to` (v0.11 M3).
+static func _route(s: Dictionary, from: Vector2, to: Vector2) -> float:
+	var n := 0.0
+	var at := from
+	for p in (s.crowd as Crowd)._grid.path(from, to):
+		n += at.distance_to(p)
+		at = p
+	return n
+
+
 ## Puts `r`'s carrier at the bell's foot on his errand, with nowhere left to walk.
 static func _at_foot(r: RingerDirector, bell: BellNetwork) -> void:
 	Kit.arrive(r.messenger, bell.foot)
@@ -86,6 +96,13 @@ static func _setup(t) -> void:
 	post.damage(500.0, post.center(), &"smite")
 	bell.tower.damage(500.0, bell.tower.center(), &"smite")
 	t.check(is_equal_approx(post.hp, hp) and not post.destroyed and not bell.tower.destroyed, "stone tonight: a post and the bell tower only shake")
+	var inside := true
+	var runs: Array[float] = []
+	for i in d.doors.size():
+		inside = inside and d.doors[i].distance_to(TownLayout.MAP.get_center()) < d.posts[i].center().distance_to(TownLayout.MAP.get_center())
+		runs.append(_route(s, bell.foot, d.doors[i]))
+	t.check(inside and runs[2] < runs[0] and runs[2] < runs[1],
+		"each post's door is its town-side one, inside the wall; the east post's run is the shortest (%s)" % [runs])
 	var clear := Kit.clear_of_stack(bell.foot, BellRingersDirector.CAMERA_AT)
 	for door in d.doors:
 		clear = clear and Kit.clear_of_stack(door, BellRingersDirector.CAMERA_AT)

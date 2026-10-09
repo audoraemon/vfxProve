@@ -98,10 +98,12 @@ extends SceneTree
 ##          Whisper sends the nearest of the poor toward the shrine's door, at most REACH at a time, the last hop only when the
 ##          prayer inside is nearly over and his own would not end in a window of Faithful at the door; the result line gives
 ##          the longest idle stretch, and a line says how long the door was watched). --seed=, --board as tax.
-##   ringers  (v0.11 M3) The Bell-Ringers, --case=none (nothing cast) or play (Silent Doom on the town's bellkeeper once called;
-##          else on a carrier whose death would go unseen; else on the midpoint of two mates standing close, when it takes both and
-##          no one else; else Mind Whisper sends the nearest of one or two witnesses, none a soldier, six units off; else Discord on
-##          a carrier near the bell's foot or on the rope; never a loud power; the result line gives the longest idle stretch).
+##   ringers  (v0.11 M3) The Bell-Ringers, --case=none (nothing cast) or play, as a player plays it (_ringers_act(): Silent
+##          Doom on the town's bellkeeper once called; else on a carrier whose death would go unseen; else on his mates -- both at
+##          once, or one -- where it takes no one else; else Mind Whisper sends a mate off, or one of one or two witnesses (none a
+##          soldier); else Mind Whisper sends a carrier left without his mates to a quiet spot when Silent Doom will be ready; else
+##          Discord on a carrier near the bell's foot or on the rope; between ringers, the next post's door cleared of watchers;
+##          never a loud power; the result line gives the longest idle stretch).
 ##          --seed= picks the town; --board plays the board's version (its wishes heard) and stops at the main objective.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
@@ -177,6 +179,20 @@ const PRAYERS_SLACK := 4.0
 const RINGERS_PAIR := 1.6
 ## The Bell-Ringers' policy (v0.11 M3): how near the bell's foot a carrier draws Discord.
 const RINGERS_DISCORD := 8.0
+## The Bell-Ringers' policy (v0.11 M3, fix round 1): how far Mind Whisper sends a mate, a witness or a door's watcher off.
+const RINGERS_SEND := 6.0
+## The Bell-Ringers' policy (v0.11 M3): how many seconds before a post sends its ringer it clears that door of watchers.
+const RINGERS_PREP := 20.0
+## The Bell-Ringers' policy (v0.11 M3): how near a post's door a watcher counts, Crowd.DOOM_WITNESS and a margin.
+const RINGERS_DOOR_R := 2.5
+## The Bell-Ringers' policy (v0.11 M3): the rings searched for a quiet spot to whisper a lone carrier to.
+const RINGERS_QUIET_R := [4.0, 7.0]
+## The Bell-Ringers' policy (v0.11 M3): the directions searched on each of RINGERS_QUIET_R.
+const RINGERS_QUIET_DIRS := 8
+## The Bell-Ringers' policy (v0.11 M3): how far from anyone else a quiet spot must be.
+const RINGERS_QUIET_CLEAR := 3.0
+## The Bell-Ringers' policy (v0.11 M3): a lone carrier is whispered aside only if Silent Doom is ready within this many seconds.
+const RINGERS_DOOM_SOON := 5.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -1607,48 +1623,154 @@ func _ringers(which: String) -> void:
 			d.running().size(), d.hint_phase(), _bell_state(crowd)])
 
 
-## One look of The Bell-Ringers' policy (v0.11 M3): what was cast, or "" for nothing.
+## One look of The Bell-Ringers' policy (v0.11 M3; fix round 1, as a player plays it): what was cast, or "" for nothing. The first
+## that applies: Silent Doom on the town's bellkeeper once called; Silent Doom on a carrier whose death would go unseen; Silent Doom
+## on his mates -- both at once, or one -- where it takes no one else; Mind Whisper sends a mate with him off, or one of one or two
+## other witnesses (none a soldier); Mind Whisper sends a carrier left without his mates to a quiet spot (_ringers_quiet()) when
+## Silent Doom will be ready as he gets there; Discord on a carrier near the bell's foot or on the rope; and between ringers, the
+## next post's door cleared of watchers before its ringer comes out (_ringers_prep()). Never a loud power.
 func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd) -> String:
 	var bell := crowd.bell
-	if d.called() and _slot_ready(rules, slots, "doom"):
+	var doom := _slot_ready(rules, slots, "doom")
+	var whisper := _slot_ready(rules, slots, "whisper")
+	if d.called() and doom:
 		rules.cast(slots.doom, bell.keeper.ground_pos)
 		return "doom the bellkeeper"
-	var going := d.running()
+	var going: Array[RingerDirector] = []
+	for r in d.running():
+		if WarningDirector._alive(r.messenger) and not r.messenger.inside:
+			going.append(r)
 	for r in going:
-		if WarningDirector._alive(r.messenger) and not r.messenger.inside and _tax_unseen(r.messenger, crowd) \
-				and _slot_ready(rules, slots, "doom"):
+		if doom and _tax_unseen(r.messenger, crowd):
 			rules.cast(slots.doom, r.messenger.ground_pos)
 			return "doom the ringer"
+	if doom:
+		for r in going:
+			var pair := r.mates_with()
+			if pair.size() >= 2 and pair[0].ground_pos.distance_to(pair[1].ground_pos) <= RINGERS_PAIR:
+				var mid := (pair[0].ground_pos + pair[1].ground_pos) * 0.5
+				if _ringers_only(crowd, mid, [pair[0], pair[1]]):
+					rules.cast(slots.doom, mid)
+					return "doom both mates"
+			for m in pair:
+				if _ringers_only(crowd, m.ground_pos, [m]):
+					rules.cast(slots.doom, m.ground_pos)
+					return "doom a mate"
+	if whisper:
+		for r in going:
+			for m in r.mates_with():
+				if _whisperable(m):
+					rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": _ringers_off(d, m, r.messenger.ground_pos)})
+					return "whisper a mate off"
+		for r in going:
+			var seeing := r.witnesses()
+			var soldier := false
+			var lone: Person = null
+			for p in seeing:
+				soldier = soldier or p.soldier
+				if _whisperable(p) and (lone == null or p.ground_pos.distance_to(r.messenger.ground_pos)
+						< lone.ground_pos.distance_to(r.messenger.ground_pos)):
+					lone = p
+			if seeing.size() <= 2 and not soldier and lone != null:
+				rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": _ringers_off(d, lone, r.messenger.ground_pos)})
+				return "whisper a witness off"
+		for r in going:
+			if not r.mates_with().is_empty() or not _whisperable(r.messenger) or (bell != null and bell.keeper == r.messenger) \
+					or _slot_wait(rules, slots, "doom") > RINGERS_DOOM_SOON:
+				continue
+			var quiet := _ringers_quiet(d, crowd, r.messenger)
+			if quiet != Vector2.INF:
+				rules.cast(slots.whisper, r.messenger.ground_pos, {"target": r.messenger, "to": quiet})
+				return "whisper the ringer aside to (%.1f, %.1f)" % [quiet.x, quiet.y]
 	for r in going:
-		var pair := r.mates_with()
-		if pair.size() >= 2 and pair[0].ground_pos.distance_to(pair[1].ground_pos) <= RINGERS_PAIR and _slot_ready(rules, slots, "doom"):
-			var mid := (pair[0].ground_pos + pair[1].ground_pos) * 0.5
-			if _ringers_only(crowd, mid, [pair[0], pair[1]]):
-				rules.cast(slots.doom, mid)
-				return "doom both mates"
-	for r in going:
-		if not WarningDirector._alive(r.messenger) or r.messenger.inside:
-			continue
-		var seeing := r.witnesses()
-		var soldier := false
-		var lone: Person = null
-		for p in seeing:
-			soldier = soldier or p.soldier
-			if not p.shaken() and (lone == null or p.ground_pos.distance_to(r.messenger.ground_pos)
-					< lone.ground_pos.distance_to(r.messenger.ground_pos)):
-				lone = p
-		if seeing.size() <= 2 and not soldier and lone != null and _slot_ready(rules, slots, "whisper"):
-			var away := lone.ground_pos + (lone.ground_pos - r.messenger.ground_pos).normalized() * 6.0
-			rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": away})
-			return "whisper a witness off"
-	for r in going:
-		if bell == null or not WarningDirector._alive(r.messenger) or r.messenger.inside:
-			continue
-		if (r.messenger.ground_pos.distance_to(bell.foot) <= RINGERS_DISCORD or bell.keeper == r.messenger) \
+		if bell != null and (r.messenger.ground_pos.distance_to(bell.foot) <= RINGERS_DISCORD or bell.keeper == r.messenger) \
 				and _slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, r.messenger.ground_pos)
 			return "discord the ringer"
+	return _ringers_prep(rules, slots, d, crowd, doom, whisper)
+
+
+## Between ringers (v0.11 M3, fix round 1): the next post's door cleared of watchers in the last RINGERS_PREP seconds before its
+## ringer comes out -- a citizen within RINGERS_DOOR_R of it whispered away, else a soldier there struck down by Silent Doom where
+## no one sees him fall -- each power only while it will be ready again when he comes out. What was cast, or "".
+func _ringers_prep(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd, doom: bool, whisper: bool) -> String:
+	var i := d.next_post()
+	if i < 0 or not d.running().is_empty():
+		return ""
+	var due := d.timeline.seconds_to("out_%d" % i)
+	if due > RINGERS_PREP:
+		return ""
+	whisper = whisper and due >= float(PowerBook.get_power("whisper").cooldown)
+	doom = doom and due >= float(PowerBook.get_power("doom").cooldown)
+	var door := d.doors[i]
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.ground_pos.distance_to(door) > RINGERS_DOOR_R:
+				continue
+			if whisper and _whisperable(p):
+				rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": _ringers_off(d, p, door)})
+				return "whisper a watcher off the %s door" % d.post_names[i]
+			if doom and p.soldier and _tax_unseen(p, crowd):
+				rules.cast(slots.doom, p.ground_pos)
+				return "doom a soldier by the %s door" % d.post_names[i]
 	return ""
+
+
+## `p` would take a Mind Whisper now (v0.11 M3): a citizen out of doors, standing, not whispered nor shaking one off.
+func _whisperable(p: Person) -> bool:
+	return WarningDirector._alive(p) and not p.soldier and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED
+
+
+## Where Mind Whisper sends `p` off (v0.11 M3): RINGERS_SEND further from `from`, on walkable ground.
+func _ringers_off(d: BellRingersDirector, p: Person, from: Vector2) -> Vector2:
+	var away := p.ground_pos - from
+	return d._walkable(p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * RINGERS_SEND)
+
+
+## A spot within Mind Whisper's reach of carrier `c` with nobody living out of doors within RINGERS_QUIET_CLEAR of it (v0.11 M3):
+## of RINGERS_QUIET_DIRS directions at each of RINGERS_QUIET_R, one his walk reaches within the reach too (not round a wall), the
+## one farthest from the bell's foot; Vector2.INF for none.
+func _ringers_quiet(d: BellRingersDirector, crowd: Crowd, c: Person) -> Vector2:
+	var best := Vector2.INF
+	for rad: float in RINGERS_QUIET_R:
+		for k in RINGERS_QUIET_DIRS:
+			var g := d._walkable(c.ground_pos + Vector2.from_angle(TAU * float(k) / float(RINGERS_QUIET_DIRS)) * rad)
+			if g.distance_to(c.ground_pos) > MindWhisperFx.REACH - 0.5 or not _ringers_empty(crowd, g, c) \
+					or _walk_len(crowd, c.ground_pos, g) > MindWhisperFx.REACH:
+				continue
+			if best == Vector2.INF or g.distance_to(crowd.bell.foot) > best.distance_to(crowd.bell.foot):
+				best = g
+	return best
+
+
+## The length of the walk grid's way from `from` to `to` (v0.11 M3); INF with no way.
+func _walk_len(crowd: Crowd, from: Vector2, to: Vector2) -> float:
+	var path := crowd._grid.path(from, to)
+	if path.is_empty():
+		return INF
+	var n := 0.0
+	var at := from
+	for q in path:
+		n += at.distance_to(q)
+		at = q
+	return n
+
+
+## Nobody living out of doors but `c` stands within RINGERS_QUIET_CLEAR of `at` (v0.11 M3).
+func _ringers_empty(crowd: Crowd, at: Vector2, c: Person) -> bool:
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if is_instance_valid(p) and p != c and p.is_alive() and not p.inside \
+					and p.ground_pos.distance_to(at) <= RINGERS_QUIET_CLEAR:
+				return false
+	return true
+
+
+## Seconds until the power `key` is ready again (v0.11 M3): 0 when ready, INF when not drafted.
+func _slot_wait(rules: Rules, slots: Dictionary, key: String) -> float:
+	if not slots.has(key):
+		return INF
+	return rules.cooldown_left(int(slots[key]))
 
 
 ## Everyone a Silent Doom at `at` would take is one of `who` (v0.11 M3: both mates, and no one else).

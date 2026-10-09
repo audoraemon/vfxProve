@@ -9,11 +9,10 @@ extends WarningDirector
 ## loses his place to the carrier waiting. Stopped on the rope, the bell goes back to its own keeper, idle (BellNetwork.restore()),
 ## and is called again if the town is at Local Emergency. A relay never picks another warning's people (`claimed`).
 
-## How many mates run with the ringer (v0.11 M3, Decision 6): the spec's first guess 2, tuned to 1 by Task 2's gate (its round 1:
-## with two, the scripted player stopped no warning in three nights; the spec's range is 1-2).
-const MATES := 1
+## How many mates run with the ringer (v0.11 M3, Decision 6).
+const MATES := 2
 ## How far behind the carrier the mates run (v0.11 M3, Decision 6): with MATE_SIDE, about 1.4 off him -- beyond one Silent Doom of
-## him, within Crowd.DOOM_WITNESS. A first guess, kept by Task 2's gate.
+## him, within Crowd.DOOM_WITNESS.
 const MATE_GAP := 1.2
 ## How far to either side of the carrier's way the mates run (v0.11 M3, Decision 6): two mates run 2 x MATE_SIDE apart, so one Doom
 ## between them takes both.

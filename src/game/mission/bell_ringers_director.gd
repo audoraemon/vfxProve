@@ -1,26 +1,23 @@
 class_name BellRingersDirector
 extends MissionDirector
 ## The Bell-Ringers (v0.11 M3, Tier 2, mission spec §1; Intercept, after StarfallDirector's pattern, which is untouched): three
-## watch posts on the walls -- the wall towers nearest POST_SPOTS, never a reserved one, each with a door the bell's foot reaches
-## -- send a ringer each for the bell, his mates (RingerDirector.MATES) at his heels. The north-east post sends its ringer at
-## SET_OUT_AT[0]; each next post at its own time or CHAIN_WAIT after the warning before it is stopped, whichever is sooner; a loud
-## power cast within POST_SIGHT of a waiting post sends its ringer at once. Each warning is a RingerDirector (The Warning's relay
-## and unseen kill; the ringer rings the bell himself); a relay never picks another warning's people (claimed_besides()). The posts
-## and the bell tower are stone tonight: a blow only shakes them. All three warnings stopped wins (StarsObjective); the bell
-## tolling -- rung by a ringer, a relay or the town's own bellkeeper -- loses (BellSilentObjective).
+## watch posts on the walls -- the wall towers nearest POST_SPOTS, never a reserved one, each with a town-side door the bell's
+## foot reaches -- send a ringer each for the bell, his mates (RingerDirector.MATES) at his heels. The north-east post sends its
+## ringer at SET_OUT_AT[0]; each next post at its own time or CHAIN_WAIT after the warning before it is stopped, whichever is
+## sooner; a loud power cast within POST_SIGHT of a waiting post sends its ringer at once. Each warning is a RingerDirector (The
+## Warning's relay and unseen kill; the ringer rings the bell himself); a relay never picks another warning's people
+## (claimed_besides()). The posts and the bell tower are stone tonight: a blow only shakes them. All three warnings stopped wins
+## (StarsObjective); the bell tolling -- rung by a ringer, a relay or the town's own bellkeeper -- loses (BellSilentObjective).
 
 ## Where the posts stand (the wall tower nearest each) (v0.11 M3, mission spec §1).
 const POST_SPOTS := [Vector2(6.6, -15.65), Vector2(-8.0, 15.65), Vector2(15.65, -8.0)]
 ## The posts' names on the banners, the strip and the tour (v0.11 M3).
 const POST_NAMES := ["north-east", "south-west", "east"]
-## Seconds into the night each post sends its ringer at the latest (v0.11 M3, Decision 8). First guesses (mission spec §1),
-## tuned in this order: SET_OUT_AT (the first at most 40), CHAIN_WAIT (30-45), RingerDirector.MATES (1-2),
-## RingerDirector.MATE_GAP, POST_SIGHT. Task 2's gate kept these (its round 3's first post at 35 won fewer nights).
+## Seconds into the night each post sends its ringer at the latest (v0.11 M3, Decision 8): the spec's first guesses, kept by Task
+## 2's gate. The knobs it may tune are these (the first at most 40), RingerDirector.OUT_PAUSE, the mates' spacing and POST_SIGHT.
 const SET_OUT_AT := [40.0, 110.0, 180.0]
-## Seconds after a warning is stopped by which the next post sends its ringer (v0.11 M3, the chain rule): the spec's first guess
-## 45, tuned to 40 by Task 2's gate (its round 2: the acting player's idle stretch after a stop is the chain wait and the next
-## ringer's first few seconds out, which made 49 s at 45).
-const CHAIN_WAIT := 40.0
+## Seconds after a warning is stopped by which the next post sends its ringer (v0.11 M3, the chain rule; Decision 8).
+const CHAIN_WAIT := 45.0
 ## How near a waiting post a loud power must be cast to send its ringer at once (v0.11 M3, Decision 9).
 const POST_SIGHT := 6.0
 ## How many of the towers nearest a spot are tried for one whose door the bell's foot reaches (v0.11 M3, Decision 4).
@@ -64,7 +61,7 @@ func _begin() -> void:
 			var tower := _tower_near(POST_SPOTS[i], tried)
 			if tower == null:
 				break
-			var door := _open_door(tower, foot)
+			var door := _town_door(tower, foot)
 			if door != Vector2.INF:
 				posts.append(tower)
 				doors.append(door)
@@ -104,6 +101,22 @@ func _tower_near(spot: Vector2, exclude: Array) -> Structure:
 		if best == null or s.center().distance_squared_to(spot) < best.center().distance_squared_to(spot):
 			best = s
 	return best
+
+
+## `tower`'s town-side door (v0.11 M3, controller ruling on Decision 4): free ground off the face turned most toward the town's
+## middle, if the bell's foot reaches it -- so no ringer starts outside the wall, and the east post's run is the shortest; else
+## _open_door()'s first face with a route (Vector2.INF for none).
+func _town_door(tower: Structure, foot: Vector2) -> Vector2:
+	var half := tower.footprint.size * 0.5 + Vector2(0.5, 0.5)
+	var inward := tower.center().direction_to(TownLayout.MAP.get_center())
+	var best := Vector2.ZERO
+	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
+		if best == Vector2.ZERO or off.normalized().dot(inward) > best.normalized().dot(inward):
+			best = off
+	var door := _walkable(tower.center() + best)
+	if crowd._grid == null or not crowd._grid.path(foot, door).is_empty():
+		return door
+	return _open_door(tower, foot)
 
 
 ## `s` is stone tonight (v0.11 M3): every blow only shakes it, until teardown.

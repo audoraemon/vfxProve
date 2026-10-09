@@ -108,8 +108,14 @@ static func _in_map(t, c: CapitalCity, all: Array[Dictionary]) -> void:
 		var r: Rect2 = d.rect
 		if not c.map().encloses(r):
 			out += 1
-		if d.kind == Structure.Kind.BRIDGE:
+		# The crossings and the ferry pier stand on the water.
+		if d.kind == Structure.Kind.BRIDGE and d.role in [&"bridge", &"dock"]:
 			continue
+		# An over-water set (BuildingTypes.OVER_WATER: its painted water cut, stood over the real water) may be wet
+		# only on its water strip, its plot's front water_depth (tests/test_capital_water.gd checks the strip is all
+		# water and stands from the bank).
+		var depth: float = BuildingTypes.info(d.tag).get("water_depth", 0.0) if d.role == CapitalPlots.ROLE else 0.0
+		var strip := Rect2(r.position.x, r.end.y - depth, r.size.x, depth).grow(0.001)
 		# The new town's river wall stands on the river's edge (Task 6's ring): its walls, gatehouses and towers may
 		# reach a little way into the water, a corner tower by its own reach past the wall line (TownLayout.WALL_T),
 		# the rest by at most RING_WET. No plot may.
@@ -118,17 +124,20 @@ static func _in_map(t, c: CapitalCity, all: Array[Dictionary]) -> void:
 			if not w.intersects(r):
 				continue
 			var cut := w.intersection(r)
-			var depth := minf(cut.size.x, cut.size.y)
+			if depth > 0.0 and strip.encloses(cut):
+				continue
+			var depth_in := minf(cut.size.x, cut.size.y)
 			if not ring:
 				wet += 1
 				first = "%s %s" % [d.tag, r]
 			elif is_equal_approx(r.size.x, TownLayout.CORNER_TOWER) and is_equal_approx(r.size.y, TownLayout.CORNER_TOWER):
-				deep_corner = maxf(deep_corner, depth)
-			elif depth > deep:
-				deep = depth
+				deep_corner = maxf(deep_corner, depth_in)
+			elif depth_in > deep:
+				deep = depth_in
 				deepest = "%s %s" % [Structure.Kind.keys()[d.kind], r]
 	t.check(out == 0, "every capital structure lies inside the map (%d out)" % out)
-	t.check(wet == 0, "only bridges (and the river wall) stand on the water (%d; %s)" % [wet, first])
+	t.check(wet == 0, "only the bridges, the pier, the over-water sets' strips (and the river wall) stand on the water (%d; %s)"
+		% [wet, first])
 	t.check(deep <= RING_WET + 0.001, "the river wall's pieces reach at most %.1f into the water (%.2f, %s)"
 		% [RING_WET, deep, deepest])
 	t.check(deep_corner <= TownLayout.WALL_T + 0.001, "its corner towers at most their reach past the wall (%.2f)" % deep_corner)
@@ -250,7 +259,10 @@ static func _districts(t, c: CapitalCity) -> void:
 	}
 	var at := {}
 	for d: Dictionary in c.structures():
-		if want.has(d.tag) and c.landmark(want[d.tag]).encloses(d.rect):
+		# (a set standing over the water by its land: its water strip lies on the river or the basin)
+		var r: Rect2 = d.rect
+		r.size.y -= float(BuildingTypes.info(d.tag).get("water_depth", 0.0))
+		if want.has(d.tag) and c.landmark(want[d.tag]).encloses(r):
 			at[d.tag] = true
 	var wrong: Array = []
 	for k: StringName in want:

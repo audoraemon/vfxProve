@@ -19,6 +19,11 @@ extends RefCounted
 ## - smokes: it smokes from its chimney, exactly the sets whose art carries a chimney key (the manifest's "chimney").
 ## Damaged and ruins come from each set's own stills; a fall is the engine's sink (the sets have no collapse strips).
 ## The props (wagon, hand cart) are decor, never placed; they keep a row so every set has one.
+## - over water (OVER_WATER, polish 1): a set painted with water at its quay (the crane, the ferry landing, the dock
+##   warehouse, the wash house, the sluice) has had that water cut from its stills (gpt_convert.py cut_water) and stands
+##   over the city's real water: the front (south) strip of its plot this deep, the manifest's water_depth for its art,
+##   lies on the river or the basin from the bank, the rest on land. Only that strip may be wet (the off-river test);
+##   the water under it stays closed to walkers (WalkGrid), and it is not a crossing (Town.bridges).
 
 const K := Structure.Kind
 
@@ -100,11 +105,23 @@ const TYPES := {
 }
 
 
-## The type of set `tag`: {kind, hp, height (its blockout's, CapitalPlots.SETS), walkable, flat, burns, smokes}; {} for
-## a tag that is not a ChatGPT set.
+## tag -> how deep its water strip reaches into its plot from the front (south) edge, ground units (OVER_WATER above).
+const OVER_WATER := {
+	&"gpt_crane": 0.55, &"gpt_ferry": 1.29, &"gpt_sluice": 1.77, &"gpt_warehouse": 0.49, &"gpt_washhouse": 0.54,
+}
+
+
+## The type of set `tag`: {kind, hp, height (its blockout's, CapitalPlots.SETS), walkable, flat, burns, smokes,
+## over_water, water_depth (0 when not over water)}; {} for a tag that is not a ChatGPT set.
 static func info(tag: StringName) -> Dictionary:
 	var row: Array = TYPES.get(tag, [])
 	if row.is_empty():
 		return {}
 	return {"kind": row[0], "hp": row[1], "height": float(CapitalPlots.SETS[tag][1]), "walkable": row[2],
-		"flat": row[3], "burns": row[4], "smokes": row[5]}
+		"flat": row[3], "burns": row[4], "smokes": row[5], "over_water": OVER_WATER.has(tag),
+		"water_depth": float(OVER_WATER.get(tag, 0.0))}
+
+
+## Whether set `tag` stands over water (OVER_WATER); false for anything that is not a ChatGPT set.
+static func over_water(tag: StringName) -> bool:
+	return OVER_WATER.has(tag)

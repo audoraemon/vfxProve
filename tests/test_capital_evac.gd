@@ -70,7 +70,8 @@ static func _layout(t) -> void:
 		total += (posts.get(k, []) as Array).size()
 	t.check(total >= 170 and total <= 190 and c.soldiers() == total, "the capital posts about 180 soldiers (%d)" % total)
 	var walls: Array = posts.walls
-	# Every gate of both rings, the Keep's barbican and drawbridge gatehouse: at least two guards within reach.
+	# Every gate of both rings and the Keep's barbican (the drawbridge gatehouse is not placed since polish 1): at least
+	# two guards within reach.
 	var gates: Array[Rect2] = []
 	for d: Dictionary in c.structures():
 		if d.kind == Structure.Kind.GATE or d.tag in [&"gpt_barbican", &"gpt_drawbridge"]:
@@ -79,8 +80,8 @@ static func _layout(t) -> void:
 	for g: Rect2 in gates:
 		if _near(walls, g.grow(2.6)) < 2:
 			unguarded.append(g.get_center())
-	t.check(gates.size() == 11 and unguarded.is_empty(),
-		"every gate, the barbican and the drawbridge has two guards (%d gates, unguarded %s)" % [gates.size(), unguarded])
+	t.check(gates.size() == 10 and unguarded.is_empty(),
+		"every gate and the barbican has two guards (%d gates, unguarded %s)" % [gates.size(), unguarded])
 	# Both ends of every crossing.
 	var ends_bare: Array = []
 	for r: Rect2 in CapitalCity.BRIDGES:

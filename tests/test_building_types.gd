@@ -173,8 +173,10 @@ static func _placed(t) -> void:
 		if (s.z_index == -1) != bool(i.flat):
 			bad.flat.append(tag)
 		if bool(i.walkable):
-			# Every walk-grid cell whose centre lies on it is open ground.
+			# Every walk-grid cell whose centre lies on it is open ground (on its dry part: the river under a set standing
+			# over the water stays closed, tests/test_capital_water.gd).
 			var r := s.footprint
+			r.size.y -= float(i.water_depth)
 			var y := floorf(r.position.y / WalkGrid.CELL) * WalkGrid.CELL + WalkGrid.CELL * 0.5
 			var open := true
 			var cells := 0
@@ -186,7 +188,7 @@ static func _placed(t) -> void:
 						open = open and grid.walkable(Vector2(x, y))
 					x += WalkGrid.CELL
 				y += WalkGrid.CELL
-			if not open or cells == 0:
+			if not open or (cells == 0 and not i.over_water):
 				bad.grid.append(tag)
 		elif minf(s.footprint.size.x, s.footprint.size.y) >= 0.5 and grid.walkable(s.center()):
 			bad.grid.append(tag)

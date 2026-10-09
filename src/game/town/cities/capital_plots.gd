@@ -13,8 +13,9 @@ extends RefCounted
 const ROLE := &"gpt"
 ## The props: decor pieces (carts on the streets), never structures, so they are not plotted.
 const PROPS := [&"gpt_wagon", &"gpt_handcart"]
-## Sets the capital no longer places (polish 1): the footbridge (its third crossing is the stone bridge set).
-const UNUSED := [&"gpt_footbridge"]
+## Sets the capital no longer places (polish 1): the footbridge (its third crossing is the stone bridge set) and the
+## drawbridge (no gate of the capital faces open water: its river gates land the stone bridges).
+const UNUSED := [&"gpt_footbridge", &"gpt_drawbridge"]
 
 const SETS := {
 	&"gpt_alleysteps": [Vector2(0.9, 1.0), 32.0],
@@ -101,6 +102,13 @@ const SALT_JITTER_Y := 7457
 const SALT_SKIP := 7583
 ## With a jitter, the share of plots (times the jitter) left empty, so the rows open up here and there.
 const SKIP_SHARE := 0.25
+
+
+## The structure for set `set_name` standing over water from the bank line `bank_y` (BuildingTypes.OVER_WATER: its
+## water strip on the water, from the bank to its front edge), its back corner's x at `x`.
+static func on_bank(set_name: StringName, x: float, bank_y: float) -> Dictionary:
+	var s: Array = SETS[set_name]
+	return plot(set_name, Vector2(x, bank_y + float(BuildingTypes.OVER_WATER[set_name]) - (s[0] as Vector2).y))
 
 
 ## The structure for set `set_name` with its footprint's back corner at `at`: {rect, height, kind, role, tag}.

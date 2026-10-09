@@ -42,7 +42,7 @@ const TOWN_SHOTS := [
 	# crane, the ferry landing, the dock warehouses), the wash houses on the north bank and the sluice.
 	["capital_keep_court.png", Vector2(-15.5, -24.5), 1.0],
 	["capital_third_bridge.png", Vector2(14, 8), 1.0],
-	["capital_quay.png", Vector2(29, -3), 0.9],
+	["capital_quay.png", Vector2(31.5, -2.5), 0.85],
 	["capital_wash.png", Vector2(-1, 5.5), 0.7],
 	["capital_sluice.png", Vector2(-27.6, 5.5), 1.3],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],

@@ -135,14 +135,19 @@ const DRILL_RANKS := [3.0, 1.8]
 const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
 	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
 	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15}
-## Every ChatGPT plot: [set, its footprint's back corner]. The set's footprint and height come from CapitalPlots.SETS.
+## The bank lines the over-water sets stand from (BuildingTypes.OVER_WATER): the river's north bank and the harbour
+## basin's north quay (RIVER's and HARBOUR's north edges).
+const NORTH_BANK := 6.0
+const NORTH_QUAY := -2.0
+## Every ChatGPT plot: [set, its footprint's back corner], or for a set standing over water [set, Vector2(its back
+## corner's x, the bank line), true] (CapitalPlots.on_bank()). The set's footprint and height come from CapitalPlots.SETS.
 ## By district (spec §1). The landmarks that must be seen (the Citadel's keep, the cathedral, the town hall, the market
 ## hall) have nothing taller just in front of them (tests/test_capital_plots.gd).
 const GPT_PLOTS := [
-	# Royal Keep: armoury and treasury before the barracks; a watchtower, the keep's drawbridge gatehouse and its
-	# barbican east of the Citadel, clear of its front.
+	# Royal Keep: armoury and treasury before the barracks; a watchtower and the keep's barbican east of the Citadel,
+	# clear of its front. (No drawbridge gatehouse: no gate of the capital faces open water. CapitalPlots.UNUSED.)
 	[&"gpt_armoury", Vector2(-7.8, -23.5)], [&"gpt_treasury", Vector2(-5.0, -23.5)],
-	[&"gpt_watchtower", Vector2(6.6, -28.2)], [&"gpt_drawbridge", Vector2(5.8, -26.6)],
+	[&"gpt_watchtower", Vector2(6.6, -28.2)],
 	[&"gpt_barbican", Vector2(5.3, -22.4)],
 	# The royal garden, the Keep courtyard's west half (KEEP_COURT): the monument at the head of its north path, the
 	# pavilion in its south-west corner.
@@ -171,14 +176,17 @@ const GPT_PLOTS := [
 	[&"gpt_crierstage", Vector2(-16.4, -3.6)],
 	# Old town houses: hospital, bathhouse, the cistern at the aqueduct's end.
 	[&"gpt_hospital", Vector2(5.5, -7.6)], [&"gpt_bathhouse", Vector2(9.0, -7.6)], [&"gpt_cistern", Vector2(11.7, -7.6)],
-	# Banks: wash houses on the north bank below the old town's wall, the sluice west of it.
-	[&"gpt_washhouse", Vector2(-9.0, 4.44)], [&"gpt_washhouse", Vector2(7.5, 4.44)], [&"gpt_sluice", Vector2(-28.0, 4.15)],
+	# Banks: wash houses on the river's north bank below the old town's wall, their washing steps over the river; the
+	# sluice west of them, standing out into the river from the bank.
+	[&"gpt_washhouse", Vector2(-9.0, NORTH_BANK), true], [&"gpt_washhouse", Vector2(7.5, NORTH_BANK), true],
+	[&"gpt_sluice", Vector2(-28.0, NORTH_BANK), true],
 	# Harbour district: the fish market by the harbour gate; the sets painted with water at their front (the dock
-	# warehouses, the crane, the ferry landing) on the basin's north quay and the river's bank, their water side to the
-	# water; the stables, a dockworkers' tenement and shop-houses behind the avenue.
-	[&"gpt_fishmarket", Vector2(19.0, -7.0)], [&"gpt_warehouse", Vector2(22.5, -4.6)],
-	[&"gpt_warehouse", Vector2(25.0, -4.6)], [&"gpt_crane", Vector2(33.8, -3.7)], [&"gpt_ferry", Vector2(36.6, -3.9)],
-	[&"gpt_warehouse", Vector2(19.5, 3.9)], [&"gpt_stables", Vector2(19.0, -13.0)],
+	# warehouses, the crane, the ferry landing) on the basin's north quay and the river's bank, their posts and piles
+	# over the water; the stables, a dockworkers' tenement and shop-houses behind the avenue.
+	[&"gpt_fishmarket", Vector2(19.0, -7.0)], [&"gpt_warehouse", Vector2(22.5, NORTH_QUAY), true],
+	[&"gpt_warehouse", Vector2(25.0, NORTH_QUAY), true], [&"gpt_crane", Vector2(33.8, NORTH_QUAY), true],
+	[&"gpt_ferry", Vector2(36.6, NORTH_QUAY), true],
+	[&"gpt_warehouse", Vector2(19.5, NORTH_BANK), true], [&"gpt_stables", Vector2(19.0, -13.0)],
 	[&"gpt_tenement", Vector2(22.5, -13.0)], [&"gpt_shophouse", Vector2(24.6, -13.0)],
 	[&"gpt_shophouse", Vector2(26.1, -13.0)],
 	# Northern woods: charcoal kilns, the aqueduct from the springs (a run of segments along x).
@@ -337,7 +345,7 @@ const POSTS_CITADEL := 30
 const GUARD_IN := 1.6
 const GUARD_SIDE := 1.4
 const BRIDGE_GUARD_SIDE := 1.0
-const HARBOUR_WATCH := [Vector2(19.6, -8.0), Vector2(21.0, -2.9), Vector2(24.0, -2.9), Vector2(27.2, -2.9),
+const HARBOUR_WATCH := [Vector2(19.6, -8.0), Vector2(21.0, -2.9), Vector2(24.0, -4.3), Vector2(27.2, -2.9),
 	Vector2(28.7, -4.0), Vector2(33.3, -4.0), Vector2(30.2, -8.0), Vector2(36.0, -6.0)]
 const LOOP_IN := 1.0
 const LOOP_STEP := 3.0
@@ -806,15 +814,19 @@ func anchors() -> Dictionary:
 			for k in QUEUE_LENGTH:
 				out.queue.append(Vector2(r.position.x - QUEUE_OFF, r.get_center().y - k * QUEUE_STEP))
 		elif d.tag == &"gpt_washhouse":
-			out.wash.append(Vector2(r.position.x - 0.35, r.get_center().y))
-			out.wash.append(Vector2(r.end.x + 0.35, r.get_center().y))
+			# Either side of its dry part (its washing steps stand over the river), and at its back, where the washing
+			# is carried in.
+			var dry := _dry(d)
+			out.wash.append(Vector2(r.position.x - 0.35, dry.get_center().y))
+			out.wash.append(Vector2(r.end.x + 0.35, dry.get_center().y))
+			out.wash.append(Vector2(r.get_center().x, r.position.y - 0.35))
 		elif d.tag in [&"gpt_chapel", &"gpt_monastery", &"gpt_graveyard"]:
 			out.pray.append(Vector2(r.get_center().x, r.end.y + 0.4))
 		elif d.tag in [&"gpt_markethall", &"gpt_weighhouse", &"gpt_crierstage"]:
 			out.market.append(front)
 		elif d.tag in [&"gpt_warehouse", &"gpt_crane", &"gpt_fishmarket"]:
-			# The quay side: the front of a set on the north quay, the back of one on the river's bank.
-			out.harbour.append(front if r.end.y < HARBOUR.position.y + 1.0 else Vector2(r.get_center().x, r.position.y - 0.35))
+			# The fish market's front; behind a set standing over the water, on the land.
+			out.harbour.append(Vector2(r.get_center().x, r.position.y - 0.35) if BuildingTypes.over_water(d.tag) else front)
 	for st: Rect2 in stalls():
 		out.stall.append(Vector2(st.get_center().x, st.end.y + 0.3))
 	for r: Rect2 in [SMITHY_YARD, WORKSHOP, CARPENTER_YARD]:
@@ -1172,9 +1184,15 @@ func _buildings() -> Array[Dictionary]:
 			out.append({"rect": r, "height": 20.0, "kind": Structure.Kind.HOUSE, "role": &"farm", "tag": &""})
 		out.append({"rect": WINDMILL, "height": 60.0, "kind": Structure.Kind.HOUSE, "role": &"farm", "tag": &"windmill"})
 		for p: Array in GPT_PLOTS:
-			out.append(CapitalPlots.plot(p[0], p[1]))
+			out.append(CapitalPlots.on_bank(p[0], p[1].x, p[1].y) if p.size() > 2 else CapitalPlots.plot(p[0], p[1]))
 		_buildings_cache = out
 	return _buildings_cache
+
+
+## The part of a ChatGPT plot on land: all of it but an over-water set's water strip (BuildingTypes.OVER_WATER).
+static func _dry(d: Dictionary) -> Rect2:
+	var r: Rect2 = d.rect
+	return Rect2(r.position, Vector2(r.size.x, r.size.y - float(BuildingTypes.info(d.tag).get("water_depth", 0.0))))
 
 
 ## The open ground no house may take: the squares, yards, patios, gate plazas, the Citadel's court and its whole

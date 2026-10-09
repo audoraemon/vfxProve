@@ -30,7 +30,8 @@ const DOCK_HP := 80.0
 var citadel: Citadel
 ## The last bridge built (Aldermere's one bridge; the capital's third bridge).
 var bridge: Structure
-## Every crossing over the water, in build order: each BRIDGE-kind structure but the dock whose footprint meets a
+## Every crossing over the water, in build order: each BRIDGE-kind structure but the dock (and a capital set standing
+## over the water, BuildingTypes.OVER_WATER) whose footprint meets a
 ## river (Aldermere: its one bridge). A fallen one closes the water under it (WalkGrid, CityDef.fallen_bridge()).
 var bridges: Array[Structure] = []
 ## The river boats' landing (v0.05), and the postern in the south wall that leads down to it (also in gates, last).
@@ -77,7 +78,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			# A wooden pier: easier to break than the stone bridge.
 			s.max_hp = DOCK_HP
 			s.hp = DOCK_HP
-		elif s.kind == Structure.Kind.BRIDGE:
+		elif s.kind == Structure.Kind.BRIDGE and not (s.role == CapitalPlots.ROLE and BuildingTypes.over_water(s.art_tag)):
+			# (a capital set standing over the water, the ferry landing or the sluice, is no crossing)
 			bridge = s
 			if _over_water(s.footprint):
 				bridges.append(s)

@@ -56,6 +56,7 @@ Each set has `intact.png`, `damaged.png`, `ruins.png`, and often `idle.png` (a s
 | `glass` | `[x, y, w, h]` lantern glass rect, lit by the engine |
 | `strip`, `period` | A wall strip tiled along a run; `period` is its repeat in ground units |
 | `chimney` | `[x, y]` smoke point |
+| `water_depth` | A `gpt_*` set whose painted water `gpt_convert.py` cut (`cut_water`): how deep its water strip reaches into the plot from its front edge, ground units (`BuildingTypes.OVER_WATER` stands it over the real river by it) |
 | `collapse_frames` | A generated collapse strip (batch 1-2 only; batch 3 uses the engine sink) |
 
 ## Decor sets (batch 4, `assets/pixellab/decor/`)

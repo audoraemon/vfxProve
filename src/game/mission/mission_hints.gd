@@ -71,6 +71,11 @@ const LINES := {
 	"market_panic.steadied": "A warden (red) steadies the crowd near him: frights break no one there. Remove them all first.",
 	"market_panic.open": "No warden stands. Strike the crowd (gold) now, before a new warden comes.",
 	"market_panic.coming": "More come to the fair (gold). Strike them on the way, away from the wardens, or when they arrive.",
+	"informer": "Whisper the contact (orange) while no one (red) sees. He names the next. Do not kill a contact.",
+	"informer.waiting": "Word has not reached the contact (grey) yet. Get his company (red) away before it does. Do not kill a contact.",
+	"informer.found": "He is found and runs for the Temple (red). Kill him before he gets in. Unseen, no cry is raised.",
+	"informer.hiding": "Alarmed, he hides. Set the house alight to smoke him out, or wait for him.",
+	"informer.running": "No hiding place: he runs for the Temple (red). Kill him before he gets in.",
 }
 
 

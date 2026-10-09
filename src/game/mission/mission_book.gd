@@ -58,7 +58,8 @@ static func campaign_missions() -> Array[MissionDef]:
 ## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
-	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic()]
+	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
+		informer()]
 	return out
 
 
@@ -213,6 +214,25 @@ static func market_panic() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [FestivalObjective.new("Scatter the fair", "fair"),
 			EventObjective.new("close", "Market closes", "market_closed"), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Informer (v0.11 M3, Tier 2, mission spec §3 and §8 row 10): find the hidden informer through his three contacts -- each turned
+## by an unseen whisper -- and kill him before the names reach the Temple (InformerDirector, the Assassinate type reused).
+static func informer() -> MissionDef:
+	var m := _tier2(INFORMER, "The Informer", PackedStringArray(["An informer carries your believers' names.",
+		"Find him through his contacts. Kill him."]))
+	m.goal = "Find the informer through his three contacts, and kill him before the names reach the Temple"
+	m.goal_label = "The informer is dead"
+	m.lose = "The names reach the Temple, a contact dies before he is turned, the bell tolls, or dawn comes"
+	m.camera_at = InformerDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])
+	m.director = InformerDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [AssassinateObjective.new("Kill the informer", "informer", "names"), BellSilentObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

@@ -112,6 +112,14 @@ extends SceneTree
 ##          on the densest knot of three or more unsteadied goers, or on the goer nearest the fountain; else Silent Doom on a
 ##          warden on guard, to clear the cover before the next crowd; the result line gives the longest idle stretch). Hit-stop is
 ##          off for it (Impact.hitstop_enabled), so two runs of a seed give the same checksum. --seed=, --board as ringers.
+##   informer  (v0.11 M3) The Informer, --case=none (nothing cast) or play, as a player plays it (_informer_act(): Silent Doom on
+##          the town's bellkeeper once called; once the informer is found and out of doors, Silent Doom on him when unseen, or
+##          whatever the witnesses within 8 of the Temple's door, never with a contact beside him; with word at the contact: no
+##          onlooker, Mind Whisper sends him three units off (and turns him); else, both ready, Discord where it holds every onlooker
+##          but at most one a whisper can send off, the whisper following; else Mind Whisper sends one onlooker eight units off, his
+##          company and those standing still first; in the 18 s before his visit, his company sent off one at a time while the
+##          whisper will be ready again when word comes; never a Doom on a contact; the result line gives the longest idle
+##          stretch). --seed=, --board as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -210,6 +218,12 @@ const PANIC_DIRS := 8
 ## Market Panic's policy (v0.11 M3): seconds the first crowd is given to take its places before the player acts (mission spec §2:
 ## "there in about 10 s"); at the first look the goers stand in a clump round the fountain, where one Silent Doom takes ten of them.
 const PANIC_SETTLE := 10.0
+## The Informer's policy (v0.11 M3): how far a contact is whispered off unseen, and an onlooker away; how near the Temple's door a
+## found informer is struck whatever the witnesses; how long before a visit his company is whispered off.
+const INFORMER_OFF := 3.0
+const INFORMER_AWAY := 8.0
+const INFORMER_LAST := 8.0
+const INFORMER_EARLY := 18.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -321,6 +335,9 @@ func _run() -> void:
 	elif scenario == "panic":
 		powers = PackedStringArray(["heaven", "doom", "smite"])
 		mission.mission_id = MissionBook.MARKET_PANIC
+	elif scenario == "informer":
+		powers = PackedStringArray(["whisper", "discord", "doom"])
+		mission.mission_id = MissionBook.INFORMER
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario == "panic":
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -382,6 +399,8 @@ func _run() -> void:
 			await _ringers(Battlefield.arg_value(args, "--case"))
 		"panic":
 			await _panic(Battlefield.arg_value(args, "--case"))
+		"informer":
+			await _informer(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1920,6 +1939,126 @@ func _panic_knot(d: MarketPanicDirector) -> Vector2:
 			best_n = n
 			best = a.ground_pos
 	return best
+
+
+## The Informer (v0.11 M3), with mission spec §3's policy (_informer_act()), through _scripted().
+func _informer(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as InformerDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("informer", which, func() -> String: return _informer_act(rules, slots, d, crowd),
+		func() -> String: return "turned=%d found=%s cold=%s phase=%s bell=%s" % [d.turned_count(), d.found, d.cold, d.hint_phase(),
+			_bell_state(crowd)])
+
+
+## One look of The Informer's policy (v0.11 M3): what was cast, or "" for nothing. The first that applies: Silent Doom on the town's
+## bellkeeper once called; once the informer is found and out of doors, Silent Doom on him when the kill would go unseen (or
+## whatever the witnesses within INFORMER_LAST of the Temple's door), never while a contact stands close enough to fall with him;
+## with word at the contact: no onlooker, Mind Whisper on him (it turns him); else, with Mind Whisper and Discord both ready and one
+## Discord holding every onlooker, Discord there (the whisper follows on the next look); else Mind Whisper sends one onlooker off
+## (_informer_off()); and in the INFORMER_EARLY seconds before his visit, his company and those standing by him sent off one at a
+## time while Mind Whisper will be ready again when word comes. It never strikes a contact.
+func _informer_act(rules: Rules, slots: Dictionary, d: InformerDirector, crowd: Crowd) -> String:
+	var bell := crowd.bell
+	if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] and WarningDirector._alive(bell.keeper) \
+			and bell.keeper.profile != null and bell.keeper.profile.role == CitizenProfile.Role.BELLKEEPER and _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, bell.keeper.ground_pos)
+		return "doom the bellkeeper"
+	if d.found:
+		var q := d.quarries[0]
+		if WarningDirector._alive(q.target) and not q.target.inside and _slot_ready(rules, slots, "doom") \
+				and not _informer_takes_contact(d, q.target) \
+				and (_tax_unseen(q.target, crowd) or q.target.ground_pos.distance_to(d.safe_at) <= INFORMER_LAST):
+			rules.cast(slots.doom, q.target.ground_pos)
+			return "doom the informer"
+		return ""
+	var c := d.contact_now()
+	if c == null or not WarningDirector._alive(c.man) or (c.man as Person).inside:
+		return ""
+	var man := c.man as Person
+	var seeing := d.onlookers(c)
+	var whisper := _slot_ready(rules, slots, "whisper")
+	if c.word:
+		if seeing.is_empty():
+			if man.shaken() or not whisper:
+				return ""
+			var to := MindWhisperFx.clamp_to(crowd._grid, man.ground_pos, man.ground_pos + Vector2(INFORMER_OFF, 0.0))
+			rules.cast(slots.whisper, man.ground_pos, {"target": man, "to": to})
+			return "whisper the %s" % c.trade
+		if whisper and not man.shaken() and _slot_ready(rules, slots, "discord"):
+			var best := _informer_discord(man, seeing)
+			var left: Array[Person] = best[1]
+			if left.is_empty():
+				rules.cast(slots.discord, best[0])
+				return "discord by the %s (%d held)" % [c.trade, seeing.size()]
+			if left.size() == 1 and _whisperable(left[0]):
+				rules.cast(slots.discord, best[0])
+				return "discord by the %s (%d held, one to send off)" % [c.trade, seeing.size() - 1]
+		return _informer_off(rules, slots, crowd, seeing, man)
+	var due := d.visit_in(d.contacts.find(c))
+	if due <= INFORMER_EARLY and due >= float(PowerBook.get_power("whisper").cooldown) and not seeing.is_empty():
+		return _informer_off(rules, slots, crowd, seeing, man)
+	return ""
+
+
+## A Silent Doom on the informer now would take a contact with him (v0.11 M3): one stands within SilentDoom.RADIUS of him (and a
+## margin for his walk). The policy never strikes a contact, turned or not.
+func _informer_takes_contact(d: InformerDirector, at: Person) -> bool:
+	for c in d.contacts:
+		if WarningDirector._alive(c.man) and (c.man as Person).ground_pos.distance_to(at.ground_pos) <= SilentDoom.RADIUS + 0.3:
+			return true
+	return false
+
+
+## Where a Discord holds the most of `seeing` (v0.11 M3): on `man`, on one of them, or midway between two of them; [the point, the
+## ones it would leave seeing]. Soldiers keep their heads (DiscordFx.taken()); of two points leaving as many, the one leaving fewer
+## a whisper cannot reach (a soldier, or one shaking off a whisper) wins.
+func _informer_discord(man: Person, seeing: Array[Person]) -> Array:
+	var best := man.ground_pos
+	var best_left: Array[Person] = seeing.duplicate()
+	var best_stuck := seeing.size() + 1
+	var spots: Array[Vector2] = [man.ground_pos]
+	for i in seeing.size():
+		spots.append(seeing[i].ground_pos)
+		for j in range(i + 1, seeing.size()):
+			spots.append((seeing[i].ground_pos + seeing[j].ground_pos) * 0.5)
+	for at in spots:
+		var left: Array[Person] = []
+		var stuck := 0
+		for p in seeing:
+			if p.soldier or p.ground_pos.distance_to(at) > DiscordFx.DISCORD_R - 0.1:
+				left.append(p)
+				stuck += 0 if _whisperable(p) else 1
+		if left.size() < best_left.size() or (left.size() == best_left.size() and stuck < best_stuck):
+			best_left = left
+			best_stuck = stuck
+			best = at
+	return [best, best_left]
+
+
+## Mind Whisper sends one of `seeing` -- not a soldier, not shaking off a whisper -- INFORMER_AWAY units straight away from `man`
+## (v0.11 M3): one who stays (his company, or one standing still) before one passing by, the nearest first; "" when none can hear
+## it or the slot is not ready.
+func _informer_off(rules: Rules, slots: Dictionary, crowd: Crowd, seeing: Array[Person], man: Person) -> String:
+	if not _slot_ready(rules, slots, "whisper"):
+		return ""
+	var lone: Person = null
+	var lone_stays := false
+	for p in seeing:
+		if p.soldier or p.shaken():
+			continue
+		var stays := p.mind == Person.Mind.DUTY or not p.has_goal()
+		var nearer := lone == null or p.ground_pos.distance_to(man.ground_pos) < lone.ground_pos.distance_to(man.ground_pos)
+		if lone == null or (stays and not lone_stays) or (stays == lone_stays and nearer):
+			lone = p
+			lone_stays = stays
+	if lone == null:
+		return ""
+	var off := lone.ground_pos - man.ground_pos
+	var away := lone.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * INFORMER_AWAY
+	rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": MindWhisperFx.clamp_to(crowd._grid, lone.ground_pos, away)})
+	return "whisper an onlooker off"
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

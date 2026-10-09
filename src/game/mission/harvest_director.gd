@@ -331,8 +331,8 @@ func _take(s: Structure, id: int) -> void:
 ## lost. v0.11 M3: the strip shows the next grain's chained time.
 func _on_razed(s: Structure) -> void:
 	rules.banner.emit("A GRANARY IS SPOILED")
-	spoiled_at[targets.find(s)] = _clock
 	var i := targets.find(s)
+	spoiled_at[i] = _clock
 	if timeline != null and i + 1 < targets.size():
 		timeline.expect("grain_%d" % (i + 1), grain_due(i + 1))  # v0.11 M3: the strip shows the chained time
 	for c: Variant in carters.get(s, []):

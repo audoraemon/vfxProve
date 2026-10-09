@@ -142,11 +142,12 @@ static func free_body(s: Dictionary, p: Person) -> void:
 	p.free()
 
 
-## The labels of `d`'s tags, in order (v0.11 M3).
+## The labels of `d`'s tags, in order (v0.11 M3); a tag with no label (a pip, a diamond on a person) is left out, as M2's tests did.
 static func labels(d: MissionDirector) -> Array:
 	var out := []
 	for m in d.tags():
-		out.append(m.label)
+		if m.label != "":
+			out.append(m.label)
 	return out
 
 
@@ -159,7 +160,9 @@ static func edged(d: MissionDirector, label: String) -> bool:
 
 
 ## Where ground point `g` shows on the 640 x 360 screen with the camera resting on `cam` at play zoom -- or, off screen, where
-## its edge arrow points from: the screen's border on the line from its centre (v0.11 M3).
+## its edge arrow points from: the screen's border on the line from its centre (v0.11 M3). The border point is clamped to the
+## screen, as float32 arithmetic can land a point meant for the border a hair outside it (-0.00003 for 0), and a point just
+## outside DEAD's corner would read clear.
 static func shown_at(g: Vector2, cam: Vector2) -> Vector2:
 	var c := VIEW * 0.5
 	var p := (Iso.ground_to_screen(g) - Iso.ground_to_screen(cam)) * Mission.PLAY_ZOOM + c
@@ -167,7 +170,8 @@ static func shown_at(g: Vector2, cam: Vector2) -> Vector2:
 		return p
 	var d := p - c
 	var k := minf(absf(c.x / d.x) if d.x != 0.0 else INF, absf(c.y / d.y) if d.y != 0.0 else INF)
-	return c + d * k
+	var edge := c + d * k
+	return Vector2(clampf(edge.x, 0.0, VIEW.x), clampf(edge.y, 0.0, VIEW.y))
 
 
 ## Ground point `g`, or its edge arrow, is clear of the left HUD stack with the camera on `cam` (v0.11 M3, controller ruling 7).
@@ -360,3 +364,30 @@ static func _kit(t) -> void:
 	t.check(is_equal_approx(west.x, 0.0) and west.y > 0.0 and west.y < VIEW.y, "a point far off screen is read at its arrow (%s)" % west)
 	var corner := Iso.screen_to_ground(Iso.ground_to_screen(c) + (Vector2(60.0, 40.0) - VIEW * 0.5) / Mission.PLAY_ZOOM)
 	t.check(not clear_of_stack(corner, c), "a point under the left HUD stack is not clear")
+	# A target far off screen to the north-west has its arrow on the left or top border; one whose arrow truly lies in the dead zone
+	# must read not clear, however float32 rounds the border point (it once read -0.00003 for 0 and slipped out of the rect).
+	var aways: Array[Vector2] = [-VIEW]  # the very diagonal first: the arrow in the screen's corner
+	for step in 181:
+		var a := PI + deg_to_rad(float(step) * 0.5)
+		aways.append(Vector2(cos(a), sin(a)) * 900.0)
+	var dead := 0
+	var wrong := []
+	for step in aways.size():
+		var far := Iso.screen_to_ground(Iso.ground_to_screen(c) + aways[step] / Mission.PLAY_ZOOM)
+		var shown := (Iso.ground_to_screen(far) - Iso.ground_to_screen(c)) * Mission.PLAY_ZOOM + VIEW * 0.5
+		var from := shown - VIEW * 0.5
+		var k := minf(absf(VIEW.x * 0.5 / from.x), absf(VIEW.y * 0.5 / from.y))
+		var edge := VIEW * 0.5 + from * k
+		var in_dead := edge.x < DEAD.end.x - 0.001 and edge.y < DEAD.end.y - 0.001
+		var out_of_dead := edge.x > DEAD.end.x + 0.001 or edge.y > DEAD.end.y + 0.001
+		dead += 1 if in_dead else 0
+		if (in_dead or out_of_dead) and clear_of_stack(far, c) != out_of_dead:
+			wrong.append(step)
+	t.check(dead >= 30 and wrong.is_empty(), "a north-west target whose arrow lies in the dead zone reads not clear, one outside it clear (%d in it; wrong at %s)" % [dead, wrong])
+	# A Festival's pips have no label: labels() leaves them out, as M2's tests did.
+	var f := world(TierBook.board("festival"), FestivalDirector.new())
+	var bare := 0
+	for m in (f.d as MissionDirector).tags():
+		bare += 1 if m.label == "" else 0
+	t.check(bare > 0 and not labels(f.d).has("") and labels(f.d).has("THE FEAST"), "labels() skips tags with no label (%d such pips)" % bare)
+	done(f)

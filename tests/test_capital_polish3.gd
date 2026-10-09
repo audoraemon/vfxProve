@@ -347,6 +347,15 @@ static func _border(t) -> void:
 			t.check(TownFloor.wet(Vector2(x, mid_y)), "%s: the river runs on past the map's edge at x %s" % [id, x])
 		t.check(not TownFloor.wet(Vector2(0.0, city.map().position.y - 6.0)), "%s: the band north of the map is dry" % id)
 		t.check(TownFloor.FILL_MARGIN < city.border(), "%s's border reaches past the old fill" % id)
+		# The band the second bake pass paints: exactly the drawn ground past the fill.
+		var fill := city.map().grow(TownFloor.FILL_MARGIN)
+		var area := 0.0
+		var apart := true
+		for s: Rect2 in TownFloor.band_strips():
+			area += s.get_area()
+			apart = apart and not s.intersects(fill) and TownFloor.drawn_area().encloses(s)
+		t.check(apart and is_equal_approx(area, TownFloor.drawn_area().get_area() - fill.get_area()),
+			"%s: the band's strips cover the drawn ground past the fill, and only that" % id)
 
 
 ## The camera never pans the view past the drawn ground at any zoom a player has (the mission's and the town debug's),

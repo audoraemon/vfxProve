@@ -8,6 +8,10 @@ extends Node2D
 
 ## The baked decor pieces this layer draws (Decor.Kind.OAK and PINE), sorted back to front.
 var trees: Array[Dictionary] = []
+## Whether to add the border band's trees (TownDecor.border_trees(), polish 3): in bands of their own,
+## TownFloor.BAND_DELAY after the town's, as the floor paints the band, so the town's first frames do not draw them.
+## They stand past the floor's fill, so no town tree stands in front of or behind one.
+var border := false
 ## Each band spans this much of x + y (ground units, BAND * 16 px of screen height).
 const BAND := 6.0
 ## Leaf clusters on a forest oak's crown (the town's own oaks have PropArt.OAK_CLUSTERS or TOWN_OAK_CLUSTERS).
@@ -17,8 +21,26 @@ const FOREST_CLUSTERS := 14
 func _ready() -> void:
 	# It sits on the ground plane, which is under the iso basis; draw in screen pixels as the floor's texture does.
 	transform = Iso.BASIS.affine_inverse()
+	_add_bands(trees)
+	if border:
+		_add_border()
+
+
+
+func _add_border() -> void:
+	await get_tree().create_timer(TownFloor.BAND_DELAY).timeout
+	if not is_inside_tree():
+		return
+	var band := TownDecor.border_trees()
+	band.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a.at as Vector2).x + (a.at as Vector2).y < (b.at as Vector2).x + (b.at as Vector2).y)
+	_add_bands(band)
+
+
+## `list` (back to front) as bands of BAND, one batch each.
+func _add_bands(list: Array) -> void:
 	var bands := {}
-	for d in trees:
+	for d in list:
 		var at: Vector2 = d.at
 		var k := floori((at.x + at.y) / BAND)
 		if not bands.has(k):

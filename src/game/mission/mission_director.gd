@@ -172,6 +172,18 @@ func _front_of(s: Structure) -> Vector2:
 	return _walkable(s.center() + Vector2(0.0, s.footprint.size.y * 0.5 + 0.5))
 
 
+## A door of `s` someone at `from` can walk to (v0.11 M2; moved up from AssassinateDirector in v0.11 M3 for The Bell-Ringers' posts):
+## its front (_front_of()), else its back, else a side -- the first with a route from `from`; Vector2.INF for none (a house
+## walled in by its neighbours, whose front is a closed yard).
+func _open_door(s: Structure, from: Vector2) -> Vector2:
+	var half := s.footprint.size * 0.5 + Vector2(0.5, 0.5)
+	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
+		var door := _walkable(s.center() + off)
+		if crowd._grid == null or not crowd._grid.path(from, door).is_empty():
+			return door
+	return Vector2.INF
+
+
 ## `p` goes indoors at `s` (v0.11 M2, as Mira's readers do): hidden, out of the field and untouchable until brought out. With
 ## `s` null (a Citadel's gate), where `p` stands.
 func _take_inside(p: Person, s: Structure) -> void:

@@ -136,6 +136,21 @@ func replace_keeper(p: Person) -> void:
 	keeper_replaced.emit()
 
 
+## The rope goes back to `p`, the bell's own keeper, idle (v0.11 M3, The Bell-Ringers): a stand-in who took it (a ringer, ringing
+## the bell himself) was stopped on it. The climb is the town's own again, so the next stand-in climbs slower again; a bell that
+## has rung or been silenced stays so. `p` is a Variant: the keeper may be a body freed after its death fade, and then nobody
+## holds the rope.
+func restore(p: Variant) -> void:
+	if state == State.RUNG or state == State.SILENCED:
+		return
+	keeper = p as Person if is_instance_valid(p) else null
+	keeper_is_soldier = false
+	_replaced = false
+	climb = _crowd.profile.bell_climb
+	progress = 0.0
+	state = State.IDLE
+
+
 ## How many times the bell has lied (The Bell Lies).
 var lied := 0
 

@@ -50,6 +50,9 @@ class Quarry:
 	var label := "TARGET"
 	## Seconds into the night he sets out at the latest (the timeline's seconds).
 	var set_out_at := 45.0
+	## v0.11 M3: he sets out at his time on his own (true), or only when the director sends him (false: The Informer, found by
+	## work) -- and then his time is not on the strip and no chain sends him.
+	var scheduled := true
 	## His stops in order, and each one's door.
 	var stops: Array[Structure] = []
 	var stop_doors: Array[Vector2] = []
@@ -97,6 +100,9 @@ var hideout_label := "HIDEOUT"
 var stop_label := "STOP"
 var safe_label := "SAFE"
 var next_label := "NEXT TARGET"
+## v0.11 M3: a power cast by the hideout's door while none is out smokes the next target out (true); The Informer's hiding place
+## is his secret, so a cast there does nothing (false).
+var smoke_out := true
 ## The targets in the order they set out (v0.11 M2; _add_quarry() in _plan()).
 var quarries: Array[Quarry] = []
 ## The hideout's door (the safe place's when there is no hideout) (v0.11 M2).
@@ -136,8 +142,9 @@ func _begin() -> void:
 		_set_down(q.target, hide_door)
 		if hideout != null:
 			_go_in(q, hideout)
-		timeline.add(q.set_out_at, "out_%d" % q.index, _set_out_label(q), _set_out.bind(q),
-			func() -> bool: return q.state == State.WAITING and _alive(q.target))
+		if q.scheduled:
+			timeline.add(q.set_out_at, "out_%d" % q.index, _set_out_label(q), _set_out.bind(q),
+				func() -> bool: return q.state == State.WAITING and _alive(q.target))
 	var taken: Array = []
 	for q in quarries:
 		q.guards = _free_soldiers(hide_door, q.guard_count, taken)
@@ -165,17 +172,6 @@ func _add_quarry(label: String, set_out_at: float, stops: Array[Structure], guar
 	q.guard_count = guard_count
 	quarries.append(q)
 	return q
-
-
-## A door of `s` someone at `from` can walk to (v0.11 M2): its front (_front_of()), else its back, else a side -- the first
-## with a route from `from`; Vector2.INF for none (a house walled in by its neighbours, whose front is a closed yard).
-func _open_door(s: Structure, from: Vector2) -> Vector2:
-	var half := s.footprint.size * 0.5 + Vector2(0.5, 0.5)
-	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
-		var door := _walkable(s.center() + off)
-		if crowd._grid == null or not crowd._grid.path(from, door).is_empty():
-			return door
-	return Vector2.INF
 
 
 ## The standing dwelling nearest `spot` with a door someone at `from` can walk to (v0.11 M2, for _plan()'s stops): as
@@ -233,6 +229,18 @@ func _seen_banner() -> String:
 	return "THE GUARDS CRY MURDER"
 
 
+## Virtual (v0.11 M3): the HUD's line for the main objective in place of AssassinateObjective's own ("" keeps its own): The
+## Informer's "Find the informer: contacts turned 1 / 3".
+func hud_line() -> String:
+	return ""
+
+
+## Virtual (v0.11 M3): why the night is lost now besides a target reaching the safe place ("" while it is not), as
+## RazeDirector.lost_reason(): The Informer's "cold", a contact killed before he was turned.
+func lost_reason() -> String:
+	return ""
+
+
 ## One step (v0.11 M2): the timeline (each target's own time), the chain (sooner after the one before dies), the deaths still
 ## to judge, each target indoors, and every TICK a look at each in the street and his guards.
 func step(delta: float) -> void:
@@ -276,7 +284,7 @@ func out_at(i: int) -> float:
 func _chain() -> void:
 	for i in range(1, quarries.size()):
 		var q := quarries[i]
-		if q.state == State.WAITING and quarries[i - 1].died_at >= 0.0 and _clock >= out_at(i) and _alive(q.target):
+		if q.scheduled and q.state == State.WAITING and quarries[i - 1].died_at >= 0.0 and _clock >= out_at(i) and _alive(q.target):
 			rules.banner.emit(_set_out_label(q).to_upper())
 			_set_out(q)
 
@@ -400,7 +408,7 @@ func _alarm(q: Quarry) -> void:
 func _on_cast(slot: int, _key: String, at: Vector2) -> void:
 	if not _anyone_out():
 		var next := _next_waiting()
-		if next != null and at.distance_to(hide_door) <= alarm_reach:
+		if smoke_out and next != null and at.distance_to(hide_door) <= alarm_reach:
 			rules.banner.emit(_set_out_label(next).to_upper())
 			_set_out(next)
 		return
@@ -425,6 +433,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			q.state = State.DEAD
 			q.inside_of = null
 			_release_guards(q)
+			if timeline != null and q.index + 1 < quarries.size():
+				timeline.expect("out_%d" % (q.index + 1), out_at(q.index + 1))  # v0.11 M3: the strip shows the chained time
 			return
 	for q in quarries:
 		for g: Variant in q.guards:

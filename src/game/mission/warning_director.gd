@@ -147,24 +147,32 @@ func _resumable(p: Person) -> bool:
 	return p.mind in RESUMABLE or (p.soldier and p.mind != Person.Mind.DUTY)
 
 
+## Virtual (v0.11 M3): the messenger rings the bell himself -- he tells no keeper, and at the tower's foot takes the rope whether
+## or not the keeper lives (The Bell-Ringers' RingerDirector). False: The Warning's way.
+func _rings_himself() -> bool:
+	return false
+
+
 ## One look at the messenger. On the errand: tell the keeper when near enough, take the rope at the tower's foot when
 ## the keeper is dead, else follow the keeper. Off it: pick it up again once back on its feet -- or, for a relay
-## (`relay`), at once unless Discord or Mind Whisper holds the witness.
+## (`relay`), at once unless Discord or Mind Whisper holds the witness. v0.11 M3: one who rings it himself (_rings_himself()) is
+## never told off to a keeper and takes the rope at the foot.
 func _run(relay := false) -> void:
 	if not _alive(messenger) or _goal() == Vector2.INF:
 		return
 	var bell := crowd.bell
 	var keeper_alive := bell != null and _alive(bell.keeper)
+	var telling := keeper_alive and not _rings_himself()  # v0.11 M3: one who rings it himself tells no keeper
 	var ready := _resumable(messenger) or (relay and not messenger.mind in HELD)
-	if keeper_alive and messenger == bell.keeper:
+	if telling and messenger == bell.keeper:
 		# The keeper carries it (a relay to the keeper): they need no telling, only to be on their feet to go.
 		if messenger.mind == Person.Mind.DUTY or ready:
 			_deliver()
 		return
 	if messenger.mind == Person.Mind.DUTY and not relay:
-		if keeper_alive and messenger.ground_pos.distance_to(bell.keeper.ground_pos) <= DELIVER_REACH:
+		if telling and messenger.ground_pos.distance_to(bell.keeper.ground_pos) <= DELIVER_REACH:
 			_deliver()
-		elif not keeper_alive and bell != null and not messenger.has_goal() \
+		elif not telling and bell != null and not messenger.has_goal() \
 				and messenger.ground_pos.distance_to(bell.foot) <= BellNetwork.FOOT_REACH:
 			_take_rope()
 		elif messenger.anchor.distance_to(_goal()) > RETARGET_MOVE or not messenger.has_goal():

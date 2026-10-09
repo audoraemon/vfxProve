@@ -17,6 +17,10 @@ const TAX_COLLECTOR := "tax_collector"
 const SPOILED_HARVEST := "spoiled_harvest"
 const LOST_LAMB := "lost_lamb"
 const FIRST_PRAYERS := "first_prayers"
+## The tier board's own missions (v0.11 M3): Tier 2's three new ones.
+const BELL_RINGERS := "bell_ringers"
+const MARKET_PANIC := "market_panic"
+const INFORMER := "informer"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -70,6 +74,23 @@ static func _tier1(id: String, name: String, brief: PackedStringArray) -> Missio
 	m.dp_capacity = 6
 	m.clock = 300.0
 	m.profile = "unaware"
+	m.intro_banner = name.to_upper()
+	return m
+
+
+## A Tier 2 (Omen) mission's frame (v0.11 M3, mission spec §0, Decision 1): an Organized town -- tier_floor 2 and no profile, so a
+## scripted run meets the board's town -- 3 slots and 8 DP, a 5:30 clock, no bonuses, every power allowed unless the mission
+## narrows its pool.
+static func _tier2(id: String, name: String, brief: PackedStringArray) -> MissionDef:
+	var m := MissionDef.new()
+	m.id = id
+	m.name = name
+	m.tier = 2
+	m.brief = brief
+	m.slots = 3
+	m.dp_capacity = 8
+	m.clock = 330.0
+	m.tier_floor = 2
 	m.intro_banner = name.to_upper()
 	return m
 

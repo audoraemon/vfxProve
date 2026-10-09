@@ -48,6 +48,11 @@ var mayor: Person
 var need := FESTIVAL_NEED
 ## How many come to the square (v0.11 M1: the board's Festival raises it with the need, TierBook.FESTIVAL_CROWD).
 var crowd_size := FESTIVAL_CROWD
+## A subclass's knob (v0.11 M3, Market Panic): the Mayor is among the goers, as before (false: none is appointed).
+var has_mayor := true
+## A subclass's knob (v0.11 M3, Market Panic): where the bonfires burn, the market square's two spots as before (none: no fire).
+var fire_spots: Array[Vector2] = [TownLayout.MARKET_SQUARE.get_center() + Vector2(-2.0, -2.5),
+	TownLayout.MARKET_SQUARE.get_center() + Vector2(2.5, 2.0)]
 var _broke := {}
 ## Goers who got away unbroken (v0.09.1, _on_escaped()): left the feast, not lost to it. Keyed by the goer, which is
 ## freed once it is out.
@@ -62,14 +67,9 @@ var _final := {}
 func _begin() -> void:
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
-	mayor = _appoint_mayor()
+	mayor = _appoint_mayor() if has_mayor else null
 	_gather()
-	# The Mayor's own events are dropped (and left off the strip) once he is dead, or if the town had no merchant.
-	var speaks := func() -> bool: return WarningDirector._alive(mayor)
-	timeline.add(BONFIRE_AT, "bonfire", "The bonfire lights", _pack)
-	timeline.add(ADDRESS_AT, "address", "The Mayor's address", _address, speaks)
-	timeline.add(ADDRESS_AT + ADDRESS_SECONDS, "address_end", "The address ends", _address_ends, speaks)
-	timeline.add(CLOSE_AT, "close", "The guard closes the square")
+	_add_events()
 	crowd._field.enemy_killed.connect(_on_killed)
 	crowd.escaped.connect(_on_escaped)
 	rules.cast_made.connect(_on_cast)
@@ -77,7 +77,7 @@ func _begin() -> void:
 	if night != null and night.bell_rang:
 		_post_guards()
 	if ctx != null:
-		for at in [TownLayout.MARKET_SQUARE.get_center() + Vector2(-2.0, -2.5), TownLayout.MARKET_SQUARE.get_center() + Vector2(2.5, 2.0)]:
+		for at in fire_spots:
 			var fire := FxTimeline.cast(BonfireFx, ctx, at, {"seconds": rules.time_left})
 			if fire != null:
 				_fires.append(fire)
@@ -109,6 +109,22 @@ func _gather() -> void:
 	for p in pool.slice(0, crowd_size):
 		goers.append(p)
 		_send(p, crowd._spot_near(c, TownLayout.MARKET_SQUARE.size.x * 0.4))
+
+
+## Virtual (v0.11 M3): the act's timed events. The Festival's: the bonfire, the Mayor's address and its end -- dropped (and left
+## off the strip) once he is dead, or if the town had no merchant -- and the square's close.
+func _add_events() -> void:
+	var speaks := func() -> bool: return WarningDirector._alive(mayor)
+	timeline.add(BONFIRE_AT, "bonfire", "The bonfire lights", _pack)
+	timeline.add(ADDRESS_AT, "address", "The Mayor's address", _address, speaks)
+	timeline.add(ADDRESS_AT + ADDRESS_SECONDS, "address_end", "The address ends", _address_ends, speaks)
+	timeline.add(CLOSE_AT, "close", "The guard closes the square")
+
+
+## Virtual (v0.11 M3): whether goer `p` may be broken now by a fright or a loud cast's danger (Market Panic: not while a warden
+## steadies him). A death counts whatever this says. Yes by default.
+func _may_break(_p: Person) -> bool:
+	return true
 
 
 func _send(p: Person, at: Vector2) -> void:
@@ -193,7 +209,7 @@ func step(delta: float) -> void:
 	if _sample_in <= 0.0:
 		_sample_in = SAMPLE
 		for p in goers:
-			if is_instance_valid(p) and p.is_alive() and p.mind in BROKE_MINDS:
+			if is_instance_valid(p) and p.is_alive() and p.mind in BROKE_MINDS and _may_break(p):
 				_broke[p] = true
 
 
@@ -223,7 +239,8 @@ func _on_cast(_slot: int, key: String, at: Vector2) -> void:
 			continue
 		for point in points:
 			if p.ground_pos.distance_to(point) <= reach:
-				_broke[p] = true
+				if _may_break(p):
+					_broke[p] = true
 				break
 
 

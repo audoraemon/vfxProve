@@ -3,9 +3,11 @@ extends Objective
 ## Act II-A's win (v0.09): the festival is broken -- FESTIVAL_NEED of its goers dead or fled (FestivalDirector).
 
 
-func _init() -> void:
-	label = "Break the festival"
-	reason = "festival"
+## `text` is the HUD's label and `why` the reason a win gives (v0.11 M3: Market Panic's "Scatter the fair", "fair"); the defaults
+## are the Festival's.
+func _init(text := "Break the festival", why := "festival") -> void:
+	label = text
+	reason = why
 
 
 func check(rules: Rules) -> Status:

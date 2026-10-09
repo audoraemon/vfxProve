@@ -62,6 +62,8 @@ const FLOW_TEST_SAVE := "user://test_flow.cfg"
 const SHOW_SAVE := "user://test_show.cfg"
 ## The new Tier 1 missions' photographs (v0.11 M2): each its board night as the tour lands, its tags and HUD in view.
 const TIER1_SHOWS := ["tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
+## The new Tier 2 missions' photographs (v0.11 M3): each its board night as the tour lands, its tags and HUD in view.
+const TIER2_SHOWS := ["bell_ringers", "market_panic", "informer"]
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -318,8 +320,8 @@ func _ready() -> void:
 			mission_id = MissionBook.WARNING
 			loadout = MissionBook.warning().default_loadout
 			go_to(Screen.MISSION)
-		"tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers":
-			# A new Tier 1 mission's board night (v0.11 M2), for the photograph of its tags, its how-to-win line and its wishes.
+		"tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers", "bell_ringers", "market_panic", "informer":
+			# A new Tier 1 or 2 mission's board night (v0.11 M2, M3), for the photograph of its tags, its how-to-win line and its wishes.
 			mission_id = show
 			loadout = MissionBook.get_mission(show).default_loadout
 			go_to(Screen.MISSION)
@@ -332,11 +334,11 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS) and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
-		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS) and is_instance_valid(_mission) \
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS) and is_instance_valid(_mission) \
 				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)

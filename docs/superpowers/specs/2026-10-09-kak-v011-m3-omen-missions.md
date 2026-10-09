@@ -285,7 +285,8 @@ through his four contacts. They are the night's paced items, on the chain rule. 
   - **The informer:** the resident nearest (-3.5, -12.0), behind the Temple. He is taken inside the dwelling nearest that
     point at the start, and is never tagged until he is found. He waits there on duty, so an evacuation never sends him
     running.
-  - **The camera** rests at (4.0, -2.0). The Temple's door is above the centre and the chandler at the top right. The
+  - **The camera** rests at (3.0, -3.0) (Task 7's photograph moved it from (4.0, -2.0), where the chandler's tag sat above the
+    tags' frame and showed as an arrow). The Temple's door is above the centre and the chandler at the top right. The
     weaver's and the potter's tags point from the left edge, below the HUD stack. The carpenter's door shows at the bottom
     left.
 - **Claims:** 17 lay citizens (4 contacts, 12 company, the informer) and five dwellings (the contacts' houses and his
@@ -539,9 +540,9 @@ wrong.
 28. **Not found in time:** 60 s after the fourth visit, the names reach the Temple by the back lanes, so doing nothing loses
     at 5:05, before dawn. Cost: none.
 29. **Informer's tag:** `hunts_informer`; the wish "Kill the informer, unseen" clashes with it. Cost: none.
-30. **Camera spots:** The Bell-Ringers (6.0, -5.0), Market Panic (10.0, -8.0), The Informer (4.0, -2.0), each checked
-    against the left HUD stack. Cost if wrong: a photo-round move, which moves that scenario's own references once (as
-    Spoiled Harvest's did in M2).
+30. **Camera spots:** The Bell-Ringers (6.0, -5.0), Market Panic (10.0, -8.0), The Informer (3.0, -3.0, moved from
+    (4.0, -2.0) by Task 7's photograph), each checked against the left HUD stack. Cost if wrong: a photo-round move, which
+    moves that scenario's own references once (as Spoiled Harvest's did in M2); The Informer's moved once, as landed.
 31. **The new wishes:** "Scare off the bully, unharmed" (a new Fright kind, 10) and "Free the pressed man" (Rescue, 15).
     Both clash with `unaware_town`. The pool grows from 10 to 12, but Tier 1's seeded draws do not change (controller ruling 3):
     `WishDef.min_tier` and `WishBook.pool_for(tier)` leave the two out of a Tier 1 night's draw before it shuffles. Only the

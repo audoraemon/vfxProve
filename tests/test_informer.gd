@@ -103,6 +103,12 @@ static func _setup(t) -> void:
 	for c in d.contacts:
 		clear = clear and Kit.clear_of_stack(c.door, InformerDirector.CAMERA_AT)
 	t.check(clear, "the camera keeps the Temple and every contact (or his arrow) clear of the left HUD stack")
+	# Task 7's photograph: at (4, -2) the chandler's tag sat above the HUD's tag frame, so he showed as an arrow at the top edge.
+	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
+	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(InformerDirector.CAMERA_AT) * Mission.PLAY_ZOOM
+	var lay := Hud.tag_layout(d.tags(), xf, Kit.VIEW)
+	t.check(not lay.is_empty() and String(lay[0].mode) == "map" and bool(lay[0].show),
+		"the first contact's tag is drawn over his door, with its label, not as an arrow at the frame's edge (%s)" % [lay[0].mode if not lay.is_empty() else "none"])
 	var m := MissionBook.informer()
 	var reasons := []
 	for o in m.objectives():

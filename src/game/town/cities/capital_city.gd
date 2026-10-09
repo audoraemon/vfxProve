@@ -123,17 +123,23 @@ const GARDEN_DECOR := [
 	[Decor.Kind.OAK, Vector2(-16.9, -26.6), Vector2(30.0, 0.0)], [Decor.Kind.OAK, Vector2(-16.5, -21.95), Vector2(27.0, 0.0)],
 	[Decor.Kind.PINE, Vector2(-21.1, -23.75), Vector2(28.0, 0.0)],
 ]
-## The drill yard's pieces: the dummies in a column by the barracks, the drill's gear along its north edge and in its
-## south-west corner.
-const DRILL_DUMMIES := [Vector2(-9.4, -26.6), Vector2(-9.4, -25.4), Vector2(-9.4, -24.2), Vector2(-9.4, -23.0)]
+## The drill yard's pieces: the dummies in two tidy rows of four (polish 3), each drawn at DUMMY_SCALE (the scarecrow
+## art stands about one and a half soldiers tall: at this scale about one), the drill's gear along its north edge and
+## in its south-west corner.
+const DRILL_DUMMIES := [
+	Vector2(-12.6, -26.6), Vector2(-12.6, -25.4), Vector2(-12.6, -24.2), Vector2(-12.6, -23.0),
+	Vector2(-9.4, -26.6), Vector2(-9.4, -25.4), Vector2(-9.4, -24.2), Vector2(-9.4, -23.0),
+]
+const DUMMY_SCALE := 0.62
 const DRILL_DECOR := [
 	[Decor.Kind.BARREL, Vector2(-14.6, -27.3)], [Decor.Kind.BARREL, Vector2(-14.15, -27.45)],
 	[Decor.Kind.CRATES, Vector2(-13.5, -27.4)], [Decor.Kind.LOGS, Vector2(-12.4, -27.5)],
 	[Decor.Kind.TABLE, Vector2(-10.9, -27.45)], [Decor.Kind.CRATES, Vector2(-14.6, -21.9)],
 	[Decor.Kind.BARREL, Vector2(-14.1, -21.8)],
 ]
-## Where the drilling soldiers stand: two before each dummy, DRILL_RANKS cells west of it.
-const DRILL_RANKS := [3.0, 1.8]
+## Where the drilling soldiers stand: one before each dummy, DRILL_RANKS cells west of it, facing it (polish 3: two
+## rows of soldiers, each facing its row of dummies).
+const DRILL_RANKS := [1.5]
 ## The ground each kind of courtyard piece closes to walkers, about its point (a bench's along its size).
 const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
 	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
@@ -651,7 +657,7 @@ func court_decor() -> Array[Dictionary]:
 	for row: Array in GARDEN_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": row[2] if row.size() > 2 else Vector2.ZERO})
 	for g: Vector2 in DRILL_DUMMIES:
-		out.append({"kind": Decor.Kind.SCARECROW, "at": g, "size": Vector2.ZERO})
+		out.append({"kind": Decor.Kind.SCARECROW, "at": g, "size": Vector2.ZERO, "scale": DUMMY_SCALE})
 	for row: Array in DRILL_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
 	for row: Array in YARD_DECOR:

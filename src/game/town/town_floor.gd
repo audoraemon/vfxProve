@@ -1209,7 +1209,7 @@ func _paint_decor(ci: CanvasItem) -> void:
 			continue
 		# The same tuning a live Decor takes: its size about its ground point, and its colour.
 		var key := String(Decor.Kind.keys()[d.kind]).to_lower()
-		var sc := ArtTuning.scale(key)
+		var sc := ArtTuning.scale(key) * float(d.get("scale", 1.0))
 		var at := Iso.ground_to_screen(d.at)
 		ci.draw_set_transform(at * (1.0 - sc), 0.0, Vector2(sc, sc))
 		# A piece from inside the walls keeps the colour it had live (see TownDecor._bake_low()).

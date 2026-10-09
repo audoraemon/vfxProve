@@ -91,6 +91,9 @@ static func spots() -> Array[Dictionary]:
 	# The city's own pieces (the capital's Keep courtyard; none at Aldermere), after all the rest.
 	for d: Dictionary in City.current().court_decor():
 		_add(out, d.kind, d.at, d.size)
+		if d.has("scale"):
+			# (drawn at its own scale: Decor.scale_mul)
+			out[out.size() - 1].scale = float(d.scale)
 	var boxes := _screen_boxes(built)
 	for d in out:
 		d.bake = _bakeable(d, boxes)
@@ -682,7 +685,7 @@ static func _merge_piles(out: Array[Dictionary], built: Array[Dictionary]) -> Ar
 	var goods: Array[int] = []
 	for i in out.size():
 		var d := out[i]
-		if not d.bake and d.kind in PILE_KINDS and _walled(d.at, 0.0) \
+		if not d.bake and d.kind in PILE_KINDS and _walled(d.at, 0.0) and not d.has("scale") \
 				and ArtTuning.scale(String(Decor.Kind.keys()[d.kind]).to_lower()) == 1.0:
 			goods.append(i)
 	goods.sort_custom(func(a: int, b: int) -> bool: return _sort_y(out[a].at) < _sort_y(out[b].at))

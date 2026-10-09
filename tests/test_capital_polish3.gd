@@ -15,7 +15,58 @@ static func run(t) -> void:
 	_glints(t)
 	_border_trees(t)
 	_keep_gate(t, c)
+	_dummies(t, c)
 	City.use(&"aldermere")
+
+
+## The practice dummies stand about a soldier's height (a decor scale: the scarecrow art drawn smaller), in two tidy
+## rows in the drill yard, a drilling soldier facing each.
+static func _dummies(t, c: CapitalCity) -> void:
+	var dummies: Array[Dictionary] = []
+	for d: Dictionary in c.court_decor():
+		if d.kind == Decor.Kind.SCARECROW:
+			dummies.append(d)
+	t.check(dummies.size() == 8, "eight practice dummies (%d)" % dummies.size())
+	var art: Dictionary = DecorSprites.decor_set("scarecrow")
+	var tall: float = (art.size as Vector2).y if not art.is_empty() else 37.0
+	var person: float = PeopleArt.cell().y
+	var ok := true
+	var xs := {}
+	for d: Dictionary in dummies:
+		var drawn: float = tall * ArtTuning.scale("scarecrow") * float(d.get("scale", 1.0))
+		ok = ok and drawn >= person * 0.9 and drawn <= person * 1.35 and CapitalCity.DRILL_YARD.has_point(d.at)
+		xs[snappedf((d.at as Vector2).x, 0.01)] = int(xs.get(snappedf((d.at as Vector2).x, 0.01), 0)) + 1
+	t.check(ok, "each dummy is drawn about a soldier's height (%.1f px art, a %.0f px cell), in the drill yard"
+		% [tall * ArtTuning.scale("scarecrow") * float(dummies[0].get("scale", 1.0)) if not dummies.is_empty() else 0.0, person])
+	t.check(xs.size() == 2 and xs.values() == [4, 4], "in two rows of four (%s)" % [xs])
+	var spots := c.drill_spots()
+	var faced := {}
+	var good := true
+	var solid := c.court_blockers()
+	for s: Dictionary in spots:
+		var at: Vector2 = s.at
+		var face: Vector2 = s.face
+		var gap := face.x - at.x
+		good = good and gap >= 1.0 and gap <= 2.0 and is_equal_approx(at.y, face.y) \
+			and CapitalCity.DRILL_YARD.has_point(at)
+		for b: Rect2 in solid:
+			good = good and not b.grow(WalkGrid.BODY).has_point(at)
+		faced[face] = true
+	t.check(spots.size() == 8 and faced.size() == 8 and good,
+		"a drilling soldier stands west of each dummy facing it, in the yard and on open ground (%d spots, %d faced)"
+		% [spots.size(), faced.size()])
+	# The scale reaches the dummies' decor nodes.
+	City.use(&"capital")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var scaled := 0
+	for dec: Decor in town._decor:
+		if dec.kind == Decor.Kind.SCARECROW and CapitalCity.DRILL_YARD.has_point(dec.at) \
+				and is_equal_approx(dec.scale_mul, CapitalCity.DUMMY_SCALE):
+			scaled += 1
+	t.check(scaled == 8, "each dummy's decor node draws at the dummies' scale (%d)" % scaled)
+	town.free()
 
 
 static func _plots(c: CapitalCity, tag: StringName) -> Array[Rect2]:

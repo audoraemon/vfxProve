@@ -72,9 +72,10 @@ func landmark(name: StringName) -> Rect2: return Rect2()   # empty Rect2 = unkno
 ##   &"lawns"          grass inside the walls (the capital's royal garden), meadow tufts on it;
 ##   &"paths"          gravel paths, each {points: polyline, width}, painted as dirt over the lawns and paving.
 func floor_areas() -> Dictionary: return {}
-## Decor the city lays out itself (the capital's Keep courtyard): each {kind (Decor.Kind), at, size}, carried by
-## TownDecor after every other piece, so the others keep their seeds; and the ground each piece closes to walkers (also
-## in blockers()). None by default.
+## Decor the city lays out itself (the capital's Keep courtyard): each {kind (Decor.Kind), at, size}, and optionally
+## "scale" (its drawing's size times this: the capital's practice dummies, polish 3), carried by TownDecor after every
+## other piece, so the others keep their seeds; and the ground each piece closes to walkers (also in blockers()). None
+## by default.
 func court_decor() -> Array[Dictionary]: return []
 func court_blockers() -> Array[Rect2]: return []
 ## Soldiers drilling: each {at, face}, the last of soldier_posts()' "yard" posts in order; the soldier posted there

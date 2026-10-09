@@ -59,6 +59,10 @@ const TOWN_SHOTS := [
 	["capital_edge_s.png", Vector2(0, 70), 0.5],
 	["capital_edge_w.png", Vector2(-70, 0), 0.5],
 	["capital_edge_river_w.png", Vector2(-70, 9), 0.6],
+	# The Keep's grounds with the watchtower on its wall line, the drill yard's two rows of dummies, the avenues of the
+	# old and the new town, a house block close-up per district, the south suburbs, gallows hill and the tournament field.
+	["capital_keep.png", Vector2(3.0, -23.5), 1.0],
+	["capital_drill.png", Vector2(-11.5, -24.8), 1.3],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
 	["town_edge_n.png", Vector2(0, -70), 0.5],
 	["town_edge_e.png", Vector2(70, 0), 0.5],

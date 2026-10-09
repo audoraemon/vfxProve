@@ -65,6 +65,9 @@ const BAND_TUFTS := 0.5
 ## The band's tufts are painted into the floor texture this long after the first bake (seconds), in a second pass that
 ## keeps what the first painted: the town's first frames cost what they did before the band.
 const BAND_DELAY := 1.5
+## The most ground squares and tuft samples one frame of the second pass paints.
+const BAND_STEP_CELLS := 800.0
+const BAND_STEP_TUFTS := 1000.0
 ## How near the map's edge a road or trail must end to run on out through the band (border_roads()): one that reaches
 ## it. (A meadow trail stopping short of the edge fades out in the band's meadow.)
 const EDGE_REACH := 0.05
@@ -132,13 +135,23 @@ class DetailPaint extends Node2D:
 ## under the iso basis) or its tufts.
 class BandPaint extends Node2D:
 	var floor_node: TownFloor
-	var ground := true
+	## What it paints: one strip's ground (GROUND), the water, banks, cliff and roads past the fill again over it
+	## (REDRAW), or one strip's tufts (TUFTS); `strip` indexes band_strips().
+	## (`from`..`to`: the share of the strip's rows, or of its tuft samples, this piece paints)
+	enum Part { GROUND, REDRAW, TUFTS }
+	var part := Part.GROUND
+	var strip := 0
+	var from := 0.0
+	var to := 1.0
 
 	func _draw() -> void:
-		if ground:
-			floor_node.band_ground_pass(self)
-		else:
-			floor_node.band_detail(self)
+		match part:
+			Part.GROUND:
+				floor_node._band_ground(self, TownFloor.band_strips()[strip], from, to)
+			Part.REDRAW:
+				floor_node.band_redraw(self)
+			Part.TUFTS:
+				floor_node.band_detail(self, strip, from, to)
 
 
 ## The world's light colour laid over the baked ground (Town.EVENING).
@@ -211,17 +224,42 @@ func _band_pass(vp: SubViewport, ground: Node2D, detail: Node2D, bounds: Rect2) 
 		return
 	ground.visible = false
 	detail.visible = false
-	var band_ground := BandPaint.new()
-	band_ground.floor_node = self
-	band_ground.transform = Transform2D.IDENTITY.translated(-bounds.position) * Iso.BASIS
-	vp.add_child(band_ground)
-	var band := BandPaint.new()
-	band.floor_node = self
-	band.ground = false
-	band.position = -bounds.position
-	vp.add_child(band)
 	vp.render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# One piece a frame, so no frame carries the whole band: each strip's ground, the redraw over them, each strip's
+	# tufts. Each is drawn into the texture once, then hidden.
+	var steps: Array = []
+	var strips := band_strips()
+	for k in strips.size():
+		var cells := strips[k].get_area() / (BAND_CELL * BAND_CELL)
+		var n := maxi(1, ceili(cells / BAND_STEP_CELLS))
+		for c in n:
+			steps.append([BandPaint.Part.GROUND, k, float(c) / n, float(c + 1) / n])
+	steps.append([BandPaint.Part.REDRAW, 0, 0.0, 1.0])
+	for k in strips.size():
+		var samples := DETAIL_COUNT * BAND_TUFTS * strips[k].get_area() / DETAIL_AREA
+		var n := maxi(1, ceili(samples / BAND_STEP_TUFTS))
+		for c in n:
+			steps.append([BandPaint.Part.TUFTS, k, float(c) / n, float(c + 1) / n])
+	var last: Node2D = null
+	for st: Array in steps:
+		if not is_instance_valid(vp) or not vp.is_inside_tree():
+			return
+		if last != null:
+			last.visible = false
+		var piece := BandPaint.new()
+		piece.floor_node = self
+		piece.part = st[0]
+		piece.strip = st[1]
+		piece.from = st[2]
+		piece.to = st[3]
+		if piece.part == BandPaint.Part.TUFTS:
+			piece.position = -bounds.position
+		else:
+			piece.transform = Transform2D.IDENTITY.translated(-bounds.position) * Iso.BASIS
+		vp.add_child(piece)
+		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		await RenderingServer.frame_post_draw
+		last = piece
 
 
 ## F7 switched the art (ArtToggle): bake the floor again, so its baked decor and shrubs follow.
@@ -922,6 +960,11 @@ static func band_haze(g: Vector2) -> float:
 static func band_forest(g: Vector2) -> bool:
 	if wet(g) or wet(g + Vector2(0.9, 0.9)) or wet(g - Vector2(0.9, 0.9)):
 		return false
+	return band_woods(g)
+
+
+## band_forest() for a point known to be off the water and its banks.
+static func band_woods(g: Vector2) -> bool:
 	var fill := _fill()
 	var edge := g.clamp(fill.position, fill.end - Vector2(0.01, 0.01))
 	if g.distance_to(edge) < BAND_JOIN:
@@ -929,29 +972,28 @@ static func band_forest(g: Vector2) -> bool:
 	return _octave(g / BAND_WOODS, 7) > BAND_FOREST
 
 
-## The border band's ground: meadow or forest floor in the fill's patches, fading to HAZE with distance, in BAND_CELL
-## squares (distant ground, and a quarter of the fill's cells to paint); the water is painted over it after (_river()).
-func _band_ground(ci: CanvasItem) -> void:
-	for strip: Rect2 in band_strips():
-		var n := int(roundf(strip.size.x / BAND_CELL))
-		var m := int(roundf(strip.size.y / BAND_CELL))
-		for j in m:
-			for i in n:
-				var g := strip.position + Vector2(i, j) * BAND_CELL
-				var c := g + Vector2(BAND_CELL, BAND_CELL) * 0.5
-				var pal: Array = FOREST if band_forest(c) else GRASS
-				var v := clampf(_noise(c) * 1.25 - 0.12, 0.0, 0.999)
-				ci.draw_rect(Rect2(g, Vector2(BAND_CELL, BAND_CELL)), (pal[int(v * pal.size())] as Color).lerp(HAZE, band_haze(c)))
+## One strip of the border band's ground: meadow or forest floor in the fill's patches, fading to HAZE with distance,
+## in BAND_CELL squares (distant ground, and a quarter of the fill's cells to paint); the water and the rest are painted
+## over it after (band_redraw()).
+func _band_ground(ci: CanvasItem, strip: Rect2, from := 0.0, to := 1.0) -> void:
+	var n := int(roundf(strip.size.x / BAND_CELL))
+	var m := int(roundf(strip.size.y / BAND_CELL))
+	for j in range(roundi(m * from), roundi(m * to)):
+		for i in n:
+			var g := strip.position + Vector2(i, j) * BAND_CELL
+			var c := g + Vector2(BAND_CELL, BAND_CELL) * 0.5
+			var pal: Array = FOREST if band_forest(c) else GRASS
+			var v := clampf(_noise(c) * 1.25 - 0.12, 0.0, 0.999)
+			ci.draw_rect(Rect2(g, Vector2(BAND_CELL, BAND_CELL)), (pal[int(v * pal.size())] as Color).lerp(HAZE, band_haze(c)))
 
 
-## The band's ground-unit layer, the bake's second pass: its ground, then everything the first pass painted past the
-## fill again over it -- the water (cut to the band), the band's own pebbles, the west branch's cliff (and the boulders
+## The band's redraw in the bake's second pass, once its ground is down (_band_ground()): everything the first pass
+## painted past the fill again over it -- the water (cut to the band), the band's own pebbles, the west branch's cliff (and the boulders
 ## of the fill's cliff that reach past it), and the roads carried out (cut to past the fill).
-func band_ground_pass(ci: CanvasItem) -> void:
+func band_redraw(ci: CanvasItem) -> void:
 	var strips := band_strips()
 	if strips.is_empty():
 		return
-	_band_ground(ci)
 	var geo := _geo()
 	var fill := _fill()
 	var drawn := drawn_area()
@@ -1055,7 +1097,7 @@ func _band_cliff(ci: CanvasItem, b: Rect2) -> void:
 ## The band's tufts and flowers in screen pixels, BAND_TUFTS as thick as the fill's (far-off ground): hashed inside each
 ## band strip, BAND_SALT apart from the fill's, on its meadow and forest floor only, off the water and the roads carried
 ## out through it, faded as its ground is. Painted in the bake's second pass (_bake()).
-func band_detail(ci: CanvasItem) -> void:
+func band_detail(ci: CanvasItem, only := -1, from := 0.0, to := 1.0) -> void:
 	var fill := _fill()
 	var roads := border_roads()
 	var water: Array[Rect2] = []
@@ -1063,9 +1105,11 @@ func band_detail(ci: CanvasItem) -> void:
 		water.append(w.grow(0.3))
 	var strips := band_strips()
 	for k in strips.size():
+		if only >= 0 and k != only:
+			continue
 		var strip: Rect2 = strips[k]
 		var count := roundi(DETAIL_COUNT * BAND_TUFTS * strip.get_area() / DETAIL_AREA)
-		for i in count:
+		for i in range(roundi(count * from), roundi(count * to)):
 			var hx := _hash(i * 3 + BAND_SALT + k * 7, i * 7 + 5)
 			var hy := _hash(i * 11 + 3, i * 5 + BAND_SALT + k * 13)
 			var hz := _hash(i * 13 + 7 + BAND_SALT, i * 17 + 1 + k)

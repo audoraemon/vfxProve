@@ -34,11 +34,11 @@ func _add_border() -> void:
 	var band := TownDecor.border_trees()
 	band.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return (a.at as Vector2).x + (a.at as Vector2).y < (b.at as Vector2).x + (b.at as Vector2).y)
-	_add_bands(band)
+	await _add_bands(band, true)
 
 
-## `list` (back to front) as bands of BAND, one batch each.
-func _add_bands(list: Array) -> void:
+## `list` (back to front) as bands of BAND, one batch each; `spread`: one band a frame.
+func _add_bands(list: Array, spread := false) -> void:
 	var bands := {}
 	for d in list:
 		var at: Vector2 = d.at
@@ -49,6 +49,10 @@ func _add_bands(list: Array) -> void:
 	var keys := bands.keys()
 	keys.sort()
 	for k in keys:
+		if spread:
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return
 		var band := Band.new()
 		band.trees = bands[k]
 		band.material = Decor.wind_material()

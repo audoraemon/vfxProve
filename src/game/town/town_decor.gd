@@ -411,6 +411,10 @@ static func border_trees() -> Array[Dictionary]:
 	var fill := city.map().grow(TownFloor.FILL_MARGIN)
 	var outer := TownFloor.drawn_area()
 	var roads := TownFloor.border_roads()
+	# The water and its banks, grown once (a tree keeps 0.8 off it every way, and the woods' own 0.9 bank test).
+	var water: Array[Rect2] = []
+	for w: Rect2 in TownFloor._geo().wet:
+		water.append(w.grow(1.3))
 	var nx := int(outer.size.x / BORDER_STEP)
 	var ny := int(outer.size.y / BORDER_STEP)
 	for j in ny:
@@ -420,12 +424,9 @@ static func border_trees() -> Array[Dictionary]:
 				(j + 0.2 + _h(n, BORDER_SALT + 1) * 0.6) * BORDER_STEP)
 			if fill.grow(0.3).has_point(g) or not outer.grow(-0.2).has_point(g):
 				continue
-			var wet := false
-			for o: Vector2 in [Vector2.ZERO, Vector2(0.8, 0.8), Vector2(-0.8, -0.8), Vector2(0.8, -0.8), Vector2(-0.8, 0.8)]:
-				wet = wet or TownFloor.wet(g + o)
-			if wet:
+			if TownFloor._in_rects(g, water):
 				continue
-			var forest := TownFloor.band_forest(g)
+			var forest := TownFloor.band_woods(g)
 			if _h(n, BORDER_SALT + 2) > (BORDER_WOODS if forest else BORDER_MEADOW):
 				continue
 			var near_road := false

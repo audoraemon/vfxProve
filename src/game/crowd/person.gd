@@ -331,6 +331,8 @@ static var view := Rect2()
 ## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
 ## screen at play zoom, and nobody can see a stride or a light reading there.
 const OFFSCREEN_EVERY := 3
+## The rate in play: the city's (CityDef.offscreen_every(), set by Crowd.setup()); Aldermere's is OFFSCREEN_EVERY.
+static var offscreen_every := OFFSCREEN_EVERY
 
 ## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
 ## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
@@ -396,7 +398,9 @@ func frame(delta: float) -> void:
 	_seen = not view.has_area() or view.has_point(position)
 	var every := 1
 	if not _seen:
-		every = OFFSCREEN_EVERY
+		# The city's slower rate is for the unhurried only: anyone fleeing, frightened or knocked off screen keeps
+		# OFFSCREEN_EVERY (at 6 the capital's fleeing jammed at its gates, Task 14).
+		every = offscreen_every if offscreen_every != OFFSCREEN_EVERY and unhurried() else OFFSCREEN_EVERY
 	elif unhurried():
 		every = CALM_EVERY
 	if every > 1:

@@ -275,6 +275,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_parent = parent
 	_rng.seed = seed_value
 	_seed = seed_value
+	Person.offscreen_every = City.current().offscreen_every()
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	env.structure_blighted.connect(_on_blighted)
 	# A structure built or taken away (v0.06's thorns) may stand on a gate's queue: find the spots again.

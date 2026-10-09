@@ -33,6 +33,9 @@ func patrol_loops() -> Array: return []
 func district_exits() -> Dictionary: return {}
 ## One person through a gate this often (Crowd's gates; the postern keeps its own pace).
 func gate_interval() -> float: return Crowd.GATE_INTERVAL
+## An off-screen person is updated every this many frames (Person.offscreen_every, set by Crowd.setup()): Aldermere's
+## Person.OFFSCREEN_EVERY, which its deterministic checksums ride on.
+func offscreen_every() -> int: return Person.OFFSCREEN_EVERY
 ## The way out through the gate standing on `gate`: the side its crowd waits on is the other. Vector2.INF: the old rule
 ## (Crowd.outward_of(), from the town's middle at the origin).
 func gate_outward(_gate: Rect2) -> Vector2: return Vector2.INF

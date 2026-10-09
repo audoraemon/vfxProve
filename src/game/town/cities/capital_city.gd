@@ -913,6 +913,12 @@ func gate_outward(gate: Rect2) -> Vector2:
 	return _outward.get(gate, Vector2.INF)
 
 
+## The capital's ~600 people (Task 14, the crowd LOD): those off screen update every 6th frame, half Aldermere's
+## rate -- a frame steps ~100 fewer people at play zoom. Nobody sees a stride or a light reading off screen.
+func offscreen_every() -> int:
+	return Person.OFFSCREEN_EVERY * 2
+
+
 ## The capital's gatehouses are wide double gates: two pass in the time Aldermere's lets one (Crowd.GATE_INTERVAL).
 func gate_interval() -> float:
 	return GATE_INTERVAL

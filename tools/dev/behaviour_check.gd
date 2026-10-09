@@ -318,6 +318,7 @@ func _calm(seconds: float, shots: bool) -> void:
 
 ## The capital's calm (Task 11): _calm()'s places every 20 s, and arrivals at the routine places every second.
 func _capital_calm(seconds: float) -> void:
+	var fps := _fps()
 	print("BEHAVIOUR capital_calm city=%s citizens=%d soldiers=%d" % [City.current().id(),
 		mission._crowd.citizens.size(), mission._crowd.soldiers.size()])
 	var anchors := mission._crowd._snapped_anchors()
@@ -326,7 +327,7 @@ func _capital_calm(seconds: float) -> void:
 	var going := {}
 	var t := 0.0
 	while t < seconds:
-		await _frames(60)
+		await _frames(fps)
 		t += 1.0
 		for p: Person in mission._crowd.citizens:
 			if not is_instance_valid(p):
@@ -351,7 +352,8 @@ func _capital_calm(seconds: float) -> void:
 ## CAPITAL_CUT_AT, reported every 10 s. A user of the cut bridge is one standing on it or with it on its path when it
 ## falls; it has rerouted once it crosses another bridge, makes for the ferry or the west road, or has escaped.
 func _capital_evac(seconds: float) -> void:
-	await _frames(20 * 60)
+	var fps := _fps()
+	await _frames(20 * fps)
 	var crowd: Crowd = mission._crowd
 	var town: Town = mission._town
 	var grid: WalkGrid = mission._grid
@@ -379,8 +381,8 @@ func _capital_evac(seconds: float) -> void:
 	while t < seconds:
 		await process_frame
 		frame += 1
-		t = frame / 60.0
-		if frame == roundi(CAPITAL_CUT_AT * 60.0):
+		t = float(frame) / fps
+		if frame == roundi(CAPITAL_CUT_AT * fps):
 			for st: Structure in town.bridges:
 				if st.footprint == cut_rect:
 					for p: Person in crowd.citizens:
@@ -414,13 +416,13 @@ func _capital_evac(seconds: float) -> void:
 				var e: Array = still.get(p, [])
 				if e.is_empty() or (e[0] as Vector2).distance_to(g) > 0.5:
 					still[p] = [g, frame]
-				elif frame - int(e[1]) > 10 * 60:
+				elif frame - int(e[1]) > 10 * fps:
 					stuck[p] = true
 			else:
 				still.erase(p)
 		if cleared < 0.0 and living == 0:
 			cleared = t
-		if frame % 600 != 0:
+		if frame % (10 * fps) != 0:
 			continue
 		var by_exit := {}
 		var waiting := 0
@@ -436,7 +438,7 @@ func _capital_evac(seconds: float) -> void:
 			for n: String in crossed[p]:
 				over[n] = int(over.get(n, 0)) + 1
 		var rerouted := 0
-		var cut_frame := roundi(CAPITAL_CUT_AT * 60.0)
+		var cut_frame := roundi(CAPITAL_CUT_AT * fps)
 		for p in users:
 			if not is_instance_valid(p) or not crowd.citizens.has(p):
 				rerouted += 1
@@ -452,7 +454,7 @@ func _capital_evac(seconds: float) -> void:
 			over, users.size(), rerouted, stuck.size(), river])
 	var ashore := 0.0
 	for p in caught:
-		ashore = maxf(ashore, (int(caught[p]) - roundi(CAPITAL_CUT_AT * 60.0)) / 60.0 if int(caught[p]) >= 0 else INF)
+		ashore = maxf(ashore, (int(caught[p]) - roundi(CAPITAL_CUT_AT * fps)) / float(fps) if int(caught[p]) >= 0 else INF)
 	var left := []
 	for p: Person in crowd.citizens:
 		if is_instance_valid(p) and p.is_alive():
@@ -2177,6 +2179,14 @@ func _force_act(how: String) -> void:
 		if mission.act().id == "omen":
 			mission._crowd.ring_bell()  # a lost Act I is a rung bell, as the night reads it
 		rules.force_end(false, "forced")
+
+
+## Frames to a second of game time: the run's --fixed-fps (60 without it), so a capital scenario counts game seconds at
+## any rate (Task 15 runs capital_evac at 30 fps).
+func _fps() -> int:
+	var a := OS.get_cmdline_args()
+	var i := a.find("--fixed-fps")
+	return int(a[i + 1]) if i >= 0 and i + 1 < a.size() else 60
 
 
 func _frames(n: int) -> void:

@@ -333,6 +333,8 @@ static var view := Rect2()
 const OFFSCREEN_EVERY := 3
 ## The rate in play: the city's (CityDef.offscreen_every(), set by Crowd.setup()); Aldermere's is OFFSCREEN_EVERY.
 static var offscreen_every := OFFSCREEN_EVERY
+## The frame count the LOD staggers by: the engine's (-1), or one a test sets, since the test runner never advances frames.
+static var frame_no := -1
 
 ## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
 ## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
@@ -405,7 +407,7 @@ func frame(delta: float) -> void:
 		every = CALM_EVERY
 	if every > 1:
 		_offscreen_delta += delta
-		if (Engine.get_process_frames() + stagger_key()) % every != 0:
+		if ((frame_no if frame_no >= 0 else Engine.get_process_frames()) + stagger_key()) % every != 0:
 			return
 		delta = _offscreen_delta
 		_offscreen_delta = 0.0

@@ -46,15 +46,16 @@ var descend := false
 
 ## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
 ## v0.11 M1: "dawn" is The Warning's loss at the clock's end (no waiting, spec §7.3) and a board night caught by dawn.
-## v0.11 M2: the new Tier 1 missions' endings.
+## v0.11 M2: the new Tier 1 missions' endings. The Lost Lamb has its own keys (`lamb_out`, `lamb_taken`, `lamb`), never the Escort
+## type's defaults (`out`, `taken`), so a later Escort mission using them is not given the lamb's words (final review).
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
 	"gaze": "THE LANTERN LOOKS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
 	"drained": "THE LANTERNS ARE DARK", "relit": "THE LANTERNS BURN ON", "flame": "THE FLAME IS STOLEN",
 	"kept": "THE FLAME IS KEPT", "wren": "THE BOY IS DEAD", "late": "DAWN FINDS THE FLAME",
 	"dawn": "DAWN COMES", "collector": "THE COLLECTORS ARE DEAD", "taxes": "THE TAXES ARE IN",
-	"spoiled": "THE HARVEST IS SPOILED", "emptied": "A GRANARY IS EMPTIED", "out": "THE LAMB IS FREE",
-	"taken": "THE LAMB IS TAKEN BACK", "lamb": "THE ACOLYTE IS DEAD"}
+	"spoiled": "THE HARVEST IS SPOILED", "emptied": "A GRANARY IS EMPTIED", "lamb_out": "THE LAMB IS FREE",
+	"lamb_taken": "THE LAMB IS TAKEN BACK", "lamb": "THE ACOLYTE IS DEAD"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

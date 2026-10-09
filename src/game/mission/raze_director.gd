@@ -130,6 +130,11 @@ func _raze(s: Structure) -> void:
 	_on_razed(s)
 
 
-## Lets go of the timeline (v0.11 M2).
+## Lets go of the timeline and every seal (v0.11 M2; final review): a sealed target's damage_filter is bound to this director, so
+## it is cleared with the night -- the building outlives it, and must take blows again.
 func teardown() -> void:
+	for s: Variant in _sealed.keys():
+		if is_instance_valid(s):
+			unseal(s as Structure)
+	_sealed.clear()
 	timeline = null  # its banner and guard lambdas hold this director: let both go

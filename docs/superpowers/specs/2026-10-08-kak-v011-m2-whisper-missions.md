@@ -57,7 +57,8 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
   - **Flushed:** the house a collector is in set alight or destroyed sends him out of it in a fright. For the
     counting-house that means those out on their rounds who hide there; those still waiting to set out stay in, and set
     out at their own time or by the chain, so one fire never sets the whole night out at once.
-  - **No hiding place:** once the counting-house is gone, an alarm sends him running for the Citadel.
+  - **No hiding place:** once the counting-house is burning or gone, an alarm sends him running for the Citadel, and the hint,
+    the HUD and the tags say he runs for it (final review: they first said he hides).
   - **Unseen:** each death is judged as the Prince's is. If anyone living stands within 2 units of where he falls (once a
     Doom's other victims have fallen), the guards cry murder and the bellkeeper is called. On the board the night is then
     caught by the bell (wishes lost) unless the god ascends first or stops the bellkeeper (Decision 3).
@@ -80,7 +81,7 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
     INSIDE (DEPUTY - INSIDE) over that door. With none out, the next one is tagged so over the counting-house's door.
   - COUNTING-HOUSE, orange.
   - DEBTOR on the house each collector out is heading to or inside, orange (with none out, the next one's first).
-  - CITADEL, red, once one heads there.
+  - CITADEL, red, once one heads there; pointed at from the screen's edge when he runs for it with no hiding place.
   - NEXT COLLECTOR, orange, at the counting-house's door while one is out and another still waits (as the Warning's NEXT
     STAR).
   - A red diamond on everyone who would see a Silent Doom on a collector in the street (within 2 units, beyond the Doom's
@@ -92,9 +93,10 @@ Reshaped by the controller's Task 2 ruling (Decision 4): three collectors in seq
   | (none) | Kill each collector (gold) in the street. If no one near (red) sees it, the guards raise no cry. |
   | `inside` | He is indoors (gold). He comes out to walk to his next debtor (orange): be ready. |
   | `hiding` | Alarmed, he hides in the counting-house. Set it alight to smoke him out, or wait for him. |
+  | `running` | No hiding place: he runs for the Citadel (red). Kill him before he gets in. |
   | `safe` | His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in. |
   | `next` | One down. The next collector (gold) leaves the counting-house soon: be ready for him. |
-- **HUD:** "Kill the collectors: 1 / 3", with ", he hides" or ", rounds done" for the first collector out.
+- **HUD:** "Kill the collectors: 1 / 3", with ", he hides", ", he runs for the Citadel" or ", rounds done" for the first collector out.
 - **Tour:**
   1. "The counting-house. The tax collector sets out at 0:45, his deputies by 1:45 and 2:45."
   2. "His first debtor. He goes in to collect, then walks on."
@@ -143,7 +145,8 @@ arrives one granary at a time.
     load at the granary and carries it to the Citadel's gate, again and again. Each granary holds 5 loads, and taking the last
     empties it. Doing nothing loses at about 3:10-3:45 (the carter's round trips vary with who he is).
   - **The god's hand:** a frightened, whispered or confused carter is left be, and takes his errand up again after.
-  - **Felled carters** are not replaced. A spoiled granary's carter and watchmen go home.
+  - **Felled carters** are not replaced. A spoiled granary's carter and watchmen go home (final review: the watchmen calm at
+    their posts too, who would otherwise stand there all night).
   - **Fire:** the town answers a fire as it always does. Its fire crews douse it, and that is the Raze type's "repair crews".
 - **Timeline:**
 
@@ -233,7 +236,8 @@ arrives one granary at a time.
 - **Tags:**
   - ACOLYTE, blue, with an edge arrow. While seized it reads ACOLYTE - CAUGHT, red.
   - WEST GATE - WATCHED (red) or WEST GATE - CLEAR (green) at the way out, with an edge arrow (Task 8: it is some 28 units from
-    the acolyte, off screen from his side).
+    the acolyte, off screen from his side). It reads WATCHED while the watch walks back from the guardhouse, not only once
+    they are at the gate (final review; the display and the hint only: seizing is by sight alone).
   - TAKING HIM BACK, red with an edge arrow, on the seizer. TEMPLE, red, while he is held.
   - SEARCHER, red with an edge arrow, on each searcher.
   - PATROL, red, on each patrol's first soldier. A red diamond on every other patrol soldier and on the watch.
@@ -250,7 +254,8 @@ arrives one granary at a time.
   2. "The west gate. Its watch changes soon after he draws near."
   3. "The Temple. At 2:30 it sends searchers after him."
 - **Mission tags:** `unaware_town` (derived).
-- **Results:** "THE LAMB IS FREE" (`out`), "THE LAMB IS TAKEN BACK" (`taken`), "THE ACOLYTE IS DEAD" (`lamb`).
+- **Results:** "THE LAMB IS FREE" (`lamb_out`), "THE LAMB IS TAKEN BACK" (`lamb_taken`), "THE ACOLYTE IS DEAD" (`lamb`). Its own keys
+  (final review), not the Escort objective's defaults `out` and `taken`, so a later Escort mission's endings are its own.
 - **First guesses** (tune order): CHARGE_PACE 0.6, the start spot, SIGHT 2.5, HUNT_AT 90, WATCH_CHANGE 30 / WATCH_GAP 15 /
   WATCH_CYCLE 45, the beats.
 - **Tuning (Task 4):** the first guesses lost: the market patrol's north end sat beside the Temple's door, and the searchers

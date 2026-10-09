@@ -31,8 +31,9 @@ func check(rules: Rules) -> Status:
 	return Status.PENDING
 
 
-## "Kill the collectors: 1 / 3", "...: 1 / 3, he hides" (the current target flees or hides), "...: 1 / 3, rounds done" (he
-## makes for the safe place); the label alone once all are dead or one is safe (v0.11 M2).
+## "Kill the collectors: 1 / 3", "...: 1 / 3, he hides" (the current target flees or hides), "...: 1 / 3, he runs for the
+## Citadel" (he flees with no hiding place, final review), "...: 1 / 3, rounds done" (he makes for the safe place); the label
+## alone once all are dead or one is safe (v0.11 M2).
 func hud_text(rules: Rules) -> String:
 	var d := rules.director as AssassinateDirector
 	if d == null or d.all_fallen() or d.any_safe() or d.quarries.is_empty():
@@ -41,6 +42,8 @@ func hud_text(rules: Rules) -> String:
 	var q := d.current()
 	if q == null:
 		return count
+	if d.fleeing_to_safe(q):
+		return "%s, he runs for the Citadel" % count
 	if q.state == AssassinateDirector.State.FLEEING or q.state == AssassinateDirector.State.HIDING:
 		return "%s, he hides" % count
 	if q.state != AssassinateDirector.State.WAITING and q.leg >= q.stops.size():

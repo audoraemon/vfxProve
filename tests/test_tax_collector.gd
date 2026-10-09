@@ -1,7 +1,7 @@
 extends RefCounted
 ## v0.11 M2 The Tax Collector (spec §1 as the controller's Task 2 ruling reshapes it, AssassinateDirector): three collectors --
 ## the tax collector and his two deputies, residents made nobles -- count in the counting-house (the workshop hall) with
-## their guards at its door. Each sets out on his own round of debtors' houses, 25 s indoors at each, then makes for the
+## their guards at its door. Each sets out on his own round of debtors' houses (3, 2 and 3 of them), 15 s indoors at each, then makes for the
 ## Citadel's gate, which loses the night: the collector at 0:45, each deputy at his own time or CHAIN_WAIT after the one
 ## before him dies, whichever is sooner (smoked out sooner still by a power cast at the door while none is out). A loud power
 ## near one, a guard felled or a fright sends him to hide 30 s; a house he is in set alight or brought down flushes him out
@@ -33,6 +33,7 @@ static func run(t) -> void:
 	_smoked(t)
 	_alarm(t)
 	_flushed(t)
+	_running(t)
 	_lost(t)
 	_kill(t)
 	_freed(t)
@@ -406,6 +407,15 @@ static func _flushed(t) -> void:
 	_run(h, AssassinateDirector.TICK + DT)
 	t.check(qh.state == AssassinateDirector.State.FLEEING and qh.target.goal().distance_to(dh.safe_at) < 0.5,
 		"frightened, with no counting-house to hide in, he runs for the Citadel")
+	# The final review's probe: shown as running for the Citadel, not as hiding, wherever he is on the way.
+	_arrive(qh.target, dh.safe_at + Vector2(3.0, 0.0))
+	_run(h, AssassinateDirector.TICK + DT)
+	t.check(_running_shown(dh, h.rules), "and he is shown so: the hint, the HUD and the Citadel tag, not a debtor's (%s; %s; %s)"
+		% [dh.hint_phase(), (h.rules as Rules).objectives[0].hud_text(h.rules), _labels(dh)])
+	_arrive(qh.target, dh.safe_at)
+	_run(h, AssassinateDirector.TICK + DT)
+	t.check(dh.any_safe() and (h.rules as Rules).finished and not (h.rules as Rules).won and (h.rules as Rules).over_reason == "taxes",
+		"and getting in loses the night")
 	_done(h)
 
 	var v := _world()
@@ -419,6 +429,64 @@ static func _flushed(t) -> void:
 	t.check(not qv.target.inside and qv.leg == 1 and qv.target.is_alive(),
 		"a debtor's house brought down flushes him out alive, and that debtor is done")
 	_done(v)
+
+
+## The collector out runs for the Citadel and is shown so (final review): the hint's phase, the HUD's words, and the Citadel's tag --
+## red, pointed at from the edge, once -- with no debtor's.
+static func _running_shown(d: TaxCollectorDirector, rules: Rules) -> bool:
+	var labels := _labels(d)
+	var edged := false
+	for m in d.tags():
+		edged = edged or (m.label == "CITADEL" and m.edge and m.color == AssassinateDirector.MARK_WATCHED)
+	return d.hint_phase() == "running" and rules.objectives[0].hud_text(rules) == "Kill the collectors: 0 / 3, he runs for the Citadel" \
+		and labels.count("CITADEL") == 1 and not labels.has("DEBTOR") and edged
+
+
+## No hiding place (final review): the counting-house burning or down while a collector is out on his round, any later alarm sends
+## him running for the Citadel -- and the hint, the HUD and the tags say so, not that he hides. With it standing he still hides.
+static func _running(t) -> void:
+	var a := _world(PackedStringArray(["smite", "doom", "discord"]))
+	var da: TaxCollectorDirector = a.d
+	var qa := da.quarries[0]
+	da._set_out(qa)
+	da._on_cast(0, "smite", qa.target.ground_pos + Vector2(1.5, 0.0))
+	t.check(qa.state == AssassinateDirector.State.FLEEING and not da.fleeing_to_safe(qa) and da.hint_phase() == "hiding"
+		and (a.rules as Rules).objectives[0].hud_text(a.rules) == "Kill the collectors: 0 / 3, he hides"
+		and _labels(da).has("COUNTING-HOUSE") and not _labels(da).has("CITADEL"),
+		"alarmed with the counting-house standing, he hides: the hint, the HUD and the tags say that (%s)" % [_labels(da)])
+	_done(a)
+
+	for gone in [false, true]:
+		var how := "down" if gone else "alight"
+		var s := _world()
+		var d: TaxCollectorDirector = s.d
+		var q := d.quarries[0]
+		d._set_out(q)
+		if gone:
+			d.hideout.destroy(d.hideout.center(), &"fire")
+		else:
+			(s.crowd as Crowd).fires.ignite(d.hideout, 0.6)
+		_run(s, AssassinateDirector.TICK + DT)
+		if not gone:
+			# (A house brought down frightens whoever stands by it, so he is alarmed at once: the next check is for fire.)
+			t.check(q.state == AssassinateDirector.State.WALKING and not d.fleeing_to_safe(q) and d.hint_phase() == ""
+				and not _labels(d).has("CITADEL") and _labels(d).has("DEBTOR"),
+				"out on his round with the counting-house %s: not yet running from anything (%s)" % [how, _labels(d)])
+		d._alarm(q)
+		t.check(q.state == AssassinateDirector.State.FLEEING and d.fleeing_to_safe(q) and q.target.goal().distance_to(d.safe_at) < 0.5
+			and _running_shown(d, s.rules),
+			"alarmed with the counting-house %s: he runs for the Citadel, and is shown so (%s; %s; %s)"
+			% [how, d.hint_phase(), (s.rules as Rules).objectives[0].hud_text(s.rules), _labels(d)])
+		# Two running: still one Citadel tag.
+		var q1 := d.quarries[1]
+		d._set_out(q1)
+		d._alarm(q1)
+		t.check(d.fleeing_to_safe(q1) and _labels(d).count("CITADEL") == 1, "two running for it share the one Citadel tag")
+		_arrive(q.target, d.safe_at)
+		_run(s, AssassinateDirector.TICK + DT)
+		t.check(d.any_safe() and (s.rules as Rules).finished and not (s.rules as Rules).won and (s.rules as Rules).over_reason == "taxes",
+			"and he gets in: the night is lost")
+		_done(s)
 
 
 static func _lost(t) -> void:

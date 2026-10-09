@@ -3,11 +3,11 @@ extends AssassinateDirector
 ## The Tax Collector (v0.11 M2, Tier 1, spec §1 and §8 row 2, as the controller's Task 2 ruling reshapes it): three collectors
 ## -- the tax collector and his two deputies, the residents nearest the counting-house, made nobles for the night so their
 ## capes and crowns pick them out -- count in the counting-house (the workshop hall, east quarter) with their guards at its
-## door. The collector walks his round of three debtors' houses from 0:45; each deputy walks his own two at his own time, or
-## CHAIN_WAIT after the one before him dies, whichever is sooner. 25 s indoors at each debtor, then each takes the taxes to
-## the Citadel's gate, which loses the night. Alarmed one hides 30 s in the counting-house; set alight, it flushes out only
-## those hiding there, and those still waiting stay in. All three dead wins; a seen kill calls the bell
-## (AssassinateDirector._judge()).
+## door. The collector walks his round of three debtors' houses from 0:45; the first deputy walks two debtors', the second three,
+## each at his own time, or CHAIN_WAIT (45 s) after the one before him dies, whichever is sooner. VISIT_SECONDS (15 s) indoors at
+## each debtor, then each takes the taxes to the Citadel's gate, which loses the night. Alarmed one hides 30 s in the counting-house;
+## set alight, it flushes out only those hiding there, and those still waiting stay in. All three dead wins; a seen kill calls the
+## bell (AssassinateDirector._judge()).
 
 ## The counting-house is the building with this art tag (v0.11 M2).
 const COUNTING_TAG := &"workshop"

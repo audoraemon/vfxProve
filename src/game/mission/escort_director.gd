@@ -386,6 +386,22 @@ func _watch_standing() -> bool:
 	return false
 
 
+## The gate is watched, as the map tag and the hint say it (v0.11 M2, final review): a watchman stands at it (_watch_standing()),
+## or the watch's change is over and one who would see him is walking back to his post from the guardhouse -- his goal is the
+## post -- so the gate does not read clear while the watch is on its way. One drawn off elsewhere (a lure, a fright) is not
+## counted. Only reads; the seizing rule is _seen_by()'s alone.
+func _gate_watched() -> bool:
+	if _watch_standing():
+		return true
+	if watch_away:
+		return false
+	for i in watch.size():
+		var v: Variant = watch[i]
+		if _watching(v) and (v as Person).goal().distance_to(_walkable(watch_posts[i])) <= MOVE:
+			return true
+	return false
+
+
 ## He is dead, and did not escape (v0.11 M2).
 func charge_lost() -> bool:
 	return not escaped and not _alive(charge)
@@ -393,7 +409,8 @@ func charge_lost() -> bool:
 
 ## The map tags (v0.11 M2), most important first, while he is in the town:
 ## - him, pointed at from the edge (red and CAUGHT while held);
-## - the way out, clear (green) or watched (red), pointed at from the edge (v0.11 M2, Task 8 fix: it lies out of sight of the charge);
+## - the way out, clear (green) or watched (red: _gate_watched()), pointed at from the edge (v0.11 M2, Task 8 fix: it lies out of sight of
+##   the charge);
 ## - his seizer, pointed at, and the Temple, while he is held;
 ## - each searcher, pointed at;
 ## - a red diamond on each patrol soldier (the first labelled PATROL) and each watchman at the gate.
@@ -405,7 +422,7 @@ func tags() -> Array[MapTag]:
 		out.append(MapTag.person(charge.ground_pos, MARK_WATCHED, charge_label + " - CAUGHT", true))
 	else:
 		out.append(MapTag.person(charge.ground_pos, MARK_CHARGE, charge_label, true))
-	var clear := watch_away or not _watch_standing()
+	var clear := watch_away or not _gate_watched()
 	out.append(MapTag.place(exit_at, MARK_CLEAR if clear else MARK_WATCHED, exit_label + (" - CLEAR" if clear else " - WATCHED"),
 		0.0, true))
 	if held and _alive(seizer):
@@ -427,14 +444,15 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## The hint's phase (v0.11 M2): "caught" while held; near the gate, "clear" while the watch is away (or none stands) else "gate"; else "".
+## The hint's phase (v0.11 M2): "caught" while held; near the gate, "gate" while it is watched (_gate_watched(): a watchman stands there, or the
+## watch is walking back to its posts), "clear" while the watch is away or none would see him; else "".
 func hint_phase() -> String:
 	if escaped or taken or not _alive(charge):
 		return ""
 	if held:
 		return "caught"
 	if charge.ground_pos.distance_to(gate_at) <= NEAR_GATE:
-		return "clear" if watch_away or not _watch_standing() else "gate"
+		return "clear" if watch_away or not _gate_watched() else "gate"
 	return ""
 
 

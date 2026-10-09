@@ -127,7 +127,7 @@ static func lost_lamb() -> MissionDef:
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])
 	m.director = LostLambDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [EscortObjective.new("Lead the acolyte out", "out", "taken", "lamb"),
+		var out: Array[Objective] = [EscortObjective.new("Lead the acolyte out", "lamb_out", "lamb_taken", "lamb"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m

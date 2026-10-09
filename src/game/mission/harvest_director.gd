@@ -340,8 +340,23 @@ func _on_razed(s: Structure) -> void:
 				crowd.off_duty(p)
 	carters[s] = []
 	for w: Watch in watches.get(s, []):
-		if _alive(w.man) and (w.man as Person).mind == Person.Mind.DUTY:
-			crowd.off_duty(w.man as Person)
+		_release(w)
+
+
+## A spoiled granary's watchman goes home (v0.11 M2, final review). One on duty is stood down (Crowd.off_duty()); one calm at his
+## post is sent home too -- the first watchmen are set down with a stay of 1000 s, so left to his day he would stand at the
+## spoiled granary all night. One frightened, held or fighting is left to the town. The hold that kept him at his post while his
+## granary burned ends with it.
+func _release(w: Watch) -> void:
+	if not _alive(w.man):
+		return
+	var p := w.man as Person
+	if p.fearless_left <= HOLD_POST:
+		p.fearless_left = 0.0
+	if p.mind == Person.Mind.DUTY:
+		crowd.off_duty(p)
+	elif p.mind in GUARD_MINDS and p.profile != null:
+		p.regroup(p.profile.home)
 
 
 ## The night is lost once a granary is emptied (v0.11 M2).

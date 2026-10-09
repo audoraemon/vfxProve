@@ -40,10 +40,12 @@ static func run(t) -> void:
 	_staggered(t)
 	_emptied(t)
 	_spoiled(t)
+	_home(t)
 	_win(t)
 	_freed(t)
 	_resume(t)
 	_walled(t)
+	_unsealed(t)
 	_reserved(t)
 	_mission(t)
 
@@ -476,6 +478,47 @@ static func _spoiled(t) -> void:
 	_done(s)
 
 
+## A spoiled granary's watchmen go home (final review): one on duty at his post, and one calm at it -- the first watchmen are set
+## down with a stay of 1000 s, so he would stand there all night, as one does who stood through the granary's fall before its grain
+## came (fearless, or beyond its fright) -- even holding his post against the fire. One frightened is left to the town, and another
+## granary's watchmen are not touched.
+static func _home(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	var h := d.targets[1]
+	var k := d.targets[2]
+	var men := d.watchmen(g)
+	var calm: Person = men[0]
+	var duty: Person = men[1]
+	var kept := d.watchmen(h)
+	var scared := d.watchmen(k)
+	var stood := calm.mind == Person.Mind.CALM and calm.stay_left > 100.0
+	# The two granaries come down before their grain does: nothing is judged yet.
+	g.destroy(g.center(), &"fire")
+	k.destroy(k.center(), &"fire")
+	_run(s, DT * 3.0)
+	var waiting := not d.razed(g) and not d.razed(k)
+	# The watchmen as the grain's coming finds them: (the collapse's fright has passed them by or run its course).
+	calm.mind = Person.Mind.CALM
+	calm.fearless_left = HarvestDirector.HOLD_POST
+	duty.go_duty(duty.anchor)
+	scared[0].mind = Person.Mind.PANIC
+	scared[1].mind = Person.Mind.CALM
+	d._deliver(g)
+	d._deliver(k)
+	_run(s, DT * 3.0)
+	t.check(stood and waiting and d.razed(g) and d.razed(k), "the watchmen stand calm with a stay of 1000 s; the grain comes to the ruins: spoiled")
+	t.check(calm.mind == Person.Mind.REGROUP and calm.anchor.is_equal_approx(calm.profile.home) and is_zero_approx(calm.fearless_left),
+		"the one calm at his post goes home, the hold against the fire ended with it")
+	t.check(duty.mind == Person.Mind.REGROUP and duty.anchor.is_equal_approx(duty.profile.home), "so does the one on duty")
+	t.check(scared[0].mind == Person.Mind.PANIC and scared[1].mind == Person.Mind.REGROUP,
+		"one frightened is left to the town; his fellow at the other spoiled granary goes home")
+	t.check(kept[0].mind == Person.Mind.CALM and kept[1].mind == Person.Mind.CALM and d.guarding(h),
+		"the watchmen of a granary still to spoil keep their posts")
+	_done(s)
+
+
 static func _win(t) -> void:
 	var s := _world()
 	var d: HarvestDirector = s.d
@@ -549,6 +592,25 @@ static func _walled(t) -> void:
 	g.destroy(g.center(), &"stone")
 	_run(s, DT * 2.0)
 	t.check(d.razed(g) and d.all_razed(), "a sealed target somehow brought down is razed all the same")
+	_done(s)
+
+
+## The night over (final review): a sealed target's damage filter, bound to the director, is cleared by teardown(), so the building
+## takes blows again; a sealed target freed by then is skipped.
+static func _unsealed(t) -> void:
+	var s := _world(false, true)
+	var d: RazeDirector = s.d
+	var g := d.targets[0]
+	var sealed := d.is_sealed(g) and g.damage_filter.is_valid()
+	d.teardown()
+	var hp := g.hp
+	g.damage(10.0, g.center(), &"fire")
+	t.check(sealed and not d.is_sealed(g) and not g.damage_filter.is_valid() and g.hp < hp,
+		"a sealed target is unsealed when the night is torn down: no filter bound to the old director, and blows land")
+	d.seal(g)
+	d.teardown()
+	d.teardown()
+	t.check(not g.damage_filter.is_valid(), "torn down twice (the rules do so too): still clear")
 	_done(s)
 
 

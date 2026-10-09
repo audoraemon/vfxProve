@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_blind(t)
 	_taken(t)
 	_watch(t)
+	_walking_back(t)
 	_escape(t)
 	_hunt(t)
 	_searchers(t)
@@ -179,7 +180,7 @@ static func _taken(t) -> void:
 	_arrive(p, d.return_to)
 	_arrive(d.charge, d.return_to + Vector2(0.5, 0.0))
 	_run(s, EscortDirector.TICK + DT)
-	t.check(d.taken and rules.finished and not rules.won and rules.over_reason == "taken"
+	t.check(d.taken and rules.finished and not rules.won and rules.over_reason == "lamb_taken"
 		and (s.banners as Array).has("THE LAMB IS TAKEN BACK"), "marched to the Temple's door: the night is lost")
 	_done(s)
 
@@ -208,6 +209,42 @@ static func _watch(t) -> void:
 	_done(s)
 
 
+## The gate reads watched while the watch walks back (final review): the change over, the watchmen still at the guardhouse -- beyond
+## the gate's reach -- are on their way to their posts and will see him, so the tag and the hint say watched; one drawn off
+## elsewhere (a lure), or frightened, is not counted, and with none left it reads clear. Only the display: seizing is _seen_by()'s
+## alone, and the scripted player's own choice (_watch_standing()) is not changed.
+static func _walking_back(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	_arrive(d.charge, d.gate_at + Vector2(0.0, -4.5))
+	d._hold_at = d.charge.ground_pos
+	d.watch_away = true
+	d._step_watch_posts()  # off to the guardhouse for the change
+	for w in d.watch:
+		_arrive(w, w.anchor)
+	var away := d.hint_phase() == "clear" and _labels(d).has("WEST GATE - CLEAR")
+	d.watch_away = false
+	d._step_watch_posts()  # the change over: back to their posts
+	var far := not d.watch.is_empty()
+	var headed := true
+	for w in d.watch:
+		far = far and w.ground_pos.distance_to(d.gate_at) > EscortDirector.SIGHT + 1.0
+		headed = headed and w.goal() != Vector2.INF
+	t.check(away and far and headed and not d._watch_standing() and d.hint_phase() == "gate"
+		and _labels(d).has("WEST GATE - WATCHED") and not _labels(d).has("WEST GATE - CLEAR"),
+		"the watch walking back from the guardhouse, still far from the gate: it reads watched, not clear (%s; %s)" % [d.hint_phase(), _labels(d)])
+	for w in d.watch:
+		w.mind = Person.Mind.OBSERVE
+		w.set_goal(d.guardhouse + Vector2(0.0, -3.0))
+	t.check(d.hint_phase() == "clear" and _labels(d).has("WEST GATE - CLEAR"),
+		"drawn off by a lure, the watch does not hold the gate: clear")
+	for w in d.watch:
+		w.mind = Person.Mind.PANIC
+	t.check(d.hint_phase() == "clear" and _labels(d).has("WEST GATE - CLEAR"), "frightened off, none would see him: clear")
+	_done(s)
+
+
 static func _escape(t) -> void:
 	var s := _world()
 	var d: LostLambDirector = s.d
@@ -215,7 +252,7 @@ static func _escape(t) -> void:
 	_clear_watchers(d)
 	_arrive(d.charge, d.exit_at)
 	_run(s, EscortDirector.TICK + DT)
-	t.check(d.escaped and rules.finished and rules.won and rules.over_reason == "out" and (s.banners as Array).has("THE LAMB IS OUT"),
+	t.check(d.escaped and rules.finished and rules.won and rules.over_reason == "lamb_out" and (s.banners as Array).has("THE LAMB IS OUT"),
 		"at the way out he escapes: won")
 	t.check((s.banners as Array).count("THE LAMB IS OUT") == 1, "and the crowd's word of it does not say it twice")
 	d.charge.free()  # (Crowd.escape() frees the body at once; a test frees it by hand)
@@ -387,7 +424,7 @@ static func _carried(t) -> void:
 		"fleeing to an exit, the crowd carries him off: he is out")
 	lamb.free()  # (the crowd frees the body a frame later)
 	_run(s, EscortDirector.TICK + DT)
-	t.check(rules.finished and rules.won and rules.over_reason == "out" and not d.charge_lost() and d.tags().is_empty()
+	t.check(rules.finished and rules.won and rules.over_reason == "lamb_out" and not d.charge_lost() and d.tags().is_empty()
 		and bool(d.report().out), "and the night is won, not lost with him dead")
 	_done(s)
 	s = _world()
@@ -461,10 +498,13 @@ static func _mission(t) -> void:
 	for o in m.objectives():
 		reasons.append(o.reason)
 	t.check(m.id == "lost_lamb" and m.tier == 1 and m.director == LostLambDirector and is_equal_approx(m.clock, 300.0)
-		and m.profile == "unaware" and reasons == ["out", "dawn"] and m.bonuses().is_empty(),
+		and m.profile == "unaware" and reasons == ["lamb_out", "dawn"] and m.bonuses().is_empty(),
 		"The Lost Lamb: Tier 1's numbers, its director; lead him out, dawn (%s)" % [reasons])
 	t.check(MissionBook.get_mission("lost_lamb").id == "lost_lamb", "found by id")
-	t.check(ResultsScreen.title_for(true, "out") == "THE LAMB IS FREE" and ResultsScreen.title_for(false, "taken") == "THE LAMB IS TAKEN BACK"
+	t.check(ResultsScreen.title_for(true, "lamb_out") == "THE LAMB IS FREE" and ResultsScreen.title_for(false, "lamb_taken") == "THE LAMB IS TAKEN BACK"
 		and ResultsScreen.title_for(false, "lamb") == "THE ACOLYTE IS DEAD", "its results' titles")
-	var none := EscortObjective.new("Lead the acolyte out", "out", "taken", "lamb")
-	t.check(none.reason == "out" and none.label == "Lead the acolyte out", "its objective's words")
+	t.check(ResultsScreen.title_for(true, "out") != "THE LAMB IS FREE" and ResultsScreen.title_for(false, "taken") != "THE LAMB IS TAKEN BACK"
+		and ResultsScreen.title_for(false, "dead") != "THE ACOLYTE IS DEAD",
+		"the Escort type's own default reasons (out, taken, dead) are not the lamb's titles, for a later Escort mission (final review)")
+	var none := EscortObjective.new("Lead the acolyte out", "lamb_out", "lamb_taken", "lamb")
+	t.check(none.reason == "lamb_out" and none.label == "Lead the acolyte out", "its objective's words")

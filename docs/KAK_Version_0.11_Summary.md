@@ -81,7 +81,7 @@ The mission spec's Decisions 1-29 and the plan's 30-33, numbered after M1's thir
 33. "Unseen" is no bonus: a seen kill calls the bellkeeper and still wins; on the board the bell tolling after it catches the night and loses the wishes, unless the god ascends or stops the bellkeeper first.
 34. The Tax Collector has three targets in sequence (the collector and two deputies), each deputy out at his own time (1:45, 2:45) or 45 s after the one before dies; any one at the Citadel's gate loses the night, and `AssassinateDirector` is generic for N targets.
 35. The counting-house is the workshop hall; each collector's debtors are the dwellings nearest his fixed spots whose doors the street reaches; the collectors are residents made nobles.
-36. A loud power within 4 units of a collector in the street, a guard falling or a fright sends him to hide 30 s; a fire on, or the fall of, the house he is in flushes him out (never those waiting in the counting-house); with no hiding place an alarm sends him to the Citadel; quiet powers never alarm.
+36. A loud power within 4 units of a collector in the street, a guard falling or a fright sends him to hide 30 s; a fire on, or the fall of, the house he is in flushes him out (never those waiting in the counting-house); with no hiding place (the counting-house burning or gone) an alarm sends him to the Citadel, and the hint, the HUD and the Citadel tag say so; quiet powers never alarm.
 37. Raze is a new `RazeDirector` base (targets, a spoil time, an optional seal); Last Judgement's and Judgement's directors are left as they are.
 38. Granaries are dwellings, empty until their grain arrives (1:00, 2:00, 3:00, or 45 s after the one before is spoiled); each has two watchmen who beat out its fire after 3 s while calm and at their posts; "spoiled" is burned 10 s in all or destroyed once the grain is in; the first granary emptied loses at once.
 39. One carter a granary from near the Citadel, setting out when its grain arrives; a load is counted when it is taken; felled carters are not replaced.
@@ -108,7 +108,7 @@ The mission spec's Decisions 1-29 and the plan's 30-33, numbered after M1's thir
 60. The directors are `AssassinateDirector` / `TaxCollectorDirector`, `RazeDirector` / `HarvestDirector`, `EscortDirector` / `LostLambDirector` and `FirstPrayersDirector`; the objectives `AssassinateObjective`, `RazeObjective` and `EscortObjective`; the wishes `BailiffWish` and `NeighboursWish`.
 61. A generic objective takes its label and its reasons in `_init()`, so later tiers' missions of its type reuse it.
 62. The board's Tier 1 list changes once, after all four missions exist; until then each was tested and played through its `MissionBook` version.
-63. Each new results title is a reason in `ResultsScreen.ACT_TITLES`, added in the mission's own task.
+63. Each new results title is a reason in `ResultsScreen.ACT_TITLES`, added in the mission's own task. The Lost Lamb's reasons are its own (`lamb_out`, `lamb_taken`, `lamb`), not the Escort objective's defaults (`out`, `taken`), so a later Escort mission using the defaults is not given the lamb's titles.
 
 ### Photographs and drawing fixes
 
@@ -116,8 +116,19 @@ The mission spec's Decisions 1-29 and the plan's 30-33, numbered after M1's thir
 
 - **Best lines:** a card's best, "Cleared  best 3:12  wishes 2", wraps between its parts and never inside one, so "best 3:12" stays whole and the double spaces survive; and the five cards' rules sit at one height, lifted by the row's most best lines, so a two-line best on The Warning does not leave its rule a line above its neighbours'.
 - **The Lost Lamb's WEST GATE tag** has an edge arrow. The gate is some 28 units from the acolyte, so it is off screen at the opening camera, and the first photograph showed no sign of it; now "WEST GATE - WATCHED" and its arrow show at the screen's left edge.
-- **Spoiled Harvest's camera** moves from (1, 8) to (-9, 13.5). At the old spot the first granary, the one whose grain comes at 0:55, sat under the left HUD stack (objectives, hint, wishes), tag and watchmen both; now its tag and its two watchmen are clear of the stack and the other two granaries' tags show at the right.
+- **Spoiled Harvest's camera** moves from (1, 8) to (-9, 13.5). At the old spot the first granary, the one whose grain comes at 1:00 (its tag read 0:55 by the time of the photograph), sat under the left HUD stack (objectives, hint, wishes), tag and watchmen both; now its tag and its two watchmen are clear of the stack and the other two granaries' tags show at the right.
 - The Tax Collector and First Prayers photographs needed nothing: their tags, hints and wishes read clear. As in every mission, a world tag can still pass under the HUD's panels and timeline strip (the INFORMER wish tag under the strip in the tax photograph).
+
+### The final review's fixes
+
+One Important and five minor findings, fixed in one commit before the milestone lands.
+
+- **A collector running for the Citadel is shown as running.** With the counting-house burning or gone, an alarmed collector walks to the Citadel and his arrival loses the night, yet the hint read "he hides in the counting-house", the HUD ", he hides" and the place tag stayed on his next debtor. `AssassinateDirector.fleeing_to_safe()` now drives a `running` hint phase ("No hiding place: he runs for the Citadel (red). Kill him before he gets in."), the HUD's ", he runs for the Citadel" and a red CITADEL tag with an edge arrow. All read-only: no checksum moved.
+- **The Lost Lamb's results keys** are its own (decision 63).
+- **A spoiled granary's watchmen go home**, those calm at their posts as well as those on duty (the first watchmen are set down with a stay of 1000 s, so they would have stood there all night). The scripted player kills every watchman before a granary is spoiled, so Spoiled Harvest's six references did not move.
+- **The lamb's gate reads WATCHED while the watch walks back** from the guardhouse, in the tag and the hint; seizing is by sight alone and the scripted player's own choice is unchanged, so the lamb references did not move.
+- **`RazeDirector.teardown()` unseals** every sealed target, so no building keeps a damage filter bound to a dead director.
+- **Stale text:** the Tax Collector's header comments (15 s indoors, the second deputy's three debtors) and the photograph note above (the first grain comes at 1:00).
 
 Gates: filled in at landing.
 

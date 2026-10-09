@@ -519,6 +519,12 @@ func _hideout_stands() -> bool:
 	return hideout != null and is_instance_valid(hideout) and not hideout.destroyed and not _burning(hideout)
 
 
+## `q` is alarmed with no hiding place left (v0.11 M2, final review): he flees, and the hideout is gone or alight, so he runs for
+## the safe place -- where arriving loses the night. Only reads.
+func fleeing_to_safe(q: Quarry) -> bool:
+	return q.state == State.FLEEING and not _hideout_stands()
+
+
 ## `s` is on fire (v0.11 M2).
 func _burning(s: Structure) -> bool:
 	return crowd.fires != null and crowd.fires.is_burning(s)
@@ -595,7 +601,8 @@ func witnesses(q: Quarry = null) -> Array[Person]:
 ## - each target out, pointed at from the edge -- over the door of the house he is in while indoors; with none out, the next
 ##   one still waiting, over the hideout's door;
 ## - the hideout while it stands;
-## - each target out's stop (or the safe place once his round is done); with none out, the next one's first stop;
+## - each target out's stop (or the safe place once his round is done, or he runs for it with no hiding place: then pointed at
+##   from the edge); with none out, the next one's first stop;
 ## - with one out and another still waiting, the next one at the hideout's door (`next_label`);
 ## - round each target in the street, a red diamond on each person who would see him die, and a blue one on each guard who
 ##   would not.
@@ -642,23 +649,31 @@ func _target_tag(q: Quarry) -> MapTag:
 	return MapTag.person(q.target.ground_pos, MARK_TARGET, q.label, true)
 
 
-## The place `q` is bound for, appended to `out` (v0.11 M2): his stop while it stands, or the safe place once his round is done.
+## The place `q` is bound for, appended to `out` (v0.11 M2): his stop while it stands, or the safe place once his round is done --
+## and the safe place, pointed at from the screen's edge, while he runs for it with no hiding place (fleeing_to_safe(), final
+## review: his next stop is no longer where he is bound). One tag to the safe place, however many head there.
 func _place_tag(q: Quarry, out: Array[MapTag]) -> void:
-	if q.leg < q.stops.size():
+	var running := fleeing_to_safe(q)
+	if q.leg < q.stops.size() and not running:
 		var s := q.stops[q.leg]
 		if is_instance_valid(s) and not s.destroyed:
 			out.append(MapTag.place(s.center(), MARK_PLACE, stop_label, s.height, false))
-	else:
-		out.append(MapTag.place(safe_at, MARK_WATCHED, safe_label, 0.0, false))
+		return
+	for m in out:
+		if m.label == safe_label and m.edge == running:
+			return
+	out.append(MapTag.place(safe_at, MARK_WATCHED, safe_label, 0.0, running))
 
 
-## The hint's phase (v0.11 M2), for the current target: "hiding" while he flees or hides; "inside" while he is indoors at a stop,
-## or waits for the first set-out; "next" while he waits after another has died; "safe" once he makes for the safe place;
-## else "". "" once none is left.
+## The hint's phase (v0.11 M2), for the current target: "running" while he flees with no hiding place, for the safe place (final
+## review); "hiding" while he flees to the hideout or hides in it; "inside" while he is indoors at a stop, or waits for the first
+## set-out; "next" while he waits after another has died; "safe" once he makes for the safe place; else "". "" once none is left.
 func hint_phase() -> String:
 	var q := current()
 	if q == null or not _alive(q.target):
 		return ""
+	if fleeing_to_safe(q):
+		return "running"
 	match q.state:
 		State.FLEEING, State.HIDING:
 			return "hiding"

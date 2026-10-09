@@ -1,7 +1,9 @@
 class_name EscortObjective
 extends Objective
 ## The Escort type's main objective (v0.11 M2, spec §7.1): DONE the moment the charge is out (reason `out`); FAILED when he
-## is taken back (`taken`) or dies (`dead`). EscortDirector judges each.
+## is taken back (`taken`) or dies (`dead`). EscortDirector judges each. Those are the defaults: a mission passes its own
+## reasons (The Lost Lamb's are `lamb_out`, `lamb_taken` and `lamb`), as the results' titles are keyed by reason and the
+## defaults have none.
 
 ## The reasons a win, a taking back and a death give (v0.11 M2).
 var _out := ""

@@ -15,10 +15,13 @@ const FPS_AT: Array[float] = [4.0, 8.0, 12.0, 10.0, 12.0]
 ## The diagonals, in atlas order: front-right, front-left, back-right, back-left.
 enum Facing { SE, SW, NE, NW }
 const DIR_NAMES := ["south-east", "south-west", "north-east", "north-west"]
-## Each citizen role's designs, in CitizenProfile.Role order: one look, or two picked by the person's look.
+## Each citizen role's designs, in CitizenProfile.Role order: one look, or two picked by the person's look. The
+## capital's roles wear existing designs: the baker a merchant's, the washer a commoner's (a resident's), the dockworker
+## the labourer's, the monk the priest's, the beggar the plainer resident look (no ragged design yet).
 const CITIZEN := [["resident_a", "resident_b"], ["merchant_a", "merchant_b"], ["craft_a", "craft_b"], ["laborer"],
 	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"], ["watchman"],
-	["mayor"], ["noble"]]
+	["mayor"], ["noble"], ["merchant_a", "merchant_b"], ["resident_a", "resident_b"], ["laborer"], ["clergy"],
+	["resident_b"]]
 ## Designs not generated yet that wear another's until they are: the watchman (v0.08) the bellkeeper's dark navy coat
 ## and cap, the nearest to his dark cloak (Person draws his lantern over it); the Mayor (v0.09) a merchant's, with
 ## Person's gold chain over it, and the Prince's noble a resident's, with its crown; and the Lantern Knight (v0.10 M3)

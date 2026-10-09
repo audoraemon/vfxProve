@@ -223,8 +223,10 @@ func _rebuild(seed_value: int) -> void:
 	add_child(_crowd)
 	_crowd.setup(_bf.ctx.field, _bf.ctx.env, _town, _grid, _bf.ctx.world, seed_value)
 	var wanted := Battlefield.arg_value(OS.get_cmdline_user_args(), "--people")
-	var people := int(wanted) if wanted != "" else PEOPLE
-	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
+	# The city's own numbers (CityDef.citizens(), soldiers(); Aldermere's PEOPLE), --people=N scaling both.
+	var town_people := City.current().citizens() + City.current().soldiers()
+	var people := int(wanted) if wanted != "" else town_people
+	var citizens := roundi(float(people) * float(City.current().citizens()) / float(town_people))
 	_crowd.spawn(citizens, people - citizens)
 
 

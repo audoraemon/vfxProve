@@ -18,6 +18,8 @@ const LIE_REASSURE := 8.0
 ## The town scale upgrade doubled the people along with the town (110 + 50 before).
 const CITIZENS := 220
 const SOLDIERS := 100
+## A city dealing by district (_district_plan()) gives each district a household per this many of its citizens.
+const HOUSEHOLD := 4
 ## Soldier posts: drilling in the yard, on the walls and gates, guarding the Citadel, patrolling in pairs.
 const POST_YARD := 30
 const POST_WALLS := 30
@@ -270,7 +272,14 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	return self
 
 
-func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
+## Spawns the people: by default the city's numbers (CityDef.citizens(), soldiers(): Aldermere's CITIZENS and
+## SOLDIERS). A city with spawn_roles() deals its citizens by district and job (_district_plan()); else by
+## CitizenProfile.SHARES into every house.
+func spawn(citizen_count := -1, soldier_count := -1) -> void:
+	if citizen_count < 0:
+		citizen_count = City.current().citizens()
+	if soldier_count < 0:
+		soldier_count = City.current().soldiers()
 	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
@@ -280,13 +289,18 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		if s.role == &"house":
 			homes.append(s)
 	var anchors := _snapped_anchors()
+	var plan := _district_plan(City.current().spawn_roles(), citizen_count, anchors)
 	var at_home := 0
 	for i in citizen_count:
-		var home_i := at_home % maxi(homes.size(), 1)
-		var home: Structure = homes[home_i] if not homes.is_empty() else null
-		at_home += 1
-		var profile := _profile(i, citizen_count, home, anchors)
-		profile.family = home_i
+		var profile: CitizenProfile
+		if not plan.is_empty():
+			profile = _job_profile(plan[i], anchors)
+		else:
+			var home_i := at_home % maxi(homes.size(), 1)
+			var home: Structure = homes[home_i] if not homes.is_empty() else null
+			at_home += 1
+			profile = _profile(i, citizen_count, home, anchors)
+			profile.family = home_i
 		# Each starts somewhere in its day: at home, at work or at a leisure spot.
 		var starts: Array[Vector2] = [profile.home]
 		if profile.works():
@@ -412,6 +426,97 @@ func _profile(i: int, n: int, home: Structure, anchors: Dictionary) -> CitizenPr
 	for k in _rng.randi_range(1, 3):
 		if not near.is_empty():
 			pr.leisure.append(near[_rng.randi_range(0, near.size() - 1)])
+	return pr
+
+
+## A city's citizens dealt by district and job (CityDef.spawn_roles()), `n` in all (each count scaled when `n` is not
+## the city's total, the rounding carried so they sum to `n`): one [job, district, home point, family] per citizen,
+## district by district. A district's households are its "home" anchors; one with fewer than a household per
+## HOUSEHOLD citizens also takes its jobs' workplaces inside it (the monks' monastery), then the nearest homes beyond
+## it. Empty when the city deals by shares.
+func _district_plan(roles: Dictionary, n: int, anchors: Dictionary) -> Array:
+	var out: Array = []
+	var total := 0
+	for d: StringName in roles:
+		for job: StringName in roles[d]:
+			total += int(roles[d][job])
+	if total == 0 or n <= 0:
+		return out
+	var homes: Array[Vector2] = anchors.get("home", [] as Array[Vector2])
+	var families := {}
+	var seen := 0
+	for d: StringName in roles:
+		var area := City.current().landmark(d)
+		var count := 0
+		var jobs: Array = []
+		for job: StringName in roles[d]:
+			var before := roundi(float(seen) * n / total)
+			seen += int(roles[d][job])
+			var k := roundi(float(seen) * n / total) - before
+			count += k
+			for j in k:
+				jobs.append(job)
+		if jobs.is_empty():
+			continue
+		var pool: Array[Vector2] = []
+		for g in homes:
+			if area.has_point(g):
+				pool.append(g)
+		var want := ceili(float(count) / HOUSEHOLD)
+		if pool.size() < want:
+			for job: StringName in roles[d]:
+				for kind: String in CitizenProfile.JOBS[job][1]:
+					for g: Vector2 in anchors.get(kind, []):
+						if area.has_point(g) and not pool.has(g):
+							pool.append(g)
+		if pool.size() < want:
+			var rest: Array[Vector2] = []
+			for g in homes:
+				if not pool.has(g):
+					rest.append(g)
+			var c := area.get_center()
+			rest.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(c) < b.distance_squared_to(c))
+			pool.append_array(rest.slice(0, want - pool.size()))
+		for i in jobs.size():
+			var at := pool[i % pool.size()] if not pool.is_empty() else area.get_center()
+			if not families.has(at):
+				families[at] = families.size()
+			out.append([jobs[i], d, at, families[at]])
+	return out
+
+
+## A citizen dealt by _district_plan() (`plan`: [job, district, home point, family]): its job's role, its home, a
+## workplace among the WORK_NEAREST of its job's kinds nearest home, and its leisure: 1-3 of the LEISURE_NEAREST
+## leisure spots nearest home, then the nearest point of each of its job's routine kinds.
+func _job_profile(plan: Array, anchors: Dictionary) -> CitizenProfile:
+	var pr := CitizenProfile.new()
+	var job: Array = CitizenProfile.JOBS[plan[0]]
+	pr.job = plan[0]
+	pr.district = plan[1]
+	pr.role = job[0]
+	pr.family = plan[3]
+	pr.home = _spot_near(plan[2], 0.0)
+	var h := pr.home
+	var by_home := func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(h) < b.distance_squared_to(h)
+	var pool: Array[Vector2] = []
+	for k: String in job[1]:
+		pool.append_array(anchors.get(k, []))
+	pool.sort_custom(by_home)
+	pool = pool.slice(0, CitizenProfile.WORK_NEAREST)
+	if not pool.is_empty():
+		pr.work = pool[_rng.randi_range(0, pool.size() - 1)]
+	var near: Array[Vector2] = []
+	for k: String in CitizenProfile.LEISURE:
+		near.append_array(anchors.get(k, []))
+	near.sort_custom(by_home)
+	near = near.slice(0, CitizenProfile.LEISURE_NEAREST)
+	for k in _rng.randi_range(1, 3):
+		if not near.is_empty():
+			pr.leisure.append(near[_rng.randi_range(0, near.size() - 1)])
+	for k: String in job[2]:
+		var pts: Array[Vector2] = anchors.get(k, [] as Array[Vector2])
+		if not pts.is_empty():
+			pr.leisure.append(_nearest(pts, h))
 	return pr
 
 

@@ -1629,7 +1629,7 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	var tint := sick_color() if sick else Color.WHITE
 	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
 	var legs := CIT_LEGS.lerp(tint, SICK_CLOTH) if sick else CIT_LEGS
-	if role == CitizenProfile.Role.CLERGY:
+	if role == CitizenProfile.Role.CLERGY or role == CitizenProfile.Role.MONK:
 		# A robe to the ground (no legs showing), a gold stole down its front.
 		var robe := CLERGY_ROBE.lerp(tint, SICK_CLOTH) if sick else CLERGY_ROBE
 		if top_only == 0:

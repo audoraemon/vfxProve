@@ -14,6 +14,12 @@ func structures() -> Array[Dictionary]: return []          # as TownLayout.struc
 func houses() -> Array[Rect2]: return []
 func blockers() -> Array[Rect2]: return []
 func anchors() -> Dictionary: return {}                    # as TownLayout.anchors()
+## Who lives here: district name (a landmark() rect) -> {job (CitizenProfile.JOBS) -> count}. Empty: the crowd deals
+## citizens() by CitizenProfile.SHARES into every house, as at Aldermere.
+func spawn_roles() -> Dictionary: return {}
+## How many citizens and soldiers a crowd spawns by default (Crowd.spawn(), Mission, town_debug).
+func citizens() -> int: return Crowd.CITIZENS
+func soldiers() -> int: return Crowd.SOLDIERS
 func street_props() -> Array[Dictionary]: return []
 func gardens() -> Array[Rect2]: return []
 func queue_fans(margin := 0.3) -> Array[PackedVector2Array]: return []

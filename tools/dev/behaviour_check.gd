@@ -5,6 +5,9 @@ extends SceneTree
 ## usage: godot --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=calm
 ##   [--seconds=60] [--shots]
 ##   calm   nothing cast: where citizens are, by kind of place, every 20 s; --shots saves captures at the end
+##   capital_calm  the calm scenario in the capital (City.use(&"capital"), its ~420 citizens dealt by district): where
+##          citizens are every 20 s, and arrivals at its routine places (the bread queue, the wash houses, the harbour,
+##          the chapels) over the run
 ##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
 ##   gates  an evacuation called after 20 s of calm; --hazard puts a lasting danger on the Main Gate's approach at
@@ -224,12 +227,17 @@ func _run() -> void:
 	elif scenario == "night":
 		powers = PackedStringArray(["whisper", "doom", "discord"])
 		mission.mission_id = MissionBook.LONG_NIGHT
+	elif scenario == "capital_calm":
+		City.use(&"capital")
+		mission.city = &"capital"
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
 		"calm", "":
 			await _calm(seconds, "--shots" in args)
+		"capital_calm":
+			await _capital_calm(seconds)
 		"strike":
 			await _strike("--shots" in args)
 		"escalate":
@@ -296,6 +304,37 @@ func _calm(seconds: float, shots: bool) -> void:
 			bf.camera.position = Iso.ground_to_screen(shot[1]).round()
 			await _frames(3)
 			await bf.save_capture(shot[0])
+
+
+## The capital's calm (Task 11): _calm()'s places every 20 s, and arrivals at the routine places every second.
+func _capital_calm(seconds: float) -> void:
+	print("BEHAVIOUR capital_calm city=%s citizens=%d soldiers=%d" % [City.current().id(),
+		mission._crowd.citizens.size(), mission._crowd.soldiers.size()])
+	var anchors := mission._crowd._snapped_anchors()
+	var places := {"queue": anchors.queue, "wash": anchors.wash, "harbour": anchors.harbour, "pray": anchors.pray}
+	var arrived := {}
+	var going := {}
+	var t := 0.0
+	while t < seconds:
+		await _frames(60)
+		t += 1.0
+		for p: Person in mission._crowd.citizens:
+			if not is_instance_valid(p):
+				continue
+			if p.has_goal():
+				going[p] = true
+				continue
+			if not going.has(p):
+				continue
+			going.erase(p)
+			for k: String in places:
+				for g: Vector2 in places[k]:
+					if p.ground_pos.distance_to(g) <= 0.8 and p.anchor.distance_to(g) <= 0.8:
+						arrived[k] = int(arrived.get(k, 0)) + 1
+						break
+		if roundi(t) % 20 == 0:
+			print("BEHAVIOUR capital_calm t=%d %s" % [roundi(t), _places()])
+	print("BEHAVIOUR capital_calm arrivals %s" % [arrived])
 
 
 func _strike(shots: bool) -> void:
@@ -2020,7 +2059,7 @@ func _frames(n: int) -> void:
 
 ## Citizens by the kind of place they are nearest (within 1.5 units), or "walking"/"elsewhere".
 func _places() -> Dictionary:
-	var anchors := TownLayout.anchors()
+	var anchors := City.current().anchors()
 	var out := {}
 	for p: Person in mission._crowd.citizens:
 		if not is_instance_valid(p) or p.state == DummyEnemy.State.DEAD:

@@ -117,6 +117,8 @@ var _scripted := false
 ## True when the mission runs on its own (play.bat before milestone 4, the scripted runs, the bench) and
 ## starts itself. Game sets it false before adding the node, then calls start() with the drafted loadout.
 var autostart := true
+## A scripted run's city in place of the mission's own (behaviour_check's capital_calm); empty: the mission's.
+var city: StringName = &""
 ## True once _ready() has finished compiling the effect shaders.
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
@@ -230,6 +232,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	var args := OS.get_cmdline_user_args()
 	_def = _mission_def(args)
 	# The mission's city is the active one before anything is built (the town, the walk grid and the crowd read it).
+	if city != &"":
+		_def.city = city  # a scripted run's city (a fresh def each start)
 	City.use(_def.city)
 	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
@@ -262,8 +266,10 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		tier = ResponseProfile.tier_named(Battlefield.arg_value(args, "--difficulty"))
 	_crowd.profile = _act.town(_night) if _act != null else _def.response_profile(tier)
 	var wanted := Battlefield.arg_value(args, "--people")
-	var people := int(wanted) if wanted != "" else PEOPLE
-	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
+	# The city's own numbers (CityDef.citizens(), soldiers(); Aldermere's PEOPLE), --people=N scaling both.
+	var town_people := City.current().citizens() + City.current().soldiers()
+	var people := int(wanted) if wanted != "" else town_people
+	var citizens := roundi(float(people) * float(City.current().citizens()) / float(town_people))
 	_crowd.spawn(citizens, people - citizens)
 
 	_wired.clear()

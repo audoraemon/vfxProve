@@ -196,6 +196,34 @@ const HOUSING := {
 const HOUSE_CLEAR := 0.5
 const HOUSE_STREET_CLEAR := 0.5
 const HOUSE_WALL_CLEAR := 1.7
+## The sets whose fronts are workplaces besides the crafts (anchors' "work"): civic, guild and trade buildings.
+const WORKS := [&"gpt_guildhall", &"gpt_shophouse", &"gpt_townhall", &"gpt_courthouse", &"gpt_library", &"gpt_school",
+	&"gpt_hospital", &"gpt_bathhouse", &"gpt_stables", &"gpt_markethall", &"gpt_weighhouse", &"gpt_fishmarket",
+	&"gpt_inn", &"gpt_treasury", &"gpt_jail"]
+## The bakery's bread queue (anchors' "queue"): how many places, how far out on the avenue, how far apart.
+const QUEUE_LENGTH := 6
+const QUEUE_OFF := 0.5
+const QUEUE_STEP := 0.45
+## Each district's citizens by job (spawn_roles()), about 420 in all.
+const SPAWN_ROLES := {
+	&"noble_quarter": {&"noble": 12, &"resident": 10, &"caregiver": 8},
+	&"cathedral_square": {&"clergy": 8, &"beggar": 4},
+	&"guild_quarter": {&"guild_craftsman": 12, &"trader": 4, &"resident": 6, &"caregiver": 4},
+	&"great_market": {&"merchant": 22, &"trader": 6, &"innkeeper": 3, &"beggar": 3},
+	&"old_town_houses": {&"resident": 16, &"caregiver": 10, &"craft": 4, &"washer": 6, &"clergy": 3},
+	&"harbour_district": {&"dockworker": 24, &"ferryman": 3, &"trader": 6, &"innkeeper": 2, &"stable_hand": 3,
+		&"beggar": 2},
+	&"crafts_quarter": {&"craft": 20, &"baker": 5, &"labourer": 6, &"resident": 6, &"caregiver": 4},
+	&"new_town": {&"resident": 14, &"caregiver": 8, &"merchant": 4, &"washer": 6, &"clergy": 2},
+	&"tanners_dyers": {&"craft": 10, &"labourer": 6, &"resident": 4},
+	&"poor_quarter": {&"labourer": 14, &"beggar": 8, &"resident": 22, &"caregiver": 12, &"washer": 4},
+	&"road_quarter": {&"innkeeper": 3, &"stable_hand": 4, &"labourer": 6, &"resident": 16, &"caregiver": 8,
+		&"merchant": 3},
+	&"monastery_hill": {&"monk": 12},
+	&"west_farms": {&"farmer": 12},
+	&"south_east_fields": {&"farmer": 12},
+	&"suburbs": {&"labourer": 4, &"resident": 4, &"farmer": 2},
+}
 ## Avenues (2 cells wide) and lanes (1 cell), as axis-aligned polylines: roads() turns each segment into a street rect.
 const AVENUE_W := 2.0
 const LANE_W := 1.0
@@ -634,23 +662,51 @@ func forest_gaps() -> Array[Rect2]:
 
 
 ## Where citizens go about their day, by kind, as Aldermere's anchors (TownLayout.anchors()): "home" in front of each
-## house and of the ChatGPT sets people live in (CapitalPlots.HOMES), "stall" before each stall, "craft" at the smithy's
-## and carpenter's yards, the workshop and each craft set (CRAFTS), "tavern" at the inns, "cathedral" on its steps,
-## "plaza" the squares' and gate plazas' quarter points, "water" by the fountains and wells, "field", "mill", "dock",
-## "barn" (the farmhouses) and "bell" (the bell tower's foot).
+## house and of the ChatGPT sets people live in (CapitalPlots.HOMES), out of the gates' queue fans as at Aldermere;
+## "stall" before each stall, "craft" at the smithy's and carpenter's yards, the workshop and each craft set (CRAFTS),
+## "tavern" at the inns, "cathedral" on its steps, "plaza" the squares' and gate plazas' quarter points, "water" by the
+## fountains and wells, "field", "mill", "dock", "barn" (the farmhouses) and "bell" (the bell tower's foot). Then the
+## capital's routine points (spec section 3), each from its district's buildings:
+##   "work"     the fronts of the civic, guild and trade buildings (WORKS: the guild quarter, the cathedral square, the
+##              Great Market, the old town houses, the harbour's stables, the road quarter's inn and stables);
+##   "queue"    the crafts quarter's bakery: its counter on the west bridge avenue, then the bread queue up the avenue;
+##   "wash"     beside the wash houses on the old town's river bank;
+##   "pray"     before the new town's chapel and monastery hill's chapel, monastery and graveyard;
+##   "market"   the Great Market's and the west market's quarter points, the market hall, weigh house and crier's stage;
+##   "harbour"  on the quay by the warehouses, the crane and the fish market, and the ferry quay;
+##   "gate"     the middle of each gate's plaza (every district's way in and out);
+##   "field"    before each field (the west farms and the south-east fields).
 func anchors() -> Dictionary:
 	var out := {"home": [], "stall": [], "craft": [], "tavern": [], "cathedral": [], "plaza": [], "water": [],
-		"field": [], "mill": [], "dock": [], "barn": [], "bell": []}
+		"field": [], "mill": [], "dock": [], "barn": [], "bell": [], "work": [], "queue": [], "wash": [], "pray": [],
+		"market": [], "harbour": [], "gate": []}
 	for h: Rect2 in houses():
 		out.home.append(Vector2(h.get_center().x, h.end.y + 0.35))
 	for d: Dictionary in _buildings():
 		var r: Rect2 = d.rect
+		var front := Vector2(r.get_center().x, r.end.y + 0.35)
 		if d.tag in CapitalPlots.HOMES:
-			out.home.append(Vector2(r.get_center().x, r.end.y + 0.35))
+			out.home.append(front)
 		elif d.tag in CRAFTS:
-			out.craft.append(Vector2(r.get_center().x, r.end.y + 0.35))
+			out.craft.append(front)
 		elif d.tag == &"gpt_inn":
 			out.tavern.append(Vector2(r.get_center().x, r.end.y + 0.4))
+		if d.tag in WORKS:
+			out.work.append(front)
+		if d.tag == &"gpt_bakery":
+			# The counter at its avenue side, then the queue up the avenue's edge, QUEUE_STEP apart.
+			for k in QUEUE_LENGTH:
+				out.queue.append(Vector2(r.position.x - QUEUE_OFF, r.get_center().y - k * QUEUE_STEP))
+		elif d.tag == &"gpt_washhouse":
+			out.wash.append(Vector2(r.position.x - 0.35, r.get_center().y))
+			out.wash.append(Vector2(r.end.x + 0.35, r.get_center().y))
+		elif d.tag in [&"gpt_chapel", &"gpt_monastery", &"gpt_graveyard"]:
+			out.pray.append(Vector2(r.get_center().x, r.end.y + 0.4))
+		elif d.tag in [&"gpt_markethall", &"gpt_weighhouse", &"gpt_crierstage"]:
+			out.market.append(front)
+		elif d.tag in [&"gpt_warehouse", &"gpt_crane", &"gpt_fishmarket"]:
+			# The quay side: the front of a set on the north quay, the back of one on the river's bank.
+			out.harbour.append(front if r.end.y < HARBOUR.position.y + 1.0 else Vector2(r.get_center().x, r.position.y - 0.35))
 	for st: Rect2 in stalls():
 		out.stall.append(Vector2(st.get_center().x, st.end.y + 0.3))
 	for r: Rect2 in [SMITHY_YARD, WORKSHOP, CARPENTER_YARD]:
@@ -664,6 +720,12 @@ func anchors() -> Dictionary:
 	for pl: Rect2 in squares:
 		for k in 4:
 			out.plaza.append(pl.position + pl.size * Vector2(0.25 + 0.5 * (k % 2), 0.25 + 0.5 * (k / 2)))
+	for pl: Rect2 in [MARKET_SQUARE, WEST_MARKET]:
+		for k in 4:
+			out.market.append(pl.position + pl.size * Vector2(0.25 + 0.5 * (k % 2), 0.25 + 0.5 * (k / 2)))
+	for pl: Rect2 in gate_plazas():
+		out.gate.append(pl.get_center())
+	out.harbour.append(DOCK_WAIT.get_center())
 	for w: Rect2 in fountains() + wells():
 		out.water.append(Vector2(w.get_center().x, w.end.y + 0.3))
 		out.water.append(Vector2(w.end.x + 0.3, w.get_center().y))
@@ -674,7 +736,33 @@ func anchors() -> Dictionary:
 	for b: Rect2 in BARNS:
 		out.barn.append(Vector2(b.get_center().x, b.end.y + 0.4))
 	out.bell.append(Vector2(BELL_TOWER.position.x - 0.45, BELL_TOWER.get_center().y))
+	var homes := []
+	for g: Vector2 in out.home:
+		if not _in_fan(Rect2(g - Vector2(0.05, 0.05), Vector2(0.1, 0.1))):
+			homes.append(g)
+	out.home = homes
 	return out
+
+
+## Who lives where (spec section 3): about 420 citizens, by district, by job (CitizenProfile.JOBS). The old town's
+## upper quarters hold the nobles, the clergy and the guilds; the Great Market its merchants and traders; the harbour
+## its dockworkers and ferrymen; the new town its crafts, bakers and washers; the poor quarter its labourers and
+## beggars; monastery hill its monks; the farms their farmers. The Royal Keep holds only soldiers.
+func spawn_roles() -> Dictionary:
+	return SPAWN_ROLES.duplicate(true)
+
+
+func citizens() -> int:
+	var n := 0
+	for d: StringName in SPAWN_ROLES:
+		for job: StringName in SPAWN_ROLES[d]:
+			n += int(SPAWN_ROLES[d][job])
+	return n
+
+
+## Aldermere's 100 until the capital's own garrison (Task 12).
+func soldiers() -> int:
+	return Crowd.SOLDIERS
 
 
 ## Torch posts: the market square's four corners first (TownDecor strings bunting between them), then two inside

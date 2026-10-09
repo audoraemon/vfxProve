@@ -6,7 +6,10 @@ extends RefCounted
 ## WATCHMAN (v0.08): never dealt by SHARES -- The Warning's director appoints one at the Main Gate and sets his work.
 ## MAYOR and NOBLE (v0.09) are never dealt either: The Long Night's festival makes a merchant the Mayor, and the Prince's
 ## procession dresses the Prince as a noble.
-enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER, WATCHMAN, MAYOR, NOBLE }
+## BAKER, WASHER, DOCKWORKER, MONK and BEGGAR (the capital) are dealt only by a city's spawn_roles()
+## (JOBS); each wears an existing design (PeopleArt.CITIZEN).
+enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER, WATCHMAN, MAYOR, NOBLE,
+	BAKER, WASHER, DOCKWORKER, MONK, BEGGAR }
 ## Where a citizen stands with the gods (v0.10, the campaign's Night 2): one of Halcyon's Faithful, who report the god
 ## at work; one of the grieving, who can be led to Mira's journal; or a Believer, who has read it.
 enum Faith { NONE, FAITHFUL, GRIEVING, BELIEVER }
@@ -20,6 +23,29 @@ const SHARES := [
 const WORK := {
 	Role.MERCHANT: ["stall", "tavern"], Role.CRAFT: ["craft"], Role.LABORER: ["stall", "dock"],
 	Role.CLERGY: ["cathedral"], Role.FARMER: ["field", "mill"], Role.BELLKEEPER: ["bell"], Role.ENGINEER: ["craft"],
+}
+## The jobs a city deals by district (CityDef.spawn_roles()): name -> [the Role it is drawn and scheduled as, the
+## anchors() kinds it works at (none: no workplace), the routine kinds it also visits (the nearest point of each to
+## home joins its leisure)]. Aldermere deals by SHARES instead and never reads this.
+const JOBS := {
+	&"resident": [Role.RESIDENT, [], ["queue", "pray", "market"]],
+	&"caregiver": [Role.CAREGIVER, [], ["queue", "wash", "market"]],
+	&"merchant": [Role.MERCHANT, ["stall"], ["harbour"]],
+	&"trader": [Role.MERCHANT, ["harbour"], ["market"]],
+	&"innkeeper": [Role.MERCHANT, ["tavern"], ["market"]],
+	&"craft": [Role.CRAFT, ["craft"], ["queue"]],
+	&"guild_craftsman": [Role.CRAFT, ["work"], ["market"]],
+	&"labourer": [Role.LABORER, ["harbour", "craft"], ["queue"]],
+	&"stable_hand": [Role.LABORER, ["work"], ["tavern"]],
+	&"clergy": [Role.CLERGY, ["cathedral"], ["pray"]],
+	&"farmer": [Role.FARMER, ["field"], ["pray"]],
+	&"baker": [Role.BAKER, ["queue"], ["market"]],
+	&"washer": [Role.WASHER, ["wash"], ["market"]],
+	&"dockworker": [Role.DOCKWORKER, ["harbour"], ["tavern"]],
+	&"ferryman": [Role.DOCKWORKER, ["dock"], ["harbour"]],
+	&"monk": [Role.MONK, ["pray"], ["field"]],
+	&"noble": [Role.NOBLE, [], ["market", "pray"]],
+	&"beggar": [Role.BEGGAR, [], ["market", "pray", "gate", "queue"]],
 }
 ## Where anyone spends leisure: the kinds, and how many of the nearest to home each citizen may pick from.
 const LEISURE := ["plaza", "water", "tavern"]
@@ -37,6 +63,9 @@ var leisure := PackedVector2Array()
 ## Family group (-1: none); used from v0.04's P1.
 var family := -1
 var faith := Faith.NONE
+## The job and district a city's spawn_roles() dealt it (JOBS; empty at Aldermere, which deals by SHARES).
+var job: StringName = &""
+var district: StringName = &""
 
 
 ## The role of the `i`-th of `n` citizens: every role gets round(share * n) (the last takes the remainder), dealt in

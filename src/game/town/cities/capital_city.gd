@@ -240,15 +240,20 @@ const GPT_PLOTS := [
 	[&"gpt_jail", Vector2(-8.7, -18.6)],
 	[&"gpt_graveyard", Vector2(-1.1, -16.4)], [&"gpt_waysidecross", Vector2(1.7, -16.0)],
 	[&"gpt_noticeboard", Vector2(0.5, -11.8)], [&"gpt_crierstage", Vector2(-7.8, -11.8)],
-	# Guild quarter: the guild hall, the weavers' hall, shop-houses.
+	# Guild quarter: the guild hall, the weavers' hall, shop-houses; and (polish 3) a row of shop-houses on the cross
+	# avenue's north side, their fronts on it.
 	[&"gpt_guildhall", Vector2(9.0, -20.6)], [&"gpt_weavers", Vector2(11.0, -20.6)],
 	[&"gpt_shophouse", Vector2(13.8, -20.6)], [&"gpt_shophouse", Vector2(15.2, -20.6)],
+	[&"gpt_shophouse", Vector2(9.6, -12.12)], [&"gpt_shophouse", Vector2(11.0, -12.12)],
+	[&"gpt_shophouse", Vector2(12.4, -12.12)],
 	# Great Market: the covered market hall at the square's head (only stalls in front of it), the weigh house, the
 	# crier's stage by the west bridge avenue.
 	[&"gpt_markethall", Vector2(-12.0, -7.7)], [&"gpt_weighhouse", Vector2(-6.2, -7.7)],
 	[&"gpt_crierstage", Vector2(-16.4, -3.6)],
-	# Old town houses: hospital, bathhouse.
+	# Old town houses: hospital, bathhouse; and (polish 3) a shop-house beside the bathhouse on the cross avenue's south
+	# side.
 	[&"gpt_hospital", Vector2(5.5, -7.6)], [&"gpt_bathhouse", Vector2(9.0, -7.6)],
+	[&"gpt_shophouse", Vector2(11.7, -7.5)],
 	# The cistern at the aqueduct's end (polish 2), just inside the wall at the north-east corner tower it runs into.
 	[&"gpt_cistern", CISTERN],
 	# Banks: wash houses on the river's north bank below the old town's wall, their washing steps over the river; the
@@ -320,16 +325,30 @@ const GPT_PLOTS := [
 ## The craft sets whose fronts are workplaces (anchors' "craft").
 const CRAFTS := [&"gpt_bakery", &"gpt_butcher", &"gpt_brewery", &"gpt_tannery", &"gpt_dyers", &"gpt_weavers",
 	&"gpt_potter", &"gpt_cooper", &"gpt_masonyard", &"gpt_lumberyard", &"gpt_glassworks"]
-## How each walled district's house blocks are filled (CapitalPlots.row()): [plot, gap, townhouses, jitter (none when
-## left out)]. Districts not listed (the Royal Keep, the cathedral square) take no houses. The poor quarter's cottages
-## are jittered and gapped, so they crowd in unevenly rather than stand in a lattice.
+## How each walled district's house blocks are filled (CapitalPlots.row()): [plot, gap, townhouses, jitter (0 for
+## none), mix]. Districts not listed (the Royal Keep, the cathedral square) take no houses. The poor quarter's cottages
+## are jittered and gapped, so they crowd in unevenly rather than stand in a lattice. The mix (polish 3): the GPT housing
+## sets whose rows stand among the district's own, each [set, share, on an avenue only] -- a row's hash picks one by the
+## shares, and its plots stand on the set's own footprint (_house_rows()): patrician rows in the noble quarter and the
+## guild quarter by the Keep, shop-house rows in the market and along the avenues, rows of shacks and tenements in the
+## poor quarter, a few shacks by the tanners; the new town is plain cottages.
 const HOUSING := {
-	&"noble_quarter": [Vector2(1.3, 0.95), 1.2, true], &"guild_quarter": [Vector2(1.3, 0.95), 0.8, true],
-	&"great_market": [Vector2(1.3, 0.95), 0.8, true], &"old_town_houses": [Vector2(1.3, 0.95), 0.6, true],
-	&"crafts_quarter": [Vector2(0.95, 0.75), 0.7, false], &"new_town": [Vector2(1.3, 0.95), 0.8, true],
-	&"tanners_dyers": [Vector2(0.95, 0.75), 0.9, false], &"poor_quarter": [Vector2(0.95, 0.75), 0.6, false, 0.6],
+	&"noble_quarter": [Vector2(1.3, 0.95), 0.9, true, 0.0, [[&"gpt_patrician", 0.5, false]]],
+	&"guild_quarter": [Vector2(1.3, 0.95), 0.8, true, 0.0, [[&"gpt_shophouse", 0.45, true], [&"gpt_patrician", 0.25, false]]],
+	&"great_market": [Vector2(1.3, 0.95), 0.8, true],
+	&"old_town_houses": [Vector2(1.3, 0.95), 0.6, true, 0.0, [[&"gpt_shophouse", 0.5, true]]],
+	&"crafts_quarter": [Vector2(0.95, 0.75), 0.7, false],
+	&"new_town": [Vector2(0.95, 0.75), 0.7, false],
+	&"tanners_dyers": [Vector2(0.95, 0.75), 0.9, false, 0.0, [[&"gpt_shacks", 0.5, false]]],
+	&"poor_quarter": [Vector2(0.95, 0.75), 0.5, false, 0.6, [[&"gpt_shacks", 0.25, false], [&"gpt_tenement", 0.15, false]]],
 	&"road_quarter": [Vector2(0.95, 0.75), 0.7, false],
 }
+## A set's row (_house_rows()) spaces its plots MIX_GAP apart; SALT_MIX hashes the rows' picks.
+const MIX_GAP := 0.5
+const SALT_MIX := 8363
+## How far a house keeps from a wall patrol's post (_house_ok()).
+const LOOP_POST_CLEAR := 0.45
+const GOLDEN := 0.618034
 ## How far a house keeps from every other building, yard and square, and from the streets; how far inside its ring's
 ## wall (Aldermere's WALL_T + WALL_CLEAR).
 const HOUSE_CLEAR := 0.5
@@ -477,6 +496,8 @@ const CARTS := [Vector2(-33.0, 19.8), Vector2(26.6, 24.6), Vector2(21.4, -4.4)]
 ## Street props and cottage gardens (TownLayout's sizes and steps): a garden keeps GARDEN_CLEAR from every building but
 ## its own cottage, so a walkable cell stays between; SALT_PROP and SALT_GARDEN hash their rolls.
 const GARDEN_CLEAR := 0.6
+## The ground before every house's front no other cottage's garden takes (gardens()): this wide and deep.
+const DOORSTEP := Vector2(1.5, 1.4)
 const SALT_PROP := 8111
 ## How far behind a street prop (away from its street) a building must stand at both its ends.
 const PROP_BACK := 1.0
@@ -567,7 +588,10 @@ func structures() -> Array[Dictionary]:
 			out.append({"rect": r, "height": 10.0, "kind": Structure.Kind.MARKET_STALL, "role": &"market", "tag": &""})
 		var hs := houses()
 		for i in hs.size():
-			if _townhouse.get(hs[i], false):
+			if _house_set.has(hs[i]):
+				# A GPT housing set dealt into the block (polish 3): its own type, height and art.
+				out.append(CapitalPlots.plot(_house_set[hs[i]], hs[i].position))
+			elif _townhouse.get(hs[i], false):
 				out.append({"rect": hs[i], "height": 28.0 + float(i * 7 % 3), "kind": Structure.Kind.HOUSE,
 					"role": &"house", "tag": &"townhouse"})
 			else:
@@ -582,7 +606,8 @@ func structures() -> Array[Dictionary]:
 
 ## The houses: each listed district's house blocks (HOUSING) filled by CapitalPlots.row() with its cottages or
 ## townhouses, every house kept HOUSE_CLEAR from the other buildings, the stalls, yards, squares, gate plazas, fountains
-## and wells, HOUSE_STREET_CLEAR from the streets and HOUSE_WALL_CLEAR inside its ring's wall. Worked out once.
+## and wells, HOUSE_STREET_CLEAR from the streets and HOUSE_WALL_CLEAR inside its ring's wall; then the district's mix
+## of GPT housing sets in rows of their own (_house_rows(), polish 3: house_set() names a plot's set). Worked out once.
 func houses() -> Array[Rect2]:
 	if _houses.is_empty():
 		var keep_off: Array[Rect2] = []
@@ -593,6 +618,9 @@ func houses() -> Array[Rect2]:
 		for r: Rect2 in roads():
 			keep_off.append(r.grow(HOUSE_STREET_CLEAR))
 		var inside: Array[Rect2] = [INNER.grow(-HOUSE_WALL_CLEAR), OUTER.grow(-HOUSE_WALL_CLEAR)]
+		var avenues: Array[Rect2] = []
+		for line: Array in AVENUES:
+			_segments(avenues, line, AVENUE_W)
 		var n := 0
 		for row: Array in DISTRICT_TABLE:
 			var style: Array = HOUSING.get(row[0], [])
@@ -600,15 +628,121 @@ func houses() -> Array[Rect2]:
 				continue
 			for block: Rect2 in _blocks(row[1]):
 				n += 1
-				var jitter: float = style[3] if style.size() > 3 else 0.0
-				for h: Rect2 in CapitalPlots.row(block.grow(-HOUSE_STREET_CLEAR), style[0], style[1], n, jitter):
-					var ok := (inside[0].encloses(h) or inside[1].encloses(h)) and not _in_fan(h)
-					for k: Rect2 in keep_off:
-						ok = ok and not k.intersects(h)
+				var south := false
+				for a: Rect2 in avenues:
+					south = south or a.intersects(Rect2(block.position.x, block.end.y, block.size.x, 0.1))
+				for pl: Array in _house_rows(block.grow(-HOUSE_STREET_CLEAR), style, n, south):
+					var h: Rect2 = pl[0]
+					var ok: bool = _house_ok(h, keep_off, inside) and (pl[1] == &"" or _clear_of_posts(h))
+					if not ok and pl[1] != &"":
+						# A set's plot that does not fit: the district's own house in its place (front and middle kept).
+						var own: Vector2 = style[0]
+						h = Rect2(Vector2(h.get_center().x - own.x * 0.5, h.end.y - own.y), own)
+						pl[1] = &""
+						ok = _house_ok(h, keep_off, inside)
 					if ok:
 						_houses.append(h)
-						_townhouse[h] = style[2]
+						_townhouse[h] = style[2] or pl[1] != &""
+						if pl[1] != &"":
+							_house_set[h] = pl[1]
 	return _houses.duplicate()
+
+
+## Whether house plot `h` may stand: inside a ring's wall, out of the queue fans, clear of `keep_off`.
+func _house_ok(h: Rect2, keep_off: Array[Rect2], inside: Array[Rect2]) -> bool:
+	var ok := (inside[0].encloses(h) or inside[1].encloses(h)) and not _in_fan(h)
+	for k: Rect2 in keep_off:
+		ok = ok and not k.intersects(h)
+	return ok
+
+
+## Whether a set's plot `h` keeps clear of the wall patrols' posts, which stand on the line HOUSE_WALL_CLEAR inside the
+## wall (a set's row stands still and wide: polish 3).
+func _clear_of_posts(h: Rect2) -> bool:
+	for loop: Dictionary in patrol_loops():
+		for p: Vector2 in loop.points:
+			if h.grow(LOOP_POST_CLEAR).has_point(p):
+				return false
+	return true
+
+
+## The GPT housing set standing on house plot `h` (houses()), or &"" for a cottage or a townhouse.
+func house_set(h: Rect2) -> StringName:
+	houses()
+	return _house_set.get(h, &"")
+
+
+## One house block's plots (polish 3), as [rect, set] (set &"" for the district's own house), in rows from the
+## block's south edge up, `gap` apart: a row of the district's houses (CapitalPlots.row(): `plot`, slid by its hash,
+## jittered as the district is), or a row of one of the mix's sets on its own footprint, picked by the row's hash and
+## the shares. A set kept to the avenues ("on an avenue only") stands only in the bottom row, and only where the
+## block's south edge lies on an avenue (`avenue_south`): its fronts face it.
+func _house_rows(block: Rect2, style: Array, n: int, avenue_south: bool) -> Array:
+	var plot: Vector2 = style[0]
+	var gap: float = style[1]
+	var jitter: float = style[3] if style.size() > 3 else 0.0
+	var mix: Array = style[4] if style.size() > 4 else []
+	if mix.is_empty():
+		# No mix: the block filled as a whole (CapitalPlots.row()), as before polish 3.
+		var plain: Array = []
+		for r: Rect2 in CapitalPlots.row(block, plot, gap, n, jitter):
+			plain.append([r, &""])
+		return plain
+	# The rows, bottom up: each [set, size, the space before it].
+	var rows: Array = []
+	var used := 0.0
+	var j := 0
+	# The rows' rolls step round by the golden ratio from the block's own hash, so each set's rows come up in about its
+	# share in every block, spread out, rather than by chance.
+	var start := ArtKit.hash01(SALT_MIX, n)
+	while true:
+		var roll := fposmod(start + float(j) * GOLDEN, 1.0)
+		var set_name := &""
+		for m: Array in mix:
+			if m[2] and (j > 0 or not avenue_south):
+				continue
+			if roll < float(m[1]):
+				set_name = m[0]
+				break
+			roll -= float(m[1])
+		var size: Vector2 = plot if set_name == &"" else CapitalPlots.SETS[set_name][0]
+		var lead := _row_lead(rows, set_name, gap, jitter)
+		if used + lead + size.y > block.size.y + 0.0001:
+			lead = _row_lead(rows, &"", gap, jitter)
+			if set_name == &"" or used + lead + plot.y > block.size.y + 0.0001:
+				break
+			set_name = &""
+			size = plot
+		rows.append([set_name, size, lead])
+		used += lead + size.y
+		j += 1
+	# The stack centred down the block, or on its south edge under a row kept to the avenue there.
+	var on_avenue := false
+	for m: Array in mix:
+		on_avenue = on_avenue or (not rows.is_empty() and m[0] == rows[0][0] and m[2])
+	var bottom := block.end.y - (0.0 if on_avenue else (block.size.y - used) * 0.5)
+	var out: Array = []
+	for k in rows.size():
+		var set_name: StringName = rows[k][0]
+		var size: Vector2 = rows[k][1]
+		# A jittered row's strip leaves it room to shift up and down by its jitter.
+		var shift := gap * jitter if set_name == &"" else 0.0
+		var strip := Rect2(block.position.x, bottom - size.y - shift * 0.5, block.size.x, size.y + shift).intersection(block)
+		for r: Rect2 in CapitalPlots.row(strip, size, gap if set_name == &"" else MIX_GAP, n * 100 + k,
+				jitter if set_name == &"" else 0.0):
+			out.append([r, set_name])
+		if k + 1 < rows.size():
+			bottom -= size.y + float(rows[k + 1][2])
+	return out
+
+
+## The space before a row of `set_name` stacked after `rows` (none before the first): the district's gap, and in a
+## jittered district its jitter's room more beside a set's row (the set's row stands still, its neighbour shifts).
+static func _row_lead(rows: Array, set_name: StringName, gap: float, jitter: float) -> float:
+	if rows.is_empty():
+		return 0.0
+	var beside_set: bool = set_name != &"" or rows[rows.size() - 1][0] != &""
+	return gap + (gap * jitter if beside_set else 0.0)
 
 
 ## The market stalls: each of STALL_ROWS laid with stalls (CapitalPlots.row()), in row order.
@@ -736,6 +870,10 @@ func gardens() -> Array[Rect2]:
 				ok = ok and not o.grow(0.1 if o == h else GARDEN_CLEAR).intersects(plot)
 			for g in _gardens:
 				ok = ok and not g.grow(0.45).intersects(plot)
+			# (polish 3) Never on another house's doorstep: the ground just before its front stays a way in.
+			for o_h: Rect2 in hs:
+				ok = ok and (o_h == h or not Rect2(Vector2(o_h.get_center().x - DOORSTEP.x * 0.5, o_h.end.y + 0.1),
+					DOORSTEP).intersects(plot))
 			if ok:
 				_gardens.append(plot)
 				break
@@ -1250,6 +1388,8 @@ const WALL_TOWER_HALF := TownLayout.WALL_TOWER * 0.5
 static var _structures: Array[Dictionary] = []
 static var _houses: Array[Rect2] = []
 static var _townhouse := {}
+## Each house plot's GPT housing set (polish 3: _house_rows()).
+static var _house_set := {}
 static var _buildings_cache: Array[Dictionary] = []
 static var _rings_cache: Array[Dictionary] = []
 static var _landmarks := {}

@@ -16,7 +16,85 @@ static func run(t) -> void:
 	_border_trees(t)
 	_keep_gate(t, c)
 	_dummies(t, c)
+	_house_mix(t, c)
 	City.use(&"aldermere")
+
+
+## The house blocks' GPT housing sets by district (item 5): patrician houses in the noble quarter and by the Keep,
+## shop-houses on the avenues and in the market, shacks and tenements in the poor quarter, plain cottages in the new
+## town; each on its own footprint, none overlapping; the count held at HOUSE_FLOOR or more.
+static func _house_mix(t, c: CapitalCity) -> void:
+	var houses := c.houses()
+	t.check(houses.size() >= HOUSE_FLOOR and HOUSE_FLOOR >= 140, "at least %d houses (%d)" % [HOUSE_FLOOR, houses.size()])
+	var tag_of := {}
+	for d: Dictionary in c.structures():
+		if d.role in [&"house", CapitalPlots.ROLE]:
+			tag_of[d.rect] = d.tag
+	var by := {}
+	var fit := true
+	var avenues: Array[Rect2] = []
+	for line: Array in CapitalCity.AVENUES:
+		for k in line.size() - 1:
+			var a: Vector2 = line[k]
+			var b: Vector2 = line[k + 1]
+			avenues.append(Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs()).grow(CapitalCity.AVENUE_W * 0.5))
+	var off_avenue := 0
+	for h: Rect2 in houses:
+		var tag: StringName = tag_of.get(h, &"?")
+		var district := _district(c, h)
+		var key := "%s/%s" % [district, tag]
+		by[key] = int(by.get(key, 0)) + 1
+		if String(tag).begins_with("gpt_"):
+			fit = fit and (CapitalPlots.SETS[tag][0] as Vector2).is_equal_approx(h.size) and tag in CapitalPlots.HOMES
+			if tag == &"gpt_shophouse" and district != &"great_market":
+				var near := false
+				for r: Rect2 in avenues:
+					near = near or r.grow(1.6).intersects(h)
+				off_avenue += 0 if near else 1
+	t.check(fit, "every GPT house stands on its own footprint and is lived in")
+	t.check(int(by.get("noble_quarter/gpt_patrician", 0)) >= 4, "patrician houses in the noble quarter's blocks (%s)" % [by])
+	var shops := 0
+	var tenements := 0
+	for d: Dictionary in c.structures():
+		var dn := _district(c, d.rect)
+		if d.tag == &"gpt_shophouse" and dn in [&"great_market", &"guild_quarter", &"old_town_houses"]:
+			shops += 1
+		if d.tag == &"gpt_tenement" and dn == &"poor_quarter":
+			tenements += 1
+	t.check(shops >= 6 and off_avenue == 0, "shop-houses in the market and on the avenues (%d, %d off an avenue)"
+		% [shops, off_avenue])
+	t.check(int(by.get("poor_quarter/gpt_shacks", 0)) >= 4 and tenements >= 4,
+		"rows of shacks in the poor quarter's blocks among its tenements (%d tenements)" % tenements)
+	var plain := true
+	for key: String in by:
+		if key.begins_with("new_town/"):
+			plain = plain and key == "new_town/"
+	t.check(plain and int(by.get("new_town/", 0)) > 0, "the new town's blocks hold plain cottages only (%s)" % [by])
+	var overlap := 0
+	for i in houses.size():
+		for j in range(i + 1, houses.size()):
+			if houses[i].grow(0.1).intersects(houses[j]):
+				overlap += 1
+	var others := 0
+	for d: Dictionary in c.structures():
+		if d.role in [&"house"] or houses.has(d.rect):
+			continue
+		for h: Rect2 in houses:
+			if (d.rect as Rect2).intersects(h):
+				others += 1
+	t.check(overlap == 0 and others == 0, "no house overlaps another or a building (%d, %d)" % [overlap, others])
+
+
+## The house count's floor: about 5% under the count, never under 140.
+const HOUSE_FLOOR := 143
+
+
+## The walled district of the plan holding `r`'s middle.
+static func _district(c: CapitalCity, r: Rect2) -> StringName:
+	for row: Array in CapitalCity.DISTRICT_TABLE:
+		if row[2] != &"outside" and (row[1] as Rect2).has_point(r.get_center()):
+			return row[0]
+	return &""
 
 
 ## The practice dummies stand about a soldier's height (a decor scale: the scarecrow art drawn smaller), in two tidy

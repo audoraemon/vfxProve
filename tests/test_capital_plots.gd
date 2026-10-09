@@ -1,7 +1,7 @@
 extends RefCounted
 ## The capital's plots (Task 7): every building on its plot. No two structures overlap; all stand in the map and off
 ## the water (bar the bridges); every ChatGPT set is placed (bar the props) on its blockout footprint and height and
-## draws its own art; about 140-180 houses fill the blocks; the landmarks stay in view; every landmark name shared code
+## draws its own art; about 143-180 houses fill the blocks; the landmarks stay in view; every landmark name shared code
 ## asks for resolves; and the people can reach every building from the market.
 
 ## How far in front (screen-down: south and east) of a landmark nothing taller may stand.
@@ -188,12 +188,13 @@ static func _every_set(t, c: CapitalCity) -> void:
 
 static func _houses(t, c: CapitalCity) -> void:
 	var houses := c.houses()
-	t.check(houses.size() >= 140 and houses.size() <= 180, "about 140-180 houses (%d)" % houses.size())
+	t.check(houses.size() >= 143 and houses.size() <= 180, "about 143-180 houses (%d)" % houses.size())
 	var built := 0
 	for d: Dictionary in c.structures():
-		if d.kind == Structure.Kind.HOUSE and d.role == &"house" and d.tag in [&"", &"townhouse"]:
+		if (d.kind == Structure.Kind.HOUSE and d.role == &"house" and d.tag in [&"", &"townhouse"]) 				or (d.role == CapitalPlots.ROLE and houses.has(d.rect) and c.house_set(d.rect) == d.tag):
 			built += 1
-	t.check(built == houses.size(), "every house is built, a cottage or a townhouse (%d of %d)" % [built, houses.size()])
+	t.check(built == houses.size(), "every house is built, a cottage, a townhouse or a GPT housing set (%d of %d)"
+		% [built, houses.size()])
 	var walled := true
 	for h: Rect2 in houses:
 		walled = walled and (CapitalCity.INNER.grow(-1.2).encloses(h) or CapitalCity.OUTER.grow(-1.2).encloses(h))

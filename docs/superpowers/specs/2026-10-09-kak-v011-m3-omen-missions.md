@@ -195,8 +195,11 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
     until he breaks or the market closes. The Organized town's bell may ring; it loses nothing here.
   - **Crowds to come wait on duty:** each crowd's people are appointed as the night begins and stand on duty round their
     source until their crowd sets out. They are held fearless, so a loud cast or a seen death near a source does not turn them
-    into the town's flight, and the regroup and the evacuation pass them by. A death still takes one; one lost there is not
-    sent and counts for nothing. They are not goers, and no tag marks them, until they set out.
+    into the town's flight, and the regroup and the evacuation pass them by; for the same reason no fright or cast's danger
+    breaks one while he waits.
+  - **The waiting are goers too:** they count as the Festival counts any of its crowd. One struck down where he waits counts
+    toward the need (nine stray kills at a source cost the night nothing) and is not sent. A crowd wholly gone before its
+    time (every one dead) is scattered at once: it never sets out, and the next comes at its own time or 45 s after.
   - **No Mayor, no address:** the Festival's own events and square guards stay off.
 - **Timeline** (left alone):
 
@@ -214,13 +217,14 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
 - **Tags:**
   - THE FAIR - 12 / 36 at the fountain, gold, with an edge arrow.
   - WARDEN on each warden on guard, red. A small red mark on one away from his post.
-  - A gold diamond on each goer not yet broken, walkers too.
-  - NEXT CROWD at the next crowd's source until it sets out, orange.
+  - A gold diamond on each goer not yet broken, walkers too, and the waiting ones at their stands: gold means it counts.
+  - NEXT CROWD and the seconds to it (the sooner of its own time and the chained one) at the next crowd's source until it sets
+    out, orange, with an edge arrow.
 - **Hint phases:**
 
   | Phase | Line |
   |---|---|
-  | (none) | Strike down the wardens (red), then scatter the crowd (gold). Thirty-six must break before the market closes. |
+  | (none) | Strike down the wardens (red), then scatter the crowd (gold). Thirty-six must break; the waiting count if struck down. |
   | `steadied` | A warden (red) steadies the crowd near him: frights break no one there. Remove them all first. |
   | `open` | No warden stands. Strike the crowd (gold) now, before a new warden comes. |
   | `coming` | More come to the fair (gold). Strike them on the way, away from the wardens, or when they arrive. |
@@ -468,7 +472,8 @@ wrong.
     wrong: a crowd too packed or too thin; FAIR_R is a tuning knob.
 14. **Four crowds:** 11 each, from (11.4, -10.0), (4.5, -4.0), (12.0, 1.0) and (8.75, 2.75). The first walks in at 0:00. The
     next come at 1:15, 2:30 and 3:40, or 45 s after the crowd before is wholly gone. All are appointed as the night begins
-    and wait on duty round their source (Task 3's fix round). Cost if wrong: one tuning round.
+    and wait on duty round their source (Task 3's fix rounds); they count as goers from the start, struck down or not yet
+    come. Cost if wrong: one tuning round.
 15. **The need:** 36 of 44, by the Festival's rule of broken. Cost if wrong: one tuning round.
 16. **The wardens:** three watchmen at posts evenly round the fountain. On guard and fearless, each steadies the goers
     within 5.5: frights break no one there, deaths still count. Return 20 s, relief 30 s. Spoiled Harvest's `Watch` record

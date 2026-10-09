@@ -3,7 +3,8 @@ extends RefCounted
 ## the first crowd of WAVE walking in at once to spots within FAIR_R; WARDENS wardens (lay watchmen) at posts evenly round it, each
 ## pair more than one Silent Doom apart; on guard a warden is fearless and steadies the goers within WARD_R (a fright or a loud
 ## cast breaks none of them; a death counts); return and relief as Spoiled Harvest's; the three crowds to come appointed as the
-## night begins and waiting on duty at their sources (an evacuation does not empty them), setting out at their times, or CHAIN after
+## night begins and waiting on duty at their sources (an evacuation does not empty them), counted as goers from the start (one
+## struck down while he waits counts; a crowd wholly gone before its time is scattered), setting out at their times, or CHAIN after
 ## the one before is scattered; goers at the fair hold to it against the town's regroup and evacuation (review focus 6);
 ## FAIR_NEED broken wins, the close loses. Freed bodies are borne (review focus 4); the tags, hints, tour, titles, camera and the
 ## mission's numbers; and Impact's hit-stop switch (the scripted run's exact replays).
@@ -20,6 +21,7 @@ static func run(t) -> void:
 	_crowds(t)
 	_scattered(t)
 	_evacuated(t)
+	_stray(t)
 	_hold(t)
 	_ends(t)
 	_freed(t)
@@ -36,7 +38,8 @@ static func _setup(t) -> void:
 	var d: MarketPanicDirector = s.d
 	var first: Array = d.waves[0]
 	var ok := d.mayor == null and d.need == MarketPanicDirector.FAIR_NEED and first.size() == MarketPanicDirector.WAVE \
-		and d.goers.size() == MarketPanicDirector.WAVE and d.wards.size() == MarketPanicDirector.WARDENS
+		and d.goers.size() == MarketPanicDirector.WAVE * MarketPanicDirector.SOURCES.size() and d.unbroken().size() == MarketPanicDirector.WAVE \
+		and d.wards.size() == MarketPanicDirector.WARDENS
 	for v: Variant in first:
 		var p := v as Person
 		var spot: Vector2 = d._spots[p.get_instance_id()]
@@ -123,21 +126,22 @@ static func _appointed(t) -> void:
 	var s := _world()
 	var d: MarketPanicDirector = s.d
 	var seen := {}
-	var ok := (d.waiting[0] as Array).is_empty()
-	for v: Variant in d.goers:
-		seen[v] = true
+	var ok := true
 	for w in d.wards:
 		seen[w.man] = true
+	for v: Variant in d.waves[0]:
+		seen[v] = true
 	for i in range(1, MarketPanicDirector.SOURCES.size()):
-		var crew: Array = d.waiting[i]
-		ok = ok and crew.size() == MarketPanicDirector.WAVE
+		var crew: Array = d.waves[i]
+		ok = ok and crew.size() == MarketPanicDirector.WAVE and d.wave_out[i] < 0.0
 		for v: Variant in crew:
 			var p := v as Person
-			ok = ok and not seen.has(v) and p.mind == Person.Mind.DUTY and p.profile.faith == CitizenProfile.Faith.NONE \
-				and p.anchor.distance_to(MarketPanicDirector.SOURCES[i]) <= MarketPanicDirector.WAIT_STEP * 6.0 \
-				and not d.goers.has(p)
+			ok = ok and not seen.has(v) and d.is_waiting(p) and d.goers.has(p) and p.mind == Person.Mind.DUTY \
+				and p.profile.faith == CitizenProfile.Faith.NONE \
+				and p.anchor.distance_to(MarketPanicDirector.SOURCES[i]) <= MarketPanicDirector.WAIT_STEP * 6.0
 			seen[v] = true
-	t.check(ok, "each crowd to come: WAVE lay citizens appointed, on duty at a stand round its source, none twice, none a goer or a warden")
+	t.check(ok and d.waiting_goers().size() == MarketPanicDirector.WAVE * (MarketPanicDirector.SOURCES.size() - 1),
+		"each crowd to come: WAVE lay citizens appointed as goers, on duty at a stand round its source, none twice, none a warden")
 	Kit.done(s)
 
 
@@ -201,10 +205,10 @@ static func _evacuated(t) -> void:
 	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
 	var kept := true
 	for i in range(1, MarketPanicDirector.SOURCES.size()):
-		for v: Variant in d.waiting[i]:
+		for v: Variant in d.waves[i]:
 			kept = kept and (v as Person).mind == Person.Mind.DUTY
 	t.check(kept, "the town's regroup and evacuation pass the crowds to come by: all still on duty at their stands")
-	var held := (d.waiting[1] as Array)[0] as Person
+	var held := (d.waves[1] as Array)[0] as Person
 	held.panic(held.ground_pos + Vector2(1.0, 0.0), 1.0)
 	t.check(held.mind == Person.Mind.DUTY and held.fearless_left > 0.0, "a fright takes none of them: held fearless while he waits")
 	Kit.run_for(s, MarketPanicDirector.CHAIN + DT * 2.0)
@@ -213,17 +217,58 @@ static func _evacuated(t) -> void:
 	var all_walk := true
 	for v: Variant in second:
 		all_walk = all_walk and walking.has(v) and (v as Person).mind == Person.Mind.CALM and (v as Person).fearless_left == 0.0
-	t.check(d.wave_out[1] >= 0.0 and second.size() == MarketPanicDirector.WAVE and all_walk and (d.waiting[1] as Array).is_empty(),
+	t.check(d.wave_out[1] >= 0.0 and second.size() == MarketPanicDirector.WAVE and all_walk and d.waiting_goers().size() > 0,
 		"the town evacuated after the first crowd: the second still walks in with its %d, no longer held" % MarketPanicDirector.WAVE)
+	Kit.done(s)
+
+
+## A goer of any crowd struck down before he walks in counts toward the need, as the Festival counts any of its crowd (Task 3's
+## fix round 2): nine stray kills at a source do not make the night unwinnable. One not sent is not walked; a crowd wholly gone
+## before its time is out and scattered, and the next one's chain moves on.
+static func _stray(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var crowd: Crowd = s.crowd
+	var third: Array = d.waves[2]
+	var n := 9
+	for i in n:
+		crowd._field.kill(third[i] as Person, &"fire")
+	Kit.run_for(s, DT * 2.0)
+	t.check(d.count() == n and d.wave_out[2] < 0.0 and d.scattered_at[2] < 0.0 and d.waiting_goers().size() == MarketPanicDirector.WAVE * 3 - n,
+		"%d of the third crowd struck down where they waited: the fair's broken count rises by %d" % [n, n])
+	for i in range(1, MarketPanicDirector.SOURCES.size()):
+		d._send_wave(i)
+	t.check((d.waves[2] as Array).size() == MarketPanicDirector.WAVE and d.unbroken().size() == MarketPanicDirector.WAVE * 4 - n,
+		"the rest of them still set out, and the dead are not walked")
+	for v: Variant in d.goers:
+		if MissionDirector._alive(v):
+			crowd._field.kill(v as Person, &"doom")
+	var o := FestivalObjective.new("Scatter the fair", "fair")
+	t.check(d.count() == d.goers.size() and d.count() >= MarketPanicDirector.FAIR_NEED and o.check(s.rules) == Objective.Status.DONE,
+		"and with every one of them struck down the night is won: the stray kills lost it nothing")
 	Kit.done(s)
 	var u := _world()
 	var e: MarketPanicDirector = u.d
-	var lost := (e.waiting[2] as Array)[0] as Person
-	(u.crowd as Crowd)._field.kill(lost, &"doom")
-	e._send_wave(2)
-	t.check((e.waves[2] as Array).size() == MarketPanicDirector.WAVE - 1 and not (e.waves[2] as Array).has(lost) and e.count() == 0,
-		"one killed where he waited is not sent, and counts for nothing")
+	for v: Variant in e.waves[2]:
+		(u.crowd as Crowd)._field.kill(v as Person, &"fire")
+	Kit.run_for(u, DT * 2.0)
+	t.check(e.scattered_at[2] >= 0.0 and e.wave_out[2] >= 0.0 and not (u.banners as Array).has("MORE COME TO THE FAIR")
+		and e.next_wave() == 1 and e.count() == MarketPanicDirector.WAVE,
+		"a whole waiting crowd struck down is scattered before its time: out, nothing comes, and the count has all of it")
+	var shown := e.timeline.seconds_to("crowd_3")
+	Kit.run_for(u, MarketPanicDirector.CHAIN + DT * 4.0)
+	t.check(shown <= MarketPanicDirector.CHAIN + 0.1 and e.wave_out[3] >= 0.0 and e.wave_out[1] < 0.0,
+		"and the crowd after it is due 45 s after at the latest: the strip says so (%.1f s) and it sets out" % shown)
 	Kit.done(u)
+	var w := _world()
+	var f: MarketPanicDirector = w.d
+	var stand := (f.waves[1] as Array)[0] as Person
+	var before := f.count()
+	(w.crowd as Crowd)._field.kill(stand, &"doom")
+	f._send_wave(1)
+	t.check(f.count() == before + 1 and (f.waves[1] as Array).size() == MarketPanicDirector.WAVE and not f.walkers().has(stand),
+		"one killed where he waited is counted and not walked")
+	Kit.done(w)
 
 
 static func _hold(t) -> void:
@@ -273,11 +318,11 @@ static func _freed(t) -> void:
 	var d: MarketPanicDirector = s.d
 	Kit.free_body(s, (d.waves[0] as Array)[0] as Person)
 	Kit.free_body(s, d.wards[0].man as Person)
-	Kit.free_body(s, (d.waiting[1] as Array)[0] as Person)
+	Kit.free_body(s, (d.waves[1] as Array)[0] as Person)
 	Kit.run_for(s, MarketPanicDirector.TICK * 2.0)
-	t.check(d.count() == 1 and d.wave_count(0) == 1 and not Kit.labels(d).is_empty() and d.hint_phase() == "steadied"
-		and int(d.report().festival_count) == 1,
-		"a goer's body, a warden's and a waiting person's freed: the goer counted; the tags and the hint untouched")
+	t.check(d.count() == 2 and d.wave_count(0) == 1 and d.wave_count(1) == 1 and not Kit.labels(d).is_empty()
+		and d.hint_phase() == "steadied" and int(d.report().festival_count) == 2,
+		"a goer's body, a warden's and a waiting person's freed: both goers counted; the tags and the hint untouched")
 	Kit.done(s)
 
 
@@ -286,13 +331,23 @@ static func _texts(t) -> void:
 	var d: MarketPanicDirector = s.d
 	var labels := Kit.labels(d)
 	var fair := "THE FAIR - 0 / %d" % MarketPanicDirector.FAIR_NEED
+	var next := "NEXT CROWD %s" % UiTheme.clock(float(MarketPanicDirector.WAVE_AT[1]))
 	t.check(labels[0] == fair and Kit.edged(d, fair) and labels.count("WARDEN") == MarketPanicDirector.WARDENS
-		and labels.has("NEXT CROWD") and Kit.edged(d, "NEXT CROWD") and d.hint_phase() == "",
-		"THE FAIR with its count, pointed at; a WARDEN each; NEXT CROWD (%s)" % [labels])
+		and labels.has(next) and Kit.edged(d, next) and d.hint_phase() == "",
+		"THE FAIR with its count, pointed at; a WARDEN each; NEXT CROWD and the time to it, pointed at (%s)" % [labels])
 	var pips := 0
 	for m in d.tags():
 		pips += 1 if m.color == FestivalDirector.MARK_GOER else 0
-	t.check(pips == MarketPanicDirector.WAVE, "a gold diamond on each goer still to break, walkers too")
+	t.check(pips == MarketPanicDirector.WAVE * MarketPanicDirector.SOURCES.size(),
+		"a gold diamond on each goer still to break, walkers and the ones waiting at their stands too")
+	var s2 := _world()
+	var d2: MarketPanicDirector = s2.d
+	Kit.run_for(s2, 30.0)
+	var counted := false
+	for sec in ["0:44", "0:45", "0:46"]:
+		counted = counted or Kit.labels(d2).has("NEXT CROWD " + sec)
+	t.check(counted, "the NEXT CROWD tag counts down the seconds to its time (%s)" % [Kit.labels(d2)])
+	Kit.done(s2)
 	var lines := []
 	for stop: Array in d.tour():
 		lines.append(String(stop[1]))

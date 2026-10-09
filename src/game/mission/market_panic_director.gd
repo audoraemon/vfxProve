@@ -5,8 +5,9 @@ extends FestivalDirector
 ## start; the others from SOURCES[1..3] at WAVE_AT[1..3], or CHAIN after the crowd before is scattered (WAVE_NEED of it gone:
 ## broken, dead or out of the town), whichever is sooner -- each strolling to a spot within FAIR_R of the fountain. Every crowd's
 ## people are appointed when the night begins and the ones still to come wait on duty round their source, so the town's regroup
-## and evacuation (a loud cast, a seen kill) cannot empty a later crowd; they are not goers, and count for nothing, until they
-## set out. Once there a goer holds to the fair (on duty at his spot: the town's regroup and evacuation pass him by) until he
+## and evacuation (a loud cast, a seen kill) cannot empty a later crowd. They are goers from the start, as the Festival's are: one
+## killed while he waits counts toward the need, and a crowd wholly gone before its time is scattered and its chain moves on; but
+## while he waits he is held, and no fright or loud cast's danger breaks him (_may_break()). Once there a goer holds to the fair (on duty at his spot: the town's regroup and evacuation pass him by) until he
 ## breaks or the market closes. WARDENS wardens -- watchmen at posts evenly round the fountain -- keep it: on guard (alive, out of
 ## doors, at his post, calm) a warden is fearless and steadies every goer within WARD_R: they are held fearless too and
 ## _may_break() says no, so a fright breaks none of them; a death still counts. A warden off his post goes back RETURN_AFTER
@@ -67,11 +68,9 @@ const CAMERA_AT := Vector2(10.0, -8.0)
 const MARK_WARDEN := Color("c8342a")
 const MARK_NEXT := Color("ff9a3a")
 
-## Each crowd's goers, in the order they set out (v0.11 M3; Variants: any may be a body freed after its death fade).
+## Each crowd's people, appointed as the night begins and in the order of their crowds' set-out (v0.11 M3; Variants: any may be a
+## body freed after its death fade). The ones of a crowd not yet set out wait on duty at their stands (is_waiting()).
 var waves: Array = []
-## Each crowd's people appointed and not yet set out, on duty round their source; emptied when the crowd sets out (v0.11 M3;
-## Variants, as waves).
-var waiting: Array = []
 ## The second each crowd set out, and was scattered; -1 until then (v0.11 M3).
 var wave_out: Array[float] = []
 var scattered_at: Array[float] = []
@@ -80,7 +79,7 @@ var wards: Array[Ward] = []
 ## A goer's instance id -> his spot at the fair; -> true once he has arrived there (v0.11 M3).
 var _spots := {}
 var _arrived := {}
-## A waiting person's instance id -> his stand round his crowd's source (v0.11 M3).
+## The instance id of each person waiting for his crowd to set out -> his stand round its source (v0.11 M3).
 var _stands := {}
 ## Seconds into the night, and to the next look (v0.11 M3).
 var _clock := 0.0
@@ -95,7 +94,6 @@ func _begin() -> void:
 	fire_spots = [_walkable(HEART + BONFIRE_OFF)]
 	for i in SOURCES.size():
 		waves.append([])
-		waiting.append([])
 		wave_out.append(-1.0)
 		scattered_at.append(-1.0)
 	for k in WARDENS:
@@ -125,9 +123,10 @@ func _add_events() -> void:
 	timeline.add(MARKET_CLOSE, "close", "The guard closes the market")
 
 
-## Crowd `i` is appointed as the night begins (v0.11 M3, Decision 14 and Task 3's fix round): the WAVE lay citizens nearest its
-## source who are calm or regrouping, none at work for the fair. Those of a crowd still to come go to their stands round the source
-## and wait there on duty (the town's regroup and evacuation pass the ones on duty by).
+## Crowd `i` is appointed as the night begins (v0.11 M3, Decision 14 and Task 3's fix rounds): the WAVE lay citizens nearest its
+## source who are calm or regrouping, with a way to it, none at work for the fair. They are its goers from now on (counted as the
+## Festival counts its crowd). Those of a crowd still to come go to their stands round the source and wait there on duty (the
+## town's regroup and evacuation pass the ones on duty by).
 func _appoint(i: int) -> void:
 	var k := 0
 	for p in _lay_near(SOURCES[i], crowd.citizens.size(), _busy()):
@@ -135,7 +134,8 @@ func _appoint(i: int) -> void:
 			break
 		if not p.mind in WarningDirector.RESUMABLE or not _reaches(p, _walkable(SOURCES[i])):
 			continue
-		(waiting[i] as Array).append(p)
+		goers.append(p)
+		(waves[i] as Array).append(p)
 		if i > 0:
 			var stand := _walkable(SOURCES[i] + Vector2.from_angle(float(k) * 2.4) * (WAIT_STEP * sqrt(float(k + 1))))
 			_stands[p.get_instance_id()] = stand
@@ -143,26 +143,24 @@ func _appoint(i: int) -> void:
 		k += 1
 
 
-## Crowd `i` sets out (v0.11 M3, Decision 14): those appointed who still stand, out of doors and on duty or calm, each strolling to
-## his spot within FAIR_R of the fountain. Once only.
+## Crowd `i` sets out (v0.11 M3, Decision 14): its people who still stand, out of doors, unbroken, and on duty or calm, each strolling
+## to his spot within FAIR_R of the fountain. Once only. Their waiting ends: a fright can take them now.
 func _send_wave(i: int) -> void:
 	if wave_out[i] >= 0.0:
 		return
 	wave_out[i] = _clock
-	for v: Variant in waiting[i]:
+	for v: Variant in waves[i]:
 		if not _alive(v) or (v as Person).inside:
 			continue
 		var p := v as Person
-		if p.mind != Person.Mind.DUTY and not p.mind in WarningDirector.RESUMABLE:
+		_stands.erase(p.get_instance_id())
+		if _broke.has(p) or (p.mind != Person.Mind.DUTY and not p.mind in WarningDirector.RESUMABLE):
 			continue
 		if p.fearless_left <= HarvestDirector.HOLD_POST:
-			p.fearless_left = 0.0  # the hold of his waiting ends: a fright can take him now
-		goers.append(p)
-		(waves[i] as Array).append(p)
+			p.fearless_left = 0.0
 		var spot := _fair_spot()
 		_spots[p.get_instance_id()] = spot
 		_send(p, spot)
-	waiting[i] = []
 
 
 ## A spot within FAIR_R of the fountain on walkable ground (v0.11 M3: the plaza, the street and the gaps between houses).
@@ -174,12 +172,10 @@ func _fair_spot() -> Vector2:
 	return _walkable(HEART)
 
 
-## Everyone at work for the fair (v0.11 M3): its goers, those appointed and waiting, and its wardens, for a new one to leave out.
+## Everyone at work for the fair (v0.11 M3): its goers, the waiting ones too, and its wardens, for a new one to leave out.
 func _busy() -> Array:
 	var out: Array = []
 	out.append_array(goers)
-	for crew: Array in waiting:
-		out.append_array(crew)
 	for w in wards:
 		if w.man != null:
 			out.append(w.man)
@@ -211,12 +207,18 @@ func step(delta: float) -> void:
 
 
 ## Each crowd with WAVE_NEED of it gone (broken, dead or out of the town; all of it, if it came short) is scattered, and the strip
-## shows the next one's chained time; each crowd still to come whose chain time has come sets out (v0.11 M3).
+## shows the next one's chained time; each crowd still to come whose chain time has come sets out (v0.11 M3). One wholly gone
+## before its time (struck down where it waited) never sets out, and scatters at once.
 func _chain() -> void:
 	for i in SOURCES.size():
 		var need := mini(WAVE_NEED, (waves[i] as Array).size())
-		if scattered_at[i] < 0.0 and wave_out[i] >= 0.0 and wave_count(i) + wave_left(i) >= need:
+		if scattered_at[i] < 0.0 and wave_count(i) + wave_left(i) >= need:
 			scattered_at[i] = _clock
+			if wave_out[i] < 0.0:
+				wave_out[i] = _clock
+				for v: Variant in waves[i]:
+					if is_instance_valid(v):
+						_stands.erase((v as Person).get_instance_id())
 			if i + 1 < SOURCES.size():
 				timeline.expect("crowd_%d" % (i + 1), wave_due(i + 1))
 	for i in range(1, SOURCES.size()):
@@ -328,9 +330,15 @@ func steadied(p: Person) -> bool:
 	return false
 
 
-## A steadied goer is not broken by a fright or a loud cast's danger (v0.11 M3); a death still counts.
+## A steadied goer, or one waiting for his crowd to set out, is not broken by a fright or a loud cast's danger (v0.11 M3); a death
+## still counts.
 func _may_break(p: Person) -> bool:
-	return not steadied(p)
+	return not steadied(p) and not is_waiting(p)
+
+
+## Goer `p` waits at his stand for his crowd to set out (v0.11 M3).
+func is_waiting(p: Person) -> bool:
+	return _stands.has(p.get_instance_id())
 
 
 ## Every goer still to break within WARD_R of a warden on guard is held fearless past the next look (v0.11 M3, Spoiled Harvest's
@@ -338,7 +346,7 @@ func _may_break(p: Person) -> bool:
 ## _release() way, so a fright takes him the moment the wardens are gone.
 func _steady() -> void:
 	for v: Variant in goers:
-		if not _alive(v) or (v as Person).inside or _broke.has(v):
+		if not _alive(v) or (v as Person).inside or _broke.has(v) or is_waiting(v as Person):
 			continue
 		var p := v as Person
 		if steadied(p):
@@ -352,7 +360,7 @@ func _steady() -> void:
 ## and back on his feet, walks back. A walker the town sent home (regrouping) is sent on to the fair again.
 func _hold_fair() -> void:
 	for v: Variant in goers:
-		if not _alive(v) or _broke.has(v) or _left.has(v) or (v as Person).inside:
+		if not _alive(v) or _broke.has(v) or _left.has(v) or (v as Person).inside or is_waiting(v as Person):
 			continue
 		var p := v as Person
 		var id := p.get_instance_id()
@@ -372,23 +380,36 @@ func _hold_fair() -> void:
 ## look, as a warden is), so a loud cast or a seen death near a source frightens none of them into the town's flight; one moved off
 ## his stand by a whisper and back on his feet walks back. A death still takes him.
 func _hold_waiting() -> void:
-	for crew: Array in waiting:
-		for v: Variant in crew:
+	for i in range(1, SOURCES.size()):
+		if wave_out[i] >= 0.0:
+			continue
+		for v: Variant in waves[i]:
 			if not _alive(v) or (v as Person).inside:
 				continue
 			var p := v as Person
-			p.fearless_left = maxf(p.fearless_left, HarvestDirector.HOLD_POST)
 			var stand: Vector2 = _stands.get(p.get_instance_id(), Vector2.INF)
-			if stand != Vector2.INF and (p.mind in WarningDirector.RESUMABLE
-					or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(stand) > 0.3)):
+			if stand == Vector2.INF:
+				continue
+			p.fearless_left = maxf(p.fearless_left, HarvestDirector.HOLD_POST)
+			if p.mind in WarningDirector.RESUMABLE or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(stand) > 0.3):
 				p.go_duty(stand)
 
 
-## The goers still to break, out of doors (v0.11 M3).
+## The goers still to break that have set out, out of doors (v0.11 M3): the ones waiting at their stands are not among them (see
+## waiting_goers()).
 func unbroken() -> Array[Person]:
 	var out: Array[Person] = []
 	for v: Variant in goers:
-		if _alive(v) and not (v as Person).inside and not _broke.has(v) and not _left.has(v):
+		if _alive(v) and not (v as Person).inside and not _broke.has(v) and not _left.has(v) and not is_waiting(v as Person):
+			out.append(v as Person)
+	return out
+
+
+## The goers still to come that stand at their stands, alive and out of doors (v0.11 M3): they count toward the need if they die.
+func waiting_goers() -> Array[Person]:
+	var out: Array[Person] = []
+	for v: Variant in goers:
+		if _alive(v) and not (v as Person).inside and is_waiting(v as Person):
 			out.append(v as Person)
 	return out
 
@@ -411,8 +432,9 @@ func next_wave() -> int:
 
 
 ## The map tags (v0.11 M3, mission spec §2), most important first: THE FAIR with its count, pointed at from the edge; WARDEN on each
-## warden on guard (a small red mark on one away from his post); NEXT CROWD at the next crowd's source, pointed at, until it sets
-## out; a gold diamond on each goer still to break, walkers too. None once the fair is scattered.
+## warden on guard (a small red mark on one away from his post); NEXT CROWD and the seconds to it at the next crowd's source,
+## pointed at, until it sets out; a gold diamond on each goer still to break, walkers and the ones waiting at their stands too (the
+## fallen of a waiting crowd count). None once the fair is scattered.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if broken():
@@ -428,10 +450,17 @@ func tags() -> Array[MapTag]:
 			out.append(MapTag.pip(p.ground_pos, MARK_WARDEN))
 	var next := next_wave()
 	if next >= 0:
-		out.append(MapTag.place(_walkable(SOURCES[next]), MARK_NEXT, "NEXT CROWD", 0.0, true))
+		out.append(MapTag.place(_walkable(SOURCES[next]), MARK_NEXT, next_label(next), 0.0, true))
 	for p in unbroken():
 		out.append(MapTag.pip(p.ground_pos, MARK_GOER))
+	for p in waiting_goers():
+		out.append(MapTag.pip(p.ground_pos, MARK_GOER))
 	return out
+
+
+## The next crowd's tag (v0.11 M3): its name and the seconds to its time (the sooner of its own and the chained one).
+func next_label(i: int) -> String:
+	return "NEXT CROWD %s" % UiTheme.clock(timeline.seconds_to("crowd_%d" % i)) if timeline != null else "NEXT CROWD"
 
 
 ## The hint's phase (v0.11 M3): "coming" while a later crowd walks in; else "open" with no warden on guard, "steadied" while some

@@ -153,7 +153,8 @@ static func _off_roads(t, c: CapitalCity) -> void:
 	t.check(n == 0, "no building, stall, fountain or well stands on a street (%d; %s)" % [n, first])
 
 
-## Every ChatGPT set but the props stands on at least one plot (the footbridge as the bridge's spans).
+## Every ChatGPT set but the props and the unused sets stands on at least one plot. The unused (polish 1): the
+## footbridge (the third crossing is the stone bridge).
 static func _every_set(t, c: CapitalCity) -> void:
 	var placed := {}
 	for d: Dictionary in c.structures():
@@ -161,12 +162,14 @@ static func _every_set(t, c: CapitalCity) -> void:
 			placed[d.tag] = true
 	var missing: Array = []
 	for k: StringName in CapitalPlots.SETS:
-		if not k in CapitalPlots.PROPS and not placed.has(k):
+		if not k in CapitalPlots.PROPS and not k in CapitalPlots.UNUSED and not placed.has(k):
 			missing.append(k)
-	t.check(missing.is_empty(), "every ChatGPT set but the props is placed (missing %s)" % [missing])
-	for k: StringName in CapitalPlots.PROPS:
-		t.check(not placed.has(k), "the prop %s is not a structure" % k)
-	t.check(placed.size() == 71, "71 sets placed (%d)" % placed.size())
+	t.check(missing.is_empty(), "every ChatGPT set but the props and the unused is placed (missing %s)" % [missing])
+	for k: StringName in CapitalPlots.PROPS + CapitalPlots.UNUSED:
+		t.check(not placed.has(k), "%s is not placed" % k)
+	t.check(&"gpt_footbridge" in CapitalPlots.UNUSED, "gpt_footbridge is unused")
+	var want := CapitalPlots.SETS.size() - CapitalPlots.PROPS.size() - CapitalPlots.UNUSED.size()
+	t.check(placed.size() == want and CapitalPlots.plotted_sets().size() == want, "%d sets placed (%d)" % [want, placed.size()])
 
 
 static func _houses(t, c: CapitalCity) -> void:

@@ -83,7 +83,7 @@ static func _layout(t) -> void:
 		"every gate, the barbican and the drawbridge has two guards (%d gates, unguarded %s)" % [gates.size(), unguarded])
 	# Both ends of every crossing.
 	var ends_bare: Array = []
-	for r: Rect2 in CapitalCity.BRIDGES + [CapitalCity.FOOTBRIDGE]:
+	for r: Rect2 in CapitalCity.BRIDGES:
 		for end: Vector2 in [Vector2(r.get_center().x, r.position.y), Vector2(r.get_center().x, r.end.y)]:
 			if _near(walls, Rect2(end, Vector2.ZERO).grow(2.5)) < 1:
 				ends_bare.append(end)
@@ -256,7 +256,7 @@ static func _evacuation(t, b: Dictionary) -> void:
 	var crossings := {}  # crossing rect -> name
 	crossings[CapitalCity.BRIDGES[0]] = &"west_bridge"
 	crossings[CapitalCity.BRIDGES[1]] = &"east_bridge"
-	crossings[CapitalCity.FOOTBRIDGE] = &"footbridge"
+	crossings[CapitalCity.BRIDGES[2]] = &"third_bridge"
 	var cut_rect: Rect2 = CapitalCity.BRIDGES[1]
 	var rivers := c.rivers()
 	var gates_used := {}  # gate -> old-towners through it
@@ -353,7 +353,7 @@ static func _evacuation(t, b: Dictionary) -> void:
 		caught.size()])
 	t.check(west_gate and river_gate and gates_used.size() >= 3,
 		"the old town leaves by its gates: the west gate and the river gates (%d gates)" % gates_used.size())
-	t.check(int(by_crossing.get(&"west_bridge", 0)) + int(by_crossing.get(&"footbridge", 0)) >= 10
+	t.check(int(by_crossing.get(&"west_bridge", 0)) + int(by_crossing.get(&"third_bridge", 0)) >= 10
 		and int(by_crossing.get(&"east_bridge", 0)) >= 5, "and over the bridges (%s)" % [by_crossing])
 	t.check(crowd.escaped_count >= 150, "the town is emptying (%d escaped in %d s)" % [crowd.escaped_count, EVAC_SECONDS])
 	# The cut.

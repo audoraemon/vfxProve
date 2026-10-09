@@ -154,7 +154,8 @@ static func _placed(t) -> void:
 	for s in env.structures():
 		if String(s.art_tag).begins_with("gpt_") and not one.has(s.art_tag):
 			one[s.art_tag] = s
-	t.check(one.size() == 71, "one placed structure for each of the 71 placed sets (%d)" % one.size())
+	var placed := CapitalPlots.plotted_sets().size()
+	t.check(one.size() == placed, "one placed structure for each of the %d placed sets (%d)" % [placed, one.size()])
 	var smokers: Array[Structure] = town.smoke._houses if is_instance_valid(town.smoke) else ([] as Array[Structure])
 	var fires := FireManager.new()
 	var tags: Array = one.keys()

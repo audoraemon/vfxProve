@@ -130,8 +130,9 @@ static func _water(t, c: CapitalCity) -> void:
 		"river and harbour landmarks")
 
 
-## Three bridges, as BRIDGE structures at x≈-14 and x≈4 (stone) and x≈14 (the footbridge set, laid in spans), each
-## crossing the whole river band: on the bridge or in the gatehouse it lands at, all the way over.
+## Three bridges, as BRIDGE structures at x≈-14, x≈4 and x≈14, all three the stone bridge set (polish 1: the third
+## crossing is no longer gpt_footbridge spans), each crossing the whole river band: on the bridge or in the gatehouse it
+## lands at, all the way over. The lane to the third is a lane, narrower than the avenues to the other two.
 static func _bridges(t, c: CapitalCity) -> void:
 	var river := c.landmark(&"river")
 	var by_x := {}
@@ -145,7 +146,7 @@ static func _bridges(t, c: CapitalCity) -> void:
 		elif d.kind == Structure.Kind.GATE:
 			gates.append(d.rect)
 	t.check(by_x.keys() == [-14, 4, 14], "three bridges, at x -14, 4 and 14 (got %s)" % [by_x.keys()])
-	var want := {-14: &"stone", 4: &"stone", 14: &"gpt_footbridge"}
+	var want := {-14: &"stone", 4: &"stone", 14: &"stone"}
 	for x: int in by_x:
 		var tags_ok := true
 		for d: Dictionary in by_x[x]:
@@ -163,6 +164,19 @@ static func _bridges(t, c: CapitalCity) -> void:
 			crosses = crosses and on
 			y += 0.1
 		t.check(crosses, "the bridge at x %d crosses the river band from gate to gate" % x)
+	for x: int in by_x:
+		t.check(by_x[x].size() == 1 and (by_x[x][0].rect as Rect2).size == Vector2(2.0, 7.6),
+			"the bridge at x %d is one stone bridge on the set's own footprint" % x)
+	t.check(CapitalCity.BRIDGES.size() == 3, "three crossings in BRIDGES")
+	var widths := {}
+	for line: Dictionary in c.road_lines():
+		for k in (line.points as Array).size() - 1:
+			var a: Vector2 = line.points[k]
+			var b: Vector2 = line.points[k + 1]
+			if a.x == b.x and minf(a.y, b.y) < river.position.y and maxf(a.y, b.y) > river.end.y:
+				widths[roundi(a.x)] = line.width
+	t.check(widths.get(14, 0.0) < widths.get(-14, 0.0) and widths.get(14, 0.0) < widths.get(4, 0.0),
+		"the way over the third bridge is narrower than the avenues over the other two (%s)" % [widths])
 	var dock := c.landmark(&"dock")
 	t.check(dock.intersects(c.landmark(&"harbour")) and c.exits().has(CapitalCity.FERRY_LANDING),
 		"the ferry pier reaches into the basin and its landing is an exit")
@@ -328,11 +342,15 @@ static func _builds(t) -> void:
 	for s: Structure in town.citadel.parts:
 		on_hill = on_hill and keep.encloses(s.footprint)
 	t.check(on_hill, "the Citadel stands on the Royal Keep's hill")
-	var foot: Structure = null
+	var stone := 0
+	var foot := 0
 	for st: Structure in env.structures():
-		if st.kind == Structure.Kind.BRIDGE and st.art_tag == &"gpt_footbridge":
-			foot = st
-	t.check(foot != null and SpriteArt.name_for(foot) == "gpt_footbridge", "the footbridge draws the gpt_footbridge set")
+		if st.kind == Structure.Kind.BRIDGE and st.role == &"bridge":
+			stone += 1 if SpriteArt.name_for(st) == "bridge_stone" else 0
+			foot += 1 if st.art_tag == &"gpt_footbridge" else 0
+	t.check(stone == 3 and foot == 0, "all three bridges draw the stone bridge set, none gpt_footbridge (%d, %d)" % [stone, foot])
+	t.check(town.bridges.size() >= 3 and town.bridge != null and town.bridge.footprint == CapitalCity.BRIDGES[2],
+		"the third bridge is in Town.bridges (the last bridge built)")
 	var grid := WalkGrid.new().setup(env, town)
 	t.check(not grid.walkable(Vector2(-6.0, 9.0)), "the river blocks between the bridges")
 	t.check(grid.walkable(Vector2(-14.0, 9.0)) and grid.walkable(Vector2(4.0, 9.0)) and grid.walkable(Vector2(14.0, 9.0)),

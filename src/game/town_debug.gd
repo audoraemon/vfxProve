@@ -30,7 +30,7 @@ const TOWN_SHOTS := [
 	["town_overview.png", Vector2(0, 2), 0.3],
 	# The whole capital (--city=capital): its 80x80 map at a glance.
 	["capital_overview.png", Vector2(0, 0), 0.17],
-	# Its east stone bridge and the footbridge, between the two wall rings.
+	# Its east stone bridge and the third bridge, between the two wall rings.
 	["capital_bridges.png", Vector2(9, 8), 0.6],
 	# The old town's ring (the Keep, the noble, civic and guild quarters, the Great Market, the old town houses), the
 	# harbour district and its quay, and the new town's ring south of the river (crafts, new town, tanners, poor and road

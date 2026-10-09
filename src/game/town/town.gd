@@ -28,7 +28,7 @@ const GROUND_EVENING := Color(1.06, 0.92, 0.74)
 const DOCK_HP := 80.0
 
 var citadel: Citadel
-## The last bridge built (Aldermere's one bridge; the capital's last footbridge span).
+## The last bridge built (Aldermere's one bridge; the capital's third bridge).
 var bridge: Structure
 ## Every crossing over the water, in build order: each BRIDGE-kind structure but the dock whose footprint meets a
 ## river (Aldermere: its one bridge). A fallen one closes the water under it (WalkGrid, CityDef.fallen_bridge()).

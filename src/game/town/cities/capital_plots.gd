@@ -13,8 +13,8 @@ extends RefCounted
 const ROLE := &"gpt"
 ## The props: decor pieces (carts on the streets), never structures, so they are not plotted.
 const PROPS := [&"gpt_wagon", &"gpt_handcart"]
-## Laid by CapitalCity as the footbridge's spans (a BRIDGE of role "bridge"), not as a plot.
-const BRIDGE_SETS := [&"gpt_footbridge"]
+## Sets the capital no longer places (polish 1): the footbridge (its third crossing is the stone bridge set).
+const UNUSED := [&"gpt_footbridge"]
 
 const SETS := {
 	&"gpt_alleysteps": [Vector2(0.9, 1.0), 32.0],
@@ -110,11 +110,11 @@ static func plot(set_name: StringName, at: Vector2) -> Dictionary:
 	return {"rect": Rect2(at, s[0]), "height": type.height, "kind": type.kind, "role": ROLE, "tag": set_name}
 
 
-## The sets a city plots: every set but the props and the bridge spans.
+## The sets a city plots: every set but the props and the unused.
 static func plotted_sets() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for k: StringName in SETS:
-		if not k in PROPS and not k in BRIDGE_SETS:
+		if not k in PROPS and not k in UNUSED:
 			out.append(k)
 	return out
 

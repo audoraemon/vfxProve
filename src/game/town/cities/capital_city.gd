@@ -9,7 +9,7 @@ extends CityDef
 ##
 ## Coordinates are ground cells, plan north = -y. The old town's wall ring (INNER) holds the Keep, the noble, civic and
 ## guild quarters, the Great Market and the old town houses; the river runs between it and the new town's ring
-## (OUTER), crossed by two stone bridges and a footbridge, each landing at a gatehouse in both rings.
+## (OUTER), crossed by three stone bridges, each landing at a gatehouse in both rings.
 
 const MAP := Rect2(-40, -40, 80, 80)
 ## The Great River, a band across the whole map, and the harbour basin it widens into east of the old town.
@@ -25,11 +25,9 @@ const TOWER_AT := [-16.0, -8.0, 0.0, 8.0, 16.0]
 ## the bridges and its harbour gate; the new town's three river gates and the south barbican.
 const INNER_GATES := [Vector2(-24, -13), Vector2(-14, 4), Vector2(4, 4), Vector2(14, 4), Vector2(18, -9)]
 const OUTER_GATES := [Vector2(-14, 12), Vector2(4, 12), Vector2(14, 12), Vector2(7, 34)]
-## The bridges, gate to gate across the river: the two stone bridges (bridge_stone's own 2.0 x 7.6 footprint) and the
-## footbridge, laid as FOOTBRIDGE_SPANS lengths of the gpt_footbridge set (a set about two cells long) end to end.
-const BRIDGES := [Rect2(-15, 4.2, 2.0, 7.6), Rect2(3, 4.2, 2.0, 7.6)]
-const FOOTBRIDGE := Rect2(13.5, 4.2, 1.0, 7.6)
-const FOOTBRIDGE_SPANS := 4
+## The bridges, gate to gate across the river, each the stone bridge set on its own 2.0 x 7.6 footprint: the west and
+## east bridges on the avenues, and the third (polish 1: once gpt_footbridge spans) on a lane, the minor crossing.
+const BRIDGES := [Rect2(-15, 4.2, 2.0, 7.6), Rect2(3, 4.2, 2.0, 7.6), Rect2(13, 4.2, 2.0, 7.6)]
 const BRIDGE_H := 6.0
 ## The harbour's ferry pier, out from the basin's north quay (a structure people walk onto, as Aldermere's dock), the
 ## quay where people wait for the ferry, and the ferry's landing: reaching it is an escape by water.
@@ -295,7 +293,8 @@ const AVENUES := [
 	[Vector2(-28, 22), Vector2(20, 22)],
 ]
 const LANES := [
-	# Over the footbridge, from the cross avenue to the new town avenue.
+	# Over the third bridge, the minor crossing (a lane, half an avenue's width), from the cross avenue to the new town
+	# avenue.
 	[Vector2(14, -9), Vector2(14, 22)],
 	# From the cross avenue down to the harbour's ferry quay.
 	[Vector2(31, -9), Vector2(31, -3)],
@@ -466,7 +465,7 @@ func district_table() -> Array[Dictionary]:
 
 
 ## Every structure: the walls, towers and gatehouses of both rings (old town first), then the buildings (buildings()),
-## the stalls and the houses, then the bridges and the dock last (so Town's `bridge` is still the last footbridge span).
+## the stalls and the houses, then the bridges and the dock last (so Town's `bridge` is the third bridge).
 ## The seeds come from the field's own generator in this order.
 func structures() -> Array[Dictionary]:
 	if _structures.is_empty():
@@ -484,10 +483,6 @@ func structures() -> Array[Dictionary]:
 					"role": &"house", "tag": &""})
 		for r: Rect2 in BRIDGES:
 			out.append({"rect": r, "height": BRIDGE_H, "kind": Structure.Kind.BRIDGE, "role": &"bridge", "tag": &"stone"})
-		var span := FOOTBRIDGE.size.y / FOOTBRIDGE_SPANS
-		for k in FOOTBRIDGE_SPANS:
-			out.append({"rect": Rect2(FOOTBRIDGE.position.x, FOOTBRIDGE.position.y + span * k, FOOTBRIDGE.size.x, span),
-				"height": BRIDGE_H, "kind": Structure.Kind.BRIDGE, "role": &"bridge", "tag": &"gpt_footbridge"})
 		out.append({"rect": DOCK, "height": DOCK_H, "kind": Structure.Kind.BRIDGE, "role": &"dock", "tag": &"dock"})
 		_structures = out
 	return _structures.duplicate(true)
@@ -927,7 +922,7 @@ func soldier_posts() -> Dictionary:
 			var r: Rect2 = d.rect
 			walls.append(Vector2(r.position.x + 0.4, r.end.y + 0.45))
 			walls.append(Vector2(r.end.x - 0.4, r.end.y + 0.45))
-	for r: Rect2 in BRIDGES + [FOOTBRIDGE]:
+	for r: Rect2 in BRIDGES:
 		var cx := r.get_center().x
 		var half := r.size.x * 0.5 + BRIDGE_GUARD_SIDE
 		# The north end on the bank beside the bridge, the south end just inside the new town's gate.
@@ -1084,7 +1079,7 @@ func landmark(name: StringName) -> Rect2:
 		var inner: Array[Rect2] = _gatehouses(INNER, INNER_GATES).gates
 		var outer: Array[Rect2] = _gatehouses(OUTER, OUTER_GATES).gates
 		_landmarks = {
-			&"river": RIVER, &"harbour": HARBOUR, &"bridge": BRIDGES[1], &"footbridge": FOOTBRIDGE, &"dock": DOCK,
+			&"river": RIVER, &"harbour": HARBOUR, &"bridge": BRIDGES[1], &"third_bridge": BRIDGES[2], &"dock": DOCK,
 			&"dock_wait": DOCK_WAIT, &"market_square": MARKET_SQUARE, &"west_market": WEST_MARKET,
 			&"citadel_court": CITADEL_COURT, &"old_town_wall": INNER, &"new_town_wall": OUTER,
 			&"west_gate": inner[0], &"harbour_gate": inner[4], &"barbican": outer[3], &"main_gate": outer[3],
@@ -1111,7 +1106,7 @@ func floor_areas() -> Dictionary:
 		&"plazas": plazas, &"yards": yards, &"gate_plazas": gate_plazas(),
 		&"building_yards": building_yards, &"farm": farm,
 		&"paved": [OUTER.grow(-TownLayout.WALL_T)] as Array[Rect2],
-		&"crossings": _typed(BRIDGES + [FOOTBRIDGE]),
+		&"crossings": _typed(BRIDGES),
 		&"lawns": [ROYAL_GARDEN] as Array[Rect2], &"paths": _garden_paths(),
 	}
 

@@ -367,7 +367,7 @@ func _capital_evac(seconds: float) -> void:
 	crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
 	crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 	crowd.add_alarm(100.0)
-	var names := {CapitalCity.BRIDGES[0]: "west", CapitalCity.BRIDGES[1]: "east", CapitalCity.FOOTBRIDGE: "foot"}
+	var names := {CapitalCity.BRIDGES[0]: "west", CapitalCity.BRIDGES[1]: "east", CapitalCity.BRIDGES[2]: "third"}
 	var cut_rect: Rect2 = CapitalCity.BRIDGES[1]
 	var crossed := {}  # person -> {bridge name: frame first on it}
 	var users: Array = []

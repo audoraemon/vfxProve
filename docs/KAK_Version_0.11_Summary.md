@@ -130,7 +130,7 @@ One Important and five minor findings, fixed in one commit before the milestone 
 - **`RazeDirector.teardown()` unseals** every sealed target, so no building keeps a damage filter bound to a dead director.
 - **Stale text:** the Tax Collector's header comments (15 s indoors, the second deputy's three debtors) and the photograph note above (the first grain comes at 1:00).
 
-Gates: filled in at landing.
+Gates (at 9c27bfd, M2 merged with Develop-Main's GPT buildings): tests 5596 checks, 0 failures (4525 on M2 alone; the rest came with the merge); FLOW 110 checks, 0 failures; the state digest and crowd_check unchanged; every exact behaviour checksum unchanged (calm, gates, fire, rite, soldiers, the five Warning cases, Mira's House, Broken Lanterns), the Vigil Flame and the Feast with the same results; all 24 new references above exact; the four `--board` runs as Task 7 recorded them (prayers differs from its off-board run on purpose: the family wish reserves some of the poor). Bench, board versions against `kak-v011-m1` (medians of three, noisy machine): The Tax Collector 96 fps against The Warning's 89 there (+22 draw calls), The Warning 111 vs 111, Mira's House 102 vs 101, the Vigil Flame 103 vs 102, Last Judgement 91 vs 85: no cost.
 
 ## M1: The Tiers framework
 

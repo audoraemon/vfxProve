@@ -11,8 +11,10 @@ extends RefCounted
 ## the tag the set's name, which SpriteArt.name_for draws.
 
 const ROLE := &"gpt"
-## The props: decor pieces (carts on the streets), never structures, so they are not plotted.
-const PROPS := [&"gpt_wagon", &"gpt_handcart"]
+## The sets that may stand turned (W and D swapped), so the engine draws them mirrored (SpriteArt.set_for): both of
+## their facings read, as the showcase shows them (GptShowcase.MIRRORS). Every other set stands unturned: its mirrored
+## painting would be lit from the right. The wagon and the hand cart stand parked in the Keep's service yard (polish 2).
+const TURNS := [&"gpt_wagon"]
 ## Sets the capital no longer places (polish 1): the footbridge (its third crossing is the stone bridge set) and the
 ## drawbridge (no gate of the capital faces open water: its river gates land the stone bridges).
 const UNUSED := [&"gpt_footbridge", &"gpt_drawbridge"]
@@ -112,17 +114,21 @@ static func on_bank(set_name: StringName, x: float, bank_y: float) -> Dictionary
 
 
 ## The structure for set `set_name` with its footprint's back corner at `at`: {rect, height, kind, role, tag}.
-static func plot(set_name: StringName, at: Vector2) -> Dictionary:
+## `turned` (a set in TURNS only): its footprint W and D swapped, so it draws mirrored, facing the other way.
+static func plot(set_name: StringName, at: Vector2, turned := false) -> Dictionary:
 	var s: Array = SETS[set_name]
 	var type := BuildingTypes.info(set_name)
-	return {"rect": Rect2(at, s[0]), "height": type.height, "kind": type.kind, "role": ROLE, "tag": set_name}
+	var size: Vector2 = s[0]
+	if turned and set_name in TURNS:
+		size = Vector2(size.y, size.x)
+	return {"rect": Rect2(at, size), "height": type.height, "kind": type.kind, "role": ROLE, "tag": set_name}
 
 
-## The sets a city plots: every set but the props and the unused.
+## The sets a city plots: every set but the unused.
 static func plotted_sets() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for k: StringName in SETS:
-		if not k in PROPS and not k in UNUSED:
+		if not k in UNUSED:
 			out.append(k)
 	return out
 

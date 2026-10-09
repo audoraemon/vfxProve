@@ -95,6 +95,9 @@ static func _solid_rects(built: Array[Dictionary]) -> Array[Rect2]:
 			and bool(BuildingTypes.info(d.get("tag", &"")).get("walkable", false)))
 		if not walked:
 			out.append(d.rect)
+		elif d.get("role", &"") == CapitalPlots.ROLE:
+			# A set walked through a passage (BuildingTypes.PASSAGE) is solid either side of it.
+			out.append_array(BuildingTypes.cheeks(d.get("tag", &""), d.rect))
 	for r: Rect2 in Citadel.TOWERS + Citadel.WALLS + [Citadel.KEEP]:
 		out.append(Rect2(r.position + City.current().citadel_origin(), r.size))
 	for f: Rect2 in City.current().fountains() + City.current().wells():

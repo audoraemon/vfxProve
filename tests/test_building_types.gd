@@ -57,10 +57,11 @@ static func _table(t) -> void:
 			flat.append(String(k))
 	walk.sort()
 	flat.sort()
-	t.check(walk == ["gpt_districtgate", "gpt_ferry", "gpt_footbridge", "gpt_sluice", "gpt_vineyard"],
-		"the walkable types: the bridges, ferry landing, sluice, district gate and vineyard (%s)" % [walk])
-	t.check(flat == ["gpt_ferry", "gpt_footbridge", "gpt_sluice", "gpt_vineyard"],
-		"the flat types: the bridges, ferry landing, sluice and vineyard (%s)" % [flat])
+	t.check(walk == ["gpt_alleysteps", "gpt_barbican", "gpt_districtgate", "gpt_ferry", "gpt_footbridge", "gpt_sluice",
+		"gpt_vineyard"], "the walkable types: the bridges, ferry landing, sluice, district gate, vineyard, and the Keep's "
+		+ "gate and the alley steps through their passages (%s)" % [walk])
+	t.check(flat == ["gpt_alleysteps", "gpt_ferry", "gpt_footbridge", "gpt_sluice", "gpt_vineyard"],
+		"the flat types: the bridges, ferry landing, sluice, vineyard and alley steps (%s)" % [flat])
 	t.check(not BuildingTypes.info(&"gpt_fishpond").walkable and not BuildingTypes.info(&"gpt_monument").walkable,
 		"the fishpond's rim and the monument's plinth are not walked on")
 	# Masonry with nothing to catch: the walls, towers, gates, stone water works, monuments and the graveyard.
@@ -174,9 +175,15 @@ static func _placed(t) -> void:
 			bad.flat.append(tag)
 		if bool(i.walkable):
 			# Every walk-grid cell whose centre lies on it is open ground (on its dry part: the river under a set standing
-			# over the water stays closed, tests/test_capital_water.gd).
+			# over the water stays closed, tests/test_capital_water.gd; through its passage only, for a set walked
+			# through one: BuildingTypes.PASSAGE, its cheeks closed, tests/test_capital_polish2.gd).
 			var r := s.footprint
 			r.size.y -= float(i.water_depth)
+			if BuildingTypes.PASSAGE.has(tag):
+				r = BuildingTypes.passage(tag, r)
+				for k: Rect2 in BuildingTypes.cheeks(tag, s.footprint):
+					if minf(k.size.x, k.size.y) >= 0.5 and grid.walkable(k.get_center()):
+						bad.grid.append(tag)
 			var y := floorf(r.position.y / WalkGrid.CELL) * WalkGrid.CELL + WalkGrid.CELL * 0.5
 			var open := true
 			var cells := 0

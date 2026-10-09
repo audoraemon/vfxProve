@@ -80,7 +80,7 @@ static func _sets_table(t) -> void:
 		var fp: Array = man[k].footprint
 		t.check(row.size() == 2 and (row[0] as Vector2).is_equal_approx(Vector2(fp[0], fp[1]))
 			and is_equal_approx(row[1], float(man[k].height)), "%s keeps its blockout footprint and height" % k)
-	t.check(CapitalPlots.PROPS == [&"gpt_wagon", &"gpt_handcart"], "the props are the wagon and the hand cart")
+	t.check(CapitalPlots.TURNS == [&"gpt_wagon"], "only the wagon may stand turned (both its facings)")
 
 
 static func _overlaps(t, all: Array[Dictionary]) -> void:
@@ -149,6 +149,10 @@ static func _off_roads(t, c: CapitalCity) -> void:
 	var first := ""
 	var things: Array[Dictionary] = []
 	for d: Dictionary in c.structures():
+		# A set people walk through may stand across a street: the district gate across its lane, the Keep's gate
+		# and its steps on the avenue (BuildingTypes walkable).
+		if d.role == CapitalPlots.ROLE and BuildingTypes.info(d.tag).walkable:
+			continue
 		if not d.kind in [Structure.Kind.CASTLE_WALL, Structure.Kind.GATE, Structure.Kind.BRIDGE] \
 				and not (d.kind == Structure.Kind.KEEP and d.role == &"tower"):
 			things.append(d)
@@ -171,13 +175,14 @@ static func _every_set(t, c: CapitalCity) -> void:
 			placed[d.tag] = true
 	var missing: Array = []
 	for k: StringName in CapitalPlots.SETS:
-		if not k in CapitalPlots.PROPS and not k in CapitalPlots.UNUSED and not placed.has(k):
+		if not k in CapitalPlots.UNUSED and not placed.has(k):
 			missing.append(k)
-	t.check(missing.is_empty(), "every ChatGPT set but the props and the unused is placed (missing %s)" % [missing])
-	for k: StringName in CapitalPlots.PROPS + CapitalPlots.UNUSED:
+	t.check(missing.is_empty(), "every ChatGPT set but the unused is placed, the wagon and hand cart too (missing %s)"
+		% [missing])
+	for k: StringName in CapitalPlots.UNUSED:
 		t.check(not placed.has(k), "%s is not placed" % k)
 	t.check(&"gpt_footbridge" in CapitalPlots.UNUSED, "gpt_footbridge is unused")
-	var want := CapitalPlots.SETS.size() - CapitalPlots.PROPS.size() - CapitalPlots.UNUSED.size()
+	var want := CapitalPlots.SETS.size() - CapitalPlots.UNUSED.size()
 	t.check(placed.size() == want and CapitalPlots.plotted_sets().size() == want, "%d sets placed (%d)" % [want, placed.size()])
 
 
@@ -206,6 +211,15 @@ static func _art(t, c: CapitalCity) -> void:
 		if d.role != CapitalPlots.ROLE:
 			continue
 		var row: Array = CapitalPlots.SETS[d.tag]
+		# A set that may stand turned (CapitalPlots.TURNS: the wagon) draws mirrored when it does.
+		var turned: bool = d.tag in CapitalPlots.TURNS and (d.rect as Rect2).size.is_equal_approx(Vector2(row[0].y, row[0].x))
+		if turned:
+			var s := Structure.new().setup(d.rect, d.height, d.kind, 1, d.role, d.tag)
+			if SpriteArt.name_for(s) != String(d.tag) or not SpriteArt.set_for(s).get("mirror", false):
+				drawn = false
+				bad = String(d.tag)
+			s.free()
+			continue
 		if not ((d.rect as Rect2).size.is_equal_approx(row[0]) and is_equal_approx(d.height, row[1])
 				and d.kind == BuildingTypes.info(d.tag).kind):
 			exact = false
@@ -216,7 +230,7 @@ static func _art(t, c: CapitalCity) -> void:
 			bad = String(d.tag)
 		s.free()
 	t.check(exact, "every ChatGPT plot has its set's footprint, height and kind (%s)" % bad)
-	t.check(drawn, "every ChatGPT plot draws its own set, unmirrored (%s)" % bad)
+	t.check(drawn, "every ChatGPT plot draws its own set, unmirrored but a turned wagon (%s)" % bad)
 	var want := {&"cathedral": "cathedral", &"tavern": "tavern", &"smithy": "smithy", &"workshop": "workshop",
 		&"carpenter": "carpenter", &"bell_tower": "bell_tower", &"windmill": "windmill"}
 	var seen := {}

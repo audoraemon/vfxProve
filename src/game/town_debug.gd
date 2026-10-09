@@ -45,6 +45,9 @@ const TOWN_SHOTS := [
 	["capital_quay.png", Vector2(31.5, -2.5), 0.85],
 	["capital_wash.png", Vector2(-1, 5.5), 0.7],
 	["capital_sluice.png", Vector2(-27.6, 5.5), 1.3],
+	# Polish 2: the Keep's service yard, the Keep's gate with its steps.
+	["capital_keep_yard.png", Vector2(11.0, -25.0), 1.0],
+	["capital_keep_gate.png", Vector2(4.0, -22.0), 1.4],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],

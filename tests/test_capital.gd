@@ -227,9 +227,12 @@ static func _walls(t, c: CapitalCity) -> void:
 	t.check(TownLayout.walls() == TownLayout.ring_walls(TownLayout.TOWN, TownLayout.ROADS,
 		TownLayout._rect_array(TownLayout.GATE_TOWERS), TownLayout._rect_array([TownLayout.MAIN_GATE, TownLayout.SIDE_GATE]),
 		TownLayout.TOWER_AT), "Aldermere's walls come from the shared ring code")
-	# No wall piece or tower stands on a road except where a gatehouse lets it through.
+	# No wall piece or tower stands on a road except where a gatehouse lets it through (or a set people walk through
+	# stands across it: the district gate, the Keep's gate, BuildingTypes walkable).
 	var on_road := 0
 	for d: Dictionary in structs:
+		if d.role == CapitalPlots.ROLE and BuildingTypes.info(d.tag).walkable:
+			continue
 		if d.kind in [Structure.Kind.CASTLE_WALL, Structure.Kind.KEEP]:
 			for road: Rect2 in c.roads():
 				if road.intersects(d.rect):

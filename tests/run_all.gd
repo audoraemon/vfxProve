@@ -24,6 +24,7 @@ const SUITES := [
 	"res://tests/test_capital_evac.gd",
 	"res://tests/test_capital_court.gd",
 	"res://tests/test_capital_water.gd",
+	"res://tests/test_capital_polish2.gd",
 	"res://tests/test_frame_rate.gd",
 	"res://tests/test_building_types.gd",
 	"res://tests/test_citadel.gd",

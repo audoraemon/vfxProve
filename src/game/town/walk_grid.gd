@@ -168,11 +168,16 @@ static func solid_rect(footprint: Rect2) -> Rect2:
 
 ## A standing building people walk over — a gate, the bridge, a field: its own footprint is open again,
 ## whatever a neighbour's margin or the river did to those cells. One standing over the water (a capital set:
-## BuildingTypes.OVER_WATER, the ferry landing) is open on its dry part only: the river under it stays closed.
+## BuildingTypes.OVER_WATER, the ferry landing) is open on its dry part only: the river under it stays closed. One
+## walked through a passage (a capital set: BuildingTypes.PASSAGE, the Keep's gate, the alley steps) is open there
+## only: its cheeks either side are solid, as they stand (not grown by a body, which would close the passage too).
 func _open(s: Structure) -> void:
 	if not is_instance_valid(s) or s.destroyed or not s.walkable:
 		return
 	stamp(s.footprint, false)
+	if s.role == CapitalPlots.ROLE:
+		for r: Rect2 in BuildingTypes.cheeks(s.art_tag, s.footprint):
+			stamp(r, true)
 	if s.role == CapitalPlots.ROLE and BuildingTypes.over_water(s.art_tag):
 		for r: Rect2 in City.current().rivers():
 			if r.intersects(s.footprint):

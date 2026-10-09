@@ -10,30 +10,34 @@ extends RefCounted
 ## - hp: its own health, sized to what it is (a shack 25, a cottage-sized workshop 50, a stone civic hall 100-140, the
 ##   keep's outworks 140-180).
 ## - walkable: people walk over it while it stands (the bridges, the ferry landing, the sluice's deck, the district
-##   gate's paving under its arch, the vineyard). The fishpond's rim and the monument's plinth are not walked on.
-## - flat: drawn under the people on it (the bridges, the ferry landing, the sluice, the vineyard). The district gate's
-##   arch stands up over them, as a town gate does.
+##   gate's paving under its arch, the vineyard; the Keep's gate and the alley steps through their passages only, see
+##   PASSAGE). The fishpond's rim and the monument's plinth are not walked on.
+## - flat: drawn under the people on it (the bridges, the ferry landing, the sluice, the vineyard, the alley steps). The
+##   district gate's arch and the Keep's gate stand up over them, as a town gate does.
 ## - burns: a fire-kind hit can set it alight and a fire can spread to it (FireManager). Bare masonry (the walls,
 ##   towers and gates, the cistern, the fishpond, the aqueduct, the sluice, the monuments, the graveyard) never does;
 ##   the wooden landing does not either, as the dock does not.
 ## - smokes: it smokes from its chimney, exactly the sets whose art carries a chimney key (the manifest's "chimney").
 ## Damaged and ruins come from each set's own stills; a fall is the engine's sink (the sets have no collapse strips).
-## The props (wagon, hand cart) are decor, never placed; they keep a row so every set has one.
+## The wagon and the hand cart stand parked in the capital's Keep service yard (polish 2), the wagon both ways round.
 ## - over water (OVER_WATER, polish 1): a set painted with water at its quay (the crane, the ferry landing, the dock
 ##   warehouse, the wash house, the sluice) has had that water cut from its stills (gpt_convert.py cut_water) and stands
 ##   over the city's real water: the front (south) strip of its plot this deep, the manifest's water_depth for its art,
 ##   lies on the river or the basin from the bank, the rest on land. Only that strip may be wet (the off-river test);
 ##   the water under it stays closed to walkers (WalkGrid), and it is not a crossing (Town.bridges).
+## - passage (PASSAGE, polish 2): a walkable set people walk through only part of, a gate-style strip across its
+##   whole depth (the Keep's gate's arch, the alley steps' stair); the rest of it, its cheeks (cheeks()), stays solid
+##   (WalkGrid, TownDecor). The steps lie flat, so the people climbing them are drawn over them; the gate stands up.
 
 const K := Structure.Kind
 
 ## tag -> [kind, hp, walkable, flat, burns, smokes]
 const TYPES := {
-	&"gpt_alleysteps": [K.HOUSE, 60.0, false, false, false, false],
+	&"gpt_alleysteps": [K.HOUSE, 60.0, true, true, false, false],
 	&"gpt_aqueduct": [K.CASTLE_WALL, 90.0, false, false, false, false],
 	&"gpt_armoury": [K.BARRACKS, 150.0, false, false, true, true],
 	&"gpt_bakery": [K.HOUSE, 50.0, false, false, true, true],
-	&"gpt_barbican": [K.KEEP, 180.0, false, false, false, false],
+	&"gpt_barbican": [K.KEEP, 180.0, true, false, false, false],
 	&"gpt_bathhouse": [K.HOUSE, 60.0, false, false, true, true],
 	&"gpt_beehives": [K.HOUSE, 20.0, false, false, true, false],
 	&"gpt_brewery": [K.HOUSE, 70.0, false, false, true, true],
@@ -109,6 +113,33 @@ const TYPES := {
 const OVER_WATER := {
 	&"gpt_crane": 0.55, &"gpt_ferry": 1.29, &"gpt_sluice": 1.77, &"gpt_warehouse": 0.49, &"gpt_washhouse": 0.54,
 }
+
+
+## tag -> its passage across x, as fractions of its footprint's width (from, to): the arch of the Keep's gate (the
+## barbican's painting: its portcullis between the two towers) and the stair of the alley steps (between its thin left
+## wall and the solid block on its right). It runs the footprint's whole depth (y), where the sets are walked through.
+const PASSAGE := {
+	&"gpt_barbican": Vector2(0.42, 0.68), &"gpt_alleysteps": Vector2(0.1, 0.5),
+}
+
+
+## The walkable strip of set `tag` standing on `rect` (PASSAGE); Rect2() for a set without one.
+static func passage(tag: StringName, rect: Rect2) -> Rect2:
+	if not PASSAGE.has(tag):
+		return Rect2()
+	var f: Vector2 = PASSAGE[tag]
+	return Rect2(rect.position.x + rect.size.x * f.x, rect.position.y, rect.size.x * (f.y - f.x), rect.size.y)
+
+
+## The solid parts of set `tag` standing on `rect` either side of its passage, west first; none without one.
+static func cheeks(tag: StringName, rect: Rect2) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var p := passage(tag, rect)
+	if not p.has_area():
+		return out
+	out.append(Rect2(rect.position, Vector2(p.position.x - rect.position.x, rect.size.y)))
+	out.append(Rect2(Vector2(p.end.x, rect.position.y), Vector2(rect.end.x - p.end.x, rect.size.y)))
+	return out
 
 
 ## The type of set `tag`: {kind, hp, height (its blockout's, CapitalPlots.SETS), walkable, flat, burns, smokes,

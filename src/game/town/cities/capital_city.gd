@@ -81,7 +81,7 @@ const WINDMILL := Rect2(-36.0, 23.0, 0.9, 0.9)
 ## The fountains (the Great Market's, the civic square's) and the wells.
 const FOUNTAINS := [Rect2(-5.0, -3.0, 1.2, 1.2), Rect2(5.5, -17.0, 1.2, 1.2)]
 const WELLS := [Rect2(-27.5, 19.6, 0.5, 0.5), Rect2(-16.5, 28.0, 0.5, 0.5), Rect2(16.0, 28.5, 0.5, 0.5),
-	Rect2(9.0, 0.6, 0.5, 0.5)]
+	Rect2(9.0, 0.6, 0.5, 0.5), KEEP_YARD_WELL]
 ## The Keep's courtyard (polish 1): the paved yard inside the old town's north-west walls, between the wall patrols'
 ## loop and the noble quarter, the barracks at its east end. Its west half is the royal garden: lawn, gravel paths
 ## crossing at a fountain, hedges, flower beds, benches and trees (court_decor()), the monument and the pavilion
@@ -135,6 +135,26 @@ const DRILL_RANKS := [3.0, 1.8]
 const COURT_HALF := {Decor.Kind.BUSH: 0.2, Decor.Kind.FLOWERS: 0.15, Decor.Kind.OAK: 0.3, Decor.Kind.PINE: 0.3,
 	Decor.Kind.SCARECROW: 0.2, Decor.Kind.BARREL: 0.15, Decor.Kind.CRATES: 0.25, Decor.Kind.LOGS: 0.3,
 	Decor.Kind.TABLE: 0.35, Decor.Kind.BENCH: 0.15}
+## The Keep's gate (polish 2): the barbican's back corner, at the head of the avenue up from the cathedral square (its
+## south edge on the avenue's end), placed so its arch (BuildingTypes.PASSAGE) opens two walk cells of the avenue and
+## its towers close the cells either side. The alley steps' back corner: two pieces, one in front of the other, from
+## the gate's front down the avenue, their stair on the arch's west cell and their solid block on its east one.
+const KEEP_GATE := Vector2(2.58, -22.88)
+const KEEP_STEPS := Vector2(3.5, -22.0)
+## The Keep's service yard (polish 2): the paving east of the Keep inside the old town's wall, between the Keep's gate
+## and the wall patrols' loop. The royal stables and horse pens along its north side under the wall, a granary, a well,
+## the wagon (both ways round) and hand carts parked (GPT_PLOTS); wood piles by the stables, barrels and crates by the
+## granary (YARD_DECOR, carried with the courtyard's: court_decor()). No hay: no set or decor piece is hay. Its stable
+## hands (SPAWN_ROLES' keep_yard) work at the stables' fronts and YARD_WORK.
+const KEEP_YARD := Rect2(6.6, -28.3, 9.7, 7.0)
+const KEEP_YARD_WELL := Rect2(11.3, -24.6, 0.5, 0.5)
+const YARD_DECOR := [
+	[Decor.Kind.LOGS, Vector2(9.35, -26.2)], [Decor.Kind.LOGS, Vector2(6.95, -26.15)],
+	[Decor.Kind.BARREL, Vector2(12.5, -22.2)], [Decor.Kind.BARREL, Vector2(12.55, -21.75)],
+	[Decor.Kind.CRATES, Vector2(12.3, -23.0)], [Decor.Kind.CRATES, Vector2(9.0, -22.55)],
+]
+## The yard's own work places besides the stables' fronts: the pens' gate, the granary's door, the cart stand.
+const YARD_WORK := [Vector2(13.3, -26.5), Vector2(13.4, -21.5), Vector2(10.6, -23.0)]
 ## The bank lines the over-water sets stand from (BuildingTypes.OVER_WATER): the river's north bank and the harbour
 ## basin's north quay (RIVER's and HARBOUR's north edges).
 const NORTH_BANK := 6.0
@@ -144,11 +164,19 @@ const NORTH_QUAY := -2.0
 ## By district (spec §1). The landmarks that must be seen (the Citadel's keep, the cathedral, the town hall, the market
 ## hall) have nothing taller just in front of them (tests/test_capital_plots.gd).
 const GPT_PLOTS := [
-	# Royal Keep: armoury and treasury before the barracks; a watchtower and the keep's barbican east of the Citadel,
-	# clear of its front. (No drawbridge gatehouse: no gate of the capital faces open water. CapitalPlots.UNUSED.)
+	# Royal Keep: armoury and treasury before the barracks. The barbican is the Keep's gate (polish 2), at the head of
+	# the avenue up from the cathedral square, its arch over the avenue (KEEP_GATE: a passage, BuildingTypes.PASSAGE,
+	# no crowd gate), the watchtower beside it on its line, and both alley steps at its foot (KEEP_STEPS) as one flight
+	# up to it. (No drawbridge gatehouse: no gate of the capital faces open water. CapitalPlots.UNUSED.)
 	[&"gpt_armoury", Vector2(-7.8, -23.5)], [&"gpt_treasury", Vector2(-5.0, -23.5)],
-	[&"gpt_watchtower", Vector2(6.6, -28.2)],
-	[&"gpt_barbican", Vector2(5.3, -22.4)],
+	[&"gpt_barbican", KEEP_GATE], [&"gpt_watchtower", KEEP_GATE + Vector2(2.78, 0.0)],
+	[&"gpt_alleysteps", KEEP_STEPS], [&"gpt_alleysteps", KEEP_STEPS + Vector2(0.0, 1.0)],
+	# The Keep's service yard (KEEP_YARD): two royal stables and the horse pens along its north side, the granary, the
+	# wagon parked both ways round (turned, it draws mirrored: CapitalPlots.TURNS) and two hand carts.
+	[&"gpt_stables", Vector2(6.9, -28.1)], [&"gpt_stables", Vector2(9.6, -28.1)], [&"gpt_pens", Vector2(12.3, -28.1)],
+	[&"gpt_granary", Vector2(12.8, -23.0)], [&"gpt_wagon", Vector2(7.4, -23.4)],
+	[&"gpt_wagon", Vector2(9.6, -24.4), &"turned"],
+	[&"gpt_handcart", Vector2(11.0, -22.4)], [&"gpt_handcart", Vector2(7.4, -25.4)],
 	# The royal garden, the Keep courtyard's west half (KEEP_COURT): the monument at the head of its north path, the
 	# pavilion in its south-west corner.
 	[&"gpt_monument", Vector2(-19.285, -27.75)], [&"gpt_pavilion", Vector2(-21.5, -23.0)],
@@ -163,10 +191,10 @@ const GPT_PLOTS := [
 	[&"gpt_patrician", Vector2(-14.2, -11.6)], [&"gpt_patrician", Vector2(-13.0, -11.6)],
 	[&"gpt_patrician", Vector2(-11.8, -11.6)], [&"gpt_patrician", Vector2(-10.6, -11.6)],
 	# Cathedral and civic square: town hall and courthouse east of the cathedral, the jail and its notice board west of
-	# it, alley steps down to the cross avenue.
+	# it.
 	[&"gpt_townhall", Vector2(-1.2, -20.8)], [&"gpt_courthouse", Vector2(-1.0, -18.6)],
 	[&"gpt_jail", Vector2(-8.7, -18.6)],
-	[&"gpt_noticeboard", Vector2(-8.6, -16.5)], [&"gpt_alleysteps", Vector2(1.2, -11.5)],
+	[&"gpt_noticeboard", Vector2(-8.6, -16.5)],
 	# Guild quarter: the guild hall, the weavers' hall, shop-houses.
 	[&"gpt_guildhall", Vector2(9.0, -20.6)], [&"gpt_weavers", Vector2(11.0, -20.6)],
 	[&"gpt_shophouse", Vector2(13.8, -20.6)], [&"gpt_shophouse", Vector2(15.2, -20.6)],
@@ -213,9 +241,9 @@ const GPT_PLOTS := [
 	[&"gpt_shacks", Vector2(-21.0, 23.6)], [&"gpt_shacks", Vector2(-19.2, 23.6)], [&"gpt_shacks", Vector2(-10.6, 31.2)],
 	[&"gpt_latrine", Vector2(-17.0, 23.6)], [&"gpt_latrine", Vector2(-8.6, 31.5)],
 	[&"gpt_noticeboard", Vector2(-14.0, 23.6)],
-	# Road quarter: the coaching inn, stables, livestock pens, the district gate, alley steps.
+	# Road quarter: the coaching inn, stables, livestock pens, the district gate.
 	[&"gpt_inn", Vector2(-3.0, 23.5)], [&"gpt_stables", Vector2(9.0, 23.5)], [&"gpt_pens", Vector2(12.0, 23.5)],
-	[&"gpt_districtgate", Vector2(15.5, 23.5)], [&"gpt_alleysteps", Vector2(18.5, 23.5)],
+	[&"gpt_districtgate", Vector2(15.5, 23.5)],
 	# Monastery hill: monastery, graveyard, chapel; the leper house far off; a wayside cross and a milestone by the west
 	# road.
 	[&"gpt_monastery", Vector2(-36.0, -36.0)], [&"gpt_graveyard", Vector2(-32.5, -36.0)],
@@ -281,6 +309,7 @@ const SPAWN_ROLES := {
 	&"road_quarter": {&"innkeeper": 3, &"stable_hand": 4, &"labourer": 6, &"resident": 16, &"caregiver": 8,
 		&"merchant": 3},
 	&"monastery_hill": {&"monk": 12},
+	&"keep_yard": {&"stable_hand": 3},
 	&"west_farms": {&"farmer": 12},
 	&"south_east_fields": {&"farmer": 12},
 	&"suburbs": {&"labourer": 4, &"resident": 4, &"farmer": 2},
@@ -563,7 +592,8 @@ func blockers() -> Array[Rect2]:
 	return out
 
 
-## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear.
+## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear; then the service
+## yard's (KEEP_YARD, polish 2).
 func court_decor() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row: Array in GARDEN_DECOR:
@@ -571,6 +601,8 @@ func court_decor() -> Array[Dictionary]:
 	for g: Vector2 in DRILL_DUMMIES:
 		out.append({"kind": Decor.Kind.SCARECROW, "at": g, "size": Vector2.ZERO})
 	for row: Array in DRILL_DECOR:
+		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
+	for row: Array in YARD_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
 	return out
 
@@ -845,6 +877,7 @@ func anchors() -> Dictionary:
 			out.market.append(pl.position + pl.size * Vector2(0.25 + 0.5 * (k % 2), 0.25 + 0.5 * (k / 2)))
 	for pl: Rect2 in gate_plazas():
 		out.gate.append(pl.get_center())
+	out.work.append_array(YARD_WORK)
 	out.harbour.append(DOCK_WAIT.get_center())
 	for w: Rect2 in _typed(FOUNTAINS) + wells():
 		out.water.append(Vector2(w.get_center().x, w.end.y + 0.3))
@@ -1000,7 +1033,7 @@ func district_exits() -> Dictionary:
 	var west: Vector2 = ex[1]
 	var ferry: Vector2 = ex[2]
 	return {
-		&"royal_keep": [west, south], &"noble_quarter": [west, south], &"cathedral_square": [west, south, ferry],
+		&"royal_keep": [west, south], &"keep_yard": [west, south], &"noble_quarter": [west, south], &"cathedral_square": [west, south, ferry],
 		&"guild_quarter": [ferry, south, west], &"great_market": [west, south], &"old_town_houses": [south, ferry, west],
 		&"harbour_district": [ferry, south], &"crafts_quarter": [south], &"new_town": [south], &"tanners_dyers": [south],
 		&"poor_quarter": [south], &"road_quarter": [south], &"monastery_hill": [west], &"northern_woods": [ferry, west],
@@ -1098,7 +1131,7 @@ func landmark(name: StringName) -> Rect2:
 			&"temple": CATHEDRAL, &"barracks": BARRACKS, &"barracks_yard": BARRACKS_YARD, &"workshop": WORKSHOP,
 			&"smithy": SMITHY, &"smithy_yard": SMITHY_YARD, &"carpenter": CARPENTER, &"carpenter_yard": CARPENTER_YARD,
 			&"tavern_patio": TAVERN_PATIO, &"bell_tower": BELL_TOWER, &"windmill": WINDMILL,
-			&"keep_court": KEEP_COURT, &"royal_garden": ROYAL_GARDEN, &"drill_yard": DRILL_YARD,
+			&"keep_court": KEEP_COURT, &"royal_garden": ROYAL_GARDEN, &"drill_yard": DRILL_YARD, &"keep_yard": KEEP_YARD,
 		}
 		for row: Array in DISTRICT_TABLE:
 			_landmarks[row[0]] = row[1]
@@ -1184,7 +1217,10 @@ func _buildings() -> Array[Dictionary]:
 			out.append({"rect": r, "height": 20.0, "kind": Structure.Kind.HOUSE, "role": &"farm", "tag": &""})
 		out.append({"rect": WINDMILL, "height": 60.0, "kind": Structure.Kind.HOUSE, "role": &"farm", "tag": &"windmill"})
 		for p: Array in GPT_PLOTS:
-			out.append(CapitalPlots.on_bank(p[0], p[1].x, p[1].y) if p.size() > 2 else CapitalPlots.plot(p[0], p[1]))
+			if p.size() > 2 and p[2] is bool:
+				out.append(CapitalPlots.on_bank(p[0], p[1].x, p[1].y))
+			else:
+				out.append(CapitalPlots.plot(p[0], p[1], p.size() > 2 and p[2] == &"turned"))
 		_buildings_cache = out
 	return _buildings_cache
 

@@ -105,6 +105,13 @@ extends SceneTree
 ##          Discord on a carrier near the bell's foot or on the rope; between ringers, the next post's door cleared of watchers;
 ##          never a loud power; the result line gives the longest idle stretch).
 ##          --seed= picks the town; --board plays the board's version (its wishes heard) and stops at the main objective.
+##   panic  (v0.11 M3) Market Panic, --case=none (nothing cast) or play, as a player plays it (_panic_act(): nothing while the
+##          first crowd takes its places; Silent Doom on a warden on guard steadying four or more goers, the one nearest the
+##          fountain first; else, once no crowd is still to come, Heaven Splitter through the fair with no warden on guard and
+##          six or more goers, along the ground axis that takes more, or along five or more walkers no warden steadies; else Smite
+##          on the densest knot of three or more unsteadied goers, or on the goer nearest the fountain; else Silent Doom on a
+##          warden on guard, to clear the cover before the next crowd; the result line gives the longest idle stretch). --seed=,
+##          --board as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -193,6 +200,16 @@ const RINGERS_QUIET_DIRS := 8
 const RINGERS_QUIET_CLEAR := 3.0
 ## The Bell-Ringers' policy (v0.11 M3): a lone carrier is whispered aside only if Silent Doom is ready within this many seconds.
 const RINGERS_DOOM_SOON := 5.0
+## Market Panic's policy (v0.11 M3): goers a warden must steady to draw Silent Doom; goers round the fountain, and walkers in a
+## strip, for a Heaven Splitter; goers in a knot for Smite; the directions tried for the walkers' strip.
+const PANIC_WARD_CROWD := 4
+const PANIC_PACK := 6
+const PANIC_WALKERS := 5
+const PANIC_KNOT := 3
+const PANIC_DIRS := 8
+## Market Panic's policy (v0.11 M3): seconds the first crowd is given to take its places before the player acts (mission spec §2:
+## "there in about 10 s"); at the first look the goers stand in a clump round the fountain, where one Silent Doom takes ten of them.
+const PANIC_SETTLE := 10.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -301,6 +318,9 @@ func _run() -> void:
 	elif scenario == "ringers":
 		powers = PackedStringArray(["doom", "whisper", "discord"])
 		mission.mission_id = MissionBook.BELL_RINGERS
+	elif scenario == "panic":
+		powers = PackedStringArray(["heaven", "doom", "smite"])
+		mission.mission_id = MissionBook.MARKET_PANIC
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -358,6 +378,8 @@ func _run() -> void:
 			await _prayers(Battlefield.arg_value(args, "--case"))
 		"ringers":
 			await _ringers(Battlefield.arg_value(args, "--case"))
+		"panic":
+			await _panic(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1781,6 +1803,120 @@ func _ringers_only(crowd: Crowd, at: Vector2, who: Array) -> bool:
 					and not who.has(p):
 				return false
 	return true
+
+
+## Market Panic (v0.11 M3), with mission spec §2's policy (_panic_act()), through _scripted().
+func _panic(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as MarketPanicDirector
+	var slots := _slots(rules)
+	await _scripted("panic", which, func() -> String: return _panic_act(rules, slots, d),
+		func() -> String: return "broken=%d/%d wardens=%d walkers=%d phase=%s" % [d.count(), d.need, d.on_guard().size(),
+			d.walkers().size(), d.hint_phase()])
+
+
+## One look of Market Panic's policy (v0.11 M3): what was cast, or "" for nothing. The first that applies: Silent Doom on a warden
+## on guard who steadies PANIC_WARD_CROWD or more goers; Heaven Splitter through the fair, or along the walkers, but only once no
+## crowd is still to come (a loud splitter into the first crowd brings the Organized town's evacuation, and the crowds to come go
+## with the town); Smite on the densest knot of PANIC_KNOT or more goers no warden steadies; Smite on the goer nearest the fountain
+## (a bolt kills whoever it strikes, steadied or not); and Silent Doom on a warden on guard, to clear the cover before the next crowd.
+func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> String:
+	if d.timeline.elapsed() < PANIC_SETTLE:
+		return ""
+	var wardens := d.on_guard()
+	if _slot_ready(rules, slots, "doom"):
+		for w in wardens:
+			if _panic_near(d, w.ground_pos, MarketPanicDirector.WARD_R).size() >= PANIC_WARD_CROWD:
+				rules.cast(slots.doom, w.ground_pos)
+				return "doom a warden"
+	if d.next_wave() < 0 and _slot_ready(rules, slots, "heaven"):
+		var best := -1
+		var best_dir := Vector2.RIGHT
+		if wardens.is_empty() and _panic_near(d, MarketPanicDirector.HEART, MarketPanicDirector.FAIR_R).size() >= PANIC_PACK:
+			for dir: Vector2 in [Vector2.RIGHT, Vector2.DOWN]:
+				var n := _panic_lane(d, d.unbroken(), MarketPanicDirector.HEART, dir)
+				if n > best:
+					best = n
+					best_dir = dir
+			rules.cast(slots.heaven, MarketPanicDirector.HEART, {"dir": best_dir})
+			return "heaven through the fair (%d)" % best
+		var walkers := d.walkers()
+		if walkers.size() >= PANIC_WALKERS:
+			var centre := Vector2.ZERO
+			for p in walkers:
+				centre += p.ground_pos
+			centre /= float(walkers.size())
+			for k in PANIC_DIRS:
+				var dir := Vector2.RIGHT.rotated(TAU * float(k) / float(PANIC_DIRS))
+				var n := _panic_lane(d, walkers, centre, dir)
+				if n > best:
+					best = n
+					best_dir = dir
+			if best >= PANIC_WALKERS:
+				rules.cast(slots.heaven, centre, {"dir": best_dir})
+				return "heaven on the walkers (%d)" % best
+	if _slot_ready(rules, slots, "smite"):
+		var at := _panic_knot(d)
+		if at != Vector2.INF:
+			rules.cast(slots.smite, at)
+			return "smite a knot"
+		var left := d.unbroken()
+		if not left.is_empty():
+			left.sort_custom(func(a: Person, b: Person) -> bool:
+				return a.ground_pos.distance_to(MarketPanicDirector.HEART) < b.ground_pos.distance_to(MarketPanicDirector.HEART))
+			rules.cast(slots.smite, left[0].ground_pos)
+			return "smite a goer"
+	if _slot_ready(rules, slots, "doom") and not wardens.is_empty():
+		rules.cast(slots.doom, wardens[0].ground_pos)
+		return "doom a warden to clear the way"
+	return ""
+
+
+## The goers still to break within `r` of `at` (v0.11 M3).
+func _panic_near(d: MarketPanicDirector, at: Vector2, r: float) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in d.unbroken():
+		if p.ground_pos.distance_to(at) <= r:
+			out.append(p)
+	return out
+
+
+## How many of `who` a Heaven Splitter laid at `origin` along `dir` would break (v0.11 M3): those no warden steadies, within its
+## danger as FestivalDirector._on_cast() judges it (each lane point's Crowd._cast_radius() plus Person.THREAT_MARGIN).
+func _panic_lane(d: MarketPanicDirector, who: Array[Person], origin: Vector2, dir: Vector2) -> int:
+	var radius := Crowd._cast_radius("heaven")
+	var a: Dictionary = Targeting.AREAS["heaven"]
+	var points := Crowd.cast_points(Targeting.lane_start("heaven", origin, dir), dir, float(a.length), radius)
+	var reach := radius + Person.THREAT_MARGIN
+	var n := 0
+	for p in who:
+		if d.steadied(p):
+			continue
+		for point in points:
+			if p.ground_pos.distance_to(point) <= reach:
+				n += 1
+				break
+	return n
+
+
+## The goer at the heart of the densest knot of PANIC_KNOT or more goers no warden steadies, all within Smite's danger of him (v0.11
+## M3); Vector2.INF for none.
+func _panic_knot(d: MarketPanicDirector) -> Vector2:
+	var reach := Crowd._cast_radius("smite") + Person.THREAT_MARGIN
+	var free: Array[Person] = []
+	for p in d.unbroken():
+		if not d.steadied(p):
+			free.append(p)
+	var best := Vector2.INF
+	var best_n := PANIC_KNOT - 1
+	for a in free:
+		var n := 0
+		for b in free:
+			n += 1 if b.ground_pos.distance_to(a.ground_pos) <= reach else 0
+		if n > best_n:
+			best_n = n
+			best = a.ground_pos
+	return best
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

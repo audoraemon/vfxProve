@@ -58,7 +58,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## TierBook.board() only stamps its tier and the god's upgrades on it. Never in all() (the v0.09 interlude's list) nor the
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
-	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers()]
+	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic()]
 	return out
 
 
@@ -193,6 +193,26 @@ static func bell_ringers() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [StarsObjective.new("Stop the ringers", "ringers", "Ringers stopped"), BellSilentObjective.new(),
 			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Market Panic (v0.11 M3, Tier 2, mission spec §2 and §8 row 9): scatter a night fair at the north-east fountain -- three crowds
+## walking in, wardens steadying them -- before the guard closes the market (MarketPanicDirector, a smaller Festival).
+static func market_panic() -> MissionDef:
+	var m := _tier2(MARKET_PANIC, "Market Panic", PackedStringArray(["A night fair fills the north-east square.",
+		"Scatter it before the market closes."]))
+	m.goal = "Scatter %d of the night fair's crowd before the guard closes the market at %s" % [MarketPanicDirector.FAIR_NEED,
+		UiTheme.clock(MarketPanicDirector.MARKET_CLOSE)]
+	m.goal_label = "The fair is scattered"
+	m.lose = "The guard closes the market, or dawn comes"
+	m.camera_at = MarketPanicDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["heaven", "doom", "smite"])
+	m.director = MarketPanicDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [FestivalObjective.new("Scatter the fair", "fair"),
+			EventObjective.new("close", "Market closes", "market_closed"), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

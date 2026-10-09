@@ -57,7 +57,7 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 	"dawn": "DAWN COMES", "collector": "THE COLLECTORS ARE DEAD", "taxes": "THE TAXES ARE IN",
 	"spoiled": "THE HARVEST IS SPOILED", "emptied": "A GRANARY IS EMPTIED", "lamb_out": "THE LAMB IS FREE",
 	"lamb_taken": "THE LAMB IS TAKEN BACK", "lamb": "THE ACOLYTE IS DEAD",
-	"ringers": "THE RINGERS ARE STOPPED"}
+	"ringers": "THE RINGERS ARE STOPPED", "fair": "THE FAIR IS SCATTERED", "market_closed": "THE MARKET IS CLOSED"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

@@ -107,5 +107,10 @@ func forest_gaps() -> Array[Rect2]:
 	return out
 
 
+## Ground where no tree stands at all, forest or meadow (TownDecor): none by default. The capital keeps its aqueduct's
+## arches clear (polish 2).
+func tree_clear() -> Array[Rect2]: return []
+
+
 ## How far past a road's sides the forest stays back (forest_gaps()).
 const FOREST_GAP := 0.8

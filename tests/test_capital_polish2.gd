@@ -1,5 +1,6 @@
 extends RefCounted
-## Capital polish 2: the Keep's gate and steps, its service yard, the cathedral close and the south district gate.
+## Capital polish 2: the Keep's gate and steps, its service yard, the cathedral close, the aqueduct and the south
+## district gate.
 ##   - The barbican is the Keep's gatehouse at the head of the avenue from the cathedral square, the watchtower beside
 ##     it on the same line. Its arch is a walkable passage (BuildingTypes.PASSAGE) between solid towers: no crowd gate.
 ##   - Both alley steps stand at the gate's foot as one flight of two pieces up to it: their stairs are walked over,
@@ -11,6 +12,8 @@ extends RefCounted
 ##   - The cathedral close: a churchyard beside the cathedral (graves, the wayside cross, yews) and a paved pilgrim
 ##     plaza before its steps (a well, benches, the notice board, a crier's stage, pilgrim stalls); priests and monks
 ##     pray there, townsfolk gather there.
+##   - The aqueduct runs from a spring in the northern woods to the old town's north-east corner tower, the cistern
+##     just inside the wall there; the woods stand back from its arches.
 
 
 static func run(t) -> void:
@@ -23,6 +26,7 @@ static func run(t) -> void:
 	_district_gate(t, c)
 	_keep_yard(t, c)
 	_close(t, c)
+	_aqueduct(t, c)
 	_walk(t, c)
 	_stable_hands(t, c)
 	City.use(&"aldermere")
@@ -228,6 +232,47 @@ static func _close(t, c: CapitalCity) -> void:
 		"prayer points in the churchyard (%d) and on the plaza (%d), market points on the plaza (%d)"
 		% [pray_yard, pray_plaza, market_plaza])
 	t.check(int(c.spawn_roles()[&"cathedral_square"].get(&"monk", 0)) >= 2, "monks are dealt to the cathedral close")
+
+
+## The aqueduct: one straight run from a spring in the northern woods west to the old town's north-east corner tower,
+## its last arch against the tower's face; the cistern just inside the wall there; no tree under or beside the arches.
+static func _aqueduct(t, c: CapitalCity) -> void:
+	City.use(&"capital")
+	var pieces := _plots(c, &"gpt_aqueduct")
+	pieces.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.x < b.position.x)
+	t.check(pieces.size() >= 8, "the aqueduct has its arches (%d)" % pieces.size())
+	if pieces.is_empty():
+		return
+	var joined := true
+	for k in range(1, pieces.size()):
+		joined = joined and is_equal_approx(pieces[k].position.x, pieces[k - 1].end.x) \
+			and is_equal_approx(pieces[k].position.y, pieces[0].position.y)
+	t.check(joined, "its arches join end to end in one straight run")
+	var corner := Rect2()
+	for d: Dictionary in c.structures():
+		var r: Rect2 = d.rect
+		if d.role == &"tower" and r.has_point(Vector2(CapitalCity.INNER.end.x, CapitalCity.INNER.position.y)):
+			corner = r
+	t.check(corner.has_area() and is_equal_approx(pieces[0].position.x, corner.end.x)
+		and pieces[0].position.y > corner.position.y and pieces[0].end.y < corner.end.y,
+		"its last arch ends against the old town's north-east corner tower (%s, %s)" % [pieces[0], corner])
+	var run := Rect2(pieces[0].position, Vector2(pieces[-1].end.x - pieces[0].position.x, pieces[0].size.y))
+	t.check(c.landmark(&"northern_woods").has_point(pieces[-1].get_center()), "it starts in the northern woods")
+	t.check(pieces[-1].end.distance_to(CapitalCity.AQUEDUCT_SPRING) < 2.0, "at the spring")
+	var cis := _plots(c, &"gpt_cistern")
+	t.check(cis.size() == 1 and CapitalCity.INNER.grow(-TownLayout.WALL_T).encloses(cis[0])
+		and cis[0].grow(0.6).intersects(corner), "the cistern stands just inside the wall at that tower (%s)" % [cis])
+	var trees: Array = []
+	var clear := run.grow_individual(0.4, 0.9, 0.0, 1.6)
+	for d: Dictionary in TownDecor.spots():
+		if d.kind in [Decor.Kind.OAK, Decor.Kind.PINE] and clear.has_point(d.at):
+			trees.append(d.at)
+	t.check(trees.is_empty(), "no tree stands under or beside the arches (%s)" % [trees])
+	var floor := true
+	for f: float in [0.1, 0.5, 0.9]:
+		for dy: float in [-0.8, 0.2, 1.4]:
+			floor = floor and TownFloor.in_forest_gap(Vector2(lerpf(run.position.x, run.end.x, f), run.get_center().y + dy))
+	t.check(floor, "the forest floor stands back from them too")
 
 
 ## Through the real town and walk grid: the passages are walked, the cheeks are not; a walk up the avenue climbs the

@@ -260,7 +260,7 @@ static func _districts(t, c: CapitalCity) -> void:
 		&"gpt_courthouse": &"cathedral_square", &"gpt_jail": &"cathedral_square",
 		&"gpt_guildhall": &"guild_quarter", &"gpt_weavers": &"guild_quarter", &"gpt_markethall": &"great_market",
 		&"gpt_weighhouse": &"great_market", &"gpt_crierstage": &"great_market", &"gpt_hospital": &"old_town_houses",
-		&"gpt_bathhouse": &"old_town_houses", &"gpt_cistern": &"old_town_houses", &"gpt_crane": &"harbour_district",
+		&"gpt_bathhouse": &"old_town_houses", &"gpt_cistern": &"old_town_wall", &"gpt_crane": &"harbour_district",
 		&"gpt_fishmarket": &"harbour_district", &"gpt_ferry": &"harbour_district", &"gpt_bakery": &"crafts_quarter",
 		&"gpt_brewery": &"crafts_quarter", &"gpt_lumberyard": &"crafts_quarter", &"gpt_chapel": &"new_town",
 		&"gpt_rowhouses": &"new_town", &"gpt_tannery": &"tanners_dyers", &"gpt_dyers": &"tanners_dyers",

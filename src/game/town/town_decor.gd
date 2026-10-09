@@ -270,6 +270,10 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 		var forest := _forest(g)
 		if roll > (FOREST_TREES if forest else MEADOW_TREES) or TownFloor.on_outcrop(g):
 			return -1
+		# (the city's tree-free ground, CityDef.tree_clear(): none at Aldermere)
+		for r: Rect2 in _geo().tree_clear:
+			if r.has_point(g):
+				return -1
 		var pine := _h(i, 11) < (FOREST_PINES if forest else 0.25)
 		return Decor.Kind.PINE if pine else Decor.Kind.OAK)
 	_scatter(out, solid, area, 2.0, 20, func(g: Vector2, roll: float, _i: int) -> int:
@@ -428,6 +432,7 @@ static func _geo() -> Dictionary:
 			exits = city.exits(), bridge = city.landmark(&"bridge"), river = city.landmark(&"river"),
 			keep_off = keep_off, outcrops = city.outcrops(), trails = city.trails(), road_trails = city.road_trails(),
 			paved = city.floor_areas().get(&"paved", []),
+			tree_clear = city.tree_clear(),
 		}
 	return _geo_cache
 

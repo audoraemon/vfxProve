@@ -176,6 +176,16 @@ const CLOSE_DECOR := [
 ]
 const CLOSE_PRAY := [Vector2(1.95, -15.15), Vector2(1.0, -16.65), Vector2(-6.1, -11.7), Vector2(0.0, -11.7)]
 const CLOSE_MARKET := [Vector2(-5.1, -11.6), Vector2(-0.8, -11.6)]
+## The aqueduct (polish 2): its west end's back corner, against the old town's north-east corner tower's east face (the
+## tower hides the run's missing end piece: no aqueduct end set exists), across the tower's middle; it runs east into
+## the northern woods to a spring among rocks (AQUEDUCT_SPRING, an outcrop). The woods stand back from the arches
+## (forest_gaps(): AQUEDUCT_CLEAR, a little north of them, more to the south, in front of them on screen), so they read.
+## The cistern it feeds stands just inside the wall at that corner.
+const AQUEDUCT := Vector2(18.7, -29.9)
+const AQUEDUCT_PIECES := 9
+const AQUEDUCT_SPRING := Vector2(30.6, -28.2)
+const AQUEDUCT_CLEAR := Rect2(18.7, -31.0, 11.4, 3.6)
+const CISTERN := Vector2(15.5, -29.25)
 ## The bank lines the over-water sets stand from (BuildingTypes.OVER_WATER): the river's north bank and the harbour
 ## basin's north quay (RIVER's and HARBOUR's north edges).
 const NORTH_BANK := 6.0
@@ -225,8 +235,10 @@ const GPT_PLOTS := [
 	# crier's stage by the west bridge avenue.
 	[&"gpt_markethall", Vector2(-12.0, -7.7)], [&"gpt_weighhouse", Vector2(-6.2, -7.7)],
 	[&"gpt_crierstage", Vector2(-16.4, -3.6)],
-	# Old town houses: hospital, bathhouse, the cistern at the aqueduct's end.
-	[&"gpt_hospital", Vector2(5.5, -7.6)], [&"gpt_bathhouse", Vector2(9.0, -7.6)], [&"gpt_cistern", Vector2(11.7, -7.6)],
+	# Old town houses: hospital, bathhouse.
+	[&"gpt_hospital", Vector2(5.5, -7.6)], [&"gpt_bathhouse", Vector2(9.0, -7.6)],
+	# The cistern at the aqueduct's end (polish 2), just inside the wall at the north-east corner tower it runs into.
+	[&"gpt_cistern", CISTERN],
 	# Banks: wash houses on the river's north bank below the old town's wall, their washing steps over the river; the
 	# sluice west of them, standing out into the river from the bank.
 	[&"gpt_washhouse", Vector2(-9.0, NORTH_BANK), true], [&"gpt_washhouse", Vector2(7.5, NORTH_BANK), true],
@@ -240,12 +252,14 @@ const GPT_PLOTS := [
 	[&"gpt_warehouse", Vector2(19.5, NORTH_BANK), true], [&"gpt_stables", Vector2(19.0, -13.0)],
 	[&"gpt_tenement", Vector2(22.5, -13.0)], [&"gpt_shophouse", Vector2(24.6, -13.0)],
 	[&"gpt_shophouse", Vector2(26.1, -13.0)],
-	# Northern woods: charcoal kilns, the aqueduct from the springs (a run of segments along x).
+	# Northern woods: charcoal kilns; the aqueduct (polish 2) from the spring (AQUEDUCT_SPRING) west to the old town's
+	# north-east corner tower, a run of AQUEDUCT_PIECES segments along x (AQUEDUCT).
 	[&"gpt_charcoal", Vector2(24.0, -35.0)], [&"gpt_charcoal", Vector2(31.0, -31.0)],
-	[&"gpt_aqueduct", Vector2(19.0, -24.6)], [&"gpt_aqueduct", Vector2(20.2, -24.6)],
-	[&"gpt_aqueduct", Vector2(21.4, -24.6)], [&"gpt_aqueduct", Vector2(22.6, -24.6)],
-	[&"gpt_aqueduct", Vector2(23.8, -24.6)], [&"gpt_aqueduct", Vector2(25.0, -24.6)],
-	[&"gpt_aqueduct", Vector2(26.2, -24.6)], [&"gpt_aqueduct", Vector2(27.4, -24.6)],
+	[&"gpt_aqueduct", AQUEDUCT], [&"gpt_aqueduct", AQUEDUCT + Vector2(1.2, 0.0)],
+	[&"gpt_aqueduct", AQUEDUCT + Vector2(2.4, 0.0)], [&"gpt_aqueduct", AQUEDUCT + Vector2(3.6, 0.0)],
+	[&"gpt_aqueduct", AQUEDUCT + Vector2(4.8, 0.0)], [&"gpt_aqueduct", AQUEDUCT + Vector2(6.0, 0.0)],
+	[&"gpt_aqueduct", AQUEDUCT + Vector2(7.2, 0.0)], [&"gpt_aqueduct", AQUEDUCT + Vector2(8.4, 0.0)],
+	[&"gpt_aqueduct", AQUEDUCT + Vector2(9.6, 0.0)],
 	# Crafts quarter: brewery, lumber yard, mason's yard (the carpenter beside them), cooper, potter (the smithy and the
 	# workshop beside them), bakery and butcher by the west bridge's gate.
 	[&"gpt_brewery", Vector2(-28.3, 13.6)], [&"gpt_lumberyard", Vector2(-25.2, 13.6)],
@@ -438,7 +452,7 @@ const ROAD_TRAILS := [
 ## Rocky outcrops in the woods and on the monastery's hill: [centre, radius].
 const OUTCROPS := [
 	[Vector2(35.5, -37.0), 1.6], [Vector2(-27.0, -37.2), 1.6], [Vector2(-29.0, -21.5), 1.6], [Vector2(12.0, -37.0), 1.4],
-	[Vector2(37.5, -17.0), 1.5],
+	[Vector2(37.5, -17.0), 1.5], [AQUEDUCT_SPRING, 0.6],
 ]
 ## Rowing boats on the river, clear of the bridges, and in the harbour basin.
 const BOATS := [Vector2(-31.0, 8.2), Vector2(-22.5, 9.8), Vector2(-5.5, 10.4), Vector2(9.0, 8.0), Vector2(27.5, 4.0),
@@ -831,11 +845,18 @@ func carts() -> Array[Vector2]:
 	return _vectors(CARTS)
 
 
-## The roads' gaps (CityDef's), and the harbour district: its quays and streets stay open ground.
+## The roads' gaps (CityDef's), and the harbour district: its quays and streets stay open ground; and the ground under
+## and beside the aqueduct (AQUEDUCT_CLEAR), so its arches read.
 func forest_gaps() -> Array[Rect2]:
 	var out := super.forest_gaps()
 	out.append(landmark(&"harbour_district"))
+	out.append(AQUEDUCT_CLEAR)
 	return out
+
+
+## No tree, forest or meadow, under or beside the aqueduct's arches (AQUEDUCT_CLEAR).
+func tree_clear() -> Array[Rect2]:
+	return [AQUEDUCT_CLEAR]
 
 
 ## Where citizens go about their day, by kind, as Aldermere's anchors (TownLayout.anchors()): "home" in front of each

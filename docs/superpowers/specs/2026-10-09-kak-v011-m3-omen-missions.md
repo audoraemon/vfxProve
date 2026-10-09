@@ -410,7 +410,7 @@ The pool grows from 10 to 12. Both new wishes clash with `unaware_town`, so they
 - **Scare off the bully:**
   - Tag BULLY, pointed at from the edge (he walks the town).
   - Granted the moment he is frightened. The town's own flight (`FLEE`) does not count.
-  - Failed if he dies first, or leaves the town.
+  - Failed if he dies first, leaves the town, or is hurt at all (his health below a citizen's full: "unharmed" is unhurt, and the frenzy powers panic as they hit).
 - **Free the pressed man:**
   - Tags PRESSED MAN (always pointed at from the edge) and PRESS-GANG (on each soldier; pointed at once engaged).
   - "Turned" is `RescueWish.TURNED`, as Save my child.

@@ -23,6 +23,8 @@ var _ids: Array[int] = []
 var _on_errand := {}
 ## The damage kind that felled each man before engagement, by his place (0 the first, 1 the second) (v0.11 M3).
 var _fell := {}
+## The instance id of the man who took the son (v0.11 M3): the first within TAKE_REACH of him, whom the son follows; 0 for none yet.
+var _taker := 0
 
 
 ## The barracks' door (v0.11 M3): the middle of TownLayout.BARRACKS's front, in its yard, on walkable ground.
@@ -145,8 +147,19 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 		_fell[k] = kind
 
 
+## The man of `men` nearest the son and within `reach` of him; null for none (v0.11 M3).
+func _nearest_son(men: Array[Person], reach: float) -> Person:
+	var best: Person = null
+	for p in men:
+		var d := p.ground_pos.distance_to(child.ground_pos)
+		if d <= reach and (best == null or d < best.ground_pos.distance_to(child.ground_pos)):
+			best = p
+	return best
+
+
 ## The clock runs; every RETARGET each man not turned is kept on the errand -- a town order undone -- to the son, then, once one is
-## within TAKE_REACH of him, to the barracks' door, the son following the first man on duty (v0.11 M3).
+## within TAKE_REACH of him, to the barracks' door, the son following the man who reached him (the other, if that one falls or is
+## turned) (v0.11 M3).
 func step(_rules: Rules, delta: float) -> void:
 	if not engaged or status != Status.PENDING:
 		return
@@ -155,17 +168,25 @@ func step(_rules: Rules, delta: float) -> void:
 	if _retarget_in > 0.0 or not MissionDirector._alive(child):
 		return
 	_retarget_in = RETARGET
-	var lead: Person = null
+	var marching: Array[Person] = []
 	for p in _men():
-		if _turned_man(p):
-			continue
-		if p.mind == Person.Mind.DUTY:
-			if not dragging and p.ground_pos.distance_to(child.ground_pos) <= TAKE_REACH:
-				dragging = true
-			if lead == null:
-				lead = p
+		if not _turned_man(p) and p.mind == Person.Mind.DUTY:
+			marching.append(p)
+	if not dragging:
+		var taker := _nearest_son(marching, TAKE_REACH)
+		if taker != null:
+			dragging = true
+			_taker = taker.get_instance_id()
 	_send_men()
-	if dragging and lead != null:
+	if not dragging:
+		return
+	var lead: Person = null
+	for p in marching:
+		if p.get_instance_id() == _taker:
+			lead = p
+	if lead == null:
+		lead = _nearest_son(marching, INF)
+	if lead != null:
 		child.go_duty(lead.ground_pos)
 
 

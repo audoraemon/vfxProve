@@ -343,6 +343,40 @@ SMALL_SMOKE = []
 # The props laid a second time, mirrored (the showcase's MIRRORS).
 MIRRORS = ["gpt_wagon"]
 
+# Slate faces set by hand (capital polish 3): on these sets the style match's split of the slate into faces by its
+# light (style_match.slate_planes()) follows the painting's moss and mottling, so a roof that is one plane was re-drawn
+# as light and dark blobs, each a face of its own with its courses turned at a staircase edge (the user's "strange
+# roofs"; roof_bands.py scores it and flags these). Each is read off the painting instead: +1 (every slate px on a face
+# whose courses run down-right, parallel to an eave on the sprite's left: the lit face) or -1 (up-right: the shaded
+# face), or a split (p0, p1, left, right): the line through sheet px p0 and p1 (a ridge or a hip, never level), the
+# slate left of it on screen one face and right of it the other. The other sets keep the light's split.
+SLATE_FACES = {
+    # one plane each (a long face, its eave on the sprite's left; a lean-to or a porch the same way)
+    "gpt_armoury": 1, "gpt_manor": 1, "gpt_library": 1, "gpt_rowhouses": 1, "gpt_inn": 1, "gpt_weavers": 1,
+    "gpt_chapel": 1, "gpt_tannery": 1, "gpt_weighhouse": 1, "gpt_lumberyard": 1,
+    # the gable at the front-left: the face seen is the right one, its eave rising to the right (the light's split
+    # had drawn most of it lit, its courses turned against the painting's)
+    "gpt_warehouse": -1, "gpt_shophouse": -1,
+    # a hip roof: the long lit face, and the hip face right of the hip (its row of ridge caps above the right turret)
+    "gpt_drawbridge": ((905, 130), (922, 265), 1, -1),
+}
+
+
+def faces_map(name, shape, tf, origin):
+    """A SLATE_FACES set's faces on its stills' canvas (`shape`, `origin` its corner on the fitted sprite): +1 / -1
+    per px, or None for a set not in the table."""
+    f = SLATE_FACES.get(name)
+    if f is None:
+        return None
+    if isinstance(f, int):
+        return np.full(shape[:2], f, int)
+    p0, p1, left, right = f
+    q0 = tf(p0) - np.array(origin, float)
+    q1 = tf(p1) - np.array(origin, float)
+    ys, xs = np.mgrid[0:shape[0], 0:shape[1]]
+    x_line = q0[0] + (ys + 0.5 - q0[1]) * (q1[0] - q0[0]) / (q1[1] - q0[1])
+    return np.where(xs + 0.5 < x_line, left, right)
+
 # A sheet: its source (in concepts/GPT), its grid (cols, rows), the painted smoke to strip, and its sets.
 SHEETS = {
     "defence": dict(src="defence_sheet_v1.webp", grid=(3, 2), smoke=[], sets=DEFENCE_SETS),
@@ -1304,7 +1338,10 @@ def nearest_base_errors(img, A, fp):
     return warehouse.corner_errors(img, A, fp)
 
 
-def make(name, out_dir, debug=None):
+def stills(name):
+    """A set's three stills before the style match pass, on one canvas cropped to them: (stills {state: RGBA float},
+    anchor, spec, transform sheet px -> canvas px, fit info, recentre shift, (canvas origin x0, y0 on the padded fit),
+    the painted water cut and its depth (None without cut_water))."""
     spec = SETS[name]
     native, A, tf, info = fit(spec)
     if spec.get("shade"):
@@ -1368,9 +1405,16 @@ def make(name, out_dir, debug=None):
     y1 = max(ys.max() + 1 + PAD, int(A[1]) + 11)
     crop = {k2: v[y0:y1, x0:x1] for k2, v in st.items()}
     A = (int(A[0] - x0), int(A[1] - y0))
+    return crop, A, spec, tf, info, shift, (x0, y0), (cut if depth is not None else None), depth
+
+
+def make(name, out_dir, debug=None):
+    crop, A, spec, tf, info, shift, (x0, y0), cut, depth = stills(name)
     # the final step: the style match pass (style_match.py), its knobs tuned on the intact; reused ruins are already
     # in the game's style, so they get only its palette lock, speck clean and outline
-    knobs, st_after = style_match.tune(crop["intact"])
+    # a SLATE_FACES set: its slate's faces read off the painting, not split by its light
+    faces = faces_map(name, crop["intact"].shape, tf, (x0, y0))
+    knobs, st_after = style_match.tune(crop["intact"], None if faces is None else {"faces": faces})
     # a garden has no windows: its fruit and straw would pass for lamp light
     glow = spec["ruins"] not in (GARDEN, CRACKED) and not spec.get("water")
     # painted water (a channel, a pond, a quay's stream) keeps its surface: its blue is not re-drawn as slate courses

@@ -52,6 +52,11 @@ const TOWN_SHOTS := [
 	["capital_district_gate.png", Vector2(-4.0, 28.0), 1.2],
 	["capital_close.png", Vector2(-3.0, -13.5), 1.0],
 	["capital_aqueduct.png", Vector2(22.0, -28.5), 0.75],
+	# Polish 3 (roofs): slate roofs whose faces are set by hand (gpt_convert SLATE_FACES): the library and the manor
+	# by the Keep, the crafts quarter's lumber yard, the new town's chapel.
+	["capital_library_roofs.png", Vector2(-17.9, -21.3), 2.0],
+	["capital_lumberyard_roofs.png", Vector2(-26.7, 14.6), 1.6],
+	["capital_chapel_roofs.png", Vector2(-7.0, 13.0), 2.0],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],

@@ -289,10 +289,10 @@ func _ready() -> void:
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
 		"tiers":
-			# The tier board part-way up (v0.11 M1, M2): three of Whisper and both of Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
+			# The tier board part-way up (v0.11 M1-M3): three of Whisper and three of Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
 			# It opens on Whisper's tab, its five cards with the ticks and the best lines; --mission=vigil_flame opens Wrath's instead.
 			save.descend = DescendState.new()
-			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns"])
+			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns", "bell_ringers"])
 			save.descend.fastest = {"warning": 192.0}
 			save.descend.most_wishes = {"warning": 2}
 			save.descend.believers = 64
@@ -839,6 +839,7 @@ func _flow_test() -> void:
 	await _flow_ascend(step)
 	await _flow_results(step)
 	await _flow_tier1(step)
+	await _flow_tier2(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -985,15 +986,17 @@ func _mission_up(other: Mission) -> bool:
 
 
 ## v0.11 M1 (spec §3.1-§3.2), v0.11 M2: on a fresh save the tier board opens on Whisper, its five cards; Omen is locked,
-## its rule shown, and its missions cannot be picked. Ends on the board, Whisper open.
+## its rule shown, and its missions cannot be picked. v0.11 M3: Omen's tab shows its five cards while locked. Ends on the board,
+## Whisper open.
 func _flow_board(step: Callable) -> void:
 	var board := _screen_node as MissionBoard
 	step.call(board != null and board.tier == 1 and Array(board.missions()) == Array(TierBook.missions(1)) and board.missions().size() == 5
 		and save.descend.open_tier == 1, "a fresh board opens on Whisper: The Warning and the four new missions")
 	board.open_tab(2)
 	board.choose(MissionBook.MIRAS_HOUSE)
-	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 3 Whisper missions",
-		"Omen is locked: its rule shows, and Mira's House cannot be picked (%s)" % board.lock_line())
+	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 3 Whisper missions"
+		and Array(board.missions()) == Array(TierBook.missions(2)) and board.missions().size() == 5,
+		"Omen is locked: its five cards and its rule show, and Mira's House cannot be picked (%s)" % board.lock_line())
 	board.open_tab(1)
 
 
@@ -1150,6 +1153,39 @@ func _flow_tier1(step: Callable) -> void:
 	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 	step.call(up and screen == Screen.BOARD and save.descend.night == nights,
 		"The Tax Collector from the board: its three collectors up with guards, no wish's person a collector or a guard; abandoned, uncounted")
+
+
+## v0.11 M3: a Tier 2 mission from the board -- The Bell-Ringers, Omen opened as a fixture (Whisper's three clears need not be
+## played). Its Prepare has Tier 2's DP plus the one bought; its night is the board's version, three posts each with its ringer;
+## its three warnings stopped, F ascends to the results: won, The Bell-Ringers cleared, Omen 1 / 3. Ends on the board.
+func _flow_tier2(step: Callable) -> void:
+	save.descend.open_tier = maxi(save.descend.open_tier, 2)
+	(_screen_node as MissionBoard).choose(MissionBook.BELL_RINGERS)
+	var prep := _screen_node as PrepareScreen
+	var dp := prep.draft.capacity if prep != null else 0
+	prep.draft.preselect(MissionBook.bell_ringers().default_loadout)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _past_intro()
+	var d := _mission.rules().director as BellRingersDirector
+	var up := d != null and d.ringers.size() == 3 and dp == TierBook.dp(2) + 1 and _mission.rules().mission.tier == 2
+	if d != null:
+		for r in d.ringers:
+			r.warning_dead = true
+	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
+	await get_tree().process_frame
+	var f := InputEventKey.new()
+	f.physical_keycode = KEY_F
+	f.pressed = true
+	Input.parse_input_event(f)
+	var shown := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var bank: Dictionary = (result.get("descend", {}) as Dictionary).get("bank", {})
+	step.call(up and shown and bool(result.get("won", false)) and save.descend.cleared.has(MissionBook.BELL_RINGERS)
+		and String(bank.get("progress", "")) == "Omen 1 / 3 cleared: 2 more open Wrath",
+		"The Bell-Ringers from the board: Tier 2's budget, three posts; stopped and ascended, the results read Omen 1 / 3 (%s)" % String(
+		bank.get("progress", "")))
+	(_screen_node as ResultsScreen).action.emit("missions")
+	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 
 
 ## The night's wishes by id, in the order heard (FLOW, v0.11 M1).

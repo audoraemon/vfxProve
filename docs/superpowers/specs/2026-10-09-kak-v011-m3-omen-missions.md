@@ -267,7 +267,7 @@ shipped (`docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, ru
 M2 lesson 1: one target in the open dies at about 1:00. So the informer cannot be reached until the player has worked
 through his four contacts. They are the night's paced items, on the chain rule. The final kill is a short chase.
 
-- **Brief:** "An informer carries your believers' names." / "Find him through his contacts. Kill him."
+- **Brief:** "An informer carries your believers' names." / "Find him by his contacts. Kill him."
 - **Card type:** Kill. **Id:** `informer`.
 - **Map:**
   - **The Temple's door** at (0.8, -5.0) (The Lost Lamb's `TEMPLE_DOOR`): where he takes the names. Tagged TEMPLE.

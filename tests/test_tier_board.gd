@@ -57,7 +57,7 @@ static func _tabs(t) -> void:
 	board._unhandled_input(u)
 	t.check(picked.back() == "upgrades", "U asks for the Upgrades")
 	t.check(board.hit(MissionBoard.UPGRADES_RECT.get_center()) == "upgrades" and board.hit(MissionBoard.tab_rect(2).get_center()) == "tab:3"
-		and board.hit(MissionBoard.card_rect(0, 2).get_center()) == "card:0", "what is under the mouse")
+		and board.hit(MissionBoard.card_rect(0, 5).get_center()) == "card:0", "what is under the mouse")
 	board.free()
 	var back := MissionBoard.new().setup(save, "broken_lanterns")
 	t.check(back.tier == 2 and back.selected == 1, "it opens on the mission last picked, when its tier is open")

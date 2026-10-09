@@ -8,7 +8,8 @@ extends RefCounted
 const NAMES := ["Whisper", "Omen", "Wrath", "Reckoning", "Ascendance"]
 ## The board's missions on each tier, by id: spec §8's ★ missions, and from v0.11 M2 the tiers' own (MissionBook.tier_missions()).
 const MISSIONS := [["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"],
-	["miras_house", "broken_lanterns"], ["vigil_flame", "festival"], ["procession"], ["last_judgement", "long_night"]]
+	["miras_house", "broken_lanterns", "bell_ringers", "market_panic", "informer"], ["vigil_flame", "festival"], ["procession"],
+	["last_judgement", "long_night"]]
 ## The town's readiness on each tier, as ResponseProfile.level(): Unaware, Organized, Prepared, God-Resistant twice.
 const READINESS := [1, 2, 3, 4, 4]
 ## The base slots and Divine Power on each tier; the upgrades add to them.
@@ -20,7 +21,7 @@ const CLOCKS := [300.0, 330.0, 360.0, 390.0, 420.0]
 const WISHES := [2, 2, 3, 3, 3]
 const MULTIPLIERS := [1.0, 1.5, 2.0, 2.5, 3.0]
 ## Cleared missions of a tier that open the next (spec §3.2), fewer while a tier has fewer missions (before M6). Whisper has five
-## from v0.11 M2, so it takes the full three.
+## from v0.11 M2, so it takes the full three. Omen has five from v0.11 M3, so Wrath takes the full three too.
 const NEED := 3
 ## The most slots a loadout can have: the HUD's row and the keys 1-6.
 const MAX_SLOTS := 6
@@ -31,10 +32,11 @@ const GAZE_SHARE := 0.05
 ## Each board mission's type on its card (spec §3.1, §8).
 const TYPES := {"warning": "Intercept", "miras_house": "Cult", "broken_lanterns": "Anchors", "vigil_flame": "Cult",
 	"festival": "Break", "procession": "Kill", "last_judgement": "Destroy", "long_night": "Three acts",
-	"tax_collector": "Kill", "spoiled_harvest": "Destroy", "lost_lamb": "Protect", "first_prayers": "Cult"}
+	"tax_collector": "Kill", "spoiled_harvest": "Destroy", "lost_lamb": "Protect", "first_prayers": "Cult",
+	"bell_ringers": "Intercept", "market_panic": "Break", "informer": "Kill"}
 ## The tags a mission declares for the wishes to filter on (spec §5.1): a wish listing one of them is never drawn there.
 ## unaware_town is not declared: board() derives it from the town's readiness (v0.11 M2).
-const MISSION_TAGS := {"miras_house": ["spares_houses"], "tax_collector": ["hunts_tax_collector"]}
+const MISSION_TAGS := {"miras_house": ["spares_houses"], "tax_collector": ["hunts_tax_collector"], "informer": ["hunts_informer"]}
 ## The tag every board mission in an Unaware town carries (v0.11 M2), and that readiness on ResponseProfile.level()'s scale.
 const UNAWARE_TAG := "unaware_town"
 const UNAWARE_LEVEL := 1

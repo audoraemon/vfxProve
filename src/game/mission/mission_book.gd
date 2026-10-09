@@ -222,7 +222,7 @@ static func market_panic() -> MissionDef:
 ## by an unseen whisper -- and kill him before the names reach the Temple (InformerDirector, the Assassinate type reused).
 static func informer() -> MissionDef:
 	var m := _tier2(INFORMER, "The Informer", PackedStringArray(["An informer carries your believers' names.",
-		"Find him through his contacts. Kill him."]))
+		"Find him by his contacts. Kill him."]))
 	m.goal = "Find the informer through his four contacts, and kill him before the names reach the Temple"
 	m.goal_label = "The informer is dead"
 	m.lose = "The names reach the Temple, a contact dies before he is turned, the bell tolls, or dawn comes"

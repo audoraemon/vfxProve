@@ -21,16 +21,16 @@ static func _table(t) -> void:
 	t.check(rows == [[1, 3, 6, 300.0, 2, 1.0], [2, 3, 8, 330.0, 2, 1.5], [3, 4, 10, 360.0, 3, 2.0], [4, 5, 13, 390.0, 3, 2.5],
 		[4, 6, 16, 420.0, 3, 3.0]], "each tier's readiness, slots, DP, clock, wishes and multiplier (spec §4) (%s)" % [rows])
 	t.check(Array(TierBook.missions(1)) == ["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
-		and Array(TierBook.missions(2)) == ["miras_house", "broken_lanterns"]
+		and Array(TierBook.missions(2)) == ["miras_house", "broken_lanterns", "bell_ringers", "market_panic", "informer"]
 		and Array(TierBook.missions(3)) == ["vigil_flame", "festival"] and Array(TierBook.missions(4)) == ["procession"]
-		and Array(TierBook.missions(5)) == ["last_judgement", "long_night"], "Whisper complete (v0.11 M2); the ★ missions on theirs (spec §8)")
-	t.check(TierBook.all().size() == 12 and TierBook.tier_of("festival") == 3 and TierBook.tier_of("feast_festival") == 0
+		and Array(TierBook.missions(5)) == ["last_judgement", "long_night"], "Whisper and Omen complete (v0.11 M2, M3); the ★ missions on theirs (spec §8)")
+	t.check(TierBook.all().size() == 15 and TierBook.tier_of("festival") == 3 and TierBook.tier_of("feast_festival") == 0
 		and not TierBook.has("feast_festival") and TierBook.has("long_night") and TierBook.tier_of("lost_lamb") == 1,
 		"found by id; the campaign's Feast is not one")
 	var needs := []
 	for tier in range(1, 6):
 		needs.append(TierBook.need(tier))
-	t.check(needs == [3, 2, 2, 1, 2], "Whisper needs three of its five (v0.11 M2); the short tiers still need all (%s)" % [needs])
+	t.check(needs == [3, 3, 2, 1, 2], "Whisper and Omen need three of their five (v0.11 M2, M3); the short tiers still need all (%s)" % [needs])
 	t.check(TierBook.believers(10, 1) == 10 and TierBook.believers(15, 2) == 23 and TierBook.believers(10, 5) == 30
 		and TierBook.believers(5, 4) == 13, "believers times the multiplier, rounded")
 	t.check(TierBook.type_of("warning") == "Intercept" and TierBook.type_of("last_judgement") == "Destroy"
@@ -42,20 +42,22 @@ static func _table(t) -> void:
 static func _unlock(t) -> void:
 	var s := DescendState.new()
 	t.check(s.open_tier == 1 and s.is_open(1) and not s.is_open(2) and not s.is_open(0), "Tier 1 is open from the start")
-	t.check(DescendState.lock_text(2) == "Clear 3 Whisper missions" and DescendState.lock_text(3) == "Clear 2 Omen missions",
+	t.check(DescendState.lock_text(2) == "Clear 3 Whisper missions" and DescendState.lock_text(3) == "Clear 3 Omen missions",
 		"a locked tier's rule (%s; %s)" % [DescendState.lock_text(2), DescendState.lock_text(3)])
 	s.cleared.append("warning")
 	t.check(s.refresh_open() == 0 and s.open_tier == 1, "The Warning alone no longer opens Omen (v0.11 M2: Whisper has five)")
 	s.cleared.append_array(PackedStringArray(["tax_collector", "spoiled_harvest"]))
 	t.check(s.refresh_open() == 2 and s.open_tier == 2, "three of Whisper's five open it")
 	s.cleared.append("miras_house")
-	t.check(s.refresh_open() == 0 and s.open_tier == 2, "one of Omen's two does not open Wrath")
+	t.check(s.refresh_open() == 0 and s.open_tier == 2, "one of Omen's five does not open Wrath")
 	s.cleared.append("broken_lanterns")
-	t.check(s.refresh_open() == 3 and s.open_tier == 3, "both open it")
+	t.check(s.refresh_open() == 0 and s.open_tier == 2, "nor do two (v0.11 M3: Omen has five)")
+	s.cleared.append("bell_ringers")
+	t.check(s.refresh_open() == 3 and s.open_tier == 3, "three open it")
 	s.cleared.clear()
 	t.check(s.refresh_open() == 0 and s.open_tier == 3, "a tier never closes again")
 	var far := DescendState.new()
-	far.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb", "miras_house", "broken_lanterns", "vigil_flame", "festival", "procession"])
+	far.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb", "miras_house", "broken_lanterns", "bell_ringers", "vigil_flame", "festival", "procession"])
 	t.check(far.refresh_open() == 5 and far.open_tier == 5, "tiers open one after another, up to Ascendance")
 	t.check(far.progress_line(1) == "Whisper 3 / 3 cleared: Omen is open" and s.progress_line(3) == "Wrath 0 / 2 cleared: 2 more open Reckoning"
 		and far.progress_line(5) == "Ascendance 0 / 2 cleared", "the results' tier line (%s; %s)" % [far.progress_line(1), s.progress_line(3)])
@@ -63,8 +65,8 @@ static func _unlock(t) -> void:
 	one.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb"])
 	one.refresh_open()
 	one.cleared.append("miras_house")
-	t.check(one.open_tier == 2 and one.progress_line(2) == "Omen 1 / 2 cleared: one more opens Wrath",
-		"three of Whisper open Omen; one of its two, one more (%s)" % one.progress_line(2))
+	t.check(one.open_tier == 2 and one.progress_line(2) == "Omen 1 / 3 cleared: 2 more open Wrath",
+		"three of Whisper open Omen; one of its five, two more (%s)" % one.progress_line(2))
 
 
 static func _prices(t) -> void:

@@ -1,5 +1,5 @@
 extends RefCounted
-## Capital polish 2: the Keep's gate and steps, its service yard and the south district gate.
+## Capital polish 2: the Keep's gate and steps, its service yard, the cathedral close and the south district gate.
 ##   - The barbican is the Keep's gatehouse at the head of the avenue from the cathedral square, the watchtower beside
 ##     it on the same line. Its arch is a walkable passage (BuildingTypes.PASSAGE) between solid towers: no crowd gate.
 ##   - Both alley steps stand at the gate's foot as one flight of two pieces up to it: their stairs are walked over,
@@ -8,6 +8,9 @@ extends RefCounted
 ##   - The Keep's service yard, the paving east of the Keep inside the old town's wall: royal stables and horse pens, a
 ##     granary, a well, the wagon (both facings) and hand carts parked, wood piles, barrels and crates; stable hands
 ##     work there.
+##   - The cathedral close: a churchyard beside the cathedral (graves, the wayside cross, yews) and a paved pilgrim
+##     plaza before its steps (a well, benches, the notice board, a crier's stage, pilgrim stalls); priests and monks
+##     pray there, townsfolk gather there.
 
 
 static func run(t) -> void:
@@ -19,6 +22,7 @@ static func run(t) -> void:
 	_keep_gate(t, c)
 	_district_gate(t, c)
 	_keep_yard(t, c)
+	_close(t, c)
 	_walk(t, c)
 	_stable_hands(t, c)
 	City.use(&"aldermere")
@@ -162,6 +166,68 @@ static func _keep_yard(t, c: CapitalCity) -> void:
 		work += 1 if y.has_point(g) else 0
 	t.check(work >= CitizenProfile.WORK_NEAREST, "the yard has its own work places (%d)" % work)
 	t.check(c.spawn_roles().get(&"keep_yard", {}).get(&"stable_hand", 0) >= 2, "stable hands are dealt to the yard")
+
+
+## The cathedral close: the churchyard on the lawn beside the cathedral, the pilgrim plaza paved before its steps;
+## nothing there taller than the cathedral; prayer and market points for the clergy, the monks and the townsfolk.
+static func _close(t, c: CapitalCity) -> void:
+	var cath := c.landmark(&"temple")
+	var yard := CapitalCity.CHURCHYARD
+	var plaza := CapitalCity.PILGRIM_PLAZA
+	t.check(c.landmark(&"churchyard") == yard and c.landmark(&"pilgrim_plaza") == plaza, "the close's two parts are landmarks")
+	t.check(yard.position.x >= cath.end.x and yard.position.x - cath.end.x < 0.6 and yard.position.y < cath.end.y
+		and yard.end.y > cath.position.y, "the churchyard lies on the lawn beside the cathedral (%s)" % yard)
+	t.check(plaza.position.y > cath.end.y and plaza.position.y - cath.end.y < 3.0 and plaza.position.x < cath.position.x
+		and plaza.end.x > cath.end.x, "the pilgrim plaza lies before the cathedral's steps, across its front (%s)" % plaza)
+	var tags := {}
+	var tall: Array = []
+	for d: Dictionary in c.structures():
+		var r: Rect2 = d.rect
+		if yard.encloses(r) or plaza.encloses(r):
+			tags[d.tag] = int(tags.get(d.tag, 0)) + (1 if yard.encloses(r) else 100)
+			if d.height >= 56.0:
+				tall.append(d.tag)
+	t.check(int(tags.get(&"gpt_graveyard", 0)) == 1 and int(tags.get(&"gpt_waysidecross", 0)) == 1,
+		"the churchyard has its graves and the wayside cross (%s)" % [tags])
+	t.check(int(tags.get(&"gpt_noticeboard", 0)) == 100 and int(tags.get(&"gpt_crierstage", 0)) == 100,
+		"the notice board and a crier's stage stand on the plaza (%s)" % [tags])
+	t.check(tall.is_empty(), "nothing in the close stands as tall as the cathedral (%s)" % [tall])
+	var near := 0
+	for d: Dictionary in c.structures():
+		if d.tag == &"gpt_noticeboard" and cath.grow(4.0).intersects(d.rect):
+			near += 1
+	t.check(near == 1, "one notice board by the cathedral: the jail's, moved to the plaza (%d)" % near)
+	var stalls := 0
+	for st: Rect2 in c.stalls():
+		stalls += 1 if plaza.encloses(st) else 0
+	t.check(stalls >= 3 and stalls <= 4, "3-4 pilgrim stalls on the plaza (%d)" % stalls)
+	var well := false
+	for w: Rect2 in c.wells():
+		well = well or plaza.encloses(w)
+	t.check(well, "the plaza has its well")
+	var paved := false
+	for r: Rect2 in c.floor_areas()[&"plazas"]:
+		paved = paved or r == plaza
+	t.check(paved, "the plaza is paved with the floor's plaza paving")
+	var benches := 0
+	var yews := 0
+	for d: Dictionary in c.court_decor():
+		benches += 1 if d.kind == Decor.Kind.BENCH and plaza.has_point(d.at) else 0
+		yews += 1 if d.kind == Decor.Kind.PINE and yard.has_point(d.at) else 0
+	t.check(benches >= 2 and yews >= 2, "benches on the plaza (%d), yews in the churchyard (%d)" % [benches, yews])
+	var an := c.anchors()
+	var pray_yard := 0
+	var pray_plaza := 0
+	var market_plaza := 0
+	for g: Vector2 in an.pray:
+		pray_yard += 1 if yard.has_point(g) else 0
+		pray_plaza += 1 if plaza.has_point(g) else 0
+	for g: Vector2 in an.market:
+		market_plaza += 1 if plaza.has_point(g) else 0
+	t.check(pray_yard >= 2 and pray_plaza >= 2 and market_plaza >= 2,
+		"prayer points in the churchyard (%d) and on the plaza (%d), market points on the plaza (%d)"
+		% [pray_yard, pray_plaza, market_plaza])
+	t.check(int(c.spawn_roles()[&"cathedral_square"].get(&"monk", 0)) >= 2, "monks are dealt to the cathedral close")
 
 
 ## Through the real town and walk grid: the passages are walked, the cheeks are not; a walk up the avenue climbs the

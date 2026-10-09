@@ -290,7 +290,9 @@ static func _evacuation(t, b: Dictionary) -> void:
 			for p: Person in crowd.citizens:
 				if not is_instance_valid(p) or not p.is_alive():
 					continue
-				if cut_rect.has_point(p.ground_pos):
+				# On the span: on the ground its fall closes, the walk cells whose centres lie on it (a person on the
+				# span's last cell, just past its end, is caught on it too).
+				if cut_rect.has_point(p.ground_pos) or cut_rect.has_point(grid.id_to_world(grid.world_to_id(p.ground_pos))):
 					users.append(p)
 					if _in_water(p.ground_pos, rivers):
 						caught[p] = true

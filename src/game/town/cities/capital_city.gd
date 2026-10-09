@@ -81,7 +81,7 @@ const WINDMILL := Rect2(-36.0, 23.0, 0.9, 0.9)
 ## The fountains (the Great Market's, the civic square's) and the wells.
 const FOUNTAINS := [Rect2(-5.0, -3.0, 1.2, 1.2), Rect2(5.5, -17.0, 1.2, 1.2)]
 const WELLS := [Rect2(-27.5, 19.6, 0.5, 0.5), Rect2(-16.5, 28.0, 0.5, 0.5), Rect2(16.0, 28.5, 0.5, 0.5),
-	Rect2(9.0, 0.6, 0.5, 0.5), KEEP_YARD_WELL]
+	Rect2(9.0, 0.6, 0.5, 0.5), KEEP_YARD_WELL, PLAZA_WELL]
 ## The Keep's courtyard (polish 1): the paved yard inside the old town's north-west walls, between the wall patrols'
 ## loop and the noble quarter, the barracks at its east end. Its west half is the royal garden: lawn, gravel paths
 ## crossing at a fountain, hedges, flower beds, benches and trees (court_decor()), the monument and the pavilion
@@ -158,6 +158,24 @@ const YARD_DECOR := [
 ]
 ## The yard's own work places besides the stables' fronts: the pens' gate, the granary's door, the cart stand.
 const YARD_WORK := [Vector2(13.3, -26.5), Vector2(13.4, -21.5), Vector2(10.6, -23.0)]
+## The cathedral close (polish 2): the lawns round the cathedral between the avenues. The churchyard, on the lawn east
+## of it below the courthouse: the monastery's graveyard set once more (no single grave art exists), the wayside cross
+## and three yews (town pines, CLOSE_DECOR). The pilgrim plaza, on the lawn before its steps across the west road,
+## paved with the floor's plaza paving: a well (PLAZA_WELL), two benches, the jail's notice board (moved here), a second
+## crier stage and four stalls of the market's designs (PLAZA_STALL_ROWS). Nothing there stands taller than the
+## cathedral. Priests and monks walk the close (CLOSE_PRAY in the churchyard); townsfolk gather at the plaza
+## (CLOSE_PRAY and CLOSE_MARKET there).
+const CHURCHYARD := Rect2(-1.35, -16.95, 4.2, 2.85)
+const PILGRIM_PLAZA := Rect2(-8.0, -11.9, 9.5, 1.8)
+const PLAZA_WELL := Rect2(-3.7, -11.7, 0.5, 0.5)
+const PLAZA_STALL_ROWS := [Rect2(-6.8, -11.0, 2.1, 0.7), Rect2(-1.2, -11.0, 2.1, 0.7)]
+const CLOSE_DECOR := [
+	[Decor.Kind.PINE, Vector2(2.5, -16.55), Vector2(26.0, 0.0)], [Decor.Kind.PINE, Vector2(2.55, -14.65), Vector2(24.0, 0.0)],
+	[Decor.Kind.PINE, Vector2(1.4, -14.5), Vector2(22.0, 0.0)],
+	[Decor.Kind.BENCH, Vector2(-2.6, -10.45), Vector2(0.7, 0.0)], [Decor.Kind.BENCH, Vector2(-2.6, -11.75), Vector2(0.7, 0.0)],
+]
+const CLOSE_PRAY := [Vector2(1.95, -15.15), Vector2(1.0, -16.65), Vector2(-6.1, -11.7), Vector2(0.0, -11.7)]
+const CLOSE_MARKET := [Vector2(-5.1, -11.6), Vector2(-0.8, -11.6)]
 ## The bank lines the over-water sets stand from (BuildingTypes.OVER_WATER): the river's north bank and the harbour
 ## basin's north quay (RIVER's and HARBOUR's north edges).
 const NORTH_BANK := 6.0
@@ -193,11 +211,13 @@ const GPT_PLOTS := [
 	[&"gpt_patrician", Vector2(-16.6, -11.6)], [&"gpt_patrician", Vector2(-15.4, -11.6)],
 	[&"gpt_patrician", Vector2(-14.2, -11.6)], [&"gpt_patrician", Vector2(-13.0, -11.6)],
 	[&"gpt_patrician", Vector2(-11.8, -11.6)], [&"gpt_patrician", Vector2(-10.6, -11.6)],
-	# Cathedral and civic square: town hall and courthouse east of the cathedral, the jail and its notice board west of
-	# it.
+	# Cathedral and civic square: town hall and courthouse east of the cathedral, the jail west of it. The cathedral
+	# close (polish 2): the churchyard east of it (a graveyard, the wayside cross), the pilgrim plaza before its steps
+	# (the jail's notice board, moved here, and a crier's stage).
 	[&"gpt_townhall", Vector2(-1.2, -20.8)], [&"gpt_courthouse", Vector2(-1.0, -18.6)],
 	[&"gpt_jail", Vector2(-8.7, -18.6)],
-	[&"gpt_noticeboard", Vector2(-8.6, -16.5)],
+	[&"gpt_graveyard", Vector2(-1.1, -16.4)], [&"gpt_waysidecross", Vector2(1.7, -16.0)],
+	[&"gpt_noticeboard", Vector2(0.5, -11.8)], [&"gpt_crierstage", Vector2(-7.8, -11.8)],
 	# Guild quarter: the guild hall, the weavers' hall, shop-houses.
 	[&"gpt_guildhall", Vector2(9.0, -20.6)], [&"gpt_weavers", Vector2(11.0, -20.6)],
 	[&"gpt_shophouse", Vector2(13.8, -20.6)], [&"gpt_shophouse", Vector2(15.2, -20.6)],
@@ -300,7 +320,7 @@ const QUEUE_STEP := 0.45
 ## Each district's citizens by job (spawn_roles()), about 420 in all.
 const SPAWN_ROLES := {
 	&"noble_quarter": {&"noble": 12, &"resident": 10, &"caregiver": 8},
-	&"cathedral_square": {&"clergy": 8, &"beggar": 4},
+	&"cathedral_square": {&"clergy": 8, &"beggar": 4, &"monk": 2},
 	&"guild_quarter": {&"guild_craftsman": 12, &"trader": 4, &"resident": 6, &"caregiver": 4},
 	&"great_market": {&"merchant": 22, &"trader": 6, &"innkeeper": 3, &"beggar": 3},
 	&"old_town_houses": {&"resident": 16, &"caregiver": 10, &"craft": 4, &"washer": 6, &"clergy": 3},
@@ -565,6 +585,9 @@ func stalls() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for i in STALL_ROWS.size():
 		out.append_array(CapitalPlots.row(STALL_ROWS[i], STALL, STALL_GAP, i + 1))
+	# The pilgrim plaza's (polish 2), after the market's, so theirs keep their rows' seeds.
+	for i in PLAZA_STALL_ROWS.size():
+		out.append_array(CapitalPlots.row(PLAZA_STALL_ROWS[i], STALL, STALL_GAP, STALL_ROWS.size() + i + 1))
 	return out
 
 
@@ -597,7 +620,7 @@ func blockers() -> Array[Rect2]:
 
 
 ## The Keep courtyard's pieces (KEEP_COURT): the garden's, then the dummies, then the drill yard's gear; then the service
-## yard's (KEEP_YARD, polish 2).
+## yard's (KEEP_YARD, polish 2), then the cathedral close's (CLOSE_DECOR).
 func court_decor() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row: Array in GARDEN_DECOR:
@@ -608,6 +631,8 @@ func court_decor() -> Array[Dictionary]:
 		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
 	for row: Array in YARD_DECOR:
 		out.append({"kind": row[0], "at": row[1], "size": Vector2.ZERO})
+	for row: Array in CLOSE_DECOR:
+		out.append({"kind": row[0], "at": row[1], "size": row[2]})
 	return out
 
 
@@ -882,6 +907,8 @@ func anchors() -> Dictionary:
 	for pl: Rect2 in gate_plazas():
 		out.gate.append(pl.get_center())
 	out.work.append_array(YARD_WORK)
+	out.pray.append_array(CLOSE_PRAY)
+	out.market.append_array(CLOSE_MARKET)
 	out.harbour.append(DOCK_WAIT.get_center())
 	for w: Rect2 in _typed(FOUNTAINS) + wells():
 		out.water.append(Vector2(w.get_center().x, w.end.y + 0.3))
@@ -1136,6 +1163,7 @@ func landmark(name: StringName) -> Rect2:
 			&"smithy": SMITHY, &"smithy_yard": SMITHY_YARD, &"carpenter": CARPENTER, &"carpenter_yard": CARPENTER_YARD,
 			&"tavern_patio": TAVERN_PATIO, &"bell_tower": BELL_TOWER, &"windmill": WINDMILL,
 			&"keep_court": KEEP_COURT, &"royal_garden": ROYAL_GARDEN, &"drill_yard": DRILL_YARD, &"keep_yard": KEEP_YARD,
+			&"churchyard": CHURCHYARD, &"pilgrim_plaza": PILGRIM_PLAZA,
 		}
 		for row: Array in DISTRICT_TABLE:
 			_landmarks[row[0]] = row[1]
@@ -1149,7 +1177,7 @@ func floor_areas() -> Dictionary:
 		building_yards.append(t.grow(0.3))
 	var farm := _typed(BARNS)
 	farm.append(WINDMILL)
-	var plazas: Array[Rect2] = [MARKET_SQUARE, WEST_MARKET, CITADEL_COURT]
+	var plazas: Array[Rect2] = [MARKET_SQUARE, WEST_MARKET, CITADEL_COURT, PILGRIM_PLAZA]
 	var yards: Array[Rect2] = [BARRACKS_YARD]
 	return {
 		&"plazas": plazas, &"yards": yards, &"gate_plazas": gate_plazas(),
@@ -1239,7 +1267,7 @@ static func _dry(d: Dictionary) -> Rect2:
 ## footprint, the fountains and the wells.
 func _fixed_ground() -> Array[Rect2]:
 	var out: Array[Rect2] = [MARKET_SQUARE, WEST_MARKET, CITADEL_COURT, BARRACKS_YARD, TAVERN_PATIO, SMITHY_YARD,
-		CARPENTER_YARD]
+		CARPENTER_YARD, PILGRIM_PLAZA]
 	out.append_array(gate_plazas())
 	out.append_array(fountains())
 	out.append_array(wells())

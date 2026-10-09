@@ -1,0 +1,13 @@
+Image 1 = BLOCKOUT GUIDE. Image 2 = my game's existing buildings (enlarged 4x). Image 3 = the game view.
+
+TASK: Paint each blockout in image 1 as a finished building in the exact art style of image 2. Keep image 1's silhouettes, wall heights, roof shapes, roof pitch, footprint, size and isometric angle EXACTLY — trace over them. Do not make walls taller, roofs smaller, or change the angle. The small grey numbers are labels only — do not draw them. Add surface detail, materials and small props.
+
+STYLE = image 2 exactly: same chunky pixel size, same muted palette (terracotta-red or greyish slate-blue tiles, cream plaster with dark brown timber framing, warm grey stone), dark warm outlines, light from the upper LEFT (left walls lighter, right walls darker), warm amber window glow, small rectangular windows with wooden frames, no arched windows, no stone frames around windows or doors. Doors about one person tall, small like in image 2.
+
+BUILDINGS (by label number):
+1 (top left) BARBICAN: a gate block of warm grey stone between two round stone towers; slate cone roofs; a dark arched gate passage with a wooden gate and portcullis; crenellations along the top; arrow slits in the towers.
+2 (top middle) GATEHOUSE: a square warm grey stone gatehouse with a slate hip roof; two small corbelled corner turrets with slate cones; the arched gate opens onto a lowered wooden drawbridge with iron chains over a short moat of water.
+3 (top right) GALLOWS: a raised wooden scaffold platform with wooden steps at the front and a plain rail at the back; two heavy wooden uprights with a crossbeam and braces; a dark trapdoor; one rope hanging from the beam.
+4 (bottom left) DISTRICT GATE: a freestanding stone gateway over a paved street; two square stone piers with a round arch; a small plastered guard room with timber framing on top under a red tile roof.
+
+OUTPUT: same layout as image 1, white or transparent background, no grass and no shadows, no text or numbers. No ground EXCEPT pieces drawn in image 1 (water strips, quays, paving, platforms, low walls, fences) — keep those exactly as drawn.

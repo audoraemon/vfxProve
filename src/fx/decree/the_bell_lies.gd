@@ -31,7 +31,7 @@ func _build() -> void:
 		mode = "well"
 	duration = T_CAST + (LIE_TIME if mode == "well" else GUARD_TIME) + 1.0
 	busy = T_CAST
-	_tower = TownLayout.BELL_TOWER.get_center()
+	_tower = City.current().landmark(&"bell_tower").get_center()
 	at(T_CAST, _toll_well if mode == "well" else _call_guard)
 	ctx.play(&"hs_charge", _tower, -10.0)
 	if DominionParts.staged(self):

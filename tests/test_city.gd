@@ -147,16 +147,54 @@ static func _leak(t) -> void:
 	t.check(not shrubs.is_empty() and TownFloor.shrub_spots() == shrubs, "Aldermere's shrubs come back after the capital")
 
 
-## Shared code reads the active city, never Aldermere's constants (Aldermere-only directors excepted).
+## Shared code reads the active city (City.current()), never Aldermere's TownLayout places. Scans every script under
+## the shared folders; a TownLayout read counts unless it is in a comment or names one of GENERIC's city-agnostic
+## sizes and helpers (both cities build their walls, gardens and street props with them).
 static func _no_hardcoded(t) -> void:
-	const SHARED := ["res://src/game/town/town.gd", "res://src/game/town/town_floor.gd",
-		"res://src/game/town/town_decor.gd", "res://src/game/town/walk_grid.gd",
-		"res://src/game/crowd/crowd.gd", "res://src/game/crowd/evacuation_manager.gd",
-		"res://src/game/crowd/alarm_manager.gd", "res://src/game/crowd/citizen_profile.gd"]
-	for p: String in SHARED:
-		var src := FileAccess.get_file_as_string(p)
-		var n := src.count("TownLayout.") - src.count("TownLayout.Prop")
-		t.check(n == 0, "%s reads no TownLayout constants (found %d)" % [p, n])
+	const DIRS := ["res://src/fx", "res://src/game/crowd", "res://src/game/descend", "res://src/game/town",
+		"res://src/environment"]
+	const FILES := ["res://src/game/targeting.gd", "res://src/game/mission.gd"]
+	# Files allowed to read Aldermere's places, each with its reason.
+	const EXCEPT := {
+		# The layout itself: Aldermere's constants live here.
+		"res://src/game/town/town_layout.gd": "Aldermere's layout",
+		# Aldermere's CityDef: answers City.current() from TownLayout.
+		"res://src/game/town/cities/aldermere_city.gd": "Aldermere's CityDef",
+		# The GPT proof district: built only by the town debug scene, and only in Aldermere (town_debug.gd).
+		"res://src/game/town/gpt_showcase.gd": "Aldermere-only dev showcase",
+	}
+	# City-agnostic sizes and helpers on TownLayout (no Aldermere place): wall thickness and pieces, garden and street
+	# prop spacing, the shared ring and gatehouse builders and the prop kinds.
+	const GENERIC := ["Prop", "WALL_T", "WALL_TOWER", "GARDEN_CHANCE", "GARDEN_LONG", "GARDEN_GAP",
+		"GARDEN_SHORT", "GARDEN_STREET_CLEAR", "STREET_PROP_STEP", "STREET_PROP_GAP", "PROP_SIZE", "_prop_kind",
+		"STREET_TREE_JUNCTION", "ring_gatehouse", "ring_structures"]
+	var files: Array[String] = []
+	for d: String in DIRS:
+		_scripts_under(d, files)
+	files.append_array(FILES)
+	t.check(files.size() > 40, "the guard scans the shared scripts (%d)" % files.size())
+	var re := RegEx.create_from_string("TownLayout\\.([A-Za-z_][A-Za-z0-9_]*)")
+	for p: String in files:
+		if EXCEPT.has(p):
+			continue
+		var found := PackedStringArray()
+		for line: String in FileAccess.get_file_as_string(p).split("\n"):
+			var code := line.get_slice("#", 0)
+			for m: RegExMatch in re.search_all(code):
+				if not m.get_string(1) in GENERIC:
+					found.append(m.get_string(1))
+		t.check(found.is_empty(), "%s reads no Aldermere places (found %s)" % [p, ", ".join(found)])
+	for p: String in EXCEPT:
+		t.check(FileAccess.file_exists(p), "the excepted %s exists" % p)
+
+
+## Every .gd file under `dir`, recursively, into `out`.
+static func _scripts_under(dir: String, out: Array[String]) -> void:
+	for f: String in DirAccess.get_files_at(dir):
+		if f.ends_with(".gd"):
+			out.append(dir.path_join(f))
+	for sub: String in DirAccess.get_directories_at(dir):
+		_scripts_under(dir.path_join(sub), out)
 
 
 ## The capital (CapitalCity, tests/test_capital.gd and tests/test_capital_plots.gd) is made by City.by_id.
@@ -171,6 +209,25 @@ static func _capital_stub(t) -> void:
 	for k: StringName in [&"plazas", &"yards", &"gate_plazas", &"building_yards", &"farm"]:
 		t.check(a.has(k), "the capital's floor area %s" % k)
 	t.check(City.by_id(&"aldermere") is AldermereCity, "by_id aldermere")
+	# What the powers and wishes read of the active city (the final review): the bell tower (The Bell Lies), the
+	# cathedral's steps (Rewrite Priority's worship) and the gates out (Mercy's ways out).
+	var al := City.by_id(&"aldermere")
+	t.check(al.gate_exits() == [TownLayout.MAIN_GATE.get_center(), TownLayout.SIDE_GATE.get_center(),
+		TownLayout.POSTERN_AT], "Aldermere's ways out are its Main Gate, Side Gate and postern")
+	t.check(c.landmark(&"bell_tower").has_area() and not (c.anchors().get("cathedral", []) as Array).is_empty(),
+		"the capital has a bell tower and cathedral steps")
+	var gates := c.structures().filter(func(s: Dictionary) -> bool: return s.kind == Structure.Kind.GATE)
+	var out_of_walls := 0
+	for e: Vector2 in c.gate_exits():
+		for s: Dictionary in gates:
+			var g: Rect2 = s.rect
+			if g.grow(0.05).has_point(e):
+				var past: Vector2 = e + c.gate_outward(g) * 2.0
+				if not c.landmark(&"old_town_wall").has_point(past) and not c.landmark(&"new_town_wall").has_point(past):
+					out_of_walls += 1
+				break
+	t.check(c.gate_exits().size() == 3 and out_of_walls == 3,
+		"the capital's three ways out are gates opening out of its walls (%d)" % out_of_walls)
 
 
 ## Every mission names its city, Aldermere by default, and the mission and town debug scenes use it before building.

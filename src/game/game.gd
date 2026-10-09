@@ -192,6 +192,12 @@ static func locked_for(from: SaveFile, in_campaign: bool) -> PackedStringArray:
 	return PackedStringArray() if in_campaign else from.descend.locked()
 
 
+## The powers a mission picked outside the campaign greys: none for a dev mission (the board's DEV tab: no tier's), the
+## board's locks for any other, a tier's or not (a CLI --mission=feast_festival keeps them).
+static func board_locked_for(from: SaveFile, id: String) -> PackedStringArray:
+	return PackedStringArray() if MissionBook.is_dev(id) else locked_for(from, false)
+
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
@@ -432,7 +438,7 @@ func go_to(to: int) -> void:
 			else:
 				# A dev mission (the board's DEV tab) is no tier's: every power is open to it.
 				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty,
-					locked_for(save, not TierBook.has(mission_id)))
+					board_locked_for(save, mission_id))
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:

@@ -385,6 +385,12 @@ func exits() -> Array[Vector2]:
 	return [Vector2(7, 39.6), Vector2(-39.6, -13), FERRY_LANDING]
 
 
+## The gates out of the walls (the exits' gates of soldier_posts()): the old town's west gate, its harbour gate and the
+## new town's south barbican. The river gates only cross between the rings.
+func gate_exits() -> Array[Vector2]:
+	return [_wall_mid(INNER, INNER_GATES[0]), _wall_mid(INNER, INNER_GATES[4]), _wall_mid(OUTER, OUTER_GATES[3])]
+
+
 ## The house blocks, as Aldermere's districts are: each walled district of the plan (district_table(), spec §1) less
 ## its streets, in DISTRICT_TABLE order; slivers under BLOCK_MIN across are left as street. The floor paints them as
 ## worn ground between the cobbled streets, and the alarms count a local emergency per block.

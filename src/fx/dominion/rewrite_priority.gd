@@ -48,7 +48,7 @@ func _rewrite() -> void:
 	glyph.assign(GLYPHS[priority])
 	var spots: Array[Vector2] = []
 	if priority == "worship":
-		var cathedral: Array = TownLayout.anchors().cathedral
+		var cathedral: Array = City.current().anchors().get("cathedral", [])
 		var place := CongregationFx.place_for(ctx.env, cathedral[0] if not cathedral.is_empty() else origin)
 		var grid: WalkGrid = people[0].grid if not people.is_empty() else null
 		spots = CongregationFx.spots_for(grid, place, people.size())

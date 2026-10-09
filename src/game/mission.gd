@@ -24,6 +24,9 @@ const PAN_SPEED := 320.0
 ## the pixel art shrinks past legibility -- cobbles shimmer and people vanish (playtest, 2026-09-27).
 const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
+## The map width PAN_MIN..PAN_MAX are set for (Aldermere's, TownLayout.MAP: tests/test_capital.gd); a wider city's
+## limits grow in proportion (pan_limits()).
+const PAN_MAP_WIDTH := 60.0
 const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
@@ -51,14 +54,14 @@ const ENDING_TIME_SCALE := 0.3
 const ASCEND_SECONDS := 2.0
 const ASCEND_BANNER := "YOU ASCEND"
 
-## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
+## The scripted run: [seconds, slot, ground (Vector2.INF: the active city's Citadel), drag direction or Vector2.ZERO].
 ## Spaced so each power has finished before the next is cast (Rules.busy_left()): Heaven 8.5 s, Cinderfall 12,
 ## Tsunami 9.5.
 const TEST_CASTS := [
 	[1.0, 0, Vector2(-9.0, -11.0), Vector2(0.2, 1.0)],
 	[10.0, 2, Vector2(0.8, 2.2), Vector2.ZERO],
 	[22.5, 1, Vector2(-12.0, 1.0), Vector2(1.0, 0.1)],
-	[32.5, 3, TownLayout.CITADEL_ORIGIN, Vector2.ZERO],
+	[32.5, 3, Vector2.INF, Vector2.ZERO],
 ]
 const TEST_SHOTS := [0.5, 2.0, 12.0, 24.0, 34.0, 44.0]
 ## How many banner frames the scripted run takes before it stops bothering.
@@ -813,7 +816,7 @@ func _pan(by: Vector2) -> void:
 ## Where the camera may pan (screen px): PAN_MIN to PAN_MAX for Aldermere's 60-unit map, grown in proportion for a larger
 ## city (the capital's 80: Task 15), so its far districts can be reached.
 static func pan_limits() -> Rect2:
-	var k := City.current().map().size.x / TownLayout.MAP.size.x
+	var k := City.current().map().size.x / PAN_MAP_WIDTH
 	return Rect2(PAN_MIN * k, (PAN_MAX - PAN_MIN) * k)
 
 
@@ -855,8 +858,9 @@ func _mission_test() -> void:
 			# Aim first, so the captured frames show the preview and the picked slot the way a player would see
 			# them. Nothing moves the mouse in a scripted run, and the cursor's own ground position is off-map.
 			_aim.pick(slot)
-			_aim.hover(c[2])
-			_rules.cast(slot, c[2], extra)
+			var ground: Vector2 = City.current().citadel_origin() if c[2] == Vector2.INF else c[2]
+			_aim.hover(ground)
+			_rules.cast(slot, ground, extra)
 		while not shots.is_empty() and t >= float(shots[0]):
 			var at: float = shots.pop_front()
 			await _bf.save_capture("%s_%04d.png" % [prefix, roundi(at * 100.0)])

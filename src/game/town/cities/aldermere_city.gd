@@ -41,6 +41,11 @@ func exits() -> Array[Vector2]:
 	return out
 
 
+## The gates out of the walls: the Main Gate, the Side Gate and the postern.
+func gate_exits() -> Array[Vector2]:
+	return [TownLayout.MAIN_GATE.get_center(), TownLayout.SIDE_GATE.get_center(), TownLayout.POSTERN_AT]
+
+
 func districts() -> Array:
 	return TownLayout.DISTRICTS.duplicate(true)
 

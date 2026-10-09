@@ -9,6 +9,7 @@ func town() -> Rect2: return Rect2()                       # the walled core (Al
 func rivers() -> Array[Rect2]: return []
 func roads() -> Array: return []                           # polylines as in TownLayout.ROADS
 func exits() -> Array[Vector2]: return []
+func gate_exits() -> Array[Vector2]: return []             # the gates out of the walls (MercyWish's ways out)
 func districts() -> Array: return []                       # as TownLayout.DISTRICTS
 func structures() -> Array[Dictionary]: return []          # as TownLayout.structures()
 func houses() -> Array[Rect2]: return []

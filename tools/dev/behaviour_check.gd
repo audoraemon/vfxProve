@@ -399,7 +399,8 @@ func _capital_evac(seconds: float) -> void:
 			if not is_instance_valid(p) or not p.is_alive():
 				continue
 			# Those staying at a duty (the engineers' teams, the clergy and the bellkeeper) are not evacuees.
-			living += 0 if p.inside or p.engineer_duty or p.mind == Person.Mind.DUTY 				or p.profile.role == CitizenProfile.Role.ENGINEER else 1
+			living += 0 if p.inside or p.engineer_duty or p.mind == Person.Mind.DUTY \
+				or p.profile.role == CitizenProfile.Role.ENGINEER else 1
 			var g := p.ground_pos
 			for r: Rect2 in names:
 				if r.has_point(g):

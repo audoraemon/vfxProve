@@ -105,6 +105,25 @@ static func _dev(t) -> void:
 		plain.tier = tier
 		shown = shown or plain.missions().has(MissionBook.CAPITAL_SANDBOX)
 	t.check(not shown and plain.hit(MissionBoard.dev_rect().get_center()) == "", "without --dev the board has no dev entry")
+	# Nor do its keys reach the DEV tab: D, Tab both ways round every tab, 1-5, or asking for it outright.
+	plain.open_tab(1)
+	var reached := plain.tier == MissionBoard.DEV_TIER
+	var keys := [KEY_D]
+	for i in TierBook.NAMES.size() + 2:
+		keys.append(KEY_TAB)
+	for i in TierBook.NAMES.size() + 2:
+		keys.append(-KEY_TAB)
+	keys.append_array([KEY_1, KEY_2, KEY_3, KEY_4, KEY_5])
+	for k: int in keys:
+		var e := InputEventKey.new()
+		e.physical_keycode = absi(k) as Key
+		e.shift_pressed = k < 0
+		e.pressed = true
+		plain._unhandled_input(e)
+		reached = reached or plain.tier == MissionBoard.DEV_TIER
+	plain.open_tab(MissionBoard.DEV_TIER)
+	reached = reached or plain.tier == MissionBoard.DEV_TIER
+	t.check(not reached, "without --dev, D, Tab and 1-5 never open the DEV tab")
 	plain.free()
 	var board := MissionBoard.new()
 	board.dev = true

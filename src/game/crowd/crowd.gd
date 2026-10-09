@@ -210,6 +210,9 @@ var _purge_in := 1.0
 var post_counts: Array[int] = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
 ## One person through a gate this often: GATE_INTERVAL, or the city's (CityDef.gate_interval()), read at spawn().
 var gate_interval := GATE_INTERVAL
+## How many citizens the gates examined in the last frame, gate by gate (Task 14's test): only the fleeing and the
+## passing are looked at.
+var gate_visits := 0
 var _city_posts := false
 ## The wall patrols walking their loops (CityDef.patrol_loops()): [soldier, the loop's points (walkable), the point it
 ## is walking to or standing at, its loop's index, when it reached that point (-1: not yet)].
@@ -782,11 +785,6 @@ func step_people(delta: float) -> void:
 		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
 	BenchProf.add(&"people", t0)
-
-
-## How many citizens the gates examined in the last frame, gate by gate (Task 14's test): only the fleeing and the
-## passing are looked at.
-var gate_visits := 0
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.

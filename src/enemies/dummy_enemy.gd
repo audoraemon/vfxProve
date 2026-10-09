@@ -192,7 +192,9 @@ func tick(delta: float) -> void:
 					var span := walk_speed * delta
 					# A step that would overshoot the target by ARRIVE or more lands on it instead: stepping past by
 					# that much each way, a walker rocks about its target for ever (a long step: an off-screen
-					# person at 30 fps steps a tenth of a second at once). Any shorter step behaves as it always did.
+					# person at 30 fps steps a tenth of a second at once). Any shorter step behaves as it always did:
+					# Aldermere's checksums stay put because no Aldermere step reaches 0.1 at a fixed 60 fps with a
+					# static camera, not because the rule is neutral by construction.
 					_move(to if span - reach >= ARRIVE else to.normalized() * walk_speed * delta, to)
 		State.KNOCKBACK:
 			_move(_velocity * delta)
@@ -398,8 +400,8 @@ func _move(step: Vector2, to := Vector2.INF) -> void:
 			# A long step (an off-screen person at 30 fps steps a tenth of a second at once) slid to and fro across
 			# the line of a target it could not reach for the margin in the way, never running out of slide to fall
 			# through to the next target below. A slide that would carry it past that line by ARRIVE or more stops on
-			# it. Only a step of twice ARRIVE or more can do that both ways; shorter ones (all of Aldermere's at
-			# 60 fps) slide as they always did.
+			# it. Only a step of twice ARRIVE (0.1) or more can do that both ways; shorter ones slide as they always
+			# did. No Aldermere step reaches 0.1 at a fixed 60 fps with a static camera, so its checksums hold.
 			if span - absf(to.x) >= ARRIVE:
 				axes[0] = Vector2(to.x, 0.0)
 			if span - absf(to.y) >= ARRIVE:

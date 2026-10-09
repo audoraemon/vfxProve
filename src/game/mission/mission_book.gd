@@ -49,6 +49,14 @@ static func dev_missions() -> Array[MissionDef]:
 	return out
 
 
+## Whether `id` is one of the dev-only missions (dev_missions()).
+static func is_dev(id: String) -> bool:
+	for m in dev_missions():
+		if m.id == id:
+			return true
+	return false
+
+
 ## The capital's sandbox (capital plan, Tasks 13 and 15): the capital, every power, no objectives but a free-play clock
 ## like Last Judgement's skirmish (won when it runs out). Dev-only: --mission=capital_sandbox, or the board's DEV tab
 ## (--dev). Its intro sweeps in from the new town over the eastern stone bridge, past the old town's river gate, and

@@ -49,6 +49,7 @@ static func _sandbox(t) -> void:
 	t.check(Mission.def_for(MissionBook.CAPITAL_SANDBOX, true, DescendState.new()).id == MissionBook.CAPITAL_SANDBOX,
 		"picked on the board, the sandbox is played as itself")
 	City.use(&"aldermere")
+	t.check(Mission.PAN_MAP_WIDTH == TownLayout.MAP.size.x, "the pan limits are set for Aldermere's map width")
 	t.check(Mission.pan_limits() == Rect2(Mission.PAN_MIN, Mission.PAN_MAX - Mission.PAN_MIN), "Aldermere pans as before")
 	City.use(&"capital")
 	var reach := Mission.pan_limits()

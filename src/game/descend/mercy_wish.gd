@@ -12,10 +12,10 @@ var target: Person
 var _out := false
 
 
-## The ways out: the Main Gate, the Side Gate and the postern.
+## The ways out: the active city's gates out of its walls (CityDef.gate_exits(); Aldermere: the Main Gate, the Side
+## Gate and the postern).
 static func exits() -> Array[Vector2]:
-	var out: Array[Vector2] = [TownLayout.MAIN_GATE.get_center(), TownLayout.SIDE_GATE.get_center(), TownLayout.POSTERN_AT]
-	return out
+	return City.current().gate_exits()
 
 
 func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:

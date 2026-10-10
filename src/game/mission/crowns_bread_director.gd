@@ -7,8 +7,9 @@ extends RazeDirector
 ## -- nothing is sealed -- but fire on a target not in use is put out at once, and a fall counts only once it is in use: a target down
 ## when its time comes is razed at once. Each target has a night crew of NIGHT_CREW engineers on posts along its open face from the
 ## start, and a shift of SHIFT who wait indoors until its stage (the granary's and mill's in their own building, the bridge's in the
-## Main Gate's west tower) and then come out to posts POST_GAP beyond. An engineer on guard -- alive, out of doors, within GUARD_REACH
-## and calm (Spoiled Harvest's GUARD_MINDS) -- mends MEND of its health a second, beats out a fire in use after SMOTHER_AFTER, and
+## Main Gate's west tower) and then each comes out at his own post POST_GAP beyond, spread like the night crew (the controller's fix
+## round 1 ruling: one strike never clears a stage). An engineer on guard -- alive, out of doors, within GUARD_REACH and calm
+## (Spoiled Harvest's GUARD_MINDS) -- mends MEND of its health a second, beats out a fire in use after SMOTHER_AFTER, and
 ## rebuilds a fall not in use (Structure.restore()) in REBUILD with two, REBUILD_ONE with one. One off his post walks back
 ## RETURN_AFTER after he left; a fallen one is replaced RELIEF_AFTER after he fell. The town's own teams keep off (hands_off). All
 ## three razed wins; the Crown's carts roll at CARTS_AT (EventObjective) and lose.
@@ -35,10 +36,10 @@ const WORDS := ["granary", "mill", "bridge"]
 ## The strip's and the banners' words as each comes into use (v0.11 M4, mission spec §1).
 const STAGE_LABELS := ["The grain carts fill the granary", "The mill grinds the Crown's flour", "The bread carts gather at the bridge"]
 ## Mission spec §1's numbers (v0.11 M4), tuned by Task 2's gate in this order: SHIFT (1-3), STAGE_AT[0] (30-60), CHAIN (30-45),
-## RELIEF_AFTER (20-30), MEND -- SHIFT 2 -> 3 (round 1), STAGE_AT[0] 45 -> 55 (round 2). When each target comes into use at the latest;
-## how long after one is razed the next does; the crews; the posts' spacing; how near an engineer stands to be on guard; the work's
-## rates; return and relief; the carts.
-const STAGE_AT := [55.0, 115.0, 185.0]
+## RELIEF_AFTER (20-30), MEND -- SHIFT 2 -> 3 (round 1); with the shift come out spread (fix round 1), STAGE_AT[0] back at 45. When
+## each target comes into use at the latest; how long after one is razed the next does; the crews; the posts' spacing; how near an
+## engineer stands to be on guard; the work's rates; return and relief; the carts.
+const STAGE_AT := [45.0, 115.0, 185.0]
 const CHAIN := 45.0
 const NIGHT_CREW := 2
 const SHIFT := 3
@@ -93,9 +94,9 @@ func _begin() -> void:
 		waiting_in.append(s if i < 2 else _gate_tower())
 		var list: Array = []
 		for k in NIGHT_CREW:
-			list.append(_appoint(i, _post(i, k, false), false, list))
+			list.append(_appoint(i, _post(i, k, false, list), false, list))
 		for k in SHIFT:
-			list.append(_appoint(i, _post(i, k, true), true, list))
+			list.append(_appoint(i, _post(i, k, true, list), true, list))
 		crews.append(list)
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
@@ -149,18 +150,40 @@ func _gate_tower() -> Structure:
 
 
 ## The `k`th post of target `i` (v0.11 M4, decision 99): along its face, the night crew POST_GAP apart about its centre, the shift
-## POST_GAP beyond them; a third of the shift POST_GAP out from the face.
-func _post(i: int, k: int, shift: bool) -> Vector2:
+## POST_GAP beyond them; a third of the shift POST_GAP out from the face. Each is kept one Silent Doom apart from the posts already
+## set (`mates`, the controller's fix round 1 ruling) by _spread().
+func _post(i: int, k: int, shift: bool, mates: Array) -> Vector2:
 	var face := faces[i]
 	var out := face - targets[i].center()
 	out = out.normalized() if out.length() > 0.01 else Vector2.DOWN
 	var along := Vector2(-out.y, out.x)
 	var side := -1.0 if k % 2 == 0 else 1.0
-	if not shift:
-		return _walkable(face + along * side * POST_GAP * 0.5)
-	if k >= 2:
-		return _walkable(face + out * POST_GAP)
-	return _walkable(face + along * side * POST_GAP * 1.5)
+	var want := face + along * side * POST_GAP * 0.5
+	if shift:
+		want = face + out * POST_GAP if k >= 2 else face + along * side * POST_GAP * 1.5
+	return _spread(i, want, mates)
+
+
+## A post at or near `want` for target `i` (v0.11 M4, the controller's fix round 1 ruling): walkable, within GUARD_REACH of the
+## target, reached on foot from its face (a crewman sent back or a relief must get there), and farther than two Silent Doom radii
+## from every post in `mates`, so one strike never takes two of its crew. The nearest such point on rings of POST_GAP / 2 steps
+## round `want`; `want` made walkable when there is none.
+func _spread(i: int, want: Vector2, mates: Array) -> Vector2:
+	var first := _walkable(want)
+	for ring in 5:
+		var r := POST_GAP * 0.5 * float(ring)
+		var n := 1 if ring == 0 else 12
+		for k in n:
+			var at := first if ring == 0 else _walkable(want + Vector2.from_angle(TAU * float(k) / float(n)) * r)
+			if targets[i].distance_to(at) > GUARD_REACH or (crowd._grid != null and (not crowd._grid.walkable(at)
+					or (at.distance_to(faces[i]) > 0.1 and crowd._grid.path(faces[i], at).is_empty()))):
+				continue
+			var clear := true
+			for m: Crew in mates:
+				clear = clear and m.post.distance_to(at) > 2.0 * SilentDoom.RADIUS
+			if clear:
+				return at
+	return first
 
 
 ## A crewman for target `i` at `post` (v0.11 M4): the free lay citizen nearest it, none of the crews so far nor of `mates` (the
@@ -232,29 +255,24 @@ func _chain() -> void:
 			_open(i)
 
 
-## Target `i` comes into use (v0.11 M4): its shift comes out at its building's door and walks on duty to its posts.
+## Target `i` comes into use (v0.11 M4): each of its shift comes out at his own post, on duty there.
 func _open(i: int) -> void:
 	if in_use[i]:
 		return
 	in_use[i] = true
 	for c: Crew in crews[i]:
 		if c.shift:
-			_bring_out_shift(i, c)
+			_bring_out_shift(c)
 			if _alive(c.man):
 				(c.man as Person).go_duty(c.post)
 
 
-## Shift man `c` of target `i`, if still indoors, comes out at his building's door (v0.11 M4).
-func _bring_out_shift(i: int, c: Crew) -> void:
+## Shift man `c`, if still indoors, comes out at his own post (v0.11 M4, the controller's fix round 1 ruling): the shift spread like
+## the night crew, POST_GAP apart, never bunched at one door where one strike would take them all.
+func _bring_out_shift(c: Crew) -> void:
 	if not _alive(c.man) or not (c.man as Person).inside:
 		return
-	var w := waiting_in[i]
-	var door := faces[i]
-	if is_instance_valid(w):
-		door = _open_door(w, c.post)
-		if door == Vector2.INF:
-			door = _front_of(w)
-	_bring_out(c.man as Person, door)
+	_bring_out(c.man as Person, c.post)
 	_keep_from_flight(c.man as Person, true)  # Crowd._evacuate() sends one waiting indoors running too, if he was not on duty
 
 
@@ -426,7 +444,7 @@ func _on_razed(s: Structure) -> void:
 	if timeline != null and i + 1 < targets.size():
 		timeline.expect("stage_%d" % (i + 1), stage_due(i + 1))
 	for c: Crew in crews[i]:
-		_bring_out_shift(i, c)
+		_bring_out_shift(c)
 		_release(c)
 
 

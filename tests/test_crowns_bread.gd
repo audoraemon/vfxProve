@@ -129,6 +129,18 @@ static func _stage(t) -> void:
 		out = out and not (c.man as Person).inside and (c.man as Person).mind == Person.Mind.DUTY and (c.man as Person).anchor == c.post
 	t.check(d.in_use[0] and out and (s.banners as Array).has("THE GRAIN CARTS FILL THE GRANARY") and not d.in_use[1],
 		"at its time the granary is in use and its shift comes out to its posts")
+	d._open(1)
+	d._open(2)
+	var spread := true
+	for i in 3:
+		var men: Array = []
+		for c: CrownsBreadDirector.Crew in d.crews[i]:
+			var p := c.man as Person
+			spread = spread and not p.inside and p.ground_pos.distance_to(c.post) < 0.1
+			for q: Person in men:
+				spread = spread and q.ground_pos.distance_to(p.ground_pos) > 2.0 * SilentDoom.RADIUS
+			men.append(p)
+	t.check(spread, "each shift man comes out at his own post, the whole crew one Doom apart: one strike never clears a stage (fix round 1)")
 	Kit.done(s)
 
 
@@ -349,7 +361,7 @@ static func _tagged(t) -> void:
 	var s := _world()
 	var d: CrownsBreadDirector = s.d
 	var labels := Kit.labels(d)
-	t.check(labels.slice(0, 3) == ["GRANARY - IN USE BY 0:55", "MILL - IN USE BY 1:55", "BRIDGE - IN USE BY 3:05"]
+	t.check(labels.slice(0, 3) == ["GRANARY - IN USE BY 0:45", "MILL - IN USE BY 1:55", "BRIDGE - IN USE BY 3:05"]
 		and Kit.edged(d, "MILL - IN USE BY 1:55") and labels.has("ENGINEER") and d.hint_phase() == "",
 		"before its time each target is grey with its time, pointed at; ENGINEER on each crewman on guard (%s)" % [labels.slice(0, 3)])
 	var mill := d.targets[1]
@@ -365,7 +377,7 @@ static func _tagged(t) -> void:
 	(s.crowd as Crowd).fires.ignite(d.targets[0], 0.5)
 	t.check(Kit.labels(d)[0] == "GRANARY - BURNING", "burning: orange")
 	var tour := d.tour()
-	t.check(tour.size() == 3 and String(tour[0][1]).begins_with("The granary by the east road. In use at 0:55.")
+	t.check(tour.size() == 3 and String(tour[0][1]).begins_with("The granary by the east road. In use at 0:45.")
 		and String(tour[2][1]).ends_with("It takes blows, not fire."), "the tour: the granary, the mill, the bridge")
 	t.check(ResultsScreen.ACT_TITLES.get("bread") == "THE CROWN'S BREAD IS RUINED" and ResultsScreen.ACT_TITLES.get("fed") == "THE CROWN IS FED",
 		"its results under its own keys")

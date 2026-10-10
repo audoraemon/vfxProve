@@ -92,7 +92,7 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   - **Lost** when the Crown's carts roll at 5:00 ("THE CROWN IS FED"), or at dawn.
 - **People and behaviour:**
   - **In use** (the stages; Spoiled Harvest's grain rule, `RazeDirector._spoilable()`):
-    - the granary at 0:55 ("THE GRAIN CARTS FILL THE GRANARY");
+    - the granary at 0:45 ("THE GRAIN CARTS FILL THE GRANARY");
     - the mill at 1:55, or 45 s after the granary is razed ("THE MILL GRINDS THE CROWN'S FLOUR");
     - the bridge at 3:05, or 45 s after the mill is razed ("THE BREAD CARTS GATHER AT THE BRIDGE").
   - **Before its time:** blows land and a target can fall. A fire on it is put out at once (the Raze base's rule for a target
@@ -100,8 +100,9 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
     holding one down is never wasted, only hard.
   - **The night crew:** two engineers at each target from the start, on posts along its open face (`_open_door()` from the
     nearest town gate), 1.8 apart, so one Silent Doom takes one.
-  - **The shift:** at its time, three more engineers come out at each target, on posts 1.8 beyond the night crew's (the third 1.8
-    out from the face). Before that they are indoors and untouchable. A fire or the fall of the building they wait in does not
+  - **The shift:** at its time, three more engineers come out at each target, each at his own post: 1.8 beyond the night crew's
+    (the third 1.8 out from the face), every post of the crew more than two Silent Doom radii from the others, so one strike never
+    clears a stage. Before that they are indoors and untouchable. A fire or the fall of the building they wait in does not
     bring them out early. This is the work that cannot be done ahead.
   - **On guard:** alive, out of doors, within 2.5 of the target, and calm (Spoiled Harvest's `GUARD_MINDS`). A crewman on guard
     holds his post while his target burns (Spoiled Harvest's `HOLD_POST`).
@@ -122,18 +123,17 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   | Time | Event |
   |---|---|
   | 0:00 | "THE CROWN'S BREAD". The night crews stand at all three targets. |
-  | 0:55 | "The grain carts fill the granary": its shift comes out |
+  | 0:45 | "The grain carts fill the granary": its shift comes out |
   | 1:55 | "The mill grinds the Crown's flour" (sooner: 45 s after the granary is razed) |
   | 3:05 | "The bread carts gather at the bridge" (sooner: 45 s after the mill is razed) |
   | 5:00 | "The Crown's carts roll": lost unless all three are razed |
   | 6:00 | Dawn |
 
-- **The clear:** first wait 55 + granary 15 (the shift: a Doom, a Smite that also strikes the granary, an Ember) + 45 +
-  mill 15 + 45 + bridge 35 (the shift, then 140 hp of blows: four Smites at 10 s) ≈ **210 s**. With nothing done ahead, the
-  work rises to about 25 / 25 / 45 s, ≈ 240 s. Measured (Task 2's gate, seeds 1-3): 187.3 / 202.8 / 188.6 s, median 188.6;
-  the median run's sum is 55 + granary 3 (the shift comes out bunched at the door: one Smite takes them and strikes the
-  granary, an Ember finishes it) + 45 + mill 6 + 45 + bridge 34 ≈ 188 s.
-- **Longest waits:** 55 s to the first stage, and 45 s between a target razed and the next one's time. In both, the next night
+- **The clear:** first wait 45 + granary 15 (the shift: a Doom, a Smite that also strikes the granary, an Ember) + 45 +
+  mill 15 + 45 + bridge 35 (the shift, then 140 hp of blows: four Smites at 10 s) ≈ **200 s**. With nothing done ahead, the
+  work rises to about 25 / 25 / 45 s, ≈ 230 s. Measured (Task 2's gate, seeds 1-3): 195.3 / 216.3 / 203.0 s, median 203.0;
+  the median run's sum is 45 + granary about 10 + 45 + mill about 15 + 45 + bridge about 43 ≈ 203 s.
+- **Longest waits:** 45 s to the first stage, and 45 s between a target razed and the next one's time. In both, the next night
   crew can be cleared in the last 25 s.
 - **Tags:**
   - Each target not razed, with an edge arrow:
@@ -152,16 +152,17 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
 
 - **HUD:** "Raze the Crown's bread 1 / 3", and the deadline row "Carts roll 2:10".
 - **Tour:**
-  1. "The granary by the east road. In use at 0:55. Its engineers mend and rebuild."
+  1. "The granary by the east road. In use at 0:45. Its engineers mend and rebuild."
   2. "The mill across the river. In use by 1:55."
   3. "The bridge. The bread carts gather here by 3:05. It takes blows, not fire."
 - **Mission tags:** `razes_bread`. It keeps the wish "Burn the tithe barn" away.
 - **Pool:** every power.
 - **Results:** "THE CROWN'S BREAD IS RUINED" (`bread`), "THE CROWN IS FED" (`fed`).
-- **Numbers** (tuned by Task 2's gate): STAGE_AT 55 / 115 / 185, CHAIN 45, NIGHT_CREW 2, SHIFT 3, POST_GAP 1.8, GUARD_REACH 2.5,
+- **Numbers** (tuned by Task 2's gate): STAGE_AT 45 / 115 / 185, CHAIN 45, NIGHT_CREW 2, SHIFT 3, POST_GAP 1.8, GUARD_REACH 2.5,
   MEND 0.025, SMOTHER_AFTER 3, REBUILD 20 (40 with one), RETURN_AFTER 20, RELIEF_AFTER 30, CARTS_AT 300. Tuned in this order
   while the scripted clear missed 180-240 s: SHIFT (1-3), STAGE_AT[0] (30-60), CHAIN (30-45), RELIEF_AFTER (20-30), MEND. Round 1:
-  SHIFT 2 -> 3 (median 177.5 -> 177.8 s); round 2: STAGE_AT[0] 45 -> 55 (median 188.6 s).
+  SHIFT 2 -> 3 (median 177.5 -> 177.8 s, the shift bunched at its door); round 2: STAGE_AT[0] 45 -> 55 (median 188.6 s). The
+  controller's fix round 1 then brought each shift man out at his own post, spread, and STAGE_AT[0] back to 45 (median 203.0 s).
 - **Scripted policy** (`--scenario=bread`, loadout Silent Doom, Smite, Ember, Mind Whisper: 4 DP; hit-stop off,
   `Impact.hitstop_enabled`). Every LOOK_FRAMES, the first that applies:
   1. The target in use has a crewman on guard:
@@ -173,7 +174,7 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   3. The next target's time is within 25 s: clear its night crew as in step 1.
   4. A relief walks toward the target in use and Doom is ready: Doom him.
 
-  It never holds a target down ahead of its time. Expected clear: about 3:30; measured median 3:09.
+  It never holds a target down ahead of its time. Expected clear: about 3:20; measured median 3:23.
 - **How it differs from Spoiled Harvest** (M2 lesson 10):
   - **Three kinds of target:** a barn, a mill and a stone bridge, each with its own answer (fire, fire, blows).
   - **Engineers, not watchmen:** they mend damage and rebuild falls, so a target can be undone, not only saved.

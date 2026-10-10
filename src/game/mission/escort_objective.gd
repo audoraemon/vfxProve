@@ -34,10 +34,16 @@ func check(rules: Rules) -> Status:
 	if d.charge_lost():
 		reason = _dead
 		return Status.FAILED
+	var lost := d.lost_reason()  # v0.11 M4: the director's own loss (The Prisoner's "prisoner_inside")
+	if lost != "":
+		reason = lost
+		return Status.FAILED
 	return Status.PENDING
 
 
-## The label (v0.11 M2), or "...: caught" while he is held.
+## The label (v0.11 M2), or "...: caught" while he is held. v0.11 M4: the director's HUD line in its place when it has one.
 func hud_text(rules: Rules) -> String:
 	var d := rules.director as EscortDirector
+	if d != null and d.hud_line() != "":
+		return d.hud_line()
 	return "%s: caught" % label if d != null and d.held else label

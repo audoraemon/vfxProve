@@ -21,6 +21,10 @@ const FIRST_PRAYERS := "first_prayers"
 const BELL_RINGERS := "bell_ringers"
 const MARKET_PANIC := "market_panic"
 const INFORMER := "informer"
+## The new Tier 3 missions (v0.11 M4, mission spec §1-§3), built by tier_missions() at Tier 3's numbers.
+const CROWNS_BREAD := "crowns_bread"
+const PRISONER := "prisoner"
+const HERETIC_HUNT := "heretic_hunt"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -92,6 +96,23 @@ static func _tier2(id: String, name: String, brief: PackedStringArray) -> Missio
 	m.dp_capacity = 8
 	m.clock = 330.0
 	m.tier_floor = 2
+	m.intro_banner = name.to_upper()
+	return m
+
+
+## A Tier 3 (Wrath) mission's frame (v0.11 M4, mission spec §0, Decision 57): a Prepared town -- tier_floor 3 and no profile, so a
+## scripted run meets the board's town -- 4 slots and 10 DP, a 6:00 clock, no bonuses, every power allowed unless the mission
+## narrows its pool.
+static func _tier3(id: String, name: String, brief: PackedStringArray) -> MissionDef:
+	var m := MissionDef.new()
+	m.id = id
+	m.name = name
+	m.tier = 3
+	m.brief = brief
+	m.slots = 4
+	m.dp_capacity = 10
+	m.clock = 360.0
+	m.tier_floor = 3
 	m.intro_banner = name.to_upper()
 	return m
 

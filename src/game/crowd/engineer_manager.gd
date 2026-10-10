@@ -60,6 +60,12 @@ var workshop: Structure
 var base := Vector2.INF
 ## Seconds until each lost team's replacement.
 var replacing: Array[float] = []
+## Structures the town's teams leave alone (v0.11 M4, The Crown's Bread, mission spec §6): no mending or rebuilding job is made for
+## any of them (jobs()). Empty by default, so every town works as before; a director fills it at setup and empties it at teardown.
+var hands_off: Array[Structure] = []
+## People the workshop never hires into a new team (v0.11 M4, decision 97: The Crown's Bread's crewmen, made engineers, would
+## otherwise be hired while calm off their posts): _recruit() passes them by. Untyped: one may be a freed body. Empty by default.
+var not_hired: Array = []
 ## The last team id given out (v0.07; each team's "id").
 var _next_id := 0
 var _think_in := 0.0
@@ -148,13 +154,13 @@ func jobs() -> Array:
 		if is_instance_valid(_town.dock):
 			routes.append(_town.dock)
 	for s in routes:
-		if is_instance_valid(s) and (s.destroyed or s.hp < s.max_hp * DAMAGED):
+		if is_instance_valid(s) and not hands_off.has(s) and (s.destroyed or s.hp < s.max_hp * DAMAGED):
 			_add_job(out, Job.ROUTE, s, s.footprint, s.destroyed)
 	for s in _env.structures():
 		if is_instance_valid(s) and not s.destroyed and s.role == &"thorns":
 			_add_job(out, Job.CLEAR, s, s.footprint, false)
 			continue
-		if not is_instance_valid(s) or s.destroyed or s.hp >= s.max_hp * DAMAGED or s.damage_filter.is_valid():
+		if not is_instance_valid(s) or s.destroyed or s.hp >= s.max_hp * DAMAGED or s.damage_filter.is_valid() or hands_off.has(s):
 			continue
 		if _crowd.fires != null and _crowd.fires.is_burning(s):
 			continue  # the fire brigade's first
@@ -455,7 +461,7 @@ func _recruit(n: int) -> Array:
 	var pool: Array[Person] = []
 	for p in _crowd.citizens:
 		if is_instance_valid(p) and p.is_alive() and p.profile != null and not p.inside and p.mind in AVAILABLE \
-				and not on_team.has(p) and p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.CRAFT]:
+				and not on_team.has(p) and not not_hired.has(p) and p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.CRAFT]:
 			pool.append(p)
 	var at := workshop.center() if is_instance_valid(workshop) else base
 	pool.sort_custom(func(a: Person, b: Person) -> bool:

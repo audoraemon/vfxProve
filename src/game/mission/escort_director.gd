@@ -34,6 +34,9 @@ const POST_MINDS := [Person.Mind.POST, Person.Mind.CALM, Person.Mind.RECOVER, Pe
 const MARK_CHARGE := Color("8fb8e8")
 const MARK_CLEAR := Color("7fc46a")
 const MARK_WATCHED := Color("c8342a")
+## How long past each look a bound charge is kept shaking off a whisper and past fear (v0.11 M4): more than a TICK, so neither lapses
+## between looks.
+const BOUND_HOLD := 1.0
 
 ## Set by _plan(): where he starts, the gate's mouth, the way out past it, where a seizer takes him, where the watch goes for
 ## the change, the watch's posts, each patrol's beat (PackedVector2Array), the patrols' size, when the searchers set out (-1
@@ -52,6 +55,13 @@ var charge_pace := 1.0
 var charge_label := "CHARGE"
 var exit_label := "WAY OUT"
 var return_label := "BACK"
+## v0.11 M4 (mission spec §6, decision 94): a structure the charge starts bound to (The Prisoner's stocks) -- null: free from the
+## start, The Lost Lamb's way. While bound he is held at his spot, seen by no one, deaf to a whisper and past fear; its fall frees him.
+var bound_by: Structure = null
+## Seconds into the night (the timeline's) by which he must be freed, or the night is lost; -1 for no such deadline (v0.11 M4).
+var free_by := -1.0
+## Seconds after he is freed that the searchers set out (v0.11 M4); -1: at hunt_at on the clock, The Lost Lamb's way.
+var hunt_after_free := -1.0
 
 ## The charge; the watch; each patrol (an Array[Person]); the searchers. Read only through _alive(): any may be freed (the
 ## charge at once when he escapes).
@@ -65,6 +75,12 @@ var seizer: Variant = null
 var escaped := false
 var taken := false
 var seizures := 0
+## He is bound now; he was still bound at free_by (the night is lost); the second of the night he was freed, -1 until then (v0.11 M4).
+var bound := false
+var bound_lost := false
+var freed_at := -1.0
+## Seconds into the night (v0.11 M4), for the freeing.
+var _clock := 0.0
 ## The watch is away for its change; seconds until the next change (-1 until he first nears the gate); seconds of it left.
 var watch_away := false
 var change_in := -1.0
@@ -77,7 +93,7 @@ var _tick_in := 0.0
 
 
 ## The mission's setup (v0.11 M2): the plan, the charge set down where the god finds him, the watch at its posts and each patrol at
-## the start of its beat.
+## the start of its beat. v0.11 M4: through the hooks, each handed the charge, and bound if bound_by is set.
 func _begin() -> void:
 	_plan()
 	gate_at = _walkable(gate_at)
@@ -97,18 +113,20 @@ func _begin() -> void:
 	_hold_at = at
 	charge.go_duty(at)
 	crowd.escaped.connect(_on_escaped)
-	var used: Array = [charge]
-	watch = _free_soldiers(gate_at, watch_posts.size(), used)
-	used.append_array(watch)
+	if bound_by != null:
+		bound = true
+		if free_by >= 0.0:
+			timeline.add(free_by, "inside", _inside_label(), _taken_inside,
+				func() -> bool: return bound and not escaped and _alive(charge))
+	watch = _appoint_watch(charge, watch_posts.size())
 	for i in watch.size():
-		watch[i].send_to_post(_walkable(watch_posts[i]))
+		_post_to(watch[i], _walkable(watch_posts[i]), false)
 	for b: PackedVector2Array in beats:
-		var squad := _free_soldiers(b[0], patrol_size, used)
-		used.append_array(squad)
+		var squad := _appoint_patrol(charge, b, patrol_size)
 		patrols.append(squad)
 		_beat_at.append(0)
 		for i in squad.size():
-			squad[i].send_to_post(_ring_spot(b[0], 0.5, i, squad.size()))
+			_post_to(squad[i], _ring_spot(b[0], 0.5, i, squad.size()), false)
 	rules.banner.emit(_opening_banner())
 
 
@@ -121,6 +139,50 @@ func _plan() -> void:
 func _appoint_charge() -> Person:
 	var near := _lay_near(charge_start, 1)
 	return near[0] if not near.is_empty() else null
+
+
+## Everyone already at the night's work for the charge `c` (v0.11 M4, decision 93): `c` himself, the watch, every patrol and the
+## searchers -- the list a new appointment leaves out (the old `used`). Virtual: The Prisoner adds her gaolers and searchers. Untyped:
+## any may be a freed body.
+func _in_use(c: Person) -> Array:
+	var out: Array = [c]
+	out.append_array(watch)
+	for squad: Array in patrols:
+		out.append_array(squad)
+	out.append_array(hunters)
+	return out
+
+
+## Virtual (v0.11 M4): the `n` watchmen for the gate, set to watch for `c`: the free soldiers nearest the gate's mouth by default.
+func _appoint_watch(c: Person, n: int) -> Array[Person]:
+	return _free_soldiers(gate_at, n, _in_use(c))
+
+
+## Virtual (v0.11 M4): the `n` of a patrol walking `beat`, set to watch for `c`: the free soldiers nearest its first point by default.
+func _appoint_patrol(c: Person, beat: PackedVector2Array, n: int) -> Array[Person]:
+	return _free_soldiers(beat[0], n, _in_use(c))
+
+
+## Virtual (v0.11 M4): the `n` searchers sent after `c`: by default the free soldiers nearest `return_to`, not already watching for
+## him, and at their posts -- never one on the rally's ring or under another town order (the controller's M2 Task 4 fix ruling).
+func _appoint_hunters(_c: Person, n: int) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
+		if p.mind in POST_MINDS and out.size() < n:
+			out.append(p)
+	return out
+
+
+## Virtual (v0.11 M4): `p` is sent to his post at `at` (`hurry`: running, as the watch going for its change) -- a soldier's post by
+## default (Person.send_to_post()); The Prisoner's lay watchmen go on duty there.
+func _post_to(p: Person, at: Vector2, hurry: bool) -> void:
+	p.send_to_post(at, false, hurry)
+
+
+## Virtual (v0.11 M4): `p` takes his post or beat again now -- a soldier of no corps in a POST_MIND by default (in any other, the
+## rally, a fight, the god's hold, he is left to the town); The Prisoner's lay watchmen on duty or back on their feet.
+func _takes_post(p: Person) -> bool:
+	return p.corps == Person.Corps.NONE and p.mind in POST_MINDS
 
 
 ## Virtual: the banners and the timeline's words (v0.11 M2): the opening banner.
@@ -158,11 +220,33 @@ func _change_banner() -> String:
 	return "THE WATCH CHANGES"
 
 
+## Virtual (v0.11 M4): the timeline's words when a bound charge, still bound, is lost (free_by).
+func _inside_label() -> String:
+	return "Taken inside"
+
+
+## Virtual (v0.11 M4): the banner when a bound charge is freed.
+func _unbound_banner() -> String:
+	return "HE BREAKS FREE"
+
+
+## Virtual (v0.11 M4, as RazeDirector's and AssassinateDirector's): why the night is lost now, "" while it is not. EscortObjective
+## fails with it; The Prisoner's "prisoner_inside".
+func lost_reason() -> String:
+	return ""
+
+
+## Virtual (v0.11 M4): the HUD's row in place of the objective's label, "" for the label (The Prisoner's while she is bound).
+func hud_line() -> String:
+	return ""
+
+
 ## One step (v0.11 M2): the timeline, the watch's change, then every TICK a look at him (free or held), the watch's posts, the
-## patrols and the searchers.
+## patrols and the searchers. v0.11 M4: the clock; a bound charge's look.
 func step(delta: float) -> void:
+	_clock += delta
 	timeline.step(delta)
-	if escaped or taken or not _alive(charge):
+	if escaped or taken or bound_lost or not _alive(charge):
 		return
 	_watch_step(delta)
 	_tick_in -= delta
@@ -171,6 +255,8 @@ func step(delta: float) -> void:
 	_tick_in = TICK
 	if held:
 		_step_held()
+	elif bound:
+		_step_bound()
 	else:
 		_step_free()
 	if escaped or taken:
@@ -199,6 +285,38 @@ func _step_free() -> void:
 		charge.go_duty(_hold_at)
 	elif charge.mind == Person.Mind.DUTY and charge.anchor.distance_to(_hold_at) > MOVE:
 		charge.go_duty(_hold_at)
+
+
+## Bound (v0.11 M4, decision 94): `bound_by` down or gone, he is free; else he is held at his spot, kept shaking off a whisper and past
+## fear, and set back on it should anything move him (Discord's confusion lasts a TICK at most).
+func _step_bound() -> void:
+	if not is_instance_valid(bound_by) or bound_by.destroyed:
+		_unbind()
+		return
+	charge._shaken_left = maxf(charge._shaken_left, BOUND_HOLD)
+	charge.fearless_left = maxf(charge.fearless_left, BOUND_HOLD)
+	if charge.mind != Person.Mind.DUTY or charge.anchor.distance_to(_hold_at) > MOVE:
+		charge.go_duty(_hold_at)
+
+
+## He is freed (v0.11 M4): the holds let go so a whisper takes at once, he holds where he stands, and with hunt_after_free the
+## searchers' event goes on the strip that long from now.
+func _unbind() -> void:
+	bound = false
+	freed_at = _clock
+	charge._shaken_left = 0.0
+	if charge.fearless_left <= BOUND_HOLD:
+		charge.fearless_left = 0.0
+	_hold_at = charge.ground_pos
+	rules.banner.emit(_unbound_banner())
+	if hunt_after_free >= 0.0:
+		timeline.add(timeline.elapsed() + hunt_after_free / timeline.stretch_factor(), "hunt", _hunt_label(), _hunt,
+			func() -> bool: return not escaped and not taken and _alive(charge))
+
+
+## Still bound at free_by (v0.11 M4): the night is lost (lost_reason()); the timeline's banner says so.
+func _taken_inside() -> void:
+	bound_lost = true
 
 
 ## Held (v0.11 M2): the seizer gone, turned or off his errand frees him; the seizer at `return_to` with him in tow, he is taken back;
@@ -319,11 +437,11 @@ func _step_watch_posts() -> void:
 		if not _alive(v) or reserved.has(v):
 			continue
 		var w := v as Person
-		if w.corps != Person.Corps.NONE or not w.mind in POST_MINDS:
+		if not _takes_post(w):
 			continue
 		var spot := _ring_spot(guardhouse, 0.6, i, watch.size()) if watch_away else _walkable(watch_posts[i])
 		if w.anchor.distance_to(spot) > MOVE:
-			w.send_to_post(spot, false, watch_away)
+			_post_to(w, spot, watch_away)
 
 
 ## Each patrol along its beat (v0.11 M2): its first soldier on his own post leads; at a beat's point, on to the next (round and round).
@@ -347,22 +465,20 @@ func _step_patrols() -> void:
 				continue
 			var spot := _ring_spot(to, 0.5, i, squad.size())
 			if (v as Person).anchor.distance_to(spot) > MOVE:
-				(v as Person).send_to_post(spot)
+				_post_to(v as Person, spot, false)
 
 
 ## `v` stands on his own post (v0.11 M2): alive, not reserved, of no corps, in a mind of POST_MINDS (a seizer, on duty, is not).
 func _on_post(v: Variant) -> bool:
-	return _alive(v) and not reserved.has(v) and (v as Person).corps == Person.Corps.NONE and (v as Person).mind in POST_MINDS
+	return _alive(v) and not reserved.has(v) and _takes_post(v as Person)
 
 
 ## The searchers set out (v0.11 M2, the controller's Task 4 fix ruling): the free soldiers nearest `return_to`, not already
 ## watching for him, and at their posts (POST_MINDS) -- never one on the rally's ring or under another town order, which the
-## director leaves to the town.
+## director leaves to the town. v0.11 M4: through _appoint_hunters().
 func _hunt() -> void:
 	hunters.clear()
-	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
-		if p.mind in POST_MINDS and hunters.size() < hunt_size:
-			hunters.append(p)
+	hunters = _appoint_hunters(charge, hunt_size)
 	for h in hunters:
 		h.go_duty(charge.ground_pos)
 

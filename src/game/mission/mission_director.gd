@@ -37,6 +37,12 @@ var _saw_evacuation := false
 ## Minds a Faithful does not see from (v0.10): the god's own holds.
 const BLIND := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 
+## The minds one of a director's own people is called back to his place from (v0.11 M4): back on his feet -- going about his day,
+## recovering, looking on or regrouping. WarningDirector.RESUMABLE's four, named here so the base names no subclass.
+const RECALL_MINDS := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
+## How many of the lay citizens nearest a post _lay_reaching() weighs (v0.11 M4, Market Panic's RELIEF_PICKS).
+const REACH_PICKS := 12
+
 
 func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> MissionDirector:
 	rules = r
@@ -232,6 +238,32 @@ func _set_down(p: Person, at: Vector2) -> void:
 ## Procession's ring).
 func _ring_spot(center: Vector2, radius: float, i: int, n: int, turn := 0.0) -> Vector2:
 	return _walkable(center + Vector2.from_angle(turn + TAU * float(i) / float(maxi(n, 1))) * radius)
+
+
+## `v` goes back to `at` on duty (v0.11 M4, M3's duty-recall idiom, "abstract at a fifth"): when he stands out of doors back on his
+## feet (RECALL_MINDS), or on duty somewhere else. One frightened, held by the god, fighting or indoors is left be. First he is kept
+## from the town's flight, by the one shared rule (_keep_from_flight(): `evacuating`, true at the director's first look after the
+## evacuation began -- _evacuation_began() -- calls back one it sent running; a whisper it found him under ends with him on his
+## feet), so a held man is never lost to the evacuation. A Variant: he may be a body freed after its death fade. Spoiled Harvest,
+## Market Panic and The Informer keep their own copies (Decision 89).
+func _recall_to(v: Variant, at: Vector2, evacuating := false) -> void:
+	if not _alive(v):
+		return
+	var p := v as Person
+	if p.inside:
+		return
+	_keep_from_flight(p, evacuating)
+	if p.mind in RECALL_MINDS or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(at) > 0.3):
+		p.go_duty(at)
+
+
+## The lay citizen nearest `at` with a way on foot to it (v0.11 M4: a relief, by Market Panic's rule -- one shut in a yard behind
+## the houses would stand there for good), of the REACH_PICKS nearest, none of `exclude`; null for none.
+func _lay_reaching(at: Vector2, exclude: Array = []) -> Person:
+	for p in _lay_near(at, REACH_PICKS, exclude):
+		if crowd._grid == null or not crowd._grid.path(p.ground_pos, at).is_empty():
+			return p
+	return null
 
 
 ## Whether `p` still stands in the world: neither freed nor dead.

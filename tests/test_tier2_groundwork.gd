@@ -132,6 +132,15 @@ static func arrive(p: Person, at: Vector2) -> void:
 	p._path = PackedVector2Array()
 
 
+## The town evacuates now (v0.11 M4, the controller's ruling: every mission gets an evacuate-mid-mission test): the alarm at its
+## Evacuation stage and everyone out of doors not on duty sent running, as the crowd does at 75 (Crowd._evacuate()). Called once the
+## night is running, a director's own people still mid-errand are then the ones its _keep_from_flight() rule must call back.
+static func evacuate(s: Dictionary) -> void:
+	var crowd: Crowd = s.crowd
+	crowd.alarms.stage = AlarmManager.Stage.EVACUATION
+	crowd._evacuate()
+
+
 ## `p` killed (if still alive) and its body freed, as its death fade ends (v0.11 M3: review focus 4).
 static func free_body(s: Dictionary, p: Person) -> void:
 	var crowd: Crowd = s.crowd

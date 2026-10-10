@@ -120,6 +120,12 @@ extends SceneTree
 ##          company and those standing still first; in the 18 s before his visit, his company sent off one at a time while the
 ##          whisper will be ready again when word comes; never a Doom on a contact; the result line gives the longest idle
 ##          stretch). --seed=, --board as ringers.
+##   bread  (v0.11 M4) The Crown's Bread, --case=none (nothing cast) or play, as a player plays it (_bread_act(): the target in use
+##          with an engineer on guard: Smite one within Smite's reach of it (he falls and it takes the blow), else Silent Doom on one
+##          alone (else any), else Mind Whisper sends one eight units off; none on guard: Ember a granary or mill not burning (Smite
+##          it while Ember cools), Smite the bridge; else, the next target within 25 s of its time, its engineers cleared with Doom
+##          and Whisper only (never a blow ahead of its time); else Silent Doom on a relief walking in; the result line gives the
+##          longest idle stretch). Hit-stop is off for it. --seed=, --board as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -227,6 +233,9 @@ const INFORMER_OFF := 3.0
 const INFORMER_AWAY := 8.0
 const INFORMER_LAST := 8.0
 const INFORMER_EARLY := 18.0
+## The Crown's Bread's policy (v0.11 M4): how near its time the next target's crew is cleared; how far an engineer is whispered off.
+const BREAD_AHEAD := 25.0
+const BREAD_AWAY := 8.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -341,9 +350,12 @@ func _run() -> void:
 	elif scenario == "informer":
 		powers = PackedStringArray(["whisper", "discord", "doom"])
 		mission.mission_id = MissionBook.INFORMER
+	elif scenario == "bread":
+		powers = PackedStringArray(["doom", "smite", "ember", "whisper"])
+		mission.mission_id = MissionBook.CROWNS_BREAD
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
-	if scenario == "panic":
-		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
+	if scenario in ["panic", "bread", "hunt"]:
+		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M4: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
@@ -404,6 +416,8 @@ func _run() -> void:
 			await _panic(Battlefield.arg_value(args, "--case"))
 		"informer":
 			await _informer(Battlefield.arg_value(args, "--case"))
+		"bread":
+			await _bread(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2063,6 +2077,97 @@ func _informer_off(rules: Rules, slots: Dictionary, crowd: Crowd, seeing: Array[
 	var away := lone.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * INFORMER_AWAY
 	rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": MindWhisperFx.clamp_to(crowd._grid, lone.ground_pos, away)})
 	return "whisper an onlooker off"
+
+
+## The Crown's Bread (v0.11 M4), with mission spec §1's policy (_bread_act()), through _scripted().
+func _bread(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as CrownsBreadDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("bread", which, func() -> String: return _bread_act(rules, slots, d, crowd),
+		func() -> String: return "razed=%d current=%d guards=%d rebuilt=%d phase=%s" % [d.razed_count(), d.current(),
+			d.guards(d.current()).size(), d.rebuilt, d.hint_phase()])
+
+
+## One look of The Crown's Bread's policy (v0.11 M4): what was cast, or "". The first that applies: the target in use with an engineer
+## on guard, clear him (_bread_clear(), a Smite allowed); with none on guard, Ember a granary or mill not burning (Smite it while Ember
+## cools), or Smite the bridge; the next target within BREAD_AHEAD of its time, clear its crew with Doom and Whisper only (decision
+## 103); a relief walking toward the target in use, Silent Doom on him. It never holds a target down ahead of its time.
+func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: Crowd) -> String:
+	var cur := -1
+	for i in d.targets.size():
+		if d.in_use[i] and not d.razed(d.targets[i]):
+			cur = i
+			break
+	if cur >= 0:
+		var s := d.targets[cur]
+		var on := d.guards(cur)
+		if not on.is_empty():
+			var did := _bread_clear(rules, slots, d, crowd, cur, on, true)
+			if did != "":
+				return did
+		elif is_instance_valid(s) and not s.destroyed:
+			if cur < 2 and not d.burning(s):
+				if _slot_ready(rules, slots, "ember"):
+					rules.cast(slots.ember, s.center())
+					return "ember the %s" % CrownsBreadDirector.WORDS[cur]
+				if _slot_ready(rules, slots, "smite"):
+					rules.cast(slots.smite, s.center())
+					return "smite the %s" % CrownsBreadDirector.WORDS[cur]
+			elif cur == 2 and _slot_ready(rules, slots, "smite"):
+				rules.cast(slots.smite, s.center())
+				return "smite the bridge"
+	var next := d.upcoming()
+	if next >= 0 and next != cur and d.due_in(next) <= BREAD_AHEAD:
+		var ahead := d.guards(next)
+		if not ahead.is_empty():
+			var did := _bread_clear(rules, slots, d, crowd, next, ahead, false)
+			if did != "":
+				return did
+	if cur >= 0:
+		var walker := d.relief_walking(cur)
+		if walker != null and _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, walker.ground_pos)
+			return "doom a relief for the %s" % CrownsBreadDirector.WORDS[cur]
+	return ""
+
+
+## Clears an engineer of target `i` (v0.11 M4): with `smite_ok`, Smite one within Smite's reach of it; else Silent Doom on one no one
+## else stands within its radius of (else the first); else Mind Whisper sends one not shaking a whisper off BREAD_AWAY from it.
+func _bread_clear(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: Crowd, i: int, on: Array[Person], smite_ok: bool) -> String:
+	var s := d.targets[i]
+	var word := String(CrownsBreadDirector.WORDS[i])
+	if smite_ok and _slot_ready(rules, slots, "smite"):
+		for p in on:
+			if s.distance_to(p.ground_pos) <= SmiteFx.HIT_R:
+				rules.cast(slots.smite, p.ground_pos)
+				return "smite an engineer at the %s" % word
+	if _slot_ready(rules, slots, "doom"):
+		var pick := on[0]
+		for p in on:
+			if _bread_alone(crowd, p):
+				pick = p
+				break
+		rules.cast(slots.doom, pick.ground_pos)
+		return "doom an engineer at the %s" % word
+	if _slot_ready(rules, slots, "whisper"):
+		for p in on:
+			if p.shaken():
+				continue
+			var off := p.ground_pos - s.center()
+			var away := p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * BREAD_AWAY
+			rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, away)})
+			return "whisper an engineer off the %s" % word
+	return ""
+
+
+## No one else alive stands within Silent Doom's radius of `p` (v0.11 M4). Only reads.
+func _bread_alone(crowd: Crowd, p: Person) -> bool:
+	for q in crowd.citizens:
+		if q != p and WarningDirector._alive(q) and not q.inside and q.ground_pos.distance_to(p.ground_pos) <= SilentDoom.RADIUS:
+			return false
+	return true
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

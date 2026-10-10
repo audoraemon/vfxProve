@@ -71,6 +71,11 @@ const SPEC := [
 	["informer.found", "He is found and runs for the Temple (red). Kill him before he gets in. Unseen, no cry is raised."],
 	["informer.hiding", "Alarmed, he hides. Set the house alight to smoke him out, or wait for him."],
 	["informer.running", "No hiding place: he runs for the Temple (red). Kill him before he gets in."],
+	# The Crown's Bread (v0.11 M4).
+	["crowns_bread", "Remove a target's engineers (red), then bring it down (gold) while it is in use: the granary, the mill, the bridge."],
+	["crowns_bread.not_yet", "Not in use yet (grey). A fall counts only if it is still down when its time comes. Clear its engineers (red) shortly before."],
+	["crowns_bread.engineers", "Engineers (red) mend it, put out its fires and rebuild it. Remove every one first."],
+	["crowns_bread.open", "No engineer stands. Bring it down now, before a relief comes. The bridge takes blows, not fire."],
 ]
 
 

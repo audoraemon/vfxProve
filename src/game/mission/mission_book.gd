@@ -63,7 +63,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer()]
+		informer(), crowns_bread()]
 	return out
 
 
@@ -253,6 +253,26 @@ static func informer() -> MissionDef:
 	m.director = InformerDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [AssassinateObjective.new("Kill the informer", "informer", "names"), BellSilentObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Crown's Bread (v0.11 M4, Tier 3, mission spec §1 and §8 row 13): raze the granary, the mill and the bridge, each while it is in
+## use, before the Crown's carts roll; engineers mend and rebuild them (CrownsBreadDirector, the Raze type reused).
+static func crowns_bread() -> MissionDef:
+	var m := _tier3(CROWNS_BREAD, "The Crown's Bread", PackedStringArray(["The Crown's bread is made tonight.",
+		"Destroy the granary, the mill and the bridge."]))
+	m.goal = "Raze the granary, the mill and the bridge, each while it is in use, before the Crown's carts roll at %s" % UiTheme.clock(
+		CrownsBreadDirector.CARTS_AT)
+	m.goal_label = "The Crown's bread is ruined"
+	m.lose = "The Crown's carts roll, or dawn comes"
+	m.camera_at = CrownsBreadDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "smite", "ember", "whisper"])
+	m.director = CrownsBreadDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [RazeObjective.new("Raze the Crown's bread", "bread"), EventObjective.new("carts", "Carts roll", "fed"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m

@@ -49,6 +49,7 @@ var descend := false
 ## v0.11 M2: the new Tier 1 missions' endings. The Lost Lamb has its own keys (`lamb_out`, `lamb_taken`, `lamb`), never the Escort
 ## type's defaults (`out`, `taken`), so a later Escort mission using them is not given the lamb's words (final review).
 ## v0.11 M3: Omen's new missions' endings, each under the mission's own reason keys.
+## v0.11 M4: Wrath's new missions' endings, each under the mission's own reason keys.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
 	"gaze": "THE LANTERN LOOKS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
@@ -58,7 +59,8 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 	"spoiled": "THE HARVEST IS SPOILED", "emptied": "A GRANARY IS EMPTIED", "lamb_out": "THE LAMB IS FREE",
 	"lamb_taken": "THE LAMB IS TAKEN BACK", "lamb": "THE ACOLYTE IS DEAD",
 	"ringers": "THE RINGERS ARE STOPPED", "fair": "THE FAIR IS SCATTERED", "market_closed": "THE MARKET IS CLOSED",
-	"informer": "THE INFORMER IS DEAD", "names": "THE NAMES REACH THE TEMPLE", "cold": "THE TRAIL GOES COLD"}
+	"informer": "THE INFORMER IS DEAD", "names": "THE NAMES REACH THE TEMPLE", "cold": "THE TRAIL GOES COLD",
+	"bread": "THE CROWN'S BREAD IS RUINED", "fed": "THE CROWN IS FED"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

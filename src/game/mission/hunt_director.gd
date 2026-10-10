@@ -99,6 +99,8 @@ var lost_word := "found"
 
 ## The standards raised so far, in order (v0.11 M4; untyped: the town frees them at its teardown).
 var standards: Array = []
+## The damage filter each standard had when raised, by instance id (v0.11 M4): a borrowed tower's own is put back at teardown().
+var _filters := {}
 ## The head and his escorts (Variants: any may be freed); his route; he is out, and when; he fell; he is searching; the hunt found
 ## its quarry (v0.11 M4).
 var head: Variant = null
@@ -217,7 +219,8 @@ func _dress_guard(p: Person) -> void:
 
 
 ## Virtual (v0.11 M4): step `i`'s standard, raised now -- a drawn lantern post at its spot by default, taken away with the town's own
-## buildings (Town._built, Broken Lanterns' way). The Lantern's Eye returns an existing tower. Null: the step counts as broken.
+## buildings (Town._built, Broken Lanterns' way). The Lantern's Eye returns an existing tower. Null, or one already destroyed: the
+## step counts as broken.
 func _raise_standard(i: int) -> Structure:
 	var at := steps[i].spot
 	var s := crowd._env.add_structure(Rect2(at - STANDARD_SIZE * 0.5, STANDARD_SIZE), STANDARD_H, Structure.Kind.SHRINE, STANDARD_ROLE)
@@ -307,9 +310,10 @@ func step_due(i: int) -> float:
 	return due
 
 
-## The second of the night the head comes out at the latest (v0.11 M4): his time, or `chain` after the last step is broken.
+## The second of the night the head comes out at the latest (v0.11 M4): his time, or `chain` after the last step is broken. With no
+## time of his own (head_at < 0) only the chain brings him, `chain` after the last step breaks; INF while it stands.
 func head_due() -> float:
-	var due := head_at * timeline.stretch_factor()
+	var due := INF if head_at < 0.0 else head_at * timeline.stretch_factor()
 	if not steps.is_empty() and steps.back().broken:
 		due = minf(due, (steps.back() as HuntStep).broken_at + chain)
 	return due
@@ -348,12 +352,13 @@ func _raise(i: int) -> void:
 		return
 	st.raised = true
 	st.raised_at = _clock
-	var s := _raise_standard(i)
-	if s == null:
-		push_warning("HuntDirector: no standard for step %d; counted broken" % i)
-		_break(i)
+	var made: Variant = _raise_standard(i)
+	if not is_instance_valid(made) or (made as Structure).destroyed:
+		_break(i)  # none to raise, or a borrowed one already down: the step counts broken, so the night never locks
 		return
+	var s := made as Structure
 	st.standard = s
+	_filters[s.get_instance_id()] = s.damage_filter
 	s.damage_filter = _shield
 	if not s.broken.is_connected(_on_broken):
 		s.broken.connect(_on_broken)
@@ -489,8 +494,15 @@ func _relieve(_i: int, g: Guard) -> void:
 	g.fallen = 0.0
 	g.away = 0.0
 	g.relief = true
+	if crowd._fled_all:
+		_keep_from_flight(p, true)  # chosen once the town is running: never one of the flight
 	p.go_duty(g.post)
-	rules.banner.emit("A NEW GUARD TAKES THE POST")
+	rules.banner.emit(_relief_banner())
+
+
+## Virtual (v0.11 M4): the banner when a relief takes a fallen guard's post.
+func _relief_banner() -> String:
+	return "A NEW GUARD TAKES THE POST"
 
 
 ## The head's time has come (v0.11 M4, the timeline): out now if every standard is raised, else as soon as the last is.
@@ -734,7 +746,7 @@ func teardown() -> void:
 	for v: Variant in standards:
 		if is_instance_valid(v):
 			var s := v as Structure
-			s.damage_filter = Callable()
+			s.damage_filter = _filters.get(s.get_instance_id(), Callable())
 			if s.broken.is_connected(_on_broken):
 				s.broken.disconnect(_on_broken)
 	_unhook_kills(_on_killed)

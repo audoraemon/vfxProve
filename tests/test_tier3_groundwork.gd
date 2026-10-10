@@ -125,6 +125,10 @@ static func run(t) -> void:
 	_hunt_head(t)
 	_hunt_towered(t)
 	_hunt_evacuation(t)
+	_hunt_no_captain_time(t)
+	_hunt_pre_destroyed(t)
+	_hunt_relief_in_flight(t)
+	_bound_both(t)
 
 
 static func _probe() -> MissionDef:
@@ -203,10 +207,12 @@ static func _hands_off(t) -> void:
 	t.check(not _job_targets(eng).has(bridge), "nor is it rebuilt once fallen")
 	var hire: Person = (s.d as MissionDirector)._lay_near(Vector2.ZERO, 1)[0]
 	hire.profile.role = CitizenProfile.Role.ENGINEER
-	t.check(eng._recruit(2).has(hire), "by default the workshop hires an engineer off a team first")
+	var hired := eng._recruit(2)
+	t.check(hired.size() == 2 and hired.has(hire), "by default the workshop hires an engineer off a team first (two hired)")
 	hire.profile.role = CitizenProfile.Role.ENGINEER
 	eng.not_hired.append(hire)
-	t.check(not eng._recruit(2).has(hire), "one in not_hired is never hired")
+	var passed := eng._recruit(2)
+	t.check(passed.size() == 2 and not passed.has(hire), "one in not_hired is never hired (two others are)")
 	Kit.done(s)
 
 
@@ -367,6 +373,8 @@ static func _hunt_towered(t) -> void:
 	var s := Kit.world(_probe(), Towered.new())
 	var d: Towered = s.d
 	var built := (s.town as Town)._built.size()
+	var own := func(_s: Structure, _a: float, _src: Vector2, _k: StringName) -> void: pass
+	d.towers[1].damage_filter = own
 	Kit.run_for(s, 15.0 + DT)
 	var tw := d.towers[0]
 	t.check(d.towers.size() == 2 and d.head_down() and d.standard(0) == tw and tw.damage_filter.is_valid()
@@ -379,8 +387,8 @@ static func _hunt_towered(t) -> void:
 	t.check(d.broken(0) and not d.broken_all() and o.check(s.rules) == Objective.Status.PENDING, "one tower down, one standing")
 	var other := d.towers[1]
 	d.teardown()
-	t.check(not other.damage_filter.is_valid() and not other.broken.is_connected(d._on_broken),
-		"teardown lets go of a borrowed tower's filter and signal: it takes blows again")
+	t.check(other.damage_filter == own and not tw.damage_filter.is_valid() and not other.broken.is_connected(d._on_broken),
+		"teardown puts back a borrowed tower's own filter (none: it takes blows again) and lets go of the signal")
 	Kit.done(s)
 
 
@@ -403,10 +411,11 @@ static func _hunt_evacuation(t) -> void:
 	t.check(guard.mind == Person.Mind.FLEE and escort.mind == Person.Mind.FLEE and head._whisper_fled,
 		"(set-up) the evacuation sends the recovering ones running and owes the whispered captain a flight")
 	Kit.run_for(s, 0.6)
-	t.check(guard.mind != Person.Mind.FLEE and escort.mind != Person.Mind.FLEE and not head._whisper_fled and head.mind == Person.Mind.WHISPERED,
+	t.check(guard.mind == Person.Mind.DUTY and escort.mind == Person.Mind.DUTY and not head._whisper_fled and head.mind == Person.Mind.WHISPERED,
 		"at the first look after it: the guard and the escort called back, the captain's flight ended")
-	Kit.run_for(s, MindWhisperFx.LINGER + 1.0)
-	t.check(head.mind != Person.Mind.FLEE and MissionDirector._alive(head) and not d.head_down() and not d.found,
+	head._wake()  # headless people never think: the whisper wears off by hand
+	Kit.run_for(s, 1.0)
+	t.check(head.mind == Person.Mind.DUTY and MissionDirector._alive(head) and not d.head_down() and not d.found,
 		"the captain does not leave town and win the hunt by his absence")
 	Kit.done(s)
 	var w := Kit.world(_probe(), Drill.new())
@@ -420,3 +429,82 @@ static func _hunt_evacuation(t) -> void:
 	t.check(wd.head_out and not inside.inside and inside.mind == Person.Mind.DUTY and inside.anchor == wd.head_route[0],
 		"coming out, he is stopped and put on his route, not left running for the gates")
 	Kit.done(w)
+
+
+## A hunt whose head has no time of his own (v0.11 M4, M6's reuse): only the chain brings him, `chain` after the last break.
+class Chained:
+	extends Drill
+
+	func _plan() -> void:
+		super()
+		head_at = -1.0
+
+
+static func _hunt_no_captain_time(t) -> void:
+	var s := Kit.world(_probe(), Chained.new())
+	var d: Chained = s.d
+	d._raise(0)
+	d._raise(1)
+	Kit.run_for(s, 1.0)
+	t.check(d.head_due() == INF and not d.head_out, "no captain time: while a standard stands he is due never, and does not come out")
+	for i in 2:
+		for g: HuntDirector.Guard in d.steps[i].party:
+			Kit.arrive(g.man as Person, g.post + Vector2(4.0, 0.0))
+		d.standard(i).damage(100.0, d.standard(i).center(), &"smite")
+	var broke := d._clock
+	t.check(d.broken_all() and is_equal_approx(d.head_due(), broke + d.chain) and not d.head_out, "the last break sets him due `chain` on")
+	Kit.run_for(s, d.chain - 1.0)
+	t.check(not d.head_out, "he is not out a second before")
+	Kit.run_for(s, 2.0)
+	t.check(d.head_out, "and is out `chain` seconds after the last break")
+	Kit.done(s)
+
+
+static func _hunt_pre_destroyed(t) -> void:
+	var s := Kit.world(_probe(), Towered.new())
+	var d: Towered = s.d
+	var tw := d.towers[0]
+	tw.destroy(tw.center(), &"blast")
+	Kit.run_for(s, 5.0 + DT)
+	t.check(d.steps[0].raised and d.broken(0) and d.standard(0) == null and (s.banners as Array).has("A STANDARD FALLS"),
+		"a tower already down when its step comes counts the step broken, not a standard that can never fall")
+	Kit.run_for(s, 10.0 + DT)
+	t.check(d.broken(2) and d.standard(1) != null and not d.broken(1), "the night does not lock: the next step is raised on its time")
+	Kit.done(s)
+
+
+## A relief chosen once the town is running is not one of the flight (v0.11 M4).
+static func _hunt_relief_in_flight(t) -> void:
+	var s := Kit.world(_probe(), Drill.new())
+	var d: Drill = s.d
+	var gone: Variant = (d.steps[0].party[0] as HuntDirector.Guard).man
+	Kit.free_body(s, gone)
+	Kit.evacuate(s)
+	Kit.run_for(s, d.relief_after + 1.0)
+	var relief: Variant = (d.steps[0].party[0] as HuntDirector.Guard).man
+	t.check(relief != gone and MissionDirector._alive(relief) and (relief as Person).mind == Person.Mind.DUTY,
+		"a relief picked after the evacuation began is put on duty at the post, not left running for the gates")
+	Kit.done(s)
+
+
+## hunt_at and hunt_after_free both set (v0.11 M4): hunt_at wins; the freeing adds no second event.
+class BothBound:
+	extends Bound
+
+	func _plan() -> void:
+		super()
+		hunt_at = 90.0
+
+
+static func _bound_both(t) -> void:
+	var s := Kit.world(MissionBook.lost_lamb(), BothBound.new())
+	var d: BothBound = s.d
+	Kit.run_for(s, 0.5)
+	d.stall.destroy(d.stall.center(), &"blast")
+	Kit.run_for(s, 0.5)
+	var ids := []
+	for e in d.timeline.upcoming(4):
+		ids.append(e.id)
+	t.check(not d.bound and ids.count("hunt") == 1 and d.timeline.seconds_to("hunt") > 60.0,
+		"with hunt_at set, the freeing adds no searchers' event of its own (%s, in %.1f)" % [ids, d.timeline.seconds_to("hunt")])
+	Kit.done(s)

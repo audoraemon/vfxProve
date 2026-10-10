@@ -60,7 +60,8 @@ var return_label := "BACK"
 var bound_by: Structure = null
 ## Seconds into the night (the timeline's) by which he must be freed, or the night is lost; -1 for no such deadline (v0.11 M4).
 var free_by := -1.0
-## Seconds after he is freed that the searchers set out (v0.11 M4); -1: at hunt_at on the clock, The Lost Lamb's way.
+## Seconds after he is freed that the searchers set out (v0.11 M4); -1: at hunt_at on the clock, The Lost Lamb's way. Only one sets
+## them out: hunt_at when it is set (>= 0), and hunt_after_free is then ignored.
 var hunt_after_free := -1.0
 
 ## The charge; the watch; each patrol (an Array[Person]); the searchers. Read only through _alive(): any may be freed (the
@@ -256,7 +257,7 @@ func step(delta: float) -> void:
 	if held:
 		_step_held()
 	elif bound:
-		_step_bound()
+		_step_bound(charge)
 	else:
 		_step_free()
 	if escaped or taken:
@@ -289,27 +290,27 @@ func _step_free() -> void:
 
 ## Bound (v0.11 M4, decision 94): `bound_by` down or gone, he is free; else he is held at his spot, kept shaking off a whisper and past
 ## fear, and set back on it should anything move him (Discord's confusion lasts a TICK at most).
-func _step_bound() -> void:
+func _step_bound(c: Person) -> void:
 	if not is_instance_valid(bound_by) or bound_by.destroyed:
-		_unbind()
+		_unbind(c)
 		return
-	charge._shaken_left = maxf(charge._shaken_left, BOUND_HOLD)
-	charge.fearless_left = maxf(charge.fearless_left, BOUND_HOLD)
-	if charge.mind != Person.Mind.DUTY or charge.anchor.distance_to(_hold_at) > MOVE:
-		charge.go_duty(_hold_at)
+	c._shaken_left = maxf(c._shaken_left, BOUND_HOLD)
+	c.fearless_left = maxf(c.fearless_left, BOUND_HOLD)
+	if c.mind != Person.Mind.DUTY or c.anchor.distance_to(_hold_at) > MOVE:
+		c.go_duty(_hold_at)
 
 
 ## He is freed (v0.11 M4): the holds let go so a whisper takes at once, he holds where he stands, and with hunt_after_free the
 ## searchers' event goes on the strip that long from now.
-func _unbind() -> void:
+func _unbind(c: Person) -> void:
 	bound = false
 	freed_at = _clock
-	charge._shaken_left = 0.0
-	if charge.fearless_left <= BOUND_HOLD:
-		charge.fearless_left = 0.0
-	_hold_at = charge.ground_pos
+	c._shaken_left = 0.0
+	if c.fearless_left <= BOUND_HOLD:
+		c.fearless_left = 0.0
+	_hold_at = c.ground_pos
 	rules.banner.emit(_unbound_banner())
-	if hunt_after_free >= 0.0:
+	if hunt_after_free >= 0.0 and hunt_at < 0.0:
 		timeline.add(timeline.elapsed() + hunt_after_free / timeline.stretch_factor(), "hunt", _hunt_label(), _hunt,
 			func() -> bool: return not escaped and not taken and _alive(charge))
 

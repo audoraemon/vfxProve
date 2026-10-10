@@ -365,9 +365,10 @@ func rebuild_left(i: int) -> float:
 
 ## Target `i`'s crew at its work (v0.11 M4). Each on guard is held there; one off his post but alive is sent back RETURN_AFTER after he
 ## left (a shift man waiting indoors is not away), or at once at the first look after the town began to evacuate (`evacuating`: one
-## _keep_held() just stopped from running is put straight back on duty); a fallen one is replaced RELIEF_AFTER after he fell. With
-## one or more on guard: a fallen target not in use is rebuilt (decision 101); a standing one is mended; one in use and alight is
-## held to and beaten out after SMOTHER_AFTER, its burning forgotten. Copied from Spoiled Harvest's watch record (Decision 89).
+## _keep_held() just stopped from running is put straight back on duty); a fallen one is replaced RELIEF_AFTER after he fell (a
+## shift slot, filled or never filled, only once its target is in use). With one or more on guard: a fallen target not in use is
+## rebuilt (decision 101); a standing one is mended; one in use and alight is held to and beaten out after SMOTHER_AFTER, its burning
+## forgotten. Copied from Spoiled Harvest's watch record (Decision 89).
 func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 	var s := targets[i]
 	var on := 0
@@ -386,8 +387,8 @@ func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 			c.away += delta
 			if looking and (c.away >= RETURN_AFTER or evacuating):
 				_recall_to(c.man, c.post, evacuating)
-		else:
-			c.fallen += delta
+		elif not c.shift or in_use[i]:
+			c.fallen += delta  # a shift slot never filled gets no relief before its stage: none stands outdoors ahead of it
 			if looking and c.fallen >= RELIEF_AFTER:
 				_relieve(i, c)
 	if not is_instance_valid(s):
@@ -421,7 +422,9 @@ func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 		forget_burn(s)
 
 
-## A relief for fallen crewman `c` of target `i` (v0.11 M4): the nearest lay citizen with a way to the post, made an engineer.
+## A relief for fallen crewman `c` of target `i` (v0.11 M4): the nearest lay citizen with a way to the post, made an engineer. One
+## chosen once the town is running is stopped from the flight first (Task 1's Hunt relief, the review's fix round 2): go_duty() refuses
+## a fleeing man, and he would run on to the gates.
 func _relieve(i: int, c: Crew) -> void:
 	var p := _lay_reaching(c.post, _busy())
 	if p == null:
@@ -431,6 +434,8 @@ func _relieve(i: int, c: Crew) -> void:
 	c.fallen = 0.0
 	c.away = 0.0
 	c.relief = true
+	if crowd._fled_all:
+		_keep_from_flight(p, true)  # chosen once the town is running: never one of the flight
 	p.go_duty(c.post)
 	rules.banner.emit("A NEW ENGINEER TAKES THE %s" % NAMES[i])
 

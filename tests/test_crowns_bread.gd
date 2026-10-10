@@ -21,6 +21,8 @@ static func run(t) -> void:
 	_smother(t)
 	_relief(t)
 	_evacuated(t)
+	_relief_in_flight(t)
+	_held_over(t)
 	_keeps_off(t)
 	_chain(t)
 	_ends(t)
@@ -285,7 +287,57 @@ static func _evacuated(t) -> void:
 	t.check(b.mind == Person.Mind.DUTY and b.anchor == second.post and (waiting.man as Person).inside
 		and (waiting.man as Person).mind == Person.Mind.DUTY,
 		"woken, he walks back to his post, not to the gates; the mill's shift waits indoors on duty")
+	var third := d.crews[0][2] as CrownsBreadDirector.Crew
+	var e := third.man as Person
+	Kit.arrive(e, third.post + Vector2(6.0, 6.0))
+	e.whisper(third.post + Vector2(7.0, 6.0), MindWhisperFx.LINGER)
+	e._whisper_fled = true  # whispered while running: he owes the flight once it wears off
+	Kit.run_for(s, CrownsBreadDirector.TICK + DT)
+	t.check(e.mind == Person.Mind.WHISPERED and not e._whisper_fled and d.crews[0][2].away < CrownsBreadDirector.RETURN_AFTER,
+		"long after the evacuation's look, a crewman away and whispered with a flight owed has it ended at the next look (_keep_held alone)")
 	Kit.done(s)
+
+
+## The review's fix round 2: a relief chosen after the evacuation -- the lay citizens out of doors all running -- is stopped from the
+## flight and walks on duty to the post, not to the gates.
+static func _relief_in_flight(t) -> void:
+	var s := _world()
+	var d: CrownsBreadDirector = s.d
+	Kit.evacuate(s)
+	Kit.run_for(s, 1.0)
+	var c := d.crews[1][0] as CrownsBreadDirector.Crew
+	var dead: Variant = c.man
+	Kit.free_body(s, dead)
+	Kit.run_for(s, CrownsBreadDirector.RELIEF_AFTER + 1.0)
+	var p: Variant = c.man
+	t.check(p != dead and MissionDirector._alive(p) and (p as Person).mind == Person.Mind.DUTY and (p as Person).anchor == c.post,
+		"after the evacuation a relief is on duty at the fallen man's post, not running for the gates")
+	Kit.done(s)
+
+
+## The review's minors (fix round 2): a fallen target with no one on guard keeps its rebuild so far and is tagged plainly DOWN; a shift
+## slot never filled gets no relief before its stage.
+static func _held_over(t) -> void:
+	var s := _world()
+	var d: CrownsBreadDirector = s.d
+	var mill := d.targets[1]
+	mill.destroy(mill.center(), &"smite")
+	_steady(d, 1)
+	Kit.run_for(s, 5.0)
+	var part := d.rebuild_progress[1]
+	_strike_all(s, d, 1)
+	Kit.run_for(s, 2.0)
+	t.check(part > 0.1 and is_equal_approx(d.rebuild_progress[1], part) and mill.destroyed and Kit.labels(d)[1] == "MILL - DOWN",
+		"down with none on guard, its rebuild waits where it stood (%.2f), tagged plainly MILL - DOWN" % part)
+	Kit.done(s)
+	var w := _world()
+	var wd: CrownsBreadDirector = w.d
+	var slot := wd.crews[2][2] as CrownsBreadDirector.Crew
+	slot.man = null  # as if the town had no one left to fill it
+	Kit.run_for(w, CrownsBreadDirector.RELIEF_AFTER + 1.0)
+	t.check(slot.man == null and not (w.banners as Array).has("A NEW ENGINEER TAKES THE BRIDGE"),
+		"a shift slot never filled gets no relief before its stage: no engineer stands outdoors ahead of it")
+	Kit.done(w)
 
 
 static func _keeps_off(t) -> void:

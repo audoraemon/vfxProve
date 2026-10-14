@@ -126,6 +126,12 @@ extends SceneTree
 ##          it while Ember cools), Smite the bridge; else, the next target within 25 s of its time, its engineers cleared with Doom
 ##          and Whisper only (never a blow ahead of its time); else Silent Doom on a relief walking in; the result line gives the
 ##          longest idle stretch). Hit-stop is off for it. --seed=, --board as ringers.
+##   prisoner  (v0.11 M4) The Prisoner, --case=none (nothing cast) or play, as a player plays it (_prisoner_act(): bound, a gaoler
+##          within sight of her: Silent Doom on him, else Mind Whisper sends him eight units off; bound, none: Ember the stocks; held:
+##          Discord on the seizer, or Doom him once she stands clear; free, a watcher (not the postern's watch) within 4 of her or of
+##          her next stretch of road: whisper him off, else Doom, else Discord; Mind Whisper sends her up to 10 units along her road,
+##          stopping short of the postern while it is watched; at the postern, watched, the change more than 10 s off: whisper one of
+##          its watch off; never a loud power; the result line gives the longest idle stretch). --seed=, --board as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -236,6 +242,16 @@ const INFORMER_EARLY := 18.0
 ## The Crown's Bread's policy (v0.11 M4): how near its time the next target's crew is cleared; how far an engineer is whispered off.
 const BREAD_AHEAD := 25.0
 const BREAD_AWAY := 8.0
+## The Prisoner's policy (v0.11 M4): how far past sight a gaoler counts; the margin a Doom or Discord keeps from her; how near her or her
+## next stretch a watcher is dealt with; that stretch's length; how far a watcher is whispered off; where she waits short of a watched
+## postern; how soon a change makes the watch worth waiting for.
+const PRISONER_WARN := 2.0
+const PRISONER_CLEAR := 0.4
+const PRISONER_NEAR := 4.0
+const PRISONER_STRETCH := 6.0
+const PRISONER_AWAY := 8.0
+const PRISONER_WAIT := Vector2(0.0, -3.0)
+const PRISONER_SOON := 10.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -353,6 +369,9 @@ func _run() -> void:
 	elif scenario == "bread":
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper"])
 		mission.mission_id = MissionBook.CROWNS_BREAD
+	elif scenario == "prisoner":
+		powers = PackedStringArray(["whisper", "doom", "ember", "discord"])
+		mission.mission_id = MissionBook.PRISONER
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M4: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -418,6 +437,8 @@ func _run() -> void:
 			await _informer(Battlefield.arg_value(args, "--case"))
 		"bread":
 			await _bread(Battlefield.arg_value(args, "--case"))
+		"prisoner":
+			await _prisoner(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2168,6 +2189,132 @@ func _bread_alone(crowd: Crowd, p: Person) -> bool:
 		if q != p and WarningDirector._alive(q) and not q.inside and q.ground_pos.distance_to(p.ground_pos) <= SilentDoom.RADIUS:
 			return false
 	return true
+
+
+## The Prisoner (v0.11 M4), with mission spec §2's policy (_prisoner_act()), through _scripted().
+func _prisoner(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as PrisonerDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("prisoner", which, func() -> String: return _prisoner_act(rules, slots, d, crowd),
+		func() -> String: return "bound=%s held=%s seizures=%d gate=%.1f watch_away=%s hounds=%d phase=%s" % [d.bound, d.held,
+			d.seizures, d.charge.ground_pos.distance_to(d.gate_at) if WarningDirector._alive(d.charge) else -1.0, d.watch_away,
+			d.hunters.size(), d.hint_phase()])
+
+
+## One look of The Prisoner's policy (v0.11 M4): what was cast, or "". The first that applies: bound, a gaoler within sight of her --
+## Silent Doom on him (beyond its reach of her), else Mind Whisper sends him off; bound, no gaoler near -- Ember the stocks; held --
+## Discord on her seizer, or Doom him once she stands clear; free -- a watcher (the postern's watch aside) near her or her next
+## stretch, whisper him off, else Doom, else Discord; Mind Whisper sends her along her road, stopping short of a watched postern; at
+## the postern, watched, its change more than PRISONER_SOON off -- whisper one of its watch off. Never a loud power.
+func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: Crowd) -> String:
+	var her := d.charge
+	if not WarningDirector._alive(her) or her.inside:
+		return ""
+	if d.bound:
+		for v: Variant in d.gaolers:
+			if not d._watching(v) or (v as Person).ground_pos.distance_to(her.ground_pos) > EscortDirector.SIGHT + PRISONER_WARN:
+				continue
+			var g := v as Person
+			if _slot_ready(rules, slots, "doom") and g.ground_pos.distance_to(her.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+				rules.cast(slots.doom, g.ground_pos)
+				return "doom a gaoler"
+			if _slot_ready(rules, slots, "whisper") and not g.shaken():
+				rules.cast(slots.whisper, g.ground_pos, {"target": g, "to": _prisoner_away(crowd, g, her.ground_pos)})
+				return "whisper a gaoler off"
+			return ""
+		if is_instance_valid(d.stocks) and not d.stocks.destroyed and not crowd.fires.is_burning(d.stocks) \
+				and _slot_ready(rules, slots, "ember"):
+			rules.cast(slots.ember, d.stocks.center())
+			return "ember the stocks"
+		return ""
+	if d.held and WarningDirector._alive(d.seizer):
+		var s := d.seizer as Person
+		if _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, s.ground_pos)
+			return "discord her seizer"
+		if _slot_ready(rules, slots, "doom") and her.ground_pos.distance_to(s.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+			rules.cast(slots.doom, s.ground_pos)
+			return "doom her seizer"
+		return ""
+	var road: Array = PrisonerDirector.ROAD
+	var ahead := _road_ahead(road, her.ground_pos, PRISONER_STRETCH)
+	for v: Variant in d._watchers():
+		if d.watch.has(v) or not d._watching(v):
+			continue
+		var p := v as Person
+		if p.ground_pos.distance_to(her.ground_pos) > PRISONER_NEAR and _seg_dist(p.ground_pos, her.ground_pos, ahead) > PRISONER_NEAR:
+			continue
+		if _slot_ready(rules, slots, "whisper") and not p.shaken():
+			rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": _prisoner_away(crowd, p, her.ground_pos)})
+			return "whisper a watcher off"
+		if _slot_ready(rules, slots, "doom") and p.ground_pos.distance_to(her.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+			rules.cast(slots.doom, p.ground_pos)
+			return "doom a watcher"
+		if _slot_ready(rules, slots, "discord") and p.ground_pos.distance_to(her.ground_pos) > DiscordFx.DISCORD_R + PRISONER_CLEAR:
+			rules.cast(slots.discord, p.ground_pos)
+			return "discord a watcher"
+		break
+	var watched := not d.watch_away and d._watch_standing()
+	if _slot_ready(rules, slots, "whisper") and not her.shaken():
+		var to := _road_ahead(road, her.ground_pos, MindWhisperFx.REACH - 0.5)
+		var wait := d._walkable(d.gate_at + PRISONER_WAIT)
+		if watched and _road_progress(road, to) > _road_progress(road, wait):
+			to = wait
+		to = MindWhisperFx.clamp_to(crowd._grid, her.ground_pos, d._walkable(to))
+		var going := her.mind == Person.Mind.WHISPERED and her.goal() != Vector2.INF and her.ground_pos.distance_to(her.goal()) > LAMB_AHEAD
+		if not going and her.ground_pos.distance_to(to) > 1.0:
+			rules.cast(slots.whisper, her.ground_pos, {"target": her, "to": to})
+			return "whisper her on to (%.1f, %.1f)" % [to.x, to.y]
+	if watched and her.ground_pos.distance_to(d.gate_at) <= EscortDirector.NEAR_GATE and (d.change_in < 0.0 or d.change_in > PRISONER_SOON) \
+			and _slot_ready(rules, slots, "whisper"):
+		for v: Variant in d.watch:
+			if d._watching(v) and not (v as Person).shaken():
+				rules.cast(slots.whisper, (v as Person).ground_pos, {"target": v, "to": _prisoner_away(crowd, v as Person, d.gate_at)})
+				return "whisper the postern's watch off"
+	return ""
+
+
+## Where Mind Whisper sends `p` (v0.11 M4): PRISONER_AWAY straight away from `from`, on ground the whisper can reach.
+func _prisoner_away(crowd: Crowd, p: Person, from: Vector2) -> Vector2:
+	var off := p.ground_pos - from
+	return MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * PRISONER_AWAY)
+
+
+## The point `dist` along polyline `road` beyond where `at` lies nearest it (v0.11 M4); its end if nearer.
+func _road_ahead(road: Array, at: Vector2, dist: float) -> Vector2:
+	var along := _road_progress(road, at) + dist
+	var run := 0.0
+	for k in range(road.size() - 1):
+		var a: Vector2 = road[k]
+		var b: Vector2 = road[k + 1]
+		var seg := a.distance_to(b)
+		if run + seg >= along:
+			return a.lerp(b, (along - run) / maxf(seg, 0.001))
+		run += seg
+	return road.back()
+
+
+## How far along polyline `road` the point nearest `at` lies (v0.11 M4).
+func _road_progress(road: Array, at: Vector2) -> float:
+	var best := INF
+	var best_run := 0.0
+	var run := 0.0
+	for k in range(road.size() - 1):
+		var a: Vector2 = road[k]
+		var b: Vector2 = road[k + 1]
+		var q := Geometry2D.get_closest_point_to_segment(at, a, b)
+		if q.distance_to(at) < best:
+			best = q.distance_to(at)
+			best_run = run + a.distance_to(q)
+		run += a.distance_to(b)
+	return best_run
+
+
+## How far `p` stands from the segment `a`-`b` (v0.11 M4).
+func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
+	return p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b))
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

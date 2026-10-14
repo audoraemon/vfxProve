@@ -187,14 +187,16 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
 - **Card type:** Protect. **Id:** `prisoner`.
 - **Map:**
   - **The stocks:** a drawn market stall (`Structure.Kind.MARKET_STALL`, footprint 0.6 × 0.4, 25 hp, burns), the director's
-    own, on free ground beside the Citadel's gate (-10.5, -7.6), the nearest spot to (-11.6, -7.2) that leaves the lane
-    walkable. Its role is `stocks`, not a building role: it never counts in a tally. The town takes it away with its own
-    buildings (`Town._built`, Broken Lanterns' way). Tagged STOCKS.
+    own, in the yard at the head of the long west street, the nearest spot to (-6.25, -7.4) that stands 4 units or more from
+    the Citadel's gate (-10.5, -7.6), leaves the Citadel's lane walkable and leaves a way from the gate to her. (Task 3, the
+    controller's ruling: beside the gate, a seizure was a loss within a second; here a seizer's march back is some 6.5 units,
+    about ten seconds at her pace, time to answer it.) Its role is `stocks`, not a building role: it never counts in a tally.
+    The town takes it away with its own buildings (`Town._built`, Broken Lanterns' way). Tagged STOCKS.
   - **The prisoner:** the lay citizen nearest the stocks, set down 1.0 in front of them. Tagged PRISONER - DO NOT KILL.
   - **The way out:** the postern in the south wall (`TownLayout.POSTERN_AT`, (-5.75, 15.65)), open in a Prepared town. Its
     mouth is (-5.75, 14.6); the way out is on the dock bank past it at (-5.75, 17.4). Tagged POSTERN.
-  - **Her road:** down the Citadel's lane, east along the street by the cathedral to the long west street, then south to the
-    postern: about 29 units (The Lost Lamb's was about 37).
+  - **Her road:** from the stocks straight down the long west street to the postern: about 21 units (The Lost Lamb's was about
+    37; 29 before the stocks moved).
   - **The camera** rests at (-9.0, -2.0). The stocks and the Citadel's gate are just above and right of the centre. The
     postern's tag points from the bottom-left edge, below the HUD stack.
 - **Claims:** 11 lay citizens: the prisoner, two gaolers, two patrols of two, the postern's watch of two, and two searchers.
@@ -209,20 +211,27 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
     - dawn comes.
 - **People and behaviour** (The Lost Lamb's rules unless said):
   - **Bound:** she stands in the stocks, held there. A whisper or a lure on her does nothing while she is bound.
-  - **The gaolers:** two watchmen posted either side of her, 1.7 from her (within sight, beyond one Silent Doom of her) and
-    3.4 apart. Each would seize her the moment she is free.
+  - **The gaolers:** two watchmen posted either side of her, GAOLER_OFF 1.7 off and set on the yard's walkable ground: about
+    1.6 from her (within sight, beyond one Silent Doom of her) and 3.0 apart. Each would seize her the moment she is free, and
+    their tag says so (GAOLER - SEIZES HER, the controller's ruling).
+  - The gaolers are held past fear while she is bound (decision 119).
+  - **Held from the flight:** at each of its looks the director keeps everyone it holds out of the town's flight (the gaolers,
+    the patrols, the postern's watch, the searchers indoors or out, and she while she is bound), by M3's final-review rule
+    (`_keep_from_flight`, the first look after the evacuation calling back one it sent running), and lets go a flight owed to a
+    false calm (its own hold past fear). It does so in its own step, never in `EscortDirector`, so The Lost Lamb plays as before.
   - **Breaking the stocks:** any blow or fire that brings the stall down frees her ("SHE IS FREE"). Ember is the quiet way.
     A Smite aimed at the stocks' far side strikes them (`HIT_R` 0.7) and passes her by (`KILL_R` 0.6 from the aim, she stands
     1.2 or more away). The stocks' tag sits on their far side, so the obvious aim is the safe one.
   - **Free:** she moves by the god's hand alone, Mind Whisper or a Will-o'-Wisp's lure, and holds where she is left. She walks
-    at 0.385 of a citizen's pace (The Lost Lamb's), weak from the stocks.
+    at 0.33 of a citizen's pace (tuned from The Lost Lamb's 0.385), weak from the stocks.
   - **Seized:** a watcher within 2.5 seizes her on sight and marches her back to the Citadel's gate. The watchers are the
     gaolers, the patrols, the postern's watch and the searchers. A watcher held by Discord or a whisper sees nothing. So does
     one frightened, or one indoors. Felling or holding the seizer frees her where she stands. A whisper on her alone does not.
   - **Watchmen, not soldiers:** every watcher is a lay citizen, so Mind Whisper and Discord work on all of them. That is the
     main difference from The Lost Lamb, where only killing or Discord answered a soldier.
   - **The patrols:**
-    - one walks the street by the cathedral from (-14.0, -5.1) to (-7.0, -5.1) and back, across the foot of the lane;
+    - one walks the street by the cathedral from (-14.0, -5.1) to (-7.0, -5.1) and back, across the foot of the lane to the
+      mouth of the stocks' yard;
     - one walks the south street from (-14.0, 9.0) to (-2.0, 9.0) and back, across the long west street.
   - **The hue and cry:** 30 s after the stocks break, two searchers come out of the Citadel's gate and walk to wherever she is,
     seizing her on sight ("THE CITADEL SENDS ITS HOUNDS"). Before that they wait inside the Citadel. The hunt starts from the
@@ -242,25 +251,29 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   | +30 s after she first nears the postern | "The guard changes": the postern clear for 25 s, every 45 s |
   | 6:00 | Dawn |
 
-- **The clear** (an escort is bound by her walk, not a chain): freeing her about 20 s (two gaolers removed, Ember, the stall
-  burns some 6 s) + her road, 29 units at The Lost Lamb's measured rate of about 4.6 s a unit with patrols in the way (≈ 135 s)
-  + the guard change, 0-30 s + the searchers, about 10 s ≈ **190-200 s**.
+- **The clear** (an escort is bound by her walk, not a chain): freeing her about 10-18 s (a Doom on one gaoler, a whisper on
+  the other, Ember; the stall burns some 8 s) + her road, 21 units at about 4.3 s a unit with the patrols and the hounds in the
+  way (≈ 90 s) + the guard change, 30 s from her first nearing the postern + the twenty seconds she shakes off the whisper that
+  left her waiting + the watch coming back, the hounds and a second change, 30-50 s ≈ **180-205 s**. Measured (Task 3's gate,
+  seed 1): freed 10, at the postern 101, the watch away 131, sent through 151 (shaking off the last whisper till then), seized
+  by the returning watch and the hounds three times, out 203.0.
 - **Longest waits:** 30 s at the postern, starting when she first nears it. The change's gap plus its away time is 55 s. There
-  is no wait at the start: the gaolers are there to work on.
+  is no wait at the start: the gaolers are there to work on. The scripted player's longest stretch between two casts is 30-36 s.
 - **Tags:**
   - PRISONER - DO NOT KILL, steel blue, with an edge arrow, while bound. Once free: PRISONER, steel blue, with an edge arrow;
     PRISONER - CAUGHT, red, while seized.
   - STOCKS - TAKEN IN AT 2:00, orange, on the stocks' far side, while they stand.
   - POSTERN - WATCHED (red) or POSTERN - CLEAR (green) at the way out, with an edge arrow. WATCHED while the watch walks back
     (The Lost Lamb's final-review rule).
-  - GAOLER on each gaoler, red. TAKING HER BACK, red, with an edge arrow, on a seizer; CITADEL, red, while she is held.
+  - GAOLER - SEIZES HER on each gaoler, red. TAKING HER BACK, red, with an edge arrow, on a seizer; CITADEL, red, while she
+    is held.
   - SEARCHER on each searcher, red, with an edge arrow. PATROL on each patrol's first watchman, red. A red diamond on every
     other patrol watchman and on the postern's watch.
 - **Hint phases:**
 
   | Phase | Line |
   |---|---|
-  | `bound` | Remove her gaolers (red), then break the stocks (orange): fire, or a blow on their far side. Do not kill her. |
+  | `bound` | Remove both gaolers (red): one left seizes her for the Citadel. Then burn the stocks (orange) or strike their far side. |
   | (none) | Whisper her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight. |
   | `caught` | She is caught. Whisper or Discord the man taking her back (red), or strike once she is clear of him. |
   | `hounds` | The Citadel's hounds (red) follow her. Strike them or turn them before they see her. |
@@ -277,9 +290,11 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
 - **Pool:** every power.
 - **Results:** "THE PRISONER IS FREE" (`prisoner_out`), "THE PRISONER IS TAKEN BACK" (`prisoner_taken`), "THE PRISONER IS TAKEN
   INSIDE" (`prisoner_inside`), "THE PRISONER IS DEAD" (`prisoner`). Its own keys, never the Escort defaults (M2 decision 63).
-- **Numbers** (first guesses): FREE_BY 120, GAOLERS 2, GAOLER_OFF 1.7, PACE 0.385, SIGHT 2.5, PATROL_SIZE 2, HUE_AFTER 30,
-  HOUNDS 2, WATCH_CHANGE 30, WATCH_GAP 25, WATCH_CYCLE 45. Tune in this order if the scripted clear misses 180-240 s: PACE
-  (0.33-0.45), the beats, HUE_AFTER (20-45), WATCH_GAP. The wait for the watch stays 30 s or less.
+- **Numbers** (tuned by Task 3's gate): FREE_BY 120, GAOLERS 2, GAOLER_OFF 1.7, PACE **0.33** (round 1, from 0.385: the clears
+  were 173.6 / 169.9 / 134.7 s, median 169.9, with the shorter road), SIGHT 2.5, PATROL_SIZE 2, HUE_AFTER 30, HOUNDS 2,
+  WATCH_CHANGE 30, WATCH_GAP 25, WATCH_CYCLE 45, LANE_DOWN 4. Tune in this order if the scripted clear misses 180-240 s: PACE
+  (0.33-0.45), the beats, HUE_AFTER (20-45), WATCH_GAP. The wait for the watch stays 30 s or less. Gate (seeds 1-3): `none`
+  lost `prisoner_inside` at 120.0 three times; `play` won 203.0 / 199.2 / 181.9 s, median **199.2 s**, idle 31 / 36 / 30 s.
 - **Scripted policy** (`--scenario=prisoner`, loadout Mind Whisper, Silent Doom, Ember, Discord: 5 DP). Every LOOK_FRAMES, the
   first that applies:
   1. Bound, a gaoler on his post: Doom him (they stand 3.4 apart: one at a time), else whisper him eight units away.
@@ -291,7 +306,7 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
      the postern while it is watched.
   6. At the postern, watched, with the change more than 10 s off: whisper one of the watch away.
 
-  It casts no loud power. Expected clear: about 3:15.
+  It casts no loud power. Expected clear: about 3:15; measured 3:19 (median of seeds 1-3).
 - **Single charge:** The Prisoner stays single-charge. Every new hook in `EscortDirector` takes the charge it acts on as an
   argument (§6), so M6's Exodus can lift `charge` to a list without rewriting them.
 - **How it differs from The Lost Lamb** (M2 lesson 10):

@@ -80,6 +80,12 @@ const LINES := {
 	"crowns_bread.not_yet": "Not in use yet (grey). A fall counts only if it is still down when its time comes. Clear its engineers (red) shortly before.",
 	"crowns_bread.engineers": "Engineers (red) mend it, put out its fires and rebuild it. Remove every one first.",
 	"crowns_bread.open": "No engineer stands. Bring it down now, before a relief comes. The bridge takes blows, not fire.",
+	"prisoner": "Whisper her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight.",
+	"prisoner.bound": "Remove both gaolers (red): one left seizes her for the Citadel. Then burn the stocks (orange) or strike their far side.",
+	"prisoner.caught": "She is caught. Whisper or Discord the man taking her back (red), or strike once she is clear of him.",
+	"prisoner.hounds": "The Citadel's hounds (red) follow her. Strike them or turn them before they see her.",
+	"prisoner.gate": "The watch (red) holds the postern. It changes soon: bring her close, or draw the watch off.",
+	"prisoner.clear": "The guard is changing. Send her through the postern now.",
 }
 
 

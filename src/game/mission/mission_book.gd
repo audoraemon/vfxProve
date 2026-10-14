@@ -63,7 +63,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread()]
+		informer(), crowns_bread(), prisoner()]
 	return out
 
 
@@ -273,6 +273,25 @@ static func crowns_bread() -> MissionDef:
 	m.director = CrownsBreadDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [RazeObjective.new("Raze the Crown's bread", "bread"), EventObjective.new("carts", "Carts roll", "fed"),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Prisoner (v0.11 M4, Tier 3, mission spec §2 and §8 row 14): break a woman who spoke the god's name out of the stocks and lead
+## her out by the postern past lay watchmen (PrisonerDirector, the Escort type reused).
+static func prisoner() -> MissionDef:
+	var m := _tier3(PRISONER, "The Prisoner", PackedStringArray(["A woman who spoke your name stands in the stocks.",
+		"Break her free and lead her out."]))
+	m.goal = "Break the prisoner out of the stocks by %s and lead her out by the postern" % UiTheme.clock(PrisonerDirector.FREE_BY)
+	m.goal_label = "The prisoner is free"
+	m.lose = "The gaolers take her inside, she is taken back to the Citadel, she dies, or dawn comes"
+	m.camera_at = PrisonerDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "doom", "ember", "discord"])
+	m.director = PrisonerDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Lead her out", "prisoner_out", "prisoner_taken", "prisoner"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m

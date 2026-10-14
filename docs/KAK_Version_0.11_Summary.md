@@ -158,7 +158,7 @@ The mission spec's Decisions 57-90 and the plan's 91-120, numbered 120-183 after
 
 Tests: 6027 checks, 0 failures (5834 at M3's landing; 3780 + 2247 in two parts); FLOW 112 checks, 0 failures.
 
-Gates: filled in at landing.
+Gates (at 0c7af2f, M4 merged with Develop-Main's sfxr sounds): tests 6049 checks, 0 failures; FLOW 112 checks, 0 failures; the state digest and crowd_check unchanged; every exact behaviour checksum unchanged (calm, gates, fire, rite, soldiers, the five Warning cases, Mira's House, Broken Lanterns), the Vigil Flame and the Feast with the same results; M2's 24, M3's 18 and the 18 above exact; The Crown's Bread's extra seeds 4 and 5 won at 257.3 and 218.4 s (seed 4 over the 240 s window: evidence only, the gate is seeds 1-3; playtest decides); the three `--board` runs won with three wishes each, never the barn wish on The Crown's Bread's night. Bench, board versions against `kak-v011-m3` (medians of three, quiet machine): The Crown's Bread 176 fps against The Vigil Flame's 134 there (its camera sees fewer buildings), The Warning 156 vs 155, Mira's House 129 vs 129, the Vigil Flame 135 vs 135, Last Judgement 128 vs 133 (within the run-to-run spread): no cost.
 
 ### The final review's fixes
 

@@ -36,8 +36,7 @@ static func run(t) -> void:
 	t.check(ResultsScreen.thousands(1234567) == "1,234,567", "and big ones get every comma (%s)" % ResultsScreen.thousands(1234567))
 	t.check(ResultsScreen.thousands(-3000) == "-3,000", "a negative keeps its sign in front (%s)" % ResultsScreen.thousands(-3000))
 
-	# Every interface sound is in the catalog and on disk (synthesized by tools/audio/synth.py, or made with GodotSfxr
-	# and baked by tools/audio/sfxr_bake.gd).
+	# Every interface sound is in the catalog and on disk (made with GodotSfxr; test_sfx_catalog checks the sources).
 	var missing := ""
 	for cue: StringName in UiSound.CUES:
 		if not Sfx.CATALOG.has(cue):
@@ -46,12 +45,3 @@ static func run(t) -> void:
 			missing += " %s(file)" % cue
 	t.check(missing == "", "every interface sound exists (missing:%s)" % missing)
 	t.check(UiSound.CUES.size() == 14, "fourteen of them (%d)" % UiSound.CUES.size())
-	# Every GodotSfxr source has been baked into its interface cue.
-	var unbaked := ""
-	for file in DirAccess.get_files_at("res://tools/audio/sfxr/"):
-		if file.get_extension() != "tres":
-			continue
-		var cue := StringName(file.get_basename())
-		if not UiSound.CUES.has(cue) or not ResourceLoader.exists("res://assets/audio/ui/%s.wav" % cue):
-			unbaked += " " + String(cue)
-	t.check(unbaked == "", "every GodotSfxr source is a baked interface cue (not:%s)" % unbaked)

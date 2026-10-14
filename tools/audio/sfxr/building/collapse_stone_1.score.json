@@ -1,0 +1,20 @@
+{"length": 1.6, "peak_db": -1.0, "parts": [
+  {"voice": "boom", "gain": 0.8, "notes": [
+    {"t": 0.0, "p": 71.7, "decay": 0.5}
+  ]},
+  {"voice": "rumble", "gain": 0.7, "notes": [
+    {"t": 0.0, "p": 12.3}
+  ]},
+  {"voice": "crumble", "gain": 0.5, "notes": [
+    {"t": 0.02, "p": 41.0}
+  ]},
+  {"voice": "knock", "gain": 0.55, "notes": [
+    {"t": 0.368, "p": 137.2, "gain": 0.962},
+    {"t": 0.39, "p": 137.7, "gain": 0.535},
+    {"t": 0.401, "p": 83.1, "gain": 0.846},
+    {"t": 0.704, "p": 113.1, "gain": 0.607}
+  ]},
+  {"voice": "dust", "gain": 0.12, "notes": [
+    {"t": 0.2}
+  ]}
+]}

@@ -1,0 +1,14 @@
+{"length": 2.4, "peak_db": -1.0, "parts": [
+  {"voice": "square_lead", "gain": 0.5, "echo": {"delay": 0.18, "feedback": 0.3, "count": 2}, "notes": [
+    {"t": 0.0, "p": "C5", "hold": 0.35, "decay": 0.5},
+    {"t": 0.13, "p": "E5", "hold": 0.35, "decay": 0.5},
+    {"t": 0.26, "p": "G5", "hold": 0.35, "decay": 0.5},
+    {"t": 0.39, "p": "C6", "hold": 0.35, "decay": 0.5}
+  ]},
+  {"voice": "saw_soft", "gain": 0.28, "echo": {"delay": 0.21, "feedback": 0.3, "count": 2}, "notes": [
+    {"t": 0.55, "p": "C4", "hold": 0.9, "decay": 0.9},
+    {"t": 0.55, "p": "E4", "hold": 0.9, "decay": 0.9},
+    {"t": 0.55, "p": "G4", "hold": 0.9, "decay": 0.9},
+    {"t": 0.55, "p": "C5", "hold": 0.9, "decay": 0.9}
+  ]}
+]}

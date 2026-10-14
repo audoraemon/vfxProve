@@ -78,31 +78,35 @@ const CATALOG := {
 	&"dr_breath": {"path": "res://assets/audio/dragon/dr_breath.wav", "db": -3.0, "loop": true},
 	&"dr_sink": {"path": "res://assets/audio/dragon/dr_sink.wav", "db": -4.0},
 	&"laser_depart": {"path": "res://assets/audio/laser/laser_depart.wav", "db": -7.0},
-	&"ui_focus": {"path": "res://assets/audio/ui/ui_focus.wav", "db": -12.0},
-	&"ui_pause": {"path": "res://assets/audio/ui/ui_pause.wav", "db": -10.0},
-	&"ui_manifest": {"path": "res://assets/audio/ui/ui_manifest.wav", "db": -6.0},
-	&"ui_win": {"path": "res://assets/audio/ui/ui_win.wav", "db": -6.0},
-	&"ui_lose": {"path": "res://assets/audio/ui/ui_lose.wav", "db": -6.0},
-	# Made with GodotSfxr: sources in tools/audio/sfxr/, baked by tools/audio/sfxr_bake.gd.
+	# Everything below is made with GodotSfxr: sources in tools/audio/sfxr/<category>/, baked by
+	# tools/audio/sfxr_bake.gd into assets/audio/<category>/. The powers' sounds above are still tools/audio/synth.py's.
+	# Interface.
 	&"ui_hover": {"path": "res://assets/audio/ui/ui_hover.wav", "db": -20.0},
 	&"ui_click": {"path": "res://assets/audio/ui/ui_click.wav", "db": -12.0},
-	&"ui_buzz": {"path": "res://assets/audio/ui/ui_buzz.wav", "db": -10.0},
+	&"ui_focus": {"path": "res://assets/audio/ui/ui_focus.wav", "db": -14.5},
 	&"ui_back": {"path": "res://assets/audio/ui/ui_back.wav", "db": -14.0},
-	&"ui_mode": {"path": "res://assets/audio/ui/ui_mode.wav", "db": -11.0},
+	&"ui_buzz": {"path": "res://assets/audio/ui/ui_buzz.wav", "db": -10.0},
+	&"ui_pause": {"path": "res://assets/audio/ui/ui_pause.wav", "db": -13.0},
 	&"ui_resume": {"path": "res://assets/audio/ui/ui_resume.wav", "db": -13.0},
+	&"ui_mode": {"path": "res://assets/audio/ui/ui_mode.wav", "db": -11.0},
 	&"ui_ready": {"path": "res://assets/audio/ui/ui_ready.wav", "db": -16.0},
 	&"ui_notice": {"path": "res://assets/audio/ui/ui_notice.wav", "db": -14.0},
 	&"ui_surge": {"path": "res://assets/audio/ui/ui_surge.wav", "db": -6.0},
-	&"cit_yelp": {"path": "res://assets/audio/crowd/cit_yelp_%d.wav", "variants": 4, "db": -10.0, "voices": 4, "jitter": 0.12},
-	&"cit_shout": {"path": "res://assets/audio/crowd/cit_shout_%d.wav", "variants": 3, "db": -12.0, "voices": 3, "jitter": 0.1},
-	&"sol_rally": {"path": "res://assets/audio/crowd/sol_rally.wav", "db": -6.0},
-	&"town_bell": {"path": "res://assets/audio/crowd/town_bell.wav", "db": -4.0},
-	&"crowd_panic": {"path": "res://assets/audio/crowd/crowd_panic.wav", "db": -8.0, "loop": true},
-	# A building or tree coming down (Town plays them). Capped at four voices each, so a stone rain felling a
-	# dozen things at once is a roar, not a pile-up.
-	&"collapse_stone": {"path": "res://assets/audio/collapse/collapse_stone_%d.wav", "variants": 3, "db": -5.0, "voices": 4, "jitter": 0.08},
-	&"collapse_timber": {"path": "res://assets/audio/collapse/collapse_timber_%d.wav", "variants": 3, "db": -6.0, "voices": 4, "jitter": 0.08},
-	&"collapse_tree": {"path": "res://assets/audio/collapse/collapse_tree_%d.wav", "variants": 3, "db": -9.0, "voices": 4, "jitter": 0.1},
+	&"ui_manifest": {"path": "res://assets/audio/ui/ui_manifest.wav", "db": 0.0},
+	&"ui_win": {"path": "res://assets/audio/ui/ui_win.wav", "db": -5.0},
+	&"ui_lose": {"path": "res://assets/audio/ui/ui_lose.wav", "db": -7.0},
+	# Citizens and soldiers.
+	&"cit_yelp": {"path": "res://assets/audio/citizen/cit_yelp_%d.wav", "variants": 4, "db": -10.5, "voices": 4, "jitter": 0.12},
+	&"cit_shout": {"path": "res://assets/audio/citizen/cit_shout_%d.wav", "variants": 3, "db": -8.5, "voices": 3, "jitter": 0.1},
+	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -8.0, "loop": true},
+	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -4.0},
+	# Buildings and the town. A building or tree coming down (Town plays them) is capped at four voices each, so a
+	# stone rain felling a dozen things at once is a roar, not a pile-up.
+	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 3, "db": -2.0, "voices": 4, "jitter": 0.08},
+	&"collapse_timber": {"path": "res://assets/audio/building/collapse_timber_%d.wav", "variants": 3, "db": -2.5, "voices": 4, "jitter": 0.08},
+	&"collapse_tree": {"path": "res://assets/audio/building/collapse_tree_%d.wav", "variants": 3, "db": -4.0, "voices": 4, "jitter": 0.1},
+	&"town_bell": {"path": "res://assets/audio/building/town_bell.wav", "db": -2.0},
+	# Music: Music plays these at its own level (Music.DB), so their db is not used.
 	&"music_theme": {"path": "res://assets/audio/music/music_theme.wav", "db": 0.0, "loop": true},
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},
 	&"music_battle_drums": {"path": "res://assets/audio/music/music_battle_drums.wav", "db": 0.0, "loop": true},

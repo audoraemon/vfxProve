@@ -81,8 +81,9 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   - The three stand 9-18 units apart: one Heaven Splitter (10 long) cannot reach two.
   - **The shifts' waiting places:** the granary's and the mill's shifts wait inside their own building. The bridge's waits in
     the Main Gate's west tower (`GATE_TOWERS[0]`), or the east one if a wish has set the west one aside.
-  - **The camera** rests at (6.0, 20.0), above the Main Gate's road. The bridge is just left of the centre, the granary at the
-    right, the mill toward the left edge at mid height. None sits in the HUD stack's corner.
+  - **The camera** rests at (-5.0, 21.0) (Task 7's photographs moved it from (6.0, 20.0): there the mill's arrow sat at the left
+    edge under the hint and the wishes' rows). The bridge is right of the centre, the mill at the left below the stack's rows, the
+    granary's arrow at the right edge. None sits in the HUD stack.
 - **Claims:** 15 lay citizens made engineers: a night crew of two and a shift of three at each target, the nearest free ones to
   each post. Reliefs as they are needed. No soldiers. The targets are fixed buildings; no wish can take one (the barn wish
   clashes, §5).
@@ -132,7 +133,8 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
 - **The clear:** first wait 45 + granary 15 (the shift: a Doom, a Smite that also strikes the granary, an Ember) + 45 +
   mill 15 + 45 + bridge 35 (the shift, then 140 hp of blows: four Smites at 10 s) ≈ **200 s**. With nothing done ahead, the
   work rises to about 25 / 25 / 45 s, ≈ 230 s. Measured (Task 2's gate, seeds 1-3): 195.3 / 216.3 / 203.0 s, median 203.0;
-  the median run's sum is 45 + granary about 10 + 45 + mill about 15 + 45 + bridge about 43 ≈ 203 s.
+  the median run's sum is 45 + granary about 10 + 45 + mill about 15 + 45 + bridge about 43 ≈ 203 s. After Task 7's camera move
+  (the camera feeds the scenario): 201.5 / 234.5 / 197.4 s, median 201.5, idle 25 / 26 / 24 s.
 - **Longest waits:** 45 s to the first stage, and 45 s between a target razed and the next one's time. In both, the next night
   crew can be cleared in the last 25 s.
 - **Tags:**
@@ -198,7 +200,8 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   - **Her road:** from the stocks straight down the long west street to the postern: about 21 units (The Lost Lamb's was about
     37; 29 before the stocks moved).
   - **The camera** rests at (-9.0, -2.0). The stocks and the Citadel's gate are just above and right of the centre. The
-    postern's tag points from the bottom-left edge, below the HUD stack.
+    postern's tag points from the bottom-left edge, below the HUD stack. (Task 7's photograph: the stocks' plate stands 14 px
+    above its usual place and each gaoler's diamond at his feet, so STOCKS, PRISONER and both GAOLER plates read.)
 - **Claims:** 11 lay citizens: the prisoner, two gaolers, two patrols of two, the postern's watch of two, and two searchers.
   All but her are made watchmen. No soldiers, no buildings.
 - **Main objective:** lead her out.
@@ -334,9 +337,10 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
     3. **the south quarter** (district 7): the spot (-1.5, 12.0), at the Main Gate plaza's west edge.
   - **The last sweep:** the cellar's own quarter (district 6), led by the captain.
   - **The Temple's door** at (0.8, -5.0): the captain comes out here. Tagged TEMPLE while he is inside.
-  - **The camera** rests at (-6.0, 3.0). The first spot is up and to the right, the second just up and left of the centre,
-    the third below the centre, the cellar at the left at mid height, the Temple's door at the right. None sits in the HUD
-    stack's corner.
+  - **The camera** rests at (-10.5, -1.5) (Task 7's photographs moved it from (-6.0, 3.0): there the west spot and its party sat
+    under the hint and the wishes' rows). The first spot is up and to the right, the second left of the centre below the stack's
+    rows, the third's arrow on the bottom edge, the cellar low at the left, the Temple's door at the right. None sits in the HUD
+    stack.
 - **Claims:** 12 lay citizens: three parties of three (a standard-bearer and two Inquisitors), the captain and his two
   escorts. Reliefs as they are needed. One dwelling (the cellar). No soldiers.
 - **Main objective:** break the hunt.
@@ -389,7 +393,8 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
 - **The clear:** first wait 60 + standard 3 (party cleared ahead, one Smite) + 45 + 3 + 45 + 3 + 30 (the captain's chain) + captain
   1 (a Doom once he is out) ≈ **190 s**. Measured (Task 4's gate): 182.1 / 183.2 / 193.5 s on seeds 1-3, median 183.2; seed 1's
   sum 60.5 + 45.4 + 45.7 + 30.0 + 0.5 = 182.1 (the policy clears each party in the last 25 s, so a standard falls within a second
-  of its raising, the third about 0.7 s after). Doing nothing loses at 5:23 / 5:43 / 5:29.
+  of its raising, the third about 0.7 s after). After Task 7's camera move (the camera feeds the scenario): 193.5 / 183.2 / 193.5 s,
+  median 193.5, idle 35 s. Doing nothing loses at 5:23 / 5:43 / 5:29.
 - **Longest waits:** 60 s to the first standard (the policy acts from 0:35), 45 s between a standard broken and the next, 30 s
   from the third broken to the captain. In each, the next party can be cleared in the last 25 s; the longest idle measured is 35
   s. The captain's walk (about 85 s at half pace with his stops) is time to act in, not a wait.
@@ -627,8 +632,9 @@ gives its cost if it proves wrong.
     none; it is a place, not a target.
 79. **Tags for the hunt:** the swept district's thin red outline while its standard stands. Cost if wrong: clutter on a busy
     map; the photo round drops it and the HUD line carries the district's name.
-80. **Camera spots:** The Crown's Bread (6.0, 20.0), The Prisoner (-9.0, -2.0), The Heretic Hunt (-6.0, 3.0), each checked
-    with `clear_of_stack()`. Cost if wrong: a photo-round move, which moves that scenario's own references once.
+80. **Camera spots:** The Crown's Bread (-5.0, 21.0, moved from (6.0, 20.0)), The Prisoner (-9.0, -2.0), The Heretic Hunt
+    (-10.5, -1.5, moved from (-6.0, 3.0)), each checked with `clear_of_stack()`; Task 7's photographs moved the two, which moved
+    their own references once (the camera feeds the scenario). Cost if wrong: a photo-round move, as just done.
 81. **The new wishes:** "Burn the tithe barn" (Ruin, 10, `min_tier` 3, clashes with `razes_bread`) and "Strike down the cruel
     sergeant" (Punish, 15, `min_tier` 3). The pool grows from 12 to 14; Tier 1 and Tier 2 draws do not change. Cost: none.
 82. **Mission tags:** only `crowns_bread` declares one (`razes_bread`); a test pins that its night never hears the barn wish

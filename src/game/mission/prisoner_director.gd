@@ -58,6 +58,10 @@ const HOUNDS := 2
 const CAMERA_AT := Vector2(-9.0, -2.0)
 ## The stocks' tag (v0.11 M4): orange, a place.
 const MARK_STOCKS := Color("ff9a3a")
+## Screen pixels the stocks' plate stands above the usual place's, clear of the prisoner's plate over the same spot (v0.11 M4).
+const STOCKS_LIFT := 14.0
+## Screen pixels a gaoler's diamond rides above his feet: none, so his plate stands below the prisoner's, not hidden by it (v0.11 M4).
+const GAOLER_LIFT := 0.0
 
 ## The stocks; the aim on their far side, where their tag sits (v0.11 M4).
 var stocks: Structure
@@ -344,7 +348,9 @@ func tags() -> Array[MapTag]:
 	if bound:
 		out.append(MapTag.person(charge.ground_pos, MARK_CHARGE, "PRISONER - DO NOT KILL", true))
 		if is_instance_valid(stocks) and not stocks.destroyed:
-			out.append(MapTag.place(stocks_far, MARK_STOCKS, "STOCKS - TAKEN IN AT %s" % UiTheme.clock(FREE_BY), stocks.height, false))
+			var spot := MapTag.place(stocks_far, MARK_STOCKS, "STOCKS - TAKEN IN AT %s" % UiTheme.clock(FREE_BY), stocks.height, false)
+			spot.lift += STOCKS_LIFT  # above the prisoner's own plate, which stands over the same spot (the photograph, v0.11 M4)
+			out.append(spot)
 	elif held:
 		out.append(MapTag.person(charge.ground_pos, MARK_WATCHED, "PRISONER - CAUGHT", true))
 	else:
@@ -356,7 +362,9 @@ func tags() -> Array[MapTag]:
 		out.append(MapTag.place(return_to, MARK_WATCHED, "CITADEL"))
 	for v: Variant in gaolers:
 		if _alive(v) and v != seizer and not (v as Person).inside:
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "GAOLER - SEIZES HER"))
+			var warn := MapTag.person((v as Person).ground_pos, MARK_WATCHED, "GAOLER - SEIZES HER")
+			warn.lift = GAOLER_LIFT  # at the feet: the gaolers stand by the prisoner, and her plate would hide a plate over their heads
+			out.append(warn)
 	for v: Variant in hunters:
 		if _alive(v) and v != seizer and not (v as Person).inside:
 			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "SEARCHER", true))

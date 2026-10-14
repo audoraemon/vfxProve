@@ -54,9 +54,9 @@ const RELIEF_AFTER := 30.0
 const CARTS_AT := 300.0
 ## How near its time a target not yet in use puts the hint on "not_yet" (v0.11 M4, decision 102): the spec's "last 25 s".
 const WORK_AHEAD := 25.0
-## Where the camera rests (v0.11 M4, Decision 80): above the Main Gate's road; the bridge left of the centre, the granary at the
-## right, the mill's arrow on the left edge at mid height.
-const CAMERA_AT := Vector2(6.0, 20.0)
+## Where the camera rests (v0.11 M4, Decision 80; moved from (6, 20) by the photographs): on the bridge, the mill at the left below the
+## hint and the wishes' rows (at (6, 20) its arrow sat under them), the granary's arrow on the right edge.
+const CAMERA_AT := Vector2(-5.0, 21.0)
 ## Seconds between looks at the crews' orders (v0.11 M4).
 const TICK := 0.5
 

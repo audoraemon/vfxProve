@@ -40,9 +40,10 @@ const HEAD_PACE := 0.5
 ## A quiet door: no soldier's post within QUIET_R of it (M3's lesson); how many dwellings the choices weigh (v0.11 M4).
 const QUIET_R := 2.0
 const HOUSE_TRIES := 12
-## Where the camera rests (v0.11 M4, Decision 80): the first spot up and right, the second up and left of the centre, the third below,
-## the cellar at the left at mid height, the Temple's door at the right.
-const CAMERA_AT := Vector2(-6.0, 3.0)
+## Where the camera rests (v0.11 M4, Decision 80; moved from (-6, 3) by the photographs): the first spot up and right, the second left of
+## the centre below the hint and the wishes' rows (at (-6, 3) it sat under them), the third's arrow on the bottom edge, the cellar low at
+## the left, the Temple's door at the right.
+const CAMERA_AT := Vector2(-10.5, -1.5)
 ## How far apart two doors of his route stand at the least (v0.11 M4): beyond twice the reach at which he counts a door reached.
 const DOOR_APART := 2.0 * HuntDirector.ARRIVE
 ## How hard the stone cellar shakes when struck (v0.11 M4).

@@ -336,6 +336,16 @@ static func _tagged(t) -> void:
 		and labels.has("POSTERN - WATCHED") and Kit.edged(d, "POSTERN - WATCHED") and labels.count("GAOLER - SEIZES HER") == 2
 		and labels.has("PATROL"),
 		"bound: PRISONER - DO NOT KILL, pointed at; the stocks' deadline; the postern; GAOLER - SEIZES HER on each gaoler (the ruling's plain warning); PATROL (%s)" % [labels])
+	# Task 7's photograph: the prisoner's plate stands over the stocks' and a gaoler's, and the HUD drops a plate that would overlap an
+	# earlier one, so STOCKS and one GAOLER were unreadable. Every plate of the night's first minute is drawn.
+	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
+	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(PrisonerDirector.CAMERA_AT) * Mission.PLAY_ZOOM
+	var shown := []
+	for e: Dictionary in Hud.tag_layout(d.tags(), xf, Kit.VIEW):
+		if bool(e.show):
+			shown.append((e.tag as MapTag).label)
+	t.check(shown.has("PRISONER - DO NOT KILL") and shown.has("STOCKS - TAKEN IN AT 2:00") and shown.count("GAOLER - SEIZES HER") == 2,
+		"at the camera's spot the prisoner's, the stocks' and both gaolers' plates are drawn, none dropped for overlap (%s)" % [shown])
 	t.check(MissionHints.line("prisoner", "bound").contains("seizes her") and MissionHints.line("prisoner", "bound").contains("Citadel"),
 		"the bound hint warns plainly that a gaoler left standing seizes her and takes her back to the Citadel")
 	var tour := d.tour()

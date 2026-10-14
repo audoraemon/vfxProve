@@ -328,7 +328,7 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
 - **Map** (the hunt closes on the south-west quarter, district by district; `TownLayout.DISTRICTS` names each):
   - **The cellar:** the dwelling nearest (-11.0, 12.5) in the south-west quarter (district 6) whose door the street reaches
     and no soldier's post watches (none within 2 units). Your believers hide in it. Tagged CELLAR, steel blue. **Stone
-    tonight:** it only shakes when struck (`Structure.damage_filter`, cleared at teardown, as M3's posts), so no stray power can
+    tonight:** it only shakes when struck (`Structure.damage_filter`, its own filter restored at teardown), so no stray power can
     end the night through it.
   - **The three sweeps**, each a district and its standard's spot (snapped to walkable ground):
     1. **the north quarter** west of the Temple (district 1): the spot (-6.0, -10.0), on the long west street;
@@ -637,7 +637,7 @@ gives its cost if it proves wrong.
 77. **The captain:** a resident made a noble, inside the Temple until his step; two escorts 1.4 behind; he searches the five
     houses nearest the cellar (4 s each) and then its door; any death ends him; no relay. Left alone he finds the cellar
     at about 5:25. Cost if wrong: if doing nothing reaches dawn, CAPTAIN_HOUSES then STEP_AT[3] come down.
-78. **The cellar:** the dwelling nearest (-11.0, 12.5) with a quiet door; stone tonight, cleared at teardown. Cost if wrong:
+78. **The cellar:** the dwelling nearest (-11.0, 12.5) with a quiet door; stone tonight, its own filter restored at teardown. Cost if wrong:
     none; it is a place, not a target.
 79. **Tags for the hunt:** the swept district's thin red outline while its standard stands. Cost if wrong: clutter on a busy
     map; the photo round drops it and the HUD line carries the district's name.

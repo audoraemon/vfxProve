@@ -291,10 +291,11 @@ func _ready() -> void:
 			loadout = MissionBook.miras_house().default_loadout
 			go_to(Screen.MISSION)
 		"tiers":
-			# The tier board part-way up (v0.11 M1-M3): three of Whisper and three of Omen cleared, Wrath open, for the photograph (SHOW_SAVE).
+			# The tier board part-way up (v0.11 M1-M4): three of Whisper, Omen and Wrath cleared, Reckoning open, for the photograph (SHOW_SAVE).
 			# It opens on Whisper's tab, its five cards with the ticks and the best lines; --mission=vigil_flame opens Wrath's instead.
 			save.descend = DescendState.new()
-			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns", "bell_ringers"])
+			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns", "bell_ringers",
+				"vigil_flame", "festival", "crowns_bread"])
 			save.descend.fastest = {"warning": 192.0}
 			save.descend.most_wishes = {"warning": 2}
 			save.descend.believers = 64
@@ -842,6 +843,7 @@ func _flow_test() -> void:
 	await _flow_results(step)
 	await _flow_tier1(step)
 	await _flow_tier2(step)
+	await _flow_tier3(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -988,17 +990,22 @@ func _mission_up(other: Mission) -> bool:
 
 
 ## v0.11 M1 (spec §3.1-§3.2), v0.11 M2: on a fresh save the tier board opens on Whisper, its five cards; Omen is locked,
-## its rule shown, and its missions cannot be picked. v0.11 M3: Omen's tab shows its five cards while locked. Ends on the board,
-## Whisper open.
+## its rule shown, and its missions cannot be picked. v0.11 M3: Omen's tab shows its five cards while locked. v0.11 M4: Wrath's tab
+## shows its five cards behind three of Omen. Ends on the board, Whisper open.
 func _flow_board(step: Callable) -> void:
 	var board := _screen_node as MissionBoard
 	step.call(board != null and board.tier == 1 and Array(board.missions()) == Array(TierBook.missions(1)) and board.missions().size() == 5
 		and save.descend.open_tier == 1, "a fresh board opens on Whisper: The Warning and the four new missions")
 	board.open_tab(2)
 	board.choose(MissionBook.MIRAS_HOUSE)
-	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 3 Whisper missions"
-		and Array(board.missions()) == Array(TierBook.missions(2)) and board.missions().size() == 5,
-		"Omen is locked: its five cards and its rule show, and Mira's House cannot be picked (%s)" % board.lock_line())
+	var omen_ok := screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 3 Whisper missions" \
+		and Array(board.missions()) == Array(TierBook.missions(2)) and board.missions().size() == 5
+	var omen_rule := board.lock_line()
+	board.open_tab(3)
+	var wrath_ok := Array(board.missions()) == Array(TierBook.missions(3)) and board.missions().size() == 5 \
+		and board.lock_line() == "Clear 3 Omen missions"
+	step.call(omen_ok and wrath_ok,
+		"Omen is locked: its five cards and its rule show, and Mira's House cannot be picked (%s); Wrath's five behind three of Omen" % omen_rule)
 	board.open_tab(1)
 
 
@@ -1190,6 +1197,45 @@ func _flow_tier2(step: Callable) -> void:
 		"The Bell-Ringers from the board: Tier 2's budget, three posts; stopped and ascended, the results read Omen 1 / 3 (%s)" % String(
 		bank.get("progress", "")))
 	if shown and _screen_node is ResultsScreen:  # (v0.11 M3 final review: no results, no cast on a freed or other screen)
+		(_screen_node as ResultsScreen).action.emit("missions")
+		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+
+
+## v0.11 M4: a Tier 3 mission from the board -- The Heretic Hunt, Wrath opened as a fixture (Omen's three clears need not be played).
+## Its Prepare has Tier 3's DP plus the one bought; its night is the board's version, three sweeps, a captain and a cellar; broken by
+## its public state (every standard broken, the captain fallen), F ascends to the results: won, The Heretic Hunt cleared, Wrath 1 / 3.
+## Ends on the board.
+func _flow_tier3(step: Callable) -> void:
+	save.descend.open_tier = maxi(save.descend.open_tier, 3)
+	(_screen_node as MissionBoard).choose(MissionBook.HERETIC_HUNT)
+	var prep := _screen_node as PrepareScreen
+	var dp := prep.draft.capacity if prep != null else 0
+	prep.draft.preselect(MissionBook.heretic_hunt().default_loadout)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 10.0)
+	await _past_intro()
+	var d := _mission.rules().director as HereticHuntDirector
+	var up := d != null and d.steps.size() == 3 and d.cellar != null and dp == TierBook.dp(3) + 1 and _mission.rules().mission.tier == 3
+	if d != null:
+		for st in d.steps:
+			st.raised = true
+			st.broken = true
+		d.head_fell = true
+	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
+	await get_tree().process_frame
+	var f := InputEventKey.new()
+	f.physical_keycode = KEY_F
+	f.pressed = true
+	Input.parse_input_event(f)
+	var shown := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var desc: Dictionary = result.get("descend", {})
+	var bank: Dictionary = desc.get("bank", {})
+	step.call(up and shown and bool(result.get("won", false)) and bool(desc.get("ascended", false))
+		and save.descend.cleared.has(MissionBook.HERETIC_HUNT)
+		and String(bank.get("progress", "")) == "Wrath 1 / 3 cleared: 2 more open Reckoning",
+		"The Heretic Hunt from the board: Tier 3's budget, three sweeps and a cellar; broken and ascended, the results read Wrath 1 / 3 (%s)" % String(
+		bank.get("progress", "")))
+	if shown and _screen_node is ResultsScreen:
 		(_screen_node as ResultsScreen).action.emit("missions")
 		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 

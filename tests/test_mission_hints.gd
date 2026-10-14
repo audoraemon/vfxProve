@@ -83,6 +83,13 @@ const SPEC := [
 	["prisoner.hounds", "The Citadel's hounds (red) follow her. Strike them or turn them before they see her."],
 	["prisoner.gate", "The watch (red) holds the postern. It changes soon: bring her close, or draw the watch off."],
 	["prisoner.clear", "The guard is changing. Send her through the postern now."],
+	# The Heretic Hunt (v0.11 M4).
+	["heretic_hunt", "Clear a standard's guards (red), then break the standard (gold). Three standards, then the captain."],
+	["heretic_hunt.guarded", "Its guards (red) hold the standard: blows only shake it. Remove every one first."],
+	["heretic_hunt.open", "The standard (gold) stands unguarded. Break it now, before a new guard comes."],
+	["heretic_hunt.waiting", "The hunt moves on soon. Clear the next sweep's guards (red) shortly before it comes."],
+	["heretic_hunt.captain", "The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it."],
+	["heretic_hunt.searching", "The captain searches the houses by your cellar. Kill him before he reaches its door."],
 ]
 
 

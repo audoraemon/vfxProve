@@ -329,7 +329,8 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
     end the night through it.
   - **The three sweeps**, each a district and its standard's spot (snapped to walkable ground):
     1. **the north quarter** west of the Temple (district 1): the spot (-6.0, -10.0), on the long west street;
-    2. **the west quarter** (district 4): the spot (-10.5, 1.5);
+    2. **the west quarter** (district 4): the spot (-12.0, 3.0), in the open (the first guess, (-10.5, 1.5), stands in a lane:
+       its ring snapped to 0.7 and 2.0 from the spot, and one post lay in a yard no relief could reach);
     3. **the south quarter** (district 7): the spot (-1.5, 12.0), at the Main Gate plaza's west edge.
   - **The last sweep:** the cellar's own quarter (district 6), led by the captain.
   - **The Temple's door** at (0.8, -5.0): the captain comes out here. Tagged TEMPLE while he is inside.
@@ -346,7 +347,7 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
     one). They are watchmen in cloak and lantern, held on duty. Fright, a whisper and Discord move them; back on their feet they
     walk back.
   - **Raised:** at its time the party's bearer plants the lantern-standard at the spot, "THE HUNT SWEEPS THE WEST QUARTER":
-    - the first at 0:45;
+    - the first at 1:00;
     - the second at 1:55, or 45 s after the first is broken, whichever is sooner;
     - the third at 3:05, or 45 s after the second is broken.
 
@@ -362,10 +363,13 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
     undone. A broken standard's party gets no relief.
   - **The captain:** the resident nearest the Temple's door, made a noble, taken inside the Temple at the start. Indoors he is
     untouchable; a fire or the Temple's fall does not bring him out.
-    - At 4:00, or 45 s after the third standard is broken, he comes out with two escorts ("THE CAPTAIN LEADS THE LAST SWEEP"):
-      the escorts are watchmen who waited inside with him, 1.4 behind him, beyond one Doom of him.
-    - He walks on duty to the cellar's quarter. Then he searches the five houses nearest the cellar, farthest first, 4 s at
-      each door (Mira's Inquisitor's search), and last the cellar's door.
+    - At 4:00, or 30 s after the third standard is broken (the controller's ruling: his own chain, HEAD_CHAIN, so an acting
+      player never waits a pure 45 s for the last item), he comes out with two escorts ("THE CAPTAIN LEADS THE LAST SWEEP"):
+      the escorts are watchmen who waited inside with him; they come out 1.4 to either side of him along the Temple's street
+      (the Temple stands behind its door), then walk 1.4 behind him, beyond one Doom of him.
+    - He walks on duty, at half pace, to the cellar's quarter. Then he searches the five houses nearest the cellar whose doors
+      stand 1.6 or more from each other and from the cellar's, the door farthest from the cellar first, 4 s at each door
+      (Mira's Inquisitor's search), and last the cellar's door.
     - A fright, a whisper or Discord drops his search. Back on his feet he takes it up at the house he had reached.
     - Any death kills him for the objective. His escorts go home. Nobody takes up the search.
     - He is the last item: he never comes before the third standard is raised.
@@ -375,18 +379,20 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
   | Time | Event |
   |---|---|
   | 0:00 | "THE HERETIC HUNT". The three parties wait at their districts. |
-  | 0:45 | "The hunt sweeps the north quarter": the first standard |
+  | 1:00 | "The hunt sweeps the north quarter": the first standard |
   | 1:55 | "The hunt sweeps the west quarter" (sooner: 45 s after the first is broken) |
   | 3:05 | "The hunt sweeps the south quarter" (sooner: 45 s after the second is broken) |
-  | 4:00 | "The captain leads the last sweep" (sooner: 45 s after the third is broken) |
-  | ~5:25 | He reaches the cellar's door: lost |
+  | 4:00 | "The captain leads the last sweep" (sooner: 30 s after the third is broken) |
+  | ~5:30 | He reaches the cellar's door: lost (measured 5:23 / 5:43 / 5:29 on seeds 1-3) |
   | 6:00 | Dawn |
 
-- **The clear:** first wait 45 + standard 3 (party cleared ahead, one Smite) + 45 + 3 + 45 + 3 + 45 + captain 8 (a Doom once he
-  is out) ≈ **197 s**. With nothing done ahead, each standard takes about 15 s: ≈ 233 s. The Informer's four items measured 191
-  s on the same sum.
-- **Longest waits:** 45 s to the first standard, and 45 s between a standard broken and the next. In both, the next party can be
-  cleared in the last 25 s. The captain's walk (about 50 s) is time to act in, not a wait.
+- **The clear:** first wait 60 + standard 3 (party cleared ahead, one Smite) + 45 + 3 + 45 + 3 + 30 (the captain's chain) + captain
+  1 (a Doom once he is out) ≈ **190 s**. Measured (Task 4's gate): 182.1 / 183.2 / 193.5 s on seeds 1-3, median 183.2; seed 1's
+  sum 60.5 + 45.4 + 45.7 + 30.0 + 0.5 = 182.1 (the policy clears each party in the last 25 s, so a standard falls within a second
+  of its raising, the third about 0.7 s after). Doing nothing loses at 5:23 / 5:43 / 5:29.
+- **Longest waits:** 60 s to the first standard (the policy acts from 0:35), 45 s between a standard broken and the next, 30 s
+  from the third broken to the captain. In each, the next party can be cleared in the last 25 s; the longest idle measured is 35
+  s. The captain's walk (about 85 s at half pace with his stops) is time to act in, not a wait.
 - **Tags:**
   - The current standard, gold, with an edge arrow: "STANDARD - GUARDED" while guarded, "STANDARD" when open.
   - Each other standing standard, gold, no arrow.
@@ -410,15 +416,16 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
 - **HUD:** "Break the hunt: standards 1 / 3". Once the captain is out: "Break the hunt: standards 3 / 3, kill the captain".
 - **Tour:**
   1. "Your believers' cellar. If the hunt finds it, the night is lost."
-  2. "The north quarter. The hunt raises its first standard here at 0:45."
+  2. "The north quarter. The hunt raises its first standard here at 1:00."
   3. "The Temple. Its captain leads the last sweep by 4:00."
 - **Mission tags:** none.
 - **Pool:** every power.
 - **Results:** "THE HUNT IS BROKEN" (`hunt`), "THE CELLAR IS FOUND" (`cellar`).
-- **Numbers** (first guesses): STEP_AT 45 / 115 / 185 / 240, CHAIN 45, PARTY 3, PARTY_R 1.2, GUARD_REACH 1.5, RETURN_AFTER 20,
-  RELIEF_AFTER 30, ESCORTS 2, ESCORT_GAP 1.4, CAPTAIN_HOUSES 5, CAPTAIN_STOP 4. Tune in this order if the scripted clear misses
-  180-240 s: CHAIN (30-45), STEP_AT[0] (30-60), PARTY (2-3), RELIEF_AFTER (20-30). If doing nothing does not lose before dawn:
-  CAPTAIN_HOUSES, then STEP_AT[3].
+- **Numbers** (tuned by Task 4's gate, one round: STEP_AT[0] 45 → 60, as CHAIN stood at its 45 s top and the median clear was
+  177.1 s): STEP_AT 60 / 115 / 185 / 240, CHAIN 45, HEAD_CHAIN 30 (the controller's ruling), PARTY 3, PARTY_R 1.2, GUARD_REACH
+  1.5, RETURN_AFTER 20, RELIEF_AFTER 30, ESCORTS 2, ESCORT_GAP 1.4, CAPTAIN_HOUSES 5, CAPTAIN_STOP 4, HEAD_PACE 0.5. Tune in this
+  order if the scripted clear misses 180-240 s: CHAIN (30-45), STEP_AT[0] (30-60), PARTY (2-3), RELIEF_AFTER (20-30). If doing
+  nothing does not lose before dawn: CAPTAIN_HOUSES, then STEP_AT[3], then HEAD_PACE.
 - **Scripted policy** (`--scenario=hunt`, loadout Silent Doom, Smite, Mind Whisper, Discord: 5 DP; hit-stop off). Every
   LOOK_FRAMES, the first that applies:
   1. The captain is out of doors and Doom is ready: Doom him.

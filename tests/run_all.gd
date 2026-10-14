@@ -120,6 +120,7 @@ const SUITES := [
 	"res://tests/test_tier3_groundwork.gd",
 	"res://tests/test_crowns_bread.gd",
 	"res://tests/test_prisoner.gd",
+	"res://tests/test_heretic_hunt.gd",
 ]
 
 var failures := 0

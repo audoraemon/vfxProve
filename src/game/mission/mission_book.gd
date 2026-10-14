@@ -63,7 +63,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt()]
 	return out
 
 
@@ -293,6 +293,24 @@ static func prisoner() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [EscortObjective.new("Lead her out", "prisoner_out", "prisoner_taken", "prisoner"),
 			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Heretic Hunt (v0.11 M4, Tier 3, mission spec §3 and §8 row 15): break the Inquisition's three lantern-standards and kill its
+## captain before he finds the believers' cellar (HereticHuntDirector, the Hunt type's first night).
+static func heretic_hunt() -> MissionDef:
+	var m := _tier3(HERETIC_HUNT, "The Heretic Hunt", PackedStringArray(["The Inquisition hunts your believers.",
+		"Break the hunt before it finds their cellar."]))
+	m.goal = "Break the hunt's three standards and kill its captain before he finds your believers' cellar"
+	m.goal_label = "The hunt is broken"
+	m.lose = "The captain finds the cellar, or dawn comes"
+	m.camera_at = HereticHuntDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "smite", "whisper", "discord"])
+	m.director = HereticHuntDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [HuntObjective.new("Break the hunt", "hunt"), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

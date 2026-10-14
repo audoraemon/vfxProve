@@ -6,12 +6,13 @@ extends MissionDirector
 ## its party guards (_guarded(): a member within `guard_reach`, out of doors, not held by the god) only shakes when struck; unguarded,
 ## it breaks for good and its party goes home. A guard off his post and calm again walks back `return_after` after he left; a fallen
 ## one is replaced `relief_after` after he fell; a broken step's party gets no relief. With `has_head`, the head (_appoint_head())
-## waits indoors with his escorts until his time (`head_at`, or `chain` after the last step is broken; never before every standard is
-## raised), then walks his search route (_head_route()) on duty, stopping `head_stop` at each door, to the quarry (_quarry_point());
-## a fright, a whisper or Discord drops his search, and back on his feet he takes it up at the door he had reached. The hunt finds its
-## quarry (_found()): the night is lost. Every standard broken and the head down wins (HuntObjective). Every one of the hunt's people
-## is kept out of the town's flight (_keep_held()). The Heretic Hunt is its first subclass; M6's The Lantern's Eye returns tower
-## mirrors from _raise_standard(), has no head, and overrides _found() and _quarry_point() for its Searchlight (decision 111).
+## waits indoors with his escorts until his time (`head_at`, or `head_chain` -- by default `chain` -- after the last step is broken;
+## never before every standard is raised), then walks his search route (_head_route()) on duty, stopping `head_stop` at each door,
+## to the quarry (_quarry_point()); a fright, a whisper or Discord drops his search, and back on his feet he takes it up at the door
+## he had reached. The hunt finds its quarry (_found()): the night is lost. Every standard broken and the head down wins
+## (HuntObjective). Every one of the hunt's people is kept out of the town's flight (_keep_held()). The Heretic Hunt is its first
+## subclass; M6's The Lantern's Eye returns tower mirrors from _raise_standard(), has no head, and overrides _found() and
+## _quarry_point() for its Searchlight (decision 111).
 
 ## One step of the hunt (v0.11 M4): a plain record, so the director holds no cycle.
 class HuntStep:
@@ -85,6 +86,9 @@ var head_stop := 4.0
 var head_pace := 1.0
 var escort_gap := 1.4
 var head_door := Vector2.INF
+## The head's own chain (v0.11 M4, the controller's ruling for The Heretic Hunt): how long after the last step breaks he comes out at
+## the latest; -1 (the default) takes the steps' `chain`.
+var head_chain := -1.0
 ## The tags' and the HUD's words, set by _plan() (v0.11 M4): The Heretic Hunt's by default; lost_word is the loss's reason.
 var standard_label := "STANDARD"
 var guard_label := "GUARD"
@@ -310,12 +314,12 @@ func step_due(i: int) -> float:
 	return due
 
 
-## The second of the night the head comes out at the latest (v0.11 M4): his time, or `chain` after the last step is broken. With no
-## time of his own (head_at < 0) only the chain brings him, `chain` after the last step breaks; INF while it stands.
+## The second of the night the head comes out at the latest (v0.11 M4): his time, or his chain (`head_chain`, else `chain`) after the
+## last step is broken. With no time of his own (head_at < 0) only the chain brings him; INF while the last step stands.
 func head_due() -> float:
 	var due := INF if head_at < 0.0 else head_at * timeline.stretch_factor()
 	if not steps.is_empty() and steps.back().broken:
-		due = minf(due, (steps.back() as HuntStep).broken_at + chain)
+		due = minf(due, (steps.back() as HuntStep).broken_at + (head_chain if head_chain >= 0.0 else chain))
 	return due
 
 
@@ -534,8 +538,14 @@ func _head_go(announce: bool) -> void:
 	for k in escorts.size():
 		var v: Variant = escorts[k]
 		if _alive(v) and (v as Person).inside:
-			_bring_out(v as Person, _walkable(door + Vector2(ESCORT_SIDE * (-1.0 if k % 2 == 0 else 1.0), -escort_gap)))
+			_bring_out(v as Person, _escort_out(k, door))
 			_keep_from_flight(v as Person, true)
+
+
+## Virtual (v0.11 M4): where the `k`th escort comes out with the head at `door` -- `escort_gap` behind it, ESCORT_SIDE to either side,
+## by default. The Heretic Hunt sets them along the Temple's street, as the Temple stands behind its door.
+func _escort_out(k: int, door: Vector2) -> Vector2:
+	return _walkable(door + Vector2(ESCORT_SIDE * (-1.0 if k % 2 == 0 else 1.0), -escort_gap))
 
 
 ## The head's search, every frame (v0.11 M4): on duty, at his point he stops `head_stop` (searching from the first door), then walks

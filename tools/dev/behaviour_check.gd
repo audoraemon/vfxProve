@@ -132,6 +132,11 @@ extends SceneTree
 ##          her next stretch of road: whisper him off, else Doom, else Discord; Mind Whisper sends her up to 10 units along her road,
 ##          stopping short of the postern while it is watched; at the postern, watched, the change more than 10 s off: whisper one of
 ##          its watch off; never a loud power; the result line gives the longest idle stretch). --seed=, --board as ringers.
+##   hunt  (v0.11 M4) The Heretic Hunt, --case=none (nothing cast) or play, as a player plays it (_hunt_act(): the captain out of
+##          doors, Silent Doom on him; a raised standard unguarded, Smite on its far side from its guards; a raised standard guarded,
+##          or the next sweep within 25 s: Discord where it holds two or more guards of a raised standard (the Smite follows while
+##          they are held), else Silent Doom on a guard alone (else any), else Mind Whisper sends one eight units off; else Silent Doom
+##          on a relief walking in; the result line gives the longest idle stretch). Hit-stop is off for it. --seed= as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -252,6 +257,11 @@ const PRISONER_STRETCH := 6.0
 const PRISONER_AWAY := 8.0
 const PRISONER_WAIT := Vector2(0.0, -3.0)
 const PRISONER_SOON := 10.0
+## The Heretic Hunt's policy (v0.11 M4): how near its time the next sweep's guards are cleared; how far a guard is whispered off; how
+## far from a standard's centre, away from its guards, the Smite lands.
+const HUNT_AHEAD := 25.0
+const HUNT_AWAY := 8.0
+const HUNT_FAR := 0.3
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -372,6 +382,9 @@ func _run() -> void:
 	elif scenario == "prisoner":
 		powers = PackedStringArray(["whisper", "doom", "ember", "discord"])
 		mission.mission_id = MissionBook.PRISONER
+	elif scenario == "hunt":
+		powers = PackedStringArray(["doom", "smite", "whisper", "discord"])
+		mission.mission_id = MissionBook.HERETIC_HUNT
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M4: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -439,6 +452,8 @@ func _run() -> void:
 			await _bread(Battlefield.arg_value(args, "--case"))
 		"prisoner":
 			await _prisoner(Battlefield.arg_value(args, "--case"))
+		"hunt":
+			await _hunt(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2315,6 +2330,107 @@ func _road_progress(road: Array, at: Vector2) -> float:
 ## How far `p` stands from the segment `a`-`b` (v0.11 M4).
 func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	return p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b))
+
+
+## The Heretic Hunt (v0.11 M4), with mission spec §3's policy (_hunt_act()), through _scripted().
+func _hunt(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as HereticHuntDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("hunt", which, func() -> String: return _hunt_act(rules, slots, d, crowd),
+		func() -> String: return "broken=%d current=%d next=%d captain=%s searching=%s phase=%s" % [d.broken_count(), d.current(),
+			d.next_step(), d.head_out, d.searching, d.hint_phase()])
+
+
+## One look of The Heretic Hunt's policy (v0.11 M4): what was cast, or "". The first that applies: the captain out of doors, Silent
+## Doom on him; a raised standard unguarded, Smite on its far side from its guards; each raised standard guarded, then the next sweep
+## within HUNT_AHEAD -- Discord where it holds two or more of a raised standard's guards, else Silent Doom on a guard alone (else any),
+## else Mind Whisper sends one off; a relief walking in, Silent Doom on him.
+func _hunt_act(rules: Rules, slots: Dictionary, d: HereticHuntDirector, crowd: Crowd) -> String:
+	if d.head_out and WarningDirector._alive(d.head) and not (d.head as Person).inside and _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, (d.head as Person).ground_pos)
+		return "doom the captain"
+	for i in d.steps.size():
+		var s := d.standard(i)
+		if s == null or d.steps[i].broken or s.destroyed or d.guarded(i):
+			continue
+		if _slot_ready(rules, slots, "smite"):
+			rules.cast(slots.smite, _hunt_far_side(d, i))
+			return "smite the standard of %s" % d.steps[i].words
+	var work: Array[int] = []
+	for i in d.steps.size():
+		if d.steps[i].raised and not d.steps[i].broken and d.guarded(i):
+			work.append(i)
+	var n := d.next_step()
+	if n >= 0 and d.due_in(n) <= HUNT_AHEAD:
+		work.append(n)
+	for i in work:
+		var on := d.party_on(i)
+		if on.is_empty():
+			continue
+		var words := d.steps[i].words
+		if on.size() >= 2 and d.steps[i].raised and _slot_ready(rules, slots, "discord"):
+			var at := _hunt_pair(on)
+			if at != Vector2.INF:
+				rules.cast(slots.discord, at)
+				return "discord the guards of %s" % words
+		if _slot_ready(rules, slots, "doom"):
+			var pick := on[0]
+			for p in on:
+				if _bread_alone(crowd, p):
+					pick = p
+					break
+			rules.cast(slots.doom, pick.ground_pos)
+			return "doom a guard of %s" % words
+		if _slot_ready(rules, slots, "whisper"):
+			for p in on:
+				if p.shaken():
+					continue
+				var off := p.ground_pos - d.steps[i].spot
+				var away := p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * HUNT_AWAY
+				rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, away)})
+				return "whisper a guard of %s off" % words
+	for i in d.steps.size():
+		if d.steps[i].broken:
+			continue
+		var r := d.relief_walking(i)
+		if r != null and _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, r.ground_pos)
+			return "doom a relief"
+	return ""
+
+
+## Where one Discord holds the most of `on`, two at least (v0.11 M4): on one of them or midway between two; Vector2.INF for nowhere.
+func _hunt_pair(on: Array[Person]) -> Vector2:
+	var best := Vector2.INF
+	var most := 1
+	var spots: Array[Vector2] = []
+	for a in on.size():
+		spots.append(on[a].ground_pos)
+		for b in range(a + 1, on.size()):
+			spots.append((on[a].ground_pos + on[b].ground_pos) * 0.5)
+	for at in spots:
+		var held := 0
+		for p in on:
+			held += 1 if p.ground_pos.distance_to(at) <= DiscordFx.DISCORD_R - 0.1 else 0
+		if held > most:
+			most = held
+			best = at
+	return best
+
+
+## A Smite's aim on standard `i` (v0.11 M4): HUNT_FAR from its centre, away from the nearest of its guards still standing.
+func _hunt_far_side(d: HereticHuntDirector, i: int) -> Vector2:
+	var s := d.standard(i)
+	var near := Vector2.INF
+	for g: HuntDirector.Guard in d.steps[i].party:
+		if WarningDirector._alive(g.man) and (near == Vector2.INF
+				or (g.man as Person).ground_pos.distance_to(s.center()) < near.distance_to(s.center())):
+			near = (g.man as Person).ground_pos
+	if near == Vector2.INF or near.distance_to(s.center()) < 0.01:
+		return s.center()
+	return s.center() + (s.center() - near).normalized() * HUNT_FAR
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

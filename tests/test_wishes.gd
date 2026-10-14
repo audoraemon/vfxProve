@@ -139,8 +139,8 @@ static func _draw(t) -> void:
 		for p: Variant in w.people():
 			shared = shared or people.has(p)
 			people.append(p)
-	t.check(all.size() == WishBook.pool_for(1).size() and WishBook.pool_for(1).size() == 10 and WishBook.pool().size() == 12 and not shared,
-		"asked for more than there are (Tier 1's ten; v0.11 M3: twelve in the pool), it offers what it can; none share a person")
+	t.check(all.size() == WishBook.pool_for(1).size() and WishBook.pool_for(1).size() == 10 and WishBook.pool().size() == 14 and not shared,
+		"asked for more than there are (Tier 1's ten; v0.11 M4: fourteen in the pool), it offers what it can; none share a person")
 	_release(all)
 	for st: Structure in (s.town as Town)._built:
 		if RuinWish.fits(st, "house"):

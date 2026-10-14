@@ -4,6 +4,8 @@ extends Wish
 ## params: "label", its tag's; "unseen", the kill must leave no living witness -- judged as The Warning judges
 ## (Crowd.nearest_witness(), once a Silent Doom's victims have all fallen) -- and a seen kill fails it. A target who leaves
 ## the town alive is beyond the god's reach: failed.
+## v0.11 M4: "soldier" -- the target is a living soldier of no corps out of doors, not taken (soldiers()), at random; "edge" -- its tag
+## pointed at from the screen's edge.
 
 var target: Person
 ## Where the target fell, waiting to be judged; its death once judged, and whether anyone saw it.
@@ -13,12 +15,31 @@ var _seen := false
 
 
 func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:
+	if bool(def.params.get("soldier", false)):
+		# v0.11 M4: a soldier and a lay wisher, both checked before either is taken.
+		var pool := soldiers(crowd, taken)
+		if pool.is_empty() or Wish.lay(crowd, taken).is_empty() or not super(crowd, town, rng, taken):
+			return false
+		target = pool[rng.randi_range(0, pool.size() - 1)]
+		taken.append(target)
+		crowd._field.enemy_killed.connect(_on_killed)
+		return true
 	# Two people or none: checked before either is taken, so a failed choose leaves nobody in `taken`.
 	if Wish.lay(crowd, taken).size() < 2 or not super(crowd, town, rng, taken):
 		return false
 	target = Wish.pick_lay(crowd, rng, taken)
 	crowd._field.enemy_killed.connect(_on_killed)
 	return true
+
+
+## The soldiers a sergeant may be (v0.11 M4, mission spec §5): living, out of doors, of no corps, none of `taken` -- the pool
+## MissionDirector._free_soldiers() draws from -- in the crowd's order.
+static func soldiers(crowd: Crowd, taken: Array) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in crowd.soldiers:
+		if MissionDirector._alive(p) and not p.inside and p.corps == Person.Corps.NONE and not taken.has(p):
+			out.append(p)
+	return out
 
 
 func people() -> Array[Person]:
@@ -53,7 +74,7 @@ func _act(_rules: Rules) -> Status:
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if MissionDirector._alive(target) and not target.inside:
-		out.append(MapTag.person(target.ground_pos, COLOR, String(def.params.get("label", ""))))
+		out.append(MapTag.person(target.ground_pos, COLOR, String(def.params.get("label", "")), bool(def.params.get("edge", false))))
 	return out
 
 

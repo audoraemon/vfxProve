@@ -1,7 +1,7 @@
 class_name RuinWish
 extends Wish
 ## "Burn the moneylender's house", "Bring down the watchtower" (v0.11 M1, spec §5.3, Ruin): destroy the marked building, by
-## any means. params: "role" -- "house" or "tower" (fits()) -- and "label", its tag's.
+## any means. params: "role" -- "house", "tower" or (v0.11 M4) "barn" (fits()) -- and "label", its tag's.
 
 var target: Structure
 
@@ -19,13 +19,16 @@ func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) 
 
 
 ## A building of `role`: "house" a dwelling (a HOUSE-kind house with no art tag, or a townhouse: not a tavern, smithy,
-## workshop or carpenter's), "tower" a tower of the walls (not the bell tower).
+## workshop or carpenter's), "tower" a tower of the walls (not the bell tower). v0.11 M4: "barn" a farmhouse by the fields -- a HOUSE
+## of role farm with no art tag (one of TownLayout.BARNS; never the windmill or the watermill).
 static func fits(s: Structure, role: String) -> bool:
 	match role:
 		"house":
 			return s.role == &"house" and s.kind == Structure.Kind.HOUSE and s.art_tag in [&"", &"townhouse"]
 		"tower":
 			return s.role == &"tower" and s.art_tag != &"bell_tower"
+		"barn":
+			return s.role == &"farm" and s.kind == Structure.Kind.HOUSE and s.art_tag == &""
 	return false
 
 

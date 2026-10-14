@@ -64,7 +64,7 @@ static func _vanish(s: Dictionary, p: Person) -> void:
 
 static func _pool(t) -> void:
 	var all := _ids(WishBook.pool())
-	t.check(all.size() == 12 and all.slice(10) == ["bully", "pressed"], "the pool: M2's ten, then Omen's two (%s)" % [all])
+	t.check(all.size() == 14 and all.slice(10, 12) == ["bully", "pressed"], "the pool: M2's ten, then Omen's two (%s)" % [all])
 	var bully := _def("bully")
 	var pressed := _def("pressed")
 	t.check(bully.text == "Scare off the bully, unharmed" and bully.kind == "fright" and bully.reward == 10 and bully.min_tier == 2
@@ -73,8 +73,8 @@ static func _pool(t) -> void:
 		"their words, kinds and rewards; heard from Omen up, never in a sleeping town")
 	t.check(Array(_def("informer").clashes) == ["hunts_informer"] and _def("sign").min_tier == 1,
 		"the informer wish keeps off The Informer's night; the older wishes are heard from Whisper")
-	t.check(_ids(WishBook.pool_for(1)) == all.slice(0, 10) and _ids(WishBook.pool_for(2)) == all,
-		"a Tier 1 night draws from M2's ten, in M2's order; Omen's from all twelve")
+	t.check(_ids(WishBook.pool_for(1)) == all.slice(0, 10) and _ids(WishBook.pool_for(2)) == all.slice(0, 12),
+		"a Tier 1 night draws from M2's ten, in M2's order; Omen's from M3's twelve")
 
 
 static func _draws(t) -> void:

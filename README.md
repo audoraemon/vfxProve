@@ -168,41 +168,58 @@ All shaders are drawn once at startup (`FxParts.prewarm`) — without it the Com
 
 ## Audio
 
-`python tools/audio/synth.py` regenerates all 33 cues deterministically (numpy + scipy); `--only <cue>` for one, `--spectrograms captures` renders a review sheet. Cue timings per stage are in the design spec.
+The game's sounds come from two places, sorted by kind under `assets/audio/`:
 
-### Interface sounds made with GodotSfxr
+| Kind | Folders | Made by |
+|---|---|---|
+| Powers | `nova`, `orbital`, `gravity`, `laser`, `heaven`, `cinder`, `tsunami`, `tornado`, `judgement`, `glacial`, `dragon` (78 files, shared by all 38 powers) | `tools/audio/synth.py` |
+| Interface | `ui` (14) | GodotSfxr |
+| Citizens and soldiers | `citizen` (9) | GodotSfxr |
+| Buildings and the town | `building` (10) | GodotSfxr |
+| Music | `music` (4 loops) | GodotSfxr |
 
-[GodotSfxr](https://github.com/tomeyro/godot-sfxr) (MIT, `addons/godot_sfxr`, enabled in the project) is an sfxr synth inside the editor. Nine interface cues are made with it; `synth.py` no longer makes any of them:
+`python tools/audio/synth.py` regenerates the powers' cues deterministically (numpy + scipy); `--only <cue>` for one, `--spectrograms captures` renders a review sheet. It leaves the GodotSfxr folders alone.
+
+### GodotSfxr
+
+[GodotSfxr](https://github.com/tomeyro/godot-sfxr) (MIT, `addons/godot_sfxr`, enabled in the project) is an sfxr synth inside the editor. Sources live in `tools/audio/sfxr/<category>/`, and `tools/audio/sfxr_bake.gd` bakes each to `assets/audio/<category>/<cue>.wav`. The game plays plain WAVs and never loads the addon. Sources come in two kinds:
+
+- **`<cue>.tres`:** one `SfxrAudioStream`, one sfxr sound. Open it in the editor: its settings show in the inspector, with a generator for each preset, and any change rebuilds the sound and plays it. Used for the short interface blips and the citizens' yelps and shouts.
+- **`<cue>.score.json`:** a score of sfxr notes that the bake mixes into one 16-bit WAV. One sfxr sound is one note, so music, chords, the bell's partials, the crowd and a building coming down are scores. Each part plays an instrument from `tools/audio/sfxr/voices/`, itself an `SfxrAudioStream` you can audition and tweak in the inspector. The score format is at the top of `sfxr_bake.gd`: note times in beats or seconds, pitch as a note name or Hz, hold, attack, decay, gain, an echo per part (sfxr has no reverb), and seamless loops.
+
+To change a sound, edit its source or a voice it uses, save, then bake and import:
+
+```bash
+"$GODOT" --headless --path . -s tools/audio/sfxr_bake.gd -- --only town_bell
+"$GODOT" --headless --editor --path . --import
+```
+
+Without `--only` it bakes all 37 (about two and a half minutes; the music is most of it). `--rebuild` builds each `.tres` from its settings first and saves that back into the resource. The bake refuses a `.tres` that clips and warns about a voice that clips: lower its `sample_params/sound_vol`. A score is normalized to `peak_db` (or `rms_db`, which the music stems use to keep their balance). Levels in play are each cue's `db` in `Sfx.CATALOG`.
+
+A new sound needs its source, an entry in `Sfx.CATALOG` and a call that plays it (`UiSound.play()` for the interface, `Sfx`/`ctx.play()` in the world).
+
+The interface cues:
 
 | Cue | When it plays | Sound |
 |---|---|---|
 | `ui_hover` | the pointer moves onto a menu item | a tiny rounded chip blip, D6 |
 | `ui_click` | a menu item is clicked | a punchy G5 "boop" that sags a little |
-| `ui_buzz` | a cast is refused, or a choice cannot be taken | a low warbling buzz falling a fifth, E3 to A2, fading out |
-| `ui_back` | Esc, a right-click or the slot's key again lets go of a power or a held press | `ui_focus` backwards: a sine falling 1400 to 650 Hz |
+| `ui_focus` | a power is picked | a sine rising 700 to 1400 Hz |
+| `ui_back` | Esc, a right-click or the slot's key again lets go of a power or a held press | `ui_focus` backwards |
+| `ui_buzz` | a cast is refused, or a choice cannot be taken | a low warbling buzz falling a fifth, E3 to A2 |
+| `ui_pause` / `ui_resume` | the pause menu opens / closes back into the mission | 660 then 440 Hz / 440 then 660 Hz |
 | `ui_mode` | Q or E steps a power's modes | a tiny chip blip up a fifth |
-| `ui_resume` | the pause menu closes back into the mission | `ui_pause` turned upward: 440 then 660 Hz |
 | `ui_ready` | a slot comes off its cooldown | a coin pickup, B5 up to E6 |
 | `ui_notice` | a banner comes on screen (not a refused cast's, nor the Divine Surge's) | a sine bell, C5 up the octave |
 | `ui_surge` | the Divine Surge resets every cooldown | the classic sfxr power-up |
+| `ui_manifest` | a loadout is manifested | an A chord swelling open, then a boom (score) |
+| `ui_win` / `ui_lose` | the results | C E G C and its chord / G F E♭ C falling (scores) |
 
-Each one's source is an `SfxrAudioStream` resource in `tools/audio/sfxr/`. To change one:
-
-1. Open it in the editor. Its sfxr settings show in the inspector, with a generator for each preset.
-2. Change any setting. The plugin rebuilds the sound and plays it.
-3. Save the resource, then bake it and import:
-
-```bash
-"$GODOT" --headless --path . -s tools/audio/sfxr_bake.gd -- --only ui_back
-"$GODOT" --headless --editor --path . --import
-```
-
-The bake writes `assets/audio/ui/<cue>.wav`, which the game plays like every other cue. The game never loads the addon. Without `--only` it bakes all nine. `--rebuild` builds each from its settings first, and saves that back into the resource. The bake refuses a sound that clips: lower its `sample_params/sound_vol`.
-
-A new sfxr sound needs its resource in `tools/audio/sfxr/`, an entry in `Sfx.CATALOG` and `UiSound.CUES`, and a call to `UiSound.play()`.
+The rest: `citizen` has the yelps (4) and shouts (3), the crowd's panic bed (a looped murmur and 38 cries) and the soldiers' rally (a bugle call); `building` has the stone, timber and tree collapses (3 each, noise crunches, knocks, splinters and thuds) and the town bell (three strokes, seven sine partials each); `music` has the theme (24 s at 60 bpm) and the battle loop's base, drums and lead stems (16 s at 120 bpm, the same notes as before).
 
 Things to know about GodotSfxr:
-- **Loudness:** its flanger stage doubles the signal even when the flanger is off. A `sound_vol` near 0.25 to 0.35 already reaches full scale.
+- **Loudness:** its flanger stage doubles the signal even when the flanger is off. A `sound_vol` near 0.25 to 0.35 already reaches full scale, and a resonant low-pass rings higher still.
+- **Length:** each envelope stage is at most 2.27 s, so one note is at most about 6.8 s.
 - **Arpeggio and retrigger:** the arpeggio is timed from the sound's start, not from each retrigger. A retriggered arpeggio does not trill: it jumps once.
 - **One local patch:** its `_get_property_list()` is typed `Array[Dictionary]`. Godot 4.7 logs an error for the untyped original.
 

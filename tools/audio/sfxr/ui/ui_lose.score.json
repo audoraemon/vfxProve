@@ -1,0 +1,14 @@
+{"length": 2.2, "peak_db": -1.0, "parts": [
+  {"voice": "saw_soft", "gain": 0.6, "echo": {"delay": 0.2, "feedback": 0.3, "count": 2}, "notes": [
+    {"t": 0.0, "p": "G4", "hold": 0.35, "decay": 0.4},
+    {"t": 0.3, "p": "F4", "hold": 0.35, "decay": 0.4},
+    {"t": 0.6, "p": "Eb4", "hold": 0.35, "decay": 0.4},
+    {"t": 0.9, "p": "C4", "hold": 0.35, "decay": 0.4}
+  ]},
+  {"voice": "sine_pluck", "gain": 0.4, "notes": [
+    {"t": 0.0, "p": "G3", "hold": 0.3, "decay": 0.45},
+    {"t": 0.3, "p": "F3", "hold": 0.3, "decay": 0.45},
+    {"t": 0.6, "p": "Eb3", "hold": 0.3, "decay": 0.45},
+    {"t": 0.9, "p": "C3", "hold": 0.3, "decay": 0.45}
+  ]}
+]}

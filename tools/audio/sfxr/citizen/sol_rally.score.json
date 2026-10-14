@@ -1,0 +1,12 @@
+{"length": 1.4, "peak_db": -1.0, "parts": [
+  {"voice": "horn", "gain": 0.7, "echo": {"delay": 0.16, "feedback": 0.3, "count": 3}, "notes": [
+    {"t": 0.0, "p": "D4", "hold": 0.1, "decay": 0.06},
+    {"t": 0.14, "p": "D4", "hold": 0.1, "decay": 0.06},
+    {"t": 0.28, "p": "A4", "hold": 0.45, "decay": 0.4}
+  ]},
+  {"voice": "horn", "gain": 0.35, "notes": [
+    {"t": 0.0, "p": "D3", "hold": 0.1, "decay": 0.06},
+    {"t": 0.14, "p": "D3", "hold": 0.1, "decay": 0.06},
+    {"t": 0.28, "p": "A3", "hold": 0.45, "decay": 0.4}
+  ]}
+]}

@@ -1,0 +1,31 @@
+[gd_resource type="AudioStreamWAV" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/godot_sfxr/SfxrAudioStream.gd" id="1_sfxr"]
+
+[resource]
+script = ExtResource("1_sfxr")
+wave/type = 0
+sample_params/sound_vol = 0.2861
+sample_params/sample_rate = 44100.0
+envelope/attack_time = 0.093915
+envelope/sustain_time = 0.257196
+envelope/punch_time = 0.2
+envelope/decay_time = 0.318481
+frequency/start_frequency = 0.351734
+frequency/min_freq_cutoff = 0.0
+frequency/slide = 0.2316
+frequency/delta_slide = -0.26
+vibrato/depth = 0.06
+vibrato/speed = 0.315805
+arpeggiation/frequency_mult = 0.0
+arpeggiation/change_speed = 0.0
+duty_cycle/duty_cycle = 0.5
+duty_cycle/sweep = 0.0
+retrigger/rate = 0.0
+flanger/offset = 0.0
+flanger/sweep = 0.0
+low_pass_filter/cutoff_frequency = 0.36
+low_pass_filter/cutoff_sweep = 0.0
+low_pass_filter/resonance = 0.0
+high_pass_filter/cutoff_frequency = 0.1
+high_pass_filter/cutoff_sweep = 0.0

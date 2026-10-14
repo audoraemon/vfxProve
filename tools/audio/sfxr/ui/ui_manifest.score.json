@@ -1,0 +1,14 @@
+{"length": 1.6, "peak_db": -1.0, "parts": [
+  {"voice": "saw_swell", "gain": 0.6, "notes": [
+    {"t": 0.0, "p": "A2"},
+    {"t": 0.0, "p": "E3"},
+    {"t": 0.0, "p": "A3"},
+    {"t": 0.0, "p": "E4"}
+  ]},
+  {"voice": "boom", "gain": 0.9, "notes": [
+    {"t": 0.88}
+  ]},
+  {"voice": "rumble", "gain": 0.35, "notes": [
+    {"t": 0.88, "decay": 0.6}
+  ]}
+]}

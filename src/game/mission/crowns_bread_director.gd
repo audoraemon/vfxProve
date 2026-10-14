@@ -73,6 +73,9 @@ var rebuild_progress: Array[float] = []
 var rebuilt := 0
 ## Each target's fire's seconds with one on guard, in use (v0.11 M4).
 var _alight: Array[float] = []
+## Everyone the director ever made an engineer, reliefs and the men they replaced too (v0.11 M4, the final review: teardown() lets
+## every one go from the workshop's not_hired list; untyped, as any may be freed).
+var _hired: Array = []
 ## Seconds into the night, and to the next look (v0.11 M4).
 var _clock := 0.0
 var _tick_in := 0.0
@@ -91,7 +94,7 @@ func _begin() -> void:
 		rebuild_progress.append(0.0)
 		_alight.append(0.0)
 		faces.append(_face(s))
-		waiting_in.append(s if i < 2 else _gate_tower())
+		waiting_in.append(_gate_tower() if s == town.bridge else s)  # by identity: with a target missing, the bridge is not third
 		var list: Array = []
 		for k in NIGHT_CREW:
 			list.append(_appoint(i, _post(i, k, false, list), false, list))
@@ -107,7 +110,8 @@ func _begin() -> void:
 	rules.banner.emit("THE CROWN'S BREAD")
 
 
-## The granary, the mill and the bridge (v0.11 M4, Decision 61), those the town has.
+## The granary, the mill and the bridge (v0.11 M4, Decision 61), those the town has and no wish has set aside (reserved_places: the
+## final review's defence in depth beside the razes_bread tag that keeps the barn wish off this night).
 func _find_targets() -> Array[Structure]:
 	var granary: Structure = null
 	var mill: Structure = null
@@ -121,7 +125,7 @@ func _find_targets() -> Array[Structure]:
 			mill = s
 	var out: Array[Structure] = []
 	for s in [granary, mill, town.bridge]:
-		if s != null:
+		if s != null and not reserved_places.has(s):
 			out.append(s)
 	return out
 
@@ -213,6 +217,7 @@ func _appoint(i: int, post: Vector2, shift: bool, mates: Array) -> Crew:
 ## `p` dressed as an engineer (the apron, cap and hammer) and kept from the workshop's hiring (v0.11 M4).
 func _make_engineer(p: Person) -> void:
 	p.profile.role = CitizenProfile.Role.ENGINEER
+	_hired.append(p)
 	if crowd.engineers != null and not crowd.engineers.not_hired.has(p):
 		crowd.engineers.not_hired.append(p)
 
@@ -294,17 +299,18 @@ func step(delta: float) -> void:
 			_work(i, delta, looking, evacuating)
 
 
-## Every crewman of a target not razed who stands out of doors is kept out of the town's flight (v0.11 M4, the controller's ruling;
-## M3's final review's rule, MissionDirector._keep_from_flight(): `evacuating`, at the first look after the evacuation began, stops
-## one it sent running; a whisper it found him under ends with him on his feet). _work() then puts him on duty again by its own
-## rules. A shift man waiting indoors is on duty and the evacuation passes him by.
+## Every crewman of a target not razed is kept out of the town's flight by the one rule (v0.11 M4, the final review's ruling,
+## MissionDirector._hold_all(): `evacuating`, at the first look after the evacuation began, stops one it sent running; a whisper it
+## found him under ends with him on his feet; a false calm's owed flight -- a crewman held to a burning post, HOLD_POST -- is let go).
+## _work() then puts him on duty again by its own rules. A shift man waiting indoors is on duty and the evacuation passes him by.
 func _keep_held(evacuating: bool) -> void:
+	var people: Array = []
 	for i in targets.size():
 		if razed(targets[i]):
 			continue
 		for c: Crew in crews[i]:
-			if _alive(c.man) and not (c.man as Person).inside:
-				_keep_from_flight(c.man as Person, evacuating)
+			people.append(c.man)
+	_hold_all(people, evacuating)
 
 
 ## Crewman `c` of target `i` is on guard now (v0.11 M4): alive, out of doors, calm (GUARD_MINDS) and within GUARD_REACH of it.
@@ -424,10 +430,12 @@ func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 
 ## A relief for fallen crewman `c` of target `i` (v0.11 M4): the nearest lay citizen with a way to the post, made an engineer. One
 ## chosen once the town is running is stopped from the flight first (Task 1's Hunt relief, the review's fix round 2): go_duty() refuses
-## a fleeing man, and he would run on to the gates.
+## a fleeing man, and he would run on to the gates. With none who can reach the post, the search backs off and is tried again
+## RELIEF_AFTER later (the final review: not at every look).
 func _relieve(i: int, c: Crew) -> void:
 	var p := _lay_reaching(c.post, _busy())
 	if p == null:
+		c.fallen = 0.0
 		return
 	_make_engineer(p)
 	c.man = p
@@ -529,12 +537,13 @@ func report() -> Dictionary:
 	return {"razed": razed_count(), "rebuilt": rebuilt}
 
 
-## Lets go of the town's engineers' lists, then the Raze type's (v0.11 M4).
+## Lets go of the town's engineers' lists -- every man it ever made an engineer, the replaced ones too (_hired) -- then the Raze type's
+## (v0.11 M4).
 func teardown() -> void:
 	if is_instance_valid(crowd) and crowd.engineers != null:
 		for s in targets:
 			if is_instance_valid(s):
 				crowd.engineers.hands_off.erase(s)
-		for v: Variant in _busy():
+		for v: Variant in _hired:
 			crowd.engineers.not_hired.erase(v)
 	super()

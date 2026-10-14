@@ -33,11 +33,15 @@ func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) 
 
 
 ## The soldiers a sergeant may be (v0.11 M4, mission spec §5): living, out of doors, of no corps, none of `taken` -- the pool
-## MissionDirector._free_soldiers() draws from -- in the crowd's order.
+## MissionDirector._free_soldiers() draws from -- in the crowd's order. Each read as a Variant and through MissionDirector._alive()
+## before any member (the final review): a body freed after its death fade aborts a typed loop.
 static func soldiers(crowd: Crowd, taken: Array) -> Array[Person]:
 	var out: Array[Person] = []
-	for p in crowd.soldiers:
-		if MissionDirector._alive(p) and not p.inside and p.corps == Person.Corps.NONE and not taken.has(p):
+	for v: Variant in crowd.soldiers:
+		if not MissionDirector._alive(v):
+			continue
+		var p := v as Person
+		if not p.inside and p.corps == Person.Corps.NONE and not taken.has(p):
 			out.append(p)
 	return out
 

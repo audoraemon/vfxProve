@@ -90,9 +90,20 @@ const LINES := {
 	"heretic_hunt.guarded": "Its guards (red) hold the standard: blows only shake it. Remove every one first.",
 	"heretic_hunt.open": "The standard (gold) stands unguarded. Break it now, before a new guard comes.",
 	"heretic_hunt.waiting": "The hunt moves on soon. Clear the next sweep's guards (red) shortly before it comes.",
+	"heretic_hunt.coming": "The captain comes out of the Temple (grey) in {n} s. Be ready on his road to your cellar (blue).",
 	"heretic_hunt.captain": "The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it.",
 	"heretic_hunt.searching": "The captain searches the houses by your cellar. Kill him before he reaches its door.",
 }
+
+
+## Where a line counts down (v0.11 M4, the controller's ruling for The Heretic Hunt's captain): the HUD puts the director's
+## hint_seconds() in its place, rounded up (filled()).
+const SECONDS := "{n}"
+
+
+## `text` with its SECONDS put as `seconds`, rounded up and never below 0 (v0.11 M4); a line without it is returned as it is.
+static func filled(text: String, seconds: float) -> String:
+	return text.replace(SECONDS, str(ceili(maxf(seconds, 0.0)))) if text.contains(SECONDS) else text
 
 
 ## The line for the mission or act `id` in `phase`: the phase's own if it has one, else the mission's, else "".

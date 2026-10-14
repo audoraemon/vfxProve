@@ -241,13 +241,16 @@ func event_rows() -> Array:
 
 
 ## The how-to-win line for the mission or act being played, in its director's phase (v0.10 M6, MissionHints); once a board
-## night's main objective is done (v0.11 M1, spec §6), the open wishes' or the ascent's; "" for none.
+## night's main objective is done (v0.11 M1, spec §6), the open wishes' or the ascent's; "" for none. v0.11 M4: a line that counts
+## down shows the director's seconds (MissionHints.filled()).
 func hint_text() -> String:
 	if _rules == null or _rules.mission == null:
 		return ""
 	if _rules.main_done:
 		return MissionHints.WISHES_LINE if _open_wishes() else MissionHints.ASCEND_LINE
-	return MissionHints.line(_rules.mission.id, _rules.director.hint_phase() if _rules.director != null else "")
+	if _rules.director == null:
+		return MissionHints.line(_rules.mission.id)
+	return MissionHints.filled(MissionHints.line(_rules.mission.id, _rules.director.hint_phase()), _rules.director.hint_seconds())
 
 
 ## A wish of the night is still open (v0.11 M1).

@@ -117,6 +117,7 @@ static func run(t) -> void:
 	_frame(t)
 	_recall(t)
 	_recall_flight(t)
+	_hold_all(t)
 	_hands_off(t)
 	_lamb_as_before(t)
 	_hooks_take_the_charge(t)
@@ -128,6 +129,7 @@ static func run(t) -> void:
 	_hunt_no_captain_time(t)
 	_hunt_pre_destroyed(t)
 	_hunt_relief_in_flight(t)
+	_hunt_relief_backs_off(t)
 	_bound_both(t)
 
 
@@ -184,6 +186,34 @@ static func _recall_flight(t) -> void:
 	d._recall_to(a[1], post, true)
 	t.check(a[1].mind == Person.Mind.WHISPERED and not a[1]._whisper_fled,
 		"a whisper the evacuation found him under ends with him on his feet, not running for the gates")
+	Kit.done(s)
+
+
+## The one held-people rule (v0.11 M4, the final review's ruling, MissionDirector._hold_all()), shared by The Crown's Bread, The Prisoner
+## and the Hunt type: at the evacuation's first look one it sent running stops, indoors or out; a whisper's owed flight ends; a false
+## calm's owed flight is let go; a freed body is passed by; with no evacuation a man already running is let be.
+static func _hold_all(t) -> void:
+	var s := Kit.world(_probe(), MissionDirector.new())
+	var d: MissionDirector = s.d
+	var a := d._lay_near(Vector2(0.0, 8.0), 5)
+	a[0].flee()
+	a[1].whisper(a[1].ground_pos + Vector2(2.0, 0.0), MindWhisperFx.LINGER)
+	a[1]._whisper_fled = true
+	a[2].fearless_left = 5.0
+	a[2].flee()
+	d._take_inside(a[3], null)
+	a[3].flee()
+	var gone: Variant = a[4]
+	Kit.free_body(s, gone)
+	t.check(a[0].mind == Person.Mind.FLEE and a[2]._reassured_fled and a[2].mind != Person.Mind.FLEE and a[3].mind == Person.Mind.FLEE,
+		"(set-up) one running, one whispered owing a flight, one calmed owing a flight, one indoors running")
+	MissionDirector._hold_all([a[0], a[1], a[2], a[3], gone], false)
+	t.check(a[0].mind == Person.Mind.FLEE and not a[1]._whisper_fled and not a[2]._reassured_fled,
+		"no evacuation: a man already running is let be (a god's own flight); the whisper's and the false calm's owed flights end")
+	a[2]._reassured_fled = true
+	MissionDirector._hold_all([a[0], a[1], a[2], a[3], gone], true)
+	t.check(a[0].mind == Person.Mind.CALM and a[3].mind == Person.Mind.CALM and not a[2]._reassured_fled and a[1].mind == Person.Mind.WHISPERED,
+		"at the evacuation's first look the running are stopped, indoors or out, back on their feet; a freed body is passed by")
 	Kit.done(s)
 
 
@@ -340,10 +370,10 @@ static func _hunt_head(t) -> void:
 	Kit.run_for(s, 0.1)
 	var head := d.head as Person
 	t.check(d.head_out and not head.inside and head.mind == Person.Mind.DUTY and Kit.labels(d).has("CAPTAIN")
-		and d.hint_phase() == "captain", "once both are raised, the head called earlier comes out, on duty, tagged")
+		and d.hint_phase() == "guarded", "once both are raised, the head called earlier comes out, on duty, tagged; a standing standard leads the hint")
 	Kit.arrive(head, d.head_route[0])
 	Kit.run_for(s, d.head_stop + 0.3)
-	t.check(d.searching and d._route_at == 1 and d.hint_phase() == "searching", "he searches a door head_stop, then walks on")
+	t.check(d.searching and d._route_at == 1 and d.hint_phase() == "guarded", "he searches a door head_stop, then walks on")
 	Kit.arrive(head, d.head_route[1])
 	Kit.run_for(s, 0.1)
 	var o := HuntObjective.new("Break the drill", "drill")
@@ -404,15 +434,24 @@ static func _hunt_evacuation(t) -> void:
 	var head := d.head as Person
 	var escort := d.escorts[0] as Person
 	var guard := (d.steps[0].party[0] as HuntDirector.Guard).man as Person
+	var away_g: HuntDirector.Guard = d.steps[1].party[0]
+	var away := away_g.man as Person
+	Kit.arrive(away, away_g.post + Vector2(4.0, 0.0))
+	away.mind = Person.Mind.CALM
+	Kit.run_for(s, 0.6)
+	t.check(away.mind == Person.Mind.CALM and away_g.away > 0.0 and away_g.away < d.return_after,
+		"(set-up) a guard away from his post, calm, not yet due back")
 	guard.mind = Person.Mind.RECOVER
 	escort.mind = Person.Mind.RECOVER
 	head.whisper(head.ground_pos + Vector2(1.0, 0.0), MindWhisperFx.LINGER)
 	Kit.evacuate(s)
-	t.check(guard.mind == Person.Mind.FLEE and escort.mind == Person.Mind.FLEE and head._whisper_fled,
-		"(set-up) the evacuation sends the recovering ones running and owes the whispered captain a flight")
+	t.check(guard.mind == Person.Mind.FLEE and escort.mind == Person.Mind.FLEE and away.mind == Person.Mind.FLEE and head._whisper_fled,
+		"(set-up) the evacuation sends the recovering ones and the one away running and owes the whispered captain a flight")
 	Kit.run_for(s, 0.6)
 	t.check(guard.mind == Person.Mind.DUTY and escort.mind == Person.Mind.DUTY and not head._whisper_fled and head.mind == Person.Mind.WHISPERED,
 		"at the first look after it: the guard and the escort called back, the captain's flight ended")
+	t.check(away.mind == Person.Mind.DUTY and away.anchor == away_g.post and away_g.away < d.return_after,
+		"one away from his post when the evacuation begins is recalled at once, not return_after later (the final review's one policy)")
 	head._wake()  # headless people never think: the whisper wears off by hand
 	Kit.run_for(s, 1.0)
 	t.check(head.mind == Person.Mind.DUTY and MissionDirector._alive(head) and not d.head_down() and not d.found,
@@ -484,6 +523,27 @@ static func _hunt_relief_in_flight(t) -> void:
 	var relief: Variant = (d.steps[0].party[0] as HuntDirector.Guard).man
 	t.check(relief != gone and MissionDirector._alive(relief) and (relief as Person).mind == Person.Mind.DUTY,
 		"a relief picked after the evacuation began is put on duty at the post, not left running for the gates")
+	Kit.done(s)
+
+
+## A hunt whose fallen guards no one can reach (v0.11 M4, the final review): it counts its searches for a relief.
+class NoRelief:
+	extends Drill
+	var searched := 0
+
+	func _lay_reaching(_at: Vector2, _exclude: Array = []) -> Person:
+		searched += 1
+		return null
+
+
+## With no relief who can reach the post, the search backs off and is tried again relief_after later, not at every look (v0.11 M4).
+static func _hunt_relief_backs_off(t) -> void:
+	var s := Kit.world(_probe(), NoRelief.new())
+	var d: NoRelief = s.d
+	var g: HuntDirector.Guard = d.steps[0].party[0]
+	Kit.free_body(s, g.man)
+	Kit.run_for(s, 2.0 * d.relief_after + 2.0)
+	t.check(d.searched == 2 and g.fallen < d.relief_after, "two searches in two relief_after spans, not one every look (%d)" % d.searched)
 	Kit.done(s)
 
 

@@ -76,6 +76,12 @@ func hint_phase() -> String:
 	return ""
 
 
+## Virtual (v0.11 M4): the seconds a phase's line counts down, put in place of MissionHints.SECONDS (The Heretic Hunt's captain
+## coming out); 0 by default, for the lines that count nothing.
+func hint_seconds() -> float:
+	return 0.0
+
+
 ## Virtual (v0.10 M6, spec §5): the stops of the camera's tour before the clock starts, as [ground point, caption] pairs;
 ## none by default, and then the intro is the sweep. A stop with no one to show is left out.
 func tour() -> Array:
@@ -409,3 +415,16 @@ static func _keep_from_flight(p: Person, evacuating: bool) -> void:
 		p.release_from_queue()
 		p.passing_gate = null
 		p.mind = Person.Mind.CALM
+
+
+## The one rule for a Tier 3 director's held people (v0.11 M4, the final review's ruling; The Crown's Bread, The Prisoner and the
+## Hunt type use it): each living one of `people`, indoors or out, is kept out of the town's flight (_keep_from_flight(), `evacuating`
+## at the first look after the evacuation began), and the flight a false calm owes him is let go (Person._reassured_fled: a hold past
+## fear puts off an evacuation's flee() until it wears off, when he would run for the gates after that one look had passed). The
+## caller then puts each on duty again by its own rules -- one away from his post when the evacuation begins is recalled at once.
+## Untyped: any may be a body freed after its death fade. M2's and M3's directors keep their own ways (their references are exact).
+static func _hold_all(people: Array, evacuating: bool) -> void:
+	for v: Variant in people:
+		if _alive(v):
+			_keep_from_flight(v as Person, evacuating)
+			(v as Person)._reassured_fled = false

@@ -41,8 +41,8 @@ const HEAD_PACE := 0.5
 const QUIET_R := 2.0
 const HOUSE_TRIES := 12
 ## Where the camera rests (v0.11 M4, Decision 80; moved from (-6, 3) by the photographs): the first spot up and right, the second left of
-## the centre below the hint and the wishes' rows (at (-6, 3) it sat under them), the third's arrow on the bottom edge, the cellar low at
-## the left, the Temple's door at the right.
+## the centre below the hint and the wishes' rows (at (-6, 3) it sat under them), the cellar low at the left, the Temple's door at the
+## right.
 const CAMERA_AT := Vector2(-10.5, -1.5)
 ## How far apart two doors of his route stand at the least (v0.11 M4): beyond twice the reach at which he counts a door reached.
 const DOOR_APART := 2.0 * HuntDirector.ARRIVE
@@ -53,6 +53,8 @@ const STONE_SHAKE := 2.0
 var cellar: Structure
 var cellar_door := Vector2.INF
 var temple: Structure
+## The cellar's own damage filter before it was made stone (v0.11 M4, the final review): put back at teardown().
+var _cellar_filter := Callable()
 
 
 ## The hunt's plan (v0.11 M4): the knobs, the three sweeps, the Temple, the cellar (stone tonight) and its door.
@@ -78,6 +80,7 @@ func _plan() -> void:
 	cellar = _cellar_house()
 	if cellar != null:
 		cellar_door = _open_door(cellar, _walkable(TEMPLE_DOOR))
+		_cellar_filter = cellar.damage_filter
 		cellar.damage_filter = _stone
 	else:
 		push_warning("HereticHuntDirector: no cellar; the captain has nowhere to search")
@@ -215,8 +218,8 @@ func tour() -> Array:
 	return out
 
 
-## Lets go of the cellar's stone, then the Hunt type's (v0.11 M4).
+## Lets go of the cellar's stone -- its own filter put back, none for most dwellings -- then the Hunt type's (v0.11 M4).
 func teardown() -> void:
-	if is_instance_valid(cellar):
-		cellar.damage_filter = Callable()
+	if is_instance_valid(cellar) and cellar.damage_filter == _stone:
+		cellar.damage_filter = _cellar_filter
 	super()

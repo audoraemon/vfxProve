@@ -336,11 +336,10 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
        its ring snapped to 0.7 and 2.0 from the spot, and one post lay in a yard no relief could reach);
     3. **the south quarter** (district 7): the spot (-1.5, 12.0), at the Main Gate plaza's west edge.
   - **The last sweep:** the cellar's own quarter (district 6), led by the captain.
-  - **The Temple's door** at (0.8, -5.0): the captain comes out here. Tagged TEMPLE while he is inside.
+  - **The Temple's door** at (0.8, -5.0): the captain comes out here. Tagged CAPTAIN - IN THE TEMPLE, grey, while he is inside.
   - **The camera** rests at (-10.5, -1.5) (Task 7's photographs moved it from (-6.0, 3.0): there the west spot and its party sat
     under the hint and the wishes' rows). The first spot is up and to the right, the second left of the centre below the stack's
-    rows, the third's arrow on the bottom edge, the cellar low at the left, the Temple's door at the right. None sits in the HUD
-    stack.
+    rows, the cellar low at the left, the Temple's door at the right. None sits in the HUD stack.
 - **Claims:** 12 lay citizens: three parties of three (a standard-bearer and two Inquisitors), the captain and his two
   escorts. Reliefs as they are needed. One dwelling (the cellar). No soldiers.
 - **Main objective:** break the hunt.
@@ -407,7 +406,7 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
   - CAPTAIN - IN THE TEMPLE, grey, over the Temple's door until he comes out. Then CAPTAIN, gold, with an edge arrow; CAPTAIN -
     SEARCHING once he searches. ESCORT, red, on each escort.
   - CELLAR, steel blue, with an edge arrow.
-- **Hint phases:**
+- **Hint phases** (a standing standard's phase comes first, even with the captain out: the final review):
 
   | Phase | Line |
   |---|---|
@@ -415,6 +414,7 @@ lantern-standards and its captain, each coming on the chain. Each standard is gu
   | `guarded` | Its guards (red) hold the standard: blows only shake it. Remove every one first. |
   | `open` | The standard (gold) stands unguarded. Break it now, before a new guard comes. |
   | `waiting` | The hunt moves on soon. Clear the next sweep's guards (red) shortly before it comes. |
+  | `coming` | The captain comes out of the Temple (grey) in n s. Be ready on his road to your cellar (blue). |
   | `captain` | The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it. |
   | `searching` | The captain searches the houses by your cellar. Kill him before he reaches its door. |
 
@@ -466,7 +466,14 @@ Searchlight, and the beam hunts the god's casts) as well as for this mission.
 - **The quarry:** `_quarry_point() -> Vector2` (virtual; the cellar's door by default). The Lantern's Eye returns the god's last
   cast, and its seeker is the Searchlight (`searchlight.gd`) rather than a man.
 - **Reads:** `standards`, `broken(i)`, `broken_count()`, `broken_all()`, `head_down()`, `found`, `lost_reason()`, and the
-  usual `tags()`, `hint_phase()`, `tour()`, `report()`.
+  usual `tags()`, `hint_phase()`, `tour()`, `report()`; `hint_seconds()` (the final review's `coming` phase: the seconds to the
+  head, which the HUD puts in the line's `{n}`, `MissionHints.filled()`).
+- **The head's time** (`head_at`): with none (-1) only his chain brings him, and the strip never shows his chained time (there is
+  no `head` event for `expect()` to bring forward). The Lantern's Eye has no head.
+- **Held people** (the final review's one rule, `MissionDirector._hold_all()`, shared with The Crown's Bread and The Prisoner):
+  at each look every guard of an unbroken step, and the head and his escorts while he stands, is kept out of the town's flight
+  and a false calm's owed flight is let go; a guard away from his post when the evacuation begins is recalled at once. A relief
+  no one can reach is searched for again `relief_after` later, not at every look.
 - **`HuntObjective`** (new): DONE (its win reason) the moment `broken_all()` and `head_down()`; FAILED with `lost_reason()`
   (`cellar`). It takes its label and reasons in `_init()`, as every M2/M3 generic objective (M2 ruling 61).
 
@@ -547,7 +554,7 @@ M3 lesson 8: every shared change is a hook or a var whose default is today's pat
   - **a body freed mid-night** (a crewman, a gaoler, a watcher, a party member, the captain, an escort): `tags()`,
     `hint_phase()`, `report()` and the objectives never touch it;
   - **the town takes the crowd** (City Emergency's regroup, the evacuation): crews, gaolers, patrols, parties and the prisoner
-    hold their places on duty;
+    hold their places on duty (one rule for all three, `MissionDirector._hold_all()`; one away when it begins recalled at once);
   - **a wish's people and buildings:** no wisher or wish target becomes a crewman, a gaoler, a watcher, a party member, the
     captain or his escort; no wish's building becomes the cellar or the bridge shift's tower;
   - **Crown's Bread:** a target down when its time comes is razed; a fall before its time is rebuilt; the town's engineers keep
@@ -604,7 +611,8 @@ gives its cost if it proves wrong.
 67. **The Prisoner, the code:** `PrisonerDirector extends EscortDirector`; the base gains the hooks of §6, each defaulting to
     The Lost Lamb's path, so its six references hold. Single charge; every new hook takes the charge as an argument for M6's
     Exodus. Cost if wrong: Exodus rewrites the hooks.
-68. **The stocks:** a drawn market stall (0.6 × 0.4, 25 hp, burns) beside the Citadel's gate, leaving the lane walkable; any blow
+68. **The stocks:** a drawn market stall (0.6 × 0.4, 25 hp, burns) in the yard at the head of the long west street (-6.25, -7.4),
+    4.25 from the Citadel's gate (the controller's Task 3 ruling; it was beside the gate), leaving the lane walkable; any blow
     or fire frees her; still standing at 2:00 loses ("taken inside"). Its tag sits on the far side, where a Smite is safe. Cost
     if wrong: a stall does not read as stocks; the tag carries it, as M3's stand-ins.
 69. **Watchmen, not soldiers:** gaolers, patrols, the postern's watch and the searchers are lay citizens made watchmen, so the
@@ -614,7 +622,8 @@ gives its cost if it proves wrong.
     evacuation jams the postern; the scripted policy stays quiet and a player has the crowd's escape rule.
 71. **The hue and cry:** two searchers come out of the Citadel 30 s after the stocks break. Cost if wrong: HUE_AFTER is a knob
     (20-45).
-72. **Her pace and sight:** 0.385 of a citizen's (The Lost Lamb's), seized within 2.5. Cost if wrong: PACE is the first knob.
+72. **Her pace and sight:** 0.33 of a citizen's (Task 3's gate, from The Lost Lamb's 0.385, the bottom of the spec's range), seized
+    within 2.5. Cost if wrong: PACE is the first knob.
 73. **The Hunt type:** `HuntDirector` (steps, standards, parties, an optional head, a quarry) with the virtuals of §3.1, so The
     Lantern's Eye can swap the planted posts for tower mirrors and the captain for the Searchlight. `HereticHuntDirector` is
     its first subclass. Cost if wrong: M6 forks it.

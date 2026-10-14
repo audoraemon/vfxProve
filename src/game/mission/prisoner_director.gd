@@ -61,6 +61,8 @@ const MARK_STOCKS := Color("ff9a3a")
 ## Screen pixels the stocks' plate stands above the usual place's, clear of the prisoner's plate over the same spot (v0.11 M4).
 const STOCKS_LIFT := 14.0
 ## Screen pixels a gaoler's diamond rides above his feet: none, so his plate stands below the prisoner's, not hidden by it (v0.11 M4).
+## 0.0 is chosen, not a placeholder (Task 7's photographs): his diamond sits at his feet and his plate just above it, below hers; at
+## the usual MapTag.PERSON_LIFT his plate overlapped hers and the HUD dropped it (Hud.tag_layout keeps the earlier plate).
 const GAOLER_LIFT := 0.0
 
 ## The stocks; the aim on their far side, where their tag sits (v0.11 M4).
@@ -263,20 +265,20 @@ func step(delta: float) -> void:
 		_recall_to(g, gaoler_posts[i], evacuating)
 
 
-## Everyone the director holds is kept out of the town's flight (v0.11 M4, M3's final review rule, MissionDirector._keep_from_flight()):
-## every watcher, the searchers indoors or out, and she while she is bound. Free, she is left to the Lost Lamb's rule: the crowd carrying
-## her out is her escape. A watchman it stops is put back on his post or beat at the base's next look (_takes_post()). The flight a
-## false calm owes is let go too: this director's own hold past fear (BOUND_HOLD) puts off an evacuation's flee() until it wears off
-## (Person._reassured_fled), when a gaoler back on his feet would run for the gates after the evacuation's one look had passed.
+## Everyone the director holds is kept out of the town's flight by the one rule (v0.11 M4, the final review's ruling,
+## MissionDirector._hold_all()): every watcher, the searchers indoors or out (each once: a searcher sent out is a watcher too), and she
+## while she is bound. Free, she is left to the Lost Lamb's rule: the crowd carrying her out is her escape. A watchman it stops is put
+## back on his post or beat at the base's next look (_takes_post()). The flight a false calm owes is let go too: this director's own
+## hold past fear (BOUND_HOLD) puts off an evacuation's flee() until it wears off (Person._reassured_fled), when a gaoler back on his
+## feet would run for the gates after the evacuation's one look had passed.
 func _keep_held(evacuating: bool) -> void:
 	var people: Array = _watchers()
-	people.append_array(searchers)
+	for v: Variant in searchers:
+		if not people.has(v):
+			people.append(v)
 	if bound:
 		people.append(charge)
-	for v: Variant in people:
-		if _alive(v):
-			_keep_from_flight(v as Person, evacuating)
-			(v as Person)._reassured_fled = false
+	_hold_all(people, evacuating)
 
 
 ## The night is lost while she is still bound at FREE_BY (v0.11 M4).
@@ -339,8 +341,8 @@ func _inside_label() -> String:
 ## The map tags, most important first (v0.11 M4, mission spec §2): her (PRISONER - DO NOT KILL while bound, PRISONER once free, red
 ## and CAUGHT while held), pointed at; the stocks' deadline on their far side while they stand; the postern, watched or clear, pointed
 ## at; her seizer and the Citadel's gate while she is held; GAOLER - SEIZES HER on each gaoler (the controller's ruling: the warning
-## said plainly); each searcher, pointed at; PATROL on each patrol's first watchman and a red diamond on the rest; a red diamond on the
-## postern's watch while at it.
+## said plainly), pointed at (the final review); each searcher, pointed at; PATROL on each patrol's first watchman and a red diamond
+## on the rest; a red diamond on the postern's watch while at it.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if escaped or taken or bound_lost or not _alive(charge):
@@ -362,7 +364,7 @@ func tags() -> Array[MapTag]:
 		out.append(MapTag.place(return_to, MARK_WATCHED, "CITADEL"))
 	for v: Variant in gaolers:
 		if _alive(v) and v != seizer and not (v as Person).inside:
-			var warn := MapTag.person((v as Person).ground_pos, MARK_WATCHED, "GAOLER - SEIZES HER")
+			var warn := MapTag.person((v as Person).ground_pos, MARK_WATCHED, "GAOLER - SEIZES HER", true)
 			warn.lift = GAOLER_LIFT  # at the feet: the gaolers stand by the prisoner, and her plate would hide a plate over their heads
 			out.append(warn)
 	for v: Variant in hunters:

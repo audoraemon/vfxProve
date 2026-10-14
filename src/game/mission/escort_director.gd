@@ -117,8 +117,10 @@ func _begin() -> void:
 	if bound_by != null:
 		bound = true
 		if free_by >= 0.0:
+			# Bound still, and by stocks still standing (v0.11 M4, the final review): stocks brought down in the last TICK before
+			# free_by, which the next look would have answered by freeing him, never lose the night.
 			timeline.add(free_by, "inside", _inside_label(), _taken_inside,
-				func() -> bool: return bound and not escaped and _alive(charge))
+				func() -> bool: return bound and is_instance_valid(bound_by) and not bound_by.destroyed and not escaped and _alive(charge))
 	watch = _appoint_watch(charge, watch_posts.size())
 	for i in watch.size():
 		_post_to(watch[i], _walkable(watch_posts[i]), false)

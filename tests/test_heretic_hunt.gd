@@ -141,7 +141,8 @@ static func _open(t) -> void:
 	var d: HereticHuntDirector = s.d
 	d._raise(0)
 	_clear(d, 0)
-	t.check(not d.guarded(0) and d.hint_phase() == "open" and Kit.labels(d)[0] == "STANDARD", "its party off it: open")
+	t.check(not d.guarded(0) and d.hint_phase() == "open" and Kit.labels(d)[0] == "STANDARD" and Kit.edged(d, "STANDARD"),
+		"its party off it: open, the standard still pointed at")
 	var home := (d.steps[0].party[0] as HuntDirector.Guard).man as Person
 	(s.env as EnvironmentField).damage_radius(d.standard(0).center(), SmiteFx.HIT_R, SmiteFx.DAMAGE, &"smite")
 	t.check(d.broken(0) and (s.banners as Array).has("A STANDARD FALLS") and home.mind != Person.Mind.DUTY
@@ -162,8 +163,8 @@ static func _captain_last(t) -> void:
 	Kit.run_for(s, 0.2)
 	var head := d.head as Person
 	t.check(d.head_out and not head.inside and head.mind == Person.Mind.DUTY and (s.banners as Array).has("THE CAPTAIN LEADS THE LAST SWEEP")
-		and Kit.labels(d).has("CAPTAIN") and Kit.edged(d, "CAPTAIN") and Kit.labels(d).count("ESCORT") == 2 and d.hint_phase() == "captain",
-		"the third raised, he comes out with his two escorts, pointed at")
+		and Kit.labels(d).has("CAPTAIN") and Kit.edged(d, "CAPTAIN") and Kit.labels(d).count("ESCORT") == 2 and d.hint_phase() == "guarded",
+		"the third raised, he comes out with his two escorts, pointed at; a standard still standing comes first in the hint (the final review)")
 	var gap := true
 	Kit.run_for(s, 2.0)
 	for v: Variant in d.escorts:
@@ -176,14 +177,15 @@ static func _found(t) -> void:
 	var s := _world()
 	var d: HereticHuntDirector = s.d
 	for i in 3:
-		d._raise(i)
+		_break(s, d, i)
 	d._call_head()
 	var head := d.head as Person
 	for k in d.head_route.size() - 1:
 		Kit.arrive(head, d.head_route[k])
 		Kit.run_for(s, HereticHuntDirector.CAPTAIN_STOP + 0.3)
 	t.check(d.searching and d._route_at == d.head_route.size() - 1 and d.hint_phase() == "searching"
-		and Kit.labels(d).has("CAPTAIN - SEARCHING"), "he searches each house CAPTAIN_STOP, then makes for the cellar")
+		and Kit.labels(d).has("CAPTAIN - SEARCHING") and Kit.edged(d, "CAPTAIN - SEARCHING"),
+		"he searches each house CAPTAIN_STOP, pointed at, then makes for the cellar")
 	Kit.arrive(head, d.cellar_door)
 	Kit.run_for(s, 0.1)
 	var main: Objective = (s.rules as Rules).objectives[0]
@@ -221,9 +223,16 @@ static func _won(t) -> void:
 	t.check(d.broken_all() and main.check(s.rules) == Objective.Status.PENDING and main.hud_text(s.rules) == "Break the hunt: standards 3 / 3"
 		and d.timeline.seconds_to("head") <= HereticHuntDirector.HEAD_CHAIN + 0.1 and HereticHuntDirector.HEAD_CHAIN < HereticHuntDirector.CHAIN,
 		"three standards broken, the captain alive: not yet; he is due HEAD_CHAIN on, sooner than the sweeps' chain (the controller's ruling)")
+	var line := MissionHints.filled(MissionHints.line("heretic_hunt", d.hint_phase()), d.hint_seconds())
+	t.check(d.hint_phase() == "coming" and line == "The captain comes out of the Temple (grey) in %d s. Be ready on his road to your cellar (blue)." % int(HereticHuntDirector.HEAD_CHAIN),
+		"until he comes out the hint counts down to him: be ready on his road (the controller's ruling; %s)" % line)
+	Kit.run_for(s, 10.0)
+	t.check(is_equal_approx(d.hint_seconds(), HereticHuntDirector.HEAD_CHAIN - 10.0) and d.hint_phase() == "coming",
+		"ten seconds on, ten fewer (%.2f)" % d.hint_seconds())
 	d._call_head()
 	Kit.run_for(s, 0.2)
-	t.check(main.hud_text(s.rules) == "Break the hunt: standards 3 / 3, kill the captain", "the HUD names the captain")
+	t.check(main.hud_text(s.rules) == "Break the hunt: standards 3 / 3, kill the captain" and d.hint_phase() == "captain" and d.hint_seconds() == 0.0,
+		"the HUD names the captain; out, the hint is his")
 	(s.crowd as Crowd)._field.kill(d.head as Person, &"doom")
 	var home := true
 	for v: Variant in d.escorts:
@@ -250,6 +259,20 @@ static func _stone(t) -> void:
 	cellar.damage(10.0, cellar.center(), &"blast")
 	t.check(not cellar.damage_filter.is_valid() and cellar.hp < cellar.max_hp, "after teardown it takes blows again")
 	Kit.done(s)
+	# A dwelling with a filter of its own gets it back (the final review): every house in the cellar's quarter given one first.
+	var own := func(_s: Structure, _a: float, _src: Vector2, _k: StringName) -> void: pass
+	var mark := func(_d: MissionDirector, rules: Rules) -> void:
+		for st: Structure in rules.town()._built:
+			if is_instance_valid(st) and TownLayout.DISTRICTS[HereticHuntDirector.CELLAR_DISTRICT].has_point(st.center()):
+				st.damage_filter = own
+	var w := Kit.world(MissionBook.heretic_hunt(), null, mark)
+	var wd: HereticHuntDirector = w.d
+	var stone := wd.cellar.damage_filter == Callable(wd._stone)
+	wd.teardown()
+	t.check(stone and wd.cellar.damage_filter == own, "teardown puts back the cellar's own filter, not none")
+	wd.teardown()
+	t.check(wd.cellar.damage_filter == own, "and a second teardown leaves it be")
+	Kit.done(w)
 
 
 static func _relief(t) -> void:
@@ -278,14 +301,17 @@ static func _evacuated(t) -> void:
 	Kit.run_for(s, 1.0)
 	var g: HuntDirector.Guard = d.steps[2].party[0]
 	var guard := g.man as Person
+	var escort := d.escorts[0] as Person
 	guard._recover(1.0)
+	escort._recover(1.0)
 	head.whisper(head.ground_pos + Vector2(1.0, 0.0), MindWhisperFx.LINGER)
 	Kit.evacuate(s)
-	t.check(d.searching and guard.mind == Person.Mind.FLEE and head._whisper_fled,
-		"(set-up) the captain searching; the evacuation sends the recovering guard running and owes the whispered captain a flight")
+	t.check(d.searching and guard.mind == Person.Mind.FLEE and escort.mind == Person.Mind.FLEE and head._whisper_fled,
+		"(set-up) the captain searching; the evacuation sends the recovering guard and escort running and owes the whispered captain a flight")
 	Kit.run_for(s, 2.0 * HuntDirector.TICK + DT)
-	t.check(guard.mind == Person.Mind.DUTY and guard.anchor == g.post and head.mind == Person.Mind.WHISPERED and not head._whisper_fled,
-		"at the next looks the guard is back on duty at his post, the captain's flight is ended")
+	t.check(guard.mind == Person.Mind.DUTY and guard.anchor == g.post and head.mind == Person.Mind.WHISPERED and not head._whisper_fled
+		and escort.mind == Person.Mind.DUTY and (s.crowd as Crowd).citizens.has(escort),
+		"at the next looks the guard is back on duty at his post, the escort back at the captain's side, the captain's flight is ended")
 	var at := d._route_at
 	head._wake()  # headless people never think: the whisper wears off by hand
 	Kit.run_for(s, 1.0)

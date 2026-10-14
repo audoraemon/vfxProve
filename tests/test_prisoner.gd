@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_seen(t)
 	_hounds(t)
 	_inside(t)
+	_last_half_second(t)
 	_dead(t)
 	_out(t)
 	_carried(t)
@@ -269,6 +270,21 @@ static func _inside(t) -> void:
 	Kit.done(s)
 
 
+## The stocks brought down in the last look's span before 2:00 (v0.11 M4, the final review): the next look frees her, so the gaolers
+## never take her inside for a fall the god made in time.
+static func _last_half_second(t) -> void:
+	var s := _world()
+	var d: PrisonerDirector = s.d
+	var main: Objective = (s.rules as Rules).objectives[0]
+	d.timeline.step(PrisonerDirector.FREE_BY - 0.2)
+	d.stocks.destroy(d.stocks.center(), &"smite")
+	d.step(0.3)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(not d.bound_lost and not d.bound and main.check(s.rules) == Objective.Status.PENDING
+		and not (s.banners as Array).has("THE GAOLERS TAKE HER INSIDE"), "stocks down at 1:59.8: she is free, not taken inside")
+	Kit.done(s)
+
+
 static func _dead(t) -> void:
 	var s := _world()
 	var d: PrisonerDirector = s.d
@@ -334,7 +350,7 @@ static func _tagged(t) -> void:
 	var labels := Kit.labels(d)
 	t.check(labels[0] == "PRISONER - DO NOT KILL" and Kit.edged(d, "PRISONER - DO NOT KILL") and labels.has("STOCKS - TAKEN IN AT 2:00")
 		and labels.has("POSTERN - WATCHED") and Kit.edged(d, "POSTERN - WATCHED") and labels.count("GAOLER - SEIZES HER") == 2
-		and labels.has("PATROL"),
+		and Kit.edged(d, "GAOLER - SEIZES HER") and labels.has("PATROL"),
 		"bound: PRISONER - DO NOT KILL, pointed at; the stocks' deadline; the postern; GAOLER - SEIZES HER on each gaoler (the ruling's plain warning); PATROL (%s)" % [labels])
 	# Task 7's photograph: the prisoner's plate stands over the stocks' and a gaoler's, and the HUD drops a plate that would overlap an
 	# earlier one, so STOCKS and one GAOLER were unreadable. Every plate of the night's first minute is drawn.

@@ -72,8 +72,10 @@ const MARK_WATCHED := Color("c8342a")
 const MARK_QUARRY := Color("8fb8e8")
 
 ## The hunt's steps, in order, and its knobs, set by _plan() (v0.11 M4, decision 111): the chain; the head's time at the latest (-1
-## for none); whether there is a head; the ring the parties stand on and how near a standard a guard must stand; a guard's return and
-## relief; the head's stop at each door, his pace (and his escorts'), and how far behind him his escorts walk; where he comes out.
+## for none: then only his chain brings him, and with no "head" event on the strip _break()'s expect() has nothing to bring forward,
+## so his chained time never shows there -- the final review's note; M6's The Lantern's Eye has no head); whether there is a head;
+## the ring the parties stand on and how near a standard a guard must stand; a guard's return and relief; the head's stop at each
+## door, his pace (and his escorts'), and how far behind him his escorts walk; where he comes out.
 var steps: Array[HuntStep] = []
 var chain := 45.0
 var head_at := -1.0
@@ -291,12 +293,14 @@ func step(delta: float) -> void:
 	_chain()
 	_tick_in -= delta
 	var looking := _tick_in <= 0.0
+	var evacuating := false
 	if looking:
 		_tick_in = TICK
-		_keep_held(_evacuation_began())
+		evacuating = _evacuation_began()
+		_keep_held(evacuating)
 	for i in steps.size():
 		if not steps[i].broken:
-			_keep_party(i, delta, looking)
+			_keep_party(i, delta, looking, evacuating)
 	_step_head(delta)
 	if looking:
 		_keep_escorts()
@@ -439,59 +443,57 @@ func _guarding(i: int, g: Guard) -> bool:
 	return gap <= guard_reach
 
 
-## Every one of the hunt's people out of doors is kept out of the town's flight (v0.11 M4, the controller's ruling; the M3 final
-## review's rule, MissionDirector._keep_from_flight(): `evacuating`, at the first look after the evacuation began, calls back one it
-## sent running; a whisper it found him under ends with him on his feet): the guards of every unbroken step, the head and his
-## escorts while the head stands -- a captain run off for the gates would win the hunt by his absence (head_down()). The ones the
+## Every one of the hunt's people is kept out of the town's flight by the one rule (v0.11 M4, the final review's ruling,
+## MissionDirector._hold_all(): `evacuating`, at the first look after the evacuation began, calls back one it sent running; a whisper
+## it found him under ends with him on his feet; a false calm's owed flight is let go): the guards of every unbroken step, the head and
+## his escorts while the head stands -- a captain run off for the gates would win the hunt by his absence (head_down()). The ones the
 ## base recalls (_keep_party(), _step_head(), _keep_escorts()) are then put on duty again by their own rules.
 func _keep_held(evacuating: bool) -> void:
+	var people: Array = []
 	for st in steps:
 		if st.broken:
 			continue
 		for g: Guard in st.party:
-			_keep_out(g.man, evacuating)
-	if head_fell:
-		return
-	_keep_out(head, evacuating)
-	for v: Variant in escorts:
-		_keep_out(v, evacuating)
-
-
-## `v`, one of the hunt's people, is kept out of the town's flight if he stands out of doors (v0.11 M4); a Variant: he may be freed.
-func _keep_out(v: Variant, evacuating: bool) -> void:
-	if _alive(v) and not (v as Person).inside:
-		_keep_from_flight(v as Person, evacuating)
+			people.append(g.man)
+	if not head_fell:
+		people.append(head)
+		people.append_array(escorts)
+	_hold_all(people, evacuating)
 
 
 ## Step `i`'s party at their work (v0.11 M4): a guard standing guard is kept on duty at his post (back on his feet within reach, he is
 ## put on duty again, so the town's regroup and evacuation pass him by); one off his post but alive is sent back `return_after` after
-## he left (once back on his feet); a fallen one is replaced `relief_after` after he fell.
-func _keep_party(i: int, delta: float, looking: bool) -> void:
+## he left (once back on his feet), or at once at the first look after the town began to evacuate (`evacuating`, the final review's one
+## policy, as The Crown's Bread's _work(): one _keep_held() just stopped from running is put straight back on duty); a fallen one is
+## replaced `relief_after` after he fell.
+func _keep_party(i: int, delta: float, looking: bool, evacuating := false) -> void:
 	for g: Guard in steps[i].party:
 		if _guarding(i, g):
 			g.away = 0.0
 			g.fallen = 0.0
 			g.relief = false
 			if looking and (g.man as Person).mind != Person.Mind.DUTY:
-				_recall_to(g.man, g.post)
+				_recall_to(g.man, g.post, evacuating)
 		elif _alive(g.man):
 			g.fallen = 0.0
 			if (g.man as Person).inside:
 				continue
 			g.away += delta
-			if looking and g.away >= return_after:
-				_recall_to(g.man, g.post)
+			if looking and (g.away >= return_after or evacuating):
+				_recall_to(g.man, g.post, evacuating)
 		else:
 			g.fallen += delta
 			if looking and g.fallen >= relief_after:
 				_relieve(i, g)
 
 
-## A relief for a fallen guard of a step (v0.11 M4): the nearest lay citizen with a way to the post, dressed as a guard. The step's
-## index is passed for a subclass that relieves by step.
+## A relief for a fallen guard of a step (v0.11 M4): the nearest lay citizen with a way to the post, dressed as a guard. With none who
+## can reach it, the search backs off and is tried again `relief_after` later (the final review: not at every look). The step's index
+## is passed for a subclass that relieves by step.
 func _relieve(_i: int, g: Guard) -> void:
 	var p := _lay_reaching(g.post, _in_use())
 	if p == null:
+		g.fallen = 0.0
 		return
 	_dress_guard(p)
 	g.man = p
@@ -730,19 +732,33 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## The hint's phase (v0.11 M4, decision 110): "searching" or "captain" while the head is out; "guarded" or "open" for the current
-## standard; "waiting" while none stands and a step is still to come; "" before the first is raised.
+## The hint's phase (v0.11 M4, decision 110; the final review put a standing standard first): "guarded" or "open" for the current
+## standard while one stands; else "searching" or "captain" while the head is out; "coming" once every step is broken and the head is
+## still to come out (the controller's ruling: the seconds to him, hint_seconds(), on the line); "waiting" while none stands and a step
+## is still to come; "" before the first is raised.
 func hint_phase() -> String:
 	if found:
 		return ""
-	if has_head and head_out and not head_down():
-		return "searching" if searching else "captain"
 	var cur := current()
 	if cur >= 0:
 		return "guarded" if guarded(cur) else "open"
+	if has_head and not head_down():
+		if head_out:
+			return "searching" if searching else "captain"
+		if broken_all():
+			return "coming"
 	if broken_count() > 0 and next_step() >= 0:
 		return "waiting"
 	return ""
+
+
+## The seconds the hint's line counts down (v0.11 M4, MissionHints.SECONDS): in the "coming" phase, until the head comes out at the
+## latest (head_due()); else 0.
+func hint_seconds() -> float:
+	if hint_phase() != "coming":
+		return 0.0
+	var due := head_due()
+	return maxf(due - _clock, 0.0) if due != INF else 0.0
 
 
 ## What the results show (v0.11 M4): the steps broken, the head down, and whether the hunt found its quarry.

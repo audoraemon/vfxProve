@@ -88,6 +88,7 @@ const SPEC := [
 	["heretic_hunt.guarded", "Its guards (red) hold the standard: blows only shake it. Remove every one first."],
 	["heretic_hunt.open", "The standard (gold) stands unguarded. Break it now, before a new guard comes."],
 	["heretic_hunt.waiting", "The hunt moves on soon. Clear the next sweep's guards (red) shortly before it comes."],
+	["heretic_hunt.coming", "The captain comes out of the Temple (grey) in {n} s. Be ready on his road to your cellar (blue)."],
 	["heretic_hunt.captain", "The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it."],
 	["heretic_hunt.searching", "The captain searches the houses by your cellar. Kill him before he reaches its door."],
 ]
@@ -134,3 +135,11 @@ static func run(t) -> void:
 	t.check(Hud.hint_lines("").is_empty() and Hud.hint_lines(spec["miras_house"]).size() == Hud.HINT_LINES,
 		"no line, no plate; Mira's House's takes the plate's three lines")
 	t.check(MissionDirector.new().hint_phase() == "", "a director has no phase of its own by default")
+	# v0.11 M4: a line that counts down (the controller's ruling for The Heretic Hunt's captain), filled by the HUD.
+	var coming := MissionHints.line("heretic_hunt", "coming")
+	t.check(MissionHints.filled(coming, 29.2) == coming.replace(MissionHints.SECONDS, "30") and MissionHints.filled(coming, -1.0).contains(" in 0 s")
+		and MissionHints.filled(spec["heretic_hunt"], 12.0) == spec["heretic_hunt"] and MissionDirector.new().hint_seconds() == 0.0,
+		"the seconds rounded up, never below 0; a line without the mark as it was; a director counts nothing by default")
+	t.check(Hud.hint_lines(MissionHints.filled(coming, 30.0)).size() <= Hud.HINT_LINES
+		and UiTheme.wrap(MissionHints.filled(coming, 30.0), Hud.HINT_W, UiTheme.SIZE_SMALL).size() <= Hud.HINT_LINES,
+		"filled at its longest (30 s), the captain's line still fits the plate")

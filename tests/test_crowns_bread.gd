@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_mend(t)
 	_smother(t)
 	_relief(t)
+	_relief_backs_off(t)
 	_evacuated(t)
 	_relief_in_flight(t)
 	_held_over(t)
@@ -27,6 +28,7 @@ static func run(t) -> void:
 	_chain(t)
 	_ends(t)
 	_tower_reserved(t)
+	_granary_reserved(t)
 	_tagged(t)
 	_freed(t)
 
@@ -260,6 +262,28 @@ static func _relief(t) -> void:
 	Kit.done(s)
 
 
+## A night whose fallen crewmen no one can reach (v0.11 M4, the final review): it counts its searches for a relief.
+class NoRelief:
+	extends CrownsBreadDirector
+	var searched := 0
+
+	func _lay_reaching(_at: Vector2, _exclude: Array = []) -> Person:
+		searched += 1
+		return null
+
+
+## With no relief who can reach the post, the search backs off and is tried again RELIEF_AFTER later, not at every look (v0.11 M4).
+static func _relief_backs_off(t) -> void:
+	var s := Kit.world(MissionBook.crowns_bread(), NoRelief.new())
+	var d: NoRelief = s.d
+	var c: CrownsBreadDirector.Crew = d.crews[1][0]
+	Kit.free_body(s, c.man)
+	Kit.run_for(s, 2.0 * CrownsBreadDirector.RELIEF_AFTER + 2.0)
+	t.check(d.searched == 2 and c.fallen < CrownsBreadDirector.RELIEF_AFTER,
+		"two searches in two RELIEF_AFTER spans, not one every look (%d)" % d.searched)
+	Kit.done(s)
+
+
 ## The controller's ruling (every M4 mission): the town evacuates mid-mission, with one crewman of the target in use recovering and
 ## one whispered; at the next looks the first is stopped and back on duty at his post, the second's flight is ended, and woken he
 ## walks back, never to the gates. The shift of a target not yet in use stays indoors on duty.
@@ -350,9 +374,17 @@ static func _keeps_off(t) -> void:
 	for j: Dictionary in eng.jobs():
 		jobs.append(j.target)
 	t.check(not jobs.has(bridge), "the town's own teams make no job of the bridge")
+	var c: CrownsBreadDirector.Crew = d.crews[0][0]
+	var replaced: Variant = c.man
+	var listed := eng.not_hired.size()
+	Kit.free_body(s, replaced)  # his entry on not_hired outlives him
+	Kit.run_for(s, CrownsBreadDirector.RELIEF_AFTER + 1.0)
+	t.check(c.man != replaced and eng.not_hired.size() == listed + 1 and eng.not_hired.has(c.man),
+		"(set-up) a relief has replaced a fallen crewman; both are on not_hired")
 	var targets := d.targets.duplicate()
 	d.teardown()
-	t.check(eng.hands_off.is_empty() and eng.not_hired.is_empty() and targets.size() == 3, "teardown empties hands_off and not_hired")
+	t.check(eng.hands_off.is_empty() and eng.not_hired.is_empty() and targets.size() == 3,
+		"teardown empties hands_off and not_hired, the replaced crewman too (the final review)")
 	Kit.done(s)
 
 
@@ -406,6 +438,22 @@ static func _tower_reserved(t) -> void:
 	t.check(ix >= 0 and east != null and (s.town as Town)._built.find(east) != ix and east.role == &"tower"
 		and east.footprint.position.is_equal_approx(TownLayout.GATE_TOWERS[1].position),
 		"a wish's west gate tower set aside: the bridge's shift waits in the east one (review focus 6)")
+	Kit.done(s)
+
+
+## A wish has set the granary aside (v0.11 M4, the final review's defence in depth beside the razes_bread tag): the night leaves it be,
+## and the bridge, found by itself and not by its place in the list, still has its shift wait in the gate tower.
+static func _granary_reserved(t) -> void:
+	var probe := _world()
+	var ix := (probe.town as Town)._built.find((probe.d as CrownsBreadDirector).targets[0])
+	Kit.done(probe)
+	var s := Kit.world(MissionBook.crowns_bread(), null, func(d: MissionDirector, rules: Rules) -> void:
+		d.reserved_places.append(rules.town()._built[ix]))
+	var d: CrownsBreadDirector = s.d
+	var town: Town = s.town
+	t.check(ix >= 0 and d.targets.size() == 2 and not d.targets.has(town._built[ix]) and d.targets[1] == town.bridge
+		and d.waiting_in[1] != null and d.waiting_in[1].role == &"tower" and d.waiting_in[0] == d.targets[0],
+		"the granary reserved is no target; the bridge's shift still waits in a gate tower, the mill's in the mill")
 	Kit.done(s)
 
 

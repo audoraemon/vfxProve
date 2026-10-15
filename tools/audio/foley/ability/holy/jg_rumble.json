@@ -1,0 +1,5 @@
+{"length": 1.5, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/judgement/jg_rumble.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "gain_db": -4, "dur": 1.5, "lp": 500, "from": 14.0, "at": 0.0},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "gain_db": -9, "dur": 1.5, "from": 1.0, "at": 0.0}
+]}

@@ -1,0 +1,5 @@
+{"length": 3.2, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/tsunami/ts_roar.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/sea-and-river-wave-sounds/VistulaShort_0.mp3", "gain_db": -2, "dur": 3.2, "fade_in": 200, "fade_out": 600, "from": 40.0, "at": 0.0},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Wave.ogg", "gain_db": -6, "onset": true, "at": 0.0}
+]}

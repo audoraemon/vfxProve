@@ -1,0 +1,51 @@
+{
+ "length": 1.4,
+ "out": "tools/audio/music/render/bugle.wav",
+ "peak_db": -1.0,
+ "parts": [
+  {
+   "voice": "trumpet",
+   "gain": 1.0,
+   "notes": [
+    {
+     "t": 0.0,
+     "p": "D5",
+     "hold": 0.1
+    },
+    {
+     "t": 0.14,
+     "p": "D5",
+     "hold": 0.1
+    },
+    {
+     "t": 0.28,
+     "p": "A5",
+     "hold": 0.6,
+     "decay": 0.3
+    }
+   ]
+  },
+  {
+   "voice": "french_horn",
+   "gain": 1.0,
+   "notes": [
+    {
+     "t": 0.0,
+     "p": "D4",
+     "hold": 0.1
+    },
+    {
+     "t": 0.14,
+     "p": "D4",
+     "hold": 0.1
+    },
+    {
+     "t": 0.28,
+     "p": "A4",
+     "hold": 0.6,
+     "decay": 0.3
+    }
+   ]
+  }
+ ]
+}

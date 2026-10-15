@@ -1,0 +1,5 @@
+{"length": 3.0, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/heaven/hs_strike.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/rain-long-thunder/rain-thunder.ogg", "gain_db": 0, "dur": 3.0, "fade_in": 5, "fade_out": 900, "from": 21.6, "at": 0.506},
+  {"src": "lib:oga/explosions-4/explosion1_0.ogg", "gain_db": -9, "onset": true, "at": 0.506}
+]}

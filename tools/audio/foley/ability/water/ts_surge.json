@@ -1,0 +1,4 @@
+{"length": 1.1, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/tsunami/ts_surge.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/beach-ocean-waves/wave_02_cc0-18363__jasinski__alkaibeach.flac", "gain_db": -3, "onset": true, "dur": 1.1, "fade_out": 250, "at": 0.0}
+]}

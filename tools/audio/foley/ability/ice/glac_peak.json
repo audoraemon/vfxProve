@@ -1,0 +1,6 @@
+{"length": 3.0, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.16, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/glacial/glac_peak.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/ice-breakingshattering/IceShatters_0/IceShatters/LedasLuzta4.ogg", "gain_db": -2, "onset": true, "at": 0.045},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_01.ogg", "gain_db": -8, "onset": true, "at": 0.045},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "gain_db": -12, "dur": 3.0, "lp": 400, "from": 5.0, "at": 0.0}
+]}

@@ -52,8 +52,8 @@ func _init() -> void:
 	var baked := 0
 	var failed := 0
 	for category in DirAccess.get_directories_at(SRC_DIR):
-		if category == VOICES:
-			continue
+		if category == VOICES or category.begins_with("_"):
+			continue  # voices are instruments, not cues; a folder starting with _ is set aside
 		var src_dir := SRC_DIR + category + "/"
 		for file in DirAccess.get_files_at(src_dir):
 			var score := file.ends_with(".score.json")

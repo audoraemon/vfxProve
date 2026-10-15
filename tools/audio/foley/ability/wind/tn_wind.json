@@ -1,0 +1,5 @@
+{"length": 2.0, "loop": true, "peak_db": -1.0, "layers": [
+  {"src": "lib:synth/tornado/tn_wind.wav", "at": 0.0, "gain_db": -6, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/wind1/wind1.wav", "gain_db": -1, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 10.0, "at": 0.0},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "gain_db": -12, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 5.0, "at": 0.0}
+]}

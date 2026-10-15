@@ -1,0 +1,4 @@
+{"length": 0.4, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/nova/nova_crack.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_thunder_01.ogg", "gain_db": -2, "onset": true, "dur": 0.4, "at": 0.0}
+]}

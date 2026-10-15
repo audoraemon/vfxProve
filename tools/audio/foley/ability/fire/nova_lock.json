@@ -1,0 +1,4 @@
+{"length": 0.3, "peak_db": -1.0, "layers": [
+  {"src": "lib:synth/nova/nova_lock.wav", "at": 0.0, "gain_db": 0, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/laser-sound-effects/sfx_laser_2.mp3", "gain_db": -12, "onset": true, "at": 0.0}
+]}

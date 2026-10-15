@@ -1,0 +1,4 @@
+{"length": 1.0, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/laser/laser_scan.wav", "at": 0.0, "gain_db": -3, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Space 2.wav", "gain_db": -7, "onset": true, "dur": 1.0, "at": 0.0}
+]}

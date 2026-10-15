@@ -1,0 +1,15 @@
+{"length": 6.0, "loop": true, "rms_db": -15.0, "reverb": {"rt60": 1.2, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "from": 3.0, "dur": 6.0, "at": 0.0, "gain_db": 0, "fade_in": 0, "fade_out": 0, "lp": 7000},
+  {"src": "lib:oga/female-scream-1/female_scream_1.ogg", "onset": true, "dur": 1.2, "at": 4.795, "pitch": -0.685, "gain_db": -14.317, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/high-pitch-scream-sounds2/high_pitch_scream.mp3", "onset": true, "dur": 1.2, "at": 4.935, "pitch": -1.212, "gain_db": -12.666, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/please-help-somebody/please_help_somebody.ogg", "onset": true, "dur": 1.2, "at": 3.347, "pitch": 0.028, "gain_db": -14.982, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/come-on-lets-run/come_on_lets_run.ogg", "onset": true, "dur": 1.2, "at": 3.784, "pitch": -0.248, "gain_db": -10.042, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/female-exasperated-yell/female_exasperated_yell.ogg", "onset": true, "dur": 1.2, "at": 0.17, "pitch": 0.893, "gain_db": -14.791, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/1yell1.wav", "onset": true, "dur": 1.2, "at": 4.88, "pitch": -0.232, "gain_db": -10.15, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/1yell6.wav", "onset": true, "dur": 1.2, "at": 1.097, "pitch": -0.696, "gain_db": -15.39, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/2yell3.wav", "onset": true, "dur": 1.2, "at": 4.672, "pitch": -0.165, "gain_db": -14.565, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/2yell6.wav", "onset": true, "dur": 1.2, "at": 1.15, "pitch": -1.298, "gain_db": -14.599, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3yell3.wav", "onset": true, "dur": 1.2, "at": 3.361, "pitch": -0.406, "gain_db": -11.07, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3yell8.wav", "onset": true, "dur": 1.2, "at": 0.458, "pitch": 0.599, "gain_db": -9.125, "hp": 200, "lp": 6000, "fade_out": 250},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/1yell15.wav", "onset": true, "dur": 1.2, "at": 4.438, "pitch": 0.358, "gain_db": -10.052, "hp": 200, "lp": 6000, "fade_out": 250}
+]}

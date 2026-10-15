@@ -1,0 +1,5 @@
+{"length": 1.5, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/laser/laser_depart.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "gain_db": -4, "dur": 1.5, "onset": true, "fade_out": 400, "at": 0.0},
+  {"src": "lib:oga/space-laser/space laser.wav", "gain_db": -11, "dur": 1.5, "fade_out": 400, "at": 0.0}
+]}

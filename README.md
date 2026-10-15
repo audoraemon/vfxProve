@@ -168,24 +168,40 @@ All shaders are drawn once at startup (`FxParts.prewarm`) — without it the Com
 
 ## Audio
 
-The game's sounds come from two places, sorted by kind under `assets/audio/`:
+Every sound is sorted by kind under `assets/audio/`, and every one is built from a source in `tools/audio/`:
 
-| Kind | Folders | Made by |
-|---|---|---|
-| Powers | `nova`, `orbital`, `gravity`, `laser`, `heaven`, `cinder`, `tsunami`, `tornado`, `judgement`, `glacial`, `dragon` (78 files, shared by all 38 powers) | `tools/audio/synth.py` |
-| Interface | `ui` (14) | GodotSfxr |
-| Citizens and soldiers | `citizen` (9) | GodotSfxr |
-| Buildings and the town | `building` (10) | GodotSfxr |
-| Music | `music` (4 loops) | GodotSfxr |
+| Kind | Folder | Built from | By |
+|---|---|---|---|
+| Powers (78, shared by all 38 powers) | `ability/<element>/`: `fire`, `ice`, `water`, `wind`, `holy`, `energy`, `arcane` | recordings over `synth.py`'s render of the same cue (`tools/audio/foley/ability/<element>/<cue>.json`) | `tools/audio/foley.py` |
+| Citizens and soldiers (9) | `citizen/` | recordings: real yells, screams, a crowd, a cheer and a bugle (`tools/audio/foley/citizen/`) | `tools/audio/foley.py` |
+| Buildings and the town (10) | `building/` | recordings: rock, wood and debris, a church bell (`tools/audio/foley/building/`) | `tools/audio/foley.py` |
+| Music (4 loops) | `music/` | scores (`tools/audio/music/<cue>.score.json`) played by real instrument samples | `tools/audio/music_render.py` |
+| Interface (14) | `ui/` | GodotSfxr (`tools/audio/sfxr/ui/`) | `tools/audio/sfxr_bake.gd` |
 
-`python tools/audio/synth.py` regenerates the powers' cues deterministically (numpy + scipy); `--only <cue>` for one, `--spectrograms captures` renders a review sheet. It leaves the GodotSfxr folders alone.
+The recordings, the soundfont and the tools live in a sound library outside the repo (`KAK_SOUND_LIBRARY`, default `C:/BURIN_NITRO/SoundLibrary`); `tools/audio/foley/SOURCES.md` says what is in it and where it came from, and `assets/audio/CREDITS.md` lists every recording in use (all CC0 or public domain). Python needs `numpy`, `scipy`, `soundfile` and `mido`.
+
+```bash
+python tools/audio/foley.py                    # every recipe; or a cue name, or a folder (ability, fire, citizen...)
+python tools/audio/foley.py --credits          # rewrite assets/audio/CREDITS.md
+python tools/audio/music_render.py             # the music, plus tools/audio/music/midi/<cue>.mid for any music editor
+KAK_SYNTH_OUT=C:/BURIN_NITRO/SoundLibrary/synth python tools/audio/synth.py   # the powers' synth base layers
+"$GODOT" --headless --editor --path . --import # after building, so new WAVs get their .import files
+```
+
+**A recipe** (`tools/audio/foley/<category>/.../<cue>.json`) layers sound files: each layer has its source (`lib:` the library, `repo:` this repo), where it starts, where to read from (or its first sound), how much, its pitch, gain, filters and fades; the recipe has a length, a reverb and a level, and a loop wraps its tail into its start. The format is at the top of `foley.py`. To change a power's sound, swap or add a recording in its recipe and rebuild; its first layer is the synth render, which keeps the power's timing.
+
+**The music** is the same notes as before, as General MIDI: `tools/audio/music/instruments.json` says which instrument plays each part (strings, contrabass, oboe, choir, brass, taiko, snare), FluidSynth plays it with the GeneralUser GS soundfont, and a loop's reverb tail is folded back into its start. For better instruments, open `tools/audio/music/midi/<cue>.mid` in a music editor with a free orchestral library (Spitfire LABS, BBC Symphony Orchestra Discover), render each stem at the same length and save it over `assets/audio/music/<cue>.wav`. `tools/audio/music/bugle.score.json` renders the soldiers' bugle that `citizen/sol_rally` uses.
+
+**Generated sounds** for what no library has: `tools/audio/sao_generate.py` runs Stable Audio Open in the local ComfyUI (models staged in `C:/BURIN_NITRO/ComfyUI/ComfyUI/models`), and `tools/audio/elevenlabs_generate.py` calls ElevenLabs with your API key; both read `tools/audio/sao_prompts.json` and put their takes in the library, to audition and use in a recipe. Running Stable Audio Open means accepting the Stability AI Community License (a copy is beside the checkpoint): free under US$1M a year in revenue, commercial use needs a free registration at https://stability.ai/community-license.
+
+A cue that varies its pitch per play (`jitter` in `Sfx.CATALOG`) varies its level too, by up to `Sfx.LEVEL_JITTER_DB`.
 
 ### GodotSfxr
 
-[GodotSfxr](https://github.com/tomeyro/godot-sfxr) (MIT, `addons/godot_sfxr`, enabled in the project) is an sfxr synth inside the editor. Sources live in `tools/audio/sfxr/<category>/`, and `tools/audio/sfxr_bake.gd` bakes each to `assets/audio/<category>/<cue>.wav`. The game plays plain WAVs and never loads the addon. Sources come in two kinds:
+[GodotSfxr](https://github.com/tomeyro/godot-sfxr) (MIT, `addons/godot_sfxr`, enabled in the project) is an sfxr synth inside the editor. It makes the interface sounds; its earlier citizen and building sounds are kept in `tools/audio/sfxr/_replaced/` (move a folder back out and bake to use them again). Sources live in `tools/audio/sfxr/<category>/`, and `tools/audio/sfxr_bake.gd` bakes each to `assets/audio/<category>/<cue>.wav`. The game plays plain WAVs and never loads the addon. Sources come in two kinds:
 
-- **`<cue>.tres`:** one `SfxrAudioStream`, one sfxr sound. Open it in the editor: its settings show in the inspector, with a generator for each preset, and any change rebuilds the sound and plays it. Used for the short interface blips and the citizens' yelps and shouts.
-- **`<cue>.score.json`:** a score of sfxr notes that the bake mixes into one 16-bit WAV. One sfxr sound is one note, so music, chords, the bell's partials, the crowd and a building coming down are scores. Each part plays an instrument from `tools/audio/sfxr/voices/`, itself an `SfxrAudioStream` you can audition and tweak in the inspector. The score format is at the top of `sfxr_bake.gd`: note times in beats or seconds, pitch as a note name or Hz, hold, attack, decay, gain, an echo per part (sfxr has no reverb), and seamless loops.
+- **`<cue>.tres`:** one `SfxrAudioStream`, one sfxr sound. Open it in the editor: its settings show in the inspector, with a generator for each preset, and any change rebuilds the sound and plays it. Used for the short interface blips.
+- **`<cue>.score.json`:** a score of sfxr notes that the bake mixes into one 16-bit WAV. One sfxr sound is one note, so the chords (`ui_manifest`, `ui_win`, `ui_lose`) are scores; so were the set-aside citizen and building sounds, and the music's scores in `tools/audio/music/` are in the same format. Each part plays an instrument from `tools/audio/sfxr/voices/`, itself an `SfxrAudioStream` you can audition and tweak in the inspector. The score format is at the top of `sfxr_bake.gd`: note times in beats or seconds, pitch as a note name or Hz, hold, attack, decay, gain, an echo per part (sfxr has no reverb), and seamless loops.
 
 To change a sound, edit its source or a voice it uses, save, then bake and import:
 
@@ -194,7 +210,7 @@ To change a sound, edit its source or a voice it uses, save, then bake and impor
 "$GODOT" --headless --editor --path . --import
 ```
 
-Without `--only` it bakes all 37 (about two and a half minutes; the music is most of it). `--rebuild` builds each `.tres` from its settings first and saves that back into the resource. The bake refuses a `.tres` that clips and warns about a voice that clips: lower its `sample_params/sound_vol`. A score is normalized to `peak_db` (or `rms_db`, which the music stems use to keep their balance). Levels in play are each cue's `db` in `Sfx.CATALOG`.
+Without `--only` it bakes all 14. `--rebuild` builds each `.tres` from its settings first and saves that back into the resource. The bake refuses a `.tres` that clips and warns about a voice that clips: lower its `sample_params/sound_vol`. A score is normalized to `peak_db` (or `rms_db`, which the music stems use to keep their balance). Levels in play are each cue's `db` in `Sfx.CATALOG`.
 
 A new sound needs its source, an entry in `Sfx.CATALOG` and a call that plays it (`UiSound.play()` for the interface, `Sfx`/`ctx.play()` in the world).
 
@@ -215,7 +231,7 @@ The interface cues:
 | `ui_manifest` | a loadout is manifested | an A chord swelling open, then a boom (score) |
 | `ui_win` / `ui_lose` | the results | C E G C and its chord / G F E♭ C falling (scores) |
 
-The rest: `citizen` has the yelps (4) and shouts (3), the crowd's panic bed (a looped murmur and 38 cries) and the soldiers' rally (a bugle call); `building` has the stone, timber and tree collapses (3 each, noise crunches, knocks, splinters and thuds) and the town bell (three strokes, seven sine partials each); `music` has the theme (24 s at 60 bpm) and the battle loop's base, drums and lead stems (16 s at 120 bpm, the same notes as before).
+The earlier sfxr versions of the citizen and building sounds are in `tools/audio/sfxr/_replaced/`; the sfxr bake skips any folder starting with `_`.
 
 Things to know about GodotSfxr:
 - **Loudness:** its flanger stage doubles the signal even when the flanger is off. A `sound_vol` near 0.25 to 0.35 already reaches full scale, and a resonant low-pass rings higher still.

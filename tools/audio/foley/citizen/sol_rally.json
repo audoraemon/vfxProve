@@ -1,0 +1,4 @@
+{"length": 1.4, "peak_db": -1.0, "reverb": {"rt60": 1.3, "mix": 0.18, "predelay_ms": 20, "damp": 6000}, "layers": [
+  {"src": "repo:tools/audio/music/render/bugle.wav", "at": 0.0, "gain_db": 0, "fade_out": 150, "dry": false},
+  {"src": "lib:oga/cheers-0/cheers_1.ogg", "onset": true, "at": 0.12, "dur": 1.25, "gain_db": -7, "fade_out": 300}
+]}

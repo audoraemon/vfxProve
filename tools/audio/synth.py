@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import zlib
 from pathlib import Path
@@ -23,7 +24,9 @@ from scipy.io import wavfile
 SR = 44100
 PEAK = 10 ** (-1.0 / 20.0)
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "assets" / "audio"
+# The powers' sounds are the base layer of tools/audio/foley/ability/ recipes, which put recordings over them: render
+# them into the sound library (KAK_SYNTH_OUT=C:/BURIN_NITRO/SoundLibrary/synth), not over the game's files.
+OUT = Path(os.environ.get("KAK_SYNTH_OUT", ROOT / "assets" / "audio"))
 
 
 # --------------------------------------------------------------------------
@@ -970,7 +973,7 @@ def generate(only: str | None) -> None:
         path = cue_path(cue)
         path.parent.mkdir(parents=True, exist_ok=True)
         wavfile.write(path, SR, np.round(x * 32767).astype(np.int16))
-        print(f"wrote {path.relative_to(ROOT)} ({len(x) / SR:.2f}s)")
+        print(f"wrote {path.relative_to(OUT)} ({len(x) / SR:.2f}s)")
 
 
 def verify() -> int:

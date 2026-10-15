@@ -1,0 +1,5 @@
+{"length": 2.7, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.14, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/gravity/grav_suction.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "gain_db": -4, "reverse": true, "dur": 2.7, "at": 0.0},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/suck.ogg", "gain_db": -7, "onset": true, "at": 0.4}
+]}

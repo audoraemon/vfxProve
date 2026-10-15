@@ -1,0 +1,5 @@
+{"length": 2.0, "loop": true, "peak_db": -1.0, "layers": [
+  {"src": "lib:synth/gravity/grav_drone.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/seamless-energy-emission-loop/movingshield_sound.ogg", "gain_db": -4, "dur": 2.4, "fade_in": 400, "fade_out": 400, "pitch": -3, "from": 2.0, "at": 0.0},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "gain_db": -12, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 20.0, "at": 0.0}
+]}

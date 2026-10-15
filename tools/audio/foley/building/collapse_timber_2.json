@@ -1,11 +1,11 @@
-{"length": 1.2, "peak_db": -1.0, "reverb": {"rt60": 0.8, "mix": 0.13, "predelay_ms": 10, "damp": 6000}, "layers": [
+{"length": 1.2, "peak_db": -1.0, "eq": [["lowshelf", 150, -5.0], ["peak", 3200, 3.5, 0.8], ["highshelf", 8000, 2.0]], "reverb": {"rt60": 0.8, "mix": 0.13, "predelay_ms": 10, "damp": 6000}, "layers": [
   {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_breaking_02.ogg", "at": 0.0, "onset": true, "gain_db": 0},
   {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_breaking_03.ogg", "at": 0.06, "onset": true, "pitch": -3, "gain_db": -5},
   {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_falling_01.ogg", "at": 0.1, "onset": true, "gain_db": -4},
   {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_001.ogg", "at": 0.4, "onset": true, "pitch": -3, "gain_db": -1},
   {"src": "lib:kenney/impact-sounds/Audio/impactPlank_medium_000.ogg", "at": 0.42, "onset": true, "gain_db": -6},
-  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "onset": true, "at": 0.4, "dur": 0.8, "lp": 260, "gain_db": -7, "fade_out": 300},
-  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_03.ogg", "at": 0.674, "onset": true, "pitch": -0.83, "gain_db": -13.602},
-  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_03.ogg", "at": 0.757, "onset": true, "pitch": -0.162, "gain_db": -12.403},
-  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_05.ogg", "at": 0.801, "onset": true, "pitch": -3.283, "gain_db": -11.24}
+  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "onset": true, "at": 0.4, "dur": 0.8, "lp": 260, "gain_db": -12, "fade_out": 300},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_03.ogg", "at": 0.674, "onset": true, "pitch": -0.83, "gain_db": -8.681},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_03.ogg", "at": 0.757, "onset": true, "pitch": -0.162, "gain_db": -7.722},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_05.ogg", "at": 0.801, "onset": true, "pitch": -3.283, "gain_db": -6.792}
 ]}

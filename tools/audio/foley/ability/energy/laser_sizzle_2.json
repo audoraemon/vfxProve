@@ -1,4 +1,4 @@
 {"length": 0.3, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.06, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/laser/laser_sizzle_2.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/laser/laser_sizzle_2.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/ignite.ogg", "gain_db": -3, "onset": true, "dur": 0.3, "at": 0.0}
 ]}

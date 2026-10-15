@@ -1,4 +1,4 @@
 {"length": 1.4, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/tsunami/ts_rise.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/tsunami/ts_rise.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/beach-ocean-waves/wave_04_cc0-18363__jasinski__alkaibeach.flac", "gain_db": -3, "dur": 1.4, "fade_out": 300, "from": 0.4, "at": 0.0}
 ]}

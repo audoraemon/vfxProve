@@ -1,4 +1,4 @@
 {"length": 1.2, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.14, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/glacial/glac_freeze.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/glacial/glac_freeze.wav", "at": 0.0, "gain_db": -10, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/freeze-spell-0/freeze.wav", "gain_db": -3, "onset": true, "dur": 1.2, "fade_out": 300, "at": 0.0}
 ]}

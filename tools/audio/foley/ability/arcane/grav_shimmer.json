@@ -1,5 +1,5 @@
 {"length": 2.4, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.16, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/gravity/grav_shimmer.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/gravity/grav_shimmer.wav", "at": 0.0, "gain_db": -10, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/magic-spell-sfx/magical_2.ogg", "gain_db": -6, "onset": true, "at": 0.0},
   {"src": "lib:oga/fantasy-magic-spell/fantasy_magic_button_1.mp3", "gain_db": -12, "dur": 2.2, "at": 0.2}
 ]}

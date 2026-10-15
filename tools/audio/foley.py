@@ -8,10 +8,12 @@ Usage:
     python tools/audio/foley.py                    # every recipe
     python tools/audio/foley.py collapse_stone_1   # one cue (or a category name)
     python tools/audio/foley.py --credits          # rewrite assets/audio/CREDITS.md from the recipes in use
+    python tools/audio/foley.py --recordings-only DIR ability   # the same cues without their synth.py base, into DIR
 
 Recipe:
     {"length": 1.6, "loop": false, "peak_db": -1.0,          # or "rms_db": -14 (never above peak -0.3 dB)
      "reverb": {"rt60": 1.4, "mix": 0.18, "predelay_ms": 12, "damp": 6000},   # optional; or {"ir": "lib:...", "mix": ..}
+     "eq": [["lowshelf", 120, -4], ["peak", 3000, 3, 0.8]],   # optional: the finished mix's EQ, [kind, Hz, dB, Q]
      "layers": [
        {"src": "lib:oga/breaking-rock/rock_break.ogg",       # lib: the library; repo: this repo (e.g. a synth.py WAV)
         "at": 0.0,            # where it starts in the output, seconds
@@ -35,6 +37,9 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 from scipy import signal
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dsp import eq  # noqa: E402
 
 SR = 44100
 ROOT = Path(__file__).resolve().parents[2]
@@ -138,12 +143,14 @@ def place(buf: np.ndarray, x: np.ndarray, at: int, loop: bool) -> None:
             rest = rest[m:]
 
 
-def build(recipe: dict) -> np.ndarray:
+def build(recipe: dict, skip_base: bool = False) -> np.ndarray:
     n = int(round(recipe["length"] * SR))
     loop = recipe.get("loop", False)
     wet_in = np.zeros(n)
     dry = np.zeros(n)
     for spec in recipe["layers"]:
+        if skip_base and spec["src"].startswith("lib:synth/"):
+            continue
         x = layer(spec)
         at = int(round(spec.get("at", 0.0) * SR))
         place(dry, x, at, loop)
@@ -157,6 +164,8 @@ def build(recipe: dict) -> np.ndarray:
         place(wet_out, wet, 0, loop)
         mix = rv.get("mix", 0.2)
         out = dry * (1.0 - mix) + wet_out * mix * 3.0
+    if "eq" in recipe:
+        out = eq(out, recipe["eq"])
     if not loop:
         f = int(0.008 * SR)
         out[-f:] *= np.linspace(1, 0, f)
@@ -217,14 +226,22 @@ def main() -> None:
     if "--credits" in args:
         credits()
         return
+    alt = None
+    if "--recordings-only" in args:
+        i = args.index("--recordings-only")
+        alt = Path(args[i + 1])
+        args = args[:i] + args[i + 2:]
     done = 0
     for p in recipes():
         rel = p.relative_to(RECIPES)
         if args and p.stem not in args and not set(rel.parts[:-1]) & set(args):
             continue
         recipe = json.loads(p.read_text(encoding="utf-8"))
-        y = build(recipe)
-        dest = OUT / rel.with_suffix(".wav")
+        if alt is not None and (not any(l["src"].startswith("lib:synth/") for l in recipe["layers"])
+                                or all(l["src"].startswith("lib:synth/") for l in recipe["layers"])):
+            continue  # only cues that have both a synth base and recordings
+        y = build(recipe, skip_base=alt is not None)
+        dest = (alt if alt is not None else OUT) / rel.with_suffix(".wav")
         dest.parent.mkdir(parents=True, exist_ok=True)
         sf.write(str(dest), y, SR, subtype="PCM_16")
         rms = 20 * np.log10(np.sqrt(np.mean(y ** 2)) + 1e-9)

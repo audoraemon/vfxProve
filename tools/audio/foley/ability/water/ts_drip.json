@@ -1,4 +1,4 @@
 {"length": 3.5, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.14, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/tsunami/ts_drip.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/tsunami/ts_drip.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/dripping-water-loop/atmosbasement.mp3_.flac", "gain_db": -3, "dur": 3.5, "fade_in": 100, "fade_out": 800, "from": 4.0, "at": 0.0}
 ]}

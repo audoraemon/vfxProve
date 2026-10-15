@@ -1,5 +1,5 @@
 {"length": 2.0, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.14, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/glacial/glac_erupt.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/glacial/glac_erupt.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/ice-breakingshattering/IceShatters_0/IceShatters/LedasLuzta33.ogg", "gain_db": -2, "onset": true, "at": 0.057},
   {"src": "lib:oga/25-cc0-bang-firework-sfx/25-CC0-bang-sfx/bang_03.ogg", "gain_db": -9, "onset": true, "at": 0.057},
   {"src": "lib:oga/ice-spells/icespells/coldsnap.wav", "gain_db": -10, "onset": true, "at": 0.1}

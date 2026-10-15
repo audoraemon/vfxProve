@@ -1,5 +1,5 @@
 {"length": 0.6, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.08, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/laser/laser_thrusters.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/laser/laser_thrusters.wav", "at": 0.0, "gain_db": -10, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_air_02.ogg", "gain_db": -4, "onset": true, "dur": 0.6, "at": 0.0},
   {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/UFO.ogg", "gain_db": -12, "dur": 0.6, "at": 0.0}
 ]}

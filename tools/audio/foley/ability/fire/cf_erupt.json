@@ -1,5 +1,5 @@
 {"length": 3.0, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/cinder/cf_erupt.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/cinder/cf_erupt.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/explosions-4/explosion1_0.ogg", "gain_db": -1, "onset": true, "at": 0.087},
   {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Fire2.ogg", "gain_db": -7, "onset": true, "at": 0.087},
   {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "gain_db": -10, "from": 0.3, "at": 0.087}

@@ -1,5 +1,5 @@
 {"length": 3.5, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/heaven/hs_rumble.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/heaven/hs_rumble.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/rain-long-thunder/rain-thunder.ogg", "gain_db": -3, "dur": 3.5, "lp": 1200, "fade_out": 1200, "from": 25.0, "at": 0.0},
   {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "gain_db": -9, "dur": 3.5, "lp": 400, "from": 7.0, "at": 0.0}
 ]}

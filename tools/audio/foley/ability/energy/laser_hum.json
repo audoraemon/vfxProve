@@ -1,4 +1,4 @@
 {"length": 1.0, "loop": true, "peak_db": -1.0, "layers": [
-  {"src": "lib:synth/laser/laser_hum.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/laser/laser_hum.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/seamless-energy-emission-loop/movingshield_sound.ogg", "gain_db": -3, "dur": 1.4, "fade_in": 400, "fade_out": 400, "from": 1.0, "at": 0.0}
 ]}

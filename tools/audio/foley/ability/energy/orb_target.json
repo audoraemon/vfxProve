@@ -1,4 +1,4 @@
 {"length": 0.8, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/orbital/orb_target.wav", "at": 0.0, "gain_db": -2, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/orbital/orb_target.wav", "at": 0.0, "gain_db": -8, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Smooth 2.wav", "gain_db": -9, "onset": true, "at": 0.0}
 ]}

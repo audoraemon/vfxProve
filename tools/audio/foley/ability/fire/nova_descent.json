@@ -1,4 +1,4 @@
 {"length": 0.8, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/nova/nova_descent.wav", "at": 0.0, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/nova/nova_descent.wav", "at": 0.0, "gain_db": -10, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "gain_db": -5, "dur": 0.8, "onset": true, "fade_out": 200, "at": 0.0}
 ]}

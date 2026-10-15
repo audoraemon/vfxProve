@@ -1,5 +1,5 @@
 {"length": 2.0, "loop": true, "peak_db": -1.0, "layers": [
-  {"src": "lib:synth/laser/laser_fire.wav", "at": 0.0, "gain_db": -5, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:synth/laser/laser_fire.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
   {"src": "lib:oga/laser-beam/laserbeam.wav", "gain_db": -2, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 0.6, "at": 0.0},
   {"src": "lib:oga/fireplace-sound-loop/fire.wav", "gain_db": -14, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 2.0, "at": 0.0}
 ]}

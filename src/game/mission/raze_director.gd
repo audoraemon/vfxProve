@@ -92,6 +92,12 @@ func hud_line() -> String:
 	return ""
 
 
+## Virtual (v0.11 M6, mission spec §6.5): the seconds of burning, in all, that raze `s` -- `spoil_seconds` by default. The Heart of
+## Faith's oil-house 12 and its Temple 20.
+func _spoil_for(_s: Structure) -> float:
+	return spoil_seconds
+
+
 ## Virtual (v0.11 M2): whether `s` can be spoiled yet. A target that cannot (HarvestDirector's granary before its grain comes)
 ## is as good as sealed: any fire on it is put out at once, nothing it burns counts, and its fall is not judged until it can.
 func _spoilable(_s: Structure) -> bool:
@@ -112,7 +118,7 @@ func step(delta: float) -> void:
 
 ## Each target not yet razed (v0.11 M2): one fallen is razed once it can be spoiled (a sealed one is stone to every power, but
 ## the director leaves none to stand sealed with its building gone); a sealed one's fire, or that of one not yet spoilable, is
-## smothered; an open one is razed once it has burned `spoil_seconds` in all.
+## smothered; an open one is razed once it has burned _spoil_for() in all (v0.11 M6).
 func _judge_targets(delta: float) -> void:
 	for s in targets:
 		if _razed.has(s):
@@ -126,7 +132,8 @@ func _judge_targets(delta: float) -> void:
 				crowd.fires._put_out(s, true)
 		elif burning(s):
 			_burned[s] = burned(s) + delta
-			if spoil_seconds > 0.0 and burned(s) >= spoil_seconds:
+			var spoil := _spoil_for(s)
+			if spoil > 0.0 and burned(s) >= spoil:
 				_raze(s)
 
 

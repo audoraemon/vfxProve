@@ -9,6 +9,8 @@ extends RefCounted
 ## the director hears casts and deaths), and a newer noise moves it. A beam moves at most BEAM_SPEED, so it slides
 ## rather than jumps. touches() is the night's test of being seen. Pure logic, stepped by VigilFlameDirector: headless
 ## tests run it alone, and SearchlightFx draws it.
+## v0.11 M6: `hunt` searches every heard noise at once, not only in the clock's last seconds, and `hold` sends a beam back to
+## its sweep that long after its noise (The Lantern's Eye); the defaults are The Vigil Flame's and The Relic Run's light.
 
 ## How many beams there can be, and the radius of each beam's pool of light (ground units).
 const MAX_BEAMS := 2
@@ -49,6 +51,13 @@ var search_beam := -1
 var _aims: Array[Vector2] = [Vector2.INF, Vector2.INF]
 ## The noise the searching beam was sent to: a newer one sends a beam again.
 var _searched := Vector2.INF
+## v0.11 M6 (mission spec §6.3): while true, every noise heard draws the nearest lit beam at once, not only in the clock's last
+## SEARCH_LAST seconds (The Lantern's Eye, while a mirror stands). False by default.
+var hunt := false
+## v0.11 M6: how long a beam stays at its noise before it goes back to its sweep; INF (the default) stays until a newer noise.
+var hold := INF
+## Seconds since the latest noise was heard (v0.11 M6, for `hold`).
+var _noise_age := 0.0
 
 
 func setup(at: Vector2) -> Searchlight:
@@ -106,9 +115,10 @@ func touches(at: Vector2) -> bool:
 	return false
 
 
-## A noise at `at` (a cast, a death): the latest is where a searching beam stops.
+## A noise at `at` (a cast, a death): the latest is where a searching beam stops. v0.11 M6: its age starts again.
 func hear(at: Vector2) -> void:
 	noise = at
+	_noise_age = 0.0
 
 
 ## A Will-o'-Wisp at `at`: the nearest lit beam goes to it for DECOY_SECONDS. Nothing while the light sleeps.
@@ -124,10 +134,11 @@ func step(delta: float, time_left: float) -> void:
 	if not on:
 		return
 	age += delta
+	_noise_age += delta
 	decoy_left = maxf(0.0, decoy_left - delta)
 	if decoy_left <= 0.0:
 		decoy_beam = -1
-	searching = time_left <= SEARCH_LAST and noise != Vector2.INF
+	searching = (hunt or time_left <= SEARCH_LAST) and noise != Vector2.INF and _noise_age < hold  # v0.11 M6: hunt, hold
 	if not searching:
 		search_beam = -1
 	elif search_beam < 0 or _searched != noise:

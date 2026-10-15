@@ -56,6 +56,43 @@ class Borrowed:
 		return s
 
 
+## A director whose stages, loss and HUD line are set by hand (v0.11 M6 tests).
+class Staged:
+	extends MissionDirector
+	var done := false
+	var why := ""
+	var line := ""
+
+	func stages_done() -> bool:
+		return done
+
+	func lost_reason() -> String:
+		return why
+
+	func hud_line() -> String:
+		return line
+
+
+## A Raze of one house whose burning spoils it in 2 s, whatever spoil_seconds says (v0.11 M6 tests).
+class QuickRaze:
+	extends RazeDirector
+
+	func _begin() -> void:
+		targets.append(_house_near(Vector2(0.0, 8.0)))
+		spoil_seconds = 50.0
+
+	func _spoil_for(_s: Structure) -> float:
+		return 2.0
+
+
+## A director that keeps a Gaze of its own (v0.11 M6 tests, Decision 208).
+class OwnGaze:
+	extends MissionDirector
+
+	func _begin() -> void:
+		gaze = GazeMeter.new()
+
+
 static func run(t) -> void:
 	_charge_record(t)
 	_charge_defaults(t)
@@ -72,6 +109,12 @@ static func run(t) -> void:
 	_keepout_stack(t)
 	_keepout_redraw(t)
 	_keepout_aside(t)
+	_frame5(t)
+	_stages(t)
+	_spoil_default(t)
+	_searchlight_hooks(t)
+	_one_gaze(t)
+	_own_gaze(t)
 
 
 ## The Lost Lamb keeps one Charge record, and every old field reads and writes it (v0.11 M6, Task 1).
@@ -382,3 +425,115 @@ static func _hunt_hooks(t) -> void:
 	post.damage(5.0, post.center(), &"smite")
 	t.check(b.owned == [10.0, 5.0] and is_equal_approx(post.hp, post.max_hp), "teardown gives the owner its building back")
 	Kit.done(s3)
+
+
+## Tier 5's frame (v0.11 M6, Decision 207).
+static func _frame5(t) -> void:
+	var m := MissionBook._tier5("x", "X", PackedStringArray(["a", "b"]))
+	t.check(m.tier == 5 and m.slots == 6 and m.dp_capacity == 16 and is_equal_approx(m.clock, 420.0) and m.profile == ""
+		and m.tier_floor == 4 and not m.chooses_difficulty()
+		and m.response_profile(ResponseProfile.Tier.UNPREPARED).tier_name() == "God-Resistant" and m.intro_banner == "X"
+		and m.bonuses().is_empty() and m.pool.is_empty() and is_equal_approx(m.stretch, 1.0),
+		"a Tier 5 mission's numbers: 7:00, 6 / 16, a God-Resistant town whatever is chosen, no bonuses")
+	t.check(MissionBook.LANTERN_EYE == "lantern_eye" and MissionBook.EXODUS == "exodus" and MissionBook.HEART_OF_FAITH == "heart_of_faith",
+		"Ascendance's three new ids")
+
+
+## StagesObjective (v0.11 M6, Decision 255): its label and win reason given; the director's stages, loss and line.
+static func _stages(t) -> void:
+	var s := Kit.world(MissionBook.warning(), Staged.new())
+	var d: Staged = s.d
+	var o := StagesObjective.new("Put out the flame", "heart")
+	t.check(o.label == "Put out the flame" and o.reason == "heart" and o.check(s.rules) == Objective.Status.PENDING
+		and o.hud_text(s.rules) == "Put out the flame" and StagesObjective.new().reason == "stages",
+		"StagesObjective: its words given; pending; its label on the HUD while the director has no line")
+	d.line = "Kill Odran"
+	d.why = "kindled"
+	t.check(o.hud_text(s.rules) == "Kill Odran" and o.check(s.rules) == Objective.Status.FAILED and o.reason == "kindled",
+		"the director's line in its place; its loss fails it with its reason")
+	d.why = ""
+	d.done = true
+	var won := StagesObjective.new("Put out the flame", "heart")
+	t.check(won.check(s.rules) == Objective.Status.DONE and won.reason == "heart", "the stages done: won, with the win's reason")
+	var base := MissionDirector.new()
+	t.check(not base.stages_done() and base.lost_reason() == "" and base.hud_line() == "", "the base director: no stages, no loss, no line")
+	Kit.done(s)
+
+
+## RazeDirector._spoil_for() (v0.11 M6, Decision 256): spoil_seconds by default; a subclass's own seconds raze its target.
+static func _spoil_default(t) -> void:
+	var s := Kit.world(MissionBook.spoiled_harvest())
+	var d: HarvestDirector = s.d
+	t.check(is_equal_approx(d._spoil_for(d.targets[0]), d.spoil_seconds), "_spoil_for() is spoil_seconds by default (Spoiled Harvest)")
+	Kit.done(s)
+	var q := QuickRaze.new()
+	var w := Kit.world(MissionBook.spoiled_harvest(), q)
+	var house := q.targets[0]
+	(w.crowd as Crowd).fires.ignite(house, 1.0)
+	Kit.run_for(w, 2.5)
+	t.check(q.razed(house) and q.burned(house) >= 2.0, "a subclass's _spoil_for() of 2 s razes its target after 2 s alight, not 50")
+	Kit.done(w)
+
+
+## The Searchlight's hunt and hold (v0.11 M6, Decision 244): by default a noise is searched only in the clock's last seconds and held
+## for good; hunting, a noise draws the nearest beam at once, held `hold` seconds, and a newer noise draws one again.
+static func _searchlight_hooks(t) -> void:
+	var l := Searchlight.new().setup(Vector2.ZERO)
+	t.check(not l.hunt and l.hold == INF, "the defaults: no hunt, held for good")
+	l.light(Searchlight.SECOND_AFTER)
+	l.hear(Vector2(10.0, 0.0))
+	l.step(0.1, 300.0)
+	var early := l.searching
+	l.step(0.1, Searchlight.SEARCH_LAST - 1.0)
+	var late := l.searching
+	for i in 100:
+		l.step(0.1, Searchlight.SEARCH_LAST - 2.0)
+	t.check(not early and late and l.searching, "by default: searched only in the last seconds, and still held 10 s on")
+	var h := Searchlight.new().setup(Vector2.ZERO)
+	h.hunt = true
+	h.hold = 8.0
+	h.light(Searchlight.SECOND_AFTER)
+	h.hear(Vector2(10.0, 0.0))
+	h.step(0.1, 300.0)
+	var beam := h.search_beam
+	t.check(h.searching and beam >= 0, "hunting: a noise draws the nearest lit beam at once")
+	for i in 30:
+		h.step(0.1, 300.0)
+	t.check(h.aim(beam).distance_to(Vector2(10.0, 0.0)) < 1.0, "the beam reaches the noise")
+	for i in 60:
+		h.step(0.1, 300.0)
+	t.check(not h.searching and h.search_beam == -1, "after `hold` seconds the beam goes back to its sweep")
+	h.hear(Vector2(10.0, 0.0))
+	h.step(0.1, 300.0)
+	t.check(h.searching, "a newer noise draws a beam again")
+
+
+## TierBook adds the Gaze objective only to a list that has none (v0.11 M6, Decision 211): the ★ missions as before.
+static func _one_gaze(t) -> void:
+	var made := func() -> Array[Objective]:
+		var out: Array[Objective] = [StagesObjective.new(), GazeObjective.new()]
+		return out
+	var list: Array[Objective] = []
+	list.assign(TierBook._with_gaze(made).call())
+	var gazes := 0
+	for o in list:
+		gazes += 1 if o is GazeObjective else 0
+	var lj := TierBook.board("last_judgement").objectives()
+	var lj_gazes := 0
+	for o in lj:
+		lj_gazes += 1 if o is GazeObjective else 0
+	t.check(list.size() == 2 and gazes == 1 and lj_gazes == 1 and lj.back() is GazeObjective,
+		"a list with its own Gaze gets none added; Last Judgement's board version still ends with its one")
+
+
+## A Tier 5 director that keeps its own Gaze keeps it (v0.11 M6, Decision 208): the night's goes only to one with none.
+static func _own_gaze(t) -> void:
+	var def := TierBook.board("last_judgement")
+	var s := Kit.world(def, OwnGaze.new())
+	var mine: GazeMeter = (s.d as MissionDirector).gaze
+	var descent := Descent.new().setup(def, 7)
+	descent.attach(s.rules, s.d)
+	t.check(mine != null and (s.d as MissionDirector).gaze == mine and descent.gaze == null and not (mine is Descent.TierGaze),
+		"Descent.attach() leaves a director's own Gaze")
+	descent.release()
+	Kit.done(s)

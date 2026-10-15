@@ -248,18 +248,31 @@ static func _gaze(m: MissionDef) -> void:
 			a.make_act_objectives = _with_gaze_for_night(a.make_act_objectives)
 
 
+## `make`'s objectives with a GazeObjective after them, unless they have one already (v0.11 M6, Decision 211: each new Tier 5 mission
+## lists its own; Last Judgement and The Long Night list none, so theirs are as before).
 static func _with_gaze(make: Callable) -> Callable:
 	return func() -> Array[Objective]:
 		var out: Array[Objective] = []
 		if make.is_valid():
 			out.assign(make.call())
-		out.append(GazeObjective.new())
+		if not _has_gaze(out):
+			out.append(GazeObjective.new())
 		return out
 
 
+## As _with_gaze(), for an act's objectives made for the night (v0.11 M6).
 static func _with_gaze_for_night(make: Callable) -> Callable:
 	return func(n: NightState) -> Array[Objective]:
 		var out: Array[Objective] = []
 		out.assign(make.call(n))
-		out.append(GazeObjective.new())
+		if not _has_gaze(out):
+			out.append(GazeObjective.new())
 		return out
+
+
+## `list` already holds a GazeObjective (v0.11 M6).
+static func _has_gaze(list: Array[Objective]) -> bool:
+	for o in list:
+		if o is GazeObjective:
+			return true
+	return false

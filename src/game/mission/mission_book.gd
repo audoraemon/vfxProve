@@ -30,6 +30,10 @@ const BISHOP := "bishop"
 const ARMOURY := "armoury"
 const SERMON := "sermon"
 const RELIC_RUN := "relic_run"
+## The new Tier 5 missions (v0.11 M6, mission spec §1-§3), built by tier_missions() at Tier 5's numbers.
+const LANTERN_EYE := "lantern_eye"
+const EXODUS := "exodus"
+const HEART_OF_FAITH := "heart_of_faith"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -134,6 +138,23 @@ static func _tier4(id: String, name: String, brief: PackedStringArray) -> Missio
 	m.slots = 5
 	m.dp_capacity = 13
 	m.clock = 390.0
+	m.tier_floor = 4
+	m.intro_banner = name.to_upper()
+	return m
+
+
+## A Tier 5 (Ascendance) mission's frame (v0.11 M6, mission spec §0, Decision 207): a God-Resistant town -- tier_floor 4 and no profile,
+## so a scripted run meets the board's town -- 6 slots and 16 DP, a 7:00 clock, no bonuses, every power allowed unless the mission
+## narrows its pool.
+static func _tier5(id: String, name: String, brief: PackedStringArray) -> MissionDef:
+	var m := MissionDef.new()
+	m.id = id
+	m.name = name
+	m.tier = 5
+	m.brief = brief
+	m.slots = 6
+	m.dp_capacity = 16
+	m.clock = 420.0
 	m.tier_floor = 4
 	m.intro_banner = name.to_upper()
 	return m

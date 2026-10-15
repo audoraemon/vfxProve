@@ -105,6 +105,24 @@ func stars_total() -> int:
 	return 0
 
 
+## Virtual (v0.11 M6, mission spec §6.5): the night's stages are done -- StagesObjective's win (The Heart of Faith: the flame out and its
+## High Priest dead). False by default.
+func stages_done() -> bool:
+	return false
+
+
+## Virtual (v0.11 M6): why the night is lost now, "" while it is not. RazeDirector, EscortDirector, HuntDirector, AssassinateDirector
+## and their subclasses override it as before; named here so StagesObjective reads any director (plan decision 272).
+func lost_reason() -> String:
+	return ""
+
+
+## Virtual (v0.11 M6): the HUD's line for the main objective in place of its own, "" for its own. Named here for StagesObjective, as
+## lost_reason() is.
+func hud_line() -> String:
+	return ""
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

@@ -68,7 +68,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon()]
 	return out
 
 
@@ -372,6 +372,25 @@ static func armoury() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [RazeObjective.new("Raze the garrison", "garrison"), EventObjective.new("march", "Garrison marches", "marches"),
 			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Sermon (v0.11 M5, Tier 4, mission spec §3 and §8 row 19): silence a preacher who holds the poor quarter and lead eight of his
+## crowd, in four waves, to the god's house unseen by the Faithful, before the sermon ends (SermonDirector, Mira's House's Convert).
+static func sermon() -> MissionDef:
+	var m := _tier4(SERMON, "The Sermon", PackedStringArray(["A preacher holds the poor quarter.", "Silence him. Turn eight of his crowd."]))
+	m.goal = "Silence the preacher and lead eight of his crowd to the god's house, unseen, before the sermon ends at %s" % UiTheme.clock(
+		SermonDirector.SERMON_ENDS)
+	m.goal_label = "The crowd believes"
+	m.lose = "The Lantern looks, the sermon ends, or too few are left to turn"
+	m.camera_at = SermonDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "wisp"])
+	m.director = SermonDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new("Turn the crowd", "sermon", "sermon_over"),
+			EventObjective.new("ends", "Sermon ends", "sermon_over")]
 		return out
 	return m
 

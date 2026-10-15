@@ -381,8 +381,10 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
     2. the west quarter (-11.0, 3.0);
     3. the south quarter (-2.0, 12.0);
     4. the long west street (-12.0, 6.0).
-  - **The camera** rests at (-9.0, 9.5). The pulpit is just below the centre, the god's house at the left below the HUD stack,
-    the second and fourth sources above the centre, the third at the lower right. The Temple's tag points from the right edge.
+  - **The camera** rests at (-13.0, 9.5) (moved from (-9.0, 9.5) and the ruling's ~(-11, 10.5), which left the god's door under the
+    real HUD stack's 240 x 165). The pulpit is below the centre, the god's house and its western sentry at the left just under the
+    HUD stack, the second and fourth sources above the centre, the third at the lower right. The Temple's tag points from the right
+    edge.
 - **Claims:** 12 listeners (four waves of three), the preacher and two acolytes (clergy), two sentries and their reliefs (lay,
   made Faithful and watchmen), the god's house. The clergy and eight lay citizens spread through the rest are Halcyon's
   Faithful (Mira's `_choose_faithful()`). No soldiers.
@@ -406,24 +408,27 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
     - A kill his acolytes see sends them running to the Temple (a report). Discord holds all three; a Doom on him then adds a
       seen death's share to the Gaze (10, `Crowd.nearest_witness()` counts the held) but sends no report.
   - **The waves:** all 12 listeners are appointed as the night begins, the three nearest each source, and wait on duty at their
-    source, held fearless (Market Panic's rule), until their wave walks in:
+    source (each on a spot with a way on foot to the pulpit), held deaf to a whisper and past fear, renewed each look (plan decision
+    183), until their wave walks in -- nothing can be done with a wave before its time:
     - the first at 0:00;
     - the second at 1:35, or 45 s after the first is spent;
     - the third at 3:05, or 45 s after the second is spent;
     - the fourth at 4:20, or 45 s after the third is spent.
 
-    A wave is **spent** when each of its listeners believes, is dead or is gone. Each walks in on duty (about 15 s) and takes a
-    place on a ring 2.5-3.5 from the preacher (outside his witnesses' 2 units). On the way he is not yet within HEAR: he can be
-    whispered.
+    A wave is **spent** when each of its listeners believes, is inside the god's house reading, is dead or is gone (the controller's
+    idle ruling: the chain runs from the last one whispered in, not his walk out). Each walks in on duty (about 15 s) and takes a
+    place on a ring 2.5-3.5 from the preacher (outside his witnesses' 2 units; nudged round the ring onto ground the pulpit's
+    street reaches). On the way he is not yet within HEAR: he can be whispered.
   - **Turning:** a listener whispered to the god's house goes in unless a Faithful within 3 of its door sees (Mira's
     `_doors()`): then he is turned away, the seer runs to the Temple, and the listener walks back to the pulpit. Inside he reads
     8 s and comes out a Believer. Several may read at once.
   - **The Believers stay:** each walks on duty to a ring 2.0 from the god's door and stands there, held, until the night is
     won. So the evacuation cannot carry a Believer out of the count. Tagged green.
   - **The sentries:** two Faithful watch the god's house from the start, on duty 1.5 either side of its door (3.0 apart; each
-    sees the door). Whispered, confused or frightened, one walks back 20 s after he is calm. A fallen one is replaced 30 s later
-    by the nearest free lay citizen with a way to the post (M4's `_lay_reaching()`), made Faithful and a watchman. At most six
-    reliefs.
+    sees the door). Whispered, confused or frightened, one walks back 20 s after he is calm (at once when the town begins to
+    evacuate). A fallen one is replaced 30 s later by the nearest free lay citizen with a way to the post (M4's `_lay_reaching()`),
+    made Faithful and a watchman, stopped from the flight if the town runs; with no one to send, tried again 30 s later. At most
+    six reliefs.
   - **Reports:** Mira's `TempleReport`. A report delivered fills the Gaze. A carrier killed unseen ends it; a seen kill passes
     it to a witness (never one fleeing or reserved: `TempleReport.skip`).
   - **The Gaze:** Mira's `GazeMeter`. A seen death adds 10; a delivered report or the bell fills it.
@@ -432,63 +437,80 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   | Time | Event |
   |---|---|
   | 0:00 | "THE SERMON". The first wave walks to the well; the sentries watch the god's house. |
-  | 1:35 | "More come to hear him", from the west quarter (sooner: 45 s after the first wave is spent) |
-  | 3:05 | "More come to hear him", from the south quarter (sooner: 45 s after the second is spent) |
-  | 4:20 | "More come to hear him", from the long west street (sooner: 45 s after the third is spent) |
+  | 1:35 | "More come to hear him", from the west quarter (sooner: 45 s after the first wave's last is inside reading) |
+  | 3:05 | "More come to hear him", from the south quarter (sooner: 45 s after the second's last is inside) |
+  | 4:20 | "More come to hear him", from the long west street (sooner: 45 s after the third's last is inside) |
   | 5:00 | "The sermon ends": lost unless eight believe |
   | 6:30 | Dawn |
 
 - **The clear:** the first wave walks in 10 + silence him and turn three 45 (Discord and a Doom on the preacher; the sentries;
   three whispers 8 s apart; the walk and the reading) + 45 + the second wave walks in 15, whispered on the way, + 30 + 45 + the
-  third walks in 15 + two more 20 ≈ **225 s**. Silencing him for good saves about 10 s a wave: ≈ 210 s. The fourth wave is slack
-  for mistakes, not a needed item.
-- **Longest waits:** 45 s between a wave spent and the next walking in. Its walk-in (15 s) can be worked on. The sentries'
-  reliefs and the reports are work in every wait. There is no wait at the start.
+  third walks in 15 + two more 20 ≈ **225 s** (the spec's first sum). Measured (the gate, seed 3, 200.2 s): the first wave ~47
+  (the preacher whispered aside at 0:00 and Doomed alone at 0:20, the sentries Doomed or whispered off, three whispers; its last
+  inside at ~0:47) + 45 + the second ~35 + 45 + the third ~30 (its third whisper turns the eighth) ≈ **200 s**; the three seeds
+  195.4 / 216.4 / 200.2. The fourth wave is slack for mistakes, not a needed item.
+- **Longest waits:** 45 s between a wave's last listener going in and the next walking in, plus its walk-in (on the gate, idle
+  44 / 26 / 17 s). The sentries' reliefs and the reports are work in every wait. There is no wait at the start.
 - **Tags:**
   - GOD'S HOUSE, gold, outlined, with an edge arrow; its door CLEAR (green) or WATCHED (red), as Mira's.
-  - PREACHER, red, while he preaches; PREACHER - SILENT, grey, while held. The acolytes are red diamonds.
+  - PREACHER, red, while he preaches; PREACHER - SILENT, grey, while held; both with an edge arrow. The acolytes are red diamonds.
   - A gold diamond on each listener not yet turned: rapt ones with a small red mark; walkers and the waiting at their sources too.
-  - SENTRY on each sentry on guard, red. A red diamond on a relief walking in.
+  - SENTRY on each sentry on guard, red. A red diamond on a relief walking in, and on any other Faithful who would see the door
+    (Mira's watchers).
   - NEXT WAVE and the seconds to it (the sooner time) at its source, orange, with an edge arrow.
   - Each report's runner, red, with an edge arrow; TEMPLE, red, with an edge arrow while one runs.
+  - BELLKEEPER, red, with an edge arrow, while the bell is called or climbing (the controller's ruling).
   - The Believers, green.
-- **Hint phases:**
+- **Hint phases** (the first that applies, top down):
 
   | Phase | Line |
   |---|---|
-  | (none) | Silence the preacher (red), then whisper his crowd (gold) to the god's house unseen. Eight must believe. Do not kill them. |
+  | (none) | Silence the preacher (red), then whisper his crowd (gold) to the god's house unseen. Eight must believe: kill none. |
+  | `bell` | The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen. |
+  | `report` | A Faithful runs to the Temple. Stop him before he gets there, unseen. |
+  | `seen` | A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze. |
+  | `coming` | More come to hear him (gold). Whisper them on the way, before they come within his voice. |
   | `rapt` | He preaches: his crowd hears only him. Discord, a whisper or a fright silences him for a while; death, for good. |
   | `watched` | Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first. |
-  | `report` | A Faithful runs to the Temple. Stop him before he gets there, unseen. |
-  | `coming` | More come to hear him (gold). Whisper them on the way, before they come within his voice. |
 
-  The sermon hint also warns: "Four seen deaths in a district ring the bell, and the bell fills the Gaze."
+  `bell` shows while the bell is called or climbing (plan decision 197); `seen` for 8 s (SEEN_SHOW) after the Gaze rises -- the
+  bell's warning before it is called (the controller's ruling); `coming` and `rapt` while he preaches. The main line was shortened
+  to fit the plate's three lines.
 - **HUD:** "Turn the crowd 3 / 8" (`BelieversObjective`'s label), "Gaze 30%", the deadline row "Sermon ends 2:10".
 - **Tour:**
   1. "The preacher at the south-west well. While he preaches, his crowd hears only him."
   2. "The god's house. Lead eight of his crowd here, unseen by the Faithful."
-  3. "The Temple. A Faithful who sees you runs here."
+  3. "The Temple. A Faithful who sees you runs here. Four deaths in a district call the bell."
 - **Mission tags:** none.
 - **Pool:** every power.
 - **Results:** "THE CROWD BELIEVES" (`sermon`), "THE SERMON ENDS" (`sermon_over`), "THE FLOCK IS SCATTERED" (`flock`); the Gaze's
   "THE LANTERN LOOKS" (`gaze`, the family's own).
-- **Numbers** (first guesses): NEED 8, WAVES 4 × 3, WAVE_AT 0 / 95 / 185 / 260, CHAIN 45, HEAR 5, RING 2.5-3.5, ACOLYTE_OFF 1.0,
-  READ 8, SIGHT 3, SENTRIES 2, SENTRY_OFF 1.5, RETURN_AFTER 20, RELIEF_AFTER 30, RELIEFS 6, FAITHFUL 8 (lay), BELIEVER_RING
-  2.0, SERMON_ENDS 300. Tune in this order if the scripted clear misses 180-240 s: CHAIN (30-45), WAVE size (3-4, NEED staying 8),
-  WAVE_AT[1] (75-110), READ (6-10), HEAR (4-6).
+- **Numbers** (landed; the gate passed at the first guesses once the policy worked the opposition, so no tuning round): NEED 8,
+  WAVES 4 × 3, WAVE_AT 0 / 95 / 185 / 260, CHAIN 45 (from the wave's last listener inside), HEAR (VOICE) 5, RING 2.5-3.5,
+  ACOLYTE_OFF 1.0 (beside him, else round him, within one Discord and beyond one Doom), READ 8, SIGHT 3, SENTRIES 2, SENTRY_OFF
+  1.5, RETURN_AFTER 20 (at once when the town begins to evacuate), RELIEF_AFTER 30 (backed off when no one can reach the post),
+  RELIEFS 6, FAITHFUL 8 (lay), BELIEVER_RING 2.0, SERMON_ENDS 300, SEEN_SHOW 8, the camera (-13.0, 9.5). Tune in this order if the
+  scripted clear misses 180-240 s: CHAIN (30-45), WAVE size (3-4, NEED staying 8), WAVE_AT[1] (75-110), READ (6-10), HEAR (4-6).
 - **Scripted policy** (`--scenario=sermon`, loadout Mind Whisper, Discord, Silent Doom, Will-o'-Wisp: 6 DP). Every LOOK_FRAMES,
-  the first that applies:
-  1. The preacher preaches and Discord is ready: Discord on him (it holds his acolytes too).
-  2. The preacher and both acolytes are held, and Doom is ready: Doom him (silenced for good).
-  3. A report runs and Doom is ready: Doom the carrier where the kill would go unseen.
-  4. A sentry stands on guard: Doom him when no one else is within 2 (they stand 3.0 apart), else whisper him eight units away.
-  5. No sentry on guard and Whisper is ready: whisper the unturned listener nearest the god's house, if he is not rapt (still
+  the first that applies (the spec's six, worked as a player works the opposition: the well is crowded, so the preacher is
+  whispered aside and killed alone rather than Doomed among his crowd):
+  1. The bellkeeper is called: Doom him, else whisper him aside, else Discord him (either drops the climb).
+  2. The preacher stands where his death would go unseen (no acolyte not held within SIGHT): Doom him (silenced for good).
+  3. The preacher preaches: whisper him to the quietest spot within reach, else Discord him (it holds his acolytes too).
+  4. The preacher and both acolytes are held, no one else within the Doom's radius: Doom him.
+  5. A report runs (and its runner has a way to the Temple): Doom the carrier where the kill would go unseen, else whisper him
+     aside, else Discord him.
+  6. A Faithful would see the god's door (a sentry on guard, or any other): Doom him when no one else is within 2 and the kill
+     goes unseen, else whisper him to a quiet spot.
+  7. The door unwatched and Whisper is ready: whisper the unturned listener nearest the god's house, if he is not rapt (still
      walking in, or the preacher silent), to its door.
-  6. A sentry's relief walks in and Doom is ready: Doom him.
+  8. A sentry off his post (whispered off, or a relief walking in) where the kill goes unseen: Doom him.
 
-  Will-o'-Wisp is a spare: a lure on the walkers of a wave. Expected clear: about 3:35.
-- **Evacuate-mid-mission test:** the evacuation begins with a listener whispered toward the house and a sentry recovering: the
-  listener reaches the door, the sentry walks back, the waiting waves and the Believers stay.
+  No Doom takes a listener or a Believer. Will-o'-Wisp is a spare it does not use: every listener is on duty, and a lure takes no
+  one on duty. Expected clear: about 3:20.
+- **Evacuate-mid-mission test:** the evacuation begins with a listener whispered toward the house, a sentry recovering away from
+  his post and a waiting listener held (confused, owed a flight): the listener reaches the door, the sentry is sent straight back at
+  the first look, the held one owes no flight, the waiting waves and the Believers stay, and no listener is lost to the flight.
 - **How it differs from Mira's House and First Prayers** (M2 lesson 10):
   - **A man holds the crowd:** the preacher must be silenced before anyone in earshot can be whispered.
   - **Waves on the chain:** eight Believers, from crowds that come in turn.

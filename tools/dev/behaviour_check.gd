@@ -148,6 +148,14 @@ extends SceneTree
 ##          Splitter through the gate barracks (Smite it while Heaven cools); the next horn within 25 s, its night watch cleared with
 ##          Silent Doom; else Silent Doom on a reinforcement or relief running in; the result line gives the longest idle stretch).
 ##          Hit-stop is off for it. --seed= as ringers.
+##   sermon  (v0.11 M5) The Sermon, --case=none (nothing cast) or play, as a player plays it (_sermon_act(): the bellkeeper called,
+##          Silent Doom on him, else a whisper or Discord; the preacher where his death goes unseen, Silent Doom on him; preaching,
+##          Mind Whisper sends him to a quiet spot, else Discord on him; he and both acolytes held, Silent Doom on him; a report
+##          running, Silent Doom on its runner where unseen, else a whisper aside or Discord; a Faithful seeing the god's door (a
+##          sentry), Silent Doom on him with no one else within 2 and unseen, else Mind Whisper sends him to a quiet spot; the door
+##          unwatched, Mind Whisper sends the unturned listener nearest the god's house, not rapt, to its door; else Silent Doom on a
+##          sentry off his post where unseen; no Doom takes a listener; the result line gives the longest idle stretch). --seed= as
+##          ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -277,6 +285,9 @@ const HUNT_FAR := 0.3
 const BISHOP_AHEAD := 25.0
 ## The Armoury's policy (v0.11 M5): how near its horn the next target's night watch is cleared.
 const ARMOURY_AHEAD := 25.0
+## The Sermon's policy (v0.11 M5): how near a sentry no one else may stand for a Doom; how far one is whispered off.
+const SERMON_ALONE := 2.0
+const SERMON_AWAY := 8.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -406,6 +417,9 @@ func _run() -> void:
 	elif scenario == "armoury":
 		powers = PackedStringArray(["doom", "smite", "ember", "heaven"])
 		mission.mission_id = MissionBook.ARMOURY
+	elif scenario == "sermon":
+		powers = PackedStringArray(["whisper", "discord", "doom", "wisp"])
+		mission.mission_id = MissionBook.SERMON
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M5: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -479,6 +493,8 @@ func _run() -> void:
 			await _bishop(Battlefield.arg_value(args, "--case"))
 		"armoury":
 			await _armoury(Battlefield.arg_value(args, "--case"))
+		"sermon":
+			await _sermon(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2600,6 +2616,172 @@ func _armoury_act(rules: Rules, slots: Dictionary, d: ArmouryDirector, crowd: Cr
 			rules.cast(slots.doom, walker.ground_pos)
 			return "doom a man running in"
 	return ""
+
+
+## The Sermon (v0.11 M5), with mission spec §3's policy (_sermon_act()), through _scripted().
+func _sermon(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as SermonDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("sermon", which, func() -> String: return _sermon_act(rules, slots, d, crowd),
+		func() -> String: return "believers=%d left=%d preaching=%s sentries=%d reports=%d gaze=%d phase=%s bell=%s" % [d.believers_outside(),
+			d.unturned().size(), d.preaching(), d.sentries_on_guard().size(), d.reports_started, roundi(d.gaze.value), d.hint_phase(),
+			_bell_state(crowd)])
+
+
+## One look of The Sermon's policy (v0.11 M5, mission spec §3's, worked as a player works the opposition): what was cast, or "". The
+## first that applies:
+## 1. the bellkeeper called (the BELLKEEPER tag's man): Silent Doom on him, else Mind Whisper sends him aside, else Discord (either
+##    drops the climb);
+## 2. the preacher out of doors where his death goes unseen (no acolyte not held within SermonDirector's SIGHT, _sermon_unseen()):
+##    Silent Doom on him (silenced for good);
+## 3. the preacher preaching: Mind Whisper sends him to a quiet spot (_sermon_quiet(): the well's crowd would see him die there),
+##    else Discord on him (it holds his acolytes too);
+## 4. he and both acolytes held and none of his crowd within its radius: Silent Doom on him;
+## 5. a report running: Silent Doom on its runner where the kill goes unseen, else Mind Whisper sends him to a quiet spot, else
+##    Discord on him (a held runner drops the run);
+## 6. a Faithful who would see the god's door (a sentry on guard, or any other -- the red marks): Silent Doom on him with no one else
+##    within SERMON_ALONE and the kill unseen, else Mind Whisper sends him to a quiet spot (else SERMON_AWAY off the door);
+## 7. the door unwatched: Mind Whisper sends the unturned listener nearest the god's house, not rapt and able to hear, to its door;
+## 8. a sentry off his post (one whispered off, a relief walking in) where his death goes unseen: Silent Doom on him.
+## Every Silent Doom but the bellkeeper's spares the crowd (_sermon_spares()). Will-o'-Wisp is a spare it does not use (every listener
+## is on duty, and a lure takes no one on duty).
+func _sermon_act(rules: Rules, slots: Dictionary, d: SermonDirector, crowd: Crowd) -> String:
+	var doom := _slot_ready(rules, slots, "doom")
+	var whisper := _slot_ready(rules, slots, "whisper")
+	var keeper := d.bellkeeper()
+	if keeper != null:
+		if doom:
+			rules.cast(slots.doom, keeper.ground_pos)
+			return "doom the bellkeeper"
+		if whisper and _whisperable(keeper):
+			var aside := _sermon_quiet(d, crowd, keeper)
+			if aside != Vector2.INF:
+				rules.cast(slots.whisper, keeper.ground_pos, {"target": keeper, "to": aside})
+				return "whisper the bellkeeper aside"
+		if not d.held(keeper) and _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, keeper.ground_pos)
+			return "discord the bellkeeper"
+	var pr: Variant = d.preacher
+	var out := WarningDirector._alive(pr) and not (pr as Person).inside
+	if out and doom and _sermon_unseen(d, crowd, pr as Person) and _sermon_spares(d, pr as Person):
+		rules.cast(slots.doom, (pr as Person).ground_pos)
+		return "doom the preacher"
+	if d.preaching():
+		if whisper and _whisperable(pr as Person):
+			var quiet := _sermon_quiet(d, crowd, pr as Person)
+			if quiet != Vector2.INF:
+				rules.cast(slots.whisper, (pr as Person).ground_pos, {"target": pr, "to": quiet})
+				return "whisper the preacher aside"
+		if _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, (pr as Person).ground_pos)
+			return "discord the preacher"
+	if out and d.held(pr) and doom and _none_within(crowd, pr as Person, SilentDoom.RADIUS):
+		var all_held := true
+		for a: Variant in d.acolytes:
+			all_held = all_held and (not WarningDirector._alive(a) or d.held(a))
+		if all_held:
+			rules.cast(slots.doom, (pr as Person).ground_pos)
+			return "doom the held preacher"
+	for r in d.reports:
+		if not r.is_open() or not WarningDirector._alive(r.carrier) or r.carrier.inside \
+				or _walk_len(crowd, r.carrier.ground_pos, d.temple_door) == INF:
+			continue  # one shut in where no street leads to the Temple never gets there
+		if doom and _tax_unseen(r.carrier, crowd) and _sermon_spares(d, r.carrier):
+			rules.cast(slots.doom, r.carrier.ground_pos)
+			return "doom a report's runner"
+		if whisper and _whisperable(r.carrier):
+			var quiet := _sermon_quiet(d, crowd, r.carrier)
+			if quiet != Vector2.INF:
+				rules.cast(slots.whisper, r.carrier.ground_pos, {"target": r.carrier, "to": quiet})
+				return "whisper a report's runner aside"
+		if not d.held(r.carrier) and _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, r.carrier.ground_pos)
+			return "discord a report's runner"
+	var on := d.watchers(d.door, MirasHouseDirector.SIGHT)
+	if not on.is_empty():
+		if doom:
+			for p in on:
+				if _none_within(crowd, p, SERMON_ALONE) and _tax_unseen(p, crowd) and _sermon_spares(d, p):
+					rules.cast(slots.doom, p.ground_pos)
+					return "doom a watcher of the door"
+		if whisper:
+			for p in on:
+				if not _whisperable(p):
+					continue
+				var to := _sermon_quiet(d, crowd, p)
+				if to == Vector2.INF:
+					var off := p.ground_pos - d.door
+					to = MindWhisperFx.clamp_to(crowd._grid, p.ground_pos,
+						p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * SERMON_AWAY)
+				rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": to})
+				return "whisper a watcher off"
+		return ""
+	if whisper:
+		var best: Person = null
+		for p in d.unturned():
+			if d.rapt(p) or not _whisperable(p):
+				continue
+			if best == null or p.ground_pos.distance_to(d.door) < best.ground_pos.distance_to(d.door):
+				best = p
+		if best != null:
+			rules.cast(slots.whisper, best.ground_pos, {"target": best, "to": MindWhisperFx.clamp_to(crowd._grid, best.ground_pos, d.door)})
+			return "whisper a listener to the house"
+	if doom:
+		for p in d.sentries_off():
+			if _tax_unseen(p, crowd) and _sermon_spares(d, p):
+				rules.cast(slots.doom, p.ground_pos)
+				return "doom a sentry off his post"
+	return ""
+
+
+## A Silent Doom on `p` would spare the preacher's crowd (v0.11 M5, the main hint's "Do not kill them"): no listener, Believers among
+## them, stands within its radius (and a hair) of him -- _tax_unseen() lets those fall with him.
+func _sermon_spares(d: SermonDirector, p: Person) -> bool:
+	for l: SermonDirector.Listener in d.listeners:
+		if WarningDirector._alive(l.man) and l.man != p and not (l.man as Person).inside \
+				and (l.man as Person).ground_pos.distance_to(p.ground_pos) <= SilentDoom.RADIUS + 0.3:
+			return false
+	return true
+
+
+## A Silent Doom on the preacher `p` now would go unseen (v0.11 M5): no one would witness it (_tax_unseen()), and no acolyte not held
+## stands within SermonDirector's SIGHT (an acolyte who sees the fall runs to the Temple).
+func _sermon_unseen(d: SermonDirector, crowd: Crowd, p: Person) -> bool:
+	if not _tax_unseen(p, crowd):
+		return false
+	for a: Variant in d.acolytes:
+		if WarningDirector._alive(a) and not d.held(a) and (a as Person).ground_pos.distance_to(p.ground_pos) <= MirasHouseDirector.SIGHT + 0.5:
+			return false
+	return true
+
+
+## The quietest spot within Mind Whisper's reach of `c` (v0.11 M5, The Bell-Ringers' search, loosened for a crowded quarter): of
+## RINGERS_QUIET_DIRS directions at each of RINGERS_QUIET_R, one his walk reaches within the reach, with the fewest living people out
+## of doors within RINGERS_QUIET_CLEAR of it, then the farthest from the pulpit and the god's door (the crowd, the acolytes and the
+## sentries); Vector2.INF for none.
+func _sermon_quiet(d: SermonDirector, crowd: Crowd, c: Person) -> Vector2:
+	var best := Vector2.INF
+	var best_n := 0
+	var best_gap := -1.0
+	for rad: float in RINGERS_QUIET_R:
+		for k in RINGERS_QUIET_DIRS:
+			var g := d._walkable(c.ground_pos + Vector2.from_angle(TAU * float(k) / float(RINGERS_QUIET_DIRS)) * rad)
+			if g.distance_to(c.ground_pos) > MindWhisperFx.REACH - 0.5 or _walk_len(crowd, c.ground_pos, g) > MindWhisperFx.REACH:
+				continue
+			var n := 0
+			for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+				for p in group:
+					if is_instance_valid(p) and p != c and p.is_alive() and not p.inside \
+							and p.ground_pos.distance_to(g) <= RINGERS_QUIET_CLEAR:
+						n += 1
+			var gap := minf(g.distance_to(d.pulpit), g.distance_to(d.door))
+			if best == Vector2.INF or n < best_n or (n == best_n and gap > best_gap):
+				best = g
+				best_n = n
+				best_gap = gap
+	return best
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

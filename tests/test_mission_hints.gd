@@ -105,6 +105,14 @@ const SPEC := [
 	["armoury.guarded", "Armed men (red) guard it: it takes no harm. Kill every one. Whispers do not move an armed man."],
 	["armoury.open", "No guard stands. Destroy it now: more armed men march from the Citadel, faster each minute."],
 	["armoury.stone", "The gate barracks is stone: blows, not fire."],
+	# The Sermon (v0.11 M5).
+	["sermon", "Silence the preacher (red), then whisper his crowd (gold) to the god's house unseen. Eight must believe: kill none."],
+	["sermon.rapt", "He preaches: his crowd hears only him. Discord, a whisper or a fright silences him for a while; death, for good."],
+	["sermon.watched", "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first."],
+	["sermon.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
+	["sermon.coming", "More come to hear him (gold). Whisper them on the way, before they come within his voice."],
+	["sermon.seen", "A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze."],
+	["sermon.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
 ]
 
 

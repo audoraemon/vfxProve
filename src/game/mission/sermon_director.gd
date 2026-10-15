@@ -81,6 +81,11 @@ const SEEN_SHOW := 8.0
 ## god's house and its western sentry at the left just under the stack, the waves' sources above and to the right, the Temple's arrow
 ## on the right edge. (The ruling's ~(-11, 10.5) left the god's door at (214, 161), under the stack's 240 x 165.)
 const CAMERA_AT := Vector2(-13.0, 9.5)
+## How far the door's plate stands above its diamond, and how high the god's house's tag is raised over its roof (screen px; world px),
+## so the house's label, the door's and the sentry's at it stack in three rows and none is dropped (v0.11 M5, Task 8's photograph: the
+## door's "WATCHED" plate was dropped under the house's).
+const DOOR_LIFT := 8.0
+const HOUSE_RAISE := 22.0
 ## Seconds between looks, and the float slack a look is taken within (v0.11 M5: ten 0.05 s frames sum a hair short of 0.5).
 const TICK := 0.5
 const LOOK_SLACK := 0.0001
@@ -684,11 +689,13 @@ func bellkeeper() -> Person:
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if house != null:
-		var h := MapTag.place(house.center(), MARK_HOUSE, _house_label(), house.height, true)
+		var h := MapTag.place(house.center(), MARK_HOUSE, _house_label(), house.height + HOUSE_RAISE, true)
 		h.outline = house.footprint
 		out.append(h)
 	var watched := faithful_seeing(door, SIGHT) != null
-	out.append(MapTag.place(door, MARK_WATCHED if watched else MARK_CLEAR, "DOOR - WATCHED" if watched else "DOOR - CLEAR", 0.0, false))
+	var door_tag := MapTag.place(door, MARK_WATCHED if watched else MARK_CLEAR, "DOOR - WATCHED" if watched else "DOOR - CLEAR", 0.0, false)
+	door_tag.lift += DOOR_LIFT
+	out.append(door_tag)
 	var running := false
 	for r in reports:
 		if r.is_open() and _alive(r.carrier):

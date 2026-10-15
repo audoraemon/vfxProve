@@ -95,6 +95,16 @@ static func _setup(t) -> void:
 	for st in d.targets:
 		clear = clear and Kit.clear_of_stack(st.center(), ArmouryDirector.CAMERA_AT, Kit.STACK)
 	t.check(clear, "the camera keeps the three targets (or their arrows) clear of the real HUD stack")
+	# Task 8's photograph: the gate barracks' and the armoury's arrows stand side by side on the bottom edge; with "MUSTERS BY" in
+	# both plates the HUD dropped the armoury's (Hud.tag_layout keeps the earlier plate).
+	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
+	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(ArmouryDirector.CAMERA_AT) * Mission.PLAY_ZOOM
+	var shown := 0
+	for e in Hud.tag_layout(d.tags(), xf, Kit.VIEW):
+		var label := String(e.tag.label)
+		if bool(e.show) and (label.begins_with("BARRACKS") or label.begins_with("ARMOURY")):
+			shown += 1
+	t.check(shown == 3, "at the camera's rest all three targets' plates are drawn, the two arrows' too (%d)" % shown)
 	var m := MissionBook.armoury()
 	var reasons := []
 	for o in m.objectives():
@@ -308,7 +318,7 @@ static func _chain(t) -> void:
 	Kit.run_for(s, 0.1)
 	var shown := d.timeline.seconds_to("horn_1")
 	t.check(d.razed(d.targets[0]) and (s.banners as Array).has("THE NORTH BARRACKS IS RAZED") and shown <= ArmouryDirector.CHAIN + 0.1
-		and String(Kit.labels(d)[0]).begins_with("BARRACKS - MUSTERS BY"), "razed after its horn; the next horn chained, CHAIN on (%.1f)" % shown)
+		and String(Kit.labels(d)[0]).begins_with("BARRACKS - HORN"), "razed after its horn; the next horn chained, CHAIN on (%.1f)" % shown)
 	Kit.run_for(s, ArmouryDirector.CHAIN + DT)
 	t.check(d.mustering[1] and (s.banners as Array).has("THE MUSTER HORN: THE GATE BARRACKS TURNS OUT"), "the gate barracks musters CHAIN after")
 	Kit.done(s)
@@ -390,8 +400,8 @@ static func _tagged(t) -> void:
 	var s := _world()
 	var d: ArmouryDirector = s.d
 	var labels := Kit.labels(d)
-	t.check(labels.slice(0, 3) == ["BARRACKS - MUSTERS BY 0:40", "BARRACKS - MUSTERS BY 1:50", "ARMOURY - MUSTERS BY 3:00"]
-		and Kit.edged(d, "ARMOURY - MUSTERS BY 3:00") and labels.has("ARMED") and d.hint_phase() == "",
+	t.check(labels.slice(0, 3) == ["BARRACKS - HORN 0:40", "BARRACKS - HORN 1:50", "ARMOURY - HORN 3:00"]
+		and Kit.edged(d, "ARMOURY - HORN 3:00") and labels.has("ARMED") and d.hint_phase() == "",
 		"before its horn each target is grey with its time, pointed at; ARMED on each man on guard (%s)" % [labels.slice(0, 3)])
 	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]) - ArmouryDirector.WORK_AHEAD + 1.0)
 	t.check(d.hint_phase() == "not_yet", "within 25 s of its horn: not yet")

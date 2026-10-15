@@ -311,7 +311,8 @@ horn's twist is that the garrison arms faster each minute.
   be cleared in the last 25 s (the scripted player's longest stretch between casts: 16 s).
 - **Tags:**
   - Each target not razed, with an edge arrow:
-    - not mustering: "BARRACKS - MUSTERS BY 1:50" (the sooner time), grey; once fallen, "BARRACKS - DOWN, COUNTS AT 1:50";
+    - not mustering: "BARRACKS - HORN 1:50" (the sooner time), grey (Task 8: "MUSTERS BY" was so long that the gate barracks' and the
+      armoury's arrows, side by side on the bottom edge, dropped the armoury's plate); once fallen, "BARRACKS - DOWN, COUNTS AT 1:50";
     - mustering, guarded: "ARMOURY - GUARDED", gold;
     - mustering, open: "ARMOURY", gold; burning: "ARMOURY - BURNING 7" (seconds of the 12 left), orange.
   - ARMED on each armed man on guard, red. A small red mark on one away from his post. A red diamond on a reinforcement or relief

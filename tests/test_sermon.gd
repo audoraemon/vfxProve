@@ -117,6 +117,18 @@ static func _setup(t) -> void:
 	for st: SermonDirector.Sentry in d.sentries:
 		clear = clear and Kit.clear_of_stack(st.post, cam, Kit.STACK)
 	t.check(clear, "the camera keeps the pulpit, the god's house, the sentries' posts, the Temple and the waves' sources (or their arrows) clear of the real HUD stack")
+	# Task 8's photograph: the door's plate stood under the god's house's and the sentry's, and the HUD dropped it
+	# (Hud.tag_layout keeps the earlier plate), so the three are stacked and every key plate is drawn at the camera's rest.
+	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
+	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(cam) * Mission.PLAY_ZOOM
+	var drawn := []
+	for e in Hud.tag_layout(d.tags(), xf, Kit.VIEW):
+		if bool(e.show):
+			drawn.append(String(e.tag.label))
+	drawn.sort()
+	t.check(drawn.size() == 6 and drawn.has("GOD'S HOUSE") and drawn.has("DOOR - WATCHED") and drawn.has("PREACHER")
+		and drawn.count("SENTRY") == 2 and drawn.any(func(w: String) -> bool: return w.begins_with("NEXT WAVE")),
+		"at the camera's rest the god's house, its watched door, the preacher, both sentries and the next wave all show a plate (%s)" % [drawn])
 	var m := MissionBook.sermon()
 	var reasons := []
 	for o in m.objectives():

@@ -147,7 +147,7 @@ func _begin() -> void:
 				func() -> bool: return q.state == State.WAITING and _alive(q.target))
 	var taken: Array = []
 	for q in quarries:
-		q.guards = _free_soldiers(hide_door, q.guard_count, taken)
+		q.guards = _appoint_guards(q, taken)
 		taken.append_array(q.guards)
 		_guard_total += q.guards.size()
 	_send_guards()
@@ -202,6 +202,18 @@ func _appointed() -> Array:
 		if q.target != null:
 			out.append(q.target)
 	return out
+
+
+## Virtual (v0.11 M5): the guards who walk with `q`, none of `taken` (the guards already appointed): the q.guard_count free soldiers
+## nearest the hideout's door by default; The Bishop's escort, Lantern Knights it adds.
+func _appoint_guards(q: Quarry, taken: Array) -> Array[Person]:
+	return _free_soldiers(hide_door, q.guard_count, taken)
+
+
+## Virtual (v0.11 M5): this director sends guard `p` to his place and home now -- one of no corps in a mind of his own (GUARD_MINDS)
+## by default; in any other, the rally, a fight, the god's hold, he is left to the town. The Bishop's are its Knights at their posts.
+func _tends(p: Person) -> bool:
+	return p.corps == Person.Corps.NONE and p.mind in GUARD_MINDS
 
 
 ## Virtual (v0.11 M2): the night's opening banner.
@@ -457,8 +469,8 @@ func _judge(q: Quarry) -> void:
 
 
 ## Each guard sent to his place (v0.11 M2): on a ring of `guard_r` round his target in the street, of DOOR_GUARD_R round the
-## door his target is in (one ring for every guard, so those at a shared door stand apart). A guard reserved, of a corps, or
-## in a mind not his own (GUARD_MINDS) is left be; so are a dead or safe target's.
+## door his target is in (one ring for every guard, so those at a shared door stand apart). A guard reserved, or one this
+## director does not tend (_tends()), is left be; so are a dead or safe target's.
 func _send_guards() -> void:
 	var slot := 0
 	for q in quarries:
@@ -473,7 +485,7 @@ func _send_guards() -> void:
 			if not _alive(g) or reserved.has(g):
 				continue
 			var p := g as Person
-			if p.corps != Person.Corps.NONE or not p.mind in GUARD_MINDS:
+			if not _tends(p):
 				continue
 			var spot := _ring_spot(q.target.ground_pos, guard_r, i, q.guards.size(), 0.5) if out \
 				else _ring_spot(_door_in(q), DOOR_GUARD_R, base + i, _guard_total, 0.5)
@@ -481,13 +493,13 @@ func _send_guards() -> void:
 				p.send_to_post(spot, false, hurried)
 
 
-## A dead target's guards go back to their own posts (v0.11 M2), unless the town has them (GUARD_MINDS) or they have none.
+## A dead target's guards go back to their own posts (v0.11 M2), unless this director does not tend them (_tends()) or they have none.
 func _release_guards(q: Quarry) -> void:
 	for g: Variant in q.guards:
 		if not _alive(g):
 			continue
 		var p := g as Person
-		if p.corps == Person.Corps.NONE and p.mind in GUARD_MINDS and p.post != Vector2.INF:
+		if _tends(p) and p.post != Vector2.INF:
 			p.send_to_post(p.post)
 
 

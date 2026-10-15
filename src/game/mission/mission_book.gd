@@ -25,6 +25,11 @@ const INFORMER := "informer"
 const CROWNS_BREAD := "crowns_bread"
 const PRISONER := "prisoner"
 const HERETIC_HUNT := "heretic_hunt"
+## The new Tier 4 missions (v0.11 M5, mission spec §1-§4), built by tier_missions() at Tier 4's numbers.
+const BISHOP := "bishop"
+const ARMOURY := "armoury"
+const SERMON := "sermon"
+const RELIC_RUN := "relic_run"
 ## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
 const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
 const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
@@ -113,6 +118,23 @@ static func _tier3(id: String, name: String, brief: PackedStringArray) -> Missio
 	m.dp_capacity = 10
 	m.clock = 360.0
 	m.tier_floor = 3
+	m.intro_banner = name.to_upper()
+	return m
+
+
+## A Tier 4 (Reckoning) mission's frame (v0.11 M5, mission spec §0, Decision 121): a God-Resistant town -- tier_floor 4 and no profile,
+## so a scripted run meets the board's town -- 5 slots and 13 DP, a 6:30 clock, no bonuses, every power allowed unless the mission
+## narrows its pool.
+static func _tier4(id: String, name: String, brief: PackedStringArray) -> MissionDef:
+	var m := MissionDef.new()
+	m.id = id
+	m.name = name
+	m.tier = 4
+	m.brief = brief
+	m.slots = 5
+	m.dp_capacity = 13
+	m.clock = 390.0
+	m.tier_floor = 4
 	m.intro_banner = name.to_upper()
 	return m
 

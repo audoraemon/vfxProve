@@ -325,6 +325,12 @@ func _house_label() -> String:
 	return "MIRA'S HOUSE"
 
 
+## Virtual (v0.11 M5): why the night is lost now besides the Gaze and dawn ("" while it is not), as RazeDirector.lost_reason():
+## The Sermon's "flock", too few left to turn. BelieversObjective fails with it.
+func lost_reason() -> String:
+	return ""
+
+
 ## The hint's phase (v0.10 M6, spec §4.1): "burning" once the house burns or falls, else "four" with four or more
 ## Believers out, else "".
 func hint_phase() -> String:

@@ -28,7 +28,10 @@ func check(rules: Rules) -> Status:
 	return Status.PENDING
 
 
-## "Granaries spoiled 1 / 3" (v0.11 M2).
+## "Granaries spoiled 1 / 3" (v0.11 M2); v0.11 M5: the director's own line (RazeDirector.hud_line()) in its place when it has one.
 func hud_text(rules: Rules) -> String:
 	var d := rules.director as RazeDirector
+	var line := d.hud_line() if d != null else ""
+	if line != "":
+		return line
 	return "%s %d / %d" % [label, d.razed_count() if d != null else 0, d.targets.size() if d != null else 0]

@@ -86,6 +86,12 @@ func lost_reason() -> String:
 	return ""
 
 
+## Virtual (v0.11 M5): the HUD's line for the main objective in place of RazeObjective's own ("" keeps its own): The Armoury's
+## "Raze the garrison 1 / 3, armed men every 30 s" while a target musters.
+func hud_line() -> String:
+	return ""
+
+
 ## Virtual (v0.11 M2): whether `s` can be spoiled yet. A target that cannot (HarvestDirector's granary before its grain comes)
 ## is as good as sealed: any fire on it is put out at once, nothing it burns counts, and its fall is not judged until it can.
 func _spoilable(_s: Structure) -> bool:

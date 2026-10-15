@@ -11,6 +11,9 @@ const DT := 0.05
 ## label sit some 30 px over its point, so a key point is kept 100 px down or 240 px right of the corner) (v0.11 M3).
 const VIEW := Vector2(640.0, 360.0)
 const DEAD := Rect2(0.0, 0.0, 240.0, 100.0)
+## The real HUD stack's depth with the hint and three wish rows, about 240 x 165 px (v0.11 M5, the controller's ruling: camera checks
+## of M5's missions use it; M3's and M4's keep DEAD).
+const STACK := Rect2(0.0, 0.0, 240.0, 165.0)
 
 
 ## A Festival with its knobs turned (v0.11 M3): no Mayor, no fires, one event of its own, no gathering, and no goer may break.
@@ -183,9 +186,10 @@ static func shown_at(g: Vector2, cam: Vector2) -> Vector2:
 	return Vector2(clampf(edge.x, 0.0, VIEW.x), clampf(edge.y, 0.0, VIEW.y))
 
 
-## Ground point `g`, or its edge arrow, is clear of the left HUD stack with the camera on `cam` (v0.11 M3, controller ruling 7).
-static func clear_of_stack(g: Vector2, cam: Vector2) -> bool:
-	return not DEAD.has_point(shown_at(g, cam))
+## Ground point `g`, or its edge arrow, is clear of the left HUD stack with the camera on `cam` (v0.11 M3, controller ruling 7);
+## v0.11 M5: `zone` is the dead zone checked, DEAD by default and STACK for M5's missions.
+static func clear_of_stack(g: Vector2, cam: Vector2, zone := DEAD) -> bool:
+	return not zone.has_point(shown_at(g, cam))
 
 
 ## EventTimeline.expect() (mission spec §6): the strip and seconds_to() show the sooner time; the event still fires at its own;

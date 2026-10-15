@@ -367,6 +367,12 @@ func going_home() -> bool:
 	return homeward and not swapped and vigil != null and vigil.active and _alive(vigil.bearer)
 
 
+## Virtual (v0.11 M5): the HUD's line for the main objective in place of FlameObjective's own ("" keeps its own): The Relic Run's
+## "The relic: Pip at the lock".
+func hud_line() -> String:
+	return ""
+
+
 ## The hint's phase (v0.10 M6, spec §4.3): "carry" once the flame is swapped, else "homeward" while the Vigil goes home
 ## (going_home()), else "wren" once he has come; "" before.
 func hint_phase() -> String:

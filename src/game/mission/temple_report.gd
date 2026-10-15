@@ -20,6 +20,9 @@ var delivered := false
 ## Ended by a death nobody saw.
 var dead := false
 var relays := 0
+## func(p: Person) -> bool (v0.11 M5): a witness a relay passes over -- The Sermon's and The Relic Run's: one fleeing the town or
+## reserved. Empty: any witness carries it on, as before.
+var skip: Callable
 var _fell_at := Vector2.INF
 var _retarget_in := 0.0
 
@@ -63,7 +66,7 @@ func on_killed(e: DummyEnemy) -> void:
 func _judge(crowd: Crowd) -> void:
 	var at := _fell_at
 	_fell_at = Vector2.INF
-	var witness := crowd.nearest_witness(at)
+	var witness := crowd.nearest_witness(at) if not skip.is_valid() else _witness(crowd, at)
 	if witness == null:
 		dead = true
 		return
@@ -71,6 +74,22 @@ func _judge(crowd: Crowd) -> void:
 		relays += 1
 	carrier = witness
 	_send(true)
+
+
+## The nearest witness to `at` a relay may take (v0.11 M5): as Crowd.nearest_witness() finds one, passing over everyone `skip` names;
+## null for none, and the report ends.
+func _witness(crowd: Crowd, at: Vector2) -> Person:
+	var best: Person = null
+	var best_d := Crowd.DOOM_WITNESS
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or bool(skip.call(p)):
+				continue
+			var d := p.ground_pos.distance_to(at)
+			if d <= best_d:
+				best = p
+				best_d = d
+	return best
 
 
 ## On the run: re-aimed only when it has stopped short. Off it: again once back on its feet, or at once for a relay

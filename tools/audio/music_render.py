@@ -14,10 +14,12 @@ programs played by FluidSynth with the GeneralUser GS soundfont. All of them, an
 Score format: as tools/audio/sfxr_bake.gd's (times in beats with "bpm"), plus, per part:
     "instrument": a name in instruments.json (else "voice" is looked up there),
     "level_db": the part's loudness while it plays (RMS dB, its balance in the mix; or "gain_db", a plain gain),
-    "pan": -1 (left) .. 1 (right), "send": how much goes to the reverb (0..1),
+    "pan": -1 (left) .. 1 (right), "send": how much goes to the reverb (0..1), "hp": a high-pass (Hz, else the
+    instrument's),
     "dyn": [[beat, value], ...] the part's dynamics (MIDI CC1, 0..127), joined by straight ramps;
 per note "vel" (1..127) sets the MIDI velocity directly. The score may set "reverb": {"rt60": 3.8, "mix": 0.35},
-"rms_db" (its level) and "mono".
+"rms_db" (its level), "mono", "eq" (master EQ bands, default MASTER_EQ) and "excite" (0 = none, default 0.6). The reverb only hears 280 Hz-9 kHz, so the
+low end stays dry and tight.
 
 Usage:
     python tools/audio/music_render.py                # every score
@@ -133,6 +135,57 @@ def render_part(mid: mido.MidiFile, cfg: dict, frames: int, tmp: Path) -> np.nda
     return out
 
 
+def biquad(kind: str, f0: float, gain_db: float = 0.0, q: float = 0.707) -> np.ndarray:
+    """One RBJ-cookbook biquad as a second-order section: "peak", "highshelf", "lowshelf", "hp" or "lp"."""
+    a_ = 10 ** (gain_db / 40.0)
+    w0 = 2 * math.pi * f0 / SR
+    cw, sw = math.cos(w0), math.sin(w0)
+    alpha = sw / (2 * q)
+    if kind == "peak":
+        b = [1 + alpha * a_, -2 * cw, 1 - alpha * a_]
+        a = [1 + alpha / a_, -2 * cw, 1 - alpha / a_]
+    elif kind in ("highshelf", "lowshelf"):
+        s = 1 if kind == "highshelf" else -1
+        r = 2 * math.sqrt(a_) * alpha
+        b = [a_ * ((a_ + 1) + s * (a_ - 1) * cw + r), -2 * s * a_ * ((a_ - 1) + s * (a_ + 1) * cw),
+             a_ * ((a_ + 1) + s * (a_ - 1) * cw - r)]
+        a = [(a_ + 1) - s * (a_ - 1) * cw + r, 2 * s * ((a_ - 1) - s * (a_ + 1) * cw), (a_ + 1) - s * (a_ - 1) * cw - r]
+    elif kind == "hp":
+        b = [(1 + cw) / 2, -(1 + cw), (1 + cw) / 2]
+        a = [1 + alpha, -2 * cw, 1 - alpha]
+    else:
+        b = [(1 - cw) / 2, 1 - cw, (1 - cw) / 2]
+        a = [1 + alpha, -2 * cw, 1 - alpha]
+    return np.array([[b[0] / a[0], b[1] / a[0], b[2] / a[0], 1.0, a[1] / a[0], a[2] / a[0]]])
+
+
+def eq(x: np.ndarray, bands: list) -> np.ndarray:
+    """Run x (frames, 2) through bands: [kind, Hz, dB, Q] each (dB and Q may be left out)."""
+    for band in bands:
+        kind, f0 = band[0], float(band[1])
+        g = float(band[2]) if len(band) > 2 else 0.0
+        q = float(band[3]) if len(band) > 3 else 0.707
+        x = signal.sosfilt(biquad(kind, f0, g, q), x, axis=0)
+    return x
+
+
+# The master EQ every score gets unless it sets its own "eq": the low-mid mud cut, presence and air lifted.
+MASTER_EQ = [["hp", 28], ["peak", 300, -3.0, 0.9], ["peak", 3200, 4.5, 0.8], ["highshelf", 8000, 4.0]]
+# The reverb only gets what sounds well in a hall: no rumble, no hiss.
+SEND_EQ = [["hp", 280], ["hp", 280], ["lp", 9000]]
+
+
+def excite(x: np.ndarray, amount: float) -> np.ndarray:
+    """A gentle exciter: the samples hold almost nothing above 7 kHz, so EQ alone cannot brighten them. Soft-saturating
+    the 2.5 kHz+ band makes real upper harmonics of what is there; only the 5 kHz+ part of those is added back."""
+    if amount <= 0:
+        return x
+    band = eq(x, [["hp", 2500], ["hp", 2500]])
+    peak = np.abs(band).max() or 1.0
+    harm = np.tanh(band / peak * 4.0) * peak / 4.0
+    return x + eq(harm, [["hp", 5000], ["hp", 5000]]) * amount
+
+
 def active_rms(x: np.ndarray) -> float:
     """A part's loudness while it plays: the RMS of the stretches within 40 dB of its loudest moment."""
     env = np.convolve(np.abs(x).mean(axis=1), np.ones(2205) / 2205, "same")
@@ -202,6 +255,9 @@ def main() -> None:
                 mid = part_midi(spec, part, cfg, tail)
                 full.tracks.append(mid.tracks[0])
                 x = render_part(mid, cfg, frames, Path(tmp))
+                hp = part.get("hp", cfg.get("hp"))
+                if hp:  # what is below an instrument's own range is only mud under everything else
+                    x = eq(x, [["hp", hp], ["hp", hp]])
                 if "level_db" in part:
                     gain = 10 ** (float(part["level_db"]) / 20.0) / active_rms(x)
                 else:
@@ -219,8 +275,10 @@ def main() -> None:
         (SRC / "midi").mkdir(exist_ok=True)
         full.save(str(SRC / "midi" / f"{cue}.mid"))
         ir = hall_ir(rv["rt60"])
+        send = eq(send, SEND_EQ)
         wet = np.stack([signal.fftconvolve(send[:, c], ir[:, c])[:frames] for c in range(2)], axis=1)
-        mix = dry + wet * rv["mix"] * 2.5
+        mix = eq(dry + wet * rv["mix"] * 2.5, spec.get("eq", MASTER_EQ))
+        mix = excite(mix, float(spec.get("excite", 0.6)))
         if loop:
             y = fold(mix, n)
         else:

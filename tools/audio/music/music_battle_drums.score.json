@@ -1,4 +1,4 @@
-{"length": 32.0, "bpm": 120, "loop": true, "rms_db": -14.5, "reverb": {"rt60": 2.6, "mix": 0.22}, "parts": [
+{"length": 32.0, "bpm": 120, "loop": true, "rms_db": -14.5, "reverb": {"rt60": 2.0, "mix": 0.18}, "parts": [
   {"instrument": "bass_drum", "level_db": -16, "notes": [
     {"t": 0, "hold": 1.0, "vel": 120},
     {"t": 1.5, "hold": 1.0, "vel": 92},

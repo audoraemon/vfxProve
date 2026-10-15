@@ -192,7 +192,7 @@ The mission spec's Decisions 121-168 and the plan's 169-206, numbered 184-269 af
 
 Tests: 6325 checks, 0 failures (6323 at Task 7, two new in Task 8; in quarters 3178 + 806 + 1219 + 1122); FLOW 113 checks, 0 failures.
 
-Gates: filled in at landing.
+Gates (at b5bc51b; Develop-Main had not moved since M4): tests 6346 checks, 0 failures; FLOW 113 checks, 0 failures; the state digest and crowd_check unchanged; every exact behaviour checksum unchanged (calm, gates, fire, rite, soldiers, the five Warning cases, Mira's House, Broken Lanterns), the Vigil Flame's none outcome and its new play reference (-884746702, won at 158.8) and the Feast the same; M2's 24, M3's 18, M4's 18 and the 24 above exact; The Relic Run's extra seeds 4 and 5 won at 211.9 and 249.2 s (seed 5 over the 240 s window: evidence only, the gate is seeds 1-3; playtest decides); the four `--board` runs won with three wishes each, never the pyre on The Bishop's night or the pressed man on The Armoury's. Bench, board versions against `kak-v011-m4` (medians of three, quiet machine): The Bishop 111 fps against The Procession's 107 there, The Sermon 117 against Mira's House's 116, The Relic Run 109 against The Vigil Flame's 119 (its cart, route and wardens: about 0.8 ms a frame, noted for a later profile), The Warning 137 vs 138, Mira's House 114 vs 114, the Vigil Flame 118 vs 118, Last Judgement 115 vs 116: no cost to the old missions.
 
 ### The final review's fixes
 

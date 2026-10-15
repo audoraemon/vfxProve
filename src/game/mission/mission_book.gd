@@ -68,7 +68,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run()]
 	return out
 
 
@@ -391,6 +391,25 @@ static func sermon() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new("Turn the crowd", "sermon", "sermon_over"),
 			EventObjective.new("ends", "Sermon ends", "sermon_over")]
+		return out
+	return m
+
+
+## The Relic Run (v0.11 M5, Tier 4, mission spec §4 and §8 row 20): Pip slips aboard the relic cart at one checkpoint's halt, picks the
+## reliquary's lock on the way and swaps the relic at the next, then carries it to your believers' house under the Searchlight
+## (RelicRunDirector, The Vigil Flame's Steal).
+static func relic_run() -> MissionDef:
+	var m := _tier4(RELIC_RUN, "The Relic Run", PackedStringArray(["The Temple's relic rides to the Citadel.", "Swap it while the cart halts."]))
+	m.goal = "Have Pip slip aboard the relic cart at one halt and swap the relic at the next, then bring it to your believers' house"
+	m.goal_label = "The relic is ours"
+	m.lose = "The relic reaches the Citadel, Pip dies, the Lantern looks, or dawn comes"
+	m.camera_at = RelicRunDirector.CART_CAMERA
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "wisp"])
+	m.director = RelicRunDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new("The relic", "relic", "relic_kept", "pip"),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

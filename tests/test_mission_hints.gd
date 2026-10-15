@@ -113,6 +113,16 @@ const SPEC := [
 	["sermon.coming", "More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them."],
 	["sermon.seen", "A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze."],
 	["sermon.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
+	# The Relic Run (v0.11 M5).
+	["relic_run", "Bring Pip (blue) to the cart's first halt. He slips aboard there, and swaps the relic at the next."],
+	["relic_run.moving", "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before."],
+	["relic_run.watched", "The cart halts, watched (red). Hold or remove the watch: Pip only works unseen."],
+	["relic_run.aboard", "Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic."],
+	["relic_run.carry", "Pip has the relic. Keep him out of the light on his way to your believers' house (orange)."],
+	["relic_run.citadel", "The cart makes for the Citadel (red). This is the last halt."],
+	["relic_run.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
+	["relic_run.seen", "A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze."],
+	["relic_run.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
 ]
 
 

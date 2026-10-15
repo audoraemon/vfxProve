@@ -560,16 +560,19 @@ way, then swaps the relic at the second.
     last fell, its reliquary locked. A new carter and escorts come from the Temple 30 s later and take it on. Killing the cart's
     people stalls the run; it never opens the reliquary.
   - **The halt:** at each checkpoint the cart halts (`VigilRoute.busy`, no change to the walk itself) and the reliquary opens for
-    the watch's count. The count takes 20 s in all with one of the watch (the checkpoint's two wardens or the cart's escort) at
+    the watch's count. The count takes 25 s in all with one of the watch (the checkpoint's two wardens or the cart's escort) at
     the cart and not held. The halt ends when the count is done, or after 50 s at most. Then the reliquary closes and the cart
-    goes on.
+    goes on. Halted, the cart stands where it stopped whatever its carter does (a carter held by Discord wanders; the cart does
+    not).
   - **Watched:** someone of the watch, or any Faithful, within 2 of the cart and not held (Mira's `BLIND`).
   - **Step one, aboard:** Pip whispered to within 1.0 of the halted cart climbs into its straw once no one watches for 2 s. He
-    is hidden: indoors, untouchable, carried with the cart. A whispered Pip by a watched cart waits beside it, "PIP - WAITING".
-  - **The lock:** aboard, Pip picks the reliquary's lock while the cart rolls on ("RELIC CART - PIP AT THE LOCK"). The leg
-    between the halts is long enough for it.
-  - **Step two, the swap:** at the next halt, Pip swaps the relic once no one watches: 4 s unwatched in all. Then he slips out
-    at the cart's side with the relic, and a false relic rides on ("THE RELIC IS TAKEN").
+    is hidden: indoors, untouchable, carried with the cart. A whispered Pip by a watched cart waits beside it, "PIP - WAITING, DO
+    NOT KILL".
+  - **The lock:** aboard, Pip picks the reliquary's lock while the cart rolls on, or at a halt while no one watches ("RELIC CART -
+    PIP AT THE LOCK"). The leg between the halts is long enough for it.
+  - **Step two, the swap:** at the second halt only (plan decision 192: the drop-off cannot be reached from the first), Pip swaps
+    the relic once no one watches: 4 s unwatched in all. Then he slips out at the cart's side with the relic, and a false relic
+    rides on ("THE RELIC IS TAKEN").
   - **One halt, both steps:** if Pip was not aboard when the first halt ended, at the second halt he can still climb in, pick the
     lock and swap in the same window: 14 s unwatched in all (2 to climb in, 8 at the lock, 4 at the swap), against four of the
     watch. It is the hard way; the tour and the hint name the first halt as the way in.
@@ -580,38 +583,45 @@ way, then swaps the relic at the second.
     touching Pip adds 50 to the Gaze; a Faithful it touches stops and prays. Pip holds where a whisper leaves him and then takes
     his errand up again.
   - **The checkpoints' wardens:** two at each watch-house from the start, on duty 2.6 apart (one Doom takes one). At a halt they
-    step up to the cart for the count. Whispered or confused, one walks back 20 s after he is calm; a fallen one is replaced 30 s
-    later by the nearest free lay citizen with a way to the post (M4's `_lay_reaching()`). At most six reliefs.
+    step up to the cart for the count. One off his post walks back 20 s after he left (at once when the town begins to
+    evacuate); a fallen one is replaced 30 s later by the nearest free lay citizen with a way to the post (M4's `_lay_reaching()`),
+    stopped from the flight first once the town is running; with no one who can reach it, the search waits another 30 s. At most
+    six reliefs. New hands for a stalled cart are chosen the same way.
   - **Reports and the Gaze:** The Vigil Flame's (`FlameGaze`, `TempleReport`). A seen death adds 10. A report runs only from a
     seen death near a Faithful's eyes; the theft itself sends none.
-  - **The God-Resistant town:** the bell fills the Gaze. Four seen deaths in a district bring it within 5 s.
+  - **The God-Resistant town:** the bell fills the Gaze. Four seen deaths in a district bring it within 5 s. The hint warns
+    before the bell is called (while a report runs, and for 8 s after a seen death raises the Gaze), and a called bellkeeper is
+    tagged.
 - **Timeline** (left alone):
 
   | Time | Event |
   |---|---|
   | 0:00 | "THE RELIC RUN". The cart waits at the Temple's door. |
-  | 0:35 | "The relic sets out" |
-  | ~0:50 | "The cart halts at the east watch-house": the reliquary open 20-50 s |
-  | ~1:55 | "The cart halts at the west watch-house" (left alone; later by as long as the first halt was held) |
-  | ~2:50 | The cart reaches the Citadel's gate: lost |
+  | 0:45 | "The relic sets out" |
+  | ~0:59 | "The cart halts at the east watch-house": the reliquary open 25-50 s |
+  | ~1:24 | "The cart rolls on" |
+  | ~2:12 | "The cart halts at the west watch-house" (left alone; later by as long as the first halt was held) |
+  | ~3:10 | The cart reaches the Citadel's gate: lost (`none` 187.5 / 191.4 / 193.2 s) |
   | 6:30 | Dawn |
 
-- **The clear:** the first halt at 0:50 + Pip aboard 15 + the count done and the cart on 10 + the leg to the second halt 44 + the
-  swap 10 + the carry 60 (30 units at about 0.8 a second, and the light dodged) ≈ **190 s**. The one-halt way is about as quick
-  (the cart passes the first halt in 20 s) but needs 14 s unwatched against the whole watch; the gate's policy takes the two
-  steps.
-- **Longest waits:** about 50 s to the first halt; Pip must be brought and the first wardens cleared in it. About 44 s of the
-  cart's leg between the halts, with the second wardens to clear. Each halt is a window of 20-50 s. No wait reaches 60 s.
+- **The clear** (measured, `play` seed 2, 181.3 s): the set-out at 0:45 + the leg to the first halt 14 + Pip aboard 10 + the count
+  done and the cart on 22 + the leg to the second halt 49 + the swap 4 + the carry 37 (about 33 units of street at 0.9 a second)
+  ≈ **181 s** (seeds 1-3: 189.5 / 181.3 / 182.6). The one-halt way is about as quick (the cart passes the first halt in 25 s) but
+  needs 14 s unwatched against the whole watch; the gate's policy takes the two steps.
+- **Longest waits:** about 59 s to the first halt; Pip must be brought and the first wardens cleared in it. About 49 s of the
+  cart's leg between the halts, with the second wardens (and their reliefs) to clear from 40 s before. Each halt is a window of
+  25-50 s. No wait reaches 60 s; the gate's longest stretch between two casts is 33-38 s (the leg, and the carry).
 - **Tags:**
   - RELIC CART, gold, with an edge arrow, on the carter: "RELIC CART - HALTED 34" (seconds of the 50 left) while halted;
     "RELIC CART - PIP AT THE LOCK" while he picks it, "RELIC CART - PIP ABOARD" once it is open. Once swapped: no tag (a false
     relic).
-  - PIP - DO NOT KILL, steel blue, with an edge arrow; PIP - WAITING while he waits by a watched cart; PIP - THE RELIC once he
-    carries it.
+  - PIP - DO NOT KILL, steel blue, with an edge arrow; PIP - WAITING, DO NOT KILL while he waits by a watched cart; PIP - THE
+    RELIC, DO NOT KILL once he carries it (his death loses in every state).
   - CHECKPOINT at the next watch-house, orange, with an edge arrow.
   - WARDEN on each warden, red; ESCORT on each escort, red. A red diamond on any other Faithful who watches the cart.
   - BELIEVERS' HOUSE, orange, with an edge arrow. CITADEL, red, with an edge arrow, from the second halt on.
   - Report runners and the Temple, as The Vigil Flame's.
+  - BELLKEEPER, red, with an edge arrow, while the bell is called or climbing.
 - **Hint phases:**
 
   | Phase | Line |
@@ -622,38 +632,52 @@ way, then swaps the relic at the second.
   | `aboard` | Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic. |
   | `carry` | Pip has the relic. Keep him out of the light on his way to your believers' house (orange). |
   | `citadel` | The cart makes for the Citadel (red). This is the last halt. |
+  | `report` | A Faithful runs to the Temple. Stop him before he gets there, unseen. |
+  | `seen` | A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze. |
+  | `bell` | The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen. |
 
-  The relic hint also warns: "Four seen deaths in a district ring the bell, and the bell fills the Gaze."
+  `bell` comes first, then `report`, then `seen` (8 s after a seen death raised the Gaze), then the phases above.
 - **HUD:** "The relic: in its cart", "The relic: Pip at the lock", "The relic: Pip aboard", "Swapping 2 / 4 s", "The relic to your believers: 18", "Gaze 50%"
   (from `FlameObjective`, its label and reasons given in `_init()`, its line from the director's `hud_line()`).
 - **Tour:**
   1. "The relic cart at the Temple. It halts at two checkpoints, where its reliquary opens."
   2. "Pip. Bring him to the first halt: he slips aboard there and swaps the relic at the second."
-  3. "Your believers' house. Pip must bring the relic here."
+  3. "Your believers' house. Pip must bring the relic here. Four seen deaths in a district call the bell."
 - **Mission tags:** none.
 - **Pool:** every power.
 - **Results:** "THE RELIC IS OURS" (`relic`), "THE RELIC REACHES THE CITADEL" (`relic_kept`), "THE BOY IS DEAD" (`pip`); the
   Gaze's "THE LANTERN LOOKS" (`gaze`); dawn's own.
-- **Numbers** (first guesses): SET_OUT_AT 35, CART_PACE 0.42, COUNT 20, HALT_MAX 50, BOARD 2, LOCK 8, SWAP 4, CART_REACH 1.0,
-  WATCH 2.0, PIP_PACE 0.5, ESCORTS 2, WARDENS 2, WARDEN_GAP 2.6, RETURN_AFTER 20, RELIEF_AFTER 30, RELIEFS 6, FAITHFUL 12 (lay); the
-  Searchlight's as The Vigil Flame's. Tune in this order if the scripted clear misses 180-240 s: the drop-off's point (25-35
-  units from the second halt), CART_PACE (0.35-0.5), COUNT (15-25), SET_OUT_AT (25-45). HALT_MAX stays under 60.
+- **Numbers** (tuned by the gate): SET_OUT_AT 45, CART_PACE 0.42, COUNT 25, HALT_MAX 50, BOARD 2, LOCK 8, SWAP 4, CART_REACH 1.0,
+  WATCH 2.0, PIP_PACE 0.5, ESCORTS 2, WARDENS 2, WARDEN_GAP 2.6, RETURN_AFTER 20, RELIEF_AFTER 30, RELIEFS 6, FAITHFUL 12 (lay),
+  DROP_SPOT (12.5, -12.0) (the house at (7.9, -12.3), its door 25.5 straight and 33 street units from the west watch-house); the
+  Searchlight's as The Vigil Flame's. Tuning order: the drop-off's point (25-30 units from the second halt), CART_PACE (0.35-0.5),
+  COUNT (15-25), SET_OUT_AT (25-45); HALT_MAX stays under 60. The rounds: the drop-off left (already at the range's top); CART_PACE
+  0.35 tried and put back (1 of 3 won, longest stretch 46-51 s); SET_OUT_AT 35 -> 45 (2 of 3, median 178.2); COUNT 20 -> 25 (3 of
+  3, median 182.6).
 - **Scripted policy** (`--scenario=relic`, loadout Mind Whisper, Discord, Silent Doom, Will-o'-Wisp: 6 DP). Every LOOK_FRAMES,
   the first that applies:
-  1. Before the first halt, Pip more than 1.5 from where the cart will halt: whisper him up to 10 units toward it.
-  2. The next halt within 25 s: Doom each of that checkpoint's wardens standing alone.
-  3. The cart halts, Pip within reach or aboard, and it is watched:
+  1. The bellkeeper called: Doom him, else Discord.
+  2. A report running: Doom its runner where unseen (sparing Pip), else whisper him eight units off from the Temple, else Discord.
+  3. Pip carries the relic: The Vigil Flame's carry (a Wisp decoy for a beam about to cross his road, else a whisper out of it;
+     Discord at the Temple in the clock's last 20 s).
+  4. Before a halt, Pip not aboard: whisper him to a place 3 short of its checkpoint on his side (out of sight of its wardens'
+     deaths), and 10 s before the halt to the checkpoint itself.
+  5. The first halt within 25 s, or the second within 40 s (clearing the watch on Pip's road is work, the controller's ruling):
+     Doom each of its wardens standing alone where unseen (in the last 10 s, seen or not); else whisper one still at his post to a
+     quiet spot, where his death will go unseen. A relief walking in is cleared the same way.
+  6. Aboard at the first halt: nothing more (the count runs and the cart rolls on sooner).
+  7. The cart halts and Pip is neither by it nor aboard: whisper him to it.
+  8. The cart halts, watched, Pip by it (or nearly):
+     - Discord where it holds every watcher, unless one stands alone (a whisper takes him);
+     - a passer-by among them and Wisp is ready: Wisp four units beyond the cart from Pip;
      - both escorts within 1.2 of one point and Discord is ready: Discord there;
-     - a warden alone and Doom is ready: Doom him;
+     - a watcher alone and Doom is ready, the kill unseen (or, Pip aboard, seen by no Faithful): Doom him;
      - else whisper one watcher eight units away.
-  4. The cart halts, unwatched, Pip beside it and not yet aboard (or not yet swapped): whisper him to the cart.
-  5. Pip carries the relic:
-     - a beam will cross his next stretch within 3 s and Wisp is ready: Wisp six units from him, away from his road;
-     - a beam is on him or about to be, and Whisper is ready: whisper him three units out of it.
 
-  Expected clear: about 3:10.
+  Measured clear: 3:01-3:10 (seeds 1-3 189.5 / 181.3 / 182.6 s, the median 182.6).
 - **Evacuate-mid-mission test:** the evacuation begins while the cart walks its second leg with Pip aboard: the cart walks on, Pip
-  stays hidden, the second checkpoint's wardens hold their posts; and again while Pip carries the relic (he walks on).
+  stays hidden, the second checkpoint's recovering warden holds his post and the one off his post is sent back at once, a
+  whispered escort's owed flight is ended; and again while Pip carries the relic (he walks on).
 - **How it differs from The Vigil Flame** (M2 lesson 10):
   - **A journey, not a loop:** the relic crosses the town once, and its reliquary opens only at two halts.
   - **Two steps:** aboard at one halt, the lock on the way, the swap at the next.
@@ -719,10 +743,13 @@ M3 lesson 8: every shared change is a hook or a var whose default is today's pat
   First Prayers), `tags()`, `hint_phase()`, `tour()`.
 - **`BelieversObjective`:** takes its label and reasons in `_init()` (defaults "Believers", "believers", "few"), and fails with
   the director's `lost_reason()` when it is not empty. Mira's House and First Prayers read exactly as before.
-- **`VigilFlameDirector`:** one hook, `hud_line() -> String` ("" by default). `RelicRunDirector` (new, its subclass) overrides `_begin()`, `_start_vigil()` (the cart),
-  `_home_check()` (the Citadel), `_swap_step()` (the halts, boarding and the swap), `_wren_step()` / `_wren_goal()` (Pip holds where
-  left until the swap), `wren_lost()`, `tags()`, `hint_phase()`, `tour()`, `report()`. It reuses `_swap()` (with `shrine` set to the
-  drop-off and the carter as the robbed bearer), phase 2 and the Searchlight, `FlameGaze` and the reports.
+- **`VigilFlameDirector`:** one hook, `hud_line() -> String` ("" by default). `RelicRunDirector` (new, its subclass) replaces `_begin()`
+  and `step()` (plan decision 191: the cart and its halts, the seen deaths, the reports, the swap, Pip, the held people, the wardens,
+  phase 2, the bell), and overrides `_home_check()` (the Citadel), `_swap_step()` (the halts, boarding, the lock and the swap),
+  `_wren_step()` / `_wren_goal()` (Pip holds where left until the swap), `_on_killed()`, `_report()`, `tags()`, `hint_phase()`,
+  `tour()`, `report()`. It does not reuse `_swap()` (its seer runs to the Temple, its banner names the flame) nor `_flame_home()`:
+  `_take_relic()` and `_relic_home()` do their work. It keeps phase 2 and the Searchlight, `FlameGaze`, the reports, `_pace_bearer()`,
+  `_listen()`, `_add_events()` and `teardown()`.
 - **`VigilRoute`:** unchanged. The halts ride on its `busy` callable ("the walk waits for him").
 - **`FlameObjective`:** takes its label and reasons in `_init()` (defaults "The flame", "flame", "kept", "wren"), and shows the
   director's `hud_line()` when it is not empty, so The Vigil Flame reads as before.

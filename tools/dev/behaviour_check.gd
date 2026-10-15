@@ -156,6 +156,14 @@ extends SceneTree
 ##          unwatched, Mind Whisper sends the unturned listener nearest the god's house, not rapt, to its door; else Silent Doom on a
 ##          sentry off his post where unseen; no Doom takes a listener; the result line gives the longest idle stretch). --seed= as
 ##          ringers.
+##   relic  (v0.11 M5) The Relic Run, --case=none (nothing cast) or play, as a player plays it (_relic_act(): the bellkeeper called,
+##          Silent Doom on him, else Discord; a report running, Silent Doom on its runner where unseen, else a whisper off or Discord;
+##          with the relic, The Vigil Flame's carry (_flame_carry()); before a halt, Mind Whisper brings Pip to a place 3 short of its
+##          checkpoint, and 10 s before it to the checkpoint; the first halt within 25 s, the second within 40 s, Silent Doom on each of
+##          its wardens alone where unseen (else Mind Whisper sends him to a quiet spot); halted, Pip not by the cart nor aboard, Mind
+##          Whisper sends him to it; halted and watched with Pip by, Discord holding every watcher, else a Will-o'-Wisp for passers-by,
+##          else Discord on the escorts, else Silent Doom on a watcher alone and unseen, else Mind Whisper sends one off; aboard at the
+##          first halt, nothing; the result line gives the longest idle stretch). --seed= as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -288,6 +296,24 @@ const ARMOURY_AHEAD := 25.0
 ## The Sermon's policy (v0.11 M5): how near a sentry no one else may stand for a Doom; how far one is whispered off.
 const SERMON_ALONE := 2.0
 const SERMON_AWAY := 8.0
+## The Relic Run's policy (v0.11 M5): how near its time the first halt's wardens are cleared, and the second's from the leg (the
+## controller's ruling: clearing the watch on Pip's road is work, and no stretch passes 45 s -- a relief walking in is cleared too); how
+## near its time a warden whose death would be seen is taken all the same; how far from the next checkpoint Pip waits for the cart (out
+## of sight of its wardens' deaths), and how much nearer than that counts as there; how near its time he is sent from there to the
+## checkpoint itself, so he stands by the cart as it stops.
+const RELIC_AHEAD := 25.0
+const RELIC_LEG := 40.0
+const RELIC_LATE := 10.0
+const RELIC_PARK := 3.0
+const RELIC_NEAR := 0.8
+const RELIC_COME := 10.0
+## The Relic Run's policy at a halt (v0.11 M5): how far beyond the cart from Pip a Will-o'-Wisp draws passers-by off it; how near the
+## escorts' midpoint both must stand for one Discord, and the margin inside Discord's reach that every watcher must stand for one Discord
+## to hold them all; how far a watcher is whispered off.
+const RELIC_LURE := 4.0
+const RELIC_PAIR := 1.2
+const RELIC_MARGIN := 0.15
+const RELIC_AWAY := 8.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -420,6 +446,9 @@ func _run() -> void:
 	elif scenario == "sermon":
 		powers = PackedStringArray(["whisper", "discord", "doom", "belllies"])
 		mission.mission_id = MissionBook.SERMON
+	elif scenario == "relic":
+		powers = PackedStringArray(["whisper", "discord", "doom", "wisp"])
+		mission.mission_id = MissionBook.RELIC_RUN
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M5: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -495,6 +524,8 @@ func _run() -> void:
 			await _armoury(Battlefield.arg_value(args, "--case"))
 		"sermon":
 			await _sermon(Battlefield.arg_value(args, "--case"))
+		"relic":
+			await _relic(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2780,6 +2811,194 @@ func _sermon_quiet(d: SermonDirector, crowd: Crowd, c: Person) -> Vector2:
 							and p.ground_pos.distance_to(g) <= RINGERS_QUIET_CLEAR:
 						n += 1
 			var gap := minf(g.distance_to(d.pulpit), g.distance_to(d.door))
+			if best == Vector2.INF or n < best_n or (n == best_n and gap > best_gap):
+				best = g
+				best_n = n
+				best_gap = gap
+	return best
+
+
+## The Relic Run (v0.11 M5), with mission spec §4's policy (_relic_act()), through _scripted().
+func _relic(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as RelicRunDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("relic", which, func() -> String: return _relic_act(rules, slots, d, crowd),
+		func() -> String: return "halt=%d halts=%s aboard=%s lock=%.0f swapped=%s stalled=%s touches=%d gaze=%d reports=%d phase=%s bell=%s" % [
+			d.halt, d.halts_done, d.aboard, d.lock_left, d.swapped, d.stalled, d.touches, roundi(d.gaze.value), d.reports_started,
+			d.hint_phase(), _bell_state(crowd)])
+
+
+## One look of The Relic Run's policy (v0.11 M5, mission spec §4's, worked as a player works the opposition): what was cast, or "". The
+## first that applies:
+## 1. the bellkeeper called (the BELLKEEPER tag's man): Silent Doom on him, else Discord (either drops the climb);
+## 2. a report running: Silent Doom on its runner where the kill goes unseen and spares Pip, else Mind Whisper sends him RELIC_AWAY off
+##    from the Temple, else Discord on him (a held runner drops the run);
+## 3. with the relic, The Vigil Flame's carry (_relic_carry());
+## 4. before a halt, Pip not aboard: within RELIC_COME of it, Mind Whisper sends him to its checkpoint; earlier, more than RELIC_NEAR
+##    from his waiting place RELIC_PARK short of it on his side, toward that place (up to its reach);
+## 5. the next halt within RELIC_AHEAD (the first) or RELIC_LEG (the second): Silent Doom on a warden of it with no one else within its
+##    radius whose death goes unseen, or in its last RELIC_LATE seconds on one seen; else Mind Whisper sends one still at his post to
+##    a quiet spot (_relic_quiet()), where his death will go unseen;
+## (aboard at the first halt, nothing more: the count runs and the cart rolls on);
+## 6. halted, Pip neither within the cart's reach nor aboard: Mind Whisper sends him to the cart;
+## 7. halted and watched, Pip by the cart or within RELIC_PARK of it: Discord where it holds every watcher (all within
+##    DiscordFx.DISCORD_R - RELIC_MARGIN of their midpoint), unless one stands alone whom a whisper takes; else, a passer-by among them
+##    (Person.LURABLE), a Will-o'-Wisp RELIC_LURE beyond the cart from Pip; else Discord at the escorts' midpoint (both within RELIC_PAIR
+##    of it, neither held); else Silent Doom on a watcher with no one else within its radius and the kill unseen -- or, Pip aboard, seen
+##    by no Faithful (no report runs); else Mind Whisper sends one watcher RELIC_AWAY off the cart.
+func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Crowd) -> String:
+	var v: Variant = d.wren
+	if not WarningDirector._alive(v) or d.home:
+		return ""
+	var pip := v as Person
+	var doom := _slot_ready(rules, slots, "doom")
+	var whisper := _slot_ready(rules, slots, "whisper")
+	var discord := _slot_ready(rules, slots, "discord")
+	var keeper := d.bellkeeper()
+	if keeper != null:
+		if doom:
+			rules.cast(slots.doom, keeper.ground_pos)
+			return "doom the bellkeeper"
+		if not crowd.is_bell_lying() and _slot_ready(rules, slots, "belllies"):
+			rules.cast(slots.belllies, TownLayout.BELL_TOWER.get_center(), {"mode": "well"})
+			return "the bell lies"
+		if discord and not keeper.mind in MissionDirector.BLIND:
+			rules.cast(slots.discord, keeper.ground_pos)
+			return "discord the bellkeeper"
+	for r in d.reports:
+		if not r.is_open() or not WarningDirector._alive(r.carrier) or r.carrier.inside:
+			continue
+		var c := r.carrier
+		var spares := pip.inside or pip.ground_pos.distance_to(c.ground_pos) > SilentDoom.RADIUS + 0.3
+		if doom and spares and _tax_unseen(c, crowd):
+			rules.cast(slots.doom, c.ground_pos)
+			return "doom a report's runner"
+		if whisper and _whisperable(c):
+			var off := c.ground_pos - d.temple_door
+			rules.cast(slots.whisper, c.ground_pos, {"target": c, "to": MindWhisperFx.clamp_to(crowd._grid, c.ground_pos,
+				c.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * RELIC_AWAY)})
+			return "whisper a report's runner off"
+		if discord and not c.mind in MissionDirector.BLIND:
+			rules.cast(slots.discord, c.ground_pos)
+			return "discord a report's runner"
+	if d.swapped:
+		return _relic_carry(rules, slots, d)
+	var cart := d.cart_at()
+	var pip_free := not pip.inside and pip.mind != Person.Mind.WHISPERED and not pip.shaken()
+	var k := d.next_halt()
+	var due := d.halt_in()
+	if d.halt < 0 and k >= 0 and not d.aboard and pip_free and whisper:
+		var at := d.checkpoints[k]
+		if due <= RELIC_COME and pip.ground_pos.distance_to(at) > RelicRunDirector.CART_REACH * 0.5:
+			rules.cast(slots.whisper, pip.ground_pos, {"target": pip, "to": MindWhisperFx.clamp_to(crowd._grid, pip.ground_pos, at)})
+			return "whisper Pip to the halt"
+		var from := pip.ground_pos - at
+		var park := d._walkable(at + (from.normalized() if from.length() > 0.01 else Vector2.DOWN) * RELIC_PARK)
+		if due > RELIC_COME and pip.ground_pos.distance_to(park) > RELIC_NEAR and pip.ground_pos.distance_to(at) > RELIC_PARK:
+			rules.cast(slots.whisper, pip.ground_pos, {"target": pip, "to": MindWhisperFx.clamp_to(crowd._grid, pip.ground_pos, park)})
+			return "whisper Pip toward the next halt"
+	if d.halt < 0 and k >= 0 and due <= (RELIC_AHEAD if k == 0 else RELIC_LEG):
+		if doom:
+			for p in d.wardens_at(k):
+				if _none_within(crowd, p, SilentDoom.RADIUS) and (due <= RELIC_LATE or _tax_unseen(p, crowd)):
+					rules.cast(slots.doom, p.ground_pos)
+					return "doom a warden ahead"
+		if whisper:
+			for p in d.wardens_at(k):
+				if not _whisperable(p) or p.ground_pos.distance_to(d.checkpoints[k]) > RelicRunDirector.WARDEN_GAP:
+					continue
+				var quiet := _relic_quiet(d, crowd, p, d.checkpoints[k])
+				if quiet != Vector2.INF:
+					rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": quiet})
+					return "whisper a warden ahead aside"
+	if d.halt < 0 or (d.aboard and d.halt != RelicRunDirector.HALT_LEGS.size() - 1):
+		return ""  # aboard at the first halt: the count may run, and the cart rolls on sooner
+	var by := d.aboard or (not pip.inside and pip.ground_pos.distance_to(cart) <= RelicRunDirector.CART_REACH)
+	if not by and pip_free and whisper:
+		rules.cast(slots.whisper, pip.ground_pos, {"target": pip, "to": MindWhisperFx.clamp_to(crowd._grid, pip.ground_pos, cart)})
+		return "whisper Pip to the cart"
+	if not by and (pip.inside or pip.ground_pos.distance_to(cart) > RELIC_PARK):
+		return ""  # the watch is held only once Pip is by the cart or nearly there
+	var seen := d.watchers_now()
+	if seen.is_empty():
+		return ""
+	var lone := seen.size() == 1 and _whisperable(seen[0])  # one watcher: a whisper (soon ready), not the slow Discord
+	if discord and not lone:
+		var mid := Vector2.ZERO
+		for p in seen:
+			mid += p.ground_pos / float(seen.size())
+		var one := true
+		for p in seen:
+			one = one and p.ground_pos.distance_to(mid) <= DiscordFx.DISCORD_R - RELIC_MARGIN
+		if one:
+			rules.cast(slots.discord, mid)
+			return "discord the watch"
+	if _slot_ready(rules, slots, "wisp"):
+		for p in seen:
+			if not p.mind in Person.LURABLE:
+				continue
+			var off := cart - pip.ground_pos if not pip.inside else p.ground_pos - cart
+			var lure := d._walkable(cart + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * RELIC_LURE)
+			rules.cast(slots.wisp, lure)
+			return "wisp the passers-by off the cart"
+	if discord and not lone:
+		var pair: Array[Person] = []
+		for e: Variant in d.escorts:
+			if WarningDirector._alive(e) and not (e as Person).inside and not (e as Person).mind in MissionDirector.BLIND:
+				pair.append(e as Person)
+		if pair.size() == 2:
+			var at := (pair[0].ground_pos + pair[1].ground_pos) * 0.5
+			if pair[0].ground_pos.distance_to(at) <= RELIC_PAIR and pair[1].ground_pos.distance_to(at) <= RELIC_PAIR:
+				rules.cast(slots.discord, at)
+				return "discord the escorts"
+	if doom:
+		var steady := pip.inside  # aboard, Pip takes no fright from a death by the cart (a whisper does not hold off a fright)
+		for p in seen:
+			if _none_within(crowd, p, SilentDoom.RADIUS) and (_tax_unseen(p, crowd) or steady and d.faithful_seeing(p.ground_pos,
+					Crowd.DOOM_WITNESS + TAX_MARGIN, p) == null):
+				rules.cast(slots.doom, p.ground_pos)
+				return "doom a watcher of the cart"
+	if whisper:
+		for p in seen:
+			if not _whisperable(p):
+				continue
+			var off := p.ground_pos - cart
+			var away := p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * RELIC_AWAY
+			rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, away)})
+			return "whisper a watcher off the cart"
+	return ""
+
+
+## The Vigil Flame's carry for Pip and the relic (v0.11 M5, plan decision 199): _flame_carry(), and what it cast, if anything.
+func _relic_carry(rules: Rules, slots: Dictionary, d: RelicRunDirector) -> String:
+	var before := rules._casts.size()
+	_flame_carry(rules, d, slots)
+	return "carry the relic" if rules._casts.size() > before else ""
+
+
+## The quietest spot within Mind Whisper's reach of warden `c` (v0.11 M5, The Sermon's search): of RINGERS_QUIET_DIRS directions at each
+## of RINGERS_QUIET_R, one his walk reaches within the reach, with the fewest living people out of doors within RINGERS_QUIET_CLEAR of
+## it, then the farthest from his checkpoint `from` and Pip; Vector2.INF for none.
+func _relic_quiet(d: RelicRunDirector, crowd: Crowd, c: Person, from: Vector2) -> Vector2:
+	var best := Vector2.INF
+	var best_n := 0
+	var best_gap := -1.0
+	for rad: float in RINGERS_QUIET_R:
+		for k in RINGERS_QUIET_DIRS:
+			var g := d._walkable(c.ground_pos + Vector2.from_angle(TAU * float(k) / float(RINGERS_QUIET_DIRS)) * rad)
+			if g.distance_to(c.ground_pos) > MindWhisperFx.REACH - 0.5 or _walk_len(crowd, c.ground_pos, g) > MindWhisperFx.REACH:
+				continue
+			var n := 0
+			for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+				for p in group:
+					if is_instance_valid(p) and p != c and p.is_alive() and not p.inside \
+							and p.ground_pos.distance_to(g) <= RINGERS_QUIET_CLEAR:
+						n += 1
+			var gap := g.distance_to(from)
+			if WarningDirector._alive(d.wren) and not d.wren.inside:
+				gap = minf(gap, g.distance_to(d.wren.ground_pos))
 			if best == Vector2.INF or n < best_n or (n == best_n and gap > best_gap):
 				best = g
 				best_n = n

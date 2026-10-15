@@ -40,6 +40,12 @@ static func run(t) -> void:
 	_exit_hook(t)
 	_need(t)
 	_watch_switch(t)
+	_keepout_empty(t)
+	_keepout_under(t)
+	_keepout_slide(t)
+	_keepout_labels(t)
+	_keepout_stack(t)
+	_keepout_redraw(t)
 
 
 ## The Lost Lamb keeps one Charge record, and every old field reads and writes it (v0.11 M6, Task 1).
@@ -156,3 +162,135 @@ static func _watch_switch(t) -> void:
 	Kit.run_for(s2, EscortDirector.TICK + DT)
 	t.check(on.change_in > EscortDirector.WATCH_CHANGE - 1.0, "watch_changes true: it starts")
 	Kit.done(s2)
+
+
+## The screen's middle, and the stack as a full night draws it, for the keepout's unit checks (v0.11 M6 tests).
+const MID := Vector2(320.0, 180.0)
+const FULL_STACK := Rect2(0.0, 0.0, 244.0, 169.0)
+
+
+## Tags as the layout takes them (v0.11 M6 tests).
+static func _tags(list: Array) -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	out.assign(list)
+	return out
+
+
+## A person's tag whose diamond lands on `screen` with the camera at MID (v0.11 M6 tests).
+static func _tag_at(screen: Vector2, label: String, edge: bool) -> MapTag:
+	var g := Iso.screen_to_ground(screen + Vector2(0.0, MapTag.PERSON_LIFT) - MID)
+	return MapTag.person(g, Color.RED, label, edge)
+
+
+## A spread of tags over the screen and off it, half with edge arrows (v0.11 M6 tests).
+static func _spread_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	for k in 16:
+		out.append(MapTag.person(Vector2(-16.0 + 2.2 * float(k), -12.0 + 1.6 * float(k)), Color.RED, "TAG %d" % k, k % 2 == 0))
+	return out
+
+
+## An empty keepout lays every tag out exactly as before (v0.11 M6, Task 3).
+static func _keepout_empty(t) -> void:
+	var xf := Transform2D(0.0, MID)
+	var tags := _spread_tags()
+	var before := Hud.tag_layout(tags, xf, Kit.VIEW)
+	var now := Hud.tag_layout(tags, xf, Kit.VIEW, Rect2())
+	var same := before.size() == now.size()
+	for i in mini(before.size(), now.size()):
+		same = same and String(before[i].mode) == String(now[i].mode) and before[i].arrow == now[i].arrow \
+			and before[i].label == now[i].label and bool(before[i].show) == bool(now[i].show)
+	var frame := Hud.tag_frame(Kit.VIEW)
+	var far := Vector2(-400.0, -100.0)
+	t.check(same and Hud.frame_point(far, frame) == Hud.frame_point(far, frame, Rect2()),
+		"an empty keepout: every tag and arrow where it was")
+
+
+## An edge tag whose diamond the stack would hide becomes an arrow on the stack's border, its label beside it outside (v0.11 M6); a tag
+## without an edge keeps its diamond under the stack but loses its label.
+static func _keepout_under(t) -> void:
+	var xf := Transform2D(0.0, MID)
+	var lay := Hud.tag_layout(_tags([_tag_at(Vector2(100.0, 130.0), "UNDER", true)]), xf, Kit.VIEW, FULL_STACK)
+	var tip: Vector2 = lay[0].arrow
+	var on_border := is_equal_approx(tip.x, FULL_STACK.end.x) or is_equal_approx(tip.y, FULL_STACK.end.y)
+	t.check(String(lay[0].mode) == "arrow" and on_border and not FULL_STACK.has_point(tip) and bool(lay[0].show)
+		and not (lay[0].label as Rect2).intersects(FULL_STACK), "an edge tag under the stack: an arrow on its border (%s), its label outside" % tip)
+	var plain := Hud.tag_layout(_tags([_tag_at(Vector2(100.0, 130.0), "PLAIN", false)]), xf, Kit.VIEW, FULL_STACK)
+	t.check(String(plain[0].mode) == "map" and not bool(plain[0].show), "a tag without an edge keeps its diamond under the stack, not its label")
+	# One high up in the stack's span, bound mostly up: its plate, centred away from the tip along the heading, would straddle the border;
+	# it is moved out and still shown.
+	var high := Hud.tag_layout(_tags([_tag_at(Vector2(196.0, 52.0), "PRESSED MAN AND HIS PRESS-GANG", true)]), xf, Kit.VIEW, FULL_STACK)
+	t.check(String(high[0].mode) == "arrow" and bool(high[0].show) and not (high[0].label as Rect2).intersects(FULL_STACK)
+		and not FULL_STACK.has_point(high[0].arrow), "an arrow bound mostly up on the stack's border keeps its label, outside it")
+
+
+## An arrow bound for the frame's left or top edge inside the stack's span slides to where the same line meets the stack's border
+## (v0.11 M6).
+static func _keepout_slide(t) -> void:
+	var frame := Hud.tag_frame(Kit.VIEW)
+	var far := Vector2(-400.0, -100.0)
+	var old := Hud.frame_point(far, frame)
+	var tip := Hud.frame_point(far, frame, FULL_STACK)
+	var mid := frame.get_center()
+	var cross := (tip - mid).cross(far - mid)
+	t.check(FULL_STACK.grow(0.5).has_point(old) and not FULL_STACK.has_point(tip) and absf(cross) < 1.0
+		and (is_equal_approx(tip.x, FULL_STACK.end.x) or is_equal_approx(tip.y, FULL_STACK.end.y)),
+		"an arrow that fell inside the stack's span (%s) now sits on its border on the same line (%s)" % [old, tip])
+	var east := Vector2(900.0, 200.0)
+	t.check(Hud.frame_point(east, frame, FULL_STACK) == Hud.frame_point(east, frame), "an arrow nowhere near the stack is where it was")
+
+
+## No label plate is drawn over the stack: it counts as a label already placed (v0.11 M6).
+static func _keepout_labels(t) -> void:
+	var xf := Transform2D(0.0, MID)
+	var clear := true
+	var shown := 0
+	for e: Dictionary in Hud.tag_layout(_spread_tags(), xf, Kit.VIEW, FULL_STACK):
+		if bool(e.show):
+			shown += 1
+			clear = clear and not (e.label as Rect2).intersects(FULL_STACK)
+	t.check(clear and shown > 0, "no shown label plate overlaps the stack (%d shown)" % shown)
+
+
+## Hud.stack_rect() is the live stack as drawn (v0.11 M6): from the corner to the widest plate's right edge and the lowest's bottom,
+## STACK_PAD beyond; the tour's caption leaves it (the stack is still drawn). A Tier 3 board night: three wishes' rows. The kit's STACK is
+## the real depth.
+static func _keepout_stack(t) -> void:
+	var def := TierBook.board("crowns_bread")
+	var s := Kit.world(def)
+	var descent := Descent.new().setup(def, 7)
+	descent.attach(s.rules, s.d)
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	var r := hud.stack_rect()
+	var hint := hud.hint_rect()
+	var wishes := hud.wishes_rect()
+	var rows := hud.objective_rect()
+	var wide := maxf(rows.end.x, maxf(hint.end.x, wishes.end.x))
+	t.check(r.position == Vector2.ZERO and is_equal_approx(r.end.x, wide + Hud.STACK_PAD) and is_equal_approx(r.end.y, wishes.end.y + Hud.STACK_PAD)
+		and descent.wishes.size() == 3 and r.end.y > Kit.DEAD.end.y,
+		"the stack: the objectives, the hint and three wishes' rows, padded (%s)" % r)
+	t.check(Kit.STACK.size.y >= r.size.y - 12.0 and Kit.STACK.size.y > Kit.DEAD.size.y, "the kit's STACK is the real depth, deeper than DEAD")
+	hud.set_caption("The tour")
+	t.check(hud.stack_rect() == r, "the tour's caption leaves it: the stack is still drawn")
+	hud.free()
+	descent.release()
+	Kit.done(s)
+
+
+## The tag layer redraws when the stack's size changes -- a wish row coming or going -- not only when a tag or the camera does
+## (v0.11 M6, the controller's ruling).
+static func _keepout_redraw(t) -> void:
+	var def := TierBook.board("crowns_bread")
+	var s := Kit.world(def)
+	var descent := Descent.new().setup(def, 7)
+	descent.attach(s.rules, s.d)
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	var before := hud._tag_signature()
+	var rows := descent.wishes.size()
+	descent.wishes.pop_back()
+	var after := hud._tag_signature()
+	t.check(before != "" and rows == 3 and before != after and hud.stack_rect().size.y < Kit.STACK.size.y,
+		"a wish row gone: the stack shrinks and the tag layer's signature changes")
+	hud.free()
+	descent.release()
+	Kit.done(s)

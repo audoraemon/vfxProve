@@ -66,6 +66,8 @@ const EDGE_MARGIN := 10.0
 ## events plate (TAG_TOP, clear of a two-row plate, which ends at 71, and of an up arrow's disc, 5 px above its tip) and just
 ## above the slot row, so a tag under any of them is pointed at, and no arrow is covered.
 const TAG_TOP := 78.0
+## The keepout's margin round the left HUD stack (v0.11 M6, mission spec §6.4): screen pixels beyond its right and bottom edges.
+const STACK_PAD := 4.0
 ## How to win (v0.10 M6, spec §3): a line under the objectives, wrapped to HINT_W, at most HINT_LINES lines, pale gold.
 const HINT_W := 228.0
 const HINT_LINES := 3
@@ -320,6 +322,49 @@ func hint_rect() -> Rect2:
 	return Rect2(2.0, hint_top(), hint_width(lines), 5.0 + UiTheme.LINE_SMALL * float(lines.size()))
 
 
+## The objective plate as drawn (v0.11 M6, factored out of _draw_rows() so the keepout reads the same rectangle): a scored mission's
+## OBJECTIVE_PANEL, else the rows' plate, Rect2() with no rows.
+func objective_rect() -> Rect2:
+	if _rules.mission.scored:
+		return OBJECTIVE_PANEL
+	var rows := objective_rows()
+	if rows.is_empty():
+		return Rect2()
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0))
+	return Rect2(2.0, 2.0, wide + 10.0, 5.0 + ROW_H * float(rows.size()))
+
+
+## The wishes' plate as drawn (v0.11 M6, factored out of _draw_wishes()): Rect2() with no rows.
+func wishes_rect() -> Rect2:
+	var rows := wish_rows()
+	if rows.is_empty():
+		return Rect2()
+	var wide := 0.0
+	for row: Array in rows:
+		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL))
+	return Rect2(2.0, wishes_top(), wide + 22.0, 5.0 + ROW_H * float(rows.size()))
+
+
+## The left HUD stack as drawn this frame (v0.11 M6, mission spec §6.4): from the screen's corner to the right edge of the widest of the
+## objective plate, the hint plate and the wishes' plate, and down to the bottom of the lowest, STACK_PAD beyond both. The plates are
+## drawn whenever the HUD is -- the tour's caption and the night's end leave them -- so it is empty only while none has anything to show.
+## The tags' keepout (_draw_tags()).
+func stack_rect() -> Rect2:
+	if _rules == null or _rules.mission == null:
+		return Rect2()
+	var right := 0.0
+	var bottom := 0.0
+	for r: Rect2 in [objective_rect(), hint_rect(), wishes_rect()]:
+		if r.has_area():
+			right = maxf(right, r.end.x)
+			bottom = maxf(bottom, r.end.y)
+	if right <= 0.0:
+		return Rect2()
+	return Rect2(0.0, 0.0, right + STACK_PAD, bottom + STACK_PAD)
+
+
 ## The wishes heard (v0.11 M1, spec §5.2) as [text, state] rows, state "open", "granted" or "failed"; none off the board.
 func wish_rows() -> Array:
 	var rows := []
@@ -432,11 +477,11 @@ func _draw_gaze(w: float) -> void:
 
 ## The tags on the map (v0.10 M6, spec §2.3): each one's footprint outline and, while on screen, its diamond, then the
 ## labels kept for them, after every diamond so that no tag's diamond or outline hides another's label. Lays the frame's
-## tags out first (tag_layout()).
+## tags out first (tag_layout()). v0.11 M6: the live stack is the layout's keepout (stack_rect()), so no tag, label or arrow hides under it.
 func _draw_tags() -> void:
 	_layout = []
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	_layout = tag_layout(all_tags(), xf, _view())
+	_layout = tag_layout(all_tags(), xf, _view(), stack_rect())
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
 	# earlier one.
 	for e: Dictionary in _layout:
@@ -516,20 +561,29 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 ## - `show`: the label is drawn. Not when it has none, nor when its plate would overlap one placed before it: a director
 ##   lists its most important tags first, so a crowded view keeps their labels.
 ## A tag at no point is left out.
-static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> Array:
+## v0.11 M6 (mission spec §6.4) `keepout`, the left HUD stack: empty, the layout of old exactly. Else (1) a tag with `edge` whose diamond
+## lies inside it becomes an arrow on its border, where the line from the frame's centre to the diamond crosses it, its label beside the
+## arrow toward the centre, clear of it (_label_beside()); (2) an arrow frame_point() would put on the frame's edge inside it slides to
+## its border the same way; (3) it counts as a label already placed, so no plate is drawn over it; (4) a tag without `edge` inside it
+## keeps its diamond, not its label.
+static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2()) -> Array:
 	var out := []
 	var placed: Array[Rect2] = []
 	var frame := tag_frame(view)
+	var keep := keepout.has_area()
+	if keep:
+		placed.append(keepout)
 	for t in tags:
 		if not t.valid():
 			continue
 		var c := tag_point(t, xf)
 		var e := {"tag": t, "c": c, "mode": "", "arrow": Vector2.INF, "dir": Vector2.ZERO, "label": Rect2(), "show": false}
-		if frame.has_point(c) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
+		var hidden := keep and t.edge and keepout.has_point(c)
+		if (frame.has_point(c) and not hidden) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
 			e.mode = "map"
 			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
 		elif t.edge:
-			var tip := frame_point(c, frame)
+			var tip := frame_point(c, frame, keepout)
 			var d := (c - frame.get_center()).normalized()
 			var reach := ARROW_REACH + absf(d.x) * plate_size(t.label).x * 0.5 \
 				+ absf(d.y) * PLATE_H * 0.5
@@ -537,6 +591,8 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> A
 			e.arrow = tip
 			e.dir = d
 			e.label = label_rect(t.label, tip - d * reach, view)
+			if keep and (e.label as Rect2).intersects(keepout):
+				e.label = _label_beside(t.label, tip, d, keepout, view)
 		if String(e.mode) != "" and t.label != "":
 			var r: Rect2 = e.label
 			var clear := true
@@ -549,8 +605,9 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2) -> A
 	return out
 
 
-## Where the arrow for a point outside `frame` sits (v0.10 M6): on the line from the frame's centre to it, on the frame's edge.
-static func frame_point(point: Vector2, frame: Rect2) -> Vector2:
+## Where the arrow for a point outside `frame` sits (v0.10 M6): on the line from the frame's centre to it, on the frame's edge. v0.11
+## M6: one that would land inside `keepout` -- or a point inside it -- sits where that line first meets the keepout's border instead.
+static func frame_point(point: Vector2, frame: Rect2, keepout := Rect2()) -> Vector2:
 	var mid := frame.get_center()
 	var d := point - mid
 	var half := frame.size * 0.5
@@ -559,7 +616,39 @@ static func frame_point(point: Vector2, frame: Rect2) -> Vector2:
 		k = half.x / absf(d.x)
 	if absf(d.y) * k > half.y:
 		k = half.y / absf(d.y)
-	return mid + d * k
+	var tip := mid + d * k
+	if keepout.has_area() and (keepout.grow(0.5).has_point(tip) or keepout.has_point(point)):
+		return _keepout_point(mid, d, keepout)
+	return tip
+
+
+## An arrow's label moved out of `keepout` (v0.11 M6): a plate beside the arrow's disc, to its right and level with it, and no higher
+## than the keepout's bottom while it still lies within the keepout's width -- where label_rect()'s plate, centred away from the tip
+## along its heading, would straddle the stack's border (an arrow bound mostly up or left).
+static func _label_beside(text: String, tip: Vector2, d: Vector2, keepout: Rect2, view: Vector2) -> Rect2:
+	var box := plate_size(text)
+	var disc := tip - d * 5.0
+	var at := Vector2(disc.x + 11.0, disc.y - box.y * 0.5)
+	if at.x < keepout.end.x:
+		at.y = maxf(at.y, keepout.end.y + 1.0)
+	return Rect2(at.round().clamp(Vector2.ZERO, (view - box).max(Vector2.ZERO)), box)
+
+
+## Where the line from `mid` along `d` first meets `keepout`'s border (v0.11 M6): its right edge or its bottom, whichever comes first --
+## the stack sits in the screen's top-left corner, the frame's centre below and right of it; `mid` itself if it never does.
+static func _keepout_point(mid: Vector2, d: Vector2, keepout: Rect2) -> Vector2:
+	var best := INF
+	if d.x < 0.0:
+		var k := (keepout.end.x - mid.x) / d.x
+		var y := mid.y + d.y * k
+		if k > 0.0 and y >= keepout.position.y - 0.01 and y <= keepout.end.y + 0.01:
+			best = minf(best, k)
+	if d.y < 0.0:
+		var k := (keepout.end.y - mid.y) / d.y
+		var x := mid.x + d.x * k
+		if k > 0.0 and x >= keepout.position.x - 0.01 and x <= keepout.end.x + 0.01:
+			best = minf(best, k)
+	return mid + d * best if best != INF else mid
 
 
 ## The screen's size: the Control's once laid out, else 640 x 360.
@@ -733,7 +822,8 @@ func _tag_signature() -> String:
 	if tags.is_empty():
 		return ""
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	var out := "%s|%s" % [xf, _view()]
+	# v0.11 M6: the stack is the layout's keepout, so the layer redraws when its size changes (a wish row comes or goes).
+	var out := "%s|%s|%s" % [xf, _view(), stack_rect()]
 	for t in tags:
 		out += "|%s%s%s%s%s%s%s%s%s" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid()]
 	return out
@@ -870,10 +960,7 @@ func _draw_rows() -> void:
 	var rows := objective_rows()
 	if rows.is_empty():
 		return
-	var wide := 0.0
-	for row: Array in rows:
-		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0))
-	draw_rect(Rect2(2.0, 2.0, wide + 10.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
+	draw_rect(objective_rect(), UiTheme.COL_PANEL)
 	var y := 14.0
 	for row: Array in rows:
 		var text := String(row[0])
@@ -902,11 +989,8 @@ func _draw_wishes() -> void:
 	var rows := wish_rows()
 	if rows.is_empty():
 		return
-	var wide := 0.0
-	for row: Array in rows:
-		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL))
 	var top := wishes_top()
-	draw_rect(Rect2(2.0, top, wide + 22.0, 5.0 + ROW_H * float(rows.size())), UiTheme.COL_PANEL)
+	draw_rect(wishes_rect(), UiTheme.COL_PANEL)
 	var y := top + 12.0
 	for row: Array in rows:
 		var text := String(row[0])

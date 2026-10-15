@@ -229,9 +229,10 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
 
 ## 2. The Armoury (Raze, reused)
 
-M2 and M4 lesson: three open targets fall in about 1:30. So each target is barred until the muster horn calls its company,
-and armed men guard it from then on. Seals, not stages: a barred target cannot be worked ahead (it only shakes), but its night
-watch can. The horn's twist is that the garrison arms faster each minute.
+M2 and M4 lesson: three open targets fall in about 1:30. So each target musters at its horn on M4's stages (the controller's
+ruling, replacing Decision 137's seals): every blow lands from the start, but fire on a target not mustering goes out, and its fall
+counts only when its horn sounds. Armed men guard each target from the start, and while one stands guard the target is sealed. The
+horn's twist is that the garrison arms faster each minute.
 
 - **Brief:** "The muster horn arms the garrison." / "Destroy the armoury and two barracks."
 - **Card type:** Destroy. **Id:** `armoury`.
@@ -244,61 +245,70 @@ watch can. The horn's twist is that the garrison arms faster each minute.
     already read as an armoury. 150 hp; it burns.
   - The three stand 13-26 units apart: one Heaven Splitter cannot reach two.
   - **The camera** rests at (-5.5, -4.5). The north barracks sits just above the centre. The gate barracks' and the armoury's
-    tags point from the bottom edge. None sits in the HUD stack's corner.
-- **Claims:** 20 lay citizens made watchmen: a night watch of two and a squad of two at each target, and a reserve of eight
-  inside the armoury. The three targets are fixed buildings; a reserved tavern or tower is skipped (above). All three go in
-  `EngineerManager.hands_off`. No soldiers.
+    tags point from the bottom edge. None sits in the real HUD stack's corner (`Kit.STACK`, 240 x 165 px).
+- **Claims:** 23 lay citizens made watchmen: a night watch of two and a squad of three at each target, and a reserve of eight
+  inside the Citadel's gate. The three targets are fixed buildings; a reserved tavern or tower is skipped (above). All three go
+  in `EngineerManager.hands_off`. No soldiers.
 - **Main objective:** destroy all three.
-  - **Razed:** a target that falls, or burns 12 s in all, while it musters (below). It stays razed. A barred target cannot fall.
+  - **Razed:** a target that falls, or burns 12 s in all after its horn. A fall before its horn counts when the horn sounds: still
+    down then, it is razed at once. It stays razed.
   - **Won** the moment the third is razed.
   - **Lost** when the garrison marches at 5:00 ("THE GARRISON MARCHES"), or at dawn.
 - **People and behaviour:**
-  - **Barred** (`RazeDirector.seal()`, the base's unused seal): before its horn a target only shakes, and any fire on it is
-    smothered at once. Tagged grey with its horn's time.
+  - **Not mustering yet** (M4's stages, `RazeDirector._spoilable()`): before its horn a target takes every blow, but any fire on
+    it is put out at once and its fall is judged only at its horn. Tagged grey with its horn's time.
   - **The muster horn** (the stages):
     - the north barracks at 0:40 ("THE MUSTER HORN: THE NORTH BARRACKS TURNS OUT");
     - the gate barracks at 1:50, or 40 s after the north barracks is razed;
     - the armoury at 3:00, or 40 s after the gate barracks is razed ("THE MUSTER HORN: THE GARRISON ARMS").
 
-    At its horn a target is unbarred and **musters**.
+    At its horn a target **musters**.
   - **The night watch:** two armed men at each target from the start, on posts along its open face (`_open_door()` from the
-    nearest town gate), 1.8 apart, so one Silent Doom takes one.
-  - **The squad:** at its horn, two more armed men come out of the target's door, on posts 1.8 beyond the night watch. Before
-    that they wait inside, untouchable. They are the work that cannot be done ahead.
+    nearest town gate; a tower's town side), 1.8 apart. Every post is kept within 2.5 of the target, reached on foot from its
+    face, and more than two Silent Doom radii from the others (The Crown's Bread's `_spread()`), so one Silent Doom takes one.
+  - **The squad:** at its horn, three more armed men come out, each at his own post 1.8 beyond the night watch (M4's fix round 1
+    ruling: never bunched at one door, where one strike would take them all). Before that they wait inside, untouchable. They
+    are the work that cannot be done ahead.
   - **Armed:** an armed man on his post is held deaf to a whisper and past fear (renewed each look, as M4's bound prisoner: plan
     decision 94). Discord holds him for a moment at most before he is set back. Only a kill removes him.
-  - **Guarded:** while an armed man stands on guard (alive, out of doors, within 2.5 of the target, on his post), a mustering
-    target is sealed again: blows shake it and its fire is put out. With none on guard it is open. Seconds it burned stay
-    counted (`burned()`; nothing calls `forget_burn()`), so a guard only pauses the fire.
+  - **Guarded:** while an armed man stands on guard (alive, out of doors, within 2.5 of the target, not frightened, sheltering or
+    whispered), the target is sealed, before or after its horn: blows shake it and its fire is put out. With none on guard it is
+    open. Seconds it burned stay counted (`burned()`; nothing calls `forget_burn()`), so a guard only pauses the fire.
   - **Return and relief:** a man off his post and calm again walks back 20 s after he left. A fallen one is replaced 30 s after
-    he fell from the armoury's reserve (the director's own men, not the nearest citizen): out of its door and running to the
-    post.
-  - **Arming faster each minute:** from the first horn, while a target musters, one armed man comes out of the armoury every
-    REINFORCE seconds and runs to it. REINFORCE falls with the clock: 40 s before 2:00, 30 s in the third minute, 20 s in the
-    fourth, 12 s from 4:00. For the armoury itself they come out at its own door. With the reserve spent, none come.
-  - **Razed:** its men go home (Spoiled Harvest's `_release()`). Reinforcements already running go back into the armoury.
+    he fell from the reserve (the director's own men, not the nearest citizen): out of the Citadel's gate and running to the
+    post. A target already down gets none; with the reserve spent, or no way from the gate to the post, the relief backs off and
+    is tried again 30 s later.
+  - **Arming faster each minute:** from each horn, while a target musters, one armed man marches out of the Citadel's gate every
+    REINFORCE seconds to the first mustering target, on a second row of posts. REINFORCE falls with the clock: 40 s before 2:00,
+    30 s in the third minute, 20 s in the fourth, 12 s from 4:00. They come from the Citadel, not the armoury, so the armoury
+    felled early never stops them (the controller's ruling); the chain still paces them. With the reserve spent, none come.
+  - **Razed:** its men go home (Spoiled Harvest's `_release()`). Reinforcements and reliefs still running in walk back into the
+    Citadel's gate, to the reserve.
+  - **Held:** every armed man, the reserve and those walking back are kept from the town's flight by the one rule
+    (`MissionDirector._hold_all()`); one away when the evacuation begins is recalled at once.
   - **The God-Resistant town:** the fire brigade answers a fire on a target, as it always does. Taverns and the barracks shed
     are shelters (`ShelterManager`); anyone sheltering in one flees its fire, as in any house.
 - **Timeline** (left alone):
 
   | Time | Event |
   |---|---|
-  | 0:00 | "THE ARMOURY". All three barred; the night watches stand. |
+  | 0:00 | "THE ARMOURY". All three take blows; none musters; the night watches stand. |
   | 0:40 | "The muster horn": the north barracks turns out |
   | 1:50 | "The muster horn": the gate barracks (sooner: 40 s after the north barracks is razed) |
   | 3:00 | "The muster horn": the garrison arms at the armoury (sooner: 40 s after the gate barracks is razed) |
   | 5:00 | "The garrison marches": lost unless all three are razed |
   | 6:30 | Dawn |
 
-- **The clear:** first wait 40 + the north barracks 25 (two squad men: a Doom and a Smite; an Ember; 12 s alight) + 40 + the gate
-  barracks 20 (two squad men; one Heaven Splitter through it, or four Smites at about 35) + 40 + the armoury 35 (two squad men,
-  an Ember, 12 s alight, one reinforcement at the 20 s rate) ≈ **200 s**. With nothing done ahead (the night watch too), about
-  230 s.
+- **The clear** (measured, scripted seeds 1-3: 235.7 / 214.4 / 200.8 s, median 214.4): first wait 40 + the north barracks about
+  30 (three squad men and two reliefs for the night watch cleared ahead: Dooms and Smites; an Ember; a Smite) + 40 + the gate
+  barracks about 14 (three squad men; one Heaven Splitter through it) + 40 + the armoury about 50 (three squad men, the night
+  watch's reliefs running in from the Citadel, a reinforcement at the 20 s rate, an Ember, 12 s alight) ≈ **214 s**. The first
+  sum was 200 s.
 - **Longest waits:** 40 s to the first horn, and 40 s between a target razed and the next horn. In both, the next night watch can
-  be cleared in the last 25 s.
+  be cleared in the last 25 s (the scripted player's longest stretch between casts: 16 s).
 - **Tags:**
   - Each target not razed, with an edge arrow:
-    - barred: "BARRACKS - MUSTERS BY 1:50" (the sooner time), grey;
+    - not mustering: "BARRACKS - MUSTERS BY 1:50" (the sooner time), grey; once fallen, "BARRACKS - DOWN, COUNTS AT 1:50";
     - mustering, guarded: "ARMOURY - GUARDED", gold;
     - mustering, open: "ARMOURY", gold; burning: "ARMOURY - BURNING 7" (seconds of the 12 left), orange.
   - ARMED on each armed man on guard, red. A small red mark on one away from his post. A red diamond on a reinforcement or relief
@@ -307,13 +317,14 @@ watch can. The horn's twist is that the garrison arms faster each minute.
 
   | Phase | Line |
   |---|---|
-  | (none) | Kill a target's armed men (red), then destroy it (gold) while it musters: the north barracks, the gate barracks, the armoury. |
-  | `barred` | Barred until its horn (grey): blows only shake it. Kill its night watch (red) shortly before. |
+  | (none) | Kill a target's armed men (red), then destroy it (gold): the north barracks, the gate barracks, the armoury. |
+  | `not_yet` | Not mustering yet (grey): fire goes out, and a fall counts when its horn sounds. Kill its night watch (red) shortly before. |
   | `guarded` | Armed men (red) guard it: it takes no harm. Kill every one. Whispers do not move an armed man. |
-  | `open` | No guard stands. Destroy it now: more armed men come from the armoury, faster each minute. |
+  | `open` | No guard stands. Destroy it now: more armed men march from the Citadel, faster each minute. |
   | `stone` | The gate barracks is stone: blows, not fire. |
 
-- **HUD:** "Raze the garrison 1 / 3", the deadline row "Garrison marches 2:10", and while a target musters "Armed men every 30 s".
+- **HUD:** the main row "Raze the garrison 1 / 3", and while a target musters and the reserve lasts "Raze the garrison 1 / 3,
+  armed men every 30 s" (`RazeDirector.hud_line()`, plan decision 182); the deadline row "Garrison marches 2:10".
 - **Tour:**
   1. "The north barracks. The muster horn calls it at 0:40."
   2. "The gate barracks, by 1:50. It is stone: blows, not fire."
@@ -322,28 +333,31 @@ watch can. The horn's twist is that the garrison arms faster each minute.
   door, the armoury here.
 - **Pool:** every power.
 - **Results:** "THE GARRISON IS BROKEN" (`garrison`), "THE GARRISON MARCHES" (`marches`).
-- **Numbers** (first guesses): STAGE_AT 40 / 110 / 180, CHAIN 40, NIGHT_WATCH 2, SQUAD 2, POST_GAP 1.8, GUARD_REACH 2.5,
-  SPOIL_SECONDS 12, RETURN_AFTER 20, RELIEF_AFTER 30, REINFORCE 40 / 40 / 30 / 20 / 12 (by the minute), RESERVE 8, MARCH_AT
-  300. Tune in this order if the scripted clear misses 180-240 s: SQUAD (1-3), STAGE_AT[0] (30-45), CHAIN (30-45), REINFORCE,
-  SPOIL_SECONDS (10-15).
+- **Numbers** (tuned): STAGE_AT 40 / 110 / 180, CHAIN 40, NIGHT_WATCH 2, SQUAD 3 (round 1: 2 -> 3), POST_GAP 1.8, GUARD_REACH
+  2.5, SPOIL_SECONDS 12, RETURN_AFTER 20, RELIEF_AFTER 30, REINFORCE 40 / 40 / 30 / 20 / 12 (by the minute), RESERVE 8,
+  MARCH_AT 300. Tune in this order if the scripted clear misses 180-240 s: SQUAD (1-3), STAGE_AT[0] (30-45), CHAIN (30-45),
+  REINFORCE, SPOIL_SECONDS (10-15).
 - **Scripted policy** (`--scenario=armoury`, loadout Silent Doom, Smite, Ember, Heaven Splitter: 5 DP; hit-stop off). Every
   LOOK_FRAMES, the first that applies:
   1. The mustering target has an armed man on guard:
      - Smite is ready and one stands within 0.7 of the target: Smite him (he falls and the target takes 45);
-     - Doom is ready: Doom the one with no one else within 0.8.
+     - Doom is ready: Doom the one with no one else within 0.8 (else the first).
   2. The mustering target has none on guard:
      - a barracks or the armoury not burning: Ember it (Smite it if Ember is cooling);
      - the gate barracks: Heaven Splitter through it if ready, else Smite it.
   3. The next horn is within 25 s: clear that target's night watch as in step 1, Doom only.
   4. A reinforcement or relief runs toward the mustering target, and Doom is ready: Doom him.
 
-  Expected clear: about 3:20.
-- **Evacuate-mid-mission test:** the evacuation begins while the gate barracks musters: its night watch, its squad and a
-  running reinforcement all hold or reach their posts; the reserve stays inside the armoury.
+  Measured clear: 3:34 (median).
+- **Evacuate-mid-mission test:** the evacuation begins while the gate barracks musters: a recovering night watch man sent
+  running is back on his post at the next look, a whispered reinforcement's owed flight is ended and he runs on to his post, the
+  squad holds its posts, and the reserve stays inside the Citadel's gate.
 - **How it differs from Spoiled Harvest and The Crown's Bread** (M2 lesson 10):
-  - **Barred, not empty or idle:** the base's seal, opened by the horn. Nothing burns ahead of its time.
+  - **Staged, with guards that seal:** M4's stages (a fall ahead counts at the horn; fire waits for it), and a target is sealed
+    while an armed man guards it, before or after its horn.
   - **Armed men, not watchmen or engineers:** deaf and fearless on their posts, killed only. Nobody mends or rebuilds.
-  - **The pressure grows with the clock:** reinforcements come faster each minute. Stalling is punished, not working ahead.
+  - **The pressure grows with the clock:** reinforcements come faster each minute, from the Citadel. Stalling is punished, not
+    working ahead.
   - **A stone target:** the gate barracks needs blows, the other two fire.
 
 ## 3. The Sermon (Convert, reused)
@@ -784,8 +798,7 @@ gives its cost if it proves wrong.
 136. **The three targets:** the north tavern (`TAVERNS[0]`) and the Main Gate's east tower (`GATE_TOWERS[1]`) as barracks, the
      barracks shed as the armoury; fallbacks for a reserved one. Cost if wrong: a stand-in that does not read as a barracks; the
      tag carries it, as M3's and M4's stand-ins.
-137. **Seals, not stages:** barred until its horn (0:40 / 1:50 / 3:00, or 40 s after the one before is razed). Cost if wrong: a
-     barred target feels like waiting; switch to The Crown's Bread's stages (a fall ahead counts when its time comes).
+137. **Seals, not stages:** replaced by the controller's ruling: M4's stages.
 138. **Armed men:** lay watchmen, held deaf and fearless on their posts (plan decision 94's hold); a night watch of two from the
      start and a squad of two at the horn; return 20 s, relief 30 s from the armoury's reserve. Cost if wrong: SQUAD is the first
      knob (1-3).

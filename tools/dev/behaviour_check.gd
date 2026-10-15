@@ -138,6 +138,16 @@ extends SceneTree
 ##          they are held), else Silent Doom on a guard alone (else any), else Mind Whisper sends one eight units off; else Silent Doom
 ##          on a relief walking in; the result line gives the longest idle stretch). Hit-stop is off for it. --seed= as ringers.
 ##   bishop  (v0.11 M5) The Bishop, --case=none (nothing cast) or play, as a player plays it (_bishop_act(): the bishop out of doors,
+##          Silent Doom on him, else Smite; a Knight on guard at his refuge, Silent Doom on one alone, else Smite one; none on guard,
+##          Ember the refuge (Smite it while Ember cools); in his flight or 25 s before his first refuge, Silent Doom on the next
+##          refuge's Knights; else Silent Doom on a relief walking in; the result line gives the longest idle stretch). Hit-stop is
+##          off for it. --seed= as ringers.
+##   armoury  (v0.11 M5) The Armoury, --case=none (nothing cast) or play, as a player plays it (_armoury_act(): the mustering target
+##          with an armed man on guard: Smite one within Smite's reach of it (he falls and it takes the blow), else Silent Doom on one
+##          alone (else the first); none on guard: Ember a barracks or the armoury not burning (Smite it while Ember cools), Heaven
+##          Splitter through the gate barracks (Smite it while Heaven cools); the next horn within 25 s, its night watch cleared with
+##          Silent Doom; else Silent Doom on a reinforcement or relief running in; the result line gives the longest idle stretch).
+##          Hit-stop is off for it. --seed= as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -265,6 +275,8 @@ const HUNT_AWAY := 8.0
 const HUNT_FAR := 0.3
 ## The Bishop's policy (v0.11 M5): how near his first arrival the next refuge's Knights are cleared.
 const BISHOP_AHEAD := 25.0
+## The Armoury's policy (v0.11 M5): how near its horn the next target's night watch is cleared.
+const ARMOURY_AHEAD := 25.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -391,6 +403,9 @@ func _run() -> void:
 	elif scenario == "bishop":
 		powers = PackedStringArray(["doom", "smite", "ember"])
 		mission.mission_id = MissionBook.BISHOP
+	elif scenario == "armoury":
+		powers = PackedStringArray(["doom", "smite", "ember", "heaven"])
+		mission.mission_id = MissionBook.ARMOURY
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M5: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -462,6 +477,8 @@ func _run() -> void:
 			await _hunt(Battlefield.arg_value(args, "--case"))
 		"bishop":
 			await _bishop(Battlefield.arg_value(args, "--case"))
+		"armoury":
+			await _armoury(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2522,6 +2539,67 @@ func _none_within(crowd: Crowd, p: Person, r: float) -> bool:
 			if o != p and is_instance_valid(o) and o.is_alive() and not o.inside and o.ground_pos.distance_to(p.ground_pos) <= r:
 				return false
 	return true
+
+
+## The Armoury (v0.11 M5), with mission spec §2's policy (_armoury_act()), through _scripted().
+func _armoury(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as ArmouryDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("armoury", which, func() -> String: return _armoury_act(rules, slots, d, crowd),
+		func() -> String: return "razed=%d mustering=%d guards=%d reinforced=%d reliefs=%d reserve=%d phase=%s" % [d.razed_count(),
+			d.mustering_now(), d.guards(d.current()).size(), d.reinforced, d.reliefs, d.reserve.size(), d.hint_phase()])
+
+
+## One look of The Armoury's policy (v0.11 M5): what was cast, or "". The first that applies: the mustering target with an armed man on
+## guard, Smite one within Smite's reach of it, else clear one with Silent Doom (_knight_clear(), no Smite); with none on guard, Ember a
+## barracks or the armoury not burning (Smite it while Ember cools), or Heaven Splitter through the gate barracks (Smite it while
+## Heaven cools); the next horn within ARMOURY_AHEAD, its night watch cleared with Silent Doom; a reinforcement or relief running in,
+## Silent Doom on him.
+func _armoury_act(rules: Rules, slots: Dictionary, d: ArmouryDirector, crowd: Crowd) -> String:
+	var cur := d.mustering_now()
+	if cur >= 0:
+		var s := d.targets[cur]
+		var word := String(ArmouryDirector.WORDS[cur])
+		var on := d.guards(cur)
+		if not on.is_empty():
+			if _slot_ready(rules, slots, "smite"):
+				for p in on:
+					if is_instance_valid(s) and s.distance_to(p.ground_pos) <= SmiteFx.HIT_R:
+						rules.cast(slots.smite, p.ground_pos)
+						return "smite an armed man at the %s" % word
+			var did := _knight_clear(rules, slots, crowd, on, false)
+			if did != "":
+				return did
+		elif is_instance_valid(s) and not s.destroyed:
+			if s.kind in FireManager.BURNABLE:
+				if not d.burning(s):
+					if _slot_ready(rules, slots, "ember"):
+						rules.cast(slots.ember, s.center())
+						return "ember the %s" % word
+					if _slot_ready(rules, slots, "smite"):
+						rules.cast(slots.smite, s.center())
+						return "smite the %s" % word
+			elif _slot_ready(rules, slots, "heaven"):
+				rules.cast(slots.heaven, s.center(), {"dir": Vector2.RIGHT})
+				return "heaven splitter through the %s" % word
+			elif _slot_ready(rules, slots, "smite"):
+				rules.cast(slots.smite, s.center())
+				return "smite the %s" % word
+	var next := d.upcoming()
+	if next >= 0 and next != cur and d.due_in(next) <= ARMOURY_AHEAD:
+		var ahead := d.guards(next)
+		if not ahead.is_empty():
+			var did := _knight_clear(rules, slots, crowd, ahead, false)
+			if did != "":
+				return did
+	if cur >= 0:
+		var walker := d.relief_walking(cur)
+		if walker != null and _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, walker.ground_pos)
+			return "doom a man running in"
+	return ""
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

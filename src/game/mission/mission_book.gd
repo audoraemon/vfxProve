@@ -68,7 +68,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury()]
 	return out
 
 
@@ -352,6 +352,26 @@ static func bishop() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [AssassinateObjective.new("Kill the bishop", "bishop", "bishop_safe"),
 			EventObjective.new("taken", "Knights come", "bishop_taken"), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Armoury (v0.11 M5, Tier 4, mission spec §2 and §8 row 18): raze the north barracks, the gate barracks and the armoury, each
+## mustering at its horn and guarded by armed men who come faster each minute, before the garrison marches (ArmouryDirector, the Raze
+## type reused on M4's stages: every blow lands from the start, a fall before its horn counts when it sounds).
+static func armoury() -> MissionDef:
+	var m := _tier4(ARMOURY, "The Armoury", PackedStringArray(["The muster horn arms the garrison.",
+		"Destroy the armoury and two barracks."]))
+	m.goal = "Destroy the two barracks and the armoury before the garrison marches at %s" % UiTheme.clock(ArmouryDirector.MARCH_AT)
+	m.goal_label = "The garrison is broken"
+	m.lose = "The garrison marches, or dawn comes"
+	m.camera_at = ArmouryDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "smite", "ember", "heaven"])
+	m.director = ArmouryDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [RazeObjective.new("Raze the garrison", "garrison"), EventObjective.new("march", "Garrison marches", "marches"),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

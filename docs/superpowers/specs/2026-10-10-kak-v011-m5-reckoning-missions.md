@@ -392,7 +392,9 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   - **Won** the moment the eighth Believer walks out of the god's house.
   - **Lost** when:
     - the sermon ends at 5:00 ("THE SERMON ENDS");
-    - too few are left to turn: Believers plus living unturned listeners fall below eight ("THE FLOCK IS SCATTERED");
+    - too few are left to turn: Believers plus living unturned listeners fall below eight ("THE FLOCK IS SCATTERED"). A listener
+      lost with one more loss left before that says "1 MORE LOST ENDS IT" (the Task 4 review's ruling), and the one that ends it
+      says "THE FLOCK IS SCATTERED";
     - Halcyon's Gaze fills ("THE LANTERN LOOKS");
     - dawn comes.
 - **People and behaviour:**
@@ -425,8 +427,8 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   - **The Believers stay:** each walks on duty to a ring 2.0 from the god's door and stands there, held, until the night is
     won. So the evacuation cannot carry a Believer out of the count. Tagged green.
   - **The sentries:** two Faithful watch the god's house from the start, on duty 1.5 either side of its door (3.0 apart; each
-    sees the door). Whispered, confused or frightened, one walks back 20 s after he is calm (at once when the town begins to
-    evacuate). A fallen one is replaced 30 s later by the nearest free lay citizen with a way to the post (M4's `_lay_reaching()`),
+    sees the door). Whispered, confused or frightened, one walks back to his post 20 s after he left it, once he is calm again
+    (at once when the town begins to evacuate). A fallen one is replaced 30 s later by the nearest free lay citizen with a way to the post (M4's `_lay_reaching()`),
     made Faithful and a watchman, stopped from the flight if the town runs; with no one to send, tried again 30 s later. At most
     six reliefs.
   - **Reports:** Mira's `TempleReport`. A report delivered fills the Gaze. A carrier killed unseen ends it; a seen kill passes
@@ -455,7 +457,8 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   - GOD'S HOUSE, gold, outlined, with an edge arrow; its door CLEAR (green) or WATCHED (red), as Mira's.
   - PREACHER, red, while he preaches; PREACHER - SILENT, grey, while held; both with an edge arrow. The acolytes are red diamonds.
   - A gold diamond on each listener not yet turned: rapt ones with a small red mark; walkers and the waiting at their sources too.
-  - SENTRY on each sentry on guard, red. A red diamond on a relief walking in, and on any other Faithful who would see the door
+  - SENTRY on each sentry on guard, red. A red diamond on every other living sentry out of doors (whispered, confused, returning,
+    a relief walking in), and on any other Faithful who would see the door
     (Mira's watchers).
   - NEXT WAVE and the seconds to it (the sooner time) at its source, orange, with an edge arrow.
   - Each report's runner, red, with an edge arrow; TEMPLE, red, with an edge arrow while one runs.
@@ -469,8 +472,8 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   | `bell` | The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen. |
   | `report` | A Faithful runs to the Temple. Stop him before he gets there, unseen. |
   | `seen` | A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze. |
-  | `coming` | More come to hear him (gold). Whisper them on the way, before they come within his voice. |
-  | `rapt` | He preaches: his crowd hears only him. Discord, a whisper or a fright silences him for a while; death, for good. |
+  | `coming` | More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them. |
+  | `rapt` | He preaches: his crowd hears only him. Whisper him aside or Discord him; kill him only alone. Never kill his crowd. |
   | `watched` | Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first. |
 
   `bell` shows while the bell is called or climbing (plan decision 197); `seen` for 8 s (SEEN_SHOW) after the Gaze rises -- the
@@ -482,7 +485,8 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   2. "The god's house. Lead eight of his crowd here, unseen by the Faithful."
   3. "The Temple. A Faithful who sees you runs here. Four deaths in a district call the bell."
 - **Mission tags:** none.
-- **Pool:** every power.
+- **Pool:** every power. The default loadout is Mind Whisper, Discord, Silent Doom and The Bell Lies (Will-o'-Wisp left out: no lure
+  takes a listener on duty).
 - **Results:** "THE CROWD BELIEVES" (`sermon`), "THE SERMON ENDS" (`sermon_over`), "THE FLOCK IS SCATTERED" (`flock`); the Gaze's
   "THE LANTERN LOOKS" (`gaze`, the family's own).
 - **Numbers** (landed; the gate passed at the first guesses once the policy worked the opposition, so no tuning round): NEED 8,
@@ -491,10 +495,11 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   1.5, RETURN_AFTER 20 (at once when the town begins to evacuate), RELIEF_AFTER 30 (backed off when no one can reach the post),
   RELIEFS 6, FAITHFUL 8 (lay), BELIEVER_RING 2.0, SERMON_ENDS 300, SEEN_SHOW 8, the camera (-13.0, 9.5). Tune in this order if the
   scripted clear misses 180-240 s: CHAIN (30-45), WAVE size (3-4, NEED staying 8), WAVE_AT[1] (75-110), READ (6-10), HEAR (4-6).
-- **Scripted policy** (`--scenario=sermon`, loadout Mind Whisper, Discord, Silent Doom, Will-o'-Wisp: 6 DP). Every LOOK_FRAMES,
+- **Scripted policy** (`--scenario=sermon`, loadout Mind Whisper, Discord, Silent Doom, The Bell Lies: 6 DP). Every LOOK_FRAMES,
   the first that applies (the spec's six, worked as a player works the opposition: the well is crowded, so the preacher is
   whispered aside and killed alone rather than Doomed among his crowd):
-  1. The bellkeeper is called: Doom him, else whisper him aside, else Discord him (either drops the climb).
+  1. The bellkeeper is called: Doom him, else The Bell Lies (all is well: rung within 45 s, the bell tolls a lie and fills no
+     Gaze), else whisper him aside, else Discord him (either drops the climb).
   2. The preacher stands where his death would go unseen (no acolyte not held within SIGHT): Doom him (silenced for good).
   3. The preacher preaches: whisper him to the quietest spot within reach, else Discord him (it holds his acolytes too).
   4. The preacher and both acolytes are held, no one else within the Doom's radius: Doom him.
@@ -506,7 +511,7 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
      walking in, or the preacher silent), to its door.
   8. A sentry off his post (whispered off, or a relief walking in) where the kill goes unseen: Doom him.
 
-  No Doom takes a listener or a Believer. Will-o'-Wisp is a spare it does not use: every listener is on duty, and a lure takes no
+  No Doom takes a listener or a Believer. Will-o'-Wisp is not carried: every listener is on duty, and a lure takes no
   one on duty. Expected clear: about 3:20.
 - **Evacuate-mid-mission test:** the evacuation begins with a listener whispered toward the house, a sentry recovering away from
   his post and a waiting listener held (confused, owed a flight): the listener reaches the door, the sentry is sent straight back at

@@ -600,6 +600,29 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			if held(a):
 				_held_at_fall.append(a)
 		rules.banner.emit("THE PREACHER IS SILENT")
+	if _listener_of_v(e) != null:
+		_warn_flock()
+
+
+## `v`'s Listener record, or null (v0.11 M5): as _listener_of(), for a dying body handed over as an enemy.
+func _listener_of_v(v: Variant) -> Listener:
+	for l: Listener in listeners:
+		if is_same(l.man, v):
+			return l
+	return null
+
+
+## A listener lost (v0.11 M5, the Task 4 review's ruling: THE FLOCK IS SCATTERED warned before it falls): with one more loss left
+## before too few are left to turn, "1 MORE LOST ENDS IT"; with none, "THE FLOCK IS SCATTERED".
+func _warn_flock() -> void:
+	var living := 0
+	for l: Listener in listeners:
+		living += 1 if _alive(l.man) else 0
+	var left := living - need + 1
+	if left == 1:
+		rules.banner.emit("1 MORE LOST ENDS IT")
+	elif left == 0:
+		rules.banner.emit("THE FLOCK IS SCATTERED")
 
 
 ## The preacher's death judged (v0.11 M5, plan decision 189): each acolyte not held who sees the fall within SIGHT runs to the Temple.
@@ -654,7 +677,8 @@ func bellkeeper() -> Person:
 
 ## The map tags, most important first (v0.11 M5, mission spec §3): the god's house, outlined and pointed at; its door, clear or
 ## watched; each report's runner and the Temple while one runs; the called bellkeeper, red and pointed at (the controller's ruling);
-## the preacher (grey while silent), pointed at; the next wave's source and time; each sentry on guard, a red diamond on a relief; a
+## the preacher (grey while silent), pointed at; the next wave's source and time; each sentry on guard, a red diamond on every other
+## living sentry out of doors (whispered, confused, returning, a relief walking in: the Task 4 review's ruling); a
 ## red diamond on any other Faithful who would see the door (Mira's watchers); the acolytes; a gold diamond on each listener not yet
 ## turned (a small red mark while rapt), green on each Believer.
 func tags() -> Array[MapTag]:
@@ -687,8 +711,8 @@ func tags() -> Array[MapTag]:
 			continue
 		if _on_guard(st):
 			out.append(MapTag.person((st.man as Person).ground_pos, MARK_WATCHED, "SENTRY"))
-		elif st.relief:
-			out.append(MapTag.person((st.man as Person).ground_pos, MARK_WATCHED))
+		else:
+			out.append(MapTag.person((st.man as Person).ground_pos, MARK_WATCHED))  # off guard: whispered, confused, returning, a relief
 	var posted := _busy()
 	for f in watchers(door, SIGHT):
 		if not posted.has(f):

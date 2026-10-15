@@ -114,13 +114,15 @@ static func _setup(t) -> void:
 		and Kit.clear_of_stack(d.temple_door, cam, Kit.STACK)
 	for w in range(1, SermonDirector.WAVES):
 		clear = clear and Kit.clear_of_stack(d._wave_source(w), cam, Kit.STACK)
-	t.check(clear, "the camera keeps the pulpit, the god's house, the Temple and the waves' sources (or their arrows) clear of the real HUD stack")
+	for st: SermonDirector.Sentry in d.sentries:
+		clear = clear and Kit.clear_of_stack(st.post, cam, Kit.STACK)
+	t.check(clear, "the camera keeps the pulpit, the god's house, the sentries' posts, the Temple and the waves' sources (or their arrows) clear of the real HUD stack")
 	var m := MissionBook.sermon()
 	var reasons := []
 	for o in m.objectives():
 		reasons.append(o.reason)
 	t.check(m.tier == 4 and is_equal_approx(m.clock, 390.0) and reasons == ["gaze", "sermon", "sermon_over"] and d.need == SermonDirector.NEED
-		and is_equal_approx(d.read_seconds, SermonDirector.READ) and Array(m.default_loadout) == ["whisper", "discord", "doom", "wisp"]
+		and is_equal_approx(d.read_seconds, SermonDirector.READ) and Array(m.default_loadout) == ["whisper", "discord", "doom", "belllies"]
 		and MissionBook.get_mission("sermon").id == "sermon", "the mission: Tier 4's numbers; the Gaze, the crowd, the sermon's end (%s)" % [reasons])
 	Kit.done(s)
 
@@ -251,11 +253,14 @@ static func _flock(t) -> void:
 			Kit.free_body(s, l.man)
 			gone += 1
 	Kit.run_for(s, 0.1)
-	t.check(d.lost_reason() == "" and main.check(s.rules) == Objective.Status.PENDING, "eight left to turn: the night goes on")
+	var banners: Array = s.banners
+	t.check(d.lost_reason() == "" and main.check(s.rules) == Objective.Status.PENDING and banners.count("1 MORE LOST ENDS IT") == 1
+		and not banners.has("THE FLOCK IS SCATTERED"), "eight left to turn: the night goes on, and the fourth loss warns that one more ends it")
 	Kit.free_body(s, (_wave(d, 3)[2] as SermonDirector.Listener).man)
 	Kit.run_for(s, 0.1)
-	t.check(d.lost_reason() == "flock" and main.check(s.rules) == Objective.Status.FAILED and main.reason == "flock",
-		"too few left to turn: lost at once, with its own reason")
+	t.check(d.lost_reason() == "flock" and main.check(s.rules) == Objective.Status.FAILED and main.reason == "flock"
+		and banners.has("THE FLOCK IS SCATTERED") and banners.count("1 MORE LOST ENDS IT") == 1,
+		"too few left to turn: lost at once, with its own reason and banner")
 	Kit.done(s)
 
 
@@ -301,6 +306,10 @@ static func _sentries(t) -> void:
 	var op := other.man as Person
 	Kit.arrive(op, d.door + Vector2(0.0, 8.0))
 	op.mind = Person.Mind.CALM
+	var marked := false
+	for m in d.tags():
+		marked = marked or (m.at == op.ground_pos and m.color == MirasHouseDirector.MARK_WATCHED and m.label == "")
+	t.check(marked, "a sentry off his post still wears a red mark (the Task 4 review)")
 	Kit.run_for(s, SermonDirector.RETURN_AFTER + 1.0)
 	t.check(op.mind == Person.Mind.DUTY and op.anchor == other.post, "one off his post and calm walks back RETURN_AFTER after he left")
 	Kit.done(s)
@@ -425,8 +434,9 @@ static func _bell(t) -> void:
 	Kit.run_for(s, SermonDirector.SEEN_SHOW + 0.5)
 	t.check(d.hint_phase() == "rapt", "SEEN_SHOW later the night's own phase again")
 	var keeper := crowd.bell.keeper
+	t.check(keeper != null and keeper.is_alive(), "(set-up) the town has a bellkeeper")
 	crowd.bell.state = BellNetwork.State.CALLED
-	t.check(d.hint_phase() == "bell" and (keeper == null or (Kit.labels(d).has("BELLKEEPER") and Kit.edged(d, "BELLKEEPER"))),
+	t.check(d.hint_phase() == "bell" and Kit.labels(d).has("BELLKEEPER") and Kit.edged(d, "BELLKEEPER"),
 		"the bell called: its line, and the bellkeeper tagged with an edge arrow")
 	Kit.done(s)
 

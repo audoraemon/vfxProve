@@ -149,9 +149,9 @@ extends SceneTree
 ##          Silent Doom; else Silent Doom on a reinforcement or relief running in; the result line gives the longest idle stretch).
 ##          Hit-stop is off for it. --seed= as ringers.
 ##   sermon  (v0.11 M5) The Sermon, --case=none (nothing cast) or play, as a player plays it (_sermon_act(): the bellkeeper called,
-##          Silent Doom on him, else a whisper or Discord; the preacher where his death goes unseen, Silent Doom on him; preaching,
-##          Mind Whisper sends him to a quiet spot, else Discord on him; he and both acolytes held, Silent Doom on him; a report
-##          running, Silent Doom on its runner where unseen, else a whisper aside or Discord; a Faithful seeing the god's door (a
+##          Silent Doom on him, else The Bell Lies, a whisper or Discord; the preacher where his death goes unseen, Silent Doom on
+##          him; preaching, Mind Whisper sends him to a quiet spot, else Discord on him; he and both acolytes held, Silent Doom on him;
+##          a report running, Silent Doom on its runner where unseen, else a whisper aside or Discord; a Faithful seeing the god's door (a
 ##          sentry), Silent Doom on him with no one else within 2 and unseen, else Mind Whisper sends him to a quiet spot; the door
 ##          unwatched, Mind Whisper sends the unturned listener nearest the god's house, not rapt, to its door; else Silent Doom on a
 ##          sentry off his post where unseen; no Doom takes a listener; the result line gives the longest idle stretch). --seed= as
@@ -418,7 +418,7 @@ func _run() -> void:
 		powers = PackedStringArray(["doom", "smite", "ember", "heaven"])
 		mission.mission_id = MissionBook.ARMOURY
 	elif scenario == "sermon":
-		powers = PackedStringArray(["whisper", "discord", "doom", "wisp"])
+		powers = PackedStringArray(["whisper", "discord", "doom", "belllies"])
 		mission.mission_id = MissionBook.SERMON
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
@@ -2632,8 +2632,8 @@ func _sermon(which: String) -> void:
 
 ## One look of The Sermon's policy (v0.11 M5, mission spec §3's, worked as a player works the opposition): what was cast, or "". The
 ## first that applies:
-## 1. the bellkeeper called (the BELLKEEPER tag's man): Silent Doom on him, else Mind Whisper sends him aside, else Discord (either
-##    drops the climb);
+## 1. the bellkeeper called (the BELLKEEPER tag's man): Silent Doom on him, else The Bell Lies (all is well: rung within 45 s, the
+##    bell tolls a lie and fills no Gaze), else Mind Whisper sends him aside, else Discord (either drops the climb);
 ## 2. the preacher out of doors where his death goes unseen (no acolyte not held within SermonDirector's SIGHT, _sermon_unseen()):
 ##    Silent Doom on him (silenced for good);
 ## 3. the preacher preaching: Mind Whisper sends him to a quiet spot (_sermon_quiet(): the well's crowd would see him die there),
@@ -2645,8 +2645,8 @@ func _sermon(which: String) -> void:
 ##    within SERMON_ALONE and the kill unseen, else Mind Whisper sends him to a quiet spot (else SERMON_AWAY off the door);
 ## 7. the door unwatched: Mind Whisper sends the unturned listener nearest the god's house, not rapt and able to hear, to its door;
 ## 8. a sentry off his post (one whispered off, a relief walking in) where his death goes unseen: Silent Doom on him.
-## Every Silent Doom but the bellkeeper's spares the crowd (_sermon_spares()). Will-o'-Wisp is a spare it does not use (every listener
-## is on duty, and a lure takes no one on duty).
+## Every Silent Doom but the bellkeeper's spares the crowd (_sermon_spares()). The loadout carries The Bell Lies, not Will-o'-Wisp:
+## every listener is on duty, and a lure takes no one on duty.
 func _sermon_act(rules: Rules, slots: Dictionary, d: SermonDirector, crowd: Crowd) -> String:
 	var doom := _slot_ready(rules, slots, "doom")
 	var whisper := _slot_ready(rules, slots, "whisper")
@@ -2655,6 +2655,9 @@ func _sermon_act(rules: Rules, slots: Dictionary, d: SermonDirector, crowd: Crow
 		if doom:
 			rules.cast(slots.doom, keeper.ground_pos)
 			return "doom the bellkeeper"
+		if not crowd.is_bell_lying() and _slot_ready(rules, slots, "belllies"):
+			rules.cast(slots.belllies, TownLayout.BELL_TOWER.get_center(), {"mode": "well"})
+			return "the bell lies"
 		if whisper and _whisperable(keeper):
 			var aside := _sermon_quiet(d, crowd, keeper)
 			if aside != Vector2.INF:

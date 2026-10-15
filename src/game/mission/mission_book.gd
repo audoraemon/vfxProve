@@ -386,7 +386,7 @@ static func sermon() -> MissionDef:
 	m.lose = "The Lantern looks, the sermon ends, or too few are left to turn"
 	m.camera_at = SermonDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
-	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "wisp"])
+	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "belllies"])  # no lure takes a listener on duty
 	m.director = SermonDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new("Turn the crowd", "sermon", "sermon_over"),

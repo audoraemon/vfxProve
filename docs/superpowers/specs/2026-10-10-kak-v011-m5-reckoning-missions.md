@@ -281,7 +281,8 @@ horn's twist is that the garrison arms faster each minute.
   - **Arming faster each minute:** from each horn, while a target musters, one armed man marches out of the Citadel's gate every
     REINFORCE seconds to the first mustering target, on a second row of posts. REINFORCE falls with the clock: 40 s before 2:00,
     30 s in the third minute, 20 s in the fourth, 12 s from 4:00. They come from the Citadel, not the armoury, so the armoury
-    felled early never stops them (the controller's ruling); the chain still paces them. With the reserve spent, none come.
+    felled early never stops them (the controller's ruling); the chain still paces them. With the reserve spent, none come; with
+    no way from the gate to the post, none leaves until the next time.
   - **Razed:** its men go home (Spoiled Harvest's `_release()`). Reinforcements and reliefs still running in walk back into the
     Citadel's gate, to the reserve.
   - **Held:** every armed man, the reserve and those walking back are kept from the town's flight by the one rule
@@ -317,7 +318,7 @@ horn's twist is that the garrison arms faster each minute.
 
   | Phase | Line |
   |---|---|
-  | (none) | Kill a target's armed men (red), then destroy it (gold): the north barracks, the gate barracks, the armoury. |
+  | (none) | Kill a target's armed men (red), then destroy it once it musters (gold): two barracks, then the armoury. |
   | `not_yet` | Not mustering yet (grey): fire goes out, and a fall counts when its horn sounds. Kill its night watch (red) shortly before. |
   | `guarded` | Armed men (red) guard it: it takes no harm. Kill every one. Whispers do not move an armed man. |
   | `open` | No guard stands. Destroy it now: more armed men march from the Citadel, faster each minute. |
@@ -681,8 +682,9 @@ M3 lesson 8: every shared change is a hook or a var whose default is today's pat
   - `BishopDirector` (new, its subclass) overrides the round: the set-out (into his house, unseen), the indoors step (driven out
     by fire), the flight, and the square. It keeps the quarry record, the judge (seen or unseen, the cry of murder), the guards'
     ring, `witnesses()` and the tags' helpers.
-- **`RazeDirector`:** unchanged. `ArmouryDirector` (new, its subclass) uses `seal()` / `unseal()` for the bars and the guards,
-  `spoil_seconds` for the 12 s, and `lost_reason()` stays "" (the march is an `EventObjective`).
+- **`RazeDirector`:** one hook, `hud_line()` ("" by default). `ArmouryDirector` (new, its subclass) uses `seal()` / `unseal()`
+  for the guards (sealed only while an armed man stands guard), `_spoilable()` for M4's stages, `spoil_seconds` for the 12 s, and
+  `lost_reason()` stays "" (the march is an `EventObjective`).
 - **`MirasHouseDirector`:** one hook, `lost_reason() -> String` ("" by default). `SermonDirector` (new, its subclass) overrides
   `_find_house()`, `_choose_people()`, `_add_events()`, `_step_events()`, `_opening_banner()`, `_house_label()`, `_roof()` (as
   First Prayers), `tags()`, `hint_phase()`, `tour()`.
@@ -728,8 +730,9 @@ M3 lesson 8: every shared change is a hook or a var whose default is today's pat
     barracks (the fallback tavern and tower are used instead);
   - **The Bishop:** a refuge he is not in only shakes; he is never out of doors before the Temple; a fire is beaten out while a
     Knight stands on guard; he reaches the next refuge 45 s after he is driven out; the Knights are never taken by the rally;
-  - **The Armoury:** a barred target only shakes; a guarded one takes no harm and its fire goes out; seconds burned stay counted;
-    REINFORCE follows the clock's minute; the reserve spent sends no more;
+  - **The Armoury:** before its horn a blow lands but its fire goes out and its fall counts at the horn; a guarded one takes no
+    harm and its fire goes out; seconds burned stay counted; REINFORCE follows the clock's minute, from the Citadel's gate, the
+    armoury felled early not stopping it; the reserve spent sends no more;
   - **The Sermon:** a rapt listener refuses a whisper; a silent preacher frees his crowd, and a preacher back on his feet holds
     them again; a seen entry is turned away and reported; too few left loses at once; a Believer stays in town through an
     evacuation;
@@ -792,18 +795,18 @@ gives its cost if it proves wrong.
      pace; a loud power or a fright sends him running; reaching the gate loses. Cost if wrong: the last step is too short to act
      in; slow him (BISHOP_PACE) before anything else.
 134. **The Bishop's deadline:** "The Knights take him away" at 5:00 (`EventObjective`); doing nothing loses then. Cost: none.
-135. **The Armoury, the code:** `ArmouryDirector extends RazeDirector`, base unchanged; the bars and the guards are the base's
-     `seal()` / `unseal()`. Cost if wrong: a seal flickering on and off each look misbehaves with fires; then a guarded flag of
+135. **The Armoury, the code:** `ArmouryDirector extends RazeDirector`, base unchanged but for `hud_line()`; the guards are the
+     base's `seal()` / `unseal()`, the stages its `_spoilable()`. Cost if wrong: a seal flickering on and off each look misbehaves with fires; then a guarded flag of
      its own.
 136. **The three targets:** the north tavern (`TAVERNS[0]`) and the Main Gate's east tower (`GATE_TOWERS[1]`) as barracks, the
      barracks shed as the armoury; fallbacks for a reserved one. Cost if wrong: a stand-in that does not read as a barracks; the
      tag carries it, as M3's and M4's stand-ins.
 137. **Seals, not stages:** replaced by the controller's ruling: M4's stages.
 138. **Armed men:** lay watchmen, held deaf and fearless on their posts (plan decision 94's hold); a night watch of two from the
-     start and a squad of two at the horn; return 20 s, relief 30 s from the armoury's reserve. Cost if wrong: SQUAD is the first
-     knob (1-3).
-139. **Arming faster each minute:** one armed man from the armoury every 40 / 30 / 20 / 12 s by the clock's minute, while a
-     target musters; a reserve of eight. Cost if wrong: one tuning round on REINFORCE.
+     start and a squad of three at the horn (tuned from two), each at his own post; return 20 s, relief 30 s from the reserve
+     inside the Citadel's gate. Cost if wrong: SQUAD is the first knob (1-3).
+139. **Arming faster each minute:** one armed man from the Citadel's gate every 40 / 30 / 20 / 12 s by the clock's minute, while
+     a target musters; a reserve of eight waiting inside it (the controller's ruling: the armoury felled early never stops them). Cost if wrong: one tuning round on REINFORCE.
 140. **Razed by fire or fall:** 12 s burning in all (`spoil_seconds`), or the fall; a guard pauses the fire but keeps its seconds.
      Cost if wrong: SPOIL_SECONDS is a knob (10-15).
 141. **The garrison marches** at 5:00 (`EventObjective("march", "Garrison marches", "marches")`). Cost: none.

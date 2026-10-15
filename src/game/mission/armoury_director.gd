@@ -441,7 +441,8 @@ func mustering_now() -> int:
 
 
 ## A reinforcement when its time has come (v0.11 M5, plan decision 179): one man from the reserve to a new post of the first mustering
-## target; the clock stops while nothing musters.
+## target; the clock stops while nothing musters. With no way from the Citadel's gate to the post, none leaves the reserve: the clock
+## backs off to the next time, as _relieve() does.
 func _arms() -> void:
 	if _next_arms < 0.0 or _clock < _next_arms:
 		return
@@ -453,6 +454,8 @@ func _arms() -> void:
 	var a := Armed.new()
 	a.reinforcement = true
 	a.post = _post(i, armed[i].size())
+	if not _reaches(a.post):
+		return
 	var p := _from_reserve(a.post)
 	if p == null:
 		return

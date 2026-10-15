@@ -40,6 +40,20 @@ static func _clear(s: Dictionary, d: ArmouryDirector, i: int) -> void:
 			Kit.free_body(s, a.man)
 
 
+## Every post of each target (night watch and squad) within GUARD_REACH of it and more than two Silent Doom radii from every other,
+## so one strike takes one man (v0.11 M5, the squad-spread ruling: _spread() must never fall back to a bunched post).
+static func _spread_ok(d: ArmouryDirector) -> bool:
+	var ok := true
+	for i in d.targets.size():
+		var list: Array = d.armed[i]
+		ok = ok and list.size() == ArmouryDirector.NIGHT_WATCH + ArmouryDirector.SQUAD
+		for a: ArmouryDirector.Armed in list:
+			ok = ok and d.targets[i].distance_to(a.post) <= ArmouryDirector.GUARD_REACH
+			for b: ArmouryDirector.Armed in list:
+				ok = ok and (a == b or a.post.distance_to(b.post) > 2.0 * SilentDoom.RADIUS)
+	return ok
+
+
 static func _setup(t) -> void:
 	var s := _world()
 	var d: ArmouryDirector = s.d
@@ -71,6 +85,7 @@ static func _setup(t) -> void:
 		"a night watch on its posts one Doom apart and a squad indoors at each target, a reserve inside the Citadel's gate: %d lay watchmen"
 			% (seen.size() + d.reserve.size()))
 	var eng := (s.crowd as Crowd).engineers
+	t.check(_spread_ok(d), "every pair of a target's five posts more than two Doom radii apart, each within reach (the squad-spread ruling)")
 	t.check(eng.hands_off.size() == 3 and eng.hands_off.has(d.targets[1]) and not d.mustering[0], "the town's teams keep off the three; none musters yet")
 	var ids := []
 	for e in d.timeline.upcoming(4):
@@ -236,6 +251,15 @@ static func _reserve(t) -> void:
 	t.check(d.reinforced == 0 and d.reliefs == 0 and not MissionDirector._alive((d.armed[0][0] as ArmouryDirector.Armed).man),
 		"the reserve spent: no reinforcement, no relief")
 	Kit.done(s)
+	var w := _world()
+	var wd: ArmouryDirector = w.d
+	wd.citadel_door = Vector2(-40.0, -40.0)  # off the map: no way from here to any post
+	wd._muster(0)
+	wd._next_arms = 0.0
+	Kit.run_for(w, 0.6)
+	t.check(wd.reinforced == 0 and wd.reserve.size() == ArmouryDirector.RESERVE and wd._next_arms > wd._clock,
+		"no way from the gate to the post: no reinforcement leaves the reserve, and the clock backs off to its next time")
+	Kit.done(w)
 	var f := _world()
 	var fd: ArmouryDirector = f.d
 	var store := fd.targets[2]
@@ -358,6 +382,7 @@ static func _tower_reserved(t) -> void:
 	t.check(ix >= 0 and d.targets[1].role == &"tower" and (s.town as Town)._built.find(d.targets[1]) != ix
 		and d.targets[1].footprint.position.is_equal_approx(TownLayout.GATE_TOWERS[0].position),
 		"a wish's east gate tower set aside: the gate barracks is the west one (review focus 5)")
+	t.check(_spread_ok(d), "the west tower's five posts too: each pair more than two Doom radii apart, each within reach")
 	Kit.done(s)
 
 
@@ -371,13 +396,15 @@ static func _tagged(t) -> void:
 	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]) - ArmouryDirector.WORK_AHEAD + 1.0)
 	t.check(d.hint_phase() == "not_yet", "within 25 s of its horn: not yet")
 	d._muster(0)
-	t.check(Kit.labels(d)[0] == "BARRACKS - GUARDED" and d.hint_phase() == "guarded", "mustering, guarded")
+	t.check(Kit.labels(d)[0] == "BARRACKS - GUARDED" and Kit.edged(d, "BARRACKS - GUARDED") and d.hint_phase() == "guarded",
+		"mustering, guarded, pointed at")
 	_clear(s, d, 0)
 	Kit.run_for(s, 0.1)
-	t.check(Kit.labels(d)[0] == "BARRACKS" and d.hint_phase() == "open", "none on guard: open")
+	t.check(Kit.labels(d)[0] == "BARRACKS" and Kit.edged(d, "BARRACKS") and d.hint_phase() == "open", "none on guard: open, pointed at")
 	(s.crowd as Crowd).fires.ignite(d.targets[0], 0.5)
 	Kit.run_for(s, 1.2)
-	t.check(Kit.labels(d)[0] == "BARRACKS - BURNING 11", "burning, its seconds counted down (%s)" % Kit.labels(d)[0])
+	t.check(Kit.labels(d)[0] == "BARRACKS - BURNING 11" and Kit.edged(d, "BARRACKS - BURNING 11"),
+		"burning, its seconds counted down, pointed at (%s)" % Kit.labels(d)[0])
 	d.targets[0].destroy(d.targets[0].center(), &"smite")
 	d._muster(1)
 	_clear(s, d, 1)

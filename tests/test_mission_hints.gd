@@ -100,7 +100,7 @@ const SPEC := [
 	["bishop.square", "He is in the square and makes for the Citadel (red). Kill him before he gets in."],
 	["bishop.running", "Alarmed, he runs for the Citadel (red). Kill him now."],
 	# The Armoury (v0.11 M5).
-	["armoury", "Kill a target's armed men (red), then destroy it (gold): the north barracks, the gate barracks, the armoury."],
+	["armoury", "Kill a target's armed men (red), then destroy it once it musters (gold): two barracks, then the armoury."],
 	["armoury.not_yet", "Not mustering yet (grey): fire goes out, and a fall counts when its horn sounds. Kill its night watch (red) shortly before."],
 	["armoury.guarded", "Armed men (red) guard it: it takes no harm. Kill every one. Whispers do not move an armed man."],
 	["armoury.open", "No guard stands. Destroy it now: more armed men march from the Citadel, faster each minute."],

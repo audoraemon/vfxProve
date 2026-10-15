@@ -13,6 +13,7 @@ extends MissionDirector
 ## (HuntObjective). Every one of the hunt's people is kept out of the town's flight (_keep_held()). The Heretic Hunt is its first
 ## subclass; M6's The Lantern's Eye returns tower mirrors from _raise_standard(), has no head, and overrides _found() and
 ## _quarry_point() for its Searchlight (decision 111).
+## v0.11 M6: an unguarded blow goes through _unguarded_blow() (a borrowed standard's owner keeps its health), heard with shield_hits.
 
 ## One step of the hunt (v0.11 M4): a plain record, so the director holds no cycle.
 class HuntStep:
@@ -91,6 +92,10 @@ var head_door := Vector2.INF
 ## The head's own chain (v0.11 M4, the controller's ruling for The Heretic Hunt): how long after the last step breaks he comes out at
 ## the latest; -1 (the default) takes the steps' `chain`.
 var head_chain := -1.0
+## v0.11 M6 (mission spec §6.2): an unguarded blow is heard as any struck building's is (Structure.hit: fire catching, windows) while the
+## standard still stands. False (the default) keeps The Heretic Hunt's standards out of the fire manager's hearing; The Lantern's Eye
+## sets it.
+var shield_hits := false
 ## The tags' and the HUD's words, set by _plan() (v0.11 M4): The Heretic Hunt's by default; lost_word is the loss's reason.
 var standard_label := "STANDARD"
 var guard_label := "GUARD"
@@ -381,19 +386,34 @@ func _step_of(s: Structure) -> int:
 	return -1
 
 
-## Structure.damage_filter for a standard (v0.11 M4, Broken Lanterns' guarded shrine): guarded, the blow only shakes it; else it
-## takes the blow as any building does.
+## Structure.damage_filter for a standard (v0.11 M4, Broken Lanterns' guarded shrine): guarded, the blow only shakes it; else
+## _unguarded_blow() takes it (v0.11 M6).
 func _shield(s: Structure, amount: float, source: Vector2, kind: StringName) -> void:
 	var i := _step_of(s)
 	if i >= 0 and _guarded(i):
 		s.shake(SHAKE)
 		return
+	_unguarded_blow(s, amount, source, kind)
+
+
+## Virtual (v0.11 M6, mission spec §6.2): a blow on a standard no one guards. A standard that came with a damage filter of its own -- a
+## borrowed building's owner, saved by _raise() -- is handed the blow, and keeps its health; else today's path: its health lowered, the
+## hit marked, then its fall, or its cracks below Structure.CRACK_AT (heard while it stands, with shield_hits). The Lantern's Eye
+## overrides it: the mirror's glass.
+func _unguarded_blow(s: Structure, amount: float, source: Vector2, kind: StringName) -> void:
+	var own: Callable = _filters.get(s.get_instance_id(), Callable())
+	if own.is_valid():
+		own.call(s, amount, source, kind)
+		return
 	s.hp -= amount
 	s.mark_hit(amount / s.max_hp, kind)
 	if s.hp <= 0.0:
 		s.destroy(source, kind)
-	elif s.hp < s.max_hp * Structure.CRACK_AT:
-		s.crack()
+	else:
+		if shield_hits:
+			s.hit.emit(s, amount, kind)
+		if s.hp < s.max_hp * Structure.CRACK_AT:
+			s.crack()
 
 
 ## A standard fell (v0.11 M4).

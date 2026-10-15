@@ -32,6 +32,30 @@ class Pair:
 		return exit_any or super(c)
 
 
+## The Heretic Hunt whose standards are heard when struck (v0.11 M6 tests): shield_hits on.
+class Loud:
+	extends HereticHuntDirector
+
+	func _plan() -> void:
+		super()
+		shield_hits = true
+
+
+## The Heretic Hunt whose first standard comes with an owner of its own (v0.11 M6 tests): the owner counts each blow handed to it and
+## lowers nothing, as a borrowed tower's would.
+class Borrowed:
+	extends HereticHuntDirector
+	var owned: Array = []
+	var post: Structure
+
+	func _raise_standard(i: int) -> Structure:
+		var s := super(i)
+		if i == 0:
+			post = s
+			s.damage_filter = func(_st: Structure, amount: float, _source: Vector2, _kind: StringName) -> void: owned.append(amount)
+		return s
+
+
 static func run(t) -> void:
 	_charge_record(t)
 	_charge_defaults(t)
@@ -40,6 +64,7 @@ static func run(t) -> void:
 	_exit_hook(t)
 	_need(t)
 	_watch_switch(t)
+	_hunt_hooks(t)
 	_keepout_empty(t)
 	_keepout_under(t)
 	_keepout_slide(t)
@@ -294,3 +319,47 @@ static func _keepout_redraw(t) -> void:
 	hud.free()
 	descent.release()
 	Kit.done(s)
+
+
+## Step `i`'s guards moved well off their ring (v0.11 M6 tests): off guard, still alive.
+static func _clear_party(d: HuntDirector, i: int) -> void:
+	for g: HuntDirector.Guard in d.steps[i].party:
+		if MissionDirector._alive(g.man):
+			Kit.arrive(g.man as Person, g.post + Vector2(5.0, 5.0))
+
+
+## HuntDirector._unguarded_blow() and shield_hits (v0.11 M6, Task 2): by default today's path, silent; heard when asked; a standard's
+## own owner keeps its health, and gets it back at teardown.
+static func _hunt_hooks(t) -> void:
+	var s := Kit.world(MissionBook.heretic_hunt())
+	var d: HereticHuntDirector = s.d
+	d._raise(0)
+	_clear_party(d, 0)
+	var std := d.standard(0)
+	var hits := [0]
+	std.hit.connect(func(_s: Structure, _a: float, _k: StringName) -> void: hits[0] += 1)
+	std.damage(10.0, std.center(), &"smite")
+	t.check(not d.shield_hits and not d.guarded(0) and is_equal_approx(std.hp, std.max_hp - 10.0) and hits[0] == 0,
+		"by default an unguarded blow lowers the standard's own health and is not heard (The Heretic Hunt's path)")
+	Kit.done(s)
+	var l := Loud.new()
+	var s2 := Kit.world(MissionBook.heretic_hunt(), l)
+	l._raise(0)
+	_clear_party(l, 0)
+	var loud := l.standard(0)
+	var heard := [0]
+	loud.hit.connect(func(_s: Structure, _a: float, _k: StringName) -> void: heard[0] += 1)
+	loud.damage(10.0, loud.center(), &"smite")
+	t.check(l.shield_hits and heard[0] == 1 and is_equal_approx(loud.hp, loud.max_hp - 10.0), "shield_hits on: the same blow, heard once")
+	Kit.done(s2)
+	var b := Borrowed.new()
+	var s3 := Kit.world(MissionBook.heretic_hunt(), b)
+	b._raise(0)
+	_clear_party(b, 0)
+	b.post.damage(10.0, b.post.center(), &"smite")
+	t.check(b.owned == [10.0] and is_equal_approx(b.post.hp, b.post.max_hp), "a standard that came with an owner hands the blow to it")
+	var post := b.post
+	b.teardown()
+	post.damage(5.0, post.center(), &"smite")
+	t.check(b.owned == [10.0, 5.0] and is_equal_approx(post.hp, post.max_hp), "teardown gives the owner its building back")
+	Kit.done(s3)

@@ -1,6 +1,7 @@
 class_name Music
 extends Node
-## Background music, made with GodotSfxr (tools/audio/sfxr/music/): a brooding theme on the title and the draft, and in the
+## Background music, played by orchestral samples (tools/audio/music/, tools/audio/music_render.py): a dark choral theme on
+## the title and the draft, and in the
 ## mission a battle loop in three stems -- base, drums, lead -- layered in as the city falls. Not positional, not
 ## tied to a battlefield, and alive across every screen change so one track can fade into the next. Built the way
 ## UiSound is: one node under the scene tree's root, made the first time music is asked for, silent headless.

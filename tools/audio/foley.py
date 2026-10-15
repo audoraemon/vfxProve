@@ -201,6 +201,13 @@ def credits() -> None:
             info = {"title": rel, "license": "?", "author": "?", "url": ""}
         lines.append(f"| [{info['title']}]({info['url']}) `{rel.rsplit('/', 1)[-1]}` | {info['license']} | "
                      f"{info['author']} | {', '.join(sorted(used[rel]))} |")
+    lines += ["", "## Music", "", "The music (`tools/audio/music_render.py`) is played on sampled instruments:", "",
+              "| Library | Licence | Used for |", "|---|---|---|",
+              "| [Sonatina Symphonic Orchestra](https://github.com/peastman/sso) 4.0, by Mattias Westlund and contributors "
+              "| [CC Sampling Plus 1.0](https://creativecommons.org/licenses/sampling+/1.0/) (credit requested) "
+              "| choir, strings, brass, organ, harp, chimes, timpani, drums, cymbals, tam-tam, the bugle |",
+              "| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE), Versilian Studios "
+              "| CC0 | the low drum |"]
     (OUT / "CREDITS.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print("wrote", (OUT / "CREDITS.md").relative_to(ROOT), len(used), "sources")
 

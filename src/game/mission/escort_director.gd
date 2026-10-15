@@ -9,6 +9,8 @@ extends MissionDirector
 ## night; the seizer felled, turned, or taken off the errand by the town lets him go where he stands. The watch at the gate
 ## changes WATCH_CHANGE seconds after he first comes within NEAR_GATE of it, walks to the guardhouse for WATCH_GAP, and changes
 ## again every WATCH_CYCLE: no wait runs over a minute. A subclass names the charge and the places in _plan() (LostLambDirector).
+## v0.11 M6 (mission spec §6.1): each charge's state is a Charge record (charges); the old single-charge fields read and write the first,
+## so a subclass of one charge reads as before. Exodus has twelve.
 
 ## Seconds between looks; how far a soldier sees him; how near the way out he escapes; how near `return_to` the seizer
 ## delivers him; how far he trails his seizer; how near a beat's point a patrol has arrived; how far a place must move before
@@ -38,6 +40,25 @@ const MARK_WATCHED := Color("c8342a")
 ## between looks.
 const BOUND_HOLD := 1.0
 
+## One charge's state (v0.11 M6, mission spec §6.1): a plain record, so the director holds no cycle. Its defaults are the old fields'.
+class Charge:
+	extends RefCounted
+	## The charge, a Variant read only through MissionDirector._alive(): he is freed at once when he escapes.
+	var man: Variant = null
+	## He is held, and by whom (a Variant: the seizer may be freed); where he holds.
+	var held := false
+	var seizer: Variant = null
+	var hold_at := Vector2.INF
+	## He is bound; he was still bound at free_by; the second of the night he was freed (-1 until then).
+	var bound := false
+	var bound_lost := false
+	var freed_at := -1.0
+	## He got out; he was taken back.
+	var escaped := false
+	var taken := false
+	## Seconds until the watch's next change (-1 until it starts). The director's clock lives in the first record (plan decision 267).
+	var change_in := -1.0
+
 ## Set by _plan(): where he starts, the gate's mouth, the way out past it, where a seizer takes him, where the watch goes for
 ## the change, the watch's posts, each patrol's beat (PackedVector2Array), the patrols' size, when the searchers set out (-1
 ## for none) and how many, his pace, and the tags' words.
@@ -64,37 +85,86 @@ var free_by := -1.0
 ## them out: hunt_at when it is set (>= 0), and hunt_after_free is then ignored.
 var hunt_after_free := -1.0
 
-## The charge; the watch; each patrol (an Array[Person]); the searchers. Read only through _alive(): any may be freed (the
-## charge at once when he escapes).
-var charge: Person
+## Every charge's record, in order (v0.11 M6): one for The Lost Lamb and The Prisoner, twelve for Exodus.
+var charges: Array[Charge] = []
+## The watch; each patrol (an Array[Person]); the searchers. Read only through _alive(): any may be freed.
 var watch: Array[Person] = []
 var patrols: Array = []
 var hunters: Array[Person] = []
-## He is held, and by whom (a Variant: the seizer may be freed).
-var held := false
-var seizer: Variant = null
-var escaped := false
-var taken := false
+## How many seizures in all (v0.11 M2).
 var seizures := 0
-## He is bound now; he was still bound at free_by (the night is lost); the second of the night he was freed, -1 until then (v0.11 M4).
-var bound := false
-var bound_lost := false
-var freed_at := -1.0
+## v0.11 M6 (mission spec §6.1): false stops the watch's change ever starting (Exodus: a gate is cleared by acting, never waited out).
+## True (the default) is The Lost Lamb's and The Prisoner's.
+var watch_changes := true
+
+## The first charge, typed (v0.11 M6: an accessor over charges[0], the old field): null with none, or once his body is freed.
+var charge: Person:
+	get:
+		if charges.is_empty() or not is_instance_valid(charges[0].man):
+			return null
+		return charges[0].man as Person
+	set(v):
+		_first().man = v
+## The first charge's state, as the old fields read it (v0.11 M6): each reads and writes charges[0], with the old default when there is none.
+var held: bool:
+	get:
+		return charges[0].held if not charges.is_empty() else false
+	set(v):
+		_first().held = v
+var seizer: Variant:
+	get:
+		return charges[0].seizer if not charges.is_empty() else null
+	set(v):
+		_first().seizer = v
+var escaped: bool:
+	get:
+		return charges[0].escaped if not charges.is_empty() else false
+	set(v):
+		_first().escaped = v
+var taken: bool:
+	get:
+		return charges[0].taken if not charges.is_empty() else false
+	set(v):
+		_first().taken = v
+var bound: bool:
+	get:
+		return charges[0].bound if not charges.is_empty() else false
+	set(v):
+		_first().bound = v
+var bound_lost: bool:
+	get:
+		return charges[0].bound_lost if not charges.is_empty() else false
+	set(v):
+		_first().bound_lost = v
+var freed_at: float:
+	get:
+		return charges[0].freed_at if not charges.is_empty() else -1.0
+	set(v):
+		_first().freed_at = v
 ## Seconds into the night (v0.11 M4), for the freeing.
 var _clock := 0.0
 ## The watch is away for its change; seconds until the next change (-1 until he first nears the gate); seconds of it left.
 var watch_away := false
-var change_in := -1.0
+var change_in: float:
+	get:
+		return charges[0].change_in if not charges.is_empty() else -1.0
+	set(v):
+		_first().change_in = v
 var away_left := 0.0
 ## Each patrol's next point on its beat.
 var _beat_at: Array[int] = []
-## Where he holds.
-var _hold_at := Vector2.INF
+## Where the first charge holds (v0.11 M6: an accessor over charges[0].hold_at).
+var _hold_at: Vector2:
+	get:
+		return charges[0].hold_at if not charges.is_empty() else Vector2.INF
+	set(v):
+		_first().hold_at = v
 var _tick_in := 0.0
 
 
 ## The mission's setup (v0.11 M2): the plan, the charge set down where the god finds him, the watch at its posts and each patrol at
-## the start of its beat. v0.11 M4: through the hooks, each handed the charge, and bound if bound_by is set.
+## the start of its beat. v0.11 M4: through the hooks, each handed the charge, and bound if bound_by is set. v0.11 M6: every charge
+## _appoint_charges() names gets a record and is placed (_place_charge()); with one, today's order line for line.
 func _begin() -> void:
 	_plan()
 	gate_at = _walkable(gate_at)
@@ -105,21 +175,21 @@ func _begin() -> void:
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	if hunt_at >= 0.0:
 		timeline.add(hunt_at, "hunt", _hunt_label(), _hunt, func() -> bool: return not escaped and not taken and _alive(charge))
-	charge = _appoint_charge()
-	if charge == null:
+	for man in _appoint_charges():
+		var c := Charge.new()
+		c.man = man
+		charges.append(c)
+		_place_charge(c)
+	if charges.is_empty():
 		return
-	var at := _walkable(charge_start)
-	_set_down(charge, at)
-	charge.pace *= charge_pace
-	_hold_at = at
-	charge.go_duty(at)
 	crowd.escaped.connect(_on_escaped)
 	if bound_by != null:
-		bound = true
+		for c in charges:
+			c.bound = true
 		if free_by >= 0.0:
 			# Bound still, and by stocks still standing (v0.11 M4, the final review): stocks brought down in the last TICK before
 			# free_by, which the next look would have answered by freeing him, never lose the night.
-			timeline.add(free_by, "inside", _inside_label(), _taken_inside,
+			timeline.add(free_by, "inside", _inside_label(), func() -> void: _taken_inside(charges[0]),
 				func() -> bool: return bound and is_instance_valid(bound_by) and not bound_by.destroyed and not escaped and _alive(charge))
 	watch = _appoint_watch(charge, watch_posts.size())
 	for i in watch.size():
@@ -144,11 +214,79 @@ func _appoint_charge() -> Person:
 	return near[0] if not near.is_empty() else null
 
 
+## Virtual (v0.11 M6, mission spec §6.1): every charge, in order (none for none) -- [_appoint_charge()] by default, The Lost Lamb's and
+## The Prisoner's one; Exodus's twelve believers.
+func _appoint_charges() -> Array[Person]:
+	var out: Array[Person] = []
+	var one := _appoint_charge()
+	if one != null:
+		out.append(one)
+	return out
+
+
+## Virtual (v0.11 M6): charge `c` set down where the god finds him, at his pace, held there on duty -- at charge_start by default
+## (today's setup, line for line); Exodus takes each believer into his household's house.
+func _place_charge(c: Charge) -> void:
+	var p := c.man as Person
+	var at := _walkable(charge_start)
+	_set_down(p, at)
+	p.pace *= charge_pace
+	c.hold_at = at
+	p.go_duty(at)
+
+
+## The first record, made if there is none (v0.11 M6: for the old fields' setters).
+func _first() -> Charge:
+	if charges.is_empty():
+		charges.append(Charge.new())
+	return charges[0]
+
+
+## The record whose man is `p`, or null (v0.11 M6). A Variant: `p` may be freed.
+func _charge_of(p: Variant) -> Charge:
+	for c in charges:
+		if c.man == p:
+			return c
+	return null
+
+
+## Charge `c` is resolved (v0.11 M6): out, taken back, lost bound, or dead.
+func _resolved(c: Charge) -> bool:
+	return c.escaped or c.taken or c.bound_lost or not _alive(c.man)
+
+
+## Every charge is resolved, or there is none (v0.11 M6): the step's early return -- for one charge today's test.
+func _all_resolved() -> bool:
+	for c in charges:
+		if not _resolved(c):
+			return false
+	return true
+
+
+## How many charges are out (v0.11 M6).
+func out_count() -> int:
+	var n := 0
+	for c in charges:
+		n += 1 if c.escaped else 0
+	return n
+
+
+## How many charges are still in the town, alive and not taken back (v0.11 M6).
+func left_count() -> int:
+	var n := 0
+	for c in charges:
+		n += 1 if not c.escaped and not c.taken and _alive(c.man) else 0
+	return n
+
+
 ## Everyone already at the night's work for the charge `c` (v0.11 M4, decision 93): `c` himself, the watch, every patrol and the
 ## searchers -- the list a new appointment leaves out (the old `used`). Virtual: The Prisoner adds her gaolers and searchers. Untyped:
 ## any may be a freed body.
 func _in_use(c: Person) -> Array:
 	var out: Array = [c]
+	for o in charges:
+		if o.man != c:
+			out.append(o.man)  # v0.11 M6: every charge's man (one charge: none added)
 	out.append_array(watch)
 	for squad: Array in patrols:
 		out.append_array(squad)
@@ -244,25 +382,28 @@ func hud_line() -> String:
 	return ""
 
 
-## One step (v0.11 M2): the timeline, the watch's change, then every TICK a look at him (free or held), the watch's posts, the
-## patrols and the searchers. v0.11 M4: the clock; a bound charge's look.
+## One step (v0.11 M2): the timeline, the watch's change, then every TICK a look at each charge (held, bound or free), the watch's
+## posts, the patrols and the searchers. v0.11 M4: the clock; a bound charge's look. v0.11 M6: each charge not resolved, in order.
 func step(delta: float) -> void:
 	_clock += delta
 	timeline.step(delta)
-	if escaped or taken or bound_lost or not _alive(charge):
+	if _all_resolved():
 		return
 	_watch_step(delta)
 	_tick_in -= delta
 	if _tick_in > 0.0:
 		return
 	_tick_in = TICK
-	if held:
-		_step_held()
-	elif bound:
-		_step_bound(charge)
-	else:
-		_step_free()
-	if escaped or taken:
+	for c in charges:
+		if _resolved(c):
+			continue
+		if c.held:
+			_step_held(c)
+		elif c.bound:
+			_step_bound(c)
+		else:
+			_step_free(c)
+	if _all_resolved():
 		return
 	_step_watch_posts()
 	_step_patrols()
@@ -270,84 +411,104 @@ func step(delta: float) -> void:
 
 
 ## Free (v0.11 M2): sheltering indoors, nothing; at the way out he escapes; seen, he is seized; near the gate, the watch's change starts
-## its clock; back on his feet he holds where he stands.
-func _step_free() -> void:
-	if charge.inside:
+## its clock; back on his feet he holds where he stands. v0.11 M6: charge `c`; the way out is _exit_reached(); the change only while
+## watch_changes.
+func _step_free(c: Charge) -> void:
+	var p := c.man as Person
+	if p.inside:
 		return  # sheltering from a fright: hidden, unseen and unheard until he comes out
-	if charge.ground_pos.distance_to(exit_at) <= ESCAPE_REACH:
-		_escape()
+	if _exit_reached(c):
+		_escape(c)
 		return
-	var by := _seen_by()
+	var by := _seen_by(c)
 	if by != null:
-		_seize(by)
+		_seize(c, by)
 		return
-	if change_in < 0.0 and charge.ground_pos.distance_to(gate_at) <= NEAR_GATE:
+	if watch_changes and change_in < 0.0 and p.ground_pos.distance_to(gate_at) <= NEAR_GATE:
 		change_in = WATCH_CHANGE
-	if charge.mind in HOLD_FROM:
-		_hold_at = charge.ground_pos
-		charge.go_duty(_hold_at)
-	elif charge.mind == Person.Mind.DUTY and charge.anchor.distance_to(_hold_at) > MOVE:
-		charge.go_duty(_hold_at)
+	if p.mind in HOLD_FROM:
+		c.hold_at = p.ground_pos
+		p.go_duty(c.hold_at)
+	elif p.mind == Person.Mind.DUTY and p.anchor.distance_to(c.hold_at) > MOVE:
+		p.go_duty(c.hold_at)
+
+
+## Virtual (v0.11 M6): charge `c` has reached a way out -- within ESCAPE_REACH of exit_at by default; Exodus: any open gate's way out.
+func _exit_reached(c: Charge) -> bool:
+	return (c.man as Person).ground_pos.distance_to(exit_at) <= ESCAPE_REACH
 
 
 ## Bound (v0.11 M4, decision 94): `bound_by` down or gone, he is free; else he is held at his spot, kept shaking off a whisper and past
-## fear, and set back on it should anything move him (Discord's confusion lasts a TICK at most).
-func _step_bound(c: Person) -> void:
+## fear, and set back on it should anything move him (Discord's confusion lasts a TICK at most). v0.11 M6: charge `c`.
+func _step_bound(c: Charge) -> void:
 	if not is_instance_valid(bound_by) or bound_by.destroyed:
 		_unbind(c)
 		return
-	c._shaken_left = maxf(c._shaken_left, BOUND_HOLD)
-	c.fearless_left = maxf(c.fearless_left, BOUND_HOLD)
-	if c.mind != Person.Mind.DUTY or c.anchor.distance_to(_hold_at) > MOVE:
-		c.go_duty(_hold_at)
+	var p := c.man as Person
+	p._shaken_left = maxf(p._shaken_left, BOUND_HOLD)
+	p.fearless_left = maxf(p.fearless_left, BOUND_HOLD)
+	if p.mind != Person.Mind.DUTY or p.anchor.distance_to(c.hold_at) > MOVE:
+		p.go_duty(c.hold_at)
 
 
 ## He is freed (v0.11 M4): the holds let go so a whisper takes at once, he holds where he stands, and with hunt_after_free the
-## searchers' event goes on the strip that long from now.
-func _unbind(c: Person) -> void:
-	bound = false
-	freed_at = _clock
-	c._shaken_left = 0.0
-	if c.fearless_left <= BOUND_HOLD:
-		c.fearless_left = 0.0
-	_hold_at = c.ground_pos
+## searchers' event goes on the strip that long from now. v0.11 M6: charge `c`.
+func _unbind(c: Charge) -> void:
+	var p := c.man as Person
+	c.bound = false
+	c.freed_at = _clock
+	p._shaken_left = 0.0
+	if p.fearless_left <= BOUND_HOLD:
+		p.fearless_left = 0.0
+	c.hold_at = p.ground_pos
 	rules.banner.emit(_unbound_banner())
 	if hunt_after_free >= 0.0 and hunt_at < 0.0:
 		timeline.add(timeline.elapsed() + hunt_after_free / timeline.stretch_factor(), "hunt", _hunt_label(), _hunt,
 			func() -> bool: return not escaped and not taken and _alive(charge))
 
 
-## Still bound at free_by (v0.11 M4): the night is lost (lost_reason()); the timeline's banner says so.
-func _taken_inside() -> void:
-	bound_lost = true
+## Still bound at free_by (v0.11 M4): the night is lost (lost_reason()); the timeline's banner says so. v0.11 M6: charge `c`.
+func _taken_inside(c: Charge) -> void:
+	c.bound_lost = true
 
 
 ## Held (v0.11 M2): the seizer gone, turned or off his errand frees him; the seizer at `return_to` with him in tow, he is taken back;
-## else the seizer walks on and he trails him (a whisper may pull him away a while; it does not free him).
-func _step_held() -> void:
-	if not _alive(seizer) or (seizer as Person).mind != Person.Mind.DUTY:
-		_release()
+## else the seizer walks on and he trails him (a whisper may pull him away a while; it does not free him). v0.11 M6: charge `c`.
+func _step_held(c: Charge) -> void:
+	if not _alive(c.seizer) or (c.seizer as Person).mind != Person.Mind.DUTY:
+		_release(c)
 		return
-	var s := seizer as Person
-	if s.ground_pos.distance_to(return_to) <= RETURN_REACH and charge.ground_pos.distance_to(s.ground_pos) <= TAKE_REACH * 2.0:
-		taken = true
-		held = false
+	var s := c.seizer as Person
+	var p := c.man as Person
+	if s.ground_pos.distance_to(return_to) <= RETURN_REACH and p.ground_pos.distance_to(s.ground_pos) <= TAKE_REACH * 2.0:
+		c.taken = true
+		c.held = false
 		crowd.off_duty(s)
 		rules.banner.emit(_taken_banner())
 		return
 	if s.anchor.distance_to(return_to) > MOVE:
 		s.go_duty(return_to)
-	if charge.mind == Person.Mind.DUTY or charge.mind in HOLD_FROM:
-		if charge.mind != Person.Mind.DUTY or charge.anchor.distance_to(s.ground_pos) > TAKE_REACH:
-			charge.go_duty(s.ground_pos)
+	if p.mind == Person.Mind.DUTY or p.mind in HOLD_FROM:
+		if p.mind != Person.Mind.DUTY or p.anchor.distance_to(s.ground_pos) > TAKE_REACH:
+			p.go_duty(s.ground_pos)
 
 
-## The first soldier set to watch for him who sees him now (v0.11 M2): _watching() and within SIGHT; else null.
-func _seen_by() -> Person:
+## The first soldier set to watch for charge `c` who sees him now (v0.11 M2): _watching() and within SIGHT; else null. v0.11 M6: a
+## watcher marching another charge sees no other (vacuous with one).
+func _seen_by(c: Charge) -> Person:
+	var at := (c.man as Person).ground_pos
 	for v: Variant in _watchers():
-		if _watching(v) and (v as Person).ground_pos.distance_to(charge.ground_pos) <= SIGHT:
+		if _watching(v) and not _marching_other(v, c) and (v as Person).ground_pos.distance_to(at) <= SIGHT:
 			return v as Person
 	return null
+
+
+## `v` is marching a charge other than `c` (v0.11 M6).
+func _marching_other(v: Variant, c: Charge) -> bool:
+	for o in charges:
+		if o != c and o.held and o.seizer == v:
+			return true
+	return false
 
 
 ## `v` is on the director's errand and looking (v0.11 M2, the controller's Task 4 ruling and Decision 20): alive, out of doors,
@@ -370,48 +531,51 @@ func _watchers() -> Array:
 	return out
 
 
-## `by` seizes him (v0.11 M2): he is held, `by` is sent to march him to `return_to`, and he follows.
-func _seize(by: Person) -> void:
-	held = true
-	seizer = by
+## `by` seizes charge `c` (v0.11 M2): he is held, `by` is sent to march him to `return_to`, and he follows.
+func _seize(c: Charge, by: Person) -> void:
+	c.held = true
+	c.seizer = by
 	seizures += 1
 	rules.banner.emit(_caught_banner())
 	by.go_duty(return_to)
-	charge.go_duty(by.ground_pos)
+	(c.man as Person).go_duty(by.ground_pos)
 
 
-## His seizer lets go of him (v0.11 M2): the seizer goes back to the town's post if still on the errand, and he holds where he stands.
-func _release() -> void:
-	held = false
-	if _alive(seizer) and (seizer as Person).mind == Person.Mind.DUTY:
-		crowd.off_duty(seizer)
-	seizer = null
-	_hold_at = charge.ground_pos
-	if charge.mind == Person.Mind.DUTY or charge.mind in HOLD_FROM:
-		charge.go_duty(_hold_at)
+## Charge `c`'s seizer lets go of him (v0.11 M2): the seizer goes back to the town's post if still on the errand, and he holds where he
+## stands.
+func _release(c: Charge) -> void:
+	c.held = false
+	if _alive(c.seizer) and (c.seizer as Person).mind == Person.Mind.DUTY:
+		crowd.off_duty(c.seizer)
+	c.seizer = null
+	var p := c.man as Person
+	c.hold_at = p.ground_pos
+	if p.mind == Person.Mind.DUTY or p.mind in HOLD_FROM:
+		p.go_duty(c.hold_at)
 	rules.banner.emit(_freed_banner())
 
 
-## Out (v0.11 M2): he leaves the town by the escape path (Crowd.escape() frees him at once).
-func _escape() -> void:
-	escaped = true
+## Out (v0.11 M2): charge `c` leaves the town by the escape path (Crowd.escape() frees him at once).
+func _escape(c: Charge) -> void:
+	c.escaped = true
 	rules.banner.emit(_escape_banner())
-	crowd._field.remove(charge)
-	crowd.escape(charge)
+	crowd._field.remove(c.man)
+	crowd.escape(c.man)
 
 
-## However he left the town (v0.11 M2, the controller's Task 4 fix ruling) -- the way out, an exit he fled to, a river boat --
-## he has got away, as the Procession's Prince has: the crowd's own exit logic carries him off, and that is his escape, not his
-## death. Not twice: _escape() has already said so. A seizer is let go.
+## However a charge left the town (v0.11 M2, the controller's Task 4 fix ruling) -- the way out, an exit he fled to, a river boat -- he
+## has got away, as the Procession's Prince has: the crowd's own exit logic carries him off, and that is his escape, not his death. Not
+## twice: _escape() has already said so. A seizer is let go. v0.11 M6: the record whose man he is.
 func _on_escaped(p: Person) -> void:
-	if p != charge or escaped or taken:
+	var c := _charge_of(p)
+	if c == null or c.escaped or c.taken:
 		return
-	escaped = true
-	if held:
-		held = false
-		if _alive(seizer) and (seizer as Person).mind == Person.Mind.DUTY:
-			crowd.off_duty(seizer)
-		seizer = null
+	c.escaped = true
+	if c.held:
+		c.held = false
+		if _alive(c.seizer) and (c.seizer as Person).mind == Person.Mind.DUTY:
+			crowd.off_duty(c.seizer)
+		c.seizer = null
 	rules.banner.emit(_escape_banner())
 
 

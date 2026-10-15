@@ -125,22 +125,31 @@ static func _ground(t) -> void:
 	Kit.run_for(s, BishopDirector.ARRIVE_AT + DT)
 	var out := 0
 	for p: BishopDirector.Post in d.posts:
-		if p.escort and MissionDirector._alive(p.man) and not (p.man as Person).inside and (p.man as Person).anchor == p.spot 				and (p.man as Person).ground_pos.is_equal_approx(p.spot):
+		if p.escort and MissionDirector._alive(p.man) and not (p.man as Person).inside and (p.man as Person).anchor == p.spot \
+				and (p.man as Person).ground_pos.is_equal_approx(p.spot):
 			out += 1
 	t.check(d.at_refuge == 0 and q.target.inside and q.target.ground_pos.is_equal_approx(d.refuges[0].center()) and out == BishopDirector.ESCORT
 		and (s.banners as Array).has("THE BISHOP GOES TO GROUND") and q.state == AssassinateDirector.State.WAITING,
 		"at ARRIVE_AT he goes to ground in his house, unseen; his escort comes out each at his own post, not bunched at the door")
-	var spots: Array[Vector2] = []
-	for p: BishopDirector.Post in d.posts:
-		if not p.done and p.refuge == 0:
-			spots.append(p.spot)
-	var apart := spots.size() == BishopDirector.STANDING + BishopDirector.ESCORT
-	for a in spots.size():
-		apart = apart and d.refuges[0].distance_to(spots[a]) <= BishopDirector.GUARD_REACH
-		for b in range(a + 1, spots.size()):
-			apart = apart and spots[a].distance_to(spots[b]) > 2.0 * SilentDoom.RADIUS
-	t.check(apart, "each of his house's Knights holds his own post within reach of it, two Doom radii from every other: one strike never takes two (%s)" % [spots])
 	Kit.done(s)
+	var apart := true
+	var seen := []
+	for i in 3:
+		var r := _world()
+		var rd: BishopDirector = r.d
+		_to_refuge(r, rd, i)
+		var spots: Array[Vector2] = []
+		for p: BishopDirector.Post in rd.posts:
+			if not p.done and p.refuge == i:
+				spots.append(p.spot)
+		apart = apart and spots.size() == BishopDirector.STANDING + BishopDirector.ESCORT
+		for a in spots.size():
+			apart = apart and rd.refuges[i].distance_to(spots[a]) <= BishopDirector.GUARD_REACH
+			for b in range(a + 1, spots.size()):
+				apart = apart and spots[a].distance_to(spots[b]) > 2.0 * SilentDoom.RADIUS
+		seen.append(spots.size())
+		Kit.done(r)
+	t.check(apart, "at each refuge his five Knights hold their own posts within reach of it, two Doom radii from every other: one strike never takes two (%s)" % [seen])
 
 
 static func _stone(t) -> void:
@@ -363,10 +372,12 @@ static func _tagged(t) -> void:
 		and is_equal_approx(d.hint_seconds(), BishopDirector.ARRIVE_AT),
 		"before ARRIVE_AT: in the Citadel (grey, no arrow into the HUD's corner); his house next, pointed at (%s)" % [labels.slice(0, 2)])
 	_to_refuge(s, d, 0)
-	t.check(Kit.labels(d).slice(0, 2) == ["REFUGE - GUARDED", "NEXT REFUGE"] and d.hint_phase() == "guarded",
+	t.check(Kit.labels(d).slice(0, 2) == ["REFUGE - GUARDED", "NEXT REFUGE"] and d.hint_phase() == "guarded"
+		and Kit.edged(d, "REFUGE - GUARDED") and Kit.edged(d, "NEXT REFUGE"),
 		"in his house: guarded, the chapter house next")
 	_clear(s, d, 0)
-	t.check(Kit.labels(d)[0] == "REFUGE - SET IT ALIGHT" and d.hint_phase() == "open", "none on guard: set it alight")
+	t.check(Kit.labels(d)[0] == "REFUGE - SET IT ALIGHT" and d.hint_phase() == "open" and Kit.edged(d, "REFUGE - SET IT ALIGHT"),
+		"none on guard: set it alight, pointed at")
 	(s.crowd as Crowd).fires.ignite(d.refuges[0], 0.5)
 	Kit.run_for(s, 1.2)
 	t.check(Kit.labels(d)[0] == "REFUGE - BURNING %d" % ceili(BishopDirector.DRIVE_OUT - 1.2) and d.hint_phase() == "burning"

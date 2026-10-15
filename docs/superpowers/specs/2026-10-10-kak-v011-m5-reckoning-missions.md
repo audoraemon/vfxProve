@@ -112,8 +112,8 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
   - **Spacing:** his house to the chapter house about 8 units; the chapter house to the Temple's door about 10.
   - **The camera** rests at (2.0, -3.0) (the controller's ruling: checked against the real HUD stack, 240x165 px). His house
     is at the right, the chapter house at the top right, the Temple's door and the first half of his walk across the square
-    clear of the stack. The Citadel's gate shows at the top-left corner (its arrow is left to M6's tag keep-out); its tag
-    shows only once he runs for it.
+    clear of the stack. The Citadel's gate shows at the top-left corner (its arrow is left to M6's tag keep-out); its CITADEL
+    tag shows as soon as he is drawn into the square (before 0:45 only the grey BISHOP - IN THE CITADEL marks it).
 - **Claims:** one cleric (the bishop), the two dwellings and the Temple. The Knights are added soldiers (below). No lay
   citizens. All three refuges are put in `EngineerManager.hands_off`, so the town's engineers never mend them.
 - **Main objective:** kill the bishop.

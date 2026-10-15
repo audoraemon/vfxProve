@@ -90,10 +90,9 @@ var _burned: Array[float] = []
 var _alight: Array[float] = []
 ## Structure -> true while it is stone (v0.11 M5).
 var _stoned := {}
-## His own pace, before BISHOP_PACE; the Knights walking home; seconds to the next look (v0.11 M5).
+## His own pace, before BISHOP_PACE; the Knights walking home (v0.11 M5).
 var _own_pace := 1.0
 var _homeward: Array = []
-var _look_in := 0.0
 
 
 ## The places and numbers (v0.11 M5): no hideout (no smoke-out, the Citadel's gate as the safe place), the guards' ring RING_R, and
@@ -420,10 +419,8 @@ func _send_guards() -> void:
 ## evacuation gave him for a fright; then the Assassinate type's (the strip, the judge, his walk in the square, which puts one stopped
 ## on his feet straight back on duty for the gate), the refuge he is in, the Knights, and the stone refuges' fires.
 func step(delta: float) -> void:
-	_look_in -= delta
-	var looking := _look_in <= 0.0
+	var looking := _tick_in - delta <= 0.0  # the base's own look this step (super() counts _tick_in down and resets it)
 	if looking:
-		_look_in = TICK
 		_hold_all(_held(), _evacuation_began())
 	super(delta)
 	var q := quarries[0]

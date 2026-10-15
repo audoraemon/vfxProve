@@ -88,7 +88,7 @@ var reliefs := 0
 ## Each refuge's seconds alight with none on guard, in all, and its fire's seconds with one on guard (v0.11 M5).
 var _burned: Array[float] = []
 var _alight: Array[float] = []
-## Structure -> true while it is stone (v0.11 M5).
+## Structure -> the damage filter it had before, while it is stone (v0.11 M5; restored when it is a building again).
 var _stoned := {}
 ## His own pace, before BISHOP_PACE; the Knights walking home (v0.11 M5).
 var _own_pace := 1.0
@@ -175,15 +175,6 @@ func _tends(p: Person) -> bool:
 	return p.corps == Person.Corps.KNIGHT and p.mind == Person.Mind.POST
 
 
-## A Lantern Knight added at `at` (v0.11 M5, Broken Lanterns' way): a soldier of corps KNIGHT, three times a soldier's health, at his post.
-func _knight(at: Vector2) -> Person:
-	var k := crowd.add_soldier(_walkable(at))
-	k.corps = Person.Corps.KNIGHT
-	k.health = Person.HEALTH_KNIGHT
-	k.send_to_post(k.ground_pos)
-	return k
-
-
 ## The `k`th Knight's post at refuge `i` (v0.11 M5): along its door's face, the standing pair POST_GAP apart about the door, the escort
 ## POST_GAP beyond them, a third of the escort POST_GAP straight out from the door; each kept more than two Silent Doom radii from
 ## the posts already set (`mates`) by _spread() (the controller's fix round 1 ruling, The Crown's Bread's: one strike never clears a
@@ -223,15 +214,16 @@ func _spread(i: int, want: Vector2, mates: Array[Vector2]) -> Vector2:
 
 ## `s` is stone tonight (v0.11 M5, Decision 128): a blow only shakes it, and its fire is smothered (_smother_stone()).
 func _stone(s: Structure) -> void:
-	_stoned[s] = true
+	_stoned[s] = s.damage_filter
 	s.damage_filter = _stone_hit
 
 
-## `s` is a building again (v0.11 M5): the bishop is in it.
+## `s` is a building again (v0.11 M5): the bishop is in it; any filter it had before is restored.
 func _unstone(s: Structure) -> void:
+	var before: Callable = _stoned.get(s, Callable())
 	_stoned.erase(s)
 	if is_instance_valid(s):
-		s.damage_filter = Callable()
+		s.damage_filter = before
 
 
 ## Structure.damage_filter for a stone refuge (v0.11 M5): the blow only shakes it.
@@ -585,10 +577,11 @@ func hud_line() -> String:
 	return "Kill the bishop: refuges %d / %d" % [driven, refuges.size()]
 
 
-## The map tags, most important first (v0.11 M5, mission spec §1): before 0:45 BISHOP - IN THE CITADEL (grey, no arrow: it would point
-## into the HUD's corner); the refuge he is in, gold, guarded, open or burning; the next refuge, grey, with his arrival's time while
-## he is on his way; KNIGHT on each Knight on guard at those two, a red diamond on a relief, a small red mark on one away. In the square:
-## BISHOP (RUNNING once alarmed), CITADEL, and a red diamond on each who would see a Doom on him. None once he is dead or gone.
+## The map tags, most important first (v0.11 M5, mission spec §1): before 0:45 BISHOP - IN THE CITADEL (grey, an edge tag: the Citadel
+## lies under the HUD's corner, and M6's keepout keeps an edge tag's words -- the final review); the refuge he is in, gold, guarded,
+## open or burning; the next refuge, grey, with his arrival's time while he is on his way; KNIGHT on each Knight on guard at those two,
+## a red diamond on a relief, a small red mark on one away. In the square: BISHOP (RUNNING once alarmed), CITADEL, and a red diamond on
+## each who would see a Doom on him. None once he is dead or gone.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	var q := quarries[0]
@@ -602,7 +595,7 @@ func tags() -> Array[MapTag]:
 			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
 		return out
 	if at_refuge < 0:
-		out.append(MapTag.place(hide_door, MARK_GREY, "BISHOP - IN THE CITADEL", 0.0, false))
+		out.append(MapTag.place(hide_door, MARK_GREY, "BISHOP - IN THE CITADEL", 0.0, true))
 	var cur := current_refuge()
 	if cur >= 0:
 		var s := refuges[cur]
@@ -677,7 +670,7 @@ func report() -> Dictionary:
 func teardown() -> void:
 	for s: Variant in _stoned.keys():
 		if is_instance_valid(s):
-			(s as Structure).damage_filter = Callable()
+			(s as Structure).damage_filter = _stoned[s]
 	_stoned.clear()
 	if is_instance_valid(crowd) and crowd.engineers != null:
 		for s: Variant in refuges:

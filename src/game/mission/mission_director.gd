@@ -76,6 +76,12 @@ func hint_phase() -> String:
 	return ""
 
 
+## Virtual (v0.11 M5, the final review): the HUD's words for a cast refused for `reason` from `slot`, in place of its own plain ones
+## ("" keeps them): The Sermon's "THEY HEAR ONLY HIM". Rules.refused_who names the one a refused whisper was meant for.
+func refused_words(_slot: int, _reason: String) -> String:
+	return ""
+
+
 ## Virtual (v0.11 M4): the seconds a phase's line counts down, put in place of MissionHints.SECONDS (The Heretic Hunt's captain
 ## coming out); 0 by default, for the lines that count nothing.
 func hint_seconds() -> float:
@@ -270,6 +276,38 @@ func _lay_reaching(at: Vector2, exclude: Array = []) -> Person:
 		if crowd._grid == null or not crowd._grid.path(p.ground_pos, at).is_empty():
 			return p
 	return null
+
+
+## A Lantern Knight added at `at` (v0.11 M5, the final review: hoisted from The Bishop and Broken Lanterns for M6): a soldier of corps
+## KNIGHT with three times a soldier's health, on walkable ground at or near `at`, and at his post there unless `post` is false (Broken
+## Lanterns sends its Knights to their shrines itself).
+func _knight(at: Vector2, post := true) -> Person:
+	var k := crowd.add_soldier(_walkable(at))
+	k.corps = Person.Corps.KNIGHT
+	k.health = Person.HEALTH_KNIGHT
+	if post:
+		k.send_to_post(k.ground_pos)
+	return k
+
+
+## `p` rides hidden (v0.11 M5, The Relic Run's ride named for M6 by the final review): put on duty where he stands first -- a man
+## taken out of the field must not be left to his own mind -- then indoors at no building, carried by _ride_step() each frame. The
+## caller's _hold_all() keeps covering him while he rides.
+func _ride_in(p: Person) -> void:
+	p.go_duty(p.ground_pos)
+	_take_inside(p, null)
+
+
+## The hidden rider `p` is carried to `at` (v0.11 M5): called each frame he rides.
+func _ride_step(p: Person, at: Vector2) -> void:
+	p.ground_pos = at
+
+
+## The hidden rider `p` slips out at `at` (v0.11 M5): back in the field and kept from the town's flight, as an evacuation may have
+## begun while he rode; the caller then gives him his duty.
+func _ride_out(p: Person, at: Vector2) -> void:
+	_bring_out(p, at)
+	_keep_from_flight(p, true)
 
 
 ## Whether `p` still stands in the world: neither freed nor dead.

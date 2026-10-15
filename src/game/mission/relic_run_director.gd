@@ -409,11 +409,13 @@ func _count_spot(w: Warden) -> Vector2:
 	return _ring_spot(_lantern, COUNT_OFF, w.slot, WARDENS, 0.5)
 
 
-## The halt ends (v0.11 M5): the reliquary closes, the wardens go back to their posts, and the cart rolls on.
+## The halt ends (v0.11 M5): the reliquary closes, the wardens go back to their posts, and the cart rolls on; a swap not finished
+## is no longer under way (the final review: the HUD would show it on).
 func _end_halt() -> void:
 	var k := halt
 	halts_done[k] = true
 	halt = -1
+	swapping = false
 	for w: Warden in wardens:
 		if w.checkpoint == k:
 			_recall_to(w.man, w.post)
@@ -485,11 +487,10 @@ func _swap_step(delta: float) -> void:
 		_take_relic()
 
 
-## Pip slips aboard (v0.11 M5): on duty where he stands, then hidden in the cart's straw, carried with it.
+## Pip slips aboard (v0.11 M5): on duty where he stands, then hidden in the cart's straw, carried with it (MissionDirector._ride_in()).
 func _board() -> void:
 	aboard = true
-	wren.go_duty(wren.ground_pos)
-	_take_inside(wren, null)
+	_ride_in(wren)
 	rules.banner.emit("PIP SLIPS ABOARD")
 
 
@@ -499,8 +500,7 @@ func _take_relic() -> void:
 	swapping = false
 	swapped = true
 	aboard = false
-	_bring_out(wren, _walkable(_lantern + Vector2(0.0, 0.8)))
-	_keep_from_flight(wren, true)
+	_ride_out(wren, _walkable(_lantern + Vector2(0.0, 0.8)))
 	rules.banner.emit("THE RELIC IS TAKEN")
 	wren.pace *= PIP_PACE
 	wren.go_duty(shrine)
@@ -521,7 +521,7 @@ func _wren_step(_delta: float) -> void:
 	if not appeared or not _alive(wren) or home:
 		return
 	if aboard:
-		wren.ground_pos = _lantern
+		_ride_step(wren, _lantern)
 		return
 	if swapped and not wren.inside and wren.ground_pos.distance_to(shrine) <= SHRINE_REACH:
 		_relic_home()
@@ -732,8 +732,8 @@ func tags() -> Array[MapTag]:
 
 ## The hint's phase (v0.11 M5): "bell" while the bell is called or climbing (plan decision 197); "report" while one runs; "seen" for
 ## SEEN_SHOW after a seen death raised the Gaze (the bell's warning before it is called, the controller's ruling); "carry" once swapped;
-## halted, "watched" while watched, else "aboard" with Pip aboard, else ""; rolling, "aboard" with Pip aboard, "citadel" once the first
-## halt is passed, "moving" once set out; "" before.
+## halted, "watched" while watched, else "aboard" with Pip aboard, else ""; rolling, "aboard" with Pip aboard, "citadel" once the last
+## halt is passed (as the CITADEL tag shows: the final review), "last_halt" once the first is, "moving" once set out; "" before.
 func hint_phase() -> String:
 	if crowd.bell != null and crowd.bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING]:
 		return "bell"
@@ -750,8 +750,10 @@ func hint_phase() -> String:
 		return "aboard" if aboard else ""
 	if aboard:
 		return "aboard"
-	if halts_done[0]:
+	if halts_done[HALT_LEGS.size() - 1]:
 		return "citadel"
+	if halts_done[0]:
+		return "last_halt"
 	return "moving" if set_out else ""
 
 

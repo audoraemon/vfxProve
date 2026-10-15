@@ -87,7 +87,7 @@ The controller's rulings, made when a task's gate or review showed what the miss
 
 ### Rulings made in M5
 
-The mission spec's Decisions 121-168 and the plan's 169-206, numbered 184-269 after M4's last (183), so each is the spec's or the plan's number plus 63. The controller's rulings are folded in where they changed a decision (200, 202, 207, 208, 211, 213, 216, 219, 222, 232, 240, 242, 243, 251, 260, 269); the last three, 270-272, are Task 8's.
+The mission spec's Decisions 121-168 and the plan's 169-206, numbered 184-269 after M4's last (183), so each is the spec's or the plan's number plus 63. The controller's rulings are folded in where they changed a decision (192, 194, 200, 202, 207, 208, 211, 213, 216, 219, 222, 232, 240, 242, 243, 251, 260, 269); the last three, 270-272, are Task 8's.
 
 184. The ids are `bishop`, `armoury`, `sermon` and `relic_run` (`MissionBook.BISHOP` / `ARMOURY` / `SERMON` / `RELIC_RUN`), built in `MissionBook.tier_missions()` by a new `_tier4()` frame (390 s, tier 4, `tier_floor` 4, no `profile`, 5 / 13, no bonuses), so the board needs no per-mission branch and they have no stretch; they are not in `all()` or the campaign.
 185. Reckoning has five missions, so Ascendance opens at three cleared; a save that opened it on The Procession alone keeps it, pinned by a test.
@@ -193,6 +193,22 @@ The mission spec's Decisions 121-168 and the plan's 169-206, numbered 184-269 af
 Tests: 6325 checks, 0 failures (6323 at Task 7, two new in Task 8; in quarters 3178 + 806 + 1219 + 1122); FLOW 113 checks, 0 failures.
 
 Gates: filled in at landing.
+
+### The final review's fixes
+
+The final review found no Critical issue and two Important ones; both, the minor ones and the minors deferred from each task are fixed in one commit before the milestone lands.
+
+- **A family that slips out alive is out.** Lead my family out read a member who left the town on his own as dead (an escaped body is freed at once) and failed the wish. The wish now listens to the crowd's escapes and counts any of its own who leaves alive, whispered to a gate or not; Lead my brother out the same. A death still fails it.
+- **The bishop's corner tag points.** BISHOP - IN THE CITADEL is an edge tag, so M6's HUD keep-out keeps its words where the Citadel's gate lies under the stack.
+- **Horns for felled targets.** In The Armoury a target already down when the one before is razed sounds its horn at once: all three felled at 0:01 are razed in quick succession at the first horn, not at 0:40, 1:20 and 2:00. The Crown's Bread gets the same rule, as its six references hold. A target down before its horn reads "BARRACKS - DOWN 1:50" ("DOWN, COUNTS AT", "DOWN, HORN" and "HORN BY" each dropped a plate on the bottom edge). A reinforcement's post is now chosen among those the Citadel's gate reaches.
+- **Shared for M6.** `MissionDirector._knight()` makes a Lantern Knight for The Bishop and Broken Lanterns, and the Relic Run's hidden ride is `_ride_in()` / `_ride_step()` / `_ride_out()` there too, ready for the Heart of Faith.
+- **The Sermon's words.** A waiting wave's listeners are grey, not the gold of those to whisper. A refused whisper shows one banner, not two: "THEY HEAR ONLY HIM" at a rapt listener, "THEY WAIT FOR THEIR CALL" at a waiting one, the HUD's own words at anyone else (`MissionDirector.refused_words()`, with `Rules.refused_who` naming the one it was meant for). A listener held by the god is not rapt. The rapt hint says "kill him unseen by his acolytes", the policy's rule.
+- **The Relic Run's words.** The carry hint says a touch of the light costs half the Gaze. While the cart rolls to its last halt with Pip not aboard, a new `last_halt` hint says he can board and swap in that one halt (a test pins the one-halt path); the `citadel` hint now shows only once the last halt is passed, with the CITADEL tag it names. A swap cut off by the halt's end no longer shows on the HUD.
+- **The bell's words:** "Four seen deaths in a district call the bell", in both hints and The Sermon's tour.
+- **Minor:** The Bishop's stone refuges get back any filter they had before; Save the heretic passes over a fallen Temple; TempleReport's witness search and the crowd's name each other; The Sermon's two listener lookups are one; a test for a wave walking in at its own time; the Armoury's and the Sermon's photo-plate tests check the key plates; the stale 0:35 set-out text, the `--mission=bishop` comment and the board test's temporary save fixed.
+- **Left as they are:** The Bishop's `REFUGE_WORDS` by index (harmless, three fixed refuges); the Relic Run's far-stall wait for new hands (measured at 38-42 s, under 60); the Sermon policy's quiet-spot search beside the Bell-Ringers' (a shared helper would risk the scenario references); the spec's Armoury HUD example "every 30 s" (right at 2:50, the third minute's rate).
+
+Every reference held: the 24 M5 scenarios, M4's 18 (The Crown's Bread's six with the horn rule), M3's 18, M2's 24, the state digest, crowd_check and every global behaviour checksum, so no gate needed re-running. Tests: 6346 checks, 0 failures (3178 + 806 + 1219 + 1143 in quarters); FLOW 113 checks, 0 failures.
 
 ## M4: Wrath
 

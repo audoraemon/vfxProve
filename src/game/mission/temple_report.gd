@@ -77,7 +77,7 @@ func _judge(crowd: Crowd) -> void:
 
 
 ## The nearest witness to `at` a relay may take (v0.11 M5): as Crowd.nearest_witness() finds one, passing over everyone `skip` names;
-## null for none, and the report ends.
+## null for none, and the report ends. A copy of that search: a change to the rule there belongs here too.
 func _witness(crowd: Crowd, at: Vector2) -> Person:
 	var best: Person = null
 	var best_d := Crowd.DOOM_WITNESS

@@ -26,6 +26,7 @@ static func run(t) -> void:
 	_held_over(t)
 	_keeps_off(t)
 	_chain(t)
+	_felled_early(t)
 	_ends(t)
 	_tower_reserved(t)
 	_granary_reserved(t)
@@ -401,6 +402,25 @@ static func _chain(t) -> void:
 		and Kit.labels(d)[0].begins_with("MILL - IN USE BY"), "razed in use; the mill's time chained, CHAIN on (%.1f)" % shown)
 	Kit.run_for(s, CrownsBreadDirector.CHAIN + DT)
 	t.check(d.in_use[1] and (s.banners as Array).has("THE MILL GRINDS THE CROWN'S FLOUR"), "the mill comes into use CHAIN after")
+	Kit.done(s)
+
+
+## v0.11 M5's final review (The Armoury's ruling, carried here as its six references hold): a target already down when the one before is
+## razed comes into use at once, so all three felled at 0:01 are razed in quick succession at the granary's time, not 45 s apart.
+static func _felled_early(t) -> void:
+	var s := _world()
+	var d: CrownsBreadDirector = s.d
+	Kit.run_for(s, 0.5)
+	for i in 3:
+		_clear(d, i)
+		d.targets[i].destroy(d.targets[i].center(), &"smite")
+	Kit.run_for(s, float(CrownsBreadDirector.STAGE_AT[0]))
+	Kit.run_for(s, 1.0)
+	var first := float(CrownsBreadDirector.STAGE_AT[0])
+	t.check(d.all_razed() and d.razed_at[0] >= first - 0.01 and d.razed_at[0] < first + 0.2 and d.razed_at[2] - d.razed_at[0] < 1.0
+		and (s.banners as Array).has("THE BREAD CARTS GATHER AT THE BRIDGE"),
+		"all three felled at 0:01: razed in quick succession at the granary's time (%.2f / %.2f / %.2f)" % [d.razed_at[0], d.razed_at[1],
+			d.razed_at[2]])
 	Kit.done(s)
 
 

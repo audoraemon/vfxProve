@@ -368,9 +368,9 @@ static func _tagged(t) -> void:
 	var labels := Kit.labels(d)
 	var comes := "NEXT REFUGE - HE COMES IN %s" % UiTheme.clock(BishopDirector.ARRIVE_AT)
 	t.check(labels.slice(0, 2) == ["BISHOP - IN THE CITADEL", comes] and labels.has("KNIGHT")
-		and Kit.edged(d, comes) and not Kit.edged(d, "BISHOP - IN THE CITADEL") and d.hint_phase() == "waiting"
+		and Kit.edged(d, comes) and Kit.edged(d, "BISHOP - IN THE CITADEL") and d.hint_phase() == "waiting"
 		and is_equal_approx(d.hint_seconds(), BishopDirector.ARRIVE_AT),
-		"before ARRIVE_AT: in the Citadel (grey, no arrow into the HUD's corner); his house next, pointed at (%s)" % [labels.slice(0, 2)])
+		"before ARRIVE_AT: in the Citadel (grey, an edge tag, so the HUD's keepout keeps it); his house next, pointed at (%s)" % [labels.slice(0, 2)])
 	_to_refuge(s, d, 0)
 	t.check(Kit.labels(d).slice(0, 2) == ["REFUGE - GUARDED", "NEXT REFUGE"] and d.hint_phase() == "guarded"
 		and Kit.edged(d, "REFUGE - GUARDED") and Kit.edged(d, "NEXT REFUGE"),
@@ -381,8 +381,9 @@ static func _tagged(t) -> void:
 	(s.crowd as Crowd).fires.ignite(d.refuges[0], 0.5)
 	Kit.run_for(s, 1.2)
 	t.check(Kit.labels(d)[0] == "REFUGE - BURNING %d" % ceili(BishopDirector.DRIVE_OUT - 1.2) and d.hint_phase() == "burning"
+		and Kit.edged(d, Kit.labels(d)[0])
 		and ((s.rules as Rules).objectives[0] as Objective).hud_text(s.rules) == "Kill the bishop: refuges 0 / 3",
-		"burning, its seconds counted down; the HUD's count (%s)" % Kit.labels(d)[0])
+		"burning, its seconds counted down, pointed at; the HUD's count (%s)" % Kit.labels(d)[0])
 	var tour := d.tour()
 	t.check(tour.size() == 3 and String(tour[0][1]).begins_with("His house. The bishop goes to ground here at %s" % UiTheme.clock(BishopDirector.ARRIVE_AT))
 		and String(tour[2][1]).ends_with("draw him into the square."), "the tour: his house, the chapter house, the Temple")

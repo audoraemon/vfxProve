@@ -2,8 +2,8 @@ extends RefCounted
 ## v0.11 M5 Reckoning's two wishes (mission spec §6): the pool grows to sixteen, the two new ones heard from Reckoning up (min_tier 4), so
 ## Tier 1-3 nights shuffle exactly what they did. Save the heretic from the pyre: Free the pressed man's march to the Temple's door (found
 ## by its role), its son tagged HERETIC and its men TEMPLE GUARD; it keeps off burns_temple. Lead my family out: Lead my brother out for
-## three of the household, each escaping by a gate. Free the pressed man gains the clash razes_barracks; it and Lead my brother out are
-## as before (review focus 1).
+## three of the household, each escaping by a gate -- or leaving the town alive any way, never read as dead (the final review). Free the
+## pressed man gains the clash razes_barracks; it and Lead my brother out are as before.
 
 const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_pressed_kept(t)
 	_family(t)
 	_family_ends(t)
+	_family_slips_out(t)
 	_brother_kept(t)
 
 
@@ -130,6 +131,10 @@ static func _heretic(t) -> void:
 	w.engage()
 	t.check(w.tags()[1].edge, "engaged: the Temple's guard pointed at")
 	w.release()
+	for st: Structure in (s.town as Town)._built:
+		if is_instance_valid(st) and st.role == &"temple":
+			st.destroy(st.center(), &"smite")
+	t.check(PressedWish.temple_door(s.crowd, s.town) == Vector2.INF, "a fallen Temple is passed over: no door (the final review)")
 	Kit.done(s)
 
 
@@ -160,11 +165,14 @@ static func _family(t) -> void:
 		p.whisper(exit, MindWhisperFx.LINGER)
 		Kit.arrive(p, exit)
 		w.step(s.rules, DT)
-	t.check(w.check(s.rules) == Objective.Status.PENDING and w.hud_text(s.rules).ends_with("2 / 3"), "two escaped: still open (%s)" % w.hud_text(s.rules))
+		p.free()
+	t.check(w.check(s.rules) == Objective.Status.PENDING and w.hud_text(s.rules).ends_with("2 / 3") and w.tags().size() == 2,
+		"two escaped and their bodies freed: still open, their tags gone (%s)" % w.hud_text(s.rules))
 	var last := w.family[2] as Person
 	last.whisper(exit, MindWhisperFx.LINGER)
 	Kit.arrive(last, exit)
 	w.step(s.rules, DT)
+	last.free()
 	t.check(w.check(s.rules) == Objective.Status.DONE, "the third escapes: granted")
 	Kit.done(s)
 
@@ -177,6 +185,33 @@ static func _family_ends(t) -> void:
 	var v := _wish(s, "family_out", 7) as MercyWish
 	Kit.free_body(s, v.wisher)
 	t.check(v.check(s.rules) == Objective.Status.FAILED, "the wisher dies first: failed")
+	Kit.done(s)
+
+
+## The final review: a member who leaves the town alive on his own -- not whispered, walking out an exit (Crowd.escape(), his body freed
+## at once) -- is out, never read as dead; a death still fails. The brother the same.
+static func _family_slips_out(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var w := _wish(s, "family_out", 5) as MercyWish
+	var p := w.family[0] as Person
+	crowd._field.remove(p)
+	crowd.escape(p)
+	p.free()
+	t.check(w.check(s.rules) == Objective.Status.PENDING and w.hud_text(s.rules).ends_with("1 / 3"),
+		"one walks out of town on his own: counted as escaped, the wish still open (%s)" % w.hud_text(s.rules))
+	Kit.free_body(s, w.family[1])
+	t.check(w.check(s.rules) == Objective.Status.FAILED, "another dies before escaping: failed, as before")
+	var b := _wish(s, "brother", 7) as MercyWish
+	var brother := b.target
+	crowd._field.remove(brother)
+	crowd.escape(brother)
+	brother.free()
+	t.check(b.check(s.rules) == Objective.Status.DONE, "the brother walks out of town alive on his own: granted, not failed")
+	w.release()
+	b.release()
+	t.check(not crowd.escaped.is_connected(w._on_escaped) and not crowd.escaped.is_connected(b._on_escaped),
+		"release() lets go of the crowd's escapes")
 	Kit.done(s)
 
 

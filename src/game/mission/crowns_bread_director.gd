@@ -239,12 +239,18 @@ func _spoilable(s: Structure) -> bool:
 
 
 ## The second of the night target `i` comes into use at the latest (v0.11 M4): its own time, or CHAIN after the one before is razed if
-## that is sooner. The one before still standing never brings it forward.
+## that is sooner. The one before still standing never brings it forward. v0.11 M5 (the final review's ruling): a target already down
+## once the one before is razed comes into use at once, so a fast player never waits out a chain with nothing left to do.
 func stage_due(i: int) -> float:
 	var at := float(STAGE_AT[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if i > 0 and razed_at[i - 1] >= 0.0:
-		at = minf(at, razed_at[i - 1] + CHAIN)
+		at = minf(at, razed_at[i - 1] + (0.0 if _down(i) else CHAIN))
 	return at
+
+
+## Target `i`'s building is gone (v0.11 M5, the final review): fallen, or freed with it.
+func _down(i: int) -> bool:
+	return not is_instance_valid(targets[i]) or targets[i].destroyed
 
 
 ## Seconds until target `i` comes into use at the latest (v0.11 M4); 0 once it is.

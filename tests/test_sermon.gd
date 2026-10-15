@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_believe(t)
 	_flock(t)
 	_waves(t)
+	_wave_at(t)
 	_sentries(t)
 	_relief(t)
 	_evacuate(t)
@@ -117,8 +118,9 @@ static func _setup(t) -> void:
 	for st: SermonDirector.Sentry in d.sentries:
 		clear = clear and Kit.clear_of_stack(st.post, cam, Kit.STACK)
 	t.check(clear, "the camera keeps the pulpit, the god's house, the sentries' posts, the Temple and the waves' sources (or their arrows) clear of the real HUD stack")
-	# Task 8's photograph: the door's plate stood under the god's house's and the sentry's, and the HUD dropped it
-	# (Hud.tag_layout keeps the earlier plate), so the three are stacked and every key plate is drawn at the camera's rest.
+	# Task 8's photograph: the door's plate stood under the god's house's and the sentry's, and the HUD dropped it (Hud.tag_layout
+	# keeps the earlier plate), so the three are stacked and every key plate is drawn at the camera's rest (the key plates are checked,
+	# not an exact count: the final review).
 	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
 	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(cam) * Mission.PLAY_ZOOM
 	var drawn := []
@@ -126,7 +128,7 @@ static func _setup(t) -> void:
 		if bool(e.show):
 			drawn.append(String(e.tag.label))
 	drawn.sort()
-	t.check(drawn.size() == 6 and drawn.has("GOD'S HOUSE") and drawn.has("DOOR - WATCHED") and drawn.has("PREACHER")
+	t.check(drawn.has("GOD'S HOUSE") and drawn.has("DOOR - WATCHED") and drawn.has("PREACHER")
 		and drawn.count("SENTRY") == 2 and drawn.any(func(w: String) -> bool: return w.begins_with("NEXT WAVE")),
 		"at the camera's rest the god's house, its watched door, the preacher, both sentries and the next wave all show a plate (%s)" % [drawn])
 	var m := MissionBook.sermon()
@@ -187,8 +189,35 @@ static func _rapt(t) -> void:
 	t.check(all, "within VOICE of the preaching preacher his crowd is rapt: deaf, fearless, on duty")
 	t.check(not d.rapt(wp) and wp.shaken() and wp.mind == Person.Mind.DUTY and wp.anchor == w.source,
 		"a waiting wave is held deaf at its source too: nothing is done with it before it walks in (plan decision 183)")
-	d._on_refused(0, "shaken")
-	t.check((s.banners as Array).has("THEY HEAR ONLY HIM"), "a whisper refused while they are rapt: THEY HEAR ONLY HIM")
+	var waiting_grey := false
+	var waiting_gold := false
+	for m in d.tags():
+		if m.at.is_equal_approx(wp.ground_pos):
+			waiting_grey = waiting_grey or m.color == SermonDirector.MARK_GREY
+			waiting_gold = waiting_gold or m.color == SermonDirector.MARK_GOLD
+	t.check(d.waiting(wp) and waiting_grey and not waiting_gold, "the final review: a waiting listener's diamond is grey, not the gold of those to whisper")
+	# The final review: one banner for a refused whisper, the director's words in place of the HUD's own.
+	var rules: Rules = s.rules
+	var ws := -1
+	for i in rules.loadout.size():
+		ws = i if rules.key(i) == "whisper" else ws
+	var hud := Hud.new().setup(rules, s.crowd, s.town, null)
+	var rp := (_wave(d, 0)[0] as SermonDirector.Listener).man as Person
+	rules.cast(ws, rp.ground_pos, {"target": rp, "to": d.door})
+	t.check(hud.banners() == PackedStringArray(["THEY HEAR ONLY HIM"]) and not (s.banners as Array).has("THEY HEAR ONLY HIM"),
+		"a whisper refused at a rapt listener: THEY HEAR ONLY HIM, in one banner (%s)" % [hud.banners()])
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	rules.cast(ws, wp.ground_pos, {"target": wp, "to": d.door})
+	t.check(hud.banners() == PackedStringArray(["THEY WAIT FOR THEIR CALL"]),
+		"a whisper refused at a waiting listener: THEY WAIT FOR THEIR CALL, in one banner (%s)" % [hud.banners()])
+	hud.advance(Hud.BANNER_SECONDS + 0.1)
+	var sentry := (d.sentries[0] as SermonDirector.Sentry).man as Person
+	sentry._shaken_left = 5.0
+	rules.refuse(ws, "shaken", sentry)
+	t.check(hud.banners() == PackedStringArray(["THEY SHAKE OFF THE WHISPER"]), "at anyone else: the HUD's own words (%s)" % [hud.banners()])
+	hud.free()
+	rp.confuse(60.0)
+	t.check(not d.rapt(rp), "the final review: one held by the god is not rapt, though he stands within the voice")
 	Kit.done(s)
 
 
@@ -300,6 +329,22 @@ static func _waves(t) -> void:
 	for l: SermonDirector.Listener in _wave(d, 1):
 		walking = walking and (l.man as Person).anchor == l.spot and (l.man as Person).mind == Person.Mind.DUTY
 	t.check(d.called[1] and walking and (s.banners as Array).has("MORE COME TO HEAR HIM"), "CHAIN later the second wave walks in, on duty")
+	Kit.done(s)
+
+
+## The final review: with the wave before not spent, the next walks in at its own time, WAVE_AT, on the strip.
+static func _wave_at(t) -> void:
+	var s := _world()
+	var d: SermonDirector = s.d
+	var at := float(SermonDirector.WAVE_AT[1])
+	Kit.run_for(s, at - 1.0)
+	t.check(not d.called[1] and d.spent_at[0] < 0.0 and is_equal_approx(d.wave_due(1), at), "the first wave not spent: the second waits for its time")
+	Kit.run_for(s, 1.1)
+	var walking := true
+	for l: SermonDirector.Listener in _wave(d, 1):
+		walking = walking and (not MissionDirector._alive(l.man) or (l.man as Person).anchor == l.spot)
+	t.check(d.called[1] and walking and not d.called[2] and (s.banners as Array).has("MORE COME TO HEAR HIM"),
+		"at WAVE_AT it walks in to its places, the third still waiting")
 	Kit.done(s)
 
 

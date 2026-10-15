@@ -1,6 +1,6 @@
 extends RefCounted
 ## v0.11 M5 The Relic Run (mission spec §4, RelicRunDirector, VigilFlameDirector reused): the relic cart -- its carter and two escorts,
-## a VigilRoute -- sets out at 0:35 from the Temple for the Citadel, halting at two watch-houses for the watch's count; its reliquary
+## a VigilRoute -- sets out at 0:45 from the Temple for the Citadel, halting at two watch-houses for the watch's count; its reliquary
 ## opens only while it halts. Pip, from the start, slips aboard at a halt once no one watches, picks the lock on the way, and swaps the
 ## relic at the second halt only, unseen by rule (no report); then carries it to your believers' house under the Searchlight. A dead
 ## driver's reins pass on; all three dead stall the cart until new hands come, its reliquary locked. The relic at the Citadel, Pip dead
@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_rolls_on(t)
 	_swap(t)
 	_no_first_swap(t)
+	_one_halt(t)
 	_stall(t)
 	_ends(t)
 	_seen(t)
@@ -127,7 +128,7 @@ static func _halt(t) -> void:
 	var d: RelicRunDirector = s.d
 	Kit.run_for(s, RelicRunDirector.SET_OUT_AT + DT)
 	t.check(d.set_out and d.vigil != null and d.vigil.active and (s.banners as Array).has("THE RELIC SETS OUT") and d.hint_phase() == "moving",
-		"at 0:35 the relic sets out")
+		"at 0:45 the relic sets out")
 	_at_halt(s, d, 0)
 	var stepped := true
 	for p in d.wardens_at(0):
@@ -220,6 +221,28 @@ static func _no_first_swap(t) -> void:
 	_blind(d)
 	Kit.run_for(s, RelicRunDirector.SWAP + 1.0)
 	t.check(d.aboard and not d.swapped, "the swap waits for the second halt (plan decision 192): the drop-off is not reached from the first")
+	Kit.done(s)
+
+
+## The one-halt path (the final review; Decision 153's fallback in play): Pip who let the first halt pass boards at the second, picks
+## the lock and swaps the relic within that one halt, while its watch is held.
+static func _one_halt(t) -> void:
+	var s := _world()
+	var d: RelicRunDirector = s.d
+	d._set_out_cart()
+	d.halts_done[0] = true
+	_at_halt(s, d, 1)
+	Kit.arrive(d.wren, d.cart_at() + Vector2(0.0, 0.6))
+	_blind(d)
+	Kit.run_for(s, RelicRunDirector.BOARD + 0.2)
+	t.check(d.halt == 1 and d.aboard and d.wren.inside and d.lock_left > 0.0 and not d.swapped,
+		"at the second halt, the first let pass: he slips aboard, the lock still shut")
+	Kit.run_for(s, RelicRunDirector.LOCK + 0.2)
+	t.check(d.halt == 1 and d.aboard and d.lock_left <= 0.0 and d.wren.ground_pos.is_equal_approx(d.cart_at()) and not d.swapped,
+		"he picks the lock while the cart stands, carried with it (%.1f left)" % d.lock_left)
+	Kit.run_for(s, RelicRunDirector.SWAP + 0.3)
+	t.check(d.halt == 1 and d.swapped and not d.aboard and not d.wren.inside and d.wren.anchor == d.shrine
+		and (s.banners as Array).has("THE RELIC IS TAKEN"), "and swaps it within the same halt: out, making for your believers' house")
 	Kit.done(s)
 
 
@@ -368,6 +391,8 @@ static func _evacuate(t) -> void:
 	var pip := cd.wren
 	pip.whisper(pip.ground_pos + Vector2(1.0, 0.0), MindWhisperFx.LINGER)
 	Kit.evacuate(c)
+	t.check(cd.swapped and pip.mind == Person.Mind.WHISPERED and pip._whisper_fled,
+		"(set-up) Pip carries the relic, whispered, and the evacuation owes him a flight")
 	Kit.run_for(c, 0.6)
 	pip._wake()
 	Kit.run_for(c, 0.6)
@@ -390,9 +415,15 @@ static func _tagged(t) -> void:
 	d.halt = -1
 	d.vigil.leg = 1
 	Kit.run_for(s, 0.1)
-	t.check(d.hint_phase() == "citadel", "the first halt passed and Pip not aboard: the next halt is the last")
+	t.check(d.hint_phase() == "last_halt" and not Kit.labels(d).has("CITADEL"),
+		"the first halt passed and Pip not aboard: the next halt is the last (bring him there)")
 	_at_halt(s, d, 1)
 	t.check(Kit.labels(d).has("CITADEL") and Kit.edged(d, "CITADEL"), "from the second halt on, the Citadel")
+	d.halts_done[1] = true
+	d.halt = -1
+	Kit.run_for(s, 0.1)
+	t.check(d.hint_phase() == "citadel" and Kit.labels(d).has("CITADEL"),
+		"the last halt passed: the citadel phase, with the CITADEL tag it names (the final review)")
 	var tour := d.tour()
 	t.check(tour.size() == 3 and String(tour[0][1]).begins_with("The relic cart at the Temple.") and String(tour[1][1]).begins_with("Pip.")
 		and String(tour[2][1]).contains("bell"), "the tour: the cart, Pip, your believers' house (with the bell's warning)")

@@ -490,10 +490,7 @@ func _kneel_places(s: Structure) -> Array[Vector2]:
 ## standing shrines.
 func _knights_come() -> void:
 	for i in KNIGHTS:
-		var k := crowd.add_soldier(_walkable(temple_door + Vector2(float(i) - float(KNIGHTS - 1) * 0.5, 0.6)))
-		k.corps = Person.Corps.KNIGHT
-		k.health = Person.HEALTH_KNIGHT
-		knights.append(k)
+		knights.append(_knight(temple_door + Vector2(float(i) - float(KNIGHTS - 1) * 0.5, 0.6), false))
 	_tend_knights()
 	_say("knights")
 

@@ -131,6 +131,9 @@ var ascended := false
 var caught := ""
 ## Where the last cast landed (v0.11 M1: the ascent rises over it); Vector2.INF before any.
 var last_cast := Vector2.INF
+## Whom the last refused whisper was meant for, while cast_refused is heard (v0.11 M5, the final review: a director names why that one
+## shakes it off -- MissionDirector.refused_words()); null when the refusal named no one. A Variant: read it only while the signal runs.
+var refused_who: Variant = null
 ## The objective that did the main objective, while the night is held.
 var _main: Objective
 
@@ -336,7 +339,8 @@ func busy_left() -> float:
 
 ## Refuse a cast for the slot before it reaches cast() (v0.08: Targeting, when a Mind Whisper's press finds nobody, or
 ## v0.08.1 someone shaken).
-func refuse(slot: int, reason: String) -> void:
+func refuse(slot: int, reason: String, who: Variant = null) -> void:
+	refused_who = who
 	cast_refused.emit(slot, reason)
 
 
@@ -344,6 +348,7 @@ func refuse(slot: int, reason: String) -> void:
 ## null when the cast was refused (and when a test's caster hands nothing back).
 func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	var reason := refusal(slot)
+	refused_who = null
 	if reason != "":
 		cast_refused.emit(slot, reason)
 		return null
@@ -359,6 +364,7 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			cast_refused.emit(slot, "nobody")
 			return null
 		if who.shaken():
+			refused_who = who
 			cast_refused.emit(slot, "shaken")
 			return null
 	_cooldowns[slot] = float(p.cooldown)

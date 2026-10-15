@@ -6,7 +6,8 @@ extends Wish
 ## v0.11 M5 (mission spec §6): "count" -- how many of the wisher's household are to be led out (1, the default: Lead my brother out, as
 ## before); more (Lead my family out) are chosen as Show yourself to my family chooses (FamilyWish._household()), each tagged FAMILY and
 ## pointed at from the edge, granted when the last escapes and failed when one dies first. An escaped body is freed at once, so escapes
-## are kept by instance id.
+## are kept by instance id. Any way out counts (the final review): the wish listens to the crowd's escapes, so one of them -- or the
+## brother -- who leaves the town alive on his own is out, never read as dead.
 
 ## How near a gate a whispered brother must come.
 const EXIT_REACH := 1.5
@@ -41,7 +42,10 @@ func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) 
 	if Wish.lay(crowd, taken).size() < 2 or not super(crowd, town, rng, taken):
 		return false
 	target = Wish.pick_lay(crowd, rng, taken)
-	return target != null
+	if target == null:
+		return false
+	_listen()
+	return true
 
 
 ## The wisher and count() of his household (v0.11 M5): as Show yourself to my family chooses, from a random start; false when no household
@@ -62,8 +66,32 @@ func _choose_family(crowd: Crowd, rng: RandomNumberGenerator, taken: Array) -> b
 				_ids.append(p.get_instance_id())
 			taken.append(wisher)
 			taken.append_array(family)
+			_listen()
 			return true
 	return false
+
+
+## Hears the crowd's escapes (v0.11 M5, the final review): whoever of the wish's own leaves the town alive -- whispered to a gate, or
+## walking out of his own accord -- is out, though his body is freed at once.
+func _listen() -> void:
+	if not _crowd.escaped.is_connected(_on_escaped):
+		_crowd.escaped.connect(_on_escaped)
+
+
+## One of the crowd got away (v0.11 M5, the final review): the brother, or a member of the family not yet counted, is recorded as out
+## by his instance id while he is still whole.
+func _on_escaped(p: Person) -> void:
+	if is_instance_valid(target) and p == target:
+		_out = true
+	var id := p.get_instance_id()
+	if _ids.has(id) and not _escaped.has(id):
+		_escaped.append(id)
+
+
+## Lets go of the crowd's escapes (v0.11 M5, the final review).
+func release() -> void:
+	if is_instance_valid(_crowd) and _crowd.escaped.is_connected(_on_escaped):
+		_crowd.escaped.disconnect(_on_escaped)
 
 
 func people() -> Array[Person]:

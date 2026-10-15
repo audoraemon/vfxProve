@@ -5,7 +5,6 @@ extends RefCounted
 ## reserved before each director gathers its people (review focus 5); The Bishop never hears the pyre, The Armoury never the pressed
 ## man (Decision 161); five cards on Reckoning's tab.
 
-const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 ## The four new Tier 4 missions.
 const NEW := ["bishop", "armoury", "sermon", "relic_run"]
@@ -54,10 +53,10 @@ static func _open(t) -> void:
 	old.set_value("descend", "cleared", BELOW + ["procession"])
 	old.save(path)
 	var kept := SaveFile.new().load_from(path).descend
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))  # at once, so nothing below that may stop the suite leaves it behind
 	kept.refresh_open()
 	t.check(kept.open_tier == 5 and kept.is_open(5) and kept.progress_line(4) == "Reckoning 1 / 3 cleared: Ascendance is open",
 		"a save that opened Ascendance on The Procession alone keeps it open: a tier never closes (Decision 122)")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 static func _waits(t) -> void:

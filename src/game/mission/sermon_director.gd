@@ -123,8 +123,8 @@ var _gaze_was := 0.0
 var _seen_left := 0.0
 
 
-## The night's setup (v0.11 M5): its numbers (as First Prayers'), Mira's (the house, the people, the strip), the first wave walking in,
-## and the refused whispers heard.
+## The night's setup (v0.11 M5): its numbers (as First Prayers'), Mira's (the house, the people, the strip) and the first wave walking
+## in.
 func _begin() -> void:
 	need = NEED
 	read_seconds = READ
@@ -132,7 +132,6 @@ func _begin() -> void:
 		called.append(w == 0)
 		spent_at.append(-1.0)
 	super()
-	rules.cast_refused.connect(_on_refused)
 	for l: Listener in listeners:
 		if l.wave == 0 and _alive(l.man):
 			(l.man as Person).go_duty(l.spot)
@@ -403,13 +402,23 @@ func preaching() -> bool:
 	return not p.inside and p.mind == Person.Mind.DUTY and p.ground_pos.distance_to(pulpit) <= PREACH_REACH
 
 
-## The listener `v` is rapt now (v0.11 M5): his wave walked in, unturned and out of doors, within VOICE of the preaching preacher.
+## The listener `v` is rapt now (v0.11 M5): his wave walked in, unturned, out of doors and on duty -- one held by the god or frightened
+## hears the god, not the preacher (the final review) -- within VOICE of the preaching preacher.
 func rapt(v: Variant) -> bool:
 	if not preaching() or not _alive(v) or believers.has(v):
 		return false
 	var p := v as Person
 	var l := _listener_of(p)
-	return l != null and called[l.wave] and not p.inside and p.ground_pos.distance_to((preacher as Person).ground_pos) <= VOICE
+	return l != null and called[l.wave] and not p.inside and p.mind == Person.Mind.DUTY \
+		and p.ground_pos.distance_to((preacher as Person).ground_pos) <= VOICE
+
+
+## The listener `v` waits for his wave's call (v0.11 M5, the final review): alive, his wave not yet walked in.
+func waiting(v: Variant) -> bool:
+	if not _alive(v):
+		return false
+	var l := _listener_of(v)
+	return l != null and not called[l.wave]
 
 
 ## `v` is held by the god (v0.11 M5): confused or whispered. Only reads.
@@ -417,10 +426,11 @@ func held(v: Variant) -> bool:
 	return _alive(v) and (v as Person).mind in BLIND
 
 
-## `p`'s Listener record, or null (v0.11 M5).
-func _listener_of(p: Person) -> Listener:
+## `v`'s Listener record, or null (v0.11 M5): a Variant, compared by identity (is_same()), so a dying body handed over as an enemy is
+## found too (the final review merged _listener_of_v() into it).
+func _listener_of(v: Variant) -> Listener:
 	for l: Listener in listeners:
-		if l.man == p:
+		if is_same(l.man, v):
 			return l
 	return null
 
@@ -605,16 +615,9 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			if held(a):
 				_held_at_fall.append(a)
 		rules.banner.emit("THE PREACHER IS SILENT")
-	if _listener_of_v(e) != null:
+	if _listener_of(e) != null:
 		_warn_flock()
 
-
-## `v`'s Listener record, or null (v0.11 M5): as _listener_of(), for a dying body handed over as an enemy.
-func _listener_of_v(v: Variant) -> Listener:
-	for l: Listener in listeners:
-		if is_same(l.man, v):
-			return l
-	return null
 
 
 ## A listener lost (v0.11 M5, the Task 4 review's ruling: THE FLOCK IS SCATTERED warned before it falls): with one more loss left
@@ -661,14 +664,21 @@ func lost_reason() -> String:
 	return "flock" if n < need else ""
 
 
-## A refused cast (Rules.cast_refused, v0.11 M5, plan decision 186): a whisper refused while his crowd is rapt says why.
-func _on_refused(slot: int, why: String) -> void:
-	if why != "shaken" or rules.key(slot) != "whisper":
-		return
+## The words for a refused whisper (v0.11 M5, plan decision 186; the final review: the HUD shows them in place of its own, one banner):
+## at a listener waiting for his wave, "THEY WAIT FOR THEIR CALL"; at a rapt one, "THEY HEAR ONLY HIM"; at anyone else, the HUD's own.
+## With no one named (Rules.refused_who), "THEY HEAR ONLY HIM" while any listener is rapt.
+func refused_words(slot: int, reason: String) -> String:
+	if reason != "shaken" or rules.key(slot) != "whisper":
+		return ""
+	var who: Variant = rules.refused_who
+	if who != null:
+		if waiting(who):
+			return "THEY WAIT FOR THEIR CALL"
+		return "THEY HEAR ONLY HIM" if rapt(who) else ""
 	for l: Listener in listeners:
 		if rapt(l.man):
-			rules.banner.emit("THEY HEAR ONLY HIM")
-			return
+			return "THEY HEAR ONLY HIM"
+	return ""
 
 
 ## The bell's keeper while he is called or climbing, else null (v0.11 M5, the controller's ruling). Only reads.
@@ -685,7 +695,7 @@ func bellkeeper() -> Person:
 ## the preacher (grey while silent), pointed at; the next wave's source and time; each sentry on guard, a red diamond on every other
 ## living sentry out of doors (whispered, confused, returning, a relief walking in: the Task 4 review's ruling); a
 ## red diamond on any other Faithful who would see the door (Mira's watchers); the acolytes; a gold diamond on each listener not yet
-## turned (a small red mark while rapt), green on each Believer.
+## turned (a small red mark while rapt) -- grey while his wave waits for its call (the final review) -- green on each Believer.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if house != null:
@@ -734,6 +744,9 @@ func tags() -> Array[MapTag]:
 		if believers.has(p):
 			out.append(MapTag.person(p.ground_pos, MARK_CLEAR))
 			continue
+		if not called[l.wave]:
+			out.append(MapTag.person(p.ground_pos, MARK_GREY))  # waiting for his wave: not yet to be whispered (the final review)
+			continue
 		out.append(MapTag.person(p.ground_pos, MARK_GOLD))
 		if rapt(p):
 			out.append(MapTag.pip(p.ground_pos, MARK_WATCHED))
@@ -763,7 +776,7 @@ func hint_phase() -> String:
 func tour() -> Array:
 	return [[pulpit, "The preacher at the south-west well. While he preaches, his crowd hears only him."],
 		[door, "The god's house. Lead eight of his crowd here, unseen by the Faithful."],
-		[temple_door, "The Temple. A Faithful who sees you runs here. Four deaths in a district call the bell."]]
+		[temple_door, "The Temple. A Faithful who sees you runs here. Four seen deaths in a district call the bell."]]
 
 
 ## What the results show (v0.11 M5): the Believers, the reports, whether the preacher lives, the reliefs.
@@ -772,10 +785,8 @@ func report() -> Dictionary:
 		"reliefs": reliefs}
 
 
-## Lets go of the god's house and the refused casts, then Mira's (v0.11 M5).
+## Lets go of the god's house, then Mira's (v0.11 M5).
 func teardown() -> void:
 	if house != null and is_instance_valid(house):
 		house.damage_filter = Callable()
-	if is_instance_valid(rules) and rules.cast_refused.is_connected(_on_refused):
-		rules.cast_refused.disconnect(_on_refused)
 	super()

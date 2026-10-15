@@ -187,14 +187,15 @@ func _post(i: int, k: int) -> Vector2:
 	var side := -1.0 if k % 2 == 0 else 1.0
 	var wide := 0.5 if (k / 2) % 2 == 0 else 1.5
 	var depth := 0.0 if k < NIGHT_WATCH + SQUAD else POST_GAP * 0.5
-	return _spread(i, face + out * depth + along * side * POST_GAP * wide)
+	return _spread(i, face + out * depth + along * side * POST_GAP * wide, k >= NIGHT_WATCH + SQUAD)
 
 
 ## A post at or near `want` for target `i` (v0.11 M5, The Crown's Bread's _spread()): walkable, within GUARD_REACH of the target and
 ## reached on foot from its face, and farther than two Silent Doom radii from every post it has so far, so one strike takes one man.
 ## The nearest such point on rings of POST_GAP / 2 steps round `want`; with none apart, the nearest within reach; `want` made walkable
-## when there is neither.
-func _spread(i: int, want: Vector2) -> Vector2:
+## when there is neither. A reinforcement's post (`from_gate`) is reached from the Citadel's gate too (_reaches(), the final review), so
+## one walled off from the gate never stalls that target's reinforcements on the same slot.
+func _spread(i: int, want: Vector2, from_gate := false) -> Vector2:
 	var first := _walkable(want)
 	var near := Vector2.INF
 	for ring in 5:
@@ -204,6 +205,8 @@ func _spread(i: int, want: Vector2) -> Vector2:
 			var at := first if ring == 0 else _walkable(want + Vector2.from_angle(TAU * float(k) / float(n)) * r)
 			if targets[i].distance_to(at) > GUARD_REACH or (crowd._grid != null and (not crowd._grid.walkable(at)
 					or (at.distance_to(faces[i]) > 0.1 and crowd._grid.path(faces[i], at).is_empty()))):
+				continue
+			if from_gate and not _reaches(at):
 				continue
 			if near == Vector2.INF:
 				near = at
@@ -252,11 +255,18 @@ func _spoilable(s: Structure) -> bool:
 
 
 ## The second of the night target `i` musters at the latest (v0.11 M5): its own time, or CHAIN after the one before is razed if sooner.
+## A target already down once the one before is razed sounds its horn at once (the final review's ruling): a fast player who felled
+## them all early never waits out a chain with nothing left to do.
 func stage_due(i: int) -> float:
 	var at := float(STAGE_AT[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if i > 0 and razed_at[i - 1] >= 0.0:
-		at = minf(at, razed_at[i - 1] + CHAIN)
+		at = minf(at, razed_at[i - 1] + (0.0 if _down(i) else CHAIN))
 	return at
+
+
+## Target `i`'s building is gone (v0.11 M5, the final review): fallen, or freed with it.
+func _down(i: int) -> bool:
+	return not is_instance_valid(targets[i]) or targets[i].destroyed
 
 
 ## Seconds until target `i` musters at the latest (v0.11 M5); 0 once it does.
@@ -549,9 +559,9 @@ func hud_line() -> String:
 ## The map tags, most important first (v0.11 M5, mission spec §2, plan decision 206): each target not razed, pointed at -- not
 ## mustering, grey, "HORN" and its chained time (not "MUSTERS BY": at the camera's rest the gate barracks' and the armoury's arrows stand
 ## side by side on the bottom edge, and the longer words made their plates overlap, so the HUD dropped the armoury's -- Task 8's
-## photograph) or "DOWN, COUNTS AT" it; mustering, gold, GUARDED while one stands guard, orange and its seconds left while it burns --
-## then each armed man: ARMED on guard, a red diamond on one running in, a small red mark on
-## one away.
+## photograph), or once fallen "DOWN" and it (the final review: "DOWN, COUNTS AT", "DOWN, HORN" and "HORN BY" all dropped a plate);
+## mustering, gold, GUARDED while one stands guard, orange and its seconds left while it burns -- then each armed man: ARMED on guard, a
+## red diamond on one running in, a small red mark on one away.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for i in targets.size():
@@ -561,7 +571,7 @@ func tags() -> Array[MapTag]:
 		var name := String(NAMES[i])
 		if not mustering[i]:
 			var when := UiTheme.clock(stage_due(i))
-			var label := "%s - DOWN, COUNTS AT %s" % [name, when] if s.destroyed else "%s - HORN %s" % [name, when]
+			var label := "%s - DOWN %s" % [name, when] if s.destroyed else "%s - HORN %s" % [name, when]
 			out.append(MapTag.place(s.center(), MARK_SEALED, label, s.height, true))
 		elif not guards(i).is_empty():
 			out.append(MapTag.place(s.center(), MARK_TARGET, "%s - GUARDED" % name, s.height, true))

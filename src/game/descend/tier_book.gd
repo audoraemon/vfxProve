@@ -6,7 +6,8 @@ extends RefCounted
 
 ## The tiers' names, Tier 1 first (2-4 are placeholders the user may rename).
 const NAMES := ["Whisper", "Omen", "Wrath", "Reckoning", "Ascendance"]
-## The board's missions on each tier, by id: spec §8's ★ missions, and from v0.11 M2 the tiers' own (MissionBook.tier_missions()).
+## The board's missions on each tier, by id: spec §8's ★ missions, and from v0.11 M2 the tiers' own (MissionBook.tier_missions()):
+## Whisper's from M2, Omen's from M3, Wrath's from M4, and Reckoning's -- The Procession and M5's four -- from M5.
 const MISSIONS := [["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"],
 	["miras_house", "broken_lanterns", "bell_ringers", "market_panic", "informer"],
 	["vigil_flame", "festival", "crowns_bread", "prisoner", "heretic_hunt"], ["procession", "bishop", "armoury", "sermon", "relic_run"],

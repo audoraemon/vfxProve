@@ -1518,7 +1518,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 
 
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
-## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen.
+## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
+## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too.
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
 	var best_d := DOOM_WITNESS

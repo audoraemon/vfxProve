@@ -107,21 +107,22 @@ const SPEC := [
 	["armoury.stone", "The gate barracks is stone: blows, not fire."],
 	# The Sermon (v0.11 M5).
 	["sermon", "Silence the preacher (red), then whisper his crowd (gold) to the god's house unseen. Eight must believe: kill none."],
-	["sermon.rapt", "He preaches: his crowd hears only him. Whisper him aside or Discord him; kill him only alone. Never kill his crowd."],
+	["sermon.rapt", "He preaches: his crowd hears only him. Whisper or Discord him aside; kill him unseen by his acolytes. Never kill his crowd."],
 	["sermon.watched", "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first."],
 	["sermon.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
 	["sermon.coming", "More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them."],
-	["sermon.seen", "A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze."],
+	["sermon.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze."],
 	["sermon.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
 	# The Relic Run (v0.11 M5).
 	["relic_run", "Bring Pip (blue) to the cart's first halt. He slips aboard there, and swaps the relic at the next."],
 	["relic_run.moving", "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before."],
 	["relic_run.watched", "The cart halts, watched (red). Hold or remove the watch: Pip only works unseen."],
 	["relic_run.aboard", "Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic."],
-	["relic_run.carry", "Pip has the relic. Keep him out of the light on his way to your believers' house (orange)."],
-	["relic_run.citadel", "The cart makes for the Citadel (red). This is the last halt."],
+	["relic_run.carry", "Pip has the relic. Keep him out of the light (a touch costs half the Gaze) on his way to your believers' house (orange)."],
+	["relic_run.last_halt", "The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt."],
+	["relic_run.citadel", "The cart makes for the Citadel (red) and halts no more: the relic is lost when it gets there."],
 	["relic_run.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
-	["relic_run.seen", "A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze."],
+	["relic_run.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze."],
 	["relic_run.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
 ]
 

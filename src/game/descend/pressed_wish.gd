@@ -38,11 +38,11 @@ static func barracks_door(crowd: Crowd) -> Vector2:
 	return snap if snap != Vector2.INF else at
 
 
-## The Temple's door (v0.11 M5): the middle of the front of the town's structure of role temple, on walkable ground; Vector2.INF for none.
-## Found by its role, not TownLayout (M3's controller ruling on shared code).
+## The Temple's door (v0.11 M5): the middle of the front of the town's standing structure of role temple (a fallen one is passed over:
+## the final review), on walkable ground; Vector2.INF for none. Found by its role, not TownLayout (M3's controller ruling on shared code).
 static func temple_door(crowd: Crowd, town: Town) -> Vector2:
 	for s: Structure in town._built:
-		if is_instance_valid(s) and s.role == &"temple":
+		if is_instance_valid(s) and not s.destroyed and s.role == &"temple":
 			var at := s.center() + Vector2(0.0, s.footprint.size.y * 0.5 + 0.5)
 			var snap := crowd._grid.nearest_walkable(at) if crowd._grid != null else at
 			return snap if snap != Vector2.INF else at

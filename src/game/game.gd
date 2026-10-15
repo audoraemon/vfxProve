@@ -297,7 +297,7 @@ func _ready() -> void:
 			go_to(Screen.MISSION)
 		"tiers":
 			# The tier board part-way up (v0.11 M1-M5): three of Whisper, Omen, Wrath and Reckoning cleared, Ascendance open, for the photograph (SHOW_SAVE).
-			# It opens on Whisper's tab, its five cards with the ticks and the best lines; --mission=vigil_flame opens Wrath's instead, --mission=procession Reckoning's.
+			# It opens on Whisper's tab, its five cards with the ticks and the best lines; --mission=vigil_flame opens Wrath's instead, --mission=bishop Reckoning's.
 			save.descend = DescendState.new()
 			save.descend.cleared = PackedStringArray(["warning", "tax_collector", "first_prayers", "miras_house", "broken_lanterns", "bell_ringers",
 				"vigil_flame", "festival", "crowns_bread", "procession", "bishop", "armoury"])

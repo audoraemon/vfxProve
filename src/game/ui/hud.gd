@@ -691,7 +691,9 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 	if reason == "nobody":
 		push_banner("NO ONE TO WHISPER TO", true)
 	elif reason == "shaken":
-		push_banner("THEY SHAKE OFF THE WHISPER", true)
+		# v0.11 M5 (the final review): a director that knows why says so in place of the plain words, in one banner.
+		var words := _rules.director.refused_words(slot, reason) if _rules.director != null else ""
+		push_banner(words if words != "" else "THEY SHAKE OFF THE WHISPER", true)
 	UiSound.play(&"ui_buzz")
 
 

@@ -112,8 +112,9 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
   - **Spacing:** his house to the chapter house about 8 units; the chapter house to the Temple's door about 10.
   - **The camera** rests at (2.0, -3.0) (the controller's ruling: checked against the real HUD stack, 240x165 px). His house
     is at the right, the chapter house at the top right, the Temple's door and the first half of his walk across the square
-    clear of the stack. The Citadel's gate shows at the top-left corner (its arrow is left to M6's tag keep-out); its CITADEL
-    tag shows as soon as he is drawn into the square (before 0:45 only the grey BISHOP - IN THE CITADEL marks it).
+    clear of the stack. The Citadel's gate shows at the top-left corner, under the stack (its words are left to M6's tag
+    keep-out); its CITADEL tag, with an edge arrow, shows as soon as he is drawn into the square (before 0:45 only the grey
+    BISHOP - IN THE CITADEL marks it, an edge tag too, so the keep-out keeps it).
 - **Claims:** one cleric (the bishop), the two dwellings and the Temple. The Knights are added soldiers (below). No lay
   citizens. All three refuges are put in `EngineerManager.hands_off`, so the town's engineers never mend them.
 - **Main objective:** kill the bishop.
@@ -173,7 +174,8 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
   cleared in the last 25 s. The wait before the Temple is not a pure one (M4's hunt-captain lesson): its standing pair is there
   to work on.
 - **Tags:**
-  - BISHOP - IN THE CITADEL, grey, over the Citadel's gate, until 0:45.
+  - BISHOP - IN THE CITADEL, grey, an edge tag, over the Citadel's gate, until 0:45 (the final review: it lies under the HUD
+    stack, and M6's keep-out drops a non-edge label there).
   - The refuge he is in, gold, with an edge arrow: "REFUGE - GUARDED" while a Knight is on guard, "REFUGE - SET IT ALIGHT"
     when open, "REFUGE - BURNING 5" (seconds of the 12 left) while it burns unguarded.
   - The next refuge, grey, with an edge arrow: "NEXT REFUGE" while he is in the one before, "NEXT REFUGE - HE COMES IN 0:31"
@@ -312,7 +314,8 @@ horn's twist is that the garrison arms faster each minute.
 - **Tags:**
   - Each target not razed, with an edge arrow:
     - not mustering: "BARRACKS - HORN 1:50" (the sooner time), grey (Task 8: "MUSTERS BY" was so long that the gate barracks' and the
-      armoury's arrows, side by side on the bottom edge, dropped the armoury's plate); once fallen, "BARRACKS - DOWN, COUNTS AT 1:50";
+      armoury's arrows, side by side on the bottom edge, dropped the armoury's plate); once fallen, "BARRACKS - DOWN 1:50" (the final review:
+      "DOWN, COUNTS AT", "DOWN, HORN" and "HORN BY" each dropped a plate in that pair; the hint says a fall counts at the horn);
     - mustering, guarded: "ARMOURY - GUARDED", gold;
     - mustering, open: "ARMOURY", gold; burning: "ARMOURY - BURNING 7" (seconds of the 12 left), orange.
   - ARMED on each armed man on guard, red. A small red mark on one away from his post. A red diamond on a reinforcement or relief
@@ -403,7 +406,8 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
     stand 1.0 either side of him: within one Discord of him (radius 1.2), beyond one Doom (radius 0.8). All three are Faithful.
   - **Rapt:** while he preaches (alive, out of doors, not whispered, confused or frightened), every listener within HEAR (5) of
     him is rapt. A rapt listener is held deaf to a whisper and past fear (renewed each look, as plan decision 94), and on duty, so
-    no lure takes him. The HUD's banner on a refused whisper: "THEY HEAR ONLY HIM".
+    no lure takes him. The HUD's banner on a refused whisper: "THEY HEAR ONLY HIM" (one banner, in place of
+    the HUD's own "THEY SHAKE OFF THE WHISPER"; at a listener waiting for his wave, "THEY WAIT FOR THEIR CALL": the final review).
   - **Silenced:**
     - whispered away, confused or frightened: silent while held. Back on his feet he walks back and preaches again ("THE
       PREACHER TAKES UP HIS SERMON");
@@ -457,7 +461,8 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
 - **Tags:**
   - GOD'S HOUSE, gold, outlined, with an edge arrow; its door CLEAR (green) or WATCHED (red), as Mira's.
   - PREACHER, red, while he preaches; PREACHER - SILENT, grey, while held; both with an edge arrow. The acolytes are red diamonds.
-  - A gold diamond on each listener not yet turned: rapt ones with a small red mark; walkers and the waiting at their sources too.
+  - A gold diamond on each listener not yet turned: rapt ones with a small red mark; walkers too. A grey one on each waiting at
+    his source for his wave's call (the final review: gold read as ready to whisper).
   - SENTRY on each sentry on guard, red. A red diamond on every other living sentry out of doors (whispered, confused, returning,
     a relief walking in), and on any other Faithful who would see the door
     (Mira's watchers).
@@ -472,9 +477,9 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
   | (none) | Silence the preacher (red), then whisper his crowd (gold) to the god's house unseen. Eight must believe: kill none. |
   | `bell` | The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen. |
   | `report` | A Faithful runs to the Temple. Stop him before he gets there, unseen. |
-  | `seen` | A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze. |
+  | `seen` | A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze. |
   | `coming` | More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them. |
-  | `rapt` | He preaches: his crowd hears only him. Whisper him aside or Discord him; kill him only alone. Never kill his crowd. |
+  | `rapt` | He preaches: his crowd hears only him. Whisper or Discord him aside; kill him unseen by his acolytes. Never kill his crowd. |
   | `watched` | Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first. |
 
   `bell` shows while the bell is called or climbing (plan decision 197); `seen` for 8 s (SEEN_SHOW) after the Gaze rises -- the
@@ -484,7 +489,7 @@ chain, so the preacher's crowd comes in waves. The twist: his words hold his cro
 - **Tour:**
   1. "The preacher at the south-west well. While he preaches, his crowd hears only him."
   2. "The god's house. Lead eight of his crowd here, unseen by the Faithful."
-  3. "The Temple. A Faithful who sees you runs here. Four deaths in a district call the bell."
+  3. "The Temple. A Faithful who sees you runs here. Four seen deaths in a district call the bell."
 - **Mission tags:** none.
 - **Pool:** every power. The default loadout is Mind Whisper, Discord, Silent Doom and The Bell Lies (Will-o'-Wisp left out: no lure
   takes a listener on duty).
@@ -556,7 +561,7 @@ way, then swaps the relic at the second.
 - **People and behaviour:**
   - **The cart:** the carter (a resident) walks the route on duty at 0.42 of a citizen's duty pace, his two escorts beside him
     (`VigilRoute`, The Vigil Flame's walk with its bearer and acolytes, 1.4 apart: one Discord at their midpoint holds both). It
-    sets out at 0:35. The relic is in its locked reliquary; no hand can reach it while the cart moves.
+    sets out at 0:45. The relic is in its locked reliquary; no hand can reach it while the cart moves.
   - **A dead driver:** the first escort takes the reins (`VigilRoute.pass_flame`). With all three dead the cart stands where the
     last fell, its reliquary locked. A new carter and escorts come from the Temple 30 s later and take it on. Killing the cart's
     people stalls the run; it never opens the reliquary.
@@ -631,10 +636,11 @@ way, then swaps the relic at the second.
   | `moving` | The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before. |
   | `watched` | The cart halts, watched (red). Hold or remove the watch: Pip only works unseen. |
   | `aboard` | Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic. |
-  | `carry` | Pip has the relic. Keep him out of the light on his way to your believers' house (orange). |
-  | `citadel` | The cart makes for the Citadel (red). This is the last halt. |
+  | `carry` | Pip has the relic. Keep him out of the light (a touch costs half the Gaze) on his way to your believers' house (orange). |
+  | `last_halt` | The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt. |
+  | `citadel` | The cart makes for the Citadel (red) and halts no more: the relic is lost when it gets there. |
   | `report` | A Faithful runs to the Temple. Stop him before he gets there, unseen. |
-  | `seen` | A death was seen: the Gaze rises. Four deaths in a district call the bell, and the bell fills the Gaze. |
+  | `seen` | A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze. |
   | `bell` | The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen. |
 
   `bell` comes first, then `report`, then `seen` (8 s after a seen death raised the Gaze), then the phases above.
@@ -789,12 +795,17 @@ M3 lesson 8: every shared change is a hook or a var whose default is today's pat
     Knight stands on guard; he reaches the next refuge 45 s after he is driven out; the Knights are never taken by the rally;
   - **The Armoury:** before its horn a blow lands but its fire goes out and its fall counts at the horn; a guarded one takes no
     harm and its fire goes out; seconds burned stay counted; REINFORCE follows the clock's minute, from the Citadel's gate, the
-    armoury felled early not stopping it; the reserve spent sends no more;
+    armoury felled early not stopping it; the reserve spent sends no more; a reinforcement with no way from the Citadel's gate to
+    its post backs off (and its post is chosen among those the gate reaches); a target already down when the one before is razed
+    sounds its horn at once (the final review: all three felled at 0:01 are razed in quick succession at the first horn);
   - **The Sermon:** a rapt listener refuses a whisper; a silent preacher frees his crowd, and a preacher back on his feet holds
     them again; a seen entry is turned away and reported; too few left loses at once; a Believer stays in town through an
-    evacuation;
+    evacuation; a wave not chained walks in at its WAVE_AT; a refused whisper shows one banner, "THEY HEAR ONLY HIM" at a rapt
+    listener and "THEY WAIT FOR THEIR CALL" at a waiting one (grey on the map);
   - **The Relic Run:** no hand reaches the relic while the cart moves; Pip never boards or swaps while watched; killing the cart's
-    people stalls it and never opens the reliquary; a cart with Pip aboard leaves the first halt once its count is done.
+    people stalls it and never opens the reliquary; a cart with Pip aboard leaves the first halt once its count is done; Pip who
+    let the first halt pass boards, picks the lock and swaps within the second (the one-halt path);
+  - **Lead my family out:** a member who leaves the town alive any way, whispered to a gate or not, is out, never read as dead.
 - **Exact references that must not move:**
   - the digest, `crowd_check`, every behaviour checksum and outcome in M4's global constraints (calm, gates, fire, rite,
     soldiers, the five Warning cases, Mira's House, Broken Lanterns, the Vigil Flame's and the Feast's outcomes);

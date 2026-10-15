@@ -238,7 +238,7 @@ func press(ground: Vector2) -> void:
 		var who := MindWhisperFx.pick(_crowd._field, ground)
 		if who == null or who.shaken():
 			var why := _rules.refusal(slot)
-			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"))
+			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"), who)
 			queue_redraw()
 			return
 		_whisper_target = who

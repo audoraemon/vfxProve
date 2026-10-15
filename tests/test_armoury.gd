@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_reserve(t)
 	_relief(t)
 	_chain(t)
+	_felled_early(t)
 	_ends(t)
 	_evacuate(t)
 	_tower_reserved(t)
@@ -52,6 +53,19 @@ static func _spread_ok(d: ArmouryDirector) -> bool:
 			for b: ArmouryDirector.Armed in list:
 				ok = ok and (a == b or a.post.distance_to(b.post) > 2.0 * SilentDoom.RADIUS)
 	return ok
+
+
+## How many of the targets' plates the HUD draws with the camera at its rest (v0.11 M5, Task 8's photograph; Hud.tag_layout keeps the
+## earlier of two overlapping plates and drops the other).
+static func _plates(d: ArmouryDirector) -> int:
+	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
+	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(ArmouryDirector.CAMERA_AT) * Mission.PLAY_ZOOM
+	var shown := 0
+	for e in Hud.tag_layout(d.tags(), xf, Kit.VIEW):
+		var label := String(e.tag.label)
+		if bool(e.show) and (label.begins_with("BARRACKS") or label.begins_with("ARMOURY")):
+			shown += 1
+	return shown
 
 
 static func _setup(t) -> void:
@@ -86,6 +100,10 @@ static func _setup(t) -> void:
 			% (seen.size() + d.reserve.size()))
 	var eng := (s.crowd as Crowd).engineers
 	t.check(_spread_ok(d), "every pair of a target's five posts more than two Doom radii apart, each within reach (the squad-spread ruling)")
+	var gate_ok := true
+	for i in d.targets.size():
+		gate_ok = gate_ok and d._reaches(d._post(i, ArmouryDirector.NIGHT_WATCH + ArmouryDirector.SQUAD))
+	t.check(gate_ok, "each target's next reinforcement post is reached from the Citadel's gate (the final review: none stalls on one slot)")
 	t.check(eng.hands_off.size() == 3 and eng.hands_off.has(d.targets[1]) and not d.mustering[0], "the town's teams keep off the three; none musters yet")
 	var ids := []
 	for e in d.timeline.upcoming(4):
@@ -97,13 +115,7 @@ static func _setup(t) -> void:
 	t.check(clear, "the camera keeps the three targets (or their arrows) clear of the real HUD stack")
 	# Task 8's photograph: the gate barracks' and the armoury's arrows stand side by side on the bottom edge; with "MUSTERS BY" in
 	# both plates the HUD dropped the armoury's (Hud.tag_layout keeps the earlier plate).
-	var xf := Transform2D(0.0, Vector2.ONE * Mission.PLAY_ZOOM, 0.0, Vector2.ZERO)
-	xf.origin = Kit.VIEW * 0.5 - Iso.ground_to_screen(ArmouryDirector.CAMERA_AT) * Mission.PLAY_ZOOM
-	var shown := 0
-	for e in Hud.tag_layout(d.tags(), xf, Kit.VIEW):
-		var label := String(e.tag.label)
-		if bool(e.show) and (label.begins_with("BARRACKS") or label.begins_with("ARMOURY")):
-			shown += 1
+	var shown := _plates(d)
 	t.check(shown == 3, "at the camera's rest all three targets' plates are drawn, the two arrows' too (%d)" % shown)
 	var m := MissionBook.armoury()
 	var reasons := []
@@ -168,8 +180,8 @@ static func _ahead(t) -> void:
 		"with none on guard a blow lands before its horn, but its fire goes out (the staged ruling)")
 	north.destroy(north.center(), &"smite")
 	Kit.run_for(s, 0.5)
-	t.check(not d.razed(north) and d.hint_phase() == "not_yet" and String(Kit.labels(d)[0]).begins_with("BARRACKS - DOWN, COUNTS AT"),
-		"a fall before its horn is not razed yet: DOWN, COUNTS AT its time")
+	t.check(not d.razed(north) and d.hint_phase() == "not_yet" and Kit.labels(d)[0] == "BARRACKS - DOWN 0:40",
+		"a fall before its horn is not razed yet: DOWN and its horn's time (%s)" % Kit.labels(d)[0])
 	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]))
 	t.check(d.razed(north) and (s.banners as Array).has("THE NORTH BARRACKS IS RAZED"), "still down when its horn sounds: razed at once")
 	Kit.done(s)
@@ -321,6 +333,34 @@ static func _chain(t) -> void:
 		and String(Kit.labels(d)[0]).begins_with("BARRACKS - HORN"), "razed after its horn; the next horn chained, CHAIN on (%.1f)" % shown)
 	Kit.run_for(s, ArmouryDirector.CHAIN + DT)
 	t.check(d.mustering[1] and (s.banners as Array).has("THE MUSTER HORN: THE GATE BARRACKS TURNS OUT"), "the gate barracks musters CHAIN after")
+	Kit.done(s)
+
+
+## The final review: a target already down when the one before is razed sounds its horn at once, so a player who felled all three at
+## 0:01 sees them razed in quick succession at the first horn, not at 0:40, 1:20 and 2:00. Down before their horns, the gate barracks'
+## and the armoury's plates (DOWN and the horn's time) both draw beside the north barracks' at the camera's rest.
+static func _felled_early(t) -> void:
+	var s := _world()
+	var d: ArmouryDirector = s.d
+	Kit.run_for(s, 0.5)
+	for i in 3:
+		_clear(s, d, i)
+	Kit.run_for(s, 0.5)
+	for i in [1, 2]:
+		d.targets[i].destroy(d.targets[i].center(), &"smite")
+	Kit.run_for(s, 0.1)
+	var labels := Kit.labels(d)
+	t.check(labels.slice(0, 3) == ["BARRACKS - HORN 0:40", "BARRACKS - DOWN 1:50", "ARMOURY - DOWN 3:00"] and _plates(d) == 3,
+		"two down before their horns: DOWN and the horn's time, all three plates drawn (%s, %d)" % [labels.slice(0, 3), _plates(d)])
+	d.targets[0].destroy(d.targets[0].center(), &"smite")
+	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]))
+	Kit.run_for(s, 1.0)
+	var horn := float(ArmouryDirector.STAGE_AT[0])
+	t.check(d.razed_at[0] >= horn - 0.01 and d.razed_at[0] < horn + 0.2, "the north barracks razed at its own horn (%.2f)" % d.razed_at[0])
+	t.check(d.all_razed() and d.razed_at[2] - d.razed_at[0] < 1.0 and (s.banners as Array).has("THE ARMOURY IS RAZED")
+		and (s.banners as Array).has("THE MUSTER HORN: THE GARRISON ARMS"),
+		"all three felled at 0:01: razed in quick succession at the first horn, each horn sounding at once (%.2f / %.2f / %.2f)"
+			% [d.razed_at[0], d.razed_at[1], d.razed_at[2]])
 	Kit.done(s)
 
 

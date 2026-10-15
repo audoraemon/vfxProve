@@ -125,11 +125,11 @@ static func _ground(t) -> void:
 	Kit.run_for(s, BishopDirector.ARRIVE_AT + DT)
 	var out := 0
 	for p: BishopDirector.Post in d.posts:
-		if p.escort and MissionDirector._alive(p.man) and not (p.man as Person).inside and (p.man as Person).anchor == p.spot:
+		if p.escort and MissionDirector._alive(p.man) and not (p.man as Person).inside and (p.man as Person).anchor == p.spot 				and (p.man as Person).ground_pos.is_equal_approx(p.spot):
 			out += 1
 	t.check(d.at_refuge == 0 and q.target.inside and q.target.ground_pos.is_equal_approx(d.refuges[0].center()) and out == BishopDirector.ESCORT
 		and (s.banners as Array).has("THE BISHOP GOES TO GROUND") and q.state == AssassinateDirector.State.WAITING,
-		"at ARRIVE_AT he goes to ground in his house, unseen; his escort comes out at its door to its posts")
+		"at ARRIVE_AT he goes to ground in his house, unseen; his escort comes out each at his own post, not bunched at the door")
 	var spots: Array[Vector2] = []
 	for p: BishopDirector.Post in d.posts:
 		if not p.done and p.refuge == 0:
@@ -138,8 +138,8 @@ static func _ground(t) -> void:
 	for a in spots.size():
 		apart = apart and d.refuges[0].distance_to(spots[a]) <= BishopDirector.GUARD_REACH
 		for b in range(a + 1, spots.size()):
-			apart = apart and spots[a].distance_to(spots[b]) > SilentDoom.RADIUS
-	t.check(apart, "each of his house's Knights holds his own post within reach of it: a Doom on one never takes another (%s)" % [spots])
+			apart = apart and spots[a].distance_to(spots[b]) > 2.0 * SilentDoom.RADIUS
+	t.check(apart, "each of his house's Knights holds his own post within reach of it, two Doom radii from every other: one strike never takes two (%s)" % [spots])
 	Kit.done(s)
 
 

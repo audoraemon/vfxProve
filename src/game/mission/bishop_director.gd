@@ -5,7 +5,8 @@ extends AssassinateDirector
 ## never walks a street until the Temple drives him out. His refuges, in order: his house (the dwelling nearest REFUGE_SPOTS[0]), the
 ## chapter house (nearest REFUGE_SPOTS[1]) and the Temple. A refuge he is not yet in is stone tonight: a blow only shakes it and any
 ## fire on it is smothered. STANDING Knights hold each refuge's door from the start, POST_GAP apart along its open face; his escort of
-## ESCORT comes with him and stands POST_GAP beyond them -- the last refuge's survivors, topped up from the Citadel through the
+## ESCORT comes with him and comes out at its own posts POST_GAP beyond them, every post more than two Doom radii from the
+## next -- the last refuge's survivors, topped up from the Citadel through the
 ## cellars. A Knight on guard (alive, out of doors, within GUARD_REACH of the refuge) beats out a fire on it once it has burned
 ## SMOTHER_AFTER. The refuge he is in burning DRIVE_OUT seconds in all with none on guard (the Temple DRIVE_OUT_TEMPLE), or falling,
 ## drives him out: he reaches the next CHAIN later, unseen, his escort's survivors with him. A standing Knight who falls is replaced
@@ -43,10 +44,11 @@ const CITADEL_GATE := Vector2(-10.5, -7.6)
 ## The refuges in words, for the banners and the strip (v0.11 M5).
 const REFUGE_WORDS := ["his house", "the chapter house", "the Temple"]
 ## Mission spec §1's numbers (v0.11 M5), tuned by Step 7's gate in this order: CHAIN (30-45; at 45 already), ARRIVE_AT (30-60) 45 -> 60,
-## ESCORT (1-3) 2 -> 3, DRIVE_OUT (6-12) 8 -> 12 with the Temple's 10 -> 14 (the scripted clear 158 -> 186 s, a median in 180-240);
-## RELIEF_AFTER (20-30) untouched. His first refuge; his flight; the Knights; their spacing and reach; the fire's rules; the reliefs;
+## ESCORT (1-3) 2 -> 3, DRIVE_OUT (6-12) 8 -> 12 with the Temple's 10 -> 14; then (the controller's fix round 1 ruling: the escort
+## comes out spread, and a longer first wait is waiting) ARRIVE_AT back to 45 (the scripted clear 212 s median); RELIEF_AFTER
+## (20-30) untouched. His first refuge; his flight; the Knights; their spacing and reach; the fire's rules; the reliefs;
 ## the square; the Knights' deadline.
-const ARRIVE_AT := 60.0
+const ARRIVE_AT := 45.0
 const CHAIN := 45.0
 const STANDING := 2
 const ESCORT := 3
@@ -134,10 +136,12 @@ func _begin() -> void:
 		_burned.append(0.0)
 		_alight.append(0.0)
 		_stone(refuges[i])
+		var mates: Array[Vector2] = []
 		for k in STANDING:
 			var p := Post.new()
 			p.refuge = i
-			p.spot = _post(i, k, false)
+			p.spot = _post(i, k, false, mates)
+			mates.append(p.spot)
 			p.man = _knight(p.spot)
 			posts.append(p)
 	if crowd.engineers != null:
@@ -182,16 +186,40 @@ func _knight(at: Vector2) -> Person:
 
 
 ## The `k`th Knight's post at refuge `i` (v0.11 M5): along its door's face, the standing pair POST_GAP apart about the door, the escort
-## POST_GAP beyond them; a third of the escort (ESCORT tuned to 3) POST_GAP straight out from the door, so no two share one Doom.
-func _post(i: int, k: int, escort: bool) -> Vector2:
+## POST_GAP beyond them, a third of the escort POST_GAP straight out from the door; each kept more than two Silent Doom radii from
+## the posts already set (`mates`) by _spread() (the controller's fix round 1 ruling, The Crown's Bread's: one strike never clears a
+## refuge).
+func _post(i: int, k: int, escort: bool, mates: Array[Vector2]) -> Vector2:
 	var face := doors[i]
 	var out := face - refuges[i].center()
 	out = out.normalized() if out.length() > 0.01 else Vector2.DOWN
-	if escort and k >= 2:
-		return _walkable(face + out * POST_GAP)
 	var along := Vector2(-out.y, out.x)
 	var side := -1.0 if k % 2 == 0 else 1.0
-	return _walkable(face + along * side * POST_GAP * (1.5 if escort else 0.5))
+	var want := face + along * side * POST_GAP * (1.5 if escort else 0.5)
+	if escort and k >= 2:
+		want = face + out * POST_GAP
+	return _spread(i, want, mates)
+
+
+## A post at or near `want` for refuge `i` (v0.11 M5, The Crown's Bread's _spread()): walkable, within GUARD_REACH of the refuge,
+## reached on foot from its door (a Knight sent back or a relief must get there), and farther than two Silent Doom radii from every
+## post in `mates`. The nearest such point on rings of POST_GAP / 2 steps round `want`; `want` made walkable when there is none.
+func _spread(i: int, want: Vector2, mates: Array[Vector2]) -> Vector2:
+	var first := _walkable(want)
+	for ring in 5:
+		var r := POST_GAP * 0.5 * float(ring)
+		var n := 1 if ring == 0 else 12
+		for k in n:
+			var at := first if ring == 0 else _walkable(want + Vector2.from_angle(TAU * float(k) / float(n)) * r)
+			if refuges[i].distance_to(at) > GUARD_REACH or (crowd._grid != null and (not crowd._grid.walkable(at)
+					or (at.distance_to(doors[i]) > 0.1 and crowd._grid.path(doors[i], at).is_empty()))):
+				continue
+			var clear := true
+			for m in mates:
+				clear = clear and m.distance_to(at) > 2.0 * SilentDoom.RADIUS
+			if clear:
+				return at
+	return first
 
 
 ## `s` is stone tonight (v0.11 M5, Decision 128): a blow only shakes it, and its fire is smothered (_smother_stone()).
@@ -252,7 +280,7 @@ func _set_out(q: Quarry) -> void:
 
 
 ## He reaches refuge `i` (v0.11 M5): indoors in it, unseen; it is a building again; his escort's survivors, topped up to ESCORT from
-## the Citadel through the cellars, come out at its door to their posts.
+## the Citadel through the cellars, come out each at his own post, spread round it (the controller's fix round 1 ruling).
 func _reach_refuge(i: int) -> void:
 	var q := quarries[0]
 	if q.dead or in_square or not _alive(q.target):
@@ -277,16 +305,21 @@ func _reach_refuge(i: int) -> void:
 		_take_inside(np.man as Person, null)
 		posts.append(np)
 		living.append(np.man as Person)
+	var mates: Array[Vector2] = []
+	for p: Post in posts:
+		if not p.escort and not p.done and p.refuge == i:
+			mates.append(p.spot)
 	var k := 0
 	for p: Post in posts:
 		if not p.escort or p.done:
 			continue
 		p.refuge = i
-		p.spot = _post(i, k, true)
+		p.spot = _post(i, k, true, mates)
+		mates.append(p.spot)
 		k += 1
 		var man := p.man as Person
 		if man.inside:
-			_bring_out(man, doors[i])
+			_bring_out(man, p.spot)  # at his own post, never bunched at the door (the controller's fix round 1 ruling)
 		man.send_to_post(p.spot, false, true)
 	q.guards = living
 	_guard_total = living.size()

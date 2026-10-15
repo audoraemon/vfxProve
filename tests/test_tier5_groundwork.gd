@@ -71,6 +71,7 @@ static func run(t) -> void:
 	_keepout_labels(t)
 	_keepout_stack(t)
 	_keepout_redraw(t)
+	_keepout_aside(t)
 
 
 ## The Lost Lamb keeps one Charge record, and every old field reads and writes it (v0.11 M6, Task 1).
@@ -191,7 +192,7 @@ static func _watch_switch(t) -> void:
 
 ## The screen's middle, and the stack as a full night draws it, for the keepout's unit checks (v0.11 M6 tests).
 const MID := Vector2(320.0, 180.0)
-const FULL_STACK := Rect2(0.0, 0.0, 244.0, 169.0)
+const FULL_STACK := Rect2(0.0, 0.0, 250.0, 175.0)
 
 
 ## Tags as the layout takes them (v0.11 M6 tests).
@@ -294,7 +295,8 @@ static func _keepout_stack(t) -> void:
 	t.check(r.position == Vector2.ZERO and is_equal_approx(r.end.x, wide + Hud.STACK_PAD) and is_equal_approx(r.end.y, wishes.end.y + Hud.STACK_PAD)
 		and descent.wishes.size() == 3 and r.end.y > Kit.DEAD.end.y,
 		"the stack: the objectives, the hint and three wishes' rows, padded (%s)" % r)
-	t.check(Kit.STACK.size.y >= r.size.y - 12.0 and Kit.STACK.size.y > Kit.DEAD.size.y, "the kit's STACK is the real depth, deeper than DEAD")
+	t.check(absf(Kit.STACK.size.y - wishes.end.y) <= 2.0 and Kit.STACK.size.y > Kit.DEAD.size.y,
+		"the kit's STACK is the real depth (%s of the plates' %s), deeper than DEAD" % [Kit.STACK.size.y, wishes.end.y])
 	hud.set_caption("The tour")
 	t.check(hud.stack_rect() == r, "the tour's caption leaves it: the stack is still drawn")
 	hud.free()
@@ -302,8 +304,9 @@ static func _keepout_stack(t) -> void:
 	Kit.done(s)
 
 
-## The tag layer redraws when the stack's size changes -- a wish row coming or going -- not only when a tag or the camera does
-## (v0.11 M6, the controller's ruling).
+## The tag layer redraws when the stack's size changes, not only when a tag or the camera does (v0.11 M6, the controller's ruling): the
+## night's main objective done swaps the hint for the wishes' line and changes the stack, the tags the same. The signature without its
+## stack term does not move, so the stack term is what moves the full one.
 static func _keepout_redraw(t) -> void:
 	var def := TierBook.board("crowns_bread")
 	var s := Kit.world(def)
@@ -311,14 +314,30 @@ static func _keepout_redraw(t) -> void:
 	descent.attach(s.rules, s.d)
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
 	var before := hud._tag_signature()
-	var rows := descent.wishes.size()
-	descent.wishes.pop_back()
-	var after := hud._tag_signature()
-	t.check(before != "" and rows == 3 and before != after and hud.stack_rect().size.y < Kit.STACK.size.y,
-		"a wish row gone: the stack shrinks and the tag layer's signature changes")
+	var blank := hud._tag_signature(false)
+	var stack := hud.stack_rect()
+	s.rules.main_done = true
+	t.check(before != "" and hud.stack_rect() != stack and hud._tag_signature() != before,
+		"the stack changed with the tags as they were: the tag layer's signature changes (%s -> %s)" % [stack, hud.stack_rect()])
+	t.check(hud._tag_signature(false) == blank, "and without the stack term it did not: the stack alone moved it")
 	hud.free()
 	descent.release()
 	Kit.done(s)
+
+
+## A map tag whose diamond is clear of the stack but whose plate over the diamond would lie under it takes its plate beside the diamond,
+## shown, never under the stack (v0.11 M6): one just below the stack, one just right of it.
+static func _keepout_aside(t) -> void:
+	var xf := Transform2D(0.0, MID)
+	var spots := {"JUST BELOW": Vector2(100.0, FULL_STACK.end.y + 4.0), "JUST RIGHT": Vector2(FULL_STACK.end.x + 4.0, 100.0)}
+	for label: String in spots:
+		var tag := _tag_at(spots[label], label, true)
+		var c := Hud.tag_point(tag, xf)
+		var over := Hud.label_rect(label, c - Vector2(0.0, tag.size + Hud.LABEL_GAP + Hud.PLATE_H * 0.5), Kit.VIEW)
+		var lay := Hud.tag_layout(_tags([tag]), xf, Kit.VIEW, FULL_STACK)
+		t.check(over.intersects(FULL_STACK) and String(lay[0].mode) == "map" and bool(lay[0].show)
+			and not (lay[0].label as Rect2).intersects(FULL_STACK) and not FULL_STACK.has_point(c),
+			"%s: the plate over its diamond is under the stack, so it sits beside it, shown, outside the stack" % label)
 
 
 ## Step `i`'s guards moved well off their ring (v0.11 M6 tests): off guard, still alive.

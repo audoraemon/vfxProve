@@ -66,8 +66,9 @@ const EDGE_MARGIN := 10.0
 ## events plate (TAG_TOP, clear of a two-row plate, which ends at 71, and of an up arrow's disc, 5 px above its tip) and just
 ## above the slot row, so a tag under any of them is pointed at, and no arrow is covered.
 const TAG_TOP := 78.0
-## The keepout's margin round the left HUD stack (v0.11 M6, mission spec §6.4): screen pixels beyond its right and bottom edges.
-const STACK_PAD := 4.0
+## The keepout's margin round the left HUD stack (v0.11 M6, mission spec §6.4): screen pixels beyond its right and bottom edges -- an
+## arrow's disc (radius 10, centred 5 px behind its tip) on the border never reaches back behind a plate.
+const STACK_PAD := 10.0
 ## How to win (v0.10 M6, spec §3): a line under the objectives, wrapped to HINT_W, at most HINT_LINES lines, pale gold.
 const HINT_W := 228.0
 const HINT_LINES := 3
@@ -338,13 +339,18 @@ func objective_rect() -> Rect2:
 
 ## The wishes' plate as drawn (v0.11 M6, factored out of _draw_wishes()): Rect2() with no rows.
 func wishes_rect() -> Rect2:
+	return _wishes_plate(hint_rect())
+
+
+## The wishes' plate under a how-to-win plate `hint` already measured (v0.11 M6): stack_rect() measures the hint once and shares it.
+func _wishes_plate(hint: Rect2) -> Rect2:
 	var rows := wish_rows()
 	if rows.is_empty():
 		return Rect2()
 	var wide := 0.0
 	for row: Array in rows:
 		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL))
-	return Rect2(2.0, wishes_top(), wide + 22.0, 5.0 + ROW_H * float(rows.size()))
+	return Rect2(2.0, hint.end.y + 4.0 if hint.size != Vector2.ZERO else hint_top(), wide + 22.0, 5.0 + ROW_H * float(rows.size()))
 
 
 ## The left HUD stack as drawn this frame (v0.11 M6, mission spec §6.4): from the screen's corner to the right edge of the widest of the
@@ -356,7 +362,8 @@ func stack_rect() -> Rect2:
 		return Rect2()
 	var right := 0.0
 	var bottom := 0.0
-	for r: Rect2 in [objective_rect(), hint_rect(), wishes_rect()]:
+	var hint := hint_rect()  # measured once: the how-to-win plate wraps its words, and the wishes' plate sits under it
+	for r: Rect2 in [objective_rect(), hint, _wishes_plate(hint)]:
 		if r.has_area():
 			right = maxf(right, r.end.x)
 			bottom = maxf(bottom, r.end.y)
@@ -565,7 +572,8 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 ## lies inside it becomes an arrow on its border, where the line from the frame's centre to the diamond crosses it, its label beside the
 ## arrow toward the centre, clear of it (_label_beside()); (2) an arrow frame_point() would put on the frame's edge inside it slides to
 ## its border the same way; (3) it counts as a label already placed, so no plate is drawn over it; (4) a tag without `edge` inside it
-## keeps its diamond, not its label.
+## keeps its diamond, not its label; (5) a tag whose diamond is clear of it but whose plate over the diamond would lie under it takes
+## its plate beside the diamond (_label_aside()).
 static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2()) -> Array:
 	var out := []
 	var placed: Array[Rect2] = []
@@ -582,6 +590,8 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keep
 		if (frame.has_point(c) and not hidden) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
 			e.mode = "map"
 			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
+			if keep and not keepout.has_point(c) and (e.label as Rect2).intersects(keepout):
+				e.label = _label_aside(t.label, c, t.size, keepout, view)
 		elif t.edge:
 			var tip := frame_point(c, frame, keepout)
 			var d := (c - frame.get_center()).normalized()
@@ -620,6 +630,18 @@ static func frame_point(point: Vector2, frame: Rect2, keepout := Rect2()) -> Vec
 	if keepout.has_area() and (keepout.grow(0.5).has_point(tip) or keepout.has_point(point)):
 		return _keepout_point(mid, d, keepout)
 	return tip
+
+
+## A map tag's label moved out of `keepout` (v0.11 M6): its plate over the diamond would lie under the stack, so it goes to the diamond's
+## right, else below it; the plate over it again (and so no label, the keepout counting as placed) when neither is clear.
+static func _label_aside(text: String, c: Vector2, size: float, keepout: Rect2, view: Vector2) -> Rect2:
+	var wide := plate_size(text).x
+	var centres: Array[Vector2] = [c + Vector2(size + LABEL_GAP + wide * 0.5, 0.0), c + Vector2(0.0, size + LABEL_GAP + PLATE_H * 0.5)]
+	for centre in centres:
+		var r := label_rect(text, centre, view)
+		if not r.intersects(keepout):
+			return r
+	return label_rect(text, c - Vector2(0.0, size + LABEL_GAP + PLATE_H * 0.5), view)
 
 
 ## An arrow's label moved out of `keepout` (v0.11 M6): a plate beside the arrow's disc, to its right and level with it, and no higher
@@ -817,13 +839,13 @@ func _signature() -> String:
 
 ## What the tag layer shows, in short (board tags): the camera, the screen and every tag's fields -- everything
 ## tag_layout() lays the tags out from. "" with nothing tagged.
-func _tag_signature() -> String:
+func _tag_signature(with_stack := true) -> String:
 	var tags := all_tags()
 	if tags.is_empty():
 		return ""
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
 	# v0.11 M6: the stack is the layout's keepout, so the layer redraws when its size changes (a wish row comes or goes).
-	var out := "%s|%s|%s" % [xf, _view(), stack_rect()]
+	var out := "%s|%s|%s" % [xf, _view(), stack_rect() if with_stack else Rect2()]
 	for t in tags:
 		out += "|%s%s%s%s%s%s%s%s%s" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid()]
 	return out

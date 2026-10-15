@@ -64,12 +64,12 @@ static func _vanish(s: Dictionary, p: Person) -> void:
 
 static func _pool(t) -> void:
 	var all := _ids(WishBook.pool())
-	t.check(all.size() == 14 and all.slice(10, 12) == ["bully", "pressed"], "the pool: M2's ten, then Omen's two (%s)" % [all])
+	t.check(all.size() == 16 and all.slice(10, 12) == ["bully", "pressed"], "the pool: M2's ten, then Omen's two (%s)" % [all])
 	var bully := _def("bully")
 	var pressed := _def("pressed")
 	t.check(bully.text == "Scare off the bully, unharmed" and bully.kind == "fright" and bully.reward == 10 and bully.min_tier == 2
 		and Array(bully.clashes) == ["unaware_town"] and pressed.text == "Free the pressed man" and pressed.kind == "rescue"
-		and pressed.reward == 15 and pressed.min_tier == 2 and Array(pressed.clashes) == ["unaware_town"],
+		and pressed.reward == 15 and pressed.min_tier == 2 and Array(pressed.clashes) == ["unaware_town", "razes_barracks"],
 		"their words, kinds and rewards; heard from Omen up, never in a sleeping town")
 	t.check(Array(_def("informer").clashes) == ["hunts_informer"] and _def("sign").min_tier == 1,
 		"the informer wish keeps off The Informer's night; the older wishes are heard from Whisper")

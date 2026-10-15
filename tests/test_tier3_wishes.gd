@@ -43,7 +43,7 @@ static func _ids(list: Array) -> Array:
 
 static func _pool(t) -> void:
 	var all := _ids(WishBook.pool())
-	t.check(all.size() == 14 and all.slice(12) == ["barn", "sergeant"], "the pool: M3's twelve, then Wrath's two (%s)" % [all])
+	t.check(all.size() == 16 and all.slice(12, 14) == ["barn", "sergeant"], "the pool: M3's twelve, then Wrath's two (%s)" % [all])
 	var barn := _def("barn")
 	var sergeant := _def("sergeant")
 	t.check(barn.text == "Burn the tithe barn" and barn.kind == "ruin" and barn.reward == 10 and barn.min_tier == 3
@@ -52,8 +52,8 @@ static func _pool(t) -> void:
 		and sergeant.reward == 15 and sergeant.min_tier == 3 and sergeant.clashes.is_empty() and sergeant.runner == PunishWish
 		and bool(sergeant.params.soldier) and bool(sergeant.params.edge) and not bool(sergeant.params.unseen),
 		"their words, kinds, rewards, parameters; heard from Wrath up; the barn keeps off razes_bread")
-	t.check(_ids(WishBook.pool_for(1)) == all.slice(0, 10) and _ids(WishBook.pool_for(2)) == all.slice(0, 12) and _ids(WishBook.pool_for(3)) == all,
-		"Tier 1 draws from M2's ten, Tier 2 from M3's twelve, each in its order; Wrath from all fourteen")
+	t.check(_ids(WishBook.pool_for(1)) == all.slice(0, 10) and _ids(WishBook.pool_for(2)) == all.slice(0, 12) and _ids(WishBook.pool_for(3)) == all.slice(0, 14),
+		"Tier 1 draws from M2's ten, Tier 2 from M3's twelve; Wrath from fourteen")
 
 
 static func _draws(t) -> void:

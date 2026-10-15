@@ -8,6 +8,9 @@ extends RescueWish
 ## death, the door reached, or the time run out fails it. A town order taking a man off the errand sends him back on it. Engagement
 ## is judged first, as Save my child's: a man felled by the god's own cast before it was engaged engages it; felled any other way,
 ## it fails.
+## v0.11 M5 (mission spec §6): params "goal" -- "barracks" (the default, the barracks' door: Free the pressed man) or "temple" (the
+## Temple's door, found by its role: Save the heretic from the pyre) -- and "son_label" / "guard_label", the son's and each man's tag
+## words (PRESSED MAN and PRESS-GANG by default).
 
 ## How far from the barracks' door the son stands at least, and how much street lies between at most (v0.11 M3, Decision 32).
 const MIN_FROM := 15.0
@@ -35,11 +38,29 @@ static func barracks_door(crowd: Crowd) -> Vector2:
 	return snap if snap != Vector2.INF else at
 
 
+## The Temple's door (v0.11 M5): the middle of the front of the town's structure of role temple, on walkable ground; Vector2.INF for none.
+## Found by its role, not TownLayout (M3's controller ruling on shared code).
+static func temple_door(crowd: Crowd, town: Town) -> Vector2:
+	for s: Structure in town._built:
+		if is_instance_valid(s) and s.role == &"temple":
+			var at := s.center() + Vector2(0.0, s.footprint.size.y * 0.5 + 0.5)
+			var snap := crowd._grid.nearest_walkable(at) if crowd._grid != null else at
+			return snap if snap != Vector2.INF else at
+	return Vector2.INF
+
+
+## This wish's parameter `key` (v0.11 M5), `fallback` with no def or no such parameter.
+func _param(key: String, fallback: Variant) -> Variant:
+	return def.params.get(key, fallback) if def != null else fallback
+
+
 ## A wisher with a son who fits, and the two free soldiers nearest the son; false when the town cannot give them (v0.11 M3).
 ## Households are tried from a random start, as Stop the bailiff tries its homes.
-func choose(crowd: Crowd, _town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:
+func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:
 	_crowd = crowd
-	var door := barracks_door(crowd)
+	var door := temple_door(crowd, town) if String(_param("goal", "barracks")) == "temple" else barracks_door(crowd)
+	if door == Vector2.INF:
+		return false
 	var homes := Wish.lay(crowd, taken)
 	var parents: Array[Person] = []
 	for p in homes:
@@ -229,12 +250,13 @@ func check(rules: Rules) -> Status:
 
 
 ## PRESSED MAN on the son, always pointed at from the edge -- he is the one to find while the wish waits -- and PRESS-GANG on each
-## man, pointed at once engaged and marching (v0.11 M3).
+## man, pointed at once engaged and marching (v0.11 M3). v0.11 M5: the params "son_label" and "guard_label" name them otherwise
+## (HERETIC and TEMPLE GUARD).
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if MissionDirector._alive(child) and not child.inside:
-		out.append(MapTag.person(child.ground_pos, COLOR, "PRESSED MAN", true))
+		out.append(MapTag.person(child.ground_pos, COLOR, String(_param("son_label", "PRESSED MAN")), true))
 	for p in _men():
 		if not p.inside:
-			out.append(MapTag.person(p.ground_pos, COLOR, "PRESS-GANG", engaged))
+			out.append(MapTag.person(p.ground_pos, COLOR, String(_param("guard_label", "PRESS-GANG")), engaged))
 	return out

@@ -102,14 +102,18 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
 - **Map** (east and north of the Temple; each dwelling is chosen by `_house_reached()`: the dwelling nearest the point whose
   door the street reaches, never reserved):
   - **His house:** the dwelling nearest (12.0, -6.8), at the north-east quarter's south edge. Tagged REFUGE.
-  - **The chapter house:** the dwelling nearest (6.5, -13.0), behind the Temple's east side. Tagged REFUGE.
+  - **The chapter house:** the dwelling nearest (7.9, -12.3), behind the Temple's east side. Tagged REFUGE. (Task 2: the
+    next nearest to the first guess (6.5, -13.0), by the quiet-places rule: that one's only door opens on a one-cell gap in a
+    lane walled both sides, where its two Knights stood 1.0 apart, inside one Doom.)
   - **The Temple:** `TownLayout.TEMPLE`, its front door (0.8, -5.0) on the square. 200 hp; it burns.
   - **The Citadel's gate** (-10.5, -7.6): where he runs once drawn into the square. Reaching it is his escape.
   - **Stone tonight:** a refuge he is not yet in only shakes when struck and smothers any fire
     (`Structure.damage_filter`, cleared at teardown, as M3's posts). No refuge can be burned down ahead of him.
   - **Spacing:** his house to the chapter house about 8 units; the chapter house to the Temple's door about 10.
-  - **The camera** rests at (6.0, -6.5). His house is at the right, the chapter house at the top right, the Temple's door at
-    the left, below the HUD stack. The Citadel's gate is off screen to the west; its tag shows only once he runs for it.
+  - **The camera** rests at (2.0, -3.0) (the controller's ruling: checked against the real HUD stack, 240x165 px). His house
+    is at the right, the chapter house at the top right, the Temple's door and the first half of his walk across the square
+    clear of the stack. The Citadel's gate shows at the top-left corner (its arrow is left to M6's tag keep-out); its tag
+    shows only once he runs for it.
 - **Claims:** one cleric (the bishop), the two dwellings and the Temple. The Knights are added soldiers (below). No lay
   citizens. All three refuges are put in `EngineerManager.hands_off`, so the town's engineers never mend them.
 - **Main objective:** kill the bishop.
@@ -122,18 +126,19 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
     - dawn comes.
 - **People and behaviour:**
   - **The bishop:** the cleric nearest the Citadel's gate, taken inside the Citadel at the start: untouchable, untagged as a
-    person. At 0:45 he goes to ground in his house by the cellars ("THE BISHOP GOES TO GROUND"). Between refuges he moves
+    person. At 1:00 he goes to ground in his house by the cellars ("THE BISHOP GOES TO GROUND"). Between refuges he moves
     indoors, unseen (The Informer's rule). He never walks a street until the Temple drives him out.
   - **The standing Knights:** two at each refuge's door from the start, on posts along its open face (`_open_door()`), 1.8
     apart, so one Silent Doom takes one. They are soldiers: Mind Whisper and Discord do not touch them (the engine's rule:
     soldiers keep their heads). They are held past fear. Only a kill removes them.
-  - **His escort:** two Knights come with him to each refuge. They wait inside with him and come out at its door when he
-    arrives, on posts 1.8 beyond the standing pair: the last refuge's survivors, topped up to two from the Citadel through the
+  - **His escort:** three Knights come with him to each refuge. They wait inside with him and come out at its door when he
+    arrives, on posts 1.8 beyond the standing pair (the third 1.8 straight out from the door): the last refuge's survivors,
+    topped up to three from the Citadel through the
     cellars. This is the work that cannot be done ahead.
   - **On guard:** a Knight alive, out of doors, within 2.5 of the refuge's door, at his post.
   - **The Knights' work:** while one stands on guard, a fire on his refuge is beaten out once it has burned 3 s (Spoiled
     Harvest's rule).
-  - **Driven out:** the refuge he is in burns 8 s in all with no Knight on guard (the Temple: 10 s), or falls. Then he flees
+  - **Driven out:** the refuge he is in burns 12 s in all with no Knight on guard (the Temple: 14 s), or falls. Then he flees
     ("THE BISHOP FLEES HIS HOUSE"). His escort's survivors go back inside with him, unseen.
   - **The flight:** he reaches the next refuge 45 s after he was driven out, unseen, by the cellars. Until then that refuge is
     stone. The chain has no scheduled time: he moves only when driven.
@@ -151,7 +156,7 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
   | Time | Event |
   |---|---|
   | 0:00 | "THE BISHOP". He is in the Citadel. Two Knights stand at each refuge's door. |
-  | 0:45 | "The bishop goes to ground": in his house, his escort at its door |
+  | 1:00 | "The bishop goes to ground": in his house, his escort at its door |
   | +45 s after he is driven out | He reaches the chapter house, then the Temple |
   | 5:00 | "The Knights take him away": lost unless he is dead |
   | 6:30 | Dawn |
@@ -159,13 +164,18 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
 - **The clear:** first wait 45 + his house 20 (his escort's two: a Doom and a Smite; an Ember; 8 s alight) + 45 + the chapter
   house 20 + 45 + the Temple 22 (two Knights, an Ember, 10 s alight) + the square 8 (a Smite as he comes out) ≈ **205 s**. With
   nothing done ahead, each refuge's work rises by about 10 s (the standing pair): ≈ 235 s.
-- **Longest waits:** 45 s to his first refuge, and 45 s of each flight. In both, the next refuge's standing Knights can be
+  - **Measured** (Task 2, scripted seeds 1-3: 196.7 / 186.5 / 177.2 s, median 186.5): first wait 60 + his house 5 (his escort
+    comes out bunched at the door: one Smite takes them all and shakes the house, an Ember fells it) + 45 + the chapter house 5
+    (the same) + 45 + the Temple 17-36 (one Smite on its Knights, an Ember, 14 s alight; the fire went out before he was driven
+    in seeds 1 and 2 and was lit again) + the square 1 (a Doom as he comes out) ≈ 177-197 s. The clear is chain-bound: 150 s of
+    it is the first wait and the two flights, at the 60 s and 45 s caps.
+- **Longest waits:** 60 s to his first refuge, and 45 s of each flight. In both, the next refuge's standing Knights can be
   cleared in the last 25 s. The wait before the Temple is not a pure one (M4's hunt-captain lesson): its standing pair is there
   to work on.
 - **Tags:**
-  - BISHOP - IN THE CITADEL, grey, over the Citadel's gate, until 0:45.
+  - BISHOP - IN THE CITADEL, grey, over the Citadel's gate, until 1:00.
   - The refuge he is in, gold, with an edge arrow: "REFUGE - GUARDED" while a Knight is on guard, "REFUGE - SET IT ALIGHT"
-    when open, "REFUGE - BURNING 5" (seconds of the 8 left) while it burns unguarded.
+    when open, "REFUGE - BURNING 5" (seconds of the 12 left) while it burns unguarded.
   - The next refuge, grey, with an edge arrow: "NEXT REFUGE" while he is in the one before, "NEXT REFUGE - HE COMES IN 0:31"
     during his flight.
   - KNIGHT on each Knight on guard, red. A small red mark on one away from his post. A red diamond on a relief walking in.
@@ -175,7 +185,7 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
 
   | Phase | Line |
   |---|---|
-  | `waiting` | The bishop goes to ground soon. Kill the next refuge's Knights (red) shortly before he comes. |
+  | `waiting` | He reaches his next refuge in {n} s. Kill its Knights (red) shortly before he comes. ({n}: the seconds to his next refuge, in the Citadel or in a flight) |
   | `guarded` | His Knights (red) beat out fire. Kill every one. Whispers and Discord do not touch a Knight. |
   | `open` | No Knight stands. Set the refuge (gold) alight before a new Knight comes. |
   | `burning` | It burns. Keep it burning: his Knights (red) put out a fire they stand by. |
@@ -187,7 +197,7 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
 - **HUD:** "Kill the bishop: refuges 1 / 3" (from `hud_line()`); in the square, "Kill the bishop, he makes for the Citadel";
   the deadline row "Knights come 2:10".
 - **Tour:**
-  1. "His house. The bishop goes to ground here at 0:45, his Knights at the door."
+  1. "His house. The bishop goes to ground here at 1:00, his Knights at the door."
   2. "The chapter house, his next refuge. Burn each one to drive him on."
   3. "The Temple, his last refuge. Set it alight to draw him into the square."
 - **Mission tags:** `burns_temple`. It keeps the wish "Save the heretic from the pyre" (§6) away: its march ends at the Temple's
@@ -195,18 +205,21 @@ him on. The Temple is his last refuge: set it alight to draw him into the square
 - **Pool:** every power.
 - **Results:** "THE BISHOP IS DEAD" (`bishop`), "THE BISHOP REACHES THE CITADEL" (`bishop_safe`), "THE KNIGHTS TAKE HIM AWAY"
   (`bishop_taken`).
-- **Numbers** (first guesses): ARRIVE_AT 45, CHAIN 45, STANDING 2, ESCORT 2, POST_GAP 1.8, GUARD_REACH 2.5, SMOTHER_AFTER 3,
-  DRIVE_OUT 8 (Temple 10), RELIEF_AFTER 30, RELIEFS 6, RING_R 1.4, BISHOP_PACE 0.5, TAKEN_AT 300. Tune in this order if the
-  scripted clear misses 180-240 s: CHAIN (30-45), ARRIVE_AT (30-60), ESCORT (1-3), DRIVE_OUT (6-12), RELIEF_AFTER (20-30).
+- **Numbers** (tuned, Task 2): ARRIVE_AT 60, CHAIN 45, STANDING 2, ESCORT 3, POST_GAP 1.8, GUARD_REACH 2.5, SMOTHER_AFTER 3,
+  DRIVE_OUT 12 (Temple 14), RELIEF_AFTER 30, RELIEFS 6, RING_R 1.4, BISHOP_PACE 0.5, TAKEN_AT 300. Tuned in this order as the
+  scripted clear missed 180-240 s (first guesses 158.3 / 158.2 / 166.6 s): CHAIN (30-45; already at 45), ARRIVE_AT (30-60) 45 ->
+  60 (173.2 / 173.2 / 173.1), ESCORT (1-3) 2 -> 3 (183.0 / 173.2 / 173.2), DRIVE_OUT (6-12) 8 -> 12, the Temple's 10 -> 14 with it
+  (196.7 / 186.5 / 177.2: the gate holds). RELIEF_AFTER (20-30) untouched.
 - **Scripted policy** (`--scenario=bishop`, loadout Silent Doom, Smite, Ember: 3 DP; hit-stop off). Every
   LOOK_FRAMES, the first that applies:
-  1. The bishop is out of doors: Smite him (Doom him if the kill would go unseen).
+  1. The bishop is out of doors: Doom him, else Smite him (plan decision 175: a Smite is cast before it strikes, and its alarm
+     sends him running out of its reach; Silent Doom is quiet).
   2. The refuge he is in has a Knight on guard: Doom the one with no one else within 0.8; else Smite one.
   3. That refuge is open and not burning: Ember it (Smite it if Ember is cooling).
   4. He is in flight, or his next arrival is within 25 s: Doom that refuge's standing Knights, one at a time.
   5. A relief walks toward a refuge he has not passed, and Doom is ready: Doom him.
 
-  Expected clear: about 3:25.
+  Expected clear: about 3:25 (measured: median 3:06).
 - **Evacuate-mid-mission test:** the evacuation begins while he is in flight: the Knights stay at their posts, the bishop
   stays inside, and he still arrives on time.
 - **How it differs from The Tax Collector and The Informer** (M2 lesson 10):

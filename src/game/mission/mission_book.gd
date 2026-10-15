@@ -68,7 +68,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop()]
 	return out
 
 
@@ -333,6 +333,25 @@ static func heretic_hunt() -> MissionDef:
 	m.director = HereticHuntDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [HuntObjective.new("Break the hunt", "hunt"), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Bishop (v0.11 M5, Tier 4, mission spec §1 and §8 row 17): burn the bishop out of his three refuges -- each guarded by Lantern
+## Knights -- and kill him in the square before the Knights take him away (BishopDirector, the Assassinate type reused).
+static func bishop() -> MissionDef:
+	var m := _tier4(BISHOP, "The Bishop", PackedStringArray(["The bishop hides behind his Knights.", "Smoke him out. Kill him."]))
+	m.goal = "Burn the bishop out of his refuges, then kill him before the Knights take him away at %s" % UiTheme.clock(
+		BishopDirector.TAKEN_AT)
+	m.goal_label = "The bishop is dead"
+	m.lose = "He reaches the Citadel, the Knights take him away, or dawn comes"
+	m.camera_at = BishopDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "smite", "ember"])
+	m.director = BishopDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [AssassinateObjective.new("Kill the bishop", "bishop", "bishop_safe"),
+			EventObjective.new("taken", "Knights come", "bishop_taken"), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

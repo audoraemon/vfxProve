@@ -50,6 +50,7 @@ var descend := false
 ## type's defaults (`out`, `taken`), so a later Escort mission using them is not given the lamb's words (final review).
 ## v0.11 M3: Omen's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M4: Wrath's new missions' endings, each under the mission's own reason keys.
+## v0.11 M5: Reckoning's new missions' endings, each under the mission's own reason keys.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
 	"gaze": "THE LANTERN LOOKS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
@@ -62,7 +63,8 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 	"informer": "THE INFORMER IS DEAD", "names": "THE NAMES REACH THE TEMPLE", "cold": "THE TRAIL GOES COLD",
 	"bread": "THE CROWN'S BREAD IS RUINED", "fed": "THE CROWN IS FED", "prisoner_out": "THE PRISONER IS FREE",
 	"prisoner_taken": "THE PRISONER IS TAKEN BACK", "prisoner_inside": "THE PRISONER IS TAKEN INSIDE", "prisoner": "THE PRISONER IS DEAD",
-	"hunt": "THE HUNT IS BROKEN", "cellar": "THE CELLAR IS FOUND"}
+	"hunt": "THE HUNT IS BROKEN", "cellar": "THE CELLAR IS FOUND", "bishop": "THE BISHOP IS DEAD",
+	"bishop_safe": "THE BISHOP REACHES THE CITADEL", "bishop_taken": "THE KNIGHTS TAKE HIM AWAY"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

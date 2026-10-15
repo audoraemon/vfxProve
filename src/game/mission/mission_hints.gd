@@ -93,6 +93,13 @@ const LINES := {
 	"heretic_hunt.coming": "The captain comes out of the Temple (grey) in {n} s. Be ready on his road to your cellar (blue).",
 	"heretic_hunt.captain": "The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it.",
 	"heretic_hunt.searching": "The captain searches the houses by your cellar. Kill him before he reaches its door.",
+	"bishop": "Burn each refuge the bishop hides in (gold), once its Knights (red) are dead. The Temple last: then kill him in the square.",
+	"bishop.waiting": "He reaches his next refuge in {n} s. Kill its Knights (red) shortly before he comes.",
+	"bishop.guarded": "His Knights (red) beat out fire. Kill every one. Whispers and Discord do not touch a Knight.",
+	"bishop.open": "No Knight stands. Set the refuge (gold) alight before a new Knight comes.",
+	"bishop.burning": "It burns. Keep it burning: his Knights (red) put out a fire they stand by.",
+	"bishop.square": "He is in the square and makes for the Citadel (red). Kill him before he gets in.",
+	"bishop.running": "Alarmed, he runs for the Citadel (red). Kill him now.",
 }
 
 

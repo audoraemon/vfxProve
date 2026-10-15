@@ -137,6 +137,7 @@ extends SceneTree
 ##          or the next sweep within 25 s: Discord where it holds two or more guards of a raised standard (the Smite follows while
 ##          they are held), else Silent Doom on a guard alone (else any), else Mind Whisper sends one eight units off; else Silent Doom
 ##          on a relief walking in; the result line gives the longest idle stretch). Hit-stop is off for it. --seed= as ringers.
+##   bishop  (v0.11 M5) The Bishop, --case=none (nothing cast) or play, as a player plays it (_bishop_act(): the bishop out of doors,
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -262,6 +263,8 @@ const PRISONER_SOON := 10.0
 const HUNT_AHEAD := 25.0
 const HUNT_AWAY := 8.0
 const HUNT_FAR := 0.3
+## The Bishop's policy (v0.11 M5): how near his first arrival the next refuge's Knights are cleared.
+const BISHOP_AHEAD := 25.0
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -385,9 +388,12 @@ func _run() -> void:
 	elif scenario == "hunt":
 		powers = PackedStringArray(["doom", "smite", "whisper", "discord"])
 		mission.mission_id = MissionBook.HERETIC_HUNT
+	elif scenario == "bishop":
+		powers = PackedStringArray(["doom", "smite", "ember"])
+		mission.mission_id = MissionBook.BISHOP
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
-	if scenario in ["panic", "bread", "hunt"]:
-		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M4: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
+	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
+		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M5: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
@@ -454,6 +460,8 @@ func _run() -> void:
 			await _prisoner(Battlefield.arg_value(args, "--case"))
 		"hunt":
 			await _hunt(Battlefield.arg_value(args, "--case"))
+		"bishop":
+			await _bishop(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -2431,6 +2439,89 @@ func _hunt_far_side(d: HereticHuntDirector, i: int) -> Vector2:
 	if near == Vector2.INF or near.distance_to(s.center()) < 0.01:
 		return s.center()
 	return s.center() + (s.center() - near).normalized() * HUNT_FAR
+
+
+## The Bishop (v0.11 M5), with mission spec §1's policy (_bishop_act()), through _scripted().
+func _bishop(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as BishopDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("bishop", which, func() -> String: return _bishop_act(rules, slots, d, crowd),
+		func() -> String: return "refuge=%d flight=%s square=%s driven=%d guards=%d reliefs=%d phase=%s" % [d.at_refuge, d.in_flight,
+			d.in_square, d.driven, d.guards_at(d.current_refuge()).size() if d.current_refuge() >= 0 else 0, d.reliefs, d.hint_phase()])
+
+
+## One look of The Bishop's policy (v0.11 M5): what was cast, or "". The first that applies: the bishop out of doors, Silent Doom on him
+## (quiet: no alarm before it lands, plan decision 175), else Smite; a Knight on guard at his refuge, clear one (_knight_clear(), a
+## Smite allowed); none on guard, Ember the refuge (Smite it while Ember cools); in his flight, or BISHOP_AHEAD before his first refuge,
+## Silent Doom on the next refuge's Knights; a relief walking in, Silent Doom on him.
+func _bishop_act(rules: Rules, slots: Dictionary, d: BishopDirector, crowd: Crowd) -> String:
+	var q := d.quarries[0]
+	if q.dead or not WarningDirector._alive(q.target):
+		return ""
+	if d.in_square and not q.target.inside:
+		if _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, q.target.ground_pos)
+			return "doom the bishop"
+		if _slot_ready(rules, slots, "smite"):
+			rules.cast(slots.smite, q.target.ground_pos)
+			return "smite the bishop"
+		return ""
+	var cur := d.current_refuge()
+	if cur >= 0:
+		var on := d.guards_at(cur)
+		if not on.is_empty():
+			var did := _knight_clear(rules, slots, crowd, on, true)
+			if did != "":
+				return did
+		else:
+			var s := d.refuges[cur]
+			if is_instance_valid(s) and not s.destroyed and not d._burning(s):
+				if _slot_ready(rules, slots, "ember"):
+					rules.cast(slots.ember, s.center())
+					return "ember refuge %d" % cur
+				if _slot_ready(rules, slots, "smite"):
+					rules.cast(slots.smite, s.center())
+					return "smite refuge %d" % cur
+	var nxt := d.next_refuge()
+	if nxt >= 0 and nxt != cur and (d.in_flight or (d.at_refuge < 0 and d.arrive_in() <= BISHOP_AHEAD)):
+		var ahead := d.standing_at(nxt)
+		if not ahead.is_empty():
+			var did := _knight_clear(rules, slots, crowd, ahead, false)
+			if did != "":
+				return did
+	var walker := d.relief_walking()
+	if walker != null and _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, walker.ground_pos)
+		return "doom a relief knight"
+	return ""
+
+
+## Clears one of `on` (v0.11 M5, The Bishop and The Armoury): Silent Doom on one no one else stands within its radius of; else, with
+## `smite_ok`, Smite the first; else (`smite_ok` false) Silent Doom on the first.
+func _knight_clear(rules: Rules, slots: Dictionary, crowd: Crowd, on: Array[Person], smite_ok: bool) -> String:
+	var alone: Person = null
+	for p in on:
+		if _none_within(crowd, p, SilentDoom.RADIUS):
+			alone = p
+			break
+	if _slot_ready(rules, slots, "doom") and (alone != null or not smite_ok):
+		rules.cast(slots.doom, (alone if alone != null else on[0]).ground_pos)
+		return "doom a guard"
+	if smite_ok and _slot_ready(rules, slots, "smite"):
+		rules.cast(slots.smite, on[0].ground_pos)
+		return "smite a guard"
+	return ""
+
+
+## No one else alive and out of doors, citizen or soldier, stands within `r` of `p` (v0.11 M5). Only reads.
+func _none_within(crowd: Crowd, p: Person, r: float) -> bool:
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for o in group:
+			if o != p and is_instance_valid(o) and o.is_alive() and not o.inside and o.ground_pos.distance_to(p.ground_pos) <= r:
+				return false
+	return true
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

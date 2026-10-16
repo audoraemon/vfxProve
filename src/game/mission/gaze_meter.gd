@@ -52,6 +52,11 @@ func note_death(at: Vector2) -> void:
 	_deaths.append(at)
 
 
+## The deaths noted and not yet judged are let go unjudged (v0.11 M6: The Heart of Faith's winning strike, judged after the night is won).
+func drop_pending() -> void:
+	_deaths.clear()
+
+
 ## Each noted death that someone living saw (Crowd.nearest_witness()) adds SEEN_DEATH. It waits while the crowd is
 ## still judging a Silent Doom's victims, so a cast's victims never witness each other.
 func judge_deaths(crowd: Crowd) -> void:

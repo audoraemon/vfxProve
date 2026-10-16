@@ -1,20 +1,21 @@
 class_name HeartOfFaithDirector
 extends RazeDirector
-## The Heart of Faith (v0.11 M6, Tier 5, mission spec §3; Raze + Assassinate, Decision 231): put out Halcyon's Great Flame, then kill the
-## High Priest who comes to rekindle it. Stage one is the Raze type's staged rule (M4's, as The Armoury's ruling has it): the oil-house
-## (the dwelling nearest OIL_AT whose door the street reaches) and the Great Temple come into use on the chain (STAGE_AT, or CHAIN after
-## the one before is razed -- at once for a target already down, M5's horn rule -- _spoilable()); before its time a target's fire goes
-## out and its fall counts only at its time; in use it is razed burned _spoil_for() seconds in all (SPOIL) or fallen. Lantern Knights --
-## soldiers MissionDirector._knight() adds, corps KNIGHT -- stand STANDING at each from the start along its quiet face (_face()) and
-## ARRIVING come out of its door there at its time; while one stands guard (within GUARD_REACH) the target is sealed (seal()). A fallen Knight is replaced RELIEF_AFTER later
-## from the Citadel's gate (RELIEFS a night; backing off while no road leads to his post). The Temple razed puts the flame out: Halcyon
-## looks harder (FURY a seen death, HeartGaze, each rise bannered), BEARERS Knights come out at the Citadel's gate as a litter's bearers
-## and Odran -- the cleric nearest the Citadel's gate, waiting inside it -- follows ODRAN_CHAIN later: hidden in his litter while two
-## bearers live (MissionDirector's shared ride, _ride_in() / _ride_step() / _ride_out(), as Pip rides M5's relic cart), on foot below two
-## with LAST_GUARD behind him; the litter at the Temple's steps sets him down there, its bearers his guard (plan decision 291). At the
-## steps, on foot and not held, he rekindles for RITE, started again by a whisper, Discord or a fright. His death, any way, wins once
-## the flame is out (StagesObjective); the flame still burning at BLESSED_AT, or rekindled, loses. Odran and every Knight are kept from
-## the town's flight by MissionDirector._hold_all(); the Knights are soldiers besides, whom the evacuation and the rally never take.
+## The Heart of Faith (v0.11 M6, Tier 5, mission spec §3; Raze + Assassinate, Decision 231): put out Halcyon's Great Flame, then kill
+## the High Priest who comes to rekindle it. Stage one is the Raze type's staged rule (M4's, as The Armoury's ruling has it): the
+## oil-house (the dwelling nearest OIL_AT whose door the street reaches) and the Great Temple come into use on the chain (STAGE_AT, or
+## CHAIN after the one before is razed -- at once for a target already down, M5's horn rule -- _spoilable()); before its time a target's
+## fire goes out and its fall counts only at its time; in use it is razed burned _spoil_for() seconds in all (SPOIL) or fallen. Lantern
+## Knights -- soldiers MissionDirector._knight() adds, corps KNIGHT -- stand STANDING at each from the start along its quiet face
+## (_face()) and ARRIVING come out of its door there at its time; while one stands guard (within GUARD_REACH) the target is sealed
+## (seal()). A fallen Knight is replaced RELIEF_AFTER later from the Citadel's gate (RELIEFS a night; backing off while no road leads to
+## his post). The Temple razed puts the flame out: Halcyon looks harder (FURY a seen death, HeartGaze, each rise bannered), BEARERS
+## Knights come out at the Citadel's gate as a litter's bearers and Odran -- the cleric nearest the Citadel's gate, waiting inside it --
+## follows ODRAN_CHAIN later: hidden in his litter while two bearers live (MissionDirector's shared ride, _ride_in() / _ride_step() /
+## _ride_out(), as Pip rides M5's relic cart), on foot below two with LAST_GUARD behind him; the litter at the Temple's steps sets him
+## down there, its bearers his guard (plan decision 291). At the steps, on foot and not held, he rekindles for RITE, started again by a
+## whisper, Discord or a fright. His death, any way, wins once the flame is out (StagesObjective); the flame still burning at
+## BLESSED_AT, or rekindled, loses. Odran and every Knight are kept from the town's flight by MissionDirector._hold_all(); the Knights
+## are soldiers besides, whom the evacuation and the rally never take.
 
 ## One Knight's post (v0.11 M6): a plain record, so the director holds no cycle.
 class Post:
@@ -228,7 +229,8 @@ func _face(s: Structure, quiet: Vector2) -> Vector2:
 	var best := Vector2.INF
 	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
 		var door := _walkable(s.center() + off)
-		if (crowd._grid == null or not crowd._grid.path(citadel_door, door).is_empty()) 				and (best == Vector2.INF or door.distance_to(quiet) < best.distance_to(quiet)):
+		if (crowd._grid == null or not crowd._grid.path(citadel_door, door).is_empty()) \
+				and (best == Vector2.INF or door.distance_to(quiet) < best.distance_to(quiet)):
 			best = door
 	return best if best != Vector2.INF else _front_of(s)
 
@@ -458,7 +460,7 @@ func step(delta: float) -> void:
 func _judge_gaze() -> void:
 	if _spare_win:  # the strike that ended Odran won the night first: its deaths are never judged (the controller's ruling)
 		_spare_win = false
-		gaze._deaths.clear()
+		gaze.drop_pending()
 		return
 	var was := gaze.value
 	gaze.judge_deaths(crowd)
@@ -892,8 +894,8 @@ func next_target() -> int:
 	return -1
 
 
-## The map tags, most important first (v0.11 M6, mission spec §3). Stage one: the target in use, gold and pointed at ("- GUARDED",
-## "- SET IT ALIGHT", or "- BURNING n" orange); the next one, grey and pointed at, with its sooner time, or once fallen "- DOWN" and it
+## The map tags, most important first (v0.11 M6, mission spec §3). Stage one: each target in use and standing (both, when the oil-house
+## still stands at the Temple's time), gold and pointed at ("- GUARDED", "- SET IT ALIGHT", or "- BURNING n" orange); the next one, grey and pointed at, with its sooner time, or once fallen "- DOWN" and it
 ## (M5's wording: "DOWN, COUNTS AT" dropped a plate); KNIGHT on each Knight on guard, a red diamond on a relief walking in, a small red
 ## mark on one away. Stage two: Odran in the Citadel (grey, pointed at, his chain's seconds once the flame is out), in his litter, on
 ## foot or rekindling (gold, pointed at); BEARER on each bearer and KNIGHT on his guards, red and pointed at (moving targets); the ALTAR
@@ -903,8 +905,9 @@ func tags() -> Array[MapTag]:
 	if lost_reason() != "" or stages_done():
 		return out
 	if not flame_out:
-		var cur := current()
-		if cur >= 0 and is_instance_valid(targets[cur]) and not targets[cur].destroyed:
+		for cur in targets.size():
+			if not in_use[cur] or razed(targets[cur]) or not is_instance_valid(targets[cur]) or targets[cur].destroyed:
+				continue
 			var s := targets[cur]
 			var label := "%s - SET IT ALIGHT" % NAMES[cur]
 			var col := MARK_TARGET
@@ -949,7 +952,8 @@ func tags() -> Array[MapTag]:
 
 
 ## The hint's phase (v0.11 M6, plan decision 303): stage two "coming", "litter", "rite", "on_foot"; stage one "guarded", "burning", "open"
-## for the target in use, "not_yet" for the next one fallen or within WORK_AHEAD of its time; else "".
+## for the target in use (of two, the first with no Knight on guard -- the work to do -- else the first), "not_yet" for the next one fallen
+## or within WORK_AHEAD of its time; else "".
 func hint_phase() -> String:
 	if lost_reason() != "" or stages_done():
 		return ""
@@ -960,6 +964,10 @@ func hint_phase() -> String:
 			return "litter"
 		return "rite" if rite_on else "on_foot"
 	var cur := current()
+	for i in targets.size():
+		if in_use[i] and not razed(targets[i]) and guards_at(i).is_empty():
+			cur = i
+			break
 	if cur >= 0:
 		if not guards_at(cur).is_empty():
 			return "guarded"

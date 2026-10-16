@@ -35,6 +35,7 @@ static func run(t) -> void:
 	_no_road(t)
 	_evacuated(t)
 	_tagged(t)
+	_both(t)
 	_freed(t)
 
 
@@ -92,7 +93,8 @@ static func _setup(t) -> void:
 	for p: HeartOfFaithDirector.Post in d.posts:
 		var k := p.man as Person
 		ok = ok and k.soldier and k.corps == Person.Corps.KNIGHT and is_equal_approx(k.health, Person.HEALTH_KNIGHT) \
-			and d.targets[p.target].distance_to(p.spot) <= HeartOfFaithDirector.GUARD_REACH + 0.01 and k.inside == p.arriving 			and d.targets[p.target].distance_to(p.spot) <= d.targets[1 - p.target].distance_to(p.spot)
+			and d.targets[p.target].distance_to(p.spot) <= HeartOfFaithDirector.GUARD_REACH + 0.01 and k.inside == p.arriving \
+			and d.targets[p.target].distance_to(p.spot) <= d.targets[1 - p.target].distance_to(p.spot)
 		for q: HeartOfFaithDirector.Post in d.posts:
 			if q != p and q.target == p.target:
 				ok = ok and p.spot.distance_to(q.spot) > Crowd.DOOM_WITNESS
@@ -264,8 +266,12 @@ static func _set_down(t) -> void:
 		Kit.arrive(p.man as Person, d.steps_at + d._corner(d.bearers.find(p)))
 	Kit.run_for(s, HeartOfFaithDirector.TICK + DT)
 	var o := d.odran as Person
+	var edged := 0
+	for m in d.tags():
+		if m.label == "KNIGHT" and m.edge:
+			edged += 1
 	t.check(not d.riding and not o.inside and o.mind == Person.Mind.DUTY and d.last_guards().size() == HeartOfFaithDirector.BEARERS
-		and Kit.labels(d).count("KNIGHT") == HeartOfFaithDirector.BEARERS,
+		and Kit.labels(d).count("KNIGHT") == HeartOfFaithDirector.BEARERS and edged == HeartOfFaithDirector.BEARERS,
 		"the litter at the Temple's steps sets him down on foot; its bearers stand by him as his guard, tagged (plan decision 291)")
 	Kit.done(s)
 
@@ -472,8 +478,9 @@ static func _evacuated(t) -> void:
 	d2._saw_evacuation = false
 	(s2.crowd as Crowd)._fled_all = false  # the town runs again, now with him recovering on foot
 	Kit.evacuate(s2)
+	var ran := o.mind == Person.Mind.FLEE  # the evacuation sent him running, before the director's look
 	Kit.run_for(s2, 2.0 * HeartOfFaithDirector.TICK + DT)
-	t.check(o.mind == Person.Mind.DUTY and (s2.crowd as Crowd).citizens.has(o) and not o.inside,
+	t.check(ran and o.mind == Person.Mind.DUTY and (s2.crowd as Crowd).citizens.has(o) and not o.inside,
 		"on foot, recovering when the town runs, he keeps his road; he never leaves the town")
 	Kit.done(s2)
 	var s3 := _world()
@@ -514,6 +521,21 @@ static func _tagged(t) -> void:
 		and ResultsScreen.ACT_TITLES.get("kindled") == "THE FLAME IS KINDLED ANEW" and MissionHints.line("heart_of_faith", "coming").contains(MissionHints.SECONDS)
 		and MissionHints.line("heart_of_faith", "coming").contains("adds %d to the Gaze" % roundi(HeartOfFaithDirector.FURY)),
 		"its results under its own keys; the hint counts Odran down and states the Gaze once the flame is out")
+	Kit.done(s)
+
+
+static func _both(t) -> void:
+	var s := _world()
+	var d: HeartOfFaithDirector = s.d
+	d.timeline.step(float(HeartOfFaithDirector.STAGE_AT[1]) + 0.5)
+	var temple := "TEMPLE - GUARDED"
+	t.check(d.in_use[0] and d.in_use[1] and not d.razed(d.oil_house) and Kit.labels(d).has("OIL-HOUSE - GUARDED") and Kit.labels(d).has(temple)
+		and Kit.edged(d, temple) and d.hint_phase() == "guarded",
+		"the oil-house still standing at the Temple's time: both in use, each tagged with its own state and pointed at")
+	_kill_knights(s, d, 1)
+	Kit.run_for(s, DT)
+	t.check(Kit.labels(d).has("TEMPLE - SET IT ALIGHT") and Kit.edged(d, "TEMPLE - SET IT ALIGHT") and d.hint_phase() == "open",
+		"its Knights dead, the Temple reads SET IT ALIGHT, and the hint follows the target with no guard")
 	Kit.done(s)
 
 

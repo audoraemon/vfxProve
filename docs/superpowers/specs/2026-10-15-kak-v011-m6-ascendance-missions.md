@@ -383,9 +383,9 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
     - The march from any household's road is 12 units or more (about 20 s), time to answer it.
   - **Watchmen, not soldiers:** every watcher is a lay citizen made a watchman, so Mind Whisper and Discord work on all of them.
   - **The patrols:**
-    - one walks the long west street from (-6.25, 0.0) to (-6.25, 12.0) and back, across the west household's road;
-    - one walks the east-west street from (1.0, 9.0) to (12.0, 9.0) and back, across the east household's road and short of the
-      south household's door.
+    - one walks the long west street from (-6.25, 0.0) to (-6.25, 12.0) and back, along the west household's road to the postern;
+    - one walks the east-west street from (1.0, 9.0) to (12.0, 9.0) and back, between the east household's road and the south
+      household's (about 2.2 and 2.8 units from them; Task 6's fix round 1, once the south household moved).
   - **The gates' watch:**
     - two watchmen at each gate's mouth, 2.4 apart, held on duty;
     - no guard change: the gate is cleared by acting, never waited out (§6.1's `watch_changes`);
@@ -454,6 +454,9 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   | `shut` | That gate is shut. Lead the household to another open gate. |
   | `waiting` | The next household comes out in {n} s. Clear its road and its gate of Inquisitors (red). |
 
+  `shut` and `gate` read the gate the household heads for (Task 6's fix round 1): its file's way out behind a lamp already out,
+  else the gate nearest where its lamp is whispered to, or stands.
+
 - **HUD:**
   - "Lead them out 3 / 10, 2 to spare" (`EscortObjective` with `need` 10, its line from `hud_line()`);
   - "Halcyon's Gaze 0%".
@@ -461,8 +464,10 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   The shuttings are on the strip. None is an `EventObjective`: only the last one loses, and only with fewer than ten out, so the
   director judges it (`lost_reason()`).
 - **Tour:**
-  1. "The west household hides here. It comes out at 0:15: whisper its lamp to the postern, and the rest follow."
-  2. "The gates. The Inquisition shuts the postern at 2:30, the Side Gate at 3:45 and the Main Gate at 5:00."
+  1. "The west household hides here. At 0:15, whisper its lamp to the postern; the rest follow."
+  2. "Gates shut: postern 2:30, Side Gate 3:45, Main Gate 5:00 (lost unless ten are out)."
+
+  (Task 6's fix round 1: each line fits the caption's one-line plate, and the last shutting's loss is said plainly.)
   3. "The Temple. Inquisitors take any believer they catch here. Ten must get out."
 - **Mission tags:** `shuts_gates`. It keeps "Lead my brother out" and "Lead my family out" away: on a night of leading out through
   gates that shut, a wish's escapee walking out through a shut gate would read as a contradiction.

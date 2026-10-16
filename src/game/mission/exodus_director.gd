@@ -68,7 +68,8 @@ const GATE_WORDS := ["the postern", "the Side Gate", "the Main Gate"]
 const GATE_ALONG := [Vector2.RIGHT, Vector2.DOWN, Vector2.RIGHT]
 ## The Temple's door, where a seized believer is taken and the searchers and reliefs come from (v0.11 M6).
 const TEMPLE_DOOR := LostLambDirector.TEMPLE_DOOR
-## The patrols' beats (v0.11 M6): the long west street; the east-west street short of the south household's door.
+## The patrols' beats (v0.11 M6): the long west street, along the west household's road to the postern; the east-west street, between
+## the east household's road and the south household's (about 2.2 and 2.8 units from them).
 const BEATS := [[Vector2(-6.25, 0.0), Vector2(-6.25, 12.0)], [Vector2(1.0, 9.0), Vector2(12.0, 9.0)]]
 ## Mission spec §2's numbers (v0.11 M6), first guesses, tuned by Step 9's gate in this order: CHAIN (20-30), BELIEVER_PACE (0.4-0.55),
 ## the houses (12-16 units of street from their gates), OUT_AT[0] (10-30), HUNT_AFTER (20-45); HUNT_AFTER down if doing nothing does not
@@ -839,8 +840,8 @@ func tags() -> Array[MapTag]:
 
 
 ## The hint's phase (v0.11 M6, plan decision 303): "caught" while a believer is marched; for the current household, "hounds" while its
-## searchers are within HOUNDS_NEAR of one of its own, "shut" once its gate is shut, "gate" while its lamp nears its watched gate;
-## "waiting" between households (not before the first); else "".
+## searchers are within HOUNDS_NEAR of one of its own, "shut" once the gate it is heading for (heading()) is shut, "gate" while its lamp
+## nears that gate, watched; "waiting" between households (not before the first); else "".
 func hint_phase() -> String:
 	if lost_reason() != "" or out_count() >= NEED:
 		return ""
@@ -855,12 +856,36 @@ func hint_phase() -> String:
 		for c: Charge in h.members:
 			if not _resolved(c) and not (c.man as Person).inside and (c.man as Person).ground_pos.distance_to(p.ground_pos) <= HOUNDS_NEAR:
 				return "hounds"
-	if (gates[h.gate] as Gate).shut:
+	var g := heading(cur)
+	if g < 0:
+		return ""
+	if (gates[g] as Gate).shut:
 		return "shut"
 	var lead := lamp(cur)
-	if lead != null and (lead.man as Person).ground_pos.distance_to((gates[h.gate] as Gate).mouth) <= NEAR_GATE and gate_watched(h.gate):
+	if lead != null and (lead.man as Person).ground_pos.distance_to((gates[g] as Gate).mouth) <= NEAR_GATE and gate_watched(g):
 		return "gate"
 	return ""
+
+
+## The gate household `i` is heading for (v0.11 M6, fix round 1): the one its file walks on to behind a lamp already out (out_to);
+## else the gate whose mouth is nearest where its lamp is whispered to, or, standing, where he stands -- shut or open, so the hint can
+## say a household makes for a shut gate; -1 with no lamp. Only reads.
+func heading(i: int) -> int:
+	var h: Household = households[i]
+	if h.out_to != Vector2.INF:
+		for g in gates.size():
+			if (gates[g] as Gate).way_out.distance_to(h.out_to) <= ESCAPE_REACH:
+				return g
+	var lead := lamp(i)
+	if lead == null:
+		return -1
+	var p := lead.man as Person
+	var to := p.goal() if p.mind == Person.Mind.WHISPERED and p.goal() != Vector2.INF else p.ground_pos
+	var best := -1
+	for g in gates.size():
+		if best < 0 or (gates[g] as Gate).mouth.distance_to(to) < (gates[best] as Gate).mouth.distance_to(to):
+			best = g
+	return best
 
 
 ## The seconds the hint counts down (v0.11 M6): in "waiting", until the next household comes out at the latest; else 0.
@@ -868,13 +893,14 @@ func hint_seconds() -> float:
 	return due_in(upcoming()) if hint_phase() == "waiting" else 0.0
 
 
-## The tour (v0.11 M6, mission spec §2): the west household's door, the postern, the Temple's door.
+## The tour (v0.11 M6, mission spec §2): the west household's door, the postern, the Temple's door; fix round 1: each line fits the
+## caption's one-line plate, and the gates' line says plainly that the last shutting loses the night unless ten are out.
 func tour() -> Array:
 	var out := []
 	if not households.is_empty():
-		out.append([(households[0] as Household).door, "The west household hides here. It comes out at %s: whisper its lamp to the postern, and the rest follow." % UiTheme.clock(float(OUT_AT[0]))])
+		out.append([(households[0] as Household).door, "The west household hides here. At %s, whisper its lamp to the postern; the rest follow." % UiTheme.clock(float(OUT_AT[0]))])
 	if not gates.is_empty():
-		out.append([(gates[0] as Gate).mouth, "The gates. The Inquisition shuts the postern at %s, the Side Gate at %s and the Main Gate at %s." % [
+		out.append([(gates[0] as Gate).mouth, "Gates shut: postern %s, Side Gate %s, Main Gate %s (lost unless ten are out)." % [
 			UiTheme.clock(float(SHUT_AT[0])), UiTheme.clock(float(SHUT_AT[1])), UiTheme.clock(float(SHUT_AT[2]))]])
 	out.append([temple_door, "The Temple. Inquisitors take any believer they catch here. Ten must get out."])
 	return out

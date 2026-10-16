@@ -36,6 +36,8 @@ static func run(t) -> void:
 	_gaze(t)
 	_evacuated(t)
 	_tagged(t)
+	_phases(t)
+	_heading(t)
 	_freed(t)
 	_lone_searchers(t)
 
@@ -515,10 +517,14 @@ static func _tagged(t) -> void:
 		Kit.arrive(v as Person, (v as Person).ground_pos + Vector2(40.0, 40.0))
 	t.check(Kit.labels(d).has("POSTERN - CLEAR"), "its watch gone, the postern reads clear")
 	var tour := d.tour()
-	t.check(tour.size() == 3 and String(tour[0][1]) == "The west household hides here. It comes out at %s: whisper its lamp to the postern, and the rest follow." % UiTheme.clock(float(ExodusDirector.OUT_AT[0]))
-		and String(tour[1][1]) == "The gates. The Inquisition shuts the postern at %s, the Side Gate at %s and the Main Gate at %s." % [
+	var fits := true
+	for stop: Array in tour:
+		fits = fits and UiTheme.width(String(stop[1]), UiTheme.SIZE_BODY) + 16.0 <= Kit.VIEW.x
+	t.check(tour.size() == 3 and String(tour[0][1]) == "The west household hides here. At %s, whisper its lamp to the postern; the rest follow." % UiTheme.clock(float(ExodusDirector.OUT_AT[0]))
+		and String(tour[1][1]) == "Gates shut: postern %s, Side Gate %s, Main Gate %s (lost unless ten are out)." % [
 			UiTheme.clock(float(ExodusDirector.SHUT_AT[0])), UiTheme.clock(float(ExodusDirector.SHUT_AT[1])), UiTheme.clock(float(ExodusDirector.SHUT_AT[2]))]
-		and String(tour[2][1]) == "The Temple. Inquisitors take any believer they catch here. Ten must get out.", "the tour")
+		and String(tour[2][1]) == "The Temple. Inquisitors take any believer they catch here. Ten must get out." and fits,
+		"the tour, each line within the caption's plate; the last gate's shutting loses unless ten are out (fix round 1)")
 	t.check(ResultsScreen.ACT_TITLES.get("exodus") == "THE FAITHFUL ARE OUT" and ResultsScreen.ACT_TITLES.get("exodus_few") == "TOO FEW ARE LEFT"
 		and ResultsScreen.ACT_TITLES.get("gates_shut") == "THE GATES ARE SHUT" and MissionHints.line("exodus", "waiting").contains(MissionHints.SECONDS),
 		"its results under its own keys")
@@ -555,4 +561,56 @@ static func _lone_searchers(t) -> void:
 	Kit.free_body(s, d.charge)
 	d._step_hunters()
 	t.check(d.charge == null and h.anchor == was, "the Escort type's searchers stand once its one charge is gone")
+	Kit.done(s)
+
+
+## Fix round 1 (v0.11 M6): each hint phase -- hounds, shut, gate, waiting -- with its seconds, and their order (caught, hounds, shut,
+## gate; waiting only between households).
+static func _phases(t) -> void:
+	var s := _world()
+	var d: ExodusDirector = s.d
+	d._come_out(0)
+	var h: ExodusDirector.Household = d.households[0]
+	var postern: ExodusDirector.Gate = d.gates[0]
+	var lp := d.lamp(0).man as Person
+	Kit.arrive(lp, postern.mouth + Vector2(0.0, -4.0))
+	t.check(d.gate_watched(0) and d.hint_phase() == "gate" and d.hint_seconds() == 0.0,
+		"the lamp within %d of the gate it heads for, watched: gate (no seconds)" % roundi(EscortDirector.NEAR_GATE))
+	d._shut(0)
+	t.check(d.hint_phase() == "shut" and d.hint_seconds() == 0.0, "that gate shut: shut, before gate (no seconds)")
+	d._send(0)
+	var hound := h.searchers[0] as Person
+	Kit.arrive(hound, lp.ground_pos + Vector2(ExodusDirector.HOUNDS_NEAR - 1.0, 0.0))
+	t.check(d.searchers_out(0).has(hound) and d.hint_phase() == "hounds" and d.hint_seconds() == 0.0,
+		"a searcher within %d of a believer: hounds, before shut (no seconds)" % roundi(ExodusDirector.HOUNDS_NEAR))
+	var w := d.watch[2]
+	Kit.arrive(w, lp.ground_pos + Vector2(0.0, 1.0))
+	d._seize(d.lamp(0), w)
+	t.check(d.hint_phase() == "caught" and d.hint_seconds() == 0.0, "a believer seized: caught, before hounds")
+	Kit.done(s)
+	s = _world()
+	d = s.d
+	d._come_out(0)
+	for c: EscortDirector.Charge in (d.households[0] as ExodusDirector.Household).members:
+		c.escaped = true
+	Kit.run_for(s, ExodusDirector.TICK + DT)
+	t.check(d.current() == -1 and d.upcoming() == 1 and d.hint_phase() == "waiting" and absf(d.hint_seconds() - d.due_in(1)) < 0.01
+		and absf(d.hint_seconds() - ExodusDirector.CHAIN) < 1.0 and MissionHints.filled(MissionHints.line("exodus", "waiting"), d.hint_seconds()).contains("in 25 s"),
+		"a household done and the next inside: waiting, counting down to it (%.1f s)" % d.hint_seconds())
+	Kit.done(s)
+
+
+## Fix round 1 (v0.11 M6): the shut phase keys to the gate the household heads for, not the one it was bound for.
+static func _heading(t) -> void:
+	var s := _world()
+	var d: ExodusDirector = s.d
+	_clear_watch(d)
+	d._come_out(0)
+	var lp := d.lamp(0).man as Person
+	var main_gate: ExodusDirector.Gate = d.gates[2]
+	lp.whisper(main_gate.mouth, MindWhisperFx.LINGER)
+	d._shut(0)
+	t.check(d.heading(0) == 2 and d.hint_phase() == "", "the west lamp whispered toward the Main Gate: its own postern shut gives no false shut")
+	d._shut(2)
+	t.check(d.lost_reason() == "" and d.hint_phase() == "shut", "the Main Gate it heads for shut: shut")
 	Kit.done(s)

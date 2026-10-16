@@ -343,7 +343,7 @@ gates one by one. M3 lesson 1 says the households must come on the chain, so eac
 through, or at its time. The work is their walk: watchmen to clear on the road and at the gate, searchers sent after each household,
 and seizures to answer. The households follow their lamp-bearer, so one whisper moves a family, not a person.
 
-- **Brief:** "The Inquisition comes for your believers tonight." / "Lead ten out before the gates are shut."
+- **Brief:** "The Inquisition comes for your flock." / "Lead ten out before the gates shut."
 - **Card type:** Protect. **Id:** `exodus`.
 - **Map** (each house is the dwelling nearest its point with a door the street reaches that is quiet: no patrol's beat and no
   gate's watch within 3.5 of it; never reserved):

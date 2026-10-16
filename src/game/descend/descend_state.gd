@@ -131,19 +131,28 @@ static func lock_text(tier: int) -> String:
 	return "Clear %d %s mission%s" % [n, TierBook.tier_name(tier - 1), "" if n == 1 else "s"]
 
 
-## The results' tier line (spec §6): "Omen 1 / 2 cleared: one more opens Wrath", "...: Wrath is open", or for the last tier
-## its count alone.
+## The results' tier line (spec §6): "Omen 1 / 2 cleared: one more opens Wrath", "...: Wrath is open". v0.11 M6 (Decision 251): the last
+## tier counts all its missions, "Ascendance 2 / 5 cleared", and with every board mission cleared "...: every tier is cleared".
 func progress_line(tier: int) -> String:
 	var n := cleared_in(tier)
+	if tier >= TierBook.NAMES.size():
+		var last := "%s %d / %d cleared" % [TierBook.tier_name(tier), n, TierBook.missions(tier).size()]
+		return last + (": every tier is cleared" if all_cleared() else "")
 	var need := TierBook.need(tier)
 	var head := "%s %d / %d cleared" % [TierBook.tier_name(tier), mini(n, need), need]
-	if tier >= TierBook.NAMES.size():
-		return head
 	var next := TierBook.tier_name(tier + 1)
 	if is_open(tier + 1):
 		return "%s: %s is open" % [head, next]
 	var left := need - n
 	return "%s: %s" % [head, ("one more opens " + next) if left == 1 else ("%d more open %s" % [left, next])]
+
+
+## Every board mission is cleared (v0.11 M6, mission spec §4, Decision 252): the board complete.
+func all_cleared() -> bool:
+	for id in TierBook.all():
+		if not cleared.has(id):
+			return false
+	return true
 
 
 ## Banks a finished board night for the mission `id` (spec §3.3, §6) and returns what changed, for the results. `outcome` is

@@ -24,14 +24,15 @@ static func _table(t) -> void:
 		and Array(TierBook.missions(2)) == ["miras_house", "broken_lanterns", "bell_ringers", "market_panic", "informer"]
 		and Array(TierBook.missions(3)) == ["vigil_flame", "festival", "crowns_bread", "prisoner", "heretic_hunt"]
 		and Array(TierBook.missions(4)) == ["procession", "bishop", "armoury", "sermon", "relic_run"]
-		and Array(TierBook.missions(5)) == ["last_judgement", "long_night"], "Whisper, Omen, Wrath and Reckoning complete (v0.11 M2-M5); the ★ missions on theirs (spec §8)")
-	t.check(TierBook.all().size() == 22 and TierBook.tier_of("festival") == 3 and TierBook.tier_of("feast_festival") == 0
+		and Array(TierBook.missions(5)) == ["last_judgement", "long_night", "lantern_eye", "exodus", "heart_of_faith"],
+		"every tier complete (v0.11 M2-M6); the ★ missions first on theirs (spec §8)")
+	t.check(TierBook.all().size() == 25 and TierBook.tier_of("festival") == 3 and TierBook.tier_of("feast_festival") == 0
 		and not TierBook.has("feast_festival") and TierBook.has("long_night") and TierBook.tier_of("lost_lamb") == 1,
 		"found by id; the campaign's Feast is not one")
 	var needs := []
 	for tier in range(1, 6):
 		needs.append(TierBook.need(tier))
-	t.check(needs == [3, 3, 3, 3, 2], "Whisper, Omen, Wrath and Reckoning need three of their five (v0.11 M2-M5); Ascendance still needs both (%s)" % [needs])
+	t.check(needs == [3, 3, 3, 3, 3], "every tier needs three of its five (v0.11 M2-M6); Ascendance opens nothing (%s)" % [needs])
 	t.check(TierBook.believers(10, 1) == 10 and TierBook.believers(15, 2) == 23 and TierBook.believers(10, 5) == 30
 		and TierBook.believers(5, 4) == 13, "believers times the multiplier, rounded")
 	t.check(TierBook.type_of("warning") == "Intercept" and TierBook.type_of("last_judgement") == "Destroy"
@@ -61,7 +62,7 @@ static func _unlock(t) -> void:
 	far.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb", "miras_house", "broken_lanterns", "bell_ringers", "vigil_flame", "festival", "crowns_bread", "procession", "bishop", "armoury"])
 	t.check(far.refresh_open() == 5 and far.open_tier == 5, "tiers open one after another, up to Ascendance")
 	t.check(far.progress_line(1) == "Whisper 3 / 3 cleared: Omen is open" and s.progress_line(3) == "Wrath 0 / 3 cleared: 3 more open Reckoning"
-		and far.progress_line(5) == "Ascendance 0 / 2 cleared", "the results' tier line (%s; %s)" % [far.progress_line(1), s.progress_line(3)])
+		and far.progress_line(5) == "Ascendance 0 / 5 cleared", "the results' tier line (%s; %s)" % [far.progress_line(1), s.progress_line(3)])
 	var one := DescendState.new()
 	one.cleared = PackedStringArray(["warning", "tax_collector", "lost_lamb"])
 	one.refresh_open()

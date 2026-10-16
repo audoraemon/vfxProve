@@ -117,8 +117,8 @@ static func _setup(t) -> void:
 	for obj in m.objectives():
 		reasons.append(obj.reason)
 	t.check(m.tier == 5 and is_equal_approx(m.clock, 420.0) and reasons == ["heart", "gaze", "dawn"]
-		and Array(m.default_loadout) == ["doom", "smite", "ember", "whisper", "heaven"] and Array(m.mission_tags) == ["burns_temple"],
-		"the mission: Tier 5's numbers; the Heart, the Gaze, dawn; it burns the Temple (%s)" % [reasons])
+		and Array(m.default_loadout) == ["doom", "smite", "ember", "whisper", "heaven"] and Array(TierBook.board("heart_of_faith").mission_tags) == ["burns_temple"],
+		"the mission: Tier 5's numbers; the Heart, the Gaze, dawn; on the board it burns the Temple (%s)" % [reasons])
 	Kit.done(s)
 
 

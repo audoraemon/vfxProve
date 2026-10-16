@@ -96,9 +96,11 @@ func lock_line() -> String:
 	return "" if _state().is_open(tier) else DescendState.lock_text(tier)
 
 
-## The header's line (spec §3.1): the night about to be played, and the believers.
+## The header's line (spec §3.1): the night about to be played, and the believers. v0.11 M6 (Decision 252): "All 25 cleared" once every
+## board mission is.
 func header_text() -> String:
-	return "Night %d   Believers %d" % [_state().night + 1, _state().believers]
+	var line := "Night %d   Believers %d" % [_state().night + 1, _state().believers]
+	return line + ("   All %d cleared" % TierBook.all().size() if _state().all_cleared() else "")
 
 
 ## A card's best, part by part (spec §3.1, §3.5; v0.11 M2, Task 8): "Not yet cleared", or "Cleared" with its fastest clear and most

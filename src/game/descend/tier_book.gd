@@ -7,11 +7,11 @@ extends RefCounted
 ## The tiers' names, Tier 1 first (2-4 are placeholders the user may rename).
 const NAMES := ["Whisper", "Omen", "Wrath", "Reckoning", "Ascendance"]
 ## The board's missions on each tier, by id: spec §8's ★ missions, and from v0.11 M2 the tiers' own (MissionBook.tier_missions()):
-## Whisper's from M2, Omen's from M3, Wrath's from M4, and Reckoning's -- The Procession and M5's four -- from M5.
+## Whisper's from M2, Omen's from M3, Wrath's from M4, Reckoning's -- The Procession and M5's four -- from M5, and Ascendance's three, after the two ★ missions, from M6.
 const MISSIONS := [["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"],
 	["miras_house", "broken_lanterns", "bell_ringers", "market_panic", "informer"],
 	["vigil_flame", "festival", "crowns_bread", "prisoner", "heretic_hunt"], ["procession", "bishop", "armoury", "sermon", "relic_run"],
-	["last_judgement", "long_night"]]
+	["last_judgement", "long_night", "lantern_eye", "exodus", "heart_of_faith"]]
 ## The town's readiness on each tier, as ResponseProfile.level(): Unaware, Organized, Prepared, God-Resistant twice.
 const READINESS := [1, 2, 3, 4, 4]
 ## The base slots and Divine Power on each tier; the upgrades add to them.
@@ -24,7 +24,7 @@ const WISHES := [2, 2, 3, 3, 3]
 const MULTIPLIERS := [1.0, 1.5, 2.0, 2.5, 3.0]
 ## Cleared missions of a tier that open the next (spec §3.2), fewer while a tier has fewer missions (before M6). Whisper has five
 ## from v0.11 M2, so it takes the full three. Omen has five from v0.11 M3, so Wrath takes the full three too. Wrath has five from
-## v0.11 M4, so Reckoning takes the full three too. Reckoning has five from v0.11 M5, so Ascendance takes the full three too.
+## v0.11 M4, so Reckoning takes the full three too. Reckoning has five from v0.11 M5, so Ascendance takes the full three too. Ascendance has five from v0.11 M6; it is the last tier and opens nothing.
 const NEED := 3
 ## The most slots a loadout can have: the HUD's row and the keys 1-6.
 const MAX_SLOTS := 6
@@ -37,11 +37,13 @@ const TYPES := {"warning": "Intercept", "miras_house": "Cult", "broken_lanterns"
 	"festival": "Break", "procession": "Kill", "last_judgement": "Destroy", "long_night": "Three acts",
 	"tax_collector": "Kill", "spoiled_harvest": "Destroy", "lost_lamb": "Protect", "first_prayers": "Cult",
 	"bell_ringers": "Intercept", "market_panic": "Break", "informer": "Kill", "crowns_bread": "Destroy", "prisoner": "Protect",
-	"heretic_hunt": "Protect", "bishop": "Kill", "armoury": "Destroy", "sermon": "Cult", "relic_run": "Cult"}
+	"heretic_hunt": "Protect", "bishop": "Kill", "armoury": "Destroy", "sermon": "Cult", "relic_run": "Cult",
+	"lantern_eye": "Anchors", "exodus": "Protect", "heart_of_faith": "Kill"}
 ## The tags a mission declares for the wishes to filter on (spec §5.1): a wish listing one of them is never drawn there.
 ## unaware_town is not declared: board() derives it from the town's readiness (v0.11 M2).
 const MISSION_TAGS := {"miras_house": ["spares_houses"], "tax_collector": ["hunts_tax_collector"], "informer": ["hunts_informer"],
-	"crowns_bread": ["razes_bread"], "bishop": ["burns_temple"], "armoury": ["razes_barracks"]}
+	"crowns_bread": ["razes_bread"], "bishop": ["burns_temple"], "armoury": ["razes_barracks"], "exodus": ["shuts_gates"],
+	"heart_of_faith": ["burns_temple"]}
 ## The tag every board mission in an Unaware town carries (v0.11 M2), and that readiness on ResponseProfile.level()'s scale.
 const UNAWARE_TAG := "unaware_town"
 const UNAWARE_LEVEL := 1
@@ -89,7 +91,7 @@ static func multiplier(tier: int) -> float:
 	return float(_at(MULTIPLIERS, tier))
 
 
-## Cleared missions of `tier` that open the next: NEED, or all of them while the tier has fewer (spec §3.2).
+## Cleared missions of `tier` that open the next: NEED, or all of them while the tier has fewer (spec §3.2). Every tier has five from v0.11 M6.
 static func need(tier: int) -> int:
 	return mini(NEED, missions(tier).size())
 

@@ -160,7 +160,8 @@ static func _clashes(t) -> void:
 	t.check(not heard.has("brother") and not heard.has("family_out") and WishBook.clashes(_def("brother"), PackedStringArray(["shuts_gates"]))
 		and WishBook.clashes(_def("family_out"), PackedStringArray(["shuts_gates"])) and not near_temple.has("heretic")
 		and (heard.has("zealot") or heard.has("priest")), "sixty draws: shuts_gates keeps both escape wishes away, burns_temple the pyre (%s)" % [heard.keys()])
-	t.check(MissionBook.exodus().mission_tags.has("shuts_gates"), "Exodus declares shuts_gates, the tag both escape wishes clash with")
+	t.check(TierBook.board("exodus").mission_tags.has("shuts_gates"),
+		"Exodus on the board declares shuts_gates, the tag both escape wishes clash with (the board takes its tags from TierBook.MISSION_TAGS)")
 	Kit.done(s)
 
 

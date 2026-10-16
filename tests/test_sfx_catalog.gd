@@ -16,31 +16,52 @@ static func run(t) -> void:
 	for cue in [&"orb_hit", &"laser_sizzle"]:
 		t.check(Sfx.paths_for(cue).size() > 1, "%s has variants" % cue)
 
-	# The GodotSfxr categories (tools/audio/sfxr_bake.gd): every source is baked to a file the catalog plays, and every
-	# file the catalog plays from those folders has its source, so none is left over from tools/audio/synth.py.
+	# Every sound has a source and every source is built into a file the catalog plays. A source is a GodotSfxr
+	# resource or score (tools/audio/sfxr/<category>/), a recipe of recordings (tools/audio/foley/<category>/..., the
+	# powers' over tools/audio/synth.py's renders) or a music score (tools/audio/music/<cue>.score.json).
 	var played := {}
 	for cue in Sfx.CATALOG:
 		for path in Sfx.paths_for(cue):
 			played[path] = true
-	var src := "res://tools/audio/sfxr/"
 	var unbaked := ""
 	var sourced := {}
-	for category in DirAccess.get_directories_at(src):
-		if category == "voices":
-			continue
-		for file in DirAccess.get_files_at(src + category):
-			var name := file.trim_suffix(".score.json") if file.ends_with(".score.json") else file.trim_suffix(".tres")
-			if name == file:
-				continue
-			var wav := "res://assets/audio/%s/%s.wav" % [category, name]
+	var from := {"sfxr": 0, "foley": 0, "music": 0}
+	for kind: String in ["sfxr", "foley"]:
+		for file in _sources("res://tools/audio/%s/" % kind, ""):
+			var rel: String = file.trim_suffix(".score.json").trim_suffix(".json").trim_suffix(".tres")
+			var wav := "res://assets/audio/%s.wav" % rel
 			sourced[wav] = true
+			from[kind] += 1
 			if not played.has(wav) or not ResourceLoader.exists(wav):
-				unbaked += " " + name
-	t.check(unbaked == "", "every GodotSfxr source is baked and in the catalog (not:%s)" % unbaked)
-	t.check(sourced.size() == 37, "37 sounds come from GodotSfxr (%d)" % sourced.size())
+				unbaked += " " + rel
+	for file in DirAccess.get_files_at("res://tools/audio/music/"):
+		if file.begins_with("music_") and file.ends_with(".score.json"):
+			var wav := "res://assets/audio/music/%s.wav" % file.trim_suffix(".score.json")
+			sourced[wav] = true
+			from["music"] += 1
+			if not played.has(wav) or not ResourceLoader.exists(wav):
+				unbaked += " " + file
+	t.check(unbaked == "", "every source is built and in the catalog (not:%s)" % unbaked)
+	t.check(sourced.size() == 115 and from["sfxr"] == 14 and from["foley"] == 97 and from["music"] == 4,
+		"all 115 sounds have a source: 14 GodotSfxr, 97 recipes of recordings, 4 music (%d: %s)" % [sourced.size(), from])
 	var orphan := ""
 	for path: String in played:
-		var category := path.get_base_dir().get_file()
-		if category in ["ui", "citizen", "building", "music"] and not sourced.has(path):
+		if not sourced.has(path):
 			orphan += " " + path.get_file()
-	t.check(orphan == "", "and every interface, citizen, building and music file has a source (not:%s)" % orphan)
+	t.check(orphan == "", "and every file the catalog plays has a source (not:%s)" % orphan)
+
+
+## Every source file under `dir` (a GodotSfxr resource or score, or a recipe), as a path relative to the root it was
+## first called with, without "voices" (instruments, not cues) or any folder starting with "_" (set aside).
+static func _sources(root: String, rel: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var dir := root + rel
+	for sub in DirAccess.get_directories_at(dir):
+		if sub == "voices" or sub.begins_with("_"):
+			continue
+		out.append_array(_sources(root, rel + sub + "/"))
+	if rel != "":
+		for file in DirAccess.get_files_at(dir):
+			if file.get_extension() in ["tres", "json"]:
+				out.append(rel + file)
+	return out

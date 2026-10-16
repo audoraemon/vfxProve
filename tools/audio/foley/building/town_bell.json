@@ -1,0 +1,4 @@
+{"length": 4.5, "peak_db": -1.0, "reverb": {"rt60": 2.0, "mix": 0.12, "predelay_ms": 25, "damp": 4500}, "layers": [
+  {"src": "lib:wikimedia/Church_bells_-_Leverkusen_2007.wav", "from": 2.45, "dur": 4.5, "gain_db": 0, "hp": 60, "fade_in": 15, "fade_out": 700},
+  {"src": "lib:wikimedia/Church_of_Saint_Mark_Litovel_ringing.ogg", "from": 5.0, "dur": 4.5, "gain_db": -9, "hp": 80, "fade_in": 15, "fade_out": 700}
+]}

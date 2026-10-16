@@ -1,0 +1,17 @@
+{
+ "_about": "Prompts for tools/audio/sao_generate.py: sounds the recording library lacks, for the powers. seconds: length; takes: how many seeds.",
+ "holy_strike": {"prompt": "massive divine lightning strike from the sky, thunder crack, bright holy energy impact, cinematic", "seconds": 3.0, "takes": 4},
+ "holy_choir_swell": {"prompt": "short ethereal choir swell rising, holy magic charging, reverb", "seconds": 2.0, "takes": 4},
+ "rune_activate": {"prompt": "magic rune activating, glowing crystal hum, sparkling shimmer, fantasy spell", "seconds": 1.5, "takes": 4},
+ "dark_implode": {"prompt": "dark magic implosion, gravity collapse, deep whoosh sucked inward then boom", "seconds": 2.5, "takes": 4},
+ "stone_hands_rise": {"prompt": "giant stone hands rising from the ground, rocks grinding and crumbling, deep rumble", "seconds": 2.0, "takes": 4},
+ "giant_punch": {"prompt": "colossal stone fist slamming the ground, huge impact, debris and dust", "seconds": 1.5, "takes": 4},
+ "dragon_breath": {"prompt": "dragon breathing a long blast of fire, roaring flames, whooshing fire stream", "seconds": 2.5, "takes": 4},
+ "lava_eruption": {"prompt": "volcanic eruption, lava bursting from the ground, rocks thrown, fiery explosion", "seconds": 3.0, "takes": 4},
+ "ice_eruption": {"prompt": "huge ice crystals bursting up from the ground, cracking and shattering ice, freezing wind", "seconds": 2.0, "takes": 4},
+ "tsunami_wall": {"prompt": "giant wave crashing over a town, roaring water wall, debris in water", "seconds": 3.0, "takes": 4},
+ "tornado_form": {"prompt": "tornado forming, howling spinning wind vortex, rising roar", "seconds": 2.0, "takes": 4},
+ "orbital_beam": {"prompt": "energy beam from orbit hitting the ground, sci-fi blast, sizzling impact", "seconds": 1.5, "takes": 4},
+ "nuclear_blast": {"prompt": "distant nuclear explosion, deep sub bass boom, long rumbling shockwave", "seconds": 4.0, "takes": 4},
+ "curse_whisper": {"prompt": "eerie cursed whispers, dark ghostly magic, unsettling", "seconds": 2.0, "takes": 4}
+}

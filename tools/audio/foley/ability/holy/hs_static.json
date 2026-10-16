@@ -1,0 +1,4 @@
+{"length": 2.0, "loop": true, "peak_db": -1.0, "layers": [
+  {"src": "lib:synth/heaven/hs_static.wav", "at": 0.0, "gain_db": -12, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/spell-sounds/electricspell2.ogg", "gain_db": -2, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 5.0, "at": 0.0}
+]}

@@ -1,0 +1,11 @@
+{"length": 1.6, "peak_db": -1.0, "eq": [["lowshelf", 150, -5.0], ["peak", 3200, 3.5, 0.8], ["highshelf", 8000, 2.0]], "reverb": {"rt60": 1.1, "mix": 0.16, "predelay_ms": 15, "damp": 5000}, "layers": [
+  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "onset": true, "at": 0.0, "dur": 1.6, "pitch": -2.223, "lp": 380, "gain_db": -9, "fade_out": 500},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_03.ogg", "at": 0.0, "onset": true, "gain_db": -1},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "from": 1.508, "dur": 1.5, "at": 0.05, "gain_db": -5, "fade_in": 30, "fade_out": 450},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_04.ogg", "at": 0.242, "onset": true, "pitch": -0.436, "gain_db": -6.251},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_02.ogg", "at": 0.274, "onset": true, "pitch": -0.875, "gain_db": -6.144},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_05.ogg", "at": 0.311, "onset": true, "pitch": -2.88, "gain_db": -6.495},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_01.ogg", "at": 0.688, "onset": true, "pitch": 0.972, "gain_db": -3.662},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_02.ogg", "at": 0.825, "onset": true, "pitch": 0.485, "gain_db": -3.761},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMining_002.ogg", "at": 0.257, "onset": true, "pitch": -1, "gain_db": -3}
+]}

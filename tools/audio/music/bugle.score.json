@@ -1,0 +1,12 @@
+{"length": 1.6, "out": "tools/audio/music/render/bugle.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 1.4, "mix": 0.15}, "parts": [
+  {"instrument": "trumpet", "level_db": -14, "notes": [
+    {"t": 0, "p": "D5", "hold": 0.12, "vel": 110},
+    {"t": 0.15, "p": "D5", "hold": 0.12, "vel": 105},
+    {"t": 0.3, "p": "A5", "hold": 0.7, "vel": 118}
+  ]},
+  {"instrument": "horn_solo", "level_db": -19, "notes": [
+    {"t": 0, "p": "D4", "hold": 0.12, "vel": 105},
+    {"t": 0.15, "p": "D4", "hold": 0.12, "vel": 100},
+    {"t": 0.3, "p": "A4", "hold": 0.7, "vel": 112}
+  ]}
+]}

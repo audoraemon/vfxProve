@@ -1,0 +1,5 @@
+{"length": 1.2, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/nova/nova_shockwave.wav", "at": 0.0, "gain_db": -10, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/wind-hit-time-morph/qubodup-timehitwind/qubodup-megaswosh2.wav", "gain_db": -3, "onset": true, "at": 0.0},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "gain_db": -11, "dur": 1.1, "at": 0.1}
+]}

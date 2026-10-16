@@ -1,0 +1,4 @@
+{"length": 2.0, "loop": true, "peak_db": -1.0, "layers": [
+  {"src": "lib:synth/orbital/orb_embers.wav", "at": 0.0, "gain_db": -12, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/fire-crackling/fire-1_0.ogg", "gain_db": -3, "dur": 2.4, "fade_in": 400, "fade_out": 400, "from": 0.3, "at": 0.0}
+]}

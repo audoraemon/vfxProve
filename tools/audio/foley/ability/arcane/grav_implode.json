@@ -1,0 +1,6 @@
+{"length": 2.5, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.16, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:synth/gravity/grav_implode.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/explosions-4/explosion3.ogg", "gain_db": -3, "onset": true, "at": 0.391},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Darkness3.ogg", "gain_db": -9, "onset": true, "at": 0.0},
+  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "gain_db": -6, "onset": true, "lp": 300, "at": 0.391}
+]}

@@ -792,7 +792,7 @@ func _escape_banner() -> String:
 
 ## The map tags, most important first (v0.11 M6, mission spec §2): each believer seized, TAKEN TO THE TEMPLE, his seizer TAKING HIM IN and
 ## the Temple's door, red, pointed at; each lamp, LAMP - DO NOT KILL, steel blue, pointed at, and a steel-blue diamond on each other
-## believer out; the next household still inside, HOUSEHOLD - OUT BY its sooner time, grey, pointed at; each gate, watched, clear, shutting
+## believer out; the next household still inside, HOUSEHOLD - OUT IN its countdown (the strip's time), grey, pointed at; each gate, watched, clear, shutting
 ## or shut, pointed at; the households after it, the same (listed after the gates: a far household's plate never hides a gate's label,
 ## the photograph's Main Gate); SEARCHER on each searcher out, pointed at; PATROL on each patrol's first watchman and a red diamond on
 ## the rest and on each gate's watch.

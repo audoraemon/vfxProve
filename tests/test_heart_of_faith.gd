@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_rite(t)
 	_fury(t)
 	_won(t)
+	_seen_win(t)
 	_leaves(t)
 	_blessed(t)
 	_relief(t)
@@ -339,6 +340,36 @@ static func _won(t) -> void:
 		home = home and p.done
 	t.check(d.odran_dead and d.stages_done() and main.check(s.rules) == Objective.Status.DONE and main.reason == "heart" and home,
 		"Odran dead once the flame is out: the Heart of Faith is broken; his Knights go home")
+	Kit.done(s)
+
+
+static func _seen_win(t) -> void:
+	var s := _world()
+	var d: HeartOfFaithDirector = s.d
+	var crowd: Crowd = s.crowd
+	_put_out(d)
+	Kit.run_for(s, DT)
+	for p: HeartOfFaithDirector.Post in d.bearers:
+		Kit.free_body(s, p.man)
+	d._odran_comes()
+	Kit.run_for(s, HeartOfFaithDirector.TICK + DT)
+	var o := d.odran as Person
+	var seer: Person = null
+	for p in crowd.citizens:
+		if MissionDirector._alive(p) and not p.inside and p != o:
+			seer = p
+			break
+	Kit.arrive(seer, o.ground_pos + Vector2(1.0, 0.0))
+	d.gaze.value = 90.0
+	crowd._field.kill(o, &"lightning")
+	Kit.run_for(s, DT)
+	var rules: Rules = s.rules
+	t.check(rules.finished and rules.won and rules.objectives[0].reason == "heart" and is_equal_approx(d.gaze.value, 90.0)
+		and (rules.objectives[1] as Objective).check(rules) == Objective.Status.PENDING and not d._spare_win,
+		"a seen kill of Odran that would fill the Gaze wins the night: the winning strike is never judged (the controller's ruling)")
+	d.gaze.note_death(seer.ground_pos + Vector2(0.5, 0.0))  # a later death beside the witness
+	d._judge_gaze()
+	t.check(d.gaze.value > 90.0, "a seen death after it is judged as before (%d)" % roundi(d.gaze.value))
 	Kit.done(s)
 
 

@@ -145,6 +145,8 @@ var _homeward: Array = []
 ## Seconds into the night, and to the next look (v0.11 M6).
 var _clock := 0.0
 var _tick_in := 0.0
+## Odran fell with the flame out since the Gaze was last judged: his strike's deaths go unjudged (v0.11 M6, _judge_gaze()).
+var _spare_win := false
 
 
 ## The night's setup (v0.11 M6): the Heart's Gaze; the two targets, kept from the town's engineers; at each, its standing Knights at
@@ -451,8 +453,13 @@ func step(delta: float) -> void:
 
 
 ## The Gaze's seen deaths judged (v0.11 M6, the controller's ruling: every rise has a banner), "HALCYON SEES A DEATH", and its FURY once the
-## flame is out.
+## flame is out. The deaths waiting when Odran fell -- his own and his strike's -- are let go unjudged: the kill that wins the night is done
+## before the Gaze is judged, so a winning strike never also loses (nor, on the board, ends the held night).
 func _judge_gaze() -> void:
+	if _spare_win:  # the strike that ended Odran won the night first: its deaths are never judged (the controller's ruling)
+		_spare_win = false
+		gaze._deaths.clear()
+		return
 	var was := gaze.value
 	gaze.judge_deaths(crowd)
 	if gaze.value > was:
@@ -822,6 +829,7 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 	gaze.note_death(e.ground_pos)
 	if odran != null and is_instance_valid(odran) and e == odran and not odran_dead:
 		odran_dead = true
+		_spare_win = flame_out
 		_knights_home()
 
 

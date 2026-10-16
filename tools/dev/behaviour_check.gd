@@ -164,6 +164,14 @@ extends SceneTree
 ##          Whisper sends him to it; halted and watched with Pip by, Discord holding every watcher, else a Will-o'-Wisp for passers-by,
 ##          else Discord on the escorts, else Silent Doom on a watcher alone and unseen, else Mind Whisper sends one off; aboard at the
 ##          first halt, nothing; the result line gives the longest idle stretch). --seed= as ringers.
+##   exodus  (v0.11 M6) Exodus, --case=none (nothing cast) or play, as a player plays it (_exodus_act(): a believer seized -- Discord on his
+##          seizer, else Mind Whisper sends the seizer off, else Silent Doom on him unseen; searchers within EXODUS_HOUNDS of a believer --
+##          cleared, else Silent Doom on them unseen wherever they walk; a watcher within SIGHT + EXODUS_WARN of a believer -- cleared; a
+##          believer left out of his file -- whispered to his lamp; each household out -- Mind Whisper sends its lamp up to 10 units along
+##          its road to the nearest open gate, short of a watched gate and of the first watcher on the way, else that watcher cleared; the
+##          next household within EXODUS_AHEAD -- the first watcher on its road cleared; "cleared" is Silent Doom unseen, else Discord, else
+##          Mind Whisper; never a loud power, and every Doom unseen with room to spare and sparing the believers, so its Gaze stays 0-10%;
+##          the result line gives the Gaze and the longest idle stretch). --seed= as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -314,6 +322,19 @@ const RELIC_LURE := 4.0
 const RELIC_PAIR := 1.2
 const RELIC_MARGIN := 0.15
 const RELIC_AWAY := 8.0
+## Exodus's policy (v0.11 M6): how near a believer searchers are answered; how near the lamp's way or its gate a watcher counts; how far
+## short of a watched gate the lamp waits, and the least step it is whispered on; how soon before the next household its road is
+## cleared, and how soon by Mind Whisper too (sooner, the watcher is back at his post before it comes); how far beyond the witness reach
+## of those Silent Doom takes no one may stand (a passer-by walks in while it falls); how far beyond SIGHT a watcher counts as about to
+## see a believer.
+const EXODUS_HOUNDS := 6.0
+const EXODUS_NEAR := 4.0
+const EXODUS_WAIT := 3.0
+const EXODUS_STEP := 1.5
+const EXODUS_AHEAD := 25.0
+const EXODUS_SOON := 8.0
+const EXODUS_MARGIN := 0.5
+const EXODUS_WARN := 1.5
 ## The Broken Lanterns policy (v0.10 M3): how far round a shrine counts the people a Dragonfire Parade there would burn.
 const LANTERN_CROWD_R := 3.0
 ## The Heaven Splitter the policy lays (its line's reach and width, its core), the farthest apart two shrines may stand
@@ -449,6 +470,9 @@ func _run() -> void:
 	elif scenario == "relic":
 		powers = PackedStringArray(["whisper", "discord", "doom", "wisp"])
 		mission.mission_id = MissionBook.RELIC_RUN
+	elif scenario == "exodus":
+		powers = PackedStringArray(["whisper", "doom", "discord", "wisp"])
+		mission.mission_id = MissionBook.EXODUS
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M5: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
@@ -526,6 +550,8 @@ func _run() -> void:
 			await _sermon(Battlefield.arg_value(args, "--case"))
 		"relic":
 			await _relic(Battlefield.arg_value(args, "--case"))
+		"exodus":
+			await _exodus(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -3183,6 +3209,241 @@ func _flame_swap(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void
 			return
 	if w.mind != Person.Mind.WHISPERED and not w.shaken() and _slot_ready(rules, slots, "whisper"):
 		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": lantern})
+
+
+## Silent Doom at `at` would go unseen and take none of `spare` (v0.11 M6, plan decision 304): it takes someone; nobody living out of
+## doors beyond its radius stands within Crowd.DOOM_WITNESS of anyone within it; none within it is one of `spare`. Only reads.
+func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = []) -> bool:
+	var victims: Array[Person] = []
+	var others: Array[Person] = []
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside:
+				continue
+			if p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+				victims.append(p)
+			else:
+				others.append(p)
+	if victims.is_empty():
+		return false
+	for v in victims:
+		if spare.has(v):
+			return false
+		for o in others:
+			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS:
+				return false
+	return true
+
+
+## Exodus (v0.11 M6), with mission spec §2's policy (_exodus_act()), through _scripted().
+func _exodus(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as ExodusDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("exodus", which, func() -> String: return _exodus_act(rules, slots, d, crowd),
+		func() -> String: return "out=%d left=%d current=%d seizures=%d gaze=%d phase=%s" % [d.out_count(), d.left_count(), d.current(),
+			d.seizures, roundi(d.gaze.value), d.hint_phase()])
+
+
+## The believers still in the town and out of doors (v0.11 M6): the Dooms' spare list.
+func _exodus_flock(d: ExodusDirector) -> Array:
+	var out := []
+	for c in d.charges:
+		if not d._resolved(c) and not (c.man as Person).inside:
+			out.append(c.man)
+	return out
+
+
+## Silent Doom at `at` goes unseen with room to spare (v0.11 M6): _doom_unseen() sparing every believer, and no one else living out of
+## doors within EXODUS_MARGIN beyond the witness reach of anyone it takes, so no one walking in while it falls sees it. Only reads.
+func _exodus_unseen(crowd: Crowd, at: Vector2, flock: Array) -> bool:
+	if not _doom_unseen(crowd, at, flock):
+		return false
+	var victims: Array[Person] = []
+	var others: Array[Person] = []
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside:
+				continue
+			if p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+				victims.append(p)
+			else:
+				others.append(p)
+	for v in victims:
+		for o in others:
+			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + EXODUS_MARGIN:
+				return false
+	return true
+
+
+## Clears watcher `p` (v0.11 M6): Silent Doom unseen (_exodus_unseen()) on him and the nearest other watcher with him, else on him
+## alone; else Discord where it holds two watchers (or him, with no whisper to send) and no believer; else, with `whisper`, Mind Whisper
+## sends him EIGHT units off `from`.
+## "" when no slot serves.
+func _exodus_off(rules: Rules, slots: Dictionary, d: ExodusDirector, crowd: Crowd, p: Person, from: Vector2, whisper := true) -> String:
+	var flock := _exodus_flock(d)
+	if _slot_ready(rules, slots, "doom"):
+		for v: Variant in d._watchers():
+			if v != p and d._watching(v) and (v as Person).ground_pos.distance_to(p.ground_pos) <= 2.0 * SilentDoom.RADIUS - 0.1:
+				var mid := ((v as Person).ground_pos + p.ground_pos) * 0.5
+				if _exodus_unseen(crowd, mid, flock):
+					rules.cast(slots.doom, mid)
+					return "doom two Inquisitors"
+		if _exodus_unseen(crowd, p.ground_pos, flock):
+			rules.cast(slots.doom, p.ground_pos)
+			return "doom an Inquisitor"
+	if _slot_ready(rules, slots, "discord"):
+		var held := 0
+		var near_flock := false
+		for v: Variant in d._watchers():
+			if d._watching(v) and (v as Person).ground_pos.distance_to(p.ground_pos) <= DiscordFx.DISCORD_R - 0.1:
+				held += 1
+		for b: Variant in flock:
+			near_flock = near_flock or (b as Person).ground_pos.distance_to(p.ground_pos) <= DiscordFx.DISCORD_R + 0.2
+		if (held >= 2 or not (whisper and _slot_ready(rules, slots, "whisper"))) and held >= 1 and not near_flock:
+			rules.cast(slots.discord, p.ground_pos)
+			return "discord the Inquisitors"
+	if whisper and _slot_ready(rules, slots, "whisper") and not p.shaken() and p.mind != Person.Mind.WHISPERED:
+		rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": _prisoner_away(crowd, p, from)})
+		return "whisper an Inquisitor off"
+	return ""
+
+
+## Household `i`'s look (v0.11 M6): its lamp free and not already walking, Mind Whisper sends it up to 10 units along its road to the
+## nearest open gate -- stopping EXODUS_WAIT short of the gate while it is watched, and EXODUS_NEAR short of the first watcher on the
+## way -- when that is more than EXODUS_STEP on; else the watcher nearest it on the way, or at its gate, is cleared (_exodus_off()).
+## "" for nothing.
+func _exodus_lead(rules: Rules, slots: Dictionary, d: ExodusDirector, crowd: Crowd, i: int) -> String:
+	var lead := d.lamp(i)
+	if lead == null:
+		return ""
+	var lp := lead.man as Person
+	var road := d.road(i)
+	var here := _road_progress(road, lp.ground_pos)
+	var limit := here + MindWhisperFx.REACH - 0.5
+	var exit: Vector2 = road.back()
+	var g := -1
+	for k in d.gates.size():
+		if (d.gates[k] as ExodusDirector.Gate).way_out == exit:
+			g = k
+	var mouth := (d.gates[g] as ExodusDirector.Gate).mouth if g >= 0 else exit
+	var at_gate := _road_progress(road, mouth)
+	if g >= 0 and d.gate_watched(g):
+		limit = minf(limit, at_gate - EXODUS_WAIT)
+	var blocker: Person = null
+	var block_at := INF
+	for v: Variant in d._watchers():
+		if not d._watching(v) or d._seizing(v):
+			continue
+		var p := v as Person
+		var on := _road_progress(road, p.ground_pos)
+		var off_road := p.ground_pos.distance_to(_road_ahead(road, road[0], on))
+		var near_gate := p.ground_pos.distance_to(mouth) <= EXODUS_NEAR
+		if not near_gate and (off_road > EXODUS_NEAR or on < here - EXODUS_NEAR or on > here + MindWhisperFx.REACH + EXODUS_NEAR):
+			continue
+		if not near_gate:
+			limit = minf(limit, on - EXODUS_NEAR)
+		var at := on if not near_gate else at_gate
+		if at < block_at:
+			block_at = at
+			blocker = p
+	var going := lp.mind == Person.Mind.WHISPERED and lp.goal() != Vector2.INF and lp.ground_pos.distance_to(lp.goal()) > LAMB_AHEAD
+	if not going and _slot_ready(rules, slots, "whisper") and not lp.shaken() and limit - here > EXODUS_STEP:
+		var to := MindWhisperFx.clamp_to(crowd._grid, lp.ground_pos, d._walkable(_road_ahead(road, road[0], limit)))
+		if lp.ground_pos.distance_to(to) > 1.0:
+			rules.cast(slots.whisper, lp.ground_pos, {"target": lp, "to": to})
+			return "whisper the %s lamp on" % (d.households[i] as ExodusDirector.Household).name.to_lower()
+	if blocker != null:
+		return _exodus_off(rules, slots, d, crowd, blocker, lp.ground_pos)
+	return ""
+
+
+## One look of Exodus's policy (v0.11 M6, mission spec §2): what was cast, or "". The first that applies: a believer seized -- Discord on
+## his seizer, else Mind Whisper sends the seizer off, else Silent Doom on him unseen; searchers out -- within EXODUS_HOUNDS of a
+## believer, cleared (_exodus_off()), else Silent Doom on them unseen wherever they walk; a watcher about to see a believer (within
+## SIGHT + EXODUS_WARN) -- cleared; a believer left out of his household's file -- whispered to his lamp; each household out, in order
+## -- its lamp's way cleared and the lamp whispered on (_exodus_lead()); the next household within EXODUS_AHEAD -- the first watcher on
+## its road or at its gate cleared by Silent Doom or Discord, and by Mind Whisper only within EXODUS_SOON. Never a loud power; every
+## Doom unseen and sparing the believers.
+func _exodus_act(rules: Rules, slots: Dictionary, d: ExodusDirector, crowd: Crowd) -> String:
+	var flock := _exodus_flock(d)
+	for c in d.charges:
+		if not c.held or d._resolved(c) or not WarningDirector._alive(c.seizer):
+			continue
+		var s := c.seizer as Person
+		if _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, s.ground_pos)
+			return "discord a seizer"
+		if _slot_ready(rules, slots, "whisper") and not s.shaken():
+			rules.cast(slots.whisper, s.ground_pos, {"target": s, "to": _prisoner_away(crowd, s, (c.man as Person).ground_pos)})
+			return "whisper a seizer off"
+		if _slot_ready(rules, slots, "doom") and _exodus_unseen(crowd, s.ground_pos, flock):
+			rules.cast(slots.doom, s.ground_pos)
+			return "doom a seizer"
+	for i in d.households.size():
+		for p in d.searchers_out(i):
+			var near := false
+			for b: Variant in flock:
+				near = near or (b as Person).ground_pos.distance_to(p.ground_pos) <= EXODUS_HOUNDS
+			var from := (d.lamp(i).man as Person).ground_pos if d.lamp(i) != null else p.ground_pos + Vector2.LEFT
+			if near:
+				var did := _exodus_off(rules, slots, d, crowd, p, from)
+				if did != "":
+					return did
+			elif _slot_ready(rules, slots, "doom"):
+				for q in d.searchers_out(i):
+					var mid := (p.ground_pos + q.ground_pos) * 0.5
+					if q != p and p.ground_pos.distance_to(q.ground_pos) <= 2.0 * SilentDoom.RADIUS - 0.1 and _exodus_unseen(crowd, mid, flock):
+						rules.cast(slots.doom, mid)
+						return "doom the searchers"
+				if _exodus_unseen(crowd, p.ground_pos, flock):
+					rules.cast(slots.doom, p.ground_pos)
+					return "doom a searcher"
+	for v: Variant in d._watchers():
+		if not d._watching(v) or d._seizing(v):
+			continue
+		var p := v as Person
+		for b: Variant in flock:
+			if (b as Person).ground_pos.distance_to(p.ground_pos) <= EscortDirector.SIGHT + EXODUS_WARN:
+				var did := _exodus_off(rules, slots, d, crowd, p, (b as Person).ground_pos)
+				if did != "":
+					return did
+				break
+	if _slot_ready(rules, slots, "whisper"):
+		for i in d.households.size():
+			var lead := d.lamp(i)
+			if lead == null:
+				continue
+			var lp := lead.man as Person
+			for c: EscortDirector.Charge in (d.households[i] as ExodusDirector.Household).members:
+				if d._resolved(c) or c.held or c == lead or (c.man as Person).inside or (c.man as Person).shaken():
+					continue
+				var p := c.man as Person
+				if p.ground_pos.distance_to(lp.ground_pos) > ExodusDirector.FOLLOW_REACH and p.mind != Person.Mind.WHISPERED \
+						and d._file_spot(c) == Vector2.INF:
+					rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, lp.ground_pos)})
+					return "whisper a believer back to his lamp"
+	for i in d.households.size():
+		var h: ExodusDirector.Household = d.households[i]
+		if h.out and not h.done:
+			var did := _exodus_lead(rules, slots, d, crowd, i)
+			if did != "":
+				return did
+	var nxt := d.upcoming()
+	if nxt >= 0 and d.due_in(nxt) <= EXODUS_AHEAD:
+		var road := d.road(nxt)
+		for v: Variant in d._watchers():
+			if not d._watching(v):
+				continue
+			var p := v as Person
+			for k in range(road.size() - 1):
+				if _seg_dist(p.ground_pos, road[k], road[k + 1]) <= EXODUS_NEAR:
+					var did := _exodus_off(rules, slots, d, crowd, p, road[k], d.due_in(nxt) <= EXODUS_SOON)
+					if did != "":
+						return did
+					break
+	return ""
 
 
 ## With the flame: Discord at the Temple's door in the last 20 s (the searching beam's noise, far from Wren); else, a

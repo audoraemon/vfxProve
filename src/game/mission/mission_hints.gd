@@ -122,6 +122,12 @@ const LINES := {
 	"relic_run.report": "A Faithful runs to the Temple. Stop him before he gets there, unseen.",
 	"relic_run.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze.",
 	"relic_run.bell": "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen.",
+	"exodus": "Whisper each lamp (blue) to an open gate: the rest follow. Inquisitors (red) seize on sight. Ten must get out alive.",
+	"exodus.caught": "A believer is taken to the Temple. Whisper, Discord or strike the man taking him (red).",
+	"exodus.hounds": "The Temple's searchers (red) follow the household. Strike them or turn them before they see it.",
+	"exodus.gate": "Inquisitors (red) watch the gate. Whisper them off or strike them, then send the household through.",
+	"exodus.shut": "That gate is shut. Lead the household to another open gate.",
+	"exodus.waiting": "The next household comes out in {n} s. Clear its road and its gate of Inquisitors (red).",
 }
 
 

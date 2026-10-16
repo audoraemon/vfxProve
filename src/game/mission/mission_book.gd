@@ -72,7 +72,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run(), exodus()]
 	return out
 
 
@@ -431,6 +431,27 @@ static func relic_run() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new("The relic", "relic", "relic_kept", "pip"),
 			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Exodus (v0.11 M6, Tier 5, mission spec §2 and §8 row 24): lead ten of twelve believers, in three households that come out one at a time,
+## out of the town before the Inquisition shuts the last gate (ExodusDirector, the Escort type with many charges).
+static func exodus() -> MissionDef:
+	var m := _tier5(EXODUS, "Exodus", PackedStringArray(["The Inquisition comes for your believers tonight.",
+		"Lead ten out before the gates are shut."]))
+	m.goal = "Lead ten of your twelve believers out of Aldermere before the Inquisition shuts the last gate at %s" % UiTheme.clock(
+		float(ExodusDirector.SHUT_AT[2]))
+	m.goal_label = "The faithful are out"
+	m.lose = "Too few are left to make ten, the last gate shuts, Halcyon's Gaze fills, or dawn comes"
+	m.camera_at = ExodusDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["whisper", "doom", "discord", "wisp"])
+	m.director = ExodusDirector
+	m.mission_tags = PackedStringArray(["shuts_gates"])
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Lead them out", "exodus", "exodus_taken", "exodus_dead", ExodusDirector.NEED),
+			GazeObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

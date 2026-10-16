@@ -319,12 +319,15 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
 
 - **Brief:** "The Inquisition comes for your believers tonight." / "Lead ten out before the gates are shut."
 - **Card type:** Protect. **Id:** `exodus`.
-- **Map** (each house is the dwelling nearest its point whose door the street reaches; quiet: no patrol's beat and no gate's
-  watch within 3.5 of its door; never reserved):
+- **Map** (each house is the dwelling nearest its point with a door the street reaches that is quiet: no patrol's beat and no
+  gate's watch within 3.5 of it; never reserved):
   - **The households, in the order they come out:**
-    1. **the west household:** the house nearest (-10.5, 7.0), bound for the postern; about 15 units of street;
-    2. **the east household:** the house nearest (7.5, 4.5), bound for the Side Gate; about 15 units of street;
-    3. **the south household:** the house nearest (-2.5, 10.5), bound for the Main Gate; about 11 units of street.
+    1. **the west household:** the house nearest (-10.5, 7.0), bound for the postern; about 12 units of street;
+    2. **the east household:** the house nearest (7.5, 4.5), its door on the east side, bound for the Side Gate; about 11 units of
+       street;
+    3. **the south household:** the house nearest (7.7, 13.8), in the south-east quarter by the wall, bound for the Main Gate; about
+       14 units of street. (Tuned, Task 6: no dwelling near the first guess (-2.5, 10.5) has a door 3.5 from the west street's beat
+       and the gates' posts; the houses are the tuning knob, Decision 229.)
   - **The ways out:**
     - the postern: mouth (-5.75, 14.6), way out on the dock bank (-5.75, 17.4);
     - the Side Gate: mouth (14.4, 9.0), way out (17.6, 9.0);
@@ -416,12 +419,14 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   | 5:00 | "The Inquisition shuts the Main Gate": lost unless ten are out |
   | 7:00 | Dawn |
 
-  Left alone, the searchers take a believer about every 40 s from about 1:20, and the third leaves too few at about 2:40
-  (`exodus_few`): doing nothing loses well before the last gate.
+  Left alone, the searchers take a believer from about 1:00, and the third leaves too few at about 2:12 (`exodus_few`, measured
+  on seeds 1-3): doing nothing loses well before the last gate.
 - **The clear:**
   - **The sum:** first wait 15 (the policy clears the west road and the postern's watch from 0:00) + the west household 53 (15 units
     at about 0.32 a second, two whispers, the postern's watch) + 25 + the east household 51 + 25 + the south household 40 + the
     searchers and a seizure answered, about 15 ≈ **225 s**.
+  - **Measured** (Task 6's gate, seeds 1-2 won): first wait 15 + the west household 40-50 + 25 + the east household 35-42 + 25 +
+    the south household's two 49-56 ≈ **196-206 s** (195.8 and 205.9; seed 3 lost at the last gate).
   - **The shortest:** the households' walk cannot be hurried and each chain is 25 s, so a skilled clear is about 195 s.
 - **Longest waits:**
   - 15 s to the first household;
@@ -442,7 +447,7 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
 
   | Phase | Line |
   |---|---|
-  | (none) | Whisper each household's lamp (blue) to an open gate: the rest follow. Inquisitors (red) seize believers on sight. Ten must get out. Do not kill them. |
+  | (none) | Whisper each lamp (blue) to an open gate: the rest follow. Inquisitors (red) seize on sight. Ten must get out alive. |
   | `caught` | A believer is taken to the Temple. Whisper, Discord or strike the man taking him (red). |
   | `hounds` | The Temple's searchers (red) follow the household. Strike them or turn them before they see it. |
   | `gate` | Inquisitors (red) watch the gate. Whisper them off or strike them, then send the household through. |
@@ -469,7 +474,7 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   - the Gaze's "THE LANTERN LOOKS" (`gaze`).
 
   Its own keys, never the Escort defaults (M2 decision 63).
-- **Numbers** (first guesses):
+- **Numbers** (first guesses, kept by Task 6's gate; only the south household's point moved):
   - **The households:** BELIEVERS 12 (3 × 4), NEED 10, OUT_AT 15 / 105 / 195, CHAIN 25, BELIEVER_PACE 0.45, FOLLOW_GAP 0.9,
     FOLLOW_REACH 4.0.
   - **The watch:** SIGHT 2.5, PATROLS 2 × 2, GATE_WATCH 2 (2.4 apart), RETURN_AFTER 20, RELIEF_AFTER 30, RELIEFS 6, HUNT_AFTER 30,
@@ -480,16 +485,22 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   - If doing nothing does not lose 3 of 3: HUNT_AFTER comes down.
 - **Scripted policy** (`--scenario=exodus`; loadout Mind Whisper, Silent Doom, Discord, Will-o'-Wisp, 6 DP):
   - Every LOOK_FRAMES, the first that applies:
-    1. A believer is seized: Discord on the seizer; else Doom him when no believer is within 0.8 of him and no one else within 2.
-    2. Searchers within 6 of a believer: Doom them when no believer is within 0.8 and no one else within 2 (they walk 1.0 apart: one
-       Doom takes both); else whisper one eight units away.
-    3. The current household's lamp is free, Whisper is ready, and its next stretch and its gate are clear of watchers within 4:
-       whisper the lamp up to 10 units along its road to the nearest open gate. It stops short of a watched gate.
-    4. A watcher within 4 of the current household's next stretch or of its gate: Doom him when no one else is within 2; else
-       Discord where it holds two; else whisper him eight units away.
-    5. The next household comes out within 25 s: clear the first watcher on its road, as in step 4.
-    6. A follower is left more than FOLLOW_REACH from his lamp: whisper him to it.
-  - **Its Gaze:** it casts no loud power and Dooms alone. Expected Gaze: 0-10%. Expected clear: about 3:45.
+    1. A believer is seized: Discord on the seizer; else whisper the seizer eight units away; else Doom him unseen.
+    2. Searchers within 6 of a believer: clear one (below); searchers farther off: Doom them unseen wherever they walk (they walk
+       1.0 apart: one Doom takes both).
+    3. A watcher within SIGHT + 1.5 of a believer: clear him.
+    4. A believer left out of his household's file, more than FOLLOW_REACH from his lamp: whisper him to it.
+    5. Each household out, in order: its lamp free, not walking and Whisper ready -- whisper it up to 10 units along its road to the
+       nearest open gate, stopping 3 short of a watched gate and 4 short of the first watcher on the way; else clear that watcher (or
+       one at its gate).
+    6. The next household comes out within 25 s: clear the first watcher on its road -- by Doom or Discord, and by a whisper only in
+       its last 8 s (sooner, he is back at his post before it comes).
+
+    To clear a watcher: Doom him (and a watcher beside him) where it goes unseen with 0.5 to spare; else Discord where it holds two,
+    or him when no whisper is ready, with no believer near; else whisper him eight units away. (Tuned, Task 6: the busy postern and
+    the believers themselves witness most Dooms, so the whisper carries the night; the plan's one-step policy lost all three seeds.)
+  - **Its Gaze:** it casts no loud power and Dooms only unseen. Expected Gaze: 0-10% (measured 0 / 0 / 10). Expected clear: about
+    3:20 (measured 3:16 and 3:26).
 - **Evacuate-mid-mission test:**
   - The evacuation begins with the east household walking (its lamp whispered) and a gate watchman recovering. The household walks
     on, its followers follow, and none flees. The watchman walks back. The south household stays inside.

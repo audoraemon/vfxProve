@@ -78,6 +78,8 @@ var exit_label := "WAY OUT"
 var return_label := "BACK"
 ## v0.11 M4 (mission spec §6, decision 94): a structure the charge starts bound to (The Prisoner's stocks) -- null: free from the
 ## start, The Lost Lamb's way. While bound he is held at his spot, seen by no one, deaf to a whisper and past fear; its fall frees him.
+## v0.11 M6: binding assumes one charge -- the `bound` accessor, the free_by event and its guard read charges[0] alone (The Prisoner's);
+## a many-charge mission leaves it null.
 var bound_by: Structure = null
 ## Seconds into the night (the timeline's) by which he must be freed, or the night is lost; -1 for no such deadline (v0.11 M4).
 var free_by := -1.0
@@ -650,8 +652,11 @@ func _hunt() -> void:
 		h.go_duty(charge.ground_pos)
 
 
-## Each searcher kept walking to where he is now (v0.11 M2; one in a mind not his own is left be).
+## Each searcher kept walking to where he is now (v0.11 M2; one in a mind not his own is left be). v0.11 M6: single-charge, after
+## charges[0] (plan decision 268), and nothing once he is gone; Exodus overrides it with its households' searchers.
 func _step_hunters() -> void:
+	if not _alive(charge):
+		return
 	for v: Variant in hunters:
 		if not _alive(v) or v == seizer:
 			continue

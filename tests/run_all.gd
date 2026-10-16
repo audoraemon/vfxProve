@@ -131,6 +131,7 @@ const SUITES := [
 	"res://tests/test_relic_run.gd",
 	"res://tests/test_tier4_board.gd",
 	"res://tests/test_tier5_groundwork.gd",
+	"res://tests/test_exodus.gd",
 ]
 
 var failures := 0

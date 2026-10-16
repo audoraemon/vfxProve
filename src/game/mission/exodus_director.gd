@@ -782,9 +782,10 @@ func _escape_banner() -> String:
 
 ## The map tags, most important first (v0.11 M6, mission spec §2): each believer seized, TAKEN TO THE TEMPLE, his seizer TAKING HIM IN and
 ## the Temple's door, red, pointed at; each lamp, LAMP - DO NOT KILL, steel blue, pointed at, and a steel-blue diamond on each other
-## believer out; each household still inside, HOUSEHOLD - OUT BY its sooner time, grey, pointed at; each gate, watched, clear, shutting or
-## shut, pointed at; SEARCHER on each searcher out, pointed at; PATROL on each patrol's first watchman and a red diamond on the rest and
-## on each gate's watch.
+## believer out; the next household still inside, HOUSEHOLD - OUT BY its sooner time, grey, pointed at; each gate, watched, clear, shutting
+## or shut, pointed at; the households after it, the same (listed after the gates: a far household's plate never hides a gate's label,
+## the photograph's Main Gate); SEARCHER on each searcher out, pointed at; PATROL on each patrol's first watchman and a red diamond on
+## the rest and on each gate's watch.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if lost_reason() != "" or out_count() >= NEED:
@@ -800,7 +801,8 @@ func tags() -> Array[MapTag]:
 	for i in households.size():
 		var h: Household = households[i]
 		if not h.out:
-			out.append(MapTag.place(h.door, MARK_NOT_YET, "HOUSEHOLD - OUT BY %s" % UiTheme.clock(out_due(i)), h.house.height, true))
+			if i == upcoming():
+				out.append(_waiting_tag(i))
 			continue
 		var lead := lamp(i)
 		for c: Charge in h.members:
@@ -821,6 +823,9 @@ func tags() -> Array[MapTag]:
 			out.append(MapTag.place(gate.mouth, MARK_WATCHED, "%s - WATCHED" % gate.label, 0.0, true))
 		else:
 			out.append(MapTag.place(gate.mouth, MARK_CLEAR, "%s - CLEAR" % gate.label, 0.0, true))
+	for i in households.size():
+		if not (households[i] as Household).out and i != upcoming():
+			out.append(_waiting_tag(i))
 	for h: Household in households:
 		if not h.sent or h.done:
 			continue
@@ -837,6 +842,12 @@ func tags() -> Array[MapTag]:
 		if _alive(v) and not (v as Person).inside:
 			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED))
 	return out
+
+
+## Household `i`'s tag while it is still inside (v0.11 M6): its door, grey, with the time it comes out at the latest.
+func _waiting_tag(i: int) -> MapTag:
+	var h: Household = households[i]
+	return MapTag.place(h.door, MARK_NOT_YET, "HOUSEHOLD - OUT BY %s" % UiTheme.clock(out_due(i)), h.house.height, true)
 
 
 ## The hint's phase (v0.11 M6, plan decision 303): "caught" while a believer is marched; for the current household, "hounds" while its

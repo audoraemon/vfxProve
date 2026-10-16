@@ -510,6 +510,13 @@ static func _tagged(t) -> void:
 	var waiting := "HOUSEHOLD - OUT BY %s" % UiTheme.clock(float(ExodusDirector.OUT_AT[0]))
 	t.check(labels.has(waiting) and Kit.edged(d, waiting) and labels.has("POSTERN - WATCHED") and Kit.edged(d, "POSTERN - WATCHED")
 		and labels.has("PATROL") and d.hint_phase() == "", "at the start: each household's time over its door, the gates watched, pointed at (%s)" % [labels])
+	var far := "HOUSEHOLD - OUT BY %s" % UiTheme.clock(d.out_due(2))
+	var last_gate := -1
+	for k in labels.size():
+		if String(labels[k]).ends_with(" - WATCHED") and String(labels[k]).begins_with("MAIN GATE"):
+			last_gate = k
+	t.check(last_gate >= 0 and labels.find(waiting) < last_gate and labels.has(far) and labels.find(far) > last_gate,
+		"the next household's plate is listed before the gates', a far household's after them, so a far plate never hides a gate's label (the photograph's Main Gate)")
 	d._come_out(0)
 	labels = Kit.labels(d)
 	t.check(labels[0] == "LAMP - DO NOT KILL" and Kit.edged(d, "LAMP - DO NOT KILL"), "the lamp, steel blue, DO NOT KILL, pointed at")

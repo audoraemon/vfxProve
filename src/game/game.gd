@@ -69,6 +69,9 @@ const TIER2_SHOWS := ["bell_ringers", "market_panic", "informer"]
 const TIER3_SHOWS := ["crowns_bread", "prisoner", "heretic_hunt", "heretic_hunt-sweep"]
 ## The new Tier 4 missions' photographs (v0.11 M5): each its board night as the tour lands, its tags and HUD in view.
 const TIER4_SHOWS := ["bishop", "armoury", "sermon", "relic_run"]
+## The new Tier 5 missions' photographs (v0.11 M6): each its board night as the tour lands, its tags and HUD in view; lantern_eye-hunt has
+## its first mirror up at once and a beam drawn to a cast; heart_of_faith-odran has the flame out and the litter on its road.
+const TIER5_SHOWS := ["lantern_eye", "exodus", "heart_of_faith", "lantern_eye-hunt", "heart_of_faith-odran"]
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -326,8 +329,8 @@ func _ready() -> void:
 			mission_id = MissionBook.WARNING
 			loadout = MissionBook.warning().default_loadout
 			go_to(Screen.MISSION)
-		"tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers", "bell_ringers", "market_panic", "informer", "crowns_bread", "prisoner", "heretic_hunt", "bishop", "armoury", "sermon", "relic_run":
-			# A new Tier 1, 2, 3 or 4 mission's board night (v0.11 M2-M5), for the photograph of its tags, its how-to-win line and its wishes.
+		"tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers", "bell_ringers", "market_panic", "informer", "crowns_bread", "prisoner", "heretic_hunt", "bishop", "armoury", "sermon", "relic_run", "lantern_eye", "exodus", "heart_of_faith":
+			# A new Tier 1-5 mission's board night (v0.11 M2-M6), for the photograph of its tags, its how-to-win line and its wishes.
 			mission_id = show
 			loadout = MissionBook.get_mission(show).default_loadout
 			go_to(Screen.MISSION)
@@ -336,6 +339,20 @@ func _ready() -> void:
 			mission_id = MissionBook.HERETIC_HUNT
 			loadout = MissionBook.heretic_hunt().default_loadout
 			go_to(Screen.MISSION)
+		"lantern_eye-hunt", "heart_of_faith-odran":
+			# The Lantern's Eye with its first mirror up and a beam drawn, The Heart of Faith with its litter walking (v0.11 M6).
+			mission_id = show.get_slice("-", 0)
+			loadout = MissionBook.get_mission(mission_id).default_loadout
+			go_to(Screen.MISSION)
+		"tiers-all":
+			# The board complete (v0.11 M6): every board mission cleared, the header's "All 25 cleared", for the photograph (SHOW_SAVE).
+			save.descend = DescendState.new()
+			save.descend.cleared = TierBook.all()
+			save.descend.believers = 990
+			save.descend.night = 41
+			save.descend.refresh_open()
+			mission_id = MissionBook.LAST_JUDGEMENT
+			go_to(Screen.BOARD)
 		_:
 			go_to(Screen.TITLE)
 	if "--capture" in args:
@@ -345,13 +362,24 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS) and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
 			if show == "heretic_hunt-sweep" and _mission.rules().director is HuntDirector:
 				(_mission.rules().director as HuntDirector)._raise(0)
-		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS) and is_instance_valid(_mission) \
+			if show == "lantern_eye-hunt" and _mission.rules().director is LanternEyeDirector:
+				var eye := _mission.rules().director as LanternEyeDirector
+				eye._raise(0)
+				eye._on_cast(0, "smite", eye.outer_face(0))
+			if show == "heart_of_faith-odran" and _mission.rules().director is HeartOfFaithDirector:
+				var heart := _mission.rules().director as HeartOfFaithDirector
+				heart._open(0)
+				heart._raze(heart.targets[0])
+				heart._open(1)
+				heart._raze(heart.targets[1])
+				heart._odran_comes()
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
 				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)

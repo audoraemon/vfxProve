@@ -1,6 +1,276 @@
 # Kingdoms Amid Kataclysm (KAK) — Version 0.11 Summary
 
-*Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `claude/lantern-campaign-spec` (from the v0.10 line plus the v0.09.1 board-tag work at `92e0dcc`). v0.11 is **The Tiers**: the board of single missions becomes the god's five Awakening Tiers, each night hears the town's wishes, ends in an ascent and pays believers that buy the god's upgrades. It is built in milestones: M1 the framework, then M2-M6 one tier at a time (25 missions in all). Design: `docs/superpowers/specs/2026-10-08-kak-v011-tiers-design.md`. Plan: `docs/superpowers/plans/2026-10-08-kak-v011-m1-framework.md`. M2 (Whisper): Tier 1's four new missions; mission spec `docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, plan `docs/superpowers/plans/2026-10-08-kak-v011-m2-whisper.md`. M3 (Omen): Tier 2's three new missions; mission spec `docs/superpowers/specs/2026-10-09-kak-v011-m3-omen-missions.md`, plan `docs/superpowers/plans/2026-10-09-kak-v011-m3-omen.md`. M4 (Wrath): Tier 3's three new missions; mission spec `docs/superpowers/specs/2026-10-10-kak-v011-m4-wrath-missions.md`, plan `docs/superpowers/plans/2026-10-10-kak-v011-m4-wrath.md`. M5 (Reckoning): Tier 4's four new missions; mission spec `docs/superpowers/specs/2026-10-10-kak-v011-m5-reckoning-missions.md`, plan `docs/superpowers/plans/2026-10-10-kak-v011-m5-reckoning.md`.*
+*Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `claude/lantern-campaign-spec` (from the v0.10 line plus the v0.09.1 board-tag work at `92e0dcc`). v0.11 is **The Tiers**: the board of single missions becomes the god's five Awakening Tiers, each night hears the town's wishes, ends in an ascent and pays believers that buy the god's upgrades. It is built in milestones: M1 the framework, then M2-M6 one tier at a time (25 missions in all). Design: `docs/superpowers/specs/2026-10-08-kak-v011-tiers-design.md`. Plan: `docs/superpowers/plans/2026-10-08-kak-v011-m1-framework.md`. M2 (Whisper): Tier 1's four new missions; mission spec `docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, plan `docs/superpowers/plans/2026-10-08-kak-v011-m2-whisper.md`. M3 (Omen): Tier 2's three new missions; mission spec `docs/superpowers/specs/2026-10-09-kak-v011-m3-omen-missions.md`, plan `docs/superpowers/plans/2026-10-09-kak-v011-m3-omen.md`. M4 (Wrath): Tier 3's three new missions; mission spec `docs/superpowers/specs/2026-10-10-kak-v011-m4-wrath-missions.md`, plan `docs/superpowers/plans/2026-10-10-kak-v011-m4-wrath.md`. M5 (Reckoning): Tier 4's four new missions; mission spec `docs/superpowers/specs/2026-10-10-kak-v011-m5-reckoning-missions.md`, plan `docs/superpowers/plans/2026-10-10-kak-v011-m5-reckoning.md`. M6 (Ascendance): Tier 5's three new missions and v0.11's close; mission spec `docs/superpowers/specs/2026-10-15-kak-v011-m6-ascendance-missions.md`, plan `docs/superpowers/plans/2026-10-15-kak-v011-m6-ascendance.md`.*
+
+## v0.11: The Tiers, complete
+
+v0.11 is finished with M6. The god's board is five Awakening Tiers of five missions each, 25 in all, and the board says so when every one is cleared ("All 25 cleared"). Each night hears the town's wishes (two or three of eighteen), ends in an ascent (**F**) or a catch at dawn, and pays believers that buy the god's upgrades (+1 DP, powers, slots). It is built from text and drawn shapes only: no new art. The Lantern campaign is untouched but for the two no-waiting changes of M1.
+
+### The board
+
+| Tier | Name | Missions (card type) | Town | Clock | Slots / DP | Wishes | Believers |
+|---|---|---|---|---|---|---|---|
+| 1 | Whisper | The Warning (Intercept), The Tax Collector (Kill), Spoiled Harvest (Destroy), The Lost Lamb (Protect), First Prayers (Cult) | Unaware | 5:00 | 3 / 6 | 2 | ×1 |
+| 2 | Omen | Mira's House (Cult), Broken Lanterns (Anchors), The Bell-Ringers (Intercept), Market Panic (Break), The Informer (Kill) | Organized | 5:30 | 3 / 8 | 2 | ×1.5 |
+| 3 | Wrath | The Vigil Flame (Cult), The Festival (Break), The Crown's Bread (Destroy), The Prisoner (Protect), The Heretic Hunt (Protect) | Prepared | 6:00 | 4 / 10 | 3 | ×2 |
+| 4 | Reckoning | The Procession (Kill), The Bishop (Kill), The Armoury (Destroy), The Sermon (Cult), The Relic Run (Cult) | God-Resistant | 6:30 | 5 / 13 | 3 | ×2.5 |
+| 5 | Ascendance | Last Judgement (Destroy), The Long Night (Three acts), The Lantern's Eye (Anchors), Exodus (Protect), The Heart of Faith (Kill) | God-Resistant, plus Halcyon's Gaze | 7:00 | 6 / 16 | 3 | ×3 |
+
+Three cleared missions open the next tier (a tier never closes again); Ascendance opens nothing. The main objective pays 10 believers and each wish 5 to 15, all times the tier's multiplier.
+
+### The wish pool of eighteen
+
+Each line is the wish's words, its kind, its reward before the multiplier, the tier it is first heard from and the mission tags it clashes with.
+
+1. Burn the moneylender's house: ruin, 10, Whisper, `spares_houses`.
+2. Bring down the watchtower: ruin, 15, Whisper.
+3. Strike down the cruel tax collector: punish, 10, Whisper, `hunts_tax_collector`.
+4. Kill the informer, unseen: punish, 15, Whisper, `hunts_informer`.
+5. Save my child: rescue, 15, Whisper, `unaware_town`.
+6. Lead my brother out: mercy, 10, Whisper, `shuts_gates`.
+7. Show me a sign: sign, 5, Whisper.
+8. Show yourself to my family: sign, 10, Whisper.
+9. Stop the bailiff: rescue, 15, Whisper.
+10. Let my neighbours believe: faith, 10, Whisper.
+11. Scare off the bully, unharmed: fright, 10, Omen, `unaware_town`.
+12. Free the pressed man: rescue, 15, Omen, `unaware_town`, `razes_barracks`.
+13. Burn the tithe barn: ruin, 10, Wrath, `razes_bread`.
+14. Strike down the cruel sergeant: punish, 15, Wrath.
+15. Save the heretic from the pyre: rescue, 15, Reckoning, `burns_temple`, `unaware_town`.
+16. Lead my family out: mercy, 15, Reckoning, `shuts_gates`.
+17. Strike down the zealot, unseen: punish, 15, Ascendance.
+18. Turn the doubting priest: faith, 15, Ascendance.
+
+### The shared types and hooks the milestones built
+
+- **Raze** (`RazeDirector`, M2; staged by M4's The Crown's Bread, `_spoil_for()` and The Heart's two targets in M6), **Assassinate** (`AssassinateDirector`, M2; its `_appoint_guards()` and `_tends()` hooks in M5), **Escort** (`EscortDirector`, M2; the Charge record in M6), **Convert** (`MirasHouseDirector`, M2; The Sermon in M5), **Steal** (The Relic Run on The Vigil Flame's director, M5), **Hunt** (`HuntDirector`, M4; the unguarded blow in M6) and `StagesObjective` (M6).
+- **The chain and `EventTimeline.expect()`** (M3): an item comes at its time or soon after the one before is done, and the strip shows the chained time.
+- **`MissionDirector._hold_all()`** (M4's final review): the one rule that holds a director's people through an evacuation; M5's `_knight()` and hidden ride, M6's use of both.
+- **The keepout** (`Hud.stack_rect()`, M6): no tag, label or arrow ever hides under the left stack.
+- **The Searchlight's hunt and hold** (M6): a light that answers the god's casts, drawn by `SearchlightFx`.
+
+### The no-waiting rule, as applied
+
+Every mission is finished by acting, never by waiting. Each mission's gate is the same on seeds 1-3: doing nothing loses 3 of 3, the scripted player wins at least 2, the median time of its wins is 180-240 s, and its longest stretch between two casts is 45 s or less. No timed wait passes 60 s and no chain wait 45 s, and every mission's tests pin its waits. Every moving target has a tag with an edge arrow, and from M6 none can sit under the stack.
+
+### The milestones
+
+| Milestone | Tag | What it built |
+|---|---|---|
+| M1 The Tiers framework | `kak-v011-m1` | The board, the wishes, ASCEND, believers and the upgrades, on the eight ★ missions |
+| M2 Whisper | `kak-v011-m2` | Tier 1's four new missions |
+| M3 Omen | `kak-v011-m3` | Tier 2's three new missions |
+| M4 Wrath | `kak-v011-m4` | Tier 3's three new missions |
+| M5 Reckoning | `kak-v011-m5` | Tier 4's four new missions |
+| M6 Ascendance | `kak-v011-m6` | Tier 5's three new missions, the keepout and the finished board |
+
+### Open playtest notes
+
+Collected from the milestones' ledgers; none is a failure, and each is a place the numbers are close.
+
+- **Margins near the 180 s floor and the 240 s ceiling.** The Relic Run's fastest win is 181.3 s, The Armoury's slowest 235.7 s, The Lantern's Eye's seed 1 won at 323.1 s (its median is 229.4 s), and The Sermon's and The Heart's idle stretches (44 s and 40 s) are near the 45 s limit.
+- **Exodus and The Heart of Faith win 2 of 3.** Exodus's seed 3 loses its last gate and The Heart's loses to the Gaze; the controller accepted both. Playtest decides whether either is too hard.
+- **The Heart's Gaze pressure.** Its Gaze stands at 50-70% before Odran dies (the Citadel's gate and the burning Temple draw crowds, and the bearers there are seldom unseen), and the scripted player's own limit on seen kills is 60%. It is Tier 5's finale; a player who finds it harsh can lower the 20 a seen death adds once the flame is out.
+- **The Relic Run's frame cost.** Its cart, route and wardens cost about 0.8 ms a frame (109 fps against The Vigil Flame's 119 on the board versions); noted for a later profile.
+- **The pyre and family wishes at a burning Temple.** Last Judgement and The Long Night do not declare `burns_temple`, so a Tier 5 night there can hear a wish at a Temple that burns; playtest decides.
+- **HUD plates under the strip and the slots.** A map tag with no arrow can still draw its plate under the timeline strip or the power slots (The Lantern's Eye's GUARD plates); the keepout covers only the left stack.
+
+Gates: filled in at landing.
+
+## M6: Ascendance
+
+M6 completes Tier 5 and the board. Ascendance has five missions: Last Judgement and The Long Night (the ★ missions of v0.09, unchanged) and three new ones, each a night of 7:00 in a God-Resistant town, 6 slots and 16 DP (plus the upgrades), three wishes and ×3 believers (the main objective pays 30). It reuses the Anchors and Hunt, Escort and Raze types, adds three groundwork changes the missions stand on (below), two wishes, and the last mission photographs. It adds no art: the mirrors are their wall towers, named by tags, and the Searchlight is The Vigil Flame's (`SearchlightFx`); the mirrors' guards and Exodus's Inquisitors are lay watchmen in the watch cloak and lantern, the mirror-wrights lay engineers in the apron and cap, the Lantern Knights wear Broken Lanterns' gold tabard (corps `KNIGHT`), High Priest Odran is the town's cleric, and the litter is its four bearers, tagged (no litter is drawn). **Every Tier 5 mission keeps Halcyon's Gaze of its own**, a plain `GazeMeter` at 10 for a seen death, with no bell loss; Last Judgement and The Long Night keep M1's 0.5 a death. Mission spec: `docs/superpowers/specs/2026-10-15-kak-v011-m6-ascendance-missions.md`.
+
+### Ascendance's five
+
+| Mission | Card type | Main objective | The twist |
+|---|---|---|---|
+| Last Judgement | Destroy | Bring down Aldermere and its Royal Citadel | v0.09's act, unchanged; on the board it keeps its Tier 5 Gaze |
+| The Long Night | Three acts | Three acts, one night | v0.09's night, unchanged; the choices shape the town you face |
+| The Lantern's Eye | Anchors | Shatter three mirrors before the Eye opens | The Searchlight hunts your casts while a mirror stands; each mirror has a party of three watchmen to clear, a glass that takes a Heaven Splitter and a Smite, and two wrights who rehang it unless stopped for 20 s; all three standing at once for 30 s loses |
+| Exodus | Protect | Lead ten of twelve believers out before the gates shut | Three households of four follow their lamp-bearer, so one whisper moves a family; patrols, gate watches and the Temple's searchers seize on sight; the postern shuts at 2:30, the Side Gate at 3:45 and the Main Gate at 5:00 |
+| The Heart of Faith | Kill | Put out the Great Flame, then kill High Priest Odran | The oil-house and the Temple burn in turn under Lantern Knights; once the flame is out Odran rides to the Temple's steps in a litter his four bearers carry, untouchable while two live, to rekindle it in 20 s; a seen death now adds 20 to the Gaze |
+
+**Ascendance opens nothing**: it is the last tier. Its line counts its five ("Ascendance 2 / 5 cleared"); with every board mission cleared it reads "Ascendance 5 / 5 cleared: every tier is cleared" and the board's header gains **All 25 cleared**. The board lists the ★ missions first, then The Lantern's Eye, Exodus and The Heart of Faith, and every brief fits the card's seven lines (Exodus's was shortened to fit).
+
+### The groundwork
+
+- **The Escort type's Charge record** (`EscortDirector`, Task 1; gated on The Lost Lamb's and The Prisoner's twelve scenario references, which stayed exact). The per-charge state (the man, held, his seizer, bound, escaped, taken, the guard change's clock) moves into an inner `Charge` record, `charges` holds one per charge, and every old field (`charge`, `held`, `seizer`, `escaped`, `taken`, `bound`, ...) is an accessor over `charges[0]`, so The Lost Lamb and The Prisoner read the same names and play the same night. New hooks: `_appoint_charges()`, `_place_charge(c)` (today's set-down by default), `_resolved(c)`, `out_count()`, `left_count()`; `EscortObjective` gains `need` (default 1) and a many-charge night fails only through `lost_reason()`. `Charge.man` is a `Variant` (a body is freed the moment he escapes); the typed `charge` accessor gives null for a freed man. M4 Decision 67's "no base edits" is reworded: the base gains the Charge record. The single-charge searchers keep following `charges[0]`; Exodus keeps its own.
+- **The Hunt's unguarded blow** (`HuntDirector`, Task 2; The Heretic Hunt's six unchanged). `_unguarded_blow()` is the one virtual a blow on an unguarded standard goes through (today's order: health, mark, destroy or crack, or a borrowed standard's own filter, which keeps the health), and `shield_hits` (false) lets a shield emit `Structure.hit` only while the standard stands. The Lantern's Eye overrides the blow: its towers are stone and the glass takes it.
+- **The HUD's keepout** (`Hud`, Task 3; no camera and no reference moved). `stack_rect()` is the live left stack (the objective plate, the hint plate and the wishes' plates, about 240 × 165 px in the 640 × 360 view, plus `STACK_PAD` 10) and is handed to `tag_layout()` and `frame_point()`: an edge tag whose diamond lies under it becomes an arrow on its border, a map tag whose plate would lie under it has the plate beside its diamond (`_label_aside()`), a slid arrow has its label beside the disc (`_label_beside()`), and the stack counts as a placed plate, so no tag, label or arrow hides under it. The stack covers the tour's caption and the night's end too, and the tag layer redraws when the stack's size changes (a wish row appearing). Tags are read-only, so every earlier reference and camera held; The Bishop's, The Sermon's and The Relic Run's old trouble spots, and The Crown's Bread's, The Informer's and Spoiled Harvest's, are the proof (photographs below).
+- **The Tier 5 frame** (Task 4). `StagesObjective`, one generic objective (a label, a win reason, the director's `stages_done()`, `lost_reason()` and `hud_line()`, three virtuals on `MissionDirector`); `RazeDirector._spoil_for(s)` (default `spoil_seconds`, so The Heart's oil-house burns 12 s and its Temple 20 s; Spoiled Harvest's, The Crown's Bread's and The Armoury's references hold); the hunting Searchlight, whose two hooks `hunt` (false) and `hold` (INF) make a light search whenever a noise is held and drop it after `hold` seconds (proven by The Relic Run's six and The Vigil Flame's outcome and play line); `MissionBook._tier5()`; and `TierBook._with_gaze()` / `_with_gaze_for_night()`, which add the Gaze objective only when the mission lists none, so each mission's own Gaze is the one objective.
+
+### Each mission's timeline
+
+- **The Lantern's Eye:** the light sweeps from 0:00 with the three parties at their towers; mirrors go up at 0:40, 1:55 and 3:00 (STEP_AT 40 / 115 / 180), or 30 s after the one before is gone for good; a shattered mirror is gone after 20 s; all three standing for 30 s loses ("THE EYE OPENS"). Doing nothing loses at 3:30. Longest wait: 40 s to the first mirror (its party to clear from 0:15), then 30 s between a mirror gone and the next; each 20 s drain is work (the wrights to stop). The scripted player's longest stretch is 22 s.
+- **Exodus:** households come out at 0:15, 1:45 and 3:15, or 25 s after the one before is done; the Temple sends two searchers 30 s after each; the gates shut at 2:30, 3:45 and 5:00, and the last shutting loses unless ten are out. Doing nothing loses at about 2:12 (too few are left). Longest wait: 25 s between a household done and the next coming out, its road and gate to clear in it. The scripted player's longest stretch is 18 s.
+- **The Heart of Faith:** two Knights stand at each target from 0:00; the oil-house is in use at 0:45 and the Temple at 1:50 (or 45 s after the oil-house is razed), two more Knights coming out with each; the flame goes out when the Temple is razed; the bearers come out then and Odran 30 s later; his litter takes about 15-20 s to the steps, and 20 s more rekindles the flame; the blessing at 5:00 loses unless the flame is out, so doing nothing loses at 300 s. Longest wait: 45 s to each target's time (its standing Knights to clear in it) and 30 s of Odran's chain (the bearers to strike). The scripted player's longest stretch is 40 s.
+
+No timed wait passes 60 s and no chain wait 45 s, and `test_tier5_board`'s `_waits` pins every one. The chain-bound clears, as measured: The Lantern's Eye's is first wait 40 + mirror one 33 + 30 + mirror two 51 + 26 + mirror three 46 = about 226 s (its sum at the tuned numbers is 196 s; the guards walk back from busy streets); Exodus's is 15 + the west household 40-50 + 25 + the east 35-42 + 25 + the south 49-56 = about 196-206 s; The Heart's is 45 + the oil-house about 20 + 45 + the Temple about 35 + 30 + about 15 = about 190 s. The tuning numbers, as shipped:
+
+| Mission | Numbers |
+|---|---|
+| The Lantern's Eye | STEP_AT 40 / 115 / 180, chain 30 s, party 3 along the face 2.4 apart, guard reach 2.0, return 20 s, relief 30 s, glass 90 (a blow at most 45, a Heaven Splitter's strokes within 5 s one blow), drain 20 s, 2 wrights, rehang 10 s, the Eye opens after 30 s, two beams from 0:00, hold 8 s, a seen cast adds 20; the south-west wrights work 2.6 beyond the outer face; camera (0.0, -6.0) |
+| Exodus | 12 believers (3 × 4), need 10, out at 0:15 / 1:45 / 3:15, chain 25 s, pace 0.45, file gap 0.9 within 4.0, 2 patrols of 2, a watch of 2 at each gate, return 20 s, relief 30 s (at most 6), searchers 30 s after a household (2 each), gates shut 2:30 / 3:45 / 5:00; camera (-7.0, 9.0) |
+| The Heart of Faith | oil-house near (-2.5, -12.5) in use at 0:45 (50 hp, 12 s alight), Temple in use at 1:50 (200 hp, 20 s alight), chain 45 s, 2 Knights standing and 2 arriving, posts 2.1 apart on the quiet side, guard reach 2.5, relief 30 s (at most 4), blessing 5:00, 4 bearers, Odran 30 s after the flame, pace 0.5, rite 20 s, 1 last guard, a seen death 10, then 20; camera (-6.0, -4.0) |
+
+### The wishes
+
+The pool grows from 16 to 18. Both new wishes are heard from Ascendance only (`min_tier` 5), so Tier 1-4 draws do not change: `WishBook.pool_for(tier)` leaves the two out before the shuffle, and a test re-draws the nights of each of Tiers 1-4 against the earlier sixteen, with a mutation check that the filter bites.
+
+| Wish | Kind | Act | Reward | Needs / clashes |
+|---|---|---|---|---|
+| Strike down the zealot, unseen | Punish | Kill a living cleric out of doors with no witness | 15 | a lay wisher and a cleric; none |
+| Turn the doubting priest | Faith | Turn the cleric nearest the wisher by street (at most 30 units) into a believer | 15 | a lay wisher and a cleric within 30 of street; none |
+
+- `PunishWish` takes `"clergy"` (the victim a living cleric out of doors, at random) with its `"unseen"`; `NeighboursWish` takes `"count"`, `"clergy"`, `"label"`, `"edge"` and `"route"`, and the priest is the cleric nearest the wisher by street. Both are tagged with an edge arrow. A town with no such pair leaves the wish unheard (the draw skips it).
+- **`shuts_gates`** is a new clash, added to "Lead my brother out" and "Lead my family out"; Exodus declares it (a wish's escapee walking out through a shut gate would read as a contradiction), so its night hears neither. Its `TierBook.MISSION_TAGS` row and The Heart's `burns_temple` row (the pyre wish's clash) are tested through the board night, `Descent.hear`, not the `MissionBook` definition (the board overwrites it). Neither Last Judgement nor The Long Night declares `burns_temple`: their Temple is not a mission target, so the pyre and family wishes fit there.
+
+### References
+
+Each mission's scenario is `--scenario=eye|exodus|heart --case=none|play [--seed=N] [--board]`; it runs the `MissionBook` version (the same director, clock and town, no wishes), so its checksums are exact references, and `--board` stops at the main objective. The `eye` and `heart` scenarios turn hit-stop off (they cast Smite and Heaven Splitter). **Every M1-M5 reference is unchanged**: the global list, the Vigil Flame's play line (`-884746702`, won at 158.8 s) and M2's 24, M3's 18, M4's 18 and M5's 24 held after every task. The 18 new ones, seeds 1-3 (a rendered run equals a headless one):
+
+| Scenario | `none` (idle) | `play` (the scripted player) |
+|---|---|---|
+| eye | lost, the Eye opens, 210.0 s all three: -958613723 / 730820601 / 769058093 | won 3 of 3, 323.1 / 229.4 / 226.4 s, median 229.4 s, idle 22 / 21 / 21 s, Gaze 0: -187177108 / -145859215 / -546070216 |
+| exodus | lost, too few are left, 132.0 / 132.3 / 132.8 s: 596980196 / -140779140 / -766503485 | won 2 of 3, 205.9 / 195.8 s, seed 3 lost at the last gate (`gates_shut`, 300.0 s), median of the wins 200.9 s, idle 18 / 13 / 10 s, Gaze 0 / 0 / 10: -899147882 / -225447740 / -397444990 |
+| heart | lost, the flame is blessed, 300.0 s all three: -747294187 / -195020752 / -832707735 | won 2 of 3, 193.8 / 187.2 s, seed 3 lost to the Gaze (`gaze`, 194.5 s), median of the wins 190.5 s, idle 38 / 23 / 40 s: -436016941 / -670500702 / -727467388 |
+
+The gate for each mission is M2's to M5's: `play` wins at least 2 of seeds 1-3, the median time to the main objective of its wins is 180-240 s, `none` loses 3 of 3, and an acting player's longest idle stretch is 45 s or less. All three pass, but narrowly: **The Lantern's Eye's seed 1 won at 323.1 s** (its median, 229.4 s, is in the window), and **Exodus and The Heart of Faith each win 2 of 3**, their lost seed decided by the last gate and by the Gaze. Task 10 changed no number: the photograph round reordered Exodus's tags and moved no camera, so the six are as the tasks recorded. The board versions at seed 1 (`--case=play --seed=1 --board`): The Lantern's Eye won 216.7 s with the family_out, child and sign wishes (-63463382); Exodus won 205.9 s with the sergeant, zealot and child wishes; The Heart of Faith won 193.8 s with the family, moneylender and bailiff wishes. Three wishes each, and never a brother or family-out wish on Exodus's night.
+
+### The rulings that changed the design
+
+The controller's rulings, made when a task's gate or review showed what the mission spec's first guesses could not.
+
+- **A mirror needs a Heaven Splitter and a Smite** (Task 5). The glass's 90 hp is struck at most 45 a blow (`BLOW_MAX`) and a Heaven Splitter's later strokes within 5 s only shake the tower (`HEAVEN_GAP`), so one Heaven Splitter is one blow, never a shatter: two Smites 10 s apart, or a Heaven Splitter and a Smite. The scripted player works it as a careful player would (Dooms only where nobody would see, a Wisp to draw off a passer-by, the shattering blow held until Silent Doom and Mind Whisper are ready).
+- **The south-west wrights work from the tower's quiet side** (Task 5's fix round). A traffic survey of every wall tower found the south-west one's town-side foot busy every second and its outer side quiet, so its wrights work 2.6 beyond the outer face, out of the town, where the last wright can be taken unseen. The first two knobs in the spec's order moved with it (STEP_AT[0] 50 to 40, CHAIN 35 to 30) and the six eye references were re-recorded (median 229.4 s).
+- **Exodus's Gaze and re-routing** (Tasks 6 and 9). Exodus hears every death and a seen one fills its Gaze (the loss is tested); a household whose lamp got out by a gate that has since shut re-routes to the next open gate, so a shut gate never silently strands a family. The `shut` hint is keyed to the gate a household heads for, and the last gate's tag and tour say it loses unless ten are out. The controller accepted Exodus at 2 of 3 (seed 3 loses its last gate) and the south household's move to the south-east corner.
+- **The Heart's winning kill comes before the Gaze** (Task 7). The kill that ends Odran wins the night before the Gaze is judged: a seen death of Odran that would fill the Gaze drops the pending deaths (`GazeMeter.drop_pending()`) and wins. The oil-house moved to the quiet row behind the Temple and the Knights stand on each target's quiet side (the old spot was never free of a witness); every target in use is tagged with its own state and the hint prefers an unguarded one. The controller accepted the Gaze pressure (50-70% before Odran) as the finale, the Heart's litter rides with the shared hidden ride (`_ride_in()` / `_ride_step()` / `_ride_out()`) and its Knights are made by the inherited `_knight()`.
+- **The keepout keeps every label** (Task 3's review). A slid arrow's label that would straddle the stack goes beside its disc (`_label_beside()`), a map tag's plate that would lie under it beside its diamond (`_label_aside()`); `STACK_PAD` grew from 4 to 10 so a disc never sits behind a plate, and M6's camera checks use the padded stack (`Kit.STACK` grown by it, about 250 × 175).
+- **Tags are on the board** (Task 9). Exodus's `shuts_gates` and The Heart's `burns_temple` rows are in `TierBook.MISSION_TAGS`; the earlier tests asserted the `MissionBook` definition, which the board overwrites, so they now assert `TierBook.board()` and the night through `Descent.hear`.
+- **Hint lines fit the plate** (the plan's pre-flight). Each new line is in `test_mission_hints.gd`'s table and within the three-line plate: shortened, never cut off.
+- **The suite runs in eighths** (`run_half.gd -- --part=N --of=8`; a quarter neared ten minutes under load).
+
+### Rulings made in M6
+
+The mission spec's Decisions 207-262 and the plan's 263-304, numbered 273-370 after M5's last (272), so each is the spec's or the plan's number plus 66. The controller's rulings are folded in where they changed a decision (281-283, 289, 294, 298, 299, 304, 311, 313, 327, 336, 347, 350, 354, 355); the last two, 371 and 372, are Task 10's.
+
+273. The ids are `lantern_eye`, `exodus` and `heart_of_faith` (`MissionBook.LANTERN_EYE` / `EXODUS` / `HEART_OF_FAITH`), built in `MissionBook.tier_missions()` by a new `_tier5()` frame (420 s, tier 5, `tier_floor` 4, no `profile`, 6 / 16, no bonuses), so their stretch is 1 and `TierBook.board()` needs no branch; they are not in `all()` or the campaign.
+274. Each keeps its own Gaze, a plain `GazeMeter` (a seen death adds 10); `Descent.attach()` leaves it. Last Judgement and The Long Night keep M1's 0.5 a death.
+275. The bell does not fill the new Gaze (M1 ruling 10); the seen deaths still do.
+276. No bell loss in M6.
+277. The Gaze objective is the mission's own: `TierBook._with_gaze()` appends one only when the made list has none.
+278. Unseen by design: every guard post more than 2.0 from every other (POST_GAP 2.4, or rings of 2.1-2.5), and each policy Dooms only where no one else would see.
+279. The Lantern's Eye is `LanternEyeDirector extends HuntDirector`: its standards are its towers, it has no head, and `_found()` is the Eye opening.
+280. The mirror towers: the standing wall towers nearest (0.0, -15.65), (15.65, 0.0) and (-8.0, 15.65), never the bell tower, a reserved tower or another mirror's, 22-33 units apart.
+281. The glass: 90 hp held by the director; guarded, a blow shakes the tower; unguarded, it strikes the glass (at most 45 a blow, a Heaven Splitter's strokes within 5 s one blow: a mirror needs a Heaven Splitter and a Smite, or two Smites, the controller's ruling) and scorches the tower, whose own health never moves tonight.
+282. The mirrors go up on the chain: 0:40 / 1:55 / 3:00, or 30 s after the one before is gone for good (Task 5's fix round, from 0:50 and 35 s); a mirror does not exist before its time.
+283. The Anchors half: shattered, a mirror is gone for good after 20 s unless hung again; two wrights come out at the shattering and 10 s of one wright's work rehangs it; the south-west wrights work 2.6 beyond the outer face (the controller's ruling). Broken Lanterns' rule rebuilt; `BrokenLanternsDirector` is untouched.
+284. The parties: three watchmen per mirror along the tower's town-side face, 2.4 apart, guard reach 2.0 of the footprint; return 20, relief 30; none after a mirror is gone.
+285. The light: both beams lit from 0:00; while a mirror stands every heard cast draws the nearest beam, held 8 s; a whisper is unheard and a Wisp a decoy.
+286. Seen casts: a cast aimed inside a lit pool adds 20 to the Gaze, judged as it is made; deaths are judged by witnesses only; every rise has its banner.
+287. The Eye opens: all three mirrors standing at once for 30 s loses ("THE EYE OPENS"); doing nothing loses at 3:30 (210 s measured).
+288. Exodus is `ExodusDirector extends EscortDirector` on the Charge record, twelve charges.
+289. Twelve believers, ten to save: three households of four; lost at once when those out plus those left fall below ten ("TOO FEW ARE LEFT"). The controller's ruling: seen deaths fill its Gaze and the loss is tested.
+290. The households come out on the chain: 0:15 / 1:45 / 3:15, or 25 s after the one before is done, from stone-tonight houses with quiet doors (the south household's point moved to (7.7, 13.8) at Task 6's gate).
+291. The lamp: a household follows its lamp-bearer in file (0.9 apart, within 4); the lamp passes on when he is seized, dies or gets out.
+292. The watchers: lay watchmen as The Prisoner's: two patrols of two, two at each gate 2.4 apart, and two searchers per household 30 s after it comes out; a seizure marches the believer to the Temple's door.
+293. No guard change in Exodus (`watch_changes` false); the gates' watch is worked: return 20, relief 30 from the Temple, at most six.
+294. The gates shut one by one: the postern at 2:30, the Side Gate at 3:45, the Main Gate at 5:00; a shut gate is no way out; the last shutting with fewer than ten out loses, and its tag and tour say so (the controller's ruling).
+295. Their pace and roads: 0.45 of a citizen's pace, on roads of about 12, 11 and 14 units.
+296. Exodus declares `shuts_gates`; "Lead my brother out" and "Lead my family out" clash with it.
+297. The Heart of Faith is `HeartOfFaithDirector extends RazeDirector` for stage one; stage two is its own; `AssassinateDirector` is untouched.
+298. The flame's two targets: the oil-house (the dwelling nearest (-2.5, -12.5), in the quiet row behind the Temple, the controller's ruling; 50 hp; 12 s alight) then the Temple (200 hp; 20 s alight), in use at 0:45 and 1:50 or 45 s after; staged, not sealed: a fall ahead counts at its time, and a target already down when the one before is razed comes into use at once (M5's horn rule).
+299. Lantern Knights: two standing per target from the start, on its quiet side (the controller's ruling), and two coming out of its door at its time, 2.4 apart; on guard they seal it; reliefs come from the Citadel's gate after 30 s, at most four.
+300. The blessing: the flame still burning at 5:00 loses; a timeline event guarded by the flame, setting the director's `lost_reason()`, not an `EventObjective` (M4 ruling 159).
+301. Odran: the cleric nearest the Citadel's gate, inside the Citadel; the four bearers come out when the flame goes out, and he 30 s later.
+302. The litter: Odran rides hidden and untouchable while two or more bearers live (the Relic Run's ride); below two it falls and he walks on, with one last guard 2.5 behind when he set out on foot.
+303. The rekindling: 20 s at the Temple's steps, started again by a whisper, Discord or a fright; finished, it loses.
+304. Halcyon looks harder: once the flame is out a seen death adds 20; and the kill that ends Odran wins before the Gaze is judged (the controller's ruling).
+305. Card types: The Lantern's Eye is Anchors, Exodus Protect, The Heart of Faith Kill (its win is Odran's death).
+306. The Heart declares `burns_temple`, so the pyre wish never clashes with its burning Temple; Last Judgement and The Long Night do not.
+307. The Charge record: per-charge fields in a record, today's fields as accessors over `charges[0]`, gated on The Lost Lamb's and The Prisoner's twelve; M4 Decision 67 reworded.
+308. `EscortObjective` gains `need` (default 1); a many-charge night fails only through `lost_reason()`.
+309. The Hunt hooks: `_unguarded_blow()` and `shield_hits` (false); The Heretic Hunt's six stay exact. The Eye skips reserved towers in its own choice.
+310. The Searchlight's hooks: `hunt` (false) and `hold` (INF), proven by The Relic Run's six and The Vigil Flame's outcome and play line.
+311. The keepout: `Hud.stack_rect()` handed to `tag_layout()` and `frame_point()`, defaults empty; edge tags under the stack arrow to its border, a label that would straddle it goes beside its disc or diamond (the controller's ruling), the stack counts as a placed plate; no camera and no reference moves.
+312. The kit's real depth: `Kit.STACK` (240 × 165) for M6's checks; the old `DEAD` checks are unchanged.
+313. Camera spots: The Lantern's Eye (0.0, -6.0), Exodus (-7.0, 9.0), The Heart of Faith (-6.0, -4.0), each checked against the padded stack (the controller's ruling); none moved after the photographs.
+314. The new wishes: "Strike down the zealot, unseen" (Punish, 15, `PunishWish` with clergy and unseen) and "Turn the doubting priest" (Faith, 15, `NeighboursWish`, count 1, clergy), both `min_tier` 5; the pool grows from 16 to 18; Tier 1-4 draws do not change.
+315. Tier 5 draws may change: no test pinned one, and Task 8 re-pinned the pool's count and ids.
+316. Board order: the ★ missions first, then The Lantern's Eye, Exodus and The Heart of Faith.
+317. The last tier's line counts its five ("Ascendance 2 / 5 cleared"); with all 25 cleared it reads "...: every tier is cleared".
+318. The board complete: the header gains "All 25 cleared" (`DescendState.all_cleared()`).
+319. The scenarios `eye`, `exodus` and `heart` run the `MissionBook` versions; `eye` and `heart` turn hit-stop off.
+320. The new results titles are THE LANTERN'S EYE IS BLIND, THE EYE OPENS, THE FAITHFUL ARE OUT, TOO FEW ARE LEFT, THE GATES ARE SHUT, THE HEART OF FAITH IS BROKEN, THE GREAT FLAME IS BLESSED and THE FLAME IS KINDLED ANEW, under the mission's own keys (`eye_blind`, `eye_open`, `exodus`, `exodus_few`, `gates_shut`, `heart`, `blessed`, `kindled`); the Gaze's is the family's `gaze`.
+321. `StagesObjective`: one generic objective (its label and win reason in `_init()`, the director's `stages_done()`, `lost_reason()` and `hud_line()`).
+322. `RazeDirector._spoil_for()` (default `spoil_seconds`), proven by Spoiled Harvest's, The Crown's Bread's and The Armoury's references.
+323. FLOW's board and results steps cover Ascendance's five and one step is added (The Lantern's Eye from the board, ascended): 113 to 114.
+324. The bench: The Lantern's Eye's board version against Last Judgement's; the release bench is the board versions of The Warning, Mira's House, The Vigil Flame, The Procession and Last Judgement against `kak-v011-m5` and v0.10's tag, on a quiet machine (the controller's, at landing).
+325. No relays in M6; no `TempleReport`.
+326. No new `TownLayout` reads in shared code: the wishes read roles and kinds; the three directors read the layout in `src/game/mission/` only.
+327. The scripted gate and policies are M2-M5's; each policy works its opposition as a player would and states its Gaze; the Eye's never casts within `POOL_R` + 0.5 of a lit pool. The controller accepted Exodus at 2 of 3.
+328. v0.11's close: this section, a short whole-version summary at the top of these notes, and the README's `--show` list.
+329. The names are `LanternEyeDirector`, `ExodusDirector` (inner `Household`, `Gate`), `HeartOfFaithDirector` (inner `Post`, `HeartGaze`) and `StagesObjective`; the scenarios `eye|exodus|heart`; the wish ids `zealot` and `priest`; the tests are `test_tier5_groundwork`, `test_lantern_eye`, `test_exodus`, `test_heart_of_faith`, `test_tier5_wishes` and `test_tier5_board`, all on M3's kit. Constants a parent class declares are not redeclared: Exodus uses `EscortDirector.SIGHT` and names its gate posts' spacing `POST_GAP`; the Eye uses `HuntDirector.SHAKE` and `TICK`.
+330. M4 Decision 67 reworded: the base gains the Charge record, its accessors gated on the Lamb's and the Prisoner's twelve.
+331. `Charge.man` is a `Variant` (a body is freed at once when he escapes); the `charge` accessor stays typed `Person` and gives null for a freed or missing man.
+332. Per-charge setup is a hook, `_place_charge(c)` (today's set-down by default; Exodus takes each believer into his household's house); `_in_use(c)` lists every charge's man.
+333. The guard change keys on the director's clock as today, stored in the first record's `change_in`.
+334. The single-charge searchers stay single-charge: `_hunt()` and `_step_hunters()` follow `charges[0]` and Exodus overrides the latter; a doc line says binding assumes one charge, and the base guards `not _alive(charge)`.
+335. `_unguarded_blow()` keeps today's order exactly (health, mark, destroy or crack); `shield_hits` emits `Structure.hit` only while the standard stands, as `Structure.damage()` does.
+336. The keepout: `STACK_PAD` (4 in the plan, 10 after the fix round), `stack_rect()` covering the stack whenever it is drawn (the tour and after the night), `objective_rect()` and `wishes_rect()` factored out of the drawing, `_keepout_point()` for an arrow sent to the border, `_label_beside()` and `_label_aside()` (the controller's ruling: the keepout never drops a label), the layer redrawn when the stack's size changes.
+337. `Kit.STACK` and `clear_of_stack(g, cam, zone := DEAD)` were already M5's; kept.
+338. `StagesObjective` reads three `MissionDirector` virtuals added in Task 4: `stages_done()` (false), `lost_reason()` ("") and `hud_line()` ("").
+339. `_tier5()`: tier 5, 7:00, 6 / 16, `tier_floor` 4, no profile, the intro banner the name in capitals; stretch 1.
+340. One Gaze objective: `_with_gaze()` and `_with_gaze_for_night()` append a `GazeObjective` only when the made list has none (`_has_gaze()`).
+341. The Searchlight's hooks: `hunt` makes `searching` true whenever a noise is held; `hold` ends a search that many seconds after its noise was heard; the defaults keep today's rule, and the Eye clears its noise when it goes quiet.
+342. The Eye's towers are stone from setup (its own filter: a blow only shakes), given back at teardown.
+343. The Eye measures "on guard" from the tower, so its party guards it before its mirror goes up.
+344. The Eye's countdown: the director's own clock decides, loss and banner in its own step; the strip shows it through a display-only timeline event that never doubles the loss's banner.
+345. Seen casts are judged whenever the light is on, quiet or hunting; hearing is only while a mirror stands.
+346. The wrights are `HuntDirector.Guard` records (no relief); hung again, they go back inside at once; gone for good, they come out if inside and go home.
+347. The Eye's HUD row is `HuntObjective` as M4 made it, "Blind the Eye: mirrors 1 / 3" (the controller's ruling), and the Eye shows a banner on every Gaze rise.
+348. Exodus's file: each household keeps a trail of its lamp's footsteps; a follower is held on duty at his place in the file while within `FOLLOW_REACH`; whispered, he leaves it and holds where he is left; within 2 of his lamp he rejoins; once the lamp gets out, every member still in file walks on to that way out.
+349. Exodus's taken believer goes inside the Temple at once when his seizer delivers him.
+350. Exodus's gates shut by timeline events, each on the strip from 0:00; a shut gate's way out is no way out; a household whose lamp got out by a gate that has since shut re-routes to the next open gate (the controller's ruling); the last shutting loses only with fewer than ten out.
+351. A lay watcher back on his feet takes his post or beat again only 20 s after he first stood calm, at once in the two looks after the evacuation began; a seizer and a searcher never take a post.
+352. Exodus's gate reliefs come from the Temple's door: the lay citizen nearest it with a way to the post, made a watchman, at most six; with none the search backs off; flight-proofed once the town runs.
+353. Exodus's lamp is a household's first member in town who is alive, out of doors, not escaped, not taken and not held by a seizer, computed at each read.
+354. Exodus holds its believers with `_hold_all()` (unlike The Lost Lamb): the household walks on and none flees; the crowd's own `escaped` signal still counts a believer out; `enemy_killed` is hooked so seen deaths fill its Gaze (the controller's ruling).
+355. The Heart's Knights are made by the inherited `MissionDirector._knight()` (the controller's blocking ruling: no override, no copy); its posts are placed by a copy of The Crown's Bread's `_spread()` with posts 2.1 apart.
+356. The litter is a point: the mean of its living bearers' places less their corner offsets; Odran, hidden indoors, is carried on it every frame; each look the bearers walk on duty to the corners of a square further along his road.
+357. The litter reaching the steps sets Odran down: he steps out on foot within 1.5 of the altar and begins the rite; the living bearers stand where they are.
+358. `ODRAN_PACE` 0.5 on duty (a man on duty walks at `Person.PANIC_SPEED` times his pace, so his 14-unit road takes about 18 s, not the spec's 40); Task 7's gate kept it.
+359. The Heart's Gaze is `HeartOfFaithDirector.HeartGaze extends GazeMeter`: 10 a seen death, 20 once the flame is out.
+360. The blessing is a timeline event guarded by the flame still burning, whose callback sets `blessed`; "Put out the flame 1 / 2: blessed in 2:10" reads its seconds.
+361. The Heart's oil-house is the first dwelling nearest `OIL_AT` whose door the street from the Citadel's gate reaches, never a wish's.
+362. A fright stops Odran a moment: at the next look a panicked Odran is put back on duty where he stands; the rite resets when his mind leaves duty.
+363. The wishes' extra parameters: `NeighboursWish` takes `"label"`, `"edge"` and `"route"` (the longest street walk to the wisher); `PunishWish`'s zealot is a living cleric out of doors, at random.
+364. `shuts_gates` is added to "Lead my brother out" and "Lead my family out" as a clash.
+365. Tier 5 draws: no test pinned one at the plan's writing; Task 8 searched again, and re-pinned the pool's count and ids (16 to 18).
+366. FLOW 114: M4's Omen-locked step also opens Ascendance's tab and checks its five cards behind "Clear 3 Reckoning missions"; a new `_flow_tier5()` plays The Lantern's Eye from the board, gives each mirror up by its public state, ascends and reads "Ascendance 1 / 5 cleared".
+367. The board complete: `DescendState.all_cleared()` (every `TierBook.all()` id cleared); the last tier's line counts all its missions; the header's "All 25 cleared" reads `TierBook.all().size()`.
+368. Photographs: `TIER5_SHOWS` is the three ids plus `lantern_eye-hunt` and `heart_of_faith-odran`; `tiers --mission=last_judgement`; a new `tiers-all`; the keepout's proof retakes `crowns_bread`, `informer` and `spoiled_harvest` as their board nights hear.
+369. Hint phases are listed most urgent first: the Eye `eye`, `shattered`, `guarded` / `open`, `waiting`; Exodus `caught`, `hounds`, `shut`, `gate`, `waiting`; the Heart `coming`, `litter`, `rite`, `on_foot`, then `guarded`, `burning`, `open`, `not_yet`.
+370. The policies' quiet Doom: every M6 policy Dooms only where it is unseen by the witness rule (`_doom_unseen()`: nobody living outside the cast's radius stands within 2.0 of anyone inside it) and takes none of its own charges.
+371. Task 10's photograph: at Exodus's camera the far south household's plate (OUT BY 3:15) was placed before the gates', and the HUD dropped the Main Gate's, leaving a gate arrow with no words. `ExodusDirector.tags()` now lists the next household's plate first, then the gates', then the households after it; tags are read-only, so no reference moved, and a test pins the order.
+372. `--show=lantern_eye|exodus|heart_of_faith` take the board night's photograph, `lantern_eye-hunt` raises the first mirror and draws a beam to a cast, `heart_of_faith-odran` razes both targets and sends Odran out, and `tiers-all` clears the whole board (the player's own save is not written).
+
+### Photographs and drawing fixes
+
+`--show=lantern_eye|exodus|heart_of_faith` photograph each new mission's board night (the tour skipped, the opening banners waited out; taken a few seconds into the night, so the clocks read a few seconds short), `lantern_eye-hunt` and `heart_of_faith-odran` the two later states, `--show=tiers --mission=last_judgement` opens Ascendance's tab and `--show=tiers-all` the finished board. They were judged against the padded keepout (about 250 × 175 px of the 640 × 360 view).
+
+- **The Lantern's Eye** reads clear. NEXT MIRROR 0:38 stands on the north tower at the upper right (an arrow at the frame's top edge, its words inward over the Temple), GUARD on the north party, the beams drawn, "Blind the Eye: mirrors 0 / 3", the Gaze row and the strip's first mirror are there, and nothing key is under the left stack. The east and south-west towers have no tag yet: a tower is tagged only as the next mirror, so the east tower's arrow comes from the bottom edge once the first mirror is up (it shows in the hunt photograph), the south-west tower's after it. Two GUARD plates of the east tower's party stand under the power slots and one of the north party's under the timeline strip: the HUD draws a plate for a tag with no arrow even there. Left, noted for the controller (a HUD matter, outside this task's files).
+- **The Lantern's Eye with its first mirror up** (`lantern_eye-hunt`): MIRROR - GUARDED on the north tower, gold, and NEXT MIRROR 1:30 with its arrow on the bottom edge; the beam lights the Temple's roof and washes no tag out: a plate is dark and its words stay legible over the lit pool, so the spec's fix (the tag's plate, `Hud._plate()`) is not needed.
+- **Exodus** had a plate dropped: the south household's far plate (HOUSEHOLD - OUT BY 3:15) was placed before the Main Gate's, so the Main Gate's arrow showed with no words (decision 371). Now HOUSEHOLD - OUT BY 0:15 stands over the west door left of the centre below the stack, POSTERN - WATCHED at the wall, PATROL, MAIN GATE - WATCHED and SIDE GATE - WATCHED draw, and the east household's plate reads from the right; the south household's grey arrow at the bottom edge draws without words while the gates' plates hold the space (it is 3:15 away). "Lead them out 0 / 10, 2 to spare", the Gaze row, the strip's two households and the hint are in the stack. The Temple has no tag until a believer is seized.
+- **The Heart of Faith** reads clear. OIL-HOUSE - IN USE BY 0:45 stands up and right of the centre with the Temple's four KNIGHT plates to its right, and ODRAN - IN THE CITADEL above the centre, clear of the stack; "Put out the flame 0 / 2: blessed in 4:55", the Gaze row and the hint are in the stack. Nothing is in use at 0:00, so only the oil-house, the next target, carries a tag (grey); the Temple's own tag comes with its time.
+- **The Heart of Faith with Odran out** (`heart_of_faith-odran`): ODRAN - IN HIS LITTER, gold, with BEARER plates on the Knights round it, ALTAR at the Temple's steps in orange, and the hint's "litter" line; one bearer under the stack is an arrow on its border with its label beside the disc. The hint has no room for the Gaze's sentence after the litter line, as the three-line plate allows.
+- **Ascendance's tab and the finished board** read clear: five cards with each name, type and brief inside it, Last Judgement, The Lantern's Eye and Exodus ticked on `tiers`, every card ticked on `tiers-all`, and the header reads "Night 42   Believers 990   All 25 cleared". (The card font draws an apostrophe as a backtick in "Halcyon`s": the font's own glyph.)
+- **The keepout's three** (`crowns_bread`, `informer`, `spoiled_harvest`): their old trouble spots, an arrow or label under the stack's corner, now sit on the stack's border with their labels beside them (The Crown's Bread's MONEYLENDER arrow, The Informer's PRESSED MAN, Spoiled Harvest's GRANARY plate to the right of the wishes' rows), and nothing else moved. No `CAMERA_AT` moved in this task, so no reference was re-recorded.
+
+Tests: 6569 checks, 0 failures (in eighths 2867 + 318 + 352 + 478 + 670 + 628 + 672 + 584); FLOW 114 checks, 0 failures.
+
+Gates: filled in at landing.
 
 ## M5: Reckoning
 

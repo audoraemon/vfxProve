@@ -16,6 +16,10 @@ const REACH := 8.0
 const NEAR := 2.0
 ## The neighbours' tag (v0.11 M2).
 const LABEL := "NEIGHBOUR"
+## How much shorter than the straight distance a street walk can measure (v0.11 M6's final review): the walk grid's path runs between
+## cell centres, each end up to a cell off the person, so _priest_for() skips a cleric whose straight distance is beyond the route, or
+## no nearer than the best walk so far, by more than this -- never one the walk itself would have taken.
+const WALK_SLACK := 2.0
 
 ## The three to be brought. Untyped: they may hold freed bodies (v0.11 M2).
 var neighbours := []
@@ -66,7 +70,8 @@ func _label() -> String:
 
 
 ## The cleric for wisher `w` (v0.11 M6): living, out of doors, none of `taken`, whose street walk to `w` is the shortest and at most the
-## "route" param; null for none. With no walk grid, the straight distance.
+## "route" param; null for none. With no walk grid, the straight distance. One whose straight distance alone rules him out is skipped
+## before his walk is measured (WALK_SLACK).
 func _priest_for(w: Person, crowd: Crowd, taken: Array) -> Person:
 	var reach := float(def.params.get("route", 0.0))
 	var best: Person = null
@@ -78,6 +83,8 @@ func _priest_for(w: Person, crowd: Crowd, taken: Array) -> Person:
 		if p.inside or p.profile == null or p.profile.role != CitizenProfile.Role.CLERGY or taken.has(p):
 			continue
 		var walk := p.ground_pos.distance_to(w.ground_pos)
+		if (reach > 0.0 and walk - WALK_SLACK > reach) or walk - WALK_SLACK >= best_walk:
+			continue  # the straight distance prefilter: no street walk is that much shorter (the final review)
 		if crowd._grid != null:
 			var path := crowd._grid.path(p.ground_pos, w.ground_pos)
 			if path.is_empty():

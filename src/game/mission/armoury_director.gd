@@ -557,11 +557,12 @@ func hud_line() -> String:
 
 
 ## The map tags, most important first (v0.11 M5, mission spec §2, plan decision 206): each target not razed, pointed at -- not
-## mustering, grey, "HORN" and its chained time (not "MUSTERS BY": at the camera's rest the gate barracks' and the armoury's arrows stand
-## side by side on the bottom edge, and the longer words made their plates overlap, so the HUD dropped the armoury's -- Task 8's
-## photograph), or once fallen "DOWN" and it (the final review: "DOWN, COUNTS AT", "DOWN, HORN" and "HORN BY" all dropped a plate);
-## mustering, gold, GUARDED while one stands guard, orange and its seconds left while it burns -- then each armed man: ARMED on guard, a
-## red diamond on one running in, a small red mark on one away.
+## mustering, grey, "HORN" and the seconds to its chained time, counting down as the strip does (v0.11 M6's final review; not "MUSTERS
+## BY" or "HORN IN": at the camera's rest the gate barracks' and the armoury's arrows stand side by side on the bottom edge, and the
+## longer words made their plates overlap, so the HUD dropped the armoury's -- Task 8's photograph), or once fallen "DOWN" and those
+## seconds (the final review: "DOWN, COUNTS AT", "DOWN, HORN" and "HORN BY" all dropped a plate); mustering, gold, GUARDED while one
+## stands guard, orange and its seconds left while it burns -- then each armed man: ARMED on guard, a red diamond on one running in, a
+## small red mark on one away.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for i in targets.size():
@@ -570,7 +571,7 @@ func tags() -> Array[MapTag]:
 			continue
 		var name := String(NAMES[i])
 		if not mustering[i]:
-			var when := UiTheme.clock(stage_due(i))
+			var when := UiTheme.clock(due_in(i))
 			var label := "%s - DOWN %s" % [name, when] if s.destroyed else "%s - HORN %s" % [name, when]
 			out.append(MapTag.place(s.center(), MARK_SEALED, label, s.height, true))
 		elif not guards(i).is_empty():

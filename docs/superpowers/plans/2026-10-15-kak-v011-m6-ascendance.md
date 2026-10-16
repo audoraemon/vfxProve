@@ -4578,8 +4578,8 @@ func teardown() -> void:
 ## Exodus (v0.11 M6, Tier 5, mission spec §2 and §8 row 24): lead ten of twelve believers, in three households that come out one at a time,
 ## out of the town before the Inquisition shuts the last gate (ExodusDirector, the Escort type with many charges).
 static func exodus() -> MissionDef:
-	var m := _tier5(EXODUS, "Exodus", PackedStringArray(["The Inquisition comes for your believers tonight.",
-		"Lead ten out before the gates are shut."]))
+	var m := _tier5(EXODUS, "Exodus", PackedStringArray(["The Inquisition comes for your flock.",
+		"Lead ten out before the gates shut."]))  # Task 9 shortened it to fit the card's seven lines
 	m.goal = "Lead ten of your twelve believers out of Aldermere before the Inquisition shuts the last gate at %s" % UiTheme.clock(
 		float(ExodusDirector.SHUT_AT[2]))
 	m.goal_label = "The faithful are out"

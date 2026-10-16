@@ -133,6 +133,12 @@ var praying := false
 ## The ascent's column (v0.11 M1): its ground point (Vector2.INF for none) and its real seconds so far.
 var _rise_at := Vector2.INF
 var _rise_age := 0.0
+## The objective rows, the how-to-win line and its wrapped lines, taken once at the start of advance() and dropped at its end (v0.11
+## M6's final review): the redraw signature and the tags' keepout (stack_rect(), each frame) read them several times a frame, and the
+## line's wrapping was done twice for each. null outside advance(), where every reader takes them live.
+var _frame_rows: Variant = null
+var _frame_hint: Variant = null
+var _frame_lines: Variant = null
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -170,8 +176,21 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
-## Age the banners and Cael's lines, and redraw when anything on screen has changed.
+## Age the banners and Cael's lines, and redraw when anything on screen has changed. v0.11 M6's final review: the objective rows and
+## the how-to-win line are taken once for the whole advance (_frame_rows, _frame_hint, _frame_lines).
 func advance(delta: float) -> void:
+	if _rules != null and _rules.mission != null:
+		_frame_rows = objective_rows()
+		_frame_hint = hint_text()
+		_frame_lines = hint_lines(String(_frame_hint))
+	_advance(delta)
+	_frame_rows = null
+	_frame_hint = null
+	_frame_lines = null
+
+
+## advance()'s work, with the frame's rows and line taken (v0.11 M6's final review).
+func _advance(delta: float) -> void:
 	_age(_banners, delta, BANNER_SECONDS)
 	_age(_subtitles, delta, SUBTITLE_SECONDS)
 	if _rise_at != Vector2.INF:
@@ -230,6 +249,21 @@ func objective_rows() -> Array:
 	for b in _rules.bonuses:
 		rows.append([b.hud_text(_rules), "x" if b.check(_rules) == Objective.Status.FAILED else "ok"])
 	return rows
+
+
+## The objective rows this advance took (v0.11 M6's final review), else live.
+func _rows_now() -> Array:
+	return _frame_rows if _frame_rows != null else objective_rows()
+
+
+## The how-to-win line this advance took (v0.11 M6's final review), else live.
+func _hint_now() -> String:
+	return String(_frame_hint) if _frame_hint != null else hint_text()
+
+
+## The how-to-win line's wrapped lines this advance took (v0.11 M6's final review), else wrapped live.
+func _lines_now() -> PackedStringArray:
+	return _frame_lines if _frame_lines != null else hint_lines(hint_text())
 
 
 ## The act's next two timed events (v0.09) as [clock, label] rows, e.g. ["0:23", "The bonfire lights"]; empty for a
@@ -303,9 +337,9 @@ func events_rect(w: float) -> Rect2:
 func hint_top() -> float:
 	var top := OBJECTIVE_PANEL.end.y + 4.0
 	if not _rules.mission.scored:
-		var rows := objective_rows().size()
+		var rows := _rows_now().size()
 		top = 2.0 + (5.0 + ROW_H * float(rows) + 4.0 if rows > 0 else 0.0)
-	var lines := hint_lines(hint_text())
+	var lines := _lines_now()
 	var events := events_rect(_view().x)
 	if lines.is_empty() or events.size == Vector2.ZERO:
 		return top
@@ -317,7 +351,7 @@ func hint_top() -> float:
 
 ## Where the how-to-win plate is drawn (v0.10 M6); `Rect2()` for no line.
 func hint_rect() -> Rect2:
-	var lines := hint_lines(hint_text())
+	var lines := _lines_now()
 	if lines.is_empty():
 		return Rect2()
 	return Rect2(2.0, hint_top(), hint_width(lines), 5.0 + UiTheme.LINE_SMALL * float(lines.size()))
@@ -328,7 +362,7 @@ func hint_rect() -> Rect2:
 func objective_rect() -> Rect2:
 	if _rules.mission.scored:
 		return OBJECTIVE_PANEL
-	var rows := objective_rows()
+	var rows := _rows_now()
 	if rows.is_empty():
 		return Rect2()
 	var wide := 0.0
@@ -350,7 +384,7 @@ func _wishes_plate(hint: Rect2) -> Rect2:
 	var wide := 0.0
 	for row: Array in rows:
 		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL))
-	return Rect2(2.0, hint.end.y + 4.0 if hint.size != Vector2.ZERO else hint_top(), wide + 22.0, 5.0 + ROW_H * float(rows.size()))
+	return Rect2(2.0, _wishes_top_under(hint), wide + 22.0, 5.0 + ROW_H * float(rows.size()))
 
 
 ## The left HUD stack as drawn this frame (v0.11 M6, mission spec §6.4): from the screen's corner to the right edge of the widest of the
@@ -384,7 +418,12 @@ func wish_rows() -> Array:
 
 ## Where the wishes' rows start (v0.11 M1): under the how-to-win plate, or where it would be with no line.
 func wishes_top() -> float:
-	var hint := hint_rect()
+	return _wishes_top_under(hint_rect())
+
+
+## Where the wishes' rows start under a how-to-win plate `hint` already measured (v0.11 M6's final review): the one rule wishes_top()
+## and _wishes_plate() share.
+func _wishes_top_under(hint: Rect2) -> float:
 	return hint.end.y + 4.0 if hint.size != Vector2.ZERO else hint_top()
 
 
@@ -484,11 +523,12 @@ func _draw_gaze(w: float) -> void:
 
 ## The tags on the map (v0.10 M6, spec §2.3): each one's footprint outline and, while on screen, its diamond, then the
 ## labels kept for them, after every diamond so that no tag's diamond or outline hides another's label. Lays the frame's
-## tags out first (tag_layout()). v0.11 M6: the live stack is the layout's keepout (stack_rect()), so no tag, label or arrow hides under it.
+## tags out first (tag_layout()). v0.11 M6: the live stack is the layout's keepout (stack_rect()), so no tag, label or arrow hides under it;
+## the timeline strip and the slot bar count as placed for labels (the final review), so no plate is drawn over them.
 func _draw_tags() -> void:
 	_layout = []
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	_layout = tag_layout(all_tags(), xf, _view(), stack_rect())
+	_layout = tag_layout(all_tags(), xf, _view(), stack_rect(), [events_rect(_view().x), slots_rect()])
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
 	# earlier one.
 	for e: Dictionary in _layout:
@@ -568,19 +608,27 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 ## - `show`: the label is drawn. Not when it has none, nor when its plate would overlap one placed before it: a director
 ##   lists its most important tags first, so a crowded view keeps their labels.
 ## A tag at no point is left out.
+## v0.11 M6's final review: `taken`, the other HUD plates no label may cover (the timeline strip, the slot bar): each counts as a label
+## already placed, and a map tag's plate that would lie over one first tries beside its diamond (_label_aside()); the arrows, the
+## diamonds and the keepout's rules are as they were. Empty, the layout of old.
 ## v0.11 M6 (mission spec §6.4) `keepout`, the left HUD stack: empty, the layout of old exactly. Else (1) a tag with `edge` whose diamond
 ## lies inside it becomes an arrow on its border, where the line from the frame's centre to the diamond crosses it, its label beside the
 ## arrow toward the centre, clear of it (_label_beside()); (2) an arrow frame_point() would put on the frame's edge inside it slides to
 ## its border the same way; (3) it counts as a label already placed, so no plate is drawn over it; (4) a tag without `edge` inside it
 ## keeps its diamond, not its label; (5) a tag whose diamond is clear of it but whose plate over the diamond would lie under it takes
 ## its plate beside the diamond (_label_aside()).
-static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2()) -> Array:
+static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2(), taken: Array[Rect2] = []) -> Array:
 	var out := []
 	var placed: Array[Rect2] = []
 	var frame := tag_frame(view)
 	var keep := keepout.has_area()
 	if keep:
 		placed.append(keepout)
+	var blocked: Array[Rect2] = []
+	for r in taken:
+		if r.has_area():
+			blocked.append(r)
+			placed.append(r)
 	for t in tags:
 		if not t.valid():
 			continue
@@ -592,6 +640,9 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keep
 			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
 			if keep and not keepout.has_point(c) and (e.label as Rect2).intersects(keepout):
 				e.label = _label_aside(t.label, c, t.size, keepout, view)
+			for b in blocked:
+				if (e.label as Rect2).intersects(b):
+					e.label = _label_aside(t.label, c, t.size, b, view)
 		elif t.edge:
 			var tip := frame_point(c, frame, keepout)
 			var d := (c - frame.get_center()).normalized()
@@ -628,20 +679,20 @@ static func frame_point(point: Vector2, frame: Rect2, keepout := Rect2()) -> Vec
 		k = half.y / absf(d.y)
 	var tip := mid + d * k
 	if keepout.has_area() and (keepout.grow(0.5).has_point(tip) or keepout.has_point(point)):
-		return _keepout_point(mid, d, keepout)
+		return _keepout_point(mid, d, keepout, tip)
 	return tip
 
 
 ## A map tag's label moved out of `keepout` (v0.11 M6): its plate over the diamond would lie under the stack, so it goes to the diamond's
 ## right, else below it; the plate over it again (and so no label, the keepout counting as placed) when neither is clear.
-static func _label_aside(text: String, c: Vector2, size: float, keepout: Rect2, view: Vector2) -> Rect2:
+static func _label_aside(text: String, c: Vector2, mark: float, keepout: Rect2, view: Vector2) -> Rect2:
 	var wide := plate_size(text).x
-	var centres: Array[Vector2] = [c + Vector2(size + LABEL_GAP + wide * 0.5, 0.0), c + Vector2(0.0, size + LABEL_GAP + PLATE_H * 0.5)]
+	var centres: Array[Vector2] = [c + Vector2(mark + LABEL_GAP + wide * 0.5, 0.0), c + Vector2(0.0, mark + LABEL_GAP + PLATE_H * 0.5)]
 	for centre in centres:
 		var r := label_rect(text, centre, view)
 		if not r.intersects(keepout):
 			return r
-	return label_rect(text, c - Vector2(0.0, size + LABEL_GAP + PLATE_H * 0.5), view)
+	return label_rect(text, c - Vector2(0.0, mark + LABEL_GAP + PLATE_H * 0.5), view)
 
 
 ## An arrow's label moved out of `keepout` (v0.11 M6): a plate beside the arrow's disc, to its right and level with it, and no higher
@@ -657,8 +708,10 @@ static func _label_beside(text: String, tip: Vector2, d: Vector2, keepout: Rect2
 
 
 ## Where the line from `mid` along `d` first meets `keepout`'s border (v0.11 M6): its right edge or its bottom, whichever comes first --
-## the stack sits in the screen's top-left corner, the frame's centre below and right of it; `mid` itself if it never does.
-static func _keepout_point(mid: Vector2, d: Vector2, keepout: Rect2) -> Vector2:
+## the stack sits in the screen's top-left corner, the frame's centre below and right of it. The final review's guard: a line that
+## never meets either (a keepout reaching past the frame's centre, or a zero heading -- neither happens with the HUD's stack, which
+## stops well short of the centre) gets `fallback`, the frame's own edge point, never the centre of the screen.
+static func _keepout_point(mid: Vector2, d: Vector2, keepout: Rect2, fallback: Vector2) -> Vector2:
 	var best := INF
 	if d.x < 0.0:
 		var k := (keepout.end.x - mid.x) / d.x
@@ -670,7 +723,7 @@ static func _keepout_point(mid: Vector2, d: Vector2, keepout: Rect2) -> Vector2:
 		var x := mid.x + d.x * k
 		if k > 0.0 and x >= keepout.position.x - 0.01 and x <= keepout.end.x + 0.01:
 			best = minf(best, k)
-	return mid + d * best if best != INF else mid
+	return mid + d * best if best != INF else fallback
 
 
 ## The screen's size: the Control's once laid out, else 640 x 360.
@@ -719,6 +772,14 @@ func slot_rect(i: int) -> Rect2:
 	var total := float(count) * SLOT_W + float(maxi(count - 1, 0)) * SLOT_GAP
 	var left := roundf((w - total) * 0.5)
 	return Rect2(Vector2(left + float(i) * (SLOT_W + SLOT_GAP), SLOT_TOP), Vector2(SLOT_W, SLOT_SIZE))
+
+
+## The slot bar (v0.11 M6's final review): every slot's rectangle in one, Rect2() with none -- tag_layout() keeps the labels off it.
+func slots_rect() -> Rect2:
+	var out := Rect2()
+	for i in _rules.loadout.size():
+		out = slot_rect(i) if i == 0 else out.merge(slot_rect(i))
+	return out
 
 
 ## The power's name in slot `i` as its card shows it, cut to one line (taken once in setup()).
@@ -824,12 +885,12 @@ func _on_surged() -> void:
 ## times a second while a four-minute mission's effects are already busy.
 func _signature() -> String:
 	var out := "%s|%s|%s|%d|%s" % [UiTheme.clock(_rules.time_left),
-		objective_text() if _rules.mission.scored else str(objective_rows()), status_text(),
+		objective_text() if _rules.mission.scored else str(_rows_now()), status_text(),
 		roundi(_rules.stability.total() * 200.0), rite_text()]
 	var events := event_rows()
 	if not events.is_empty():
 		out += "|" + str(events)
-	out += "|" + hint_text()
+	out += "|" + _hint_now()
 	out += "|" + _caption
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
 	for i in _rules.loadout.size():
@@ -844,8 +905,11 @@ func _tag_signature(with_stack := true) -> String:
 	if tags.is_empty():
 		return ""
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	# v0.11 M6: the stack is the layout's keepout, so the layer redraws when its size changes (a wish row comes or goes).
+	# v0.11 M6: the stack is the layout's keepout, so the layer redraws when its size changes (a wish row comes or goes); the final
+	# review: the strip and the slot bar are placed for the labels, so the same for them (`with_stack` false leaves all three out).
 	var out := "%s|%s|%s" % [xf, _view(), stack_rect() if with_stack else Rect2()]
+	if with_stack:
+		out += "|%s|%s" % [events_rect(_view().x), slots_rect()]
 	for t in tags:
 		out += "|%s%s%s%s%s%s%s%s%s" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid()]
 	return out

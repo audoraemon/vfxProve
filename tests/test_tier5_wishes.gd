@@ -14,6 +14,7 @@ static func run(t) -> void:
 	_kept(t)
 	_zealot(t)
 	_priest(t)
+	_priest_skips(t)
 	_clashes(t)
 	_zealot_not_odran(t)
 
@@ -99,8 +100,12 @@ static func _kept(t) -> void:
 static func _zealot(t) -> void:
 	var s := Kit.world(MissionBook.warning(), MissionDirector.new())
 	var w := _wish(s, "zealot") as PunishWish
+	t.check(w != null, "the town gives a zealot")
+	if w == null:
+		Kit.done(s)
+		return
 	var z := w.target
-	t.check(w != null and z.profile.role == CitizenProfile.Role.CLERGY and not z.inside and w.wisher.profile.role != CitizenProfile.Role.CLERGY
+	t.check(z.profile.role == CitizenProfile.Role.CLERGY and not z.inside and w.wisher.profile.role != CitizenProfile.Role.CLERGY
 		and w.tags()[0].label == "ZEALOT" and w.tags()[0].edge, "a cleric out of doors, marked ZEALOT and pointed at; a lay wisher")
 	var crowd: Crowd = s.crowd
 	for p in crowd.citizens:
@@ -123,12 +128,16 @@ static func _zealot(t) -> void:
 static func _priest(t) -> void:
 	var s := Kit.world(MissionBook.warning(), MissionDirector.new())
 	var w := _wish(s, "priest") as NeighboursWish
+	t.check(w != null, "the town gives a doubting priest")
+	if w == null:
+		Kit.done(s)
+		return
 	var priest := w.neighbours[0] as Person
 	var path := (s.crowd as Crowd)._grid.path(priest.ground_pos, w.wisher.ground_pos)
 	var walk := 0.0
 	for k in range(path.size() - 1):
 		walk += path[k].distance_to(path[k + 1])
-	t.check(w != null and w.neighbours.size() == 1 and priest.profile.role == CitizenProfile.Role.CLERGY and walk <= 30.0
+	t.check(w.neighbours.size() == 1 and priest.profile.role == CitizenProfile.Role.CLERGY and walk <= 30.0
 		and w.tags()[0].label == "DOUBTING PRIEST" and w.tags()[0].edge and w.hud_text(s.rules).ends_with("0 / 1"),
 		"one cleric within 30 units of street of the wisher, DOUBTING PRIEST, pointed at (%.1f units)" % walk)
 	priest.whisper(w.wisher.ground_pos, MindWhisperFx.LINGER)
@@ -139,6 +148,50 @@ static func _priest(t) -> void:
 	var dies := _wish(s, "priest", 9) as NeighboursWish
 	Kit.free_body(s, dies.neighbours[0])
 	t.check(dies.check(s.rules) == Objective.Status.FAILED, "the priest dead before believing: failed")
+	Kit.done(s)
+
+
+## The priest's skip path (v0.11 M6's final review): a wisher with no cleric out of doors within the route is passed over, and with
+## none for any wisher the wish is not heard; every cleric already taken is the same; the straight-distance prefilter never drops the
+## cleric the walk picks.
+static func _priest_skips(t) -> void:
+	var s := Kit.world(MissionBook.warning(), MissionDirector.new())
+	var r := RandomNumberGenerator.new()
+	var clergy := []
+	for p in (s.crowd as Crowd).citizens:
+		if MissionDirector._alive(p) and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY:
+			clergy.append(p)
+	var out_of_doors := []
+	for v: Variant in clergy:
+		if not (v as Person).inside:
+			out_of_doors.append(v)
+			(v as Person).inside = true
+	r.seed = 3
+	var none := _def("priest").instance() as NeighboursWish
+	t.check(not out_of_doors.is_empty() and not none.choose(s.crowd, s.town, r, []) and none.wisher == null and none.neighbours.is_empty(),
+		"every cleric indoors: no wisher has one within the route, each is passed over, the wish not heard")
+	for v: Variant in out_of_doors:
+		(v as Person).inside = false
+	r.seed = 3
+	var taken := _def("priest").instance() as NeighboursWish
+	t.check(clergy.size() > 0 and not taken.choose(s.crowd, s.town, r, clergy.duplicate()), "every cleric already taken: not heard")
+	var w := _wish(s, "priest") as NeighboursWish
+	var best: Person = null
+	var best_walk := INF
+	var grid: WalkGrid = (s.crowd as Crowd)._grid
+	for v: Variant in clergy:
+		var p := v as Person
+		if p.inside or p == w.wisher:
+			continue
+		var path := grid.path(p.ground_pos, w.wisher.ground_pos)
+		var walk := 0.0
+		for k in range(path.size() - 1):
+			walk += path[k].distance_to(path[k + 1])
+		if not path.is_empty() and walk <= 30.0 and walk < best_walk:
+			best = p
+			best_walk = walk
+	t.check(best != null and w.neighbours[0] == best, "the cleric chosen is the one the street walk alone picks, prefilter or not")
+	w.release()
 	Kit.done(s)
 
 
@@ -158,8 +211,10 @@ static func _clashes(t) -> void:
 			near_temple[w.def.id] = true
 			w.release()
 	t.check(not heard.has("brother") and not heard.has("family_out") and WishBook.clashes(_def("brother"), PackedStringArray(["shuts_gates"]))
-		and WishBook.clashes(_def("family_out"), PackedStringArray(["shuts_gates"])) and not near_temple.has("heretic")
-		and (heard.has("zealot") or heard.has("priest")), "sixty draws: shuts_gates keeps both escape wishes away, burns_temple the pyre (%s)" % [heard.keys()])
+		and WishBook.clashes(_def("family_out"), PackedStringArray(["shuts_gates"])) and not near_temple.has("heretic"),
+		"sixty draws: shuts_gates keeps both escape wishes away, burns_temple the pyre (%s)" % [heard.keys()])
+	t.check(heard.has("zealot"), "sixty draws at Tier 5 hear the zealot (%s)" % [heard.keys()])
+	t.check(heard.has("priest"), "sixty draws at Tier 5 hear the doubting priest (%s)" % [heard.keys()])
 	t.check(TierBook.board("exodus").mission_tags.has("shuts_gates"),
 		"Exodus on the board declares shuts_gates, the tag both escape wishes clash with (the board takes its tags from TierBook.MISSION_TAGS)")
 	Kit.done(s)

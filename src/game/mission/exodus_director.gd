@@ -539,6 +539,16 @@ func current() -> int:
 	return -1
 
 
+## The household the hint speaks of (v0.11 M6's final review): the first out, not done, with its lamp out of doors -- the one acting --
+## else current(). Only reads.
+func acting() -> int:
+	for i in households.size():
+		var h: Household = households[i]
+		if h.out and not h.done and lamp(i) != null:
+			return i
+	return current()
+
+
 ## The next household still inside, or -1 (v0.11 M6).
 func upcoming() -> int:
 	for i in households.size():
@@ -818,7 +828,7 @@ func tags() -> Array[MapTag]:
 		if gate.shut:
 			out.append(MapTag.place(gate.mouth, MARK_NOT_YET, "%s - SHUT" % gate.label, 0.0, true))
 		elif shut_at - _clock <= SHUT_WARN:
-			out.append(MapTag.place(gate.mouth, MARK_PLACE, "%s - SHUT AT %s" % [gate.label, UiTheme.clock(shut_at)], 0.0, true))
+			out.append(MapTag.place(gate.mouth, MARK_PLACE, "%s - SHUT IN %s" % [gate.label, UiTheme.clock(shut_at - _clock)], 0.0, true))
 		elif gate_watched(g):
 			out.append(MapTag.place(gate.mouth, MARK_WATCHED, "%s - WATCHED" % gate.label, 0.0, true))
 		else:
@@ -844,22 +854,24 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## Household `i`'s tag while it is still inside (v0.11 M6): its door, grey, with the time it comes out at the latest.
+## Household `i`'s tag while it is still inside (v0.11 M6): its door, grey, with the seconds until it comes out at the latest, counting
+## down as the strip does (the final review).
 func _waiting_tag(i: int) -> MapTag:
 	var h: Household = households[i]
-	return MapTag.place(h.door, MARK_NOT_YET, "HOUSEHOLD - OUT BY %s" % UiTheme.clock(out_due(i)), h.house.height, true)
+	return MapTag.place(h.door, MARK_NOT_YET, "HOUSEHOLD - OUT IN %s" % UiTheme.clock(due_in(i)), h.house.height, true)
 
 
-## The hint's phase (v0.11 M6, plan decision 303): "caught" while a believer is marched; for the current household, "hounds" while its
-## searchers are within HOUNDS_NEAR of one of its own, "shut" once the gate it is heading for (heading()) is shut, "gate" while its lamp
-## nears that gate, watched; "waiting" between households (not before the first); else "".
+## The hint's phase (v0.11 M6, plan decision 303): "caught" while a believer is marched; for the household acting (acting(), the final
+## review: one with its lamp out of doors before the first unfinished), "hounds" while its searchers are within HOUNDS_NEAR of one of
+## its own, "shut" once the gate it is heading for (heading()) is shut, "gate" while its lamp nears that gate, watched; "waiting"
+## between households (not before the first); else "".
 func hint_phase() -> String:
 	if lost_reason() != "" or out_count() >= NEED:
 		return ""
 	for c in charges:
 		if c.held and not _resolved(c):
 			return "caught"
-	var cur := current()
+	var cur := acting()
 	if cur < 0:
 		return "waiting" if upcoming() > 0 else ""
 	var h: Household = households[cur]
@@ -878,7 +890,7 @@ func hint_phase() -> String:
 	return ""
 
 
-## The gate household `i` is heading for (v0.11 M6, fix round 1): the one its file walks on to behind a lamp already out (out_to);
+## The gate household `i` is heading for (v0.11 M6, Task 6's review): the one its file walks on to behind a lamp already out (out_to);
 ## else the gate whose mouth is nearest where its lamp is whispered to, or, standing, where he stands -- shut or open, so the hint can
 ## say a household makes for a shut gate; -1 with no lamp. Only reads.
 func heading(i: int) -> int:
@@ -904,8 +916,8 @@ func hint_seconds() -> float:
 	return due_in(upcoming()) if hint_phase() == "waiting" else 0.0
 
 
-## The tour (v0.11 M6, mission spec §2): the west household's door, the postern, the Temple's door; fix round 1: each line fits the
-## caption's one-line plate, and the gates' line says plainly that the last shutting loses the night unless ten are out.
+## The tour (v0.11 M6, mission spec §2): the west household's door, the postern, the Temple's door; each line fits the caption's
+## one-line plate, and the gates' line says plainly that the last shutting loses the night unless ten are out.
 func tour() -> Array:
 	var out := []
 	if not households.is_empty():

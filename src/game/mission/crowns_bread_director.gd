@@ -481,9 +481,10 @@ func _release(c: Crew) -> void:
 		p.regroup(p.profile.home)
 
 
-## The map tags, most important first (v0.11 M4, mission spec §1): each target not razed, pointed at -- not in use, grey, "IN USE BY"
-## its chained time, or "DOWN" (with its rebuild's seconds while one works on it); in use, gold, or orange while burning -- then each
-## crewman: ENGINEER on guard, a red diamond on a relief walking in, a small red mark on one away.
+## The map tags, most important first (v0.11 M4, mission spec §1): each target not razed, pointed at -- not in use, grey, "IN USE IN"
+## and the seconds to its chained time, counting down as the strip does (v0.11 M6's final review), or "DOWN" (with its rebuild's
+## seconds while one works on it); in use, gold, or orange while burning -- then each crewman: ENGINEER on guard, a red diamond on a
+## relief walking in, a small red mark on one away.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for i in targets.size():
@@ -492,7 +493,7 @@ func tags() -> Array[MapTag]:
 			continue
 		var name := String(NAMES[i])
 		if not in_use[i]:
-			var label := "%s - IN USE BY %s" % [name, UiTheme.clock(stage_due(i))]
+			var label := "%s - IN USE IN %s" % [name, UiTheme.clock(due_in(i))]
 			if s.destroyed:
 				var left := rebuild_left(i)
 				label = "%s - DOWN, REBUILT IN %d" % [name, ceili(left)] if left > 0.0 else "%s - DOWN" % name

@@ -15,6 +15,7 @@ static func run(t) -> void:
 	_board(t)
 	_lines(t)
 	_complete(t)
+	_m5_save(t)
 	_waits(t)
 	_reserved(t)
 	_wishes(t)
@@ -40,6 +41,9 @@ static func _board(t) -> void:
 	t.check(TierBook.type_of("lantern_eye") == "Anchors" and TierBook.type_of("exodus") == "Protect" and TierBook.type_of("heart_of_faith") == "Kill"
 		and Array(TierBook.board("exodus").mission_tags) == ["shuts_gates"] and Array(TierBook.board("heart_of_faith").mission_tags) == ["burns_temple"]
 		and TierBook.board("lantern_eye").mission_tags.is_empty(), "each card's type; Exodus and the Heart keep their clashing wishes away")
+	t.check(TierBook.board("last_judgement").mission_tags.is_empty() and TierBook.board("long_night").mission_tags.is_empty()
+		and not TierBook.MISSION_TAGS.has("last_judgement") and not TierBook.MISSION_TAGS.has("long_night"),
+		"Last Judgement and The Long Night declare no tags on the board (no burns_temple): their wishes as they were (the final review's pin)")
 
 
 ## Three cleared of each tier below Ascendance (v0.11 M6 tests).
@@ -53,6 +57,32 @@ static func _lines(t) -> void:
 	s.refresh_open()
 	t.check(s.open_tier == 5 and s.progress_line(5) == "Ascendance 2 / 5 cleared" and s.progress_line(4) == "Reckoning 3 / 3 cleared: Ascendance is open"
 		and not s.all_cleared(), "the last tier counts its five; the tier below reads as before (%s)" % s.progress_line(5))
+
+
+## An M5-era save (v0.11 M6's final review): written before Ascendance had its three new missions -- Ascendance open, Last Judgement and
+## The Long Night cleared, bests on each -- it reads as it was, counts 2 / 5 in the last tier, and writes and reads back the same.
+static func _m5_save(t) -> void:
+	var path := "user://test_tier5_board.cfg"
+	var old := ConfigFile.new()
+	old.set_value("descend", "night", 30)
+	old.set_value("descend", "believers", 400)
+	old.set_value("descend", "open_tier", 5)
+	old.set_value("descend", "cleared", BELOW + ["last_judgement", "long_night"])
+	old.set_value("descend", "fastest", {"last_judgement": 250.5, "long_night": 300.0})
+	old.set_value("descend", "most_wishes", {"long_night": 2})
+	old.save(path)
+	var kept := SaveFile.new().load_from(path).descend
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))  # at once, so nothing below that may stop the suite leaves it behind
+	var again := ConfigFile.new()
+	kept.write(again)
+	var back := DescendState.read(again)
+	t.check(kept.night == 30 and kept.believers == 400 and kept.open_tier == 5 and kept.cleared.size() == BELOW.size() + 2
+		and is_equal_approx(float(kept.fastest.get("last_judgement", 0.0)), 250.5) and int(kept.most_wishes.get("long_night", 0)) == 2
+		and kept.progress_line(5) == "Ascendance 2 / 5 cleared" and not kept.all_cleared(),
+		"an M5-era save reads as it was, Ascendance 2 / 5 (%s)" % kept.progress_line(5))
+	t.check(back.night == kept.night and back.believers == kept.believers and back.open_tier == kept.open_tier and back.cleared == kept.cleared
+		and back.fastest == kept.fastest and back.most_wishes == kept.most_wishes and back.unlocked == kept.unlocked,
+		"and writes and reads back the same")
 
 
 static func _complete(t) -> void:

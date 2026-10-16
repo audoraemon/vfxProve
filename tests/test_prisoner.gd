@@ -348,7 +348,7 @@ static func _tagged(t) -> void:
 	var s := _world()
 	var d: PrisonerDirector = s.d
 	var labels := Kit.labels(d)
-	t.check(labels[0] == "PRISONER - DO NOT KILL" and Kit.edged(d, "PRISONER - DO NOT KILL") and labels.has("STOCKS - TAKEN IN AT 2:00")
+	t.check(labels[0] == "PRISONER - DO NOT KILL" and Kit.edged(d, "PRISONER - DO NOT KILL") and labels.has("STOCKS - TAKEN INSIDE IN 2:00")
 		and labels.has("POSTERN - WATCHED") and Kit.edged(d, "POSTERN - WATCHED") and labels.count("GAOLER - SEIZES HER") == 2
 		and Kit.edged(d, "GAOLER - SEIZES HER") and labels.has("PATROL"),
 		"bound: PRISONER - DO NOT KILL, pointed at; the stocks' deadline; the postern; GAOLER - SEIZES HER on each gaoler (the ruling's plain warning); PATROL (%s)" % [labels])
@@ -360,8 +360,11 @@ static func _tagged(t) -> void:
 	for e: Dictionary in Hud.tag_layout(d.tags(), xf, Kit.VIEW):
 		if bool(e.show):
 			shown.append((e.tag as MapTag).label)
-	t.check(shown.has("PRISONER - DO NOT KILL") and shown.has("STOCKS - TAKEN IN AT 2:00") and shown.count("GAOLER - SEIZES HER") == 2,
+	t.check(shown.has("PRISONER - DO NOT KILL") and shown.has("STOCKS - TAKEN INSIDE IN 2:00") and shown.count("GAOLER - SEIZES HER") == 2,
 		"at the camera's spot the prisoner's, the stocks' and both gaolers' plates are drawn, none dropped for overlap (%s)" % [shown])
+	# v0.11 M6's final review: the stocks' deadline counts down as the strip does.
+	d.timeline.step(30.0)
+	t.check(Kit.labels(d).has("STOCKS - TAKEN INSIDE IN 1:30"), "30 s in, the stocks' tag counts down to 1:30 (%s)" % [Kit.labels(d)])
 	t.check(MissionHints.line("prisoner", "bound").contains("seizes her") and MissionHints.line("prisoner", "bound").contains("Citadel"),
 		"the bound hint warns plainly that a gaoler left standing seizes her and takes her back to the Citadel")
 	var tour := d.tour()

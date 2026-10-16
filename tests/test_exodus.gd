@@ -507,10 +507,10 @@ static func _tagged(t) -> void:
 	var s := _world()
 	var d: ExodusDirector = s.d
 	var labels := Kit.labels(d)
-	var waiting := "HOUSEHOLD - OUT BY %s" % UiTheme.clock(float(ExodusDirector.OUT_AT[0]))
+	var waiting := "HOUSEHOLD - OUT IN %s" % UiTheme.clock(float(ExodusDirector.OUT_AT[0]))
 	t.check(labels.has(waiting) and Kit.edged(d, waiting) and labels.has("POSTERN - WATCHED") and Kit.edged(d, "POSTERN - WATCHED")
 		and labels.has("PATROL") and d.hint_phase() == "", "at the start: each household's time over its door, the gates watched, pointed at (%s)" % [labels])
-	var far := "HOUSEHOLD - OUT BY %s" % UiTheme.clock(d.out_due(2))
+	var far := "HOUSEHOLD - OUT IN %s" % UiTheme.clock(d.due_in(2))
 	var last_gate := -1
 	for k in labels.size():
 		if String(labels[k]).ends_with(" - WATCHED") and String(labels[k]).begins_with("MAIN GATE"):
@@ -523,6 +523,11 @@ static func _tagged(t) -> void:
 	for v: Variant in d.watch.slice(0, 2):
 		Kit.arrive(v as Person, (v as Person).ground_pos + Vector2(40.0, 40.0))
 	t.check(Kit.labels(d).has("POSTERN - CLEAR"), "its watch gone, the postern reads clear")
+	# v0.11 M6's final review: a tag counts down to its event as the strip does, never the night's absolute second.
+	d._clock = 100.0
+	labels = Kit.labels(d)
+	t.check(labels.has("POSTERN - SHUT IN 0:50") and Kit.edged(d, "POSTERN - SHUT IN 0:50") and labels.has("HOUSEHOLD - OUT IN 0:05"),
+		"100 s in: the postern shuts in 0:50 (at 2:30), the next household comes out in 0:05 (at 1:45) (%s)" % [labels])
 	var tour := d.tour()
 	var fits := true
 	for stop: Array in tour:
@@ -531,7 +536,7 @@ static func _tagged(t) -> void:
 		and String(tour[1][1]) == "Gates shut: postern %s, Side Gate %s, Main Gate %s (lost unless ten are out)." % [
 			UiTheme.clock(float(ExodusDirector.SHUT_AT[0])), UiTheme.clock(float(ExodusDirector.SHUT_AT[1])), UiTheme.clock(float(ExodusDirector.SHUT_AT[2]))]
 		and String(tour[2][1]) == "The Temple. Inquisitors take any believer they catch here. Ten must get out." and fits,
-		"the tour, each line within the caption's plate; the last gate's shutting loses unless ten are out (fix round 1)")
+		"the tour, each line within the caption's plate; the last gate's shutting loses unless ten are out")
 	t.check(ResultsScreen.ACT_TITLES.get("exodus") == "THE FAITHFUL ARE OUT" and ResultsScreen.ACT_TITLES.get("exodus_few") == "TOO FEW ARE LEFT"
 		and ResultsScreen.ACT_TITLES.get("gates_shut") == "THE GATES ARE SHUT" and MissionHints.line("exodus", "waiting").contains(MissionHints.SECONDS),
 		"its results under its own keys")
@@ -571,7 +576,7 @@ static func _lone_searchers(t) -> void:
 	Kit.done(s)
 
 
-## Fix round 1 (v0.11 M6): each hint phase -- hounds, shut, gate, waiting -- with its seconds, and their order (caught, hounds, shut,
+## v0.11 M6: each hint phase -- hounds, shut, gate, waiting -- with its seconds, and their order (caught, hounds, shut,
 ## gate; waiting only between households).
 static func _phases(t) -> void:
 	var s := _world()
@@ -605,9 +610,21 @@ static func _phases(t) -> void:
 		and absf(d.hint_seconds() - ExodusDirector.CHAIN) < 1.0 and MissionHints.filled(MissionHints.line("exodus", "waiting"), d.hint_seconds()).contains("in 25 s"),
 		"a household done and the next inside: waiting, counting down to it (%.1f s)" % d.hint_seconds())
 	Kit.done(s)
+	# The final review: the hint follows the household acting -- its lamp out of doors -- not the first unfinished one gone back in.
+	s = _world()
+	d = s.d
+	d._come_out(0)
+	d._come_out(1)
+	for c: EscortDirector.Charge in (d.households[0] as ExodusDirector.Household).members:
+		(c.man as Person).inside = true
+	var east := d.lamp(1).man as Person
+	Kit.arrive(east, (d.gates[0] as ExodusDirector.Gate).mouth + Vector2(0.0, -4.0))
+	t.check(d.current() == 0 and d.lamp(0) == null and d.acting() == 1 and d.heading(1) == 0 and d.gate_watched(0) and d.hint_phase() == "gate",
+		"the west household out but indoors, the east lamp at the watched postern: the hint speaks of the east household (gate)")
+	Kit.done(s)
 
 
-## Fix round 1 (v0.11 M6): the shut phase keys to the gate the household heads for, not the one it was bound for.
+## v0.11 M6: the shut phase keys to the gate the household heads for, not the one it was bound for.
 static func _heading(t) -> void:
 	var s := _world()
 	var d: ExodusDirector = s.d

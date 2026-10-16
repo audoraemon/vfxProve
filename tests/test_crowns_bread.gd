@@ -399,7 +399,8 @@ static func _chain(t) -> void:
 	Kit.run_for(s, 0.1)
 	var shown := d.timeline.seconds_to("stage_1")
 	t.check(d.razed(barn) and (s.banners as Array).has("THE GRANARY IS RAZED") and shown <= CrownsBreadDirector.CHAIN + 0.1
-		and Kit.labels(d)[0].begins_with("MILL - IN USE BY"), "razed in use; the mill's time chained, CHAIN on (%.1f)" % shown)
+		and Kit.labels(d)[0] == "MILL - IN USE IN %s" % UiTheme.clock(shown),
+		"razed in use; the mill's time chained, CHAIN on, its tag counting down with the strip (%.1f, %s)" % [shown, Kit.labels(d)[0]])
 	Kit.run_for(s, CrownsBreadDirector.CHAIN + DT)
 	t.check(d.in_use[1] and (s.banners as Array).has("THE MILL GRINDS THE CROWN'S FLOUR"), "the mill comes into use CHAIN after")
 	Kit.done(s)
@@ -481,9 +482,9 @@ static func _tagged(t) -> void:
 	var s := _world()
 	var d: CrownsBreadDirector = s.d
 	var labels := Kit.labels(d)
-	t.check(labels.slice(0, 3) == ["GRANARY - IN USE BY 0:45", "MILL - IN USE BY 1:55", "BRIDGE - IN USE BY 3:05"]
-		and Kit.edged(d, "MILL - IN USE BY 1:55") and labels.has("ENGINEER") and d.hint_phase() == "",
-		"before its time each target is grey with its time, pointed at; ENGINEER on each crewman on guard (%s)" % [labels.slice(0, 3)])
+	t.check(labels.slice(0, 3) == ["GRANARY - IN USE IN 0:45", "MILL - IN USE IN 1:55", "BRIDGE - IN USE IN 3:05"]
+		and Kit.edged(d, "MILL - IN USE IN 1:55") and labels.has("ENGINEER") and d.hint_phase() == "",
+		"before its time each target is grey with the seconds to it, pointed at; ENGINEER on each crewman on guard (%s)" % [labels.slice(0, 3)])
 	var mill := d.targets[1]
 	mill.destroy(mill.center(), &"smite")
 	_steady(d, 1)

@@ -159,8 +159,9 @@ static func _not_yet(t) -> void:
 		"not in use and unguarded: its fire goes out at once and nothing it burns counts")
 	d.oil_house.destroy(d.oil_house.center(), &"smite")
 	Kit.run_for(s, DT)
-	t.check(not d.razed(d.oil_house) and Kit.labels(d).has("OIL-HOUSE - DOWN %s" % UiTheme.clock(float(HeartOfFaithDirector.STAGE_AT[0])))
-		and d.hint_phase() == "not_yet", "felled ahead of its time: not razed yet, and its tag says when it counts")
+	var down := "OIL-HOUSE - DOWN %s" % UiTheme.clock(d.due_in(0))
+	t.check(not d.razed(d.oil_house) and Kit.labels(d).has(down) and d.due_in(0) < float(HeartOfFaithDirector.STAGE_AT[0])
+		and d.hint_phase() == "not_yet", "felled ahead of its time: not razed yet, and its tag counts down to when it counts (%s)" % down)
 	d._open(0)
 	Kit.run_for(s, DT)
 	t.check(d.razed(d.oil_house) and absf(d.timeline.seconds_to("stage_1") - HeartOfFaithDirector.CHAIN) < 1.0,
@@ -371,11 +372,16 @@ static func _seen_win(t) -> void:
 	Kit.run_for(s, DT)
 	var rules: Rules = s.rules
 	t.check(rules.finished and rules.won and rules.objectives[0].reason == "heart" and is_equal_approx(d.gaze.value, 90.0)
-		and (rules.objectives[1] as Objective).check(rules) == Objective.Status.PENDING and not d._spare_win,
+		and (rules.objectives[1] as Objective).check(rules) == Objective.Status.PENDING and d._spare_win,
 		"a seen kill of Odran that would fill the Gaze wins the night: the winning strike is never judged (the controller's ruling)")
-	d.gaze.note_death(seer.ground_pos + Vector2(0.5, 0.0))  # a later death beside the witness
+	# The final review: a Heaven Splitter's later strike, the same cast, beside the witness, adds nothing either.
+	d.gaze.note_death(seer.ground_pos + Vector2(0.5, 0.0))
 	d._judge_gaze()
-	t.check(d.gaze.value > 90.0, "a seen death after it is judged as before (%d)" % roundi(d.gaze.value))
+	t.check(is_equal_approx(d.gaze.value, 90.0) and d._spare_win, "the rest of the winning cast's strokes add nothing (%d)" % roundi(d.gaze.value))
+	rules.cast_made.emit(0, "smite", seer.ground_pos)
+	d.gaze.note_death(seer.ground_pos + Vector2(0.5, 0.0))  # a death of a new cast, beside the witness
+	d._judge_gaze()
+	t.check(not d._spare_win and d.gaze.value > 90.0, "a new cast ends the spare: a seen death after it is judged as before (%d)" % roundi(d.gaze.value))
 	Kit.done(s)
 
 
@@ -507,12 +513,16 @@ static func _tagged(t) -> void:
 	var s := _world()
 	var d: HeartOfFaithDirector = s.d
 	var labels := Kit.labels(d)
-	var next := "OIL-HOUSE - IN USE BY %s" % UiTheme.clock(float(HeartOfFaithDirector.STAGE_AT[0]))
+	var next := "OIL-HOUSE - IN USE IN %s" % UiTheme.clock(float(HeartOfFaithDirector.STAGE_AT[0]))
 	t.check(labels[0] == next and Kit.edged(d, next) and labels.has("ODRAN - IN THE CITADEL") and labels.has("KNIGHT")
 		and d.hud_line() == "Put out the flame 0 / 2: blessed in %s" % UiTheme.clock(HeartOfFaithDirector.BLESSED_AT),
 		"at the start: the oil-house's time, grey, pointed at; Odran in the Citadel; KNIGHT on each; the blessing's countdown (%s)" % [labels])
 	d._open(0)
 	t.check(Kit.labels(d)[0] == "OIL-HOUSE - GUARDED" and Kit.edged(d, "OIL-HOUSE - GUARDED"), "in use and guarded, gold, pointed at")
+	# v0.11 M6's final review: the next target's tag counts down to its time as the strip does.
+	d._clock = 70.0
+	t.check(Kit.labels(d).has("TEMPLE - THE FLAME BLAZES IN 0:40") and Kit.edged(d, "TEMPLE - THE FLAME BLAZES IN 0:40"),
+		"70 s in, the Temple's tag counts down: the flame blazes in 0:40 (at 1:50) (%s)" % [Kit.labels(d)])
 	var tour := d.tour()
 	t.check(tour.size() == 3 and String(tour[0][1]) == "The oil-house. Its Knights guard it. It feeds the flame from %s: burn it." % UiTheme.clock(float(HeartOfFaithDirector.STAGE_AT[0]))
 		and String(tour[1][1]) == "The Great Temple. The flame blazes here by %s. Burn it down to put the flame out." % UiTheme.clock(float(HeartOfFaithDirector.STAGE_AT[1]))

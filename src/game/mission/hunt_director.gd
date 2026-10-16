@@ -92,9 +92,10 @@ var head_door := Vector2.INF
 ## The head's own chain (v0.11 M4, the controller's ruling for The Heretic Hunt): how long after the last step breaks he comes out at
 ## the latest; -1 (the default) takes the steps' `chain`.
 var head_chain := -1.0
-## v0.11 M6 (mission spec §6.2): an unguarded blow is heard as any struck building's is (Structure.hit: fire catching, windows) while the
-## standard still stands. False (the default) keeps The Heretic Hunt's standards out of the fire manager's hearing; The Lantern's Eye
-## sets it.
+## v0.11 M6 (mission spec §6.2): an unguarded blow emits Structure.hit while the standard still stands, so fire can catch from it as from
+## any struck building (the final review: Structure.hit's listeners only -- the windows and a nova's fire stay in Structure.damage(),
+## which a filtered blow never reaches). False (the default) keeps The Heretic Hunt's standards out of the fire manager's hearing; The
+## Lantern's Eye sets it.
 var shield_hits := false
 ## The tags' and the HUD's words, set by _plan() (v0.11 M4): The Heretic Hunt's by default; lost_word is the loss's reason.
 var standard_label := "STANDARD"

@@ -313,9 +313,10 @@ horn's twist is that the garrison arms faster each minute.
   be cleared in the last 25 s (the scripted player's longest stretch between casts: 16 s).
 - **Tags:**
   - Each target not razed, with an edge arrow:
-    - not mustering: "BARRACKS - HORN 1:50" (the sooner time), grey (Task 8: "MUSTERS BY" was so long that the gate barracks' and the
-      armoury's arrows, side by side on the bottom edge, dropped the armoury's plate); once fallen, "BARRACKS - DOWN 1:50" (the final review:
-      "DOWN, COUNTS AT", "DOWN, HORN" and "HORN BY" each dropped a plate in that pair; the hint says a fall counts at the horn);
+    - not mustering: "BARRACKS - HORN 1:50" (the seconds to the sooner time, counting down as the strip does: M6's final review; "HORN IN" dropped a plate),
+      grey (Task 8: "MUSTERS BY" was so long that the gate barracks' and the armoury's arrows, side by side on the bottom edge, dropped
+      the armoury's plate); once fallen, "BARRACKS - DOWN 1:50", those seconds counting down too (the final review: "DOWN, COUNTS AT",
+      "DOWN, HORN" and "HORN BY" each dropped a plate in that pair; the hint says a fall counts at the horn);
     - mustering, guarded: "ARMOURY - GUARDED", gold;
     - mustering, open: "ARMOURY", gold; burning: "ARMOURY - BURNING 7" (seconds of the 12 left), orange.
   - ARMED on each armed man on guard, red. A small red mark on one away from his post. A red diamond on a reinforcement or relief

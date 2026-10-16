@@ -193,6 +193,17 @@ static func _heaven(t) -> void:
 	_smite(s, d, 0)
 	t.check(d.shattered[0], "a Smite after it shatters the mirror")
 	Kit.done(s)
+	# The final review: a Smite inside HEAVEN_GAP is no Heaven stroke -- it lands as the second blow at once.
+	s = _world()
+	d = s.d
+	env = s.env
+	d._raise(0)
+	_clear(d, 0)
+	env.damage_radius(d.outer_face(0), HEAVEN_FX.CORE_KILL, 99999.0, &"lightning")
+	Kit.run_for(s, 1.0)
+	_smite(s, d, 0)
+	t.check(d.shattered[0], "a Smite 1 s after a Heaven Splitter's first stroke, inside HEAVEN_GAP, shatters the mirror")
+	Kit.done(s)
 
 
 static func _rehang(t) -> void:
@@ -207,6 +218,31 @@ static func _rehang(t) -> void:
 		inside = inside and (w.man as Person).inside
 	t.check(not d.shattered[0] and not d.broken(0) and is_equal_approx(d.glass[0], LanternEyeDirector.MIRROR_HP) and inside
 		and (s.banners as Array).has("THE MIRROR IS HUNG AGAIN"), "two wrights at work hang a new glass in 5 s: the mirror stands again, its wrights back inside")
+	Kit.done(s)
+	# The final review: the south-west tower's quiet-side wrights through a whole cycle -- out to their posts beyond the outer face, the
+	# glass hung again, back inside, the mirror ready to shatter once more.
+	s = _world()
+	d = s.d
+	d._raise(2)
+	_clear(d, 2)
+	d._shatter(2)
+	var posted := true
+	for w: HuntDirector.Guard in d.wrights[2]:
+		var p := w.man as Person
+		posted = posted and not p.inside and p.mind == Person.Mind.DUTY and p.anchor == w.post
+		Kit.arrive(p, w.post)
+	t.check(LanternEyeDirector.QUIET_SIDE[2] and d.shattered[2] and posted, "the south-west mirror shattered: its wrights out to their quiet-side posts")
+	Kit.run_for(s, LanternEyeDirector.REHANG * 0.5 + 0.2)
+	inside = true
+	for w: HuntDirector.Guard in d.wrights[2]:
+		inside = inside and (w.man as Person).inside
+	t.check(not d.shattered[2] and is_equal_approx(d.glass[2], LanternEyeDirector.MIRROR_HP) and inside,
+		"they hang a new glass from the quiet side and go back inside")
+	d._shatter(2)
+	posted = true
+	for w: HuntDirector.Guard in d.wrights[2]:
+		posted = posted and not (w.man as Person).inside and (w.man as Person).anchor == w.post
+	t.check(d.shattered[2] and posted, "shattered again: the same wrights come out to the same posts")
 	Kit.done(s)
 
 
@@ -390,6 +426,7 @@ static func _evacuated(t) -> void:
 	var w1: HuntDirector.Guard = d2.wrights[0][1]
 	(w1.man as Person)._recover(1.0)
 	Kit.evacuate(s2)
+	t.check((w1.man as Person).mind == Person.Mind.FLEE, "(set-up) during a drain the evacuation runs the recovering wright")
 	Kit.run_for(s2, 2.0 * HuntDirector.TICK + DT)
 	t.check((w0.man as Person).mind == Person.Mind.DUTY and (w1.man as Person).mind == Person.Mind.DUTY and (w1.man as Person).anchor == w1.post
 		and d2.hang_work[0] > 0.0 and (s2.crowd as Crowd).citizens.has(w1.man), "during a drain: the wrights hold their posts and work on")

@@ -3647,8 +3647,9 @@ func _flame_swap(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void
 
 
 ## Silent Doom at `at` would go unseen and take none of `spare` (v0.11 M6, plan decision 304): it takes someone; nobody living out of
-## doors beyond its radius stands within Crowd.DOOM_WITNESS of anyone within it; none within it is one of `spare`. Only reads.
-func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = []) -> bool:
+## doors beyond its radius stands within Crowd.DOOM_WITNESS (and `margin` more, the final review: Exodus's EXODUS_MARGIN, room to spare
+## so no one walking in while it falls sees it) of anyone within it; none within it is one of `spare`. Only reads.
+func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0) -> bool:
 	var victims: Array[Person] = []
 	var others: Array[Person] = []
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
@@ -3665,7 +3666,7 @@ func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = []) -> bool:
 		if spare.has(v):
 			return false
 		for o in others:
-			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS:
+			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + margin:
 				return false
 	return true
 
@@ -3690,42 +3691,19 @@ func _exodus_flock(d: ExodusDirector) -> Array:
 	return out
 
 
-## Silent Doom at `at` goes unseen with room to spare (v0.11 M6): _doom_unseen() sparing every believer, and no one else living out of
-## doors within EXODUS_MARGIN beyond the witness reach of anyone it takes, so no one walking in while it falls sees it. Only reads.
-func _exodus_unseen(crowd: Crowd, at: Vector2, flock: Array) -> bool:
-	if not _doom_unseen(crowd, at, flock):
-		return false
-	var victims: Array[Person] = []
-	var others: Array[Person] = []
-	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
-		for p in group:
-			if not is_instance_valid(p) or not p.is_alive() or p.inside:
-				continue
-			if p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
-				victims.append(p)
-			else:
-				others.append(p)
-	for v in victims:
-		for o in others:
-			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + EXODUS_MARGIN:
-				return false
-	return true
-
-
-## Clears watcher `p` (v0.11 M6): Silent Doom unseen (_exodus_unseen()) on him and the nearest other watcher with him, else on him
-## alone; else Discord where it holds two watchers (or him, with no whisper to send) and no believer; else, with `whisper`, Mind Whisper
-## sends him EIGHT units off `from`.
-## "" when no slot serves.
+## Clears watcher `p` (v0.11 M6): Silent Doom unseen with EXODUS_MARGIN to spare (_doom_unseen()) on him and the nearest other watcher
+## with him, else on him alone; else Discord where it holds two watchers (or him, with no whisper to send) and no believer; else, with
+## `whisper`, Mind Whisper sends him EIGHT units off `from`. "" when no slot serves.
 func _exodus_off(rules: Rules, slots: Dictionary, d: ExodusDirector, crowd: Crowd, p: Person, from: Vector2, whisper := true) -> String:
 	var flock := _exodus_flock(d)
 	if _slot_ready(rules, slots, "doom"):
 		for v: Variant in d._watchers():
 			if v != p and d._watching(v) and (v as Person).ground_pos.distance_to(p.ground_pos) <= 2.0 * SilentDoom.RADIUS - 0.1:
 				var mid := ((v as Person).ground_pos + p.ground_pos) * 0.5
-				if _exodus_unseen(crowd, mid, flock):
+				if _doom_unseen(crowd, mid, flock, EXODUS_MARGIN):
 					rules.cast(slots.doom, mid)
 					return "doom two Inquisitors"
-		if _exodus_unseen(crowd, p.ground_pos, flock):
+		if _doom_unseen(crowd, p.ground_pos, flock, EXODUS_MARGIN):
 			rules.cast(slots.doom, p.ground_pos)
 			return "doom an Inquisitor"
 	if _slot_ready(rules, slots, "discord"):
@@ -3813,7 +3791,7 @@ func _exodus_act(rules: Rules, slots: Dictionary, d: ExodusDirector, crowd: Crow
 		if _slot_ready(rules, slots, "whisper") and not s.shaken():
 			rules.cast(slots.whisper, s.ground_pos, {"target": s, "to": _prisoner_away(crowd, s, (c.man as Person).ground_pos)})
 			return "whisper a seizer off"
-		if _slot_ready(rules, slots, "doom") and _exodus_unseen(crowd, s.ground_pos, flock):
+		if _slot_ready(rules, slots, "doom") and _doom_unseen(crowd, s.ground_pos, flock, EXODUS_MARGIN):
 			rules.cast(slots.doom, s.ground_pos)
 			return "doom a seizer"
 	for i in d.households.size():
@@ -3829,10 +3807,11 @@ func _exodus_act(rules: Rules, slots: Dictionary, d: ExodusDirector, crowd: Crow
 			elif _slot_ready(rules, slots, "doom"):
 				for q in d.searchers_out(i):
 					var mid := (p.ground_pos + q.ground_pos) * 0.5
-					if q != p and p.ground_pos.distance_to(q.ground_pos) <= 2.0 * SilentDoom.RADIUS - 0.1 and _exodus_unseen(crowd, mid, flock):
+					if q != p and p.ground_pos.distance_to(q.ground_pos) <= 2.0 * SilentDoom.RADIUS - 0.1 \
+							and _doom_unseen(crowd, mid, flock, EXODUS_MARGIN):
 						rules.cast(slots.doom, mid)
 						return "doom the searchers"
-				if _exodus_unseen(crowd, p.ground_pos, flock):
+				if _doom_unseen(crowd, p.ground_pos, flock, EXODUS_MARGIN):
 					rules.cast(slots.doom, p.ground_pos)
 					return "doom a searcher"
 	for v: Variant in d._watchers():

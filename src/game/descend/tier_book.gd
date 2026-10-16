@@ -240,8 +240,9 @@ static func _warning(m: MissionDef) -> void:
 		return out
 
 
-## Halcyon's Gaze in a Tier 5 mission (spec §4): a GazeObjective after its own objectives, in the mission and in each act. It
-## waits while the director has no Gaze; the night's Descent gives one to a director that keeps none.
+## Halcyon's Gaze in a Tier 5 mission (spec §4): a GazeObjective after its own objectives -- in the mission, in each act and in each act's
+## objectives made for the night -- unless they list one already (v0.11 M6, Decision 211: _with_gaze(), _with_gaze_for_night()). It waits
+## while the director has no Gaze; the night's Descent gives one to a director that keeps none, and leaves a director's own (Decision 208).
 static func _gaze(m: MissionDef) -> void:
 	m.make_objectives = _with_gaze(m.make_objectives)
 	for a: ActDef in m.acts:

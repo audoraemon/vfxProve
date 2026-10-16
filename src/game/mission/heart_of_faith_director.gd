@@ -61,7 +61,7 @@ const QUIET_AT := [Vector2(-3.5, -14.0), Vector2(2.0, -14.0)]
 const NAMES := ["OIL-HOUSE", "TEMPLE"]
 const WORDS := ["oil-house", "Temple"]
 const STAGE_LABELS := ["The keepers draw the flame's oil", "The Great Flame blazes"]
-const NEXT_WORDS := ["IN USE BY", "THE FLAME BLAZES BY"]
+const NEXT_WORDS := ["IN USE IN", "THE FLAME BLAZES IN"]
 ## Mission spec §3's numbers (v0.11 M6), first guesses, tuned by the gate in this order: CHAIN (35-45), STAGE_AT[0] (40-60), SPOIL[1]
 ## (15-25), ODRAN_CHAIN (20-30), ARRIVING (1-3); ODRAN_PACE (0.25-0.5, plan decision 292). Stage one: each target's time at the latest,
 ## the chain, the Knights standing and arriving, their spacing (wanted, and the least, beyond a witness's 2.0), their reach, each
@@ -146,7 +146,8 @@ var _homeward: Array = []
 ## Seconds into the night, and to the next look (v0.11 M6).
 var _clock := 0.0
 var _tick_in := 0.0
-## Odran fell with the flame out since the Gaze was last judged: his strike's deaths go unjudged (v0.11 M6, _judge_gaze()).
+## Odran fell with the flame out, and no cast has been made since: the winning cast's deaths go unjudged (v0.11 M6, _judge_gaze(); the
+## final review: the whole cast, a Heaven Splitter's later strikes too, until the next cast is made, _on_cast()).
 var _spare_win := false
 
 
@@ -213,6 +214,7 @@ func _begin() -> void:
 		_take_inside(o, null)
 	crowd._field.enemy_killed.connect(_on_killed)
 	crowd.escaped.connect(_on_escaped)
+	rules.cast_made.connect(_on_cast)
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
@@ -403,6 +405,12 @@ func _down(i: int) -> bool:
 	return not is_instance_valid(targets[i]) or targets[i].destroyed
 
 
+## Seconds until target `i` comes into use at the latest (v0.11 M6's final review, The Crown's Bread's due_in()): its tag counts them
+## down as the strip does; 0 once it is in use.
+func due_in(i: int) -> float:
+	return 0.0 if in_use[i] else maxf(stage_due(i) - _clock, 0.0)
+
+
 ## Target `i` comes into use (v0.11 M6): its arriving pair comes out of its door to their posts.
 func _open(i: int) -> void:
 	if in_use[i]:
@@ -456,10 +464,10 @@ func step(delta: float) -> void:
 
 ## The Gaze's seen deaths judged (v0.11 M6, the controller's ruling: every rise has a banner), "HALCYON SEES A DEATH", and its FURY once the
 ## flame is out. The deaths waiting when Odran fell -- his own and his strike's -- are let go unjudged: the kill that wins the night is done
-## before the Gaze is judged, so a winning strike never also loses (nor, on the board, ends the held night).
+## before the Gaze is judged, so a winning strike never also loses (nor, on the board, ends the held night). The final review: so are the
+## rest of the winning cast's (a Heaven Splitter's later strikes), until the next cast is made.
 func _judge_gaze() -> void:
-	if _spare_win:  # the strike that ended Odran won the night first: its deaths are never judged (the controller's ruling)
-		_spare_win = false
+	if _spare_win:  # the cast that ended Odran won the night first: its deaths are never judged (the controller's ruling)
 		gaze.drop_pending()
 		return
 	var was := gaze.value
@@ -835,6 +843,12 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 		_knights_home()
 
 
+## A cast (Rules.cast_made, v0.11 M6's final review): a new cast after the winning one ends its spare (_spare_win), so its own deaths are
+## judged.
+func _on_cast(_slot: int, _key: String, _at: Vector2) -> void:
+	_spare_win = false
+
+
 ## Odran leaving the town ends him as his death would (v0.11 M6): at once.
 func _on_escaped(p: Person) -> void:
 	if odran != null and is_instance_valid(odran) and p == odran and not odran_dead:
@@ -895,18 +909,19 @@ func next_target() -> int:
 
 
 ## The map tags, most important first (v0.11 M6, mission spec §3). Stage one: each target in use and standing (both, when the oil-house
-## still stands at the Temple's time), gold and pointed at ("- GUARDED", "- SET IT ALIGHT", or "- BURNING n" orange); the next one, grey and pointed at, with its sooner time, or once fallen "- DOWN" and it
-## (M5's wording: "DOWN, COUNTS AT" dropped a plate); KNIGHT on each Knight on guard, a red diamond on a relief walking in, a small red
-## mark on one away. Stage two: Odran in the Citadel (grey, pointed at, his chain's seconds once the flame is out), in his litter, on
-## foot or rekindling (gold, pointed at); BEARER on each bearer and KNIGHT on his guards, red and pointed at (moving targets); the ALTAR
-## at the steps, orange, pointed at, once he is out.
+## still stands at the Temple's time), gold and pointed at ("- GUARDED", "- SET IT ALIGHT", or "- BURNING n" orange); the next one,
+## grey and pointed at, with the seconds to its sooner time counting down as the strip does (v0.11 M6's final review), or once fallen
+## "- DOWN" and them (M5's wording: "DOWN, COUNTS AT" dropped a plate); KNIGHT on each Knight on guard, a red diamond on a relief
+## walking in, a small red mark on one away. Stage two: Odran in the Citadel (grey, pointed at, his chain's seconds once the flame is
+## out), in his litter, on foot or rekindling (gold, pointed at); BEARER on each bearer and KNIGHT on his guards, red and pointed at
+## (moving targets); the ALTAR at the steps, orange, pointed at, once he is out.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if lost_reason() != "" or stages_done():
 		return out
 	if not flame_out:
 		for cur in targets.size():
-			if not in_use[cur] or razed(targets[cur]) or not is_instance_valid(targets[cur]) or targets[cur].destroyed:
+			if not in_use[cur] or not is_instance_valid(targets[cur]) or razed(targets[cur]) or targets[cur].destroyed:
 				continue
 			var s := targets[cur]
 			var label := "%s - SET IT ALIGHT" % NAMES[cur]
@@ -920,7 +935,7 @@ func tags() -> Array[MapTag]:
 		var n := next_target()
 		if n >= 0 and is_instance_valid(targets[n]):
 			var s := targets[n]
-			var when := UiTheme.clock(stage_due(n))
+			var when := UiTheme.clock(due_in(n))
 			var label := ("%s - DOWN %s" % [NAMES[n], when]) if s.destroyed else ("%s - %s %s" % [NAMES[n], NEXT_WORDS[n], when])
 			out.append(MapTag.place(s.center(), MARK_NOT_YET, label, 0.0 if s.destroyed else s.height, true))
 	if not odran_out:
@@ -1005,10 +1020,12 @@ func report() -> Dictionary:
 		"reliefs": reliefs, "gaze": gaze.value}
 
 
-## Lets go of the kills, the crowd's exits, the targets on the engineers' list, then the Raze type's (every seal, the timeline) (v0.11 M6).
-## Safe to call twice.
+## Lets go of the kills, the casts, the crowd's exits, the targets on the engineers' list, then the Raze type's (every seal, the timeline)
+## (v0.11 M6). Safe to call twice.
 func teardown() -> void:
 	_unhook_kills(_on_killed)
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
+		rules.cast_made.disconnect(_on_cast)
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
 	if is_instance_valid(crowd) and crowd.engineers != null:

@@ -180,8 +180,9 @@ static func _ahead(t) -> void:
 		"with none on guard a blow lands before its horn, but its fire goes out (the staged ruling)")
 	north.destroy(north.center(), &"smite")
 	Kit.run_for(s, 0.5)
-	t.check(not d.razed(north) and d.hint_phase() == "not_yet" and Kit.labels(d)[0] == "BARRACKS - DOWN 0:40",
-		"a fall before its horn is not razed yet: DOWN and its horn's time (%s)" % Kit.labels(d)[0])
+	t.check(not d.razed(north) and d.hint_phase() == "not_yet" and Kit.labels(d)[0] == "BARRACKS - DOWN %s" % UiTheme.clock(d.due_in(0))
+		and d.due_in(0) < float(ArmouryDirector.STAGE_AT[0]),
+		"a fall before its horn is not razed yet: DOWN and the seconds to its horn, counting down (%s)" % Kit.labels(d)[0])
 	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]))
 	t.check(d.razed(north) and (s.banners as Array).has("THE NORTH BARRACKS IS RAZED"), "still down when its horn sounds: razed at once")
 	Kit.done(s)
@@ -350,8 +351,10 @@ static func _felled_early(t) -> void:
 		d.targets[i].destroy(d.targets[i].center(), &"smite")
 	Kit.run_for(s, 0.1)
 	var labels := Kit.labels(d)
-	t.check(labels.slice(0, 3) == ["BARRACKS - HORN 0:40", "BARRACKS - DOWN 1:50", "ARMOURY - DOWN 3:00"] and _plates(d) == 3,
-		"two down before their horns: DOWN and the horn's time, all three plates drawn (%s, %d)" % [labels.slice(0, 3), _plates(d)])
+	var want := ["BARRACKS - HORN %s" % UiTheme.clock(d.due_in(0)), "BARRACKS - DOWN %s" % UiTheme.clock(d.due_in(1)),
+		"ARMOURY - DOWN %s" % UiTheme.clock(d.due_in(2))]
+	t.check(labels.slice(0, 3) == want and want[2] == "ARMOURY - DOWN 2:59" and _plates(d) == 3,
+		"two down before their horns: DOWN and the seconds to the horn, all three plates drawn (%s, %d)" % [labels.slice(0, 3), _plates(d)])
 	d.targets[0].destroy(d.targets[0].center(), &"smite")
 	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]))
 	Kit.run_for(s, 1.0)
@@ -442,9 +445,11 @@ static func _tagged(t) -> void:
 	var labels := Kit.labels(d)
 	t.check(labels.slice(0, 3) == ["BARRACKS - HORN 0:40", "BARRACKS - HORN 1:50", "ARMOURY - HORN 3:00"]
 		and Kit.edged(d, "ARMOURY - HORN 3:00") and labels.has("ARMED") and d.hint_phase() == "",
-		"before its horn each target is grey with its time, pointed at; ARMED on each man on guard (%s)" % [labels.slice(0, 3)])
+		"before its horn each target is grey with the seconds to it, pointed at; ARMED on each man on guard (%s)" % [labels.slice(0, 3)])
 	Kit.run_for(s, float(ArmouryDirector.STAGE_AT[0]) - ArmouryDirector.WORK_AHEAD + 1.0)
 	t.check(d.hint_phase() == "not_yet", "within 25 s of its horn: not yet")
+	t.check(Kit.labels(d)[0] == "BARRACKS - HORN 0:24",
+		"its tag counts down to the horn as the strip does (v0.11 M6's final review) (%s)" % Kit.labels(d)[0])
 	d._muster(0)
 	t.check(Kit.labels(d)[0] == "BARRACKS - GUARDED" and Kit.edged(d, "BARRACKS - GUARDED") and d.hint_phase() == "guarded",
 		"mustering, guarded, pointed at")

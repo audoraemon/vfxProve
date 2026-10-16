@@ -338,11 +338,12 @@ func _inside_label() -> String:
 	return "The gaolers take her inside"
 
 
-## The map tags, most important first (v0.11 M4, mission spec §2): her (PRISONER - DO NOT KILL while bound, PRISONER once free, red
-## and CAUGHT while held), pointed at; the stocks' deadline on their far side while they stand; the postern, watched or clear, pointed
-## at; her seizer and the Citadel's gate while she is held; GAOLER - SEIZES HER on each gaoler (the controller's ruling: the warning
-## said plainly), pointed at (the final review); each searcher, pointed at; PATROL on each patrol's first watchman and a red diamond
-## on the rest; a red diamond on the postern's watch while at it.
+## The map tags, most important first (v0.11 M4, mission spec §2): her (PRISONER - DO NOT KILL while bound, PRISONER once free, red and
+## CAUGHT while held), pointed at; the stocks' deadline on their far side while they stand (its seconds counting down as the strip
+## does, v0.11 M6's final review); the postern, watched or clear, pointed at; her seizer and the Citadel's gate while she is held;
+## GAOLER - SEIZES HER on each gaoler (the controller's ruling: the warning said plainly), pointed at (the final review); each
+## searcher, pointed at; PATROL on each patrol's first watchman and a red diamond on the rest; a red diamond on the postern's watch
+## while at it.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if escaped or taken or bound_lost or not _alive(charge):
@@ -350,7 +351,8 @@ func tags() -> Array[MapTag]:
 	if bound:
 		out.append(MapTag.person(charge.ground_pos, MARK_CHARGE, "PRISONER - DO NOT KILL", true))
 		if is_instance_valid(stocks) and not stocks.destroyed:
-			var spot := MapTag.place(stocks_far, MARK_STOCKS, "STOCKS - TAKEN IN AT %s" % UiTheme.clock(FREE_BY), stocks.height, false)
+			var left := timeline.seconds_to("inside") if timeline != null else FREE_BY
+			var spot := MapTag.place(stocks_far, MARK_STOCKS, "STOCKS - TAKEN INSIDE IN %s" % UiTheme.clock(left), stocks.height, false)
 			spot.lift += STOCKS_LIFT  # above the prisoner's own plate, which stands over the same spot (the photograph, v0.11 M4)
 			out.append(spot)
 	elif held:

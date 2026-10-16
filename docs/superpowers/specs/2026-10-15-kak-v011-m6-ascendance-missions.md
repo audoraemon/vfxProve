@@ -261,11 +261,11 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
 
   | Phase | Line |
   |---|---|
-  | (none) | Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. While one stands, never cast in the light. |
+  | (none) | Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light. |
   | `guarded` | Its guards (red) hold the mirror: blows only shake the tower. Remove every one. |
   | `open` | The mirror (gold) stands unguarded. Two blows shatter it: strike where no beam shines. |
   | `shattered` | Its wrights (red) hang a new glass. Stop them for {n} s and it is gone for good. |
-  | `waiting` | The next mirror goes up soon, and the light is quiet till then. Clear its guards (red) shortly before. |
+  | `waiting` | The next mirror goes up soon; till then the beams sweep but do not hunt. Clear its guards (red) shortly before. |
   | `eye` | All three mirrors stand: the Eye opens in {n} s. Shatter one now. |
 
   The `eye` phase comes first, then `shattered`, then the current mirror's. The `{n}` mark is filled from `hint_seconds()`
@@ -325,7 +325,7 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
     wrights inside stay inside.
   - Again during a drain, the wrights at work: they hold their posts and work on.
 - **No hidden losses:**
-  - The Eye's countdown is 30 s, with its tag, its hint and its HUD row.
+  - The Eye's countdown is 30 s, with its tag, its hint and its strip row.
   - Every Gaze addition has a banner.
   - None of the Eye's people is a loss if killed.
 - **How it differs:**
@@ -411,7 +411,7 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   - **The patrols:**
     - one walks the long west street from (-6.25, 0.0) to (-6.25, 12.0) and back, along the west household's road to the postern;
     - one walks the east-west street from (1.0, 9.0) to (12.0, 9.0) and back, between the east household's road and the south
-      household's (about 2.2 and 2.8 units from them; Task 6's fix round 1, once the south household moved).
+      household's (about 2.2 and 2.8 units from them, once the south household moved: Task 6's review).
   - **The gates' watch:**
     - two watchmen at each gate's mouth, 2.4 apart, held on duty;
     - no guard change: the gate is cleared by acting, never waited out (§6.1's `watch_changes`);
@@ -464,8 +464,9 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   - Each lamp-bearer: "LAMP - DO NOT KILL", steel blue, with an edge arrow. Each follower, a steel-blue diamond.
   - A seized believer: "TAKEN TO THE TEMPLE", red, with an edge arrow. Then TAKING HIM IN on his seizer and TEMPLE on the Temple's
     door, both red, with edge arrows.
-  - A household still inside: "HOUSEHOLD - OUT BY 1:30" (the sooner time), grey, over its door, with an edge arrow.
-  - Each gate, with an edge arrow: "POSTERN - WATCHED" (red), "POSTERN - CLEAR" (green), "POSTERN - SHUT AT 2:30" while shutting
+  - A household still inside: "HOUSEHOLD - OUT IN 1:30" (the seconds to the sooner time, counting down as the strip does: the final
+    review), grey, over its door, with an edge arrow.
+  - Each gate, with an edge arrow: "POSTERN - WATCHED" (red), "POSTERN - CLEAR" (green), "POSTERN - SHUT IN 0:50" while shutting
     is under a minute off (orange), "POSTERN - SHUT" (grey).
   - SEARCHER on each searcher, red, with an edge arrow. PATROL on each patrol's first watchman, red. A red diamond on every other
     patrol watchman and on each gate's watch.
@@ -480,7 +481,7 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
   | `shut` | That gate is shut. Lead the household to another open gate. |
   | `waiting` | The next household comes out in {n} s. Clear its road and its gate of Inquisitors (red). |
 
-  `shut` and `gate` read the gate the household heads for (Task 6's fix round 1): its file's way out behind a lamp already out,
+  `shut` and `gate` read the gate the household heads for (Task 6's review): its file's way out behind a lamp already out,
   else the gate nearest where its lamp is whispered to, or stands.
 
 - **HUD:**
@@ -492,9 +493,9 @@ and seizures to answer. The households follow their lamp-bearer, so one whisper 
 - **Tour:**
   1. "The west household hides here. At 0:15, whisper its lamp to the postern; the rest follow."
   2. "Gates shut: postern 2:30, Side Gate 3:45, Main Gate 5:00 (lost unless ten are out)."
-
-  (Task 6's fix round 1: each line fits the caption's one-line plate, and the last shutting's loss is said plainly.)
   3. "The Temple. Inquisitors take any believer they catch here. Ten must get out."
+
+  Each line fits the caption's one-line plate, and the last shutting's loss is said plainly (Task 6's review).
 - **Mission tags:** `shuts_gates`. It keeps "Lead my brother out" and "Lead my family out" away: on a night of leading out through
   gates that shut, a wish's escapee walking out through a shut gate would read as a contradiction.
 - **Pool:** every power.
@@ -679,8 +680,9 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
   - **Stage one:**
     - The target in use, gold, with an edge arrow: "OIL-HOUSE - GUARDED" while a Knight is on guard, "OIL-HOUSE - SET IT ALIGHT"
       when open, "OIL-HOUSE - BURNING 7" (seconds of its 12 left), orange.
-    - The next target, grey, with an edge arrow: "TEMPLE - THE FLAME BLAZES BY 1:50" (the sooner time); once felled ahead of its
-      time "OIL-HOUSE - DOWN 0:45" (M5's wording: "DOWN, COUNTS AT" dropped a plate).
+    - The next target, grey, with an edge arrow: "TEMPLE - THE FLAME BLAZES IN 1:50" (the seconds to the sooner time, counting down
+      as the strip does: the final review); once felled ahead of its time "OIL-HOUSE - DOWN 0:45", counting down too (M5's wording:
+      "DOWN, COUNTS AT" dropped a plate).
     - KNIGHT on each Knight on guard, red. A small red mark on one away from his post. A red diamond on a relief walking in.
   - **Stage two:**
     - "ODRAN - IN THE CITADEL" over the Citadel's gate, grey, with an edge arrow, with "COMES OUT IN 21" while his chain runs.

@@ -109,6 +109,9 @@ static func run(t) -> void:
 	_keepout_stack(t)
 	_keepout_redraw(t)
 	_keepout_aside(t)
+	_taken_rects(t)
+	_keepout_fallback(t)
+	_advance_cache(t)
 	_frame5(t)
 	_stages(t)
 	_spoil_default(t)
@@ -383,6 +386,76 @@ static func _keepout_aside(t) -> void:
 			"%s: the plate over its diamond is under the stack, so it sits beside it, shown, outside the stack" % label)
 
 
+## The timeline strip and the slot bar as the HUD draws them at 640 x 360 (v0.11 M6's final review tests): a strip under the clock, six
+## slots along the bottom.
+const STRIP := Rect2(240.0, 40.0, 160.0, 31.0)
+const SLOTS := Rect2(10.0, Hud.SLOT_TOP, 620.0, Hud.SLOT_SIZE)
+
+
+## The strip and the slot bar count as placed for labels (v0.11 M6's final review): a plate that would cover the strip sits beside its
+## diamond instead; one that cannot clear the slot bar is not drawn; no shown plate covers either; the arrows and diamonds are where they
+## were; with none taken, the layout of old.
+static func _taken_rects(t) -> void:
+	var xf := Transform2D(0.0, MID)
+	var taken: Array[Rect2] = [STRIP, SLOTS]
+	var high := _tag_at(Vector2(320.0, 86.0), "GUARD", false)
+	var c := Hud.tag_point(high, xf)
+	var over := Hud.label_rect("GUARD", c - Vector2(0.0, high.size + Hud.LABEL_GAP + Hud.PLATE_H * 0.5), Kit.VIEW)
+	var lay := Hud.tag_layout(_tags([high]), xf, Kit.VIEW, Rect2(), taken)
+	t.check(over.intersects(STRIP) and String(lay[0].mode) == "map" and bool(lay[0].show) and not (lay[0].label as Rect2).intersects(STRIP),
+		"a plate over its diamond would cover the strip: it sits beside the diamond, shown, clear of it (%s)" % lay[0].label)
+	var low := Hud.tag_layout(_tags([_tag_at(Vector2(320.0, 336.0), "GUARD", false)]), xf, Kit.VIEW, Rect2(), taken)
+	t.check(String(low[0].mode) == "map" and not bool(low[0].show), "a diamond on the slot bar keeps no plate over the slots")
+	var tags := _spread_tags()
+	var before := Hud.tag_layout(tags, xf, Kit.VIEW, FULL_STACK)
+	var now := Hud.tag_layout(tags, xf, Kit.VIEW, FULL_STACK, taken)
+	var same := before.size() == now.size()
+	var clear := true
+	for i in mini(before.size(), now.size()):
+		same = same and String(before[i].mode) == String(now[i].mode) and before[i].arrow == now[i].arrow and before[i].c == now[i].c
+		if bool(now[i].show):
+			clear = clear and not (now[i].label as Rect2).intersects(STRIP) and not (now[i].label as Rect2).intersects(SLOTS)
+	var none := Hud.tag_layout(tags, xf, Kit.VIEW, FULL_STACK, [] as Array[Rect2])
+	var old := none.size() == before.size()
+	for i in mini(before.size(), none.size()):
+		old = old and before[i].label == none[i].label and bool(before[i].show) == bool(none[i].show)
+	t.check(same and clear and old, "every arrow and diamond where it was, no shown plate on the strip or the slots; none taken, as of old")
+
+
+## _keepout_point()'s guard (v0.11 M6's final review): a line that never meets the keepout's right edge or bottom gets the frame's own
+## edge point, never the screen's centre.
+static func _keepout_fallback(t) -> void:
+	var frame := Hud.tag_frame(Kit.VIEW)
+	var far := Vector2(-400.0, -100.0)
+	var whole := Rect2(Vector2.ZERO, Kit.VIEW)
+	t.check(Hud.frame_point(far, frame, whole) == Hud.frame_point(far, frame) and Hud.frame_point(far, frame, whole) != frame.get_center()
+		and Hud._keepout_point(frame.get_center(), Vector2.ZERO, FULL_STACK, Vector2(7.0, 9.0)) == Vector2(7.0, 9.0),
+		"a keepout over the whole frame, or no heading: the frame's own edge point, not the centre")
+
+
+## advance() takes the objective rows and the how-to-win line once and lets them go at its end (v0.11 M6's final review): outside it
+## every reader takes them live, so a change between two advances is read at once; the slot bar is the slots' rectangles in one.
+static func _advance_cache(t) -> void:
+	var def := TierBook.board("crowns_bread")
+	var s := Kit.world(def)
+	var descent := Descent.new().setup(def, 7)
+	descent.attach(s.rules, s.d)
+	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	var stack := hud.stack_rect()
+	var sig := hud._signature()
+	hud.advance(0.016)
+	t.check(hud._frame_rows == null and hud._frame_hint == null and hud._frame_lines == null and hud.stack_rect() == stack
+		and hud._signature() == sig, "after an advance nothing is held, and the stack and the signature read as before")
+	s.rules.main_done = true
+	t.check(hud.stack_rect() != stack and hud._signature() != sig, "a change after the advance is read at once")
+	var n: int = (s.rules as Rules).loadout.size()
+	var bar := hud.slots_rect()
+	t.check(n > 0 and bar.position == hud.slot_rect(0).position and bar.end == hud.slot_rect(n - 1).end, "the slot bar: every slot in one (%s)" % bar)
+	hud.free()
+	descent.release()
+	Kit.done(s)
+
+
 ## Step `i`'s guards moved well off their ring (v0.11 M6 tests): off guard, still alive.
 static func _clear_party(d: HuntDirector, i: int) -> void:
 	for g: HuntDirector.Guard in d.steps[i].party:
@@ -524,6 +597,19 @@ static func _one_gaze(t) -> void:
 		lj_gazes += 1 if o is GazeObjective else 0
 	t.check(list.size() == 2 and gazes == 1 and lj_gazes == 1 and lj.back() is GazeObjective,
 		"a list with its own Gaze gets none added; Last Judgement's board version still ends with its one")
+	# The final review: the same for an act's objectives made for the night -- one added to a list with none, none to a list with its own.
+	var bare := func(_n: NightState) -> Array[Objective]:
+		var out: Array[Objective] = [StagesObjective.new()]
+		return out
+	var own := func(_n: NightState) -> Array[Objective]:
+		var out: Array[Objective] = [StagesObjective.new(), GazeObjective.new()]
+		return out
+	var added: Array[Objective] = []
+	added.assign(TierBook._with_gaze_for_night(bare).call(NightState.new()))
+	var kept: Array[Objective] = []
+	kept.assign(TierBook._with_gaze_for_night(own).call(NightState.new()))
+	t.check(added.size() == 2 and added[0] is StagesObjective and added[1] is GazeObjective and kept.size() == 2 and kept[1] is GazeObjective
+		and not kept[0] is GazeObjective, "an act's night objectives: a Gaze after a list with none, none added to a list with its own")
 
 
 ## A Tier 5 director that keeps its own Gaze keeps it (v0.11 M6, Decision 208): the night's goes only to one with none.

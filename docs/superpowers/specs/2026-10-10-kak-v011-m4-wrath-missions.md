@@ -139,7 +139,7 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
   crew can be cleared in the last 25 s.
 - **Tags:**
   - Each target not razed, with an edge arrow:
-    - not in use: "MILL - IN USE BY 1:55" (the sooner time), grey;
+    - not in use: "MILL - IN USE IN 1:55" (the seconds to the sooner time, counting down as the strip does: M6's final review), grey;
     - not in use and down: "MILL - DOWN, REBUILT IN 14" while a crew rebuilds it, else "MILL - DOWN", grey;
     - in use: "MILL", gold; burning: "MILL - BURNING", orange.
   - ENGINEER on each crewman on guard, red. A small red mark on one away from his post. A red diamond on a relief walking in.
@@ -265,7 +265,8 @@ the chain, and each brings fresh work when it does. Nothing is sealed: every tar
 - **Tags:**
   - PRISONER - DO NOT KILL, steel blue, with an edge arrow, while bound. Once free: PRISONER, steel blue, with an edge arrow;
     PRISONER - CAUGHT, red, while seized.
-  - STOCKS - TAKEN IN AT 2:00, orange, on the stocks' far side, while they stand.
+  - STOCKS - TAKEN INSIDE IN 2:00 (counting down as the strip does: M6's final review), orange, on the stocks' far side, while they
+    stand.
   - POSTERN - WATCHED (red) or POSTERN - CLEAR (green) at the way out, with an edge arrow. WATCHED while the watch walks back
     (The Lost Lamb's final-review rule).
   - GAOLER - SEIZES HER on each gaoler, red. TAKING HER BACK, red, with an edge arrow, on a seizer; CITADEL, red, while she

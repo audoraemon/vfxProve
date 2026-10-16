@@ -173,9 +173,9 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
     Gaze ("THE EYE SEES YOUR HAND"). It is judged as the cast is made (`Rules.cast_made`), so only a beam already there sees it.
     Deaths are judged by the witness rule alone (§0).
   - **The mirrors go up** (the steps, `HuntDirector`'s chain):
-    - the north tower's at 0:50 ("A MIRROR GOES UP ON THE NORTH TOWER");
-    - the east tower's at 1:55, or 35 s after the first is gone for good, whichever is sooner;
-    - the south-west tower's at 3:00, or 35 s after the second is gone for good.
+    - the north tower's at 0:40 ("A MIRROR GOES UP ON THE NORTH TOWER");
+    - the east tower's at 1:55, or 30 s after the first is gone for good, whichever is sooner;
+    - the south-west tower's at 3:00, or 30 s after the second is gone for good.
 
     Before its time a mirror does not exist. Blows on its tower only shake it (it is stone tonight: the filter owns its health).
   - **The glass:** a mirror's glass has MIRROR_HP (90), held by the director:
@@ -191,6 +191,9 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   - **The wrights:**
     - They wait inside their tower, untouchable, until its mirror shatters.
     - Then they come out on posts at its foot, 2.4 apart (one Doom takes one), each working where he stands.
+    - The south-west tower's wrights work from its quiet side instead (`QUIET_SIDE`; the controller's fix-round ruling): its foot is a
+      busy street, where the onlookers every Smite stops would see a wright fall, so its two posts lie WRIGHT_OUT (2.6) beyond its
+      outer face, out of the town, clear of the wall soldiers who stand at that face.
     - A wright alive, out of doors, not held by the god (`BLIND`) and within 1.2 of his post is at work. REHANG (10 s) of one
       wright's work in all hangs a new glass at full health ("THE MIRROR IS HUNG AGAIN"). Two at work hang it in 5 s.
     - Hung again, the mirror is up and guarded by whoever of its party stands. Its wrights go back inside for the next time, and the
@@ -221,27 +224,29 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   | Time | Event |
   |---|---|
   | 0:00 | "THE LANTERN'S EYE". The light sweeps; the three parties stand at their towers. |
-  | 0:50 | "A mirror goes up on the north tower": the light hunts your casts |
-  | 1:55 | "A mirror goes up on the east tower" (sooner: 35 s after the first is gone for good) |
-  | 3:00 | "A mirror goes up on the south-west tower" (sooner: 35 s after the second is gone) |
+  | 0:40 | "A mirror goes up on the north tower": the light hunts your casts |
+  | 1:55 | "A mirror goes up on the east tower" (sooner: 30 s after the first is gone for good) |
+  | 3:00 | "A mirror goes up on the south-west tower" (sooner: 30 s after the second is gone) |
   | 3:30 | "The Eye opens": lost, 30 s after all three stand |
   | 7:00 | Dawn |
 
 - **The clear:**
-  - **The sum:** first wait 50 + mirror 1 (glass 12: two Smites 10 s apart; the wrights a Doom and a whisper inside the drain;
+  - **The sum** (first guesses): first wait 50 + mirror 1 (glass 12: two Smites 10 s apart; the wrights a Doom and a whisper inside the drain;
     drain 20) 32 + 35 + mirror 2 32 + 35 + mirror 3 32 ≈ **216 s**.
-  - **The schedule:** the times 1:55 and 3:00 fall 2 s before the chain's, so the expected run is ≈ 212 s.
-  - **Measured** (Task 5's gate, seed 2): first wait 50 + mirror 1 34 (up 0:50, gone about 1:24) + 31 to the east mirror at its time
-    1:55 + mirror 2 50 (its guards came back twice before the second Smite) + 15 to the south-west mirror at 3:00 + mirror 3 35
-    ≈ 215 s (won 214.7 s; seed 3 243.6 s; seed 1's south-west mirror was hung again until dawn).
+  - **The schedule:** with the first guesses the times 1:55 and 3:00 fell 2 s before the chain's, so the expected run was ≈ 212 s.
+  - **Tuned** (Task 5's fix round 1: STEP_AT[0] 40, CHAIN 30): first wait 40 + mirror 1 32 + 30 + mirror 2 32 + 30 + mirror 3 32
+    ≈ **196 s**; on the schedule the east mirror comes by the chain (about 1:42) and the south-west one at 3:00.
+  - **Measured** (seed 3): first wait 40 + mirror 1 33 (up 0:40, gone about 1:13) + 30 to the east mirror on the chain + mirror 2 51
+    (its guards came back before the first Smite) + 26 to the south-west mirror at 3:00 + mirror 3 46 (its guards walk back from the
+    busy street) ≈ 226 s (won 226.4 s; seed 2 229.4 s; seed 1 323.1 s).
   - **The shortest:** no glass can be struck before its mirror goes up, and no drain can be cut. So a skilled player's clear is at
-    least 50 + 3 × (3 + 20) + 2 × 35 ≈ 189 s.
+    least 40 + 3 × (3 + 20) + 2 × 30 ≈ 169 s.
 - **Longest waits:**
-  - 50 s to the first mirror, with its party to clear from 0:25 (idle about 25 s);
-  - 35 s between a mirror gone for good and the next one going up, its party to clear in the last 25 s;
+  - 40 s to the first mirror, with its party to clear from 0:15 (idle about 15 s);
+  - 30 s between a mirror gone for good and the next one going up, its party to clear in the last 25 s;
   - each 20 s drain, the wrights to stop inside it.
 
-  No timed wait passes 35 s except the first.
+  No timed wait passes 30 s except the first.
 - **Tags:**
   - The current mirror, gold, with an edge arrow:
     - "MIRROR - GUARDED" while guarded, "MIRROR" when open;
@@ -272,7 +277,7 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
 
   The Eye's countdown shows on the strip, on the spire's tag and in the hint's `{n}`. `HuntObjective` stays as M4 made it.
 - **Tour:**
-  1. "The north tower. A mirror goes up here at 0:50: shatter it and keep it shattered 20 s."
+  1. "The north tower. A mirror goes up here at 0:40: shatter it and keep it shattered 20 s."
   2. "Halcyon's Searchlight. While a mirror stands, its beams hunt your casts. A cast in the light is seen."
   3. "The east and south-west towers: the next mirrors. If all three stand at once, the Eye opens."
 - **Mission tags:** none. A watchtower wish's tower is reserved before the director chooses, so the mirror takes the next nearest
@@ -282,11 +287,11 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   - "THE LANTERN'S EYE IS BLIND" (`eye_blind`);
   - "THE EYE OPENS" (`eye_open`);
   - the Gaze's "THE LANTERN LOOKS" (`gaze`, the family's own).
-- **Numbers** (first guesses, kept by Task 5's gate: no knob moved):
-  - **The steps:** STEP_AT 50 / 115 / 180, CHAIN 35, PARTY 3, POST_GAP 2.4, POST_OUT 1.0, GUARD_REACH 2.0, RETURN_AFTER 20,
+- **Numbers** (tuned by Task 5's fix round 1: STEP_AT[0] 50 → 40 and CHAIN 35 → 30, the first two knobs in the order; the rest kept):
+  - **The steps:** STEP_AT 40 / 115 / 180, CHAIN 30, PARTY 3, POST_GAP 2.4, POST_OUT 1.0, GUARD_REACH 2.0, RETURN_AFTER 20,
     RELIEF_AFTER 30; POST_REACH 1.9, POST_SEP 2.2.
   - **The glass:** MIRROR_HP 90, BLOW_MAX 45, HEAVEN_GAP 5, DRAIN 20, WRIGHTS 2, WRIGHT_GAP 2.4, WRIGHT_REACH 1.2, REHANG 10,
-    EYE_OPENS 30.
+    EYE_OPENS 30; QUIET_SIDE (the south-west tower), WRIGHT_OUT 2.6.
   - **The light:** two beams from 0:00, HOLD 8, SEEN_CAST 20; the rest is The Vigil Flame's Searchlight.
   - **Tuning order,** if the scripted clear misses 180-240 s: CHAIN (30-45), STEP_AT[0] (40-60), DRAIN (15-20), MIRROR_HP
     (90-135), PARTY (2-3).
@@ -313,8 +318,8 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
     - The shattering blow waits until Silent Doom and Mind Whisper will both be ready as the Smite ends, as two wrights hang a glass
       in 5 s. Once a mirror is struck, the next party waits.
   - **Its Gaze:** no seen cast by its rule, and its Dooms are taken alone. A sweeping beam that swings onto an aim already cast is
-    the only risk. Expected Gaze: 0-20% (Task 5's gate: 0 / 10 / 0%). Expected clear: about 3:35 (Task 5: 3:35 and 4:04 won, one
-    seed lost at dawn: the south-west tower's foot is a busy street, and onlookers stopped by each Smite see its wrights fall).
+    the only risk. Expected Gaze: 0-20% (Task 5's gate: 0 / 0 / 0%). Expected clear: about 3:50 (Task 5's fix round: 5:23, 3:49
+    and 3:46, all won; the median 3:49).
 - **Evacuate-mid-mission test:**
   - The evacuation begins while the second mirror stands, one guard whispered and one recovering: both back on their posts, and the
     wrights inside stay inside.

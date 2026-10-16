@@ -80,6 +80,14 @@ static func _setup(t) -> void:
 		var b: HuntDirector.Guard = d.wrights[i][1]
 		ok = ok and a.post.distance_to(b.post) > Crowd.DOOM_WITNESS
 	t.check(ok and people.size() == 15, "three towers 20-35 apart, stone tonight; three watchmen on guard at each, one witness apart; two wrights inside each; fifteen lay citizens")
+	var quiet := true
+	for w: HuntDirector.Guard in d.wrights[2]:
+		var out := (d.towers[2].center() - d.feet[2]).normalized()
+		quiet = quiet and (w.post - d.towers[2].center()).dot(out) > d.towers[2].footprint.size.y * 0.5 + LanternEyeDirector.WRIGHT_OUT - 0.5
+	for w: HuntDirector.Guard in d.wrights[0]:
+		quiet = quiet and d.towers[0].distance_to(w.post) <= LanternEyeDirector.POST_REACH
+	t.check(LanternEyeDirector.QUIET_SIDE == [false, false, true] and quiet,
+		"the south-west tower's wrights work from its quiet side, %.1f beyond its outer face, out of the busy street at its foot; the others at their feet" % LanternEyeDirector.WRIGHT_OUT)
 	var ids := []
 	for e in d.timeline.upcoming(3):
 		ids.append(e.id)

@@ -25,9 +25,9 @@ const TOWER_POINTS := [Vector2(0.0, -15.65), Vector2(15.65, 0.0), Vector2(-8.0, 
 const TOWER_WORDS := ["the north tower", "the east tower", "the south-west tower"]
 ## Each mirror's time at the latest, in the timeline's seconds (v0.11 M6, mission spec §1; tuned by the gate in the spec's order: CHAIN
 ## (30-45), STEP_AT[0] (40-60), DRAIN (15-20), MIRROR_HP (90-135), PARTY (2-3); EYE_OPENS (20-30) if doing nothing does not lose).
-const STEP_AT := [50.0, 115.0, 180.0]
+const STEP_AT := [40.0, 115.0, 180.0]
 ## Seconds after a mirror is gone for good that the next goes up at the latest (v0.11 M6).
-const CHAIN := 35.0
+const CHAIN := 30.0
 ## Watchmen in each tower's party (v0.11 M6).
 const PARTY := 3
 ## How far apart a party's posts stand along the tower's face, and how far out from it the foot lies (v0.11 M6).
@@ -57,6 +57,11 @@ const DRAIN := 20.0
 const WRIGHTS := 2
 const WRIGHT_GAP := 2.4
 const WRIGHT_REACH := 1.2
+## Which towers' wrights work from the tower's quiet side, out of the town beyond its outer face, and how far beyond that face (v0.11 M6,
+## the controller's fix-round ruling): the south-west tower's foot is a busy street, where onlookers stopped by every Smite would see a
+## wright fall, and the wall's own soldiers stand at its outer face, so the posts lie WRIGHT_OUT past it, more than a witness from them.
+const QUIET_SIDE := [false, false, true]
+const WRIGHT_OUT := 2.6
 ## Seconds of one wright's work that hang a new glass (v0.11 M6).
 const REHANG := 10.0
 ## Seconds all three mirrors stand together before the Eye opens (v0.11 M6).
@@ -225,23 +230,28 @@ func outer_face(i: int) -> Vector2:
 
 
 ## Tower `i`'s posts, planned once (v0.11 M6): its party's -- the foot, then POST_GAP to either side of it along the face -- and its
-## wrights' -- at the foot, WRIGHT_GAP apart -- each its own spot or, walled in, the nearest free one (_free_spot()).
+## wrights' -- WRIGHT_GAP apart, at the foot, or on a QUIET_SIDE tower WRIGHT_OUT beyond the outer face -- each its own spot or, walled
+## in, the nearest free one (_free_spot()).
 func _plan_posts(i: int) -> void:
 	var guards: Array[Vector2] = []
 	for k in PARTY:
 		var side := 0.0 if k == 0 else (-1.0 if k % 2 == 1 else 1.0) * POST_GAP * float((k + 1) / 2)
-		guards.append(_free_spot(i, feet[i] + along(i) * side, guards))
+		guards.append(_free_spot(i, feet[i] + along(i) * side, guards, POST_REACH))
+	var quiet: bool = i < QUIET_SIDE.size() and QUIET_SIDE[i]
+	var face := _face(towers[i])
+	var door := towers[i].center() - face * (_depth(towers[i], face) + WRIGHT_OUT) if quiet else feet[i]
 	var crew: Array[Vector2] = []
 	for k in WRIGHTS:
-		crew.append(_free_spot(i, feet[i] + along(i) * WRIGHT_GAP * (float(k) - 0.5 * float(WRIGHTS - 1)), crew))
+		crew.append(_free_spot(i, door + along(i) * WRIGHT_GAP * (float(k) - 0.5 * float(WRIGHTS - 1)), crew,
+			WRIGHT_OUT + POST_STEP if quiet else POST_REACH))
 	_guard_posts.append(guards)
 	_wright_posts.append(crew)
 
 
 ## Ground for a post of tower `i` meant for `spot` (v0.11 M6): `spot` itself when it fits (_post_fits()); else the nearest such point
 ## within POST_SEARCH of it (every POST_STEP); else `spot` made walkable.
-func _free_spot(i: int, spot: Vector2, taken: Array[Vector2]) -> Vector2:
-	if _post_fits(i, spot, taken):
+func _free_spot(i: int, spot: Vector2, taken: Array[Vector2], reach: float) -> Vector2:
+	if _post_fits(i, spot, taken, reach):
 		return spot
 	var best := Vector2.INF
 	var n := roundi(POST_SEARCH / POST_STEP)
@@ -249,18 +259,18 @@ func _free_spot(i: int, spot: Vector2, taken: Array[Vector2]) -> Vector2:
 		for dx in range(-n, n + 1):
 			var g := spot + Vector2(dx, dy) * POST_STEP
 			var nearer := best == Vector2.INF or g.distance_squared_to(spot) < best.distance_squared_to(spot)
-			if nearer and g.distance_to(spot) <= POST_SEARCH and _post_fits(i, g, taken):
+			if nearer and g.distance_to(spot) <= POST_SEARCH and _post_fits(i, g, taken, reach):
 				best = g
 	return best if best != Vector2.INF else _walkable(spot)
 
 
-## `g` will do for a post of tower `i` (v0.11 M6): walkable, outside the tower and within POST_REACH of it, more than POST_SEP from each
-## of `taken`.
-func _post_fits(i: int, g: Vector2, taken: Array[Vector2]) -> bool:
+## `g` will do for a post of tower `i` (v0.11 M6): walkable, outside the tower and within `reach` of it (POST_REACH at its foot), more
+## than POST_SEP from each of `taken`.
+func _post_fits(i: int, g: Vector2, taken: Array[Vector2], reach: float) -> bool:
 	if crowd._grid != null and not crowd._grid.walkable(g):
 		return false
 	var gap := towers[i].distance_to(g)
-	if gap <= 0.0 or gap > POST_REACH:
+	if gap <= 0.0 or gap > reach:
 		return false
 	for o in taken:
 		if o.distance_to(g) <= POST_SEP:

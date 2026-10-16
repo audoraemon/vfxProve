@@ -73,9 +73,10 @@ Collected from the milestones' ledgers; none is a failure, and each is a place t
 - **The Heart's Gaze pressure.** Its Gaze stands at 50-70% before Odran dies (the Citadel's gate and the burning Temple draw crowds, and the bearers there are seldom unseen), and the scripted player's own limit on seen kills is 60%. It is Tier 5's finale; if playtest finds it harsh, it may lower FURY, the 20 a seen death adds once the flame is out.
 - **The Relic Run's frame cost.** Its cart, route and wardens cost about 0.8 ms a frame (109 fps against The Vigil Flame's 119 on the board versions); noted for a later profile.
 - **The pyre and family wishes at a burning Temple.** Last Judgement and The Long Night do not declare `burns_temple`, so a Tier 5 night there can hear a wish at a Temple that burns; playtest decides.
+- **The HUD keepout's frame cost.** About 0.3-0.5 ms a frame on every mission (stack_rect and the taken rects, worked out each frame); profile and cache it in a later pass.
 - **HUD plates under the strip and the slots.** A map tag with no arrow could draw its plate under the timeline strip or the power slots (The Lantern's Eye's GUARD plates). Fixed in the final review: both count as placed for labels (see "The final review's fixes").
 
-Gates: filled in at landing.
+Gates for the whole of v0.11 (at e060c6f, kak-v011-m6): tests 6598 checks, 0 failures; FLOW 114 checks, 0 failures; the state digest and crowd_check unchanged since v0.10; every exact behaviour checksum unchanged (calm, gates, fire, rite, soldiers, the five Warning cases, Mira's House, Broken Lanterns), the Vigil Flame and the Feast the same; all 102 board scenario references exact (M2's 24, M3's 18, M4's 18, M5's 24, M6's 18) and the Vigil Flame's play line. Frame rate against v0.10 (kak-v010-m6, the campaign versions, medians of three, quiet machine): The Warning 119 fps against 125, Mira's House 106 against 111, the Vigil Flame 116 against 114, the Festival 116 against 120, Last Judgement 117 against 123: v0.11 costs the old missions about 0.35 ms a frame, most likely the HUD keepout's per-frame layout (noted below for a profile).
 
 ## M6: Ascendance
 
@@ -285,7 +286,7 @@ The final review found no Critical; its two Important findings, its minors and e
 
 Tests: 6598 checks, 0 failures (in eighths 2867 + 318 + 352 + 478 + 670 + 628 + 673 + 612); FLOW 114 checks, 0 failures.
 
-Gates: filled in at landing.
+Gates (at e060c6f; Develop-Main had not moved since M5): tests 6598 checks, 0 failures; FLOW 114 checks, 0 failures; the state digest and crowd_check unchanged; every exact behaviour checksum unchanged, the Vigil Flame's none outcome and play line and the Feast the same; M2's 24, M3's 18, M4's 18, M5's 24 and the 18 above exact; The Heart of Faith's extra seeds 4 and 5 won at 165.9 and 174.8 s; the three `--board` runs won with three wishes each, never an escape wish on Exodus's night or the pyre on The Heart's. Bench, board versions against `kak-v011-m5` (medians of three, quiet machine): The Lantern's Eye 96 fps against Last Judgement's 106 there, Exodus 97 against The Prisoner's 105, The Heart of Faith 99 against The Crown's Bread's 144 (that camera sees fewer buildings); the old missions 3-5% under M5 (The Warning 123 vs 126, Mira's House 104 vs 110, the Vigil Flame 106 vs 110, Last Judgement 104 vs 107, The Sermon 106 vs 108, The Relic Run 100 vs 105, the Festival 67 vs 70): about 0.3-0.5 ms a frame, the HUD keepout's per-frame layout (stack_rect and the taken rects): a profile is a follow-up.
 
 ## M5: Reckoning
 

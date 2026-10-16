@@ -172,6 +172,15 @@ extends SceneTree
 ##          next household within EXODUS_AHEAD -- the first watcher on its road cleared; "cleared" is Silent Doom unseen, else Discord, else
 ##          Mind Whisper; never a loud power, and every Doom unseen with room to spare and sparing the believers, so its Gaze stays 0-10%;
 ##          the result line gives the Gaze and the longest idle stretch). --seed= as ringers.
+##   eye  (v0.11 M6) The Lantern's Eye, --case=none (nothing cast) or play, as a player plays it (_eye_act(), never casting where a lit pool
+##          lies within POOL_R + EYE_LIT_MARGIN of the aim, every Silent Doom taken alone with room for walkers (_eye_unseen()): a
+##          shattered mirror's wrights at work, Silent Doom on one, else Mind Whisper sends one off to a quiet spot; the current mirror
+##          open and none of its guards walking back, Smite on its tower's outer face where it strikes no one, Heaven Splitter along the
+##          face while Smite cools where nobody stands within its kill, a Will-o'-Wisp off the face while a beam lights it -- the shattering
+##          blow waiting until Silent Doom and Mind Whisper are both ready, a Wisp first drawing onlookers off the wrights' posts; the
+##          current mirror standing or the next due within EYE_AHEAD, Silent Doom on a guard, on guard or sent off, else a Wisp draws off
+##          the passers-by who would see it, else Mind Whisper sends one to a quiet spot; a relief walking in, Silent Doom on him; the
+##          result line gives the longest idle stretch). Hit-stop is off for it. --seed=, --board as ringers.
 ##   heart  (v0.11 M6) The Heart of Faith, --case=none (nothing cast) or play, as a player plays it (_heart_act(): Odran on foot out of
 ##          doors -- Silent Doom on him, else Smite (his death is the win, seen or not); his rite running with neither ready -- Mind
 ##          Whisper sends him HEART_OFF units off the steps; riding, or his bearers waiting -- a bearer struck; his last guard within
@@ -341,6 +350,23 @@ const EXODUS_NEAR := 4.0
 const EXODUS_WAIT := 3.0
 const EXODUS_STEP := 1.5
 const EXODUS_AHEAD := 25.0
+## The Lantern's Eye's policy (v0.11 M6): how far past a lit pool's edge it never casts; how far out from a tower its Wisp goes; how
+## soon before the next mirror it clears that party; how far round its aim a Heaven Splitter kills (its fissures and their eruptions),
+## where nobody may stand for the policy to lay one.
+const EYE_LIT_MARGIN := 0.5
+const EYE_WISP := 6.0
+const EYE_AHEAD := 25.0
+const EYE_HEAVEN_R := HEAVEN_FX.FISSURE_LENGTH + HEAVEN_FX.ERUPT_KILL
+## How far along a tower's face the policy slides its Smite's aim when the face's middle is taken (v0.11 M6).
+const EYE_AIM_SLIDE := 0.6
+## The Lantern's Eye's timing (v0.11 M6): how soon Silent Doom and Mind Whisper must both be ready for the shattering blow (about a
+## Smite's play, which holds every other cast); how near standing guard a guard walking back holds a blow; how much farther than
+## Crowd.DOOM_WITNESS someone on the move must be for a Silent Doom to go unseen.
+const EYE_CREW_WAIT := 2.0
+const EYE_COMING := 1.0
+const EYE_DOOM_MARGIN := 0.4
+## How far beyond a guard, away from his tower, the policy's Will-o'-Wisp draws off the passers-by who would see him fall (v0.11 M6).
+const EYE_LURE := 4.5
 ## The Heart of Faith's policy (v0.11 M6): how soon before the next target it clears that target's Knights; how far off the steps its
 ## whisper sends Odran; how near Odran his last guard is answered.
 const HEART_AHEAD := 25.0
@@ -490,6 +516,9 @@ func _run() -> void:
 	elif scenario == "relic":
 		powers = PackedStringArray(["whisper", "discord", "doom", "wisp"])
 		mission.mission_id = MissionBook.RELIC_RUN
+	elif scenario == "eye":
+		powers = PackedStringArray(["doom", "smite", "whisper", "wisp", "heaven"])
+		mission.mission_id = MissionBook.LANTERN_EYE
 	elif scenario == "exodus":
 		powers = PackedStringArray(["whisper", "doom", "discord", "wisp"])
 		mission.mission_id = MissionBook.EXODUS
@@ -497,7 +526,7 @@ func _run() -> void:
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
 		mission.mission_id = MissionBook.HEART_OF_FAITH
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
-	if scenario in ["panic", "bread", "hunt", "bishop", "armoury", "heart"]:
+	if scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -573,6 +602,8 @@ func _run() -> void:
 			await _sermon(Battlefield.arg_value(args, "--case"))
 		"relic":
 			await _relic(Battlefield.arg_value(args, "--case"))
+		"eye":
+			await _eye(Battlefield.arg_value(args, "--case"))
 		"exodus":
 			await _exodus(Battlefield.arg_value(args, "--case"))
 		"heart":
@@ -3193,6 +3224,247 @@ func _relic_quiet(d: RelicRunDirector, crowd: Crowd, c: Person, from: Vector2) -
 				best_n = n
 				best_gap = gap
 	return best
+
+
+## The Lantern's Eye (v0.11 M6), with mission spec §1's policy (_eye_act()), through _scripted().
+func _eye(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as LanternEyeDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	await _scripted("eye", which, func() -> String: return _eye_act(rules, slots, d, crowd),
+		func() -> String: return "gone=%d current=%d next=%d shattered=%d eye=%.0f gaze=%d phase=%s" % [d.broken_count(), d.current(),
+			d.next_step(), d.shattered_now(), d.eye_left(), roundi(d.gaze.value), d.hint_phase()])
+
+
+## A lit pool lies within Searchlight.POOL_R + EYE_LIT_MARGIN of `at` (v0.11 M6): the policy never casts there. Only reads.
+func _eye_lit(d: LanternEyeDirector, at: Vector2) -> bool:
+	for i in d.searchlight.beams():
+		var a := d.searchlight.aim(i)
+		if a != Vector2.INF and a.distance_to(at) <= Searchlight.POOL_R + EYE_LIT_MARGIN:
+			return true
+	return false
+
+
+## Where the policy strikes tower `i` (v0.11 M6): the first of points just off its outer face -- the middle, then toward either end --
+## then off its two sides, each within a Smite's reach of the tower, that no lit pool lies near (_eye_lit()) and where the bolt strikes
+## no one (_eye_clear()); Vector2.INF for none. Only reads.
+func _eye_aim(d: LanternEyeDirector, crowd: Crowd, i: int) -> Vector2:
+	var tw := d.towers[i]
+	var out := (d.outer_face(i) - tw.center()).normalized()
+	var side := d.along(i)
+	var depth := tw.footprint.size.x * 0.5
+	for at: Vector2 in [d.outer_face(i), d.outer_face(i) + side * EYE_AIM_SLIDE, d.outer_face(i) - side * EYE_AIM_SLIDE,
+			tw.center() + side * (depth + 0.3) + out * EYE_AIM_SLIDE, tw.center() - side * (depth + 0.3) + out * EYE_AIM_SLIDE]:
+		if tw.distance_to(at) <= SmiteFx.HIT_R and not _eye_lit(d, at) and _eye_clear(crowd, at, SmiteFx.HIT_R):
+			return at
+	return Vector2.INF
+
+
+## Nobody alive and out of doors stands within `r` of `at` (v0.11 M6): a Smite's aim that strikes down no one. Only reads.
+func _eye_clear(crowd: Crowd, at: Vector2, r: float) -> bool:
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= r:
+				return false
+	return true
+
+
+## One look of The Lantern's Eye's policy (v0.11 M6, mission spec §1): what was cast, or "". Never where a beam shines, and every Silent
+## Doom taken alone (_eye_unseen()). The first that applies: a shattered mirror's wrights at work -- Silent Doom on one alone, else Mind
+## Whisper sends one off, one Silent Doom cannot take first; the current mirror open, none of its party walking back to it -- Smite its tower's outer face (_eye_aim()), else Heaven
+## Splitter along it where nobody stands within its kill (EYE_HEAVEN_R), else, a beam on that face, a Will-o'-Wisp six units beyond it,
+## out of the town; the current mirror standing, or the next due within EYE_AHEAD -- Silent Doom on a guard of its party, on guard or
+## sent off his post (_eye_away()), else a Will-o'-Wisp draws off the passers-by who would see it (_eye_lure()), else Mind Whisper
+## sends one on guard off; a relief walking in -- Silent Doom on him. Once the current
+## mirror's glass is struck the wrights come next: the shattering blow waits until Silent Doom and Mind Whisper will both be ready as
+## the Smite ends (EYE_CREW_WAIT: two wrights hang a glass in 5 s), a Will-o'-Wisp first draws off the onlookers standing at the
+## wrights' posts (_eye_onlookers()), and the next party waits.
+func _eye_act(rules: Rules, slots: Dictionary, d: LanternEyeDirector, crowd: Crowd) -> String:
+	for i in d.steps.size():
+		if not d.shattered[i] or d.steps[i].broken:
+			continue
+		var crew: Array[Person] = []
+		var alone: Array[Person] = []
+		for w: HuntDirector.Guard in d.wrights[i]:
+			if d._working(w) and not _eye_lit(d, (w.man as Person).ground_pos):
+				crew.append(w.man as Person)
+				if _eye_unseen(crowd, (w.man as Person).ground_pos):
+					alone.append(w.man as Person)
+		if not alone.is_empty() and _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, alone[0].ground_pos)
+			return "doom a wright at %s" % d.steps[i].words
+		if _slot_ready(rules, slots, "whisper"):
+			var pick: Person = null
+			for p in crew:
+				if not p.shaken() and (pick == null or alone.has(pick)):
+					pick = p
+			if pick != null:
+				rules.cast(slots.whisper, pick.ground_pos, {"target": pick, "to": _eye_off(d, crowd, pick, d.towers[i].center())})
+				return "whisper a wright off %s" % d.steps[i].words
+	var cur := d.current()
+	var struck := cur >= 0 and not d.shattered[cur] and d.glass[cur] < LanternEyeDirector.MIRROR_HP
+	var crew_ready := slots.has("doom") and slots.has("whisper") and rules.cooldown_left(int(slots.doom)) <= EYE_CREW_WAIT \
+		and rules.cooldown_left(int(slots.whisper)) <= EYE_CREW_WAIT
+	if cur >= 0 and not d.shattered[cur] and not d.guarded(cur) and not _eye_coming(d, cur) \
+			and (d.glass[cur] > LanternEyeDirector.BLOW_MAX or crew_ready):
+		var aim := _eye_aim(d, crowd, cur)
+		var off := _eye_onlookers(d, crowd, cur) if d.glass[cur] <= LanternEyeDirector.BLOW_MAX else Vector2.INF
+		if aim != Vector2.INF and off != Vector2.INF and _slot_ready(rules, slots, "smite") and _slot_ready(rules, slots, "wisp"):
+			rules.cast(slots.wisp, off)
+			return "wisp the onlookers off the wrights' door at %s" % d.steps[cur].words
+		if aim != Vector2.INF:
+			if _slot_ready(rules, slots, "smite"):
+				rules.cast(slots.smite, aim)
+				return "smite the mirror on %s" % d.steps[cur].words
+			if _slot_ready(rules, slots, "heaven") and _eye_clear(crowd, aim, EYE_HEAVEN_R):
+				rules.cast(slots.heaven, aim, {"dir": d.along(cur)})
+				return "heaven along %s" % d.steps[cur].words
+		elif _eye_lit(d, d.outer_face(cur)) and _slot_ready(rules, slots, "wisp"):
+			var lure := d.outer_face(cur) + (d.outer_face(cur) - d.towers[cur].center()).normalized() * EYE_WISP
+			if not _eye_lit(d, lure):
+				rules.cast(slots.wisp, lure)
+				return "wisp off %s" % d.steps[cur].words
+	var work: Array[int] = []
+	if cur >= 0 and not d.shattered[cur]:
+		work.append(cur)
+	var n := d.next_step()
+	if n >= 0 and d.due_in(n) <= EYE_AHEAD and not struck:
+		work.append(n)
+	for i in work:
+		var on := d.party_on(i)
+		if _slot_ready(rules, slots, "doom"):
+			for p in on + _eye_away(d, i):
+				if not _eye_lit(d, p.ground_pos) and _eye_unseen(crowd, p.ground_pos):
+					rules.cast(slots.doom, p.ground_pos)
+					return "doom a guard of %s" % d.steps[i].words
+			if _slot_ready(rules, slots, "wisp"):
+				for p in on:
+					var lure := _eye_lure(d, crowd, i, p)
+					if lure != Vector2.INF:
+						rules.cast(slots.wisp, lure)
+						return "wisp the passers-by off a guard of %s" % d.steps[i].words
+		if _slot_ready(rules, slots, "whisper"):
+			for p in on:
+				if not _eye_lit(d, p.ground_pos) and not p.shaken():
+					rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": _eye_off(d, crowd, p, d.towers[i].center())})
+					return "whisper a guard of %s off" % d.steps[i].words
+	for i in d.steps.size():
+		if d.steps[i].broken:
+			continue
+		var r := d.relief_walking(i)
+		if r != null and not _eye_lit(d, r.ground_pos) and _slot_ready(rules, slots, "doom") and _eye_unseen(crowd, r.ground_pos):
+			rules.cast(slots.doom, r.ground_pos)
+			return "doom a relief at %s" % d.steps[i].words
+	return ""
+
+
+## Step `i`'s guards alive and out of doors but off guard (v0.11 M6): sent off by the god, to be taken alone where they stand. Only reads.
+func _eye_away(d: LanternEyeDirector, i: int) -> Array[Person]:
+	var out: Array[Person] = []
+	for g: HuntDirector.Guard in d.steps[i].party:
+		if MissionDirector._alive(g.man) and not (g.man as Person).inside and not d._guarding(i, g):
+			out.append(g.man as Person)
+	return out
+
+
+## A guard of step `i`, off guard and free of the god's hold, is within EYE_COMING of standing guard again (v0.11 M6): a blow now would
+## land as he takes his post, and only shake the tower. Only reads.
+func _eye_coming(d: LanternEyeDirector, i: int) -> bool:
+	for p in _eye_away(d, i):
+		if not p.mind in MissionDirector.BLIND and d.towers[i].distance_to(p.ground_pos) <= d.guard_reach + EYE_COMING:
+			return true
+	return false
+
+
+## Silent Doom at `at` goes unseen (v0.11 M6): _doom_unseen(), and nobody on the move -- neither on duty nor at a post -- within
+## Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN of its victims, as he could walk up in the doom's SilentDoom.T_STRIKE. Only reads.
+func _eye_unseen(crowd: Crowd, at: Vector2) -> bool:
+	if not _doom_unseen(crowd, at):
+		return false
+	var victims: Array[Person] = []
+	var moving: Array[Person] = []
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside:
+				continue
+			if p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+				victims.append(p)
+			elif not p.mind in [Person.Mind.DUTY, Person.Mind.POST]:
+				moving.append(p)
+	for v in victims:
+		for o in moving:
+			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN:
+				return false
+	return true
+
+
+## Where Mind Whisper sends `p` off tower `from` (v0.11 M6): the quietest spot -- fewest living out of doors within RINGERS_QUIET_CLEAR
+## -- of RINGERS_QUIET_DIRS directions at each of RINGERS_QUIET_R that his walk reaches within the whisper's reach, the farthest from
+## the tower of those, so a Silent Doom can take him there alone; else PRISONER_AWAY straight off (_prisoner_away()). Only reads.
+func _eye_off(d: LanternEyeDirector, crowd: Crowd, p: Person, from: Vector2) -> Vector2:
+	var best := Vector2.INF
+	var best_n := 0
+	for rad: float in RINGERS_QUIET_R:
+		for k in RINGERS_QUIET_DIRS:
+			var g := d._walkable(p.ground_pos + Vector2.from_angle(TAU * float(k) / float(RINGERS_QUIET_DIRS)) * rad)
+			if g.distance_to(p.ground_pos) > MindWhisperFx.REACH - 0.5 or _walk_len(crowd, p.ground_pos, g) > MindWhisperFx.REACH:
+				continue
+			var n := 0
+			for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+				for o in group:
+					if is_instance_valid(o) and o != p and o.is_alive() and not o.inside and o.ground_pos.distance_to(g) <= RINGERS_QUIET_CLEAR:
+						n += 1
+			if best == Vector2.INF or n < best_n or (n == best_n and g.distance_to(from) > best.distance_to(from)):
+				best = g
+				best_n = n
+	return best if best != Vector2.INF else _prisoner_away(crowd, p, from)
+
+
+## Where a Will-o'-Wisp draws off the passers-by who alone stop a Silent Doom on `p`, of step `i`'s party, going unseen (v0.11 M6):
+## everyone within Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN of him is one the Wisp lures (Person.LURABLE, no soldier) and none stands
+## within his doom; then EYE_LURE beyond him from his tower, on walkable ground out of the light; else Vector2.INF. Only reads.
+func _eye_lure(d: LanternEyeDirector, crowd: Crowd, i: int, p: Person) -> Vector2:
+	var any := false
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for o in group:
+			if not is_instance_valid(o) or o == p or not o.is_alive() or o.inside:
+				continue
+			var gap := o.ground_pos.distance_to(p.ground_pos)
+			if gap > Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN:
+				continue
+			if gap <= SilentDoom.RADIUS or o.soldier or not o.mind in Person.LURABLE:
+				return Vector2.INF
+			any = true
+	if not any:
+		return Vector2.INF
+	var off := p.ground_pos - d.towers[i].center()
+	var at := d._walkable(p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * EYE_LURE)
+	return at if not _eye_lit(d, at) else Vector2.INF
+
+
+## Where a Will-o'-Wisp draws off the onlookers who would see a Silent Doom on mirror `i`'s wrights as they come out (v0.11 M6): when
+## someone living out of doors stands within Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN of every wright's post and all of them are ones the
+## Wisp lures, EYE_LURE beyond the nearest post from the tower, on walkable ground out of the light; else Vector2.INF. Only reads.
+func _eye_onlookers(d: LanternEyeDirector, crowd: Crowd, i: int) -> Vector2:
+	var posts: Array[Vector2] = []
+	for w: HuntDirector.Guard in d.wrights[i]:
+		posts.append(w.post)
+	for at in posts:
+		if _eye_clear(crowd, at, Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN):
+			return Vector2.INF
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for o in group:
+			if not is_instance_valid(o) or not o.is_alive() or o.inside:
+				continue
+			for at in posts:
+				if o.ground_pos.distance_to(at) <= Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN and (o.soldier or not o.mind in Person.LURABLE):
+					return Vector2.INF
+	if posts.is_empty():
+		return Vector2.INF
+	var off := posts[0] - d.towers[i].center()
+	var at := d._walkable(posts[0] + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * EYE_LURE)
+	return at if not _eye_lit(d, at) else Vector2.INF
 
 
 ## Whom the Broken Lanterns policy strikes down quietly: the bellkeeper once called, or the flame-bearer while he is

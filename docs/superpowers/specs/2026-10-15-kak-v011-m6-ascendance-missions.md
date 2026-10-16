@@ -182,7 +182,9 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
     - **Guarded:** while a guard of its party stands guard, a blow only shakes the tower (`HuntDirector._shield`).
     - **Unguarded:** the blow strikes the glass (`_unguarded_blow()`, §6.2). The tower scorches, shakes and emits its `hit` as any
       struck building does, but its own health never moves tonight.
-    - Two Smites shatter it, or one Heaven Splitter through the tower and a Smite.
+    - Two Smites shatter it, or one Heaven Splitter through the tower and a Smite (the controller's ruling: one Heaven Splitter alone
+      never does). A blow strikes the glass at most BLOW_MAX (a Smite's 45), and a Heaven Splitter's strokes on one tower -- its
+      core, its line, its eruptions, all within HEAVEN_GAP (5 s) of the first -- are one blow (Task 5).
   - **Shattered:** at 0 the mirror shatters ("THE MIRROR SHATTERS"), and its two wrights come out of the tower's door to hang a new
     glass. The mirror is **gone for good** once it has stayed shattered DRAIN (20 s) without being hung again ("THE MIRROR IS GONE"):
     Broken Lanterns' drain rule.
@@ -198,6 +200,9 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   - **The parties:**
     - Each tower's guard is three watchmen on posts along its town-side face from the start: the foot, and 2.4 to either side of it,
       1.0 out from the face.
+    - A post whose spot is walled in moves to the nearest walkable ground within POST_REACH (1.9) of the tower and more than POST_SEP
+      (2.2) from the tower's other posts of its kind (Task 5: the east tower's town side is built up against its face, so one of its
+      guards stands south-east of it, outside the wall; the north tower's second wright stands a little off the foot).
     - They are held on duty. Fright, a whisper and Discord move them. Back on their feet they walk back.
     - **On guard:** alive, out of doors, not held by the god, within GUARD_REACH (2.0) of the tower's footprint.
     - **Return and relief:** a guard away from his post and calm again walks back 20 s after he left. A fallen one is replaced 30 s
@@ -226,6 +231,9 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   - **The sum:** first wait 50 + mirror 1 (glass 12: two Smites 10 s apart; the wrights a Doom and a whisper inside the drain;
     drain 20) 32 + 35 + mirror 2 32 + 35 + mirror 3 32 ≈ **216 s**.
   - **The schedule:** the times 1:55 and 3:00 fall 2 s before the chain's, so the expected run is ≈ 212 s.
+  - **Measured** (Task 5's gate, seed 2): first wait 50 + mirror 1 34 (up 0:50, gone about 1:24) + 31 to the east mirror at its time
+    1:55 + mirror 2 50 (its guards came back twice before the second Smite) + 15 to the south-west mirror at 3:00 + mirror 3 35
+    ≈ 215 s (won 214.7 s; seed 3 243.6 s; seed 1's south-west mirror was hung again until dawn).
   - **The shortest:** no glass can be struck before its mirror goes up, and no drain can be cut. So a skilled player's clear is at
     least 50 + 3 × (3 + 20) + 2 × 35 ≈ 189 s.
 - **Longest waits:**
@@ -248,7 +256,7 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
 
   | Phase | Line |
   |---|---|
-  | (none) | Clear a mirror's guards (red), then shatter it (gold) and keep it shattered 20 s. While a mirror stands, the light hunts your casts: never cast where it shines. |
+  | (none) | Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. While one stands, never cast in the light. |
   | `guarded` | Its guards (red) hold the mirror: blows only shake the tower. Remove every one. |
   | `open` | The mirror (gold) stands unguarded. Two blows shatter it: strike where no beam shines. |
   | `shattered` | Its wrights (red) hang a new glass. Stop them for {n} s and it is gone for good. |
@@ -258,7 +266,8 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   The `eye` phase comes first, then `shattered`, then the current mirror's. The `{n}` mark is filled from `hint_seconds()`
   (M4's countdown mark).
 - **HUD:**
-  - "Shatter the mirrors 1 / 3" (`HuntObjective`, count word "mirrors", no head);
+  - "Blind the Eye: mirrors 1 / 3" (`HuntObjective`, label "Blind the Eye", count word "mirrors", no head: the controller's ruling,
+    plan decision 281);
   - "Halcyon's Gaze 20%" (`GazeObjective`).
 
   The Eye's countdown shows on the strip, on the spire's tag and in the hint's `{n}`. `HuntObjective` stays as M4 made it.
@@ -273,10 +282,11 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
   - "THE LANTERN'S EYE IS BLIND" (`eye_blind`);
   - "THE EYE OPENS" (`eye_open`);
   - the Gaze's "THE LANTERN LOOKS" (`gaze`, the family's own).
-- **Numbers** (first guesses):
+- **Numbers** (first guesses, kept by Task 5's gate: no knob moved):
   - **The steps:** STEP_AT 50 / 115 / 180, CHAIN 35, PARTY 3, POST_GAP 2.4, POST_OUT 1.0, GUARD_REACH 2.0, RETURN_AFTER 20,
-    RELIEF_AFTER 30.
-  - **The glass:** MIRROR_HP 90, DRAIN 20, WRIGHTS 2, WRIGHT_GAP 2.4, WRIGHT_REACH 1.2, REHANG 10, EYE_OPENS 30.
+    RELIEF_AFTER 30; POST_REACH 1.9, POST_SEP 2.2.
+  - **The glass:** MIRROR_HP 90, BLOW_MAX 45, HEAVEN_GAP 5, DRAIN 20, WRIGHTS 2, WRIGHT_GAP 2.4, WRIGHT_REACH 1.2, REHANG 10,
+    EYE_OPENS 30.
   - **The light:** two beams from 0:00, HOLD 8, SEEN_CAST 20; the rest is The Vigil Flame's Searchlight.
   - **Tuning order,** if the scripted clear misses 180-240 s: CHAIN (30-45), STEP_AT[0] (40-60), DRAIN (15-20), MIRROR_HP
     (90-135), PARTY (2-3).
@@ -292,8 +302,19 @@ real work each. Here each mirror brings a party to clear, two blows to land wher
     4. The current mirror is guarded, or the next goes up within 25 s: Doom a guard with no one else within 2 (the posts stand 2.4
        apart); else whisper one eight units away.
     5. A relief walks toward a standing mirror and Doom is ready: Doom him.
+  - **As Task 5 plays it** (the steps above, played as a careful player would):
+    - A Doom is cast only where nobody on the move stands within 2.4 of its victim (the 0.45 s before it lands). Silent Doom also
+      takes a guard the whisper sent off, and a Will-o'-Wisp draws off the passers-by who alone would see a guard fall.
+    - Mind Whisper sends a guard or wright to the quietest spot 4-7 units off.
+    - Smite aims at the outer face's middle, else toward either end or off a side (always within its reach), and not while a guard
+      walks back within 1 of standing guard.
+    - Heaven Splitter only where nobody stands within its kill (its fissures and eruptions, 6.85 units). With a town round every
+      tower that is seldom, so the second blow is usually the second Smite, 10 s on.
+    - The shattering blow waits until Silent Doom and Mind Whisper will both be ready as the Smite ends, as two wrights hang a glass
+      in 5 s. Once a mirror is struck, the next party waits.
   - **Its Gaze:** no seen cast by its rule, and its Dooms are taken alone. A sweeping beam that swings onto an aim already cast is
-    the only risk. Expected Gaze: 0-20%. Expected clear: about 3:35.
+    the only risk. Expected Gaze: 0-20% (Task 5's gate: 0 / 10 / 0%). Expected clear: about 3:35 (Task 5: 3:35 and 4:04 won, one
+    seed lost at dawn: the south-west tower's foot is a busy street, and onlookers stopped by each Smite see its wrights fall).
 - **Evacuate-mid-mission test:**
   - The evacuation begins while the second mirror stands, one guard whispered and one recovering: both back on their posts, and the
     wrights inside stay inside.

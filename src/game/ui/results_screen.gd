@@ -51,6 +51,7 @@ var descend := false
 ## v0.11 M3: Omen's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M4: Wrath's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M5: Reckoning's new missions' endings, each under the mission's own reason keys.
+## v0.11 M6: Ascendance's new missions' endings, each under the mission's own reason keys.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
 	"gaze": "THE LANTERN LOOKS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
@@ -68,6 +69,7 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 	"garrison": "THE GARRISON IS BROKEN", "marches": "THE GARRISON MARCHES",
 	"sermon": "THE CROWD BELIEVES", "sermon_over": "THE SERMON ENDS", "flock": "THE FLOCK IS SCATTERED",
 	"relic": "THE RELIC IS OURS", "relic_kept": "THE RELIC REACHES THE CITADEL", "pip": "THE BOY IS DEAD",
+	"eye_blind": "THE LANTERN'S EYE IS BLIND", "eye_open": "THE EYE OPENS",
 	"exodus": "THE FAITHFUL ARE OUT", "exodus_few": "TOO FEW ARE LEFT", "gates_shut": "THE GATES ARE SHUT",
 	"heart": "THE HEART OF FAITH IS BROKEN", "blessed": "THE GREAT FLAME IS BLESSED", "kindled": "THE FLAME IS KINDLED ANEW"}
 

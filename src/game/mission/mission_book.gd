@@ -72,7 +72,7 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run(), exodus(),
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run(), lantern_eye(), exodus(),
 		heart_of_faith()]
 	return out
 
@@ -431,6 +431,27 @@ static func relic_run() -> MissionDef:
 	m.director = RelicRunDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new("The relic", "relic", "relic_kept", "pip"),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Lantern's Eye (v0.11 M6, Tier 5, mission spec §1 and §8 row 23): shatter the three mirrors the Inquisition hangs on the wall
+## towers to aim Halcyon's Searchlight, each kept shattered 20 s, before all three stand together (LanternEyeDirector, the Hunt type
+## with an Anchors drain).
+static func lantern_eye() -> MissionDef:
+	var m := _tier5(LANTERN_EYE, "The Lantern's Eye", PackedStringArray(["Halcyon hangs mirrors to aim his light.",
+		"Shatter all three before the Eye opens."]))
+	m.goal = "Shatter the three mirrors on the wall towers, each kept shattered %d s, before all three stand together for %d s" % [
+		roundi(LanternEyeDirector.DRAIN), roundi(LanternEyeDirector.EYE_OPENS)]
+	m.goal_label = "The Eye is blind"
+	m.lose = "All three mirrors stand together for %d s, Halcyon's Gaze fills, or dawn comes" % roundi(LanternEyeDirector.EYE_OPENS)
+	m.camera_at = LanternEyeDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "smite", "whisper", "wisp", "heaven"])
+	m.director = LanternEyeDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [HuntObjective.new("Blind the Eye", "eye_blind"), GazeObjective.new(),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m

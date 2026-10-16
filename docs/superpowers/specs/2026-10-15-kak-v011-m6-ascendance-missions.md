@@ -530,8 +530,11 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
 - **Brief:** "Halcyon's Great Flame burns in his Temple." / "Put it out. Then kill his High Priest."
 - **Card type:** Kill. **Id:** `heart_of_faith`.
 - **Map:**
-  - **The oil-house:** the dwelling nearest (-3.5, -9.5), on the Temple's west side between it and the Citadel, whose door the
-    street reaches. Tagged OIL-HOUSE. 50 hp; it burns. If a wish has set it aside, the next nearest.
+  - **The oil-house:** the dwelling nearest (-2.5, -12.5), in the quiet row behind the Temple on its west side, whose door the
+    street reaches. Tagged OIL-HOUSE. 50 hp; it burns. If a wish has set it aside, the next nearest. (Task 7's sync: the first
+    guess, (-3.5, -9.5), stands in streets never clear of passers-by and the town's patrols -- a 120 s sample found no point within
+    a Knight's reach clear of a witness 1% of the time -- so no Knight there could be Doomed unseen; the row behind the Temple is
+    clear 80-99% of the time.)
   - **The Great Temple:** `TownLayout.TEMPLE` (centre (0.8, -8.7)), its front door and steps at (0.8, -5.0). Tagged TEMPLE. 200 hp;
     it burns.
   - **The Citadel's gate** (-10.5, -7.6): where Odran waits and the Knights' reliefs come from.
@@ -556,22 +559,27 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
 - **People and behaviour, stage one** (M4's staged rule as The Armoury's ruling has it; `RazeDirector`):
   - **In use** (the stages, `_spoilable()`):
     - the oil-house at 0:45 ("THE KEEPERS DRAW THE FLAME'S OIL");
-    - the Temple at 1:50, or 45 s after the oil-house is razed, whichever is sooner ("THE GREAT FLAME BLAZES").
+    - the Temple at 1:50, or 45 s after the oil-house is razed, whichever is sooner ("THE GREAT FLAME BLAZES"); a Temple already
+      down when the oil-house is razed comes into use at once, and so is razed (M5's horn rule).
   - **Before its time:**
     - every blow lands, and a target can fall: one down when its time comes is razed at once;
     - any fire on it is put out at once (the Temple's keepers inside), and nothing it burns counts.
   - **Razed** (`_spoil_for()`, §6.5): while in use, the oil-house burned 12 s in all or fallen; the Temple burned 20 s in all or
     fallen. It stays razed. Seconds burned stay counted.
   - **The Knights:**
-    - **Standing:** two Lantern Knights at each target from the start, on posts along its open face (`_open_door()`), 2.4 apart.
-    - **Coming out:** at its time two more come out of the target's own door, on posts 2.4 beyond them. Before that they wait
-      inside, untouchable: the work that cannot be done ahead.
+    - **Standing:** two Lantern Knights at each target from the start, on posts along its quiet face (of the doors the street
+      reaches, the one nearest its quiet yard behind the Temple, `QUIET_AT`), 2.4 apart, beyond a witness's 2.0 of every other
+      post, nearer their own target than the other, and kept 2.5 off the town's soldiers' posts where they can be (a Knight among
+      the watch could never be Doomed unseen). Packed in by its neighbours, a target's four spread as far apart as its yard allows.
+    - **Coming out:** at its time two more come out of the target's own door, on posts 2.4 beyond them, out from the face. Before
+      that they wait inside, untouchable: the work that cannot be done ahead.
     - **Soldiers:** Mind Whisper and Discord refuse them (M5 plan decision 173) and fear does not move them. Only a kill removes one.
   - **On guard:** a Knight alive, out of doors, within GUARD_REACH (2.5) of the target's footprint, on his post. While one stands
     on guard, the target is sealed (`seal()`; `unseal()` once none is): blows shake it and its fire is put out. The Armoury's
     ruling, before or after its time.
   - **Relief:** a standing Knight who falls is replaced 30 s later by a Knight walking from the Citadel's gate, while his target is
-    not razed. At most four reliefs in a night.
+    not razed. At most four reliefs in a night. With no road from the gate to his post, the relief backs off and is tried again 30 s
+    later.
   - **Razed:** its Knights walk to the Citadel's gate and go in. Any still running in go back.
   - **The town:** the fire brigade answers a fire on a target as it always does. Its men can be seen beating at the flames: that is
     the town's answer, not a hidden crew.
@@ -588,6 +596,8 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
       square.
     - **On foot:** with fewer than two alive he walks his road on foot, and one more Knight comes out with him as his last guard,
       walking 2.5 behind him (beyond a witness's 2.0).
+  - **The litter at the steps** (plan decision 291): within ALTAR_REACH of the Temple's steps it sets him down on foot; its living
+    bearers stand by him as his last guard did.
   - **The litter falls** when its bearers fall below two ("THE LITTER FALLS"):
     - Odran steps out where it stands and walks on, on foot, killable;
     - any living bearer guards him as his last guard did, 2.5 behind.
@@ -602,7 +612,8 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
   - **Leaving:** a whisper or the crowd cannot carry him out, because he is held on duty. Should he leave the town anyway, his going
     ends him as his death would (`head_down()`'s freed-body rule): it resolves at once.
   - **Halcyon looks harder:** once the flame is out, a seen death adds FURY (20) to the Gaze, not 10 ("HALCYON LOOKS HARDER").
-    Five seen deaths in stage two lose.
+    Five seen deaths in stage two lose. Every rise of the Gaze is bannered: "HALCYON SEES A DEATH", and once the flame is out
+    "HALCYON SEES A DEATH: +20".
     - **The clean line:** kill each bearer with a Doom from clear (they stand 2.1 apart, and Odran inside sees nothing), or kill the
       last guard 2.5 behind Odran. Then kill Odran alone.
 - **Timeline** (left alone):
@@ -614,7 +625,7 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
   | 1:50 | "The Great Flame blazes" (sooner: 45 s after the oil-house is razed): the Temple in use, two more Knights |
   | the flame out | "The Great Flame goes out": the litter's four bearers come out at the Citadel's gate |
   | +30 s | "The High Priest comes to rekindle the flame" |
-  | +about 40 s | He reaches the Temple's steps; 20 s more and the flame is kindled anew: lost |
+  | +about 15-20 s | The litter (or he, on foot) reaches the Temple's steps (measured); 20 s more and the flame is kindled anew: lost |
   | 5:00 | "The Great Flame is blessed": lost unless the flame is out |
   | 7:00 | Dawn |
 
@@ -623,8 +634,12 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
   - **The sum:** first wait 45 + the oil-house 22 (its two new Knights, a Doom and a Smite; an Ember; 12 s alight) + 45 + the Temple
     30 (two new Knights; an Ember; 20 s alight) + 30 (Odran's chain, his four bearers Doomed in it, one at a time) + Odran 25 (on
     foot with his last guard: a Doom on the guard, then Odran) ≈ **197 s**.
+  - **Measured** (Task 7's gate, seeds 1-2 won): first wait 45 + the oil-house about 20 (razed by 1:05-1:10; it burns down inside
+    its 12 s) + 45 + the Temple about 35 (razed by 2:20-2:30) + 30 (Odran's chain, a bearer or two struck in it) + about 15 (the
+    litter to the steps, or falling) = about **190 s** (193.8 and 187.2).
   - **The shortest:** a skilled player can fell the oil-house ahead of its time (its standing pair dead, two Smites), and it is razed
-    at 0:45. The chain still paces the Temple and Odran, so the clear is about 170 s.
+    at 0:45; a Temple felled ahead too comes into use, and is razed, the moment the oil-house is (M5's horn rule), so only Odran's
+    chain paces the rest.
 - **Longest waits:**
   - 45 s to the oil-house's time, with its standing pair to clear;
   - 45 s between the oil-house razed and the Temple's time, with the Temple's standing pair to clear;
@@ -633,30 +648,32 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
   - **Stage one:**
     - The target in use, gold, with an edge arrow: "OIL-HOUSE - GUARDED" while a Knight is on guard, "OIL-HOUSE - SET IT ALIGHT"
       when open, "OIL-HOUSE - BURNING 7" (seconds of its 12 left), orange.
-    - The next target, grey, with an edge arrow: "TEMPLE - THE FLAME BLAZES BY 1:50" (the sooner time).
+    - The next target, grey, with an edge arrow: "TEMPLE - THE FLAME BLAZES BY 1:50" (the sooner time); once felled ahead of its
+      time "OIL-HOUSE - DOWN 0:45" (M5's wording: "DOWN, COUNTS AT" dropped a plate).
     - KNIGHT on each Knight on guard, red. A small red mark on one away from his post. A red diamond on a relief walking in.
   - **Stage two:**
-    - "ODRAN - IN THE CITADEL" over the Citadel's gate, grey, with "COMES OUT IN 21" while his chain runs.
-    - BEARER on each bearer, red.
+    - "ODRAN - IN THE CITADEL" over the Citadel's gate, grey, with an edge arrow, with "COMES OUT IN 21" while his chain runs.
+    - BEARER on each bearer, red, with an edge arrow (a moving target).
     - "ODRAN - IN HIS LITTER", gold, with an edge arrow, on the litter's middle while he rides. Then ODRAN, gold, with an edge arrow,
       on foot, and "ODRAN - REKINDLING 14" during the rite.
-    - KNIGHT on his last guard, red.
+    - KNIGHT on his last guard (and on bearers standing by him), red, with an edge arrow.
     - ALTAR at the Temple's steps, orange, with an edge arrow, once he is out.
 - **Hint phases:**
 
   | Phase | Line |
   |---|---|
-  | (none) | Burn the oil-house, then the Temple (gold), once their Knights (red) are dead: the Great Flame goes out. Then kill High Priest Odran. |
+  | (none) | Kill the Knights (red), then burn the oil-house and the Temple (gold): the Great Flame goes out. Then kill High Priest Odran. |
   | `not_yet` | Not in use yet (grey): fire there goes out, but a fall counts when its time comes. Kill its Knights (red) shortly before. |
-  | `guarded` | Lantern Knights (red) guard it: it takes no harm and its fire goes out. Kill every one: whispers and Discord do not touch a Knight. |
+  | `guarded` | Lantern Knights (red) guard it: it takes no harm, its fire goes out. Kill every one: whispers and Discord do not touch them. |
   | `open` | No Knight stands. Set it alight (gold) and keep it burning. |
   | `burning` | It burns. Keep it burning: a new Knight comes from the Citadel. |
-  | `coming` | The flame is out. Odran comes out in {n} s: kill his bearers (red) at the Citadel's gate first. Halcyon looks harder now. |
+  | `coming` | The flame is out: each seen death now adds 20 to the Gaze. Odran comes out in {n} s: kill his bearers (red) first. |
   | `litter` | Odran rides in his litter, untouchable. Kill his bearers (red): with fewer than two, it falls. |
   | `on_foot` | Odran walks to the Temple's steps (orange). Kill him before he rekindles the flame. |
   | `rite` | Odran rekindles the flame. Kill him now, or whisper him off the steps to start it again. |
 
-  The stage-two lines are followed by "Each seen death now adds 20 to the Gaze." while room allows (`HINT_LINES` 3).
+  Every line fits the three-line plate (the controller's ruling); the Gaze's sentence is said once, in `coming`, beside the
+  "HALCYON LOOKS HARDER" banner.
 - **HUD:**
   - "Put out the flame 1 / 2: blessed in 2:10", then "Kill Odran", then "Kill Odran: in his litter" while he rides
     (`StagesObjective`, §6.5, its line from `hud_line()`);
@@ -675,29 +692,37 @@ The last mission. Two stages: put out Halcyon's Great Flame, then kill the High 
   - "THE GREAT FLAME IS BLESSED" (`blessed`);
   - "THE FLAME IS KINDLED ANEW" (`kindled`);
   - the Gaze's "THE LANTERN LOOKS" (`gaze`).
-- **Numbers** (first guesses):
+- **Numbers** (first guesses; Task 7's gate kept every one):
   - **Stage one:** STAGE_AT 45 / 110, CHAIN 45, STANDING 2, ARRIVING 2, POST_GAP 2.4, GUARD_REACH 2.5, SPOIL 12 (oil-house) / 20
     (Temple), RELIEF_AFTER 30, RELIEFS 4, BLESSED_AT 300.
   - **Stage two:** BEARERS 4, LITTER_SIDE 2.1, LAST_GUARD 1, GUARD_GAP 2.5, ODRAN_CHAIN 30, ODRAN_PACE 0.5, RITE 20, ALTAR_REACH 1.5.
   - **The Gaze:** SEEN 10, FURY 20.
+  - **Placing** (Task 7): OIL_AT (-2.5, -12.5), QUIET_AT (-3.5, -14.0) for the oil-house and (2.0, -14.0) for the Temple, POST_APART
+    2.1, QUIET 2.5.
   - **Tuning order,** if the scripted clear misses 180-240 s: CHAIN (35-45), STAGE_AT[0] (40-60), SPOIL[1] (15-25), ODRAN_CHAIN
     (20-30), ARRIVING (1-3).
 - **Scripted policy** (`--scenario=heart`; loadout Silent Doom, Smite, Ember, Mind Whisper, Heaven Splitter, 6 DP; hit-stop off):
   - Every LOOK_FRAMES, the first that applies:
     1. Odran is on foot out of doors: Doom him when no one else is within 2; else Smite him.
     2. Odran's rite runs and neither Doom nor Smite is ready, but Whisper is: whisper him four units off the steps.
-    3. Odran rides, or his bearers wait at the Citadel's gate: Doom a bearer with no one else within 2; else Smite one.
-    4. His last guard stands within 3 of him: Doom the guard when no one else is within 2 of the guard; else Smite him.
-    5. The target in use has a Knight on guard: Doom one with no one else within 2; else Smite him.
+    3. Odran rides, or his bearers wait at the Citadel's gate: strike a bearer.
+    4. His last guard stands within 3 of him: strike the guard.
+    5. The target in use has a Knight on guard: strike one.
     6. The target in use is unguarded and not burning: Ember it (Smite it if Ember is cooling).
-    7. The next target's time is within 25 s: Doom its standing Knights, one at a time.
-    8. A relief walks toward a target not razed and Doom is ready: Doom him.
+    7. The next target's time is within 25 s: strike its standing Knights, one at a time.
+    8. A relief walks toward a target not razed: strike him.
+  - **A strike** (Task 7): Silent Doom where its death goes unseen; else Smite there; else Mind Whisper sends the lone citizen who
+    would see it 8 units off; for 3-5 (work that cannot wait), at last a seen Doom, 3 s after any such whisper, while the Gaze stays
+    within 60%. Odran himself is struck seen or not: his death is the win.
   - It never fells a target ahead of its time.
   - **Its Gaze:** Dooms from clear; a Smite only when no Doom is ready, and only on a man with no one else within 2 if it can choose.
-    Expected Gaze: 0-30%. Expected clear: about 3:20.
+    Expected Gaze: 0-30%. Expected clear: about 3:20. Measured (Task 7): the Gaze 50-70% before the last blow, which is seen and
+    takes it to full as Odran dies (the Citadel's gate and the burning Temple draw crowds, and bearers there are seldom clear); one
+    seed in three is lost to it; the clear about 3:10.
 - **Evacuate-mid-mission test:**
   - The evacuation begins while the Temple is in use, a Knight's relief walking in: the relief reaches his post and the Knights hold.
-  - Again while the litter walks: the bearers keep their square, Odran stays hidden in it, and on foot he keeps his road.
+  - Again while the litter walks: the bearers keep their square, Odran stays hidden in it, and on foot -- recovering, or whispered
+    -- he keeps his road.
   - Odran never leaves the town.
 - **No hidden losses:**
   - The 5:00 blessing is on the strip from 0:00.

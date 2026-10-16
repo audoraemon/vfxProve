@@ -72,7 +72,8 @@ static func campaign_missions() -> Array[MissionDef]:
 ## campaign's.
 static func tier_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [tax_collector(), spoiled_harvest(), lost_lamb(), first_prayers(), bell_ringers(), market_panic(),
-		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run(), exodus()]
+		informer(), crowns_bread(), prisoner(), heretic_hunt(), bishop(), armoury(), sermon(), relic_run(), exodus(),
+		heart_of_faith()]
 	return out
 
 
@@ -452,6 +453,28 @@ static func exodus() -> MissionDef:
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [EscortObjective.new("Lead them out", "exodus", "exodus_taken", "exodus_dead", ExodusDirector.NEED),
 			GazeObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## The Heart of Faith (v0.11 M6, Tier 5, mission spec §3 and §8 row 25): burn the oil-house and the Great Temple under their Lantern
+## Knights to put out Halcyon's Great Flame, then kill High Priest Odran, borne to the Temple's steps in his litter, before he rekindles it
+## (HeartOfFaithDirector, a staged Raze and an Assassinate of its own). It burns the Temple (burns_temple, M5's tag).
+static func heart_of_faith() -> MissionDef:
+	var m := _tier5(HEART_OF_FAITH, "The Heart of Faith", PackedStringArray(["Halcyon's Great Flame burns in his Temple.",
+		"Put it out. Then kill his High Priest."]))
+	m.goal = "Burn the oil-house and the Great Temple to put out the Great Flame by %s, then kill High Priest Odran before he rekindles it" % UiTheme.clock(
+		HeartOfFaithDirector.BLESSED_AT)
+	m.goal_label = "The Heart of Faith is broken"
+	m.lose = "The flame is blessed at %s, Odran rekindles it, Halcyon's Gaze fills, or dawn comes" % UiTheme.clock(HeartOfFaithDirector.BLESSED_AT)
+	m.camera_at = HeartOfFaithDirector.CAMERA_AT
+	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
+	m.default_loadout = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
+	m.director = HeartOfFaithDirector
+	m.mission_tags = PackedStringArray(["burns_temple"])
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [StagesObjective.new("Put out the flame", "heart"), GazeObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
 

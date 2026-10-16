@@ -128,6 +128,15 @@ const LINES := {
 	"exodus.gate": "Inquisitors (red) watch the gate. Whisper them off or strike them, then send the household through.",
 	"exodus.shut": "That gate is shut. Lead the household to another open gate.",
 	"exodus.waiting": "The next household comes out in {n} s. Clear its road and its gate of Inquisitors (red).",
+	"heart_of_faith": "Kill the Knights (red), then burn the oil-house and the Temple (gold): the Great Flame goes out. Then kill High Priest Odran.",
+	"heart_of_faith.not_yet": "Not in use yet (grey): fire there goes out, but a fall counts when its time comes. Kill its Knights (red) shortly before.",
+	"heart_of_faith.guarded": "Lantern Knights (red) guard it: it takes no harm, its fire goes out. Kill every one: whispers and Discord do not touch them.",
+	"heart_of_faith.open": "No Knight stands. Set it alight (gold) and keep it burning.",
+	"heart_of_faith.burning": "It burns. Keep it burning: a new Knight comes from the Citadel.",
+	"heart_of_faith.coming": "The flame is out: each seen death now adds 20 to the Gaze. Odran comes out in {n} s: kill his bearers (red) first.",
+	"heart_of_faith.litter": "Odran rides in his litter, untouchable. Kill his bearers (red): with fewer than two, it falls.",
+	"heart_of_faith.on_foot": "Odran walks to the Temple's steps (orange). Kill him before he rekindles the flame.",
+	"heart_of_faith.rite": "Odran rekindles the flame. Kill him now, or whisper him off the steps to start it again.",
 }
 
 

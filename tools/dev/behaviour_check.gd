@@ -172,6 +172,15 @@ extends SceneTree
 ##          next household within EXODUS_AHEAD -- the first watcher on its road cleared; "cleared" is Silent Doom unseen, else Discord, else
 ##          Mind Whisper; never a loud power, and every Doom unseen with room to spare and sparing the believers, so its Gaze stays 0-10%;
 ##          the result line gives the Gaze and the longest idle stretch). --seed= as ringers.
+##   heart  (v0.11 M6) The Heart of Faith, --case=none (nothing cast) or play, as a player plays it (_heart_act(): Odran on foot out of
+##          doors -- Silent Doom on him, else Smite (his death is the win, seen or not); his rite running with neither ready -- Mind
+##          Whisper sends him HEART_OFF units off the steps; riding, or his bearers waiting -- a bearer struck; his last guard within
+##          HEART_GUARD of him -- the same; the target in use guarded -- a Knight struck; unguarded and not burning -- Ember (Smite while
+##          Ember cools); the next target within HEART_AHEAD of its time -- its standing Knights struck one at a time; a relief walking in
+##          -- the same. A strike is Silent Doom where its death goes unseen, else Smite there, else Mind Whisper sends a lone citizen
+##          witness HEART_HUSH units off; on a guard at the target in use, a bearer or the last guard, at last a seen Doom while the Gaze
+##          stays within HEART_GAZE_CAP (a seen death adds 10, and 20 once the flame is out). It never fells a target ahead of its time;
+##          the result line gives the Gaze and the longest idle stretch). Hit-stop is off for it. --seed= as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
 ##          town's tier at each act's start, and the night's result. Before the first handover the time scale is dipped
@@ -332,6 +341,17 @@ const EXODUS_NEAR := 4.0
 const EXODUS_WAIT := 3.0
 const EXODUS_STEP := 1.5
 const EXODUS_AHEAD := 25.0
+## The Heart of Faith's policy (v0.11 M6): how soon before the next target it clears that target's Knights; how far off the steps its
+## whisper sends Odran; how near Odran his last guard is answered.
+const HEART_AHEAD := 25.0
+const HEART_OFF := 4.0
+const HEART_GUARD := 3.0
+## How far the policy whispers a lone witness off a Knight before it strikes; how long after that whisper before it will strike seen
+## (v0.11 M6).
+const HEART_HUSH := 8.0
+const HEART_SETTLE := 3.0
+## The Gaze the policy lets a seen strike bring it to (v0.11 M6): a player's budget, short of THE LANTERN LOOKS.
+const HEART_GAZE_CAP := 60.0
 const EXODUS_SOON := 8.0
 const EXODUS_MARGIN := 0.5
 const EXODUS_WARN := 1.5
@@ -473,9 +493,12 @@ func _run() -> void:
 	elif scenario == "exodus":
 		powers = PackedStringArray(["whisper", "doom", "discord", "wisp"])
 		mission.mission_id = MissionBook.EXODUS
+	elif scenario == "heart":
+		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
+		mission.mission_id = MissionBook.HEART_OF_FAITH
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
-	if scenario in ["panic", "bread", "hunt", "bishop", "armoury"]:
-		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M5: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
+	if scenario in ["panic", "bread", "hunt", "bishop", "armoury", "heart"]:
+		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
@@ -552,6 +575,8 @@ func _run() -> void:
 			await _relic(Battlefield.arg_value(args, "--case"))
 		"exodus":
 			await _exodus(Battlefield.arg_value(args, "--case"))
+		"heart":
+			await _heart(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -1804,6 +1829,144 @@ func _scripted(label: String, which: String, act: Callable, state: Callable) -> 
 			acts.last = t
 	acts.longest = maxf(float(acts.longest), t - float(acts.last))
 	print("BEHAVIOUR %s result %s %s idle=%.0f" % [label, _outcome(rules), String(state.call()), float(acts.longest)])
+
+
+## The Heart of Faith (v0.11 M6), with mission spec §3's policy (_heart_act()), through _scripted().
+func _heart(which: String) -> void:
+	var rules: Rules = mission._rules
+	var d := rules.director as HeartOfFaithDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	var memo := {"hush": -INF}
+	await _scripted("heart", which, func() -> String: return _heart_act(rules, slots, d, crowd, memo),
+		func() -> String: return "razed=%d flame_out=%s odran=%s riding=%s rite=%.0f gaze=%d phase=%s" % [d.razed_count(), d.flame_out,
+			d.odran_out, d.riding, d.rite_left, roundi(d.gaze.value), d.hint_phase()])
+
+
+## Strikes one of `who` (v0.11 M6, mission spec §3's "Its Gaze"): Silent Doom on the first whose death goes unseen (_doom_unseen()); else,
+## with `smite_ok`, Smite on the first unseen; else Mind Whisper sends off the one citizen who would see a strike on one of them
+## (_heart_hush(), its time kept in `memo`); else, with `seen_ok` (work that cannot wait: a Knight on guard at the target in use, a bearer,
+## his last guard), HEART_SETTLE after the last hush and the Gaze kept within HEART_GAZE_CAP, Silent Doom on the one fewest would see,
+## seen. "" when nothing serves.
+func _heart_strike(rules: Rules, slots: Dictionary, crowd: Crowd, who: Array[Person], smite_ok: bool, what: String, memo: Dictionary,
+		d: HeartOfFaithDirector, seen_ok := false) -> String:
+	var now := d._clock
+	if who.is_empty():
+		return ""
+	var doom := _slot_ready(rules, slots, "doom")
+	var smite := smite_ok and _slot_ready(rules, slots, "smite")
+	if doom or smite:
+		for p in who:
+			if _doom_unseen(crowd, p.ground_pos):
+				rules.cast(slots.doom if doom else slots.smite, p.ground_pos)
+				return "%s %s" % ["doom" if doom else "smite", what]
+	if (doom or smite) and _slot_ready(rules, slots, "whisper"):
+		var did := _heart_hush(rules, slots, crowd, who, what)
+		if did != "":
+			memo.hush = now
+			return did
+	var cost := HeartOfFaithDirector.FURY if d.flame_out else HeartOfFaithDirector.SEEN
+	if seen_ok and doom and now - float(memo.hush) >= HEART_SETTLE and d.gaze.value + cost <= HEART_GAZE_CAP:
+		var best: Person = null
+		var fewest := 0
+		for p in who:
+			var n := _heart_seers(crowd, p).size()
+			if best == null or n < fewest:
+				best = p
+				fewest = n
+		rules.cast(slots.doom, best.ground_pos)
+		return "doom %s, seen by %d" % [what, fewest]
+	return ""
+
+
+## Everyone alive out of doors but `p` within Crowd.DOOM_WITNESS of the edge of a Silent Doom on him (v0.11 M6): who would see it. Only
+## reads.
+func _heart_seers(crowd: Crowd, p: Person) -> Array[Person]:
+	var out: Array[Person] = []
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for o in group:
+			if is_instance_valid(o) and o.is_alive() and not o.inside and o != p \
+					and o.ground_pos.distance_to(p.ground_pos) <= Crowd.DOOM_WITNESS + SilentDoom.RADIUS:
+				out.append(o)
+	return out
+
+
+## Mind Whisper sends off the lone witness of one of `who` (v0.11 M6): the first of them with exactly one other person out of doors who
+## would see a strike on him (_heart_seers()), a citizen not shaking off a whisper, sent HEART_HUSH units straight away. "" when none has
+## one.
+func _heart_hush(rules: Rules, slots: Dictionary, crowd: Crowd, who: Array[Person], what: String) -> String:
+	for p in who:
+		var seers := _heart_seers(crowd, p)
+		if seers.size() != 1 or seers[0].soldier or seers[0].shaken():
+			continue
+		var w := seers[0]
+		var away := w.ground_pos - p.ground_pos
+		away = away.normalized() if away.length() > 0.01 else Vector2.RIGHT
+		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": MindWhisperFx.clamp_to(crowd._grid, w.ground_pos, w.ground_pos + away * HEART_HUSH)})
+		return "whisper a witness off %s" % what
+	return ""
+
+
+## One look of The Heart of Faith's policy (v0.11 M6, mission spec §3): what was cast, or "". The first that applies: Odran on foot; his
+## rite with no strike ready; his bearers; his last guard; the target in use guarded; the target in use open and not burning; the next
+## target's standing Knights within HEART_AHEAD; a relief walking in. Never a blow on a target ahead of its time.
+func _heart_act(rules: Rules, slots: Dictionary, d: HeartOfFaithDirector, crowd: Crowd, memo: Dictionary) -> String:
+	var afoot := d.odran_out and not d.riding and not d.odran_down() and not (d.odran as Person).inside
+	if afoot:
+		var o := d.odran as Person
+		if _slot_ready(rules, slots, "doom"):  # his death is the win: seen or not
+			rules.cast(slots.doom, o.ground_pos)
+			return "doom Odran"
+		if _slot_ready(rules, slots, "smite"):
+			rules.cast(slots.smite, o.ground_pos)
+			return "smite Odran"
+		if d.rite_on and _slot_ready(rules, slots, "whisper") and not o.shaken():
+			var off := o.ground_pos + (o.ground_pos - d.temple.center()).normalized() * HEART_OFF
+			rules.cast(slots.whisper, o.ground_pos, {"target": o, "to": MindWhisperFx.clamp_to(crowd._grid, o.ground_pos, off)})
+			return "whisper Odran off the steps"
+	if d.flame_out and (d.riding or not d.odran_out):
+		var did := _heart_strike(rules, slots, crowd, d.bearers_standing(), true, "a bearer", memo, d, true)
+		if did != "":
+			return did
+	if afoot:
+		var near: Array[Person] = []
+		for g in d.last_guards():
+			if g.ground_pos.distance_to((d.odran as Person).ground_pos) <= HEART_GUARD:
+				near.append(g)
+		var did := _heart_strike(rules, slots, crowd, near, true, "his last guard", memo, d, true)
+		if did != "":
+			return did
+	if d.flame_out:
+		return ""
+	var cur := d.current()
+	if cur >= 0:
+		var s := d.targets[cur]
+		var on := d.guards_at(cur)
+		if not on.is_empty():
+			var did := _heart_strike(rules, slots, crowd, on, true, "a Knight at the %s" % HeartOfFaithDirector.WORDS[cur], memo, d,
+				true)
+			if did != "":
+				return did
+		elif is_instance_valid(s) and not s.destroyed and not d.burning(s):
+			if _slot_ready(rules, slots, "ember"):
+				rules.cast(slots.ember, s.center())
+				return "ember the %s" % HeartOfFaithDirector.WORDS[cur]
+			if _slot_ready(rules, slots, "smite"):
+				rules.cast(slots.smite, s.center())
+				return "smite the %s" % HeartOfFaithDirector.WORDS[cur]
+	var n := d.next_target()
+	if n >= 0 and n != cur and d.stage_due(n) - d._clock <= HEART_AHEAD:
+		var did := _heart_strike(rules, slots, crowd, d.standing_at(n), false, "a Knight ahead at the %s" % HeartOfFaithDirector.WORDS[n],
+			memo, d)
+		if did != "":
+			return did
+	var walker := d.relief_walking()
+	if walker != null:
+		var one: Array[Person] = [walker]
+		var did := _heart_strike(rules, slots, crowd, one, false, "a relief Knight", memo, d)
+		if did != "":
+			return did
+	return ""
 
 
 ## The Bell-Ringers (v0.11 M3), with mission spec §1's policy (_ringers_act()).

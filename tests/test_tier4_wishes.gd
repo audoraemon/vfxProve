@@ -47,17 +47,17 @@ static func _ids(list: Array) -> Array:
 
 static func _pool(t) -> void:
 	var all := _ids(WishBook.pool())
-	t.check(all.size() == 16 and all.slice(14) == ["heretic", "family_out"], "the pool: M4's fourteen, then Reckoning's two (%s)" % [all])
+	t.check(all.size() == 18 and all.slice(14, 16) == ["heretic", "family_out"], "the pool: M4's fourteen, then Reckoning's two, M6 grown to eighteen (%s)" % [all])
 	var h := _def("heretic")
 	var f := _def("family_out")
 	t.check(h.text == "Save the heretic from the pyre" and h.kind == "rescue" and h.reward == 15 and h.min_tier == 4 and h.runner == PressedWish
 		and Array(h.clashes) == ["burns_temple", "unaware_town"] and String(h.params.goal) == "temple" and String(h.params.son_label) == "HERETIC"
 		and String(h.params.guard_label) == "TEMPLE GUARD" and f.text == "Lead my family out" and f.kind == "mercy" and f.reward == 15
-		and f.min_tier == 4 and f.runner == MercyWish and int(f.params.count) == 3 and f.clashes.is_empty(),
+		and f.min_tier == 4 and f.runner == MercyWish and int(f.params.count) == 3 and Array(f.clashes) == ["shuts_gates"],
 		"their words, kinds, rewards and parameters; heard from Reckoning up; the pyre keeps off burns_temple")
 	t.check(Array(_def("pressed").clashes) == ["unaware_town", "razes_barracks"], "Free the pressed man keeps off The Armoury's night")
 	t.check(_ids(WishBook.pool_for(1)) == all.slice(0, 10) and _ids(WishBook.pool_for(2)) == all.slice(0, 12)
-		and _ids(WishBook.pool_for(3)) == all.slice(0, 14) and _ids(WishBook.pool_for(4)) == all,
+		and _ids(WishBook.pool_for(3)) == all.slice(0, 14) and _ids(WishBook.pool_for(4)) == all.slice(0, 16),
 		"Tier 1 draws from M2's ten, Tier 2 from twelve, Tier 3 from fourteen, each in its order; Reckoning from all sixteen")
 
 

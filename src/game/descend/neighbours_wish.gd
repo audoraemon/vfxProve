@@ -4,6 +4,9 @@ extends Wish
 ## citizens living nearest the wisher's home within REACH, not of the household, marked -- to within NEAR of the wisher; each
 ## so brought believes (CitizenProfile.Faith.BELIEVER), and the third grants it. One dying before believing fails it. The lists
 ## are untyped: a neighbour may die and be freed while the wish still holds them.
+## v0.11 M6: params "count" (COUNT by default), "clergy" -- the one brought is a cleric out of doors whose street walk to the wisher is at
+## most "route" units, the nearest so ("Turn the doubting priest") -- "label" (LABEL) and "edge" (false). The defaults keep Let my
+## neighbours believe exact.
 
 ## How many must believe (v0.11 M2).
 const COUNT := 3
@@ -20,26 +23,72 @@ var neighbours := []
 var believing := []
 
 
-## A lay wisher with a home and COUNT neighbours; false when no one in the town has them (v0.11 M2). Wishers are tried from a
-## random start.
+## A lay wisher with a home and _count() neighbours -- or, with "clergy", a cleric within "route" of street (v0.11 M6) -- false when no
+## one in the town has them (v0.11 M2). Wishers are tried from a random start.
 func choose(crowd: Crowd, _town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:
 	_crowd = crowd
 	var pool := Wish.lay(crowd, taken)
 	if pool.is_empty():
 		return false
 	var start := rng.randi_range(0, pool.size() - 1)
+	var clergy := bool(def.params.get("clergy", false))
 	for k in pool.size():
 		var w := pool[(start + k) % pool.size()]
+		if clergy:
+			var priest := _priest_for(w, crowd, taken)
+			if priest == null:
+				continue
+			wisher = w
+			neighbours = [priest]
+			taken.append(wisher)
+			taken.append(priest)
+			return true
 		if w.profile.home == Vector2.INF:
 			continue
 		var near := _neighbours_of(w, pool, crowd._grid)
-		if near.size() >= COUNT:
+		if near.size() >= _count():
 			wisher = w
-			neighbours = near.slice(0, COUNT)
+			neighbours = near.slice(0, _count())
 			taken.append(wisher)
 			taken.append_array(neighbours)
 			return true
 	return false
+
+
+## How many must believe (v0.11 M6): the "count" param, COUNT by default.
+func _count() -> int:
+	return int(def.params.get("count", COUNT)) if def != null else COUNT
+
+
+## The tag on each who has yet to believe (v0.11 M6): the "label" param, LABEL by default.
+func _label() -> String:
+	return String(def.params.get("label", LABEL)) if def != null else LABEL
+
+
+## The cleric for wisher `w` (v0.11 M6): living, out of doors, none of `taken`, whose street walk to `w` is the shortest and at most the
+## "route" param; null for none. With no walk grid, the straight distance.
+func _priest_for(w: Person, crowd: Crowd, taken: Array) -> Person:
+	var reach := float(def.params.get("route", 0.0))
+	var best: Person = null
+	var best_walk := INF
+	for v: Variant in crowd.citizens:
+		if not MissionDirector._alive(v) or v == w:
+			continue
+		var p := v as Person
+		if p.inside or p.profile == null or p.profile.role != CitizenProfile.Role.CLERGY or taken.has(p):
+			continue
+		var walk := p.ground_pos.distance_to(w.ground_pos)
+		if crowd._grid != null:
+			var path := crowd._grid.path(p.ground_pos, w.ground_pos)
+			if path.is_empty():
+				continue
+			walk = 0.0
+			for k in range(path.size() - 1):
+				walk += path[k].distance_to(path[k + 1])
+		if (reach <= 0.0 or walk <= reach) and walk < best_walk:
+			best = p
+			best_walk = walk
+	return best
 
 
 ## The lay citizens of `pool` but `w` living within REACH of `w`'s home and not of `w`'s household, nearest first. With a
@@ -82,7 +131,7 @@ func step(_rules: Rules, _delta: float) -> void:
 
 ## Granted at COUNT believers; failed when a neighbour is gone before he believed (v0.11 M2).
 func _act(_rules: Rules) -> Status:
-	if believing.size() >= COUNT:
+	if believing.size() >= _count():
 		return Status.DONE
 	for p: Variant in neighbours:
 		if not believing.has(p) and not MissionDirector._alive(p):
@@ -92,13 +141,13 @@ func _act(_rules: Rules) -> Status:
 
 ## "Let my neighbours believe (+10) 1 / 3".
 func hud_text(_rules: Rules) -> String:
-	return "%s (+%d) %d / %d" % [def.text, reward, believing.size(), COUNT]
+	return "%s (+%d) %d / %d" % [def.text, reward, believing.size(), _count()]
 
 
-## NEIGHBOUR on each who has yet to believe (v0.11 M2).
+## The label on each who has yet to believe (v0.11 M2: NEIGHBOUR; v0.11 M6: _label(), pointed at from the edge with "edge").
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for p: Variant in neighbours:
 		if MissionDirector._alive(p) and not (p as Person).inside and not believing.has(p):
-			out.append(MapTag.person((p as Person).ground_pos, COLOR, LABEL))
+			out.append(MapTag.person((p as Person).ground_pos, COLOR, _label(), bool(def.params.get("edge", false))))
 	return out

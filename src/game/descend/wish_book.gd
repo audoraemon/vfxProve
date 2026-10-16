@@ -5,7 +5,7 @@ extends RefCounted
 ## a mission with too few eligible wishes offers what it can, possibly none.
 
 
-## The pool (spec §5.3): M1's eight in the spec's order, then v0.11 M2's two for Tier 1, v0.11 M3's two for Omen, v0.11 M4's two for Wrath and v0.11 M5's two for Reckoning (mission spec §6).
+## The pool (spec §5.3): M1's eight in the spec's order, then v0.11 M2's two for Tier 1, v0.11 M3's two for Omen, v0.11 M4's two for Wrath and v0.11 M5's two for Reckoning (mission spec §6) and v0.11 M6's two for Ascendance (§5).
 static func pool() -> Array[WishDef]:
 	var out: Array[WishDef] = [
 		WishDef.make("moneylender", "Burn the moneylender's house", "ruin", 10, RuinWish,
@@ -16,7 +16,7 @@ static func pool() -> Array[WishDef]:
 		WishDef.make("informer", "Kill the informer, unseen", "punish", 15, PunishWish, {"label": "INFORMER", "unseen": true},
 			PackedStringArray(["hunts_informer"])),
 		WishDef.make("child", "Save my child", "rescue", 15, RescueWish, {}, PackedStringArray(["unaware_town"])),
-		WishDef.make("brother", "Lead my brother out", "mercy", 10, MercyWish),
+		WishDef.make("brother", "Lead my brother out", "mercy", 10, MercyWish, {}, PackedStringArray(["shuts_gates"])),
 		WishDef.make("sign", "Show me a sign", "sign", 5, SignWish),
 		WishDef.make("family", "Show yourself to my family", "sign", 10, FamilyWish),
 		WishDef.make("bailiff", "Stop the bailiff", "rescue", 15, BailiffWish),
@@ -30,7 +30,11 @@ static func pool() -> Array[WishDef]:
 			{"label": "SERGEANT", "unseen": false, "soldier": true, "edge": true}, PackedStringArray(), 3),
 		WishDef.make("heretic", "Save the heretic from the pyre", "rescue", 15, PressedWish,
 			{"goal": "temple", "son_label": "HERETIC", "guard_label": "TEMPLE GUARD"}, PackedStringArray(["burns_temple", "unaware_town"]), 4),
-		WishDef.make("family_out", "Lead my family out", "mercy", 15, MercyWish, {"count": 3}, PackedStringArray(), 4),
+		WishDef.make("family_out", "Lead my family out", "mercy", 15, MercyWish, {"count": 3}, PackedStringArray(["shuts_gates"]), 4),
+		WishDef.make("zealot", "Strike down the zealot, unseen", "punish", 15, PunishWish,
+			{"label": "ZEALOT", "unseen": true, "clergy": true, "edge": true}, PackedStringArray(), 5),
+		WishDef.make("priest", "Turn the doubting priest", "faith", 15, NeighboursWish,
+			{"count": 1, "clergy": true, "label": "DOUBTING PRIEST", "edge": true, "route": 30.0}, PackedStringArray(), 5),
 	]
 	return out
 

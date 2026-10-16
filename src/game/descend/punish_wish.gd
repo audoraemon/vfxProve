@@ -6,6 +6,8 @@ extends Wish
 ## the town alive is beyond the god's reach: failed.
 ## v0.11 M4: "soldier" -- the target is a living soldier of no corps out of doors, not taken (soldiers()), at random; "edge" -- its tag
 ## pointed at from the screen's edge.
+## v0.11 M6: "clergy" -- the target is a living cleric out of doors, not taken (clergy()), at random: "Strike down the zealot,
+## unseen". Its default, false, keeps the tax collector, the informer and the sergeant exact.
 
 var target: Person
 ## Where the target fell, waiting to be judged; its death once judged, and whether anyone saw it.
@@ -15,6 +17,15 @@ var _seen := false
 
 
 func choose(crowd: Crowd, town: Town, rng: RandomNumberGenerator, taken: Array) -> bool:
+	if bool(def.params.get("clergy", false)):
+		# v0.11 M6: a cleric and a lay wisher, both checked before either is taken.
+		var priests := clergy(crowd, taken)
+		if priests.is_empty() or Wish.lay(crowd, taken).is_empty() or not super(crowd, town, rng, taken):
+			return false
+		target = priests[rng.randi_range(0, priests.size() - 1)]
+		taken.append(target)
+		crowd._field.enemy_killed.connect(_on_killed)
+		return true
 	if bool(def.params.get("soldier", false)):
 		# v0.11 M4: a soldier and a lay wisher, both checked before either is taken.
 		var pool := soldiers(crowd, taken)
@@ -42,6 +53,19 @@ static func soldiers(crowd: Crowd, taken: Array) -> Array[Person]:
 			continue
 		var p := v as Person
 		if not p.inside and p.corps == Person.Corps.NONE and not taken.has(p):
+			out.append(p)
+	return out
+
+
+## The clerics a zealot may be (v0.11 M6, mission spec §5): living, out of doors, of the clergy, none of `taken`, in the crowd's order. Each
+## read as a Variant and through MissionDirector._alive() before any member.
+static func clergy(crowd: Crowd, taken: Array) -> Array[Person]:
+	var out: Array[Person] = []
+	for v: Variant in crowd.citizens:
+		if not MissionDirector._alive(v):
+			continue
+		var p := v as Person
+		if not p.inside and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY and not taken.has(p):
 			out.append(p)
 	return out
 

@@ -64,7 +64,7 @@ static func _vanish(s: Dictionary, p: Person) -> void:
 
 static func _pool(t) -> void:
 	var all := _ids(WishBook.pool())
-	t.check(all.size() == 16 and all.slice(10, 12) == ["bully", "pressed"], "the pool: M2's ten, then Omen's two (%s)" % [all])
+	t.check(all.size() == 18 and all.slice(10, 12) == ["bully", "pressed"], "the pool: M2's ten, then Omen's two, M6 grown to eighteen (%s)" % [all])
 	var bully := _def("bully")
 	var pressed := _def("pressed")
 	t.check(bully.text == "Scare off the bully, unharmed" and bully.kind == "fright" and bully.reward == 10 and bully.min_tier == 2

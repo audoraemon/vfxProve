@@ -75,7 +75,7 @@ static func _pool(t) -> void:
 	for d in WishBook.pool():
 		ids.append(d.id)
 	t.check(ids == ["moneylender", "watchtower", "tax_collector", "informer", "child", "brother", "sign", "family", "bailiff",
-		"neighbours", "bully", "pressed", "barn", "sergeant", "heretic", "family_out"], "the pool: M1's eight in the spec's order, then M2's two, then M3's two, then M4's two, then M5's two (%s)" % [ids])
+		"neighbours", "bully", "pressed", "barn", "sergeant", "heretic", "family_out", "zealot", "priest"], "the pool: M1's eight in the spec's order, then M2's two, then M3's two, then M4's two, then M5's two, then M6's two (%s)" % [ids])
 	var child := _def("child")
 	t.check(child.text == "Save my child" and child.kind == "rescue" and child.reward == 15 and Array(child.clashes) == ["unaware_town"]
 		and _def("brother").text == "Lead my brother out" and _def("brother").reward == 10

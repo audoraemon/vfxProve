@@ -43,7 +43,7 @@ static func _ids(list: Array) -> Array:
 
 static func _pool(t) -> void:
 	var all := _ids(WishBook.pool())
-	t.check(all.size() == 16 and all.slice(12, 14) == ["barn", "sergeant"], "the pool: M3's twelve, then Wrath's two (%s)" % [all])
+	t.check(all.size() == 18 and all.slice(12, 14) == ["barn", "sergeant"], "the pool: M3's twelve, then Wrath's two, M6 grown to eighteen (%s)" % [all])
 	var barn := _def("barn")
 	var sergeant := _def("sergeant")
 	t.check(barn.text == "Burn the tithe barn" and barn.kind == "ruin" and barn.reward == 10 and barn.min_tier == 3

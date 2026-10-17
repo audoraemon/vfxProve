@@ -201,3 +201,125 @@ v0.11 "The Tiers" was built straight through, subagent-driven, from 2026-10-08 t
 1. the clock area and arrow-disc overlap stay as recorded v0.11 follow-ups (no key target hidden) — cost if wrong: a cosmetic overlap until a later HUD pass.
 
 1. accept v0.11's frame cost (~0.35 ms against v0.10, 0.3-0.5 ms against M5 — the HUD keepout's per-frame layout; every mission above 100 fps except the board Festival at 67, 70 at M5) and record a profile/caching pass as a follow-up — cost if wrong: a few fps until then.
+
+
+## Merged v0.11.1 rulings (kak-v0.11.1)
+
+v0.11.1 "Playtest round 1" was built straight through, subagent-driven, on 2026-10-17 and 2026-10-18; the controller's R0-R7 bind over the plan and spec text, and every `Ruling:` line of the task reports and commit bodies follows. Context, gates and open playtest notes are in `docs/KAK_Version_0.11_Summary.md`, "v0.11.1: Playtest round 1".
+
+### Controller rulings (R0-R7, `.superpowers/sdd/v0111/rulings.md`)
+
+1. R0: the pre-flight (4 blocking, 15 important, 20 minor findings) is accepted; every `Ruling:` in `.superpowers/sdd/v0111/preflight.md` (B1-B4, I1-I15, M1-M20) binds, except where R1-R3 choose.
+1. R1 (M9): `resists_mind()` is also asked in `Person.compel()` and at every power-set `fight()` entry point now (it returns false, so nothing moves); its doc comment says it covers every god's hold, so the later "strong ones" are one override — cost if wrong: none today.
+1. R1 (M11): no change to `MindWhisperFx.pick()` (nearest within PICK_R); noted as a playtest watch item, aim is the player's — cost if wrong: an annoyed player; the next playtest decides.
+1. R1 (I10): Pip answers a lure only away from the halted cart, not aboard; loadout A's Wisp policy is unchanged — cost if wrong: none.
+1. R2: Tasks 1-4 ran at once in four worktrees (suite `run_suite_parallel.sh 3`, references `--jobs=2`, no FLOW); Tasks 2 and 3 wrote their FLOW edits, the controller ran FLOW alone after merging 1→2→3→4; Task 4 created `tools/dev/gate.sh` (I15), Task 6 extended it — cost if wrong: a rerun.
+1. R3: Routes keys are TierBook ids (M7); the tag is `kak-v0.11.1`.
+1. R4: `gate.sh tax` (loadout A) idled 48-49 s at the start; Task 6 fixes it, policy first, else `SET_OUT_AT[0]` ≤ 35 s with the tax rows re-recorded — the user's no-waiting rule — cost if wrong: a 45 s empty open.
+1. R5: CONFUSED joins the Armoury's `OFF_GUARD`, so Discord holds an armed man like a whisper (armed men stand fast against blows only, D21); a released soldier walks back at once; a hurrying soldier refuses lure/observe; citizens unchanged — cost if wrong: Armoury Discord route dead, B narrower.
+1. R6: a tier mission's loadout B (not a ★) must have a median of 150-270 s, and `gate.sh` enforces it (no `--board`); a fast B is fixed by making the B power's work on the objective real (more casts, a guard, the target's own timing), never by touching A's knobs; A's gate is re-run after any director change. A ★ B main step under 90 s needs a reason in the report — cost if wrong: a trivial mission with that loadout.
+1. R7: Last Judgement, The Long Night and Mira's House have no scripted loadout-A win in the references (`miras_play` is a gaze loss; judgement and night have no A rows); their B rows are recorded and reported like A's with no win required, and the playtest judges them — B is held to A's standard, not a stricter one — cost if wrong: a ★ B route may be unwinnable for a human.
+
+### Task 1: the HUD collapses, edge arrows go bare
+
+1. Ruling: the cue of an unscored mission lives inside the objective plate (the plate widens to first row + cue), a scored mission's on its Escaped line with the Gaze readout moved left of it — keeps `hint_top` = panel end + 4 and adds no keepout area — cost if wrong: a cue slightly off where the spec pictured it; a one-line move.
+1. Ruling: the wish summary row shows a ticked box only when all N are granted, otherwise an open box (failed wishes just count in N) — cost if wrong: copy tweak.
+1. Ruling: `Hud.reset_session()` clears `details` only; the flash is per-Hud instance state, so nothing else is static — cost: none.
+1. Ruling: a hovered bare arrow shows its label even if it overlaps another plate and does not join `placed` (no flicker for others) — cost: an occasional overlap while hovering.
+
+### Task 2: the opening shows one thing at a time
+
+1. Ruling: the prayers hold also waits for the opening banners (a sweep intro and a tour alike) and `praying` is false while any banner shows — because Last Judgement's MANIFEST banner outlasts its 2.0 s sweep — cost if wrong: the board night's intro runs about 0.2-2 s longer than 2.0 + 3.0 (FLOW waits on the state, not a fixed time).
+1. Ruling: while a banner is up during the tour the caption is blanked by Mission (`_hud.caption()` reads ""), not only hidden by the HUD, because FLOW and tests read `caption()` — cost: none.
+1. Ruling: `_hud.intro`/`praying` are synced from `_intro_left` at the top of `_process()` (and in `start()`/`next_act()`), so behaviour_check, which zeroes `_intro_left` after start, never leaves the HUD in intro — cost if wrong: its captures would miss the stack.
+1. Ruling (fix round): `Mission._unhandled_input` skip no longer needs a tree (an `is_inside_tree` guard), so the stub Mission in the suite can test it; any intro (a sweep, the prayers hold) skips on Space/Enter/click — cost if wrong: none.
+
+### Task 3: the H legend
+
+1. Ruling: Mission-level legend tests use a stub Mission (the suite has no scene tree) — cost if wrong: `start()`'s own call to `_close_legend()` and the real Esc routing are only proved by FLOW.
+1. Ruling: while the legend is open the mission ignores every event except H (page turn) — spec §4 — cost if wrong: none (the mission is also frozen).
+1. Ruling: `Hud.paint_arrow()` (static, on any canvas) next to M5's `arrow_shape()`, because the legend needs the disc and ring as well as the triangle — cost if wrong: one small extra function in hud.gd.
+1. Ruling: opening the legend cancels a held press (`_aim.cancel()`, `_pressing = false`), otherwise its release after the panel casts — cost if wrong: none visible.
+
+### Task 4: the Tax Collector's burning counting-house empties
+
+1. Ruling (M1): The Heart of Faith is not an `AssassinateDirector` subclass; one check each in test_bishop and test_informer that only the Tax Collector flushes — cost: none.
+1. Ruling: a quarry flushed while HIDING or VISITING-in-hideout also becomes `flushed` and raises the same single banner — the spec says "everyone still inside", and a hider flushed into a re-lit fire must not turn back (M19) — cost if wrong: a hiding collector's flushed run raises no "A DEPUTY HIDES" banner.
+1. Ruling: once the flush begins (`burst_in` set) it completes though the fire is put out — the building's occupants were told to run — cost if wrong: only matters with FLUSH_GAP > 0.
+1. Ruling: the idle in tax and harvest counts the stretch from t=0 to the first cast and from the last cast to the end, as `_scripted()` does — the same definition for every gate.
+1. Ruling: `gate.sh` takes `--jobs` (default 6) so the parallel phase can use 3 — cost: none.
+
+### Task 5: soldiers hear the god (code)
+
+1. Ruling: a soldier let go goes back at once (no RECOVER wait) — the saved state is the post — cost if wrong: none seen.
+1. Ruling: lure/observe refuse a hurrying soldier (an escort or rescuer running) — cost if wrong: a running man can't be lured.
+1. Ruling: soldiers panicked or looking via `_react` do not yelp or pass a fright on — keeps the citizens' RNG stream and voices — cost if wrong: quieter soldiers.
+1. Ruling: `held_by_god()` guards use `p.soldier and ...` at shared sites so lured citizens are retaken as before (references) — cost if wrong: a lured citizen watchman is retaken (as today).
+1. Ruling (original text, overruled by R5): armoury CONFUSED left out of `OFF_GUARD` — armed men are lay watchmen — R5 then added it.
+1. M9 (R1): `resists_mind()` also in `compel()` and the power-set `fight()` entry points. M10: a maddened soldier's PANIC/ERRATIC outcomes now act (only where Madness is cast, which no A policy does). M11: `MindWhisperFx.pick` unchanged — a playtest watch item.
+1. Ruling (fix round): `forget_hold_duty()` also resets a saved ASSIST — same stale-state reason — cost if wrong: none.
+
+### Task 6: every moved reference re-recorded; every gate re-run
+
+1. Ruling: tax `SET_OUT_AT` 35/95/155 and `VISIT_SECONDS` 20, the policy smokes the next collector out after 42 s idle — the 45 s opening and the 45 s chain wait made idle 48-49 and nothing useful exists to do before 0:45 (guards 2,2,1 and a 38 s smoke were tried and dropped) — cost if wrong: a slightly tighter opening; seed 1 wins at 243.7 s (> 240) though the median is 199.
+1. Ruling: `RescueWish.turned_man()` is applied to PressedWish and BailiffWish too (they copy `_turned`) — same bug, same soldiers — cost if wrong: a lured press-ganger or bailiff counts as turned and grants the wish.
+1. Ruling: scripted policies are not changed to whisper/Discord soldiers (the ringers and eye "none a soldier" filters stay) — every gate passes with them — cost if wrong: B policies write their own.
+1. Ruling (commit): armoury CONFUSED joins `OFF_GUARD` (R5); no Armoury checksum moves.
+1. Task 5 leftovers done: `EscortDirector._on_escaped` uses the same seizer release (`_let_go_seizer`); a lured soldier on a Rescue wish ends it as granted.
+
+### Task 7: second-route groundwork
+
+1. Ruling: `answers_lure` persons are drawn only within `CHARGE_LURE_R` whatever their mind (not only on DUTY) — Decision 28: a charge answers a Wisp near him only — cost if wrong: a calm charge walking elsewhere is drawn by a distant Wisp.
+1. Ruling: the director's Blight banner is emitted by BlightFx (`ctx.rules.banner`), not Mission — cost if wrong: a second place says "BLIGHT - ...".
+1. Ruling: `blight_target` is asked first; a hit blights no structure even when one is also in reach — cost if wrong: a standard beside a well ruins nothing else.
+1. Ruling: feast `--board` sets mission_id to the board id for route a too — cost if wrong: none.
+1. Ruling (commit): `lamb_play_1..3` mismatch on the Task 7 branch exactly as on its base (Task 5's soldier rule); Task 6 re-records them.
+1. Fix round: a charge obeys `CHARGE_LURE_R` in `lure()` for every source (Death Mark's gawkers too) and returns to his duty; a guarded Blight costs no alarm (`blight_takes`); `--route=` other than a or b is an error; `refs_check.sh` refuses duplicate row names.
+
+### Task 8: Tier 1 second routes
+
+1. Ruling: Warning B is deathmark, whisper, discord; the runner is led (Whisper) to the quietest spot within 40 u of walking (outside the walls) and marked there when nobody is within 3.5 — the street round every gate is never clear for ten seconds — cost if wrong: a longer first star.
+1. Ruling: Tax B does not kill the bellkeeper (Smite cooldown 10 s > the bell's 8 s climb after a seen kill), so seen Smite kills are forced only for the last collector (the win comes first) — cost if wrong: median 217 relies on that.
+1. Ruling: Lost Lamb — the audit's "a Wisp's lure draws him" was wrong (he holds on DUTY); the acolyte now answers a Wisp from `WillOWisp.LURE_REACH` (6.0) and his lure lasts his slow walk + 5 s — cost if wrong: a Wisp cast for bystanders within 6 pulls him.
+1. Ruling: Harvest B fells a granary (Heaven, Whisper on its watchmen beforehand) at 45/30/15 s before its grain; a fall before grain is judged when the grain comes — cost if wrong: none.
+1. Ruling: lamb B uses Silent Doom regardless of witnesses (a death seen does not lose the Lamb) — cost if wrong: more alarm.
+1. Ruling (fix round): the First Prayers fetch reaches only from a light at the shrine (`FirstPrayersDirector._on_light`, FETCH_R 16, stare 6 s), not from a Wisp cast anywhere — cost if wrong: none today.
+1. First knob: `TaxCollectorDirector.FLUSH_GAP` 0.0 → 1.5 (at 0 a Smite on the burst cluster took 2 of 3).
+
+### Task 9: Tier 2 second routes
+
+1. Ruling: Bell-Ringers B is Death Mark, whisper, wisp (not Smite) — Smite is dodged by anyone free to run (threat registered at cast, bolt 0.35 s later, KILL_R 0.6) — cost if wrong: B's main power differs from the spec row.
+1. Ruling: the ringers' mates answer a Wisp's lure (`answers_lure`, left staring) — the spec's "the Wisp clears his mates" was false for men on duty — cost if wrong: none for A.
+1. Ruling: The Informer's company are spotted within 1.0 of the door (one Discord must hold contact and company) — cost if wrong: informer A rows moved (re-recorded, A gate still 3/3, 189 s).
+1. Ruling: Broken Lanterns B first casts the Parade on the bell tower (Dragonfire is loud, the keeper rings within 12 s, B has no Doom) — cost if wrong: one 54 s cast spent; wins at 199-253 s.
+1. Ruling: Market Panic B plays Ember on a house by the next crowd's road 12 s before it sets out (fire frightens walkers; no warden steadies the road) — cost if wrong: one ember.
+1. Ruling (fix round): the Informer's B kill is Death Mark, not Smite — a free runner dodges the bolt — cost if wrong: loadout differs from spec row 10.
+1. Ruling (fix round): Market Panic B drops Discord for Death Mark — fire alone left a coin flip at 35 of 36 — cost if wrong: loadout differs from row 9.
+1. Ruling (fix round): a lured man is passed over by the Bell-Ringers' relay (`Person.lured()`) — the Wisp's draw must clear witnesses for the second family to be real — cost if wrong: Death Mark's gawkers (lured) pass over too, after the body.
+
+### Task 10: Tier 3 second routes
+
+1. Ruling: Festival B's main step is under 90 s (45 s median) — the board Festival's need is 80 of 120 and Heaven Splitter along a Wisp-drawn knot breaks about 50 per cast (A's pool allows Heaven; A's own win waits for the Mayor at 95 s); the policy casts from t=0 to keep idle under 45 s — cost if wrong: a quick ★ Festival; a playtest note, no knob.
+1. Ruling: Mob Verdict judges the stone bridge (`CongregationFx.place_for(bridge_ok)`) — the row 13 failure was a walkable-structure skip, not a damage filter; no `mob` kind change in CrownsBreadDirector — cost if wrong: Verdict also judges the bridge in the Armoury and Last Judgement (harmless).
+1. Ruling: Bread B does the Mob Verdict's work on the granary and the bridge and Heaven on the mill, with a Wisp ahead of each stage — Heaven alone razes every stage at its opening and the chain fixes a floor of about 140 s, under R6's 150 — cost if wrong: with Heaven in an A-like draft the Crown's Bread is a 140 s mission; the chain was not touched.
+1. Ruling: The Prisoner — a freed charge on duty is deaf to a Wisp, so she answers a Wisp within `WISP_R` 5.0, hurries to it while drawn, holds where it leaves her (director-only, A unaffected) — cost if wrong: the Lamb and Exodus charges have the same gap and need their own answer.
+1. Ruling: Vigil Flame — Wren `answers_lure` from when he comes; a lure counts as the god's hand (whispered, left be); a drawn Wren starts the swap within `LURE_SWAP_REACH` 2.4; a Wisp within `CHARGE_LURE_R` of Wren is no noise or decoy to the light — cost if wrong: flame A rows move (they did not).
+1. Ruling: Hunt B kills guards with Death Mark (one per sweep, 25 s ahead), Discord holds the last, Blight breaks the standard; Blight rots an unguarded standard through a blow (a guarded one costs no alarm; targeting rings it red) — cost if wrong: Blight's route is louder than "quiet".
+1. Ruling: Flame B uses Silent Doom on bystanders about the lantern instead of A's Wisp draw-off, because the Wisp is also the lure that draws Wren (30 s cooldown) — cost if wrong: Faithful die for it.
+
+### Task 11: Tier 4 second routes
+
+1. Ruling: Procession B's main step is Death Mark (RouteBook `b` smite → deathmark) — Smite on the Prince is a gamble (the cast frightens him and he runs against KILL_R 0.6) — cost if wrong: the "strike" family has no route on the Procession.
+1. Ruling: Sermon listeners draw a Wisp from `WillOWisp.LURE_REACH` (new `Person.lure_reach`), not `CHARGE_LURE_R` — with 3.0 only wave 0 (3 of 12) can be reached and 8 Believers are impossible — cost if wrong: Sermon B unwinnable.
+1. Ruling: a waiting wave and a Believer do not answer a lure — cost: B slightly slower.
+1. Ruling: Relic Pip's anchor follows him while lured and a lured Pip boards from the Wisp's ring; a Wisp at a halted cart cannot draw him (R1/I10), so B sends him by Oathbound's hold-a-place — cost: none.
+1. Ruling (fix round): Bishop and Armoury pace is made by the guards (a blow-sealed refuge while a Knight stands guard; a stone target before its horn), not by timers — the B power's work must be real (R6) and A never meets either rule — cost if wrong: A hints or behaviour drift (none seen).
+1. Ruling (fix round): the Relic watch lure is keyed on `pip_led` (Pip COMPELLED or Wisp-lured, never whispered), so A (whisper) is untouched — cost: a B-only mechanic.
+1. Ruling (fix round): the Procession's carriage (the Prince waits inside until `EMERGE_AT`, ~83 s) is on the board only; the Long Night's act is unchanged.
+
+### Task 12: Tier 5 second routes
+
+1. Ruling: Exodus B is led by Oathbound HOLD A PLACE, not the Wisp — a held charge is on duty and no Wisp draws him, and a cast moves a household about 4 units against a 12-16 unit road — cost if wrong: B's main step reads as the lead family, not draw (the one same-family exception; commit 04c52d0).
+1. Ruling: Heart B never uses Discord (a Knight guards by position, not by mind) and never fells a target ahead of its time — cost: none.
+1. Ruling: Heart bearers are struck only where the Smite goes unseen or after a one-witness hush, with a Death Mark within a Gaze cap of 60 as last resort — a loud fall made every seen death 20 Gaze.
+1. Ruling: the Night's idle is counted across acts from `Rules.cast_made` at the night's clock; the night result's `time` is the night's own sum.

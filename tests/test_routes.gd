@@ -32,7 +32,11 @@ static func run(t) -> void:
 			continue
 		var m := TierBook.board(id)
 		var b := RouteBook.loadout_b(id)
-		t.check(PowerBook.family(r.a) != "" and PowerBook.family(r.a) != PowerBook.family(r.b), "%s: two families for its main step" % id)
+		# Exodus (v0.11.1 Task 12): a held household is on duty and a Wisp moves it a few steps on a 12-16 step road, so its second
+		# route is Oathbound's HOLD A PLACE -- another power, the same family (lead) as A's Whisper. The one allowed exception.
+		var same_ok: bool = id == "exodus" and r.b == "oath"
+		t.check(PowerBook.family(r.a) != "" and r.a != r.b and (same_ok or PowerBook.family(r.a) != PowerBook.family(r.b)),
+			"%s: two families for its main step" % id)
 		t.check(b.has(r.b) and not b.has(r.a), "%s: B holds its own main power, not A's" % id)
 		t.check(b.size() <= m.slots and _dp(b) <= m.dp_capacity,
 			"%s: B fits %d slots / %d DP (%d / %d)" % [id, m.slots, m.dp_capacity, b.size(), _dp(b)])

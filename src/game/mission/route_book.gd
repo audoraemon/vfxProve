@@ -36,7 +36,7 @@ const ROUTES := {
 	"last_judgement": {"a": "heaven", "b": "verdict", "loadout": ["dragon", "ember", "verdict", "pestilence", "madness", "blight"]},
 	"long_night": {"a": "doom", "b": "deathmark", "loadout": ["deathmark", "whisper", "discord"]},
 	"lantern_eye": {"a": "smite", "b": "blight", "loadout": ["blight", "whisper", "discord", "wisp", "deathmark", "thorns"]},
-	"exodus": {"a": "whisper", "b": "wisp", "loadout": ["wisp", "deathmark", "oath", "discord", "thorns"]},
+	"exodus": {"a": "whisper", "b": "oath", "loadout": ["wisp", "deathmark", "oath", "discord", "thorns"]},
 	"heart_of_faith": {"a": "ember", "b": "heaven", "loadout": ["heaven", "deathmark", "whisper", "discord", "wisp", "smite"]},
 }
 

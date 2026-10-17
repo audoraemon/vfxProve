@@ -79,6 +79,9 @@ const MARK_PLACE := Color("ff9a3a")
 ## The banners when the Gaze rises (v0.11 M6, the controller's ruling: every rise has one): a cast seen in the light, a death seen.
 const SEEN_CAST_BANNER := "THE EYE SEES YOUR HAND"
 const SEEN_DEATH_BANNER := "THE EYE SEES A DEATH"
+## Blight on a mirror (v0.11.1, spec §7.3): its glass clouds; a guard holds it.
+const BLIGHT_BANNER := "BLIGHT - THE MIRROR CLOUDS"
+const BLIGHT_GUARDED := "THEIR GUARD KEEPS IT"
 
 ## The three towers, in order (v0.11 M6).
 var towers: Array[Structure] = []
@@ -344,6 +347,57 @@ func _unguarded_blow(s: Structure, amount: float, _source: Vector2, kind: String
 		s.hit.emit(s, blow, kind)
 	if glass[i] <= 0.0:
 		_shatter(i)
+
+
+## The standing mirror whose tower lies within BlightFx.REACH of `at` (v0.11.1), or -1: raised, not gone, not shattered. A shattered one
+## has no glass to cloud. Only reads.
+func _mirror_near(at: Vector2) -> int:
+	var best := -1
+	var best_gap := BlightFx.REACH
+	for i in steps.size():
+		if i >= towers.size() or not is_instance_valid(towers[i]) or not steps[i].raised or steps[i].broken or shattered[i]:
+			continue
+		var gap := towers[i].distance_to(at)
+		if gap <= best_gap:
+			best_gap = gap
+			best = i
+	return best
+
+
+## A standing mirror's tower point within BlightFx.REACH of `at` (v0.11.1, spec §7.3): the tower's middle; INF for none. Guarded or not --
+## Blight lands on a guarded one and does nothing (blight_takes()). Only reads.
+func blight_target(at: Vector2) -> Vector2:
+	var i := _mirror_near(at)
+	return towers[i].center() if i >= 0 else Vector2.INF
+
+
+## Blight takes a mirror no guard holds (v0.11.1, spec §7.3, Decision 29): a guarded one only shakes. Only reads.
+func blight_takes(at: Vector2) -> bool:
+	var i := _mirror_near(at)
+	return i >= 0 and not guarded(i)
+
+
+## Blight landed on the mirror at `at` (v0.11.1): an unguarded one's glass clouds and it shatters as after the last blow -- its drain
+## starts and its wrights come out (_shatter()); the town's alarm as any Blight (the base). False for a guarded one.
+func blighted(at: Vector2) -> bool:
+	var i := _mirror_near(at)
+	if i < 0 or not super(at):
+		return false
+	glass[i] = 0.0
+	_shatter(i)
+	return true
+
+
+## The banner for a Blight on the mirror at `at` (v0.11.1): "BLIGHT - THE MIRROR CLOUDS" once its glass is gone, else, a guard holding it,
+## "THEIR GUARD KEEPS IT". Only reads.
+func blight_words(at: Vector2) -> String:
+	var j := -1
+	for i in steps.size():
+		if i < towers.size() and is_instance_valid(towers[i]) and steps[i].raised and not steps[i].broken and towers[i].distance_to(at) <= BlightFx.REACH:
+			j = i
+	if j < 0:
+		return ""
+	return BLIGHT_BANNER if shattered[j] or not guarded(j) else BLIGHT_GUARDED
 
 
 ## Mirror `i` shatters (v0.11 M6): its drain starts, and its wrights come out of the tower to their posts on duty.

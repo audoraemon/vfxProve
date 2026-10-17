@@ -124,7 +124,7 @@ const LINES := {
 	"relic_run.bell": "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen.",
 	"lantern_eye": "Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light.",
 	"lantern_eye.guarded": "Its guards (red) hold the mirror: blows only shake the tower. Remove every one.",
-	"lantern_eye.open": "The mirror (gold) stands unguarded. Two blows shatter it: strike where no beam shines.",
+	"lantern_eye.open": "The mirror (gold) stands unguarded. Two blows or one Blight shatter it: strike where no beam shines.",
 	"lantern_eye.shattered": "Its wrights (red) hang a new glass. Stop them for {n} s and it is gone for good.",
 	"lantern_eye.waiting": "The next mirror goes up soon; till then the beams sweep but do not hunt. Clear its guards (red) shortly before.",
 	"lantern_eye.eye": "All three mirrors stand: the Eye opens in {n} s. Shatter one now.",

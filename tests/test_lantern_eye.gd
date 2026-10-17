@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_not_yet(t)
 	_guarded(t)
 	_shatter(t)
+	_blight_mirror(t)
 	_heaven(t)
 	_rehang(t)
 	_gone(t)
@@ -169,6 +170,67 @@ static func _shatter(t) -> void:
 	t.check(d.shattered[0] and is_equal_approx(d.drain_left[0], LanternEyeDirector.DRAIN) and out and (s.banners as Array).has("THE MIRROR SHATTERS")
 		and d.hint_phase() == "shattered" and not d.searchlight.hunt, "two Smites shatter it; its two wrights come out to their posts; the light goes quiet")
 	Kit.done(s)
+
+
+## v0.11.1 (spec §7.3, Task 12): Blight clouds an unguarded mirror's glass at once and it shatters as after the last blow -- its wrights come
+## out, the drain starts, the light goes quiet, the town hears one Blight's alarm and the banner is "BLIGHT - THE MIRROR CLOUDS"; a guarded
+## one stands whole, no alarm, only "THEIR GUARD KEEPS IT"; a mirror not yet up, or a spot away from any tower, gives Blight nothing; a cast
+## aimed in a lit pool adds SEEN_CAST like any other.
+static func _blight_mirror(t) -> void:
+	var s := _world()
+	var d: LanternEyeDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var banners: Array = s.banners
+	var fxc := FxContext.new()
+	fxc.env = s.env
+	fxc.field = s.field
+	fxc.rng = RandomNumberGenerator.new()
+	fxc.overhead = Node2D.new()
+	fxc.ground = Node2D.new()
+	fxc.rules = rules
+	var face := d.outer_face(0)
+	t.check(d.blight_target(face) == Vector2.INF and not d.blighted(face), "no mirror up: Blight finds nothing of the director's")
+	d._raise(0)
+	Kit.run_for(s, DT)
+	t.check(d.blight_target(face) == d.towers[0].center() and d.blight_target(face + Vector2(6.0, 6.0)) == Vector2.INF,
+		"a mirror up: Blight within %.0f of its tower finds the tower's middle; farther, nothing" % BlightFx.REACH)
+	t.check(d.guarded(0) and not d.blight_takes(face), "its party stands guard: Blight would not take it")
+	var alarm := crowd.alarm
+	var fx: FxTimeline = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, face)
+	fx._process(1.0)
+	t.check(is_equal_approx(d.glass[0], LanternEyeDirector.MIRROR_HP) and not d.shattered[0] and banners.back() == "THEIR GUARD KEEPS IT"
+		and crowd.alarm == alarm, "guarded, Blight lands and does nothing: the glass whole, no alarm, the banner THEIR GUARD KEEPS IT")
+	fx.end_now()
+	_clear(d, 0)
+	t.check(not d.guarded(0) and d.blight_takes(face), "its guards walked off: Blight takes it")
+	var before := banners.size()
+	fx = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, face)
+	fx._process(1.0)
+	Kit.run_for(s, DT)
+	var out := true
+	for w: HuntDirector.Guard in d.wrights[0]:
+		var p := w.man as Person
+		out = out and not p.inside and p.mind == Person.Mind.DUTY and p.anchor == w.post
+	t.check(d.shattered[0] and is_zero_approx(d.glass[0]) and absf(d.drain_left[0] - LanternEyeDirector.DRAIN) < 0.5 and out
+		and is_equal_approx(d.towers[0].hp, d.towers[0].max_hp) and d.hint_phase() == "shattered" and not d.searchlight.hunt,
+		"unguarded, Blight clouds the glass: shattered, its two wrights out to their posts, the tower unharmed, the light quiet")
+	t.check(is_equal_approx(crowd.alarm - alarm, Crowd.BLIGHT_ALARM) and banners.slice(before).has("BLIGHT - THE MIRROR CLOUDS")
+		and banners.slice(before).has("THE MIRROR SHATTERS"), "the town hears one Blight's alarm; the banners say the mirror clouds and shatters")
+	fx.end_now()
+	t.check(d.blight_target(face) == Vector2.INF, "a shattered mirror gives Blight nothing more")
+	fxc.overhead.free()
+	fxc.ground.free()
+	Kit.done(s)
+	# A Blight aimed inside a lit pool is a seen cast (the Eye's own rule for every cast) and, a mirror standing, a heard one.
+	var w := _world()
+	var e: LanternEyeDirector = w.d
+	e._raise(0)
+	Kit.run_for(w, DT)
+	(w.rules as Rules).cast_made.emit(0, "blight", e.searchlight.aim(0))
+	t.check(is_equal_approx(e.gaze.value, LanternEyeDirector.SEEN_CAST) and (w.banners as Array).has("THE EYE SEES YOUR HAND"),
+		"a Blight cast in a lit pool adds %d to the Gaze" % roundi(LanternEyeDirector.SEEN_CAST))
+	Kit.done(w)
 
 
 ## The controller's ruling: a mirror needs a Heaven Splitter and a Smite -- every stroke of one Heaven Splitter (its core, its line, its

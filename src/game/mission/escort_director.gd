@@ -521,7 +521,8 @@ func _watching(v: Variant) -> bool:
 	if not _alive(v):
 		return false
 	var p := v as Person
-	return not p.inside and p.corps == Person.Corps.NONE and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS) 		and not (p.soldier and p.held_by_god())  # (v0.11.1: a soldier staring at a lure sees nothing, as one whispered or confused)
+	# (v0.11.1: a soldier staring at a lure sees nothing, as one whispered or confused)
+	return not p.inside and p.corps == Person.Corps.NONE and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS) 		and not (p.soldier and p.held_by_god())
 
 
 ## Every soldier set to watch for him (v0.11 M2): the watch, the patrols, the searchers (untyped: any may be freed).
@@ -547,8 +548,8 @@ func _seize(c: Charge, by: Person) -> void:
 ## stands.
 func _release(c: Charge) -> void:
 	c.held = false
-	if _alive(c.seizer) and (c.seizer as Person).mind == Person.Mind.DUTY:
-		crowd.off_duty(c.seizer)
+	if _alive(c.seizer) and ((c.seizer as Person).mind == Person.Mind.DUTY 			or ((c.seizer as Person).soldier and (c.seizer as Person).held_by_god())):
+		crowd.off_duty(c.seizer)  # (v0.11.1: a seizer the god holds goes to his post when the hold ends, not back on this duty)
 	c.seizer = null
 	var p := c.man as Person
 	c.hold_at = p.ground_pos

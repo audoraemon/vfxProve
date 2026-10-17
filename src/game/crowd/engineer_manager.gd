@@ -335,7 +335,8 @@ func _stand_by(team: Dictionary) -> void:
 
 
 func _send(p: Person, at: Vector2) -> void:
-	if is_instance_valid(p) and p.is_alive() and not (p.soldier and p.held_by_god()) 			and (p.mind == Person.Mind.DUTY or p.mind in AVAILABLE or p.soldier):
+	if is_instance_valid(p) and p.is_alive() and not (p.soldier and p.held_by_god()) \
+			and (p.mind == Person.Mind.DUTY or p.mind in AVAILABLE or p.soldier):
 		p.go_duty(at)
 
 

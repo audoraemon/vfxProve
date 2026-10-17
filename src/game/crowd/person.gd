@@ -895,10 +895,29 @@ func _hold_begin() -> void:
 			_held_mind = Mind.POST
 			_held_anchor = post if post != Vector2.INF else ground_pos
 			_held_hurrying = false
+		Mind.ASSIST:
+			# A fire fighter's round is its manager's, and it goes on without him: he comes back to his post and the rescue
+			# squad's or engineer team's next look puts him on a fire again.
+			_held_mind = Mind.POST
+			_held_anchor = post if post != Vector2.INF else ground_pos
+			_held_hurrying = false
+			assist_fire = null
+			assist_full = false
+			assist_at_water = false
+			assist_stays = false
 		_:
 			_held_mind = mind
 			_held_anchor = anchor
 			_held_hurrying = hurrying
+
+
+## His duty ended (Crowd.off_duty()) while the god held him: what the hold goes back to is his post, not the duty (v0.11.1), which
+## nobody owns any more and would leave him standing on DUTY for good.
+func forget_hold_duty() -> void:
+	if _held_saved and (_held_mind == Mind.DUTY or _held_mind == Mind.ASSIST):
+		_held_mind = Mind.POST
+		_held_anchor = post if post != Vector2.INF else ground_pos
+		_held_hurrying = false
 
 
 ## A soldier's hold lifts: back to what he was doing before it (_hold_begin()) -- a ring slot to the ring, a Knight or guard
@@ -923,12 +942,6 @@ func _soldier_back() -> void:
 				send_to_post(at, false, hurry)
 		Mind.HOLD:
 			hold_ground()
-		Mind.ASSIST:
-			if assist_fire != null and is_instance_valid(assist_fire):
-				mind = Mind.ASSIST
-				walk_speed = _mind_speed()
-			else:
-				send_to_post(post if post != Vector2.INF else at)
 		_:
 			send_to_post(at, false, hurry)
 
@@ -1438,7 +1451,7 @@ func _plan_exit() -> void:
 func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 	if state == State.DEAD:
 		return
-	_held_saved = false  # sent somewhere by someone: any hold the god had on him is over
+	_held_saved = false  # sent somewhere by someone (a town order -- the rally, the marshals, a rescue -- wins over any hold, WILL_FIRM too)
 	anchor = at
 	mind = Mind.RALLY if rally else Mind.POST
 	hurrying = hurried

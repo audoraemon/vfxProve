@@ -44,7 +44,7 @@ func _believe() -> void:
 	if belief == "danger":
 		if ctx.crowd != null:
 			ctx.crowd.fright(origin, DANGER_R, float(DANGER_REACH[0]), DANGER_TIME, float(DANGER_REACH[1]), float(DANGER_REACH[2]),
-				&"delusion")
+				&"delusion", true)  # (v0.11.1: the one fright that reaches soldiers)
 	else:
 		belief = "calm"
 		for p in DominionParts.near(ctx.field, origin, RADIUS):

@@ -198,6 +198,8 @@ func _tick() -> void:
 		var s := escorts[i]
 		if not WarningDirector._alive(s) or reserved.has(s):  # (v0.11 M1: a wish's soldier is not his to post)
 			continue
+		if s.held_by_god():
+			continue  # whispered, confused or lured off (v0.11.1): the hold ends by itself and the next look sends him to his place
 		var spot := _escort_spot(i)
 		if s.anchor.distance_to(spot) > ESCORT_MOVE:
 			s.send_to_post(spot, false, true)

@@ -37,6 +37,8 @@ func _build() -> void:
 	duration = TURN_TIME + 0.5
 	busy = 1.0
 	turned = target_at(ctx.field, origin)
+	if turned != null and turned.resists_mind():
+		turned = null  # a mind beyond the god's hand turns on no one (v0.11.1): no side, no badge
 	at(TURN_TIME, _end)
 	if turned == null:
 		duration = 1.0
@@ -44,8 +46,7 @@ func _build() -> void:
 	turned.side = 2
 	turned.set_badge(DominionParts.SPLIT, MARK, TURN_TIME)
 	if turned.soldier:
-		if not turned.resists_mind():
-			turned.fight(null, TURN_TIME, Person.SOLDIER_BLOW, Person.FightRule.OWN_KIND, SIGHT)
+		turned.fight(null, TURN_TIME, Person.SOLDIER_BLOW, Person.FightRule.OWN_KIND, SIGHT)
 	else:
 		_next_aim()
 	ctx.play(&"grav_arc", origin, -4.0)

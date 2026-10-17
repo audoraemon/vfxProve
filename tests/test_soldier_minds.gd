@@ -6,6 +6,7 @@ extends RefCounted
 ## their places at its looks leaves one the god holds be (Person.held_by_god()): one `_held_soldier` check per manager.
 
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
+const Proc := preload("res://tests/test_procession.gd")
 const DT := 0.05
 
 
@@ -21,6 +22,7 @@ static func run(t) -> void:
 	_hears(t)
 	_comes_back(t)
 	_back_to_what_he_did(t)
+	_fix_round(t)
 	_powers(t)
 	_town_unchanged(t)
 	_hook(t)
@@ -240,7 +242,9 @@ static func _powers(t) -> void:
 	var h := _soldier(crowd, 3)
 	g.ground_pos = Vector2(1.0, 2.0)
 	h.ground_pos = Vector2(1.2, 2.0)
-	crowd.fright(Vector2(1.0, 2.0), 1.5, 0.5, 4.0, 6.0, 6.0, &"delusion")
+	crowd.fright(Vector2(1.0, 2.0), 1.5, 0.5, 4.0, 6.0, 6.0, &"town")
+	t.check(g.mind == Person.Mind.POST and h.mind == Person.Mind.POST, "fix round: Crowd.fright() leaves soldiers be unless asked (soldiers_too defaults to false)")
+	crowd.fright(Vector2(1.0, 2.0), 1.5, 0.5, 4.0, 6.0, 6.0, &"delusion", true)
 	t.check(g.mind == Person.Mind.PANIC and h.mind == Person.Mind.PANIC, "v0.11.1: a power's fright (Collective Delusion) panics the soldiers it reaches")
 	for p in [g, h]:
 		(p as Person).send_to_post((p as Person).post)
@@ -320,6 +324,7 @@ static func _held_soldier(t) -> void:
 	_held_escort_director(t)
 	_held_recall(t)
 	_held_heart(t)
+	_held_procession(t)
 
 
 static func _held_escorts(t) -> void:
@@ -477,3 +482,70 @@ static func _held_heart(t) -> void:
 	Kit.run_for(s, HeartOfFaithDirector.TICK + DT)
 	t.check(bearer.mind == Person.Mind.WHISPERED, "_held_soldier: the Heart's litter does not put a whispered bearer back on duty")
 	Kit.done(s)
+
+
+static func _held_procession(t) -> void:
+	var s := Proc._setup()
+	var d: ProcessionDirector = s.d
+	Proc._run(s, 1.0)
+	var e: Person = d.escorts[0]
+	var other: Person = d.escorts[1]
+	Proc._arrive(e)
+	e.hurrying = false
+	e._shaken_left = 0.0
+	e.whisper(e.ground_pos + Vector2(3.0, 0.0), 8.0)
+	other.anchor = other.ground_pos + Vector2(20.0, 0.0)
+	d._tick()
+	t.check(e.mind == Person.Mind.WHISPERED, "_held_soldier: the Procession's escort does not re-post a whispered escort")
+	t.check(other.anchor.distance_to(other.ground_pos) < 19.0, "(control) an escort not held is sent back to his place")
+	Proc._done(s)
+
+
+## The fix round of Task 5's review: a held fire fighter, a duty that ends while he is held.
+static func _fix_round(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	# I2: a fire fighter let go of a hold goes to his post, not back to a fire nobody sends him to.
+	var f := _soldier(crowd, 0)
+	var site: Structure = (made[1] as EnvironmentField).structures()[0]
+	f.assist(site, true)
+	t.check(f.mind == Person.Mind.ASSIST, "(set-up) a soldier is fighting a fire")
+	f.confuse(4.0)
+	t.check(f.assist_fire == null, "a held fire fighter drops the fire he was on")
+	_let_go(f, 40.0)
+	t.check(f.mind == Person.Mind.POST and f.anchor.is_equal_approx(f.post) and f.assist_fire == null,
+		"fix round: a soldier let go of a hold that took him off a fire goes to his post, not back to ASSIST")
+	# I3: his duty ends while he is held (Crowd.off_duty()): the hold lifts at his post.
+	var spot := grid.nearest_walkable(f.ground_pos + Vector2(5.0, 1.0))
+	var d := _soldier(crowd, 1)
+	d.go_duty(spot)
+	_arrive(d)
+	d.whisper(grid.nearest_walkable(spot + Vector2(0.0, 2.0)), 6.0)
+	crowd.off_duty(d)
+	_let_go(d, 40.0)
+	t.check(d.mind == Person.Mind.POST and d.anchor.is_equal_approx(d.post),
+		"fix round: a duty that ends while the soldier is held leaves him at his post, not on a stale DUTY (mind %d)" % d.mind)
+	# (control) the duty still held when no one ends it: back on duty.
+	var k := _soldier(crowd, 2)
+	k.go_duty(spot)
+	_arrive(k)
+	k.confuse(3.0)
+	_let_go(k, 40.0)
+	t.check(k.mind == Person.Mind.DUTY and k.anchor.is_equal_approx(spot), "(control) a duty nobody ended is taken up again")
+	_done(made)
+	# A held seizer released by the escort director (Lamb/Prisoner/Tax rule) is sent to his post, not back to his duty.
+	var w := Kit.world(MissionBook.lost_lamb())
+	var ed: EscortDirector = w.d
+	var c = ed.charges[0]
+	var seizer := _soldier(w.crowd, 4)
+	seizer.go_duty(ed.return_to)
+	c.seizer = seizer
+	c.held = true
+	seizer._shaken_left = 0.0
+	seizer.whisper(seizer.ground_pos + Vector2(2.0, 0.0), 6.0)
+	ed._release(c)
+	_let_go(seizer, 40.0)
+	t.check(seizer.mind == Person.Mind.POST and c.seizer == null,
+		"fix round: a seizer the god holds when his charge is released ends at his post, not on a duty nobody owns")
+	Kit.done(w)

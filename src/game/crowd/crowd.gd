@@ -897,7 +897,7 @@ static func _cast_radius(key: String) -> float:
 ## Something frightening at `at` of `radius` (a maddened citizen turning on the crowd): a danger the town knows of for
 ## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
 func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName,
-		soldiers_too := true) -> void:
+		soldiers_too := false) -> void:
 	threats.register(at, radius, severity, seconds, sight, sound, kind)
 	var points: Array[Vector2] = [at]
 	_react(points, radius, sound, at, kind, soldiers_too)
@@ -1148,6 +1148,8 @@ func off_duty(p: Person) -> void:
 		return
 	var on_team := p.engineer_duty
 	p.engineer_duty = false
+	if p.soldier and p.held_by_god():
+		p.forget_hold_duty()  # (v0.11.1) held as his duty ends: the hold lifts at his post, not on a duty nobody owns
 	if p.mind != Person.Mind.DUTY:
 		if on_team and _fled_all and not p.soldier and (p.mind in EngineerManager.AVAILABLE
 				or p.mind == Person.Mind.PANIC or p.mind == Person.Mind.ASSIST):

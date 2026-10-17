@@ -166,9 +166,9 @@ func witnesses() -> Array[Person]:
 
 
 ## The relay never picks `p` (v0.11 M3 final review): one fleeing the town would carry the warning out of it, never to the bell,
-## and one reserved belongs to his wish. Only reads.
+## and one reserved belongs to his wish; v0.11.1: nor one staring at a lure's light (a Wisp's), who looks at it and not at the road. Only reads.
 func _passed_over(p: Person) -> bool:
-	return p.mind == Person.Mind.FLEE or reserved.has(p)
+	return p.mind == Person.Mind.FLEE or reserved.has(p) or p.lured()
 
 
 ## One step (v0.11 M3): nothing while they wait inside; else a carrier gone with no fall to judge -- out of the town alive, his body

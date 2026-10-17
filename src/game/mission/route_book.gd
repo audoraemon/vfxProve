@@ -18,8 +18,8 @@ const ROUTES := {
 	"miras_house": {"a": "whisper", "b": "wisp", "loadout": ["wisp", "discord", "doom"]},
 	"broken_lanterns": {"a": "heaven", "b": "dragon", "loadout": ["dragon", "discord", "wisp"]},
 	"bell_ringers": {"a": "doom", "b": "deathmark", "loadout": ["deathmark", "whisper", "wisp"]},
-	"market_panic": {"a": "heaven", "b": "ember", "loadout": ["ember", "whisper", "discord"]},
-	"informer": {"a": "whisper", "b": "discord", "loadout": ["discord", "wisp", "smite"]},
+	"market_panic": {"a": "heaven", "b": "ember", "loadout": ["ember", "whisper", "deathmark"]},
+	"informer": {"a": "whisper", "b": "discord", "loadout": ["discord", "wisp", "deathmark"]},
 	# Tier 3, Wrath
 	"vigil_flame": {"a": "whisper", "b": "wisp", "loadout": ["wisp", "discord", "doom", "thorns"]},
 	"festival": {"a": "doom", "b": "heaven", "loadout": ["heaven", "smite", "ember", "wisp"]},

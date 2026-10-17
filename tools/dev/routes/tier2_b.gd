@@ -232,12 +232,11 @@ static func state_lanterns(_bc, ctx: Dictionary) -> String:
 
 
 ## The Bell-Ringers, loadout B (deathmark, whisper, wisp; spec row 8). Two things changed from the spec's text, by rulings: Smite is dodged
-## (the cast frightens everyone within 2.1 of its mark and the bolt lands 0.35 s later), so the death is Death Mark's; and a Will-o'-Wisp
-## clears the mates only because they now answer its lure (RingerDirector). The carrier is marked as soon as he is out and dies 10 s on,
-## unseen if no one stands within Crowd.DOOM_WITNESS of him then: the Wisp is laid behind him (_ringers_light()), drawing his mates off his
-## heels, and Mind Whisper sends a lone stranger near him off. A warning passed on to a witness is a new carrier, marked when the mark is ready
-## again (20 s). Per look, the first that applies: the town's bellkeeper once called (Mind Whisper holds him back; the mark when it cools);
-## an unmarked carrier marked; the Wisp for his mates; Mind Whisper for a stranger by a marked carrier.
+## (the cast frightens everyone within 2.1 and the bolt lands 0.35 s later), so the death is Death Mark's; and the Will-o'-Wisp is what clears the
+## witnesses, because a man staring at its light (a mate, which answers a lure, a stranger, a soldier) is passed over by the relay (RingerDirector).
+## The carrier is marked as soon as he is out; the Wisp is laid on him a second before the mark comes due, and he dies unseen. A warning passed on
+## anyway is a new carrier, marked when the mark is ready again (20 s). Per look, the first that applies: the town's bellkeeper once called (Mind
+## Whisper holds him back; the mark when it cools); an unmarked carrier marked; the Wisp at its time.
 static func act_ringers(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
@@ -263,62 +262,51 @@ static func act_ringers(bc, ctx: Dictionary) -> String:
 	for r in going:
 		var c := r.messenger
 		if mark and not c.statuses.has(&"frail"):
+			ctx.memo["mark_%d" % c.get_instance_id()] = rules.time_left
 			rules.cast(slots.deathmark, c.ground_pos)
 			return "death mark the carrier"
 	if wisp:
 		for r in going:
-			var light := _ringers_light(r)
+			var light := _ringers_light(ctx, rules, r)
 			if light != Vector2.INF:
 				rules.cast(slots.wisp, light)
-				return "wisp the mates off the carrier's heels"
-	if whisper:
-		for r in going:
-			var c := r.messenger
-			if not c.statuses.has(&"frail"):
-				continue
-			var lone: Person = null
-			for p in r.witnesses():
-				if WarningDirector._alive(p) and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED and not r.crew().has(p) \
-					and (lone == null or p.ground_pos.distance_to(c.ground_pos) < lone.ground_pos.distance_to(c.ground_pos)):
-					lone = p
-			if lone != null:
-				rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": _ringers_far(d, lone, c.ground_pos, crowd)})
-				return "whisper a witness off"
+				return "wisp everyone round the carrier an instant before his mark is due"
+	if whisper and going.is_empty():
+		var i := d.next_post()
+		if i >= 0 and d.timeline.seconds_to("out_%d" % i) <= RINGERS_PREP:
+			var watcher: Person = null
+			for p in crowd.citizens + crowd.soldiers:
+				if WarningDirector._alive(p) and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED 						and p.ground_pos.distance_to(d.doors[i]) <= RINGERS_DOOR_R 						and (watcher == null or p.ground_pos.distance_to(d.doors[i]) < watcher.ground_pos.distance_to(d.doors[i])):
+					watcher = p
+			if watcher != null:
+				rules.cast(slots.whisper, watcher.ground_pos, {"target": watcher, "to": d._walkable(watcher.ground_pos + (watcher.ground_pos - d.doors[i]).normalized() * 6.0)})
+				return "whisper a watcher off the %s door" % d.post_names[i]
 	return ""
+
+
+## Between ringers, in the last seconds before the next post sends its ringer, a man by its door is whispered off it (a soldier too: they hear it now).
+const RINGERS_PREP := 20.0
+const RINGERS_DOOR_R := 6.0
+
+
+## The Wisp is cast this many seconds before the mark comes due.
+const RINGERS_LIGHT_LEAD := 1.0
 
 
 ## The bellkeeper is whispered this far back from the foot.
 const RINGERS_KEEPER_BACK := 8.0
 
 
-## A witness is whispered as far from the carrier as the whisper reaches (MindWhisperFx.REACH - 0.5), straight away from him.
-static func _ringers_far(d: BellRingersDirector, m: Person, from: Vector2, crowd: Crowd) -> Vector2:
-	var away := m.ground_pos - from
-	var to: Vector2 = m.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * (MindWhisperFx.REACH - 0.5)
-	return MindWhisperFx.clamp_to(crowd._grid, m.ground_pos, d._walkable(to))
-
-
-## Where the Wisp's light stands to hold carrier `r`'s mates where they are: at the middle of the mates still with him, brought to the one nearer
-## him if the other stands beyond WillOWisp.CHARGE_LURE_R of it. They stop to stare at it for WISP_TIME while the ringer, marked and slowed, runs
-## on, so that when the mark comes due they are many steps behind him. Vector2.INF when he has no mate with him.
-static func _ringers_light(r: RingerDirector) -> Vector2:
+## Where the Wisp's light stands: on the carrier, RINGERS_LIGHT_LEAD seconds before his mark is due. Everyone within its reach is lured at once
+## -- his mates (1.2 to 1.4 off, within CHARGE_LURE_R of him), the strangers on his road, a soldier at his post -- and a man staring at a light is no
+## witness (RingerDirector passes him over), so when the mark comes due nobody can carry the warning on. Vector2.INF before then.
+static func _ringers_light(ctx: Dictionary, rules: Rules, r: RingerDirector) -> Vector2:
 	var c := r.messenger
-	if not c.statuses.has(&"frail"):
+	var since: Variant = ctx.memo.get("mark_%d" % c.get_instance_id())
+	if since == null or not c.statuses.has(&"frail"):
 		return Vector2.INF
-	var mates := r.mates_with()
-	if mates.is_empty():
-		return Vector2.INF
-	var mid := Vector2.ZERO
-	for m in mates:
-		mid += m.ground_pos
-	mid /= float(mates.size())
-	for m in mates:
-		if m.ground_pos.distance_to(mid) > WillOWisp.CHARGE_LURE_R - 0.1:
-			return Vector2.INF
-	for p in WillOWisp.drawn(r.crowd._field, mid):  # it also draws every calm stranger within its reach: they would stand round the road
-		if not r.crew().has(p):
-			return Vector2.INF
-	return mid
+	var left := rules.time_left - (float(since) - DeathMarkFx.MARK_TIME)  # seconds to his death
+	return c.ground_pos if left <= RINGERS_LIGHT_LEAD and left > 0.2 else Vector2.INF
 
 
 static func state_ringers(bc, ctx: Dictionary) -> String:
@@ -327,7 +315,8 @@ static func state_ringers(bc, ctx: Dictionary) -> String:
 		bc._bell_state(ctx.crowd)]
 
 
-## Market Panic, loadout B (ember, whisper, discord; spec row 9). The fair's wardens steady every goer within WARD_R and are fearless, so
+## Market Panic, loadout B (ember, whisper, deathmark; spec row 9, Discord replaced by Death Mark by a ruling: a goer it kills counts for the need,
+## the Festival's rule, quiet and sure, one in twenty seconds, which is the margin the fires alone did not give). The fair's wardens steady every goer within WARD_R and are fearless, so
 ## a fire breaks nobody while one guards. Discord on one warden and Mind Whisper on the others take them off guard (RETURN_AFTER 20 s
 ## before any goes back), and with none on guard Ember sets alight the house round which the most goers still to break stand, their
 ## panic at the fire (a threat of its footprint and 0.8, and Person.THREAT_MARGIN) being what breaks them. The wardens are sent off only
@@ -359,6 +348,11 @@ static func _panic_look(bc, ctx: Dictionary, d: MarketPanicDirector, lull: bool)
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var wardens := d.on_guard()
+	if bc._slot_ready(rules, slots, "deathmark"):
+		var mark := _panic_mark(d)
+		if mark != null:
+			rules.cast(slots.deathmark, mark.ground_pos)
+			return "death mark a goer (%s)" % ("waiting" if d.is_waiting(mark) else "at the fair")
 	var push := d.need - d.count() <= PANIC_PUSH  # the last few: every goer near a house counts, and the town's alarm no longer matters
 	if bc._slot_ready(rules, slots, "ember"):
 		var ahead := _panic_ahead(d, ctx.crowd)
@@ -429,6 +423,20 @@ static func _panic_ahead(d: MarketPanicDirector, crowd: Crowd, within := PANIC_A
 	return best
 
 
+## The goer a Death Mark takes: one waiting at his stand for his crowd (no fire can break him; a death counts for the need, the Festival's rule),
+## else one at the fair that no warden need be sent off for, the farthest from the fountain's heart (a fire will not reach him soonest); null when
+## none is free of a mark. Only goers not already marked.
+static func _panic_mark(d: MarketPanicDirector) -> Person:
+	for group: Array[Person] in [d.waiting_goers(), d.unbroken()]:
+		var best: Person = null
+		for p in group:
+			if WarningDirector._alive(p) and not p.statuses.has(&"frail") and (best == null 					or p.ground_pos.distance_to(MarketPanicDirector.HEART) > best.ground_pos.distance_to(MarketPanicDirector.HEART)):
+				best = p
+		if best != null:
+			return best
+	return null
+
+
 ## A citizen far from the fair, not a goer nor a warden, who can hear a whisper; null for none.
 static func _panic_far_citizen(d: MarketPanicDirector, crowd: Crowd) -> Person:
 	for p in crowd.citizens:
@@ -469,30 +477,22 @@ static func state_panic(_bc, ctx: Dictionary) -> String:
 		d.hint_phase(), AlarmManager.Stage.keys()[crowd.alarms.stage], crowd.fires.fires.size(), d._left.size()]
 
 
-## The Informer, loadout B (discord, wisp, smite; spec row 10). Before he is found: with word at the contact, Discord on the spot that holds
-## the contact and the most onlookers (_informer_spot()); when some would still see (passers-by, a soldier), the Wisp draws them off to a
-## light 5 beyond them first (and in the INFORMER_EARLY seconds before a visit it clears the bystanders by his door already). Found: Smite on the
-## informer, aimed where he will stand 0.35 s later -- a cast within ALARM_REACH of one in the street sends him running for his hiding
-## place, so that is the way he goes (_informer_lead()); Smite on the town's bellkeeper once called. Never a Smite near a contact.
+## The Informer, loadout B (discord, wisp, deathmark; spec row 10, changed by a ruling: Smite is dodged by the runner, see the Bell-Ringers).
+## Before he is found: with word at the contact, Discord on the spot that holds the contact and the most onlookers (_informer_spot()); when some
+## would still see (passers-by, a soldier), the Wisp draws them off to a light 5 beyond them first (and in the INFORMER_EARLY seconds before a
+## visit it clears the bystanders by his door already). Found: Death Mark on the informer the moment he is out -- it is quiet, so it neither
+## alarms him nor sends him hiding, it slows him (0.6), and it kills him 10 s on, before he can reach the Temple; any death of his wins.
 static func act_informer(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var d := ctx.d as InformerDirector
 	var crowd: Crowd = ctx.crowd
-	var smite: bool = bc._slot_ready(rules, slots, "smite")
-	var bell := crowd.bell
-	if smite and bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] and WarningDirector._alive(bell.keeper) \
-			and bell.keeper.profile != null and bell.keeper.profile.role == CitizenProfile.Role.BELLKEEPER:
-		var k := bell.keeper
-		rules.cast(slots.smite, k.ground_pos + (bc._tax_lead(k) if k.has_goal() else Vector2.ZERO))
-		return "smite the bellkeeper"
 	if d.found:
 		var q := d.quarries[0]
 		var t := q.target as Person
-		if smite and WarningDirector._alive(t) and not t.inside and not bc._informer_takes_contact(d, t):
-			var aim: Vector2 = t.ground_pos + _informer_lead(d, crowd, q)
-			rules.cast(slots.smite, aim)
-			return "smite the informer (%s)" % AssassinateDirector.State.keys()[q.state]
+		if bc._slot_ready(rules, slots, "deathmark") and WarningDirector._alive(t) and not t.inside and not t.statuses.has(&"frail"):
+			rules.cast(slots.deathmark, t.ground_pos)
+			return "death mark the informer (%s)" % AssassinateDirector.State.keys()[q.state]
 		return ""
 	var c := d.contact_now()
 	if c == null or not WarningDirector._alive(c.man) or (c.man as Person).inside:
@@ -526,8 +526,6 @@ static func act_informer(bc, ctx: Dictionary) -> String:
 const INFORMER_EARLY := 12.0
 ## From this many seconds before a visit the Wisp is laid by the contact's door even with no one standing there to draw off.
 const INFORMER_LULL := 25.0
-## How much of his stride in the bolt's 0.35 s the aim leads him by.
-const INFORMER_LEAD := 0.0
 ## The Wisp's light stands this far past the ones it is to draw off, from the contact.
 const INFORMER_LIGHT := 5.0
 
@@ -575,21 +573,6 @@ static func _informer_spot(c: InformerDirector.Contact, seeing: Array[Person]) -
 				best = at
 				best_left = left
 	return {"at": best, "left": best_left}
-
-
-## Where informer `q` will stand DiscordFx... SmiteFx.T_STRIKE after a Smite is cast at him: a cast within ALARM_REACH of one in the street
-## sends him on duty for his hiding place (_hide_goal()), at his pace, along the walk grid's way; one already running keeps his way.
-static func _informer_lead(d: InformerDirector, crowd: Crowd, q) -> Vector2:
-	var t := q.target as Person
-	var goal: Vector2 = d._hide_goal(q) if q.state == AssassinateDirector.State.WALKING else (t.goal() if t.has_goal() else d._hide_goal(q))
-	var path := crowd._grid.path(t.ground_pos, goal)
-	var next := goal
-	for p in path:
-		if p.distance_to(t.ground_pos) > 0.05:
-			next = p
-			break
-	var dir := (next - t.ground_pos).normalized() if next.distance_to(t.ground_pos) > 0.01 else Vector2.ZERO
-	return dir * t.walk_speed * SmiteFx.T_STRIKE * INFORMER_LEAD
 
 
 static func state_informer(bc, ctx: Dictionary) -> String:

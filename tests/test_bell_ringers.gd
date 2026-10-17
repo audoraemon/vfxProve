@@ -34,6 +34,7 @@ static func run(t) -> void:
 	_recall(t)
 	_two(t)
 	_lured_mates(t)
+	_lured_passed_over(t)
 	_ends(t)
 	_freed(t)
 	_texts(t)
@@ -368,6 +369,35 @@ static func _lured_mates(t) -> void:
 	Kit.arrive(mate, mate.goal())
 	t.check(mate.ground_pos.distance_to(c.ground_pos) > Crowd.DOOM_WITNESS and r.mates.has(mate),
 		"at the light's ring he stands beyond a Silent Doom's witnesses of the carrier, and is still his mate for when it goes out")
+	Kit.done(s)
+
+
+## v0.11.1 (fix round, row 8): a man staring at a lure's light is passed over by the relay -- he looks at the light, not the road -- so a carrier
+## who falls with only such men (and his lured mates) near is not carried on, while the same man not staring is.
+static func _lured_passed_over(t) -> void:
+	var s := _world()
+	var d: BellRingersDirector = s.d
+	var r := d.ringers[0]
+	d._send(0)
+	Kit.run_for(s, RingerDirector.OUT_PAUSE + RingerDirector.MATE_TICK * 2.0 + DT * 4.0)
+	var c := r.messenger
+	var crowd: Crowd = s.crowd
+	_clear_round(s, c, r.mates)
+	var man: Person = null
+	for p in crowd.citizens:
+		if is_instance_valid(p) and p != c and not r.crew().has(p) and p.is_alive() and not p.inside:
+			man = p
+			break
+	Kit.arrive(man, c.ground_pos + Vector2(1.0, 0.0))
+	man.mind = Person.Mind.CALM
+	for v: Variant in r.mates:
+		Kit.arrive(v as Person, c.ground_pos + Vector2(6.0, 0.0))
+	t.check(r.witnesses().has(man) and not man.lured(), "a stranger by the carrier would see him die")
+	man.lure(c.ground_pos + Vector2(1.5, 0.0), 10.0, c.ground_pos)
+	t.check(man.lured() and not r.witnesses().has(man), "staring at a light, he is no witness")
+	crowd._field.kill(c, &"deathmark")
+	Kit.run_for(s, DT * 2.0)
+	t.check(r.warning_dead and r.relays == 0, "the carrier falls with only a man staring at a light near: the warning dies, nobody carries it on")
 	Kit.done(s)
 
 

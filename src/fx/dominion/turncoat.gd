@@ -44,7 +44,8 @@ func _build() -> void:
 	turned.side = 2
 	turned.set_badge(DominionParts.SPLIT, MARK, TURN_TIME)
 	if turned.soldier:
-		turned.fight(null, TURN_TIME, Person.SOLDIER_BLOW, Person.FightRule.OWN_KIND, SIGHT)
+		if not turned.resists_mind():
+			turned.fight(null, TURN_TIME, Person.SOLDIER_BLOW, Person.FightRule.OWN_KIND, SIGHT)
 	else:
 		_next_aim()
 	ctx.play(&"grav_arc", origin, -4.0)

@@ -94,7 +94,7 @@ const SPEC := [
 	# The Bishop (v0.11 M5).
 	["bishop", "Burn each refuge the bishop hides in (gold), once its Knights (red) are dead. The Temple last: then kill him in the square."],
 	["bishop.waiting", "He reaches his next refuge in {n} s. Kill its Knights (red) shortly before he comes."],
-	["bishop.guarded", "His Knights (red) beat out fire. Kill every one. Whispers and Discord do not touch a Knight."],
+	["bishop.guarded", "His Knights (red) beat out fire. Kill them, or whisper, Discord or lure them off: each walks back."],
 	["bishop.open", "No Knight stands. Set the refuge (gold) alight before a new Knight comes."],
 	["bishop.burning", "It burns. Keep it burning: his Knights (red) put out a fire they stand by."],
 	["bishop.square", "He is in the square and makes for the Citadel (red). Kill him before he gets in."],
@@ -102,7 +102,7 @@ const SPEC := [
 	# The Armoury (v0.11 M5).
 	["armoury", "Kill a target's armed men (red), then destroy it once it musters (gold): two barracks, then the armoury."],
 	["armoury.not_yet", "Not mustering yet (grey): fire goes out, and a fall counts when its horn sounds. Kill its night watch (red) shortly before."],
-	["armoury.guarded", "Armed men (red) guard it: it takes no harm. Kill every one. Whispers do not move an armed man."],
+	["armoury.guarded", "Armed men (red) guard it: it takes no harm. Kill them, or whisper one off: he walks back."],
 	["armoury.open", "No guard stands. Destroy it now: more armed men march from the Citadel, faster each minute."],
 	["armoury.stone", "The gate barracks is stone: blows, not fire."],
 	# The Sermon (v0.11 M5).
@@ -141,7 +141,7 @@ const SPEC := [
 	# The Heart of Faith (v0.11 M6; shortened to the three-line plate, the controller's ruling: the Gaze's sentence once, in "coming").
 	["heart_of_faith", "Kill the Knights (red), then burn the oil-house and the Temple (gold): the Great Flame goes out. Then kill High Priest Odran."],
 	["heart_of_faith.not_yet", "Not in use yet (grey): fire there goes out, but a fall counts when its time comes. Kill its Knights (red) shortly before."],
-	["heart_of_faith.guarded", "Lantern Knights (red) guard it: it takes no harm, its fire goes out. Kill every one: whispers and Discord do not touch them."],
+	["heart_of_faith.guarded", "Lantern Knights (red) guard it: it takes no harm, its fire goes out. Kill them, or whisper, Discord or lure them off."],
 	["heart_of_faith.open", "No Knight stands. Set it alight (gold) and keep it burning."],
 	["heart_of_faith.burning", "It burns. Keep it burning: a new Knight comes from the Citadel."],
 	["heart_of_faith.coming", "The flame is out: each seen death now adds 20 to the Gaze. Odran comes out in {n} s: kill his bearers (red) first."],

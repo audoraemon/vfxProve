@@ -8,7 +8,7 @@ extends RazeDirector
 ## the start, but fire on a target not mustering is put out at once and its fall is judged only at its horn: one down then is razed at
 ## once. Two armed men -- lay citizens made watchmen -- stand each target's night watch from the start on posts along its face, POST_GAP
 ## apart; at its horn its squad of SQUAD comes out of its door to posts POST_GAP beyond them. An armed man on guard (alive, out of doors,
-## within GUARD_REACH, not frightened or whispered) is held deaf to a whisper and past fear and set back on his post at every look; while
+## within GUARD_REACH, not frightened or whispered) is held past fear (v0.11.1: no longer deaf to a whisper, which takes him off his post until he walks back) and set back on his post at every look; while
 ## one stands guard the target is sealed (RazeDirector.seal(): a blow only shakes it, its fire is put out), before or after its horn,
 ## and the seconds it burned stay counted. One off his post walks back RETURN_AFTER after he left; a fallen one is replaced RELIEF_AFTER
 ## later from the reserve of RESERVE waiting inside the Citadel's gate. From each horn, while a target musters, one armed man marches
@@ -71,7 +71,7 @@ const RESERVE := 8
 const MARCH_AT := 300.0
 ## How near its horn a target not mustering puts the hint on "not_yet" (v0.11 M5): the spec's "last 25 s".
 const WORK_AHEAD := 25.0
-## How long past each look an armed man on guard is kept deaf and fearless (v0.11 M5): more than a TICK, so neither lapses between looks.
+## How long past each look an armed man on guard is kept fearless (v0.11 M5; v0.11.1: no longer deaf to a whisper): more than a TICK, so it does not lapse between looks.
 const ARMED_HOLD := 1.0
 ## The minds that take an armed man off guard (v0.11 M5, plan decision 178): Discord's does not.
 const OFF_GUARD := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.WHISPERED]
@@ -371,7 +371,7 @@ func guards(i: int) -> Array[Person]:
 	return out
 
 
-## Target `i`'s armed men at their work (v0.11 M5). One on guard is held deaf and fearless and set back on his post at each look; one off
+## Target `i`'s armed men at their work (v0.11 M5). One on guard is held fearless and set back on his post at each look; one off
 ## his post walks back RETURN_AFTER after he left, at once when running in or at the first look after the evacuation began
 ## (`evacuating`); a fallen one is replaced RELIEF_AFTER after he fell, from the reserve -- a squad slot only once its target musters,
 ## and none for a target already down.
@@ -392,7 +392,6 @@ func _work(i: int, delta: float, looking: bool, evacuating: bool) -> void:
 			a.away = 0.0
 			a.relief = false
 			if looking:
-				p._shaken_left = maxf(p._shaken_left, ARMED_HOLD)
 				p.fearless_left = maxf(p.fearless_left, ARMED_HOLD)
 				if p.mind != Person.Mind.DUTY or p.anchor.distance_to(a.post) > 0.3:
 					p.go_duty(a.post)

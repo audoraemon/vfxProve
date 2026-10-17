@@ -1,7 +1,7 @@
 extends RefCounted
 ## v0.06 Discord: the confused forget their task for a while, then pick up again -- the rite breaks when its ring is
 ## confused, the bellkeeper drops the climb and is called again later, an engineer downs tools and goes back, an
-## evacuee leaves the queue and flees again after; soldiers keep their heads, and nothing is a danger to the town.
+## evacuee leaves the queue and flees again after; soldiers lose theirs as citizens do (v0.11.1), and nothing is a danger to the town.
 
 
 static func _crowd() -> Array:
@@ -37,16 +37,19 @@ static func run(t) -> void:
 	var crowd: Crowd = made[0]
 	var field: EnemyField = made[3]
 
-	# Who it takes: citizens, not soldiers; and it is no danger the town can see.
+	# Who it takes: citizens and soldiers; and it is no danger the town can see.
 	var at := Vector2(0.8, 2.0)
 	var c: Person = crowd.citizens[0]
 	c.ground_pos = at
 	var s: Person = crowd.soldiers[0]
 	s.ground_pos = at + Vector2(0.3, 0.0)
 	var taken := DiscordFx.taken(field, at)
-	t.check(c in taken and s not in taken, "Discord takes citizens, not soldiers")
+	t.check(c in taken and s in taken, "v0.11.1: soldiers hear the god -- Discord takes citizens and soldiers")
 	s.confuse(15.0)
-	t.check(s.mind != Person.Mind.CONFUSED, "a soldier keeps its head")
+	t.check(s.mind == Person.Mind.CONFUSED, "v0.11.1: soldiers hear the god -- a soldier loses its head")
+	s._confused_left = 0.0
+	s._come_to()
+	s.send_to_post(s.post)
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "discord")
 	t.check(crowd.threats.active_count() == 0, "it is no danger the town can see")
 	c.mind = Person.Mind.CALM

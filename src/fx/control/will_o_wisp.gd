@@ -16,12 +16,13 @@ const LIGHT := Color(0.6, 1.0, 0.85)
 var _light: QuadFx
 
 
-## Who it would draw from `at`: citizens within reach it can lure, nearest first, LURE_MAX at most.
+## Who it would draw from `at`: people within reach it can lure (v0.11.1: soldiers at their post too), nearest first, LURE_MAX at most.
 static func drawn(field: EnemyField, at: Vector2) -> Array[Person]:
 	var out: Array[Person] = []
 	for e in field.in_radius(at, LURE_REACH):
 		var p := e as Person
-		if p != null and not p.soldier and not p.inside and p.mind in Person.LURABLE:
+		if p != null and not p.resists_mind() and not p.inside \
+		and (p.mind in Person.LURABLE or (p.soldier and p.mind in Person.SOLDIER_LURABLE and not p.hurrying)):
 			out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))

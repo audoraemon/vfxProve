@@ -772,8 +772,8 @@ func _step_litter() -> void:
 			continue
 		var b := p.man as Person
 		p.spot = _walkable(to + _corner(k))
-		if b.mind != Person.Mind.DUTY or b.anchor.distance_to(p.spot) > MOVE:
-			b.go_duty(p.spot)
+		if (b.mind != Person.Mind.DUTY or b.anchor.distance_to(p.spot) > MOVE) and not b.held_by_god():
+			b.go_duty(p.spot)  # (v0.11.1: not a bearer the god holds -- the hold ends by itself and he is put on duty again)
 
 
 ## Odran on foot, each look (v0.11 M6): a fright stops him a moment (plan decision 296); on duty he walks his road point by point and holds
@@ -804,8 +804,8 @@ func _step_on_foot() -> void:
 		var g := p.man as Person
 		var off := 0.0 if k == 0 else SIDE_STEP * (-1.0 if k % 2 == 1 else 1.0) * float((k + 1) / 2)
 		var spot := _walkable(o.ground_pos - dir * GUARD_GAP + side * off)
-		if g.mind != Person.Mind.POST or g.anchor.distance_to(spot) > 0.5:
-			g.send_to_post(spot, false, false)
+		if (g.mind != Person.Mind.POST or g.anchor.distance_to(spot) > 0.5) and not g.held_by_god():
+			g.send_to_post(spot, false, false)  # (v0.11.1: not one the god holds -- the hold ends and he walks back to his post)
 		k += 1
 
 

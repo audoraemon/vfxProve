@@ -279,7 +279,7 @@ func release(ground: Vector2) -> void:
 		# A whisper goes out where the citizen is now, sending them to the release clamped to REACH and walkable
 		# ground. Someone who died or went in meanwhile can no longer hear it.
 		var hears := is_instance_valid(_whisper_target) and _whisper_target.is_alive() \
-			and not _whisper_target.inside and not _whisper_target.soldier
+			and not _whisper_target.inside and not _whisper_target.resists_mind()
 		var who := _whisper_target if hears else null
 		_whisper_target = null
 		aiming = false

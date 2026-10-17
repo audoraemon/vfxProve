@@ -896,14 +896,17 @@ static func _cast_radius(key: String) -> float:
 
 ## Something frightening at `at` of `radius` (a maddened citizen turning on the crowd): a danger the town knows of for
 ## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
-func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName) -> void:
+func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName,
+		soldiers_too := true) -> void:
 	threats.register(at, radius, severity, seconds, sight, sound, kind)
 	var points: Array[Vector2] = [at]
-	_react(points, radius, sound, at, kind)
+	_react(points, radius, sound, at, kind, soldiers_too)
 
 
-## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look.
-func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"") -> void:
+## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look. Citizens;
+## and with `soldiers_too` (v0.11.1: a power's fright -- Collective Delusion's false danger -- not an ordinary cast's danger,
+## where soldiers stand fast) the soldiers too, who run and look as citizens do but do not cry out or pass a fright on.
+func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"", soldiers_too := false) -> void:
 	var frightened: Array[Person] = []
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
@@ -925,6 +928,21 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 				_spreads.append([_clock + _rng.randf_range(SPREAD_DELAY.x, SPREAD_DELAY.y), p])
 		elif best <= sound:
 			p.observe(at)
+	if soldiers_too:
+		for p in soldiers:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside:
+				continue
+			var best := INF
+			var at := Vector2.INF
+			for point in points:
+				var d := p.ground_pos.distance_to(point)
+				if d < best:
+					best = d
+					at = point
+			if best <= radius + Person.THREAT_MARGIN:
+				p.panic(at, radius, kind)
+			elif best <= sound:
+				p.observe(at)
 	_yelp(frightened, yelp_at)
 
 

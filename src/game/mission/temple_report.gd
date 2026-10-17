@@ -101,6 +101,8 @@ func _send(relay: bool) -> void:
 		if not carrier.has_goal() or carrier.anchor.distance_to(door) > 0.3:
 			carrier.go_duty(door)
 		return
+	if carrier.soldier and carrier.held_by_god():
+		return  # whispered, confused or lured off (v0.11.1): the hold ends by itself, and the errand is given again then
 	if carrier.mind in RESUMABLE or carrier.soldier or (relay and not carrier.mind in HELD):
 		carrier.go_duty(door)
 

@@ -69,9 +69,11 @@ static func run(t) -> void:
 	s.bounds = TownLayout.MAP
 	s.setup_person(true, TownLayout.BARRACKS_YARD.get_center(), grid)
 	t.check(s.mind == Person.Mind.POST, "a soldier starts at its post")
-	s.panic(s.ground_pos + Vector2(1.0, 0.0))
 	s.flee()
-	t.check(s.mind == Person.Mind.POST, "and ignores panic and flight")
+	t.check(s.mind == Person.Mind.POST, "and ignores flight")
+	s.panic(s.ground_pos + Vector2(1.0, 0.0))
+	t.check(s.mind == Person.Mind.PANIC, "v0.11.1: soldiers hear the god -- a danger laid on a soldier frightens him")
+	s.send_to_post(TownLayout.BARRACKS_YARD.get_center())
 	var ring := TownLayout.CITADEL_ORIGIN + Vector2(0.0, 3.6)
 	s.send_to_post(ring, true)
 	t.check(s.mind == Person.Mind.RALLY, "the rally moves it")

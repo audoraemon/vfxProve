@@ -303,6 +303,8 @@ func _fight_fire(team: Dictionary) -> bool:
 		if not is_instance_valid(p) or not (p as Person).is_alive():
 			continue
 		var m: Person = p
+		if m.soldier and m.held_by_god():
+			continue  # a soldier on the team whispered, confused or lured off (v0.11.1) is not taken back until the hold ends
 		if m.mind != Person.Mind.ASSIST and (m.mind == Person.Mind.DUTY or m.mind in AVAILABLE or m.soldier):
 			_crowd.fires.enlist(m, fire, true)
 		sent = sent or m.mind == Person.Mind.ASSIST
@@ -333,7 +335,7 @@ func _stand_by(team: Dictionary) -> void:
 
 
 func _send(p: Person, at: Vector2) -> void:
-	if is_instance_valid(p) and p.is_alive() and (p.mind == Person.Mind.DUTY or p.mind in AVAILABLE or p.soldier):
+	if is_instance_valid(p) and p.is_alive() and not (p.soldier and p.held_by_god()) 			and (p.mind == Person.Mind.DUTY or p.mind in AVAILABLE or p.soldier):
 		p.go_duty(at)
 
 
@@ -349,7 +351,7 @@ func _work(team: Dictionary, delta: float) -> void:
 			ready = false  # at a fire (v0.08.2): FireManager runs its round, a job calls it back (_take())
 		elif p.mind != Person.Mind.DUTY:
 			# Frightened off (or busy elsewhere): back to it once calm again.
-			if (p.mind in AVAILABLE or p.soldier) and spot != Vector2.INF:
+			if (p.mind in AVAILABLE or p.soldier) and spot != Vector2.INF and not (p.soldier and p.held_by_god()):
 				p.go_duty(spot)
 			ready = false
 		elif p.has_goal() or p.ground_pos.distance_to(spot) > WORK_REACH:

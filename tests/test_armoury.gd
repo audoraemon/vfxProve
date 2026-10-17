@@ -158,11 +158,14 @@ static func _guarded(t) -> void:
 		"an armed man on guard: a blow only shakes it, its fire goes out")
 	var a: ArmouryDirector.Armed = d.armed[0][0]
 	var man := a.man as Person
-	t.check(man.shaken() and man.fearless_left > 0.0 and not man.whisper(man.ground_pos + Vector2(4.0, 0.0), MindWhisperFx.LINGER),
-		"an armed man on guard is deaf to a whisper and past fear")
+	t.check(man.fearless_left > 0.0 and not man.shaken(), "an armed man on guard is past fear")
 	man.confuse(5.0)
 	Kit.run_for(s, 0.6)
 	t.check(man.mind == Person.Mind.DUTY and man.anchor == a.post, "Discord holds him a look at most: he is set back on his post")
+	t.check(man.whisper(man.ground_pos + Vector2(4.0, 0.0), MindWhisperFx.LINGER),
+		"v0.11.1: soldiers hear the god -- an armed man hears a whisper")
+	Kit.run_for(s, 0.6)
+	t.check(man.mind == Person.Mind.WHISPERED and not d.guards(0).has(man), "and a whispered one is off his post, not set back on it at the next look")
 	Kit.done(s)
 
 

@@ -3,19 +3,19 @@ extends FxTimeline
 ## Discord (v0.06): a violet swirl at the aim, and every citizen within DISCORD_R forgets what it was doing for
 ## DISCORD_TIME (Person.confuse()) -- clergy step out of the rite's ring, the bellkeeper drops the climb, engineers
 ## down tools, fire crews leave the fire, evacuees stop in the queue and wander. Then they pick up again. No danger and
-## no alarm; soldiers keep their heads. The cast locks the other slots for 0.6 s.
+## no alarm; soldiers lose theirs as citizens do (v0.11.1) and go back to their posts. The cast locks the other slots for 0.6 s.
 
 const DISCORD_R := 1.2
 const DISCORD_TIME := 15.0
 const SWIRL := [Color("f0d8ff"), Color("c890ff"), Color("8a50d0"), Color("4a2a70")]
 
 
-## Who it would take at `at`: the living citizens within reach.
+## Who it would take at `at`: the living within reach, soldiers too.
 static func taken(field: EnemyField, at: Vector2) -> Array[Person]:
 	var out: Array[Person] = []
 	for e in field.in_radius(at, DISCORD_R):
 		var p := e as Person
-		if p != null and not p.soldier and not p.inside:
+		if p != null and not p.resists_mind() and not p.inside:
 			out.append(p)
 	return out
 

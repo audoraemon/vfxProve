@@ -311,7 +311,7 @@ func _appoint_patrol(c: Person, beat: PackedVector2Array, n: int) -> Array[Perso
 func _appoint_hunters(_c: Person, n: int) -> Array[Person]:
 	var out: Array[Person] = []
 	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
-		if p.mind in POST_MINDS and out.size() < n:
+		if p.mind in POST_MINDS and not p.held_by_god() and out.size() < n:
 			out.append(p)
 	return out
 
@@ -325,7 +325,7 @@ func _post_to(p: Person, at: Vector2, hurry: bool) -> void:
 ## Virtual (v0.11 M4): `p` takes his post or beat again now -- a soldier of no corps in a POST_MIND by default (in any other, the
 ## rally, a fight, the god's hold, he is left to the town); The Prisoner's lay watchmen on duty or back on their feet.
 func _takes_post(p: Person) -> bool:
-	return p.corps == Person.Corps.NONE and p.mind in POST_MINDS
+	return p.corps == Person.Corps.NONE and p.mind in POST_MINDS and not p.held_by_god()
 
 
 ## Virtual: the banners and the timeline's words (v0.11 M2): the opening banner.
@@ -521,7 +521,7 @@ func _watching(v: Variant) -> bool:
 	if not _alive(v):
 		return false
 	var p := v as Person
-	return not p.inside and p.corps == Person.Corps.NONE and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS)
+	return not p.inside and p.corps == Person.Corps.NONE and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS) 		and not (p.soldier and p.held_by_god())  # (v0.11.1: a soldier staring at a lure sees nothing, as one whispered or confused)
 
 
 ## Every soldier set to watch for him (v0.11 M2): the watch, the patrols, the searchers (untyped: any may be freed).
@@ -661,6 +661,8 @@ func _step_hunters() -> void:
 		if not _alive(v) or v == seizer:
 			continue
 		var h := v as Person
+		if h.soldier and h.held_by_god():
+			continue  # lured, whispered or confused off (v0.11.1): the hold ends by itself
 		if h.mind == Person.Mind.DUTY or h.mind in POST_MINDS:
 			if h.mind != Person.Mind.DUTY or h.anchor.distance_to(charge.ground_pos) > 1.0:
 				h.go_duty(charge.ground_pos)

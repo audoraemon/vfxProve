@@ -67,6 +67,8 @@ func _judge() -> void:
 	var links: DominionParts.Links = DominionParts.links(self) if DominionParts.staged(self) else null
 	for i in candidates.size():
 		var p := candidates[i]
+		if p.resists_mind():
+			continue
 		if judged != null:
 			if not is_instance_valid(judged) or not judged.is_alive():
 				break

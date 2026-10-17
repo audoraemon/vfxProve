@@ -99,6 +99,8 @@ func step(delta: float) -> void:
 			var p: Person = mine[i]
 			if p.mind == Person.Mind.DUTY:
 				continue  # it took over a duty (the bell, an engineer's place)
+			if p.held_by_god():
+				continue  # whispered, confused or lured off (v0.11.1): the hold ends by itself and he is sent back to this post
 			if p.anchor.distance_to(point) > REACH or p.mind != Person.Mind.POST:
 				p.send_to_post(_crowd._spot_near(point + OFFSETS[i % OFFSETS.size()], 0.2), false, true)  # at a run
 		_steady(d.guarded, mine)

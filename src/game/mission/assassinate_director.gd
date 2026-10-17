@@ -225,9 +225,9 @@ func _appoint_guards(q: Quarry, taken: Array) -> Array[Person]:
 
 
 ## Virtual (v0.11 M5): this director sends guard `p` to his place and home now -- one of no corps in a mind of his own (GUARD_MINDS)
-## by default; in any other, the rally, a fight, the god's hold, he is left to the town. The Bishop's are its Knights at their posts.
+## by default; in any other, the rally, a fight, the god's hold -- a lure's stare is one (v0.11.1, Person.held_by_god()) -- he is left to the town. The Bishop's are its Knights at their posts.
 func _tends(p: Person) -> bool:
-	return p.corps == Person.Corps.NONE and p.mind in GUARD_MINDS
+	return p.corps == Person.Corps.NONE and p.mind in GUARD_MINDS and not p.held_by_god()
 
 
 ## Virtual (v0.11 M2): the night's opening banner.

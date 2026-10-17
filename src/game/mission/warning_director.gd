@@ -142,8 +142,10 @@ func _goal() -> Vector2:
 	return bell.foot if bell != null else Vector2.INF
 
 
-## Back on its feet (or, for a soldier, under any other order): the errand can be given again.
+## Back on its feet (or, for a soldier, under any other order but the god's hold, v0.11.1): the errand can be given again.
 func _resumable(p: Person) -> bool:
+	if p.soldier and p.held_by_god():
+		return false  # a soldier whispered, confused or staring at a lure (v0.11.1): the hold ends by itself
 	return p.mind in RESUMABLE or (p.soldier and p.mind != Person.Mind.DUTY)
 
 
@@ -163,7 +165,7 @@ func _run(relay := false) -> void:
 	var bell := crowd.bell
 	var keeper_alive := bell != null and _alive(bell.keeper)
 	var telling := keeper_alive and not _rings_himself()  # v0.11 M3: one who rings it himself tells no keeper
-	var ready := _resumable(messenger) or (relay and not messenger.mind in HELD)
+	var ready := _resumable(messenger) or (relay and not messenger.mind in HELD and not (messenger.soldier and messenger.held_by_god()))
 	if telling and messenger == bell.keeper:
 		# The keeper carries it (a relay to the keeper): they need no telling, only to be on their feet to go.
 		if messenger.mind == Person.Mind.DUTY or ready:

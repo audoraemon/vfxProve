@@ -15,7 +15,7 @@ extends AssassinateDirector
 ## fewer than two live) at RING_R and walks on duty at BISHOP_PACE for the Citadel's gate; a loud power near him, a fallen Knight or
 ## a fright sends him running (the base's alarm, with no hideout). Reaching the gate, or leaving the town, loses; so does TAKEN_AT
 ## (EventObjective). His death wins, seen or not (a seen one calls the bellkeeper). The Knights are soldiers the director adds
-## (Crowd.add_soldier(), corps KNIGHT): a whisper and Discord do not touch a soldier, a fright does not move one, and the rally, the
+## (Crowd.add_soldier(), corps KNIGHT): a whisper, Discord or a lure takes a Knight off his post and he walks back (v0.11.1), a town's fright does not move one, and the rally, the
 ## marshals and the investigations never take a Knight (plan decisions 171-176).
 
 ## One Knight's post (v0.11 M5): a plain record, so the director holds no cycle.

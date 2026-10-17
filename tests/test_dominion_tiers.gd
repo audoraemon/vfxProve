@@ -206,7 +206,8 @@ static func run(t) -> void:
 				a.observe(a.ground_pos)
 				t.check(a.mind == Person.Mind.CALM and a.fearless_left > 0.0, "Ignore: nothing frightens them and nothing makes them look")
 			"escape":
-				t.check(a.mind == Person.Mind.FLEE and guard.mind == Person.Mind.POST, "Escape: citizens make for a way out")
+				t.check(a.mind == Person.Mind.FLEE and guard.mind == Person.Mind.COMPELLED and guard.has_goal() and not crowd.soldiers.is_empty() and crowd.soldiers.has(guard),
+					"Escape: citizens make for a way out; v0.11.1: soldiers hear the god -- a soldier is sent to the nearest way out's mouth, still in the town")
 		pri.free()
 
 	# --- Mob Verdict: a person, then a building.

@@ -6,7 +6,7 @@ extends FxTimeline
 ## there as if of its own mind -- at a walk, no panic, no teleport, no harm -- and stand in a spot of its own round or
 ## inside the place (GATHER_SPACING apart) until DURATION is up, when each takes up its day again. A danger on top of
 ## them still frightens them (MOVEMENT_PRIORITY below Person.WILL_ABSOLUTE); an evacuation does not call them away
-## (above WILL_FIRM). Soldiers and the important may resist (RESISTANCE). A place that falls lets everyone go at once.
+## (above WILL_FIRM). The important may resist (RESISTANCE); soldiers come (v0.11.1) and go back to their posts. A place that falls lets everyone go at once.
 ## Quiet: the town sees nothing, and only ALARM_GENERATED (the book entry's "alarm") unsettles it. The cast locks the
 ## other slots for 1 s.
 
@@ -18,7 +18,7 @@ const GATHER_SPACING := 0.45
 ## How firmly it holds (Person.WILL_FIRM .. WILL_ABSOLUTE).
 const MOVEMENT_PRIORITY := 0.8
 ## Who may resist, by what they are (MadnessManager.kind_of()): the chance, times RESISTANCE_MULTIPLIER.
-const RESISTANCE := {&"soldier": 1.0, &"clergy": 0.35, &"bellkeeper": 0.5, &"engineer": 0.5}
+const RESISTANCE := {&"clergy": 0.35, &"bellkeeper": 0.5, &"engineer": 0.5}
 const RESISTANCE_MULTIPLIER := 1.0
 ## What the cast unsettles the town by (read by Crowd.on_cast() from the book entry).
 const ALARM_GENERATED := 0.3

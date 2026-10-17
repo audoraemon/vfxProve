@@ -155,6 +155,8 @@ func _assign() -> void:
 		var fire: Structure = null if evacuating else _nearest_fire((crew[0] as Person).ground_pos)
 		for m in crew:
 			var p: Person = m
+			if p.held_by_god():
+				continue  # whispered, confused or lured off (v0.11.1): he goes back to the squad's post by himself
 			if fire != null:
 				_crowd.fires.enlist(p, fire)
 			elif p.mind != Person.Mind.POST or p.anchor != p.post:

@@ -93,9 +93,9 @@ static func run(t) -> void:
 	var all_in := true
 	for c in inside:
 		all_in = all_in and c.mind == Person.Mind.COMPELLED and c.intent() == Person.Intent.GATHER and c.has_goal()
-	t.check(all_in and fx.gathered.size() == 12, "everyone in the circle is drawn to the place (%d)" % fx.gathered.size())
+	t.check(all_in and fx.gathered.size() == 13, "everyone in the circle is drawn to the place, a soldier too (%d)" % fx.gathered.size())
 	t.check(outside.mind == Person.Mind.CALM, "someone outside it is not")
-	t.check(guard.mind == Person.Mind.POST and fx.resisted >= 1, "a soldier resists")
+	t.check(guard.mind == Person.Mind.COMPELLED and fx.gathered.has(guard), "v0.11.1: soldiers hear the god -- a soldier comes")
 	t.check(not inside[0].is_running() and is_equal_approx(inside[0].walk_speed, Person.WALK_SPEED * inside[0].pace),
 		"they walk, as if of their own mind")
 	var own_spots := {}

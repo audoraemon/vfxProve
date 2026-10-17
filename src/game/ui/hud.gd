@@ -141,6 +141,9 @@ var _tags_drawn := ""
 var _canvas: CanvasItem = self
 ## The night's first intro is up (v0.11 M1): Mission sets it, and the prayers plate shows the wishes heard.
 var praying := false
+## The intro is up (v0.11.1, spec §2): Mission sets it. The HUD then draws the clock, the slots and one message (a banner, a
+## tour caption or the prayers plate): the objective stack, the strip, the status line and the Gaze bar wait for play.
+var intro := false
 ## The ascent's column (v0.11 M1): its ground point (Vector2.INF for none) and its real seconds so far.
 var _rise_at := Vector2.INF
 var _rise_age := 0.0
@@ -492,8 +495,8 @@ func _wishes_plate(hint: Rect2) -> Rect2:
 ## drawn whenever the HUD is -- the tour's caption and the night's end leave them -- so it is empty only while none has anything to show.
 ## The tags' keepout (_draw_tags()).
 func stack_rect() -> Rect2:
-	if _rules == null or _rules.mission == null:
-		return Rect2()
+	if _rules == null or _rules.mission == null or intro:
+		return Rect2()  # v0.11.1: the stack is not drawn during the intro, so it keeps nothing clear
 	var right := 0.0
 	var bottom := 0.0
 	var hint := hint_rect()  # measured once: the how-to-win plate wraps its words, and the wishes' plate sits under it
@@ -1063,6 +1066,7 @@ func _signature() -> String:
 		out += "|" + str(events)
 	out += "|" + (_hint_now() if hint_shown() else "")
 	out += "|" + _caption
+	out += "|%s" % intro
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
 	out += "|%s|%s" % [details, wish_summary()]
 	for i in _rules.loadout.size():
@@ -1105,16 +1109,8 @@ func _draw() -> void:
 	_draw_rise()
 	_draw_clock(w)
 	_draw_rite(w)
-	_draw_gaze(w)
-	_draw_events(w)
-	if _rules.mission.scored:
-		_draw_objectives()
-	else:
-		_draw_rows()
-	_draw_cue()
-	_draw_hint()
-	_draw_wishes()
-	_draw_status(w)
+	if not intro:
+		_draw_play_plates(w)
 	_draw_banners(w)
 	_draw_subtitle(w)
 	_draw_prayers(w)
@@ -1276,6 +1272,21 @@ func _draw_wishes() -> void:
 		if state == "failed":
 			draw_line(Vector2(18.0, y - 4.0), Vector2(18.0 + UiTheme.width(text, UiTheme.SIZE_SMALL), y - 4.0), UiTheme.COL_DIM, -1.0)
 		y += ROW_H
+
+
+## The plates that wait for play (v0.11.1: not drawn during the intro): the Gaze bar, the strip, the objectives, the how-to-win
+## line, the wishes and the status line.
+func _draw_play_plates(w: float) -> void:
+	_draw_gaze(w)
+	_draw_events(w)
+	if _rules.mission.scored:
+		_draw_objectives()
+	else:
+		_draw_rows()
+	_draw_cue()
+	_draw_hint()
+	_draw_wishes()
+	_draw_status(w)
 
 
 ## The town prays (v0.11 M1, spec §5.1): during the night's first intro, a plate in the middle of the screen with

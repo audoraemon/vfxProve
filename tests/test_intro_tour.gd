@@ -12,6 +12,7 @@ const D := Vector2(0.0, 10.0)
 
 static func run(t) -> void:
 	_timeline(t)
+	_one_at_a_time(t)
 	_skips(t)
 	_raised(t)
 	_stops(t)
@@ -22,8 +23,8 @@ static func _timeline(t) -> void:
 	var move := IntroTour.MOVE_SECONDS
 	var hold := IntroTour.HOLD_SECONDS
 	t.near(tour.seconds(), 3.0 * move + 2.0 * hold, 0.001, "three moves and two holds")
-	t.check(tour.camera() == A and tour.caption() == "one" and tour.zoom_k() == 0.0 and not tour.done(),
-		"it opens where the intro starts, on its way to the first stop, under its caption")
+	t.check(tour.camera() == A and tour.caption() == "" and tour.zoom_k() == 0.0 and not tour.done(),
+		"it opens where the intro starts, on its way to the first stop (v0.11.1: no caption while it moves)")
 	tour.step(move * 0.5)
 	t.check(tour.camera().x > 0.0 and tour.camera().x < 10.0 and tour.zoom_k() > 0.0 and tour.zoom_k() < 1.0,
 		"half way there, zooming in (%s)" % tour.camera())
@@ -41,6 +42,25 @@ static func _timeline(t) -> void:
 	skipped.skip()
 	t.check(skipped.done() and skipped.camera() == D and skipped.caption() == "", "skip() lands it at once")
 	t.near(IntroTour.new().setup(A, [], D).seconds(), move, 0.001, "with no stops it is one move")
+
+
+## v0.11.1 (spec §2): the opening shows one thing at a time. A caption shows only while the camera holds at its stop, and a
+## stop is held long enough to be read.
+static func _one_at_a_time(t) -> void:
+	var tour := IntroTour.new().setup(Vector2.ZERO, [[Vector2(5, 0), "A"], [Vector2(0, 5), "B"]], Vector2(1, 1))
+	t.check(tour.at_start() and tour.caption() == "", "the sweep in: no caption, the banner alone")
+	tour.step(IntroTour.MOVE_SECONDS * 0.5)
+	t.check(not tour.at_start() and tour.caption() == "", "half way to the first stop: still none")
+	tour.step(IntroTour.MOVE_SECONDS * 0.5 + 0.1)
+	t.check(tour.caption() == "A", "held at the first stop: its caption")
+	tour.step(IntroTour.HOLD_SECONDS)
+	t.check(tour.caption() == "", "moving on to the second: none")
+	tour.step(IntroTour.MOVE_SECONDS)
+	t.check(tour.caption() == "B", "held at the second stop: its caption")
+	tour.step(IntroTour.HOLD_SECONDS + IntroTour.MOVE_SECONDS)
+	t.check(tour.done() and tour.caption() == "", "on to where play begins: none")
+	t.check(IntroTour.HOLD_SECONDS == 2.4, "a caption holds 2.4 s")
+	t.near(tour.seconds(), 3.0 * IntroTour.MOVE_SECONDS + 2.0 * IntroTour.HOLD_SECONDS, 0.001, "the tour is three moves and two holds")
 
 
 static func _key(code: Key, pressed := true, echo := false) -> InputEventKey:

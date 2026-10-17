@@ -25,6 +25,7 @@ static func run(t) -> void:
 	_relief_in_flight(t)
 	_held_over(t)
 	_keeps_off(t)
+	_verdict_bridge(t)
 	_chain(t)
 	_felled_early(t)
 	_ends(t)
@@ -363,6 +364,50 @@ static func _held_over(t) -> void:
 	t.check(slot.man == null and not (w.banners as Array).has("A NEW ENGINEER TAKES THE BRIDGE"),
 		"a shift slot never filled gets no relief before its stage: no engineer stands outdoors ahead of it")
 	Kit.done(w)
+
+
+## v0.11.1 (spec §7.2 row 13, plan Task 10): Mob Verdict judges the stone bridge -- a walkable structure Mob Verdict used to pass over --
+## and, its crew off guard and the bridge in use, a mob of eight tears it down (damage kind `mob`): the director counts it razed.
+static func _verdict_bridge(t) -> void:
+	var s := _world()
+	var d: CrownsBreadDirector = s.d
+	var crowd: Crowd = s.crowd
+	d._open(2)
+	_clear(d, 2)
+	var bridge := d.targets[2]
+	var ctx := FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var center: Vector2 = crowd._grid.nearest_walkable(bridge.center() + Vector2(0.0, 2.5))
+	var busy := d._busy()
+	var people: Array[Person] = []
+	for p in crowd.citizens:
+		if people.size() < 8 and p.is_alive() and not p.inside and not busy.has(p):
+			people.append(p)
+	for k in people.size():
+		Kit.arrive(people[k], crowd._grid.nearest_walkable(center + Vector2(0.4 * float(k), 0.0)))
+	var verdict: MobVerdictFx = FxTimeline.cast(load("res://src/fx/dominion/mob_verdict.gd"), ctx, bridge.center(), {"to": center})
+	t.check(verdict.building == bridge and verdict.judged == null, "Mob Verdict: the bridge, a walkable structure, is a building it can judge")
+	verdict._process(MobVerdictFx.T_CAST + 0.1)
+	t.check(verdict.mob.size() >= 6, "Mob Verdict: the mob turns on the bridge (%d)" % verdict.mob.size())
+	for p in verdict.mob:
+		p.ground_pos = p.goal()
+	var steps := 0
+	while not bridge.destroyed and steps < 140:
+		verdict._process(MobVerdictFx.HIT_EVERY)
+		steps += 1
+	t.check(bridge.destroyed and bridge.destroy_kind == &"mob", "Mob Verdict: and tear the bridge down (%d s)" % steps)
+	Kit.run_for(s, 1.0)
+	t.check(d.razed(bridge) and d.razed_count() == 1, "the bridge in use, none on guard: razed by the mob")
+	verdict.free()
+	ctx.overhead.free()
+	ctx.ground.free()
+	Kit.done(s)
 
 
 static func _keeps_off(t) -> void:

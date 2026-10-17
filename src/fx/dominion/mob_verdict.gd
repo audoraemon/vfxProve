@@ -1,7 +1,7 @@
 class_name MobVerdictFx
 extends FxTimeline
 ## Mob Verdict (Dominion, Tier IV): a district judges. Two clicks: the first the judged -- the person within PICK_R of
-## it, else the building it is on or beside (CongregationFx.place_for()) -- the second the middle of the mob's circle
+## it, else the building it is on or beside (CongregationFx.place_for(); v0.11.1: the stone bridge too) -- the second the middle of the mob's circle
 ## (RADIUS). After T_CAST everyone in the circle, nearest first up to MAX_MOB and any role but the judged, turns on it
 ## for VERDICT_TIME:
 ##   a person    they go for it and strike until it falls (Person.fight(), TARGET_ONLY), each as what it is.
@@ -43,7 +43,7 @@ func _build() -> void:
 		judged = near[0]
 		judged_at = judged.ground_pos
 	else:
-		var place := CongregationFx.place_for(ctx.env, origin)
+		var place := CongregationFx.place_for(ctx.env, origin, true)  # v0.11.1: the stone bridge too
 		building = place.structure
 		judged_at = place.at
 	at(T_CAST, _judge)

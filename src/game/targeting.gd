@@ -496,8 +496,9 @@ func _draw() -> void:
 			var mine := _rules.director.blight_target(_press) if _rules.director != null else Vector2.INF
 			var s := BlightFx.target(_crowd._env, _press) if mine == Vector2.INF else null
 			if mine != Vector2.INF:
-				# A director's own thing (v0.11.1: an unguarded standard or mirror), ringed as a structure is outlined.
-				_ring(mine, 0.45, COL_ROT)
+				# A director's own thing (v0.11.1: an unguarded standard or mirror), ringed as a structure is outlined; a guarded one
+				# only takes the banner, so its ring is red.
+				_ring(mine, 0.45, COL_ROT if _rules.director.blight_takes(mine) else COL_BAD)
 			elif s != null:
 				var r := s.footprint.grow(0.08)
 				for pass_i in 2:

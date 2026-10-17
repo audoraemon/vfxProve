@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_bound(t)
 	_seized_at_once(t)
 	_smite(t)
+	_wisp_leads(t)
 	_seen(t)
 	_hounds(t)
 	_inside(t)
@@ -212,6 +213,42 @@ static func _smite(t) -> void:
 		and is_equal_approx(her.health, Person.HEALTH_CITIZEN) and d.hint_phase() == "",
 		"her gaolers gone, a Smite on the stocks' far side brings them down and passes her by: free, unhurt")
 	t.check(her.whisper(her.ground_pos + Vector2(0.0, 3.0), MindWhisperFx.LINGER), "free, a whisper takes her at once")
+	Kit.done(s)
+
+
+## v0.11.1 (spec §7.2 row 14, plan Task 10): proven first, a free prisoner on duty is deaf to a Wisp (her hold is her duty, which no lure
+## takes), so loadout B's Wisp could not lead her; the fallback is the mechanism of the row's own family -- once free she answers a Wisp
+## cast within PrisonerDirector.WISP_R of her, hurries to its light, and holds where it leaves her -- and a bound one still answers nothing.
+static func _wisp_leads(t) -> void:
+	var s := _world()
+	var d: PrisonerDirector = s.d
+	var her := d.charge
+	t.check(not her.lure(her.ground_pos + Vector2(2.0, 0.0), 5.0, her.ground_pos) and not her.answers_lure, "bound: a lure takes her not, and she answers none")
+	_strike(s, d.gaolers)
+	for squad: Array in d.patrols:
+		_strike(s, squad)
+	for v: Variant in d.watch:
+		_strike(s, [v])
+	_break(s, d)
+	t.check(not d.bound and her.answers_lure, "free, she answers a lure")
+	var from := her.ground_pos
+	var light := from + Vector2(0.0, PrisonerDirector.WISP_R - 0.5)
+	d._on_wisp(0, "wisp", light)
+	t.check(her.mind == Person.Mind.OBSERVE and her.held_by_god() and her.has_goal() and her.goal().distance_to(light) <= WillOWisp.RING.y + 0.01,
+		"a Wisp cast %.1f off draws her to its ring" % (PrisonerDirector.WISP_R - 0.5))
+	t.check(her.pace > 0.6, "and she hurries there (pace %.2f)" % her.pace)
+	d._on_wisp(0, "wisp", from + Vector2(0.0, PrisonerDirector.WISP_R + 1.5))
+	t.check(her.goal().distance_to(light) <= WillOWisp.RING.y + 0.01, "a Wisp cast beyond WISP_R does not")
+	Kit.arrive(her, her.goal())
+	Kit.run_for(s, EscortDirector.TICK * 2.0 + DT)
+	# (headless people never think: the lure's end is Person's own step, a lured duty going back to its anchor -- done by hand)
+	t.check(her._duty_lured and her.anchor.distance_to(her.ground_pos) < 0.01, "a duty lured, her anchor follows her while she is drawn")
+	her._lured = false
+	her.go_duty(her.anchor)
+	Kit.run_for(s, EscortDirector.TICK * 3.0 + DT)
+	t.check(her.mind == Person.Mind.DUTY and her.anchor.distance_to(light) <= WillOWisp.RING.y + 0.5 and her.anchor.distance_to(from) > 1.0
+		and d.charges[0].hold_at.distance_to(her.anchor) < 0.5 and her.pace < 0.6,
+		"the lure over, she holds where it left her -- not back where she stood -- at her own slow pace")
 	Kit.done(s)
 
 

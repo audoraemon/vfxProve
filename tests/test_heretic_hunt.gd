@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_hold(t)
 	_guarded(t)
 	_open(t)
+	_blight_standard(t)
 	_captain_last(t)
 	_found(t)
 	_search_dropped(t)
@@ -148,6 +149,33 @@ static func _open(t) -> void:
 	t.check(d.broken(0) and (s.banners as Array).has("A STANDARD FALLS") and home.mind != Person.Mind.DUTY
 		and d.timeline.seconds_to("step_1") <= HereticHuntDirector.CHAIN + 0.1 and d.hint_phase() == "waiting",
 		"one Smite breaks an open standard: its party goes home, the next sweep chained CHAIN on, the hint waiting")
+	Kit.done(s)
+
+
+## v0.11.1 (spec §7.3, row 15): Blight rots an unguarded standard (veil); a guarded one only takes the banner and costs no alarm.
+static func _blight_standard(t) -> void:
+	var s := _world()
+	var d: HereticHuntDirector = s.d
+	var crowd: Crowd = s.crowd
+	t.check(d.blight_target(d.steps[0].spot) == Vector2.INF, "Blight: no standard raised, nothing of the hunt's to rot")
+	d._raise(0)
+	var std := d.standard(0)
+	var at := std.center() + Vector2(0.3, 0.0)
+	t.check(d.guarded(0) and d.blight_target(at) == std.center() and d.blight_target(std.center() + Vector2(3.0, 0.0)) == Vector2.INF,
+		"Blight: a raised standard within BlightFx.REACH is the hunt's mark, guarded or not")
+	var before := crowd.alarm
+	t.check(not d.blight_takes(at) and not d.blighted(at) and d.blight_words(at) == "THEIR GUARD KEEPS IT"
+		and not std.destroyed and not d.broken(0) and is_equal_approx(crowd.alarm, before),
+		"Blight: guarded, the standard stands, no alarm, the banner THEIR GUARD KEEPS IT")
+	_clear(d, 0)
+	var home := (d.steps[0].party[0] as HuntDirector.Guard).man as Person
+	t.check(not d.guarded(0) and d.blight_takes(at), "Blight: its party off it, it takes the rot")
+	var took := d.blighted(at)
+	t.check(took and std.destroyed and d.broken(0) and d.blight_words(at) == "BLIGHT - THE STANDARD ROTS"
+		and crowd.alarm - before >= Crowd.BLIGHT_ALARM and home.mind != Person.Mind.DUTY
+		and d.broken_count() == 1 and d.timeline.seconds_to("step_1") <= HereticHuntDirector.CHAIN + 0.1,
+		"Blight: unguarded, the standard breaks as a blow breaks it (counted by the hunt, the next sweep chained), the Blight's alarm and the fall's, the banner")
+	t.check(d.blight_target(at) == Vector2.INF, "Blight: a broken standard is no mark")
 	Kit.done(s)
 
 

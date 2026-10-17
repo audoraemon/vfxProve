@@ -65,6 +65,11 @@ const STOCKS_LIFT := 14.0
 ## the usual MapTag.PERSON_LIFT his plate overlapped hers and the HUD dropped it (Hud.tag_layout keeps the earlier plate).
 const GAOLER_LIFT := 0.0
 
+## v0.11.1 (spec §7.2 row 14, Task 10's fallback): free, she answers a Wisp cast within WISP_R of her -- the lure the Escort type's charge
+## never took, her hold being her duty -- hurrying to its light, and holds where the lure leaves her. WISP_R is her own reach (a charge's
+## general CHARGE_LURE_R is 3.0): her road is long and her pace slow, and a Wisp is cast once in thirty seconds.
+const WISP_R := 5.0
+
 ## The stocks; the aim on their far side, where their tag sits (v0.11 M4).
 var stocks: Structure
 var stocks_far := Vector2.INF
@@ -76,6 +81,16 @@ var searchers: Array = []
 var citadel_door := Vector2.INF
 ## Seconds to the next look at the gaolers and at everyone held (v0.11 M4).
 var _keep_in := 0.0
+## Her pace walking by the god's hand, and the pace at which she hurries to a Wisp's light (v0.11.1); -1 until she is free.
+var _pace_walk := -1.0
+var _pace_lure := -1.0
+
+
+## The Escort type's setup, then the cast signal (v0.11.1: a Wisp cast near her).
+func _begin() -> void:
+	super()
+	if not charges.is_empty() and is_instance_valid(rules) and not rules.cast_made.is_connected(_on_wisp):
+		rules.cast_made.connect(_on_wisp)
 
 
 ## The mission's places and numbers (v0.11 M4): the stocks placed and binding her; the postern, the beats, the hue and cry.
@@ -241,6 +256,52 @@ func _watchers() -> Array:
 	out.append_array(hunters)
 	out.append_array(gaolers)
 	return out
+
+
+## Freed (v0.11.1): she answers a lure from now on, hurrying at `_pace_lure`.
+func _unbind(c: Charge) -> void:
+	super(c)
+	var p := c.man as Person
+	if not is_instance_valid(p):
+		return
+	p.answers_lure = true
+	_pace_walk = p.pace
+	_pace_lure = p.pace / maxf(charge_pace, 0.01)
+
+
+## A Wisp cast (Rules.cast_made, v0.11.1): free and not held by a seizer, within WISP_R of the light, she is drawn to its ring -- her own
+## reach, which Person.lure() would otherwise bound by WillOWisp.CHARGE_LURE_R (`from` is her own place) -- for the Wisp's seconds.
+func _on_wisp(_slot: int, key: String, at: Vector2) -> void:
+	if key != "wisp" or bound or held or escaped or taken or not _alive(charge) or charge.inside or not charge.answers_lure:
+		return
+	if charge.ground_pos.distance_to(at) > WISP_R:
+		return
+	var spot := Vector2.INF
+	for k in 8:  # a place in the light's ring she can stand on (the first of a few tries), else the nearest ground to its light
+		var angle: float = crowd._rng.randf() * TAU
+		var try := at + Vector2(cos(angle), sin(angle)) * crowd._rng.randf_range(WillOWisp.RING.x, WillOWisp.RING.y)
+		if crowd._grid == null or crowd._grid.walkable(try):
+			spot = try
+			break
+	if spot == Vector2.INF:
+		spot = _walkable(at)
+	if charge.lure(spot, WillOWisp.WISP_TIME - 0.5, charge.ground_pos):
+		charges[0].hold_at = charge.ground_pos
+		charge.pace = _pace_lure
+
+
+## Free (v0.11.1): the Escort type's look, but a lure holds her where she stands as it leaves her -- her hold follows her while she is
+## drawn, so the lure's end finds her holding there, not back where she was -- and she hurries only while drawn.
+func _step_free(c: Charge) -> void:
+	var p := c.man as Person
+	if _pace_walk > 0.0:
+		if p.mind == Person.Mind.OBSERVE and p.held_by_god():
+			p.pace = _pace_lure
+			c.hold_at = p.ground_pos
+			p.anchor = p.ground_pos
+		else:
+			p.pace = _pace_walk
+	super(c)
 
 
 ## One step (v0.11 M4): the Escort type's, then every TICK a look of its own -- everyone it holds kept out of the town's flight
@@ -410,6 +471,13 @@ func tour() -> Array:
 	out.append([gate_at, "The postern, down to the dock. Its guard changes soon after she draws near."])
 	out.append([citadel_door, "The Citadel. Once she is free it sends its hounds after her."])
 	return out
+
+
+## Lets go of the cast signal, then the Escort type's (v0.11.1).
+func teardown() -> void:
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_wisp):
+		rules.cast_made.disconnect(_on_wisp)
+	super()
 
 
 ## What the results show (v0.11 M4): the Escort type's, when she was freed, and whether she was taken inside.

@@ -138,6 +138,7 @@ static func run(t) -> void:
 	_wren(t)
 	_swap(t)
 	_own_try(t)
+	_lured_wren(t)
 	_board_wren(t)
 	_route(t)
 	_carry(t)
@@ -278,6 +279,58 @@ static func _swap(t) -> void:
 	_run(s3, VigilFlameDirector.SWAP_SECONDS + 0.2)
 	t.check(d3.swapped and not d3.swap_seen and d3.reports.is_empty(), "an acolyte held by Discord sees nothing")
 	_done(s3)
+
+
+## A Wisp cast at `at` in the staged world (v0.11.1 tests): the real effect, so it draws whom it would.
+static func _wisp_at(s: Dictionary, at: Vector2) -> FxTimeline:
+	var ctx := FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rules = s.rules
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	return FxTimeline.cast(load("res://src/fx/control/will_o_wisp.gd"), ctx, at)
+
+
+## v0.11.1 (spec §7.2 row 11): Wren answers a Wisp. One cast within CHARGE_LURE_R of him draws him from his duty to its light, the director
+## leaves him to it (a lure is the god's hand as a whisper is), and the lantern coming near the light he stands in, he takes hold; one cast
+## 5.0 away does not move him.
+static func _lured_wren(t) -> void:
+	var s := _setup()
+	var d: VigilFlameDirector = s.d
+	_wren_now(d)
+	_bearer_out(s)
+	_clear_watchers(d)
+	var w := d.wren
+	t.check(w.answers_lure, "Wren answers a lure from the moment he comes")
+	_run(s, VigilFlameDirector.TICK + DT)
+	var lantern := d.flame_at()
+	_arrive(w, lantern + Vector2(2.5, 0.0))
+	var far := _wisp_at(s, lantern + Vector2(7.5, 0.0))
+	_run(s, 1.0)
+	t.check(w.mind == Person.Mind.DUTY and not w.held_by_god() and not d.whispered, "a Wisp cast 5.0 away does not move him")
+	far.free()
+	var near := _wisp_at(s, lantern)
+	t.check(w.mind == Person.Mind.OBSERVE and w.held_by_god(), "a Wisp within 3.0 of him draws him to its light")
+	_run(s, VigilFlameDirector.TICK * 3.0)
+	t.check(w.mind == Person.Mind.OBSERVE and w.has_goal(), "and the director leaves him to it (no errand sent over the lure)")
+	_arrive(w, w.goal())  # (headless people do not walk their goals in this world: he stands at the ring spot the lure gave him)
+	_run(s, 0.6)
+	t.check(d.whispered and (d.swapping or d.swapped), "at the lantern's side he takes hold as a whispered one does (%s)" % d.hint_phase())
+	_run(s, VigilFlameDirector.SWAP_SECONDS + 0.5)
+	t.check(d.swapped and d.wren.mind == Person.Mind.DUTY and d.wren.anchor.distance_to(d.shrine) < 0.01,
+		"and carries the flame to Mira's shrine")
+	near.free()
+	# The Searchlight does not hear the Wisp that drew him.
+	d.searchlight.hear(Vector2.INF)
+	d._on_cast(0, "wisp", w.ground_pos)
+	t.check(d.searchlight.noise == Vector2.INF, "a Wisp that draws Wren is no noise to the light")
+	d._on_cast(0, "wisp", w.ground_pos + Vector2(8.0, 0.0))
+	t.check(d.searchlight.noise != Vector2.INF, "a Wisp farther off still is")
+	_done(s)
 
 
 static func _own_try(t) -> void:

@@ -49,12 +49,13 @@ var _strands: Strands
 var _debug: Debug
 
 
-## The gathering place for a click at `at`: the standing building it is on or beside, else the ground there.
-static func place_for(env: EnvironmentField, at: Vector2) -> Dictionary:
+## The gathering place for a click at `at`: the standing building it is on or beside, else the ground there. `bridge_ok` (v0.11.1, Mob
+## Verdict) lets the stone bridge count: it is walkable, which every other caller passes over.
+static func place_for(env: EnvironmentField, at: Vector2, bridge_ok := false) -> Dictionary:
 	var best: Structure = null
 	var best_d := PICK_REACH
 	for s in env.near(at, PICK_REACH):
-		if not is_instance_valid(s) or s.destroyed or s.walkable:
+		if not is_instance_valid(s) or s.destroyed or (s.walkable and not (bridge_ok and s.kind == Structure.Kind.BRIDGE)):
 			continue
 		var d := s.distance_to(at)
 		if d <= best_d:

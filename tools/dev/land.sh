@@ -21,7 +21,7 @@ if ! git merge-tree --write-tree --name-only HEAD origin/feat/Develop-Main > "$O
 say "trial merge: clean"
 timeout 900 "$G" --headless --editor --path . --import > "$O/import.log" 2>&1; say "import exit=$?"
 say "== suite"; bash tools/dev/run_suite_parallel.sh 8 2>&1 | tail -1 | tee -a "$SUM"
-say "== references"; bash tools/dev/refs_check.sh > "$O/refs.txt" 2>&1; grep -v ' OK$' "$O/refs.txt" | tee -a "$SUM"
+say "== references"; bash tools/dev/refs_check.sh --jobs=8 > "$O/refs.txt" 2>&1; grep -v ' OK$' "$O/refs.txt" | tee -a "$SUM"
 if [ "$FLOW" = 1 ]; then
   for i in $(seq 1 120); do [ "$(busy)" = "0" ] && break; sleep 30; done
   say "== FLOW (waited $((i-1))x30 s)"

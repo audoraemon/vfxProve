@@ -8,6 +8,9 @@ extends FxTimeline
 const WISP_TIME := 12.0
 const LURE_REACH := 6.0
 const LURE_MAX := 25
+## A director's charge (Person.answers_lure) answers only a Wisp cast this near him (v0.11.1, Decision 28): a Wisp cast to draw
+## bystanders elsewhere does not pull him off his road.
+const CHARGE_LURE_R := 3.0
 ## The ring the drawn stand in, round the light.
 const RING := Vector2(0.8, 1.6)
 const GLOW := [Color("e8fff4"), Color("9fe8d0"), Color("5cb8a8"), Color("2a6a6a")]
@@ -16,13 +19,17 @@ const LIGHT := Color(0.6, 1.0, 0.85)
 var _light: QuadFx
 
 
-## Who it would draw from `at`: people within reach it can lure (v0.11.1: soldiers at their post too), nearest first, LURE_MAX at most.
+## Who it would draw from `at`: people within reach it can lure (v0.11.1: soldiers at their post too; a charge only within CHARGE_LURE_R), nearest first, LURE_MAX at most.
 static func drawn(field: EnemyField, at: Vector2) -> Array[Person]:
 	var out: Array[Person] = []
 	for e in field.in_radius(at, LURE_REACH):
 		var p := e as Person
-		if p != null and not p.resists_mind() and not p.inside \
-		and (p.mind in Person.LURABLE or (p.soldier and p.mind in Person.SOLDIER_LURABLE and not p.hurrying)):
+		if p == null or p.resists_mind() or p.inside:
+			continue
+		if p.answers_lure:
+			if p.ground_pos.distance_to(at) <= CHARGE_LURE_R and (p.mind == Person.Mind.DUTY or p.mind in Person.LURABLE):
+				out.append(p)
+		elif p.mind in Person.LURABLE or (p.soldier and p.mind in Person.SOLDIER_LURABLE and not p.hurrying):
 			out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))

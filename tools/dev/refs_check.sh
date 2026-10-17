@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks KAK's exact references against tools/dev/refs/references.tsv.
+# Checks KAK's exact references against every tools/dev/refs/*.tsv (references.tsv and, from v0.11.1, one routes_t<N>.tsv per tier).
 # usage: bash tools/dev/refs_check.sh [--only=REGEX] [--jobs=N]     (from the project root; G= overrides the Godot path)
 #   --only=REGEX   check only references whose name matches (e.g. --only='^(bread|hunt)_' for the missions a task touched)
 #   --jobs=N       parallel headless scenario runs (default 6; fixed-fps headless runs are deterministic under load)
@@ -10,9 +10,8 @@ set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
 ONLY=""; JOBS=6
 for a in "$@"; do case "$a" in --only=*) ONLY="${a#--only=}";; --jobs=*) JOBS="${a#--jobs=}";; esac; done
-TSV=tools/dev/refs/references.tsv
 T=$(mktemp -d)
-grep -v '^#' "$TSV" | awk -F'\t' 'NF>=3' > "$T/rows"
+for f in tools/dev/refs/*.tsv; do cat "$f"; echo; done | tr -d '\r' | grep -v '^#' | awk -F'\t' 'NF>=3' > "$T/rows"
 [ -n "$ONLY" ] && { awk -F'	' -v re="$ONLY" '$1 ~ re' "$T/rows" > "$T/r2"; mv "$T/r2" "$T/rows"; }
 run_row() { # name how expected outfile mode
   local name="$1" how="$2" want="$3" out="$4" mode="$5" o got

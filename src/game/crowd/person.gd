@@ -184,6 +184,9 @@ var _held_saved := false
 var _held_mind := Mind.POST
 var _held_anchor := Vector2.ZERO
 var _held_hurrying := false
+## A director's charge that answers a lure from DUTY (v0.11.1, spec §7.3): Wren coming for the flame, Pip, a listener who is not
+## rapt. The director sets it on one of its own people and reads the lure as the god's hand. false for everyone else.
+var answers_lure := false
 ## Drawn by a lure (lure()) and still staring: with WHISPERED, CONFUSED and COMPELLED the god's hold on him (held_by_god()).
 var _lured := false
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
@@ -777,14 +780,15 @@ func _come_to() -> void:
 
 ## Drawn by a Will-o'-Wisp (v0.06): walk to `at` and stand staring at the light for `seconds` (the watching mind,
 ## with a walk first), then back to its day. Only a citizen going about its day, watching, recovering or regrouping
-## comes, and (v0.11.1) a soldier standing at his post or holding the ground (SOLDIER_LURABLE); true when it did.
+## comes, and (v0.11.1) a soldier standing at his post or holding the ground (SOLDIER_LURABLE), and a director's charge
+## on duty that answers a lure (answers_lure); true when it did.
 func lure(at: Vector2, seconds: float) -> bool:
 	if resists_mind() or inside or state == State.DEAD:
 		return false
 	if soldier:
 		if not mind in SOLDIER_LURABLE or hurrying:
 			return false
-	elif not mind in LURABLE:
+	elif not (mind in LURABLE or (answers_lure and mind == Mind.DUTY)):
 		return false
 	_hold_begin()
 	_lured = true

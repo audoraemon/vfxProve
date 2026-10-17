@@ -48,5 +48,25 @@ static func run(t) -> void:
 	t.check(not near[0].lure(at, 10.0) and not soldier.lure(at, 10.0), "the fleeing and a soldier on the rally will not come")
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "wisp")
 	t.check(crowd.threats.active_count() == 0, "a wisp is no danger the town can see")
+
+	# v0.11.1: a director's charge (answers_lure) on duty answers a Wisp within CHARGE_LURE_R of him and no farther; any other
+	# person on duty never does.
+	var charge: Person = near[3]
+	charge.ground_pos = at + Vector2(1.0, 0.0)
+	charge.mind = Person.Mind.DUTY
+	near[4].mind = Person.Mind.DUTY
+	near[4].ground_pos = at + Vector2(1.0, 0.5)
+	t.check(not charge.lure(at, 10.0) and charge not in WillOWisp.drawn(field, at), "a person on duty is deaf to a lure")
+	charge.answers_lure = true
+	t.check(charge in WillOWisp.drawn(field, at) and near[4] not in WillOWisp.drawn(field, at),
+		"one who answers a lure is drawn from duty within %.0f of the light, and only he" % WillOWisp.CHARGE_LURE_R)
+	charge.ground_pos = at + Vector2(WillOWisp.CHARGE_LURE_R + 0.5, 0.0)
+	t.check(charge not in WillOWisp.drawn(field, at), "and not beyond it: a Wisp cast elsewhere does not pull him off his road")
+	charge.ground_pos = at + Vector2(WillOWisp.CHARGE_LURE_R - 0.5, 0.0)
+	t.check(charge.lure(at, 10.0) and charge.mind == Person.Mind.OBSERVE and charge.goal() != Vector2.INF,
+		"lured, he walks to the light and stares as anyone does")
+	charge.mind = Person.Mind.CALM
+	charge.ground_pos = at + Vector2(WillOWisp.CHARGE_LURE_R + 0.5, 0.0)
+	t.check(charge not in WillOWisp.drawn(field, at), "a charge going about calmly keeps to the same reach")
 	crowd.clear()
 	world.free()

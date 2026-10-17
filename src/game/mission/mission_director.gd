@@ -123,6 +123,27 @@ func hud_line() -> String:
 	return ""
 
 
+## Virtual (v0.11.1, spec §7.3): a thing of this director's own that Blight can ruin within BlightFx.REACH of `at` -- an unguarded
+## standard, an unguarded mirror -- as the ground point Blight rots (Vector2.INF for none, the default). Only reads. BlightFx asks
+## the director before it looks for a structure.
+func blight_target(_at: Vector2) -> Vector2:
+	return Vector2.INF
+
+
+## Virtual (v0.11.1): Blight landed on this director's thing at `at` (blight_target()). The base adds the town's alarm
+## (Crowd.BLIGHT_ALARM) that env.blight() adds for a structure, so a director's Blight costs what any Blight costs; subclasses
+## call super() and then break their standard or cloud their mirror.
+func blighted(_at: Vector2) -> void:
+	if crowd != null:
+		crowd.add_alarm(Crowd.BLIGHT_ALARM)
+
+
+## Virtual (v0.11.1): the banner for a Blight that landed on this director's thing at `at` ("" keeps Mission.blight_banner(): the
+## HUD then says nothing of the director's thing). "BLIGHT - THE STANDARD ROTS", "THEIR GUARD KEEPS IT".
+func blight_words(_at: Vector2) -> String:
+	return ""
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

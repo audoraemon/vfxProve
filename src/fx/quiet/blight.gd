@@ -3,7 +3,9 @@ extends FxTimeline
 ## Blight (v0.05): a quiet ruin. The nearest structure with a use within REACH of the aim -- a well or a fountain, the
 ## Bell Tower, a gate or the postern, the dock, the cathedral -- rots grey-green and its use is gone
 ## (EnvironmentField.blight(); the town's responses read Structure.blighted). Nothing falls and nobody runs: it only
-## adds Crowd.BLIGHT_ALARM. With nothing of use in reach it fizzles.
+## adds Crowd.BLIGHT_ALARM. With nothing of use in reach it fizzles. (v0.11.1) A mission's director is asked first: its own
+## thing within REACH (an unguarded standard or mirror -- MissionDirector.blight_target()) is rotted instead and the director
+## told (blighted(), which adds the same alarm); no structure is ruined then, and the banner is the director's own words.
 
 const REACH := 1.0
 const T_ROT := 0.8
@@ -30,10 +32,19 @@ static func target(env: EnvironmentField, at: Vector2) -> Structure:
 	return best
 
 
+## The director's point Blight would rot at `at` (v0.11.1), or Vector2.INF for none: no director, or none of its own in reach.
+## Targeting rings it as it rings a structure.
+static func director_target(ctx: FxContext, at: Vector2) -> Vector2:
+	if ctx == null or ctx.rules == null or ctx.rules.director == null:
+		return Vector2.INF
+	return ctx.rules.director.blight_target(at)
+
+
 func _build() -> void:
 	duration = 1.6
-	var s := target(ctx.env, origin)
-	var where := s.center() if s != null else origin
+	var mine := director_target(ctx, origin)
+	var s: Structure = null if mine != Vector2.INF else target(ctx.env, origin)
+	var where := mine if mine != Vector2.INF else (s.center() if s != null else origin)
 	var screen := Iso.ground_to_screen(where)
 	ctx.play(&"grav_field", where, -12.0)
 	var gather := FxParts.particles(self, ctx.overhead, screen, PixelParticles.Shape.PUFF, ROT)
@@ -47,5 +58,12 @@ func _build() -> void:
 		spores.drag = 0.8
 		spores.burst(16, {"radius": 18.0, "speed": Vector2(2, 8), "alt": Vector2(0, 20), "alt_speed": Vector2(4, 14),
 			"life": Vector2(0.6, 0.8), "size": Vector2(1, 2)})
-		if s != null and is_instance_valid(s) and not s.destroyed:
+		if mine != Vector2.INF:
+			var d: MissionDirector = ctx.rules.director if ctx.rules != null else null
+			if d != null:
+				d.blighted(mine)
+				var words := d.blight_words(mine)
+				if words != "":
+					ctx.rules.banner.emit(words)
+		elif s != null and is_instance_valid(s) and not s.destroyed:
 			ctx.env.blight(s))

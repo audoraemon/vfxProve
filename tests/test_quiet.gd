@@ -4,6 +4,22 @@ extends RefCounted
 ## a well's water, a gate (jammed for a while), the bell, the dock, the rite -- and adds a single alarm.
 
 
+## A director with a thing of its own Blight can ruin (v0.11.1): a point `at`, a banner, and a count of the times it was told.
+class BlightDirector extends MissionDirector:
+	var spot := Vector2.INF
+	var told := []
+
+	func blight_target(at: Vector2) -> Vector2:
+		return spot if spot != Vector2.INF and at.distance_to(spot) <= BlightFx.REACH else Vector2.INF
+
+	func blighted(at: Vector2) -> void:
+		told.append(at)
+		super(at)
+
+	func blight_words(_at: Vector2) -> String:
+		return "BLIGHT - THE STANDARD ROTS"
+
+
 static func _crowd(tier := ResponseProfile.Tier.ORGANIZED) -> Array:
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -206,6 +222,47 @@ static func run(t) -> void:
 		if is_instance_valid(p) and p.passing_gate == gate:
 			passing += 1
 	t.check(not gate.blighted and passing >= 1, "after %d s it frees itself" % roundi(Crowd.GATE_JAM))
+	_done(made)
+
+	# v0.11.1: a director's own thing is asked first. Blight lands on its point, tells it once (the town's alarm, base class), ruins no
+	# structure, and the banner is the director's; with no point of its own it is Blight as before.
+	made = _crowd(ResponseProfile.Tier.PREPARED)
+	crowd = made[0]
+	env = made[1]
+	var fxc := FxContext.new()
+	fxc.env = env
+	fxc.field = made[3]
+	fxc.rng = RandomNumberGenerator.new()
+	fxc.overhead = Node2D.new()
+	fxc.ground = Node2D.new()
+	var rules := Rules.new()
+	var dir := BlightDirector.new()
+	dir.crowd = crowd
+	rules.director = dir
+	fxc.rules = rules
+	var banners := []
+	rules.banner.connect(func(text: String) -> void: banners.append(text))
+	well = BlightFx.target(env, TownLayout.WELLS[0].get_center())
+	dir.spot = well.center()
+	t.check(BlightFx.director_target(fxc, well.center() + Vector2(0.3, 0.0)) == dir.spot
+		and BlightFx.director_target(fxc, well.center() + Vector2(3.0, 0.0)) == Vector2.INF, "Blight asks the director for its point")
+	before = crowd.alarm
+	var fx: FxTimeline = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, well.center() + Vector2(0.3, 0.0))
+	fx._process(1.0)
+	t.check(dir.told == [dir.spot] and not well.blighted and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM)
+		and banners == ["BLIGHT - THE STANDARD ROTS"],
+		"on its point Blight tells the director once, ruins no structure, adds one alarm and says the director's words")
+	fx.end_now()
+	dir.spot = Vector2.INF
+	before = crowd.alarm
+	fx = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, well.center() + Vector2(0.3, 0.0))
+	fx._process(1.0)
+	t.check(dir.told.size() == 1 and well.blighted and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM) and banners.size() == 1,
+		"with no point of its own it ruins the well as v0.11 did (one alarm), and the director hears nothing")
+	fx.end_now()
+	rules.free()
+	fxc.overhead.free()
+	fxc.ground.free()
 	_done(made)
 
 	# The bell cannot ring, the cathedral holds no rite.

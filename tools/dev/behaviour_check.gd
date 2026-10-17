@@ -213,6 +213,10 @@ extends SceneTree
 ##          escapes, and the Procession's end line counts the looks with no soldier, and nobody, within the witness
 ##          distance.
 ## --difficulty=<tier> plays any scenario at that tier (default Organized; rite, engineers and boats: Prepared).
+## --route=b (v0.11.1, spec §7) plays a board mission's second route: it drafts RouteBook.loadout_b() and plays the scenario's B policy
+##   (tools/dev/routes/tier<N>_b.gd: act_<scenario>(bc, ctx) and state_<scenario>(bc, ctx) through _scripted(); hit-stop is off for every
+##   scenario; --board plays the board version, as for the ★ missions. `--scenario=feast --path=festival|procession --board` plays the
+##   board's Festival or Procession (mission_id = the board id). ctx = {rules, slots, d (the director), crowd, memo, mission}.
 
 const SEED := 7
 ## How many houses `siege --burn` sets burning each time (v0.08.2).
@@ -421,7 +425,18 @@ const FEAST_DP := CampaignDef.START_DP + 2 * CampaignDef.WIN_DP
 const FINALE_SLOTS := 6
 const FINALE_DP := CampaignDef.START_DP + 3 * CampaignDef.WIN_DP
 
+## v0.11.1 second routes (spec §7): the scenario's board mission id (feast: by --path, see _route_id()), and the tier files holding its B policy.
+const ROUTE_IDS := {"warning": "warning", "tax": "tax_collector", "harvest": "spoiled_harvest", "lamb": "lost_lamb",
+	"prayers": "first_prayers", "miras": "miras_house", "lanterns": "broken_lanterns", "ringers": "bell_ringers",
+	"panic": "market_panic", "informer": "informer", "flame": "vigil_flame", "bread": "crowns_bread", "prisoner": "prisoner",
+	"hunt": "heretic_hunt", "bishop": "bishop", "armoury": "armoury", "sermon": "sermon", "relic": "relic_run",
+	"judgement": "last_judgement", "night": "long_night", "eye": "lantern_eye", "exodus": "exodus", "heart": "heart_of_faith"}
+const TIER_B := [preload("res://tools/dev/routes/tier1_b.gd"), preload("res://tools/dev/routes/tier2_b.gd"),
+	preload("res://tools/dev/routes/tier3_b.gd"), preload("res://tools/dev/routes/tier4_b.gd"), preload("res://tools/dev/routes/tier5_b.gd")]
+
 var mission: Mission
+## "b" under --route=b (v0.11.1), else "".
+var route := ""
 
 
 func _initialize() -> void:
@@ -525,12 +540,19 @@ func _run() -> void:
 	elif scenario == "heart":
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
 		mission.mission_id = MissionBook.HEART_OF_FAITH
+	route = Battlefield.arg_value(args, "--route")
+	if scenario == "feast" and "--board" in args:
+		mission.mission_id = _route_id(scenario)  # v0.11.1: the board's Festival or Procession, not the campaign night
+	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
+		powers = RouteBook.loadout_b(_route_id(scenario))
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
-	if scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
+	if route == "b" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	match scenario:
+		_ when route == "b":
+			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
 		"calm", "":
 			await _calm(seconds, "--shots" in args)
 		"strike":
@@ -617,6 +639,31 @@ func _run() -> void:
 					% [case_arg, ", ".join(WARNING_CASES.keys())])
 	print("BEHAVIOUR checksum=%d" % _checksum())
 	quit()
+
+
+## The board mission a scenario plays (v0.11.1, ROUTE_IDS; feast by --path), "" for one that is not a board mission.
+func _route_id(scenario: String) -> String:
+	if scenario == "feast":
+		return "procession" if _feast_path() == "procession" else "festival"
+	return String(ROUTE_IDS.get(scenario, ""))
+
+
+## `--route=b` (v0.11.1, spec §7): the scenario's B policy -- its tier file's act_<name>(bc, ctx) and state_<name>(bc, ctx) -- through
+## _scripted(), which stops at the main objective on the board and prints the gate's result line. `name` is the scenario's, but the
+## Festival's and the Procession's are named for the act (the board id). A tier file's functions are all a tier task writes: this gives them
+## ctx = {rules, slots (key -> slot), d (the director), crowd, memo (the policy's own notes), mission}, and `bc` (this script) with its helpers.
+func _route_b(scenario: String, case_arg: String) -> void:
+	var id := _route_id(scenario)
+	if id == "":
+		print("BEHAVIOUR route b: scenario=%s is not a board mission" % scenario)
+		return
+	var label := id if scenario == "feast" else scenario
+	var rules: Rules = mission._rules
+	var ctx := {"rules": rules, "slots": _slots(rules), "d": rules.director, "crowd": mission._crowd, "memo": {}, "mission": mission}
+	var tier: GDScript = TIER_B[TierBook.tier_of(id) - 1]
+	await _scripted(label, case_arg if case_arg != "" else "play",
+		func() -> String: return String(tier.call("act_" + label, self, ctx)),
+		func() -> String: return String(tier.call("state_" + label, self, ctx)))
 
 
 func _calm(seconds: float, shots: bool) -> void:

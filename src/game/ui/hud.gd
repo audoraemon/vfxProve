@@ -1130,6 +1130,7 @@ func _draw_tag_layer() -> void:
 func _draw() -> void:
 	# Before the first layout pass a Control can still be 0 wide, and this one is centred on the screen.
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
+	_frame_wishes = _build_wish_rows()  # v0.11.1: the wish rows are built once a draw, not once a plate
 	_draw_rise()
 	_draw_clock(w)
 	_draw_rite(w)
@@ -1141,6 +1142,7 @@ func _draw() -> void:
 	_draw_caption(w)
 	_draw_ascend()
 	_draw_slots(w)
+	_frame_wishes = null
 
 
 func _draw_clock(w: float) -> void:

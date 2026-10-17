@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs the whole test suite as N Godot processes at once (default 8) and sums them.
 # usage: bash tools/dev/run_suite_parallel.sh [N]      (from the project root; G= overrides the Godot path)
-# Prints each part's line, then "checks=C failures=F"; exits 1 on any failure. Logs: a fresh $TMPDIR/kak_suite.XXXX/part_N.log per run (parallel worktrees never share one)
+# Prints each part's line, then "checks=C failures=F"; exits 1 on any failure. Logs: a fresh $TMPDIR/kak_suite.XXXX/part_N.log per run (parallel worktrees never share one; removed when all pass)
 set -u
 N=${1:-8}
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
@@ -20,4 +20,5 @@ for i in $(seq 1 "$N"); do
 done
 grep -a -h "FAIL:\|SCRIPT ERROR\|Parse Error" "$LOG"/part_*.log | head -20
 echo "checks=$total failures=$fails"
-[ "$fails" -eq 0 ] && [ "$bad" -eq 0 ]
+if [ "$fails" -eq 0 ] && [ "$bad" -eq 0 ]; then rm -rf "$LOG"; exit 0; fi
+exit 1

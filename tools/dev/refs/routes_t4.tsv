@@ -1,0 +1,16 @@
+# KAK Tier 4 second routes (v0.11.1 Task 11): the scripted player's loadout-B runs, seeds 1-3. name<TAB>how<TAB>expected (a checksum).
+procession_b_play_1	--scenario=feast --path=procession --board --case=play --route=b --seed=1	-205330251
+procession_b_play_2	--scenario=feast --path=procession --board --case=play --route=b --seed=2	-16989598
+procession_b_play_3	--scenario=feast --path=procession --board --case=play --route=b --seed=3	-763157456
+bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	679877813
+bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	421923320
+bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	536941281
+armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1	-851703909
+armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2	-492323792
+armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3	-214820974
+sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1	-545851218
+sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2	-511830713
+sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3	-460503112
+relic_b_play_1	--scenario=relic --case=play --route=b --seed=1	-870977033
+relic_b_play_2	--scenario=relic --case=play --route=b --seed=2	-931989609
+relic_b_play_3	--scenario=relic --case=play --route=b --seed=3	-906500894

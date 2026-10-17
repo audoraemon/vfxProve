@@ -455,6 +455,7 @@ func _step_events(delta: float) -> void:
 	_clock += delta
 	_chain()
 	var now := preaching()
+	_answer_lures()
 	if now and not _was_preaching:
 		rules.banner.emit("THE PREACHER TAKES UP HIS SERMON")
 	_was_preaching = now
@@ -504,7 +505,21 @@ func _keep_listener(l: Listener, preaching_now: bool, evacuating: bool) -> void:
 		return
 	if preaching_now and p.ground_pos.distance_to((preacher as Person).ground_pos) <= VOICE:
 		_hold(p)
+	if p.mind == Person.Mind.OBSERVE and p.held_by_god():
+		return  # (v0.11.1) drawn by a Will-o'-Wisp: the god's hand, left be; when the lure ends he walks back to his ring himself
 	_recall_to(p, l.spot, evacuating)
+
+
+## A listener answers a Will-o'-Wisp's lure from his duty while he is not rapt (v0.11.1, spec §7.3, Decision 28): his wave has walked in, he is
+## unturned and out of doors, and the preacher does not hold him (silenced, or he is out of his voice). A waiting wave is held at its
+## source (deaf to the god's hand as to a whisper), a rapt one hears only the preacher, a Believer stands by the door. Every frame, so a
+## Wisp cast the instant the preacher falls silent finds him. One lured within LURE_REACH of the god's house goes in by Mira's rule.
+func _answer_lures() -> void:
+	for l: Listener in listeners:
+		if _alive(l.man):
+			var p := l.man as Person
+			p.answers_lure = called[l.wave] and not p.inside and not believers.has(p) and not rapt(p)
+			p.lure_reach = WillOWisp.LURE_REACH
 
 
 ## `p` held deaf to a whisper and past fear past the next look (v0.11 M5, plan decision 94's hold).

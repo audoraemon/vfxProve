@@ -78,6 +78,7 @@ static func run(t) -> void:
 	_bless_reserved(t)
 	_escort_balance(t)
 	_let_go(t)
+	_smite_alone(t)
 
 
 ## The Prince, six attendants and four escorts; a route of walkable points.
@@ -471,3 +472,53 @@ static func _let_go(t) -> void:
 	_run(s, 1.0)
 	_done(s)
 	t.check(w.get_ref() == null, "the Procession's director is freed after teardown")
+
+
+## v0.11.1 (spec §7.2 row 16, proved first): the B route's strike. A Smite takes a Prince who stands where its bolt falls, and not his escort
+## (ESCORT_R from him, beyond SmiteFx.KILL_R); but the cast frightens him at once and he runs (1.6 * pace * T_STRIKE against KILL_R, which
+## the live runs of tools/dev/behaviour_check.gd --route=b showed: a walking Prince missed twice, a standing one hit on the margin), so the
+## route's main step is the Death Mark, which fixes the kill: marked he grows frail and slow, and MARK_TIME on he dies where he stands, his
+## death judged seen or not -- the act's win -- and nothing more is struck.
+static func _smite_alone(t) -> void:
+	var s := _setup()
+	var d: ProcessionDirector = s.d
+	_run(s, 0.2)
+	var ctx := FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var smite: SmiteFx = FxTimeline.cast(load("res://src/fx/ruin/smite.gd"), ctx, d.prince.ground_pos)
+	smite._process(SmiteFx.T_STRIKE + 0.05)
+	_run(s, 0.3)
+	var escort := 0
+	for e in d.escorts:
+		escort += 1 if WarningDirector._alive(e) else 0
+	t.check(d.fallen() and d.judged and smite.struck >= 1 and escort == d.escorts.size(),
+		"a Smite on a Prince who stands where it falls kills him, his death is judged, and his escort stands (%d of %d)" % [escort, d.escorts.size()])
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)
+	s = _setup()
+	d = s.d
+	_run(s, 0.2)
+	ctx = FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var mark: DeathMarkFx = FxTimeline.cast(load("res://src/fx/death/death_mark.gd"), ctx, d.prince.ground_pos)
+	t.check(mark.marked == d.prince and d.prince.statuses.has(&"frail") and d.prince.statuses.has(&"slow") and not d.fallen(),
+		"a Death Mark on the Prince marks him -- frail and slow, still walking -- and nothing falls yet")
+	mark._process(DeathMarkFx.MARK_TIME + 0.05)
+	_run(s, 0.3)
+	t.check(d.fallen() and d.judged and not d.boarded, "MARK_TIME on he dies where he stands, and his death is judged: the act's win")
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)

@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_halt(t)
 	_moving(t)
 	_board(t)
+	_lured_pip(t)
 	_rolls_on(t)
 	_swap(t)
 	_no_first_swap(t)
@@ -169,6 +170,66 @@ static func _board(t) -> void:
 	Kit.run_for(s, RelicRunDirector.BOARD + 0.2)
 	t.check(not d.watched() and d.aboard and d.wren.inside and (s.banners as Array).has("PIP SLIPS ABOARD")
 		and d.hud_line() == "The relic: Pip at the lock", "the watch held, BOARD seconds unwatched and he slips aboard, hidden")
+	Kit.done(s)
+
+
+## v0.11.1 (spec §7.3, row 20): Pip answers a Will-o'-Wisp's lure from his duty while he is not aboard and not by the halted cart (within
+## WillOWisp.CHARGE_LURE_R of it: the passers-by's Wisp cast beyond the cart never pulls him off it); a lure is the god's hand like a
+## whisper -- the director leaves him be, he holds where it leaves him, and staring at a light by the halted cart he can board.
+static func _lured_pip(t) -> void:
+	var s := _world()
+	var d: RelicRunDirector = s.d
+	var field: EnemyField = s.field
+	_at_halt(s, d, 0)
+	var cart := d.cart_at()
+	var pip := d.wren
+	Kit.arrive(pip, cart + Vector2(4.5, 0.0))
+	Kit.run_for(s, 0.1)
+	var light := cart + Vector2(2.0, 0.0)
+	t.check(pip.answers_lure and WillOWisp.drawn(field, light).has(pip) and not WillOWisp.drawn(field, cart + Vector2(-2.0, 0.0)).has(pip),
+		"away from the halted cart Pip answers a Wisp lit within CHARGE_LURE_R of him, and not one lit beyond it")
+	Kit.arrive(pip, cart + Vector2(2.0, 0.0))
+	Kit.run_for(s, 0.1)
+	t.check(not pip.answers_lure and not WillOWisp.drawn(field, cart).has(pip),
+		"by the halted cart (within CHARGE_LURE_R) a Wisp cast beyond it never draws him off")
+	Kit.arrive(pip, cart + Vector2(4.5, 0.0))
+	Kit.run_for(s, 0.1)
+	t.check(pip.lure(cart + Vector2(1.4, 0.0), WillOWisp.WISP_TIME - 0.5, light), "(set-up) the light at the cart draws him")
+	Kit.run_for(s, 0.6)
+	t.check(pip.mind == Person.Mind.OBSERVE and pip.held_by_god(), "the director leaves a lured Pip be: it is the god's hand, as a whisper is")
+	Kit.arrive(pip, cart + Vector2(1.4, 0.0))
+	Kit.run_for(s, RelicRunDirector.BOARD + 0.5)
+	t.check(d.watched() and not d.aboard, "staring at the light by a watched cart he does not board")
+	_blind(d)
+	Kit.run_for(s, RelicRunDirector.BOARD + 0.3)
+	t.check(not d.watched() and d.aboard and pip.inside, "the watch held, BOARD seconds unwatched and he slips aboard from the light's ring")
+	Kit.done(s)
+	s = _world()
+	d = s.d
+	field = s.field
+	pip = d.wren
+	d._set_out_cart()
+	Kit.arrive(pip, Vector2(0.0, 6.0))
+	Kit.run_for(s, 0.1)
+	pip.lure(Vector2(0.5, 6.0), 11.5, Vector2(0.0, 6.0))
+	Kit.run_for(s, 0.6)
+	var left := pip.anchor.distance_to(pip.ground_pos)
+	t.check(pip.mind == Person.Mind.OBSERVE and left < 0.3, "a lure leaves him where it ends: his duty is where he stands (%.2f off)" % left)
+	Kit.done(s)
+	s = _world()
+	d = s.d
+	field = s.field
+	d._set_out_cart()
+	d.halts_done[0] = true
+	d._board()
+	d.lock_left = 0.0
+	_at_halt(s, d, 1)
+	_blind(d)
+	Kit.run_for(s, RelicRunDirector.SWAP + 0.3)
+	t.check(d.swapped and d.wren.answers_lure, "with the relic he answers a lure again")
+	d.wren.lure(d.wren.ground_pos + Vector2(0.5, 0.0), 11.5, d.wren.ground_pos)
+	Kit.run_for(s, 0.6)
+	t.check(d.wren.mind == Person.Mind.OBSERVE and d.wren.anchor.distance_to(d.shrine) < 0.5, "lured with the relic he is left be and his errand stays your believers' house")
 	Kit.done(s)
 
 

@@ -106,7 +106,7 @@ const SPEC := [
 	["armoury.open", "No guard stands. Destroy it now: more armed men march from the Citadel, faster each minute."],
 	["armoury.stone", "The gate barracks is stone: blows, not fire."],
 	# The Sermon (v0.11 M5).
-	["sermon", "Silence the preacher (red), then whisper his crowd (gold) to the god's house unseen. Eight must believe: kill none."],
+	["sermon", "Silence the preacher (red), then whisper or lure his crowd (gold) to the god's house unseen. Eight must believe: kill none."],
 	["sermon.rapt", "He preaches: his crowd hears only him. Whisper or Discord him aside; kill him unseen by his acolytes. Never kill his crowd."],
 	["sermon.watched", "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first."],
 	["sermon.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
@@ -114,7 +114,7 @@ const SPEC := [
 	["sermon.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze."],
 	["sermon.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
 	# The Relic Run (v0.11 M5).
-	["relic_run", "Bring Pip (blue) to the cart's first halt. He slips aboard there, and swaps the relic at the next."],
+	["relic_run", "Bring Pip (blue) to the cart's first halt, by whisper or lure. He slips aboard there, and swaps the relic at the next."],
 	["relic_run.moving", "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before."],
 	["relic_run.watched", "The cart halts, watched (red). Hold or remove the watch: Pip only works unseen."],
 	["relic_run.aboard", "Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic."],

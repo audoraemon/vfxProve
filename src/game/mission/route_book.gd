@@ -27,7 +27,7 @@ const ROUTES := {
 	"prisoner": {"a": "whisper", "b": "wisp", "loadout": ["wisp", "smite", "discord", "deathmark"]},
 	"heretic_hunt": {"a": "smite", "b": "blight", "loadout": ["blight", "discord", "wisp", "deathmark"]},
 	# Tier 4, Reckoning
-	"procession": {"a": "doom", "b": "smite", "loadout": ["smite", "heaven", "wisp", "discord", "deathmark"]},
+	"procession": {"a": "doom", "b": "deathmark", "loadout": ["smite", "heaven", "wisp", "discord", "deathmark"]},
 	"bishop": {"a": "ember", "b": "heaven", "loadout": ["heaven", "smite", "whisper", "discord", "wisp"]},
 	"armoury": {"a": "ember", "b": "verdict", "loadout": ["verdict", "heaven", "whisper", "discord", "wisp"]},
 	"sermon": {"a": "whisper", "b": "wisp", "loadout": ["wisp", "discord", "deathmark", "belllies", "thorns"]},

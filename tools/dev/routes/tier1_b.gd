@@ -461,6 +461,31 @@ static func _lamb_light(d: EscortDirector, crowd: Crowd, lamb: Person, to: Vecto
 ## Silent Doom where nobody would see) on the Faithful who would see the door, as in loadout A; and a report on its way stopped.
 static func act_prayers(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
+	var memo: Dictionary = ctx.memo
+	var did := _prayers_look(bc, ctx)
+	if did != "":
+		memo["last"] = rules.time_left
+		return did
+	# Idle a while with nothing to fetch or hold: Silent Doom takes a Faithful where nobody would see it (one fewer to stand by the door
+	# later), the nearest the door first -- the player always has a hand to play.
+	if float(memo.get("last", rules.time_left)) - rules.time_left >= PRAYB_IDLE and bc._slot_ready(rules, ctx.slots, "doom"):
+		var d := ctx.d as MirasHouseDirector
+		var free := d._free_faithful()
+		free.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(d.door) < b.ground_pos.distance_to(d.door))
+		for f in free:
+			if bc._doom_unseen(ctx.crowd, f.ground_pos, [], 0.3):
+				rules.cast(ctx.slots.doom, f.ground_pos)
+				memo["last"] = rules.time_left
+				return "doom a Faithful where nobody sees"
+	return ""
+
+
+## Seconds without a cast after which the policy takes a Faithful with Silent Doom.
+const PRAYB_IDLE := 20.0
+
+
+static func _prayers_look(bc, ctx: Dictionary) -> String:
+	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var d := ctx.d as MirasHouseDirector
 	var crowd: Crowd = ctx.crowd
@@ -484,41 +509,53 @@ static func act_prayers(bc, ctx: Dictionary) -> String:
 		if bc._slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, watcher.ground_pos)
 			return "discord a Faithful by the door"
-	# The Wisp at the shrine's door, when the door is unwatched and the next prayer would not end in a crowded square (the policy of loadout A,
-	# _prayers_ready()), and some of the poor would come and no Faithful with them.
-	if bc._slot_ready(rules, slots, "wisp") and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null and _prayers_clear(bc, d):
+	# The Wisp at the shrine's door fetches the poor from the streets (FirstPrayersDirector.FETCH_R), when the door is unwatched and the next
+	# prayer, by the nearest of them to arrive, would not end in a crowded square (loadout A's _prayers_ready() rule), and no Faithful comes with them.
+	if bc._slot_ready(rules, slots, "wisp") and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null:
 		var light := d._walkable(d.door)
-		var poor := 0
+		var arrive := INF
 		var seen := false
+		for g in d.grieving:
+			if not is_instance_valid(g) or not g.is_alive() or g.inside or d.believers.has(g) or not g.mind in Person.LURABLE:
+				continue
+			var gap := g.ground_pos.distance_to(light)
+			if gap > FirstPrayersDirector.FETCH_R:
+				continue
+			arrive = minf(arrive, bc._walk_len(crowd, g.ground_pos, light) / maxf(g.walk_speed, 0.05))
 		for p in WillOWisp.drawn(crowd._field, light):
-			poor += 1 if d.grieving.has(p) and not d.believers.has(p) and not p.inside else 0
 			seen = seen or d.faithful.has(p)
-		if poor > 0 and not seen:
+		if arrive < INF and not seen and _prayers_clear(bc, d, arrive):
 			rules.cast(slots.wisp, light)
-			return "wisp at the shrine's door, drawing %d of the poor" % poor
+			return "wisp at the shrine's door, fetching the poor (the first there in %.0f s)" % arrive
 	return ""
 
 
-## The next prayer, begun now by a lure, ends clear of the market's and the priests' windows (the director's: Faithful stand by the door): it
-## comes out between PRAYB_ARRIVE seconds of the lure's arrival at the soonest and at the latest, and a prayer already in progress ends first.
-const PRAYB_ARRIVE := Vector2(3.0, 8.0)
-const PRAYB_SLACK := 5.0
+## The next prayer, begun now by a lure whose first poor arrives in `arrive` seconds (+-PRAYB_JITTER), ends clear of the market's and the
+## priests' windows (the director's: Faithful stand by the door), and a prayer already in progress ends first (the fetched wait, staring,
+## FETCH_STARE seconds).
+const PRAYB_JITTER := 2.0
+const PRAYB_SLACK := 3.0
 
 
-static func _prayers_clear(bc, d: MirasHouseDirector) -> bool:
+static func _prayers_clear(bc, d: MirasHouseDirector, arrive: float) -> bool:
 	var left := d.reading_left()
-	if left != INF and left > bc.PRAYERS_WALK:
+	if left != INF and left - arrive > FirstPrayersDirector.FETCH_STARE - 1.0:
 		return false
 	var fp := d as FirstPrayersDirector
 	if fp == null:
 		return true
 	var now := fp.timeline.elapsed()
-	var start := now + maxf(PRAYB_ARRIVE.x, left if left != INF else 0.0) + fp.read_seconds
-	var stop := now + maxf(PRAYB_ARRIVE.y, left if left != INF else 0.0) + fp.read_seconds
+	var wait := left if left != INF else 0.0
+	var enter_from := now + maxf(arrive - PRAYB_JITTER, wait)
+	var start := enter_from + fp.read_seconds
+	var stop := now + maxf(arrive + PRAYB_JITTER, wait) + fp.read_seconds
 	for w: Array in [[FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.MARKET_SECONDS],
 			[FirstPrayersDirector.PRIESTS_AT, FirstPrayersDirector.PRIESTS_SECONDS]]:
-		if stop >= float(w[0]) and start <= float(w[0]) + float(w[1]) + PRAYB_SLACK:
-			return false
+		var closes := float(w[0]) + float(w[1]) + PRAYB_SLACK
+		if stop >= float(w[0]) and start <= closes:
+			return false  # it would come out among them
+		if now + maxf(arrive + PRAYB_JITTER, wait) >= float(w[0]) and enter_from <= closes:
+			return false  # or go in under their eyes
 	return true
 
 

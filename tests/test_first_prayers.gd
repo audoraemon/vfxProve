@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_freed(t)
 	_waits(t)
 	_miras_same(t)
+	_fetch(t)
 	_mission(t)
 
 
@@ -281,6 +282,33 @@ static func _miras_same(t) -> void:
 	t.check(m.need == BelieversObjective.NEED and m.need == 4 and is_equal_approx(m.read_seconds, MirasHouseDirector.READ_SECONDS)
 		and not m.one_at_a_time and m._opening_banner() == "LEAD THE GRIEVING TO MIRA'S HOUSE",
 		"Mira's House keeps its own numbers: four, 8 s, all at once")
+
+
+## Spec 7.2 row 5, proven before loadout B's policy (v0.11.1 Task 8): a Wisp cast at the shrine fetches the poor from the streets. One of the
+## poor FETCH_R off, beyond the Wisp's own reach, walks to the near side of its ring and is given the time his walk takes; one farther off,
+## one lured by anything but a Wisp at the shrine, and a Wisp cast elsewhere draw him not.
+static func _fetch(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var far: Person = null
+	for g in d.grieving:
+		g.mind = Person.Mind.CALM
+		g.ground_pos = d.door + Vector2(-10.0, 9.0) if far == null else d.door + Vector2(40.0, 40.0)
+		far = g if far == null else far
+	var gap := far.ground_pos.distance_to(d.door)
+	t.check(gap > WillOWisp.LURE_REACH and gap <= FirstPrayersDirector.FETCH_R, "one of the poor stands beyond a Wisp's reach and within the fetch (%.1f)" % gap)
+	d._on_light(0, "ember", d.door)
+	t.check(far.mind == Person.Mind.CALM, "a spark fetches no one")
+	d._on_light(0, "wisp", d.door + Vector2(10.0, 10.0))
+	t.check(far.mind == Person.Mind.CALM, "a Wisp cast away from the shrine fetches no one")
+	d._on_light(0, "wisp", d.door)
+	t.check(far.mind == Person.Mind.OBSERVE and far.has_goal() and far._observe_left > FirstPrayersDirector.FETCH_STARE,
+		"a Wisp at the shrine draws him, and he has the time his walk takes (%.1f s)" % far._observe_left)
+	var others := 0
+	for g in d.grieving:
+		others += 1 if g != far and g.mind == Person.Mind.OBSERVE else 0
+	t.check(others == 0, "the poor beyond the fetch stay where they are")
+	_done(s)
 
 
 static func _mission(t) -> void:

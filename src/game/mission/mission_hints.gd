@@ -47,7 +47,7 @@ const LINES := {
 	"vigil_flame.carry": "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight.",
 	"tax_collector": "Kill each collector (gold) in the street. If no one near (red) sees it, the guards raise no cry.",
 	"tax_collector.inside": "He is indoors (gold). He comes out to walk to his next debtor (orange): be ready.",
-	"tax_collector.hiding": "Alarmed, he hides in the counting-house. Set it alight to smoke him out, or wait for him.",
+	"tax_collector.hiding": "Alarmed, he hides in the counting-house. Set it alight: every collector inside runs for the Citadel.",
 	"tax_collector.running": "No hiding place: he runs for the Citadel (red). Kill him before he gets in.",
 	"tax_collector.safe": "His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in.",
 	"tax_collector.next": "One down. The next collector (gold) leaves the counting-house soon: be ready for him.",

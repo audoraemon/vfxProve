@@ -12,6 +12,7 @@ const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 static func run(t) -> void:
 	_setup(t)
+	_no_flush(t)
 	_hold(t)
 	_ground(t)
 	_stone(t)
@@ -409,4 +410,13 @@ static func _freed(t) -> void:
 	d.tags()
 	t.check(d.all_fallen() and d.hint_phase() == "" and d.tags().is_empty() and String(d.report().target) != "",
 		"his body freed too: nothing touches it")
+	Kit.done(s)
+
+
+## v0.11.1: the Bishop has no hideout to empty and keeps the base's rule (flush_waiting false).
+static func _no_flush(t) -> void:
+	var s := _world()
+	var d: BishopDirector = s.d
+	t.check(not d.flush_waiting and d.hideout == null and d.quarries[0].state == AssassinateDirector.State.WAITING,
+		"the Bishop keeps the base's rule: nothing to flush, the waiting bishop stays put")
 	Kit.done(s)

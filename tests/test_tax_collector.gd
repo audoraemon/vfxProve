@@ -5,7 +5,8 @@ extends RefCounted
 ## Citadel's gate, which loses the night: the collector at 0:45, each deputy at his own time or CHAIN_WAIT after the one
 ## before him dies, whichever is sooner (smoked out sooner still by a power cast at the door while none is out). A loud power
 ## near one, a guard felled or a fright sends him to hide 30 s; a house he is in set alight or brought down flushes him out
-## (review focus 4) -- a collector out or hiding, never one still waiting, who sets out at his own time (fix round). All three
+## (review focus 4) -- a collector out or hiding and, since v0.11.1, one still waiting too: everyone inside the burning or fallen
+## counting-house runs for the Citadel, one banner, none sent from it again. All three
 ## dead wins; one escaping the town counts as safe; a seen kill makes the guards cry murder and calls the bellkeeper. Reserved
 ## people and places are never taken (review focus 1); freed bodies and the town's rally are borne (review focus 2, 3); with no
 ## hideout the targets still are three different people (fix round).
@@ -33,6 +34,7 @@ static func run(t) -> void:
 	_smoked(t)
 	_alarm(t)
 	_flushed(t)
+	_flush_awkward(t)
 	_running(t)
 	_lost(t)
 	_kill(t)
@@ -375,21 +377,47 @@ static func _alarm(t) -> void:
 	_done(f)
 
 
+## The banners raised so far (v0.11.1).
+static func _banners(s: Dictionary) -> Array:
+	return s.banners
+
+
+## Every collector but those in `except` is out of the counting-house, alive, frightened and bound for the Citadel (v0.11.1).
+static func _all_run(d: TaxCollectorDirector, except := []) -> bool:
+	var ok := true
+	for q in d.quarries:
+		if except.has(q):
+			continue
+		ok = ok and not q.target.inside and q.state == AssassinateDirector.State.FLEEING and q.target.is_alive() \
+			and q.target.goal().distance_to(d.safe_at) < 0.5 and q.flushed
+	return ok
+
+
 static func _flushed(t) -> void:
 	var s := _world()
 	var d: TaxCollectorDirector = s.d
+	_banners(s).clear()
 	(s.crowd as Crowd).fires.ignite(d.hideout, 0.6)
-	_run(s, 2.0)
-	var waiting := true
+	_run(s, AssassinateDirector.TICK * 2.0 + DT)
+	t.check(_all_run(d), "the counting-house alight: every collector, waiting ones too, runs for the Citadel")
+	t.check(_banners(s) == [TaxCollectorDirector.FLUSH_BANNER], "one banner, no 'hides' (%s)" % [_banners(s)])
+	t.check(d._next_waiting() == null and d.timeline.upcoming(3).is_empty(), "none is left waiting, and the strip's set-out rows are gone")
+	_run(s, TaxCollectorDirector.SET_OUT_AT[2] + 1.0)
+	var never := true
 	for q in d.quarries:
-		waiting = waiting and q.target.inside and q.state == AssassinateDirector.State.WAITING and q.target.is_alive()
-	t.check(waiting, "the counting-house alight flushes out none still waiting: one fire never sets the whole night out")
-	_run(s, TaxCollectorDirector.SET_OUT_AT[0] - d._clock + DT * 2.0)
-	var q0 := d.quarries[0]
-	t.check(q0.state != AssassinateDirector.State.WAITING and not q0.target.inside and q0.target.is_alive()
-		and d.quarries[1].state == AssassinateDirector.State.WAITING and d.quarries[1].target.inside,
-		"the collector sets out at his own time all the same, and his deputies wait on")
+		never = never and q.state != AssassinateDirector.State.WAITING and not q.target.inside
+	t.check(never and not d.timeline.fired_ids().has("out_0") and not (_labels(d)).has("NEXT COLLECTOR"),
+		"none is ever sent from it again: no set-out fires, no NEXT COLLECTOR tag")
 	_done(s)
+
+	# The same with the counting-house brought down instead of burning.
+	var f := _world()
+	var df: TaxCollectorDirector = f.d
+	_banners(f).clear()
+	df.hideout.destroy(df.hideout.center(), &"fire")
+	_run(f, AssassinateDirector.TICK * 2.0 + DT)
+	t.check(_all_run(df) and _banners(f) == [TaxCollectorDirector.FLUSH_BANNER], "the counting-house fallen: the same, one banner")
+	_done(f)
 
 	var h := _world()
 	var dh: TaxCollectorDirector = h.d
@@ -402,8 +430,8 @@ static func _flushed(t) -> void:
 	(h.crowd as Crowd).fires.ignite(dh.hideout, 0.6)
 	_run(h, DT * 2.0)
 	t.check(hid and not qh.target.inside and qh.state != AssassinateDirector.State.HIDING and qh.target.is_alive()
-		and dh.quarries[1].state == AssassinateDirector.State.WAITING and dh.quarries[1].target.inside,
-		"hiding there, the collector is flushed out alive (review focus 4); his deputies stay in")
+		and dh.quarries[1].state != AssassinateDirector.State.WAITING and not dh.quarries[1].target.inside,
+		"hiding there, the collector is flushed out alive (review focus 4); his deputies burst out with him")
 	_run(h, AssassinateDirector.TICK + DT)
 	t.check(qh.state == AssassinateDirector.State.FLEEING and qh.target.goal().distance_to(dh.safe_at) < 0.5,
 		"frightened, with no counting-house to hide in, he runs for the Citadel")
@@ -429,6 +457,97 @@ static func _flushed(t) -> void:
 	t.check(not qv.target.inside and qv.leg == 1 and qv.target.is_alive(),
 		"a debtor's house brought down flushes him out alive, and that debtor is done")
 	_done(v)
+
+
+## The counting-house burns at an awkward moment (v0.11.1, review focus 4): one banner, each collector resolves once, none is left
+## waiting, and the strip's rows are gone.
+static func _flush_awkward(t) -> void:
+	# While the collector visits a debtor: he keeps his round, only the two inside run.
+	var v := _world()
+	var dv: TaxCollectorDirector = v.d
+	var q0 := dv.quarries[0]
+	dv._set_out(q0)
+	_arrive(q0.target, q0.stop_doors[0])
+	_run(v, AssassinateDirector.TICK + DT)
+	var visiting := q0.state == AssassinateDirector.State.VISITING and q0.target.inside
+	_banners(v).clear()
+	(v.crowd as Crowd).fires.ignite(dv.hideout, 0.6)
+	_run(v, AssassinateDirector.TICK * 2.0 + DT)
+	t.check(visiting and q0.state == AssassinateDirector.State.VISITING and q0.target.inside and not q0.flushed
+		and _all_run(dv, [q0]) and _banners(v) == [TaxCollectorDirector.FLUSH_BANNER] and dv._next_waiting() == null,
+		"burning while the collector visits a debtor: he keeps his visit, the two inside run, one banner")
+	_done(v)
+
+	# While the collector flees to hide: the counting-house is no hiding place now, he runs for the Citadel.
+	var r := _world()
+	var dr: TaxCollectorDirector = r.d
+	var qr := dr.quarries[0]
+	dr._set_out(qr)
+	dr._alarm(qr)
+	_banners(r).clear()
+	(r.crowd as Crowd).fires.ignite(dr.hideout, 0.6)
+	_run(r, AssassinateDirector.TICK * 2.0 + DT)
+	t.check(qr.state == AssassinateDirector.State.FLEEING and qr.target.goal().distance_to(dr.safe_at) < 0.5
+		and _all_run(dr, [qr]) and _banners(r) == [TaxCollectorDirector.FLUSH_BANNER],
+		"burning while he flees to hide: he runs for the Citadel too, the two inside burst out, one banner")
+	_done(r)
+
+	# After one is safe: the night is lost and stays lost; the others still run.
+	var a := _world()
+	var da: TaxCollectorDirector = a.d
+	da._set_out(da.quarries[0])
+	da._reach_safe(da.quarries[0])
+	_banners(a).clear()
+	(a.crowd as Crowd).fires.ignite(da.hideout, 0.6)
+	_run(a, AssassinateDirector.TICK * 2.0 + DT)
+	t.check(da.any_safe() and (a.rules as Rules).finished and not (a.rules as Rules).won
+		and _all_run(da, [da.quarries[0]]) and _banners(a).count(TaxCollectorDirector.FLUSH_BANNER) == 1,
+		"burning after one is safe: the night stays lost, the two inside run, one banner")
+	_done(a)
+
+	# Burning again, and then a fall after burning: still one banner, each resolved once.
+	var b := _world()
+	var db: TaxCollectorDirector = b.d
+	_banners(b).clear()
+	(b.crowd as Crowd).fires.ignite(db.hideout, 0.6)
+	_run(b, AssassinateDirector.TICK * 2.0 + DT)
+	var alarms := 0
+	for q in db.quarries:
+		alarms += q.alarms
+	(b.crowd as Crowd).fires.ignite(db.hideout, 0.6)
+	db.hideout.destroy(db.hideout.center(), &"fire")
+	_run(b, AssassinateDirector.TICK * 4.0 + DT)
+	var again := 0
+	for q in db.quarries:
+		again += q.alarms
+	t.check(_banners(b) == [TaxCollectorDirector.FLUSH_BANNER] and again == alarms and alarms == 3 and _all_run(db),
+		"burning again, then falling: still one banner, each collector flushed and alarmed once (%s, %d/%d)" % [_banners(b), again, alarms])
+	_done(b)
+
+	# The fire put out does not call a flushed collector back to the counting-house.
+	var o := _world()
+	var do: TaxCollectorDirector = o.d
+	var qo := do.quarries[0]
+	qo.flushed = true
+	qo.state = AssassinateDirector.State.FLEEING
+	t.check(do._hideout_stands() and do._hide_goal(qo).distance_to(do.safe_at) < 0.1 and do._hide_goal().distance_to(do.hide_door) < 0.1
+		and do.fleeing_to_safe(qo), "a flushed collector's goal stays the Citadel with the house standing again")
+	_done(o)
+
+	# FLUSH_GAP: the next waiting collector bursts that long after the one before.
+	var g := _world()
+	var dg: TaxCollectorDirector = g.d
+	dg.flush_gap = 1.5
+	_banners(g).clear()
+	(g.crowd as Crowd).fires.ignite(dg.hideout, 0.6)
+	_run(g, 1.0)
+	var first := not dg.quarries[0].target.inside and dg.quarries[1].target.inside and dg.quarries[2].target.inside
+	_run(g, 1.0)
+	var second := not dg.quarries[1].target.inside and dg.quarries[2].target.inside
+	_run(g, 1.5)
+	t.check(first and second and not dg.quarries[2].target.inside and _banners(g).count(TaxCollectorDirector.FLUSH_BANNER) == 1,
+		"with FLUSH_GAP 1.5 they burst one at a time, 1.5 s apart, under one banner")
+	_done(g)
 
 
 ## The collector out runs for the Citadel and is shown so (final review): the hint's phase, the HUD's words, and the Citadel's tag --
@@ -470,8 +589,8 @@ static func _running(t) -> void:
 		if not gone:
 			# (A house brought down frightens whoever stands by it, so he is alarmed at once: the next check is for fire.)
 			t.check(q.state == AssassinateDirector.State.WALKING and not d.fleeing_to_safe(q) and d.hint_phase() == ""
-				and not _labels(d).has("CITADEL") and _labels(d).has("DEBTOR"),
-				"out on his round with the counting-house %s: not yet running from anything (%s)" % [how, _labels(d)])
+				and _labels(d).has("DEBTOR"),
+				"out on his round with the counting-house %s: he keeps to it, the two inside run (%s)" % [how, _labels(d)])
 		d._alarm(q)
 		t.check(q.state == AssassinateDirector.State.FLEEING and d.fleeing_to_safe(q) and q.target.goal().distance_to(d.safe_at) < 0.5
 			and _running_shown(d, s.rules),

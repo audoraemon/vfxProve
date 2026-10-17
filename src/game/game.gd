@@ -779,6 +779,15 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	on_action("prepare:" + what)
 
 
+## A key press as the player would make it, for FLOW's real-input checks (v0.11.1).
+func _flow_key(code: Key) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.physical_keycode = code
+	e.keycode = code
+	e.pressed = true
+	return e
+
+
 func _open_pause() -> void:
 	if is_instance_valid(_pause) or not is_instance_valid(_mission):
 		return
@@ -939,6 +948,26 @@ func _flow_test() -> void:
 	step.call(_mission == first and not is_instance_valid(_pause), "Resume gives back the same mission")
 	await get_tree().create_timer(0.5).timeout
 	step.call(_mission.rules().time_left < paused_at, "and its clock runs on (%.2f)" % _mission.rules().time_left)
+
+	# The legend of marks (v0.11.1, spec §4): H opens it and the night waits; R does nothing under it; Esc closes it and does not
+	# open the pause menu. Real key events, so the panel's own handling (and the mission's) is the path under test.
+	var legend_rules := _mission.rules()
+	Input.parse_input_event(_flow_key(KEY_H))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var legend_at := _mission.rules().time_left
+	step.call(_mission.legend_open() and _mission.process_mode == Node.PROCESS_MODE_DISABLED, "H opens the legend and the night waits")
+	Input.parse_input_event(_flow_key(KEY_R))
+	await get_tree().create_timer(1.0).timeout
+	step.call(_mission.rules() == legend_rules and _mission.rules().time_left == legend_at,
+		"R does nothing under the legend, and its clock waits (%.2f -> %.2f)" % [legend_at, _mission.rules().time_left])
+	Input.parse_input_event(_flow_key(KEY_ESCAPE))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	step.call(not _mission.legend_open() and not is_instance_valid(_pause) and _mission.process_mode == Node.PROCESS_MODE_INHERIT,
+		"Esc closes the legend and opens no pause menu")
+	await get_tree().create_timer(0.5).timeout
+	step.call(_mission.rules().time_left < legend_at, "and the night runs on (%.2f)" % _mission.rules().time_left)
 
 	# The clock running out ends it on the Results screen, over the frozen mission.
 	_mission.rules().time_left = 0.01

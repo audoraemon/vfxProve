@@ -131,6 +131,8 @@ var _prayers_hold := 0.0
 var _tour: IntroTour
 ## True from the last blow to Results: the slow-motion ending is playing out (note 9).
 var _ending := false
+## The legend of marks (v0.11.1, spec §4) while it is open; null otherwise. The night waits while it is up.
+var _legend: LegendPanel
 ## Seconds until the battle's layers are next fed how far the city has fallen.
 var _music_in := 0.0
 
@@ -200,6 +202,7 @@ func _bench_beams(args: PackedStringArray) -> void:
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works -- or, once a loadout has been drafted, to that loadout (the R restart).
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	_close_legend()
 	if powers.is_empty():
 		powers = _drafted
 	_drafted = powers
@@ -414,6 +417,7 @@ func _begin_intro(play: MissionDef) -> void:
 func next_act(powers: PackedStringArray, path := "") -> void:
 	if _night == null or _act == null or _act.is_last():
 		return
+	_close_legend()
 	var ids := _act.next
 	var id := path if path != "" and ids.has(path) else String(ids[0])
 	if ids.size() > 1:
@@ -718,6 +722,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _ending:
 		return  # the mission is over; nothing to aim or pause
+	if toggles_legend(event):
+		# H opens the legend (over the intro's tour too), or turns its page. Handled here, so the panel it opens cannot take the
+		# same press and turn to page 2 at once.
+		var vp := get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
+		if legend_open():
+			_legend.open_next()
+		else:
+			open_legend()
+		return
+	if legend_open():
+		return  # R, F, the slots and every cast wait for the legend to close
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
 		if touring() and skips_tour(event):
 			get_viewport().set_input_as_handled()
@@ -781,6 +798,45 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _pressing:
 			_pressing = false
 			_aim.release(_bf.mouse_ground())
+
+
+## Whether `event` is H pressed: the legend's key (spec §4, Decision 1).
+static func toggles_legend(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_H
+
+
+## Whether the legend of marks is up.
+func legend_open() -> bool:
+	return is_instance_valid(_legend) and _legend.page > 0
+
+
+## Open the legend on page 1 and let the night wait (v0.11.1 spec §4): frozen as the pause menu freezes it, a held press called
+## off so its release after the panel cannot cast. Nothing in the ending, nor before the mission has started.
+func open_legend() -> void:
+	if not started() or _ending or legend_open():
+		return
+	_pressing = false
+	_aim.cancel()
+	_legend = LegendPanel.new().setup(_hud.all_tags())
+	_legend.name = "Legend"
+	_bf.hud_layer.add_child(_legend)
+	_legend.closed.connect(_on_legend_closed)
+	_legend.open_next()
+	set_frozen(true)
+
+
+func _on_legend_closed() -> void:
+	set_frozen(false)
+	if is_instance_valid(_legend):
+		_legend.queue_free()
+	_legend = null
+
+
+## A new mission or act starts with the legend shut (and the night let go).
+func _close_legend() -> void:
+	if is_instance_valid(_legend):
+		_legend.close()
+	_legend = null
 
 
 ## Focus a slot by its key or its card. The focused one's own again lets it go (Targeting.pick), and that is the

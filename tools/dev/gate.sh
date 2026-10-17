@@ -6,7 +6,7 @@
 # Per run:   <scenario> <case> seed=N won=.. reason=.. time=.. idle=.. checksum=..
 # Last line: gate <scenario> route=<a|b> none_lost=K/3 wins=K/3 median=S idle_max=S PASS|FAIL      (exit 1 on FAIL)
 # The gate (spec §7 and the plan's Global Constraints): the none runs all lose (route a only; with --route=b they are skipped and
-# none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b only reports it,
+# none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission, only reported for a ★ --board one,
 # D33); no idle stretch over 45 s in a play run. A play run whose result line has no idle= makes idle_max ? and the gate FAIL.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
@@ -68,6 +68,10 @@ verdict=PASS
 if [ "$ROUTE" = a ]; then
   [ "$lost" -ne 3 ] && verdict=FAIL
   { [ "$median" = "-" ] || [ "$median" -lt 180 ] || [ "$median" -gt 240 ]; } && verdict=FAIL
+fi
+# A tier mission's second loadout (no --board): its median may stray a little from A's band, never trivially fast (rulings R6).
+if [ "$ROUTE" = b ] && [ -z "$BOARD" ]; then
+  { [ "$median" = "-" ] || [ "$median" -lt 150 ] || [ "$median" -gt 270 ]; } && verdict=FAIL
 fi
 [ "$time_ok" -eq 0 ] && { verdict=FAIL; median="time?"; }  # a win with no time= can not be judged
 if [ "$idle_ok" -eq 0 ]; then idle_show="?"; verdict=FAIL; else

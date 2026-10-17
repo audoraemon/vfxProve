@@ -94,6 +94,7 @@ static func run(t) -> void:
 	_ending(t)
 	_prayers(t)
 	_knights(t)
+	_dragonfire(t)
 	_kneelers(t)
 	_kneel_topup(t)
 	_focus(t)
@@ -597,4 +598,34 @@ static func _freed(t) -> void:
 			k.free()
 	t.check(d.living_knights() == 0 and _tag(d, "KNIGHT") == null and d.hint_phase() == "" and d.tags().size() == 6,
 		"every Knight's body freed: no Knight tags, no hint phase, and the six shrines still tagged")
+	_done(s)
+
+
+## v0.11.1 (spec §7.2 row 7, proved first): the Dragonfire Parade breaks a lantern with what it does -- its eruption's 'cinder' blow within
+## ERUPT_R (and the kill of whoever stands there, a Knight beside the shrine too), its breath's 'fire' blows along the cone -- and a Knight
+## beside a shrine the breath only crosses keeps it standing. The shrine has Structure hp 40, the breath 260 a second.
+static func _dragonfire(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	var crowd: Crowd = s.crowd
+	var env: EnvironmentField = s.env
+	_away(d)
+	var a := d.shrines[0]
+	env.damage_radius(a.center(), 1.9, 99999.0, &"cinder")  # the eruption (dragonfire_parade.gd _erupt())
+	t.check(a.destroyed and d.draining(a), "the Parade's eruption on a lantern breaks it, and it starts to drain")
+	var b := d.shrines[1]
+	for i in 6:
+		b.damage(260.0 * 0.05, b.center() - Vector2(5.0, 0.0), &"fire")  # the breath crossing it, a third of a second
+	t.check(b.destroyed and d.draining(b), "the breath's fire crossing a lantern for under a second breaks it")
+	d.timeline.step(BrokenLanternsDirector.KNIGHTS_AT)
+	var k := d.knights[0]
+	var c: Structure = d.guarding[k]
+	_arrive(k, k.anchor)
+	for i in 6:
+		c.damage(260.0 * 0.05, c.center() - Vector2(5.0, 0.0), &"fire")
+	t.check(not c.destroyed and d.guarded(c), "a Knight beside it, the breath only shakes the lantern")
+	crowd._field.kill(k, &"fire", c.center())  # the breath kills a Knight in its band as it kills anyone, an eruption at the lantern too
+	for i in 6:
+		c.damage(260.0 * 0.05, c.center() - Vector2(5.0, 0.0), &"fire")
+	t.check(c.destroyed and d.draining(c), "the Knight fallen to the Parade's fire, the same breath then breaks the lantern")
 	_done(s)

@@ -56,7 +56,11 @@ const VISIT_AT := [45.0, 115.0, 180.0, 245.0]
 const CHAIN_WAIT := 45.0
 ## How many stand with each contact, and how far from his door (v0.11 M3).
 const COMPANY := 3
-const COMPANY_R := 1.2
+const COMPANY_R := 1.0
+## v0.11.1 (spec §7.3): one Discord on a contact's door holds him and all his company, so no company spot lies farther than this from the
+## door (Discord's reach is 1.2): a spot the walk grid pushes farther is tried again nearer (COMPANY_STEPS), the last of them kept.
+const COMPANY_HOLD := 1.0
+const COMPANY_STEPS := [1.0, 0.85, 0.7, 0.55]
 ## How near an onlooker sees a whisper on a contact (v0.11 M3).
 const SPEAK_SEEN := 2.0
 ## How long after the last visit the names reach the Temple by the back lanes (v0.11 M3).
@@ -186,7 +190,13 @@ func _watched(door: Vector2) -> bool:
 ## off behind the house or down the lane, out of his sight (the potter's door put one 2.06 from him).
 func _company_spot(c: Contact, k: int, n: int) -> Vector2:
 	var out := (c.door - c.house.center()).angle()
-	return _walkable(c.door + Vector2.from_angle(out + PI * ((float(k) + 0.5) / float(maxi(n, 1)) - 0.5)) * COMPANY_R)
+	var angle := out + PI * ((float(k) + 0.5) / float(maxi(n, 1)) - 0.5)
+	var spot := c.door
+	for r: float in COMPANY_STEPS:
+		spot = _walkable(c.door + Vector2.from_angle(angle) * r)
+		if spot.distance_to(c.door) <= COMPANY_HOLD:
+			break
+	return spot
 
 
 ## The resident nearest his lodging, none of the contacts nor their company (v0.11 M3, mission spec §3).
@@ -309,23 +319,30 @@ func _back_to(v: Variant, at: Vector2, evacuating := false) -> void:
 		p.go_duty(at)
 
 
-## A power cast (v0.11 M3, Decision 24): a Mind Whisper on the contact to turn now, after his visit, turns him while no one else
-## out of doors within SPEAK_SEEN sees it -- else the banner says he was seen, and nothing comes of it. The whisper is his own when
-## he has just heard it (his full LINGER left), so one on a companion beside him -- or a cast near him while an older whisper still
-## holds him -- neither turns him nor reads as seen. Then the Assassinate type's (once he is found, a loud cast near him alarms him;
-## the hiding place is never smoked out).
+## A power cast (v0.11 M3, Decision 24; v0.11.1: Discord too, spec §7.3): a Mind Whisper on the contact to turn now, after his visit, turns
+## him while no one else out of doors within SPEAK_SEEN sees it -- else the banner says he was seen, and nothing comes of it. So does a
+## Discord that has just confused him (his full DISCORD_TIME left, he within its reach of the cast): he forgets his task and speaks, held
+## minds see nothing. The whisper is his own when he has just heard it (his full LINGER left), so one on a companion beside him -- or a
+## cast near him while an older whisper still holds him -- neither turns him nor reads as seen. Then the Assassinate type's (once he is
+## found, a loud cast near him alarms him; the hiding place is never smoked out).
 func _on_cast(slot: int, key: String, at: Vector2) -> void:
-	if key == "whisper" and not found and not cold:
+	if (key == "whisper" or key == "discord") and not found and not cold:
 		var c := contact_now()
-		if c != null and c.word and _alive(c.man):
-			var man := c.man as Person
-			if man.mind == Person.Mind.WHISPERED and man.whispered_left() >= MindWhisperFx.LINGER - 0.01 \
-					and at.distance_to(man.ground_pos) <= MindWhisperFx.PICK_R:
-				if onlookers(c).is_empty():
-					_turn(c)
-				else:
-					rules.banner.emit(SEEN_BANNER)
+		if c != null and c.word and _alive(c.man) and _speaks_to(c.man as Person, key, at):
+			if onlookers(c).is_empty():
+				_turn(c)
+			else:
+				rules.banner.emit(SEEN_BANNER)
 	super(slot, key, at)
+
+
+## The cast `key` at `at` has just reached `man` (v0.11.1): a whisper he has just heard, or a Discord that has just confused him.
+func _speaks_to(man: Person, key: String, at: Vector2) -> bool:
+	if key == "whisper":
+		return man.mind == Person.Mind.WHISPERED and man.whispered_left() >= MindWhisperFx.LINGER - 0.01 \
+				and at.distance_to(man.ground_pos) <= MindWhisperFx.PICK_R
+	return man.mind == Person.Mind.CONFUSED and man.confused_left() >= DiscordFx.DISCORD_TIME - 0.01 \
+			and at.distance_to(man.ground_pos) <= DiscordFx.DISCORD_R
 
 
 ## `c` is turned (v0.11 M3): he names the next contact -- the strip shows his visit's chained time -- or, the last, the hiding

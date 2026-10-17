@@ -17,7 +17,7 @@ const ROUTES := {
 	# Tier 2, Omen
 	"miras_house": {"a": "whisper", "b": "wisp", "loadout": ["wisp", "discord", "doom"]},
 	"broken_lanterns": {"a": "heaven", "b": "dragon", "loadout": ["dragon", "discord", "wisp"]},
-	"bell_ringers": {"a": "doom", "b": "smite", "loadout": ["smite", "whisper", "wisp"]},
+	"bell_ringers": {"a": "doom", "b": "deathmark", "loadout": ["deathmark", "whisper", "wisp"]},
 	"market_panic": {"a": "heaven", "b": "ember", "loadout": ["ember", "whisper", "discord"]},
 	"informer": {"a": "whisper", "b": "discord", "loadout": ["discord", "wisp", "smite"]},
 	# Tier 3, Wrath

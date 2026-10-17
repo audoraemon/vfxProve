@@ -67,6 +67,7 @@ func _appoint_watchman() -> Person:
 		_take_inside(p, tower)
 	for i in range(1, crew.size()):
 		mates.append(crew[i])
+		crew[i].answers_lure = true  # v0.11.1 (spec §7.2 row 8): a Will-o'-Wisp's light within CHARGE_LURE_R draws a mate off the ringer's heels
 	return crew[0]
 
 
@@ -232,8 +233,8 @@ func _step_mates() -> void:
 		if not _alive(v):
 			continue
 		var p := v as Person
-		if p.inside or not (p.mind == Person.Mind.DUTY or _resumable(p)):
-			continue
+		if p.inside or p.held_by_god() or not (p.mind == Person.Mind.DUTY or _resumable(p)):
+			continue  # v0.11.1: one staring at a Wisp's light is held by it too (held_by_god()), and let run on only once it lets him go
 		var spot := _heel(messenger.ground_pos, dir, i)
 		if p.mind != Person.Mind.DUTY or p.anchor.distance_to(spot) > RETARGET_MOVE:
 			p.go_duty(spot)

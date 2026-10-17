@@ -33,6 +33,7 @@ static func run(t) -> void:
 	_rope(t)
 	_recall(t)
 	_two(t)
+	_lured_mates(t)
 	_ends(t)
 	_freed(t)
 	_texts(t)
@@ -341,6 +342,32 @@ static func _two(t) -> void:
 	b._run()
 	t.check(back and bell.keeper == waiter and not b.warning_dead and b.messenger == waiter,
 		"the rope given back, the carrier waiting at the foot takes it, back on his errand")
+	Kit.done(s)
+
+
+## v0.11.1 (spec §7.2 row 8, Loadout B): a mate answers a Will-o'-Wisp's lure within CHARGE_LURE_R of its light -- the ringer himself does
+## not -- and the director leaves him staring at it (held_by_god()) instead of sending him back to the carrier's heels.
+static func _lured_mates(t) -> void:
+	var s := _world()
+	var d: BellRingersDirector = s.d
+	var r := d.ringers[0]
+	d._send(0)
+	Kit.run_for(s, RingerDirector.OUT_PAUSE + RingerDirector.MATE_TICK * 2.0 + DT * 4.0)
+	var c := r.messenger
+	var mate := r.mates[0] as Person
+	var other := r.mates[1] as Person
+	var light := mate.ground_pos + Vector2(WillOWisp.CHARGE_LURE_R - 0.5, 0.0)
+	Kit.arrive(other, light + Vector2(WillOWisp.CHARGE_LURE_R + 1.0, 0.0))
+	var drawn := WillOWisp.drawn((s.crowd as Crowd)._field, light)
+	t.check(mate.answers_lure and drawn.has(mate) and not drawn.has(c) and not drawn.has(other),
+		"a Wisp's light %.1f from a mate draws him, and not the ringer nor the mate farther off" % (WillOWisp.CHARGE_LURE_R - 0.5))
+	mate.lure(light + Vector2(1.0, 0.0), WillOWisp.WISP_TIME - 0.5, light)
+	Kit.run_for(s, RingerDirector.MATE_TICK * 3.0)
+	t.check(mate.mind == Person.Mind.OBSERVE and mate.held_by_god() and mate.goal().distance_to(light) < 2.0,
+		"lured, the mate stands staring at the light: the director does not send him back to the carrier's heels")
+	Kit.arrive(mate, mate.goal())
+	t.check(mate.ground_pos.distance_to(c.ground_pos) > Crowd.DOOM_WITNESS and r.mates.has(mate),
+		"at the light's ring he stands beyond a Silent Doom's witnesses of the carrier, and is still his mate for when it goes out")
 	Kit.done(s)
 
 

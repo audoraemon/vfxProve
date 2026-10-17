@@ -1149,13 +1149,23 @@ func _draw_rise() -> void:
 ## An arrow at the screen's edge (v0.10 M6's tags): `col` on a dark disc ringed in `ring`, its tip at
 ## `at`, pointing along `dir`. On a dark disc, so it stands out from the town's warm roofs and stalls.
 func _draw_arrow(at: Vector2, dir: Vector2, col: Color, ring: Color) -> void:
+	paint_arrow(_canvas, at, dir, col, ring)
+
+
+## The arrow's triangle, its tip at `at`, pointing along `dir`: the one shape the HUD and the legend (LegendPanel) share.
+static func arrow_shape(at: Vector2, dir: Vector2) -> PackedVector2Array:
 	var side := Vector2(-dir.y, dir.x)
-	_canvas.draw_circle(at - dir * 5.0, 10.0, MARK_EDGE)
-	_canvas.draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, -1.0)
-	var arrow := PackedVector2Array([at, at - dir * 10.0 + side * 6.0, at - dir * 10.0 - side * 6.0])
-	_canvas.draw_colored_polygon(arrow, col)
+	return PackedVector2Array([at, at - dir * 10.0 + side * 6.0, at - dir * 10.0 - side * 6.0])
+
+
+## _draw_arrow()'s drawing on any canvas (the legend draws the same arrow).
+static func paint_arrow(on: CanvasItem, at: Vector2, dir: Vector2, col: Color, ring: Color) -> void:
+	on.draw_circle(at - dir * 5.0, 10.0, MARK_EDGE)
+	on.draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, -1.0)
+	var arrow := arrow_shape(at, dir)
+	on.draw_colored_polygon(arrow, col)
 	arrow.append(arrow[0])
-	_canvas.draw_polyline(arrow, MARK_EDGE, -1.0)
+	on.draw_polyline(arrow, MARK_EDGE, -1.0)
 
 
 func _draw_status(w: float) -> void:

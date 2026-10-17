@@ -123,6 +123,37 @@ func hud_line() -> String:
 	return ""
 
 
+## Virtual (v0.11.1, spec §7.3): a thing of this director's own that Blight can ruin within BlightFx.REACH of `at` -- an unguarded
+## standard, an unguarded mirror -- as the ground point Blight rots (Vector2.INF for none, the default). Only reads. BlightFx asks
+## the director before it looks for a structure.
+func blight_target(_at: Vector2) -> Vector2:
+	return Vector2.INF
+
+
+## Virtual (v0.11.1): whether Blight can ruin this director's thing at `at` (blight_target()) -- false for a guarded standard or
+## mirror (spec §7.3, Decision 29: no route round the opposition). True by default.
+func blight_takes(_at: Vector2) -> bool:
+	return true
+
+
+## Virtual (v0.11.1): Blight landed on this director's thing at `at` (blight_target()). True when it took: the base then adds the
+## town's alarm (Crowd.BLIGHT_ALARM) that env.blight() adds for a structure (I12). A guarded one (blight_takes() false) costs no
+## alarm and returns false -- only its banner (blight_words()) shows. Subclasses call `super(at)` and break their standard or cloud
+## their mirror only if it returned true.
+func blighted(at: Vector2) -> bool:
+	if not blight_takes(at):
+		return false
+	if crowd != null:
+		crowd.add_alarm(Crowd.BLIGHT_ALARM)
+	return true
+
+
+## Virtual (v0.11.1): the banner for a Blight that landed on this director's thing at `at`, taken or not ("BLIGHT - THE STANDARD ROTS",
+## "THEIR GUARD KEEPS IT"). "" says nothing; Mission.blight_banner() is for structures only and is not reached on this path.
+func blight_words(_at: Vector2) -> String:
+	return ""
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

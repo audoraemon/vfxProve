@@ -196,6 +196,28 @@ static func authority_title(authority: String) -> String:
 	return String(AUTHORITY_TITLES[i]) if i >= 0 else ""
 
 
+## A power's family (v0.11.1, spec §7.1): what it does, not its Authority (Decision 25). A mission's main step has a route in
+## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
+const FAMILY := {
+	"doom": "veil", "blight": "veil",
+	"deathmark": "death", "pestilence": "death",
+	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
+	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike",
+	"ember": "fire", "dragon": "fire", "cinder": "fire",
+	"whisper": "lead", "oath": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
+	"wisp": "draw", "delusion": "draw",
+	"discord": "hold",
+	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
+	"noleave": "decree", "belllies": "decree", "magnify": "decree", "abolition": "decree",
+	"thorns": "passage", "mirror": "passage",
+}
+
+
+## A power's family (FAMILY), or "" for an unknown key.
+static func family(key: String) -> String:
+	return String(FAMILY.get(key, ""))
+
+
 ## A quiet power (v0.05): its cast is no danger the town can see.
 static func is_quiet(key: String) -> bool:
 	return bool(get_power(key).get("quiet", false))

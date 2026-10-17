@@ -89,6 +89,6 @@ func _fx_process(delta: float) -> void:
 		if came >= GAWKERS:
 			break
 		var a := ctx.rng.randf() * TAU
-		if p.lure(body_at + Vector2(cos(a), sin(a)) * ctx.rng.randf_range(RING.x, RING.y), LOOK_SECONDS):
+		if p.lure(body_at + Vector2(cos(a), sin(a)) * ctx.rng.randf_range(RING.x, RING.y), LOOK_SECONDS, body_at):
 			came += 1
 	gawked += came

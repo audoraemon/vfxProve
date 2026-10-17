@@ -493,8 +493,12 @@ func _draw() -> void:
 				_ring(marked.ground_pos, 0.25, COL_MAD)
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
-			var s := BlightFx.target(_crowd._env, _press)
-			if s != null:
+			var mine := _rules.director.blight_target(_press) if _rules.director != null else Vector2.INF
+			var s := BlightFx.target(_crowd._env, _press) if mine == Vector2.INF else null
+			if mine != Vector2.INF:
+				# A director's own thing (v0.11.1: an unguarded standard or mirror), ringed as a structure is outlined.
+				_ring(mine, 0.45, COL_ROT)
+			elif s != null:
 				var r := s.footprint.grow(0.08)
 				for pass_i in 2:
 					var g := SHADE_GAP if pass_i == 0 else 0.0

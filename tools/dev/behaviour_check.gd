@@ -217,6 +217,9 @@ extends SceneTree
 ##   (tools/dev/routes/tier<N>_b.gd: act_<scenario>(bc, ctx) and state_<scenario>(bc, ctx) through _scripted(); hit-stop is off for every
 ##   scenario; --board plays the board version, as for the ★ missions. `--scenario=feast --path=festival|procession --board` plays the
 ##   board's Festival or Procession (mission_id = the board id). ctx = {rules, slots, d (the director), crowd, memo, mission}.
+##   `--scenario=night --route=b --board` (Task 12) plays the whole night, every act with its own loadout B (RouteBook.ACTS_B, drafted at each
+##   handover; `--path=` picks the Festival or the Procession) and tier5_b.gd's act_night(); its result line gives the night's total time and
+##   its longest idle stretch across the acts.
 
 const SEED := 7
 ## How many houses `siege --burn` sets burning each time (v0.08.2).
@@ -660,6 +663,9 @@ func _route_b(scenario: String, case_arg: String) -> void:
 	var id := _route_id(scenario)
 	if id == "":
 		print("BEHAVIOUR route b: scenario=%s is not a board mission" % scenario)
+		return
+	if scenario == "night":
+		await _night()  # v0.11.1 Task 12: The Long Night plays each act's B policy in its own loop
 		return
 	var label := id if scenario == "feast" else scenario
 	var memo := {}
@@ -4292,11 +4298,18 @@ func _night() -> void:
 	path = path if path != "" else "festival"
 	var outcome := {"omen": Battlefield.arg_value(args, "--act1"), "festival": Battlefield.arg_value(args, "--act2"),
 		"procession": Battlefield.arg_value(args, "--act2"), "judgement": Battlefield.arg_value(args, "--act3")}
+	if route == "b":
+		for k in outcome:
+			outcome[k] = "play"  # v0.11.1: every act plays its loadout B (RouteBook.ACTS_B) with tier5_b.gd's act_night()
 	# A played night has its own casts to hand over, and the aid's Heaven Splitter would fall on the Prince in his first second.
 	var calm_handover := "--calm-handover" in OS.get_cmdline_user_args() or "play" in outcome.values()
 	var done := [false]
 	var acts := [0]
+	# v0.11.1 (route b): the night's clock and its longest stretch between two casts, across the acts.
+	var night_clock := [0.0]
+	var night_idle := {"last": 0.0, "longest": 0.0}
 	mission.act_over.connect(func(r: Dictionary) -> void:
+		night_clock[0] += float(r.time)
 		print("BEHAVIOUR night act=%s won=%s reason=%s time=%.1f prince=%s" % [mission.act().id, r.won, r.reason, float(r.time),
 			mission.night().prince])
 		# Test aid: the Procession decides the Prince's outcome itself now; this forces it, over what it decided.
@@ -4312,7 +4325,12 @@ func _night() -> void:
 	mission.finished.connect(func(r: Dictionary) -> void:
 		print("BEHAVIOUR night end won=%s reason=%s time=%.1f path=%s acts=%d score=%d rank=%s" % [r.won, r.reason,
 			float(r.get("time", 0.0)), r.path, (r.acts as Array).size(), int(r.score), r.rank])
+		if route == "b":
+			var total: float = float(r.get("time", 0.0))  # the night's own result already sums its acts
+			print("BEHAVIOUR night result won=%s reason=%s time=%.1f idle=%.0f" % [r.won, r.reason, total, _idle_end(night_idle, total)])
 		done[0] = true)
+	if route == "b":
+		_watch_night_idle(mission._rules, night_idle, night_clock)
 	var seen := -1
 	while not done[0]:
 		if acts[0] != seen:
@@ -4345,7 +4363,11 @@ func _night() -> void:
 			if "--shots" in OS.get_cmdline_user_args() and mission.act().id == "procession":
 				_procession_shots()
 			var how := String(outcome.get(mission.act().id, ""))
-			if how == "play":
+			if route == "b":
+				if seen > 0:
+					_watch_night_idle(mission._rules, night_idle, night_clock)
+				_play_act_b(mission.act().id)  # a coroutine left running beside the loop, until the act is over
+			elif how == "play":
 				_play_act(mission.act().id)  # a coroutine left running beside the loop, until the act is over
 			await _frames(60)
 			_force_act(how)
@@ -4357,12 +4379,45 @@ func _night() -> void:
 func _loadout_for_next(outcome: Dictionary, path: String) -> PackedStringArray:
 	var ids := mission.act().next
 	var id := path if path != "" and ids.has(path) else String(ids[0])
+	if route == "b":
+		return RouteBook.loadout_b_for_act(MissionBook.LONG_NIGHT, id)
 	if String(outcome.get(id, "")) != "play":
 		return PackedStringArray()
 	var asked := Battlefield.arg_value(OS.get_cmdline_user_args(), "--act3-loadout")
 	if id == "judgement" and asked != "":
 		return PackedStringArray(asked.split(","))
 	return PackedStringArray(NIGHT_LOADOUTS[id])
+
+
+## v0.11.1 (route b): the night's idle stretches, from `rules`' casts: each noted at the night's clock (the acts before it, then the act's own).
+func _watch_night_idle(rules: Rules, acts: Dictionary, clock: Array) -> void:
+	var offset: float = clock[0]
+	rules.cast_made.connect(func(_slot: int, _key: String, _at: Vector2) -> void:
+		_note_act(acts, offset + rules.elapsed()))
+
+
+## v0.11.1 (route b): the act that is running played with loadout B (tier5_b.gd's act_night()), a look every LOOK_FRAMES, until it is over.
+func _play_act_b(id: String) -> void:
+	var rules: Rules = mission._rules
+	var memo := {"act": id}
+	var tier: GDScript = TIER_B[4]
+	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var frames := 0
+	var report_at := 15.0
+	while is_instance_valid(rules) and rules == mission._rules and not rules.finished and frames < max_frames:
+		await process_frame
+		frames += 1
+		var t := rules.elapsed()
+		if t >= report_at:
+			report_at += 15.0
+			print("BEHAVIOUR night play %s t=%d %s" % [id, roundi(t), String(tier.call("state_night", self, _route_ctx(memo)))])
+		if frames % LOOK_FRAMES != 0:
+			continue
+		var did := String(tier.call("act_night", self, _route_ctx(memo)))
+		if did != "":
+			print("BEHAVIOUR night play %s t=%.1f %s" % [id, t, did])
+	print("BEHAVIOUR night play %s end t=%.1f %s" % [id, rules.elapsed() if is_instance_valid(rules) else 0.0,
+		String(tier.call("state_night", self, _route_ctx(memo))) if is_instance_valid(rules) and rules == mission._rules else ""])
 
 
 ## Play the act that is running with its scripted policy (`--actN=play`), until it is over.

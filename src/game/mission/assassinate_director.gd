@@ -409,7 +409,7 @@ func _tell_flush() -> void:
 func _tick(q: Quarry) -> void:
 	match q.state:
 		State.WALKING:
-			if q.target.mind in FRIGHT or q.guard_fell:
+			if q.target.mind in FRIGHT or q.guard_fell or q.flushed:
 				q.guard_fell = false
 				_alarm(q)
 				return

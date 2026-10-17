@@ -534,6 +534,16 @@ static func _flush_awkward(t) -> void:
 		and do.fleeing_to_safe(qo), "a flushed collector's goal stays the Citadel with the house standing again")
 	_done(o)
 
+	# A flushed collector whose fright is ignored (a Reassure on him) still runs for the Citadel, not on to his debtor.
+	var f := _world()
+	var df: TaxCollectorDirector = f.d
+	for q in df.quarries:
+		q.target.fearless_left = 99.0
+	(f.crowd as Crowd).fires.ignite(df.hideout, 0.6)
+	_run(f, AssassinateDirector.TICK * 3.0 + DT)
+	t.check(_all_run(df), "a flushed collector whose panic is ignored still runs for the Citadel")
+	_done(f)
+
 	# FLUSH_GAP: the next waiting collector bursts that long after the one before.
 	var g := _world()
 	var dg: TaxCollectorDirector = g.d

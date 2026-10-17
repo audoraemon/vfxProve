@@ -153,6 +153,10 @@ var _rise_age := 0.0
 var _frame_rows: Variant = null
 var _frame_hint: Variant = null
 var _frame_lines: Variant = null
+## The wish rows taken once per advance() as well (v0.11.1 fix round): the signature and the keepout read them several times a frame.
+var _frame_wishes: Variant = null
+## The cue's plate width by its text (two texts): measured once.
+var _cue_widths := {}
 ## v0.11.1: expanded (TAB) or collapsed. Static, so it holds for the session across missions, restarts and acts (spec §1.3); nothing but
 ## the HUD reads it.
 static var details := false
@@ -208,11 +212,13 @@ func _process(delta: float) -> void:
 func advance(delta: float) -> void:
 	if _rules != null and _rules.mission != null:
 		_frame_rows = objective_rows()
+		_frame_wishes = _build_wish_rows()
 		_frame_hint = hint_text()
 		_step_hint_flash(delta)
 		_frame_lines = hint_lines(String(_frame_hint)) if hint_shown() else PackedStringArray()
 	_advance(delta)
 	_frame_rows = null
+	_frame_wishes = null
 	_frame_hint = null
 	_frame_lines = null
 
@@ -299,6 +305,14 @@ func _lines_now() -> PackedStringArray:
 ## TAB (v0.11.1 §1.2): everything, or the short screen again.
 func toggle_details() -> void:
 	details = not details
+
+
+## The cue's plate width: measured once per text.
+func _cue_width() -> float:
+	var text := cue_text()
+	if not _cue_widths.has(text):
+		_cue_widths[text] = plate_size(text).x
+	return _cue_widths[text]
 
 
 ## The cue on the objective row: what TAB does now.
@@ -450,12 +464,14 @@ func objective_rect() -> Rect2:
 	if rows.is_empty():
 		return Rect2()
 	var wide := 0.0
+	var first_w := -1.0
 	for row: Array in rows:
-		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0))
+		var row_w := UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0)
+		if first_w < 0.0:
+			first_w = row_w
+		wide = maxf(wide, row_w)
 	# The cue sits at the right end of the first row (v0.11.1): the plate is at least as wide as that row and the cue side by side.
-	var first: Array = rows[0]
-	var first_w := UiTheme.width(String(first[0]), UiTheme.SIZE_SMALL) + (12.0 if String(first[1]) != "" else 0.0)
-	wide = maxf(wide, first_w + plate_size(cue_text()).x + 4.0)
+	wide = maxf(wide, first_w + _cue_width() + 4.0)
 	return Rect2(2.0, 2.0, wide + 10.0, 5.0 + ROW_H * float(rows.size()))
 
 
@@ -464,7 +480,7 @@ func objective_rect() -> Rect2:
 func cue_rect() -> Rect2:
 	if _rules == null or _rules.mission == null:
 		return Rect2()
-	var box := plate_size(cue_text())
+	var box := Vector2(_cue_width(), PLATE_H)
 	if _rules.mission.scored:
 		var panel := objective_panel()
 		return Rect2(panel.end.x - 3.0 - box.x, (ESCAPED_Y if details else ESCAPED_Y_SHORT) - (PLATE_H - 3.0), box.x, box.y)
@@ -511,6 +527,10 @@ func stack_rect() -> Rect2:
 
 ## The wishes heard (v0.11 M1, spec §5.2) as [text, state] rows, state "open", "granted" or "failed"; none off the board.
 func wish_rows() -> Array:
+	return _frame_wishes if _frame_wishes != null else _build_wish_rows()
+
+
+func _build_wish_rows() -> Array:
 	var rows := []
 	if _rules == null or _rules.descent == null:
 		return rows
@@ -973,6 +993,10 @@ func slot_at(point: Vector2) -> int:
 func push_banner(text: String, quiet := false) -> void:
 	_banners.append([text, 0.0, quiet or _quiet_next_banner])
 	_quiet_next_banner = false
+
+
+func banner_up() -> bool:
+	return not _banners.is_empty()
 
 
 func banners() -> PackedStringArray:

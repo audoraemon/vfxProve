@@ -22,6 +22,7 @@ for a in "$@"; do case "$a" in
 esac; done
 [ -z "$S" ] && { echo "usage: gate.sh <scenario> [--route=b] [--board] [--extra='...'] [--jobs=N]" >&2; exit 2; }
 T=$(mktemp -d)
+trap 'rm -rf "$T"' EXIT
 CASES="none play"; [ "$ROUTE" = b ] && CASES="play"
 : > "$T/jobs"
 for c in $CASES; do for n in 1 2 3; do echo "$c $n" >> "$T/jobs"; done; done
@@ -30,23 +31,31 @@ run_one() { # case seed
   local c="$1" n="$2" o
   o=$(timeout 600 "$G" --headless --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- \
     --scenario="$S" --case="$c" --seed="$n" $BOARD $RARG $EXTRA 2>&1)
+  echo "$o" > "$T/$c.$n.log"
   echo "$o" | grep -a "BEHAVIOUR" | grep -a -E " (result|end) .*won=" | tail -1 > "$T/$c.$n.res"
   echo "$o" | grep -a -o 'checksum=-\?[0-9]*' | tail -1 > "$T/$c.$n.sum"
 }
 export -f run_one
 xargs -P "$JOBS" -L 1 bash -c 'run_one $0 $1' < "$T/jobs"
-wins=0; lost=0; idle_max=0; idle_ok=1; times=""
+wins=0; lost=0; idle_max=0; idle_ok=1; time_ok=1; times=""
 for c in $CASES; do for n in 1 2 3; do
   line=$(cat "$T/$c.$n.res" 2>/dev/null); sum=$(cat "$T/$c.$n.sum" 2>/dev/null)
   won=$(echo "$line" | grep -a -o 'won=[a-z]*' | head -1 | cut -d= -f2)
   reason=$(echo "$line" | grep -a -o 'reason=[a-z_]*' | head -1 | cut -d= -f2)
   tm=$(echo "$line" | grep -a -o 'time=[0-9.]*' | head -1 | cut -d= -f2)
   idle=$(echo "$line" | grep -a -o 'idle=[0-9.]*' | tail -1 | cut -d= -f2)
+  if [ -z "$line" ]; then  # no result line: a crash or a parse error, not a lost run; show where it stopped
+    echo "gate.sh: $c seed=$n printed no result line; the log's last lines:" >&2
+    tail -n 8 "$T/$c.$n.log" >&2
+  fi
   echo "$S $c seed=$n won=${won:-?} reason=${reason:-?} time=${tm:-?} idle=${idle:-?} ${sum:-checksum=?}"
   if [ "$c" = none ]; then
     [ "$won" = false ] && lost=$((lost+1))
   else
-    if [ "$won" = true ]; then wins=$((wins+1)); times="$times $tm"; fi
+    if [ "$won" = true ]; then
+      wins=$((wins+1)); times="$times ${tm:-0}"
+      [ -z "$tm" ] && time_ok=0
+    fi
     if [ -z "$idle" ]; then idle_ok=0; else idle_max=$(awk -v a="$idle_max" -v b="$idle" 'BEGIN{print (b>a)?b:a}'); fi
   fi
 done; done
@@ -60,10 +69,10 @@ if [ "$ROUTE" = a ]; then
   [ "$lost" -ne 3 ] && verdict=FAIL
   { [ "$median" = "-" ] || [ "$median" -lt 180 ] || [ "$median" -gt 240 ]; } && verdict=FAIL
 fi
+[ "$time_ok" -eq 0 ] && { verdict=FAIL; median="time?"; }  # a win with no time= can not be judged
 if [ "$idle_ok" -eq 0 ]; then idle_show="?"; verdict=FAIL; else
   idle_show=$idle_max; awk -v a="$idle_max" 'BEGIN{exit !(a>45)}' && verdict=FAIL
 fi
 nl="$lost/3"; [ "$ROUTE" = b ] && nl="-"
 echo "gate $S route=$ROUTE none_lost=$nl wins=$wins/3 median=$median idle_max=$idle_show $verdict"
-rm -rf "$T"
 [ "$verdict" = PASS ]

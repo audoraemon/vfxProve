@@ -499,7 +499,7 @@ func ascend() -> bool:
 ## The details key (v0.11.1 §1.3): TAB pressed -- not an echo, nor a release. In a mission nothing else uses it.
 static func toggles_details(event: InputEvent) -> bool:
 	if event is InputEventKey:
-		return event.pressed and not event.echo and event.physical_keycode == KEY_TAB
+		return event.pressed and not event.echo and event.physical_keycode == KEY_TAB 			and not (event.alt_pressed or event.ctrl_pressed or event.meta_pressed)
 	return false
 
 
@@ -550,12 +550,13 @@ func _land() -> void:
 ## How much of this frame's `delta` the intro takes (v0.11.1, spec §2: one message at a time). The opening's banners come first:
 ## the tour waits at its start until the HUD's queue is empty, and the prayers hold does not begin while one is up.
 func _intro_step(delta: float) -> float:
-	if not is_instance_valid(_hud) or _hud.banners().is_empty():
+	if not is_instance_valid(_hud) or not _hud.banner_up():
 		return delta
 	if _tour != null and _tour.at_start():
 		return 0.0
-	if _prayers_hold > 0.0 and _intro_left >= _prayers_hold:
-		return minf(delta, _intro_left - _prayers_hold)  # up to the hold's start, and no further
+	if _prayers_hold > 0.0:
+		# Up to the hold's start, and no further; inside the hold nothing is spent while a banner hides the plate.
+		return minf(delta, maxf(_intro_left - _prayers_hold, 0.0))
 	return delta
 
 
@@ -566,7 +567,7 @@ func _sync_intro_hud() -> void:
 		return
 	var running := _intro_left > 0.0
 	_hud.intro = running
-	_hud.praying = running and _prayers_hold > 0.0 and _intro_left <= _prayers_hold and _hud.banners().is_empty()
+	_hud.praying = running and _prayers_hold > 0.0 and _intro_left <= _prayers_hold and not _hud.banner_up()
 
 
 ## A press that skips the tour (v0.10 M6, spec §5): Space, Enter or a left click, pressed -- not an echo, nor a release.
@@ -736,8 +737,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if legend_open():
 		return  # R, F, the slots and every cast wait for the legend to close
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
-		if touring() and skips_tour(event):
-			get_viewport().set_input_as_handled()
+		if skips_tour(event):  # a sweep and the prayers' hold skip as a tour does (v0.11.1, spec §2)
+			if is_inside_tree():
+				get_viewport().set_input_as_handled()
 			skip_intro()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -864,7 +866,7 @@ func _process(delta: float) -> void:
 			_bf.camera.position = Iso.ground_to_screen(_tour.camera()).round()
 			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, _tour.zoom_k())
 			# One thing at a time (v0.11.1): a banner up means no caption (it is the HUD's one message).
-			_hud.set_caption(_tour.caption() if _hud.banners().is_empty() else "")
+			_hud.set_caption("" if _hud.banner_up() else _tour.caption())
 		else:
 			var k := clampf(1.0 - maxf(_intro_left - _prayers_hold, 0.0) / INTRO_SECONDS, 0.0, 1.0)
 			var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns

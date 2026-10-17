@@ -286,6 +286,11 @@ static func _collapsed(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
 	other_key.physical_keycode = KEY_H
 	t.check(Mission.toggles_details(tab) and not Mission.toggles_details(tab_echo) and not Mission.toggles_details(tab_up)
 		and not Mission.toggles_details(other_key), "TAB pressed toggles; an echo, a release or another key does not")
+	var alt_tab := tab.duplicate() as InputEventKey
+	alt_tab.alt_pressed = true
+	var ctrl_tab := tab.duplicate() as InputEventKey
+	ctrl_tab.ctrl_pressed = true
+	t.check(not Mission.toggles_details(alt_tab) and not Mission.toggles_details(ctrl_tab), "Alt+TAB and Ctrl+TAB do not")
 	_flash_rules(t, hud, crowd, rules)
 	Hud.reset_session()
 

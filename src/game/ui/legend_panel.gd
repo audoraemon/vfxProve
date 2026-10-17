@@ -171,10 +171,33 @@ func _draw() -> void:
 		if rows.is_empty():
 			UiTheme.text(self, Vector2(right, top + 22.0), NOTHING, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		else:
-			_draw_rows(rows, right, top + 10.0, PANEL.end.x - 16.0 - right - SWATCH_W - 8.0)
+			var room := PANEL.end.x - 16.0 - right - SWATCH_W - 8.0
+			_draw_rows(fit_rows(rows, room, top + 10.0, PANEL.end.y - 24.0), right, top + 10.0, room)
 	else:
 		_draw_rows(OVERHEAD, left, top, PANEL.size.x - 32.0 - SWATCH_W - 8.0)
 	_draw_footer()
+
+
+## The rows that fit between `top` and `bottom` (v0.11.1 fix round): the column has no room to run into the footer, so the rows
+## beyond what fits become one last row, "+K more". All of them when they fit.
+static func fit_rows(rows: Array, room: float, top: float, bottom: float) -> Array:
+	var heights: Array[float] = []
+	var total := 0.0
+	for r: Array in rows:
+		var h := maxf(ROW_MIN, UiTheme.LINE_SMALL * float(UiTheme.wrap(String(r[2]), room, UiTheme.SIZE_SMALL).size()) + 3.0)
+		heights.append(h)
+		total += h
+	if top + total <= bottom:
+		return rows
+	var out: Array = []
+	var y := top + ROW_MIN  # the "+K more" row is kept room for
+	for i in rows.size():
+		if y + heights[i] > bottom:
+			break
+		y += heights[i]
+		out.append(rows[i])
+	out.append(["none", UiTheme.COL_DIM, "+%d more" % (rows.size() - out.size())])
+	return out
 
 
 ## The footer's three phrases with a visible gap between them (the pixel font's spaces are narrow).

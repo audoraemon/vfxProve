@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_tags(t)
 	_rise(t)
 	_gaze_display(t)
+	_intro_display(t)
 
 
 static func _world(def: MissionDef) -> Dictionary:
@@ -154,3 +155,19 @@ static func _gaze_display(t) -> void:
 	var plain := _world(TierBook.board("warning"))
 	t.check(not (plain.hud as Hud).gaze_bar_shown() and (plain.hud as Hud).gaze_readout() == "", "no Gaze below Tier 5")
 	_done(plain)
+
+
+## v0.11.1 (spec §2): during the intro the HUD is the clock, the slots and one message -- no objective stack, so its keepout is empty
+## and the tags spread into the corner; the prayers plate is its own message and shows only when `praying` is.
+static func _intro_display(t) -> void:
+	var s := _world(TierBook.board("warning"))
+	var hud: Hud = s.hud
+	t.check(not hud.intro and hud.stack_rect().has_area(), "play: the stack is drawn and measured")
+	var before := hud._signature()
+	hud.intro = true
+	t.check(hud.stack_rect() == Rect2(), "the intro: no stack, so no keepout")
+	t.check(hud._signature() != before, "the intro landing redraws the HUD")
+	t.check(not hud.praying, "the prayers wait for their own hold")
+	hud.intro = false
+	t.check(hud.stack_rect().has_area(), "and the stack is back once the intro lands")
+	_done(s)

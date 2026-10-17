@@ -411,7 +411,12 @@ func _ready() -> void:
 		if show.begins_with("flame"):
 			wait = 2.0
 		elif show == "tour":
-			wait = IntroTour.MOVE_SECONDS * 2.0 + IntroTour.HOLD_SECONDS + 0.4  # held at the second stop
+			# v0.11.1: the tour waits for the opening banners; then held at the second stop.
+			for _frame in 1200:
+				if not is_instance_valid(_mission) or _mission._hud.banners().is_empty():
+					break
+				await get_tree().process_frame
+			wait = IntroTour.MOVE_SECONDS * 2.0 + IntroTour.HOLD_SECONDS + 0.4
 		await get_tree().create_timer(wait).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		await _quit_cleanly()
@@ -850,9 +855,10 @@ func _until(cond: Callable, seconds: float) -> bool:
 	return true
 
 
-## Waits out the mission's intro (FLOW). A Night 2 mission's tour (v0.10 M6) is skipped at once, as a player would.
+## Waits out the mission's intro (FLOW). Any intro -- a tour (v0.10 M6) or a sweep with the prayers' hold (v0.11.1) -- is skipped
+## at once, as a player would.
 func _past_intro() -> void:
-	if is_instance_valid(_mission) and _mission.touring():
+	if is_instance_valid(_mission) and _mission.in_intro():
 		_mission.skip_intro()
 	await _until(func() -> bool: return not _mission.in_intro(), 5.0)
 
@@ -907,7 +913,15 @@ func _flow_test() -> void:
 	var clock0 := _mission.rules().time_left
 	await get_tree().create_timer(Mission.INTRO_SECONDS * 0.5).timeout
 	step.call(_mission.rules().time_left == clock0, "the clock waits during the intro (%.2f)" % _mission.rules().time_left)
-	await get_tree().create_timer(Mission.INTRO_SECONDS * 0.5 + 1.0).timeout
+	# v0.11.1: a night that heard wishes ends its sweep on the prayers' hold (Mission.PRAYERS_SECONDS), which waits for the opening
+	# banners to go: so wait for the hold and then for the intro to land, not for a fixed time.
+	var prayed := _mission.descent() != null and not _mission.descent().wishes.is_empty()
+	if prayed:
+		var prays := await _until(func() -> bool: return _mission._hud.praying, Mission.INTRO_SECONDS + 15.0)
+		step.call(prays and _mission.rules().time_left == clock0 and _mission._hud.banners().is_empty(),
+			"the sweep ends on the town's prayers, the clock still waiting")
+	await _until(func() -> bool: return not _mission.in_intro(), Mission.PRAYERS_SECONDS + 5.0)
+	await get_tree().create_timer(1.0).timeout
 	var running := _mission.rules().time_left
 	step.call(not _mission.in_intro() and running < clock0, "after the intro the clock runs (%.2f)" % running)
 	step.call(_fader.is_clear(), "the fade has cleared once the mission is up")
@@ -1075,7 +1089,12 @@ func _flow_ascend(step: Callable) -> void:
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await get_tree().process_frame
 	var heard := _mission.descent().wishes.size() if _mission.descent() != null else 0
-	step.call(heard > 0 and heard <= TierBook.wishes(1) and _mission._hud.praying, "the town prays during the intro: %d wishes" % heard)
+	# v0.11.1: the prayers plate is the intro's last hold (one message at a time), not its first frame: the tour, then the town prays.
+	step.call(heard > 0 and heard <= TierBook.wishes(1) and not _mission._hud.praying and _mission._hud.intro,
+		"the intro opens on its tour, not the prayers: %d wishes heard" % heard)
+	var prays := await _until(func() -> bool: return _mission._hud.praying, 40.0)
+	step.call(prays and _mission.in_intro() and _mission._hud.caption() == "" and _mission._hud.stack_rect() == Rect2(),
+		"the town prays last in the intro, alone: no caption, no stack")
 	await _past_intro()
 	var f := InputEventKey.new()
 	f.physical_keycode = KEY_F
@@ -1758,7 +1777,10 @@ func _flow_tour(step: Callable) -> void:
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await get_tree().process_frame
 	var clock0 := _mission.rules().time_left
-	step.call(_mission.touring() and _mission._hud.caption() != "", "Mira's House opens on its tour, a caption up")
+	step.call(_mission.touring() and _mission._hud.caption() == "", "Mira's House opens on its tour, the banner alone first (no caption)")
+	# v0.11.1: the tour waits for the opening banners, then each stop's caption shows while the camera holds there.
+	var held := await _until(func() -> bool: return _mission._hud.caption() != "", 20.0)
+	step.call(held and _mission.touring() and _mission._hud.banners().is_empty(), "then its first stop holds, a caption up")
 	var space := InputEventKey.new()
 	space.physical_keycode = KEY_SPACE
 	space.pressed = true
@@ -1777,7 +1799,9 @@ func _flow_tour(step: Callable) -> void:
 	on_action("pause:restart")
 	await _until(func() -> bool: return _mission_up(old), 10.0)
 	await get_tree().process_frame
-	step.call(_mission.touring() and _mission._hud.caption() != "", "a restart tours again from the top")
+	step.call(_mission.touring() and _mission._hud.caption() == "", "a restart tours again from the top")
+	held = await _until(func() -> bool: return _mission._hud.caption() != "", 20.0)
+	step.call(held, "and holds at its first stop under a caption")
 	_mission.skip_intro()
 	step.call(not _mission.in_intro() and _mission._hud.caption() == "", "and lands at once when skipped")
 	_open_pause()

@@ -36,6 +36,9 @@ const CLEAR := Color("6e8230")
 const INTRO_SECONDS := 2.0
 ## The sweep starts as far out as the zoom goes.
 const INTRO_FROM_ZOOM := ZOOM_MIN
+## A board night that heard wishes ends its first intro with one last hold at the play spot (v0.11.1, spec §2), showing only
+## the prayers plate.
+const PRAYERS_SECONDS := 3.0
 ## How close the camera rests for play.
 const PLAY_ZOOM := 0.6
 ## The tour's stops sit this far below the screen's centre (v0.10 M6, screen px at PLAY_ZOOM), so a stop and its labels
@@ -121,6 +124,8 @@ var autostart := true
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
 var _intro_left := 0.0
+## The last PRAYERS_SECONDS of `_intro_left` when the night's first intro ends on the prayers plate (v0.11.1), else 0.
+var _prayers_hold := 0.0
 ## The intro's tour of a Night 2 mission's key places (v0.10 M6, spec §5), played in place of the sweep; null for a
 ## sweep, or once the camera has landed.
 var _tour: IntroTour
@@ -271,8 +276,12 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		BehaviourOverlay.shown = true
 	add_child(_overlay)
 	_begin_intro(play)
-	if _descent != null and not _scripted and is_instance_valid(_hud):
-		_hud.praying = true  # the town prays during the night's first intro (v0.11 M1, spec §5.1)
+	_prayers_hold = 0.0
+	if _descent != null and not _scripted and not _descent.wishes.is_empty():
+		# The town prays at the end of the night's first intro, alone on the screen (v0.11 M1, spec §5.1; v0.11.1, spec §2).
+		_prayers_hold = PRAYERS_SECONDS
+		_intro_left += PRAYERS_SECONDS
+	_sync_intro_hud()
 	_show_held_banners()
 
 
@@ -429,6 +438,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_ending = false
 	_build_act(powers if not powers.is_empty() else _act.default_loadout)
 	_begin_intro(_act)
+	_prayers_hold = 0.0
+	_sync_intro_hud()
 	if not raised.is_empty():
 		# After the act's own banner (the HUD queues them).
 		_rules.banner.emit("THE TOWN PREPARES: " + ", ".join(raised).to_upper())
@@ -506,13 +517,37 @@ func skip_intro() -> void:
 func _land() -> void:
 	var play: MissionDef = _act if _act != null else _def
 	_intro_left = 0.0
+	_prayers_hold = 0.0
 	_tour = null
 	_bf.camera.position = Iso.ground_to_screen(play.camera_at).round()
 	_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
 		_hud.praying = false
+		_hud.intro = false
 	_rules.set_process(true)
+
+
+## How much of this frame's `delta` the intro takes (v0.11.1, spec §2: one message at a time). The opening's banners come first:
+## the tour waits at its start until the HUD's queue is empty, and the prayers hold does not begin while one is up.
+func _intro_step(delta: float) -> float:
+	if not is_instance_valid(_hud) or _hud.banners().is_empty():
+		return delta
+	if _tour != null and _tour.at_start():
+		return 0.0
+	if _prayers_hold > 0.0 and _intro_left >= _prayers_hold:
+		return minf(delta, _intro_left - _prayers_hold)  # up to the hold's start, and no further
+	return delta
+
+
+## The HUD's view of the intro (v0.11.1): `intro` while it runs, and the prayers plate only in the last PRAYERS_SECONDS and with
+## no banner up (one message at a time).
+func _sync_intro_hud() -> void:
+	if not is_instance_valid(_hud):
+		return
+	var running := _intro_left > 0.0
+	_hud.intro = running
+	_hud.praying = running and _prayers_hold > 0.0 and _intro_left <= _prayers_hold and _hud.banners().is_empty()
 
 
 ## A press that skips the tour (v0.10 M6, spec §5): Space, Enter or a left click, pressed -- not an echo, nor a release.
@@ -746,15 +781,18 @@ func _process(delta: float) -> void:
 		if _music_in <= 0.0:
 			_music_in = 0.5
 			Music.set_intensity(1.0 - _rules.stability.total())
+	_sync_intro_hud()
 	if _intro_left > 0.0:
-		_intro_left = maxf(0.0, _intro_left - delta)
+		var step := _intro_step(delta)
+		_intro_left = maxf(0.0, _intro_left - step)
 		if _tour != null:
-			_tour.step(delta)
+			_tour.step(step)
 			_bf.camera.position = Iso.ground_to_screen(_tour.camera()).round()
 			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, _tour.zoom_k())
-			_hud.set_caption(_tour.caption())
+			# One thing at a time (v0.11.1): a banner up means no caption (it is the HUD's one message).
+			_hud.set_caption(_tour.caption() if _hud.banners().is_empty() else "")
 		else:
-			var k := 1.0 - _intro_left / INTRO_SECONDS
+			var k := clampf(1.0 - maxf(_intro_left - _prayers_hold, 0.0) / INTRO_SECONDS, 0.0, 1.0)
 			var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
 			var play: MissionDef = _act if _act != null else _def
 			_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera_at, smooth)).round()

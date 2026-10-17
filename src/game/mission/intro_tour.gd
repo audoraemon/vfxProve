@@ -2,11 +2,12 @@ class_name IntroTour
 extends RefCounted
 ## The camera's tour of a mission's key places before its clock starts (v0.10 M6, spec §5): from where the intro opens to
 ## each stop in turn -- MOVE_SECONDS on the way, smoothed, then HOLD_SECONDS there under the stop's caption -- and on to
-## where play begins. A pure timeline: Mission moves the camera, and the HUD shows the caption.
+## where play begins. A pure timeline: Mission moves the camera, and the HUD shows the caption. v0.11.1: a caption shows
+## only while the camera holds at its stop, so the opening is one thing at a time.
 
-## Each move between points, and each hold at a stop.
+## Each move between points, and each hold at a stop (v0.11.1: held 2.4 s, up from 1.6, so a caption can be read).
 const MOVE_SECONDS := 1.0
-const HOLD_SECONDS := 1.6
+const HOLD_SECONDS := 2.4
 
 ## The tour's points in order -- where it opens, each stop, where play begins -- and each stop's caption.
 var _points: Array[Vector2] = []
@@ -43,6 +44,11 @@ func skip() -> void:
 	_t = seconds()
 
 
+## The tour has not moved yet (v0.11.1: Mission holds it here while the opening banners are up).
+func at_start() -> bool:
+	return _t <= 0.0
+
+
 ## The tour has reached where play begins.
 func done() -> bool:
 	return _t >= seconds()
@@ -55,10 +61,10 @@ func camera() -> Vector2:
 	return _points[leg].lerp(_points[leg + 1], k * k * (3.0 - 2.0 * k))
 
 
-## The caption of the stop the tour is moving to or holding at; "" on the way to where play begins.
+## The caption of the stop the camera is holding at; "" while it moves (to a stop or on to where play begins).
 func caption() -> String:
 	var leg := _leg()
-	return _captions[leg] if leg < _captions.size() else ""
+	return _captions[leg] if leg < _captions.size() and _leg_k() >= 1.0 else ""
 
 
 ## How far the zoom has come in, 0 to 1: over the first move, then held.

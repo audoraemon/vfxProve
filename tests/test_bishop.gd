@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_hold(t)
 	_ground(t)
 	_stone(t)
+	_held_door(t)
 	_smother(t)
 	_flight(t)
 	_relief(t)
@@ -208,9 +209,8 @@ static func _flight(t) -> void:
 	for p: BishopDirector.Post in d.posts:
 		if p.escort and not p.done and p.refuge == 1 and MissionDirector._alive(p.man) and not (p.man as Person).inside:
 			out += 1
-	t.check(not d.in_flight and d.at_refuge == 1 and out == BishopDirector.ESCORT and not d.refuges[1].damage_filter.is_valid()
-		and (s.banners as Array).has("THE BISHOP REACHES THE CHAPTER HOUSE"),
-		"CHAIN after he was driven out he reaches the chapter house, his escort beside him; it is stone no more")
+	t.check(not d.in_flight and d.at_refuge == 1 and out == BishopDirector.ESCORT and (s.banners as Array).has("THE BISHOP REACHES THE CHAPTER HOUSE"),
+		"CHAIN after he was driven out he reaches the chapter house, his escort beside him")
 	Kit.done(s)
 
 
@@ -419,4 +419,26 @@ static func _no_flush(t) -> void:
 	var d: BishopDirector = s.d
 	t.check(not d.flush_waiting and d.hideout == null and d.quarries[0].state == AssassinateDirector.State.WAITING,
 		"the Bishop keeps the base's rule: nothing to flush, the waiting bishop stays put")
+	Kit.done(s)
+
+
+## v0.11.1 (R6; mission spec §7.2 row 17): the refuge he is in is held by the Knights at its door -- a blow only shakes it while one
+## stands guard, and it takes blows as any building does once none does; fire is not a blow.
+static func _held_door(t) -> void:
+	var s := _world()
+	var d: BishopDirector = s.d
+	_to_refuge(s, d, 0)
+	Kit.run_for(s, 0.6)
+	var house := d.refuges[0]
+	var hp := house.hp
+	t.check(not d.guards_at(0).is_empty(), "(set-up) Knights stand at his door")
+	house.damage(30.0, house.center(), &"lightning")
+	t.check(is_equal_approx(house.hp, hp), "a blow only shakes it while a Knight stands guard")
+	house.damage(10.0, house.center(), &"fire")
+	t.check(house.hp < hp, "a fire is not turned aside: the Knights beat it out themselves")
+	hp = house.hp
+	_clear(s, d, 0)
+	Kit.run_for(s, 0.6)
+	house.damage(30.0, house.center(), &"lightning")
+	t.check(d.guards_at(0).is_empty() and house.hp < hp, "with none on guard it takes the blow")
 	Kit.done(s)

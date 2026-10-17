@@ -11,7 +11,10 @@ extends RefCounted
 
 
 ## How far Mind Whisper sends a Knight off his refuge's door (bishop).
+const PROCESSION_SIDE := 5.0
 const BISHOP_SENT := 4.0
+const BISHOP_DIRS := 12
+const BISHOP_LIGHT_R := 5.5
 
 
 ## How long after a Mob Verdict on a target the policy leaves it to the mob before it tries Heaven Splitter (MobVerdictFx.VERDICT_TIME and a
@@ -20,13 +23,15 @@ const ARMOURY_VERDICT_WAIT := 30.0
 ## The Relic Run's policy: how near the next checkpoint Pip counts as there (a Wisp lit at the cart then takes him), the margin inside
 ## WillOWisp.CHARGE_LURE_R a light is lit from him, how far from the cart the Oath sends the watch, and how far ahead of a halt a warden's
 ## Death Mark is cast beyond the halt's own lead (RELIC_AHEAD / RELIC_LEG of behaviour_check are the A policy's; these mirror them).
-const RELIC_OATH_LEAD := 50.0
+const RELIC_OATH_LEAD := 42.0
+const RELIC_OATH_AHEAD := 58.0
 const RELIC_HOP_MARGIN := 0.4
 const RELIC_OATH_AWAY := 9.0
 const RELIC_LURE := 4.0
+const RELIC_DRAW := 0.0
 const RELIC_GATHER := 0.7
-const RELIC_GATHERED := 3
-const RELIC_GATHER_WAIT := 7.0
+const RELIC_GATHERED := 4
+const RELIC_GATHER_WAIT := 10.0
 const RELIC_AHEAD := 20.0
 const RELIC_LEG := 35.0
 const RELIC_LATE := 10.0
@@ -48,6 +53,9 @@ const SERMON_WISP_SOON := 2.0
 const SERMON_LIGHT_MARGIN := 0.3
 ## How far Mind Whisper sends an armed man off his target (armoury).
 const ARMOURY_SENT := 8.0
+const ARMOURY_AHEAD := 25.0
+const ARMOURY_DIRS := 12
+const ARMOURY_LIGHT_R := 5.5
 
 
 ## Where `p` will stand `ahead` seconds on, walking the path it has now at its pace (a person with no goal stands). Only reads.
@@ -78,6 +86,15 @@ static func act_procession(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var p := d.prince
+	if p.inside:
+		# In his carriage nothing of the god's reaches him. Until he comes out the road is cleared of onlookers: a Will-o'-Wisp draws
+		# those along his first leg off to stand staring in a side street, so that his death, when it comes, has fewer witnesses.
+		if bc._slot_ready(rules, slots, "wisp") and d.route.size() > 1:
+			var mid := (d.route[0] + d.route[1]) * 0.5
+			var side := (d.route[1] - d.route[0]).orthogonal().normalized()
+			rules.cast(slots.wisp, d._ground(mid + side * PROCESSION_SIDE))
+			return "wisp the onlookers off the road"
+		return ""
 	if p.statuses.has(&"frail") or not bc._slot_ready(rules, slots, "deathmark"):
 		return ""
 	rules.cast(slots.deathmark, p.ground_pos)
@@ -113,6 +130,41 @@ static func act_bishop(bc, ctx: Dictionary) -> String:
 	if cur < 0 or not is_instance_valid(d.refuges[cur]) or d.refuges[cur].destroyed:
 		return _bishop_ahead(bc, ctx, d, cur)
 	var s := d.refuges[cur]
+	var on := d.guards_at(cur)
+	if not on.is_empty():
+		# His Knights at the door turn blows aside (BishopDirector._seal_guarded()): a Will-o'-Wisp lit where it draws the most of them off
+		# (they stand staring at the light, away from the door, and walk back after), else a whisper or Discord on one.
+		var crowd: Crowd = ctx.crowd
+		if bc._slot_ready(rules, slots, "wisp"):
+			var best := Vector2.INF
+			var best_n := 0
+			for r in [3.0, 5.0, 7.0, 9.0, 12.0]:
+				for k in BISHOP_DIRS:
+					var at := d._walkable(s.center() + Vector2.from_angle(TAU * float(k) / float(BISHOP_DIRS)) * r)
+					var gap := s.distance_to(at)
+					if gap < BishopDirector.GUARD_REACH + WillOWisp.RING.y + 0.3 or gap > BISHOP_LIGHT_R:
+						continue
+					var n := 0
+					for p in on:
+						n += 1 if p.ground_pos.distance_to(at) <= WillOWisp.LURE_REACH - 0.4 and not p.hurrying and p.mind == Person.Mind.POST else 0
+					if n > best_n:
+						best_n = n
+						best = at
+			if best != Vector2.INF:
+				rules.cast(slots.wisp, best)
+				return "wisp %d Knights off refuge %d" % [best_n, cur]
+		for p in on:
+			if p.held_by_god() or p.shaken():
+				continue
+			var away := p.ground_pos - s.center()
+			var to := MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * BISHOP_SENT)
+			if bc._slot_ready(rules, slots, "whisper"):
+				rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": to})
+				return "whisper a Knight off refuge %d" % cur
+			if bc._slot_ready(rules, slots, "discord"):
+				rules.cast(slots.discord, p.ground_pos)
+				return "discord a Knight at refuge %d" % cur
+		return ""
 	if bc._slot_ready(rules, slots, "heaven"):
 		rules.cast(slots.heaven, s.center(), {"dir": Vector2.RIGHT})
 		return "heaven through refuge %d" % cur
@@ -155,10 +207,11 @@ static func state_bishop(_bc, ctx: Dictionary) -> String:
 		d.guards_at(d.current_refuge()).size() if d.current_refuge() >= 0 else 0, d.reliefs, d.hint_phase()]
 
 
-## The Armoury (loadout verdict, heaven, whisper, discord, wisp): the target to work is the first standing one not razed. Its armed men on
-## guard seal it, so a whisper sends one off (it cools in 8 s, Discord on one it will not take); with none on guard, Mob Verdict (the first
-## click on the building, the second on the crowd about it, away from the men whispered off), else Heaven Splitter through it. A target
-## brought down before its horn is razed at the horn.
+## The Armoury (loadout verdict, heaven, whisper, discord, wisp): a target is stone until its horn (ArmouryDirector, v0.11.1), so the work
+## is on the target that musters, against its armed men: Mob Verdict when it is ready (the first click on the building, the second on the
+## crowd about it -- the circle takes the armed men within it too, and bound to the walls they no longer guard); else a Will-o'-Wisp lit
+## where it draws the most of them off their posts (they stand staring at it away from the building), else a whisper or Discord on one;
+## with none on guard, Heaven Splitter through it.
 static func act_armoury(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ArmouryDirector
 	if d == null:
@@ -166,36 +219,70 @@ static func act_armoury(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var crowd: Crowd = ctx.crowd
-	var i := _armoury_target(d)
+	var i := d.mustering_now()
 	if i < 0:
+		# Before the next horn, its night watch is thinned: a whisper (cooling in 8 s) sends one off the target, Discord holds another.
+		var nxt := d.upcoming()
+		if nxt >= 0 and d.due_in(nxt) <= ARMOURY_AHEAD:
+			for p in d.guards(nxt):
+				if p.held_by_god() or p.shaken():
+					continue
+				var away := p.ground_pos - d.targets[nxt].center()
+				var to := MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * ARMOURY_SENT)
+				if bc._slot_ready(rules, slots, "whisper"):
+					rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": to})
+					return "whisper a night watchman off the %s" % String(ArmouryDirector.WORDS[nxt])
+				if bc._slot_ready(rules, slots, "discord"):
+					rules.cast(slots.discord, p.ground_pos)
+					return "discord a night watchman at the %s" % String(ArmouryDirector.WORDS[nxt])
 		return ""
 	var s := d.targets[i]
-	var word := String(ArmouryDirector.WORDS[i])
-	var on := d.guards(i)
-	if not on.is_empty():
-		for p in on:
-			if p.shaken() or p.mind == Person.Mind.WHISPERED:
-				continue
-			var away := p.ground_pos - s.center()
-			var to := MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * ARMOURY_SENT)
-			if bc._slot_ready(rules, slots, "whisper"):
-				rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": to})
-				return "whisper an armed man off the %s" % word
-			if bc._slot_ready(rules, slots, "discord") and p.mind == Person.Mind.DUTY:
-				rules.cast(slots.discord, p.ground_pos)
-				return "discord an armed man at the %s" % word
+	if not is_instance_valid(s) or s.destroyed:
 		return ""
+	var word := String(ArmouryDirector.WORDS[i])
 	var memo: Dictionary = ctx.memo
+	var waiting: bool = d._clock - float(memo.get("verdict_%d" % i, -100.0)) < ARMOURY_VERDICT_WAIT
+	if waiting:
+		return ""  # its mob is at the walls: nothing else is wasted on what the verdict is taking down
 	if bc._slot_ready(rules, slots, "verdict"):
-		var mob := _armoury_mob(d, crowd, s)
-		rules.cast(slots.verdict, s.center(), {"to": mob})
+		rules.cast(slots.verdict, s.center(), {"to": _armoury_mob(d, crowd, s)})
 		memo["verdict_%d" % i] = d._clock
 		return "mob verdict on the %s" % word
-	if d._clock - float(memo.get("verdict_%d" % i, -100.0)) < ARMOURY_VERDICT_WAIT:
-		return ""  # its mob is at the walls: Heaven is not wasted on what the verdict is taking down
-	if bc._slot_ready(rules, slots, "heaven"):
-		rules.cast(slots.heaven, s.center(), {"dir": Vector2.RIGHT})
-		return "heaven through the %s" % word
+	var on := d.guards(i)
+	if on.is_empty():
+		if bc._slot_ready(rules, slots, "heaven"):
+			rules.cast(slots.heaven, s.center(), {"dir": Vector2.RIGHT})
+			return "heaven through the %s" % word
+		return ""
+	if bc._slot_ready(rules, slots, "wisp"):
+		var best := Vector2.INF
+		var best_n := 0
+		for r in [3.0, 5.0, 7.0, 9.0]:
+			for k in ARMOURY_DIRS:
+				var at := d._walkable(s.center() + Vector2.from_angle(TAU * float(k) / float(ARMOURY_DIRS)) * r)
+				var gap := s.distance_to(at)
+				if gap < ArmouryDirector.GUARD_REACH + WillOWisp.RING.y + 0.3 or gap > ARMOURY_LIGHT_R:
+					continue
+				var n := 0
+				for p in on:
+					n += 1 if p.ground_pos.distance_to(at) <= WillOWisp.LURE_REACH - 0.4 else 0
+				if n > best_n:
+					best_n = n
+					best = at
+		if best != Vector2.INF:
+			rules.cast(slots.wisp, best)
+			return "wisp %d armed men off the %s" % [best_n, word]
+	for p in on:
+		if p.held_by_god() or p.shaken():
+			continue
+		var away := p.ground_pos - s.center()
+		var to := MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * ARMOURY_SENT)
+		if bc._slot_ready(rules, slots, "whisper"):
+			rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": to})
+			return "whisper an armed man off the %s" % word
+		if bc._slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, p.ground_pos)
+			return "discord an armed man at the %s" % word
 	return ""
 
 
@@ -462,6 +549,22 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 				and pip.ground_pos.distance_to(d.checkpoints[kk]) > RelicRunDirector.CART_REACH * 0.5:
 			rules.cast(slots.oath, pip.ground_pos, {"mode": "hold", "to": d.checkpoints[kk]})
 			return "oath Pip to the halt (%.1f off)" % pip.ground_pos.distance_to(d.checkpoints[kk])
+	# A warden of the last halt is bound ahead of it: Oathbound's hold a place sends him off to hold it 60 s, and a Faithful bound by an oath
+	# neither watches the cart nor sees a fall (RelicRunDirector._sees()).
+	if d.halt < 0 and k == 1 and due <= RELIC_OATH_AHEAD and bc._slot_ready(rules, slots, "oath"):
+		for p in d.wardens_at(k):
+			if p.mind == Person.Mind.COMPELLED:
+				continue
+			rules.cast(slots.oath, p.ground_pos, {"mode": "hold", "to": d._walkable(d.checkpoints[k] + Vector2(RELIC_OATH_AWAY, 0.0))})
+			return "oath a warden ahead away from the last halt"
+	# A warden of the next halt whose fall goes quite unseen (no one at all within Crowd.DOOM_WITNESS of him) is marked ahead of it: one fewer
+	# at the cart (his relief comes RELIEF_AFTER after he falls, and the cart's watch is drawn off together by the Wisp then).
+	if d.halt < 0 and k == 1 and due <= RELIC_LEG + DeathMarkFx.MARK_TIME and bc._slot_ready(rules, slots, "deathmark"):
+		for p in d.wardens_at(k):
+			if p.statuses.has(&"frail") or not bc._none_within(crowd, p, Crowd.DOOM_WITNESS + RELIC_MARGIN):
+				continue  # (no other Faithful by him: a seen fall by a lay person only raises the Gaze, a Faithful's runs to the Temple)
+			rules.cast(slots.deathmark, p.ground_pos)
+			return "death mark a warden ahead"
 	if d.halt >= 0 and (d.aboard or pip.held_by_god() or pip.ground_pos.distance_to(cart) <= RelicRunDirector.CART_REACH):
 		var seen := d.watchers_now()
 		if seen.is_empty():
@@ -478,9 +581,11 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 			return ""
 		# Only passers-by left (Faithful going about their day who stopped to look at the cart): a Wisp lit RELIC_LURE past them, away from the
 		# cart, draws them off to stand staring at it.
+		# Once Pip has been led by the god's light or oath (RelicRunDirector.pip_led) the watch itself answers it: the same light draws the
+		# escorts and wardens off to stare at it, and the cart stands unwatched for as long as they do.
 		var strollers: Array[Person] = []
 		for p in seen:
-			if p.mind in Person.LURABLE:
+			if p.mind in Person.LURABLE or (d.pip_led and p.answers_lure and p.mind == Person.Mind.DUTY):
 				strollers.append(p)
 		if not strollers.is_empty() and strollers.size() == seen.size() - _relic_leaving(seen) and bc._slot_ready(rules, slots, "wisp"):
 			var c := Vector2.ZERO
@@ -489,7 +594,11 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 			var off := c - cart
 			var dir := off.normalized() if off.length() > 0.01 else Vector2.RIGHT
 			rules.cast(slots.wisp, d._walkable(cart + dir * (maxf(off.length(), 1.0) + RELIC_LURE)))
+			ctx.memo["wisp_at"] = d._clock
 			return "wisp the passers-by off the cart"
+		# The Wisp's draw takes a few seconds to clear the cart; Discord and Oathbound are kept for the ones it leaves, not spent at once.
+		if d._clock - float(ctx.memo.get("wisp_at", -100.0)) < RELIC_DRAW:
+			return ""
 		# Discord holds the watchers within its reach of a spot that leaves Pip and the carter out; Oathbound sends the four nearest a click to
 		# hold a place away from the cart (they walk off slowly, but they walk): the one that takes the more of the watch goes first.
 		var d_at := Vector2.INF
@@ -517,7 +626,7 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 				for b in OathboundFx.bound_at(crowd._field, p.ground_pos):
 					if seen.has(b):
 						n += 1
-					elif b == pip:
+					elif b == pip or b == d.carter:
 						bad += 1
 				if bad == 0 and n > o_n:
 					o_n = n
@@ -528,20 +637,6 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 		if o_n > 0:
 			rules.cast(slots.oath, o_at, {"mode": "hold", "to": d._walkable(cart + Vector2(RELIC_OATH_AWAY, 0.0))})
 			return "oath %d of the watch away from the cart" % o_n
-		if bc._slot_ready(rules, slots, "deathmark"):
-			# A Death Mark's fall is a report only if another Faithful, not held, stands within Crowd.DOOM_WITNESS of it; Pip and the carter
-			# are lay people and see nothing the Temple would hear of (the Gaze rises by a seen death, no more).
-			for p in seen:
-				if p.statuses.has(&"frail") or p.mind in MissionDirector.BLIND:
-					continue
-				var alone := true
-				for f in d.watchers(p.ground_pos, Crowd.DOOM_WITNESS + RELIC_MARGIN, p):
-					alone = false
-				if d.halt != 0:
-					alone = bc._none_within(crowd, p, Crowd.DOOM_WITNESS)  # the swap halt: no fall may be seen at all, a report would end it
-				if alone:
-					rules.cast(slots.deathmark, p.ground_pos)
-					return "death mark a watcher of the cart"
 	return ""
 
 

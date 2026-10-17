@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_moving(t)
 	_board(t)
 	_lured_pip(t)
+	_led_watch(t)
 	_rolls_on(t)
 	_swap(t)
 	_no_first_swap(t)
@@ -533,4 +534,44 @@ static func _freed(t) -> void:
 	Kit.run_for(s, 1.0)
 	t.check(d.stalled and d.wardens_at(0).is_empty() and d.wardens_at(1).is_empty() and int(d.report().halts) == 0,
 		"the cart's people and the wardens freed: the tags, hint and report bear it (review focus 4)")
+	Kit.done(s)
+
+
+## v0.11.1 (R6): once Pip has been led by the god's light or oath, the cart's watch answers a Wisp, a Faithful bound by an oath does not
+## watch, a watch drawn off does not call the lured back, and an unwatched first halt is not stood out; a Pip led by a whisper changes none of it.
+static func _led_watch(t) -> void:
+	var s := _world()
+	var d: RelicRunDirector = s.d
+	var field: EnemyField = s.field
+	_at_halt(s, d, 0)
+	var esc := d.escorts[0] as Person
+	Kit.run_for(s, 0.6)
+	t.check(not d.pip_led and not esc.answers_lure, "a Pip led by no one: the watch hears no Wisp")
+	d.wren.whisper(d.cart_at() + Vector2(0.5, 0.0), MindWhisperFx.LINGER)
+	Kit.run_for(s, 0.6)
+	t.check(not d.pip_led, "led by a whisper (loadout A): nothing changes")
+	d.wren._wake()
+	d.wren.mind = Person.Mind.COMPELLED
+	Kit.run_for(s, 0.6)
+	t.check(d.pip_led and esc.answers_lure and is_equal_approx(esc.lure_reach, WillOWisp.LURE_REACH),
+		"Pip bound by an oath: the watch answers a Wisp from its whole reach")
+	var was := d.watched()
+	for p in d.watchers_now():
+		p.mind = Person.Mind.COMPELLED
+	t.check(was and not d.watched(), "a Faithful bound by an oath does not watch the cart (was watched: %s)" % was)
+	esc.mind = Person.Mind.DUTY
+	Kit.arrive(esc, d.cart_at() + Vector2(0.5, 0.0))
+	t.check(esc.lure(d.cart_at() + Vector2(4.0, 0.0), 11.5, d.cart_at() + Vector2(4.0, 0.0), esc.lure_reach), "(set-up) a Wisp draws an escort off the cart")
+	Kit.run_for(s, 1.0)
+	t.check(esc.mind == Person.Mind.OBSERVE, "the walk and the wardens' watch do not call a lured escort back")
+	Kit.done(s)
+	s = _world()
+	d = s.d
+	_at_halt(s, d, 0)
+	d._board()
+	d.wren.mind = Person.Mind.COMPELLED
+	Kit.run_for(s, 0.6)
+	_blind(d)
+	Kit.run_for(s, RelicRunDirector.LED_HALT + 1.0)
+	t.check(d.halts_done[0] and d.halt == -1, "Pip aboard and led, the first halt is not stood out to HALT_MAX: the carter rolls on LED_HALT in")
 	Kit.done(s)

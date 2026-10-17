@@ -161,6 +161,11 @@ static func board(id: String, state: DescendState = null) -> MissionDef:
 			_warning(m)
 		"festival":
 			_festival(m)
+		"procession":
+			m.tune = func(d: MissionDirector) -> void:
+				var pd := d as ProcessionDirector
+				if pd != null:
+					pd.emerge_after = ProcessionDirector.EMERGE_AT
 		"last_judgement":
 			m.goal = "Destroy the Citadel and break the city before dawn"
 	if tier >= GAZE_TIER:

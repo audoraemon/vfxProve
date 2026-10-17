@@ -93,6 +93,8 @@ var _stoned := {}
 ## His own pace, before BISHOP_PACE; the Knights walking home (v0.11 M5).
 var _own_pace := 1.0
 var _homeward: Array = []
+## The refuge whose Knights hold it against blows now (v0.11.1).
+var _guard_sealed: Structure
 
 
 ## The places and numbers (v0.11 M5): no hideout (no smoke-out, the Citadel's gate as the safe place), the guards' ring RING_R, and
@@ -228,6 +230,33 @@ func _unstone(s: Structure) -> void:
 
 ## Structure.damage_filter for a stone refuge (v0.11 M5): the blow only shakes it.
 func _stone_hit(s: Structure, _amount: float, _source: Vector2, _kind: StringName) -> void:
+	s.shake(STONE_SHAKE)
+
+
+## The refuge he is in is held by its Knights (v0.11.1, R6; mission spec §7.2 row 17: "Heaven fells the refuge; whisper, Discord and the
+## Wisp clear the Knights"): while one stands guard at it, a blow only shakes it, as it does a refuge he is not yet in; fire is not a blow
+## (the Knights beat that out themselves). With none on guard it takes blows as any building does. Checked every step.
+func _seal_guarded() -> void:
+	var cur := current_refuge()
+	var s: Structure = refuges[cur] if cur >= 0 else null
+	var want := s != null and is_instance_valid(s) and not s.destroyed and not guards_at(cur).is_empty()
+	if _guard_sealed != null and (not want or _guard_sealed != s):
+		if is_instance_valid(_guard_sealed):
+			_guard_sealed.damage_filter = Callable()
+		_guard_sealed = null
+	if want and _guard_sealed == null:
+		s.damage_filter = _guard_hit
+		_guard_sealed = s
+
+
+## Structure.damage_filter for a refuge its Knights hold (v0.11.1): a blow only shakes it; fire burns it as ever.
+func _guard_hit(s: Structure, amount: float, source: Vector2, kind: StringName) -> void:
+	if kind == &"fire":
+		s.damage_filter = Callable()
+		s.damage(amount, source, kind)
+		if is_instance_valid(s) and not s.destroyed:
+			s.damage_filter = _guard_hit
+		return
 	s.shake(STONE_SHAKE)
 
 
@@ -420,6 +449,7 @@ func step(delta: float) -> void:
 		_refuge_step(at_refuge, delta)
 	_tend(delta, looking)
 	_smother_stone()
+	_seal_guarded()
 
 
 ## The bishop's people for the one hold rule (v0.11 M5, the controller's ruling): the bishop and every Knight at a post or ringing him.
@@ -668,6 +698,9 @@ func report() -> Dictionary:
 
 ## Lets go of the stone and the engineers' list, then the Assassinate type's (v0.11 M5).
 func teardown() -> void:
+	if is_instance_valid(_guard_sealed):
+		_guard_sealed.damage_filter = Callable()
+	_guard_sealed = null
 	for s: Variant in _stoned.keys():
 		if is_instance_valid(s):
 			(s as Structure).damage_filter = _stoned[s]

@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_tagged(t)
 	_freed(t)
 	_verdict_stone(t)
+	_lured_guard(t)
 
 
 static func _world() -> Dictionary:
@@ -181,8 +182,8 @@ static func _ahead(t) -> void:
 	north.damage(20.0, north.center(), &"smite")
 	(s.crowd as Crowd).fires.ignite(north, 0.5)
 	Kit.run_for(s, 0.1)
-	t.check(not d.is_sealed(north) and north.hp < hp and not d.burning(north),
-		"with none on guard a blow lands before its horn, but its fire goes out (the staged ruling)")
+	t.check(d.is_sealed(north) and is_equal_approx(north.hp, hp) and not d.burning(north),
+		"v0.11.1 (R6): before its horn a target is stone, guarded or not -- a blow only shakes it and its fire goes out")
 	north.destroy(north.center(), &"smite")
 	Kit.run_for(s, 0.5)
 	t.check(not d.razed(north) and d.hint_phase() == "not_yet" and Kit.labels(d)[0] == "BARRACKS - DOWN %s" % UiTheme.clock(d.due_in(0))
@@ -494,14 +495,16 @@ static func _freed(t) -> void:
 
 
 ## v0.11.1 (spec §7.2 row 18, proved first): Mob Verdict on the stone gate barracks. Unguarded, a mob at its walls tears the tower down
-## (damage kind `mob`; stone is proof against fire, not against a mob); with an armed man on guard it is sealed and the mob only
-## shakes it. A fall before its horn is razed at the horn.
+## (damage kind `mob`; stone is proof against fire, not against a mob); an armed man within the circle is turned on it with the rest and,
+## held by the god, no longer guards (v0.11.1), so the seal lifts. A fall before its horn is razed at the horn.
 static func _verdict_stone(t) -> void:
 	for guarded in [false, true]:
 		var s := _world()
 		var d: ArmouryDirector = s.d
 		Kit.run_for(s, 0.5)
 		var gate := d.targets[1]
+		d._muster(1)  # (v0.11.1) before its horn it is stone, whoever guards it
+		Kit.run_for(s, 0.1)
 		var keep: Variant = null
 		for a: ArmouryDirector.Armed in d.armed[1]:
 			if MissionDirector._alive(a.man) and not (a.man as Person).inside:
@@ -541,7 +544,8 @@ static func _verdict_stone(t) -> void:
 					p.ground_pos = p.goal()
 			steps += 1
 		if guarded:
-			t.check(not gate.destroyed and verdict.mob.size() > 0, "an armed man on guard: the mob only shakes the sealed gate barracks (%d s)" % steps)
+			t.check(gate.destroyed and verdict.mob.has(keep), "v0.11.1: the circle takes the armed man too -- bound to the walls he no longer guards, "
+				+ "so the target is open and falls (%d s)" % steps)
 		else:
 			t.check(gate.destroyed and gate.destroy_kind == &"mob" and verdict.mob.size() >= 0,
 				"unguarded, the mob tears the stone gate barracks down (kind %s, %d s, %d in the mob)" % [gate.destroy_kind, steps, verdict.mob.size()])
@@ -549,3 +553,27 @@ static func _verdict_stone(t) -> void:
 		ctx.overhead.free()
 		ctx.ground.free()
 		Kit.done(s)
+
+
+## v0.11.1 (R6): an armed man answers a Will-o'-Wisp from its whole reach and is off guard while the god's hand is on him (lured, bound); the
+## director does not call him back to his post until it lifts, and the target is open meanwhile.
+static func _lured_guard(t) -> void:
+	var s := _world()
+	var d: ArmouryDirector = s.d
+	Kit.run_for(s, 0.6)
+	d._muster(0)
+	Kit.run_for(s, 0.6)
+	var north := d.targets[0]
+	for a: ArmouryDirector.Armed in d.armed[0]:
+		if MissionDirector._alive(a.man) and not (a.man as Person).inside and a != d.armed[0][0]:
+			Kit.free_body(s, a.man)
+	Kit.run_for(s, 0.6)
+	var a0: ArmouryDirector.Armed = d.armed[0][0]
+	var man := a0.man as Person
+	t.check(man.answers_lure and is_equal_approx(man.lure_reach, WillOWisp.LURE_REACH) and d.guards(0).has(man) and d.is_sealed(north),
+		"(set-up) one armed man guards the mustering target, and answers a Wisp from afar")
+	t.check(man.lure(north.center() + Vector2(5.0, 0.0), 11.5, north.center() + Vector2(5.0, 0.0), man.lure_reach), "the light draws him off his post")
+	Kit.run_for(s, 0.6)
+	t.check(man.mind == Person.Mind.OBSERVE and not d.guards(0).has(man) and not d.is_sealed(north),
+		"lured, he is no guard, he is not called back, and the target is open")
+	Kit.done(s)

@@ -48,6 +48,8 @@ const SET_OUT_AT := 45.0
 const CART_PACE := 0.42
 const COUNT := 25.0
 const HALT_MAX := 50.0
+## The first halt a led Pip rides out when its watch is drawn off (v0.11.1).
+const LED_HALT := 18.0
 const BOARD := 2.0
 const LOCK := 8.0
 const SWAP := 4.0
@@ -66,6 +68,8 @@ const FAITHFUL_LAY := 12
 const COUNT_OFF := 1.0
 const POST_REACH := 1.5
 const CITADEL_REACH := 1.0
+## How far from the cart Pip may stand and slip aboard while a Wisp's light draws him (v0.11.1): the ring the drawn stand in round a light by the cart.
+const LURE_BOARD_R := WillOWisp.RING.y + Person.GOAL_REACH
 ## How long the bell's warning shows after a seen death raised the Gaze (v0.11 M5, the controller's ruling: before the bell is called).
 const SEEN_SHOW := 8.0
 ## Where the camera rests (v0.11 M5, Decision 159, checked against the real HUD stack): the Temple's door above the centre, the east
@@ -95,6 +99,9 @@ var counted := 0.0
 var aboard := false
 var lock_left := LOCK
 var swap_spent := 0.0
+## Pip has been taken by the god's light or oath (v0.11.1, R6): from then the cart's watch -- its escorts and wardens -- answers a Will-o'-Wisp
+## as a curious crowd does, and stares at the light away from the cart. Never set where he is led by a whisper, so no loadout A meets it.
+var pip_led := false
 var unwatched_for := 0.0
 ## The cart stands, its people dead; seconds to new hands; the new hands walking to it (the carter first); reliefs come (v0.11 M5).
 var stalled := false
@@ -251,8 +258,8 @@ func _on_reins(_to: Person) -> void:
 ## VigilRoute.busy for the cart (v0.11 M5, plan decision 194): a walker carrying a report; the carter while the cart halts or stands at
 ## the next checkpoint's point -- the walk waits for him.
 func _cart_busy(p: Person) -> bool:
-	if _carrying(p):
-		return true
+	if _carrying(p) or (p.mind == Person.Mind.OBSERVE and p.held_by_god()):
+		return true  # (v0.11.1) one drawn to a Wisp's light is left to it: the walk does not call him back
 	return vigil != null and p == vigil.bearer and (halt >= 0 or _at_checkpoint())
 
 
@@ -293,6 +300,7 @@ func step(delta: float) -> void:
 	if looking:
 		_look_in = TICK
 		evacuating = _evacuation_began()
+		_watch_answers()
 		_hold_all(_busy(), evacuating)  # the one rule (the controller's ruling): Pip, the cart's people, the new hands, the wardens
 	_cart_step(delta)
 	if not _falls.is_empty() and crowd._doomed.is_empty():
@@ -332,7 +340,10 @@ func _cart_step(delta: float) -> void:
 	halt_time += delta
 	if _count_ok():
 		counted += delta
-	if counted >= COUNT or halt_time >= HALT_MAX:
+	# (v0.11.1, R6) With Pip aboard and led by the god's light or oath, an unwatched first halt is not stood out to HALT_MAX: the carter
+	# rolls on LED_HALT seconds in. (Never where Pip was whispered: no loadout A is led.)
+	var led_on := pip_led and aboard and halt == 0 and halt_time >= LED_HALT
+	if counted >= COUNT or halt_time >= HALT_MAX or led_on:
 		_end_halt()
 
 
@@ -392,6 +403,17 @@ func _to_duty(p: Person, at: Vector2) -> void:
 	p.go_duty(at)
 
 
+## The cart's watch answers a Will-o'-Wisp once Pip has been led by the god's light or oath (v0.11.1, R6), from its whole reach.
+func _watch_answers() -> void:
+	var watch: Array = escorts.duplicate()
+	for w: Warden in wardens:
+		watch.append(w.man)
+	for v: Variant in watch:
+		if _alive(v):
+			(v as Person).answers_lure = pip_led
+			(v as Person).lure_reach = WillOWisp.LURE_REACH
+
+
 ## The cart halts at checkpoint `k` (v0.11 M5): the reliquary opens for the count; that checkpoint's wardens step up to the cart.
 func _begin_halt(k: int) -> void:
 	halt = k
@@ -437,6 +459,12 @@ func _count_ok() -> bool:
 	return false
 
 
+## A Faithful bound by an oath keeps his mind on it (v0.11.1, R6): Oathbound's hold-a-place binds him by WILL (Person.Mind.COMPELLED), and
+## he neither watches the cart nor sees a fall. Only this night asks it; no loadout A casts Oathbound.
+func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
+	return super(f, at, reach, exclude) and (f as Person).mind != Person.Mind.COMPELLED
+
+
 ## The cart is watched now (v0.11 M5, plan decision 193): a Faithful not held within WATCH of it. Only reads.
 func watched() -> bool:
 	return faithful_seeing(_lantern, WATCH) != null
@@ -470,7 +498,7 @@ func _swap_step(delta: float) -> void:
 	var seen := watched()
 	unwatched_for = 0.0 if seen else unwatched_for + delta
 	if not aboard:
-		if not wren.inside and wren.ground_pos.distance_to(_lantern) <= CART_REACH and unwatched_for >= BOARD:
+		if not wren.inside and _by_the_cart() and unwatched_for >= BOARD:
 			_board()
 		return
 	if seen:
@@ -485,6 +513,14 @@ func _swap_step(delta: float) -> void:
 	swap_left = maxf(SWAP - swap_spent, 0.0)
 	if swap_spent >= SWAP:
 		_take_relic()
+
+
+## Pip is near enough the halted cart to slip aboard (v0.11.1, spec §7.3): within CART_REACH of it; or staring at a Will-o'-Wisp's light by it
+## -- a lure is the god's hand as a whisper is -- anywhere on the ring the drawn stand in round the light (LURE_BOARD_R, as Mira's LURE_REACH).
+func _by_the_cart() -> bool:
+	if wren.ground_pos.distance_to(_lantern) <= CART_REACH:
+		return true
+	return wren.mind == Person.Mind.OBSERVE and wren.held_by_god() and wren._threat.distance_to(_lantern) <= LURE_BOARD_R 		and wren.ground_pos.distance_to(_lantern) <= LURE_BOARD_R
 
 
 ## Pip slips aboard (v0.11 M5): on duty where he stands, then hidden in the cart's straw, carried with it (MissionDirector._ride_in()).
@@ -520,6 +556,9 @@ func _home_check() -> void:
 func _wren_step(_delta: float) -> void:
 	if not appeared or not _alive(wren) or home:
 		return
+	wren.answers_lure = _pip_answers()
+	if not pip_led and (wren.mind == Person.Mind.COMPELLED or (wren.mind == Person.Mind.OBSERVE and wren.held_by_god())):
+		pip_led = true
 	if aboard:
 		_ride_step(wren, _lantern)
 		return
@@ -528,9 +567,22 @@ func _wren_step(_delta: float) -> void:
 		return
 	if wren.inside or not (wren.mind == Person.Mind.DUTY or wren.mind in RESUMABLE):
 		return
+	if wren.mind == Person.Mind.OBSERVE and wren.held_by_god():
+		if not swapped:
+			wren.anchor = wren.ground_pos  # (v0.11.1) drawn by a Wisp: the god's hand, left be; he holds where the lure leaves him
+		return
 	var goal := _wren_goal()
 	if wren.mind != Person.Mind.DUTY or wren.anchor.distance_to(goal) > 0.3:
 		wren.go_duty(goal)
+
+
+## Pip answers a Will-o'-Wisp's lure now (v0.11.1, spec §7.3, Decision 28; ruling R1/I10): not aboard (inside, nothing draws him), and not by the
+## halted cart (within WillOWisp.CHARGE_LURE_R of it) -- a Wisp cast beyond it for the passers-by never pulls him off the cart; one drawn from
+## afar to a light by the cart is already his lure. With the relic he answers again.
+func _pip_answers() -> bool:
+	if aboard:
+		return false
+	return swapped or not (halt >= 0 and wren.ground_pos.distance_to(_lantern) <= WillOWisp.CHARGE_LURE_R)
 
 
 ## Where Pip makes for (v0.11 M5): your believers' house with the relic; else where he stands (he holds where a whisper left him).
@@ -567,7 +619,7 @@ func _wardens_step(delta: float, looking: bool, evacuating := false) -> void:
 		if not p.mind in BLIND and p.ground_pos.distance_to(at) <= POST_REACH:
 			w.away = 0.0
 			w.relief = false
-			if looking and p.mind != Person.Mind.DUTY:
+			if looking and p.mind != Person.Mind.DUTY and not (p.mind == Person.Mind.OBSERVE and p.held_by_god()):
 				_recall_to(p, at, evacuating)
 		else:
 			w.away += delta

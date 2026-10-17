@@ -187,6 +187,10 @@ var _held_hurrying := false
 ## A director's charge that answers a lure from DUTY (v0.11.1, spec §7.3): Wren coming for the flame, Pip, a listener who is not
 ## rapt. The director sets it on one of its own people and reads the lure as the god's hand. false for everyone else.
 var answers_lure := false
+## How near a Will-o'-Wisp's light must stand to a charge (answers_lure) for it to draw him: WillOWisp.CHARGE_LURE_R, or more for a crowd the
+## director means the Wisp to gather (The Sermon's listeners: WillOWisp.LURE_REACH, since the preacher's ring lies well beyond 3 units of the
+## god's house). Any other lure (a Death Mark's body) reaches a charge only within CHARGE_LURE_R (lure()'s `reach`).
+var lure_reach := WillOWisp.CHARGE_LURE_R
 ## A charge (answers_lure) drawn from DUTY: when the lure ends he goes back to his duty (his anchor), not to a day he does not have.
 var _duty_lured := false
 ## Drawn by a lure (lure()) and still staring: with WHISPERED, CONFUSED and COMPELLED the god's hold on him (held_by_god()).
@@ -789,12 +793,12 @@ func _come_to() -> void:
 ## with a walk first), then back to its day. Only a citizen going about its day, watching, recovering or regrouping
 ## comes, and (v0.11.1) a soldier standing at his post or holding the ground (SOLDIER_LURABLE), and a director's charge
 ## on duty that answers a lure (answers_lure); true when it did. `from` is where the lure comes from when that is not `at` (the
-## Wisp's light, whose drawn stand round it): a charge answers only a source within WillOWisp.CHARGE_LURE_R of him, whatever casts
-## it (a Death Mark's body too, Decision 28); he returns to his duty when it ends.
-func lure(at: Vector2, seconds: float, from := Vector2.INF) -> bool:
+## Wisp's light, whose drawn stand round it): a charge answers only a source within `reach` of him (WillOWisp.CHARGE_LURE_R, whatever
+## casts it -- a Death Mark's body too, Decision 28; the Wisp passes his lure_reach); he returns to his duty when it ends.
+func lure(at: Vector2, seconds: float, from := Vector2.INF, reach := WillOWisp.CHARGE_LURE_R) -> bool:
 	if resists_mind() or inside or state == State.DEAD:
 		return false
-	if answers_lure and ground_pos.distance_to(from if from != Vector2.INF else at) > WillOWisp.CHARGE_LURE_R:
+	if answers_lure and ground_pos.distance_to(from if from != Vector2.INF else at) > reach:
 		return false
 	if soldier:
 		if not mind in SOLDIER_LURABLE or hurrying:

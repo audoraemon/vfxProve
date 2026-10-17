@@ -10,7 +10,7 @@ const R := CitizenProfile.Role
 
 
 ## A town spawned Unaware, the Procession's Rules and its director, as Mission sets them up (no effects: ctx null).
-static func _setup() -> Dictionary:
+static func _setup(emerge := 0.0) -> Dictionary:
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
@@ -26,7 +26,9 @@ static func _setup() -> Dictionary:
 	def.night = NightState.new()
 	var rules := Rules.new().setup(def.default_loadout, null, env, field, crowd, town, def)
 	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
-	var d := (def.director.new() as MissionDirector).setup(rules, crowd, town, null, def.night) as ProcessionDirector
+	var made := def.director.new() as ProcessionDirector
+	made.emerge_after = emerge
+	var d := made.setup(rules, crowd, town, null, def.night) as ProcessionDirector
 	rules.director = d
 	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd, "rules": rules,
 		"def": def, "d": d}
@@ -78,6 +80,8 @@ static func run(t) -> void:
 	_bless_reserved(t)
 	_escort_balance(t)
 	_let_go(t)
+	_smite_alone(t)
+	_carriage(t)
 
 
 ## The Prince, six attendants and four escorts; a route of walkable points.
@@ -471,3 +475,85 @@ static func _let_go(t) -> void:
 	_run(s, 1.0)
 	_done(s)
 	t.check(w.get_ref() == null, "the Procession's director is freed after teardown")
+
+
+## v0.11.1 (spec §7.2 row 16, proved first): the B route's strike. A Smite takes a Prince who stands where its bolt falls, and not his escort
+## (ESCORT_R from him, beyond SmiteFx.KILL_R); but the cast frightens him at once and he runs (1.6 * pace * T_STRIKE against KILL_R, which
+## the live runs of tools/dev/behaviour_check.gd --route=b showed: a walking Prince missed twice, a standing one hit on the margin), so the
+## route's main step is the Death Mark, which fixes the kill: marked he grows frail and slow, and MARK_TIME on he dies where he stands, his
+## death judged seen or not -- the act's win -- and nothing more is struck.
+static func _smite_alone(t) -> void:
+	var s := _setup()
+	var d: ProcessionDirector = s.d
+	_run(s, 0.2)
+	var ctx := FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var smite: SmiteFx = FxTimeline.cast(load("res://src/fx/ruin/smite.gd"), ctx, d.prince.ground_pos)
+	smite._process(SmiteFx.T_STRIKE + 0.05)
+	_run(s, 0.3)
+	var escort := 0
+	for e in d.escorts:
+		escort += 1 if WarningDirector._alive(e) else 0
+	t.check(d.fallen() and d.judged and smite.struck >= 1 and escort == d.escorts.size(),
+		"a Smite on a Prince who stands where it falls kills him, his death is judged, and his escort stands (%d of %d)" % [escort, d.escorts.size()])
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)
+	s = _setup()
+	d = s.d
+	_run(s, 0.2)
+	ctx = FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var mark: DeathMarkFx = FxTimeline.cast(load("res://src/fx/death/death_mark.gd"), ctx, d.prince.ground_pos)
+	t.check(mark.marked == d.prince and d.prince.statuses.has(&"frail") and d.prince.statuses.has(&"slow") and not d.fallen(),
+		"a Death Mark on the Prince marks him -- frail and slow, still walking -- and nothing falls yet")
+	mark._process(DeathMarkFx.MARK_TIME + 0.05)
+	_run(s, 0.3)
+	t.check(d.fallen() and d.judged and not d.boarded, "MARK_TIME on he dies where he stands, and his death is judged: the act's win")
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)
+
+
+## v0.11.1 (R6): on the board the Prince waits in his carriage until EMERGE_AT: nothing of the god's reaches him inside (a Death Mark finds no one,
+## he is not in the field), he does not walk, and he steps out at the court's exit when the time comes and takes the road. The Long Night's act
+## (emerge_after 0) is as it ever was.
+static func _carriage(t) -> void:
+	var s := _setup(ProcessionDirector.EMERGE_AT)
+	var d: ProcessionDirector = s.d
+	_run(s, 1.0)
+	var inside := d.prince.inside and not (s.field as EnemyField).in_radius(d.prince.ground_pos, 0.5).has(d.prince)
+	var first := d.prince.ground_pos
+	_run(s, 10.0)
+	t.check(inside and d.prince.inside and d.prince.ground_pos.is_equal_approx(first) and d.under_way() and _label_starts(d, "PRINCE - IN HIS CARRIAGE"),
+		"in his carriage he is out of the field and does not walk, and his tag says so")
+	_hurry(d, ProcessionDirector.EMERGE_AT)
+	_run(s, 1.0)
+	t.check(not d.prince.inside and (s.field as EnemyField).in_radius(d.prince.ground_pos, 0.5).has(d.prince), "at EMERGE_AT he steps out into the field")
+	_run(s, 3.0)
+	t.check(d.prince.has_goal() or d.prince.ground_pos.distance_to(d.route[0]) > 0.3, "and takes the road")
+	_done(s)
+	s = _setup()
+	d = s.d
+	_run(s, 1.0)
+	t.check(not d.prince.inside, "with no emerge_after (the Long Night's act) he walks from the start")
+	_done(s)
+
+
+static func _label_starts(d: ProcessionDirector, prefix: String) -> bool:
+	for m in d.tags():
+		if String(m.label).begins_with(prefix):
+			return true
+	return false

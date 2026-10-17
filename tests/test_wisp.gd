@@ -69,6 +69,17 @@ static func run(t) -> void:
 	charge.ground_pos = at + Vector2(WillOWisp.CHARGE_LURE_R + 0.5, 0.0)
 	t.check(charge not in WillOWisp.drawn(field, at), "a charge going about calmly keeps to the same reach")
 
+	# A crowd the director means the Wisp to gather (The Sermon's listeners) is drawn from farther (lure_reach), but a Death Mark's body
+	# still reaches him only within CHARGE_LURE_R (lure()'s own reach).
+	charge.mind = Person.Mind.DUTY
+	charge.ground_pos = at + Vector2(WillOWisp.CHARGE_LURE_R + 1.0, 0.0)
+	charge.lure_reach = WillOWisp.LURE_REACH
+	t.check(not charge.lure(at, 10.0, at), "a body's lure (CHARGE_LURE_R) does not reach a charge four away")
+	t.check(charge.lure(at, 10.0, at, charge.lure_reach),
+		"a charge with a longer lure_reach is lured by a Wisp that far")
+	charge.lure_reach = WillOWisp.CHARGE_LURE_R
+	charge.mind = Person.Mind.DUTY
+
 	# Any lure obeys it (a Death Mark's gawkers too), measured from the source; and he goes back to his duty after it.
 	charge.mind = Person.Mind.DUTY
 	charge.anchor = at + Vector2(2.0, 0.0)

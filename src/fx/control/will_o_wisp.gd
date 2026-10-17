@@ -27,7 +27,7 @@ static func drawn(field: EnemyField, at: Vector2) -> Array[Person]:
 		if p == null or p.resists_mind() or p.inside:
 			continue
 		if p.answers_lure:
-			if p.ground_pos.distance_to(at) <= CHARGE_LURE_R and (p.mind == Person.Mind.DUTY or p.mind in Person.LURABLE):
+			if p.ground_pos.distance_to(at) <= p.lure_reach and (p.mind == Person.Mind.DUTY or p.mind in Person.LURABLE):
 				out.append(p)
 		elif p.mind in Person.LURABLE or (p.soldier and p.mind in Person.SOLDIER_LURABLE and not p.hurrying):
 			out.append(p)
@@ -42,7 +42,7 @@ func _build() -> void:
 	var rng := ctx.rng
 	for p in drawn(ctx.field, origin):
 		var a := rng.randf() * TAU
-		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), WISP_TIME - 0.5, origin)
+		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), WISP_TIME - 0.5, origin, p.lure_reach)
 	ctx.play(&"grav_shimmer", origin, -12.0)
 	_light = FxParts.ground_light(self, origin, 1.4, LIGHT, 0.0)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),

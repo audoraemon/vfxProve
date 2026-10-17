@@ -39,6 +39,10 @@ const ONLOOK_SECONDS := 20.0
 const SHIP_AT := 120.0
 const TIDE_AT := 150.0
 const STEPS_LEG := 1
+## The board's Procession (v0.11.1, R6): the Prince waits inside his carriage in the Citadel's court until EMERGE_AT (in the act's
+## seconds, stretched with the rest), and comes out to walk then; nothing of the god's reaches him inside. The Long Night's act leaves
+## `emerge_after` 0 and he walks from the start, as ever. Without it a Death Mark at the first second killed him in ten.
+const EMERGE_AT := 32.0
 const DOCK_LEG := 3
 ## The map tags' colours (board tags, spec §2): the Prince gold, the cathedral steps orange, his escort steel blue, and
 ## the ship and anyone near enough to see him die red.
@@ -48,6 +52,8 @@ const MARK_ESCORT := Color("8fb8e8")
 const MARK_WATCHED := Color("c8342a")
 
 var prince: Person
+## Seconds (the act's) the Prince keeps to his carriage; 0: he walks from the start.
+var emerge_after := 0.0
 var attendants: Array[Person] = []
 var escorts: Array[Person] = []
 ## The leg of the route he is walking to (an index into `route`).
@@ -85,6 +91,16 @@ func _begin() -> void:
 	_place(prince, route[0])
 	_gather_attendants()
 	_gather_escorts()
+	if emerge_after > 0.0:
+		_take_inside(prince, null)
+		timeline.add(emerge_after, "emerge", "The Prince comes out", _emerge, travelling)
+
+
+## The Prince steps down from his carriage (v0.11.1) at the Citadel's exit, and his walk begins at the next look.
+func _emerge() -> void:
+	if WarningDirector._alive(prince) and prince.inside:
+		_bring_out(prince, route[0])
+		prince.anchor = route[0]
 
 
 ## The way to the ship, each point on walkable ground: out of the Citadel, the cathedral steps, the market's south
@@ -193,6 +209,8 @@ func step(delta: float) -> void:
 func _tick() -> void:
 	if not WarningDirector._alive(prince):
 		return
+	if prince.inside:
+		return  # still in his carriage (v0.11.1)
 	_walk()
 	for i in escorts.size():
 		var s := escorts[i]
@@ -325,7 +343,10 @@ func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if not under_way() or route.is_empty():
 		return out
-	out.append(MapTag.person(prince.ground_pos, MARK_PRINCE, "PRINCE", true))
+	var label := "PRINCE"
+	if prince.inside:
+		label = "PRINCE - IN HIS CARRIAGE %s" % UiTheme.clock(maxf(emerge_after - timeline.elapsed(), 0.0) * timeline.stretch_factor())
+	out.append(MapTag.person(prince.ground_pos, MARK_PRINCE, label, true))
 	out.append(MapTag.place(route[route.size() - 1], MARK_WATCHED, "THE SHIP", 0.0, false))
 	if leg <= STEPS_LEG:
 		out.append(MapTag.place(route[STEPS_LEG], MARK_STEPS, "CATHEDRAL STEPS", 0.0, false))

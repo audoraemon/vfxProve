@@ -4,11 +4,11 @@ extends RazeDirector
 ## horn arms the garrison. Destroy the north barracks (the north tavern by the Citadel's lane, TownLayout.TAVERNS[0]), the gate barracks
 ## (the Main Gate's east tower, GATE_TOWERS[1]: stone, blows only) and the armoury (the barracks shed); a target a wish has set aside
 ## gives way to the west tavern or tower. Each musters on the chain (The Crown's Bread's stages, RazeDirector._spoilable()): the north
-## barracks at STAGE_AT[0], each next at its own time or CHAIN after the one before is razed, whichever is sooner. Every blow lands from
-## the start, but fire on a target not mustering is put out at once and its fall is judged only at its horn: one down then is razed at
-## once. Two armed men -- lay citizens made watchmen -- stand each target's night watch from the start on posts along its face, POST_GAP
+## barracks at STAGE_AT[0], each next at its own time or CHAIN after the one before is razed, whichever is sooner. (v0.11.1, R6: before its
+## horn a target is stone -- a blow only shakes it, its fire goes out -- so the work begins at the horn, against its armed men; the old
+## ruling let a fast player fell all three before their horns and be done in a minute.) Two armed men -- lay citizens made watchmen -- stand each target's night watch from the start on posts along its face, POST_GAP
 ## apart; at its horn its squad of SQUAD comes out of its door to posts POST_GAP beyond them. An armed man on guard (alive, out of doors,
-## within GUARD_REACH, not frightened or whispered) is held past fear (v0.11.1: no longer deaf to a whisper, which takes him off his post until he walks back) and set back on his post at every look; while
+## within GUARD_REACH, not frightened or held by the god -- whispered, confused, lured or bound) is held past fear (v0.11.1: no longer deaf to a whisper, which takes him off his post until he walks back) and set back on his post at every look; while
 ## one stands guard the target is sealed (RazeDirector.seal(): a blow only shakes it, its fire is put out), before or after its horn,
 ## and the seconds it burned stay counted. One off his post walks back RETURN_AFTER after he left; a fallen one is replaced RELIEF_AFTER
 ## later from the reserve of RESERVE waiting inside the Citadel's gate. From each horn, while a target musters, one armed man marches
@@ -332,7 +332,7 @@ func _guard_seals() -> void:
 		var s := targets[i]
 		if razed(s) or not is_instance_valid(s):
 			continue
-		var held := not s.destroyed and not guards(i).is_empty()
+		var held := not s.destroyed and (not mustering[i] or not guards(i).is_empty())  # (v0.11.1, R6) stone until its horn, then while guarded
 		if held and not is_sealed(s):
 			seal(s)
 		elif not held and is_sealed(s):
@@ -358,7 +358,8 @@ func _on_guard(i: int, a: Armed) -> bool:
 	if not _alive(a.man):
 		return false
 	var p := a.man as Person
-	return not p.inside and not p.mind in OFF_GUARD and is_instance_valid(targets[i]) and targets[i].distance_to(p.ground_pos) <= GUARD_REACH
+	return not p.inside and not p.mind in OFF_GUARD and not p.held_by_god() and is_instance_valid(targets[i]) \
+			and targets[i].distance_to(p.ground_pos) <= GUARD_REACH
 
 
 ## Target `i`'s armed men on guard now (v0.11 M5). Only reads.
@@ -389,6 +390,8 @@ func _work(i: int, delta: float, looking: bool, evacuating: bool) -> void:
 		var p := a.man as Person
 		if p.inside:
 			continue
+		p.answers_lure = true  # (v0.11.1) a Will-o'-Wisp draws him off his post like a Knight, from its whole reach: the garrison hears the god
+		p.lure_reach = WillOWisp.LURE_REACH
 		if _on_guard(i, a):
 			a.away = 0.0
 			a.relief = false
@@ -398,7 +401,7 @@ func _work(i: int, delta: float, looking: bool, evacuating: bool) -> void:
 					p.go_duty(a.post)
 		else:
 			a.away += delta
-			if looking and (a.relief or evacuating or a.away >= RETURN_AFTER):
+			if looking and not p.held_by_god() and (a.relief or evacuating or a.away >= RETURN_AFTER):
 				_recall_to(p, a.post, evacuating)
 
 

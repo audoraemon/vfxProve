@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_rapt(t)
 	_silenced(t)
 	_turned(t)
+	_lured_listener(t)
 	_believe(t)
 	_flock(t)
 	_waves(t)
@@ -260,6 +261,41 @@ static func _turned(t) -> void:
 	p._wake()
 	Kit.run_for(s, 0.6)
 	t.check(p.mind == Person.Mind.DUTY and p.anchor == l.spot, "turned away and back on his feet, he walks back to the pulpit")
+	Kit.done(s)
+
+
+## v0.11.1 (spec §7.3, row 19): a listener who is not rapt answers a Will-o'-Wisp's lure from his duty; one lured to a light by the god's
+## house goes in by Mira's rule. A rapt one, one waiting for his wave, a Believer: never drawn.
+static func _lured_listener(t) -> void:
+	var s := _world()
+	var d: SermonDirector = s.d
+	var field: EnemyField = s.field
+	_seat(d, 0)
+	Kit.run_for(s, 0.6)
+	var l: SermonDirector.Listener = _wave(d, 0)[0]
+	var p := l.man as Person
+	t.check(d.rapt(p) and not p.answers_lure and not WillOWisp.drawn(field, p.ground_pos).has(p),
+		"a rapt listener answers no lure: the preacher holds him")
+	var wait: SermonDirector.Listener = _wave(d, 1)[0]
+	t.check(not (wait.man as Person).answers_lure and not WillOWisp.drawn(field, wait.source).has(wait.man),
+		"one waiting for his wave is held at his source: no lure draws him either")
+	_silence(d)
+	Kit.run_for(s, 0.6)
+	var light := d.door + Vector2(1.0, 0.0)
+	t.check(not d.rapt(p) and p.answers_lure and WillOWisp.drawn(field, p.ground_pos).has(p),
+		"the preacher silent, he is not rapt: he answers a lure")
+	t.check(WillOWisp.drawn(field, p.ground_pos + Vector2(WillOWisp.CHARGE_LURE_R + 0.5, 0.0)).has(p) and not WillOWisp.drawn(field, p.ground_pos + Vector2(WillOWisp.LURE_REACH + 0.5, 0.0)).has(p),
+		"a Wisp lit within the Wisp's own reach of him draws him (the ring lies beyond 3 units of the god's house), not one beyond it")
+	_unwatch(s, d)
+	t.check(p.lure(light + Vector2(0.8, 0.0), WillOWisp.WISP_TIME - 0.5, p.ground_pos), "(set-up) the light takes him from his duty")
+	Kit.run_for(s, 0.6)
+	t.check(p.mind == Person.Mind.OBSERVE and p.held_by_god(), "the director leaves a lured listener be: he is not called back to his ring")
+	Kit.arrive(p, light + Vector2(0.8, 0.0))
+	Kit.run_for(s, 0.1)
+	t.check(p.inside, "lured to a light by the god's house, unseen, he goes in by Mira's rule")
+	Kit.run_for(s, SermonDirector.READ + 0.2)
+	t.check(d.believers.has(p) and not p.answers_lure and not WillOWisp.drawn(field, p.ground_pos).has(p),
+		"a Believer answers no lure: he stands by the door")
 	Kit.done(s)
 
 

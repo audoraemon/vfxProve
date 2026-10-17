@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_labels(t)
 	_edge(t)
 	_frame(t)
+	_bare_arrows(t)
 
 
 static func _kinds(t) -> void:
@@ -116,6 +117,32 @@ static func _edge(t) -> void:
 		"its label beside it, inside the screen, clear of the tip (%s)" % lr)
 	t.check(Hud.tag_frame(VIEW).has_point(MID) and not Hud.tag_frame(VIEW).has_point(Vector2(-5.0, 180.0))
 		and not Hud.tag_frame(VIEW).has_point(Vector2(5.0, 180.0)), "the frame holds the middle, not the margin or beyond")
+
+
+## v0.11.1 §3: an off-screen tag shows its arrow alone; its label shows while the mouse is within ARROW_HOVER_PX of the arrow's disc
+## (the nearer of two, one only), and a bare arrow's plate never blocks a map label.
+static func _bare_arrows(t) -> void:
+	var xf := Transform2D(0.0, MID)
+	var off := MapTag.person(Vector2(400.0, 0.0), Color.RED, "WREN", true)
+	var mapped := MapTag.person(Vector2.ZERO, Color.RED, "INQUISITOR")
+	var l := Hud.tag_layout(_tags([off]), xf, VIEW, Rect2(), [], Vector2.INF, false)
+	t.check(String(l[0].mode) == "arrow" and not bool(l[0].show), "off screen: the arrow, no plate")
+	var at: Vector2 = (l[0].arrow as Vector2) - (l[0].dir as Vector2) * 5.0
+	var h := Hud.tag_layout(_tags([off]), xf, VIEW, Rect2(), [], at + Vector2(Hud.ARROW_HOVER_PX - 1.0, 0.0), false)
+	t.check(bool(h[0].show), "hovered within 12 px: its plate shows")
+	var far := Hud.tag_layout(_tags([off]), xf, VIEW, Rect2(), [], at + Vector2(Hud.ARROW_HOVER_PX + 2.0, 0.0), false)
+	t.check(not bool(far[0].show), "the mouse beyond 12 px: still bare")
+	t.check(h[0].label == l[0].label, "the hovered plate draws where it would have")
+	var two := Hud.tag_layout(_tags([off, mapped]), xf, VIEW, Rect2(), [], Vector2.INF, false)
+	t.check(bool(two[1].show), "a bare arrow's unshown plate never blocks a map label")
+	var other := MapTag.person(Vector2(400.0, 30.0), Color.GOLD, "SOLDIER", true)
+	var pair := Hud.tag_layout(_tags([off, other]), xf, VIEW, Rect2(), [], at, false)
+	t.check(bool(pair[0].show) != bool(pair[1].show), "under the mouse: the nearer arrow shows its label, one only")
+	t.check(Hud.hovered_arrow(pair, at) == 0 and Hud.hovered_arrow(pair, Vector2.INF) == -1, "the hovered arrow is found by its index")
+	var kept := Hud.tag_layout(_tags([off]), xf, VIEW)
+	t.check(bool(kept[0].show), "default arguments: v0.11's layout, the label beside its arrow")
+	var all := Hud.tag_layout(_tags([off]), xf, VIEW, Rect2(), [], Vector2.INF, true)
+	t.check(bool(all[0].show), "details on: every arrow carries its label")
 
 
 ## The arrows' frame (v0.10 M6): below the clock, the Gaze bar and the events plate, above the slot row. A tag under the slot row or under

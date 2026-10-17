@@ -350,6 +350,7 @@ static func _hint_clears_events(t) -> void:
 	var s := _setup(NightState.new())
 	_start(s, null)
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	Hud.details = true  # v0.11.1: these measure the expanded HUD
 	var w := Hud.SCREEN_W
 	var natural := hud.hint_top()
 	t.check(hud.hint_text() != "" and hud.objective_rows().size() == 3 and natural == 50.0,
@@ -369,6 +370,7 @@ static func _hint_clears_events(t) -> void:
 	t.check(events.size != Vector2.ZERO and (beside or hud.hint_top() >= events.end.y + 4.0) and not plate.intersects(events),
 		"the hint plate stays beside the events plate or starts 4 px below it, and the two do not meet (hint %s, events %s)"
 		% [plate, events])
+	Hud.reset_session()
 	hud.free()
 	_done(s)
 

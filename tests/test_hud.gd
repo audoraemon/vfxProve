@@ -26,6 +26,7 @@ static func run(t) -> void:
 		return null
 	var aim := Targeting.new().setup(rules, crowd)
 	var hud := Hud.new().setup(rules, crowd, town, aim)
+	Hud.details = true  # v0.11.1: these checks measure the expanded HUD, today's plates
 
 	t.check(hud.objective_text().contains("Royal Citadel") and hud.objective_text().contains("100%"),
 		"the objective names the Citadel and what is left of it (%s)" % hud.objective_text())
@@ -189,6 +190,7 @@ static func run(t) -> void:
 
 	# The Warning (v0.08): the objective panel in place of the Citadel's, the messenger's marker and its edge arrow.
 	_warning(t, env, field, crowd, town)
+	Hud.reset_session()
 
 	hud.free()
 	aim.free()
@@ -210,6 +212,7 @@ static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, 
 	var director := (def.director.new() as MissionDirector).setup(rules, crowd, town, null) as WarningDirector
 	rules.director = director
 	var hud := Hud.new().setup(rules, crowd, town, null)
+	Hud.details = true
 	var rows := hud.objective_rows()
 	t.check(rows == [["Stop the warning", ""], ["Dawn 2:00", ""], ["Unseen", "ok"]],
 		"The Warning's panel: the warning, dawn's clock (v0.11 M1), and Unseen ticked (%s)" % [rows])
@@ -242,12 +245,104 @@ static func _warning(t, env: EnvironmentField, field: EnemyField, crowd: Crowd, 
 	var before := hud._signature()
 	timeline.step(1.0)
 	t.check(hud._signature() != before, "the strip is in the redraw signature")
+	_collapsed(t, hud, crowd, rules)
 	director.timeline = null
 	t.check(hud.event_rows() == [], "and goes with the timeline")
 
 	hud.free()
 	rules.teardown()
 	rules.free()
+
+
+## v0.11.1 §1: collapsed, an unscored mission shows its main objective, the strip's next event and the alarm stage; TAB brings back all.
+static func _collapsed(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
+	Hud.details = false
+	t.check(hud.rows_shown().size() == 1 and String(hud.rows_shown()[0][0]) == "Stop the warning",
+		"collapsed: the main objective row only (%s)" % [hud.rows_shown()])
+	t.check(not hud.hint_shown() and hud.hint_rect() == Rect2() and hud.hint_text() != "",
+		"collapsed: no how-to-win plate before play begins (the line is still there to flash)")
+	t.check(hud.wishes_rect() == Rect2() and hud.wish_summary() == "", "no wishes off the board: no row, no summary")
+	t.check(hud.event_rows().size() == 1 and hud.status_text() == crowd.alarms.stage_name(),
+		"the strip one row, the status the stage (%s, %s)" % [hud.event_rows(), hud.status_text()])
+	t.check(hud.cue_text() == Hud.MORE_TEXT and hud.cue_rect().has_area() and hud.cue_rect().end.x <= hud.objective_rect().end.x,
+		"the cue reads TAB more, inside the objective plate")
+	var small := hud.stack_rect()
+	var short_sig := hud._signature()
+	hud.toggle_details()
+	t.check(Hud.details and hud.rows_shown().size() == 3 and hud.hint_shown() and hud.stack_rect().size.y > small.size.y
+		and hud.event_rows().size() == 2 and hud.cue_text() == Hud.LESS_TEXT and hud.status_text().contains("Citizens"),
+		"TAB: everything, and the keepout grows")
+	t.check(hud._signature() != short_sig, "the redraw signature knows the key")
+	hud.toggle_details()
+	t.check(not Hud.details, "TAB again: collapsed")
+	var tab := InputEventKey.new()
+	tab.physical_keycode = KEY_TAB
+	tab.pressed = true
+	var tab_echo := tab.duplicate() as InputEventKey
+	tab_echo.echo = true
+	var tab_up := tab.duplicate() as InputEventKey
+	tab_up.pressed = false
+	var other_key := tab.duplicate() as InputEventKey
+	other_key.physical_keycode = KEY_H
+	t.check(Mission.toggles_details(tab) and not Mission.toggles_details(tab_echo) and not Mission.toggles_details(tab_up)
+		and not Mission.toggles_details(other_key), "TAB pressed toggles; an echo, a release or another key does not")
+	_flash_rules(t, hud, crowd, rules)
+	Hud.reset_session()
+
+
+## v0.11.1 §1.1: the how-to-win line flashes for HINT_FLASH when play begins and when its unfilled words change; a ticking {n} never does.
+static func _flash_rules(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
+	Hud.details = false
+	hud.advance(Hud.HINT_FLASH * 3.0)
+	t.check(not hud.hint_shown(), "play not begun: the line stays hidden whatever its words do")
+	hud.play_began()
+	t.check(hud.hint_shown() and hud.hint_rect().has_area(), "the hint flashes when play begins")
+	hud.advance(Hud.HINT_FLASH - 0.5)
+	t.check(hud.hint_shown(), "and holds for HINT_FLASH")
+	hud.advance(0.6)
+	t.check(not hud.hint_shown() and hud.hint_rect() == Rect2(), "then collapses")
+	# A phase change is a new instruction: it shows itself again, collapsed (spec decision 5).
+	var def: MissionDef = rules.mission
+	var old_id := def.id
+	var stub := _PhaseDirector.new()
+	stub.rules = rules
+	var old := rules.director
+	rules.director = stub
+	def.id = "heretic_hunt"
+	stub.phase = "coming"
+	stub.secs = 30.0
+	hud.advance(0.1)
+	t.check(hud.hint_shown() and hud.hint_text().contains("30"), "a new phase flashes the line, its seconds filled (%s)" % hud.hint_text())
+	hud.advance(Hud.HINT_FLASH + 0.1)
+	t.check(not hud.hint_shown(), "and it collapses again")
+	stub.secs = 29.0
+	hud.advance(0.1)
+	t.check(not hud.hint_shown(), "a ticking {n} (the same words, new seconds) never re-flashes it")
+	stub.phase = ""
+	hud.advance(0.1)
+	t.check(hud.hint_shown() == (hud.hint_text() != ""), "the words changing back flash again (when there are words)")
+	hud.advance(Hud.HINT_FLASH + 0.1)
+	# A fresh Hud reads the same session value: details is static.
+	Hud.details = true
+	var other := Hud.new().setup(rules, crowd, null, null)
+	t.check(Hud.details and other.cue_text() == Hud.LESS_TEXT, "TAB state survives a fresh HUD (a restart or the next act)")
+	other.free()
+	Hud.reset_session()
+	t.check(not Hud.details, "reset_session() collapses again")
+	rules.director = old
+	def.id = old_id
+
+
+## A director whose hint phase and seconds the test sets.
+class _PhaseDirector extends MissionDirector:
+	var phase := ""
+	var secs := 0.0
+
+	func hint_phase() -> String:
+		return phase
+
+	func hint_seconds() -> float:
+		return secs
 
 
 ## The interface cues asked for since the test last cleared them, in order.

@@ -87,6 +87,17 @@ const ASCEND_KEY := "F"
 ## The town prays (spec §5.1): the plate over the wishes heard during the night's first intro, its top and its title.
 const PRAYERS_TOP := 166.0
 const PRAYERS_TITLE := "THE TOWN PRAYS..."
+## v0.11.1 §1: the HUD collapses to one objective line, and TAB opens the rest (`details`). The how-to-win line flashes for HINT_FLASH
+## seconds when play begins and whenever its (unfilled) words change; the cue on the objective row says what TAB does.
+const HINT_FLASH := 8.0
+const MORE_TEXT := "TAB more"
+const LESS_TEXT := "TAB less"
+## A scored mission's objective panel collapsed: no colour legend row, the Escaped line moved up to ESCAPED_Y_SHORT.
+const OBJECTIVE_PANEL_SHORT := Rect2(2.0, 2.0, 236.0, 46.0)
+const ESCAPED_Y := 54.0
+const ESCAPED_Y_SHORT := 40.0
+## v0.11.1 §3: an off-screen tag shows its label while the mouse is this close to its arrow's disc (or while `details` is on).
+const ARROW_HOVER_PX := 12.0
 ## The ascent (spec §6): a pale gold column rising over the god's last cast spot for RISE_SECONDS of real time.
 const RISE_SECONDS := 2.0
 const RISE_COL := Color(1.0, 0.93, 0.7)
@@ -139,6 +150,19 @@ var _rise_age := 0.0
 var _frame_rows: Variant = null
 var _frame_hint: Variant = null
 var _frame_lines: Variant = null
+## v0.11.1: expanded (TAB) or collapsed. Static, so it holds for the session across missions, restarts and acts (spec §1.3); nothing but
+## the HUD reads it.
+static var details := false
+## The how-to-win flash: the unfilled line last seen, the seconds of flash left, and whether play has begun (play_began()).
+var _hint_key := ""
+var _hint_left := 0.0
+var _played := false
+
+
+## Back to a fresh session (v0.11.1): collapsed. The suite calls it before each test file, so no file depends on what ran before it in
+## the same process.
+static func reset_session() -> void:
+	details = false
 
 
 func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
@@ -182,7 +206,8 @@ func advance(delta: float) -> void:
 	if _rules != null and _rules.mission != null:
 		_frame_rows = objective_rows()
 		_frame_hint = hint_text()
-		_frame_lines = hint_lines(String(_frame_hint))
+		_step_hint_flash(delta)
+		_frame_lines = hint_lines(String(_frame_hint)) if hint_shown() else PackedStringArray()
 	_advance(delta)
 	_frame_rows = null
 	_frame_hint = null
@@ -263,7 +288,54 @@ func _hint_now() -> String:
 
 ## The how-to-win line's wrapped lines this advance took (v0.11 M6's final review), else wrapped live.
 func _lines_now() -> PackedStringArray:
-	return _frame_lines if _frame_lines != null else hint_lines(hint_text())
+	if _frame_lines != null:
+		return _frame_lines
+	return hint_lines(hint_text()) if hint_shown() else PackedStringArray()
+
+
+## TAB (v0.11.1 §1.2): everything, or the short screen again.
+func toggle_details() -> void:
+	details = not details
+
+
+## The cue on the objective row: what TAB does now.
+func cue_text() -> String:
+	return LESS_TEXT if details else MORE_TEXT
+
+
+## Play begins (v0.11.1 §1.1): the intro has landed (or a scripted run starts), so the how-to-win line flashes once, and from now on a
+## change of its words flashes it again.
+func play_began() -> void:
+	_played = true
+	_hint_key = hint_key()
+	_hint_left = HINT_FLASH if _hint_key != "" else 0.0
+
+
+## Ages the flash and restarts it when the unfilled words have changed (after play_began() only). A ticking `{n}` does not change them.
+func _step_hint_flash(delta: float) -> void:
+	_hint_left = maxf(0.0, _hint_left - delta)
+	if not _played:
+		return
+	var key := hint_key()
+	if key != _hint_key:
+		_hint_key = key
+		_hint_left = HINT_FLASH if key != "" else 0.0
+
+
+## The how-to-win plate is up: expanded, or flashing; and there is a line.
+func hint_shown() -> bool:
+	return (details or _hint_left > 0.0) and _hint_now() != ""
+
+
+## The objective rows as drawn: collapsed, the main one only.
+func rows_shown() -> Array:
+	var rows := _rows_now()
+	return rows if details or rows.size() <= 1 else rows.slice(0, 1)
+
+
+## The objective panel of a scored mission as drawn.
+func objective_panel() -> Rect2:
+	return OBJECTIVE_PANEL if details else OBJECTIVE_PANEL_SHORT
 
 
 ## The act's next two timed events (v0.09) as [clock, label] rows, e.g. ["0:23", "The bonfire lights"]; empty for a
@@ -272,7 +344,7 @@ func event_rows() -> Array:
 	var rows := []
 	if _rules.director == null or _rules.director.timeline == null:
 		return rows
-	for e: Dictionary in _rules.director.timeline.upcoming(2):
+	for e: Dictionary in _rules.director.timeline.upcoming(2 if details else 1):
 		rows.append([UiTheme.clock(float(e["in"])), String(e["label"])])
 	return rows
 
@@ -283,11 +355,20 @@ func event_rows() -> Array:
 func hint_text() -> String:
 	if _rules == null or _rules.mission == null:
 		return ""
+	if _rules.main_done or _rules.director == null:
+		return hint_key()
+	return MissionHints.filled(hint_key(), _rules.director.hint_seconds())
+
+
+## The how-to-win line with its seconds unfilled (v0.11.1): what the flash keys on, so a ticking `{n}` never re-flashes it.
+func hint_key() -> String:
+	if _rules == null or _rules.mission == null:
+		return ""
 	if _rules.main_done:
 		return MissionHints.WISHES_LINE if _open_wishes() else MissionHints.ASCEND_LINE
 	if _rules.director == null:
 		return MissionHints.line(_rules.mission.id)
-	return MissionHints.filled(MissionHints.line(_rules.mission.id, _rules.director.hint_phase()), _rules.director.hint_seconds())
+	return MissionHints.line(_rules.mission.id, _rules.director.hint_phase())
 
 
 ## A wish of the night is still open (v0.11 M1).
@@ -335,9 +416,9 @@ func events_rect(w: float) -> Rect2:
 ## of this plate's right edge, the two sharing some height, a 4 px margin counted), 4 px below the events plate instead.
 ## Read only, from the same data _draw() uses.
 func hint_top() -> float:
-	var top := OBJECTIVE_PANEL.end.y + 4.0
+	var top := objective_panel().end.y + 4.0
 	if not _rules.mission.scored:
-		var rows := _rows_now().size()
+		var rows := rows_shown().size()
 		top = 2.0 + (5.0 + ROW_H * float(rows) + 4.0 if rows > 0 else 0.0)
 	var lines := _lines_now()
 	var events := events_rect(_view().x)
@@ -361,14 +442,33 @@ func hint_rect() -> Rect2:
 ## OBJECTIVE_PANEL, else the rows' plate, Rect2() with no rows.
 func objective_rect() -> Rect2:
 	if _rules.mission.scored:
-		return OBJECTIVE_PANEL
-	var rows := _rows_now()
+		return objective_panel()
+	var rows := rows_shown()
 	if rows.is_empty():
 		return Rect2()
 	var wide := 0.0
 	for row: Array in rows:
 		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.SIZE_SMALL) + (12.0 if String(row[1]) != "" else 0.0))
+	# The cue sits at the right end of the first row (v0.11.1): the plate is at least as wide as that row and the cue side by side.
+	var first: Array = rows[0]
+	var first_w := UiTheme.width(String(first[0]), UiTheme.SIZE_SMALL) + (12.0 if String(first[1]) != "" else 0.0)
+	wide = maxf(wide, first_w + plate_size(cue_text()).x + 4.0)
 	return Rect2(2.0, 2.0, wide + 10.0, 5.0 + ROW_H * float(rows.size()))
+
+
+## The cue's plate as drawn (v0.11.1 §1.1): at the right end of the objective row; a scored panel's, at the right end of its Escaped line.
+## Rect2() with nothing to put it on.
+func cue_rect() -> Rect2:
+	if _rules == null or _rules.mission == null:
+		return Rect2()
+	var box := plate_size(cue_text())
+	if _rules.mission.scored:
+		var panel := objective_panel()
+		return Rect2(panel.end.x - 3.0 - box.x, (ESCAPED_Y if details else ESCAPED_Y_SHORT) - (PLATE_H - 3.0), box.x, box.y)
+	var plate := objective_rect()
+	if not plate.has_area():
+		return Rect2()
+	return Rect2(plate.end.x - 3.0 - box.x, 14.0 - (PLATE_H - 3.0), box.x, box.y)
 
 
 ## The wishes' plate as drawn (v0.11 M6, factored out of _draw_wishes()): Rect2() with no rows.
@@ -378,7 +478,7 @@ func wishes_rect() -> Rect2:
 
 ## The wishes' plate under a how-to-win plate `hint` already measured (v0.11 M6): stack_rect() measures the hint once and shares it.
 func _wishes_plate(hint: Rect2) -> Rect2:
-	var rows := wish_rows()
+	var rows := wish_rows_shown()
 	if rows.is_empty():
 		return Rect2()
 	var wide := 0.0
@@ -414,6 +514,31 @@ func wish_rows() -> Array:
 	for w in _rules.descent.wishes:
 		rows.append([w.hud_text(_rules), Wish.state_name(w.status)])
 	return rows
+
+
+## "Wishes: K of N granted" (v0.11.1 §1.1): K granted of the N heard; "" off the board or with none heard.
+func wish_summary() -> String:
+	var rows := wish_rows()
+	if rows.is_empty():
+		return ""
+	return "Wishes: %d of %d granted" % [_granted(rows), rows.size()]
+
+
+## How many of the wish rows are granted.
+func _granted(rows: Array) -> int:
+	var granted := 0
+	for row: Array in rows:
+		if String(row[1]) == "granted":
+			granted += 1
+	return granted
+
+
+## The wishes' rows as drawn: collapsed, the one summary row (never nothing: a failed wish still shows in the count).
+func wish_rows_shown() -> Array:
+	var rows := wish_rows()
+	if details or rows.is_empty():
+		return rows
+	return [[wish_summary(), "granted" if _granted(rows) == rows.size() else "open"]]
 
 
 ## Where the wishes' rows start (v0.11 M1): under the how-to-win plate, or where it would be with no line.
@@ -526,9 +651,10 @@ func _draw_gaze(w: float) -> void:
 ## tags out first (tag_layout()). v0.11 M6: the live stack is the layout's keepout (stack_rect()), so no tag, label or arrow hides under it;
 ## the timeline strip and the slot bar count as placed for labels (the final review), so no plate is drawn over them.
 func _draw_tags() -> void:
-	_layout = []
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
-	_layout = tag_layout(all_tags(), xf, _view(), stack_rect(), [events_rect(_view().x), slots_rect()])
+	# v0.11.1 §3: the hover comes from the previous frame's arrows (cheap, one frame late), read before the layout is replaced.
+	var hover := _hover_point()
+	_layout = tag_layout(all_tags(), xf, _view(), stack_rect(), [events_rect(_view().x), slots_rect()], hover, details)
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
 	# earlier one.
 	for e: Dictionary in _layout:
@@ -558,6 +684,35 @@ func _draw_tag_arrows() -> void:
 		if String(e.mode) == "arrow" and bool(e.show):
 			var t: MapTag = e.tag
 			_plate((e.label as Rect2).position, t.label, t.color)
+
+
+## Where the mouse is, for the arrows' hover (v0.11.1 §3): Vector2.INF unless the last layout held an arrow and the labels are not all
+## showing anyway (`details`).
+func _hover_point() -> Vector2:
+	if details or not is_inside_tree():
+		return Vector2.INF
+	for e: Dictionary in _layout:
+		if String(e.mode) == "arrow":
+			return get_viewport().get_mouse_position()
+	return Vector2.INF
+
+
+## The index in `layout` of the arrow whose disc (tip - dir * 5) the point `hover` is within ARROW_HOVER_PX of -- the nearest, one only --
+## and which has a label to show; -1 for none (v0.11.1 §3).
+static func hovered_arrow(layout: Array, hover: Vector2) -> int:
+	var best := -1
+	var near := ARROW_HOVER_PX + 0.001
+	if hover == Vector2.INF:
+		return best
+	for i in layout.size():
+		var e: Dictionary = layout[i]
+		if String(e.mode) != "arrow" or (e.tag as MapTag).label == "":
+			continue
+		var d := hover.distance_to((e.arrow as Vector2) - (e.dir as Vector2) * 5.0)
+		if d < near:
+			near = d
+			best = i
+	return best
 
 
 ## A ground footprint's outline (v0.10 M6): its diamond on the ground, through the camera `xf`, 1 px in `col`.
@@ -617,18 +772,18 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 ## its border the same way; (3) it counts as a label already placed, so no plate is drawn over it; (4) a tag without `edge` inside it
 ## keeps its diamond, not its label; (5) a tag whose diamond is clear of it but whose plate over the diamond would lie under it takes
 ## its plate beside the diamond (_label_aside()).
-static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2(), taken: Array[Rect2] = []) -> Array:
+## v0.11.1 §3: with `arrow_labels` false an off-screen tag's arrow shows no label plate unless `hover` (screen pixels) is within
+## ARROW_HOVER_PX of its disc -- the nearest one only; a bare arrow's plate is never placed, so it blocks no label. The defaults
+## (labels on, no hover) are v0.11's layout exactly.
+static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2(), taken: Array[Rect2] = [],
+		hover := Vector2.INF, arrow_labels := true) -> Array:
 	var out := []
-	var placed: Array[Rect2] = []
 	var frame := tag_frame(view)
 	var keep := keepout.has_area()
-	if keep:
-		placed.append(keepout)
 	var blocked: Array[Rect2] = []
 	for r in taken:
 		if r.has_area():
 			blocked.append(r)
-			placed.append(r)
 	for t in tags:
 		if not t.valid():
 			continue
@@ -654,15 +809,28 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keep
 			e.label = label_rect(t.label, tip - d * reach, view)
 			if keep and (e.label as Rect2).intersects(keepout):
 				e.label = _label_beside(t.label, tip, d, keepout, view)
-		if String(e.mode) != "" and t.label != "":
-			var r: Rect2 = e.label
-			var clear := true
-			for p in placed:
-				clear = clear and not r.intersects(p)
-			if clear:
-				placed.append(r)
-				e.show = true
 		out.append(e)
+	# Which labels show, in the tags' order: a label that would overlap one placed before it (or the keepout or a taken plate) stays off.
+	var placed: Array[Rect2] = []
+	if keep:
+		placed.append(keepout)
+	for r in blocked:
+		placed.append(r)
+	var hovered := -1 if arrow_labels else hovered_arrow(out, hover)
+	for i in out.size():
+		var e: Dictionary = out[i]
+		if String(e.mode) == "" or (e.tag as MapTag).label == "":
+			continue
+		if String(e.mode) == "arrow" and not arrow_labels:
+			e.show = i == hovered
+			continue
+		var r: Rect2 = e.label
+		var clear := true
+		for p in placed:
+			clear = clear and not r.intersects(p)
+		if clear:
+			placed.append(r)
+			e.show = true
 	return out
 
 
@@ -738,11 +906,14 @@ const STAGE_COLS := [Color("9a9484"), Color("e8e2d0"), Color("d8b23a"), Color("f
 
 
 func status_segments() -> Array:
+	var stage := [_crowd.alarms.stage_name(), STAGE_COLS[_crowd.alarms.stage]]
+	if not details:
+		return [stage]  # v0.11.1: collapsed, only the alarm stage, the one figure that warns
 	return [
 		["Citizens %d" % _crowd.alive_citizens(), UiTheme.STABILITY_COLS[0]],
 		["Soldiers %d" % _crowd.alive_soldiers(), UiTheme.STABILITY_COLS[3]],
 		["Destroyed %d" % _rules.buildings_down, UiTheme.STABILITY_COLS[1]],
-		[_crowd.alarms.stage_name(), STAGE_COLS[_crowd.alarms.stage]],
+		stage,
 	]
 
 
@@ -890,9 +1061,10 @@ func _signature() -> String:
 	var events := event_rows()
 	if not events.is_empty():
 		out += "|" + str(events)
-	out += "|" + _hint_now()
+	out += "|" + (_hint_now() if hint_shown() else "")
 	out += "|" + _caption
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
+	out += "|%s|%s" % [details, wish_summary()]
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
@@ -910,6 +1082,8 @@ func _tag_signature(with_stack := true) -> String:
 	var out := "%s|%s|%s" % [xf, _view(), stack_rect() if with_stack else Rect2()]
 	if with_stack:
 		out += "|%s|%s" % [events_rect(_view().x), slots_rect()]
+	# v0.11.1 §3: which bare arrow the mouse is over (from the last layout: one frame late, no layout needed here) and whether all show.
+	out += "|%s|%d" % [details, hovered_arrow(_layout, _hover_point())]
 	for t in tags:
 		out += "|%s%s%s%s%s%s%s%s%s" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid()]
 	return out
@@ -937,6 +1111,7 @@ func _draw() -> void:
 		_draw_objectives()
 	else:
 		_draw_rows()
+	_draw_cue()
 	_draw_hint()
 	_draw_wishes()
 	_draw_status(w)
@@ -1005,7 +1180,7 @@ func _draw_events(w: float) -> void:
 
 
 func _draw_objectives() -> void:
-	draw_rect(OBJECTIVE_PANEL, UiTheme.COL_PANEL)
+	draw_rect(objective_panel(), UiTheme.COL_PANEL)
 	UiTheme.text(self, Vector2(6.0, 14.0), objective_text(), UiTheme.SIZE_SMALL)
 	# The five-colour stability bar: one segment per part, each as wide as its weight.
 	var at := Vector2(6.0, 21.0)
@@ -1023,9 +1198,9 @@ func _draw_objectives() -> void:
 		x += full
 	UiTheme.text(self, Vector2(at.x + STABILITY_BAR.x + 5.0, at.y + 6.0),
 		"Stability %d%%" % roundi(_rules.stability.total() * 100.0), UiTheme.SIZE_SMALL)
-	# The legend: a swatch and a short name for each part, in the bar's order.
+	# The legend: a swatch and a short name for each part, in the bar's order (v0.11.1: expanded only; the H legend has it).
 	var lx := 6.0
-	for entry: Array in LEGEND:
+	for entry: Array in (LEGEND if details else []):
 		draw_rect(Rect2(lx, 31.0, 5.0, 5.0), UiTheme.STABILITY_COLS[int(entry[1])])
 		UiTheme.text(self, Vector2(lx + 7.0, 38.0), String(entry[0]), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		lx += 7.0 + UiTheme.width(String(entry[0]), UiTheme.SIZE_SMALL) + 8.0
@@ -1033,17 +1208,18 @@ func _draw_objectives() -> void:
 	var limit := escape_limit()
 	var escaped := "Escaped %d / %d" % [count, limit]
 	var col := UiTheme.COL_BAD if count >= limit - 8 else UiTheme.COL_DIM
-	UiTheme.text(self, Vector2(6.0, 54.0), escaped, UiTheme.SIZE_SMALL, col)
+	var escaped_y := ESCAPED_Y if details else ESCAPED_Y_SHORT
+	UiTheme.text(self, Vector2(6.0, escaped_y), escaped, UiTheme.SIZE_SMALL, col)
 	var gaze := gaze_readout()
 	if gaze != "":
-		# Tier 5's Gaze (v0.11 M1) beside the escapes, readable while the rite's plate takes the bar's place.
-		UiTheme.text(self, Vector2(OBJECTIVE_PANEL.end.x - 6.0 - UiTheme.width(gaze, UiTheme.SIZE_SMALL), 54.0), gaze,
+		# Tier 5's Gaze (v0.11 M1) beside the escapes, readable while the rite's plate takes the bar's place; v0.11.1: left of the cue.
+		UiTheme.text(self, Vector2(cue_rect().position.x - 6.0 - UiTheme.width(gaze, UiTheme.SIZE_SMALL), escaped_y), gaze,
 			UiTheme.SIZE_SMALL, UiTheme.COL_GOLD.lerp(UiTheme.COL_BAD, gaze_of(_rules)))
 
 
 ## The objective panel of a mission without a score (v0.08): objective_rows(), each with its tick or cross after it.
 func _draw_rows() -> void:
-	var rows := objective_rows()
+	var rows := rows_shown()
 	if rows.is_empty():
 		return
 	draw_rect(objective_rect(), UiTheme.COL_PANEL)
@@ -1056,9 +1232,16 @@ func _draw_rows() -> void:
 		y += ROW_H
 
 
+## The cue (v0.11.1 §1.1): "TAB more" / "TAB less" dim on a plate at the right end of the objective row.
+func _draw_cue() -> void:
+	var cue := cue_rect()
+	if cue.has_area():
+		_plate(cue.position, cue_text(), UiTheme.COL_DIM)
+
+
 ## The how-to-win line (v0.10 M6) on its own dark plate under the objectives, in HINT_COL.
 func _draw_hint() -> void:
-	var lines := hint_lines(hint_text())
+	var lines := _lines_now()
 	if lines.is_empty():
 		return
 	var plate := hint_rect()
@@ -1072,7 +1255,7 @@ func _draw_hint() -> void:
 ## The wishes' rows (v0.11 M1, spec §5.2) on a plate under the how-to-win line: an open box, a tick once granted, a cross and
 ## the words struck through once failed.
 func _draw_wishes() -> void:
-	var rows := wish_rows()
+	var rows := wish_rows_shown()
 	if rows.is_empty():
 		return
 	var top := wishes_top()

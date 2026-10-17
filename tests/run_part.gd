@@ -35,6 +35,7 @@ func _initialize() -> void:
 		if suite == null or not suite.can_instantiate():
 			check(false, "suite failed to load: %s" % path)
 			continue
+		Hud.reset_session()  # v0.11.1: no suite depends on the display state an earlier one left in this process
 		var before := checks
 		suite.run(self)
 		if checks == before:

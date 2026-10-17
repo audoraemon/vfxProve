@@ -198,6 +198,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	if powers.is_empty():
 		powers = _drafted
 	_drafted = powers
+	# v0.11.1: a Control that holds keyboard focus (a menu button just clicked) takes Tab for focus-next before the HUD can see it.
+	if is_inside_tree():
+		get_viewport().gui_release_focus()
 	if _ending:
 		# A start during the ending's slow motion (v0.09): that ending lets go once its wait is over (_play_ending()), so
 		# the time scale it dipped is restored here.
@@ -383,6 +386,8 @@ func _begin_intro(play: MissionDef) -> void:
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
 		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera_at
 		_bf.camera.position = Iso.ground_to_screen(framed).round()
+		if is_instance_valid(_hud):
+			_hud.play_began()  # v0.11.1: a scripted run starts at once, so its captures show the how-to-win line too
 	else:
 		_rules.set_process(false)  # the clock waits for the camera
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
@@ -418,6 +423,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.end_powers()
 	_aim.queue_free()
 	_hud.queue_free()
+	if is_inside_tree():
+		get_viewport().gui_release_focus()  # v0.11.1: as in start()
 	_pressing = false  # a press held over the old aim is not the new one's to release
 	_act = _def.act(id)
 	_act.night = _night
@@ -474,6 +481,13 @@ func ascend() -> bool:
 	return _rules.ascend()
 
 
+## The details key (v0.11.1 §1.3): TAB pressed -- not an echo, nor a release. In a mission nothing else uses it.
+static func toggles_details(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo and event.physical_keycode == KEY_TAB
+	return false
+
+
 ## The ascent's key (spec §6): F pressed -- not an echo, nor a release. Nothing else in a mission uses it.
 static func ascends(event: InputEvent) -> bool:
 	if event is InputEventKey:
@@ -512,6 +526,7 @@ func _land() -> void:
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
 		_hud.praying = false
+		_hud.play_began()  # v0.11.1: the how-to-win line flashes once now
 	_rules.set_process(true)
 
 
@@ -681,6 +696,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			start(PackedStringArray(), Time.get_ticks_usec())
 		elif ascends(event):
 			ascend()
+		elif toggles_details(event):
+			get_viewport().set_input_as_handled()
+			_hud.toggle_details()
 		elif event.physical_keycode == KEY_ESCAPE:
 			# Esc first calls off a held press, then unfocuses the power. With nothing focused it is the
 			# pause menu's -- or, for a mission running on its own with no Game around it, still the way out.

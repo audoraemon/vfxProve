@@ -791,6 +791,7 @@ func _close_pause() -> void:
 	if is_instance_valid(_pause):
 		_pause.queue_free()
 	_pause = null
+	get_viewport().gui_release_focus()  # v0.11.1: a clicked menu button must not keep TAB
 	Music.set_ducked(false)
 
 

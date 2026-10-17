@@ -424,9 +424,11 @@ static func _tags(t) -> void:
 	var d: MirasHouseDirector = s.d
 	# v0.10 M6 final review: at its start no event meets the hint plate, so it stays under the objective rows.
 	var start := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	Hud.details = true  # v0.11.1: the expanded HUD, three rows
 	t.check(start.hint_top() == 2.0 + 5.0 + Hud.ROW_H * float(start.objective_rows().size()) + 4.0
 		and not start.hint_rect().intersects(start.events_rect(Hud.SCREEN_W)),
 		"at its start the hint stays under the rows, clear of the events (%s)" % start.hint_top())
+	Hud.reset_session()
 	start.free()
 	var house: MapTag = d.tags()[0]
 	t.check(house.label == "MIRA'S HOUSE" and house.at == d.house.center() and house.rise == d.house.height

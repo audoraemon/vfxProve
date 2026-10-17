@@ -333,6 +333,7 @@ static func _keepout_stack(t) -> void:
 	var descent := Descent.new().setup(def, 7)
 	descent.attach(s.rules, s.d)
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	Hud.details = true  # v0.11.1: these measure the expanded HUD
 	var r := hud.stack_rect()
 	var hint := hud.hint_rect()
 	var wishes := hud.wishes_rect()
@@ -345,6 +346,7 @@ static func _keepout_stack(t) -> void:
 		"the kit's STACK is the real depth (%s of the plates' %s), deeper than DEAD" % [Kit.STACK.size.y, wishes.end.y])
 	hud.set_caption("The tour")
 	t.check(hud.stack_rect() == r, "the tour's caption leaves it: the stack is still drawn")
+	Hud.reset_session()
 	hud.free()
 	descent.release()
 	Kit.done(s)
@@ -359,6 +361,7 @@ static func _keepout_redraw(t) -> void:
 	var descent := Descent.new().setup(def, 7)
 	descent.attach(s.rules, s.d)
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	Hud.details = true  # v0.11.1: these measure the expanded HUD
 	var before := hud._tag_signature()
 	var blank := hud._tag_signature(false)
 	var stack := hud.stack_rect()
@@ -366,6 +369,7 @@ static func _keepout_redraw(t) -> void:
 	t.check(before != "" and hud.stack_rect() != stack and hud._tag_signature() != before,
 		"the stack changed with the tags as they were: the tag layer's signature changes (%s -> %s)" % [stack, hud.stack_rect()])
 	t.check(hud._tag_signature(false) == blank, "and without the stack term it did not: the stack alone moved it")
+	Hud.reset_session()
 	hud.free()
 	descent.release()
 	Kit.done(s)
@@ -441,6 +445,7 @@ static func _advance_cache(t) -> void:
 	var descent := Descent.new().setup(def, 7)
 	descent.attach(s.rules, s.d)
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
+	Hud.details = true  # v0.11.1: these measure the expanded HUD
 	var stack := hud.stack_rect()
 	var sig := hud._signature()
 	hud.advance(0.016)
@@ -451,6 +456,7 @@ static func _advance_cache(t) -> void:
 	var n: int = (s.rules as Rules).loadout.size()
 	var bar := hud.slots_rect()
 	t.check(n > 0 and bar.position == hud.slot_rect(0).position and bar.end == hud.slot_rect(n - 1).end, "the slot bar: every slot in one (%s)" % bar)
+	Hud.reset_session()
 	hud.free()
 	descent.release()
 	Kit.done(s)

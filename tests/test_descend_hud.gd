@@ -13,6 +13,8 @@ static func run(t) -> void:
 	_tags(t)
 	_rise(t)
 	_gaze_display(t)
+	_collapsed_board(t)
+	Hud.reset_session()
 
 
 static func _world(def: MissionDef) -> Dictionary:
@@ -61,6 +63,7 @@ static func _stop_all(s: Dictionary) -> void:
 
 
 static func _rows(t) -> void:
+	Hud.details = true  # the expanded rows, as v0.11 drew them (v0.11.1: collapsed is the default)
 	var s := _world(TierBook.board("warning"))
 	var hud: Hud = s.hud
 	var d: Descent = s.descent
@@ -78,6 +81,7 @@ static func _rows(t) -> void:
 
 
 static func _ascend(t) -> void:
+	Hud.details = true
 	var s := _world(TierBook.board("warning"))
 	var hud: Hud = s.hud
 	var rules: Rules = s.rules
@@ -139,6 +143,37 @@ static func _rise(t) -> void:
 	hud.advance(Hud.RISE_SECONDS + 0.1)
 	t.check(not hud.rising(), "and is gone after its two seconds")
 	_done(s)
+
+
+## v0.11.1 §1.1: collapsed, the wishes are one summary row (never none), and a scored panel is shorter, without its legend row.
+static func _collapsed_board(t) -> void:
+	Hud.details = false
+	var s := _world(TierBook.board("warning"))
+	var hud: Hud = s.hud
+	var d: Descent = s.descent
+	t.check(hud.wish_summary() == "Wishes: 0 of 2 granted" and hud.wish_rows_shown().size() == 1
+		and hud.wishes_rect().size.y == 5.0 + Hud.ROW_H, "collapsed: one wish row (%s)" % hud.wish_summary())
+	d.wishes[0].status = Objective.Status.DONE
+	d.wishes[1].status = Objective.Status.FAILED
+	t.check(hud.wish_summary() == "Wishes: 1 of 2 granted", "a failed wish still counts in the N (%s)" % hud.wish_summary())
+	t.check(hud.wish_rows().size() == 2, "the prayers' plate still has every wish")
+	var small := hud.stack_rect()
+	hud.toggle_details()
+	t.check(hud.wish_rows_shown().size() == 2 and hud.stack_rect().size.y > small.size.y, "TAB: every wish row, and the keepout grows")
+	Hud.details = false
+	_done(s)
+	var j := _world(TierBook.board("last_judgement"))
+	var jh: Hud = j.hud
+	t.check(jh.objective_panel().size.y == 46.0 and jh.objective_rect() == Hud.OBJECTIVE_PANEL_SHORT,
+		"a scored panel collapsed: shorter, no legend row")
+	t.check(jh.objective_panel().encloses(jh.cue_rect()) and jh.cue_rect().has_area(), "its cue sits on the Escaped line, inside the panel")
+	t.check(jh.hint_top() == Hud.OBJECTIVE_PANEL_SHORT.end.y + 4.0 and not jh.hint_shown(), "the hint (hidden until play) starts under it")
+	var short_keepout := jh.stack_rect()
+	Hud.details = true
+	t.check(jh.objective_panel() == Hud.OBJECTIVE_PANEL and jh.cue_text() == Hud.LESS_TEXT and jh.hint_shown()
+		and jh.stack_rect().size.y > short_keepout.size.y, "expanded: today's panel and the plate, the keepout grown")
+	Hud.details = false
+	_done(j)
 
 
 static func _gaze_display(t) -> void:

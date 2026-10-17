@@ -161,7 +161,8 @@ static func _guarded(t) -> void:
 	t.check(man.fearless_left > 0.0 and not man.shaken(), "an armed man on guard is past fear")
 	man.confuse(5.0)
 	Kit.run_for(s, 0.6)
-	t.check(man.mind == Person.Mind.DUTY and man.anchor == a.post, "Discord holds him a look at most: he is set back on his post")
+	t.check(man.mind == Person.Mind.CONFUSED and not d.guards(0).has(man),
+		"v0.11.1 (R5): Discord holds an armed man off his post like a whisper, he is not set back on it at the next look")
 	t.check(man.whisper(man.ground_pos + Vector2(4.0, 0.0), MindWhisperFx.LINGER),
 		"v0.11.1: soldiers hear the god -- an armed man hears a whisper")
 	Kit.run_for(s, 0.6)

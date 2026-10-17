@@ -3,8 +3,8 @@ extends AssassinateDirector
 ## The Tax Collector (v0.11 M2, Tier 1, spec §1 and §8 row 2, as the controller's Task 2 ruling reshapes it): three collectors
 ## -- the tax collector and his two deputies, the residents nearest the counting-house, made nobles for the night so their
 ## capes and crowns pick them out -- count in the counting-house (the workshop hall, east quarter) with their guards at its
-## door. The collector walks his round of three debtors' houses from 0:45; the first deputy walks two debtors', the second three,
-## each at his own time, or CHAIN_WAIT (45 s) after the one before him dies, whichever is sooner. VISIT_SECONDS (15 s) indoors at
+## door. The collector walks his round of three debtors' houses from 0:35; the first deputy walks two debtors', the second three,
+## each at his own time, or CHAIN_WAIT (45 s) after the one before him dies, whichever is sooner. VISIT_SECONDS (20 s) indoors at
 ## each debtor, then each takes the taxes to the Citadel's gate, which loses the night. Alarmed one hides 30 s in the counting-house;
 ## set alight or brought down (v0.11.1), it empties: everyone inside it, those still waiting too, bursts out in a fright and runs for
 ## the Citadel's gate (FLUSH_GAP seconds apart), and no collector is sent from it again. All three dead wins; a seen kill calls the
@@ -28,9 +28,11 @@ const CITADEL_GATE := RescueWish.GATE
 ## First guesses (spec §1 and the ruling), tuned in this order if the scripted clear misses its window (v0.11 M2): when each
 ## collector sets out at the latest; how long after one dies the next sets out at the latest (30-50 s); a visit; a hiding;
 ## the alarm's reach; how many guards walk with each, and how near.
-const SET_OUT_AT := [45.0, 105.0, 165.0]
+## v0.11.1 (ruling R4, the no-waiting rule): the collector at 0:35 (was 0:45) and no wait over 60 s (the deputies by 1:35 and 2:35), a visit
+## 20 s (was 15) so the scripted clear stays in its window; the gate's numbers are in the v0.11.1 commit.
+const SET_OUT_AT := [35.0, 95.0, 155.0]
 const CHAIN_WAIT := 45.0
-const VISIT_SECONDS := 15.0
+const VISIT_SECONDS := 20.0
 const HIDE_SECONDS := 30.0
 const ALARM_REACH := 4.0
 const GUARDS := [2, 1, 1]

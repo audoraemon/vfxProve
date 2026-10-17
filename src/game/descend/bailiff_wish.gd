@@ -159,7 +159,7 @@ func step(_rules: Rules, delta: float) -> void:
 		_started = bailiff.mind == Person.Mind.DUTY
 		return
 	if bailiff.mind != Person.Mind.DUTY:
-		if not RescueWish.TURNED.has(bailiff.mind):
+		if not RescueWish.turned_man(bailiff):
 			bailiff.go_duty(home)
 		return
 	if bailiff.anchor.distance_to(home) > 0.3:
@@ -178,7 +178,7 @@ func _act(rules: Rules) -> Status:
 		return Status.PENDING
 	if bailiff.ground_pos.distance_to(home) <= HOME_REACH:
 		return Status.FAILED
-	if _started and RescueWish.TURNED.has(bailiff.mind):
+	if _started and RescueWish.turned_man(bailiff):
 		return Status.DONE
 	return Status.DONE if seconds_left <= 0.0 else Status.PENDING
 

@@ -73,8 +73,9 @@ const MARCH_AT := 300.0
 const WORK_AHEAD := 25.0
 ## How long past each look an armed man on guard is kept fearless (v0.11 M5; v0.11.1: no longer deaf to a whisper): more than a TICK, so it does not lapse between looks.
 const ARMED_HOLD := 1.0
-## The minds that take an armed man off guard (v0.11 M5, plan decision 178): Discord's does not.
-const OFF_GUARD := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.WHISPERED]
+## The minds that take an armed man off guard (v0.11 M5, plan decision 178; v0.11.1, ruling R5: Discord's does too -- every control power
+## reaches every human, armed men stand fast against blows only).
+const OFF_GUARD := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.WHISPERED, Person.Mind.CONFUSED]
 ## Where the camera rests (v0.11 M5, Decision 159): the north barracks just above the centre, the other two pointed at from the bottom.
 const CAMERA_AT := Vector2(-5.5, -4.5)
 ## The Citadel's gate (v0.11 M5, the controller's ruling): where the reserve waits and the reinforcements march from.

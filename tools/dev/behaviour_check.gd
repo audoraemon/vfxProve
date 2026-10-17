@@ -1288,6 +1288,7 @@ func _judgement() -> void:
 	var frames := 0
 	var report_at := 30.0
 	var rich := Battlefield.arg_value(OS.get_cmdline_user_args(), "--aim") == "rich"
+	var acts := _watch_idle(rules)
 	print("BEHAVIOUR judgement start aim=%s %s" % ["rich" if rich else "ring", _budget(rules, FINALE_SLOTS, FINALE_DP)])
 	while not rules.finished and frames < JUDGEMENT_MAX_FRAMES:
 		await process_frame
@@ -1312,9 +1313,9 @@ func _judgement() -> void:
 	if fell_at < 0.0 and town.citadel.is_fallen():
 		fell_at = t
 	var dp_left: Variant = rules.get("dp")
-	print("BEHAVIOUR judgement end t=%.1f citadel_fell=%.1f won=%s reason=%s escaped=%d buildings=%d score=%d rank=%s dp_left=%s" % [
-		t, fell_at, rules.won, rules.over_reason, mission._crowd.escaped_count, rules.buildings_down, rules.score(),
-		rules.rank(), str(dp_left)])
+	print("BEHAVIOUR judgement end t=%.1f citadel_fell=%.1f won=%s reason=%s time=%.1f escaped=%d buildings=%d score=%d rank=%s dp_left=%s idle=%.0f" % [
+		t, fell_at, rules.won, rules.over_reason, t, mission._crowd.escaped_count, rules.buildings_down, rules.score(),
+		rules.rank(), str(dp_left), _idle_now(rules, acts)])
 
 
 ## The warning scenario's loadout for each case (v0.08 M5). "none" drafts Mind Whisper and never casts it: an empty
@@ -1503,6 +1504,7 @@ func _lanterns(which: String) -> void:
 		if rules.key(slot) != "":
 			slots[rules.key(slot)] = slot
 	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var acts := _watch_idle(rules)
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
@@ -1537,8 +1539,8 @@ func _lanterns(which: String) -> void:
 				rules.cast(slots.dragon, target.center())
 	var res := rules.result()
 	var bonus: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
-	print("BEHAVIOUR lanterns result won=%s reason=%s time=%.1f drained=%d relit=%d gaze=%d bonus=%s" % [res.won,
-		res.reason, float(res.time), d.drained_count(), d.relit, roundi(d.gaze.value), bonus])
+	print("BEHAVIOUR lanterns result won=%s reason=%s time=%.1f drained=%d relit=%d gaze=%d bonus=%s idle=%.0f" % [res.won,
+		res.reason, float(res.time), d.drained_count(), d.relit, roundi(d.gaze.value), bonus, _idle_now(rules, acts)])
 
 
 func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
@@ -1577,6 +1579,20 @@ func _note_act(acts: Dictionary, t: float) -> void:
 	acts.last = t
 
 
+## Idle tracking for a scenario that casts through Rules.cast() in its own loops (v0.11.1, lanterns, flame, warning, feast, judgement):
+## the stretches between casts, read off Rules.cast_made against the mission clock. Printing only; `_watch_idle(rules)` once, then
+## `_idle_now(rules, acts)` for the longest stretch (the last cast to now counts) at the result.
+func _watch_idle(rules: Rules) -> Dictionary:
+	var acts := {"last": 0.0, "longest": 0.0, "start": rules.time_left}
+	rules.cast_made.connect(func(_slot: int, _key: String, _at: Vector2) -> void:
+		_note_act(acts, float(acts.start) - rules.time_left))
+	return acts
+
+
+func _idle_now(rules: Rules, acts: Dictionary) -> float:
+	return _idle_end(acts, float(acts.start) - rules.time_left)
+
+
 ## The longest idle stretch at the night's end `t` (v0.11.1): counts the stretch since the last cast.
 func _idle_end(acts: Dictionary, t: float) -> float:
 	return maxf(float(acts.longest), t - float(acts.last))
@@ -1589,6 +1605,28 @@ func _tax_states(d: AssassinateDirector) -> String:
 	for q in d.quarries:
 		out.append("%s%d" % ["WAVFHSD"[q.state], q.leg])
 	return " ".join(out)
+
+
+## How long the tax policy waits at the door, since its last cast, before it smokes the next collector out (v0.11.1, R4).
+const TAX_SMOKE_AFTER := 42.0
+
+
+## Where a smoking-out cast lands (v0.11.1): within 3.0 of the counting-house's door (the director's alarm reach is 4), on the side
+## with the fewest people within a Silent Doom of it, so the guards at the door are left standing.
+func _tax_smoke_spot(d: AssassinateDirector, crowd: Crowd) -> Vector2:
+	var best := d.hide_door
+	var best_n := 1000
+	for k in 8:
+		var at := d.hide_door + Vector2.from_angle(TAU * float(k) / 8.0) * 3.0
+		var n := 0
+		for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+			for p in group:
+				if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= SilentDoom.RADIUS + 0.2:
+					n += 1
+		if n < best_n:
+			best = at
+			best_n = n
+	return best
 
 
 ## A Silent Doom cast on `p` now would go unseen (v0.11 M2, the tax policy): everyone else out of doors either falls with him
@@ -1643,6 +1681,15 @@ func _tax(which: String) -> void:
 				and WarningDirector._alive(bell.keeper) and _slot_ready(rules, slots, "doom"):
 			_note_act(acts, t)
 			rules.cast(slots.doom, bell.keeper.ground_pos)
+			continue
+		# v0.11.1 (R4, the no-waiting rule): between a death and the next collector's setting out, a power cast by the counting-house's
+		# door smokes him out (the mission's own rule). A player does not stand 45 s watching a door, so the policy does it once
+		# TAX_SMOKE_AFTER seconds have passed since its last cast.
+		if d.killed() > 0 and not d._anyone_out() and d._next_waiting() != null and t - float(acts.last) >= TAX_SMOKE_AFTER 				and _slot_ready(rules, slots, "doom"):
+			var spot := _tax_smoke_spot(d, crowd)
+			print("BEHAVIOUR tax t=%.1f doom at the door, smoking out %s" % [t, d._next_waiting().label])
+			_note_act(acts, t)
+			rules.cast(slots.doom, spot)
 			continue
 		for q in d.quarries:
 			if q.dead or not WarningDirector._alive(q.target) or q.target.inside:
@@ -3579,6 +3626,7 @@ func _flame(which: String) -> void:
 		if rules.key(slot) != "":
 			slots[rules.key(slot)] = slot
 	var max_frames := int(rules.time_left * 2.0 * 60.0)
+	var acts := _watch_idle(rules)
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
@@ -3600,8 +3648,8 @@ func _flame(which: String) -> void:
 			_flame_carry(rules, d, slots)
 	var res := rules.result()
 	var bonus: bool = not res.bonuses.is_empty() and bool(res.bonuses[0].earned)
-	print("BEHAVIOUR flame result won=%s reason=%s time=%.1f swapped=%s seen=%s touches=%d gaze=%d bonus=%s" % [res.won,
-		res.reason, float(res.time), d.swapped, d.swap_seen, d.touches, roundi(d.gaze.value), bonus])
+	print("BEHAVIOUR flame result won=%s reason=%s time=%.1f swapped=%s seen=%s touches=%d gaze=%d bonus=%s idle=%.0f" % [res.won,
+		res.reason, float(res.time), d.swapped, d.swap_seen, d.touches, roundi(d.gaze.value), bonus, _idle_now(rules, acts)])
 
 
 func _flame_phase(d: VigilFlameDirector) -> String:
@@ -4020,6 +4068,7 @@ func _warning(which: String) -> void:
 			slots[rules.key(slot)] = slot
 	var max_frames := int(rules.time_left * 2.0 * 60.0)
 	var casts := {}
+	var acts := _watch_idle(rules)
 	var last_delay := ""  # mix: the power that last held him, so the other goes next
 	var t := 0.0
 	var frames := 0
@@ -4083,9 +4132,9 @@ func _warning(which: String) -> void:
 	var unseen := false
 	for b: Dictionary in res.bonuses:
 		unseen = unseen or bool(b.earned)
-	print("BEHAVIOUR warning end case=%s won=%s reason=%s time=%.1f relays=%d unseen=%s solved_by=%s casts=%s" % [
+	print("BEHAVIOUR warning end case=%s won=%s reason=%s time=%.1f relays=%d unseen=%s solved_by=%s casts=%s idle=%.0f" % [
 		which, rules.won, rules.over_reason, float(res.time), int(res.get("relays", 0)), unseen,
-		",".join(res.get("solved_by", PackedStringArray())), casts])
+		",".join(res.get("solved_by", PackedStringArray())), casts, _idle_now(rules, acts)])
 
 
 ## Nobody would see Silent Doom take the person: nobody within Crowd.DOOM_WITNESS of them now, nor of where they will
@@ -4148,8 +4197,11 @@ func _feast(which: String) -> void:
 	print("BEHAVIOUR feast start path=%s bell=%s town=%s %s" % [path, mission.bell_rang, mission._crowd.profile.tier_name(),
 		_budget(mission._rules, FEAST_SLOTS, FEAST_DP)])
 	var done := [false]
+	var feast_rules: Rules = mission._rules
+	var acts := _watch_idle(feast_rules)
 	mission.finished.connect(func(r: Dictionary) -> void:
-		print("BEHAVIOUR feast result won=%s reason=%s time=%.1f bonuses=%s" % [r.won, r.reason, float(r.time), _earned(r)])
+		print("BEHAVIOUR feast result won=%s reason=%s time=%.1f bonuses=%s idle=%.0f" % [r.won, r.reason, float(r.time), _earned(r),
+			_idle_now(feast_rules, acts)])
 		done[0] = true)
 	if which == "play":
 		_play_act(path)  # a coroutine left running beside the loop, until the act is over
@@ -4201,8 +4253,8 @@ func _night() -> void:
 			print("BEHAVIOUR night festival forced to %s" % festival)
 		acts[0] += 1)
 	mission.finished.connect(func(r: Dictionary) -> void:
-		print("BEHAVIOUR night end won=%s reason=%s path=%s acts=%d score=%d rank=%s" % [r.won, r.reason, r.path,
-			(r.acts as Array).size(), int(r.score), r.rank])
+		print("BEHAVIOUR night end won=%s reason=%s time=%.1f path=%s acts=%d score=%d rank=%s" % [r.won, r.reason,
+			float(r.get("time", 0.0)), r.path, (r.acts as Array).size(), int(r.score), r.rank])
 		done[0] = true)
 	var seen := -1
 	while not done[0]:

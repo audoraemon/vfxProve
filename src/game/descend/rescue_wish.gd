@@ -176,9 +176,16 @@ func _act(rules: Rules) -> Status:
 	return Status.FAILED if seconds_left <= 0.0 else Status.PENDING
 
 
-## Whether the soldier has been turned by the god's own effect (v0.11 M1): his mind is one of TURNED.
+## Whether the soldier has been turned by the god's own effect (v0.11 M1): his mind is one of TURNED, or (v0.11.1) the god holds him
+## (a lure he stares at, a whisper): RETARGET never re-sends him.
 func _turned() -> bool:
-	return TURNED.has(soldier.mind)
+	return turned_man(soldier)
+
+
+## `p`, a soldier, is the god's doing (v0.11.1): in one of TURNED, or held by the god (a lure he stares at, a whisper) -- the wishes of
+## this family never re-send him to his errand while it lasts.
+static func turned_man(p: Person) -> bool:
+	return TURNED.has(p.mind) or p.held_by_god()
 
 
 ## Once ended, whoever is still on its errand is let go (Crowd.off_duty()): the child home, the soldier to his post.

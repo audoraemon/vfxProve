@@ -23,6 +23,7 @@ static func run(t) -> void:
 	_comes_back(t)
 	_back_to_what_he_did(t)
 	_fix_round(t)
+	_leftovers(t)
 	_powers(t)
 	_town_unchanged(t)
 	_hook(t)
@@ -549,3 +550,46 @@ static func _fix_round(t) -> void:
 	t.check(seizer.mind == Person.Mind.POST and c.seizer == null,
 		"fix round: a seizer the god holds when his charge is released ends at his post, not on a duty nobody owns")
 	Kit.done(w)
+
+
+## Task 5's leftovers (the coordinator, Task 6): a seizer the god holds when his charge escapes, a lured soldier on a rescue wish.
+static func _leftovers(t) -> void:
+	var w := Kit.world(MissionBook.lost_lamb())
+	var ed: EscortDirector = w.d
+	var c = ed.charges[0]
+	var seizer := _soldier(w.crowd, 4)
+	seizer.go_duty(ed.return_to)
+	c.seizer = seizer
+	c.held = true
+	seizer._shaken_left = 0.0
+	seizer.whisper(seizer.ground_pos + Vector2(2.0, 0.0), 6.0)
+	ed._on_escaped(c.man)
+	_let_go(seizer, 40.0)
+	t.check(seizer.mind == Person.Mind.POST and c.seizer == null and c.escaped,
+		"leftover: a whispered seizer whose charge escapes ends at his post, not on a stale saved DUTY (mind %d)" % seizer.mind)
+	Kit.done(w)
+	# A rescue wish never re-sends a soldier the god holds with a lure (RETARGET).
+	var s := Kit.world(MissionBook.bell_ringers(), MissionDirector.new())
+	var r := RandomNumberGenerator.new()
+	r.seed = 3
+	var def: WishDef = null
+	for d in WishBook.pool():
+		if d.id == "child":
+			def = d
+	var wish := def.instance() as RescueWish
+	t.check(wish.choose(s.crowd, s.town, r, []), "(set-up) a pressed-man wish is chosen")
+	wish.on_cast("doom", wish.soldier.ground_pos)
+	t.check(wish.engaged, "(set-up) a cast at the soldier engages the wish")
+	for i in 3:
+		wish.step(s.rules, RescueWish.RETARGET + 0.1)
+	var sol: Person = wish.soldier
+	t.check(wish._started and sol.mind == Person.Mind.DUTY and not wish._turned(), "(set-up) engaged, the soldier is on the errand and not turned")
+	sol.send_to_post(sol.post)  # the town's order takes him off the errand; at his post he can be lured
+	_arrive(sol)
+	sol.hurrying = false
+	t.check(sol.lure(sol.ground_pos + Vector2(2.0, 0.0), 6.0), "(set-up) the soldier takes a lure")
+	t.check(wish._turned(), "leftover: a soldier staring at a lure counts as turned by the god")
+	wish.step(s.rules, RescueWish.RETARGET + 0.1)
+	t.check(sol.mind == Person.Mind.OBSERVE, "leftover: RETARGET does not re-send a lured soldier (mind %d)" % sol.mind)
+	wish.release()
+	Kit.done(s)

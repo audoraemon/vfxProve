@@ -1,8 +1,8 @@
 extends RefCounted
 ## v0.11 M2 The Tax Collector (spec §1 as the controller's Task 2 ruling reshapes it, AssassinateDirector): three collectors --
 ## the tax collector and his two deputies, residents made nobles -- count in the counting-house (the workshop hall) with
-## their guards at its door. Each sets out on his own round of debtors' houses (3, 2 and 3 of them), 15 s indoors at each, then makes for the
-## Citadel's gate, which loses the night: the collector at 0:45, each deputy at his own time or CHAIN_WAIT after the one
+## their guards at its door. Each sets out on his own round of debtors' houses (3, 2 and 3 of them), 20 s indoors at each, then makes for the
+## Citadel's gate, which loses the night: the collector at 0:35, each deputy at his own time or CHAIN_WAIT after the one
 ## before him dies, whichever is sooner (smoked out sooner still by a power cast at the door while none is out). A loud power
 ## near one, a guard felled or a fright sends him to hide 30 s; a house he is in set alight or brought down flushes him out
 ## (review focus 4) -- a collector out or hiding and, since v0.11.1, one still waiting too: everyone inside the burning or fallen
@@ -196,12 +196,12 @@ static func _setup(t) -> void:
 	var up := d.timeline.upcoming(3)
 	t.check(up.size() == 3 and String(up[0].id) == "out_0" and is_equal_approx(float(up[0].at), TaxCollectorDirector.SET_OUT_AT[0])
 		and String(up[1].id) == "out_1" and is_equal_approx(float(up[1].at), TaxCollectorDirector.SET_OUT_AT[1])
-		and String(up[2].id) == "out_2", "the strip: the collector out at 0:45, his deputies at their times")
+		and String(up[2].id) == "out_2", "the strip: the collector out at 0:35, his deputies at their times")
 	t.check(_labels(d) == ["TAX COLLECTOR - INSIDE", "COUNTING-HOUSE", "DEBTOR"] and d.hint_phase() == "inside",
 		"tagged indoors, with the counting-house and his first debtor (%s); the hint: he is indoors" % [_labels(d)])
 	var stops := d.tour()
 	t.check(stops.size() == 3
-		and String(stops[0][1]) == "The counting-house. The tax collector sets out at 0:45, his deputies by 1:45 and 2:45."
+		and String(stops[0][1]) == "The counting-house. The tax collector sets out at 0:35, his deputies by 1:35 and 2:35."
 		and String(stops[1][1]) == "His first debtor. He goes in to collect, then walks on."
 		and String(stops[2][1]) == "The Citadel. A collector whose rounds are done takes the taxes in.",
 		"the tour: the counting-house, his first debtor, the Citadel (%s)" % [stops])
@@ -217,7 +217,7 @@ static func _rounds(t) -> void:
 	_run(s, TaxCollectorDirector.SET_OUT_AT[0] + DT * 2.0)
 	t.check(q.state == AssassinateDirector.State.WALKING and not q.target.inside and q.target.mind == Person.Mind.DUTY
 		and q.target.goal().distance_to(q.stop_doors[0]) < 0.5 and (s.banners as Array).has("THE TAX COLLECTOR SETS OUT")
-		and d.quarries[1].state == AssassinateDirector.State.WAITING, "0:45: he sets out for his first debtor; his deputies wait")
+		and d.quarries[1].state == AssassinateDirector.State.WAITING, "0:35: he sets out for his first debtor; his deputies wait")
 	t.check(_labels(d).has("TAX COLLECTOR") and _labels(d).has("NEXT COLLECTOR") and d.hint_phase() == ""
 		and rules.objectives[0].hud_text(rules) == "Kill the collectors: 0 / 3",
 		"in the street he is tagged, the next collector is pointed out, the hint is the mission's, the HUD counts (%s; %s)"
@@ -238,7 +238,7 @@ static func _rounds(t) -> void:
 	_run(s, AssassinateDirector.TICK + DT)
 	_run(s, TaxCollectorDirector.SET_OUT_AT[1] - d._clock + DT * 2.0)
 	t.check(q.state == AssassinateDirector.State.HIDING and d.quarries[1].state != AssassinateDirector.State.WAITING
-		and (s.banners as Array).has("A DEPUTY SETS OUT"), "1:45 with the collector still alive: the first deputy sets out on his own time")
+		and (s.banners as Array).has("A DEPUTY SETS OUT"), "1:35 with the collector still alive: the first deputy sets out on his own time")
 	_run(s, TaxCollectorDirector.HIDE_SECONDS)
 	t.check(q.state == AssassinateDirector.State.WALKING and q.target.goal().distance_to(d.safe_at) < 0.5,
 		"out of hiding, the collector makes for the Citadel again")
@@ -314,7 +314,7 @@ static func _smoked(t) -> void:
 	var sets := 0
 	for b: String in s.banners:
 		sets += 1 if b == "THE TAX COLLECTOR SETS OUT" else 0
-	t.check(sets == 1, "and 0:45 does not send him out a second time")
+	t.check(sets == 1, "and 0:35 does not send him out a second time")
 	_kill_unseen(s, 0)
 	d._on_cast(0, "whisper", d.hide_door)
 	t.check(d.quarries[1].state == AssassinateDirector.State.WALKING and d.quarries[2].state == AssassinateDirector.State.WAITING,

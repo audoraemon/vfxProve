@@ -522,7 +522,8 @@ func _watching(v: Variant) -> bool:
 		return false
 	var p := v as Person
 	# (v0.11.1: a soldier staring at a lure sees nothing, as one whispered or confused)
-	return not p.inside and p.corps == Person.Corps.NONE and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS) 		and not (p.soldier and p.held_by_god())
+	return not p.inside and p.corps == Person.Corps.NONE \
+			and (p.mind == Person.Mind.DUTY or p.mind in POST_MINDS) and not (p.soldier and p.held_by_god())
 
 
 ## Every soldier set to watch for him (v0.11 M2): the watch, the patrols, the searchers (untyped: any may be freed).
@@ -548,14 +549,22 @@ func _seize(c: Charge, by: Person) -> void:
 ## stands.
 func _release(c: Charge) -> void:
 	c.held = false
-	if _alive(c.seizer) and ((c.seizer as Person).mind == Person.Mind.DUTY 			or ((c.seizer as Person).soldier and (c.seizer as Person).held_by_god())):
-		crowd.off_duty(c.seizer)  # (v0.11.1: a seizer the god holds goes to his post when the hold ends, not back on this duty)
-	c.seizer = null
+	_let_go_seizer(c)
 	var p := c.man as Person
 	c.hold_at = p.ground_pos
 	if p.mind == Person.Mind.DUTY or p.mind in HOLD_FROM:
 		p.go_duty(c.hold_at)
 	rules.banner.emit(_freed_banner())
+
+
+## Charge `c`'s seizer is let go (v0.11.1): still on the errand, or held by the god on it, he goes to the town's post (Crowd.off_duty() forgets
+## the saved duty of a held one), not back on this duty.
+func _let_go_seizer(c: Charge) -> void:
+	if _alive(c.seizer):
+		var by := c.seizer as Person
+		if by.mind == Person.Mind.DUTY or (by.soldier and by.held_by_god()):
+			crowd.off_duty(by)
+	c.seizer = null
 
 
 ## Out (v0.11 M2): charge `c` leaves the town by the escape path (Crowd.escape() frees him at once).
@@ -576,9 +585,7 @@ func _on_escaped(p: Person) -> void:
 	c.escaped = true
 	if c.held:
 		c.held = false
-		if _alive(c.seizer) and (c.seizer as Person).mind == Person.Mind.DUTY:
-			crowd.off_duty(c.seizer)
-		c.seizer = null
+		_let_go_seizer(c)
 	rules.banner.emit(_escape_banner())
 
 

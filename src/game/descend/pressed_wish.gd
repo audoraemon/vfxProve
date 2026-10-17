@@ -125,7 +125,7 @@ func _men() -> Array[Person]:
 
 ## `p` has been turned by the god (v0.11 M3): on his errand once, and now in one of RescueWish.TURNED.
 func _turned_man(p: Person) -> bool:
-	return _on_errand.has(p.get_instance_id()) and TURNED.has(p.mind)
+	return _on_errand.has(p.get_instance_id()) and turned_man(p)
 
 
 ## Each man not turned is sent on the errand: to the son, or, once one has him, to the barracks' door (v0.11 M3).

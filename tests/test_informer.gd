@@ -25,6 +25,7 @@ static func run(t) -> void:
 	_tagged(t)
 	_unwatched(t)
 	_freed(t)
+	_stays_in(t)
 
 
 static func _world() -> Dictionary:
@@ -414,4 +415,16 @@ static func _freed(t) -> void:
 	Kit.run_for(s, DT * 2.0)
 	t.check((s.rules as Rules).objectives[0].check(s.rules) == Objective.Status.DONE and d.tags().is_empty() and d.hint_phase() == ""
 		and int(d.report().killed) == 1, "the informer's body freed after his death: still dead, untagged, the night won")
+	Kit.done(s)
+
+
+## v0.11.1: only The Tax Collector empties a burning hideout (flush_waiting): the informer waiting in his lodging stays in.
+static func _stays_in(t) -> void:
+	var s := _world()
+	var d: InformerDirector = s.d
+	var q := d.quarries[0]
+	(s.crowd as Crowd).fires.ignite(d.hideout, 0.6)
+	Kit.run_for(s, 2.0)
+	t.check(not d.flush_waiting and q.state == AssassinateDirector.State.WAITING and q.target.inside and not q.flushed,
+		"a hiding place alight does not empty it: the waiting informer stays in")
 	Kit.done(s)

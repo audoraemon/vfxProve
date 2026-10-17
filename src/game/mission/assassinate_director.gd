@@ -9,7 +9,9 @@ extends MissionDirector
 ## power cast within `alarm_reach` of him in the street, a guard felled, a fright -- he makes for the hideout and hides
 ## `hide_seconds`, then takes his round up at the stop he was walking to; with the hideout gone he makes for the safe place
 ## instead. A house he is in set alight or brought down flushes him out in a fright -- a target out on his round or hiding;
-## one still waiting at the hideout stays in and sets out at his time (the controller's Task 2 fix ruling). Each death is
+## one still waiting at the hideout stays in and sets out at his time (the controller's Task 2 fix ruling), unless the subclass
+## sets `flush_waiting` (v0.11.1: The Tax Collector): then the hideout alight or fallen sends every target inside it running for
+## the safe place, waiting ones too. Each death is
 ## judged as the Procession's Prince's: unseen when nobody living stands within Crowd.DOOM_WITNESS once a cast's other
 ## victims have fallen; seen, the guards cry murder and the bellkeeper is called. A subclass names the places, the targets and
 ## the numbers in _plan() (TaxCollectorDirector).
@@ -82,6 +84,11 @@ class Quarry:
 	var killed_by := ""
 	## The building he is inside, or null (out of doors, or inside the safe place).
 	var inside_of: Structure
+	## v0.11.1: the hideout alight or fallen flushed him (flush_waiting): he runs for the safe place for good -- his flight shows
+	## no banner of its own and never turns back for the hideout, even if the fire is put out.
+	var flushed := false
+	## v0.11.1: seconds until a waiting target bursts from a burning hideout (flush_gap apart), or -1 before the flush began.
+	var burst_in := -1.0
 
 
 ## Set by _plan(): the hideout every target starts in (null: none), and the safe place.
@@ -103,6 +110,11 @@ var next_label := "NEXT TARGET"
 ## v0.11 M3: a power cast by the hideout's door while none is out smokes the next target out (true); The Informer's hiding place
 ## is his secret, so a cast there does nothing (false).
 var smoke_out := true
+## v0.11.1: a hideout alight or fallen sends out every target inside it, waiting ones too, in a fright for the safe place (true:
+## The Tax Collector); or only one hiding there (false: the others keep to their times).
+var flush_waiting := false
+## v0.11.1: seconds between one waiting target's burst from a burning hideout and the next's (flush_waiting).
+var flush_gap := 0.0
 ## The targets in the order they set out (v0.11 M2; _add_quarry() in _plan()).
 var quarries: Array[Quarry] = []
 ## The hideout's door (the safe place's when there is no hideout) (v0.11 M2).
@@ -113,6 +125,8 @@ var _clock := 0.0
 var _tick_in := 0.0
 ## How many guards there are in all, for their places round a shared door (v0.11 M2).
 var _guard_total := 0
+## v0.11.1: the flush banner was raised (once, however the hideout burns).
+var _flush_told := false
 
 
 ## The night's setup (v0.11 M2): the plan, each target's reachable stops, the targets appointed and taken indoors at the
@@ -231,6 +245,11 @@ func _hide_banner(q: Quarry) -> String:
 	return "%s HIDES" % q.label
 
 
+## Virtual (v0.11.1): the one banner when a burning or fallen hideout sends its targets running (flush_waiting); "" for none.
+func _flush_banner() -> String:
+	return ""
+
+
 ## Virtual (v0.11 M2): the banner when a target reaches the safe place.
 func _safe_banner() -> String:
 	return "HE IS SAFE"
@@ -319,11 +338,14 @@ func _lost(q: Quarry) -> void:
 
 
 ## `q` indoors (v0.11 M2): waiting for his time, he stays -- even in a hideout alight or fallen, so one fire never sets the
-## whole night out at once (the controller's Task 2 fix ruling). Visiting or hiding, the house alight or fallen flushes him out
-## in a fright (a stop's visit then counts as done); else his time there runs down and he walks on.
+## whole night out at once (the controller's Task 2 fix ruling) -- unless flush_waiting (v0.11.1): then the hideout alight or
+## fallen bursts him out too (_flush_waiting()). Visiting or hiding, the house alight or fallen flushes him out in a fright (a
+## stop's visit then counts as done); else his time there runs down and he walks on.
 func _indoors(q: Quarry, delta: float) -> void:
 	var was := q.state
 	if was == State.WAITING:
+		if flush_waiting:
+			_flush_waiting(q, delta)
 		return
 	var house := q.inside_of
 	if not is_instance_valid(house) or house.destroyed or _burning(house):
@@ -333,6 +355,9 @@ func _indoors(q: Quarry, delta: float) -> void:
 			q.leg += 1
 		q.state = State.WALKING
 		q.target.panic(from, 2.0)
+		if flush_waiting and house == hideout:
+			q.flushed = true
+			_tell_flush()
 		return
 	q.indoors_left -= delta
 	if q.indoors_left > 0.0:
@@ -342,6 +367,41 @@ func _indoors(q: Quarry, delta: float) -> void:
 		q.leg += 1
 	q.state = State.WALKING
 	q.target.go_duty(_leg_goal(q))
+
+
+## `q` waits in a hideout (v0.11.1, flush_waiting): once it is alight or fallen every target waiting there is given his turn to
+## burst out -- the i-th (in order) i * flush_gap seconds after the first -- and when it comes he is flushed as a hiding one is:
+## out in a fright, bound for the safe place, never sent from the building again. Once begun the flush runs on though the fire
+## goes out.
+func _flush_waiting(q: Quarry, delta: float) -> void:
+	if q.burst_in < 0.0:
+		var house := q.inside_of
+		if is_instance_valid(house) and not house.destroyed and not _burning(house):
+			return
+		var rank := 0
+		for o in quarries:
+			if o.state == State.WAITING and o.inside_of == q.inside_of and o.burst_in < 0.0 and _alive(o.target):
+				o.burst_in = float(rank) * flush_gap
+				rank += 1
+		_tell_flush()
+	q.burst_in -= delta
+	if q.burst_in > 0.0:
+		return
+	var from := q.inside_of.center() if is_instance_valid(q.inside_of) else q.target.ground_pos
+	_come_out(q)
+	q.flushed = true
+	q.state = State.WALKING
+	q.target.panic(from, 2.0)
+
+
+## The flush banner, once (v0.11.1).
+func _tell_flush() -> void:
+	if _flush_told:
+		return
+	_flush_told = true
+	var text := _flush_banner()
+	if text != "":
+		rules.banner.emit(text)
 
 
 ## One look at `q` in the street (v0.11 M2): a fright or a fallen guard alarms him; else he is kept on his way -- to the stop or
@@ -355,7 +415,7 @@ func _tick(q: Quarry) -> void:
 				return
 			_walk(q, _leg_goal(q))
 		State.FLEEING:
-			_walk(q, _hide_goal())
+			_walk(q, _hide_goal(q))
 	q.guard_fell = false
 
 
@@ -378,7 +438,7 @@ func _walk(q: Quarry, goal: Vector2) -> void:
 ## is down or burning (then that stop is skipped); past the last stop, he is safe.
 func _arrive(q: Quarry) -> void:
 	if q.state == State.FLEEING:
-		if _hideout_stands():
+		if _hideout_stands() and not q.flushed:
 			_go_in(q, hideout)
 			q.state = State.HIDING
 			q.indoors_left = hide_seconds
@@ -411,8 +471,9 @@ func _alarm(q: Quarry) -> void:
 		return
 	q.state = State.FLEEING
 	q.alarms += 1
-	rules.banner.emit(_hide_banner(q))
-	q.target.go_duty(_hide_goal())
+	if not q.flushed:
+		rules.banner.emit(_hide_banner(q))  # a flushed one runs: the flush has its banner already
+	q.target.go_duty(_hide_goal(q))
 
 
 ## A power cast (Rules.cast_made, v0.11 M2): by the hideout's door while no target is out, it smokes the next one out; a loud
@@ -531,9 +592,10 @@ func _leg_goal(q: Quarry) -> Vector2:
 	return q.stop_doors[q.leg] if q.leg < q.stops.size() else safe_at
 
 
-## Where an alarmed target flees to (v0.11 M2): the hideout while it stands unburnt, else the safe place.
-func _hide_goal() -> Vector2:
-	return hide_door if _hideout_stands() else safe_at
+## Where an alarmed target flees to (v0.11 M2): the hideout while it stands unburnt, else the safe place -- always the safe place
+## for `q` when the hideout flushed him (v0.11.1), though the fire goes out.
+func _hide_goal(q: Quarry = null) -> Vector2:
+	return hide_door if _hideout_stands() and not (q != null and q.flushed) else safe_at
 
 
 ## The hideout stands, unburnt (v0.11 M2).
@@ -544,7 +606,7 @@ func _hideout_stands() -> bool:
 ## `q` is alarmed with no hiding place left (v0.11 M2, final review): he flees, and the hideout is gone or alight, so he runs for
 ## the safe place -- where arriving loses the night. Only reads.
 func fleeing_to_safe(q: Quarry) -> bool:
-	return q.state == State.FLEEING and not _hideout_stands()
+	return q.state == State.FLEEING and (q.flushed or not _hideout_stands())
 
 
 ## `s` is on fire (v0.11 M2).

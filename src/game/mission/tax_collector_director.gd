@@ -6,7 +6,8 @@ extends AssassinateDirector
 ## door. The collector walks his round of three debtors' houses from 0:45; the first deputy walks two debtors', the second three,
 ## each at his own time, or CHAIN_WAIT (45 s) after the one before him dies, whichever is sooner. VISIT_SECONDS (15 s) indoors at
 ## each debtor, then each takes the taxes to the Citadel's gate, which loses the night. Alarmed one hides 30 s in the counting-house;
-## set alight, it flushes out only those hiding there, and those still waiting stay in. All three dead wins; a seen kill calls the
+## set alight or brought down (v0.11.1), it empties: everyone inside it, those still waiting too, bursts out in a fright and runs for
+## the Citadel's gate (FLUSH_GAP seconds apart), and no collector is sent from it again. All three dead wins; a seen kill calls the
 ## bell (AssassinateDirector._judge()).
 
 ## The counting-house is the building with this art tag (v0.11 M2).
@@ -34,6 +35,11 @@ const HIDE_SECONDS := 30.0
 const ALARM_REACH := 4.0
 const GUARDS := [2, 1, 1]
 const GUARD_R := 0.6
+## v0.11.1 (spec §5): seconds between one waiting collector's burst from a burning counting-house and the next's. 0.0 is "at once";
+## the first knob if one strike at the door clears all three (1.5, at most 3.0).
+const FLUSH_GAP := 0.0
+## The one banner when the counting-house burns or falls with collectors inside (v0.11.1).
+const FLUSH_BANNER := "THE COUNTING-HOUSE BURNS - THE COLLECTORS RUN"
 
 
 ## The counting-house, the three collectors' rounds and the numbers (v0.11 M2).
@@ -55,6 +61,8 @@ func _plan() -> void:
 	alarm_reach = ALARM_REACH
 	guard_r = GUARD_R
 	chain_wait = CHAIN_WAIT
+	flush_waiting = true
+	flush_gap = FLUSH_GAP
 	hideout_label = "COUNTING-HOUSE"
 	stop_label = "DEBTOR"
 	safe_label = "CITADEL"
@@ -91,6 +99,11 @@ func _set_out_label(q: Quarry) -> String:
 ## The banner when `q` is alarmed and hides (v0.11 M2).
 func _hide_banner(q: Quarry) -> String:
 	return "THE TAX COLLECTOR HIDES" if q.index == 0 else "A DEPUTY HIDES"
+
+
+## The banner when the counting-house burns or falls with collectors inside (v0.11.1).
+func _flush_banner() -> String:
+	return FLUSH_BANNER
 
 
 ## The banner when a collector reaches the Citadel's gate (v0.11 M2).

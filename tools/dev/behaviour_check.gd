@@ -1570,6 +1570,18 @@ func _bell_state(crowd: Crowd) -> String:
 	return BellNetwork.State.keys()[crowd.bell.state] if crowd.bell != null else "none"
 
 
+## The longest stretch without a cast so far (v0.11.1, tools/dev/gate.sh's idle): `acts` {last, longest} as _scripted() keeps them; call
+## before each cast at second `t`.
+func _note_act(acts: Dictionary, t: float) -> void:
+	acts.longest = maxf(float(acts.longest), t - float(acts.last))
+	acts.last = t
+
+
+## The longest idle stretch at the night's end `t` (v0.11.1): counts the stretch since the last cast.
+func _idle_end(acts: Dictionary, t: float) -> float:
+	return maxf(float(acts.longest), t - float(acts.last))
+
+
 ## Each collector's state by its initial (W waiting, A walking, V visiting, F fleeing, H hiding, S safe, D dead) and leg, in
 ## order (v0.11 M2 tax reports): "A1 W0 W0".
 func _tax_states(d: AssassinateDirector) -> String:
@@ -1615,6 +1627,7 @@ func _tax(which: String) -> void:
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
+	var acts := {"last": 0.0, "longest": 0.0}
 	while not rules.finished and not rules.main_done and frames < max_frames:
 		await process_frame
 		frames += 1
@@ -1628,6 +1641,7 @@ func _tax(which: String) -> void:
 		var bell := crowd.bell
 		if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] \
 				and WarningDirector._alive(bell.keeper) and _slot_ready(rules, slots, "doom"):
+			_note_act(acts, t)
 			rules.cast(slots.doom, bell.keeper.ground_pos)
 			continue
 		for q in d.quarries:
@@ -1637,17 +1651,19 @@ func _tax(which: String) -> void:
 			if _tax_unseen(q.target, crowd):
 				if _slot_ready(rules, slots, "doom"):
 					print("BEHAVIOUR tax t=%.1f doom %s" % [t, q.label])
+					_note_act(acts, t)
 					rules.cast(slots.doom, q.target.ground_pos)
 					break
 				continue
 			if seeing.size() == 1 and not seeing[0].soldier and not seeing[0].shaken() and _slot_ready(rules, slots, "whisper"):
 				var lone := seeing[0]
 				var away := lone.ground_pos + (lone.ground_pos - q.target.ground_pos).normalized() * 6.0
+				_note_act(acts, t)
 				rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": away})
 				break
 	var r := d.report()
-	print("BEHAVIOUR tax result %s states=%s killed=%d seen=%d alarms=%d target=%s" % [_outcome(rules), _tax_states(d),
-		int(r.killed), int(r.seen), int(r.alarms), String(r.target)])
+	print("BEHAVIOUR tax result %s states=%s killed=%d seen=%d alarms=%d target=%s idle=%.0f" % [_outcome(rules), _tax_states(d),
+		int(r.killed), int(r.seen), int(r.alarms), String(r.target), _idle_end(acts, t)])
 
 
 ## Spoiled Harvest (v0.11 M2, Task 3 fix round 2: watchmen, grain arriving one granary at a time), played every LOOK_FRAMES.
@@ -1665,6 +1681,7 @@ func _harvest(which: String) -> void:
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
+	var acts := {"last": 0.0, "longest": 0.0}
 	while not rules.finished and not rules.main_done and frames < max_frames:
 		await process_frame
 		frames += 1
@@ -1684,11 +1701,13 @@ func _harvest(which: String) -> void:
 			if d.guarding(s):
 				if _slot_ready(rules, slots, "doom"):
 					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary" % [t, name])
+					_note_act(acts, t)
 					rules.cast(slots.doom, d.guards(s)[0].ground_pos)
 					cast = true
 					break
 			elif not d.burning(s) and _slot_ready(rules, slots, "ember"):
 				print("BEHAVIOUR harvest t=%.1f ember the %s granary" % [t, name])
+				_note_act(acts, t)
 				rules.cast(slots.ember, s.center())
 				cast = true
 				break
@@ -1697,6 +1716,7 @@ func _harvest(which: String) -> void:
 				if not d.razed(s) and not d.has_grain(s) and d.grain_left(s) <= HARVEST_PRE and d.guarding(s):
 					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary (grain in %.0f s)" % [t,
 						HarvestDirector.STORE_NAMES[d.targets.find(s)], d.grain_left(s)])
+					_note_act(acts, t)
 					rules.cast(slots.doom, d.guards(s)[0].ground_pos)
 					cast = true
 					break
@@ -1710,9 +1730,10 @@ func _harvest(which: String) -> void:
 				if WarningDirector._alive(c) and not d._hauling.has((c as Person).get_instance_id()) 						and (mark == null or (c as Person).ground_pos.distance_to(d.doors[s]) < mark.ground_pos.distance_to(d.doors[s])):
 					mark = c
 			if mark != null:
+				_note_act(acts, t)
 				rules.cast(slots.doom, mark.ground_pos)
 				break
-	print("BEHAVIOUR harvest result %s spoiled=%d emptied=%s" % [_outcome(rules), d.razed_count(), d.emptied != null])
+	print("BEHAVIOUR harvest result %s spoiled=%d emptied=%s idle=%.0f" % [_outcome(rules), d.razed_count(), d.emptied != null, _idle_end(acts, t)])
 
 
 ## Each granary's state for the harvest reports (v0.11 M2): x spoiled; else its loads left (e for an empty one waiting for its

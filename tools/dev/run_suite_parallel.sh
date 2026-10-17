@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Runs the whole test suite as N Godot processes at once (default 8) and sums them.
 # usage: bash tools/dev/run_suite_parallel.sh [N]      (from the project root; G= overrides the Godot path)
-# Prints each part's line, then "checks=C failures=F"; exits 1 on any failure. Logs: $TMPDIR/kak_suite/part_N.log
+# Prints each part's line, then "checks=C failures=F"; exits 1 on any failure. Logs: a fresh $TMPDIR/kak_suite.XXXX/part_N.log per run (parallel worktrees never share one)
 set -u
 N=${1:-8}
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
-LOG=${TMPDIR:-/tmp}/kak_suite; mkdir -p "$LOG"; rm -f "$LOG"/part_*.log
+LOG=$(mktemp -d "${TMPDIR:-/tmp}/kak_suite.XXXX")
 for i in $(seq 1 "$N"); do
   ( timeout 1800 "$G" --headless --path . --script res://tests/run_part.gd -- --part=$i --of=$N > "$LOG/part_$i.log" 2>&1 ) &
 done

@@ -68,5 +68,25 @@ static func run(t) -> void:
 	charge.mind = Person.Mind.CALM
 	charge.ground_pos = at + Vector2(WillOWisp.CHARGE_LURE_R + 0.5, 0.0)
 	t.check(charge not in WillOWisp.drawn(field, at), "a charge going about calmly keeps to the same reach")
+
+	# Any lure obeys it (a Death Mark's gawkers too), measured from the source; and he goes back to his duty after it.
+	charge.mind = Person.Mind.DUTY
+	charge.anchor = at + Vector2(2.0, 0.0)
+	charge.ground_pos = charge.anchor
+	var body := charge.ground_pos + Vector2(5.0, 0.0)
+	t.check(not charge.lure(body + Vector2(1.0, 0.0), 10.0) and charge.mind == Person.Mind.DUTY,
+		"a Death Mark's body five away does not draw a charge off his duty")
+	t.check(charge.lure(charge.ground_pos + Vector2(3.0, 0.0), 10.0, charge.ground_pos + Vector2(2.0, 0.0)) and charge.mind == Person.Mind.OBSERVE,
+		"the Wisp's light within reach draws him though the ring spot it names is farther (the source is the light)")
+	charge.ground_pos = charge.goal()
+	charge._goal = Vector2.INF
+	charge._think(9.0)
+	t.check(charge.mind == Person.Mind.OBSERVE, "he stares at it")
+	charge._think(1.5)
+	t.check(charge.mind == Person.Mind.DUTY and charge.anchor == at + Vector2(2.0, 0.0), "and goes back to his duty, not to a day he does not have")
+	var plain: Person = near[5]
+	plain.mind = Person.Mind.CALM
+	plain.ground_pos = at + Vector2(8.0, 0.0)
+	t.check(plain.lure(at, 10.0), "everyone else is lured from any distance as before")
 	crowd.clear()
 	world.free()

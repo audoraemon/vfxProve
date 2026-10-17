@@ -12,6 +12,8 @@ ONLY=""; JOBS=6
 for a in "$@"; do case "$a" in --only=*) ONLY="${a#--only=}";; --jobs=*) JOBS="${a#--jobs=}";; esac; done
 T=$(mktemp -d)
 for f in tools/dev/refs/*.tsv; do cat "$f"; echo; done | tr -d '\r' | grep -v '^#' | awk -F'\t' 'NF>=3' > "$T/rows"
+dups=$(cut -f1 "$T/rows" | sort | uniq -d)
+[ -n "$dups" ] && { echo "refs_check.sh: duplicate reference names across tools/dev/refs/*.tsv: $dups" >&2; rm -rf "$T"; exit 2; }
 [ -n "$ONLY" ] && { awk -F'	' -v re="$ONLY" '$1 ~ re' "$T/rows" > "$T/r2"; mv "$T/r2" "$T/rows"; }
 run_row() { # name how expected outfile mode
   local name="$1" how="$2" want="$3" out="$4" mode="$5" o got

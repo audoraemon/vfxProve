@@ -541,6 +541,10 @@ func _run() -> void:
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
 		mission.mission_id = MissionBook.HEART_OF_FAITH
 	route = Battlefield.arg_value(args, "--route")
+	if not route in ["", "a", "b"]:
+		push_error("behaviour_check: unknown --route=%s (a or b)" % route)
+		quit(1)
+		return
 	if scenario == "feast" and "--board" in args:
 		mission.mission_id = _route_id(scenario)  # v0.11.1: the board's Festival or Procession, not the campaign night
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
@@ -651,19 +655,25 @@ func _route_id(scenario: String) -> String:
 ## `--route=b` (v0.11.1, spec §7): the scenario's B policy -- its tier file's act_<name>(bc, ctx) and state_<name>(bc, ctx) -- through
 ## _scripted(), which stops at the main objective on the board and prints the gate's result line. `name` is the scenario's, but the
 ## Festival's and the Procession's are named for the act (the board id). A tier file's functions are all a tier task writes: this gives them
-## ctx = {rules, slots (key -> slot), d (the director), crowd, memo (the policy's own notes), mission}, and `bc` (this script) with its helpers.
+## ctx = {rules, slots (key -> slot), d (the director), crowd, memo (the policy's own notes), mission} (rebuilt at every look), and `bc` (this script) with its helpers.
 func _route_b(scenario: String, case_arg: String) -> void:
 	var id := _route_id(scenario)
 	if id == "":
 		print("BEHAVIOUR route b: scenario=%s is not a board mission" % scenario)
 		return
 	var label := id if scenario == "feast" else scenario
-	var rules: Rules = mission._rules
-	var ctx := {"rules": rules, "slots": _slots(rules), "d": rules.director, "crowd": mission._crowd, "memo": {}, "mission": mission}
+	var memo := {}
 	var tier: GDScript = TIER_B[TierBook.tier_of(id) - 1]
 	await _scripted(label, case_arg if case_arg != "" else "play",
-		func() -> String: return String(tier.call("act_" + label, self, ctx)),
-		func() -> String: return String(tier.call("state_" + label, self, ctx)))
+		func() -> String: return String(tier.call("act_" + label, self, _route_ctx(memo))),
+		func() -> String: return String(tier.call("state_" + label, self, _route_ctx(memo))))
+
+
+## A B policy's ctx, built afresh at every look (v0.11.1): the rules, director and crowd change at a night's next_act, so a ctx kept
+## across acts would hold a freed director. `memo` is the policy's own notes and lives the whole run.
+func _route_ctx(memo: Dictionary) -> Dictionary:
+	var rules: Rules = mission._rules
+	return {"rules": rules, "slots": _slots(rules), "d": rules.director, "crowd": mission._crowd, "memo": memo, "mission": mission}
 
 
 func _calm(seconds: float, shots: bool) -> void:

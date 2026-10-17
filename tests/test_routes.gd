@@ -73,3 +73,20 @@ static func run(t) -> void:
 			for m in (tiers[tier_n - 1] as GDScript).get_script_method_list():
 				methods.append(String(m.name))
 			t.check(methods.has("act_" + label) and methods.has("state_" + label), "%s: tier %d has act_%s and state_%s" % [id, tier_n, label, label])
+
+	# ROUTE_IDS agrees with the mission id the scenario chain in _run() sets (a typo would silently play loadout A's mission).
+	var src := bc.source_code
+	var mission_consts: Dictionary = (load("res://src/game/mission/mission_book.gd") as GDScript).get_script_constant_map()
+	var seen := {}
+	for scenario in ids_by_scenario:
+		var at := src.find("elif scenario == \"%s\":" % scenario)
+		var assign := src.find("mission.mission_id = MissionBook.", at)
+		var next_case := src.find("elif scenario ==", at + 10)
+		if at >= 0 and assign >= 0 and (next_case < 0 or assign < next_case):
+			var const_name := src.substr(assign + 33, 40).split(String.chr(10))[0].strip_edges()
+			seen[scenario] = String(mission_consts.get(const_name, ""))
+	for scenario in ids_by_scenario:
+		if scenario == "judgement":
+			continue  # plays the default mission, Last Judgement
+		t.check(seen.get(scenario, "?") == ids_by_scenario[scenario],
+			"ROUTE_IDS: %s plays %s (the chain sets %s)" % [scenario, ids_by_scenario[scenario], seen.get(scenario, "?")])

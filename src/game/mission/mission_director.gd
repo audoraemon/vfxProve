@@ -130,16 +130,26 @@ func blight_target(_at: Vector2) -> Vector2:
 	return Vector2.INF
 
 
-## Virtual (v0.11.1): Blight landed on this director's thing at `at` (blight_target()). The base adds the town's alarm
-## (Crowd.BLIGHT_ALARM) that env.blight() adds for a structure, so a director's Blight costs what any Blight costs; subclasses
-## call super() and then break their standard or cloud their mirror.
-func blighted(_at: Vector2) -> void:
+## Virtual (v0.11.1): whether Blight can ruin this director's thing at `at` (blight_target()) -- false for a guarded standard or
+## mirror (spec §7.3, Decision 29: no route round the opposition). True by default.
+func blight_takes(_at: Vector2) -> bool:
+	return true
+
+
+## Virtual (v0.11.1): Blight landed on this director's thing at `at` (blight_target()). True when it took: the base then adds the
+## town's alarm (Crowd.BLIGHT_ALARM) that env.blight() adds for a structure (I12). A guarded one (blight_takes() false) costs no
+## alarm and returns false -- only its banner (blight_words()) shows. Subclasses call `super(at)` and break their standard or cloud
+## their mirror only if it returned true.
+func blighted(at: Vector2) -> bool:
+	if not blight_takes(at):
+		return false
 	if crowd != null:
 		crowd.add_alarm(Crowd.BLIGHT_ALARM)
+	return true
 
 
-## Virtual (v0.11.1): the banner for a Blight that landed on this director's thing at `at` ("" keeps Mission.blight_banner(): the
-## HUD then says nothing of the director's thing). "BLIGHT - THE STANDARD ROTS", "THEIR GUARD KEEPS IT".
+## Virtual (v0.11.1): the banner for a Blight that landed on this director's thing at `at`, taken or not ("BLIGHT - THE STANDARD ROTS",
+## "THEIR GUARD KEEPS IT"). "" says nothing; Mission.blight_banner() is for structures only and is not reached on this path.
 func blight_words(_at: Vector2) -> String:
 	return ""
 

@@ -8,16 +8,20 @@ extends RefCounted
 class BlightDirector extends MissionDirector:
 	var spot := Vector2.INF
 	var told := []
+	var guarded := false
 
 	func blight_target(at: Vector2) -> Vector2:
 		return spot if spot != Vector2.INF and at.distance_to(spot) <= BlightFx.REACH else Vector2.INF
 
-	func blighted(at: Vector2) -> void:
+	func blight_takes(_at: Vector2) -> bool:
+		return not guarded
+
+	func blighted(at: Vector2) -> bool:
 		told.append(at)
-		super(at)
+		return super(at)
 
 	func blight_words(_at: Vector2) -> String:
-		return "BLIGHT - THE STANDARD ROTS"
+		return "THEIR GUARD KEEPS IT" if guarded else "BLIGHT - THE STANDARD ROTS"
 
 
 static func _crowd(tier := ResponseProfile.Tier.ORGANIZED) -> Array:
@@ -253,11 +257,21 @@ static func run(t) -> void:
 		and banners == ["BLIGHT - THE STANDARD ROTS"],
 		"on its point Blight tells the director once, ruins no structure, adds one alarm and says the director's words")
 	fx.end_now()
+	# A guarded one: the banner and nothing else -- no alarm, nothing ruined (Decision 29).
+	dir.guarded = true
+	before = crowd.alarm
+	fx = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, well.center() + Vector2(0.3, 0.0))
+	fx._process(1.0)
+	t.check(dir.told.size() == 2 and not well.blighted and crowd.alarm == before and banners.back() == "THEIR GUARD KEEPS IT"
+		and not dir.blighted(dir.spot),
+		"a guarded one costs no alarm and ruins nothing: only its banner, and blighted() says it did not take")
+	fx.end_now()
+	dir.guarded = false
 	dir.spot = Vector2.INF
 	before = crowd.alarm
 	fx = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, well.center() + Vector2(0.3, 0.0))
 	fx._process(1.0)
-	t.check(dir.told.size() == 1 and well.blighted and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM) and banners.size() == 1,
+	t.check(dir.told.size() == 3 and well.blighted and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM) and banners.size() == 2,
 		"with no point of its own it ruins the well as v0.11 did (one alarm), and the director hears nothing")
 	fx.end_now()
 	rules.free()

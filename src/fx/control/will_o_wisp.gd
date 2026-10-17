@@ -42,7 +42,7 @@ func _build() -> void:
 	var rng := ctx.rng
 	for p in drawn(ctx.field, origin):
 		var a := rng.randf() * TAU
-		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), WISP_TIME - 0.5)
+		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), WISP_TIME - 0.5, origin)
 	ctx.play(&"grav_shimmer", origin, -12.0)
 	_light = FxParts.ground_light(self, origin, 1.4, LIGHT, 0.0)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),

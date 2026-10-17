@@ -187,6 +187,8 @@ var _held_hurrying := false
 ## A director's charge that answers a lure from DUTY (v0.11.1, spec §7.3): Wren coming for the flame, Pip, a listener who is not
 ## rapt. The director sets it on one of its own people and reads the lure as the god's hand. false for everyone else.
 var answers_lure := false
+## A charge (answers_lure) drawn from DUTY: when the lure ends he goes back to his duty (his anchor), not to a day he does not have.
+var _duty_lured := false
 ## Drawn by a lure (lure()) and still staring: with WHISPERED, CONFUSED and COMPELLED the god's hold on him (held_by_god()).
 var _lured := false
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
@@ -507,7 +509,12 @@ func _think(delta: float) -> void:
 		if _goal == Vector2.INF:
 			_idle = maxf(_idle, 0.1)  # stands and looks; one drawn by a wisp (lure()) walks there first
 		if _observe_left <= 0.0:
-			_recover(rng.randf_range(1.0, 3.0))
+			if _duty_lured and _lured:
+				_duty_lured = false
+				_lured = false
+				go_duty(anchor)
+			else:
+				_recover(rng.randf_range(1.0, 3.0))
 	elif mind == Mind.CONFUSED:
 		_confused_left -= delta
 		if _confused_left <= 0.0:
@@ -781,15 +788,23 @@ func _come_to() -> void:
 ## Drawn by a Will-o'-Wisp (v0.06): walk to `at` and stand staring at the light for `seconds` (the watching mind,
 ## with a walk first), then back to its day. Only a citizen going about its day, watching, recovering or regrouping
 ## comes, and (v0.11.1) a soldier standing at his post or holding the ground (SOLDIER_LURABLE), and a director's charge
-## on duty that answers a lure (answers_lure); true when it did.
-func lure(at: Vector2, seconds: float) -> bool:
+## on duty that answers a lure (answers_lure); true when it did. `from` is where the lure comes from when that is not `at` (the
+## Wisp's light, whose drawn stand round it): a charge answers only a source within WillOWisp.CHARGE_LURE_R of him, whatever casts
+## it (a Death Mark's body too, Decision 28); he returns to his duty when it ends.
+func lure(at: Vector2, seconds: float, from := Vector2.INF) -> bool:
 	if resists_mind() or inside or state == State.DEAD:
+		return false
+	if answers_lure and ground_pos.distance_to(from if from != Vector2.INF else at) > WillOWisp.CHARGE_LURE_R:
 		return false
 	if soldier:
 		if not mind in SOLDIER_LURABLE or hurrying:
 			return false
 	elif not (mind in LURABLE or (answers_lure and mind == Mind.DUTY)):
 		return false
+	if answers_lure and not soldier:
+		_duty_lured = mind == Mind.DUTY or (_duty_lured and mind == Mind.OBSERVE and _lured)
+	else:
+		_duty_lured = false
 	_hold_begin()
 	_lured = true
 	mind = Mind.OBSERVE

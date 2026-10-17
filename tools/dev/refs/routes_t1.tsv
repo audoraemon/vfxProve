@@ -1,0 +1,17 @@
+# KAK second-route references, Tier 1 (v0.11.1 Task 8): loadout B played by tools/dev/routes/tier1_b.gd. name<TAB>how<TAB>expected
+# The Warning is the board's (three stars, --board). A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
+warning_b_play_1	--scenario=warning --case=play --route=b --board --seed=1	-427497341
+warning_b_play_2	--scenario=warning --case=play --route=b --board --seed=2	-608554927
+warning_b_play_3	--scenario=warning --case=play --route=b --board --seed=3	-522729931
+tax_b_play_1	--scenario=tax --case=play --route=b --seed=1	-459338008
+tax_b_play_2	--scenario=tax --case=play --route=b --seed=2	-244708692
+tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	-793751969
+harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1	-406228870
+harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2	954856983
+harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3	363019187
+lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1	-355523178
+lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2	-800196824
+lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3	-476831020
+prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1	-468999569
+prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	-643595078
+prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	-964736122

@@ -35,6 +35,7 @@ static func run(t) -> void:
 	_alarm(t)
 	_flushed(t)
 	_flush_awkward(t)
+	_flush_apart(t)
 	_running(t)
 	_lost(t)
 	_kill(t)
@@ -45,7 +46,7 @@ static func run(t) -> void:
 	_mission(t)
 
 
-static func _world(loadout := PackedStringArray(), reserve := false, plain := false) -> Dictionary:
+static func _world(loadout := PackedStringArray(), reserve := false, plain := false, keep_gap := false) -> Dictionary:
 	var def := MissionBook.tax_collector()
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -67,6 +68,8 @@ static func _world(loadout := PackedStringArray(), reserve := false, plain := fa
 	if reserve:
 		held = _hold_back(director, crowd, town)
 	director.setup(rules, crowd, town, null)
+	if director is TaxCollectorDirector and not keep_gap:
+		director.flush_gap = 0.0  # the mechanics tests read a flush at once; _flush_apart() keeps the knob (v0.11.1 Task 8)
 	rules.director = director
 	return {"env": env, "town": town, "field": field, "world": world, "crowd": crowd, "rules": rules, "d": director,
 		"banners": banners, "held": held}
@@ -558,6 +561,28 @@ static func _flush_awkward(t) -> void:
 	t.check(first and second and not dg.quarries[2].target.inside and _banners(g).count(TaxCollectorDirector.FLUSH_BANNER) == 1,
 		"with FLUSH_GAP 1.5 they burst one at a time, 1.5 s apart, under one banner")
 	_done(g)
+
+
+## Spec 7.2 row 2, proven before loadout B's policy (v0.11.1 Task 8, pre-flight I3): the counting-house alight at the start, with its own
+## FLUSH_GAP, never lets one bolt take all three. Measured in behaviour_check (Ember at 0.1 s, then Smite on the cluster): at gap 0 the three
+## stood within 0.66 of each other and one bolt (KILL_R 0.6) took two of them, and the policy that centres it well takes three, so the gap is the
+## first knob (0 -> 1.5 -> 3.0). Here: the bursts are spaced by it, and a runner (PANIC_SPEED) is a bolt's width clear of the next before
+## the next is out.
+static func _flush_apart(t) -> void:
+	var s := _world(PackedStringArray(), false, false, true)
+	var d: TaxCollectorDirector = s.d
+	(s.crowd as Crowd).fires.ignite(d.hideout, 0.6)
+	_run(s, DT * 2.0)
+	var offsets := PackedFloat32Array()
+	for q in d.quarries:
+		offsets.append(q.burst_in if q.burst_in >= 0.0 else 0.0)
+	t.check(is_equal_approx(d.flush_gap, TaxCollectorDirector.FLUSH_GAP) and TaxCollectorDirector.FLUSH_GAP >= 1.5
+		and offsets[1] > offsets[0] + TaxCollectorDirector.FLUSH_GAP - 0.3 and offsets[2] > offsets[1] + TaxCollectorDirector.FLUSH_GAP - 0.3,
+		"the three burst from the counting-house %.1f s apart (%s)" % [TaxCollectorDirector.FLUSH_GAP, offsets])
+	t.check(TaxCollectorDirector.FLUSH_GAP * Person.PANIC_SPEED > 2.0 * SmiteFx.KILL_R * 1.5,
+		"in that gap a runner is clear of the next out by more than a bolt's width (%.1f vs %.1f)" % [
+		TaxCollectorDirector.FLUSH_GAP * Person.PANIC_SPEED, 2.0 * SmiteFx.KILL_R])
+	_done(s)
 
 
 ## The collector out runs for the Citadel and is shown so (final review): the hint's phase, the HUD's words, and the Citadel's tag --

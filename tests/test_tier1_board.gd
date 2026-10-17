@@ -15,6 +15,7 @@ static func run(t) -> void:
 	_reserved(t)
 	_tags(t)
 	_best(t)
+	_deathmark_runner(t)
 
 
 ## A board world for `id`: before the director's setup, `reserve`'s people ("c<i>" a citizen, "s<i>" a soldier, by index) and
@@ -151,6 +152,8 @@ static func _board(t) -> void:
 		"The Tax Collector keeps the tax collector wish away")
 	t.check(Array(TierBook.missions(1)) == ["warning"] + NEW and TierBook.need(1) == 3 and DescendState.lock_text(2) == "Clear 3 Whisper missions",
 		"Whisper: The Warning and the four new; three of them open Omen")
+	t.check(TierBook.board("warning").powers().has("deathmark") and not MissionBook.warning().powers().has("deathmark"),
+		"Death Mark on the board's Warning only")
 	t.check(TierBook.type_of("tax_collector") == "Kill" and TierBook.type_of("spoiled_harvest") == "Destroy"
 		and TierBook.type_of("lost_lamb") == "Protect" and TierBook.type_of("first_prayers") == "Cult", "each card's type")
 
@@ -281,3 +284,46 @@ static func _best(t) -> void:
 	t.check(worst <= 3 and tight.is_empty(), "every card cleared with a wide best: %d best lines, each brief ends clear above the rule (%s)" % [
 		worst, tight])
 	board.free()
+
+
+## Spec 7.2 row 1, proven before its policy (v0.11.1 Task 8): Death Mark on a runner of the board's Warning. Alone, the mark comes
+## due ten seconds later and the warning dies; with a living soul within Crowd.DOOM_WITNESS of the fall, that
+## witness carries it on, as for any seen death.
+static func _deathmark_runner(t) -> void:
+	for seen in [false, true]:
+		var s := _world("warning")
+		var d := s.d as StarfallDirector
+		var crowd: Crowd = s.crowd
+		_run(s, 9.0)
+		var w: WarningDirector = d.stars[0]
+		var m := w.messenger
+		var others: Array[Person] = []
+		for p in crowd.citizens + crowd.soldiers:
+			if p != m:
+				others.append(p)
+		for k in others.size():
+			others[k].ground_pos = Vector2(-27.0 + float(k % 20) * 0.3, -27.0 + float(k / 20) * 0.3)
+		if seen:
+			others[0].ground_pos = m.ground_pos + Vector2(1.0, 0.0)
+		var ctx := FxContext.new()
+		ctx.env = s.env
+		ctx.field = s.field
+		ctx.crowd = crowd
+		ctx.rng = RandomNumberGenerator.new()
+		ctx.rng.seed = 3
+		ctx.overhead = Node2D.new()
+		ctx.ground = Node2D.new()
+		var mark: DeathMarkFx = FxTimeline.cast(load("res://src/fx/death/death_mark.gd"), ctx, m.ground_pos)
+		t.check(mark.marked == m and m.is_alive(), "Death Mark on the runner marks him and he lives out his ten seconds")
+		mark._process(DeathMarkFx.MARK_TIME + 0.1)
+		_run(s, 1.0)
+		if seen:
+			t.check(not m.is_alive() and not w.warning_dead and w.relays == 1 and w.messenger == others[0],
+				"a witness within %.0f of the fall carries the warning on" % Crowd.DOOM_WITNESS)
+		else:
+			t.check(not m.is_alive() and m._kind == &"deathmark" and w.warning_dead and d.stopped() == 1,
+				"nobody near: the mark comes due and the warning dies")
+		mark.free()
+		ctx.overhead.free()
+		ctx.ground.free()
+		_done(s)

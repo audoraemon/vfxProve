@@ -227,9 +227,13 @@ static func _festival(m: MissionDef) -> void:
 
 
 ## The board's Warning (spec §7.2): three stars, three runners (StarfallDirector), all three to stop. No stretch: the stars
-## keep the spec's own times.
+## keep the spec's own times. v0.11.1 (Decision 30): the pool gains Death Mark, the second way to kill a runner (a mark, not a
+## veil); the campaign's Warning keeps its own pool.
 static func _warning(m: MissionDef) -> void:
 	m.director = StarfallDirector
+	m.pool = m.powers().duplicate()
+	if not m.pool.has("deathmark"):
+		m.pool.append("deathmark")
 	m.stretch = 1.0
 	m.brief = PackedStringArray(["Three stars fall through the night.", "Each sends a runner to wake the bell."])
 	m.goal = "Stop all three warnings before the bell tolls"

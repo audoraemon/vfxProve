@@ -23,6 +23,12 @@ const CHARGE_PACE := 0.385
 const PATROL_SIZE := 2
 const HUNT_AT := 150.0
 const HUNTERS := 2
+## v0.11.1 (spec 7.2 row 4, a second route): a Will-o'-the-Wisp draws the acolyte from as far as it draws anyone (WillOWisp.LURE_REACH),
+## not only from CHARGE_LURE_R -- he is the whole of the lead, and the light is cast once in thirty seconds. He answers it from his duty
+## (Person.answers_lure) and walks to it at his own slow pace -- so slow that the Wisp's twelve seconds would leave him two steps on -- and
+## stares there WISP_STARE seconds; the hold he keeps where the lure leaves him is his own.
+const WISP_HAND := WillOWisp.LURE_REACH
+const WISP_STARE := 5.0
 
 
 ## The mission's places and numbers (v0.11 M2), from the consts above.
@@ -51,6 +57,51 @@ func _plan() -> void:
 ## The cleric nearest the north-east fountain (v0.11 M2).
 func _appoint_charge() -> Person:
 	return _citizen_near(START, CitizenProfile.Role.CLERGY)
+
+
+## He answers a Wisp's lure (v0.11.1): see WISP_HAND.
+func _place_charge(c: Charge) -> void:
+	super(c)
+	(c.man as Person).answers_lure = bound_by == null  # a charge bound to his spot is deaf to a lure, as to a whisper
+	if not rules.cast_made.is_connected(_on_light):
+		rules.cast_made.connect(_on_light)
+
+
+## A Will-o'-the-Wisp is cast (v0.11.1): the acolyte beyond the Wisp's own CHARGE_LURE_R but within WISP_HAND of its light walks to the near
+## side of its ring and stares. Within CHARGE_LURE_R the Wisp draws him itself.
+func _on_light(_slot: int, key: String, at: Vector2) -> void:
+	if key != "wisp" or not _alive(charge) or charge.inside or bound:
+		return
+	var gap := charge.ground_pos.distance_to(at)
+	if gap <= WillOWisp.CHARGE_LURE_R or gap > WISP_HAND:
+		return
+	var near := _walkable(at + (charge.ground_pos - at).normalized() * WillOWisp.RING.x)
+	if not charge.lure(near, WillOWisp.WISP_TIME - 0.5, charge.ground_pos):
+		return
+	var way := 0.0
+	var from := charge.ground_pos
+	for step in crowd._grid.path(charge.ground_pos, near):
+		way += from.distance_to(step)
+		from = step
+	charge._observe_left = way / maxf(charge.walk_speed, 0.05) + WISP_STARE
+
+
+## Free (v0.11.1): drawn by a light, his hold goes with him -- where it leaves him is where he holds, not where he stood before.
+func _step_free(c: Charge) -> void:
+	var p := c.man as Person
+	if p.answers_lure and p.mind == Person.Mind.OBSERVE and not p.inside:
+		p.anchor = p.ground_pos
+		c.hold_at = p.ground_pos
+	super(c)
+
+
+func teardown() -> void:
+	for c in charges:
+		if is_instance_valid(c.man):
+			(c.man as Person).answers_lure = false  # a body is not his for ever: the next night's may be recycled
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_light):
+		rules.cast_made.disconnect(_on_light)
+	super()
 
 
 ## The opening banner (v0.11 M2).

@@ -28,12 +28,46 @@ const FAITHFUL_LAY := 3
 const PRIEST_SPOTS := [Vector2(-1.0, 1.2), Vector2(1.0, 1.2)]
 ## How hard a blow shakes the shrine (v0.11 M2).
 const SHRINE_SHAKE := 2.0
+## v0.11.1 (spec 7.2 row 5, a second route): a Will-o'-the-Wisp cast at the shrine draws the poor from beyond its own reach too -- up to
+## FETCH_R from the light -- each walking to it at his own pace and staring FETCH_STARE seconds when there, so a player can fetch the poor
+## from the streets instead of waiting for them to pass the shrine. Only a light at the shrine; loadout A casts none.
+const FETCH_R := 16.0
+const FETCH_STARE := 6.0
 
 
 func _begin() -> void:
 	need = NEED
 	read_seconds = PRAY_SECONDS
 	one_at_a_time = true
+	super()
+	rules.cast_made.connect(_on_light)
+
+
+## A Wisp is cast at the shrine (v0.11.1): each of the poor beyond the Wisp's own reach but within FETCH_R is drawn to the near side of its
+## ring, the lure lasting his walk there and FETCH_STARE more. Those within the Wisp's reach it draws itself.
+func _on_light(_slot: int, key: String, at: Vector2) -> void:
+	if key != "wisp" or roof_fallen or burning or not _near_house(at, MirasHouseDirector.LURE_REACH):
+		return
+	for g in grieving:
+		if not _alive(g) or g.inside or believers.has(g):
+			continue
+		var gap := g.ground_pos.distance_to(at)
+		if gap <= WillOWisp.LURE_REACH or gap > FETCH_R:
+			continue
+		var near := _walkable(at + (g.ground_pos - at).normalized() * WillOWisp.RING.x)
+		if not g.lure(near, WillOWisp.WISP_TIME - 0.5, g.ground_pos):
+			continue
+		var way := 0.0
+		var from := g.ground_pos
+		for step in crowd._grid.path(g.ground_pos, near):
+			way += from.distance_to(step)
+			from = step
+		g._observe_left = way / maxf(g.walk_speed, 0.05) + FETCH_STARE
+
+
+func teardown() -> void:
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_light):
+		rules.cast_made.disconnect(_on_light)
 	super()
 
 

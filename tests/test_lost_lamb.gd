@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_hidden(t)
 	_dead(t)
 	_lured(t)
+	_wisp_leads(t)
 	_mission(t)
 
 
@@ -489,6 +490,41 @@ static func _lured(t) -> void:
 	_run(s, EscortDirector.TICK + DT)
 	t.check(d.charge.mind == Person.Mind.DUTY and d.charge.anchor.distance_to(d.charge.ground_pos) < 0.5,
 		"back on his feet, he holds where he was left")
+	_done(s)
+
+
+## Spec 7.2 row 4, proven before loadout B's policy (v0.11.1 Task 8): the Wisp leads him -- which the audit took for granted: he holds on duty,
+## which no light draws. Now he answers one from as far as it draws anyone (WISP_HAND) though his hold stops it within CHARGE_LURE_R:
+## he walks to the near side of its ring at his own slow pace (the lure lasts until he is there and has stared WISP_STARE), and holds where
+## it leaves him. A light too far, or not a Wisp's, moves him not at all; one within CHARGE_LURE_R is the Wisp's own to draw.
+static func _wisp_leads(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	var lamb := d.charge
+	t.check(lamb.answers_lure, "the acolyte answers a lure from his duty")
+	var from := lamb.ground_pos
+	var light := d._walkable(from + Vector2(0.0, 5.0))
+	d._on_light(0, "ember", light)
+	t.check(lamb.mind == Person.Mind.DUTY, "a spark is no Wisp: he holds")
+	d._on_light(0, "wisp", d._walkable(from + Vector2(0.0, 8.5)))
+	t.check(lamb.mind == Person.Mind.DUTY, "a Wisp beyond WISP_HAND draws him not")
+	d._on_light(0, "wisp", d._walkable(from + Vector2(0.0, 1.5)))
+	t.check(lamb.mind == Person.Mind.DUTY, "one within CHARGE_LURE_R is the Wisp's own to draw, not the director's")
+	d._on_light(0, "wisp", light)
+	var gap := lamb.ground_pos.distance_to(light)
+	t.check(lamb.mind == Person.Mind.OBSERVE and lamb.has_goal() and lamb._observe_left > WillOWisp.WISP_TIME - 0.5,
+		"a Wisp five off draws him, and he is given the time his slow walk to it takes (%.1f s)" % lamb._observe_left)
+	# He walks it, staying drawn; where it leaves him is where he holds.
+	for i in roundi((lamb._observe_left - 1.0) / 0.25):
+		lamb.tick(0.25)
+		d.step(0.25)
+	t.check(lamb.ground_pos.distance_to(light) < gap - 1.0 and lamb.mind == Person.Mind.OBSERVE,
+		"he comes toward the light (%.1f from it, was %.1f)" % [lamb.ground_pos.distance_to(light), gap])
+	_arrive(lamb, light + Vector2(0.0, -0.8))
+	d.step(EscortDirector.TICK + DT)
+	t.check(lamb.anchor.distance_to(lamb.ground_pos) < 0.5 and d._hold_at.distance_to(lamb.ground_pos) < 0.5,
+		"his hold goes with him: where the light leaves him is where he stays, not where he stood before")
 	_done(s)
 
 

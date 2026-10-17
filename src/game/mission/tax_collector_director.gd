@@ -39,7 +39,7 @@ const GUARDS := [2, 1, 1]
 const GUARD_R := 0.6
 ## v0.11.1 (spec §5): seconds between one waiting collector's burst from a burning counting-house and the next's. 0.0 is "at once";
 ## the first knob if one strike at the door clears all three (1.5, at most 3.0).
-const FLUSH_GAP := 0.0
+const FLUSH_GAP := 1.5
 ## The one banner when the counting-house burns or falls with collectors inside (v0.11.1).
 const FLUSH_BANNER := "THE COUNTING-HOUSE BURNS - THE COLLECTORS RUN"
 

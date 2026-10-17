@@ -36,8 +36,7 @@ static func run(t) -> void:
 		t.check(b.has(r.b) and not b.has(r.a), "%s: B holds its own main power, not A's" % id)
 		t.check(b.size() <= m.slots and _dp(b) <= m.dp_capacity,
 			"%s: B fits %d slots / %d DP (%d / %d)" % [id, m.slots, m.dp_capacity, b.size(), _dp(b)])
-		if id != "warning":  # Task 8 widens the board Warning's pool with Death Mark and removes this skip
-			t.check(_in_pool(b, m.powers()), "%s: B is in the board pool" % id)
+		t.check(_in_pool(b, m.powers()), "%s: B is in the board pool" % id)
 		t.check(b != m.default_loadout, "%s: B differs from A" % id)
 		t.check(RouteBook.main_a(id) == r.a and RouteBook.main_b(id) == r.b, "%s: main_a / main_b read the row" % id)
 	t.check(RouteBook.loadout_b("nope").is_empty() and RouteBook.main_b("nope") == "", "an unknown id has no route")

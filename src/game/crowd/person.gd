@@ -1191,6 +1191,16 @@ func whisper(to: Vector2, linger: float) -> bool:
 	return true
 
 
+## Staring at a light it was lured to (a Will-o'-Wisp's, a body's) (v0.11.1: The Bell-Ringers' relay passes such a man over -- he looks at the light, not at the road).
+func lured() -> bool:
+	return mind == Mind.OBSERVE and _lured
+
+
+## Seconds of confusion left while confused, else 0 (v0.11.1: The Informer reads a Discord that has just taken a contact).
+func confused_left() -> float:
+	return _confused_left if mind == Mind.CONFUSED else 0.0
+
+
 ## Seconds of lingering left while whispered, else 0.
 func whispered_left() -> float:
 	return _whisper_left if mind == Mind.WHISPERED else 0.0

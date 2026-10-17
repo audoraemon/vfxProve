@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_word(t)
 	_turn(t)
 	_seen(t)
+	_discord_turns(t)
 	_found(t)
 	_cold(t)
 	_evacuated(t)
@@ -188,6 +189,69 @@ static func _seen(t) -> void:
 	(g.rules as Rules).cast_made.emit(0, "whisper", held.ground_pos + Vector2(0.3, 0.0))
 	t.check(not o.turned and not (g.banners as Array).has(InformerDirector.SEEN_BANNER),
 		"a whisper beside him while an older one still holds him neither turns him nor reads as seen (pre-flight cosmetic 12)")
+	Kit.done(g)
+
+
+## A Discord on `c`'s contact as the game casts it (v0.11.1 tests): everyone within its reach forgets his task, then the cast is made where
+## `at` is (the contact's own spot unless given).
+static func _discord(s: Dictionary, c: InformerDirector.Contact, at := Vector2.INF) -> void:
+	var man := c.man as Person
+	var where := man.ground_pos if at == Vector2.INF else at
+	for p in DiscordFx.taken(s.field, where):
+		p.confuse(DiscordFx.DISCORD_TIME)
+	(s.rules as Rules).cast_made.emit(1, "discord", where)
+
+
+## v0.11.1 (spec §7.3, Tier 2 second routes): a contact Discord has just confused, after his visit and unseen, is turned as a whisper turns him.
+static func _discord_turns(t) -> void:
+	var s := _world()
+	var d: InformerDirector = s.d
+	var c := d.contacts[0]
+	_clear(d, c)
+	_discord(s, c)
+	t.check(not c.turned and d.turned_count() == 0 and d.hint_phase() == "waiting", "before his visit a Discord turns no one")
+	Kit.done(s)
+	var u := _world()
+	var e: InformerDirector = u.d
+	var k := e.contacts[0]
+	e._visit(0)
+	_clear(e, k)
+	_discord(u, k)
+	t.check(k.turned and e.turned_count() == 1 and e.contact_now() == e.contacts[1] and (u.banners as Array).has("THE CHANDLER NAMES THE WEAVER")
+		and (e.timeline.seconds_to("visit_1")) <= InformerDirector.CHAIN_WAIT + 0.1,
+		"Discord on the visited chandler, no onlooker: he is turned and names the next (the same _turn as a whisper)")
+	Kit.done(u)
+	# An onlooker beyond Discord's reach but within SPEAK_SEEN sees it: nothing comes of it, and the banner says so.
+	var b := _world()
+	var f: InformerDirector = b.d
+	var o := f.contacts[0]
+	f._visit(0)
+	_clear(f, o)
+	var man := o.man as Person
+	var watcher: Person = (b.crowd as Crowd).citizens[(b.crowd as Crowd).citizens.size() - 1]
+	for q in (b.crowd as Crowd).citizens:
+		if q != man and not o.company.has(q) and not f._claimed().has(q):
+			watcher = q
+			break
+	Kit.arrive(watcher, man.ground_pos + Vector2(DiscordFx.DISCORD_R + 0.5, 0.0))
+	watcher.mind = Person.Mind.CALM
+	_discord(b, o)
+	t.check(not o.turned and not f.onlookers(o).is_empty() and (b.banners as Array).has(InformerDirector.SEEN_BANNER),
+		"an onlooker within %.0f but out of Discord's reach sees it: he says nothing" % InformerDirector.SPEAK_SEEN)
+	watcher.confuse(10.0)
+	_discord(b, o)
+	t.check(o.turned, "the onlooker held by Discord himself sees nothing: the second Discord turns him")
+	Kit.done(b)
+	# A Discord on a companion beyond its reach of the contact does not take him, so nothing is turned.
+	var g := _world()
+	var h: InformerDirector = g.d
+	var n := h.contacts[0]
+	h._visit(0)
+	_clear(h, n)
+	var mate := n.company[0] as Person
+	Kit.arrive(mate, (n.man as Person).ground_pos + Vector2(DiscordFx.DISCORD_R + 0.4, 0.0))
+	_discord(g, n, mate.ground_pos)
+	t.check(not n.turned and (n.man as Person).mind != Person.Mind.CONFUSED, "a Discord on a companion out of the contact's reach turns no one")
 	Kit.done(g)
 
 

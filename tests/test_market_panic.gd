@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_freed(t)
 	_texts(t)
 	_impact(t)
+	_ember_breaks(t)
 
 
 static func _world() -> Dictionary:
@@ -482,3 +483,35 @@ static func _impact(t) -> void:
 		"Impact: hit-stop on by default; off, it leaves the time scale alone")
 	on.free()
 	off.free()
+
+
+## v0.11.1 (spec §7.2 row 9, proved first): Ember's fire breaks the fair -- a goer standing by a burning house panics at its fright and breaks,
+## unless a warden on guard steadies him (the wardens sent off first, Discord or Mind Whisper, then it does).
+static func _ember_breaks(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var crowd: Crowd = s.crowd
+	var env: EnvironmentField = s.env
+	var house: Structure = null
+	for st in env.structures():
+		if is_instance_valid(st) and not st.destroyed and st.kind in FireManager.BURNABLE and st.kind != Structure.Kind.TREE \
+				and (house == null or st.center().distance_to(MarketPanicDirector.HEART) < house.center().distance_to(MarketPanicDirector.HEART)):
+			house = st
+	var g := (d.waves[0] as Array)[0] as Person
+	Kit.arrive(g, house.center() + Vector2(0.0, house.footprint.size.y * 0.5 + 0.6))
+	var warden := d.wards[0].man as Person
+	Kit.arrive(warden, g.ground_pos + Vector2(1.5, 0.0))
+	Kit.run_for(s, MarketPanicDirector.TICK + DT)
+	crowd.fires.ignite(house, EmberFx.START_LEVEL)  # what Ember's spark does when it lands
+	Kit.run_for(s, 8.0)
+	t.check(d.steadied(g) and not d.broke_list().has(g) and g.mind != Person.Mind.PANIC,
+		"a goer by a burning house, a warden on guard beside him: the fire frightens him not")
+	# The wardens sent off (Mind Whisper holds a warden away from his post; here they are simply taken off guard).
+	for w in d.wards:
+		(w.man as Person).whisper((w.man as Person).ground_pos + Vector2(6.0, 0.0), MindWhisperFx.LINGER)
+	Kit.run_for(s, MarketPanicDirector.TICK + DT)
+	t.check(d.on_guard().is_empty(), "the wardens whispered off are off guard")
+	Kit.run_for(s, 8.0)
+	t.check(d.broke_list().has(g) and d.hint_phase() == "open",
+		"with no warden on guard the fire's fright breaks the goer by the house (%s)" % [d.hint_phase()])
+	Kit.done(s)

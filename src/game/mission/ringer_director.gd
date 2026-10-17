@@ -67,6 +67,7 @@ func _appoint_watchman() -> Person:
 		_take_inside(p, tower)
 	for i in range(1, crew.size()):
 		mates.append(crew[i])
+		crew[i].answers_lure = true  # v0.11.1 (spec §7.2 row 8): a Will-o'-Wisp's light within CHARGE_LURE_R draws a mate off the ringer's heels
 	return crew[0]
 
 
@@ -165,9 +166,9 @@ func witnesses() -> Array[Person]:
 
 
 ## The relay never picks `p` (v0.11 M3 final review): one fleeing the town would carry the warning out of it, never to the bell,
-## and one reserved belongs to his wish. Only reads.
+## and one reserved belongs to his wish; v0.11.1: nor one staring at a lure's light (a Wisp's), who looks at it and not at the road. Only reads.
 func _passed_over(p: Person) -> bool:
-	return p.mind == Person.Mind.FLEE or reserved.has(p)
+	return p.mind == Person.Mind.FLEE or reserved.has(p) or p.lured()
 
 
 ## One step (v0.11 M3): nothing while they wait inside; else a carrier gone with no fall to judge -- out of the town alive, his body
@@ -232,8 +233,8 @@ func _step_mates() -> void:
 		if not _alive(v):
 			continue
 		var p := v as Person
-		if p.inside or not (p.mind == Person.Mind.DUTY or _resumable(p)):
-			continue
+		if p.inside or p.held_by_god() or not (p.mind == Person.Mind.DUTY or _resumable(p)):
+			continue  # v0.11.1: one staring at a Wisp's light is held by it too (held_by_god()), and let run on only once it lets him go
 		var spot := _heel(messenger.ground_pos, dir, i)
 		if p.mind != Person.Mind.DUTY or p.anchor.distance_to(spot) > RETARGET_MOVE:
 			p.go_duty(spot)

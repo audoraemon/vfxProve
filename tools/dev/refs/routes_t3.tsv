@@ -1,0 +1,17 @@
+# KAK second-route references, Tier 3 (v0.11.1 Task 10): loadout B, scripted play, seeds 1-3. name<TAB>how<TAB>expected
+# flame and festival are board versions (--board). The B policies live in tools/dev/routes/tier3_b.gd.
+flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1	-825405682
+flame_b_play_2	--scenario=flame --case=play --route=b --board --seed=2	-599584529
+flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3	-823378039
+festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-913099876
+festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b --seed=2	-529255464
+festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	47704188
+bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-648095024
+bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-129303039
+bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	56427689
+prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-172312401
+prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-909318732
+prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	-868010547
+hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-333276766
+hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-219759947
+hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	754638805

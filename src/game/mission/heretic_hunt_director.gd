@@ -55,6 +55,8 @@ var cellar_door := Vector2.INF
 var temple: Structure
 ## The cellar's own damage filter before it was made stone (v0.11 M4, the final review): put back at teardown().
 var _cellar_filter := Callable()
+## The words of the Blight that last landed (v0.11.1).
+var _blight_said := ""
 
 
 ## The hunt's plan (v0.11 M4): the knobs, the three sweeps, the Temple, the cellar (stone tonight) and its door.
@@ -205,6 +207,46 @@ func _opening_banner() -> String:
 ## The banner when the captain finds the cellar (v0.11 M4).
 func _found_banner() -> String:
 	return "THE CELLAR IS FOUND"
+
+
+## Blight's mark (v0.11.1, spec §7.3, Heretic Hunt row 15): a raised standard within BlightFx.REACH of `at`, guarded or not (a guarded one
+## is still a mark, so the player is told THEIR GUARD KEEPS IT). Only reads.
+func blight_target(at: Vector2) -> Vector2:
+	var i := _blight_step(at)
+	return standard(i).center() if i >= 0 else Vector2.INF
+
+
+## An unguarded standard takes the rot (Decision 29: Blight never routes round the opposition).
+func blight_takes(at: Vector2) -> bool:
+	var i := _blight_step(at)
+	return i >= 0 and not _guarded(i)
+
+
+## Blight on a standard: unguarded, it breaks as a blow that breaks it (its party goes home, the chain runs); guarded, nothing but the
+## banner and no alarm (the base).
+func blighted(at: Vector2) -> bool:
+	var i := _blight_step(at)
+	_blight_said = "BLIGHT - THE STANDARD ROTS" if blight_takes(at) else "THEIR GUARD KEEPS IT"
+	if not super(at):
+		return false
+	var s := standard(i)
+	if s != null and not s.destroyed:
+		s.damage(s.max_hp + s.hp + 1.0, at, &"blight")
+	return true
+
+
+## The banner of the Blight that just landed (blighted() saves it: the standard is down by the time BlightFx asks).
+func blight_words(at: Vector2) -> String:
+	return _blight_said if _blight_said != "" else ("BLIGHT - THE STANDARD ROTS" if blight_takes(at) else "THEIR GUARD KEEPS IT")
+
+
+## The raised, unbroken step whose standard stands within BlightFx.REACH of `at`, or -1 (v0.11.1).
+func _blight_step(at: Vector2) -> int:
+	for i in steps.size():
+		var s := standard(i)
+		if steps[i].raised and not steps[i].broken and s != null and not s.destroyed and s.distance_to(at) <= BlightFx.REACH:
+			return i
+	return -1
 
 
 ## The tour (v0.11 M4, mission spec §3): the cellar, the north quarter, the Temple.

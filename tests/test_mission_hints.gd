@@ -30,7 +30,7 @@ const SPEC := [
 	["broken_lanterns", "Break a lantern (gold), then keep the flame-bearer off it for 20 s while it drains. Drain all six."],
 	["broken_lanterns.knights", "A Knight (blue) shields the lantern he guards. Draw him off or kill him, then strike."],
 	["vigil_flame", "Soon the boy Wren comes for the flame (gold). Its acolytes would see him: draw them off first."],
-	["vigil_flame.wren", "Whisper Wren (blue) to the flame (gold) while no Faithful but its bearer is near him (red)."],
+	["vigil_flame.wren", "Whisper or lure Wren (blue) to the flame (gold) while no Faithful but its bearer is near him (red)."],
 	["vigil_flame.homeward", "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple."],
 	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight."],
 	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
@@ -77,7 +77,7 @@ const SPEC := [
 	["crowns_bread.engineers", "Engineers (red) mend it, put out its fires and rebuild it. Remove every one first."],
 	["crowns_bread.open", "No engineer stands. Bring it down now, before a relief comes. The bridge takes blows, not fire."],
 	# The Prisoner (v0.11 M4).
-	["prisoner", "Whisper her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight."],
+	["prisoner", "Whisper or lure her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight."],
 	["prisoner.bound", "Remove both gaolers (red): one left seizes her for the Citadel. Then burn the stocks (orange) or strike their far side."],
 	["prisoner.caught", "She is caught. Whisper or Discord the man taking her back (red), or strike once she is clear of him."],
 	["prisoner.hounds", "The Citadel's hounds (red) follow her. Strike them or turn them before they see her."],
@@ -86,7 +86,7 @@ const SPEC := [
 	# The Heretic Hunt (v0.11 M4).
 	["heretic_hunt", "Clear a standard's guards (red), then break the standard (gold). Three standards, then the captain."],
 	["heretic_hunt.guarded", "Its guards (red) hold the standard: blows only shake it. Remove every one first."],
-	["heretic_hunt.open", "The standard (gold) stands unguarded. Break it now, before a new guard comes."],
+	["heretic_hunt.open", "The standard (gold) stands unguarded. Break it now with a blow or Blight, before a new guard comes."],
 	["heretic_hunt.waiting", "The hunt moves on soon. Clear the next sweep's guards (red) shortly before it comes."],
 	["heretic_hunt.coming", "The captain comes out of the Temple (grey) in {n} s. Be ready on his road to your cellar (blue)."],
 	["heretic_hunt.captain", "The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it."],

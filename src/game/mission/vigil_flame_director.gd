@@ -41,6 +41,11 @@ const WREN_OWN_AFTER := 30.0
 ## The swap: begun within SWAP_REACH of the lantern (whispered there, or on his own try), it takes SWAP_SECONDS while
 ## Wren keeps within SWAP_HOLD of it on his duty; any farther, or Wren off his duty (frightened, held), breaks it.
 const SWAP_REACH := 1.0
+## A Wren drawn by a Wisp stands in its ring (up to WillOWisp.RING.y from the light, which may lie a step toward him from the lantern),
+## so he takes hold when the lantern comes this near him (v0.11.1, spec §7.3: a lure is the god's hand as a whisper is).
+const LURE_SWAP_REACH := 2.4
+## While a drawn Wren closes on the lantern the swap holds for this much more (a held bearer still drifts).
+const CLOSING_SLACK := 0.8
 const SWAP_HOLD := 1.6
 const SWAP_SECONDS := 3.0
 ## Wren with the flame walks carefully: the share of his own pace he keeps.
@@ -72,7 +77,7 @@ const TOUCH_GAZE := GazeMeter.SEARCHLIGHT
 const PRAY_SECONDS := 5.0
 const PRAY_REACH := 0.6
 const PRAYER_SCALE := 0.5
-## Casts the light does not hear: a Mind Whisper speaks in the mind.
+## Casts the light does not hear: a Mind Whisper speaks in the mind. (v0.11.1: nor a Wisp cast within WillOWisp.CHARGE_LURE_R of Wren, which draws him.)
 const UNHEARD := ["whisper"]
 
 var vigil: VigilRoute
@@ -88,6 +93,8 @@ var attempting := false
 ## The swap under way, and its seconds left.
 var swapping := false
 var swap_left := 0.0
+## A drawn Wren has begun the swap standing LURE_SWAP_REACH off and has yet to close to SWAP_HOLD (v0.11.1).
+var _closing := false
 ## The real flame has left the lantern (Phase 2), and whether a Faithful saw it go.
 var swapped := false
 var swap_seen := false
@@ -210,6 +217,7 @@ func _wren_comes() -> void:
 		no_wren = true
 		return
 	appeared = true
+	wren.answers_lure = true  # v0.11.1: a Wisp within WillOWisp.CHARGE_LURE_R of him draws him from his duty
 	_appeared_at = timeline.elapsed()
 	_tick = 0.0
 	_say("wren")
@@ -239,17 +247,26 @@ func _swap_step(delta: float) -> void:
 		return
 	var gap := wren.ground_pos.distance_to(_lantern)
 	if not swapping:
-		if gap <= SWAP_REACH and (wren.mind == Person.Mind.WHISPERED or attempting):
-			whispered = whispered or wren.mind == Person.Mind.WHISPERED
+		# drawn to the lantern: staring within reach of it, and (while he walks to his place in the ring) the place is within reach of it
+		var drawn := _lured() and gap <= LURE_SWAP_REACH and (not wren.has_goal() or wren.goal().distance_to(_lantern) <= LURE_SWAP_REACH)
+		if (gap <= SWAP_REACH and (wren.mind == Person.Mind.WHISPERED or attempting)) or drawn:
+			whispered = whispered or wren.mind == Person.Mind.WHISPERED or drawn
 			swapping = true
 			swap_left = SWAP_SECONDS
+			_closing = drawn
 			wren.go_duty(_lantern)
 		return
-	if gap > SWAP_HOLD or wren.mind != Person.Mind.DUTY:
+	# (v0.11.1) a drawn Wren stood up to LURE_SWAP_REACH away: he closes to SWAP_HOLD first, and the seconds count from then.
+	if _closing and gap <= SWAP_HOLD:
+		_closing = false
+	if gap > (LURE_SWAP_REACH + CLOSING_SLACK if _closing else SWAP_HOLD) or wren.mind != Person.Mind.DUTY:
 		swapping = false
+		_closing = false
 		return
 	if wren.anchor.distance_to(_lantern) > 0.3:
 		wren.go_duty(_lantern)
+	if _closing:
+		return
 	swap_left -= delta
 	if swap_left <= 0.0:
 		_swap()
@@ -278,8 +295,8 @@ func _swap() -> void:
 func _wren_step(delta: float) -> void:
 	if not appeared or not _alive(wren) or home:
 		return
-	if wren.mind == Person.Mind.WHISPERED:
-		whispered = true
+	if wren.mind == Person.Mind.WHISPERED or _lured():
+		whispered = true  # (v0.11.1: a lure is the god's hand like a whisper -- he is left to it and picks his errand up after)
 	if swapped and not wren.inside and wren.ground_pos.distance_to(shrine) <= SHRINE_REACH:
 		_flame_home()
 		return
@@ -291,11 +308,16 @@ func _wren_step(delta: float) -> void:
 	if _tick > 0.0:
 		return
 	_tick = TICK
-	if swapping or wren.inside or not (wren.mind == Person.Mind.DUTY or wren.mind in RESUMABLE):
+	if swapping or wren.inside or _lured() or not (wren.mind == Person.Mind.DUTY or wren.mind in RESUMABLE):
 		return
 	var goal := _wren_goal()
 	if wren.mind != Person.Mind.DUTY or wren.anchor.distance_to(goal) > 0.3:
 		wren.go_duty(goal)
+
+
+## Wren is staring at a Wisp's light (v0.11.1): the god's hand is on him, and the director leaves him to it.
+func _lured() -> bool:
+	return appeared and _alive(wren) and wren.mind == Person.Mind.OBSERVE and wren.held_by_god()
 
 
 ## Where Wren is making for: Mira's shrine with the flame; else the lantern on his own try; else a place WATCH_DIST from
@@ -465,6 +487,8 @@ func _phase2_end() -> void:
 func _on_cast(_slot: int, key: String, at: Vector2) -> void:
 	if key in UNHEARD:
 		return
+	if key == "wisp" and appeared and _alive(wren) and wren.ground_pos.distance_to(at) <= WillOWisp.CHARGE_LURE_R:
+		return  # (v0.11.1) a Wisp that draws Wren is the god's hand on the boy, not a noise: it calls no beam onto him
 	_noise(at)
 	if key == "wisp":
 		searchlight.lure(at)

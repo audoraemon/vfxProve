@@ -48,7 +48,7 @@ func _believe() -> void:
 	else:
 		belief = "calm"
 		for p in DominionParts.near(ctx.field, origin, RADIUS):
-			if not p.soldier:
+			if not p.resists_mind():
 				p.reassure(CALM_TIME)
 				p.set_badge(DominionParts.EYE, SHIMMER, 3.0)
 				reassured.append(p)

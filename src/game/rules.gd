@@ -358,7 +358,7 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		# refused, and no cooldown starts.
 		var given: Variant = extra.get("target")
 		var heard := is_instance_valid(given) and given is Person and (given as Person).is_alive() \
-			and not (given as Person).inside and not (given as Person).soldier
+			and not (given as Person).inside and not (given as Person).resists_mind()
 		var who: Person = (given as Person) if heard else MindWhisperFx.pick(_field, ground)
 		if who == null:
 			cast_refused.emit(slot, "nobody")

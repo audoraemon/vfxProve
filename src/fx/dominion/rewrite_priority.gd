@@ -6,7 +6,8 @@ extends FxTimeline
 ##   WORK     each goes to its work and stays at it (one with no work, home; a soldier, its post).
 ##   WORSHIP  each goes to the cathedral, to a spot of its own.
 ##   HIDE     each goes home and stays in.
-##   ESCAPE   each drops what it was doing and makes for a way out (citizens; an escape counts as any other).
+##   ESCAPE   each drops what it was doing and makes for a way out (citizens; an escape counts as any other). A soldier
+##            runs to the nearest way out's mouth and waits there the time; he never leaves the town.
 ##   IGNORE   nothing frightens them and nothing makes them look (Person.fearless_left): they go on with their day.
 ## Work, Worship and Hide are compulsions of WILL: an evacuation does not call them away; a danger on top of them does.
 ## Quiet, but for the book entry's "alarm". The cast locks the other slots until it has landed.
@@ -68,7 +69,13 @@ func _rewrite() -> void:
 				p.compel(DominionParts.home_of(p), PRIORITY_TIME, WILL, DominionParts.GOLD, false, &"", glyph)
 			"escape":
 				p.set_badge(glyph, DominionParts.GOLD, ICON_SECONDS)
-				if not p.soldier:
+				if p.soldier:
+					# A soldier is sent to the nearest way out's mouth for the time (v0.11.1) and never leaves the town: a
+					# compulsion, not a flight, and he goes back to his post after.
+					var mouth := p.grid.nearest_exit(p.ground_pos) if p.grid != null else Vector2.INF
+					p.compel(mouth if mouth != Vector2.INF else DominionParts.home_of(p), PRIORITY_TIME, WILL,
+						DominionParts.GOLD, true, &"", glyph)
+				else:
 					p.release_from_queue()
 					p.mind = Person.Mind.CALM
 					p.flee()

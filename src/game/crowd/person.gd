@@ -90,6 +90,9 @@ const CIT_HAIR := [Color("3a2a1a"), Color("5a4a2a"), Color("24201c"), Color("7a5
 const CIT_LEGS := Color("453c33")
 ## Minds a Will-o'-Wisp can draw (lure()).
 const LURABLE := [Mind.CALM, Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
+## A soldier's lurable minds (v0.11.1): standing at his post or holding the ground, besides the citizens' LURABLE. RALLY,
+## DUTY, ASSIST and FIGHT stay deaf to a lure: a soldier going somewhere is not idle.
+const SOLDIER_LURABLE := [Mind.POST, Mind.HOLD]
 ## Discord (v0.06): a confused citizen ambles at this share of a walk, under a violet swirl.
 const CONFUSED_PACE := 0.7
 const COL_DISCORD := Color("b070ff")
@@ -174,6 +177,15 @@ var corps := Corps.NONE
 var post := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
+## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
+## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
+## the duty -- and not to his spawn post (_soldier_back()).
+var _held_saved := false
+var _held_mind := Mind.POST
+var _held_anchor := Vector2.ZERO
+var _held_hurrying := false
+## Drawn by a lure (lure()) and still staring: with WHISPERED, CONFUSED and COMPELLED the god's hold on him (held_by_god()).
+var _lured := false
 ## Home for a citizen, posted spot for a soldier: where it drifts around when it has nowhere to be.
 var anchor := Vector2.ZERO
 ## A citizen's role and the places of its day (Crowd sets it; null for soldiers and people made on their own).
@@ -659,9 +671,11 @@ func _drift() -> void:
 # --- What the town does to a person ------------------------------------------
 
 ## A danger of radius `radius` at `from` is on top of it: run clear of it, to LOCAL_FLEE beyond its edge, then
-## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. Soldiers do not.
+## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. A soldier (v0.11.1) runs
+## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
+## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
 func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
-	if soldier or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
+	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
 	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
 		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
@@ -669,6 +683,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	if shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
 		return
+	_hold_begin()
 	mind = Mind.PANIC
 	awareness = Awareness.THREATENED
 	# Set here, not left for the next _think(): that can be a frame away now that thinking is half-rate, and a
@@ -681,11 +696,18 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 
 
 ## Something happened within sight or earshot at `from`: stop and look at it for a moment. Only a calm or recovering
-## citizen does; the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
+## citizen does (v0.11.1: and a soldier standing at his post); the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
 ## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
 func observe(from: Vector2, seconds := -1.0) -> void:
-	if soldier or state == State.DEAD or not (mind == Mind.CALM or mind == Mind.RECOVER) or fearless_left > 0.0:
+	if resists_mind() or state == State.DEAD or fearless_left > 0.0:
 		return
+	if soldier:
+		if mind != Mind.POST or hurrying:
+			return  # a soldier looks up from his post; one going somewhere has no time
+	elif not (mind == Mind.CALM or mind == Mind.RECOVER):
+		return
+	_hold_begin()
+	_lured = false
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
 	_threat = from
@@ -726,8 +748,9 @@ func sick_color() -> Color:
 ## stands under a violet swirl; then pick up again (flee if it was fleeing, else back to its day, where a responder's
 ## manager takes it back). A fright still works on it.
 func confuse(seconds: float, swirl := true) -> void:
-	if soldier or inside or state == State.DEAD:
+	if resists_mind() or inside or state == State.DEAD:
 		return
+	_hold_begin()
 	_was_fleeing = mind == Mind.FLEE
 	_confused_swirl = swirl
 	release_from_queue()
@@ -745,7 +768,7 @@ func confuse(seconds: float, swirl := true) -> void:
 ## The confusion lifts.
 func _come_to() -> void:
 	_confused_left = 0.0
-	if _was_fleeing:
+	if _was_fleeing and not soldier:
 		mind = Mind.CALM
 		flee()
 	else:
@@ -754,10 +777,17 @@ func _come_to() -> void:
 
 ## Drawn by a Will-o'-Wisp (v0.06): walk to `at` and stand staring at the light for `seconds` (the watching mind,
 ## with a walk first), then back to its day. Only a citizen going about its day, watching, recovering or regrouping
-## comes; true when it did.
+## comes, and (v0.11.1) a soldier standing at his post or holding the ground (SOLDIER_LURABLE); true when it did.
 func lure(at: Vector2, seconds: float) -> bool:
-	if soldier or inside or state == State.DEAD or not mind in LURABLE:
+	if resists_mind() or inside or state == State.DEAD:
 		return false
+	if soldier:
+		if not mind in SOLDIER_LURABLE or hurrying:
+			return false
+	elif not mind in LURABLE:
+		return false
+	_hold_begin()
+	_lured = true
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
 	_threat = at
@@ -800,8 +830,9 @@ func held_by_will(level: float) -> bool:
 ## up, and a fight dropped. True when it took.
 func compel(spot: Vector2, seconds: float, will: float, mark: Color, run := false, pose := &"",
 		glyph: Array[int] = GLYPH_DIAMOND) -> bool:
-	if inside or state == State.DEAD:
+	if resists_mind() or inside or state == State.DEAD:
 		return false
+	_hold_begin()
 	fight_target = null
 	_fight_left = 0.0
 	_compel_run = run
@@ -832,9 +863,74 @@ func release_compulsion() -> void:
 	_compel_run = false
 	compel_pose = &""
 	if soldier:
-		send_to_post(post if post != Vector2.INF else ground_pos)
+		_soldier_back()
 	else:
 		_recover(rng.randf_range(1.0, 2.5))
+
+
+## Whether this person's mind is beyond the god's hand (v0.11.1): false for everyone. The one hook for the later "strong ones"
+## -- a corps or a role that answers true is deaf to every hold the god lays: Mind Whisper, Discord, lures, a power's fright,
+## calm, and every compulsion or fight a power sets (panic(), observe(), confuse(), lure(), reassure(), whisper() and
+## compel() ask it; so do the powers' fight() entry points).
+func resists_mind() -> bool:
+	return false
+
+
+## Whether the god's hand is on him now (v0.11.1): whispered, confused, compelled, or staring at a lure. A director that
+## takes its soldiers back to their places at its looks leaves a held one be: the hold ends by itself and he is sent back
+## (_soldier_back()).
+func held_by_god() -> bool:
+	return mind == Mind.WHISPERED or mind == Mind.CONFUSED or mind == Mind.COMPELLED \
+		or (mind == Mind.OBSERVE and _lured)
+
+
+## A soldier's hold begins: remember what he was doing (once; a hold that replaces a hold keeps the first). Minds that are
+## themselves a hold or a pause (a fright, a look, a fight) are no state to go back to: his post then.
+func _hold_begin() -> void:
+	if not soldier or _held_saved:
+		return
+	_held_saved = true
+	match mind:
+		Mind.WHISPERED, Mind.CONFUSED, Mind.OBSERVE, Mind.PANIC, Mind.COMPELLED, Mind.RECOVER, Mind.FIGHT, Mind.FLEE:
+			_held_mind = Mind.POST
+			_held_anchor = post if post != Vector2.INF else ground_pos
+			_held_hurrying = false
+		_:
+			_held_mind = mind
+			_held_anchor = anchor
+			_held_hurrying = hurrying
+
+
+## A soldier's hold lifts: back to what he was doing before it (_hold_begin()) -- a ring slot to the ring, a Knight or guard
+## to the post his director gave him, a man on duty to it -- or, with nothing saved, to the post he was given at spawn.
+## Never into a citizen's recovery or day, and never flight.
+func _soldier_back() -> void:
+	_lured = false
+	var m := Mind.POST
+	var at := post if post != Vector2.INF else ground_pos
+	var hurry := false
+	if _held_saved:
+		m = _held_mind
+		at = _held_anchor
+		hurry = _held_hurrying
+	_held_saved = false
+	match m:
+		Mind.RALLY:
+			send_to_post(at, true, hurry)
+		Mind.DUTY:
+			go_duty(at)
+			if mind != Mind.DUTY:
+				send_to_post(at, false, hurry)
+		Mind.HOLD:
+			hold_ground()
+		Mind.ASSIST:
+			if assist_fire != null and is_instance_valid(assist_fire):
+				mind = Mind.ASSIST
+				walk_speed = _mind_speed()
+			else:
+				send_to_post(post if post != Vector2.INF else at)
+		_:
+			send_to_post(at, false, hurry)
 
 
 ## What it is, for the powers that tell people apart: a soldier, or its role's name (clergy, engineer, merchant...).
@@ -850,7 +946,7 @@ func kind() -> StringName:
 ## dropped and it goes back to its day; nothing frightens it meanwhile; and if it was leaving the town, it leaves again
 ## when the calm wears off.
 func reassure(seconds: float) -> void:
-	if inside or state == State.DEAD or soldier:
+	if inside or state == State.DEAD or resists_mind():
 		return
 	var fled := mind == Mind.FLEE
 	fearless_left = maxf(fearless_left, seconds)
@@ -927,6 +1023,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 		return
 	release_from_queue()
 	passing_gate = null
+	_held_saved = false  # a fight takes him over: nothing of an earlier hold is left to go back to
 	mind = Mind.FIGHT
 	fight_target = target
 	_fight_left = seconds
@@ -1039,12 +1136,13 @@ func hurt(amount: float, by: Person) -> void:
 		panic(by.ground_pos, 0.5, &"frenzy")
 ## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
 ## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
-## where a duty's manager takes it back. Soldiers, anyone inside and the dead do not hear it, nor (v0.08.1) anyone still
+## where a duty's manager takes it back. Anyone inside and the dead do not hear it (a soldier does, v0.11.1: he goes back to what he was doing), nor (v0.08.1) anyone still
 ## shaking the last one off; true when it did. One still under a whisper hears a new one -- the shake-off starts when
 ## it wears off -- and keeps the flight it owes.
 func whisper(to: Vector2, linger: float) -> bool:
-	if soldier or inside or state == State.DEAD or shaken():
+	if resists_mind() or inside or state == State.DEAD or shaken():
 		return false
+	_hold_begin()
 	if mind != Mind.WHISPERED:
 		_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
 	release_from_queue()
@@ -1081,7 +1179,7 @@ func whisper_resume_flee() -> void:
 func _wake() -> void:
 	_whisper_left = 0.0
 	_shaken_left = SHAKE_OFF
-	if _whisper_fled:
+	if _whisper_fled and not soldier:
 		_whisper_fled = false
 		mind = Mind.CALM
 		flee()
@@ -1116,6 +1214,10 @@ func _settle() -> void:
 ## Wait `wait` seconds where it stands, then its routine picks up again (RoutineManager), steering clear of the
 ## ground the danger left.
 func _recover(wait: float) -> void:
+	_lured = false
+	if soldier:
+		_soldier_back()  # a soldier's day is his post: no wait, no routine
+		return
 	mind = Mind.RECOVER
 	_panic_left = 0.0
 	anchor = ground_pos
@@ -1195,6 +1297,7 @@ func assist(s: Structure, force := false, stays := false) -> void:
 	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
 			or held_by_will(WILL_FIRM):
 		return
+	_held_saved = false
 	mind = Mind.ASSIST
 	assist_fire = s
 	assist_stays = stays
@@ -1245,6 +1348,7 @@ func go_ring(steps: Vector2) -> void:
 func go_duty(at: Vector2) -> void:
 	if state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
+	_held_saved = false
 	mind = Mind.DUTY
 	anchor = at
 	walk_speed = _mind_speed()
@@ -1334,6 +1438,7 @@ func _plan_exit() -> void:
 func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 	if state == State.DEAD:
 		return
+	_held_saved = false  # sent somewhere by someone: any hold the god had on him is over
 	anchor = at
 	mind = Mind.RALLY if rally else Mind.POST
 	hurrying = hurried
@@ -1345,6 +1450,7 @@ func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 func hold_ground() -> void:
 	if state == State.DEAD:
 		return
+	_held_saved = false
 	mind = Mind.HOLD
 	walk_speed = _mind_speed()
 	_goal = Vector2.INF

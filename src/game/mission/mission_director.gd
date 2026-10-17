@@ -283,6 +283,8 @@ func _recall_to(v: Variant, at: Vector2, evacuating := false) -> void:
 	if p.inside:
 		return
 	_keep_from_flight(p, evacuating)
+	if p.soldier and p.held_by_god():
+		return  # a soldier lured, whispered or confused (v0.11.1) is not taken back: the hold ends and he goes to his place himself
 	if p.mind in RECALL_MINDS or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(at) > 0.3):
 		p.go_duty(at)
 

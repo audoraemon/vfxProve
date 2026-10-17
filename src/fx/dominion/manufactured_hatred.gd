@@ -55,7 +55,7 @@ func _build() -> void:
 func _turn() -> void:
 	var left := HATE_TIME
 	for p in group:
-		if not is_instance_valid(p) or not p.is_alive() or p.inside:
+		if not is_instance_valid(p) or not p.is_alive() or p.inside or p.resists_mind():
 			continue
 		p.wait = 0.0
 		var target: Person = first if is_instance_valid(first) and first.is_alive() else null

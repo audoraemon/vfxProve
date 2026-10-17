@@ -75,8 +75,12 @@ static func run(t) -> void:
 		crowd.bell.step(0.5)
 	t.check(keeper.mind == Person.Mind.WHISPERED, "and does not take it back mid-whisper")
 
-	# Immune: soldiers, the dead, anyone inside.
-	t.check(not crowd.soldiers[0].whisper(Vector2.ZERO, 8.0), "soldiers do not hear it")
+	# Immune: the dead, anyone inside. (Soldiers hear it since v0.11.1: tests/test_soldier_minds.gd.)
+	var heard: Person = crowd.soldiers[0]
+	t.check(heard.whisper(Vector2.ZERO, 8.0) and heard.mind == Person.Mind.WHISPERED, "v0.11.1: soldiers hear the god -- a soldier hears it")
+	heard._whisper_left = 0.0
+	heard._wake()
+	heard._shaken_left = 0.0
 	var inside: Person = crowd.citizens[2]
 	inside.inside = true
 	t.check(not inside.whisper(Vector2.ZERO, 8.0), "nor does anyone inside")
@@ -184,10 +188,10 @@ static func _power(t, made: Array) -> void:
 	var h_was := hidden.ground_pos
 	hidden.ground_pos = empty + Vector2(0.2, 0.0)
 	hidden.inside = true
-	t.check(MindWhisperFx.pick(field, empty) == null, "nor a soldier, nor anyone inside")
+	t.check(MindWhisperFx.pick(field, empty) == s, "v0.11.1: soldiers hear the god -- a press picks a soldier, but not anyone inside")
 	hidden.inside = false
-	t.check(MindWhisperFx.pick(field, empty) == hidden, "but someone out in the open, yes")
 	s.ground_pos = s_was
+	t.check(MindWhisperFx.pick(field, empty) == hidden, "but someone out in the open, yes")
 	hidden.ground_pos = h_was
 	var far := MindWhisperFx.clamp_to(grid, c.ground_pos, c.ground_pos + Vector2(20.0, 0.0))
 	t.check(far.distance_to(c.ground_pos) <= MindWhisperFx.REACH + 0.5 and grid.walkable(far),

@@ -194,7 +194,7 @@ func _command(p: Person) -> void:
 				return
 			if p == judged:
 				p.set_badge(glyph, CRIMSON, left)
-			elif judges < JUDGE_MAX and p.ground_pos.distance_to(judged.ground_pos) <= JUDGE_REACH:
+			elif judges < JUDGE_MAX and not p.resists_mind() and p.ground_pos.distance_to(judged.ground_pos) <= JUDGE_REACH:
 				judges += 1
 				p.set_badge(glyph, GOLD, left)
 				p.fight(judged, left, Person.SOLDIER_BLOW if p.soldier else JUDGE_BLOW, Person.FightRule.TARGET_ONLY)

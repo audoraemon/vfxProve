@@ -161,7 +161,7 @@ static func fights(p: Person) -> bool:
 
 ## Set `p` on side `s`.
 func _enlist(p: Person, s: int) -> void:
-	if p.side != 0:
+	if p.side != 0 or p.resists_mind():
 		return
 	var left := maxf(DURATION - (t - T_BREAK), 0.5)
 	p.side = s

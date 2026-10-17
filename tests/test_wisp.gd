@@ -30,9 +30,9 @@ static func run(t) -> void:
 	var soldier: Person = crowd.soldiers[0]
 	soldier.ground_pos = at + Vector2(0.5, 0.5)
 	var drawn := WillOWisp.drawn(field, at)
-	t.check(drawn.size() == WillOWisp.LURE_MAX and near[0] not in drawn and near[1] not in drawn and soldier not in drawn,
-		"it draws calm citizens only, %d at most (%d)" % [WillOWisp.LURE_MAX, drawn.size()])
-	var p: Person = drawn[0]
+	t.check(drawn.size() == WillOWisp.LURE_MAX and near[0] not in drawn and near[1] not in drawn and soldier in drawn,
+		"it draws the calm and (v0.11.1: soldiers hear the god) a soldier at his post, %d at most (%d)" % [WillOWisp.LURE_MAX, drawn.size()])
+	var p: Person = near[2]
 	t.check(p.lure(at, 10.0) and p.mind == Person.Mind.OBSERVE and p.goal() != Vector2.INF,
 		"a lured citizen walks to the light, watching it")
 	p._idle = 0.0
@@ -44,7 +44,8 @@ static func run(t) -> void:
 	t.check(p.mind == Person.Mind.OBSERVE, "it stands there staring")
 	p._think(1.5)
 	t.check(p.mind == Person.Mind.RECOVER, "then goes back to its day")
-	t.check(not near[0].lure(at, 10.0) and not soldier.lure(at, 10.0), "the fleeing and soldiers will not come")
+	soldier.mind = Person.Mind.RALLY
+	t.check(not near[0].lure(at, 10.0) and not soldier.lure(at, 10.0), "the fleeing and a soldier on the rally will not come")
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "wisp")
 	t.check(crowd.threats.active_count() == 0, "a wisp is no danger the town can see")
 	crowd.clear()

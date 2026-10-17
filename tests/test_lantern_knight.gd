@@ -2,7 +2,7 @@ extends RefCounted
 ## v0.10 M3 the Lantern Knight: a soldier come mid-mission (Crowd.add_soldier()), one of the town's soldiers from then
 ## on, given the KNIGHT corps. He has three times a soldier's health and a gold tabard, and wears the escort's sprite
 ## until his own is drawn. No other corps' work takes him: not the patrols' investigations (even once pruning slides him
-## into the patrols' index range), the rally, the marshals or the escorts.
+## into the patrols' index range), the rally, the marshals or the escorts. (Since v0.11.1 the god's quiet powers do hold him.)
 
 
 static func _crowd(prepared := false) -> Dictionary:
@@ -51,8 +51,10 @@ static func run(t) -> void:
 	k.hurt(Person.HEALTH_SOLDIER, null)
 	t.check(k.is_alive(), "he stands through blows that would fell a soldier")
 	k.confuse(15.0)
-	t.check(k.mind == Person.Mind.POST and not k.whisper(at + Vector2(3.0, 0.0), 8.0) and not k.lure(at, 6.0),
-		"the quiet powers do not hold him")
+	t.check(k.mind == Person.Mind.CONFUSED, "v0.11.1: soldiers hear the god -- the quiet powers hold a Knight as any soldier")
+	k._confused_left = 0.0
+	k._come_to()
+	t.check(k.mind == Person.Mind.POST and k.anchor == at, "and he goes back to his post once they let go")
 
 	# Soldiers freed before him slide him down the roster (_prune_soldiers() compacts it) into the patrols' index range,
 	# [80, 100): the patrols' investigations must still leave him alone, and take him as any soldier without his corps.

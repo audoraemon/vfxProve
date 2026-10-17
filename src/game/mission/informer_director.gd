@@ -155,8 +155,8 @@ func _begin() -> void:
 
 
 ## The dwelling for the contact near `spot` (v0.11 M3, the controller's Task 4 fix ruling: quiet doors): as _house_reached() picks,
-## but passing over any whose door a soldier's post watches (_watched()) -- a soldier hears no whisper and feels no Discord, so one
-## standing guard there would see every whisper on the contact all night (a wall post by the first carpenter's door did); the
+## but passing over any whose door a soldier's post watches (_watched()) -- the quiet-door choice stays (v0.11.1, Decision 22), though a soldier
+## now hears a whisper and can be sent off: one standing guard there would see every whisper on the contact unless sent away (a wall post by the first carpenter's door did); the
 ## nearest reachable one when every house tried is watched, and null for none.
 func _contact_house(spot: Vector2, from: Vector2, exclude: Array) -> Structure:
 	var skip := exclude.duplicate()

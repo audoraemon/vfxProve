@@ -218,12 +218,12 @@ Every `Ruling:` of the run, with the controller's R0-R7. The same list is in `do
 
 | Gate | Result |
 |---|---|
-| Unit suite | land.sh: pending (last task runs: 7127 checks, 0 failures, at the Task 11 fix round) |
-| References (all `tools/dev/refs/*.tsv`: 119 A and global rows at Task 6, plus 75 B rows) | land.sh: pending |
-| FLOW | land.sh: pending (last run alone at Tasks 6+7: 122 checks, 0 failures) |
-| A and B gate per mission | the table above; the final merged-tree re-run: land.sh: pending |
-| Trial merge | land.sh: pending |
-| Bench (`--bench=kak-v011-m6`, within 1 fps of v0.11) | land.sh: pending |
+| Unit suite | 7224 checks, 0 failures (land.sh at 69fae43; again at 6c28be9) |
+| References (all `tools/dev/refs/*.tsv`: 119 A and global rows, 6 board Procession A rows, 75 B rows) | 200 ok, 0 bad (land.sh at 69fae43; at 891cc1c; the touched rows again at 6c28be9) |
+| FLOW | 122 checks, 0 failures, alone (69fae43, 891cc1c, 6c28be9) |
+| A and B gate per mission | the table above (each from its task's final gate; the merged tree's 200 references reproduce every one of those runs) |
+| Trial merge | clean against origin/feat/Develop-Main d539922 (no incoming commits) |
+| Bench (`--bench=kak-v011-m6`, board versions, median of 3, fps) | warning 153.5 -> 156.0, miras_house 125.9 -> 127.3, vigil_flame 132.1 -> 134.0, procession 118.5 -> 118.2, last_judgement 125.2 -> 125.9: within 1 fps or better |
 
 ### Open playtest notes
 

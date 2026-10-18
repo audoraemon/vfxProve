@@ -68,7 +68,7 @@ func _seal() -> void:
 
 func _lift() -> void:
 	sealed = false
-	for p: Person in bound:
+	for p: Variant in bound:
 		if is_instance_valid(p):
 			p.clear_badge()
 	bound.clear()
@@ -92,7 +92,7 @@ func _fx_process(delta: float) -> void:
 	if _join_in <= 0.0:
 		_join_in = JOIN_EVERY
 		_join()
-	for p: Person in bound.keys():
+	for p: Variant in bound.keys():
 		if not is_instance_valid(p) or not p.is_alive():
 			bound.erase(p)
 			continue

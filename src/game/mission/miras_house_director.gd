@@ -212,7 +212,7 @@ func _enter(p: Person) -> void:
 
 
 func _read(delta: float) -> void:
-	for p: Person in _reading.keys():
+	for p: Variant in _reading.keys():
 		if not is_instance_valid(p):
 			_reading.erase(p)
 			continue
@@ -243,7 +243,7 @@ func _exit(p: Person) -> void:
 ## Dawn: the roof falls on whoever is still inside, and the house is gone.
 func _roof() -> void:
 	roof_fallen = true
-	for p: Person in _reading.keys():
+	for p: Variant in _reading.keys():
 		if not is_instance_valid(p):
 			continue
 		p.inside = false
@@ -265,8 +265,9 @@ func believers_outside() -> int:
 
 func inside() -> Array[Person]:
 	var out: Array[Person] = []
-	for p: Person in _reading.keys():
-		out.append(p)
+	for p: Variant in _reading.keys():
+		if is_instance_valid(p):  # v0.11.1: a freed reader (death fade, escape) is no reader
+			out.append(p)
 	return out
 
 
@@ -518,7 +519,7 @@ func _burn() -> void:
 ## Everyone inside runs out at the door in a fright, unconverted if their reading was not done.
 func _flush() -> void:
 	burning = true
-	for p: Person in _reading.keys():
+	for p: Variant in _reading.keys():
 		_reading.erase(p)
 		if not is_instance_valid(p):
 			continue

@@ -208,7 +208,7 @@ func _draw_panel(ci: Control) -> void:
 	if crowd.madness != null and not crowd.madness.afflicted.is_empty():
 		var m := crowd.madness
 		var by_stage := [0, 0, 0, 0]
-		for p: Person in m.afflicted:
+		for p: Variant in m.afflicted:
 			if is_instance_valid(p) and p.is_alive():
 				by_stage[MadnessManager.stage_of(m.value_of(p))] += 1
 		lines.append(["Madness: %d afflicted (%d uneasy, %d disturbed, %d unstable, %d broken), %d broken in all, alarm +%.1f" % [

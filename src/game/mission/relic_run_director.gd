@@ -529,7 +529,8 @@ func _swap_step(delta: float) -> void:
 func _by_the_cart() -> bool:
 	if wren.ground_pos.distance_to(_lantern) <= CART_REACH:
 		return true
-	return wren.mind == Person.Mind.OBSERVE and wren.held_by_god() and wren._threat.distance_to(_lantern) <= LURE_BOARD_R 		and wren.ground_pos.distance_to(_lantern) <= LURE_BOARD_R
+	return wren.mind == Person.Mind.OBSERVE and wren.held_by_god() and wren._threat.distance_to(_lantern) <= LURE_BOARD_R \
+			and wren.ground_pos.distance_to(_lantern) <= LURE_BOARD_R
 
 
 ## Pip slips aboard (v0.11 M5): on duty where he stands, then hidden in the cart's straw, carried with it (MissionDirector._ride_in()).
@@ -734,7 +735,11 @@ func hud_line() -> String:
 ## The cart's tag's words (v0.11 M5): Pip at the lock or aboard; halted, its window's seconds; else its name.
 func _cart_label() -> String:
 	if aboard:
-		return "RELIC CART - PIP AT THE LOCK" if lock_left > 0.0 else "RELIC CART - PIP ABOARD"
+		if lock_left > 0.0:
+			return "RELIC CART - PIP AT THE LOCK"
+		if _led_roll():
+			return "RELIC CART - PIP ABOARD, ROLLS ON %d" % ceili(_halt_left())  # v0.11.1: the led roll-on counts down
+		return "RELIC CART - PIP ABOARD"
 	if halt >= 0:
 		return "RELIC CART - HALTED %d" % ceili(_halt_left())
 	return "RELIC CART"

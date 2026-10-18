@@ -99,7 +99,7 @@ func _fx_process(delta: float) -> void:
 		if p.inside:
 			continue
 		bound[p] = maxf(float(bound[p]) - delta, 0.0)
-		var d := p.ground_pos - origin
+		var d: Vector2 = p.ground_pos - origin
 		var far := d.length()
 		if far > RADIUS + CARRIED:
 			bound.erase(p)

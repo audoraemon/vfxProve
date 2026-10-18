@@ -19,6 +19,8 @@ for i in $(seq 1 "$N"); do
   total=$((total + c)); fails=$((fails + f))
 done
 grep -a -h "FAIL:\|SCRIPT ERROR\|Parse Error" "$LOG"/part_*.log | head -20
+# A script that fails to parse or compile drops its suite silently (fewer checks, no FAIL): count it as a failure.
+if grep -a -q "Parse Error\|Compile Error" "$LOG"/part_*.log; then echo "a script failed to parse or compile (see above)"; bad=1; fi
 echo "checks=$total failures=$fails"
 if [ "$fails" -eq 0 ] && [ "$bad" -eq 0 ]; then rm -rf "$LOG"; exit 0; fi
 exit 1

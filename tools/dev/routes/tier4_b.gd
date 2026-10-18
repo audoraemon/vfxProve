@@ -10,8 +10,9 @@ extends RefCounted
 ## the opposition would see.
 
 
+const Tier3B := preload("res://tools/dev/routes/tier3_b.gd")
+
 ## How far Mind Whisper sends a Knight off his refuge's door (bishop).
-const PROCESSION_SIDE := 5.0
 const BISHOP_SENT := 4.0
 const BISHOP_DIRS := 12
 const BISHOP_LIGHT_R := 5.5
@@ -36,6 +37,9 @@ const RELIC_AHEAD := 20.0
 const RELIC_LEG := 35.0
 const RELIC_LATE := 10.0
 const RELIC_MARGIN := 0.15
+## The rolling stretch's job: how far before a halt (s) a Death Mark may fall on a Faithful stroller, and how near the checkpoint he must stand.
+const RELIC_STROLL_AHEAD := 80.0
+const RELIC_STROLL_R := 8.0
 ## The Sermon's policy: how near a watcher of the door no one else may stand for a Death Mark on him (his death goes unseen), and how far
 ## inside the Wisp's reach a listener must stand for the light to count him (he walks while the cast lands).
 const SERMON_MARK_ALONE := Crowd.DOOM_WITNESS
@@ -73,7 +77,7 @@ static func lead(p: Person, ahead: float) -> Vector2:
 	return at
 
 
-## The Procession (board, ★): Death Mark on the Prince, at once (he walks out of the Citadel at the start). RouteBook's row says the
+## The Procession (board, ★): Death Mark on the Prince the moment he steps out of his carriage (EMERGE_AT, 36 s). RouteBook's row says the
 ## main step is a death (Smite proved a gamble, ruling in the Task 11 report): the cast is quiet, he grows frail and slow, and ten
 ## seconds on he dies wherever he stands -- out of doors, as he always is -- and his death is judged. A Smite, aimed where he will stand
 ## when its bolt lands, is taken by a standing Prince only by the width of KILL_R (the cast frightens him and he runs at once, 1.6 *
@@ -87,14 +91,7 @@ static func act_procession(bc, ctx: Dictionary) -> String:
 	var slots: Dictionary = ctx.slots
 	var p := d.prince
 	if p.inside:
-		# In his carriage nothing of the god's reaches him. Until he comes out the road is cleared of onlookers: a Will-o'-Wisp draws
-		# those along his first leg off to stand staring in a side street, so that his death, when it comes, has fewer witnesses.
-		if bc._slot_ready(rules, slots, "wisp") and d.route.size() > 1:
-			var mid := (d.route[0] + d.route[1]) * 0.5
-			var side := (d.route[1] - d.route[0]).orthogonal().normalized()
-			rules.cast(slots.wisp, d._ground(mid + side * PROCESSION_SIDE))
-			return "wisp the onlookers off the road"
-		return ""
+		return ""  # in his carriage nothing of the god's reaches him (the board's wait is EMERGE_AT, 36 s: no casts are padded into it)
 	if p.statuses.has(&"frail") or not bc._slot_ready(rules, slots, "deathmark"):
 		return ""
 	rules.cast(slots.deathmark, p.ground_pos)
@@ -495,8 +492,8 @@ static func state_sermon(_bc, ctx: Dictionary) -> String:
 
 ## The Relic Run (loadout wisp, discord, deathmark, oath, thorns), one look of the policy -- the first that applies:
 ## 1. the bellkeeper called: Discord on him, else a Death Mark; 2. a report running: Discord on its runner, else a Death Mark on him;
-## 3. with the relic, The Vigil Flame's carry (bc._flame_carry(): the Wisp draws the beam off, Discord stops the light at the end -- no
-##    whisper in this loadout, so its Wisp and Discord only);
+## 3. with the relic, the Vigil Flame's loadout-B carry (Tier3B._flame_carry(): the Wisp draws a due beam off his road, a decoy Wisp draws
+##    the next beam off it when 30 s have passed quiet, Discord stops the light at the end -- no whisper in this loadout);
 ## 4. before a halt, Pip not aboard: a Will-o'-Wisp lit RELIC_HOP toward the next checkpoint draws him a stretch nearer (he answers a lure
 ##    within CHARGE_LURE_R of the light and holds where it leaves him); within RELIC_CLOSE of a halted cart, a Wisp lit at the cart draws
 ##    him to its ring, where a lured Pip can slip aboard;
@@ -535,9 +532,15 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 			rules.cast(slots.deathmark, c.ground_pos)
 			return "death mark a report's runner"
 	if d.swapped:
-		var before: int = rules._casts.size()
-		bc._flame_carry(rules, d, slots)
-		return "carry the relic" if rules._casts.size() > before else ""
+		# The carry is the Searchlight's to hunt Pip on his way: the Vigil Flame's loadout-B carry (a Wisp that draws a due beam off his road,
+		# and, when the quiet has lasted, a decoy that draws the next beam off it before it comes), as the Flame's own B route plays it.
+		if not ctx.memo.has("carry_last"):
+			ctx.memo["carry_last"] = d._clock
+		var did: String = Tier3B._flame_carry(bc, d, rules, slots, ctx, d._clock - float(ctx.memo.carry_last) >= Tier3B.FLAME_QUIET)
+		if did != "":
+			ctx.memo["carry_last"] = d._clock
+			return "carry the relic: " + did
+		return ""
 	var cart := d.cart_at()
 	var k := d.next_halt()
 	var due := d.halt_in()
@@ -565,6 +568,20 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 				continue  # (no other Faithful by him: a seen fall by a lay person only raises the Gaze, a Faithful's runs to the Temple)
 			rules.cast(slots.deathmark, p.ground_pos)
 			return "death mark a warden ahead"
+	# The Faithful going about their day near the next checkpoint -- not the cart's people nor its wardens -- are the ones who stop to look at
+	# the halted cart: those whose fall goes quite unseen are marked while the cart rolls, so fewer eyes meet it there (R8: a job in the
+	# rolling stretch, when the Oath and the Wisp are cooling).
+	if d.halt < 0 and k >= 0 and due <= RELIC_STROLL_AHEAD and bc._slot_ready(rules, slots, "deathmark"):
+		var mates: Array = d.escorts.duplicate()
+		mates.append(d.carter)
+		for w: RelicRunDirector.Warden in d.wardens:
+			mates.append(w.man)
+		for f in d.faithful:
+			if not WarningDirector._alive(f) or f.inside or mates.has(f) or f.statuses.has(&"frail") or f.ground_pos.distance_to(d.checkpoints[k]) > RELIC_STROLL_R:
+				continue
+			if bc._none_within(crowd, f, Crowd.DOOM_WITNESS + RELIC_MARGIN):
+				rules.cast(slots.deathmark, f.ground_pos)
+				return "death mark a Faithful who would watch the cart"
 	if d.halt >= 0 and (d.aboard or pip.held_by_god() or pip.ground_pos.distance_to(cart) <= RelicRunDirector.CART_REACH):
 		var seen := d.watchers_now()
 		if seen.is_empty():

@@ -635,7 +635,7 @@ way, then swaps the relic at the second.
   |---|---|
   | (none) | Bring Pip (blue) to the cart's first halt. He slips aboard there, and swaps the relic at the next. |
   | `moving` | The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before. |
-  | `watched` | The cart halts, watched (red). Hold or remove the watch: Pip only works unseen. |
+  | `watched` | Watched (red): remove the watch; Pip works unseen. Once light or oath leads Pip, a Wisp draws the watch too. |
   | `aboard` | Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic. |
   | `carry` | Pip has the relic. Keep him out of the light (a touch costs half the Gaze) on his way to your believers' house (orange). |
   | `last_halt` | The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt. |

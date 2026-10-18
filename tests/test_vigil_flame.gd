@@ -73,7 +73,7 @@ static func _alive(p: Variant) -> bool:
 ## The first of the director's tags labelled `label`, or null.
 static func _tag(d: MissionDirector, label: String) -> MapTag:
 	for m in d.tags():
-		if m.label == label:
+		if m.label == label or m.label.begins_with(label + " - "):  # Wren's tag counts down to his own try (final review M7)
 			return m
 	return null
 
@@ -220,6 +220,10 @@ static func _wren(t) -> void:
 	t.check(wt != null and wt.at == w.ground_pos and wt.color == VigilFlameDirector.MARK_WREN and wt.edge
 		and d.hint_phase() == "wren", "the HUD names him and points at him; the hint says whisper him to the flame")
 	t.check(_hint_is(s, "wren"), "and the HUD shows that line, under the objectives")
+	t.check(String(wt.label).begins_with("WREN - TRIES THE LANTERN 0:"), "M7: his tag counts down to his own try (%s)" % wt.label)
+	w.whisper(d.flame_at() + Vector2(0.5, 0.0), MindWhisperFx.LINGER)
+	_run(s, DT)
+	t.check(_tag(d, "WREN") != null and _tag(d, "WREN").label == "WREN", "whispered, it is his name alone")
 	_done(s)
 
 

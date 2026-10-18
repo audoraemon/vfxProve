@@ -38,16 +38,16 @@ Built on v0.11 (feat/Develop-Main `d539922`, tag `kak-v011-m6`), 2026-10-17 and 
 | 13 | The Crown's Bread | ember / verdict | heaven, verdict, discord, wisp | 3/3, 202, 26 | 3/3, 183, 40 |
 | 14 | The Prisoner | whisper / wisp | wisp, smite, discord, deathmark | 3/3, 199, 36 | 3/3, 208, 30 |
 | 15 | The Heretic Hunt | smite / blight | blight, discord, wisp, deathmark | 3/3, 194, 35 | 3/3, 214, 35 |
-| 16 | The Procession ★ | doom / deathmark | smite, heaven, wisp, discord, deathmark | no board A gate (A's pool allows Death Mark on the Prince at the first second) | 3/3, 93, 30 |
-| 17 | The Bishop | ember / heaven | heaven, smite, whisper, discord, wisp | 3/3, 212, 21 | 3/3, 224, 27 |
+| 16 | The Procession ★ | doom / deathmark | smite, heaven, wisp, discord, deathmark | board A (Task 14): none 3/3 lost; play 3/3 with the main at 259 / 258 / 114 s (`main=` on the feast line; the held night's 390 s and idle 131-277 are the harness reading dawn, not the main) | 3/3, 46, 36 |
+| 17 | The Bishop | ember / heaven | heaven, smite, whisper, discord, wisp | 3/3, 212, 21 | 2/3, 168, 28 (Task 14: held Knights are off guard; seed 2 lost to the bishop's safety) |
 | 18 | The Armoury | ember / verdict | verdict, heaven, whisper, discord, wisp | 3/3, 214, 16 | 3/3, 181, 30 |
 | 19 | The Sermon | whisper / wisp | wisp, discord, deathmark, belllies, thorns | 3/3, 200, 44 | 2/3, 264, 34 |
-| 20 | The Relic Run | whisper / wisp | wisp, discord, deathmark, oath, thorns | 3/3, 183, 38 | 3/3, 188, 61 (one seed; idle clause fails) |
+| 20 | The Relic Run | whisper / wisp | wisp, discord, deathmark, oath, thorns | 3/3, 183, 38 | 3/3, 210, 45 (Task 14; the longest gap is 45.1 s on seed 1) |
 | 21 | Last Judgement ★ | heaven / verdict | dragon, ember, verdict, pestilence, madness, blight | no scripted win (R7) | 0/3, lost to escapes at 65 s, 15 |
 | 22 | The Long Night ★ | doom / deathmark (Act I; each act its own row) | per act (`RouteBook.ACTS_B`) | no A rows (R7) | 0/3, times out in Act III, 22 |
 | 23 | The Lantern's Eye | smite / blight | blight, whisper, discord, wisp, deathmark, thorns | 3/3, 238, 22 | 3/3, 195, 16 |
 | 24 | Exodus | whisper / oath | wisp, deathmark, oath, discord, thorns | 2/3, 201, 18 | 3/3, 240, 45 |
-| 25 | The Heart of Faith | ember / heaven | heaven, deathmark, whisper, discord, wisp, smite | 2/3, 190, 40 | 3/3, 211, 25 |
+| 25 | The Heart of Faith | ember / heaven | heaven, deathmark, whisper, discord, wisp, smite | 2/3, 190, 40 | 3/3, 184, 34 (Task 14) |
 
 Rows that differ from the spec's audit (§7.2): Bell-Ringers B main step is deathmark (spec: smite); Market Panic B's loadout is ember, whisper, deathmark (spec: ember, whisper, discord); The Informer's is discord, wisp, deathmark (spec: discord, wisp, smite); The Procession B main step is deathmark (spec: smite); Exodus B main step is oath (spec: wisp, the one same-family exception, since no Wisp can lead a household before the gates shut). Each has a Ruling below.
 
@@ -60,6 +60,7 @@ Rows that differ from the spec's audit (§7.2): Bell-Ringers B main step is deat
 | 6 | 25 rows (the task report and commit title say 22; the diff has 25): `tax_none_1..3` and `tax_play_1..3` (R4: the first collector sets out at 0:35, deputies by 1:35 and 2:35, a visit 20 s, the policy smokes the next collector out after 42 s idle), `lamb_play_1..3`, `prayers_play_1..3`, `ringers_play_2`, `relic_play_1..3`, `eye_play_1..3`, `exodus_play_1..3`, `warning_discord`, `miras_play`, `flame_play` | patrols, watches, searchers, escorts, marshals and soldier witnesses are now reached by whisper and Discord. Outcomes kept: `warning_discord` and `miras_play` still lose, `flame_play` still wins at 158.6 s, tax 3/3, `exodus_play` seed 3 now lost at 300 s |
 | 7-8 | none (75 B rows are new, not moved) | plumbing, then Tier 1 B rows |
 | 9 | 6 rows: `informer_none_1..3`, `informer_play_1..3` | the company's spots pulled within 1.0 of the door; A's Discord on a contact now turns him. A gate re-run: none 3/3 lost, play 3/3, median 189, idle 27 |
+| 14 | A: none moved (re-gated: tax, bishop, heart, relic, informer, prisoner; the full list 200 of 200). B: `bishop_b_play_1..3`, `heart_b_play_1..3` (held Knights off guard), `procession_b_play_1..3` (36 s carriage), `relic_b_play_1..3` (visible watch rule, stroller Death Mark, flame-style carry), `judgement_b_play_3` and `night_b_play_3` (the Madness freed-key fix). New: `procession_none_1..3` and `procession_play_1..3`, the board Procession's A rows | see Task 14 above |
 | 10-12 | none | A rows were re-checked after every director change (flame, feast, bread, prisoner, hunt, sermon, relic, bishop, armoury, eye all equal their references) |
 
 Unmoved throughout: `digest` (61267b7e...), `crowd_check` (-346732806), `calm`, `gates`, `fire`, `rite`, `soldiers`, the other Warning rows, `lanterns_none`, `flame_none`, `feast_play`, and the harvest, panic, bread, prisoner, hunt, bishop, armoury and sermon rows.
@@ -195,7 +196,7 @@ Every `Ruling:` of the run, with the controller's R0-R7. The same list is in `do
 - Ruling: Relic Pip's anchor follows him while lured and a lured Pip boards from the Wisp's ring; a Wisp at a halted cart cannot draw him (R1/I10), so B sends him by Oathbound's hold-a-place — cost: none.
 - Ruling (fix round): Bishop and Armoury pace is made by the guards (a blow-sealed refuge while a Knight stands guard; a stone target before its horn), not by timers — the B power's work must be real (R6) and A never meets either rule — cost if wrong: A hints or behaviour drift (none seen).
 - Ruling (fix round): the Relic watch lure is keyed on `pip_led` (Pip COMPELLED or Wisp-lured, never whispered), so A (whisper) is untouched — cost: a B-only mechanic.
-- Ruling (fix round): the Procession's carriage (the Prince waits inside until `EMERGE_AT`, ~83 s) is on the board only; the Long Night's act is unchanged.
+- Ruling (fix round): the Procession's carriage (the Prince waits inside until `EMERGE_AT`) is on the board only; the Long Night's act is unchanged. (Task 14 shortened the wait from about 83 s to 36 s real.)
 
 **Task 12: Tier 5 second routes**
 
@@ -203,6 +204,15 @@ Every `Ruling:` of the run, with the controller's R0-R7. The same list is in `do
 - Ruling: Heart B never uses Discord (a Knight guards by position, not by mind) and never fells a target ahead of its time — cost: none.
 - Ruling: Heart bearers are struck only where the Smite goes unseen or after a one-witness hush, with a Death Mark within a Gaze cap of 60 as last resort — a loud fall made every seen death 20 Gaze.
 - Ruling: the Night's idle is counted across acts from `Rules.cast_made` at the night's clock; the night result's `time` is the night's own sum.
+
+**Task 14: the final review's fix wave (R8)**
+
+- Ruling: a Knight the god holds (`held_by_god()`: Discord, a whisper, an oath, a lure) is off guard in The Bishop and The Heart of Faith, as in the Armoury -- the hints already say Discord, and the user's rule is that every control power reaches soldiers -- cost if wrong: Discord on a Knight does nothing again (bishop/heart A rows did not move; Bishop B now wins 2/3, median 168 s, since its Discord and Wisp work opens the door).
+- Ruling: the board Procession's carriage wait is `EMERGE_AT` = 36 real seconds (the board divides it by the mission's stretch), not about 83 s -- the 60 s rule; B's filler Wisp at the road is gone (B idles the 36 s wait: idle 36) -- cost if wrong: Death Mark on the Prince is open from 36 s, so B's main step is 46 s (median; A's pool allows the same Death Mark, so it is equal for both loadouts).
+- Ruling: the Relic watch still answers a Wisp only once Pip has been led by a light or oath (`pip_led`), so loadout A is untouched, but the rule is now visible: a banner when it begins, and the `relic_run.watched` hint says it. The led-Pip first-halt roll-on now checks that the cart is really unwatched, and the cart's tag counts it down (18 s) -- cost if wrong: a B-only mechanic the hint must keep explaining.
+- Ruling: a fire power (the `fire` family) cast at the counting-house smokes no collector out ahead of its own fire (AssassinateDirector `_on_cast`); the spark lands, the house burns, all inside run, one banner. The first flush spends the counting-house (`_hideout_spent`): standing again with its fire out it is no hiding place -- cost if wrong: an Ember that misses the house at the door does nothing, where it used to smoke a collector out.
+- Ruling: `MadnessManager` iterates its afflicted dictionary through `_live()` (and an untyped key loop in `step`), because a body freed while afflicted is a dead key a typed loop refuses -- it threw every frame and aborted the Night loadout-B seed 3 run with no checksum -- cost: `judgement_b_play_3` and `night_b_play_3` moved (re-recorded).
+- Minors fixed: M1 (a collector with a burst pending is not sent out), M2 (the spent counting-house), M6 (the prisoner's lure pace reset when seized), M7 (the tax visit tag and Wren's tag count down; the B policies read what is shown), M9 (the bishop refuge's own damage filter is restored), M10 (tab runs split in source and tools), M11 (a comment at DiscordFx). M3, M4, M5 are summary notes (below). Skipped: M8 (gate.sh excluding labelled fillers) -- a change to the gate's measure, not a fix; the relic B stroller Death Mark and the carry's decoy are jobs a player would do.
 
 ### Gates
 
@@ -221,7 +231,10 @@ Every `Ruling:` of the run, with the controller's R0-R7. The same list is in `do
 |---|---|
 | Last Judgement and The Long Night, loadout B | 0/3 each. Judgement: the town evacuates within about 30 s of the first plague or fire and 50 escape by about 65 s whatever is cast. Night Act III: stability ends at 19-35% (walls and towers fall only to the Dragonfire's six casts; 70% of the area is out of reach). No scripted loadout-A win exists for either (R7), so B is held to A's standard, not a stricter one; the playtest judges them. A fix is a loadout or rule decision, not a policy |
 | Mira's House ★, one-Wisp B | the main step is 39 s median (9-153): one Wisp by the door draws every griever at once. A's pool (VIGIL_POOL) allows the same; left as is |
-| The Relic Run B, idle | wins 3/3 (median 188) but one seed idles 61 s in the 57 s carry phase after the swap (the decoy Wisp and Discord are used only when a beam threatens). Variants that held Discord back dropped wins to 1-2/3 and were rejected. `gate.sh relic --route=b` fails its idle clause only |
+| The Relic Run B, idle | fixed in Task 14: the carry uses the Flame B's carry (a decoy Wisp when 30 s pass quiet) and a Death Mark on a Faithful who would watch the cart fills a rolling stretch; idle 45 / 43 / 43 (seed 1's 45.1 s gap sits between the Oath's cooldown and the next cast). The hint and a banner tell the watch rule |
+| Procession, the board A harness | `gate.sh` reads a held board night's finish (dawn, 390 s) and idle to dawn for A; the main objective's time is `main=` on the feast line. A's main falls at 259 / 258 / 114 s: it waits for the Prince to stand alone. A policy that ascends after the main would let the gate read it |
+| Mira's House B, Exodus B, Judgement and Night | Mira's House B wins in 9 s on seed 1 (median 39) and the board Festival B in 45 s: one Wisp at the door draws every griever, one Heaven falls through a Wisp-drawn knot; both are reachable with A's pools. Exodus B's main step is Oathbound (lead), A's Whisper's own family -- it meets the user's "without one specific ability" but not spec section 7.1's "two families": for the user's approval. The user's note 6 is undemonstrated for Last Judgement and The Long Night (A has no scripted win either); Task 12's numbers (Judgement: 50 escapes by about 65 s; Night Act III stability 19-35%) stay on this list |
+| Lamb and Prisoner Wisp reach | The Lost Lamb answers a Wisp from 6.0 and the prisoner from 5.0, against Decision 28's 3.0 (which keeps A's bystander Wisps from pulling the charge). A rows did not move, but a human A player's Wisp near either now pulls them; the prisoner hurries to the light at about 3x her led pace (reset when she is seized). A playtest watch item |
 | Spoiled Harvest B | sits on the 150 s floor: any fast felling lands on the chain (60 + 45 + 45). A trial `CHAIN_AFTER` 60 broke the 30-45 s chain rule and was reverted |
 | Exodus B | median 240 s and idle 45 s on the band edges; it wins by Oathbound's HOLD A PLACE (the one same-family exception, commit 04c52d0). About eight policy rounds; results are chaotic with small changes |
 | Tax wins 157-244 s | the median is 199, but seed 1 wins at 243.7 s, over the 240 ceiling; tightly tuned after R4 |

@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_setup(t)
 	_hold(t)
 	_sealed(t)
+	_discorded(t)
 	_not_yet(t)
 	_burn(t)
 	_horn(t)
@@ -145,6 +146,27 @@ static func _sealed(t) -> void:
 	d.oil_house.damage(40.0, d.oil_house.center(), &"smite")
 	t.check(d.is_sealed(d.oil_house) and is_equal_approx(d.oil_house.hp, d.oil_house.max_hp) and d.hint_phase() == "guarded",
 		"a Knight on guard seals the target in use: a blow only shakes it")
+	Kit.done(s)
+
+
+## v0.11.1 (R8, final review I1): a Knight the god holds (Discord, a whisper, an oath) is off guard; with both Discorded the target takes the blow.
+static func _discorded(t) -> void:
+	var s := _world()
+	var d: HeartOfFaithDirector = s.d
+	d._open(0)
+	Kit.run_for(s, DT)
+	var knights := d.guards_at(0)
+	var n := knights.size()
+	t.check(n >= 2 and d.is_sealed(d.oil_house), "(set-up) Knights guard the oil-house, sealed")
+	knights[0].confuse(8.0)
+	t.check(d.guards_at(0).size() == n - 1, "one Knight Discorded: he no longer stands guard")
+	for k in knights:
+		k.confuse(8.0)
+	Kit.run_for(s, DT)
+	t.check(d.guards_at(0).is_empty() and not d.is_sealed(d.oil_house), "both Discorded: none on guard, the target unsealed")
+	var hp := d.oil_house.hp
+	d.oil_house.damage(40.0, d.oil_house.center(), &"smite")
+	t.check(d.oil_house.hp < hp, "and it takes the blow")
 	Kit.done(s)
 
 

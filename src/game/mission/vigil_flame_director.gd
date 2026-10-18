@@ -369,7 +369,7 @@ func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	var with_us := appeared and _alive(wren) and not wren.inside
 	if with_us and not home:
-		out.append(MapTag.person(wren.ground_pos, MARK_WREN, "WREN", true))
+		out.append(MapTag.person(wren.ground_pos, MARK_WREN, _wren_label(), true))
 	if not swapped:
 		var flame := vigil.bearer.ground_pos if vigil != null and vigil.active and _alive(vigil.bearer) else _lantern
 		if flame != Vector2.INF:
@@ -381,6 +381,14 @@ func tags() -> Array[MapTag]:
 		for f in watchers(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null):
 			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
 	return out
+
+
+## Wren's tag's words (final review M7): until the swap, with no whisper or lure on him, the seconds left before he tries for the lantern
+## himself (WREN_OWN_AFTER), counted down like the strip; else his name.
+func _wren_label() -> String:
+	if swapped or whispered or attempting:
+		return "WREN"
+	return "WREN - TRIES THE LANTERN %s" % UiTheme.clock(maxf(WREN_OWN_AFTER - (timeline.elapsed() - _appeared_at) * stretch, 0.0))
 
 
 ## The Vigil is taking the real flame home (v0.10 M6): the route has shortened, the flame is still in its lantern, and a

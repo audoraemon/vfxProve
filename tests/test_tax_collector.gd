@@ -35,6 +35,7 @@ static func run(t) -> void:
 	_alarm(t)
 	_flushed(t)
 	_flush_awkward(t)
+	_ember_cast(t)
 	_flush_apart(t)
 	_running(t)
 	_lost(t)
@@ -561,6 +562,59 @@ static func _flush_awkward(t) -> void:
 	t.check(first and second and not dg.quarries[2].target.inside and _banners(g).count(TaxCollectorDirector.FLUSH_BANNER) == 1,
 		"with FLUSH_GAP 1.5 they burst one at a time, 1.5 s apart, under one banner")
 	_done(g)
+
+## v0.11.1 (R8, final review I4, the user's note 6): an Ember cast through the real cast path at the counting-house's door with all three
+## waiting never smokes a collector out ahead of its own fire: the spark lands (EmberFx.T_LAND), the house burns, and all three run, one banner.
+## Also M1 (a collector whose burst is pending is not sent on his round) and M2 (the spent counting-house, fire out, is no hiding place).
+static func _ember_cast(t) -> void:
+	var s := _world(PackedStringArray(["ember", "doom", "discord"]))
+	var d: TaxCollectorDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	_banners(s).clear()
+	t.check(EmberFx.target(s.env, d.hide_door) == d.hideout, "(set-up) an Ember at the door would light the counting-house")
+	rules.cast(0, d.hide_door)
+	_run(s, 0.3)
+	var waiting := true
+	for q in d.quarries:
+		waiting = waiting and q.state == AssassinateDirector.State.WAITING and q.target.inside
+	t.check(waiting and not _banners(s).has("THE TAX COLLECTOR SETS OUT"), "the Ember cast, nobody is smoked out ahead of its fire")
+	_run(s, EmberFx.T_LAND - 0.3)
+	crowd.fires.ignite(d.hideout, EmberFx.START_LEVEL)  # what EmberFx._land() does (the test's caster casts no Fx)
+	_run(s, AssassinateDirector.TICK * 2.0 + DT)
+	t.check(_all_run(d) and _banners(s) == [TaxCollectorDirector.FLUSH_BANNER],
+		"the spark lands: all three burst out for the Citadel, one banner and no 'sets out' or 'hides' (%s)" % [_banners(s)])
+	crowd.fires._put_out(d.hideout, true)
+	t.check(not d._hideout_stands(), "M2: the counting-house is spent -- put out and standing, it is no hiding place again")
+	_done(s)
+
+	var m := _world()
+	var dm: TaxCollectorDirector = m.d
+	dm.quarries[0].burst_in = 1.0
+	dm._set_out(dm.quarries[0])
+	t.check(dm.quarries[0].state == AssassinateDirector.State.WAITING, "M1: a collector whose burst is pending is not sent on his round")
+	_done(m)
+
+	# M7: a visit's tag counts its seconds down.
+	var v := _world()
+	var dv: TaxCollectorDirector = v.d
+	var qv := dv.quarries[0]
+	dv._set_out(qv)
+	_arrive(qv.target, qv.stop_doors[0])
+	_run(v, AssassinateDirector.TICK + DT)
+	var shown := false
+	for tag in dv.tags():
+		shown = shown or (qv.state == AssassinateDirector.State.VISITING and String(tag.label) == "TAX COLLECTOR - INSIDE " + UiTheme.clock(qv.indoors_left))
+	t.check(shown, "M7: indoors on a visit, his tag counts the visit down (%s)" % [_labels(dv)])
+	_done(v)
+
+	# Any other power at the door still smokes the next collector out (v0.11 M3).
+	var o := _world(PackedStringArray(["ember", "doom", "discord"]))
+	var dd: TaxCollectorDirector = o.d
+	(o.rules as Rules).cast(2, dd.hide_door)
+	t.check(dd.quarries[0].state == AssassinateDirector.State.WALKING, "a Discord at the door still smokes the first collector out")
+	_done(o)
+
 
 
 ## Spec 7.2 row 2, proven before loadout B's policy (v0.11.1 Task 8, pre-flight I3): the counting-house alight at the start, with its own

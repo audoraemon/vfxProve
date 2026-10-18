@@ -99,6 +99,14 @@ static func run(t) -> void:
 		"nine seconds in, broken (%.2f)" % m.value_of(alone))
 	var outcome: int = m.afflicted[alone].outcome
 	t.check(outcome >= 0 and outcome < MadnessManager.Outcome.size(), "with one of the outcomes (%d)" % outcome)
+	# (v0.11.1 R8) A body freed while afflicted is a dead key: the step drops it, and the looks and the scans skip it.
+	var ghost := Person.new()
+	m.afflicted[ghost] = {"stage": -1, "since": 0.0, "outcome": -1, "broken_at": -INF, "secondary": 0, "tic": 1.0, "concern": 1.0, "shove": 1.0}
+	ghost.free()
+	var n := m.afflicted.size()
+	t.check(m._live().size() == n - 1 and m._maddened_near(alone) >= 0, "a freed afflicted body is skipped by the scans")
+	m.step(0.1)
+	t.check(m.afflicted.size() == n - 1 and m.afflicted.keys().all(func(k: Variant) -> bool: return is_instance_valid(k)), "and the next step drops its dead key")
 	fx._process(3.0)
 	fx.free()
 	m.clear()

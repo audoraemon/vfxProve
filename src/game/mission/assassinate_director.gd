@@ -127,6 +127,9 @@ var _tick_in := 0.0
 var _guard_total := 0
 ## v0.11.1: the flush banner was raised (once, however the hideout burns).
 var _flush_told := false
+## v0.11.1 (R8, final review M2): the first flush spends the hideout (flush_waiting): standing again with its fire put out, it is no
+## hiding place -- "never send another collector" -- and a collector alarmed afterwards runs for the safe place.
+var _hideout_spent := false
 
 
 ## The night's setup (v0.11 M2): the plan, each target's reachable stops, the targets appointed and taken indoors at the
@@ -322,8 +325,8 @@ func _chain() -> void:
 
 ## `q` sets out on his round (v0.11 M2: the timeline's event at his time, the chain, or a power cast by the hideout's door).
 func _set_out(q: Quarry) -> void:
-	if q.state != State.WAITING or not _alive(q.target):
-		return
+	if q.state != State.WAITING or q.burst_in >= 0.0 or not _alive(q.target):
+		return  # (v0.11.1, final review M1: one whose burst from a burning hideout is pending is not sent on his round)
 	if q.inside_of != null:
 		_come_out(q)
 	q.state = State.WALKING
@@ -399,6 +402,7 @@ func _tell_flush() -> void:
 	if _flush_told:
 		return
 	_flush_told = true
+	_hideout_spent = true
 	var text := _flush_banner()
 	if text != "":
 		rules.banner.emit(text)
@@ -478,10 +482,13 @@ func _alarm(q: Quarry) -> void:
 
 ## A power cast (Rules.cast_made, v0.11 M2): by the hideout's door while no target is out, it smokes the next one out; a loud
 ## one near a target in the street alarms him. Quiet powers never alarm.
-func _on_cast(slot: int, _key: String, at: Vector2) -> void:
+func _on_cast(slot: int, key: String, at: Vector2) -> void:
 	if not _anyone_out():
 		var next := _next_waiting()
-		if smoke_out and next != null and at.distance_to(hide_door) <= alarm_reach:
+		# (v0.11.1, R8 / final review I4) A fire power cast at the hideout is the fire, not a noise at the door: it lands a moment later and
+		# sends everyone inside running (flush_waiting), so it smokes no one out ahead of itself.
+		var fire_on_hideout := flush_waiting and hideout != null and PowerBook.family(key) == "fire" and hideout.distance_to(at) <= alarm_reach
+		if smoke_out and next != null and not fire_on_hideout and at.distance_to(hide_door) <= alarm_reach:
 			rules.banner.emit(_set_out_label(next).to_upper())
 			_set_out(next)
 		return
@@ -600,7 +607,7 @@ func _hide_goal(q: Quarry = null) -> Vector2:
 
 ## The hideout stands, unburnt (v0.11 M2).
 func _hideout_stands() -> bool:
-	return hideout != null and is_instance_valid(hideout) and not hideout.destroyed and not _burning(hideout)
+	return hideout != null and is_instance_valid(hideout) and not hideout.destroyed and not _burning(hideout) and not _hideout_spent
 
 
 ## `q` is alarmed with no hiding place left (v0.11 M2, final review): he flees, and the hideout is gone or alight, so he runs for
@@ -729,7 +736,11 @@ func tags() -> Array[MapTag]:
 ## `q`'s own tag (v0.11 M2): on him out of doors, over the door he is behind indoors.
 func _target_tag(q: Quarry) -> MapTag:
 	if q.target.inside:
-		return MapTag.place(_door_in(q), MARK_TARGET, q.label + " - INSIDE", 0.0, true)
+		# (final review M7) a visit or a hiding shows its seconds, as the strip counts a set-out; one waiting for his time is on the strip.
+		var words := q.label + " - INSIDE"
+		if q.state == State.VISITING or q.state == State.HIDING:
+			words += " " + UiTheme.clock(maxf(q.indoors_left, 0.0))
+		return MapTag.place(_door_in(q), MARK_TARGET, words, 0.0, true)
 	return MapTag.person(q.target.ground_pos, MARK_TARGET, q.label, true)
 
 

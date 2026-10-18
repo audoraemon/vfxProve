@@ -29,5 +29,7 @@ func _build() -> void:
 	swirl.gravity = -30.0
 	swirl.burst(28, {"radius": 26.0, "speed": Vector2(20, 40), "dir": PixelParticles.Dir.INWARD, "alt": Vector2(4, 18),
 		"alt_speed": Vector2(4, 16), "life": Vector2(0.5, 0.9), "size": Vector2(1, 2)})
+	# Confuses at once, in the cast's own frame -- before Rules.cast_made reaches the missions: The Informer's contacts read "confused with their
+	# full DISCORD_TIME left" at that signal (InformerDirector._speaks_to()). A delay here would silently kill that route.
 	for p in taken(ctx.field, origin):
 		p.confuse(DISCORD_TIME)

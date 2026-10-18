@@ -1,16 +1,16 @@
 # KAK Tier 4 second routes (v0.11.1 Task 11, fix round R6): the scripted player's loadout-B runs, seeds 1-3. name<TAB>how<TAB>expected (a checksum).
-procession_b_play_1	--scenario=feast --path=procession --board --case=play --route=b --seed=1	-51290114
-procession_b_play_2	--scenario=feast --path=procession --board --case=play --route=b --seed=2	-534620906
-procession_b_play_3	--scenario=feast --path=procession --board --case=play --route=b --seed=3	-671773942
-bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	468613469
-bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	-246025173
-bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	562396524
+procession_b_play_1	--scenario=feast --path=procession --board --case=play --route=b --seed=1	290487123
+procession_b_play_2	--scenario=feast --path=procession --board --case=play --route=b --seed=2	-722684364
+procession_b_play_3	--scenario=feast --path=procession --board --case=play --route=b --seed=3	-81486593
+bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	929549295
+bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	-589957138
+bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	-54694476
 armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1	-931528504
 armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2	-563437234
 armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3	-333612900
 sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1	-545851218
 sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2	-511830713
 sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3	-460503112
-relic_b_play_1	--scenario=relic --case=play --route=b --seed=1	504069989
-relic_b_play_2	--scenario=relic --case=play --route=b --seed=2	-528261838
-relic_b_play_3	--scenario=relic --case=play --route=b --seed=3	51086575
+relic_b_play_1	--scenario=relic --case=play --route=b --seed=1	537540523
+relic_b_play_2	--scenario=relic --case=play --route=b --seed=2	98496157
+relic_b_play_3	--scenario=relic --case=play --route=b --seed=3	-601776785

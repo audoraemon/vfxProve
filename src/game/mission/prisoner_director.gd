@@ -311,6 +311,8 @@ func step(delta: float) -> void:
 	super(delta)
 	if escaped or taken or bound_lost or not _alive(charge):
 		return
+	if held and _pace_walk > 0.0:
+		charge.pace = _pace_walk  # (final review M6) seized while drawn: no hurrying pace under a seizer's hand (_step_free is not called while held)
 	_keep_in -= delta
 	if _keep_in > 0.0:
 		return

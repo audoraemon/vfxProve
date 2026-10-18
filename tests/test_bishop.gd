@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_ground(t)
 	_stone(t)
 	_held_door(t)
+	_discorded_door(t)
 	_smother(t)
 	_flight(t)
 	_relief(t)
@@ -441,4 +442,27 @@ static func _held_door(t) -> void:
 	Kit.run_for(s, 0.6)
 	house.damage(30.0, house.center(), &"lightning")
 	t.check(d.guards_at(0).is_empty() and house.hp < hp, "with none on guard it takes the blow")
+	Kit.done(s)
+
+
+## v0.11.1 (R8, final review I1): a Knight the god holds -- Discorded, whispered, bound -- is off guard, as in the Armoury: the refuge takes
+## the blow, and he stands guard again once the hold ends. The refuge's own damage filter is put back when the seal comes off (M9).
+static func _discorded_door(t) -> void:
+	var s := _world()
+	var d: BishopDirector = s.d
+	_to_refuge(s, d, 0)
+	Kit.run_for(s, 0.6)
+	var house := d.refuges[0]
+	var knights := d.guards_at(0)
+	var n := knights.size()
+	t.check(n >= 2 and house.damage_filter == Callable(d, "_guard_hit"), "(set-up) Knights stand guard and the refuge is sealed")
+	knights[0].confuse(8.0)
+	t.check(d.guards_at(0).size() == n - 1, "one Knight Discorded: he no longer stands guard")
+	for k in knights:
+		k.confuse(8.0)
+	Kit.run_for(s, 0.6)
+	t.check(d.guards_at(0).is_empty() and house.damage_filter == Callable(), "all Discorded: none on guard, the seal is off, the original filter back")
+	var hp := house.hp
+	house.damage(30.0, house.center(), &"lightning")
+	t.check(house.hp < hp, "and the refuge takes the blow")
 	Kit.done(s)

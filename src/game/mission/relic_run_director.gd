@@ -340,11 +340,20 @@ func _cart_step(delta: float) -> void:
 	halt_time += delta
 	if _count_ok():
 		counted += delta
-	# (v0.11.1, R6) With Pip aboard and led by the god's light or oath, an unwatched first halt is not stood out to HALT_MAX: the carter
-	# rolls on LED_HALT seconds in. (Never where Pip was whispered: no loadout A is led.)
-	var led_on := pip_led and aboard and halt == 0 and halt_time >= LED_HALT
-	if counted >= COUNT or halt_time >= HALT_MAX or led_on:
+	if counted >= COUNT or halt_time >= HALT_MAX or (_led_roll() and halt_time >= LED_HALT):
 		_end_halt()
+
+
+## The first halt is not stood out to HALT_MAX (v0.11.1, R6, R8): with Pip aboard and led by the god's light or oath (pip_led), and the cart
+## left unwatched (the watch drawn off or bound), the carter rolls on LED_HALT seconds in -- the cart's tag counts that down (_halt_left()).
+## Never where Pip was only whispered: no loadout A is led.
+func _led_roll() -> bool:
+	return pip_led and aboard and halt == 0 and not watched()
+
+
+## Seconds the halt has left to run at most (v0.11.1, R8): the tag's count -- HALT_MAX, or LED_HALT when the led-Pip roll-on rule holds.
+func _halt_left() -> float:
+	return maxf((LED_HALT if _led_roll() else HALT_MAX) - halt_time, 0.0)
 
 
 ## A stalled cart (v0.11 M5, plan decision 196): RELIEF_AFTER after it stood, new hands; at the cart, they take it on.
@@ -559,6 +568,7 @@ func _wren_step(_delta: float) -> void:
 	wren.answers_lure = _pip_answers()
 	if not pip_led and (wren.mind == Person.Mind.COMPELLED or (wren.mind == Person.Mind.OBSERVE and wren.held_by_god())):
 		pip_led = true
+		rules.banner.emit("PIP FOLLOWS THE GOD - THE WATCH WILL FOLLOW A WISP")  # (R8) the rule is told when it begins; the hint says it too
 	if aboard:
 		_ride_step(wren, _lantern)
 		return
@@ -726,7 +736,7 @@ func _cart_label() -> String:
 	if aboard:
 		return "RELIC CART - PIP AT THE LOCK" if lock_left > 0.0 else "RELIC CART - PIP ABOARD"
 	if halt >= 0:
-		return "RELIC CART - HALTED %d" % ceili(maxf(HALT_MAX - halt_time, 0.0))
+		return "RELIC CART - HALTED %d" % ceili(_halt_left())
 	return "RELIC CART"
 
 

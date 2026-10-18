@@ -95,6 +95,8 @@ var _own_pace := 1.0
 var _homeward: Array = []
 ## The refuge whose Knights hold it against blows now (v0.11.1).
 var _guard_sealed: Structure
+## The refuge's own damage filter before the Knights' seal went on, put back when it comes off (final review M9).
+var _guard_before := Callable()
 
 
 ## The places and numbers (v0.11 M5): no hideout (no smoke-out, the Citadel's gate as the safe place), the guards' ring RING_R, and
@@ -242,9 +244,11 @@ func _seal_guarded() -> void:
 	var want := s != null and is_instance_valid(s) and not s.destroyed and not guards_at(cur).is_empty()
 	if _guard_sealed != null and (not want or _guard_sealed != s):
 		if is_instance_valid(_guard_sealed):
-			_guard_sealed.damage_filter = Callable()
+			_guard_sealed.damage_filter = _guard_before
 		_guard_sealed = null
+		_guard_before = Callable()
 	if want and _guard_sealed == null:
+		_guard_before = s.damage_filter
 		s.damage_filter = _guard_hit
 		_guard_sealed = s
 
@@ -252,7 +256,7 @@ func _seal_guarded() -> void:
 ## Structure.damage_filter for a refuge its Knights hold (v0.11.1): a blow only shakes it; fire burns it as ever.
 func _guard_hit(s: Structure, amount: float, source: Vector2, kind: StringName) -> void:
 	if kind == &"fire":
-		s.damage_filter = Callable()
+		s.damage_filter = _guard_before
 		s.damage(amount, source, kind)
 		if is_instance_valid(s) and not s.destroyed:
 			s.damage_filter = _guard_hit
@@ -546,7 +550,7 @@ func _on_guard(p: Post) -> bool:
 		return false
 	var man := p.man as Person
 	var s := refuges[p.refuge]
-	return not man.inside and is_instance_valid(s) and s.distance_to(man.ground_pos) <= GUARD_REACH
+	return not man.inside and not man.held_by_god() and is_instance_valid(s) and s.distance_to(man.ground_pos) <= GUARD_REACH
 
 
 ## The Knights on guard at refuge `i` now (v0.11 M5). Only reads.
@@ -699,8 +703,9 @@ func report() -> Dictionary:
 ## Lets go of the stone and the engineers' list, then the Assassinate type's (v0.11 M5).
 func teardown() -> void:
 	if is_instance_valid(_guard_sealed):
-		_guard_sealed.damage_filter = Callable()
+		_guard_sealed.damage_filter = _guard_before
 	_guard_sealed = null
+	_guard_before = Callable()
 	for s: Variant in _stoned.keys():
 		if is_instance_valid(s):
 			(s as Structure).damage_filter = _stoned[s]

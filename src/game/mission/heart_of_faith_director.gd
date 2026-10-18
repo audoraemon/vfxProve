@@ -506,7 +506,7 @@ func _on_guard(p: Post) -> bool:
 		return false
 	var k := p.man as Person
 	var s := targets[p.target]
-	return not k.inside and is_instance_valid(s) and s.distance_to(k.ground_pos) <= GUARD_REACH
+	return not k.inside and not k.held_by_god() and is_instance_valid(s) and s.distance_to(k.ground_pos) <= GUARD_REACH
 
 
 ## Target `i`'s Knights on guard now (v0.11 M6). Only reads.

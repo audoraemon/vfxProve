@@ -158,7 +158,8 @@ static func act_tax(bc, ctx: Dictionary) -> String:
 					rules.cast(slots.wisp, light)
 					return "wisp %.1f from where %s will be, to draw off those who would see" % [light.distance_to(spot), q.label]
 	var house := d.hideout
-	if alive == 1 and hiding == 1 and bc._slot_ready(rules, slots, "ember") and smite_ready and is_instance_valid(house) 			and not house.destroyed and not crowd.fires.is_burning(house):
+	if alive == 1 and hiding == 1 and bc._slot_ready(rules, slots, "ember") and smite_ready and is_instance_valid(house) \
+			and not house.destroyed and not crowd.fires.is_burning(house):
 		rules.cast(slots.ember, house.center())
 		return "ember the counting-house, to bring out the last one hiding"
 	return ""

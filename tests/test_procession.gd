@@ -82,6 +82,7 @@ static func run(t) -> void:
 	_let_go(t)
 	_smite_alone(t)
 	_carriage(t)
+	_carriage_board(t)
 
 
 ## The Prince, six attendants and four escorts; a route of walkable points.
@@ -550,6 +551,16 @@ static func _carriage(t) -> void:
 	_run(s, 1.0)
 	t.check(not d.prince.inside, "with no emerge_after (the Long Night's act) he walks from the start")
 	_done(s)
+
+
+## v0.11.1 (R8, final review I2): on the board the carriage wait is EMERGE_AT real seconds -- at most 40 -- whatever the mission's stretch, and
+## the tag counts it down in those seconds.
+static func _carriage_board(t) -> void:
+	for tier_id in ["procession"]:
+		var m := TierBook.board(tier_id)
+		var d := m.make_director() as ProcessionDirector
+		t.check(d != null and m.stretch > 1.0 and absf(d.emerge_after * m.stretch - ProcessionDirector.EMERGE_AT) < 0.001
+			and ProcessionDirector.EMERGE_AT <= 40.0, "the board's Prince waits EMERGE_AT real seconds (%.1f act-s x stretch %.2f), at most 40" % [d.emerge_after, m.stretch])
 
 
 static func _label_starts(d: ProcessionDirector, prefix: String) -> bool:

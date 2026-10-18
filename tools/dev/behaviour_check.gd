@@ -1748,7 +1748,8 @@ func _tax(which: String) -> void:
 		# v0.11.1 (R4, the no-waiting rule): between a death and the next collector's setting out, a power cast by the counting-house's
 		# door smokes him out (the mission's own rule). A player does not stand 45 s watching a door, so the policy does it once
 		# TAX_SMOKE_AFTER seconds have passed since its last cast.
-		if d.killed() > 0 and not d._anyone_out() and d._next_waiting() != null and t - float(acts.last) >= TAX_SMOKE_AFTER 				and _slot_ready(rules, slots, "doom"):
+		if d.killed() > 0 and not d._anyone_out() and d._next_waiting() != null and t - float(acts.last) >= TAX_SMOKE_AFTER \
+				and _slot_ready(rules, slots, "doom"):
 			var spot := _tax_smoke_spot(d, crowd)
 			print("BEHAVIOUR tax t=%.1f doom at the door, smoking out %s" % [t, d._next_waiting().label])
 			_note_act(acts, t)
@@ -1837,7 +1838,8 @@ func _harvest(which: String) -> void:
 				continue
 			var mark: Person = null
 			for c: Variant in d.carters[s]:
-				if WarningDirector._alive(c) and not d._hauling.has((c as Person).get_instance_id()) 						and (mark == null or (c as Person).ground_pos.distance_to(d.doors[s]) < mark.ground_pos.distance_to(d.doors[s])):
+				if WarningDirector._alive(c) and not d._hauling.has((c as Person).get_instance_id()) \
+						and (mark == null or (c as Person).ground_pos.distance_to(d.doors[s]) < mark.ground_pos.distance_to(d.doors[s])):
 					mark = c
 			if mark != null:
 				_note_act(acts, t)
@@ -4263,8 +4265,8 @@ func _feast(which: String) -> void:
 	var feast_rules: Rules = mission._rules
 	var acts := _watch_idle(feast_rules)
 	mission.finished.connect(func(r: Dictionary) -> void:
-		print("BEHAVIOUR feast result won=%s reason=%s time=%.1f bonuses=%s idle=%.0f" % [r.won, r.reason, float(r.time), _earned(r),
-			_idle_now(feast_rules, acts)])
+		print("BEHAVIOUR feast result won=%s reason=%s time=%.1f bonuses=%s idle=%.0f main=%.1f" % [r.won, r.reason, float(r.time), _earned(r),
+			_idle_now(feast_rules, acts), feast_rules.main_time if feast_rules.main_done else -1.0])  # main: a board night's time to its main objective (held open to dawn)
 		done[0] = true)
 	if which == "play":
 		_play_act(path)  # a coroutine left running beside the loop, until the act is over

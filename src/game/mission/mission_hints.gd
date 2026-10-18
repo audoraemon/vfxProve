@@ -114,7 +114,7 @@ const LINES := {
 	"sermon.bell": "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen.",
 	"relic_run": "Bring Pip (blue) to the cart's first halt, by whisper or lure. He slips aboard there, and swaps the relic at the next.",
 	"relic_run.moving": "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before.",
-	"relic_run.watched": "The cart halts, watched (red). Hold or remove the watch: Pip only works unseen.",
+	"relic_run.watched": "Watched (red): remove the watch; Pip works unseen. Once light or oath leads Pip, a Wisp draws the watch too.",
 	"relic_run.aboard": "Pip is aboard and picks the lock. At the next halt, clear the watch so he can swap the relic.",
 	"relic_run.carry": "Pip has the relic. Keep him out of the light (a touch costs half the Gaze) on his way to your believers' house (orange).",
 	"relic_run.last_halt": "The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt.",

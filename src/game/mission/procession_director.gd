@@ -39,10 +39,11 @@ const ONLOOK_SECONDS := 20.0
 const SHIP_AT := 120.0
 const TIDE_AT := 150.0
 const STEPS_LEG := 1
-## The board's Procession (v0.11.1, R6): the Prince waits inside his carriage in the Citadel's court until EMERGE_AT (in the act's
-## seconds, stretched with the rest), and comes out to walk then; nothing of the god's reaches him inside. The Long Night's act leaves
-## `emerge_after` 0 and he walks from the start, as ever. Without it a Death Mark at the first second killed him in ten.
-const EMERGE_AT := 32.0
+## The board's Procession (v0.11.1, R6, R8): the Prince waits inside his carriage in the Citadel's court for EMERGE_AT real seconds (the
+## board divides it by the mission's stretch to get the act's seconds), and comes out to walk then; nothing of the god's reaches him
+## inside. At most 40 s, the user's no-waiting rule. The Long Night's act leaves `emerge_after` 0 and he walks from the start, as ever.
+## Without it a Death Mark at the first second killed him in ten.
+const EMERGE_AT := 36.0
 const DOCK_LEG := 3
 ## The map tags' colours (board tags, spec §2): the Prince gold, the cathedral steps orange, his escort steel blue, and
 ## the ship and anyone near enough to see him die red.

@@ -575,3 +575,34 @@ static func _led_watch(t) -> void:
 	Kit.run_for(s, RelicRunDirector.LED_HALT + 1.0)
 	t.check(d.halts_done[0] and d.halt == -1, "Pip aboard and led, the first halt is not stood out to HALT_MAX: the carter rolls on LED_HALT in")
 	Kit.done(s)
+
+	# (R8, final review I3) The roll-on needs the cart really unwatched (as the comment always said), is told by the tag's count, and the latch
+	# is told by a banner.
+	s = _world()
+	d = s.d
+	var told: Array[String] = []
+	(s.rules as Rules).banner.connect(func(text: String) -> void: told.append(text))
+	_at_halt(s, d, 0)
+	d._board()
+	d.wren.mind = Person.Mind.COMPELLED
+	Kit.run_for(s, 0.6)
+	t.check(d.pip_led and told.any(func(x: String) -> bool: return x.begins_with("PIP FOLLOWS THE GOD")), "the latch is announced")
+	t.check(d.watched(), "(set-up) the cart is watched")
+	Kit.run_for(s, RelicRunDirector.LED_HALT + 3.0)
+	t.check(d.halt == 0 and d._halt_left() > RelicRunDirector.LED_HALT, "led, but the cart still watched: no early roll-on, the tag counts to HALT_MAX")
+	_blind(d)
+	Kit.run_for(s, 0.3)
+	t.check(not d.watched() and d.halt == -1 and d.halts_done[0], "the watch drawn off: the roll-on rule holds at once (the halt is past LED_HALT)")
+	Kit.done(s)
+
+	s = _world()
+	d = s.d
+	_at_halt(s, d, 0)
+	d._board()
+	d.wren.whisper(d.cart_at() + Vector2(0.5, 0.0), MindWhisperFx.LINGER)
+	Kit.run_for(s, 0.6)
+	_blind(d)
+	Kit.run_for(s, RelicRunDirector.LED_HALT + 1.0)
+	t.check(not d.pip_led and d.halt == 0 and not d.watched() and d._halt_left() > 0.0 and d.halt_time > RelicRunDirector.LED_HALT,
+		"a Pip only whispered (loadout A): past LED_HALT unwatched there is no roll-on, the halt runs on")
+	Kit.done(s)

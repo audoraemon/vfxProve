@@ -120,3 +120,9 @@ heart_none_3	--scenario=heart --case=none --seed=3	-832707735
 heart_play_1	--scenario=heart --case=play --seed=1	-436016941
 heart_play_2	--scenario=heart --case=play --seed=2	-670500702
 heart_play_3	--scenario=heart --case=play --seed=3	-727467388
+procession_none_1	--scenario=feast --path=procession --board --case=none --seed=1	-76505154
+procession_none_2	--scenario=feast --path=procession --board --case=none --seed=2	-806865701
+procession_none_3	--scenario=feast --path=procession --board --case=none --seed=3	517111
+procession_play_1	--scenario=feast --path=procession --board --case=play --seed=1	-718175967
+procession_play_2	--scenario=feast --path=procession --board --case=play --seed=2	91582720
+procession_play_3	--scenario=feast --path=procession --board --case=play --seed=3	728363854

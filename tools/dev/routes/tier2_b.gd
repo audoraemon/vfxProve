@@ -276,7 +276,9 @@ static func act_ringers(bc, ctx: Dictionary) -> String:
 		if i >= 0 and d.timeline.seconds_to("out_%d" % i) <= RINGERS_PREP:
 			var watcher: Person = null
 			for p in crowd.citizens + crowd.soldiers:
-				if WarningDirector._alive(p) and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED 						and p.ground_pos.distance_to(d.doors[i]) <= RINGERS_DOOR_R 						and (watcher == null or p.ground_pos.distance_to(d.doors[i]) < watcher.ground_pos.distance_to(d.doors[i])):
+				if WarningDirector._alive(p) and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED \
+						and p.ground_pos.distance_to(d.doors[i]) <= RINGERS_DOOR_R \
+						and (watcher == null or p.ground_pos.distance_to(d.doors[i]) < watcher.ground_pos.distance_to(d.doors[i])):
 					watcher = p
 			if watcher != null:
 				rules.cast(slots.whisper, watcher.ground_pos, {"target": watcher, "to": d._walkable(watcher.ground_pos + (watcher.ground_pos - d.doors[i]).normalized() * 6.0)})
@@ -430,7 +432,8 @@ static func _panic_mark(d: MarketPanicDirector) -> Person:
 	for group: Array[Person] in [d.waiting_goers(), d.unbroken()]:
 		var best: Person = null
 		for p in group:
-			if WarningDirector._alive(p) and not p.statuses.has(&"frail") and (best == null 					or p.ground_pos.distance_to(MarketPanicDirector.HEART) > best.ground_pos.distance_to(MarketPanicDirector.HEART)):
+			if WarningDirector._alive(p) and not p.statuses.has(&"frail") and (best == null \
+					or p.ground_pos.distance_to(MarketPanicDirector.HEART) > best.ground_pos.distance_to(MarketPanicDirector.HEART)):
 				best = p
 		if best != null:
 			return best

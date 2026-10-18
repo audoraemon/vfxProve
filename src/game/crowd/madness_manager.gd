@@ -133,10 +133,14 @@ func step(delta: float) -> void:
 		_collect()
 	if afflicted.is_empty():
 		return
-	var gone: Array[Person] = []
-	for p: Person in afflicted:
+	var gone: Array = []
+	for key: Variant in afflicted.keys():  # (v0.11.1 R8) untyped: a body freed since the last step is a dead key, which a typed loop variable refuses
+		if not is_instance_valid(key):
+			gone.append(key)
+			continue
+		var p := key as Person
 		var rec: Dictionary = afflicted[p]
-		if not is_instance_valid(p) or not p.is_alive():
+		if not p.is_alive():
 			gone.append(p)
 			continue
 		if _clock - float(rec.since) >= DURATION:
@@ -155,8 +159,8 @@ func step(delta: float) -> void:
 			rec.stage = int(rec.stage) + 1
 			_enter(p, rec, rec.stage as Stage)
 		_tick(p, rec, stage, delta)
-	for p in gone:
-		afflicted.erase(p)
+	for k: Variant in gone:
+		afflicted.erase(k)
 	_propagate_in -= delta
 	if _propagate_in <= 0.0:
 		_propagate_in = PROPAGATE_EVERY
@@ -172,9 +176,18 @@ func _collect() -> void:
 				"tic": _rng.randf_range(HESITATE_EVERY.x, HESITATE_EVERY.y), "concern": CONCERN_EVERY, "shove": SHOVE_EVERY}
 
 
+## The afflicted still standing as bodies: a freed one is skipped (its dead key is dropped by the next step()).
+func _live() -> Array[Person]:
+	var out: Array[Person] = []
+	for key: Variant in afflicted.keys():
+		if is_instance_valid(key):
+			out.append(key as Person)
+	return out
+
+
 func _maddened_near(p: Person) -> int:
 	var n := 0
-	for q: Person in afflicted:
+	for q: Person in _live():
 		if q != p and is_instance_valid(q) and q.is_alive() and not q.inside \
 				and q.ground_pos.distance_to(p.ground_pos) <= PROPAGATION_R:
 			n += 1
@@ -280,7 +293,7 @@ func _end(p: Person) -> void:
 
 func _propagate() -> void:
 	var fresh: Array = []
-	for p: Person in afflicted:
+	for p: Person in _live():
 		var rec: Dictionary = afflicted[p]
 		if not is_instance_valid(p) or not p.is_alive() or p.inside or int(rec.stage) < Stage.DISTURBED:
 			continue
@@ -300,7 +313,7 @@ func _propagate() -> void:
 
 ## Whether any of the afflicted is out in the open to be seen.
 func any_in_open() -> bool:
-	for p: Person in afflicted:
+	for p: Person in _live():
 		if is_instance_valid(p) and p.is_alive() and not p.inside and p.visible:
 			return true
 	return false
@@ -329,7 +342,7 @@ func _whisper(p: Person, count: int) -> void:
 ## thin dark tendrils that flicker, and one just broken on a cracked halo.
 func draw_ground(ci: CanvasItem) -> void:
 	var now := float(Time.get_ticks_msec()) * 0.001
-	for p: Person in afflicted:
+	for p: Person in _live():
 		if not is_instance_valid(p) or not p.is_alive() or p.inside or not p.visible:
 			continue
 		var rec: Dictionary = afflicted[p]
@@ -360,7 +373,7 @@ func draw_ground(ci: CanvasItem) -> void:
 ## a red flash then a red point over the Broken.
 func draw_over(ci: CanvasItem) -> void:
 	var now := float(Time.get_ticks_msec()) * 0.001
-	for p: Person in afflicted:
+	for p: Person in _live():
 		if not is_instance_valid(p) or not p.is_alive() or p.inside or not p.visible:
 			continue
 		var rec: Dictionary = afflicted[p]

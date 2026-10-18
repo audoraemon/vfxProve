@@ -165,7 +165,7 @@ static func board(id: String, state: DescendState = null) -> MissionDef:
 			m.tune = func(d: MissionDirector) -> void:
 				var pd := d as ProcessionDirector
 				if pd != null:
-					pd.emerge_after = ProcessionDirector.EMERGE_AT
+					pd.emerge_after = ProcessionDirector.EMERGE_AT / maxf(pd.stretch, 0.001)  # real seconds (R8: the wait is at most 40 s)
 		"last_judgement":
 			m.goal = "Destroy the Citadel and break the city before dawn"
 	if tier >= GAZE_TIER:

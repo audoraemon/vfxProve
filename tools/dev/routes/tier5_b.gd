@@ -677,7 +677,8 @@ static func _heart_lure_spot(bc, d: HeartOfFaithDirector, crowd: Crowd, i: int, 
 		while x <= HEART_DRAW:
 			var at := mean + Vector2(x, y)
 			x += HEART_STEP
-			if at.distance_to(drop) < HEART_BLAST + HEART_RING or d._walkable(at).distance_to(at) > 0.3 					or d.targets[i].distance_to(at) < d.GUARD_REACH + HEART_RING_MAX:
+			if at.distance_to(drop) < HEART_BLAST + HEART_RING or d._walkable(at).distance_to(at) > 0.3 \
+					or d.targets[i].distance_to(at) < d.GUARD_REACH + HEART_RING_MAX:
 				continue
 			var drawn := 0
 			for p in on:
@@ -706,7 +707,8 @@ static func _heart_lure_spot(bc, d: HeartOfFaithDirector, crowd: Crowd, i: int, 
 static func _heart_on(d: HeartOfFaithDirector, i: int) -> Array[Person]:
 	var out := d.guards_at(i)
 	for p in d.standing_at(i):
-		if not out.has(p) and not p.mind in [Person.Mind.WHISPERED, Person.Mind.CONFUSED, Person.Mind.OBSERVE] 				and d.targets[i].distance_to(p.ground_pos) <= HeartOfFaithDirector.GUARD_REACH + HEART_COMING:
+		if not out.has(p) and not p.mind in [Person.Mind.WHISPERED, Person.Mind.CONFUSED, Person.Mind.OBSERVE] \
+				and d.targets[i].distance_to(p.ground_pos) <= HeartOfFaithDirector.GUARD_REACH + HEART_COMING:
 			out.append(p)
 	return out
 
@@ -766,7 +768,8 @@ static func _heart_hush(bc, ctx: Dictionary, at: Vector2, reach: float, words: S
 	var best: Person = null
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for o in group:
-			if is_instance_valid(o) and o.is_alive() and not o.inside and not o.shaken() and o.mind != Person.Mind.WHISPERED 					and o.mind != Person.Mind.OBSERVE and o.ground_pos.distance_to(at) <= reach:
+			if is_instance_valid(o) and o.is_alive() and not o.inside and not o.shaken() and o.mind != Person.Mind.WHISPERED \
+					and o.mind != Person.Mind.OBSERVE and o.ground_pos.distance_to(at) <= reach:
 				if best == null or o.ground_pos.distance_to(at) < best.ground_pos.distance_to(at):
 					best = o
 	if best == null:

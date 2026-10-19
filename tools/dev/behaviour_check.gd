@@ -1670,8 +1670,9 @@ func _tax_states(d: AssassinateDirector) -> String:
 	return " ".join(out)
 
 
-## How long the tax policy waits at the door, since its last cast, before it smokes the next collector out (v0.11.1, R4).
-const TAX_SMOKE_AFTER := 42.0
+## How long the tax policy waits at the door, since its last cast, before it smokes the next collector out (v0.11.1, R4; 42 s -> 30 s
+## in v0.11.2 Task 6: with the awareness rules the third collector's round ended at 244-256 s; a player smokes the door out sooner).
+const TAX_SMOKE_AFTER := 30.0
 
 
 ## Where a smoking-out cast lands (v0.11.1): within 3.0 of the counting-house's door (the director's alarm reach is 4), on the side
@@ -1746,7 +1747,7 @@ func _tax(which: String) -> void:
 			rules.cast(slots.doom, bell.keeper.ground_pos)
 			continue
 		# v0.11.1 (R4, the no-waiting rule): between a death and the next collector's setting out, a power cast by the counting-house's
-		# door smokes him out (the mission's own rule). A player does not stand 45 s watching a door, so the policy does it once
+		# door smokes him out (the mission's own rule). A player does not stand watching a door, so the policy does it once
 		# TAX_SMOKE_AFTER seconds have passed since its last cast.
 		if d.killed() > 0 and not d._anyone_out() and d._next_waiting() != null and t - float(acts.last) >= TAX_SMOKE_AFTER \
 				and _slot_ready(rules, slots, "doom"):

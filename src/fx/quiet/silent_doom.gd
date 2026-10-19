@@ -22,19 +22,23 @@ static func victims_at(field: EnemyField, at: Vector2) -> Array[DummyEnemy]:
 func _build() -> void:
 	duration = 1.4
 	var victims := victims_at(ctx.field, origin)
-	ctx.play(&"grav_shimmer", origin, -10.0)
+	ctx.play(&"q_doom", origin)
 	for v in victims:
 		_wisp(Iso.ground_to_screen(v.ground_pos))
 	if victims.is_empty():
 		_wisp(Iso.ground_to_screen(origin))
 	at(T_STRIKE, func() -> void:
+		var struck := 0
 		for v in victims:
 			if not is_instance_valid(v):
 				continue
 			var person := v as Person
 			if person != null and person.inside:
 				continue  # boarded a boat or took shelter since the cast: out of reach, hidden away
-			ctx.field.kill(v, &"doom", origin))
+			ctx.field.kill(v, &"doom", origin)
+			struck += 1
+		if struck > 0:
+			ctx.play(&"q_doom_hit", origin))
 
 
 ## A dark wisp: smoke that curls down onto the spot, then a faint puff as it takes them.

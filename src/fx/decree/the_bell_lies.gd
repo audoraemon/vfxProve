@@ -33,7 +33,7 @@ func _build() -> void:
 	busy = T_CAST
 	_tower = TownLayout.BELL_TOWER.get_center()
 	at(T_CAST, _toll_well if mode == "well" else _call_guard)
-	ctx.play(&"hs_charge", _tower, -10.0)
+	ctx.play(&"q_belllies", _tower)
 	if DominionParts.staged(self):
 		DecreeParts.proclaim(self, _tower, 54.0, UP, T_CAST, 1.4)
 		var mark := FxParts.rings(self, _tower, 1.8, DecreeParts.GILT, 2, 14.0)

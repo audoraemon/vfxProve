@@ -1,0 +1,5 @@
+{"length": 1.6, "rms_db": -19.0, "reverb": {"rt60": 0.9, "mix": 0.1, "predelay_ms": 6, "damp": 4000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/burble_01.ogg", "at": 0.0, "pitch": -4, "lp": 2400, "hp": 120, "fade_in": 60, "fade_out": 300, "gain_db": 0},
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/burble_02.ogg", "at": 0.55, "pitch": -5, "lp": 2200, "hp": 120, "fade_out": 300, "gain_db": -3},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/slime/slime5.wav", "at": 0.9, "pitch": -3, "lp": 2500, "gain_db": -5},
+  {"src": "lib:oga/wind1/wind1.wav", "at": 0.0, "from": 0.5, "dur": 1.4, "hp": 2500, "fade_in": 400, "fade_out": 500, "gain_db": -13}]}

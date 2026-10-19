@@ -206,6 +206,9 @@ def credits() -> None:
             continue  # tools/audio/synth.py's own render, made in this repo
         if rel.startswith("kenney/"):
             info = {"title": "Kenney " + rel.split("/")[1], "license": "CC0", "author": "Kenney", "url": "https://kenney.nl"}
+        if rel.startswith("orchestra/VSCO-2-CE"):
+            info = {"title": "VS Chamber Orchestra 2 Community Edition", "license": "CC0", "author": "Versilian Studios",
+                    "url": "https://github.com/sgossner/VSCO-2-CE"}
         if info is None:
             info = {"title": rel, "license": "?", "author": "?", "url": ""}
         lines.append(f"| [{info['title']}]({info['url']}) `{rel.rsplit('/', 1)[-1]}` | {info['license']} | "

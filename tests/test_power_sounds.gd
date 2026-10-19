@@ -15,9 +15,18 @@ const FLOOR_STEP := 0.5
 const LOUD_EXEMPT := {}
 ## The quiet keys still without their own q_<key> cue; Tasks 13 and 14 empty it (a key that already plays its cue must leave).
 const PENDING_QUIET := [
-	"doom", "whisper", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "madness", "blight", "thorns",
-	"pestilence", "mirror", "magnify", "congregation", "oath", "echo", "turncoat", "hatred", "priority", "verdict",
-	"delusion", "voice", "abolition",
+	"whisper",
+	"wisp",
+	"discord",
+	"congregation",
+	"oath",
+	"echo",
+	"turncoat",
+	"hatred",
+	"priority",
+	"verdict",
+	"delusion",
+	"voice",
 ]
 const TSV := "res://tools/audio/loudness.tsv"
 ## Spec 6.3 row 4: the death cues' played levels relative to the loud median, and how far either way is allowed.
@@ -39,6 +48,7 @@ static func run(t) -> void:
 	_floor(t, mains, median)
 	_quiet_cues(t)
 	_deaths(t, lufs, median)
+	_hits_and_lantern(t, lufs, median)
 	_sanity(t)
 
 
@@ -213,6 +223,35 @@ static func _deaths(t, lufs: Dictionary, median: float) -> void:
 			"%s plays at %.1f, within %.0f of %.1f (loud median %.1f %+.0f)" % [cue, level, DEATH_TOL, want, median, DEATH_REL[cue]])
 	var wave := played(&"crowd_death_wave", 0.0, lufs)
 	t.check(not is_nan(wave) and wave <= median, "crowd_death_wave plays at %.1f, at most the loud median %.1f" % [wave, median])
+
+
+## v0.11.2 Task 13: the effect cues q_<key>_hit sit in the code that has the moment, at a level in the floor..median + 2 band, and
+## the Lantern's three cues (LanternWatch plays them at the Temple) are catalogued near the loud median.
+const HIT_SOURCES := {
+	"doom": "res://src/fx/quiet/silent_doom.gd",
+	"blight": "res://src/fx/quiet/blight.gd",
+	"deathmark": "res://src/fx/death/death_mark.gd",
+	"ember": "res://src/fx/ruin/ember.gd",
+	"thorns": "res://src/fx/control/thornwall.gd",
+	"mirror": "res://src/fx/control/mirrorfold_passage.gd",
+	"madness": "res://src/game/crowd/madness_manager.gd",
+}
+const LANTERN_BAND := 3.0
+
+
+static func _hits_and_lantern(t, lufs: Dictionary, median: float) -> void:
+	for key in HIT_SOURCES:
+		var cue := StringName("q_%s_hit" % key)
+		var level := played(cue, 0.0, lufs)
+		t.check(Sfx.CATALOG.has(cue) and not is_nan(level), "%s is catalogued and measured" % cue)
+		t.check(level >= QUIET_FLOOR and level <= median + 2.0,
+			"%s plays at %.1f, within the floor %.1f and the loud median + 2 (%.1f)" % [cue, level, QUIET_FLOOR, median + 2.0])
+		t.check(FileAccess.get_file_as_string(HIT_SOURCES[key]).contains('&"%s"' % cue), "%s plays %s at its moment" % [HIT_SOURCES[key].get_file(), cue])
+	t.check(not FileAccess.get_file_as_string(HIT_SOURCES["ember"]).contains("dr_ignite"), "the ember's own spark replaces dr_ignite")
+	for cue in [LanternWatch.CUE_FLARE, LanternWatch.CUE_BURN, LanternWatch.CUE_BLIND]:
+		var level := played(cue, 0.0, lufs)
+		t.check(Sfx.CATALOG.has(cue) and not is_nan(level) and level >= median - LANTERN_BAND and level <= median + 2.0,
+			"%s plays at %.1f, within %.0f under the loud median %.1f and +2" % [cue, level, LANTERN_BAND, median])
 
 
 ## The reader itself: a few known calls, so a parser that silently reads nothing cannot pass the floor by default.

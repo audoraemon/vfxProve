@@ -235,8 +235,10 @@ func _draw_outcome() -> Outcome:
 
 ## A frenzy breaks out: the town sees a danger, the alarm rises, and the nearest soldier at its post comes for them.
 ## The frenzy is the town's own danger, so only citizens react (soldiers_too false, v0.11.1): the nearest soldier at his post is the
-## one who engages it, and fright() would otherwise panic him first.
+## one who engages it, and fright() would otherwise panic him first. (v0.11.2) The snap is heard (q_madness_hit; sound only, no draw).
 func _outbreak(p: Person) -> void:
+	if _crowd.sfx != null and not _crowd.is_hushed():
+		_crowd.sfx.play(&"q_madness_hit", p.ground_pos)
 	var t: Array = FRENZY_THREAT
 	_crowd.fright(p.ground_pos, float(t[0]), float(t[1]), float(t[2]), float(t[3]), float(t[4]), &"frenzy", false)
 	var points := ALARM_BROKEN * ALARM_MULTIPLIER

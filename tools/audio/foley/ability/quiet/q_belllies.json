@@ -1,0 +1,5 @@
+{"length": 2.5, "rms_db": -18.0, "reverb": {"rt60": 1.8, "mix": 0.14, "predelay_ms": 12, "damp": 4500}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_003.ogg", "at": 0.15, "pitch": -4, "reverse": true, "lp": 3200, "fade_in": 10, "fade_out": 8, "gain_db": -3},
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.8, "pitch": -1, "lp": 3800, "dur": 1.7, "fade_out": 800, "gain_db": 0},
+  {"src": "lib:oga/bell-dingschimes/bell_ding4.wav", "at": 0.8, "pitch": -2.4, "lp": 3400, "dur": 1.7, "fade_out": 800, "gain_db": -3},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_001.ogg", "at": 0.8, "pitch": -8, "lp": 1100, "dur": 1.5, "fade_out": 700, "gain_db": -6}]}

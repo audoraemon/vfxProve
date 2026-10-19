@@ -25,7 +25,7 @@ static func victims_at(field: EnemyField, at: Vector2) -> Array[Person]:
 func _build() -> void:
 	duration = 1.4
 	busy = 0.8
-	ctx.play(&"grav_suction", origin, -12.0)
+	ctx.play(&"q_pestilence", origin)
 	var victims := victims_at(ctx.field, origin)
 	var spots: Array[Vector2] = [origin]
 	for p in victims:

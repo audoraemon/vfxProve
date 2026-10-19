@@ -81,6 +81,27 @@ const CATALOG := {
 	&"dr_breath": {"path": "res://assets/audio/ability/fire/dr_breath.wav", "db": -4.0, "loop": true},
 	&"dr_sink": {"path": "res://assets/audio/ability/fire/dr_sink.wav", "db": -5.5},
 	&"laser_depart": {"path": "res://assets/audio/ability/energy/laser_depart.wav", "db": -6.5},
+	# The quiet powers' own sounds, part I (v0.11.2 Task 13, spec 2.3; tools/audio/foley/ability/quiet/): a cast cue q_<key> each, and a q_<key>_hit
+	# where the power has a moment of effect. Levels measured by tools/audio/loudness.py: every cast plays between the quiet floor and the loud median + 2.
+	&"q_doom": {"path": "res://assets/audio/ability/quiet/q_doom.wav", "db": 0.6},
+	&"q_doom_hit": {"path": "res://assets/audio/ability/quiet/q_doom_hit.wav", "db": 0.2, "voices": 3, "jitter": 0.06},
+	&"q_blight": {"path": "res://assets/audio/ability/quiet/q_blight.wav", "db": 0.5},
+	&"q_blight_hit": {"path": "res://assets/audio/ability/quiet/q_blight_hit.wav", "db": 1.5, "voices": 3, "jitter": 0.08},
+	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark.wav", "db": -0.2},
+	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit.wav", "db": -0.7},
+	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
+	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
+	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},
+	&"q_noleave": {"path": "res://assets/audio/ability/quiet/q_noleave.wav", "db": 0.5},
+	&"q_belllies": {"path": "res://assets/audio/ability/quiet/q_belllies.wav", "db": 1.2},
+	&"q_magnify": {"path": "res://assets/audio/ability/quiet/q_magnify.wav", "db": -1.3},
+	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
+	&"q_thorns": {"path": "res://assets/audio/ability/quiet/q_thorns.wav", "db": -0.2},
+	&"q_thorns_hit": {"path": "res://assets/audio/ability/quiet/q_thorns_hit.wav", "db": -1.6, "voices": 3, "jitter": 0.08},
+	&"q_mirror": {"path": "res://assets/audio/ability/quiet/q_mirror.wav", "db": -0.7},
+	&"q_mirror_hit": {"path": "res://assets/audio/ability/quiet/q_mirror_hit.wav", "db": -3.1, "voices": 3, "jitter": 0.08},
+	&"q_madness": {"path": "res://assets/audio/ability/quiet/q_madness.wav", "db": -1.2},
+	&"q_madness_hit": {"path": "res://assets/audio/ability/quiet/q_madness_hit.wav", "db": -0.8, "voices": 3, "jitter": 0.06},
 	# The powers' sounds above are recordings over tools/audio/synth.py's renders (tools/audio/foley/ability/<element>/,
 	# built by tools/audio/foley.py). Below, the rest, sorted by kind into assets/audio/<category>/:
 	# Interface: made with GodotSfxr (tools/audio/sfxr/ui/, baked by tools/audio/sfxr_bake.gd).
@@ -115,6 +136,10 @@ const CATALOG := {
 	&"collapse_timber": {"path": "res://assets/audio/building/collapse_timber_%d.wav", "variants": 3, "db": -0.3, "voices": 4, "jitter": 0.08},
 	&"collapse_tree": {"path": "res://assets/audio/building/collapse_tree_%d.wav", "variants": 3, "db": -0.3, "voices": 4, "jitter": 0.1},
 	&"town_bell": {"path": "res://assets/audio/building/town_bell.wav", "db": -1.5},
+	# The Lantern (v0.11.2, LanternWatch plays them at the Temple): the toll's flare, the burn, and the Bearer's fall.
+	&"lantern_flare": {"path": "res://assets/audio/building/lantern_flare.wav", "db": 0.6},
+	&"lantern_burn": {"path": "res://assets/audio/building/lantern_burn.wav", "db": 1.3},
+	&"lantern_blind": {"path": "res://assets/audio/building/lantern_blind.wav", "db": 0.5},
 	# Music: real instrument samples (tools/audio/music/, rendered by tools/audio/music_render.py). Music plays these at its own level (Music.DB), so their db is not used.
 	&"music_theme": {"path": "res://assets/audio/music/music_theme.wav", "db": 0.0, "loop": true},
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},

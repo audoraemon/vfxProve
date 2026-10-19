@@ -1,0 +1,6 @@
+{"length": 2.8, "rms_db": -15.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 8, "damp": 5000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/explosion-0/explosion.wav", "at": 0.0, "pitch": -6, "lp": 900, "dur": 0.9, "fade_out": 400, "gain_db": -1},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Fire3.ogg", "at": 0.0, "dur": 2.5, "lp": 6500, "fade_in": 60, "fade_out": 900, "gain_db": -1},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_03.ogg", "at": 0.1, "dur": 1.9, "pitch": -3, "lp": 5000, "fade_out": 600, "gain_db": -3},
+  {"src": "lib:oga/cc0-deep-monster-roar/monster_roar.wav", "at": 0.15, "dur": 2.3, "pitch": -2, "lp": 2600, "hp": 80, "fade_in": 200, "fade_out": 900, "gain_db": -5},
+  {"src": "lib:oga/fire-crackling/fire-1.wav", "at": 0.6, "dur": 2.1, "hp": 1500, "fade_out": 700, "gain_db": -8}]}

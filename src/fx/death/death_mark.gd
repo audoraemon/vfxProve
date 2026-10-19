@@ -47,7 +47,7 @@ func _build() -> void:
 	marked.walk_speed = marked._mind_speed()
 	marked.set_badge(SKULL, PALE, MARK_TIME)
 	at(MARK_TIME, _die)
-	ctx.play(&"grav_suction", origin, -14.0)
+	ctx.play(&"q_deathmark", origin)
 	if DominionParts.staged(self):
 		# The mark settles on them: pale motes drawn down, and the skull shown large for a moment.
 		var down := FxParts.particles(self, ctx.overhead, Iso.ground_to_screen(marked.ground_pos), PixelParticles.Shape.PUFF, SHADE)
@@ -71,6 +71,7 @@ func _die() -> void:
 		return
 	body_at = marked.ground_pos
 	ctx.field.kill(marked, &"deathmark", body_at)
+	ctx.play(&"q_deathmark_hit", body_at)
 	_look_in = 0.5
 	if DominionParts.staged(self):
 		DominionParts.motes(self, body_at, SHADE, 10)

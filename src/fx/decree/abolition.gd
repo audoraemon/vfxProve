@@ -34,7 +34,7 @@ func _build() -> void:
 	busy = T_DECREE + 0.4
 	at(T_DECREE, _strike)
 	at(T_DECREE + ABOLISH_TIME, _restore)
-	ctx.play(&"hs_charge", origin, -4.0)
+	ctx.play(&"q_abolition", origin)
 	if not DominionParts.staged(self):
 		return
 	# The world dims while the decree is spoken; the crown gathers over the place, and the law's sign under it.
@@ -59,7 +59,6 @@ func _strike() -> void:
 	if ctx.rules != null:
 		ctx.rules.abolish(StringName(law), ABOLISH_TIME)
 		ctx.rules.banner.emit(String(WORDS[law]))
-	ctx.play(&"hs_strike", origin, -2.0)
 	if not DominionParts.staged(self):
 		return
 	if _sign != null and is_instance_valid(_sign):

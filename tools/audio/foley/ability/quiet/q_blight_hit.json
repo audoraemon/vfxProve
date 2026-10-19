@@ -1,0 +1,5 @@
+{"length": 0.9, "peak_db": -2.0, "reverb": {"rt60": 0.5, "mix": 0.08, "predelay_ms": 5}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_breaking_02.ogg", "at": 0.0, "pitch": -3, "lp": 4500, "gain_db": -1},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/item_stone_01.ogg", "at": 0.02, "pitch": -5, "lp": 2200, "gain_db": -3},
+  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/slime_03.ogg", "at": 0.12, "pitch": -2, "lp": 2800, "gain_db": -4},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_air_02.ogg", "at": 0.1, "hp": 3500, "dur": 0.6, "fade_out": 300, "gain_db": -10}]}

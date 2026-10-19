@@ -1,0 +1,4 @@
+{"length": 1.0, "peak_db": -2.0, "reverb": {"rt60": 0.7, "mix": 0.1, "predelay_ms": 6}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/horror-scream1/scream_horror1_0.mp3", "at": 0.0, "dur": 0.8, "pitch": 0, "lp": 5200, "hp": 300, "fade_out": 300, "gain_db": 0},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Rend.ogg", "at": 0.0, "pitch": -3, "gain_db": -4},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/creature_roar_03.ogg", "at": 0.05, "dur": 0.8, "lp": 3000, "hp": 150, "fade_out": 300, "gain_db": -7}]}

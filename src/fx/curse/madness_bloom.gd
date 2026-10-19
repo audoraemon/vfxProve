@@ -35,7 +35,7 @@ func _build() -> void:
 			continue
 		p.statuses[MadnessManager.STATUS] = SEED
 		afflicted.append(p)
-	ctx.play(&"grav_field", origin, -16.0)
+	ctx.play(&"q_madness", origin)
 	if ctx.impact == null or not is_inside_tree():
 		return
 	var sp := Iso.ground_to_screen(origin)

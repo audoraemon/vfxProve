@@ -1,0 +1,6 @@
+{"length": 2.3, "rms_db": -18.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 10, "damp": 6000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Median_v1.wav", "at": 0.0, "dur": 0.95, "lp": 5000, "hp": 250, "fade_out": 40, "gain_db": -5},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Orbit.ogg", "at": 0.0, "dur": 0.95, "pitch": 2, "lp": 4000, "fade_in": 300, "fade_out": 40, "gain_db": -4},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/ching.ogg", "at": 0.9, "dur": 1.2, "fade_out": 500, "gain_db": -1},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/ching.ogg", "at": 0.98, "dur": 1.2, "pitch": 12, "fade_out": 500, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/vibraring_v1_rr2.wav", "at": 0.9, "pitch": 3, "dur": 1.4, "fade_out": 600, "gain_db": -8}]}

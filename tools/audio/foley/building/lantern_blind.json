@@ -1,0 +1,6 @@
+{"length": 3.0, "rms_db": -17.0, "reverb": {"rt60": 1.8, "mix": 0.12, "predelay_ms": 14, "damp": 4000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_air_01.ogg", "at": 0.0, "dur": 0.9, "hp": 3000, "fade_in": 30, "fade_out": 500, "gain_db": 0},
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.0, "pitch": 4, "reverse": true, "hp": 900, "gain_db": -5},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Slow.ogg", "at": 0.35, "pitch": -6, "lp": 1800, "gain_db": -5},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_000.ogg", "at": 0.55, "pitch": -7, "lp": 2200, "hp": 90, "dur": 2.3, "fade_out": 1200, "gain_db": -2},
+  {"src": "lib:wikimedia/25822_heigh-hoo_peace-bell-hiroshima.wav", "at": 0.6, "onset": true, "pitch": -9, "lp": 1500, "hp": 90, "dur": 2.2, "fade_out": 1200, "gain_db": -6}]}

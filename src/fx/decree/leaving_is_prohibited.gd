@@ -32,7 +32,7 @@ func _build() -> void:
 	busy = T_SEAL
 	at(T_SEAL, _seal)
 	at(T_SEAL + HOLD_TIME, _lift)
-	ctx.play(&"hs_charge", origin, -10.0)
+	ctx.play(&"q_noleave", origin)
 	if DominionParts.staged(self):
 		DecreeParts.proclaim(self, origin, 60.0, 70.0, T_SEAL, 1.2)
 		var mark := FxParts.rings(self, origin, RADIUS, DecreeParts.GILT, 2, 24.0)
@@ -44,7 +44,6 @@ func _build() -> void:
 func _seal() -> void:
 	sealed = true
 	_join()
-	ctx.play(&"jg_rise", origin, -10.0)
 	if not DominionParts.staged(self):
 		return
 	_wall = Wall.new()

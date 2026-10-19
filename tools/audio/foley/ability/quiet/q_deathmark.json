@@ -1,0 +1,4 @@
+{"length": 1.7, "rms_db": -19.0, "reverb": {"rt60": 1.6, "mix": 0.14, "predelay_ms": 14, "damp": 3500}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/TouchofDeath.ogg", "at": 0.0, "dur": 1.6, "pitch": -3, "lp": 4200, "hp": 90, "fade_in": 30, "fade_out": 500, "gain_db": 0},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/vibraring_v1_rr1.wav", "at": 0.15, "pitch": -8, "lp": 2400, "dur": 1.4, "fade_out": 600, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub3_v1.wav", "at": 0.0, "dur": 1.2, "lp": 420, "fade_in": 300, "fade_out": 500, "gain_db": -8}]}

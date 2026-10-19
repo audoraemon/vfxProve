@@ -1,0 +1,6 @@
+{"length": 3.4, "rms_db": -17.0, "reverb": {"rt60": 2.0, "mix": 0.16, "predelay_ms": 14, "damp": 4500}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub2_v1.wav", "at": 0.0, "dur": 1.9, "lp": 700, "hp": 60, "fade_in": 1100, "fade_out": 60, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Long_v1.wav", "at": 0.0, "dur": 1.85, "lp": 4500, "hp": 200, "fade_in": 200, "fade_out": 40, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_f.wav", "at": 1.8, "dur": 1.6, "pitch": -1, "lp": 4000, "hp": 130, "fade_out": 900, "gain_db": 0},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Anvil_Hit1_v3_Sum.wav", "at": 1.8, "pitch": -3, "lp": 3200, "hp": 150, "dur": 1.0, "fade_out": 500, "gain_db": -3},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/glass_05.ogg", "at": 1.82, "pitch": -2, "lp": 8000, "dur": 0.9, "fade_out": 400, "gain_db": -6}]}

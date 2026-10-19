@@ -46,7 +46,9 @@ func _build() -> void:
 		leaves.drag = 1.0
 		leaves.burst(8, {"radius": 6.0, "speed": Vector2(10, 30), "alt": Vector2(0, 6), "alt_speed": Vector2(30, 70),
 			"life": Vector2(0.4, 0.8), "size": Vector2(1, 2)})
-	ctx.play(&"grav_compress", origin, -10.0)
+	ctx.play(&"q_thorns", origin)
+	if not segments.is_empty():
+		at(GROW * 0.5, func() -> void: ctx.play(&"q_thorns_hit", origin))
 	at(THORN_TIME, _wither_away)
 
 

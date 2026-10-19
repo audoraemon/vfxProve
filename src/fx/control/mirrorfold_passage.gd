@@ -71,7 +71,7 @@ func _build() -> void:
 	for e in ctx.field.alive():
 		if on_mirror(origin, e.ground_pos):
 			_within[e.get_instance_id()] = true
-	ctx.play(&"grav_shimmer", origin, -14.0)
+	ctx.play(&"q_mirror", origin)
 	if ctx.distort == null:
 		return
 	var size := Vector2(HALF_WIDE, HALF_DEEP) * Vector2(FxParts.PX_PER_UNIT_MAJOR, FxParts.PX_PER_UNIT_MINOR) * 2.0
@@ -144,9 +144,9 @@ func _crossing(at: Vector2, from: Vector2, to: Vector2) -> void:
 			_faces[i].set_param("pulse_at", at)
 			_pulse_age[i] = 0.0
 			_flash_age[i] = 0.0
+	ctx.play(&"q_mirror_hit", to)
 	if ctx.distort == null:
 		return
-	ctx.play(&"grav_arc", to, -6.0)
 	var sink := FxParts.particles(self, ctx.overhead, Iso.ground_to_screen(from) + Vector2(0, -8), PixelParticles.Shape.STREAK, GLASS)
 	sink.drag = 1.0
 	sink.burst(14, {"radius": 12.0, "speed": Vector2(40, 90), "dir": PixelParticles.Dir.INWARD, "alt": Vector2(0, 14),

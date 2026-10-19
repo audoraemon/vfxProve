@@ -1,0 +1,7 @@
+{"length": 1.8, "rms_db": -18.0, "reverb": {"rt60": 1.0, "mix": 0.1, "predelay_ms": 8, "damp": 4000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_03.ogg", "at": 0.0, "hp": 300, "lp": 6000, "fade_out": 120, "gain_db": -3},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 0.0, "dur": 0.7, "lp": 380, "fade_in": 300, "fade_out": 100, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Anvil_Hit1_v1_Sum.wav", "at": 0.6, "pitch": -7, "lp": 1800, "dur": 1.0, "fade_out": 500, "gain_db": -2},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/slam_05.ogg", "at": 0.6, "pitch": -5, "lp": 2200, "gain_db": -1},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/lock_01.ogg", "at": 0.66, "pitch": -2, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v2_Sum.wav", "at": 0.62, "pitch": -12, "lp": 1500, "dur": 0.9, "fade_out": 500, "gain_db": -6}]}

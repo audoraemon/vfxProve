@@ -22,10 +22,33 @@ power's cast sound is that minus 6 LU, **-21.0** (`QUIET_FLOOR` in `tests/test_p
 | `sol_death` | 1: -14.39 / -2.17, 2: -15.63 / -1.84, 3: -14.65 / -2.10 | -4.2 | -18.6 (loud median -4) | `mix_sol_death.wav` | A soldier's grunt, mail and a fall: reads as armour, not as a villager. | | |
 | `cit_fall` | 1: -26.56 / -5.99, 2: -25.34 / -5.99, 3: -25.79 / -5.99, 4: -25.30 / -5.99 | +1.8 | -23.5 (loud median -9) | `mix_cit_fall.wav` | A body slumping, no cry: Silent Doom, Death Mark and plague. Quiet on purpose; can you still hear it on a calm street, and does it stay unsettling rather than silent? | | |
 | `crowd_death_wave` | 1: -13.97 / -0.28, 2: -15.67 / -0.29 | -2.0 | -16.0 (under the median) | `mix_crowd_death_wave.wav` | The roar of a crowd falling at once: one crunchy wave over three cries, never sixty. | | |
+| `q_doom` | -18.07 / -4.61 | +0.6 | -17.5 | `mix_q_doom.wav` | Silent Doom, the cast: a dark breath gathering over the spot, 0.45 s before the fall. Quiet but present; eerie, not a wail. | | |
+| `q_doom_hit` | -18.19 / -1.87 | +0.2 | -18.0 | `mix_q_doom_hit.wav` | Silent Doom, the fall: a soft drained thud as they go (with cit_fall under it). Not a cry. | | |
+| `q_blight` | -17.53 / -0.40 | +0.5 | -17.0 | `mix_q_blight.wav` | Blight, the cast: a wet gurgle and a thin hiss, rot beginning. | | |
+| `q_blight_hit` | -19.99 / -1.81 | +1.5 | -18.5 | `mix_q_blight_hit.wav` | Blight, the rot takes: a brittle crack and a sizzle. Heard when the well, the gate or the standard goes grey. | | |
+| `q_deathmark` | -17.32 / -4.89 | -0.2 | -17.5 | `mix_q_deathmark.wav` | Death Mark, the cast: a cold touch with a low ring under it, then ten quiet seconds. | | |
+| `q_deathmark_hit` | -15.85 / -1.98 | -0.7 | -16.6 | `mix_q_deathmark_hit.wav` | Death Mark, ten seconds later: one knell as the marked falls. Heard once, final. | | |
+| `q_pestilence` | -18.22 / -0.18 | +1.2 | -17.0 | `mix_q_pestilence.wav` | Pestilence: a swarm of flies and a cough. Sickness, not magic. | | |
+| `q_ember` | -16.16 / -0.28 | -0.8 | -17.0 | `mix_q_ember.wav` | Ember, the cast: a thin hiss and crackle of a spark falling for 0.7 s. | | |
+| `q_ember_hit` | -18.75 / 0.09 | +2.8 | -15.9 | `mix_q_ember_hit.wav` | Ember lands and the building catches: a soft whump of flame (replaces the dragon's ignition cue). | | |
+| `q_noleave` | -16.54 / -0.20 | +0.5 | -16.0 | `mix_q_noleave.wav` | Leaving Is Prohibited: shackles rattling, then at 0.6 s a lock and an anvil clang as the wall seals. | | |
+| `q_belllies` | -17.70 / -0.28 | +1.2 | -16.5 | `mix_q_belllies.wav` | The Bell Lies: a bell played backwards, swelling into an out-of-tune toll at 0.8 s. Should sound false. | | |
+| `q_magnify` | -14.69 / -0.17 | -1.3 | -16.0 | `mix_q_magnify.wav` | Magnify: a lens swell, then at 0.9 s a chime struck twice, the second an octave up. | | |
+| `q_abolition` | -16.52 / -0.43 | +1.0 | -15.5 | `mix_q_abolition.wav` | Abolition: a low swell for 1.8 s, then a gong, an anvil and breaking glass as the law is struck down. | | |
+| `q_thorns` | -16.79 / -3.07 | -0.2 | -17.0 | `mix_q_thorns.wav` | Thornwall, the cast: a dry rustle and a wooden creak. | | |
+| `q_thorns_hit` | -16.41 / -1.79 | -1.6 | -18.0 | `mix_q_thorns_hit.wav` | Thornwall, the brambles snap up: a whip crack. | | |
+| `q_mirror` | -16.28 / -3.37 | -0.7 | -17.0 | `mix_q_mirror.wav` | Mirrorfold Passage, laid down: glass chimes and a high ring. | | |
+| `q_mirror_hit` | -15.93 / -1.99 | -3.1 | -19.0 | `mix_q_mirror_hit.wav` | Someone steps through a mirror: a quick bright whoosh and ping. Plays at every crossing (3 voices): not tiring? | | |
+| `q_madness` | -15.82 / -3.13 | -1.2 | -17.0 | `mix_q_madness.wav` | Madness Bloom, the cast: a murmuring wail that will not settle. | | |
+| `q_madness_hit` | -15.22 / -1.98 | -0.8 | -16.0 | `mix_q_madness_hit.wav` | A frenzy breaks: a short horror scream and a snarl, once per new frenzy (3 voices at most). | | |
+| `lantern_flare` | -14.59 / -0.30 | +0.6 | -14.0 | `mix_lantern_flare.wav` | The toll's flare at the Temple: a deep struck bell under a rising swell. Should read as an event, over the music. | | |
+| `lantern_burn` | -15.76 / -0.23 | +1.3 | -14.5 | `mix_lantern_burn.wav` | The Lantern burns: a low whump, then a roar of flame. | | |
+| `lantern_blind` | -16.05 / -0.29 | +0.5 | -15.6 | `mix_lantern_blind.wav` | The Bearer falls: a snuffed hiss, then a low bell. | | |
 
-Rows for the quiet powers' own `q_<key>` cues (Tasks 13-14) and the Lantern's `lantern_flare`, `lantern_burn` and
-`lantern_blind` (Task 14) are added by those tasks with the same columns: run `python tools/audio/loudness.py`, then
-`python tools/audio/loudness.py --mix <cue>...`, and copy the numbers from `tools/audio/loudness.tsv`.
+Rows for the quiet powers' own cues, part I (Task 13), and the Lantern's three (`lantern_flare`, `lantern_burn`, `lantern_blind`) are above. Part II
+(the other twelve quiet powers) is added by Task 14 with the same columns: run `python tools/audio/loudness.py`, then
+`python tools/audio/loudness.py --mix <cue>...`, and copy the numbers from `tools/audio/loudness.tsv`. Every quiet cast plays between the
+floor (-21.0) and the loud median + 2 (-12.6); the Lantern's three sit at the median or just under it. A hit sits within 3 LU of its cast; the moments that matter (the ember catching, the knell, a frenzy breaking) are a little above it.
 
 ## In the game
 
@@ -33,5 +56,5 @@ Rows for the quiet powers' own `q_<key>` cues (Tasks 13-14) and the Lantern's `l
 2. **Last Judgement, a Nova into the market.** One wave of falling, a roar and three cries, not sixty cries.
 3. **The Tax Collector, Silent Doom on a collector.** Hear the cast, then the fall; no cry from an unseen death.
 4. **The Vigil Sandbox, each quiet power in turn.** Every cast has its own sound and none is lost under the music.
-5. **The Warning, a toll.** The Lantern's flare (once Task 14 has landed).
+5. **The Warning, a toll.** The Lantern's flare at the Temple; kill the Bearer for the blind cue, or let the clock burn for the roar.
 6. **The pause duck.** Pause a mission: the music ducks; open Options from the pause menu: the duck lifts so the Music bar is audible.

@@ -1,0 +1,6 @@
+{"length": 4.2, "rms_db": -16.0, "reverb": {"rt60": 2.4, "mix": 0.18, "predelay_ms": 18, "damp": 5000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.0, "onset": true, "dur": 4.0, "pitch": -9, "lp": 3000, "fade_out": 1600, "gain_db": 0},
+  {"src": "lib:wikimedia/25822_heigh-hoo_peace-bell-hiroshima.wav", "at": 0.05, "onset": true, "dur": 3.6, "pitch": -5, "lp": 3500, "fade_out": 1600, "gain_db": -4},
+  {"src": "lib:oga/ghost-voice-pack/ghost_and_lich_voice_pack/Ghost and Lich Voice Pack/output (14).wav", "at": 0.2, "dur": 3.6, "pitch": -2, "hp": 200, "lp": 4500, "fade_in": 1700, "fade_out": 500, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Loud/Rode_Man3Open_04.wav", "at": 0.4, "dur": 3.4, "hp": 150, "lp": 3500, "fade_in": 1900, "fade_out": 700, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Long_v1.wav", "at": 0.0, "dur": 3.0, "hp": 500, "lp": 7000, "fade_in": 300, "fade_out": 60, "gain_db": -9}]}

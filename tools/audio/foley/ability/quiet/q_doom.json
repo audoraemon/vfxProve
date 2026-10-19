@@ -1,0 +1,4 @@
+{"length": 1.2, "rms_db": -19.0, "reverb": {"rt60": 1.4, "mix": 0.16, "predelay_ms": 10, "damp": 3500}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan05.wav", "at": 0.0, "from": 0.1, "dur": 1.0, "pitch": -1, "hp": 180, "lp": 3000, "fade_in": 160, "fade_out": 380, "gain_db": -1},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Darkness1.ogg", "at": 0.12, "pitch": -2, "lp": 3200, "fade_in": 40, "fade_out": 300, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Short_v1.wav", "at": 0.0, "lp": 3500, "hp": 300, "dur": 0.5, "fade_in": 150, "fade_out": 80, "gain_db": -8}]}

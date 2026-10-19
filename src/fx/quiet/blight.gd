@@ -46,7 +46,7 @@ func _build() -> void:
 	var s: Structure = null if mine != Vector2.INF else target(ctx.env, origin)
 	var where := mine if mine != Vector2.INF else (s.center() if s != null else origin)
 	var screen := Iso.ground_to_screen(where)
-	ctx.play(&"grav_field", where, -12.0)
+	ctx.play(&"q_blight", where)
 	var gather := FxParts.particles(self, ctx.overhead, screen, PixelParticles.Shape.PUFF, ROT)
 	gather.drag = 1.0
 	gather.gravity = -10.0
@@ -58,6 +58,8 @@ func _build() -> void:
 		spores.drag = 0.8
 		spores.burst(16, {"radius": 18.0, "speed": Vector2(2, 8), "alt": Vector2(0, 20), "alt_speed": Vector2(4, 14),
 			"life": Vector2(0.6, 0.8), "size": Vector2(1, 2)})
+		if mine != Vector2.INF or (s != null and is_instance_valid(s) and not s.destroyed):
+			ctx.play(&"q_blight_hit", where)
 		if mine != Vector2.INF:
 			var d: MissionDirector = ctx.rules.director if ctx.rules != null else null
 			if d != null:

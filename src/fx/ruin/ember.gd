@@ -37,6 +37,7 @@ func _build() -> void:
 	busy = T_LAND
 	fuel = target(ctx.env, origin)
 	at(T_LAND, _land)
+	ctx.play(&"q_ember", origin)
 	if DominionParts.staged(self):
 		var spark := Spark.new()
 		spark.fx = self
@@ -59,7 +60,7 @@ func _land() -> void:
 			# No town to keep the fire: the blow itself is fire's.
 			fuel.damage(1.0, where, &"fire")
 			lit = true
-	ctx.play(&"dr_ignite", where, -8.0)
+	ctx.play(&"q_ember_hit", where)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(where) + Vector2(0, -(fuel.height * 0.5 if lit else 0.0))

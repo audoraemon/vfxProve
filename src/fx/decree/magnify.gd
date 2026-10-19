@@ -25,7 +25,7 @@ func _build() -> void:
 	duration = T_SWELL + 2.2
 	busy = T_SWELL + 0.3
 	at(T_SWELL, _swell)
-	ctx.play(&"grav_suction", origin, -8.0)
+	ctx.play(&"q_magnify", origin)
 	if DominionParts.staged(self):
 		DecreeParts.proclaim(self, origin, 80.0, 90.0, T_SWELL, 1.4)
 		DecreeParts.seal(self, origin, DecreeParts.LENS, T_SWELL + 1.8, 90.0)
@@ -62,7 +62,6 @@ func _swell() -> void:
 			cracked += 1
 			if staged:
 				DecreeParts.scatter(self, s.center(), 8, s.height * 0.4)
-	ctx.play(&"jg_rise", origin, -6.0)
 	if not staged:
 		return
 	# It lets go: the screen swells over the place, and two rings go out where one would do.

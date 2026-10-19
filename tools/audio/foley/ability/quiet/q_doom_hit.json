@@ -1,0 +1,4 @@
+{"length": 0.7, "peak_db": -2.0, "reverb": {"rt60": 0.6, "mix": 0.1, "predelay_ms": 8}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Vampire.ogg", "at": 0.0, "dur": 0.55, "pitch": -3, "lp": 3600, "hp": 200, "fade_out": 260, "gain_db": 0},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/suck.ogg", "at": 0.02, "pitch": -7, "lp": 1800, "gain_db": -4},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Thud.ogg", "at": 0.08, "pitch": -5, "lp": 700, "gain_db": -7}]}

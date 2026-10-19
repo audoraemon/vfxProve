@@ -8,8 +8,9 @@ extends Node
 
 const THEME := &"music_theme"
 const BATTLE := [&"music_battle_base", &"music_battle_drums", &"music_battle_lead"]
-## The music's level under everything else.
-const DB := -10.0
+## The music's level under everything else (v0.11.2: -10 -> -16, the playtest's "too loud"; its own bus, so the Options slider moves it).
+const DB := -16.0
+const BUS := &"Music"
 ## Seconds for a track or a layer to fade fully in or out.
 const FADE := 1.2
 ## How far the music drops while the pause menu is up.
@@ -48,6 +49,10 @@ static func set_ducked(on: bool) -> void:
 	var m := _instance()
 	if m != null:
 		m._ducked = on
+
+
+static func is_ducked() -> bool:
+	return is_instance_valid(_node) and _node._ducked
 
 
 static func current() -> StringName:
@@ -91,6 +96,7 @@ func _player(cue: StringName) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
 	p.stream = Sfx.load_stream(cue)
 	p.volume_db = -80.0
+	p.bus = BUS
 	add_child(p)
 	return p
 

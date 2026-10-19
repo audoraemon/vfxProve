@@ -55,6 +55,10 @@ const FADE_OUT := 0.25
 const FADE_IN := 0.35
 ## Where --flow-test keeps its save, so a scripted run never touches the player's best score.
 const FLOW_TEST_SAVE := "user://test_flow.cfg"
+## Where --flow-test keeps its volumes (v0.11.2): the player's own settings file is neither read nor written by a scripted run.
+const FLOW_TEST_SETTINGS := "user://test_flow_settings.cfg"
+## Where a --show photograph keeps its volumes: a photo run never rewrites the player's user://kak_settings.cfg.
+const SHOW_SETTINGS := "user://test_show_settings.cfg"
 ## Where --show=<screen> writes its save (v0.10 M5 final review). A sample builds a state of its own -- --show=ending a
 ## campaign that has ended, --show=campaign-choice one on Night 2 -- and the first key pressed on it (Enter on the ending,
 ## MANIFEST after a card) writes the save, which would have replaced the player's real campaign with the sample. Under
@@ -139,6 +143,9 @@ var screen := Screen.TITLE
 var save: SaveFile
 ## Where the save file lives: the real one, FLOW_TEST_SAVE under --flow-test, or SHOW_SAVE under --show.
 var save_path := SaveFile.PATH
+## The volumes (v0.11.2): loaded and put on the buses at boot, edited by the Options panel (pause and title), saved apart from the progress.
+var settings := Settings.new()
+var settings_path := Settings.PATH
 ## The four powers the player drafted, kept so Replay can run them again.
 var loadout := PackedStringArray()
 ## The mission to play (v0.08): Last Judgement until the board picks one.
@@ -208,6 +215,13 @@ func _ready() -> void:
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+		settings_path = FLOW_TEST_SETTINGS
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	elif Battlefield.arg_value(args, "--show") != "":
+		settings_path = SHOW_SETTINGS
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	settings = Settings.new().load_from(settings_path)
+	settings.apply()
 	save = SaveFile.new().load_from(save_path)
 	mission_id = save.last_mission
 	loadout = starting_loadout(save, mission_id)
@@ -258,6 +272,13 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
+		"options":  # v0.11.2: the title with the Options panel open
+			go_to(Screen.TITLE)
+			(_screen_node as TitleScreen)._open_options()
+		"pause-options":
+			go_to(Screen.MISSION)
+			_open_pause()
+			_pause._open_options()
 		"campaign":
 			if save.campaign == null:
 				save.campaign = CampaignState.new()
@@ -458,7 +479,7 @@ func go_to(to: int) -> void:
 			var title := TitleScreen.new()
 			title.name = "Title"
 			add_child(title)
-			title.setup(save.best_score, save.best_rank)
+			title.setup(save.best_score, save.best_rank, settings, settings_path)
 			title.action.connect(_on_title_action)
 			_screen_node = title
 		Screen.BOARD:
@@ -795,7 +816,7 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
-	_pause.setup(_in_campaign)
+	_pause.setup(_in_campaign, settings, settings_path)
 	UiSound.play(&"ui_pause")
 	Music.set_ducked(true)
 	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
@@ -887,6 +908,8 @@ func _flow_test() -> void:
 	var four := PackedStringArray(["heaven", "tsunami", "cinder", "nova"])
 
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "the game opens on the title")
+	step.call((_screen_node as TitleScreen)._menu.items.size() == 5 and String((_screen_node as TitleScreen)._menu.items[2].action) == "options",
+		"the title's third row is Options")
 	step.call(Music.current() == &"theme", "the title plays the theme")
 	# The title's first frames compile its shaders, which can take seconds; let them pass before anything is timed.
 	await get_tree().process_frame
@@ -944,6 +967,17 @@ func _flow_test() -> void:
 	await get_tree().create_timer(1.0).timeout
 	step.call(is_instance_valid(_pause) and _mission.rules().time_left == paused_at,
 		"pause stops the clock (%.2f -> %.2f)" % [paused_at, _mission.rules().time_left])
+	# v0.11.2: Options is the pause menu's second row; its panel opens over the menu, lifts the duck, and Esc closes the panel only.
+	step.call(_pause._menu.items.size() == 5 and String(_pause._menu.items[1].action) == "options", "the pause menu's second row is Options")
+	_pause._open_options()
+	step.call(_pause.options_open() and (not Music.is_ducked() or DisplayServer.get_name() == "headless"),
+		"Options opens over the pause menu and lifts the music's duck")
+	Input.parse_input_event(_flow_key(KEY_ESCAPE))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	step.call(is_instance_valid(_pause) and not _pause.options_open() and _mission.rules().time_left == paused_at,
+		"Esc closes the panel and does not resume")
+	step.call(Music.is_ducked() or DisplayServer.get_name() == "headless", "and the pause duck is back")
 	on_action("pause:resume")
 	step.call(_mission == first and not is_instance_valid(_pause), "Resume gives back the same mission")
 	await get_tree().create_timer(0.5).timeout

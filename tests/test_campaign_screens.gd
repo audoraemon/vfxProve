@@ -143,6 +143,6 @@ static func run(t) -> void:
 		"The Warning still says what solved it")
 	var pause := PauseMenu.new()
 	pause.setup(true)
-	t.check(String(pause._menu.items[3].action) == "campaign" and String(pause._menu.items[3].label) == "Campaign",
+	t.check(String(pause._menu.items[4].action) == "campaign" and String(pause._menu.items[4].label) == "Campaign",
 		"in a campaign, Pause's last button is Campaign")
 	pause.free()

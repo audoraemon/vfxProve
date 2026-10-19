@@ -253,7 +253,7 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## The hint's phase (v0.11 M3): "bell" while the town's keeper is called; else the most pressing warning's -- "climbing", then
+## The hint's phase (v0.11 M3): "bell" while the town's keeper is called; else the most pressing warning's -- (v0.11.2) "herald", then "climbing", then
 ## "relay", then "mates" (or "" for one running alone); with none out, "waiting" once one is stopped and a post still waits.
 func hint_phase() -> String:
 	if called():
@@ -262,7 +262,7 @@ func hint_phase() -> String:
 	var best := ""
 	for r in going:
 		var p := r.hint_phase()
-		if p == "climbing" or (p == "relay" and best != "climbing") or (p == "mates" and best == ""):
+		if p == "herald" or (p == "climbing" and best != "herald") or (p == "relay" and best != "climbing" and best != "herald") 				or (p == "mates" and best == ""):
 			best = p
 	if not going.is_empty():
 		return best
@@ -284,6 +284,39 @@ func tour() -> Array:
 	if crowd.bell != null:
 		out.append([crowd.bell.foot, "The bell tower. A ringer who reaches it climbs and rings it himself."])
 	return out
+
+
+## The toll fell (v0.11.2, spec 4.6): every ringer's warning hears of it (a Herald's errand is the Temple); one still inside his tower runs
+## for the Temple when he is sent.
+func on_toll() -> void:
+	for r in ringers:
+		if r.rules != null:
+			r.on_toll()
+
+
+## `p` is the Herald of one of the posts' warnings (v0.11.2).
+func claims_herald(p: Person) -> bool:
+	for r in ringers:
+		if r.rules != null and r.claims_herald(p):
+			return true
+	return false
+
+
+## One ringer's warning runs for the Temple as a Herald (v0.11.2).
+func herald_open() -> bool:
+	for r in ringers:
+		if r.rules != null and r.herald_open():
+			return true
+	return false
+
+
+## The soonest of the Heralds' arrivals, in mission seconds (v0.11.2).
+func herald_eta() -> float:
+	var best := INF
+	for r in ringers:
+		if r.rules != null:
+			best = minf(best, r.herald_eta())
+	return best
 
 
 ## The results' report (v0.11 M3): the warnings stopped, and the relays they made.

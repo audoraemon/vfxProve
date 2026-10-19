@@ -143,6 +143,39 @@ func tour() -> Array:
 	return out
 
 
+## The toll fell (v0.11.2, spec 4.6): every warning that is up hears of it (a Herald's errand is the Temple); a star yet to fall finds the
+## Lantern already tolled when its watchman runs.
+func on_toll() -> void:
+	for w in stars:
+		if w.rules != null:
+			w.on_toll()
+
+
+## `p` is the Herald of one of the warnings that are up (v0.11.2).
+func claims_herald(p: Person) -> bool:
+	for w in stars:
+		if w.rules != null and w.claims_herald(p):
+			return true
+	return false
+
+
+## One of the warnings runs for the Temple as a Herald (v0.11.2).
+func herald_open() -> bool:
+	for w in stars:
+		if w.rules != null and w.herald_open():
+			return true
+	return false
+
+
+## The soonest of the Heralds' arrivals, in mission seconds (v0.11.2).
+func herald_eta() -> float:
+	var best := INF
+	for w in stars:
+		if w.rules != null:
+			best = minf(best, w.herald_eta())
+	return best
+
+
 ## The results' report (v0.11 M1): the warnings stopped, and the relays all three made.
 func report() -> Dictionary:
 	var relays := 0

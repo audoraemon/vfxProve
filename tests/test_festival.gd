@@ -568,7 +568,7 @@ static func _warned(t) -> void:
 		for dir in [Vector2(1.0, 0.0), Vector2(0.0, 1.0), Vector2(1.0, 1.0).normalized()]:
 			(s.crowd as Crowd).on_cast(Targeting.lane_start("heaven", TownLayout.FOUNTAIN.get_center(), dir), dir,
 				float(Targeting.AREAS.heaven.length), "heaven")
-			_run(s, 0.5)
+			_run(s, PowerBook.IMPACT.heaven + 0.1)  # v0.11.2: the danger lands at the impact
 			after.append(d.count())
 		counts[warned] = after
 		if warned:
@@ -634,8 +634,8 @@ static func _left_town(t) -> void:
 	t.check(not is_instance_valid(boated) and not is_instance_valid(gated) and d.count() == 2,
 		"a goer the god broke still counts once it gets away (%d)" % d.count())
 	d.teardown()
-	t.check(not crowd.escaped.is_connected(d._on_escaped) and not (s.rules as Rules).cast_made.is_connected(d._on_cast),
-		"teardown lets go of the crowd's escapes and the casts")
+	t.check(not crowd.escaped.is_connected(d._on_escaped) and not crowd.danger_landed.is_connected(d._on_danger),
+		"teardown lets go of the crowd's escapes and the dangers")
 	_done(s)
 
 
@@ -674,6 +674,10 @@ static func _fleeing_under_cast(t) -> void:
 	t.check(d.broke_list().is_empty(), "a quiet power (Silent Doom) on a fleeing goer breaks nobody (%d)" % d.broke_list().size())
 	rules._playing = null  # the one power at a time: let the next go out
 	t.check(rules.cast(0, at, {"dir": dir}) != null, "(set-up) a Heaven Splitter goes out")
+	# No Targeting in this world: the crowd takes the cast as Targeting hands it on, and the danger lands at the impact (v0.11.2).
+	(s.crowd as Crowd).on_cast(Targeting.lane_start("heaven", at, dir), dir, float(Targeting.AREAS.heaven.length), "heaven")
+	t.check(d.broke_list().is_empty(), "v0.11.2: and nobody is broken at the cast")
+	_run(s, PowerBook.IMPACT.heaven + 0.1)
 	t.check(d.broke_list().has(near) and near.mind == Person.Mind.FLEE,
 		"a fleeing goer within its lane's danger is broken by it (%s)" % Person.Mind.keys()[near.mind])
 	t.check(not d.broke_list().has(far) and d.count() == 1,

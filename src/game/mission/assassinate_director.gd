@@ -170,6 +170,7 @@ func _begin() -> void:
 	_send_guards()
 	crowd._field.enemy_killed.connect(_on_killed)
 	rules.cast_made.connect(_on_cast)
+	crowd.danger_landed.connect(_on_danger)
 	rules.banner.emit(_opening_banner())
 
 
@@ -480,8 +481,8 @@ func _alarm(q: Quarry) -> void:
 	q.target.go_duty(_hide_goal(q))
 
 
-## A power cast (Rules.cast_made, v0.11 M2): by the hideout's door while no target is out, it smokes the next one out; a loud
-## one near a target in the street alarms him. Quiet powers never alarm.
+## A power cast (Rules.cast_made, v0.11 M2): by the hideout's door while no target is out, it smokes the next one out -- a noise
+## at a door, so at the cast. A loud one near a target in the street alarms him at its impact (_on_danger(), v0.11.2).
 func _on_cast(slot: int, key: String, at: Vector2) -> void:
 	if not _anyone_out():
 		var next := _next_waiting()
@@ -491,12 +492,18 @@ func _on_cast(slot: int, key: String, at: Vector2) -> void:
 		if smoke_out and next != null and not fire_on_hideout and at.distance_to(hide_door) <= alarm_reach:
 			rules.banner.emit(_set_out_label(next).to_upper())
 			_set_out(next)
-		return
-	if bool(rules.power(slot).get("quiet", false)):
-		return
+
+
+## A loud power's danger has landed (Crowd.danger_landed, v0.11.2 spec §3.4): a walking target within `alarm_reach` of one of its
+## points is alarmed. Quiet powers register no danger, so never alarm.
+func _on_danger(_key: String, points: Array[Vector2]) -> void:
 	for q in quarries:
-		if q.state == State.WALKING and _alive(q.target) and at.distance_to(q.target.ground_pos) <= alarm_reach:
-			_alarm(q)
+		if q.state != State.WALKING or not _alive(q.target):
+			continue
+		for point in points:
+			if point.distance_to(q.target.ground_pos) <= alarm_reach:
+				_alarm(q)
+				break
 
 
 ## A death in the field (v0.11 M2): a target falls (judged once the cast's other victims have fallen too); a guard falls, and
@@ -798,6 +805,8 @@ func report() -> Dictionary:
 ## Lets go of the field's deaths, the casts and the timeline (v0.11 M2).
 func teardown() -> void:
 	_unhook_kills(_on_killed)
+	if is_instance_valid(crowd) and crowd.danger_landed.is_connected(_on_danger):
+		crowd.danger_landed.disconnect(_on_danger)
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
 	timeline = null  # its banner and guard lambdas hold this director: let both go

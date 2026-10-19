@@ -157,8 +157,20 @@ const REACH := {
 	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "smite": [5.0, 9.0, 0.4, 2.0], "schism": [14.0, 18.0, 0.8, 8.0],
 	"nova": [40.0, 40.0, 1.0, 4.0],
 }
+## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
+## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
+## build-up until then. Quiet powers (Ember too) register no danger and have none.
+const IMPACT := {
+	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
+	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3,
+}
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
+
+
+## Seconds from a loud power's cast to its first impact (IMPACT), 0.0 for any other key.
+static func impact(key: String) -> float:
+	return float(IMPACT.get(key, 0.0))
 
 
 static func get_power(key: String) -> Dictionary:

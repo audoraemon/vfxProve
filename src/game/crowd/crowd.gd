@@ -10,6 +10,9 @@ signal alarm_changed(value: float)
 ## The bell tolled a lie (The Bell Lies): at the tower.
 signal bell_lied(at: Vector2)
 signal rallied
+## A loud power's danger has just landed (v0.11.2, spec §3.2): at its first impact, not at its cast. `points` are the danger's
+## points (cast_points()). Directors that judge a cast as danger read this, not Rules.cast_made.
+signal danger_landed(key: String, points: Array[Vector2])
 
 ## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
 const LIE_CALM := 8.0
@@ -189,6 +192,8 @@ var _gate_next := {}
 ## Gate -> its queue spots, nearest the doorway first. Built when the town is first asked about, per gate.
 var _spots := {}
 var _clock := 0.0
+## Loud casts whose danger has not landed yet (v0.11.2): {at: crowd-clock seconds it lands, points, radius, reach, key}.
+var _held_dangers: Array[Dictionary] = []
 var _rallied := false
 var _fled_all := false
 var _citadel_hit := false
@@ -569,6 +574,7 @@ func advance(delta: float) -> void:
 		return
 	_clock += delta
 	threats.step(delta)
+	_land_held()
 	_spread_fright()
 	_watch_in -= delta
 	if _watch_in <= 0.0:
@@ -847,7 +853,8 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 		_voice(frightened[i], &"cit_yelp")
 
 
-## A cast of power `key` landed (v0.04): it registers a threat (PowerBook.REACH), and the people it reaches react
+## A cast of power `key` was made (v0.04; v0.11.2: a loud power's danger is held until its impact, PowerBook.IMPACT, and the
+## calm who see the build-up look at it; below, what the impact does): it registers a threat (PowerBook.REACH), and the people it reaches react
 ## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
@@ -862,10 +869,66 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key)
 	var points := cast_points(ground, dir, length, radius)
+	var impact := PowerBook.impact(key)
+	if impact <= 0.0:
+		_land(key, points, radius, reach, ground)  # a key with no impact (a scripted test's "", the sandbox) lands at once
+		return
+	# (v0.11.2, spec §3.2) A loud power's danger counts from its first impact: the cast only holds it, and the calm people
+	# who can see the build-up stop and look at it.
+	_held_dangers.append({"at": _clock + impact, "points": points, "radius": radius, "reach": reach, "key": key,
+		"ground": ground})
+	_look(points, float(reach[0]))
+
+
+## Danger held for the impact (on_cast()): how many casts are still building up.
+func held_count() -> int:
+	return _held_dangers.size()
+
+
+## Lets go of every held danger (v0.11.2): an act that ends before the impact never frightens anyone. Called by clear() and by
+## Mission.next_act() (the crowd outlives an act).
+func drop_held() -> void:
+	_held_dangers.clear()
+
+
+## The held dangers whose moment has come land (advance()).
+func _land_held() -> void:
+	if _held_dangers.is_empty():
+		return
+	var due: Array[Dictionary] = []
+	var later: Array[Dictionary] = []
+	for h in _held_dangers:
+		(due if float(h.at) <= _clock else later).append(h)
+	_held_dangers = later
+	for h in due:
+		_land(String(h.key), h.points, float(h.radius), h.reach, h.ground)
+
+
+## A loud danger lands: it is registered and everyone it reaches reacts, as on_cast() always did (v0.04), then
+## `danger_landed` tells the directors.
+func _land(key: String, points: Array[Vector2], radius: float, reach: Array, ground: Vector2) -> void:
 	for point in points:
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
 	_react(points, radius, float(reach[1]), ground, StringName(key))
+	danger_landed.emit(key, points)
+
+
+## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
+## their posts; those the impact will reach are judged when it lands.
+func _look(points: Array[Vector2], sight: float) -> void:
+	for p in citizens:
+		if not is_instance_valid(p) or not p.is_alive() or p.inside:
+			continue
+		var best := INF
+		var at := Vector2.INF
+		for point in points:
+			var d := p.ground_pos.distance_to(point)
+			if d < best:
+				best = d
+				at = point
+		if best <= sight:
+			p.observe(at)
 
 
 ## Where a cast of danger `radius` at `ground` is a threat (on_cast()): there, or for a lane power (`dir` set, `length`
@@ -1447,6 +1510,7 @@ func clear() -> void:
 	soldiers.clear()
 	threats.clear()
 	_spreads.clear()
+	_held_dangers.clear()
 	alarms.reset()
 	fires.clear()
 	if shelters != null:

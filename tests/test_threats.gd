@@ -41,6 +41,9 @@ static func run(t) -> void:
 	mid.ground_pos = at + Vector2(0.0, radius + Person.THREAT_MARGIN + 2.0)
 	far.ground_pos = at + Vector2(0.0, -(float(reach[1]) + radius + 4.0))
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "heaven")
+	t.check(near.mind == Person.Mind.OBSERVE and crowd.threats.active_count() == 0, "v0.11.2: at the cast he only looks")
+	for i in int(ceilf(PowerBook.IMPACT.heaven / 0.1)) + 1:
+		crowd.advance(0.1)  # v0.11.2: at the impact
 	t.check(near.mind == Person.Mind.PANIC and near.intent() == Person.Intent.LOCAL_FLEE, "inside the danger: run clear of it")
 	t.check(mid.mind == Person.Mind.OBSERVE and mid.awareness == Person.Awareness.CONCERNED, "within earshot: stop and look")
 	t.check(far.mind == Person.Mind.CALM and far.awareness == Person.Awareness.UNAWARE, "beyond: carry on")

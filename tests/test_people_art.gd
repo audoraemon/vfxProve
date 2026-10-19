@@ -42,6 +42,10 @@ static func _poses(t) -> void:
 			faced += 1 if p._sprite_pose()[1] == want or absf(d.x - d.y) < 1e-6 or absf(d.x + d.y) < 1e-6 else 0
 	t.check(walked > 60 and walked == faced, "walking, it shows walk facing the way it steps (%d / %d)" % [faced, walked])
 	p.panic(p.ground_pos + Vector2(0.0, -1.0))
+	for i in 120:
+		if not p.startled():
+			break
+		p.tick(1.0 / 60.0)  # v0.11.2: frozen in fright first
 	var ran := 0
 	var fled := 0
 	for i in 60:

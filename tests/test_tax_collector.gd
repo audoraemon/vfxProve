@@ -334,9 +334,14 @@ static func _alarm(t) -> void:
 	_run(s, DT)
 	d._on_cast(1, "doom", q.target.ground_pos + Vector2(1.5, 0.0))
 	t.check(q.state == AssassinateDirector.State.WALKING and q.alarms == 0, "a quiet power near him does not alarm him")
-	d._on_cast(0, "smite", q.target.ground_pos + Vector2(TaxCollectorDirector.ALARM_REACH + 1.0, 0.0))
+	var crowd: Crowd = s.crowd
+	crowd.on_cast(q.target.ground_pos + Vector2(TaxCollectorDirector.ALARM_REACH + 2.0, 0.0), Vector2.ZERO, 0.0, "smite")
+	_run(s, PowerBook.IMPACT.smite + 0.1)
 	t.check(q.alarms == 0, "nor a loud one beyond its reach")
-	d._on_cast(0, "smite", q.target.ground_pos + Vector2(1.5, 0.0))
+	crowd.on_cast(q.target.ground_pos + Vector2(1.5, 0.0), Vector2.ZERO, 0.0, "smite")
+	_run(s, DT)
+	t.check(q.alarms == 0, "v0.11.2: a loud one near him does not alarm him at the cast")
+	_run(s, PowerBook.IMPACT.smite + 0.1)
 	t.check(q.state == AssassinateDirector.State.FLEEING and q.alarms == 1 and (s.banners as Array).has("THE TAX COLLECTOR HIDES")
 		and q.target.goal().distance_to(d.hide_door) < 0.5 and d.hint_phase() == "hiding"
 		and (s.rules as Rules).objectives[0].hud_text(s.rules) == "Kill the collectors: 0 / 3, he hides",
@@ -657,7 +662,8 @@ static func _running(t) -> void:
 	var da: TaxCollectorDirector = a.d
 	var qa := da.quarries[0]
 	da._set_out(qa)
-	da._on_cast(0, "smite", qa.target.ground_pos + Vector2(1.5, 0.0))
+	(a.crowd as Crowd).on_cast(qa.target.ground_pos + Vector2(1.5, 0.0), Vector2.ZERO, 0.0, "smite")
+	_run(a, PowerBook.IMPACT.smite + 0.1)  # v0.11.2: at the impact
 	t.check(qa.state == AssassinateDirector.State.FLEEING and not da.fleeing_to_safe(qa) and da.hint_phase() == "hiding"
 		and (a.rules as Rules).objectives[0].hud_text(a.rules) == "Kill the collectors: 0 / 3, he hides"
 		and _labels(da).has("COUNTING-HOUSE") and not _labels(da).has("CITADEL"),

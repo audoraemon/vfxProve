@@ -1,16 +1,16 @@
-# KAK exact references: Tier 5 second routes (v0.11.1 Task 12). name<TAB>how<TAB>expected. B rows: --route=b plays the mission's loadout B (tools/dev/routes/tier5_b.gd); the stars (Last Judgement, The Long Night) on their board version (--board).
+# KAK exact references: Tier 5 second routes (v0.11.1 Task 12). name<TAB>how<TAB>expected. B rows: --route=b plays the mission's loadout B (tools/dev/routes/tier5_b.gd); the stars (Last Judgement, The Long Night) on their board version (--board). Re-recorded for v0.11.2 awareness (Task 5).
 eye_b_play_1	--scenario=eye --case=play --route=b --seed=1	-606893416
 eye_b_play_2	--scenario=eye --case=play --route=b --seed=2	-530024246
 eye_b_play_3	--scenario=eye --case=play --route=b --seed=3	-748632671
 exodus_b_play_1	--scenario=exodus --case=play --route=b --seed=1	-385746938
 exodus_b_play_2	--scenario=exodus --case=play --route=b --seed=2	-814779822
 exodus_b_play_3	--scenario=exodus --case=play --route=b --seed=3	-454784170
-heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	-323565977
-heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-626354436
-heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	-949498289
-judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	-477666598
-judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	965521828
-judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	395717757
-night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	937274612
-night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	673965306
-night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	175117815
+heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	-26823662
+heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-585177458
+heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	30847832
+judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	-286514026
+judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	-631641573
+judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	-778437149
+night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	215739558
+night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	312646943
+night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	551376667

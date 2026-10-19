@@ -1,17 +1,17 @@
-# KAK second-route references, Tier 3 (v0.11.1 Task 10): loadout B, scripted play, seeds 1-3. name<TAB>how<TAB>expected
+# KAK second-route references, Tier 3 (v0.11.1 Task 10): loadout B, scripted play, seeds 1-3. name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5).
 # flame and festival are board versions (--board). The B policies live in tools/dev/routes/tier3_b.gd.
 flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1	-825405682
 flame_b_play_2	--scenario=flame --case=play --route=b --board --seed=2	-599584529
 flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3	-823378039
-festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-913099876
-festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b --seed=2	-529255464
-festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	47704188
-bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-648095024
-bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-129303039
-bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	56427689
-prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-172312401
-prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-909318732
-prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	-868010547
-hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-333276766
-hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-219759947
-hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	754638805
+festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-900480397
+festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b --seed=2	-708384528
+festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	121803805
+bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-364892104
+bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-101053638
+bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-279481016
+prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-393571833
+prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-460936240
+prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	521722354
+hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-404693535
+hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-373810347
+hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	958262832

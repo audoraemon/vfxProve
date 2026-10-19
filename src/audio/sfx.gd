@@ -104,10 +104,10 @@ const CATALOG := {
 	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -7.0, "loop": true},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
 	# A death on every kill (v0.11.2, DeathVoices): a citizen's cry and fall, a soldier's grunt and mail, a quiet body's slump,
-	# and the roar of a crowd falling at once. Levels are first guesses; tools/audio/loudness.py measures them (spec 6.3 row 4).
-	&"cit_death": {"path": "res://assets/audio/citizen/cit_death_%d.wav", "variants": 5, "db": -4.0, "voices": 4, "jitter": 0.1},
-	&"cit_fall": {"path": "res://assets/audio/citizen/cit_fall_%d.wav", "variants": 4, "db": -9.0, "voices": 3, "jitter": 0.1},
-	&"sol_death": {"path": "res://assets/audio/citizen/sol_death_%d.wav", "variants": 3, "db": -4.0, "voices": 4, "jitter": 0.1},
+	# and the roar of a crowd falling at once. Levels measured by tools/audio/loudness.py (spec 6.3 row 4): cit_death and sol_death at the loud median - 4, cit_fall at - 9, the wave under the median.
+	&"cit_death": {"path": "res://assets/audio/citizen/cit_death_%d.wav", "variants": 5, "db": -4.4, "voices": 4, "jitter": 0.1},
+	&"cit_fall": {"path": "res://assets/audio/citizen/cit_fall_%d.wav", "variants": 4, "db": 1.8, "voices": 3, "jitter": 0.1},
+	&"sol_death": {"path": "res://assets/audio/citizen/sol_death_%d.wav", "variants": 3, "db": -4.2, "voices": 4, "jitter": 0.1},
 	&"crowd_death_wave": {"path": "res://assets/audio/citizen/crowd_death_wave_%d.wav", "variants": 2, "db": -2.0, "voices": 2, "jitter": 0.08},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.

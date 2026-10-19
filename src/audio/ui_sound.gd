@@ -10,6 +10,8 @@ extends Node
 const CUES := [&"ui_hover", &"ui_click", &"ui_focus", &"ui_buzz", &"ui_pause", &"ui_manifest", &"ui_win", &"ui_lose",
 	&"ui_back", &"ui_mode", &"ui_resume", &"ui_ready", &"ui_notice", &"ui_surge"]
 const POOL := 6
+## The bus the interface's sounds play on (v0.11.2): its own slider in Options.
+const BUS := &"UI"
 ## How many of the cues last asked for `asked` keeps.
 const ASKED_SIZE := 32
 
@@ -25,8 +27,9 @@ var _next := 0
 var _pending: Array = []
 
 
-## Play an interface cue. Safe from anywhere, including before the pool exists.
-static func play(cue: StringName, db_offset := 0.0) -> void:
+## Play an interface cue. Safe from anywhere, including before the pool exists. `bus` is the UI bus unless the Options panel
+## previews the Sounds bar, which must be heard through the SFX bus it is moving.
+static func play(cue: StringName, db_offset := 0.0, bus := BUS) -> void:
 	asked.append(cue)
 	if asked.size() > ASKED_SIZE:
 		asked.pop_front()
@@ -44,9 +47,9 @@ static func play(cue: StringName, db_offset := 0.0) -> void:
 		# Deferred: a sound can be asked for while the root is still adding the main scene's children.
 		tree.root.add_child.call_deferred(_node)
 	if _node.is_inside_tree():
-		_node._play(cue, db_offset)
+		_node._play(cue, db_offset, bus)
 	else:
-		_node._pending.append([cue, db_offset])
+		_node._pending.append([cue, db_offset, bus])
 
 
 ## Stop whatever is playing, so a sting still ringing (the win/lose stings run past 2 seconds) does not hold
@@ -60,18 +63,19 @@ static func stop_all() -> void:
 func _ready() -> void:
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
-		p.bus = Sfx.BUS
+		p.bus = BUS
 		add_child(p)
 		_players.append(p)
 	for s: Array in _pending:
-		_play(s[0], s[1])
+		_play(s[0], s[1], s[2])
 	_pending.clear()
 
 
-func _play(cue: StringName, db_offset: float) -> void:
+func _play(cue: StringName, db_offset: float, bus: StringName) -> void:
 	var entry: Dictionary = Sfx.CATALOG[cue]
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
 	p.stream = Sfx.load_stream(cue)
+	p.bus = bus
 	p.volume_db = float(entry.get("db", 0.0)) + db_offset
 	p.play()

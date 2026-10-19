@@ -1,11 +1,15 @@
 class_name TitleScreen
 extends Node
 ## The title (spec §1, §5): "KINGDOMS AMID KATACLYSM" with "KAK" small, over the town of Aldermere drifting
-## slowly past, and four ways on: the Campaign (v0.10), the Missions board, the VFX Sandbox, Quit. The town is the
+## slowly past, and five ways on: the Campaign (v0.10), the Missions board, Options (v0.11.2), the VFX Sandbox, Quit. The town is the
 ## real one, built without its people -- nothing here needs a crowd, and nothing here should cost a frame.
 
-## "campaign", "play" (the Missions board; also Enter), "sandbox" or "quit".
+## "campaign", "play" (the Missions board; also Enter), "sandbox" or "quit". "options" (v0.11.2) opens the volume panel here and is
+## never emitted.
 signal action(name: String)
+
+const ROWS := ["campaign", "play", "options", "sandbox", "quit"]
+const LABELS := ["Campaign", "Missions", "Options", "VFX Sandbox", "Quit"]
 
 ## One slow loop of the camera every 1 / DRIFT_SPEED seconds, this far each way (screen pixels).
 const DRIFT_SPEED := 0.02
@@ -19,12 +23,17 @@ var _town: Town
 var _ui: Control
 var _menu: Menu
 var _hover := ""
+var _panel: OptionsPanel
+var _settings: Settings
+var _settings_path := Settings.PATH
 var _best_score := 0
 var _best_rank := ""
 var _t := 0.0
 
 
-func setup(best_score: int, best_rank: String) -> TitleScreen:
+func setup(best_score: int, best_rank: String, settings: Settings = null, path := Settings.PATH) -> TitleScreen:
+	_settings = settings if settings != null else Settings.new().load_from(path)
+	_settings_path = path
 	_best_score = best_score
 	_best_rank = best_rank
 	_bf = Battlefield.new()
@@ -44,9 +53,27 @@ func setup(best_score: int, best_rank: String) -> TitleScreen:
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	_menu = Menu.column(["campaign", "play", "sandbox", "quit"], ["Campaign", "Missions", "VFX Sandbox", "Quit"], 320.0,
-		184.0, 132.0)
+	_menu = Menu.column(ROWS, LABELS, 320.0, 176.0, 132.0, 4.0)
 	return self
+
+
+func options_open() -> bool:
+	return is_instance_valid(_panel) and _panel.is_open()
+
+
+func _open_options() -> void:
+	if options_open():
+		return
+	_panel = OptionsPanel.new().setup(_settings, _settings_path)
+	_panel.closed.connect(_on_options_closed)
+	_ui.add_child(_panel)
+
+
+func _on_options_closed() -> void:
+	if is_instance_valid(_panel):
+		_panel.queue_free()
+	_panel = null
+	_ui.queue_redraw()
 
 
 func _process(delta: float) -> void:
@@ -57,12 +84,16 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if options_open():
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:
 			action.emit("play")
 
 
 func _on_gui_input(event: InputEvent) -> void:
+	if options_open():
+		return
 	if event is InputEventMouseMotion:
 		var h := _menu.at(event.position)
 		if h != _hover:
@@ -72,7 +103,10 @@ func _on_gui_input(event: InputEvent) -> void:
 			_ui.queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var a := _menu.at(event.position)
-		if a != "":
+		if a == "options":
+			UiSound.play(&"ui_click")
+			_open_options()
+		elif a != "":
 			UiSound.play(&"ui_click")
 			action.emit(a)
 
@@ -89,5 +123,5 @@ func _draw_ui() -> void:
 	_menu.draw_on(_ui, _hover)
 	if _best_score > 0:
 		var best := "Best %d  %s" % [_best_score, _best_rank]
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_SMALL) * 0.5), 300.0), best,
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_SMALL) * 0.5), 312.0), best,
 			UiTheme.SIZE_SMALL, UiTheme.COL_DIM)

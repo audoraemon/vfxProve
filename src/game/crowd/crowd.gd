@@ -175,6 +175,8 @@ var killed_soldiers := 0
 var sfx: Node
 var voices_played := 0
 var _voice_tokens := VOICE_BUDGET
+## A death you can hear (v0.11.2): asked once for every body that falls, in _on_killed(). Pure; draws no number from any rng.
+var deaths := DeathVoices.new()
 var _bed: AudioStreamPlayer
 var _bed_level := 0.0
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -625,6 +627,7 @@ func advance(delta: float) -> void:
 	_escapes()
 	_prune_soldiers()
 	_voice_tokens = minf(VOICE_BUDGET, _voice_tokens + VOICE_BUDGET * delta)
+	deaths.step(delta)
 	_purge_in -= delta
 	if _purge_in <= 0.0:
 		_purge_in = 1.0
@@ -1563,6 +1566,7 @@ func clear() -> void:
 	_purge_in = 1.0
 	_voice_tokens = VOICE_BUDGET
 	voices_played = 0
+	deaths.reset()
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
@@ -1584,6 +1588,16 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				p.replan()
 
 
+## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the
+## fall is all that is heard (a quiet kind's cue).
+func _voice_death(p: Person, kind: StringName) -> void:
+	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() else kind, p.soldier, _clock)
+	if sfx == null:
+		return
+	for c: Array in cues:
+		sfx.play(c[0], c[1])
+
+
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	var p := e as Person
 	if p == null:
@@ -1593,6 +1607,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 		_refill(p)
 	else:
 		killed_citizens += 1
+	_voice_death(p, kind)
 	if kind == &"doom":
 		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
 		return

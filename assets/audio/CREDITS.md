@@ -4,11 +4,22 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 
 | Source | Licence | Author | Used by |
 |---|---|---|---|
+| [Kenney impact-sounds](https://kenney.nl) `footstep_carpet_001.ogg` | CC0 | Kenney | citizen/cit_fall_3 |
+| [Kenney impact-sounds](https://kenney.nl) `footstep_grass_001.ogg` | CC0 | Kenney | citizen/cit_fall_1 |
+| [Kenney impact-sounds](https://kenney.nl) `footstep_grass_002.ogg` | CC0 | Kenney | citizen/cit_fall_4 |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_000.ogg` | CC0 | Kenney | citizen/sol_death_1 |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_002.ogg` | CC0 | Kenney | citizen/sol_death_3 |
 | [Kenney impact-sounds](https://kenney.nl) `impactMining_000.ogg` | CC0 | Kenney | building/collapse_stone_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactMining_001.ogg` | CC0 | Kenney | building/collapse_stone_2 |
 | [Kenney impact-sounds](https://kenney.nl) `impactMining_002.ogg` | CC0 | Kenney | building/collapse_stone_3 |
 | [Kenney impact-sounds](https://kenney.nl) `impactPlank_medium_000.ogg` | CC0 | Kenney | building/collapse_timber_2, building/collapse_timber_3 |
 | [Kenney impact-sounds](https://kenney.nl) `impactPlank_medium_003.ogg` | CC0 | Kenney | building/collapse_timber_1 |
+| [Kenney impact-sounds](https://kenney.nl) `impactPlate_heavy_000.ogg` | CC0 | Kenney | citizen/sol_death_3 |
+| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_000.ogg` | CC0 | Kenney | citizen/cit_death_1, citizen/cit_fall_1, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1 |
+| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_001.ogg` | CC0 | Kenney | citizen/cit_death_2, citizen/cit_fall_2, citizen/crowd_death_wave_2, citizen/sol_death_2 |
+| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_002.ogg` | CC0 | Kenney | citizen/cit_death_3, citizen/crowd_death_wave_1 |
+| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_003.ogg` | CC0 | Kenney | citizen/cit_death_4, citizen/cit_fall_3, citizen/crowd_death_wave_2 |
+| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_004.ogg` | CC0 | Kenney | citizen/cit_death_5, citizen/cit_fall_4, citizen/crowd_death_wave_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactWood_heavy_000.ogg` | CC0 | Kenney | building/collapse_timber_3 |
 | [Kenney impact-sounds](https://kenney.nl) `impactWood_heavy_001.ogg` | CC0 | Kenney | building/collapse_timber_2, building/collapse_tree_2, building/collapse_tree_3 |
 | [Kenney impact-sounds](https://kenney.nl) `impactWood_heavy_003.ogg` | CC0 | Kenney | building/collapse_timber_1, building/collapse_tree_1 |
@@ -22,13 +33,18 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_08.ogg` | CC0 | rubberduck | ability/holy/jg_punch_2 |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_10.ogg` | CC0 | rubberduck | ability/holy/jg_punch_3 |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `cannon_04.ogg` | CC0 | rubberduck | ability/energy/orb_hit_4 |
+| [5 Hit Sounds + Dying](https://opengameart.org/content/5-hit-sounds-dying) `die1.ogg` | CC0 | TinyWorlds | citizen/cit_death_5 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_falling_01.ogg` | CC0 | rubberduck | citizen/crowd_death_wave_2 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_falling_04.ogg` | CC0 | rubberduck | citizen/crowd_death_wave_1 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_metal_falling_02.ogg` | CC0 | rubberduck | citizen/sol_death_2 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_misc_04.ogg` | CC0 | rubberduck | citizen/cit_fall_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_01.ogg` | CC0 | rubberduck | ability/holy/hs_fissure, ability/ice/glac_peak, building/collapse_stone_1 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_02.ogg` | CC0 | rubberduck | ability/fire/cf_impact, ability/holy/jg_punch_3, building/collapse_stone_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_03.ogg` | CC0 | rubberduck | ability/holy/jg_punch_1, building/collapse_stone_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_01.ogg` | CC0 | rubberduck | ability/holy/jg_punch_2, building/collapse_stone_3 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_02.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1, building/collapse_stone_1, building/collapse_stone_3 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_02.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1, building/collapse_stone_1, building/collapse_stone_3, citizen/crowd_death_wave_1 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_03.ogg` | CC0 | rubberduck | ability/holy/hs_erupt, building/collapse_stone_1, building/collapse_stone_2 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_04.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_04.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, citizen/crowd_death_wave_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_05.ogg` | CC0 | rubberduck | ability/energy/orb_hit_2, building/collapse_stone_2, building/collapse_stone_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_06.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_07.ogg` | CC0 | rubberduck | ability/energy/orb_hit_3 |
@@ -67,12 +83,15 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Explosions](https://opengameart.org/content/explosions-4) `explosion3.ogg` | CC0 | EZduzziteh | ability/arcane/grav_implode |
 | [Fantasy Magic Spell](https://opengameart.org/content/fantasy-magic-spell) `fantasy_magic_button_1.mp3` | CC0 | Almitory | ability/arcane/grav_shimmer |
 | [Female Exasperated Yell](https://opengameart.org/content/female-exasperated-yell) `female_exasperated_yell.ogg` | CC0 | Nocturnal_Vanguard | citizen/crowd_panic |
+| [Female Hurt Grunts & Groans](https://opengameart.org/content/female-hurt-grunts-groans) `female_hurt_grunts_groans_1.ogg` | CC0 | Nocturnal_Vanguard | citizen/cit_death_1, citizen/cit_death_4, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2 |
 | [Female Scream 1](https://opengameart.org/content/female-scream-1) `female_scream_1.ogg` | CC0 | Nocturnal_Vanguard | citizen/cit_yelp_1, citizen/crowd_panic |
 | [Fire Crackling](https://opengameart.org/content/fire-crackling) `fire-1_0.ogg` | CC0 | AntumDeluge | ability/energy/orb_embers, ability/fire/dr_breath |
 | [Fireplace Sound loop](https://opengameart.org/content/fireplace-sound-loop) `fire.wav` | CC0 | PagDev | ability/energy/laser_fire, ability/fire/cf_lava, ability/fire/dr_breath |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
 | [Gravity Inverter](https://opengameart.org/content/gravity-inverter) `gravity_inverter.ogg` | CC0 | fvcalderan | ability/arcane/grav_compress |
+| [grunts of male death and pain ](https://opengameart.org/content/grunts-male-death-and-pain) `death pain grunts.wav` | CC0 | thebardofblasphemy | citizen/cit_death_2, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1, citizen/sol_death_2, citizen/sol_death_3 |
 | [High pitch scream sounds(2)](https://opengameart.org/content/high-pitch-scream-sounds2) `high_pitch_scream.mp3` | CC0 | pauliuw | citizen/cit_yelp_4, citizen/crowd_panic |
+| [Hurt / Death sound effect for character ](https://opengameart.org/content/hurt-death-sound-effect-for-character) `12.mp3` | CC0 | Badre-Eddine | citizen/cit_death_3 |
 | [Hurt Sound Effects](https://opengameart.org/content/hurt-sound-effects) `hurt_05.mp3` | CC0 | EZduzziteh | citizen/cit_yelp_3 |
 | [Ice breaking/shattering](https://opengameart.org/content/ice-breakingshattering) `LedasLuzta.ogg` | CC0 | IgnasD | ability/ice/glac_shatter_1 |
 | [Ice breaking/shattering](https://opengameart.org/content/ice-breakingshattering) `LedasLuzta2.ogg` | CC0 | IgnasD | ability/ice/glac_shatter_2 |

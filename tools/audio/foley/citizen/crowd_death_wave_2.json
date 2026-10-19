@@ -1,0 +1,9 @@
+{"length": 1.8, "rms_db": -14.0, "reverb": {"rt60": 0.9, "mix": 0.14, "predelay_ms": 6}, "layers": [
+  {"src": "lib:oga/female-hurt-grunts-groans/female_hurt_grunts_groans_1.ogg", "at": 0.0, "from": 9.37, "dur": 0.9, "pitch": -3, "hp": 120, "lp": 5000, "fade_out": 200}, 
+  {"src": "lib:oga/grunts-male-death-and-pain/death pain grunts.wav", "at": 0.1, "from": 23.85, "dur": 1.0, "pitch": -3, "hp": 100, "lp": 5000, "fade_out": 200}, 
+  {"src": "lib:oga/grunts-male-death-and-pain/death pain grunts.wav", "at": 0.3, "from": 14.43, "dur": 1.0, "pitch": -5, "hp": 100, "lp": 5000, "fade_out": 220}, 
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_001.ogg", "at": 0.12, "gain_db": -4, "lp": 1000}, 
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_003.ogg", "at": 0.28, "gain_db": -4, "lp": 1000}, 
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_000.ogg", "at": 0.5, "pitch": -2, "gain_db": -4, "lp": 1000}, 
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_01.ogg", "at": 0.08, "gain_db": -6, "lp": 3000, "fade_out": 220}, 
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_04.ogg", "at": 0.4, "gain_db": -8, "lp": 3000, "fade_out": 220}]}

@@ -1,0 +1,4 @@
+{"length": 1.1, "rms_db": -16.0, "reverb": {"rt60": 0.6, "mix": 0.1, "predelay_ms": 6}, "layers": [
+  {"src": "lib:oga/grunts-male-death-and-pain/death pain grunts.wav", "at": 0.0, "from": 8.33, "dur": 0.6, "hp": 90, "lp": 5000, "fade_out": 120}, 
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_metal_falling_02.ogg", "at": 0.35, "gain_db": -7, "hp": 600, "lp": 6000}, 
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_001.ogg", "at": 0.5, "gain_db": -4, "lp": 1000}]}

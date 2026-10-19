@@ -1,0 +1,4 @@
+{"length": 1.1, "rms_db": -16.0, "reverb": {"rt60": 0.6, "mix": 0.1, "predelay_ms": 6}, "layers": [
+  {"src": "lib:oga/grunts-male-death-and-pain/death pain grunts.wav", "at": 0.0, "from": 0.49, "dur": 0.5, "pitch": -2, "hp": 90, "lp": 5000, "fade_out": 120}, 
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_light_000.ogg", "at": 0.3, "gain_db": -8, "hp": 800}, 
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_000.ogg", "at": 0.4, "gain_db": -4, "lp": 1000}]}

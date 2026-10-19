@@ -238,9 +238,9 @@ static func _warning(m: MissionDef) -> void:
 	m.director = StarfallDirector
 	m.stretch = 1.0
 	m.brief = PackedStringArray(["Three stars fall through the night.", "Each sends a runner to wake the bell."])
-	m.goal = "Stop all three warnings before the bell tolls"
+	m.goal = "Stop all three warnings before one reaches the Temple"
 	m.goal_label = "The warnings die"
-	m.lose = "The bell tolls, or dawn comes with a warning alive"
+	m.lose = "A warning reaches the Temple, or dawn comes with a warning alive"
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [StarsObjective.new(), BellSilentObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
 		return out

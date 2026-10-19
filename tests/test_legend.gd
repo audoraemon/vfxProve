@@ -14,6 +14,7 @@ static func run(t) -> void:
 	_keys_while_open(t)
 	_closes_on_start(t)
 	_fit(t)
+	_columns(t)
 	_sweep_skips(t)
 	_hold_waits(t)
 
@@ -43,7 +44,7 @@ static func _rows(t) -> void:
 	for w in ["A", "B", "C", "D"]:
 		many.append(MapTag.person(Vector2.ZERO, GOLD, w))
 	t.check(LegendPanel.night_rows(many)[0][1] == "A, B, C", "up to three labels a row")
-	t.check(LegendPanel.MARKS.size() == 12 and LegendPanel.OVERHEAD.size() == 17, "every mark of the spec's two tables")
+	t.check(LegendPanel.MARKS.size() == 12 and LegendPanel.OVERHEAD.size() == 21, "every mark of the spec's two tables (page 2 gained the Lantern's four rows)")
 
 
 static func _pages(t) -> void:
@@ -185,3 +186,29 @@ static func _hold_waits(t) -> void:
 	m._hud._banners.clear()
 	t.near(m._intro_step(0.5), 0.5, 0.0001, "the banner gone: the hold counts down again")
 	_drop(m)
+
+
+## v0.11.2 Task 12 (spec 5.5, R33): page 2 lays its 21 rows in two columns; each column's rows fit between the title and the footer, and the
+## four Lantern rows carry the spec's words.
+static func _columns(t) -> void:
+	var split := LegendPanel.OVERHEAD_SPLIT
+	t.check(split > 0 and split < LegendPanel.OVERHEAD.size(), "page 2 splits into two columns (the first holds %d)" % split)
+	var cols := LegendPanel.overhead_columns()
+	t.check(cols.size() == 2 and (cols[0] as Array).size() == split and (cols[0] as Array).size() + (cols[1] as Array).size() == 21,
+		"the columns hold all 21 rows, in order")
+	var top := LegendPanel.PANEL.position.y + 44.0
+	var bottom := LegendPanel.PANEL.end.y - 24.0
+	var room := LegendPanel.column_room()
+	for i in 2:
+		var end := top + LegendPanel.rows_height(cols[i], room)
+		t.check(end <= bottom, "column %d ends at %.0f, above the footer's %.0f" % [i + 1, end, bottom])
+	t.check(room > 100.0 and LegendPanel.PANEL.position.x + 16.0 + 2.0 * (room + LegendPanel.SWATCH_W + 8.0) + LegendPanel.COL_GAP
+		<= LegendPanel.PANEL.end.x - 16.0 + 0.01, "two columns fit the panel's width (room %.0f)" % room)
+	var words := []
+	for r: Array in LegendPanel.OVERHEAD:
+		words.append(String(r[2]))
+	for line in ["Gold ring on the clock: the Lantern hastens dawn, x1.5; red, burning, x2.0",
+			"Pale beam: the Lantern's eye. A loud power or a seen death in it makes it burn",
+			"LANTERN-BEARER: kill him and dawn slows again; his escorts take the flame if they see",
+			"HERALD: runs to the Temple; if he gets in, the night is lost"]:
+		t.check(words.has(line), "page 2 has the row: %s" % line)

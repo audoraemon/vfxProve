@@ -81,6 +81,8 @@ static func _stars(t) -> void:
 		and String(stops[1][1]) == "The Main Gate. A star falls here by 1:30."
 		and String(stops[2][1]) == "The Side Gate. A star falls here by 3:00.",
 		"the tour: the three gates -- the later stars 'by' their time, as they may fall sooner (v0.11 M2) -- then the bellkeeper")
+	t.check(String(stops[3][1]) == "The bellkeeper. Warned, he rings the bell: the Lantern turns, and he runs for the Temple.",
+		"v0.11.2: the bellkeeper's stop says what the toll does now (%s)" % [stops[3][1]])
 	t.check(rules.objectives[0].hud_text(rules) == "Warnings stopped 0 / 3", "the HUD counts them")
 	d._clock = 7.95
 	_run(s, 0.1)

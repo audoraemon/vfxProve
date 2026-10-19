@@ -7,7 +7,7 @@ extends RefCounted
 ## The Warning's lines, which its act in The Long Night shares (board tags: the colours are its tags').
 const WARNING_LINE := "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."
 const WARNING_RELAY := "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."
-const WARNING_BELL := "The bell is called. Kill its ringer (gold) unseen before the bell tolls."
+const WARNING_BELL := "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."
 ## Last Judgement's lines for the rite and the fallen Citadel, which Judgement (its act in The Long Night) shares.
 const RITE_LINE := "The clergy gather for the Banishing Rite (red). Break it, or it cuts your time short."
 ## Once a board night's main objective is done (v0.11 M1, spec §6): the open wishes, or the ascent when none is open. Kept
@@ -65,7 +65,7 @@ const LINES := {
 	"bell_ringers.mates": "His mates (red) would see him die and run on. Draw them off or strike them first.",
 	"bell_ringers.relay": "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near.",
 	"bell_ringers.climbing": "He climbs the bell (gold). Pull him off with a whisper or a fright, or kill him unseen before the bar fills.",
-	"bell_ringers.bell": "The town calls its bellkeeper (blue). Stop him before the bell tolls.",
+	"bell_ringers.bell": "The town calls its bellkeeper (blue). Stop him, or the bell tolls and the Lantern turns.",
 	"bell_ringers.waiting": "That warning is dead. The next post (gold) sends its ringer soon. A loud power near a post sends him at once.",
 	"market_panic": "Strike the wardens (red), then scatter the crowd (gold). Thirty-six must break; crowds still waiting count if struck down.",
 	"market_panic.steadied": "A warden (red) steadies the crowd near him: frights break no one there. Remove them all first.",
@@ -110,8 +110,8 @@ const LINES := {
 	"sermon.watched": "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first.",
 	"sermon.report": "A Faithful runs to the Temple. Stop him before he gets there, unseen.",
 	"sermon.coming": "More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them.",
-	"sermon.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze.",
-	"sermon.bell": "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen.",
+	"sermon.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: it raises the Gaze and turns the Lantern.",
+	"sermon.bell": "The bellkeeper (red) runs to ring the bell: it raises the Gaze and turns the Lantern. Stop him, unseen.",
 	"relic_run": "Bring Pip (blue) to the cart's first halt, by whisper or lure. He slips aboard there, and swaps the relic at the next.",
 	"relic_run.moving": "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before.",
 	"relic_run.watched": "Watched (red): remove the watch; Pip works unseen. Once light or oath leads Pip, a Wisp draws the watch too.",
@@ -120,8 +120,8 @@ const LINES := {
 	"relic_run.last_halt": "The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt.",
 	"relic_run.citadel": "The cart makes for the Citadel (red) and halts no more: the relic is lost when it gets there.",
 	"relic_run.report": "A Faithful runs to the Temple. Stop him before he gets there, unseen.",
-	"relic_run.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze.",
-	"relic_run.bell": "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen.",
+	"relic_run.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: it raises the Gaze and turns the Lantern.",
+	"relic_run.bell": "The bellkeeper (red) runs to ring the bell: it raises the Gaze and turns the Lantern. Stop him, unseen.",
 	"lantern_eye": "Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light.",
 	"lantern_eye.guarded": "Its guards (red) hold the mirror: blows only shake the tower. Remove every one.",
 	"lantern_eye.open": "The mirror (gold) stands unguarded. Two blows or one Blight shatter it: strike where no beam shines.",
@@ -146,6 +146,17 @@ const LINES := {
 }
 
 
+## The Lantern's lines (v0.11.2, spec 5.3), by LanternWatch.hint_phase(): they take the how-to-win plate by that precedence (herald, then
+## burning for BURN_HINT seconds, then the Bearer walking, then stirring until he sets out), and the mission's own line returns after
+## them (Hud.hint_key()).
+const LANTERN := {
+	"stirring": "The bell tolled: the Lantern turns and dawn comes 1.5 times as fast. Its Bearer sets out soon: kill him to blind it.",
+	"bearer": "The Bearer (gold) carries the flame to the bell tower. Kill him and dawn slows again. His escorts (red) take it up if they see.",
+	"burning": "The Lantern burns: dawn comes twice as fast. A loud power or a seen death in its beam did it. Kill the Bearer (gold).",
+	"herald": "The bell tolled: its Herald (gold) runs for the Temple. Kill him before he gets in, unseen, or the warning passes on.",
+}
+
+
 ## Where a line counts down (v0.11 M4, the controller's ruling for The Heretic Hunt's captain): the HUD puts the director's
 ## hint_seconds() in its place, rounded up (filled()).
 const SECONDS := "{n}"
@@ -161,3 +172,8 @@ static func line(id: String, phase := "") -> String:
 	if phase != "" and LINES.has(id + "." + phase):
 		return String(LINES[id + "." + phase])
 	return String(LINES.get(id, ""))
+
+
+## The Lantern's line for `phase` (LanternWatch.hint_phase()); "" for none or an unknown one.
+static func lantern_line(phase: String) -> String:
+	return String(LANTERN.get(phase, ""))

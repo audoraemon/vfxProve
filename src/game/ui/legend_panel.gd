@@ -49,7 +49,8 @@ const MARKS := [
 	["plate", DANGER, "DO NOT KILL: that death loses the night"],
 ]
 
-## Page 2: the same shape (spec §4.2).
+## Page 2: the same shape (spec §4.2). v0.11.2 (spec 5.5, R33): 21 rows, laid in two columns -- the first OVERHEAD_SPLIT rows on the left, the rest
+## on the right -- with the Lantern's four after Halcyon's light (its clock ring leads the HUD's column).
 const OVERHEAD := [
 	["eye", Color("ffe9a8"), "Gold eye: whispered, walking where you sent them"],
 	["swirl", Color("b070ff"), "Violet swirl: confused by Discord"],
@@ -58,6 +59,10 @@ const OVERHEAD := [
 	["madness", Color("ff9a3a"), "Ring underfoot: madness; it reddens as it grows"],
 	["tint", CLEAR, "Green to red: the plague, from caught to dying"],
 	["beam", Color("ffe9a8"), "Halcyon's light: anyone in it is seen; a cast in it adds to the Gaze"],
+	["beam", SearchlightFx.PALE_POOL, "Pale beam: the Lantern's eye. A loud power or a seen death in it makes it burn"],
+	["diamond", TARGET, "LANTERN-BEARER: kill him and dawn slows again; his escorts take the flame if they see"],
+	["diamond", TARGET, "HERALD: runs to the Temple; if he gets in, the night is lost"],
+	["clock_ring", Color("d8b23a"), "Gold ring on the clock: the Lantern hastens dawn, x1.5; red, burning, x2.0"],
 	["gaze_bar", TARGET, "The Gaze: when it fills, the night is lost"],
 	["rite_bar", TARGET, "The Banishing Rite: finished, it takes time off your clock"],
 	["strip", NOT_YET, "The strip: what happens next, and when"],
@@ -69,6 +74,9 @@ const OVERHEAD := [
 	["district", PLACE, "The district the power will reach"],
 	["topline", NOT_YET, "Citizens, soldiers, buildings down, and the town's alarm"],
 ]
+
+## How many of OVERHEAD's rows the first column holds (the marks over the town and the Lantern's beam and people; the HUD's own are the second's).
+const OVERHEAD_SPLIT := 10
 
 ## 0 closed, 1 or 2 the page showing.
 var page := 0
@@ -174,8 +182,29 @@ func _draw() -> void:
 			var room := PANEL.end.x - 16.0 - right - SWATCH_W - 8.0
 			_draw_rows(fit_rows(rows, room, top + 10.0, PANEL.end.y - 24.0), right, top + 10.0, room)
 	else:
-		_draw_rows(OVERHEAD, left, top, PANEL.size.x - 32.0 - SWATCH_W - 8.0)
+		var cols := overhead_columns()
+		var room := column_room()
+		_draw_rows(cols[0], left, top, room)
+		_draw_rows(cols[1], left + room + SWATCH_W + 8.0 + COL_GAP, top, room)
 	_draw_footer()
+
+
+## Page 2's two columns, as [left rows, right rows].
+static func overhead_columns() -> Array:
+	return [OVERHEAD.slice(0, OVERHEAD_SPLIT), OVERHEAD.slice(OVERHEAD_SPLIT)]
+
+
+## The words' room in one of page 2's columns (px): half the panel's inner width less the gap, then the swatch zone.
+static func column_room() -> float:
+	return (PANEL.size.x - 32.0 - COL_GAP) * 0.5 - SWATCH_W - 8.0
+
+
+## The height `rows` take wrapped to `room` (what _draw_rows() advances by).
+static func rows_height(rows: Array, room: float) -> float:
+	var total := 0.0
+	for r: Array in rows:
+		total += maxf(ROW_MIN, UiTheme.LINE_SMALL * float(UiTheme.wrap(String(r[2]), room, UiTheme.SIZE_SMALL).size()) + 3.0)
+	return total
 
 
 ## The rows that fit between `top` and `bottom` (v0.11.1 fix round): the column has no room to run into the footer, so the rows
@@ -278,6 +307,9 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 		"tint":
 			for i in 8:
 				draw_rect(Rect2(x + 1.0 + 3.0 * float(i), cy - 4.0, 3.0, 8.0), CLEAR.lerp(DANGER, float(i) / 7.0))
+		"clock_ring":
+			draw_rect(Rect2(x + 1.0, cy - 7.0, 24.0, 14.0), col, false, 1.0)
+			UiTheme.text(self, Vector2(x + 3.0, cy + 4.0), "1.5", UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 		"beam":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-2, -6), c + Vector2(2, -6), c + Vector2(10, 5), c + Vector2(-10, 5)]),
 				Color(col, 0.4))

@@ -139,7 +139,7 @@ func tour() -> Array:
 			UiTheme.clock(float(s[0]))]])
 	var bell := crowd.bell
 	if bell != null and _alive(bell.keeper):
-		out.append([bell.keeper.ground_pos, "The bellkeeper. Warned, he rings the bell, and you lose."])
+		out.append([bell.keeper.ground_pos, "The bellkeeper. Warned, he rings the bell: the Lantern turns, and he runs for the Temple."])
 	return out
 
 

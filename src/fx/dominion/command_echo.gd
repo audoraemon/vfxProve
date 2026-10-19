@@ -44,7 +44,7 @@ func _build() -> void:
 			DominionParts.icon(self, place.at, DominionParts.WAVES, DominionParts.GOLD, SPREAD_TIME, 30.0)
 	for p in seeds:
 		_carry(p, null)
-	ctx.play(&"grav_shimmer", origin, -10.0)
+	ctx.play(&"q_echo", origin)
 
 
 ## `p` catches the command (from `from`, or from the god).

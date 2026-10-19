@@ -23,7 +23,7 @@ static func taken(field: EnemyField, at: Vector2) -> Array[Person]:
 func _build() -> void:
 	duration = 1.2
 	busy = 0.6
-	ctx.play(&"grav_shimmer", origin, -8.0)
+	ctx.play(&"q_discord", origin)
 	var swirl := FxParts.particles(self, ctx.overhead, Iso.ground_to_screen(origin), PixelParticles.Shape.SQUARE, SWIRL)
 	swirl.drag = 0.6
 	swirl.gravity = -30.0

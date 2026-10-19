@@ -32,7 +32,7 @@ func _build() -> void:
 	duration = T_CAST + hold + 0.5
 	busy = T_CAST + 0.5
 	at(T_CAST, _believe)
-	ctx.play(&"grav_field", origin, -8.0)
+	ctx.play(&"q_delusion", origin)
 	if DominionParts.staged(self):
 		# The eye opens over the district.
 		DominionParts.sky_sigil(self, origin, 130.0, 130.0, SHIMMER.lerp(DominionParts.GOLD, 0.5), T_CAST, 2.0)

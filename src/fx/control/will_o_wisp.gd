@@ -43,7 +43,7 @@ func _build() -> void:
 	for p in drawn(ctx.field, origin):
 		var a := rng.randf() * TAU
 		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), WISP_TIME - 0.5, origin, p.lure_reach)
-	ctx.play(&"grav_shimmer", origin, -12.0)
+	ctx.play(&"q_wisp", origin)
 	_light = FxParts.ground_light(self, origin, 1.4, LIGHT, 0.0)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),
 		PixelParticles.Shape.SQUARE, GLOW, 6.0, WISP_TIME - 1.0,

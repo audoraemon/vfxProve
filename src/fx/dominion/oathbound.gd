@@ -41,7 +41,7 @@ func _build() -> void:
 		var spot: Vector2 = spots[i] if i < spots.size() else p.ground_pos
 		if p.compel(spot, OATH_TIME, WILL, DominionParts.GOLD, false, &"", DominionParts.RINGS):
 			bound.append(p)
-	ctx.play(&"grav_compress", origin, -10.0)
+	ctx.play(&"q_oath", origin)
 	if DominionParts.staged(self):
 		_show()
 

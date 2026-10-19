@@ -130,6 +130,20 @@ const CATALOG := {
 	&"cit_fall": {"path": "res://assets/audio/citizen/cit_fall_%d.wav", "variants": 4, "db": 1.8, "voices": 3, "jitter": 0.1},
 	&"sol_death": {"path": "res://assets/audio/citizen/sol_death_%d.wav", "variants": 3, "db": -4.2, "voices": 4, "jitter": 0.1},
 	&"crowd_death_wave": {"path": "res://assets/audio/citizen/crowd_death_wave_%d.wav", "variants": 2, "db": -2.0, "voices": 2, "jitter": 0.08},
+	# The quiet powers' own cast cues, part II (v0.11.2 Task 14; spec 2.3): one per power, none shared, each at a played level in [QUIET_FLOOR, loud median + 2] (tools/audio/loudness.py).
+	&"q_whisper": {"path": "res://assets/audio/ability/quiet/q_whisper.wav", "db": -5.3},
+	&"q_wisp": {"path": "res://assets/audio/ability/quiet/q_wisp.wav", "db": -2.0},
+	&"q_discord": {"path": "res://assets/audio/ability/quiet/q_discord.wav", "db": -0.7},
+	&"q_congregation": {"path": "res://assets/audio/ability/quiet/q_congregation.wav", "db": 0.0},
+	&"q_oath": {"path": "res://assets/audio/ability/quiet/q_oath.wav", "db": -0.7},
+	&"q_echo": {"path": "res://assets/audio/ability/quiet/q_echo.wav", "db": -0.4},
+	&"q_turncoat": {"path": "res://assets/audio/ability/quiet/q_turncoat.wav", "db": -1.8},
+	&"q_hatred": {"path": "res://assets/audio/ability/quiet/q_hatred.wav", "db": -0.8},
+	&"q_priority": {"path": "res://assets/audio/ability/quiet/q_priority.wav", "db": 0.2},
+	&"q_verdict": {"path": "res://assets/audio/ability/quiet/q_verdict.wav", "db": 0.0},
+	&"q_verdict_hit": {"path": "res://assets/audio/ability/quiet/q_verdict_hit.wav", "db": 0.0},
+	&"q_delusion": {"path": "res://assets/audio/ability/quiet/q_delusion.wav", "db": -2.5},
+	&"q_voice": {"path": "res://assets/audio/ability/quiet/q_voice.wav", "db": 0.6},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.
 	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 3, "db": -1.2, "voices": 4, "jitter": 0.08},

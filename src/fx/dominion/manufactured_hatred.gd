@@ -40,7 +40,7 @@ func _build() -> void:
 		p.set_badge(DominionParts.EYE, MARK, T_ACCUSE + HATE_TIME)
 		p.stun(T_ACCUSE)
 	at(T_ACCUSE, _turn)
-	ctx.play(&"grav_field", origin, -8.0)
+	ctx.play(&"q_hatred", origin)
 	if DominionParts.staged(self):
 		DominionParts.ground_sigil(self, origin, GROUP_R, MARK, 0.6, T_ACCUSE - 0.6)
 		DominionParts.pulse(self, origin, GROUP_R * 1.3, MARK, 0.6, T_ACCUSE)

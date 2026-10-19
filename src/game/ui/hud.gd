@@ -42,6 +42,9 @@ const PLATE_H := 12.0
 ## The Banishing Rite's bar under the clock (v0.05).
 const RITE_BAR := Vector2(120.0, 4.0)
 const RITE_TOP := 30.0
+## The Lantern's rings on the clock (v0.11.2, spec 5.1): gold while it stirs, red while it burns.
+const LANTERN_GOLD := Color("d8b23a")
+const LANTERN_RED := Color("c8342a")
 ## The act's next timed events (v0.09), centred under the clock and the rite's bar: one line each.
 const EVENTS_TOP := 44.0
 ## Halcyon's Gaze under the clock (v0.10), where the Banishing Rite's bar would sit (an Unaware town has no rite).
@@ -359,9 +362,16 @@ func objective_panel() -> Rect2:
 ## mission whose director keeps no timeline.
 func event_rows() -> Array:
 	var rows := []
-	if _rules.director == null or _rules.director.timeline == null:
-		return rows
-	for e: Dictionary in _rules.director.timeline.upcoming(2 if details else 1):
+	var want := 2 if details else 1
+	# v0.11.2 (spec 5.2): the Lantern's rows (the Bearer sets out, reaches the tower; a Herald reaches the Temple) merge with the timeline's by the
+	# seconds still to come, soonest first; collapsed, the soonest of all.
+	var soon: Array[Dictionary] = []
+	if _rules.director != null and _rules.director.timeline != null:
+		soon.append_array(_rules.director.timeline.upcoming(want))
+	if _rules.lantern != null:
+		soon.append_array(_rules.lantern.strip_rows())
+	soon.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["in"]) < float(b["in"]))
+	for e: Dictionary in soon.slice(0, want):
 		rows.append([UiTheme.clock(float(e["in"])), String(e["label"])])
 	return rows
 
@@ -381,6 +391,11 @@ func hint_text() -> String:
 func hint_key() -> String:
 	if _rules == null or _rules.mission == null:
 		return ""
+	# v0.11.2 (spec 5.3): the Lantern's line first -- the instant loss, then the counterplay; "" gives the rest back.
+	if _rules.lantern != null:
+		var lantern_line := MissionHints.lantern_line(_rules.lantern.hint_phase())
+		if lantern_line != "":
+			return lantern_line
 	if _rules.main_done:
 		return MissionHints.WISHES_LINE if _open_wishes() else MissionHints.ASCEND_LINE
 	if _rules.director == null:
@@ -592,6 +607,8 @@ func all_tags() -> Array[MapTag]:
 		return out
 	if _rules.director != null:
 		out.append_array(_rules.director.tags())
+	if _rules.lantern != null:
+		out.append_array(_rules.lantern.tags())  # v0.11.2: the Herald and the Bearer, after the mission's own, before the wishes'
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
 	return out
@@ -649,6 +666,8 @@ static func tags_shown(rules: Rules) -> bool:
 	if rules == null:
 		return false
 	if rules.director != null and not rules.director.tags().is_empty():
+		return true
+	if rules.lantern != null and not rules.lantern.tags().is_empty():
 		return true
 	return rules.descent != null and not rules.descent.tags().is_empty()
 
@@ -1088,6 +1107,7 @@ func _signature() -> String:
 	var events := event_rows()
 	if not events.is_empty():
 		out += "|" + str(events)
+	out += "|" + clock_badge()  # v0.11.2: the Lantern's stage (the badge says which, the ring follows it)
 	out += "|" + (_hint_now() if hint_shown() else "")
 	out += "|" + _caption
 	out += "|%s" % intro
@@ -1151,7 +1171,46 @@ func _draw_clock(w: float) -> void:
 	if _rules.time_left <= HURRY_AT:
 		# One pulse a second, so the last half minute is felt without a tween.
 		col = UiTheme.COL_BAD if fmod(_rules.time_left, 1.0) > 0.5 else Color("ff8a72")
-	UiTheme.text(self, Vector2(roundf((w - UiTheme.width(s, UiTheme.SIZE_BIG)) * 0.5), 18.0), s, UiTheme.SIZE_BIG, col)
+	var x := roundf((w - UiTheme.width(s, UiTheme.SIZE_BIG)) * 0.5)
+	UiTheme.text(self, Vector2(x, 18.0), s, UiTheme.SIZE_BIG, col)
+	_draw_clock_lantern(x, UiTheme.width(s, UiTheme.SIZE_BIG))
+
+
+## The badge beside the clock while the Lantern hastens dawn (v0.11.2, spec 5.1): "x1.5" Stirring, "x2.0" Burning, with the multiplication sign
+## when the pixel font has it (Decision 29); "" for Asleep, Blind and a night with no Lantern.
+func clock_badge() -> String:
+	if _rules == null or _rules.lantern == null:
+		return ""
+	var badge := _rules.lantern.badge()
+	return badge.replace("x", String.chr(0xD7)) if badge != "" and UiTheme.font().has_char(0xD7) else badge
+
+
+## The ring round the clock: the Lantern's gold at Stirring, red at Burning, transparent otherwise.
+func clock_ring() -> Color:
+	if _rules == null or _rules.lantern == null:
+		return Color(0.0, 0.0, 0.0, 0.0)
+	match _rules.lantern.stage:
+		LanternWatch.Stage.STIRRING:
+			return LANTERN_GOLD
+		LanternWatch.Stage.BURNING:
+			return LANTERN_RED
+	return Color(0.0, 0.0, 0.0, 0.0)
+
+
+## The ring, the drawn lantern mark left of it and the badge right of it, collapsed or not (TAB never hides them).
+func _draw_clock_lantern(x: float, clock_w: float) -> void:
+	var ring := clock_ring()
+	if ring.a <= 0.0:
+		return
+	var plate := Rect2(x - 7.0, 2.0, clock_w + 14.0, 20.0)
+	draw_rect(plate, ring, false, 1.0)
+	var mark := Vector2(plate.position.x - 12.0, 5.0)  # a small lantern: the cap, the glass, the flame, the foot
+	draw_rect(Rect2(mark + Vector2(2.0, 0.0), Vector2(4.0, 1.0)), ring)
+	draw_rect(Rect2(mark + Vector2(1.0, 1.0), Vector2(6.0, 8.0)), Color(0.04, 0.04, 0.06, 0.8))
+	draw_rect(Rect2(mark + Vector2(1.0, 1.0), Vector2(6.0, 8.0)), ring, false, 1.0)
+	draw_rect(Rect2(mark + Vector2(3.0, 4.0), Vector2(2.0, 3.0)), ring)
+	draw_rect(Rect2(mark + Vector2(1.0, 9.0), Vector2(6.0, 1.0)), ring)
+	UiTheme.text(self, Vector2(plate.end.x + 5.0, 17.0), clock_badge(), UiTheme.SIZE_BODY, ring)
 
 
 ## The Banishing Rite under the clock: the clergy gathering, then the rite's progress in RITE_BAR's steps; "" when

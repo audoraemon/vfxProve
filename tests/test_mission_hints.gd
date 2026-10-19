@@ -7,11 +7,11 @@ const SPEC := [
 	# The board missions' (board tags, spec §3).
 	["warning", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["warning.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
-	["warning.bell", "The bell is called. Kill its ringer (gold) unseen before the bell tolls."],
+	["warning.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],
 	["warning.waiting", "That warning is dead. Watch the next star's gate (gold): its watchman runs when it falls."],
 	["omen", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["omen.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
-	["omen.bell", "The bell is called. Kill its ringer (gold) unseen before the bell tolls."],
+	["omen.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],
 	["festival", "Break the festival: kill or scatter enough of its crowd (gold) before the guard closes the square."],
 	["festival.packed", "The bonfire packs the crowd (gold) round the fountain: one strike there breaks many."],
 	["festival.address", "The Mayor (orange) speaks from the fountain. Kill him and the crowd round it panics."],
@@ -58,7 +58,7 @@ const SPEC := [
 	["bell_ringers.mates", "His mates (red) would see him die and run on. Draw them off or strike them first."],
 	["bell_ringers.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
 	["bell_ringers.climbing", "He climbs the bell (gold). Pull him off with a whisper or a fright, or kill him unseen before the bar fills."],
-	["bell_ringers.bell", "The town calls its bellkeeper (blue). Stop him before the bell tolls."],
+	["bell_ringers.bell", "The town calls its bellkeeper (blue). Stop him, or the bell tolls and the Lantern turns."],
 	["bell_ringers.waiting", "That warning is dead. The next post (gold) sends its ringer soon. A loud power near a post sends him at once."],
 	# Market Panic (v0.11 M3).
 	["market_panic", "Strike the wardens (red), then scatter the crowd (gold). Thirty-six must break; crowds still waiting count if struck down."],
@@ -111,8 +111,8 @@ const SPEC := [
 	["sermon.watched", "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first."],
 	["sermon.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
 	["sermon.coming", "More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them."],
-	["sermon.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze."],
-	["sermon.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
+	["sermon.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: it raises the Gaze and turns the Lantern."],
+	["sermon.bell", "The bellkeeper (red) runs to ring the bell: it raises the Gaze and turns the Lantern. Stop him, unseen."],
 	# The Relic Run (v0.11 M5).
 	["relic_run", "Bring Pip (blue) to the cart's first halt, by whisper or lure. He slips aboard there, and swaps the relic at the next."],
 	["relic_run.moving", "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before."],
@@ -122,8 +122,8 @@ const SPEC := [
 	["relic_run.last_halt", "The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt."],
 	["relic_run.citadel", "The cart makes for the Citadel (red) and halts no more: the relic is lost when it gets there."],
 	["relic_run.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
-	["relic_run.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell, and the bell fills the Gaze."],
-	["relic_run.bell", "The bellkeeper (red) runs to ring the bell, and the bell fills the Gaze. Stop him, unseen."],
+	["relic_run.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: it raises the Gaze and turns the Lantern."],
+	["relic_run.bell", "The bellkeeper (red) runs to ring the bell: it raises the Gaze and turns the Lantern. Stop him, unseen."],
 	# The Lantern's Eye (v0.11 M6).
 	["lantern_eye", "Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light."],
 	["lantern_eye.guarded", "Its guards (red) hold the mirror: blows only shake the tower. Remove every one."],
@@ -152,6 +152,8 @@ const SPEC := [
 
 
 static func run(t) -> void:
+	_lantern(t)
+	_words(t)
 	var spec := {}
 	var wrong := PackedStringArray()
 	for row: Array in SPEC:
@@ -200,3 +202,43 @@ static func run(t) -> void:
 	t.check(Hud.hint_lines(MissionHints.filled(coming, 30.0)).size() <= Hud.HINT_LINES
 		and UiTheme.wrap(MissionHints.filled(coming, 30.0), Hud.HINT_W, UiTheme.SIZE_SMALL).size() <= Hud.HINT_LINES,
 		"filled at its longest (30 s), the captain's line still fits the plate")
+
+
+## v0.11.2 Task 12 (spec 5.3): the Lantern's four lines, word for word, by their phase.
+const LANTERN_SPEC := {
+	"stirring": "The bell tolled: the Lantern turns and dawn comes 1.5 times as fast. Its Bearer sets out soon: kill him to blind it.",
+	"bearer": "The Bearer (gold) carries the flame to the bell tower. Kill him and dawn slows again. His escorts (red) take it up if they see.",
+	"burning": "The Lantern burns: dawn comes twice as fast. A loud power or a seen death in its beam did it. Kill the Bearer (gold).",
+	"herald": "The bell tolled: its Herald (gold) runs for the Temple. Kill him before he gets in, unseen, or the warning passes on.",
+}
+
+
+static func _lantern(t) -> void:
+	t.check(MissionHints.LANTERN == LANTERN_SPEC, "the Lantern's four lines are the spec's")
+	var odd := PackedStringArray()
+	for phase: String in LANTERN_SPEC:
+		if MissionHints.lantern_line(phase) != String(LANTERN_SPEC[phase]):
+			odd.append(phase)
+		if UiTheme.wrap(String(LANTERN_SPEC[phase]), Hud.HINT_W, UiTheme.SIZE_SMALL).size() > Hud.HINT_LINES:
+			odd.append(phase + " (too long)")
+	t.check(odd.is_empty(), "lantern_line(phase) gives each line and each fits %d lines (%s)" % [Hud.HINT_LINES, ", ".join(odd)])
+	t.check(MissionHints.lantern_line("") == "" and MissionHints.lantern_line("nowhere") == "", "no phase, or an unknown one, has no Lantern line")
+	t.check(not MissionHints.LINES.has("stirring") and not MissionHints.LINES.has("lantern.stirring"), "the Lantern's lines stay out of the missions' table")
+
+
+## v0.11.2 Task 12 (spec 5.4): the goal and lose words the Lantern made untrue.
+static func _words(t) -> void:
+	var w := MissionBook.warning()
+	t.check(w.goal == "Stop the warning before it reaches the Temple" and w.lose == "The warning reaches the Temple, or dawn comes with it alive",
+		"The Warning's goal and lose (%s / %s)" % [w.goal, w.lose])
+	var star := TierBook.board("warning")
+	t.check(star.goal == "Stop all three warnings before one reaches the Temple"
+		and star.lose == "A warning reaches the Temple, or dawn comes with a warning alive", "Starfall's goal and lose (%s / %s)" % [star.goal, star.lose])
+	var ringers := MissionBook.bell_ringers()
+	t.check(ringers.goal == "Stop the ringers of all three watch posts" and ringers.lose == "A Herald reaches the Temple, or dawn comes",
+		"The Bell-Ringers' goal and lose (%s / %s)" % [ringers.goal, ringers.lose])
+	t.check(MissionBook.tax_collector().lose == "A collector reaches the Citadel, or dawn comes", "The Tax Collector's lose")
+	t.check(MissionBook.informer().lose == "The names reach the Temple, a contact dies or leaves the town before he is turned, or dawn comes",
+		"The Informer's lose")
+	t.check(MissionBook.broken_lanterns().lose == "The Lantern looks, or dawn finds a shrine still lit", "Broken Lanterns' lose")
+	t.check(MissionBook.long_night().acts[0].goal == w.goal and MissionBook.long_night().acts[0].lose == w.lose, "The Omen shares The Warning's words")

@@ -3,6 +3,11 @@ extends RefCounted
 ## itself, and the banner queue. The look itself is judged from captures, not from here.
 
 
+const Kit := preload("res://tests/test_tier2_groundwork.gd")
+const GOLD := Color("d8b23a")
+const RED := Color("c8342a")
+
+
 static func run(t) -> void:
 	t.check(UiTheme.clock(240.0) == "4:00", "four minutes reads 4:00 (%s)" % UiTheme.clock(240.0))
 	t.check(UiTheme.clock(29.4) == "0:30", "a part-second rounds up, so the clock never sits on 0:00 early (%s)" % UiTheme.clock(29.4))
@@ -191,6 +196,8 @@ static func run(t) -> void:
 	# The Warning (v0.08): the objective panel in place of the Citadel's, the messenger's marker and its edge arrow.
 	_warning(t, env, field, crowd, town)
 	Hud.reset_session()
+	_lantern_clock(t)
+	Hud.reset_session()
 
 	hud.free()
 	aim.free()
@@ -338,6 +345,22 @@ static func _flash_rules(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
 	def.id = old_id
 
 
+## A Lantern whose Bearer phase, tags and strip rows the test sets (Task 10 fills the real ones).
+class _StubLantern extends LanternWatch:
+	var phase := ""
+	var rows: Array[Dictionary] = []
+	var marks: Array[MapTag] = []
+
+	func _bearer_phase() -> String:
+		return phase
+
+	func _bearer_rows() -> Array[Dictionary]:
+		return rows
+
+	func _bearer_tags() -> Array[MapTag]:
+		return marks
+
+
 ## A director whose hint phase and seconds the test sets.
 class _PhaseDirector extends MissionDirector:
 	var phase := ""
@@ -353,3 +376,82 @@ class _PhaseDirector extends MissionDirector:
 ## The interface cues asked for since the test last cleared them, in order.
 static func _heard() -> String:
 	return ",".join(PackedStringArray(UiSound.asked))
+
+
+## v0.11.2 Task 12 (spec 5.1-5.3): the Lantern on the HUD. The clock's ring and badge (collapsed or not), the Lantern's line first on the
+## how-to-win plate, its tags on the map layer and its rows merged into the strip (soonest first).
+static func _lantern_clock(t) -> void:
+	var def := MissionBook.bell_ringers()
+	def.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [HeraldObjective.new()]
+		return out
+	var s := Kit.world(def, MissionDirector.new())
+	var rules: Rules = s.rules
+	var lw := _StubLantern.new()
+	lw.setup(rules, s.crowd, s.town, null, "watch")
+	rules.lantern = lw
+	var hud := Hud.new().setup(rules, s.crowd, s.town, null)
+	Hud.details = false  # collapsed: TAB never hides the clock's ring
+	t.check(hud.clock_badge() == "" and hud.clock_ring().a == 0.0, "Asleep: no badge, no ring")
+	var asleep := hud._signature()
+	lw.on_toll()
+	t.check(hud.clock_badge() in ["x1.5", "×1.5"] and hud.clock_ring() == GOLD,
+		"Stirring: the badge x1.5 and the gold ring, collapsed (%s)" % hud.clock_badge())
+	t.check(hud.clock_badge().begins_with("×") == UiTheme.font().has_char(0xD7), "the multiplication sign when the font has it, else x")
+	var stirring := hud._signature()
+	t.check(stirring != asleep, "the stage is in the redraw signature")
+	Hud.details = true
+	t.check(hud.clock_badge() in ["x1.5", "×1.5"] and hud.clock_ring() == GOLD, "and expanded")
+	lw.burn()
+	t.check(hud.clock_badge() in ["x2.0", "×2.0"] and hud.clock_ring() == RED, "Burning: x2.0 and the red ring (%s)" % hud.clock_badge())
+	t.check(hud._signature() != stirring, "Burning redraws the clock")
+	lw.blind()
+	t.check(hud.clock_badge() == "" and hud.clock_ring().a == 0.0, "Blind: no badge, no ring")
+	# A night with no Lantern: nothing.
+	rules.lantern = null
+	t.check(hud.clock_badge() == "" and hud.clock_ring().a == 0.0, "no Lantern, no badge")
+	rules.lantern = lw
+
+	# The Lantern's hint comes first; "" gives the director's own line back.
+	var own := MissionHints.line(def.id)
+	var fresh := _StubLantern.new()
+	fresh.setup(rules, s.crowd, s.town, null, "watch")
+	rules.lantern = fresh
+	t.check(hud.hint_key() == own and own != "", "no phase: the mission's own line")
+	fresh.on_toll()
+	t.check(fresh.hint_phase() == "stirring" and hud.hint_key() == MissionHints.LANTERN["stirring"], "Stirring, the Bearer not out: the stirring line")
+	fresh.phase = "walking"
+	t.check(fresh.hint_phase() == "bearer" and hud.hint_key() == MissionHints.LANTERN["bearer"], "the Bearer walks: the bearer line")
+	fresh.burn()
+	t.check(hud.hint_key() == MissionHints.LANTERN["burning"], "Burning, 8 s: the burning line beats the Bearer's")
+	t.check(hud.hint_text() == MissionHints.LANTERN["burning"], "and hint_text() gives the same words")
+	fresh.phase = "vigil"
+	fresh.step(LanternWatch.BURN_HINT + 1.0)
+	t.check(fresh.hint_phase() == "" and hud.hint_key() == own, "at the vigil, after the burning hint: the mission's own line returns")
+	rules.lantern = lw
+
+	# The strip: the Lantern's rows merge with the timeline's, soonest first; collapsed shows the soonest only.
+	var director: MissionDirector = s.d
+	var timeline := EventTimeline.new()
+	timeline.add(30.0, "dawn", "Dawn")
+	director.timeline = timeline
+	lw.rows = [{"in": 12.0, "label": "The Lantern-Bearer sets out"}]
+	Hud.details = true
+	t.check(hud.event_rows() == [["0:12", "The Lantern-Bearer sets out"], ["0:30", "Dawn"]],
+		"a bearer row in 12 s comes before the timeline's in 30 s (%s)" % [hud.event_rows()])
+	Hud.details = false
+	t.check(hud.event_rows() == [["0:12", "The Lantern-Bearer sets out"]], "collapsed: only the soonest (%s)" % [hud.event_rows()])
+	lw.rows = [{"in": 40.0, "label": "The Herald reaches the Temple"}]
+	t.check(hud.event_rows() == [["0:30", "Dawn"]], "a later Lantern row waits behind the timeline's (%s)" % [hud.event_rows()])
+	director.timeline = null
+	t.check(hud.event_rows() == [["0:40", "The Herald reaches the Temple"]], "with no timeline the Lantern's rows still show (%s)" % [hud.event_rows()])
+	lw.rows = []
+	t.check(hud.event_rows().is_empty(), "and none when it has none")
+
+	# Tags: the Lantern's join the map layer after the director's.
+	t.check(not Hud.tags_shown(rules) and hud.all_tags().is_empty(), "no tags yet")
+	lw.marks = [MapTag.person(Vector2(3.0, 4.0), GOLD, "LANTERN-BEARER - KEEPS THE VIGIL", true)]
+	t.check(Hud.tags_shown(rules) and hud.all_tags().size() == 1 and hud.all_tags()[0].label == "LANTERN-BEARER - KEEPS THE VIGIL",
+		"a Lantern tag is on the layer, and the layer is shown")
+	hud.free()
+	Kit.done(s)

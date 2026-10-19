@@ -60,6 +60,8 @@ static func _warning(t) -> void:
 	var stops := d.tour()
 	t.check(stops.size() == 2 and stops[0][0] == d.watchman.ground_pos and stops[1][0] == keeper.ground_pos,
 		"the tour: the watchman, then the bellkeeper")
+	t.check(String(stops[1][1]) == "The bellkeeper. Warned, he rings the bell: the Lantern turns, and he runs for the Temple.",
+		"v0.11.2: the bellkeeper's stop says what the toll does now (%s)" % [stops[1][1]])
 	t.check(_reads_only(d, crowd), "the Warning's tags, phase and tour draw no random number")
 
 	Warn._run(s, 6.2)

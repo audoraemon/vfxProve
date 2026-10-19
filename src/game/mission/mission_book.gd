@@ -166,7 +166,7 @@ static func tax_collector() -> MissionDef:
 		"Kill them before the taxes arrive."]))
 	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
 	m.goal_label = "The collectors are dead"
-	m.lose = "A collector reaches the Citadel, the bell tolls, or dawn comes"
+	m.lose = "A collector reaches the Citadel, or dawn comes"
 	m.camera_at = TownLayout.WORKSHOP.get_center() + Vector2(-2.0, 3.0)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "discord", "whisper"])
@@ -241,9 +241,9 @@ static func first_prayers() -> MissionDef:
 static func bell_ringers() -> MissionDef:
 	var m := _tier2(BELL_RINGERS, "The Bell-Ringers", PackedStringArray(["Three watch posts guard the walls.",
 		"Stop their ringers before the bell."]))
-	m.goal = "Stop the ringers of all three watch posts before the bell tolls"
+	m.goal = "Stop the ringers of all three watch posts"
 	m.goal_label = "The ringers are stopped"
-	m.lose = "The bell tolls, or dawn comes"
+	m.lose = "A Herald reaches the Temple, or dawn comes"
 	m.camera_at = BellRingersDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "whisper", "discord"])
@@ -282,7 +282,7 @@ static func informer() -> MissionDef:
 		"Find him by his contacts. Kill him."]))
 	m.goal = "Find the informer through his four contacts, and kill him before the names reach the Temple"
 	m.goal_label = "The informer is dead"
-	m.lose = "The names reach the Temple, a contact dies or leaves the town before he is turned, the bell tolls, or dawn comes"
+	m.lose = "The names reach the Temple, a contact dies or leaves the town before he is turned, or dawn comes"
 	m.camera_at = InformerDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])
@@ -502,9 +502,9 @@ static func warning() -> MissionDef:
 	m.name = "The Warning"
 	m.tier = 1
 	m.brief = PackedStringArray(["A star falls over the Main Gate.", "A watchman runs to wake the bell."])
-	m.goal = "Stop the warning before the bell tolls"
+	m.goal = "Stop the warning before it reaches the Temple"
 	m.goal_label = "Stop the warning"
-	m.lose = "The bell tolls, or dawn comes with the warning alive"
+	m.lose = "The warning reaches the Temple, or dawn comes with it alive"
 	m.slots = 3
 	m.dp_capacity = 6
 	m.clock = 120.0
@@ -763,7 +763,7 @@ static func broken_lanterns() -> MissionDef:
 		"Break them before they are relit."]))
 	m.goal = "Break Halcyon's six shrines, and let them drain before the Vigil relights them"
 	m.goal_label = "The lanterns are dark"
-	m.lose = "The bell tolls, the Lantern looks, or dawn finds a shrine still lit"
+	m.lose = "The Lantern looks, or dawn finds a shrine still lit"
 	m.clock = 180.0
 	m.camera_at = BrokenLanternsDirector.CAMERA_AT
 	m.intro_from = BrokenLanternsDirector.CAMERA_AT + Vector2(0.0, 6.0)

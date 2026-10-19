@@ -188,7 +188,14 @@ func _walkable(g: Vector2) -> Vector2:
 ## A fresh timeline for the director's events (v0.11 M1): stretched by `stretch`, so a board mission's windows fall inside
 ## its longer night. Off the board it is EventTimeline.new()'s own.
 func _new_timeline() -> EventTimeline:
-	return EventTimeline.new().stretched(stretch)
+	var tl := EventTimeline.new().stretched(stretch)
+	tl.clock = rules  # v0.11.2: the timeline runs on the mission clock's rate (null rules: rate 1)
+	return tl
+
+
+## `delta` real seconds as mission seconds (v0.11.2): what a Lantern night's director adds to a schedule clock of its own.
+func mission_delta(delta: float) -> float:
+	return delta * rules.clock_rate if is_instance_valid(rules) else delta
 
 
 ## `p` may be gathered or appointed by this director (v0.11 M2): standing (_alive()), out of doors and not reserved. A Variant,

@@ -10,6 +10,14 @@ var _elapsed := 0.0
 ## How many times slower the timeline's own seconds run than the night's (v0.11 M1, stretched()): an event `at` seconds in,
 ## and every wait a director measures with elapsed(), comes that many times later in real seconds. 1 off the board.
 var _scale := 1.0
+## The Rules whose clock_rate speeds this timeline (v0.11.2): null runs it at rate 1. Rules is a Node freed at next_act, so
+## it is checked before every read.
+var clock: Rules
+
+
+## The mission clock's rate now (1 for no clock, or one already freed).
+func _rate() -> float:
+	return clock.clock_rate if is_instance_valid(clock) else 1.0
 
 
 ## A timeline whose events and elapsed() run `factor` times slower than real time (v0.11 M1, spec §7.2: a board mission's
@@ -35,7 +43,7 @@ func add(at: float, id: String, label: String, fn := Callable(), when := Callabl
 
 
 func step(delta: float) -> void:
-	_elapsed += delta / _scale
+	_elapsed += delta * _rate() / _scale
 	for e in _events:
 		if bool(e.done) or float(e.at) > _elapsed:
 			continue
@@ -48,6 +56,8 @@ func step(delta: float) -> void:
 		fired.emit(String(e.id), String(e.label))
 
 
+## Times in upcoming()'s "in" and seconds_to() are mission seconds (v0.11.2): `_elapsed` runs on the clock's rate, so at x2 a
+## 20 s wait shows 20 and takes 10 real seconds -- the strip agrees with the clock.
 ## The next `n` events still to come, soonest first as the strip shows them (v0.11 M3: each at its shown time -- its own, or the
 ## sooner one a director's chain expects, expect() -- ties in the order added; for a timeline that never calls expect() this is
 ## the order of old).
@@ -81,7 +91,7 @@ func has_come(id: String) -> bool:
 	return false
 
 
-## Real seconds until the event `id` comes (v0.11 M1); 0 once it has, or for no such event. v0.11 M3: to its shown time (expect()).
+## Mission seconds (v0.11.2; real at rate 1) until the event `id` comes (v0.11 M1); 0 once it has, or for no such event. v0.11 M3: to its shown time (expect()).
 func seconds_to(id: String) -> float:
 	for e in _events:
 		if String(e.id) == id and not bool(e.done):

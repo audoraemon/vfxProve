@@ -96,6 +96,12 @@ const SCORE_PER_CHAIN := 300
 const RANKS := [[19000, "S"], [14200, "A"], [9400, "B"], [4600, "C"]]
 
 var time_left := MISSION_SECONDS
+## How many mission seconds pass per real second (v0.11.2 spec 4.4): 1.0 until a Lantern turns (LanternWatch), then x1.5 or x2.0.
+## The clock (time_left) and every EventTimeline run on it; cooldowns, a person's walk, elapsed() and the director's step(delta)
+## stay real. Negative rates are clamped to 0.
+var clock_rate := 1.0:
+	set(value):
+		clock_rate = maxf(value, 0.0)
 ## The drafted power keys, in slot order.
 var loadout := PackedStringArray()
 ## The mission is over: the clock ran out, the people got away, or the city fell.
@@ -154,6 +160,8 @@ var _playing: FxTimeline
 var _casts: Array[Dictionary] = []
 ## Seconds since the mission started, for the casts' grace window.
 var _elapsed := 0.0
+## The act's mission seconds: the sum of delta x clock_rate while the clock runs (mission_time()).
+var _mission_elapsed := 0.0
 ## The crowd's counts when this act began (v0.09): an act counts from its own start; a single mission starts from 0.
 var _escaped0 := 0
 ## The laws abolished for now (abolish()): law -> seconds left. And the Citadel's ward as it was, to put back.
@@ -214,7 +222,8 @@ func advance(delta: float) -> void:
 	_forget_old_casts()
 	_step_abolished(delta)
 	if not is_abolished(LAW_CLOCK):
-		time_left = maxf(0.0, time_left - delta)
+		time_left = maxf(0.0, time_left - delta * clock_rate)
+		_mission_elapsed += delta * clock_rate
 	if _stability_dirty:
 		_stability_dirty = false
 		stability.measure(_env, _crowd, _town.citadel)
@@ -525,6 +534,18 @@ func ascend() -> bool:
 ## Seconds since the act started (v0.11 M1: a board night's time to its main objective).
 func elapsed() -> float:
 	return _elapsed
+
+
+## The act's mission seconds (v0.11.2): real time x clock_rate, summed while the clock runs -- not while Abolition stops it.
+## (An EventTimeline keeps stepping through Abolition, as it always has, so a Lantern's own clocks use this and the strip's
+## timeline may differ from it by the abolished seconds.)
+func mission_time() -> float:
+	return _mission_elapsed
+
+
+## `seconds` of real time as mission seconds at the clock's present rate.
+func real_to_mission(seconds: float) -> float:
+	return seconds * clock_rate
 
 
 ## End the act now, as a tool or a test asks (v0.09); an act already over stays as it ended.

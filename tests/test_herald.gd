@@ -6,6 +6,12 @@ extends RefCounted
 
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const DT := 0.05
+const HERALD_ROW := "The Herald reaches the Temple"
+
+
+## The strip's Herald rows (the Bearer's row shares the strip).
+static func _herald_rows(lw: LanternWatch) -> Array:
+	return lw.strip_rows().filter(func(r: Dictionary) -> bool: return String(r["label"]) == HERALD_ROW)
 
 
 static func run(t) -> void:
@@ -190,8 +196,10 @@ static func _toll_runs(t) -> void:
 	var temple := false
 	for tag in lt:
 		temple = temple or (tag.label == "TEMPLE" and tag.edge and tag.at.is_equal_approx(_door(s)))
-	t.check(temple and lw.strip_rows().size() == 1 and lw.strip_rows()[0]["label"] == "The Herald reaches the Temple"
-		and float(lw.strip_rows()[0]["in"]) > 7.0, "the Temple's door is tagged, and the strip has the row (%s)" % [lw.strip_rows()])
+	# The Bearer's row (Task 10) shares the strip: only the Herald's rows are counted here.
+	var hrows := _herald_rows(lw)
+	t.check(temple and hrows.size() == 1 and float(hrows[0]["in"]) > 7.0,
+		"the Temple's door is tagged, and the strip has the row (%s)" % [lw.strip_rows()])
 	var p0 := keeper.ground_pos
 	_run(s, 4.0)
 	t.check(keeper.ground_pos.distance_to(p0) < 0.15, "he stands on the tower for the descent (%.2f moved)" % keeper.ground_pos.distance_to(p0))
@@ -290,7 +298,7 @@ static func _later_star(t) -> void:
 		heralds += 1 if tag.label.begins_with("HERALD") else 0
 	for tag in lw.tags():
 		heralds += 1 if tag.label.begins_with("HERALD") else 0
-	t.check(heralds == 2 and lw.strip_rows().size() == 1, "two Heralds at once, both tagged, one strip row (soonest)")
+	t.check(heralds == 2 and _herald_rows(lw).size() == 1, "two Heralds at once, both tagged, one strip row (soonest)")
 	Kit.done(s)
 
 

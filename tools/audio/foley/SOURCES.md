@@ -22,3 +22,10 @@ the built WAVs; `assets/audio/CREDITS.md` lists every recording a recipe uses.
 WAV built from a Sonniss recording must not be pushed to a public repo. Nothing here uses Sonniss yet.
 
 Python needs `numpy`, `scipy`, `soundfile` and `mido` (`python -m pip install scipy soundfile mido`).
+
+**Loudness and the listening sheet.** `python tools/audio/loudness.py` measures every WAV the catalog plays (ITU-R BS.1770-4
+integrated loudness and true peak) into `tools/audio/loudness.tsv`; `--check` fails if a WAV no longer matches its row, so run the
+tool after any recipe rebuild or new cue and commit the TSV. `--table` prints the played level (LUFS + catalog dB + the call's
+offset) of every power's cues and the quiet floor; `tests/test_power_sounds.gd` reads the same numbers. `--mix CUE...` renders
+`tools/audio/ab/v0112/mix_<cue>.wav` (the cue over `music_theme` at the game's music level) for `tools/audio/ab/v0112/LISTEN.md`,
+the sheet the user listens with.

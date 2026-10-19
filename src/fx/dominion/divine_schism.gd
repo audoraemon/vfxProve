@@ -301,7 +301,7 @@ func _beat(k: int) -> void:
 	beat.tween_param("intensity", 0.9, 0.0, 0.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	beat.life = 0.42
 	ctx.shake.add_trauma(0.2 + 0.1 * float(k))
-	ctx.play(&"jg_punch", origin, -10.0 + 3.0 * float(k))
+	ctx.play(&"jg_punch", origin, -10.0 if k == 0 else -7.0)  # the same two levels as -10 + 3k, literal for the loudness measure
 
 
 ## The break: lightning down the middle, the sigil torn in two and the halves driven apart -- one white-gold, one

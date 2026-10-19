@@ -148,7 +148,7 @@ func _build() -> void:
 			continue
 		if p.compel(spots[gathered.size()], DURATION - 0.5, MOVEMENT_PRIORITY, MARK):
 			gathered.append(p)
-	ctx.play(&"grav_shimmer", place_at, -8.0)
+	ctx.play(&"q_congregation", place_at)
 	if _staged():
 		_show()
 

@@ -109,8 +109,7 @@ func _build() -> void:
 		"judge":
 			judged = judged_at(ctx.field, origin)
 	at(T_SPEAK, _speak)
-	ctx.play(&"jg_rumble", origin, -4.0)
-	ctx.play(&"hs_charge", origin, -6.0)
+	ctx.play(&"q_voice", origin)
 	if _staged():
 		_gather_show()
 

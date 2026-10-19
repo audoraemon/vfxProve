@@ -13,11 +13,20 @@ const FLOOR_BELOW := 6.0
 const FLOOR_STEP := 0.5
 ## A loud power whose main cue sits under the floor, with its number. Measured: none (the quietest, Smite, is -20.4).
 const LOUD_EXEMPT := {}
-## The quiet keys still without their own q_<key> cue; Tasks 13 and 14 empty it (a key that already plays its cue must leave).
+## The quiet keys still without their own q_<key> cue; Tasks 13 and 14 empty it, one key per line (a key that already plays its cue must leave). Task 14 took the twelve from whisper to voice.
 const PENDING_QUIET := [
-	"doom", "whisper", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "madness", "blight", "thorns",
-	"pestilence", "mirror", "magnify", "congregation", "oath", "echo", "turncoat", "hatred", "priority", "verdict",
-	"delusion", "voice", "abolition",
+	"doom",
+	"ember",
+	"deathmark",
+	"noleave",
+	"belllies",
+	"madness",
+	"blight",
+	"thorns",
+	"pestilence",
+	"mirror",
+	"magnify",
+	"abolition",
 ]
 const TSV := "res://tools/audio/loudness.tsv"
 ## Spec 6.3 row 4: the death cues' played levels relative to the loud median, and how far either way is allowed.

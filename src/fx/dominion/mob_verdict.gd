@@ -33,6 +33,9 @@ var judged_at := Vector2.ZERO
 var mob: Array[Person] = []
 
 var _hit_in := HIT_EVERY
+## Sound only (v0.11.2): where the judged person last stood, and whether their fall has been heard.
+var _fall_at := Vector2.ZERO
+var _fell := false
 
 
 func _build() -> void:
@@ -47,7 +50,7 @@ func _build() -> void:
 		building = place.structure
 		judged_at = place.at
 	at(T_CAST, _judge)
-	ctx.play(&"hs_charge", origin, -6.0)
+	ctx.play(&"q_verdict", origin)
 	if DominionParts.staged(self):
 		var over: Variant = judged if judged != null else judged_at
 		var brand := DominionParts.icon(self, over, DominionParts.BLADE, DominionParts.CRIMSON, T_CAST + VERDICT_TIME, 48.0)
@@ -103,7 +106,20 @@ func at_walls() -> int:
 	return mini(n, MAX_AT_WALLS)
 
 
+## The judged person's fall is the verdict carried out: its own sound, once, where they fell (a person freed without
+## dying, one who left the town, is not a fall). Output only; nothing in the simulation reads it.
+func _hear_the_fall() -> void:
+	if _fell or judged == null or t < T_CAST or not is_instance_valid(judged):
+		return
+	if judged.is_alive():
+		_fall_at = judged.ground_pos
+		return
+	_fell = true
+	ctx.play(&"q_verdict_hit", _fall_at if _fall_at != Vector2.ZERO else judged_at)
+
+
 func _fx_process(delta: float) -> void:
+	_hear_the_fall()
 	if building == null or t < T_CAST or mob.is_empty():
 		return
 	_hit_in -= delta
@@ -112,6 +128,9 @@ func _fx_process(delta: float) -> void:
 	_hit_in = HIT_EVERY
 	if not is_instance_valid(building) or building.destroyed:
 		# It is down: the verdict is carried out.
+		if not _fell:
+			_fell = true
+			ctx.play(&"q_verdict_hit", judged_at)
 		for p in mob:
 			if is_instance_valid(p):
 				p.release_compulsion()

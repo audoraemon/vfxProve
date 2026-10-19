@@ -64,6 +64,24 @@ static func _cast(ctx: FxContext, file: String, at: Vector2, extra := {}) -> FxT
 	return FxTimeline.cast(load(DIR + file), ctx, at, extra)
 
 
+## A stand-in for the battlefield's Sfx that writes down what it was asked to play and where.
+class _Heard extends Node:
+	var played: Array = []
+
+	func play(cue: StringName, at: Vector2, _db := 0.0) -> Variant:
+		played.append([cue, at])
+		return null
+
+	func cues() -> Array:
+		return played.map(func(c: Array) -> StringName: return c[0])
+
+	func at(cue: StringName) -> Vector2:
+		for c in played:
+			if c[0] == cue:
+				return c[1]
+		return Vector2.INF
+
+
 ## The first citizens of a role, `count` of them.
 static func _of_role(crowd: Crowd, role: CitizenProfile.Role, count: int) -> Array[Person]:
 	var out: Array[Person] = []
@@ -223,6 +241,25 @@ static func run(t) -> void:
 	t.check(verdict.mob.size() == 3 and b.fight_target == a and guard.fight_target == a and a.mind != Person.Mind.FIGHT,
 		"the second click's circle turns on them, soldiers too (%d)" % verdict.mob.size())
 	verdict.free()
+	# v0.11.2 (Task 14): the judged one's fall has its own cue, once, where they fell; nothing before it. (A far resident, so the
+	# later checks keep theirs.)
+	var victim := residents[29]
+	victim.ground_pos = grid.nearest_walkable(at + Vector2(0.0, 6.0))
+	var heard := _Heard.new()
+	var had_sfx := ctx.sfx
+	ctx.sfx = heard
+	var doomed: MobVerdictFx = _cast(ctx, "mob_verdict.gd", victim.ground_pos, {"to": victim.ground_pos})
+	doomed._process(MobVerdictFx.T_CAST + 0.1)
+	t.check(doomed.judged == victim and not heard.cues().has(&"q_verdict_hit"), "no fall sound while the judged still stands")
+	var fell_at := victim.ground_pos
+	field.kill(victim, &"mob")
+	doomed._process(0.1)
+	doomed._process(0.1)
+	t.check(heard.cues().count(&"q_verdict_hit") == 1 and heard.at(&"q_verdict_hit") == fell_at,
+		"Mob Verdict: the judged one's fall plays q_verdict_hit once, where they fell (%s)" % [heard.cues()])
+	ctx.sfx = had_sfx
+	heard.free()
+	doomed.free()
 	_scatter(crowd)
 	var house: Structure = null
 	for s in env.structures():

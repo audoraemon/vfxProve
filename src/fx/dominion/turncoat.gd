@@ -49,7 +49,7 @@ func _build() -> void:
 		turned.fight(null, TURN_TIME, Person.SOLDIER_BLOW, Person.FightRule.OWN_KIND, SIGHT)
 	else:
 		_next_aim()
-	ctx.play(&"grav_arc", origin, -4.0)
+	ctx.play(&"q_turncoat", origin)
 	if DominionParts.staged(self):
 		# The emblem cracks and flips: a flash split in two colours over the turned.
 		DominionParts.pulse(self, turned.ground_pos, 1.4, DominionParts.GOLD, 0.8, 0.5)

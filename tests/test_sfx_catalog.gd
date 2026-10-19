@@ -12,7 +12,7 @@ static func run(t) -> void:
 		if stream is AudioStreamWAV and Sfx.CATALOG[cue].get("loop", false):
 			t.check(stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "cue %s loops" % cue)
 			t.check(stream.loop_end > 0, "cue %s loop_end set" % cue)
-	t.check(count == 129, "catalog covers all 129 generated files (got %d)" % count)
+	t.check(count == 142, "catalog covers all 142 generated files (got %d)" % count)
 	for cue in [&"orb_hit", &"laser_sizzle"]:
 		t.check(Sfx.paths_for(cue).size() > 1, "%s has variants" % cue)
 
@@ -42,8 +42,8 @@ static func run(t) -> void:
 			if not played.has(wav) or not ResourceLoader.exists(wav):
 				unbaked += " " + file
 	t.check(unbaked == "", "every source is built and in the catalog (not:%s)" % unbaked)
-	t.check(sourced.size() == 129 and from["sfxr"] == 14 and from["foley"] == 111 and from["music"] == 4,
-		"all 129 sounds have a source: 14 GodotSfxr, 111 recipes of recordings, 4 music (%d: %s)" % [sourced.size(), from])
+	t.check(sourced.size() == 142 and from["sfxr"] == 14 and from["foley"] == 124 and from["music"] == 4,
+		"all 142 sounds have a source: 14 GodotSfxr, 124 recipes of recordings, 4 music (%d: %s)" % [sourced.size(), from])
 	var orphan := ""
 	for path: String in played:
 		if not sourced.has(path):

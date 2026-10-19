@@ -22,8 +22,21 @@ power's cast sound is that minus 6 LU, **-21.0** (`QUIET_FLOOR` in `tests/test_p
 | `sol_death` | 1: -14.39 / -2.17, 2: -15.63 / -1.84, 3: -14.65 / -2.10 | -4.2 | -18.6 (loud median -4) | `mix_sol_death.wav` | A soldier's grunt, mail and a fall: reads as armour, not as a villager. | | |
 | `cit_fall` | 1: -26.56 / -5.99, 2: -25.34 / -5.99, 3: -25.79 / -5.99, 4: -25.30 / -5.99 | +1.8 | -23.5 (loud median -9) | `mix_cit_fall.wav` | A body slumping, no cry: Silent Doom, Death Mark and plague. Quiet on purpose; can you still hear it on a calm street, and does it stay unsettling rather than silent? | | |
 | `crowd_death_wave` | 1: -13.97 / -0.28, 2: -15.67 / -0.29 | -2.0 | -16.0 (under the median) | `mix_crowd_death_wave.wav` | The roar of a crowd falling at once: one crunchy wave over three cries, never sixty. | | |
+| `q_whisper` | -13.75 / -1.10 | -5.3 | -19.1 (floor -21.0) | `mix_q_whisper.wav` | Mind Whisper. A breath of voice in the dark, all air and hiss; the quietest of the twelve on purpose. Can you still hear it over the music? | | |
+| `q_wisp` | -15.52 / -0.29 | -2.0 | -17.5 (floor -21.0) | `mix_q_wisp.wav` | Will-o'-Wisp. Four glass chimes climbing, like a light bobbing off down the street. Lures, so it should sound like an invitation. | | |
+| `q_discord` | -16.83 / -0.29 | -0.7 | -17.5 (floor -21.0) | `mix_q_discord.wav` | Discord. Bells struck out of tune on top of each other, a glass shard in it: a clash, thoughts that will not agree. | | |
+| `q_congregation` | -17.08 / -2.75 | +0.0 | -17.1 (floor -21.0) | `mix_q_congregation.wav` | Divine Congregation. A crowd murmuring as it gathers under a low church bell. Reads as a meeting called, not an attack. | | |
+| `q_oath` | -16.27 / -0.32 | -0.7 | -17.0 (floor -21.0) | `mix_q_oath.wav` | Oathbound. A lock turning, a heavy clang and a chain: a vow sealed. Solid metal, not a magic sparkle. | | |
+| `q_echo` | -17.61 / -0.26 | -0.4 | -18.0 (floor -21.0) | `mix_q_echo.wav` | Command Echo. One short shout handed on five times, each further off and duller. The repetition is the point. | | |
+| `q_turncoat` | -15.20 / -0.12 | -1.8 | -17.0 (floor -21.0) | `mix_q_turncoat.wav` | Turncoat. A reversed rush of air then a drawn blade and a ring: someone changing sides. Sharp and quick. | | |
+| `q_hatred` | -15.71 / -2.71 | -0.8 | -16.5 (floor -21.0) | `mix_q_hatred.wav` | Manufactured Hatred. A growl over an angry crowd murmur. Ugly, mid-low, close to a threat but with no flash. | | |
+| `q_priority` | -18.72 / -4.34 | +0.2 | -18.5 (floor -21.0) | `mix_q_priority.wav` | Rewrite Priority. A page turned, two small marks written, a clear bell as it is set: an order rewritten. | | |
+| `q_verdict` | -19.04 / -0.29 | +0.0 | -19.0 (floor -21.0) | `mix_q_verdict.wav` | Mob Verdict (the cast). Two knocks of a gavel and a bell. The ruling being made. | | |
+| `q_verdict_hit` | -17.87 / -0.29 | +0.0 | -17.9 (floor -21.0) | `mix_q_verdict_hit.wav` | Mob Verdict (the fall). A heavy fall with a short crowd roar and a low bell, where the judged one drops. Quiet-power fall, not a death cry. | | |
+| `q_delusion` | -14.51 / -1.16 | -2.5 | -17.0 (floor -21.0) | `mix_q_delusion.wav` | Collective Delusion. A bell played backwards swelling into a wavering theremin: reality bending. Peaks as the lie lands. | | |
+| `q_voice` | -16.08 / -0.91 | +0.6 | -15.5 (floor -21.0) | `mix_q_voice.wav` | Voice of God. A deep, huge voice with a bass hit and a choir halo. The loudest of the twelve; still under a Heaven Splitter. | | |
 
-Rows for the quiet powers' own `q_<key>` cues (Tasks 13-14) and the Lantern's `lantern_flare`, `lantern_burn` and
+Rows for the quiet powers' own `q_<key>` cues (Task 14's twelve are above, from `q_whisper` to `q_voice`; Task 13's are added by it) and the Lantern's `lantern_flare`, `lantern_burn` and
 `lantern_blind` (Task 14) are added by those tasks with the same columns: run `python tools/audio/loudness.py`, then
 `python tools/audio/loudness.py --mix <cue>...`, and copy the numbers from `tools/audio/loudness.tsv`.
 

@@ -70,7 +70,7 @@ func _build() -> void:
 	if _target == null or not _target.whisper(_to, LINGER):
 		duration = 0.1
 		return
-	ctx.play(&"grav_shimmer", _to, -14.0)
+	ctx.play(&"q_whisper", _to)
 	# A solid ring in a faint halo, no telegraph's scan or crosshair: a mark, not a threat.
 	_ring = _mark(RING_R, COL_RING, 0.25)
 	_halo = _mark(HALO_R, COL_HALO, 0.0)

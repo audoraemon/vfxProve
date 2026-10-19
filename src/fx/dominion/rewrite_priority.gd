@@ -32,7 +32,7 @@ func _build() -> void:
 	duration = T_CAST + PRIORITY_TIME + 0.5
 	busy = T_CAST + 0.5
 	at(T_CAST, _rewrite)
-	ctx.play(&"hs_charge", origin, -8.0)
+	ctx.play(&"q_priority", origin)
 	if DominionParts.staged(self):
 		# The compass over the district, the chosen priority's sign at its heart.
 		DominionParts.sky_sigil(self, origin, 130.0, 130.0, DominionParts.GOLD, T_CAST, 2.5)

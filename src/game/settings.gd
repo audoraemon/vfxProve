@@ -25,7 +25,8 @@ func load_from(path := PATH) -> Settings:
 	for key: String in BUSES:
 		var v: Variant = cf.get_value(SECTION, key, 1.0)
 		if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
-			set(key, clampf(float(v), 0.0, 1.0))
+			var f := float(v)
+			set(key, clampf(f, 0.0, 1.0) if is_finite(f) else 1.0)  # nan and inf are damage: the default
 	return self
 
 
@@ -49,12 +50,23 @@ static func bus_db(v: float) -> float:
 	return -80.0 if v <= 0.0 else linear_to_db(v)
 
 
-func level(key: String) -> float:
-	return float(get(key)) if BUSES.has(key) else 1.0
+## The settings key ("music", "sfx", "ui") for a key or a bus name ("Music", "SFX", "UI"), or "" (and an error) for anything else.
+static func key_for(name: String) -> String:
+	for key: String in BUSES:
+		if name == key or name == BUSES[key]:
+			return key
+	push_error("Settings: unknown volume '%s' (keys music/sfx/ui, buses Music/SFX/UI)" % name)
+	return ""
 
 
-func set_level(key: String, v: float) -> void:
-	if not BUSES.has(key):
+func level(name: String) -> float:
+	var key := key_for(name)
+	return float(get(key)) if key != "" else 1.0
+
+
+func set_level(name: String, v: float) -> void:
+	var key := key_for(name)
+	if key == "":
 		return
-	set(key, clampf(v, 0.0, 1.0))
+	set(key, clampf(v, 0.0, 1.0) if is_finite(v) else 1.0)
 	apply()

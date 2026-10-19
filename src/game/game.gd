@@ -57,6 +57,8 @@ const FADE_IN := 0.35
 const FLOW_TEST_SAVE := "user://test_flow.cfg"
 ## Where --flow-test keeps its volumes (v0.11.2): the player's own settings file is neither read nor written by a scripted run.
 const FLOW_TEST_SETTINGS := "user://test_flow_settings.cfg"
+## Where a --show photograph keeps its volumes: a photo run never rewrites the player's user://kak_settings.cfg.
+const SHOW_SETTINGS := "user://test_show_settings.cfg"
 ## Where --show=<screen> writes its save (v0.10 M5 final review). A sample builds a state of its own -- --show=ending a
 ## campaign that has ended, --show=campaign-choice one on Night 2 -- and the first key pressed on it (Enter on the ending,
 ## MANIFEST after a card) writes the save, which would have replaced the player's real campaign with the sample. Under
@@ -214,6 +216,9 @@ func _ready() -> void:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 		settings_path = FLOW_TEST_SETTINGS
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	elif Battlefield.arg_value(args, "--show") != "":
+		settings_path = SHOW_SETTINGS
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
 	settings = Settings.new().load_from(settings_path)
 	settings.apply()

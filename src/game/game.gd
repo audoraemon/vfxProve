@@ -1726,7 +1726,7 @@ func _flow_campaign(step: Callable) -> void:
 	night.click(night.button_rect("draft").get_center())
 	prep = _screen_node as PrepareScreen
 	step.call(prep != null and prep.mission.id == MissionBook.VIGIL_FLAME and prep.draft.capacity == dp1
-		and not prep.draft.pool.has("heaven"), "the Vigil Flame's draft: the god's %d DP, the quiet pool" % dp1)
+		and prep.draft.pool.has("heaven"), "the Vigil Flame's draft: the god's %d DP, every power" % dp1)
 	prep.draft.preselect(quiet)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)

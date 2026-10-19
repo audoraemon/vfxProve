@@ -29,9 +29,8 @@ static func run(t) -> void:
 	var w := MissionBook.warning()
 	t.check(w.id == MissionBook.WARNING and w.tier == 1 and w.slots == 3 and w.dp_capacity == 6,
 		"The Warning is Tier 1, 3 slots, 6 DP")
-	t.check(Array(w.powers()) == ["whisper", "doom", "wisp", "discord"], "its pool is the four small powers (%s)"
-		% [w.powers()])
-	t.check(not w.allows("thorns") and lj.allows("thorns"), "Thornwall is Last Judgement's only (v0.08.1)")
+	t.check(w.powers() == PowerBook.keys(), "v0.11.2: every power in its draft (%s)" % [w.powers()])
+	t.check(w.allows("thorns") and lj.allows("thorns"), "v0.11.2: every power, Thornwall too")
 	t.near(w.clock, 120.0, 0.001, "on a 2:00 clock")
 	t.check(w.profile == "unaware" and not w.chooses_difficulty() and not w.scored and w.director == WarningDirector,
 		"an Unaware town, unscored, with WarningDirector")
@@ -77,11 +76,11 @@ static func run(t) -> void:
 	t.check(vf_dp <= 5 and Array(vf.default_loadout).all(func(k: String) -> bool: return vf.allows(k)),
 		"its default loadout is in its pool and fits a bitten Night 2's 5 DP (%d)" % vf_dp)
 	t.check(vf.bonuses().size() == 1 and vf.bonuses()[0].label == "Unseen hands", "one bonus, Unseen hands")
-	t.check(Array(mh.powers()) == MissionBook.VIGIL_POOL and Array(MissionBook.vigil_flame().powers()) == MissionBook.VIGIL_POOL,
-		"Mira's House and the Vigil Flame draft from the quiet five (%s)" % [mh.powers()])
+	t.check(mh.powers() == PowerBook.keys() and MissionBook.vigil_flame().powers() == PowerBook.keys(),
+		"v0.11.2: Mira's House and the Vigil Flame draft from every power (%s)" % [mh.powers()])
 	var bl := MissionBook.broken_lanterns()
-	t.check(bl.allows("thorns") and bl.allows("heaven") and bl.allows("gravity") and not bl.allows("nova"),
-		"Broken Lanterns adds four Ruin powers, not Nova")
+	t.check(bl.allows("thorns") and bl.allows("heaven") and bl.allows("gravity") and bl.allows("nova"),
+		"v0.11.2: Broken Lanterns allows every power, Nova too")
 	var bl_reasons := []
 	for o in bl.objectives():
 		bl_reasons.append(o.reason)

@@ -34,9 +34,6 @@ const RELIC_RUN := "relic_run"
 const LANTERN_EYE := "lantern_eye"
 const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
-## The Vigil's pools (v0.10 spec §4.1): the quiet five, and for Broken Lanterns four Ruin powers besides.
-const VIGIL_POOL := ["whisper", "doom", "wisp", "discord", "thorns"]
-const RUIN_POOL := ["heaven", "tornado", "dragon", "gravity"]
 ## Seconds a completed Banishing Rite takes off the clock in The Long Night's acts (v0.09.1); every other mission keeps
 ## BanishingRite.PENALTY.
 const NIGHT_RITE_PENALTY := 20.0
@@ -239,19 +236,14 @@ static func first_prayers() -> MissionDef:
 
 
 ## The Bell-Ringers (v0.11 M3, Tier 2, mission spec §1 and §8 row 8): three watch posts each send a ringer for the bell, his mates
-## at his heels; stop all three warnings before the bell tolls (BellRingersDirector). Blight and The Bell Lies are left out of its
-## pool: either silences the bell outright.
+## at his heels; stop all three warnings before the bell tolls (BellRingersDirector). v0.11.2: every power is open; a warning that
+## can no longer ring the bell (Blight cracks it) runs for the Temple instead.
 static func bell_ringers() -> MissionDef:
 	var m := _tier2(BELL_RINGERS, "The Bell-Ringers", PackedStringArray(["Three watch posts guard the walls.",
 		"Stop their ringers before the bell."]))
 	m.goal = "Stop the ringers of all three watch posts before the bell tolls"
 	m.goal_label = "The ringers are stopped"
 	m.lose = "The bell tolls, or dawn comes"
-	var pool := PackedStringArray()
-	for key in PowerBook.keys():
-		if not key in BellRingersDirector.LEFT_OUT:
-			pool.append(key)
-	m.pool = pool
 	m.camera_at = BellRingersDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "whisper", "discord"])
@@ -501,8 +493,8 @@ static func heart_of_faith() -> MissionDef:
 
 
 ## The Warning (v0.08 M4): a star falls over the Main Gate and a watchman runs to wake the bell; kill whoever carries
-## the warning unseen (WarningDirector). v0.08.1 left Thornwall out of its pool: a 3-unit wall is walked round in at most
-## 1.5 s, once a mission -- a Last Judgement tool (gates, evacuees). v0.11 M1 (no waiting, spec §7.3): holding the warning
+## the warning unseen (WarningDirector). v0.08.1 left Thornwall out of its pool (a 3-unit wall is walked round in at most
+## 1.5 s, once a mission -- a Last Judgement tool); v0.11.2 opened every power on every mission. v0.11 M1 (no waiting, spec §7.3): holding the warning
 ## off until the omen fades no longer wins; dawn with the warning alive loses, as any other dawn does.
 static func warning() -> MissionDef:
 	var m := MissionDef.new()
@@ -515,7 +507,6 @@ static func warning() -> MissionDef:
 	m.lose = "The bell tolls, or dawn comes with the warning alive"
 	m.slots = 3
 	m.dp_capacity = 6
-	m.pool = PackedStringArray(["whisper", "doom", "wisp", "discord"])
 	m.clock = 120.0
 	m.profile = "unaware"
 	m.intro_from = TownLayout.MAIN_GATE.get_center() + Vector2(0.0, 6.0)
@@ -724,7 +715,7 @@ static func _judgement_line(n: NightState) -> String:
 ## Vigil Flame (the Theft path) M4's.
 static func miras_house() -> MissionDef:
 	var m := _vigil(MIRAS_HOUSE, "Mira's House", PackedStringArray(["Her journal waits in a shuttered house.",
-		"Lead the grieving to it unseen."]), PackedStringArray(VIGIL_POOL))
+		"Lead the grieving to it unseen."]))
 	m.goal = "Lead four of the grieving to Mira's journal, unseen, before dawn"
 	m.goal_label = "Four believe"
 	m.lose = "The Lantern looks, or fewer than four believe by dawn"
@@ -747,7 +738,7 @@ static func miras_house() -> MissionDef:
 ## Night 2 after a bite.
 static func vigil_flame() -> MissionDef:
 	var m := _vigil(VIGIL_FLAME, "The Vigil Flame", PackedStringArray(["A priest carries Halcyon's flame.",
-		"A mortal hand must steal it."]), PackedStringArray(VIGIL_POOL))
+		"A mortal hand must steal it."]))
 	m.goal = "Have Wren swap Halcyon's flame unseen, and carry it to Mira's shrine under the searchlight"
 	m.goal_label = "The flame is stolen"
 	m.lose = "The Lantern looks, Wren dies, the flame goes home to the Temple, or dawn comes first"
@@ -769,7 +760,7 @@ static func vigil_flame() -> MissionDef:
 ## Vigil relights them (BrokenLanternsDirector). The default loadout costs 5 DP, so it fits a Night 2 after a bite.
 static func broken_lanterns() -> MissionDef:
 	var m := _vigil(BROKEN_LANTERNS, "Broken Lanterns", PackedStringArray(["Six shrines anchor the Lantern.",
-		"Break them before they are relit."]), PackedStringArray(VIGIL_POOL + RUIN_POOL))
+		"Break them before they are relit."]))
 	m.goal = "Break Halcyon's six shrines, and let them drain before the Vigil relights them"
 	m.goal_label = "The lanterns are dark"
 	m.lose = "The bell tolls, the Lantern looks, or dawn finds a shrine still lit"
@@ -788,7 +779,7 @@ static func broken_lanterns() -> MissionDef:
 	return m
 
 
-static func _vigil(id: String, name: String, brief: PackedStringArray, pool: PackedStringArray) -> MissionDef:
+static func _vigil(id: String, name: String, brief: PackedStringArray) -> MissionDef:
 	var m := MissionDef.new()
 	m.id = id
 	m.name = name
@@ -799,7 +790,6 @@ static func _vigil(id: String, name: String, brief: PackedStringArray, pool: Pac
 	m.lose = "Nothing yet"
 	m.slots = 3
 	m.dp_capacity = 8
-	m.pool = pool
 	m.clock = 120.0
 	m.profile = "unaware"
 	m.intro_banner = name.to_upper()

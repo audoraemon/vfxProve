@@ -24,8 +24,6 @@ const POST_SIGHT := 6.0
 const TOWER_TRIES := 6
 ## How hard a blow shakes the posts and the bell tower (v0.11 M3, Decision 5).
 const STONE_SHAKE := 2.0
-## The powers left out of its pool (v0.11 M3, Decision 5): both silence the bell outright, which would stop every ringer at once.
-const LEFT_OUT := ["blight", "belllies"]
 ## Where the camera rests (v0.11 M3, Decision 30): the north-east post top right, the bell tower below the centre, the east post
 ## at the right; the south-west post's arrow on the left edge, below the HUD stack.
 const CAMERA_AT := Vector2(6.0, -5.0)

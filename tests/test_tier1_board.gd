@@ -152,8 +152,8 @@ static func _board(t) -> void:
 		"The Tax Collector keeps the tax collector wish away")
 	t.check(Array(TierBook.missions(1)) == ["warning"] + NEW and TierBook.need(1) == 3 and DescendState.lock_text(2) == "Clear 3 Whisper missions",
 		"Whisper: The Warning and the four new; three of them open Omen")
-	t.check(TierBook.board("warning").powers().has("deathmark") and not MissionBook.warning().powers().has("deathmark"),
-		"Death Mark on the board's Warning only")
+	t.check(TierBook.board("warning").powers().has("deathmark") and MissionBook.warning().powers().has("deathmark"),
+		"v0.11.2: every power, Death Mark on the campaign's Warning too")
 	t.check(TierBook.type_of("tax_collector") == "Kill" and TierBook.type_of("spoiled_harvest") == "Destroy"
 		and TierBook.type_of("lost_lamb") == "Protect" and TierBook.type_of("first_prayers") == "Cult", "each card's type")
 

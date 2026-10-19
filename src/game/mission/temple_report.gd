@@ -6,6 +6,10 @@ extends RefCounted
 ## it to the nearest witness, who runs on. Judged once a cast's other victims have fallen (Crowd._settle_doom()), as
 ## The Warning judges its messenger. A frightened, confused or whispered carrier drops the run and picks it up again
 ## once back on its feet; only a relay overrides a fright.
+##
+## v0.11.2 (the Herald, spec 4.6): `slow` is the share of its pace a carrier keeps (LanternWatch.HERALD_SLOW) and `descend` the seconds the
+## first carrier stands still before he is sent (he is coming down the bell tower); a relay's new carrier is sent at once. Both default
+## to the report's old ways (full pace, sent at once), so no other mission changes.
 
 const REACH := 1.0
 const RETARGET := 0.5
@@ -23,14 +27,23 @@ var relays := 0
 ## func(p: Person) -> bool (v0.11 M5): a witness a relay passes over -- The Sermon's and The Relic Run's: one fleeing the town or
 ## reserved. Empty: any witness carries it on, as before.
 var skip: Callable
+## The share of the carrier's pace kept on the run (1.0: all of it).
+var slow := 1.0
+## Seconds the first carrier is held before he is sent (0: sent at once).
+var descend := 0.0
 var _fell_at := Vector2.INF
 var _retarget_in := 0.0
+var _descend_left := 0.0
 
 
-func _init(p: Person, temple_door: Vector2) -> void:
+func _init(p: Person, temple_door: Vector2, slow_pace := 1.0, descend_seconds := 0.0) -> void:
 	carrier = p
 	door = temple_door
-	_send(true)
+	slow = slow_pace
+	descend = descend_seconds
+	_descend_left = descend_seconds
+	if _descend_left <= 0.0:
+		_send(true)
 
 
 ## Still on its way: neither delivered nor ended.
@@ -47,15 +60,66 @@ func step(delta: float, crowd: Crowd) -> void:
 			return
 	if not _alive(carrier):
 		return
+	if _descend_left > 0.0:
+		_descend_left -= delta
+		if _descend_left > 0.0:
+			hold(carrier)  # still coming down the tower: stands where he is
+			return
+		_retarget_in = RETARGET
+		_send(true)
+		return
 	if carrier.ground_pos.distance_to(door) <= REACH:
 		delivered = true
 		if carrier.mind == Person.Mind.DUTY:
 			carrier.leave_shelter(false)
+		unslow()
 		return
 	_retarget_in -= delta
 	if _retarget_in <= 0.0:
 		_retarget_in = RETARGET
 		_send(false)
+
+
+## Seconds the first carrier is still held (0 once he walks, and for a relay).
+func descend_left() -> float:
+	return maxf(_descend_left, 0.0)
+
+
+## The carrier left the town (or was freed) with no fall to judge: nothing is left to stop, so the report is over. Only reads.
+func gone() -> bool:
+	return is_open() and _fell_at == Vector2.INF and not is_instance_valid(carrier)
+
+
+## Real seconds `p` still needs to walk to `to` at the Herald's pace: along the rest of his path when he has one, else straight.
+## `slow` is the share of his pace kept. Only reads.
+static func walk_seconds(who: Variant, to: Vector2, slow_pace := 1.0) -> float:
+	if not is_instance_valid(who):
+		return 0.0
+	var p := who as Person
+	var at := p.ground_pos
+	var d := 0.0
+	if not p._path.is_empty() and p._goal != Vector2.INF:
+		if p._leg > 0 and p._target != Vector2.INF:
+			d += at.distance_to(p._target)
+			at = p._target
+		for i in range(p._leg, p._path.size()):
+			d += at.distance_to(p._path[i])
+			at = p._path[i]
+	d += at.distance_to(to)
+	return d / maxf(Person.PANIC_SPEED * p.pace * slow_pace, 0.05)
+
+
+## `who` stands where he is for the next moment (called every frame while a Herald comes down the tower): his idle pause, which the base
+## walk honours on every frame, not only on the frames he thinks.
+static func hold(who: Variant) -> void:
+	if is_instance_valid(who):
+		(who as Person)._idle = maxf((who as Person)._idle, 0.2)
+
+
+## The carrier's slowing and duty are undone (the report ends: delivered, or the act does).
+func unslow() -> void:
+	if slow < 1.0 and is_instance_valid(carrier):
+		carrier.statuses.erase(&"slow")
 
 
 func on_killed(e: DummyEnemy) -> void:
@@ -73,6 +137,7 @@ func _judge(crowd: Crowd) -> void:
 	if witness != carrier:
 		relays += 1
 	carrier = witness
+	_descend_left = 0.0  # a relay is sent at once, wherever the first carrier was
 	_send(true)
 
 
@@ -97,6 +162,8 @@ func _witness(crowd: Crowd, at: Vector2) -> Person:
 func _send(relay: bool) -> void:
 	if not _alive(carrier):
 		return
+	if slow < 1.0:
+		carrier.statuses[&"slow"] = slow  # before every go_duty: the pace it is given reads it
 	if carrier.mind == Person.Mind.DUTY:
 		if not carrier.has_goal() or carrier.anchor.distance_to(door) > 0.3:
 			carrier.go_duty(door)

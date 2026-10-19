@@ -99,8 +99,11 @@ func _omen() -> void:
 	omen_fallen = true
 
 
-## The bell's foot: the keeper is never his goal (v0.11 M3, Decision 7).
+## The bell's foot: the keeper is never his goal (v0.11 M3, Decision 7); the Temple's door once the bell has tolled on a Herald night
+## (v0.11.2, WarningDirector.heralding()).
 func _goal() -> Vector2:
+	if heralding():
+		return lantern_door()
 	return crowd.bell.foot if crowd.bell != null else Vector2.INF
 
 
@@ -289,7 +292,10 @@ func tags() -> Array[MapTag]:
 		return out
 	var bell := crowd.bell
 	var climbing := bell != null and bell.keeper == messenger and bell.state == BellNetwork.State.CLIMBING
-	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, "RINGER - CLIMBING" if climbing else "RINGER", true))
+	var label := "RINGER - CLIMBING" if climbing else "RINGER"
+	if herald_open():
+		label = herald_label()  # v0.11.2: the bell has tolled; the ringer is the Herald
+	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
 	var with_him := mates_with()
 	for p in with_him:
 		out.append(MapTag.person(p.ground_pos, MARK_WATCHED, "MATE"))
@@ -304,6 +310,8 @@ func tags() -> Array[MapTag]:
 func hint_phase() -> String:
 	if waiting or phase == Phase.OVER or warning_dead:
 		return ""
+	if herald_open():
+		return "herald"  # v0.11.2
 	if phase == Phase.DELIVERED:
 		return "climbing"
 	if relays > 0:

@@ -181,6 +181,19 @@ static func lantern_door_in(c: Crowd) -> Vector2:
 	return w if w != Vector2.INF else g
 
 
+## Virtual (v0.11.2, spec 4.6): one of this director's warnings runs for the Temple as a Herald and has been neither stopped nor got in
+## (WarningDirector.herald_open(); Starfall's and The Bell-Ringers' ask each of theirs). LanternWatch.herald_running() reads it, so a
+## night's main objective is not DONE while one runs. False by default.
+func herald_open() -> bool:
+	return false
+
+
+## Virtual (v0.11.2, spec 4.5): the soonest of this director's Heralds reaches the Temple in this many MISSION seconds (the remaining real
+## walk times the clock's rate), INF for none. The strip's `The Herald reaches the Temple` row reads it.
+func herald_eta() -> float:
+	return INF
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

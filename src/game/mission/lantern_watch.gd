@@ -41,6 +41,12 @@ const TOLL_BANNER := "THE BELL TOLLS - THE LANTERN TURNS"
 const BURN_BANNER := "THE LANTERN BURNS - DAWN RUSHES"
 const BLIND_BANNER := "THE LANTERN IS BLIND - DAWN SLOWS"
 const HEARD_BANNER := "THE LANTERN HEARS"
+const HERALD_BANNER := "THE HERALD RUNS FOR THE TEMPLE"
+const SILENT_BANNER := "THE BELL IS SILENT - THE WARNING RUNS FOR THE TEMPLE"
+## The Herald's tag (spec 5.2): gold, as the Warning's carrier; the Temple's door orange, as every place.
+const MARK_HERALD := Color("d8b23a")
+const MARK_TEMPLE := Color("ff9a3a")
+const STRIP_HERALD := "The Herald reaches the Temple"
 
 ## The cues played at the Temple (catalogued by Task 13; nothing plays until they exist).
 const CUE_FLARE := &"lantern_flare"
@@ -54,11 +60,14 @@ var tolled := false
 var tolled_at := -1.0
 ## The Lantern's own pale beam from the Temple's spire: it hunts every noise it hears and holds each BEAM_HOLD seconds.
 var light: Searchlight
-## A Herald reached the Temple's door: the Lantern heard (Task 11 sets it; HeraldObjective loses the night on it).
+## A Herald reached the Temple's door: the Lantern heard (hear(); HeraldObjective loses the night on it).
 var heard := false
-## The bell was silenced (cracked, its tower fallen) after it was called -- there will be no toll (latched from the bell's signal; Task 11 reads it).
+## The bell was silenced (cracked, its tower fallen) after it was called and before it tolled -- there will be no toll (latched from the bell's
+## signal, which only a called bell emits; never set once the bell has tolled). On a Herald night the warnings run for the Temple on it
+## (WarningDirector.heralding()).
 var bell_silenced := false
-## Herald reports running for the Temple that are not a warning's own (the keeper who rang with no warning delivered), Task 11.
+## Herald reports running for the Temple that are not a warning's own: the keeper who rang with no warning delivered (a TempleReport
+## each; the warnings' own Heralds are their directors', MissionDirector.herald_open()).
 var heralds: Array[TempleReport] = []
 ## The Lantern-Bearer (Task 10: a LanternBearer); null until he sets out.
 var bearer: RefCounted
@@ -75,6 +84,8 @@ var _burn_age := INF
 ## Deaths waiting to be judged, as [ground point, whether a beam covered it when it fell]: judged once the crowd has settled a cast's victims.
 var _deaths: Array = []
 var _released := false
+## The first Herald's banner has been shown (once for the night, whoever runs first).
+var _herald_said := false
 
 
 func setup(r: Rules, c: Crowd, t: Town, x: FxContext, k: String) -> LanternWatch:
@@ -102,12 +113,25 @@ func rate() -> float:
 	return float(RATES[stage])
 
 
-## A Herald runs for the Temple's door and has not been stopped (Task 11 adds the warnings that herald).
+## A Herald runs for the Temple's door and has not been stopped or got in: a report of the Lantern's own, or one of the night's warnings (the
+## director's herald_open()).
 func herald_running() -> bool:
+	if _released:
+		return false
 	for h in heralds:
 		if h.is_open():
 			return true
-	return false
+	var d := rules.director if is_instance_valid(rules) else null
+	return d != null and d.herald_open()
+
+
+## A Herald reached the Temple's door: the Lantern hears, once. HeraldObjective loses the night on it; it is set in the same frame the Herald
+## arrives, before the objectives are checked, so the night can never read as won in between (C7).
+func hear() -> void:
+	if heard or _released:
+		return
+	heard = true
+	rules.banner.emit(HEARD_BANNER)
 
 
 ## A Herald runs, or got in: the night's main objective (Warning, Stars) may not read DONE, whatever else is true (HeraldObjective loses
@@ -296,8 +320,13 @@ func _judge_deaths() -> void:
 		burn()
 
 
+## The bell was silenced. Once it has tolled this changes nothing (C7: there was a toll, the Lantern turned, and a warning's errand is the
+## Temple's door already); before, no toll will come, and on a Herald night the warnings run for the Temple on it (R13).
 func _on_silenced(_reason: String) -> void:
+	if tolled or _released:
+		return
 	bell_silenced = true
+	_heralds_start()
 
 
 func _show_light() -> void:
@@ -349,28 +378,84 @@ func _bearer_teardown() -> void:
 
 # --- Task 11's seams (the Herald) -----------------------------------------------------------------------------------------------------
 
-## The toll fell (or the bell was silenced): the keeper who rang, if no director claims him, becomes a TempleReport Herald.
+## The toll fell: on a Herald night the keeper who rang, if no warning claims him as its own carrier (MissionDirector.claims_herald()), is a Herald
+## of his own -- a TempleReport at the Herald's pace, held HERALD_DESCEND seconds while he comes down the tower. His delivery has the Lantern
+## hear. The warnings' own Heralds are their directors' (on_toll() has told them). A silenced bell tolls nothing and makes no report: the
+## warning that called it is the Herald (WarningDirector.heralding()), and the banner is shown by _herald_step().
 func _heralds_start() -> void:
-	pass
+	if kind != KIND_HERALD or not tolled:
+		return
+	var keeper: Variant = _bell.keeper if _bell != null else null
+	if not is_instance_valid(keeper) or not (keeper as Person).is_alive():
+		return
+	var d := rules.director
+	if d != null and d.claims_herald(keeper as Person):
+		return
+	var report := TempleReport.new(keeper as Person, door(), HERALD_SLOW, HERALD_DESCEND)
+	report.skip = func(p: Person) -> bool:
+		# A relay never picks one fleeing the town, nor a warning's own carrier (one kill never stops two Heralds).
+		return p.mind == Person.Mind.FLEE or (is_instance_valid(d) and d.claims_herald(p))
+	heralds.append(report)
 
 
-func _herald_step(_delta: float) -> void:
-	pass
+## One frame of the Lantern's own Heralds: each report is stepped, and the one that gets in is heard in the same frame; a carrier gone from the
+## town ends his report. The first Herald of the night (a report or a warning's) shows the banner once.
+func _herald_step(delta: float) -> void:
+	for h in heralds:
+		if not h.is_open():
+			continue
+		h.step(delta, crowd)
+		if h.gone():
+			h.dead = true
+		elif h.delivered:
+			hear()
+	if not _herald_said and herald_running():
+		_herald_said = true
+		rules.banner.emit(HERALD_BANNER if tolled else SILENT_BANNER)
 
 
-func _herald_killed(_e: DummyEnemy) -> void:
-	pass
+func _herald_killed(e: DummyEnemy) -> void:
+	for h in heralds:
+		h.on_killed(e)
 
 
+## The Lantern's own Heralds, gold and pointed at (the warnings' carry theirs in their director's tags), and the Temple's door while any Herald runs.
 func _herald_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
+	if not herald_running():
+		return out
+	var rate := rules.clock_rate
+	for h in heralds:
+		if not h.is_open() or not is_instance_valid(h.carrier):
+			continue
+		var label := ""
+		if h.descend_left() > 0.0:
+			label = "HERALD - COMES DOWN IN %s" % UiTheme.clock(h.descend_left() * rate)
+		else:
+			label = "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(h.carrier, h.door, h.slow) * rate)
+		out.append(MapTag.person(h.carrier.ground_pos, MARK_HERALD, label, true))
+	out.append(MapTag.place(door(), MARK_TEMPLE, "TEMPLE", 0.0, true))
 	return out
 
 
+## One strip row while a Herald runs: when the soonest reaches the Temple, in mission seconds.
 func _herald_rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	var eta := INF
+	var rate := rules.clock_rate
+	for h in heralds:
+		if h.is_open() and is_instance_valid(h.carrier):
+			eta = minf(eta, (h.descend_left() + TempleReport.walk_seconds(h.carrier, h.door, h.slow)) * rate)
+	if is_instance_valid(rules.director):
+		eta = minf(eta, rules.director.herald_eta())
+	if eta < INF:
+		out.append({"in": eta, "label": STRIP_HERALD})
 	return out
 
 
+## The act ends: the reports' carriers get their pace and their day back.
 func _herald_teardown() -> void:
-	pass
+	for h in heralds:
+		h.unslow()
+		if is_instance_valid(h.carrier) and is_instance_valid(crowd) and (h.carrier as Person).mind == Person.Mind.DUTY:
+			crowd.off_duty(h.carrier)

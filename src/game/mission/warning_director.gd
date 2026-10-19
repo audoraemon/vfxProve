@@ -10,6 +10,11 @@ extends MissionDirector
 ##
 ## A frightened, confused (Discord) or whispered messenger drops the errand and picks it up again once back on its
 ## feet (RESUMABLE); only the relay itself overrides a fright -- the witness "runs on".
+##
+## On a Herald night (v0.11.2, spec 4.6: rules.lantern of kind herald) the toll is not a loss: once the bell has tolled -- or been
+## silenced -- the warning's errand is the Temple's door (heralding()), not the bell. Its carrier is the HERALD: the keeper who rang comes
+## down the tower (HERALD_DESCEND) and, like every later carrier, walks slowed by HERALD_SLOW; killed unseen, the warning dies as ever, killed
+## seen, the witness carries it on to the Temple. A Herald within TempleReport.REACH of the door has the Lantern HEAR (LanternWatch.hear()).
 
 enum Phase { OMEN, STARE, RUN, DELIVERED, OVER }
 
@@ -52,6 +57,10 @@ var post := GATE_SPOT
 var post_name := "THE MAIN GATE"
 ## The star has fallen (it falls at OMEN_AT whatever the phase: a relay before it skips the stare, not the omen).
 var omen_fallen := false
+## Seconds (real) the keeper who rang still has to come down the bell tower before he walks as the Herald (v0.11.2).
+var _descend := 0.0
+## Whoever was slowed as the Herald, to be given back his pace (a Variant: he may be a body freed after his death fade).
+var _slowed: Variant = null
 var _clock := 0.0
 var _retarget_in := 0.0
 ## Where the messenger fell, waiting to be judged once the cast's other victims have fallen too.
@@ -109,6 +118,9 @@ func step(delta: float) -> void:
 			return
 	if not omen_fallen and _clock >= OMEN_AT:
 		_omen()
+	var herald := heralding()
+	if herald:
+		_herald_tick(delta)
 	match phase:
 		Phase.STARE:
 			if _clock >= OMEN_AT + STARE:
@@ -116,10 +128,17 @@ func step(delta: float) -> void:
 				_retarget_in = RETARGET
 				_run()
 		Phase.RUN:
-			_retarget_in -= delta
-			if _retarget_in <= 0.0:
-				_retarget_in = RETARGET
-				_run()
+			_tick_run(delta)
+		Phase.DELIVERED:
+			if herald:
+				_tick_run(delta)  # the keeper who rang runs on as the Herald (v0.11.2)
+
+
+func _tick_run(delta: float) -> void:
+	_retarget_in -= delta
+	if _retarget_in <= 0.0:
+		_retarget_in = RETARGET
+		_run()
 
 
 func _omen() -> void:
@@ -134,8 +153,11 @@ func _omen() -> void:
 		watchman.observe(gate_spot + Vector2(0.0, 0.8), STARE)
 
 
-## The messenger's way: to the keeper while the keeper lives, else to the tower's foot to climb it.
+## The messenger's way: to the keeper while the keeper lives, else to the tower's foot to climb it; to the Temple's door once the bell
+## has tolled on a Herald night (heralding()).
 func _goal() -> Vector2:
+	if heralding():
+		return lantern_door()
 	var bell := crowd.bell
 	if bell != null and _alive(bell.keeper):
 		return bell.keeper.ground_pos
@@ -160,6 +182,9 @@ func _rings_himself() -> bool:
 ## (`relay`), at once unless Discord or Mind Whisper holds the witness. v0.11 M3: one who rings it himself (_rings_himself()) is
 ## never told off to a keeper and takes the rope at the foot.
 func _run(relay := false) -> void:
+	if heralding():
+		_herald_run(relay)  # v0.11.2: the Temple's door, whatever the bell's rope or the keeper were
+		return
 	if not _alive(messenger) or _goal() == Vector2.INF:
 		return
 	var bell := crowd.bell
@@ -181,6 +206,88 @@ func _run(relay := false) -> void:
 			messenger.go_duty(_goal())
 	elif ready:
 		messenger.go_duty(_goal())  # the errand (again)
+
+
+## The bell has tolled, or been silenced, on a Herald night (v0.11.2, spec 4.6): this warning's errand is the Temple's door. Latched on the
+## Lantern's side (`tolled` stays set when The Bell Lies unrings the bell; `bell_silenced` only when a called bell was silenced -- a town with no bell
+## at all is "silenced" from the start and heralds nothing). False off a Herald night.
+func heralding() -> bool:
+	if rules == null or rules.lantern == null or rules.lantern.kind != LanternWatch.KIND_HERALD:
+		return false
+	return rules.lantern.tolled or rules.lantern.bell_silenced
+
+
+## The Herald runs: not yet stopped, not yet in (spec 4.6). A warning still staring at its star is not a Herald yet.
+func herald_open() -> bool:
+	return heralding() and not warning_dead and phase != Phase.OVER and (phase == Phase.RUN or phase == Phase.DELIVERED)
+
+
+## Mission seconds until the Herald reaches the Temple (the remaining descent and walk, in real seconds, times the clock's rate); INF for none.
+func herald_eta() -> float:
+	if not herald_open() or not _alive(messenger):
+		return INF
+	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW)) * rules.clock_rate
+
+
+## The toll fell (LanternWatch.on_toll()): the keeper who rang, if he carries this warning, comes down the tower before he runs; the others
+## (a messenger still on his way, a watchman still staring) simply have the Temple for their errand from their next look.
+func on_toll() -> void:
+	if not heralding():
+		return
+	var bell := crowd.bell
+	if phase == Phase.DELIVERED and bell != null and _alive(messenger) and messenger == bell.keeper:
+		_descend = LanternWatch.HERALD_DESCEND
+		_retarget_in = 0.0
+
+
+## `p` is this warning's own Herald, so the Lantern makes no second one of him (LanternWatch._heralds_start()).
+func claims_herald(p: Person) -> bool:
+	return heralding() and not warning_dead and phase != Phase.OVER and p == messenger
+
+
+## Each frame of a Herald: the keeper still on the tower stands (his descent counts down in real seconds), then walks; one within reach of the
+## door has the Lantern hear.
+func _herald_tick(delta: float) -> void:
+	if (phase == Phase.RUN or phase == Phase.DELIVERED) and _fell_at == Vector2.INF and not is_instance_valid(messenger):
+		warning_dead = true  # a Herald gone from the town alive, his body freed with no fall to judge: nothing is left to stop
+		phase = Phase.OVER
+		return
+	if not _alive(messenger):
+		return
+	if _descend > 0.0:
+		_descend = maxf(_descend - delta, 0.0)
+		if _descend > 0.0:
+			TempleReport.hold(messenger)
+		else:
+			_retarget_in = 0.0
+		return
+	if (phase == Phase.RUN or phase == Phase.DELIVERED) and messenger.ground_pos.distance_to(lantern_door()) <= TempleReport.REACH:
+		rules.lantern.hear()
+
+
+## One look at a Herald (v0.11.2): given the Temple's door at the Herald's pace (slowed), as `_run()` gives the bell's errand; nothing while
+## he is still coming down the tower. A fright drops it and it is picked up again once back on his feet, as ever.
+func _herald_run(relay: bool) -> void:
+	if not _alive(messenger) or _descend > 0.0:
+		return
+	var door := lantern_door()
+	if float(messenger.statuses.get(&"slow", 1.0)) != LanternWatch.HERALD_SLOW:
+		messenger.statuses[&"slow"] = LanternWatch.HERALD_SLOW
+	_slowed = messenger
+	var ready := _resumable(messenger) or (relay and not messenger.mind in HELD and not (messenger.soldier and messenger.held_by_god()))
+	if messenger.mind == Person.Mind.DUTY and not relay:
+		if messenger.anchor.distance_to(door) > RETARGET_MOVE or not messenger.has_goal():
+			messenger.go_duty(door)
+	elif ready:
+		messenger.go_duty(door)
+
+
+## The label on the Herald's tag (spec 5.2): while he comes down the tower, then the walk, each in mission seconds.
+func herald_label() -> String:
+	var rate := rules.clock_rate if rules != null else 1.0
+	if _descend > 0.0:
+		return "HERALD - COMES DOWN IN %s" % UiTheme.clock(_descend * rate)
+	return "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW) * rate)
 
 
 ## The keeper is told: the bell is called, and the warning is the keeper's to carry now. (A bell already called -- by
@@ -224,6 +331,7 @@ func _judge() -> void:
 	relays += 1
 	messenger = witness
 	killed_by = ""
+	_descend = 0.0  # a relay is on his feet already (v0.11.2)
 	rules.banner.emit("THE WARNING PASSES ON")
 	phase = Phase.RUN
 	_retarget_in = RETARGET
@@ -268,10 +376,13 @@ func tags() -> Array[MapTag]:
 		label = "BELLKEEPER"
 	elif phase == Phase.OMEN or phase == Phase.STARE:
 		label = "WATCHMAN"
+	var herald := herald_open()
+	if herald:
+		label = herald_label()  # v0.11.2: the bell has tolled: the keeper and the tower are no longer the errand
 	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
-	if keeper != null and keeper != messenger and not keeper.inside:
+	if keeper != null and keeper != messenger and not keeper.inside and not herald:
 		out.append(MapTag.person(keeper.ground_pos, MARK_KEEPER, "BELLKEEPER", phase == Phase.RUN))
-	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed:
+	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
 		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
 	if phase == Phase.RUN or phase == Phase.DELIVERED:
 		for p in witnesses():
@@ -296,6 +407,8 @@ func witnesses() -> Array[Person]:
 ## The hint's phase (board tags, spec §3): "bell" once the warning has reached the bell, "relay" while a witness carries
 ## it on, else "".
 func hint_phase() -> String:
+	if herald_open():
+		return "herald"  # v0.11.2 (the Lantern's own line takes the plate by precedence; this one only names the phase)
 	if phase == Phase.DELIVERED:
 		return "bell"
 	return "relay" if phase == Phase.RUN and relays > 0 else ""
@@ -334,3 +447,9 @@ func teardown() -> void:
 	# The bell waits for a relay only while the warning lives (v0.09: a crowd outlives an act).
 	if is_instance_valid(crowd) and crowd.bell != null:
 		crowd.bell.hold_on_death = false
+	# A Herald is given back his pace and his day (v0.11.2).
+	if is_instance_valid(_slowed):
+		(_slowed as Person).statuses.erase(&"slow")
+		if is_instance_valid(crowd) and (_slowed as Person).mind == Person.Mind.DUTY:
+			crowd.off_duty(_slowed as Person)
+	_slowed = null

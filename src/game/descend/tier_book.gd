@@ -213,6 +213,7 @@ static func _from_act(id: String) -> MissionDef:
 	m.intro_banner = m.name.to_upper()
 	m.director = a.director
 	m.make_objectives = a.make_objectives
+	m.lantern = a.lantern  # v0.11.2
 	return m
 
 

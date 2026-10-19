@@ -58,6 +58,9 @@ var hunt := false
 var hold := INF
 ## Seconds since the latest noise was heard (v0.11 M6, for `hold`).
 var _noise_age := 0.0
+## v0.11.2: at most this many beams are lit, whatever the light's age (MAX_BEAMS by default, so The Vigil Flame's, The Relic Run's and The
+## Lantern's Eye's light is as it was). The Lantern (LanternWatch) holds one beam at Stirring and two at Burning by this, not by age.
+var beam_cap := MAX_BEAMS
 
 
 func setup(at: Vector2) -> Searchlight:
@@ -87,7 +90,7 @@ func put_out() -> void:
 func beams() -> int:
 	if not on:
 		return 0
-	return MAX_BEAMS if age >= SECOND_AFTER else 1
+	return mini(beam_cap, MAX_BEAMS if age >= SECOND_AFTER else 1)
 
 
 ## Beam i's own time: seconds since it lit.

@@ -154,6 +154,33 @@ func blight_words(_at: Vector2) -> String:
 	return ""
 
 
+## Virtual (v0.11.2, spec 4.2): the bell tolled and the Lantern turned (LanternWatch.on_toll(), after it has lit its beam and added a gaze
+## night's GAZE_TOLL). A night's director that has something to do at the toll does it here (The Warning's messenger runs for the Temple).
+## Nothing by default.
+func on_toll() -> void:
+	pass
+
+
+## Virtual (v0.11.2, spec 4.6): `p` is one of this director's own heralds -- a warning's messenger who runs for the Temple after the toll --
+## so the Lantern does not make a second Herald of him when he is the keeper who rang. False by default.
+func claims_herald(_p: Person) -> bool:
+	return false
+
+
+## The walkable point at the Temple's door, 0.6 south of its south face (v0.11.2): where a Herald runs to and the Lantern-Bearer sets out
+## from. Named for the Lantern because several directors keep a `temple_door` variable of their own (Mira's, the Vigil Flame, Broken
+## Lanterns, Exodus), which a method of that name would clash with; it is the same point.
+func lantern_door() -> Vector2:
+	return lantern_door_in(crowd)
+
+
+## lantern_door() for a town with no director (LanternWatch on a night whose mission has none).
+static func lantern_door_in(c: Crowd) -> Vector2:
+	var g := Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6)
+	var w := c._grid.nearest_walkable(g) if c != null and c._grid != null else g
+	return w if w != Vector2.INF else g
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

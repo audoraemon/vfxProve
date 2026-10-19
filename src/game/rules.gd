@@ -126,6 +126,9 @@ var mission: MissionDef
 var objectives: Array[Objective] = []
 var bonuses: Array[Objective] = []
 var director: MissionDirector
+## v0.11.2 (spec 4): the Lantern the bell's toll turns on a Lantern night (Mission sets it when the mission's `lantern` is not ""), else null.
+## It sets clock_rate every frame, so a Rules with a Lantern cannot have a forced rate (a test forces the stage instead: lantern.burn()).
+var lantern: LanternWatch
 ## The board's night (v0.11 M1): its Tier 5 Gaze, its wishes, and whether this act holds the win (Descent.holds()); null off
 ## the board.
 var descent: Descent
@@ -221,6 +224,8 @@ func advance(delta: float) -> void:
 	_elapsed += delta
 	_forget_old_casts()
 	_step_abolished(delta)
+	if lantern != null:
+		clock_rate = lantern.rate()  # v0.11.2: the Lantern's stage is the clock's rate
 	if not is_abolished(LAW_CLOCK):
 		time_left = maxf(0.0, time_left - delta * clock_rate)
 		_mission_elapsed += delta * clock_rate
@@ -232,6 +237,8 @@ func advance(delta: float) -> void:
 			_crowd.order_collapses()
 	if director != null:
 		director.step(delta)
+	if lantern != null:
+		lantern.step(delta)  # v0.11.2: after the director, so a death or a cast it judged this frame is seen
 	if descent != null:
 		descent.step(self, delta)
 	_check_end()
@@ -605,6 +612,7 @@ func result() -> Dictionary:
 		out["score"] = score()
 		out["rank"] = rank()
 		out["lines"] = stat_lines()
+	out["tolled"] = lantern != null and lantern.tolled  # v0.11.2: the campaign reads Night 1's bell from this, not from the loss
 	if director != null:
 		out.merge(director.report())
 	return out
@@ -614,6 +622,9 @@ func result() -> Dictionary:
 ## same destroyed building -- freeing a node disconnects it eventually, but queue_free() is deferred and the
 ## overlap is a whole frame wide.
 func teardown() -> void:
+	if lantern != null:
+		lantern.teardown()
+		lantern = null
 	if director != null:
 		director.teardown()
 		director = null

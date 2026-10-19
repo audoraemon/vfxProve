@@ -2,6 +2,7 @@
 # One mission's gate (v0.11.1, spec Decision 35): runs the scripted player's six runs (none and play, seeds 1-3; B's three) at once
 # and prints one verdict line, so fifty gates need not be read by hand.
 # usage: bash tools/dev/gate.sh <scenario> [--route=b] [--board] [--extra='--path=festival ...'] [--jobs=N]
+#        [--case=toll]   (v0.11.2, D32: a Lantern night's toll case; see below)
 #   (from the project root; G= overrides the Godot path)
 # Per run:   <scenario> <case> seed=N won=.. reason=.. time=.. idle=.. checksum=..
 # Last line: gate <scenario> route=<a|b> none_lost=K/3 wins=K/3 median=S idle_max=S PASS|FAIL      (exit 1 on FAIL)
@@ -10,20 +11,22 @@
 # D33); no idle stretch over 45 s in a play run. A play run whose result line has no idle= makes idle_max ? and the gate FAIL.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
-S=""; ROUTE=a; BOARD=""; EXTRA=""; JOBS=6; RARG=""
+S=""; ROUTE=a; BOARD=""; EXTRA=""; JOBS=6; RARG=""; ONLYCASE=""
 for a in "$@"; do case "$a" in
   --route=b) ROUTE=b; RARG="--route=b";;
   --route=a) ROUTE=a;;
   --board) BOARD="--board";;
   --extra=*) EXTRA="${a#--extra=}";;
   --jobs=*) JOBS="${a#--jobs=}";;
+  --case=toll) ONLYCASE=toll;;
   -*) echo "gate.sh: unknown option $a" >&2; exit 2;;
   *) S="$a";;
 esac; done
-[ -z "$S" ] && { echo "usage: gate.sh <scenario> [--route=b] [--board] [--extra='...'] [--jobs=N]" >&2; exit 2; }
+[ -z "$S" ] && { echo "usage: gate.sh <scenario> [--route=b] [--board] [--case=toll] [--extra='...'] [--jobs=N]" >&2; exit 2; }
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 CASES="none play"; [ "$ROUTE" = b ] && CASES="play"
+[ -n "$ONLYCASE" ] && CASES="$ONLYCASE"  # --case=toll: the three toll runs only
 : > "$T/jobs"
 for c in $CASES; do for n in 1 2 3; do echo "$c $n" >> "$T/jobs"; done; done
 export G S BOARD RARG EXTRA T
@@ -76,6 +79,16 @@ fi
 [ "$time_ok" -eq 0 ] && { verdict=FAIL; median="time?"; }  # a win with no time= can not be judged
 if [ "$idle_ok" -eq 0 ]; then idle_show="?"; verdict=FAIL; else
   idle_show=$idle_max; awk -v a="$idle_max" 'BEGIN{exit !(a>45)}' && verdict=FAIL
+fi
+# The toll case (v0.11.2, D32): the policy waits for the toll on purpose, so only the wins are judged (at least 2 of 3); the idle stretch and the
+# median are reported, not judged.
+if [ -n "$ONLYCASE" ]; then
+  verdict=PASS; [ "$wins" -lt 2 ] && verdict=FAIL
+  [ "$time_ok" -eq 0 ] && median="time?"
+  [ "$idle_ok" -eq 0 ] && idle_show="?" || idle_show=$idle_max
+  echo "gate $S case=$ONLYCASE wins=$wins/3 median=$median idle_max=$idle_show $verdict"
+  [ "$verdict" = PASS ]
+  exit
 fi
 nl="$lost/3"; [ "$ROUTE" = b ] && nl="-"
 echo "gate $S route=$ROUTE none_lost=$nl wins=$wins/3 median=$median idle_max=$idle_show $verdict"

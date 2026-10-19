@@ -16,6 +16,8 @@ func _init(text := "Stop the warnings", why := "warning", counted := "Warnings s
 
 
 func check(rules: Rules) -> Status:
+	if rules.lantern != null and rules.lantern.blocks_win():
+		return Status.PENDING  # v0.11.2: a Herald still runs, or got in (see HeraldObjective)
 	var n := tally(rules.director)
 	return Status.DONE if n.y > 0 and n.x >= n.y else Status.PENDING
 

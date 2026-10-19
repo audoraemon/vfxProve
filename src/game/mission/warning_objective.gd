@@ -9,5 +9,7 @@ func _init() -> void:
 
 
 func check(rules: Rules) -> Status:
+	if rules.lantern != null and rules.lantern.blocks_win():
+		return Status.PENDING  # v0.11.2: a Herald still runs, or got in -- HeraldObjective loses it, never this one first
 	var director := rules.director as WarningDirector
 	return Status.DONE if director != null and director.warning_dead else Status.PENDING

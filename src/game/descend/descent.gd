@@ -8,7 +8,8 @@ extends RefCounted
 ## The main objective's believers before the tier's multiplier (spec §4).
 const MAIN_REWARD := 10
 ## Granted wishes lost on a night not ascended (spec §6), by the reason it ended; any clock's end is dawn's.
-const LOST := {"gaze": "lost: Halcyon saw you", "bell": "lost: the bell tolled", "escapes": "lost: the people escaped"}
+const LOST := {"gaze": "lost: Halcyon saw you", "bell": "lost: the bell tolled",
+	"lantern": "lost: the Lantern heard", "escapes": "lost: the people escaped"}
 const LOST_DAWN := "lost: dawn came"
 const LOST_ANY := "lost: the night was lost"
 ## The banners when a wish is granted, and when one fails (spec §5.1-§5.2).

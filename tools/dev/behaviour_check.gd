@@ -4,6 +4,9 @@ extends SceneTree
 ##
 ## usage: godot --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=calm
 ##   [--seconds=60] [--shots]
+##   --case=toll (v0.11.2, a Lantern night, D32): the scripted player casts nothing until the bell tolls and the Lantern turns
+##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
+##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
 ##   calm   nothing cast: where citizens are, by kind of place, every 20 s; --shots saves captures at the end
 ##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
@@ -1965,6 +1968,14 @@ func _lamb_act(rules: Rules, slots: Dictionary, d: EscortDirector, lamb: Person,
 	return "whisper him to (%.1f, %.1f)" % [to.x, to.y]
 
 
+## Whether the scripted player acts this look under `which` (v0.11.2, D32): `play` always; `toll` from the toll on (LanternWatch.tolled), when
+## it plays as `play` does -- the policy waits for the toll on purpose, so the toll case shows what a night is like after it; `none` never.
+func _acts(which: String, rules: Rules) -> bool:
+	if which == "play":
+		return true
+	return which == "toll" and rules.lantern != null and rules.lantern.tolled
+
+
 ## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its
 ## main objective is done, every LOOK_FRAMES with `play` the policy's move (`act.call()`: what it cast, or ""), printed; a report
 ## every 10 s (`state.call()`); then the result, with the longest stretch between two casts as `idle` (the gate: 45 s or less).
@@ -1984,7 +1995,7 @@ func _scripted(label: String, which: String, act: Callable, state: Callable) -> 
 		if t >= report_at:
 			report_at += 10.0
 			print("BEHAVIOUR %s t=%d %s" % [label, roundi(t), String(state.call())])
-		if which != "play" or frames % LOOK_FRAMES != 0:
+		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
 			continue
 		var did := String(act.call())
 		if did != "":

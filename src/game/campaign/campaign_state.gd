@@ -79,7 +79,9 @@ func record(mission_id: String, result: Dictionary) -> Dictionary:
 		tally[p] = int(tally.get(p, 0)) + 1
 		last_path = p
 	if night == 0:
-		bell_rang = String(result.get("reason", "")) == "bell"
+		# v0.11.2: the toll no longer loses the night (the Lantern turns instead), so Night 1's bell is read from what happened, not
+		# from the loss: Rules.result() says "tolled". ("bell" stays for results saved before.)
+		bell_rang = bool(result.get("tolled", false)) or String(result.get("reason", "")) == "bell"
 	var gain := 0
 	if won:
 		gain = CampaignDef.WIN_DP + (CampaignDef.BONUS_DP if _bonus_earned(result) else 0)

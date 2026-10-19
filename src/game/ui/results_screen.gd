@@ -54,7 +54,7 @@ var descend := false
 ## v0.11 M6: Ascendance's new missions' endings, each under the mission's own reason keys.
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
-	"gaze": "THE LANTERN LOOKS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
+	"gaze": "THE LANTERN LOOKS", "lantern": "THE LANTERN HEARS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
 	"drained": "THE LANTERNS ARE DARK", "relit": "THE LANTERNS BURN ON", "flame": "THE FLAME IS STOLEN",
 	"kept": "THE FLAME IS KEPT", "wren": "THE BOY IS DEAD", "late": "DAWN FINDS THE FLAME",
 	"dawn": "DAWN COMES", "collector": "THE COLLECTORS ARE DEAD", "taxes": "THE TAXES ARE IN",

@@ -51,6 +51,10 @@ var stretch := 1.0
 var tune: Callable
 ## The tags the mission declares for the wishes to filter on (v0.11 M1, spec §5.1): "unaware_town", "spares_houses".
 var mission_tags := PackedStringArray()
+## v0.11.2 (spec 4.1): which Lantern the bell's toll turns on this night -- "" none (the toll is only the town's alarm), "herald" (the
+## bell's ringer runs for the Temple: Warning, Omen, Starfall, Bell-Ringers), "watch" (Tax Collector, Informer), "gaze" (the toll adds
+## LanternWatch.GAZE_TOLL to the Gaze: Mira's House, the Vigil Flame, Broken Lanterns, the Relic Run, the Sermon). An ActDef inherits it.
+var lantern := ""
 
 
 ## A mission played in acts (v0.09, The Long Night): its ActDefs, the first one first. Empty for a single act.

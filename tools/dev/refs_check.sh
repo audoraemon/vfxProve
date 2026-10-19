@@ -4,7 +4,8 @@
 #   --only=REGEX   check only references whose name matches (e.g. --only='^(bread|hunt)_' for the missions a task touched)
 #   --jobs=N       parallel headless scenario runs (default 6; fixed-fps headless runs are deterministic under load)
 # The digest, crowd_check and the global behaviour rows run one at a time, rendered, as they were recorded (casts there
-# use hit-stop, which is wall-clock). Board-mission scenario rows (<scenario>_<none|play>_<seed>) run in parallel, headless.
+# use hit-stop, which is wall-clock). Board-mission scenario rows (<scenario>_<none|play|toll>_<seed>; v0.11.2: the toll case of a
+# Lantern night) run in parallel, headless.
 # Prints one line per reference with OK or MISMATCH(want ...); last line "refs ok=K bad=B"; exits 1 if any is bad.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
@@ -33,7 +34,7 @@ run_row() { # name how expected outfile mode
 export -f run_row; export G
 i=0
 while IFS=$'\t' read -r name how want; do
-  i=$((i+1)); if echo "$name" | grep -q -E '_(none|play)_[0-9]+$'; then echo "$i	$name	$how	$want" >> "$T/par"; else run_row "$name" "$how" "$want" "$T/$i.out" seq; fi
+  i=$((i+1)); if echo "$name" | grep -q -E '_(none|play|toll)_[0-9]+$'; then echo "$i	$name	$how	$want" >> "$T/par"; else run_row "$name" "$how" "$want" "$T/$i.out" seq; fi
 done < "$T/rows"
 if [ -f "$T/par" ]; then
   awk -F'\t' -v d="$T" '{printf "%s\t%s\t%s\t%s/%s.out\n", $2, $3, $4, d, $1}' "$T/par" | \

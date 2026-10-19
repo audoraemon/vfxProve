@@ -21,9 +21,9 @@ feast_play	--scenario=feast --case=play --seed=1	outcome:won=true reason=festiva
 tax_none_1	--scenario=tax --case=none --seed=1	-258775422
 tax_none_2	--scenario=tax --case=none --seed=2	920872334
 tax_none_3	--scenario=tax --case=none --seed=3	990015681
-tax_play_1	--scenario=tax --case=play --seed=1	-610984289
-tax_play_2	--scenario=tax --case=play --seed=2	-563447459
-tax_play_3	--scenario=tax --case=play --seed=3	513083877
+tax_play_1	--scenario=tax --case=play --seed=1	-503318402
+tax_play_2	--scenario=tax --case=play --seed=2	899173971
+tax_play_3	--scenario=tax --case=play --seed=3	979802064
 harvest_none_1	--scenario=harvest --case=none --seed=1	-631739367
 harvest_none_2	--scenario=harvest --case=none --seed=2	-407285158
 harvest_none_3	--scenario=harvest --case=none --seed=3	-195261095

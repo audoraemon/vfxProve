@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_waiting(t)
 	_gaze_faithful(t)
 	_report_leaves_him(t)
+	_faithful_not_taken(t)
 
 
 ## The crowd, the Rules (and so the Lantern) and a standalone Bearer, `seconds` of the night.
@@ -516,3 +517,35 @@ static func _report_leaves_him(t) -> void:
 	t.check(d.reports.size() == 1, "(anyone else still can be sent)")
 	t.check(not d.busy(e), "MissionDirector.busy() is false by default")
 	Kit.done(s)
+
+
+## The director's own Faithful watchers are never the Bearer or an escort: a Faithful cleric nearest the door is skipped; where every cleric is
+## Faithful the Bearer is the nearest free citizen.
+static func _faithful_not_taken(t) -> void:
+	var s := LW._world("watch")
+	var crowd: Crowd = s.crowd
+	var d: MissionDirector = s.d
+	var door := d.lantern_door()
+	var clergy: Array[Person] = []
+	for p in crowd.citizens:
+		if p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY and not p.inside:
+			clergy.append(p)
+	clergy.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))
+	var first := clergy[0]
+	d._make_faithful(first)
+	var b := _set_out(s)
+	t.check(b != null and b.carrier != first and not b.escorts.has(first) and b.carrier.profile.role == CitizenProfile.Role.CLERGY,
+		"a Faithful cleric nearest the door is skipped: the next cleric is the Bearer, and the Faithful one is no escort")
+	Kit.done(s)
+	var a := LW._world("watch")
+	var ad: MissionDirector = a.d
+	for p in (a.crowd as Crowd).citizens:
+		if p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY:
+			ad._make_faithful(p)
+	var ab := _set_out(a)
+	var taken := false
+	for p in ab.walkers():
+		taken = taken or ad.faithful.has(p)
+	t.check(ab != null and ab.walkers().size() == 3 and not taken and ab.carrier.profile.role != CitizenProfile.Role.CLERGY,
+		"every cleric Faithful: the Bearer is the nearest free citizen, and none of the three is a watcher")
+	Kit.done(a)

@@ -435,6 +435,7 @@ func _judge() -> void:
 	if _alive(carrier):
 		carrier.statuses.erase(&"slow")
 	escorts.erase(best)
+	_places = []  # (the file's indices just shifted)
 	carrier = best
 	relays += 1
 	_last_at = best.ground_pos
@@ -464,6 +465,8 @@ func _prune() -> void:
 	for e: Variant in escorts:
 		if is_instance_valid(e):
 			live.append(e)
+	if live.size() != escorts.size():
+		_places = []
 	escorts = live
 
 

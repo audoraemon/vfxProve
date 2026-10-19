@@ -380,10 +380,10 @@ func has_errand(p: Variant) -> bool:
 	return bearer != null and bearer.has_errand(p)
 
 
-## `p` is already busy with a director's errand or a Herald's: not for the Bearer to take.
+## `p` is already busy with a director's errand or a Herald's, or is one of the director's own Faithful watchers: not for the Bearer to take.
 func _busy(p: Person) -> bool:
 	var d := rules.director
-	if d != null and (d.busy(p) or d.claims_herald(p) or d._carrying(p)):
+	if d != null and (d.busy(p) or d.claims_herald(p) or d._carrying(p) or d.faithful.has(p)):
 		return true
 	for h in heralds:
 		if h.carrier == p:

@@ -167,6 +167,12 @@ func claims_herald(_p: Person) -> bool:
 	return false
 
 
+## Virtual (v0.11.2, spec 4.5): `p` is one of this director's own actors on an errand the Lantern-Bearer must not take him from (Mira's
+## Venn, the Sermon's preacher, a warden, a contact). A report's carrier and a Herald are found by the Lantern itself. False by default.
+func busy(_p: Person) -> bool:
+	return false
+
+
 ## The walkable point at the Temple's door, 0.6 south of its south face (v0.11.2): where a Herald runs to and the Lantern-Bearer sets out
 ## from. Named for the Lantern because several directors keep a `temple_door` variable of their own (Mira's, the Vigil Flame, Broken
 ## Lanterns, Exodus), which a method of that name would clash with; it is the same point.
@@ -493,8 +499,8 @@ func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.
 func _report(seer: Person, door: Vector2) -> void:
-	if _carrying(seer):
-		return
+	if _carrying(seer) or (rules != null and rules.lantern != null and rules.lantern.has_errand(seer)):
+		return  # (v0.11.2: nor one carrying the Lantern's flame, or escorting it)
 	reports.append(TempleReport.new(seer, door))
 	reports_started += 1
 	rules.banner.emit("A FAITHFUL RUNS TO THE TEMPLE")

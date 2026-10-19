@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_held(t)
 	_smite_lands(t)
 	_held_dies_with_act(t)
+	_next_act_drops(t)
 	_startle(t)
 	_startle_deterministic(t)
 	_directors(t)
@@ -175,6 +176,21 @@ static func _held_dies_with_act(t) -> void:
 			panicked += 1 if c.mind == Person.Mind.PANIC else 0
 		t.check(panicked == 0 and crowd.threats.active_count() == 0, "%s: nobody is frightened by it later (%d)" % [how, panicked])
 		_done(s)
+
+
+## Mission.next_act() is where the crowd outlives an act, and a real Mission cannot be built or advanced in the headless suite
+## (its Battlefield, aim and HUD need a scene tree), so the call is asserted on the source: next_act() drops the held dangers,
+## after it has ended the old act's powers and before the next act is built.
+static func _next_act_drops(t) -> void:
+	var src := FileAccess.get_file_as_string("res://src/game/mission.gd")
+	var a := src.find("
+func next_act(")
+	var b := src.find("
+func ", a + 1)
+	var body := src.substr(a, b - a) if a >= 0 and b > a else ""
+	var drop := body.find("_crowd.drop_held()")
+	t.check(drop >= 0 and drop > body.find("_bf.end_powers()") and drop < body.find("_build_act("),
+		"Mission.next_act() drops the crowd's held dangers between ending the old powers and building the next act")
 
 
 static func _startle(t) -> void:

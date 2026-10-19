@@ -324,7 +324,7 @@ func _back_to(v: Variant, at: Vector2, evacuating := false) -> void:
 ## Discord that has just confused him (his full DISCORD_TIME left, he within its reach of the cast): he forgets his task and speaks, held
 ## minds see nothing. The whisper is his own when he has just heard it (his full LINGER left), so one on a companion beside him -- or a
 ## cast near him while an older whisper still holds him -- neither turns him nor reads as seen. Then the Assassinate type's (once he is
-## found, a loud cast near him alarms him; the hiding place is never smoked out).
+## found, a loud power near him alarms him at its impact -- v0.11.2, _on_danger(); the hiding place is never smoked out).
 func _on_cast(slot: int, key: String, at: Vector2) -> void:
 	if (key == "whisper" or key == "discord") and not found and not cold:
 		var c := contact_now()

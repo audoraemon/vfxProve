@@ -853,7 +853,8 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 		_voice(frightened[i], &"cit_yelp")
 
 
-## A cast of power `key` landed (v0.04): it registers a threat (PowerBook.REACH), and the people it reaches react
+## A cast of power `key` was made (v0.04; v0.11.2: a loud power's danger is held until its impact, PowerBook.IMPACT, and the
+## calm who see the build-up look at it; below, what the impact does): it registers a threat (PowerBook.REACH), and the people it reaches react
 ## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.

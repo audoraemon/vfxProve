@@ -2,7 +2,7 @@ class_name LanternWatch
 extends RefCounted
 ## The Lantern Turns (v0.11.2, spec 4): what the bell's toll does on a Lantern night instead of losing it. The first toll lights the Temple's
 ## pale beam and the Lantern STIRS: dawn comes 1.5 times as fast. A loud power cast into the beam, or a death someone sees inside it, makes it
-## BURN: 2.0 times as fast, a second beam. The Lantern-Bearer (Task 10) carries its flame to the bell tower; kill him and the Lantern goes
+## BURN: 2.0 times as fast, a second beam. The Lantern-Bearer (LanternBearer) carries its flame to the bell tower; kill him and the Lantern goes
 ## BLIND for the rest of the act, the clock back to 1.0. On a Herald night (Task 11) the bell's ringer runs for the Temple instead: a Herald
 ## who gets in has the Lantern HEAR, and the night is lost (HeraldObjective).
 ##
@@ -14,7 +14,7 @@ extends RefCounted
 ## stops), while the strip's EventTimelines keep stepping through Abolition as they always have (a deliberate difference, v0.11.2 pre-flight);
 ## its reflexes -- the beam's sweep and hold, a hint's seconds, a walker's pace -- are real time.
 ##
-## Seams: Task 10 fills `_bearer_*` and Task 11 fills `_herald_*` (each a no-op here), so this file's shape is fixed by Task 7.
+## Seams: `_bearer_*` are the Lantern-Bearer's (Task 10); Task 11 fills `_herald_*` (a no-op until then), so this file's shape is fixed by Task 7.
 
 signal stage_changed(stage: int)
 
@@ -60,8 +60,8 @@ var heard := false
 var bell_silenced := false
 ## Herald reports running for the Temple that are not a warning's own (the keeper who rang with no warning delivered), Task 11.
 var heralds: Array[TempleReport] = []
-## The Lantern-Bearer (Task 10: a LanternBearer); null until he sets out.
-var bearer: RefCounted
+## The Lantern-Bearer: null until he sets out (BEARER_AFTER mission seconds after the toll).
+var bearer: LanternBearer
 
 var rules: Rules
 var crowd: Crowd
@@ -75,6 +75,8 @@ var _burn_age := INF
 ## Deaths waiting to be judged, as [ground point, whether a beam covered it when it fell]: judged once the crowd has settled a cast's victims.
 var _deaths: Array = []
 var _released := false
+## The mission second the Bearer sets out (tolled_at + LanternBearer.AFTER), set at the toll.
+var _bearer_due := INF
 
 
 func setup(r: Rules, c: Crowd, t: Town, x: FxContext, k: String) -> LanternWatch:
@@ -311,40 +313,89 @@ func _sound(cue: StringName) -> void:
 		ctx.play(cue, light.spire)
 
 
-# --- Task 10's seams (the Lantern-Bearer) ---------------------------------------------------------------------------------------------
+# --- the Lantern-Bearer (Task 10) -----------------------------------------------------------------------------------------------------
 
-## The toll fell: schedule the Bearer to set out BEARER_AFTER mission seconds later.
+## The toll fell: the Bearer sets out LanternBearer.AFTER mission seconds later.
 func _bearer_schedule() -> void:
-	pass
+	_bearer_due = rules.mission_time() + LanternBearer.AFTER
 
 
-func _bearer_step(_delta: float) -> void:
-	pass
+## The Bearer sets out at his time and walks; his death (or a Blind Lantern) lets him go. Real time for the walk (D20).
+func _bearer_step(delta: float) -> void:
+	if stage == Stage.BLIND:
+		if bearer != null and not bearer.dead():
+			bearer.release()
+		return
+	if bearer == null:
+		if rules.mission_time() < _bearer_due:
+			return
+		var d := rules.director
+		var reserved: Array = d.reserved if d != null else []
+		bearer = LanternBearer.new().setup(rules, crowd, door(), crowd.bell.foot if crowd.bell != null else door(), reserved,
+			_busy, _escort_appointed)
+		return
+	bearer.step(delta)
+	if bearer.dead():
+		blind()
 
 
-## A death, for the Bearer's judging (a TempleReport's on_killed()).
-func _bearer_killed(_e: DummyEnemy) -> void:
-	pass
+## A death, for the Bearer's judging.
+func _bearer_killed(e: DummyEnemy) -> void:
+	if bearer != null:
+		bearer.on_killed(e)
 
 
 ## "" before he sets out, "walking" on the way to the tower, "vigil" at the tower, "dead".
 func _bearer_phase() -> String:
-	return ""
+	return bearer.phase() if bearer != null else ""
 
 
 func _bearer_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
+	if bearer != null:
+		out.append_array(bearer.tags())
 	return out
 
 
+## The strip's rows, in mission seconds: before he sets out the wait, while he walks his real walk times the clock's rate (D21).
 func _bearer_rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if not tolled or stage == Stage.BLIND:
+		return out
+	if bearer == null or bearer.state == LanternBearer.State.WAITING:
+		out.append({"in": maxf(0.0, _bearer_due - rules.mission_time()), "label": "The Lantern-Bearer sets out"})
+	elif bearer.state == LanternBearer.State.WALKING:
+		out.append({"in": bearer.seconds_left() * rules.clock_rate, "label": "The Bearer reaches the bell tower"})
 	return out
 
 
 ## The act ends: the Bearer's and his escorts' slowing is undone.
 func _bearer_teardown() -> void:
-	pass
+	if bearer != null:
+		bearer.release()
+
+
+## `p` is on the Bearer's errand (MissionDirector._report() leaves him be).
+func has_errand(p: Variant) -> bool:
+	return bearer != null and bearer.has_errand(p)
+
+
+## `p` is already busy with a director's errand or a Herald's: not for the Bearer to take.
+func _busy(p: Person) -> bool:
+	var d := rules.director
+	if d != null and (d.busy(p) or d.claims_herald(p) or d._carrying(p)):
+		return true
+	for h in heralds:
+		if h.carrier == p:
+			return true
+	return false
+
+
+## An escort is appointed: on a gaze night he is one of the Faithful, who see (spec 4.5; pre-flight GAP, Task 10). Elsewhere a plain lay citizen.
+func _escort_appointed(p: Person) -> void:
+	var d := rules.director
+	if kind == KIND_GAZE and d != null and p.profile != null and not d.faithful.has(p):
+		d._make_faithful(p)
 
 
 # --- Task 11's seams (the Herald) -----------------------------------------------------------------------------------------------------

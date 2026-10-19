@@ -170,8 +170,8 @@ static func _burn(t) -> void:
 	_run(s, 0.1)
 	t.check(_count(s, LanternWatch.BURN_BANNER) == 1 and lw.stage == LanternWatch.Stage.BURNING, "a second cast in a beam changes nothing")
 	_run(s, LanternWatch.BURN_HINT + 0.5)
-	t.check(lw.stage == LanternWatch.Stage.BURNING and lw.hint_phase() == "stirring",
-		"it never falls back to Stirring; after BURN_HINT the hint is the Stirring one again (no Bearer yet)")
+	t.check(lw.stage == LanternWatch.Stage.BURNING and lw.hint_phase() == "bearer",
+		"it never falls back to Stirring; after BURN_HINT the hint is the Bearer's (he set out in the meantime)")
 	Kit.done(s)
 	# A loud cast outside the beam heard, not burning.
 	var o := _world()
@@ -395,15 +395,16 @@ static func _no_lantern(t) -> void:
 	Kit.done(s)
 
 
-## The seams Tasks 10 and 11 fill do nothing here, and teardown lets go of every signal.
+## The seams Task 11 fills do nothing here (Task 10's are tested in test_lantern_bearer.gd), and teardown lets go of every signal.
 static func _seams(t) -> void:
 	var s := _world()
 	var lw: LanternWatch = s.lw
 	var r: Rules = s.rules
 	_ring(s)
 	_run(s, 0.2)
-	t.check(lw.bearer == null and lw.heralds.is_empty() and lw.tags().is_empty() and lw.strip_rows().is_empty() and not lw.heard,
-		"the Bearer and the Heralds are not there yet: no tags, no rows")
+	t.check(lw.bearer == null and lw.heralds.is_empty() and lw.tags().is_empty() and not lw.heard
+		and lw.strip_rows().size() == 1 and lw.strip_rows()[0]["label"] == "The Lantern-Bearer sets out",
+		"the Bearer has not set out and no Herald runs (Task 11): no tags, the strip counts the Bearer down")
 	var bell: BellNetwork = (s.crowd as Crowd).bell
 	r.teardown()
 	t.check(r.lantern == null and not bell.rung.is_connected(lw.on_toll) and not r.cast_made.is_connected(lw._on_cast)

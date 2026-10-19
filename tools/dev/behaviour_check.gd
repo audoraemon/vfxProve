@@ -2383,7 +2383,7 @@ func _panic_near(d: MarketPanicDirector, at: Vector2, r: float) -> Array[Person]
 
 
 ## How many of `who` a Heaven Splitter laid at `origin` along `dir` would break (v0.11 M3): those no warden steadies, within its
-## danger as FestivalDirector._on_cast() judges it (each lane point's Crowd._cast_radius() plus Person.THREAT_MARGIN).
+## danger as FestivalDirector._on_danger() judges it (each lane point's Crowd._cast_radius() plus Person.THREAT_MARGIN).
 func _panic_lane(d: MarketPanicDirector, who: Array[Person], origin: Vector2, dir: Vector2) -> int:
 	var radius := Crowd._cast_radius("heaven")
 	var a: Dictionary = Targeting.AREAS["heaven"]

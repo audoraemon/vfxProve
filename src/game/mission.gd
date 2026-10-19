@@ -434,6 +434,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	# Every power still playing ends here, with the act that cast it: an Act I Heaven Splitter must not fall on the
 	# Prince or the Mayor during Act II's intro (v0.09 final review).
 	_bf.end_powers()
+	_crowd.drop_held()  # v0.11.2: and so with the danger it held for its impact -- the crowd outlives the act
 	_aim.queue_free()
 	_hud.queue_free()
 	if is_inside_tree():

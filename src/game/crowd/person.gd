@@ -27,6 +27,9 @@ const LOCAL_FLEE := 3.0
 const LOCAL_FLEE_JITTER := 2.0
 ## A frightened person still inside the threat's radius plus this is not yet safe.
 const THREAT_MARGIN := 1.5
+## Seconds a person freezes when something turns them to PANIC from another mind (v0.11.2, spec §3.3), before they run. Each
+## person's own value, fixed by their rng seed (startle_seconds()).
+const STARTLE := Vector2(0.4, 0.8)
 ## How long a person stops to look at something it saw or heard (seconds, min and max), and how long one waits where
 ## it ran to (or after looking) before going back to its day.
 const OBSERVE_SECONDS := Vector2(1.0, 3.0)
@@ -312,6 +315,8 @@ var _whisper_fled := false
 var _shaken_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
+## Seconds left frozen in fright before running (v0.11.2, STARTLE); see startled().
+var _startle_left := 0.0
 ## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
 ## toward the back of the screen (a back view), and which of a role's two looks it wears (hashed from its home or
 ## post, never drawn from rng; -1 until first drawn).
@@ -433,7 +438,7 @@ func frame(delta: float) -> void:
 func unhurried() -> bool:
 	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER \
 		or mind == Mind.REGROUP or mind == Mind.COMPELLED
-	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and wait <= 0.0 and not hurrying
+	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and _startle_left <= 0.0 and wait <= 0.0 and not hurrying
 
 
 # --- Brain -------------------------------------------------------------------
@@ -482,6 +487,14 @@ func _think(delta: float) -> void:
 	if wait > 0.0:
 		# Held in a gate queue: stand still, but keep the fright timer running.
 		wait = maxf(wait - delta, 0.0)
+		_panic_left = maxf(_panic_left - delta, 0.0)
+		_idle = maxf(_idle, 0.05)
+		return
+	if _startle_left > 0.0 and mind != Mind.PANIC:
+		_startle_left = 0.0  # something else took the mind (a whisper, a Dominion): no freeze left to serve
+	if _startle_left > 0.0:
+		# Frozen in fright (v0.11.2): stands still, draws nothing, and the fright timer runs on.
+		_startle_left = maxf(_startle_left - delta, 0.0)
 		_panic_left = maxf(_panic_left - delta, 0.0)
 		_idle = maxf(_idle, 0.05)
 		return
@@ -697,6 +710,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	if shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
 		return
+	var from_other_mind := mind != Mind.PANIC
 	_hold_begin()
 	mind = Mind.PANIC
 	awareness = Awareness.THREATENED
@@ -707,6 +721,22 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	_threat = from
 	_threat_r = radius
 	_flee_local()
+	if from_other_mind:
+		# (v0.11.2) Frozen first: _idle too, as thinking is half-rate and the base tick would step on the off frame.
+		_startle_left = startle_seconds()
+		_idle = maxf(_idle, _startle_left)
+
+
+## How long this person freezes in fright (v0.11.2, STARTLE): a hash of their own rng seed, fixed and never drawn from any
+## generator, so no random stream shifts.
+func startle_seconds() -> float:
+	var h := posmod(rng.seed * 2654435761, 1000)
+	return STARTLE.x + (STARTLE.y - STARTLE.x) * float(h) / 999.0
+
+
+## Frozen in fright, before running (v0.11.2).
+func startled() -> bool:
+	return _startle_left > 0.0
 
 
 ## Something happened within sight or earshot at `from`: stop and look at it for a moment. Only a calm or recovering

@@ -274,7 +274,8 @@ static func _square(t) -> void:
 		and ((s.rules as Rules).objectives[0] as Objective).hud_text(s.rules) == "Kill the bishop, he makes for the Citadel",
 		"in the square: BISHOP and CITADEL, pointed at; the HUD says so")
 	var walk := q.target.pace
-	d._on_cast(1, "smite", q.target.ground_pos)
+	(s.crowd as Crowd).on_cast(q.target.ground_pos, Vector2.ZERO, 0.0, "smite")
+	Kit.run_for(s, PowerBook.IMPACT.smite + 0.1)  # v0.11.2: at the impact
 	t.check(q.state == AssassinateDirector.State.FLEEING and q.target.pace > walk and d.hint_phase() == "running"
 		and Kit.labels(d)[0] == "BISHOP - RUNNING", "a loud power by him sends him running for it, at his own pace")
 	Kit.arrive(q.target, d.safe_at)

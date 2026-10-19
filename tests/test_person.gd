@@ -38,8 +38,11 @@ static func run(t) -> void:
 		"a calm citizen on screen waits its turn, keeping the time it skipped")
 	odd.panic(at + Vector2(0.0, -1.0))
 	odd.frame(1.0 / 60.0)
-	t.check(not odd.unhurried() and odd.ground_pos != at and odd._offscreen_delta == 0.0,
-		"a frightened one moves at once, with the time it skipped")
+	t.check(not odd.unhurried() and odd.startled() and odd._offscreen_delta == 0.0,
+		"a frightened one is updated at once, with the time it skipped (v0.11.2: frozen first)")
+	for i in 60:
+		odd.frame(1.0 / 60.0)
+	t.check(odd.ground_pos != at, "and runs once the startle is over")
 	Person.view = Rect2()
 	odd.free()
 

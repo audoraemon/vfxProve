@@ -312,6 +312,9 @@ func _build_act(loadout: PackedStringArray) -> void:
 			_descent.reserve(_rules, made)
 		_director = made.setup(_rules, _crowd, _town, _bf.ctx, _night)
 		_rules.director = _director
+	if play.lantern != "":
+		# v0.11.2: the Lantern the bell's toll turns -- the act being played says whether (The Long Night's Act I does, its Acts II and III do not).
+		_rules.lantern = LanternWatch.new().setup(_rules, _crowd, _town, _bf.ctx, play.lantern)
 	if _descent != null:
 		_descent.attach(_rules, _director)
 	_wire_responses()
@@ -348,7 +351,9 @@ func _wire_responses() -> void:
 	if _crowd.bell != null and _wire_once(_crowd.bell):
 		_crowd.bell.climbing_started.connect(func():
 			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
-		_crowd.bell.rung.connect(func(): _rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
+		_crowd.bell.rung.connect(func():
+			if _rules.lantern == null:  # a Lantern night's toll has its own banner (LanternWatch.TOLL_BANNER)
+				_rules.banner.emit("THE BELL TOLLS - THE TOWN IS WARNED"))
 		_crowd.bell.silenced.connect(func(_why: String): _rules.banner.emit("THE BELL IS SILENCED"))
 		_crowd.bell.keeper_replaced.connect(func():
 			_rules.banner.emit(bell_hand(_crowd.bell) + " TAKES THE BELL ROPE"))

@@ -8,6 +8,9 @@ extends FxTimeline
 ## - while the light is on, the town is darkened with the impact dim.
 ## It lasts until end_now() (the director let go). The light put out (the flame home) fades the cones, the pools and
 ## the dim away over FADE_SECONDS.
+## v0.11.2 (The Lantern's beam, LanternWatch): extra "pale": true draws it in the Lantern's pale silver-white instead of gold, and
+## extra "dim": false never darkens the town (nor undoes a dim in end_now()), so it does not fight the Vigil Flame's or the Relic
+## Run's own light.
 
 ## The spire's lamp: how far above the Temple's ground point it stands (screen pixels), its glow's radius, and the
 ## cone's half-width at the lamp.
@@ -20,6 +23,10 @@ const CONE_TOP_A := 0.4
 const CONE_FOOT_A := 0.12
 ## The pools of light on the ground (and in the LightField).
 const COL_POOL := Color(1.0, 0.86, 0.52)
+## The Lantern's own beam (extra "pale"): the cone, the pool and the dust, silver-white.
+const PALE_CONE := Color(0.82, 0.9, 1.0)
+const PALE_POOL := Color(0.86, 0.93, 1.0)
+const PALE_DUST := [Color("f2f8ff"), Color("cfe2ff"), Color(0.8, 0.9, 1.0, 0.6)]
 const POOL_INTENSITY := 1.0
 ## How dark the town goes under the light (Impact.dim(), scaled by the mission's dim_scale), how fast, and how long the
 ## light takes to come up or fade.
@@ -31,6 +38,11 @@ const DUST := [Color("fff6d8"), Color("ffe08a"), Color(1.0, 0.82, 0.45, 0.6)]
 const DUST_RATE := 10.0
 
 var light: Searchlight
+## The colours in use (the gold ones, or the Lantern's pale ones), and whether the town is dimmed under the light.
+var _col_cone := COL_CONE
+var _col_pool := COL_POOL
+var _col_dust: Array = DUST
+var _dims := true
 var _cones: Node2D
 var _glow: QuadFx
 var _pools: Array[QuadFx] = []
@@ -40,6 +52,14 @@ var _dust: Array[PixelParticles] = []
 var _fade := 0.0
 var _beam_fade: Array[float] = [0.0, 0.0]
 var _last: Array[Vector2] = []
+
+
+## The colours and the dim an effect's extra asks for (v0.11.2): the gold beam that darkens the town, unless "pale" / "dim" say otherwise.
+## Pure, for the tests.
+static func style_for(extra: Dictionary) -> Dictionary:
+	var pale := bool(extra.get("pale", false))
+	return {"cone": PALE_CONE if pale else COL_CONE, "pool": PALE_POOL if pale else COL_POOL, "dust": PALE_DUST if pale else DUST,
+		"dim": bool(extra.get("dim", true))}
 
 
 ## One frame of a beam's fade: up while lit, down while not, over FADE_SECONDS. Pure, for the tests.
@@ -62,6 +82,11 @@ static func cone_points(top: Vector2, aim: Vector2, r: float) -> PackedVector2Ar
 func _build() -> void:
 	duration = 1.0e9
 	light = extra.get("light") as Searchlight
+	var style := style_for(extra)
+	_col_cone = style.cone
+	_col_pool = style.pool
+	_col_dust = style.dust
+	_dims = bool(style.dim)
 	_cones = Node2D.new()
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -72,18 +97,18 @@ func _build() -> void:
 	if light == null:
 		return
 	_last = [light.spire, light.spire]
-	_glow = FxParts.bloom(self, _lamp(), SPIRE_GLOW_PX, COL_CONE, 0.0)
+	_glow = FxParts.bloom(self, _lamp(), SPIRE_GLOW_PX, _col_cone, 0.0)
 	for i in Searchlight.MAX_BEAMS:
 		var q := FxParts.quad(self, FxParts.SH_LIGHT, Vector2.ONE * Searchlight.POOL_R * 2.0, ctx.ground)
 		q.position = light.spire
 		q.z_index = 6
-		q.set_param("color", COL_POOL)
+		q.set_param("color", _col_pool)
 		q.set_param("intensity", 0.0)
 		if ctx.lights != null:
 			var k := i
-			ctx.lights.register_quad(q, light.spire, Searchlight.POOL_R * 1.15, COL_POOL, func() -> Vector2: return _lit_at(k))
+			ctx.lights.register_quad(q, light.spire, Searchlight.POOL_R * 1.15, _col_pool, func() -> Vector2: return _lit_at(k))
 		_pools.append(q)
-		var d := FxParts.particles(self, ctx.overhead, Iso.ground_to_screen(light.spire), PixelParticles.Shape.SQUARE, DUST)
+		var d := FxParts.particles(self, ctx.overhead, Iso.ground_to_screen(light.spire), PixelParticles.Shape.SQUARE, _col_dust)
 		d.auto_free = false
 		d.gravity = -6.0
 		d.rate = DUST_RATE
@@ -98,7 +123,7 @@ func _fx_process(delta: float) -> void:
 		return
 	var was := _fade
 	_fade = move_toward(_fade, 1.0 if light.on else 0.0, delta / FADE_SECONDS)
-	if ctx.impact != null and (_fade > 0.0 or was > 0.0):
+	if _dims and ctx.impact != null and (_fade > 0.0 or was > 0.0):
 		ctx.impact.dim(DIM * _fade, DIM_SPEED)
 	if is_instance_valid(_glow):
 		_glow.set_param("intensity", _fade * (0.85 + 0.15 * sin(t * 2.4)))
@@ -116,7 +141,7 @@ func _fx_process(delta: float) -> void:
 
 ## Let go while the light is still on: the town must not stay dark, so the dim goes with it.
 func end_now() -> void:
-	if not finished and ctx != null and ctx.impact != null and _fade > 0.0:
+	if _dims and not finished and ctx != null and ctx.impact != null and _fade > 0.0:
 		ctx.impact.dim(0.0, DIM_SPEED)
 	super.end_now()
 
@@ -137,7 +162,7 @@ func _draw_cones() -> void:
 	for i in _pools.size():
 		if _beam_fade[i] <= 0.0:
 			continue
-		var top_c := Color(COL_CONE, CONE_TOP_A * _beam_fade[i])
-		var foot_c := Color(COL_CONE, CONE_FOOT_A * _beam_fade[i])
+		var top_c := Color(_col_cone, CONE_TOP_A * _beam_fade[i])
+		var foot_c := Color(_col_cone, CONE_FOOT_A * _beam_fade[i])
 		_cones.draw_polygon(cone_points(top, _last[i], Searchlight.POOL_R),
 			PackedColorArray([top_c, top_c, foot_c, foot_c]))

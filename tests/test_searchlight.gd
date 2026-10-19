@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_out(t)
 	_cone(t)
 	_fade(t)
+	_cap(t)
 
 
 static func _sweep(t) -> void:
@@ -162,3 +163,31 @@ static func _fade(t) -> void:
 	for i in 20:
 		down = SearchlightFx.fade_step(down, false, 0.05)
 	t.near(down, 0.0, 0.0001, "and is gone after FADE_SECONDS")
+
+
+## v0.11.2 (The Lantern's beam_cap and look): by default the light is as it was -- one beam, a second SECOND_AFTER later -- so The Vigil
+## Flame's, The Relic Run's and The Lantern's Eye's do not move; a cap of 1 holds one beam past SECOND_AFTER, and raising it with the age
+## lights the second at once; the pale, undimmed look is only the fx's extra asking for it.
+static func _cap(t) -> void:
+	var d := Searchlight.new().setup(SPIRE)
+	t.check(d.beam_cap == Searchlight.MAX_BEAMS, "the default cap is MAX_BEAMS")
+	d.light()
+	_run(d, Searchlight.SECOND_AFTER - 1.0)
+	t.check(d.beams() == 1, "by default: one beam before SECOND_AFTER...")
+	_run(d, 2.0)
+	t.check(d.beams() == 2, "...and the second after it, as the Vigil's light always did")
+	var c := Searchlight.new().setup(SPIRE)
+	c.beam_cap = 1
+	c.light()
+	_run(c, Searchlight.SECOND_AFTER + 10.0)
+	t.check(c.beams() == 1 and c.aim(1) == Vector2.INF, "a cap of 1 holds one beam long past SECOND_AFTER")
+	c.beam_cap = Searchlight.MAX_BEAMS
+	t.check(c.beams() == 2, "lifting the cap lights the second (the age is past SECOND_AFTER)")
+	c.beam_cap = 0
+	t.check(c.beams() == 0 and c.aim(0) == Vector2.INF, "a cap of 0 lights none")
+	var gold := SearchlightFx.style_for({"light": c})
+	var pale := SearchlightFx.style_for({"light": c, "pale": true, "dim": false})
+	t.check(gold.cone == SearchlightFx.COL_CONE and gold.pool == SearchlightFx.COL_POOL and gold.dim == true and gold.dust == SearchlightFx.DUST,
+		"the fx's default look is the gold beam that dims the town")
+	t.check(pale.cone == SearchlightFx.PALE_CONE and pale.pool == SearchlightFx.PALE_POOL and pale.dim == false and pale.cone != gold.cone,
+		"extra pale / dim:false: the Lantern's pale beam, and it never dims the town")

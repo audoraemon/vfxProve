@@ -65,6 +65,10 @@ static func _growth(t) -> void:
 	c = s.record("warning", _lost("bell"))
 	t.check(s.dp == 5 and s.bites == 1 and s.night == 1 and s.bell_rang and bool(c.bite) and int(c.dp_gain) == 0,
 		"a lost night is a bite: -1 DP, and the story goes on; the bell is remembered")
+	# v0.11.2: the toll no longer loses the night, so Night 1's bell is read from the result's "tolled"
+	var tolled := CampaignState.new()
+	tolled.record("warning", {"won": true, "reason": "warning", "tolled": true, "bonuses": []})
+	t.check(tolled.bell_rang and tolled.night == 1, "a won Night 1 that tolled the bell remembers it (\"tolled\": true sets bell_rang)")
 	var f := s.mission("feast_festival")
 	t.check(f.first_act().night != null and f.first_act().night.bell_rang
 		and f.response_profile(ResponseProfile.DEFAULT).tier == ResponseProfile.Tier.ORGANIZED,

@@ -66,7 +66,7 @@ func step(delta: float, crowd: Crowd) -> void:
 			hold(carrier)  # still coming down the tower: stands where he is
 			return
 		_retarget_in = RETARGET
-		_send(true)
+		_send(false)  # the first carrier is sent in the normal form: a fright he came down the tower in is respected (v0.11.2 review)
 		return
 	if carrier.ground_pos.distance_to(door) <= REACH:
 		delivered = true
@@ -162,16 +162,24 @@ func _witness(crowd: Crowd, at: Vector2) -> Person:
 func _send(relay: bool) -> void:
 	if not _alive(carrier):
 		return
-	if slow < 1.0:
-		carrier.statuses[&"slow"] = slow  # before every go_duty: the pace it is given reads it
 	if carrier.mind == Person.Mind.DUTY:
+		_slow_down()
 		if not carrier.has_goal() or carrier.anchor.distance_to(door) > 0.3:
 			carrier.go_duty(door)
 		return
 	if carrier.soldier and carrier.held_by_god():
 		return  # whispered, confused or lured off (v0.11.1): the hold ends by itself, and the errand is given again then
 	if carrier.mind in RESUMABLE or carrier.soldier or (relay and not carrier.mind in HELD):
+		_slow_down()
 		carrier.go_duty(door)
+	elif slow < 1.0 and is_equal_approx(float(carrier.statuses.get(&"slow", 1.0)), slow):
+		carrier.statuses.erase(&"slow")  # frightened (PANIC, FLEE, ...): he runs at his own pace until he is back on his feet (v0.11.2 review)
+
+
+## The Herald's pace, written just before he is given the Temple's door: the pace go_duty() reads. A frightened carrier is not given it.
+func _slow_down() -> void:
+	if slow < 1.0:
+		carrier.statuses[&"slow"] = slow
 
 
 static func _alive(p: Variant) -> bool:

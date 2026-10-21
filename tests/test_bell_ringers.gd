@@ -130,9 +130,9 @@ static func _setup(t) -> void:
 	for o in m.objectives():
 		reasons.append(o.reason)
 	t.check(m.tier == 2 and is_equal_approx(m.clock, 330.0) and m.slots == 3 and m.dp_capacity == 8 and m.allows("blight")
-		and m.allows("belllies") and m.allows("doom") and reasons == ["ringers", "bell", "dawn"] and m.bonuses().is_empty()
+		and m.allows("belllies") and m.allows("doom") and reasons == ["ringers", "lantern", "dawn"] and m.bonuses().is_empty()
 		and MissionBook.get_mission("bell_ringers").id == "bell_ringers" and m.camera_at == BellRingersDirector.CAMERA_AT,
-		"the mission: Tier 2's numbers, v0.11.2: every power (Blight, The Bell Lies too); the ringers, the bell, dawn (%s)" % [reasons])
+		"the mission: Tier 2's numbers, v0.11.2: every power (Blight, The Bell Lies too); the ringers, the Herald, dawn (%s)" % [reasons])
 	Kit.done(s)
 
 

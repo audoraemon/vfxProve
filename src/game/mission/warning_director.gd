@@ -271,15 +271,23 @@ func _herald_run(relay: bool) -> void:
 	if not _alive(messenger) or _descend > 0.0:
 		return
 	var door := lantern_door()
-	if float(messenger.statuses.get(&"slow", 1.0)) != LanternWatch.HERALD_SLOW:
-		messenger.statuses[&"slow"] = LanternWatch.HERALD_SLOW
 	_slowed = messenger
 	var ready := _resumable(messenger) or (relay and not messenger.mind in HELD and not (messenger.soldier and messenger.held_by_god()))
 	if messenger.mind == Person.Mind.DUTY and not relay:
+		_herald_pace()
 		if messenger.anchor.distance_to(door) > RETARGET_MOVE or not messenger.has_goal():
 			messenger.go_duty(door)
 	elif ready:
+		_herald_pace()
 		messenger.go_duty(door)
+	elif is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), LanternWatch.HERALD_SLOW):
+		messenger.statuses.erase(&"slow")  # frightened: he flees at his own pace; the Herald's is written again when he is sent (v0.11.2 review)
+
+
+## The Herald's pace, written just before he is given the Temple's door (go_duty() reads it): never on a frightened one.
+func _herald_pace() -> void:
+	if float(messenger.statuses.get(&"slow", 1.0)) != LanternWatch.HERALD_SLOW:
+		messenger.statuses[&"slow"] = LanternWatch.HERALD_SLOW
 
 
 ## The label on the Herald's tag (spec 5.2): while he comes down the tower, then the walk, each in mission seconds.

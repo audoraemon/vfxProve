@@ -1387,7 +1387,7 @@ func _judgement() -> void:
 ## The warning scenario's loadout for each case (v0.08 M5). "none" drafts Mind Whisper and never casts it: an empty
 ## loadout would fall back to the mission's default, and the HUD has no look for an empty slot.
 const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whisper"], "discord": ["discord"],
-	"mix": ["whisper", "discord", "doom"]}
+	"mix": ["whisper", "discord", "doom"], "toll": ["whisper", "discord", "doom"]}
 ## How far straight back toward the gate the whisper sends the messenger.
 const WARNING_WHISPER_BACK := 8.0
 
@@ -2177,6 +2177,9 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 		if doom and _tax_unseen(r.messenger, crowd):
 			rules.cast(slots.doom, r.messenger.ground_pos)
 			return "doom the ringer"
+	var held := _ringers_hold_herald(rules, slots, d, crowd, going)  # v0.11.2: the bell has tolled -- the ringer who rang has ~21 s, so he is held first
+	if held != "":
+		return held
 	if doom:
 		for r in going:
 			var pair := r.mates_with()
@@ -2221,6 +2224,24 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 			rules.cast(slots.discord, r.messenger.ground_pos)
 			return "discord the ringer"
 	return _ringers_prep(rules, slots, d, crowd, doom, whisper)
+
+
+## A Herald running for the Temple (v0.11.2): too little time for the mates to be dealt with first, so he is held at once -- Mind Whisper leads him
+## to a quiet spot (or, none within reach, away from the Temple), where it holds a man twice his run; Discord when it is cooling. What was cast, or "".
+func _ringers_hold_herald(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd, going: Array[RingerDirector]) -> String:
+	for r in going:
+		var m := r.messenger
+		if not r.herald_open() or m.mind == Person.Mind.WHISPERED or m.mind == Person.Mind.CONFUSED:
+			continue
+		if _slot_ready(rules, slots, "whisper") and _whisperable(m) and not m.shaken():
+			var quiet := _ringers_quiet(d, crowd, m)
+			var to := quiet if quiet != Vector2.INF else _ringers_off(d, m, d.lantern_door())
+			rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": to})
+			return "whisper the Herald to (%.1f, %.1f)" % [to.x, to.y]
+		if _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, m.ground_pos)
+			return "discord the Herald"
+	return ""
 
 
 ## Between ringers (v0.11 M3): the next post's door cleared of watchers in the last RINGERS_PREP seconds before its
@@ -4167,8 +4188,8 @@ func _warning(which: String) -> void:
 				WarningDirector.Phase.keys()[director.phase], _warning_mind(director.messenger), director.relays,
 				BellNetwork.State.keys()[crowd.bell.state] if crowd.bell != null else "none",
 				crowd.alarms.stage_name()])
-		if frames % 6 != 0 or which == "none":
-			continue
+		if frames % 6 != 0 or which == "none" or (which == "toll" and not (rules.lantern != null and rules.lantern.tolled)):
+			continue  # v0.11.2, D32: the toll case lets the bell toll, then plays `mix` against the Herald
 		var m := director.messenger
 		if not is_instance_valid(m) or not m.is_alive() or director.warning_dead:
 			continue
@@ -4180,7 +4201,7 @@ func _warning(which: String) -> void:
 			key = "doom"
 		elif running:
 			var order := ["whisper", "discord"]
-			if which == "mix" and last_delay == "whisper":
+			if (which == "mix" or which == "toll") and last_delay == "whisper":
 				order = ["discord", "whisper"]
 			for k: String in order:
 				if k == "whisper" and m.shaken():

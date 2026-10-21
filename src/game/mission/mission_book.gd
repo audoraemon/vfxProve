@@ -248,8 +248,9 @@ static func bell_ringers() -> MissionDef:
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "whisper", "discord"])
 	m.director = BellRingersDirector
+	m.lantern = LanternWatch.KIND_HERALD  # v0.11.2: the toll turns the Lantern; the ringer is the Herald (spec 4.6)
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [StarsObjective.new("Stop the ringers", "ringers", "Ringers stopped"), BellSilentObjective.new(),
+		var out: Array[Objective] = [StarsObjective.new("Stop the ringers", "ringers", "Ringers stopped"), HeraldObjective.new(),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
@@ -514,9 +515,9 @@ static func warning() -> MissionDef:
 	m.intro_banner = "THE FIRST STIRRING"
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
 	m.director = WarningDirector
+	m.lantern = LanternWatch.KIND_HERALD  # v0.11.2: the toll turns the Lantern; its Herald runs for the Temple (spec 4.6)
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [WarningObjective.new(), BellSilentObjective.new(),
-			ClockObjective.new(false, "Dawn", "dawn")]
+		var out: Array[Objective] = [WarningObjective.new(), HeraldObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	m.make_bonuses = func() -> Array[Objective]:
 		var out: Array[Objective] = [UnseenObjective.new()]
@@ -599,6 +600,7 @@ static func _omen(m: MissionDef) -> ActDef:
 	a.camera_at = w.camera_at
 	a.intro_banner = "ACT I - THE OMEN"
 	a.director = WarningDirector
+	a.lantern = w.lantern  # v0.11.2: The Omen is a Herald night as The Warning is (R3)
 	a.make_objectives = w.make_objectives
 	a.make_bonuses = w.make_bonuses
 	a.next = PackedStringArray(["festival", "procession"])

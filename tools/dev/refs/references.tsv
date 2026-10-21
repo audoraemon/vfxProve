@@ -8,10 +8,10 @@ gates	--scenario=gates	927388410
 fire	--scenario=fire	-334254837
 rite	--scenario=rite --interrupt	-555358538
 soldiers	--scenario=soldiers --case=escort	-778609674
-warning_none	--scenario=warning --case=none	-489775734
+warning_none	--scenario=warning --case=none	-241523189
 warning_doom	--scenario=warning --case=doom	-905773030
-warning_whisper	--scenario=warning --case=whisper	-588314462
-warning_discord	--scenario=warning --case=discord	-74330247
+warning_whisper	--scenario=warning --case=whisper	-570744607
+warning_discord	--scenario=warning --case=discord	-569152994
 warning_mix	--scenario=warning --case=mix	-206935500
 miras_play	--scenario=miras --case=play	-898150873
 lanterns_none	--scenario=lanterns --case=none --seed=1	424350965
@@ -42,12 +42,12 @@ prayers_none_3	--scenario=prayers --case=none --seed=3	-200623714
 prayers_play_1	--scenario=prayers --case=play --seed=1	-467367340
 prayers_play_2	--scenario=prayers --case=play --seed=2	-923328669
 prayers_play_3	--scenario=prayers --case=play --seed=3	-817033524
-ringers_none_1	--scenario=ringers --case=none --seed=1	-275717420
-ringers_none_2	--scenario=ringers --case=none --seed=2	-138070945
-ringers_none_3	--scenario=ringers --case=none --seed=3	-370827666
+ringers_none_1	--scenario=ringers --case=none --seed=1	-419113896
+ringers_none_2	--scenario=ringers --case=none --seed=2	-835341761
+ringers_none_3	--scenario=ringers --case=none --seed=3	-291431623
 ringers_play_1	--scenario=ringers --case=play --seed=1	270374828
 ringers_play_2	--scenario=ringers --case=play --seed=2	-172522133
-ringers_play_3	--scenario=ringers --case=play --seed=3	-163481213
+ringers_play_3	--scenario=ringers --case=play --seed=3	120507664
 panic_none_1	--scenario=panic --case=none --seed=1	-42444191
 panic_none_2	--scenario=panic --case=none --seed=2	-831702796
 panic_none_3	--scenario=panic --case=none --seed=3	49852883

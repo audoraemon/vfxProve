@@ -104,6 +104,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, k: String) -> LanternWatch
 	if _bell != null:
 		_bell.rung.connect(on_toll)
 		_bell.silenced.connect(_on_silenced)
+		_bell.keeper_held = _keeper_is_herald
 	rules.cast_made.connect(_on_cast)
 	if c._field != null:
 		c._field.enemy_killed.connect(_on_killed)
@@ -263,6 +264,7 @@ func teardown() -> void:
 			_bell.rung.disconnect(on_toll)
 		if _bell.silenced.is_connected(_on_silenced):
 			_bell.silenced.disconnect(_on_silenced)
+		_bell.keeper_held = Callable()
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
@@ -323,12 +325,12 @@ func _judge_deaths() -> void:
 
 
 ## The bell was silenced. Once it has tolled this changes nothing (C7: there was a toll, the Lantern turned, and a warning's errand is the
-## Temple's door already); before, no toll will come, and on a Herald night the warnings run for the Temple on it (R13).
+## Temple's door already); before, no toll will come, and on a Herald night the warnings run for the Temple on it (R13): they read `bell_silenced`
+## themselves (WarningDirector.heralding()), and the first Herald's banner is _herald_step()'s, so nothing is started here.
 func _on_silenced(_reason: String) -> void:
 	if tolled or _released:
 		return
 	bell_silenced = true
-	_heralds_start()
 
 
 func _show_light() -> void:
@@ -420,6 +422,21 @@ func _busy(p: Person) -> bool:
 	return false
 
 
+## The bellkeeper is a Herald running for the Temple (a warning's carrier, or the Lantern's own report): The Bell Lies' unrung bell must not
+## send him back to the rope (BellNetwork.keeper_held; review-11's residual risk, C8). False before the toll and on a night with no Herald.
+func _keeper_is_herald() -> bool:
+	if not tolled or _released or _bell == null or not is_instance_valid(_bell.keeper):
+		return false
+	var k := _bell.keeper
+	var d := rules.director if is_instance_valid(rules) else null
+	if d != null and d.claims_herald(k):
+		return true
+	for h in heralds:
+		if h.is_open() and h.carrier == k:
+			return true
+	return false
+
+
 ## An escort is appointed: on a gaze night he is one of the Faithful, who see (spec 4.5; pre-flight GAP, Task 10). Elsewhere a plain lay citizen.
 func _escort_appointed(p: Person) -> void:
 	var d := rules.director
@@ -444,8 +461,8 @@ func _heralds_start() -> void:
 		return
 	var report := TempleReport.new(keeper as Person, door(), HERALD_SLOW, HERALD_DESCEND)
 	report.skip = func(p: Person) -> bool:
-		# A relay never picks one fleeing the town, nor a warning's own carrier (one kill never stops two Heralds).
-		return p.mind == Person.Mind.FLEE or (is_instance_valid(d) and d.claims_herald(p))
+		# A relay never picks one fleeing the town, a warning's own carrier (one kill never stops two Heralds), nor a wisher or a wish's target.
+		return p.mind == Person.Mind.FLEE or (is_instance_valid(d) and (d.claims_herald(p) or d.reserved.has(p)))
 	heralds.append(report)
 
 

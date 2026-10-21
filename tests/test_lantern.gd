@@ -383,8 +383,8 @@ static func _heard_beats_win(t) -> void:
 static func _no_lantern(t) -> void:
 	var s := Kit.world(MissionBook.bell_ringers(), MissionDirector.new())
 	var r: Rules = s.rules
-	t.check(r.lantern == null and MissionBook.bell_ringers().lantern == "" and MissionBook.warning().lantern == ""
-		and MissionBook.long_night().lantern == "" and TierBook.board("festival").lantern == "", "no mission names a Lantern yet (MissionDef.lantern is \"\")")
+	t.check(r.lantern == null and MissionBook.long_night().lantern == "" and TierBook.board("festival").lantern == "",
+		"a night that names no Lantern has none (MissionDef.lantern is \"\"; the adopting nights say theirs in their own tests)")
 	_ring(s)
 	_run(s, 1.0)
 	t.check(is_equal_approx(r.clock_rate, 1.0) and not (s.banners as Array).has(LanternWatch.TOLL_BANNER),

@@ -212,9 +212,14 @@ static func _relay(t) -> void:
 static func _endings(t) -> void:
 	var s := _setup()
 	var rules: Rules = s.rules
-	(s.crowd as Crowd).bell.state = BellNetwork.State.RUNG
+	var lw := LanternWatch.new().setup(rules, s.crowd, s.town, null, MissionBook.warning().lantern)
+	rules.lantern = lw
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
 	_run(s, DT)
-	t.check(rules.finished and not rules.won and rules.over_reason == "bell", "the bell rings: lost (%s)" % rules.over_reason)
+	t.check(lw.tolled and not rules.finished and not (s.d as WarningDirector).warning_dead,
+		"v0.11.2: the bell rings: the Lantern turns, the night is not lost (its Herald is the loss: tests/test_herald_nights.gd)")
 	_done(s)
 
 	s = _setup()

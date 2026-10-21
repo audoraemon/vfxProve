@@ -692,6 +692,23 @@ static func _lantern(t) -> void:
 	_done(k)
 	var g1 := _prayer_gain(1.0)
 	var g2 := _prayer_gain(2.0)
+	# The Gaze's feeds are today's until the Lantern has tolled, and halve then (TOLL_GAZE_SCALE).
+	var q := _setup()
+	var qd: BrokenLanternsDirector = q.d
+	var ql := LanternWatch.new().setup(q.rules, q.crowd, q.town, null, "gaze")
+	(q.rules as Rules).lantern = ql
+	_away(qd)
+	_run(q, DT)
+	qd.gaze.seen_death()
+	t.near(qd.gaze.value, GazeMeter.SEEN_DEATH * BrokenLanternsDirector.SEEN_DEATH_SCALE, 0.001, "before the toll a seen death adds the night's own 0.5")
+	var before := qd.gaze.value
+	ql.on_toll()
+	_run(q, DT)
+	var after_toll := qd.gaze.value - before - LanternWatch.GAZE_TOLL
+	qd.gaze.seen_death()
+	t.near(qd.gaze.value - before - LanternWatch.GAZE_TOLL, GazeMeter.SEEN_DEATH * BrokenLanternsDirector.SEEN_DEATH_SCALE * 0.5 + after_toll, 0.001,
+		"after the toll a seen death adds half of it")
+	_done(q)
 	t.check(g1 > 0.0 and is_equal_approx(g1, g2), "the prayers' Gaze feed is per real second: the same at x1 and x2 (%.3f, %.3f)" % [g1, g2])
 
 

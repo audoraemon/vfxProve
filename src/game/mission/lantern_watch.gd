@@ -361,7 +361,7 @@ func _bearer_step(delta: float) -> void:
 		var d := rules.director
 		var reserved: Array = d.reserved if d != null else []
 		bearer = LanternBearer.new().setup(rules, crowd, door(), crowd.bell.foot if crowd.bell != null else door(), reserved,
-			_busy, _escort_appointed)
+			_busy)
 		return
 	bearer.step(delta)
 	if bearer.dead():
@@ -420,12 +420,8 @@ func _busy(p: Person) -> bool:
 	return false
 
 
-## An escort is appointed: on a gaze night he is one of the Faithful, who see (spec 4.5; pre-flight GAP, Task 10). Elsewhere a plain lay citizen.
-func _escort_appointed(p: Person) -> void:
-	var d := rules.director
-	if kind == KIND_GAZE and d != null and p.profile != null and not d.faithful.has(p):
-		d._make_faithful(p)
-
+# (v0.11.2, ruling C10) The escorts are plain lay citizens on every night: converting them to Faithful on a gaze night made two hidden extra
+# watchers, who stayed Faithful after the Lantern went blind. They still see a death as any citizen does.
 
 # --- Task 11's seams (the Herald) -----------------------------------------------------------------------------------------------------
 

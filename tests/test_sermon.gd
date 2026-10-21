@@ -583,6 +583,16 @@ static func _lantern(t) -> void:
 		for st: SermonDirector.Sentry in d.sentries:
 			taken = taken or st.man == p
 	t.check(not taken, "neither he nor an escort is the preacher, an acolyte, a listener, a Believer or a sentry")
+	# Ruling C10: the escorts are plain lay citizens: never Faithful, at the set-out or after Blind.
+	var ex: Array = lw.bearer.escorts.duplicate()
+	var plain := ex.size() == LanternBearer.ESCORTS
+	for e: Variant in ex:
+		plain = plain and not d.faithful.has(e) and (e as Person).profile.faith != CitizenProfile.Faith.FAITHFUL
+	t.check(plain, "the escorts are not Faithful on The Sermon's night")
+	lw.blind()
+	for e: Variant in ex:
+		plain = plain and not d.faithful.has(e) and (e as Person).profile.faith != CitizenProfile.Faith.FAITHFUL
+	t.check(plain, "and after Blind none of them is of the Faith")
 	t.check(d.busy(d.preacher) and d.busy((d.listeners[0] as SermonDirector.Listener).man) and d.busy((d.sentries[0] as SermonDirector.Sentry).man),
 		"busy() lists the sermon's people")
 	Kit.done(s)

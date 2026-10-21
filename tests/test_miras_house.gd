@@ -600,10 +600,19 @@ static func _lantern(t) -> void:
 	for p: Variant in [lw.bearer.carrier] + lw.bearer.escorts:
 		taken = taken or d.grieving.has(p) or d.believers.has(p) or p == d.venn
 	t.check(not taken and lw.bearer.escorts.size() == LanternBearer.ESCORTS, "neither he nor an escort is one of the grieving, a Believer or Venn")
-	var faithful_escorts := true
-	for e: Variant in lw.bearer.escorts:
-		faithful_escorts = faithful_escorts and d.faithful.has(e)
-	t.check(faithful_escorts, "his escorts are Faithful on a Gaze night (they see)")
+	# Ruling C10: the escorts are plain lay citizens even on a Gaze night: never Faithful, at the set-out or after Blind (no hidden extra watchers).
+	var ex: Array = lw.bearer.escorts.duplicate()
+	var plain := ex.size() == LanternBearer.ESCORTS
+	for e: Variant in ex:
+		plain = plain and not d.faithful.has(e) and (e as Person).profile.faith != CitizenProfile.Faith.FAITHFUL
+	t.check(plain, "his escorts are not Faithful on a Gaze night")
+	_blind(d, d.door)
+	_arrive(ex[0], d.door + Vector2(1.0, 0.0))
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null, "an escort at the door is no watcher of it")
+	lw.blind()
+	for e: Variant in ex:
+		plain = plain and not d.faithful.has(e) and (e as Person).profile.faith != CitizenProfile.Faith.FAITHFUL
+	t.check(plain, "and after Blind none of them is of the Faith")
 	t.check(d.busy(d.grieving[0]) and d.busy(d.venn) and not d.busy(crowd.soldiers[0]), "busy() lists the grieving and Venn, not a soldier")
 	_done(s)
 

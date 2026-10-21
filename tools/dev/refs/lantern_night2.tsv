@@ -1,0 +1,10 @@
+# KAK exact references (v0.11.2, Task 17): the toll case of the Gaze nights Mira's House (route b, board), The Sermon and Broken Lanterns (route a); judged on wins >= 2/3 by tools/dev/gate.sh --case=toll; the lanterns rows re-recorded in the fix round (Gaze scales halved only after the toll; the toll case runs without hit-stop, which is wall clock)
+miras_toll_1	--scenario=miras --case=toll --route=b --seed=1 --board	-511123020
+miras_toll_2	--scenario=miras --case=toll --route=b --seed=2 --board	-114036784
+miras_toll_3	--scenario=miras --case=toll --route=b --seed=3 --board	-47081346
+lanterns_toll_1	--scenario=lanterns --case=toll --seed=1	-496787946
+lanterns_toll_2	--scenario=lanterns --case=toll --seed=2	-872747931
+lanterns_toll_3	--scenario=lanterns --case=toll --seed=3	-371330133
+sermon_toll_1	--scenario=sermon --case=toll --seed=1	4845150
+sermon_toll_2	--scenario=sermon --case=toll --seed=2	-953070306
+sermon_toll_3	--scenario=sermon --case=toll --seed=3	-407130082

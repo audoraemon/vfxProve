@@ -12,7 +12,8 @@ extends MirasHouseDirector
 ## out a Believer -- who stands on duty on a ring BELIEVER_RING from the door until the night is won. Two sentries, Faithful watchmen,
 ## watch the door SENTRY_OFF either side of it; one off his post walks back RETURN_AFTER after he left (at once when the town begins to
 ## evacuate), a fallen one is replaced RELIEF_AFTER later (RELIEFS at most). Everyone the sermon holds is kept by the one rule,
-## MissionDirector._hold_all(). A report delivered fills the Gaze; a seen death adds to it; the bell fills it. NEED Believers win; too
+## MissionDirector._hold_all(). A report delivered fills the Gaze; a seen death adds to it; the bell's toll adds 40 to it and turns the
+## Lantern (v0.11.2: this is a Gaze night, Mira's step does it; the toll used to fill the Gaze). NEED Believers win; too
 ## few left to turn loses at once ("flock", lost_reason()); the sermon ends at SERMON_ENDS (EventObjective). The god's house only shakes
 ## tonight (plan decisions 183-190). Structure.destroy() ignores the damage filter: no power of the god's calls it on a house.
 
@@ -113,10 +114,13 @@ var _preacher_fell := Vector2.INF
 var _fall_judged := false
 ## The acolytes held by the god when he fell (v0.11 M5): they saw nothing. Untyped: either may be freed.
 var _held_at_fall: Array = []
-## Seconds into the night, and to the next look (v0.11 M5).
+## Seconds into the night in MISSION time (v0.11.2: the waves and their chain are the night's schedule, so the Lantern's rate hastens
+## them; MissionDirector.mission_delta()), and to the next look (v0.11 M5).
 var _clock := 0.0
 var _tick_in := 0.0
-## The second of the last look (v0.11 M5): the sentries' timers count the real seconds between looks.
+## Real seconds into the night, and the second of the last look (v0.11 M5): the sentries' timers (return, relief) are reflexes, they
+## count the real seconds between looks.
+var _real_clock := 0.0
 var _looked_at := 0.0
 ## The Gaze at the last frame, and seconds left of the bell's warning since it last rose (v0.11 M5).
 var _gaze_was := 0.0
@@ -327,6 +331,16 @@ func _busy() -> Array:
 	return out
 
 
+## (v0.11.2, spec 4.5) The sermon's people are on the sermon's errand: the Lantern-Bearer and his escorts are never taken from among them.
+func busy(p: Person) -> bool:
+	if super.busy(p):
+		return true
+	for v: Variant in _busy():
+		if is_instance_valid(v) and v == p:
+			return true
+	return false
+
+
 ## The strip (v0.11 M5): each later wave at its time, and the sermon's end.
 func _add_events() -> void:
 	for w in range(1, WAVES):
@@ -452,7 +466,8 @@ func _believer_spot(p: Person) -> Vector2:
 ## Mira's step's events (v0.11 M5): the chain, the preacher's word, the acolytes' sight of his death, the god's house kept from fire,
 ## the bell's warning, and every TICK everyone the sermon holds kept by the one rule and each at his place.
 func _step_events(delta: float) -> void:
-	_clock += delta
+	_clock += mission_delta(delta)
+	_real_clock += delta
 	_chain()
 	var now := preaching()
 	_answer_lures()
@@ -471,8 +486,8 @@ func _step_events(delta: float) -> void:
 	if _tick_in > LOOK_SLACK:
 		return
 	_tick_in = TICK
-	var since := _clock - _looked_at
-	_looked_at = _clock
+	var since := _real_clock - _looked_at
+	_looked_at = _real_clock
 	var evacuating := _evacuation_began()
 	_hold_all(_busy(), evacuating)  # the one rule (the controller's ruling): everyone the sermon holds, Believers among the listeners
 	_keep_clergy(evacuating)

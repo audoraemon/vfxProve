@@ -477,15 +477,19 @@ static func _waiting(t) -> void:
 	Kit.done(s)
 
 
-## A gaze night's escorts are Faithful (pre-flight GAP); elsewhere they are plain lay citizens.
+## Ruling C10: the escorts are plain lay citizens on every night, a gaze night's too: never in the director's Faithful, at the set-out or after Blind.
 static func _gaze_faithful(t) -> void:
 	var g := LW._world("gaze")
 	var gb := _set_out(g)
 	var d: MissionDirector = g.d
-	var all := true
+	t.check(gb.escorts.size() == 2 and not d.faithful.has(gb.carrier), "a gaze night: the escorts are not made Faithful (nor is the Bearer)")
+	var any := false
 	for e: Variant in gb.escorts:
-		all = all and d.faithful.has(e)
-	t.check(gb.escorts.size() == 2 and all and not d.faithful.has(gb.carrier), "a gaze night: both escorts are made Faithful (the Bearer is not)")
+		any = any or d.faithful.has(e) or (e as Person).profile.faith == CitizenProfile.Faith.FAITHFUL
+	(g.lw as LanternWatch).blind()
+	for e: Variant in gb.escorts:
+		any = any or d.faithful.has(e) or (e as Person).profile.faith == CitizenProfile.Faith.FAITHFUL
+	t.check(not any, "and none of them is of the Faith, at the set-out or after Blind")
 	Kit.done(g)
 	var w := LW._world("watch")
 	var wb := _set_out(w)

@@ -88,8 +88,8 @@ static func run(t) -> void:
 	for key in bl.default_loadout:
 		bl_dp += int(PowerBook.get_power(key).dp)
 	t.check(bl.tier == 2 and bl.profile == "unaware" and not bl.scored and bl.director == BrokenLanternsDirector
-		and bl_reasons == ["drained", "bell", "gaze", "relit"] and is_equal_approx(bl.clock, 180.0),
-		"Broken Lanterns is Tier 2, Unaware, on 3:00: won by six drained, lost to the bell, the Gaze or dawn (%s)" % [bl_reasons])
+		and bl_reasons == ["drained", "gaze", "relit"] and is_equal_approx(bl.clock, 180.0),
+		"Broken Lanterns is Tier 2, Unaware, on 3:00: won by six drained, lost to the Gaze or dawn (the toll turns the Lantern, v0.11.2) (%s)" % [bl_reasons])
 	t.check(bl_dp <= 5 and Array(bl.default_loadout).all(func(k: String) -> bool: return bl.allows(k)),
 		"its default loadout is in its pool and fits a bitten Night 2's 5 DP (%d)" % bl_dp)
 	t.check(bl.bonuses().size() == 1 and bl.bonuses()[0].label == "Through the faithful", "one bonus, Through the faithful")

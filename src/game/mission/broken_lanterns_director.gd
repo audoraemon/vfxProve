@@ -4,7 +4,9 @@ extends MissionDirector
 ## town. Break them before the Vigil relights them, and drink what was in them. A broken shrine is drained once it has
 ## stayed broken DRAIN_SECONDS. The flame-bearer walks the Vigil round the six, turns aside for a broken shrine, and
 ## relights it if he reaches it first (it stands again). A drained shrine is gone for good. All six drained win the
-## night. A death someone sees adds to Halcyon's Gaze, and the bell fills it. Faithful pray at the standing shrines, and
+## night. A death someone sees adds to Halcyon's Gaze, and the bell's toll adds 40 to it and turns the Lantern (LanternWatch, v0.11.2; the
+## toll used to fill the Gaze). A shrine's draining is the night's schedule (its tag counts it down), so the Lantern's rate hastens it; the
+## flame-bearer's walk and the prayers' feed are real time. Faithful pray at the standing shrines, and
 ## the prayer feeds the Gaze; at 1:30 four Lantern Knights come and guard the shrines; when five are drained, up to
 ## fifteen Faithful kneel round the last one, more coming as they are free (the bonus, if the blow falls through ten).
 ## The shrines are this mission's own: placed here, never in the shared town layout, and taken away with the town
@@ -40,7 +42,9 @@ const MARK_KNIGHT := Color("8fb8e8")
 ## (GazeMeter.pray()), scaled by PRAYER_SCALE: 1.0 is the spec's rate, and the scale is this mission's own lever for
 ## balance, so M4's Gaze is untouched. Task 8 measured it: three praying at each of two standing shrines already reach
 ## PRAYER_CAP, so at 1.0 prayer alone fills the Gaze about 17 s after the first break, and at 0.2 or 0.1 prayer and the
-## seen deaths together still filled it before the sixth shrine could drain.
+## seen deaths together still filled it before the sixth shrine could drain. PRAYER_SCALE and SEEN_DEATH_SCALE are the night's
+## balance as it has always been (0.05); only once the Lantern has tolled are they multiplied by TOLL_GAZE_SCALE (v0.11.2: the toll's
+## +40 left a night that ended at Gaze 75-86 no room, so its other feeds halve then; a night that never tolls is unchanged).
 const PRAYERS := 3
 const PRAY_RING := 1.0
 const PRAY_REACH := 0.6
@@ -49,6 +53,8 @@ const PRAYER_SCALE := 0.05
 ## Heaven Splitter kills ten to twenty people, nearly all seen (Task 8 measured it). GazeMeter's own number stays for
 ## Mira's House and M4.
 const SEEN_DEATH_SCALE := 0.05
+## The share of the two scales that remains once the Lantern has tolled.
+const TOLL_GAZE_SCALE := 0.5
 ## When five are drained, KNEELERS Faithful kneel round the last standing shrine on these rings ([radius, places]), all
 ## within BONUS_REACH of it (ThroughFaithfulObjective).
 const KNEELERS := 15
@@ -137,14 +143,13 @@ func _start_vigil() -> void:
 
 func step(delta: float) -> void:
 	timeline.step(delta)
+	(gaze as LanternGaze).toll_scale = _toll_scale()
 	gaze.judge_deaths(crowd)
 	if vigil != null:
 		vigil.step(delta)
-	_drain(delta)
+	_drain(mission_delta(delta))
 	_relight()
 	_prayers_step(delta)
-	if crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
-		gaze.fill()
 
 
 ## A shrine broke: it drains from the start (a relit shrine broken again starts over).
@@ -157,6 +162,7 @@ func _on_broken(s: Structure) -> void:
 	_sync_detour()
 
 
+## `delta` is in mission seconds (v0.11.2): a draining shrine's countdown is shown on its tag, so it runs at the clock's pace.
 func _drain(delta: float) -> void:
 	for s: Structure in drain_left.keys():
 		drain_left[s] = float(drain_left[s]) - delta
@@ -212,6 +218,11 @@ func _shield(s: Structure, amount: float, source: Vector2, kind: StringName) -> 
 		s.destroy(source, kind)
 	elif s.hp < s.max_hp * Structure.CRACK_AT:
 		s.crack()
+
+
+## The share of the Gaze's two feeds that stands now: TOLL_GAZE_SCALE once the Lantern has tolled, else all of it.
+func _toll_scale() -> float:
+	return TOLL_GAZE_SCALE if rules.lantern != null and rules.lantern.tolled else 1.0
 
 
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
@@ -308,7 +319,7 @@ func _prayers_step(delta: float) -> void:
 		_tend_prayers()
 		_call_kneelers()
 		_tend_knights()
-	gaze.pray(praying_count(), delta * PRAYER_SCALE)
+	gaze.pray(praying_count(), delta * PRAYER_SCALE * _toll_scale())
 	_kneeling_near = kneeling_near()
 
 
@@ -542,5 +553,8 @@ func _guard_place(s: Structure, k: Person) -> Vector2:
 
 ## Broken Lanterns' Gaze: a seen death adds SEEN_DEATH_SCALE of GazeMeter.SEEN_DEATH; all else is GazeMeter's.
 class LanternGaze extends GazeMeter:
+	## TOLL_GAZE_SCALE once the Lantern has tolled (set by the director at each death), else 1.0.
+	var toll_scale := 1.0
+
 	func seen_death() -> void:
-		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE)
+		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE * toll_scale)

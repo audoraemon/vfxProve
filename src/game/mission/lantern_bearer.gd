@@ -65,7 +65,7 @@ var foot := Vector2.INF
 var _reserved: Array = []
 ## func(p: Person) -> bool: someone a director has busy (its own actor, a report's carrier, a Herald). Empty: nobody is.
 var _skip: Callable
-## func(p: Person) -> void: told of each escort as he is appointed (a gaze night makes him one of the Faithful).
+## func(p: Person) -> void: told of each escort as he is appointed (no night uses it since ruling C10: escorts are plain lay citizens).
 var _escorted: Callable
 ## The Bearer's path, oldest first (seeded with a tail behind where he set out, so the escorts have a place from the first second).
 var _trail := PackedVector2Array()

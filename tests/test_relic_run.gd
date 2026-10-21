@@ -32,6 +32,8 @@ static func run(t) -> void:
 	_tagged(t)
 	_bell(t)
 	_freed(t)
+	_lantern(t)
+	_mission_time(t)
 
 
 static func _world() -> Dictionary:
@@ -606,3 +608,107 @@ static func _led_watch(t) -> void:
 	t.check(not d.pip_led and d.halt == 0 and not d.watched() and d._halt_left() > 0.0 and d.halt_time > RelicRunDirector.LED_HALT,
 		"a Pip only whispered (loadout A): past LED_HALT unwatched there is no roll-on, the halt runs on")
 	Kit.done(s)
+
+
+## The relic world with the Lantern its mission asks for (v0.11.2): Tier 4's town has a bell.
+static func _lantern_world() -> Dictionary:
+	var def := MissionBook.relic_run()
+	var s := Kit.world(def)
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, def.lantern)
+	(s.rules as Rules).lantern = lw
+	s["lw"] = lw
+	return s
+
+
+## The bell tolls as it does in play: a keeper on the rope, the climb done.
+static func _toll(s: Dictionary) -> void:
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
+
+
+## v0.11.2 Task 18: The Relic Run is a gaze night -- the toll adds LanternWatch.GAZE_TOLL (40) to the Gaze instead of filling it and the clock
+## runs 1.5 times as fast; the Lantern's own beam (a separate light) costs no Gaze, and the Bearer takes nobody from the run.
+static func _lantern(t) -> void:
+	t.check(MissionBook.relic_run().lantern == "gaze" and TierBook.board(MissionBook.RELIC_RUN).lantern == "gaze", "the Relic Run is a gaze night, mission and board")
+	var s := _lantern_world()
+	var d: RelicRunDirector = s.d
+	var lw: LanternWatch = s.lw
+	var r: Rules = s.rules
+	t.check((s.crowd as Crowd).bell != null and (s.crowd as Crowd).bell.state == BellNetwork.State.IDLE, "(the town has a bell, still asleep)")
+	_toll(s)
+	Kit.run_for(s, 3.0)
+	t.check(lw.tolled and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and not d.gaze.is_full() and not r.finished,
+		"the toll adds 40 to the Gaze: the night goes on (it used to lose)")
+	t.check(is_equal_approx(r.clock_rate, 1.5), "and the clock runs at x1.5")
+	# The Lantern's beam is its own light: Pip in it adds nothing, Stirring or Burning.
+	var spot := lw.light.aim(0)
+	Kit.arrive(d.wren, spot)
+	Kit.run_for(s, 0.1)
+	t.check(lw.light.touches(d.wren.ground_pos) and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and d.touches == 0,
+		"Pip in the Lantern's beam adds nothing to the Gaze")
+	lw.burn()
+	Kit.arrive(d.wren, lw.light.aim(0))
+	Kit.run_for(s, 0.1)
+	t.check(is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and d.touches == 0, "nor when the Lantern burns")
+	Kit.done(s)
+	# The Bearer and his escorts come from nobody at the run's work: Pip, the cart's people, the wardens (busy()).
+	var b := _lantern_world()
+	var bd: RelicRunDirector = b.d
+	var bl: LanternWatch = b.lw
+	var mine := [bd.wren, bd.carter]
+	mine.append_array(bd.escorts)
+	for w: RelicRunDirector.Warden in bd.wardens:
+		mine.append(w.man)
+	var all_busy := true
+	for v: Variant in mine:
+		all_busy = all_busy and bd.busy(v as Person)
+	t.check(all_busy and not bd.busy((b.crowd as Crowd).citizens[40]), "busy(): Pip, the carter, the escorts and the wardens, nobody else")
+	_toll(b)
+	var left := LanternBearer.AFTER + 2.0
+	while bl.bearer == null and left > 0.0:
+		Kit.run_for(b, 0.5)
+		left -= 0.5
+	var clean := bl.bearer != null
+	if clean:
+		for v: Variant in mine:
+			clean = clean and not bl.has_errand(v)
+	t.check(clean, "the Bearer set out, and none of the run's people is on his errand")
+	Kit.done(b)
+
+
+## Mission time (D20): at x2.0 the set-out comes in half the time and the halt's seconds count double (the tag counts them down at the
+## clock's pace); the reflexes -- Pip boarding, the look interval -- stay real.
+static func _mission_time(t) -> void:
+	var s := _world()
+	var d: RelicRunDirector = s.d
+	(s.rules as Rules).clock_rate = 2.0
+	Kit.run_for(s, RelicRunDirector.SET_OUT_AT / 2.0 - 1.0)
+	t.check(not d.set_out, "at x2.0 the relic has not set out a second before half its time")
+	Kit.run_for(s, 2.0)
+	t.check(d.set_out, "and has set out a second after it (its 0:45 is mission time)")
+	var rate_in := d.halt_in()
+	t.check(rate_in < INF and rate_in > 0.0, "(halt_in still answers, in real seconds)")
+	Kit.done(s)
+	var h := _world()
+	var hd: RelicRunDirector = h.d
+	(h.rules as Rules).clock_rate = 2.0
+	_at_halt(h, hd, 0)
+	Kit.run_for(h, 5.0)
+	t.check(hd.halt == 0 and absf(hd.halt_time - 10.0) < 0.6 and absf(hd.counted - 10.0) < 1.2,
+		"at x2.0 the halt's window and the watch's count run double (%.1f / %.1f after 5 s)" % [hd.halt_time, hd.counted])
+	t.check(Kit.labels(hd)[0].begins_with("RELIC CART - HALTED ") and Kit.labels(hd)[0] == "RELIC CART - HALTED %d" % ceili(hd._halt_left()),
+		"and the tag counts the window down in mission seconds (%s)" % Kit.labels(hd)[0])
+	Kit.done(h)
+	# Pip's boarding is a reflex: BOARD seconds of real time, whatever the rate.
+	var b := _world()
+	var bd: RelicRunDirector = b.d
+	(b.rules as Rules).clock_rate = 2.0
+	_at_halt(b, bd, 0)
+	Kit.arrive(bd.wren, bd.cart_at() + Vector2(0.0, 0.6))
+	_blind(bd)
+	Kit.run_for(b, RelicRunDirector.BOARD * 0.6)
+	t.check(not bd.aboard, "at x2.0 Pip does not board in 0.6 of BOARD (it is real time)")
+	Kit.run_for(b, RelicRunDirector.BOARD * 0.6 + 0.2)
+	t.check(bd.aboard, "and boards after it")
+	Kit.done(b)

@@ -171,6 +171,9 @@ func _ready() -> void:
 		elif "--bench-beams" in args:
 			await _bench_beams(args)
 			label = "flame-beams"
+		if Battlefield.arg_value(args, "--bench-toll") != "":
+			await _bench_toll(args)
+			label += "-toll"
 		await _bf.bench(label)
 		await _quit()
 
@@ -194,6 +197,21 @@ func _bench_beams(args: PackedStringArray) -> void:
 	var d := _director as VigilFlameDirector
 	if d != null:
 		d.bench_beams()
+	var after := Battlefield.arg_value(args, "--bench-after")
+	await get_tree().create_timer(float(after) if after != "" else 5.0).timeout
+
+
+## Bench aid (v0.11.2, D33): `--bench-toll=SECONDS` lets the night run SECONDS, then rings the bell (the keeper is called and the bell
+## tolls at once) and burns the Lantern, so the Temple's two pale beams and the Lantern-Bearer are up with whatever else the bench has lit
+## (`--bench-beams` on The Vigil Flame: four beams in all), then `--bench-after` (default 5) seconds more before the frames are timed. A Lantern
+## night only (the board versions of The Vigil Flame, The Relic Run, ...); without a Lantern it only waits.
+func _bench_toll(args: PackedStringArray) -> void:
+	await get_tree().create_timer(float(Battlefield.arg_value(args, "--bench-toll"))).timeout
+	if _crowd != null and _crowd.bell != null:
+		_crowd.bell.call_keeper()
+		_crowd.bell._ring()
+	if _rules != null and _rules.lantern != null:
+		_rules.lantern.burn()
 	var after := Battlefield.arg_value(args, "--bench-after")
 	await get_tree().create_timer(float(after) if after != "" else 5.0).timeout
 

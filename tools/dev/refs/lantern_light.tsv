@@ -1,0 +1,7 @@
+# KAK exact references: the toll case of the gaze nights The Vigil Flame (board, loadout B) and The Relic Run (v0.11.2 Task 18, D32). The bell is rung at 30 mission seconds (behaviour_check TOLL_AT_LIGHT) and the policy plays as `play` throughout. Judged on wins only (gate.sh --case=toll): both are 1/3 -- see the Task 18 report.
+flame_toll_1	--scenario=flame --case=toll --route=b --board --seed=1	245877734
+flame_toll_2	--scenario=flame --case=toll --route=b --board --seed=2	9104748
+flame_toll_3	--scenario=flame --case=toll --route=b --board --seed=3	-136264331
+relic_toll_1	--scenario=relic --case=toll --seed=1	-514053072
+relic_toll_2	--scenario=relic --case=toll --seed=2	340689182
+relic_toll_3	--scenario=relic --case=toll --seed=3	-75714727

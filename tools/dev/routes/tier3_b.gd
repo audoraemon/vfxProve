@@ -100,7 +100,10 @@ static func _flame_prep(bc, d: VigilFlameDirector, rules: Rules, slots: Dictiona
 		var at: Vector2 = (ctx.crowd as Crowd)._grid.nearest_walkable(ahead)
 		rules.cast(slots.wisp, at if at != Vector2.INF else lantern)
 		return "wisp the bystanders off the Vigil's road"
-	if now < FLAME_HOLD_AT:
+	# (v0.11.2) The Discord must be ready again (30 real seconds) when the boy tries for the lantern himself, WREN_AT + WREN_OWN_AFTER mission
+	# seconds in: the faster the clock runs, the sooner the first one is cast.
+	var own_try: float = float(VigilFlameDirector.WREN_AT) + float(VigilFlameDirector.WREN_OWN_AFTER)
+	if now < minf(FLAME_HOLD_AT, own_try - 30.0 * rules.clock_rate - 2.0):
 		return ""
 	# Before the boy comes, the bystanders about the lantern thinned: Silent Doom where none would see it.
 	var thinned := _flame_doom_stray(bc, d, rules, slots, ctx, lantern, null)
@@ -167,7 +170,8 @@ static func _flame_swap(bc, d: VigilFlameDirector, rules: Rules, slots: Dictiona
 				break
 	# The watchers and the bearer taken by Discord: just before the boy, left alone, comes for the lantern himself (he is quick over the
 	# last steps and Discord is a moment landing), or as he does, or as the lure is about to be cast.
-	var coming: float = float(VigilFlameDirector.WREN_OWN_AFTER) - (d.timeline.elapsed() - d._appeared_at) * d.timeline.stretch_factor()
+	# (v0.11.2: his thirty seconds are mission seconds, and the Discord lasts real ones, so what is left is counted at the clock's rate.)
+	var coming: float = (float(VigilFlameDirector.WREN_OWN_AFTER) - (d.timeline.elapsed() - d._appeared_at) * d.timeline.stretch_factor()) 		/ maxf(rules.clock_rate, 0.01)
 	if (not watchers.is_empty() or not held) and bc._slot_ready(rules, slots, "discord") and (d.attempting or coming <= FLAME_DISCORD_LEAD or wisp_ready):
 		var fit := _flame_discord_point(bc, lantern, watchers, held)
 		if fit == Vector2.INF and (d.attempting or coming <= 0.5):

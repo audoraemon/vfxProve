@@ -421,6 +421,7 @@ static func relic_run() -> MissionDef:
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "wisp"])
 	m.director = RelicRunDirector
+	m.lantern = "gaze"  # v0.11.2: the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze)
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new("The relic", "relic", "relic_kept", "pip"),
 			ClockObjective.new(false, "Dawn", "dawn")]
@@ -747,6 +748,7 @@ static func vigil_flame() -> MissionDef:
 	m.intro_from = VigilFlameDirector.CAMERA_AT + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "wisp"])
 	m.director = VigilFlameDirector
+	m.lantern = "gaze"  # v0.11.2: the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze); the campaign's town has no bell
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new(), ClockObjective.new(false, "Dawn", "late")]
 		return out

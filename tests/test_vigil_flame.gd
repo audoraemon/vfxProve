@@ -11,6 +11,7 @@ const DT := 0.05
 ## spire), so nothing the light does there is an accident.
 const OUT := Vector2(-20.0, 18.0)
 const AWAY := Vector2(22.0, 16.0)
+const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 
 static func _setup(board := false) -> Dictionary:
@@ -155,6 +156,8 @@ static func run(t) -> void:
 	_freed_bearer(t)
 	_fallen_homeward(t)
 	_loose_ends(t)
+	_lantern(t)
+	_mission_time(t)
 
 
 static func _cast(t) -> void:
@@ -462,8 +465,8 @@ static func _ending(t) -> void:
 	if crowd4.bell != null:
 		crowd4.bell.state = BellNetwork.State.RUNG
 	_run(s4, DT * 2.0)
-	t.check(crowd4.bell == null or ((s4.d as VigilFlameDirector).gaze.is_full() and (s4.rules as Rules).over_reason == "gaze"),
-		"the bell fills the Gaze")
+	t.check(not (s4.d as VigilFlameDirector).gaze.is_full() and not (s4.rules as Rules).finished,
+		"v0.11.2: a rung bell no longer fills the Gaze by itself (the Lantern's toll adds 40: _lantern)")
 	_done(s4)
 
 	var s5 := _setup()
@@ -837,3 +840,106 @@ static func _loose_ends(t) -> void:
 	_run(s2, VigilRoute.TICK + DT)
 	t.check(not banners.has("AN ACOLYTE TAKES UP THE FLAME"), "nor does an acolyte take up a flame that is false")
 	_done(s2)
+
+
+## A board Vigil Flame (the campaign's town has no bell) with the Lantern its mission asks for, not hushed.
+static func _lantern_world() -> Dictionary:
+	var def := TierBook.board(MissionBook.VIGIL_FLAME)
+	var s := Kit.world(def)
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, def.lantern)
+	(s.rules as Rules).lantern = lw
+	s["lw"] = lw
+	return s
+
+
+## The bell tolls as it does in play: a keeper on the rope, the climb done.
+static func _toll(s: Dictionary) -> void:
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
+
+
+## v0.11.2 Task 18: The Vigil Flame is a gaze night -- the toll adds LanternWatch.GAZE_TOLL (40) to the Gaze instead of filling it, the clock
+## runs 1.5 times as fast, and the Lantern's own beam (a separate light) costs no Gaze.
+static func _lantern(t) -> void:
+	t.check(MissionBook.vigil_flame().lantern == "gaze" and TierBook.board(MissionBook.VIGIL_FLAME).lantern == "gaze",
+		"the Vigil Flame is a gaze night, campaign and board")
+	var s := _lantern_world()
+	var d: VigilFlameDirector = s.d
+	var lw: LanternWatch = s.lw
+	var r: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	t.check(crowd.bell != null and crowd.bell.state == BellNetwork.State.IDLE, "(the board's town has a bell, still asleep)")
+	_toll(s)
+	Kit.run_for(s, 3.0)
+	t.check(lw.tolled and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and not d.gaze.is_full() and not r.finished,
+		"the toll adds 40 to the Gaze: the night goes on (it used to lose)")
+	t.check(is_equal_approx(r.clock_rate, 1.5) and lw.stage == LanternWatch.Stage.STIRRING, "and the Lantern Stirs: the clock at x1.5")
+	crowd.unring_bell()
+	_toll(s)
+	Kit.run_for(s, 0.5)
+	t.check(is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL), "a second toll (the bell unrung) adds nothing")
+	Kit.done(s)
+	# The Lantern's beam is its own light: Wren in it adds nothing to the Gaze, Stirring or Burning.
+	var b := _lantern_world()
+	var bd: VigilFlameDirector = b.d
+	var bl: LanternWatch = b.lw
+	bd.timeline.step(VigilFlameDirector.WREN_AT)  # Wren has come
+	_toll(b)
+	Kit.run_for(b, 0.5)
+	var spot := bl.light.aim(0)
+	Kit.arrive(bd.wren, spot)
+	Kit.run_for(b, 0.1)
+	t.check(bl.light.touches(bd.wren.ground_pos) and bd.touches == 0 and is_equal_approx(bd.gaze.value, LanternWatch.GAZE_TOLL),
+		"Wren in the Lantern's beam adds nothing to the Gaze (the Vigil's own light is not lit yet)")
+	bl.burn()
+	Kit.arrive(bd.wren, bl.light.aim(0))
+	Kit.run_for(b, 0.1)
+	t.check(bd.touches == 0 and is_equal_approx(bd.gaze.value, LanternWatch.GAZE_TOLL), "nor when the Lantern burns")
+	Kit.done(b)
+
+
+## The Lantern-Bearer and his escorts are never Wren, and Wren is never one of them (D20 and the pre-flight's busy()); a clock at x2 brings the
+## night's first event in half the time and leaves the reflexes alone (D20).
+static func _mission_time(t) -> void:
+	var s := _lantern_world()
+	var d: VigilFlameDirector = s.d
+	var lw: LanternWatch = s.lw
+	_toll(s)
+	var left := LanternBearer.AFTER + 2.0
+	while lw.bearer == null and left > 0.0:
+		Kit.run_for(s, 0.5)
+		left -= 0.5
+	t.check(lw.bearer != null, "(the Bearer set out)")
+	if lw.bearer != null:
+		d._wren_comes()
+		t.check(d.wren != null and not lw.has_errand(d.wren), "Wren is nobody the Lantern sent: not the Bearer, not an escort")
+		t.check(d.busy(d.wren) and not d.busy(lw.bearer.carrier), "busy(): Wren, nobody else")
+	Kit.done(s)
+	# Forced to x2.0 from the start (a world with no Lantern keeps a forced rate): Wren comes at half his time.
+	var f := _setup()
+	var fd: VigilFlameDirector = f.d
+	(f.rules as Rules).clock_rate = 2.0
+	_run(f, VigilFlameDirector.WREN_AT / 2.0 - 1.0)
+	t.check(not fd.appeared, "at x2.0 Wren has not come a second before half his time")
+	_run(f, 2.0)
+	t.check(fd.appeared, "and has come a second after it (his 0:50 is mission time)")
+	_run(f, 2.0)
+	var label := _tag(fd, "WREN").label
+	# He came 25 real seconds in; 3 real seconds later 6 mission seconds of his 30 are gone.
+	t.check(label.ends_with(UiTheme.clock(VigilFlameDirector.WREN_OWN_AFTER - 6.0)) or label.ends_with(UiTheme.clock(VigilFlameDirector.WREN_OWN_AFTER - 5.0)),
+		"his own-try tag counts down in mission seconds (%s)" % label)
+	_done(f)
+	# The swap is a reflex: SWAP_SECONDS of real time, whatever the clock's rate.
+	var w := _setup()
+	var wd: VigilFlameDirector = w.d
+	(w.rules as Rules).clock_rate = 2.0
+	wd.timeline.step(VigilFlameDirector.WREN_AT / 2.0)
+	_bearer_out(w)
+	_clear_watchers(wd)
+	_bring_wren(wd)
+	_run(w, VigilFlameDirector.SWAP_SECONDS - 0.5)
+	t.check(wd.swapping and not wd.swapped, "at x2.0 the swap still takes its SWAP_SECONDS of real time (a reflex)")
+	_run(w, 1.0)
+	t.check(wd.swapped, "and is done after them")
+	_done(w)

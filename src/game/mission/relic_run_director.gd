@@ -14,7 +14,10 @@ extends VigilFlameDirector
 ## ("pip") or the Gaze. Two wardens at each watch-house, Faithful watchmen: one off his post walks back RETURN_AFTER after he left (at
 ## once when the town begins to evacuate), a fallen one is replaced RELIEF_AFTER later (RELIEFS at most). Everyone the run holds is
 ## kept by MissionDirector._hold_all() each look. A seen death sends a Faithful to the Temple (plan decision 195); a report delivered
-## fills the Gaze; the bell fills it, and the hint warns of it before it is called (plan decisions 191-199, the controller's rulings).
+## fills the Gaze; the bell's toll adds LanternWatch.GAZE_TOLL to it and turns the Lantern (v0.11.2; it used to fill it), and the hint warns of
+## it before it is called (plan decisions 191-199, the controller's rulings). v0.11.2: the night's schedule runs on mission time (D20) -- the
+## set-out (the timeline), the halt's seconds (halt_time, counted) and _clock follow Rules.clock_rate; the walks, Pip's lock and swap, the
+## wardens' returns and reliefs and every look stay real.
 ## Structure.destroy() ignores damage filters; nothing here filters damage.
 
 ## One warden's post (v0.11 M5): a plain record, so the director holds no cycle.
@@ -112,7 +115,7 @@ var reliefs := 0
 var _leg_base := 0
 ## Where deaths fell, to be judged once the cast's victims have fallen (v0.11 M5).
 var _falls: Array[Vector2] = []
-## Seconds into the night, and to the next look (v0.11 M5).
+## Mission seconds into the night (v0.11.2: the clock's rate speeds it), and real seconds to the next look (v0.11 M5).
 var _clock := 0.0
 var _look_in := 0.0
 ## Seconds left of the bell's warning since a seen death last raised the Gaze (v0.11 M5).
@@ -220,6 +223,12 @@ func _busy() -> Array:
 	return out
 
 
+## Everyone at the run's work is busy (v0.11.2): the Lantern-Bearer and his escorts are never picked from Pip, the cart's people, the new
+## hands or the wardens.
+func busy(p: Person) -> bool:
+	return _busy().has(p)
+
+
 ## The relic sets out (v0.11 M5, the timeline's event): the cart walks the route.
 func _set_out_cart() -> void:
 	if set_out:
@@ -289,7 +298,8 @@ func cart_at() -> Vector2:
 ## warning); every TICK the one hold rule; the cart and its halts; the seen deaths; the reports; the swap; Pip; the wardens; phase 2;
 ## the bell.
 func step(delta: float) -> void:
-	_clock += delta
+	var mission_dt := mission_delta(delta)
+	_clock += mission_dt
 	timeline.step(delta)
 	var was := gaze.value
 	gaze.judge_deaths(crowd)
@@ -302,7 +312,7 @@ func step(delta: float) -> void:
 		evacuating = _evacuation_began()
 		_watch_answers()
 		_hold_all(_busy(), evacuating)  # the one rule (the controller's ruling): Pip, the cart's people, the new hands, the wardens
-	_cart_step(delta)
+	_cart_step(delta, mission_dt)
 	if not _falls.is_empty() and crowd._doomed.is_empty():
 		_judge_falls()
 	_step_reports(delta)
@@ -312,14 +322,12 @@ func step(delta: float) -> void:
 	_wren_step(delta)
 	_wardens_step(delta, looking, evacuating)
 	_phase2_step(delta)
-	if crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
-		gaze.fill()
 
 
 ## The cart (v0.11 M5): its walk, the relic with its carter -- halted, the cart stands where it stopped, whatever its carter does (a
 ## carter held by the god wanders; the cart does not); all three dead, it stands (and waits for new hands); at the next checkpoint it
-## halts; a halt ends once the count is done or after HALT_MAX.
-func _cart_step(delta: float) -> void:
+## halts; a halt ends once the count is done or after HALT_MAX (both counted in mission seconds, `mission_dt`: dawn hastens the watch's count too).
+func _cart_step(delta: float, mission_dt: float) -> void:
 	if vigil != null:
 		vigil.step(delta)
 		if vigil.active and _alive(vigil.bearer) and halt < 0:
@@ -337,9 +345,9 @@ func _cart_step(delta: float) -> void:
 		if k >= 0 and _at_checkpoint():
 			_begin_halt(k)
 		return
-	halt_time += delta
+	halt_time += mission_dt
 	if _count_ok():
-		counted += delta
+		counted += mission_dt
 	if counted >= COUNT or halt_time >= HALT_MAX or (_led_roll() and halt_time >= LED_HALT):
 		_end_halt()
 
@@ -698,7 +706,7 @@ func halt_in() -> float:
 		var d := _lantern.distance_to(route[0])
 		for i in to:
 			d += route[i].distance_to(route[i + 1])
-		return maxf(SET_OUT_AT - _clock, 0.0) + d / speed
+		return maxf(SET_OUT_AT - _clock, 0.0) / maxf(rules.clock_rate, 0.01) + d / speed
 	if vigil == null or not vigil.active:
 		return INF
 	var at := _leg_base + vigil.leg

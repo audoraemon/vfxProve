@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Landing gates for a KAK milestone, run from the work branch's project root. It never pushes.
-# usage: bash tools/dev/land.sh [--bench=BASE_REF] [--pairs="a:b c:c ..."] [--skip-flow]
+# usage: bash tools/dev/land.sh [--bench=BASE_REF] [--pairs="a:b c:c ..."] [--extra="--bench-beams --bench-toll=20"] [--skip-flow]
+#   --extra=ARGS (v0.11.2) goes to every bench run, both sides (a flag one side does not know is ignored): e.g. the Vigil Flame's lit Searchlight
+#   against the same with a forced toll (mission.gd --bench-toll=SECONDS).
 #   Steps: fetch + trial merge of origin/feat/Develop-Main (reports conflicts and incoming commits; stops on a conflict),
 #   import, the suite in parallel, every exact reference (refs_check.sh), FLOW alone (waits for other sessions' Godot to
 #   finish), and with --bench a board-version bench of each "A:B" pair: mission A at BASE_REF against mission B here
@@ -8,8 +10,8 @@
 #   After it passes: merge origin into the branch if it moved, re-run, then ff feat/Develop-Main, tag and push by hand.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
-BENCH=""; PAIRS="warning:warning miras_house:miras_house vigil_flame:vigil_flame procession:procession last_judgement:last_judgement"; FLOW=1
-for a in "$@"; do case "$a" in --bench=*) BENCH="${a#--bench=}";; --pairs=*) PAIRS="${a#--pairs=}";; --skip-flow) FLOW=0;; esac; done
+BENCH=""; PAIRS="warning:warning miras_house:miras_house vigil_flame:vigil_flame procession:procession last_judgement:last_judgement"; FLOW=1; EXTRA=""
+for a in "$@"; do case "$a" in --bench=*) BENCH="${a#--bench=}";; --extra=*) EXTRA="${a#--extra=}";; --pairs=*) PAIRS="${a#--pairs=}";; --skip-flow) FLOW=0;; esac; done
 O=${TMPDIR:-/tmp}/kak_land; mkdir -p "$O"; SUM="$O/summary.txt"; : > "$SUM"
 say() { echo "$*" | tee -a "$SUM"; }
 busy() { powershell -NoProfile -Command "(@(Get-CimInstance Win32_Process -Filter \"Name like 'Godot%'\" | Where-Object { \$_.CommandLine -match 'behaviour_check|run_all|run_part|flow-test|crowd_check|state_digest|--bench|--import' })).Count" | tr -d '\r'; }
@@ -36,7 +38,7 @@ if [ -n "$BENCH" ]; then
   (cd "$W" && timeout 900 "$G" --headless --editor --path . --import >/dev/null 2>&1)
   for i in $(seq 1 60); do [ "$(busy)" = "0" ] && break; sleep 30; done
   say "== bench (board versions, median of 3, fps): A=$BENCH B=HEAD"
-  run() { (cd "$1" && timeout 300 "$G" --path . --audio-driver Dummy --disable-vsync --scene res://scenes/mission.tscn -- --mission=$2 --bench --board 2>&1 | grep -a "^bench\[" | tail -1 | grep -o 'avg_fps=[0-9.]*' | cut -d= -f2); }
+  run() { (cd "$1" && timeout 300 "$G" --path . --audio-driver Dummy --disable-vsync --scene res://scenes/mission.tscn -- --mission=$2 --bench --board $EXTRA 2>&1 | grep -a "^bench\[" | tail -1 | grep -o 'avg_fps=[0-9.]*' | cut -d= -f2); }
   for p in $PAIRS; do a=${p%%:*}; b=${p##*:}; av=(); bv=()
     for k in 1 2 3; do av+=("$(run "$W" "$a")"); bv+=("$(run . "$b")"); done
     med() { printf '%s\n' "$@" | sort -n | sed -n 2p; }

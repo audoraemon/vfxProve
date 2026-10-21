@@ -560,6 +560,7 @@ func _run() -> void:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
+	_arm_toll_light(scenario, Battlefield.arg_value(args, "--case"))
 	match scenario:
 		_ when route == "b":
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
@@ -1969,12 +1970,43 @@ func _lamb_act(rules: Rules, slots: Dictionary, d: EscortDirector, lamb: Person,
 	return "whisper him to (%.1f, %.1f)" % [to.x, to.y]
 
 
+## The toll case of the gaze nights whose scripted runs never ring the bell themselves (v0.11.2 Task 18, D32): the mission second at which the
+## bell is rung (call_keeper(), then the ring at once), by scenario.
+const TOLL_AT_LIGHT := {"flame": 30.0, "relic": 30.0}
+
+
+## The toll case plays as `play` from the start: the bell is forced (_arm_toll_light()), so there is nothing to wait for.
+var _toll_forced := false
+
+
+## `--case=toll` on The Vigil Flame (its board town: the campaign's has no bell) or The Relic Run: rings the bell at TOLL_AT_LIGHT, in a
+## coroutine beside the scenario's own loop. The policy plays as `play` from the start (_acts(), _toll_forced).
+func _arm_toll_light(scenario: String, case_arg: String) -> void:
+	if case_arg != "toll" or not TOLL_AT_LIGHT.has(scenario):
+		return
+	_toll_forced = true  # these nights' policy plays from the start (its lead-in is the night's), and the bell is called for it
+	var rules: Rules = mission._rules
+	var crowd: Crowd = mission._crowd
+	var at := float(TOLL_AT_LIGHT[scenario])
+	var asked := Battlefield.arg_value(OS.get_cmdline_user_args(), "--toll-at")  # a trial of another second (the gate and the references use the table's)
+	if asked != "":
+		at = float(asked)
+	var t := 0.0
+	while not rules.finished and t < at:
+		await process_frame
+		t += mission.get_process_delta_time()
+	if not rules.finished and crowd.bell != null:
+		# Rung at once, as the bench's --bench-toll does (a keeper left to climb is frightened off by the policy's own casts).
+		crowd.bell.call_keeper()
+		crowd.bell._ring()
+
+
 ## Whether the scripted player acts this look under `which` (v0.11.2, D32): `play` always; `toll` from the toll on (LanternWatch.tolled), when
 ## it plays as `play` does -- the policy waits for the toll on purpose, so the toll case shows what a night is like after it; `none` never.
 func _acts(which: String, rules: Rules) -> bool:
 	if which == "play":
 		return true
-	return which == "toll" and rules.lantern != null and rules.lantern.tolled
+	return which == "toll" and rules.lantern != null and (rules.lantern.tolled or _toll_forced)
 
 
 ## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its

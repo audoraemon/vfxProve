@@ -14,8 +14,8 @@ extends MissionDirector
 ##   lantern; swapped before then, the Vigil keeps circling. The bearer reaching the Temple with the real flame keeps it,
 ##   and the night is lost.
 ## - The flame home: Wren carries it to Mira's shrine at the west forest edge; there it relights with the god's own
-##   flame and the night is won. Wren dead, or dawn first, loses it. A death someone sees adds to the Gaze, and the bell
-##   fills it.
+##   flame and the night is won. Wren dead, or dawn first, loses it. A death someone sees adds to the Gaze, and the bell's
+##   toll adds LanternWatch.GAZE_TOLL to it and turns the Lantern (v0.11.2; it used to fill it).
 ## - Phase 2: from the swap until the flame is home, Halcyon's Searchlight (Searchlight, drawn by SearchlightFx) sweeps
 ##   out from the Temple's spire, in and out of the town and past its walls (up to Searchlight.FAR + POOL_R, 28 units):
 ##   one beam, a second 30 s on, a Will-o'-Wisp a decoy, and in the clock's last 20 s a beam stopping to search
@@ -191,8 +191,6 @@ func step(delta: float) -> void:
 		_swap_step(delta)
 	_wren_step(delta)
 	_phase2_step(delta)
-	if crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
-		gaze.fill()
 
 
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
@@ -209,7 +207,7 @@ func _wren_comes() -> void:
 	var clergy: Array[Person] = []
 	_sort_citizens(clergy, lay)
 	for p in lay:
-		if faithful.has(p):
+		if faithful.has(p) or _on_lanterns_errand(p):
 			continue
 		if wren == null or p.ground_pos.distance_to(_lantern) < wren.ground_pos.distance_to(_lantern):
 			wren = p
@@ -313,6 +311,16 @@ func _wren_step(delta: float) -> void:
 	var goal := _wren_goal()
 	if wren.mind != Person.Mind.DUTY or wren.anchor.distance_to(goal) > 0.3:
 		wren.go_duty(goal)
+
+
+## Wren is the Vigil's own errand (v0.11.2): the Lantern-Bearer and his escorts are never picked from him.
+func busy(p: Person) -> bool:
+	return p == wren
+
+
+## `p` walks the Lantern's errand (the Bearer or an escort, LanternWatch.has_errand()): not Wren, and not at prayer.
+func _on_lanterns_errand(p: Person) -> bool:
+	return rules != null and rules.lantern != null and rules.lantern.has_errand(p)
 
 
 ## Wren is staring at a Wisp's light (v0.11.1): the god's hand is on him, and the director leaves him to it.
@@ -523,7 +531,7 @@ func _touch() -> void:
 func _pray(delta: float) -> void:
 	var walking: Array[Person] = vigil.walkers() if vigil != null else ([] as Array[Person])
 	for f in faithful:
-		if praying.has(f) or not _alive(f) or f.inside or f.mind in BLIND or walking.has(f) or _carrying(f):
+		if praying.has(f) or not _alive(f) or f.inside or f.mind in BLIND or walking.has(f) or _carrying(f) or _on_lanterns_errand(f):
 			continue
 		if not (f.mind in RESUMABLE or f.mind == Person.Mind.DUTY):
 			continue

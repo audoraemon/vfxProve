@@ -38,7 +38,7 @@ static func run(t) -> void:
 	var w_reasons := []
 	for o in w.objectives():
 		w_reasons.append(o.reason)
-	t.check(w_reasons == ["warning", "bell", "dawn"], "its objectives in order: no win at the clock's end (v0.11 M1) (%s)" % [w_reasons])
+	t.check(w_reasons == ["warning", "lantern", "dawn"], "its objectives in order: no win at the clock's end (v0.11 M1); v0.11.2: the Herald, not the bell, loses (%s)" % [w_reasons])
 	t.check(w.bonuses().size() == 1 and w.bonuses()[0].label == "Unseen", "one bonus, Unseen")
 	t.check(MissionBook.all()[0].id == MissionBook.WARNING and MissionBook.get_mission(MissionBook.WARNING).id == "warning",
 		"it is first in the book")
@@ -88,8 +88,8 @@ static func run(t) -> void:
 	for key in bl.default_loadout:
 		bl_dp += int(PowerBook.get_power(key).dp)
 	t.check(bl.tier == 2 and bl.profile == "unaware" and not bl.scored and bl.director == BrokenLanternsDirector
-		and bl_reasons == ["drained", "bell", "gaze", "relit"] and is_equal_approx(bl.clock, 180.0),
-		"Broken Lanterns is Tier 2, Unaware, on 3:00: won by six drained, lost to the bell, the Gaze or dawn (%s)" % [bl_reasons])
+		and bl_reasons == ["drained", "gaze", "relit"] and is_equal_approx(bl.clock, 180.0),
+		"Broken Lanterns is Tier 2, Unaware, on 3:00: won by six drained, lost to the Gaze or dawn (the toll turns the Lantern, v0.11.2) (%s)" % [bl_reasons])
 	t.check(bl_dp <= 5 and Array(bl.default_loadout).all(func(k: String) -> bool: return bl.allows(k)),
 		"its default loadout is in its pool and fits a bitten Night 2's 5 DP (%d)" % bl_dp)
 	t.check(bl.bonuses().size() == 1 and bl.bonuses()[0].label == "Through the faithful", "one bonus, Through the faithful")

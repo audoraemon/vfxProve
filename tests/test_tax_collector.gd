@@ -45,6 +45,7 @@ static func run(t) -> void:
 	_reserved(t)
 	_plain(t)
 	_mission(t)
+	_lantern(t)
 
 
 static func _world(loadout := PackedStringArray(), reserve := false, plain := false, keep_gap := false) -> Dictionary:
@@ -848,8 +849,9 @@ static func _mission(t) -> void:
 	for o in m.objectives():
 		reasons.append(o.reason)
 	t.check(m.id == "tax_collector" and m.tier == 1 and m.director == TaxCollectorDirector and is_equal_approx(m.clock, 300.0)
-		and m.profile == "unaware" and m.slots == 3 and m.dp_capacity == 6 and reasons == ["collector", "bell", "dawn"]
-		and m.bonuses().is_empty(), "The Tax Collector: Tier 1's numbers, its director; kill them, the bell, dawn (%s)" % [reasons])
+		and m.profile == "unaware" and m.slots == 3 and m.dp_capacity == 6 and reasons == ["collector", "dawn"]
+		and m.bonuses().is_empty() and m.lantern == LanternWatch.KIND_WATCH,
+		"The Tax Collector: Tier 1's numbers, its director; kill them, dawn -- no bell objective, a watch night's Lantern (%s)" % [reasons])
 	t.check(MissionBook.get_mission("tax_collector").id == "tax_collector" and MissionBook.tier_missions().size() >= 1
 		and not MissionBook.all().any(func(x: MissionDef) -> bool: return x.id == "tax_collector"),
 		"found by id among the board's own missions, never in all()")
@@ -863,3 +865,93 @@ static func _mission(t) -> void:
 	for i in range(1, TaxCollectorDirector.SET_OUT_AT.size()):
 		waits_ok = waits_ok and TaxCollectorDirector.SET_OUT_AT[i] > TaxCollectorDirector.SET_OUT_AT[i - 1]
 	t.check(waits_ok, "no wait over 60 s: the first set-out, the chain (30-50 s), a visit, a hiding")
+
+
+## A world whose Rules carry the night's Lantern (v0.11.2, a watch night), as Mission builds it.
+static func _lantern_world() -> Dictionary:
+	var s := _world()
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, (s.rules as Rules).mission.lantern)
+	(s.rules as Rules).lantern = lw
+	s["lw"] = lw
+	return s
+
+
+## The bell tolls as it does in play: a keeper on the rope, the climb done.
+static func _ring(s: Dictionary) -> void:
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
+
+
+## v0.11.2 (Task 16, D15-D21): The Tax Collector is a watch night. The toll no longer loses -- it turns the Lantern (no Herald here) -- and the
+## night's schedule (set-outs, the chain) runs on mission time while its reflexes (a visit's, a hiding's seconds) stay real.
+static func _lantern(t) -> void:
+	var s := _lantern_world()
+	var d: TaxCollectorDirector = s.d
+	var lw: LanternWatch = s.lw
+	var rules: Rules = s.rules
+	var kinds := []
+	for o in rules.objectives:
+		kinds.append(o.reason)
+	t.check(lw.kind == LanternWatch.KIND_WATCH and kinds == ["collector", "dawn"], "a watch night: the collectors and dawn, no HeraldObjective, no bell (%s)" % [kinds])
+	_ring(s)
+	_run(s, 1.0)
+	t.check(lw.tolled and lw.stage == LanternWatch.Stage.STIRRING and is_equal_approx(rules.clock_rate, 1.5) and not rules.finished
+		and not lw.herald_running() and lw.heralds.is_empty(), "the toll turns the Lantern (x1.5) and loses nothing; no Herald runs on a watch night")
+	t.check((s.banners as Array).has(LanternWatch.TOLL_BANNER) and not (s.banners as Array).has("THE BELL TOLLS - THE TOWN IS WARNED"),
+		"the Lantern's banner")
+	# Reflex: a visit's seconds are real; its tag counts them in mission seconds (D20, D21).
+	var q := d.quarries[0]
+	d._set_out(q)
+	q.target.inside = true
+	q.state = AssassinateDirector.State.VISITING
+	q.inside_of = q.stops[0]
+	q.indoors_left = 20.0
+	var words := String(d._target_tag(q).label)
+	t.check(words == "TAX COLLECTOR - INSIDE 0:30", "at x1.5 a visit's 20 s reads 0:30 on its tag (%s)" % words)
+	var before := q.indoors_left
+	_run(s, 2.0)
+	t.check(is_equal_approx(before - q.indoors_left, 2.0), "but the visit itself runs in real seconds (%.2f left)" % q.indoors_left)
+	_done(s)
+
+	# The schedule on mission time: the clock forced to x2 from the start, the collector sets out at half his time (0:35 -> 17.5 s).
+	var f := _world()
+	var df: TaxCollectorDirector = f.d
+	(f.rules as Rules).clock_rate = 2.0
+	var first := df.quarries[0]
+	_run(f, TaxCollectorDirector.SET_OUT_AT[0] * 0.5 - 1.0)
+	t.check(first.state == AssassinateDirector.State.WAITING, "at x2 he is still indoors a second before half his time")
+	_run(f, 2.0)
+	t.check(first.state != AssassinateDirector.State.WAITING, "and has set out just after it (the first scheduled event at half its real time)")
+	t.check(is_equal_approx(df._clock, df.timeline.elapsed() * df.timeline.stretch_factor()), "the director's clock and the strip's agree (%.2f / %.2f)"
+		% [df._clock, df.timeline.elapsed()])
+	_done(f)
+
+	# The chain on mission time: a death brings the next out CHAIN_WAIT mission seconds later (22.5 real at x2).
+	var c := _world()
+	var dc: TaxCollectorDirector = c.d
+	(c.rules as Rules).clock_rate = 2.0
+	_kill_unseen(c, 0)
+	var next := dc.quarries[1]
+	_run(c, TaxCollectorDirector.CHAIN_WAIT * 0.5 - 2.0)
+	var early := next.state == AssassinateDirector.State.WAITING
+	_run(c, 4.0)
+	t.check(early and next.state != AssassinateDirector.State.WAITING and dc.quarries[0].died_at <= 0.2,
+		"the chain: the next collector comes CHAIN_WAIT mission seconds after the death, 22.5 s at x2")
+	_done(c)
+
+	# Reserved from the Bearer: collectors, deputies and their guards are the director's own.
+	var b := _world()
+	var db: TaxCollectorDirector = b.d
+	var mine := true
+	for qq in db.quarries:
+		mine = mine and db.busy(qq.target)
+		for g in qq.guards:
+			mine = mine and db.busy(g)
+	var stranger: Person = null
+	for p in (b.crowd as Crowd).citizens:
+		if not db.busy(p):
+			stranger = p
+			break
+	t.check(mine and stranger != null, "busy(): every collector and guard is the director's own, a passer-by is not")
+	_done(b)

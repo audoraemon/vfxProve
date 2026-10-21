@@ -160,7 +160,7 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 
 ## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): kill the tax
 ## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector). A seen
-## kill still counts, but calls the bell.
+## kill still counts, but calls the bell; v0.11.2: the toll turns the Lantern (a watch night) instead of losing the night.
 static func tax_collector() -> MissionDef:
 	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))
@@ -173,8 +173,9 @@ static func tax_collector() -> MissionDef:
 	m.director = TaxCollectorDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [AssassinateObjective.new("Kill the collectors", "collector", "taxes"),
-			BellSilentObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
+	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a seen kill's toll turns the Lantern instead of losing the night
 	return m
 
 
@@ -248,8 +249,9 @@ static func bell_ringers() -> MissionDef:
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "whisper", "discord"])
 	m.director = BellRingersDirector
+	m.lantern = LanternWatch.KIND_HERALD  # v0.11.2: the toll turns the Lantern; the ringer is the Herald (spec 4.6)
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [StarsObjective.new("Stop the ringers", "ringers", "Ringers stopped"), BellSilentObjective.new(),
+		var out: Array[Objective] = [StarsObjective.new("Stop the ringers", "ringers", "Ringers stopped"), HeraldObjective.new(),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
@@ -288,9 +290,10 @@ static func informer() -> MissionDef:
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])
 	m.director = InformerDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [AssassinateObjective.new("Kill the informer", "informer", "names"), BellSilentObjective.new(),
+		var out: Array[Objective] = [AssassinateObjective.new("Kill the informer", "informer", "names"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
+	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a toll turns the Lantern instead of losing the night
 	return m
 
 
@@ -398,6 +401,7 @@ static func sermon() -> MissionDef:
 		SermonDirector.SERMON_ENDS)
 	m.goal_label = "The crowd believes"
 	m.lose = "The Lantern looks, the sermon ends, or too few are left to turn"
+	m.lantern = "gaze"  # v0.11.2
 	m.camera_at = SermonDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "belllies"])  # no lure takes a listener on duty
@@ -515,9 +519,9 @@ static func warning() -> MissionDef:
 	m.intro_banner = "THE FIRST STIRRING"
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
 	m.director = WarningDirector
+	m.lantern = LanternWatch.KIND_HERALD  # v0.11.2: the toll turns the Lantern; its Herald runs for the Temple (spec 4.6)
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [WarningObjective.new(), BellSilentObjective.new(),
-			ClockObjective.new(false, "Dawn", "dawn")]
+		var out: Array[Objective] = [WarningObjective.new(), HeraldObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	m.make_bonuses = func() -> Array[Objective]:
 		var out: Array[Objective] = [UnseenObjective.new()]
@@ -600,6 +604,7 @@ static func _omen(m: MissionDef) -> ActDef:
 	a.camera_at = w.camera_at
 	a.intro_banner = "ACT I - THE OMEN"
 	a.director = WarningDirector
+	a.lantern = w.lantern  # v0.11.2: The Omen is a Herald night as The Warning is (R3)
 	a.make_objectives = w.make_objectives
 	a.make_bonuses = w.make_bonuses
 	a.next = PackedStringArray(["festival", "procession"])
@@ -720,6 +725,7 @@ static func miras_house() -> MissionDef:
 	m.goal = "Lead four of the grieving to Mira's journal, unseen, before dawn"
 	m.goal_label = "Four believe"
 	m.lose = "The Lantern looks, or fewer than four believe by dawn"
+	m.lantern = "gaze"  # v0.11.2: the toll adds 40 to the Gaze and turns the Lantern (it used to fill the Gaze)
 	m.clock = 150.0
 	m.camera_at = MirasHouseDirector.MIRA_SPOT
 	m.intro_from = MirasHouseDirector.MIRA_SPOT + Vector2(0.0, 6.0)
@@ -766,13 +772,14 @@ static func broken_lanterns() -> MissionDef:
 	m.goal = "Break Halcyon's six shrines, and let them drain before the Vigil relights them"
 	m.goal_label = "The lanterns are dark"
 	m.lose = "The Lantern looks, or dawn finds a shrine still lit"
+	m.lantern = "gaze"  # v0.11.2
 	m.clock = 180.0
 	m.camera_at = BrokenLanternsDirector.CAMERA_AT
 	m.intro_from = BrokenLanternsDirector.CAMERA_AT + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["heaven", "doom", "discord"])
 	m.director = BrokenLanternsDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [ShrinesObjective.new(), BellSilentObjective.new(), GazeObjective.new(),
+		var out: Array[Objective] = [ShrinesObjective.new(), GazeObjective.new(),
 			ClockObjective.new(false, "Dawn", "relit")]
 		return out
 	m.make_bonuses = func() -> Array[Objective]:

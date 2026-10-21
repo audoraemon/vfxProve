@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_tagged(t)
 	_bell(t)
 	_freed(t)
+	_lantern(t)
 
 
 static func _world() -> Dictionary:
@@ -551,3 +552,64 @@ static func _freed(t) -> void:
 	t.check(not d.preaching() and d.lost_reason() == "" and int(d.report().believers) == 0 and d.sentries_on_guard().is_empty(),
 		"the preacher, his acolytes, the sentries and a wave freed: the tags, hint and report bear it (review focus 4)")
 	Kit.done(s)
+
+
+## v0.11.2 Task 17: The Sermon is a Gaze night (Mira's step, reused: the toll adds 40 to the Gaze and turns the Lantern; it used to fill it). The Bearer
+## and his escorts are never taken from the sermon's people; the waves and their strip run on mission time, the sentries' timers stay real.
+static func _lantern(t) -> void:
+	var def := MissionBook.sermon()
+	t.check(def.lantern == "gaze", "The Sermon is a Gaze night (MissionDef.lantern)")
+	var s := _world()
+	var d: SermonDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var lw := LanternWatch.new().setup(rules, crowd, s.town, null, def.lantern)
+	rules.lantern = lw
+	_seat(d, 0)
+	Kit.run_for(s, 1.0)
+	if crowd.bell != null:
+		crowd.bell.state = BellNetwork.State.RUNG
+	lw.on_toll()
+	Kit.run_for(s, DT * 2.0)
+	t.check(not rules.finished and lw.tolled and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and not d.gaze.is_full(),
+		"the toll no longer loses The Sermon: the Gaze rises 40 and the Lantern stirs (a rung bell fills nothing)")
+	Kit.run_for(s, 8.0)
+	t.check(lw.bearer != null and not rules.finished, "the Bearer sets out")
+	var taken := false
+	for p: Variant in [lw.bearer.carrier] + lw.bearer.escorts:
+		taken = taken or d.busy(p) or d.preacher == p or d.acolytes.has(p) or d.believers.has(p)
+		for l: SermonDirector.Listener in d.listeners:
+			taken = taken or l.man == p
+		for st: SermonDirector.Sentry in d.sentries:
+			taken = taken or st.man == p
+	t.check(not taken, "neither he nor an escort is the preacher, an acolyte, a listener, a Believer or a sentry")
+	# Ruling C10: the escorts are plain lay citizens: never Faithful, at the set-out or after Blind.
+	var ex: Array = lw.bearer.escorts.duplicate()
+	var plain := ex.size() == LanternBearer.ESCORTS
+	for e: Variant in ex:
+		plain = plain and not d.faithful.has(e) and (e as Person).profile.faith != CitizenProfile.Faith.FAITHFUL
+	t.check(plain, "the escorts are not Faithful on The Sermon's night")
+	lw.blind()
+	for e: Variant in ex:
+		plain = plain and not d.faithful.has(e) and (e as Person).profile.faith != CitizenProfile.Faith.FAITHFUL
+	t.check(plain, "and after Blind none of them is of the Faith")
+	t.check(d.busy(d.preacher) and d.busy((d.listeners[0] as SermonDirector.Listener).man) and d.busy((d.sentries[0] as SermonDirector.Sentry).man),
+		"busy() lists the sermon's people")
+	Kit.done(s)
+
+	# The waves are the night's schedule: at x2 the second comes at half its real time, and the strip counts down at the clock's pace.
+	var f := _world()
+	var fd: SermonDirector = f.d
+	(f.rules as Rules).clock_rate = 2.0
+	var at := float(SermonDirector.WAVE_AT[1])
+	Kit.run_for(f, 10.0)
+	t.near(fd.timeline.seconds_to("wave_1"), at - 20.0, 0.2, "at x2 the strip's countdown falls two seconds a second")
+	t.near(fd.due_in(1), at - 20.0, 0.2, "and so does the wave's own (the tag's NEXT WAVE)")
+	Kit.run_for(f, at * 0.5 - 11.0)
+	t.check(not fd.called[1], "at x2 the second wave has not walked in a second short of half its time")
+	Kit.run_for(f, 1.2)
+	t.check(fd.called[1], "at x2 the second wave walks in at half its real time")
+	# A reflex stays real: the sentries' clock counts real seconds.
+	t.near(fd._real_clock, at * 0.5 + 0.2, 0.3, "the sentries' clock counts real seconds")
+	t.near(fd._clock, at + 0.4, 0.5, "and the schedule's counts mission seconds")
+	Kit.done(f)

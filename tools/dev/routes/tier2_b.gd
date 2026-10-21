@@ -130,7 +130,7 @@ static func _lantern_look(bc, ctx: Dictionary) -> String:
 	var tower: Structure = bell.tower if bell != null else null
 	var tower_up := bell != null and bell.state != BellNetwork.State.SILENCED and is_instance_valid(tower) and not tower.destroyed
 	if bc._slot_ready(rules, slots, "dragon"):
-		if tower_up and not ctx.memo.has("tower"):
+		if tower_up and not ctx.memo.has("tower") and not (rules.lantern != null and rules.lantern.tolled):  # (v0.11.2) after a toll the tower is moot
 			ctx.memo.tower = true
 			return "dragon the bell tower" if rules.cast(slots.dragon, tower.center()) != null else ""
 		var pick := _lantern_origin(d, crowd)

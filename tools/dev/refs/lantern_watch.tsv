@@ -1,0 +1,7 @@
+# KAK toll-case references, the watch nights (v0.11.2 Task 16, D32): The Tax Collector and The Informer with the bell called at the start; the scripted player casts nothing until it tolls and the Lantern turns, then kills the Lantern-Bearer (behaviour_check _watch_bearer_act) and plays on as `play` does. name<TAB>how<TAB>expected
+tax_toll_1	--scenario=tax --case=toll --seed=1	-897875961
+tax_toll_2	--scenario=tax --case=toll --seed=2	-969813615
+tax_toll_3	--scenario=tax --case=toll --seed=3	15112196
+informer_toll_1	--scenario=informer --case=toll --seed=1	-472412170
+informer_toll_2	--scenario=informer --case=toll --seed=2	170450719
+informer_toll_3	--scenario=informer --case=toll --seed=3	-330594493

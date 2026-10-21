@@ -556,11 +556,13 @@ func _run() -> void:
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
 		powers = RouteBook.loadout_b(_route_id(scenario))
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
-	if route == "b" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
+	if route == "b" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
 	_arm_toll_light(scenario, Battlefield.arg_value(args, "--case"))
+	if Battlefield.arg_value(args, "--case") == "toll" and scenario in TOLL_CALLED:
+		_toll_caller.call_deferred(TOLL_CALLED[scenario])
 	match scenario:
 		_ when route == "b":
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
@@ -1388,7 +1390,7 @@ func _judgement() -> void:
 ## The warning scenario's loadout for each case (v0.08 M5). "none" drafts Mind Whisper and never casts it: an empty
 ## loadout would fall back to the mission's default, and the HUD has no look for an empty slot.
 const WARNING_CASES := {"none": ["whisper"], "doom": ["doom"], "whisper": ["whisper"], "discord": ["discord"],
-	"mix": ["whisper", "discord", "doom"]}
+	"mix": ["whisper", "discord", "doom"], "toll": ["whisper", "discord", "doom"]}
 ## How far straight back toward the gate the whisper sends the messenger.
 const WARNING_WHISPER_BACK := 8.0
 
@@ -1441,12 +1443,14 @@ func _faith_night(label: String, which: String, fetch: bool) -> void:
 			report_at += 10.0
 			print("BEHAVIOUR %s t=%d believers=%d inside=%d gaze=%d reports=%d" % [label, roundi(t), d.believers_outside(),
 				d.inside().size(), roundi(d.gaze.value), d.reports_started])
-		if which != "play" or frames % LOOK_FRAMES != 0:
+		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
 			continue
-		var did := _faith_look(rules, slots, d, fetch)
+		var did := _toll_hunt(rules) if which == "toll" else ""
+		if did == "":
+			did = _faith_look(rules, slots, d, fetch)
 		if did == "":
 			continue
-		if fetch:
+		if fetch or which == "toll":
 			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
 		acts.longest = maxf(float(acts.longest), t - float(acts.last))
 		acts.last = t
@@ -1583,7 +1587,9 @@ func _lanterns(which: String) -> void:
 			report_at += 10.0
 			print("BEHAVIOUR lanterns t=%d drained=%d broken=%d relit=%d praying=%d gaze=%d knights=%d" % [roundi(t),
 				d.drained_count(), d.drain_left.size(), d.relit, d.praying_count(), roundi(d.gaze.value), d.living_knights()])
-		if not which in ["play", "bonus"] or frames % LOOK_FRAMES != 0:
+		if not (which in ["play", "bonus"] or _acts(which, rules)) or frames % LOOK_FRAMES != 0:
+			continue
+		if which == "toll" and _toll_hunt(rules) != "":
 			continue
 		if _slot_ready(rules, slots, "doom"):
 			var mark := _lantern_doom_target(d, crowd)
@@ -1719,6 +1725,17 @@ func _tax_lead(p: Person) -> Vector2:
 	return _warning_heading(p) * p.walk_speed * SilentDoom.T_STRIKE if p.has_goal() else Vector2.ZERO
 
 
+## A report suffix for a Lantern night (v0.11.2): the stage, the rate and the Bearer, or "" with no Lantern.
+func _lantern_state(rules: Rules) -> String:
+	var lw := rules.lantern
+	if lw == null:
+		return ""
+	var who := "-"
+	if lw.bearer != null:
+		who = "%s%s" % ["WBVD"[lw.bearer.state], "+%d" % lw.bearer.relays if lw.bearer.relays > 0 else ""]
+	return " lantern=%s x%.1f bearer=%s" % [LanternWatch.Stage.keys()[lw.stage], rules.clock_rate, who]
+
+
 ## The Tax Collector (v0.11 M2), played every LOOK_FRAMES: Silent Doom on the bellkeeper once he is called (a seen death
 ## elsewhere would ring the bell); else, for the first collector in the street with nobody but those within SilentDoom.RADIUS
 ## of him (who fall with him) near enough to see, Silent Doom on him; else, for the first with one lone onlooker -- a citizen,
@@ -1734,15 +1751,22 @@ func _tax(which: String) -> void:
 	var frames := 0
 	var report_at := 10.0
 	var acts := {"last": 0.0, "longest": 0.0}
+	if which == "toll":
+		crowd.bell.call_keeper()  # v0.11.2 (D32): the town's bellkeeper is called at the start and the bell tolls; the policy acts from the toll on
 	while not rules.finished and not rules.main_done and frames < max_frames:
 		await process_frame
 		frames += 1
 		t += mission.get_process_delta_time()
 		if t >= report_at:
 			report_at += 10.0
-			print("BEHAVIOUR tax t=%d states=%s killed=%d witnesses=%d bell=%s" % [roundi(t), _tax_states(d), d.killed(),
-				d.witnesses().size(), _bell_state(crowd)])
-		if which != "play" or frames % LOOK_FRAMES != 0:
+			print("BEHAVIOUR tax t=%d states=%s killed=%d witnesses=%d bell=%s%s" % [roundi(t), _tax_states(d), d.killed(),
+				d.witnesses().size(), _bell_state(crowd), _lantern_state(rules)])
+		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
+			continue
+		var held := _watch_bearer_act(rules, slots, crowd)
+		if held != "":
+			print("BEHAVIOUR tax t=%.1f %s" % [t, held])
+			_note_act(acts, t)
 			continue
 		var bell := crowd.bell
 		if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] \
@@ -2004,12 +2028,101 @@ func _arm_toll_light(scenario: String, case_arg: String) -> void:
 		crowd.bell._ring()
 
 
+## The nights (v0.11.2, Task 17) whose toll case calls the bell's keeper at a fixed time -- the town never rings by itself while the policy waits for the
+## toll on purpose -- and the second (of the night's real time) it calls him. He walks to the tower and climbs; the toll comes some seconds later.
+const TOLL_CALLED := {"miras": 3.0, "lanterns": 15.0, "sermon": 15.0}
+
+
+## Calls the bellkeeper at `at` seconds into the night (the toll case, D32), once; a bell already called, rung or silenced is left alone.
+func _toll_caller(at: float) -> void:
+	var rules: Rules = mission._rules
+	while is_instance_valid(rules) and not rules.finished and rules.elapsed() < at:
+		await process_frame
+	var crowd: Crowd = mission._crowd
+	if is_instance_valid(rules) and not rules.finished and crowd != null and crowd.bell != null:
+		crowd.bell.call_keeper()
+		print("BEHAVIOUR toll the keeper is called at t=%.1f" % rules.elapsed())
+
+
+## The toll case's counterplay (v0.11.2, D32): the Lantern-Bearer walking or keeping his vigil, killed so the Lantern goes Blind. While an escort
+## living and unheld stands within LanternBearer.ESCORT_SEE of him he would take up the flame: Discord on the Bearer and that escort (a held
+## escort relays nothing) when the loadout has it and it is ready, else wait for him to reach the tower (no relay at the vigil); then Silent Doom
+## on him. What was cast, or "" (nothing to do, or not ready).
+func _toll_hunt(rules: Rules) -> String:
+	var lw: LanternWatch = rules.lantern
+	if lw == null or lw.bearer == null or lw.stage == LanternWatch.Stage.BLIND:
+		return ""
+	var b: LanternBearer = lw.bearer
+	if not (b.state == LanternBearer.State.WALKING or b.state == LanternBearer.State.VIGIL) or not MissionDirector._alive(b.carrier):
+		return ""
+	var slots := _slots(rules)
+	if not slots.has("doom"):
+		return ""  # a loadout without Silent Doom has no quiet kill for him: it plays the night on (the Lantern stays Stirring)
+	var c: Person = b.carrier
+	var guard: Person = null
+	for e: Variant in b.escorts:
+		if MissionDirector._alive(e) and not (e as Person).inside and not (e as Person).mind in TempleReport.HELD 				and (e as Person).ground_pos.distance_to(c.ground_pos) <= LanternBearer.ESCORT_SEE:
+			guard = e as Person
+			break
+	if guard != null and b.state == LanternBearer.State.WALKING:
+		if _slot_ready(rules, slots, "discord"):
+			return "discord the Lantern-Bearer and his escort" if rules.cast(slots.discord, (c.ground_pos + guard.ground_pos) * 0.5) != null else ""
+		return ""
+	if _slot_ready(rules, slots, "doom") and crowd_alone(c):  # only where his death goes unseen: a seen one costs the Gaze
+		return "doom the Lantern-Bearer" if rules.cast(slots.doom, c.ground_pos) != null else ""
+	return ""
+
+
 ## Whether the scripted player acts this look under `which` (v0.11.2, D32): `play` always; `toll` from the toll on (LanternWatch.tolled), when
 ## it plays as `play` does -- the policy waits for the toll on purpose, so the toll case shows what a night is like after it; `none` never.
 func _acts(which: String, rules: Rules) -> bool:
 	if which == "play":
 		return true
 	return which == "toll" and rules.lantern != null and (rules.lantern.tolled or _toll_forced)
+
+
+## The Lantern-Bearer on a watch night (v0.11.2, Task 16): what the scripted player casts at the three on the errand, or "" for nothing. Kill the
+## Bearer -- that blinds the Lantern -- but an escort living, unheld and within LanternBearer.ESCORT_SEE of him would take the flame up where he
+## falls, so first hold that escort (Mind Whisper sends him off; else Discord holds him), else kill him (Silent Doom); once none stands near,
+## Silent Doom on the Bearer. Never while the Lantern is Blind or the Bearer is not out. Loadout A's (tax, informer) policy; B's tax Smite is too
+## scarce to spend on him (tried: seed 1 then loses a collector to the Citadel, seed 2 slips to 267 s), so route b plays on as before.
+func _watch_bearer_act(rules: Rules, slots: Dictionary, crowd: Crowd) -> String:
+	var lw := rules.lantern
+	if lw == null or lw.stage == LanternWatch.Stage.BLIND or lw.bearer == null or lw.bearer.dead():
+		return ""
+	var b := lw.bearer
+	if b.state != LanternBearer.State.WALKING and b.state != LanternBearer.State.VIGIL:
+		return ""
+	if not WarningDirector._alive(b.carrier):
+		return ""
+	var carrier := b.carrier
+	var near: Person = null
+	if b.state == LanternBearer.State.WALKING:
+		for e: Variant in b.escorts:
+			if not WarningDirector._alive(e):
+				continue
+			var p := e as Person
+			if p.inside or p.held_by_god() or p.mind in LanternBearer.HELD:
+				continue
+			if p.ground_pos.distance_to(carrier.ground_pos) <= LanternBearer.ESCORT_SEE + 0.5 \
+					and (near == null or p.ground_pos.distance_to(carrier.ground_pos) < near.ground_pos.distance_to(carrier.ground_pos)):
+				near = p
+	if near == null:
+		if _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, carrier.ground_pos)
+			return "doom the Lantern-Bearer"
+		return ""
+	if _slot_ready(rules, slots, "whisper") and not near.shaken():
+		var away := near.ground_pos + (near.ground_pos - carrier.ground_pos).normalized() * 4.0
+		rules.cast(slots.whisper, near.ground_pos, {"target": near, "to": MindWhisperFx.clamp_to(crowd._grid, near.ground_pos, away)})
+		return "whisper an escort off"
+	if _slot_ready(rules, slots, "discord"):
+		rules.cast(slots.discord, near.ground_pos)
+		return "discord an escort"
+	if _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, near.ground_pos)
+		return "doom an escort"
+	return ""
 
 
 ## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its
@@ -2033,7 +2146,9 @@ func _scripted(label: String, which: String, act: Callable, state: Callable) -> 
 			print("BEHAVIOUR %s t=%d %s" % [label, roundi(t), String(state.call())])
 		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
 			continue
-		var did := String(act.call())
+		var did := _toll_hunt(rules) if which == "toll" else ""
+		if did == "":
+			did = String(act.call())
 		if did != "":
 			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
 			acts.longest = maxf(float(acts.longest), t - float(acts.last))
@@ -2212,6 +2327,9 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 		if doom and _tax_unseen(r.messenger, crowd):
 			rules.cast(slots.doom, r.messenger.ground_pos)
 			return "doom the ringer"
+	var held := _ringers_hold_herald(rules, slots, d, crowd, going)  # v0.11.2: the bell has tolled -- the ringer who rang has ~21 s, so he is held first
+	if held != "":
+		return held
 	if doom:
 		for r in going:
 			var pair := r.mates_with()
@@ -2256,6 +2374,24 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 			rules.cast(slots.discord, r.messenger.ground_pos)
 			return "discord the ringer"
 	return _ringers_prep(rules, slots, d, crowd, doom, whisper)
+
+
+## A Herald running for the Temple (v0.11.2): too little time for the mates to be dealt with first, so he is held at once -- Mind Whisper leads him
+## to a quiet spot (or, none within reach, away from the Temple), where it holds a man twice his run; Discord when it is cooling. What was cast, or "".
+func _ringers_hold_herald(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd, going: Array[RingerDirector]) -> String:
+	for r in going:
+		var m := r.messenger
+		if not r.herald_open() or m.mind == Person.Mind.WHISPERED or m.mind == Person.Mind.CONFUSED:
+			continue
+		if _slot_ready(rules, slots, "whisper") and _whisperable(m) and not m.shaken():
+			var quiet := _ringers_quiet(d, crowd, m)
+			var to := quiet if quiet != Vector2.INF else _ringers_off(d, m, d.lantern_door())
+			rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": to})
+			return "whisper the Herald to (%.1f, %.1f)" % [to.x, to.y]
+		if _slot_ready(rules, slots, "discord"):
+			rules.cast(slots.discord, m.ground_pos)
+			return "discord the Herald"
+	return ""
 
 
 ## Between ringers (v0.11 M3): the next post's door cleared of watchers in the last RINGERS_PREP seconds before its
@@ -2473,9 +2609,13 @@ func _informer(which: String) -> void:
 	var d := rules.director as InformerDirector
 	var crowd: Crowd = mission._crowd
 	var slots := _slots(rules)
-	await _scripted("informer", which, func() -> String: return _informer_act(rules, slots, d, crowd),
-		func() -> String: return "turned=%d found=%s cold=%s phase=%s bell=%s" % [d.turned_count(), d.found, d.cold, d.hint_phase(),
-			_bell_state(crowd)])
+	if which == "toll":
+		crowd.bell.call_keeper()  # v0.11.2 (D32): the bellkeeper is called at the start and the bell tolls; the policy acts from the toll on
+	await _scripted("informer", which, func() -> String:
+			var held := _watch_bearer_act(rules, slots, crowd)
+			return held if held != "" else _informer_act(rules, slots, d, crowd),
+		func() -> String: return "turned=%d found=%s cold=%s phase=%s bell=%s%s" % [d.turned_count(), d.found, d.cold, d.hint_phase(),
+			_bell_state(crowd), _lantern_state(rules)])
 
 
 ## One look of The Informer's policy (v0.11 M3): what was cast, or "" for nothing. The first that applies: Silent Doom on the town's
@@ -4202,8 +4342,8 @@ func _warning(which: String) -> void:
 				WarningDirector.Phase.keys()[director.phase], _warning_mind(director.messenger), director.relays,
 				BellNetwork.State.keys()[crowd.bell.state] if crowd.bell != null else "none",
 				crowd.alarms.stage_name()])
-		if frames % 6 != 0 or which == "none":
-			continue
+		if frames % 6 != 0 or which == "none" or (which == "toll" and not (rules.lantern != null and rules.lantern.tolled)):
+			continue  # v0.11.2, D32: the toll case lets the bell toll, then plays `mix` against the Herald
 		var m := director.messenger
 		if not is_instance_valid(m) or not m.is_alive() or director.warning_dead:
 			continue
@@ -4215,7 +4355,7 @@ func _warning(which: String) -> void:
 			key = "doom"
 		elif running:
 			var order := ["whisper", "discord"]
-			if which == "mix" and last_delay == "whisper":
+			if (which == "mix" or which == "toll") and last_delay == "whisper":
 				order = ["discord", "whisper"]
 			for k: String in order:
 				if k == "whisper" and m.shaken():

@@ -236,13 +236,14 @@ static func _festival(m: MissionDef) -> void:
 ## keep the spec's own times. v0.11.2: no mission narrows the draft, so the pool line v0.11.1 added (Death Mark) is gone.
 static func _warning(m: MissionDef) -> void:
 	m.director = StarfallDirector
+	m.lantern = LanternWatch.KIND_HERALD  # v0.11.2 (as MissionBook.warning())
 	m.stretch = 1.0
 	m.brief = PackedStringArray(["Three stars fall through the night.", "Each sends a runner to wake the bell."])
 	m.goal = "Stop all three warnings before one reaches the Temple"
 	m.goal_label = "The warnings die"
 	m.lose = "A warning reaches the Temple, or dawn comes with a warning alive"
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [StarsObjective.new(), BellSilentObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+		var out: Array[Objective] = [StarsObjective.new(), HeraldObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 
 

@@ -30,6 +30,9 @@ static func state_warning(_bc, ctx: Dictionary) -> String:
 ## in the ten seconds); the least gap at which the mark is cast; the whisper's seconds left below which a fresh one is sent first (the mark
 ## outlasts what is left of a held man); the spots tried (radii, directions); the walks wanted and allowed.
 const WARN_CLEAR := 4.5
+## The same once the bell has tolled (v0.11.2): the Herald has some 21 s to be stopped, not a whole street's worth, so a quieter corner is any with nobody
+## within this of it (Death Mark's fall is judged at Crowd.DOOM_WITNESS = 2.0), and Discord holds him when no such corner is within Mind Whisper's reach.
+const WARN_CLEAR_HERALD := 3.0
 const WARN_CAST_GAP := 3.5
 const WARN_FRESH := 5.5
 const WARN_RADII := [2.0, 3.5, 5.0, 6.5, 8.0, 9.5]
@@ -54,6 +57,8 @@ static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> Strin
 	var m := w.messenger
 	if not WarningDirector._alive(m) or m.inside or m.statuses.has(&"frail"):
 		return ""  # nobody, or already marked: the mark does the rest
+	var herald: bool = rules.lantern != null and rules.lantern.tolled
+	var clear := WARN_CLEAR_HERALD if herald else WARN_CLEAR
 	var gap := _warning_gap(crowd, m.ground_pos, m)
 	var mark_ready: bool = bc._slot_ready(rules, slots, "deathmark")
 	var whisper_ok: bool = bc._slot_ready(rules, slots, "whisper") and not m.shaken()
@@ -67,15 +72,15 @@ static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> Strin
 	if whisper_ok:
 		var redo := not whispered
 		if whispered and m.has_goal():
-			redo = _warning_gap(crowd, m.goal(), m) < WARN_CLEAR - 1.0  # the crowd has closed on where he is led
+			redo = _warning_gap(crowd, m.goal(), m) < clear - 1.0  # the crowd has closed on where he is led
 		elif standing:
 			redo = gap < WARN_CAST_GAP or m.whispered_left() < WARN_FRESH
 		if redo:
-			var spot := _warning_spot(bc, crowd, w, m)
+			var spot := _warning_spot(bc, crowd, w, m, clear)
 			if spot != Vector2.INF:
 				rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": spot})
 				return "whisper the carrier to (%.1f, %.1f)" % [spot.x, spot.y]
-	if not whispered and not whisper_ok and discord_ok and m.mind != Person.Mind.CONFUSED:
+	if not whispered and (not whisper_ok or herald) and discord_ok and m.mind != Person.Mind.CONFUSED:
 		rules.cast(slots.discord, m.ground_pos)
 		return "discord the carrier, to hold him"
 	return ""
@@ -83,7 +88,7 @@ static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> Strin
 
 ## The spot within Mind Whisper's reach of `m` with nobody out of doors within WARN_CLEAR of it: of those, the nearest by his walk
 ## (WARN_WALK_WANT, else WARN_WALK_MAX). Vector2.INF for none.
-static func _warning_spot(bc, crowd: Crowd, w: WarningDirector, m: Person) -> Vector2:
+static func _warning_spot(bc, crowd: Crowd, w: WarningDirector, m: Person, clear := WARN_CLEAR) -> Vector2:
 	var best := Vector2.INF
 	var best_way := INF
 	for limit: float in [WARN_WALK_WANT, WARN_WALK_MAX]:
@@ -93,7 +98,7 @@ static func _warning_spot(bc, crowd: Crowd, w: WarningDirector, m: Person) -> Ve
 				var g: Vector2 = w._walkable(raw)
 				if g.distance_to(raw) > 1.0 or g.distance_to(m.ground_pos) > MindWhisperFx.REACH - 0.5:
 					continue
-				if _warning_gap(crowd, g, m) < WARN_CLEAR:
+				if _warning_gap(crowd, g, m) < clear:
 					continue
 				var way: float = bc._walk_len(crowd, m.ground_pos, g)
 				if way <= limit and way < best_way:

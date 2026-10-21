@@ -33,6 +33,9 @@ var keeper_is_soldier := false
 var hold_on_death := false
 ## Whether a stand-in has taken the rope: the slower climb applies once, however many fall (v0.08; replace_keeper()).
 var _replaced := false
+## func() -> bool (v0.11.2): the keeper is on another errand -- the Herald's run for the Temple (LanternWatch) -- so a bell The Bell Lies has
+## unrung does not send him back to the rope while it is true. Unset: never held.
+var keeper_held := Callable()
 var foot := Vector2.INF
 var _crowd: Crowd
 var _retry_in := 0.0
@@ -118,7 +121,7 @@ func step(delta: float) -> void:
 		State.WAITING:
 			_retry_in -= delta
 			if _retry_in <= 0.0 and keeper.mind in [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE,
-					Person.Mind.REGROUP]:
+					Person.Mind.REGROUP] and not (keeper_held.is_valid() and bool(keeper_held.call())):
 				_send()
 
 

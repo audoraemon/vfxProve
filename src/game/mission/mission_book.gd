@@ -230,6 +230,7 @@ static func first_prayers() -> MissionDef:
 	m.intro_from = FirstPrayersDirector.SHRINE_AT + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
 	m.director = FirstPrayersDirector
+	m.lantern = LanternWatch.KIND_GAZE  # v0.11.2 (C14): the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze)
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), BelieversObjective.new()]
 		return out
@@ -401,7 +402,7 @@ static func sermon() -> MissionDef:
 		SermonDirector.SERMON_ENDS)
 	m.goal_label = "The crowd believes"
 	m.lose = "The Lantern looks, the sermon ends, or too few are left to turn"
-	m.lantern = "gaze"  # v0.11.2
+	m.lantern = LanternWatch.KIND_GAZE  # v0.11.2
 	m.camera_at = SermonDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "belllies"])  # no lure takes a listener on duty
@@ -425,7 +426,7 @@ static func relic_run() -> MissionDef:
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "wisp"])
 	m.director = RelicRunDirector
-	m.lantern = "gaze"  # v0.11.2: the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze)
+	m.lantern = LanternWatch.KIND_GAZE  # v0.11.2: the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze)
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new("The relic", "relic", "relic_kept", "pip"),
 			ClockObjective.new(false, "Dawn", "dawn")]
@@ -725,7 +726,7 @@ static func miras_house() -> MissionDef:
 	m.goal = "Lead four of the grieving to Mira's journal, unseen, before dawn"
 	m.goal_label = "Four believe"
 	m.lose = "The Lantern looks, or fewer than four believe by dawn"
-	m.lantern = "gaze"  # v0.11.2: the toll adds 40 to the Gaze and turns the Lantern (it used to fill the Gaze)
+	m.lantern = LanternWatch.KIND_GAZE  # v0.11.2: the toll adds 40 to the Gaze and turns the Lantern (it used to fill the Gaze)
 	m.clock = 150.0
 	m.camera_at = MirasHouseDirector.MIRA_SPOT
 	m.intro_from = MirasHouseDirector.MIRA_SPOT + Vector2(0.0, 6.0)
@@ -754,7 +755,7 @@ static func vigil_flame() -> MissionDef:
 	m.intro_from = VigilFlameDirector.CAMERA_AT + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "wisp"])
 	m.director = VigilFlameDirector
-	m.lantern = "gaze"  # v0.11.2: the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze); the campaign's town has no bell
+	m.lantern = LanternWatch.KIND_GAZE  # v0.11.2: the toll adds to the Gaze and turns the Lantern (it used to fill the Gaze); the campaign's town has no bell
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [GazeObjective.new(), FlameObjective.new(), ClockObjective.new(false, "Dawn", "late")]
 		return out
@@ -772,7 +773,7 @@ static func broken_lanterns() -> MissionDef:
 	m.goal = "Break Halcyon's six shrines, and let them drain before the Vigil relights them"
 	m.goal_label = "The lanterns are dark"
 	m.lose = "The Lantern looks, or dawn finds a shrine still lit"
-	m.lantern = "gaze"  # v0.11.2
+	m.lantern = LanternWatch.KIND_GAZE  # v0.11.2
 	m.clock = 180.0
 	m.camera_at = BrokenLanternsDirector.CAMERA_AT
 	m.intro_from = BrokenLanternsDirector.CAMERA_AT + Vector2(0.0, 6.0)

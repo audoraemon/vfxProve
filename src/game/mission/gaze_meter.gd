@@ -3,7 +3,7 @@ extends RefCounted
 ## Halcyon's Gaze (v0.10, spec §3.4): how near the Lantern is to looking at the town, from 0 to FULL. It never falls
 ## during a night. A death someone sees adds SEEN_DEATH; each Faithful praying adds PRAYER_PER_SECOND, at most
 ## PRAYER_CAP a second in all; the searchlight touching its quarry adds SEARCHLIGHT; a report reaching the Temple, or
-## the bell, fills it. Full, it says so once (`filled`), and GazeObjective loses the night.
+## the bell, fills it (v0.11.2: on a Lantern night the toll adds GAZE_TOLL instead, LanternWatch). Full, it says so once (`filled`), and GazeObjective loses the night.
 
 signal filled
 

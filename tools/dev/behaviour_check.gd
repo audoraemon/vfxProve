@@ -2030,7 +2030,7 @@ func _arm_toll_light(scenario: String, case_arg: String) -> void:
 
 ## The nights (v0.11.2, Task 17) whose toll case calls the bell's keeper at a fixed time -- the town never rings by itself while the policy waits for the
 ## toll on purpose -- and the second (of the night's real time) it calls him. He walks to the tower and climbs; the toll comes some seconds later.
-const TOLL_CALLED := {"miras": 3.0, "lanterns": 15.0, "sermon": 15.0}
+const TOLL_CALLED := {"miras": 3.0, "lanterns": 15.0, "sermon": 15.0, "prayers": 15.0}
 
 
 ## Calls the bellkeeper at `at` seconds into the night (the toll case, D32), once; a bell already called, rung or silenced is left alone.

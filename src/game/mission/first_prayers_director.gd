@@ -6,7 +6,7 @@ extends MirasHouseDirector
 ## PRAY_SECONDS, one at a time, and comes out a Believer; NEED out win. Few Faithful -- the clergy nearest the Temple and a few
 ## lay -- and no Inquisitor; but the shrine sits by the market: at MARKET_AT the market fills and Faithful stand at its door,
 ## and at PRIESTS_AT the priests come to the well. Mira's rules otherwise: a Faithful who sees runs to the Temple, a report
-## delivered fills the Gaze, a seen death adds to it, the bell fills it. Its tags are Mira's own, the shrine named for the well.
+## delivered fills the Gaze, a seen death adds to it, the bell's toll adds 40 and turns the Lantern (v0.11.2). Its tags are Mira's own, the shrine named for the well.
 
 ## Where the shrine stands (v0.11 M2; moved to free ground), and its role (not a building in the tally: Rules.BUILDING_ROLES).
 const SHRINE_AT := Vector2(-4.4, 2.8)

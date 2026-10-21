@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_miras_same(t)
 	_fetch(t)
 	_mission(t)
+	_lantern(t)
 
 
 static func _world() -> Dictionary:
@@ -320,3 +321,28 @@ static func _mission(t) -> void:
 		and m.profile == "unaware" and reasons == ["gaze", "believers"] and m.bonuses().is_empty(),
 		"First Prayers: Tier 1's numbers, its director; the Gaze, three believe (%s)" % [reasons])
 	t.check(MissionBook.get_mission("first_prayers").id == "first_prayers", "found by id")
+
+
+## v0.11.2 (ruling C14): First Prayers is a Gaze night too. The bell's toll adds 40 to the Gaze and turns the Lantern instead of filling it.
+static func _lantern(t) -> void:
+	var def := MissionBook.first_prayers()
+	t.check(def.lantern == LanternWatch.KIND_GAZE, "First Prayers is a Gaze night (MissionDef.lantern)")
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var lw := LanternWatch.new().setup(rules, crowd, s.town, null, def.lantern)
+	rules.lantern = lw
+	_run(s, 1.0)
+	if crowd.bell != null:
+		crowd.bell.state = BellNetwork.State.RUNG
+	lw.on_toll()
+	_run(s, DT * 2.0)
+	t.check(not rules.finished and lw.tolled and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and not d.gaze.is_full(),
+		"the toll no longer loses First Prayers: the Gaze rises 40, not to 100, and the Lantern stirs")
+	_run(s, 3.0)
+	t.check(not rules.finished and not d.gaze.is_full(), "a rung bell stays a rung bell: the Gaze is not filled a moment later")
+	lw.teardown()
+	rules.lantern = null
+	_done(s)
+

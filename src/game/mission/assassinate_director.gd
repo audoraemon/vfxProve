@@ -119,7 +119,8 @@ var flush_gap := 0.0
 var quarries: Array[Quarry] = []
 ## The hideout's door (the safe place's when there is no hideout) (v0.11 M2).
 var hide_door := Vector2.INF
-## Seconds into the night (v0.11 M2), for the chain rule.
+## Seconds into the night (v0.11 M2), for the chain rule. v0.11.2: MISSION seconds (it advances by mission_delta(), so on a Lantern night
+## a Stirring or Burning clock hastens every set-out, chain and visit that this clock schedules; the timeline's own seconds agree).
 var _clock := 0.0
 ## Seconds to the next look at the targets (v0.11 M2, TICK).
 var _tick_in := 0.0
@@ -279,7 +280,7 @@ func lost_reason() -> String:
 ## One step (v0.11 M2): the timeline (each target's own time), the chain (sooner after the one before dies), the deaths still
 ## to judge, each target indoors, and every TICK a look at each in the street and his guards.
 func step(delta: float) -> void:
-	_clock += delta
+	_clock += mission_delta(delta)
 	timeline.step(delta)
 	_chain()
 	# Judged once the crowd has judged its own doomed (Crowd._settle_doom()), so a cast's victims never witness each other.
@@ -531,7 +532,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 
 
 ## `q`'s death judged (v0.11 M2): unseen with nobody living within Crowd.DOOM_WITNESS; seen, the guards cry murder and the
-## bellkeeper is called (on the board a bell rung after the main objective catches the night, its wishes lost).
+## bellkeeper is called. v0.11.2: the toll that follows turns the Lantern (a watch night); it no longer loses the night, before the main
+## objective or after it -- it only hastens dawn.
 func _judge(q: Quarry) -> void:
 	var at := q.fell_at
 	q.fell_at = Vector2.INF
@@ -746,7 +748,8 @@ func _target_tag(q: Quarry) -> MapTag:
 		# (final review M7) a visit or a hiding shows its seconds, as the strip counts a set-out; one waiting for his time is on the strip.
 		var words := q.label + " - INSIDE"
 		if q.state == State.VISITING or q.state == State.HIDING:
-			words += " " + UiTheme.clock(maxf(q.indoors_left, 0.0))
+			# v0.11.2 (D21): the stay itself is real time (a reflex), its countdown is shown in mission seconds like the clock's.
+			words += " " + UiTheme.clock(maxf(q.indoors_left, 0.0) * (rules.clock_rate if is_instance_valid(rules) else 1.0))
 		return MapTag.place(_door_in(q), MARK_TARGET, words, 0.0, true)
 	return MapTag.person(q.target.ground_pos, MARK_TARGET, q.label, true)
 
@@ -800,6 +803,18 @@ func report() -> Dictionary:
 	elif all_fallen():
 		how = "seen" if seen > 0 else "unseen"
 	return {"target": how, "killed": killed(), "seen": seen, "alarms": alarms}
+
+
+## `p` is one of this director's own actors (v0.11.2, LanternWatch's Bearer must not take them): a target or a guard of one.
+func busy(p: Person) -> bool:
+	for q in quarries:
+		var t: Variant = q.target  # (Variants: a body may be freed after its death fade)
+		if t == p:
+			return true
+		for g: Variant in q.guards:
+			if g == p:
+				return true
+	return false
 
 
 ## Lets go of the field's deaths, the casts and the timeline (v0.11 M2).

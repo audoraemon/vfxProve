@@ -1718,6 +1718,17 @@ func _tax_lead(p: Person) -> Vector2:
 	return _warning_heading(p) * p.walk_speed * SilentDoom.T_STRIKE if p.has_goal() else Vector2.ZERO
 
 
+## A report suffix for a Lantern night (v0.11.2): the stage, the rate and the Bearer, or "" with no Lantern.
+func _lantern_state(rules: Rules) -> String:
+	var lw := rules.lantern
+	if lw == null:
+		return ""
+	var who := "-"
+	if lw.bearer != null:
+		who = "%s%s" % ["WBVD"[lw.bearer.state], "+%d" % lw.bearer.relays if lw.bearer.relays > 0 else ""]
+	return " lantern=%s x%.1f bearer=%s" % [LanternWatch.Stage.keys()[lw.stage], rules.clock_rate, who]
+
+
 ## The Tax Collector (v0.11 M2), played every LOOK_FRAMES: Silent Doom on the bellkeeper once he is called (a seen death
 ## elsewhere would ring the bell); else, for the first collector in the street with nobody but those within SilentDoom.RADIUS
 ## of him (who fall with him) near enough to see, Silent Doom on him; else, for the first with one lone onlooker -- a citizen,
@@ -1733,15 +1744,22 @@ func _tax(which: String) -> void:
 	var frames := 0
 	var report_at := 10.0
 	var acts := {"last": 0.0, "longest": 0.0}
+	if which == "toll":
+		crowd.bell.call_keeper()  # v0.11.2 (D32): the town's bellkeeper is called at the start and the bell tolls; the policy acts from the toll on
 	while not rules.finished and not rules.main_done and frames < max_frames:
 		await process_frame
 		frames += 1
 		t += mission.get_process_delta_time()
 		if t >= report_at:
 			report_at += 10.0
-			print("BEHAVIOUR tax t=%d states=%s killed=%d witnesses=%d bell=%s" % [roundi(t), _tax_states(d), d.killed(),
-				d.witnesses().size(), _bell_state(crowd)])
-		if which != "play" or frames % LOOK_FRAMES != 0:
+			print("BEHAVIOUR tax t=%d states=%s killed=%d witnesses=%d bell=%s%s" % [roundi(t), _tax_states(d), d.killed(),
+				d.witnesses().size(), _bell_state(crowd), _lantern_state(rules)])
+		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
+			continue
+		var held := _watch_bearer_act(rules, slots, crowd)
+		if held != "":
+			print("BEHAVIOUR tax t=%.1f %s" % [t, held])
+			_note_act(acts, t)
 			continue
 		var bell := crowd.bell
 		if bell != null and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING] \
@@ -1975,6 +1993,50 @@ func _acts(which: String, rules: Rules) -> bool:
 	if which == "play":
 		return true
 	return which == "toll" and rules.lantern != null and rules.lantern.tolled
+
+
+## The Lantern-Bearer on a watch night (v0.11.2, Task 16): what the scripted player casts at the three on the errand, or "" for nothing. Kill the
+## Bearer -- that blinds the Lantern -- but an escort living, unheld and within LanternBearer.ESCORT_SEE of him would take the flame up where he
+## falls, so first hold that escort (Mind Whisper sends him off; else Discord holds him), else kill him (Silent Doom); once none stands near,
+## Silent Doom on the Bearer. Never while the Lantern is Blind or the Bearer is not out. Loadout A's (tax, informer) policy; B's tax Smite is too
+## scarce to spend on him (tried: seed 1 then loses a collector to the Citadel, seed 2 slips to 267 s), so route b plays on as before.
+func _watch_bearer_act(rules: Rules, slots: Dictionary, crowd: Crowd) -> String:
+	var lw := rules.lantern
+	if lw == null or lw.stage == LanternWatch.Stage.BLIND or lw.bearer == null or lw.bearer.dead():
+		return ""
+	var b := lw.bearer
+	if b.state != LanternBearer.State.WALKING and b.state != LanternBearer.State.VIGIL:
+		return ""
+	if not WarningDirector._alive(b.carrier):
+		return ""
+	var carrier := b.carrier
+	var near: Person = null
+	if b.state == LanternBearer.State.WALKING:
+		for e: Variant in b.escorts:
+			if not WarningDirector._alive(e):
+				continue
+			var p := e as Person
+			if p.inside or p.held_by_god() or p.mind in LanternBearer.HELD:
+				continue
+			if p.ground_pos.distance_to(carrier.ground_pos) <= LanternBearer.ESCORT_SEE + 0.5 \
+					and (near == null or p.ground_pos.distance_to(carrier.ground_pos) < near.ground_pos.distance_to(carrier.ground_pos)):
+				near = p
+	if near == null:
+		if _slot_ready(rules, slots, "doom"):
+			rules.cast(slots.doom, carrier.ground_pos)
+			return "doom the Lantern-Bearer"
+		return ""
+	if _slot_ready(rules, slots, "whisper") and not near.shaken():
+		var away := near.ground_pos + (near.ground_pos - carrier.ground_pos).normalized() * 4.0
+		rules.cast(slots.whisper, near.ground_pos, {"target": near, "to": MindWhisperFx.clamp_to(crowd._grid, near.ground_pos, away)})
+		return "whisper an escort off"
+	if _slot_ready(rules, slots, "discord"):
+		rules.cast(slots.discord, near.ground_pos)
+		return "discord an escort"
+	if _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, near.ground_pos)
+		return "doom an escort"
+	return ""
 
 
 ## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its
@@ -2438,9 +2500,13 @@ func _informer(which: String) -> void:
 	var d := rules.director as InformerDirector
 	var crowd: Crowd = mission._crowd
 	var slots := _slots(rules)
-	await _scripted("informer", which, func() -> String: return _informer_act(rules, slots, d, crowd),
-		func() -> String: return "turned=%d found=%s cold=%s phase=%s bell=%s" % [d.turned_count(), d.found, d.cold, d.hint_phase(),
-			_bell_state(crowd)])
+	if which == "toll":
+		crowd.bell.call_keeper()  # v0.11.2 (D32): the bellkeeper is called at the start and the bell tolls; the policy acts from the toll on
+	await _scripted("informer", which, func() -> String:
+			var held := _watch_bearer_act(rules, slots, crowd)
+			return held if held != "" else _informer_act(rules, slots, d, crowd),
+		func() -> String: return "turned=%d found=%s cold=%s phase=%s bell=%s%s" % [d.turned_count(), d.found, d.cold, d.hint_phase(),
+			_bell_state(crowd), _lantern_state(rules)])
 
 
 ## One look of The Informer's policy (v0.11 M3): what was cast, or "" for nothing. The first that applies: Silent Doom on the town's

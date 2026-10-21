@@ -160,7 +160,7 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 
 ## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): kill the tax
 ## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector). A seen
-## kill still counts, but calls the bell.
+## kill still counts, but calls the bell; v0.11.2: the toll turns the Lantern (a watch night) instead of losing the night.
 static func tax_collector() -> MissionDef:
 	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))
@@ -173,8 +173,9 @@ static func tax_collector() -> MissionDef:
 	m.director = TaxCollectorDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [AssassinateObjective.new("Kill the collectors", "collector", "taxes"),
-			BellSilentObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
+	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a seen kill's toll turns the Lantern instead of losing the night
 	return m
 
 
@@ -288,9 +289,10 @@ static func informer() -> MissionDef:
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom"])
 	m.director = InformerDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [AssassinateObjective.new("Kill the informer", "informer", "names"), BellSilentObjective.new(),
+		var out: Array[Objective] = [AssassinateObjective.new("Kill the informer", "informer", "names"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
+	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a toll turns the Lantern instead of losing the night
 	return m
 
 

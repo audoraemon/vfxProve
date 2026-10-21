@@ -204,6 +204,11 @@ func _appoint_target(_q: Quarry) -> Person:
 	return _citizen_near(LODGING_AT, CitizenProfile.Role.RESIDENT, _appointed() + _claimed())
 
 
+## `p` is the informer, a guard, a contact or one of a contact's company (v0.11.2: the Lantern-Bearer must not take them).
+func busy(p: Person) -> bool:
+	return super(p) or _claimed().has(p)
+
+
 ## The contacts and their company (v0.11 M3), for the informer's choice to leave out.
 func _claimed() -> Array:
 	var out: Array = []

@@ -27,6 +27,7 @@ static func run(t) -> void:
 	_unwatched(t)
 	_freed(t)
 	_stays_in(t)
+	_lantern(t)
 
 
 static func _world() -> Dictionary:
@@ -116,9 +117,10 @@ static func _setup(t) -> void:
 	var reasons := []
 	for o in m.objectives():
 		reasons.append(o.reason)
-	t.check(m.tier == 2 and is_equal_approx(m.clock, 330.0) and m.dp_capacity == 8 and reasons == ["informer", "bell", "dawn"]
-		and Array(m.default_loadout) == ["whisper", "discord", "doom"] and MissionBook.get_mission("informer").id == "informer",
-		"the mission: Tier 2's numbers; the informer, the bell, dawn (%s)" % [reasons])
+	t.check(m.tier == 2 and is_equal_approx(m.clock, 330.0) and m.dp_capacity == 8 and reasons == ["informer", "dawn"]
+		and Array(m.default_loadout) == ["whisper", "discord", "doom"] and MissionBook.get_mission("informer").id == "informer"
+		and m.lantern == LanternWatch.KIND_WATCH,
+		"the mission: Tier 2's numbers; the informer, dawn -- no bell objective, a watch night's Lantern (%s)" % [reasons])
 	Kit.done(s)
 
 
@@ -492,3 +494,69 @@ static func _stays_in(t) -> void:
 	t.check(not d.flush_waiting and q.state == AssassinateDirector.State.WAITING and q.target.inside and not q.flushed,
 		"a hiding place alight does not empty it: the waiting informer stays in")
 	Kit.done(s)
+
+
+## v0.11.2 (Task 16, D15-D21): The Informer is a watch night. A toll turns the Lantern (no Herald) instead of losing; the visits and the names'
+## deadline run on mission time, a hiding's seconds stay real.
+static func _lantern(t) -> void:
+	var s := _world()
+	var d: InformerDirector = s.d
+	var rules: Rules = s.rules
+	var lw := LanternWatch.new().setup(rules, s.crowd, s.town, null, rules.mission.lantern)
+	rules.lantern = lw
+	var kinds := []
+	for o in rules.objectives:
+		kinds.append(o.reason)
+	t.check(lw.kind == LanternWatch.KIND_WATCH and kinds == ["informer", "dawn"], "a watch night: the informer and dawn, no HeraldObjective, no bell (%s)" % [kinds])
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
+	Kit.run_for(s, 1.0)
+	t.check(lw.tolled and lw.stage == LanternWatch.Stage.STIRRING and is_equal_approx(rules.clock_rate, 1.5) and not rules.finished
+		and not lw.herald_running(), "the toll turns the Lantern (x1.5) and loses nothing")
+	var q := d.quarries[0]
+	q.state = AssassinateDirector.State.HIDING
+	q.inside_of = d.hideout
+	q.target.inside = true
+	q.indoors_left = 20.0
+	Kit.run_for(s, 2.0)
+	t.check(is_equal_approx(20.0 - q.indoors_left, 2.0), "a hiding's seconds are real, not hastened (%.2f left)" % q.indoors_left)
+	Kit.done(s)
+
+	var f := _world()
+	var df: InformerDirector = f.d
+	(f.rules as Rules).clock_rate = 2.0
+	var c := df.contacts[0]
+	Kit.run_for(f, float(InformerDirector.VISIT_AT[0]) * 0.5 - 1.0)
+	var early := not c.word
+	Kit.run_for(f, 2.0)
+	t.check(early and c.word and is_equal_approx(df._clock, df.timeline.elapsed()),
+		"at x2 word reaches the chandler at half his time (22.5 s), the director's clock and the strip's agreeing")
+	Kit.done(f)
+
+	var n := _world()
+	var dn: InformerDirector = n.d
+	(n.rules as Rules).clock_rate = 2.0
+	for i in dn.contacts.size():
+		dn._visit(i)
+	Kit.run_for(n, InformerDirector.FOUND_LIMIT * 0.5 - 1.0)
+	var pending := (n.rules as Rules).objectives[0].check(n.rules) == Objective.Status.PENDING
+	Kit.run_for(n, 2.0 + DT * 2.0)
+	t.check(pending and (n.rules as Rules).objectives[0].check(n.rules) == Objective.Status.FAILED,
+		"the names' deadline is FOUND_LIMIT mission seconds: 30 s at x2")
+	Kit.done(n)
+
+	var b := _world()
+	var db: InformerDirector = b.d
+	var mine: bool = db.busy(db.quarries[0].target)
+	for c2 in db.contacts:
+		mine = mine and db.busy(c2.man as Person)
+		for v: Variant in c2.company:
+			mine = mine and db.busy(v as Person)
+	var stranger: Person = null
+	for p in (b.crowd as Crowd).citizens:
+		if not db.busy(p):
+			stranger = p
+			break
+	t.check(mine and stranger != null, "busy(): the informer, every contact and his company are the director's own, a passer-by is not")
+	Kit.done(b)

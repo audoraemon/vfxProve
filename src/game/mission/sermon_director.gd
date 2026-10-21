@@ -681,9 +681,9 @@ func _report(seer: Person, at: Vector2) -> void:
 		reports[i].skip = _passed_over
 
 
-## A relay never picks `p` (v0.11 M5, the M3 final review's rule): one fleeing the town or reserved.
+## A relay never picks `p` (v0.11 M5, the M3 final review's rule): one fleeing the town or reserved; nor, v0.11.2 (C15), one on the Lantern's errand.
 func _passed_over(p: Person) -> bool:
-	return p.mind == Person.Mind.FLEE or reserved.has(p)
+	return p.mind == Person.Mind.FLEE or reserved.has(p) or on_lantern_errand(p)
 
 
 ## Too few left to turn (v0.11 M5, Decision 148): the living listeners, Believers among them, below NEED -- "flock"; else "".

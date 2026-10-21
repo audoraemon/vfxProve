@@ -457,8 +457,9 @@ func _heralds_start() -> void:
 		return
 	var report := TempleReport.new(keeper as Person, door(), HERALD_SLOW, HERALD_DESCEND)
 	report.skip = func(p: Person) -> bool:
-		# A relay never picks one fleeing the town, a warning's own carrier (one kill never stops two Heralds), nor a wisher or a wish's target.
-		return p.mind == Person.Mind.FLEE or (is_instance_valid(d) and (d.claims_herald(p) or d.reserved.has(p)))
+		# A relay never picks one fleeing the town, a warning's own carrier (one kill never stops two Heralds), nor a wisher or a wish's target,
+		# nor one on the Bearer's errand (C15).
+		return p.mind == Person.Mind.FLEE or has_errand(p) or (is_instance_valid(d) and (d.claims_herald(p) or d.reserved.has(p)))
 	heralds.append(report)
 
 

@@ -687,9 +687,9 @@ func _report(seer: Person, at: Vector2) -> void:
 		reports[i].skip = _passed_over
 
 
-## A relay never picks `p` (v0.11 M5): one fleeing the town or reserved.
+## A relay never picks `p` (v0.11 M5): one fleeing the town or reserved; nor, v0.11.2 (C15), one on the Lantern's errand.
 func _passed_over(p: Person) -> bool:
-	return p.mind == Person.Mind.FLEE or reserved.has(p)
+	return p.mind == Person.Mind.FLEE or reserved.has(p) or on_lantern_errand(p)
 
 
 ## Seconds until the cart halts at the next checkpoint, about (v0.11 M5, plan decision 198, for the scripted player): the route still to

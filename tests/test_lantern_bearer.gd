@@ -519,6 +519,9 @@ static func _report_leaves_him(t) -> void:
 			break
 	d._report(other, d.lantern_door())
 	t.check(d.reports.size() == 1, "(anyone else still can be sent)")
+	var skip: Callable = d.reports[0].skip
+	t.check(skip.is_valid() and bool(skip.call(b.carrier)) and bool(skip.call(e)) and not bool(skip.call(other)),
+		"and a plain report's relay passes over the Bearer and his escorts, not other people (C15)")
 	t.check(not d.busy(e), "MissionDirector.busy() is false by default")
 	Kit.done(s)
 

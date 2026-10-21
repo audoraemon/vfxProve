@@ -512,9 +512,11 @@ func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.
 func _report(seer: Person, door: Vector2) -> void:
-	if _carrying(seer) or (rules != null and rules.lantern != null and rules.lantern.has_errand(seer)):
+	if _carrying(seer) or on_lantern_errand(seer):
 		return  # (v0.11.2: nor one carrying the Lantern's flame, or escorting it)
-	reports.append(TempleReport.new(seer, door))
+	var report := TempleReport.new(seer, door)
+	report.skip = _report_skip
+	reports.append(report)
 	reports_started += 1
 	rules.banner.emit("A FAITHFUL RUNS TO THE TEMPLE")
 
@@ -526,6 +528,17 @@ func _step_reports(delta: float) -> void:
 		if r.delivered:
 			gaze.fill()
 	reports.assign(reports.filter(func(r: TempleReport) -> bool: return r.is_open()))
+
+
+## `p` walks the Lantern's errand (the Bearer or an escort): no relay of any director's hands its own errand to him (v0.11.2, ruling C15).
+## `p` is a Variant: a body may already be freed.
+func on_lantern_errand(p: Variant) -> bool:
+	return rules != null and rules.lantern != null and rules.lantern.has_errand(p)
+
+
+## What a plain report's relay passes over (TempleReport.skip): the Lantern's errand (C15). Directors with their own list add this to it.
+func _report_skip(p: Person) -> bool:
+	return on_lantern_errand(p)
 
 
 ## `p` is carrying a report to the Temple.

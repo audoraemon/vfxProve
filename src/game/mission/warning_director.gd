@@ -346,10 +346,21 @@ func _judge() -> void:
 	_run(true)
 
 
-## Virtual (v0.11 M3): who carries the warning on from a death seen at `at` -- the nearest witness (Crowd.nearest_witness()); null
-## for none, and the warning dies. The Bell-Ringers' RingerDirector passes over the people the other warnings own.
+## Virtual (v0.11 M3): who carries the warning on from a death seen at `at` -- the nearest witness (Crowd.nearest_witness()'s search, passing
+## over the Lantern's errand: v0.11.2, C15); null for none, and the warning dies. The Bell-Ringers' RingerDirector passes over the people the
+## other warnings own as well.
 func _relay_witness(at: Vector2) -> Person:
-	return crowd.nearest_witness(at)
+	var best: Person = null
+	var best_d := Crowd.DOOM_WITNESS
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or on_lantern_errand(p):
+				continue
+			var d := p.ground_pos.distance_to(at)
+			if d <= best_d:
+				best = p
+				best_d = d
+	return best
 
 
 func _on_cast(_slot: int, key: String, at: Vector2) -> void:
@@ -406,7 +417,7 @@ func witnesses() -> Array[Person]:
 		return out
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside \
+			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside and not on_lantern_errand(p) \
 					and p.ground_pos.distance_to(messenger.ground_pos) <= Crowd.DOOM_WITNESS:
 				out.append(p)
 	return out

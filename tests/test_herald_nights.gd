@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_first_herald_normal(t)
 	_frightened_herald_not_slowed(t)
 	_relay_skips_reserved(t)
+	_relay_skips_errand(t)
 
 
 ## A world for `def` (a mission or an act) with the Lantern its `lantern` names, as Mission builds it: the real objectives, dawn and all.
@@ -293,3 +294,63 @@ static func _relay_skips_reserved(t) -> void:
 	H._run(s, 0.4)
 	t.check(lw.heralds[0].dead and lw.heralds[0].relays == 0, "a reserved witness does not carry the keeper-Herald on: the report ends")
 	Kit.done(s)
+
+
+## Ruling C15: no relay hands its errand to someone on the Lantern's errand. A Herald killed in sight of only the Bearer's file is stopped
+## (the report ends, the warning dies) and the Bearer keeps walking; with a plain witness by, the plain one carries on.
+static func _relay_skips_errand(t) -> void:
+	for variant: String in ["ringers", "warning"]:
+		for plain in [false, true]:
+			var s: Dictionary
+			var victim: Person
+			if variant == "ringers":
+				s = H._world("ringers")
+				victim = (s.crowd as Crowd).bell.keeper
+				H._ring(s)
+				H._run(s, LanternWatch.HERALD_DESCEND + 1.0)
+			else:
+				s = H._tolled(0.1)
+				victim = (s.crowd as Crowd).bell.keeper
+				H._run(s, LanternWatch.HERALD_DESCEND + 1.0)
+			var lw: LanternWatch = s.lw
+			var crowd: Crowd = s.crowd
+			Kit.arrive(victim, crowd.bell.foot.lerp(H._door(s), 0.5))  # (well off the tower's foot, so the Bearer's walk is no vigil)
+			var b := LanternBearer.new().setup(s.rules, crowd, H._door(s), crowd.bell.foot, [])
+			lw.bearer = b
+			var file: Array = b.walkers()
+			var keep: Array = file.duplicate()
+			var other: Person = null
+			if plain:
+				for p in crowd.citizens:
+					if is_instance_valid(p) and p != victim and p.is_alive() and not file.has(p) and p.mind != Person.Mind.DUTY:
+						other = p
+						break
+				keep.append(other)
+			H._clear_round(s, victim, keep)
+			for i in file.size():
+				Kit.arrive(file[i], victim.ground_pos + Vector2(0.4 + 0.3 * float(i), 0.3))
+			if other != null:
+				Kit.arrive(other, victim.ground_pos + Vector2(-1.5, 0.0))
+				other.inside = false
+			var label := "%s, %s" % [variant, "a plain witness by" if plain else "only the Bearer's file by"]
+			t.check(b.state == LanternBearer.State.WALKING and file.size() == 3 and (s.d as MissionDirector).on_lantern_errand(file[1]),
+				"(%s: the file is out and on the Lantern's errand)" % label)
+			if variant == "warning":
+				var seen: Array = (s.d as WarningDirector).witnesses()
+				t.check((seen.has(other) or not plain) and not seen.has(file[0]) and not seen.has(file[1]) and not seen.has(file[2]),
+					"(%s: the red diamonds leave the Bearer's file out)" % label)
+			(s.crowd as Crowd)._field.kill(victim, &"fire")
+			H._run(s, 0.4)
+			var stopped: bool
+			if variant == "ringers":
+				stopped = lw.heralds[0].dead and lw.heralds[0].relays == 0
+				if plain:
+					stopped = lw.heralds[0].is_open() and lw.heralds[0].carrier == other
+			else:
+				var d: WarningDirector = s.d
+				stopped = d.warning_dead
+				if plain:
+					stopped = not d.warning_dead and d.messenger == other
+			t.check(stopped, "%s: %s" % [label, "the plain witness carries it on" if plain else "the Herald is stopped, the Bearer is not taken"])
+			t.check(b.state == LanternBearer.State.WALKING and not file.has(other), "(%s: the Bearer keeps walking)" % label)
+			Kit.done(s)

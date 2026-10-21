@@ -131,17 +131,25 @@ static func _held(t) -> void:
 	_done(s)
 
 
+## v0.11.2: the toll no longer loses the Warning; what catches the night after its main objective is a Herald who got in (reason lantern).
+static func _lantern(s: Dictionary) -> LanternWatch:
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, "herald")
+	(s.rules as Rules).lantern = lw
+	return lw
+
+
 static func _caught(t) -> void:
 	var s := _world(TierBook.board("warning"))
 	var rules: Rules = s.rules
+	var lw := _lantern(s)
 	_stop_all(s)
 	_run(s, DT)
-	(s.crowd as Crowd).bell.state = BellNetwork.State.RUNG
+	lw.hear()
 	_run(s, DT)
-	t.check(rules.finished and rules.won and not rules.ascended and rules.caught == "bell" and rules.over_reason == "warning",
-		"the bell after the main objective: caught, the main win standing")
-	t.check((s.descent as Descent).earned(rules) == 10 and (s.descent as Descent).lost_text(rules) == "lost: the bell tolled",
-		"its believers banked, the wishes lost to the bell")
+	t.check(rules.finished and rules.won and not rules.ascended and rules.caught == "lantern" and rules.over_reason == "warning",
+		"the Lantern hearing after the main objective: caught, the main win standing")
+	t.check((s.descent as Descent).earned(rules) == 10 and (s.descent as Descent).lost_text(rules) == "lost: the Lantern heard",
+		"its believers banked, the wishes lost to the Lantern")
 	_done(s)
 
 	var s2 := _world(TierBook.board("warning"))
@@ -154,7 +162,7 @@ static func _caught(t) -> void:
 	_done(s2)
 
 	var s3 := _world(TierBook.board("warning"))
-	(s3.crowd as Crowd).bell.state = BellNetwork.State.RUNG
+	_lantern(s3).hear()
 	_run(s3, DT)
 	t.check((s3.rules as Rules).finished and not (s3.rules as Rules).won and not (s3.rules as Rules).main_done
 		and (s3.descent as Descent).earned(s3.rules) == 0, "a loss before the main objective earns nothing")

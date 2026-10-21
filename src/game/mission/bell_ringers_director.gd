@@ -7,7 +7,8 @@ extends MissionDirector
 ## sooner; a loud power cast within POST_SIGHT of a waiting post sends its ringer at once. Each warning is a RingerDirector (The
 ## Warning's relay and unseen kill; the ringer rings the bell himself); a relay never picks another warning's people
 ## (claimed_besides()). The posts and the bell tower are stone tonight: a blow only shakes them. All three warnings stopped wins
-## (StarsObjective); the bell tolling -- rung by a ringer, a relay or the town's own bellkeeper -- loses (BellSilentObjective).
+## (StarsObjective). v0.11.2: the bell tolling -- rung by a ringer, a relay or the town's own bellkeeper -- does not lose: it turns the Lantern and the ringer
+## who rang runs for the Temple as the Herald (HeraldObjective loses the night only if one gets in). The posts' times (SET_OUT_AT, CHAIN_WAIT) are MISSION seconds.
 
 ## Where the posts stand (the wall tower nearest each) (v0.11 M3, mission spec §1).
 const POST_SPOTS := [Vector2(6.6, -15.65), Vector2(-8.0, 15.65), Vector2(15.65, -8.0)]
@@ -43,7 +44,7 @@ var ringers: Array[RingerDirector] = []
 var _stopped_at: Array[float] = []
 ## The posts and the bell tower made stone tonight, given back at teardown (v0.11 M3, Decision 5).
 var _stone: Array[Structure] = []
-## Seconds into the night (v0.11 M3).
+## Mission seconds into the night (v0.11 M3; v0.11.2: the posts' schedule runs on the mission clock's rate, a ringer's walk and stand are real time).
 var _clock := 0.0
 
 
@@ -160,7 +161,7 @@ func out_at(i: int) -> float:
 ## One step (v0.11 M3): the timeline, the chain, then each warning; the second one is first seen stopped is kept, and the strip
 ## shown the next post's chained time.
 func step(delta: float) -> void:
-	_clock += delta
+	_clock += mission_delta(delta)
 	timeline.step(delta)
 	for i in range(1, ringers.size()):
 		if ringers[i].waiting and _stopped_at[i - 1] >= 0.0 and _clock >= out_at(i):
@@ -262,7 +263,8 @@ func hint_phase() -> String:
 	var best := ""
 	for r in going:
 		var p := r.hint_phase()
-		if p == "herald" or (p == "climbing" and best != "herald") or (p == "relay" and best != "climbing" and best != "herald") 				or (p == "mates" and best == ""):
+		if p == "herald" or (p == "climbing" and best != "herald") \
+				or (p == "relay" and best != "climbing" and best != "herald") or (p == "mates" and best == ""):
 			best = p
 	if not going.is_empty():
 		return best

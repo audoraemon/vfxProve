@@ -3,7 +3,8 @@ extends MissionDirector
 ## The Warning on the tier board (v0.11 M1, spec §7.2): three stars fall through the night, each over a gate, and each sends
 ## that gate's watchman running to the bellkeeper. Each star is a WarningDirector of its own -- the omen, the stare, the run,
 ## the relay, the unseen kill -- set up WarningDirector.OMEN_AT before its star, so its watchman is appointed then. The main
-## objective (StarsObjective) is all three warnings stopped; any one reaching the bell loses the night (BellSilentObjective).
+## objective (StarsObjective) is all three warnings stopped. v0.11.2: a Herald night -- the toll turns the Lantern, and the warning's carrier runs for the
+## Temple (HeraldObjective loses the night only if one gets in); the stars' times and STOP_WAIT are MISSION seconds, so dawn's haste brings them sooner.
 ## Each later runner starts nearer the bell (spec §8): the postern, the Main Gate, then the Side Gate.
 
 ## Each star: [seconds into the night it falls, the watchman's post just inside its gate, the gate's name for the banner].
@@ -19,7 +20,7 @@ const STOP_WAIT := 30.0
 
 ## The three warnings, in the order their stars fall; each is set up when its time comes (its `rules` is null until then).
 var stars: Array[WarningDirector] = []
-## Seconds into the night.
+## Mission seconds into the night (v0.11.2: the stars' schedule runs on the mission clock's rate; each warning's own stare and run are real time).
 var _clock := 0.0
 ## The night's second each star's warning was first seen stopped, or -1 while it has not been (v0.11 M1); one per star.
 var _stopped_at: Array[float] = []
@@ -37,7 +38,7 @@ func _begin() -> void:
 ## Sets up each star's warning OMEN_AT before it falls -- unless it is already stopped -- and steps those set up. The
 ## second a warning is first seen stopped is kept: the next star falls no later than STOP_WAIT after it.
 func step(delta: float) -> void:
-	_clock += delta
+	_clock += mission_delta(delta)
 	for i in stars.size():
 		var w := stars[i]
 		if w.rules == null:

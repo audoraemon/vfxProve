@@ -174,12 +174,18 @@ static func _chain(t) -> void:
 	_done(late)
 
 
+## v0.11.2: the toll no longer loses the night (it turned the Lantern); a Herald who reaches the Temple does (tests/test_herald_nights.gd).
 static func _bell(t) -> void:
 	var s := _world()
-	(s.crowd as Crowd).bell.state = BellNetwork.State.RUNG
+	var rules: Rules = s.rules
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	var lw := LanternWatch.new().setup(rules, s.crowd, s.town, null, TierBook.board("warning").lantern)
+	rules.lantern = lw
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
 	_run(s, DT)
-	t.check((s.rules as Rules).finished and not (s.rules as Rules).won and (s.rules as Rules).over_reason == "bell",
-		"a warning reaching the bell loses the night")
+	t.check(lw.tolled and not rules.finished and lw.stage == LanternWatch.Stage.STIRRING,
+		"a warning reaching the bell no longer loses the night: the Lantern turns")
 	_done(s)
 
 
@@ -261,5 +267,5 @@ static func _single(t) -> void:
 	var reasons := []
 	for o in b.objectives():
 		reasons.append(o.reason)
-	t.check(b.director == StarfallDirector and b.stretch == 1.0 and reasons == ["warning", "bell", "dawn"]
+	t.check(b.director == StarfallDirector and b.stretch == 1.0 and reasons == ["warning", "lantern", "dawn"]
 		and b.goal_label == "The warnings die", "the board's: three stars, stop them all (%s)" % [reasons])

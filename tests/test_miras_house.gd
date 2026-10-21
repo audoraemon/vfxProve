@@ -92,6 +92,7 @@ static func run(t) -> void:
 	_freed(t)
 	_venn_watching(t)
 	_loose_ends(t)
+	_lantern(t)
 
 
 static func _cast(t) -> void:
@@ -227,7 +228,7 @@ static func _gaze(t) -> void:
 	t.near(d2.gaze.value, GazeMeter.SEEN_DEATH, 0.001, "a seen death adds 10 to the Gaze")
 	_done(s2)
 
-	# Review focus 4: the bell, rung by the town's own alarm, fills it.
+	# Review focus 4: the bell, rung by the town's own alarm, fills it (a world with no Lantern: First Prayers' rule; Mira's own is _lantern()).
 	var s3 := _setup()
 	var d3: MirasHouseDirector = s3.d
 	var crowd3: Crowd = s3.crowd
@@ -572,3 +573,65 @@ static func _loose_ends(t) -> void:
 	t.check(d2.vigil == null and not (s2.banners as Array).has("THE VIGIL PASSES"),
 		"with no Faithful free, the Vigil does not pass and no banner says it does")
 	_done(s2)
+
+
+## v0.11.2 Task 17: Mira's House is a Gaze night. The toll adds 40 to the Gaze and turns the Lantern instead of filling it, the Bearer and his escorts
+## are never taken from the grieving, and the night's timeline runs on mission time while a reading stays real.
+static func _lantern(t) -> void:
+	var def := MissionBook.miras_house()
+	t.check(def.lantern == "gaze", "Mira's House is a Gaze night (MissionDef.lantern)")
+	var s := _setup()
+	var d: MirasHouseDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var lw := LanternWatch.new().setup(rules, crowd, s.town, null, def.lantern)
+	rules.lantern = lw
+	_run(s, 1.0)
+	if crowd.bell != null:
+		crowd.bell.state = BellNetwork.State.RUNG
+	lw.on_toll()
+	_run(s, DT * 2.0)
+	t.check(not rules.finished and lw.tolled and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and not d.gaze.is_full(),
+		"the toll no longer loses Mira's House: the Gaze rises 40, not to 100, and the Lantern stirs")
+	t.check(lw.stage == LanternWatch.Stage.STIRRING and is_equal_approx(rules.clock_rate, 1.5), "the clock runs at x1.5")
+	_run(s, 8.0)
+	t.check(lw.bearer != null and not rules.finished, "the Bearer sets out 10 mission seconds after the toll")
+	var taken := false
+	for p: Variant in [lw.bearer.carrier] + lw.bearer.escorts:
+		taken = taken or d.grieving.has(p) or d.believers.has(p) or p == d.venn
+	t.check(not taken and lw.bearer.escorts.size() == LanternBearer.ESCORTS, "neither he nor an escort is one of the grieving, a Believer or Venn")
+	var faithful_escorts := true
+	for e: Variant in lw.bearer.escorts:
+		faithful_escorts = faithful_escorts and d.faithful.has(e)
+	t.check(faithful_escorts, "his escorts are Faithful on a Gaze night (they see)")
+	t.check(d.busy(d.grieving[0]) and d.busy(d.venn) and not d.busy(crowd.soldiers[0]), "busy() lists the grieving and Venn, not a soldier")
+	_done(s)
+
+	# The schedule is mission time: the first event (the Inquisitor's search, at 0:40) comes at half its real time at x2.
+	var fast := _setup()
+	var fd: MirasHouseDirector = fast.d
+	(fast.rules as Rules).clock_rate = 2.0
+	_run(fast, 19.0)
+	t.check(not fd.venn_searching, "at x2 the search has not begun at 19 real seconds")
+	_run(fast, 2.0)
+	t.check(fd.venn_searching, "at x2 the 0:40 search begins at 20 real seconds")
+	_done(fast)
+	var slow := _setup()
+	_run(slow, 21.0)
+	t.check(not (slow.d as MirasHouseDirector).venn_searching, "at x1 it has not begun at 21 seconds (the control)")
+	_done(slow)
+
+	# A reflex does not change: a reading is eight REAL seconds at x2.
+	var r := _setup()
+	var rd: MirasHouseDirector = r.d
+	(r.rules as Rules).clock_rate = 2.0
+	var g := rd.grieving[0]
+	_blind(rd, rd.door)
+	_bring(rd, g)
+	_run(r, DT * 2.0)
+	_run(r, MirasHouseDirector.READ_SECONDS - 1.0)
+	t.check(g.inside and rd.believers.is_empty(), "at x2 a reading is still going a second short of READ_SECONDS")
+	_blind(rd, rd.door)
+	_run(r, 1.5)
+	t.check(rd.believers.has(g), "and done after READ_SECONDS real seconds")
+	_done(r)

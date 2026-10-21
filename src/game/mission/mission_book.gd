@@ -398,6 +398,7 @@ static func sermon() -> MissionDef:
 		SermonDirector.SERMON_ENDS)
 	m.goal_label = "The crowd believes"
 	m.lose = "The Lantern looks, the sermon ends, or too few are left to turn"
+	m.lantern = "gaze"  # v0.11.2
 	m.camera_at = SermonDirector.CAMERA_AT
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["whisper", "discord", "doom", "belllies"])  # no lure takes a listener on duty
@@ -719,6 +720,7 @@ static func miras_house() -> MissionDef:
 	m.goal = "Lead four of the grieving to Mira's journal, unseen, before dawn"
 	m.goal_label = "Four believe"
 	m.lose = "The Lantern looks, or fewer than four believe by dawn"
+	m.lantern = "gaze"  # v0.11.2: the toll adds 40 to the Gaze and turns the Lantern (it used to fill the Gaze)
 	m.clock = 150.0
 	m.camera_at = MirasHouseDirector.MIRA_SPOT
 	m.intro_from = MirasHouseDirector.MIRA_SPOT + Vector2(0.0, 6.0)
@@ -764,13 +766,14 @@ static func broken_lanterns() -> MissionDef:
 	m.goal = "Break Halcyon's six shrines, and let them drain before the Vigil relights them"
 	m.goal_label = "The lanterns are dark"
 	m.lose = "The Lantern looks, or dawn finds a shrine still lit"
+	m.lantern = "gaze"  # v0.11.2
 	m.clock = 180.0
 	m.camera_at = BrokenLanternsDirector.CAMERA_AT
 	m.intro_from = BrokenLanternsDirector.CAMERA_AT + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["heaven", "doom", "discord"])
 	m.director = BrokenLanternsDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [ShrinesObjective.new(), BellSilentObjective.new(), GazeObjective.new(),
+		var out: Array[Objective] = [ShrinesObjective.new(), GazeObjective.new(),
 			ClockObjective.new(false, "Dawn", "relit")]
 		return out
 	m.make_bonuses = func() -> Array[Objective]:

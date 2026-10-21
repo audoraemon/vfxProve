@@ -5,8 +5,9 @@ extends MissionDirector
 ## Will-o'-Wisp's lure -- goes in, reads for READ_SECONDS and comes out a Believer. Halcyon's Faithful must not see it: a
 ## Faithful who sees someone go in turns them away, one who sees a Believer come out lets them go; either runs to the
 ## Temple to report it (TempleReport), and a report reaching the Temple fills Halcyon's Gaze. A death someone sees adds to
-## it; the bell fills it. A Faithful held by Discord or a whisper sees nothing. Task 5's windows: the Inquisitor's search,
-## a Believer crying out, the Vigil passing the door, and the priests burning the house.
+## it; the bell's toll adds 40 to it and turns the Lantern (LanternWatch, v0.11.2; it used to fill it). A Faithful held by Discord or a
+## whisper sees nothing. Task 5's windows: the Inquisitor's search, a Believer crying out, the Vigil passing the door, and the priests
+## burning the house.
 
 ## Where Mira lived: her house is the one nearest this point (ground units).
 const MIRA_SPOT := Vector2(-12.0, 2.0)
@@ -147,10 +148,16 @@ func step(delta: float) -> void:
 	_read(delta)
 	_step_reports(delta)
 	_step_events(delta)
-	if crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
-		gaze.fill()
+	if rules.lantern == null and crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
+		gaze.fill()  # (v0.11.2) only where no Lantern is: on Mira's and the Sermon the toll turns the Lantern and adds to the Gaze instead
 	if rules.time_left <= 0.0 and not roof_fallen:
 		_roof()
+
+
+## (v0.11.2, spec 4.5) The night's own actors, whom the Lantern-Bearer and his escorts must not be taken from: the grieving, the Believers,
+## the Inquisitor and the crying Believer. (The Faithful and a report's carrier are skipped by the Lantern itself.)
+func busy(p: Person) -> bool:
+	return p == venn or p == shouter or grieving.has(p) or believers.has(p)
 
 
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:

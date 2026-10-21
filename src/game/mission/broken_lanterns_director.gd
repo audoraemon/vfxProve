@@ -4,7 +4,9 @@ extends MissionDirector
 ## town. Break them before the Vigil relights them, and drink what was in them. A broken shrine is drained once it has
 ## stayed broken DRAIN_SECONDS. The flame-bearer walks the Vigil round the six, turns aside for a broken shrine, and
 ## relights it if he reaches it first (it stands again). A drained shrine is gone for good. All six drained win the
-## night. A death someone sees adds to Halcyon's Gaze, and the bell fills it. Faithful pray at the standing shrines, and
+## night. A death someone sees adds to Halcyon's Gaze, and the bell's toll adds 40 to it and turns the Lantern (LanternWatch, v0.11.2; the
+## toll used to fill the Gaze). A shrine's draining is the night's schedule (its tag counts it down), so the Lantern's rate hastens it; the
+## flame-bearer's walk and the prayers' feed are real time. Faithful pray at the standing shrines, and
 ## the prayer feeds the Gaze; at 1:30 four Lantern Knights come and guard the shrines; when five are drained, up to
 ## fifteen Faithful kneel round the last one, more coming as they are free (the bonus, if the blow falls through ten).
 ## The shrines are this mission's own: placed here, never in the shared town layout, and taken away with the town
@@ -44,11 +46,11 @@ const MARK_KNIGHT := Color("8fb8e8")
 const PRAYERS := 3
 const PRAY_RING := 1.0
 const PRAY_REACH := 0.6
-const PRAYER_SCALE := 0.05
+const PRAYER_SCALE := 0.025
 ## A death someone sees adds this share of GazeMeter.SEEN_DEATH in this mission (LanternGaze): Ruin is loud, and one
 ## Heaven Splitter kills ten to twenty people, nearly all seen (Task 8 measured it). GazeMeter's own number stays for
 ## Mira's House and M4.
-const SEEN_DEATH_SCALE := 0.05
+const SEEN_DEATH_SCALE := 0.025
 ## When five are drained, KNEELERS Faithful kneel round the last standing shrine on these rings ([radius, places]), all
 ## within BONUS_REACH of it (ThroughFaithfulObjective).
 const KNEELERS := 15
@@ -140,11 +142,9 @@ func step(delta: float) -> void:
 	gaze.judge_deaths(crowd)
 	if vigil != null:
 		vigil.step(delta)
-	_drain(delta)
+	_drain(mission_delta(delta))
 	_relight()
 	_prayers_step(delta)
-	if crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
-		gaze.fill()
 
 
 ## A shrine broke: it drains from the start (a relit shrine broken again starts over).
@@ -157,6 +157,7 @@ func _on_broken(s: Structure) -> void:
 	_sync_detour()
 
 
+## `delta` is in mission seconds (v0.11.2): a draining shrine's countdown is shown on its tag, so it runs at the clock's pace.
 func _drain(delta: float) -> void:
 	for s: Structure in drain_left.keys():
 		drain_left[s] = float(drain_left[s]) - delta

@@ -100,6 +100,7 @@ static func run(t) -> void:
 	_focus(t)
 	_lines(t)
 	_freed(t)
+	_lantern(t)
 
 
 static func _cast(t) -> void:
@@ -236,8 +237,8 @@ static func _ending(t) -> void:
 	if crowd2.bell != null:
 		crowd2.bell.state = BellNetwork.State.RUNG
 	_run(s2, DT * 2.0)
-	t.check(crowd2.bell == null or ((s2.rules as Rules).finished and (s2.rules as Rules).over_reason == "bell"
-		and (s2.d as BrokenLanternsDirector).gaze.is_full()), "the bell loses the night, and fills the Gaze")
+	t.check(not (s2.rules as Rules).finished and not (s2.d as BrokenLanternsDirector).gaze.is_full(),
+		"a rung bell no longer loses Broken Lanterns nor fills its Gaze (v0.11.2: the toll turns the Lantern, _lantern())")
 	_done(s2)
 
 	var s3 := _setup()
@@ -629,3 +630,86 @@ static func _dragonfire(t) -> void:
 		c.damage(260.0 * 0.05, c.center() - Vector2(5.0, 0.0), &"fire")
 	t.check(c.destroyed and d.draining(c), "the Knight fallen to the Parade's fire, the same breath then breaks the lantern")
 	_done(s)
+
+
+## v0.11.2 Task 17: Broken Lanterns is a Gaze night. The toll adds 40 to the Gaze and turns the Lantern (no BellSilentObjective, no fill); a shrine's
+## draining is the night's schedule (its tag counts it down), so it runs at the clock's rate; the prayers' Gaze feed and the Vigil's walk stay real.
+static func _lantern(t) -> void:
+	var def := MissionBook.broken_lanterns()
+	t.check(def.lantern == "gaze", "Broken Lanterns is a Gaze night (MissionDef.lantern)")
+	var kinds := []
+	for o: Objective in def.make_objectives.call():
+		kinds.append(o.get_script())
+	t.check(not kinds.has(BellSilentObjective), "BellSilentObjective is out of its objectives")
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var lw := LanternWatch.new().setup(rules, crowd, s.town, null, def.lantern)
+	rules.lantern = lw
+	_away(d)
+	_run(s, 1.0)
+	if crowd.bell != null:
+		crowd.bell.state = BellNetwork.State.RUNG
+	lw.on_toll()
+	_run(s, DT * 2.0)
+	t.check(not rules.finished and lw.tolled and is_equal_approx(d.gaze.value, LanternWatch.GAZE_TOLL) and not d.gaze.is_full(),
+		"the toll no longer loses the night: the Gaze rises 40 and the Lantern stirs")
+	t.check(is_equal_approx(rules.clock_rate, 1.5), "the clock runs at x1.5")
+	_run(s, 8.0)
+	t.check(lw.bearer != null and not rules.finished, "the Bearer sets out")
+	var taken := false
+	for p: Variant in [lw.bearer.carrier] + lw.bearer.escorts:
+		taken = taken or d.vigil.walkers().has(p) or d.praying.has(p)
+	t.check(not taken, "neither he nor an escort is a Vigil walker or at prayer")
+	_done(s)
+
+	# Draining runs on mission time: 20 mission seconds are 10 real ones at x2, and the tag counts them down at the clock's pace.
+	var f := _setup()
+	var fd: BrokenLanternsDirector = f.d
+	(f.rules as Rules).clock_rate = 2.0
+	_away(fd)
+	var sh := fd.shrines[0]
+	_break(sh)
+	_run(f, 4.0)
+	t.near(float(fd.drain_left[sh]), BrokenLanternsDirector.DRAIN_SECONDS - 8.0, 0.2, "at x2 a draining shrine loses two seconds a second")
+	t.check(_tag(fd, "DRAINING %d" % ceili(float(fd.drain_left[sh]))) != null, "and its tag shows what is left")
+	_run(f, 5.5)
+	t.check(fd.draining(sh) and not fd.is_drained(sh), "not drained a half second short of ten real seconds")
+	_run(f, 1.0)
+	t.check(fd.is_drained(sh), "drained at ten real seconds at x2")
+	_done(f)
+
+	# The Knights come at half their real time too (the timeline), and a reflex stays real: the prayers' feed per second is the same at x2.
+	var k := _setup()
+	var kd: BrokenLanternsDirector = k.d
+	(k.rules as Rules).clock_rate = 2.0
+	_away(kd)
+	_run(k, BrokenLanternsDirector.KNIGHTS_AT * 0.5 - 1.0)
+	t.check(kd.knights.is_empty(), "at x2 the Knights have not come a second short of 0:45 real")
+	_run(k, 1.5)
+	t.check(kd.knights.size() == BrokenLanternsDirector.KNIGHTS, "at x2 the Knights come at 0:45 real")
+	_done(k)
+	var g1 := _prayer_gain(1.0)
+	var g2 := _prayer_gain(2.0)
+	t.check(g1 > 0.0 and is_equal_approx(g1, g2), "the prayers' Gaze feed is per real second: the same at x1 and x2 (%.3f, %.3f)" % [g1, g2])
+
+
+## The Gaze the Faithful at prayer add in 4 real seconds at clock rate `rate` (a shrine broken, so the Faithful are sent to the standing ones, and set down
+## at their places).
+static func _prayer_gain(rate: float) -> float:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	(s.rules as Rules).clock_rate = rate
+	_away(d)
+	_break(d.shrines[0])
+	for f: Variant in d.praying.keys():
+		var e: Array = d.praying[f]
+		_arrive(f as Person, e[1])
+	_run(s, DT)
+	var before := d.gaze.value
+	var n := d.praying_count()
+	_run(s, 4.0)
+	var gain := d.gaze.value - before
+	_done(s)
+	return gain if n > 0 else -1.0

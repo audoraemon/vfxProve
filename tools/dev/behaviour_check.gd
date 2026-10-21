@@ -560,6 +560,8 @@ func _run() -> void:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
+	if Battlefield.arg_value(args, "--case") == "toll" and scenario in TOLL_CALLED:
+		_toll_caller.call_deferred(TOLL_CALLED[scenario])
 	match scenario:
 		_ when route == "b":
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
@@ -1440,12 +1442,14 @@ func _faith_night(label: String, which: String, fetch: bool) -> void:
 			report_at += 10.0
 			print("BEHAVIOUR %s t=%d believers=%d inside=%d gaze=%d reports=%d" % [label, roundi(t), d.believers_outside(),
 				d.inside().size(), roundi(d.gaze.value), d.reports_started])
-		if which != "play" or frames % LOOK_FRAMES != 0:
+		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
 			continue
-		var did := _faith_look(rules, slots, d, fetch)
+		var did := _toll_hunt(rules) if which == "toll" else ""
+		if did == "":
+			did = _faith_look(rules, slots, d, fetch)
 		if did == "":
 			continue
-		if fetch:
+		if fetch or which == "toll":
 			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
 		acts.longest = maxf(float(acts.longest), t - float(acts.last))
 		acts.last = t
@@ -1582,7 +1586,9 @@ func _lanterns(which: String) -> void:
 			report_at += 10.0
 			print("BEHAVIOUR lanterns t=%d drained=%d broken=%d relit=%d praying=%d gaze=%d knights=%d" % [roundi(t),
 				d.drained_count(), d.drain_left.size(), d.relit, d.praying_count(), roundi(d.gaze.value), d.living_knights()])
-		if not which in ["play", "bonus"] or frames % LOOK_FRAMES != 0:
+		if not (which in ["play", "bonus"] or _acts(which, rules)) or frames % LOOK_FRAMES != 0:
+			continue
+		if which == "toll" and _toll_hunt(rules) != "":
 			continue
 		if _slot_ready(rules, slots, "doom"):
 			var mark := _lantern_doom_target(d, crowd)
@@ -1969,6 +1975,51 @@ func _lamb_act(rules: Rules, slots: Dictionary, d: EscortDirector, lamb: Person,
 	return "whisper him to (%.1f, %.1f)" % [to.x, to.y]
 
 
+## The nights (v0.11.2, Task 17) whose toll case calls the bell's keeper at a fixed time -- the town never rings by itself while the policy waits for the
+## toll on purpose -- and the second (of the night's real time) it calls him. He walks to the tower and climbs; the toll comes some seconds later.
+const TOLL_CALLED := {"miras": 3.0, "lanterns": 15.0, "sermon": 15.0}
+
+
+## Calls the bellkeeper at `at` seconds into the night (the toll case, D32), once; a bell already called, rung or silenced is left alone.
+func _toll_caller(at: float) -> void:
+	var rules: Rules = mission._rules
+	while is_instance_valid(rules) and not rules.finished and rules.elapsed() < at:
+		await process_frame
+	var crowd: Crowd = mission._crowd
+	if is_instance_valid(rules) and not rules.finished and crowd != null and crowd.bell != null:
+		crowd.bell.call_keeper()
+		print("BEHAVIOUR toll the keeper is called at t=%.1f" % rules.elapsed())
+
+
+## The toll case's counterplay (v0.11.2, D32): the Lantern-Bearer walking or keeping his vigil, killed so the Lantern goes Blind. While an escort
+## living and unheld stands within LanternBearer.ESCORT_SEE of him he would take up the flame: Discord on the Bearer and that escort (a held
+## escort relays nothing) when the loadout has it and it is ready, else wait for him to reach the tower (no relay at the vigil); then Silent Doom
+## on him. What was cast, or "" (nothing to do, or not ready).
+func _toll_hunt(rules: Rules) -> String:
+	var lw: LanternWatch = rules.lantern
+	if lw == null or lw.bearer == null or lw.stage == LanternWatch.Stage.BLIND:
+		return ""
+	var b: LanternBearer = lw.bearer
+	if not (b.state == LanternBearer.State.WALKING or b.state == LanternBearer.State.VIGIL) or not MissionDirector._alive(b.carrier):
+		return ""
+	var slots := _slots(rules)
+	if not slots.has("doom"):
+		return ""  # a loadout without Silent Doom has no quiet kill for him: it plays the night on (the Lantern stays Stirring)
+	var c: Person = b.carrier
+	var guard: Person = null
+	for e: Variant in b.escorts:
+		if MissionDirector._alive(e) and not (e as Person).inside and not (e as Person).mind in TempleReport.HELD 				and (e as Person).ground_pos.distance_to(c.ground_pos) <= LanternBearer.ESCORT_SEE:
+			guard = e as Person
+			break
+	if guard != null and b.state == LanternBearer.State.WALKING:
+		if _slot_ready(rules, slots, "discord"):
+			return "discord the Lantern-Bearer and his escort" if rules.cast(slots.discord, (c.ground_pos + guard.ground_pos) * 0.5) != null else ""
+		return ""
+	if _slot_ready(rules, slots, "doom") and crowd_alone(c):  # only where his death goes unseen: a seen one costs the Gaze
+		return "doom the Lantern-Bearer" if rules.cast(slots.doom, c.ground_pos) != null else ""
+	return ""
+
+
 ## Whether the scripted player acts this look under `which` (v0.11.2, D32): `play` always; `toll` from the toll on (LanternWatch.tolled), when
 ## it plays as `play` does -- the policy waits for the toll on purpose, so the toll case shows what a night is like after it; `none` never.
 func _acts(which: String, rules: Rules) -> bool:
@@ -1998,7 +2049,9 @@ func _scripted(label: String, which: String, act: Callable, state: Callable) -> 
 			print("BEHAVIOUR %s t=%d %s" % [label, roundi(t), String(state.call())])
 		if not _acts(which, rules) or frames % LOOK_FRAMES != 0:
 			continue
-		var did := String(act.call())
+		var did := _toll_hunt(rules) if which == "toll" else ""
+		if did == "":
+			did = String(act.call())
 		if did != "":
 			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
 			acts.longest = maxf(float(acts.longest), t - float(acts.last))

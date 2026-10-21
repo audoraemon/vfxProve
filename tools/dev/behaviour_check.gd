@@ -1984,6 +1984,9 @@ var _toll_forced := false
 func _arm_toll_light(scenario: String, case_arg: String) -> void:
 	if case_arg != "toll" or not TOLL_AT_LIGHT.has(scenario):
 		return
+	if (mission._crowd as Crowd).bell == null or (mission._crowd as Crowd).bell.state == BellNetwork.State.SILENCED:
+		print("BEHAVIOUR toll: no bell in this town (%s without --board: the campaign's town is unaware) -- there is no toll case; use --board" % scenario)
+		return
 	_toll_forced = true  # these nights' policy plays from the start (its lead-in is the night's), and the bell is called for it
 	var rules: Rules = mission._rules
 	var crowd: Crowd = mission._crowd

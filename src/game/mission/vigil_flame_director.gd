@@ -33,8 +33,8 @@ const FAITHFUL := 20
 const VIGIL_PACE := 0.5
 const BEARER_LEAD := 0.85
 ## 0:50 -- Wren comes to watch the lantern, keeping WATCH_DIST from it; left WREN_OWN_AFTER seconds without a whisper,
-## he tries the swap himself. Both run in real seconds whatever the board stretch (v0.11 M1: nothing of the player's can
-## move until he comes, so no wait over 60 s).
+## he tries the swap himself. Both are mission seconds (v0.11.2: the Lantern's clock rate speeds them, a board stretch slows them; v0.11 M1:
+## nothing of the player's can move until he comes, so no wait over 60 s).
 const WREN_AT := 50.0
 const WATCH_DIST := 3.0
 const WREN_OWN_AFTER := 30.0
@@ -318,8 +318,14 @@ func busy(p: Person) -> bool:
 	return p == wren
 
 
+## Nobody on the Lantern's errand is eligible for this night's own work (v0.11.2): not a relief warden, not new hands for the cart (the Bearer's
+## file walks past the watch-houses), not Wren.
+func _eligible(p: Variant) -> bool:
+	return super(p) and not _on_lanterns_errand(p)
+
+
 ## `p` walks the Lantern's errand (the Bearer or an escort, LanternWatch.has_errand()): not Wren, and not at prayer.
-func _on_lanterns_errand(p: Person) -> bool:
+func _on_lanterns_errand(p: Variant) -> bool:
 	return rules != null and rules.lantern != null and rules.lantern.has_errand(p)
 
 

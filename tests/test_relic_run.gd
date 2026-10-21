@@ -470,7 +470,7 @@ static func _tagged(t) -> void:
 	var d: RelicRunDirector = s.d
 	var labels := Kit.labels(d)
 	t.check(labels.slice(0, 4) == ["RELIC CART", "PIP - DO NOT KILL", "CHECKPOINT", "BELIEVERS' HOUSE"] and Kit.edged(d, "RELIC CART")
-		and Kit.edged(d, "PIP - DO NOT KILL") and Kit.edged(d, "CHECKPOINT") and Kit.edged(d, "BELIEVERS' HOUSE") and labels.has("ESCORT")
+		and Kit.edged(d, "PIP - DO NOT KILL") and Kit.edged(d, "CHECKPOINT") and Kit.edged(d, "BELIEVERS' HOUSE") and labels.has("CART ESCORT")
 		and labels.has("WARDEN") and not labels.has("CITADEL") and d.hint_phase() == "" and d.hud_line() == "The relic: in its cart",
 		"the cart, Pip (DO NOT KILL), the first checkpoint, your believers' house, all pointed at; the escorts and wardens (%s)" % [labels])
 	_at_halt(s, d, 0)
@@ -675,6 +675,34 @@ static func _lantern(t) -> void:
 			clean = clean and not bl.has_errand(v)
 	t.check(clean, "the Bearer set out, and none of the run's people is on his errand")
 	Kit.done(b)
+	# The run never recruits the Bearer or his escorts (review 18): a relief warden and new hands for the cart.
+	var rw := _lantern_world()
+	var rd: RelicRunDirector = rw.d
+	var rl: LanternWatch = rw.lw
+	_toll(rw)
+	var wait := LanternBearer.AFTER + 2.0
+	while rl.bearer == null and wait > 0.0:
+		Kit.run_for(rw, 0.5)
+		wait -= 0.5
+	var lantern_men: Array = [rl.bearer.carrier]
+	lantern_men.append_array(rl.bearer.escorts)
+	var warden: RelicRunDirector.Warden = rd.wardens[0]
+	for i in lantern_men.size():
+		Kit.arrive(lantern_men[i], warden.post + Vector2(0.15 * float(i), 0.0))  # the nearest lay citizens to the post, all of them the Lantern's
+	Kit.free_body(rw, warden.man)
+	rd._relieve(warden, warden.post)
+	t.check(warden.man != null and MissionDirector._alive(warden.man) and not rl.has_errand(warden.man) and not lantern_men.has(warden.man),
+		"the east warden fell: his relief is nobody on the Bearer's errand")
+	Kit.arrive(rl.bearer.carrier, rd.temple_door)  # the resident nearest the door is the Bearer
+	for v: Variant in rd.escorts + [rd.carter]:
+		Kit.free_body(rw, v)
+	rd.stall_left = 0.0
+	rd._new_hands()
+	var hired := true
+	for v: Variant in rd.hands:
+		hired = hired and not rl.has_errand(v)
+	t.check(not rd.hands.is_empty() and hired, "new hands for a stalled cart are nobody on the Bearer's errand")
+	Kit.done(rw)
 
 
 ## Mission time (D20): at x2.0 the set-out comes in half the time and the halt's seconds count double (the tag counts them down at the

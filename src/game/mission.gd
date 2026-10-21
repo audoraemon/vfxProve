@@ -203,7 +203,8 @@ func _bench_beams(args: PackedStringArray) -> void:
 
 ## Bench aid (v0.11.2, D33): `--bench-toll=SECONDS` lets the night run SECONDS, then rings the bell (the keeper is called and the bell
 ## tolls at once) and burns the Lantern, so the Temple's two pale beams and the Lantern-Bearer are up with whatever else the bench has lit
-## (`--bench-beams` on The Vigil Flame: four beams in all), then `--bench-after` (default 5) seconds more before the frames are timed. A Lantern
+## (`--bench-beams` on The Vigil Flame: four beams in all), then `--bench-after` (default 5) seconds more before the frames are timed. With
+## `--bench-beams` the beams' own `--bench-after` wait comes first, so the toll falls that much later than SECONDS counted from the start of the bench. A Lantern
 ## night only (the board versions of The Vigil Flame, The Relic Run, ...); without a Lantern it only waits.
 func _bench_toll(args: PackedStringArray) -> void:
 	await get_tree().create_timer(float(Battlefield.arg_value(args, "--bench-toll"))).timeout

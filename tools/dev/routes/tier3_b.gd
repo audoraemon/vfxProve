@@ -89,7 +89,7 @@ static func _flame_draw_off(bc, d: VigilFlameDirector, rules: Rules, slots: Dict
 
 static func _flame_prep(bc, d: VigilFlameDirector, rules: Rules, slots: Dictionary, ctx: Dictionary) -> String:
 	var lantern := d.flame_at()
-	var now: float = d.timeline.elapsed() * d.timeline.stretch_factor()  # real seconds
+	var now: float = d.timeline.elapsed() * d.timeline.stretch_factor()  # mission seconds (elapsed x stretch)
 	if lantern == Vector2.INF or d.vigil == null or not d.vigil.active:
 		return ""
 	# Early: a Wisp ahead of the Vigil on its road draws the bystanders there off it (and is ready again for the boy by 0:50).
@@ -171,7 +171,8 @@ static func _flame_swap(bc, d: VigilFlameDirector, rules: Rules, slots: Dictiona
 	# The watchers and the bearer taken by Discord: just before the boy, left alone, comes for the lantern himself (he is quick over the
 	# last steps and Discord is a moment landing), or as he does, or as the lure is about to be cast.
 	# (v0.11.2: his thirty seconds are mission seconds, and the Discord lasts real ones, so what is left is counted at the clock's rate.)
-	var coming: float = (float(VigilFlameDirector.WREN_OWN_AFTER) - (d.timeline.elapsed() - d._appeared_at) * d.timeline.stretch_factor()) 		/ maxf(rules.clock_rate, 0.01)
+	var coming: float = (float(VigilFlameDirector.WREN_OWN_AFTER) - (d.timeline.elapsed() - d._appeared_at) * d.timeline.stretch_factor()) \
+		/ maxf(rules.clock_rate, 0.01)
 	if (not watchers.is_empty() or not held) and bc._slot_ready(rules, slots, "discord") and (d.attempting or coming <= FLAME_DISCORD_LEAD or wisp_ready):
 		var fit := _flame_discord_point(bc, lantern, watchers, held)
 		if fit == Vector2.INF and (d.attempting or coming <= 0.5):

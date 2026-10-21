@@ -792,7 +792,7 @@ func tags() -> Array[MapTag]:
 	var named: Array = []
 	for v: Variant in escorts:
 		if _alive(v) and not (v as Person).inside:
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "ESCORT"))
+			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "CART ESCORT"))  # (the Lantern-Bearer's are "ESCORT")
 			named.append(v)
 	for w: Warden in wardens:
 		if _alive(w.man) and not (w.man as Person).inside:

@@ -632,15 +632,15 @@ static func _dragonfire(t) -> void:
 	_done(s)
 
 
-## v0.11.2 Task 17: Broken Lanterns is a Gaze night. The toll adds 40 to the Gaze and turns the Lantern (no BellSilentObjective, no fill); a shrine's
+## v0.11.2 Task 17: Broken Lanterns is a Gaze night. The toll adds 40 to the Gaze and turns the Lantern (no bell loss, no fill); a shrine's
 ## draining is the night's schedule (its tag counts it down), so it runs at the clock's rate; the prayers' Gaze feed and the Vigil's walk stay real.
 static func _lantern(t) -> void:
 	var def := MissionBook.broken_lanterns()
 	t.check(def.lantern == "gaze", "Broken Lanterns is a Gaze night (MissionDef.lantern)")
-	var kinds := []
+	var reasons := []
 	for o: Objective in def.make_objectives.call():
-		kinds.append(o.get_script())
-	t.check(not kinds.has(BellSilentObjective), "BellSilentObjective is out of its objectives")
+		reasons.append(o.reason)
+	t.check(not reasons.has("bell"), "no objective loses to the bell (%s)" % [reasons])
 	var s := _setup()
 	var d: BrokenLanternsDirector = s.d
 	var rules: Rules = s.rules

@@ -1732,7 +1732,7 @@ func _lantern_state(rules: Rules) -> String:
 		return ""
 	var who := "-"
 	if lw.bearer != null:
-		who = "%s%s" % ["WBVD"[lw.bearer.state], "+%d" % lw.bearer.relays if lw.bearer.relays > 0 else ""]
+		who = "%s%s" % [LanternBearer.State.keys()[lw.bearer.state], "+%d" % lw.bearer.relays if lw.bearer.relays > 0 else ""]
 	return " lantern=%s x%.1f bearer=%s" % [LanternWatch.Stage.keys()[lw.stage], rules.clock_rate, who]
 
 

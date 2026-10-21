@@ -1,6 +1,6 @@
 extends RefCounted
 ## v0.11.2 Task 15: the Herald nights adopt the Lantern -- The Warning (campaign), The Omen (The Long Night's Act I), the board's Warning
-## (Starfall) and The Bell-Ringers. The toll does not lose any of them (HeraldObjective in place of BellSilentObjective, the kind "herald" on the
+## (Starfall) and The Bell-Ringers. The toll does not lose any of them (HeraldObjective in place of the old bell-silent objective, the kind "herald" on the
 ## mission or the act); a Herald who gets in does, a Herald killed unseen leaves the night to be won; Starfall's stars and The Bell-Ringers' posts
 ## keep their schedule in MISSION seconds while a stare, a post's lamp-lighting and every walk stay real (D20). Task 15 also owns the review-11
 ## items (C8): The Bell Lies' unring after a toll leaves the Herald running, the toll and the Herald banners both reach the HUD, the first Herald
@@ -40,14 +40,7 @@ static func _reasons(def: MissionDef) -> Array:
 	return out
 
 
-static func _has_old_rule(def: MissionDef) -> bool:
-	for o in def.objectives():
-		if o is BellSilentObjective:
-			return true
-	return false
-
-
-## The four nights are Herald nights: the kind, the objectives in order (the main one, HeraldObjective, dawn), no BellSilentObjective;
+## The four nights are Herald nights: the kind, the objectives in order (the main one, HeraldObjective, dawn), no loss by the bell;
 ## The Long Night's own acts II and III have no Lantern (R31).
 static func _adopted(t) -> void:
 	var warning := MissionBook.warning()
@@ -58,8 +51,8 @@ static func _adopted(t) -> void:
 			["the board's Warning", board, ["warning", "lantern", "dawn"]], ["The Bell-Ringers", ringers, ["ringers", "lantern", "dawn"]]]:
 		var def: MissionDef = pair[1]
 		t.check(def.lantern == LanternWatch.KIND_HERALD, "%s is a Herald night" % pair[0])
-		t.check(_reasons(def) == pair[2] and not _has_old_rule(def) and def.objectives()[1] is HeraldObjective,
-			"%s: the main objective, then HeraldObjective, then dawn; no BellSilentObjective (%s)" % [pair[0], _reasons(def)])
+		t.check(_reasons(def) == pair[2] and not _reasons(def).has("bell") and def.objectives()[1] is HeraldObjective,
+			"%s: the main objective, then HeraldObjective, then dawn; none loses to the bell (%s)" % [pair[0], _reasons(def)])
 	t.check(TierBook.board("bell_ringers").lantern == LanternWatch.KIND_HERALD and _reasons(TierBook.board("bell_ringers"))[1] == "lantern",
 		"and the board's Bell-Ringers is the same night")
 	var night := MissionBook.long_night()
@@ -212,15 +205,12 @@ static func _unring(t) -> void:
 	bell._retry_in = 0.0  # the keeper would try again at once, if he were free
 	t.check(bell.state == BellNetwork.State.WAITING, "(the bell is unrung: the keeper is to try again)")
 	var pulled := 0
-	var near_foot := 0
 	var steps := 0
 	while not r.finished and steps < 700:
 		H._run(s, DT)
 		steps += 1
 		if bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING]:
 			pulled += 1
-		if d.herald_open() and keeper.ground_pos.distance_to(bell.foot) <= BellNetwork.FOOT_REACH + 0.3 and steps > 160:
-			near_foot += 1
 	t.check(pulled == 0, "the keeper-Herald is never sent back to the rope (%d frames of CALLED or CLIMBING)" % pulled)
 	t.check(lw.tolled and is_equal_approx(lw.tolled_at, tolled_at) and (s.banners as Array).count(LanternWatch.TOLL_BANNER) == 1
 		and lw.stage == LanternWatch.Stage.STIRRING, "the Lantern stays latched: one toll, one banner, still Stirring")
@@ -263,7 +253,6 @@ static func _first_herald_normal(t) -> void:
 ## review-11 Minor 2: a Herald who is frightened is not slowed -- he flees at his own pace; the Herald's pace is written when he is sent again.
 static func _frightened_herald_not_slowed(t) -> void:
 	var s := H._tolled(0.1)
-	var d: WarningDirector = s.d
 	var keeper: Person = (s.crowd as Crowd).bell.keeper
 	H._run(s, LanternWatch.HERALD_DESCEND + 1.0)
 	t.check(keeper.mind == Person.Mind.DUTY and is_equal_approx(float(keeper.statuses.get(&"slow", 1.0)), LanternWatch.HERALD_SLOW),
@@ -281,7 +270,6 @@ static func _frightened_herald_not_slowed(t) -> void:
 	t.check(k2.mind == Person.Mind.PANIC and not k2.statuses.has(&"slow"), "the same for the town keeper's report")
 	Kit.done(rep)
 	Kit.done(s)
-	t.check(d != null, "(done)")
 
 
 ## review-11 Minor 3: the town keeper's relay never picks a wisher or a wish's target.

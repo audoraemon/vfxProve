@@ -37,6 +37,8 @@ func record(act_id: String, result: Dictionary, crowd: Crowd) -> void:
 	results.append(r)
 	if crowd != null and (crowd.alarms.bell_rung or (crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG)):
 		bell_rang = true
+	if bool(result.get("tolled", false)):
+		bell_rang = true  # v0.11.2: an Omen toll that The Bell Lies later unrings still counts as the bell having rung
 	if result.has("festival"):
 		festival = String(result.festival)
 	if result.has("prince"):

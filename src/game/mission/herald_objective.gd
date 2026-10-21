@@ -3,7 +3,7 @@ extends Objective
 ## "Stop the Herald" (v0.11.2, spec 4.6 and 4.10): the loss on a Herald night. The bell tolled and its ringer (or a warning's messenger)
 ## runs for the Temple; once one has reached the door the Lantern has heard (LanternWatch.heard) and the night is lost, reason `lantern`.
 ## It follows the night's main objective in the list; the main one (Warning, Stars) is not DONE while a Herald runs or has been heard
-## (WarningObjective, StarsObjective), so a Herald who gets in can never be read as a win first. It replaces BellSilentObjective, which
+## (WarningObjective, StarsObjective), so a Herald who gets in can never be read as a win first. It replaced the v0.08 "Keep the bell silent" objective, which
 ## lost the night outright on the toll.
 
 

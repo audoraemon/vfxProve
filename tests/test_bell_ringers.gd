@@ -416,7 +416,10 @@ static func _ends(t) -> void:
 		and StarsObjective.tally(Counted.new()) == Vector2i(2, 5) and StarsObjective.tally(d) == Vector2i(3, 3),
 		"StarsObjective keeps the board Warning's words; it reads a director's own count, and one that keeps none counts nothing")
 	(s.crowd as Crowd).bell.state = BellNetwork.State.RUNG
-	t.check(BellSilentObjective.new().check(rules) == Objective.Status.FAILED, "the bell tolling loses, whoever rang it")
+	var failed := 0
+	for ob: Objective in MissionBook.bell_ringers().objectives():
+		failed += 1 if ob.check(rules) == Objective.Status.FAILED else 0
+	t.check(failed == 0, "the bell tolling loses nothing outright (v0.11.2: it turns the Lantern instead)")
 	t.check(ResultsScreen.title_for(true, "ringers") == "THE RINGERS ARE STOPPED" and ResultsScreen.title_for(false, "bell") == "THE BELL TOLLS"
 		and ResultsScreen.title_for(false, "dawn") == "DAWN COMES", "its results' titles, under its own reason")
 	Kit.done(s)

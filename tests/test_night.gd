@@ -41,6 +41,13 @@ static func run(t) -> void:
 	t.check(NightState.new().escape_limit() == NightState.ESCAPE_LIMIT and NightState.PRINCE_ESCAPED_LIMIT < NightState.ESCAPE_LIMIT,
 		"otherwise it is the night's own, the higher")
 	t.check(n.act_result("omen").reason == "warning" and n.act_result("judgement").is_empty(), "results by act")
+	var tolled_night := NightState.new()
+	t.check(not tolled_night.bell_rang, "a fresh night has no rung bell")
+	tolled_night.record("omen", {"won": true, "reason": "warning", "time": 40.0, "bonuses": [], "tolled": true}, null)
+	t.check(tolled_night.bell_rang, "an Omen toll later unrung by The Bell Lies still counts: the bell rang (C9, result.tolled)")
+	var quiet_night := NightState.new()
+	quiet_night.record("omen", {"won": true, "reason": "warning", "time": 40.0, "bonuses": [], "tolled": false}, null)
+	t.check(not quiet_night.bell_rang, "and no toll leaves it unrung")
 	t.check(n.night_score(9000) == 9000 + NightState.ACT_POINTS + NightState.BONUS_POINTS, "the night's score")
 	t.check(NightState.rank_for(30000) == "S" and NightState.rank_for(29999) == "A" and NightState.rank_for(6999) == "D",
 		"and its rank")

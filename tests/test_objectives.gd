@@ -60,14 +60,8 @@ static func run(t) -> void:
 	t.check(win_clock.hud_text(rules) == "Omen fades 1:23", "the clock's line shows the time (%s)" % win_clock.hud_text(rules))
 	t.check(lose_clock.hud_text(rules) == "", "a clock with no label stays off the panel")
 
-	# The Warning's (v0.08 M4): the bell rung fails it, off the panel; the warning stopped needs its director; Unseen
+	# The Warning's (v0.08 M4; v0.11.2: the bell rung no longer fails it): the warning stopped needs its director; Unseen
 	# fails at Local Emergency.
-	var bell_silent := BellSilentObjective.new()
-	t.check(bell_silent.check(rules) == P and bell_silent.hud_text(rules) == "", "a silent bell is pending, off the panel")
-	var was: BellNetwork.State = crowd.bell.state
-	crowd.bell.state = BellNetwork.State.RUNG
-	t.check(bell_silent.check(rules) == F and bell_silent.reason == "bell", "the bell rung fails it")
-	crowd.bell.state = was
 	var warning := WarningObjective.new()
 	t.check(warning.check(rules) == P and warning.label == "Stop the warning" and warning.reason == "warning",
 		"with no Warning director the warning is never stopped")

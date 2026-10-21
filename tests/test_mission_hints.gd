@@ -34,7 +34,7 @@ const SPEC := [
 	["vigil_flame.homeward", "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple."],
 	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight."],
 	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
-	["tax_collector", "Kill each collector (gold) in the street. If no one near (red) sees it, the guards raise no cry."],
+	["tax_collector", "Kill each collector (gold) in the street. If no one near (red) sees it, no cry is raised; a seen kill turns the Lantern."],
 	["tax_collector.inside", "He is indoors (gold). He comes out to walk to his next debtor (orange): be ready."],
 	["tax_collector.hiding", "Alarmed, he hides in the counting-house. Set it alight: every collector inside runs for the Citadel."],
 	["tax_collector.running", "No hiding place: he runs for the Citadel (red). Kill him before he gets in."],

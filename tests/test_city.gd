@@ -35,6 +35,7 @@ static func _landmarks(t, c: AldermereCity) -> void:
 		&"bridge": TownLayout.BRIDGE, &"fountain_plaza": TownLayout.FOUNTAIN_PLAZA,
 		&"carpenter_yard": TownLayout.CARPENTER_YARD, &"tavern_patio": TownLayout.TAVERN_PATIO,
 		&"smithy_yard": TownLayout.SMITHY_YARD, &"river": TownLayout.RIVER, &"river_west": TownLayout.RIVER_WEST,
+		&"fountain": TownLayout.FOUNTAIN, &"side_gate": TownLayout.SIDE_GATE,
 	}
 	t.check(AldermereCity.LANDMARKS.size() == want.size(), "every Aldermere landmark is checked")
 	for k in AldermereCity.LANDMARKS:

@@ -59,7 +59,7 @@ const WATCH_OFFS := [Vector2(-1.4, 0.3), Vector2(1.4, 0.3)]
 ## The minds a watchman keeps guard in (v0.11 M2): going about his day, looking on, or on duty at his post. Any other -- fright,
 ## flight, shelter, the rally, a fight, the god's hold, fetching water at a fire -- and he does not.
 const GUARD_MINDS := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.DUTY]
-## The Citadel's gate, where the grain goes; how near a door a carter takes or leaves a load; seconds between looks (v0.11 M2).
+## Aldermere's Citadel gate (the director reads the place citadel_gate; Tiers 2-5 alias this); how near a door a carter takes or leaves a load; seconds between looks (v0.11 M2).
 const CITADEL_GATE := Vector2(-10.5, -7.6)
 const TAKE_REACH := 0.8
 const TICK := 0.5
@@ -97,7 +97,7 @@ var _tick_in := 0.0
 ## timeline.
 func _begin() -> void:
 	spoil_seconds = SPOIL_SECONDS
-	citadel_door = _walkable(CITADEL_GATE)
+	citadel_door = _walkable(Places.point(&"citadel_gate"))
 	for spot: Vector2 in STORE_SPOTS:
 		var s := _house_near(spot, targets)
 		if s == null:

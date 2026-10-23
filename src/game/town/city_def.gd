@@ -65,6 +65,16 @@ func torches() -> Array[Vector2]: return []                # torch posts; the fi
 func ship_at() -> Vector2: return Vector2.INF              # where the moored ship lies (INF = no ship)
 func citadel_origin() -> Vector2: return Vector2.INF       # INF = this city has no Aldermere-style Citadel node
 func landmark(name: StringName) -> Rect2: return Rect2()   # empty Rect2 = unknown
+## A named point missions read (v0.12): the Citadel's gate, the postern, the Citadel's origin. Vector2.INF = unknown. Missions
+## reach it through Places.point(), which fails loudly on a misspelt name.
+func place(_name: StringName) -> Vector2: return Vector2.INF
+## The main gate's towers (Aldermere: TownLayout.GATE_TOWERS); none modelled by default, so a mission needing them is not hostable.
+func gate_towers() -> Array[Rect2]: return []
+## Farm buildings (Aldermere: TownLayout.BARNS).
+func barns() -> Array[Rect2]: return []
+## What this town changes in a mission (v0.12): {"def": {property: value}, "director": {town var: value}}, empty for none
+## (MissionBook.in_city() applies it). Task 4 loads it from missions_dir().
+func mission_overrides(_mission_id: String) -> Dictionary: return {}
 ## Ground the floor paints, name -> Array[Rect2] (a missing key is no such ground):
 ##   &"plazas"         flagstone squares, open ground (Aldermere: market, citadel court, fountain plaza);
 ##   &"yards"          sanded working yards, open ground (the barracks yard);

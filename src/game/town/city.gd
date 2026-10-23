@@ -3,6 +3,8 @@ extends RefCounted
 ## The city being built or played. Missions set it before building (Mission, town_debug); defaults to Aldermere.
 
 static var active: CityDef = null
+## The ids of the cities that exist (by_id()).
+const IDS := [&"aldermere", &"capital"]
 
 
 static func current() -> CityDef:

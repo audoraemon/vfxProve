@@ -14,6 +14,11 @@ const LANDMARKS := {
 	&"bridge": TownLayout.BRIDGE, &"fountain_plaza": TownLayout.FOUNTAIN_PLAZA,
 	&"carpenter_yard": TownLayout.CARPENTER_YARD, &"tavern_patio": TownLayout.TAVERN_PATIO,
 	&"smithy_yard": TownLayout.SMITHY_YARD, &"river": TownLayout.RIVER, &"river_west": TownLayout.RIVER_WEST,
+	&"fountain": TownLayout.FOUNTAIN, &"side_gate": TownLayout.SIDE_GATE,
+}
+## The named points missions read (place()). The Citadel's gate is the literal three of its missions and its wish shared.
+const PLACES := {
+	&"citadel_gate": Vector2(-10.5, -7.6), &"postern": TownLayout.POSTERN_AT, &"citadel": TownLayout.CITADEL_ORIGIN,
 }
 
 
@@ -188,6 +193,18 @@ func citadel_origin() -> Vector2:
 
 func landmark(name: StringName) -> Rect2:
 	return LANDMARKS.get(name, Rect2())
+
+
+func place(name: StringName) -> Vector2:
+	return PLACES.get(name, Vector2.INF)
+
+
+func gate_towers() -> Array[Rect2]:
+	return _rects(TownLayout.GATE_TOWERS)
+
+
+func barns() -> Array[Rect2]:
+	return _rects(TownLayout.BARNS)
 
 
 static func _points(src: Array) -> Array[Vector2]:

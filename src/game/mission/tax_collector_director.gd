@@ -23,7 +23,7 @@ const ROUNDS := [
 ]
 ## The tags' words for each collector (v0.11 M2).
 const LABELS := ["TAX COLLECTOR", "DEPUTY", "DEPUTY"]
-## The Citadel's gate (v0.11 M2), where the taxes go: RescueWish.GATE's point.
+## Aldermere's Citadel gate, RescueWish.GATE (v0.11 M2); the director reads the place citadel_gate (Places.point()).
 const CITADEL_GATE := RescueWish.GATE
 ## First guesses (spec §1 and the ruling), tuned in this order if the scripted clear misses its window (v0.11 M2): when each
 ## collector sets out at the latest; how long after one dies the next sets out at the latest (30-50 s); a visit; a hiding;
@@ -57,7 +57,7 @@ func _plan() -> void:
 				stops.append(h)
 				taken.append(h)
 		_add_quarry(String(LABELS[i]), float(SET_OUT_AT[i]), stops, int(GUARDS[i]))
-	safe_at = CITADEL_GATE
+	safe_at = Places.point(&"citadel_gate")
 	visit_seconds = VISIT_SECONDS
 	hide_seconds = HIDE_SECONDS
 	alarm_reach = ALARM_REACH

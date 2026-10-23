@@ -1542,10 +1542,27 @@ func landmark(name: StringName) -> Rect2:
 			&"tavern_patio": TAVERN_PATIO, &"bell_tower": BELL_TOWER, &"windmill": WINDMILL,
 			&"keep_court": KEEP_COURT, &"royal_garden": ROYAL_GARDEN, &"drill_yard": DRILL_YARD, &"keep_yard": KEEP_YARD,
 			&"churchyard": CHURCHYARD, &"pilgrim_plaza": PILGRIM_PLAZA,
+			# the names shared code asks Aldermere for (v0.12): the Great Market's fountain, the harbour gate as its side gate
+			&"fountain": FOUNTAINS[0], &"side_gate": inner[4],
 		}
 		for row: Array in DISTRICT_TABLE:
 			_landmarks[row[0]] = row[1]
 	return _landmarks.get(name, Rect2())
+
+
+## The named points missions read (v0.12): the Keep's gate, 2.9 south of the Citadel's origin, and the origin itself.
+## Nothing else (no postern).
+func place(name: StringName) -> Vector2:
+	match name:
+		&"citadel_gate":
+			return CITADEL_ORIGIN + Vector2(0.0, 2.9)
+		&"citadel":
+			return CITADEL_ORIGIN
+	return Vector2.INF
+
+
+func barns() -> Array[Rect2]:
+	return _typed(BARNS)
 
 
 func floor_areas() -> Dictionary:

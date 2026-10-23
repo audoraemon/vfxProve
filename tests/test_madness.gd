@@ -282,4 +282,28 @@ static func _people_animations(t) -> void:
 	judge.fight(lying, 5.0, 0.34, Person.FightRule.TARGET_ONLY)
 	t.check(judge._fightable(lying), "though a mob set on one person still goes for it")
 	judge.free()
+	# Frozen mid-scream, it screams no more once thawed, and the frenzy still starts on time.
+	var froze: Person = crowd.citizens[33]
+	froze.ground_pos = at + Vector2(6.0, 0.0)
+	froze.mind = Person.Mind.CALM
+	froze.statuses[MadnessManager.STATUS] = 1.0
+	var rec2 := {"stage": MadnessManager.Stage.BROKEN, "since": 0.0, "outcome": -1, "broken_at": -INF, "secondary": 0,
+		"tic": 99.0, "concern": 99.0, "shove": 99.0}
+	m.afflicted[froze] = rec2
+	for seed_value in range(1, 200):
+		m._rng.seed = seed_value
+		if m._draw_outcome() == MadnessManager.Outcome.FRENZY:
+			m._rng.seed = seed_value
+			break
+	m._enter(froze, rec2, MadnessManager.Stage.BROKEN)
+	froze.freeze(0.4)
+	_run_for(crowd, [froze], 0.6)
+	t.check(not froze.is_screaming() and froze._sprite_pose()[0] != &"scream", "thawed after a freeze mid-scream, no scream")
+	_run_for(crowd, [froze], 0.8)
+	t.check(froze.mind == Person.Mind.FIGHT and froze._sprite_pose()[0] != &"scream", "and the frenzy has fired")
+	# The manifest says which rows are a design's own art: resident_a has the lurch, the guard has not.
+	var own_a: int = PeopleArt.info("resident_a")[5]
+	var own_g: int = PeopleArt.info("guard")[5]
+	t.check((own_a >> 6) & 1 == 1 and (own_g >> 6) & 1 == 0 and (own_g >> 7) & 1 == 1 and own_g & 1 == 1,
+		"own art: resident_a has the lurch; the guard has idle and swing but no lurch")
 	_done(made)

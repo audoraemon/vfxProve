@@ -72,7 +72,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "caregiver_a": {
    "block": [
@@ -142,7 +143,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "caregiver_b": {
    "block": [
@@ -212,7 +214,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "clergy": {
    "block": [
@@ -282,7 +285,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "craft_a": {
    "block": [
@@ -352,7 +356,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "craft_b": {
    "block": [
@@ -422,7 +427,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "engineer": {
    "block": [
@@ -492,7 +498,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "escort": {
    "block": [
@@ -562,7 +569,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 287
   },
   "farmer": {
    "block": [
@@ -632,7 +640,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "guard": {
    "block": [
@@ -702,7 +711,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 415
   },
   "laborer": {
    "block": [
@@ -772,7 +782,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "marshal": {
    "block": [
@@ -842,7 +853,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 287
   },
   "merchant_a": {
    "block": [
@@ -912,7 +924,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "merchant_b": {
    "block": [
@@ -982,7 +995,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "rescue": {
    "block": [
@@ -1052,7 +1066,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 287
   },
   "resident_a": {
    "block": [
@@ -1122,7 +1137,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   },
   "resident_b": {
    "block": [
@@ -1192,7 +1208,8 @@
      "north-east": 7,
      "north-west": 7
     }
-   }
+   },
+   "own": 511
   }
  },
  "white": [

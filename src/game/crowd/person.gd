@@ -478,6 +478,7 @@ func tick(delta: float) -> void:
 		# The knock-back slide is over: it lies where it came to rest.
 		_down_pending = false
 		_down_left = DOWN_SECONDS
+		_idle = maxf(_idle, 0.2)  # not a tick of creep before the first think
 
 
 ## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
@@ -1157,11 +1158,34 @@ func scream(seconds: float) -> void:
 	_idle = maxf(_idle, seconds)
 
 
-## A knock-back cuts a scream short.
+## A knock-back cuts a scream short, and throws a person who is down: it is not lying there any more.
 func knock(v: Vector2) -> void:
 	super(v)
 	if state == State.KNOCKBACK:
 		_scream_left = 0.0
+		_get_up_now()
+
+
+## A pull (gravity, a tornado) throws a person who is down too, and cuts a scream short.
+func pull_step(center: Vector2, strength: float, swirl: float, delta: float) -> void:
+	super(center, strength, swirl, delta)
+	if state == State.PULLED:
+		_scream_left = 0.0
+		_get_up_now()
+
+
+## Frozen mid-scream, it screams no more.
+func freeze(seconds: float, on_thaw := Callable()) -> void:
+	super(seconds, on_thaw)
+	if is_frozen():
+		_scream_left = 0.0
+
+
+## Moved by something else while down: the down and get-up timers are cleared and it behaves as normal.
+func _get_up_now() -> void:
+	_down_pending = false
+	_down_left = 0.0
+	_getup_left = 0.0
 
 
 func is_screaming() -> bool:
@@ -1180,7 +1204,6 @@ func knock_down() -> void:
 ## Lying or getting up after a knock-down: it cannot be picked as a target (but a fight set on it still goes on).
 func is_down() -> bool:
 	return state != State.DEAD and (_down_pending or _down_left > 0.0 or _getup_left > 0.0)
-
 
 
 ## The fight is over: a soldier back to its post, a citizen to come round where it stands.
@@ -1798,11 +1821,11 @@ func _sprite_pose_code() -> int:
 	elif _scream_left > 0.0 and state == State.WANDER:
 		anim = 5
 		t = _scream_total - _scream_left
-	elif _down_left > 0.0:
+	elif _down_left > 0.0 and state == State.WANDER:
 		# Knocked down: the death fall, held on its last frame.
 		anim = 4
 		t = DOWN_SECONDS - _down_left
-	elif _getup_left > 0.0:
+	elif _getup_left > 0.0 and state == State.WANDER:
 		anim = 8
 		t = GETUP_SECONDS - _getup_left
 	elif _stumble > 0.0:
@@ -1833,11 +1856,10 @@ func _sprite_pose_code() -> int:
 	return frame << 6 | anim << 2 | facing
 
 
-## Whether this design has art of its own for the animation (ANIMS index) in the direction it faces: a design without
-## it wears its idle there (PeopleArt, the atlas tool), so it has as many frames as idle does.
+## Whether this design has art of its own for the animation (ANIMS index), not its idle standing in (the manifest's
+## `own` bitmask, written by tools/dev/make_people_atlas.py).
 func _has_own_art(anim: int) -> bool:
-	var counts: PackedInt32Array = _design_info[4]
-	return counts[anim * 4] != counts[0]
+	return (int(_design_info[5]) >> anim) & 1 == 1
 
 
 ## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way

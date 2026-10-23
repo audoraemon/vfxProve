@@ -117,7 +117,8 @@ static func frame_count(design: String, anim: StringName, facing: int) -> int:
 
 
 ## A design's frame table for drawing every frame of every person: [where its frames start, where its silhouettes
-## start, its foot, the cell, its frame counts by ANIMS index * 4 + facing]. The same numbers as frame_rect(),
+## start, its foot, the cell, its frame counts by ANIMS index * 4 + facing, its own-art bitmask (bit = ANIMS index: the row
+## is the design's own art, generated or mirrored, not its idle standing in)]. The same numbers as frame_rect(),
 ## silhouette_rect(), foot() and frame_count(), which look them up in the manifest's dictionaries call by call (and
 ## allocate their defaults): a person on screen needs them a few times a second, a crowd ~0.4 ms a frame.
 static func info(design: String) -> Array:
@@ -129,7 +130,8 @@ static func info(design: String) -> Array:
 	for anim in ANIMS:
 		for f in DIR_NAMES.size():
 			counts.append(frame_count(design, anim, f))
-	var made := [Vector2(d.block[0], d.block[1]), Vector2(d.sil[0], d.sil[1]), foot(design), cell(), counts]
+	var made := [Vector2(d.block[0], d.block[1]), Vector2(d.sil[0], d.sil[1]), foot(design), cell(), counts,
+		int(d.get("own", 0))]
 	_info[design] = made
 	return made
 

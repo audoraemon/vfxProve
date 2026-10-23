@@ -126,8 +126,12 @@ def main():
         block = origin(di)
         sil = origin(len(designs) + di)
         counts = {}
+        own = 0  # bit si: the design's own art for that row, generated or mirrored, not the idle fallback
         for si, (state, template) in enumerate(STATES):
             counts[state] = {}
+            src_template = "falling-back-death" if state == "getup" else template
+            if all(frames_of(design, src_template, d) for d in DIRS):
+                own |= 1 << si
             for dj, d in enumerate(DIRS):
                 frames = state_frames(design, state, template, d)
                 if not frames:
@@ -146,7 +150,7 @@ def main():
         idle = frames_of(design, "breathing-idle", "south-east") or [Image.open(FRAMES / design / "rot_south-east.png")]
         bb = idle[0].getchannel("A").getbbox()
         manifest["designs"][design] = {"block": list(block), "sil": list(sil), "foot": [(bb[0] + bb[2]) // 2, bb[3]],
-                                       "frames": counts}
+                                       "frames": counts, "own": own}
         print("packed", design, "foot", manifest["designs"][design]["foot"])
     white = origin(len(designs) * 2)
     atlas.paste(Image.new("RGBA", (8, 8), (255, 255, 255, 255)), white)

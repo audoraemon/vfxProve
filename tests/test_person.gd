@@ -231,8 +231,7 @@ static func run(t) -> void:
 	while slid < 600 and downed.state != DummyEnemy.State.WANDER:
 		downed.tick(1.0 / 60.0)
 		slid += 1
-	downed.tick(1.0 / 60.0)
-	var lies := downed.ground_pos
+	var lies := downed.ground_pos  # the tick that ended the slide started the lying: no creep
 	for i in int(Person.DOWN_SECONDS * 60.0) - 6:
 		downed.tick(1.0 / 60.0)
 	t.check(downed.is_down() and downed.ground_pos == lies and downed._sprite_pose()[0] == &"death",
@@ -244,6 +243,33 @@ static func run(t) -> void:
 		downed.tick(1.0 / 60.0)
 	t.check(not downed.is_down() and (downed.mind == Person.Mind.PANIC or downed.mind == Person.Mind.FLEE),
 		"and runs from the blow once it is up (%s)" % Person.Mind.keys()[downed.mind])
+	# Thrown while down (an explosion's knock, the madness shove, a gravity pull): no longer lying there.
+	var thrown := Person.new()
+	thrown.rng.seed = 47
+	thrown.bounds = TownLayout.MAP
+	thrown.setup_person(false, Vector2(2.7, 2.0), grid)
+	thrown.mind = Person.Mind.CALM
+	thrown.hurt(0.34, hitter)
+	while thrown.state != DummyEnemy.State.WANDER:
+		thrown.tick(1.0 / 60.0)
+	t.check(thrown._down_left > 0.0, "down again to be thrown")
+	thrown.knock(Vector2(1.5, 0.0))
+	t.check(not thrown.is_down() and thrown._down_left == 0.0 and thrown._getup_left == 0.0 and not thrown._down_pending
+		and thrown._sprite_pose()[0] != &"death", "a knock on a person lying down clears the down timers and the pose")
+	var pulled := Person.new()
+	pulled.rng.seed = 48
+	pulled.bounds = TownLayout.MAP
+	pulled.setup_person(false, Vector2(2.7, 2.0), grid)
+	pulled.mind = Person.Mind.CALM
+	pulled.hurt(0.34, hitter)
+	while pulled.state != DummyEnemy.State.WANDER:
+		pulled.tick(1.0 / 60.0)
+	pulled.pull_step(pulled.ground_pos + Vector2(3.0, 0.0), 2.0, 0.0, 1.0 / 60.0)
+	t.check(pulled.state == DummyEnemy.State.PULLED and not pulled.is_down() and pulled._down_left == 0.0
+		and pulled._getup_left == 0.0 and pulled._sprite_pose()[0] != &"death",
+		"and so does a gravity pull: it is moved, not lying in the death pose")
+	thrown.free()
+	pulled.free()
 	downed.free()
 
 	var fighter := Person.new()

@@ -238,7 +238,8 @@ func _ready() -> void:
 	# default loadout when nothing was drafted for it.
 	var wanted := Battlefield.arg_value(args, "--mission")
 	if wanted != "":
-		mission_id = MissionBook.get_mission(wanted).id
+		# A composite id (v0.12, `tax_collector@capital`) is kept as given; get_mission() only validates it.
+		mission_id = wanted if MissionBook.split_city(wanted)[1] != &"" else MissionBook.get_mission(wanted).id
 		loadout = save.loadout_for(mission_id)
 		if loadout.is_empty():
 			loadout = MissionBook.get_mission(mission_id).default_loadout

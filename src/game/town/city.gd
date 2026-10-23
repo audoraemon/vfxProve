@@ -5,6 +5,8 @@ extends RefCounted
 static var active: CityDef = null
 ## The ids of the cities that exist (by_id()).
 const IDS := [&"aldermere", &"capital"]
+## Cities a test registered (register()): ids() lists them and by_id() builds them. Empty outside a test.
+static var _extra := {}
 
 
 static func current() -> CityDef:
@@ -21,8 +23,34 @@ static func use(id: StringName) -> void:
 	active = by_id(id)
 
 
+## Every city id: IDS, then the ones a test registered.
+static func ids() -> Array:
+	var out: Array = IDS.duplicate()
+	for id: StringName in _extra:
+		out.append(id)
+	return out
+
+
+## Whether `id` names a city (IDS or registered).
+static func has(id: StringName) -> bool:
+	return id in IDS or _extra.has(id)
+
+
+## A test's fixture town (v0.12): `def` answers by_id(`id`) until unregister(). Never used by the game.
+static func register(id: StringName, def: CityDef) -> void:
+	_extra[id] = def
+
+
+static func unregister(id: StringName) -> void:
+	_extra.erase(id)
+	if active != null and active.id() == id:
+		active = null
+
+
 ## A fresh city for `id`. An unknown id is an error; Aldermere stands in so the game still runs.
 static func by_id(id: StringName) -> CityDef:
+	if _extra.has(id):
+		return _extra[id]
 	match id:
 		&"aldermere":
 			return AldermereCity.new()

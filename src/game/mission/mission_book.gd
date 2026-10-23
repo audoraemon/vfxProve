@@ -34,6 +34,8 @@ const RELIC_RUN := "relic_run"
 const LANTERN_EYE := "lantern_eye"
 const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
+## Between a mission's id and its town in a composite id (v0.12): `tax_collector@capital`.
+const CITY_SEP := "@"
 ## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
 const CAPITAL_SANDBOX := "capital_sandbox"
 ## Where the sandbox's intro sweep starts: the new town's street south of the eastern stone bridge.
@@ -48,8 +50,12 @@ static func all() -> Array[MissionDef]:
 	return out
 
 
-## The mission with this id, on the board or in the campaign; an unknown id gives Last Judgement.
+## The mission with this id, on the board or in the campaign; an unknown id gives Last Judgement. A composite id
+## (`<mission>@<city>`, v0.12) gives the mission put in that town (in_city()).
 static func get_mission(id: String) -> MissionDef:
+	var parts := split_city(id)
+	if parts[1] != &"":
+		return in_city(get_mission(parts[0]), parts[1])
 	for m in all():
 		if m.id == id:
 			return m
@@ -71,12 +77,77 @@ static func dev_missions() -> Array[MissionDef]:
 	return out
 
 
-## Whether `id` is one of the dev-only missions (dev_missions()).
+## Whether `id` is one of the dev-only missions (dev_missions()), or a mission put in another town (v0.12): a night there is
+## dev-only, so every power is open.
 static func is_dev(id: String) -> bool:
+	if split_city(id)[1] != &"":
+		return true
 	for m in dev_missions():
 		if m.id == id:
 			return true
 	return false
+
+
+## The id of mission `id` played in `city` (v0.12): `tax_collector@capital`. It rides through Game, Prepare, the board, Restart
+## and the save as one string, and never collides with Aldermere's bests.
+static func city_id(id: String, city: StringName) -> String:
+	return "%s%s%s" % [id, CITY_SEP, city]
+
+
+## [base id, city] of a composite id; the city is &"" for a plain one.
+static func split_city(id: String) -> Array:
+	var at := id.find(CITY_SEP)
+	if at < 0:
+		return [id, &""]
+	return [id.substr(0, at), StringName(id.substr(at + CITY_SEP.length()))]
+
+
+## `m` put in `city` (v0.12, spec 1.6): its city set, the town's `def` overrides applied, and its tune chained so the town's
+## `director` overrides follow the board's own tuning -- the town is the most specific (R13). `from` is the city's def (default
+## City.by_id(city)); a test passes a fixture. Aldermere has no overrides, so a mission put there is unchanged.
+static func in_city(m: MissionDef, city: StringName, from: CityDef = null) -> MissionDef:
+	if from == null and not City.has(city):
+		push_error("MissionBook.in_city: unknown city '%s' for %s" % [city, m.id])
+		return m
+	var town := from if from != null else City.by_id(city)
+	m.city = city
+	var ov := town.mission_overrides(m.id)
+	for key: Variant in ov:
+		if not String(key) in Overrides.KEYS:
+			push_error("MissionBook.in_city: %s's overrides for %s have an unknown section '%s'" % [city, m.id, key])
+	var def_ov: Dictionary = ov.get("def", {})
+	if not def_ov.is_empty():
+		Overrides.apply(m, def_ov)
+	var dir_ov: Dictionary = ov.get("director", {})
+	if not dir_ov.is_empty():
+		var board_tune := m.tune
+		m.tune = func(d: MissionDirector) -> void:
+			if board_tune.is_valid():
+				board_tune.call(d)
+			Overrides.apply(d, dir_ov)
+	return m
+
+
+## Whether `city` offers mission `id` (v0.12, D13): it has every place the mission needs (Places.can_host()) and either is the
+## mission's home city or has its overrides -- needs alone would offer the Tax Collector in the Capital with Aldermere's coordinates.
+static func hostable(id: String, city: CityDef) -> bool:
+	var home := get_mission(id).city == city.id()
+	if not home and city.mission_overrides(id).is_empty():
+		return false
+	return Places.can_host(id, city)
+
+
+## The composite ids of the board's missions (TierBook.all(), tier order) that `city` hosts; none for Aldermere (its own are on
+## the board proper).
+static func town_missions(city: StringName) -> PackedStringArray:
+	var out := PackedStringArray()
+	if city == &"aldermere":
+		return out
+	var town := City.by_id(city)
+	for id in TierBook.all():
+		if hostable(id, town):
+			out.append(city_id(id, city))
+	return out
 
 
 ## The capital's sandbox (capital plan, Tasks 13 and 15): the capital, every power, no objectives but a free-play clock

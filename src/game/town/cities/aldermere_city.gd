@@ -207,6 +207,11 @@ func barns() -> Array[Rect2]:
 	return _rects(TownLayout.BARNS)
 
 
+## Aldermere's consts are the source of truth for its missions: it never overrides one (v0.12).
+func mission_overrides(_mission_id: String) -> Dictionary:
+	return {}
+
+
 static func _points(src: Array) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	out.assign(src)

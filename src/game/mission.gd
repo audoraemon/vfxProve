@@ -294,9 +294,11 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 				n.free()
 	var args := OS.get_cmdline_user_args()
 	_def = _mission_def(args)
-	# The mission's city is the active one before anything is built (the town, the walk grid and the crowd read it).
-	if city != &"":
-		_def.city = city  # a scripted run's city (a fresh def each start)
+	# The mission's city is the active one before anything is built (the town, the walk grid and the crowd read it). A city
+	# asked for (the `city` var or --city=) puts the mission in that town, with its overrides (v0.12); a fresh def each start.
+	var town_id := city_for(_def, city, args, autostart)
+	if town_id != _def.city:
+		_def = MissionBook.in_city(_def, town_id)
 	City.use(_def.city)
 	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
@@ -316,7 +318,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		# A scripted run's --board (v0.11 M1): the night's seed is the first night's, as a fresh god's.
 		wish_seed = Descent.seed_for(descend.night if descend != null else 0, _def.id)
 	# A board night (v0.11 M1): its wishes, its Tier 5 Gaze and its ascent, handed to each act's Rules in _build_act().
-	_descent = Descent.new().setup(_def, wish_seed) if on_board and TierBook.has(_def.id) else null
+	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board) else null
 	_night = NightState.new() if _def.has_acts() else null
 	if _night != null:
 		_night.bell_rang = bell_rang
@@ -687,9 +689,32 @@ func _mission_def(args: PackedStringArray) -> MissionDef:
 ## The mission for `id` (v0.11 M1): on the board, its tier's version (TierBook.board(), with `state`'s upgrades); else
 ## MissionBook's -- the campaign's, a standalone run's, a scripted run's.
 static func def_for(id: String, on_board: bool, state: DescendState) -> MissionDef:
+	var parts := MissionBook.split_city(id)
+	if parts[1] != &"":
+		return MissionBook.in_city(def_for(parts[0], on_board, state), parts[1])
 	if on_board and TierBook.has(id):
 		return TierBook.board(id, state)
 	return MissionBook.get_mission(id)
+
+
+## The city a mission is played in (v0.12): a scripted run's `city_var`, else the command line's --city= (only when the mission
+## starts on its own), else the def's own. Mission wraps the def in that town when it differs from the def's.
+static func city_for(def: MissionDef, city_var: StringName, args: PackedStringArray, autostart_run: bool) -> StringName:
+	if city_var != &"":
+		return city_var
+	var wanted := wanted_city(args, autostart_run)
+	return wanted if wanted != &"" else def.city
+
+
+## The command line's --city=<id> when the mission starts on its own (`Game` ignores it: the DEV tab is the game's door), else &"".
+static func wanted_city(args: PackedStringArray, autostart_run: bool) -> StringName:
+	return StringName(Battlefield.arg_value(args, "--city")) if autostart_run else &""
+
+
+## Whether a night of `def` has a Descent (v0.12, D20): a board night in Aldermere only -- no wishes, believers, banking or tier
+## progress in another town.
+static func has_descent(def: MissionDef, on_board: bool) -> bool:
+	return on_board and TierBook.has(def.id) and def.city == &"aldermere"
 
 
 ## This is a board night (v0.11 M1): Game said so, or a standalone run was given --board.

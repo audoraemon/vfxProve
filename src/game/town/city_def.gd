@@ -73,8 +73,19 @@ func gate_towers() -> Array[Rect2]: return []
 ## Farm buildings (Aldermere: TownLayout.BARNS).
 func barns() -> Array[Rect2]: return []
 ## What this town changes in a mission (v0.12): {"def": {property: value}, "director": {town var: value}}, empty for none
-## (MissionBook.in_city() applies it). Task 4 loads it from missions_dir().
-func mission_overrides(_mission_id: String) -> Dictionary: return {}
+## (MissionBook.in_city() applies it). One file per mission in missions_dir(), `static func overrides() -> Dictionary`; none:
+## empty. Aldermere never has any (its consts are the source of truth).
+func mission_overrides(mission_id: String) -> Dictionary:
+	var path := "%s/%s.gd" % [missions_dir(), mission_id]
+	if not ResourceLoader.exists(path):
+		return {}
+	var script: GDScript = load(path)
+	if script == null or not script.has_method("overrides"):
+		push_error("CityDef.mission_overrides: %s did not load or has no static overrides()" % path)
+		return {}
+	return script.call("overrides")
+## Where this town's overrides files live (v0.12 R11): src/game/town/cities/<city>_missions.
+func missions_dir() -> String: return "res://src/game/town/cities/%s_missions" % id()
 ## Ground the floor paints, name -> Array[Rect2] (a missing key is no such ground):
 ##   &"plazas"         flagstone squares, open ground (Aldermere: market, citadel court, fountain plaza);
 ##   &"yards"          sanded working yards, open ground (the barracks yard);

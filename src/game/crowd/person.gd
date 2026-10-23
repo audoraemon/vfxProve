@@ -90,7 +90,7 @@ const STUMBLE_SECONDS := 0.45
 const SCREAM_SECONDS := 1.0
 ## A bystander struck in a fight: how long it lies where it fell, then how long it takes to get up (then it flees).
 const DOWN_SECONDS := 1.0
-const GETUP_SECONDS := 0.6
+const GETUP_SECONDS := 0.7  # the getup clip is 7 frames at 10 fps
 ## How long the swing pose shows after a blow lands: the whole clip plays within it.
 const SWING_SHOW := 0.35
 
@@ -471,6 +471,8 @@ func tick(delta: float) -> void:
 			_think(_think_accum)
 			_think_accum = 0.0
 		_think_due = not _think_due
+	if (_scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0) and state == State.WANDER:
+		_idle = maxf(_idle, 0.05)  # a goal set from outside (set_goal, flee, fight...) cannot creep a held person for a tick
 	var before := ground_pos
 	super(delta)
 	_track_stride(ground_pos - before)
@@ -1199,6 +1201,7 @@ func knock_down() -> void:
 		return
 	_down_pending = true
 	_scream_left = 0.0
+	_startle_left = 0.0  # a fright freeze waiting to start would freeze it again once it is up
 
 
 ## Lying or getting up after a knock-down: it cannot be picked as a target (but a fight set on it still goes on).

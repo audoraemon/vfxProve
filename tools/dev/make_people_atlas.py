@@ -139,7 +139,7 @@ def main():
         for si, (state, template) in enumerate(STATES):
             counts[state] = {}
             src_template = "falling-back-death" if state == "getup" else template
-            if all(frames_of(design, src_template, d) for d in DIRS):
+            if all(frames_of(design, src_template, d) for d in DIRS) and not any((design, state, d) in REJECTED for d in DIRS):
                 own |= 1 << si
             for dj, d in enumerate(DIRS):
                 frames = state_frames(design, state, template, d)

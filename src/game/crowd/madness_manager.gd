@@ -214,7 +214,7 @@ func _enter(p: Person, rec: Dictionary, stage: Stage) -> void:
 				Outcome.FRENZY:
 					# It clutches its head and screams first; the frenzy (its 15 s, the town's alarm) starts after.
 					p.scream(Person.SCREAM_SECONDS)
-					if _crowd.sfx != null and not _crowd.is_hushed():
+					if p.is_screaming() and _crowd.sfx != null and not _crowd.is_hushed():
 						_crowd.sfx.play(&"cit_scream", p.ground_pos)
 					rec.frenzy_in = Person.SCREAM_SECONDS
 				Outcome.PANIC:

@@ -322,6 +322,34 @@ static func run(t) -> void:
 	screamer2.die(&"nova", Vector2.INF)
 	t.check(not screamer2.is_screaming() and screamer2._sprite_pose()[0] == &"death", "and so does death")
 	screamer2.free()
+	# Review fixes: the get-up clip plays whole; a knock-down clears a pending fright freeze; outside calls cannot drift
+	# a screaming or downed person for a tick.
+	t.check(Person.GETUP_SECONDS * PeopleArt.FPS_AT[PeopleArt.ANIMS.find(&"getup")] >= 6.99, "the get-up window shows all 7 frames")
+	var frightened := Person.new()
+	frightened.rng.seed = 49
+	frightened.bounds = TownLayout.MAP
+	frightened.setup_person(false, Vector2(2.7, 2.0), grid)
+	frightened._startle_left = 1.0
+	frightened.knock_down()
+	t.check(frightened._startle_left == 0.0, "a knock-down clears a pending fright freeze, so it does not freeze after getting up")
+	frightened.free()
+	var pinned := Person.new()
+	pinned.rng.seed = 50
+	pinned.bounds = TownLayout.MAP
+	pinned.setup_person(false, Vector2(2.7, 2.0), grid)
+	pinned.scream(Person.SCREAM_SECONDS)
+	pinned._idle = 0.0
+	var held_at := pinned.ground_pos
+	pinned.set_goal(Vector2(2.7, 8.0))
+	pinned.tick(1.0 / 60.0)
+	t.check(pinned.ground_pos == held_at and pinned._idle > 0.0, "a goal set on a screaming person moves it not at all, not for a tick")
+	pinned._scream_left = 0.0
+	pinned._down_left = 0.5
+	pinned._idle = 0.0
+	pinned.set_goal(Vector2(2.7, 8.0))
+	pinned.tick(1.0 / 60.0)
+	t.check(pinned.ground_pos == held_at and pinned._idle > 0.0, "nor one lying down")
+	pinned.free()
 	hitter.free()
 
 	var calm := Person.new()

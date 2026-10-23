@@ -39,3 +39,9 @@ All read fine; no clipping or holes. Back-view screams stand still, as ruled.
 ## Concerns
 - Bench is noisy because other sessions run Godot throughout; no clear regression.
 - Back-view screams still show the idle until the re-roll.
+
+## Fix wave (final review: Needs fixes)
+One commit. Tests first (test_person: get-up window shows 7 frames, knock-down clears the fright freeze, a goal set on a screaming or downed person moves it not at all; test_people_art: own-art bit clear for a rejected scream).
+- Recipe: `docs/people_anim_reroll.md` rewritten (remove old clip first, temp `--name` or `--replace`, copy `cross-punch/` to `swing/`, delete stale frames, `_REJECTED_SOURCE`). `pixellab_api.py char-anim --replace` added (DELETE per group and direction; checked with `--help` only, the endpoint is untested, the doc says to use MCP `delete_animation` if refused; no generations spent).
+- 1 `GETUP_SECONDS` 0.7 (7 frames at 10 fps). 2 scream sound only if `p.is_screaming()`. 3 `tick()` keeps `_idle >= 0.05` while scream/down/getup runs. 4 `knock_down()` clears `_startle_left`. 5 `own` bit skips REJECTED rows (scream bit clear for the 9 designs). 6 `"since": m._clock` in behaviour_check. 7 doc says idle frames. 8 spec rule 2 reworded (timers pause, as in a stumble).
+- Suite 8255/0. Full refs run: only judgement_b_play_1..3 and night_b_play_1..3 moved (Mob Verdict/Madness fights: a knocked-down victim no longer freezes after getting up, and held people no longer creep a tick); identical on two runs, re-recorded in routes_t5.tsv (judgement 306700222, -721575751, -594002650; night 207366634, -913637529, 718260393). digest, crowd_check, calm, gates and all other 227 refs unchanged. FLOW alone 127/0.

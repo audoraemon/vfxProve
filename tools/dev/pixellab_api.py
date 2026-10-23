@@ -203,6 +203,21 @@ def _group_of(cid, template, name):
     return gs[0].get("animation_group_id") if gs else None
 
 
+## Delete the frames of a character's animation (by template or name) in the given directions, one DELETE per group and
+## direction: char-anim skips a direction that already has frames, so a re-roll has to remove them first. (If this endpoint
+## is refused, delete in the MCP with delete_animation(character_id, animation_group_id, direction) and run char-anim again.)
+def _delete_dirs(cid, template, name, dirs):
+    for g in _groups(cid, template, name):
+        gid = g.get("animation_group_id")
+        for d in g.get("directions", []):
+            if d["direction"] in dirs and d.get("frames"):
+                st, r = _call("DELETE", "/characters/%s/animations/%s?direction=%s" % (cid, gid, d["direction"]))
+                if st >= 300:
+                    sys.exit("--replace: deleting %s %s failed (%d): %s; delete it with the MCP delete_animation instead"
+                             % (g.get("display_name"), d["direction"], st, json.dumps(r)[:300]))
+                print("replace: deleted %s %s (group %s)" % (g.get("display_name") or g.get("animation_type"), d["direction"], gid))
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -220,6 +235,9 @@ def main():
     an.add_argument("--action", help="v3: the action_description")
     an.add_argument("--frames", type=int, default=8, help="v3: frame_count")
     an.add_argument("--name")
+    an.add_argument("--replace", action="store_true",
+                    help="first delete this animation's group (by template or name) for the given --dirs, so a clip that "
+                         "already has frames is generated again instead of skipped; costs the generations of a new clip")
     an.add_argument("--dirs", default="south-east,south-west,north-east,north-west")
     an.add_argument("--out", required=True)
     ip = sub.add_parser("inpaint", help="regenerate the mask's white area of an image, the rest kept as it is")
@@ -278,6 +296,8 @@ def main():
             sys.exit("--template is required in template mode")
         name = args.name or args.template
         group = None
+        if args.replace:
+            _delete_dirs(args.id, args.template, name, wanted)
         # PixelLab takes only as many directions as it has free job slots and drops the rest: submit what is missing
         # into the same animation group until every direction has landed.
         for attempt in range(12):

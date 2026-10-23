@@ -751,7 +751,7 @@ func _madness_shots(shots: bool, ring: float, pick: int, prefix: String, front: 
 		near[i].mind = Person.Mind.CALM
 	var m: MadnessManager = crowd.madness
 	mad.statuses[MadnessManager.STATUS] = 1.0
-	var rec := {"stage": MadnessManager.Stage.BROKEN, "since": 0.0, "outcome": -1, "broken_at": -INF, "secondary": 0,
+	var rec := {"stage": MadnessManager.Stage.BROKEN, "since": m._clock, "outcome": -1, "broken_at": -INF, "secondary": 0,
 		"tic": 99.0, "concern": 99.0, "shove": 99.0}
 	m.afflicted[mad] = rec
 	for seed_value in range(1, 200):

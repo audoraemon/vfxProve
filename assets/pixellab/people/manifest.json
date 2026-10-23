@@ -73,7 +73,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "caregiver_a": {
    "block": [
@@ -144,7 +144,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "caregiver_b": {
    "block": [
@@ -215,7 +215,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "clergy": {
    "block": [
@@ -286,7 +286,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "craft_a": {
    "block": [
@@ -357,7 +357,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "craft_b": {
    "block": [
@@ -428,7 +428,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "engineer": {
    "block": [
@@ -499,7 +499,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "escort": {
    "block": [
@@ -925,7 +925,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "merchant_b": {
    "block": [
@@ -996,7 +996,7 @@
      "north-west": 7
     }
    },
-   "own": 511
+   "own": 479
   },
   "rescue": {
    "block": [

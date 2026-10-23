@@ -1,28 +1,49 @@
 # People animations: clips to re-roll later
 
-Every clip below is rejected or missing. The game shows a fallback until it is re-rolled (a still stand from the idle
-frames, or the old fight pose). Each direction costs 1 PixelLab generation. Character ids are in
-`assets/pixellab/people/characters.json`.
+Every clip below is rejected or missing. The game shows a fallback until it is re-rolled: a still stand from the idle
+frames (the back-view screams, and the marshal, escort and rescue during a swing). Each direction costs 1 PixelLab
+generation. Character ids are in `assets/pixellab/people/characters.json`.
 
-Re-roll recipe (from the project root; each call is one direction):
+## How to re-roll (the recipe that works)
 
-    python tools/dev/pixellab_api.py char-anim --id <id> --mode v3 --action "<action>" --frames 8 \
-        --name <name> --dirs <direction> --out <scratch dir>
-    python tools/dev/make_people_atlas.py --import <design>=<scratch dir>
+`char-anim` skips any direction that already has frames under that animation (matched by template or name), and a
+second group of the same name would overwrite the first one's files, so the old clip has to go first.
 
-v3 clips come on a 28 x 28 canvas with the reference as frame 0; `--import` fits them to the 24 cell by the feet.
-After a successful re-roll, delete the design's entry from `REJECTED` in `tools/dev/make_people_atlas.py`, rebuild the
-atlas and re-record the references that move.
+1. **Remove the old clip from PixelLab.** Either add `--replace` to `char-anim` (it deletes that name's group for the
+   given `--dirs` first; untested against the live API, so if it refuses, use the next), or call the MCP
+   `delete_animation(character_id, animation_group_id, direction)` (group ids: `get_character`). A clip that is not
+   generated yet (the soldier thrusts) needs no removal. Alternative for a v3 clip: generate under a temporary
+   `--name <name>_rr` (a new group, no clash) and copy its folder over in step 3.
+2. **Generate one direction:**
+
+       python tools/dev/pixellab_api.py char-anim --id <id> --mode v3 --action "<action>" --frames 8 \
+           --name <name> --dirs <direction> --replace --out <scratch dir>
+
+   For a template clip: `--template cross-punch --dirs <direction> --replace --out <scratch dir>`.
+3. **Fix the download so `--import` finds it.**
+   - A template swing downloads into `<scratch dir>/cross-punch/`: copy its files into `<scratch dir>/swing/`
+     (`--import` reads `swing/`, not `cross-punch/`).
+   - A temporary `--name` folder: copy its files into the real folder name (`scream/` or `swing/`).
+   - Delete the old `assets/pixellab/people/frames/<design>/<scream|swing>/<direction>_*.png` first, so the new frames
+     are not mixed with stale ones (the import refits every direction of that folder from the download).
+4. **Import and repack:**
+
+       python tools/dev/make_people_atlas.py --import <design>=<scratch dir>
+
+   (v3 clips come on a 28 x 28 canvas with the reference as frame 0; `--import` fits them to the 24 cell by the feet.)
+5. **Un-reject:** for a back-view scream, delete the design from `_REJECTED_SOURCE` in `tools/dev/make_people_atlas.py`
+   (`REJECTED` is built from it, with the mirrored direction), rerun `make_people_atlas.py`, import in Godot, and re-record
+   whatever references move.
 
 ## 1. Back-view screams (9): rejected, silent fallback
 
-The north-east scream shows the face, so it reads as facing south. Frames stay on disk in
-`assets/pixellab/people/frames/<design>/scream/north-east_*.png`. North-west mirrors north-east, so both back views
-use the idle frames (a still stand; the scream sound still plays). Re-roll the north-east direction only.
+The north-east scream shows the face, so it reads as facing south. The old frames stay on disk in
+`assets/pixellab/people/frames/<design>/scream/north-east_*.png`. North-west mirrors north-east, so both back views use
+the idle frames (the scream sound still plays). Re-roll the north-east direction only.
 
 - mode: v3, name `scream`, frames 8, direction `north-east`
-- action: `clutching head with both hands and screaming, staggering in place` (same as the south-east clip; to push the
-  back view, try appending `, seen from behind, face turned away`)
+- action: `clutching head with both hands and screaming, staggering in place` (to push the back view, try appending
+  `, seen from behind, face turned away`)
 
 | design | character id |
 |---|---|
@@ -40,12 +61,13 @@ use the idle frames (a still stand; the scream sound still plays). Re-roll the n
 
 The clip is in the game; re-roll it when budget allows. Farmer id `0b2d388b-9e50-46e5-9213-bea9957a9ac8`.
 
-- mode: template, template id `cross-punch`, name `swing`, direction `south-east` (south-west mirrors it)
+- mode: template, `--template cross-punch`, direction `south-east` (south-west mirrors it). Needs step 1 (remove) and the
+  `cross-punch/` to `swing/` copy in step 3. Not in `_REJECTED_SOURCE`, so step 5 does not apply.
 
 ## 3. Soldier spear thrusts (6): not yet generated
 
-The marshal, escort and rescue designs show their old fight pose. Both directions for each (`south-east`,
-`north-east`), the same as the guard.
+The marshal, escort and rescue show their idle frames during a swing. Both directions for each (`south-east`,
+`north-east`), the same as the guard. Nothing to remove first.
 
 - mode: v3, name `swing`, frames 8
 - action: `thrusting a spear forward then pulling it back`

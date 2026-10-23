@@ -209,7 +209,7 @@ const LANTERN_SPEC := {
 	"stirring": "The bell tolled: the Lantern turns and dawn comes 1.5 times as fast. Its Bearer sets out soon: kill him to blind it.",
 	"bearer": "The Bearer (gold) carries the flame to the bell tower. Kill him and dawn slows again. His escorts (red) take it up if they see.",
 	"burning": "The Lantern burns: dawn comes twice as fast. A loud power or a seen death in its beam did it. Kill the Bearer (gold).",
-	"herald": "The Herald (gold) runs for the Temple. Kill him before he gets in, unseen, or the warning passes on. The Bearer waits.",
+	"herald": "The Herald (gold) runs for the Temple. Kill him before he gets in, unseen, or the warning passes on. No new Bearer starts.",
 	"herald_silent": "The bell is silent: the warning (gold) runs for the Temple instead. Kill its carrier before he gets in, unseen.",
 	"seeking": "The bell tolled: dawn comes 1.5 times as fast. The Lantern seeks a Bearer: nobody is free to carry its flame yet.",
 }

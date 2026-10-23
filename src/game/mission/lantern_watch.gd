@@ -71,7 +71,7 @@ var bell_silenced := false
 ## Herald reports running for the Temple that are not a warning's own: the keeper who rang with no warning delivered (a TempleReport
 ## each; the warnings' own Heralds are their directors', MissionDirector.herald_open()).
 var heralds: Array[TempleReport] = []
-## The Lantern-Bearer: null until he sets out (BEARER_AFTER mission seconds after the toll).
+## The Lantern-Bearer: null until he sets out (LanternBearer.AFTER mission seconds after the toll, or after the last Herald is gone on a Herald night).
 var bearer: LanternBearer
 
 var rules: Rules

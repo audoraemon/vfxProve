@@ -1,17 +1,28 @@
 # v0.11.2 listening sheet
 
-The numbers below are measured (`python tools/audio/loudness.py`, ITU-R BS.1770-4); whether they sound right is yours to say.
-Mark each row 1-5 (1 = wrong, 3 = fine, 5 = just right) and write what you heard in the note column. A level that is off is
-one number in `Sfx.CATALOG` (`db`), so say "louder" or "quieter" and by how much if you can.
+This sheet is for your ears. The computer can measure how loud a sound is. It cannot say if the sound is right. You can.
 
-**How to listen.** Every row has a mix beside this file, `mix_<cue>.wav`: four seconds of `music_theme` at the game's music
-level (`Music.DB` -16 dB; the bed measures -29.2 LUFS) and the cue at its played level at 1.0 s. If the cue reads over the
-music in the mix, it reads over it in the game. A cue with several variants is mixed with its loudest variant (the one the
-measure and the tests use); the others are up to 2.5 LU quieter.
+**How to use it.**
+1. Open the table below. Each row is one sound. Next to this file is `mix_<cue>.wav` for that row.
+2. Play the mix. It is 4 seconds of the game's music with the sound added at 1.0 s, at the level the game plays it.
+   If you hear the sound over the music in the mix, you will hear it over the music in the game.
+3. Read the "Listen for" column. It says what the sound should be.
+4. Write your verdict in the same row of this file. Put a mark from 1 to 5 in "Mark 1-5"
+   (1 = wrong, 3 = fine, 5 = just right). Put what you heard in "Note".
+   If a sound is too loud or too quiet, write "louder" or "quieter" and by how much, if you can.
+   You can also tell me in the chat instead of editing the file.
+5. Then do the six checks in "In the game" at the end.
 
-**Terms.** LUFS = integrated loudness of the file. Peak = true peak in dBTP. Played = LUFS + the catalog's dB + the call's offset,
-the level the player hears (jitter of +-1.5 dB aside). The loud powers' median main cue plays at **-14.55**; the floor for every
-power's cast sound is that minus 6 LU, **-21.0** (`QUIET_FLOOR` in `tests/test_power_sounds.gd`).
+A level that is off is one number in `Sfx.CATALOG` (`db`). It is a small change to fix.
+
+**How the numbers were made.** Every number below is measured (`python tools/audio/loudness.py`, ITU-R BS.1770-4) and copied from
+`tools/audio/loudness.tsv` (164 files, all checked). The mix uses the game's music level, `Music.DB` -16 dB; the music bed
+measures -29.2 LUFS. A cue with several variants is mixed with its loudest variant (the one the measure and the tests use);
+the others are up to 2.5 LU quieter.
+
+**Terms.** LUFS = integrated loudness of the file. Peak = true peak in dBTP. Played = LUFS + the catalog's dB + the call's offset.
+That is the level the player hears (a random change of +-1.5 dB aside). The loud powers' median main cue plays at **-14.55**.
+The floor for every power's cast sound is that minus 6 LU: **-21.0** (`QUIET_FLOOR` in `tests/test_power_sounds.gd`).
 
 ## Rows
 

@@ -149,7 +149,7 @@ func step(delta: float) -> void:
 	_step_reports(delta)
 	_step_events(delta)
 	if rules.lantern == null and crowd.bell != null and crowd.bell.state == BellNetwork.State.RUNG:
-		gaze.fill()  # (v0.11.2) only where no Lantern is: on Mira's and the Sermon the toll turns the Lantern and adds to the Gaze instead
+		gaze.fill()  # (v0.11.2) only where no Lantern is: on Mira's, the Sermon and First Prayers the toll turns the Lantern and adds to the Gaze instead
 	if rules.time_left <= 0.0 and not roof_fallen:
 		_roof()
 

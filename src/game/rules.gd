@@ -96,7 +96,7 @@ const SCORE_PER_CHAIN := 300
 const RANKS := [[19000, "S"], [14200, "A"], [9400, "B"], [4600, "C"]]
 
 var time_left := MISSION_SECONDS
-## How many mission seconds pass per real second (v0.11.2 spec 4.4): 1.0 until a Lantern turns (LanternWatch), then x1.5 or x2.0.
+## How many mission seconds pass per real second (v0.11.2 spec §4.4): 1.0 until a Lantern turns (LanternWatch), then x1.5 or x2.0.
 ## The clock (time_left) and every EventTimeline run on it; cooldowns, a person's walk, elapsed() and the director's step(delta)
 ## stay real. Negative rates are clamped to 0.
 var clock_rate := 1.0:

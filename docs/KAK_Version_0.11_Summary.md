@@ -2,6 +2,226 @@
 
 *Engine: Godot 4.7.2 (gl_compatibility, 640×360 pixel art, iso view). Branch `claude/lantern-campaign-spec` (from the v0.10 line plus the v0.09.1 board-tag work at `92e0dcc`). v0.11 is **The Tiers**: the board of single missions becomes the god's five Awakening Tiers, each night hears the town's wishes, ends in an ascent and pays believers that buy the god's upgrades. It is built in milestones: M1 the framework, then M2-M6 one tier at a time (25 missions in all). Design: `docs/superpowers/specs/2026-10-08-kak-v011-tiers-design.md`. Plan: `docs/superpowers/plans/2026-10-08-kak-v011-m1-framework.md`. M2 (Whisper): Tier 1's four new missions; mission spec `docs/superpowers/specs/2026-10-08-kak-v011-m2-whisper-missions.md`, plan `docs/superpowers/plans/2026-10-08-kak-v011-m2-whisper.md`. M3 (Omen): Tier 2's three new missions; mission spec `docs/superpowers/specs/2026-10-09-kak-v011-m3-omen-missions.md`, plan `docs/superpowers/plans/2026-10-09-kak-v011-m3-omen.md`. M4 (Wrath): Tier 3's three new missions; mission spec `docs/superpowers/specs/2026-10-10-kak-v011-m4-wrath-missions.md`, plan `docs/superpowers/plans/2026-10-10-kak-v011-m4-wrath.md`. M5 (Reckoning): Tier 4's four new missions; mission spec `docs/superpowers/specs/2026-10-10-kak-v011-m5-reckoning-missions.md`, plan `docs/superpowers/plans/2026-10-10-kak-v011-m5-reckoning.md`. M6 (Ascendance): Tier 5's three new missions and v0.11's close; mission spec `docs/superpowers/specs/2026-10-15-kak-v011-m6-ascendance-missions.md`, plan `docs/superpowers/plans/2026-10-15-kak-v011-m6-ascendance.md`.*
 
+## v0.11.2: Playtest round 2
+
+Built on v0.11.1 (feat/Develop-Main `3361a711`, tag `kak-v0.11.1`). Built from 2026-10-19 to 2026-10-23, straight through and subagent-driven in 20 tasks plus one fix wave after the final review (45 commits since `3361a711`, branch `feat/v0112`). Spec: `docs/superpowers/specs/2026-10-19-kak-v0112-playtest-2.md`. Plan: `docs/superpowers/plans/2026-10-19-kak-v0112-playtest-2.md`. Run notes (rulings, pre-flight, task reports, reviews, the final review): `.superpowers/sdd/v0112/`. Every ruling is also in `docs/KAK_v011_Rulings.md`, "Merged v0.11.2 rulings". Text, drawn shapes and new sounds only: no new art, no PixelLab. New sounds are made from the CC0 and public-domain sound library. No Sonniss sound and no generated sound is in the repo.
+
+At the end: suite 8111 checks, 0 failures. FLOW 127 checks, 0 failures (run alone). `python tools/audio/loudness.py --check`: 164 files, 0 bad. 233 reference rows, all matching.
+
+### The four playtest points
+
+| # | What the user said | What it became | Where |
+|---|---|---|---|
+| 1 | Some missions restrict which abilities can be equipped | No mission keeps a power list. Every power can be drafted for every mission. Slots, DP and unlocks stay as they were. `MissionDef.pool` and `allows()` stay, but every pool is empty. `VIGIL_POOL`, `RUIN_POOL` and `BellRingersDirector.LEFT_OUT` are deleted | Task 1 |
+| 2 | Too silent: some abilities have no sound, a death has none, the music is too loud | Music lowered from -10 dB to -16 dB, on its own bus. An Options panel (pause menu and title) with Music, Sounds and Interface bars. A death sound on every kill. Each of the 24 quiet powers has its own cast sound, and 8 of them a second sound for the moment of effect. Levels are measured, and a listening sheet waits for your ears | Tasks 3, 8, 9, 13, 14 |
+| 3 | Citizens notice too fast: Smite's target escapes | A loud power's danger now counts from its first impact, not from the cast. While it builds up, calm citizens only look at it. A frightened person freezes for 0.4-0.8 s before they run | Tasks 4, 5 |
+| 4 | A loud power rings the bell and the mission fails at once | The toll is never an instant loss. **The Lantern Turns**: dawn comes faster (x1.5, then x2.0 when it burns). A Lantern-Bearer walks to the bell tower, and killing him slows dawn again. On the bell nights a Herald runs for the Temple and you must stop him | Tasks 7, 10-12, 15-18 |
+
+### The Lantern Turns: the rules
+
+These are the numbers in the code now (`LanternWatch`, `LanternBearer`, `TempleReport`).
+
+| Part | Rule |
+|---|---|
+| The toll | The first time the bell rings on a Lantern night: banner `THE BELL TOLLS - THE LANTERN TURNS`, a flare cue at the Temple, one pale beam from the Temple's spire. The toll is latched: a bell that is unrung and rung again changes nothing |
+| Stages | Asleep before the toll, clock x1.0. **Stirring** from the toll, x1.5, one beam. **Burning** x2.0, two beams. **Blind** x1.0, no beams |
+| What burns it | A loud power cast where a beam touches, or a death that someone sees inside a beam. A quiet cast in a beam does nothing. Burning never falls back to Stirring |
+| Blind is final | When the Bearer dies the Lantern is blind for the rest of the act. It cannot turn again |
+| The beam | A separate pale `Searchlight` with no town dim. It holds 6 s (`BEAM_HOLD`) and slides toward loud casts and deaths. It costs no Gaze. The Vigil Flame's and the Relic Run's own lights are not touched |
+| What hastens | The clock, every timeline event and each director's schedule (set-outs, waves, stars, halts) run on mission time. Reflexes stay real: walks, stares, looks, beam sweeps, cooldowns, the Gaze's per-second feeds. Every countdown shown is in mission seconds, so the strip, the tags and the clock agree |
+| The Bearer | The clergy citizen nearest the Temple's door (else the nearest citizen not reserved). He sets out 10 mission s after the toll (`LanternBearer.AFTER`), walks slowed to 0.3 (`SLOW`), and reaches the bell tower in about 21 s. Banner `THE LANTERN-BEARER SETS OUT`. Gold tag with an edge arrow and a countdown. At the tower he keeps the vigil, and he can still be killed there |
+| The escorts | Two plain citizens walk in file behind him, 2.2 apart (`ESCORT_GAP`), tagged red `ESCORT`. If an escort sees the Bearer fall (within 3.0, `ESCORT_SEE`) he takes up the flame, banner `AN ESCORT TAKES UP THE FLAME`. At most two relays. **This was the run's choice, not the brief's: it needs your eye** (`ESCORT_RELAY` false turns it off) |
+| If nobody is free | If no one can be appointed, the Lantern retries every 1 s (`SEEK`). The strip shows `The Lantern seeks a Bearer` with no countdown |
+| The Herald (bell nights) | Whoever rang the bell becomes the Herald and runs for the Temple's door. He first comes down the tower (5 s, `HERALD_DESCEND`), then walks slowed to 0.4 (`HERALD_SLOW`), about 16 s. About 21 s of room in all. Gold tag, countdown `HERALD - AT THE TEMPLE IN m:ss`, and a `TEMPLE` place tag. Kill him unseen and the warning dies. Kill him seen and the nearest witness carries it on. If he gets in: banner `THE LANTERN HEARS` and the night is lost, reason `lantern` |
+| The Bearer waits | On a Herald night the Bearer does not set out while any Herald runs. He sets out 10 mission s after the last Herald is gone (final-review fix C16). This keeps the Herald and the Bearer from crossing in the same street |
+| Silent bell | If the bell is cracked (Blight) or its tower falls on a Herald night, the warning that called it runs for the Temple as a Herald. Banner `THE BELL IS SILENT - THE WARNING RUNS FOR THE TEMPLE`. There is no toll and no Lantern. Blight on the bell is never a free win |
+| The Gaze nights | The toll no longer fills the Gaze. It adds 40 once (`GAZE_TOLL`). Everything else is as above |
+| The watch nights | The toll turns the Lantern and nothing else. No Herald |
+| After the main objective | A toll after the main objective is done costs only the faster dawn (ruling C3). It cannot lose the night |
+| Acts | The Lantern lasts the act it turned in. The Long Night's Acts II and III meet a rung bell as before |
+| The campaign | `Rules.result()` now says `"tolled"`. Night 2's warned town is set from that, because a bell loss can no longer happen |
+| The HUD | A gold ring and a badge `×1.5` on the clock (red ring and `×2.0` when burning; `x` if the font has no `×`). TAB never hides it. Legend page 2 is in two columns and has 4 new rows. Hints: the Herald's line first, then a director's own instant-loss line, then burning (8 s), the Bearer, stirring |
+| The words of the loss | Results screen: `THE LANTERN HEARS`. `Descent.LOST`: "lost: the Lantern heard" |
+| Relays | No relay (a warning, a ringer, a Temple report) ever hands its errand to the Bearer or an escort (fix C15) |
+
+### The nights that adopted the Lantern (12)
+
+| Kind | Nights | What the toll did before |
+|---|---|---|
+| **Herald** | The Warning (campaign Night 1), The Omen (Act I of The Long Night), Starfall (the board Warning), The Bell-Ringers | Lost the night at once (`BellSilentObjective`) |
+| **Watch** | The Tax Collector, The Informer | Lost the night at once |
+| **Gaze** | Mira's House, The Vigil Flame, Broken Lanterns, The Relic Run, The Sermon, First Prayers | Filled the Gaze, which lost the night (The Sermon only promised it in its text; First Prayers inherited it from Mira's House) |
+
+The Omen, The Sermon and First Prayers were not in the user's list. The Omen and The Sermon joined by rulings R3 and R4. First Prayers joined in the final-review fix wave (C14), because its toll still lost the night. Every other mission's toll stays as it was: the town's alarm. `BellSilentObjective` is deleted. `HeraldObjective` ("Stop the Herald", reason `lantern`) takes its place on Herald nights.
+
+### What changed in the game, by task
+
+| Task | What |
+|---|---|
+| 1 | Every pool emptied; `test_open_powers` checks every mission, act and board card. The FLOW step reads "every power" |
+| 2 | `Rules.clock_rate`, `Rules.mission_time()`, `EventTimeline` on mission time, `MissionDirector.mission_delta()`. Rate 1.0 is bit-exact |
+| 3 | `Settings` (`user://kak_settings.cfg`, `[audio]` music/sfx/ui), `OptionsPanel`, buses `Music` and `UI`, `Music.DB` -16. Pause menu: Resume, Options, Restart, Change powers, Missions or Campaign. Title: Campaign, Missions, Options, VFX Sandbox, Quit |
+| 4 | `PowerBook.IMPACT` (14 loud powers), held dangers in `Crowd`, `Crowd.danger_landed`, a look at the build-up, `Person.startle_seconds()` (a hash of the person's seed, never a random draw). The Assassinate and Festival directors read the impact |
+| 5 | Every moved reference re-recorded; all 50 gates run |
+| 6 | The Tax Collector A: the scripted policy smokes the door out after 30 s (was 42 s). Median 244 s to 201 s |
+| 7 | `LanternWatch` (stages, beam, Gaze +40, result `tolled`), `HeraldObjective`, the `--case=toll` plumbing |
+| 8 | `DeathVoices`: `cit_death` (5 takes), `sol_death` (3), `cit_fall` (4), `crowd_death_wave` (2). A wave is 0.25 s, 3 voices, a roar at 6 or more, 4 tokens refilled 3 a second |
+| 9 | `tools/audio/loudness.py`, `loudness.tsv`, `QUIET_FLOOR` -21.0, the listening sheet and its 39 mixes |
+| 10 | `LanternBearer`: Bearer, two escorts, relays, the vigil, tags and strip rows |
+| 11 | The Herald: `TempleReport`, warnings that run for the Temple, the silent bell |
+| 12 | Clock ring and badge, strip rows, 4 legend rows, `MissionHints.LANTERN`, new goal and lose words |
+| 13, 14 | 24 `q_<key>` cast cues, 8 `q_<key>_hit` cues, `lantern_flare`, `lantern_burn`, `lantern_blind` |
+| 15 | The Herald nights adopt the Lantern; the stars and posts run on mission time; `BellNetwork.keeper_held` |
+| 16 | The Tax Collector and The Informer adopt the Lantern (watch) |
+| 17 | Mira's House, The Sermon and Broken Lanterns adopt the Lantern (Gaze). Broken Lanterns' Gaze scales halve only after the toll |
+| 18 | The Vigil Flame and The Relic Run adopt the Lantern. Bench flags `--bench-toll` and `--bench-beams` |
+| 19 | Clean-ups, the final sweep, FLOW, the bench |
+| Fix wave | C14 First Prayers adopts the Lantern. C15 no relay hands its errand to the Bearer's people. C16 the Bearer waits for the Herald. C17 hint order. C18 no stale 0:00. C19 comment and dead-code minors |
+| 20 | These notes, the listening sheet, the Options row in the README, one hint wording |
+
+### Gates
+
+Gate columns are wins of 3, median seconds to the main objective, and the longest idle stretch (scripted player, seeds 1-3). The rules are v0.11.1's: doing nothing loses 3/3, the scripted player wins at least 2/3, the median is 180-240 s (route A) or 150-270 s (route B), idle is at most 45 s. Stars are judged on wins and idle only.
+
+**The 17 tier missions, after the awareness change (Task 5) and the later fixes.** Task 19 ran all 17 again on the final tree and every row passed.
+
+| Mission | A | B |
+|---|---|---|
+| The Tax Collector | 3/3, 201, 38 (Task 6) | 2/3, 238, 35 (thin: seed 1 loses to dawn at 276 s) |
+| Spoiled Harvest | 3/3, 189, 40 | 3/3, 150, 30 |
+| The Lost Lamb | 3/3, 194, 32 | 3/3, 222, 30 |
+| First Prayers | 3/3, 219, 35 | 3/3, 262, 42 |
+| The Bell-Ringers | 3/3, 193, 26 | 3/3, 160, 26 |
+| Market Panic | 3/3, 215, 25 | 2/3, 251, 20 |
+| The Informer | 3/3, 189, 27 | 3/3, 192, 30 |
+| The Crown's Bread | 3/3, 203, 26 | 3/3, 158, 40 |
+| The Prisoner | 3/3, 207, 36 | 3/3, 209, 30 |
+| The Heretic Hunt | 3/3, 183, 35 | 3/3, 214, 35 |
+| The Bishop | 3/3, 210, 21 | 3/3, 177, 28 |
+| The Armoury | 3/3, 214, 16 | 3/3, 168, 30 |
+| The Sermon | 3/3, 200, 44 | 2/3, 264, 34 |
+| The Relic Run | 2/3, 187, 38 | 3/3, 210, 45 |
+| The Lantern's Eye | 3/3, 230, 22 | 3/3, 195, 16 |
+| Exodus | 3/3, 206, 18 | 3/3, 240, 45 |
+| The Heart of Faith | 3/3, 183, 37 | 3/3, 183, 34 |
+
+**The stars (route B, `--board`; A is a reference outcome).**
+
+| Mission | Result |
+|---|---|
+| The Warning (Starfall) | 3/3, 185, 40 |
+| Mira's House | 3/3, 39, 34 |
+| Broken Lanterns | 2/3, 227, 35 |
+| The Vigil Flame | 3/3, 124, 33 |
+| The Festival | 3/3, 32, 15 |
+| The Procession | 3/3, 46, 36 |
+| Last Judgement | 0/3, idle 15 (reported, see below) |
+| The Long Night | 0/3, idle 22 (reported, see below) |
+
+**The toll case (`--case=toll`).** The scripted player lets the bell toll, then plays on. Wins of at least 2/3 are required. Idle and median are only printed. The ringers' idle of 73 s is the policy waiting for the Herald on purpose.
+
+| Night | Wins | Median | Idle | Verdict |
+|---|---|---|---|---|
+| The Warning (campaign) | 3/3 | 84 | 37 | PASS |
+| Starfall (route B, board) | 2/3 | 168 | 38 | PASS (thin) |
+| The Bell-Ringers | 2/3 | 181 | 73 | PASS (thin: seed 1 loses to the Herald) |
+| First Prayers | 2/3 | 187 | 36 | PASS (thin: seed 2 loses on "few", not the Gaze) |
+| The Tax Collector | 3/3 | 150 | 30 | PASS |
+| The Informer | 3/3 | 196 | 27 | PASS |
+| Mira's House (route B, board) | 2/3 | 45 | 30 | PASS (thin) |
+| Broken Lanterns | 3/3 | 122 | 43 | PASS |
+| The Sermon (A) | 3/3 | 160 | 23 | PASS |
+| The Vigil Flame (route B, board) | 1/3 | 133 | 30 | reported (C12) |
+| The Relic Run | 1/3 | 165 | 45 | reported (C12) |
+
+The Omen has no toll row of its own. It uses the same director, objectives and Herald as The Warning, and unit tests cover it.
+
+### Moved references
+
+The list had 200 rows at v0.11.1. It has 233 now. Of the 200, 91 moved on purpose and none were removed. 33 are new toll rows. Each move was re-recorded in the commit that caused it, with the reason in the commit body.
+
+| Task | Rows | Why |
+|---|---|---|
+| 1-4 | none | Open powers, the clock rate at 1.0, the sound and the awareness code move no checksum on their own |
+| 5 | 84: `crowd_check` (-346732806 to -935602679), `fire`, `miras_play`, and the play and B-play rows of 26 missions | Danger from the impact, a look at the build-up and the startle. The whole list was run before and after. `digest`, `calm`, `gates`, `rite`, `soldiers` and every `*_none_*` row did not move |
+| 6 | 3: `tax_play_1..3` | The policy smokes the door out at 30 s |
+| 7-14 | none | |
+| 15 | 7: `warning_none`, `warning_whisper`, `warning_discord`, `ringers_none_1..3`, `ringers_play_3`. New: `warning_toll_1..3`, `starfall_toll_1..3`, `ringers_toll_1..3` | The toll no longer loses. The Herald gets in, or dawn decides |
+| 16 | 2: `tax_b_play_1..2`. New: `tax_toll_1..3`, `informer_toll_1..3` | A seen strike's toll no longer loses by the bell |
+| 17 | none. New: `miras_toll_1..3`, `lanterns_toll_1..3`, `sermon_toll_1..3` | `lanterns_toll` was re-recorded in the fix round (escorts are plain citizens, C10) |
+| 18 | none. New: `flame_toll_1..3`, `relic_toll_1..3` | `flame_toll_1..2` and `relic_toll_2..3` were re-recorded after C10 |
+| 19 | 5 toll rows: `ringers_toll_1`, `ringers_toll_3`, `informer_toll_1..3` | The toll harness runs without hit-stop (C13) |
+| Fix wave | 16 rows: `warning_toll_1..3`, `starfall_toll_1..3`, `ringers_toll_1..3`, `warning_none`, `warning_whisper`, `warning_discord`, `ringers_none_1..3`, `ringers_play_3`. New: `prayers_toll_1..3` | C16: the Bearer waits for the Herald, so who is in the street changed. The outcomes and times of the none and play rows did not change |
+
+Unmoved throughout: `digest` (61267b7e...), `calm`, `gates`, `rite`, `soldiers`, and every row of the missions not listed above. Note: `crowd_check` is now -935602679 (it was -346732806).
+
+### Bench
+
+Taken alone on a quiet machine with `--bench --board`, alternating v0.11.1 and v0.11.2, medians of 3 pairs (9 pairs for The Warning and The Vigil Flame). Run-to-run noise on this laptop is 3-5 fps.
+
+| Row | v0.11.1 | v0.11.2 | Diff |
+|---|---|---|---|
+| The Warning | 120.3 | 118.2 | -2.1 |
+| Mira's House | 99.9 | 102.2 | +2.3 |
+| The Vigil Flame | 105.1 | 102.2 | -2.9 |
+| The Procession | 94.2 | 93.2 | -1.0 |
+| Last Judgement | 96.7 | 98.0 | +1.3 |
+| Vigil Flame, `--bench-beams` (untolled) | 103.7 | 103.3 | -0.4 |
+| Vigil Flame, `--bench-beams --bench-toll=20` (tolled) | 103.2 | 94.3 | **-8.9** |
+
+Untolled, the draw calls and primitives are the same within 1 on every row. The two small losses (The Warning -2.1, The Vigil Flame -2.9) are inside the noise. A profile found no single place for them. The cost is spread over small new work each frame (the Lantern's step, DeathVoices, the awareness hold). The tolled Vigil is the worst case: four beams, the Bearer's file and a town with the bell rung. It still runs above 94 fps. About 2 fps of the loss is the two pale beams. The rest is the town's response to a rung bell. It was not tuned.
+
+### Reported, not binding
+
+These missed a gate, or sit at the edge of one. The rule the user asked for holds on all of them: the toll never loses the night at once, and the night stays winnable.
+
+- **Last Judgement and The Long Night, route B: 0/3 each (C5).** This is v0.11.1's known state. It is not new.
+- **Stealth toll cases (C12): The Vigil Flame 1/3, The Relic Run 1/3, Mira's House A 0/3, The Sermon B 0/3.** Their no-toll results are already thin. The scripted player has no quiet way to the Bearer: someone always stands within 2.0 of him. Tuning those nights for a forced toll at 30 s broke their normal gates (a slower Relic cart made route A idle 66 s). A late toll wins them (The Vigil Flame wins 3/3 when the toll comes at 90 s or later). A person may do better than the script. Please try them.
+- **Thin 2/3 rows:** The Tax Collector B (2/3, seed 1 loses to dawn at 276 s), the Starfall toll, the Bell-Ringers toll, the First Prayers toll, and the Mira's House toll on route B (all 2/3). The Bell-Ringers toll fell from 3/3 to 2/3 in the fix wave. The Bearer now stays out of the street while the Herald runs, so the scripted player has the Herald alone for his 21 s.
+- **C3: a toll after the main objective costs only the faster dawn.** With `BellSilentObjective` gone, nothing else can lose the night after the main objective is done.
+- **Bench:** untolled The Warning -2.1 and The Vigil Flame -2.9 are inside the noise. Tolled Vigil Flame -8.9.
+
+### Worth checking when you play
+
+1. **A toll on The Warning.** Cast a loud power where people see it. Do you feel dawn rushing? Is the Herald a fair chase (about 21 s)? Is `THE HERALD RUNS FOR THE TEMPLE` clear?
+2. **The Lantern-Bearer's escorts (R26).** They take up the flame if they see the Bearer fall. This was not in your brief. Does it feel like a fair second fight, or too slow? One constant turns it off.
+3. **The stealth nights with a toll** (The Vigil Flame, The Relic Run, Mira's House, The Sermon). Can you kill the Bearer without being seen? The scripted player could not.
+4. **Burning.** Does a loud power in the pale beam read clearly as the cause? The `×2.0` badge and the red ring are the only signs besides the banner.
+5. **Smite on a standing target.** Does the target now stand and stare long enough for the strike to land? Is the 0.4-0.8 s freeze natural, or too long?
+6. **The listening sheet** (`tools/audio/ab/v0112/LISTEN.md`). Start with the music at -16 dB: too quiet, or still too loud? Then the quiet powers, and a Nova into the market (one roar and three cries, not sixty).
+7. **Silent deaths.** Silent Doom, Death Mark and plague play a body falling, not a cry. Is that the right feel?
+8. **Options.** Move each bar from the title and from the pause menu. Close the game and open it again: do the volumes stay?
+9. **First Prayers.** The bell now turns the Lantern here too (the Gaze rises by 40).
+10. **Blight on the bell** on a Herald night. The warning should run for the Temple, not vanish.
+11. **The Bell-Ringers' late posts.** The second and third posts send a ringer after the toll. A Herald from a late post can run while the Bearer is already walking, so they can still cross in the street.
+12. **Legend page 2 (H).** It now has two columns and four new rows. Is it readable?
+13. **Frame rate.** The tolled Vigil Flame is the heaviest case (94 fps in the bench).
+
+### Minors left
+
+Nothing here blocks the release. Each was seen by a reviewer and not taken.
+
+From the final review and the fix wave (`final-review.md`, `review-fix.md`, `task-fix-report.md`):
+
+- `LanternBearer.MIN_CHORD` is 1.9 and `Crowd.DOOM_WITNESS` is 2.0. At a corner an escort can count as a witness to the Bearer's fall. 2.05 collapses the escorts' file (the closest pair would be 0.86), so it stays at 1.9.
+- `Person.panic()` returns early for a person who finds a shelter, so a sheltering person never freezes. This matters only for survivors.
+- `TierBook._from_act()` still copies `m.pool` (always empty; R39 kept the field).
+- The Bell-Ringers brief line "Stop their ringers before the bell." is still shown. It is still true advice.
+- The Informer's how-to-win line and its `informer.found` line do not name the Lantern. The plate is too short to hold it.
+- The `seeking` and `stirring` hints say "1.5 times as fast", but they also show at Burning (x2.0). Neutral words would fix it.
+- `Hud.hint_key` puts the Herald's line before a director's own phase line. This is deliberate (note C20 in the rulings file). The text of C17 said otherwise.
+- A third copy of `Crowd.nearest_witness` sits in `WarningDirector._relay_witness` (and in `RingerDirector`). The doc names only `TempleReport._witness`.
+- `tests/test_hud.gd` leaves `Hud.details = true` set at the end of one block.
+- The note about 2.05 in `lantern_bearer.gd` sits inside the REACH and MIN_CHORD doc block.
+- `EventTimeline` keeps stepping through Abolition while `mission_time()` stops. A Lantern's clocks and the strip can differ by the abolished seconds (documented on `mission_time()`).
+
+From the task reviews (2, 4, 16, 18):
+
+- Review 2: `tests/test_clock_rate.gd` has no `==` check that rate 1.0 is exact. The references guard that. A stray `tl.step(0.0)` asserts nothing.
+- Review 4: under Abolition a loud power's danger is held until the thaw plus its impact time. Held dangers that fall due in the same frame land in the order they were cast, not in time order. A lane power alarms a quarry within `alarm_reach` of any point of its lane, which is wider than the old test. A startled person may take one step before the freeze ends.
+- Review 16: Tax B stays thin (see above). Bishop and the board descent rows were confirmed unmoved by the full reference run.
+- Review 18: two lights in one sky (the Vigil's and the Lantern's) are never tested together, and an escort that does not pray in the Vigil's beams has no test. `RelicRunDirector.halt_in()` compares `SET_OUT_AT` with the mission clock and is exact only at stretch 1, which is the Relic's case today. The `--bench-beams` and `--bench-toll` flags stack, so the "SECONDS then `--bench-after`" doc is one wait out.
+
 ## v0.11.1: Playtest round 1
 
 Built on v0.11 (feat/Develop-Main `d539922`, tag `kak-v011-m6`), 2026-10-17 and 2026-10-18, straight through and subagent-driven in 13 tasks (33 commits since `3209ae4`). Spec: `docs/superpowers/specs/2026-10-17-kak-v0111-playtest-1.md`. Plan: `docs/superpowers/plans/2026-10-17-kak-v0111-playtest-1.md`. Run notes (rulings, pre-flight, task reports, reviews): `.superpowers/sdd/v0111/`. Text and drawn shapes only: no new art.

@@ -126,8 +126,8 @@ var _seen_left := 0.0
 ## checkpoints, your believers' house, the people, the signals, the strip (the set-out, the light's search).
 func _begin() -> void:
 	gaze = VigilFlameDirector.FlameGaze.new()
-	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
-	searchlight = Searchlight.new().setup(TownLayout.TEMPLE.get_center())
+	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
+	searchlight = Searchlight.new().setup(Places.at(&"temple"))
 	for p: Vector2 in ROUTE:
 		route.append(_walkable(p))
 	for k: int in HALT_LEGS:

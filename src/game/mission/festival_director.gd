@@ -51,8 +51,8 @@ var crowd_size := FESTIVAL_CROWD
 ## A subclass's knob (v0.11 M3, Market Panic): the Mayor is among the goers, as before (false: none is appointed).
 var has_mayor := true
 ## A subclass's knob (v0.11 M3, Market Panic): where the bonfires burn, the market square's two spots as before (none: no fire).
-var fire_spots: Array[Vector2] = [TownLayout.MARKET_SQUARE.get_center() + Vector2(-2.0, -2.5),
-	TownLayout.MARKET_SQUARE.get_center() + Vector2(2.5, 2.0)]
+var fire_spots: Array[Vector2] = [Places.at(&"market_square") + Vector2(-2.0, -2.5),
+	Places.at(&"market_square") + Vector2(2.5, 2.0)]
 var _broke := {}
 ## Goers who got away unbroken (v0.09.1, _on_escaped()): left the feast, not lost to it. Keyed by the goer, which is
 ## freed once it is out.
@@ -86,7 +86,7 @@ func _begin() -> void:
 ## The merchant living nearest the market square is the Mayor tonight.
 func _appoint_mayor() -> Person:
 	var best: Person = null
-	var c := TownLayout.MARKET_SQUARE.get_center()
+	var c := Places.at(&"market_square")
 	for p in crowd.citizens:
 		if WarningDirector._alive(p) and p.profile != null and not p.inside \
 				and p.profile.role == CitizenProfile.Role.MERCHANT and not reserved.has(p) \
@@ -99,7 +99,7 @@ func _appoint_mayor() -> Person:
 
 ## The FESTIVAL_CROWD calm citizens nearest the square walk to a spot in it and stay.
 func _gather() -> void:
-	var c := TownLayout.MARKET_SQUARE.get_center()
+	var c := Places.at(&"market_square")
 	var pool: Array[Person] = []
 	for p in crowd.citizens:
 		if WarningDirector._alive(p) and p.profile != null and not p.inside and not p.profile.role in SKIP_ROLES \
@@ -108,7 +108,7 @@ func _gather() -> void:
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
 	for p in pool.slice(0, crowd_size):
 		goers.append(p)
-		_send(p, crowd._spot_near(c, TownLayout.MARKET_SQUARE.size.x * 0.4))
+		_send(p, crowd._spot_near(c, Places.rect(&"market_square").size.x * 0.4))
 
 
 ## Virtual (v0.11 M3): the act's timed events. The Festival's: the bonfire, the Mayor's address and its end -- dropped (and left
@@ -137,11 +137,11 @@ func _send(p: Person, at: Vector2) -> void:
 ## The bell rang in Act I: soldiers with no role, nearest the square, stand watch in it -- GUARDS more than are posted
 ## there already (v0.09.1: patrols without a role now, some posted in the square, who are not taken).
 func _post_guards() -> void:
-	var c := TownLayout.MARKET_SQUARE.get_center()
+	var c := Places.at(&"market_square")
 	var pool: Array[Person] = []
 	for s in crowd.soldiers:
 		if WarningDirector._alive(s) and s.corps == Person.Corps.NONE and s.mind == Person.Mind.POST \
-				and not reserved.has(s) and not TownLayout.MARKET_SQUARE.has_point(s.anchor):
+				and not reserved.has(s) and not Places.rect(&"market_square").has_point(s.anchor):
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
 	for s in pool.slice(0, GUARDS):
@@ -150,7 +150,7 @@ func _post_guards() -> void:
 
 ## A spot within PACK_R of the fountain on walkable ground (its stone is not).
 func _pack_spot() -> Vector2:
-	var c := TownLayout.FOUNTAIN.get_center()
+	var c := Places.at(&"fountain")
 	for attempt in 12:
 		var spot := c + Vector2(crowd._rng.randf_range(-PACK_R, PACK_R), crowd._rng.randf_range(-PACK_R, PACK_R))
 		if spot.distance_to(c) <= PACK_R and crowd._grid.walkable(spot):
@@ -168,7 +168,7 @@ func _pack() -> void:
 
 ## Where the Mayor speaks from.
 func _address_spot() -> Vector2:
-	var at := TownLayout.FOUNTAIN.get_center() + ADDRESS_OFFSET
+	var at := Places.at(&"fountain") + ADDRESS_OFFSET
 	var free := crowd._grid.nearest_walkable(at)
 	return free if free != Vector2.INF else at
 
@@ -195,7 +195,7 @@ func _address_ends() -> void:
 func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 	if e != mayor or e == null:
 		return
-	var c := TownLayout.FOUNTAIN.get_center()
+	var c := Places.at(&"fountain")
 	for p in goers:
 		if WarningDirector._alive(p) and p.ground_pos.distance_to(c) <= MAYOR_PANIC_R:
 			p.panic(e.ground_pos, 1.0, &"mayor")
@@ -279,7 +279,7 @@ func tags() -> Array[MapTag]:
 	if broken():
 		return out
 	var rise := town.fountain.height if town != null and is_instance_valid(town.fountain) else 0.0
-	out.append(MapTag.place(TownLayout.FOUNTAIN.get_center(), MARK_FEAST, "THE FEAST", rise))
+	out.append(MapTag.place(Places.at(&"fountain"), MARK_FEAST, "THE FEAST", rise))
 	for p in goers:
 		if WarningDirector._alive(p) and not p.inside and not _broke.has(p) and not _left.has(p):
 			out.append(MapTag.pip(p.ground_pos, MARK_GOER))
@@ -298,7 +298,7 @@ func hint_phase() -> String:
 ## The tour (board tags, spec §4): the fountain, then the Mayor.
 func tour() -> Array:
 	var out := []
-	out.append([TownLayout.FOUNTAIN.get_center(), "The Feast of Lanterns. Break %s of its crowd." % need])
+	out.append([Places.at(&"fountain"), "The Feast of Lanterns. Break %s of its crowd." % need])
 	if WarningDirector._alive(mayor):
 		out.append([mayor.ground_pos, "The Mayor. Mid-feast he speaks from the fountain."])
 	return out

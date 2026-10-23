@@ -483,7 +483,7 @@ func _begin_intro(play: MissionDef) -> void:
 		_tour = null
 		_intro_left = 0.0
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
-		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera_at
+		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera()
 		_bf.camera.position = Iso.ground_to_screen(framed).round()
 		if is_instance_valid(_hud):
 			_hud.play_began()  # v0.11.1: a scripted run starts at once, so its captures show the how-to-win line too
@@ -492,7 +492,7 @@ func _begin_intro(play: MissionDef) -> void:
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
 		_bf.camera.position = Iso.ground_to_screen(play.intro_from).round()
 		var stops: Array = _director.tour() if _director != null else []
-		_tour = IntroTour.new().setup(play.intro_from, raised(stops), play.camera_at) if not stops.is_empty() else null
+		_tour = IntroTour.new().setup(play.intro_from, raised(stops), play.camera()) if not stops.is_empty() else null
 		_intro_left = _tour.seconds() if _tour != null else INTRO_SECONDS
 		if play.intro_banner != "":
 			_rules.banner.emit(play.intro_banner)
@@ -580,7 +580,7 @@ func ascend() -> bool:
 		return false
 	if is_instance_valid(_hud):
 		var play: MissionDef = _act if _act != null else _def
-		_hud.rise(_rules.last_cast if _rules.last_cast != Vector2.INF else play.camera_at)
+		_hud.rise(_rules.last_cast if _rules.last_cast != Vector2.INF else play.camera())
 	return _rules.ascend()
 
 
@@ -625,7 +625,7 @@ func _land() -> void:
 	_intro_left = 0.0
 	_prayers_hold = 0.0
 	_tour = null
-	_bf.camera.position = Iso.ground_to_screen(play.camera_at).round()
+	_bf.camera.position = Iso.ground_to_screen(play.camera()).round()
 	_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
@@ -974,7 +974,7 @@ func _process(delta: float) -> void:
 			var k := clampf(1.0 - maxf(_intro_left - _prayers_hold, 0.0) / INTRO_SECONDS, 0.0, 1.0)
 			var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
 			var play: MissionDef = _act if _act != null else _def
-			_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera_at, smooth)).round()
+			_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera(), smooth)).round()
 			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
 			_land()

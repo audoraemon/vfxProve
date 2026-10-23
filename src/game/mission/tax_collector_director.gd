@@ -77,7 +77,7 @@ func _counting_house() -> Structure:
 	for s: Structure in town._built:
 		if is_instance_valid(s) and s.art_tag == COUNTING_TAG and not s.destroyed:
 			return s
-	return _house_near(TownLayout.WORKSHOP.get_center())
+	return _house_near(Places.at(&"workshop"))
 
 
 ## The resident nearest the counting-house's door not yet a collector, made a noble for the night (v0.11 M2).

@@ -182,7 +182,7 @@ func lantern_door() -> Vector2:
 
 ## lantern_door() for a town with no director (LanternWatch on a night whose mission has none).
 static func lantern_door_in(c: Crowd) -> Vector2:
-	var g := Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6)
+	var g := Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6)
 	var w := c._grid.nearest_walkable(g) if c != null and c._grid != null else g
 	return w if w != Vector2.INF else g
 

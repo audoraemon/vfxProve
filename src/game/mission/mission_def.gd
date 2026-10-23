@@ -29,9 +29,11 @@ var city: StringName = &"aldermere"
 ## The town's readiness: "" for the difficulty chosen on Prepare, "unaware" for The Warning's (v0.08 M4), "night" for The
 ## Long Night's first town (v0.09; each ActDef then sets its own).
 var profile := ""
-## The intro's camera: from `intro_from` to `camera_at` (ground units); its banner.
+## The intro's camera: from `intro_from` to `camera_at` (ground units); its banner. `camera_at` is Vector2.INF unless the
+## mission sets it: read it through camera(), which answers the active city's Citadel (a var initialiser cannot ask the
+## active city, and a def is built before the city is chosen -- v0.12, ruling R25).
 var intro_from := Vector2(2.7, 12.0)
-var camera_at := TownLayout.CITADEL_ORIGIN
+var camera_at := Vector2.INF
 var intro_banner := "MANIFEST"
 ## A score and a rank in the results (Last Judgement), rather than objectives ticked or crossed.
 var scored := false
@@ -61,6 +63,17 @@ var lantern := ""
 
 ## A mission played in acts (v0.09, The Long Night): its ActDefs, the first one first. Empty for a single act.
 var acts: Array = []
+
+
+## Where the intro's camera comes to rest and play begins: `camera_at`, else the active city's Citadel (Aldermere's
+## TownLayout.CITADEL_ORIGIN exactly). An ActDef inherits it.
+func camera() -> Vector2:
+	return camera_at if camera_at != Vector2.INF else City.current().citadel_origin()
+
+
+## What a town must have for this mission (MissionNeeds, Places.has()).
+func needs() -> PackedStringArray:
+	return MissionNeeds.of(id)
 
 
 func has_acts() -> bool:

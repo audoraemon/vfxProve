@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_rows(t)
 	_info_table(t)
 	_getup(t)
+	_mirror(t)
 	_fallback(t)
 	_pack(t)
 	t.check(_crowd_run(true) == _crowd_run(false), "people sprites on or off, the crowd does exactly the same")
@@ -285,6 +286,30 @@ static func _getup(t) -> void:
 				var down := img.get_region(Rect2i(PeopleArt.frame_rect(d, &"death", f, n - 1 - i)))
 				same = same and _same_cell(up, down)
 	t.check(same, "getup frame i is death frame n-1-i")
+
+
+## A direction the art lacks is its partner flipped left-right: south-west from south-east, north-west from north-east.
+## The feet stay on the same row, and a flipped 24 px cell moves the foot column by at most a pixel.
+static func _mirror(t) -> void:
+	var img := PeopleArt.atlas().get_image()
+	var same := true
+	var feet := true
+	for pair in [["resident_a", &"scream"], ["guard", &"swing"]]:
+		var d: String = pair[0]
+		var a: StringName = pair[1]
+		for from_to in [[PeopleArt.Facing.SE, PeopleArt.Facing.SW], [PeopleArt.Facing.NE, PeopleArt.Facing.NW]]:
+			var n := PeopleArt.frame_count(d, a, from_to[0])
+			same = same and n == PeopleArt.frame_count(d, a, from_to[1]) and n > 1
+			for i in n:
+				var src := img.get_region(Rect2i(PeopleArt.frame_rect(d, a, from_to[0], i)))
+				var dst := img.get_region(Rect2i(PeopleArt.frame_rect(d, a, from_to[1], i)))
+				src.flip_x()
+				same = same and _same_cell(src, dst)
+				var r1 := src.get_used_rect()
+				var r2 := dst.get_used_rect()
+				feet = feet and r1.end.y == r2.end.y and absi((r1.position.x + r1.end.x) / 2 - (r2.position.x + r2.end.x) / 2) <= 1
+	t.check(same, "a mirrored direction is its partner flipped, frame for frame (scream, swing)")
+	t.check(feet, "and its feet stand on the same row and within a pixel of the same column")
 
 
 ## A design with no art for a new row shows its idle there; no hole, no error.

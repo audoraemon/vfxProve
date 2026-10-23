@@ -46,7 +46,37 @@ def import_character(design, src):
         s = os.path.join(src, template)
         if os.path.isdir(s):
             shutil.copytree(s, dst / template, dirs_exist_ok=True)
+            fit_v3(design, template)
     print("imported", design, "from", src)
+
+
+def _foot(im):
+    bb = im.getchannel("A").getbbox()
+    return ((bb[0] + bb[2]) // 2, bb[3])
+
+
+def fit_v3(design, template):
+    """PixelLab v3 clips come on a 28 x 28 canvas whose frame 0 is the reference (the idle pose). Move every frame so
+    that reference's feet land on the design's idle feet in the 24 x 24 cell, never scaling, then drop the reference."""
+    folder = FRAMES / design / template
+    for d in DIRS:
+        files = sorted(glob.glob(str(folder / (d + "_*.png"))))
+        if not files or Image.open(files[0]).size == (CELL, CELL):
+            continue
+        idle = _read(design, "breathing-idle", d)
+        frames = [Image.open(f).convert("RGBA") for f in files]
+        fx, fy = _foot(frames[0])
+        ix, iy = _foot(idle[0]) if idle else (fx - 2, fy - 2)
+        dx, dy = ix - fx, iy - fy
+        for f in files:
+            os.remove(f)
+        for i, fr in enumerate(frames[1:]):
+            cell = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+            cell.paste(fr, (dx, dy))
+            if cell.getchannel("A").histogram()[1:] != fr.getchannel("A").histogram()[1:]:
+                print("  WARNING: %s/%s/%s_%d is clipped by the 24 cell" % (design, template, d, i))
+            cell.save(folder / ("%s_%02d.png" % (d, i)))
+        print("  fitted %s/%s/%s: shift (%d, %d), %d frames" % (design, template, d, dx, dy, len(frames) - 1))
 
 
 def _read(design, template, d):

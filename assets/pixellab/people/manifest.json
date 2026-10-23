@@ -51,8 +51,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -122,8 +122,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -193,8 +193,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -264,8 +264,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -335,8 +335,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -406,8 +406,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -477,8 +477,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -903,8 +903,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,
@@ -974,8 +974,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 8,
-     "north-west": 8
+     "north-east": 4,
+     "north-west": 4
     },
     "lurch": {
      "south-east": 8,

@@ -296,6 +296,7 @@ static func _people_animations(t) -> void:
 			m._rng.seed = seed_value
 			break
 	m._enter(froze, rec2, MadnessManager.Stage.BROKEN)
+	t.check(froze.is_screaming(), "it is screaming before the freeze")
 	froze.freeze(0.4)
 	_run_for(crowd, [froze], 0.6)
 	t.check(not froze.is_screaming() and froze._sprite_pose()[0] != &"scream", "thawed after a freeze mid-scream, no scream")

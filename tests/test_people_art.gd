@@ -329,6 +329,15 @@ static func _fallback(t) -> void:
 			same = same and _same_cell(a0, b0)
 	t.check(ok, "a design lacking new art has frames in every new row")
 	t.check(same, "and a scream it lacks is its idle")
+	# Back-view screams rejected on review (make_people_atlas.py REJECTED) show the idle, both back directions.
+	var back := true
+	for d in ["merchant_a", "craft_a", "engineer"]:
+		for f in [PeopleArt.Facing.NE, PeopleArt.Facing.NW]:
+			back = back and PeopleArt.frame_count(d, &"scream", f) == PeopleArt.frame_count(d, &"idle", f)
+			back = back and _same_cell(img.get_region(Rect2i(PeopleArt.frame_rect(d, &"scream", f, 0))),
+				img.get_region(Rect2i(PeopleArt.frame_rect(d, &"idle", f, 0))))
+		back = back and PeopleArt.frame_count(d, &"scream", PeopleArt.Facing.SE) > PeopleArt.frame_count(d, &"idle", PeopleArt.Facing.SE)
+	t.check(back, "a rejected back-view scream is the idle, the front view keeps its art")
 
 
 ## Frame, animation and facing round-trip through the pose code for every animation.

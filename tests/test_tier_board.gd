@@ -5,7 +5,16 @@ extends RefCounted
 
 
 static func run(t) -> void:
+	City.use(&"aldermere")
+	City.register(FixtureCity.ID, FixtureCity.new())
 	_dev(t)
+	_dev_town(t)
+	_dev_card_fits(t)
+	_dev_night_banks_nothing(t)
+	_reopen(t)
+	City.unregister(FixtureCity.ID)
+	City.use(&"aldermere")
+	t.check(City.current() is AldermereCity and not City.has(FixtureCity.ID), "the board test leaves Aldermere active and the fixture gone")
 	_layout(t)
 	_tabs(t)
 	_best(t)
@@ -141,7 +150,10 @@ static func _dev(t) -> void:
 	board.action.connect(func(what: String) -> void: picked.append(what))
 	t.check(board.hit(MissionBoard.dev_rect().get_center()) == "tab:%d" % MissionBoard.DEV_TIER, "with --dev, a DEV tab")
 	board.open_tab(MissionBoard.DEV_TIER)
-	t.check(board.tier == MissionBoard.DEV_TIER and Array(board.missions()) == [MissionBook.CAPITAL_SANDBOX]
+	# v0.12: the sandbox, then the Capital's hostable missions (none until its overrides files exist).
+	var listed: Array = [MissionBook.CAPITAL_SANDBOX]
+	listed.append_array(Array(MissionBook.town_missions(&"capital")))
+	t.check(board.tier == MissionBoard.DEV_TIER and Array(board.missions()).slice(0, listed.size()) == listed
 		and board.lock_line() == "", "the DEV tab lists the capital's sandbox, open (%s)" % [board.missions()])
 	board.choose(MissionBook.CAPITAL_SANDBOX)
 	t.check(picked == ["pick"] and board.chosen == MissionBook.CAPITAL_SANDBOX, "and it can be picked")
@@ -151,3 +163,107 @@ static func _dev(t) -> void:
 	t.check(on_dev.tier == MissionBoard.DEV_TIER, "the board reopens on the DEV tab after a sandbox night")
 	on_dev.free()
 	board.free()
+
+
+## v0.12 (spec 1.7): after the sandbox the DEV tab lists every town's hostable missions but Aldermere's, as composite ids; the fixture
+## town (registered by run()) adds its one. Their cards show the mission's name, the town, the type; no brief.
+static func _dev_town(t) -> void:
+	var save := SaveFile.new()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "warning")
+	var want: Array = [MissionBook.CAPITAL_SANDBOX]
+	want.append_array(Array(MissionBook.town_missions(&"capital")))
+	want.append_array(["tax_collector@fixture"])
+	t.check(Array(board._missions_of(MissionBoard.DEV_TIER)) == want, "the DEV tab lists the sandbox, the Capital's missions, the fixture town's (%s)" % [board._missions_of(MissionBoard.DEV_TIER)])
+	t.check(not Array(board._missions_of(MissionBoard.DEV_TIER)).any(func(id: String) -> bool: return id.ends_with("@aldermere")),
+		"Aldermere lists nothing of its own on the DEV tab")
+	board.open_tab(MissionBoard.DEV_TIER)
+	var composite := "tax_collector@fixture"
+	t.check(board._defs.has(composite) and (board._defs[composite] as MissionDef).city == FixtureCity.ID, "a town mission's def is built in its town")
+	t.check(board.brief_lines(composite, 74.0).is_empty(), "a town mission's card has no brief")
+	t.check(Array(board.kind_lines(composite)) == ["FIXTURE", TierBook.type_of("tax_collector").to_upper()], "its card names the town, then the type (%s)" % [board.kind_lines(composite)])
+	t.check(Array(board.kind_lines(MissionBook.CAPITAL_SANDBOX)) == ["DEV SANDBOX"], "the sandbox's card stays as merged")
+	var picked := []
+	board.action.connect(func(what: String) -> void: picked.append(what))
+	board.choose(composite)
+	t.check(picked == ["pick"] and board.chosen == composite and board.tier == MissionBoard.DEV_TIER, "a town mission is picked like any board pick")
+	board.free()
+	var plain := MissionBoard.new().setup(save, "warning")
+	t.check(not Array(plain._missions_of(MissionBoard.DEV_TIER)).has(composite) and plain._missions_of(MissionBoard.DEV_TIER).is_empty(),
+		"without --dev no town mission shows")
+	plain.free()
+
+
+## Six cards share the 640 px board, 94 px wide: every text line of a town mission's card fits it, for each Tier 1 mission.
+static func _dev_card_fits(t) -> void:
+	var save := SaveFile.new()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "warning")
+	board.tier = MissionBoard.DEV_TIER
+	var r := MissionBoard.card_rect(0, 6)
+	var room := r.size.x - 2.0 * MissionBoard.PAD
+	var wide := []
+	# Tier 1's five are the ones a town can host in v0.12 (the sandbox and they make the six cards); later tiers' longer names
+	# (Bell-Ringers, Procession...) would wrap at this width and are not hostable anywhere.
+	for id in TierBook.missions(1):
+		var composite := MissionBook.city_id(id, &"capital")
+		board._defs[composite] = Mission.def_for(composite, true, save.descend)
+		for line in UiTheme.wrap((board._defs[composite] as MissionDef).name, room - 12.0, UiTheme.SIZE_BIG):
+			if UiTheme.width(line, UiTheme.SIZE_BIG) > room:
+				wide.append("%s: %s" % [composite, line])
+		for line in board.best_lines(composite, room):
+			if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
+				wide.append("%s: %s" % [composite, line])
+		for line in board.kind_lines(composite):
+			if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
+				wide.append("%s: %s" % [composite, line])
+		if board.brief_bottom(composite, r) > board.brief_top(composite, r) + 3.0:
+			wide.append("%s has a brief" % composite)
+		if board.brief_top(composite, r) >= MissionBoard.rule_y(r, 2):
+			wide.append("%s: the type lines reach the rule" % composite)
+	t.check(wide.is_empty(), "every line of a town card fits six cards (%s)" % [wide])
+	# A cleared card's best, too: a wide time and wishes.
+	save.descend.cleared.append("tax_collector@capital")
+	save.descend.fastest["tax_collector@capital"] = 612.0
+	save.descend.most_wishes["tax_collector@capital"] = 3
+	var best_wide := false
+	for line in board.best_lines("tax_collector@capital", room):
+		best_wide = best_wide or UiTheme.width(line, UiTheme.SIZE_SMALL) > room
+	t.check(not best_wide, "a cleared town card's best fits (%s)" % [board.best_lines("tax_collector@capital", room)])
+	board.free()
+
+
+## A town night banks nothing (D20): the tier board's night, believers and cleared are unchanged, even for a result carrying a Descent
+## bank; the save keeps the best under the composite id. A board night banks as ever. Game.bank_night is the handler's body, so no save is
+## written and no screen is built.
+static func _dev_night_banks_nothing(t) -> void:
+	var save := SaveFile.new()
+	var id := "tax_collector@capital"
+	var night := save.descend.night
+	var believers := save.descend.believers
+	var cleared := save.descend.cleared.size()
+	var outcome := {"won": true, "reason": "tax", "descend": {"ascended": true, "believers": 40, "progress": ""}}
+	Game.bank_night(save, id, PackedStringArray(), outcome, false)
+	t.check(save.descend.night == night and save.descend.believers == believers and save.descend.cleared.size() == cleared
+		and not save.descend.cleared.has(id), "a town night leaves the tier board's night, believers and cleared alone")
+	t.check(not (outcome.descend as Dictionary).has("bank") and bool(save.best(id).won) and not save.best("tax_collector").won,
+		"the save's entry for the composite id is won; the board's own is not")
+	var plain := {"won": true, "descend": {"ascended": false, "believers": 10, "progress": ""}}
+	Game.bank_night(save, "tax_collector", PackedStringArray(), plain, false)
+	t.check((plain.descend as Dictionary).has("bank") and save.descend.night == night + 1, "a board night banks as before")
+
+
+## The board reopens on the DEV tab after a town night (Results go back to it).
+static func _reopen(t) -> void:
+	var save := SaveFile.new()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "tax_collector@fixture")
+	t.check(board.tier == MissionBoard.DEV_TIER and board.missions()[board.selected] == "tax_collector@fixture",
+		"the board reopens on the DEV tab, on the town mission just played")
+	board.free()
+	var plain := MissionBoard.new().setup(save, "tax_collector@fixture")
+	t.check(plain.tier != MissionBoard.DEV_TIER, "without --dev a town mission's id opens no DEV tab")
+	plain.free()

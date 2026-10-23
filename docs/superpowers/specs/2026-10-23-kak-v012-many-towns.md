@@ -296,7 +296,7 @@ dwellings `RuinWish.fits(s, "house")` accepts, and checked by the parity test.
 
 - **Needs:** `temple` (the cathedral `(-6.0, -20.8, 4.2, 6.2)`; door about `(-3.9, -14.0)`), `bell_tower` (`(-8.6, -20.6)`; the keeper's
   foot about `(-9.05, -20.05)`). Herald and Bearer walk tower <-> cathedral door: ~7.6 vs Aldermere's ~8.5 (in band).
-- **Spots to set first:** `stars` (the town var of `STARS`: time, post, banner name). Aldermere's runs from post to the keeper's foot:
+- **Spots to set first:** `star_falls` (the town var of `STARS`: time, post, banner name). Aldermere's runs from post to the keeper's foot:
   postern 18.3, Main Gate 13.7, Side Gate 11.0 -- each later runner nearer. The old town has five gates, all at least 15 from the tower:
   the harbour gate (inside about `(16.4, -9.0)`, ~28), the river gates (inside about `(4.0, 2.4)` ~26 and `(-14.0, 2.4)` ~23) and the west
   gate (inside about `(-22.4, -13.0)`, ~15). First guess: **harbour gate -> west river gate -> west gate** (far to near), banners
@@ -336,9 +336,9 @@ dwellings `RuinWish.fits(s, "house")` accepts, and checked by the parity test.
   (south-east), 22.9 (north-east). First guess, old town dwellings: **north-east `(15, -14)`** (~17), **south-east `(14, 0)`** (~27),
   **west `(-16, -4)`** (~25), names `north-east`, `south-east`, `west`. The carter walks gate <-> granary five times: parity on that walk
   is the one that matters most.
-- **Tuning order:** (1) store spots (parity of the cart walk), (2) `grain_at` 60 / 120 / 180, (3) `chain_after` 45 (30-45), (4) `loads` 5
+- **Tuning order:** (1) store spots (parity of the cart walk), (2) `grain_at` 60 / 120 / 180, (3) `chain_after` 45 (30-45), (4) `load_count` 5
   (4-6). Fixed (copy, D17): `SPOIL_SECONDS` 10, `SMOTHER_AFTER` 3, `WATCHMEN` 2 and `WATCH_OFFS` (more than 1.6 apart already).
-- **Risks:** *chain pacing* -- a longer cart walk empties a granary later, so the player waits for grain: `grain_at` before `loads`;
+- **Risks:** *chain pacing* -- a longer cart walk empties a granary later, so the player waits for grain: `grain_at` before `load_count`;
   *spread opposition* -- both watchmen per door must stay >1.6 apart on the Capital's narrower lanes (`WATCH_OFFS` is door-relative: check
   the snapped posts); *no luck* -- the relief watchman walks in from the nearest lay citizens: in the Capital's dense old town a relief
   arrives sooner; *clarity* -- the first granary's camera clear of the HUD (Aldermere's moved for that in v0.11 M2).

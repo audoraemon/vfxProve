@@ -459,7 +459,8 @@ var route := ""
 
 func _initialize() -> void:
 	mission = load("res://scenes/mission.tscn").instantiate()
-	mission.exit_on_refusal = false  # its _ready() start may be refused (the default mission in --city=); the real start below is judged
+	mission.exit_on_refusal = false
+	mission.unhosted_ok = true  # its throw-away _ready() start runs the default mission, which a non-home --city= does not host; _run() resets this
 	root.add_child(mission)
 	_run.call_deferred()
 
@@ -471,6 +472,7 @@ func _run() -> void:
 		else 60.0
 	while not mission.is_prewarmed or not (mission.started() or mission.refused != ""):
 		await process_frame
+	mission.unhosted_ok = false  # the start judged below is the scenario's own (capital_calm and capital_evac allow it again)
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")

@@ -68,7 +68,7 @@ for c in $CASES; do for n in 1 2 3; do
   fi
 done; done
 refused=0
-for f in "$T"/*.log; do grep -a -q "^BEHAVIOUR refused" "$f" && refused=1; done
+for f in "$T"/*.log; do grep -a -q "^BEHAVIOUR refused scenario=" "$f" && refused=1; done
 [ "$refused" = 1 ] && echo "gate.sh: a run was refused (the town cannot host this mission); the verdict is FAIL" >&2
 median="-"
 if [ "$wins" -gt 0 ]; then

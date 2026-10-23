@@ -281,9 +281,9 @@ t.check(is_equal_approx((m.make_director() as TaxCollectorDirector).hide_seconds
 
 | Director | Seeded in `_init()` (base's vars) | Declared town vars |
 |---|---|---|
-| `StarfallDirector` | -- | `stars: Array = STARS` (time, post, banner name), `stop_wait: float = STOP_WAIT` |
+| `StarfallDirector` | -- | `star_falls: Array = STARS` (time, post, banner name), `stop_wait: float = STOP_WAIT` |
 | `TaxCollectorDirector` | `visit_seconds`, `hide_seconds`, `alarm_reach`, `guard_r`, `chain_wait`, `flush_gap` (AssassinateDirector's) | `counting_tag: StringName = COUNTING_TAG`, `counting_spot := Vector2.INF` (INF: `Places.rect(&"workshop").get_center()` at `_plan()`), `rounds: Array = ROUNDS`, `set_out_at: Array = SET_OUT_AT`, `guards: Array = GUARDS` |
-| `HarvestDirector` | -- | `store_spots: Array = STORE_SPOTS`, `store_names: Array = STORE_NAMES`, `grain_at: Array = GRAIN_AT`, `chain_after: float = CHAIN_AFTER`, `loads: int = LOADS` |
+| `HarvestDirector` | -- | `store_spots: Array = STORE_SPOTS`, `store_names: Array = STORE_NAMES`, `grain_at: Array = GRAIN_AT`, `chain_after: float = CHAIN_AFTER`, `load_count: int = LOADS` |
 | `LostLambDirector` | `charge_start` (START), `gate_at` (GATE_MOUTH), `exit_at` (EXIT), `return_to` (TEMPLE_DOOR), `guardhouse`, `watch_posts` (POSTS), `patrol_size`, `hunt_at`, `hunt_size` (HUNTERS), `charge_pace` (EscortDirector's) | `beat_spots: Array = BEATS` (`_plan()` builds `beats` from it with `_walkable()`) |
 | `FirstPrayersDirector` | `read_seconds` (PRAY_SECONDS; MirasHouseDirector's) | `shrine_at: Vector2 = SHRINE_AT`, `poor_spot: Vector2 = POOR_SPOT`, `market_at`, `market_seconds`, `priests_at`, `priests_seconds`, `faithful_lay: int = FAITHFUL_LAY`, `fetch_r: float = FETCH_R` |
 
@@ -295,7 +295,7 @@ Spec §2's knob names map to these (`pray_seconds` -> `read_seconds`, Lamb's `st
 ```gdscript
 # _seeded: a fresh director of each of the five has every town var equal to its const (counting_spot INF before _plan)
 var h := HarvestDirector.new()
-t.check(h.store_spots == HarvestDirector.STORE_SPOTS and h.grain_at == HarvestDirector.GRAIN_AT and h.loads == HarvestDirector.LOADS, "harvest seeded")
+t.check(h.store_spots == HarvestDirector.STORE_SPOTS and h.grain_at == HarvestDirector.GRAIN_AT and h.load_count == HarvestDirector.LOADS, "harvest seeded")
 var l := LostLambDirector.new()
 t.check(l.charge_start == LostLambDirector.START and l.gate_at == LostLambDirector.GATE_MOUTH and l.hunt_at == LostLambDirector.HUNT_AT, "lamb seeded in _init")
 # ... every row of the table, the same way
@@ -382,7 +382,7 @@ Shared knobs: none (each task changes only its own overrides file). A task that 
 
 #### Task 9: Starfall (`warning`) -- spec §2.1
 
-- Overrides: `stars` = `[[10.0, <harbour gate inside ≈ (16.4, -9.0)>, "THE HARBOUR GATE"], [90.0, <west river gate inside ≈ (-14.0, 2.4)>, "THE RIVER GATE"], [180.0, <west gate inside ≈ (-22.4, -13.0)>, "THE WEST GATE"]]`; `camera_at` = the first post `.lerp(<bell tower centre>, 0.35)`, `intro_from` = `camera_at + (0, 6)`.
+- Overrides: `star_falls` = `[[10.0, <harbour gate inside ≈ (16.4, -9.0)>, "THE HARBOUR GATE"], [90.0, <west river gate inside ≈ (-14.0, 2.4)>, "THE RIVER GATE"], [180.0, <west gate inside ≈ (-22.4, -13.0)>, "THE WEST GATE"]]`; `camera_at` = the first post `.lerp(<bell tower centre>, 0.35)`, `intro_from` = `camera_at + (0, 6)`.
 - Parity walks: each post -> the bellkeeper's foot (`crowd.bell`'s foot point; Aldermere 18.3 / 13.7 / 11.0 straight-line, measure paths), band 0.75-1.6x; the Herald's bell tower -> cathedral door (Aldermere ~8.5).
 - Knobs in order: posts; fall times 10/90/180 (±30; every wait ≤60 s); `stop_wait` 30 (20-40).
 - Gates: `gate.sh warning --route=b --board --city=capital --with-none`; toll `gate.sh warning --route=b --board --city=capital --case=toll` (binding ≥2/3).
@@ -402,7 +402,7 @@ Shared knobs: none (each task changes only its own overrides file). A task that 
 
 - Overrides: `store_spots` ≈ `[(15, -14), (14, 0), (-16, -4)]`, `store_names` `["north-east", "south-east", "west"]`; `camera_at` ≈ the first granary's door (checked clear of the HUD), `intro_from` + `(0, 6)`.
 - Parity walks: the Citadel's gate -> each granary's door (the carter's trip; Aldermere 19.7 / 29.8 / 22.9 straight-line, measure paths).
-- Knobs: spots; `grain_at` 60/120/180; `chain_after` 45 (30-45); `loads` 5 (4-6). Never `SPOIL_SECONDS`, `SMOTHER_AFTER`, `WATCHMEN` (copy, D17).
+- Knobs: spots; `grain_at` 60/120/180; `chain_after` 45 (30-45); `load_count` 5 (4-6). Never `SPOIL_SECONDS`, `SMOTHER_AFTER`, `WATCHMEN` (copy, D17).
 - Gates: `gate.sh harvest --city=capital`; `gate.sh harvest --route=b --city=capital`. No toll case (no Lantern).
 - TSV `capital_harvest.tsv`: `capital_harvest_none_*`, `_play_*`, `_b_play_*`. Aldermere rows to keep: `harvest_*`, `harvest_b_play_*`.
 

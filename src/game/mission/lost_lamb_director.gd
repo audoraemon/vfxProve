@@ -31,24 +31,32 @@ const WISP_HAND := WillOWisp.LURE_REACH
 const WISP_STARE := 5.0
 
 
-## The mission's places and numbers (v0.11 M2), from the consts above.
-func _plan() -> void:
+## The town's patrol beats (v0.12, spec 1.5): seeded from BEATS, which is Aldermere's; _plan() builds `beats` from it. The other places and
+## numbers are EscortDirector's own vars, set in _init().
+var beat_spots: Array = BEATS
+
+
+## EscortDirector's places and numbers start at the consts above (v0.12, R31): set at .new(), so a town's override survives setup.
+func _init() -> void:
 	charge_start = START
 	gate_at = GATE_MOUTH
 	exit_at = EXIT
 	return_to = TEMPLE_DOOR
 	guardhouse = GUARDHOUSE
-	for p: Vector2 in POSTS:
-		watch_posts.append(p)
-	for b: Array in BEATS:
-		var line := PackedVector2Array()
-		for at: Vector2 in b:
-			line.append(_walkable(at))
-		beats.append(line)
+	watch_posts.assign(POSTS)
 	patrol_size = PATROL_SIZE
 	hunt_at = HUNT_AT
 	hunt_size = HUNTERS
 	charge_pace = CHARGE_PACE
+
+
+## The mission's beats and labels (v0.11 M2), from the town vars.
+func _plan() -> void:
+	for b: Array in beat_spots:
+		var line := PackedVector2Array()
+		for at: Vector2 in b:
+			line.append(_walkable(at))
+		beats.append(line)
 	charge_label = "ACOLYTE"
 	exit_label = "WEST GATE"
 	return_label = "TEMPLE"
@@ -56,7 +64,7 @@ func _plan() -> void:
 
 ## The cleric nearest the north-east fountain (v0.11 M2).
 func _appoint_charge() -> Person:
-	return _citizen_near(START, CitizenProfile.Role.CLERGY)
+	return _citizen_near(charge_start, CitizenProfile.Role.CLERGY)
 
 
 ## He answers a Wisp's lure (v0.11.1): see WISP_HAND.
@@ -140,5 +148,5 @@ func tour() -> Array:
 	if _alive(charge):
 		out.append([charge.ground_pos, "The runaway acolyte hides by the north-east fountain."])
 	out.append([gate_at, "The west gate. Its watch changes soon after he draws near."])
-	out.append([return_to, "The Temple. At %s it sends searchers after him." % UiTheme.clock(HUNT_AT)])
+	out.append([return_to, "The Temple. At %s it sends searchers after him." % UiTheme.clock(hunt_at)])
 	return out

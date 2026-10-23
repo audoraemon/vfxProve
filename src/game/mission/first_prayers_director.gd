@@ -35,9 +35,26 @@ const FETCH_R := 16.0
 const FETCH_STARE := 6.0
 
 
+## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace them.
+## (`read_seconds`, MirasHouseDirector's, is the prayer's length: seeded from PRAY_SECONDS in _init().) NEED (the copy says three),
+## POOR and FAITHFUL_CLERGY stay consts.
+var shrine_at: Vector2 = SHRINE_AT
+var poor_spot: Vector2 = POOR_SPOT
+var market_at: float = MARKET_AT
+var market_seconds: float = MARKET_SECONDS
+var priests_at: float = PRIESTS_AT
+var priests_seconds: float = PRIESTS_SECONDS
+var faithful_lay: int = FAITHFUL_LAY
+var fetch_r: float = FETCH_R
+
+
+## MirasHouseDirector's prayer length starts at PRAY_SECONDS (v0.12, R31): set at .new(), so a town's override survives setup.
+func _init() -> void:
+	read_seconds = PRAY_SECONDS
+
+
 func _begin() -> void:
 	need = NEED
-	read_seconds = PRAY_SECONDS
 	one_at_a_time = true
 	super()
 	rules.cast_made.connect(_on_light)
@@ -52,7 +69,7 @@ func _on_light(_slot: int, key: String, at: Vector2) -> void:
 		if not _alive(g) or g.inside or believers.has(g):
 			continue
 		var gap := g.ground_pos.distance_to(at)
-		if gap <= WillOWisp.LURE_REACH or gap > FETCH_R:
+		if gap <= WillOWisp.LURE_REACH or gap > fetch_r:
 			continue
 		var near := _walkable(at + (g.ground_pos - at).normalized() * WillOWisp.RING.x)
 		if not g.lure(near, WillOWisp.WISP_TIME - 0.5, g.ground_pos):
@@ -92,7 +109,7 @@ func _roof() -> void:
 ## The old well shrine, raised at the market's edge (v0.11 M2): a shrine post a blow only shakes. The town takes it away with
 ## its own buildings (Town.teardown()).
 func _find_house() -> Structure:
-	var at := _walkable(SHRINE_AT)
+	var at := _walkable(shrine_at)
 	var size := BrokenLanternsDirector.SHRINE_SIZE
 	var s := crowd._env.add_structure(Rect2(at - size * 0.5, size), BrokenLanternsDirector.SHRINE_H, Structure.Kind.SHRINE, ROLE)
 	s.damage_filter = func(st: Structure, _amount: float, _source: Vector2, _kind: StringName) -> void: st.shake(SHRINE_SHAKE)
@@ -107,7 +124,7 @@ func _choose_people() -> void:
 	var clergy: Array[Person] = []
 	_sort_citizens(clergy, lay)
 	lay.sort_custom(func(a: Person, b: Person) -> bool:
-		return a.ground_pos.distance_to(POOR_SPOT) < b.ground_pos.distance_to(POOR_SPOT))
+		return a.ground_pos.distance_to(poor_spot) < b.ground_pos.distance_to(poor_spot))
 	for i in mini(POOR, lay.size()):
 		lay[i].profile.faith = CitizenProfile.Faith.GRIEVING
 		grieving.append(lay[i])
@@ -117,25 +134,25 @@ func _choose_people() -> void:
 		_make_faithful(p)
 	var rest: Array[Person] = []
 	rest.assign(lay.slice(POOR))
-	_spread_faithful(rest, FAITHFUL_LAY)
+	_spread_faithful(rest, faithful_lay)
 	venn = null
 
 
 ## The night's two windows (v0.11 M2): the market fills; the priests come to the well.
 func _add_events() -> void:
-	timeline.add(MARKET_AT, "market", "The market fills", _market_fills, func() -> bool: return not _free_faithful().is_empty())
-	timeline.add(PRIESTS_AT, "priests", "The priests come to the well", _priests_come,
+	timeline.add(market_at, "market", "The market fills", _market_fills, func() -> bool: return not _free_faithful().is_empty())
+	timeline.add(priests_at, "priests", "The priests come to the well", _priests_come,
 		func() -> bool: return not _free_clergy().is_empty())
 
 
 ## The market fills (v0.11 M2): the free Faithful nearest the door stand by it (Mira's LINE_SPOTS) for MARKET_SECONDS.
 func _market_fills() -> void:
-	_line_door(_free_faithful(), MirasHouseDirector.LINE_SPOTS, MARKET_SECONDS)
+	_line_door(_free_faithful(), MirasHouseDirector.LINE_SPOTS, market_seconds)
 
 
 ## The priests come (v0.11 M2): the free clergy among the Faithful stand by the door (PRIEST_SPOTS) for PRIESTS_SECONDS.
 func _priests_come() -> void:
-	_line_door(_free_clergy(), PRIEST_SPOTS, PRIESTS_SECONDS)
+	_line_door(_free_clergy(), PRIEST_SPOTS, priests_seconds)
 
 
 ## The free Faithful who are clergy (v0.11 M2).

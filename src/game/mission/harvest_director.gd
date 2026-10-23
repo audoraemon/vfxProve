@@ -66,6 +66,14 @@ const TICK := 0.5
 ## The map tags' colours (v0.11 M2): a carter steel blue.
 const MARK_CARTER := Color("8fb8e8")
 
+## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace
+## them. (`loads` below is the granaries' loads left, so the count of loads each holds is `load_count`.)
+var store_spots: Array = STORE_SPOTS
+var store_names: Array = STORE_NAMES
+var grain_at: Array = GRAIN_AT
+var chain_after: float = CHAIN_AFTER
+var load_count: int = LOADS
+
 ## Structure -> loads left in it (v0.11 M2).
 var loads := {}
 ## Structure -> its carters (v0.11 M2; untyped: a carter may be a freed body).
@@ -98,12 +106,12 @@ var _tick_in := 0.0
 func _begin() -> void:
 	spoil_seconds = SPOIL_SECONDS
 	citadel_door = _walkable(Places.point(&"citadel_gate"))
-	for spot: Vector2 in STORE_SPOTS:
+	for spot: Vector2 in store_spots:
 		var s := _house_near(spot, targets)
 		if s == null:
 			continue
 		targets.append(s)
-		loads[s] = LOADS
+		loads[s] = load_count
 		carters[s] = []
 		doors[s] = _front_of(s)
 		spoiled_at.append(-1.0)
@@ -122,14 +130,14 @@ func _begin() -> void:
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
 		var s := targets[i]
-		timeline.add(float(GRAIN_AT[i]), "grain_%d" % i, _grain_label(i), _deliver.bind(s),
+		timeline.add(float(grain_at[i]), "grain_%d" % i, _grain_label(i), _deliver.bind(s),
 			func() -> bool: return not has_grain(s) and not razed(s))
 	rules.banner.emit("SPOIL THE HARVEST")
 
 
 ## The strip's and the banner's words when granary `i`'s grain arrives (v0.11 M2).
 func _grain_label(i: int) -> String:
-	return "Grain arrives at the %s granary" % STORE_NAMES[i]
+	return "Grain arrives at the %s granary" % store_names[i]
 
 
 ## Everyone the director has put to work (v0.11 M2): every granary's carters and watchmen, for a new one to leave out.
@@ -157,9 +165,9 @@ func _spoilable(s: Structure) -> bool:
 ## The second of the night granary `i`'s grain arrives at the latest (v0.11 M2): its own time, or CHAIN_AFTER after the one
 ## before it is spoiled if that is sooner. The one before it still unspoiled never brings it forward.
 func grain_due(i: int) -> float:
-	var at := float(GRAIN_AT[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
+	var at := float(grain_at[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if i > 0 and spoiled_at[i - 1] >= 0.0:
-		at = minf(at, spoiled_at[i - 1] + CHAIN_AFTER)
+		at = minf(at, spoiled_at[i - 1] + chain_after)
 	return at
 
 
@@ -427,8 +435,8 @@ func hint_phase() -> String:
 func tour() -> Array:
 	var out := []
 	for i in targets.size():
-		out.append([doors[targets[i]], "The %s granary. Its watchmen put out fires. Its grain arrives by %s." % [STORE_NAMES[i],
-			UiTheme.clock(float(GRAIN_AT[i]))]])
+		out.append([doors[targets[i]], "The %s granary. Its watchmen put out fires. Its grain arrives by %s." % [store_names[i],
+			UiTheme.clock(float(grain_at[i]))]])
 	if citadel_door != Vector2.INF:
 		out.append([citadel_door, "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled."])
 	return out

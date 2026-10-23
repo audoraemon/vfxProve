@@ -18,6 +18,11 @@ const STARS := [
 ## star falls at its scheduled time or this long after the previous warning was stopped, whichever is sooner.
 const STOP_WAIT := 30.0
 
+## The town's stars and wait (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace them.
+## (`stars` below is the list of warnings, so the schedule is `star_falls`.)
+var star_falls: Array = STARS
+var stop_wait: float = STOP_WAIT
+
 ## The three warnings, in the order their stars fall; each is set up when its time comes (its `rules` is null until then).
 var stars: Array[WarningDirector] = []
 ## Mission seconds into the night (v0.11.2: the stars' schedule runs on the mission clock's rate; each warning's own stare and run are real time).
@@ -27,7 +32,7 @@ var _stopped_at: Array[float] = []
 
 
 func _begin() -> void:
-	for s: Array in STARS:
+	for s: Array in star_falls:
 		var w := WarningDirector.new()
 		w.post = s[1]
 		w.post_name = String(s[2])
@@ -54,9 +59,9 @@ func step(delta: float) -> void:
 ## The second into the night star `i` falls (v0.11 M1): its scheduled time, or STOP_WAIT after the previous warning was stopped
 ## if that is sooner. A previous warning not yet stopped never brings it forward, and the first star is never earlier.
 func fall_at(i: int) -> float:
-	var at := float(STARS[i][0])
+	var at := float(star_falls[i][0])
 	if i > 0 and _stopped_at[i - 1] >= 0.0:
-		at = minf(at, _stopped_at[i - 1] + STOP_WAIT)
+		at = minf(at, _stopped_at[i - 1] + stop_wait)
 	return at
 
 
@@ -118,7 +123,7 @@ func tags() -> Array[MapTag]:
 			out.append_array(stars[i].tags())
 	var next := next_star()
 	if next >= 0:
-		out.append(MapTag.place(STARS[next][1], WarningDirector.MARK_MESSENGER, "NEXT STAR", 0.0, true))
+		out.append(MapTag.place(star_falls[next][1], WarningDirector.MARK_MESSENGER, "NEXT STAR", 0.0, true))
 	return out
 
 
@@ -134,8 +139,8 @@ func hint_phase() -> String:
 ## falls at its time; a later one may fall sooner (STOP_WAIT), so it falls "by" its time.
 func tour() -> Array:
 	var out := []
-	for i in STARS.size():
-		var s: Array = STARS[i]
+	for i in star_falls.size():
+		var s: Array = star_falls[i]
 		out.append([_walkable(s[1]), "%s. A star falls here %s %s." % [String(s[2]).capitalize(), "at" if i == 0 else "by",
 			UiTheme.clock(float(s[0]))]])
 	var bell := crowd.bell

@@ -262,9 +262,10 @@ const TAX_MARGIN := 0.2
 ## The harvest policy clears the next granary's watchmen when its grain is due within this many seconds (v0.11 M2): sooner, the relief
 ## (HarvestDirector.RELIEF_AFTER) walks in before the fire has burned its 10 s.
 const HARVEST_PRE := 20.0
-## The Lost Lamb policy (v0.11 M2): where it holds him for the watch's change, relative to the west gate's mouth, and how far
-## beyond SIGHT it reads a soldier as about to see him.
-const LAMB_WAIT := Vector2(0.0, -4.0)
+## The Lost Lamb policy (v0.11 M2): where it holds him for the watch's change -- this far from the gate's mouth, back along the way
+## in from the exit (v0.12: the town's gate and exit; Aldermere's (0, -4) exactly) -- and how far beyond SIGHT it reads a soldier as
+## about to see him.
+const LAMB_WAIT_DIST := 4.0
 const LAMB_WARN := 2.0
 ## The Lost Lamb policy sends the next whisper once he is within this of where the last sent him, and Silent Doom on his seizer
 ## only with him this much beyond its radius from the seizer, or the same cast would take him too (v0.11 M2).
@@ -1720,8 +1721,7 @@ func _prayers_ready(d: MirasHouseDirector) -> bool:
 	if fp == null:
 		return true
 	var ends := fp.timeline.elapsed() + maxf(PRAYERS_WALK, left if left != INF else 0.0) + fp.read_seconds
-	for w: Array in [[FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.MARKET_SECONDS],
-			[FirstPrayersDirector.PRIESTS_AT, FirstPrayersDirector.PRIESTS_SECONDS]]:
+	for w: Array in [[fp.market_at, fp.market_seconds], [fp.priests_at, fp.priests_seconds]]:
 		if ends >= float(w[0]) and ends <= float(w[0]) + float(w[1]) + PRAYERS_SLACK:
 			return false
 	return true
@@ -2007,7 +2007,7 @@ func _harvest(which: String) -> void:
 		for s: Structure in order:
 			if d.razed(s) or not d.has_grain(s):
 				continue
-			var name := String(HarvestDirector.STORE_NAMES[d.targets.find(s)])
+			var name := String(d.store_names[d.targets.find(s)])
 			if d.guarding(s):
 				if _slot_ready(rules, slots, "doom"):
 					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary" % [t, name])
@@ -2025,7 +2025,7 @@ func _harvest(which: String) -> void:
 			for s: Structure in order:
 				if not d.razed(s) and not d.has_grain(s) and d.grain_left(s) <= HARVEST_PRE and d.guarding(s):
 					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary (grain in %.0f s)" % [t,
-						HarvestDirector.STORE_NAMES[d.targets.find(s)], d.grain_left(s)])
+						d.store_names[d.targets.find(s)], d.grain_left(s)])
 					_note_act(acts, t)
 					rules.cast(slots.doom, d.guards(s)[0].ground_pos)
 					cast = true
@@ -2077,7 +2077,7 @@ func _lamb(which: String) -> void:
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
-	var wait_at := d._walkable(d.gate_at + LAMB_WAIT)
+	var wait_at := d._walkable(d.gate_at + (d.gate_at - d.exit_at).normalized() * LAMB_WAIT_DIST)
 	var acts := {"last": 0.0, "longest": 0.0}
 	var seized := 0
 	while not rules.finished and not rules.main_done and frames < max_frames:

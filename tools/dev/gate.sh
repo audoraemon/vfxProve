@@ -3,15 +3,18 @@
 # and prints one verdict line, so fifty gates need not be read by hand.
 # usage: bash tools/dev/gate.sh <scenario> [--route=b] [--board] [--extra='--path=festival ...'] [--jobs=N]
 #        [--case=toll]   (v0.11.2, D32: a Lantern night's toll case; see below)
+#        [--city=<id>]   (v0.12, D23: appended to every run, e.g. --city=capital; the verdict line then reads `gate <scenario> city=<id> route=...`)
+#        [--with-none]   (v0.12, D23: with --route=b also runs the three none cases and judges none_lost 3/3, FAIL otherwise; route a always does)
 #   (from the project root; G= overrides the Godot path)
 # Per run:   <scenario> <case> seed=N won=.. reason=.. time=.. idle=.. checksum=..
 # Last line: gate <scenario> route=<a|b> none_lost=K/3 wins=K/3 median=S idle_max=S PASS|FAIL      (exit 1 on FAIL)
+# A route b gate with --with-none prints the none runs as well and none_lost=K/3 (without it none_lost prints -).
 # The gate (spec §7 and the plan's Global Constraints): the none runs all lose (route a only; with --route=b they are skipped and
 # none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission, only reported for a ★ --board one,
 # D33); no idle stretch over 45 s in a play run. A play run whose result line has no idle= makes idle_max ? and the gate FAIL.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
-S=""; ROUTE=a; BOARD=""; EXTRA=""; JOBS=6; RARG=""; ONLYCASE=""
+S=""; ROUTE=a; BOARD=""; EXTRA=""; JOBS=6; RARG=""; ONLYCASE=""; CITY=""; CARG=""; WITHNONE=0
 for a in "$@"; do case "$a" in
   --route=b) ROUTE=b; RARG="--route=b";;
   --route=a) ROUTE=a;;
@@ -19,21 +22,23 @@ for a in "$@"; do case "$a" in
   --extra=*) EXTRA="${a#--extra=}";;
   --jobs=*) JOBS="${a#--jobs=}";;
   --case=toll) ONLYCASE=toll;;
+  --city=*) CITY="${a#--city=}"; CARG="--city=$CITY";;
+  --with-none) WITHNONE=1;;
   -*) echo "gate.sh: unknown option $a" >&2; exit 2;;
   *) S="$a";;
 esac; done
-[ -z "$S" ] && { echo "usage: gate.sh <scenario> [--route=b] [--board] [--case=toll] [--extra='...'] [--jobs=N]" >&2; exit 2; }
+[ -z "$S" ] && { echo "usage: gate.sh <scenario> [--route=b] [--board] [--case=toll] [--city=<id>] [--with-none] [--extra='...'] [--jobs=N]" >&2; exit 2; }
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
-CASES="none play"; [ "$ROUTE" = b ] && CASES="play"
+CASES="none play"; [ "$ROUTE" = b ] && [ "$WITHNONE" = 0 ] && CASES="play"
 [ -n "$ONLYCASE" ] && CASES="$ONLYCASE"  # --case=toll: the three toll runs only
 : > "$T/jobs"
 for c in $CASES; do for n in 1 2 3; do echo "$c $n" >> "$T/jobs"; done; done
-export G S BOARD RARG EXTRA T
+export G S BOARD RARG EXTRA CARG T
 run_one() { # case seed
   local c="$1" n="$2" o
   o=$(timeout 600 "$G" --headless --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- \
-    --scenario="$S" --case="$c" --seed="$n" $BOARD $RARG $EXTRA 2>&1)
+    --scenario="$S" --case="$c" --seed="$n" $BOARD $RARG $CARG $EXTRA 2>&1)
   echo "$o" > "$T/$c.$n.log"
   echo "$o" | grep -a "BEHAVIOUR" | grep -a -E " (result|end) .*won=" | tail -1 > "$T/$c.$n.res"
   echo "$o" | grep -a -o 'checksum=-\?[0-9]*' | tail -1 > "$T/$c.$n.sum"
@@ -68,8 +73,10 @@ if [ "$wins" -gt 0 ]; then
 fi
 verdict=PASS
 [ "$wins" -lt 2 ] && verdict=FAIL
-if [ "$ROUTE" = a ]; then
+if [ "$ROUTE" = a ] || [ "$WITHNONE" = 1 ]; then
   [ "$lost" -ne 3 ] && verdict=FAIL
+fi
+if [ "$ROUTE" = a ]; then
   { [ "$median" = "-" ] || [ "$median" -lt 180 ] || [ "$median" -gt 240 ]; } && verdict=FAIL
 fi
 # A tier mission's second loadout (no --board): its median may stray a little from A's band, never trivially fast (rulings R6).
@@ -86,10 +93,11 @@ if [ -n "$ONLYCASE" ]; then
   verdict=PASS; [ "$wins" -lt 2 ] && verdict=FAIL
   [ "$time_ok" -eq 0 ] && median="time?"
   [ "$idle_ok" -eq 0 ] && idle_show="?" || idle_show=$idle_max
-  echo "gate $S case=$ONLYCASE wins=$wins/3 median=$median idle_max=$idle_show $verdict"
+  echo "gate $S${CITY:+ city=$CITY} case=$ONLYCASE wins=$wins/3 median=$median idle_max=$idle_show $verdict"
   [ "$verdict" = PASS ]
   exit
 fi
-nl="$lost/3"; [ "$ROUTE" = b ] && nl="-"
-echo "gate $S route=$ROUTE none_lost=$nl wins=$wins/3 median=$median idle_max=$idle_show $verdict"
+nl="$lost/3"; [ "$ROUTE" = b ] && [ "$WITHNONE" = 0 ] && nl="-"
+cl=""; [ -n "$CITY" ] && cl=" city=$CITY"
+echo "gate $S${cl} route=$ROUTE none_lost=$nl wins=$wins/3 median=$median idle_max=$idle_show $verdict"
 [ "$verdict" = PASS ]

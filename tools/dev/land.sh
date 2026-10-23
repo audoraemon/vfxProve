@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Landing gates for a KAK milestone, run from the work branch's project root. It never pushes.
-# usage: bash tools/dev/land.sh [--bench=BASE_REF] [--pairs="a:b c:c ..."] [--extra="--bench-beams --bench-toll=20"] [--skip-flow]
+# usage: bash tools/dev/land.sh [--bench=BASE_REF] [--pairs="a:b c:c ..."] [--extra="--bench-beams --bench-toll=20"] [--skip-flow] [--bench-only]
+#   --bench-only (v0.12, D24): no fetch, trial merge, suite, references or FLOW; imports, waits for a quiet machine and runs the bench pairs
+#   only (needs --bench=REF); the summary says `bench only`. E.g. the Capital against its tip:
+#   bash tools/dev/land.sh --bench-only --bench=f7d74922 --pairs="capital_sandbox:capital_sandbox"
 #   --extra=ARGS (v0.11.2) goes to every bench run, both sides (a flag one side does not know is ignored): e.g. the Vigil Flame's lit Searchlight
 #   against the same with a forced toll (mission.gd --bench-toll=SECONDS).
 #   Steps: fetch + trial merge of origin/feat/Develop-Main (reports conflicts and incoming commits; stops on a conflict),
@@ -10,11 +13,17 @@
 #   After it passes: merge origin into the branch if it moved, re-run, then ff feat/Develop-Main, tag and push by hand.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
-BENCH=""; PAIRS="warning:warning miras_house:miras_house vigil_flame:vigil_flame procession:procession last_judgement:last_judgement"; FLOW=1; EXTRA=""
-for a in "$@"; do case "$a" in --bench=*) BENCH="${a#--bench=}";; --extra=*) EXTRA="${a#--extra=}";; --pairs=*) PAIRS="${a#--pairs=}";; --skip-flow) FLOW=0;; esac; done
+BENCH=""; PAIRS="warning:warning miras_house:miras_house vigil_flame:vigil_flame procession:procession last_judgement:last_judgement"; FLOW=1; EXTRA=""; BONLY=0
+for a in "$@"; do case "$a" in --bench=*) BENCH="${a#--bench=}";; --extra=*) EXTRA="${a#--extra=}";; --pairs=*) PAIRS="${a#--pairs=}";; --skip-flow) FLOW=0;; --bench-only) BONLY=1;; esac; done
 O=${TMPDIR:-/tmp}/kak_land; mkdir -p "$O"; SUM="$O/summary.txt"; : > "$SUM"
 say() { echo "$*" | tee -a "$SUM"; }
 busy() { powershell -NoProfile -Command "(@(Get-CimInstance Win32_Process -Filter \"Name like 'Godot%'\" | Where-Object { \$_.CommandLine -match 'behaviour_check|run_all|run_part|flow-test|crowd_check|state_digest|--bench|--import' })).Count" | tr -d '\r'; }
+if [ "$BONLY" = 1 ] && [ -z "$BENCH" ]; then echo "land.sh: --bench-only needs --bench=REF" >&2; exit 2; fi
+if [ "$BONLY" = 1 ]; then
+  say "bench only; HEAD $(git rev-parse --short HEAD) $(git rev-parse --abbrev-ref HEAD)"
+  timeout 900 "$G" --headless --editor --path . --import > "$O/import.log" 2>&1; say "import exit=$?"
+  FLOW=0
+else
 GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never git fetch origin >/dev/null 2>&1
 say "HEAD $(git rev-parse --short HEAD) $(git rev-parse --abbrev-ref HEAD); origin/feat/Develop-Main $(git rev-parse --short origin/feat/Develop-Main)"
 say "incoming commits: $(git log --oneline HEAD..origin/feat/Develop-Main | wc -l)"
@@ -33,6 +42,7 @@ if [ "$FLOW" = 1 ]; then
   done
   say "${r:-FLOW: NO RESULT (rerun alone)}"
 fi
+fi  # not --bench-only
 if [ -n "$BENCH" ]; then
   W="$O/wt-bench"; git worktree remove --force "$W" >/dev/null 2>&1; git worktree add --detach "$W" "$BENCH" >/dev/null 2>&1
   (cd "$W" && timeout 900 "$G" --headless --editor --path . --import >/dev/null 2>&1)

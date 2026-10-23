@@ -38,6 +38,9 @@ const FETCH_STARE := 6.0
 ## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace them.
 ## (`read_seconds`, MirasHouseDirector's, is the prayer's length: seeded from PRAY_SECONDS in _init().) NEED (the copy says three),
 ## POOR and FAITHFUL_CLERGY stay consts.
+## The names a town's overrides may set (Overrides): the vars below and `read_seconds`; setup reads them and never assigns them.
+const TOWN_VARS := ["shrine_at", "poor_spot", "market_at", "market_seconds", "priests_at", "priests_seconds", "faithful_lay",
+	"fetch_r", "read_seconds"]
 var shrine_at: Vector2 = SHRINE_AT
 var poor_spot: Vector2 = POOR_SPOT
 var market_at: float = MARKET_AT

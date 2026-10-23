@@ -11,13 +11,19 @@ const KEYS := ["def", "director"]
 ## Sets each of `values` on `target`. Returns (and push_errors) the keys it did not set: no such property, a value whose type
 ## differs from the property's current one (an override file writes floats with a decimal point and tags as &"..."), or a
 ## value that is not what the property reads back. A typed array property takes an untyped literal through assign().
-static func apply(target: Object, values: Dictionary) -> PackedStringArray:
+## `allowed` (null: any property): the only names that may be set, a director's town_vars() -- a key outside it is reported and
+## not set (v0.12 C7: setup assigns the other properties after the tune has run, so an override of one would be silent).
+static func apply(target: Object, values: Dictionary, allowed: Variant = null) -> PackedStringArray:
 	var bad := PackedStringArray()
 	var props := {}
 	for p: Dictionary in target.get_property_list():
 		props[p["name"]] = true
 	for key: Variant in values:
 		var prop := String(key)
+		if allowed != null and not prop in allowed:
+			bad.append(prop)
+			push_error("Overrides: '%s' is not a town var of %s" % [prop, _name_of(target)])
+			continue
 		if not props.has(prop):
 			bad.append(prop)
 			push_error("Overrides: %s has no property '%s'" % [_name_of(target), prop])
@@ -45,6 +51,14 @@ static func apply(target: Object, values: Dictionary) -> PackedStringArray:
 			bad.append(prop)
 			push_error("Overrides: '%s' of %s did not take the value" % [prop, _name_of(target)])
 	return bad
+
+
+## The names a town may override on `director`: the TOWN_VARS its script declares (none: none).
+static func town_vars(director: Object) -> Array:
+	var script := director.get_script() as Script
+	if script == null:
+		return []
+	return script.get_script_constant_map().get("TOWN_VARS", [])
 
 
 static func _name_of(target: Object) -> String:

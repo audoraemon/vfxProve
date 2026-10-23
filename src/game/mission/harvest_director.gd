@@ -3,7 +3,7 @@ extends RazeDirector
 ## Spoiled Harvest (v0.11 M2, Tier 1, spec §2 and §8 row 3; reshaped by the controller's Task 3 fix-round rulings: work, not
 ## waiting; the grain arrives one granary at a time): three granary stores -- the dwellings nearest STORE_SPOTS, far from the
 ## Citadel. A granary holds nothing to spoil until its grain arrives: fire on an empty one is put out at once and counts for
-## nothing. The first granary's grain arrives at GRAIN_AT[0]; each next one at its own time, or CHAIN_AFTER seconds after the one
+## nothing. The first granary's grain arrives at GRAIN_AT[0]; each next one at its own time, or chain_after seconds after the one
 ## before it is spoiled, whichever is sooner (the board Warning's stars' rule). The moment a granary's grain is in, its carter
 ## sets out from the Citadel's gate and carries its LOADS to the Citadel, a load taken at a time; the last load taken empties
 ## it, and a granary emptied cannot be spoiled: the night is lost. Each granary has WATCHMEN watchmen, lay citizens at its door,
@@ -68,6 +68,8 @@ const MARK_CARTER := Color("8fb8e8")
 
 ## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace
 ## them. (`loads` below is the granaries' loads left, so the count of loads each holds is `load_count`.)
+## The names a town's overrides may set (Overrides): the vars below, which setup reads and never assigns.
+const TOWN_VARS := ["store_spots", "store_names", "grain_at", "chain_after", "load_count"]
 var store_spots: Array = STORE_SPOTS
 var store_names: Array = STORE_NAMES
 var grain_at: Array = GRAIN_AT
@@ -162,7 +164,7 @@ func _spoilable(s: Structure) -> bool:
 	return grain.has(s)
 
 
-## The second of the night granary `i`'s grain arrives at the latest (v0.11 M2): its own time, or CHAIN_AFTER after the one
+## The second of the night granary `i`'s grain arrives at the latest (v0.11 M2): its own time, or chain_after after the one
 ## before it is spoiled if that is sooner. The one before it still unspoiled never brings it forward.
 func grain_due(i: int) -> float:
 	var at := float(grain_at[i]) * (timeline.stretch_factor() if timeline != null else 1.0)

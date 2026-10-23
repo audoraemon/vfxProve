@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_order(t)
 	_aldermere_none(t)
 	_hostable(t)
+	_director_keys(t)
 	_def_for(t)
 	_no_descent(t)
 	_city_for(t)
@@ -155,3 +156,25 @@ static func _registry(t) -> void:
 	t.check(City.ids() == [&"aldermere", &"capital", FixtureCity.ID], "City.ids() lists IDS then the registered towns")
 	t.check(City.IDS == [&"aldermere", &"capital"], "City.IDS itself is unchanged")
 	t.check(City.by_id(FixtureCity.ID).id() == FixtureCity.ID, "by_id() builds a registered town")
+
+
+## C7: a town's director overrides take only the names the director lists in TOWN_VARS.
+class LabelCity extends CapitalCity:
+	func id() -> StringName: return &"labelled"
+	func mission_overrides(_id: String) -> Dictionary:
+		return {"director": {"hide_seconds": 31.0, "hideout_label": "SOMEWHERE"}}
+
+
+static func _director_keys(t) -> void:
+	var d := TaxCollectorDirector.new()
+	var allowed := Overrides.town_vars(d)
+	t.check("hide_seconds" in allowed and "set_out_at" in allowed and not "hideout_label" in allowed, "the Tax Collector lists its town vars (%s)" % [allowed])
+	var bad := Overrides.apply(d, {"hide_seconds": 40.0, "hideout_label": "X"}, allowed)
+	t.check(bad == PackedStringArray(["hideout_label"]) and is_equal_approx(d.hide_seconds, 40.0) and d.hideout_label != "X",
+		"a key outside TOWN_VARS is refused, the rest applied (got %s)" % [bad])
+	t.check(Overrides.apply(MissionDef.new(), {"clock": 100.0}).is_empty(), "no list given: any property (the def section)")
+	t.check(Overrides.town_vars(MissionDirector.new()).is_empty(), "a director with no TOWN_VARS takes no override")
+	var m := MissionBook.in_city(MissionBook.tax_collector(), &"labelled", LabelCity.new())
+	var made := m.make_director() as TaxCollectorDirector
+	t.check(is_equal_approx(made.hide_seconds, 31.0) and made.hideout_label != "SOMEWHERE",
+		"through in_city(): the listed key is set, the label refused")

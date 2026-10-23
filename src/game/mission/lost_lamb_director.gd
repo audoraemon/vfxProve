@@ -33,6 +33,10 @@ const WISP_STARE := 5.0
 
 ## The town's patrol beats (v0.12, spec 1.5): seeded from BEATS, which is Aldermere's; _plan() builds `beats` from it. The other places and
 ## numbers are EscortDirector's own vars, set in _init().
+## The names a town's overrides may set (Overrides): `beat_spots` and EscortDirector's vars seeded in _init(); setup reads them (the
+## gate, exit, return and guardhouse it snaps to walkable ground) and never replaces them (the labels it assigns are not here).
+const TOWN_VARS := ["charge_start", "gate_at", "exit_at", "return_to", "guardhouse", "watch_posts", "patrol_size", "beat_spots",
+	"hunt_at", "hunt_size", "charge_pace"]
 var beat_spots: Array = BEATS
 
 

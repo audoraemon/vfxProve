@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_read_not_const(t)
 	_policies_read_vars(t)
 	_override_survives_setup(t)
+	_every_var_holds(t)
 	City.use(&"aldermere")
 	t.check(City.current().id() == &"aldermere", "the town-vars test leaves Aldermere the active city")
 
@@ -142,3 +143,76 @@ static func _override_survives_setup(t) -> void:
 	var ps := Kit.world(MissionBook.first_prayers(), pr)
 	t.check(pr.read_seconds == 20.0 and pr.market_at == 40.0, "first prayers' read_seconds and market_at survive setup")
 	Kit.done(ps)
+
+
+## C7: each director's TOWN_VARS is the whole list of what a town may override, and every name in it still holds after the
+## director's setup (Kit.world runs _begin()/_plan()): a changed value is applied through Overrides.apply, then read back.
+## The gate/exit/return/guardhouse spots are snapped to walkable ground by the escort base: they read back as _walkable(value).
+static func _directors() -> Dictionary:
+	return {
+		"starfall": [StarfallDirector, "warning"],
+		"tax": [TaxCollectorDirector, "tax_collector"],
+		"harvest": [HarvestDirector, "spoiled_harvest"],
+		"lamb": [LostLambDirector, "lost_lamb"],
+		"prayers": [FirstPrayersDirector, "first_prayers"],
+	}
+const SNAPPED := ["gate_at", "exit_at", "return_to", "guardhouse"]
+
+
+static func _every_var_holds(t) -> void:
+	var directors := _directors()
+	for key: String in directors:
+		var script: GDScript = directors[key][0]
+		var mission_id: String = directors[key][1]
+		var fresh = script.new()
+		var names := Overrides.town_vars(fresh)
+		t.check(not names.is_empty(), "%s declares TOWN_VARS" % key)
+		var changed := {}
+		for n in names:
+			changed[n] = _bump(fresh.get(n))
+		var d = script.new()
+		var bad := Overrides.apply(d, changed, names)
+		t.check(bad.is_empty(), "%s: every TOWN_VARS name takes a changed value (refused %s)" % [key, bad])
+		var s := Kit.world(MissionBook.get_mission(mission_id), d)
+		var lost := PackedStringArray()
+		for n in names:
+			var want: Variant = changed[n]
+			if n in SNAPPED:
+				want = d._walkable(want)
+			if str(d.get(n)) != str(want):
+				lost.append("%s (%s -> %s)" % [n, want, d.get(n)])
+		t.check(lost.is_empty(), "%s: every override still holds after setup (lost %s)" % [key, ", ".join(lost)])
+		Kit.done(s)
+	# The names the review found setup overwriting are not on any list.
+	for banned: String in ["hideout_label", "stop_label", "safe_label", "flush_waiting", "safe_at", "charge_label", "exit_label",
+			"return_label", "need", "one_at_a_time", "spoil_seconds"]:
+		var listed := false
+		for key: String in directors:
+			listed = listed or banned in Overrides.town_vars(directors[key][0].new())
+		t.check(not listed, "%s is no town var (setup assigns it)" % banned)
+
+
+## A value of the same type that is not the one it started as (a float +1, a position moved, a list's every element bumped).
+static func _bump(v: Variant) -> Variant:
+	match typeof(v):
+		TYPE_FLOAT:
+			return float(v) + 1.0
+		TYPE_INT:
+			return int(v) + 1
+		TYPE_VECTOR2:
+			return Vector2(3.0, 4.0) if v == Vector2.INF else (v as Vector2) + Vector2(0.5, 0.25)
+		TYPE_STRING:
+			return String(v) + "x"
+		TYPE_STRING_NAME:
+			return StringName(String(v) + "_x")
+		TYPE_ARRAY:
+			var out := []
+			for e: Variant in v:
+				out.append(_bump(e))
+			return out
+		TYPE_DICTIONARY:
+			var out := {}
+			for k: Variant in v:
+				out[k] = _bump(v[k])
+			return out
+	return v

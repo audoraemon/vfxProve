@@ -62,7 +62,10 @@ static func all() -> Array[MissionDef]:
 static func get_mission(id: String) -> MissionDef:
 	var parts := split_city(id)
 	if parts[1] != &"":
-		return in_city(get_mission(parts[0]), parts[1])
+		var base := get_mission(parts[0])
+		if base.id != parts[0]:
+			push_error("MissionBook.get_mission: no mission '%s' to put in '%s'" % [parts[0], parts[1]])
+		return in_city(base, parts[1])
 	for m in all():
 		if m.id == id:
 			return m
@@ -131,7 +134,7 @@ static func in_city(m: MissionDef, city: StringName, from: CityDef = null) -> Mi
 		m.tune = func(d: MissionDirector) -> void:
 			if board_tune.is_valid():
 				board_tune.call(d)
-			Overrides.apply(d, dir_ov.duplicate(true))
+			Overrides.apply(d, dir_ov.duplicate(true), Overrides.town_vars(d))
 	return m
 
 

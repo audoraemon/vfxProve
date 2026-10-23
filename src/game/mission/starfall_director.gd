@@ -4,7 +4,7 @@ extends MissionDirector
 ## that gate's watchman running to the bellkeeper. Each star is a WarningDirector of its own -- the omen, the stare, the run,
 ## the relay, the unseen kill -- set up WarningDirector.OMEN_AT before its star, so its watchman is appointed then. The main
 ## objective (StarsObjective) is all three warnings stopped. v0.11.2: a Herald night -- the toll turns the Lantern, and the warning's carrier runs for the
-## Temple (HeraldObjective loses the night only if one gets in); the stars' times and STOP_WAIT are MISSION seconds, so dawn's haste brings them sooner.
+## Temple (HeraldObjective loses the night only if one gets in); the stars' times and stop_wait are MISSION seconds, so dawn's haste brings them sooner.
 ## Each later runner starts nearer the bell (spec §8): the postern, the Main Gate, then the Side Gate.
 
 ## Each star: [seconds into the night it falls, the watchman's post just inside its gate, the gate's name for the banner].
@@ -20,6 +20,8 @@ const STOP_WAIT := 30.0
 
 ## The town's stars and wait (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace them.
 ## (`stars` below is the list of warnings, so the schedule is `star_falls`.)
+## The names a town's overrides may set (Overrides): the vars above, which setup reads and never assigns.
+const TOWN_VARS := ["star_falls", "stop_wait"]
 var star_falls: Array = STARS
 var stop_wait: float = STOP_WAIT
 
@@ -41,7 +43,7 @@ func _begin() -> void:
 
 
 ## Sets up each star's warning OMEN_AT before it falls -- unless it is already stopped -- and steps those set up. The
-## second a warning is first seen stopped is kept: the next star falls no later than STOP_WAIT after it.
+## second a warning is first seen stopped is kept: the next star falls no later than stop_wait after it.
 func step(delta: float) -> void:
 	_clock += mission_delta(delta)
 	for i in stars.size():
@@ -56,7 +58,7 @@ func step(delta: float) -> void:
 			_stopped_at[i] = _clock
 
 
-## The second into the night star `i` falls (v0.11 M1): its scheduled time, or STOP_WAIT after the previous warning was stopped
+## The second into the night star `i` falls (v0.11 M1): its scheduled time, or stop_wait after the previous warning was stopped
 ## if that is sooner. A previous warning not yet stopped never brings it forward, and the first star is never earlier.
 func fall_at(i: int) -> float:
 	var at := float(star_falls[i][0])
@@ -136,7 +138,7 @@ func hint_phase() -> String:
 
 
 ## The tour (v0.11 M1): the three gates the stars fall over, then the bellkeeper. v0.11 M2 (M1 final review): the first star
-## falls at its time; a later one may fall sooner (STOP_WAIT), so it falls "by" its time.
+## falls at its time; a later one may fall sooner (stop_wait), so it falls "by" its time.
 func tour() -> Array:
 	var out := []
 	for i in star_falls.size():

@@ -47,6 +47,10 @@ const FLUSH_BANNER := "THE COUNTING-HOUSE BURNS - THE COLLECTORS RUN"
 ## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace
 ## them. The counting-house is the building with `counting_tag`, else the dwelling nearest `counting_spot` (INF: the workshop place's
 ## centre); `set_out_at` reads in the tour's words too.
+## The names a town's overrides may set (Overrides): these vars and the base's numbers seeded in _init(); setup reads them and never
+## assigns them (the labels, `safe_at` and `flush_waiting` it does assign, so they are not here).
+const TOWN_VARS := ["counting_tag", "counting_spot", "rounds", "set_out_at", "guards", "visit_seconds", "hide_seconds",
+	"alarm_reach", "guard_r", "chain_wait", "flush_gap"]
 var counting_tag: StringName = COUNTING_TAG
 var counting_spot := Vector2.INF
 var rounds: Array = ROUNDS

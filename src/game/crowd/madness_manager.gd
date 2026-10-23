@@ -212,8 +212,9 @@ func _enter(p: Person, rec: Dictionary, stage: Stage) -> void:
 			rec.outcome = outcome
 			match outcome:
 				Outcome.FRENZY:
-					p.fight(null, FRENZY_DURATION, ATTACK_DAMAGE)
-					_outbreak(p)
+					# It clutches its head and screams first; the frenzy (its 15 s, the town's alarm) starts after.
+					p.scream(Person.SCREAM_SECONDS)
+					rec.frenzy_in = Person.SCREAM_SECONDS
 				Outcome.PANIC:
 					p.mind = Person.Mind.CALM
 					p.panic(p.ground_pos + Vector2(0.1, -0.1), 0.3, STATUS)
@@ -231,6 +232,12 @@ func _draw_outcome() -> Outcome:
 		if roll < 0.0:
 			return i as Outcome
 	return Outcome.FRENZY
+
+
+## The scream is over: it goes for whoever is nearest, lurching (kind &"madness"), and the town sees it.
+func _frenzy(p: Person) -> void:
+	p.fight(null, FRENZY_DURATION, ATTACK_DAMAGE, Person.FightRule.ANYONE, Person.FIGHT_SIGHT, &"madness")
+	_outbreak(p)
 
 
 ## A frenzy breaks out: the town sees a danger, the alarm rises, and the nearest soldier at its post comes for them.
@@ -283,7 +290,11 @@ func _tick(p: Person, rec: Dictionary, stage: Stage, delta: float) -> void:
 						var away := q.ground_pos - p.ground_pos
 						q.knock((away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 1.5)
 		Stage.BROKEN:
-			pass  # its outcome runs on the person's own timers
+			# Its outcome runs on the person's own timers; a frenzy waits out the scream first.
+			if float(rec.get("frenzy_in", 0.0)) > 0.0:
+				rec.frenzy_in = float(rec.frenzy_in) - delta
+				if float(rec.frenzy_in) <= 0.0:
+					_frenzy(p)
 
 
 ## The madness ends for `p`.

@@ -215,6 +215,89 @@ static func run(t) -> void:
 	t.near(looked, 4.0, 0.1, "observe(at, 4 s) looks for 4 s (%.2f s)" % looked)
 	looker.free()
 
+	# --- Knocked down, getting up, screaming ---------------------------------------------------------
+	var hitter := Person.new()
+	hitter.rng.seed = 41
+	hitter.bounds = TownLayout.MAP
+	hitter.setup_person(false, Vector2(2.7, 1.7), grid)
+	var downed := Person.new()
+	downed.rng.seed = 42
+	downed.bounds = TownLayout.MAP
+	downed.setup_person(false, Vector2(2.7, 2.0), grid)
+	downed.mind = Person.Mind.CALM
+	downed.hurt(0.34, hitter)
+	t.check(downed.is_down() and downed.is_alive(), "a struck bystander is knocked down")
+	var slid := 0
+	while slid < 600 and downed.state != DummyEnemy.State.WANDER:
+		downed.tick(1.0 / 60.0)
+		slid += 1
+	downed.tick(1.0 / 60.0)
+	var lies := downed.ground_pos
+	for i in int(Person.DOWN_SECONDS * 60.0) - 6:
+		downed.tick(1.0 / 60.0)
+	t.check(downed.is_down() and downed.ground_pos == lies and downed._sprite_pose()[0] == &"death",
+		"it lies still where the slide ended, on the fall's last frame")
+	for i in 10:
+		downed.tick(1.0 / 60.0)
+	t.check(downed.is_down() and downed._sprite_pose()[0] == &"getup", "then it gets up")
+	for i in int(Person.GETUP_SECONDS * 60.0) + 20:
+		downed.tick(1.0 / 60.0)
+	t.check(not downed.is_down() and (downed.mind == Person.Mind.PANIC or downed.mind == Person.Mind.FLEE),
+		"and runs from the blow once it is up (%s)" % Person.Mind.keys()[downed.mind])
+	downed.free()
+
+	var fighter := Person.new()
+	fighter.rng.seed = 43
+	fighter.bounds = TownLayout.MAP
+	fighter.setup_person(false, Vector2(2.7, 2.0), grid)
+	fighter.fight(null, 5.0, 0.3)
+	fighter.hurt(0.34, hitter)
+	for i in 120:
+		fighter.tick(1.0 / 60.0)
+		if fighter.is_down():
+			break
+	t.check(not fighter.is_down() and fighter.mind == Person.Mind.FIGHT, "a fighter struck stays on its feet")
+	fighter.free()
+	var trooper := Person.new()
+	trooper.rng.seed = 44
+	trooper.bounds = TownLayout.MAP
+	trooper.setup_person(true, Vector2(2.7, 2.0), grid)
+	trooper.hurt(0.3, hitter)
+	for i in 120:
+		trooper.tick(1.0 / 60.0)
+		if trooper.is_down():
+			break
+	t.check(not trooper.is_down(), "and so does a soldier")
+	trooper.free()
+
+	# A scream holds the spot; death, freezing and a knock-back cut it short.
+	var screamer := Person.new()
+	screamer.rng.seed = 45
+	screamer.bounds = TownLayout.MAP
+	screamer.setup_person(false, Vector2(2.7, 2.0), grid)
+	screamer.set_goal(Vector2(2.7, 8.0))
+	screamer.scream(Person.SCREAM_SECONDS)
+	var screams_at := screamer.ground_pos
+	for i in 30:
+		screamer.tick(1.0 / 60.0)
+	t.check(screamer.is_screaming() and screamer._sprite_pose()[0] == &"scream" and screamer.ground_pos == screams_at,
+		"a screaming citizen clutches its head and stays put")
+	screamer.freeze(1.0)
+	t.check(not screamer.is_screaming() and screamer._sprite_pose()[0] != &"scream", "frozen mid-scream it screams no more")
+	screamer.free()
+	var screamer2 := Person.new()
+	screamer2.rng.seed = 46
+	screamer2.bounds = TownLayout.MAP
+	screamer2.setup_person(false, Vector2(2.7, 2.0), grid)
+	screamer2.scream(Person.SCREAM_SECONDS)
+	screamer2.knock(Vector2(1.0, 0.0))
+	t.check(not screamer2.is_screaming() and screamer2._sprite_pose()[0] != &"scream", "a knock-back cuts the scream short")
+	screamer2.scream(Person.SCREAM_SECONDS)
+	screamer2.die(&"nova", Vector2.INF)
+	t.check(not screamer2.is_screaming() and screamer2._sprite_pose()[0] == &"death", "and so does death")
+	screamer2.free()
+	hitter.free()
+
 	var calm := Person.new()
 	calm.setup_person(false, Vector2(2.7, 2.0), grid)
 	t.check(not calm.is_running(), "a calm citizen does not run")

@@ -86,6 +86,13 @@ const SCURRY := 0.9
 ## Chance per think that a running person stumbles, and how long they are down for.
 const STUMBLE_CHANCE := 0.006
 const STUMBLE_SECONDS := 0.45
+## Madness breaking: how long a citizen screams, clutching its head, before the frenzy starts.
+const SCREAM_SECONDS := 1.0
+## A bystander struck in a fight: how long it lies where it fell, then how long it takes to get up (then it flees).
+const DOWN_SECONDS := 1.0
+const GETUP_SECONDS := 0.6
+## How long the swing pose shows after a blow lands: the whole clip plays within it.
+const SWING_SHOW := 0.35
 
 const CIT_SKIN := [Color("c89a72"), Color("b07a52"), Color("8a5a3a")]
 const CIT_TUNIC := [Color("8a5a3a"), Color("6a6a4a"), Color("7a4a4a"), Color("4a5a6a"), Color("8a7a4a"), Color("6a5a7a")]
@@ -285,7 +292,8 @@ var _swing_in := 0.0
 var _retarget_in := 0.0
 var _fight_rule := FightRule.ANYONE
 var _fight_sight := FIGHT_SIGHT
-var _fight_kind := &""
+## What the fight is for (the `kind` of fight()): &"madness" is a frenzy, whose fighters lurch.
+var fight_kind := &""
 ## Seconds left of fearing nothing (Rewrite Priority's Ignore, Collective Delusion's All Is Well): no danger frightens
 ## it, nothing makes it look, no evacuation calls it; and whether it was fleeing when reassured, to flee again after.
 var fearless_left := 0.0
@@ -315,6 +323,16 @@ var _whisper_fled := false
 var _shaken_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
+## Seconds left screaming (scream()), and how long the scream is in all: it holds the person still.
+var _scream_left := 0.0
+var _scream_total := SCREAM_SECONDS
+## A blow knocked it down and it is still sliding (the down timer starts when the slide ends), the seconds left lying
+## down and then getting up (is_down()).
+var _down_pending := false
+var _down_left := 0.0
+var _getup_left := 0.0
+## Seconds left of showing the swing pose after a blow it struck.
+var _swing_left := 0.0
 ## Seconds left frozen in fright before running (v0.11.2, STARTLE); see startled().
 var _startle_left := 0.0
 ## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
@@ -438,7 +456,8 @@ func frame(delta: float) -> void:
 func unhurried() -> bool:
 	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER \
 		or mind == Mind.REGROUP or mind == Mind.COMPELLED
-	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and _startle_left <= 0.0 and wait <= 0.0 and not hurrying
+	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and _startle_left <= 0.0 and wait <= 0.0 and not hurrying \
+		and _scream_left <= 0.0 and _down_left <= 0.0 and _getup_left <= 0.0 and not _down_pending
 
 
 # --- Brain -------------------------------------------------------------------
@@ -455,6 +474,10 @@ func tick(delta: float) -> void:
 	var before := ground_pos
 	super(delta)
 	_track_stride(ground_pos - before)
+	if _down_pending and state == State.WANDER:
+		# The knock-back slide is over: it lies where it came to rest.
+		_down_pending = false
+		_down_left = DOWN_SECONDS
 
 
 ## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
@@ -476,6 +499,24 @@ func _think(delta: float) -> void:
 				mind = Mind.CALM
 				flee()
 	_repath_in = maxf(_repath_in - delta, 0.0)
+	if _swing_left > 0.0:
+		_swing_left = maxf(_swing_left - delta, 0.0)
+	if _scream_left > 0.0:
+		# Screaming, hands to the head: stands still, whatever else it had to do.
+		_scream_left = maxf(_scream_left - delta, 0.0)
+		_idle = maxf(_idle, 0.2)
+		return
+	if _down_left > 0.0:
+		# Knocked down: lies still, then gets up.
+		_down_left = maxf(_down_left - delta, 0.0)
+		if _down_left <= 0.0:
+			_getup_left = GETUP_SECONDS
+		_idle = maxf(_idle, 0.2)
+		return
+	if _getup_left > 0.0:
+		_getup_left = maxf(_getup_left - delta, 0.0)
+		_idle = maxf(_idle, 0.2)
+		return
 	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
 	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
 	# Checked even while held at a gate: otherwise a citizen whose path ran out inside gate range can only
@@ -1096,7 +1137,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	_fight_blow = blow
 	_fight_rule = rule
 	_fight_sight = sight
-	_fight_kind = kind
+	fight_kind = kind
 	_swing_in = 0.0
 	_retarget_in = 0.0
 	_panic_left = 0.0
@@ -1104,6 +1145,42 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	_path = PackedVector2Array()
 	_leg = 0
 	walk_speed = _mind_speed()
+
+
+## Clutch its head and scream for `seconds`, rooted to the spot (the madness breaking). Death, freezing and a knock-back
+## cut it short.
+func scream(seconds: float) -> void:
+	if state == State.DEAD or is_frozen() or seconds <= 0.0:
+		return
+	_scream_left = seconds
+	_scream_total = seconds
+	_idle = maxf(_idle, seconds)
+
+
+## A knock-back cuts a scream short.
+func knock(v: Vector2) -> void:
+	super(v)
+	if state == State.KNOCKBACK:
+		_scream_left = 0.0
+
+
+func is_screaming() -> bool:
+	return _scream_left > 0.0 and state == State.WANDER and not is_frozen()
+
+
+## Knocked down by a blow: after the knock-back slide it lies still for DOWN_SECONDS, then gets up for GETUP_SECONDS.
+## Its mind is its own business (hurt() frightens it as the blow lands), and its flight waits until it is up.
+func knock_down() -> void:
+	if state == State.DEAD or is_frozen() or is_down():
+		return
+	_down_pending = true
+	_scream_left = 0.0
+
+
+## Lying or getting up after a knock-down: it cannot be picked as a target (but a fight set on it still goes on).
+func is_down() -> bool:
+	return state != State.DEAD and (_down_pending or _down_left > 0.0 or _getup_left > 0.0)
+
 
 
 ## The fight is over: a soldier back to its post, a citizen to come round where it stands.
@@ -1122,6 +1199,8 @@ func stop_fighting() -> void:
 func _fightable(p: Person) -> bool:
 	if p == null or p == self or not is_instance_valid(p) or not p.is_alive() or p.inside or not p.visible:
 		return false
+	if p.is_down() and _fight_rule != FightRule.TARGET_ONLY:
+		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
 	match _fight_rule:
 		FightRule.HOSTILES:
 			# A fighting citizen, or a fighter set on another side (a soldier turned).
@@ -1129,7 +1208,7 @@ func _fightable(p: Person) -> bool:
 		FightRule.OWN_KIND:
 			return p.soldier == soldier
 		FightRule.OF_KIND:
-			return p.kind() == _fight_kind
+			return p.kind() == fight_kind
 		FightRule.TARGET_ONLY:
 			return p == fight_target
 		FightRule.OTHER_SIDE:
@@ -1175,6 +1254,7 @@ func _fight_step(delta: float) -> void:
 		_facing = 1 if fight_target.ground_pos.x - fight_target.ground_pos.y > ground_pos.x - ground_pos.y else -1
 		if _swing_in <= 0.0:
 			_swing_in = FIGHT_SWING
+			_swing_left = SWING_SHOW
 			fight_target.hurt(_fight_blow, self)
 
 
@@ -1187,19 +1267,22 @@ func hurt(amount: float, by: Person) -> void:
 	if statuses.has(&"frail"):
 		health = 0.0  # the frail fall to any blow (Death Mark)
 	flash(0.08)
-	if by != null and is_instance_valid(by):
+	var lying := is_down()  # already on the ground: struck again, it neither slides nor rises sooner
+	if by != null and is_instance_valid(by) and not lying:
 		var away := ground_pos - by.ground_pos
 		knock((away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 1.2)
 	if health <= 0.0:
 		if field != null:
 			field.kill(self, &"frenzy", by.ground_pos if by != null and is_instance_valid(by) else Vector2.INF)
 		return
-	if by == null or not is_instance_valid(by) or mind == Mind.FIGHT:
+	if by == null or not is_instance_valid(by) or mind == Mind.FIGHT or lying:
 		return
 	if soldier:
 		fight(by, 20.0, SOLDIER_BLOW, FightRule.HOSTILES)
 	else:
+		# A bystander is frightened as before, and knocked flat: it lies there, and runs when it is up.
 		panic(by.ground_pos, 0.5, &"frenzy")
+		knock_down()
 ## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
 ## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
 ## where a duty's manager takes it back. Anyone inside and the dead do not hear it (a soldier does, v0.11.1: he goes back to what he was doing), nor (v0.08.1) anyone still
@@ -1688,7 +1771,7 @@ func _design() -> String:
 	return _design_name
 
 
-## The people sprite's [animation, facing, frame] for what it is doing: its fall when dead, still while frozen, on one
+## The people sprite's [animation, facing, frame] for what it is doing: its fall when dead, still while frozen, screaming, lying down or getting up, swinging, on one
 ## knee in a stumble, running when lifted, knocked or frightened, walking when it stepped, else idle; facing the way it
 ## last stepped. Stumble and death hold their last frame.
 func _sprite_pose() -> Array:
@@ -1706,24 +1789,55 @@ func _sprite_pose_code() -> int:
 		facing = PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
 	var anim := 0
 	var t := _anim
+	var span := 0.0
 	if state == State.DEAD:
 		anim = 4
 		t = _dead_time
 	elif _frozen > 0.0:
 		return facing
+	elif _scream_left > 0.0 and state == State.WANDER:
+		anim = 5
+		t = _scream_total - _scream_left
+	elif _down_left > 0.0:
+		# Knocked down: the death fall, held on its last frame.
+		anim = 4
+		t = DOWN_SECONDS - _down_left
+	elif _getup_left > 0.0:
+		anim = 8
+		t = GETUP_SECONDS - _getup_left
 	elif _stumble > 0.0:
 		anim = 3
 		t = STUMBLE_SECONDS - _stumble
+	elif _swing_left > 0.0 and state == State.WANDER:
+		anim = 7
+		t = SWING_SHOW - _swing_left
+		span = SWING_SHOW
 	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
 		anim = 2
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
+		if mind == Mind.FIGHT and fight_kind == &"madness":
+			_design()
+			if _has_own_art(6):
+				anim = 6  # the zombie lurch of a frenzy
 	var frame := int(t * PeopleArt.FPS_AT[anim])
-	if PeopleArt.ONCE_AT[anim]:
+	if span > 0.0:
+		# The whole clip plays within the window it is shown for.
+		_design()
+		var n: int = _design_info[4][anim * 4 + facing]
+		frame = mini(int(t / span * float(n)), n - 1)
+	elif PeopleArt.ONCE_AT[anim]:
 		_design()
 		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
 	return frame << 6 | anim << 2 | facing
+
+
+## Whether this design has art of its own for the animation (ANIMS index) in the direction it faces: a design without
+## it wears its idle there (PeopleArt, the atlas tool), so it has as many frames as idle does.
+func _has_own_art(anim: int) -> bool:
+	var counts: PackedInt32Array = _design_info[4]
+	return counts[anim * 4] != counts[0]
 
 
 ## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way

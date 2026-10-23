@@ -145,6 +145,7 @@ const SUITES := [
 	"res://tests/test_tier5_wishes.gd",
 	"res://tests/test_tier5_board.gd",
 	"res://tests/test_legend.gd",
+	"res://tests/test_hide_ui.gd",
 	"res://tests/test_soldier_minds.gd",
 	"res://tests/test_routes.gd",
 	"res://tests/test_audio_mix.gd",

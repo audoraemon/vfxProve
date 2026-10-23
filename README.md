@@ -77,6 +77,7 @@ The approved effects are becoming a one-mission game (spec: `docs/superpowers/sp
 | `U` | Upgrades, on the mission board (v0.11) |
 | `TAB` | more or less of the mission's text: every objective, how to win, the wishes, names on the edge arrows (v0.11.1) |
 | `H` | the legend of marks, with this night's tags; again for the second page, Esc to close; the night waits (v0.11.1) |
+| `F1` | hide or show the whole interface, to watch the town: the HUD, its tags and the aim go; the camera still pans and zooms, and no click casts while it is hidden. `F1` again, a slot key, `TAB` or `H` brings it back; the ending always shows (v0.11.2) |
 | `Esc` | cancel an aim in progress, else quit; Title from the board, the board from Prepare, pause in a mission, resume from pause, the board from Results |
 | Options (the pause menu's second row, the title's third) | opens the volume panel (v0.11.2): bars for Music, Sounds and Interface in 10 steps. Click a bar, or `Up` / `Down` to choose and `Left` / `Right` to change; `Esc` closes it and goes back to the menu (it does not resume the mission). The volumes are saved in their own file, `user://kak_settings.cfg`, apart from your progress |
 

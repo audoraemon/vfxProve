@@ -1,0 +1,63 @@
+# Posts KAK progress to the Discord #changelog channel.
+#   push to feat/Develop-Main  -> short "vX in progress" summary of the pushed commits
+#   push a kak-v* tag          -> release (kak-v0.11.2) or milestone (kak-v011-m6) summary
+#   run by hand                -> re-post any tag, e.g. an older release
+# Needs the repo secret DISCORD_WEBHOOK (Settings > Secrets and variables > Actions).
+# Without it the job only prints what it would have posted.
+name: Discord changelog
+
+on:
+  push:
+    branches: [feat/Develop-Main]
+    tags: ["kak-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to post, e.g. kak-v0.11.2"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-changelog
+  cancel-in-progress: false  # queue posts so they arrive in order
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history and tags, to find the previous release
+          filter: blob:none  # skip file contents: the art and sound are large, only commits are read
+          sparse-checkout: .github
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          script=.github/scripts/discord_changelog.py
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            python "$script" --tag "$INPUT_TAG"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            python "$script" --tag "$REF_NAME"
+          elif [ -z "${BEFORE//0/}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            # New branch or a force push: there is no old tip to compare with.
+            echo "No usable previous tip ($BEFORE); posting only the newest commit."
+            python "$script" --range "$AFTER~1..$AFTER" --branch "$REF_NAME"
+          else
+            python "$script" --range "$BEFORE..$AFTER" --branch "$REF_NAME"
+          fi

@@ -142,6 +142,8 @@ var _hush_until := -INF
 var _bell_lies_until := -INF
 ## Seconds left of time standing still (freeze()).
 var _freeze_left := 0.0
+## Where nothing is seen (veil()): [{at, r, until}] on the crowd's clock.
+var _veils: Array = []
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -862,6 +864,8 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
+	if is_veiled(ground):
+		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
 	if PowerBook.is_quiet(key):
 		# Nothing for the town to see (v0.05): Silent Doom and Blight report their own effects. A quiet power may still
 		# unsettle it a little (its book entry's "alarm": a congregation forming, a bloom of madness).
@@ -964,6 +968,8 @@ static func _cast_radius(key: String) -> float:
 ## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
 func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName,
 		soldiers_too := false) -> void:
+	if is_veiled(at):
+		return  # nothing there is seen (Unseen Hour)
 	threats.register(at, radius, severity, seconds, sight, sound, kind)
 	var points: Array[Vector2] = [at]
 	_react(points, radius, sound, at, kind, soldiers_too)
@@ -986,6 +992,8 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 				at = point
 		if p.inside:
 			continue
+		if p.mind == Person.Mind.ASLEEP and best <= sound:
+			p.wake()  # a loud blow wakes the sleeping (Curfew)
 		if best <= radius + Person.THREAT_MARGIN:
 			var was := p.mind
 			p.panic(at, radius, kind)
@@ -994,6 +1002,13 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 				_spreads.append([_clock + _rng.randf_range(SPREAD_DELAY.x, SPREAD_DELAY.y), p])
 		elif best <= sound:
 			p.observe(at)
+	for p in soldiers:
+		if not is_instance_valid(p) or p.mind != Person.Mind.ASLEEP or p.inside:
+			continue
+		for point in points:
+			if p.ground_pos.distance_to(point) <= sound:
+				p.wake()  # a soldier too
+				break
 	if soldiers_too:
 		for p in soldiers:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside:
@@ -1065,6 +1080,21 @@ func hush(seconds: float) -> void:
 
 func is_hushed() -> bool:
 	return _clock < _hush_until
+
+
+## Nothing within `r` of `at` is seen for `seconds` (Unseen Hour): no cast there is looked at or feared, no death or
+## collapse there raises the alarm or brings anyone, no danger is registered there, no fire there is fought. The
+## people inside go on as they were; what is done to them is done.
+func veil(at: Vector2, r: float, seconds: float) -> void:
+	_veils.append({"at": at, "r": r, "until": _clock + seconds})
+	threats.blind = is_veiled
+
+
+func is_veiled(at: Vector2) -> bool:
+	for v: Dictionary in _veils:
+		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= float(v.r):
+			return true
+	return false
 
 
 ## Time stands still in the town for `seconds` (Abolition's clock): nobody alive moves or thinks, and nothing of the
@@ -1526,6 +1556,7 @@ func clear() -> void:
 	_hush_until = -INF
 	_bell_lies_until = -INF
 	_freeze_left = 0.0
+	_veils.clear()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -1572,15 +1603,16 @@ func clear() -> void:
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role == &"thorns":
 		return  # a bramble burnt or blasted away: no incident, nothing to flee
-	if s.role != &"citadel":
-		_hear_alarm(ALARM_BUILDING)
 	var at := s.center()
-	if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
-		_investigate(at)
-	var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
-	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
-	var points: Array[Vector2] = [at]
-	_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
+	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
+		if s.role != &"citadel":
+			_hear_alarm(ALARM_BUILDING)
+		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
+			_investigate(at)
+		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
+		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
+		var points: Array[Vector2] = [at]
+		_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
 	if is_instance_valid(_town) and s == _town.bridge:
 		# The south route just closed: everyone already walking it needs a new plan.
 		for p in citizens:
@@ -1608,6 +1640,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	else:
 		killed_citizens += 1
 	_voice_death(p, kind)
+	if is_veiled(p.ground_pos):
+		return  # a death nobody sees (Unseen Hour)
 	if kind == &"doom":
 		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
 		return

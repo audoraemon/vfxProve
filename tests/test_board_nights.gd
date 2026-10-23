@@ -36,7 +36,7 @@ static func _versions(t) -> void:
 	t.check(Mission.ascends(f) and not Mission.ascends(echo) and not Mission.ascends(g) and not Mission.ascends(up),
 		"F pressed ascends; an echo, a release or another key does not")
 	var save := SaveFile.new()
-	t.check(Game.locked_for(save, false).size() == 23 and Game.locked_for(save, true).is_empty(),
+	t.check(Game.locked_for(save, false).size() == 25 and Game.locked_for(save, true).is_empty(),
 		"the board's draft greys the locked powers; the campaign's keeps its own rules")
 
 

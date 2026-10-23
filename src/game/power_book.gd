@@ -66,6 +66,9 @@ const POWERS := [
 	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
 		"dp": 3, "cooldown": 75.0, "aim": "click", "shape": "doubles what is already there: fires, cracks, madness, spells",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s nothing in the circle is seen: no alarm, no fright, nobody comes",
+		"quiet": true, "authority": "veil"},
 	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
 		"quiet": true, "alarm": 0.3, "authority": "dominion"},
@@ -99,6 +102,9 @@ const POWERS := [
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district believes a danger that is not there, or that all is well",
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "danger", "name": "FALSE DANGER"}, {"key": "calm", "name": "ALL IS WELL", "area": {"r": 7.0}}]},
+	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
+		"quiet": true, "alarm": 1.0, "authority": "decree"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
@@ -211,7 +217,7 @@ static func authority_title(authority: String) -> String:
 ## A power's family (v0.11.1, spec §7.1): what it does, not its Authority (Decision 25). A mission's main step has a route in
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
-	"doom": "veil", "blight": "veil",
+	"doom": "veil", "blight": "veil", "unseen": "veil",
 	"deathmark": "death", "pestilence": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike",
@@ -220,7 +226,7 @@ const FAMILY := {
 	"wisp": "draw", "delusion": "draw",
 	"discord": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "belllies": "decree", "magnify": "decree", "abolition": "decree",
+	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage",
 }
 

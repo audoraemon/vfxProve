@@ -16,10 +16,14 @@ var _recent: Array[Dictionary] = []
 var _clock := 0.0
 ## Rises whenever a threat starts, ends or a recent impact fades: EvacuationManager re-weighs the walk grid on it.
 var epoch := 0
+## func(at: Vector2) -> bool: where nothing is seen (Crowd.veil()); a danger there is not registered (-1).
+var blind := Callable()
 
 
 func register(at: Vector2, radius: float, severity: float, duration: float, sight: float, sound: float,
 		kind: StringName) -> int:
+	if blind.is_valid() and blind.call(at):
+		return -1
 	var id := _next
 	_next += 1
 	epoch += 1

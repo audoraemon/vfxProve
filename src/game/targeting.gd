@@ -49,6 +49,10 @@ const AREAS := {
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
+	# UnseenHourFx.RADIUS
+	"unseen": {"shape": "circle", "r": 5.0},
+	# CurfewFx.RADIUS
+	"curfew": {"shape": "circle", "r": 4.0},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())

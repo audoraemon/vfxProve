@@ -57,6 +57,8 @@ const POWER_KINDS := {
 	"noleave": [],
 	"belllies": [],
 	"magnify": [&"magnify"],
+	"unseen": [],
+	"curfew": [],
 	"abolition": [],
 	"voice": [&"frenzy"],
 	"turncoat": [&"frenzy"],

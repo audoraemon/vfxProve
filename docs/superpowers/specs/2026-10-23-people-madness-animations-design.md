@@ -116,7 +116,7 @@ Every changed checksum is re-recorded with the reason, as each milestone does. T
    - A downed person can't be targeted. An attacker picks someone else, so nobody is beaten to death on the ground.
 2. **Down is a timer layered over the person's state, like the stumble.**
    - It starts when the knock-back slide ends.
-   - While down, the person doesn't move or path, and its other timers pause, as they do in a stumble.
+   - While down, the person doesn't move or path, and its fright, panic and stumble timers pause, as in a stumble. Its other timers (fearless, badge, repath, swing) keep counting.
    - It ends with the get-up, then the person's normal reaction to the blow: flee from the attacker.
 3. **The scream** is a hold timer in the same way. Freeze, death and a knock-back override it, and a screaming person can be killed. The frenzy's 15 s starts when the scream ends.
 4. **Custom animations** (scream, soldier thrust) use PixelLab's custom mode ("v3") on the existing character id, one direction per job. At this sprite size that costs 1 generation per direction, the same as a template.

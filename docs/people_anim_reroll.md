@@ -1,7 +1,8 @@
 # People animations: clips to re-roll later
 
-Every clip below is rejected or missing. The game shows a fallback until it is re-rolled: a still stand from the idle
-frames (the back-view screams, and the marshal, escort and rescue during a swing). Each direction costs 1 PixelLab
+Every clip below is rejected, missing or kept with a known flaw. The rejected and missing ones show a fallback until
+re-rolled: a still stand from the idle frames (the back-view screams, and the marshal, escort and rescue during a
+swing). The farmer swing (section 2) is in the game as it is; re-rolling it only improves its colours. Each direction costs 1 PixelLab
 generation. Character ids are in `assets/pixellab/people/characters.json`.
 
 ## How to re-roll (the recipe that works)
@@ -9,7 +10,7 @@ generation. Character ids are in `assets/pixellab/people/characters.json`.
 `char-anim` skips any direction that already has frames under that animation (matched by template or name), and a
 second group of the same name would overwrite the first one's files, so the old clip has to go first.
 
-1. **Remove the old clip from PixelLab.** Either add `--replace` to `char-anim` (it deletes that name's group for the
+1. **Remove the old clip from PixelLab.** Either add `--replace` to `char-anim` (it deletes that name's frames for each of the
    given `--dirs` first; untested against the live API, so if it refuses, use the next), or call the MCP
    `delete_animation(character_id, animation_group_id, direction)` (group ids: `get_character`). A clip that is not
    generated yet (the soldier thrusts) needs no removal. Alternative for a v3 clip: generate under a temporary

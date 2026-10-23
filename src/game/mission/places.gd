@@ -42,6 +42,8 @@ static func has(city: CityDef, need: StringName) -> bool:
 	var text := String(need)
 	var base := StringName(text.get_slice(":", 0))
 	var count := int(text.get_slice(":", 1)) if ":" in text else 1
+	if ":" in text and not base in LIST_NEEDS:
+		push_error("Places.has: '%s' has a count, but only the list needs (%s) are counted" % [need, LIST_NEEDS])
 	if base == &"citadel":
 		return city.citadel_origin() != Vector2.INF
 	if base in LIST_NEEDS:
@@ -49,8 +51,12 @@ static func has(city: CityDef, need: StringName) -> bool:
 	return city.landmark(base).has_area() or city.place(base) != Vector2.INF
 
 
-## Whether `city` has every place mission `id` needs (MissionNeeds). Whether it is also offered there is MissionBook.hostable().
+## Whether `city` has every place mission `id` needs (MissionNeeds); an id with no row is an error and false. Whether it is
+## also offered there is MissionBook.hostable().
 static func can_host(id: String, city: CityDef) -> bool:
+	if not MissionNeeds.TABLE.has(id):
+		push_error("Places.can_host: no needs listed for '%s'; it cannot be hosted" % id)
+		return false
 	for need: String in MissionNeeds.of(id):
 		if not has(city, StringName(need)):
 			return false

@@ -74,7 +74,7 @@ func _plan() -> void:
 	head_door = TEMPLE_DOOR
 	lost_word = "cellar"
 	for i in SWEEP_SPOTS.size():
-		steps.append(_step(String(SWEEP_WORDS[i]), SWEEP_SPOTS[i], TownLayout.DISTRICTS[SWEEP_DISTRICTS[i]], float(STEP_AT[i]), PARTY))
+		steps.append(_step(String(SWEEP_WORDS[i]), SWEEP_SPOTS[i], City.current().districts()[SWEEP_DISTRICTS[i]], float(STEP_AT[i]), PARTY))
 	for s: Structure in town._built:
 		if is_instance_valid(s) and s.role == &"temple":
 			temple = s
@@ -92,7 +92,7 @@ func _plan() -> void:
 ## soldier's post watches; the nearest reachable one there when every one tried is watched; null for none. Never a wish's building
 ## (_house_near()).
 func _cellar_house() -> Structure:
-	var area: Rect2 = TownLayout.DISTRICTS[CELLAR_DISTRICT]
+	var area: Rect2 = City.current().districts()[CELLAR_DISTRICT]
 	var from := _walkable(TEMPLE_DOOR)
 	var skip: Array = []
 	var first: Structure = null

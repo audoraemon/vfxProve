@@ -159,7 +159,7 @@ func _roof() -> void:
 ## The pulpit, and the god's house (v0.11 M5, Decision 143): the dwelling nearest HOUSE_SPOT, never set aside, whose door the street
 ## from the pulpit reaches beyond VOICE of it; it only shakes tonight (plan decision 184).
 func _find_house() -> Structure:
-	pulpit = _walkable(TownLayout.WELLS[2].get_center() + Vector2(0.0, -0.8))
+	pulpit = _walkable(City.current().wells()[2].get_center() + Vector2(0.0, -0.8))
 	var skip: Array = []
 	for i in HOUSE_TRIES:
 		var h := _house_near(HOUSE_SPOT, skip)

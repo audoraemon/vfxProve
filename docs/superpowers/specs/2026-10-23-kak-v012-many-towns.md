@@ -182,7 +182,7 @@ Tier 1's needs (the other 20 missions' rows are filled from their scans in M1's 
 |---|---|---|
 | The Warning / Starfall (`warning`) | `temple`, `bell_tower` | the Herald's goal and the Lantern's beam; the bellkeeper's tower |
 | The Tax Collector | `temple`, `bell_tower`, `citadel`, `citadel_gate`, `workshop` | the Lantern (watch night); the taxes' goal; the default counting-house |
-| Spoiled Harvest | `citadel`, `citadel_gate` | the carts' goal |
+| Spoiled Harvest | `citadel`, `citadel_gate`, `temple` | the carts' goal; the Temple, which every director reads (`MissionDirector.lantern_door_in`) -- pre-flight ruling, Task 3's scan demands it |
 | The Lost Lamb | `temple` | where a seizer takes him (spots are the town's) |
 | First Prayers | `temple`, `bell_tower`, `market_square` | Mira's Temple's door and reports; the Lantern (gaze night); the shrine by the market |
 
@@ -331,7 +331,7 @@ dwellings `RuinWish.fits(s, "house")` accepts, and checked by the parity test.
 
 ### 2.3 Spoiled Harvest in the Capital
 
-- **Needs:** `citadel`, `citadel_gate`.
+- **Needs:** `citadel`, `citadel_gate`, `temple` (every director reads the Temple through `MissionDirector`).
 - **Spots to set first:** `store_spots` and `store_names`. Aldermere's granaries from the Citadel's gate: 19.7 (south-west), 29.8
   (south-east), 22.9 (north-east). First guess, old town dwellings: **north-east `(15, -14)`** (~17), **south-east `(14, 0)`** (~27),
   **west `(-16, -4)`** (~25), names `north-east`, `south-east`, `west`. The carter walks gate <-> granary five times: parity on that walk

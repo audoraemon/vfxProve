@@ -91,7 +91,7 @@ func _begin() -> void:
 	gaze = GazeMeter.new()
 	house = _find_house()
 	door = _door_of(house) if house != null else _walkable(MIRA_SPOT)
-	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
+	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
 	_choose_people()
 	crowd._field.enemy_killed.connect(_on_killed)
 	timeline = _new_timeline()

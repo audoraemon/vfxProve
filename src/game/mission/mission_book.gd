@@ -43,6 +43,13 @@ const CAPITAL_INTRO_FROM := Vector2(4.0, 16.0)
 const NIGHT_RITE_PENALTY := 20.0
 
 
+## Aldermere, the home town of every mission built here (v0.12). A def is built before City.use() (Mission.start, the board's
+## cards), so the builders never ask the active city: after a Capital night, Aldermere's Tax Collector must still frame
+## Aldermere's workshop. Its values are TownLayout's exactly.
+static func _home() -> CityDef:
+	return City.by_id(&"aldermere")
+
+
 static func all() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [warning(), long_night(), last_judgement()]
 	return out
@@ -213,7 +220,7 @@ static func tax_collector() -> MissionDef:
 	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
 	m.goal_label = "The collectors are dead"
 	m.lose = "A collector reaches the Citadel, or dawn comes"
-	m.camera_at = TownLayout.WORKSHOP.get_center() + Vector2(-2.0, 3.0)
+	m.camera_at = _home().landmark(&"workshop").get_center() + Vector2(-2.0, 3.0)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "discord", "whisper"])
 	m.director = TaxCollectorDirector
@@ -561,8 +568,8 @@ static func warning() -> MissionDef:
 	m.dp_capacity = 6
 	m.clock = 120.0
 	m.profile = "unaware"
-	m.intro_from = TownLayout.MAIN_GATE.get_center() + Vector2(0.0, 6.0)
-	m.camera_at = TownLayout.MAIN_GATE.get_center().lerp(TownLayout.BELL_TOWER.get_center(), 0.35)
+	m.intro_from = _home().landmark(&"main_gate").get_center() + Vector2(0.0, 6.0)
+	m.camera_at = _home().landmark(&"main_gate").get_center().lerp(_home().landmark(&"bell_tower").get_center(), 0.35)
 	m.intro_banner = "THE FIRST STIRRING"
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
 	m.director = WarningDirector
@@ -617,8 +624,8 @@ static func long_night() -> MissionDef:
 	m.profile = "night"
 	m.scored = true
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
-	m.intro_from = TownLayout.MAIN_GATE.get_center() + Vector2(0.0, 6.0)
-	m.camera_at = TownLayout.MAIN_GATE.get_center().lerp(TownLayout.BELL_TOWER.get_center(), 0.35)
+	m.intro_from = _home().landmark(&"main_gate").get_center() + Vector2(0.0, 6.0)
+	m.camera_at = _home().landmark(&"main_gate").get_center().lerp(_home().landmark(&"bell_tower").get_center(), 0.35)
 	m.acts = [_omen(m), _festival(m), _procession(m), _judgement(m)]
 	m.make_objectives = (m.acts[0] as ActDef).make_objectives
 	m.make_bonuses = (m.acts[0] as ActDef).make_bonuses
@@ -670,8 +677,8 @@ static func _festival(m: MissionDef) -> ActDef:
 	a.goal = "Break the festival before the guard closes the square"
 	a.goal_label = "The festival is broken"
 	a.lose = "The guard closes the square with the festival unbroken"
-	a.camera_at = TownLayout.MARKET_SQUARE.get_center()
-	a.intro_from = TownLayout.MARKET_SQUARE.get_center() + Vector2(0.0, 8.0)
+	a.camera_at = _home().landmark(&"market_square").get_center()
+	a.intro_from = _home().landmark(&"market_square").get_center() + Vector2(0.0, 8.0)
 	a.intro_banner = "ACT II - THE FESTIVAL"
 	a.next = PackedStringArray(["judgement"])
 	a.make_town = _act2_town
@@ -694,8 +701,8 @@ static func _procession(m: MissionDef) -> ActDef:
 	a.goal = "Kill the Prince before he sails"
 	a.goal_label = "The Prince is dead"
 	a.lose = "The Prince boards the ship, or the last tide comes"
-	a.camera_at = TownLayout.CITADEL_ORIGIN.lerp(TownLayout.DOCK.get_center(), 0.3)
-	a.intro_from = TownLayout.CITADEL_ORIGIN
+	a.camera_at = _home().citadel_origin().lerp(_home().landmark(&"dock").get_center(), 0.3)
+	a.intro_from = _home().citadel_origin()
 	a.intro_banner = "ACT II - THE PROCESSION"
 	a.next = PackedStringArray(["judgement"])
 	a.make_town = _act2_town
@@ -728,8 +735,8 @@ static func _judgement(m: MissionDef) -> ActDef:
 	a.goal_label = "The city has fallen"
 	a.lose = "The people escape, or dawn comes"
 	a.scored = true
-	a.intro_from = TownLayout.MAIN_GATE.get_center()
-	a.camera_at = TownLayout.CITADEL_ORIGIN
+	a.intro_from = _home().landmark(&"main_gate").get_center()
+	a.camera_at = _home().citadel_origin()
 	a.intro_banner = "ACT III - JUDGEMENT"
 	a.make_town = _act3_town
 	a.make_act_objectives = func(n: NightState) -> Array[Objective]:

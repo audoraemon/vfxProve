@@ -108,11 +108,11 @@ func _emerge() -> void:
 ## side, the dock's waiting ground and the boarding point.
 func _route() -> PackedVector2Array:
 	var points := [
-		Vector2(TownLayout.CITADEL_COURT.get_center().x, TownLayout.CITADEL_COURT.end.y + 0.6),
-		Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.5),
-		Vector2(TownLayout.MARKET_SQUARE.get_center().x, TownLayout.MARKET_SQUARE.end.y - 0.5),
-		TownLayout.DOCK_WAIT.get_center(),
-		Vector2(TownLayout.DOCK.get_center().x, TownLayout.DOCK.position.y - 0.4),
+		Vector2(Places.rect(&"citadel_court").get_center().x, Places.rect(&"citadel_court").end.y + 0.6),
+		Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.5),
+		Vector2(Places.rect(&"market_square").get_center().x, Places.rect(&"market_square").end.y - 0.5),
+		Places.at(&"dock_wait"),
+		Vector2(Places.rect(&"dock").get_center().x, Places.rect(&"dock").position.y - 0.4),
 	]
 	var out := PackedVector2Array()
 	for at: Vector2 in points:
@@ -142,8 +142,9 @@ func _residents() -> Array[Person]:
 		if WarningDirector._alive(p) and p.profile != null and not p.inside \
 				and p.profile.role == CitizenProfile.Role.RESIDENT and not reserved.has(p):
 			pool.append(p)
+	var citadel := Places.point(&"citadel")
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
-		return a.ground_pos.distance_squared_to(TownLayout.CITADEL_ORIGIN) < b.ground_pos.distance_squared_to(TownLayout.CITADEL_ORIGIN))
+		return a.ground_pos.distance_squared_to(citadel) < b.ground_pos.distance_squared_to(citadel))
 	return pool
 
 

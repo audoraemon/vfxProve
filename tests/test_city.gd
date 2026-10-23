@@ -152,8 +152,9 @@ static func _leak(t) -> void:
 ## the shared folders; a TownLayout read counts unless it is in a comment or names one of GENERIC's city-agnostic
 ## sizes and helpers (both cities build their walls, gardens and street props with them).
 static func _no_hardcoded(t) -> void:
+	# v0.12: the missions (src/game/mission) and the scripted routes read their places from the active town too.
 	const DIRS := ["res://src/fx", "res://src/game/crowd", "res://src/game/descend", "res://src/game/town",
-		"res://src/environment"]
+		"res://src/environment", "res://src/game/mission", "res://tools/dev/routes"]
 	const FILES := ["res://src/game/targeting.gd", "res://src/game/mission.gd"]
 	# Files allowed to read Aldermere's places, each with its reason.
 	const EXCEPT := {
@@ -187,6 +188,33 @@ static func _no_hardcoded(t) -> void:
 		t.check(found.is_empty(), "%s reads no Aldermere places (found %s)" % [p, ", ".join(found)])
 	for p: String in EXCEPT:
 		t.check(FileAccess.file_exists(p), "the excepted %s exists" % p)
+	_no_hardcoded_policies(t, re)
+
+
+## The scripted Tier 1 policies of tools/dev/behaviour_check.gd read their places from the town too (v0.12): no `TownLayout.` in
+## the body of a function named like one. Its Aldermere-only scenarios (calm, gates, siege, boats ...) keep their TownLayout reads:
+## they test Aldermere by design.
+static func _no_hardcoded_policies(t, re: RegEx) -> void:
+	const POLICY_FUNCS := ["_tax", "_harvest", "_lamb", "_faith_", "_prayers", "_warning", "_watch_bearer_act", "_toll_", "_scripted"]
+	var fn_re := RegEx.create_from_string("^(?:static )?func (\\w+)")
+	var cur := ""
+	var is_policy := false
+	var seen := 0
+	var found := PackedStringArray()
+	for line: String in FileAccess.get_file_as_string("res://tools/dev/behaviour_check.gd").split("\n"):
+		var m := fn_re.search(line)
+		if m != null:
+			cur = m.get_string(1)
+			is_policy = false
+			for prefix: String in POLICY_FUNCS:
+				is_policy = is_policy or cur.begins_with(prefix)
+			seen += 1 if is_policy else 0
+		if not is_policy:
+			continue
+		for rm: RegExMatch in re.search_all(line.get_slice("#", 0)):
+			found.append("%s: %s" % [cur, rm.get_string(1)])
+	t.check(seen > 20, "the guard sees the Tier 1 policy functions (%d)" % seen)
+	t.check(found.is_empty(), "the Tier 1 policies read no Aldermere places (found %s)" % ", ".join(found))
 
 
 ## Every .gd file under `dir`, recursively, into `out`.

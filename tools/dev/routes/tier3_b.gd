@@ -364,7 +364,7 @@ static func act_festival(bc, ctx: Dictionary) -> String:
 		return "heaven through the thickest knot of goers"
 	if not packed and not memo.has("wisp_at") and bc._slot_ready(rules, slots, "wisp"):
 		memo["wisp_at"] = now
-		rules.cast(slots.wisp, TownLayout.MARKET_SQUARE.get_center())
+		rules.cast(slots.wisp, Places.at(&"market_square"))
 		return "wisp the goers into a knot"
 	if bc._slot_ready(rules, slots, "ember"):
 		var house := _by_square(ctx.crowd)
@@ -383,7 +383,7 @@ static func state_festival(_bc, ctx: Dictionary) -> String:
 
 ## The nearest standing house or stall to the market square that is not already burning, or null.
 static func _by_square(crowd: Crowd) -> Structure:
-	var c := TownLayout.MARKET_SQUARE.get_center()
+	var c := Places.at(&"market_square")
 	var best: Structure = null
 	for s in crowd._env.structures():
 		if not is_instance_valid(s) or s.destroyed or not (s.kind == Structure.Kind.HOUSE or s.kind == Structure.Kind.MARKET_STALL) \

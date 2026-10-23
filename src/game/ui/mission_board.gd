@@ -8,7 +8,8 @@ extends Node
 ## - Input: the mouse, Left and Right choose a card; Tab or 1-5 a tier; a click or Enter picks the card (an open tier's
 ##   only); U opens the Upgrades; Esc goes back to the title.
 ## - With --dev (Game sets `dev`), a DEV tab beside the title holds the dev-only missions (MissionBook.dev_missions(): the
-##   capital's sandbox), always open; D opens it. Nothing of it shows without the flag.
+##   capital's sandbox, then each town's hostable missions as composite ids, `tax_collector@capital`: v0.12), always open;
+##   D opens it. A town mission's card shows its name, the town (gold) and its type, no brief. Nothing of it shows without the flag.
 
 ## "pick" (the player chose `chosen`), "upgrades" or "back" (Esc).
 signal action(name: String)
@@ -55,6 +56,9 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 	if dev:
 		for m in MissionBook.dev_missions():
 			_defs[m.id] = m
+		for id in _missions_of(DEV_TIER):
+			if not _defs.has(id):
+				_defs[id] = Mission.def_for(id, true, _state())
 	tier = 1
 	selected = 0
 	var at := _tier_of(current)
@@ -106,13 +110,17 @@ func missions() -> PackedStringArray:
 	return _missions_of(tier)
 
 
-## Tier `t`'s missions: TierBook's, or on the DEV tab (--dev) the dev-only ones.
+## Tier `t`'s missions: TierBook's, or on the DEV tab (--dev) the dev-only ones, then (v0.12) each town's but Aldermere's hostable
+## missions, `<mission>@<city>`, in tier order.
 func _missions_of(t: int) -> PackedStringArray:
 	if t == DEV_TIER:
 		var out := PackedStringArray()
 		if dev:
 			for m in MissionBook.dev_missions():
 				out.append(m.id)
+			for city: StringName in City.ids():
+				if city != &"aldermere":
+					out.append_array(MissionBook.town_missions(city))
 		return out
 	return TierBook.missions(t)
 
@@ -164,7 +172,7 @@ func best_line(id: String) -> String:
 func brief_lines(id: String, room: float) -> PackedStringArray:
 	var out := PackedStringArray()
 	var def: MissionDef = _defs.get(id)
-	if def != null:
+	if def != null and MissionBook.split_city(id)[1] == &"":
 		for brief in def.brief:
 			out.append_array(UiTheme.wrap(brief, room, UiTheme.SIZE_BODY))
 	return out
@@ -209,11 +217,20 @@ static func rule_y(r: Rect2, rows: int) -> float:
 	return r.end.y - PAD - UiTheme.LINE_SMALL * float(rows) - 6.0
 
 
+## The lines under a card's name, each drawn small and upper-case (v0.12, D21): a town mission's town, then its type; any other card's
+## type, or "Dev sandbox" on the DEV tab.
+func kind_lines(id: String) -> PackedStringArray:
+	var parts := MissionBook.split_city(id)
+	if parts[1] != &"":
+		return PackedStringArray([String(parts[1]).to_upper(), TierBook.type_of(parts[0]).to_upper()])
+	return PackedStringArray([("Dev sandbox" if tier == DEV_TIER else TierBook.type_of(id)).to_upper()])
+
+
 ## The y of the first line of a card's brief (v0.11 M2, Task 8): under its name, however many lines that wraps to, and its type.
 func brief_top(id: String, r: Rect2) -> float:
 	var def: MissionDef = _defs.get(id)
 	var names := UiTheme.wrap(def.name, r.size.x - PAD * 2.0 - 12.0, UiTheme.SIZE_BIG).size()
-	return r.position.y + PAD + 14.0 + (UiTheme.LINE_BODY + 3.0) * float(names) + UiTheme.LINE_SMALL + 8.0
+	return r.position.y + PAD + 14.0 + (UiTheme.LINE_BODY + 3.0) * float(names) + UiTheme.LINE_SMALL * float(kind_lines(id).size()) + 8.0
 
 
 ## Where a card's brief ends (v0.11 M2, Task 8): its last line's baseline and a few pixels of descender.
@@ -413,8 +430,12 @@ func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 		y += UiTheme.LINE_BODY + 3.0
 	if _state().cleared.has(id):
 		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)
-	var kind := "Dev sandbox" if tier == DEV_TIER else TierBook.type_of(id)
-	UiTheme.text(_ui, Vector2(x, y), kind.to_upper(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	var town: bool = MissionBook.split_city(id)[1] != &""
+	var kinds := kind_lines(id)
+	for i in kinds.size():
+		# A town mission's town is gold on every card (v0.12); the type follows the card's own colour.
+		UiTheme.text(_ui, Vector2(x, y + UiTheme.LINE_SMALL * float(i)), kinds[i], UiTheme.SIZE_SMALL,
+			UiTheme.COL_GOLD if on or (town and i == 0) else UiTheme.COL_DIM)
 	y = brief_top(id, r)
 	for line in brief_lines(id, room):
 		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)

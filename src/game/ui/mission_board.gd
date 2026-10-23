@@ -7,6 +7,8 @@ extends Node
 ## - The header holds the night to come, the believers and an Upgrades button.
 ## - Input: the mouse, Left and Right choose a card; Tab or 1-5 a tier; a click or Enter picks the card (an open tier's
 ##   only); U opens the Upgrades; Esc goes back to the title.
+## - With --dev (Game sets `dev`), a DEV tab beside the title holds the dev-only missions (MissionBook.dev_missions(): the
+##   capital's sandbox), always open; D opens it. Nothing of it shows without the flag.
 
 ## "pick" (the player chose `chosen`), "upgrades" or "back" (Esc).
 signal action(name: String)
@@ -27,10 +29,15 @@ const PAD := 10.0
 const BRIEF_LINES := 7
 ## The header's Upgrades button.
 const UPGRADES_RECT := Rect2(548.0, 8.0, 84.0, 20.0)
+## The DEV tab (--dev only): its tier number, past the five, and its button in the header beside the title.
+const DEV_TIER := 6
+const DEV_RECT := Rect2(112.0, 8.0, 40.0, 20.0)
 
 ## The mission picked, once "pick" is emitted.
 var chosen := ""
-## The tier whose tab is open (1-5), and the selected card on it.
+## Whether the DEV tab shows (--dev, set before setup()).
+var dev := false
+## The tier whose tab is open (1-5, or DEV_TIER), and the selected card on it.
 var tier := 1
 var selected := 0
 
@@ -45,12 +52,15 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 	_save = save
 	for id in TierBook.all():
 		_defs[id] = TierBook.board(id)
+	if dev:
+		for m in MissionBook.dev_missions():
+			_defs[m.id] = m
 	tier = 1
 	selected = 0
-	var at := TierBook.tier_of(current)
-	if at > 0 and _state().is_open(at):
+	var at := _tier_of(current)
+	if at > 0 and _is_open(at):
 		tier = at
-		selected = maxi(TierBook.missions(at).find(current), 0)
+		selected = maxi(_missions_of(at).find(current), 0)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -86,14 +96,42 @@ static func card_rect(i: int, count: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (size.x + CARD_GAP), CARD_TOP), size)
 
 
+## The DEV tab's button (--dev only).
+static func dev_rect() -> Rect2:
+	return DEV_RECT
+
+
 ## The open tab's missions, by id.
 func missions() -> PackedStringArray:
-	return TierBook.missions(tier)
+	return _missions_of(tier)
+
+
+## Tier `t`'s missions: TierBook's, or on the DEV tab (--dev) the dev-only ones.
+func _missions_of(t: int) -> PackedStringArray:
+	if t == DEV_TIER:
+		var out := PackedStringArray()
+		if dev:
+			for m in MissionBook.dev_missions():
+				out.append(m.id)
+		return out
+	return TierBook.missions(t)
+
+
+## The tab a mission is on: its tier, DEV_TIER for a dev one (--dev), or 0.
+func _tier_of(id: String) -> int:
+	if dev and _missions_of(DEV_TIER).has(id):
+		return DEV_TIER
+	return TierBook.tier_of(id)
+
+
+## Whether tab `t` is open: its tier's rule, the DEV tab always (--dev).
+func _is_open(t: int) -> bool:
+	return dev if t == DEV_TIER else _state().is_open(t)
 
 
 ## The open tier's rule while it is locked (spec §3.1: "Clear 3 Omen missions"); "" while open.
 func lock_line() -> String:
-	return "" if _state().is_open(tier) else DescendState.lock_text(tier)
+	return "" if _is_open(tier) else DescendState.lock_text(tier)
 
 
 ## The header's line (spec §3.1): the night about to be played, and the believers. v0.11 M6 (Decision 252): "All 25 cleared" once every
@@ -186,7 +224,7 @@ func brief_bottom(id: String, r: Rect2) -> float:
 
 ## Opens tier `t`'s tab -- locked or not: a locked one shows its rule -- on its first card.
 func open_tab(t: int) -> void:
-	t = clampi(t, 1, TierBook.NAMES.size())
+	t = DEV_TIER if dev and t == DEV_TIER else clampi(t, 1, TierBook.NAMES.size())
 	if t == tier:
 		return
 	tier = t
@@ -198,13 +236,13 @@ func open_tab(t: int) -> void:
 ## Picks a mission by id, as a click on its card would (the FLOW test, --show): its tier's tab opens, and the mission is
 ## picked only when that tier is open.
 func choose(id: String) -> void:
-	var t := TierBook.tier_of(id)
+	var t := _tier_of(id)
 	if t == 0:
 		push_warning("KAK has no board mission called " + id)
 		return
 	tier = t
-	selected = maxi(TierBook.missions(t).find(id), 0)
-	if _state().is_open(t):
+	selected = maxi(_missions_of(t).find(id), 0)
+	if _is_open(t):
 		_pick()
 	else:
 		_redraw()
@@ -214,6 +252,8 @@ func choose(id: String) -> void:
 func hit(point: Vector2) -> String:
 	if UPGRADES_RECT.has_point(point):
 		return "upgrades"
+	if dev and DEV_RECT.has_point(point):
+		return "tab:%d" % DEV_TIER
 	for i in TierBook.NAMES.size():
 		if tab_rect(i).has_point(point):
 			return "tab:%d" % (i + 1)
@@ -225,7 +265,7 @@ func hit(point: Vector2) -> String:
 
 
 func _pick() -> void:
-	if not _state().is_open(tier) or missions().is_empty():
+	if not _is_open(tier) or missions().is_empty():
 		return
 	chosen = missions()[selected]
 	UiSound.play(&"ui_manifest")
@@ -255,6 +295,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key == KEY_ESCAPE:
 			UiSound.play(&"ui_click")
 			action.emit("back")
+		elif key == KEY_D and dev:
+			open_tab(DEV_TIER)
 		elif key == KEY_U:
 			UiSound.play(&"ui_click")
 			action.emit("upgrades")
@@ -302,7 +344,9 @@ func _draw_ui() -> void:
 		"Upgrades", UiTheme.SIZE_BODY, UiTheme.COL_GOLD if _hover == "upgrades" else UiTheme.COL_TEXT)
 	for i in TierBook.NAMES.size():
 		_draw_tab(i)
-	if _state().is_open(tier):
+	if dev:
+		_draw_dev_tab()
+	if _is_open(tier):
 		var ids := missions()
 		var rows := best_rows()
 		for i in ids.size():
@@ -312,6 +356,16 @@ func _draw_ui() -> void:
 	var hint := "Left and Right: missions   Tab or number keys: tiers   Enter: prepare   U: upgrades   Esc: title"
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), 322.0), hint,
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
+## The DEV tab's button (--dev): gold-framed while open.
+func _draw_dev_tab() -> void:
+	var open := tier == DEV_TIER
+	_ui.draw_rect(DEV_RECT, Color(0.12, 0.1, 0.05, 0.95) if open else (Color(0.1, 0.09, 0.07, 0.9)
+		if _hover == "tab:%d" % DEV_TIER else UiTheme.COL_PANEL))
+	UiTheme.frame(_ui, DEV_RECT, open)
+	UiTheme.text(_ui, Vector2(roundf(DEV_RECT.get_center().x - UiTheme.width("DEV", UiTheme.SIZE_SMALL) * 0.5),
+		DEV_RECT.end.y - 6.0), "DEV", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
 
 
 ## Tab `i`: "WHISPER", gold-framed while open; a locked tier's dim, with a padlock.
@@ -359,7 +413,8 @@ func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 		y += UiTheme.LINE_BODY + 3.0
 	if _state().cleared.has(id):
 		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)
-	UiTheme.text(_ui, Vector2(x, y), TierBook.type_of(id).to_upper(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
+	var kind := "Dev sandbox" if tier == DEV_TIER else TierBook.type_of(id)
+	UiTheme.text(_ui, Vector2(x, y), kind.to_upper(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_DIM)
 	y = brief_top(id, r)
 	for line in brief_lines(id, room):
 		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)

@@ -178,6 +178,8 @@ var soldier := false
 ## A soldier's role (v0.07; Crowd._assign_corps()) and the post it was given at spawn, which it goes back to.
 var corps := Corps.NONE
 var post := Vector2.INF
+## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
+var drill_face := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
@@ -229,6 +231,12 @@ var inside := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
+## The city's water (CityDef.rivers()), read again whenever the city changes: nobody steps off dry ground into it
+## (_step_blocked()).
+static var _rivers: Array[Rect2] = []
+static var _rivers_of: CityDef
+## Whether the city has the river rules at all (CityDef.river_rules(): the capital's; Aldermere's walkers never had them).
+static var _river_rule := false
 ## Seconds this person must stand still (a gate queue sets it every frame it holds someone back).
 var wait := 0.0
 ## This person's spot in a gate's waiting crowd, or Vector2.INF. While set, it walks there and stands; the gate
@@ -353,6 +361,11 @@ static var view := Rect2()
 ## An off-screen person is updated every this many frames, with the time it skipped. Most of the town is off
 ## screen at play zoom, and nobody can see a stride or a light reading there.
 const OFFSCREEN_EVERY := 3
+## The rate in play: the city's (CityDef.offscreen_every(), set by Crowd.setup()); Aldermere's is OFFSCREEN_EVERY.
+static var offscreen_every := OFFSCREEN_EVERY
+## The frame count the LOD staggers by: the engine's (-1), or one a test sets, since the test runner never advances frames.
+static var frame_no := -1
+
 ## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
 ## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
 ## halves most of the crowd's cost there. Anyone frightened, fleeing, knocked, pulled, stumbling or held at a gate
@@ -417,18 +430,22 @@ func frame(delta: float) -> void:
 	_seen = not view.has_area() or view.has_point(position)
 	var every := 1
 	if not _seen:
-		every = OFFSCREEN_EVERY
+		# The city's slower rate is for the unhurried only: anyone fleeing, frightened or knocked off screen keeps
+		# OFFSCREEN_EVERY (at 6 the capital's fleeing jammed at its gates, Task 14).
+		every = offscreen_every if offscreen_every != OFFSCREEN_EVERY and unhurried() else OFFSCREEN_EVERY
 	elif unhurried():
 		every = CALM_EVERY
 	if every > 1:
 		_offscreen_delta += delta
-		if (Engine.get_process_frames() + stagger_key()) % every != 0:
+		if ((frame_no if frame_no >= 0 else Engine.get_process_frames()) + stagger_key()) % every != 0:
 			return
 		delta = _offscreen_delta
 		_offscreen_delta = 0.0
 	elif _offscreen_delta > 0.0:
 		delta += _offscreen_delta
 		_offscreen_delta = 0.0
+	if BenchProf.on:
+		BenchProf.count(&"people_ticked")
 	tick(delta)
 	_refresh(delta)
 
@@ -568,7 +585,7 @@ func _think(delta: float) -> void:
 		Mind.CALM:
 			# A citizen with a day of its own goes where RoutineManager sends it; one made on its own strolls.
 			if profile == null and _goal == Vector2.INF and rng.randf() < STROLL_CHANCE:
-				set_goal(TownLayout.MARKET_SQUARE.get_center() if rng.randf() < 0.5 else anchor)
+				set_goal(City.current().landmark(&"market_square").get_center() if rng.randf() < 0.5 else anchor)
 		Mind.HOLD:
 			_idle = maxf(_idle, 0.2)
 	_sort_in -= delta
@@ -610,6 +627,14 @@ func _base_speed() -> float:
 ## Whether it is on its way somewhere (a goal it has not reached).
 func has_goal() -> bool:
 	return _goal != Vector2.INF
+
+
+## Whether the path ahead (the waypoint it is walking to and the `ahead` after it) runs through `r`.
+func path_crosses(r: Rect2, ahead: int) -> bool:
+	for k in range(maxi(_leg - 1, 0), mini(_leg + ahead, _path.size())):
+		if r.has_point(_path[k]):
+			return true
+	return false
 
 
 ## Walk to `g` along the grid's path. A goal inside a building routes to its doorstep.
@@ -680,6 +705,13 @@ func _pick_target() -> void:
 		# At its post (the reach _think() re-paths beyond): shifting about it is at a walk again. A goal dropped short of
 		# the post (the way closed) is not an arrival: the re-path keeps the run.
 		hurrying = false
+		if drill_face != Vector2.INF and anchor == post and corps == Corps.NONE:
+			# At drill: it stands on its spot facing its dummy instead of shifting about.
+			_target = anchor
+			var d := drill_face - ground_pos
+			_facing = 1 if d.x - d.y > 0.0 else -1
+			_back = d.x + d.y < 0.0
+			return
 	_drift()
 
 
@@ -1502,11 +1534,51 @@ func _plan_exit() -> void:
 	elif grid != null:
 		exit = grid.nearest_exit(ground_pos)
 	if exit == Vector2.INF:
-		# Sealed in: mill about and try again shortly.
+		# Sealed in: mill about and try again shortly -- or, stranded in the river (a bridge fell under it), first make
+		# for the nearest dry ground.
 		_repath_in = 1.5
+		if grid != null and _river_rules() and not grid.walkable(ground_pos) and _in_river(ground_pos):
+			var land := grid.nearest_walkable(ground_pos)
+			if land != Vector2.INF:
+				_target = land
+				return
 		_drift()
 		return
 	set_goal(exit)
+
+
+static func _in_river(g: Vector2) -> bool:
+	_sync_rivers()
+	for r: Rect2 in _rivers:
+		if r.has_point(g):
+			return true
+	return false
+
+
+static func _river_rules() -> bool:
+	_sync_rivers()
+	return _river_rule
+
+
+static func _sync_rivers() -> void:
+	if City.active != _rivers_of:
+		_rivers_of = City.current()
+		_rivers = _rivers_of.rivers()
+		_river_rule = _rivers_of.river_rules()
+
+
+## The base unit's rule (a building's margin), and never off dry ground into the water -- a river cell the walk grid
+## keeps closed: a straight walk to a target (a scurry, a drift, a queue spot) can cut a bank's corner. One standing in
+## the water (a bridge fell under it) may step anyway, and wades out.
+func _step_blocked(step: Vector2) -> bool:
+	if super(step):
+		return true
+	if grid == null:
+		return false
+	if not _river_rules():
+		return false
+	var to := ground_pos + step
+	return not grid.walkable(to) and _in_river(to) and grid.walkable(ground_pos)
 
 
 ## Soldiers only: stand at `at` (its starting post, or a slot on the Citadel's rally ring), at a walk or, `hurried`
@@ -1811,7 +1883,7 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	var tint := sick_color() if sick else Color.WHITE
 	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
 	var legs := CIT_LEGS.lerp(tint, SICK_CLOTH) if sick else CIT_LEGS
-	if role == CitizenProfile.Role.CLERGY:
+	if role == CitizenProfile.Role.CLERGY or role == CitizenProfile.Role.MONK:
 		# A robe to the ground (no legs showing), a gold stole down its front.
 		var robe := CLERGY_ROBE.lerp(tint, SICK_CLOTH) if sick else CLERGY_ROBE
 		if top_only == 0:

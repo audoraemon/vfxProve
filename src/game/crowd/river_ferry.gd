@@ -88,7 +88,7 @@ func _spots(grid: WalkGrid, r: Rect2) -> Array[Vector2]:
 			out.append(g)
 		along -= SPACING
 	var bank: Array[Vector2] = []
-	var w := TownLayout.DOCK_WAIT
+	var w := City.current().landmark(&"dock_wait")
 	var y := r.position.y - 0.25
 	while y > w.position.y:
 		var x := w.position.x + 0.2

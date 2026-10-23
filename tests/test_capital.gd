@@ -1,0 +1,369 @@
+extends RefCounted
+## The capital's geography (Task 6): its map, the river and the harbour basin, the three bridges, the two closed wall
+## rings with their gatehouses, the roads, the districts of the spec's §1 table, and that it builds and walks.
+
+
+static func run(t) -> void:
+	var c := City.by_id(&"capital")
+	t.check(c is CapitalCity and c.id() == &"capital", "City.by_id builds the CapitalCity")
+	var cap := c as CapitalCity
+	if cap == null:
+		return
+	t.check(cap.map() == Rect2(-40, -40, 80, 80), "the capital's map is 80x80")
+	_water(t, cap)
+	_bridges(t, cap)
+	_walls(t, cap)
+	_roads(t, cap)
+	_districts(t, cap)
+	_floor(t, cap)
+	_builds(t)
+	_sandbox(t)
+	var title := FileAccess.get_file_as_string("res://src/game/ui/title_screen.gd")
+	t.check(title.contains("City.use(&\"aldermere\")") and title.find("City.use(&\"aldermere\")") < title.find("Town.new()"),
+		"the title screen's backdrop is always Aldermere")
+	City.use(&"aldermere")
+
+
+## The bench's capital mission (Task 13 stub; Task 15 finishes it): reached by id, played in the capital, every power,
+## and kept off the board and the campaign.
+static func _sandbox(t) -> void:
+	var m := MissionBook.get_mission(MissionBook.CAPITAL_SANDBOX)
+	t.check(m.id == MissionBook.CAPITAL_SANDBOX and m.city == &"capital" and m.pool.is_empty(),
+		"capital_sandbox is a mission in the capital with every power")
+	var listed := false
+	for d: MissionDef in MissionBook.all() + MissionBook.campaign_missions():
+		listed = listed or d.id == MissionBook.CAPITAL_SANDBOX
+	t.check(not listed and not TierBook.has(MissionBook.CAPITAL_SANDBOX),
+		"capital_sandbox is dev-only: not on the board or in the campaign")
+	# Task 15: a free-play clock like Last Judgement's skirmish (won, not lost, when it runs out), six slots, no
+	# objective beyond it, and its own intro: in the capital, over the river onto the old town -- not Aldermere's.
+	var objectives: Array[Objective] = m.make_objectives.call()
+	t.check(m.clock == Rules.MISSION_SECONDS and m.slots == 6 and objectives.size() == 1 and objectives[0] is ClockObjective
+		and (objectives[0] as ClockObjective).succeeds, "capital_sandbox is free play on Last Judgement's clock")
+	var aldermere := MissionDef.new()
+	t.check(m.camera_at != aldermere.camera_at and m.intro_from != aldermere.intro_from
+		and CapitalCity.INNER.has_point(m.camera_at) and CapitalCity.MAP.has_point(m.intro_from)
+		and m.intro_from.y > CapitalCity.RIVER.end.y,
+		"its intro sweeps from beyond the river (%s) onto the old town (%s), not Aldermere's" % [m.intro_from, m.camera_at])
+	# Picked from the board (a dev entry), the board's def is MissionBook's: no tier, no wishes.
+	t.check(Mission.def_for(MissionBook.CAPITAL_SANDBOX, true, DescendState.new()).id == MissionBook.CAPITAL_SANDBOX,
+		"picked on the board, the sandbox is played as itself")
+	City.use(&"aldermere")
+	t.check(Mission.PAN_MAP_WIDTH == TownLayout.MAP.size.x, "the pan limits are set for Aldermere's map width")
+	t.check(Mission.pan_limits() == Rect2(Mission.PAN_MIN, Mission.PAN_MAX - Mission.PAN_MIN), "Aldermere pans as before")
+	City.use(&"capital")
+	var reach := Mission.pan_limits()
+	t.check(reach.encloses(Rect2(Mission.PAN_MIN, Mission.PAN_MAX - Mission.PAN_MIN))
+		and reach.has_point(Iso.ground_to_screen(Vector2(-36.0, -36.0))) and reach.has_point(Iso.ground_to_screen(Vector2(30.0, 36.0))),
+		"the capital pans far enough to reach the monastery hill and the south-east fields (%s)" % reach)
+	City.use(&"aldermere")
+	_round_trip(t)
+
+
+## The sandbox builds the capital, and once it ends a mission in Aldermere builds Aldermere exactly as before (Review
+## Focus 1): the town, its people, its gates and the crowd's city-set rates, built and torn down as Mission does.
+static func _round_trip(t) -> void:
+	var before := _built_print(MissionBook.last_judgement())
+	var cap := _build_for(MissionBook.capital_sandbox())
+	t.check(City.current() is CapitalCity and (cap.crowd as Crowd).citizens.size() == City.current().citizens()
+		and Person.offscreen_every == City.current().offscreen_every(),
+		"the sandbox builds the capital and its crowd (%d citizens)" % (cap.crowd as Crowd).citizens.size())
+	_tear_down(cap)
+	var after := _built_print(MissionBook.last_judgement())
+	t.check(City.current().id() == &"aldermere" and after == before,
+		"after the sandbox, Last Judgement builds Aldermere identically (%s / %s)" % [before, after])
+
+
+## The world a mission builds for `def` (Mission.start()'s order: the city first, then the town, the grid and the crowd).
+static func _build_for(def: MissionDef) -> Dictionary:
+	City.use(def.city)
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = City.current().map()
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.spawn()
+	return {"env": env, "town": town, "grid": grid, "field": field, "world": world, "crowd": crowd}
+
+
+## Mission.start()'s teardown of the last mission's world.
+static func _tear_down(b: Dictionary) -> void:
+	(b.town as Town).teardown()
+	(b.crowd as Crowd).clear()
+	(b.world as Node).free()
+	(b.town as Node).free()
+	(b.crowd as Node).free()
+
+
+## An md5 of what `def`'s mission builds: every structure, every person's place and job, the gates, the walk grid on a
+## lattice, and the crowd's city-set rates.
+static func _built_print(def: MissionDef) -> String:
+	var b := _build_for(def)
+	var rows := PackedStringArray()
+	for st: Structure in (b.env as EnvironmentField).structures():
+		rows.append("%s/%d/%s/%s" % [st.footprint, st.kind, st.role, st.art_tag])
+	var crowd: Crowd = b.crowd
+	for p: Person in crowd.citizens + crowd.soldiers:
+		rows.append("%s/%s/%s" % [p.ground_pos, p.profile.job if p.profile != null else "", p.anchor])
+	for g: Structure in (b.town as Town).gates:
+		rows.append("gate %s" % g.footprint)
+	var grid: WalkGrid = b.grid
+	var walk := ""
+	for i in 400:
+		walk += "1" if grid.walkable(Vector2(-29.5 + float(i % 20) * 3.0, -29.5 + float(i / 20) * 3.0)) else "0"
+	rows.append(walk)
+	rows.append("%s/%d/%s" % [crowd.gate_interval, Person.offscreen_every, crowd.post_counts])
+	_tear_down(b)
+	return "|".join(rows).md5_text()
+
+
+static func _water(t, c: CapitalCity) -> void:
+	var rivers := c.rivers()
+	t.check(rivers == ([Rect2(-40, 6, 80, 6), Rect2(22, -2, 18, 20)] as Array[Rect2]), "the river band and the harbour basin")
+	for r: Rect2 in rivers:
+		t.check(c.map().encloses(r), "%s lies inside the map" % r)
+	t.check(c.landmark(&"river") == Rect2(-40, 6, 80, 6) and c.landmark(&"harbour") == Rect2(22, -2, 18, 20),
+		"river and harbour landmarks")
+
+
+## Three bridges, as BRIDGE structures at x≈-14, x≈4 and x≈14, all three the stone bridge set (polish 1: the third
+## crossing is no longer gpt_footbridge spans), each crossing the whole river band: on the bridge or in the gatehouse it
+## lands at, all the way over. The lane to the third is a lane, narrower than the avenues to the other two.
+static func _bridges(t, c: CapitalCity) -> void:
+	var river := c.landmark(&"river")
+	var by_x := {}
+	var gates: Array[Rect2] = []
+	for d: Dictionary in c.structures():
+		if d.kind == Structure.Kind.BRIDGE and d.role == &"bridge":
+			var x := roundi((d.rect as Rect2).get_center().x)
+			if not by_x.has(x):
+				by_x[x] = []
+			by_x[x].append(d)
+		elif d.kind == Structure.Kind.GATE:
+			gates.append(d.rect)
+	t.check(by_x.keys() == [-14, 4, 14], "three bridges, at x -14, 4 and 14 (got %s)" % [by_x.keys()])
+	var want := {-14: &"stone", 4: &"stone", 14: &"stone"}
+	for x: int in by_x:
+		var tags_ok := true
+		for d: Dictionary in by_x[x]:
+			tags_ok = tags_ok and d.tag == want.get(x, &"")
+		t.check(tags_ok, "the bridge at x %d is %s" % [x, want.get(x, &"")])
+		var crosses := true
+		var y := river.position.y - 0.5
+		while y <= river.end.y + 0.5:
+			var p := Vector2(float(x), y)
+			var on := false
+			for d: Dictionary in by_x[x]:
+				on = on or (d.rect as Rect2).has_point(p)
+			for g: Rect2 in gates:
+				on = on or g.has_point(p)
+			crosses = crosses and on
+			y += 0.1
+		t.check(crosses, "the bridge at x %d crosses the river band from gate to gate" % x)
+	for x: int in by_x:
+		t.check(by_x[x].size() == 1 and (by_x[x][0].rect as Rect2).size == Vector2(2.0, 7.6),
+			"the bridge at x %d is one stone bridge on the set's own footprint" % x)
+	t.check(CapitalCity.BRIDGES.size() == 3, "three crossings in BRIDGES")
+	var widths := {}
+	for line: Dictionary in c.road_lines():
+		for k in (line.points as Array).size() - 1:
+			var a: Vector2 = line.points[k]
+			var b: Vector2 = line.points[k + 1]
+			if a.x == b.x and minf(a.y, b.y) < river.position.y and maxf(a.y, b.y) > river.end.y:
+				widths[roundi(a.x)] = line.width
+	t.check(widths.get(14, 0.0) < widths.get(-14, 0.0) and widths.get(14, 0.0) < widths.get(4, 0.0),
+		"the way over the third bridge is narrower than the avenues over the other two (%s)" % [widths])
+	var dock := c.landmark(&"dock")
+	t.check(dock.intersects(c.landmark(&"harbour")) and c.exits().has(CapitalCity.FERRY_LANDING),
+		"the ferry pier reaches into the basin and its landing is an exit")
+
+
+## Each ring is closed: its wall band's centre line is covered all the way round by its walls, towers and gatehouses;
+## and its gates stand where the plan has them. Built with TownLayout's own ring code.
+static func _walls(t, c: CapitalCity) -> void:
+	var structs := c.structures()
+	var rings := [[CapitalCity.INNER, CapitalCity.INNER_GATES], [CapitalCity.OUTER, CapitalCity.OUTER_GATES]]
+	t.check(CapitalCity.INNER == Rect2(-24, -30, 42, 34) and CapitalCity.OUTER == Rect2(-30, 12, 52, 22), "the two rings' rects")
+	for ring: Array in rings:
+		var rect: Rect2 = ring[0]
+		var pieces: Array[Rect2] = []
+		var gates: Array[Rect2] = []
+		for d: Dictionary in structs:
+			if d.kind in [Structure.Kind.CASTLE_WALL, Structure.Kind.KEEP, Structure.Kind.GATE] \
+					and rect.grow(1.5).intersects(d.rect) and not rect.grow(-1.5).encloses(d.rect):
+				pieces.append(d.rect)
+				if d.kind == Structure.Kind.GATE:
+					gates.append(d.rect)
+		var m := TownLayout.WALL_T * 0.5
+		var inner := rect.grow(-m)
+		var corners := [inner.position, Vector2(inner.end.x, inner.position.y), inner.end, Vector2(inner.position.x, inner.end.y)]
+		var gaps := 0
+		for k in 4:
+			var a: Vector2 = corners[k]
+			var b: Vector2 = corners[(k + 1) % 4]
+			var n := int(a.distance_to(b) / 0.2)
+			for i in n + 1:
+				var p := a.lerp(b, float(i) / n)
+				var covered := false
+				for r: Rect2 in pieces:
+					covered = covered or r.grow(0.01).has_point(p)
+				if not covered:
+					gaps += 1
+		t.check(gaps == 0, "the ring %s is closed (%d gaps)" % [rect, gaps])
+		var points: Array = ring[1]
+		t.check(gates.size() == points.size(), "the ring %s has its %d gatehouses (got %d)" % [rect, points.size(), gates.size()])
+		for at: Vector2 in points:
+			var found := false
+			for g: Rect2 in gates:
+				found = found or g.get_center().distance_to(at) < 0.6
+			t.check(found, "a gatehouse at %s" % at)
+	t.check(c.landmark(&"barbican").get_center().distance_to(Vector2(7, 34)) < 0.6, "the south barbican at (7, 34)")
+	t.check(c.landmark(&"west_gate").get_center().distance_to(Vector2(-24, -13)) < 0.6, "the west gate at (-24, -13)")
+	# The ring code is shared: Aldermere's walls are ring_walls() round its TOWN with its own gates.
+	t.check(TownLayout.walls() == TownLayout.ring_walls(TownLayout.TOWN, TownLayout.ROADS,
+		TownLayout._rect_array(TownLayout.GATE_TOWERS), TownLayout._rect_array([TownLayout.MAIN_GATE, TownLayout.SIDE_GATE]),
+		TownLayout.TOWER_AT), "Aldermere's walls come from the shared ring code")
+	# No wall piece or tower stands on a road except where a gatehouse lets it through (or a set people walk through
+	# stands across it: the district gate, the Keep's gate, BuildingTypes walkable).
+	var on_road := 0
+	for d: Dictionary in structs:
+		if d.role == CapitalPlots.ROLE and BuildingTypes.info(d.tag).walkable:
+			continue
+		if d.kind in [Structure.Kind.CASTLE_WALL, Structure.Kind.KEEP]:
+			for road: Rect2 in c.roads():
+				if road.intersects(d.rect):
+					on_road += 1
+	t.check(on_road == 0, "no wall or tower stands on a road (%d)" % on_road)
+	var overlaps := 0
+	for i in structs.size():
+		for j in range(i + 1, structs.size()):
+			# Butting wall pieces meet within float error (as Aldermere's do): only a real overlap counts.
+			var o := (structs[i].rect as Rect2).intersection(structs[j].rect)
+			if o.size.x > 0.001 and o.size.y > 0.001:
+				overlaps += 1
+	t.check(overlaps == 0, "no two capital structures overlap (%d)" % overlaps)
+
+
+static func _roads(t, c: CapitalCity) -> void:
+	var roads := c.roads()
+	var lines := c.road_lines()
+	t.check(lines.size() == CapitalCity.AVENUES.size() + CapitalCity.LANES.size() and lines.size() >= 8,
+		"avenues and lanes as polylines (%d)" % lines.size())
+	var avenues := 0
+	var lanes := 0
+	for l: Dictionary in lines:
+		avenues += 1 if l.width == 2.0 else 0
+		lanes += 1 if l.width == 1.0 else 0
+	t.check(avenues >= 4 and lanes >= 4, "2-cell avenues and 1-cell lanes (%d, %d)" % [avenues, lanes])
+	var all_in := true
+	for r: Rect2 in roads:
+		all_in = all_in and c.map().encloses(r) and r.has_area()
+	t.check(all_in, "every street rect lies in the map")
+	var exits := c.exits()
+	t.check(exits.size() == 3, "three exits: the south road, the west road, the ferry")
+	for e: Vector2 in exits:
+		var on := false
+		for r: Rect2 in roads:
+			on = on or r.grow(0.6).has_point(e)
+		t.check(on and c.map().has_point(e), "exit %s is on a road, in the map" % e)
+
+
+static func _districts(t, c: CapitalCity) -> void:
+	# Spec §1, as (x0, y0, x1, y1).
+	var spec := {
+		&"royal_keep": [-8, -30, 8, -21], &"noble_quarter": [-24, -21, -9, -9], &"cathedral_square": [-9, -21, 8, -9],
+		&"guild_quarter": [8, -21, 18, -9], &"great_market": [-24, -9, -2, 4], &"old_town_houses": [-2, -9, 18, 4],
+		&"harbour_district": [18, -22, 40, -2], &"crafts_quarter": [-30, 12, -8, 22], &"new_town": [-8, 12, 10, 22],
+		&"tanners_dyers": [10, 12, 22, 22], &"poor_quarter": [-30, 22, -4, 34], &"road_quarter": [-4, 22, 22, 34],
+		&"monastery_hill": [-40, -40, -24, -12], &"northern_woods": [14, -40, 40, -22], &"west_farms": [-40, 12, -30, 40],
+		&"south_east_fields": [22, 18, 40, 40], &"suburbs": [-30, 34, 6, 40], &"tournament_field": [6, 34, 22, 40],
+	}
+	var table := c.district_table()
+	t.check(table.size() == spec.size(), "every area of the plan (%d)" % table.size())
+	for row: Dictionary in table:
+		var s: Array = spec.get(row.name, [])
+		var want := Rect2(s[0], s[1], s[2] - s[0], s[3] - s[1]) if s.size() == 4 else Rect2()
+		t.check(row.rect == want, "district %s matches the spec (%s)" % [row.name, row.rect])
+		t.check(c.landmark(row.name) == row.rect, "district %s is a landmark" % row.name)
+	var walled := 0
+	for row: Dictionary in table:
+		if row.kind == &"old_town":
+			t.check(CapitalCity.INNER.encloses(row.rect), "%s lies in the old town's ring" % row.name)
+			walled += 1
+		elif row.kind == &"new_town":
+			t.check(CapitalCity.OUTER.encloses(row.rect), "%s lies in the new town's ring" % row.name)
+			walled += 1
+	t.check(walled == 11, "eleven walled districts (%d)" % walled)
+	# districts() is the floor's house blocks: the walled districts less their streets.
+	var blocks := c.districts()
+	var ok := blocks.size() >= walled
+	for b: Rect2 in blocks:
+		var inside := false
+		for row: Dictionary in table:
+			inside = inside or (row.kind != &"outside" and (row.rect as Rect2).encloses(b))
+		ok = ok and inside
+		for road: Rect2 in c.roads():
+			ok = ok and not road.intersects(b)
+	t.check(ok, "the house blocks lie in the walled districts, clear of every street (%d blocks)" % blocks.size())
+
+
+static func _floor(t, c: CapitalCity) -> void:
+	var a := c.floor_areas()
+	for k: StringName in [&"plazas", &"yards", &"gate_plazas", &"building_yards", &"farm"]:
+		t.check(a.has(k), "floor area %s" % k)
+	var paved: Array = a.get(&"paved", [])
+	t.check(paved.size() == 1 and CapitalCity.OUTER.encloses(paved[0]) and (paved[0] as Rect2).get_area() > 900.0,
+		"the new town's ring is cobbled like the old town's")
+	t.check(not AldermereCity.new().floor_areas().has(&"paved"), "Aldermere has no extra paved ground")
+	var plazas: Array = a.get(&"gate_plazas", [])
+	t.check(plazas.size() == CapitalCity.INNER_GATES.size() + CapitalCity.OUTER_GATES.size(), "a gate plaza at every gate")
+	var clear := true
+	for p: Rect2 in plazas:
+		for d: Dictionary in c.structures():
+			clear = clear and not (d.rect as Rect2).intersects(p)
+	t.check(clear, "the gate plazas are open ground")
+	var torches := c.torches()
+	t.check(torches.size() == 4 + 2 * plazas.size(), "four market torches, two inside every gate (%d)" % torches.size())
+	t.check(c.anchors().has("stall") and c.anchors().has("home"), "anchors carry every key")
+
+
+## The capital builds through the real town, walk grid and crowd, and the river is crossed only at the bridges.
+static func _builds(t) -> void:
+	City.use(&"capital")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	t.check(env.structures().size() == City.current().structures().size() + town.citadel.parts.size()
+		+ City.current().fountains().size() + City.current().wells().size(),
+		"every capital structure is built, and the Citadel, the fountains and the wells")
+	var keep := City.current().landmark(&"royal_keep")
+	var on_hill := true
+	for s: Structure in town.citadel.parts:
+		on_hill = on_hill and keep.encloses(s.footprint)
+	t.check(on_hill, "the Citadel stands on the Royal Keep's hill")
+	var stone := 0
+	var foot := 0
+	for st: Structure in env.structures():
+		if st.kind == Structure.Kind.BRIDGE and st.role == &"bridge":
+			stone += 1 if SpriteArt.name_for(st) == "bridge_stone" else 0
+			foot += 1 if st.art_tag == &"gpt_footbridge" else 0
+	t.check(stone == 3 and foot == 0, "all three bridges draw the stone bridge set, none gpt_footbridge (%d, %d)" % [stone, foot])
+	t.check(town.bridges.size() >= 3 and town.bridge != null and town.bridge.footprint == CapitalCity.BRIDGES[2],
+		"the third bridge is in Town.bridges (the last bridge built)")
+	var grid := WalkGrid.new().setup(env, town)
+	t.check(not grid.walkable(Vector2(-6.0, 9.0)), "the river blocks between the bridges")
+	t.check(grid.walkable(Vector2(-14.0, 9.0)) and grid.walkable(Vector2(4.0, 9.0)) and grid.walkable(Vector2(14.0, 9.0)),
+		"the three bridges cross it")
+	t.check(not grid.walkable(Vector2(-10.0, -29.65)), "the old town's wall blocks")
+	# From the market to each map-edge exit, and from the new town back into the old town.
+	var market := City.current().landmark(&"market_square").get_center()
+	for e: Vector2 in [Vector2(7, 39.6), Vector2(-39.6, -13)]:
+		t.check(grid.path(market, e).size() > 0, "a route from the market to the exit %s" % e)
+	t.check(grid.path(Vector2(0, 17), Vector2(0, -15)).size() > 0, "a route from the new town to the cathedral square")
+	t.check(grid.path(market, CapitalCity.FERRY_LANDING).size() > 0, "a route from the market to the ferry")
+	town.free()
+	City.use(&"aldermere")

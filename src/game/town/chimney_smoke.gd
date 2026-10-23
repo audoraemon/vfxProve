@@ -4,6 +4,7 @@ extends Node2D
 ## a few pale puffs per chimney rise, drift and fade on a loop, each chimney out of step with the rest. A house
 ## that falls stops smoking. It dims with the ambient light like everything else.
 
+const BenchProf := preload("res://src/core/bench_prof.gd")
 const STEP := 0.125
 ## Seconds a puff takes to rise and vanish, how high it goes (px) and how far it drifts.
 const CYCLE := 2.8
@@ -39,7 +40,8 @@ func _smokes(h: Structure) -> bool:
 ## drawn from a sprite (whose own smoke, if drawn in, means none here), else the procedural art's.
 static func tip_of(h: Structure) -> Vector2:
 	if h.sprite.is_empty():
-		return HouseArt.chimney_top(h)
+		# Drawn procedurally, only a house has a chimney (a ChatGPT armoury or monastery without its sprite has none).
+		return HouseArt.chimney_top(h) if h.kind == Structure.Kind.HOUSE else Vector2.INF
 	var c: Vector2 = h.sprite.chimney
 	if c == Vector2.INF:
 		return c
@@ -55,6 +57,12 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	var t0 := BenchProf.begin()
+	_draw_all()
+	BenchProf.add(&"smoke_draw", t0)
+
+
+func _draw_all() -> void:
 	var amb := maxf(lights.ambient, 0.3) if lights else 1.0
 	for i in _houses.size():
 		var h := _houses[i]

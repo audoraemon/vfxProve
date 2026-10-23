@@ -40,12 +40,13 @@ var _city_at := -1.0
 var _events := {}
 
 
-## The district (TownLayout.DISTRICTS index) a ground point is in, or the nearest one.
+## The district (City.current().districts() index) a ground point is in, or the nearest one.
 static func district_of(g: Vector2) -> int:
 	var best := 0
 	var best_d := INF
-	for i in TownLayout.DISTRICTS.size():
-		var d: Rect2 = TownLayout.DISTRICTS[i]
+	var districts := City.current().districts()
+	for i in districts.size():
+		var d: Rect2 = districts[i]
 		if d.has_point(g):
 			return i
 		var dist := d.get_center().distance_to(g)

@@ -8,6 +8,8 @@ enum State { WANDER, KNOCKBACK, PULLED, DEAD }
 enum Look { TROOPER, ORC }
 
 const WALK_SPEED := 0.6
+## Close enough to its target to count as there.
+const ARRIVE := 0.05
 const KNOCK_DECAY := 8.0
 const MIN_PULL_DIST := 0.15
 const DEATH_FADE := 1.6
@@ -16,6 +18,8 @@ const BODY_HOLD := 20.0
 ## How often a unit re-reads the light around it. Pixel art tints in steps anyway, and with 160 people this
 ## sampling was the biggest thing left in the crowd's frame.
 const LIGHT_HZ := 20.0
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 
 const COL_SHADOW := Color(0, 0, 0, 0.4)
 const COL_DARK := Color("1c1f2a")
@@ -180,11 +184,18 @@ func tick(delta: float) -> void:
 				_idle -= delta
 			else:
 				var to := _target - ground_pos
-				if to.length() < 0.05:
+				var reach := to.length()
+				if reach < ARRIVE:
 					_idle = rng.randf_range(0.3, 1.6)
 					_pick_target()
 				else:
-					_move(to.normalized() * walk_speed * delta)
+					var span := walk_speed * delta
+					# A step that would overshoot the target by ARRIVE or more lands on it instead: stepping past by
+					# that much each way, a walker rocks about its target for ever (a long step: an off-screen
+					# person at 30 fps steps a tenth of a second at once). Any shorter step behaves as it always did:
+					# Aldermere's checksums stay put because no Aldermere step reaches 0.1 at a fixed 60 fps with a
+					# static camera, not because the rule is neutral by construction.
+					_move(to if span - reach >= ARRIVE else to.normalized() * walk_speed * delta, to)
 		State.KNOCKBACK:
 			_move(_velocity * delta)
 			_velocity = _velocity.move_toward(Vector2.ZERO, KNOCK_DECAY * delta)
@@ -373,7 +384,8 @@ func fold(to: Vector2) -> bool:
 	return true
 
 
-func _move(step: Vector2) -> void:
+## `to`, when walking to a target: how far off it is (a slide stops on its line, see below).
+func _move(step: Vector2, to := Vector2.INF) -> void:
 	if absf(step.x - step.y) > 0.0001:
 		_facing = 1 if step.x - step.y > 0.0 else -1
 	var hit := _step_blocked(step)
@@ -384,6 +396,16 @@ func _move(step: Vector2) -> void:
 		# edge has almost nothing to spare on one axis and would inch along it for ever.
 		var span := step.length()
 		var axes := [Vector2(signf(step.x) * span, 0.0), Vector2(0.0, signf(step.y) * span)]
+		if to != Vector2.INF and span >= ARRIVE * 2.0:
+			# A long step (an off-screen person at 30 fps steps a tenth of a second at once) slid to and fro across
+			# the line of a target it could not reach for the margin in the way, never running out of slide to fall
+			# through to the next target below. A slide that would carry it past that line by ARRIVE or more stops on
+			# it. Only a step of twice ARRIVE (0.1) or more can do that both ways; shorter ones slide as they always
+			# did. No Aldermere step reaches 0.1 at a fixed 60 fps with a static camera, so its checksums hold.
+			if span - absf(to.x) >= ARRIVE:
+				axes[0] = Vector2(to.x, 0.0)
+			if span - absf(to.y) >= ARRIVE:
+				axes[1] = Vector2(0.0, to.y)
 		if absf(step.y) > absf(step.x):
 			axes.reverse()
 		for along: Vector2 in axes:
@@ -450,6 +472,16 @@ func _px(x: int, y: int, w: int, h: int, c: Color) -> void:
 
 
 func _draw() -> void:
+	if BenchProf.on:
+		var t0 := BenchProf.begin()
+		_draw_all()
+		BenchProf.add(&"people_draw", t0)
+		BenchProf.count(&"people_drawn")
+		return
+	_draw_all()
+
+
+func _draw_all() -> void:
 	draw_set_transform(_draw_origin)
 	if state == State.DEAD:
 		match _kind:

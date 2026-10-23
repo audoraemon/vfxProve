@@ -24,6 +24,9 @@ const PAN_SPEED := 320.0
 ## the pixel art shrinks past legibility -- cobbles shimmer and people vanish (playtest, 2026-09-27).
 const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
+## The map width PAN_MIN..PAN_MAX are set for (Aldermere's, TownLayout.MAP: tests/test_capital.gd); a wider city's
+## limits grow in proportion (pan_limits()).
+const PAN_MAP_WIDTH := 60.0
 const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
@@ -57,14 +60,14 @@ const ENDING_TIME_SCALE := 0.3
 const ASCEND_SECONDS := 2.0
 const ASCEND_BANNER := "YOU ASCEND"
 
-## The scripted run: [seconds, slot, ground, drag direction or Vector2.ZERO].
+## The scripted run: [seconds, slot, ground (Vector2.INF: the active city's Citadel), drag direction or Vector2.ZERO].
 ## Spaced so each power has finished before the next is cast (Rules.busy_left()): Heaven 8.5 s, Cinderfall 12,
 ## Tsunami 9.5.
 const TEST_CASTS := [
 	[1.0, 0, Vector2(-9.0, -11.0), Vector2(0.2, 1.0)],
 	[10.0, 2, Vector2(0.8, 2.2), Vector2.ZERO],
 	[22.5, 1, Vector2(-12.0, 1.0), Vector2(1.0, 0.1)],
-	[32.5, 3, TownLayout.CITADEL_ORIGIN, Vector2.ZERO],
+	[32.5, 3, Vector2.INF, Vector2.ZERO],
 ]
 const TEST_SHOTS := [0.5, 2.0, 12.0, 24.0, 34.0, 44.0]
 ## How many banner frames the scripted run takes before it stops bothering.
@@ -125,6 +128,8 @@ var _scripted := false
 ## True when the mission runs on its own (play.bat before milestone 4, the scripted runs, the bench) and
 ## starts itself. Game sets it false before adding the node, then calls start() with the drafted loadout.
 var autostart := true
+## A scripted run's city in place of the mission's own (behaviour_check's capital_calm); empty: the mission's.
+var city: StringName = &""
 ## True once _ready() has finished compiling the effect shaders.
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
@@ -148,7 +153,7 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
-	_bf.ctx.field.bounds = TownLayout.MAP
+	_bf.ctx.field.bounds = City.current().map()
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -179,6 +184,7 @@ func _ready() -> void:
 		if Battlefield.arg_value(args, "--bench-toll") != "":
 			await _bench_toll(args)
 			label += "-toll"
+		label += await _bench_view(args)
 		await _bf.bench(label)
 		await _quit()
 
@@ -193,6 +199,30 @@ func _bench_jump(act_id: String, args: PackedStringArray) -> void:
 	var after := Battlefield.arg_value(args, "--bench-after")
 	var secs := float(after) if after != "" else 50.0
 	await get_tree().create_timer(secs).timeout
+
+
+## Bench aid (capital plan, Task 13; Review Focus 5): `--bench-zoom=Z` rests the camera at zoom Z where the mission
+## framed it (ZOOM_MIN, 0.5, is as far out as a player can go); `--bench-zoomed-out` frames the whole map (City.map()) at
+## whatever zoom fits it, every building and person in view -- the worst case for draw calls. A second is let pass first
+## so what came into view has woken. Returns the label's suffix ("" for the mission's own view).
+func _bench_view(args: PackedStringArray) -> String:
+	var suffix := ""
+	if "--bench-zoomed-out" in args:
+		var m := City.current().map()
+		var box := Rect2(Iso.ground_to_screen(m.position), Vector2.ZERO)
+		for c in [m.position + Vector2(m.size.x, 0.0), m.position + Vector2(0.0, m.size.y), m.end]:
+			box = box.expand(Iso.ground_to_screen(c))
+		var seen := get_viewport().get_visible_rect().size
+		_bf.camera.zoom = Vector2.ONE * minf(seen.x / box.size.x, seen.y / box.size.y)
+		_bf.camera.position = box.get_center().round()
+		suffix = "-whole"
+	elif Battlefield.arg_value(args, "--bench-zoom") != "":
+		_bf.camera.zoom = Vector2.ONE * float(Battlefield.arg_value(args, "--bench-zoom"))
+		suffix = "-z" + Battlefield.arg_value(args, "--bench-zoom")
+	else:
+		return suffix
+	await get_tree().create_timer(1.0).timeout
+	return suffix
 
 
 ## Bench aid (v0.10 M4, spec §7): `--mission=vigil_flame --bench --bench-beams` lights Halcyon's Searchlight with both
@@ -262,6 +292,13 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 				n.queue_free()
 			else:
 				n.free()
+	var args := OS.get_cmdline_user_args()
+	_def = _mission_def(args)
+	# The mission's city is the active one before anything is built (the town, the walk grid and the crowd read it).
+	if city != &"":
+		_def.city = city  # a scripted run's city (a fresh def each start)
+	City.use(_def.city)
+	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
 	_town.name = "Town"
 	add_child(_town)
@@ -274,8 +311,6 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.ctx.crowd = _crowd
 	_crowd.sfx = _bf.ctx.sfx
 	_town.sfx = _bf.ctx.sfx
-	var args := OS.get_cmdline_user_args()
-	_def = _mission_def(args)
 	var on_board := _on_board(args)
 	if autostart and wants_board(args):
 		# A scripted run's --board (v0.11 M1): the night's seed is the first night's, as a fresh god's.
@@ -294,8 +329,10 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		tier = ResponseProfile.tier_named(Battlefield.arg_value(args, "--difficulty"))
 	_crowd.profile = _act.town(_night) if _act != null else _def.response_profile(tier)
 	var wanted := Battlefield.arg_value(args, "--people")
-	var people := int(wanted) if wanted != "" else PEOPLE
-	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
+	# The city's own numbers (CityDef.citizens(), soldiers(); Aldermere's PEOPLE), --people=N scaling both.
+	var town_people := City.current().citizens() + City.current().soldiers()
+	var people := int(wanted) if wanted != "" else town_people
+	var citizens := roundi(float(people) * float(City.current().citizens()) / float(town_people))
 	_crowd.spawn(citizens, people - citizens)
 
 	_wired.clear()
@@ -407,7 +444,7 @@ func _wire_responses() -> void:
 		_crowd.engineers.rebuilt.connect(func(s: Structure):
 			var what := "THE DOCK" if s.role == &"dock" else ("THE BRIDGE" if s.kind == Structure.Kind.BRIDGE else
 				("THE POSTERN" if s.art_tag == &"postern" else
-				("THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")))
+				("THE MAIN GATE" if s.footprint == City.current().landmark(&"main_gate") else "THE SIDE GATE")))
 			_rules.banner.emit(what + " IS REBUILT"))
 	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED and _wire_once(_crowd.ferry):
 		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
@@ -683,7 +720,7 @@ func _loadout(args: PackedStringArray) -> PackedStringArray:
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
-	if is_instance_valid(_town) and is_instance_valid(_rules) and s == _town.bridge:
+	if is_instance_valid(_town) and is_instance_valid(_rules) and s in _town.bridges:
 		_rules.banner.emit("THE BRIDGE HAS FALLEN")
 
 
@@ -715,7 +752,7 @@ static func blight_banner(s: Structure) -> String:
 		return "BLIGHT - THE DOCK ROTS"
 	if s.kind == Structure.Kind.GATE:
 		var which := "THE POSTERN" if s.art_tag == &"postern" else (
-			"THE MAIN GATE" if s.footprint == TownLayout.MAIN_GATE else "THE SIDE GATE")
+			"THE MAIN GATE" if s.footprint == City.current().landmark(&"main_gate") else "THE SIDE GATE")
 		return "BLIGHT - %s IS JAMMED" % which
 	return "BLIGHT - THE %s IS POISONED" % ("WELL" if s.art_tag == &"well" else "FOUNTAIN")
 
@@ -836,6 +873,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
+		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
+		_pan(Vector2.ZERO)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.
@@ -950,7 +989,22 @@ func _process(delta: float) -> void:
 
 
 func _pan(by: Vector2) -> void:
-	_bf.camera.position = (_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX)
+	_bf.camera.position = clamp_view(_bf.camera.position + by, _bf.camera.zoom.x, get_viewport().get_visible_rect().size)
+
+
+## Where the camera may rest at `zoom` with a view `view` px across (polish 3): inside pan_limits(), and close enough to
+## the middle that the view stays on the drawn ground (TownFloor.keep_in_view(): the map and its border band), so the
+## clear colour never shows at any zoom a player has.
+static func clamp_view(pos: Vector2, zoom: float, view: Vector2) -> Vector2:
+	var limits := pan_limits()
+	return TownFloor.keep_in_view(pos.clamp(limits.position, limits.end), zoom, view)
+
+
+## Where the camera may pan (screen px): PAN_MIN to PAN_MAX for Aldermere's 60-unit map, grown in proportion for a larger
+## city (the capital's 80: Task 15), so its far districts can be reached.
+static func pan_limits() -> Rect2:
+	var k := City.current().map().size.x / PAN_MAP_WIDTH
+	return Rect2(PAN_MIN * k, (PAN_MAX - PAN_MIN) * k)
 
 
 ## A fixed mission: four casts on a timetable, screenshots at the interesting moments, and one result line. The
@@ -961,7 +1015,7 @@ func _mission_test() -> void:
 	if judgement:
 		# Aim the Nova at the Citadel and cast nothing: the first screenshot is the aim preview on a whole town.
 		_aim.pick(3)
-		_aim.hover(TownLayout.CITADEL_ORIGIN)
+		_aim.hover(City.current().citadel_origin())
 	var casts := TEST_CASTS.duplicate() if judgement else []
 	var shots := TEST_SHOTS.duplicate() if judgement else WARNING_SHOTS.duplicate()
 	var looks := [] if judgement else WARNING_LOOK_AWAY.duplicate()
@@ -991,8 +1045,9 @@ func _mission_test() -> void:
 			# Aim first, so the captured frames show the preview and the picked slot the way a player would see
 			# them. Nothing moves the mouse in a scripted run, and the cursor's own ground position is off-map.
 			_aim.pick(slot)
-			_aim.hover(c[2])
-			_rules.cast(slot, c[2], extra)
+			var ground: Vector2 = City.current().citadel_origin() if c[2] == Vector2.INF else c[2]
+			_aim.hover(ground)
+			_rules.cast(slot, ground, extra)
 		while not shots.is_empty() and t >= float(shots[0]):
 			var at: float = shots.pop_front()
 			await _bf.save_capture("%s_%04d.png" % [prefix, roundi(at * 100.0)])

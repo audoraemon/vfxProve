@@ -5,6 +5,7 @@ extends RefCounted
 
 
 static func run(t) -> void:
+	_dev(t)
 	_layout(t)
 	_tabs(t)
 	_best(t)
@@ -101,3 +102,52 @@ static func _draft(t) -> void:
 		"the board's Prepare: Tier 1's budget, the locked powers, no difficulty picker")
 	t.check(String(PrepareScreen.REFUSALS["locked"]) == "Locked: unlock it on the Upgrades screen", "and says why it refuses one")
 	prep.free()
+
+
+## The dev entry (Task 15): with --dev a DEV tab holds the dev-only missions (MissionBook.dev_missions(), the capital's
+## sandbox), always open and pickable; without it the board shows only the tiers.
+static func _dev(t) -> void:
+	var save := SaveFile.new()
+	var plain := MissionBoard.new().setup(save, "warning")
+	var shown := false
+	for tier in range(1, TierBook.NAMES.size() + 2):
+		plain.tier = tier
+		shown = shown or plain.missions().has(MissionBook.CAPITAL_SANDBOX)
+	t.check(not shown and plain.hit(MissionBoard.dev_rect().get_center()) == "", "without --dev the board has no dev entry")
+	# Nor do its keys reach the DEV tab: D, Tab both ways round every tab, 1-5, or asking for it outright.
+	plain.open_tab(1)
+	var reached := plain.tier == MissionBoard.DEV_TIER
+	var keys := [KEY_D]
+	for i in TierBook.NAMES.size() + 2:
+		keys.append(KEY_TAB)
+	for i in TierBook.NAMES.size() + 2:
+		keys.append(-KEY_TAB)
+	keys.append_array([KEY_1, KEY_2, KEY_3, KEY_4, KEY_5])
+	for k: int in keys:
+		var e := InputEventKey.new()
+		e.physical_keycode = absi(k) as Key
+		e.shift_pressed = k < 0
+		e.pressed = true
+		plain._unhandled_input(e)
+		reached = reached or plain.tier == MissionBoard.DEV_TIER
+	plain.open_tab(MissionBoard.DEV_TIER)
+	reached = reached or plain.tier == MissionBoard.DEV_TIER
+	t.check(not reached, "without --dev, D, Tab and 1-5 never open the DEV tab")
+	plain.free()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "warning")
+	var picked := []
+	board.action.connect(func(what: String) -> void: picked.append(what))
+	t.check(board.hit(MissionBoard.dev_rect().get_center()) == "tab:%d" % MissionBoard.DEV_TIER, "with --dev, a DEV tab")
+	board.open_tab(MissionBoard.DEV_TIER)
+	t.check(board.tier == MissionBoard.DEV_TIER and Array(board.missions()) == [MissionBook.CAPITAL_SANDBOX]
+		and board.lock_line() == "", "the DEV tab lists the capital's sandbox, open (%s)" % [board.missions()])
+	board.choose(MissionBook.CAPITAL_SANDBOX)
+	t.check(picked == ["pick"] and board.chosen == MissionBook.CAPITAL_SANDBOX, "and it can be picked")
+	var on_dev := MissionBoard.new()
+	on_dev.dev = true
+	on_dev.setup(save, MissionBook.CAPITAL_SANDBOX)
+	t.check(on_dev.tier == MissionBoard.DEV_TIER, "the board reopens on the DEV tab after a sandbox night")
+	on_dev.free()
+	board.free()

@@ -232,7 +232,7 @@ func _appoint() -> void:
 		return
 	var chosen: Person = null
 	for row: Array in pool:
-		if (row[2] as Person).profile.role == CitizenProfile.Role.CLERGY:
+		if CitizenProfile.is_clergy((row[2] as Person).profile.role):
 			chosen = row[2]
 			break
 	if chosen == null:
@@ -245,7 +245,7 @@ func _appoint() -> void:
 			if escorts.size() >= ESCORTS:
 				break
 			var p: Person = row[2]
-			if p == carrier or escorts.has(p) or (lay and p.profile.role == CitizenProfile.Role.CLERGY):
+			if p == carrier or escorts.has(p) or (lay and CitizenProfile.is_clergy(p.profile.role)):
 				continue
 			escorts.append(p)
 	state = State.WALKING

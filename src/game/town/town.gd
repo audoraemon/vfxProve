@@ -28,7 +28,12 @@ const GROUND_EVENING := Color(1.06, 0.92, 0.74)
 const DOCK_HP := 80.0
 
 var citadel: Citadel
+## The last bridge built (Aldermere's one bridge; the capital's third bridge).
 var bridge: Structure
+## Every crossing over the water, in build order: each BRIDGE-kind structure but the dock (and a capital set standing
+## over the water, BuildingTypes.OVER_WATER) whose footprint meets a
+## river (Aldermere: its one bridge). A fallen one closes the water under it (WalkGrid, CityDef.fallen_bridge()).
+var bridges: Array[Structure] = []
 ## The river boats' landing (v0.05), and the postern in the south wall that leads down to it (also in gates, last).
 var dock: Structure
 var postern: Structure
@@ -60,7 +65,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	if env.lights != null:
 		env.lights.tint = EVENING
-	for d in TownLayout.structures():
+	var city := City.current()
+	for d in city.structures():
 		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
 		_built.append(s)
 		if s.art_tag == &"postern":
@@ -72,8 +78,11 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			# A wooden pier: easier to break than the stone bridge.
 			s.max_hp = DOCK_HP
 			s.hp = DOCK_HP
-		elif s.kind == Structure.Kind.BRIDGE:
+		elif s.kind == Structure.Kind.BRIDGE and not (s.role == CapitalPlots.ROLE and BuildingTypes.over_water(s.art_tag)):
+			# (a capital set standing over the water, the ferry landing or the sluice, is no crossing)
 			bridge = s
+			if _over_water(s.footprint):
+				bridges.append(s)
 	if postern != null:
 		gates.append(postern)
 	if not keep_clear.is_empty():
@@ -87,15 +96,15 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		citadel = Citadel.new()
 		citadel.name = "Citadel"
 		add_child(citadel)
-	citadel.setup(env, TownLayout.CITADEL_ORIGIN, shake)
+	citadel.setup(env, city.citadel_origin(), shake)
 	_built.append_array(citadel.parts)
 	# Built last so every other building keeps the seed it had before the fountain existed.
-	for f: Rect2 in TownLayout.FOUNTAINS:
+	for f: Rect2 in city.fountains():
 		var built := env.add_structure(f, 24.0, Structure.Kind.FOUNTAIN, &"decor")
 		_built.append(built)
 		if fountain == null:
 			fountain = built
-	for w: Rect2 in TownLayout.WELLS:
+	for w: Rect2 in city.wells():
 		_built.append(env.add_structure(w, 12.0, Structure.Kind.FOUNTAIN, &"decor", &"well"))
 	var baked: Array[Dictionary] = []
 	if env.world_parent != null:
@@ -110,6 +119,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 			baked.append(d)
 			continue
 		var dec := Decor.new().setup(d.kind, d.at, d.size, d.seed)
+		dec.scale_mul = float(d.get("scale", 1.0))
 		dec.parts = d.get("parts", [])
 		env.add_decor(dec)
 		_decor.append(dec)
@@ -120,7 +130,9 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 				dec.followers.append(_stand_in(p))
 	var houses: Array[Structure] = []
 	for s in _built:
-		if s.kind == Structure.Kind.HOUSE and s.role == &"house":
+		# The cottages, and the capital's ChatGPT plots whose type smokes (BuildingTypes: their art has a chimney key).
+		if (s.kind == Structure.Kind.HOUSE and s.role == &"house") \
+				or (s.role == CapitalPlots.ROLE and bool(BuildingTypes.info(s.art_tag).get("smokes", false))):
 			houses.append(s)
 	smoke = ChimneySmoke.new().setup(houses)
 	smoke.name = "ChimneySmoke"
@@ -173,6 +185,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		forest = ForestLayer.new()
 		forest.name = "Forest"
 		forest.trees = trees
+		forest.border = true
 		# Lit as the floor's texture is: the baked trees took its tint.
 		forest.modulate = GROUND_EVENING
 		ground.add_child(forest)
@@ -231,6 +244,7 @@ func teardown() -> void:
 	_built.clear()
 	gates.clear()
 	bridge = null
+	bridges.clear()
 	dock = null
 	postern = null
 	fountain = null
@@ -320,3 +334,10 @@ func _free_floor() -> void:
 		else:
 			plant_layer.free()
 	plant_layer = null
+
+
+static func _over_water(r: Rect2) -> bool:
+	for w: Rect2 in City.current().rivers():
+		if w.intersects(r):
+			return true
+	return false

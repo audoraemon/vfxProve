@@ -52,6 +52,14 @@ func setup(crowd: Crowd, env: EnvironmentField, seed_value: int) -> FireManager:
 	return self
 
 
+## Whether `s` can burn: its kind's say (BURNABLE), or, for a ChatGPT plot (the capital's), its building type's
+## (BuildingTypes: bare masonry never burns).
+static func burns(s: Structure) -> bool:
+	if s.role == CapitalPlots.ROLE:
+		return bool(BuildingTypes.info(s.art_tag).get("burns", false))
+	return s.kind in BURNABLE
+
+
 func is_burning(s: Structure) -> bool:
 	return fires.has(s)
 
@@ -68,7 +76,7 @@ func _on_hit(s: Structure, amount: float, kind: StringName) -> void:
 
 ## Set `s` burning at `level` (or raise its fire to it).
 func ignite(s: Structure, level: float) -> void:
-	if not is_instance_valid(s) or s.destroyed or not s.kind in BURNABLE:
+	if not is_instance_valid(s) or s.destroyed or not burns(s):
 		return
 	if fires.has(s):
 		fires[s].intensity = clampf(maxf(float(fires[s].intensity), level), 0.0, 1.0)
@@ -112,7 +120,7 @@ func _burn(dt: float) -> void:
 			_crowd.threats.register(s.center(), radius, 0.5, RENEW + 0.5, 5.0, 7.0, &"fire")
 		if _rng.randf() < float(f.intensity) * SPREAD * (WIND_GROW if windy else 1.0) * dt:
 			for n in _env.near(s.center(), SPREAD_REACH):
-				if n != s and n.kind in BURNABLE and not n.destroyed and not fires.has(n) \
+				if n != s and burns(n) and not n.destroyed and not fires.has(n) \
 						and n.distance_to(s.center()) <= SPREAD_REACH:
 					catching.append(n)
 					break

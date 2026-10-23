@@ -34,6 +34,10 @@ const RELIC_RUN := "relic_run"
 const LANTERN_EYE := "lantern_eye"
 const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
+## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
+const CAPITAL_SANDBOX := "capital_sandbox"
+## Where the sandbox's intro sweep starts: the new town's street south of the eastern stone bridge.
+const CAPITAL_INTRO_FROM := Vector2(4.0, 16.0)
 ## Seconds a completed Banishing Rite takes off the clock in The Long Night's acts (v0.09.1); every other mission keeps
 ## BanishingRite.PENALTY.
 const NIGHT_RITE_PENALTY := 20.0
@@ -55,7 +59,49 @@ static func get_mission(id: String) -> MissionDef:
 	for m in tier_missions():
 		if m.id == id:
 			return m
+	for m in dev_missions():
+		if m.id == id:
+			return m
 	return last_judgement()
+
+
+## Dev-only missions (the capital plan): reached by id (--mission=<id>), never listed on the board or in the campaign.
+static func dev_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [capital_sandbox()]
+	return out
+
+
+## Whether `id` is one of the dev-only missions (dev_missions()).
+static func is_dev(id: String) -> bool:
+	for m in dev_missions():
+		if m.id == id:
+			return true
+	return false
+
+
+## The capital's sandbox (capital plan, Tasks 13 and 15): the capital, every power, no objectives but a free-play clock
+## like Last Judgement's skirmish (won when it runs out). Dev-only: --mission=capital_sandbox, or the board's DEV tab
+## (--dev). Its intro sweeps in from the new town over the eastern stone bridge, past the old town's river gate, and
+## rests on the great market, the town's busiest (where the bench looks).
+static func capital_sandbox() -> MissionDef:
+	var m := MissionDef.new()
+	m.id = CAPITAL_SANDBOX
+	m.name = "Capital Sandbox"
+	m.tier = 5
+	m.brief = PackedStringArray(["The capital, its two rings and its river.", "Free play."])
+	m.goal = "Free play"
+	m.goal_label = "Free play"
+	m.lose = "The time runs out"
+	m.slots = 6
+	m.city = &"capital"
+	m.clock = Rules.MISSION_SECONDS
+	m.camera_at = CapitalCity.MARKET_SQUARE.get_center()
+	m.intro_from = CAPITAL_INTRO_FROM
+	m.default_loadout = PackedStringArray(Mission.DEFAULT_LOADOUT)
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]
+		return out
+	return m
 
 
 ## The Lantern campaign's missions (v0.10): played from the campaign's night screen, never listed on the board.

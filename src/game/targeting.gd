@@ -483,7 +483,7 @@ func _draw() -> void:
 			else:
 				_ring(_press, 0.3, COL_BAD)
 		"belllies":
-			_ring(TownLayout.BELL_TOWER.get_center(), 0.9, COL_DIVINE)
+			_ring(City.current().landmark(&"bell_tower").get_center(), 0.9, COL_DIVINE)
 			if String(mode().get("key", "")) == "guard":
 				# Where the guard would be sent.
 				_place_mark(_press, edge)

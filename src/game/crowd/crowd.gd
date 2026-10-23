@@ -5,6 +5,8 @@ extends Node
 ## ring it. Everyone is an ordinary unit in EnemyField, so every effect kills, knocks, pulls, freezes and lifts
 ## them as it does the sandbox's troopers. Numbers are the spec's starting values (§3).
 
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 signal escaped(person: Person)
 signal alarm_changed(value: float)
 ## The bell tolled a lie (The Bell Lies): at the tower.
@@ -21,11 +23,20 @@ const LIE_REASSURE := 8.0
 ## The town scale upgrade doubled the people along with the town (110 + 50 before).
 const CITIZENS := 220
 const SOLDIERS := 100
+## A city dealing by district (_district_plan()) gives each district a household per this many of its citizens.
+const HOUSEHOLD := 4
 ## Soldier posts: drilling in the yard, on the walls and gates, guarding the Citadel, patrolling in pairs.
 const POST_YARD := 30
 const POST_WALLS := 30
 const POST_CITADEL := 20
 const POST_PATROL := 20
+## A city's own posting (CityDef.soldier_posts()): how far each post is spread, how near its point a wall patrol must be
+## to have arrived, and how long it stands there before walking on to its loop's next point.
+const CITY_POST_SPREAD := 0.25
+const LOOP_REACH := 0.6
+const LOOP_PAUSE := 2.0
+## How many waypoints ahead a city's faced gate (CityDef.gate_outward()) looks for itself on a waiting person's path.
+const GATE_AHEAD := 24
 ## A rescue squad's size (v0.07).
 const RESCUE_SQUAD := 3
 const ALARM_BUILDING := 2.0
@@ -201,6 +212,18 @@ var _fled_all := false
 var _citadel_hit := false
 ## Seconds until EnemyField.purge() runs again (about once a second; mirrors the gate clock's pacing).
 var _purge_in := 1.0
+## The soldiers' post groups' sizes, in post order (yard, walls, Citadel, patrols): Aldermere's POST_* constants, or the
+## city's own (CityDef.soldier_posts()), and whether it is the city's.
+var post_counts: Array[int] = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
+## One person through a gate this often: GATE_INTERVAL, or the city's (CityDef.gate_interval()), read at spawn().
+var gate_interval := GATE_INTERVAL
+## How many citizens the gates examined in the last frame, gate by gate (Task 14's test): only the fleeing and the
+## passing are looked at.
+var gate_visits := 0
+var _city_posts := false
+## The wall patrols walking their loops (CityDef.patrol_loops()): [soldier, the loop's points (walkable), the point it
+## is walking to or standing at, its loop's index, when it reached that point (-1: not yet)].
+var _loops: Array = []
 ## Steps the people (see Ticker).
 var _ticker: Ticker
 
@@ -262,6 +285,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	_parent = parent
 	_rng.seed = seed_value
 	_seed = seed_value
+	Person.offscreen_every = City.current().offscreen_every()
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	env.structure_blighted.connect(_on_blighted)
 	# A structure built or taken away (v0.06's thorns) may stand on a gate's queue: find the spots again.
@@ -277,7 +301,14 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	return self
 
 
-func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
+## Spawns the people: by default the city's numbers (CityDef.citizens(), soldiers(): Aldermere's CITIZENS and
+## SOLDIERS). A city with spawn_roles() deals its citizens by district and job (_district_plan()); else by
+## CitizenProfile.SHARES into every house.
+func spawn(citizen_count := -1, soldier_count := -1) -> void:
+	if citizen_count < 0:
+		citizen_count = City.current().citizens()
+	if soldier_count < 0:
+		soldier_count = City.current().soldiers()
 	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
@@ -287,13 +318,18 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		if s.role == &"house":
 			homes.append(s)
 	var anchors := _snapped_anchors()
+	var plan := _district_plan(City.current().spawn_roles(), citizen_count, anchors)
 	var at_home := 0
 	for i in citizen_count:
-		var home_i := at_home % maxi(homes.size(), 1)
-		var home: Structure = homes[home_i] if not homes.is_empty() else null
-		at_home += 1
-		var profile := _profile(i, citizen_count, home, anchors)
-		profile.family = home_i
+		var profile: CitizenProfile
+		if not plan.is_empty():
+			profile = _job_profile(plan[i], anchors)
+		else:
+			var home_i := at_home % maxi(homes.size(), 1)
+			var home: Structure = homes[home_i] if not homes.is_empty() else null
+			at_home += 1
+			profile = _profile(i, citizen_count, home, anchors)
+			profile.family = home_i
 		# Each starts somewhere in its day: at home, at work or at a leisure spot.
 		var starts: Array[Vector2] = [profile.home]
 		if profile.works():
@@ -305,16 +341,19 @@ func spawn(citizen_count := CITIZENS, soldier_count := SOLDIERS) -> void:
 		p.anchor = at
 		p.profile = profile
 		citizens.append(p)
+	gate_interval = City.current().gate_interval()
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
 	_assign_corps()
-	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", []))
+	_start_loops()
+	var no_stalls: Array[Vector2] = []
+	routine = RoutineManager.new().setup(self, _rng.randi(), anchors.get("stall", no_stalls))
 	evac = EvacuationManager.new().setup(self, _grid, _town, _rng.randi())
 	var keeper := _appoint_bellkeeper(anchors)
 	bell = BellNetwork.new().setup(self, _env, keeper, keeper.profile.work if keeper != null else Vector2.INF)
 	rite = BanishingRite.new().setup(self, _env, _grid)
-	_workshop = _nearest_of(anchors.get("craft", []), Vector2(TownLayout.WORKSHOP.get_center().x,
-		TownLayout.WORKSHOP.end.y + 0.35))
+	var workshop := City.current().landmark(&"workshop")
+	_workshop = _nearest_of(anchors.get("craft", []), Vector2(workshop.get_center().x, workshop.end.y + 0.35))
 	engineers = EngineerManager.new().setup(self, _env, _grid, _town, _appoint_engineers(_workshop), _workshop)
 	ferry = RiverFerry.new().setup(self, _env, _grid, _field)
 	plague = PlagueManager.new().setup(self, _field, _seed + 41)
@@ -369,10 +408,10 @@ func _nearest(pts: Array[Vector2], to: Vector2) -> Vector2:
 	return best
 
 
-## TownLayout.anchors(), each point moved onto the nearest walkable cell.
+## The city's anchors(), each point moved onto the nearest walkable cell.
 func _snapped_anchors() -> Dictionary:
 	var out := {}
-	var raw := TownLayout.anchors()
+	var raw := City.current().anchors()
 	for k in raw:
 		var pts: Array[Vector2] = []
 		for g: Vector2 in raw[k]:
@@ -421,6 +460,97 @@ func _profile(i: int, n: int, home: Structure, anchors: Dictionary) -> CitizenPr
 	return pr
 
 
+## A city's citizens dealt by district and job (CityDef.spawn_roles()), `n` in all (each count scaled when `n` is not
+## the city's total, the rounding carried so they sum to `n`): one [job, district, home point, family] per citizen,
+## district by district. A district's households are its "home" anchors; one with fewer than a household per
+## HOUSEHOLD citizens also takes its jobs' workplaces inside it (the monks' monastery), then the nearest homes beyond
+## it. Empty when the city deals by shares.
+func _district_plan(roles: Dictionary, n: int, anchors: Dictionary) -> Array:
+	var out: Array = []
+	var total := 0
+	for d: StringName in roles:
+		for job: StringName in roles[d]:
+			total += int(roles[d][job])
+	if total == 0 or n <= 0:
+		return out
+	var homes: Array[Vector2] = anchors.get("home", [] as Array[Vector2])
+	var families := {}
+	var seen := 0
+	for d: StringName in roles:
+		var area := City.current().landmark(d)
+		var count := 0
+		var jobs: Array = []
+		for job: StringName in roles[d]:
+			var before := roundi(float(seen) * n / total)
+			seen += int(roles[d][job])
+			var k := roundi(float(seen) * n / total) - before
+			count += k
+			for j in k:
+				jobs.append(job)
+		if jobs.is_empty():
+			continue
+		var pool: Array[Vector2] = []
+		for g in homes:
+			if area.has_point(g):
+				pool.append(g)
+		var want := ceili(float(count) / HOUSEHOLD)
+		if pool.size() < want:
+			for job: StringName in roles[d]:
+				for kind: String in CitizenProfile.JOBS[job][1]:
+					for g: Vector2 in anchors.get(kind, []):
+						if area.has_point(g) and not pool.has(g):
+							pool.append(g)
+		if pool.size() < want:
+			var rest: Array[Vector2] = []
+			for g in homes:
+				if not pool.has(g):
+					rest.append(g)
+			var c := area.get_center()
+			rest.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(c) < b.distance_squared_to(c))
+			pool.append_array(rest.slice(0, want - pool.size()))
+		for i in jobs.size():
+			var at := pool[i % pool.size()] if not pool.is_empty() else area.get_center()
+			if not families.has(at):
+				families[at] = families.size()
+			out.append([jobs[i], d, at, families[at]])
+	return out
+
+
+## A citizen dealt by _district_plan() (`plan`: [job, district, home point, family]): its job's role, its home, a
+## workplace among the WORK_NEAREST of its job's kinds nearest home, and its leisure: 1-3 of the LEISURE_NEAREST
+## leisure spots nearest home, then the nearest point of each of its job's routine kinds.
+func _job_profile(plan: Array, anchors: Dictionary) -> CitizenProfile:
+	var pr := CitizenProfile.new()
+	var job: Array = CitizenProfile.JOBS[plan[0]]
+	pr.job = plan[0]
+	pr.district = plan[1]
+	pr.role = job[0]
+	pr.family = plan[3]
+	pr.home = _spot_near(plan[2], 0.0)
+	var h := pr.home
+	var by_home := func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(h) < b.distance_squared_to(h)
+	var pool: Array[Vector2] = []
+	for k: String in job[1]:
+		pool.append_array(anchors.get(k, []))
+	pool.sort_custom(by_home)
+	pool = pool.slice(0, CitizenProfile.WORK_NEAREST)
+	if not pool.is_empty():
+		pr.work = pool[_rng.randi_range(0, pool.size() - 1)]
+	var near: Array[Vector2] = []
+	for k: String in CitizenProfile.LEISURE:
+		near.append_array(anchors.get(k, []))
+	near.sort_custom(by_home)
+	near = near.slice(0, CitizenProfile.LEISURE_NEAREST)
+	for k in _rng.randi_range(1, 3):
+		if not near.is_empty():
+			pr.leisure.append(near[_rng.randi_range(0, near.size() - 1)])
+	for k: String in job[2]:
+		var pts: Array[Vector2] = anchors.get(k, [] as Array[Vector2])
+		if not pts.is_empty():
+			pr.leisure.append(_nearest(pts, h))
+	return pr
+
+
 ## Walkable ground within `spread` of `about`, or the nearest walkable point to it.
 func _spot_near(about: Vector2, spread: float) -> Vector2:
 	for attempt in 8:
@@ -457,22 +587,97 @@ func add_soldier(at: Vector2) -> Person:
 ## barracks yard's first profile.rescue_squads x RESCUE_SQUAD form the rescue squads, the walls' first
 ## profile.marshals_per_exit x ways out become marshals, and the patrols' first escort_cap() escort the responders. The
 ## Citadel's guard and anyone over the counts keep v0.06's ways (posts, investigations, the rally). Each remembers its
-## post.
+## post. The yard's last, on a city's drill spots, drill there (Person.drill_face).
 func _assign_corps() -> void:
-	var exits := 2 + (2 if profile.boats else 0)
+	var exits := _marshal_exits()
 	var cap := escort_cap(profile)
+	var yard := post_counts[0]
+	var walls := post_counts[1]
+	var patrols_from := post_counts[0] + post_counts[1] + post_counts[2]
+	# A city's drill spots are its yard's last posts (CityDef.drill_spots()): those soldiers face their dummies.
+	var drills: Array[Dictionary] = []
+	if _city_posts:
+		drills = City.current().drill_spots()
+	var drill_from := yard - drills.size()
 	for i in soldiers.size():
 		var p := soldiers[i]
 		p.post = p.anchor
-		if i < POST_YARD:
+		if i < yard:
 			if i < profile.rescue_squads * RESCUE_SQUAD:
 				p.corps = Person.Corps.RESCUE
-		elif i < POST_YARD + POST_WALLS:
-			if i - POST_YARD < profile.marshals_per_exit * exits:
+			elif i >= drill_from:
+				p.drill_face = drills[i - drill_from].face
+		elif i < yard + walls:
+			if i - yard < profile.marshals_per_exit * exits:
 				p.corps = Person.Corps.MARSHAL
-		elif i >= POST_YARD + POST_WALLS + POST_CITADEL:
-			if i - (POST_YARD + POST_WALLS + POST_CITADEL) < cap:
+		elif i >= patrols_from:
+			if i - patrols_from < cap:
 				p.corps = Person.Corps.ESCORT
+
+
+## How many ways out the marshals man: Aldermere's two gates (and the postern and the dock with the boats); a city
+## with its own posting, every gate (and the dock with the boats).
+func _marshal_exits() -> int:
+	if _city_posts:
+		return _town.gates.size() + (1 if profile.boats else 0)
+	return 2 + (2 if profile.boats else 0)
+
+
+## The wall patrols' loops (CityDef.patrol_loops()): the first patrols, in pairs from evenly spaced starts, each loop's
+## points snapped to open ground.
+func _start_loops() -> void:
+	_loops.clear()
+	var i := post_counts[0] + post_counts[1] + post_counts[2]
+	var loops := City.current().patrol_loops()
+	for k in loops.size():
+		var points: Array[Vector2] = []
+		for g: Vector2 in loops[k].points:
+			var w := _grid.nearest_walkable(g)
+			points.append(w if w != Vector2.INF else g)
+		var pairs := int(loops[k].walkers) / 2
+		for pair in pairs:
+			var at := CityDef.loop_start(pair, pairs, points.size())
+			for m in 2:
+				if i < soldiers.size():
+					_loops.append([soldiers[i], points, at, k, -1.0])
+					i += 1
+
+
+## Which wall patrol loop `p` walks (its index in CityDef.patrol_loops()), or -1.
+func loop_of(p: Person) -> int:
+	for e in _loops:
+		if e[0] == p:
+			return e[3]
+	return -1
+
+
+## The wall patrols walk on: one at its point (and without a role, at its post, not looking at an incident, the town
+## not rallied) stands LOOP_PAUSE, then makes for the loop's next point, which becomes its post.
+func _walk_loops() -> void:
+	for e in _loops:
+		if not is_instance_valid(e[0]):
+			continue
+		var p: Person = e[0]
+		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal():
+			continue
+		var points: Array[Vector2] = e[1]
+		if p.ground_pos.distance_to(points[e[2]]) > LOOP_REACH or _looking(p):
+			e[4] = -1.0
+			continue
+		if float(e[4]) < 0.0:
+			e[4] = _clock
+		elif _clock - float(e[4]) >= LOOP_PAUSE:
+			e[2] = (int(e[2]) + 1) % points.size()
+			e[4] = -1.0
+			p.post = points[e[2]]
+			p.send_to_post(p.post)
+
+
+func _looking(p: Person) -> bool:
+	for e in _investigating:
+		if e[0] == p:
+			return true
+	return false
 
 
 ## How many escorts a town keeps (v0.09.1: by need): escorts_per_duty for each duty EscortManager can give them -- the
@@ -481,11 +686,17 @@ static func escort_cap(pr: ResponseProfile) -> int:
 	return pr.escorts_per_duty * ((1 if pr.bell else 0) + (1 if pr.rite else 0) + pr.engineer_teams)
 
 
-## The spec's posting: the yard, the wall towers and gates, the Citadel, and street patrols in pairs.
+## The spec's posting: the yard, the wall towers and gates, the Citadel, and street patrols in pairs. A city with its own
+## posting (CityDef.soldier_posts()) lays out its groups instead (_city_soldier_posts()).
 func _soldier_posts(count: int) -> Array[Vector2]:
+	var groups := City.current().soldier_posts()
+	_city_posts = not groups.is_empty()
+	if _city_posts:
+		return _city_soldier_posts(groups, count)
+	post_counts = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
 	var out: Array[Vector2] = []
 	for i in POST_YARD:
-		out.append(_spot_near(TownLayout.BARRACKS_YARD.get_center(), 1.4))
+		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
 	var guard_spots: Array[Vector2] = []
 	for s in _env.structures():
 		if s.role == &"tower" or s.role == &"gate":
@@ -495,13 +706,15 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 		out.append(_spot_near(about, 1.2))
 	for i in POST_CITADEL:
 		var a := TAU * float(i) / float(POST_CITADEL)
-		out.append(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.8))
+		out.append(_spot_near(City.current().citadel_origin() + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.8))
 	# Pairs walk the streets inside the walls; their posts are points spread along each street's centre line.
 	var streets: Array[Rect2] = []
-	for road: Rect2 in TownLayout.ROADS:
-		if TownLayout.TOWN.encloses(road):
+	var town := City.current().town()
+	for road: Rect2 in City.current().roads():
+		if town.encloses(road):
 			streets.append(road)
-	for i in POST_PATROL:
+	# A city with no street inside its walls has no patrols (their posts go to the barracks yard below).
+	for i in (POST_PATROL if not streets.is_empty() else 0):
 		var road := streets[(i / 2) % streets.size()]
 		var along := (float((i / 2) / streets.size()) + 0.5) / ceilf(float(POST_PATROL / 2) / streets.size())
 		var point := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \
@@ -510,7 +723,24 @@ func _soldier_posts(count: int) -> Array[Vector2]:
 	while out.size() > count:
 		out.pop_back()
 	while out.size() < count:
-		out.append(_spot_near(TownLayout.BARRACKS_YARD.get_center(), 1.4))
+		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
+	return out
+
+
+## A city's own posting, its groups in post order (yard, walls, Citadel, patrols), each post spread a little; cut short
+## or filled up in the barracks yard to `count`, as Aldermere's is.
+func _city_soldier_posts(groups: Dictionary, count: int) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	post_counts = []
+	for k: String in ["yard", "walls", "citadel", "patrol"]:
+		var list: Array = groups.get(k, [])
+		post_counts.append(list.size())
+		for g: Vector2 in list:
+			out.append(_spot_near(g, CITY_POST_SPREAD))
+	while out.size() > count:
+		out.pop_back()
+	while out.size() < count:
+		out.append(_spot_near(City.current().landmark(&"barracks_yard").get_center(), 1.4))
 	return out
 
 
@@ -561,12 +791,14 @@ func _process(delta: float) -> void:
 func step_people(delta: float) -> void:
 	# While time stands still (freeze()) the living do not move or think; the dead still fall.
 	var still := is_frozen()
+	var t0 := BenchProf.begin()
 	for p in citizens:
 		if is_instance_valid(p) and not p.inside and not (still and p.is_alive()):
 			p.frame(delta)
 	for p in soldiers:
 		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
+	BenchProf.add(&"people", t0)
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
@@ -574,6 +806,12 @@ func advance(delta: float) -> void:
 	if _freeze_left > 0.0:
 		_freeze_left -= delta
 		return
+	var t0 := BenchProf.begin()
+	_advance(delta)
+	BenchProf.add(&"crowd", t0)
+
+
+func _advance(delta: float) -> void:
 	_clock += delta
 	threats.step(delta)
 	_land_held()
@@ -583,10 +821,16 @@ func advance(delta: float) -> void:
 		_watch_in = 1.0 / WATCH_HZ
 		_watch_threats()
 	if routine != null:
+		var t_routine := BenchProf.begin()
 		routine.step(delta)
+		BenchProf.add(&"routine", t_routine)
 	if evac != null:
+		var t_evac := BenchProf.begin()
 		evac.step(delta)
+		BenchProf.add(&"evac", t_evac)
+	var t_fires := BenchProf.begin()
 	fires.step(delta)
+	BenchProf.add(&"fires", t_fires)
 	if shelters != null:
 		shelters.step(delta)
 	_stage_in -= delta
@@ -623,7 +867,13 @@ func advance(delta: float) -> void:
 	_free_jams()
 	_tend_households()
 	_return_investigators()
+	if not _loops.is_empty():
+		var t_loops := BenchProf.begin()
+		_walk_loops()
+		BenchProf.add(&"loops", t_loops)
+	var t_gates := BenchProf.begin()
 	_gates()
+	BenchProf.add(&"gates", t_gates)
 	_escapes()
 	_prune_soldiers()
 	_voice_tokens = minf(VOICE_BUDGET, _voice_tokens + VOICE_BUDGET * delta)
@@ -672,6 +922,9 @@ func queue_spots(gate: Structure) -> Array[Vector2]:
 ## The way out through a gate: straight across the wall it stands in, away from the town. (Its centre's direction
 ## from the town's middle only works for a gate in the middle of its wall; the Side Gate is not.)
 static func outward_of(gate: Structure) -> Vector2:
+	var o := City.current().gate_outward(gate.footprint)
+	if o != Vector2.INF:
+		return o  # a city whose gates face their own way (the capital's two rings)
 	var c := gate.center()
 	if absf(c.x) > absf(c.y):
 		return Vector2(signf(c.x), 0.0)
@@ -689,6 +942,14 @@ func waiting_at(gate: Structure) -> int:
 
 
 func _gates() -> void:
+	# Only the fleeing and those a gate has let through matter to any gate (Task 14): found once a frame, in the
+	# citizens' order, so every gate below sees them as it saw them in the whole list -- a calm town's gates look at
+	# nobody. Nothing a gate does makes anyone flee or pass but the fleeing, so the list holds for every gate.
+	var moving: Array[Person] = []
+	for p in citizens:
+		if is_instance_valid(p) and (p.passing_gate != null or p.mind == Person.Mind.FLEE):
+			moving.append(p)
+	gate_visits = 0
 	for gate in _town.gates:
 		if not is_instance_valid(gate) or gate.destroyed:
 			_release_all(gate)
@@ -697,13 +958,16 @@ func _gates() -> void:
 			continue  # a barred postern
 		var centre := gate.center()
 		var outward := outward_of(gate)
+		# A city whose gates face their own way (CityDef.gate_outward()) has gates close together: each holds only those
+		# whose way out runs through it (_heading_through()).
+		var faced := City.current().gate_outward(gate.footprint) != Vector2.INF
 		var spots := queue_spots(gate)
 		var face := centre - outward * (absf(gate.footprint.size.dot(outward)) * 0.5 + GATE_DOOR)
 		# Each person this gate has released keeps its own pass until it is through (more than a third of the
 		# way past the doorway's centre line), dead, no longer fleeing, or has wandered off -- unlike the old
 		# single shared pass, several can be on their way out at once, so a slow one never looks like a jam.
-		for p in citizens:
-			if not is_instance_valid(p) or p.passing_gate != gate:
+		for p in moving:
+			if p.passing_gate != gate:
 				continue
 			var rel := p.ground_pos - centre
 			if rel.dot(outward) > 0.3 or not p.is_alive() or p.mind != Person.Mind.FLEE \
@@ -711,12 +975,15 @@ func _gates() -> void:
 				p.passing_gate = null
 		# The waiting crowd: fleeing, in front of the doorway, not yet released.
 		var crowd_here: Array[Person] = []
-		for p in citizens:
-			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.FLEE or p.passing_gate == gate:
+		for p in moving:
+			gate_visits += 1
+			if not p.is_alive() or p.mind != Person.Mind.FLEE or p.passing_gate == gate:
 				continue
 			var rel := p.ground_pos - centre
 			var in_front := rel.dot(outward) <= 0.0 \
 				and p.ground_pos.distance_to(face) <= QUEUE_DEPTH0 + QUEUE_REACH + 0.5
+			if in_front and faced and not _heading_through(p, gate, spots):
+				in_front = false
 			if in_front:
 				crowd_here.append(p)
 			elif spots.has(p.queue_spot):
@@ -749,7 +1016,7 @@ func _gates() -> void:
 		# A blighted gate is jammed (v0.05), a held one too (v0.09): its crowd waits, nobody passes.
 		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted \
 				and _clock >= float(_held.get(gate, -1.0)):
-			var interval := profile.postern_interval if gate.art_tag == &"postern" else GATE_INTERVAL
+			var interval := profile.postern_interval if gate.art_tag == &"postern" else gate_interval
 			# Marshals at the mouth (v0.07) let them through faster.
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()
@@ -761,6 +1028,16 @@ func _gates() -> void:
 			if p.queue_since < 0.0:
 				p.queue_since = _clock
 			p.queue_spot = spots[mini(slot, spots.size() - 1)]
+
+
+## Whether `p` is on its way through `gate`: the gate lies within GATE_AHEAD waypoints of its path. While it has no
+## path (planning anew), it keeps the place it holds in this gate's crowd, if any.
+func _heading_through(p: Person, gate: Structure, spots: Array[Vector2]) -> bool:
+	if not p.has_goal():
+		return p.queue_spot != Vector2.INF and spots.has(p.queue_spot)
+	if BenchProf.on:
+		BenchProf.count(&"heading_checks")
+	return p.path_crosses(gate.footprint.grow(GATE_DOOR), GATE_AHEAD)
 
 
 ## A gate that fell lets its whole crowd go, waiting or already walking through it.
@@ -1099,7 +1376,7 @@ func is_bell_lying() -> bool:
 
 ## The bell tolls, and it says all is well: the town is not warned, its alarm falls by LIE_CALM, and every citizen
 ## who hears it -- all of them -- takes heart for LIE_REASSURE (Person.reassure()).
-func false_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
+func false_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
 			p.reassure(LIE_REASSURE)
@@ -1283,7 +1560,7 @@ func _appoint_bellkeeper(anchors: Dictionary) -> Person:
 
 ## The Bell Tower rings (BellNetwork): every citizen learns of the danger, and the town calls City Emergency and the
 ## evacuation sooner.
-func ring_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
+func ring_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
 	alarms.bell_rung = true
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
@@ -1299,9 +1576,9 @@ func ring_bell(at := TownLayout.BELL_TOWER.get_center()) -> void:
 func _investigate(at: Vector2) -> void:
 	if _rallied:
 		return
-	var first := POST_YARD + POST_WALLS + POST_CITADEL
+	var first := post_counts[0] + post_counts[1] + post_counts[2]
 	var pool: Array[Person] = []
-	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
+	for i in range(first, mini(first + post_counts[3], soldiers.size())):
 		var p := soldiers[i]
 		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST \
 				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)):
@@ -1341,9 +1618,9 @@ func rally() -> void:
 	for i in living.size():
 		var p := living[i]
 		var a := TAU * float(i) / float(maxi(living.size(), 1))
-		p.send_to_post(_spot_near(TownLayout.CITADEL_ORIGIN + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
+		p.send_to_post(_spot_near(City.current().citadel_origin() + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
 	if sfx != null:
-		sfx.play(&"sol_rally", TownLayout.CITADEL_ORIGIN)
+		sfx.play(&"sol_rally", City.current().citadel_origin())
 	rallied.emit()
 
 
@@ -1355,7 +1632,7 @@ func on_ring(p: Variant) -> bool:
 		return false
 	var s := p as Person
 	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and s.mind == Person.Mind.RALLY \
-		and s.ground_pos.distance_to(TownLayout.CITADEL_ORIGIN) <= RING_RADIUS + RING_REACH
+		and s.ground_pos.distance_to(City.current().citadel_origin()) <= RING_RADIUS + RING_REACH
 
 
 ## How many soldiers stand on the rally ring (v0.09.1): the Citadel's garrison, asked once per hit on it.
@@ -1449,14 +1726,14 @@ static func _standing(s: Structure) -> bool:
 
 ## More marshals for a raised profile: soldiers on the walls without a role take it, in post order, up to the new count.
 func _raise_marshals() -> int:
-	var exits := 2 + (2 if profile.boats else 0)
+	var exits := _marshal_exits()
 	var want := profile.marshals_per_exit * exits
 	var have := 0
 	for p in soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL:
 			have += 1
 	var added := 0
-	for i in range(POST_YARD, mini(POST_YARD + POST_WALLS, soldiers.size())):
+	for i in range(post_counts[0], mini(post_counts[0] + post_counts[1], soldiers.size())):
 		if have + added >= want:
 			break
 		var p := soldiers[i]
@@ -1475,8 +1752,8 @@ func _raise_escorts() -> int:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.ESCORT:
 			have += 1
 	var added := 0
-	var first := POST_YARD + POST_WALLS + POST_CITADEL
-	for i in range(first, mini(first + POST_PATROL, soldiers.size())):
+	var first := post_counts[0] + post_counts[1] + post_counts[2]
+	for i in range(first, mini(first + post_counts[3], soldiers.size())):
 		if have + added >= want:
 			break
 		var p := soldiers[i]
@@ -1553,6 +1830,12 @@ func clear() -> void:
 	rescue = null
 	_gate_next.clear()
 	_spots.clear()
+	_loops.clear()
+	gate_interval = GATE_INTERVAL
+	# The city's LOD rate goes with its crowd: nothing built after this one inherits it (setup() sets it again).
+	Person.offscreen_every = Person.OFFSCREEN_EVERY
+	post_counts = [POST_YARD, POST_WALLS, POST_CITADEL, POST_PATROL]
+	_city_posts = false
 	alarm = 0.0
 	escaped_count = 0
 	killed_citizens = 0
@@ -1581,8 +1864,8 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
 	var points: Array[Vector2] = [at]
 	_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
-	if is_instance_valid(_town) and s == _town.bridge:
-		# The south route just closed: everyone already walking it needs a new plan.
+	if is_instance_valid(_town) and s in _town.bridges:
+		# A way over the river just closed: everyone already walking needs a new plan.
 		for p in citizens:
 			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE:
 				p.replan()

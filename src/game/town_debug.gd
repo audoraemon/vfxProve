@@ -28,7 +28,66 @@ const CLEAR := Color("6e8230")
 ## [file, ground point to look at, zoom] for --capture-town.
 const TOWN_SHOTS := [
 	["town_overview.png", Vector2(0, 2), 0.3],
+	# The whole capital (--city=capital): its 80x80 map at a glance.
+	["capital_overview.png", Vector2(0, 0), 0.17],
+	# Its east stone bridge and the third bridge, between the two wall rings.
+	["capital_bridges.png", Vector2(9, 8), 0.6],
+	# The old town's ring (the Keep, the noble, civic and guild quarters, the Great Market, the old town houses), the
+	# harbour district and its quay, and the new town's ring south of the river (crafts, new town, tanners, poor and road
+	# quarters).
+	["capital_old_town.png", Vector2(-3, -13), 0.5],
+	["capital_harbour.png", Vector2(28, -9), 0.75],
+	["capital_south.png", Vector2(-4, 23), 0.5],
+	# Polish 1: the Keep's courtyard (the royal garden and the drill yard), the third crossing, the harbour's quay (the
+	# crane, the ferry landing, the dock warehouses), the wash houses on the north bank and the sluice.
+	["capital_keep_court.png", Vector2(-15.5, -24.5), 1.0],
+	["capital_third_bridge.png", Vector2(14, 8), 1.0],
+	["capital_quay.png", Vector2(31.5, -2.5), 0.85],
+	["capital_wash.png", Vector2(-1, 5.5), 0.7],
+	["capital_sluice.png", Vector2(-27.6, 5.5), 1.3],
+	# Polish 2: the Keep's service yard, the Keep's gate with its steps, the south district gate across its lane,
+	# the cathedral close (the churchyard and the pilgrim plaza), the aqueduct feeding the cistern.
+	["capital_keep_yard.png", Vector2(11.0, -25.0), 1.0],
+	["capital_keep_gate.png", Vector2(4.0, -22.0), 1.4],
+	["capital_district_gate.png", Vector2(-4.0, 28.0), 1.2],
+	["capital_close.png", Vector2(-3.0, -13.5), 1.0],
+	["capital_aqueduct.png", Vector2(22.0, -28.5), 0.75],
+	# Polish 3: the map's edge as far as a player can pan each way at the mission's furthest zoom (an _edge_ shot's
+	# camera is clamped as the mission's is, Mission.clamp_view()), and the river's west end running on into the band.
+	["capital_edge_n.png", Vector2(0, -70), 0.5],
+	["capital_edge_e.png", Vector2(70, 0), 0.5],
+	["capital_edge_s.png", Vector2(0, 70), 0.5],
+	["capital_edge_w.png", Vector2(-70, 0), 0.5],
+	["capital_edge_river_w.png", Vector2(-70, 9), 0.6],
+	# The Keep's grounds with the watchtower on its wall line, the drill yard's two rows of dummies, the avenues of the
+	# old and the new town, a house block close-up per district, the south suburbs, gallows hill and the tournament field.
+	["capital_keep.png", Vector2(3.0, -23.5), 1.0],
+	["capital_drill.png", Vector2(-11.5, -24.8), 1.3],
+	["capital_avenue_old.png", Vector2(-6.0, -9.5), 0.8],
+	["capital_avenue_civic.png", Vector2(5.0, -15.0), 0.9],
+	["capital_avenue_new.png", Vector2(-6.0, 21.0), 0.8],
+	["capital_houses_noble.png", Vector2(-15.0, -15.5), 1.0],
+	["capital_houses_guild.png", Vector2(12.5, -14.0), 1.0],
+	["capital_houses_market.png", Vector2(-18.0, -4.0), 1.0],
+	["capital_houses_oldtown.png", Vector2(5.0, -3.0), 1.0],
+	["capital_houses_crafts.png", Vector2(-23.0, 19.0), 1.0],
+	["capital_houses_newtown.png", Vector2(-1.0, 19.5), 1.0],
+	["capital_houses_tanners.png", Vector2(17.0, 17.0), 1.0],
+	["capital_houses_poor.png", Vector2(-19.0, 28.0), 1.0],
+	["capital_houses_road.png", Vector2(10.0, 28.0), 1.0],
+	["capital_suburbs.png", Vector2(-14.0, 37.0), 0.7],
+	["capital_tournament.png", Vector2(14.0, 37.0), 0.8],
+	["capital_south_fields.png", Vector2(28.0, 34.0), 0.6],
+	# Polish 3 (roofs): slate roofs whose faces are set by hand (gpt_convert SLATE_FACES): the library and the manor
+	# by the Keep, the crafts quarter's lumber yard, the new town's chapel.
+	["capital_library_roofs.png", Vector2(-17.9, -21.3), 2.0],
+	["capital_lumberyard_roofs.png", Vector2(-26.7, 14.6), 1.6],
+	["capital_chapel_roofs.png", Vector2(-7.0, 13.0), 2.0],
 	["town_citadel.png", TownLayout.CITADEL_ORIGIN, 1.0],
+	["town_edge_n.png", Vector2(0, -70), 0.5],
+	["town_edge_e.png", Vector2(70, 0), 0.5],
+	["town_edge_s.png", Vector2(0, 70), 0.5],
+	["town_edge_w.png", Vector2(-70, 0), 0.5],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],
 	["town_main_gate.png", Vector2(2.7, 16.0), 1.0],
@@ -140,7 +199,6 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
-	_bf.ctx.field.bounds = TownLayout.MAP
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"
@@ -191,14 +249,20 @@ func _rebuild(seed_value: int) -> void:
 		_showcase.queue_free()
 		_showcase = null
 	var args := OS.get_cmdline_user_args()
+	# The city to build: --city=<id>, Aldermere by default.
+	var city := Battlefield.arg_value(args, "--city")
+	City.use(StringName(city) if city != "" else &"aldermere")
+	_bf.ctx.field.bounds = City.current().map()
+	# The GPT showcase district is laid out round Aldermere's walls (TownLayout): Aldermere only.
+	var showcase := GptShowcase.wanted(args) and City.current().id() == &"aldermere"
 	_town = Town.new()
 	_town.name = "Town"
-	if GptShowcase.wanted(args):
+	if showcase:
 		_town.keep_clear = GptShowcase.clear_rects()
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_town.sfx = _bf.ctx.sfx
-	if GptShowcase.wanted(args):
+	if showcase:
 		# After the town: every town building keeps its seed; before the walk grid, which then walks round it.
 		_showcase_page = GptShowcase.page_arg(args)
 		_build_showcase()
@@ -208,8 +272,10 @@ func _rebuild(seed_value: int) -> void:
 	add_child(_crowd)
 	_crowd.setup(_bf.ctx.field, _bf.ctx.env, _town, _grid, _bf.ctx.world, seed_value)
 	var wanted := Battlefield.arg_value(OS.get_cmdline_user_args(), "--people")
-	var people := int(wanted) if wanted != "" else PEOPLE
-	var citizens := roundi(float(people) * float(Crowd.CITIZENS) / float(PEOPLE))
+	# The city's own numbers (CityDef.citizens(), soldiers(); Aldermere's PEOPLE), --people=N scaling both.
+	var town_people := City.current().citizens() + City.current().soldiers()
+	var people := int(wanted) if wanted != "" else town_people
+	var citizens := roundi(float(people) * float(City.current().citizens()) / float(town_people))
 	_crowd.spawn(citizens, people - citizens)
 
 
@@ -244,6 +310,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
+		_pan(Vector2.ZERO)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true
@@ -271,8 +338,10 @@ func _process(delta: float) -> void:
 	_update_hud()
 
 
+## Panned within PAN_MIN..PAN_MAX, the view kept on the drawn ground (TownFloor.keep_in_view(), polish 3).
 func _pan(by: Vector2) -> void:
-	_bf.camera.position = (_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX)
+	_bf.camera.position = TownFloor.keep_in_view((_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX), _bf.camera.zoom.x,
+		get_viewport().get_visible_rect().size)
 
 
 func _draw_drag_line() -> void:
@@ -319,6 +388,8 @@ func _show_page(page: int) -> void:
 ## show what moves.
 func _capture_town(only := "", frames := 1) -> void:
 	_hud.visible = false
+	# The floor paints its border band a little after the town is built (TownFloor.BAND_DELAY, then a frame a piece).
+	await get_tree().create_timer(TownFloor.BAND_DELAY + 2.0).timeout
 	for shot in TOWN_SHOTS:
 		if only != "" and not String(shot[0]).begins_with(only):
 			continue
@@ -336,6 +407,9 @@ func _capture_town(only := "", frames := 1) -> void:
 		else:
 			_bf.camera.zoom = Vector2.ONE * float(shot[2])
 			_bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
+			if String(shot[0]).contains("_edge_"):
+				_bf.camera.position = Mission.clamp_view(Iso.ground_to_screen(at), float(shot[2]),
+					get_viewport().get_visible_rect().size).round()
 		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
 		if frames <= 1:

@@ -30,9 +30,9 @@ var _fell := {}
 var _taker := 0
 
 
-## The barracks' door (v0.11 M3): the middle of TownLayout.BARRACKS's front, in its yard, on walkable ground.
+## The barracks' door (v0.11 M3): the middle of the front of the city's barracks, in its yard, on walkable ground.
 static func barracks_door(crowd: Crowd) -> Vector2:
-	var r := TownLayout.BARRACKS
+	var r := City.current().landmark(&"barracks")
 	var at := Vector2(r.get_center().x, r.end.y + 0.5)
 	var snap := crowd._grid.nearest_walkable(at) if crowd._grid != null else at
 	return snap if snap != Vector2.INF else at

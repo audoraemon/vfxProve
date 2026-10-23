@@ -149,8 +149,9 @@ func jobs() -> Array:
 	if is_instance_valid(_town):
 		if not _evacuating():
 			routes.append_array(_town.gates)
-		if is_instance_valid(_town.bridge):
-			routes.append(_town.bridge)
+		for b in _town.bridges:
+			if is_instance_valid(b):
+				routes.append(b)
 		if is_instance_valid(_town.dock):
 			routes.append(_town.dock)
 	for s in routes:
@@ -183,7 +184,7 @@ func _site(rect: Rect2) -> Vector2:
 	var sides := [Vector2(c.x, rect.end.y + SITE_OUT), Vector2(c.x, rect.position.y - SITE_OUT),
 		Vector2(rect.end.x + SITE_OUT, c.y), Vector2(rect.position.x - SITE_OUT, c.y)]
 	var best := Vector2.INF
-	var middle := TownLayout.MARKET_SQUARE.get_center()
+	var middle := City.current().landmark(&"market_square").get_center()
 	for g: Vector2 in sides:
 		var w := g if _grid.walkable(g) else _grid.nearest_walkable(g, 3)
 		if w != Vector2.INF and (best == Vector2.INF or w.distance_squared_to(middle) < best.distance_squared_to(middle)):

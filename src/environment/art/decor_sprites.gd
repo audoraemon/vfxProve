@@ -178,7 +178,7 @@ static func variants(base: String) -> Array:
 
 
 ## The set a decor piece draws, or "" (procedural): off while SpriteArt is off; a run takes its direction's set; a
-## boat standing at `at` lies along the river holding it (boat_2 along y on TownLayout.RIVER_WEST, else boat_1 along
+## boat standing at `at` lies along the river holding it (boat_2 along y on the city's river_west, else boat_1 along
 ## x); a garden takes the garden_<n> whose "footprint" is nearest its plot; a kind with one set takes its bare name,
 ## else a variant picked from the seed (a boat too, when `at` is INF; a town sheep or cow by its decor order).
 ## `force` looks past F7 (the set the piece draws while sprites are on), for layout that must not hang on the art.
@@ -187,7 +187,7 @@ static func name_for(kind: int, seed_value: int, size: Vector2, at := Vector2.IN
 		return ""
 	var base: String = BASE[kind]
 	if kind == Decor.Kind.BOAT and at != Vector2.INF:
-		var b := "boat_2" if TownLayout.RIVER_WEST.has_point(at) else "boat_1"
+		var b := "boat_2" if City.current().landmark(&"river_west").has_point(at) else "boat_1"
 		return b if manifest().has(b) else ""
 	if kind in RUNS:
 		var n := base + ("_x" if absf(size.x) >= absf(size.y) else "_y")

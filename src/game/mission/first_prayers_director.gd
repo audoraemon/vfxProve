@@ -142,7 +142,7 @@ func _priests_come() -> void:
 func _free_clergy() -> Array[Person]:
 	var out: Array[Person] = []
 	for f in _free_faithful():
-		if f.profile.role == CitizenProfile.Role.CLERGY:
+		if CitizenProfile.is_clergy(f.profile.role):
 			out.append(f)
 	return out
 

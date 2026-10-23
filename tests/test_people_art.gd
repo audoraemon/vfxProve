@@ -10,6 +10,11 @@ static func run(t) -> void:
 	_poses(t)
 	_merged_looks(t)
 	_cached_frames(t)
+	_rows(t)
+	_info_table(t)
+	_getup(t)
+	_fallback(t)
+	_pack(t)
 	t.check(_crowd_run(true) == _crowd_run(false), "people sprites on or off, the crowd does exactly the same")
 	SpriteArt.set_enabled(true)
 
@@ -247,3 +252,96 @@ static func _cached_frames(t) -> void:
 	t.check(p.mind == Person.Mind.WHISPERED and p._art_signature() == quiet, "whispered too")
 	p.free()
 
+
+
+## The atlas has nine animations (v0.12 people animations): idle walk run stumble death scream lurch swing getup.
+static func _rows(t) -> void:
+	t.check(PeopleArt.ANIMS.size() == 9, "people have nine animations")
+	t.check(PeopleArt.FPS_AT.size() == 9 and PeopleArt.ONCE_AT.size() == 9, "each has an fps and a hold flag")
+	var agree := true
+	for a in PeopleArt.ANIMS.size():
+		agree = agree and PeopleArt.FPS_AT[a] == PeopleArt.FPS[PeopleArt.ANIMS[a]] 			and PeopleArt.ONCE_AT[a] == PeopleArt.ONCE.has(PeopleArt.ANIMS[a])
+	t.check(agree, "FPS_AT and ONCE_AT agree with FPS and ONCE")
+
+
+## Every design's frame table holds 9 * 4 frame counts.
+static func _info_table(t) -> void:
+	var ok := true
+	for d in PeopleArt.manifest().designs.keys():
+		ok = ok and PeopleArt.info(d)[4].size() == 36
+	t.check(ok, "every design's frame table has 36 frame counts")
+
+
+## "getup" is the death fall played backwards, frame for frame.
+static func _getup(t) -> void:
+	var img := PeopleArt.atlas().get_image()
+	var same := true
+	for d in ["resident_a", "guard"]:
+		for f in PeopleArt.Facing.values():
+			var n := PeopleArt.frame_count(d, &"death", f)
+			same = same and PeopleArt.frame_count(d, &"getup", f) == n
+			for i in n:
+				var up := img.get_region(Rect2i(PeopleArt.frame_rect(d, &"getup", f, i)))
+				var down := img.get_region(Rect2i(PeopleArt.frame_rect(d, &"death", f, n - 1 - i)))
+				same = same and _same_cell(up, down)
+	t.check(same, "getup frame i is death frame n-1-i")
+
+
+## A design with no art for a new row shows its idle there; no hole, no error.
+static func _fallback(t) -> void:
+	var img := PeopleArt.atlas().get_image()
+	var ok := true
+	var same := true
+	for d in PeopleArt.manifest().designs.keys():
+		for a in [&"scream", &"lurch", &"swing"]:
+			for f in PeopleArt.Facing.values():
+				ok = ok and PeopleArt.frame_count(d, a, f) >= 1
+		# Until a design is given scream art, its scream is its idle.
+		var n := PeopleArt.frame_count(d, &"scream", 0)
+		if n == PeopleArt.frame_count(d, &"idle", 0):
+			var a0 := img.get_region(Rect2i(PeopleArt.frame_rect(d, &"scream", 0, 0)))
+			var b0 := img.get_region(Rect2i(PeopleArt.frame_rect(d, &"idle", 0, 0)))
+			same = same and _same_cell(a0, b0)
+	t.check(ok, "a design lacking new art has frames in every new row")
+	t.check(same, "and a scream it lacks is its idle")
+
+
+## Frame, animation and facing round-trip through the pose code for every animation.
+static func _pack(t) -> void:
+	var ok := true
+	for a in 9:
+		for f in 4:
+			for k in 21:
+				var code := k << 6 | a << 2 | f
+				ok = ok and (code >> 2 & 15) == a and (code & 3) == f and (code >> 6) == k
+	t.check(ok, "the pose code round-trips frame, animation and facing for all nine animations")
+	# And the person's own: a held animation's code reads back through _sprite_pose().
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var p := Person.new()
+	p.rng.seed = 26
+	p.bounds = TownLayout.MAP
+	p.setup_person(false, Vector2(2.7, 2.0), grid)
+	p.die(&"nova", p.ground_pos + Vector2(1, 0))
+	p.tick(1.0)
+	var pose := p._sprite_pose()
+	var code := p._sprite_pose_code()
+	t.check(PeopleArt.ANIMS[code >> 2 & 15] == pose[0] and (code & 3) == pose[1] and (code >> 6) == pose[2],
+		"_sprite_pose() unpacks _sprite_pose_code()")
+	p.free()
+
+
+## Two atlas cells show the same picture: the same alpha, and the same colour where there is any. (Import fixes the colour
+## of transparent pixels from their neighbours, so those bytes differ between cells.)
+static func _same_cell(a: Image, b: Image) -> bool:
+	if a.get_size() != b.get_size():
+		return false
+	for y in a.get_height():
+		for x in a.get_width():
+			var p := a.get_pixel(x, y)
+			var q := b.get_pixel(x, y)
+			if not is_equal_approx(p.a, q.a) or (p.a > 0.0 and not p.is_equal_approx(q)):
+				return false
+	return true

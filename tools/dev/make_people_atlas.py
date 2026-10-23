@@ -1,9 +1,10 @@
 """Pack the PixelLab people into one atlas (PixelLab people; docs/superpowers/plans/2026-10-03-pixellab-people.md).
 
 Reads assets/pixellab/people/frames/<design>/<template>/<direction>_<i>.png (and rot_<direction>.png), writes
-assets/pixellab/people/atlas.png and manifest.json. Each design is a block of 8 x 20 cells of 24 x 24 px: row =
+assets/pixellab/people/atlas.png and manifest.json. Each design is a block of 8 x 36 cells of 24 x 24 px: row =
 state * 4 + direction, column = frame. After the design blocks come their silhouettes (white where the frame is
-opaque), which the engine draws over a sprite to tint it. A state a design lacks takes its idle, and a missing idle
+opaque), which the engine draws over a sprite to tint it. A direction a state lacks is its partner flipped; "getup" is
+"death" played backwards; a state a design lacks takes its idle, and a missing idle
 takes the rotation image, so the engine always finds a frame.
 
 Usage (from the project root):
@@ -23,7 +24,10 @@ PEOPLE = ROOT / "assets" / "pixellab" / "people"
 FRAMES = PEOPLE / "frames"
 # Engine state, PixelLab template (the folder the frames come in).
 STATES = [("idle", "breathing-idle"), ("walk", "walking-4-frames"), ("run", "running-4-frames"),
-          ("stumble", "crouching"), ("death", "falling-back-death")]
+          ("stumble", "crouching"), ("death", "falling-back-death"), ("scream", "scream"), ("lurch", "scary-walk"),
+          ("swing", "swing"), ("getup", None)]
+# A direction PixelLab was not asked for is its partner flipped left-right: SE <-> SW, NE <-> NW.
+MIRROR = {"south-east": "south-west", "south-west": "south-east", "north-east": "north-west", "north-west": "north-east"}
 DIRS = ["south-east", "south-west", "north-east", "north-west"]
 CELL = 24
 BLOCK_COLS = 8
@@ -37,14 +41,38 @@ def import_character(design, src):
     for p in glob.glob(os.path.join(src, "rot_*.png")):
         shutil.copy(p, dst / os.path.basename(p))
     for _, template in STATES:
+        if template is None:
+            continue
         s = os.path.join(src, template)
         if os.path.isdir(s):
             shutil.copytree(s, dst / template, dirs_exist_ok=True)
     print("imported", design, "from", src)
 
 
-def frames_of(design, template, d):
+def _read(design, template, d):
     return [Image.open(p).convert("RGBA") for p in sorted(glob.glob(str(FRAMES / design / template / (d + "_*.png"))))]
+
+
+def frames_of(design, template, d):
+    """The frames of a template facing d; a direction not generated is its partner's, flipped left-right."""
+    got = _read(design, template, d)
+    if not got:
+        got = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in _read(design, template, MIRROR[d])]
+    return got
+
+
+def state_frames(design, state, template, d):
+    """The frames for an engine state: "getup" is the fall reversed; a state with none takes the idle, then the rotation."""
+    if state == "getup":
+        frames = list(reversed(state_frames(design, "death", "falling-back-death", d)))
+    else:
+        frames = frames_of(design, template, d)
+    if not frames:
+        frames = frames_of(design, "breathing-idle", d)
+    if not frames:
+        rot = FRAMES / design / ("rot_%s.png" % d)
+        frames = [Image.open(rot).convert("RGBA")] if rot.exists() else []
+    return frames
 
 
 def main():
@@ -71,10 +99,7 @@ def main():
         for si, (state, template) in enumerate(STATES):
             counts[state] = {}
             for dj, d in enumerate(DIRS):
-                frames = frames_of(design, template, d) or frames_of(design, "breathing-idle", d)
-                if not frames:
-                    rot = FRAMES / design / ("rot_%s.png" % d)
-                    frames = [Image.open(rot).convert("RGBA")] if rot.exists() else []
+                frames = state_frames(design, state, template, d)
                 if not frames:
                     sys.exit("%s has no %s frame for %s" % (design, state, d))
                 frames = frames[:BLOCK_COLS]

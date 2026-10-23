@@ -11,7 +11,7 @@
    ],
    "sil": [
     960,
-    960
+    1728
    ],
    "foot": [
     11,
@@ -47,6 +47,30 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
@@ -57,7 +81,7 @@
    ],
    "sil": [
     0,
-    1440
+    2592
    ],
    "foot": [
     11,
@@ -93,6 +117,30 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
@@ -103,7 +151,7 @@
    ],
    "sil": [
     192,
-    1440
+    2592
    ],
    "foot": [
     11,
@@ -135,6 +183,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -149,7 +221,7 @@
    ],
    "sil": [
     384,
-    1440
+    2592
    ],
    "foot": [
     11,
@@ -181,6 +253,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -195,7 +291,7 @@
    ],
    "sil": [
     576,
-    1440
+    2592
    ],
    "foot": [
     11,
@@ -231,6 +327,30 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
@@ -241,7 +361,7 @@
    ],
    "sil": [
     768,
-    1440
+    2592
    ],
    "foot": [
     12,
@@ -273,6 +393,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -283,11 +427,11 @@
   "engineer": {
    "block": [
     0,
-    480
+    864
    ],
    "sil": [
     960,
-    1440
+    2592
    ],
    "foot": [
     12,
@@ -323,17 +467,41 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
   "escort": {
    "block": [
     192,
-    480
+    864
    ],
    "sil": [
     0,
-    1920
+    3456
    ],
    "foot": [
     13,
@@ -369,17 +537,41 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
   "farmer": {
    "block": [
     384,
-    480
+    864
    ],
    "sil": [
     192,
-    1920
+    3456
    ],
    "foot": [
     11,
@@ -415,17 +607,41 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
   "guard": {
    "block": [
     576,
-    480
+    864
    ],
    "sil": [
     384,
-    1920
+    3456
    ],
    "foot": [
     12,
@@ -461,17 +677,41 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
   "laborer": {
    "block": [
     768,
-    480
+    864
    ],
    "sil": [
     576,
-    1920
+    3456
    ],
    "foot": [
     11,
@@ -507,17 +747,41 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
   "marshal": {
    "block": [
     960,
-    480
+    864
    ],
    "sil": [
     768,
-    1920
+    3456
    ],
    "foot": [
     11,
@@ -549,6 +813,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -559,11 +847,11 @@
   "merchant_a": {
    "block": [
     0,
-    960
+    1728
    ],
    "sil": [
     960,
-    1920
+    3456
    ],
    "foot": [
     12,
@@ -595,6 +883,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -605,11 +917,11 @@
   "merchant_b": {
    "block": [
     192,
-    960
+    1728
    ],
    "sil": [
     0,
-    2400
+    4320
    ],
    "foot": [
     12,
@@ -641,6 +953,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -651,11 +987,11 @@
   "rescue": {
    "block": [
     384,
-    960
+    1728
    ],
    "sil": [
     192,
-    2400
+    4320
    ],
    "foot": [
     11,
@@ -687,6 +1023,30 @@
      "north-west": 5
     },
     "death": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
      "south-east": 7,
      "south-west": 7,
      "north-east": 7,
@@ -697,11 +1057,11 @@
   "resident_a": {
    "block": [
     576,
-    960
+    1728
    ],
    "sil": [
     384,
-    2400
+    4320
    ],
    "foot": [
     11,
@@ -737,17 +1097,41 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   },
   "resident_b": {
    "block": [
     768,
-    960
+    1728
    ],
    "sil": [
     576,
-    2400
+    4320
    ],
    "foot": [
     12,
@@ -783,12 +1167,36 @@
      "south-west": 7,
      "north-east": 7,
      "north-west": 7
+    },
+    "scream": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "lurch": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "swing": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "getup": {
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 7,
+     "north-west": 7
     }
    }
   }
  },
  "white": [
   768,
-  2400
+  4320
  ]
 }

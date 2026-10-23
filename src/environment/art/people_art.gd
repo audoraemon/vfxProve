@@ -7,11 +7,16 @@ extends RefCounted
 ## person stays in one draw batch. Shown while SpriteArt.on(): F7 and `-- --art=procedural` switch people too.
 
 const DIR := "res://assets/pixellab/people/"
-const ANIMS := [&"idle", &"walk", &"run", &"stumble", &"death"]
-## Frames a second per animation; stumble and death hold their last frame.
-const FPS := {&"idle": 4.0, &"walk": 8.0, &"run": 12.0, &"stumble": 10.0, &"death": 12.0}
+const ANIMS := [&"idle", &"walk", &"run", &"stumble", &"death", &"scream", &"lurch", &"swing", &"getup"]
+## Frames a second per animation.
+const FPS := {&"idle": 4.0, &"walk": 8.0, &"run": 12.0, &"stumble": 10.0, &"death": 12.0, &"scream": 8.0,
+	&"lurch": 8.0, &"swing": 12.0, &"getup": 10.0}
 ## FPS by ANIMS index.
-const FPS_AT: Array[float] = [4.0, 8.0, 12.0, 10.0, 12.0]
+const FPS_AT: Array[float] = [4.0, 8.0, 12.0, 10.0, 12.0, 8.0, 8.0, 12.0, 10.0]
+## The animations that play once and hold their last frame.
+const ONCE: Array[StringName] = [&"stumble", &"death", &"scream", &"swing", &"getup"]
+## ONCE by ANIMS index, for the per-frame pose code.
+const ONCE_AT: Array[bool] = [false, false, false, true, true, true, false, true, true]
 ## The diagonals, in atlas order: front-right, front-left, back-right, back-left.
 enum Facing { SE, SW, NE, NW }
 const DIR_NAMES := ["south-east", "south-west", "north-east", "north-west"]

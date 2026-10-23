@@ -1693,10 +1693,10 @@ func _design() -> String:
 ## last stepped. Stumble and death hold their last frame.
 func _sprite_pose() -> Array:
 	var code := _sprite_pose_code()
-	return [PeopleArt.ANIMS[code >> 2 & 7], code & 3, code >> 5]
+	return [PeopleArt.ANIMS[code >> 2 & 15], code & 3, code >> 6]
 
 
-## _sprite_pose() folded into one int, frame << 5 | ANIMS index << 2 | facing: every person on screen asks for it every
+## _sprite_pose() folded into one int, frame << 6 | ANIMS index << 2 | facing: every person on screen asks for it every
 ## frame (_sprite_signature()), so it allocates nothing and reads its frame counts from the cached design table.
 func _sprite_pose_code() -> int:
 	var facing: int
@@ -1720,10 +1720,10 @@ func _sprite_pose_code() -> int:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
 	var frame := int(t * PeopleArt.FPS_AT[anim])
-	if anim >= 3:
+	if PeopleArt.ONCE_AT[anim]:
 		_design()
 		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
-	return frame << 5 | anim << 2 | facing
+	return frame << 6 | anim << 2 | facing
 
 
 ## What colours the sprite now, as the colour to draw its silhouette in over it (alpha: how strongly): the way
@@ -1753,10 +1753,10 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 	# PeopleArt.frame_rect(), silhouette_rect() and foot(), from the design's cached table (PeopleArt.info()).
 	_design()
 	var code := _sprite_pose_code()
-	var row := (code >> 2 & 7) * 4 + (code & 3)
+	var row := (code >> 2 & 15) * 4 + (code & 3)
 	var n: int = _design_info[4][row]
 	var cell: Vector2 = _design_info[3]
-	var off := Vector2(((code >> 5) % n) * cell.x, row * cell.y)
+	var off := Vector2(((code >> 6) % n) * cell.x, row * cell.y)
 	var src := Rect2(_design_info[0] + off, cell)
 	var sil := Rect2(_design_info[1] + off, cell)
 	var foot: Vector2 = _design_info[2]
@@ -1955,8 +1955,8 @@ func _sprite_signature() -> int:
 	if state == State.DEAD:
 		return super._art_signature()
 	var code := _sprite_pose_code()
-	var sig: int = (code >> 2 & 7) * 4 + (code & 3)
-	sig = sig * 16 + (code >> 5) % 16
+	var sig: int = (code >> 2 & 15) * 4 + (code & 3)
+	sig = sig * 16 + (code >> 6) % 16
 	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).

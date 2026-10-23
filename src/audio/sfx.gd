@@ -122,6 +122,7 @@ const CATALOG := {
 	# Citizens and soldiers: recordings (tools/audio/foley/citizen/, built by tools/audio/foley.py).
 	&"cit_yelp": {"path": "res://assets/audio/citizen/cit_yelp_%d.wav", "variants": 4, "db": -9.5, "voices": 4, "jitter": 0.12},
 	&"cit_shout": {"path": "res://assets/audio/citizen/cit_shout_%d.wav", "variants": 3, "db": -10.0, "voices": 3, "jitter": 0.1},
+	&"cit_scream": {"path": "res://assets/audio/citizen/cit_scream_%d.wav", "variants": 3, "db": -8.0, "voices": 3, "jitter": 0.08},
 	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -7.0, "loop": true},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
 	# A death on every kill (v0.11.2, DeathVoices): a citizen's cry and fall, a soldier's grunt and mail, a quiet body's slump,

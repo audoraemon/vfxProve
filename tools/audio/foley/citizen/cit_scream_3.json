@@ -1,0 +1,3 @@
+{"length": 1.0, "rms_db": -14.0, "reverb": {"rt60": 0.7, "mix": 0.12, "predelay_ms": 8}, "layers": [
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/scream_02.ogg", "onset": true, "pitch": -2.0, "dur": 0.95, "at": 0.0, "hp": 150, "fade_out": 160}
+]}

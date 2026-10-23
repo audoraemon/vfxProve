@@ -28,6 +28,9 @@ const ZOOM_MIN := 0.5
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6]
+## Hides the whole interface, to watch the town (v0.11.2, the user's ask): the HUD, its tags and the aim. The camera still moves,
+## and no click casts while it is hidden; F1 again, or a slot key, TAB or H, brings it back.
+const HIDE_UI_KEY := KEY_F1
 ## Grass, the same clear colour the debug scene uses.
 const CLEAR := Color("6e8230")
 
@@ -114,6 +117,8 @@ var _wired := {}
 ## SOLDIERS RALLY, THE SOLDIERS TAKE THE GATES): shown once its intro has begun (_show_held_banners()).
 var _held_banners: Array[String] = []
 var _pressing := false
+## The interface is hidden (HIDE_UI_KEY): kept across restarts and acts until shown again.
+var ui_hidden := false
 ## A scripted run (--mission-test, --bench) has no mouse: the cursor sits whereever the desktop left it, which
 ## is off the map, so the aim preview follows the script instead of it.
 var _scripted := false
@@ -352,6 +357,27 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_rules.banner.disconnect(hold)
 	_held_banners = held
+	set_ui_hidden(ui_hidden)  # a new act or a restart keeps the interface as the player left it
+
+
+## Hide or show the whole interface (HIDE_UI_KEY): the HUD layer -- the HUD, its tags, its plates -- and the aim on the ground. Hidden,
+## a held press is called off and the focused power let go, so nothing is cast unseen. The pause menu is not on this layer.
+func set_ui_hidden(on: bool) -> void:
+	ui_hidden = on
+	if _bf != null and _bf.hud_layer != null:
+		_bf.hud_layer.visible = not on
+	if is_instance_valid(_aim):
+		if on:
+			_pressing = false
+			_aim.cancel()
+			_aim.unfocus()
+		_aim.visible = not on
+		_aim.set_process_unhandled_input(not on)
+
+
+## Whether `event` is HIDE_UI_KEY pressed.
+static func toggles_ui(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == HIDE_UI_KEY
 
 
 ## The banners held while the act was built, after its intro's own (the HUD queues them).
@@ -713,6 +739,7 @@ func _on_over(won: bool, reason: String) -> void:
 
 func _play_ending() -> void:
 	_ending = true
+	set_ui_hidden(false)  # the ending's banner and the result are never hidden
 	_aim.unfocus()
 	var ended := _rules
 	if not _scripted:
@@ -748,6 +775,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _ending:
 		return  # the mission is over; nothing to aim or pause
+	if toggles_ui(event):
+		if is_inside_tree():
+			get_viewport().set_input_as_handled()
+		set_ui_hidden(not ui_hidden)
+		return
+	if ui_hidden:
+		# Watching the town: no click casts or lets go; a slot key, TAB or H brings the interface back and then does its own work.
+		if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+			return
+		if event is InputEventKey and event.pressed and not event.echo \
+				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H]):
+			set_ui_hidden(false)
 	if toggles_legend(event):
 		# H opens the legend (over the intro's tour too), or turns its page. Handled here, so the panel it opens cannot take the
 		# same press and turn to page 2 at once.

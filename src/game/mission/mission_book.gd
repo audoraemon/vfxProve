@@ -238,7 +238,7 @@ static func first_prayers() -> MissionDef:
 
 
 ## The Bell-Ringers (v0.11 M3, Tier 2, mission spec §1 and §8 row 8): three watch posts each send a ringer for the bell, his mates
-## at his heels; stop all three warnings before the bell tolls (BellRingersDirector). v0.11.2: every power is open; a warning that
+## at his heels; stop all three warnings before a ringer gets in (BellRingersDirector). v0.11.2: every power is open; a warning that
 ## can no longer ring the bell (Blight cracks it) runs for the Temple instead.
 static func bell_ringers() -> MissionDef:
 	var m := _tier2(BELL_RINGERS, "The Bell-Ringers", PackedStringArray(["Three watch posts guard the walls.",

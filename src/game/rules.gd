@@ -550,11 +550,6 @@ func mission_time() -> float:
 	return _mission_elapsed
 
 
-## `seconds` of real time as mission seconds at the clock's present rate.
-func real_to_mission(seconds: float) -> float:
-	return seconds * clock_rate
-
-
 ## End the act now, as a tool or a test asks (v0.09); an act already over stays as it ended.
 func force_end(win: bool, reason: String) -> void:
 	if not finished:

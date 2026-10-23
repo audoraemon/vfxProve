@@ -62,6 +62,7 @@ func _set_step(key: String, steps: int) -> void:
 	var before := _settings.level(key)
 	_settings.set_level(key, float(clampi(steps, 0, STEPS)) / float(STEPS))
 	if not is_equal_approx(before, _settings.level(key)):
+		_settings.save_to(_path)  # (final review: a quit with the panel open keeps the change)
 		match key:
 			"sfx":
 				UiSound.play(&"hs_strike", -12.0, Sfx.BUS)  # one Smite crack, on the bus it is moving

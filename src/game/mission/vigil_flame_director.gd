@@ -130,7 +130,7 @@ func _begin() -> void:
 	_listen()
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
-	timeline.add(WREN_AT / stretch, "wren", "A boy watches the lantern", _wren_comes)  # (real seconds: the timeline's are stretched)
+	timeline.add(WREN_AT / stretch, "wren", "A boy watches the lantern", _wren_comes)  # (mission seconds: a board stretches the timeline's)
 	# Once the flame is gone, the suspicious priest has nothing to bring home (v0.10 M5).
 	timeline.add(ROUTE_AT, "route", "The route shortens", _route_home, func() -> bool: return vigil != null and vigil.active and not swapped)
 	_add_events()

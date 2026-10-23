@@ -56,11 +56,10 @@ func step(delta: float) -> void:
 		fired.emit(String(e.id), String(e.label))
 
 
-## Times in upcoming()'s "in" and seconds_to() are mission seconds (v0.11.2): `_elapsed` runs on the clock's rate, so at x2 a
-## 20 s wait shows 20 and takes 10 real seconds -- the strip agrees with the clock.
 ## The next `n` events still to come, soonest first as the strip shows them (v0.11 M3: each at its shown time -- its own, or the
 ## sooner one a director's chain expects, expect() -- ties in the order added; for a timeline that never calls expect() this is
-## the order of old).
+## the order of old). Times in "in" and seconds_to() are mission seconds (v0.11.2): `_elapsed` runs on the clock's rate, so at x2 a
+## 20 s wait shows 20 and takes 10 real seconds -- the strip agrees with the clock.
 func upcoming(n := 2) -> Array[Dictionary]:
 	var due: Array[Dictionary] = []
 	for e in _events:

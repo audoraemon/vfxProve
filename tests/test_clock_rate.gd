@@ -24,7 +24,6 @@ static func _rates(t) -> void:
 	r.clock_rate = -3.0
 	t.check(r.clock_rate == 0.0, "a negative rate clamps to 0")
 	r.clock_rate = 2.0
-	t.check(is_equal_approx(r.real_to_mission(3.0), 6.0), "real_to_mission() multiplies by the rate")
 	var t0 := r.time_left
 	var slot := 0
 	while slot < r.loadout.size() - 1 and r.key(slot) == "whisper":

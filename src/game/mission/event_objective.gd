@@ -18,7 +18,7 @@ func check(rules: Rules) -> Status:
 	return Status.FAILED if tl != null and tl.has_come(event_id) else Status.PENDING
 
 
-## "Square closes 3:12": the real seconds until the event, as the clock reads them; "" with no label or no timeline.
+## "Square closes 3:12": the mission seconds until the event, as the clock reads them; "" with no label or no timeline.
 func hud_text(rules: Rules) -> String:
 	var tl := _timeline(rules)
 	if label == "" or tl == null:

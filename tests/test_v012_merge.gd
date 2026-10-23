@@ -8,6 +8,7 @@ static func run(t) -> void:
 	_sandbox(t)
 	_aldermere_people(t)
 	_river_rules(t)
+	_long_steps(t)
 	City.use(&"aldermere")
 	t.check(City.current() is AldermereCity, "the merge test leaves Aldermere the active city")
 
@@ -62,6 +63,35 @@ static func _river_rules(t) -> void:
 	t.check(not City.by_id(&"aldermere").river_rules(), "Aldermere's walkers have no river rules")
 	t.check(City.by_id(&"capital").river_rules(), "the Capital's walkers have them")
 	_walker_obeys(t)
+
+
+## The capital's long-step rule (a step that would overshoot its waypoint by ARRIVE or more lands on it, and a slide stops on the
+## waypoint's line) is the Capital's (C8): Aldermere's real-play walking is as before the merge, whatever the frame time.
+static func _long_steps(t) -> void:
+	t.check(not City.by_id(&"aldermere").long_steps() and City.by_id(&"capital").long_steps(), "only the Capital lands long steps")
+	for id: StringName in [&"aldermere", &"capital"]:
+		City.use(id)
+		var e := DummyEnemy.new()
+		e.bounds = Rect2(-100.0, -100.0, 200.0, 200.0)
+		e.ground_pos = Vector2.ZERO
+		e._target = Vector2(0.18, 0.0)
+		e.walk_speed = 1.2
+		e.tick(0.1)
+		e.tick(0.1)
+		# 0.12 a tick: the second step would carry it 0.06 past the waypoint.
+		var want := 0.18 if id == &"capital" else 0.24
+		t.check(is_equal_approx(e.ground_pos.x, want), "%s: two 0.12 steps toward a waypoint 0.18 away end at x=%.2f (got %.3f)" % [id, want, e.ground_pos.x])
+		# A slide against a margin: the capital's stops on the waypoint's line, Aldermere's takes the step's whole length.
+		e.ground_pos = Vector2(0.8247, -3.8342)
+		e._target = Vector2(0.75, -3.75)
+		e._idle = 0.0
+		e.walk_speed = 1.44
+		e.blocked = func(g: Vector2) -> bool: return g.x < 0.8
+		e.tick(0.1)
+		var want_y := -3.75 if id == &"capital" else -3.8342 + 0.144
+		t.check(absf(e.ground_pos.y - want_y) < 0.001, "%s: a long slide ends at y=%.4f (got %.4f)" % [id, want_y, e.ground_pos.y])
+		e.free()
+	City.use(&"aldermere")
 
 
 ## A walker on Aldermere's bank stepping into its river: Person obeys the flag. Off (Aldermere's own city), the step is not

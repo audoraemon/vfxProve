@@ -190,12 +190,14 @@ func tick(delta: float) -> void:
 					_pick_target()
 				else:
 					var span := walk_speed * delta
-					# A step that would overshoot the target by ARRIVE or more lands on it instead: stepping past by
-					# that much each way, a walker rocks about its target for ever (a long step: an off-screen
-					# person at 30 fps steps a tenth of a second at once). Any shorter step behaves as it always did:
-					# Aldermere's checksums stay put because no Aldermere step reaches 0.1 at a fixed 60 fps with a
-					# static camera, not because the rule is neutral by construction.
-					_move(to if span - reach >= ARRIVE else to.normalized() * walk_speed * delta, to)
+					# In a city with the rule (CityDef.long_steps(): the capital's) a step that would overshoot the
+					# target by ARRIVE or more lands on it instead: stepping past by that much each way, a walker rocks
+					# about its target for ever (a long step: an off-screen person at 30 fps steps a tenth of a second
+					# at once). Aldermere's walkers never had the rule, so they walk as in v0.11 whatever the frame time.
+					if _long_steps():
+						_move(to if span - reach >= ARRIVE else to.normalized() * walk_speed * delta, to)
+					else:
+						_move(to.normalized() * walk_speed * delta)
 		State.KNOCKBACK:
 			_move(_velocity * delta)
 			_velocity = _velocity.move_toward(Vector2.ZERO, KNOCK_DECAY * delta)
@@ -384,7 +386,19 @@ func fold(to: Vector2) -> bool:
 	return true
 
 
-## `to`, when walking to a target: how far off it is (a slide stops on its line, see below).
+## Whether the active city lands long steps (CityDef.long_steps()), read again whenever the city changes.
+static var _long_of: CityDef
+static var _long_rule := false
+
+
+static func _long_steps() -> bool:
+	if City.active != _long_of:
+		_long_of = City.current()
+		_long_rule = _long_of.long_steps()
+	return _long_rule
+
+
+## `to`, when walking to a target in a city with long steps: how far off it is (a slide stops on its line, see below).
 func _move(step: Vector2, to := Vector2.INF) -> void:
 	if absf(step.x - step.y) > 0.0001:
 		_facing = 1 if step.x - step.y > 0.0 else -1
@@ -401,7 +415,7 @@ func _move(step: Vector2, to := Vector2.INF) -> void:
 			# the line of a target it could not reach for the margin in the way, never running out of slide to fall
 			# through to the next target below. A slide that would carry it past that line by ARRIVE or more stops on
 			# it. Only a step of twice ARRIVE (0.1) or more can do that both ways; shorter ones slide as they always
-			# did. No Aldermere step reaches 0.1 at a fixed 60 fps with a static camera, so its checksums hold.
+			# did. Only the capital's walkers pass `to` (Aldermere's never do).
 			if span - absf(to.x) >= ARRIVE:
 				axes[0] = Vector2(to.x, 0.0)
 			if span - absf(to.y) >= ARRIVE:

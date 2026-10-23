@@ -44,6 +44,10 @@ func gate_outward(_gate: Rect2) -> Vector2: return Vector2.INF
 ## stranded in it by a fallen span wades ashore (_plan_exit()). The capital's; Aldermere's walkers never had them and
 ## turning them on there moves its v0.11 checksums (soldier and bridge-falling nights), so they are off.
 func river_rules() -> bool: return false
+## Whether a walker's long step lands on its waypoint (DummyEnemy.tick(), _move()): a step that would overshoot by ARRIVE or more stops on
+## it, and a slide stops on its line. The capital's, for an off-screen crowd's long steps; Aldermere's walkers never had it and a
+## real player's slow frame must not change them (v0.12 C8), so it is off.
+func long_steps() -> bool: return false
 ## The ground a fallen bridge on `footprint` closes (WalkGrid): by default all of it, as at Aldermere.
 func fallen_bridge(footprint: Rect2) -> Array[Rect2]: return [footprint]
 

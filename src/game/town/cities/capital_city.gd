@@ -1473,6 +1473,11 @@ func river_rules() -> bool:
 	return true
 
 
+## Long steps land on their waypoint (DummyEnemy): the evacuation's off-screen crowd at 30 fps jammed without it.
+func long_steps() -> bool:
+	return true
+
+
 ## A bridge falls into the water and closes it; its ends on the banks and in the gates stay open ground.
 func fallen_bridge(footprint: Rect2) -> Array[Rect2]:
 	var out: Array[Rect2] = []

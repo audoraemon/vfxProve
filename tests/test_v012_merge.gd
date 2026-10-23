@@ -61,6 +61,48 @@ static func _aldermere_people(t) -> void:
 static func _river_rules(t) -> void:
 	t.check(not City.by_id(&"aldermere").river_rules(), "Aldermere's walkers have no river rules")
 	t.check(City.by_id(&"capital").river_rules(), "the Capital's walkers have them")
+	_walker_obeys(t)
+
+
+## A walker on Aldermere's bank stepping into its river: Person obeys the flag. Off (Aldermere's own city), the step is not
+## blocked, as in v0.11.2; with the flag on (Aldermere's def with river_rules() true) the same step is.
+static func _walker_obeys(t) -> void:
+	City.use(&"aldermere")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var from := Vector2.INF
+	var step := Vector2.ZERO
+	for r: Rect2 in TownLayout.RIVERS:
+		for side in [Vector2(0.0, -1.0), Vector2(0.0, 1.0)]:
+			var edge_y := r.position.y if side.y < 0.0 else r.end.y
+			var x := r.position.x + 1.0
+			while x < r.end.x - 1.0 and from == Vector2.INF:
+				var dry := Vector2(x, edge_y + side.y * 0.1)
+				var wet := Vector2(x, edge_y - side.y * 0.1)
+				if grid.walkable(dry) and not grid.walkable(wet):
+					from = dry
+					step = wet - dry
+				x += 0.5
+	t.check(from != Vector2.INF, "Aldermere has a bank to step off (%s)" % from)
+	if from != Vector2.INF:
+		var p := Person.new().setup_person(false, from, grid)
+		t.check(not p._step_blocked(step), "an Aldermere walker steps into the river as before")
+		var wet_city := WetAldermere.new()
+		City.active = wet_city
+		t.check(p._step_blocked(step), "with the river rules on, the same step is blocked")
+		City.use(&"aldermere")
+		p.free()
+	town.free()
+	env.free()
+	City.use(&"aldermere")
+
+
+## Aldermere with the capital's river rules on: only to show Person reads the flag.
+class WetAldermere extends AldermereCity:
+	func river_rules() -> bool:
+		return true
 
 
 static func _scripts_under(dir: String, out: Array[String]) -> void:

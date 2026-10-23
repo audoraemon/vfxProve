@@ -24,7 +24,9 @@ func check(rules: Rules) -> Status:
 
 func hud_text(rules: Rules) -> String:
 	var n := tally(rules.director)
-	return "%s %d / %d" % [count_text, n.x, n.y if n.y > 0 else StarfallDirector.STARS.size()]
+	var sf := rules.director as StarfallDirector
+	var total := n.y if n.y > 0 else (sf.star_falls.size() if sf != null else StarfallDirector.STARS.size())
+	return "%s %d / %d" % [count_text, n.x, total]
 
 
 ## The warnings stopped (x) and in all (y) of `d` (v0.11 M3): its own count (the final review: MissionDirector.stars_stopped() and

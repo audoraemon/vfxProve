@@ -188,6 +188,7 @@ func near(a: float, b: float, eps: float, msg: String) -> void:
 ## Aldermere's world before each suite (v0.12, C3): the active city and the crowd's two process-wide statics a capital suite sets.
 func _reset_world() -> void:
 	City.use(&"aldermere")
+	City._extra.clear()  # a fixture town a failed suite never unregistered
 	Person.frame_no = -1
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 

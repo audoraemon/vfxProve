@@ -124,7 +124,7 @@ static func in_city(m: MissionDef, city: StringName, from: CityDef = null) -> Mi
 		m.tune = func(d: MissionDirector) -> void:
 			if board_tune.is_valid():
 				board_tune.call(d)
-			Overrides.apply(d, dir_ov)
+			Overrides.apply(d, dir_ov.duplicate(true))
 	return m
 
 

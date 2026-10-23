@@ -80,7 +80,10 @@ func mission_overrides(mission_id: String) -> Dictionary:
 	if not ResourceLoader.exists(path):
 		return {}
 	var script: GDScript = load(path)
-	return script.call("overrides") if script != null else {}
+	if script == null or not script.has_method("overrides"):
+		push_error("CityDef.mission_overrides: %s did not load or has no static overrides()" % path)
+		return {}
+	return script.call("overrides")
 ## Where this town's overrides files live (v0.12 R11): src/game/town/cities/<city>_missions.
 func missions_dir() -> String: return "res://src/game/town/cities/%s_missions" % id()
 ## Ground the floor paints, name -> Array[Rect2] (a missing key is no such ground):

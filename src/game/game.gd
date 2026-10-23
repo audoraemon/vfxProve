@@ -711,7 +711,7 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 		# best results and drafted loadouts it must not touch.
 		result["campaign"] = save.campaign.record(mission_id, result)
 		result["best"] = false
-	elif result.has("descend"):
+	elif result.has("descend") and not MissionBook.is_dev(mission_id):
 		# A board night (v0.11 M1, spec §3.3, §6): banked on the tier board -- the night counted, its believers added, its
 		# mission cleared and its bests kept. record() still runs so the title's best score and rank keep updating, but
 		# its NEW BEST is not shown: the board's results have their own bests (controller ruling, Task 11).

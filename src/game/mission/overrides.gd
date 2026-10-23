@@ -31,6 +31,14 @@ static func apply(target: Object, values: Dictionary) -> PackedStringArray:
 		if now is Array and (now as Array).is_typed():
 			var typed := Array([], (now as Array).get_typed_builtin(), (now as Array).get_typed_class_name(), (now as Array).get_typed_script())
 			typed.assign(want)
+			# assign() of elements that cannot convert only prints an engine error and leaves the copy short or empty.
+			var same := typed.size() == (want as Array).size()
+			for i in (typed.size() if same else 0):
+				same = same and typeof(typed[i]) == typeof(want[i]) and typed[i] == want[i]
+			if not same:
+				bad.append(prop)
+				push_error("Overrides: '%s' of %s has elements of the wrong type" % [prop, _name_of(target)])
+				continue
 			want = typed
 		target.set(prop, want)
 		if target.get(prop) != want:

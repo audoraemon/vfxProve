@@ -64,6 +64,12 @@ static func _typed(t) -> void:
 	var d := EscortDirector.new()
 	var bad := Overrides.apply(d, {"watch_posts": [Vector2(1.0, 2.0), Vector2(3.0, 4.0)]})
 	t.check(bad.is_empty() and d.watch_posts.size() == 2 and d.watch_posts[1] == Vector2(3.0, 4.0), "a typed array takes an untyped literal (got %s)" % [bad])
+	var e := EscortDirector.new()
+	var worse := Overrides.apply(e, {"watch_posts": [Vector2i(1, 2)]})
+	t.check(worse == PackedStringArray(["watch_posts"]) and e.watch_posts.is_empty(), "elements of the wrong type are reported, the field unchanged (got %s)" % [worse])
+	var f := EscortDirector.new()
+	f.watch_posts.assign([Vector2(9.0, 9.0)])
+	t.check(Overrides.apply(f, {"watch_posts": [1, 2]}).size() == 1 and f.watch_posts == [Vector2(9.0, 9.0)], "a bad literal leaves a set field as it was")
 
 
 static func _order(t) -> void:

@@ -14,7 +14,7 @@ extends RefCounted
 ## stops), while the strip's EventTimelines keep stepping through Abolition as they always have (a deliberate difference, v0.11.2 pre-flight);
 ## its reflexes -- the beam's sweep and hold, a hint's seconds, a walker's pace -- are real time.
 ##
-## Seams: `_bearer_*` are the Lantern-Bearer's (Task 10); Task 11 fills `_herald_*` (a no-op until then), so this file's shape is fixed by Task 7.
+## Seams: `_bearer_*` are the Lantern-Bearer's (LanternBearer), `_herald_*` the Heralds' (TempleReport, and the warnings' own).
 
 signal stage_changed(stage: int)
 
@@ -47,8 +47,10 @@ const SILENT_BANNER := "THE BELL IS SILENT - THE WARNING RUNS FOR THE TEMPLE"
 const MARK_HERALD := Color("d8b23a")
 const MARK_TEMPLE := Color("ff9a3a")
 const STRIP_HERALD := "The Herald reaches the Temple"
+## A strip row with no countdown shows this where the time would be (a Bearer waiting for a Herald, or with nobody free to carry the flame).
+const NO_CLOCK := "--:--"
 
-## The cues played at the Temple (catalogued by Task 13; nothing plays until they exist).
+## The cues played at the Temple (catalogued in Sfx; a cue that is not in the catalogue is skipped).
 const CUE_FLARE := &"lantern_flare"
 const CUE_BURN := &"lantern_burn"
 const CUE_BLIND := &"lantern_blind"
@@ -84,7 +86,8 @@ var _burn_age := INF
 ## Deaths waiting to be judged, as [ground point, whether a beam covered it when it fell]: judged once the crowd has settled a cast's victims.
 var _deaths: Array = []
 var _released := false
-## The mission second the Bearer sets out (tolled_at + LanternBearer.AFTER), set at the toll.
+## The mission second the Bearer sets out (tolled_at + LanternBearer.AFTER), set at the toll; on a Herald night it is pushed on while any Herald
+## runs, so he sets out LanternBearer.AFTER seconds after the last Herald is gone (C16).
 var _bearer_due := INF
 ## The first Herald's banner has been shown (once for the night, whoever runs first).
 var _herald_said := false
@@ -201,24 +204,24 @@ func step(delta: float) -> void:
 	if light.on:
 		light.step(delta, rules.time_left)
 	_burn_age += delta
-	_judge_deaths()
 	if tolled:
-		_bearer_step(delta)
+		_bearer_step(delta)  # (the Bearer first: a death that blinds the Lantern must not also burn it in the same frame)
+	_judge_deaths()
 	_herald_step(delta)
 
 
 ## The line the how-to-win plate takes (MissionHints.LANTERN) by spec 5.3's precedence: a Herald running, then Burning for BURN_HINT seconds,
-## then the Bearer walking, then Stirring until he sets out; "" gives the mission's own line back (at the vigil, when Blind, asleep).
+## then the Bearer walking, then Stirring until he sets out (or "seeking", when nobody was free to be the Bearer); "" gives the mission's own line back (at the vigil, when Blind, asleep).
 func hint_phase() -> String:
 	if herald_running():
-		return "herald"
+		return "herald" if tolled else "herald_silent"
 	if stage == Stage.BURNING and _burn_age < BURN_HINT:
 		return "burning"
 	var b := _bearer_phase()
 	if b == "walking":
 		return "bearer"
 	if (stage == Stage.STIRRING or stage == Stage.BURNING) and b == "":
-		return "stirring"
+		return "seeking" if bearer != null and bearer.state == LanternBearer.State.WAITING else "stirring"
 	return ""
 
 
@@ -358,6 +361,9 @@ func _bearer_step(delta: float) -> void:
 			bearer.release()
 		return
 	if bearer == null:
+		if herald_running():
+			_bearer_due = rules.mission_time() + LanternBearer.AFTER  # he does not set out into a Herald's street: AFTER from the moment none runs (C16)
+			return
 		if rules.mission_time() < _bearer_due:
 			return
 		var d := rules.director
@@ -393,7 +399,11 @@ func _bearer_rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if not tolled or stage == Stage.BLIND:
 		return out
-	if bearer == null or bearer.state == LanternBearer.State.WAITING:
+	if bearer != null and bearer.state == LanternBearer.State.WAITING:
+		out.append({"in": INF, "clock": NO_CLOCK, "label": "The Lantern seeks a Bearer"})  # nobody free to carry it: no countdown (C18)
+	elif bearer == null and herald_running():
+		out.append({"in": INF, "clock": NO_CLOCK, "label": "The Bearer waits for the Herald"})  # (C16)
+	elif bearer == null:
 		out.append({"in": maxf(0.0, _bearer_due - rules.mission_time()), "label": "The Lantern-Bearer sets out"})
 	elif bearer.state == LanternBearer.State.WALKING:
 		out.append({"in": bearer.seconds_left() * rules.clock_rate, "label": "The Bearer reaches the bell tower"})

@@ -23,6 +23,7 @@ static func run(t) -> void:
 	_frightened_herald_not_slowed(t)
 	_relay_skips_reserved(t)
 	_relay_skips_errand(t)
+	_bearer_waits_for_herald(t)
 
 
 ## A world for `def` (a mission or an act) with the Lantern its `lantern` names, as Mission builds it: the real objectives, dawn and all.
@@ -354,3 +355,47 @@ static func _relay_skips_errand(t) -> void:
 			t.check(stopped, "%s: %s" % [label, "the plain witness carries it on" if plain else "the Herald is stopped, the Bearer is not taken"])
 			t.check(b.state == LanternBearer.State.WALKING and not file.has(other), "(%s: the Bearer keeps walking)" % label)
 			Kit.done(s)
+
+
+## Ruling C16: on a Herald night the Bearer does not set out while any Herald runs; he sets out LanternBearer.AFTER mission seconds after the
+## last one is gone. The strip and the hint say he waits.
+static func _bearer_waits_for_herald(t) -> void:
+	var s := H._world("ringers")
+	var lw: LanternWatch = s.lw
+	var r: Rules = s.rules
+	var keeper: Person = (s.crowd as Crowd).bell.keeper
+	H._ring(s)
+	H._run(s, LanternWatch.HERALD_DESCEND + 2.0)
+	var rows := lw.strip_rows()
+	var labels := []
+	for row: Dictionary in rows:
+		labels.append(String(row["label"]))
+	t.check(lw.heralds.size() == 1 and lw.herald_running() and r.mission_time() - lw.tolled_at > LanternBearer.AFTER * 0.5,
+		"(the Herald runs, the toll well past)")
+	H._run(s, 12.0)
+	t.check(lw.herald_running() and lw.bearer == null and lw.hint_phase() == "herald",
+		"the Herald still runs well after AFTER mission seconds: the Bearer has not set out (%.1f s since the toll)" % [r.mission_time() - lw.tolled_at])
+	labels.clear()
+	for row: Dictionary in lw.strip_rows():
+		labels.append(String(row["label"]))
+	t.check(labels.has("The Bearer waits for the Herald") and labels.has(LanternWatch.STRIP_HERALD) and not labels.has("The Lantern-Bearer sets out"),
+		"the strip says the Bearer waits for the Herald, with no countdown of his own (%s)" % [labels])
+	var waits: Dictionary = {}
+	for row: Dictionary in lw.strip_rows():
+		if String(row["label"]) == "The Bearer waits for the Herald":
+			waits = row
+	t.check(String(waits.get("clock", "")) == LanternWatch.NO_CLOCK, "(a countdown-free row)")
+	# The Herald is stopped unseen: the Bearer sets out AFTER mission seconds later, not before.
+	H._clear_round(s, keeper, [])
+	(s.crowd as Crowd)._field.kill(keeper, &"doom")
+	H._run(s, 0.4)
+	t.check(lw.heralds[0].dead and not lw.herald_running(), "(the Herald is stopped)")
+	var stopped_at := r.mission_time()
+	H._until(s, 3.0, func() -> bool: return lw.bearer != null)
+	t.check(lw.bearer == null, "he does not set out the moment the Herald falls")
+	var took := H._until(s, 30.0, func() -> bool: return lw.bearer != null)
+	var after := r.mission_time() - stopped_at
+	t.check(lw.bearer != null and after >= LanternBearer.AFTER - 0.5 and after <= LanternBearer.AFTER + 1.5,
+		"he sets out AFTER (%.0f) mission seconds from the moment no Herald runs (%.1f s, %.1f real)" % [LanternBearer.AFTER, after, took])
+	Kit.done(s)
+

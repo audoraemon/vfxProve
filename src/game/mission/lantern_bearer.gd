@@ -27,8 +27,11 @@ const ESCORT_SEE := 3.0
 const ESCORT_RELAY := true
 ## Seconds between re-aims of the three (real).
 const RETARGET := 0.5
+## Seconds between the tries of a Bearer with nobody free to appoint (C18).
+const SEEK := 1.0
 ## How near the tower's foot counts as there, and the least straight distance an escort keeps from the walker ahead of him (a corner would
-## otherwise cut the 2.2 of path down to 1.56, under two Silent Doom radii).
+## otherwise cut the 2.2 of path down to 1.56, under two Silent Doom radii). (Left, final review: 1.9 is under Crowd.DOOM_WITNESS 2.0, so at a corner an escort can count as a
+## witness to the Bearer's fall where on a straight he would not; 2.05 breaks the file's spread, test_lantern_bearer._spread.)
 const REACH := 1.0
 const MIN_CHORD := 1.9
 ## Metres between samples of the Bearer's path, and how far back an escort looks for a place that keeps MIN_CHORD.
@@ -65,8 +68,6 @@ var foot := Vector2.INF
 var _reserved: Array = []
 ## func(p: Person) -> bool: someone a director has busy (its own actor, a report's carrier, a Herald). Empty: nobody is.
 var _skip: Callable
-## func(p: Person) -> void: told of each escort as he is appointed (no night uses it since ruling C10: escorts are plain lay citizens).
-var _escorted: Callable
 ## The Bearer's path, oldest first (seeded with a tail behind where he set out, so the escorts have a place from the first second).
 var _trail := PackedVector2Array()
 ## Path length ÷ straight distance, from the start (the countdown's allowance for corners).
@@ -82,15 +83,14 @@ var _places: Array = []
 
 
 ## Appoints the Bearer, the clergy citizen nearest `door_point` (else the nearest citizen free for it), and the two nearest lay citizens as
-## escorts, and sends them. With nobody free he waits (WAITING) and tries again every RETARGET. `reserved`: people the night has set aside.
-func setup(r: Rules, c: Crowd, door_point: Vector2, foot_point: Vector2, reserved: Array = [], skip := Callable(), escorted := Callable()) -> LanternBearer:
+## escorts, and sends them. With nobody free he waits (WAITING) and tries again every SEEK. `reserved`: people the night has set aside.
+func setup(r: Rules, c: Crowd, door_point: Vector2, foot_point: Vector2, reserved: Array = [], skip := Callable()) -> LanternBearer:
 	rules = r
 	crowd = c
 	door = door_point
 	foot = foot_point
 	_reserved = reserved
 	_skip = skip
-	_escorted = escorted
 	_appoint()
 	return self
 
@@ -143,7 +143,7 @@ func step(delta: float) -> void:
 	if state == State.WAITING:
 		_retarget_in -= delta
 		if _retarget_in <= 0.0:
-			_retarget_in = RETARGET
+			_retarget_in = SEEK
 			_appoint()
 		return
 	_prune()
@@ -253,9 +253,6 @@ func _appoint() -> void:
 	_last_at = carrier.ground_pos
 	_start_trail()
 	rules.banner.emit(SET_OUT)
-	if _escorted.is_valid():
-		for e: Variant in escorts:
-			_escorted.call(e)
 	_retarget_in = 0.0
 	_force_next = true
 	_apply_slow()

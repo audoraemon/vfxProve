@@ -25,6 +25,7 @@ static func run(t) -> void:
 	_gaze_faithful(t)
 	_report_leaves_him(t)
 	_faithful_not_taken(t)
+	_seeks(t)
 
 
 ## The crowd, the Rules (and so the Lantern) and a standalone Bearer, `seconds` of the night.
@@ -556,3 +557,39 @@ static func _faithful_not_taken(t) -> void:
 	t.check(ab != null and ab.walkers().size() == 3 and not taken and ab.carrier.profile.role != CitizenProfile.Role.CLERGY,
 		"every cleric Faithful: the Bearer is the nearest free citizen, and none of the three is a watcher")
 	Kit.done(a)
+
+
+## Ruling C18: with nobody free to carry the flame the Lantern seeks a Bearer: the strip shows no countdown (never a stale 0:00), the hint says
+## so, and he is tried for again every SEEK seconds until someone is.
+static func _seeks(t) -> void:
+	var s := LW._world("watch")
+	var lw: LanternWatch = s.lw
+	var crowd: Crowd = s.crowd
+	var all: Array = []
+	for p in crowd.citizens:
+		all.append(p)
+	for p: Person in all:
+		p.inside = true
+	LW._ring(s)
+	_go(s, 8.0)
+	_go(s, LanternBearer.AFTER)
+	var b := lw.bearer
+	t.check(b != null and b.state == LanternBearer.State.WAITING and lw.hint_phase() == "seeking",
+		"the due time passed with nobody free: the Bearer waits, the hint is 'seeking'")
+	var row: Dictionary = {}
+	for r in lw.strip_rows():
+		row = r
+	t.check(String(row.get("label", "")) == "The Lantern seeks a Bearer" and String(row.get("clock", "")) == LanternWatch.NO_CLOCK
+		and is_inf(float(row.get("in", 0.0))), "the strip says the Lantern seeks a Bearer, with no countdown (%s)" % [row])
+	_go(s, 5.0)
+	t.check(b.state == LanternBearer.State.WAITING, "(still nobody)")
+	for p: Person in all:
+		p.inside = false
+	_go(s, LanternBearer.SEEK + 0.3)
+	t.check(b.state == LanternBearer.State.WALKING and lw.hint_phase() == "bearer", "once someone is free he is appointed within SEEK (%.0f s)" % LanternBearer.SEEK)
+	var seeking := false
+	for r in lw.strip_rows():
+		seeking = seeking or String(r["label"]) == "The Lantern seeks a Bearer"
+	t.check(not seeking, "and the seeking row is gone")
+	Kit.done(s)
+

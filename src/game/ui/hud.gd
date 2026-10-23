@@ -372,7 +372,7 @@ func event_rows() -> Array:
 		soon.append_array(_rules.lantern.strip_rows())
 	soon.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["in"]) < float(b["in"]))
 	for e: Dictionary in soon.slice(0, want):
-		rows.append([UiTheme.clock(float(e["in"])), String(e["label"])])
+		rows.append([String(e["clock"]) if e.has("clock") else UiTheme.clock(float(e["in"])), String(e["label"])])  # (a row may carry no countdown)
 	return rows
 
 
@@ -391,9 +391,14 @@ func hint_text() -> String:
 func hint_key() -> String:
 	if _rules == null or _rules.mission == null:
 		return ""
-	# v0.11.2 (spec 5.3): the Lantern's line first -- the instant loss, then the counterplay; "" gives the rest back.
+	# v0.11.2 (spec 5.3, final-review ruling C17): a Herald running first (the instant loss the Lantern owns); then the director's own phase line
+	# when it has one (a collector running for the Citadel, a report running to the Temple: they are instant losses too); then the Lantern's
+	# counterplay lines; "" gives the rest back. The clock ring shows the Lantern's state whatever the plate says.
 	if _rules.lantern != null:
-		var lantern_line := MissionHints.lantern_line(_rules.lantern.hint_phase())
+		var phase := _rules.lantern.hint_phase()
+		var lantern_line := MissionHints.lantern_line(phase)
+		if lantern_line != "" and not (phase == "herald" or phase == "herald_silent") and _director_line_up():
+			lantern_line = ""
 		if lantern_line != "":
 			return lantern_line
 	if _rules.main_done:
@@ -401,6 +406,14 @@ func hint_key() -> String:
 	if _rules.director == null:
 		return MissionHints.line(_rules.mission.id)
 	return MissionHints.line(_rules.mission.id, _rules.director.hint_phase())
+
+
+## The mission's director is in a phase with a line of its own (not its default one), and the night's main objective is not done (C17).
+func _director_line_up() -> bool:
+	if _rules.main_done or _rules.director == null:
+		return false
+	var phase := _rules.director.hint_phase()
+	return phase != "" and MissionHints.LINES.has(_rules.mission.id + "." + phase)
 
 
 ## A wish of the night is still open (v0.11 M1).

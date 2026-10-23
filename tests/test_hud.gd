@@ -361,6 +361,12 @@ class _StubLantern extends LanternWatch:
 		return marks
 
 
+## A Lantern with a Herald running (the phase only).
+class _HeraldLantern extends LanternWatch:
+	func hint_phase() -> String:
+		return "herald"
+
+
 ## A director whose hint phase and seconds the test sets.
 class _PhaseDirector extends MissionDirector:
 	var phase := ""
@@ -430,6 +436,36 @@ static func _lantern_clock(t) -> void:
 	t.check(fresh.hint_phase() == "" and hud.hint_key() == own, "at the vigil, after the burning hint: the mission's own line returns")
 	rules.lantern = lw
 
+	# Ruling C17: a director's own phase line (an instant loss) outranks the Lantern's counterplay lines, not the Herald's.
+	var old_dir := rules.director
+	var old_id := def.id
+	var pd := _PhaseDirector.new()
+	rules.director = pd
+	def.id = "tax_collector"
+	var third := _StubLantern.new()
+	third.setup(rules, s.crowd, s.town, null, "watch")
+	rules.lantern = third
+	third.on_toll()
+	pd.phase = "running"
+	t.check(third.hint_phase() == "stirring" and hud.hint_key() == String(MissionHints.LINES["tax_collector.running"]),
+		"a tolled night with the collector running: his line, not the Lantern's stirring one")
+	third.phase = "walking"
+	t.check(hud.hint_key() == String(MissionHints.LINES["tax_collector.running"]), "... nor the Bearer's")
+	third.burn()
+	t.check(hud.hint_key() == String(MissionHints.LINES["tax_collector.running"]), "... nor the burning one")
+	pd.phase = ""
+	t.check(hud.hint_key() == MissionHints.LANTERN["burning"], "the director on its default line: the Lantern's line shows")
+	pd.phase = "nowhere"
+	t.check(hud.hint_key() == MissionHints.LANTERN["burning"], "a phase with no line of its own is the default one")
+	var herald := _HeraldLantern.new()
+	herald.setup(rules, s.crowd, s.town, null, "herald")
+	rules.lantern = herald
+	pd.phase = "running"
+	t.check(hud.hint_key() == MissionHints.LANTERN["herald"], "a Herald running keeps the plate whatever the director says")
+	rules.lantern = lw
+	rules.director = old_dir
+	def.id = old_id
+
 	# The strip: the Lantern's rows merge with the timeline's, soonest first; collapsed shows the soonest only.
 	var director: MissionDirector = s.d
 	var timeline := EventTimeline.new()
@@ -445,6 +481,12 @@ static func _lantern_clock(t) -> void:
 	t.check(hud.event_rows() == [["0:30", "Dawn"]], "a later Lantern row waits behind the timeline's (%s)" % [hud.event_rows()])
 	director.timeline = null
 	t.check(hud.event_rows() == [["0:40", "The Herald reaches the Temple"]], "with no timeline the Lantern's rows still show (%s)" % [hud.event_rows()])
+	lw.rows = [{"in": INF, "clock": "--:--", "label": "The Bearer waits for the Herald"}]
+	t.check(hud.event_rows() == [["--:--", "The Bearer waits for the Herald"]], "a row with no countdown shows its own words (%s)" % [hud.event_rows()])
+	director.timeline = timeline
+	Hud.details = true
+	t.check(hud.event_rows() == [["0:30", "Dawn"], ["--:--", "The Bearer waits for the Herald"]], "and sorts after the timed ones (%s)" % [hud.event_rows()])
+	director.timeline = null
 	lw.rows = []
 	t.check(hud.event_rows().is_empty(), "and none when it has none")
 

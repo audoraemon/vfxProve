@@ -45,7 +45,7 @@ const LINES := {
 	"vigil_flame.wren": "Whisper or lure Wren (blue) to the flame (gold) while no Faithful but its bearer is near him (red).",
 	"vigil_flame.homeward": "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple.",
 	"vigil_flame.carry": "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight.",
-	"tax_collector": "Kill each collector (gold) in the street. If no one near (red) sees it, no cry is raised; a seen kill turns the Lantern.",
+	"tax_collector": "Kill each collector (gold) in the street. If no one near (red) sees it, no cry is raised; a seen one may ring the bell.",
 	"tax_collector.inside": "He is indoors (gold). He comes out to walk to his next debtor (orange): be ready.",
 	"tax_collector.hiding": "Alarmed, he hides in the counting-house. Set it alight: every collector inside runs for the Citadel.",
 	"tax_collector.running": "No hiding place: he runs for the Citadel (red). Kill him before he gets in.",
@@ -110,8 +110,8 @@ const LINES := {
 	"sermon.watched": "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first.",
 	"sermon.report": "A Faithful runs to the Temple. Stop him before he gets there, unseen.",
 	"sermon.coming": "More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them.",
-	"sermon.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: it raises the Gaze and turns the Lantern.",
-	"sermon.bell": "The bellkeeper (red) runs to ring the bell: it raises the Gaze and turns the Lantern. Stop him, unseen.",
+	"sermon.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: +40 Gaze, and the Lantern turns.",
+	"sermon.bell": "The bellkeeper (red) runs to ring the bell: it raises the Gaze by 40 and turns the Lantern. Stop him, unseen.",
 	"relic_run": "Bring Pip (blue) to the cart's first halt, by whisper or lure. He slips aboard there, and swaps the relic at the next.",
 	"relic_run.moving": "The cart (gold) moves. Its reliquary opens only at a checkpoint. Clear the next one's wardens (red) shortly before.",
 	"relic_run.watched": "Watched (red): remove the watch; Pip works unseen. Once light or oath leads Pip, a Wisp draws the watch too.",
@@ -120,8 +120,8 @@ const LINES := {
 	"relic_run.last_halt": "The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt.",
 	"relic_run.citadel": "The cart makes for the Citadel (red) and halts no more: the relic is lost when it gets there.",
 	"relic_run.report": "A Faithful runs to the Temple. Stop him before he gets there, unseen.",
-	"relic_run.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: it raises the Gaze and turns the Lantern.",
-	"relic_run.bell": "The bellkeeper (red) runs to ring the bell: it raises the Gaze and turns the Lantern. Stop him, unseen.",
+	"relic_run.seen": "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: +40 Gaze, and the Lantern turns.",
+	"relic_run.bell": "The bellkeeper (red) runs to ring the bell: it raises the Gaze by 40 and turns the Lantern. Stop him, unseen.",
 	"lantern_eye": "Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light.",
 	"lantern_eye.guarded": "Its guards (red) hold the mirror: blows only shake the tower. Remove every one.",
 	"lantern_eye.open": "The mirror (gold) stands unguarded. Two blows or one Blight shatter it: strike where no beam shines.",
@@ -148,12 +148,14 @@ const LINES := {
 
 ## The Lantern's lines (v0.11.2, spec 5.3), by LanternWatch.hint_phase(): they take the how-to-win plate by that precedence (herald, then
 ## burning for BURN_HINT seconds, then the Bearer walking, then stirring until he sets out), and the mission's own line returns after
-## them (Hud.hint_key()).
+## them. A director's own phase line (an instant loss like "he runs for the Citadel") outranks all of them but the Herald's (Hud.hint_key(), C17).
 const LANTERN := {
 	"stirring": "The bell tolled: the Lantern turns and dawn comes 1.5 times as fast. Its Bearer sets out soon: kill him to blind it.",
 	"bearer": "The Bearer (gold) carries the flame to the bell tower. Kill him and dawn slows again. His escorts (red) take it up if they see.",
 	"burning": "The Lantern burns: dawn comes twice as fast. A loud power or a seen death in its beam did it. Kill the Bearer (gold).",
-	"herald": "The bell tolled: its Herald (gold) runs for the Temple. Kill him before he gets in, unseen, or the warning passes on.",
+	"herald": "The Herald (gold) runs for the Temple. Kill him before he gets in, unseen, or the warning passes on. The Bearer waits.",
+	"herald_silent": "The bell is silent: the warning (gold) runs for the Temple instead. Kill its carrier before he gets in, unseen.",
+	"seeking": "The bell tolled: dawn comes 1.5 times as fast. The Lantern seeks a Bearer: nobody is free to carry its flame yet.",
 }
 
 

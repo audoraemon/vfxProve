@@ -130,6 +130,14 @@ var _scripted := false
 var autostart := true
 ## A scripted run's city in place of the mission's own (behaviour_check's capital_calm); empty: the mission's.
 var city: StringName = &""
+## A scripted run that tests the town itself, not a mission (behaviour_check's capital_calm and capital_evac), may put a mission in a
+## town that does not host it; every other start in such a town is refused (hosting_error()).
+var unhosted_ok := false
+## Why the last start() was refused (hosting_error()), or "".
+var refused := ""
+## Whether a refused start of the mission's own (autostart) ends the process with exit code 1, as a scripted gate needs. behaviour_check
+## turns it off: it starts its missions itself, after the one that _ready() starts, and judges each.
+var exit_on_refusal := true
 ## True once _ready() has finished compiling the effect shaders.
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
@@ -165,6 +173,10 @@ func _ready() -> void:
 	var seed_value := int(seed_arg) if seed_arg != "" else (7 if scripted else Time.get_ticks_usec())
 	if autostart:
 		start(_loadout(args), seed_value)
+		if refused != "" and exit_on_refusal:
+			# A scripted run has nothing to run: end it with a failure.
+			await _bf.quit(1)
+			return
 	await FxParts.prewarm(_bf.ctx.distort)
 	is_prewarmed = true
 	prewarmed.emit()
@@ -256,6 +268,12 @@ func _bench_toll(args: PackedStringArray) -> void:
 ## `powers` is the drafted loadout in slot order; an empty array falls back to the command line's or the
 ## default four, so a standalone run still works -- or, once a loadout has been drafted, to that loadout (the R restart).
 func start(powers: PackedStringArray, seed_value: int) -> void:
+	# A night in a town that cannot host it is refused before anything is torn down (v0.12 C6): it would run on Aldermere's coordinates.
+	refused = _refusal_of_start()
+	if refused != "":
+		push_error("Mission.start: refused: " + refused)
+		print("BEHAVIOUR refused %s" % refused)
+		return
 	_close_legend()
 	if powers.is_empty():
 		powers = _drafted
@@ -695,6 +713,28 @@ static func def_for(id: String, on_board: bool, state: DescendState) -> MissionD
 	if on_board and TierBook.has(id):
 		return TierBook.board(id, state)
 	return MissionBook.get_mission(id)
+
+
+## Why this start would be refused (hosting_error() of the mission and town it is about to be played in), or "".
+func _refusal_of_start() -> String:
+	if unhosted_ok:
+		return ""
+	var args := OS.get_cmdline_user_args()
+	var def := _mission_def(args)
+	return hosting_error(def, city_for(def, city, args, autostart))
+
+
+## Why `town_id` cannot host `def` (v0.12 C6), or "" when it can: the mission's home town always does; another needs the mission's
+## overrides file and the places it needs (MissionBook.hostable()). `def` may already be put in the town (its id is the base id).
+static func hosting_error(def: MissionDef, town_id: StringName) -> String:
+	var home := MissionBook.get_mission(def.id)
+	if town_id == (home.city if home.id == def.id else def.city):
+		return ""
+	if not City.has(town_id):
+		return "%s: unknown town '%s'" % [def.id, town_id]
+	if not MissionBook.hostable(def.id, City.by_id(town_id)):
+		return "%s: '%s' does not host it (no overrides file named %s.gd in its missions folder, or places missing)" % [def.id, town_id, def.id]
+	return ""
 
 
 ## The city a mission is played in (v0.12): a scripted run's `city_var`, else the command line's --city= (only when the mission

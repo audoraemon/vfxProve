@@ -67,12 +67,16 @@ for c in $CASES; do for n in 1 2 3; do
     if [ -z "$idle" ]; then idle_ok=0; else idle_max=$(awk -v a="$idle_max" -v b="$idle" 'BEGIN{print (b>a)?b:a}'); fi
   fi
 done; done
+refused=0
+for f in "$T"/*.log; do grep -a -q "^BEHAVIOUR refused" "$f" && refused=1; done
+[ "$refused" = 1 ] && echo "gate.sh: a run was refused (the town cannot host this mission); the verdict is FAIL" >&2
 median="-"
 if [ "$wins" -gt 0 ]; then
   median=$(echo $times | tr ' ' '\n' | sort -g | awk '{v[NR]=$1} END{ if (NR%2) printf "%.0f", v[(NR+1)/2]; else printf "%.0f", (v[NR/2]+v[NR/2+1])/2 }')
 fi
 verdict=PASS
 [ "$wins" -lt 2 ] && verdict=FAIL
+[ "$refused" = 1 ] && verdict=FAIL
 if [ "$ROUTE" = a ] || [ "$WITHNONE" = 1 ]; then
   [ "$lost" -ne 3 ] && verdict=FAIL
 fi
@@ -91,6 +95,7 @@ fi
 # median are reported, not judged.
 if [ -n "$ONLYCASE" ]; then
   verdict=PASS; [ "$wins" -lt 2 ] && verdict=FAIL
+  [ "$refused" = 1 ] && verdict=FAIL
   [ "$time_ok" -eq 0 ] && median="time?"
   [ "$idle_ok" -eq 0 ] && idle_show="?" || idle_show=$idle_max
   echo "gate $S${CITY:+ city=$CITY} case=$ONLYCASE wins=$wins/3 median=$median idle_max=$idle_show $verdict"

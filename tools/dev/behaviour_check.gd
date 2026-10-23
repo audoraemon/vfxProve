@@ -459,6 +459,7 @@ var route := ""
 
 func _initialize() -> void:
 	mission = load("res://scenes/mission.tscn").instantiate()
+	mission.exit_on_refusal = false  # its _ready() start may be refused (the default mission in --city=); the real start below is judged
 	root.add_child(mission)
 	_run.call_deferred()
 
@@ -468,7 +469,7 @@ func _run() -> void:
 	var scenario := Battlefield.arg_value(args, "--scenario")
 	var seconds := float(Battlefield.arg_value(args, "--seconds")) if Battlefield.arg_value(args, "--seconds") != "" \
 		else 60.0
-	while not mission.is_prewarmed or not mission.started():
+	while not mission.is_prewarmed or not (mission.started() or mission.refused != ""):
 		await process_frame
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
@@ -561,6 +562,7 @@ func _run() -> void:
 	elif scenario == "capital_calm" or scenario == "capital_evac":
 		City.use(&"capital")
 		mission.city = &"capital"
+		mission.unhosted_ok = true  # these test the town (its crowd), not a mission hosted in it
 	route = Battlefield.arg_value(args, "--route")
 	if not route in ["", "a", "b"]:
 		push_error("behaviour_check: unknown --route=%s (a or b)" % route)
@@ -571,6 +573,11 @@ func _run() -> void:
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
 		powers = RouteBook.loadout_b(_route_id(scenario))
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
+	if mission.refused != "":
+		# v0.12 C6: a mission the town cannot host is not run; gate.sh reads this line as a FAIL.
+		print("BEHAVIOUR refused scenario=%s %s" % [scenario, mission.refused])
+		quit(1)
+		return
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
 	if route == "b" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none

@@ -12,6 +12,7 @@ const CAPITAL_TAX := "res://src/game/town/cities/capital_missions/tax_collector.
 static func run(t) -> void:
 	City.use(&"aldermere")
 	City.register(FixtureCity.ID, FixtureCity.new())
+	City.register(MisnamedCity.ID, MisnamedCity.new())
 	_ids(t)
 	_apply(t)
 	_unknown_key(t)
@@ -19,6 +20,7 @@ static func run(t) -> void:
 	_order(t)
 	_aldermere_none(t)
 	_hostable(t)
+	_refused(t)
 	_director_keys(t)
 	_def_for(t)
 	_no_descent(t)
@@ -26,6 +28,7 @@ static func run(t) -> void:
 	_cli_city(t)
 	_registry(t)
 	City.unregister(FixtureCity.ID)
+	City.unregister(MisnamedCity.ID)
 	City.use(&"aldermere")
 	t.check(City.current() is AldermereCity and not City.has(FixtureCity.ID), "the overrides test leaves Aldermere active and the fixture gone")
 
@@ -153,9 +156,27 @@ static func _cli_city(t) -> void:
 
 static func _registry(t) -> void:
 	t.check(City.has(&"capital") and City.has(FixtureCity.ID) and not City.has(&"atlantis"), "City.has() knows IDS and registered towns")
-	t.check(City.ids() == [&"aldermere", &"capital", FixtureCity.ID], "City.ids() lists IDS then the registered towns")
+	t.check(City.ids() == [&"aldermere", &"capital", FixtureCity.ID, MisnamedCity.ID], "City.ids() lists IDS then the registered towns")
 	t.check(City.IDS == [&"aldermere", &"capital"], "City.IDS itself is unchanged")
 	t.check(City.by_id(FixtureCity.ID).id() == FixtureCity.ID, "by_id() builds a registered town")
+
+
+## C6: a night in a town that cannot host the mission is refused (Mission.start), not run on Aldermere's coordinates. A misnamed
+## overrides file is the same as none.
+static func _refused(t) -> void:
+	var misnamed := City.by_id(MisnamedCity.ID)
+	t.check(not MissionBook.hostable("tax_collector", misnamed), "a misnamed overrides file hosts nothing")
+	var tax := MissionBook.tax_collector()
+	t.check(Mission.hosting_error(tax, MisnamedCity.ID) != "", "the Tax Collector is refused in the town with the misnamed file")
+	t.check(Mission.hosting_error(tax, &"aldermere") == "", "a mission at home is never refused")
+	t.check(Mission.hosting_error(tax, FixtureCity.ID) == "", "a town with the mission's overrides hosts it")
+	t.check(Mission.hosting_error(MissionBook.get_mission("tax_collector@" + String(FixtureCity.ID)), FixtureCity.ID) == "",
+		"the composite id's def is judged by its base id: hosted")
+	t.check(Mission.hosting_error(MissionBook.get_mission("tax_collector@" + String(MisnamedCity.ID)), MisnamedCity.ID) != "",
+		"the composite id's def is judged by its base id: refused")
+	t.check(Mission.hosting_error(MissionBook.spoiled_harvest(), FixtureCity.ID) != "", "no overrides, no night")
+	t.check(Mission.hosting_error(tax, &"atlantis") != "", "an unknown town is refused")
+	t.check(Mission.hosting_error(MissionBook.capital_sandbox(), &"capital") == "", "the sandbox is the Capital's own")
 
 
 ## C7: a town's director overrides take only the names the director lists in TOWN_VARS.

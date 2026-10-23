@@ -276,7 +276,7 @@ func bench(label: String, seconds := 9.0) -> void:
 
 
 ## Stop voices and effects before quitting so the audio server does not leak playbacks.
-func quit() -> void:
+func quit(code := 0) -> void:
 	ctx.sfx.stop_all("")
 	clear_effects()
 	await wait_frames(3)
@@ -284,7 +284,7 @@ func quit() -> void:
 	OS.delay_msec(150)
 	await wait_frames(1)
 	Sfx.clear_cache()
-	get_tree().quit()
+	get_tree().quit(code)
 
 
 ## Value of a `key=value` command-line argument, or "".

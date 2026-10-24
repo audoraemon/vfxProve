@@ -1,0 +1,44 @@
+# Refreshes the KAK project board in the Discord #board channel.
+# Claude pushes board/payload.json to this branch after each Dev Ledger update;
+# this job edits the board message(s) in place and saves their ids in board/state.json.
+# Needs the repo secret DISCORD_BOARD_WEBHOOK (a webhook in #board).
+name: Discord board
+
+on:
+  push:
+    branches: [kak-board]
+    paths: [board/payload.json, board/board.py]
+
+permissions:
+  contents: write  # to save board/state.json
+
+concurrency:
+  group: discord-board
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh the board
+        env:
+          DISCORD_BOARD_WEBHOOK: ${{ secrets.DISCORD_BOARD_WEBHOOK }}
+        run: python board/board.py send
+
+      - name: Save message ids
+        run: |
+          if [ -n "$(git status --porcelain -- board/state.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add board/state.json
+            git commit -m "board: Discord message ids"
+            git pull --rebase origin kak-board
+            git push origin HEAD:kak-board
+          fi

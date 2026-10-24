@@ -1,0 +1,60 @@
+{
+ "messages": [
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
+    {
+     "title": "KAK project board",
+     "description": "**v0.11.2** is the latest release (`kak-v0.11.2`)\n**11** in progress · **20** to do · **79** done\n**6** active branches besides Develop-Main",
+     "color": 15249483,
+     "footer": {
+      "text": "Updated"
+     },
+     "timestamp": "2026-10-24T08:26:06+07:00"
+    },
+    {
+     "title": "feat/v012",
+     "description": "61 commits not in Develop-Main · last commit today · local only\n> fix: gate.sh --city=<town> no longer fails on the throw-away start's refusal; spec/plan name star_falls and load_count (v0.12 M1 fix round 2)\n\n**In progress** (1)\n• v0.12 Many Towns: missions on any town (Capital first)",
+     "color": 5016537
+    },
+    {
+     "title": "feat/town-lighting",
+     "description": "2 commits not in Develop-Main · last commit today · local only\n> docs: town lighting proof plan\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/vfx-ability-effects-964aca",
+     "description": "1 commit not in Develop-Main · last commit yesterday · local only\n> feat: Unseen Hour (Veil) and Curfew (Decree)\n\n**In progress** (1)\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "feat/capital-city",
+     "description": "42 commits not in Develop-Main · last commit 15 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "color": 7041664
+    },
+    {
+     "title": "fix/evac-recalm",
+     "description": "1 commit not in Develop-Main · last commit 15 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "color": 7041664
+    },
+    {
+     "title": "feat/gpt-handoff",
+     "description": "3 commits not in Develop-Main · last commit 20 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
+     "color": 7041664
+    },
+    {
+     "title": "feat/Develop-Main",
+     "description": "Main line · last commit 2026-10-24\n> chore: keep SDD reports out of the repo (.superpowers is ignored)\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (20)\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "color": 3908956
+    },
+    {
+     "title": "Recently done",
+     "description": "• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_\n• F1 hides the interface (watch the town) _(10-23)_\n• v0.11.2: playtest 2 — open abilities, sound, impact awareness, The Lantern Turns _(10-23)_\n• v0.11.1 Playtest round 1 _(10-18)_\n• Faster milestone workflow: kak-milestone skill + fast gates _(10-17)_\n• v0.11 The Tiers: 5-tier board, 25 missions, wishes, ascend, believers _(10-16)_\n• Music recomposed: dark and choral, orchestral samples, stereo _(10-15)_",
+     "color": 10185686
+    }
+   ]
+  }
+ ]
+}

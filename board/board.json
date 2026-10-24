@@ -1,0 +1,1040 @@
+{
+ "hash": "1f2ab7e07a658e82",
+ "updated": "2026-10-24T08:26:06+07:00",
+ "changes": {
+  "date": "<t:1792805166:f>",
+  "items": []
+ },
+ "snapshot": {
+  "project": {
+   "version": "v0.11.2",
+   "tag": "kak-v0.11.2",
+   "tests": 8111,
+   "updated": "2026-10-23"
+  },
+  "tasks": {
+   "board-objective-tags": {
+    "title": "Board missions adopt M6's objective layer",
+    "status": "done",
+    "area": "UI",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 1
+   },
+   "c01": {
+    "title": "Decide: Pestilence spread after the 5 s change",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.09.1",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 1
+   },
+   "c02": {
+    "title": "Decide: what rallied soldiers should do",
+    "status": "done",
+    "area": "Soldiers",
+    "version": "v0.09.1",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 2
+   },
+   "c03": {
+    "title": "Decide: all 20 patrollers as escorts?",
+    "status": "done",
+    "area": "Soldiers",
+    "version": "v0.09.1",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 3
+   },
+   "c04": {
+    "title": "Playtest v0.07.1: Pestilence and Silent Doom",
+    "status": "todo",
+    "area": "Powers",
+    "version": "v0.07.1",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 4
+   },
+   "c05": {
+    "title": "Decide: first slice of the Awakening direction",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "d01": {
+    "title": "Pestilence: 5 s life, spreads every second, soldiers catch it",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.07.1",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 1
+   },
+   "d02": {
+    "title": "Sick glow and green-to-red stages",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.07.1",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 2
+   },
+   "d03": {
+    "title": "Silent Doom: 2.5 s cooldown, takes everyone in reach",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.07.1",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 3
+   },
+   "d04": {
+    "title": "Seen-Doom stall fixed",
+    "status": "done",
+    "area": "Perf",
+    "version": "v0.07.1",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 4
+   },
+   "d05": {
+    "title": "Soldier roles: marshals, escorts, rescue squads",
+    "status": "done",
+    "area": "Soldiers",
+    "version": "v0.07",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 5
+   },
+   "d06": {
+    "title": "Four new abilities: Wisp, Thornwall, Discord, Pestilence",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.06",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 6
+   },
+   "d07": {
+    "title": "Draft sorted into tabs by kind",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.06",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 7
+   },
+   "d08": {
+    "title": "Difficulty tiers and the Defense Profile",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.05",
+    "needs_you": false,
+    "updated": "2026-10-01",
+    "order": 8
+   },
+   "d09": {
+    "title": "Bell Tower, Banishing Rite, engineers, river boats",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.05",
+    "needs_you": false,
+    "updated": "2026-10-01",
+    "order": 9
+   },
+   "d10": {
+    "title": "Living town: routines, awareness, staged alarm",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.04",
+    "needs_you": false,
+    "updated": "2026-09-30",
+    "order": 10
+   },
+   "d11": {
+    "title": "Performance passes: mission 61 → 102 fps",
+    "status": "done",
+    "area": "Perf",
+    "version": "v0.03",
+    "needs_you": false,
+    "updated": "2026-09-28",
+    "order": 11
+   },
+   "d12": {
+    "title": "Town at scale: 220 citizens and 100 soldiers",
+    "status": "done",
+    "area": "Town",
+    "version": "v0.02",
+    "needs_you": false,
+    "updated": "2026-09-26",
+    "order": 12
+   },
+   "d13": {
+    "title": "Branch split: feat/Develop-Main for the game",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "discord-changelog": {
+    "title": "Discord #changelog feed",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.11.2",
+    "needs_you": false,
+    "updated": "2026-10-23",
+    "order": 183
+   },
+   "eng-followups": {
+    "title": "Decide: engineers' fire duty follow-ups",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.09.1",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 5
+   },
+   "evac-recalm": {
+    "title": "Fix: citizens who drop back to calm during an evacuation flee again",
+    "status": "doing",
+    "area": "Crowd",
+    "needs_you": true,
+    "branch": "fix/evac-recalm",
+    "updated": "2026-10-09",
+    "order": 1
+   },
+   "fade-manifest": {
+    "title": "A MANIFEST pressed during the fade-in is ignored",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.08.2",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 20
+   },
+   "hide-ui-f1": {
+    "title": "F1 hides the interface (watch the town)",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.11.2",
+    "needs_you": false,
+    "updated": "2026-10-23",
+    "order": 0
+   },
+   "kak-milestone-skill": {
+    "title": "Faster milestone workflow: kak-milestone skill + fast gates",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.11",
+    "needs_you": false,
+    "updated": "2026-10-17",
+    "order": 2
+   },
+   "ln-plan": {
+    "title": "The Long Night: write the implementation plan",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 1
+   },
+   "ln-spec": {
+    "title": "Review The Long Night spec",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 0
+   },
+   "music-dark-choral": {
+    "title": "Music recomposed: dark and choral, orchestral samples, stereo",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.11",
+    "needs_you": true,
+    "updated": "2026-10-15",
+    "order": 36
+   },
+   "natural-sound-you": {
+    "title": "Natural sound: listen, and the steps only you can do",
+    "status": "todo",
+    "area": "Tools",
+    "version": "v0.11",
+    "needs_you": true,
+    "updated": "2026-10-15",
+    "order": 35
+   },
+   "natural-sound": {
+    "title": "Natural sound (proving): recordings + real instruments",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.11",
+    "needs_you": false,
+    "updated": "2026-10-15",
+    "order": 34
+   },
+   "p01": {
+    "title": "Project dashboard",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": false,
+    "updated": "2026-10-02",
+    "order": 1
+   },
+   "p02": {
+    "title": "PixelLab structures proof",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 2
+   },
+   "p03": {
+    "title": "Move work to the new laptop (BURIN_NITRO)",
+    "status": "doing",
+    "area": "Tools",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "p04": {
+    "title": "PixelLab people: every citizen role and soldier",
+    "status": "done",
+    "area": "Crowd",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 3
+   },
+   "p05": {
+    "title": "Decide: bring the PixelLab art into feat/Develop-Main",
+    "status": "done",
+    "area": "Design",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 4
+   },
+   "p06": {
+    "title": "PixelLab art: before-merge fixes",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 5
+   },
+   "p07": {
+    "title": "PixelLab batch 2: defences, townhouses, civic, market",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 6
+   },
+   "p08": {
+    "title": "Reference-converted art: bell tower + living banners",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 7
+   },
+   "p09": {
+    "title": "Reference-converted art batch 3: stalls, fountains, wells, torches, trees, bridge, dock, farm",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 8
+   },
+   "p10": {
+    "title": "Decor batch 4: sprite decor from the reference sheets",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 9
+   },
+   "p11": {
+    "title": "Art animation round: bonfires, banners, water, wind, animals, windows",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 10
+   },
+   "p12-comfy": {
+    "title": "Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate",
+    "status": "todo",
+    "area": "Town",
+    "needs_you": true,
+    "updated": "2026-10-08",
+    "order": 12
+   },
+   "p12": {
+    "title": "Art polish: tavern window panes, night lantern brightness",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 11
+   },
+   "p13": {
+    "title": "Art polish 2: decor looks and animation feel",
+    "status": "done",
+    "area": "Town",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 12
+   },
+   "p14": {
+    "title": "The capital: second, larger city",
+    "status": "doing",
+    "area": "Town",
+    "needs_you": true,
+    "branch": "feat/capital-city",
+    "updated": "2026-10-09",
+    "order": 13
+   },
+   "people-anim-madness": {
+    "title": "People animations phase 1: madness",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.11.x",
+    "needs_you": false,
+    "updated": "2026-10-24",
+    "order": 184
+   },
+   "people-anim-phase2": {
+    "title": "People animations phase 2: pray, point and shout, look up, cower",
+    "status": "todo",
+    "area": "Crowd",
+    "version": "v0.11.x",
+    "needs_you": false,
+    "updated": "2026-10-24",
+    "order": 186
+   },
+   "people-anim-reroll": {
+    "title": "Re-roll people clips (after PixelLab refill)",
+    "status": "todo",
+    "area": "Crowd",
+    "version": "v0.11.x",
+    "needs_you": false,
+    "updated": "2026-10-24",
+    "order": 185
+   },
+   "push-auth": {
+    "title": "Sign in to GitHub on BURIN_NITRO so pushes work",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "sfxr-ability": {
+    "title": "The powers' 78 sounds remade (recordings, not sfxr)",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.11",
+    "needs_you": false,
+    "updated": "2026-10-15",
+    "order": 33
+   },
+   "sfxr-non-ability": {
+    "title": "Music, UI, citizen and building sounds remade with GodotSfxr",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.11",
+    "needs_you": false,
+    "updated": "2026-10-15",
+    "order": 32
+   },
+   "t01": {
+    "title": "Profile the v0.07 worst-frame bump",
+    "status": "done",
+    "area": "Perf",
+    "version": "v0.08.2",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 10
+   },
+   "t02": {
+    "title": "Tornado: soft lock-on wander",
+    "status": "done",
+    "area": "Powers",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 11
+   },
+   "t03": {
+    "title": "Engineers idle in fire-heavy sieges",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.08.2",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 12
+   },
+   "t04": {
+    "title": "Make God-Resistant feel clearly harder",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.08.2",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 13
+   },
+   "t05": {
+    "title": "More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest",
+    "status": "todo",
+    "area": "Powers",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 14
+   },
+   "t06": {
+    "title": "More town responses",
+    "status": "todo",
+    "area": "Crowd",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 15
+   },
+   "t07": {
+    "title": "World map, progression and upgrades",
+    "status": "todo",
+    "area": "Design",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 16
+   },
+   "t08": {
+    "title": "More maps and civilization ages",
+    "status": "todo",
+    "area": "Design",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 17
+   },
+   "t09": {
+    "title": "Elemental combos and building materials",
+    "status": "todo",
+    "area": "Design",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 18
+   },
+   "t10": {
+    "title": "Enemy heroes and defenses that fight back",
+    "status": "todo",
+    "area": "Design",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 19
+   },
+   "ui-sfxr-listen": {
+    "title": "Listen to the GodotSfxr sounds in game (UI, citizens, buildings, music)",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.10",
+    "needs_you": true,
+    "updated": "2026-10-15",
+    "order": 31
+   },
+   "ui-sfxr-sounds": {
+    "title": "GodotSfxr installed + nine UI sounds",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-08",
+    "order": 30
+   },
+   "ux-objectives": {
+    "title": "Objective markers + in-game goal text for every mission",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 0
+   },
+   "v010-campaign": {
+    "title": "v0.10 Lantern campaign: four nights in Aldermere",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 22
+   },
+   "v010-decisions": {
+    "title": "v0.10 decisions for you (a)-(i)",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": true,
+    "updated": "2026-10-06",
+    "order": 29
+   },
+   "v010-m1-plan-review": {
+    "title": "Review the v0.10 M1 plan and pick how to run it",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 23
+   },
+   "v010-m1-playtest": {
+    "title": "Playtest the campaign (Nights 1-3)",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 24
+   },
+   "v010-m2": {
+    "title": "v0.10 M2: Halcyon's Gaze + Mira's House",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 25
+   },
+   "v010-m3": {
+    "title": "v0.10 M3: Broken Lanterns (shrines, Lantern Knights)",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 26
+   },
+   "v010-m4": {
+    "title": "v0.10 M4: The Vigil Flame + Halcyon's Searchlight",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 27
+   },
+   "v010-m5": {
+    "title": "v0.10 M5: Cael's lines, panels, balance",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-06",
+    "order": 28
+   },
+   "v010-spec-review": {
+    "title": "Review the v0.10 Lantern campaign spec",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.10",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 21
+   },
+   "v011-keepout-perf": {
+    "title": "Profile and cache the HUD keepout (v0.11 frame cost)",
+    "status": "todo",
+    "area": "Perf",
+    "version": "v0.11.1",
+    "needs_you": false,
+    "updated": "2026-10-16",
+    "order": 1
+   },
+   "v011-tiers": {
+    "title": "v0.11 The Tiers: 5-tier board, 25 missions, wishes, ascend, believers",
+    "status": "done",
+    "area": "Missions",
+    "version": "v0.11",
+    "needs_you": true,
+    "updated": "2026-10-16",
+    "order": 0
+   },
+   "v0111-playtest-1": {
+    "title": "v0.11.1 Playtest round 1",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.11.1",
+    "needs_you": false,
+    "updated": "2026-10-18",
+    "order": 180
+   },
+   "v0111-playtest-2": {
+    "title": "Playtest v0.11.1",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.11.1",
+    "needs_you": true,
+    "updated": "2026-10-18",
+    "order": 181
+   },
+   "v0112-playtest-2": {
+    "title": "v0.11.2: playtest 2 — open abilities, sound, impact awareness, The Lantern Turns",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.11.2",
+    "needs_you": false,
+    "updated": "2026-10-23",
+    "order": 0
+   },
+   "v0112-playtest-3": {
+    "title": "Playtest v0.11.2 (and listen)",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.11.2",
+    "needs_you": true,
+    "updated": "2026-10-23",
+    "order": 182
+   },
+   "v012-many-towns": {
+    "title": "v0.12 Many Towns: missions on any town (Capital first)",
+    "status": "doing",
+    "area": "Town",
+    "version": "v0.12",
+    "needs_you": false,
+    "branch": "feat/v012",
+    "updated": "2026-10-23",
+    "order": 0
+   },
+   "v08-confirm": {
+    "title": "Confirm 5 plan interpretations for v0.08",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "v08-m1": {
+    "title": "v0.08 M1: Mission framework + mission board",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 1
+   },
+   "v08-m2": {
+    "title": "v0.08 M2: Divine loadout (DP budget, 6 slots, Authority tabs)",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 2
+   },
+   "v08-m3": {
+    "title": "v0.08 M3: Mind Whisper",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 3
+   },
+   "v08-m4": {
+    "title": "v0.08 M4: The Warning (Tier 1 mission)",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 4
+   },
+   "v08-m5": {
+    "title": "v0.08 M5: scenario, balance, summary, tag",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 5
+   },
+   "v08-plan": {
+    "title": "v0.08: write the implementation plan",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "v08-playtest-m2": {
+    "title": "Playtest the v0.08 loadout model (M2)",
+    "status": "todo",
+    "area": "Powers",
+    "version": "v0.08",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 1
+   },
+   "v08-playtest": {
+    "title": "Playtest v0.08: The Warning and the loadout",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.08",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 1
+   },
+   "v08-spec": {
+    "title": "Review the v0.08 spec",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.08",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "v08-thorn-balance": {
+    "title": "Thornwall dropped from The Warning",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.08.1",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "v08-whisper-balance": {
+    "title": "Mind Whisper shake-off (20 s)",
+    "status": "done",
+    "area": "Powers",
+    "version": "v0.08.1",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 0
+   },
+   "v09-decisions": {
+    "title": "Decide: The Long Night balance issues",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.09.1",
+    "needs_you": false,
+    "updated": "2026-10-07",
+    "order": 0
+   },
+   "v09-m1": {
+    "title": "v0.09 M1: missions in acts",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 1
+   },
+   "v09-m2": {
+    "title": "v0.09 M2: the town between acts and timed events",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 2
+   },
+   "v09-m3": {
+    "title": "v0.09 M3: Act II-A The Festival",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 3
+   },
+   "v09-m4": {
+    "title": "v0.09 M4: Act II-B The Procession",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-04",
+    "order": 4
+   },
+   "v09-m5": {
+    "title": "v0.09 M5: night scenario, balance, bench, summary",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.09",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 5
+   },
+   "v09-playtest": {
+    "title": "Playtest v0.09: The Long Night",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.09",
+    "needs_you": true,
+    "updated": "2026-10-05",
+    "order": 1
+   },
+   "v091-questions": {
+    "title": "Decide: v0.09.1 follow-ups",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.09.1",
+    "needs_you": true,
+    "updated": "2026-10-07",
+    "order": 0
+   },
+   "vfx-authorities-rework": {
+    "title": "Authorities rework: Tier I powers, Death, Decree, the Dominion + Disorder merge",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-10-05",
+    "order": 8
+   },
+   "vfx-congregation": {
+    "title": "Divine Congregation (new power)",
+    "status": "doing",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 3
+   },
+   "vfx-madness": {
+    "title": "Madness Bloom (new power)",
+    "status": "doing",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 4
+   },
+   "vfx-merge-conflict": {
+    "title": "VFX branch conflicts with Develop-Main (person.gd)",
+    "status": "todo",
+    "area": "Powers",
+    "needs_you": true,
+    "updated": "2026-10-04",
+    "order": 2
+   },
+   "vfx-mirrorfold": {
+    "title": "Mirrorfold Passage (new power)",
+    "status": "doing",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 2
+   },
+   "vfx-solaris": {
+    "title": "Light of Solaris (new power)",
+    "status": "doing",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 1
+   },
+   "vfx-sync-v08": {
+    "title": "Sync the VFX branch with Develop-Main after v0.08",
+    "status": "done",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-10-03",
+    "order": 5
+   },
+   "vfx-tier34-dominion": {
+    "title": "Dominion Tier III and IV (seven powers)",
+    "status": "doing",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-10-04",
+    "order": 7
+   },
+   "vfx-tier5-dominion": {
+    "title": "Voice of God and Divine Schism (Tier 5 Dominion)",
+    "status": "doing",
+    "area": "Powers",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-10-03",
+    "order": 6
+   },
+   "vfx-unseen-curfew": {
+    "title": "Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area",
+    "status": "doing",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": true,
+    "branch": "claude/vfx-ability-effects-964aca",
+    "updated": "2026-10-23",
+    "order": 9
+   }
+  },
+  "branches": [
+   {
+    "name": "feat/v012",
+    "ahead": 61,
+    "behind": 0,
+    "date": "2026-10-24",
+    "subject": "fix: gate.sh --city=<town> no longer fails on the throw-away start's refusal; spec/plan name star_falls and load_count (v0.12 M1 fix round 2)",
+    "pushed": false
+   },
+   {
+    "name": "feat/town-lighting",
+    "ahead": 2,
+    "behind": 0,
+    "date": "2026-10-24",
+    "subject": "docs: town lighting proof plan",
+    "pushed": false
+   },
+   {
+    "name": "claude/vfx-ability-effects-964aca",
+    "ahead": 1,
+    "behind": 17,
+    "date": "2026-10-23",
+    "subject": "feat: Unseen Hour (Veil) and Curfew (Decree)",
+    "pushed": false
+   },
+   {
+    "name": "feat/capital-city",
+    "ahead": 42,
+    "behind": 194,
+    "date": "2026-10-09",
+    "subject": "docs: capital summary after polish 3",
+    "pushed": true
+   },
+   {
+    "name": "fix/evac-recalm",
+    "ahead": 1,
+    "behind": 194,
+    "date": "2026-10-09",
+    "subject": "fix: citizens who drop back to calm during an evacuation flee again",
+    "pushed": false
+   },
+   {
+    "name": "feat/gpt-handoff",
+    "ahead": 3,
+    "behind": 439,
+    "date": "2026-10-04",
+    "subject": "fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot",
+    "pushed": false
+   }
+  ],
+  "main": {
+   "name": "feat/Develop-Main",
+   "date": "2026-10-24",
+   "subject": "chore: keep SDD reports out of the repo (.superpowers is ignored)"
+  }
+ }
+}

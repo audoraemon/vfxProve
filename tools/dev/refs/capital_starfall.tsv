@@ -1,0 +1,10 @@
+# KAK exact references: the board Warning (Starfall) in the Capital (v0.12 M2 Task 9; src/game/town/cities/capital_missions/warning.gd): none, loadout B play and the Herald toll case, seeds 1-3, --city=capital. name<TAB>how<TAB>expected.
+capital_starfall_none_1	--scenario=warning --case=none --route=b --board --seed=1 --city=capital	-827575092
+capital_starfall_none_2	--scenario=warning --case=none --route=b --board --seed=2 --city=capital	-748527231
+capital_starfall_none_3	--scenario=warning --case=none --route=b --board --seed=3 --city=capital	-817964770
+capital_starfall_b_play_1	--scenario=warning --case=play --route=b --board --seed=1 --city=capital	-962597497
+capital_starfall_b_play_2	--scenario=warning --case=play --route=b --board --seed=2 --city=capital	-100093365
+capital_starfall_b_play_3	--scenario=warning --case=play --route=b --board --seed=3 --city=capital	-522516453
+capital_starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1 --city=capital	-450502486
+capital_starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2 --city=capital	-156575536
+capital_starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3 --city=capital	-265685181

@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.11.2** is the latest release (`kak-v0.11.2`)\n**11** in progress · **20** to do · **79** done\n**6** active branches besides Develop-Main",
+     "description": "**v0.11.2** is the latest release (`kak-v0.11.2`)\n**11** in progress · **20** to do · **80** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1792843158:f>)\n• New: Discord #board: live project board",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-24T18:57:59+07:00"
+     "timestamp": "2026-10-24T18:59:18+07:00"
     },
     {
      "title": "feat/v012",
@@ -51,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_\n• F1 hides the interface (watch the town) _(10-23)_\n• v0.11.2: playtest 2 — open abilities, sound, impact awareness, The Lantern Turns _(10-23)_\n• v0.11.1 Playtest round 1 _(10-18)_\n• Faster milestone workflow: kak-milestone skill + fast gates _(10-17)_\n• v0.11 The Tiers: 5-tier board, 25 missions, wishes, ascend, believers _(10-16)_\n• Music recomposed: dark and choral, orchestral samples, stereo _(10-15)_",
+     "description": "• Discord #board: live project board _(10-24)_\n• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_\n• F1 hides the interface (watch the town) _(10-23)_\n• v0.11.2: playtest 2 — open abilities, sound, impact awareness, The Lantern Turns _(10-23)_\n• v0.11.1 Playtest round 1 _(10-18)_\n• Faster milestone workflow: kak-milestone skill + fast gates _(10-17)_\n• v0.11 The Tiers: 5-tier board, 25 missions, wishes, ascend, believers _(10-16)_",
      "color": 10185686
     }
    ]

@@ -1,9 +1,11 @@
 {
- "hash": "d2d85c28ef0d4ad5",
- "updated": "2026-10-24T18:57:59+07:00",
+ "hash": "d9cafc751ec74447",
+ "updated": "2026-10-24T18:59:18+07:00",
  "changes": {
-  "date": "<t:1792843079:f>",
-  "items": []
+  "date": "<t:1792843158:f>",
+  "items": [
+   "New: Discord #board: live project board"
+  ]
  },
  "snapshot": {
   "project": {
@@ -181,6 +183,15 @@
     "needs_you": false,
     "updated": "2026-10-03",
     "order": 0
+   },
+   "discord-board": {
+    "title": "Discord #board: live project board",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.11.2",
+    "needs_you": false,
+    "updated": "2026-10-24",
+    "order": 184
    },
    "discord-changelog": {
     "title": "Discord #changelog feed",

@@ -95,6 +95,10 @@ SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture   # 
 /f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --audio-driver Dummy --scene res://scenes/mission.tscn -- --mission=vigil_flame --bench --bench-beams   # times Halcyon's Searchlight with both beams lit
 ```
 
+### Towns (v0.12)
+
+The five Tier 1 missions can also be played in the Capital, as dev nights. Run the game with `--dev` (`& $godot --path . --scene res://scenes/game.tscn -- --dev`), open the Missions board and press `D`: the **DEV tab** lists the Capital Sandbox and the Capital's missions (cards marked `CAPITAL`). They have no Descent and no progress. Scripted runs take `--city=<id>` (for example `-- --scenario=tax --case=play --city=capital`, or `bash tools/dev/gate.sh tax --city=capital`); a mission a town cannot host is refused. How to add a town: `docs/KAK_Version_0.12_Summary.md`; the decisions: `docs/KAK_v012_Rulings.md`.
+
 ### Debug scene
 
 Every one of the eleven powers, freely castable, no rules yet. Open it with `town.bat`, or:

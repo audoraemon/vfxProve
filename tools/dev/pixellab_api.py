@@ -190,7 +190,7 @@ def _fetch_character(cid, out):
 def _groups(cid, template, name):
     st, c = _call("GET", "/characters/" + cid)
     return [g for g in (c.get("animations") or [])
-            if g.get("animation_type") == template or g.get("display_name") == name]
+            if (template and g.get("animation_type") == template) or g.get("display_name") == name]
 
 
 ## The directions of a character's animation (by template or name) that have frames.
@@ -201,6 +201,21 @@ def _animated_dirs(cid, template, name):
 def _group_of(cid, template, name):
     gs = _groups(cid, template, name)
     return gs[0].get("animation_group_id") if gs else None
+
+
+## Delete the frames of a character's animation (by template or name) in the given directions, one DELETE per group and
+## direction: char-anim skips a direction that already has frames, so a re-roll has to remove them first. (If this endpoint
+## is refused, delete in the MCP with delete_animation(character_id, animation_group_id, direction) and run char-anim again.)
+def _delete_dirs(cid, template, name, dirs):
+    for g in _groups(cid, template, name):
+        gid = g.get("animation_group_id")
+        for d in g.get("directions", []):
+            if d["direction"] in dirs and d.get("frames"):
+                st, r = _call("DELETE", "/characters/%s/animations/%s?direction=%s" % (cid, gid, d["direction"]))
+                if st >= 300:
+                    sys.exit("--replace: deleting %s %s failed (%d): %s; delete it with the MCP delete_animation instead"
+                             % (g.get("display_name"), d["direction"], st, json.dumps(r)[:300]))
+                print("replace: deleted %s %s (group %s)" % (g.get("display_name") or g.get("animation_type"), d["direction"], gid))
 
 
 def main():
@@ -215,8 +230,14 @@ def main():
     c.add_argument("--out", required=True)
     an = sub.add_parser("char-anim", help="add a template animation to a character, then download everything")
     an.add_argument("--id", required=True)
-    an.add_argument("--template", required=True)
+    an.add_argument("--template", help="template animation id (template mode)")
+    an.add_argument("--mode", default="template", choices=["template", "v3"])
+    an.add_argument("--action", help="v3: the action_description")
+    an.add_argument("--frames", type=int, default=8, help="v3: frame_count")
     an.add_argument("--name")
+    an.add_argument("--replace", action="store_true",
+                    help="first delete this animation's group (by template or name) for the given --dirs, so a clip that "
+                         "already has frames is generated again instead of skipped; costs the generations of a new clip")
     an.add_argument("--dirs", default="south-east,south-west,north-east,north-west")
     an.add_argument("--out", required=True)
     ip = sub.add_parser("inpaint", help="regenerate the mask's white area of an image, the rest kept as it is")
@@ -269,16 +290,26 @@ def main():
     elif args.cmd == "char-anim":
         before = _balance()
         wanted = args.dirs.split(",")
+        if args.mode == "v3" and not (args.action and args.name):
+            sys.exit("--mode v3 needs --action and --name")
+        if args.mode == "template" and not args.template:
+            sys.exit("--template is required in template mode")
         name = args.name or args.template
         group = None
+        if args.replace:
+            _delete_dirs(args.id, args.template, name, wanted)
         # PixelLab takes only as many directions as it has free job slots and drops the rest: submit what is missing
         # into the same animation group until every direction has landed.
         for attempt in range(12):
             missing = [d for d in wanted if d not in _animated_dirs(args.id, args.template, name)]
             if not missing:
                 break
-            body = {"character_id": args.id, "mode": "template", "template_animation_id": args.template,
-                    "animation_name": name, "directions": missing}
+            if args.mode == "v3":
+                body = {"character_id": args.id, "mode": "v3", "action_description": args.action,
+                        "frame_count": args.frames, "animation_name": name, "directions": missing}
+            else:
+                body = {"character_id": args.id, "mode": "template", "template_animation_id": args.template,
+                        "animation_name": name, "directions": missing}
             if group:
                 body["animation_group_id"] = group
             st, r = _call("POST", "/animate-character", body)
@@ -289,7 +320,7 @@ def main():
             if st >= 300:
                 sys.exit("char-anim failed (%d): %s" % (st, json.dumps(_strip(r))[:800]))
             group = r.get("animation_group_id") or group
-            print("char-anim %s on %s: %s submitted (%d of %d missing)" % (args.template, args.id, r.get("directions"),
+            print("char-anim %s on %s: %s submitted (%d of %d missing)" % (args.template or name, args.id, r.get("directions"),
                                                                           len(jobs), len(missing)))
             for job in jobs:
                 status, j = _wait_job(job, "char-anim")

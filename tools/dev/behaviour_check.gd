@@ -599,6 +599,9 @@ func _run() -> void:
 			await _capital_evac(seconds if Battlefield.arg_value(args, "--seconds") != "" else CAPITAL_EVAC_SECONDS)
 		"strike":
 			await _strike("--shots" in args)
+		"madness":
+			await _madness_shots("--shots" in args, float(Battlefield.arg_value(args, "--ring")) if Battlefield.arg_value(args, "--ring") != "" else 0.55,
+				int(Battlefield.arg_value(args, "--pick")), Battlefield.arg_value(args, "--prefix"), "--front" in args)
 		"escalate":
 			await _escalate()
 		"fire":
@@ -899,6 +902,78 @@ func _strike(shots: bool) -> void:
 			bf.camera.position = Iso.ground_to_screen(at).round()
 			await _frames(2)
 			await bf.save_capture("behaviour_strike.png")
+
+
+## `madness` (v0.12 people animations; --ring= the others' distance, --pick= which of the ten is maddened, --prefix= for the file names, --front to face the maddened one forward): ten citizens near the market, one maddened by hand into a frenzy on the spot;
+## --shots photographs it the first time the cluster shows each of the scream, the lurch, a swing, someone knocked down
+## and someone getting up (captures/behaviour_madness_<kind>.png, zoom 4, on the maddened one).
+func _madness_shots(shots: bool, ring: float, pick: int, prefix: String, front: bool) -> void:
+	await _frames(20 * 60)
+	var crowd: Crowd = mission._crowd
+	var at := Vector2(0.8, 2.0)
+	var near: Array[Person] = []
+	for c in crowd.citizens:
+		if is_instance_valid(c) and c.is_alive() and not c.soldier and not c.inside:
+			near.append(c)
+	near.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+	near = near.slice(0, 10)
+	var mad: Person = near[pick]
+	near.erase(mad)
+	near.push_front(mad)
+	mad.ground_pos = at
+	mad.mind = Person.Mind.CALM
+	if front:
+		mad._back = false
+		mad._facing = 1.0
+	for i in range(1, near.size()):
+		var a := TAU * float(i) / float(near.size() - 1)
+		near[i].ground_pos = at + Vector2(cos(a), sin(a)) * ring
+		near[i].mind = Person.Mind.CALM
+	var m: MadnessManager = crowd.madness
+	mad.statuses[MadnessManager.STATUS] = 1.0
+	var rec := {"stage": MadnessManager.Stage.BROKEN, "since": m._clock, "outcome": -1, "broken_at": -INF, "secondary": 0,
+		"tic": 99.0, "concern": 99.0, "shove": 99.0}
+	m.afflicted[mad] = rec
+	for seed_value in range(1, 200):
+		m._rng.seed = seed_value
+		if m._draw_outcome() == MadnessManager.Outcome.FRENZY:
+			m._rng.seed = seed_value
+			break
+	m._enter(mad, rec, MadnessManager.Stage.BROKEN)
+	var bf: Battlefield = mission._bf
+	var seen := {}
+	var t := 0.0
+	while t < 14.0:
+		await _frames(3)
+		t += 3.0 / 60.0
+		var kinds := {}
+		for q in near:
+			if not is_instance_valid(q) or not q.is_alive():
+				continue
+			if q == mad and q.is_screaming() and t >= 0.45:  # mid-scream, not its first frame
+				kinds["scream"] = q
+			elif q == mad and q._sprite_pose()[0] == &"lurch":
+				kinds["lurch"] = q
+			elif q._swing_left > 0.0:
+				kinds["swing"] = q
+			if q != mad and q.is_down():
+				kinds["down"] = q
+			if q._getup_left > 0.0:
+				kinds["getup"] = q
+		for k in kinds:
+			if seen.has(k):
+				continue
+			seen[k] = t
+			print("BEHAVIOUR madness t=%.2f first %s" % [t, k])
+			if shots:
+				var who: Person = kinds[k]
+				bf.camera.zoom = Vector2.ONE * 4.0
+				bf.camera.position = Iso.ground_to_screen(who.ground_pos).round()
+				await _frames(1)
+				await bf.save_capture("behaviour_madness_%s%s.png" % [prefix, k])
+		if seen.size() == 5:
+			break
+	print("BEHAVIOUR madness seen %s" % [seen])
 
 
 func _escalate() -> void:

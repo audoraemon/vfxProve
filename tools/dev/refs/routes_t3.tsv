@@ -8,7 +8,7 @@ festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b
 festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	121803805
 bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-364892104
 bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-101053638
-bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-279481016
+bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-165023444
 prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-393571833
 prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-460936240
 prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	521722354

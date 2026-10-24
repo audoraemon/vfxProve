@@ -161,13 +161,17 @@ static func run(t) -> void:
 	t.check(guard.mind == Person.Mind.FIGHT and guard.fight_target == mad, "the nearest soldier at its post comes for them")
 	var kills := crowd.killed_citizens
 	_run_for(crowd, [mad, victim], 0.3)
-	t.check(mad.fight_target == victim and victim.health < Person.HEALTH_CITIZEN, "it goes for the nearest and strikes (%.2f)" % victim.health)
+	t.check(victim.health < Person.HEALTH_CITIZEN and victim.is_down(), "it goes for the nearest and strikes, and the victim is knocked down (%.2f)" % victim.health)
 	guard.ground_pos = at + Vector2(20.0, 0.0)  # kept out of it, so the victim's fall is the frenzy's alone
 	guard.fight_target = null
 	guard.stop_fighting()
-	for k in 30:
+	# (People animations) Each blow knocks the bystander down and nobody is beaten on the ground, so the next blow
+	# waits until it is up again: the fall takes a while.
+	for k in 150:
 		victim.ground_pos = mad.ground_pos + Vector2(0.2, 0.0)  # held in reach
 		_run_for(crowd, [mad, victim], 0.1)
+		if not victim.is_alive():
+			break
 	t.check(not victim.is_alive() and victim._kind == &"frenzy" and crowd.killed_citizens == kills + 1,
 		"three blows and the victim falls, a death the town counts")
 	for k in 10:
@@ -190,4 +194,117 @@ static func run(t) -> void:
 	guard.hurt(0.3, brute)
 	t.check(guard.mind == Person.Mind.FIGHT and guard.fight_target == brute and guard.health < Person.HEALTH_SOLDIER,
 		"a struck soldier turns on its attacker")
+	_done(made)
+	_people_animations(t)
+
+
+## Scream then lurch, the swing on a blow, and nobody beaten while down.
+static func _people_animations(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var m := crowd.madness
+	var i := 0
+	for person in crowd.citizens + crowd.soldiers:
+		person.ground_pos = Vector2(-27.0 + float(i % 20) * 0.3, -27.0 + float(i / 20) * 0.3)
+		i += 1
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	var mad: Person
+	for c in crowd.citizens:
+		if c._design() == "resident_a":
+			mad = c
+			break
+	t.check(mad != null, "a resident_a citizen to break (the pilot design)")
+	mad.ground_pos = at
+	mad.mind = Person.Mind.CALM
+	var prey: Person
+	for c in crowd.citizens:
+		if c != mad:
+			prey = c
+			break
+	prey.ground_pos = at + Vector2(1.4, 0.0)
+	prey.mind = Person.Mind.CALM
+	# Break into a frenzy: the outcome is a weighted draw, so find a seed that draws it.
+	for seed_value in range(1, 200):
+		m._rng.seed = seed_value
+		if m._draw_outcome() == MadnessManager.Outcome.FRENZY:
+			m._rng.seed = seed_value
+			break
+	mad.statuses[MadnessManager.STATUS] = 1.0
+	var rec := {"stage": MadnessManager.Stage.BROKEN, "since": 0.0, "outcome": -1, "broken_at": -INF, "secondary": 0,
+		"tic": 99.0, "concern": 99.0, "shove": 99.0}
+	m.afflicted[mad] = rec
+	m._enter(mad, rec, MadnessManager.Stage.BROKEN)
+	t.check(int(rec.outcome) == MadnessManager.Outcome.FRENZY and mad.is_screaming() and mad._sprite_pose()[0] == &"scream",
+		"breaking into a frenzy, it screams first")
+	_run_for(crowd, [mad], 0.5)
+	t.check(mad.mind != Person.Mind.FIGHT and mad.ground_pos == at and mad.is_screaming(),
+		"for a second it screams on the spot, not yet fighting")
+	_run_for(crowd, [mad], 1.0)
+	t.check(mad.mind == Person.Mind.FIGHT and mad.fight_kind == &"madness" and not mad.is_screaming(),
+		"then the frenzy starts, a madness fight")
+	var lurched := false
+	for k in 40:
+		_run_for(crowd, [mad], 0.05, 0.05)
+		if mad._stride and mad._sprite_pose()[0] == &"lurch":
+			lurched = true
+			break
+	t.check(lurched, "going for its prey, it lurches")
+	# A swing shows for SWING_SHOW after a blow.
+	var swung := false
+	for k in 60:
+		prey.ground_pos = mad.ground_pos + Vector2(0.2, 0.0)
+		_run_for(crowd, [mad, prey], 0.05, 0.05)
+		if mad._swing_left > 0.0:
+			swung = mad._sprite_pose()[0] == &"swing"
+			break
+	t.check(swung, "a blow shows the swing")
+	_run_for(crowd, [mad], Person.SWING_SHOW + 0.2, 0.05)
+	t.check(mad._swing_left <= 0.0 and mad._sprite_pose()[0] != &"swing", "which does not last")
+	# Nobody is beaten on the ground: the attacker picks the one standing.
+	var lying: Person = crowd.citizens[30]
+	var standing: Person = crowd.citizens[31]
+	var brute: Person = crowd.citizens[32]
+	for q in [lying, standing, brute]:
+		q.mind = Person.Mind.CALM
+		q.health = Person.HEALTH_CITIZEN
+	brute.ground_pos = at + Vector2(-6.0, 0.0)
+	lying.ground_pos = brute.ground_pos + Vector2(0.3, 0.0)
+	standing.ground_pos = brute.ground_pos + Vector2(0.9, 0.0)
+	lying.knock_down()
+	brute.fight(null, 10.0, 0.34, Person.FightRule.ANYONE, Person.FIGHT_SIGHT, &"madness")
+	t.check(not brute._fightable(lying) and brute._fightable(standing), "a person lying down is not a target")
+	for k in 8:
+		_run_for(crowd, [brute], 0.1)
+		standing.ground_pos = brute.ground_pos + Vector2(0.9, 0.0)
+	t.check(brute.fight_target == standing and lying.health == Person.HEALTH_CITIZEN, "it goes for the one standing")
+	var judge := Person.new()
+	judge.fight(lying, 5.0, 0.34, Person.FightRule.TARGET_ONLY)
+	t.check(judge._fightable(lying), "though a mob set on one person still goes for it")
+	judge.free()
+	# Frozen mid-scream, it screams no more once thawed, and the frenzy still starts on time.
+	var froze: Person = crowd.citizens[33]
+	froze.ground_pos = at + Vector2(6.0, 0.0)
+	froze.mind = Person.Mind.CALM
+	froze.statuses[MadnessManager.STATUS] = 1.0
+	var rec2 := {"stage": MadnessManager.Stage.BROKEN, "since": 0.0, "outcome": -1, "broken_at": -INF, "secondary": 0,
+		"tic": 99.0, "concern": 99.0, "shove": 99.0}
+	m.afflicted[froze] = rec2
+	for seed_value in range(1, 200):
+		m._rng.seed = seed_value
+		if m._draw_outcome() == MadnessManager.Outcome.FRENZY:
+			m._rng.seed = seed_value
+			break
+	m._enter(froze, rec2, MadnessManager.Stage.BROKEN)
+	t.check(froze.is_screaming(), "it is screaming before the freeze")
+	froze.freeze(0.4)
+	_run_for(crowd, [froze], 0.6)
+	t.check(not froze.is_screaming() and froze._sprite_pose()[0] != &"scream", "thawed after a freeze mid-scream, no scream")
+	_run_for(crowd, [froze], 0.8)
+	t.check(froze.mind == Person.Mind.FIGHT and froze._sprite_pose()[0] != &"scream", "and the frenzy has fired")
+	# The manifest says which rows are a design's own art: resident_a has the lurch, the guard has not.
+	var own_a: int = PeopleArt.info("resident_a")[5]
+	var own_g: int = PeopleArt.info("guard")[5]
+	t.check((own_a >> 6) & 1 == 1 and (own_g >> 6) & 1 == 0 and (own_g >> 7) & 1 == 1 and own_g & 1 == 1,
+		"own art: resident_a has the lurch; the guard has idle and swing but no lurch")
 	_done(made)

@@ -73,8 +73,28 @@ static func _looks(t, id: StringName) -> void:
 		t.check(forest_i >= 0 and dm.get_index() > forest_i, "%s: the mist lies over the forest, in the ground plane" % id)
 		t.check(dm.get_parent() == ground, "%s: the mist is in the ground plane, under everything that stands" % id)
 		t.check(TownMist.mist_colour(Town.Look.DAY).a > TownMist.mist_colour(Town.Look.NIGHT).a, "%s: NIGHT mist is thinner" % id)
+	if dm != null:
+		_beam_rules(t, dm, id)
 	_free(day)
 	var night := _build(Town.Look.NIGHT)
 	var nm := _mist(night[0])
 	t.check(nm != null and nm.zone_count() > 0 and nm.beam_count() == 0, "%s: NIGHT has mist and no sunbeams" % id)
 	_free(night)
+
+
+## The sunbeams: in a "Beams" node under the mist at TownMist.BEAM_Z (above the y-sorted world, where they would be seen),
+## so pale that they hide nothing (alpha at most BEAM_MAX_ALPHA a step), with whole-pixel vertices.
+static func _beam_rules(t, mist: TownMist, id: StringName) -> void:
+	var worst := 0.0
+	var whole := true
+	var layered := true
+	for b in mist.beams():
+		worst = maxf(worst, b.color.a)
+		var holder := b.get_parent()
+		layered = layered and holder != null and holder.get_parent() == mist and holder.name == &"Beams" 			and holder.z_index == TownMist.BEAM_Z and not holder.z_as_relative and b.z_index == 0
+		for p in b.polygon:
+			whole = whole and p == p.round()
+	t.check(layered, "%s: every beam sits in the mist's Beams node at z %d" % [id, TownMist.BEAM_Z])
+	t.check(worst <= TownMist.BEAM_MAX_ALPHA + 0.0001 and worst > 0.0,
+		"%s: beam alpha %.3f is within %.3f" % [id, worst, TownMist.BEAM_MAX_ALPHA])
+	t.check(whole, "%s: beam vertices are whole world pixels" % id)

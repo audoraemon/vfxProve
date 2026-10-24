@@ -20,8 +20,10 @@ void fragment() {
 	float t = smoothstep(split - spread, split + spread, lum);
 	vec3 g = c * gain * mix(cool, warm, t) + lift;
 	float glum = dot(g, vec3(0.299, 0.587, 0.114));
-	float blueness = smoothstep(0.04, 0.2, g.b - max(g.r, g.g));
-	float dark = 1.0 - smoothstep(0.22, 0.5, glum);
+	// Water is found on the ungraded colour: the night grade makes every mid-dark pixel blue, so measuring after it would
+	// grey the whole scene. Only what was already saturated blue qualifies (TownGrade.grade_pixel is the same formula).
+	float blueness = smoothstep(0.08, 0.22, c.b - max(c.r, c.g));
+	float dark = 1.0 - smoothstep(0.55, 0.95, lum);
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
 	COLOR = vec4(mix(g, c, ember), 1.0);

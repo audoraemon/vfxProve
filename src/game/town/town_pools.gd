@@ -168,10 +168,14 @@ func _process(delta: float) -> void:
 		# A window's pool goes out with its building.
 		var st = p.structure
 		if st != null:
-			sp.visible = is_instance_valid(st) and not st.destroyed
+			var shown: bool = is_instance_valid(st) and not st.destroyed
+			if sp.visible != shown:
+				sp.visible = shown
 		# A lamp's pool goes out when the lamp is knocked down.
 		var dc = p.decor
 		if dc != null:
-			sp.visible = is_instance_valid(dc) and not dc.down
+			var shown: bool = is_instance_valid(dc) and not dc.down
+			if sp.visible != shown:
+				sp.visible = shown
 		if absf(sp.modulate.a - a) > 0.01:
 			sp.modulate.a = a

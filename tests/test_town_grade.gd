@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_lightfield_untouched(t)
 	_day(t)
 	_capital_lamps(t)
+	_calm(t)
 	await _world_space(t)
 	_band_texture(t)
 
@@ -116,10 +117,46 @@ static func _capital_lamps(t) -> void:
 			fallen = d
 			break
 	if fallen != null:
+		var idx := -1
+		for i in pools.pool_count():
+			if pools._pools[i].decor == fallen:
+				idx = i
 		fallen.down = true
 		t.check(TownPools.lamp_pool(fallen).is_empty(), "a lamp knocked down has no pool")
+		t.check(idx >= 0 and pools.pool_sprite(idx).visible, "the lamp's pool shows while it stands")
+		pools._process(0.016)
+		t.check(idx >= 0 and not pools.pool_sprite(idx).visible, "the live pool sprite hides after the lamp falls")
 	_free(parts)
 	City.use(&"aldermere")
+
+
+## `calm` greys only what was already saturated blue before the grade (water): grey stone, warm wood and a lit window are
+## untouched by it, a river-blue pixel is greyed, and with calm at 0 (DAY) the output is the grade's alone.
+static func _calm(t) -> void:
+	var night := TownLook.grade(Town.Look.NIGHT)
+	var no_calm := night.duplicate()
+	no_calm.calm = 0.0
+	var stone := Color(0.46, 0.46, 0.48)
+	var wood := Color(0.55, 0.38, 0.22)
+	var river := Color(0.16, 0.38, 0.78)
+	for c: Color in [stone, wood]:
+		var a := TownGrade.grade_pixel(c, night)
+		var b := TownGrade.grade_pixel(c, no_calm)
+		t.check(a.is_equal_approx(b), "calm leaves %s untouched" % str(c))
+	var wet := TownGrade.grade_pixel(river, night)
+	var dry := TownGrade.grade_pixel(river, no_calm)
+	var sat := func(x: Color) -> float: return maxf(x.r, maxf(x.g, x.b)) - minf(x.r, minf(x.g, x.b))
+	t.check(sat.call(wet) < sat.call(dry) * 0.7, "calm greys a saturated river blue (%.3f -> %.3f)" % [sat.call(dry), sat.call(wet)])
+	var day := TownLook.grade(Town.Look.DAY)
+	var day0 := day.duplicate()
+	day0.calm = 0.0
+	var same := true
+	for c: Color in [stone, wood, river, Color(0.9, 0.8, 0.6)]:
+		same = same and TownGrade.grade_pixel(c, day).is_equal_approx(TownGrade.grade_pixel(c, day0))
+	t.check(same and day.calm == 0.0, "DAY output is identical with calm at 0")
+	# The shader and grade_pixel() are the same formula: the shader measures the ungraded colour.
+	var src := FileAccess.get_file_as_string("res://src/game/town/town_grade.gdshader")
+	t.check(src.contains("c.b - max(c.r, c.g)") and not src.contains("g.b - max"), "the shader measures blueness on the ungraded colour")
 
 
 static func _lightfield_untouched(t) -> void:

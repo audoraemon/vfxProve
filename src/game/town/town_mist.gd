@@ -15,7 +15,9 @@ const WATER_PAD := 1.2
 const WATER_FADE := 1.6
 const WATER_ALPHA := 0.6
 const BEAMS := 4
-## The sunbeams' z: above the y-sorted world (z 0 and the few decor at 1), under the overhead effects.
+## The sunbeams: on the ground they vanish under the buildings, so they lie over the y-sorted world (z 2) but each stripe
+## step adds at most BEAM_MAX_ALPHA, a faint pale wash that hides nothing under it.
+const BEAM_MAX_ALPHA := 0.05
 const BEAM_Z := 2
 
 var look := 0
@@ -128,7 +130,6 @@ func setup(look_value) -> TownMist:
 ## Slanted stripes of sun from the upper left across the town (screen px, world-space): three nested pale
 ## parallelograms each, so a stripe has a bright core and two stepped edges.
 func _add_beams(town_rect: Rect2) -> void:
-	# Over the buildings (a stripe of sun crosses roofs too) but pale and never opaque, so nothing under it is hidden.
 	var beams := Node2D.new()
 	beams.name = "Beams"
 	beams.z_as_relative = false
@@ -147,15 +148,22 @@ func _add_beams(town_rect: Rect2) -> void:
 			var w: float = half * widths[k]
 			var poly := Polygon2D.new()
 			poly.name = "Beam%d_%d" % [i, k]
-			poly.polygon = PackedVector2Array([Vector2(x0 - w, y0), Vector2(x0 + w, y0),
+			var quad := PackedVector2Array([Vector2(x0 - w, y0), Vector2(x0 + w, y0),
 				Vector2(x0 + w + length * slant, y0 + length), Vector2(x0 - w + length * slant, y0 + length)])
-			poly.color = Color(1.0, 0.94, 0.74, 0.10)
+			for j in quad.size():
+				quad[j] = quad[j].round()
+			poly.polygon = quad
+			poly.color = Color(1.0, 0.94, 0.74, BEAM_MAX_ALPHA)
 			beams.add_child(poly)
 			_beams.append(poly)
 
 
 func zone_count() -> int:
 	return _polys.size()
+
+
+func beams() -> Array[Polygon2D]:
+	return _beams
 
 
 func beam_count() -> int:

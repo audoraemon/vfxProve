@@ -54,7 +54,7 @@ static func grade(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
 		return {"lift": Vector3(0.0, 0.01, 0.04), "gain": Vector3(0.50, 0.60, 0.84),
 			"warm": Vector3(1.10, 1.02, 0.95), "cool": Vector3(0.90, 1.0, 1.18), "split": 0.45, "spread": 0.3,
-			"keep_lit": 0.85}
+			"keep_lit": 0.85, "calm": 0.6}
 	return {"lift": Vector3(0.0, 0.0, 0.02), "gain": Vector3(1.0, 0.99, 0.97),
 		"warm": Vector3(1.12, 1.03, 0.86), "cool": Vector3(0.86, 0.96, 1.14), "split": 0.5, "spread": 0.3,
-		"keep_lit": 0.0}
+		"keep_lit": 0.0, "calm": 0.0}

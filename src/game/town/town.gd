@@ -65,8 +65,6 @@ var keep_clear: Array[Rect2] = []
 var _env: EnvironmentField
 ## The nodes a non-CURRENT look added (all in group TownLook.GROUP); teardown() frees them.
 var _look_nodes: Array[Node] = []
-## Whether this town has set the look statics (Structure.cast_shadows, TownLook.active) and not yet put them back.
-var _look_set := false
 ## The instance id of the town whose look currently owns the statics (Structure.cast_shadows, TownLook.active): a
 ## town freed or torn down puts them back only while it is still the owner, so an older town never undoes a newer one's.
 static var _look_owner := 0
@@ -76,7 +74,6 @@ static var _look_owner := 0
 func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = null) -> void:
 	_env = env
 	TownLook.active = look
-	_look_set = look != Look.CURRENT
 	_look_owner = get_instance_id()
 	Structure.cast_shadows = look == Look.CURRENT
 	var ground_tint := TownLook.ground_tint(look)
@@ -215,14 +212,18 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		_build_look(ground)
 
 
-## The nodes of a non-CURRENT look. Tasks 2-4 of the lighting proof add the shadow layer, the grade, the pools and the
-## mist here, each through _add_look_node(). Empty for now.
+## The nodes of a non-CURRENT look: the shadow layer, the mist, the grade and (at night) the pools, each through
+## _add_look_node().
 func _build_look(ground: Node2D) -> void:
 	if ground != null:
 		# Over the floor, the plants and the forest, under everything that stands.
 		var shadows := TownShadows.new().setup(_env, look, forest.trees if forest != null else [])
 		_add_look_node(shadows, ground)
 		ground.move_child(shadows, mini(3, ground.get_child_count() - 1))
+		# The mist (and DAY's sunbeams) on the ground over the shadows, under everything that stands.
+		var mist := TownMist.new().setup(look)
+		_add_look_node(mist, ground)
+		ground.move_child(mist, mini(4, ground.get_child_count() - 1))
 	# The grade over the world, then (at night) the lamp pools over the grade: both under Battlefield's glow layer.
 	_add_look_node(TownGrade.new().setup(look))
 	if look == Look.NIGHT:
@@ -369,7 +370,6 @@ func _exit_tree() -> void:
 ## A town freed without teardown() must not leave its look's statics behind. Only while its look is still set: a town
 ## torn down has put them back already, and a newer town may own them now.
 func _release_look() -> void:
-	_look_set = false
 	if _look_owner == get_instance_id():
 		_look_owner = 0
 		Structure.cast_shadows = true

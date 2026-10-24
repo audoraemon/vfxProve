@@ -8,6 +8,7 @@ static func run(t) -> void:
 	_layers_and_counts(t)
 	_lightfield_untouched(t)
 	_day(t)
+	_capital_lamps(t)
 	await _world_space(t)
 	_band_texture(t)
 
@@ -45,6 +46,7 @@ static func _params(t) -> void:
 	var day := TownLook.grade(Town.Look.DAY)
 	var night := TownLook.grade(Town.Look.NIGHT)
 	t.check(day.warm.x > day.warm.z and day.cool.z > day.cool.x, "DAY: warm highlights, cool darks")
+	t.check(night.calm > 0.0 and day.calm == 0.0, "NIGHT calms its dark blues (the water), DAY does not")
 	t.check(night.gain.x < 0.7 and night.gain.z > night.gain.x, "NIGHT darkens toward moonlight blue")
 	var c := TownLook.shadow_colour(Town.Look.DAY)
 	t.check(c.b > c.r and c.r > 0.12 and c.b < 0.5, "DAY shadow is a cool slate, not a navy patch")
@@ -71,15 +73,53 @@ static func _layers_and_counts(t) -> void:
 			if not s.destroyed and s.sprite is Dictionary and s.sprite.get("glow_mask") != null \
 					and TownPools.lit_pixels(s.sprite.glow_mask) > 0:
 				windows += 1
+		var lamps := 0
+		for d: Decor in town._decor:
+			if d.kind == Decor.Kind.LAMP and not d.down:
+				lamps += 1
 		var listed := TownPools.pools_for(town)
-		t.check(statics > 0 and windows > 0, "Aldermere has torches (%d) and lit windows (%d)" % [statics, windows])
-		t.check(listed.size() == statics + windows, "pools_for: %d == %d torches + %d windows" % [listed.size(), statics, windows])
+		t.check(statics > 0 and windows > 0 and lamps > 0, "Aldermere has torches (%d), lit windows (%d) and decor lamps (%d)" % [statics, windows, lamps])
+		t.check(listed.size() == statics + windows + lamps, "pools_for: %d == %d torches + %d windows + %d decor lamps" % [listed.size(), statics, windows, lamps])
 		t.check(pools.pool_count() == listed.size(), "a Sprite2D per pool")
 		var ok := true
 		for p in listed:
 			ok = ok and p.radius > 0.0 and p.color.a > 0.0 and p.has("flicker")
 		t.check(ok, "every pool has a radius, a colour and a flicker")
 	_free(parts)
+
+
+## The capital's street lamps are decor, not LightField lights: at NIGHT each throws a pool, so the capital has more pools
+## than static lights alone; a lamp knocked down loses its pool; nothing is registered in LightField.
+static func _capital_lamps(t) -> void:
+	City.use(&"capital")
+	var parts := _build(Town.Look.NIGHT)
+	var town: Town = parts[0]
+	var env: EnvironmentField = parts[1]
+	var statics := 0
+	for l in env.lights._lights:
+		if l.get("static", false):
+			statics += 1
+	var before: int = env.lights._lights.size()
+	var listed := TownPools.pools_for(town)
+	var from_decor := 0
+	for p in listed:
+		if p.has("decor"):
+			from_decor += 1
+	t.check(listed.size() > statics, "the capital at NIGHT has more pools (%d) than static lights (%d)" % [listed.size(), statics])
+	t.check(from_decor > 0, "the capital's decor lamps throw pools (%d)" % from_decor)
+	t.check(env.lights._lights.size() == before, "the lamp pools register nothing in LightField")
+	var pools := _find(town, TownPools) as TownPools
+	t.check(pools != null and pools.pool_count() == listed.size(), "a Sprite2D per pool, decor lamps included")
+	var fallen: Decor = null
+	for d: Decor in town._decor:
+		if not TownPools.lamp_pool(d).is_empty():
+			fallen = d
+			break
+	if fallen != null:
+		fallen.down = true
+		t.check(TownPools.lamp_pool(fallen).is_empty(), "a lamp knocked down has no pool")
+	_free(parts)
+	City.use(&"aldermere")
 
 
 static func _lightfield_untouched(t) -> void:

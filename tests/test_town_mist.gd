@@ -57,6 +57,16 @@ static func _zones(t, id: StringName) -> void:
 		if z.kind == &"water":
 			water += 1
 	t.check(water > 0, "%s: the river has mist (%d water zones)" % [id, water])
+	# No mist on open water: no zone covers more than a sliver of any water rect.
+	var worst := 0.0
+	for w in TownMist.water_rects():
+		var covered := 0.0
+		for r in zones:
+			var i := r.intersection(w)
+			if i.has_area():
+				covered += i.get_area()
+		worst = maxf(worst, covered / w.get_area())
+	t.check(worst < 0.02, "%s: mist covers %.3f of the worst water rect (< 0.02)" % [id, worst])
 
 
 static func _looks(t, id: StringName) -> void:
@@ -82,8 +92,8 @@ static func _looks(t, id: StringName) -> void:
 	_free(night)
 
 
-## The sunbeams: in a "Beams" node under the mist at TownMist.BEAM_Z (above the y-sorted world, where they would be seen),
-## so pale that they hide nothing (alpha at most BEAM_MAX_ALPHA a step), with whole-pixel vertices.
+## The sunbeams: in a "Beams" node under the mist in the ground plane (z TownMist.BEAM_Z, under everything that stands),
+## alpha at most BEAM_MAX_ALPHA a step, a stepped falloff, with whole-pixel vertices.
 static func _beam_rules(t, mist: TownMist, id: StringName) -> void:
 	var worst := 0.0
 	var whole := true
@@ -92,11 +102,13 @@ static func _beam_rules(t, mist: TownMist, id: StringName) -> void:
 		worst = maxf(worst, b.color.a)
 		var holder := b.get_parent()
 		var in_holder: bool = holder != null and holder.get_parent() == mist and holder.name == &"Beams"
-		layered = layered and in_holder and holder.z_index == TownMist.BEAM_Z and not holder.z_as_relative \
+		layered = layered and in_holder and holder.z_index == TownMist.BEAM_Z and holder.z_as_relative \
 			and b.z_index == 0
 		for p in b.polygon:
 			whole = whole and p == p.round()
 	t.check(layered, "%s: every beam sits in the mist's Beams node at z %d" % [id, TownMist.BEAM_Z])
+	t.check(mist.z_index == 0 and mist.z_as_relative, "%s: the mist (and its beams) draw in the ground plane, z 0" % id)
+	t.check(mist.beams().size() > 0 and mist.beams()[0].color.a >= 0.06, "%s: beams read (step alpha >= 0.06)" % id)
 	t.check(worst <= TownMist.BEAM_MAX_ALPHA + 0.0001 and worst > 0.0,
 		"%s: beam alpha %.3f is within %.3f" % [id, worst, TownMist.BEAM_MAX_ALPHA])
 	t.check(whole, "%s: beam vertices are whole world pixels" % id)

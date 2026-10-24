@@ -11,14 +11,14 @@ extends Node2D
 const KEEP_PAD := 1.0
 const RING_FADE := 8.0
 ## Water zones: the band grown past the water, and how far in from its edges the mist thickens.
-const WATER_PAD := 1.2
-const WATER_FADE := 1.6
+const BANK_BAND := 1.2
+const WATER_FADE := 0.8
 const WATER_ALPHA := 0.6
 const BEAMS := 4
-## The sunbeams: on the ground they vanish under the buildings, so they lie over the y-sorted world (z 2) but each stripe
-## step adds at most BEAM_MAX_ALPHA, a faint pale wash that hides nothing under it.
-const BEAM_MAX_ALPHA := 0.05
-const BEAM_Z := 2
+## The sunbeams light open ground only: they lie in the ground plane with the mist (z 0, under everything that stands), so
+## buildings, people and tags are never covered. Each of a stripe's three nested steps adds up to BEAM_MAX_ALPHA.
+const BEAM_MAX_ALPHA := 0.10
+const BEAM_Z := 0
 
 var look := 0
 var _beams: Array[Polygon2D] = []
@@ -36,25 +36,56 @@ static func keep_outs() -> Array[Rect2]:
 	return out
 
 
+## The water of the active city (rivers and the harbour basin), each run on out through the border band where it meets the
+## map's edge, as the floor draws it.
+static func water_rects() -> Array[Rect2]:
+	var city := City.current()
+	var map := city.map()
+	var outer := map.grow(city.border())
+	var out: Array[Rect2] = []
+	for o: Rect2 in city.rivers():
+		var e := o
+		if o.position.x <= map.position.x:
+			e = e.expand(Vector2(outer.position.x, e.position.y))
+		if o.end.x >= map.end.x:
+			e = e.expand(Vector2(outer.end.x, e.position.y))
+		if o.position.y <= map.position.y:
+			e = e.expand(Vector2(e.position.x, outer.position.y))
+		if o.end.y >= map.end.y:
+			e = e.expand(Vector2(e.position.x, outer.end.y))
+		out.append(e)
+	return out
+
+
 ## The mist of the active city, tagged: {rect, kind}, in ground units. Ring pieces tile the map and its border band round
-## the town, thickening with the distance from the walls (keep_outs(), in the shader); water pieces are the rivers (the
-## harbour too) grown by WATER_PAD. All are cut to leave out the town rect (City.current().town()).
+## the town, thickening with the distance from the walls (keep_outs(), in the shader), and leave out all open water
+## (water_rects()). Water pieces are thin bands that hug the banks (BANK_BAND wide), also off the water. All are cut to
+## leave out the town rect (City.current().town()).
 static func tagged_zones() -> Array[Dictionary]:
 	var city := City.current()
 	var town := city.town()
 	var map := city.map()
 	var outer := map.grow(city.border())
+	var water := water_rects()
 	var pieces: Array[Dictionary] = [{"rect": outer, "kind": &"ring"}]
-	for w: Rect2 in city.rivers():
-		# A river leaves the map through the border band: its mist goes out with it.
-		pieces.append({"rect": w.grow(WATER_PAD).intersection(outer), "kind": &"water"})
+	for w: Rect2 in water:
+		pieces.append({"rect": w.grow(BANK_BAND).intersection(outer), "kind": &"water"})
 	var out: Array[Dictionary] = []
 	for p in pieces:
 		var r: Rect2 = p.rect
 		if r.size.x <= 0.0 or r.size.y <= 0.0:
 			continue
-		for part in _minus(r, town):
-			out.append({"rect": part, "kind": p.kind})
+		var parts: Array[Rect2] = [r]
+		var cuts: Array[Rect2] = [town]
+		cuts.append_array(water)
+		for c in cuts:
+			var next: Array[Rect2] = []
+			for part in parts:
+				next.append_array(_minus(part, c))
+			parts = next
+		for part in parts:
+			if part.has_area():
+				out.append({"rect": part, "kind": p.kind})
 	return out
 
 
@@ -132,8 +163,6 @@ func setup(look_value) -> TownMist:
 func _add_beams(town_rect: Rect2) -> void:
 	var holder := Node2D.new()
 	holder.name = "Beams"
-	holder.z_as_relative = false
-	holder.z_index = BEAM_Z
 	add_child(holder)
 	var c := Iso.ground_to_screen(town_rect.get_center())
 	var span := town_rect.size.x * 32.0

@@ -22,6 +22,8 @@ var group: CanvasGroup
 ## Structure instance id -> its polygon node.
 var _polys := {}
 var _tree_poly: Polygon2D
+## DAY's soft tree shadows: a wider band and a smaller core, each in a group of its own (so the two add up inside the core).
+var tree_bands: Array[CanvasGroup] = []
 var _pending := false
 ## How many times rebuild() has run (for tests).
 var rebuilds := 0
@@ -73,7 +75,10 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	_tree_poly.name = "Trees"
 	_tree_poly.color = Color.WHITE
 	group.add_child(_tree_poly)
-	_build_trees()
+	if look == Town.Look.DAY:
+		_build_soft_trees()
+	else:
+		_build_trees()
 	env.structure_destroyed.connect(_on_change)
 	env.structure_restored.connect(_on_change)
 	env.structure_added.connect(_on_change)
@@ -152,3 +157,37 @@ func polygon_of(s: Structure) -> Polygon2D:
 
 func polygon_count() -> int:
 	return _polys.size()
+
+
+## DAY's tree shadows: per tree a short low ellipse a little down and to the right, in two stepped bands (a wide faint one
+## and a smaller core), a dark green-slate tuned to the grass. They never stripe: nothing is sheared.
+func _build_soft_trees() -> void:
+	var bands := TownLook.tree_shadow_bands(look)
+	for k in bands.size():
+		var scale: float = bands[k].scale
+		var pts := PackedVector2Array()
+		var polys: Array = []
+		for d in trees:
+			var tall: float = (d.size as Vector2).x if (d.size as Vector2).x > 0.0 else 52.0
+			var c := Iso.ground_to_screen(d.at as Vector2) + SHEAR * tall * 0.14
+			var rx := tall * 0.26 * scale
+			var idx := PackedInt32Array()
+			for i in 10:
+				var a := TAU * float(i) / 10.0
+				idx.append(pts.size())
+				pts.append((c + Vector2(cos(a) * rx, sin(a) * rx * 0.5)).round())
+			polys.append(idx)
+		var grp := CanvasGroup.new()
+		grp.name = "TreeBand%d" % k
+		grp.self_modulate = bands[k].colour
+		var poly := Polygon2D.new()
+		poly.name = "Trees"
+		poly.color = Color.WHITE
+		if not pts.is_empty():
+			poly.polygon = pts
+			poly.polygons = polys
+		grp.add_child(poly)
+		add_child(grp)
+		tree_bands.append(grp)
+		if k == 0:
+			_tree_poly = poly

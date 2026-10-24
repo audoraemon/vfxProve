@@ -91,6 +91,24 @@ static func _deferred(t) -> void:
 	t.check(shadows.polygon_count() > 0 and not shadows._polys.has(added_id), "a removed structure's shadow is gone")
 	t.check(not town.forest.trees.is_empty() and shadows._tree_poly.polygon.size() >= town.forest.trees.size() * 3,
 		"every forest tree has a blob (%d points for %d trees)" % [shadows._tree_poly.polygon.size(), town.forest.trees.size()])
+	# DAY's tree shadows are soft: 2 stepped bands, low alpha, green-slate (not blue), each blob short and low (no stripes).
+	var bands := TownLook.tree_shadow_bands(Town.Look.DAY)
+	var soft := shadows.tree_bands.size() == bands.size() and bands.size() >= 2 and bands.size() <= 3
+	var green := true
+	for bd in bands:
+		var c: Color = bd.colour
+		soft = soft and c.a <= 0.25
+		green = green and c.g > c.b and c.g > c.r
+	t.check(soft and green, "DAY tree shadows: 2-3 low-alpha bands, green-slate")
+	var minp := Vector2(INF, INF)
+	var maxp := Vector2(-INF, -INF)
+	for idx: PackedInt32Array in shadows._tree_poly.polygons.slice(0, 1):
+		for i in idx:
+			var p := shadows._tree_poly.polygon[i]
+			minp = minp.min(p)
+			maxp = maxp.max(p)
+	t.check((maxp.x - minp.x) < 40.0 and (maxp.y - minp.y) < (maxp.x - minp.x) * 0.7,
+		"one tree's shadow is a short low ellipse (%.0f x %.0f)" % [maxp.x - minp.x, maxp.y - minp.y])
 	t.check(shadows.get_index() > town.forest.get_index() and shadows.z_index == town.forest.z_index
 		and shadows.get_parent() == ground, "the shadows sit over the forest on the same z, under the ground plane")
 	_free_day(parts)

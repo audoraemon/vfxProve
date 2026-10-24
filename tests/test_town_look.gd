@@ -40,8 +40,9 @@ static func _neutral_bake(t) -> void:
 	env.lights = LightField.new()
 	var ground := Node2D.new()
 	var town := _build(Town.Look.DAY, ground, env)
-	t.check(town.floor_node.tint == Color.WHITE and town.plant_layer.modulate == Color.WHITE
-		and town.forest.modulate == Color.WHITE, "a DAY town bakes floor, plants and forest neutral")
+	var gold := TownLook.ground_tint(Town.Look.DAY)
+	t.check(town.floor_node.tint == gold and town.plant_layer.modulate == gold
+		and town.forest.modulate == gold, "a DAY town bakes floor, plants and forest in the low golden sun")
 	t.check(env.lights.tint == TownLook.light_tint(Town.Look.DAY), "DAY sets the light tint")
 	t.check(not Structure.cast_shadows, "DAY turns the contact shadow off")
 	_free(town, env, ground)

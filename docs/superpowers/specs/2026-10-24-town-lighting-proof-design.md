@@ -99,6 +99,10 @@ The game as it is today (`Town.EVENING` / `GROUND_EVENING` tint, contact shadows
    - `LightField.tint` and `ambient` are set per look, so sprites match.
    - CURRENT bakes exactly as today.
 8. **Nothing exists in CURRENT.** The grade, shadow layer, pools and mist are created only when the look is not CURRENT, so headless runs and every reference are untouched.
+9. **Two deviations from rule 5, approved by eye.**
+   - The shadow and mist layers sit above the ForestLayer, so shadows and mist fall onto the neighbouring forest trees (rule 5 said trees stay above).
+   - DAY's tree bands stack over the building shadows (the two tree-band groups are not merged into the structures' group).
+   - Pools draw as one node and re-read their flicker ten times a second, so "torch flicker only modulates alpha" holds at 10 Hz.
 
 ## Proof
 

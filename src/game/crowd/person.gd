@@ -1841,9 +1841,11 @@ func _mark_signature() -> int:
 ## With the people sprites, the shadow comes from the atlas's white square: an untextured rect between two atlas draws
 ## would split the crowd into a draw batch a person (+~190 calls in the mission bench).
 func _draw_shadow(r: Rect2, c: Color) -> void:
-	var look_shadow := foot_shadow(r, c)
-	r = look_shadow[0]
-	c = look_shadow[1]
+	# CURRENT (the contact shadow on): as given, with no look array built per draw.
+	if not Structure.cast_shadows:
+		var look_shadow := foot_shadow(r, c)
+		r = look_shadow[0]
+		c = look_shadow[1]
 	if SpriteArt.on() and PeopleArt.ready():
 		draw_texture_rect_region(PeopleArt.atlas(), r, PeopleArt.white_rect(), c)
 	else:

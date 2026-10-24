@@ -31,5 +31,6 @@ void fragment() {
 	float dark = 1.0 - smoothstep(0.55, 0.95, lum);
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
-	COLOR = vec4(mix(g, c, ember), 1.0);
+	// Clamped as TownGrade.grade_pixel() is (the framebuffer would clamp it anyway).
+	COLOR = vec4(clamp(mix(g, c, ember), 0.0, 1.0), 1.0);
 }

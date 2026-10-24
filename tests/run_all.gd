@@ -31,6 +31,7 @@ const SUITES := [
 	"res://tests/test_mission_needs.gd",
 	"res://tests/test_town_overrides.gd",
 	"res://tests/test_town_vars.gd",
+	"res://tests/test_capital_prayers.gd",
 	"res://tests/test_frame_rate.gd",
 	"res://tests/test_building_types.gd",
 	"res://tests/test_citadel.gd",

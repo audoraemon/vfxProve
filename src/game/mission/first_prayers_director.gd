@@ -14,6 +14,7 @@ const ROLE := &"well_shrine"
 ## The poor (v0.11 M2): the POOR lay citizens nearest POOR_SPOT (the south-west quarter); NEED of them must pray.
 const POOR_SPOT := Vector2(-11.0, 12.0)
 const POOR := 8
+const POOR_QUARTER := "south-west quarter"
 const NEED := 3
 ## The night's numbers (v0.11 M2, spec §4). PRAY_SECONDS was tuned from the first guess of 25 so the scripted clear lands in 3-4 minutes;
 ## the rest are the first guesses, to be tuned in this order if it misses again.
@@ -39,10 +40,12 @@ const FETCH_STARE := 6.0
 ## (`read_seconds`, MirasHouseDirector's, is the prayer's length: seeded from PRAY_SECONDS in _init().) NEED (the copy says three),
 ## POOR and FAITHFUL_CLERGY stay consts.
 ## The names a town's overrides may set (Overrides): the vars below and `read_seconds`; setup reads them and never assigns them.
-const TOWN_VARS := ["shrine_at", "poor_spot", "market_at", "market_seconds", "priests_at", "priests_seconds", "faithful_lay",
-	"fetch_r", "read_seconds"]
+const TOWN_VARS := ["shrine_at", "poor_spot", "poor_quarter", "market_at", "market_seconds", "priests_at", "priests_seconds",
+	"faithful_lay", "fetch_r", "read_seconds"]
 var shrine_at: Vector2 = SHRINE_AT
 var poor_spot: Vector2 = POOR_SPOT
+## What the tour calls the place the poor live (a name on a tag: a town may set it; the copy must never name another town's quarter).
+var poor_quarter: String = POOR_QUARTER
 var market_at: float = MARKET_AT
 var market_seconds: float = MARKET_SECONDS
 var priests_at: float = PRIESTS_AT
@@ -193,7 +196,7 @@ func tour() -> Array:
 		out.append([door, "The old well shrine, by the market. Lead the poor here."])
 	for p: Variant in grieving:
 		if _alive(p):
-			out.append([(p as Person).ground_pos, "The poor of the south-west quarter. Three must pray at the well."])
+			out.append([(p as Person).ground_pos, "The poor of the %s. Three must pray at the well." % poor_quarter])
 			break
 	if temple_door != Vector2.INF:
 		out.append([temple_door, "The Temple. A Faithful who sees you runs here."])

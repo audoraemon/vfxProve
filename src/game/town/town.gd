@@ -60,12 +60,15 @@ var keep_clear: Array[Rect2] = []
 var _env: EnvironmentField
 ## The nodes a non-CURRENT look added (all in group TownLook.GROUP); teardown() frees them.
 var _look_nodes: Array[Node] = []
+## Whether this town has set the look statics (Structure.cast_shadows, TownLook.active) and not yet put them back.
+var _look_set := false
 
 
 ## ground: the battlefield's ground plane, or null for no floor. shake: camera the Citadel shakes when parts fall.
 func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = null) -> void:
 	_env = env
 	TownLook.active = look
+	_look_set = look != Look.CURRENT
 	Structure.cast_shadows = look == Look.CURRENT
 	var ground_tint := TownLook.ground_tint(look)
 	var light_tint := TownLook.light_tint(look)
@@ -197,8 +200,12 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 
 ## The nodes of a non-CURRENT look. Tasks 2-4 of the lighting proof add the shadow layer, the grade, the pools and the
 ## mist here, each through _add_look_node(). Empty for now.
-func _build_look(_ground: Node2D) -> void:
-	pass
+func _build_look(ground: Node2D) -> void:
+	if ground != null:
+		# Over the floor, the plants and the forest, under everything that stands.
+		var shadows := TownShadows.new().setup(_env, look, forest.trees if forest != null else [])
+		_add_look_node(shadows, ground)
+		ground.move_child(shadows, mini(3, ground.get_child_count() - 1))
 
 
 ## Adds a look node under `parent` (the town itself if null) and remembers it, so teardown() frees exactly these.
@@ -287,6 +294,7 @@ func teardown() -> void:
 	for n in _look_nodes:
 		_free(n)
 	_look_nodes.clear()
+	_look_set = false
 	Structure.cast_shadows = true
 	TownLook.active = Look.CURRENT
 	_env.clear_decor()
@@ -335,6 +343,16 @@ func _free(n: Node) -> void:
 
 func _exit_tree() -> void:
 	_free_floor()
+	_release_look()
+
+
+## A town freed without teardown() must not leave its look's statics behind. Only while its look is still set: a town
+## torn down has put them back already, and a newer town may own them now.
+func _release_look() -> void:
+	if _look_set:
+		_look_set = false
+		Structure.cast_shadows = true
+		TownLook.active = Look.CURRENT
 
 
 func _notification(what: int) -> void:
@@ -342,6 +360,7 @@ func _notification(what: int) -> void:
 	# hand whichever way the town goes away — including a town that never entered the scene tree.
 	if what == NOTIFICATION_PREDELETE:
 		_free_floor()
+		_release_look()
 		# Decor that never entered a tree (headless) would leak otherwise.
 		for d in _decor:
 			if is_instance_valid(d) and not d.is_inside_tree():

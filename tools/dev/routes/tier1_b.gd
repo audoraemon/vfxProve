@@ -34,6 +34,10 @@ const WARN_CLEAR := 4.5
 ## within this of it (Death Mark's fall is judged at Crowd.DOOM_WITNESS = 2.0), and Discord holds him when no such corner is within Mind Whisper's reach.
 const WARN_CLEAR_HERALD := 3.0
 const WARN_CAST_GAP := 3.5
+## A street too crowded for a WARN_CLEAR corner (the Capital's Great Market): the player takes the emptiest corner within reach instead, with this much
+## less room, never under WARN_CLEAR_HERALD (Death Mark's fall is judged at 2.0; a seen death only hands the errand to the witness). Used only when no
+## WARN_CLEAR corner exists, so a town that has one plays as before (Aldermere's rows).
+const WARN_RELAX := 1.0
 const WARN_FRESH := 5.5
 const WARN_RADII := [2.0, 3.5, 5.0, 6.5, 8.0, 9.5]
 const WARN_DIRS := 24
@@ -77,6 +81,8 @@ static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> Strin
 			redo = gap < WARN_CAST_GAP or m.whispered_left() < WARN_FRESH
 		if redo:
 			var spot := _warning_spot(bc, crowd, w, m, clear)
+			if spot == Vector2.INF:
+				spot = _warning_spot(bc, crowd, w, m, maxf(clear - WARN_RELAX, WARN_CLEAR_HERALD))
 			if spot != Vector2.INF:
 				rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": spot})
 				return "whisper the carrier to (%.1f, %.1f)" % [spot.x, spot.y]

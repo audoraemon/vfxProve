@@ -1,0 +1,14 @@
+# First Prayers in the Capital (v0.12 M2, Task 13): the scripted player's runs in the Capital, each how ending --city=capital (name<TAB>how<TAB>checksum).
+# none = casts nothing, play = loadout A, b_play = loadout B (--route=b), toll = the bell tolled on purpose (--case=toll).
+capital_prayers_none_1	--scenario=prayers --case=none --seed=1 --city=capital	-706139488
+capital_prayers_none_2	--scenario=prayers --case=none --seed=2 --city=capital	-909370537
+capital_prayers_none_3	--scenario=prayers --case=none --seed=3 --city=capital	-967232630
+capital_prayers_play_1	--scenario=prayers --case=play --seed=1 --city=capital	-36521596
+capital_prayers_play_2	--scenario=prayers --case=play --seed=2 --city=capital	-18332516
+capital_prayers_play_3	--scenario=prayers --case=play --seed=3 --city=capital	-538201557
+capital_prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1 --city=capital	-252052717
+capital_prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2 --city=capital	-531737743
+capital_prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3 --city=capital	-138138564
+capital_prayers_toll_1	--scenario=prayers --case=toll --seed=1 --city=capital	-669648483
+capital_prayers_toll_2	--scenario=prayers --case=toll --seed=2 --city=capital	-224286873
+capital_prayers_toll_3	--scenario=prayers --case=toll --seed=3 --city=capital	-838823374

@@ -9,13 +9,14 @@
 #   Steps: fetch + trial merge of origin/feat/Develop-Main (reports conflicts and incoming commits; stops on a conflict),
 #   import, the suite in parallel, every exact reference (refs_check.sh), FLOW alone (waits for other sessions' Godot to
 #   finish), and with --bench a board-version bench of each "A:B" pair: mission A at BASE_REF against mission B here
-#   (default pairs: each tier's ★ mission against itself). Writes a summary to $TMPDIR/kak_land/summary.txt and prints it.
+#   (default pairs: each tier's ★ mission against itself). Writes a summary to a private $TMPDIR/kak_land.XXXXXX/summary.txt (printed path) and prints it.
 #   After it passes: merge origin into the branch if it moved, re-run, then ff feat/Develop-Main, tag and push by hand.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
 BENCH=""; PAIRS="warning:warning miras_house:miras_house vigil_flame:vigil_flame procession:procession last_judgement:last_judgement"; FLOW=1; EXTRA=""; BONLY=0
 for a in "$@"; do case "$a" in --bench=*) BENCH="${a#--bench=}";; --extra=*) EXTRA="${a#--extra=}";; --pairs=*) PAIRS="${a#--pairs=}";; --skip-flow) FLOW=0;; --bench-only) BONLY=1;; esac; done
-O=${TMPDIR:-/tmp}/kak_land; mkdir -p "$O"; SUM="$O/summary.txt"; : > "$SUM"
+# A private folder per run (v0.12): two sessions landing at once must never share (or clean up) each other's work.
+O=$(mktemp -d "${TMPDIR:-/tmp}/kak_land.XXXXXX"); SUM="$O/summary.txt"; : > "$SUM"; echo "land.sh work folder: $O"
 say() { echo "$*" | tee -a "$SUM"; }
 busy() { powershell -NoProfile -Command "(@(Get-CimInstance Win32_Process -Filter \"Name like 'Godot%'\" | Where-Object { \$_.CommandLine -match 'behaviour_check|run_all|run_part|flow-test|crowd_check|state_digest|--bench|--import' })).Count" | tr -d '\r'; }
 if [ "$BONLY" = 1 ] && [ -z "$BENCH" ]; then echo "land.sh: --bench-only needs --bench=REF" >&2; exit 2; fi

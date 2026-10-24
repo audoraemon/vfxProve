@@ -5,6 +5,9 @@ extends CanvasLayer
 ## town's decor) and in front of every standing building that has lit windows (its sprite set's glow_mask). They sit above
 ## the colour grade, so lamplight is what the grade did not darken, and under Battlefield's glow layer. The layer follows the viewport, so the pools are world-space: they pan and scale with the
 ## art, and their bands are world pixels. Torch pools flicker with their light; nothing is registered in LightField.
+## Every pool is one rect in a single draw node (one draw call): a stepped ellipse of the shared band texture, additive. The
+## flicker is re-read ten times a second, a pool hides on the event that puts its light out (a structure destroyed, a lamp
+## knocked down), and pools outside the view are skipped, so the node redraws only when something changed.
 
 ## One above the grade (TownGrade.LAYER), under Battlefield's glow layer.
 const LAYER := 2
@@ -27,12 +30,36 @@ const LAMP_ALPHA := 0.42
 ## Decor sets that are lamps whether or not the manifest gives them a "glow".
 const LAMP_SETS := ["lamp_post", "lamp_house"]
 
+## A pool's scale snaps to this step so the four bands stay even (96 * k and 48 * k are whole pixels).
+const SCALE_STEP := 1.0 / 48.0
+## Flicker is re-read this often (seconds).
+const FLICKER_STEP := 0.1
+
 static var _texture: ImageTexture
 static var _lit_cache := {}
 
-## [{sprite: Sprite2D, base: float, flicker: float, light: Dictionary or null}]
+## Static facts per pool: {flicker: float, light: Dictionary or null, structure, decor, alpha: float, i: int}.
 var _pools: Array[Dictionary] = []
+## Per pool, parallel to _pools: the rect's top-left and size (world px), its colour (alpha = the live strength), shown.
+var _tl := PackedVector2Array()
+var _sz := PackedVector2Array()
+var _col := PackedColorArray()
+var _on := PackedByteArray()
+var _canvas: PoolCanvas
+var _env: EnvironmentField
 var _time := 0.0
+var _since := 0.0
+var _seen_view := Rect2()
+## How many times the pools were redrawn (for tests).
+var redraws := 0
+
+
+## The one node every pool draws on: additive, nearest filtered.
+class PoolCanvas extends Node2D:
+	var owner_pools: TownPools
+
+	func _draw() -> void:
+		owner_pools._paint(self)
 
 
 ## The band texture, built once: alpha steps in four bands out to the ellipse's edge, white.
@@ -53,11 +80,11 @@ static func texture() -> ImageTexture:
 	return _texture
 
 
-## The lit pixels of a glow mask (red above one half), cached by texture.
+## The lit pixels of a glow mask (red above one half), cached by texture instance.
 static func lit_pixels(mask: Texture2D) -> int:
 	if mask == null:
 		return 0
-	var key := mask.get_rid()
+	var key := mask.get_instance_id()
 	if _lit_cache.has(key):
 		return _lit_cache[key]
 	var n := 0
@@ -126,56 +153,146 @@ func setup(town: Town) -> TownPools:
 	name = "Pools"
 	layer = LAYER
 	follow_viewport_enabled = true
+	_env = town._env
+	_canvas = PoolCanvas.new()
+	_canvas.name = "PoolCanvas"
+	_canvas.owner_pools = self
+	_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_canvas.material = mat
+	add_child(_canvas)
 	for p in pools_for(town):
-		var sp := Sprite2D.new()
-		sp.texture = texture()
-		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sp.material = mat
-		sp.position = (p.pos as Vector2).round()
-		var k: float = float(p.radius) / (TEX.x * 0.5)
-		sp.scale = Vector2(k, k)
+		# Whole-pixel size: the scale k snaps to 1/48 steps, the top-left to a pixel.
+		var k := maxf(snappedf(float(p.radius) / (TEX.x * 0.5), SCALE_STEP), SCALE_STEP)
+		var sz := Vector2(TEX) * k
 		var c: Color = p.color
-		sp.modulate = Color(c.r, c.g, c.b, float(p.get("alpha", 0.5)))
-		add_child(sp)
-		_pools.append({"sprite": sp, "flicker": p.flicker, "light": p.get("light"), "structure": p.get("structure"), "decor": p.get("decor"), "alpha": float(p.get("alpha", 0.5)),
-			"i": _pools.size()})
+		_tl.append(((p.pos as Vector2) - sz * 0.5).round())
+		_sz.append(sz)
+		_col.append(Color(c.r, c.g, c.b, float(p.get("alpha", 0.5))))
+		_on.append(1)
+		_pools.append({"flicker": p.flicker, "light": p.get("light"), "structure": p.get("structure"), "decor": p.get("decor"),
+			"alpha": float(p.get("alpha", 0.5)), "i": _pools.size()})
+		var dc = p.get("decor")
+		if dc != null:
+			(dc as Decor).fell.connect(_on_lamp_fell.bind(_pools.size() - 1))
+	if _env != null:
+		_env.structure_destroyed.connect(_on_structure_destroyed)
+		_env.structure_restored.connect(_on_structure_restored)
+		_env.structure_removed.connect(_on_structure_removed)
+	_refresh()
 	return self
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_env):
+		for pair: Array in [[_env.structure_destroyed, _on_structure_destroyed], [_env.structure_restored, _on_structure_restored],
+				[_env.structure_removed, _on_structure_removed]]:
+			if (pair[0] as Signal).is_connected(pair[1]):
+				(pair[0] as Signal).disconnect(pair[1])
 
 
 func pool_count() -> int:
 	return _pools.size()
 
 
-func pool_sprite(i: int) -> Sprite2D:
-	return _pools[i].sprite
+## Whether pool i is lit (its building stands, its lamp is up).
+func pool_visible(i: int) -> bool:
+	return _on[i] == 1
+
+
+## The centre of pool i, world px.
+func pool_position(i: int) -> Vector2:
+	return _tl[i] + _sz[i] * 0.5
+
+
+## The live strength of pool i (what the flicker last set).
+func pool_alpha(i: int) -> float:
+	return _col[i].a
+
+
+## The draw node (for tests).
+func canvas() -> Node2D:
+	return _canvas
+
+
+func _on_lamp_fell(i: int) -> void:
+	if _on[i] == 1:
+		_on[i] = 0
+		_canvas.queue_redraw()
+
+
+func _on_structure_destroyed(s: Structure, _kind = null) -> void:
+	_set_structure(s, 0)
+
+
+func _on_structure_restored(s: Structure) -> void:
+	_set_structure(s, 1)
+
+
+func _on_structure_removed(s: Structure) -> void:
+	_set_structure(s, 0)
+
+
+func _set_structure(s: Structure, shown: int) -> void:
+	var changed := false
+	for p in _pools:
+		if p.structure == s and _on[p.i] != shown:
+			_on[p.i] = shown
+			changed = true
+	if changed:
+		_canvas.queue_redraw()
+
+
+## The live strength of pool p now.
+func _strength(p: Dictionary) -> float:
+	var base: float = p.alpha
+	var l = p.light
+	if l != null:
+		return base * clampf(float(l.intensity) / maxf(float(l.base), 0.001), 0.0, 1.2)
+	var f: float = p.flicker
+	var i: int = p.i
+	return base * (1.0 - f * 0.25 + f * 0.25 * sin(_time * 5.0 + i * 2.3) * sin(_time * 3.1 + i))
+
+
+## Re-read every pool's flicker; true when one changed enough to show.
+func _refresh() -> bool:
+	var changed := false
+	for p in _pools:
+		var a := _strength(p)
+		var i: int = p.i
+		if absf(_col[i].a - a) > 0.01:
+			_col[i].a = a
+			changed = true
+	return changed
 
 
 func _process(delta: float) -> void:
 	_time += delta
-	for p in _pools:
-		var base: float = p.alpha
-		var a := base
-		var l = p.light
-		if l != null:
-			a = base * clampf(float(l.intensity) / maxf(float(l.base), 0.001), 0.0, 1.2)
-		else:
-			var f: float = p.flicker
-			var i: int = p.i
-			a = base * (1.0 - f * 0.25 + f * 0.25 * sin(_time * 5.0 + i * 2.3) * sin(_time * 3.1 + i))
-		var sp: Sprite2D = p.sprite
-		# A window's pool goes out with its building.
-		var st = p.structure
-		if st != null:
-			var shown: bool = is_instance_valid(st) and not st.destroyed
-			if sp.visible != shown:
-				sp.visible = shown
-		# A lamp's pool goes out when the lamp is knocked down.
-		var dc = p.decor
-		if dc != null:
-			var shown: bool = is_instance_valid(dc) and not dc.down
-			if sp.visible != shown:
-				sp.visible = shown
-		if absf(sp.modulate.a - a) > 0.01:
-			sp.modulate.a = a
+	_since += delta
+	var redraw := false
+	if _since >= FLICKER_STEP:
+		_since = 0.0
+		redraw = _refresh()
+	if Structure.view != _seen_view:
+		_seen_view = Structure.view
+		redraw = true
+	if redraw:
+		_canvas.queue_redraw()
+
+
+## The pools a paint draws: lit and inside the view (all lit ones while no view is known).
+func drawn_indices() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var culled := _seen_view.has_area()
+	for i in _tl.size():
+		if _on[i] != 0 and (not culled or _seen_view.intersects(Rect2(_tl[i], _sz[i]))):
+			out.append(i)
+	return out
+
+
+func _paint(c: CanvasItem) -> void:
+	redraws += 1
+	var tex := texture()
+	for i in drawn_indices():
+		c.draw_texture_rect(tex, Rect2(_tl[i], _sz[i]), false, _col[i])

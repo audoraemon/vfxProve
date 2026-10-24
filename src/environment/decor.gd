@@ -26,6 +26,8 @@ var scale_mul := 1.0
 ## 0..1 how burnt it is.
 var char_amount := 0.0
 var down := false
+## Emitted once when a hit knocks it down (TownPools hides a lamp's light pool on it).
+signal fell
 ## A PILE's pieces, back to front: {"kind", "at", "size", "seed"} each (TownDecor merges goods standing together
 ## into one node, one draw call instead of one each).
 var parts: Array = []
@@ -271,6 +273,7 @@ func hit(amount: float, damage_kind: StringName) -> void:
 		return
 	if amount >= KNOCK_AT or damage_kind == &"stone":
 		down = true
+		fell.emit()
 		if is_instance_valid(_glow):
 			_glow.queue_free()
 		_sync_glass()

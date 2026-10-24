@@ -22,6 +22,8 @@ static func grade_pixel(c: Color, g: Dictionary) -> Color:
 	var cool: Vector3 = g.cool
 	var lift: Vector3 = g.lift
 	var out := Vector3(c.r, c.g, c.b) * gain * cool.lerp(warm, t) + lift
+	var top := out.x * 0.299 + out.y * 0.587 + out.z * 0.114
+	out *= 1.0 - float(g.get("shoulder", 0.0)) * smoothstep(float(g.get("knee", 0.45)), 1.0, top)
 	var glum := out.x * 0.299 + out.y * 0.587 + out.z * 0.114
 	var blueness := smoothstep(0.08, 0.22, c.b - maxf(c.r, c.g))
 	var dark := 1.0 - smoothstep(0.55, 0.95, lum)

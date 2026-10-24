@@ -13,12 +13,17 @@ uniform float spread = 0.3;
 uniform float keep_lit = 0.0;
 // calm: how far dark, strongly blue pixels (the river under the moon) are pulled toward a grey-blue of their own light.
 uniform float calm = 0.0;
+// shoulder: the brightest graded pixels are pulled down by up to this fraction (a soft shoulder from `knee` luminance up),
+// keeping their hue, so sunlit paving does not clip to a flat yellow. 0 = off.
+uniform float shoulder = 0.0;
+uniform float knee = 0.45;
 
 void fragment() {
 	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
 	float lum = dot(c, vec3(0.299, 0.587, 0.114));
 	float t = smoothstep(split - spread, split + spread, lum);
 	vec3 g = c * gain * mix(cool, warm, t) + lift;
+	g *= 1.0 - shoulder * smoothstep(knee, 1.0, dot(g, vec3(0.299, 0.587, 0.114)));
 	float glum = dot(g, vec3(0.299, 0.587, 0.114));
 	// Water is found on the ungraded colour: the night grade makes every mid-dark pixel blue, so measuring after it would
 	// grey the whole scene. Only what was already saturated blue qualifies (TownGrade.grade_pixel is the same formula).

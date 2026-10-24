@@ -66,4 +66,4 @@ static func grade(look) -> Dictionary:
 			"keep_lit": 0.85, "calm": 0.85}
 	return {"lift": Vector3(0.0, 0.0, 0.01), "gain": Vector3(1.02, 0.99, 0.92),
 		"warm": Vector3(1.14, 1.03, 0.80), "cool": Vector3(0.92, 0.98, 1.06), "split": 0.40, "spread": 0.28,
-		"keep_lit": 0.0, "calm": 0.0}
+		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.28, "knee": 0.45}

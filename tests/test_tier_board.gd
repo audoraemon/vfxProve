@@ -155,6 +155,16 @@ static func _dev(t) -> void:
 	listed.append_array(Array(MissionBook.town_missions(&"capital")))
 	t.check(board.tier == MissionBoard.DEV_TIER and Array(board.missions()).slice(0, listed.size()) == listed
 		and board.lock_line() == "", "the DEV tab lists the capital's sandbox, open (%s)" % [board.missions()])
+	# v0.12 M2: the five Capital Tier 1 nights are real (no fixture), in tier order, as composite ids.
+	var five := ["warning@capital", "tax_collector@capital", "spoiled_harvest@capital", "lost_lamb@capital", "first_prayers@capital"]
+	var tier1 := Array(board.missions()).slice(1, 1 + five.size())
+	t.check(tier1 == five and Array(MissionBook.town_missions(&"capital")).slice(0, five.size()) == five,
+		"the DEV tab lists the five Capital Tier 1 nights in tier order (%s)" % [board.missions()])
+	var real := true
+	for id in five:
+		var def: MissionDef = board._defs.get(id)
+		real = real and def != null and def.city == &"capital" and MissionBook.hostable(String(MissionBook.split_city(id)[0]), City.by_id(&"capital"))
+	t.check(real, "each is built in the Capital and hostable there on its own overrides file")
 	board.choose(MissionBook.CAPITAL_SANDBOX)
 	t.check(picked == ["pick"] and board.chosen == MissionBook.CAPITAL_SANDBOX, "and it can be picked")
 	var on_dev := MissionBoard.new()

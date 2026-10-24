@@ -1491,6 +1491,32 @@ func _flow_dev_town(step: Callable) -> void:
 	_open_pause()
 	on_action("pause:missions")
 	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+	# v0.12 M2: the DEV tab lists the sandbox and the five Capital Tier 1 nights; a Tax Collector night there starts in the Capital
+	# with the weigh-house as the counting-house, and Missions goes back to the DEV tab.
+	var dev_board := _screen_node as MissionBoard
+	var capital_ids := [MissionBook.CAPITAL_SANDBOX, "warning@capital", "tax_collector@capital", "spoiled_harvest@capital",
+		"lost_lamb@capital", "first_prayers@capital"]
+	step.call(dev_board != null and dev_board.tier == MissionBoard.DEV_TIER
+		and Array(dev_board.missions()).slice(0, capital_ids.size()) == capital_ids,
+		"the DEV tab lists the sandbox and the five Capital Tier 1 nights in tier order (%s)" % [dev_board.missions() if dev_board != null else []])
+	dev_board.choose("tax_collector@capital")
+	prep = _screen_node as PrepareScreen
+	if prep != null:
+		prep.draft.preselect(MissionBook.tax_collector().default_loadout)
+		_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	var counting_tag := &""
+	if is_instance_valid(_mission) and _mission.rules() != null and _mission.rules().director is TaxCollectorDirector:
+		counting_tag = (_mission.rules().director as TaxCollectorDirector).counting_tag
+	step.call(screen == Screen.MISSION and mission_id == "tax_collector@capital" and City.current().id() == &"capital"
+		and counting_tag == &"gpt_weighhouse",
+		"picking tax_collector@capital starts it in the Capital with the weigh-house as the counting-house (%s, %s)" % [City.current().id(), counting_tag])
+	_open_pause()
+	on_action("pause:missions")
+	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+	step.call(_screen_node is MissionBoard and (_screen_node as MissionBoard).tier == MissionBoard.DEV_TIER,
+		"Missions after it returns to the DEV tab")
 	(_screen_node as MissionBoard).choose(MissionBook.TAX_COLLECTOR)
 	prep = _screen_node as PrepareScreen
 	if prep != null:

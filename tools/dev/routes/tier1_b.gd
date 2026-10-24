@@ -489,11 +489,25 @@ static func act_prayers(bc, ctx: Dictionary) -> String:
 				rules.cast(ctx.slots.doom, f.ground_pos)
 				memo["last"] = rules.time_left
 				return "doom a Faithful where nobody sees"
+	# v0.12 (Capital, Task 13 fix): in a town whose streets are too busy for any unseen kill the lull between the first prayer and the market's
+	# window would pass with no cast at all (a player would not stand idle): Discord on the Faithful nearest the door, who sees nothing
+	# while he is confused (only before the window: Discord is the guard's tool once the Faithful stand at the door). Only outside Aldermere, so its rows stay exact.
+	var d2 := ctx.d as FirstPrayersDirector
+	if City.current().id() != &"aldermere" and d2 != null and d2.timeline.elapsed() < d2.market_at \
+			and float(memo.get("last", rules.time_left)) - rules.time_left >= PRAYB_FILL and bc._slot_ready(rules, ctx.slots, "discord"):
+		var near := d2._free_faithful()
+		near.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(d2.door) < b.ground_pos.distance_to(d2.door))
+		if not near.is_empty():
+			rules.cast(ctx.slots.discord, near[0].ground_pos)
+			memo["last"] = rules.time_left
+			return "discord the Faithful nearest the door"
 	return ""
 
 
 ## Seconds without a cast after which the policy takes a Faithful with Silent Doom.
 const PRAYB_IDLE := 20.0
+## ... and after which, outside Aldermere and before the market's window, Discord takes the Faithful nearest the door.
+const PRAYB_FILL := 32.0
 
 
 static func _prayers_look(bc, ctx: Dictionary) -> String:

@@ -23,6 +23,8 @@ var group: CanvasGroup
 var _polys := {}
 var _tree_poly: Polygon2D
 var _pending := false
+## How many times rebuild() has run (for tests).
+var rebuilds := 0
 
 
 ## The shadow of a footprint `diamond` (its four corners, screen px) of `height`: the hull of the corners and the
@@ -51,11 +53,9 @@ static func diamond_of(r: Rect2) -> PackedVector2Array:
 		Iso.ground_to_screen(g2), Iso.ground_to_screen(Vector2(g0.x, g2.y))])
 
 
-## The darkness of the group for a look: cool blue-grey in the day, fainter and darker at night.
+## The darkness of the group for a look (TownLook.shadow_colour).
 static func colour_for(look_value) -> Color:
-	if look_value == Town.Look.NIGHT:
-		return Color(0.02, 0.04, 0.12, 0.28)
-	return Color(0.10, 0.16, 0.38, 0.5)
+	return TownLook.shadow_colour(look_value)
 
 
 func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] = []) -> TownShadows:
@@ -92,7 +92,8 @@ func _on_change(_s = null, _k = null) -> void:
 ## Redraws every standing structure's shadow (a destroyed one's as its ruin's).
 func rebuild() -> void:
 	_pending = false
-	if env == null:
+	rebuilds += 1
+	if not is_instance_valid(env):
 		return
 	var alive := {}
 	for s in env.structures():

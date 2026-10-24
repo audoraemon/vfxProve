@@ -1769,15 +1769,23 @@ func _mark_signature() -> int:
 ## With the people sprites, the shadow comes from the atlas's white square: an untextured rect between two atlas draws
 ## would split the crowd into a draw batch a person (+~190 calls in the mission bench).
 func _draw_shadow(r: Rect2, c: Color) -> void:
-	if not Structure.cast_shadows:
-		# The DAY and NIGHT looks: a small ellipse of the look's cast-shadow colour, leaning with the sun.
-		r = Rect2(r.position + Vector2(1, 0), r.size + Vector2(2, 0))
-		c = TownShadows.colour_for(TownLook.active)
-		c.a = minf(c.a * 1.6, 0.6)
+	var look_shadow := foot_shadow(r, c)
+	r = look_shadow[0]
+	c = look_shadow[1]
 	if SpriteArt.on() and PeopleArt.ready():
 		draw_texture_rect_region(PeopleArt.atlas(), r, PeopleArt.white_rect(), c)
 	else:
 		super(r, c)
+
+
+## The rect and colour of a foot shadow: as given, or in the DAY and NIGHT looks (Structure.cast_shadows off) a small
+## ellipse of the look's cast-shadow colour, leaning with the sun.
+static func foot_shadow(r: Rect2, c: Color) -> Array:
+	if not Structure.cast_shadows:
+		r = Rect2(r.position + Vector2(1, 0), r.size + Vector2(2, 0))
+		c = TownLook.shadow_colour(TownLook.active)
+		c.a = minf(c.a * 1.6, 0.6)
+	return [r, c]
 
 
 ## A death with no effect of its own (the quiet powers, the plague): with the people sprites, the body falls and lies

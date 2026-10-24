@@ -62,6 +62,9 @@ var _env: EnvironmentField
 var _look_nodes: Array[Node] = []
 ## Whether this town has set the look statics (Structure.cast_shadows, TownLook.active) and not yet put them back.
 var _look_set := false
+## The instance id of the town whose look currently owns the statics (Structure.cast_shadows, TownLook.active): a
+## town freed or torn down puts them back only while it is still the owner, so an older town never undoes a newer one's.
+static var _look_owner := 0
 
 
 ## ground: the battlefield's ground plane, or null for no floor. shake: camera the Citadel shakes when parts fall.
@@ -69,6 +72,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	_env = env
 	TownLook.active = look
 	_look_set = look != Look.CURRENT
+	_look_owner = get_instance_id()
 	Structure.cast_shadows = look == Look.CURRENT
 	var ground_tint := TownLook.ground_tint(look)
 	var light_tint := TownLook.light_tint(look)
@@ -206,6 +210,10 @@ func _build_look(ground: Node2D) -> void:
 		var shadows := TownShadows.new().setup(_env, look, forest.trees if forest != null else [])
 		_add_look_node(shadows, ground)
 		ground.move_child(shadows, mini(3, ground.get_child_count() - 1))
+	# The grade over the world, then (at night) the lamp pools over the grade: both under Battlefield's glow layer.
+	_add_look_node(TownGrade.new().setup(look))
+	if look == Look.NIGHT:
+		_add_look_node(TownPools.new().setup(self))
 
 
 ## Adds a look node under `parent` (the town itself if null) and remembers it, so teardown() frees exactly these.
@@ -294,9 +302,7 @@ func teardown() -> void:
 	for n in _look_nodes:
 		_free(n)
 	_look_nodes.clear()
-	_look_set = false
-	Structure.cast_shadows = true
-	TownLook.active = Look.CURRENT
+	_release_look()
 	_env.clear_decor()
 	for d in _decor:
 		_free(d)
@@ -349,8 +355,9 @@ func _exit_tree() -> void:
 ## A town freed without teardown() must not leave its look's statics behind. Only while its look is still set: a town
 ## torn down has put them back already, and a newer town may own them now.
 func _release_look() -> void:
-	if _look_set:
-		_look_set = false
+	_look_set = false
+	if _look_owner == get_instance_id():
+		_look_owner = 0
 		Structure.cast_shadows = true
 		TownLook.active = Look.CURRENT
 

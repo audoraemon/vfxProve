@@ -28,12 +28,33 @@ static func light_tint(look) -> Color:
 			return Color(1.06, 0.97, 0.86)
 		Town.Look.NIGHT:
 			# Moonlight: cool blue-grey.
-			return Color(0.56, 0.66, 0.96)
+			return Color(0.80, 0.88, 1.0)
 	return Town.EVENING
 
 
 ## LightField.ambient: 1 is normal.
 static func ambient(look) -> float:
 	if look == Town.Look.NIGHT:
-		return 0.72
+		return 0.86
 	return 1.0
+
+
+## The darkness of the cast-shadow group (TownShadows): a cool slate at dawn, fainter and darker at night. People's foot
+## shadows take it too (Person._draw_shadow).
+static func shadow_colour(look) -> Color:
+	if look == Town.Look.NIGHT:
+		return Color(0.03, 0.05, 0.16, 0.30)
+	return Color(0.20, 0.22, 0.40, 0.50)
+
+
+## The colour grade's uniforms for a look (TownGrade, town_grade.gdshader): lift (added), gain (multiplied), then warm
+## highlights and cool darks split at `split` luminance over `spread`; keep_lit saves bright warm pixels (windows, flames)
+## from the grade.
+static func grade(look) -> Dictionary:
+	if look == Town.Look.NIGHT:
+		return {"lift": Vector3(0.0, 0.01, 0.04), "gain": Vector3(0.50, 0.60, 0.84),
+			"warm": Vector3(1.10, 1.02, 0.95), "cool": Vector3(0.90, 1.0, 1.18), "split": 0.45, "spread": 0.3,
+			"keep_lit": 0.85}
+	return {"lift": Vector3(0.0, 0.0, 0.02), "gain": Vector3(1.0, 0.99, 0.97),
+		"warm": Vector3(1.12, 1.03, 0.86), "cool": Vector3(0.86, 0.96, 1.14), "split": 0.5, "spread": 0.3,
+		"keep_lit": 0.0}

@@ -37,7 +37,8 @@ func _initialize() -> void:
 			continue
 		Hud.reset_session()  # v0.11.1: no suite depends on the display state an earlier one left in this process
 		var before := checks
-		suite.run(self)
+		# A suite may be a coroutine (await t.process_frame): the tree is only live after the first frame.
+		await suite.run(self)
 		if checks == before:
 			check(false, "suite ran no checks (runtime error?): %s" % path)
 	print("part=%d/%d suites=%d checks=%d failures=%d" % [part, of, mine.size(), checks, failures])

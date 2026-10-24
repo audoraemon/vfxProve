@@ -20,6 +20,7 @@ const SUITES := [
 	"res://tests/test_town.gd",
 	"res://tests/test_town_look.gd",
 	"res://tests/test_town_shadows.gd",
+	"res://tests/test_town_grade.gd",
 	"res://tests/test_power_book.gd",
 	"res://tests/test_walk_grid.gd",
 	"res://tests/test_person.gd",
@@ -178,7 +179,7 @@ func _initialize() -> void:
 			continue
 		Hud.reset_session()  # v0.11.1: as in run_part.gd
 		var before := checks
-		suite.run(self)
+		await suite.run(self)
 		if checks == before:
 			check(false, "suite ran no checks (runtime error?): %s" % path)
 	print("checks=%d failures=%d" % [checks, failures])

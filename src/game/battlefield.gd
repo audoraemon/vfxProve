@@ -4,13 +4,17 @@ extends Node2D
 ## camera with shake, positional sound, lights, destructible buildings, units, screen glow, impact post and
 ## screen flash, all wired into one FxContext. The VFX sandbox and the KAK game each add one as a child.
 
+## Canvas layers: the town's look puts its grade at 1 and its light pools at 2 (TownGrade, TownPools), so the glow, the post
+## and the flash (and the HUD) stay above them and spell glows stay bright at night.
+const GLOW_LAYER := 3
+
 var ctx := FxContext.new()
 ## Seeds unit spawns and effect randomness; reseeded by reset().
 var rng := RandomNumberGenerator.new()
 var camera: CameraShake
 ## Transform Iso.BASIS: floors and ground previews added here are authored in ground units.
 var ground_plane: Node2D
-## CanvasLayer 5 for HUD controls (empty until the owner adds some).
+## CanvasLayer 6 for HUD controls (empty until the owner adds some).
 var hud_layer: CanvasLayer
 
 var _flash_rect: ColorRect
@@ -82,12 +86,12 @@ func _ready() -> void:
 
 	hud_layer = CanvasLayer.new()
 	hud_layer.name = "HudLayer"
-	hud_layer.layer = 5
+	hud_layer.layer = 6
 	add_child(hud_layer)
 
 	# Glow sits above the world and effects, below the impact post and flash.
 	var glow_layer := CanvasLayer.new()
-	glow_layer.layer = 2
+	glow_layer.layer = GLOW_LAYER
 	add_child(glow_layer)
 	var glow := ColorRect.new()
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -98,7 +102,7 @@ func _ready() -> void:
 	glow_layer.add_child(glow)
 
 	var post_layer := CanvasLayer.new()
-	post_layer.layer = 3
+	post_layer.layer = 4
 	add_child(post_layer)
 	var impact := Impact.new()
 	impact.name = "Impact"
@@ -106,7 +110,7 @@ func _ready() -> void:
 	impact.setup(post_layer, dim_layer, camera)
 
 	var flash_layer := CanvasLayer.new()
-	flash_layer.layer = 4
+	flash_layer.layer = 5
 	add_child(flash_layer)
 	_flash_rect = ColorRect.new()
 	_flash_rect.color = Color(1, 1, 1, 0)

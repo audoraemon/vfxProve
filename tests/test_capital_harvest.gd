@@ -99,8 +99,23 @@ static func _walk_parity(t, cap: Dictionary, ald: Dictionary) -> void:
 	for x in c:
 		each = each and x > 0.0 and x >= lo * BAND_LO and x <= hi * BAND_HI
 	t.check(each, "each granary trip is within %.2f-%.2f of Aldermere's shortest-longest (%s vs %s)" % [BAND_LO, BAND_HI, c, a])
+	var cs := c.duplicate()
+	var as_ := a.duplicate()
+	cs.sort()
+	as_.sort()
+	var paired := cs.size() == 3 and as_.size() == 3
+	var rank := []
+	for i in mini(cs.size(), as_.size()):
+		rank.append(snappedf(cs[i] / as_[i], 0.01))
+		paired = paired and cs[i] / as_[i] >= RANK_FLOOR
+	print("Capital harvest parity: rank-paired ratios %s" % [rank])
+	t.check(paired, "the trips, shortest to longest against Aldermere's, are each at least %.2f of its pair (%s)" % [RANK_FLOOR, rank])
 	var ratio := _sum(c) / _sum(a)
 	t.check(ratio >= BAND_LO and ratio <= BAND_HI, "the three trips together are %.2fx Aldermere's (band %.2f-%.2f)" % [ratio, BAND_LO, BAND_HI])
+
+
+## The least a Capital trip may be of Aldermere's trip of the same rank (the total is held to BAND_LO-BAND_HI).
+const RANK_FLOOR := 0.70
 
 
 static func _sum(xs: Array[float]) -> float:
@@ -125,6 +140,10 @@ static func _spots_land(t, cap: Dictionary) -> void:
 		homes[st] = true
 		fit = fit and RuinWish.fits(st, "house")
 	t.check(fit and homes.size() == 3, "the three granaries are three distinct dwellings (%d)" % d.targets.size())
+	var on_spot := d.targets.size() == 3
+	for i in mini(d.targets.size(), d.store_spots.size()):
+		on_spot = on_spot and (d.targets[i] as Structure).center().distance_to(d.store_spots[i]) < 1.5
+	t.check(on_spot, "each granary is the dwelling at its own spot (names and camera stay on the intended houses)")
 	var posts: Array[Vector2] = []
 	for st: Structure in d.targets:
 		for w: HarvestDirector.Watch in d.watches[st]:

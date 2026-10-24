@@ -1,6 +1,6 @@
 extends RefCounted
-## v0.12 M2 First Prayers in the Capital (spec 2.5, Task 13): the Capital's overrides file for the mission (the shrine on free ground at
-## the Great Market's west edge, the poor of the west market, the camera), valid against the director's town vars; the town hosts the
+## v0.12 M2 First Prayers in the Capital (spec 2.5, Task 13): the Capital's overrides file for the mission (the shrine on free ground on
+## the Great Market's south promenade, the poor of the west market's back lanes, the camera), valid against the director's town vars; the town hosts the
 ## mission; the key walks keep to Aldermere's within the band (D26: the poor's walk and the Bearer's asserted, the Faithful's report run
 ## printed only, D28); every spot lands on ground, the shrine stands on free ground with the poor and the Faithful's door spots inside
 ## the old town and apart (spread); the intro's camera keeps the shrine, the Temple and the first of the poor clear of the HUD stack;

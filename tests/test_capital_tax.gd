@@ -179,8 +179,8 @@ static func _camera_clear(t, cap: Dictionary) -> void:
 	for g: Vector2 in [cap.hideout_at, cap.door, cap.doors[0], cap.safe]:
 		clear = clear and Kit.clear_of_stack(g, cam, zone)
 	t.check(clear, "at the intro camera %s the weigh-house, its door, the first debtor and the Keep's gate are clear of the padded stack" % [cam])
-	t.check(cap.intro_from != Vector2(2.7, 12.0) and (cap.intro_from as Vector2).distance_to(cam) <= 8.0 and cap.intro_from != cam,
-		"the intro starts at its own spot near the camera, not the default (%s -> %s)" % [cap.intro_from, cam])
+	t.check((cap.intro_from as Vector2).is_equal_approx(cam + Vector2(0.0, 6.0)),
+		"the intro starts 6 south of the camera (%s -> %s)" % [cap.intro_from, cam])
 	t.check(cam.distance_to(cap.hideout_at) < 12.0, "the camera rests on the counting-house (%.1f from it)" % cam.distance_to(cap.hideout_at))
 
 

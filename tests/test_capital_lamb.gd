@@ -85,9 +85,10 @@ static func _overrides_valid(t) -> void:
 		var now: Variant = LostLambDirector.new().get(String(key))
 		okay = okay and typeof(now) == typeof(ov.director[key])
 	t.check(okay, "every overridden value has the type of the var it sets")
-	t.check(d.charge_start == Vector2(6.1, -15.2) and d.gate_at == Vector2(-22.4, -13.0) and d.exit_at == Vector2(-25.6, -13.0)
-		and d.return_to == Vector2(-3.9, -14.0) and d.watch_posts.size() == 2 and d.beat_spots.size() == 2 and d.hunt_at == 150.0
-		and is_equal_approx(d.charge_pace, 0.385), "the director reads back the Capital's spots and keeps the tuned numbers")
+	var dv: Dictionary = ov.director
+	t.check(d.charge_start == dv.charge_start and d.gate_at == dv.gate_at and d.exit_at == dv.exit_at and d.return_to == dv.return_to
+		and d.watch_posts.size() == 2 and d.beat_spots.size() == 2 and d.hunt_at == LostLambDirector.HUNT_AT
+		and is_equal_approx(d.charge_pace, LostLambDirector.CHARGE_PACE), "the director reads back the Capital's spots and keeps Aldermere's tuned numbers")
 	t.check(def.camera_at == Vector2(-12.0, -2.0) and def.intro_from == def.camera_at + Vector2(0.0, 6.0),
 		"camera_at and intro_from are overridden together (C9)")
 
@@ -205,15 +206,15 @@ static func _setup_holds(t) -> void:
 	var d: LostLambDirector = s.d
 	var grid: WalkGrid = (s.crowd as Crowd)._grid
 	var ov: Dictionary = _ov().director
-	t.check(d.hunt_at == 150.0 and is_equal_approx(d.charge_pace, 0.385) and d.charge_start == ov.charge_start,
+	t.check(d.hunt_at == LostLambDirector.HUNT_AT and is_equal_approx(d.charge_pace, LostLambDirector.CHARGE_PACE) and d.charge_start == ov.charge_start,
 		"the town's numbers and hiding place survive setup")
 	t.check(d.gate_at == d._walkable(ov.gate_at) and d.exit_at == d._walkable(ov.exit_at) and d.return_to == d._walkable(ov.return_to)
 		and d.guardhouse == d._walkable(ov.guardhouse), "the gate, exit, door and guardhouse are the town's, snapped to walkable ground")
 	t.check(d.beats.size() == 2 and d.beats[0][0] == d._walkable(ov.beat_spots[0][0]) and d.beats[1][1] == d._walkable(ov.beat_spots[1][1]),
 		"the beats are built from the town's beat spots")
 	var c := d.charge
-	var cleric := c != null and is_instance_valid(c) and CitizenProfile.is_clergy(c.profile.role)
-	t.check(cleric and c.ground_pos.distance_to(ov.charge_start) < 14.0,
+	var cleric := c != null and is_instance_valid(c) and c.profile.role == CitizenProfile.Role.CLERGY
+	t.check(cleric and c.ground_pos.distance_to(ov.charge_start) < 0.6,
 		"the acolyte is a cleric of the Capital, hiding near the civic square's fountain (%.1f away)" % (c.ground_pos.distance_to(ov.charge_start) if c != null else -1.0))
 	t.check(d.watch.size() == 2 and d.patrols.size() == 2, "two on the watch and two patrol pairs (%d, %d)" % [d.watch.size(), d.patrols.size()])
 	var posted := true

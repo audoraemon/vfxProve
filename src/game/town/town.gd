@@ -27,6 +27,12 @@ const GROUND_EVENING := Color(1.06, 0.92, 0.74)
 ## The dock's health (v0.05): a wooden pier, weaker than the stone bridge's kind default.
 const DOCK_HP := 80.0
 
+## The town's lighting look (TownLook). CURRENT is today's build with no extra nodes; DAY and NIGHT are the lighting
+## proof: a neutral ground bake, then the look's shadows, grade, pools and mist.
+enum Look { CURRENT, DAY, NIGHT }
+## Chosen before build(); a rebuild in another look is teardown() then build() again.
+var look: Look = Look.CURRENT
+
 var citadel: Citadel
 var bridge: Structure
 ## The river boats' landing (v0.05), and the postern in the south wall that leads down to it (also in gates, last).
@@ -52,14 +58,22 @@ var sfx: Sfx
 var keep_clear: Array[Rect2] = []
 
 var _env: EnvironmentField
+## The nodes a non-CURRENT look added (all in group TownLook.GROUP); teardown() frees them.
+var _look_nodes: Array[Node] = []
 
 
 ## ground: the battlefield's ground plane, or null for no floor. shake: camera the Citadel shakes when parts fall.
 func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = null) -> void:
 	_env = env
+	TownLook.active = look
+	Structure.cast_shadows = look == Look.CURRENT
+	var ground_tint := TownLook.ground_tint(look)
+	var light_tint := TownLook.light_tint(look)
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	if env.lights != null:
-		env.lights.tint = EVENING
+		env.lights.tint = light_tint
+		if look != Look.CURRENT:
+			env.lights.ambient = TownLook.ambient(look)
 	for d in TownLayout.structures():
 		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
 		_built.append(s)
@@ -149,7 +163,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		# Pieces drawn live while sprites are on (an animated set, and the baked pieces painted over it): each gets a
 		# live stand-in, and the floor, the plant layer and the forest leave it out while it shows.
 		TownFloor.mark_live(baked)
-		var lit := Color(GROUND_EVENING.r / EVENING.r, GROUND_EVENING.g / EVENING.g, GROUND_EVENING.b / EVENING.b)
+		var lit := Color(ground_tint.r / light_tint.r, ground_tint.g / light_tint.g, ground_tint.b / light_tint.b)
 		for d in baked:
 			if d.get("live", false):
 				_stand_in(d, lit * (d.get("tint", Color.WHITE) as Color))
@@ -158,7 +172,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		floor_node.baked_decor = flat
 		floor_node.shrubs = shrubs
 		floor_node.keep_clear = keep_clear
-		floor_node.tint = GROUND_EVENING
+		floor_node.tint = ground_tint
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
 		plants.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -167,16 +181,48 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		plant_layer.name = "Plants"
 		plant_layer.plants = plants
 		# Lit as the floor's texture is: the baked plants took its tint.
-		plant_layer.modulate = GROUND_EVENING
+		plant_layer.modulate = ground_tint
 		ground.add_child(plant_layer)
 		ground.move_child(plant_layer, 1)
 		forest = ForestLayer.new()
 		forest.name = "Forest"
 		forest.trees = trees
 		# Lit as the floor's texture is: the baked trees took its tint.
-		forest.modulate = GROUND_EVENING
+		forest.modulate = ground_tint
 		ground.add_child(forest)
 		ground.move_child(forest, 2)
+	if look != Look.CURRENT:
+		_build_look(ground)
+
+
+## The nodes of a non-CURRENT look. Tasks 2-4 of the lighting proof add the shadow layer, the grade, the pools and the
+## mist here, each through _add_look_node(). Empty for now.
+func _build_look(_ground: Node2D) -> void:
+	pass
+
+
+## Adds a look node under `parent` (the town itself if null) and remembers it, so teardown() frees exactly these.
+func _add_look_node(n: Node, parent: Node = null) -> void:
+	n.add_to_group(TownLook.GROUP)
+	_look_nodes.append(n)
+	(parent if parent != null else self).add_child(n)
+
+
+## The nodes this town's look added (none in CURRENT).
+func look_nodes() -> Array[Node]:
+	return _look_nodes
+
+
+## `--look=day|night|current` among the command-line arguments; anything else is CURRENT.
+static func look_from_args(args: PackedStringArray) -> Look:
+	for a in args:
+		if a.begins_with("--look="):
+			match a.substr(7):
+				"day":
+					return Look.DAY
+				"night":
+					return Look.NIGHT
+	return Look.CURRENT
 
 
 ## Whether `r` touches the ground kept bare (keep_clear).
@@ -236,6 +282,13 @@ func teardown() -> void:
 	fountain = null
 	if _env.lights != null:
 		_env.lights.tint = Color.WHITE
+		if look != Look.CURRENT:
+			_env.lights.ambient = 1.0
+	for n in _look_nodes:
+		_free(n)
+	_look_nodes.clear()
+	Structure.cast_shadows = true
+	TownLook.active = Look.CURRENT
 	_env.clear_decor()
 	for d in _decor:
 		_free(d)

@@ -79,6 +79,9 @@ const SIG_DIR_STEPS := 8.0
 ## The cracks drawn up a damaged building's walls.
 const COL_CRACK := Color(0.05, 0.04, 0.05, 0.9)
 ## Scratch buffers for _quad() and _fan(); canvas drawing is single-threaded, so one shared set is enough.
+## The contact shadow (a footprint nudged back). True in the CURRENT town look; the DAY and NIGHT looks (Town.look) turn
+## it off, because TownShadows casts the shadow instead. Set by Town.build() before any structure is added.
+static var cast_shadows := true
 static var _no_uv := PackedVector2Array()
 const SHADOW := Color(0, 0, 0, 0.25)
 static var _quad_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
@@ -631,7 +634,7 @@ func _new_view() -> SpriteView:
 ## the sprite; see _sync_sprite()).
 func _draw_sprite_frame(light: Color) -> void:
 	# Fields lie flat and cast none, as the procedural ones.
-	if not destroyed and kind != Kind.FARM_FIELD:
+	if not destroyed and kind != Kind.FARM_FIELD and cast_shadows:
 		_quad(_sprite_shadow(), SHADOW)
 	var amb := lights.ambient if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
@@ -889,14 +892,14 @@ func _draw() -> void:
 	var rubble_top := _collapse >= 0.0
 	var art_drawn := not destroyed and not rubble_top and kind in ART_KINDS
 	# Ground shadow toward the back (fields lie flat and cast none). Drawn art carries it in its own first batch.
-	if kind != Kind.FARM_FIELD and not art_drawn:
+	if kind != Kind.FARM_FIELD and not art_drawn and cast_shadows:
 		_quad(_shadow(), SHADOW)
 	if art_drawn:
 		var key := _art_key_now()
 		_light_art(light, dir)
 		if key != _art_key or _art_cache.is_empty():
 			# This once, the shadow goes down on its own: the recording only takes it in once it is made.
-			if kind != Kind.FARM_FIELD:
+			if kind != Kind.FARM_FIELD and cast_shadows:
 				_quad(_shadow(), SHADOW)
 			ArtKit.record()
 			match kind:
@@ -912,7 +915,7 @@ func _draw() -> void:
 			if kind == Kind.HOUSE:
 				# A house's layers are few and its lines many: flattened, it is one fill call and one line call.
 				_art_cache = ArtKit.flatten(_art_cache)
-			if kind != Kind.FARM_FIELD:
+			if kind != Kind.FARM_FIELD and cast_shadows:
 				_art_cache = _with_shadow(_art_cache)
 			_art_key = key
 		else:

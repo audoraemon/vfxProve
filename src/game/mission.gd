@@ -264,6 +264,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 				n.free()
 	_town = Town.new()
 	_town.name = "Town"
+	_town.look = Town.look_from_args(OS.get_cmdline_user_args())
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)

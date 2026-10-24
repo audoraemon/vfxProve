@@ -119,6 +119,8 @@ const CROWD_TEST_END := 40.0
 
 var _bf: Battlefield
 var _town: Town
+## The town's lighting look (L cycles CURRENT, DAY, NIGHT and rebuilds); --look=day|night starts in one.
+var _look := Town.Look.CURRENT
 var _grid: WalkGrid
 var _crowd: Crowd
 ## The GPT showcase district (dev only), or null with --no-showcase, and the page of it shown.
@@ -151,6 +153,7 @@ func _ready() -> void:
 	_hud = _bf.add_debug_label()
 	var args := OS.get_cmdline_user_args()
 	var scripted := "--capture-town" in args or "--citadel-test" in args or "--crowd-test" in args or "--bench" in args
+	_look = Town.look_from_args(args)
 	_rebuild(7 if scripted else Time.get_ticks_usec())
 	_bf.camera.zoom = Vector2.ONE * 0.75
 	_bf.camera.position = Iso.ground_to_screen(Vector2(0.8, 2.0)).round()
@@ -193,6 +196,7 @@ func _rebuild(seed_value: int) -> void:
 	var args := OS.get_cmdline_user_args()
 	_town = Town.new()
 	_town.name = "Town"
+	_town.look = _look
 	if GptShowcase.wanted(args):
 		_town.keep_clear = GptShowcase.clear_rects()
 	add_child(_town)
@@ -232,6 +236,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if i >= 0:
 			_selected = i
 		elif event.physical_keycode == KEY_R:
+			_rebuild(Time.get_ticks_usec())
+		elif event.physical_keycode == KEY_L:
+			_look = ((_look + 1) % 3) as Town.Look
 			_rebuild(Time.get_ticks_usec())
 		elif event.physical_keycode == KEY_F9 and is_instance_valid(_showcase):
 			_showcase.toggle_labels()

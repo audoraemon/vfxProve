@@ -223,7 +223,13 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 func _build_look(ground: Node2D) -> void:
 	if ground != null:
 		# Over the floor, the plants and the forest, under everything that stands.
-		var shadows := TownShadows.new().setup(_env, look, forest.trees if forest != null else [])
+		# The forest's baked trees and the border band's (ForestLayer adds those later; they stand in the same woods).
+		var shaded: Array[Dictionary] = []
+		if forest != null:
+			shaded.append_array(forest.trees)
+			if forest.border:
+				shaded.append_array(TownDecor.border_trees())
+		var shadows := TownShadows.new().setup(_env, look, shaded)
 		_add_look_node(shadows, ground)
 		ground.move_child(shadows, mini(3, ground.get_child_count() - 1))
 		# The mist (and DAY's sunbeams) on the ground over the shadows, under everything that stands.

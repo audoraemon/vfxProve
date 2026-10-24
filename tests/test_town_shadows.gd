@@ -66,31 +66,36 @@ static func _deferred(t) -> void:
 	var shadows := _shadows(town)
 	var a := _standing(env, [Structure.Kind.TEMPLE, Structure.Kind.BARRACKS, Structure.Kind.KEEP])
 	var b := _standing(env, [Structure.Kind.HOUSE])
-	var before := _area(shadows.polygon_of(a).polygon)
+	var before := _area(shadows.polygon_of(a))
 	var n0 := shadows.rebuilds
 	a.destroy(a.center(), &"smite")
 	b.destroy(b.center(), &"smite")
 	t.check(shadows.rebuilds == n0, "nothing is rebuilt inside the frame of a destroy")
 	await t.process_frame
 	t.check(shadows.rebuilds == n0 + 1, "two destroys in one frame cause one rebuild (%d)" % (shadows.rebuilds - n0))
-	var after := _area(shadows.polygon_of(a).polygon)
+	var after := _area(shadows.polygon_of(a))
 	t.check(after < before, "the deferred rebuild shrank the shadow with no hand call (%.0f to %.0f)" % [before, after])
-	var ruin := TownShadows.cast_polygon(TownShadows.diamond_of(a.footprint), a.max_height * TownShadows.RUIN_FACTOR, TownShadows.SHEAR)
-	t.check(absf(_area(shadows.polygon_of(a).polygon) - _area(ruin)) < 0.01 and TownShadows.RUIN_FACTOR == 0.15,
-		"a ruin casts 0.15 of its height")
+	# Hand-computed: footprint diamond area + hull of the sheared strip, (width + height) * ... see _hand_area().
+	var want := _hand_area(a.footprint, a.max_height * 0.15)
+	t.check(absf(_area(shadows.polygon_of(a)) - want) < 0.5 and TownShadows.RUIN_FACTOR == 0.15,
+		"a ruin casts 0.15 of its height (%.1f vs hand-computed %.1f)" % [_area(shadows.polygon_of(a)), want])
 	a.restore()
 	await t.process_frame
-	t.check(shadows.rebuilds == n0 + 2 and absf(_area(shadows.polygon_of(a).polygon) - before) < 0.01,
+	t.check(shadows.rebuilds == n0 + 2 and absf(_area(shadows.polygon_of(a)) - before) < 0.01,
 		"restoring a structure rebuilds its full shadow")
 	var added := env.add_structure(Rect2(30, 30, 1, 1), 30.0, Structure.Kind.HOUSE)
 	await t.process_frame
-	t.check(shadows.polygon_of(added) != null, "an added structure gets a shadow")
+	t.check(shadows.has_shadow(added), "an added structure gets a shadow")
 	var added_id := added.get_instance_id()
 	env.remove(added)
 	await t.process_frame
 	t.check(shadows.polygon_count() > 0 and not shadows._polys.has(added_id), "a removed structure's shadow is gone")
 	t.check(not town.forest.trees.is_empty() and shadows._tree_poly.polygon.size() >= town.forest.trees.size() * 3,
 		"every forest tree has a blob (%d points for %d trees)" % [shadows._tree_poly.polygon.size(), town.forest.trees.size()])
+	t.check(shadows._tree_poly.polygons.size() >= town.forest.trees.size() + TownDecor.border_trees().size(),
+		"the border band's trees cast shadows too (%d blobs for %d forest + %d border trees)" % [shadows._tree_poly.polygons.size(), town.forest.trees.size(), TownDecor.border_trees().size()])
+	t.check(shadows.group.find_children("Trees", "Polygon2D", false, false).is_empty() and shadows.group.get_child_count() == 1,
+		"a DAY group holds only the structures' polygon (no empty Trees node)")
 	# DAY's tree shadows are soft: 2 stepped bands, low alpha, green-slate (not blue), each blob short and low (no stripes).
 	var bands := TownLook.tree_shadow_bands(Town.Look.DAY)
 	var soft := shadows.tree_bands.size() == bands.size() and bands.size() >= 2 and bands.size() <= 3
@@ -161,6 +166,22 @@ static func _area(p: PackedVector2Array) -> float:
 	return absf(a) * 0.5
 
 
+## The area of a footprint's shadow by hand, with no use of cast_polygon: the hull of a convex shape and its copy moved by
+## a vector o is the shape plus a strip, so area = the diamond's area + (its width across o) * |o|.
+static func _hand_area(r: Rect2, height: float) -> float:
+	var d := TownShadows.diamond_of(r)
+	var o := TownShadows.SHEAR * height
+	# Convex hull of a convex shape swept by a vector: area + width-perpendicular-to-o * |o|.
+	var dir := o.normalized()
+	var perp := Vector2(-dir.y, dir.x)
+	var lo := INF
+	var hi := -INF
+	for p in d:
+		lo = minf(lo, p.dot(perp))
+		hi = maxf(hi, p.dot(perp))
+	return _area(d) + (hi - lo) * o.length()
+
+
 static func _centroid(p: PackedVector2Array) -> Vector2:
 	var c := Vector2.ZERO
 	for v in p:
@@ -189,7 +210,7 @@ static func _flat(t, env: EnvironmentField, shadows: TownShadows) -> void:
 	for s in env.structures():
 		if s.kind == Structure.Kind.FARM_FIELD or s.kind == Structure.Kind.BRIDGE:
 			flats += 1
-			if shadows.polygon_of(s) != null:
+			if shadows.has_shadow(s):
 				seen += 1
 	t.check(flats > 0 and seen == 0, "fields and bridges cast no shadow (%d flat, %d with one)" % [flats, seen])
 
@@ -203,11 +224,11 @@ static func _destroy(t, env: EnvironmentField, shadows: TownShadows) -> void:
 	if hall == null:
 		t.check(false, "town hall found")
 		return
-	var before := _area(shadows.polygon_of(hall).polygon)
+	var before := _area(shadows.polygon_of(hall))
 	hall.destroy(hall.center(), &"smite")
 	t.check(shadows._pending, "destroying a structure schedules a shadow rebuild")
 	shadows.rebuild()
-	var after := _area(shadows.polygon_of(hall).polygon)
+	var after := _area(shadows.polygon_of(hall))
 	t.check(after < before, "a destroyed building's shadow shrinks to its ruin (%.0f to %.0f)" % [before, after])
 
 
@@ -215,9 +236,9 @@ static func _no_stack(t, shadows: TownShadows) -> void:
 	var ok := shadows.polygon_count() > 0
 	for n in shadows.group.get_children():
 		ok = ok and n is Polygon2D and n.color == Color.WHITE
-	for s in shadows._polys.values():
-		ok = ok and (s as Node).get_parent() == shadows.group
-	t.check(ok and shadows.group.self_modulate.a < 1.0, "every shadow is an opaque child of one group that sets the alpha")
+	var sp := shadows.group.get_node("Structures") as Polygon2D
+	ok = ok and sp.polygons.size() == shadows.polygon_count()
+	t.check(ok and shadows.group.self_modulate.a < 1.0, "every shadow is an opaque polygon of one Polygon2D in one group that sets the alpha (%d polygons)" % sp.polygons.size())
 
 
 static func _current_none(t) -> void:

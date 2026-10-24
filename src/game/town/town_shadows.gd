@@ -17,10 +17,13 @@ var env: EnvironmentField
 var look := 0
 ## The forest's baked trees (Town.build's), each a blob in the same layer.
 var trees: Array[Dictionary] = []
-## The one group every shadow polygon is a child of.
+## The one group every shadow is drawn in.
 var group: CanvasGroup
-## Structure instance id -> its polygon node.
+## Structure instance id -> its shadow polygon (screen px).
 var _polys := {}
+## One Polygon2D holds every structure's shadow, one convex polygon each (its `polygons`), rebuilt on change.
+var _struct_poly: Polygon2D
+## NIGHT's tree capsules, or DAY's first soft band (null when there are no trees).
 var _tree_poly: Polygon2D
 ## DAY's soft tree shadows: a wider band and a smaller core, each in a group of its own (so the two add up inside the core).
 var tree_bands: Array[CanvasGroup] = []
@@ -71,10 +74,10 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	group.name = "ShadowGroup"
 	group.self_modulate = colour_for(look)
 	add_child(group)
-	_tree_poly = Polygon2D.new()
-	_tree_poly.name = "Trees"
-	_tree_poly.color = Color.WHITE
-	group.add_child(_tree_poly)
+	_struct_poly = Polygon2D.new()
+	_struct_poly.name = "Structures"
+	_struct_poly.color = Color.WHITE
+	group.add_child(_struct_poly)
 	if look == Town.Look.DAY:
 		_build_soft_trees()
 	else:
@@ -87,6 +90,14 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	return self
 
 
+## The field outlives the town's nodes: let go of its signals.
+func _exit_tree() -> void:
+	if is_instance_valid(env):
+		for sig: Signal in [env.structure_destroyed, env.structure_restored, env.structure_added, env.structure_removed]:
+			if sig.is_connected(_on_change):
+				sig.disconnect(_on_change)
+
+
 func _on_change(_s = null, _k = null) -> void:
 	if _pending:
 		return
@@ -94,32 +105,30 @@ func _on_change(_s = null, _k = null) -> void:
 	rebuild.call_deferred()
 
 
-## Redraws every standing structure's shadow (a destroyed one's as its ruin's).
+## Redraws every standing structure's shadow (a destroyed one's as its ruin's), all into the one polygon node.
 func rebuild() -> void:
 	_pending = false
 	rebuilds += 1
 	if not is_instance_valid(env):
 		return
-	var alive := {}
+	_polys.clear()
+	var pts := PackedVector2Array()
+	var polys: Array = []
 	for s in env.structures():
 		if not is_instance_valid(s) or not casts(s):
 			continue
-		var id := s.get_instance_id()
-		alive[id] = true
 		var h := s.max_height * RUIN_FACTOR if s.destroyed else s.max_height
 		var poly := cast_polygon(diamond_of(s.footprint), h, SHEAR)
-		var node: Polygon2D = _polys.get(id)
-		if node == null:
-			node = Polygon2D.new()
-			node.color = Color.WHITE
-			group.add_child(node)
-			_polys[id] = node
-		if node.polygon != poly:
-			node.polygon = poly
-	for id in _polys.keys():
-		if not alive.has(id):
-			(_polys[id] as Node).queue_free()
-			_polys.erase(id)
+		_polys[s.get_instance_id()] = poly
+		var idx := PackedInt32Array()
+		for p in poly:
+			idx.append(pts.size())
+			pts.append(p)
+		polys.append(idx)
+	# Clear before the points shrink: a stale index list must never outlive its points.
+	_struct_poly.polygons = []
+	_struct_poly.polygon = pts
+	_struct_poly.polygons = polys
 
 
 ## One capsule per baked forest tree, all in a single multi-polygon node.
@@ -146,13 +155,21 @@ func _build_trees() -> void:
 		polys.append(idx)
 	if pts.is_empty():
 		return
+	_tree_poly = Polygon2D.new()
+	_tree_poly.name = "Trees"
+	_tree_poly.color = Color.WHITE
+	group.add_child(_tree_poly)
 	_tree_poly.polygon = pts
 	_tree_poly.polygons = polys
 
 
-## The polygon node of a structure, or null (for tests).
-func polygon_of(s: Structure) -> Polygon2D:
-	return _polys.get(s.get_instance_id())
+## The shadow polygon of a structure (empty if it casts none).
+func polygon_of(s: Structure) -> PackedVector2Array:
+	return _polys.get(s.get_instance_id(), PackedVector2Array())
+
+
+func has_shadow(s: Structure) -> bool:
+	return _polys.has(s.get_instance_id())
 
 
 func polygon_count() -> int:

@@ -99,7 +99,7 @@ var _tick := 0.0
 
 func _begin() -> void:
 	gaze = LanternGaze.new()
-	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
+	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
 	_place_shrines()
 	_choose_faithful(FAITHFUL)
 	_start_vigil()

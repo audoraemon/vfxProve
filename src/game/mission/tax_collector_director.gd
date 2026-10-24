@@ -23,7 +23,7 @@ const ROUNDS := [
 ]
 ## The tags' words for each collector (v0.11 M2).
 const LABELS := ["TAX COLLECTOR", "DEPUTY", "DEPUTY"]
-## The Citadel's gate (v0.11 M2), where the taxes go: RescueWish.GATE's point.
+## Aldermere's Citadel gate, RescueWish.GATE (v0.11 M2); the director reads the place citadel_gate (Places.point()).
 const CITADEL_GATE := RescueWish.GATE
 ## First guesses (spec §1 and the ruling), tuned in this order if the scripted clear misses its window (v0.11 M2): when each
 ## collector sets out at the latest; how long after one dies the next sets out at the latest (30-50 s); a visit; a hiding;
@@ -44,27 +44,45 @@ const FLUSH_GAP := 1.5
 const FLUSH_BANNER := "THE COUNTING-HOUSE BURNS - THE COLLECTORS RUN"
 
 
-## The counting-house, the three collectors' rounds and the numbers (v0.11 M2).
-func _plan() -> void:
-	hideout = _counting_house()
-	var door := _front_of(hideout)
-	var taken: Array = [hideout]
-	for i in ROUNDS.size():
-		var stops: Array[Structure] = []
-		for spot: Vector2 in ROUNDS[i]:
-			var h := _house_reached(spot, door, taken)
-			if h != null:
-				stops.append(h)
-				taken.append(h)
-		_add_quarry(String(LABELS[i]), float(SET_OUT_AT[i]), stops, int(GUARDS[i]))
-	safe_at = CITADEL_GATE
+## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace
+## them. The counting-house is the building with `counting_tag`, else the dwelling nearest `counting_spot` (INF: the workshop place's
+## centre); `set_out_at` reads in the tour's words too.
+## The names a town's overrides may set (Overrides): these vars and the base's numbers seeded in _init(); setup reads them and never
+## assigns them (the labels, `safe_at` and `flush_waiting` it does assign, so they are not here).
+const TOWN_VARS := ["counting_tag", "counting_spot", "rounds", "set_out_at", "guards", "visit_seconds", "hide_seconds",
+	"alarm_reach", "guard_r", "chain_wait", "flush_gap"]
+var counting_tag: StringName = COUNTING_TAG
+var counting_spot := Vector2.INF
+var rounds: Array = ROUNDS
+var set_out_at: Array = SET_OUT_AT
+var guards: Array = GUARDS
+
+
+## AssassinateDirector's numbers start at the consts above (v0.12, R31): set at .new(), so a town's override survives setup.
+func _init() -> void:
 	visit_seconds = VISIT_SECONDS
 	hide_seconds = HIDE_SECONDS
 	alarm_reach = ALARM_REACH
 	guard_r = GUARD_R
 	chain_wait = CHAIN_WAIT
-	flush_waiting = true
 	flush_gap = FLUSH_GAP
+
+
+## The counting-house, the three collectors' rounds and the numbers (v0.11 M2).
+func _plan() -> void:
+	hideout = _counting_house()
+	var door := _front_of(hideout)
+	var taken: Array = [hideout]
+	for i in rounds.size():
+		var stops: Array[Structure] = []
+		for spot: Vector2 in rounds[i]:
+			var h := _house_reached(spot, door, taken)
+			if h != null:
+				stops.append(h)
+				taken.append(h)
+		_add_quarry(String(LABELS[i]), float(set_out_at[i]), stops, int(guards[i]))
+	safe_at = Places.point(&"citadel_gate")
+	flush_waiting = true
 	hideout_label = "COUNTING-HOUSE"
 	stop_label = "DEBTOR"
 	safe_label = "CITADEL"
@@ -75,9 +93,9 @@ func _plan() -> void:
 ## towers.
 func _counting_house() -> Structure:
 	for s: Structure in town._built:
-		if is_instance_valid(s) and s.art_tag == COUNTING_TAG and not s.destroyed:
+		if is_instance_valid(s) and s.art_tag == counting_tag and not s.destroyed:
 			return s
-	return _house_near(TownLayout.WORKSHOP.get_center())
+	return _house_near(Places.at(&"workshop") if counting_spot == Vector2.INF else counting_spot)
 
 
 ## The resident nearest the counting-house's door not yet a collector, made a noble for the night (v0.11 M2).
@@ -119,7 +137,7 @@ func tour() -> Array:
 	var out := []
 	if hide_door != Vector2.INF:
 		out.append([hide_door, "The counting-house. The tax collector sets out at %s, his deputies by %s and %s." % [
-			UiTheme.clock(SET_OUT_AT[0]), UiTheme.clock(SET_OUT_AT[1]), UiTheme.clock(SET_OUT_AT[2])]])
+			UiTheme.clock(set_out_at[0]), UiTheme.clock(set_out_at[1]), UiTheme.clock(set_out_at[2])]])
 	if not quarries.is_empty() and not quarries[0].stop_doors.is_empty():
 		out.append([quarries[0].stop_doors[0], "His first debtor. He goes in to collect, then walks on."])
 	if safe_at != Vector2.INF:

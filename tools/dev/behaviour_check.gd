@@ -8,6 +8,13 @@ extends SceneTree
 ##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
 ##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
 ##   calm   nothing cast: where citizens are, by kind of place, every 20 s; --shots saves captures at the end
+##   capital_calm  the calm scenario in the capital (City.use(&"capital"), its ~420 citizens dealt by district): where
+##          citizens are every 20 s, and arrivals at its routine places (the bread queue, the wash houses, the harbour,
+##          the chapels) over the run
+##   capital_evac  (the capital) after 20 s of calm, an alarm in the old town houses (a district in emergency, the bell,
+##          the alarm to 100) and its evacuation; 10 s in, the east stone bridge brought down. Every 10 s over 180 s: the
+##          stage, evacuees by way out, those waiting at gates, escapes, crossings of each bridge, the cut bridge's users
+##          rerouted, anyone standing still 10 s (not waiting at a gate), anyone ever in the river; when the town cleared
 ##   strike after 20 s of calm, one Heaven Splitter in the market: intents by distance from it, over 30 s
 ##   escalate  three casts across town, 15 s apart: the alarm stage, the bell and everyone's intents every 5 s
 ##   gates  an evacuation called after 20 s of calm; --hazard puts a lasting danger on the Main Gate's approach at
@@ -255,9 +262,10 @@ const TAX_MARGIN := 0.2
 ## The harvest policy clears the next granary's watchmen when its grain is due within this many seconds (v0.11 M2): sooner, the relief
 ## (HarvestDirector.RELIEF_AFTER) walks in before the fire has burned its 10 s.
 const HARVEST_PRE := 20.0
-## The Lost Lamb policy (v0.11 M2): where it holds him for the watch's change, relative to the west gate's mouth, and how far
-## beyond SIGHT it reads a soldier as about to see him.
-const LAMB_WAIT := Vector2(0.0, -4.0)
+## The Lost Lamb policy (v0.11 M2): where it holds him for the watch's change -- this far from the gate's mouth, back along the way
+## in from the exit (v0.12: the town's gate and exit; Aldermere's (0, -4) exactly) -- and how far beyond SIGHT it reads a soldier as
+## about to see him.
+const LAMB_WAIT_DIST := 4.0
 const LAMB_WARN := 2.0
 ## The Lost Lamb policy sends the next whisper once he is within this of where the last sent him, and Silent Doom on his seizer
 ## only with him this much beyond its radius from the seizer, or the same cast would take him too (v0.11 M2).
@@ -440,6 +448,10 @@ const ROUTE_IDS := {"warning": "warning", "tax": "tax_collector", "harvest": "sp
 const TIER_B := [preload("res://tools/dev/routes/tier1_b.gd"), preload("res://tools/dev/routes/tier2_b.gd"),
 	preload("res://tools/dev/routes/tier3_b.gd"), preload("res://tools/dev/routes/tier4_b.gd"), preload("res://tools/dev/routes/tier5_b.gd")]
 
+## The capital's evacuation (capital_evac): how long it runs after the alarm, and when the east stone bridge falls.
+const CAPITAL_EVAC_SECONDS := 180.0
+const CAPITAL_CUT_AT := 10.0
+
 var mission: Mission
 ## "b" under --route=b (v0.11.1), else "".
 var route := ""
@@ -447,6 +459,8 @@ var route := ""
 
 func _initialize() -> void:
 	mission = load("res://scenes/mission.tscn").instantiate()
+	mission.exit_on_refusal = false
+	mission.unhosted_ok = true  # its throw-away _ready() start runs the default mission, which a non-home --city= does not host; _run() resets this
 	root.add_child(mission)
 	_run.call_deferred()
 
@@ -456,8 +470,9 @@ func _run() -> void:
 	var scenario := Battlefield.arg_value(args, "--scenario")
 	var seconds := float(Battlefield.arg_value(args, "--seconds")) if Battlefield.arg_value(args, "--seconds") != "" \
 		else 60.0
-	while not mission.is_prewarmed or not mission.started():
+	while not mission.is_prewarmed or not (mission.started() or mission.refused != ""):
 		await process_frame
+	mission.unhosted_ok = false  # the start judged below is the scenario's own (capital_calm and capital_evac allow it again)
 	# A fixed seed (--seed=, default SEED): without a scripted flag the mission seeds itself from the clock.
 	var seed_arg := Battlefield.arg_value(args, "--seed")
 	var tier := Battlefield.arg_value(args, "--difficulty")
@@ -546,6 +561,10 @@ func _run() -> void:
 	elif scenario == "heart":
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
 		mission.mission_id = MissionBook.HEART_OF_FAITH
+	elif scenario == "capital_calm" or scenario == "capital_evac":
+		City.use(&"capital")
+		mission.city = &"capital"
+		mission.unhosted_ok = true  # these test the town (its crowd), not a mission hosted in it
 	route = Battlefield.arg_value(args, "--route")
 	if not route in ["", "a", "b"]:
 		push_error("behaviour_check: unknown --route=%s (a or b)" % route)
@@ -556,6 +575,12 @@ func _run() -> void:
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
 		powers = RouteBook.loadout_b(_route_id(scenario))
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
+	if mission.refused != "":
+		# v0.12 C6: a mission the town cannot host is not run; gate.sh reads this line as a FAIL.
+		print("BEHAVIOUR refused scenario=%s %s" % [scenario, mission.refused])
+		quit(1)
+		return
+	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
 	if route == "b" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
@@ -568,6 +593,10 @@ func _run() -> void:
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
 		"calm", "":
 			await _calm(seconds, "--shots" in args)
+		"capital_calm":
+			await _capital_calm(seconds)
+		"capital_evac":
+			await _capital_evac(seconds if Battlefield.arg_value(args, "--seconds") != "" else CAPITAL_EVAC_SECONDS)
 		"strike":
 			await _strike("--shots" in args)
 		"madness":
@@ -705,6 +734,157 @@ func _calm(seconds: float, shots: bool) -> void:
 			bf.camera.position = Iso.ground_to_screen(shot[1]).round()
 			await _frames(3)
 			await bf.save_capture(shot[0])
+
+
+## The capital's calm (Task 11): _calm()'s places every 20 s, and arrivals at the routine places every second.
+func _capital_calm(seconds: float) -> void:
+	var fps := _fps()
+	print("BEHAVIOUR capital_calm city=%s citizens=%d soldiers=%d" % [City.current().id(),
+		mission._crowd.citizens.size(), mission._crowd.soldiers.size()])
+	var anchors := mission._crowd._snapped_anchors()
+	var places := {"queue": anchors.queue, "wash": anchors.wash, "harbour": anchors.harbour, "pray": anchors.pray}
+	var arrived := {}
+	var going := {}
+	var t := 0.0
+	while t < seconds:
+		await _frames(fps)
+		t += 1.0
+		for p: Person in mission._crowd.citizens:
+			if not is_instance_valid(p):
+				continue
+			if p.has_goal():
+				going[p] = true
+				continue
+			if not going.has(p):
+				continue
+			going.erase(p)
+			for k: String in places:
+				for g: Vector2 in places[k]:
+					if p.ground_pos.distance_to(g) <= 0.8 and p.anchor.distance_to(g) <= 0.8:
+						arrived[k] = int(arrived.get(k, 0)) + 1
+						break
+		if roundi(t) % 20 == 0:
+			print("BEHAVIOUR capital_calm t=%d %s" % [roundi(t), _places()])
+	print("BEHAVIOUR capital_calm arrivals %s" % [arrived])
+
+
+## The capital's evacuation (Task 12): an alarm in the old town houses after 20 s of calm, the east stone bridge cut at
+## CAPITAL_CUT_AT, reported every 10 s. A user of the cut bridge is one standing on it or with it on its path when it
+## falls; it has rerouted once it crosses another bridge, makes for the ferry or the west road, or has escaped.
+func _capital_evac(seconds: float) -> void:
+	var fps := _fps()
+	await _frames(20 * fps)
+	var crowd: Crowd = mission._crowd
+	var town: Town = mission._town
+	var grid: WalkGrid = mission._grid
+	var c := City.current() as CapitalCity
+	var ex := c.exits()
+	print("BEHAVIOUR capital_evac city=%s citizens=%d soldiers=%d" % [c.id(), crowd.citizens.size(), crowd.soldiers.size()])
+	var old_town := c.landmark(&"old_town_houses")
+	for k in AlarmManager.LOCAL_EVENTS:
+		crowd.alarms.incident(old_town.get_center())
+	crowd.alarms.bell_rung = true
+	crowd.alarms.update(AlarmManager.CITY_ALARM, 0, crowd._clock)
+	crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
+	crowd.add_alarm(100.0)
+	var names := {CapitalCity.BRIDGES[0]: "west", CapitalCity.BRIDGES[1]: "east", CapitalCity.BRIDGES[2]: "third"}
+	var cut_rect: Rect2 = CapitalCity.BRIDGES[1]
+	var crossed := {}  # person -> {bridge name: frame first on it}
+	var users: Array = []
+	var still := {}  # person -> [where, since]
+	var stuck := {}
+	var river := 0
+	var caught := {}  # person -> frame it reached dry ground (-1: still in the water)
+	var cleared := -1.0
+	var frame := 0
+	var t := 0.0
+	while t < seconds:
+		await process_frame
+		frame += 1
+		t = float(frame) / fps
+		if frame == roundi(CAPITAL_CUT_AT * fps):
+			for st: Structure in town.bridges:
+				if st.footprint == cut_rect:
+					for p: Person in crowd.citizens:
+						if is_instance_valid(p) and p.is_alive() and (cut_rect.has_point(p.ground_pos)
+								or p.path_crosses(cut_rect, 1000)):
+							users.append(p)
+							if CapitalCity.RIVER.has_point(p.ground_pos) and cut_rect.has_point(p.ground_pos):
+								caught[p] = -1
+					st.destroy(st.center(), &"nova")
+			print("BEHAVIOUR capital_evac t=%d east bridge down, users %d (on its water %d)" % [roundi(t), users.size(),
+				caught.size()])
+		var living := 0
+		for p: Person in crowd.citizens:
+			if not is_instance_valid(p) or not p.is_alive():
+				continue
+			# Those staying at a duty (the engineers' teams, the clergy and the bellkeeper) are not evacuees.
+			living += 0 if p.inside or p.engineer_duty or p.mind == Person.Mind.DUTY \
+				or p.profile.role == CitizenProfile.Role.ENGINEER else 1
+			var g := p.ground_pos
+			for r: Rect2 in names:
+				if r.has_point(g):
+					var seen: Dictionary = crossed.get(p, {})
+					if not seen.has(names[r]):
+						seen[names[r]] = frame
+					crossed[p] = seen
+			if not grid.walkable(g) and (CapitalCity.RIVER.has_point(g) or CapitalCity.HARBOUR.has_point(g)):
+				if not caught.has(p) or int(caught[p]) >= 0:
+					river += 1  # in the water, and not one wading out from the fallen span
+			elif caught.has(p) and int(caught[p]) < 0:
+				caught[p] = frame
+			if p.mind == Person.Mind.FLEE and p.queue_spot == Vector2.INF and p.passing_gate == null:
+				var e: Array = still.get(p, [])
+				if e.is_empty() or (e[0] as Vector2).distance_to(g) > 0.5:
+					still[p] = [g, frame]
+				elif frame - int(e[1]) > 10 * fps:
+					stuck[p] = true
+			else:
+				still.erase(p)
+		if cleared < 0.0 and living == 0:
+			cleared = t
+		if frame % (10 * fps) != 0:
+			continue
+		var by_exit := {}
+		var waiting := 0
+		for p: Person in crowd.citizens:
+			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.FLEE:
+				continue
+			var i := ex.find(p.goal())
+			var k: String = ["south", "west", "ferry"][i] if i >= 0 else ("boat" if crowd.evac.is_boat_exit(p.goal()) else "none")
+			by_exit[k] = int(by_exit.get(k, 0)) + 1
+			waiting += 1 if p.queue_spot != Vector2.INF else 0
+		var over := {}
+		for p in crossed:
+			for n: String in crossed[p]:
+				over[n] = int(over.get(n, 0)) + 1
+		var rerouted := 0
+		var cut_frame := roundi(CAPITAL_CUT_AT * fps)
+		for p in users:
+			if not is_instance_valid(p) or not crowd.citizens.has(p):
+				rerouted += 1
+				continue
+			var seen: Dictionary = crossed.get(p, {})
+			var other := false
+			for n: String in seen:
+				other = other or (n != "east" and int(seen[n]) > cut_frame)
+			if other or p.goal() == ex[1] or p.goal() == ex[2] or crowd.evac.is_boat_exit(p.goal()):
+				rerouted += 1
+		print("BEHAVIOUR capital_evac t=%d stage=%s evacuees in town %d by exit %s waiting %d escaped %d dead %d crossed %s users %d rerouted %d stuck %d river %d" % [
+			roundi(t), crowd.alarms.stage_name(), living, by_exit, waiting, crowd.escaped_count, crowd.killed_citizens,
+			over, users.size(), rerouted, stuck.size(), river])
+	var ashore := 0.0
+	for p in caught:
+		ashore = maxf(ashore, (int(caught[p]) - roundi(CAPITAL_CUT_AT * fps)) / float(fps) if int(caught[p]) >= 0 else INF)
+	var left := []
+	for p: Person in crowd.citizens:
+		if is_instance_valid(p) and p.is_alive():
+			left.append("%s%s %s %s" % [p.profile.job, " (%s)" % CitizenProfile.Role.keys()[p.profile.role].to_lower()
+				if p.profile.role != CitizenProfile.JOBS[p.profile.job][0] else "",
+				Person.Mind.keys()[p.mind], p.ground_pos.snapped(Vector2(0.1, 0.1))])
+	print("BEHAVIOUR capital_evac cleared=%s escaped=%d left=%d %s stuck=%d river=%d caught on the span %d, ashore within %.1f s"
+		% ["%.1f" % cleared if cleared >= 0.0 else "no", crowd.escaped_count, left.size(), left, stuck.size(), river,
+		caught.size(), ashore])
 
 
 func _strike(shots: bool) -> void:
@@ -1625,8 +1805,7 @@ func _prayers_ready(d: MirasHouseDirector) -> bool:
 	if fp == null:
 		return true
 	var ends := fp.timeline.elapsed() + maxf(PRAYERS_WALK, left if left != INF else 0.0) + fp.read_seconds
-	for w: Array in [[FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.MARKET_SECONDS],
-			[FirstPrayersDirector.PRIESTS_AT, FirstPrayersDirector.PRIESTS_SECONDS]]:
+	for w: Array in [[fp.market_at, fp.market_seconds], [fp.priests_at, fp.priests_seconds]]:
 		if ends >= float(w[0]) and ends <= float(w[0]) + float(w[1]) + PRAYERS_SLACK:
 			return false
 	return true
@@ -1912,7 +2091,7 @@ func _harvest(which: String) -> void:
 		for s: Structure in order:
 			if d.razed(s) or not d.has_grain(s):
 				continue
-			var name := String(HarvestDirector.STORE_NAMES[d.targets.find(s)])
+			var name := String(d.store_names[d.targets.find(s)])
 			if d.guarding(s):
 				if _slot_ready(rules, slots, "doom"):
 					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary" % [t, name])
@@ -1930,7 +2109,7 @@ func _harvest(which: String) -> void:
 			for s: Structure in order:
 				if not d.razed(s) and not d.has_grain(s) and d.grain_left(s) <= HARVEST_PRE and d.guarding(s):
 					print("BEHAVIOUR harvest t=%.1f doom a watchman of the %s granary (grain in %.0f s)" % [t,
-						HarvestDirector.STORE_NAMES[d.targets.find(s)], d.grain_left(s)])
+						d.store_names[d.targets.find(s)], d.grain_left(s)])
 					_note_act(acts, t)
 					rules.cast(slots.doom, d.guards(s)[0].ground_pos)
 					cast = true
@@ -1982,7 +2161,7 @@ func _lamb(which: String) -> void:
 	var t := 0.0
 	var frames := 0
 	var report_at := 10.0
-	var wait_at := d._walkable(d.gate_at + LAMB_WAIT)
+	var wait_at := d._walkable(d.gate_at + (d.gate_at - d.exit_at).normalized() * LAMB_WAIT_DIST)
 	var acts := {"last": 0.0, "longest": 0.0}
 	var seized := 0
 	while not rules.finished and not rules.main_done and frames < max_frames:
@@ -5021,6 +5200,14 @@ func _force_act(how: String) -> void:
 		rules.force_end(false, "forced")
 
 
+## Frames to a second of game time: the run's --fixed-fps (60 without it), so a capital scenario counts game seconds at
+## any rate (Task 15 runs capital_evac at 30 fps).
+func _fps() -> int:
+	var a := OS.get_cmdline_args()
+	var i := a.find("--fixed-fps")
+	return int(a[i + 1]) if i >= 0 and i + 1 < a.size() else 60
+
+
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
@@ -5028,7 +5215,7 @@ func _frames(n: int) -> void:
 
 ## Citizens by the kind of place they are nearest (within 1.5 units), or "walking"/"elsewhere".
 func _places() -> Dictionary:
-	var anchors := TownLayout.anchors()
+	var anchors := City.current().anchors()
 	var out := {}
 	for p: Person in mission._crowd.citizens:
 		if not is_instance_valid(p) or p.state == DummyEnemy.State.DEAD:

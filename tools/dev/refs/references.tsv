@@ -126,3 +126,5 @@ procession_none_3	--scenario=feast --path=procession --board --case=none --seed=
 procession_play_1	--scenario=feast --path=procession --board --case=play --seed=1	-718175967
 procession_play_2	--scenario=feast --path=procession --board --case=play --seed=2	-616815945
 procession_play_3	--scenario=feast --path=procession --board --case=play --seed=3	728363854
+capital_calm	--scenario=capital_calm --seconds=60	-713901328
+capital_evac	--scenario=capital_evac	122086902

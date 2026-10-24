@@ -181,6 +181,8 @@ var _interlude: InterludeScreen
 ## drafts within the campaign's slots and budget, a finished night is recorded on it, and Pause and Results lead back to
 ## its night screen.
 var _in_campaign := false
+## --dev (capital plan, Task 15): the board shows its DEV tab, the dev-only missions (MissionBook.dev_missions()).
+var dev := false
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -209,9 +211,16 @@ static func locked_for(from: SaveFile, in_campaign: bool) -> PackedStringArray:
 	return PackedStringArray() if in_campaign else from.descend.locked()
 
 
+## The powers a mission picked outside the campaign greys: none for a dev mission (the board's DEV tab: no tier's), the
+## board's locks for any other, a tier's or not (a CLI --mission=feast_festival keeps them).
+static func board_locked_for(from: SaveFile, id: String) -> PackedStringArray:
+	return PackedStringArray() if MissionBook.is_dev(id) else locked_for(from, false)
+
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
+	dev = "--dev" in args
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
@@ -229,7 +238,8 @@ func _ready() -> void:
 	# default loadout when nothing was drafted for it.
 	var wanted := Battlefield.arg_value(args, "--mission")
 	if wanted != "":
-		mission_id = MissionBook.get_mission(wanted).id
+		# A composite id (v0.12, `tax_collector@capital`) is kept as given; get_mission() only validates it.
+		mission_id = wanted if MissionBook.split_city(wanted)[1] != &"" else MissionBook.get_mission(wanted).id
 		loadout = save.loadout_for(mission_id)
 		if loadout.is_empty():
 			loadout = MissionBook.get_mission(mission_id).default_loadout
@@ -485,6 +495,7 @@ func go_to(to: int) -> void:
 		Screen.BOARD:
 			var board := MissionBoard.new()
 			board.name = "Board"
+			board.dev = dev
 			add_child(board)
 			board.setup(save, mission_id)
 			board.action.connect(_on_board_action.bind(board))
@@ -505,7 +516,9 @@ func go_to(to: int) -> void:
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
-				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty, locked_for(save, false))
+				# A dev mission (the board's DEV tab) is no tier's: every power is open to it.
+				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty,
+					board_locked_for(save, mission_id))
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:
@@ -693,24 +706,31 @@ func _build_mission() -> Mission:
 func _on_mission_finished(outcome: Dictionary) -> void:
 	_between_acts = false
 	result = outcome
-	if _in_campaign and save.campaign != null:
+	bank_night(save, mission_id, loadout, result, _in_campaign)
+	save.save_to(save_path)
+	on_action("mission:over")
+
+
+## What a finished night does to the save (not written to disk: the caller does that), a static so a suite can prove it (v0.12): a
+## campaign night is the campaign's; a board night is banked; a dev night, a town's `<mission>@<city>` included, only records its own best
+## under its own id and leaves the tier board's state (night, believers, cleared) alone.
+static func bank_night(into: SaveFile, id: String, kept: PackedStringArray, outcome: Dictionary, in_campaign: bool) -> void:
+	if in_campaign and into.campaign != null:
 		# A campaign night is the campaign's (v0.10): The Warning and Last Judgement share their ids with the board, whose
 		# best results and drafted loadouts it must not touch.
-		result["campaign"] = save.campaign.record(mission_id, result)
-		result["best"] = false
-	elif result.has("descend"):
+		outcome["campaign"] = into.campaign.record(id, outcome)
+		outcome["best"] = false
+	elif outcome.has("descend") and not MissionBook.is_dev(id):
 		# A board night (v0.11 M1, spec §3.3, §6): banked on the tier board -- the night counted, its believers added, its
 		# mission cleared and its bests kept. record() still runs so the title's best score and rank keep updating, but
 		# its NEW BEST is not shown: the board's results have their own bests (controller ruling, Task 11).
-		(result.descend as Dictionary)["bank"] = save.descend.bank(mission_id, result.descend)
-		save.record(mission_id, result)
-		result["best"] = false
-		save.remember_loadout(mission_id, loadout)
+		(outcome.descend as Dictionary)["bank"] = into.descend.bank(id, outcome.descend)
+		into.record(id, outcome)
+		outcome["best"] = false
+		into.remember_loadout(id, kept)
 	else:
-		result["best"] = save.record(mission_id, result)
-		save.remember_loadout(mission_id, loadout)
-	save.save_to(save_path)
-	on_action("mission:over")
+		outcome["best"] = into.record(id, outcome)
+		into.remember_loadout(id, kept)
 
 
 ## An act of the night is over (v0.09): its result for the interlude, and the loadout kept for the re-draft.
@@ -925,6 +945,7 @@ func _flow_test() -> void:
 	await _flow_tier3(step)
 	await _flow_tier4(step)
 	await _flow_tier5(step)
+	await _flow_dev_town(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -1443,6 +1464,51 @@ func _flow_tier5(step: Callable) -> void:
 	if shown and _screen_node is ResultsScreen:
 		(_screen_node as ResultsScreen).action.emit("missions")
 		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+
+
+## v0.12 (spec 1.7, D22): with `dev` set, the board's DEV tab picks the Capital Sandbox and the night starts in the Capital; Missions
+## goes back to the board and a Tier 1 board pick starts in Aldermere, exactly as it was built (no Capital left behind in the active
+## city). A town night banks nothing. `dev` is restored and the board rebuilt without the tab. Ends on the board.
+func _flow_dev_town(step: Callable) -> void:
+	var was := dev
+	var nights := save.descend.night
+	var believers := save.descend.believers
+	var cleared := save.descend.cleared.size()
+	dev = true
+	go_to(Screen.BOARD)
+	var board := _screen_node as MissionBoard
+	board.open_tab(MissionBoard.DEV_TIER)
+	board.choose(MissionBook.CAPITAL_SANDBOX)
+	var prep := _screen_node as PrepareScreen
+	var picked := prep != null and mission_id == MissionBook.CAPITAL_SANDBOX
+	if prep != null:
+		prep.draft.preselect(MissionBook.capital_sandbox().default_loadout)
+		_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	step.call(picked and screen == Screen.MISSION and City.current().id() == &"capital",
+		"--dev: the board's DEV tab picks the Capital Sandbox and the night starts in the Capital (%s)" % City.current().id())
+	_open_pause()
+	on_action("pause:missions")
+	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+	(_screen_node as MissionBoard).choose(MissionBook.TAX_COLLECTOR)
+	prep = _screen_node as PrepareScreen
+	if prep != null:
+		prep.draft.preselect(MissionBook.tax_collector().default_loadout)
+		_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	step.call(screen == Screen.MISSION and City.current().id() == &"aldermere"
+		and City.current().structures() == AldermereCity.new().structures() and _mission.rules().mission.city == &"aldermere",
+		"and a Tier 1 board pick after it starts in Aldermere, built as ever (%s)" % City.current().id())
+	_open_pause()
+	on_action("pause:missions")
+	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
+	step.call(save.descend.night == nights and save.descend.believers == believers and save.descend.cleared.size() == cleared,
+		"neither night, abandoned, counted for anything")
+	dev = was
+	go_to(Screen.BOARD)
+	step.call(screen == Screen.BOARD and not (_screen_node as MissionBoard).dev, "the board is rebuilt without the DEV tab")
 
 
 ## The night's wishes by id, in the order heard (FLOW, v0.11 M1).

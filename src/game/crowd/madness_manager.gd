@@ -31,7 +31,7 @@ const FRENZY_DURATION := 15.0
 const ATTACK_DAMAGE := 0.34
 const TARGET_SELECTION_INTERVAL := Person.FIGHT_RETARGET
 ## Who may shrug it off, by what they are: the chance, times RESISTANCE_MULTIPLIER.
-const RESISTANCE := {&"soldier": 0.8, &"clergy": 0.5, &"bellkeeper": 0.6, &"engineer": 0.5}
+const RESISTANCE := {&"soldier": 0.8, &"clergy": 0.5, &"monk": 0.5, &"bellkeeper": 0.6, &"engineer": 0.5}
 const RESISTANCE_MULTIPLIER := 1.0
 ## Alarm: what the cast is worth (PowerBook's "alarm"), and each one broken, times ALARM_MULTIPLIER.
 const ALARM_BROKEN := 1.0

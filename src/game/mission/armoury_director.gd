@@ -148,8 +148,8 @@ func _begin() -> void:
 ## gives way to the next named.
 func _find_targets() -> Array[Structure]:
 	var out: Array[Structure] = []
-	for rects: Array in [[TownLayout.TAVERNS[0], TownLayout.TAVERNS[1]], [TownLayout.GATE_TOWERS[1], TownLayout.GATE_TOWERS[0]],
-			[TownLayout.BARRACKS]]:
+	for rects: Array in [[City.current().taverns()[0], City.current().taverns()[1]],
+			[City.current().gate_towers()[1], City.current().gate_towers()[0]], [Places.rect(&"barracks")]]:
 		var s := _built_at(rects)
 		if s != null:
 			out.append(s)

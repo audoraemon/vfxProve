@@ -99,7 +99,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, k: String) -> LanternWatch
 	town = t
 	ctx = x
 	kind = k
-	light = Searchlight.new().setup(TownLayout.TEMPLE.get_center())
+	light = Searchlight.new().setup(Places.at(&"temple"))
 	light.hunt = true
 	light.hold = BEAM_HOLD
 	light.beam_cap = 1

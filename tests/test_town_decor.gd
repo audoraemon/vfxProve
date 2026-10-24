@@ -3,8 +3,8 @@ extends RefCounted
 
 
 static func run(t) -> void:
-	var trails_ok := not TownFloor.TRAILS.is_empty()
-	for tr: Array in TownFloor.TRAILS:
+	var trails_ok := not TownLayout.TRAILS.is_empty()
+	for tr: Array in TownLayout.TRAILS:
 		for p: Vector2 in tr:
 			trails_ok = trails_ok and not TownLayout.TOWN.grow(0.8).has_point(p) \
 				and not TownLayout.RIVER.grow(0.3).has_point(p)

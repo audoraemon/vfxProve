@@ -115,7 +115,7 @@ func _begin() -> void:
 func _find_targets() -> Array[Structure]:
 	var granary: Structure = null
 	var mill: Structure = null
-	var barn: Rect2 = TownLayout.BARNS[3]
+	var barn: Rect2 = City.current().barns()[3]
 	for s: Structure in town._built:
 		if not is_instance_valid(s):
 			continue
@@ -145,7 +145,7 @@ func _face(s: Structure) -> Vector2:
 ## Where the bridge's shift waits (v0.11 M4, decision 100): the Main Gate's west tower, else the east one; never one a wish has set
 ## aside; null for neither.
 func _gate_tower() -> Structure:
-	for r: Rect2 in [TownLayout.GATE_TOWERS[0], TownLayout.GATE_TOWERS[1]]:
+	for r: Rect2 in [City.current().gate_towers()[0], City.current().gate_towers()[1]]:
 		for s: Structure in town._built:
 			if is_instance_valid(s) and s.role == &"tower" and s.footprint.position.is_equal_approx(r.position) \
 					and not reserved_places.has(s):

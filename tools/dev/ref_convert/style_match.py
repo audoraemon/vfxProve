@@ -451,20 +451,21 @@ def roof_materials():
     return [m for m in COURSE if m != ss.RED or RED_ROOFS]
 
 
-def courses(a, m, mat, contrast=1.0, ref=None, fam=None):
+def courses(a, m, mat, contrast=1.0, ref=None, fam=None, planes=None):
     """A roof (mask m, material mat) re-drawn as courses, as the in-game roofs are (COURSE[mat]): the tone is the
     roof's own colour per face, the painting's light across the face kept at `keep` (its mottling and speckle go);
     each course of `p` px has a light top row and a dark bottom line, parallel to the face's eave (slate_planes());
     tiles (`joint` px long, staggered by half a tile per course) get a dark joint in the course's middle rows and a
     fixed tone step of up to `var`. `contrast` scales every step (tune() fits it to the reference roofs' edge
     contrast). `ref`: the same canvas's intact at the same stage; a damaged still keeps its soot and char as the
-    ratio of its luminance to the intact's."""
+    ratio of its luminance to the intact's. `planes`: the faces (+1 / -1 per px, a set's own: knobs["faces"])
+    instead of slate_planes()."""
     if not m.any():
         return a
     c = COURSE[mat]
     out = a.copy()
     L = ss.luma(a[..., :3])
-    pl = slate_planes(L if ref is None else ss.luma(ref[..., :3]), m)
+    pl = slate_planes(L if ref is None else ss.luma(ref[..., :3]), m) if planes is None else planes
     h, w = m.shape
     ys, xs = np.mgrid[0:h, 0:w]
     v = np.where(pl > 0, ys - xs // 2, ys + (xs + 1) // 2)
@@ -580,7 +581,8 @@ def match(a, knobs, light=False, glow=True, ref=None, keep=None):
                     sm &= ~keep
                 if sm.sum() < SLATE_MIN:
                     continue
-                a = courses(a, sm, mat, knobs.get("tile", {}).get(mat, 1.0), r, rfam if r is not None else fam0)
+                pl = knobs.get("faces")         # a set's own faces (gpt_convert SLATE_FACES), else the light's
+                a = courses(a, sm, mat, knobs.get("tile", {}).get(mat, 1.0), r, rfam if r is not None else fam0, pl)
                 fam = np.where(sm, mat, fam)    # the re-drawn roof locks to its own material, mottles too
                 clear = clear | (sm & (a[..., :3].max(-1) >= CLEAR_V * 255))   # a damaged roof's char stays char
         if glow:
@@ -610,7 +612,7 @@ def score(img):
     return abs(st["edge"] - EDGE_TARGET) + 2.0 * max(0.0, lo - st["lum"], st["lum"] - hi), st
 
 
-def _grid(intact, fac, glob, roof, tile=None):
+def _grid(intact, fac, glob, roof, tile=None, opts=None):
     """The (lift, amount) grid with the saturation rounds (see tune()): (knobs, stats, image)."""
     mat_ref = refs()[1]
     tile = tile or {}
@@ -618,7 +620,7 @@ def _grid(intact, fac, glob, roof, tile=None):
         best = None
         for lift in LIFTS:
             for amount in AMOUNTS:
-                k = {"fac": fac, "glob": glob, "lift": lift, "amount": amount, "roof": roof, "tile": tile}
+                k = dict(opts or {}, fac=fac, glob=glob, lift=lift, amount=amount, roof=roof, tile=tile)
                 img, _ = match(intact, k)
                 c, st = score(img)
                 c += 0.01 * abs(lift - 1.0) + 0.002 * amount
@@ -671,14 +673,16 @@ def _roofs(intact, k, img, rounds):
     return k, img
 
 
-def tune(intact):
+def tune(intact, opts=None):
     """The set's knobs: saturation factors from the intact, then (lift, amount) off the fixed grid that lands its
     edge contrast nearest EDGE_TARGET with its mean luminance in LUM_BAND (ties: the smaller change), then the roofs
-    (shade and course contrast) toward the reference roofs; the grid again with them, and the roofs again."""
+    (shade and course contrast) toward the reference roofs; the grid again with them, and the roofs again. `opts`: a
+    set's own options, kept in its knobs (faces: its slate's faces, +1 / -1 per px of the canvas, instead of
+    slate_planes()' split by light)."""
     fac, glob = sat_factors(intact)
-    k, st, img = _grid(intact, fac, glob, {})
+    k, st, img = _grid(intact, fac, glob, {}, None, opts)
     k, img = _roofs(intact, k, img, ROOF_ROUNDS)
-    k, st, img = _grid(intact, fac, k["glob"], k["roof"], k.get("tile"))
+    k, st, img = _grid(intact, fac, k["glob"], k["roof"], k.get("tile"), opts)
     k, img = _roofs(intact, k, img, ROOF_ROUNDS)
     return k, ss.stats(img)
 

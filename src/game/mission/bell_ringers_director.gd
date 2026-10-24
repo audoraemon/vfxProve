@@ -52,7 +52,7 @@ var _clock := 0.0
 ## the ringers' times on the strip, and the casts watched.
 func _begin() -> void:
 	var bell := crowd.bell
-	var foot := bell.foot if bell != null else _walkable(TownLayout.BELL_TOWER.get_center())
+	var foot := bell.foot if bell != null else _walkable(Places.at(&"bell_tower"))
 	for i in POST_SPOTS.size():
 		var tried: Array = []
 		tried.append_array(posts)
@@ -107,7 +107,7 @@ func _tower_near(spot: Vector2, exclude: Array) -> Structure:
 ## _open_door()'s first face with a route (Vector2.INF for none).
 func _town_door(tower: Structure, foot: Vector2) -> Vector2:
 	var half := tower.footprint.size * 0.5 + Vector2(0.5, 0.5)
-	var inward := tower.center().direction_to(TownLayout.MAP.get_center())
+	var inward := tower.center().direction_to(City.current().map().get_center())
 	var best := Vector2.ZERO
 	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
 		if best == Vector2.ZERO or off.normalized().dot(inward) > best.normalized().dot(inward):

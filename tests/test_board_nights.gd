@@ -38,6 +38,12 @@ static func _versions(t) -> void:
 	var save := SaveFile.new()
 	t.check(Game.locked_for(save, false).size() == 23 and Game.locked_for(save, true).is_empty(),
 		"the board's draft greys the locked powers; the campaign's keeps its own rules")
+	t.check(MissionBook.is_dev(MissionBook.CAPITAL_SANDBOX) and not MissionBook.is_dev("feast_festival")
+		and not MissionBook.is_dev("warning"), "only the dev-only missions are dev missions")
+	t.check(Game.board_locked_for(save, MissionBook.CAPITAL_SANDBOX).is_empty(), "a dev mission has every power open")
+	t.check(not TierBook.has("feast_festival") and Game.board_locked_for(save, "feast_festival") == Game.locked_for(save, false)
+		and Game.board_locked_for(save, "warning") == Game.locked_for(save, false),
+		"a mission outside the campaign and no tier's (--mission=feast_festival) keeps the board's locks")
 
 
 ## The scripted runs' --board flag (preflight ruling): with it the def is the board's version, the tier's clock and budget.

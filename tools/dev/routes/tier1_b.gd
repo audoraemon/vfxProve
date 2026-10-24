@@ -315,7 +315,7 @@ static func act_harvest(bc, ctx: Dictionary) -> String:
 		if d.razed(s) or not is_instance_valid(s):
 			continue
 		var i := d.targets.find(s)
-		var name := String(HarvestDirector.STORE_NAMES[i])
+		var name := String(d.store_names[i])
 		var left := d.grain_left(s)
 		if s.destroyed:
 			continue  # fallen: spoiled the moment the grain is in
@@ -404,7 +404,7 @@ static func act_lamb(bc, ctx: Dictionary) -> String:
 		rules.cast(slots.discord, threat.ground_pos)
 		return "discord a soldier about to see him"
 	if bc._slot_ready(rules, slots, "wisp") and lamb.mind != Person.Mind.OBSERVE:
-		var wait_at := d._walkable(d.gate_at + bc.LAMB_WAIT)
+		var wait_at := d._walkable(d.gate_at + (d.gate_at - d.exit_at).normalized() * bc.LAMB_WAIT_DIST)
 		var near_gate := lamb.ground_pos.distance_to(d.gate_at) <= EscortDirector.NEAR_GATE
 		var to := d.exit_at if near_gate and (d.watch_away or not d._watch_standing()) else wait_at
 		if to == wait_at and lamb.ground_pos.distance_to(wait_at) <= 1.0:
@@ -515,7 +515,7 @@ static func _prayers_look(bc, ctx: Dictionary) -> String:
 		if bc._slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, watcher.ground_pos)
 			return "discord a Faithful by the door"
-	# The Wisp at the shrine's door fetches the poor from the streets (FirstPrayersDirector.FETCH_R), when the door is unwatched and the next
+	# The Wisp at the shrine's door fetches the poor from the streets (the director's fetch_r), when the door is unwatched and the next
 	# prayer, by the nearest of them to arrive, would not end in a crowded square (loadout A's _prayers_ready() rule), and no Faithful comes with them.
 	if bc._slot_ready(rules, slots, "wisp") and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null:
 		var light := d._walkable(d.door)
@@ -525,7 +525,7 @@ static func _prayers_look(bc, ctx: Dictionary) -> String:
 			if not is_instance_valid(g) or not g.is_alive() or g.inside or d.believers.has(g) or not g.mind in Person.LURABLE:
 				continue
 			var gap := g.ground_pos.distance_to(light)
-			if gap > FirstPrayersDirector.FETCH_R:
+			if gap > (d as FirstPrayersDirector).fetch_r:
 				continue
 			arrive = minf(arrive, bc._walk_len(crowd, g.ground_pos, light) / maxf(g.walk_speed, 0.05))
 		for p in WillOWisp.drawn(crowd._field, light):
@@ -555,8 +555,7 @@ static func _prayers_clear(bc, d: MirasHouseDirector, arrive: float) -> bool:
 	var enter_from := now + maxf(arrive - PRAYB_JITTER, wait)
 	var start := enter_from + fp.read_seconds
 	var stop := now + maxf(arrive + PRAYB_JITTER, wait) + fp.read_seconds
-	for w: Array in [[FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.MARKET_SECONDS],
-			[FirstPrayersDirector.PRIESTS_AT, FirstPrayersDirector.PRIESTS_SECONDS]]:
+	for w: Array in [[fp.market_at, fp.market_seconds], [fp.priests_at, fp.priests_seconds]]:
 		var closes := float(w[0]) + float(w[1]) + PRAYB_SLACK
 		if stop >= float(w[0]) and start <= closes:
 			return false  # it would come out among them

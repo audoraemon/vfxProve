@@ -34,9 +34,22 @@ const RELIC_RUN := "relic_run"
 const LANTERN_EYE := "lantern_eye"
 const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
+## Between a mission's id and its town in a composite id (v0.12): `tax_collector@capital`.
+const CITY_SEP := "@"
+## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
+const CAPITAL_SANDBOX := "capital_sandbox"
+## Where the sandbox's intro sweep starts: the new town's street south of the eastern stone bridge.
+const CAPITAL_INTRO_FROM := Vector2(4.0, 16.0)
 ## Seconds a completed Banishing Rite takes off the clock in The Long Night's acts (v0.09.1); every other mission keeps
 ## BanishingRite.PENALTY.
 const NIGHT_RITE_PENALTY := 20.0
+
+
+## Aldermere, the home town of every mission built here (v0.12). A def is built before City.use() (Mission.start, the board's
+## cards), so the builders never ask the active city: after a Capital night, Aldermere's Tax Collector must still frame
+## Aldermere's workshop. Its values are TownLayout's exactly.
+static func _home() -> CityDef:
+	return City.by_id(&"aldermere")
 
 
 static func all() -> Array[MissionDef]:
@@ -44,8 +57,15 @@ static func all() -> Array[MissionDef]:
 	return out
 
 
-## The mission with this id, on the board or in the campaign; an unknown id gives Last Judgement.
+## The mission with this id, on the board or in the campaign; an unknown id gives Last Judgement. A composite id
+## (`<mission>@<city>`, v0.12) gives the mission put in that town (in_city()).
 static func get_mission(id: String) -> MissionDef:
+	var parts := split_city(id)
+	if parts[1] != &"":
+		var base := get_mission(parts[0])
+		if base.id != parts[0]:
+			push_error("MissionBook.get_mission: no mission '%s' to put in '%s'" % [parts[0], parts[1]])
+		return in_city(base, parts[1])
 	for m in all():
 		if m.id == id:
 			return m
@@ -55,7 +75,114 @@ static func get_mission(id: String) -> MissionDef:
 	for m in tier_missions():
 		if m.id == id:
 			return m
+	for m in dev_missions():
+		if m.id == id:
+			return m
 	return last_judgement()
+
+
+## Dev-only missions (the capital plan): reached by id (--mission=<id>), never listed on the board or in the campaign.
+static func dev_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [capital_sandbox()]
+	return out
+
+
+## Whether `id` is one of the dev-only missions (dev_missions()), or a mission put in another town (v0.12): a night there is
+## dev-only, so every power is open.
+static func is_dev(id: String) -> bool:
+	if split_city(id)[1] != &"":
+		return true
+	for m in dev_missions():
+		if m.id == id:
+			return true
+	return false
+
+
+## The id of mission `id` played in `city` (v0.12): `tax_collector@capital`. It rides through Game, Prepare, the board, Restart
+## and the save as one string, and never collides with Aldermere's bests.
+static func city_id(id: String, city: StringName) -> String:
+	return "%s%s%s" % [id, CITY_SEP, city]
+
+
+## [base id, city] of a composite id; the city is &"" for a plain one.
+static func split_city(id: String) -> Array:
+	var at := id.find(CITY_SEP)
+	if at < 0:
+		return [id, &""]
+	return [id.substr(0, at), StringName(id.substr(at + CITY_SEP.length()))]
+
+
+## `m` put in `city` (v0.12, spec 1.6): its city set, the town's `def` overrides applied, and its tune chained so the town's
+## `director` overrides follow the board's own tuning -- the town is the most specific (R13). `from` is the city's def (default
+## City.by_id(city)); a test passes a fixture. Aldermere has no overrides, so a mission put there is unchanged.
+static func in_city(m: MissionDef, city: StringName, from: CityDef = null) -> MissionDef:
+	if from == null and not City.has(city):
+		push_error("MissionBook.in_city: unknown city '%s' for %s" % [city, m.id])
+		return m
+	var town := from if from != null else City.by_id(city)
+	m.city = city
+	var ov := town.mission_overrides(m.id)
+	for key: Variant in ov:
+		if not String(key) in Overrides.KEYS:
+			push_error("MissionBook.in_city: %s's overrides for %s have an unknown section '%s'" % [city, m.id, key])
+	var def_ov: Dictionary = ov.get("def", {})
+	if not def_ov.is_empty():
+		Overrides.apply(m, def_ov)
+	var dir_ov: Dictionary = ov.get("director", {})
+	if not dir_ov.is_empty():
+		var board_tune := m.tune
+		m.tune = func(d: MissionDirector) -> void:
+			if board_tune.is_valid():
+				board_tune.call(d)
+			Overrides.apply(d, dir_ov.duplicate(true), Overrides.town_vars(d))
+	return m
+
+
+## Whether `city` offers mission `id` (v0.12, D13): it has every place the mission needs (Places.can_host()) and either is the
+## mission's home city or has its overrides -- needs alone would offer the Tax Collector in the Capital with Aldermere's coordinates.
+static func hostable(id: String, city: CityDef) -> bool:
+	var home := get_mission(id).city == city.id()
+	if not home and city.mission_overrides(id).is_empty():
+		return false
+	return Places.can_host(id, city)
+
+
+## The composite ids of the board's missions (TierBook.all(), tier order) that `city` hosts; none for Aldermere (its own are on
+## the board proper).
+static func town_missions(city: StringName) -> PackedStringArray:
+	var out := PackedStringArray()
+	if city == &"aldermere":
+		return out
+	var town := City.by_id(city)
+	for id in TierBook.all():
+		if hostable(id, town):
+			out.append(city_id(id, city))
+	return out
+
+
+## The capital's sandbox (capital plan, Tasks 13 and 15): the capital, every power, no objectives but a free-play clock
+## like Last Judgement's skirmish (won when it runs out). Dev-only: --mission=capital_sandbox, or the board's DEV tab
+## (--dev). Its intro sweeps in from the new town over the eastern stone bridge, past the old town's river gate, and
+## rests on the great market, the town's busiest (where the bench looks).
+static func capital_sandbox() -> MissionDef:
+	var m := MissionDef.new()
+	m.id = CAPITAL_SANDBOX
+	m.name = "Capital Sandbox"
+	m.tier = 5
+	m.brief = PackedStringArray(["The capital, its two rings and its river.", "Free play."])
+	m.goal = "Free play"
+	m.goal_label = "Free play"
+	m.lose = "The time runs out"
+	m.slots = 6
+	m.city = &"capital"
+	m.clock = Rules.MISSION_SECONDS
+	m.camera_at = CapitalCity.MARKET_SQUARE.get_center()
+	m.intro_from = CAPITAL_INTRO_FROM
+	m.default_loadout = PackedStringArray(Mission.DEFAULT_LOADOUT)
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]
+		return out
+	return m
 
 
 ## The Lantern campaign's missions (v0.10): played from the campaign's night screen, never listed on the board.
@@ -167,7 +294,7 @@ static func tax_collector() -> MissionDef:
 	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
 	m.goal_label = "The collectors are dead"
 	m.lose = "A collector reaches the Citadel, or dawn comes"
-	m.camera_at = TownLayout.WORKSHOP.get_center() + Vector2(-2.0, 3.0)
+	m.camera_at = _home().landmark(&"workshop").get_center() + Vector2(-2.0, 3.0)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "discord", "whisper"])
 	m.director = TaxCollectorDirector
@@ -515,8 +642,8 @@ static func warning() -> MissionDef:
 	m.dp_capacity = 6
 	m.clock = 120.0
 	m.profile = "unaware"
-	m.intro_from = TownLayout.MAIN_GATE.get_center() + Vector2(0.0, 6.0)
-	m.camera_at = TownLayout.MAIN_GATE.get_center().lerp(TownLayout.BELL_TOWER.get_center(), 0.35)
+	m.intro_from = _home().landmark(&"main_gate").get_center() + Vector2(0.0, 6.0)
+	m.camera_at = _home().landmark(&"main_gate").get_center().lerp(_home().landmark(&"bell_tower").get_center(), 0.35)
 	m.intro_banner = "THE FIRST STIRRING"
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
 	m.director = WarningDirector
@@ -571,8 +698,8 @@ static func long_night() -> MissionDef:
 	m.profile = "night"
 	m.scored = true
 	m.default_loadout = PackedStringArray(["whisper", "doom", "discord"])
-	m.intro_from = TownLayout.MAIN_GATE.get_center() + Vector2(0.0, 6.0)
-	m.camera_at = TownLayout.MAIN_GATE.get_center().lerp(TownLayout.BELL_TOWER.get_center(), 0.35)
+	m.intro_from = _home().landmark(&"main_gate").get_center() + Vector2(0.0, 6.0)
+	m.camera_at = _home().landmark(&"main_gate").get_center().lerp(_home().landmark(&"bell_tower").get_center(), 0.35)
 	m.acts = [_omen(m), _festival(m), _procession(m), _judgement(m)]
 	m.make_objectives = (m.acts[0] as ActDef).make_objectives
 	m.make_bonuses = (m.acts[0] as ActDef).make_bonuses
@@ -624,8 +751,8 @@ static func _festival(m: MissionDef) -> ActDef:
 	a.goal = "Break the festival before the guard closes the square"
 	a.goal_label = "The festival is broken"
 	a.lose = "The guard closes the square with the festival unbroken"
-	a.camera_at = TownLayout.MARKET_SQUARE.get_center()
-	a.intro_from = TownLayout.MARKET_SQUARE.get_center() + Vector2(0.0, 8.0)
+	a.camera_at = _home().landmark(&"market_square").get_center()
+	a.intro_from = _home().landmark(&"market_square").get_center() + Vector2(0.0, 8.0)
 	a.intro_banner = "ACT II - THE FESTIVAL"
 	a.next = PackedStringArray(["judgement"])
 	a.make_town = _act2_town
@@ -648,8 +775,8 @@ static func _procession(m: MissionDef) -> ActDef:
 	a.goal = "Kill the Prince before he sails"
 	a.goal_label = "The Prince is dead"
 	a.lose = "The Prince boards the ship, or the last tide comes"
-	a.camera_at = TownLayout.CITADEL_ORIGIN.lerp(TownLayout.DOCK.get_center(), 0.3)
-	a.intro_from = TownLayout.CITADEL_ORIGIN
+	a.camera_at = _home().citadel_origin().lerp(_home().landmark(&"dock").get_center(), 0.3)
+	a.intro_from = _home().citadel_origin()
 	a.intro_banner = "ACT II - THE PROCESSION"
 	a.next = PackedStringArray(["judgement"])
 	a.make_town = _act2_town
@@ -682,8 +809,8 @@ static func _judgement(m: MissionDef) -> ActDef:
 	a.goal_label = "The city has fallen"
 	a.lose = "The people escape, or dawn comes"
 	a.scored = true
-	a.intro_from = TownLayout.MAIN_GATE.get_center()
-	a.camera_at = TownLayout.CITADEL_ORIGIN
+	a.intro_from = _home().landmark(&"main_gate").get_center()
+	a.camera_at = _home().citadel_origin()
 	a.intro_banner = "ACT III - JUDGEMENT"
 	a.make_town = _act3_town
 	a.make_act_objectives = func(n: NightState) -> Array[Objective]:

@@ -56,6 +56,7 @@ Each set has `intact.png`, `damaged.png`, `ruins.png`, and often `idle.png` (a s
 | `glass` | `[x, y, w, h]` lantern glass rect, lit by the engine |
 | `strip`, `period` | A wall strip tiled along a run; `period` is its repeat in ground units |
 | `chimney` | `[x, y]` smoke point |
+| `water_depth` | A `gpt_*` set whose painted water `gpt_convert.py` cut (`cut_water`): how deep its water strip reaches into the plot from its front edge, ground units (`BuildingTypes.OVER_WATER` stands it over the real river by it) |
 | `collapse_frames` | A generated collapse strip (batch 1-2 only; batch 3 uses the engine sink) |
 
 ## Decor sets (batch 4, `assets/pixellab/decor/`)
@@ -121,6 +122,7 @@ Spec: `docs/superpowers/specs/2026-10-05-art-animation-design.md`. Frames are dr
   - `window_glow.lit(frames)` is the finder alone; `style_match.py` runs it on a converted sprite before its palette lock.
 - **`style_stats.py [<set>...] [--state] [--dir]`**: the style numbers of intact stills (outline luminance, edge contrast, distinct colours, saturation, luminance) and each set's dominant material against the references.
 - **`style_match.py [--palette]`**: the style match pass, `gpt_convert.py`'s final step: saturation per material, local contrast, a lock to the game palette (`game_palette.png`, rebuilt from the reference sets with `--palette`) within each pixel's material, speck clean, darker eaves, the in-game outline colours and the lit-window ramp (it writes the `gpt_*` glow masks).
+- **`roof_bands.py [<set>...] [--dir] [--top]`**: how much of each `gpt_*` set's slate roof is drawn as stepped light/dark blocks (faces split by the painting's mottling, not its planes), per still, ranked, the sets over its threshold flagged; `gpt_convert.py`'s `SLATE_FACES` sets those sets' faces by hand.
 
 ### Engine
 

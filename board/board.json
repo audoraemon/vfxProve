@@ -1,8 +1,8 @@
 {
- "hash": "1f2ab7e07a658e82",
- "updated": "2026-10-24T08:26:06+07:00",
+ "hash": "d2d85c28ef0d4ad5",
+ "updated": "2026-10-24T18:57:59+07:00",
  "changes": {
-  "date": "<t:1792805166:f>",
+  "date": "<t:1792843079:f>",
   "items": []
  },
  "snapshot": {
@@ -707,7 +707,7 @@
     "version": "v0.12",
     "needs_you": false,
     "branch": "feat/v012",
-    "updated": "2026-10-23",
+    "updated": "2026-10-24",
     "order": 0
    },
    "v08-confirm": {
@@ -984,48 +984,48 @@
   "branches": [
    {
     "name": "feat/v012",
-    "ahead": 61,
+    "ahead": 15,
     "behind": 0,
     "date": "2026-10-24",
-    "subject": "fix: gate.sh --city=<town> no longer fails on the throw-away start's refusal; spec/plan name star_falls and load_count (v0.12 M1 fix round 2)",
+    "subject": "docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)",
     "pushed": false
    },
    {
     "name": "feat/town-lighting",
-    "ahead": 2,
+    "ahead": 9,
     "behind": 0,
     "date": "2026-10-24",
-    "subject": "docs: town lighting proof plan",
+    "subject": "fix: Task 5 step 0: lamp pool check before the lamp falls, beams local renamed, assert reflowed, grade_pixel clamped",
     "pushed": false
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 1,
-    "behind": 17,
+    "behind": 78,
     "date": "2026-10-23",
     "subject": "feat: Unseen Hour (Veil) and Curfew (Decree)",
     "pushed": false
    },
    {
-    "name": "feat/capital-city",
-    "ahead": 42,
-    "behind": 194,
-    "date": "2026-10-09",
-    "subject": "docs: capital summary after polish 3",
-    "pushed": true
-   },
-   {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 194,
+    "behind": 255,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
    },
    {
+    "name": "feat/capital-city",
+    "ahead": 0,
+    "behind": 213,
+    "date": "2026-10-09",
+    "subject": "docs: capital summary after polish 3",
+    "pushed": true
+   },
+   {
     "name": "feat/gpt-handoff",
     "ahead": 3,
-    "behind": 439,
+    "behind": 500,
     "date": "2026-10-04",
     "subject": "fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot",
     "pushed": false
@@ -1034,7 +1034,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-10-24",
-   "subject": "chore: keep SDD reports out of the repo (.superpowers is ignored)"
+   "subject": "fix: gate.sh --city=<town> no longer fails on the throw-away start's refusal; spec/plan name star_falls and load_count (v0.12 M1 fix round 2)"
   }
  }
 }

@@ -7,6 +7,7 @@ static func run(t) -> void:
 	_current_untouched(t)
 	_neutral_bake(t)
 	_cycle(t)
+	await _night_ambient(t)
 
 
 static func _parse(t) -> void:
@@ -52,7 +53,7 @@ static func _neutral_bake(t) -> void:
 	var g2 := Node2D.new()
 	var night := _build(Town.Look.NIGHT, g2, env2)
 	t.check(env2.lights.tint == TownLook.light_tint(Town.Look.NIGHT) and env2.lights.ambient == TownLook.ambient(Town.Look.NIGHT),
-		"NIGHT sets the light tint and ambient")
+		"NIGHT sets the light tint and the build-time ambient (a Battlefield keeps it: see _night_ambient)")
 	var lights := env2.lights
 	_free(night, env2, g2)
 	t.check(lights.ambient == 1.0 and lights.tint == Color.WHITE, "teardown puts the ambient and tint back")
@@ -89,3 +90,27 @@ static func _free(town: Town, env: EnvironmentField, ground: Node2D) -> void:
 	env.clear()
 	env.free()
 	ground.free()
+
+
+## Under a Battlefield (which rewrites the ambient every frame from the dim) a NIGHT town keeps its ambient, a CURRENT one
+## stays at 1.0, and the effects' dim still darkens either from there.
+static func _night_ambient(t) -> void:
+	for look in [Town.Look.CURRENT, Town.Look.NIGHT]:
+		var bf := Battlefield.new()
+		t.root.add_child(bf)
+		await t.process_frame
+		var town := Town.new()
+		town.look = look
+		town.build(bf.ctx.env, bf.ground_plane)
+		bf._process(0.016)
+		var want := TownLook.ambient(look) if look == Town.Look.NIGHT else 1.0
+		t.check(is_equal_approx(bf.ctx.lights.ambient, want),
+			"%s town under a Battlefield keeps an ambient of %.2f after a frame (%.3f)" % [Town.Look.keys()[look], want, bf.ctx.lights.ambient])
+		if look == Town.Look.NIGHT:
+			t.check(want < 0.9, "NIGHT's ambient is below 0.9, not the 1.0 Battlefield used to write")
+		town.teardown()
+		bf._process(0.016)
+		t.check(is_equal_approx(bf.ctx.lights.ambient, 1.0), "teardown puts the Battlefield's ambient back to 1.0")
+		town.free()
+		t.root.remove_child(bf)
+		bf.free()

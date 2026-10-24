@@ -63,6 +63,8 @@ var sfx: Sfx
 var keep_clear: Array[Rect2] = []
 
 var _env: EnvironmentField
+## The Battlefield the town was built under (its ground plane's parent), or null.
+var _bf: Battlefield
 ## The nodes a non-CURRENT look added (all in group TownLook.GROUP); teardown() frees them.
 var _look_nodes: Array[Node] = []
 ## The instance id of the town whose look currently owns the statics (Structure.cast_shadows, TownLook.active): a
@@ -83,6 +85,10 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		env.lights.tint = light_tint
 		if look != Look.CURRENT:
 			env.lights.ambient = TownLook.ambient(look)
+	# Battlefield rewrites the ambient every frame from the dim: hand it the look's own as the base.
+	_battlefield_of(ground)
+	if _bf != null:
+		_bf.base_ambient = TownLook.ambient(look)
 	var city := City.current()
 	for d in city.structures():
 		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
@@ -367,13 +373,20 @@ func _exit_tree() -> void:
 	_release_look()
 
 
+func _battlefield_of(ground: Node2D) -> void:
+	_bf = ground.get_parent() as Battlefield if ground != null else null
+
+
 ## A town freed without teardown() must not leave its look's statics behind. Only while its look is still set: a town
 ## torn down has put them back already, and a newer town may own them now.
 func _release_look() -> void:
 	if _look_owner == get_instance_id():
+		if is_instance_valid(_bf):
+			_bf.base_ambient = 1.0
 		_look_owner = 0
 		Structure.cast_shadows = true
 		TownLook.active = Look.CURRENT
+	_bf = null
 
 
 func _notification(what: int) -> void:

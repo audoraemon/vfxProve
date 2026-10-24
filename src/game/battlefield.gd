@@ -13,6 +13,8 @@ var ctx := FxContext.new()
 ## Seeds unit spawns and effect randomness; reseeded by reset().
 var rng := RandomNumberGenerator.new()
 var camera: CameraShake
+## A town look's own ambient (TownLook.ambient; Town sets it): the effects' dim scales it. 1.0 in CURRENT.
+var base_ambient := 1.0
 ## Transform Iso.BASIS: floors and ground previews added here are authored in ground units.
 var ground_plane: Node2D
 ## CanvasLayer 6 for HUD controls (empty until the owner adds some).
@@ -150,7 +152,7 @@ const VIEW_MARGIN := 48.0
 
 
 func _process(_delta: float) -> void:
-	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85
+	ctx.lights.ambient = base_ambient * (1.0 - ctx.impact.dim_level() * 0.85)
 	var size := get_viewport().get_visible_rect().size / camera.zoom
 	Person.view = Rect2(camera.get_screen_center_position() - size * 0.5, size).grow(VIEW_MARGIN)
 	Structure.view = Person.view

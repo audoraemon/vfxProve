@@ -130,6 +130,7 @@ const SUITES := [
 	"res://tests/test_spoiled_harvest.gd",
 	"res://tests/test_capital_harvest.gd",
 	"res://tests/test_lost_lamb.gd",
+	"res://tests/test_capital_lamb.gd",
 	"res://tests/test_first_prayers.gd",
 	"res://tests/test_tier1_wishes.gd",
 	"res://tests/test_tier1_board.gd",

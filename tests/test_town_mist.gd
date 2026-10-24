@@ -91,7 +91,9 @@ static func _beam_rules(t, mist: TownMist, id: StringName) -> void:
 	for b in mist.beams():
 		worst = maxf(worst, b.color.a)
 		var holder := b.get_parent()
-		layered = layered and holder != null and holder.get_parent() == mist and holder.name == &"Beams" 			and holder.z_index == TownMist.BEAM_Z and not holder.z_as_relative and b.z_index == 0
+		var in_holder: bool = holder != null and holder.get_parent() == mist and holder.name == &"Beams"
+		layered = layered and in_holder and holder.z_index == TownMist.BEAM_Z and not holder.z_as_relative \
+			and b.z_index == 0
 		for p in b.polygon:
 			whole = whole and p == p.round()
 	t.check(layered, "%s: every beam sits in the mist's Beams node at z %d" % [id, TownMist.BEAM_Z])

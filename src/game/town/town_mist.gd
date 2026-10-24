@@ -130,11 +130,11 @@ func setup(look_value) -> TownMist:
 ## Slanted stripes of sun from the upper left across the town (screen px, world-space): three nested pale
 ## parallelograms each, so a stripe has a bright core and two stepped edges.
 func _add_beams(town_rect: Rect2) -> void:
-	var beams := Node2D.new()
-	beams.name = "Beams"
-	beams.z_as_relative = false
-	beams.z_index = BEAM_Z
-	add_child(beams)
+	var holder := Node2D.new()
+	holder.name = "Beams"
+	holder.z_as_relative = false
+	holder.z_index = BEAM_Z
+	add_child(holder)
 	var c := Iso.ground_to_screen(town_rect.get_center())
 	var span := town_rect.size.x * 32.0
 	var length := 520.0
@@ -154,7 +154,7 @@ func _add_beams(town_rect: Rect2) -> void:
 				quad[j] = quad[j].round()
 			poly.polygon = quad
 			poly.color = Color(1.0, 0.94, 0.74, BEAM_MAX_ALPHA)
-			beams.add_child(poly)
+			holder.add_child(poly)
 			_beams.append(poly)
 
 

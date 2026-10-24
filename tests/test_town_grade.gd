@@ -121,9 +121,9 @@ static func _capital_lamps(t) -> void:
 		for i in pools.pool_count():
 			if pools._pools[i].decor == fallen:
 				idx = i
+		t.check(idx >= 0 and pools.pool_sprite(idx).visible, "the lamp's pool shows while it stands")
 		fallen.down = true
 		t.check(TownPools.lamp_pool(fallen).is_empty(), "a lamp knocked down has no pool")
-		t.check(idx >= 0 and pools.pool_sprite(idx).visible, "the lamp's pool shows while it stands")
 		pools._process(0.016)
 		t.check(idx >= 0 and not pools.pool_sprite(idx).visible, "the live pool sprite hides after the lamp falls")
 	_free(parts)

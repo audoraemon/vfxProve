@@ -29,7 +29,7 @@ static func grade_pixel(c: Color, g: Dictionary) -> Color:
 	var ember := smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * float(g.keep_lit)
 	var src := Vector3(c.r, c.g, c.b)
 	var res := out.lerp(src, ember)
-	return Color(res.x, res.y, res.z, 1.0)
+	return Color(clampf(res.x, 0.0, 1.0), clampf(res.y, 0.0, 1.0), clampf(res.z, 0.0, 1.0), 1.0)
 
 
 func setup(look_value) -> TownGrade:

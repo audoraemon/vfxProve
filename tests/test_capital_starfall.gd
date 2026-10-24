@@ -156,14 +156,14 @@ static func _camera_clear(t) -> void:
 	var first: Vector2 = d.star_falls[0][1]
 	t.check(Kit.clear_of_stack(first, cam, zone), "the first star's gate (or its arrow) is clear of the padded stack at the camera (%s)" % [Kit.shown_at(first, cam)])
 	t.check(def.intro_from.is_equal_approx(cam + Vector2(0.0, 6.0)), "the intro sweeps in from 6 south of the camera's rest")
-	t.check(cam.is_equal_approx(first.lerp(Vector2(-8.05, -20.05), 0.35)), "the camera rests a third of the way from the first post to the tower")
+	t.check(cam.is_equal_approx(first.lerp(City.by_id(&"capital").landmark(&"bell_tower").get_center(), 0.35)), "the camera rests a third of the way from the first post to the tower")
 
 
 ## A set-up director keeps the town's values and its tour names them.
 static func _tour_true(t, town: Dictionary) -> void:
 	var d: StarfallDirector = town.d
 	var stops := d.tour()
-	var want := ["The Harbour Gate. A star falls here at %s." % UiTheme.clock(10.0), "The River Gate. A star falls here by %s." % UiTheme.clock(90.0),
+	var want := ["The Harbour Gate. A star falls here at %s." % UiTheme.clock(10.0), "The West River Gate. A star falls here by %s." % UiTheme.clock(90.0),
 		"The West Gate. A star falls here by %s." % UiTheme.clock(180.0)]
 	var ok := stops.size() == 4
 	for i in 3:

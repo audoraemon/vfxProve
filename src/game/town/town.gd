@@ -159,7 +159,13 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		if (s.kind == Structure.Kind.HOUSE and s.role == &"house") \
 				or (s.role == CapitalPlots.ROLE and bool(BuildingTypes.info(s.art_tag).get("smokes", false))):
 			houses.append(s)
+	if look != Look.CURRENT:
+		# The looks smoke from every chimney a sprite has (an armoury, a monastery), not only the houses'.
+		for s in _built:
+			if not houses.has(s) and s.sprite is Dictionary and not (s.sprite as Dictionary).is_empty() 					and s.sprite.get("chimney", Vector2.INF) != Vector2.INF and not s.sprite.get("own_smoke", false):
+				houses.append(s)
 	smoke = ChimneySmoke.new().setup(houses)
+	smoke.tall = look != Look.CURRENT
 	smoke.name = "ChimneySmoke"
 	smoke.lights = env.lights
 	if env.fx_back != null:

@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_windows(t)
 	_atmosphere(t)
 	_contact(t)
+	_smoke(t)
 
 
 static func _build(look: Town.Look) -> Array:
@@ -178,3 +179,20 @@ static func _contact(t) -> void:
 		var mat := sh.contact.get_child(0).material as ShaderMaterial
 		t.check(mat != null and mat.shader.code.contains("bayer4"), "the band is dithered")
 		_free(parts)
+
+
+## More chimney smoke in the looks only: CURRENT's plume is the old one (ChimneySmoke.tall off), DAY and NIGHT draw the
+## taller one with wisps, from at least every chimney CURRENT smokes from.
+static func _smoke(t) -> void:
+	var cur := _build(Town.Look.CURRENT)
+	var cs: ChimneySmoke = (cur[0] as Town).smoke
+	t.check(not cs.tall, "CURRENT smoke is the old plume")
+	var n_cur := cs.wisp_count()
+	_free(cur)
+	for look: Town.Look in [Town.Look.DAY, Town.Look.NIGHT]:
+		var parts := _build(look)
+		var sm: ChimneySmoke = (parts[0] as Town).smoke
+		t.check(sm.tall and sm.wisp_count() >= n_cur and n_cur > 0,
+			"%s smokes taller, from %d chimneys (CURRENT %d)" % [Town.Look.keys()[look], sm.wisp_count(), n_cur])
+		_free(parts)
+	t.check(ChimneySmoke.TALL_RISE > ChimneySmoke.RISE and ChimneySmoke.TALL_PUFFS > ChimneySmoke.PUFFS, "the looks' plume rises higher, with more puffs")

@@ -100,7 +100,7 @@ const ART_MIN := 8
 static func window_pixels(s: Structure) -> int:
 	if not (s.sprite is Dictionary) or (s.sprite as Dictionary).is_empty():
 		return 0
-	var mask: Texture2D = s.sprite.get("glow_mask")
+	var mask: Texture2D = SpriteArt.window_mask(s.sprite)
 	if mask != null:
 		return lit_pixels(mask)
 	# Only a building with windows (or a gatehouse): an orchard's fruit or a vineyard's grapes are bright and warm too.

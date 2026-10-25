@@ -141,7 +141,7 @@ func _set_flicker(on: bool) -> void:
 		return
 	_flicker = on
 	if on:
-		_mat.set_shader_parameter("glow_mask", sprite.glow_mask)
+		_mat.set_shader_parameter("glow_mask", SpriteArt.window_mask(sprite))
 	_mat.set_shader_parameter("window_flicker", on)
 
 
@@ -152,7 +152,7 @@ func _stop() -> void:
 
 
 func _show(st: StringName, frame_index: int) -> void:
-	_set_flicker(st == &"intact" and sprite.get("glow_mask") != null)
+	_set_flicker(st == &"intact" and SpriteArt.window_mask(sprite) != null)
 	var n := frame_count(st)
 	var f := 0
 	if n > 1:

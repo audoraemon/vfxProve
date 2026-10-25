@@ -90,7 +90,7 @@ static func _windows(t) -> void:
 	t.check(SpriteView.window_boost == 0.0, "a CURRENT build leaves the window boost at 0")
 	var plain := true
 	for s in (cur[1] as EnvironmentField).structures():
-		if s.sprite is Dictionary and s.sprite.get("glow_mask") != null:
+		if s.sprite is Dictionary and SpriteArt.window_mask(s.sprite) != null:
 			plain = _boost_of(s) == null
 			break
 	t.check(plain, "CURRENT sprites never get a window_boost parameter")
@@ -102,7 +102,7 @@ static func _windows(t) -> void:
 	var masked := 0
 	var from_art := 0
 	for s in env.structures():
-		if s.sprite is Dictionary and s.sprite.get("glow_mask") != null:
+		if s.sprite is Dictionary and SpriteArt.window_mask(s.sprite) != null:
 			masked += 1
 			if boosted == 0 and float(_boost_of(s)) > 0.0:
 				boosted += 1

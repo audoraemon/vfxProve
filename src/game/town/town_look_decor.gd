@@ -140,11 +140,12 @@ static func plan(town: Town) -> Array[Dictionary]:
 		elif s.kind == Structure.Kind.GATE or s.kind == Structure.Kind.KEEP and not day:
 			# DAY keeps only the gatehouses' corner brackets, unlit.
 			var r := s.footprint.grow(-TOWER_INSET)
+			var deck := deck_height(s)
 			for c: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
-				_put(out, Prop.TORCH, c, s.height, s)
+				_put(out, Prop.TORCH, c, deck, s)
 			if s.kind == Structure.Kind.KEEP and not day:
-				# A tower's brazier in the middle of its top, as the concept's.
-				_put(out, Prop.TORCH, s.footprint.get_center(), s.height, s)
+				# A tower's brazier in the middle of its top, as the concept's (over a sprite tower's painted one: a bigger fire).
+				_put(out, Prop.TORCH, s.footprint.get_center(), deck, s)
 	# A lantern by every house (a farmhouse too), and by every market stall, church and barracks inside the town, on its
 	# face toward the nearest street.
 	for s in town._built:
@@ -192,6 +193,40 @@ static func plan(town: Town) -> Array[Dictionary]:
 		_put(out, Prop.LAMP, g, 0.0, null)
 		taken.append(g)
 	return out
+
+
+## How high a tower's or gatehouse's top deck stands (screen px over its footprint): its sprite's, from the intact still's
+## first opaque row over its anchor, less the footprint diamond's own height and DECK_DROP for the battlements (round 3:
+## its structure's height sits well under a sprite tower's top, so the torches hung on its face). Its height without a
+## sprite. Cached per still.
+const DECK_DROP := 4.0
+static var _deck_cache := {}
+
+
+static func deck_height(s: Structure) -> float:
+	if not (s.sprite is Dictionary) or (s.sprite as Dictionary).is_empty():
+		return s.height
+	var still: Texture2D = (s.sprite.get("stills", {}) as Dictionary).get(&"intact")
+	if still == null:
+		return s.height
+	var key := still.get_instance_id()
+	if not _deck_cache.has(key):
+		var img := still.get_image()
+		if img.is_compressed():
+			img.decompress()
+		var top := 0
+		var found := false
+		for y in img.get_height():
+			for x in img.get_width():
+				if img.get_pixel(x, y).a > 0.5:
+					found = true
+					break
+			if found:
+				break
+			top += 1
+		var fp: Vector2 = s.sprite.footprint
+		_deck_cache[key] = (s.sprite.anchor as Vector2).y - top - (fp.x + fp.y) * 16.0 - DECK_DROP
+	return maxf(s.height, float(_deck_cache[key]))
 
 
 static func _wall_torches(out: Array[Dictionary], s: Structure) -> void:

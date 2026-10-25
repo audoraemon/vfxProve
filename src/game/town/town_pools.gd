@@ -16,17 +16,19 @@ const BUFFER_SCALE := 0.5
 ## world pixels, so it never shows rings).
 const TEX := Vector2i(96, 48)
 ## A torch's pool, against its light's radius in screen pixels (the light's own falloff reaches further).
-const TORCH_REACH := 0.72
+const TORCH_REACH := 1.0
+## A torch pool's strength (its light's flicker scales it).
+const TORCH_ALPHA := 0.8
 const WINDOW_COLOUR := Color(1.0, 0.72, 0.34)
 ## A window pool's strength: a little gentler than a torch's (0.5).
-const WINDOW_ALPHA := 0.42
+const WINDOW_ALPHA := 0.7
 ## Window pool radius (screen px, x semi-axis): per lit pixel, clamped to this range.
-const WINDOW_MIN := 18.0
-const WINDOW_MAX := 48.0
+const WINDOW_MIN := 22.0
+const WINDOW_MAX := 64.0
 ## A decor lamp's pool (a house lantern, a lamp post, anything with a "glow" in the decor manifest): the radius (screen px,
 ## x semi-axis; its own light quad is 23) and strength.
-const LAMP_RADIUS := 30.0
-const LAMP_ALPHA := 0.42
+const LAMP_RADIUS := 48.0
+const LAMP_ALPHA := 0.5
 ## Decor sets that are lamps whether or not the manifest gives them a "glow".
 const LAMP_SETS := ["lamp_post", "lamp_house"]
 
@@ -38,6 +40,8 @@ const WALL_W := 0.7
 const WALL_H := 1.5
 const WALL_RISE := 1.0
 const WALL_ALPHA := 0.6
+## A window's light up its own front, out of 255 (it mostly lights the street).
+const WINDOW_WALL := 255
 ## Flicker is re-read this often (seconds).
 const FLICKER_STEP := 0.1
 
@@ -51,7 +55,7 @@ var _tl := PackedVector2Array()
 var _sz := PackedVector2Array()
 var _col := PackedColorArray()
 var _on := PackedByteArray()
-## Per pool: whether it also lights what stands round it (a torch or a lamp; a window lights only the street).
+## Per pool: how much it lights what stands round it, 0..255 (a torch or a lamp fully; a window its own front a little).
 var _wall := PackedByteArray()
 var _canvas: PoolCanvas
 ## The light buffer every pool is drawn into; TownGrade reads its texture.
@@ -72,7 +76,7 @@ class PoolCanvas extends Node2D:
 		owner_pools._paint(self)
 
 
-## The pool texture, built once: white, its alpha a smooth falloff (1 - d^2)^2 out to the ellipse's edge.
+## The pool texture, built once: white, its alpha a smooth falloff (1 - d)^2.5 out to the ellipse's edge.
 static func texture() -> ImageTexture:
 	if _texture != null:
 		return _texture
@@ -80,7 +84,7 @@ static func texture() -> ImageTexture:
 	for y in TEX.y:
 		for x in TEX.x:
 			var d := Vector2((x + 0.5) / TEX.x * 2.0 - 1.0, (y + 0.5) / TEX.y * 2.0 - 1.0).length()
-			var a := pow(maxf(1.0 - d * d, 0.0), 2.0)
+			var a := pow(maxf(1.0 - d, 0.0), 2.5)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_texture = ImageTexture.create_from_image(img)
 	return _texture
@@ -193,7 +197,7 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 		if lit <= 0:
 			continue
 		var front := Iso.ground_to_screen(s.footprint.end)
-		out.append({"pos": front + Vector2(0, 3), "radius": clampf(sqrt(float(lit)) * 2.2, WINDOW_MIN, WINDOW_MAX),
+		out.append({"pos": front + Vector2(0, 3), "radius": clampf(sqrt(float(lit)) * 2.8, WINDOW_MIN, WINDOW_MAX),
 			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA, "structure": s})
 	return out
 
@@ -223,11 +227,12 @@ func setup(town: Town) -> TownPools:
 		var c: Color = p.color
 		_tl.append(((p.pos as Vector2) - sz * 0.5).round())
 		_sz.append(sz)
-		_col.append(Color(c.r, c.g, c.b, float(p.get("alpha", 0.5))))
+		_col.append(Color(c.r, c.g, c.b, float(p.get("alpha", TORCH_ALPHA))))
 		_on.append(1)
-		_wall.append(0 if p.get("structure") != null else 1)
+		# A window lights its own front a little (WINDOW_WALL), a torch or a lamp what stands round it fully.
+		_wall.append(WINDOW_WALL if p.get("structure") != null else 255)
 		_pools.append({"flicker": p.flicker, "light": p.get("light"), "structure": p.get("structure"), "decor": p.get("decor"),
-			"alpha": float(p.get("alpha", 0.5)), "i": _pools.size()})
+			"alpha": float(p.get("alpha", TORCH_ALPHA)), "i": _pools.size()})
 		var dc = p.get("decor")
 		if dc != null:
 			(dc as Decor).fell.connect(_on_lamp_fell.bind(_pools.size() - 1))
@@ -379,11 +384,9 @@ func _paint(c: CanvasItem) -> void:
 	for i in drawn_indices():
 		var r := Rect2(_tl[i], _sz[i])
 		c.draw_texture_rect(tex, r, false, _col[i])
-		if _wall[i] == 0:
-			continue
 		# The light up the walls: a rounder, fainter pool rising from the ground one, so the faces, roofs and people
 		# standing over the lit ground take the light too, not the paving alone.
 		var col := _col[i]
-		col.a *= WALL_ALPHA
+		col.a *= WALL_ALPHA * _wall[i] / 255.0
 		c.draw_texture_rect(tex, Rect2(r.position + Vector2(r.size.x * (1.0 - WALL_W) * 0.5, -r.size.y * WALL_RISE),
 			Vector2(r.size.x * WALL_W, r.size.y * WALL_H)), false, col)

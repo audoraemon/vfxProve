@@ -75,8 +75,9 @@ static func _bloom(t) -> void:
 		_free(parts)
 	var day := TownLook.bloom(Town.Look.DAY)
 	var night := TownLook.bloom(Town.Look.NIGHT)
-	t.check(float(night.strength) > float(day.strength) and float(night.threshold) < float(day.threshold),
-		"NIGHT glows more strongly, and from dimmer pixels, than DAY")
+	t.check(float(night.strength) > float(day.strength), "NIGHT glows more strongly than DAY")
+	t.check(float(day.get("use_lum", 0.0)) == 1.0 and float(night.get("use_lum", 0.0)) == 0.0,
+		"DAY blooms from bright luminance (highlights), NIGHT from a flame's brightest channel")
 
 
 ## Every house's windows: DAY and NIGHT push the glow-mask windows toward a hot lamp colour (NIGHT fully, DAY faintly),

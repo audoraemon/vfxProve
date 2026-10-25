@@ -69,8 +69,8 @@ static func tree_shadow_bands(_look) -> Array[Dictionary]:
 ## from the grade.
 static func grade(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
-		return {"lift": Vector3(0.0, 0.01, 0.04), "gain": Vector3(0.50, 0.60, 0.84),
-			"warm": Vector3(1.10, 1.02, 0.95), "cool": Vector3(0.90, 1.0, 1.18), "split": 0.45, "spread": 0.3,
+		return {"lift": Vector3(0.0, 0.01, 0.04), "gain": Vector3(0.44, 0.48, 0.68),
+			"warm": Vector3(1.10, 1.02, 0.95), "cool": Vector3(0.96, 1.0, 1.08), "split": 0.45, "spread": 0.3,
 			"keep_lit": 0.85, "calm": 0.85}
 	return {"lift": Vector3(0.0, 0.0, 0.01), "gain": Vector3(1.02, 0.99, 0.92),
 		"warm": Vector3(1.14, 1.03, 0.80), "cool": Vector3(0.92, 0.98, 1.06), "split": 0.40, "spread": 0.28,
@@ -140,13 +140,16 @@ static func window_boost(look) -> float:
 ## NIGHT the lamps, torches and windows light what stands near them; by DAY they only warm their own doorsteps a touch.
 static func light_gain(look) -> float:
 	if look == Town.Look.NIGHT:
-		return 1.6
+		return 3.0
 	if look == Town.Look.DAY:
 		return 0.15
 	return 0.0
 
 
-static func light_warm(_look) -> Vector3:
+static func light_warm(look) -> Vector3:
+	if look == Town.Look.NIGHT:
+		# Deep lamp orange, as the reference's lit streets.
+		return Vector3(1.0, 0.62, 0.30)
 	return Vector3(1.0, 0.86, 0.66)
 
 
@@ -154,5 +157,5 @@ static func light_warm(_look) -> Vector3:
 ## and tint. NIGHT blooms from its flames and windows strongly; DAY lightly from its highlights.
 static func bloom(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
-		return {"threshold": 0.7, "knee": 0.25, "warm_only": 1.0, "strength": 0.8, "tint": Vector3(1.0, 0.78, 0.5)}
+		return {"threshold": 0.8, "knee": 0.2, "warm_only": 1.0, "strength": 1.0, "tint": Vector3(1.0, 0.78, 0.5)}
 	return {"threshold": 0.8, "knee": 0.15, "warm_only": 0.0, "use_lum": 1.0, "strength": 0.3, "tint": Vector3(1.0, 0.88, 0.66)}

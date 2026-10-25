@@ -23,7 +23,7 @@ vec3 bright(vec3 c) {
 	float m = max(c.r, max(c.g, c.b));
 	float b = mix(m, dot(c, vec3(0.299, 0.587, 0.114)), use_lum);
 	float sat = (m - min(c.r, min(c.g, c.b))) / max(m, 0.001);
-	float w = smoothstep(0.04, 0.25, c.r - c.b) * smoothstep(0.35, 0.6, sat);
+	float w = smoothstep(0.04, 0.25, c.r - c.b) * smoothstep(0.45, 0.7, sat);
 	return c * smoothstep(threshold, threshold + knee, b) * mix(1.0 - warm_only, 1.0, w);
 }
 

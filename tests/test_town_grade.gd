@@ -238,7 +238,7 @@ static func _band_texture(t) -> void:
 	t.check(alphas.size() > 20, "the pool texture falls off smoothly (%d levels)" % alphas.size())
 	var mid := img.get_pixel(TownPools.TEX.x / 2, TownPools.TEX.y / 2).a
 	var half := img.get_pixel(TownPools.TEX.x * 3 / 4, TownPools.TEX.y / 2).a
-	t.check(mid > 0.95 and half > 0.2 and half < mid and img.get_pixel(0, 0).a == 0.0, "brightest at the centre, none at the corner")
+	t.check(mid > 0.9 and half > 0.1 and half < mid and img.get_pixel(0, 0).a == 0.0, "brightest at the centre, none at the corner")
 	for m: float in [0.1, 0.37, 0.5, 0.83]:
 		var sum := 0.0
 		var whole := true

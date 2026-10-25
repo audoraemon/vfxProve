@@ -158,7 +158,7 @@ void fragment() {
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
 	// Soft roll-off: two lights overlapping warm the art more, but never blow it to white.
 	vec3 lg = light_at(SCREEN_UV) * light_gain;
-	g += c * lg / (1.0 + 0.6 * lg) * light_warm;
+	g += c * lg / (1.0 + 1.0 * lg) * light_warm;
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
 	// Clamped as TownGrade.grade_pixel() is (the framebuffer would clamp it anyway).
 	vec3 o = clamp(mix(g, c, ember), 0.0, 1.0);

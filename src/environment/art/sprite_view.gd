@@ -50,6 +50,10 @@ var _flicker := false
 ## How far lit windows (the glow mask) are pushed toward a hot lamp colour in every view made from now on: 0 in CURRENT
 ## (the shader's path is then unchanged); the town's DAY and NIGHT looks set it (TownLook.window_boost) for their build.
 static var window_boost := 0.0
+## The town look's other sprite-shader settings for every view made from now on (round 3, TownLook.sprite_params(): the
+## windows' hot core and halo, the rim light): {uniform name: value}. Empty in CURRENT, so no parameter is ever set and
+## the shader runs its defaults (off).
+static var look_params := {}
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -71,6 +75,8 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	_mat.set_shader_parameter("frame_size", sprite.size)
 	if window_boost > 0.0:
 		_mat.set_shader_parameter("window_boost", window_boost)
+	for k: String in look_params:
+		_mat.set_shader_parameter(k, look_params[k])
 	return self
 
 

@@ -227,7 +227,7 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 			continue
 		var front := Iso.ground_to_screen(s.footprint.end)
 		out.append({"pos": front + Vector2(0, 3), "radius": clampf(sqrt(float(lit)) * 2.8, WINDOW_MIN, WINDOW_MAX),
-			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA, "structure": s,
+			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA * TownLook.window_pool(town.look), "structure": s,
 			"face": face_of(s) if s.kind in FACE_KINDS else PackedVector2Array()})
 	return out
 

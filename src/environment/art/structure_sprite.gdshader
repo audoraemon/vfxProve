@@ -41,6 +41,13 @@ uniform vec2 frame_size = vec2(1.0);
 // colour and glows (skips the dim). 0 (CURRENT): the path is unchanged.
 uniform float window_boost = 0.0;
 const vec3 WINDOW_HOT = vec3(1.0, 0.80, 0.42);
+// Round 3 (NIGHT, SpriteView.look_params): a window's hot core (window_hot of the way to WINDOW_CORE) and a one-pixel
+// warm halo round it on the wall (WINDOW_HALO, window_hot of the way), so a house with a mask reads as glowing.
+// Both stay saturated (red well over blue), so the NIGHT grade's keep_lit saves them whole.
+// 0 (CURRENT, DAY): off.
+uniform float window_hot = 0.0;
+const vec3 WINDOW_CORE = vec3(1.0, 0.86, 0.42);
+const vec3 WINDOW_HALO = vec3(0.95, 0.58, 0.26);
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -104,6 +111,18 @@ void fragment() {
 			c = min(c * (1.0 + window_amp * f), vec3(cap));
 			if (window_boost > 0.0) {
 				c = mix(c, max(c, WINDOW_HOT * (0.9 + 0.1 * f)), window_boost);
+				glow = true;
+			}
+			if (window_hot > 0.0) {
+				c = mix(c, min(max(c, WINDOW_CORE) * (1.0 + 0.3 * f), vec3(1.0)), window_hot);
+			}
+		} else if (window_hot > 0.0) {
+			float n = texture(glow_mask, (local + vec2(1.5, 0.5)) / frame_size).a
+				+ texture(glow_mask, (local + vec2(-0.5, 0.5)) / frame_size).a
+				+ texture(glow_mask, (local + vec2(0.5, 1.5)) / frame_size).a
+				+ texture(glow_mask, (local + vec2(0.5, -0.5)) / frame_size).a;
+			if (n > 0.5) {
+				c = mix(c, WINDOW_HALO, min(window_hot, 1.0));
 				glow = true;
 			}
 		}

@@ -141,6 +141,19 @@ static func window_boost(look) -> float:
 	return 0.0
 
 
+## The look's sprite-shader settings (SpriteView.look_params, structure_sprite.gdshader; round 3): NIGHT's windows burn
+## with a hot core and a halo. Nothing in CURRENT.
+static func sprite_params(look) -> Dictionary:
+	if look == Town.Look.NIGHT:
+		return {"window_hot": 0.9}
+	return {}
+
+
+## A window's pool on the ground in front (TownPools) against its round-2 strength: NIGHT's windows throw a brighter fan.
+static func window_pool(look) -> float:
+	return 1.7 if look == Town.Look.NIGHT else 1.0
+
+
 ## The light map (TownPools' buffer, multiplied in by TownGrade): how strongly it lights the art, and its warm colour. At
 ## NIGHT the lamps, torches and windows light what stands near them; by DAY they only warm their own doorsteps a touch.
 static func light_gain(look) -> float:

@@ -81,6 +81,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	_look_owner = get_instance_id()
 	Structure.cast_shadows = look == Look.CURRENT
 	SpriteView.window_boost = TownLook.window_boost(look)
+	SpriteView.look_params = TownLook.sprite_params(look)
 	var ground_tint := TownLook.ground_tint(look)
 	var light_tint := TownLook.light_tint(look)
 	env.structure_destroyed.connect(_on_structure_destroyed)
@@ -409,6 +410,7 @@ func _release_look() -> void:
 		_look_owner = 0
 		Structure.cast_shadows = true
 		SpriteView.window_boost = 0.0
+		SpriteView.look_params = {}
 		TownLook.active = Look.CURRENT
 	_bf = null
 

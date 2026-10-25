@@ -23,6 +23,34 @@ uniform float knee = 0.45;
 uniform sampler2D light_tex : hint_default_black, filter_linear;
 uniform float light_gain = 0.0;
 uniform vec3 light_warm = vec3(1.0);
+// The view (TownGrade.follow_view): the viewport's size and its canvas transform (origin, zoom), so the light map is read
+// once per world pixel and cut into light_steps levels through a 4x4 Bayer dither locked to the world: crisp pixels, no
+// rings. Below zoom 1 a dither cell is ceil(1 / zoom) world pixels, at least one screen pixel.
+uniform vec2 view_size = vec2(640.0, 360.0);
+uniform vec2 view_origin = vec2(0.0);
+uniform float view_zoom = 1.0;
+uniform float light_steps = 16.0;
+
+float bayer4(vec2 p) {
+	ivec2 i = ivec2(mod(p, 4.0));
+	int b[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+	return (float(b[i.y * 4 + i.x]) + 0.5) / 16.0;
+}
+
+// The light at this fragment: the map read at its world cell's centre, then stepped through the dither.
+vec3 light_at(vec2 screen_uv) {
+	float k = max(ceil(1.0 / view_zoom - 0.001), 1.0);
+	vec2 wp = (screen_uv * view_size - view_origin) / view_zoom;
+	vec2 cell = floor(wp / k);
+	vec2 uv = ((cell + 0.5) * k * view_zoom + view_origin) / view_size;
+	vec3 l = texture(light_tex, uv).rgb;
+	float m = max(l.r, max(l.g, l.b));
+	if (m <= 0.0) {
+		return vec3(0.0);
+	}
+	float q = floor(m * light_steps + bayer4(cell)) / light_steps;
+	return l * (q / m);
+}
 
 void fragment() {
 	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
@@ -36,7 +64,9 @@ void fragment() {
 	float blueness = smoothstep(0.08, 0.22, c.b - max(c.r, c.g));
 	float dark = 1.0 - smoothstep(0.55, 0.95, lum);
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
-	g += c * texture(light_tex, SCREEN_UV).rgb * light_warm * light_gain;
+	// Soft roll-off: two lights overlapping warm the art more, but never blow it to white.
+	vec3 lg = light_at(SCREEN_UV) * light_gain;
+	g += c * lg / (1.0 + 0.6 * lg) * light_warm;
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
 	// Clamped as TownGrade.grade_pixel() is (the framebuffer would clamp it anyway).
 	COLOR = vec4(clamp(mix(g, c, ember), 0.0, 1.0), 1.0);

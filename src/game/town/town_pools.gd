@@ -12,10 +12,9 @@ extends Node
 
 ## The light buffer's resolution against the game's (half).
 const BUFFER_SCALE := 0.5
-## The band texture's size: a 2:1 ellipse, four hard bands.
+## The pool texture's size: a 2:1 ellipse with a smooth falloff to its edge (TownGrade cuts it into dithered steps of
+## world pixels, so it never shows rings).
 const TEX := Vector2i(96, 48)
-const BAND_EDGES := [0.34, 0.58, 0.80, 1.0]
-const BAND_ALPHA := [1.0, 0.62, 0.34, 0.14]
 ## A torch's pool, against its light's radius in screen pixels (the light's own falloff reaches further).
 const TORCH_REACH := 0.72
 const WINDOW_COLOUR := Color(1.0, 0.72, 0.34)
@@ -63,7 +62,7 @@ var _seen_view := Rect2()
 var redraws := 0
 
 
-## The one node every pool draws on: additive, nearest filtered.
+## The one node every pool draws on: additive, linear filtered (the buffer is smooth; the grade steps it).
 class PoolCanvas extends Node2D:
 	var owner_pools: TownPools
 
@@ -71,7 +70,7 @@ class PoolCanvas extends Node2D:
 		owner_pools._paint(self)
 
 
-## The band texture, built once: alpha steps in four bands out to the ellipse's edge, white.
+## The pool texture, built once: white, its alpha a smooth falloff (1 - d^2)^2 out to the ellipse's edge.
 static func texture() -> ImageTexture:
 	if _texture != null:
 		return _texture
@@ -79,11 +78,7 @@ static func texture() -> ImageTexture:
 	for y in TEX.y:
 		for x in TEX.x:
 			var d := Vector2((x + 0.5) / TEX.x * 2.0 - 1.0, (y + 0.5) / TEX.y * 2.0 - 1.0).length()
-			var a := 0.0
-			for i in BAND_EDGES.size():
-				if d < BAND_EDGES[i]:
-					a = BAND_ALPHA[i]
-					break
+			var a := pow(maxf(1.0 - d * d, 0.0), 2.0)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_texture = ImageTexture.create_from_image(img)
 	return _texture
@@ -171,7 +166,7 @@ func setup(town: Town) -> TownPools:
 	_canvas = PoolCanvas.new()
 	_canvas.name = "PoolCanvas"
 	_canvas.owner_pools = self
-	_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_canvas.material = mat

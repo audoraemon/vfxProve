@@ -54,3 +54,33 @@ func setup(look_value, light: Texture2D = null) -> TownGrade:
 	rect.material = mat
 	add_child(rect)
 	return self
+
+
+func _enter_tree() -> void:
+	if not RenderingServer.frame_pre_draw.is_connected(follow_view):
+		RenderingServer.frame_pre_draw.connect(follow_view)
+
+
+func _exit_tree() -> void:
+	if RenderingServer.frame_pre_draw.is_connected(follow_view):
+		RenderingServer.frame_pre_draw.disconnect(follow_view)
+
+
+## The light map's dither is locked to the world: hand the shader the view (its size, origin and zoom) just before each
+## frame is drawn.
+func follow_view() -> void:
+	if not is_inside_tree() or mat == null:
+		return
+	var vp := get_viewport()
+	var ct := vp.canvas_transform
+	mat.set_shader_parameter("view_size", vp.get_visible_rect().size)
+	mat.set_shader_parameter("view_origin", ct.origin)
+	mat.set_shader_parameter("view_zoom", ct.get_scale().x)
+
+
+## The shader's light step (town_grade.gdshader light_at) in GDScript, for the tests: the light `m` (0..1) at a world
+## cell, cut into `steps` levels through the 4x4 Bayer dither.
+static func light_step(m: float, cell: Vector2i, steps: float) -> float:
+	const B := [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+	var b := (float(B[posmod(cell.y, 4) * 4 + posmod(cell.x, 4)]) + 0.5) / 16.0
+	return floorf(m * steps + b) / steps

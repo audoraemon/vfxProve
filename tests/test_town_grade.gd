@@ -227,6 +227,8 @@ static func _on_screen(layer: CanvasLayer, pos: Vector2) -> Vector2:
 	return layer.get_final_transform() * pos
 
 
+## The pool texture falls off smoothly (many levels, brightest at the centre, none at the edge); the grade cuts it into
+## dithered steps per world pixel: a 4x4 block averages back to the light, and a pixel only takes whole steps.
 static func _band_texture(t) -> void:
 	var tex := TownPools.texture()
 	var img := tex.get_image()
@@ -234,7 +236,21 @@ static func _band_texture(t) -> void:
 	for y in img.get_height():
 		for x in img.get_width():
 			alphas[snappedf(img.get_pixel(x, y).a, 0.001)] = true
-	t.check(alphas.size() == TownPools.BAND_ALPHA.size() + 1, "the pool texture has %d hard steps (and nothing smooth)" % alphas.size())
+	t.check(alphas.size() > 20, "the pool texture falls off smoothly (%d levels)" % alphas.size())
+	var mid := img.get_pixel(TownPools.TEX.x / 2, TownPools.TEX.y / 2).a
+	var half := img.get_pixel(TownPools.TEX.x * 3 / 4, TownPools.TEX.y / 2).a
+	t.check(mid > 0.95 and half > 0.2 and half < mid and img.get_pixel(0, 0).a == 0.0, "brightest at the centre, none at the corner")
+	for m: float in [0.1, 0.37, 0.5, 0.83]:
+		var sum := 0.0
+		var whole := true
+		for y in 4:
+			for x in 4:
+				var v := TownGrade.light_step(m, Vector2i(x + 8, y - 4), 6.0)
+				sum += v
+				whole = whole and is_equal_approx(v * 6.0, roundf(v * 6.0))
+		t.check(absf(sum / 16.0 - m) < 0.04 and whole, "a 4x4 block of dithered light %.2f averages %.3f in whole steps" % [m, sum / 16.0])
+	var src := FileAccess.get_file_as_string("res://src/game/town/town_grade.gdshader")
+	t.check(src.contains("0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5"), "the shader's Bayer matrix is light_step()'s")
 
 
 ## All pools are one draw node: a single CanvasItem under the layer, additive and nearest filtered, whose scale snaps to
@@ -251,8 +267,7 @@ static func _one_draw(t) -> void:
 			drawers += 1
 	t.check(drawers == 1 and pools.canvas() is Node2D, "all %d pools draw on one node" % pools.pool_count())
 	var mat := pools.canvas().material as CanvasItemMaterial
-	t.check(mat != null and mat.blend_mode == CanvasItemMaterial.BLEND_MODE_ADD
-		and pools.canvas().texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "the draw node is additive and nearest filtered")
+	t.check(mat != null and mat.blend_mode == CanvasItemMaterial.BLEND_MODE_ADD, "the draw node is additive")
 	var even := true
 	for i in pools.pool_count():
 		var k := pools._sz[i].x / float(TownPools.TEX.x)

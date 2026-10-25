@@ -25,6 +25,12 @@ const LAMP_OUT := 0.3
 const LAMP_IN := 0.3
 const CLEAR := 0.5
 const FOOT_CLEAR := 0.2
+## DAY (round 3) shows far fewer props: no wall-walk or tower torches (a gatehouse's corners keep an unlit bracket), street lamps
+## only along the main avenues (roads at least MAIN_ROAD wide) every DAY_LAMP_STEP and round the squares, and a lantern
+## only by a house within DAY_NEAR of a square or a main avenue (and by the church and barracks); none on the stalls.
+const MAIN_ROAD := 1.3
+const DAY_LAMP_STEP := 6.0
+const DAY_NEAR := 1.2
 ## Lamps stand inside the town (and the capital's paved ring), and this far beyond it along the approaches.
 const TOWN_PAD := 1.5
 ## The buildings that get a lantern by their door.
@@ -42,13 +48,17 @@ const LIGHT := {
 }
 
 ## The atlas: the three sprites on its top rows, then the animated band from BAND_Y: rows of four CELL x CELL frames.
-const ATLAS := Vector2i(112, 112)
+const ATLAS := Vector2i(112, 128)
 const BAND_Y := 48
 const CELL := 16
 const ROW_FLAME := 0
 const ROW_FLAME_SMALL := 1
 const ROW_GLASS_LAMP := 2
 const ROW_GLASS_LANTERN := 3
+## A wall torch's iron bracket (round 3: no post, so at overview zoom a wall carries flames, not sticks): its cup's top
+## sits at BRACKET_CUP in its cell, its stem runs to the cell's bottom.
+const ROW_BRACKET := 4
+const BRACKET_CUP := Vector2i(8, 8)
 ## Where a glass sits in its cell (top left), and a flame's base (the engine's flame tip) in its cell.
 const GLASS_AT := Vector2i(5, 5)
 const FLAME_BASE := Vector2i(8, 15)
@@ -111,23 +121,36 @@ static func plan(town: Town) -> Array[Dictionary]:
 		if is_instance_valid(d):
 			taken.append(d.at)
 	var roads: Array = city.roads()
+	var day: bool = town.look == Town.Look.DAY
+	var mains: Array[Rect2] = []
+	for r: Rect2 in roads:
+		if minf(r.size.x, r.size.y) >= MAIN_ROAD:
+			mains.append(r)
+	# DAY's lit ground: the squares and the main avenues.
+	var squares: Array[Rect2] = []
+	squares.assign(areas.get(&"plazas", []))
+	squares.append_array(mains)
 	# Wall walks and tower tops.
 	for s in town._built:
 		if not is_instance_valid(s) or s == keep:
 			continue
 		if s.kind == Structure.Kind.CASTLE_WALL:
-			_wall_torches(out, s)
-		elif s.kind == Structure.Kind.KEEP or s.kind == Structure.Kind.GATE:
+			if not day:
+				_wall_torches(out, s)
+		elif s.kind == Structure.Kind.GATE or s.kind == Structure.Kind.KEEP and not day:
+			# DAY keeps only the gatehouses' corner brackets, unlit.
 			var r := s.footprint.grow(-TOWER_INSET)
 			for c: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
 				_put(out, Prop.TORCH, c, s.height, s)
-			if s.kind == Structure.Kind.KEEP:
+			if s.kind == Structure.Kind.KEEP and not day:
 				# A tower's brazier in the middle of its top, as the concept's.
 				_put(out, Prop.TORCH, s.footprint.get_center(), s.height, s)
 	# A lantern by every house (a farmhouse too), and by every market stall, church and barracks inside the town, on its
 	# face toward the nearest street.
 	for s in town._built:
 		if not is_instance_valid(s) or not s.kind in LANTERN_KINDS 				or (s.kind != Structure.Kind.HOUSE and not _in(inside, s.footprint.get_center())):
+			continue
+		if day and (s.kind == Structure.Kind.MARKET_STALL or s.kind == Structure.Kind.HOUSE 				and not _hits(squares, s.footprint.get_center(), DAY_NEAR + s.footprint.size.length() * 0.5)):
 			continue
 		if s.kind == Structure.Kind.MARKET_STALL:
 			# A stall's lantern hangs from its awning's front corner: its glass alone, no post (the market is busy enough).
@@ -139,16 +162,17 @@ static func plan(town: Town) -> Array[Dictionary]:
 		taken.append(g)
 	# Street lamps along both sides of every road, then round every square.
 	var spots: Array[Vector2] = []
-	for r: Rect2 in roads:
+	var step := DAY_LAMP_STEP if day else LAMP_STEP
+	for r: Rect2 in (mains if day else roads):
 		var along_x := r.size.x >= r.size.y
 		var a0 := r.position.x if along_x else r.position.y
 		var a1 := r.end.x if along_x else r.end.y
 		for side in 2:
 			var across := (r.position.y - LAMP_OUT if side == 0 else r.end.y + LAMP_OUT) if along_x \
 				else (r.position.x - LAMP_OUT if side == 0 else r.end.x + LAMP_OUT)
-			var k := ceili(a0 / LAMP_STEP - (0.25 + 0.5 * side))
-			while (k + 0.25 + 0.5 * side) * LAMP_STEP < a1:
-				var u := (k + 0.25 + 0.5 * side) * LAMP_STEP
+			var k := ceili(a0 / step - (0.25 + 0.5 * side))
+			while (k + 0.25 + 0.5 * side) * step < a1:
+				var u := (k + 0.25 + 0.5 * side) * step
 				spots.append(Vector2(u, across) if along_x else Vector2(across, u))
 				k += 1
 	for p: Rect2 in areas.get(&"plazas", []):
@@ -157,7 +181,7 @@ static func plan(town: Town) -> Array[Dictionary]:
 		for e in 4:
 			var a: Vector2 = corners[e]
 			var b: Vector2 = corners[(e + 1) % 4]
-			var n := maxi(int(a.distance_to(b) / LAMP_STEP), 1)
+			var n := maxi(int(a.distance_to(b) / step), 1)
 			for i in n:
 				spots.append(a.lerp(b, (i + 0.5) / n))
 	var water: Array[Rect2] = city.rivers()
@@ -268,6 +292,10 @@ static func atlas() -> ImageTexture:
 			_fill(img, o, Rect2i(Vector2i.ONE, gs - Vector2i(2, 2)), fl[0])
 			if row == ROW_GLASS_LAMP:
 				_fill(img, o, Rect2i(gs.x / 2, 0, 1, gs.y), Structure.COL_IRON_CUP)
+		# A wall torch's bracket: an iron cup on a short stem (Structure._draw_post_flame()'s cup), the same each frame.
+		o = Vector2i(f * CELL, BAND_Y + ROW_BRACKET * CELL) + BRACKET_CUP
+		_fill(img, o, Rect2i(-3, 0, 6, 2), Structure.COL_IRON_CUP)
+		_fill(img, o, Rect2i(-1, 2, 2, CELL - BRACKET_CUP.y - 2), Structure.COL_IRON_CUP.darkened(0.25))
 	_atlas = ImageTexture.create_from_image(img)
 	return _atlas
 
@@ -286,12 +314,26 @@ static func material() -> ShaderMaterial:
 	return _material
 
 
+## The look's settings on the shared material (round 3): at NIGHT the posts take their own lamp's warm light
+## (SELF_LIT) instead of reading as black sticks; in both looks the posts fade out below POST_ZOOM (the camera's zoom),
+## so at overview zoom only the flames and glasses show.
+const SELF_LIT := Color(1.0, 0.66, 0.40, 0.75)
+const POST_ZOOM := Vector2(0.45, 0.7)
+
+
+static func _set_look(look_value) -> void:
+	var m := material()
+	m.set_shader_parameter("self_lit", SELF_LIT if look_value == Town.Look.NIGHT else Color(0, 0, 0, 0))
+	m.set_shader_parameter("post_zoom", POST_ZOOM)
+
+
 func setup(town: Town, look_value) -> TownLookDecor:
 	name = "LookDecor"
 	look = look_value
 	y_sort_enabled = true
 	_env = town._env
 	_lights = _env.lights if _env != null else null
+	_set_look(look_value)
 	props = plan(town)
 	for p in props:
 		var host: Structure = p.host
@@ -327,10 +369,14 @@ func _rects(p: Dictionary, origin: Vector2) -> Array[Rect2]:
 	var cell := Vector2(CELL, CELL)
 	var col := float(int(p.phase) * CELL)
 	if p.prop == Prop.TORCH:
-		# NIGHT burns the torch's full flame; DAY keeps it small.
-		var row := ROW_FLAME if look == Town.Look.NIGHT else ROW_FLAME_SMALL
-		out.append_array([Rect2(top + (sp.flame as Vector2) - Vector2(FLAME_BASE), cell),
-			Rect2(Vector2(col, BAND_Y + row * CELL), cell)])
+		# Round 3: a bracket, no post (a post read as a black stick at overview zoom). NIGHT burns the full flame on its
+		# cup; DAY's torches are unlit.
+		out.clear()
+		var foot := (Iso.ground_to_screen(p.at) - Vector2(0, p.lift) - origin).round()
+		var cup := foot - Vector2(0, CELL - BRACKET_CUP.y)
+		out.append_array([Rect2(cup - Vector2(BRACKET_CUP), cell), Rect2(Vector2(col, BAND_Y + ROW_BRACKET * CELL), cell)])
+		if look == Town.Look.NIGHT:
+			out.append_array([Rect2(cup - Vector2(FLAME_BASE), cell), Rect2(Vector2(col, BAND_Y + ROW_FLAME * CELL), cell)])
 	else:
 		var g: Rect2 = sp.glass
 		var row := ROW_GLASS_LAMP if p.prop == Prop.LAMP else ROW_GLASS_LANTERN
@@ -343,10 +389,17 @@ func _rects(p: Dictionary, origin: Vector2) -> Array[Rect2]:
 func lights() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for p in props:
+		if not lit(p):
+			continue
 		var l: Dictionary = LIGHT[p.prop]
 		out.append({"pos": Iso.ground_to_screen(p.at) - Vector2(0, p.lift), "radius": l.radius, "color": Structure.TORCH_LIGHT,
 			"flicker": l.flicker, "alpha": l.alpha, "structure": p.host, "look_decor": true})
 	return out
+
+
+## Whether prop `p` burns: DAY's wall torches are unlit (round 3).
+func lit(p: Dictionary) -> bool:
+	return not (look == Town.Look.DAY and p.prop == Prop.TORCH)
 
 
 ## How many props of kind `prop`.

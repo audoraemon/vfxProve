@@ -99,7 +99,8 @@ static func _props(t, city: StringName) -> void:
 	var cur_cells := _solid_cells(cur_env, cur_town)
 	var cur_counts := [cur_env.structures().size(), cur_env.decor().size(), cur_env.lights._lights.size()]
 	_free(cur)
-	for look: Town.Look in [Town.Look.DAY, Town.Look.NIGHT]:
+	var night_counts := []
+	for look: Town.Look in [Town.Look.NIGHT, Town.Look.DAY]:
 		var parts := _build(look)
 		var town: Town = parts[0]
 		var env: EnvironmentField = parts[1]
@@ -111,8 +112,21 @@ static func _props(t, city: StringName) -> void:
 		var n_torch := ld.count(TownLookDecor.Prop.TORCH)
 		var n_lamp := ld.count(TownLookDecor.Prop.LAMP)
 		var n_lantern := ld.count(TownLookDecor.Prop.LANTERN)
-		t.check(n_torch > 100 and n_lamp > 20 and n_lantern > 80,
-			"%s %d: torches %d, lamps %d, lanterns %d" % [city, look, n_torch, n_lamp, n_lantern])
+		if look == Town.Look.NIGHT:
+			night_counts = [n_torch, n_lamp, n_lantern]
+			t.check(n_torch > 100 and n_lamp > 20 and n_lantern > 80,
+				"%s NIGHT: torches %d, lamps %d, lanterns %d" % [city, n_torch, n_lamp, n_lantern])
+		else:
+			# Round 3: DAY shows far fewer props (no wall-walk torches, lamps on the main avenues and squares only, lanterns
+			# only near them), and its torches are unlit.
+			t.check(n_lamp * 2 <= int(night_counts[1]) and n_lantern * 2 <= int(night_counts[2]) and n_torch < int(night_counts[0]),
+				"%s DAY: far fewer props (torches %d, lamps %d, lanterns %d against NIGHT's %s)" % [city, n_torch, n_lamp,
+					n_lantern, str(night_counts)])
+			var unlit := true
+			for p in ld.props:
+				if p.prop == TownLookDecor.Prop.TORCH:
+					unlit = unlit and not ld.lit(p)
+			t.check(unlit, "%s DAY: the torches are unlit" % city)
 		# Visual only: the walk grid and the field are exactly CURRENT's.
 		t.check(_solid_cells(env, town) == cur_cells, "%s %d: the walk grid is CURRENT's (no prop enters it)" % [city, look])
 		t.check([env.structures().size(), env.decor().size(), env.lights._lights.size()] == cur_counts,
@@ -151,7 +165,10 @@ static func _props(t, city: StringName) -> void:
 		for p in pools:
 			if p.get("look_decor", false):
 				from_decor += 1
-		t.check(from_decor == ld.props.size(), "%s %d: every prop has a pool (%d)" % [city, look, from_decor])
+		var lit := 0
+		for p in ld.props:
+			lit += 1 if ld.lit(p) else 0
+		t.check(from_decor == lit, "%s %d: every lit prop has a pool (%d of %d)" % [city, look, from_decor, lit])
 		if look == Town.Look.NIGHT:
 			# Round 1's sources: the same town without the look decor and without the look-only window masks.
 			town.look_decor = null

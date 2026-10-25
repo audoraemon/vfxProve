@@ -75,11 +75,14 @@ static func grade(look) -> Dictionary:
 	# DAY (round 2): clean colour, no global orange. A light warm/cool split, then the sun's tone split on lit content
 	# (local_*: a face brighter than round it turns warm and brighter, a darker one cool and deeper), a saturation and a
 	# contrast lift, and the shoulder so sunlit paving does not clip.
-	return {"lift": Vector3(0.0, 0.0, 0.0), "gain": Vector3(1.02, 1.0, 0.98),
-		"warm": Vector3(1.06, 1.02, 0.94), "cool": Vector3(0.92, 0.97, 1.08), "split": 0.42, "spread": 0.25,
+	# Round 3: softer, toward the concept's golden hour: lower contrast, warmer highlights, a gentler tone split measured
+	# over a wider neighbourhood (lod 4) with a wider dead zone, so small details (paving, timber, clutter) are not
+	# sharpened into a busy look. The haze is kept.
+	return {"lift": Vector3(0.01, 0.008, 0.0), "gain": Vector3(1.02, 1.0, 0.98),
+		"warm": Vector3(1.07, 1.02, 0.93), "cool": Vector3(0.94, 0.97, 1.04), "split": 0.42, "spread": 0.30,
 		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.30, "knee": 0.50,
-		"local_amt": 1.1, "local_lod": 3.0, "local_dead": 0.06, "local_warm": Vector3(1.08, 1.0, 0.86), "local_cool": Vector3(0.86, 0.94, 1.12),
-		"saturation": 1.08, "contrast": 1.12, "pivot": 0.42}
+		"local_amt": 0.7, "local_lod": 4.0, "local_dead": 0.09, "local_warm": Vector3(1.10, 1.0, 0.82), "local_cool": Vector3(0.90, 0.95, 1.08),
+		"saturation": 1.04, "contrast": 1.05, "pivot": 0.42}
 
 
 ## The atmosphere of a look over the active city (TownGrade's uniforms, town_grade.gdshader atmosphere()): DAY's haze

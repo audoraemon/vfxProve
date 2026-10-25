@@ -190,6 +190,9 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 			continue
 		out.append({"pos": lp.pos, "radius": LAMP_RADIUS * d.scale_mul, "color": Structure.TORCH_LIGHT, "flicker": 1.0,
 			"alpha": LAMP_ALPHA, "decor": d})
+	# The look's extra lights (TownLookDecor, round 2): a pool round every wall-walk torch, house lantern and street lamp.
+	if is_instance_valid(town.look_decor):
+		out.append_array(town.look_decor.lights())
 	for s in env.structures():
 		if not is_instance_valid(s) or s.destroyed:
 			continue

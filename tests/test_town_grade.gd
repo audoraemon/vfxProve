@@ -83,8 +83,10 @@ static func _layers_and_counts(t) -> void:
 			if d.kind == Decor.Kind.LAMP and not d.down:
 				lamps += 1
 		var listed := TownPools.pools_for(town)
+		# (and round 2's look decor: a pool per prop, TownLookDecor)
+		var props: int = town.look_decor.props.size() if is_instance_valid(town.look_decor) else 0
 		t.check(statics > 0 and windows > 0 and lamps > 0, "Aldermere has torches (%d), lit windows (%d) and decor lamps (%d)" % [statics, windows, lamps])
-		t.check(listed.size() == statics + windows + lamps, "pools_for: %d == %d torches + %d windows + %d decor lamps" % [listed.size(), statics, windows, lamps])
+		t.check(listed.size() == statics + windows + lamps + props, "pools_for: %d == %d torches + %d windows + %d decor lamps + %d look props" % [listed.size(), statics, windows, lamps, props])
 		t.check(pools.pool_count() == listed.size(), "one pool per listed light")
 		var ok := true
 		for p in listed:

@@ -67,6 +67,8 @@ var _env: EnvironmentField
 var _bf: Battlefield
 ## The nodes a non-CURRENT look added (all in group TownLook.GROUP); teardown() frees them.
 var _look_nodes: Array[Node] = []
+## The look's extra lights (TownLookDecor; DAY and NIGHT only, null in CURRENT).
+var look_decor: TownLookDecor
 ## The instance id of the town whose look currently owns the statics (Structure.cast_shadows, TownLook.active): a
 ## town freed or torn down puts them back only while it is still the owner, so an older town never undoes a newer one's.
 static var _look_owner := 0
@@ -243,6 +245,10 @@ func _build_look(ground: Node2D) -> void:
 		var mist := TownMist.new().setup(look)
 		_add_look_node(mist, ground)
 		ground.move_child(mist, mini(4, ground.get_child_count() - 1))
+	# The look's extra lights (round 2, visual only): wall-walk torches, house lanterns, street lamps, y-sorted in the
+	# world beside the decor. Before the light map, which takes a pool from each.
+	look_decor = TownLookDecor.new().setup(self, look)
+	_add_look_node(look_decor, _env.world_parent if _env.world_parent != null else null)
 	# The light map (every lamp, torch and lit window drawn into a small buffer), then the grade over the world, which
 	# multiplies the world by it: under Battlefield's glow layer.
 	var pools := TownPools.new().setup(self)
@@ -339,6 +345,7 @@ func teardown() -> void:
 	for n in _look_nodes:
 		_free(n)
 	_look_nodes.clear()
+	look_decor = null
 	_release_look()
 	_env.clear_decor()
 	for d in _decor:

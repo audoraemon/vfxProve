@@ -170,6 +170,17 @@ static func _props(t, city: StringName) -> void:
 			lit += 1 if ld.lit(p) else 0
 		t.check(from_decor == lit, "%s %d: every lit prop has a pool (%d of %d)" % [city, look, from_decor, lit])
 		if look == Town.Look.NIGHT:
+			# Round 3: a house's windows and lantern light its front: a six-point face over its two seen faces, raised.
+			var faced := 0
+			var good := true
+			for p in pools:
+				var s = p.get("structure")
+				if s == null or (s as Structure).kind != Structure.Kind.HOUSE:
+					continue
+				var face: PackedVector2Array = p.get("face", PackedVector2Array())
+				faced += 1 if face.size() == 6 else 0
+				good = good and (face.is_empty() or face[4].y < face[1].y and face[0].x < face[1].x and face[1].x < face[2].x)
+			t.check(faced > 50 and good, "%s NIGHT: house lights light their fronts (%d faces)" % [city, faced])
 			# Round 1's sources: the same town without the look decor and without the look-only window masks.
 			town.look_decor = null
 			TownLook.active = Town.Look.CURRENT

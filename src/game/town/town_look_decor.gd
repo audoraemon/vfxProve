@@ -392,8 +392,11 @@ func lights() -> Array[Dictionary]:
 		if not lit(p):
 			continue
 		var l: Dictionary = LIGHT[p.prop]
+		var host: Structure = p.host
+		# A house's (church's, barracks') lantern lights its front too (round 3, TownPools.face_of()).
+		var face := TownPools.face_of(host) if p.prop == Prop.LANTERN and host != null and host.kind in TownPools.FACE_KINDS 			else PackedVector2Array()
 		out.append({"pos": Iso.ground_to_screen(p.at) - Vector2(0, p.lift), "radius": l.radius, "color": Structure.TORCH_LIGHT,
-			"flicker": l.flicker, "alpha": l.alpha, "structure": p.host, "look_decor": true})
+			"flicker": l.flicker, "alpha": l.alpha, "structure": host, "look_decor": true, "face": face})
 	return out
 
 

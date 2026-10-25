@@ -36,10 +36,22 @@ const LAMP_SETS := ["lamp_post", "lamp_house"]
 const SCALE_STEP := 1.0 / 48.0
 ## The light on what stands round a pool: a second, rounder pool WALL_W as wide and WALL_H as tall, raised WALL_RISE of
 ## the ground pool's height, at WALL_ALPHA of its strength.
-const WALL_W := 0.7
-const WALL_H := 1.5
-const WALL_RISE := 1.0
+## Round 3: taller than wide (a vertical ellipse from the ground up past the eaves), so a lamp at a house front reaches
+## up its wall, not just the ground.
+const WALL_W := 0.55
+const WALL_H := 2.6
+const WALL_RISE := 2.0
 const WALL_ALPHA := 0.6
+## Round 3: a light tied to a building (its windows, its lantern) also lights that building's front: a face-shaped
+## polygon over its two seen faces (face_of()), FACE_ALPHA of the pool's strength at the foot fading to FACE_TOP of that
+## at the eaves, FACE_RISE of its height (at most FACE_MAX px) up.
+const FACE_ALPHA := 0.9
+const FACE_TOP := 0.5
+const FACE_RISE := 1.15
+const FACE_MAX := 72.0
+## The kinds whose front a light tied to them lights.
+const FACE_KINDS := [Structure.Kind.HOUSE, Structure.Kind.TEMPLE, Structure.Kind.BARRACKS, Structure.Kind.KEEP, Structure.Kind.TOWER,
+	Structure.Kind.BLOCK]
 ## A window's light up its own front, out of 255 (it mostly lights the street).
 const WINDOW_WALL := 255
 ## Flicker is re-read this often (seconds).
@@ -57,6 +69,9 @@ var _col := PackedColorArray()
 var _on := PackedByteArray()
 ## Per pool: how much it lights what stands round it, 0..255 (a torch or a lamp fully; a window its own front a little).
 var _wall := PackedByteArray()
+## Per pool: the front of the building it lights (face_of(): bottom left, front, right, then the tops right, front,
+## left; world px), or empty.
+var _face: Array[PackedVector2Array] = []
 var _canvas: PoolCanvas
 ## The light buffer every pool is drawn into; TownGrade reads its texture.
 var buffer: SubViewport
@@ -171,6 +186,17 @@ static func lamp_pool(d: Decor) -> Dictionary:
 	return {"pos": Iso.ground_to_screen(d.at) + off * ArtTuning.scale(d.tuning_key()) * d.scale_mul}
 
 
+## The front of building `s` on screen (world px): its footprint's left, front and right corners, then the same raised
+## FACE_RISE of its height (FACE_MAX at most), right to left: a polygon over the two faces the view sees.
+static func face_of(s: Structure) -> PackedVector2Array:
+	var f := s.footprint
+	var h := Vector2(0, minf(s.height * FACE_RISE, FACE_MAX))
+	var l := Iso.ground_to_screen(Vector2(f.position.x, f.end.y))
+	var c := Iso.ground_to_screen(f.end)
+	var r := Iso.ground_to_screen(Vector2(f.end.x, f.position.y))
+	return PackedVector2Array([l, c, r, r - h, c - h, l - h])
+
+
 ## Every pool of a town: {pos: Vector2 (world screen px), radius: float (x semi-axis, px), color: Color, flicker: float,
 ## light: the LightField entry for a torch, absent for a window}.
 static func pools_for(town: Town) -> Array[Dictionary]:
@@ -201,7 +227,8 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 			continue
 		var front := Iso.ground_to_screen(s.footprint.end)
 		out.append({"pos": front + Vector2(0, 3), "radius": clampf(sqrt(float(lit)) * 2.8, WINDOW_MIN, WINDOW_MAX),
-			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA, "structure": s})
+			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA, "structure": s,
+			"face": face_of(s) if s.kind in FACE_KINDS else PackedVector2Array()})
 	return out
 
 
@@ -234,6 +261,7 @@ func setup(town: Town) -> TownPools:
 		_on.append(1)
 		# A window lights its own front a little (WINDOW_WALL), a torch or a lamp what stands round it fully.
 		_wall.append(WINDOW_WALL if p.get("structure") != null else 255)
+		_face.append(p.get("face", PackedVector2Array()))
 		_pools.append({"flicker": p.flicker, "light": p.get("light"), "structure": p.get("structure"), "decor": p.get("decor"),
 			"alpha": float(p.get("alpha", TORCH_ALPHA)), "i": _pools.size()})
 		var dc = p.get("decor")
@@ -384,7 +412,8 @@ func drawn_indices() -> PackedInt32Array:
 func _paint(c: CanvasItem) -> void:
 	redraws += 1
 	var tex := texture()
-	for i in drawn_indices():
+	var drawn := drawn_indices()
+	for i in drawn:
 		var r := Rect2(_tl[i], _sz[i])
 		c.draw_texture_rect(tex, r, false, _col[i])
 		# The light up the walls: a rounder, fainter pool rising from the ground one, so the faces, roofs and people
@@ -393,3 +422,27 @@ func _paint(c: CanvasItem) -> void:
 		col.a *= WALL_ALPHA * _wall[i] / 255.0
 		c.draw_texture_rect(tex, Rect2(r.position + Vector2(r.size.x * (1.0 - WALL_W) * 0.5, -r.size.y * WALL_RISE),
 			Vector2(r.size.x * WALL_W, r.size.y * WALL_H)), false, col)
+	# The lit fronts, after every pool, all in one triangle array (one draw): flat light (the pool texture's full-alpha
+	# middle), bright at the foot and fading up to the eaves. Each front is two quads: left L F Ft Lt, right F R Rt Ft.
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	for i in drawn:
+		var face := _face[i]
+		if face.is_empty():
+			continue
+		var low := _col[i]
+		low.a *= FACE_ALPHA
+		var high := low
+		high.a *= FACE_TOP
+		var o := pts.size()
+		pts.append_array(face)
+		cols.append_array([low, low, low, high, high, high])
+		for k in [0, 1, 4, 0, 4, 5, 1, 2, 3, 1, 3, 4]:
+			idx.append(o + k)
+	if not idx.is_empty():
+		var uvs := PackedVector2Array()
+		uvs.resize(pts.size())
+		uvs.fill(Vector2(0.5, 0.5))
+		RenderingServer.canvas_item_add_triangle_array(c.get_canvas_item(), idx, pts, cols, uvs, PackedInt32Array(),
+			PackedFloat32Array(), tex.get_rid())

@@ -1,16 +1,17 @@
 class_name TownPools
-extends CanvasLayer
-## The warm light pools of the NIGHT look (Town.Look): one additive stepped ellipse of light on the ground under every
-## wall torch (LightField's static lights, read only), under every decor lamp (read from the
-## town's decor) and in front of every standing building that has lit windows (its sprite set's glow_mask). They sit above
-## the colour grade, so lamplight is what the grade did not darken, and under Battlefield's glow layer. The layer follows the viewport, so the pools are world-space: they pan and scale with the
-## art, and their bands are world pixels. Torch pools flicker with their light; nothing is registered in LightField.
-## Every pool is one rect in a single draw node (one draw call): a stepped ellipse of the shared band texture, additive. The
+extends Node
+## The light map of the DAY and NIGHT looks (Town.Look): one warm pool of light round every wall torch (LightField's
+## static lights, read only), every decor lamp (read from the town's decor) and in front of every standing building that
+## has lit windows (its sprite set's glow_mask). The pools are not drawn on the screen: they are drawn into a small
+## light buffer (a SubViewport at half the game's resolution that follows the camera), and the colour grade multiplies
+## the world by it (TownGrade: lit = base * (ambient + light)), so a wall, a roof or a person near a lamp turns warm while
+## its own dark side stays dark. Nothing is registered in LightField.
+## Every pool is one rect in a single draw node in the buffer (one draw call): the shared pool texture, additive. The
 ## flicker is re-read ten times a second, a pool hides on the event that puts its light out (a structure destroyed, a lamp
 ## knocked down), and pools outside the view are skipped, so the node redraws only when something changed.
 
-## One above the grade (TownGrade.LAYER), under Battlefield's glow layer.
-const LAYER := 2
+## The light buffer's resolution against the game's (half).
+const BUFFER_SCALE := 0.5
 ## The band texture's size: a 2:1 ellipse, four hard bands.
 const TEX := Vector2i(96, 48)
 const BAND_EDGES := [0.34, 0.58, 0.80, 1.0]
@@ -32,6 +33,12 @@ const LAMP_SETS := ["lamp_post", "lamp_house"]
 
 ## A pool's scale snaps to this step so the four bands stay even (96 * k and 48 * k are whole pixels).
 const SCALE_STEP := 1.0 / 48.0
+## The light on what stands round a pool: a second, rounder pool WALL_W as wide and WALL_H as tall, raised WALL_RISE of
+## the ground pool's height, at WALL_ALPHA of its strength.
+const WALL_W := 0.7
+const WALL_H := 1.5
+const WALL_RISE := 1.0
+const WALL_ALPHA := 0.6
 ## Flicker is re-read this often (seconds).
 const FLICKER_STEP := 0.1
 
@@ -46,6 +53,8 @@ var _sz := PackedVector2Array()
 var _col := PackedColorArray()
 var _on := PackedByteArray()
 var _canvas: PoolCanvas
+## The light buffer every pool is drawn into; TownGrade reads its texture.
+var buffer: SubViewport
 var _env: EnvironmentField
 var _time := 0.0
 var _since := 0.0
@@ -151,9 +160,14 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 
 func setup(town: Town) -> TownPools:
 	name = "Pools"
-	layer = LAYER
-	follow_viewport_enabled = true
 	_env = town._env
+	buffer = SubViewport.new()
+	buffer.name = "LightBuffer"
+	buffer.disable_3d = true
+	buffer.transparent_bg = true
+	buffer.size = Vector2i(320, 180)
+	buffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(buffer)
 	_canvas = PoolCanvas.new()
 	_canvas.name = "PoolCanvas"
 	_canvas.owner_pools = self
@@ -161,7 +175,7 @@ func setup(town: Town) -> TownPools:
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_canvas.material = mat
-	add_child(_canvas)
+	buffer.add_child(_canvas)
 	for p in pools_for(town):
 		# Whole-pixel size: the scale k snaps to 1/48 steps, the top-left to a pixel.
 		var k := maxf(snappedf(float(p.radius) / (TEX.x * 0.5), SCALE_STEP), SCALE_STEP)
@@ -184,7 +198,14 @@ func setup(town: Town) -> TownPools:
 	return self
 
 
+func _enter_tree() -> void:
+	if not RenderingServer.frame_pre_draw.is_connected(follow_view):
+		RenderingServer.frame_pre_draw.connect(follow_view)
+
+
 func _exit_tree() -> void:
+	if RenderingServer.frame_pre_draw.is_connected(follow_view):
+		RenderingServer.frame_pre_draw.disconnect(follow_view)
 	if is_instance_valid(_env):
 		for pair: Array in [[_env.structure_destroyed, _on_structure_destroyed], [_env.structure_restored, _on_structure_restored],
 				[_env.structure_removed, _on_structure_removed]]:
@@ -209,6 +230,26 @@ func pool_position(i: int) -> Vector2:
 ## The live strength of pool i (what the flicker last set).
 func pool_alpha(i: int) -> float:
 	return _col[i].a
+
+
+## The light buffer's texture (what TownGrade multiplies the world by).
+func light_texture() -> Texture2D:
+	return buffer.get_texture()
+
+
+## The buffer follows the game's view: its size is the view's times BUFFER_SCALE, and its canvas transform is the view's
+## scaled down, so a pool sits under the same world pixels it lights. Run just before each frame is drawn, after the
+## camera has moved.
+func follow_view() -> void:
+	if not is_inside_tree() or buffer == null:
+		return
+	var vp := get_viewport()
+	var size := vp.get_visible_rect().size
+	var want := Vector2i(maxi(int(size.x * BUFFER_SCALE), 1), maxi(int(size.y * BUFFER_SCALE), 1))
+	if buffer.size != want:
+		buffer.size = want
+	var k := Vector2(want) / size
+	buffer.canvas_transform = Transform2D().scaled(k) * vp.canvas_transform
 
 
 ## The draw node (for tests).
@@ -295,4 +336,11 @@ func _paint(c: CanvasItem) -> void:
 	redraws += 1
 	var tex := texture()
 	for i in drawn_indices():
-		c.draw_texture_rect(tex, Rect2(_tl[i], _sz[i]), false, _col[i])
+		var r := Rect2(_tl[i], _sz[i])
+		c.draw_texture_rect(tex, r, false, _col[i])
+		# The light up the walls: a rounder, fainter pool rising from the ground one, so the faces, roofs and people
+		# standing over the lit ground take the light too, not the paving alone.
+		var col := _col[i]
+		col.a *= WALL_ALPHA
+		c.draw_texture_rect(tex, Rect2(r.position + Vector2(r.size.x * (1.0 - WALL_W) * 0.5, -r.size.y * WALL_RISE),
+			Vector2(r.size.x * WALL_W, r.size.y * WALL_H)), false, col)

@@ -17,6 +17,12 @@ uniform float calm = 0.0;
 // keeping their hue, so sunlit paving does not clip to a flat yellow. 0 = off.
 uniform float shoulder = 0.0;
 uniform float knee = 0.45;
+// The light map (TownPools' buffer, the view at half resolution): every lamp, torch and lit window's light. It lights the
+// ungraded colour (lit = graded + base * light * light_warm * light_gain), so near a lamp a wall, a roof or a person turns
+// warm while its dark side, dark in the art, stays dark.
+uniform sampler2D light_tex : hint_default_black, filter_linear;
+uniform float light_gain = 0.0;
+uniform vec3 light_warm = vec3(1.0);
 
 void fragment() {
 	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
@@ -30,6 +36,7 @@ void fragment() {
 	float blueness = smoothstep(0.08, 0.22, c.b - max(c.r, c.g));
 	float dark = 1.0 - smoothstep(0.55, 0.95, lum);
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
+	g += c * texture(light_tex, SCREEN_UV).rgb * light_warm * light_gain;
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
 	// Clamped as TownGrade.grade_pixel() is (the framebuffer would clamp it anyway).
 	COLOR = vec4(clamp(mix(g, c, ember), 0.0, 1.0), 1.0);

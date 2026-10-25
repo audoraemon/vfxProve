@@ -4,7 +4,7 @@ extends Node2D
 ## camera with shake, positional sound, lights, destructible buildings, units, screen glow, impact post and
 ## screen flash, all wired into one FxContext. The VFX sandbox and the KAK game each add one as a child.
 
-## Canvas layers: the town's look puts its grade at 1 and its light pools at 2 (TownGrade, TownPools), so the glow, the post
+## Canvas layers: the town's look puts its grade (lit by TownPools' light map) at 1 (TownGrade), so the glow, the post
 ## and the flash (and the HUD) stay above them and spell glows stay bright at night.
 const GLOW_LAYER := 3
 const BenchProf := preload("res://src/core/bench_prof.gd")

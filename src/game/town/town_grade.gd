@@ -1,10 +1,10 @@
 class_name TownGrade
 extends CanvasLayer
-## The DAY and NIGHT colour grade (Town.Look): one full-screen pass over the finished world and under the light pools, the
-## Battlefield's glow, post and flash layers and the HUD, so spell glows and flashes stay bright whatever the look. The
-## only screen-space piece of the look; it is a colour transform with no positions (town_grade.gdshader).
+## The DAY and NIGHT colour grade (Town.Look): one full-screen pass over the finished world and under the Battlefield's
+## glow, post and flash layers and the HUD, so spell glows and flashes stay bright whatever the look. It grades the
+## colour, then multiplies in the light map (TownPools' buffer): lit = graded + base * light (town_grade.gdshader).
 
-## The canvas layer of the grade; the pools sit one above, Battlefield's glow above those.
+## The canvas layer of the grade; Battlefield's glow sits above.
 const LAYER := 1
 
 var look := 0
@@ -34,7 +34,7 @@ static func grade_pixel(c: Color, g: Dictionary) -> Color:
 	return Color(clampf(res.x, 0.0, 1.0), clampf(res.y, 0.0, 1.0), clampf(res.z, 0.0, 1.0), 1.0)
 
 
-func setup(look_value) -> TownGrade:
+func setup(look_value, light: Texture2D = null) -> TownGrade:
 	name = "Grade"
 	layer = LAYER
 	look = look_value
@@ -47,6 +47,10 @@ func setup(look_value) -> TownGrade:
 	var g := TownLook.grade(look_value)
 	for k: String in g:
 		mat.set_shader_parameter(k, g[k])
+	if light != null:
+		mat.set_shader_parameter("light_tex", light)
+		mat.set_shader_parameter("light_gain", TownLook.light_gain(look_value))
+		mat.set_shader_parameter("light_warm", TownLook.light_warm(look_value))
 	rect.material = mat
 	add_child(rect)
 	return self

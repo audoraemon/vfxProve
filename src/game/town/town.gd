@@ -218,7 +218,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		_build_look(ground)
 
 
-## The nodes of a non-CURRENT look: the shadow layer, the mist, the grade and (at night) the pools, each through
+## The nodes of a non-CURRENT look: the shadow layer, the mist, the light map and the grade, each through
 ## _add_look_node().
 func _build_look(ground: Node2D) -> void:
 	if ground != null:
@@ -236,10 +236,11 @@ func _build_look(ground: Node2D) -> void:
 		var mist := TownMist.new().setup(look)
 		_add_look_node(mist, ground)
 		ground.move_child(mist, mini(4, ground.get_child_count() - 1))
-	# The grade over the world, then (at night) the lamp pools over the grade: both under Battlefield's glow layer.
-	_add_look_node(TownGrade.new().setup(look))
-	if look == Look.NIGHT:
-		_add_look_node(TownPools.new().setup(self))
+	# The light map (every lamp, torch and lit window drawn into a small buffer), then the grade over the world, which
+	# multiplies the world by it: under Battlefield's glow layer.
+	var pools := TownPools.new().setup(self)
+	_add_look_node(pools)
+	_add_look_node(TownGrade.new().setup(look, pools.light_texture()))
 
 
 ## Adds a look node under `parent` (the town itself if null) and remembers it, so teardown() frees exactly these.

@@ -1,6 +1,6 @@
 extends RefCounted
-## The DAY and NIGHT colour grade and the NIGHT light pools: pools counted from the static lights and the lit windows,
-## LightField untouched, layer order under the glow, pools locked to the world, no pools by day.
+## The DAY and NIGHT colour grade and the light map: pools counted from the static lights and the lit windows,
+## LightField untouched, layer order under the glow, the buffer locked to the world, a faint light map by day.
 
 
 static func run(t) -> void:
@@ -63,9 +63,13 @@ static func _layers_and_counts(t) -> void:
 	var pools := _find(town, TownPools) as TownPools
 	t.check(grade != null and pools != null, "a NIGHT town has a grade and pools")
 	if grade != null and pools != null:
-		t.check(grade.layer < pools.layer and pools.layer < Battlefield.GLOW_LAYER,
-			"grade layer %d < pools layer %d < glow layer %d" % [grade.layer, pools.layer, Battlefield.GLOW_LAYER])
-		t.check(pools.follow_viewport_enabled, "the pools follow the viewport")
+		t.check(grade.layer < Battlefield.GLOW_LAYER, "grade layer %d < glow layer %d" % [grade.layer, Battlefield.GLOW_LAYER])
+		var pn: Node = pools
+		t.check(not (pn is CanvasItem) and not (pn is CanvasLayer), "the pools draw nothing on the screen: they are a light map")
+		t.check(pools.buffer is SubViewport and pools.canvas().get_parent() == pools.buffer, "the pools draw into the light buffer")
+		var gm := grade.rect.material as ShaderMaterial
+		t.check(gm.get_shader_parameter("light_tex") == pools.light_texture() and float(gm.get_shader_parameter("light_gain")) > 0.0,
+			"the grade multiplies the world by the light buffer")
 		var statics := 0
 		for l in env.lights._lights:
 			if l.get("static", false):
@@ -180,14 +184,16 @@ static func _lightfield_untouched(t) -> void:
 static func _day(t) -> void:
 	var parts := _build(Town.Look.DAY)
 	var town: Town = parts[0]
-	t.check(_find(town, TownGrade) != null and _find(town, TownPools) == null, "DAY has a grade and no pools")
+	t.check(_find(town, TownGrade) != null and _find(town, TownPools) != null, "DAY has a grade and a light map")
+	t.check(TownLook.light_gain(Town.Look.DAY) < TownLook.light_gain(Town.Look.NIGHT) * 0.5, "DAY's light map is faint beside NIGHT's")
 	_free(parts)
 	var cur := _build(Town.Look.CURRENT)
 	t.check((cur[0] as Town).look_nodes().is_empty(), "CURRENT has no grade and no pools")
 	_free(cur)
 
 
-## The pools follow the camera: a pool's on-screen position moves by -dx * zoom when the camera moves by dx.
+## The light buffer follows the camera: half the view's size, and a pool's place in it moves by -dx * zoom / 2 when the
+## camera moves by dx.
 static func _world_space(t) -> void:
 	await t.process_frame
 	var parts := _build(Town.Look.NIGHT)
@@ -200,12 +206,17 @@ static func _world_space(t) -> void:
 	cam.zoom = Vector2(1.5, 1.5)
 	cam.position = Vector2(300, 100)
 	cam.force_update_scroll()
-	var before := _on_screen(pools, pools.pool_position(0))
+	pools.follow_view()
+	var view: Vector2 = t.root.get_visible_rect().size
+	t.check(pools.buffer.size == Vector2i(view * TownPools.BUFFER_SCALE), "the buffer is half the view (%s for %s)" % [str(pools.buffer.size), str(view)])
+	var before := pools.buffer.canvas_transform * pools.pool_position(0)
 	cam.position += Vector2(100, 0)
 	cam.force_update_scroll()
-	var after := _on_screen(pools, pools.pool_position(0))
-	t.check(is_equal_approx(after.x - before.x, -150.0) and is_equal_approx(after.y, before.y),
-		"a pool moves -100 * zoom on screen when the camera moves 100 (moved %s)" % str(after - before))
+	pools.follow_view()
+	var after := pools.buffer.canvas_transform * pools.pool_position(0)
+	var k: float = float(pools.buffer.size.x) / view.x
+	t.check(is_equal_approx(after.x - before.x, -150.0 * k) and is_equal_approx(after.y, before.y),
+		"a pool moves -100 * zoom * %.2f in the buffer when the camera moves 100 (moved %s)" % [k, str(after - before)])
 	t.root.remove_child(town)
 	t.root.remove_child(cam)
 	cam.free()
@@ -235,7 +246,7 @@ static func _one_draw(t) -> void:
 	var env: EnvironmentField = parts[1]
 	var pools := _find(town, TownPools) as TownPools
 	var drawers := 0
-	for c in pools.get_children():
+	for c in pools.buffer.get_children():
 		if c is CanvasItem:
 			drawers += 1
 	t.check(drawers == 1 and pools.canvas() is Node2D, "all %d pools draw on one node" % pools.pool_count())

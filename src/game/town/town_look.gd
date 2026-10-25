@@ -67,3 +67,17 @@ static func grade(look) -> Dictionary:
 	return {"lift": Vector3(0.0, 0.0, 0.01), "gain": Vector3(1.02, 0.99, 0.92),
 		"warm": Vector3(1.14, 1.03, 0.80), "cool": Vector3(0.92, 0.98, 1.06), "split": 0.40, "spread": 0.28,
 		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.28, "knee": 0.45}
+
+
+## The light map (TownPools' buffer, multiplied in by TownGrade): how strongly it lights the art, and its warm colour. At
+## NIGHT the lamps, torches and windows light what stands near them; by DAY they only warm their own doorsteps a touch.
+static func light_gain(look) -> float:
+	if look == Town.Look.NIGHT:
+		return 1.6
+	if look == Town.Look.DAY:
+		return 0.15
+	return 0.0
+
+
+static func light_warm(_look) -> Vector3:
+	return Vector3(1.0, 0.86, 0.66)

@@ -37,6 +37,10 @@ uniform bool window_flicker = false;
 uniform float window_amp = 0.12;
 // One frame's size (px): the mask's.
 uniform vec2 frame_size = vec2(1.0);
+// The town's DAY and NIGHT looks (SpriteView.window_boost): a window pixel of the mask is pushed this far toward a hot lamp
+// colour and glows (skips the dim). 0 (CURRENT): the path is unchanged.
+uniform float window_boost = 0.0;
+const vec3 WINDOW_HOT = vec3(1.0, 0.80, 0.42);
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -98,6 +102,10 @@ void fragment() {
 			// Never above the pixel's brightest channel x (1 + window_amp), nor past white.
 			float cap = min(max(px.r, max(px.g, px.b)) * (1.0 + window_amp), 1.0);
 			c = min(c * (1.0 + window_amp * f), vec3(cap));
+			if (window_boost > 0.0) {
+				c = mix(c, max(c, WINDOW_HOT * (0.9 + 0.1 * f)), window_boost);
+				glow = true;
+			}
 		}
 	}
 	if (!glow) {

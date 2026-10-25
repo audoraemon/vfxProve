@@ -47,6 +47,9 @@ var playing := false
 var phase := 0.0
 ## The window flicker last handed to the shader (_set_flicker()): on for the intact still or its strip with a mask.
 var _flicker := false
+## How far lit windows (the glow mask) are pushed toward a hot lamp colour in every view made from now on: 0 in CURRENT
+## (the shader's path is then unchanged); the town's DAY and NIGHT looks set it (TownLook.window_boost) for their build.
+static var window_boost := 0.0
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -66,6 +69,8 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	_mat.set_shader_parameter("anchor", sprite.anchor)
 	_mat.set_shader_parameter("window_amp", WINDOW_AMP)
 	_mat.set_shader_parameter("frame_size", sprite.size)
+	if window_boost > 0.0:
+		_mat.set_shader_parameter("window_boost", window_boost)
 	return self
 
 

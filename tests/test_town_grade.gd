@@ -76,8 +76,7 @@ static func _layers_and_counts(t) -> void:
 				statics += 1
 		var windows := 0
 		for s in env.structures():
-			if not s.destroyed and s.sprite is Dictionary and s.sprite.get("glow_mask") != null \
-					and TownPools.lit_pixels(s.sprite.glow_mask) > 0:
+			if not s.destroyed and TownPools.window_pixels(s) > 0:
 				windows += 1
 		var lamps := 0
 		for d: Decor in town._decor:

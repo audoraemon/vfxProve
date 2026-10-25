@@ -69,6 +69,16 @@ static func grade(look) -> Dictionary:
 		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.28, "knee": 0.45}
 
 
+## Lit windows (SpriteView.window_boost): how far a window of a building's glow mask is pushed toward a hot lamp colour.
+## NIGHT lights every one; DAY only faintly, as at dusk.
+static func window_boost(look) -> float:
+	if look == Town.Look.NIGHT:
+		return 1.0
+	if look == Town.Look.DAY:
+		return 0.25
+	return 0.0
+
+
 ## The light map (TownPools' buffer, multiplied in by TownGrade): how strongly it lights the art, and its warm colour. At
 ## NIGHT the lamps, torches and windows light what stands near them; by DAY they only warm their own doorsteps a touch.
 static func light_gain(look) -> float:

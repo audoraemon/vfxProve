@@ -6,6 +6,7 @@ extends RefCounted
 static func run(t) -> void:
 	_current_creates_none(t)
 	_bloom(t)
+	_windows(t)
 
 
 static func _build(look: Town.Look) -> Array:
@@ -73,3 +74,45 @@ static func _bloom(t) -> void:
 	var night := TownLook.bloom(Town.Look.NIGHT)
 	t.check(float(night.strength) > float(day.strength) and float(night.threshold) < float(day.threshold),
 		"NIGHT glows more strongly, and from dimmer pixels, than DAY")
+
+
+## Every house's windows: DAY and NIGHT push the glow-mask windows toward a hot lamp colour (NIGHT fully, DAY faintly),
+## CURRENT leaves the sprite shader's path alone, and the town puts the static back on teardown. A building whose set has
+## no mask still lights the street from the windows painted in its art.
+static func _windows(t) -> void:
+	t.check(TownLook.window_boost(Town.Look.NIGHT) > TownLook.window_boost(Town.Look.DAY) and TownLook.window_boost(Town.Look.DAY) > 0.0
+		and TownLook.window_boost(Town.Look.CURRENT) == 0.0, "NIGHT lights every window, DAY faintly, CURRENT not at all")
+	var cur := _build(Town.Look.CURRENT)
+	t.check(SpriteView.window_boost == 0.0, "a CURRENT build leaves the window boost at 0")
+	var plain := true
+	for s in (cur[1] as EnvironmentField).structures():
+		if s.sprite is Dictionary and s.sprite.get("glow_mask") != null:
+			plain = _boost_of(s) == null
+			break
+	t.check(plain, "CURRENT sprites never get a window_boost parameter")
+	_free(cur)
+	var parts := _build(Town.Look.NIGHT)
+	var env: EnvironmentField = parts[1]
+	t.check(SpriteView.window_boost == TownLook.window_boost(Town.Look.NIGHT), "a NIGHT build sets the window boost")
+	var boosted := 0
+	var masked := 0
+	var from_art := 0
+	for s in env.structures():
+		if s.sprite is Dictionary and s.sprite.get("glow_mask") != null:
+			masked += 1
+			if boosted == 0 and float(_boost_of(s)) > 0.0:
+				boosted += 1
+		elif TownPools.window_pixels(s) > 0:
+			from_art += 1
+	t.check(boosted > 0 and masked > 50, "NIGHT sprites carry the boost (%d), %d buildings have masked windows" % [boosted, masked])
+	t.check(from_art > 0, "buildings without a mask light the street from their painted windows (%d)" % from_art)
+	_free(parts)
+	t.check(SpriteView.window_boost == 0.0, "teardown puts the window boost back")
+
+
+## The window_boost a fresh view of the structure's sprite set gets (null: none set).
+static func _boost_of(s: Structure) -> Variant:
+	var v := SpriteView.new().setup(s.sprite, Vector2(-32, -16), Vector2(32, -16))
+	var b = (v.material as ShaderMaterial).get_shader_parameter("window_boost")
+	v.free()
+	return b

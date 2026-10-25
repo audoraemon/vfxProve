@@ -18,11 +18,11 @@ const TEX := Vector2i(96, 48)
 ## A torch's pool, against its light's radius in screen pixels (the light's own falloff reaches further).
 const TORCH_REACH := 0.72
 const WINDOW_COLOUR := Color(1.0, 0.72, 0.34)
-## A window pool's strength: gentler than a torch's (0.5).
-const WINDOW_ALPHA := 0.3
+## A window pool's strength: a little gentler than a torch's (0.5).
+const WINDOW_ALPHA := 0.42
 ## Window pool radius (screen px, x semi-axis): per lit pixel, clamped to this range.
-const WINDOW_MIN := 14.0
-const WINDOW_MAX := 40.0
+const WINDOW_MIN := 18.0
+const WINDOW_MAX := 48.0
 ## A decor lamp's pool (a house lantern, a lamp post, anything with a "glow" in the decor manifest): the radius (screen px,
 ## x semi-axis; its own light quad is 23) and strength.
 const LAMP_RADIUS := 30.0
@@ -51,6 +51,8 @@ var _tl := PackedVector2Array()
 var _sz := PackedVector2Array()
 var _col := PackedColorArray()
 var _on := PackedByteArray()
+## Per pool: whether it also lights what stands round it (a torch or a lamp; a window lights only the street).
+var _wall := PackedByteArray()
 var _canvas: PoolCanvas
 ## The light buffer every pool is drawn into; TownGrade reads its texture.
 var buffer: SubViewport
@@ -82,6 +84,52 @@ static func texture() -> ImageTexture:
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_texture = ImageTexture.create_from_image(img)
 	return _texture
+
+
+## A set without a glow mask lights the street only with at least this many lit pixels painted in.
+const ART_MIN := 8
+
+
+## A building's lit window pixels: its glow mask's (red above one half), or for a set without a mask the pixels of its
+## intact still that the sprite shader already lets glow (lit_art_pixels(); at least ART_MIN, on a windowed kind or a
+## gate), or 0.
+static func window_pixels(s: Structure) -> int:
+	if not (s.sprite is Dictionary) or (s.sprite as Dictionary).is_empty():
+		return 0
+	var mask: Texture2D = s.sprite.get("glow_mask")
+	if mask != null:
+		return lit_pixels(mask)
+	# Only a building with windows (or a gatehouse): an orchard's fruit or a vineyard's grapes are bright and warm too.
+	if not (s.kind in Structure.WINDOWED or s.kind == Structure.Kind.GATE):
+		return 0
+	var stills: Dictionary = s.sprite.get("stills", {})
+	var n := lit_art_pixels(stills.get(&"intact"))
+	return n if n >= ART_MIN else 0
+
+
+## The pixels of a still the sprite shader's glows() rule lights (a lit window or a fire painted in: warm, very bright,
+## strongly saturated), cached by texture instance. tools/dev/check_sprite_glow.py and structure_sprite.gdshader hold
+## the same rule.
+static func lit_art_pixels(still: Texture2D) -> int:
+	if still == null:
+		return 0
+	var key := -still.get_instance_id()
+	if _lit_cache.has(key):
+		return _lit_cache[key]
+	var n := 0
+	var img := still.get_image()
+	if img != null:
+		if img.is_compressed():
+			img.decompress()
+		for y in img.get_height():
+			for x in img.get_width():
+				var c := img.get_pixel(x, y)
+				var mx := maxf(c.r, maxf(c.g, c.b))
+				var mn := minf(c.r, minf(c.g, c.b))
+				if c.a > 0.5 and c.r >= mx and mx > 0.93 and (mx - mn) / mx > 0.55 and c.g > 0.45:
+					n += 1
+	_lit_cache[key] = n
+	return n
 
 
 ## The lit pixels of a glow mask (red above one half), cached by texture instance.
@@ -141,10 +189,7 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 	for s in env.structures():
 		if not is_instance_valid(s) or s.destroyed:
 			continue
-		var mask: Texture2D = s.sprite.get("glow_mask") if s.sprite is Dictionary else null
-		if mask == null:
-			continue
-		var lit := lit_pixels(mask)
+		var lit := window_pixels(s)
 		if lit <= 0:
 			continue
 		var front := Iso.ground_to_screen(s.footprint.end)
@@ -180,6 +225,7 @@ func setup(town: Town) -> TownPools:
 		_sz.append(sz)
 		_col.append(Color(c.r, c.g, c.b, float(p.get("alpha", 0.5))))
 		_on.append(1)
+		_wall.append(0 if p.get("structure") != null else 1)
 		_pools.append({"flicker": p.flicker, "light": p.get("light"), "structure": p.get("structure"), "decor": p.get("decor"),
 			"alpha": float(p.get("alpha", 0.5)), "i": _pools.size()})
 		var dc = p.get("decor")
@@ -333,6 +379,8 @@ func _paint(c: CanvasItem) -> void:
 	for i in drawn_indices():
 		var r := Rect2(_tl[i], _sz[i])
 		c.draw_texture_rect(tex, r, false, _col[i])
+		if _wall[i] == 0:
+			continue
 		# The light up the walls: a rounder, fainter pool rising from the ground one, so the faces, roofs and people
 		# standing over the lit ground take the light too, not the paving alone.
 		var col := _col[i]

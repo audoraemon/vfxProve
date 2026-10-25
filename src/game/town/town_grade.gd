@@ -65,6 +65,9 @@ func setup(look_value, light: Texture2D = null) -> TownGrade:
 		mat.set_shader_parameter("light_tex", light)
 		mat.set_shader_parameter("light_gain", TownLook.light_gain(look_value))
 		mat.set_shader_parameter("light_warm", TownLook.light_warm(look_value))
+		var mix := TownLook.light_mix(look_value)
+		for k: String in mix:
+			mat.set_shader_parameter(k, mix[k])
 	rect.material = mat
 	add_child(rect)
 	return self

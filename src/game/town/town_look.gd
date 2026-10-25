@@ -158,9 +158,21 @@ static func light_warm(look) -> Vector3:
 	return Vector3(1.0, 0.86, 0.66)
 
 
+## How the light map's light meets the graded colour (town_grade.gdshader light_replace, light_mono, light_floor; round
+## 3): NIGHT's lamplight replaces the cool moon grade where it falls and lights the luminance, so stone reads amber, not
+## pink. DAY: none (the shader's defaults, off).
+static func light_mix(look) -> Dictionary:
+	if look == Town.Look.NIGHT:
+		return {"light_replace": 0.8, "light_mono": 0.55, "light_floor": 0.16, "light_boost": 2.4,
+			"light_knee": 0.62, "light_bend": 1.6, "light_pow": 2.0}
+	return {}
+
+
 ## The glow (TownBloom, town_bloom.gdshader): the brightness a pixel blooms from, how warm it must be, the halo's strength
 ## and tint. NIGHT blooms from its flames and windows strongly; DAY lightly from its highlights.
 static func bloom(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
-		return {"threshold": 0.8, "knee": 0.2, "warm_only": 1.0, "strength": 1.0, "tint": Vector3(1.0, 0.78, 0.5)}
+		# Round 3: the threshold sits over the lamplit ground's brightest (the grade's light_knee), so only flames and
+		# windows bloom and the pools never smear.
+		return {"threshold": 0.9, "knee": 0.1, "warm_only": 1.0, "strength": 1.0, "tint": Vector3(1.0, 0.78, 0.5)}
 	return {"threshold": 0.8, "knee": 0.15, "warm_only": 0.0, "use_lum": 1.0, "strength": 0.25, "tint": Vector3(1.0, 0.93, 0.80)}

@@ -36,6 +36,20 @@ uniform float pivot = 0.45;
 uniform sampler2D light_tex : hint_default_black, filter_linear;
 uniform float light_gain = 0.0;
 uniform vec3 light_warm = vec3(1.0);
+// Round 3 (NIGHT): saturated amber on stone, not pink. Where the light falls it replaces up to light_replace of the cool
+// moonlit grade (so orange is not added onto blue), it lights the colour's luminance (light_mono of the way) rather than
+// its own hue (pinkish paving), and never less than light_floor (dark timber still takes the light). All 0: off (DAY).
+uniform float light_replace = 0.0;
+uniform float light_mono = 0.0;
+uniform float light_floor = 0.0;
+// ... and that light is light_boost times as bright (it no longer adds onto the moonlit grade). 1: off.
+uniform float light_boost = 1.0;
+// A luminance shoulder on that light (hue kept): its luminance y becomes light_knee * (1 - exp(-y * light_bend)), so the
+// pools stay saturated amber and under the glow's threshold instead of blowing out. 0: off.
+uniform float light_knee = 0.0;
+uniform float light_bend = 2.2;
+// The light's falloff is steepened to this power (pools concentrated round their lamps, cool dark between). 1: off.
+uniform float light_pow = 1.0;
 // The view (TownGrade.follow_view): the viewport's size and its canvas transform (origin, zoom), so the light map is read
 // once per world pixel and cut into light_steps levels through a 4x4 Bayer dither locked to the world: crisp pixels, no
 // rings. Below zoom 1 a dither cell is ceil(1 / zoom) world pixels, at least one screen pixel.
@@ -187,7 +201,20 @@ void fragment() {
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
 	// Soft roll-off: two lights overlapping warm the art more, but never blow it to white.
 	vec3 lg = light_at(SCREEN_UV) * light_gain;
-	g += c * lg / (1.0 + 1.0 * lg) * light_warm;
+	vec3 ll = lg / (1.0 + 1.0 * lg);
+	// The moon grade gives way wherever any lamplight reaches (measured before the falloff is steepened): orange on blue
+	// reads pink.
+	float reach = max(ll.r, max(ll.g, ll.b));
+	if (light_pow != 1.0) {
+		ll = pow(ll, vec3(light_pow));
+	}
+	vec3 lb = max(mix(c, vec3(lum), light_mono), vec3(light_floor)) * light_boost;
+	vec3 lit = lb * ll * light_warm;
+	if (light_knee > 0.0) {
+		float ly = max(dot(lit, vec3(0.299, 0.587, 0.114)), 1.0e-4);
+		lit *= light_knee * (1.0 - exp(-ly * light_bend)) / ly;
+	}
+	g = g * (1.0 - light_replace * reach) + lit;
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
 	// Clamped as TownGrade.grade_pixel() is (the framebuffer would clamp it anyway).
 	vec3 o = clamp(mix(g, c, ember), 0.0, 1.0);

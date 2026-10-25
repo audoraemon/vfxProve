@@ -117,11 +117,11 @@ static func _minus(r: Rect2, cut: Rect2) -> Array[Rect2]:
 	return out
 
 
-## DAY mist: a pale warm haze. NIGHT mist: thinner, a grey blue light enough to survive the grade.
+## DAY mist: a pale, nearly white haze (round 2: no warm cast). NIGHT mist: thinner, a grey blue light enough to survive the grade.
 static func mist_colour(look_value) -> Color:
 	if look_value == Town.Look.NIGHT:
 		return Color(0.62, 0.72, 0.90, 0.20)
-	return Color(0.98, 0.93, 0.80, 0.46)
+	return Color(0.96, 0.95, 0.90, 0.42)
 
 
 func setup(look_value) -> TownMist:

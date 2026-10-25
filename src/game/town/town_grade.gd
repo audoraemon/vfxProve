@@ -13,8 +13,9 @@ var mat: ShaderMaterial
 
 
 ## The shader's colour transform in GDScript (the same formula, for the tests): `c` ungraded, `g` the TownLook.grade()
-## dictionary. Returns the graded colour.
-static func grade_pixel(c: Color, g: Dictionary) -> Color:
+## dictionary. `around`: the luminance round the pixel (the shader's screen mip, for DAY's tone split); by default its own,
+## so the split does nothing. Returns the graded colour.
+static func grade_pixel(c: Color, g: Dictionary, around := -1.0) -> Color:
 	var lum := c.r * 0.299 + c.g * 0.587 + c.b * 0.114
 	var t := smoothstep(float(g.split) - float(g.spread), float(g.split) + float(g.spread), lum)
 	var gain: Vector3 = g.gain
@@ -22,6 +23,16 @@ static func grade_pixel(c: Color, g: Dictionary) -> Color:
 	var cool: Vector3 = g.cool
 	var lift: Vector3 = g.lift
 	var out := Vector3(c.r, c.g, c.b) * gain * cool.lerp(warm, t) + lift
+	var amt := float(g.get("local_amt", 0.0))
+	if amt > 0.0:
+		var d := lum - (lum if around < 0.0 else around)
+		var k := clampf(signf(d) * maxf(absf(d) - float(g.get("local_dead", 0.0)), 0.0) * amt, -0.35, 0.35)
+		var tint: Vector3 = g.get("local_warm", Vector3.ONE) if k > 0.0 else g.get("local_cool", Vector3.ONE)
+		out = (out * (1.0 + k) * Vector3.ONE.lerp(tint, minf(absf(k) * 4.0, 1.0))).max(Vector3.ZERO)
+	var l0 := out.x * 0.299 + out.y * 0.587 + out.z * 0.114
+	out = Vector3(l0, l0, l0).lerp(out, float(g.get("saturation", 1.0)))
+	var pv := float(g.get("pivot", 0.45))
+	out = (out - Vector3(pv, pv, pv)) * float(g.get("contrast", 1.0)) + Vector3(pv, pv, pv)
 	var top := out.x * 0.299 + out.y * 0.587 + out.z * 0.114
 	out *= 1.0 - float(g.get("shoulder", 0.0)) * smoothstep(float(g.get("knee", 0.45)), 1.0, top)
 	var glum := out.x * 0.299 + out.y * 0.587 + out.z * 0.114

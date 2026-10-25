@@ -17,6 +17,19 @@ uniform float calm = 0.0;
 // keeping their hue, so sunlit paving does not clip to a flat yellow. 0 = off.
 uniform float shoulder = 0.0;
 uniform float knee = 0.45;
+// DAY's sun (round 2): a tone split on lit content. Each pixel is measured against its neighbourhood (the screen's mip at
+// local_lod, a few px wide): what is brighter than round it (a sprite's sunlit face, the art being lit from the left) is
+// lifted toward local_warm, what is darker (its shaded face) pushed toward local_cool, by local_amt. Then a saturation and
+// a contrast lift about `pivot`. All off by default (local_amt 0, saturation and contrast 1): NIGHT does not use them.
+uniform sampler2D screen_mip : hint_screen_texture, filter_linear_mipmap;
+uniform float local_amt = 0.0;
+uniform float local_lod = 2.0;
+uniform float local_dead = 0.0;
+uniform vec3 local_warm = vec3(1.0);
+uniform vec3 local_cool = vec3(1.0);
+uniform float saturation = 1.0;
+uniform float contrast = 1.0;
+uniform float pivot = 0.45;
 // The light map (TownPools' buffer, the view at half resolution): every lamp, torch and lit window's light. It lights the
 // ungraded colour (lit = graded + base * light * light_warm * light_gain), so near a lamp a wall, a roof or a person turns
 // warm while its dark side, dark in the art, stays dark.
@@ -39,6 +52,8 @@ uniform float haze = 0.0;
 uniform float haze_start = 3.0;
 uniform float haze_end = 24.0;
 uniform vec3 haze_col = vec3(0.95, 0.85, 0.66);
+// How much of the colour's own saturation the haze keeps (0.5: half greyed).
+uniform float haze_sat = 0.5;
 // Sunbeams outside the town walls (the town's own beams lie in its ground plane, TownMist): wide warm stripes slanting
 // down and right from the sun, one every beam_period world px across, laid out from beam_origin as TownLook.beam_stripe()
 // does, cut out of the town's ground rect (beam_keep, grown by a pad) and stepped through the world-locked dither.
@@ -75,6 +90,14 @@ vec3 light_at(vec2 screen_uv) {
 	}
 	float q = floor(m * light_steps + bayer4(cell)) / light_steps;
 	return l * (q / m);
+}
+
+// The sun's tone split (local_amt): `d` is how much brighter the pixel is than round it. TownGrade.grade_pixel() mirrors it.
+vec3 tone_split(vec3 g, float d) {
+	// A dead zone: fine texture (paving joints, plaster grain) is left alone; only whole faces split.
+	float k = clamp(sign(d) * max(abs(d) - local_dead, 0.0) * local_amt, -0.35, 0.35);
+	vec3 tint = k > 0.0 ? local_warm : local_cool;
+	return max(g * (1.0 + k) * mix(vec3(1.0), tint, min(abs(k) * 4.0, 1.0)), vec3(0.0));
 }
 
 float hash1(float k) {
@@ -114,7 +137,7 @@ vec3 atmosphere(vec3 o, vec2 screen_uv) {
 		float h = smoothstep(haze_start, haze_end, d) * haze;
 		h = floor(h * 24.0 + dith) / 24.0;
 		float l = dot(o, vec3(0.299, 0.587, 0.114));
-		o = mix(o, mix(vec3(l), o, 0.5) * 0.45 + haze_col * 0.55, h);
+		o = mix(o, mix(vec3(l), o, haze_sat) * 0.45 + haze_col * 0.55, h);
 	}
 	if (beam > 0.0 && outside(g, beam_keep) > 0.0) {
 		float u = wp.x - beam_origin.x - (wp.y - beam_origin.y) * beam_slant;
@@ -149,6 +172,12 @@ void fragment() {
 	float lum = dot(c, vec3(0.299, 0.587, 0.114));
 	float t = smoothstep(split - spread, split + spread, lum);
 	vec3 g = c * gain * mix(cool, warm, t) + lift;
+	if (local_amt > 0.0) {
+		float around = dot(textureLod(screen_mip, SCREEN_UV, local_lod).rgb, vec3(0.299, 0.587, 0.114));
+		g = tone_split(g, lum - around);
+	}
+	g = mix(vec3(dot(g, vec3(0.299, 0.587, 0.114))), g, saturation);
+	g = (g - pivot) * contrast + pivot;
 	g *= 1.0 - shoulder * smoothstep(knee, 1.0, dot(g, vec3(0.299, 0.587, 0.114)));
 	float glum = dot(g, vec3(0.299, 0.587, 0.114));
 	// Water is found on the ungraded colour: the night grade makes every mid-dark pixel blue, so measuring after it would

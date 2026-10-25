@@ -18,8 +18,8 @@ static func ground_tint(look) -> Color:
 	if look == Town.Look.CURRENT:
 		return Town.GROUND_EVENING
 	if look == Town.Look.DAY:
-		# Low golden sun on the grass and the stones, a touch more than CURRENT's evening.
-		return Color(1.10, 0.95, 0.70)
+		# Clean sunlight (round 2): the grass green and the stones grey, barely warm; the grade's tone split lights it.
+		return Color(1.06, 1.0, 0.88)
 	return Color.WHITE
 
 
@@ -27,8 +27,8 @@ static func ground_tint(look) -> Color:
 static func light_tint(look) -> Color:
 	match look:
 		Town.Look.DAY:
-			# Early sun: warm, a little gold.
-			return Color(1.08, 0.98, 0.80)
+			# Clear sun, a little warm: no global orange (round 2), the warmth is in the lit faces (grade's tone split).
+			return Color(1.06, 1.0, 0.90)
 		Town.Look.NIGHT:
 			# Moonlight: cool blue-grey.
 			return Color(0.80, 0.88, 1.0)
@@ -47,7 +47,7 @@ static func ambient(look) -> float:
 static func shadow_colour(look) -> Color:
 	if look == Town.Look.NIGHT:
 		return Color(0.03, 0.05, 0.16, 0.30)
-	return Color(0.20, 0.22, 0.40, 0.50)
+	return Color(0.14, 0.17, 0.38, 0.58)
 
 
 ## The contact shadows (TownShadows' contact group, dithered): a dark band at every building's base and under every
@@ -72,9 +72,14 @@ static func grade(look) -> Dictionary:
 		return {"lift": Vector3(0.0, 0.01, 0.04), "gain": Vector3(0.44, 0.48, 0.68),
 			"warm": Vector3(1.10, 1.02, 0.95), "cool": Vector3(0.96, 1.0, 1.08), "split": 0.45, "spread": 0.3,
 			"keep_lit": 0.85, "calm": 0.85}
-	return {"lift": Vector3(0.0, 0.0, 0.01), "gain": Vector3(1.02, 0.99, 0.92),
-		"warm": Vector3(1.14, 1.03, 0.80), "cool": Vector3(0.92, 0.98, 1.06), "split": 0.40, "spread": 0.28,
-		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.28, "knee": 0.45}
+	# DAY (round 2): clean colour, no global orange. A light warm/cool split, then the sun's tone split on lit content
+	# (local_*: a face brighter than round it turns warm and brighter, a darker one cool and deeper), a saturation and a
+	# contrast lift, and the shoulder so sunlit paving does not clip.
+	return {"lift": Vector3(0.0, 0.0, 0.0), "gain": Vector3(1.02, 1.0, 0.98),
+		"warm": Vector3(1.06, 1.02, 0.94), "cool": Vector3(0.92, 0.97, 1.08), "split": 0.42, "spread": 0.25,
+		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.22, "knee": 0.55,
+		"local_amt": 1.4, "local_lod": 3.0, "local_dead": 0.06, "local_warm": Vector3(1.08, 1.0, 0.86), "local_cool": Vector3(0.86, 0.94, 1.12),
+		"saturation": 1.15, "contrast": 1.15, "pivot": 0.42}
 
 
 ## The atmosphere of a look over the active city (TownGrade's uniforms, town_grade.gdshader atmosphere()): DAY's haze
@@ -87,7 +92,7 @@ static func atmosphere(look) -> Dictionary:
 		return {}
 	var city := City.current()
 	var keeps := TownMist.keep_outs()
-	var out := {"vignette": 0.32, "haze": 0.55, "haze_start": 3.0, "haze_end": city.border() + 10.0,
+	var out := {"vignette": 0.26, "haze": 0.45, "haze_sat": 0.85, "haze_col": Vector3(0.92, 0.89, 0.80), "haze_start": 3.0, "haze_end": city.border() + 10.0,
 		"beam": 0.75, "beam_origin": beam_origin(), "beam_slant": BEAM_SLANT, "beam_period": BEAM_PERIOD,
 		"beam_width": BEAM_WIDTH, "beam_keep": _rect4(city.town().grow(BEAM_PAD)), "sun": 0.75, "sun_at": Vector2(0.02, 0.0),
 		"sun_radius": 0.5}
@@ -158,4 +163,4 @@ static func light_warm(look) -> Vector3:
 static func bloom(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
 		return {"threshold": 0.8, "knee": 0.2, "warm_only": 1.0, "strength": 1.0, "tint": Vector3(1.0, 0.78, 0.5)}
-	return {"threshold": 0.8, "knee": 0.15, "warm_only": 0.0, "use_lum": 1.0, "strength": 0.3, "tint": Vector3(1.0, 0.88, 0.66)}
+	return {"threshold": 0.8, "knee": 0.15, "warm_only": 0.0, "use_lum": 1.0, "strength": 0.25, "tint": Vector3(1.0, 0.93, 0.80)}

@@ -19,7 +19,7 @@ static func ground_tint(look) -> Color:
 		return Town.GROUND_EVENING
 	if look == Town.Look.DAY:
 		# Clean sunlight (round 2): the grass green and the stones grey, barely warm; the grade's tone split lights it.
-		return Color(1.06, 1.0, 0.88)
+		return Color(1.04, 1.0, 0.92)
 	return Color.WHITE
 
 
@@ -77,9 +77,9 @@ static func grade(look) -> Dictionary:
 	# contrast lift, and the shoulder so sunlit paving does not clip.
 	return {"lift": Vector3(0.0, 0.0, 0.0), "gain": Vector3(1.02, 1.0, 0.98),
 		"warm": Vector3(1.06, 1.02, 0.94), "cool": Vector3(0.92, 0.97, 1.08), "split": 0.42, "spread": 0.25,
-		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.22, "knee": 0.55,
-		"local_amt": 1.4, "local_lod": 3.0, "local_dead": 0.06, "local_warm": Vector3(1.08, 1.0, 0.86), "local_cool": Vector3(0.86, 0.94, 1.12),
-		"saturation": 1.15, "contrast": 1.15, "pivot": 0.42}
+		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.30, "knee": 0.50,
+		"local_amt": 1.1, "local_lod": 3.0, "local_dead": 0.06, "local_warm": Vector3(1.08, 1.0, 0.86), "local_cool": Vector3(0.86, 0.94, 1.12),
+		"saturation": 1.08, "contrast": 1.12, "pivot": 0.42}
 
 
 ## The atmosphere of a look over the active city (TownGrade's uniforms, town_grade.gdshader atmosphere()): DAY's haze

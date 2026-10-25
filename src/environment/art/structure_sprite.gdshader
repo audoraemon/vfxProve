@@ -49,6 +49,13 @@ uniform float window_hot = 0.0;
 const vec3 WINDOW_CORE = vec3(1.0, 0.86, 0.42);
 const vec3 WINDOW_HALO = vec3(0.95, 0.58, 0.26);
 
+// Round 3 (DAY and NIGHT, SpriteView.look_params): a one-pixel rim on the silhouette facing the light: an opaque pixel
+// on the silhouette toward rim_dir (texels; toward the sun, up-left on screen, mirrored with the sprite) is pulled up
+// toward rim_col by rim_amt (DAY a warm sun rim, NIGHT a faint cool moon rim). 0 (CURRENT): off, the path unchanged.
+uniform float rim_amt = 0.0;
+uniform vec3 rim_col = vec3(1.0);
+uniform vec2 rim_dir = vec2(-1.0, -1.0);
+
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
 const vec3 MOLTEN = vec3(1.0, 0.690196, 0.25098);
@@ -138,6 +145,16 @@ void fragment() {
 		c = min(c * ambient * (1.0 + lit * gain) + lit * add, vec3(1.0));
 		c = mix(c, CHAR, scorch * 0.65);
 		c = mix(c, FROST, frost * 0.35) * tint;
+	}
+	if (rim_amt > 0.0 && !glow && px.a > 0.5) {
+		// The art's dark outline is the silhouette's first pixel: the rim lights the pixel inside it (its neighbour
+		// opaque, the next one clear) fully, and the outline itself half.
+		float a1 = texture(TEXTURE, uv + rim_dir * TEXTURE_PIXEL_SIZE).a;
+		float a2 = texture(TEXTURE, uv + 2.0 * rim_dir * TEXTURE_PIXEL_SIZE).a;
+		float k = a1 < 0.5 ? 0.5 : (a2 < 0.5 ? 1.0 : 0.0);
+		if (k > 0.0) {
+			c = mix(c, max(c, rim_col), rim_amt * k);
+		}
 	}
 	if (cut_mode == -1 && p.y < line + 2.0) {
 		c = mix(c, MOLTEN, molten);

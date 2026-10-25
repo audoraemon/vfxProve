@@ -142,10 +142,13 @@ static func window_boost(look) -> float:
 
 
 ## The look's sprite-shader settings (SpriteView.look_params, structure_sprite.gdshader; round 3): NIGHT's windows burn
-## with a hot core and a halo. Nothing in CURRENT.
+## with a hot core and a halo; a one-pixel rim on the roofs' and wall tops' sun side, DAY warm, NIGHT a faint cool moon.
+## Nothing in CURRENT.
 static func sprite_params(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
-		return {"window_hot": 0.9}
+		return {"window_hot": 0.9, "rim_amt": 0.35, "rim_col": Vector3(0.50, 0.60, 0.85)}
+	if look == Town.Look.DAY:
+		return {"rim_amt": 0.55, "rim_col": Vector3(1.0, 0.88, 0.58)}
 	return {}
 
 

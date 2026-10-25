@@ -33,7 +33,7 @@ static func _night_colour(t) -> void:
 
 
 ## The sprite shader's look settings (SpriteView.look_params): none in CURRENT (no parameter is ever set, so the shader
-## runs its defaults and CURRENT's art is untouched), NIGHT's hot windows; teardown puts them back.
+## runs its defaults and CURRENT's art is untouched), NIGHT's hot windows, both looks' rim; teardown puts them back.
 static func _sprite_params(t) -> void:
 	t.check(TownLook.sprite_params(Town.Look.CURRENT).is_empty(), "CURRENT has no sprite look settings")
 	t.check(float(TownLook.sprite_params(Town.Look.NIGHT).get("window_hot", 0.0)) > 0.0, "NIGHT's windows burn hot")
@@ -42,6 +42,14 @@ static func _sprite_params(t) -> void:
 	var src := _src("res://src/environment/art/structure_sprite.gdshader")
 	t.check(src.contains("uniform float window_hot = 0.0;") and src.contains("if (window_hot > 0.0)"),
 		"the sprite shader's hot windows are off by default")
+	t.check(src.contains("uniform float rim_amt = 0.0;") and src.contains("if (rim_amt > 0.0 && !glow && px.a > 0.5)"),
+		"the sprite shader's rim light is off by default, so CURRENT's art is byte-identical")
+	var day := TownLook.sprite_params(Town.Look.DAY)
+	var night := TownLook.sprite_params(Town.Look.NIGHT)
+	var dc: Vector3 = day.rim_col
+	var nc: Vector3 = night.rim_col
+	t.check(float(day.rim_amt) > 0.0 and dc.x > dc.z and float(night.rim_amt) > 0.0 and nc.z > nc.x,
+		"DAY's rim is a warm sun, NIGHT's a cool moon")
 	for look: Town.Look in [Town.Look.CURRENT, Town.Look.DAY, Town.Look.NIGHT]:
 		var parts: Array = R2._build(look)
 		var want := TownLook.sprite_params(look)
@@ -50,9 +58,10 @@ static func _sprite_params(t) -> void:
 		var v := SpriteView.new().setup(s.sprite, Vector2(-32, -16), Vector2(32, -16))
 		var m := v.material as ShaderMaterial
 		var ok := true
-		for k: String in ["window_hot", "rim_amt", "rim_col", "rim_moon"]:
+		for k: String in ["window_hot", "rim_amt", "rim_col"]:
 			var got = m.get_shader_parameter(k)
 			ok = ok and (got == null if not want.has(k) else got == want[k])
+		ok = ok and (m.get_shader_parameter("rim_dir") == null) == not want.has("rim_amt")
 		t.check(ok, "%d: a sprite view carries exactly the look's settings (none in CURRENT)" % look)
 		v.free()
 		R2._free(parts)

@@ -77,6 +77,9 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 		_mat.set_shader_parameter("window_boost", window_boost)
 	for k: String in look_params:
 		_mat.set_shader_parameter(k, look_params[k])
+	if look_params.has("rim_amt"):
+		# Toward the sun (up-left on screen): in a mirrored sprite's own texels that is up-right.
+		_mat.set_shader_parameter("rim_dir", Vector2(-m, -1.0))
 	return self
 
 

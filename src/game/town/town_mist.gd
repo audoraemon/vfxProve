@@ -14,11 +14,12 @@ const RING_FADE := 8.0
 const BANK_BAND := 1.2
 const WATER_FADE := 0.8
 const WATER_ALPHA := 0.6
-const BEAMS := 4
 ## The sunbeams light open ground only: they lie in the ground plane with the mist (z 0, under everything that stands), so
 ## buildings, people and tags are never covered. Each of a stripe's three nested steps adds up to BEAM_MAX_ALPHA.
-const BEAM_MAX_ALPHA := 0.10
+const BEAM_MAX_ALPHA := 0.14
 const BEAM_Z := 0
+## DAY mist starts lower (town_mist.gdshader floor_level; NIGHT keeps the shader's 0.28), so it is thicker.
+const DAY_FLOOR := 0.16
 
 var look := 0
 var _beams: Array[Polygon2D] = []
@@ -120,7 +121,7 @@ static func _minus(r: Rect2, cut: Rect2) -> Array[Rect2]:
 static func mist_colour(look_value) -> Color:
 	if look_value == Town.Look.NIGHT:
 		return Color(0.62, 0.72, 0.90, 0.20)
-	return Color(0.96, 0.92, 0.82, 0.34)
+	return Color(0.98, 0.93, 0.80, 0.46)
 
 
 func setup(look_value) -> TownMist:
@@ -142,6 +143,10 @@ func setup(look_value) -> TownMist:
 		if z.kind == &"water":
 			col.a *= WATER_ALPHA
 		mat.set_shader_parameter("mist_col", col)
+		if look_value == Town.Look.DAY:
+			# Thick, soft-edged volumes, dithered (town_mist.gdshader dither), lying lower so more of the ring is in them.
+			mat.set_shader_parameter("dither", 1.0)
+			mat.set_shader_parameter("floor_level", DAY_FLOOR)
 		if z.kind == &"ring":
 			for i in mini(keeps.size(), 2):
 				var k: Rect2 = keeps[i]
@@ -158,33 +163,47 @@ func setup(look_value) -> TownMist:
 	return self
 
 
-## Slanted stripes of sun from the upper left across the town (screen px, world-space): three nested pale
-## parallelograms each, so a stripe has a bright core and two stepped edges.
+## Slanted stripes of sun from the upper left across the town (screen px, world-space), on the same stripes the grade
+## draws outside the walls (TownLook.beam_stripe()), so a beam runs on from the forest into the town: three nested pale
+## parallelograms each, so a stripe has a bright core and two stepped edges. They span the town's diamond top to bottom.
 func _add_beams(town_rect: Rect2) -> void:
 	var holder := Node2D.new()
 	holder.name = "Beams"
 	add_child(holder)
-	var c := Iso.ground_to_screen(town_rect.get_center())
-	var span := town_rect.size.x * 32.0
-	var length := 520.0
-	var slant := 0.55
+	var c := TownLook.beam_origin()
+	var top := Iso.ground_to_screen(town_rect.position).y
+	var bottom := Iso.ground_to_screen(town_rect.end).y
+	var left := Iso.ground_to_screen(Vector2(town_rect.position.x, town_rect.end.y)).x
+	var right := Iso.ground_to_screen(Vector2(town_rect.end.x, town_rect.position.y)).x
+	var y0 := top
+	var length := bottom - top
+	var slant := TownLook.BEAM_SLANT
 	var widths := [1.0, 0.62, 0.30]
-	for i in BEAMS:
-		var x0 := c.x - span * 0.55 + (float(i) + 0.5) / BEAMS * span * 1.1 + float(i % 2) * 40.0
-		var y0 := c.y - length * 0.7
-		var half := 34.0 + float(i % 3) * 14.0
+	var diamond := PackedVector2Array([Iso.ground_to_screen(town_rect.position),
+		Iso.ground_to_screen(Vector2(town_rect.end.x, town_rect.position.y)), Iso.ground_to_screen(town_rect.end),
+		Iso.ground_to_screen(Vector2(town_rect.position.x, town_rect.end.y))])
+	# Every stripe whose band crosses the town's screen box somewhere between its top and bottom.
+	var n0 := floori((left - c.x - (bottom - c.y) * slant) / TownLook.BEAM_PERIOD) - 1
+	var n1 := ceili((right - c.x - (top - c.y) * slant) / TownLook.BEAM_PERIOD) + 1
+	for n in range(n0, n1 + 1):
+		var st := TownLook.beam_stripe(n)
+		# The stripe's centre on the line y = y0: u = x - c.x - (y0 - c.y) * slant.
+		var x0: float = st.x + c.x + (y0 - c.y) * slant
+		var half: float = st.y * 0.8
 		for k in 3:
 			var w: float = half * widths[k]
-			var poly := Polygon2D.new()
-			poly.name = "Beam%d_%d" % [i, k]
 			var quad := PackedVector2Array([Vector2(x0 - w, y0), Vector2(x0 + w, y0),
 				Vector2(x0 + w + length * slant, y0 + length), Vector2(x0 - w + length * slant, y0 + length)])
-			for j in quad.size():
-				quad[j] = quad[j].round()
-			poly.polygon = quad
-			poly.color = Color(1.0, 0.94, 0.74, BEAM_MAX_ALPHA)
-			holder.add_child(poly)
-			_beams.append(poly)
+			# Cut to the town's diamond: outside it the grade draws the beam.
+			for piece in Geometry2D.intersect_polygons(quad, diamond):
+				for j in piece.size():
+					piece[j] = piece[j].round()
+				var poly := Polygon2D.new()
+				poly.name = "Beam%d_%d" % [n - n0, k]
+				poly.polygon = piece
+				poly.color = Color(1.0, 0.94, 0.74, BEAM_MAX_ALPHA)
+				holder.add_child(poly)
+				_beams.append(poly)
 
 
 func zone_count() -> int:

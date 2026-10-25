@@ -69,6 +69,55 @@ static func grade(look) -> Dictionary:
 		"keep_lit": 0.0, "calm": 0.0, "shoulder": 0.28, "knee": 0.45}
 
 
+## The atmosphere of a look over the active city (TownGrade's uniforms, town_grade.gdshader atmosphere()): DAY's haze
+## toward the map's edges, its sunbeams outside the walls (the same stripes as TownMist's in the town, beam_stripe()),
+## a sun glow in the screen's top left, and a vignette (NIGHT's a little stronger, and nothing else).
+static func atmosphere(look) -> Dictionary:
+	if look == Town.Look.NIGHT:
+		return {"vignette": 0.42}
+	if look != Town.Look.DAY:
+		return {}
+	var city := City.current()
+	var keeps := TownMist.keep_outs()
+	var out := {"vignette": 0.32, "haze": 0.55, "haze_start": 3.0, "haze_end": city.border() + 10.0,
+		"beam": 0.75, "beam_origin": beam_origin(), "beam_slant": BEAM_SLANT, "beam_period": BEAM_PERIOD,
+		"beam_width": BEAM_WIDTH, "beam_keep": _rect4(city.town().grow(BEAM_PAD)), "sun": 0.75, "sun_at": Vector2(0.02, 0.0),
+		"sun_radius": 0.5}
+	for i in mini(keeps.size(), 2):
+		out["keep_out" if i == 0 else "keep_out2"] = _rect4(keeps[i])
+	return out
+
+
+static func _rect4(r: Rect2) -> Vector4:
+	return Vector4(r.position.x, r.position.y, r.size.x, r.size.y)
+
+
+## The sunbeams' layout (world px), shared by the grade (outside the walls) and TownMist (the town's ground plane):
+## stripes slanting BEAM_SLANT px right per px down, one every BEAM_PERIOD px across, each about BEAM_WIDTH px half-wide.
+## The grade's beams keep BEAM_PAD ground units off the town rect.
+const BEAM_SLANT := 0.55
+const BEAM_PERIOD := 260.0
+const BEAM_WIDTH := 70.0
+const BEAM_PAD := 2.5
+
+
+## Where the beams are laid out from: the active town's centre (world px).
+static func beam_origin() -> Vector2:
+	return Iso.ground_to_screen(City.current().town().get_center())
+
+
+## Stripe n's centre (px across the beams from the origin's line, beam_u()) and half-width, as the shader lays it out.
+static func beam_stripe(n: int) -> Vector2:
+	var hk := fposmod(n * 0.6180340 + 0.31, 1.0)
+	var hw := BEAM_WIDTH * (0.6 + 0.8 * fposmod((n + 3.0) * 0.6180340 + 0.31, 1.0))
+	return Vector2(n * BEAM_PERIOD + (hk - 0.5) * BEAM_PERIOD * 0.3, hw)
+
+
+## A point's place across the beams (world px), as the shader measures it.
+static func beam_u(p: Vector2, origin: Vector2) -> float:
+	return p.x - origin.x - (p.y - origin.y) * BEAM_SLANT
+
+
 ## Lit windows (SpriteView.window_boost): how far a window of a building's glow mask is pushed toward a hot lamp colour.
 ## NIGHT lights every one; DAY only faintly, as at dusk.
 static func window_boost(look) -> float:

@@ -7,6 +7,7 @@ static func run(t) -> void:
 	_current_creates_none(t)
 	_bloom(t)
 	_windows(t)
+	_atmosphere(t)
 
 
 static func _build(look: Town.Look) -> Array:
@@ -116,3 +117,41 @@ static func _boost_of(s: Structure) -> Variant:
 	var b = (v.material as ShaderMaterial).get_shader_parameter("window_boost")
 	v.free()
 	return b
+
+
+## DAY's atmosphere: haze, beams, sun and a vignette in the grade; NIGHT only a stronger vignette. The beams inside the town
+## stay in the ground plane (TownMist's, cut to the town's diamond); the grade's beams keep off the town rect.
+static func _atmosphere(t) -> void:
+	var day := TownLook.atmosphere(Town.Look.DAY)
+	var night := TownLook.atmosphere(Town.Look.NIGHT)
+	t.check(TownLook.atmosphere(Town.Look.CURRENT).is_empty(), "CURRENT has no atmosphere")
+	t.check(float(day.haze) > 0.0 and float(day.beam) > 0.0 and float(day.sun) > 0.0, "DAY has haze, sunbeams and a sun glow")
+	t.check(not night.has("haze") and not night.has("beam") and not night.has("sun"), "NIGHT has none of DAY's atmosphere")
+	t.check(float(night.vignette) > float(day.vignette) and float(day.vignette) > 0.0, "both have a vignette, NIGHT's stronger")
+	for id: StringName in [&"aldermere", &"capital"]:
+		City.use(id)
+		var town_rect := City.current().town()
+		var keep: Vector4 = TownLook.atmosphere(Town.Look.DAY).beam_keep
+		var k := Rect2(keep.x, keep.y, keep.z, keep.w)
+		t.check(k.encloses(town_rect), "%s: the grade's beams keep off the whole town rect" % id)
+		var parts := _build(Town.Look.DAY)
+		var town: Town = parts[0]
+		var mist := _find(town, TownMist) as TownMist
+		var inside := true
+		var ground_plane := true
+		for b in mist.beams():
+			ground_plane = ground_plane and b.get_parent().get_parent() == mist and b.z_index == 0 and b.get_parent().z_index == TownMist.BEAM_Z
+			for p in b.polygon:
+				var g := Iso.screen_to_ground(p)
+				inside = inside and town_rect.grow(0.1).has_point(g)
+		t.check(mist.beam_count() > 0 and inside, "%s: the town's %d beam pieces lie inside the town" % [id, mist.beam_count()])
+		t.check(ground_plane and mist.get_parent() == parts[2], "%s: the town's beams are in the ground plane, under everything that stands" % id)
+		var ok := true
+		for n in range(-3, 4):
+			var st := TownLook.beam_stripe(n)
+			ok = ok and st.y > 0.0 and absf(st.x - n * TownLook.BEAM_PERIOD) <= TownLook.BEAM_PERIOD * 0.15 + 0.001
+		t.check(ok, "beam stripes repeat every period, jittered at most 15%")
+		_free(parts)
+	City.use(&"aldermere")
+	var src := FileAccess.get_file_as_string("res://src/game/town/town_mist.gdshader")
+	t.check(src.contains("bayer4(floor(wpos))"), "DAY mist is soft-edged with a dithered alpha")

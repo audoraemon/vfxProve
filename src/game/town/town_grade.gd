@@ -47,6 +47,9 @@ func setup(look_value, light: Texture2D = null) -> TownGrade:
 	var g := TownLook.grade(look_value)
 	for k: String in g:
 		mat.set_shader_parameter(k, g[k])
+	var atm := TownLook.atmosphere(look_value)
+	for k: String in atm:
+		mat.set_shader_parameter(k, atm[k])
 	if light != null:
 		mat.set_shader_parameter("light_tex", light)
 		mat.set_shader_parameter("light_gain", TownLook.light_gain(look_value))

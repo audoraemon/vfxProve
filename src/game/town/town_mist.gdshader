@@ -14,6 +14,15 @@ uniform float scale = 90.0;
 uniform vec2 drift = vec2(7.0, 2.5);
 uniform float steps = 3.0;
 uniform float floor_level = 0.28;
+// DAY's soft mist volumes: 0 = `steps` hard alpha steps; 1 = a soft edge, its alpha stepped through a 4x4 Bayer dither of
+// world pixels (8 levels), so it is thick and soft-edged and still crisp pixel art.
+uniform float dither = 0.0;
+
+float bayer4(vec2 p) {
+	ivec2 i = ivec2(mod(p, 4.0));
+	int b[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+	return (float(b[i.y * 4 + i.x]) + 0.5) / 16.0;
+}
 
 varying vec2 wpos;
 
@@ -55,5 +64,9 @@ void fragment() {
 	}
 	float v = clamp((n * (0.55 + 0.45 * m) - floor_level) / (1.0 - floor_level), 0.0, 0.999) * m;
 	float level = floor(v * (steps + 1.0)) / steps;
+	if (dither > 0.5) {
+		float soft = smoothstep(0.0, 0.85, v);
+		level = floor(soft * 8.0 + bayer4(floor(wpos))) / 8.0;
+	}
 	COLOR = vec4(mist_col.rgb, min(level, 1.0) * mist_col.a);
 }

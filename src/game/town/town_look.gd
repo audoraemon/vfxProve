@@ -81,3 +81,11 @@ static func light_gain(look) -> float:
 
 static func light_warm(_look) -> Vector3:
 	return Vector3(1.0, 0.86, 0.66)
+
+
+## The glow (TownBloom, town_bloom.gdshader): the brightness a pixel blooms from, how warm it must be, the halo's strength
+## and tint. NIGHT blooms from its flames and windows strongly; DAY lightly from its highlights.
+static func bloom(look) -> Dictionary:
+	if look == Town.Look.NIGHT:
+		return {"threshold": 0.7, "knee": 0.25, "warm_only": 1.0, "strength": 0.8, "tint": Vector3(1.0, 0.78, 0.5)}
+	return {"threshold": 0.8, "knee": 0.15, "warm_only": 0.0, "use_lum": 1.0, "strength": 0.3, "tint": Vector3(1.0, 0.88, 0.66)}

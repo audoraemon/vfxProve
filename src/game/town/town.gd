@@ -241,6 +241,8 @@ func _build_look(ground: Node2D) -> void:
 	var pools := TownPools.new().setup(self)
 	_add_look_node(pools)
 	_add_look_node(TownGrade.new().setup(look, pools.light_texture()))
+	# The glow over the graded world, under Battlefield's glow layer.
+	_add_look_node(TownBloom.new().setup(look))
 
 
 ## Adds a look node under `parent` (the town itself if null) and remembers it, so teardown() frees exactly these.

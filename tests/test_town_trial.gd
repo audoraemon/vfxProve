@@ -8,6 +8,7 @@ static func run(t) -> void:
 	_bloom(t)
 	_windows(t)
 	_atmosphere(t)
+	_contact(t)
 
 
 static func _build(look: Town.Look) -> Array:
@@ -155,3 +156,25 @@ static func _atmosphere(t) -> void:
 	City.use(&"aldermere")
 	var src := FileAccess.get_file_as_string("res://src/game/town/town_mist.gdshader")
 	t.check(src.contains("bayer4(floor(wpos))"), "DAY mist is soft-edged with a dithered alpha")
+
+
+## Contact shadows: in the shadow layer (TownShadows), a group of their own drawn after the cast shadows, four dithered
+## quads round every casting structure's base and a blob under every forest tree; a destroyed building keeps its band.
+static func _contact(t) -> void:
+	for look: Town.Look in [Town.Look.DAY, Town.Look.NIGHT]:
+		var parts := _build(look)
+		var town: Town = parts[0]
+		var env: EnvironmentField = parts[1]
+		var sh := _find(town, TownShadows) as TownShadows
+		var casting := 0
+		for s in env.structures():
+			if TownShadows.casts(s):
+				casting += 1
+		t.check(sh.contact != null and sh.contact.get_parent() == sh and sh.contact.get_index() > sh.group.get_index(),
+			"%s: the contact group is in the shadow layer, after the cast shadows" % Town.Look.keys()[look])
+		t.check(sh.contact_count() == casting * 4 + sh.trees.size() * 8,
+			"%s: a band per casting structure (%d) and a blob per tree (%d): %d shapes" % [Town.Look.keys()[look], casting, sh.trees.size(), sh.contact_count()])
+		t.check(sh.contact.self_modulate.a > TownLook.shadow_colour(look).a, "the contact band is darker than the cast shadow")
+		var mat := sh.contact.get_child(0).material as ShaderMaterial
+		t.check(mat != null and mat.shader.code.contains("bayer4"), "the band is dithered")
+		_free(parts)

@@ -328,7 +328,7 @@ func click(point: Vector2) -> void:
 			UiSound.play(&"ui_click")
 			_ui.queue_redraw()
 		else:
-			_refuse(String(REFUSALS.get(why, why)))
+			refuse(String(REFUSALS.get(why, why)))
 	elif h.begins_with("slot:"):
 		var i := int(h.substr(5))
 		if i < draft.picks.size():
@@ -341,7 +341,7 @@ func click(point: Vector2) -> void:
 			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
 		else:
-			_refuse(REFUSE_EMPTY)
+			refuse(REFUSE_EMPTY)
 	elif h != "":
 		var why := draft.toggle(h)
 		_keep_god_levels()
@@ -349,7 +349,7 @@ func click(point: Vector2) -> void:
 			UiSound.play(&"ui_click")
 			_ui.queue_redraw()
 		else:
-			_refuse(String(REFUSALS.get(why, why)))
+			refuse(String(REFUSALS.get(why, why)))
 
 
 ## A god's powers keep their learned levels when picked, given back and picked again (god P1): Draft.toggle() clears a level when a
@@ -359,12 +359,25 @@ func _keep_god_levels() -> void:
 		draft.levels = god.learned.duplicate()
 
 
-## Buzz, and say why in the panel's hint line for REFUSE_SECONDS.
-func _refuse(reason: String) -> void:
+## Buzz, and say why in the panel's hint line for REFUSE_SECONDS. Public: Game refuses an empty draft through it (god P1, review M4).
+func refuse(reason: String) -> void:
 	UiSound.play(&"ui_buzz")
 	refused_reason = reason
 	_refuse_left = REFUSE_SECONDS
 	_ui.queue_redraw()
+
+
+## The price line of a power's card: its Might (at the level it is picked at, when it is picked on the board -- god P1, review M5), its
+## cooldown, a god's learned level before them, or the unlocking price of a locked power (v0.11 M1, spec §3.4).
+func card_cost_text(key: String) -> String:
+	var p := PowerBook.get_power(key)
+	if draft.locked.has(key):
+		return "Locked: %d" % DescendState.unlock_price(key)
+	if god != null:
+		# A god's card (god P1): the learned level and the Might at that level.
+		return "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p)]
+	var might := PowerBook.might(key, draft.level_of(key)) if draft.slot_of(key) > 0 else int(p.dp)
+	return "%d Might  %s" % [might, cooldown_text(p)]
 
 
 ## The power the mouse is over: a card's, or the pick in a loadout slot's (or its level badge's).
@@ -596,12 +609,7 @@ func _draw_card(i: int, key: String) -> void:
 			UiTheme.COL_GOLD if slot > 0 else (UiTheme.COL_DIM if refused else UiTheme.COL_TEXT))
 		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
 	# A locked power (v0.11 M1, spec §3.4) shows its unlocking price instead.
-	var cost := "%d Might  %s" % [int(p.dp), cooldown_text(p)]
-	if god != null:
-		# A god's card (god P1): the learned level and the Might at that level.
-		cost = "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p)]
-	if draft.locked.has(key):
-		cost = "Locked: %d" % DescendState.unlock_price(key)
+	var cost := card_cost_text(key)
 	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.

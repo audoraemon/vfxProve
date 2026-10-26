@@ -17,6 +17,9 @@ const SPOT_GAP := 4.0
 const COLUMN_GAP := 12.0
 const ROW_STEP := 52.0
 const COLUMNS := 3
+## A spot's icon (spec §12): ICON_PX square, drawn at its top left, with the name from NAME_X so the two sit side by side above the pips.
+const ICON_PX := 14.0
+const NAME_X := 20.0
 ## The detail panel under the grid (the hovered spot's change, or a refusal), and the Back button beside it.
 const DETAIL := Rect2(86.0, 314.0, 546.0, 40.0)
 const BACK_RECT := Rect2(8.0, 322.0, 70.0, 24.0)
@@ -33,10 +36,18 @@ var _slot: GodSlot
 var _ui: Control
 var _hover := ""
 var _picked := ""
+## The spots' icons, loaded once each in setup(), not in the draw (a texture first loaded inside a draw showed white for a frame); null for a power with none yet.
+var _icons := {}
 
 
 func setup(slot: GodSlot) -> SkillTreeScreen:
 	_slot = slot
+	for col in columns().size():
+		for tier in range(1, GodTree.TIERS + 1):
+			for i in GodTree.PER_TIER:
+				var key := key_at(col, tier, i)
+				if key != "" and not _icons.has(key):
+					_icons[key] = spot_icon(key)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -61,6 +72,17 @@ static func spot_rect(col: int, tier: int, i: int) -> Rect2:
 	var x := GRID_AT.x + float(col) * (2.0 * SPOT.x + SPOT_GAP + COLUMN_GAP) + float(i) * (SPOT.x + SPOT_GAP)
 	var y := GRID_AT.y + float(tier - 1) * ROW_STEP
 	return Rect2(Vector2(x, y), SPOT)
+
+
+## The rectangle of the icon in the spot `i` of tier `tier` in column `col`.
+static func icon_rect(col: int, tier: int, i: int) -> Rect2:
+	return Rect2(spot_rect(col, tier, i).position + Vector2(3.0, 1.0), Vector2(ICON_PX, ICON_PX))
+
+
+## The picture of an ability's spot: the HUD copy of its icon, else the full one; null when the power has none yet.
+static func spot_icon(key: String) -> Texture2D:
+	var hud := PowerBook.hud_icon(key)
+	return hud if hud != null else PowerBook.icon(key)
 
 
 ## What is under a point: "spot:<col>:<tier>:<i>", "back" or "".
@@ -241,7 +263,10 @@ func _draw_spot(col: int, tier: int, i: int, locked: bool) -> void:
 	var text_col := Color(UiTheme.COL_TEXT, fade)
 	var dim_col := Color(UiTheme.COL_DIM, fade)
 	var room := r.size.x - 8.0
-	UiTheme.text(_ui, r.position + Vector2(4.0, 11.0), UiTheme.fit(lines[0], room), UiTheme.SIZE_SMALL,
+	var icon: Texture2D = _icons.get(key)
+	if icon != null:
+		_ui.draw_texture_rect(icon, icon_rect(col, tier, i), false, Color(1, 1, 1, fade))
+	UiTheme.text(_ui, r.position + Vector2(NAME_X, 11.0), UiTheme.fit(lines[0], room - (NAME_X - 4.0)), UiTheme.SIZE_SMALL,
 		Color(UiTheme.COL_GOLD, fade) if have > 0 else text_col, fade)
 	for p in PowerBook.MAX_LEVEL:
 		var pip := Rect2(r.position + Vector2(4.0 + float(p) * 6.0, 15.0), Vector2(5.0, 5.0))

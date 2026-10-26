@@ -12,6 +12,7 @@ static func run(t) -> void:
 	_learn(t)
 	_far_hidden(t)
 	_header_and_detail(t)
+	_spot_icons(t)
 	GodTree.dev_fill = false
 
 
@@ -173,4 +174,30 @@ static func _header_and_detail(t) -> void:
 		"hovering a spot: its title line, then its next level (%s)" % [lines])
 	s._hover = "spot:1:3:0"
 	t.check(s.detail_lines()[0].begins_with("Dragon"), "another spot (%s)" % [s.detail_lines()])
+	s.free()
+
+
+## M6 (final review, spec §12): every spot with an ability draws that power's icon, small, left of the name -- inside the spot, clear of
+## the level pips under it.
+static func _spot_icons(t) -> void:
+	var s := _screen("ruin")
+	var with_key := 0
+	var missing := PackedStringArray()
+	for col in 3:
+		for tier in range(1, 6):
+			for i in 2:
+				var key := s.key_at(col, tier, i)
+				if key == "":
+					continue
+				with_key += 1
+				var spot := SkillTreeScreen.spot_rect(col, tier, i)
+				var box := SkillTreeScreen.icon_rect(col, tier, i)
+				t.check(spot.encloses(box) and box.size == Vector2(SkillTreeScreen.ICON_PX, SkillTreeScreen.ICON_PX),
+					"the icon of %s sits inside its spot (%s in %s)" % [key, box, spot])
+				t.check(box.end.x <= spot.position.x + SkillTreeScreen.NAME_X and box.end.y <= spot.position.y + 15.0,
+					"and clear of the name and the pips (%s)" % [box])
+				if SkillTreeScreen.spot_icon(key) == null:
+					missing.append(key)
+	t.check(with_key > 0 and SkillTreeScreen.spot_icon("smite") != null, "smite has an icon to draw (%d spots with a power)" % with_key)
+	t.check(missing.is_empty(), "every power in the tree has an icon (missing: %s)" % ", ".join(missing))
 	s.free()

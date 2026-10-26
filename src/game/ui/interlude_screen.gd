@@ -3,7 +3,8 @@ extends Node
 ## The interlude between the acts of a night (v0.09), over the frozen town: the act just played -- its goal and each
 ## bonus ticked or crossed, and the time it took -- then what comes next. After Act I that is the choice card, one card
 ## per path with its brief, its timed events and how the town will meet the player; after Act II it is a single line
-## naming the last act. "Choose powers" goes on to the re-draft, "Missions" leaves the night for the board.
+## naming the last act. "Choose powers" goes on to the re-draft, "Missions" leaves the night for the board. In Endless Night (god P1, final
+## review I2) leaving is a lost night, so the button reads "Abandon night", asks first with the pause menu's words, and Esc does nothing.
 
 ## "draft" (on to Prepare with `chosen`) or "missions" (Esc, or the button).
 signal action(name: String)
@@ -26,6 +27,8 @@ var chosen := ""
 ## The acts that may follow, and the card the keyboard is on.
 var choices: Array = []
 var selected := 0
+## True in an Endless Night (set before setup()): the second button abandons the night after a confirm, and Esc does not leave.
+var endless := false
 
 var _result := {}
 ## The name of the act just played, looked up once.
@@ -34,6 +37,9 @@ var _night: NightState
 var _ui: Control
 var _menu: Menu
 var _hover := ""
+## The two rows the menu goes back to when Stay is pressed, and whether Abandon's confirm is up (Endless Night only).
+var _rows: Menu
+var _confirm := false
 
 
 ## Where card `i` of `count` sits: side by side inside the panel, the row centred on 320.
@@ -69,7 +75,8 @@ func setup(result: Dictionary, next: Array, night: NightState) -> InterludeScree
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	_menu = Menu.row(["draft", "missions"], ["Choose powers", "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
+	_menu = Menu.row(["draft", "missions"], ["Choose powers", "Abandon night" if endless else "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
+	_rows = _menu
 	return self
 
 
@@ -100,9 +107,31 @@ func hit(point: Vector2) -> int:
 	return -1
 
 
+## Abandon's confirm is up (Endless Night only).
+func confirming() -> bool:
+	return _confirm
+
+
+## What the confirm says: the pause menu's words for a night whose clock has started (every interlude is after the first act); "" while it is not up.
+func confirm_line() -> String:
+	return PauseMenu.CONFIRM_LOST if _confirm else ""
+
+
+## Opens (or closes) the confirm: the buttons become Abandon and Stay, and the two rows return on Stay.
+func _set_confirm(on: bool) -> void:
+	_confirm = on
+	_hover = ""
+	if on:
+		_menu = Menu.row(["missions", "stay"], ["Abandon", "Stay"], 320.0, PANEL.end.y - 28.0, 100.0)
+	else:
+		_menu = _rows
+	if _ui != null:
+		_ui.queue_redraw()
+
+
 ## A left click at a screen point: a card is chosen, a button pressed.
 func click(point: Vector2) -> void:
-	var i := hit(point)
+	var i := -1 if _confirm else hit(point)
 	if i >= 0:
 		_choose_card(i)
 		return
@@ -111,8 +140,17 @@ func click(point: Vector2) -> void:
 		_press(a)
 
 
-## "Choose powers" goes once an act is chosen, and buzzes before; "Missions" always goes.
+## "Choose powers" goes once an act is chosen, and buzzes before; "Missions" always goes -- in Endless Night only after its confirm (Stay
+## goes back).
 func _press(what: String) -> void:
+	if what == "stay":
+		UiSound.play(&"ui_click")
+		_set_confirm(false)
+		return
+	if what == "missions" and endless and not _confirm:
+		UiSound.play(&"ui_click")
+		_set_confirm(true)
+		return
 	if what == "draft" and chosen == "":
 		UiSound.play(&"ui_buzz")
 		return
@@ -137,7 +175,14 @@ func _select(i: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if _confirm:
+			# In the confirm only Esc answers, and it is Stay; Enter and the arrows leave the night as it is.
+			if event.physical_keycode == KEY_ESCAPE:
+				_press("stay")
+			return
 		if event.physical_keycode == KEY_ESCAPE:
+			if endless:
+				return  # leaving a night between its acts costs it: only the button, and its confirm, does
 			UiSound.play(&"ui_click")
 			action.emit("missions")
 		elif event.physical_keycode == KEY_LEFT:
@@ -180,7 +225,7 @@ func _draw_ui() -> void:
 		for i in choices.size():
 			_draw_card(card_rect(i, choices.size()), choices[i] as ActDef, i)
 		var hint := "Left and Right, then Enter, to choose the next act" if chosen == "" \
-			else "Enter or Choose powers to draft for it, Esc for the missions"
+			else ("Enter or Choose powers to draft for it" if endless else "Enter or Choose powers to draft for it, Esc for the missions")
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), HINT_Y), hint,
 			UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	elif choices.size() == 1:
@@ -193,7 +238,9 @@ func _draw_ui() -> void:
 			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(l, UiTheme.SIZE_BODY) * 0.5), y), l, UiTheme.SIZE_BODY,
 				UiTheme.COL_GOLD)
 			y += UiTheme.LINE_BODY
-	_menu.draw_on(_ui, _hover, PackedStringArray(["draft"]) if chosen == "" else PackedStringArray())
+	if _confirm:
+		_draw_confirm()
+	_menu.draw_on(_ui, _hover, PackedStringArray(["draft"]) if chosen == "" and not _confirm else PackedStringArray())
 
 
 ## The act's result on one centred row: its goal and each bonus with a tick or a cross, then "Time m:ss".
@@ -247,3 +294,14 @@ func _draw_card(r: Rect2, act: ActDef, i: int) -> void:
 	for line in meet:
 		UiTheme.text(_ui, Vector2(x, foot), line, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 		foot += UiTheme.LINE_BODY
+
+
+## Abandon's confirm, over the cards: what leaving costs, in the pause menu's words, above the Abandon and Stay buttons.
+func _draw_confirm() -> void:
+	var box := Rect2(PANEL.position.x + 8.0, CARD_TOP - 6.0, PANEL.size.x - 16.0, PANEL.end.y - 32.0 - (CARD_TOP - 6.0))
+	_ui.draw_rect(box, Color(0.03, 0.03, 0.05, 1.0))
+	UiTheme.frame(_ui, box, true)
+	var y := box.position.y + box.size.y * 0.5 - 6.0
+	for l in UiTheme.wrap(confirm_line(), 480.0, UiTheme.SIZE_BODY):
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(l, UiTheme.SIZE_BODY) * 0.5), y), l, UiTheme.SIZE_BODY, UiTheme.COL_BAD)
+		y += UiTheme.LINE_BODY

@@ -92,6 +92,20 @@ static func path(n: int, base := PATH_BASE) -> String:
 	return "%s%d.cfg" % [base, n]
 
 
+## The generator behind fresh_seed(), made on first use.
+static var _seeds: RandomNumberGenerator
+
+
+## A seed for a new god (Ruling P17, final review M9): from the operating system's entropy, not the engine clock, which counts from launch
+## and would give two gods made at the same moment the same draws. One generator of its own, seeded once from the system (a new one
+## per call can be seeded by the same tick twice), so the game's global one is not reseeded and each call is another number.
+static func fresh_seed() -> int:
+	if _seeds == null:
+		_seeds = RandomNumberGenerator.new()
+		_seeds.randomize()
+	return (int(_seeds.randi()) << 31) ^ int(_seeds.randi())
+
+
 ## A new god: level 1, tier 1, its two Tier 1 abilities learned at level 1 for free (spec §4).
 static func make(n: int, god_type: String, p_seed: int) -> GodSlot:
 	var s := GodSlot.new()

@@ -14,6 +14,8 @@ static func run(t) -> void:
 	_load_god_forfeits(t)
 	_draw_survives_quit(t)
 	_endless_button(t)
+	_between_acts_levels(t)
+	_god_seed(t)
 	GodTree.dev_fill = false
 	_clear()
 
@@ -164,3 +166,22 @@ static func _endless_button(t) -> void:
 	plain.click(at)
 	t.check(plain.hit(at) == "" and plain_got.is_empty(), "without dev there is no ENDLESS (%s, %s)" % [plain.hit(at), plain_got])
 	plain.free()
+
+
+## M1 (final review): a campaign's between-acts Prepare never shows the board's levels left in Game.levels; a board night's does.
+static func _between_acts_levels(t) -> void:
+	var left := {"smite": 4}
+	t.check(Game.between_acts_levels(true, left).is_empty(), "the campaign re-draft shows no board levels (%s)" % [Game.between_acts_levels(true, left)])
+	t.check(Game.between_acts_levels(false, left) == left, "a board night's re-draft shows the levels chosen so far (%s)" % [Game.between_acts_levels(false, left)])
+
+
+## M9 (final review): a new god's seed is not the engine clock, so two gods made at once do not share their draws (Ruling P17).
+static func _god_seed(t) -> void:
+	var seen := {}
+	for i in 64:
+		seen[GodSlot.fresh_seed()] = true
+	t.check(seen.size() == 64, "64 fresh seeds are all different (%d)" % seen.size())
+	var text := FileAccess.get_file_as_string("res://src/game/game.gd")
+	t.check(text.contains("GodSlot.make(god_slot, pick.chosen_type, GodSlot.fresh_seed())"),
+		"Game makes a new god from fresh_seed()")
+	t.check(not text.contains("GodSlot.make(god_slot, pick.chosen_type, Time.get_ticks_usec())"), "and no longer from the engine clock")

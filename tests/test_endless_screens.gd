@@ -15,6 +15,8 @@ static func run(t) -> void:
 	_bar_animation(t)
 	_pause_endless(t)
 	_prepare_god(t)
+	_interlude_endless(t)
+	_refuse_and_card_cost(t)
 	GodTree.dev_fill = false
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
 
@@ -89,12 +91,16 @@ static func _god_lines(t) -> void:
 	var want := PackedStringArray(["Divine Power +120", "Level 2   +1 ability point", "Level 3   +1 ability point",
 		"Believers 30   Faith +30, 45 now", "Lantern Notice 0%", "Night 1"])
 	t.check(got == want, "the god's lines in spec §9.2's order (%s)" % [got])
-	var capped := {"god": {"divine_power": 80, "levels": PackedInt32Array(), "capped": true, "believers": 0, "faith": 0,
+	var capped := {"god": {"divine_power": 80, "levels": PackedInt32Array(), "capped": true, "lost": 30, "believers": 0, "faith": 0,
 		"faith_total": 7, "notice": 25, "night": 4}}
 	var c := ResultsScreen.god_lines(capped)
 	t.check(c[0] == "Divine Power +80   AWAKEN TO GROW", "a capped god is told to awaken (%s)" % [c[0]])
-	t.check(c.size() == 4 and c[1] == "Believers 0   Faith +0, 7 now" and c[2] == "Lantern Notice 25%" and c[3] == "Night 4",
-		"no level lines when no level was gained (%s)" % [c])
+	t.check(c.size() == 5 and c[1] == "30 Divine Power lost at the cap" and c[2] == "Believers 0   Faith +0, 7 now"
+		and c[3] == "Lantern Notice 25%" and c[4] == "Night 4",
+		"no level lines when no level was gained, and the Divine Power lost at the cap is shown as an amount (I1) (%s)" % [c])
+	var clean := ResultsScreen.god_lines(_god_result())
+	t.check(not "
+".join(clean).contains("lost"), "nothing lost, no line about it (%s)" % [clean])
 	# Levels may come as a plain Array (a hand-built result).
 	var arr := ResultsScreen.god_lines({"god": {"divine_power": 5, "levels": [2], "capped": false, "believers": 1, "faith": 1,
 		"faith_total": 1, "notice": 0, "night": 2}})
@@ -220,3 +226,62 @@ static func _prepare_god(t) -> void:
 	plain.setup(TierBook.board("warning"), PackedStringArray())
 	t.check(plain.god == null and plain.tabs().size() > 0 and plain.draft.levels.is_empty(), "no god: Prepare as before")
 	plain.free()
+
+
+## I2 (final review): in Endless Night the interlude's second button is "Abandon night", Esc does nothing, and the click asks first with
+## the pause menu's words before it emits "missions"; Stay (or Esc in the confirm) goes back. A board night's interlude is unchanged.
+static func _interlude_endless(t) -> void:
+	var ln := MissionBook.long_night()
+	var result := {"mission": "omen", "won": true, "goal": {"label": "Stop the warning", "done": true}, "bonuses": [], "time": 21.4}
+	var card := InterludeScreen.new()
+	card.endless = true
+	card.setup(result, [ln.act("festival")], NightState.new())
+	var got: Array[String] = []
+	card.action.connect(func(what: String) -> void: got.append(what))
+	t.check(_labels(card._menu) == ["Choose powers", "Abandon night"], "an Endless Night interlude's buttons (%s)" % [_labels(card._menu)])
+	card._unhandled_input(_key(KEY_ESCAPE))
+	t.check(got.is_empty() and not card.confirming(), "Esc does nothing between the acts of a night (%s)" % [got])
+	card.click(card.button_rect("missions").get_center())
+	t.check(got.is_empty() and card.confirming(), "the button opens the confirm and leaves nothing yet (%s)" % [got])
+	t.check(card.confirm_line() == PauseMenu.CONFIRM_LOST, "which says what the pause menu says (%s)" % card.confirm_line())
+	t.check(_rows(card._menu) == ["missions", "stay"] and _labels(card._menu) == ["Abandon", "Stay"],
+		"its buttons are Abandon and Stay (%s)" % [_labels(card._menu)])
+	card._unhandled_input(_key(KEY_ENTER))
+	t.check(got.is_empty() and card.confirming(), "Enter does not abandon (%s)" % [got])
+	card._unhandled_input(_key(KEY_ESCAPE))
+	t.check(got.is_empty() and not card.confirming() and card.confirm_line() == "", "Esc in the confirm is Stay")
+	card.click(card.button_rect("missions").get_center())
+	card.click(card.button_rect("stay").get_center())
+	t.check(got.is_empty() and not card.confirming() and _labels(card._menu) == ["Choose powers", "Abandon night"],
+		"Stay goes back to the two buttons (%s)" % [got])
+	card.click(card.button_rect("missions").get_center())
+	card.click(card.button_rect("missions").get_center())
+	t.check(got == ["missions"], "Abandon in the confirm leaves the night (%s)" % [got])
+	card.free()
+	var board := InterludeScreen.new()
+	board.setup(result, [ln.act("festival")], NightState.new())
+	var board_got: Array[String] = []
+	board.action.connect(func(what: String) -> void: board_got.append(what))
+	board._unhandled_input(_key(KEY_ESCAPE))
+	t.check(board_got == ["missions"] and _labels(board._menu) == ["Choose powers", "Missions"],
+		"a board night's interlude is as before: Esc leaves, the button says Missions (%s)" % [board_got])
+	board.free()
+
+
+## M4: Game asks Prepare to refuse an empty draft through a public call. M5: a picked card shows its Might at the level it is picked at.
+static func _refuse_and_card_cost(t) -> void:
+	var prep := PrepareScreen.new()
+	prep.setup(TierBook.board("warning"), PackedStringArray())
+	t.check(prep.has_method("refuse"), "PrepareScreen.refuse() is public")
+	if prep.has_method("refuse"):
+		prep.call("refuse", PrepareScreen.REFUSE_EMPTY)
+		t.check(prep.refused_reason == PrepareScreen.REFUSE_EMPTY, "and sets the reason the hint line shows (%s)" % prep.refused_reason)
+	prep.level_picker = true
+	t.check(prep.draft.toggle("smite") == "", "smite is picked on the board")
+	t.check(prep.draft.set_level("smite", 5) == "", "and raised to L5")
+	var picked := prep.card_cost_text("smite")
+	t.check(picked.begins_with("%d Might" % PowerBook.might("smite", 5)) and PowerBook.might("smite", 5) > PowerBook.might("smite", 1),
+		"a picked card shows its Might at L5, not L1 (%s)" % picked)
+	var open := prep.card_cost_text("ember")
+	t.check(open.begins_with("%d Might" % PowerBook.might("ember", 1)), "a card not picked shows the base Might (%s)" % open)
+	prep.free()

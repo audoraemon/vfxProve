@@ -392,8 +392,8 @@ static func summary_lines(result: Dictionary) -> PackedStringArray:
 
 
 ## An Endless Night's lines under its rows (god P1, spec §9.2), from `result.god` (GodNight.bank()'s dictionary), in order: the Divine
-## Power earned (and AWAKEN TO GROW when the god is at its cap), one line per level gained, the believers with the Faith they
-## became and the Faith now, the Lantern Notice, and the night. Empty for a result with no god.
+## Power earned (and AWAKEN TO GROW when the god is at its cap), one line per level gained, the Divine Power lost at the cap when any
+## was (spec §8: the loss is simple and visible), the believers with the Faith they became and the Faith now, the Lantern Notice, and the night. Empty for a result with no god.
 static func god_lines(result: Dictionary) -> PackedStringArray:
 	var out := PackedStringArray()
 	var g := _god_of(result)
@@ -402,6 +402,8 @@ static func god_lines(result: Dictionary) -> PackedStringArray:
 	out.append("Divine Power +%d%s" % [int(g.get("divine_power", 0)), "   AWAKEN TO GROW" if bool(g.get("capped", false)) else ""])
 	for level in _levels_of(g):
 		out.append("Level %d   +1 ability point" % level)
+	if int(g.get("lost", 0)) > 0:
+		out.append("%d Divine Power lost at the cap" % int(g.get("lost", 0)))
 	out.append("Believers %d   Faith +%d, %d now" % [int(g.get("believers", 0)), int(g.get("faith", 0)), int(g.get("faith_total", 0))])
 	out.append("Lantern Notice %d%%" % int(g.get("notice", 0)))
 	out.append("Night %d" % int(g.get("night", 0)))
@@ -519,6 +521,8 @@ func _draw_god_lines(y: float) -> void:
 			col = UiTheme.COL_DIM
 			if level_reached(k, total, _t):
 				col = UiTheme.COL_TEXT.lerp(UiTheme.COL_GOLD, level_flash(k, total, _t))
+		elif lines[i].ends_with("lost at the cap"):
+			col = UiTheme.COL_BAD  # a loss is shown as one (spec §8)
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[i], size) * 0.5), y), lines[i], size, col)
 		y += step
 

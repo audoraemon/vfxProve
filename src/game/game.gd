@@ -288,6 +288,12 @@ static func load_god(file: String) -> Array:
 	return [slot, line]
 
 
+## The levels a between-acts Prepare shows (god P1, final review M1): the board night's, chosen so far; none in the campaign, whose picker is
+## off and whose `levels` may be a board night's left behind. A static so a suite can prove it.
+static func between_acts_levels(campaign: bool, chosen: Dictionary) -> Dictionary:
+	return {} if campaign else chosen
+
+
 ## What a finished Endless Night night does (god P1, Rulings P9, P10, C7): it is banked to the god (GodNight.bank(): Divine Power, Faith, bests,
 ## the carried abilities) and the result carries it for the results screen. The caller writes the god's file. Nothing of the board's save is
 ## touched -- no SaveFile is even passed in -- and no NEW BEST shows. A static so a suite can prove it.
@@ -610,7 +616,7 @@ func go_to(to: int) -> void:
 				# The levels chosen so far show again, and can be changed, in a board night (god P1, pre-flight G1). An Endless Night
 				# draft is the god's: its abilities at its levels, no picker.
 				prep.level_picker = not _in_campaign and not _in_endless
-				prep.levels = levels
+				prep.levels = between_acts_levels(_in_campaign, levels)
 				if _in_endless:
 					prep.god = god
 				prep.setup(act, loadout, save.difficulty, locked_for(save, _in_campaign))
@@ -803,6 +809,7 @@ func _fade_back_in() -> void:
 ## The interlude over whatever is behind it, with the acts that may follow and the night so far.
 func _show_interlude(choices: Array, night: NightState) -> void:
 	_interlude = InterludeScreen.new()
+	_interlude.endless = _in_endless  # leaving between acts costs the night: the screen asks first (final review I2)
 	_interlude.name = "Interlude"
 	add_child(_interlude)
 	_interlude.setup(result, choices, night)
@@ -987,7 +994,7 @@ func _on_slots_action(what: String, slots: SlotScreen) -> void:
 func _on_god_select_action(what: String, pick: GodSelectScreen) -> void:
 	match what:
 		"chosen":
-			god = GodSlot.make(god_slot, pick.chosen_type, Time.get_ticks_usec())
+			god = GodSlot.make(god_slot, pick.chosen_type, GodSlot.fresh_seed())
 			_hub_line = ""
 			_write_god()
 			on_action("god:chosen")
@@ -1135,7 +1142,7 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 			return
 		if what == "manifest":
 			if _in_endless and prep.draft.picks.is_empty():
-				prep._refuse(PrepareScreen.REFUSE_EMPTY)  # as the button does (pre-flight R2)
+				prep.refuse(PrepareScreen.REFUSE_EMPTY)  # as the button does (pre-flight R2)
 				return
 			loadout = prep.draft.picks
 			if not _in_campaign and not _in_endless:
@@ -1159,7 +1166,7 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 			on_action("prepare:hub")
 		elif what == "manifest":
 			if prep.draft.picks.is_empty():
-				prep._refuse(PrepareScreen.REFUSE_EMPTY)
+				prep.refuse(PrepareScreen.REFUSE_EMPTY)
 				return
 			loadout = prep.draft.picks
 			on_action("prepare:manifest")

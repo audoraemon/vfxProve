@@ -1,18 +1,22 @@
 {
- "hash": "d9cafc751ec74447",
- "updated": "2026-10-24T18:59:18+07:00",
+ "hash": "5206191840e923f4",
+ "updated": "2026-10-26T21:20:57+07:00",
  "changes": {
-  "date": "<t:1792843158:f>",
+  "date": "<t:1793024457:f>",
   "items": [
-   "New: Discord #board: live project board"
+   "Done: v0.12 Many Towns: missions on any town (Capital first)",
+   "New: Design: god progression and Endless Night (in progress)",
+   "New: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop",
+   "New: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
+   "New: Playtest v0.12: Tier 1 in the Capital"
   ]
  },
  "snapshot": {
   "project": {
-   "version": "v0.11.2",
-   "tag": "kak-v0.11.2",
-   "tests": 8111,
-   "updated": "2026-10-23"
+   "version": "v0.12",
+   "tag": "kak-v012-m2",
+   "tests": 10079,
+   "updated": "2026-10-25"
   },
   "tasks": {
    "board-objective-tags": {
@@ -228,6 +232,34 @@
     "needs_you": false,
     "updated": "2026-10-04",
     "order": 20
+   },
+   "god-progression-design": {
+    "title": "Design: god progression and Endless Night",
+    "status": "doing",
+    "area": "Design",
+    "version": "next",
+    "needs_you": true,
+    "branch": "claude/god-ability-progression-d24545",
+    "updated": "2026-10-26",
+    "order": 187
+   },
+   "god-progression-p1": {
+    "title": "P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "updated": "2026-10-26",
+    "order": 189
+   },
+   "god-tree-tier1-fill": {
+    "title": "Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": true,
+    "updated": "2026-10-26",
+    "order": 188
    },
    "hide-ui-f1": {
     "title": "F1 hides the interface (watch the town)",
@@ -713,13 +745,22 @@
    },
    "v012-many-towns": {
     "title": "v0.12 Many Towns: missions on any town (Capital first)",
-    "status": "doing",
+    "status": "done",
     "area": "Town",
     "version": "v0.12",
     "needs_you": false,
     "branch": "feat/v012",
-    "updated": "2026-10-24",
+    "updated": "2026-10-25",
     "order": 0
+   },
+   "v012-playtest": {
+    "title": "Playtest v0.12: Tier 1 in the Capital",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.12",
+    "needs_you": true,
+    "updated": "2026-10-25",
+    "order": 183
    },
    "v08-confirm": {
     "title": "Confirm 5 plan interpretations for v0.08",
@@ -994,25 +1035,25 @@
   },
   "branches": [
    {
-    "name": "feat/v012",
-    "ahead": 15,
+    "name": "claude/god-ability-progression-d24545",
+    "ahead": 1,
     "behind": 0,
-    "date": "2026-10-24",
-    "subject": "docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)",
+    "date": "2026-10-26",
+    "subject": "docs: god progression and Endless Night design",
     "pushed": false
    },
    {
     "name": "feat/town-lighting",
-    "ahead": 9,
+    "ahead": 35,
     "behind": 0,
-    "date": "2026-10-24",
-    "subject": "fix: Task 5 step 0: lamp pool check before the lamp falls, beams local renamed, assert reflowed, grade_pixel clamped",
+    "date": "2026-10-25",
+    "subject": "fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)",
     "pushed": false
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 1,
-    "behind": 78,
+    "behind": 93,
     "date": "2026-10-23",
     "subject": "feat: Unseen Hour (Veil) and Curfew (Decree)",
     "pushed": false
@@ -1020,7 +1061,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 255,
+    "behind": 270,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1028,7 +1069,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 213,
+    "behind": 228,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1036,7 +1077,7 @@
    {
     "name": "feat/gpt-handoff",
     "ahead": 3,
-    "behind": 500,
+    "behind": 515,
     "date": "2026-10-04",
     "subject": "fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot",
     "pushed": false
@@ -1045,7 +1086,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-10-24",
-   "subject": "fix: gate.sh --city=<town> no longer fails on the throw-away start's refusal; spec/plan name star_falls and load_count (v0.12 M1 fix round 2)"
+   "subject": "docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)"
   }
  }
 }

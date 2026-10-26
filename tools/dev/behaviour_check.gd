@@ -4,6 +4,11 @@ extends SceneTree
 ##
 ## usage: godot --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=calm
 ##   [--seconds=60] [--shots]
+##   --dev-tree, --god=<type>:<tier>, --level=<n> (god P1, C6; spec §5.2's per-type win check): --dev-tree turns GodTree.dev_fill on for
+##          the run; --god restricts the drafted loadout to GodTree.keys_for(type, tier) (tier 1 when omitted) -- a key outside it prints
+##          `BEHAVIOUR refused scenario=<s> god=<type>:<tier> outside=<k1,k2>` and quits 1 (gate.sh reads that as a FAIL), else the run
+##          prints `BEHAVIOUR god=<type>:<tier>` (in no checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
+##          No flag: the run is exactly as before.
 ##   --case=toll (v0.11.2, a Lantern night, D32): the scripted player casts nothing until the bell tolls and the Lantern turns
 ##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
 ##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
@@ -574,6 +579,38 @@ func _run() -> void:
 		mission.mission_id = _route_id(scenario)  # v0.11.1: the board's Festival or Procession, not the campaign night
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
 		powers = RouteBook.loadout_b(_route_id(scenario))
+	# God P1, C6: the flags for the per-type win check. None given: nothing here runs and the mission starts as before.
+	if "--dev-tree" in args:
+		GodTree.dev_fill = true
+	var god_arg := Battlefield.arg_value(args, "--god")
+	var god_type := ""
+	var god_tier := 1
+	var level_arg := Battlefield.arg_value(args, "--level")
+	if level_arg != "" and not level_arg in ["1", "2", "3", "4", "5"]:
+		push_error("behaviour_check: unknown --level=%s (1-5)" % level_arg)
+		quit(1)
+		return
+	if god_arg != "":
+		var parts := god_arg.split(":")
+		god_type = parts[0]
+		god_tier = int(parts[1]) if parts.size() > 1 else 1
+		if not god_type in GodTree.RING or god_tier < 1 or god_tier > GodTree.TIERS or parts.size() > 2:
+			push_error("behaviour_check: unknown --god=%s (<type>:<tier>, type one of %s, tier 1-%d)" % [god_arg, ",".join(GodTree.RING), GodTree.TIERS])
+			quit(1)
+			return
+	# The loadout the run will draft: this scenario's, or (empty) the one the throw-away start in _ready() already drafted.
+	var drafted := powers if not powers.is_empty() else mission._drafted
+	if god_type != "":
+		var outside := GodTree.outside(god_type, god_tier, drafted)
+		if not outside.is_empty():
+			print("BEHAVIOUR refused scenario=%s god=%s:%d outside=%s" % [scenario, god_type, god_tier, ",".join(outside)])
+			quit(1)
+			return
+	if level_arg != "":
+		var at := {}
+		for key in drafted:
+			at[key] = int(level_arg)
+		mission.levels = at
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if mission.refused != "":
 		# v0.12 C6: a mission the town cannot host is not run; gate.sh reads this line as a FAIL.
@@ -581,6 +618,8 @@ func _run() -> void:
 		quit(1)
 		return
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
+	if god_type != "":
+		print("BEHAVIOUR god=%s:%d" % [god_type, god_tier])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
 	if route == "b" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0

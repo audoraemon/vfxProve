@@ -9,6 +9,7 @@ extends Node
 ## - With --dev (Game sets `dev`), a DEV tab beside the title holds the dev-only missions (MissionBook.dev_missions(): the
 ##   capital's sandbox, then each town's hostable missions as composite ids, `tax_collector@capital`: v0.12), always open;
 ##   D opens it. A town mission's card shows its name, the town (gold) and its type, no brief. Nothing of it shows without the flag.
+## - With --dev, an ENDLESS button beside DEV (god P1, Ruling P14) emits "endless": Game opens Endless Night's slot select.
 
 ## "pick" (the player chose `chosen`) or "back" (Esc).
 signal action(name: String)
@@ -36,6 +37,9 @@ const HINT := "Left and Right: missions   Tab or number keys: tiers   Enter: pre
 ## The DEV tab (--dev only): its tier number, past the five, and its button in the header beside the title.
 const DEV_TIER := 6
 const DEV_RECT := Rect2(112.0, 8.0, 40.0, 20.0)
+## The ENDLESS button (god P1, Ruling P14; --dev only), beside DEV in the header: it opens Endless Night's slot select. A card would need
+## a fake MissionDef, so it is a button. A click emits "endless".
+const ENDLESS_RECT := Rect2(158.0, 8.0, 72.0, 20.0)
 
 ## The mission picked, once "pick" is emitted.
 var chosen := ""
@@ -266,8 +270,10 @@ func choose(id: String) -> void:
 		_redraw()
 
 
-## What is under a point: "tab:<tier>", "card:<i>" (the open tier's), or "".
+## What is under a point: "endless" (--dev only), "tab:<tier>", "card:<i>" (the open tier's), or "".
 func hit(point: Vector2) -> String:
+	if dev and ENDLESS_RECT.has_point(point):
+		return "endless"
 	if dev and DEV_RECT.has_point(point):
 		return "tab:%d" % DEV_TIER
 	for i in TierBook.NAMES.size():
@@ -334,12 +340,20 @@ func _on_gui_input(event: InputEvent) -> void:
 				_select(int(h.substr(5)))
 			_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var h := hit(event.position)
-		if h.begins_with("tab:"):
-			open_tab(int(h.substr(4)))
-		elif h.begins_with("card:"):
-			selected = int(h.substr(5))
-			_pick()
+		click(event.position)
+
+
+## A left click at a screen point: ENDLESS (--dev) opens Endless Night, a tab opens, a card is picked.
+func click(point: Vector2) -> void:
+	var h := hit(point)
+	if h == "endless":
+		UiSound.play(&"ui_click")
+		action.emit("endless")
+	elif h.begins_with("tab:"):
+		open_tab(int(h.substr(4)))
+	elif h.begins_with("card:"):
+		selected = int(h.substr(5))
+		_pick()
 
 
 func _draw_ui() -> void:
@@ -351,6 +365,7 @@ func _draw_ui() -> void:
 		_draw_tab(i)
 	if dev:
 		_draw_dev_tab()
+		_draw_endless_button()
 	if _is_open(tier):
 		var ids := missions()
 		var rows := best_rows()
@@ -368,6 +383,15 @@ func _draw_dev_tab() -> void:
 	UiTheme.frame(_ui, DEV_RECT, open)
 	UiTheme.text(_ui, Vector2(roundf(DEV_RECT.get_center().x - UiTheme.width("DEV", UiTheme.SIZE_SMALL) * 0.5),
 		DEV_RECT.end.y - 6.0), "DEV", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
+
+
+## The ENDLESS button (--dev, god P1): lit while the mouse is over it.
+func _draw_endless_button() -> void:
+	var lit := _hover == "endless"
+	_ui.draw_rect(ENDLESS_RECT, Color(0.12, 0.1, 0.05, 0.95) if lit else UiTheme.COL_PANEL)
+	UiTheme.frame(_ui, ENDLESS_RECT, lit)
+	UiTheme.text(_ui, Vector2(roundf(ENDLESS_RECT.get_center().x - UiTheme.width("ENDLESS", UiTheme.SIZE_SMALL) * 0.5),
+		ENDLESS_RECT.end.y - 6.0), "ENDLESS", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if lit else UiTheme.COL_TEXT)
 
 
 ## Tab `i`: "WHISPER", gold-framed while open. No tier is locked, so none is dim or carries a padlock (god P1, C3).

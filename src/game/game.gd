@@ -5,7 +5,8 @@ extends Node
 ## string, and FLOW says where that leads. Keeping the flow as data is what makes it provable without
 ## building a single screen.
 
-enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES}
+## The last five are Endless Night's (god P1, spec §14): the slot select, the god select, the hub, the skill tree and the Faith screen.
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES, SLOTS, GOD_SELECT, HUB, TREE, FAITH}
 
 ## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
 ## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
@@ -42,10 +43,30 @@ const FLOW := {
 	"ending:title": Screen.TITLE,
 	# An ending not yet seen (v0.10 M5: the game quit on the last night's Results) opens from the title's Campaign.
 	"title:ending": Screen.ENDING,
-	# The tier board (v0.11 M1): the Upgrades, from the board's header and from a board night's results; back to the board.
-	"board:upgrades": Screen.UPGRADES,
-	"results:upgrades": Screen.UPGRADES,
+	# The Upgrades screen's way back. Nothing leads to it since the board became a test mode (god P1, ruling C3: no Upgrades button),
+	# but the screen and its Back stay for a later change of mind.
 	"upgrades:back": Screen.BOARD,
+	# Endless Night (god P1, spec §14 P1, rulings C2, P14): from the board's DEV ENDLESS button to the slot select, the god select for a
+	# new god, the hub, and from the hub to a night's Prepare, the Skill Tree, the Faith screen or the title. A night's Results go back
+	# to the hub, to the tree or to Faith; Prepare's back, Pause's Abandon and the interlude's Missions go back to the hub too.
+	"board:endless": Screen.SLOTS,
+	"slots:continue": Screen.HUB,
+	"slots:new": Screen.GOD_SELECT,
+	"slots:back": Screen.BOARD,
+	"god:chosen": Screen.HUB,
+	"god:back": Screen.SLOTS,
+	"hub:descend": Screen.PREPARE,
+	"hub:tree": Screen.TREE,
+	"hub:faith": Screen.FAITH,
+	"hub:title": Screen.TITLE,
+	"tree:back": Screen.HUB,
+	"faith:back": Screen.HUB,
+	"prepare:hub": Screen.HUB,
+	"results:continue": Screen.HUB,
+	"results:tree": Screen.TREE,
+	"results:faith": Screen.FAITH,
+	"pause:abandon": Screen.HUB,
+	"interlude:hub": Screen.HUB,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -64,6 +85,11 @@ const SHOW_SETTINGS := "user://test_show_settings.cfg"
 ## MANIFEST after a card) writes the save, which would have replaced the player's real campaign with the sample. Under
 ## --show the screens still open on the player's own save, but write to this file instead; nothing ever reads it back.
 const SHOW_SAVE := "user://test_show.cfg"
+## Where --flow-test keeps its three god slots (god P1, Endless Night): `PATH_BASE`'s twin, so a scripted run never touches the player's gods.
+## Its files are removed at the start and the end of the run.
+const FLOW_TEST_GOD := "user://test_flow_god_"
+## Where a --show photograph keeps its god slots: the player's `user://kak_god_<n>.cfg` is neither read nor written by a photograph.
+const SHOW_GOD := "user://test_show_god_"
 ## The new Tier 1 missions' photographs (v0.11 M2): each its board night as the tour lands, its tags and HUD in view.
 const TIER1_SHOWS := ["tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
 ## The new Tier 2 missions' photographs (v0.11 M3): each its board night as the tour lands, its tags and HUD in view.
@@ -137,6 +163,18 @@ const SAMPLE_DESCEND_RESULT := {
 			{"text": "Show me a sign", "reward": 5, "state": "failed", "lost": false}],
 		"bank": {"test": true, "night": 1, "cleared": true, "first_clear": true, "bests": ["Fastest clear 3:21"]}},
 }
+## What --show=results-endless displays (god P1, spec §9.2): the Warning won with two wishes granted, 120 Divine Power and two levels
+## gained (7 and 8), the bar left a fifth of the way to the next.
+const SAMPLE_ENDLESS_RESULT := {
+	"mission": "warning", "won": true, "reason": "warning", "time": 201.0, "goal": {"label": "The warnings die", "done": true},
+	"bonuses": [], "best": false,
+	"descend": {"tier": 1, "main": true, "main_time": 201.0, "main_reward": 10, "ascended": false, "caught": "", "lost_text": "",
+		"earned": 30, "kept": 2,
+		"wishes": [{"text": "Burn the moneylender's house", "reward": 10, "state": "granted", "lost": false},
+			{"text": "Show me a sign", "reward": 10, "state": "granted", "lost": false}]},
+	"god": {"divine_power": 120, "levels": [7, 8], "points": 2, "lost": 0, "capped": false, "level": 8, "bar": [20, 50], "believers": 30,
+		"faith": 30, "faith_total": 210, "notice": 0, "notice_change": 0, "night": 7, "bests": ["Fastest clear 3:21"]},
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
@@ -186,6 +224,16 @@ var _in_campaign := false
 var levels := {}
 ## --dev (capital plan, Task 15): the board shows its DEV tab, the dev-only missions (MissionBook.dev_missions()).
 var dev := false
+## Endless Night's god (god P1, spec §4): the slot being played, read or made from the slot select. null outside Endless Night.
+var god: GodSlot = null
+## Which of the three slots (1-3) `god` is, and where the slots' files live: GodSlot.PATH_BASE, FLOW_TEST_GOD under --flow-test, SHOW_GOD under --show.
+var god_slot := 0
+var god_base := GodSlot.PATH_BASE
+## True from the slot select to the hub and its nights (god P1); false at the title and the board, as `_in_campaign` is. Prepare, the
+## pause menu, the interlude and Results read it: a night is the god's, banked to its file and never to the board's save (C7).
+var _in_endless := false
+## A line the next hub shows once (god P1, Ruling P9, P21): "Night 3 was abandoned: a lost night." after an Abandon or a slot found mid-night.
+var _hub_line := ""
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -226,6 +274,28 @@ static func board_def(id: String) -> MissionDef:
 	return Mission.def_for(id, true, null)
 
 
+## Opens the god in `file` (god P1, spec §9.1, Ruling P9), as [the slot or null, the line the hub shows once]. A slot found with `in_night`
+## set was left after its clock started -- the game was closed or crashed mid-night -- so it is forfeited at once (a lost night: counted,
+## nothing earned), written, and the line is GodNight.forfeit()'s. A missing or damaged file gives [null, ""]. A static so a suite can prove it.
+static func load_god(file: String) -> Array:
+	var slot := GodSlot.read(file)
+	if slot == null:
+		return [null, ""]
+	var line := ""
+	if slot.in_night != "":
+		line = String(GodNight.forfeit(slot).line)
+		slot.write(file)
+	return [slot, line]
+
+
+## What a finished Endless Night night does (god P1, Rulings P9, P10, C7): it is banked to the god (GodNight.bank(): Divine Power, Faith, bests,
+## the carried abilities) and the result carries it for the results screen. The caller writes the god's file. Nothing of the board's save is
+## touched -- no SaveFile is even passed in -- and no NEW BEST shows. A static so a suite can prove it.
+static func bank_god_night(slot: GodSlot, id: String, kept: PackedStringArray, outcome: Dictionary) -> void:
+	outcome["god"] = GodNight.bank(slot, id, kept, outcome)
+	outcome["best"] = false
+
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
@@ -235,9 +305,13 @@ func _ready() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 		settings_path = FLOW_TEST_SETTINGS
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+		god_base = FLOW_TEST_GOD
+		_remove_gods()
 	elif Battlefield.arg_value(args, "--show") != "":
 		settings_path = SHOW_SETTINGS
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+		god_base = SHOW_GOD
+		_remove_gods()
 	settings = Settings.new().load_from(settings_path)
 	settings.apply()
 	save = SaveFile.new().load_from(save_path)
@@ -384,6 +458,9 @@ func _ready() -> void:
 			mission_id = show.get_slice("-", 0)
 			loadout = MissionBook.get_mission(mission_id).default_loadout
 			go_to(Screen.MISSION)
+		"slots", "god-select", "hub", "hub-capped", "tree", "faith", "results-endless", "prepare-endless", "pause-endless":
+			# Endless Night's screens (god P1), for the photographs: a fixture god on the dev fill, in the show's own slot files.
+			_show_endless(show)
 		"tiers-all":
 			# The board complete (v0.11 M6): every board mission cleared, the header's "All 25 cleared", for the photograph (SHOW_SAVE).
 			save.descend = DescendState.new()
@@ -459,10 +536,13 @@ func _ready() -> void:
 			wait = IntroTour.MOVE_SECONDS * 2.0 + IntroTour.HOLD_SECONDS + 0.4
 		await get_tree().create_timer(wait).timeout
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
+		if god_base == SHOW_GOD:
+			_remove_gods()
 		await _quit_cleanly()
 	elif "--flow-test" in args:
 		await _flow_test()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+		_remove_gods()
 		await _quit_cleanly()
 
 
@@ -473,13 +553,20 @@ func go_to(to: int) -> void:
 	screen = to
 	# Leaving the campaign (v0.10 M5), whichever way -- its Title, or its ending: the board's own mission and loadout come
 	# back, so Missions opens on the last board pick rather than the campaign's last night.
-	if (to == Screen.TITLE or to == Screen.BOARD) and _in_campaign:
+	# The same for Endless Night (god P1): its nights drew their own missions, and the god is put down.
+	if (to == Screen.TITLE or to == Screen.BOARD) and (_in_campaign or _in_endless):
 		mission_id = save.last_mission
 		loadout = starting_loadout(save, mission_id)
 	if to == Screen.TITLE or to == Screen.BOARD:
 		_in_campaign = false
+		_in_endless = false
+		god = null
 	elif to == Screen.CAMPAIGN:
 		_in_campaign = true
+	elif to in [Screen.SLOTS, Screen.GOD_SELECT, Screen.HUB, Screen.TREE, Screen.FAITH]:
+		_in_endless = true
+		if to == Screen.SLOTS:
+			god = null  # the slot select puts the god down; Continue or the god select picks one up
 	# A hit dips Engine.time_scale and the battlefield's Impact restores it from its own _process. A mission
 	# freed mid-dip never restores it, and the whole game would stay in slow motion from then on.
 	Engine.time_scale = 1.0
@@ -520,11 +607,18 @@ func go_to(to: int) -> void:
 				for a: ActDef in next:
 					if a.id == _next_path:
 						act = a
-				# The levels chosen so far show again, and can be changed, in a board night (god P1, pre-flight G1).
-				prep.level_picker = not _in_campaign
+				# The levels chosen so far show again, and can be changed, in a board night (god P1, pre-flight G1). An Endless Night
+				# draft is the god's: its abilities at its levels, no picker.
+				prep.level_picker = not _in_campaign and not _in_endless
 				prep.levels = levels
+				if _in_endless:
+					prep.god = god
 				prep.setup(act, loadout, save.difficulty, locked_for(save, _in_campaign))
 				prep.confirm_label = "BEGIN"
+			elif _in_endless and god != null:
+				# Endless Night's night (god P1, spec §9.1): the drawn mission as this god plays it, drafting from what it has learned.
+				prep.god = god
+				prep.setup(GodNight.def_for(god, mission_id), loadout, save.difficulty)
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
@@ -576,10 +670,47 @@ func go_to(to: int) -> void:
 			up.setup(save.descend)
 			up.action.connect(_on_upgrades_action)
 			_screen_node = up
+		Screen.SLOTS:
+			var slots := SlotScreen.new()
+			slots.name = "Slots"
+			add_child(slots)
+			slots.setup(god_base)
+			slots.action.connect(_on_slots_action.bind(slots))
+			_screen_node = slots
+		Screen.GOD_SELECT:
+			var pick := GodSelectScreen.new()
+			pick.name = "GodSelect"
+			add_child(pick)
+			pick.setup()
+			pick.action.connect(_on_god_select_action.bind(pick))
+			_screen_node = pick
+		Screen.HUB:
+			var hub := GodHub.new()
+			hub.name = "Hub"
+			add_child(hub)
+			hub.setup(god, _hub_line, dev)
+			_hub_line = ""  # shown once
+			hub.action.connect(_on_hub_action)
+			_screen_node = hub
+		Screen.TREE:
+			var tree := SkillTreeScreen.new()
+			tree.name = "Tree"
+			add_child(tree)
+			tree.setup(god)
+			tree.action.connect(_on_tree_action)
+			_screen_node = tree
+		Screen.FAITH:
+			var faith := FaithScreen.new()
+			faith.name = "Faith"
+			add_child(faith)
+			faith.setup(god)
+			faith.action.connect(_on_faith_action)
+			_screen_node = faith
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
-		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES:
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, Screen.GOD_SELECT, \
+				Screen.HUB, Screen.TREE, Screen.FAITH:
 			Music.play(&"theme")
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
@@ -689,7 +820,12 @@ func _on_interlude_action(what: String) -> void:
 			_next_path = _interlude.chosen
 			on_action("interlude:draft")
 		"missions":
-			on_action("interlude:missions")
+			if _in_endless:
+				# Leaving a night between its acts is leaving it after its clock started: a lost night (god P1, Ruling P9).
+				_abandon_night()
+				on_action("interlude:hub")
+			else:
+				on_action("interlude:missions")
 
 
 func _build_mission() -> Mission:
@@ -704,6 +840,14 @@ func _build_mission() -> Mission:
 	mission.levels = {} if _in_campaign else levels.duplicate()
 	mission.wish_seed = Descent.seed_for(save.descend.night, mission_id)
 	mission.bell_rang = _in_campaign and save.campaign != null and save.campaign.bell_rang
+	if _in_endless and god != null:
+		# Endless Night's night (god P1, spec §9.1): the god's version of the drawn mission, its learned levels, wishes seeded by the
+		# god and its night (the same after a quit and a return), no restart, and the clock's start is written to the god's file (P9).
+		mission.night_def = func() -> MissionDef: return GodNight.def_for(god, mission_id)
+		mission.levels = god.learned.duplicate()
+		mission.wish_seed = GodNight.wish_seed(god, mission_id)
+		mission.restart_locked = true
+		mission.clock_started.connect(_on_clock_started)
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
 	mission.act_over.connect(_on_act_over)
@@ -721,8 +865,13 @@ func _build_mission() -> Mission:
 func _on_mission_finished(outcome: Dictionary) -> void:
 	_between_acts = false
 	result = outcome
-	bank_night(save, mission_id, loadout, result, _in_campaign)
-	save.save_to(save_path)
+	if _in_endless and god != null:
+		# Endless Night (god P1, Rulings P9, P10, C7): the night is banked to the god and only the god's file is written.
+		bank_god_night(god, mission_id, loadout, result)
+		_write_god()
+	else:
+		bank_night(save, mission_id, loadout, result, _in_campaign)
+		save.save_to(save_path)
 	on_action("mission:over")
 
 
@@ -754,13 +903,17 @@ func _on_act_over(res: Dictionary) -> void:
 	_between_acts = true
 	_next_path = ""
 	result = res
-	save.remember_loadout(mission_id, loadout)
-	save.save_to(save_path)
+	if not _in_endless:  # Endless Night writes only the god's file (god P1, C7)
+		save.remember_loadout(mission_id, loadout)
+		save.save_to(save_path)
 	on_action("mission:act_over")
 
 
 ## The board's pick becomes the mission to prepare, with the loadout last drafted for it; the save remembers it.
 func _on_board_action(what: String, board: MissionBoard) -> void:
+	if what == "endless":
+		# The DEV door into Endless Night (god P1, Rulings P2, P14): the dev fill of the tree is on for the session.
+		GodTree.dev_fill = true
 	if what == "pick":
 		mission_id = board.chosen
 		levels = {}  # a new pick starts every power at level 1 (god P1, ruling P13)
@@ -811,6 +964,169 @@ func _on_upgrades_action(what: String) -> void:
 		on_action("upgrades:back")
 
 
+## The slot select (god P1, spec §4): Continue opens the slot's god (a night left mid-way is forfeited at once: Ruling P9), New goes to the
+## god select, which makes the god and writes its file -- over an old one, only once it is chosen -- and Back is the board.
+func _on_slots_action(what: String, slots: SlotScreen) -> void:
+	match what:
+		"continue":
+			god_slot = slots.chosen
+			var opened := load_god(GodSlot.path(god_slot, god_base))
+			if opened[0] == null:
+				return
+			god = opened[0]
+			_hub_line = String(opened[1])
+			on_action("slots:continue")
+		"new":
+			god_slot = slots.chosen
+			on_action("slots:new")
+		"back":
+			on_action("slots:back")
+
+
+## The god select (god P1, spec §4): the type chosen makes the god (the seed from the clock) and writes it; Back is the slot select.
+func _on_god_select_action(what: String, pick: GodSelectScreen) -> void:
+	match what:
+		"chosen":
+			god = GodSlot.make(god_slot, pick.chosen_type, Time.get_ticks_usec())
+			_hub_line = ""
+			_write_god()
+			on_action("god:chosen")
+		"back":
+			on_action("god:back")
+
+
+## The hub (god P1, spec §9): Descend draws the night (the same until one counts) and opens its Prepare, blocked while the god has nothing
+## to draft; Awaken (dev) raises the tier and writes; the rest are FLOW's.
+func _on_hub_action(what: String) -> void:
+	match what:
+		"descend":
+			if god.draftable().is_empty():
+				return
+			mission_id = GodNight.draw(god)
+			loadout = god.loadout.duplicate()
+			on_action("hub:descend")
+		"awaken_dev":
+			god.awaken()
+			_write_god()
+			go_to(Screen.HUB)
+		_:
+			on_action("hub:" + what)
+
+
+## The Skill Tree: a point spent is written at once; Back is the hub.
+func _on_tree_action(what: String) -> void:
+	if what == "learned":
+		_write_god()
+	elif what == "back":
+		on_action("tree:back")
+
+
+## The Faith screen: a purchase is written at once; Back is the hub.
+func _on_faith_action(what: String) -> void:
+	if what == "bought":
+		_write_god()
+	elif what == "back":
+		on_action("faith:back")
+
+
+## The pause menu over an Endless Night night (god P1, Ruling P9): Abandon forfeits a night whose clock has started, then goes to the hub.
+func _on_pause_action(what: String) -> void:
+	if what == "abandon":
+		_abandon_night()
+	on_action("pause:" + what)
+
+
+## Leaves the night in progress (god P1, Ruling P9, P21): one whose clock has started is a lost night -- counted, nothing earned, no results
+## screen, the hub shows its line once; one that has not started costs nothing.
+func _abandon_night() -> void:
+	_hub_line = ""
+	if god == null or god.in_night == "":
+		return
+	_hub_line = String(GodNight.forfeit(god).line)
+	_write_god()
+
+
+## The night's clock has started (god P1, Ruling P9): from here leaving is a lost night, so the god's file says so now, once.
+func _on_clock_started() -> void:
+	if god == null or not _in_endless or god.in_night == mission_id:
+		return
+	god.in_night = mission_id
+	_write_god()
+
+
+## Writes the god in play to its slot's file.
+func _write_god() -> void:
+	if god == null or god_slot < 1:
+		return
+	var err := god.write(GodSlot.path(god_slot, god_base))
+	if err != OK:
+		push_warning("KAK could not write the god in slot %d (%d)" % [god_slot, err])
+
+
+## Removes the three slot files under `god_base`: a --flow-test or --show run starts and ends without a god.
+func _remove_gods() -> void:
+	for n in range(1, GodSlot.COUNT + 1):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GodSlot.path(n, god_base)))
+
+
+## The photographed god (god P1): a ruin god, level 7 (or `level`), tier 1, three points, Smite at 3, Ember and Deathmark at 1, 180 Faith,
+## on its sixth night.
+func _show_god(level: int) -> GodSlot:
+	var g := GodSlot.make(1, "ruin", 77)
+	g.level = level
+	g.tier = 1
+	g.points = 3
+	g.learned = {"smite": 3, "ember": 1, "deathmark": 1}
+	g.faith = 180
+	g.night = 6
+	g.last_mission = MissionBook.WARNING
+	g.loadout = PackedStringArray(["smite", "ember"])
+	g.divine_power = g.need() if g.capped() else 20
+	return g
+
+
+## --show=<name> for Endless Night's screens (god P1): the fixture god on the dev fill, written to the show's own slot files. `hub-capped` is
+## the same god at level 10 (the tier's cap); `pause-endless` has the night's clock started, so Abandon's confirm says the night is lost.
+func _show_endless(show: String) -> void:
+	GodTree.dev_fill = true
+	dev = true
+	_in_endless = true
+	god_slot = 1
+	god = _show_god(10 if show == "hub-capped" else 7)
+	_write_god()
+	match show:
+		"slots":
+			var other := GodSlot.make(2, "veil", 5)
+			other.level = 3
+			other.night = 1
+			other.write(GodSlot.path(2, god_base))
+			go_to(Screen.SLOTS)
+		"god-select":
+			go_to(Screen.GOD_SELECT)
+		"hub", "hub-capped":
+			_hub_line = GodNight.ABANDONED % god.night if show == "hub" else ""
+			go_to(Screen.HUB)
+		"tree":
+			go_to(Screen.TREE)
+		"faith":
+			go_to(Screen.FAITH)
+		"results-endless":
+			result = SAMPLE_ENDLESS_RESULT.duplicate(true)
+			go_to(Screen.RESULTS)
+		"prepare-endless":
+			mission_id = MissionBook.WARNING
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
+		"pause-endless":
+			mission_id = MissionBook.WARNING
+			loadout = god.loadout.duplicate()
+			god.in_night = mission_id
+			go_to(Screen.MISSION)
+			_open_pause()
+			if is_instance_valid(_pause):
+				_pause._set_confirm(true)
+
+
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 	if _between_acts:
 		# The re-draft between acts (v0.09): BEGIN carries the night on, Back returns to the interlude -- but not once
@@ -818,19 +1134,35 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		if _fading:
 			return
 		if what == "manifest":
+			if _in_endless and prep.draft.picks.is_empty():
+				prep._refuse(PrepareScreen.REFUSE_EMPTY)  # as the button does (pre-flight R2)
+				return
 			loadout = prep.draft.picks
-			if not _in_campaign:
+			if not _in_campaign and not _in_endless:
 				levels = prep.draft.levels.duplicate()
 				if is_instance_valid(_mission):
 					_mission.levels = levels.duplicate()  # the next act's Rules read them (god P1, pre-flight G1)
-			save.remember_loadout(mission_id, loadout)
-			save.save_to(save_path)
+			if not _in_endless:  # the god's draft is not the board's: only the god's file is written (pre-flight R1)
+				save.remember_loadout(mission_id, loadout)
+				save.save_to(save_path)
 			on_action("prepare:begin")
 		elif what == "back":
 			go_to(Screen.INTERLUDE)
 		return
 	if what == "back" and _in_campaign:
 		on_action("prepare:campaign")
+		return
+	if _in_endless:
+		# Endless Night's Prepare (god P1): back to the hub is free (nothing started); MANIFEST needs a pick (pre-flight R2) and writes no
+		# save of the board's (R1): the loadout is the god's, kept when the night is banked.
+		if what == "back":
+			on_action("prepare:hub")
+		elif what == "manifest":
+			if prep.draft.picks.is_empty():
+				prep._refuse(PrepareScreen.REFUSE_EMPTY)
+				return
+			loadout = prep.draft.picks
+			on_action("prepare:manifest")
 		return
 	if what == "manifest":
 		loadout = prep.draft.picks
@@ -858,10 +1190,11 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
-	_pause.setup(_in_campaign, settings, settings_path)
+	# Endless Night's menu (god P1, Ruling P9): no Restart, no Change powers, and Abandon night, which says whether it costs the night.
+	_pause.setup(_in_campaign, settings, settings_path, _in_endless, _in_endless and god != null and god.in_night != "")
 	UiSound.play(&"ui_pause")
 	Music.set_ducked(true)
-	_pause.action.connect(func(what: String) -> void: on_action("pause:" + what))
+	_pause.action.connect(_on_pause_action)
 
 
 func _close_pause() -> void:

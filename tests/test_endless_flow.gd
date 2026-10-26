@@ -1,0 +1,166 @@
+extends RefCounted
+## God P1 Task 11 (spec §9.1, §14 P1, rulings C2, C7, C9, P9, P10, P14): the wiring of Endless Night into Game -- every new FLOW entry,
+## a night banked to the god and never to the board's save, a slot found mid-night forfeited when it is opened, and the board's ENDLESS
+## button. The screens themselves are proved by their own suites; the walk through them is FLOW's (Task 12).
+
+const BASE := "user://test_endless_flow_"
+const FILE := "user://test_endless_flow_1.cfg"
+
+
+static func run(t) -> void:
+	_clear()
+	_flow_table(t)
+	_bank_leaves_save(t)
+	_load_god_forfeits(t)
+	_draw_survives_quit(t)
+	_endless_button(t)
+	GodTree.dev_fill = false
+	_clear()
+
+
+static func _clear() -> void:
+	for n in range(1, GodSlot.COUNT + 1):
+		if FileAccess.file_exists(GodSlot.path(n, BASE)):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(GodSlot.path(n, BASE)))
+
+
+## A report's "descend" as Descent.report() gives it, for the keys banking reads (as test_god_night.gd).
+static func _outcome(main: bool, kept: int, earned: int) -> Dictionary:
+	return {"mission": "warning", "won": main, "descend": {"tier": 1, "main": main, "kept": kept, "earned": earned,
+		"main_time": 150.0 if main else 0.0}}
+
+
+static func _flow_table(t) -> void:
+	var want := {
+		"board:endless": Game.Screen.SLOTS, "slots:continue": Game.Screen.HUB, "slots:new": Game.Screen.GOD_SELECT,
+		"slots:back": Game.Screen.BOARD, "god:chosen": Game.Screen.HUB, "god:back": Game.Screen.SLOTS,
+		"hub:descend": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
+		"hub:title": Game.Screen.TITLE, "tree:back": Game.Screen.HUB, "faith:back": Game.Screen.HUB,
+		"prepare:hub": Game.Screen.HUB, "results:continue": Game.Screen.HUB, "results:tree": Game.Screen.TREE,
+		"results:faith": Game.Screen.FAITH, "pause:abandon": Game.Screen.HUB, "interlude:hub": Game.Screen.HUB,
+	}
+	var wrong := PackedStringArray()
+	for action: String in want:
+		if Game.next_screen(action) != int(want[action]):
+			wrong.append("%s=%d" % [action, Game.next_screen(action)])
+	t.check(wrong.is_empty(), "every Endless Night action leads to its screen (wrong: %s)" % ", ".join(wrong))
+	t.check(Game.Screen.TITLE == 0 and Game.Screen.BOARD == 1 and Game.Screen.UPGRADES == 8 and Game.Screen.SLOTS == 9
+		and Game.Screen.FAITH == 13, "the old screens keep their values and the five new ones follow (SLOTS %d, FAITH %d)" % [
+		Game.Screen.SLOTS, Game.Screen.FAITH])
+	t.check(Game.next_screen("title:play") == Game.Screen.BOARD and Game.next_screen("prepare:back") == Game.Screen.BOARD
+		and Game.next_screen("results:replay") == Game.Screen.MISSION and Game.next_screen("pause:restart") == Game.Screen.MISSION
+		and Game.next_screen("interlude:missions") == Game.Screen.BOARD, "the old entries are unchanged")
+	t.check(Game.next_screen("title:endless") == -1 and Game.next_screen("title:slots") == -1,
+		"the title offers no way into Endless Night (C2)")
+
+
+## C7: a night banked to a god changes the god and nothing of the board's save, in memory or on disk.
+static func _bank_leaves_save(t) -> void:
+	GodTree.dev_fill = true
+	var save := SaveFile.new()
+	save.descend.night = 3
+	save.descend.believers = 40
+	save.descend.cleared = PackedStringArray(["warning"])
+	save.campaign = CampaignState.new()
+	save.campaign.night = 2
+	var disk := _file_bytes(SaveFile.PATH)
+	var god := GodSlot.make(1, "ruin", 9)
+	var kit := PackedStringArray(["smite"])
+	var out := _outcome(true, 2, 30)
+	Game.bank_god_night(god, "warning", kit, out)
+	t.check(out.god.divine_power == 120, "main plus two wishes at tier 1 is 120 Divine Power (%s)" % [out.get("god")])
+	t.check(out.god.faith == 30 and god.faith == 30 and god.night == 1 and god.last_mission == "warning",
+		"the god banks the night: Faith %d, night %d, last %s" % [god.faith, god.night, god.last_mission])
+	t.check(god.carried == {"smite": 1} and god.loadout == kit, "and carries the drafted ability (%s)" % [god.carried])
+	t.check(out.best == false, "the results show no NEW BEST (the board's best is not touched)")
+	t.check(save.descend.night == 3 and save.descend.believers == 40 and save.descend.cleared == PackedStringArray(["warning"]),
+		"the board's night, believers and cleared are unchanged (%d, %d, %s)" % [save.descend.night, save.descend.believers, save.descend.cleared])
+	t.check(save.campaign.night == 2, "and the campaign's night (%d)" % save.campaign.night)
+	t.check(_file_bytes(SaveFile.PATH) == disk, "and nothing was written to the board's save file")
+	t.check(not out.has("campaign"), "the night is not a campaign night")
+	# A lost night banks nothing but still counts.
+	var lost := GodSlot.make(1, "ruin", 9)
+	var out2 := _outcome(false, 0, 0)
+	Game.bank_god_night(lost, "warning", kit, out2)
+	t.check(out2.god.divine_power == 0 and lost.night == 1 and lost.faith == 0 and lost.in_night == "",
+		"a lost night earns nothing and counts (%d, night %d)" % [out2.god.divine_power, lost.night])
+	GodTree.dev_fill = false
+
+
+static func _file_bytes(path: String) -> PackedByteArray:
+	return FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else PackedByteArray()
+
+
+## P9, C9: a slot opened with in_night set was left after its clock started -- it is forfeited at once, written, and the line says so.
+static func _load_god_forfeits(t) -> void:
+	_clear()
+	var god := GodSlot.make(1, "ruin", 4)
+	god.night = 2
+	god.in_night = "tax_collector"
+	god.faith = 12
+	t.check(god.write(FILE) == OK, "the test slot is written")
+	var got := Game.load_god(FILE)
+	var s: GodSlot = got[0]
+	t.check(s != null and s.night == 3 and s.in_night == "" and s.last_mission == "tax_collector",
+		"a slot found mid-night is forfeited: night 3, nothing open, the mission remembered")
+	t.check(got[1] == "Night 3 was abandoned: a lost night.", "and the line says so (%s)" % got[1])
+	t.check(s != null and s.faith == 12 and s.level == 1, "nothing is earned and nothing is lost")
+	var again := GodSlot.read(FILE)
+	t.check(again != null and again.night == 3 and again.in_night == "" and again.last_mission == "tax_collector",
+		"the forfeit was written: the file says the same")
+	var twice := Game.load_god(FILE)
+	t.check(twice[1] == "" and twice[0].night == 3, "opened again, it is not forfeited twice (%s)" % [twice[1]])
+	# A slot that was not mid-night is unchanged, with no line.
+	var calm := GodSlot.make(1, "ruin", 4)
+	calm.night = 5
+	calm.write(FILE)
+	var calm_got := Game.load_god(FILE)
+	t.check(calm_got[1] == "" and calm_got[0].night == 5, "a slot that was not mid-night opens as it was (%s)" % [calm_got[1]])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	var none := Game.load_god(FILE)
+	t.check(none[0] == null and none[1] == "", "a missing file gives no god and no line")
+
+
+## Task 5's carry: the seeded draw survives a quit. A god written before its Prepare and read back draws the same night.
+static func _draw_survives_quit(t) -> void:
+	_clear()
+	GodTree.dev_fill = true
+	var god := GodSlot.make(1, "ruin", 31337)
+	god.night = 4
+	god.last_mission = "warning"
+	var before := GodNight.draw(god)
+	t.check(god.write(FILE) == OK, "the slot is written before the player quits")
+	var back: GodSlot = Game.load_god(FILE)[0]
+	t.check(back != null and GodNight.draw(back) == before and back.night == 4,
+		"read back, the same night is drawn (%s, %s)" % [GodNight.draw(back) if back != null else "-", before])
+	# Quit mid-night: the next opening forfeits it, and the draw moves on (the night counted).
+	back.in_night = before
+	back.write(FILE)
+	var after: GodSlot = Game.load_god(FILE)[0]
+	t.check(after.night == 5 and after.last_mission == before and GodNight.draw(after) != before,
+		"after a forfeit the night counted and the next draw is another mission (%s)" % GodNight.draw(after))
+	GodTree.dev_fill = false
+
+
+## P14: the board's header has an ENDLESS button beside DEV, with --dev only.
+static func _endless_button(t) -> void:
+	var at := MissionBoard.ENDLESS_RECT.get_center()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(SaveFile.new(), "warning")
+	t.check(board.hit(at) == "endless", "with dev, the point on ENDLESS hits it (%s)" % board.hit(at))
+	t.check(not MissionBoard.ENDLESS_RECT.intersects(MissionBoard.DEV_RECT) and Rect2(0, 0, 640, 360).encloses(MissionBoard.ENDLESS_RECT),
+		"ENDLESS sits beside DEV, on screen")
+	var got := []
+	board.action.connect(func(what: String) -> void: got.append(what))
+	board.click(at)
+	t.check(got == ["endless"], "a click emits endless (%s)" % [got])
+	t.check(board.hit(MissionBoard.dev_rect().get_center()) == "tab:%d" % MissionBoard.DEV_TIER, "DEV still opens its tab")
+	board.free()
+	var plain := MissionBoard.new()
+	plain.setup(SaveFile.new(), "warning")
+	var plain_got := []
+	plain.action.connect(func(what: String) -> void: plain_got.append(what))
+	plain.click(at)
+	t.check(plain.hit(at) == "" and plain_got.is_empty(), "without dev there is no ENDLESS (%s, %s)" % [plain.hit(at), plain_got])
+	plain.free()

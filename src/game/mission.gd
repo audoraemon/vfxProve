@@ -14,6 +14,9 @@ signal pause_pressed
 ## The effect shaders are compiled and the mission can start. start() before this would clear the effect
 ## layers under the prewarm while it is still using them.
 signal prewarmed
+## The clock starts (god P1, Ruling P9): once at the end of each intro, a mission's or an act's. Endless Night marks the god's night
+## open on it, and a night left after this counts as lost.
+signal clock_started
 
 ## The four powers a mission starts with until the Prepare screen exists (milestone 4). Override on the
 ## command line: -- --loadout=heaven,gravity,judgement,nova
@@ -106,6 +109,11 @@ var wish_seed := 0
 ## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
 ## Rules is given it, and an R restart or next_act() keeps it.
 var levels := {}
+## Endless Night's night (god P1, spec §9.1): when valid, `_mission_def()` returns what this gives (a GodNight.def_for()) and ignores
+## `--mission`. Game sets it before start() for a night; unset everywhere else.
+var night_def: Callable
+## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
+var restart_locked := false
 ## The loadout start() was last given (v0.11 M1): an R restart passes none and replays this one, not the mission's default
 ## (which on the board would hand out locked powers and drop what the player drafted).
 var _drafted := PackedStringArray()
@@ -657,6 +665,7 @@ func _land() -> void:
 		_hud.intro = false
 		_hud.play_began()  # v0.11.1: the how-to-win line flashes once now
 	_rules.set_process(true)
+	clock_started.emit()
 
 
 ## How much of this frame's `delta` the intro takes (v0.11.1, spec §2: one message at a time). The opening's banners come first:
@@ -704,6 +713,8 @@ static func raised(stops: Array) -> Array:
 ## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08); on the board, its
 ## tier's version (v0.11 M1).
 func _mission_def(args: PackedStringArray) -> MissionDef:
+	if night_def.is_valid():
+		return night_def.call()
 	var wanted_mission := Battlefield.arg_value(args, "--mission") if autostart else ""
 	return def_for(wanted_mission if wanted_mission != "" else mission_id, _on_board(args), descend)
 
@@ -917,7 +928,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if i >= 0 and i < _rules.loadout.size():
 			_pick(i)
 		elif event.physical_keycode == KEY_R:
-			start(PackedStringArray(), Time.get_ticks_usec())
+			if not restart_locked:  # Endless Night: no restart (god P1, Ruling P9)
+				start(PackedStringArray(), Time.get_ticks_usec())
 		elif ascends(event):
 			ascend()
 		elif toggles_details(event):

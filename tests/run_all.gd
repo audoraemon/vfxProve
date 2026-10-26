@@ -178,6 +178,7 @@ const SUITES := [
 	"res://tests/test_power_levels.gd",
 	"res://tests/test_god_tree.gd",
 	"res://tests/test_god_slot.gd",
+	"res://tests/test_slot_screens.gd",
 ]
 
 var failures := 0

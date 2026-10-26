@@ -1,6 +1,6 @@
 # KAK: God Progression and Endless Night (design)
 
-Date: 2026-10-26. Status: agreed in chat with the user, part by part, and reviewed by a fresh builder; awaits the user's read.
+Date: 2026-10-26. Status: approved by the user (2026-10-26). Branch: `feat/god-progression` (worktree `vfxProve-god`), merged into `feat/Develop-Main` later.
 Base: `feat/Develop-Main` at `a94db78f` (v0.12 "Many Towns").
 
 Marks used below: **(user)** is the user's decision. **(my call)** is a choice made by the designer (Claude) that the

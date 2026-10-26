@@ -7,51 +7,51 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **23** to do · **81** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793024457:f>)\n• Done: v0.12 Many Towns: missions on any town (Capital first)\n• New: Design: god progression and Endless Night (in progress)\n• New: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop\n• New: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n• New: Playtest v0.12: Tier 1 in the Capital",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **83** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793053741:f>)\n• Done: Design: god progression and Endless Night\n• Done: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop\n• New: Level tables, batch 1: five levels and the level-5 twist\n• New: God P2: Lantern Notice, the Lantern Hunt and seals\n• New: God P3: the Awaken rite mission type and the first rite",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-26T21:20:57+07:00"
+     "timestamp": "2026-10-27T05:29:01+07:00"
     },
     {
-     "title": "claude/god-ability-progression-d24545",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: god progression and Endless Night design\n\n**In progress** (1)\n• Design: god progression and Endless Night — **needs you**",
+     "title": "feat/god-progression",
+     "description": "31 commits not in Develop-Main · last commit today · local only\n> docs: god P1 summary -- merged-tree landing numbers\n\n**To do** (3)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• God P3: the Awaken rite mission type and the first rite\n• God P2: Lantern Notice, the Lantern Hunt and seals",
      "color": 5016537
     },
     {
      "title": "feat/town-lighting",
-     "description": "35 commits not in Develop-Main · last commit yesterday · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
+     "description": "35 commits not in Develop-Main · last commit 2 days ago · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/vfx-ability-effects-964aca",
-     "description": "1 commit not in Develop-Main · last commit 3 days ago · local only\n> feat: Unseen Hour (Veil) and Curfew (Decree)\n\n**In progress** (1)\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area — **needs you**",
+     "description": "1 commit not in Develop-Main · last commit 4 days ago · local only\n> feat: Unseen Hour (Veil) and Curfew (Decree)\n\n**In progress** (1)\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area — **needs you**",
      "color": 5016537
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 17 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 18 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 17 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 18 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/gpt-handoff",
-     "description": "3 commits not in Develop-Main · last commit 22 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
+     "description": "3 commits not in Develop-Main · last commit 23 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-10-24\n> docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (23)\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) — **needs you**\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-10-24\n> docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (22)\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) — **needs you**\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• v0.12 Many Towns: missions on any town (Capital first) _(10-25)_\n• Discord #board: live project board _(10-24)_\n• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_\n• F1 hides the interface (watch the town) _(10-23)_\n• v0.11.2: playtest 2 — open abilities, sound, impact awareness, The Lantern Turns _(10-23)_\n• v0.11.1 Playtest round 1 _(10-18)_\n• Faster milestone workflow: kak-milestone skill + fast gates _(10-17)_",
+     "description": "• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop _(10-27)_\n• Design: god progression and Endless Night _(10-26)_\n• v0.12 Many Towns: missions on any town (Capital first) _(10-25)_\n• Discord #board: live project board _(10-24)_\n• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_\n• F1 hides the interface (watch the town) _(10-23)_\n• v0.11.2: playtest 2 — open abilities, sound, impact awareness, The Lantern Turns _(10-23)_",
      "color": 10185686
     }
    ]

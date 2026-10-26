@@ -1,14 +1,14 @@
 {
- "hash": "5206191840e923f4",
- "updated": "2026-10-26T21:20:57+07:00",
+ "hash": "fa902884b3238bc6",
+ "updated": "2026-10-27T05:29:01+07:00",
  "changes": {
-  "date": "<t:1793024457:f>",
+  "date": "<t:1793053741:f>",
   "items": [
-   "Done: v0.12 Many Towns: missions on any town (Capital first)",
-   "New: Design: god progression and Endless Night (in progress)",
-   "New: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop",
-   "New: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
-   "New: Playtest v0.12: Tier 1 in the Capital"
+   "Done: Design: god progression and Endless Night",
+   "Done: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop",
+   "New: Level tables, batch 1: five levels and the level-5 twist",
+   "New: God P2: Lantern Notice, the Lantern Hunt and seals",
+   "New: God P3: the Awaken rite mission type and the first rite"
   ]
  },
  "snapshot": {
@@ -233,23 +233,54 @@
     "updated": "2026-10-04",
     "order": 20
    },
-   "god-progression-design": {
-    "title": "Design: god progression and Endless Night",
-    "status": "doing",
-    "area": "Design",
+   "god-level-tables-1": {
+    "title": "Level tables, batch 1: five levels and the level-5 twist",
+    "status": "todo",
+    "area": "Powers",
     "version": "next",
     "needs_you": true,
-    "branch": "claude/god-ability-progression-d24545",
+    "branch": "feat/god-progression",
+    "updated": "2026-10-27",
+    "order": 192
+   },
+   "god-p2-lantern": {
+    "title": "God P2: Lantern Notice, the Lantern Hunt and seals",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-27",
+    "order": 190
+   },
+   "god-p3-first-rite": {
+    "title": "God P3: the Awaken rite mission type and the first rite",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-27",
+    "order": 191
+   },
+   "god-progression-design": {
+    "title": "Design: god progression and Endless Night",
+    "status": "done",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "branch": "feat/god-progression",
     "updated": "2026-10-26",
     "order": 187
    },
    "god-progression-p1": {
     "title": "P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop",
-    "status": "todo",
+    "status": "done",
     "area": "Design",
     "version": "next",
     "needs_you": false,
-    "updated": "2026-10-26",
+    "branch": "feat/god-progression",
+    "updated": "2026-10-27",
     "order": 189
    },
    "god-tree-tier1-fill": {
@@ -1035,11 +1066,11 @@
   },
   "branches": [
    {
-    "name": "claude/god-ability-progression-d24545",
-    "ahead": 1,
+    "name": "feat/god-progression",
+    "ahead": 31,
     "behind": 0,
-    "date": "2026-10-26",
-    "subject": "docs: god progression and Endless Night design",
+    "date": "2026-10-27",
+    "subject": "docs: god P1 summary -- merged-tree landing numbers",
     "pushed": false
    },
    {

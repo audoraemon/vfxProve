@@ -173,6 +173,7 @@ const SUITES := [
 	"res://tests/test_audio_mix.gd",
 	"res://tests/test_options.gd",
 	"res://tests/test_power_sounds.gd",
+	"res://tests/test_power_levels.gd",
 ]
 
 var failures := 0

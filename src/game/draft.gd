@@ -16,6 +16,9 @@ var picks := PackedStringArray()
 ## Powers the god has not unlocked (v0.11 M1, spec §3.4): the board's draft shows them greyed with their price and refuses
 ## them; empty off the board.
 var locked := PackedStringArray()
+## Each picked power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. A level raises the power's Might
+## (PowerBook.might()); the board's level picker sets it, a mission outside the board leaves it empty.
+var levels := {}
 
 
 ## The draft for a mission: its slots, its DP capacity and the powers it allows.
@@ -40,7 +43,7 @@ func toggle(key: String) -> String:
 
 
 ## Why a power that is not picked cannot be added: "pool" (not a power, or not the mission's), "locked" (v0.11 M1: not yet
-## unlocked on the board), "slots" (every slot is taken), "dp" (its price would go over the Divine Power), or "" when it fits.
+## unlocked on the board), "slots" (every slot is taken), "dp" (its price at its level would go over the Might), or "" when it fits.
 ## A picked power gives "".
 func refusal(key: String) -> String:
 	if picks.has(key):
@@ -52,17 +55,38 @@ func refusal(key: String) -> String:
 		return "locked"
 	if picks.size() >= slots:
 		return "slots"
-	if capacity > 0 and spent() + int(p.dp) > capacity:
+	if capacity > 0 and spent() + PowerBook.might(key, level_of(key)) > capacity:
 		return "dp"
 	return ""
 
 
-## The Divine Power the picks cost in all.
+## The Might the picks cost in all: each power's price at its level (PowerBook.might()).
 func spent() -> int:
 	var total := 0
 	for key in picks:
-		total += int(PowerBook.get_power(key).get("dp", 0))
+		total += PowerBook.might(key, level_of(key))
 	return total
+
+
+## A power's ability level in this draft, 1-5; 1 when none was set.
+func level_of(key: String) -> int:
+	return clampi(int(levels.get(key, 1)), 1, PowerBook.MAX_LEVEL)
+
+
+## Set a picked power's level (clamped 1-5). "" when set; "pool" for a power that is not picked; "dp" when its Might at the new
+## level would put the picks over the capacity (the level stays as it was). Going down always fits.
+func set_level(key: String, level: int) -> String:
+	if not picks.has(key):
+		return "pool"
+	var to := clampi(level, 1, PowerBook.MAX_LEVEL)
+	if capacity > 0 and to > level_of(key) \
+			and spent() - PowerBook.might(key, level_of(key)) + PowerBook.might(key, to) > capacity:
+		return "dp"
+	if to == 1:
+		levels.erase(key)
+	else:
+		levels[key] = to
+	return ""
 
 
 ## A loadout can go out with at least one power in it (v0.08: empty slots are allowed).

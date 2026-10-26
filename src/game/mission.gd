@@ -103,6 +103,9 @@ var board := false
 var descend: DescendState
 ## The seed the board night's wishes are drawn from (Descent.seed_for()): Game sets it, and an R restart keeps it.
 var wish_seed := 0
+## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
+## Rules is given it, and an R restart or next_act() keeps it.
+var levels := {}
 ## The loadout start() was last given (v0.11 M1): an R restart passes none and replays this one, not the mission's default
 ## (which on the board would hand out locked powers and drop what the player drafted).
 var _drafted := PackedStringArray()
@@ -380,6 +383,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.name = "Rules"
 	add_child(_rules)
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
+	_rules.levels = levels
 	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
 	# Nothing shows a banner until the HUD below is made: the director's setup and the town's responses may raise some.

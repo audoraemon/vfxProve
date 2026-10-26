@@ -180,6 +180,149 @@ static func get_power(key: String) -> Dictionary:
 	return {}
 
 
+## The highest ability level (god P1, spec §5.4): levels run 1 to MAX_LEVEL.
+const MAX_LEVEL := 5
+## The levels at which a power costs one more Might (spec §6): reaching 3 adds 1, reaching 5 adds 1.
+const MIGHT_STEPS := [3, 5]
+## What level_change() says for a power whose row has no `levels` table yet (god P1: no row has one).
+const NO_LEVELS := "Level effects not set"
+## The keys a level table holds besides stats: level 5's twist flag and its one-line text.
+const TWIST_KEYS := ["twist", "twist_text"]
+
+
+## What a power costs in Might at a level (spec §6): its `dp` plus one for each MIGHT_STEPS entry the level has reached.
+## The level is clamped to 1-MAX_LEVEL; 0 for an unknown key. (The "dp" field keeps its name, ruling C1.)
+static func might(key: String, level := 1) -> int:
+	var p := get_power(key)
+	if p.is_empty():
+		return 0
+	var lv := clampi(level, 1, MAX_LEVEL)
+	var total := int(p.get("dp", 0))
+	for step: int in MIGHT_STEPS:
+		if step <= lv:
+			total += 1
+	return total
+
+
+## True when the power's row has a `levels` table (an Array of MAX_LEVEL Dictionaries, index 0 = level 1, each mapping a stat name
+## to the number its effect reads; index 4 also holds "twist": true and "twist_text").
+static func has_levels(key: String) -> bool:
+	return not _table(get_power(key)).is_empty()
+
+
+## A row's levels table, or an empty Array when it has none.
+static func _table(entry: Dictionary) -> Array:
+	var t: Variant = entry.get("levels")
+	return t as Array if t is Array else []
+
+
+## The entry's value for `stat` at `level` (clamped 1-MAX_LEVEL) when it has a table naming that stat, else `base`.
+static func stat_in(entry: Dictionary, level: int, stat: String, base: Variant) -> Variant:
+	var table := _table(entry)
+	if table.is_empty():
+		return base
+	var row: Variant = table[clampi(level, 1, table.size()) - 1]
+	if row is Dictionary and (row as Dictionary).has(stat):
+		return (row as Dictionary)[stat]
+	return base
+
+
+## A power's number for `stat` at `level`: its table's value, or `base` (the effect's own constant) without one.
+static func level_stat(key: String, level: int, stat: String, base: Variant) -> Variant:
+	return stat_in(get_power(key), level, stat, base)
+
+
+## What an effect calls for each number its level may change: `PowerBook.stat(extra, "<key>", "<stat>", CONST)`. The level is
+## extra["level"] (Rules.cast() puts it on every cast), 1 when absent. A power with no table plays exactly as it always did.
+static func stat(extra: Dictionary, key: String, stat_name: String, base: Variant) -> Variant:
+	return level_stat(key, int(extra.get("level", 1)), stat_name, base)
+
+
+## The one-line twist a power gains at level 5, or "" for a power without one.
+static func twist(key: String) -> String:
+	return twist_in(get_power(key))
+
+
+## The entry's level-5 twist text ("" when it has no table or no twist).
+static func twist_in(entry: Dictionary) -> String:
+	var table := _table(entry)
+	if table.size() < MAX_LEVEL:
+		return ""
+	var top: Variant = table[MAX_LEVEL - 1]
+	if top is Dictionary and bool((top as Dictionary).get("twist", false)):
+		return String((top as Dictionary).get("twist_text", ""))
+	return ""
+
+
+## What reaching `level` changes for a power, as the tables give it: "radius 1.5 -> 1.7, damage 40 -> 46" (level 5 ends with the
+## twist text); "" at level 1; NO_LEVELS for a power without a table.
+static func level_change(key: String, level: int) -> String:
+	return level_change_in(get_power(key), level)
+
+
+## level_change() for a row given directly.
+static func level_change_in(entry: Dictionary, level: int) -> String:
+	var table := _table(entry)
+	if table.is_empty():
+		return NO_LEVELS
+	if level < 2:
+		return ""
+	var lv := mini(level, table.size())
+	var before: Dictionary = table[lv - 2]
+	var after: Dictionary = table[lv - 1]
+	var parts := PackedStringArray()
+	for name: String in after:
+		if TWIST_KEYS.has(name):
+			continue
+		if not before.has(name) or before[name] != after[name]:
+			parts.append("%s %s -> %s" % [name, str(before.get(name, "?")), str(after[name])])
+	if lv == MAX_LEVEL and twist_in(entry) != "":
+		parts.append(twist_in(entry))
+	return ", ".join(parts)
+
+
+## What is wrong with a row's levels table; empty when valid: MAX_LEVEL tables, every stat named in all of them with one kind of
+## value (numbers count as one kind), and the twist ("twist": true plus a non-empty "twist_text") at level 5 only.
+static func levels_problems(entry: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	var table := _table(entry)
+	var label := String(entry.get("key", "?"))
+	if table.size() != MAX_LEVEL:
+		out.append("%s: needs %d level tables, has %d" % [label, MAX_LEVEL, table.size()])
+		return out
+	var names := {}
+	for i in table.size():
+		if not table[i] is Dictionary:
+			out.append("%s: level %d is not a Dictionary" % [label, i + 1])
+			return out
+		for name: String in (table[i] as Dictionary):
+			if not TWIST_KEYS.has(name):
+				names[name] = true
+	for name: String in names:
+		var kind := -1
+		for i in table.size():
+			var row: Dictionary = table[i]
+			if not row.has(name):
+				out.append("%s: stat %s is missing at level %d" % [label, name, i + 1])
+				continue
+			var k := typeof(row[name])
+			k = TYPE_FLOAT if k == TYPE_INT else k
+			if kind >= 0 and k != kind:
+				out.append("%s: stat %s changes type at level %d" % [label, name, i + 1])
+			kind = k
+	for i in table.size():
+		var row: Dictionary = table[i]
+		if i < MAX_LEVEL - 1:
+			if row.has("twist") or row.has("twist_text"):
+				out.append("%s: only level %d may carry a twist (level %d does)" % [label, MAX_LEVEL, i + 1])
+		else:
+			if not (row.has("twist") and row["twist"] == true):
+				out.append("%s: level %d needs \"twist\": true" % [label, MAX_LEVEL])
+			if String(row.get("twist_text", "")).strip_edges() == "":
+				out.append("%s: level %d needs a twist_text" % [label, MAX_LEVEL])
+	return out
+
+
 ## Decree rules the rules themselves: what is allowed, what is true, what is law (prohibit, distort, abolish).
 ## Dominion holds what was Disorder too: to command a mind and to break one are the same Authority.
 ## The Authorities (v0.08; before, the kinds): what a power commands, and the draft's tabs, in tab order.

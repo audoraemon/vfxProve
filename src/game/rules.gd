@@ -104,6 +104,9 @@ var clock_rate := 1.0:
 		clock_rate = maxf(value, 0.0)
 ## The drafted power keys, in slot order.
 var loadout := PackedStringArray()
+## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Mission sets it after setup(); cast()
+## hands the level to the effect as extra["level"].
+var levels := {}
 ## The mission is over: the clock ran out, the people got away, or the city fell.
 var finished := false
 ## Buildings destroyed this mission, by BUILDING_ROLES.
@@ -323,6 +326,11 @@ func key(slot: int) -> String:
 	return String(p.get("key", ""))
 
 
+## The ability level of the power in a slot, 1-5 (levels; 1 when none was set, for an empty slot too).
+func level_of(slot: int) -> int:
+	return clampi(int(levels.get(key(slot), 1)), 1, PowerBook.MAX_LEVEL)
+
+
 func cooldown_left(slot: int) -> float:
 	if slot < 0 or slot >= _cooldowns.size():
 		return 0.0
@@ -384,7 +392,11 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			cast_refused.emit(slot, "shaken")
 			return null
 	_cooldowns[slot] = float(p.cooldown)
-	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)
+	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. No P1 effect reads it.
+	var told := extra.duplicate()
+	if not told.has("level"):
+		told["level"] = level_of(slot)
+	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, told)
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
 		"until": _elapsed + CAST_GRACE})

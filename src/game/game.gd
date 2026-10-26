@@ -1153,13 +1153,17 @@ func _mission_up(other: Mission) -> bool:
 
 
 ## v0.11 M1 (spec §3.1-§3.2), a test mode since god P1 (spec §3, ruling C3): on a fresh save the tier board opens on Whisper, its five
-## cards, and every tier is open -- Omen, Wrath, Reckoning and Ascendance each show their five cards with no rule line, no padlock and
+## cards (a fresh save opens on its last mission's tier, Ascendance), and every tier is open -- Omen, Wrath, Reckoning and Ascendance each show their five cards with no rule line, no padlock and
 ## no Upgrades button, under the test header. Ends on the board, Whisper open.
 func _flow_board(step: Callable) -> void:
 	var board := _screen_node as MissionBoard
-	step.call(board != null and board.tier == 1 and Array(board.missions()) == Array(TierBook.missions(1)) and board.missions().size() == 5
-		and board.lock_line() == "" and board.header_text() == MissionBoard.TEST_HEADER and save.descend.open_tier == 1,
-		"a fresh board opens on Whisper under the test header: The Warning and the four new missions, no rule line")
+	# A fresh save's last mission is Last Judgement (Ascendance): with every tier open the board opens on its tab, not on Whisper's.
+	step.call(board != null and board.tier == TierBook.tier_of(mission_id) and board.lock_line() == ""
+		and board.header_text() == MissionBoard.TEST_HEADER and save.descend.open_tier == 1,
+		"a fresh board opens on the last mission's tier (%s, tab %d) under the test header, no rule line" % [mission_id, board.tier if board != null else 0])
+	board.open_tab(1)
+	step.call(board.tier == 1 and Array(board.missions()) == Array(TierBook.missions(1)) and board.missions().size() == 5,
+		"Whisper holds The Warning and the four new missions")
 	var open_ok := true
 	for tier in range(2, TierBook.NAMES.size() + 1):
 		board.open_tab(tier)

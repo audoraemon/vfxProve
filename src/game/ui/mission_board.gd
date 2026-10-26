@@ -1,17 +1,16 @@
 class_name MissionBoard
 extends Node
-## The tier board (v0.11 M1, spec §3.1), between the Title and Prepare, in place of v0.08's board of three cards.
+## The tier board (v0.11 M1, spec §3.1), between the Title and Prepare, in place of v0.08's board of three cards. Since god P1
+## (spec §3, ruling C3) it is a test mode: every tier, mission and power is open, and nothing is banked but bests.
 ## - Five tabs, one per Awakening Tier, and the open tab's missions as cards: name, type, two-line brief, best result, and a
 ##   tick once cleared.
-## - A locked tier shows a padlock and its rule.
-## - The header holds the night to come, the believers and an Upgrades button.
-## - Input: the mouse, Left and Right choose a card; Tab or 1-5 a tier; a click or Enter picks the card (an open tier's
-##   only); U opens the Upgrades; Esc goes back to the title.
+## - No tier is locked, so there is no padlock and no unlock rule; the header says TEST_HEADER and there is no Upgrades button.
+## - Input: the mouse, Left and Right choose a card; Tab or 1-5 a tier; a click or Enter picks the card; Esc goes back to the title.
 ## - With --dev (Game sets `dev`), a DEV tab beside the title holds the dev-only missions (MissionBook.dev_missions(): the
 ##   capital's sandbox, then each town's hostable missions as composite ids, `tax_collector@capital`: v0.12), always open;
 ##   D opens it. A town mission's card shows its name, the town (gold) and its type, no brief. Nothing of it shows without the flag.
 
-## "pick" (the player chose `chosen`), "upgrades" or "back" (Esc).
+## "pick" (the player chose `chosen`) or "back" (Esc).
 signal action(name: String)
 
 ## The tabs' row under the title: five tabs sharing the screen less its margins.
@@ -28,8 +27,12 @@ const PAD := 10.0
 ## in the worst case, a best that wraps to three lines (a cleared card with a wide time and wishes; card 230 high: two name
 ## lines, the type, then 15 px a line, which leaves 5 px).
 const BRIEF_LINES := 7
-## The header's Upgrades button.
+## Where the header's Upgrades button was (v0.11 M1). The test mode has none (god P1, spec §3): nothing is drawn or hit here.
 const UPGRADES_RECT := Rect2(548.0, 8.0, 84.0, 20.0)
+## The header's line in the test mode (god P1, spec §3, ruling C3), where the night and the believers were.
+const TEST_HEADER := "TEST MODE: every tier, mission and power open"
+## The hint under the cards.
+const HINT := "Left and Right: missions   Tab or number keys: tiers   Enter: prepare   Esc: title"
 ## The DEV tab (--dev only): its tier number, past the five, and its button in the header beside the title.
 const DEV_TIER := 6
 const DEV_RECT := Rect2(112.0, 8.0, 40.0, 20.0)
@@ -132,21 +135,19 @@ func _tier_of(id: String) -> int:
 	return TierBook.tier_of(id)
 
 
-## Whether tab `t` is open: its tier's rule, the DEV tab always (--dev).
+## Whether tab `t` is open (god P1, ruling C3): the five tiers always, the DEV tab with --dev.
 func _is_open(t: int) -> bool:
-	return dev if t == DEV_TIER else _state().is_open(t)
+	return dev if t == DEV_TIER else t >= 1 and t <= TierBook.NAMES.size()
 
 
-## The open tier's rule while it is locked (spec §3.1: "Clear 3 Omen missions"); "" while open.
+## The open tier's rule while it is locked (v0.11 M1: "Clear 3 Omen missions"); always "" now that no tier is locked (god P1, C3).
 func lock_line() -> String:
-	return "" if _is_open(tier) else DescendState.lock_text(tier)
+	return ""
 
 
-## The header's line (spec §3.1): the night about to be played, and the believers. v0.11 M6 (Decision 252): "All 25 cleared" once every
-## board mission is.
+## The header's line (god P1, spec §3): TEST_HEADER. It was the night to come and the believers (v0.11 M1); the test mode banks neither.
 func header_text() -> String:
-	var line := "Night %d   Believers %d" % [_state().night + 1, _state().believers]
-	return line + ("   All %d cleared" % TierBook.all().size() if _state().all_cleared() else "")
+	return TEST_HEADER
 
 
 ## A card's best, part by part (spec §3.1, §3.5; v0.11 M2, Task 8): "Not yet cleared", or "Cleared" with its fastest clear and most
@@ -265,10 +266,8 @@ func choose(id: String) -> void:
 		_redraw()
 
 
-## What is under a point: "upgrades", "tab:<tier>", "card:<i>" (the open tier's), or "".
+## What is under a point: "tab:<tier>", "card:<i>" (the open tier's), or "".
 func hit(point: Vector2) -> String:
-	if UPGRADES_RECT.has_point(point):
-		return "upgrades"
 	if dev and DEV_RECT.has_point(point):
 		return "tab:%d" % DEV_TIER
 	for i in TierBook.NAMES.size():
@@ -314,9 +313,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			action.emit("back")
 		elif key == KEY_D and dev:
 			open_tab(DEV_TIER)
-		elif key == KEY_U:
-			UiSound.play(&"ui_click")
-			action.emit("upgrades")
 		elif key == KEY_LEFT:
 			_select(selected - 1)
 		elif key == KEY_RIGHT:
@@ -339,10 +335,7 @@ func _on_gui_input(event: InputEvent) -> void:
 			_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var h := hit(event.position)
-		if h == "upgrades":
-			UiSound.play(&"ui_click")
-			action.emit("upgrades")
-		elif h.begins_with("tab:"):
+		if h.begins_with("tab:"):
 			open_tab(int(h.substr(4)))
 		elif h.begins_with("card:"):
 			selected = int(h.substr(5))
@@ -353,12 +346,7 @@ func _draw_ui() -> void:
 	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
 	UiTheme.text(_ui, Vector2(8, 24), "THE TIERS", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	var head := header_text()
-	UiTheme.text(_ui, Vector2(UPGRADES_RECT.position.x - 10.0 - UiTheme.width(head, UiTheme.SIZE_SMALL), 22.0), head,
-		UiTheme.SIZE_SMALL)
-	_ui.draw_rect(UPGRADES_RECT, Color(0.04, 0.04, 0.06, 0.85))
-	UiTheme.frame(_ui, UPGRADES_RECT, _hover == "upgrades")
-	UiTheme.text(_ui, Vector2(roundf(UPGRADES_RECT.get_center().x - UiTheme.width("Upgrades") * 0.5), UPGRADES_RECT.position.y + 14.0),
-		"Upgrades", UiTheme.SIZE_BODY, UiTheme.COL_GOLD if _hover == "upgrades" else UiTheme.COL_TEXT)
+	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(head, UiTheme.SIZE_SMALL), 22.0), head, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	for i in TierBook.NAMES.size():
 		_draw_tab(i)
 	if dev:
@@ -368,10 +356,7 @@ func _draw_ui() -> void:
 		var rows := best_rows()
 		for i in ids.size():
 			_draw_card(card_rect(i, ids.size()), ids[i], i == selected, rows)
-	else:
-		_draw_locked()
-	var hint := "Left and Right: missions   Tab or number keys: tiers   Enter: prepare   U: upgrades   Esc: title"
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), 322.0), hint,
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(HINT, UiTheme.SIZE_SMALL) * 0.5), 322.0), HINT,
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 
 
@@ -385,34 +370,17 @@ func _draw_dev_tab() -> void:
 		DEV_RECT.end.y - 6.0), "DEV", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
 
 
-## Tab `i`: "WHISPER", gold-framed while open; a locked tier's dim, with a padlock.
+## Tab `i`: "WHISPER", gold-framed while open. No tier is locked, so none is dim or carries a padlock (god P1, C3).
 func _draw_tab(i: int) -> void:
 	var r := tab_rect(i)
 	var open := i + 1 == tier
-	var unlocked := _state().is_open(i + 1)
 	_ui.draw_rect(r, Color(0.12, 0.1, 0.05, 0.95) if open else (Color(0.1, 0.09, 0.07, 0.9) if _hover == "tab:%d" % (i + 1)
 		else UiTheme.COL_PANEL))
 	UiTheme.frame(_ui, r, open)
 	# No digit in the label: the pixel font's 5 reads as an S ("S ASCENDANCE"); the keys 1-5 are in the hint.
 	var label := TierBook.tier_name(i + 1).to_upper()
 	UiTheme.text(_ui, Vector2(r.position.x + 5.0, r.end.y - 5.0), label, UiTheme.SIZE_SMALL,
-		UiTheme.COL_GOLD if open and unlocked else (UiTheme.COL_TEXT if unlocked else UiTheme.COL_DIM))
-	if not unlocked:
-		_padlock(Vector2(r.end.x - 12.0, r.position.y + 6.0), 1.0, UiTheme.COL_DIM)
-
-
-## A padlock drawn in lines, its body's top-left at `at`, `k` times its small size.
-func _padlock(at: Vector2, k: float, col: Color) -> void:
-	_ui.draw_arc(at + Vector2(3.5, 0.0) * k, 2.5 * k, PI, TAU, 8, col, maxf(k, 1.0))
-	_ui.draw_rect(Rect2(at, Vector2(7.0, 6.0) * k), col)
-
-
-## A locked tier's body (spec §3.1): a large padlock and the rule that opens it.
-func _draw_locked() -> void:
-	_padlock(Vector2(306.0, 140.0), 4.0, UiTheme.COL_GOLD_DARK)
-	var rule := lock_line()
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(rule, UiTheme.SIZE_BIG) * 0.5), 196.0), rule, UiTheme.SIZE_BIG,
-		UiTheme.COL_GOLD)
+		UiTheme.COL_GOLD if open else UiTheme.COL_TEXT)
 
 
 ## One card, top to bottom: its name and a tick once cleared, its type, its brief, then under a rule its best. `rows` is the most

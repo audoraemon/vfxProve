@@ -34,6 +34,8 @@ const SLOT := Vector2(84.0, 28.0)
 ## A loadout slot narrower than this shows its icon and number without the name.
 const SLOT_NAME_MIN := 70.0
 const MANIFEST_RECT := Rect2(552.0, 282.0, 76.0, 28.0)
+## The level badge on a picked loadout slot (god P1, spec §3, ruling P13): "L1" to "L5", at the slot's top right.
+const LEVEL_BADGE := Vector2(14.0, 10.0)
 ## The left panel: briefing above, the card under the mouse below.
 const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
 ## The slot-number badge on a picked card: large enough for the body size, where 2 and 3 do not read as 8.
@@ -44,6 +46,12 @@ const LABEL_GAP := 6.0
 ## The mission being prepared (v0.08): its briefing, its slots and the powers it allows. Last Judgement until setup().
 var mission: MissionDef = MissionBook.last_judgement()
 var draft := Draft.new()
+## The board's test mode (god P1, spec §3, ruling P13): each picked slot carries a level badge, and a click on it steps the
+## power's level 1 to 5 and round to 1. Game sets it for a board night, before setup(); off, the badge is neither drawn nor hit.
+var level_picker := false
+## The levels the draft starts with (god P1, pre-flight G1), key -> level: Game's, set before setup() so Change powers and the
+## between-acts re-draft show the levels already chosen. setup() replaces the draft, so it copies them in.
+var levels := {}
 ## The open tab: an index into tabs().
 var tab := 0
 ## Why the last pick (or MANIFEST) was refused, shown in the panel's hint line for REFUSE_SECONDS; "" for none.
@@ -85,7 +93,12 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	mission = def
 	draft = Draft.new().for_mission(mission)
 	draft.locked = locked
+	draft.levels = levels.duplicate()
 	draft.preselect(preselect)
+	# A level kept for a power that did not make the loadout is dropped, so a later pick starts at level 1 (ruling C14).
+	for key: String in draft.levels.keys():
+		if not draft.picks.has(key):
+			draft.levels.erase(key)
 	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
 	tab = maxi(tabs().find(PowerBook.authority_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
 	difficulty = tier
@@ -183,8 +196,15 @@ func can_manifest() -> bool:
 	return draft.can_manifest()
 
 
-## What is under a point: a power key, "tab:<i>", "slot:<i>", "manifest", the difficulty arrows (only when the mission
-## lets the player choose the difficulty), or "".
+## The level badge of loadout slot `i` of `count` (god P1, ruling P13): LEVEL_BADGE at the slot's top right.
+static func level_rect(i: int, count: int) -> Rect2:
+	var slot := slot_rect(i, count)
+	return Rect2(Vector2(slot.end.x - LEVEL_BADGE.x - 2.0, slot.position.y + 2.0), LEVEL_BADGE)
+
+
+## What is under a point: a power key, "tab:<i>", "level:<i>" (a filled slot's badge, only while `level_picker` is on), "slot:<i>",
+## "manifest", the difficulty arrows (only when the mission lets the player choose the difficulty), or "". The badge is tested
+## before the slot it sits in, or a click on it would give the pick back (pre-flight R7).
 func hit(point: Vector2) -> String:
 	var count := tabs().size()
 	for i in count:
@@ -194,6 +214,10 @@ func hit(point: Vector2) -> String:
 	for i in keys.size():
 		if cell_rect(i, shown().size()).has_point(point):
 			return String(keys[i])
+	if level_picker:
+		for i in draft.picks.size():
+			if level_rect(i, draft.slots).has_point(point):
+				return "level:%d" % i
 	for i in draft.slots:
 		if slot_rect(i, draft.slots).has_point(point):
 			return "slot:%d" % i
@@ -251,8 +275,8 @@ func _on_gui_input(event: InputEvent) -> void:
 		click(event.position)
 
 
-## A left click at a screen point: a tab opens, a card is picked or given back, a filled slot gives its pick back,
-## MANIFEST goes. A card that does not fit, or MANIFEST with nothing picked, buzzes and says why (refused_reason).
+## A left click at a screen point: a tab opens, a card is picked or given back, a filled slot gives its pick back, a level badge
+## steps its power's level (1 to 5, 5 round to 1; a refusal says why as a pick's does), MANIFEST goes. A card that does not fit, or MANIFEST with nothing picked, buzzes and says why (refused_reason).
 func click(point: Vector2) -> void:
 	var h := hit(point)
 	if h == "diff_prev" or h == "diff_next":
@@ -260,6 +284,14 @@ func click(point: Vector2) -> void:
 	elif h.begins_with("tab:"):
 		UiSound.play(&"ui_click")
 		set_tab(int(h.substr(4)))
+	elif h.begins_with("level:"):
+		var key := draft.picks[int(h.substr(6))]
+		var why := draft.set_level(key, draft.level_of(key) % PowerBook.MAX_LEVEL + 1)
+		if why == "":
+			UiSound.play(&"ui_click")
+			_ui.queue_redraw()
+		else:
+			_refuse(String(REFUSALS.get(why, why)))
 	elif h.begins_with("slot:"):
 		var i := int(h.substr(5))
 		if i < draft.picks.size():
@@ -289,10 +321,10 @@ func _refuse(reason: String) -> void:
 	_ui.queue_redraw()
 
 
-## The power the mouse is over: a card's, or the pick in a loadout slot's.
+## The power the mouse is over: a card's, or the pick in a loadout slot's (or its level badge's).
 func _hover_key() -> String:
-	if _hover.begins_with("slot:"):
-		var i := int(_hover.substr(5))
+	if _hover.begins_with("slot:") or _hover.begins_with("level:"):
+		var i := int(_hover.substr(_hover.find(":") + 1))
 		return draft.picks[i] if i < draft.picks.size() else ""
 	return _hover
 
@@ -450,7 +482,8 @@ func _draw_panel() -> void:
 			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
 			y += UiTheme.LINE_SMALL
 		y += 3.0
-	_draw_hint("Pick up to %d powers within %d Might" % [mission.slots, mission.dp_capacity])
+	_draw_hint("Pick up to %d powers within %d Might%s" % [mission.slots, mission.dp_capacity,
+		". Click the L on a slot to set its level" if level_picker else ""])
 
 
 ## The panel's last line: why a pick was just refused, in red, or else `hint`, dim ("" for none).
@@ -537,6 +570,18 @@ func _draw_card(i: int, key: String) -> void:
 			digit, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 
 
+## Slot `i`'s level badge (god P1, ruling P13): "L1" to "L5" in a small dark box at the slot's top right, gold once the level is
+## raised, lit while the mouse is on it.
+func _draw_level_badge(i: int, key: String) -> void:
+	var r := level_rect(i, draft.slots)
+	var level := draft.level_of(key)
+	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.95) if _hover == "level:%d" % i else Color(0.04, 0.04, 0.06, 0.92))
+	_ui.draw_rect(r, UiTheme.COL_GOLD if level > 1 or _hover == "level:%d" % i else UiTheme.COL_GOLD_DARK, false, -1.0)
+	var label := "L%d" % level
+	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_SMALL) * 0.5), r.end.y - 1.0), label,
+		UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if level > 1 else UiTheme.COL_DIM)
+
+
 ## The loadout bar: the picks in slot order, whichever tab they came from (a click gives one back), then MANIFEST,
 ## lit once there is one (v0.08: empty slots are allowed).
 func _draw_loadout() -> void:
@@ -554,10 +599,12 @@ func _draw_loadout() -> void:
 		if icon != null:
 			_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(2, 2), Vector2(24, 24)), false)
 		UiTheme.text(_ui, r.position + Vector2(3.0, 12.0), digit, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+		if level_picker:
+			_draw_level_badge(i, key)
 		# The name, or its first word, cut to the slot's room -- none in a slot too narrow for one.
 		if r.size.x < SLOT_NAME_MIN:
 			continue
-		var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - 32.0)
+		var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - 32.0 - (LEVEL_BADGE.x + 2.0 if level_picker else 0.0))
 		UiTheme.text(_ui, r.position + Vector2(29.0, 17.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 	var full := draft.can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
 	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))

@@ -96,12 +96,13 @@ static func _complete(t) -> void:
 	var save := SaveFile.new()
 	save.descend = s
 	var board := MissionBoard.new().setup(save, "last_judgement")
-	t.check(board.header_text() == "Night 42   Believers 990   All 25 cleared", "the board's header says so (%s)" % board.header_text())
+	t.check(board.header_text() == MissionBoard.TEST_HEADER and board.best_line("last_judgement") == "Cleared",
+		"the test mode's header is the same with all 25 cleared; the cards keep their ticks (%s)" % board.header_text())
 	board.free()
 	var short := SaveFile.new()
 	short.descend.night = 3
 	var b2 := MissionBoard.new().setup(short, "warning")
-	t.check(b2.header_text() == "Night 4   Believers 0", "until then the header is as before")
+	t.check(b2.header_text() == MissionBoard.TEST_HEADER, "and before then (the night and believers are no longer shown)")
 	b2.free()
 
 

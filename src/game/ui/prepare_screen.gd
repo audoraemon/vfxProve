@@ -52,6 +52,10 @@ var level_picker := false
 ## The levels the draft starts with (god P1, pre-flight G1), key -> level: Game's, set before setup() so Change powers and the
 ## between-acts re-draft show the levels already chosen. setup() replaces the draft, so it copies them in.
 var levels := {}
+## Endless Night's god (god P1, spec §9.1): set before setup(), Prepare drafts from the abilities this god has learned, each at its
+## learned level -- a tab per god type holding one (the spot decides the tab, spec §5.2), the god's slots and Might, no level
+## picker. null for every other mission.
+var god: GodSlot = null
 ## The open tab: an index into tabs().
 var tab := 0
 ## Why the last pick (or MANIFEST) was refused, shown in the panel's hint line for REFUSE_SECONDS; "" for none.
@@ -72,6 +76,8 @@ const PROFILE_RIGHT := 626.0
 const COLUMN_GAP := 8.0
 
 var _ui: Control
+## A god's draft (god P1): type -> its draftable keys in spot order, made in setup() (empty for every other mission).
+var _god_tabs := {}
 ## Both icon sizes, loaded once here and never inside _draw() (a texture loaded while drawing can reach the
 ## draw list before the GPU has it and paint a white block that stays).
 var _icons := {}
@@ -93,14 +99,30 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	mission = def
 	draft = Draft.new().for_mission(mission)
 	draft.locked = locked
-	draft.levels = levels.duplicate()
+	_god_tabs.clear()
+	if god != null:
+		# Endless Night (god P1): the god's slots, Might and learned levels. A power's level is the god's, so every learned level
+		# stays in the draft, picked or not.
+		level_picker = false
+		draft.slots = god.slots()
+		draft.capacity = god.max_might()
+		draft.levels = god.learned.duplicate()
+		for key in god.draftable():
+			var type := _tab_of(key)
+			if mission.allows(key) and type != "":
+				var keys: PackedStringArray = _god_tabs.get(type, PackedStringArray())
+				keys.append(key)
+				_god_tabs[type] = keys
+	else:
+		draft.levels = levels.duplicate()
 	draft.preselect(preselect)
-	# A level kept for a power that did not make the loadout is dropped, so a later pick starts at level 1 (ruling C14).
-	for key: String in draft.levels.keys():
-		if not draft.picks.has(key):
-			draft.levels.erase(key)
+	if god == null:
+		# A level kept for a power that did not make the loadout is dropped, so a later pick starts at level 1 (ruling C14).
+		for key: String in draft.levels.keys():
+			if not draft.picks.has(key):
+				draft.levels.erase(key)
 	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
-	tab = maxi(tabs().find(PowerBook.authority_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
+	tab = maxi(tabs().find(_tab_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
 	difficulty = tier
 	for p: Dictionary in PowerBook.POWERS:
 		var key := String(p.key)
@@ -157,9 +179,22 @@ static func slot_rect(i: int, count := 4) -> Rect2:
 	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (w + 4.0), LOADOUT_BAR.position.y + 2.0), Vector2(w, SLOT.y))
 
 
-## The Authorities with at least one power in the mission's pool, in PowerBook.AUTHORITIES order: one tab each.
+## The tab a power sits in: its Authority, or -- for a god's draft (god P1, spec §5.2) -- the type of the tree spot it was learned in.
+func _tab_of(key: String) -> String:
+	if god != null:
+		return str(GodTree.spot_of(key).get("type", ""))
+	return PowerBook.authority_of(key)
+
+
+## The Authorities with at least one power in the mission's pool, in PowerBook.AUTHORITIES order: one tab each. A god's draft (god P1)
+## has a tab per god type holding a draftable ability, in ring order.
 func tabs() -> PackedStringArray:
 	var out := PackedStringArray()
+	if god != null:
+		for type: String in GodTree.RING:
+			if _god_tabs.has(type):
+				out.append(type)
+		return out
 	for authority: String in PowerBook.AUTHORITIES:
 		for key in PowerBook.of_authority(authority):
 			if mission.allows(key):
@@ -173,12 +208,14 @@ func shown() -> PackedStringArray:
 	return authority_keys(tab)
 
 
-## Tab `i`'s power keys that the mission allows, in PowerBook order.
+## Tab `i`'s power keys that the mission allows, in PowerBook order -- a god's draft (god P1): the type's draftable keys, in spot order.
 func authority_keys(i: int) -> PackedStringArray:
 	var out := PackedStringArray()
 	var all := tabs()
 	if i < 0 or i >= all.size():
 		return out
+	if god != null:
+		return _god_tabs.get(all[i], out)
 	for key in PowerBook.of_authority(all[i]):
 		if mission.allows(key):
 			out.append(key)
@@ -297,6 +334,7 @@ func click(point: Vector2) -> void:
 		if i < draft.picks.size():
 			UiSound.play(&"ui_click")
 			draft.toggle(draft.picks[i])
+			_keep_god_levels()
 			_ui.queue_redraw()
 	elif h == "manifest":
 		if can_manifest():
@@ -306,11 +344,19 @@ func click(point: Vector2) -> void:
 			_refuse(REFUSE_EMPTY)
 	elif h != "":
 		var why := draft.toggle(h)
+		_keep_god_levels()
 		if why == "":
 			UiSound.play(&"ui_click")
 			_ui.queue_redraw()
 		else:
 			_refuse(String(REFUSALS.get(why, why)))
+
+
+## A god's powers keep their learned levels when picked, given back and picked again (god P1): Draft.toggle() clears a level when a
+## pick goes back (ruling C14, the board's picker), but here the level is the god's, not the player's.
+func _keep_god_levels() -> void:
+	if god != null:
+		draft.levels = god.learned.duplicate()
 
 
 ## Buzz, and say why in the panel's hint line for REFUSE_SECONDS.
@@ -348,8 +394,8 @@ func _process(delta: float) -> void:
 func preview(key: String) -> void:
 	_hover = key
 	_held = true
-	if tabs().has(PowerBook.authority_of(key)):
-		tab = tabs().find(PowerBook.authority_of(key))
+	if tabs().has(_tab_of(key)):
+		tab = tabs().find(_tab_of(key))
 	_clip_t = 0.0
 	_clip_frame = 0
 	_ui.queue_redraw()
@@ -466,7 +512,7 @@ func _draw_panel() -> void:
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
-		["LOADOUT", "%d slots, %d Might to spend on them" % [mission.slots, mission.dp_capacity]],
+		["LOADOUT", "%d slots, %d Might to spend on them" % [draft.slots, draft.capacity]],
 		["TEMPLE", "Its fall resets every cooldown, once"],
 	]
 	# Values start just right of the widest label, measured rather than guessed -- a guessed column ran
@@ -482,7 +528,7 @@ func _draw_panel() -> void:
 			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
 			y += UiTheme.LINE_SMALL
 		y += 3.0
-	_draw_hint("Pick up to %d powers within %d Might%s" % [mission.slots, mission.dp_capacity,
+	_draw_hint("Pick up to %d powers within %d Might%s" % [draft.slots, draft.capacity,
 		". Click the L on a slot to set its level" if level_picker else ""])
 
 
@@ -512,8 +558,11 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
-	var title := PowerBook.authority_title(PowerBook.authority_of(key))
-	UiTheme.text(_ui, Vector2(tx, y), "%d Might   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)], UiTheme.SIZE_SMALL)
+	var title := PowerBook.authority_title(_tab_of(key))
+	var stats := "%d Might   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)]
+	if god != null:
+		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p), String(p.aim)]
+	UiTheme.text(_ui, Vector2(tx, y), stats, UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,
 		Color("9ab48a") if bool(p.get("quiet", false)) else UiTheme.COL_DIM)
@@ -548,6 +597,9 @@ func _draw_card(i: int, key: String) -> void:
 		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
 	# A locked power (v0.11 M1, spec §3.4) shows its unlocking price instead.
 	var cost := "%d Might  %s" % [int(p.dp), cooldown_text(p)]
+	if god != null:
+		# A god's card (god P1): the learned level and the Might at that level.
+		cost = "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p)]
 	if draft.locked.has(key):
 		cost = "Locked: %d" % DescendState.unlock_price(key)
 	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)

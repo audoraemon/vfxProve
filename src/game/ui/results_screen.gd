@@ -7,7 +7,8 @@ extends Node
 ## It is drawn over the mission's frozen ruins, which Game keeps up underneath it.
 
 ## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08). A board night
-## (the test mode since god P1) has the same three; "upgrades" (v0.11 M1) went with the Upgrades button.
+## (the test mode since god P1) has the same three; "upgrades" (v0.11 M1) went with the Upgrades button. An Endless Night's
+## (god P1, spec §9.2) are "continue" (the hub), "tree" and "faith".
 signal action(name: String)
 
 const PANEL := Rect2(36.0, 20.0, 568.0, 320.0)
@@ -34,6 +35,14 @@ const DESCEND_R := 540.0
 const DESCEND_TOP := 112.0
 const DESCEND_ROW := 18.0
 
+## Endless Night's Divine Power bar (god P1, spec §9.2): how long it takes to fill, how long a level line's gold flash lasts once the
+## bar has passed it, and where the bar sits (its width, height, and the lowest baseline a line may have above the buttons).
+const FILL_SECONDS := 1.0
+const FLASH_SECONDS := 0.6
+const BAR_WIDTH := 200.0
+const BAR_HEIGHT := 6.0
+const LINES_BOTTOM := 304.0
+
 var _result := {}
 var _ui: Control
 var _menu: Menu
@@ -42,6 +51,11 @@ var _hover := ""
 var campaign := false
 ## A board night's results (v0.11 M1, spec §6): Board, Again and Change powers (god P1: the test mode), and the night's rows and lines.
 var descend := false
+## An Endless Night's results (god P1, spec §9.2): the result carries `god`, GodNight.bank()'s dictionary. It is a board night's rows
+## and title, then the god's lines (god_lines()), and Continue / Skill Tree / Faith.
+var endless := false
+## Seconds since the results opened: drives the Divine Power bar's fill and the level lines' flash (drawing only).
+var _t := 0.0
 
 
 ## The act-end words for The Long Night's Act II (v0.09), by the reason its objective ended it.
@@ -116,8 +130,12 @@ func setup(result: Dictionary) -> ResultsScreen:
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
 	campaign = result.has("campaign")
-	descend = result.has("descend") and not campaign
-	if campaign:
+	endless = result.has("god") and not campaign
+	descend = (result.has("descend") or endless) and not campaign
+	set_process(endless)
+	if endless:
+		_menu = Menu.row(["continue", "tree", "faith"], ["Continue", "Skill Tree", "Faith"], 320.0, PANEL.end.y - 28.0, 120.0)
+	elif campaign:
 		_menu = Menu.row(["next"], ["Continue"], 320.0, PANEL.end.y - 28.0, 120.0)
 	elif descend:
 		_menu = Menu.row(["missions", "replay", "change"], ["Board", "Again", "Change powers"], 320.0, PANEL.end.y - 28.0, 120.0)
@@ -129,6 +147,10 @@ func setup(result: Dictionary) -> ResultsScreen:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if endless:
+			if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE]:
+				action.emit("continue")
+			return
 		if campaign:
 			if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE]:
 				action.emit("next")
@@ -137,6 +159,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			action.emit("replay")
 		elif event.physical_keycode == KEY_ESCAPE:
 			action.emit("missions")
+
+
+## Runs the Divine Power bar and the level flashes (god P1, spec §9.2); it stops once they are over.
+func _process(delta: float) -> void:
+	_t += delta
+	if _ui != null:
+		_ui.queue_redraw()
+	if _t >= FILL_SECONDS + FLASH_SECONDS:
+		set_process(false)
 
 
 func _on_gui_input(event: InputEvent) -> void:
@@ -360,7 +391,79 @@ static func summary_lines(result: Dictionary) -> PackedStringArray:
 	return out
 
 
-## A board night (v0.11 M1, spec §6): the mission and its tier under the title, its rows, a rule, then its lines.
+## An Endless Night's lines under its rows (god P1, spec §9.2), from `result.god` (GodNight.bank()'s dictionary), in order: the Divine
+## Power earned (and AWAKEN TO GROW when the god is at its cap), one line per level gained, the believers with the Faith they
+## became and the Faith now, the Lantern Notice, and the night. Empty for a result with no god.
+static func god_lines(result: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	var g := _god_of(result)
+	if g.is_empty():
+		return out
+	out.append("Divine Power +%d%s" % [int(g.get("divine_power", 0)), "   AWAKEN TO GROW" if bool(g.get("capped", false)) else ""])
+	for level in _levels_of(g):
+		out.append("Level %d   +1 ability point" % level)
+	out.append("Believers %d   Faith +%d, %d now" % [int(g.get("believers", 0)), int(g.get("faith", 0)), int(g.get("faith_total", 0))])
+	out.append("Lantern Notice %d%%" % int(g.get("notice", 0)))
+	out.append("Night %d" % int(g.get("night", 0)))
+	return out
+
+
+## The god's dictionary in a result: `result.god`, or the dictionary itself when it is one (it has Divine Power); {} otherwise.
+static func _god_of(result: Dictionary) -> Dictionary:
+	if result.get("god") is Dictionary:
+		return result.god
+	return result if result.has("divine_power") else {}
+
+
+## The levels a night gained, as the bank listed them (a PackedInt32Array, or an Array in a hand-built result).
+static func _levels_of(g: Dictionary) -> Array:
+	var out := []
+	var raw: Variant = g.get("levels", [])
+	if raw is PackedInt32Array or raw is Array:
+		for level: Variant in raw:
+			out.append(int(level))
+	return out
+
+
+## The bar as the bank left it, as a fraction of the level the god is now on.
+static func _bar_frac(g: Dictionary) -> float:
+	var bar: Variant = g.get("bar", [0, 1])
+	if bar is Array and bar.size() >= 2 and int(bar[1]) > 0:
+		return clampf(float(bar[0]) / float(bar[1]), 0.0, 1.0)
+	return 0.0
+
+
+## The Divine Power bar's travel `t` seconds in (god P1, spec §9.2): `total` is the levels gained plus the fraction of the next
+## one, covered evenly in FILL_SECONDS.
+static func bar_progress(total: float, t: float) -> float:
+	return total * clampf(t / FILL_SECONDS, 0.0, 1.0)
+
+
+## What the bar shows `t` seconds in: the fraction of the level it is crossing, ending at `frac` after `levels` full bars.
+static func bar_fill(levels: int, frac: float, t: float) -> float:
+	var total := float(levels) + frac
+	if total <= 0.0:
+		return 0.0
+	var p := bar_progress(total, t)
+	if p >= total:
+		return frac
+	return p - floorf(p)
+
+
+## True once the bar has passed level line `k` (from 0) of the `total`-long travel, `t` seconds in.
+static func level_reached(k: int, total: float, t: float) -> bool:
+	return total > 0.0 and t >= FILL_SECONDS * float(k + 1) / total
+
+
+## The gold flash on level line `k`: 1 as the bar passes it, gone FLASH_SECONDS later; 0 before it and after.
+static func level_flash(k: int, total: float, t: float) -> float:
+	if not level_reached(k, total, t):
+		return 0.0
+	return clampf(1.0 - (t - FILL_SECONDS * float(k + 1) / total) / FLASH_SECONDS, 0.0, 1.0)
+
+
+## A board night (v0.11 M1, spec §6): the mission and its tier under the title, its rows, a rule, then its lines. An Endless Night
+## (god P1, spec §9.2) has the same rows and, in place of the bank's lines, the god's, with the Divine Power bar under the first.
 func _draw_descend() -> void:
 	var d: Dictionary = _result.get("descend", {})
 	var def := TierBook.board(String(_result.get("mission", "")))
@@ -378,11 +481,46 @@ func _draw_descend() -> void:
 		y += DESCEND_ROW
 	_ui.draw_line(Vector2(DESCEND_L, y - 10.0), Vector2(DESCEND_R, y - 10.0), UiTheme.COL_GOLD_DARK, -1.0)
 	y += 4.0
+	if endless:
+		_draw_god_lines(y)
+		return
 	var lines := summary_lines(_result)
 	for i in lines.size():
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[i], UiTheme.SIZE_BODY) * 0.5), y), lines[i], UiTheme.SIZE_BODY,
 			UiTheme.COL_GOLD if i == 0 or lines[i].begins_with("New best") else UiTheme.COL_TEXT)
 		y += UiTheme.LINE_BODY
+
+
+## An Endless Night's lines from baseline `y` (god P1, spec §9.2): the Divine Power line in gold with its bar under it, which fills over
+## FILL_SECONDS; then one line per level gained, dim until the bar passes it and gold as it does; then the rest. Lines close up (and
+## shrink) only when a big night gains so many levels that they would run into the buttons.
+func _draw_god_lines(y: float) -> void:
+	var lines := god_lines(_result)
+	var g := _god_of(_result)
+	var gained := _levels_of(g)
+	var frac := _bar_frac(g)
+	var total := float(gained.size()) + frac
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[0], UiTheme.SIZE_BODY) * 0.5), y), lines[0], UiTheme.SIZE_BODY,
+		UiTheme.COL_GOLD)
+	var bar := Rect2(roundf(320.0 - BAR_WIDTH * 0.5), y + 4.0, BAR_WIDTH, BAR_HEIGHT)
+	_ui.draw_rect(bar, Color(0.04, 0.04, 0.06, 0.9))
+	var fill := bar_fill(gained.size(), frac, _t)
+	if fill > 0.0:
+		_ui.draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * fill), bar.size.y)), UiTheme.COL_GOLD)
+	UiTheme.frame(_ui, bar, false)
+	y += 4.0 + BAR_HEIGHT + UiTheme.LINE_BODY - 2.0
+	var rest := lines.size() - 1
+	var step := UiTheme.LINE_BODY if rest <= 0 else minf(UiTheme.LINE_BODY, (LINES_BOTTOM - y) / float(rest))
+	var size := UiTheme.SIZE_BODY if step >= UiTheme.LINE_BODY - 0.5 else UiTheme.SIZE_SMALL
+	for i in range(1, lines.size()):
+		var col := UiTheme.COL_TEXT
+		if i <= gained.size():
+			var k := i - 1
+			col = UiTheme.COL_DIM
+			if level_reached(k, total, _t):
+				col = UiTheme.COL_TEXT.lerp(UiTheme.COL_GOLD, level_flash(k, total, _t))
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[i], size) * 0.5), y), lines[i], size, col)
+		y += step
 
 
 ## One board row, `y` its baseline: the label (struck through when lost, dim when unanswered), its note in red before the

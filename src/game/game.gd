@@ -1301,6 +1301,7 @@ func _flow_test() -> void:
 	await _flow_tier4(step)
 	await _flow_tier5(step)
 	await _flow_dev_town(step)
+	await _flow_endless(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -1893,6 +1894,315 @@ func _flow_dev_town(step: Callable) -> void:
 	dev = was
 	go_to(Screen.BOARD)
 	step.call(screen == Screen.BOARD and not (_screen_node as MissionBoard).dev, "the board is rebuilt without the DEV tab")
+
+
+## A left click at a screen point as the mouse would send it to a control's gui_input (FLOW, god P1).
+func _flow_mouse(at: Vector2) -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.position = at
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	return e
+
+
+## Endless Night through the real screens (god P1, spec §9.1, §14 P1's "playable at its end"; rulings C2, C7, C9, P9, pre-flight B3, R1, R2).
+## 1. With --dev the board's ENDLESS opens the slot select: three empty slots. New -> the god select -> Ruin -> the hub (Night 1, the dev
+##    fill's two starting abilities at level 1, the slot file written). The Skill Tree refuses a point the god has not got.
+## 2. Descend (a fixture seed that draws The Warning): Prepare is the god's (one ruin tab, 3 slots, 6 Might, nothing locked); the night is
+##    played with the god's pool, `in_night` is written once the clock starts, and R does not restart it.
+## 3. The warnings stopped, F ascends: banked to the god (Divine Power, a level, a point, Faith 1:1, Night 1), the file agrees, and the results offer
+##    Continue / Skill Tree / Faith. The tree raises Smite; Faith buys +1 Might (7).
+## 4. No escape by quitting (spec §9.1): Abandon after the clock is a lost night (Night 2, the lost-night line, nothing earned); Abandon during
+##    the intro is free; closing the game mid-night (the board with no forfeit) is forfeited on Continue (Night 3).
+## 5. The title is unchanged, and the board's save -- its descend, its campaign, its bytes -- is what it was (C7). Ends on the board with `dev` restored.
+func _flow_endless(step: Callable) -> void:
+	var was := dev
+	var camp := save.campaign
+	var camp_night := camp.night if camp != null else -1
+	var nights := save.descend.night
+	var believers := save.descend.believers
+	var cleared := save.descend.cleared.duplicate()
+	var disk := FileAccess.get_file_as_bytes(save_path)
+	var out := func() -> void:
+		dev = was
+		GodTree.dev_fill = false
+		go_to(Screen.BOARD)
+	var god_file := func() -> GodSlot: return GodSlot.read(GodSlot.path(god_slot, god_base))
+	var pair := PackedStringArray(["smite", "ember"])
+	dev = true
+	go_to(Screen.BOARD)
+	var board := _screen_node as MissionBoard
+	board.click(MissionBoard.ENDLESS_RECT.get_center())
+	var slots := _screen_node as SlotScreen
+	step.call(screen == Screen.SLOTS and slots != null and GodTree.dev_fill and slots.slot_line(0) == "Empty"
+		and slots.slot_line(1) == "Empty" and slots.slot_line(2) == "Empty",
+		"--dev: the board's ENDLESS opens the slot select, three slots Empty (%s)" % [slots.slot_line(0) if slots != null else "-"])
+	if slots == null:
+		out.call()
+		return
+
+	# The god.
+	slots.click(slots.button_rect(0, "new").get_center())
+	var pick := _screen_node as GodSelectScreen
+	step.call(screen == Screen.GOD_SELECT and pick != null and god_slot == 1, "New on slot 1 opens the god select")
+	if pick == null:
+		out.call()
+		return
+	pick.click(GodSelectScreen.ring_rect(0).get_center())
+	pick.click(GodSelectScreen.CHOOSE_RECT.get_center())
+	var hub := _screen_node as GodHub
+	var saved: GodSlot = god_file.call()
+	step.call(screen == Screen.HUB and hub != null and god != null and god.type == "ruin" and saved != null and saved.type == "ruin"
+		and god.level == 1 and god.tier == 1 and god.learned == {"smite": 1, "ember": 1} and hub.lines()[6] == "Night 1"
+		and FileAccess.file_exists(GodSlot.path(1, god_base)),
+		"choosing Ruin makes the god (level 1, tier 1, Smite and Ember at 1), writes slot 1 and opens the hub at Night 1 (%s)" % [god.learned if god != null else {}])
+	if hub == null or god == null:
+		out.call()
+		return
+
+	# The Skill Tree refuses a point the god has not got.
+	hub.click(hub.menu_rect("tree").get_center())
+	var tree := _screen_node as SkillTreeScreen
+	if tree == null:
+		step.call(false, "the hub's Skill Tree opens the tree")
+		out.call()
+		return
+	var why := tree.learn_at(1, 1, 0)
+	step.call(screen == Screen.TREE and tree.columns()[1] == "ruin" and tree.key_at(1, 1, 0) == "smite" and why == "points"
+		and god.level_of("smite") == 1 and god.points == 0,
+		"the Skill Tree refuses a point the god has not got (%s, %d points)" % [why, god.points])
+	tree.click(SkillTreeScreen.BACK_RECT.get_center())
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null, "Back from the tree is the hub")
+	if hub == null:
+		out.call()
+		return
+
+	# Night 1: The Warning, by a fixture seed.
+	var s := 1
+	while s < 1000:
+		god.seed = s
+		if GodNight.draw(god) == MissionBook.WARNING:
+			break
+		s += 1
+	_write_god()
+	hub.click(hub.menu_rect("descend").get_center())
+	var prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == MissionBook.WARNING and prep.god == god
+		and prep.tabs() == PackedStringArray(["ruin"]) and prep.draft.slots == 3 and prep.draft.capacity == 6 and prep.draft.locked.is_empty(),
+		"Descend draws The Warning (seed %d) and opens the god's Prepare: one Ruin tab, 3 slots, 6 Might, nothing locked" % s)
+	if prep == null:
+		out.call()
+		return
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	if not is_instance_valid(_mission) or _mission.rules() == null:
+		step.call(false, "MANIFEST starts the night")
+		out.call()
+		return
+	var pool := _mission.rules().mission.pool
+	var kit := _mission.rules().loadout
+	var inside := not kit.is_empty()
+	for key in kit:
+		inside = inside and god.draftable().has(key)
+	step.call(screen == Screen.MISSION and pool == god.draftable() and inside and god.in_night == "",
+		"MANIFEST starts the night on the god's pool, its kit (%s) inside it, the clock not started so nothing in the file yet" % ", ".join(kit))
+	await _past_intro()
+	await _until(func() -> bool: return god.in_night != "", 3.0)
+	var rules_before := _mission.rules()
+	_mission._unhandled_input(_flow_key(KEY_R))
+	await get_tree().process_frame
+	saved = god_file.call()
+	step.call(god.in_night == MissionBook.WARNING and saved != null and saved.in_night == MissionBook.WARNING and _mission.rules() == rules_before,
+		"past the intro the clock has started and the file says so; R leaves the same night (restart locked)")
+
+	# The night won and banked.
+	for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
+		w.warning_dead = true
+	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
+	await get_tree().process_frame
+	var f := _flow_key(KEY_F)
+	Input.parse_input_event(f)
+	var up := await _until(func() -> bool: return screen == Screen.RESULTS, 6.0)
+	var d: Dictionary = result.get("descend", {})
+	var banked: Dictionary = result.get("god", {})
+	var kept := int(d.get("kept", 0))
+	saved = god_file.call()
+	var res := _screen_node as ResultsScreen
+	var menu: Array = []
+	if res != null:
+		for item: Dictionary in res._menu.items:
+			menu.append(String(item.action))
+	step.call(up and res != null and res.endless and int(banked.get("divine_power", -1)) == 80 + 20 * kept and god.level >= 2 and god.points >= 1
+		and god.faith == int(d.get("earned", -1)) and god.night == 1 and god.in_night == "" and saved != null and saved.night == 1
+		and saved.level == god.level and saved.points == god.points and saved.faith == god.faith and saved.divine_power == god.divine_power
+		and saved.in_night == "" and saved.last_mission == MissionBook.WARNING and menu == ["continue", "tree", "faith"],
+		"F ascends: banked to the god -- %d Divine Power (80 + 20 x %d wishes), level %d, %d points, Faith %d = the %s believers, Night 1 -- the file agrees; Continue / Skill Tree / Faith"
+		% [int(banked.get("divine_power", -1)), kept, god.level, god.points, god.faith, d.get("earned", "?")])
+	if not up or res == null:
+		out.call()
+		return
+
+	# The tree and Faith, from the results.
+	res.action.emit("tree")
+	tree = _screen_node as SkillTreeScreen
+	if tree == null:
+		step.call(false, "the results' Skill Tree opens the tree")
+		out.call()
+		return
+	var points := god.points
+	why = tree.learn_at(1, 1, 0)
+	saved = god_file.call()
+	step.call(screen == Screen.TREE and why == "" and god.level_of("smite") == 2 and god.points == points - 1 and saved != null
+		and saved.level_of("smite") == 2 and saved.points == points - 1,
+		"Skill Tree from the results: Smite to level 2 costs a point (%d -> %d), written at once" % [points, god.points])
+	tree.click(SkillTreeScreen.BACK_RECT.get_center())
+	hub = _screen_node as GodHub
+	if hub == null:
+		step.call(false, "Back from the tree is the hub")
+		out.call()
+		return
+	hub.click(hub.menu_rect("faith").get_center())
+	var faith := _screen_node as FaithScreen
+	if faith == null:
+		step.call(false, "the hub's Faith opens the Faith screen")
+		out.call()
+		return
+	god.faith += 25  # a fixture: enough for the first +1 Might whatever the night earned
+	var bought := faith.buy("might")
+	saved = god_file.call()
+	step.call(screen == Screen.FAITH and bought and god.max_might() == 7 and saved != null and saved.max_might() == 7 and saved.faith == god.faith,
+		"Faith: +1 Might is bought (Might %d), the file agrees" % god.max_might())
+	faith.click(FaithScreen.BACK_RECT.get_center())
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null, "Back from Faith is the hub")
+	if hub == null:
+		out.call()
+		return
+
+	# The second night, abandoned after the clock has started -- a lost night.
+	var level := god.level
+	var dp := god.divine_power
+	var faith_held := god.faith
+	hub.click(hub.menu_rect("descend").get_center())
+	prep = _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and mission_id != MissionBook.WARNING and prep.draft.capacity == 7,
+		"Descend draws another night than The Warning (%s) and Prepare has 7 Might" % mission_id)
+	if prep == null:
+		out.call()
+		return
+	var second := mission_id
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	await _until(func() -> bool: return god.in_night != "", 3.0)
+	_open_pause()
+	var rows: Array = []
+	if is_instance_valid(_pause):
+		for item: Dictionary in _pause._menu.items:
+			rows.append(String(item.action))
+	var ask := ""
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+		ask = _pause.confirm_line()
+	step.call(god.in_night == second and rows == ["resume", "options", "abandon"] and ask == PauseMenu.CONFIRM_LOST,
+		"Pause in a night: Resume, Options, Abandon night (no Restart, no Change powers); after the clock its confirm says the night is lost")
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
+	hub = _screen_node as GodHub
+	saved = god_file.call()
+	step.call(screen == Screen.HUB and hub != null and god.night == 2 and god.level == level and god.divine_power == dp and god.faith == faith_held
+		and god.in_night == "" and saved != null and saved.night == 2 and saved.in_night == "" and hub.line == "Night 2 was abandoned: a lost night.",
+		"Abandon after the clock: Night 2 is a lost night -- counted, no Divine Power, no Faith -- and the hub says so")
+	if hub == null:
+		out.call()
+		return
+
+	# The next night, abandoned during its intro -- free.
+	hub.click(hub.menu_rect("descend").get_center())
+	prep = _screen_node as PrepareScreen
+	if prep == null:
+		step.call(false, "Descend opens Prepare again")
+		out.call()
+		return
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	var intro := is_instance_valid(_mission) and _mission.in_intro()
+	_open_pause()
+	ask = ""
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+		ask = _pause.confirm_line()
+	step.call(intro and god.in_night == "" and ask == PauseMenu.CONFIRM_FREE,
+		"Pause during the intro: the clock has not started, so the confirm says leaving is free")
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
+	hub = _screen_node as GodHub
+	saved = god_file.call()
+	step.call(screen == Screen.HUB and hub != null and god.night == 2 and hub.line == "" and saved != null and saved.night == 2
+		and saved.in_night == "" and god.level == level and god.faith == faith_held,
+		"Abandon during the intro costs nothing: still Night 2, no line")
+	if hub == null:
+		out.call()
+		return
+
+	# The same night again, the game closed once its clock has run.
+	hub.click(hub.menu_rect("descend").get_center())
+	prep = _screen_node as PrepareScreen
+	if prep == null:
+		step.call(false, "Descend opens Prepare once more")
+		out.call()
+		return
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	await _until(func() -> bool: return god.in_night != "", 3.0)
+	saved = god_file.call()
+	var open_night := god.in_night
+	step.call(open_night != "" and saved != null and saved.in_night == open_night, "past the intro the file says the night is open (%s)" % open_night)
+	go_to(Screen.BOARD)  # as a quit would leave it: nothing forfeits on the way out
+	board = _screen_node as MissionBoard
+	board.click(MissionBoard.ENDLESS_RECT.get_center())
+	slots = _screen_node as SlotScreen
+	if slots == null:
+		step.call(false, "the board's ENDLESS opens the slot select again")
+		out.call()
+		return
+	step.call(slots.slot_line(0) != "Empty", "the slot still holds the god (%s)" % slots.slot_line(0))
+	slots.click(slots.button_rect(0, "continue").get_center())
+	hub = _screen_node as GodHub
+	saved = god_file.call()
+	step.call(screen == Screen.HUB and hub != null and god != null and god.night == 3 and god.in_night == "" and god.level == level
+		and god.faith == faith_held and hub.line == "Night 3 was abandoned: a lost night." and saved != null and saved.night == 3
+		and saved.in_night == "",
+		"Continue on a slot left mid-night forfeits it: Night 3 is a lost night, nothing earned, the hub says so")
+	if hub == null:
+		out.call()
+		return
+
+	# The title is unchanged and the board's save is what it was (C7).
+	hub.click(hub.menu_rect("title").get_center())
+	var title := _screen_node as TitleScreen
+	var rows_title: Array = []
+	if title != null:
+		for item: Dictionary in title._menu.items:
+			rows_title.append(String(item.action))
+	step.call(screen == Screen.TITLE and title != null and rows_title == ["campaign", "play", "options", "sandbox", "quit"] and god == null,
+		"the hub's Title is the title, its rows unchanged (%s)" % ", ".join(PackedStringArray(rows_title)))
+	var camp_same := save.campaign == camp and (camp == null or save.campaign.night == camp_night)
+	step.call(save.descend.night == nights and save.descend.believers == believers and save.descend.cleared == cleared and camp_same
+		and FileAccess.get_file_as_bytes(save_path) == disk,
+		"Endless Night left the board's save alone: night %d, believers %d, %d cleared, the campaign, and the file's bytes" % [
+			save.descend.night, save.descend.believers, save.descend.cleared.size()])
+	out.call()
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not (_screen_node as MissionBoard).dev and not GodTree.dev_fill,
+		"the board is rebuilt without the DEV tab, the dev fill off")
 
 
 ## FLOW (god P1, ruling P11): a board night's bank is a test bank -- flagged, no believers, no progress line, its first clear's fastest

@@ -126,8 +126,8 @@ const SAMPLE_FEAST_RESULT := {
 	"campaign": {"won": true, "dp_gain": 3, "dp": 13, "bites": 0, "ending": ""},
 }
 
-## What --show=results-descend displays (v0.11 M1): the board's Warning caught by dawn after its main objective -- its 10
-## believers banked, a granted wish lost, one failed -- and Whisper 1 / 3 (v0.11 M2: two more clears open Omen).
+## What --show=results-descend displays (v0.11 M1): the board's Warning caught by dawn after its main objective -- a granted wish
+## lost, one failed -- as a test-mode night (god P1): nothing banked, its fastest clear shown.
 const SAMPLE_DESCEND_RESULT := {
 	"mission": "warning", "won": true, "reason": "warning", "time": 214.0, "goal": {"label": "The warnings die", "done": true},
 	"bonuses": [],
@@ -135,8 +135,7 @@ const SAMPLE_DESCEND_RESULT := {
 		"lost_text": "lost: dawn came", "earned": 10, "kept": 0,
 		"wishes": [{"text": "Burn the moneylender's house", "reward": 10, "state": "granted", "lost": true},
 			{"text": "Show me a sign", "reward": 5, "state": "failed", "lost": false}],
-		"bank": {"believers": 10, "total": 10, "night": 1, "cleared": true, "first_clear": true, "opened": 0,
-			"progress": "Whisper 1 / 3 cleared: 2 more open Omen", "bests": ["Fastest clear 3:21"]}},
+		"bank": {"test": true, "night": 1, "cleared": true, "first_clear": true, "bests": ["Fastest clear 3:21"]}},
 }
 
 var screen := Screen.TITLE
@@ -181,6 +180,10 @@ var _interlude: InterludeScreen
 ## drafts within the campaign's slots and budget, a finished night is recorded on it, and Pause and Results lead back to
 ## its night screen.
 var _in_campaign := false
+## The ability levels the board's Prepare picker chose (god P1, spec §3, ruling P13): power key -> level 1-5, absent = 1. Set from
+## Prepare's draft at MANIFEST and BEGIN, handed to the mission, and shown again by Prepare after Change powers; kept for Again
+## and Restart, reset by a new board pick, and never saved.
+var levels := {}
 ## --dev (capital plan, Task 15): the board shows its DEV tab, the dev-only missions (MissionBook.dev_missions()).
 var dev := false
 
@@ -205,16 +208,22 @@ static func starting_loadout(from: SaveFile, id: String) -> PackedStringArray:
 	return def.default_loadout if kept.is_empty() and not def.acts.is_empty() else kept
 
 
-## The powers the draft greys and refuses (v0.11 M1, spec §3.4): on the board those not yet unlocked; none in the campaign,
-## which keeps its own DP rules.
-static func locked_for(from: SaveFile, in_campaign: bool) -> PackedStringArray:
-	return PackedStringArray() if in_campaign else from.descend.locked()
+## The powers the draft greys and refuses (v0.11 M1, spec §3.4): none, now that the board is a test mode with every power open
+## (god P1, spec §3, ruling C3). The signature stays, and so does the unlock economy in DescendState, for a later change of mind.
+static func locked_for(_from: SaveFile, _in_campaign: bool) -> PackedStringArray:
+	return PackedStringArray()
 
 
-## The powers a mission picked outside the campaign greys: none for a dev mission (the board's DEV tab: no tier's), the
-## board's locks for any other, a tier's or not (a CLI --mission=feast_festival keeps them).
-static func board_locked_for(from: SaveFile, id: String) -> PackedStringArray:
-	return PackedStringArray() if MissionBook.is_dev(id) else locked_for(from, false)
+## The powers a mission picked outside the campaign greys: none (god P1, ruling C3; it was none for a dev mission and the locks
+## for any other).
+static func board_locked_for(_from: SaveFile, _id: String) -> PackedStringArray:
+	return PackedStringArray()
+
+
+## The board's version of a mission for Prepare and the night (god P1, ruling C3): TierBook's slots and Might and no upgrades
+## (`Mission.def_for(id, true, null)`). It takes no state, so a save's bought Might or slot changes nothing.
+static func board_def(id: String) -> MissionDef:
+	return Mission.def_for(id, true, null)
 
 
 func _ready() -> void:
@@ -511,14 +520,19 @@ func go_to(to: int) -> void:
 				for a: ActDef in next:
 					if a.id == _next_path:
 						act = a
+				# The levels chosen so far show again, and can be changed, in a board night (god P1, pre-flight G1).
+				prep.level_picker = not _in_campaign
+				prep.levels = levels
 				prep.setup(act, loadout, save.difficulty, locked_for(save, _in_campaign))
 				prep.confirm_label = "BEGIN"
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
-				# A dev mission (the board's DEV tab) is no tier's: every power is open to it.
-				prep.setup(Mission.def_for(mission_id, true, save.descend), loadout, save.difficulty,
-					board_locked_for(save, mission_id))
+				# The board is a test mode (god P1): TierBook's slots and Might with no upgrades, every power open, and the level
+				# picker, which starts from the levels chosen before (Change powers, Again).
+				prep.level_picker = true
+				prep.levels = levels
+				prep.setup(board_def(mission_id), loadout, save.difficulty, board_locked_for(save, mission_id))
 			prep.action.connect(_on_prepare_action.bind(prep))
 			_screen_node = prep
 		Screen.MISSION:
@@ -686,7 +700,8 @@ func _build_mission() -> Mission:
 	# Outside the campaign every mission is a board night (v0.11 M1): its tier's version, the god's upgrades, and wishes
 	# drawn from the nights played -- the same again on a Restart, redrawn once a night is counted.
 	mission.board = not _in_campaign
-	mission.descend = save.descend
+	mission.descend = null  # no upgrades on the board (god P1, ruling C3); the wishes' seed below still counts the nights
+	mission.levels = {} if _in_campaign else levels.duplicate()
 	mission.wish_seed = Descent.seed_for(save.descend.night, mission_id)
 	mission.bell_rang = _in_campaign and save.campaign != null and save.campaign.bell_rang
 	add_child(mission)
@@ -721,10 +736,11 @@ static func bank_night(into: SaveFile, id: String, kept: PackedStringArray, outc
 		outcome["campaign"] = into.campaign.record(id, outcome)
 		outcome["best"] = false
 	elif outcome.has("descend") and not MissionBook.is_dev(id):
-		# A board night (v0.11 M1, spec §3.3, §6): banked on the tier board -- the night counted, its believers added, its
-		# mission cleared and its bests kept. record() still runs so the title's best score and rank keep updating, but
-		# its NEW BEST is not shown: the board's results have their own bests (controller ruling, Task 11).
-		(outcome.descend as Dictionary)["bank"] = into.descend.bank(id, outcome.descend)
+		# A board night (v0.11 M1, spec §3.3, §6), a test mode since god P1 (spec §3, rulings C3, P11): the night counted (only to
+		# seed the wishes), its mission cleared and its bests kept -- no believers banked, no tier opened (DescendState.bank_test()).
+		# record() still runs so the title's best score and rank keep updating, but its NEW BEST is not shown: the board's results
+		# have their own bests (controller ruling, Task 11).
+		(outcome.descend as Dictionary)["bank"] = into.descend.bank_test(id, outcome.descend)
 		into.record(id, outcome)
 		outcome["best"] = false
 		into.remember_loadout(id, kept)
@@ -747,6 +763,7 @@ func _on_act_over(res: Dictionary) -> void:
 func _on_board_action(what: String, board: MissionBoard) -> void:
 	if what == "pick":
 		mission_id = board.chosen
+		levels = {}  # a new pick starts every power at level 1 (god P1, ruling P13)
 		save.last_mission = mission_id
 		loadout = starting_loadout(save, mission_id)
 		save.save_to(save_path)
@@ -802,6 +819,10 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 			return
 		if what == "manifest":
 			loadout = prep.draft.picks
+			if not _in_campaign:
+				levels = prep.draft.levels.duplicate()
+				if is_instance_valid(_mission):
+					_mission.levels = levels.duplicate()  # the next act's Rules read them (god P1, pre-flight G1)
 			save.remember_loadout(mission_id, loadout)
 			save.save_to(save_path)
 			on_action("prepare:begin")
@@ -813,6 +834,7 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		return
 	if what == "manifest":
 		loadout = prep.draft.picks
+		levels = {} if _in_campaign else prep.draft.levels.duplicate()  # kept for Again and Restart, never saved (ruling P13)
 		if not _in_campaign:
 			save.remember_loadout(mission_id, loadout)
 		save.difficulty = prep.difficulty
@@ -1130,35 +1152,29 @@ func _mission_up(other: Mission) -> bool:
 	return up and _mission.started() and not _fading
 
 
-## v0.11 M1 (spec §3.1-§3.2), v0.11 M2: on a fresh save the tier board opens on Whisper, its five cards; Omen is locked,
-## its rule shown, and its missions cannot be picked. v0.11 M3: Omen's tab shows its five cards while locked. v0.11 M4: Wrath's tab
-## shows its five cards behind three of Omen. v0.11 M5: Reckoning's tab shows its five cards behind three of Wrath. v0.11 M6: Ascendance's
-## tab shows its five cards behind three of Reckoning. Ends on the board, Whisper open.
+## v0.11 M1 (spec §3.1-§3.2), a test mode since god P1 (spec §3, ruling C3): on a fresh save the tier board opens on Whisper, its five
+## cards, and every tier is open -- Omen, Wrath, Reckoning and Ascendance each show their five cards with no rule line, no padlock and
+## no Upgrades button, under the test header. Ends on the board, Whisper open.
 func _flow_board(step: Callable) -> void:
 	var board := _screen_node as MissionBoard
 	step.call(board != null and board.tier == 1 and Array(board.missions()) == Array(TierBook.missions(1)) and board.missions().size() == 5
-		and save.descend.open_tier == 1, "a fresh board opens on Whisper: The Warning and the four new missions")
-	board.open_tab(2)
-	board.choose(MissionBook.MIRAS_HOUSE)
-	var omen_ok := screen == Screen.BOARD and _screen_node == board and board.chosen == "" and board.lock_line() == "Clear 3 Whisper missions" \
-		and Array(board.missions()) == Array(TierBook.missions(2)) and board.missions().size() == 5
-	var omen_rule := board.lock_line()
-	board.open_tab(3)
-	var wrath_ok := Array(board.missions()) == Array(TierBook.missions(3)) and board.missions().size() == 5 \
-		and board.lock_line() == "Clear 3 Omen missions"
-	board.open_tab(4)
-	var reckoning_ok := Array(board.missions()) == Array(TierBook.missions(4)) and board.missions().size() == 5 \
-		and board.lock_line() == "Clear 3 Wrath missions"
-	board.open_tab(5)
-	var ascendance_ok := Array(board.missions()) == Array(TierBook.missions(5)) and board.missions().size() == 5 \
-		and board.lock_line() == "Clear 3 Reckoning missions"
-	step.call(omen_ok and wrath_ok and reckoning_ok and ascendance_ok,
-		"Omen is locked: its five cards and its rule show, and Mira's House cannot be picked (%s); Wrath's five behind three of Omen; Reckoning's five behind three of Wrath; Ascendance's five behind three of Reckoning" % omen_rule)
+		and board.lock_line() == "" and board.header_text() == MissionBoard.TEST_HEADER and save.descend.open_tier == 1,
+		"a fresh board opens on Whisper under the test header: The Warning and the four new missions, no rule line")
+	var open_ok := true
+	for tier in range(2, TierBook.NAMES.size() + 1):
+		board.open_tab(tier)
+		open_ok = open_ok and board.tier == tier and Array(board.missions()) == Array(TierBook.missions(tier)) \
+			and board.missions().size() == 5 and board.lock_line() == ""
+	step.call(open_ok and board.hit(MissionBoard.UPGRADES_RECT.get_center()) != "upgrades",
+		"every tab is open on a fresh save: Omen, Wrath, Reckoning and Ascendance show five cards and no rule; no Upgrades button")
+	board._unhandled_input(_flow_key(KEY_U))
+	step.call(screen == Screen.BOARD and _screen_node == board and board.chosen == "", "U does nothing on the board")
 	board.open_tab(1)
 
 
 ## v0.11 M1 (spec §4, §5.1, §6): The Warning from the board's card.
-## - Prepare has no difficulty picker, Tier 1's 3 slots and 6 DP, and refuses the locked powers.
+## - Prepare has no difficulty picker, Tier 1's 3 slots and 6 Might, no locked power (god P1: every power is open) and the level
+##   picker: a click on the first slot's badge makes it L2, and MANIFEST hands the level to the night.
 ## - The town prays during the intro.
 ## - F before the main objective does nothing (review focus 4).
 ## - Its three warnings stopped: THE NIGHT IS YOURS, the ASCEND plate up, the clock running on.
@@ -1167,12 +1183,22 @@ func _flow_ascend(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	var prep := _screen_node as PrepareScreen
 	step.call(prep != null and prep.draft.slots == 3 and prep.draft.capacity == 6 and not prep.mission.chooses_difficulty()
-		and prep.draft.locked.has("tsunami") and prep.draft.locked.size() == 23,
-		"its Prepare: Tier 1's 3 slots and 6 DP, no difficulty, the locked powers greyed")
+		and prep.draft.locked.is_empty() and prep.level_picker,
+		"its Prepare: Tier 1's 3 slots and 6 Might, no difficulty, no power locked, the level picker up")
 	prep.draft.preselect(MissionBook.warning().default_loadout)
+	# The level picker (god P1, ruling P13): a click on the first badge makes that power L2, and the budget counts it.
+	var first := prep.draft.picks[0]
+	var spent := prep.draft.spent()
+	prep.click(PrepareScreen.level_rect(0, prep.draft.slots).get_center())
+	step.call(prep.hit(PrepareScreen.level_rect(0, prep.draft.slots).get_center()) == "level:0" and prep.draft.level_of(first) == 2
+		and prep.draft.levels == {first: 2} and prep.draft.spent() == spent + PowerBook.might(first, 2) - PowerBook.might(first, 1)
+		and prep.budget_text() == "%d / 3 slots   %d / 6 Might" % [prep.draft.picks.size(), prep.draft.spent()],
+		"a click on the first badge makes %s L2 and the budget counts it (%s)" % [first, prep.budget_text()])
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await get_tree().process_frame
+	step.call(levels == {first: 2} and _mission.levels == {first: 2} and _mission.rules().level_of(0) == 2 and _mission.rules().level_of(1) == 1,
+		"MANIFEST hands the level to the night: Game's levels, the mission's, slot 1's rules (L%d)" % _mission.rules().level_of(0))
 	var heard := _mission.descent().wishes.size() if _mission.descent() != null else 0
 	# v0.11.1: the prayers plate is the intro's last hold (one message at a time), not its first frame: the tour, then the town prays.
 	step.call(heard > 0 and heard <= TierBook.wishes(1) and not _mission._hud.praying and _mission._hud.intro,
@@ -1206,44 +1232,51 @@ func _flow_ascend(step: Callable) -> void:
 		"F ascends: the results, won")
 
 
-## v0.11 M1 (spec §3.3-§3.4, §6; review focus 3).
-## - The ascended Warning's results bank it: Night 1, its believers, The Warning cleared, Whisper 1 / 3; the save holds them.
-## - Upgrades from the results buys the first +1 DP, saved at once; Back is the board, and The Warning's Prepare has 7 DP.
-## - A restart banks nothing and hears the same wishes.
-## - A night caught by dawn after its main objective banks the main win, its granted wish lost.
+## v0.11 M1 (spec §3.3-§3.4, §6; review focus 3), a test mode since god P1 (spec §3, rulings P11, P13, pre-flight G1).
+## - The ascended Warning's results are a test bank: Night 1, no believers, The Warning cleared, no tier opened, no Upgrades button; the
+##   save holds the tick and the night.
+## - Change powers shows Prepare on the levels chosen (the badge still reads L2); Back is the board, and a new pick starts at level 1
+##   with The Warning's Prepare at TierBook.dp(1).
+## - A restart banks nothing, hears the same wishes and keeps the levels.
+## - A night caught by dawn after its main objective keeps the main win, its granted wish lost, and banks no believers.
 ## Ends on the board.
 func _flow_results(step: Callable) -> void:
 	var res := _screen_node as ResultsScreen
 	var d: Dictionary = result.get("descend", {})
 	var bank: Dictionary = d.get("bank", {})
 	var earned := int(d.get("earned", 0))
-	step.call(res != null and res.descend and save.descend.night == 1 and earned >= 10 and save.descend.believers == earned
-		and save.descend.cleared.has(MissionBook.WARNING) and save.descend.open_tier == 1 and int(bank.get("opened", 0)) == 0
-		and String(bank.get("progress", "")) == "Whisper 1 / 3 cleared: 2 more open Omen",
-		"the results bank the night: Night 1, %d believers, The Warning cleared, Whisper 1 / 3 (v0.11 M2)" % earned)
+	var menu: Array = []
+	if res != null:
+		for item: Dictionary in res._menu.items:
+			menu.append(String(item.action))
+	step.call(res != null and res.descend and bool(bank.get("test", false)) and save.descend.night == 1 and earned >= 10
+		and save.descend.believers == 0 and save.descend.cleared.has(MissionBook.WARNING) and save.descend.open_tier == 1
+		and int(bank.get("night", 0)) == 1 and not bank.has("believers") and menu == ["missions", "replay", "change"]
+		and ResultsScreen.summary_lines(result)[0] == "Test mode: nothing banked",
+		"the results are a test bank: Night 1, no believers (the %d earned are not banked), The Warning cleared, no tier opened, Board/Again/Change powers" % earned)
 	var reread := SaveFile.new().load_from(save_path)
-	step.call(reread.descend.night == 1 and reread.descend.believers == earned and reread.descend.open_tier == 1
-		and reread.descend.cleared.has(MissionBook.WARNING), "and the save holds them")
-	res.action.emit("upgrades")
-	var up := _screen_node as UpgradesScreen
-	step.call(screen == Screen.UPGRADES and up != null, "Upgrades from the results opens the Upgrades")
-	save.descend.believers += DescendState.DP_STEP  # (a fixture: one night need not pay for the first +1 DP)
-	var purse := save.descend.believers
-	up.click(up.button_rect("dp").get_center())
-	step.call(save.descend.dp_bought == 1 and save.descend.believers == purse - DescendState.DP_STEP
-		and SaveFile.new().load_from(save_path).descend.dp_bought == 1, "a click buys the first +1 DP for 25, saved at once")
-	up.action.emit("back")
+	step.call(reread.descend.night == 1 and reread.descend.believers == 0 and reread.descend.open_tier == 1
+		and reread.descend.cleared.has(MissionBook.WARNING), "and the save holds the tick and the night, no believers")
+	# Change powers (pre-flight G1): Prepare comes back on the levels chosen -- the badge still reads L2.
+	var first := loadout[0]
+	res.action.emit("change")
+	var again := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and again != null and again.level_picker and again.draft.level_of(first) == 2
+		and again.hit(PrepareScreen.level_rect(0, again.draft.slots).get_center()) == "level:0",
+		"Change powers shows Prepare on the levels chosen: %s still L%d" % [first, again.draft.level_of(first) if again != null else 0])
+	again.action.emit("back")
 	var board := _screen_node as MissionBoard
-	step.call(screen == Screen.BOARD and board != null and not save.descend.is_open(2), "Back is the tier board, Omen still locked")
+	step.call(screen == Screen.BOARD and board != null and board.tier == 1, "Back is the tier board")
 	board.choose(MissionBook.WARNING)
 	var prep := _screen_node as PrepareScreen
-	step.call(prep != null and prep.draft.capacity == TierBook.dp(1) + 1,
-		"The Warning's Prepare now has %d DP" % (prep.draft.capacity if prep != null else 0))
+	step.call(prep != null and prep.draft.capacity == TierBook.dp(1) and prep.draft.levels.is_empty() and levels.is_empty(),
+		"a new pick: The Warning's Prepare has %d Might (no upgrades) and every power at level 1" % (prep.draft.capacity if prep != null else 0))
 	# (drafted in a different order from the default, so the R restart below can tell the draft from it)
 	var reversed := PackedStringArray()
 	for key in MissionBook.warning().default_loadout:
 		reversed.insert(0, key)
 	prep.draft.preselect(reversed)
+	prep.click(PrepareScreen.level_rect(0, prep.draft.slots).get_center())  # slot 1 to L2, kept by the restarts below
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
@@ -1253,8 +1286,8 @@ func _flow_results(step: Callable) -> void:
 	on_action("pause:restart")
 	await _until(func() -> bool: return _mission_up(old), 10.0)
 	await _past_intro()
-	step.call(save.descend.night == 1 and _wish_ids() == heard,
-		"a restart banks nothing and hears the same wishes (%s)" % ", ".join(heard))
+	step.call(save.descend.night == 1 and _wish_ids() == heard and _mission.rules().level_of(0) == 2,
+		"a restart banks nothing, hears the same wishes (%s) and keeps the level" % ", ".join(heard))
 	var r := InputEventKey.new()
 	r.physical_keycode = KEY_R
 	r.pressed = true
@@ -1262,8 +1295,9 @@ func _flow_results(step: Callable) -> void:
 	_mission._unhandled_input(r)
 	await _past_intro()
 	step.call(loadout != MissionBook.warning().default_loadout and Array(drafted) == Array(loadout)
-		and Array(_mission.rules().loadout) == Array(loadout) and _wish_ids() == heard and save.descend.night == 1,
-		"R restarts the night with the drafted loadout (%s) and the same wishes, not the default" % ", ".join(_mission.rules().loadout))
+		and Array(_mission.rules().loadout) == Array(loadout) and _wish_ids() == heard and save.descend.night == 1
+		and _mission.rules().level_of(0) == 2,
+		"R restarts the night with the drafted loadout (%s), its level and the same wishes, not the default" % ", ".join(_mission.rules().loadout))
 	for w: WarningDirector in (_mission.rules().director as StarfallDirector).stars:
 		w.warning_dead = true
 	await _until(func() -> bool: return _mission.rules().main_done, 3.0)
@@ -1276,15 +1310,15 @@ func _flow_results(step: Callable) -> void:
 	var caught: Dictionary = result.get("descend", {})
 	var rows: Array = caught.get("wishes", [])
 	step.call(String(caught.get("caught", "")) == "dawn" and bool(result.get("won", false)) and int(caught.get("earned", 0)) == 10
-		and save.descend.believers == total + 10 and save.descend.night == 2
+		and save.descend.believers == total and save.descend.night == 2 and bool((caught.get("bank", {}) as Dictionary).get("test", false))
 		and (rows.is_empty() or bool((rows[0] as Dictionary).get("lost", false))),
-		"caught by dawn after the main objective: its 10 believers banked, the granted wish lost")
+		"caught by dawn after the main objective: Night 2, the 10 believers not banked, the granted wish lost")
 	if over and _screen_node is ResultsScreen:  # (v0.11 M3 final review: no results, no cast on a freed or other screen)
 		(_screen_node as ResultsScreen).action.emit("missions")
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Board from the results returns to the tier board")
 
 
-## v0.11 M2: a new Tier 1 mission from the board -- The Tax Collector. Its Prepare has Tier 1's DP plus the one bought; its
+## v0.11 M2: a new Tier 1 mission from the board -- The Tax Collector. Its Prepare has Tier 1's Might; its
 ## night is the board's version with its director up (three collectors, each with his guards), and no wish's person is a
 ## collector or a guard (the wishes are reserved first); Pause > Missions abandons it without counting the night. Ends on the
 ## board.
@@ -1310,7 +1344,7 @@ func _flow_tier1(step: Callable) -> void:
 				for q in d.quarries:
 					clash = clash or p == q.target or q.guards.has(p)
 	var up := d != null and targets == TaxCollectorDirector.ROUNDS.size() and guards > 0 and not clash \
-		and dp == TierBook.dp(1) + 1 and _mission.rules().mission.tier == 1
+		and dp == TierBook.dp(1) and _mission.rules().mission.tier == 1
 	_open_pause()
 	on_action("pause:missions")
 	await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
@@ -1318,11 +1352,10 @@ func _flow_tier1(step: Callable) -> void:
 		"The Tax Collector from the board: its three collectors up with guards, no wish's person a collector or a guard; abandoned, uncounted")
 
 
-## v0.11 M3: a Tier 2 mission from the board -- The Bell-Ringers, Omen opened as a fixture (Whisper's three clears need not be
-## played). Its Prepare has Tier 2's DP plus the one bought; its night is the board's version, three posts each with its ringer;
-## its three warnings stopped, F ascends to the results: won, The Bell-Ringers cleared, Omen 1 / 3. Ends on the board.
+## v0.11 M3: a Tier 2 mission from the board -- The Bell-Ringers (Omen is open: the board is a test mode). Its Prepare has Tier 2's
+## Might; its night is the board's version, three posts each with its ringer; its three warnings stopped, F ascends to the results: won,
+## The Bell-Ringers cleared, a test bank (its fastest clear shown, nothing banked, Omen still the only tier open). Ends on the board.
 func _flow_tier2(step: Callable) -> void:
-	save.descend.open_tier = maxi(save.descend.open_tier, 2)
 	(_screen_node as MissionBoard).choose(MissionBook.BELL_RINGERS)
 	var prep := _screen_node as PrepareScreen
 	var dp := prep.draft.capacity if prep != null else 0
@@ -1331,7 +1364,7 @@ func _flow_tier2(step: Callable) -> void:
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
 	var d := _mission.rules().director as BellRingersDirector
-	var up := d != null and d.ringers.size() == 3 and dp == TierBook.dp(2) + 1 and _mission.rules().mission.tier == 2
+	var up := d != null and d.ringers.size() == 3 and dp == TierBook.dp(2) and _mission.rules().mission.tier == 2
 	if d != null:
 		for r in d.ringers:
 			r.warning_dead = true
@@ -1345,21 +1378,17 @@ func _flow_tier2(step: Callable) -> void:
 	var desc: Dictionary = result.get("descend", {})
 	var bank: Dictionary = desc.get("bank", {})
 	step.call(up and shown and bool(result.get("won", false)) and bool(desc.get("ascended", false))
-		and save.descend.cleared.has(MissionBook.BELL_RINGERS)
-		and String(bank.get("progress", "")) == "Omen 1 / 3 cleared: 2 more open Wrath",
-		"The Bell-Ringers from the board: Tier 2's budget, three posts; stopped and ascended, the results read Omen 1 / 3 (%s)" % String(
-		bank.get("progress", "")))
+		and save.descend.cleared.has(MissionBook.BELL_RINGERS) and _test_bank(bank),
+		"The Bell-Ringers from the board: Tier 2's budget, three posts; stopped and ascended, a test bank: %s" % _bests_text(bank))
 	if shown and _screen_node is ResultsScreen:  # (v0.11 M3 final review: no results, no cast on a freed or other screen)
 		(_screen_node as ResultsScreen).action.emit("missions")
 		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 
 
-## v0.11 M4: a Tier 3 mission from the board -- The Heretic Hunt, Wrath opened as a fixture (Omen's three clears need not be played).
-## Its Prepare has Tier 3's DP plus the one bought; its night is the board's version, three sweeps, a captain and a cellar; broken by
-## its public state (every standard broken, the captain fallen), F ascends to the results: won, The Heretic Hunt cleared, Wrath 1 / 3.
-## Ends on the board.
+## v0.11 M4: a Tier 3 mission from the board -- The Heretic Hunt (Wrath is open: the board is a test mode). Its Prepare has Tier 3's
+## Might; its night is the board's version, three sweeps, a captain and a cellar; broken by its public state (every standard broken,
+## the captain fallen), F ascends to the results: won, The Heretic Hunt cleared, a test bank. Ends on the board.
 func _flow_tier3(step: Callable) -> void:
-	save.descend.open_tier = maxi(save.descend.open_tier, 3)
 	(_screen_node as MissionBoard).choose(MissionBook.HERETIC_HUNT)
 	var prep := _screen_node as PrepareScreen
 	var dp := prep.draft.capacity if prep != null else 0
@@ -1368,7 +1397,7 @@ func _flow_tier3(step: Callable) -> void:
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
 	var d := _mission.rules().director as HereticHuntDirector
-	var up := d != null and d.steps.size() == 3 and d.cellar != null and dp == TierBook.dp(3) + 1 and _mission.rules().mission.tier == 3
+	var up := d != null and d.steps.size() == 3 and d.cellar != null and dp == TierBook.dp(3) and _mission.rules().mission.tier == 3
 	if d != null:
 		for st in d.steps:
 			st.raised = true
@@ -1384,20 +1413,17 @@ func _flow_tier3(step: Callable) -> void:
 	var desc: Dictionary = result.get("descend", {})
 	var bank: Dictionary = desc.get("bank", {})
 	step.call(up and shown and bool(result.get("won", false)) and bool(desc.get("ascended", false))
-		and save.descend.cleared.has(MissionBook.HERETIC_HUNT)
-		and String(bank.get("progress", "")) == "Wrath 1 / 3 cleared: 2 more open Reckoning",
-		"The Heretic Hunt from the board: Tier 3's budget, three sweeps and a cellar; broken and ascended, the results read Wrath 1 / 3 (%s)" % String(
-		bank.get("progress", "")))
+		and save.descend.cleared.has(MissionBook.HERETIC_HUNT) and _test_bank(bank),
+		"The Heretic Hunt from the board: Tier 3's budget, three sweeps and a cellar; broken and ascended, a test bank: %s" % _bests_text(bank))
 	if shown and _screen_node is ResultsScreen:
 		(_screen_node as ResultsScreen).action.emit("missions")
 		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 
 
-## v0.11 M5: a Tier 4 mission from the board -- The Armoury, Reckoning opened as a fixture (Wrath's three clears need not be played). Its
-## Prepare has Tier 4's DP plus the one bought; its night is the board's version, three targets; razed by its public state (each target
-## razed, ArmouryDirector._raze()), F ascends to the results: won, The Armoury cleared, Reckoning 1 / 3. Ends on the board.
+## v0.11 M5: a Tier 4 mission from the board -- The Armoury (Reckoning is open: the board is a test mode). Its Prepare has Tier 4's
+## Might; its night is the board's version, three targets; razed by its public state (each target razed, ArmouryDirector._raze()), F
+## ascends to the results: won, The Armoury cleared, a test bank. Ends on the board.
 func _flow_tier4(step: Callable) -> void:
-	save.descend.open_tier = maxi(save.descend.open_tier, 4)
 	(_screen_node as MissionBoard).choose(MissionBook.ARMOURY)
 	var prep := _screen_node as PrepareScreen
 	var dp := prep.draft.capacity if prep != null else 0
@@ -1406,7 +1432,7 @@ func _flow_tier4(step: Callable) -> void:
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
 	var d := _mission.rules().director as ArmouryDirector
-	var up := d != null and d.targets.size() == 3 and dp == TierBook.dp(4) + 1 and _mission.rules().mission.tier == 4
+	var up := d != null and d.targets.size() == 3 and dp == TierBook.dp(4) and _mission.rules().mission.tier == 4
 	if d != null:
 		for s in d.targets:
 			d._raze(s)
@@ -1420,21 +1446,17 @@ func _flow_tier4(step: Callable) -> void:
 	var desc: Dictionary = result.get("descend", {})
 	var bank: Dictionary = desc.get("bank", {})
 	step.call(up and shown and bool(result.get("won", false)) and bool(desc.get("ascended", false))
-		and save.descend.cleared.has(MissionBook.ARMOURY)
-		and String(bank.get("progress", "")) == "Reckoning 1 / 3 cleared: 2 more open Ascendance",
-		"The Armoury from the board: Tier 4's budget, three targets; razed and ascended, the results read Reckoning 1 / 3 (%s)" % String(
-		bank.get("progress", "")))
+		and save.descend.cleared.has(MissionBook.ARMOURY) and _test_bank(bank),
+		"The Armoury from the board: Tier 4's budget, three targets; razed and ascended, a test bank: %s" % _bests_text(bank))
 	if shown and _screen_node is ResultsScreen:
 		(_screen_node as ResultsScreen).action.emit("missions")
 		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
 
 
-## v0.11 M6: a Tier 5 mission from the board -- The Lantern's Eye, Ascendance opened as a fixture (Reckoning's three clears need not be
-## played). Its Prepare has Tier 5's DP plus the one bought; its night is the board's version, three mirror towers; each mirror given up by
-## its public state (LanternEyeDirector._raise(), then _gone()), F ascends to the results: won, The Lantern's Eye cleared, Ascendance 1 / 5.
-## Ends on the board.
+## v0.11 M6: a Tier 5 mission from the board -- The Lantern's Eye (Ascendance is open: the board is a test mode). Its Prepare has Tier
+## 5's Might; its night is the board's version, three mirror towers; each mirror given up by its public state (LanternEyeDirector._raise(),
+## then _gone()), F ascends to the results: won, The Lantern's Eye cleared, a test bank. Ends on the board.
 func _flow_tier5(step: Callable) -> void:
-	save.descend.open_tier = maxi(save.descend.open_tier, 5)
 	(_screen_node as MissionBoard).choose(MissionBook.LANTERN_EYE)
 	var prep := _screen_node as PrepareScreen
 	var dp := prep.draft.capacity if prep != null else 0
@@ -1443,7 +1465,7 @@ func _flow_tier5(step: Callable) -> void:
 	await _until(func() -> bool: return _mission_up(null), 10.0)
 	await _past_intro()
 	var d := _mission.rules().director as LanternEyeDirector
-	var up := d != null and d.towers.size() == 3 and dp == TierBook.dp(5) + 1 and _mission.rules().mission.tier == 5
+	var up := d != null and d.towers.size() == 3 and dp == TierBook.dp(5) and _mission.rules().mission.tier == 5
 	if d != null:
 		for i in d.steps.size():
 			d._raise(i)
@@ -1458,9 +1480,8 @@ func _flow_tier5(step: Callable) -> void:
 	var desc: Dictionary = result.get("descend", {})
 	var bank: Dictionary = desc.get("bank", {})
 	step.call(up and shown and bool(result.get("won", false)) and bool(desc.get("ascended", false))
-		and save.descend.cleared.has(MissionBook.LANTERN_EYE) and String(bank.get("progress", "")) == "Ascendance 1 / 5 cleared",
-		"The Lantern's Eye from the board: Tier 5's budget, three towers; its mirrors gone and ascended, the results read Ascendance 1 / 5 (%s)" % String(
-		bank.get("progress", "")))
+		and save.descend.cleared.has(MissionBook.LANTERN_EYE) and _test_bank(bank),
+		"The Lantern's Eye from the board: Tier 5's budget, three towers; its mirrors gone and ascended, a test bank: %s" % _bests_text(bank))
 	if shown and _screen_node is ResultsScreen:
 		(_screen_node as ResultsScreen).action.emit("missions")
 		await _until(func() -> bool: return screen == Screen.BOARD, 5.0)
@@ -1537,6 +1558,18 @@ func _flow_dev_town(step: Callable) -> void:
 	step.call(screen == Screen.BOARD and not (_screen_node as MissionBoard).dev, "the board is rebuilt without the DEV tab")
 
 
+## FLOW (god P1, ruling P11): a board night's bank is a test bank -- flagged, no believers, no progress line, its first clear's fastest
+## time among the bests -- and no tier has opened by it.
+func _test_bank(bank: Dictionary) -> bool:
+	return bool(bank.get("test", false)) and not bank.has("believers") and not bank.has("progress") and save.descend.open_tier == 1 \
+		and save.descend.believers == 0 and _bests_text(bank).contains("Fastest clear")
+
+
+## The bests a test bank reports, comma-joined (FLOW).
+func _bests_text(bank: Dictionary) -> String:
+	return ", ".join(PackedStringArray(bank.get("bests", PackedStringArray())))
+
+
 ## The night's wishes by id, in the order heard (FLOW, v0.11 M1).
 func _wish_ids() -> PackedStringArray:
 	var out := PackedStringArray()
@@ -1546,14 +1579,12 @@ func _wish_ids() -> PackedStringArray:
 	return out
 
 
-## The steps from before the tier board (FLOW, v0.11 M1) play Last Judgement, The Long Night and their drafts as a veteran
-## god would: every tier open, every power unlocked, no upgrades bought (so the tiers' own budgets are checked).
+## The steps from before the tier board (FLOW, v0.11 M1) play Last Judgement, The Long Night and their drafts with no upgrades bought,
+## so the tiers' own budgets are checked. Every tier and power is open on the board whatever the save says (god P1, ruling C3), so the
+## veteran's open tiers and unlocked powers are no longer set here.
 func _veteran() -> void:
-	save.descend.open_tier = TierBook.NAMES.size()
 	save.descend.dp_bought = 0
 	save.descend.slot_bought = 0
-	for key in save.descend.locked():
-		save.descend.unlocked.append(key)
 
 
 ## The Long Night through the screens (v0.09), from the board: Act I won on its clock, the choice card, the re-draft,

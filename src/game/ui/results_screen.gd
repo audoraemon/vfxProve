@@ -6,8 +6,8 @@ extends Node
 ## A night (v0.09: a result with acts) shows each act's mark and bonuses, the path and the night's total.
 ## It is drawn over the mission's frozen ruins, which Game keeps up underneath it.
 
-## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08); a board night's
-## also "upgrades" (v0.11 M1).
+## "replay" (the same four powers again), "change" (back to the draft) or "missions" (the mission board, v0.08). A board night
+## (the test mode since god P1) has the same three; "upgrades" (v0.11 M1) went with the Upgrades button.
 signal action(name: String)
 
 const PANEL := Rect2(36.0, 20.0, 568.0, 320.0)
@@ -40,7 +40,7 @@ var _menu: Menu
 var _hover := ""
 ## A campaign night's results (v0.10): one Continue, and a line on what the night did to the god's power.
 var campaign := false
-## A board night's results (v0.11 M1, spec §6): Board, Again and Upgrades, and the night's rows and lines.
+## A board night's results (v0.11 M1, spec §6): Board, Again and Change powers (god P1: the test mode), and the night's rows and lines.
 var descend := false
 
 
@@ -120,7 +120,7 @@ func setup(result: Dictionary) -> ResultsScreen:
 	if campaign:
 		_menu = Menu.row(["next"], ["Continue"], 320.0, PANEL.end.y - 28.0, 120.0)
 	elif descend:
-		_menu = Menu.row(["missions", "replay", "upgrades"], ["Board", "Again", "Upgrades"], 320.0, PANEL.end.y - 28.0, 120.0)
+		_menu = Menu.row(["missions", "replay", "change"], ["Board", "Again", "Change powers"], 320.0, PANEL.end.y - 28.0, 120.0)
 	else:
 		_menu = Menu.row(["replay", "change", "missions"], ["Replay", "Change powers", "Missions"], 320.0,
 			PANEL.end.y - 28.0, 120.0)
@@ -340,11 +340,17 @@ static func caught_line(result: Dictionary) -> String:
 
 
 ## A board night's lines under its rows (v0.11 M1, spec §6): the believers banked and the new total, the night, the tier's
-## progress, and each best beaten.
+## progress, and each best beaten. A test-mode night (god P1, ruling P11: `bank.test`) banks nothing: "Test mode: nothing banked",
+## then each best beaten.
 static func summary_lines(result: Dictionary) -> PackedStringArray:
 	var d: Dictionary = result.get("descend", {})
 	var bank: Dictionary = d.get("bank", {})
 	var out := PackedStringArray()
+	if bool(bank.get("test", false)):
+		out.append("Test mode: nothing banked")
+		for b in bank.get("bests", PackedStringArray()):
+			out.append("New best: " + String(b))
+		return out
 	out.append("Believers +%d, %d now" % [int(bank.get("believers", d.get("earned", 0))), int(bank.get("total", 0))])
 	out.append("Night %d" % int(bank.get("night", 0)))
 	if String(bank.get("progress", "")) != "":

@@ -30,11 +30,12 @@ func for_mission(def: MissionDef) -> Draft:
 
 
 ## Pick a power, or give a picked one back. "" when the draft changed, else why the power could not be added
-## (refusal()).
+## (refusal()). Giving a power back clears its level, so a later pick starts at level 1 (god P1, ruling C14).
 func toggle(key: String) -> String:
 	var at := picks.find(key)
 	if at >= 0:
 		picks.remove_at(at)
+		levels.erase(key)
 		return ""
 	var why := refusal(key)
 	if why == "":

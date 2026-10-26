@@ -1,6 +1,6 @@
 class_name UpgradesScreen
 extends Node
-## The Upgrades (v0.11 M1, spec §3.4): believers spent on the tier board's god -- +1 Divine Power (the n-th for 25 x n, six
+## The Upgrades (v0.11 M1, spec §3.4): believers spent on the tier board's god -- +1 Might (the n-th for 25 x n, six
 ## at most), +1 slot (150, once) and each locked power (15 x its DP). Board missions only: the campaign keeps its own DP. A
 ## click buys what it can afford; one it cannot buzzes and says why. Esc or Board goes back to the tier board.
 
@@ -146,10 +146,10 @@ func _draw_ui() -> void:
 	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(purse, UiTheme.SIZE_BODY), 24.0), purse, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 	var dp_line := "All six bought" if _state.dp_bought >= DescendState.DP_LIMIT else "%d believers   %d / %d" % [_state.dp_price(),
 		_state.dp_bought, DescendState.DP_LIMIT]
-	_draw_button(DP_RECT, "+1 DIVINE POWER", dp_line, "dp")
+	_draw_button(DP_RECT, "+1 MIGHT", dp_line, "dp")
 	var slot_line := "Bought" if _state.slot_bought >= DescendState.SLOT_LIMIT else "%d believers" % DescendState.SLOT_PRICE
 	_draw_button(SLOT_RECT, "+1 SLOT", slot_line, "slot")
-	var budget := "Board missions: their tier's budget +%d DP, +%d slot" % [_state.dp_bought, _state.slot_bought]
+	var budget := "Board missions: their tier's budget +%d Might, +%d slot" % [_state.dp_bought, _state.slot_bought]
 	for i in UiTheme.wrap(budget, DP_RECT.size.x, UiTheme.SIZE_SMALL).size():
 		UiTheme.text(_ui, Vector2(8.0, SLOT_RECT.end.y + 16.0 + UiTheme.LINE_SMALL * float(i)),
 			UiTheme.wrap(budget, DP_RECT.size.x, UiTheme.SIZE_SMALL)[i], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)

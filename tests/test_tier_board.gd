@@ -106,7 +106,7 @@ static func _draft(t) -> void:
 	t.check(d.picks == PackedStringArray(["doom"]), "and left out of a saved loadout")
 	var prep := PrepareScreen.new().setup(TierBook.board("warning"), PackedStringArray(), ResponseProfile.DEFAULT,
 		DescendState.new().locked())
-	t.check(prep.draft.locked.size() == 23 and prep.budget_text() == "0 / 3 slots   0 / 6 DP"
+	t.check(prep.draft.locked.size() == 23 and prep.budget_text() == "0 / 3 slots   0 / 6 Might"
 		and prep.hit(PrepareScreen.arrow_rect(-1).get_center()) == "" and not prep.mission.chooses_difficulty(),
 		"the board's Prepare: Tier 1's budget, the locked powers, no difficulty picker")
 	t.check(String(PrepareScreen.REFUSALS["locked"]) == "Locked: unlock it on the Upgrades screen", "and says why it refuses one")

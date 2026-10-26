@@ -25,6 +25,7 @@ func _reset_world() -> void:
 	City._extra.clear()  # a fixture town a failed suite never unregistered
 	Person.frame_no = -1
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
+	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
 
 
 func _initialize() -> void:

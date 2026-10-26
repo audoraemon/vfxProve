@@ -109,11 +109,11 @@ Landing checks were run by Task 14 on `c2df7f85` (Tasks 1-13), by hand in `land.
 |---|---|---|
 | Trial merge vs `origin/feat/Develop-Main` | clean, 0 incoming commits | - |
 | Import | exit 0 | exit 0 |
-| Suite (`run_suite_parallel.sh 8`) | `checks=10565 failures=0` | `MERGED_SUITE` |
+| Suite (`run_suite_parallel.sh 8`) | `checks=10565 failures=0` | `checks=10637 failures=0` |
 | References | 286 / 286 OK, none moved, nothing re-recorded | not rerun (no simulation file changed) |
-| `digest` | `61267b7e90524d800bf1c3473a71146b` | not rerun |
-| `crowd_check` | `-935602679` | not rerun |
-| FLOW alone | `checks=160 failures=0` (3 m 44 s) | `MERGED_FLOW` |
+| `digest` | `61267b7e90524d800bf1c3473a71146b` | `61267b7e90524d800bf1c3473a71146b` (rerun, OK) |
+| `crowd_check` | `-935602679` | `-935602679` (rerun, OK) |
+| FLOW alone | `checks=160 failures=0` (3 m 44 s) | `checks=160 failures=0` |
 | Bench vs `kak-v012-m2` | all five pairs within about 1 fps (below) | not rerun |
 
 Bench (median of 3, fps; A = `kak-v012-m2`, B = `c2df7f85`; the machine was shared with other sessions, so the absolute fps are low):

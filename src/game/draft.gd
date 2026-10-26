@@ -1,13 +1,13 @@
 class_name Draft
 extends RefCounted
 ## The Prepare screen's rules (spec §1, §2): the player picks up to as many powers as the mission has slots, without
-## their prices going over the mission's Divine Power, and the order they pick them in is the order of the slots.
+## their prices going over the mission's Might, and the order they pick them in is the order of the slots.
 ## Picking a card again takes it back out, and the later picks move up a slot to close the gap. Since v0.08 the
-## mission sets the slots, the Divine Power and the powers allowed, and empty slots are allowed.
+## mission sets the slots, the Might and the powers allowed, and empty slots are allowed.
 
 ## How many powers make a full loadout (v0.08: the mission's).
 var slots := 4
-## How much Divine Power the picks may cost in all; 0 for no budget.
+## How much Might the picks may cost in all; 0 for no budget.
 var capacity := 0
 ## The power keys the mission allows; empty for every power.
 var pool := PackedStringArray()
@@ -21,7 +21,7 @@ var locked := PackedStringArray()
 var levels := {}
 
 
-## The draft for a mission: its slots, its DP capacity and the powers it allows.
+## The draft for a mission: its slots, its Might capacity and the powers it allows.
 func for_mission(def: MissionDef) -> Draft:
 	slots = def.slots
 	capacity = def.dp_capacity
@@ -104,7 +104,7 @@ func is_full() -> bool:
 
 
 ## Start from a saved loadout, in its own order: anything refused -- keys that are not powers (or not the mission's),
-## repeats, anything past the last slot or over the Divine Power -- is skipped.
+## repeats, anything past the last slot or over the Might -- is skipped.
 func preselect(keys: PackedStringArray) -> Draft:
 	picks = PackedStringArray()
 	for key in keys:

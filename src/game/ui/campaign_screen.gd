@@ -1,7 +1,7 @@
 class_name CampaignScreen
 extends Node
 ## The Lantern campaign between nights (v0.10, spec §4-§5): where the campaign stands -- the night and its Tier, the
-## god's Divine Power and slots, Halcyon's bites, the title its path has given it -- Cael's memory fragment for tonight,
+## god's Might and slots, Halcyon's bites, the title its path has given it -- Cael's memory fragment for tonight,
 ## and tonight's mission: one line, or a choice card per mission, with its goal and Cael's line. "Choose powers" goes on to Prepare with `chosen`;
 ## "New campaign" asks twice before it starts over; "Title", or Esc, leaves.
 
@@ -52,9 +52,9 @@ static func card_rect(i: int, count: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (w + CARD_GAP), CARD_TOP), Vector2(w, CARD_H))
 
 
-## "8 DP   3 slots   Bites 1 / 3   The Deceiver".
+## "8 Might   3 slots   Bites 1 / 3   The Deceiver".
 static func status_text(s: CampaignState) -> String:
-	return "%d DP   %d slots   Bites %d / %d   %s" % [s.dp, s.slots(), s.bites, CampaignDef.MAX_BITES, s.title()]
+	return "%d Might   %d slots   Bites %d / %d   %s" % [s.dp, s.slots(), s.bites, CampaignDef.MAX_BITES, s.title()]
 
 
 ## Cael's line on a card: his own for a Night 2 mission, else the night's first act's line on how the town will meet the

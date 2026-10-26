@@ -301,8 +301,8 @@ static func campaign_line(c: Dictionary) -> String:
 	if String(c.get("ending", "")) == CampaignDef.EATEN:
 		return "Halcyon has eaten you."
 	if bool(c.get("won", false)):
-		return "The god grows: +%d DP, %d DP now." % [int(c.get("dp_gain", 0)), int(c.get("dp", 0))]
-	return "Halcyon bites: %d DP now. Bites %d / %d." % [int(c.get("dp", 0)), int(c.get("bites", 0)), CampaignDef.MAX_BITES]
+		return "The god grows: +%d Might, %d Might now." % [int(c.get("dp_gain", 0)), int(c.get("dp", 0))]
+	return "Halcyon bites: %d Might now. Bites %d / %d." % [int(c.get("dp", 0)), int(c.get("bites", 0)), CampaignDef.MAX_BITES]
 
 
 ## A board night's rows (v0.11 M1, spec §6) as [label, value, mark, note]:

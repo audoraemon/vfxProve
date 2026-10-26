@@ -1,8 +1,8 @@
 class_name PowerBook
 extends RefCounted
-## The draftable powers: Divine Power price, cooldown (seconds), how they are aimed, their effect script and icons, and
+## The draftable powers: Might price, cooldown (seconds), how they are aimed, their effect script and icons, and
 ## their Authority (v0.08: the draft's tabs).
-## Prices are the loadout budget (v0.08): a mission's draft may spend its Divine Power capacity on them, and nothing
+## Prices are the loadout budget (v0.08): a mission's draft may spend its Might capacity on them, and nothing
 ## is spent once the mission runs. Cooldowns follow spec §2's rule of thumb, the larger of the old cooldown and 3x
 ## the old DP cost. Aim "drag" = press at the start point, drag the direction, release; aim "whisper" (v0.08) = press
 ## on a person, drag to where they should go, release; aim "two clicks" = one click for each of the power's two places

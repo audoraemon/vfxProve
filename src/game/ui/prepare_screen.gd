@@ -3,7 +3,7 @@ extends Node
 ## Prepare (spec §1, §5): the briefing and the card under the mouse on the left; on the right the powers by Authority
 ## (v0.08: a tab per Authority in the mission's pool -- v0.06's were kinds -- over a grid of the open tab's cards), and
 ## under them the loadout bar -- the mission's slots, the picks in slot order whichever tab they came from -- with
-## MANIFEST once there is one. The header's right shows the slots and Divine Power spent; a card that would not fit is
+## MANIFEST once there is one. The header's right shows the slots and Might spent; a card that would not fit is
 ## dimmed and refuses with its reason. The difficulty strip shows only for a mission that lets the player choose.
 ##
 ## One deviation from the spec's layout, forced by 640x360: the cards carry the 42-pixel HUD icons, and the
@@ -24,7 +24,7 @@ const TAB_GAP := 4.0
 ## How long a refused pick's reason stays in the panel's hint line (v0.08).
 const REFUSE_SECONDS := 1.5
 ## What the panel says when a pick is refused, by Draft.refusal()'s answer.
-const REFUSALS := {"dp": "Not enough Divine Power", "slots": "No free slot", "pool": "Not a power of this mission",
+const REFUSALS := {"dp": "Not enough Might", "slots": "No free slot", "pool": "Not a power of this mission",
 	"locked": "Locked: unlock it on the Upgrades screen"}
 ## And when MANIFEST is pressed with nothing picked.
 const REFUSE_EMPTY := "Pick at least one power"
@@ -336,12 +336,12 @@ func _draw_ui() -> void:
 	_draw_profile()
 
 
-## "4 / 6 slots   12 / 14 DP" at the header's right (v0.08's budget meter): gold once the slots or the Divine Power
+## "4 / 6 slots   12 / 14 Might" at the header's right (v0.08's budget meter): gold once the slots or the Might
 ## are used up, dim before.
 func budget_text() -> String:
 	if draft.capacity <= 0:
 		return "%d / %d slots" % [draft.picks.size(), draft.slots]
-	return "%d / %d slots   %d / %d DP" % [draft.picks.size(), draft.slots, draft.spent(), draft.capacity]
+	return "%d / %d slots   %d / %d Might" % [draft.picks.size(), draft.slots, draft.spent(), draft.capacity]
 
 
 func _draw_budget() -> void:
@@ -434,7 +434,7 @@ func _draw_panel() -> void:
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
-		["LOADOUT", "%d slots, %d Divine Power to spend on them" % [mission.slots, mission.dp_capacity]],
+		["LOADOUT", "%d slots, %d Might to spend on them" % [mission.slots, mission.dp_capacity]],
 		["TEMPLE", "Its fall resets every cooldown, once"],
 	]
 	# Values start just right of the widest label, measured rather than guessed -- a guessed column ran
@@ -450,7 +450,7 @@ func _draw_panel() -> void:
 			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
 			y += UiTheme.LINE_SMALL
 		y += 3.0
-	_draw_hint("Pick up to %d powers within %d DP" % [mission.slots, mission.dp_capacity])
+	_draw_hint("Pick up to %d powers within %d Might" % [mission.slots, mission.dp_capacity])
 
 
 ## The panel's last line: why a pick was just refused, in red, or else `hint`, dim ("" for none).
@@ -480,7 +480,7 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
 	var title := PowerBook.authority_title(PowerBook.authority_of(key))
-	UiTheme.text(_ui, Vector2(tx, y), "%d DP   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)], UiTheme.SIZE_SMALL)
+	UiTheme.text(_ui, Vector2(tx, y), "%d Might   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)], UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,
 		Color("9ab48a") if bool(p.get("quiet", false)) else UiTheme.COL_DIM)
@@ -497,7 +497,7 @@ func _draw_card(i: int, key: String) -> void:
 	var compact := r.size.y < CARD.y
 	var icon_px := r.size.y - 8.0 if compact else 42.0
 	var slot := draft.slot_of(key)
-	# A card that would not fit -- no free slot, or over the Divine Power -- is dimmed (v0.08); a picked one never is.
+	# A card that would not fit -- no free slot, or over the Might -- is dimmed (v0.08); a picked one never is.
 	var refused := draft.refusal(key) != ""
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
 	var icon: Texture2D = _icons.get(key)
@@ -514,15 +514,17 @@ func _draw_card(i: int, key: String) -> void:
 			UiTheme.COL_GOLD if slot > 0 else (UiTheme.COL_DIM if refused else UiTheme.COL_TEXT))
 		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
 	# A locked power (v0.11 M1, spec §3.4) shows its unlocking price instead.
-	var cost := "%d DP  %s" % [int(p.dp), cooldown_text(p)]
+	var cost := "%d Might  %s" % [int(p.dp), cooldown_text(p)]
 	if draft.locked.has(key):
 		cost = "Locked: %d" % DescendState.unlock_price(key)
 	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.
-		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1).
-		var lift := UiTheme.LINE_SMALL if draft.locked.has(key) else 0.0
-		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - (3.0 if compact else 5.0) - lift),
+		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1); so does a price
+		# that "Might" makes long enough to reach the mark (god P1, C1).
+		var mark_x := r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0
+		var lift := UiTheme.LINE_SMALL if draft.locked.has(key) or tx + UiTheme.width(cost, UiTheme.SIZE_SMALL) + 4.0 > mark_x else 0.0
+		UiTheme.text(_ui, Vector2(mark_x, r.end.y - (3.0 if compact else 5.0) - lift),
 			"quiet", UiTheme.SIZE_SMALL, Color("9ab48a"))
 	if slot > 0:
 		# On the icon's corner, gold on dark like the HUD's hotkeys. Dark digits on a gold square picked up every

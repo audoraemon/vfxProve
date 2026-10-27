@@ -43,6 +43,7 @@ static func run(t) -> void:
 	_tag_countdown(t)
 	_bolt_is_a_minute(t)
 	_bolt_teardown(t)
+	_led_hint(t)
 
 
 static func _world(stretch := 1.0) -> Dictionary:
@@ -734,10 +735,10 @@ static func _bolt_fear(t) -> void:
 	d = s.d
 	_clear_watchers(d)
 	d.charge.panic(d.charge.ground_pos + Vector2(1.0, 0.0), 2.0)
-	if not d.charge.inside:
-		d._start_bolt(true)
-		t.check(d.charge.mind == Person.Mind.DUTY and d.charge.anchor.distance_to(d.exit_at) < 0.5,
-			"panicking when the bolt starts, he is sent on at once")
+	t.check(not d.charge.inside, "a fright in the open does not shelter him in this world (so the next case always asserts)")
+	d._start_bolt(true)
+	t.check(d.charge.mind == Person.Mind.DUTY and d.charge.anchor.distance_to(d.exit_at) < 0.5,
+		"panicking when the bolt starts, he is sent on at once")
 	_done(s)
 
 
@@ -837,4 +838,16 @@ static func _bolt_teardown(t) -> void:
 	d.teardown()
 	t.check(not crowd.danger_landed.is_connected(d._on_danger) and not crowd._field.enemy_killed.is_connected(d._on_killed)
 		and not crowd._env.structure_blighted.is_connected(d._on_blighted), "and lets go of them at teardown")
+	_done(s)
+
+
+## Once the god has led him he never runs, so the hint stops saying he does: a `led` phase (and `running` only while he runs).
+static func _led_hint(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	t.check(d.hint_phase() == "", "before anything: the mission's own line")
+	d.charge.whisper(d.charge.ground_pos + Vector2(0.0, 2.0), MindWhisperFx.LINGER)
+	_run(s, EscortDirector.TICK * 2.0)
+	t.check(d.led and d.hint_phase() == "led", "led: the hint's phase is led (%s)" % d.hint_phase())
 	_done(s)

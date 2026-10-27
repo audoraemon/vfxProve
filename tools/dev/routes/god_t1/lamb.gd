@@ -148,6 +148,20 @@ static func _seizer_clear(d: LostLambDirector, r: float) -> bool:
 		and d.charge.ground_pos.distance_to((d.seizer as Person).ground_pos) > r + SEIZER_GAP
 
 
+## The negative case of the gate (D22): `--startle-only` (gate.sh --extra) plays Ruin's Ember or Veil's Blight at 0:00 and then casts nothing; the
+## night must be lost, so that a short night is won by the play and not by the bolt alone.
+static func _startle_only() -> bool:
+	return "--startle-only" in OS.get_cmdline_user_args()
+
+
+## The middle of where these soldiers stand.
+static func _mid(members: Array) -> Vector2:
+	var mid := Vector2.ZERO
+	for m: Person in members:
+		mid += m.ground_pos
+	return mid / float(maxi(members.size(), 1))
+
+
 static func _ready(bc, ctx: Dictionary, key: String) -> bool:
 	return bc._slot_ready(ctx.rules, ctx.slots, key)
 
@@ -179,6 +193,8 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 		return ""
 	var lamb := d.charge
 	if d.held and WarningDirector._alive(d.seizer):
+		if _startle_only():
+			return ""
 		if _ready(bc, ctx, "smite") and _seizer_clear(d, SmiteFx.KILL_R):
 			var s := d.seizer as Person
 			_cast(ctx, "smite", _pieces().road_ahead(s, SmiteFx.T_STRIKE))
@@ -189,7 +205,7 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 		if house != null:
 			_cast(ctx, "ember", house.center())
 			return "ember a house beside him"
-	if _ready(bc, ctx, "smite"):
+	if _ready(bc, ctx, "smite") and not _startle_only():
 		var blow := _first_blow(d, ctx, SmiteFx.KILL_R, SmiteFx.T_STRIKE)
 		if not blow.is_empty():
 			_cast(ctx, "smite", blow.at)
@@ -206,6 +222,8 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	if d == null or d.charge.inside:
 		return ""
 	if d.held and WarningDirector._alive(d.seizer):
+		if _startle_only():
+			return ""
 		if _ready(bc, ctx, "doom") and _seizer_clear(d, SilentDoom.RADIUS):
 			_cast(ctx, "doom", _pieces().road_ahead(d.seizer as Person, SilentDoom.T_STRIKE))
 			return "doom his seizer"
@@ -213,7 +231,7 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	if not d.bolting and not d.led and d.fountain != null and _ready(bc, ctx, "blight") and not d.fountain.blighted:
 		_cast(ctx, "blight", d.fountain.center())
 		return "blight his fountain"
-	if _ready(bc, ctx, "doom"):
+	if _ready(bc, ctx, "doom") and not _startle_only():
 		var blow := _first_blow(d, ctx, SilentDoom.RADIUS, SilentDoom.T_STRIKE)
 		if not blow.is_empty():
 			_cast(ctx, "doom", blow.at)
@@ -259,10 +277,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 		for sq: Dictionary in squads:
 			if (sq.members as Array).size() < 2:
 				continue  # one man is Death Mark's
-			var mid := Vector2.ZERO
-			for m: Person in sq.members:
-				mid += m.ground_pos
-			mid /= float((sq.members as Array).size())
+			var mid := _mid(sq.members)
 			var victims := PestilenceFx.victims_at(crowd._field, mid)
 			var whole := true
 			for m: Person in sq.members:
@@ -315,11 +330,8 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 		for sq: Dictionary in _squads(d, road):
 			if sq.kind != "patrol":
 				continue
-			var mid := Vector2.ZERO
+			var mid := _mid(sq.members)
 			var tight := true
-			for m: Person in sq.members:
-				mid += m.ground_pos
-			mid /= float((sq.members as Array).size())
 			for m: Person in sq.members:
 				tight = tight and m.ground_pos.distance_to(mid) <= DiscordFx.DISCORD_R - 0.2
 			var near := _probe(road, mid)
@@ -619,16 +631,11 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 			_cast(ctx, "belllies", s.ground_pos + Vector2(3.0, 0.0), {"mode": "guard"})
 			return "call the guard away from his seizer"
 		return ""
-	var total := 0.0
-	for i in range(1, road.size()):
-		total += road[i - 1].distance_to(road[i])
+	var total := _length(road)
 	if d.bolting and _ready(bc, ctx, "belllies") and total / speed <= BELL_LEAD and total > 1.0:
 		# To the middle of the watch: it is then among the twelve nearest soldiers to the click, whatever else the town has about.
-		var mid := Vector2.ZERO
 		var live := _living(d.watch)
-		for w in live:
-			mid += w.ground_pos
-		mid = mid / float(live.size()) if not live.is_empty() else d.guardhouse
+		var mid := _mid(live) if not live.is_empty() else d.guardhouse
 		_cast(ctx, "belllies", mid, {"mode": "guard"})
 		return "call the guard to the gate"
 	if _ready(bc, ctx, "noleave"):
@@ -643,10 +650,7 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 		for sq: Dictionary in squads:
 			if sq.kind != "patrol":
 				continue
-			var mid := Vector2.ZERO
-			for m: Person in sq.members:
-				mid += m.ground_pos
-			mid /= float((sq.members as Array).size())
+			var mid := _mid(sq.members)
 			var tight := true
 			for m: Person in sq.members:
 				tight = tight and m.ground_pos.distance_to(mid) <= NoLeaveFx.RADIUS - 0.5

@@ -48,6 +48,7 @@ const SPEC := [
 	# The Lost Lamb (v0.11 M2).
 	["lost_lamb", "Get the acolyte (blue) out by the west gate. Frightened, or at 1:00, he runs for it: clear the soldiers (red) from his way."],
 	["lost_lamb.running", "He runs for the west gate. Clear the patrols and the watch (red) ahead of him, or draw them off."],
+	["lost_lamb.led", "He holds where you left him. Whisper or lure him on toward the west gate; soldiers (red) seize him on sight."],
 	["lost_lamb.caught", "He is caught. Discord the soldier taking him back (red), or strike once the acolyte is clear of him, before the Temple."],
 	["lost_lamb.gate", "The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off."],
 	["lost_lamb.clear", "The watch is changing. Send him through the gate now."],

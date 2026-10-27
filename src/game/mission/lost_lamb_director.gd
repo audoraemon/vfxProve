@@ -209,7 +209,7 @@ func _run_for_it(c: Charge) -> void:
 
 ## A startle `gap` from him (god T1R): if he is free, out of doors and not led, and it is within BOLT_REACH of him, he bolts.
 func _startle(gap: float) -> void:
-	if led or bolting or escaped or taken or held or bound or not _alive(charge) or charge.inside:
+	if led or bolting or escaped or taken or held or bound_by != null or not _alive(charge) or charge.inside:
 		return
 	if gap <= BOLT_REACH:
 		_start_bolt(true)
@@ -329,11 +329,15 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## The hint's phase (god T1R, spec 7.4): the Escort type's (caught, at the gate), else "running" while he bolts.
+## The hint's phase (god T1R, spec 7.4): the Escort type's (caught, at the gate), else "running" while he bolts, else "led" once the god has
+## led him (he never runs then: the base line would be untrue).
 func hint_phase() -> String:
 	var phase := super()
-	if phase == "" and bolting and not held and _alive(charge) and not escaped and not taken:
-		return "running"
+	if phase == "" and not held and _alive(charge) and not escaped and not taken:
+		if bolting:
+			return "running"
+		if led:
+			return "led"
 	return phase
 
 

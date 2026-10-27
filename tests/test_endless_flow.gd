@@ -105,7 +105,7 @@ static func _load_god_forfeits(t) -> void:
 	var s: GodSlot = got[0]
 	t.check(s != null and s.night == 3 and s.in_night == "" and s.last_mission == "tax_collector",
 		"a slot found mid-night is forfeited: night 3, nothing open, the mission remembered")
-	t.check(got[1] == "Night 3 was abandoned: a lost night.", "and the line says so (%s)" % got[1])
+	t.check(got[1] == "Night 3 was abandoned: a lost night. Lantern Notice +25%.", "and the line says so (%s)" % got[1])
 	t.check(s != null and s.faith == 12 and s.level == 1, "nothing is earned and nothing is lost")
 	var again := GodSlot.read(FILE)
 	t.check(again != null and again.night == 3 and again.in_night == "" and again.last_mission == "tax_collector",

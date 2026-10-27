@@ -2122,7 +2122,7 @@ func _flow_endless(step: Callable) -> void:
 	hub = _screen_node as GodHub
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god.night == 2 and god.level == level and god.divine_power == dp and god.faith == faith_held
-		and god.in_night == "" and saved != null and saved.night == 2 and saved.in_night == "" and hub.line == "Night 2 was abandoned: a lost night.",
+		and god.in_night == "" and saved != null and saved.night == 2 and saved.in_night == "" and hub.line == "Night 2 was abandoned: a lost night. Lantern Notice +25%.",
 		"Abandon after the clock: Night 2 is a lost night -- counted, no Divine Power, no Faith -- and the hub says so")
 	if hub == null:
 		out.call()
@@ -2186,7 +2186,7 @@ func _flow_endless(step: Callable) -> void:
 	hub = _screen_node as GodHub
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god != null and god.night == 3 and god.in_night == "" and god.level == level
-		and god.faith == faith_held and hub.line == "Night 3 was abandoned: a lost night." and saved != null and saved.night == 3
+		and god.faith == faith_held and hub.line == "Night 3 was abandoned: a lost night. Lantern Notice +25%." and saved != null and saved.night == 3
 		and saved.in_night == "",
 		"Continue on a slot left mid-night forfeits it: Night 3 is a lost night, nothing earned, the hub says so")
 	if hub == null:

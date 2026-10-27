@@ -25,6 +25,8 @@ const AWAKEN_POINTS := 2
 const BASE_SLOTS := 3
 ## The Notice's highest value, in percent (spec §10.1).
 const NOTICE_MAX := 100
+## Nights a Lantern seal lasts, counted in nights banked or forfeited (god P2, spec §10.3, Ruling P2-9).
+const SEAL_NIGHTS := 3
 ## Faith one banked believer gives (spec §7, my call: 1:1).
 const FAITH_PER_BELIEVER := 1
 ## Seconds one +15 S DESCENT upgrade adds to the descent clock (spec §7).
@@ -61,11 +63,12 @@ var learned := {}
 var faith := 0
 ## Faith upgrades bought: FAITH key -> count (a key appears once it is bought, or read from a file).
 var bought := {}
-## The Lantern Notice, in percent (written and read in P1; always 0 until P2: C9).
+## The Lantern Notice, in percent (spec §10.1): it moves at every bank and forfeit (GodNight, Ruling P2-1) and 100 makes the next
+## night the Hunt (Ruling P2-3: derived, not stored).
 var notice := 0
-## The sealed ability's key, or "" (P2).
+## The sealed ability's key, or "" (god P2, spec §10.3): not draftable, kept in the tree.
 var sealed := ""
-## Nights the seal has left (P2).
+## Nights the seal has left, 0 when nothing is sealed (god P2, Ruling P2-9).
 var seal_nights := 0
 ## Nights played.
 var night := 0
@@ -137,11 +140,14 @@ static func read(file: String) -> GodSlot:
 	s.points = maxi(_int(cfg.get_value(SECTION, "points", 0)), 0)
 	s.faith = maxi(_int(cfg.get_value(SECTION, "faith", 0)), 0)
 	s.notice = clampi(_int(cfg.get_value(SECTION, "notice", 0)), 0, NOTICE_MAX)
-	s.seal_nights = maxi(_int(cfg.get_value(SECTION, "seal_nights", 0)), 0)
+	s.seal_nights = clampi(_int(cfg.get_value(SECTION, "seal_nights", 0)), 0, SEAL_NIGHTS)
 	s.night = maxi(_int(cfg.get_value(SECTION, "night", 0)), 0)
 	s.seed = _int(cfg.get_value(SECTION, "seed", 0))
 	var sealed_key := _string(cfg.get_value(SECTION, "sealed", ""))
 	s.sealed = sealed_key if _is_power(sealed_key) else ""
+	if s.sealed == "" or s.seal_nights == 0:  # a half seal reads as none (god P2, Ruling P2-12)
+		s.sealed = ""
+		s.seal_nights = 0
 	var last := _string(cfg.get_value(SECTION, "last_mission", ""))
 	s.last_mission = last if TierBook.has(last) else ""
 	var open := _string(cfg.get_value(SECTION, "in_night", ""))
@@ -355,15 +361,80 @@ func extra_clock() -> float:
 	return CLOCK_STEP * int(bought.get("clock", 0))
 
 
-## Learned keys that sit in a spot and are not sealed, in GodTree.spots() order. A learned key in no spot is kept in the file but not
-## drafted (Ruling P4).
-func draftable() -> PackedStringArray:
+## Learned keys that sit in a spot, sealed ones included, in GodTree.spots() order (god P2, Ruling P2-7): the Lantern's candidates.
+## A learned key in no spot is kept in the file but never drafted or sealed (Ruling P4).
+func in_tree() -> PackedStringArray:
 	var out := PackedStringArray()
 	for s: Dictionary in GodTree.spots():
 		var key: String = s.key
-		if key != "" and learned.has(key) and key != sealed:
+		if key != "" and learned.has(key):
 			out.append(key)
 	return out
+
+
+## Learned keys that sit in a spot and are not sealed, in GodTree.spots() order: what Prepare offers (Ruling P4, god P2).
+func draftable() -> PackedStringArray:
+	var out := PackedStringArray()
+	for key in in_tree():
+		if key != sealed:
+			out.append(key)
+	return out
+
+
+## True when the Notice is full: the next night is the Lantern Hunt (god P2, spec §10.2, Ruling P2-3).
+func hunt_due() -> bool:
+	return notice >= NOTICE_MAX
+
+
+## Moves the Notice by `delta`, kept in 0..NOTICE_MAX; returns the change actually made (god P2, Ruling P2-1).
+func add_notice(delta: int) -> int:
+	var before := notice
+	notice = clampi(notice + delta, 0, NOTICE_MAX)
+	return notice - before
+
+
+## The ability a lost Hunt seals (god P2, spec §10.3, Ruling P2-7): over in_tree(), the most nights carried; a tie goes to the higher
+## Might at the learned level, then to the earlier spot. "" when fewer than two keys sit in the tree (Ruling P2-8: never trap the god).
+func seal_target() -> String:
+	var keys := in_tree()
+	if keys.size() < 2:
+		return ""
+	var best := keys[0]
+	for key in keys:
+		var more := int(carried.get(key, 0)) - int(carried.get(best, 0))
+		if more > 0 or (more == 0 and might_of(key) > might_of(best)):
+			best = key
+	return best
+
+
+## Seals `key` for SEAL_NIGHTS nights and drops it from the remembered loadout (god P2, Ruling P2-9); "" does nothing. A seal already
+## on is replaced: the file holds one.
+func seal(key: String) -> void:
+	if key == "":
+		return
+	sealed = key
+	seal_nights = SEAL_NIGHTS
+	var at := loadout.find(key)
+	while at >= 0:
+		loadout.remove_at(at)
+		at = loadout.find(key)
+
+
+## One counted night passes under a seal (god P2, Ruling P2-9): returns the key when this was its last night and it ends, else "".
+func tick_seal() -> String:
+	if sealed == "" or seal_nights <= 0:
+		return ""
+	seal_nights -= 1
+	if seal_nights > 0:
+		return ""
+	var key := sealed
+	sealed = ""
+	return key
+
+
+## "1 night" or "3 nights" (god P2, copy for the seal lines).
+static func nights_text(n: int) -> String:
+	return "1 night" if n == 1 else "%d nights" % n
 
 
 ## What this god's type starts with: its Tier 1 abilities (spec §4).

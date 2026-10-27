@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_bar_animation(t)
 	_pause_endless(t)
 	_pause_hunt(t)
+	_pause_lost_notice(t)
 	_prepare_god(t)
 	_prepare_sealed(t)
 	_prepare_hunt(t)
@@ -495,3 +496,69 @@ static func _pause_hunt(t) -> void:
 	free._on_gui_input(_click((free._menu.rect_of("abandon") as Rect2).get_center()))
 	t.check(free.confirm_line() == PauseMenu.CONFIRM_FREE, "before the clock starts leaving the Hunt is still free (%s)" % free.confirm_line())
 	free.free()
+
+
+## God P2 fix wave (final review M2, Ruling F1): the lost-night confirm states the Notice rise that will really happen after the clamp
+## (min(25, 100 - notice)) and, when the abandon fills the meter, that the Lantern Hunts next; at 100 already it says so plainly. The
+## interlude's confirm reads the same words. A board night's and the Hunt's confirms are unchanged.
+static func _pause_lost_notice(t) -> void:
+	var cases := [
+		{"notice": 0, "rise": 25, "hunt": false}, {"notice": 50, "rise": 25, "hunt": false},
+		{"notice": 75, "rise": 25, "hunt": true}, {"notice": 95, "rise": 5, "hunt": true}, {"notice": 100, "rise": 0, "hunt": true},
+	]
+	for c: Dictionary in cases:
+		var n: int = c.notice
+		var pause := PauseMenu.new()
+		pause.notice = n
+		pause.setup(false, Settings.new(), PATH, true, true)
+		pause._on_gui_input(_click((pause._menu.rect_of("abandon") as Rect2).get_center()))
+		var line := pause.confirm_line()
+		var rise_text := "Lantern Notice +%d%%" % c.rise
+		t.check(line == PauseMenu.lost_line(n) and line.begins_with("Abandon now and the night is lost: no Divine Power, no Faith"),
+			"notice %d: the confirm is lost_line (%s)" % [n, line])
+		if c.rise > 0:
+			t.check(line.contains(rise_text),
+				"notice %d: it states the real rise, %s (%s)" % [n, rise_text, line])
+		else:
+			t.check(not line.contains("+") and line.contains("already 100%"), "notice 100: no rise is promised and it says it is already full (%s)" % line)
+		t.check(line.contains("the Lantern Hunts next") == bool(c.hunt), "notice %d: the Hunt is named exactly when the abandon fills the meter (%s)" % [n, line])
+		var lines := UiTheme.wrap(line, PauseMenu.CONFIRM_WIDTH, UiTheme.SIZE_BODY)
+		var row := pause._menu.rect_of("abandon") as Rect2
+		var last_baseline := PauseMenu.CONFIRM_Y + UiTheme.LINE_BODY * float(lines.size() - 1)
+		t.check(lines.size() <= 3 and row.position.y > last_baseline + 3.0 and row.end.y < 360.0,
+			"notice %d: at most 3 lines, buttons under them (%d lines, last baseline %s, buttons %s)" % [n, lines.size(), last_baseline, row])
+		pause.free()
+	t.check(PauseMenu.lost_line(0) == PauseMenu.CONFIRM_LOST, "the default (rise 25, no Hunt) is CONFIRM_LOST word for word (%s)" % PauseMenu.lost_line(0))
+	# The Hunt's own confirm ignores the Notice; a free exit still says free.
+	var hunt := PauseMenu.new()
+	hunt.hunt_stake = "The Lantern will seal X for 3 nights"
+	hunt.notice = 95
+	hunt.setup(false, Settings.new(), PATH, true, true)
+	hunt._on_gui_input(_click((hunt._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(hunt.confirm_line() == PauseMenu.CONFIRM_HUNT % hunt.hunt_stake, "a Hunt night's confirm is unchanged at any Notice (%s)" % hunt.confirm_line())
+	hunt.free()
+	var free := PauseMenu.new()
+	free.notice = 95
+	free.setup(false, Settings.new(), PATH, true, false)
+	free._on_gui_input(_click((free._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(free.confirm_line() == PauseMenu.CONFIRM_FREE, "before the clock, leaving is free at any Notice (%s)" % free.confirm_line())
+	free.free()
+	# The interlude says the same.
+	var ln := MissionBook.long_night()
+	var result := {"mission": "omen", "won": true, "goal": {"label": "Stop the warning", "done": true}, "bonuses": [], "time": 21.4}
+	for n: int in [0, 95, 100]:
+		var card := InterludeScreen.new()
+		card.endless = true
+		card.notice = n
+		card.setup(result, [ln.act("festival")], NightState.new())
+		card.click(card.button_rect("missions").get_center())
+		t.check(card.confirm_line() == PauseMenu.lost_line(n), "notice %d: the interlude's confirm is lost_line (%s)" % [n, card.confirm_line()])
+		card.free()
+	var card95 := InterludeScreen.new()
+	card95.endless = true
+	card95.notice = 95
+	card95.setup(result, [ln.act("festival")], NightState.new())
+	card95.click(card95.button_rect("missions").get_center())
+	t.check(card95.confirm_line().contains("Lantern Notice +5%") and card95.confirm_line().contains("the Lantern Hunts next"),
+		"the interlude at 95 says +5% and the Hunt (%s)" % card95.confirm_line())
+	card95.free()

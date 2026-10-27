@@ -15,6 +15,11 @@ signal action(name: String)
 const CONFIRM_LOST := "Abandon now and the night is lost: no Divine Power, no Faith, Lantern Notice +25%."
 ## The Hunt's Abandon confirm (god P2, spec §10.3, Ruling P2-5; *my call*): `%s` is GodNight.hunt_stake() -- what the Lantern would seal.
 const CONFIRM_HUNT := "Abandon the Hunt and it is lost. %s, and the Notice goes to 50%%."
+## The same when the abandon fills the meter (god P2 fix wave, final review M2, Ruling F1): `%d` is the rise that really happens after the
+## clamp (min(25, 100 - Notice)), and the Hunt is named because the next night will be it. *My call* (copy).
+const CONFIRM_LOST_HUNT := "Abandon now and the night is lost: no Divine Power, no Faith, Lantern Notice +%d%%, and the Lantern Hunts next."
+## And when the Notice is full already (rise 0): no rise is promised; the Hunt is still the next night. *My call* (copy).
+const CONFIRM_LOST_FULL := "Abandon now and the night is lost: no Divine Power, no Faith. Lantern Notice is already 100%, and the Lantern Hunts next."
 ## And before the clock starts (the intro, Prepare's side of it): leaving costs nothing.
 const CONFIRM_FREE := "The clock has not started: leaving is free."
 ## The confirm's text block: its width, its first baseline, and the row of buttons under it.
@@ -35,6 +40,8 @@ var _endless := false
 var _forfeits := false
 ## What a lost Hunt would seal (GodNight.hunt_stake()), set by Game before setup() when the night is the Hunt; "" for any other night.
 var hunt_stake := ""
+## The god's Lantern Notice now, set by Game before setup() (god P2 fix wave, M2): the lost-night confirm states the rise it will really cause.
+var notice := 0
 ## The rows the menu goes back to when Stay is pressed, and whether the confirm is up.
 var _rows: Menu
 var _confirm := false
@@ -73,14 +80,26 @@ func confirming() -> bool:
 	return _confirm
 
 
-## What the confirm says: once the clock has started CONFIRM_HUNT for the Hunt (it names the stake) or else CONFIRM_LOST; before it,
+## The lost-night confirm for a god at `notice` (god P2 fix wave, final review M2, Ruling F1; spec §2 "every penalty is shown before it
+## happens"): the Notice rise after the clamp -- GodNight.NOTICE_LOST, but never past 100 -- and "the Lantern Hunts next" when the abandon
+## fills the meter. At 0..74 this is CONFIRM_LOST word for word. Static so the interlude says exactly the same.
+static func lost_line(at_notice: int) -> String:
+	var rise := clampi(mini(GodNight.NOTICE_LOST, GodSlot.NOTICE_MAX - at_notice), 0, GodNight.NOTICE_LOST)
+	if rise == 0:
+		return CONFIRM_LOST_FULL
+	if at_notice + rise >= GodSlot.NOTICE_MAX:
+		return CONFIRM_LOST_HUNT % rise
+	return CONFIRM_LOST
+
+
+## What the confirm says: once the clock has started CONFIRM_HUNT for the Hunt (it names the stake) or else lost_line(notice); before it,
 ## CONFIRM_FREE; "" while it is not up.
 func confirm_line() -> String:
 	if not _confirm:
 		return ""
 	if not _forfeits:
 		return CONFIRM_FREE
-	return CONFIRM_HUNT % hunt_stake if hunt_stake != "" else CONFIRM_LOST
+	return CONFIRM_HUNT % hunt_stake if hunt_stake != "" else lost_line(notice)
 
 
 ## Opens (or closes) the confirm: the buttons become Abandon and Stay, and the rows return on Stay.

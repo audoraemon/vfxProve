@@ -211,7 +211,8 @@ static func _hub_seal(t) -> void:
 	t.check(hub.seal_line() == "Sealed by the Lantern: %s, 1 night left" % name, "a seal of 1 night (%s)" % hub.seal_line())
 	# Preflight R6: a three-line one-off line, the seal and the Hunt all up: stacked, clear of the Night line and of the buttons.
 	god.notice = 100
-	hub.line = "Night 4 was abandoned: the Hunt is lost. The Lantern seals a very long ability name for 3 nights. Lantern Notice 50%. " 		+ "The disk is full and the god could not be written, so the Lantern forgets this night when you quit."
+	hub.line = ("Night 4 was abandoned: the Hunt is lost. The Lantern seals a very long ability name for 3 nights. Lantern Notice 50%. "
+		+ "The disk is full and the god could not be written, so the Lantern forgets this night when you quit.")
 	var lay := hub.status_layout()
 	var ys: Array = lay.line_ys
 	t.check(ys.size() == 3 and is_equal_approx(ys[ys.size() - 1], GodHub.BUTTONS_Y - 14.0),

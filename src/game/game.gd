@@ -856,6 +856,8 @@ func _fade_back_in() -> void:
 func _show_interlude(choices: Array, night: NightState) -> void:
 	_interlude = InterludeScreen.new()
 	_interlude.endless = _in_endless  # leaving between acts costs the night: the screen asks first (final review I2)
+	if _in_endless and god != null:
+		_interlude.notice = god.notice  # and says the Notice rise it will really cause (god P2 fix wave, M2)
 	_interlude.name = "Interlude"
 	add_child(_interlude)
 	_interlude.setup(result, choices, night)
@@ -1287,6 +1289,8 @@ func _open_pause() -> void:
 	add_child(_pause)
 	if _in_endless and god != null and god.in_night != "" and String(GodNight.hunt_for(god).get("id", "")) == mission_id:
 		_pause.hunt_stake = GodNight.hunt_stake(god)  # the Hunt: Abandon says what the Lantern would seal (god P2, Ruling P2-11)
+	if _in_endless and god != null:
+		_pause.notice = god.notice  # the lost-night confirm states the rise it will really cause (god P2 fix wave, M2)
 	# Endless Night's menu (god P1, Ruling P9): no Restart, no Change powers, and Abandon night, which says whether it costs the night.
 	_pause.setup(_in_campaign, settings, settings_path, _in_endless, _in_endless and god != null and god.in_night != "")
 	UiSound.play(&"ui_pause")
@@ -2205,7 +2209,7 @@ func _flow_endless(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 		ask = _pause.confirm_line()
-	step.call(god.in_night == second and rows == ["resume", "options", "abandon"] and ask == PauseMenu.CONFIRM_LOST,
+	step.call(god.in_night == second and rows == ["resume", "options", "abandon"] and ask == PauseMenu.lost_line(god.notice),
 		"Pause in a night: Resume, Options, Abandon night (no Restart, no Change powers); after the clock its confirm says the night is lost")
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
@@ -2406,7 +2410,8 @@ func _flow_lantern(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 		ask = _pause.confirm_line()
-	step.call(god.in_night == picked and ask == PauseMenu.CONFIRM_LOST, "Pause in an ordinary night: the confirm says it costs Lantern Notice +25%")
+	step.call(god.in_night == picked and ask == PauseMenu.lost_line(75) and ask.contains("Lantern Notice +25%") and ask.contains("the Lantern Hunts next"),
+		"Pause in an ordinary night at Notice 75%%: the confirm says it costs Lantern Notice +25%% and that the Lantern Hunts next (%s)" % ask)
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)

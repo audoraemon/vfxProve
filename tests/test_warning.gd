@@ -87,6 +87,7 @@ static func run(t) -> void:
 	_interruptions(t)
 	_bonus(t)
 	_teardown_releases_the_bell(t)
+	_flags_off(t)
 
 
 ## The watchman, the omen, the run, the re-aim and the delivery.
@@ -297,4 +298,26 @@ static func _teardown_releases_the_bell(t) -> void:
 	t.check(crowd.bell.hold_on_death, "the warning holds the bell while it lives")
 	(s.d as WarningDirector).teardown()
 	t.check(not crowd.bell.hold_on_death, "and lets it go when it is torn down")
+	_done(s)
+
+
+## God T1R (spec 4.1): a lone WarningDirector (the campaign's) has walls_stop and lie_stops at their defaults, off: a messenger
+## outside the walls and a delivery while the bell lies change nothing.
+static func _flags_off(t) -> void:
+	var s := _setup()
+	var d: WarningDirector = s.d
+	var crowd: Crowd = s.crowd
+	t.check(not d.walls_stop and not d.lie_stops and d.stopped_how == "", "both rules default off")
+	_run(s, 6.2)
+	var w := d.messenger
+	t.check(w.fold(Vector2(2.7, 18.0)) and Walls.outside(w.ground_pos), "the messenger is set down outside the walls")
+	_run(s, 0.5)
+	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.RUN and d.leaving.is_empty() and d.stopped_how == "",
+		"not stopped, not sent off")
+	crowd.bell_lies(45.0)
+	_arrive(w, crowd.bell.keeper.ground_pos + Vector2(0.4, 0.0))
+	_run(s, 0.7)
+	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.DELIVERED and crowd.bell.state == BellNetwork.State.CALLED
+		and _tag(d, "BELLKEEPER") != null,
+		"delivered while the bell lies, the bell called, a plain BELLKEEPER tag (%s)" % BellNetwork.State.keys()[crowd.bell.state])
 	_done(s)

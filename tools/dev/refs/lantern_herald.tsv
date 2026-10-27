@@ -2,9 +2,9 @@
 warning_toll_1	--scenario=warning --case=toll --seed=1	-308413679
 warning_toll_2	--scenario=warning --case=toll --seed=2	-364742800
 warning_toll_3	--scenario=warning --case=toll --seed=3	-989289558
-starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1	-286930712
-starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2	-294363368
-starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3	-706223097
+starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1	-756202374
+starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2	-761108448
+starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3	47594600
 ringers_toll_1	--scenario=ringers --case=toll --seed=1	-523952249
 ringers_toll_2	--scenario=ringers --case=toll --seed=2	-654893297
 ringers_toll_3	--scenario=ringers --case=toll --seed=3	-384488163

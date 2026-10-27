@@ -18,6 +18,7 @@ static func run(t) -> void:
 	var town := _world(&"capital")
 	_walk_parity(t, home, town)
 	_spots_land(t, town)
+	_walls(t, town)
 	_camera_clear(t)
 	_tour_true(t, town)
 	Kit.done(home)
@@ -143,6 +144,22 @@ static func _spots_land(t, town: Dictionary) -> void:
 			apart = minf(apart, p.distance_to(d.star_falls[j][1]))
 	t.check(worst <= 0.6, "each post snaps within 0.6 of itself (worst %.2f)" % worst)
 	t.check(apart > 1.6, "the three posts stand more than 1.6 apart (%.1f)" % apart)
+
+
+## God T1R (spec 4.1, 2.1): the Capital's stars play the Warning's two new rules too, and no post stands outside the old town's walls (a watchman
+## there would be out the moment the star fell); a carrier set down on a river bridge or a gate's far side is out of them.
+static func _walls(t, town: Dictionary) -> void:
+	City.use(&"capital")
+	var d: StarfallDirector = town.d
+	var on := true
+	var posts_in := true
+	for i in d.stars.size():
+		on = on and d.stars[i].walls_stop and d.stars[i].lie_stops
+		posts_in = posts_in and not Walls.outside(d._walkable(d.star_falls[i][1]))
+	t.check(on, "each of the Capital's stars has both rules on")
+	t.check(posts_in, "and every post stands inside the old town's walls")
+	t.check(Walls.outside(Vector2(4.0, 4.6)) and Walls.outside(Vector2(-24.6, -13.0)), "a bridge and the far side of the west gate are out of the walls")
+	City.use(&"aldermere")
 
 
 ## The first target (the first star's gate, pointed at or shown) is clear of the padded HUD stack at the intro's camera, and

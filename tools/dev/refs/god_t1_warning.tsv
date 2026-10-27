@@ -1,0 +1,20 @@
+# KAK exact references, god T1R Task 2: The Warning (the board's Starfall) played by each god type's own two Tier 1 powers (tools/dev/routes/god_t1/warning.gd), Aldermere, seeds 1-3. name<TAB>how<TAB>expected.
+# Recorded as the policies play at the commit that adds them; a row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
+god_ruin_warning_play_1	--scenario=warning --case=play --board --god=ruin:1 --seed=1	-795637670
+god_ruin_warning_play_2	--scenario=warning --case=play --board --god=ruin:1 --seed=2	-607391505
+god_ruin_warning_play_3	--scenario=warning --case=play --board --god=ruin:1 --seed=3	496070807
+god_death_warning_play_1	--scenario=warning --case=play --board --god=death:1 --seed=1	-806451995
+god_death_warning_play_2	--scenario=warning --case=play --board --god=death:1 --seed=2	-638454245
+god_death_warning_play_3	--scenario=warning --case=play --board --god=death:1 --seed=3	-382510082
+god_veil_warning_play_1	--scenario=warning --case=play --board --god=veil:1 --seed=1	-840626169
+god_veil_warning_play_2	--scenario=warning --case=play --board --god=veil:1 --seed=2	-607261301
+god_veil_warning_play_3	--scenario=warning --case=play --board --god=veil:1 --seed=3	749403024
+god_passage_warning_play_1	--scenario=warning --case=play --board --god=passage:1 --seed=1	-306670928
+god_passage_warning_play_2	--scenario=warning --case=play --board --god=passage:1 --seed=2	796965990
+god_passage_warning_play_3	--scenario=warning --case=play --board --god=passage:1 --seed=3	-299080053
+god_decree_warning_play_1	--scenario=warning --case=play --board --god=decree:1 --seed=1	-330021256
+god_decree_warning_play_2	--scenario=warning --case=play --board --god=decree:1 --seed=2	65142225
+god_decree_warning_play_3	--scenario=warning --case=play --board --god=decree:1 --seed=3	-190281629
+god_dominion_warning_play_1	--scenario=warning --case=play --board --god=dominion:1 --seed=1	-81108209
+god_dominion_warning_play_2	--scenario=warning --case=play --board --god=dominion:1 --seed=2	-446415573
+god_dominion_warning_play_3	--scenario=warning --case=play --board --god=dominion:1 --seed=3	79886604

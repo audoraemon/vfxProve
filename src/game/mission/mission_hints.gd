@@ -19,6 +19,7 @@ const ASCEND_LINE := "Ascend when you are ready: press F."
 const LINES := {
 	"warning": WARNING_LINE,
 	"warning.relay": WARNING_RELAY,
+	"warning.stars": "Stop the messenger (gold): kill him with no one near (red), send him out of the walls, or let him find the bell lying.",
 	"warning.bell": WARNING_BELL,
 	"warning.waiting": "That warning is dead. Watch the next star's gate (gold): its watchman runs when it falls.",
 	"omen": WARNING_LINE,

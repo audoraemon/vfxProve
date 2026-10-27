@@ -301,7 +301,11 @@ static func _draftable(t) -> void:
 	s.learned["nosuch_spot"] = 2
 	t.check(not s.draftable().has("nosuch_spot") and s.learned.has("nosuch_spot"), "a learned key in no spot is kept but not draftable")
 	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
 	t.check(s.draftable().is_empty(), "with the dev fill off and the real table empty nothing is draftable (%s)" % [s.draftable()])
+	GodTree.use_table({})
+	t.check(s.draftable() == PackedStringArray(["ember", "deathmark"]),
+		"with the dev fill off the real Tier 1 fill drafts what is learned there, smite still sealed (%s)" % [s.draftable()])
 	GodTree.dev_fill = true
 
 
@@ -309,6 +313,10 @@ static func _ensure_starting(t) -> void:
 	var s := _read_with("start", {"type": "ruin", "points": 3, "learned": {}})
 	t.check(s != null and s.learned == {"smite": 1, "ember": 1} and s.points == 3, "an old god gets its starting two free, points unchanged (%s)" % [s.learned if s else null])
 	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
 	var bare := _read_with("start_off", {"type": "ruin", "learned": {}})
 	t.check(bare.learned.is_empty(), "with no fill there is nothing to give")
+	GodTree.use_table({})
+	var real := _read_with("start_real", {"type": "ruin", "learned": {}})
+	t.check(real.learned == {"smite": 1, "ember": 1}, "with the dev fill off the real Tier 1 fill gives its two (%s)" % [real.learned])
 	GodTree.dev_fill = true

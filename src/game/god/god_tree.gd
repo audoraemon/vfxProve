@@ -30,14 +30,14 @@ const FLAVOUR := {
 	"dominion": "Every mind bends.",
 }
 
-## The real tree: type -> five tiers (index 0 = Tier 1) of two PowerBook keys, "" for a spot not filled yet. All empty in P1.
+## The real tree: type -> five tiers (index 0 = Tier 1) of two PowerBook keys, "" for a spot not filled yet. Tier 1 filled by the user (2026-10-27); the rest empty.
 const TABLE := {
-	"ruin": [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"death": [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"veil": [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"passage": [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"decree": [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"dominion": [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"ruin": [["smite", "ember"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"passage": [["thorns", "mirror"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"decree": [["noleave", "belllies"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"dominion": [["whisper", "discord"], ["", ""], ["", ""], ["", ""], ["", ""]],
 }
 
 ## Test and scripted play: take GodTreeDev's key for every empty real spot (Ruling P2). Both test runners reset it per suite.
@@ -45,13 +45,40 @@ static var dev_fill := false
 
 static var _merged_cache: Dictionary = {}
 
+## Tests only: a table that stands in for TABLE as the real one (an empty tree, or an odd one), set with use_table(). Both test
+## runners clear it per suite. Empty means TABLE.
+static var _test_table: Dictionary = {}
+
+
+## Tests only: read `tbl` as the real table until use_table({}) (Tier 1 fill, 2026-10-27: tests of an empty tree no longer get one
+## from TABLE).
+static func use_table(tbl: Dictionary) -> void:
+	_test_table = tbl
+	_merged_cache = {}
+
+
+## A table of the tree's shape with every spot empty.
+static func blank() -> Dictionary:
+	var out := {}
+	for type: String in RING:
+		var tiers := []
+		for _tier in TIERS:
+			tiers.append(["", ""])
+		out[type] = tiers
+	return out
+
+
+## The real table: TABLE, or the one a test set with use_table().
+static func real() -> Dictionary:
+	return TABLE if _test_table.is_empty() else _test_table
+
 
 ## The table every lookup reads: the real one, or the real one with the dev fill merged over its empty spots.
 static func table() -> Dictionary:
 	if not dev_fill:
-		return TABLE
+		return real()
 	if _merged_cache.is_empty():
-		_merged_cache = merged(TABLE, GodTreeDev.TABLE)
+		_merged_cache = merged(real(), GodTreeDev.TABLE)
 	return _merged_cache
 
 

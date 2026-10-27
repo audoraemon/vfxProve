@@ -144,6 +144,7 @@ static func _hub_buttons(t) -> void:
 
 static func _hub_blocked(t) -> void:
 	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
 	var god := _slot()
 	var hub := GodHub.new().setup(god)
 	var emitted := []
@@ -156,6 +157,7 @@ static func _hub_blocked(t) -> void:
 	hub._on_gui_input(_click(hub.menu_rect("tree").get_center()))
 	t.check(emitted == ["tree"], "the other buttons still work (%s)" % [emitted])
 	hub.free()
+	GodTree.use_table({})
 	GodTree.dev_fill = true
 	var full := GodHub.new().setup(_slot())
 	t.check(full.can_descend() and full.blocked_line() == "", "with a filled tree it can Descend and has no blocked line")

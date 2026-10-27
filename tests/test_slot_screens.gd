@@ -207,10 +207,13 @@ static func _slot_keys(t) -> void:
 
 static func _ring(t) -> void:
 	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
 	var screen := GodSelectScreen.new().setup()
 	var lines := screen.type_lines("ruin")
 	var want := PackedStringArray(["RUIN", GodTree.FLAVOUR.ruin, "Tier 1: Not yet chosen, Not yet chosen", "Neighbours: DOMINION, DEATH"])
-	t.check(lines == want, "ruin's lines with the dev fill off (%s)" % [lines])
+	t.check(lines == want, "ruin's lines with an empty tree (%s)" % [lines])
+	GodTree.use_table({})
+	t.check(screen.type_lines("ruin")[2] == "Tier 1: Smite, Ember", "with the dev fill off the real fill names ruin's two (%s)" % screen.type_lines("ruin")[2])
 	GodTree.dev_fill = true
 	t.check(screen.type_lines("ruin")[2] == "Tier 1: Smite, Ember", "with the dev fill on, its Tier 1 names the two powers (%s)" % screen.type_lines("ruin")[2])
 	GodTree.dev_fill = false

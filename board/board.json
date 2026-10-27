@@ -1,14 +1,10 @@
 {
- "hash": "fa902884b3238bc6",
- "updated": "2026-10-27T05:29:01+07:00",
+ "hash": "b2b3812565a2e7bf",
+ "updated": "2026-10-27T14:06:25+07:00",
  "changes": {
-  "date": "<t:1793053741:f>",
+  "date": "<t:1793084785:f>",
   "items": [
-   "Done: Design: god progression and Endless Night",
-   "Done: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop",
-   "New: Level tables, batch 1: five levels and the level-5 twist",
-   "New: God P2: Lantern Notice, the Lantern Hunt and seals",
-   "New: God P3: the Awaken rite mission type and the first rite"
+   "Started: God P2: Lantern Notice, the Lantern Hunt and seals"
   ]
  },
  "snapshot": {
@@ -245,7 +241,7 @@
    },
    "god-p2-lantern": {
     "title": "God P2: Lantern Notice, the Lantern Hunt and seals",
-    "status": "todo",
+    "status": "doing",
     "area": "Design",
     "version": "next",
     "needs_you": false,
@@ -1067,6 +1063,14 @@
   "branches": [
    {
     "name": "feat/god-progression",
+    "ahead": 31,
+    "behind": 0,
+    "date": "2026-10-27",
+    "subject": "docs: god P1 summary -- merged-tree landing numbers",
+    "pushed": true
+   },
+   {
+    "name": "claude/god-p2-lantern-04cddc",
     "ahead": 31,
     "behind": 0,
     "date": "2026-10-27",

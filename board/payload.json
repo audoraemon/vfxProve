@@ -7,16 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **83** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793053741:f>)\n• Done: Design: god progression and Endless Night\n• Done: P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop\n• New: Level tables, batch 1: five levels and the level-5 twist\n• New: God P2: Lantern Notice, the Lantern Hunt and seals\n• New: God P3: the Awaken rite mission type and the first rite",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **24** to do · **83** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793084785:f>)\n• Started: God P2: Lantern Notice, the Lantern Hunt and seals",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-27T05:29:01+07:00"
+     "timestamp": "2026-10-27T14:06:25+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "31 commits not in Develop-Main · last commit today · local only\n> docs: god P1 summary -- merged-tree landing numbers\n\n**To do** (3)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• God P3: the Awaken rite mission type and the first rite\n• God P2: Lantern Notice, the Lantern Hunt and seals",
+     "description": "31 commits not in Develop-Main · last commit today\n> docs: god P1 summary -- merged-tree landing numbers\n\n**In progress** (1)\n• God P2: Lantern Notice, the Lantern Hunt and seals\n\n**To do** (2)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• God P3: the Awaken rite mission type and the first rite",
+     "color": 5016537
+    },
+    {
+     "title": "claude/god-p2-lantern-04cddc",
+     "description": "31 commits not in Develop-Main · last commit today · local only\n> docs: god P1 summary -- merged-tree landing numbers\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

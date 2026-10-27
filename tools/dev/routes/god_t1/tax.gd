@@ -44,9 +44,8 @@ const BELL_MIN := 3.0
 const LIP_LEAD := 1.2
 ## Decree: his guards are called off when none stands within this of the door (the mob needs them beyond MOB_GUARD_R of him).
 const LIP_CLEAR := 3.0
-## Decree: how far from the door the guards are called, and how far behind the door (against his heading) the law is centred.
+## Decree: how far from the door the guards are called.
 const BELL_FAR := [8.0, 9.0, 10.0]
-const LIP_BEHIND := 1.0
 ## Dominion: how far a hop of the whisper goes (REACH is 10).
 const WHISPER_HOP := 9.0
 
@@ -129,7 +128,8 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 		hiding += 1 if q.state == AssassinateDirector.State.HIDING else 0
 	# A visit runs out: the bolt cast RUIN_DOOR seconds before he comes out lands at his door as he does, where he cannot have walked from.
 	for q in d.quarries:
-		if q.state == AssassinateDirector.State.VISITING and q.indoors_left <= RUIN_DOOR and q.indoors_left > 0.0 and smite_ready 				and MissionDirector._alive(q.target):
+		if q.state == AssassinateDirector.State.VISITING and q.indoors_left <= RUIN_DOOR and q.indoors_left > 0.0 and smite_ready \
+				and MissionDirector._alive(q.target):
 			rules.cast(slots.smite, d._door_in(q))
 			return _did(ctx, "smite %s at the door as he comes out" % q.label)
 	var street := _street(d)
@@ -352,8 +352,8 @@ static func _any_near(guards: Array[Person], at: Vector2, r: float) -> bool:
 
 ## CALL THE GUARD when a collector's next exit from a debtor's door is BELL_MAX to BELL_MIN seconds away (once for that visit), from a spot that
 ## takes his guards; then Leaving Is Prohibited over the door LIP_LEAD seconds before he comes out, if none of his guards stands near it. Bound
-## at the door with the guards away, the debtors mob him. The law is centred behind the door against his heading so the edge he is held at is
-## well inside the mob's reach. With nothing else to do for SMOKE_AFTER seconds, the law at the counting-house's door smokes the next one out.
+## at the door with the guards away, the debtors mob him. The law is centred on the door (D17: the mob reads the law's centre, so a click on the door is
+## enough). With nothing else to do for SMOKE_AFTER seconds, the law at the counting-house's door smokes the next one out.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
@@ -361,7 +361,8 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 	if d == null:
 		return ""
 	for q in d.quarries:
-		if q.dead or not q.state in [AssassinateDirector.State.WALKING, AssassinateDirector.State.VISITING] 				or not MissionDirector._alive(q.target):
+		if q.dead or not q.state in [AssassinateDirector.State.WALKING, AssassinateDirector.State.VISITING] \
+				or not MissionDirector._alive(q.target):
 			continue
 		var nx := _next_exit(ctx, q)
 		if nx.is_empty():
@@ -370,13 +371,13 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 		var left: float = nx["in"]
 		var key := "%d_%d" % [q.index, int(nx["leg"])]
 		var guards := _guards_out(q)
-		if q.state == AssassinateDirector.State.VISITING and left <= LIP_LEAD and bc._slot_ready(rules, slots, "noleave") 				and not ctx.memo.has("lip_" + key) and not _any_near(guards, door, LIP_CLEAR):
-			var next: Vector2 = q.stop_doors[q.leg + 1] if q.leg + 1 < q.stop_doors.size() else d.safe_at
-			var heading := (next - door).normalized()
+		if q.state == AssassinateDirector.State.VISITING and left <= LIP_LEAD and bc._slot_ready(rules, slots, "noleave") \
+				and not ctx.memo.has("lip_" + key) and not _any_near(guards, door, LIP_CLEAR):
 			ctx.memo["lip_" + key] = _now(ctx)
-			rules.cast(slots.noleave, door - heading * LIP_BEHIND)
+			rules.cast(slots.noleave, door)
 			return _did(ctx, "leaving is prohibited over %s's door, %d guard(s) out of doors" % [q.label, guards.size()])
-		if left <= BELL_MAX and left >= BELL_MIN and not guards.is_empty() and not ctx.memo.has("bell_" + key) 				and bc._slot_ready(rules, slots, "belllies"):
+		if left <= BELL_MAX and left >= BELL_MIN and not guards.is_empty() and not ctx.memo.has("bell_" + key) \
+				and bc._slot_ready(rules, slots, "belllies"):
 			var spot := _bell_spot(ctx, door, guards)
 			if spot != Vector2.INF and GOD.cast_bell(bc, ctx, "guard", spot):
 				ctx.memo["bell_" + key] = _now(ctx)

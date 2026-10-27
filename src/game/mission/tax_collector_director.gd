@@ -42,8 +42,8 @@ const GUARD_R := 0.6
 const FLUSH_GAP := 1.5
 ## The one banner when the counting-house burns or falls with collectors inside (v0.11.1).
 const FLUSH_BANNER := "THE COUNTING-HOUSE BURNS - THE COLLECTORS RUN"
-## God T1R (spec 5.2): the debtors' mob. A collector bound by a sealed Leaving Is Prohibited (NoLeaveFx.bound), out of doors within
-## MOB_DOOR_R of the door of a debtor he has visited tonight, with none of his guards (alive, out of doors) within MOB_GUARD_R of him,
+## God T1R (spec 5.2, D17): the debtors' mob. A collector bound by a sealed Leaving Is Prohibited (NoLeaveFx.bound) whose centre is within
+## MOB_DOOR_R of the door of a debtor he has gone in at tonight, out of doors, with none of his guards (alive, out of doors) within MOB_GUARD_R of him,
 ## for MOB_AFTER seconds, is mobbed by that house's debtors: he dies (kind &"mob", credited to "noleave"), judged unseen -- the debtors
 ## raise no cry. His guards must be drawn off first (The Bell Lies, CALL THE GUARD). First guesses, tuned in this order: the policy,
 ## then MOB_GUARD_R 1.5 -> 1.0, then MOB_AFTER 3 -> 2.
@@ -184,21 +184,21 @@ func step(delta: float) -> void:
 	_step_mob(delta)
 
 
-## `q` is bound by a law that holds now (a sealed NoLeaveFx with him in its bound).
-func _bound(q: Quarry) -> bool:
-	for v: Variant in _noleave:
-		if is_instance_valid(v) and (v as NoLeaveFx).sealed and (v as NoLeaveFx).bound.has(q.target):
-			return true
-	return false
-
-
-## The door `q` has visited tonight nearest him and within MOB_DOOR_R of him; Vector2.INF for none.
+## The door the law that binds `q` is laid on (god T1R, D17): the door he went in at tonight nearest the origin of a sealed Leaving Is Prohibited
+## that holds him (he is in its `bound`), if that origin is within MOB_DOOR_R of it; Vector2.INF for none. The law's centre is read, not where he
+## stands: he is held on the circle's edge, which is a different distance from the door by where he walks, so a click on the door must always work.
 func _mob_door(q: Quarry) -> Vector2:
 	var best := Vector2.INF
-	for door: Vector2 in _visited.get(q.index, []):
-		var gap := q.target.ground_pos.distance_to(door)
-		if gap <= MOB_DOOR_R and (best == Vector2.INF or gap < q.target.ground_pos.distance_to(best)):
-			best = door
+	var best_gap := INF
+	for v: Variant in _noleave:
+		if not is_instance_valid(v) or not (v as NoLeaveFx).sealed or not (v as NoLeaveFx).bound.has(q.target):
+			continue
+		var origin: Vector2 = (v as NoLeaveFx).origin
+		for door: Vector2 in _visited.get(q.index, []):
+			var gap := origin.distance_to(door)
+			if gap <= MOB_DOOR_R and gap < best_gap:
+				best = door
+				best_gap = gap
 	return best
 
 
@@ -210,10 +210,10 @@ func _guarded(q: Quarry) -> bool:
 	return false
 
 
-## `q` is held by the law at a visited debtor's door: bound, out of doors on his round (or in his flight), within MOB_DOOR_R of the door.
+## `q` is held by a law laid on a visited debtor's door (_mob_door()): bound, and out of doors on his round (or in his flight).
 func _held_at_door(q: Quarry) -> bool:
 	return not q.dead and _alive(q.target) and not q.target.inside and q.state in [State.WALKING, State.FLEEING] \
-		and _bound(q) and _mob_door(q) != Vector2.INF
+		and _mob_door(q) != Vector2.INF
 
 
 ## The debtors can mob `q` now: held at a visited door (_held_at_door()) with no guard of his near. Only reads.
@@ -239,6 +239,8 @@ func _step_mob(delta: float) -> void:
 
 
 ## Seconds left before `q` is mobbed (MOB_AFTER while the conditions are not yet met, or have just been); for his tag.
+## (Real seconds, on purpose: the mob's wait is a reflex like a visit's, not a schedule, so a Lantern night's clock rate does not scale it, and
+## its tag counts real seconds where the visit's tag counts mission seconds.)
 func mob_left(q: Quarry) -> float:
 	return maxf(MOB_AFTER - float(_mob_for.get(q.index, 0.0)), 0.0)
 

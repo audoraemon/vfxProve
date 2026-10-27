@@ -74,8 +74,8 @@ class Quarry:
 	var alarms := 0
 	## One of his guards fell: he is alarmed at the next look, unless he fell in the same blow.
 	var guard_fell := false
-	## He was killed; the second of the night he fell (-1 alive); where, waiting to be judged once a cast's other victims
-	## have fallen too.
+	## He was killed, or (god T1R, walls_stop) stopped out of the walls -- then only `died_at` is set; the second of the night he fell or was
+	## stopped (-1 alive); where he fell, waiting to be judged once a cast's other victims have fallen too.
 	var dead := false
 	var died_at := -1.0
 	var fell_at := Vector2.INF

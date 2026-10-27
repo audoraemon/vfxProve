@@ -52,6 +52,8 @@ static func run(t) -> void:
 	_mob(t)
 	_mob_guarded(t)
 	_mob_far(t)
+	_mob_centre(t)
+	_mob_unvisited(t)
 
 
 static func _world(loadout := PackedStringArray(), reserve := false, plain := false, keep_gap := false) -> Dictionary:
@@ -1078,11 +1080,13 @@ static func _mob_run(s: Dictionary, off: Vector2, guards_at: Vector2, seconds: f
 		_run(s, DT)
 
 
-## The law cast over the door and sealed, binding the collector.
-static func _seal_on(s: Dictionary) -> void:
+## The law cast and sealed, binding the collector: centred on the door by default, or on `at` (D17: the mob reads the law's centre).
+static func _seal_on(s: Dictionary, at := Vector2.INF) -> void:
 	var d: TaxCollectorDirector = s.d
 	var fx: NoLeaveFx = s.fx
-	(s.rules as Rules).cast(0, s.door as Vector2)
+	var centre: Vector2 = s.door if at == Vector2.INF else at
+	(s.rules as Rules).cast(0, centre)
+	fx.origin = centre
 	fx.sealed = true
 	fx.bound[d.quarries[0].target] = 0.0
 
@@ -1133,12 +1137,58 @@ static func _mob_far(t) -> void:
 	var s := _mob_world()
 	var d: TaxCollectorDirector = s.d
 	var q := d.quarries[0]
-	_seal_on(s)
-	var off := Vector2(TaxCollectorDirector.MOB_DOOR_R + 2.0, 0.0)
-	_mob_run(s, off, (s.door as Vector2) + Vector2(14.0, 0.0), TaxCollectorDirector.MOB_AFTER + 2.0)
-	t.check(not q.dead and not d.mob_ready(q), "bound 5 from any door he visited: the debtors do not come, he lives")
+	var door: Vector2 = s.door
+	var away := door + Vector2(14.0, 0.0)
+	# D17 boundary: the law's centre 3.5 from the door (MOB_DOOR_R is 3.0): the collector stands at the door, bound, and lives.
+	_seal_on(s, door + Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.5, 0.0))
+	_mob_run(s, Vector2.ZERO, away, TaxCollectorDirector.MOB_AFTER + 2.0)
+	t.check(not q.dead and not d.mob_ready(q), "the law's centre 3.5 from his debtor's door: the debtors do not come, he lives")
 	(s.fx as NoLeaveFx).sealed = false
-	_mob_run(s, Vector2.ZERO, (s.door as Vector2) + Vector2(14.0, 0.0), TaxCollectorDirector.MOB_AFTER + 2.0)
+	_mob_run(s, Vector2.ZERO, away, TaxCollectorDirector.MOB_AFTER + 2.0)
 	t.check(not q.dead and not d.mob_ready(q), "a law that is not sealed binds nobody: he lives")
+	(s.fx as NoLeaveFx).free()
+	_done(s)
+
+
+## D17: the law is read at its centre. Centred on the door with the collector held out on the circle's edge (3.2 from the door, past MOB_DOOR_R),
+## the mob starts all the same; with the centre 3.0 from the door, it starts too (the number is inclusive).
+static func _mob_centre(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	var door: Vector2 = s.door
+	_seal_on(s)
+	_mob_run(s, Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.2, 0.0), door + Vector2(14.0, 0.0), 0.5)
+	t.check(d.mob_ready(q) and not q.dead, "the law centred on the door, the collector held 3.2 from it: the mob is ready")
+	_mob_run(s, Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.2, 0.0), door + Vector2(14.0, 0.0), TaxCollectorDirector.MOB_AFTER + 0.5)
+	t.check(q.dead and q.killed_by == "noleave" and q.unseen, "and MOB_AFTER later he is dead, unseen")
+	(s.fx as NoLeaveFx).free()
+	_done(s)
+	var e := _mob_world()
+	var de: TaxCollectorDirector = e.d
+	var qe := de.quarries[0]
+	var edge: Vector2 = e.door
+	_seal_on(e, edge + Vector2(TaxCollectorDirector.MOB_DOOR_R, 0.0))
+	_mob_run(e, Vector2.ZERO, edge + Vector2(14.0, 0.0), 0.5)
+	t.check(de.mob_ready(qe), "the law's centre exactly MOB_DOOR_R from the door: the mob is ready")
+	(e.fx as NoLeaveFx).free()
+	_done(e)
+
+
+## The door must be one he went in at tonight: bound at the door of the stop he has NOT reached yet (the law centred on it), he lives.
+static func _mob_unvisited(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	var next: Vector2 = q.stop_doors[1]
+	t.check(next.distance_to(s.door) > TaxCollectorDirector.MOB_DOOR_R * 2.0, "(set-up) his second debtor's door is far from his first")
+	_seal_on(s, next)
+	for i in roundi((TaxCollectorDirector.MOB_AFTER + 2.0) / DT):
+		_arrive(q.target, next)
+		for g: Variant in q.guards:
+			if MissionDirector._alive(g):
+				_arrive(g as Person, next + Vector2(14.0, 0.0))
+		_run(s, DT)
+	t.check(not q.dead and not d.mob_ready(q), "bound at the door of a stop he has not reached: the debtors do not come, he lives")
 	(s.fx as NoLeaveFx).free()
 	_done(s)

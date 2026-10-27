@@ -285,9 +285,10 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 	return m
 
 
-## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): kill the tax
-## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector). A seen
-## kill still counts, but calls the bell; v0.11.2: the toll turns the Lantern (a watch night) instead of losing the night.
+## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): stop the tax
+## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector): kill them, send
+## them out of the walls, or (god T1R) have the debtors mob them. A seen kill still counts, but calls the bell; v0.11.2: the toll turns
+## the Lantern (a watch night) instead of losing the night.
 static func tax_collector() -> MissionDef:
 	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))

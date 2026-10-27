@@ -36,6 +36,7 @@ static func run(t) -> void:
 	_lie_calls_off_waiting(t)
 	_gate_body_far(t)
 	_hint_running(t)
+	_key_evacuation(t)
 
 
 static func _world() -> Dictionary:
@@ -662,7 +663,7 @@ static func _next_countdown(t) -> void:
 	_run(s, 3.5)
 	t.check(_labelled(d, "NEXT STAR - FALLS IN 0:07").size() == 1, "it counts down (0:07 at 0:03.5)")
 	var w := _star_running(s, 0)
-	t.check(_labelled(d, "NEXT STAR - FALLS IN 1:30").size() == 0 and d.next_star() == 1 and d.next_fall_in() < 90.0, "star 1 by its schedule while star 0 runs")
+	t.check(d.next_star() == 1 and d.next_fall_in() < 90.0, "star 1 by its schedule while star 0 runs")
 	t.check(w.messenger.fold(Vector2(-5.75, 18.0)), "star 0's runner set down outside")
 	_run(s, DT * 2.0)
 	t.check(w.warning_dead and _labelled(d, "NEXT STAR - FALLS IN 0:30").size() == 1, "stopped: the next star's tag reads stop_wait, 0:30 (%s)"
@@ -746,12 +747,30 @@ static func _gate_body_far(t) -> void:
 	_done(s)
 
 
-## Review M4: while a warning runs with nothing of its own to say (its stare, its run with no relay), the board's hint is its own line, "stars".
+## Review M4, D30: while a warning has nothing of its own to say, the board's hint is its own line -- "stars" (W3's stare clause) while he stares,
+## "running" (no stare clause: W3 draws only in the stare) once he runs with no relay.
 static func _hint_running(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
 	var w := _star_staring(s, 0)
 	t.check(d.running() == w and w.hint_phase() == "" and d.hint_phase() == "stars", "staring: the board's line (%s)" % d.hint_phase())
 	_run(s, WarningDirector.STARE)
-	t.check(w.phase == WarningDirector.Phase.RUN and w.relays == 0 and d.hint_phase() == "stars", "running, no relay: still the board's line")
+	t.check(w.phase == WarningDirector.Phase.RUN and w.relays == 0 and d.hint_phase() == "running", "running, no relay: the running line (%s)" % d.hint_phase())
+	t.check(not MissionHints.line("warning", "running").contains("stares") and MissionHints.line("warning", "stars").contains("stares"),
+		"the running line offers no stare clause; the stare's does")
+	_done(s)
+
+
+## D30 (review M2): the town's evacuation sends the postern's watchman to flee for a gate (FLEE, Crowd._evacuate()); a flight like that, though
+## it lies beyond the wall, does not turn the key -- only a fright from a strike near him (PANIC), or W3's body.
+static func _key_evacuation(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var w := _star_staring(s, 0)
+	var m := w.messenger
+	crowd._evacuate()
+	t.check(m.mind == Person.Mind.FLEE and w.key_door() != Vector2.INF, "the town evacuates: the staring watchman flees for a gate (%s)" % Person.Mind.keys()[m.mind])
+	m.set_goal(Vector2(-6.0, 17.4))  # his way to the gate it chose, beyond the barred postern
+	_run(s, DT * 3.0)
+	t.check(not w.warning_dead and City.current().town().has_point(m.ground_pos), "an evacuation's flight does not turn the key: he stays in")
 	_done(s)

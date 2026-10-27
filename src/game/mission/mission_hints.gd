@@ -20,6 +20,7 @@ const LINES := {
 	"warning": WARNING_LINE,
 	"warning.relay": WARNING_RELAY,
 	"warning.stars": "Kill the messenger (gold) unseen (red), let the bell lie, or get him out: kill a man just outside his gate as he stares at his star.",
+	"warning.running": "The messenger (gold) runs for the bellkeeper (blue): kill him unseen (red), get him out of the walls, or let the bell lie.",
 	"warning.bell": WARNING_BELL,
 	"warning.waiting": "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out.",
 	"omen": WARNING_LINE,

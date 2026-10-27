@@ -458,8 +458,9 @@ func _use_key() -> void:
 	var bound := messenger.goal()
 	if messenger.ground_pos.distance_to(at) > KEY_REACH or bound == Vector2.INF or City.current().town().has_point(bound):
 		return
-	# Only a way W3 or a fright gave him (D29, review M2): the body he goes out to, or his flight. Any other walk beyond the wall goes round.
-	var frightened := messenger.mind == Person.Mind.PANIC or messenger.mind == Person.Mind.FLEE
+	# Only a way W3 or a fright gave him (D29, D30): the body he goes out to, or his flight from a danger near him (PANIC). The town's
+	# evacuation (Crowd._evacuate(): FLEE for a gate) does not turn it, nor does any other walk beyond the wall: he goes round as ever.
+	var frightened := messenger.mind == Person.Mind.PANIC
 	if not frightened and not (_drawn_to != Vector2.INF and bound.distance_to(_drawn_to) <= RETARGET_MOVE):
 		return
 	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN

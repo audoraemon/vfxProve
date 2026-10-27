@@ -149,7 +149,10 @@ func hint_phase() -> String:
 	var w := running()
 	if w != null:
 		var phase := w.hint_phase()
-		return phase if phase != "" else "stars"  # (god T1R) the board's line names the new ways to stop a warning
+		if phase != "":
+			return phase
+		# (god T1R) the board's line names the new ways to stop a warning; once he runs, W3 (the stare's) is over: "running" names the rest (D30).
+		return "running" if w.phase == WarningDirector.Phase.RUN else "stars"
 	if stopped() > 0:
 		return "waiting" if next_star() >= 0 else ""
 	return "stars"

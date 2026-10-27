@@ -8,6 +8,7 @@ const SPEC := [
 	["warning", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["warning.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
 	["warning.stars", "Kill the messenger (gold) unseen (red), let the bell lie, or get him out: kill a man just outside his gate as he stares at his star."],
+	["warning.running", "The messenger (gold) runs for the bellkeeper (blue): kill him unseen (red), get him out of the walls, or let the bell lie."],
 	["warning.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],
 	["warning.waiting", "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out."],
 	["omen", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],

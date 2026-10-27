@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_spots_land(t, cap)
 	_camera_clear(t, cap)
 	_tour_true(t, cap)
+	_routes_stay_in(t, cap)
 	_still_aldermere(t, ald)
 	Kit.done(cap)
 	Kit.done(ald)
@@ -197,6 +198,30 @@ static func _tour_true(t, cap: Dictionary) -> void:
 		for n in HarvestDirector.STORE_NAMES:
 			aldermere_names = aldermere_names or (line[1] as String).contains("The %s granary" % n)
 	t.check(not aldermere_names, "the tour names none of Aldermere's granaries")
+
+
+## God T1R (Tier 1 routes, Task 4): the Capital's carters set out CARTER_LEAD before each grain, and none of their roads, Keep gate to door and
+## back, leaves the old town's walls (a carter who merely walks his road is never "out of the walls", river gates included), nor does a
+## granary's door or a watchman's post.
+static func _routes_stay_in(t, cap: Dictionary) -> void:
+	var d: HarvestDirector = cap.d
+	var capital := City.by_id(&"capital")
+	var grid: WalkGrid = (cap.crowd as Crowd)._grid
+	var early := true
+	for i in d.targets.size():
+		early = early and is_equal_approx(d.carter_out_at(i), maxf(d.grain_due(i) - HarvestDirector.CARTER_LEAD, 0.0))
+	t.check(early, "the Capital's carters set out CARTER_LEAD before each grain")
+	var inside := not Walls.outside(d.citadel_door, capital)
+	for st: Structure in d.targets:
+		inside = inside and not Walls.outside(d.doors[st], capital)
+		for w: HarvestDirector.Watch in d.watches[st]:
+			inside = inside and not Walls.outside(w.post, capital)
+		for pair in [[d.citadel_door, d.doors[st]], [d.doors[st], d.citadel_door]]:
+			var path := grid.path(pair[0], pair[1])
+			inside = inside and not path.is_empty()
+			for pt in path:
+				inside = inside and not Walls.outside(pt, capital)
+	t.check(inside, "in the Capital the Keep gate, the doors, the posts and every carter's road lie inside the old town's walls")
 
 
 ## Aldermere's own Spoiled Harvest is as ever: its seeded spots, names and door.

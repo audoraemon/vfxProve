@@ -111,8 +111,11 @@ static func draw(slot: GodSlot) -> String:
 ## The mission `id` as `slot`'s god plays it (spec §9.1): the board's version at the god's tier with the god's slots, Might and
 ## drafted abilities, and the Faith clock added to the night's clock after the board stretched its events (Ruling P7: the events keep
 ## the tier's times and only dawn comes later). A night with acts has the clock added to each act. Null for an id not on the board.
+## The Lantern's Hunt (god P2, spec §10.2, Ruling P2-5) is its stand-in built at the god's tier, then dressed with the Hunt's title and banner.
 static func def_for(slot: GodSlot, id: String) -> MissionDef:
-	var def := TierBook.board(id, null)
+	var hunt := hunt_for(slot)
+	var is_hunt := not hunt.is_empty() and id == String(hunt.id)
+	var def := TierBook.board(id, null, slot.tier) if is_hunt else TierBook.board(id, null)
 	if def == null:
 		return null
 	var pool := slot.draftable()
@@ -126,7 +129,15 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 			a.clock += extra
 	else:
 		def.clock += extra
+	if is_hunt:
+		_dress_hunt(def, hunt)
 	return def
+
+
+## The Hunt's own title and banner on its stand-in; brief, goal and lose stay the stand-in's (god P2, Ruling P2-5).
+static func _dress_hunt(def: MissionDef, hunt: Dictionary) -> void:
+	def.name = String(hunt.title)
+	def.intro_banner = String(hunt.title).to_upper()
 
 
 ## The god's numbers on one def (the mission or an act).

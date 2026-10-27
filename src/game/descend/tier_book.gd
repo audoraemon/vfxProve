@@ -137,10 +137,14 @@ static func believers(base: int, tier: int) -> int:
 ## - No bonuses: the wishes take their place.
 ## - Its mission tags, and at GAZE_TIER the Gaze objective.
 ## Null for an id not on the board. MissionBook's own missions are fresh copies each call, so nothing here reaches them.
-static func board(id: String, state: DescendState = null) -> MissionDef:
+## `at_tier` (god P2, spec §10.2, Ruling P2-5): a Lantern Hunt's stand-in played at the god's tier -- 1-5 builds it at that tier's
+## readiness, budget, clock, stretch, unaware tag and Gaze; anything else (the default 0) is the mission's own tier, exactly as before.
+static func board(id: String, state: DescendState = null, at_tier := 0) -> MissionDef:
 	var tier := tier_of(id)
 	if tier == 0:
 		return null
+	if at_tier >= 1 and at_tier <= NAMES.size():
+		tier = at_tier
 	var m: MissionDef = checked(_from_act(id) if id == "festival" or id == "procession" else MissionBook.get_mission(id), id)
 	if m == null:
 		return null

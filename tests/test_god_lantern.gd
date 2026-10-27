@@ -5,6 +5,8 @@ extends RefCounted
 ## Keys come from the merged tree at test time (C2): the fixture type is the first with two starting keys (preflight R3).
 
 const FILE := "user://test_god_lantern_%s.cfg"
+const Tier2 := preload("res://tests/test_tier2_board.gd")
+const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 
 static func run(t) -> void:
@@ -23,6 +25,11 @@ static func run(t) -> void:
 	_seal_never_traps(t)
 	_stake(t)
 	_bad_seal_file(t)
+	_board_at_default(t)
+	_board_at_informer(t)
+	_hunt_def(t)
+	_hunt_def_not_due(t)
+	_informer_t3_wishes(t)
 	GodTree.dev_fill = false
 
 
@@ -358,3 +365,91 @@ static func _bad_seal_file(t) -> void:
 	var back := GodSlot.read(file)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(file))
 	t.check(back != null and back.sealed == key and back.seal_nights == 3 and back.notice == 100 and back.hunt_due(), "a seal and the Notice round-trip")
+
+
+## What a board def holds that the tier drives, for comparing two builds of the same mission (god P2 Task 2; C3).
+static func _shape(m: MissionDef) -> Array:
+	var acts: Array = []
+	for a: ActDef in m.acts:
+		acts.append([a.tier, a.slots, a.dp_capacity, a.tier_floor])
+	var gazes := 0
+	if m.make_objectives.is_valid():
+		for o in m.objectives():
+			gazes += 1 if o is GazeObjective else 0
+	return [m.tier, m.tier_floor, m.clock, m.stretch, m.slots, m.dp_capacity, m.mission_tags, m.acts.size(), gazes, acts]
+
+
+static func _board_at_default(t) -> void:
+	var bad := PackedStringArray()
+	for id in TierBook.all():
+		var a := _shape(TierBook.board(id))
+		if _shape(TierBook.board(id, null, 0)) != a or _shape(TierBook.board(id, null, TierBook.tier_of(id))) != a:
+			bad.append(id)
+	t.check(bad.is_empty(), "board(id), board(id, null, 0) and board(id, null, its own tier) build the same def for every board mission (%s)" % [bad])
+
+
+static func _board_at_informer(t) -> void:
+	var m := TierBook.board("informer", null, 3)
+	t.check(m != null and m.tier == 3 and m.tier_floor == TierBook.readiness(3), "the Informer at tier 3 has tier 3 and its floor (%d, %d)" % [m.tier, m.tier_floor])
+	t.check(is_equal_approx(m.clock, TierBook.clock(3)), "its clock is tier 3's (%s)" % m.clock)
+	t.check(is_equal_approx(m.stretch, TierBook.clock(3) / MissionBook.informer().clock), "its events stretch to the longer clock (%s)" % m.stretch)
+	t.check(m.slots == TierBook.slots(3) and m.dp_capacity == TierBook.dp(3), "tier 3's slots and Might (%d, %d)" % [m.slots, m.dp_capacity])
+	t.check(int(_shape(m)[8]) == 0, "no Gaze at tier 3")
+	t.check(int(_shape(TierBook.board("informer", null, 5))[8]) == 1, "one Gaze at tier 5")
+	t.check(TierBook.board("nosuch", null, 3) == null, "an id not on the board is null whatever the tier")
+	t.check(TierBook.board("informer", null, 9).tier == 2 and TierBook.board("informer", null, -1).tier == 2, "a tier outside 1-5 is the mission's own")
+
+
+static func _hunt_def(t) -> void:
+	for tier in range(1, 6):
+		var s := _slot(tier)
+		s.notice = 100
+		s.bought["clock"] = 1
+		var h: Dictionary = GodNight.HUNTS[tier - 1]
+		var def := GodNight.def_for(s, h.id)
+		var board := TierBook.board(h.id)
+		t.check(def.tier == tier and def.name == h.title and def.intro_banner == String(h.title).to_upper(),
+			"tier %d Hunt: tier, the Hunt's title and its banner (%d, %s, %s)" % [tier, def.tier, def.name, def.intro_banner])
+		t.check(def.slots == s.slots() and def.dp_capacity == s.max_might() and def.pool == s.draftable(),
+			"tier %d Hunt: the god's slots, Might and pool (%d, %d)" % [tier, def.slots, def.dp_capacity])
+		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001, "tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])
+		t.check(def.goal == board.goal and def.lose == board.lose and def.brief == board.brief, "tier %d Hunt: brief, goal and lose are the stand-in's" % tier)
+		t.check(int(_shape(def)[8]) == (1 if tier == 5 else 0), "tier %d Hunt: Gaze only at tier 5 (%d)" % [tier, int(_shape(def)[8])])
+		t.check(Descent.new().setup(def, 1).tier == tier, "tier %d Hunt: the Descent plays it at the god tier" % tier)
+
+
+static func _hunt_def_not_due(t) -> void:
+	var s := _slot(1)
+	s.notice = 99
+	var def := GodNight.def_for(s, "lost_lamb")
+	var own := MissionBook.get_mission("lost_lamb")
+	t.check(def.name == own.name and def.intro_banner == own.intro_banner, "at 99%% the stand-in plays under its own name and banner (%s)" % def.name)
+	# A due Hunt only renames the Hunt's own mission: any other board id is the god's ordinary night.
+	s.notice = 100
+	var other := GodNight.def_for(s, "warning")
+	t.check(other != null and other.name == TierBook.board("warning").name, "at 100%% another mission keeps its name (%s)" % other.name)
+
+
+## The Informer's Tier 3 night hears 1-3 Tier 3 wishes, none of them on the director's own people (preflight R8); fewer than 3 is reported only.
+static func _informer_t3_wishes(t) -> void:
+	var heard := 0
+	var hit := 0
+	var short := 0
+	for night in 4:
+		var def := TierBook.board("informer", null, 3)
+		var descent := Descent.new().setup(def, Descent.seed_for(night, "informer"))
+		var n := Kit.world(TierBook.board("informer", null, 3), null, func(d: MissionDirector, rules: Rules) -> void: descent.reserve(rules, d))
+		var mine := Tier2._actors(n.d)
+		for w in descent.wishes:
+			heard += 1
+			for p in w.people():
+				hit += 1 if (mine.people as Array).has(p) else 0
+			for st in w.places():
+				hit += 1 if (mine.places as Array).has(st) else 0
+		short += 1 if descent.wishes.size() < TierBook.wishes(3) else 0
+		t.check(descent.wishes.size() >= 1 and descent.wishes.size() <= 3, "night %d: the Informer at tier 3 hears 1-3 wishes (%d)" % [night, descent.wishes.size()])
+		descent.release()
+		Kit.done(n)
+	t.check(heard > 0 and hit == 0, "the Informer at tier 3: wishes heard (%d), none on the director's own people or buildings (%d)" % [heard, hit])
+	if short > 0:
+		print("NOTE: the Informer at tier 3 heard fewer than %d wishes on %d of 4 nights" % [TierBook.wishes(3), short])

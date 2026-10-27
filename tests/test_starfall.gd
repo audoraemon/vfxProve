@@ -23,6 +23,13 @@ static func run(t) -> void:
 	_lie_over(t)
 	_lie_tag(t)
 	_flags_and_report(t)
+	_gate_body(t)
+	_gate_body_not(t)
+	_gate_body_postern(t)
+	_key_fright(t)
+	_key_only_his(t)
+	_lie_calls_off(t)
+	_lie_tolled_stays(t)
 
 
 static func _world() -> Dictionary:
@@ -472,4 +479,170 @@ static func _flags_and_report(t) -> void:
 	t.check(d.report().out == 0 and d.report().lies == 0 and d.report().has("stopped") and d.report().has("relays"), "the report has out and lies, beside stopped and relays")
 	var lone := WarningDirector.new()
 	t.check(not lone.walls_stop and not lone.lie_stops and lone.stopped_how == "", "a lone WarningDirector has both rules off")
+	_done(s)
+
+
+## Star `i` set up, its star fallen, and its watchman a second into his stare (W3's window).
+static func _star_staring(s: Dictionary, i: int) -> WarningDirector:
+	var d: StarfallDirector = s.d
+	d._clock = float(d.star_falls[i][0]) - WarningDirector.OMEN_AT - 0.05
+	_run(s, 0.1)
+	_run(s, WarningDirector.OMEN_AT + 1.0)
+	return d.stars[i]
+
+
+## One of the town's soldiers, out of doors, moved to stand (and keep his post) at `at`, for a test to strike down.
+static func _guard_at(s: Dictionary, at: Vector2) -> Person:
+	var crowd: Crowd = s.crowd
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and not p.inside:
+			p.ground_pos = at
+			p.anchor = at
+			return p
+	return null
+
+
+## W3 (D26): while the Main Gate's watchman stares at his star, a man struck down just outside the gate draws him out to the body; past the
+## walls he is out, and the warning is stopped as by W1.
+static func _gate_body(t) -> void:
+	var s := _world()
+	var w := _star_staring(s, 1)
+	var m := w.messenger
+	t.check(w.gate_keeps and w.phase == WarningDirector.Phase.STARE and m == w.watchman, "star 1's watchman stares, W3 on")
+	var g := _guard_at(s, Vector2(2.7, 17.2))
+	t.check(g != null and not City.current().town().has_point(g.ground_pos) and g.ground_pos.distance_to(w.gate_spot) <= WarningDirector.GATE_SIGHT,
+		"a guard stands outside the gate, within sight of the post")
+	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
+	t.check(m.mind == Person.Mind.DUTY and w._drawn_to != Vector2.INF and (s.banners as Array).has("THE WATCHMAN GOES OUT TO THE BODY"),
+		"he goes out to the body, on duty (%s)" % Person.Mind.keys()[m.mind])
+	t.check(Walls.outside(m.goal()), "his walk ends past the walls' margin (%s)" % m.goal())
+	_run(s, WarningDirector.STARE)
+	t.check(w.phase == WarningDirector.Phase.RUN and m.mind == Person.Mind.DUTY and m.goal() == w._drawn_to and not w.warning_dead,
+		"his stare runs out on the way: he goes on out, not to the keeper")
+	m.ground_pos = m.goal()  # (the test's people do not walk: he is set down where his walk ends)
+	_run(s, DT * 2.0)
+	t.check(w.warning_dead and w.stopped_how == "out" and w.is_leaving(m) and (s.banners as Array).has("THE WARNING LEAVES TOWN"),
+		"past the walls he is out: stopped 'out', leaving the map (%s)" % w.stopped_how)
+	_done(s)
+
+
+## W3's edges: a death inside the walls, or one outside once he has run, draws nobody.
+static func _gate_body_not(t) -> void:
+	var s := _world()
+	var w := _star_staring(s, 1)
+	var m := w.messenger
+	var g := _guard_at(s, Vector2(2.7, 12.5))
+	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
+	t.check(w._drawn_to == Vector2.INF and m.mind != Person.Mind.DUTY and w.phase == WarningDirector.Phase.STARE,
+		"a man killed inside the walls: he stares on (%s)" % Person.Mind.keys()[m.mind])
+	_run(s, WarningDirector.STARE)
+	t.check(w.phase == WarningDirector.Phase.RUN and m.mind == Person.Mind.DUTY, "he runs for the keeper")
+	var g2 := _guard_at(s, Vector2(2.7, 17.2))
+	(s.field as EnemyField).kill(g2, &"lightning", g2.ground_pos)
+	t.check(w._drawn_to == Vector2.INF, "a man killed outside once he runs: he runs on")
+	_run(s, 1.0)
+	t.check(not w.warning_dead, "and the warning lives")
+	_done(s)
+
+
+## W3 at the barred postern: a man struck down on the bank beyond it draws its watchman out through it (he holds its key); it stays barred.
+static func _gate_body_postern(t) -> void:
+	var s := _world()
+	var town: Town = s.town
+	var w := _star_staring(s, 0)
+	t.check(is_instance_valid(town.postern) and not town.postern.walkable and w.key_door() != Vector2.INF, "the postern is barred; its watchman holds the key")
+	var g := _guard_at(s, Vector2(-7.5, 16.6))
+	(s.field as EnemyField).kill(g, &"deathmark", g.ground_pos)
+	_run(s, DT * 3.0)
+	t.check(w.warning_dead and w.stopped_how == "out" and (s.banners as Array).has("THE WATCHMAN UNBARS THE POSTERN"),
+		"he goes out through his postern at once, not round by the Main Gate: stopped 'out' (%s)" % w.stopped_how)
+	t.check(not town.postern.walkable, "and the postern is barred behind him")
+	_done(s)
+
+
+## The key turns for a fright too: the postern's watchman whose way lies beyond his barred postern (a fright's flight) goes out through it.
+static func _key_fright(t) -> void:
+	var s := _world()
+	var w := _star_staring(s, 0)
+	var m := w.messenger
+	m.panic(m.ground_pos + Vector2(0.0, -1.4), 0.6, &"smite")
+	m.set_goal(Vector2(-6.0, 17.4))  # his flight beyond the wall (where a panic's own flight ends is its own; the key reads only where he is going)
+	t.check(not City.current().town().has_point(m.goal()), "frightened at his post, his flight lies beyond the barred postern")
+	_run(s, DT * 2.0)
+	t.check(w.warning_dead and w.stopped_how == "out" and Walls.outside(m.ground_pos), "he unbars it and is out: stopped 'out' (%s)" % w.stopped_how)
+	_done(s)
+
+
+## Only the postern's own watchman, while he carries the warning, and only once his star has fallen: the watchman before his star, the Main
+## Gate's watchman, or a relay standing at the postern, goes round as ever.
+static func _key_only_his(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	d._clock = 7.95
+	_run(s, 0.1)
+	var w := d.stars[0]
+	t.check(w.phase == WarningDirector.Phase.OMEN and w.key_door() != Vector2.INF, "set up, the star not yet fallen")
+	var m := w.messenger
+	m.set_goal(Vector2(-6.0, 17.4))
+	_run(s, DT * 2.0)
+	t.check(not w.warning_dead and City.current().town().has_point(m.ground_pos), "before the star falls the key does not turn")
+	_done(s)
+	s = _world()
+	var w1 := _star_staring(s, 1)
+	t.check(w1.key_door() == Vector2.INF, "the Main Gate's watchman holds no postern's key")
+	_done(s)
+	s = _world()
+	var w0 := _star_running(s, 0)
+	var crowd: Crowd = s.crowd
+	var relay: Person = null
+	for p in crowd.citizens:
+		if p != w0.messenger and p != crowd.bell.keeper and p.profile != null and p.profile.role == CitizenProfile.Role.RESIDENT:
+			relay = p
+			break
+	w0.messenger = relay
+	relay.ground_pos = Vector2(-5.75, 14.9)
+	relay.set_goal(Vector2(-6.0, 17.4))
+	t.check(w0.key_door() == Vector2.INF, "a relay is not the postern's watchman: no key")
+	_run(s, DT * 2.0)
+	t.check(not w0.warning_dead and City.current().town().has_point(relay.ground_pos), "and he does not go through it")
+	_done(s)
+
+
+## D27: the keeper has the warning and the bell is called when the bell starts to lie -- he heard ALL IS WELL, so he calls the ringer back before
+## the toll. The warning is stopped 'lie', the bell is idle again with its keeper, who is off the rope.
+static func _lie_calls_off(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var bell := crowd.bell
+	var w := _star_running(s, 0)
+	var keeper := bell.keeper
+	w.messenger.ground_pos = keeper.ground_pos + Vector2(0.3, 0.0)
+	_run(s, 0.7)
+	t.check(w.phase == WarningDirector.Phase.DELIVERED and w.messenger == keeper and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING],
+		"delivered: the keeper carries it, the bell is called (%s)" % BellNetwork.State.keys()[bell.state])
+	crowd.bell_lies(45.0)
+	_run(s, DT * 2.0)
+	t.check(w.warning_dead and w.stopped_how == "lie" and bell.state == BellNetwork.State.IDLE and bell.keeper == keeper,
+		"he hears ALL IS WELL: stopped 'lie', the bell idle again with its keeper (%s, %s)" % [w.stopped_how, BellNetwork.State.keys()[bell.state]])
+	t.check(keeper.mind != Person.Mind.DUTY and (s.banners as Array).has("ALL IS WELL - THE KEEPER CALLS OFF THE BELL"), "off the rope; the banner")
+	t.check((s.d as StarfallDirector).report().lies == 1, "the report counts the lie")
+	_run(s, 20.0)
+	t.check(bell.state == BellNetwork.State.IDLE, "and the bell is not rung after all")
+	_done(s)
+
+
+## D27's edge: a bell that has tolled stays tolled; the lie stops nothing then.
+static func _lie_tolled_stays(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var bell := crowd.bell
+	var w := _star_running(s, 0)
+	w.messenger.ground_pos = bell.keeper.ground_pos + Vector2(0.3, 0.0)
+	_run(s, 0.7)
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
+	t.check(bell.state == BellNetwork.State.RUNG and w.phase == WarningDirector.Phase.DELIVERED, "the bell has tolled, the keeper has the warning")
+	crowd.bell_lies(45.0)
+	_run(s, DT * 2.0)
+	t.check(bell.state == BellNetwork.State.RUNG and not w.warning_dead and w.stopped_how == "", "the lie after the toll: the bell stays rung, the warning lives")
 	_done(s)

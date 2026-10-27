@@ -320,4 +320,29 @@ static func _flags_off(t) -> void:
 	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.DELIVERED and crowd.bell.state == BellNetwork.State.CALLED
 		and _tag(d, "BELLKEEPER") != null,
 		"delivered while the bell lies, the bell called, a plain BELLKEEPER tag (%s)" % BellNetwork.State.keys()[crowd.bell.state])
+	crowd.bell_lies(45.0)
+	_run(s, 0.3)
+	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.DELIVERED and crowd.bell.state != BellNetwork.State.IDLE,
+		"a lie heard once the bell is called calls nothing off (D27 is the board's)")
+	_done(s)
+	_gate_off(t)
+
+
+## (god T1R fix round) W3 is the board's: the campaign's watchman, staring at his star, stares on when a man falls just outside his gate.
+static func _gate_off(t) -> void:
+	var s := _setup()
+	var d: WarningDirector = s.d
+	t.check(not d.gate_keeps, "W3 defaults off")
+	_run(s, WarningDirector.OMEN_AT + 1.0)
+	t.check(d.phase == WarningDirector.Phase.STARE, "the watchman stares")
+	var crowd: Crowd = s.crowd
+	var g: Person = null
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and not p.inside:
+			g = p
+			break
+	g.ground_pos = Vector2(2.7, 17.2)
+	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
+	t.check(d.messenger.mind != Person.Mind.DUTY and d._drawn_to == Vector2.INF and not (s.banners as Array).has("THE WATCHMAN GOES OUT TO THE BODY"),
+		"a man killed outside his gate draws nobody")
 	_done(s)

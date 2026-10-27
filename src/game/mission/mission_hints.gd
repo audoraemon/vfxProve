@@ -19,9 +19,9 @@ const ASCEND_LINE := "Ascend when you are ready: press F."
 const LINES := {
 	"warning": WARNING_LINE,
 	"warning.relay": WARNING_RELAY,
-	"warning.stars": "Stop the messenger (gold): kill him with no one near (red), send him out of the walls, or let him find the bell lying.",
+	"warning.stars": "Stop the messenger (gold): kill him unseen (red), send him out of the walls, or let the bell lie. A death at his gate draws him out.",
 	"warning.bell": WARNING_BELL,
-	"warning.waiting": "That warning is dead. Watch the next star's gate (gold): its watchman runs when it falls.",
+	"warning.waiting": "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out.",
 	"omen": WARNING_LINE,
 	"omen.relay": WARNING_RELAY,
 	"omen.bell": WARNING_BELL,

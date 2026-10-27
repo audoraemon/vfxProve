@@ -7,9 +7,9 @@ const SPEC := [
 	# The board missions' (board tags, spec §3).
 	["warning", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["warning.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
-	["warning.stars", "Stop the messenger (gold): kill him with no one near (red), send him out of the walls, or let him find the bell lying."],
+	["warning.stars", "Stop the messenger (gold): kill him unseen (red), send him out of the walls, or let the bell lie. A death at his gate draws him out."],
 	["warning.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],
-	["warning.waiting", "That warning is dead. Watch the next star's gate (gold): its watchman runs when it falls."],
+	["warning.waiting", "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out."],
 	["omen", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["omen.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
 	["omen.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],

@@ -28,6 +28,8 @@ const URGENT_ETA := 5.0
 ## Where a gate's way out is within SCARE_WALK units of his walk, Smite falls SCARE_BACK units behind him (outside its kill radius, inside the fright it throws).
 const SCARE_WALK := 5.0
 const SCARE_BACK := 1.4
+## The room left between Smite's fright (its kill radius and Person.THREAT_MARGIN) and the watchman when it strikes a man outside his gate.
+const SMITE_CLEAR := 0.4
 ## The fire is lit beside his road this far along.
 const FIRE_AT := 3.0
 ## Smite may fall near the tower this many times in a night (the tower stands a few blows; five silenced it).
@@ -144,11 +146,23 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	var crowd: Crowd = ctx.crowd
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
-		# At a gate whose way out is a few steps off, the bolt falls behind him on the side away from it: he bolts from it, out through the gate.
-		var out := _out_spot(bc, crowd, m)
-		var way: float = bc._walk_len(crowd, m.ground_pos, out) if out != Vector2.INF else INF
+		# W3: while the watchman stares at his star, a bolt on a man standing just outside his gate draws him out to the body (the postern's watchman
+		# through his barred postern, with its key); the man struck stands clear of the watchman, so the blow's fright does not reach him.
+		var gkey := "gate_smite_%d" % w.get_instance_id()
+		if w.phase == WarningDirector.Phase.STARE and m == w.watchman and bc._slot_ready(rules, ctx.slots, "smite") and not ctx.memo.has(gkey):
+			var man := _outside_man(crowd, w.gate_spot, m, SmiteFx.KILL_R + Person.THREAT_MARGIN + SMITE_CLEAR)
+			if man != null:
+				ctx.memo[gkey] = true
+				rules.cast(ctx.slots.smite, man.ground_pos)
+				return "smite the man outside the gate (%.1f, %.1f): the watchman goes out to him" % [man.ground_pos.x, man.ground_pos.y]
+		# At a gate whose way out is a few steps off, the bolt falls behind him on the side away from it: he bolts from it, out through the gate. The
+		# postern's watchman holds its key (W3), so his barred postern is a way out a step off; the fright waits for the star (the key turns only then).
+		var door := w.key_door()
+		var out := door if door != Vector2.INF else _out_spot(bc, crowd, m)
+		var way: float = (m.ground_pos.distance_to(door) if door != Vector2.INF else bc._walk_len(crowd, m.ground_pos, out)) if out != Vector2.INF else INF
 		var skey := "scared_%d" % m.get_instance_id()
-		if m.mind != Person.Mind.FLEE and w.phase != WarningDirector.Phase.DELIVERED and bc._slot_ready(rules, ctx.slots, "smite") and way <= SCARE_WALK 				and not ctx.memo.has(skey):
+		if m.mind != Person.Mind.FLEE and w.omen_fallen and w.phase != WarningDirector.Phase.DELIVERED and bc._slot_ready(rules, ctx.slots, "smite") \
+				and way <= SCARE_WALK and not ctx.memo.has(skey):
 			var back := m.ground_pos - (out - m.ground_pos).normalized() * SCARE_BACK
 			if not _by_tower(crowd, back):
 				ctx.memo[skey] = true  # once: a man frightened against the gate may stand there, alone, for the next blow
@@ -256,15 +270,21 @@ static func _cluster_aim(crowd: Crowd, m: Person, radius: float, reach: float, m
 
 # --- Death: Death Mark, Pestilence ---
 
-## Pestilence on the carrier where he stands with the neighbours who would see him (the nearest three within 1.2 of its aim): they die five seconds on, and the
-## plague goes on through the crowd round them, so the witness who carries the warning on is sick himself and dies in his turn. Death Mark on the carrier
-## when the street where he will die, ten seconds on, slowed to 0.6, is clear, or after MARK_AFTER seconds all the same.
+## The gate mark (W3): Death Mark a man standing just outside the next star's gate -- a guard at his post outside it, who keeps still -- timed so he falls
+## MARK_LANDS seconds into the watchman's stare: the body draws the watchman out to it (the postern's goes through his barred postern with its key), and
+## the walls stop the warning. Only once the star's time is known (the warning before it stopped). As before when no gate mark is up for a carrier: Pestilence
+## on him where he stands with the neighbours who would see him (the nearest three within 1.2 of its aim), so they die with him five seconds on, and Death
+## Mark on him.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var crowd: Crowd = ctx.crowd
+	if bc._slot_ready(rules, ctx.slots, "deathmark"):
+		var marked := _gate_mark(ctx)
+		if marked != "":
+			return marked
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
-		if m.statuses.has(&"frail") or m.sick_left > 0.0:
+		if m.statuses.has(&"frail") or m.sick_left > 0.0 or _mark_pending(ctx, w):
 			return ""
 		if bc._slot_ready(rules, ctx.slots, "pestilence"):
 			var aim := _plague_aim(crowd, m)
@@ -275,6 +295,77 @@ static func act_death(bc, ctx: Dictionary) -> String:
 			rules.cast(ctx.slots.deathmark, m.ground_pos)
 			return "deathmark the carrier"
 		return "")
+
+
+## The gate mark falls this many seconds into the star's four-second stare (WarningDirector.STARE): time for the watchman to go out before he would run.
+const MARK_LANDS := 1.5
+## How far past the wall's ring a guard's post must lie for the gate mark: as far as a soldier shifts about his post.
+const POST_OUT := Person.POST_SPREAD
+## A man for the gate mark stands within this of the gate's post: inside W3's reach (WarningDirector.GATE_SIGHT) with room for him to shift on his post.
+const MARK_NEAR := WarningDirector.GATE_SIGHT - 0.3
+
+
+## Death Mark for the next star still to fall, cast DeathMarkFx.MARK_TIME - MARK_LANDS seconds before it: what was cast, or "".
+static func _gate_mark(ctx: Dictionary) -> String:
+	var d := ctx.d as StarfallDirector
+	if d == null:
+		return ""
+	var rules: Rules = ctx.rules
+	for i in d.stars.size():
+		var w := d.stars[i]
+		if w.warning_dead or w.omen_fallen:
+			continue
+		if i > 0 and not d.stars[i - 1].warning_dead:
+			return ""  # its time may still come sooner (stop_wait): wait for the warning before it
+		var key := "gate_mark_%d" % i
+		if ctx.memo.has(key):
+			return ""
+		var left := (d.fall_at(i) - d._clock) / maxf(rules.clock_rate, 0.001)
+		if left > DeathMarkFx.MARK_TIME - MARK_LANDS:
+			return ""
+		ctx.memo[key] = null
+		if left < DeathMarkFx.MARK_TIME - (WarningDirector.STARE - 1.0):
+			return ""  # too late: he would fall after the watchman has run
+		var crowd: Crowd = ctx.crowd
+		var post: Vector2 = d.star_falls[i][1]
+		var free := crowd._grid.nearest_walkable(post)
+		var guard := _outside_man(crowd, free if free != Vector2.INF else post)
+		if guard == null:
+			return ""
+		ctx.memo[key] = guard
+		rules.cast(ctx.slots.deathmark, guard.ground_pos)
+		return "deathmark the man outside %s, to fall as its star does (%.1f, %.1f)" % [w.post_name.to_lower(), guard.ground_pos.x, guard.ground_pos.y]
+	return ""
+
+
+## A guard standing at his post out of the walls within MARK_NEAR of `post` (a soldier at his post keeps still, and no citizen who might walk in and be
+## made the next watchman), the nearest the post; null for none. With `clear`, only one at least that far from `m` (a blow's fright must not reach the
+## watchman it is meant to draw out).
+static func _outside_man(crowd: Crowd, post: Vector2, m: Person = null, clear := 0.0) -> Person:
+	var best: Person = null
+	var best_d := INF
+	for p in crowd.soldiers:
+		# Judged by his post (he shifts about it): a post past the wall's ring by POST_OUT (how far he shifts about it), so he cannot shift back inside it before he falls.
+		if not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind != Person.Mind.POST or p.hurrying or p.statuses.has(&"frail") \
+				or City.current().town().grow(POST_OUT).has_point(p.anchor) or City.current().town().has_point(p.ground_pos):
+			continue
+		var dist := maxf(p.ground_pos.distance_to(post), p.anchor.distance_to(post))
+		if dist > MARK_NEAR or (m != null and p.ground_pos.distance_to(m.ground_pos) < clear):
+			continue
+		if dist < best_d:
+			best = p
+			best_d = dist
+	return best
+
+
+## A gate mark is up for this star: its man is marked and not yet fallen, or its watchman is on his way out to the body (W3).
+static func _mark_pending(ctx: Dictionary, w: WarningDirector) -> bool:
+	if w._drawn_to != Vector2.INF:
+		return true
+	var d := ctx.d as StarfallDirector
+	var i := d.stars.find(w)
+	var guard: Variant = ctx.memo.get("gate_mark_%d" % i, null)
+	return w.phase in [WarningDirector.Phase.OMEN, WarningDirector.Phase.STARE] and is_instance_valid(guard) and (guard as Person).is_alive() and (guard as Person).statuses.has(&"frail")
 
 
 ## Where Pestilence takes the carrier and the fewest others (the plague goes on through a crowd by itself, and every death is heard by the alarm): the aim, or INF if none takes him.

@@ -46,6 +46,14 @@ static func run(t) -> void:
 	_plain(t)
 	_mission(t)
 	_lantern(t)
+	_out_stops(t)
+	_out_not_safe(t)
+	_out_killed_after(t)
+	_mob(t)
+	_mob_guarded(t)
+	_mob_far(t)
+	_mob_centre(t)
+	_mob_unvisited(t)
 
 
 static func _world(loadout := PackedStringArray(), reserve := false, plain := false, keep_gap := false) -> Dictionary:
@@ -224,7 +232,7 @@ static func _rounds(t) -> void:
 		and q.target.goal().distance_to(q.stop_doors[0]) < 0.5 and (s.banners as Array).has("THE TAX COLLECTOR SETS OUT")
 		and d.quarries[1].state == AssassinateDirector.State.WAITING, "0:35: he sets out for his first debtor; his deputies wait")
 	t.check(_labels(d).has("TAX COLLECTOR") and _labels(d).has("NEXT COLLECTOR") and d.hint_phase() == ""
-		and rules.objectives[0].hud_text(rules) == "Kill the collectors: 0 / 3",
+		and rules.objectives[0].hud_text(rules) == "Stop the collectors: 0 / 3",
 		"in the street he is tagged, the next collector is pointed out, the hint is the mission's, the HUD counts (%s; %s)"
 		% [_labels(d), rules.objectives[0].hud_text(rules)])
 	for i in 3:
@@ -235,7 +243,7 @@ static func _rounds(t) -> void:
 		_run(s, TaxCollectorDirector.VISIT_SECONDS + DT)
 		t.check(q.state == AssassinateDirector.State.WALKING and q.leg == i + 1 and not q.target.inside, "and walks on")
 	t.check(d.current() == q and d.hint_phase() == "safe" and _labels(d).has("CITADEL") and q.target.goal().distance_to(d.safe_at) < 0.5
-		and rules.objectives[0].hud_text(rules) == "Kill the collectors: 0 / 3, rounds done",
+		and rules.objectives[0].hud_text(rules) == "Stop the collectors: 0 / 3, rounds done",
 		"the collector's rounds done, he makes for the Citadel")
 	# Alarmed, he hides while the first deputy's own time comes.
 	d._alarm(q)
@@ -291,14 +299,14 @@ static func _won(t) -> void:
 	var d: TaxCollectorDirector = s.d
 	var rules: Rules = s.rules
 	_kill_unseen(s, 0)
-	t.check(not rules.finished and rules.objectives[0].hud_text(rules) == "Kill the collectors: 1 / 3" and d.killed() == 1,
+	t.check(not rules.finished and rules.objectives[0].hud_text(rules) == "Stop the collectors: 1 / 3" and d.killed() == 1,
 		"one dead is not the night (%s)" % rules.objectives[0].hud_text(rules))
 	_kill_unseen(s, 1)
 	t.check(not rules.finished and d.killed() == 2, "nor two")
 	_kill_unseen(s, 2)
 	_run(s, 0.5)
 	t.check(d.all_fallen() and rules.finished and rules.won and rules.over_reason == "collector"
-		and rules.objectives[0].hud_text(rules) == "Kill the collectors", "all three dead: the night is won")
+		and rules.objectives[0].hud_text(rules) == "Stop the collectors", "all three dead: the night is won")
 	var r := d.report()
 	t.check(String(r.target) == "unseen" and int(r.killed) == 3 and int(r.seen) == 0 and d.tags().is_empty() and d.hint_phase() == "",
 		"the results say all three died unseen (%s); nothing is tagged" % [r])
@@ -345,7 +353,7 @@ static func _alarm(t) -> void:
 	_run(s, PowerBook.IMPACT.smite + 0.1)
 	t.check(q.state == AssassinateDirector.State.FLEEING and q.alarms == 1 and (s.banners as Array).has("THE TAX COLLECTOR HIDES")
 		and q.target.goal().distance_to(d.hide_door) < 0.5 and d.hint_phase() == "hiding"
-		and (s.rules as Rules).objectives[0].hud_text(s.rules) == "Kill the collectors: 0 / 3, he hides",
+		and (s.rules as Rules).objectives[0].hud_text(s.rules) == "Stop the collectors: 0 / 3, he hides",
 		"a loud one near him: he makes for the counting-house")
 	_arrive(q.target, d.hide_door)
 	_run(s, AssassinateDirector.TICK + DT)
@@ -652,7 +660,7 @@ static func _running_shown(d: TaxCollectorDirector, rules: Rules) -> bool:
 	var edged := false
 	for m in d.tags():
 		edged = edged or (m.label == "CITADEL" and m.edge and m.color == AssassinateDirector.MARK_WATCHED)
-	return d.hint_phase() == "running" and rules.objectives[0].hud_text(rules) == "Kill the collectors: 0 / 3, he runs for the Citadel" \
+	return d.hint_phase() == "running" and rules.objectives[0].hud_text(rules) == "Stop the collectors: 0 / 3, he runs for the Citadel" \
 		and labels.count("CITADEL") == 1 and not labels.has("DEBTOR") and edged
 
 
@@ -666,7 +674,7 @@ static func _running(t) -> void:
 	(a.crowd as Crowd).on_cast(qa.target.ground_pos + Vector2(1.5, 0.0), Vector2.ZERO, 0.0, "smite")
 	_run(a, PowerBook.IMPACT.smite + 0.1)  # v0.11.2: at the impact
 	t.check(qa.state == AssassinateDirector.State.FLEEING and not da.fleeing_to_safe(qa) and da.hint_phase() == "hiding"
-		and (a.rules as Rules).objectives[0].hud_text(a.rules) == "Kill the collectors: 0 / 3, he hides"
+		and (a.rules as Rules).objectives[0].hud_text(a.rules) == "Stop the collectors: 0 / 3, he hides"
 		and _labels(da).has("COUNTING-HOUSE") and not _labels(da).has("CITADEL"),
 		"alarmed with the counting-house standing, he hides: the hint, the HUD and the tags say that (%s)" % [_labels(da)])
 	_done(a)
@@ -792,9 +800,9 @@ static func _freed(t) -> void:
 			crowd.citizens.erase(p)
 			(p as Person).free()
 	d.step(DT)
-	var obj := AssassinateObjective.new("Kill the collectors", "collector", "taxes")
+	var obj := AssassinateObjective.new("Stop the collectors", "collector", "taxes")
 	t.check(d.tags().is_empty() and d.hint_phase() == "" and obj.check(s.rules) == Objective.Status.DONE
-		and obj.hud_text(s.rules) == "Kill the collectors" and int(d.report().killed) == 3,
+		and obj.hud_text(s.rules) == "Stop the collectors" and int(d.report().killed) == 3,
 		"every body freed: no tag, no phase, and the objective is done (review focus 2)")
 	_done(s)
 
@@ -955,3 +963,232 @@ static func _lantern(t) -> void:
 			break
 	t.check(mine and stranger != null, "busy(): every collector and guard is the director's own, a passer-by is not")
 	_done(b)
+
+
+# --- God T1R Task 3: out of the walls (spec 5.1) and the debtors' mob (spec 5.2) ---
+
+## Aldermere past the Main Gate's wall: out of the walls, on walkable ground (the south road).
+const OUTSIDE := Vector2(2.7, 17.5)
+
+
+## Quarry `i` set out and set down outside the walls, then the world stepped once: he is stopped out (OUT).
+static func _send_out(s: Dictionary, i: int) -> void:
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[i]
+	if q.state == AssassinateDirector.State.WAITING:
+		d._set_out(q)
+	_arrive(q.target, OUTSIDE)
+	_run(s, DT * 2.0)
+
+
+static func _out_stops(t) -> void:
+	var s := _world()
+	var d: TaxCollectorDirector = s.d
+	var rules: Rules = s.rules
+	var q := d.quarries[0]
+	t.check(d.walls_stop, "the Tax Collector stops a collector out of the walls")
+	_send_out(s, 0)
+	t.check(q.state == AssassinateDirector.State.OUT and not q.dead and d.stopped() == 1 and d.killed() == 0 and d.out_count() == 1,
+		"set down outside the walls, the collector is OUT: stopped, not dead")
+	t.check((s.banners as Array).has(TaxCollectorDirector.OUT_BANNER), "with its banner")
+	t.check(d.is_leaving(q.target) and q.target.mind == Person.Mind.DUTY, "and he is sent off the map")
+	t.check(not d.any_safe() and not rules.finished and rules.objectives[0].hud_text(rules) == "Stop the collectors: 1 / 3",
+		"he is not safe, the night goes on, and the HUD counts him stopped")
+	t.check(is_equal_approx(d.out_at(1), q.died_at + TaxCollectorDirector.CHAIN_WAIT) and d.out_at(1) < TaxCollectorDirector.SET_OUT_AT[1],
+		"the first deputy's chain runs from the stop: %.1f s" % d.out_at(1))
+	t.check(not _labels(d).has("TAX COLLECTOR") and d.hint_phase() == "next" and int(d.report().out) == 1,
+		"no tag for him, the hint says the next comes, the report counts him out (%s)" % [_labels(d)])
+	var way := Walls.way_off(q.target.ground_pos)
+	_arrive(q.target, way + Vector2(0.5, 0.0))
+	_run(s, DT * 2.0)
+	t.check(not d.is_leaving(q.target) and not q.target in (s.crowd as Crowd).citizens and q.state == AssassinateDirector.State.OUT,
+		"within reach of his way off he is taken off the map, and he is still stopped")
+	_kill_unseen(s, 1)
+	t.check(not rules.finished and d.stopped() == 2, "a death and a stop make two")
+	_send_out(s, 2)
+	_run(s, 0.5)
+	t.check(d.all_fallen() and rules.finished and rules.won and rules.over_reason == "collector"
+		and rules.objectives[0].hud_text(rules) == "Stop the collectors", "all three dead or out: the night is won (reason collector)")
+	var r := d.report()
+	t.check(String(r.target) == "unseen" and int(r.killed) == 1 and int(r.out) == 2, "the results: one dead, two out (%s)" % [r])
+	_done(s)
+
+
+static func _out_not_safe(t) -> void:
+	var s := _world()
+	var d: TaxCollectorDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	var q := d.quarries[0]
+	_send_out(s, 0)
+	var who := q.target
+	crowd._field.remove(who)
+	crowd.escape(who)
+	who.free()  # the map's edge took the body, as in _lost()
+	_run(s, AssassinateDirector.TICK + DT)
+	t.check(q.state == AssassinateDirector.State.OUT and not d.any_safe() and not rules.finished and d.stopped() == 1,
+		"an OUT collector whose body is gone at the map's edge is not SAFE: the night is not lost")
+	_done(s)
+
+
+static func _out_killed_after(t) -> void:
+	var s := _world()
+	var d: TaxCollectorDirector = s.d
+	var crowd: Crowd = s.crowd
+	var q := d.quarries[0]
+	_send_out(s, 0)
+	var died := q.died_at
+	_clear_round(crowd, q.target)
+	crowd._field.kill(q.target, &"doom")
+	_run(s, 1.0)
+	t.check(q.state == AssassinateDirector.State.OUT and not q.dead and is_equal_approx(q.died_at, died) and not q.judged
+		and q.fell_at == Vector2.INF and crowd.bell.state == BellNetwork.State.IDLE and d.stopped() == 1 and q.killed_by == "",
+		"an OUT collector struck on his way off: still OUT, the chain unchanged, no judgement, the bell IDLE")
+	_done(s)
+
+
+## The world for the mob tests: a Decree loadout whose caster hands back one NoLeaveFx (sealed, nobody bound yet), and collector 0 having
+## gone in at his first debtor's and come out, at that door.
+static func _mob_world() -> Dictionary:
+	var s := _world(PackedStringArray(["noleave", "belllies", "whisper"]))
+	var d: TaxCollectorDirector = s.d
+	var rules: Rules = s.rules
+	var fx := NoLeaveFx.new()
+	s["fx"] = fx
+	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return fx
+	var q := d.quarries[0]
+	d._set_out(q)
+	_arrive(q.target, q.stop_doors[0])
+	_run(s, AssassinateDirector.TICK + DT)
+	_run(s, TaxCollectorDirector.VISIT_SECONDS + DT)
+	s["door"] = q.stop_doors[0]
+	return s
+
+
+## A look of `seconds` with the collector pinned `off` from his debtor's door and his guards pinned at `guards_at` (the law holds them
+## still where the test puts them; the real guards are drawn off by CALL THE GUARD).
+static func _mob_run(s: Dictionary, off: Vector2, guards_at: Vector2, seconds: float) -> void:
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	for i in roundi(seconds / DT):
+		if q.dead:
+			break
+		_arrive(q.target, (s.door as Vector2) + off)
+		for g: Variant in q.guards:
+			if MissionDirector._alive(g):
+				_arrive(g as Person, guards_at)
+		_run(s, DT)
+
+
+## The law cast and sealed, binding the collector: centred on the door by default, or on `at` (D17: the mob reads the law's centre).
+static func _seal_on(s: Dictionary, at := Vector2.INF) -> void:
+	var d: TaxCollectorDirector = s.d
+	var fx: NoLeaveFx = s.fx
+	var centre: Vector2 = s.door if at == Vector2.INF else at
+	(s.rules as Rules).cast(0, centre)
+	fx.origin = centre
+	fx.sealed = true
+	fx.bound[d.quarries[0].target] = 0.0
+
+
+static func _mob(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var crowd: Crowd = s.crowd
+	var q := d.quarries[0]
+	var far := (s.door as Vector2) + Vector2(14.0, 0.0)
+	t.check(q.state == AssassinateDirector.State.WALKING and not q.target.inside and not d.mob_ready(q),
+		"he came out of his first debtor's, with no law on him: the mob is not ready")
+	_seal_on(s)
+	_mob_run(s, Vector2.ZERO, far, 0.5)
+	t.check(d.mob_ready(q) and not q.dead and (_labels(d).has("TAX COLLECTOR - MOB 0:03") or _labels(d).has("TAX COLLECTOR - MOB 0:02")),
+		"bound at a visited door with his guards away: ready, and his tag counts the mob down (%s)" % [_labels(d)])
+	_mob_run(s, Vector2.ZERO, far, TaxCollectorDirector.MOB_AFTER - 1.0)
+	t.check(not q.dead, "not before MOB_AFTER")
+	_mob_run(s, Vector2.ZERO, far, 1.5)
+	t.check(q.dead and q.state == AssassinateDirector.State.DEAD and q.judged and q.unseen and q.killed_by == "noleave"
+		and q.fell_at == Vector2.INF and crowd.bell.state == BellNetwork.State.IDLE and d.stopped() == 1
+		and (s.banners as Array).has(TaxCollectorDirector.MOB_BANNER) and not (s.banners as Array).has("THE GUARDS CRY MURDER"),
+		"MOB_AFTER later he is dead, judged unseen (bell IDLE), credited to Leaving Is Prohibited, with the banner")
+	t.check(is_equal_approx(d.out_at(1), minf(TaxCollectorDirector.SET_OUT_AT[1], q.died_at + TaxCollectorDirector.CHAIN_WAIT)),
+		"and the chain runs from his death")
+	(s.fx as NoLeaveFx).free()
+	_done(s)
+
+
+static func _mob_guarded(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	var door: Vector2 = s.door
+	_seal_on(s)
+	_mob_run(s, Vector2.ZERO, door + Vector2(1.0, 0.0), TaxCollectorDirector.MOB_AFTER + 2.0)
+	t.check(not q.dead and not d.mob_ready(q) and _labels(d).has("TAX COLLECTOR - GUARDED"),
+		"with a guard of his within MOB_GUARD_R he lives, and his tag says GUARDED (%s)" % [_labels(d)])
+	_mob_run(s, Vector2.ZERO, door + Vector2(12.0, 0.0), 1.0)
+	t.check(not q.dead and d.mob_ready(q), "the guards drawn off: the mob is ready again, its seconds start over")
+	_mob_run(s, Vector2.ZERO, door + Vector2(12.0, 0.0), TaxCollectorDirector.MOB_AFTER)
+	t.check(q.dead and q.killed_by == "noleave", "and MOB_AFTER later he is dead")
+	(s.fx as NoLeaveFx).free()
+	_done(s)
+
+
+static func _mob_far(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	var door: Vector2 = s.door
+	var away := door + Vector2(14.0, 0.0)
+	# D17 boundary: the law's centre 3.5 from the door (MOB_DOOR_R is 3.0): the collector stands at the door, bound, and lives.
+	_seal_on(s, door + Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.5, 0.0))
+	_mob_run(s, Vector2.ZERO, away, TaxCollectorDirector.MOB_AFTER + 2.0)
+	t.check(not q.dead and not d.mob_ready(q), "the law's centre 3.5 from his debtor's door: the debtors do not come, he lives")
+	# The law back on the door, but not sealed: it binds nobody (take the sealed check out and this fails).
+	(s.fx as NoLeaveFx).origin = door
+	(s.fx as NoLeaveFx).sealed = false
+	_mob_run(s, Vector2.ZERO, away, TaxCollectorDirector.MOB_AFTER + 2.0)
+	t.check(not q.dead and not d.mob_ready(q), "a law that is not sealed binds nobody: he lives")
+	(s.fx as NoLeaveFx).free()
+	_done(s)
+
+
+## D17: the law is read at its centre. Centred on the door with the collector held out on the circle's edge (3.2 from the door, past MOB_DOOR_R),
+## the mob starts all the same; with the centre 3.0 from the door, it starts too (the number is inclusive).
+static func _mob_centre(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	var door: Vector2 = s.door
+	_seal_on(s)
+	_mob_run(s, Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.2, 0.0), door + Vector2(14.0, 0.0), 0.5)
+	t.check(d.mob_ready(q) and not q.dead, "the law centred on the door, the collector held 3.2 from it: the mob is ready")
+	_mob_run(s, Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.2, 0.0), door + Vector2(14.0, 0.0), TaxCollectorDirector.MOB_AFTER + 0.5)
+	t.check(q.dead and q.killed_by == "noleave" and q.unseen, "and MOB_AFTER later he is dead, unseen")
+	(s.fx as NoLeaveFx).free()
+	_done(s)
+	var e := _mob_world()
+	var de: TaxCollectorDirector = e.d
+	var qe := de.quarries[0]
+	var edge: Vector2 = e.door
+	_seal_on(e, edge + Vector2(TaxCollectorDirector.MOB_DOOR_R, 0.0))
+	_mob_run(e, Vector2.ZERO, edge + Vector2(14.0, 0.0), 0.5)
+	t.check(de.mob_ready(qe), "the law's centre exactly MOB_DOOR_R from the door: the mob is ready")
+	(e.fx as NoLeaveFx).free()
+	_done(e)
+
+
+## The door must be one he went in at tonight: bound at the door of the stop he has NOT reached yet (the law centred on it), he lives.
+static func _mob_unvisited(t) -> void:
+	var s := _mob_world()
+	var d: TaxCollectorDirector = s.d
+	var q := d.quarries[0]
+	var next: Vector2 = q.stop_doors[1]
+	t.check(next.distance_to(s.door) > TaxCollectorDirector.MOB_DOOR_R * 2.0, "(set-up) his second debtor's door is far from his first")
+	# He is held out of doors at a point that is no stop (8 north of his first door, inside the walls), with the law centred on his second debtor's door, a
+	# door he has not gone in at: the mob reads visited doors only (replace them with all stop_doors and he dies).
+	_seal_on(s, next)
+	_mob_run(s, Vector2(0.0, -8.0), (s.door as Vector2) + Vector2(-14.0, 0.0), TaxCollectorDirector.MOB_AFTER + 2.0)
+	t.check(not q.dead and not d.mob_ready(q), "the law on the door of a stop he has not reached: the debtors do not come, he lives (%s)" % [q.state])
+	t.check(q.state == AssassinateDirector.State.WALKING and not Walls.outside(q.target.ground_pos), "(and he is still on his round, inside the walls)")
+	(s.fx as NoLeaveFx).free()
+	_done(s)

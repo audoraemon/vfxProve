@@ -285,21 +285,22 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 	return m
 
 
-## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): kill the tax
-## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector). A seen
-## kill still counts, but calls the bell; v0.11.2: the toll turns the Lantern (a watch night) instead of losing the night.
+## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): stop the tax
+## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector): kill them, send
+## them out of the walls, or (god T1R) have the debtors mob them. A seen kill still counts, but calls the bell; v0.11.2: the toll turns
+## the Lantern (a watch night) instead of losing the night.
 static func tax_collector() -> MissionDef:
 	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))
-	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
-	m.goal_label = "The collectors are dead"
+	m.goal = "Stop the tax collector and his two deputies before the taxes reach the Citadel"
+	m.goal_label = "The collectors are stopped"
 	m.lose = "A collector reaches the Citadel, or dawn comes"
 	m.camera_at = _home().landmark(&"workshop").get_center() + Vector2(-2.0, 3.0)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "discord", "whisper"])
 	m.director = TaxCollectorDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [AssassinateObjective.new("Kill the collectors", "collector", "taxes"),
+		var out: Array[Objective] = [AssassinateObjective.new("Stop the collectors", "collector", "taxes"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a seen kill's toll turns the Lantern instead of losing the night

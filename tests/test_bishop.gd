@@ -25,6 +25,7 @@ static func run(t) -> void:
 	_ends(t)
 	_evacuate(t)
 	_tagged(t)
+	_walls_off(t)
 	_freed(t)
 
 
@@ -466,4 +467,22 @@ static func _discorded_door(t) -> void:
 	var hp := house.hp
 	house.damage(30.0, house.center(), &"lightning")
 	t.check(house.hp < hp, "and the refuge takes the blow")
+	Kit.done(s)
+
+
+## God T1R: a target set down outside the walls is stopped only where the director asks for it (walls_stop, The Tax Collector's): The
+## Bishop's walls_stop is at its default, so he is not OUT and not sent off the map.
+static func _walls_off(t) -> void:
+	var s := _world()
+	var d: BishopDirector = s.d
+	var q := d.quarries[0]
+	d._set_out(q)
+	q.state = AssassinateDirector.State.WALKING  # on his way in the street (the bishop stays in his refuge till he is driven out)
+	q.inside_of = null
+	q.target.inside = false
+	Kit.arrive(q.target, Vector2(2.7, 17.5))
+	t.check(d._is_out(q) and Walls.outside(q.target.ground_pos), "(set-up) the bishop is on his way, outside the walls")
+	Kit.run_for(s, 1.0)
+	t.check(not d.walls_stop and q.state != AssassinateDirector.State.OUT and d.out_count() == 0 and not d.is_leaving(q.target),
+		"with walls_stop at its default he is not OUT and not sent off the map")
 	Kit.done(s)

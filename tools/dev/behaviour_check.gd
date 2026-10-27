@@ -1988,11 +1988,11 @@ func _idle_end(acts: Dictionary, t: float) -> float:
 
 
 ## Each collector's state by its initial (W waiting, A walking, V visiting, F fleeing, H hiding, S safe, D dead) and leg, in
-## order (v0.11 M2 tax reports): "A1 W0 W0".
+## order (v0.11 M2 tax reports; god T1R: O out of the walls): "A1 W0 W0".
 func _tax_states(d: AssassinateDirector) -> String:
 	var out := PackedStringArray()
 	for q in d.quarries:
-		out.append("%s%d" % ["WAVFHSD"[q.state], q.leg])
+		out.append("%s%d" % ["WAVFHSDO"[q.state], q.leg])
 	return " ".join(out)
 
 

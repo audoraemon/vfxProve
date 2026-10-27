@@ -208,6 +208,7 @@ func _reset_world() -> void:
 	Person.frame_no = -1
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
+	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own
 
 
 func _initialize() -> void:

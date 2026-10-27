@@ -28,14 +28,24 @@ static func _shape(t) -> void:
 	t.check(ok, "every type has five tiers of two")
 	var first: Dictionary = GodTree.spots()[0]
 	var last: Dictionary = GodTree.spots()[59]
-	t.check(first == {"type": "ruin", "tier": 1, "i": 0, "key": ""} and last.type == "dominion" and last.tier == 5 and last.i == 1,
+	t.check(first == {"type": "ruin", "tier": 1, "i": 0, "key": "smite"} and last.type == "dominion" and last.tier == 5 and last.i == 1,
 		"spots() runs in RING, tier, index order (%s .. %s)" % [first, last])
-	var empty := true
+	# The user's Tier 1 fill (2026-10-27): every Tier 1 spot holds a key; Tiers 2-5 are still empty.
+	var tier1_full := true
+	var rest_empty := true
 	for key: String in GodTree.TABLE.keys():
-		for tier: Array in GodTree.TABLE[key]:
-			for k: String in tier:
-				empty = empty and k == ""
-	t.check(empty, "the real table is all empty in P1")
+		var tiers: Array = GodTree.TABLE[key]
+		for k: String in tiers[0]:
+			tier1_full = tier1_full and k != ""
+		for i in range(1, tiers.size()):
+			for k: String in tiers[i]:
+				rest_empty = rest_empty and k == ""
+	t.check(tier1_full, "every Tier 1 spot of the real table is filled")
+	t.check(rest_empty, "Tiers 2-5 of the real table are still empty")
+	t.check(GodTree.TABLE.ruin[0] == ["smite", "ember"] and GodTree.TABLE.death[0] == ["deathmark", "pestilence"]
+		and GodTree.TABLE.veil[0] == ["doom", "blight"] and GodTree.TABLE.passage[0] == ["thorns", "mirror"]
+		and GodTree.TABLE.decree[0] == ["noleave", "belllies"] and GodTree.TABLE.dominion[0] == ["whisper", "discord"],
+		"Tier 1 holds the user's picks")
 
 
 static func _valid(t) -> void:
@@ -106,13 +116,17 @@ static func _dev_fill(t) -> void:
 		and GodTree.spot("nosuch", 1, 0) == "", "out of range is empty")
 	t.check(GodTree.spots().size() == 60, "spots() is 60 with the fill on")
 	GodTree.dev_fill = false
-	t.check(GodTree.starting("ruin") == PackedStringArray(), "dev fill off: starting(ruin) is the real table's (empty in P1) (%s)"
+	t.check(GodTree.starting("ruin") == PackedStringArray(["smite", "ember"]), "dev fill off: starting(ruin) is the real table's (%s)"
 		% [GodTree.starting("ruin")])
-	t.check(GodTree.spot("ruin", 1, 0) == "", "dev fill off: the spot is empty")
+	t.check(GodTree.spot("ruin", 2, 0) == "", "dev fill off: a Tier 2 spot is empty")
+	GodTree.use_table(GodTree.blank())
+	t.check(GodTree.starting("ruin") == PackedStringArray() and GodTree.spot("ruin", 1, 0) == "",
+		"use_table(blank()): the tree reads empty (%s)" % [GodTree.starting("ruin")])
+	GodTree.use_table({})
 
 
 static func _real_wins(t) -> void:
-	var real := _copy(GodTree.TABLE)
+	var real := GodTree.blank()
 	real["veil"][2][0] = "smite"
 	real["veil"][0][0] = "doom"
 	var merged := GodTree.merged(real, GodTreeDev.TABLE)
@@ -122,7 +136,7 @@ static func _real_wins(t) -> void:
 	t.check(merged["veil"][0][0] == "doom" and merged["veil"][0][1] == "blight", "doom stays at veil T1 spot 0; blight fills spot 1 (%s)"
 		% [merged["veil"][0]])
 	t.check(GodTree.problems(merged).is_empty(), "the merged table is valid (%s)" % [GodTree.problems(merged)])
-	t.check(real["ruin"][0][0] == "" and GodTree.TABLE["ruin"][0][0] == "", "merged() changes neither input")
+	t.check(real["ruin"][0][0] == "" and GodTree.TABLE["ruin"][0][0] == "smite", "merged() changes neither input")
 
 
 static func _flavour(t) -> void:

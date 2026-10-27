@@ -79,6 +79,7 @@ static func _lines(t) -> void:
 	t.check(s.spot_lines(1, 1, 0)[3] == "Level 5" and s.spot_lines(1, 1, 0)[1] == "5 / 5", "level 5 reads Level 5 (%s)" % [s.spot_lines(1, 1, 0)])
 	s.free()
 	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
 	var bare := _screen("ruin")
 	var all_empty := true
 	for col in 3:
@@ -88,6 +89,7 @@ static func _lines(t) -> void:
 	t.check(all_empty, "with the dev fill off every spot reads Not yet chosen")
 	t.check(bare.learn_at(1, 1, 0) == "unknown", "and an empty spot cannot be learned (unknown)")
 	bare.free()
+	GodTree.use_table({})
 	GodTree.dev_fill = true
 
 

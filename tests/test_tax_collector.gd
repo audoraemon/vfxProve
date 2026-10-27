@@ -1143,6 +1143,8 @@ static func _mob_far(t) -> void:
 	_seal_on(s, door + Vector2(TaxCollectorDirector.MOB_DOOR_R + 0.5, 0.0))
 	_mob_run(s, Vector2.ZERO, away, TaxCollectorDirector.MOB_AFTER + 2.0)
 	t.check(not q.dead and not d.mob_ready(q), "the law's centre 3.5 from his debtor's door: the debtors do not come, he lives")
+	# The law back on the door, but not sealed: it binds nobody (take the sealed check out and this fails).
+	(s.fx as NoLeaveFx).origin = door
 	(s.fx as NoLeaveFx).sealed = false
 	_mob_run(s, Vector2.ZERO, away, TaxCollectorDirector.MOB_AFTER + 2.0)
 	t.check(not q.dead and not d.mob_ready(q), "a law that is not sealed binds nobody: he lives")
@@ -1182,13 +1184,11 @@ static func _mob_unvisited(t) -> void:
 	var q := d.quarries[0]
 	var next: Vector2 = q.stop_doors[1]
 	t.check(next.distance_to(s.door) > TaxCollectorDirector.MOB_DOOR_R * 2.0, "(set-up) his second debtor's door is far from his first")
+	# He is held out of doors at a point that is no stop (8 north of his first door, inside the walls), with the law centred on his second debtor's door, a
+	# door he has not gone in at: the mob reads visited doors only (replace them with all stop_doors and he dies).
 	_seal_on(s, next)
-	for i in roundi((TaxCollectorDirector.MOB_AFTER + 2.0) / DT):
-		_arrive(q.target, next)
-		for g: Variant in q.guards:
-			if MissionDirector._alive(g):
-				_arrive(g as Person, next + Vector2(14.0, 0.0))
-		_run(s, DT)
-	t.check(not q.dead and not d.mob_ready(q), "bound at the door of a stop he has not reached: the debtors do not come, he lives")
+	_mob_run(s, Vector2(0.0, -8.0), (s.door as Vector2) + Vector2(-14.0, 0.0), TaxCollectorDirector.MOB_AFTER + 2.0)
+	t.check(not q.dead and not d.mob_ready(q), "the law on the door of a stop he has not reached: the debtors do not come, he lives (%s)" % [q.state])
+	t.check(q.state == AssassinateDirector.State.WALKING and not Walls.outside(q.target.ground_pos), "(and he is still on his round, inside the walls)")
 	(s.fx as NoLeaveFx).free()
 	_done(s)

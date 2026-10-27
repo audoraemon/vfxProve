@@ -320,7 +320,10 @@ static func _gate_mark(ctx: Dictionary) -> String:
 		var key := "gate_mark_%d" % i
 		if ctx.memo.has(key):
 			return ""
-		var left := (d.fall_at(i) - d._clock) / maxf(rules.clock_rate, 0.001)
+		if d.next_star() != i:
+			return ""
+		# What the NEXT STAR tag shows (D29): the policy times the mark by the countdown a player reads, no finer.
+		var left := d.next_fall_in() / maxf(rules.clock_rate, 0.001)
 		if left > DeathMarkFx.MARK_TIME - MARK_LANDS:
 			return ""
 		ctx.memo[key] = null
@@ -342,6 +345,12 @@ static func _gate_mark(ctx: Dictionary) -> String:
 ## made the next watchman), the nearest the post; null for none. With `clear`, only one at least that far from `m` (a blow's fright must not reach the
 ## watchman it is meant to draw out).
 static func _outside_man(crowd: Crowd, post: Vector2, m: Person = null, clear := 0.0) -> Person:
+	return outside_guard(crowd, post, m.ground_pos if m != null else Vector2.INF, clear)
+
+
+## The guard _outside_man() picks for the post `post`, clear by `clear` of the point `away` (INF for none). Public for the test that pins the board town's
+## gate guards (D29: tests/test_starfall.gd _gate_guards).
+static func outside_guard(crowd: Crowd, post: Vector2, away := Vector2.INF, clear := 0.0) -> Person:
 	var best: Person = null
 	var best_d := INF
 	for p in crowd.soldiers:
@@ -350,7 +359,7 @@ static func _outside_man(crowd: Crowd, post: Vector2, m: Person = null, clear :=
 				or City.current().town().grow(POST_OUT).has_point(p.anchor) or City.current().town().has_point(p.ground_pos):
 			continue
 		var dist := maxf(p.ground_pos.distance_to(post), p.anchor.distance_to(post))
-		if dist > MARK_NEAR or (m != null and p.ground_pos.distance_to(m.ground_pos) < clear):
+		if dist > MARK_NEAR or (away != Vector2.INF and p.ground_pos.distance_to(away) < clear):
 			continue
 		if dist < best_d:
 			best = p

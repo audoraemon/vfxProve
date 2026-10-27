@@ -186,7 +186,7 @@ static func _tour_true(t, town: Dictionary) -> void:
 	for i in 3:
 		ok = ok and String(stops[i][1]) == want[i] and (stops[i][0] as Vector2).is_equal_approx(d._walkable(d.star_falls[i][1]))
 	t.check(ok, "the tour names the Capital's three gates and times, then the bellkeeper (%s)" % [stops.map(func(x: Array) -> String: return String(x[1]))])
-	var next := d.tags().filter(func(m: MapTag) -> bool: return m.label == "NEXT STAR")
+	var next := d.tags().filter(func(m: MapTag) -> bool: return m.label == "NEXT STAR - FALLS IN 0:10")
 	t.check(next.size() == 1 and (next[0] as MapTag).at.is_equal_approx(d.star_falls[0][1]) and (next[0] as MapTag).edge,
 		"the first NEXT STAR tag points at the harbour gate")
 	t.check(d.stars.size() == 3 and d.star_falls[0][2] == "THE HARBOUR GATE", "setup kept the town's stars")

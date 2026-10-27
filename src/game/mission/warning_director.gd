@@ -448,8 +448,8 @@ static func _beyond_walls(at: Vector2) -> Vector2:
 	return out
 
 
-## W3: the watchman of a barred postern holds its key -- standing at it with his way beyond the wall (a fright's flight, a body he goes out to),
-## he unbars it and steps out through it (set down just beyond; it is barred behind him). Only the gate's own watchman, while he carries the
+## W3: the watchman of a barred postern holds its key -- standing at it with his way beyond the wall, given by a fright (his flight) or by W3 (the
+## body he goes out to), he unbars it and steps out through it (set down just beyond; it is barred behind him). Only the gate's own watchman, while he carries the
 ## warning; anyone else goes round as ever.
 func _use_key() -> void:
 	if not omen_fallen or key_door() == Vector2.INF or messenger.inside or Walls.outside(messenger.ground_pos):
@@ -457,6 +457,10 @@ func _use_key() -> void:
 	var at := _key_gate.center()
 	var bound := messenger.goal()
 	if messenger.ground_pos.distance_to(at) > KEY_REACH or bound == Vector2.INF or City.current().town().has_point(bound):
+		return
+	# Only a way W3 or a fright gave him (D29, review M2): the body he goes out to, or his flight. Any other walk beyond the wall goes round.
+	var frightened := messenger.mind == Person.Mind.PANIC or messenger.mind == Person.Mind.FLEE
+	if not frightened and not (_drawn_to != Vector2.INF and bound.distance_to(_drawn_to) <= RETARGET_MOVE):
 		return
 	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
 	if messenger.fold(at + out_dir * KEY_STEP):

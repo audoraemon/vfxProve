@@ -123,8 +123,16 @@ func next_star() -> int:
 	return -1
 
 
+## Mission seconds until the next star still to fall falls (fall_at() less the night's clock; never below 0), INF when none is left
+## (god T1R fix round 2, D29: what the NEXT STAR tag counts down, and all the Tier 1 policies may read of the schedule).
+func next_fall_in() -> float:
+	var next := next_star()
+	return maxf(0.0, fall_at(next) - _clock) if next >= 0 else INF
+
+
 ## The tags (v0.11 M1): every set-up warning's own (WarningDirector.tags()), the latest first; and the next star's gate,
-## pointed at from the edge, until it falls.
+## pointed at from the edge, until it falls, counting down to its fall (god T1R fix round 2, D29: "NEXT STAR - FALLS IN m:ss", so a
+## cast that takes time, such as a Death Mark for W3, can be timed by what the player sees).
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for i in range(stars.size() - 1, -1, -1):
@@ -132,7 +140,7 @@ func tags() -> Array[MapTag]:
 			out.append_array(stars[i].tags())
 	var next := next_star()
 	if next >= 0:
-		out.append(MapTag.place(star_falls[next][1], WarningDirector.MARK_MESSENGER, "NEXT STAR", 0.0, true))
+		out.append(MapTag.place(star_falls[next][1], WarningDirector.MARK_MESSENGER, "NEXT STAR - FALLS IN %s" % UiTheme.clock(next_fall_in()), 0.0, true))
 	return out
 
 

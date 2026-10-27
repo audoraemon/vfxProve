@@ -30,6 +30,12 @@ static func run(t) -> void:
 	_key_only_his(t)
 	_lie_calls_off(t)
 	_lie_tolled_stays(t)
+	_next_countdown(t)
+	_gate_guards(t)
+	_key_other_goal(t)
+	_lie_calls_off_waiting(t)
+	_gate_body_far(t)
+	_hint_running(t)
 
 
 static func _world() -> Dictionary:
@@ -90,7 +96,7 @@ static func _stars(t) -> void:
 	var rules: Rules = s.rules
 	t.check(d.stars.size() == 3 and d.stars[0].rules == null and d.stopped() == 0 and d.hint_phase() == "stars",
 		"three stars, none set up before its time; the board's own line (god T1R)")
-	var next := _labelled(d, "NEXT STAR")
+	var next := _labelled(d, "NEXT STAR - FALLS IN 0:10")
 	t.check(next.size() == 1 and next[0].at == StarfallDirector.STARS[0][1] and next[0].edge, "the first star's gate is pointed at")
 	var stops := d.tour()
 	t.check(stops.size() == 4 and String(stops[0][1]) == "The Postern. A star falls here at 0:10."
@@ -645,4 +651,107 @@ static func _lie_tolled_stays(t) -> void:
 	crowd.bell_lies(45.0)
 	_run(s, DT * 2.0)
 	t.check(bell.state == BellNetwork.State.RUNG and not w.warning_dead and w.stopped_how == "", "the lie after the toll: the bell stays rung, the warning lives")
+	_done(s)
+
+
+## D29 (1): the NEXT STAR tag counts down to the fall in mission seconds -- from the schedule, and stop_wait after a stop.
+static func _next_countdown(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	t.check(_labelled(d, "NEXT STAR - FALLS IN 0:10").size() == 1 and is_equal_approx(d.next_fall_in(), 10.0), "at dusk: NEXT STAR - FALLS IN 0:10")
+	_run(s, 3.5)
+	t.check(_labelled(d, "NEXT STAR - FALLS IN 0:07").size() == 1, "it counts down (0:07 at 0:03.5)")
+	var w := _star_running(s, 0)
+	t.check(_labelled(d, "NEXT STAR - FALLS IN 1:30").size() == 0 and d.next_star() == 1 and d.next_fall_in() < 90.0, "star 1 by its schedule while star 0 runs")
+	t.check(w.messenger.fold(Vector2(-5.75, 18.0)), "star 0's runner set down outside")
+	_run(s, DT * 2.0)
+	t.check(w.warning_dead and _labelled(d, "NEXT STAR - FALLS IN 0:30").size() == 1, "stopped: the next star's tag reads stop_wait, 0:30 (%s)"
+		% [d.tags().map(func(m: MapTag) -> String: return m.label)])
+	_done(s)
+
+
+## The policy file whose Ruin and Death routes stand on the gate guards (D29 (3)).
+const WARNING_POLICY := preload("res://tools/dev/routes/god_t1/warning.gd")
+
+
+## The board Warning's gates with no guard posted outside the walls for W3: none the gate mark can pick (a post past the ring by POST_SPREAD, within
+## GATE_SIGHT less a little of the watchman's post), or none clear of the watchman for Ruin's Smite. The names of the gates that lack one.
+static func _missing_gate_guards(s: Dictionary) -> PackedStringArray:
+	var d: StarfallDirector = s.d
+	var crowd: Crowd = s.crowd
+	var out := PackedStringArray()
+	for star: Array in d.star_falls:
+		var post: Vector2 = d._walkable(star[1])
+		var marked: Person = WARNING_POLICY.outside_guard(crowd, post)
+		var struck: Person = WARNING_POLICY.outside_guard(crowd, post, post, SmiteFx.KILL_R + Person.THREAT_MARGIN + WARNING_POLICY.SMITE_CLEAR)
+		if marked == null or struck == null or marked.ground_pos.distance_to(post) > WarningDirector.GATE_SIGHT:
+			out.append(String(star[2]))
+	return out
+
+
+## D29 (3), as D25 pins the Lamb's pocket: in Aldermere every star's gate has a guard posted outside the walls within W3's reach of its post. Ruin's and
+## Death's Warning policies win by striking or marking him; an art or layout round that moves the gate guards shows up here, not as a gate mystery.
+## The pin bites: with the Main Gate's outer guards moved inside, it names that gate.
+static func _gate_guards(t) -> void:
+	var s := _world()
+	var missing := _missing_gate_guards(s)
+	t.check(missing.is_empty(), ("W3 (D28/D29): no guard posted outside the walls within GATE_SIGHT of %s -- tools/dev/routes/god_t1/warning.gd's Ruin (Smite the man outside the "
+		+ "gate) and Death (the gate mark) Warning policies stand on one at each of the three gates") % ", ".join(missing))
+	var crowd: Crowd = s.crowd
+	var post: Vector2 = (s.d as StarfallDirector)._walkable(StarfallDirector.STARS[1][1])
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.anchor.distance_to(post) <= WarningDirector.GATE_SIGHT + 1.0 and not City.current().town().has_point(p.anchor):
+			p.anchor = post + Vector2(0.0, -1.0)
+			p.ground_pos = p.anchor
+	t.check(Array(_missing_gate_guards(s)) == ["THE MAIN GATE"], "with the Main Gate's outer guards moved inside, the pin names that gate (%s)" % ", ".join(_missing_gate_guards(s)))
+	_done(s)
+
+
+## Review M2 (D29): the key turns only for a way W3 or a fright gave him; any other walk beyond the wall goes round as ever.
+static func _key_other_goal(t) -> void:
+	var s := _world()
+	var w := _star_staring(s, 0)
+	var m := w.messenger
+	t.check(m.mind == Person.Mind.OBSERVE and w.key_door() != Vector2.INF, "the postern's watchman stares, the key his")
+	m.set_goal(Vector2(-6.0, 17.4))
+	_run(s, DT * 3.0)
+	t.check(not w.warning_dead and City.current().town().has_point(m.ground_pos), "a walk beyond the wall from nothing W3 or a fright gave: no key, he stays in")
+	_done(s)
+
+
+## Review M4: D27 recalls a bell left WAITING too (a frightened keeper, or a lie at the top of the climb).
+static func _lie_calls_off_waiting(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var bell := crowd.bell
+	var w := _star_running(s, 0)
+	w.messenger.ground_pos = bell.keeper.ground_pos + Vector2(0.3, 0.0)
+	_run(s, 0.7)
+	bell._wait()
+	t.check(w.phase == WarningDirector.Phase.DELIVERED and bell.state == BellNetwork.State.WAITING, "delivered, the bell waiting to be tried again")
+	crowd.bell_lies(45.0)
+	_run(s, DT * 2.0)
+	t.check(w.warning_dead and w.stopped_how == "lie" and bell.state == BellNetwork.State.IDLE, "the lie calls it off: stopped 'lie', the bell idle (%s)" % BellNetwork.State.keys()[bell.state])
+	_done(s)
+
+
+## Review M4: W3's reach -- a man killed outside the gate but beyond GATE_SIGHT of the post draws nobody.
+static func _gate_body_far(t) -> void:
+	var s := _world()
+	var w := _star_staring(s, 1)
+	var g := _guard_at(s, w.gate_spot + Vector2(0.0, WarningDirector.GATE_SIGHT + 0.4))
+	t.check(not City.current().town().has_point(g.ground_pos), "a guard outside the walls, %.1f from the post" % g.ground_pos.distance_to(w.gate_spot))
+	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
+	t.check(w._drawn_to == Vector2.INF and w.messenger.mind != Person.Mind.DUTY, "beyond W3's reach: he stares on")
+	_done(s)
+
+
+## Review M4: while a warning runs with nothing of its own to say (its stare, its run with no relay), the board's hint is its own line, "stars".
+static func _hint_running(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	var w := _star_staring(s, 0)
+	t.check(d.running() == w and w.hint_phase() == "" and d.hint_phase() == "stars", "staring: the board's line (%s)" % d.hint_phase())
+	_run(s, WarningDirector.STARE)
+	t.check(w.phase == WarningDirector.Phase.RUN and w.relays == 0 and d.hint_phase() == "stars", "running, no relay: still the board's line")
 	_done(s)

@@ -44,6 +44,7 @@ static func run(t) -> void:
 	_bolt_is_a_minute(t)
 	_bolt_teardown(t)
 	_led_hint(t)
+	_passage_dead_end(t)
 
 
 static func _world(stretch := 1.0) -> Dictionary:
@@ -850,4 +851,20 @@ static func _led_hint(t) -> void:
 	d.charge.whisper(d.charge.ground_pos + Vector2(0.0, 2.0), MindWhisperFx.LINGER)
 	_run(s, EscortDirector.TICK * 2.0)
 	t.check(d.led and d.hint_phase() == "led", "led: the hint's phase is led (%s)" % d.hint_phase())
+	_done(s)
+
+
+## D25: Passage's Lamb policy flings a patrol into Aldermere's north-west pocket (the user ruled it fair), which has no way back to the streets. Pinned here, so an
+## art round that opens the pocket shows up as this test and not as a Passage gate that loses for no clear reason.
+static func _passage_dead_end(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	var grid: WalkGrid = (s.crowd as Crowd)._grid
+	var policy := preload("res://tools/dev/routes/god_t1/lamb.gd")
+	var spot: Vector2 = policy._far_corner(d)
+	t.check(City.current().id() == &"aldermere" and spot.distance_to(d._walkable(policy.FLING_TO)) < 0.01,
+		"the policy sets the patrol down at its FLING_TO in Aldermere (%s)" % [spot])
+	t.check(grid.path(spot, d.gate_at).is_empty() and grid.path(spot, LostLambDirector.GATE_MOUTH).is_empty(),
+		"the Passage Lamb policy depends on a dead end (D25): a soldier set down at %s has no path to the gate mouth; if the pocket was opened, the Passage "
+		% [spot] + "gate loses because patrol 1 walks back, not because of the policy")
 	_done(s)

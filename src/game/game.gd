@@ -308,9 +308,7 @@ static func load_god(file: String) -> Array:
 	var line := ""
 	if slot.in_night != "":
 		line = String(GodNight.forfeit(slot).line)
-		var failed := write_god(slot, file)  # a forfeit now costs Notice: a disk error must not hide it (god P2, pre-flight G1)
-		if failed != "":
-			line += " " + failed
+		line = join_lines(line, write_god(slot, file))  # a forfeit now costs Notice: a disk error must not hide it (god P2, pre-flight G1)
 	return [slot, line]
 
 
@@ -323,6 +321,14 @@ const WRITE_FAILED := "The god could not be saved (error %d): progress since the
 static func write_god(slot: GodSlot, file: String) -> String:
 	var err := slot.write(file)
 	return "" if err == OK else WRITE_FAILED % err
+
+
+## `line` with `extra` added after it (god P2, Ruling P2-13, review I1): nothing when `extra` is empty, and nothing when `line` already says
+## it, so a disk that fails every write shows its one sentence once on the hub, not once per write. A static so a suite can prove it.
+static func join_lines(line: String, extra: String) -> String:
+	if extra == "" or line.contains(extra):
+		return line
+	return extra if line == "" else line + " " + extra
 
 
 ## The levels a between-acts Prepare shows (god P1, final review M1): the board night's, chosen so far; none in the campaign, whose picker is
@@ -1108,7 +1114,7 @@ func _write_god() -> void:
 	var failed := write_god(god, GodSlot.path(god_slot, god_base))
 	if failed != "":
 		push_warning("KAK could not write the god in slot %d: %s" % [god_slot, failed])
-		_hub_line = failed if _hub_line == "" else _hub_line + " " + failed  # the next hub shows it once (god P2, Ruling P2-13)
+		_hub_line = join_lines(_hub_line, failed)  # the next hub shows it once (god P2, Ruling P2-13)
 
 
 ## Removes the three slot files under `god_base`: a --flow-test or --show run starts and ends without a god.
@@ -1279,7 +1285,7 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
-	if _in_endless and god != null and god.in_night != "" and god.hunt_due():
+	if _in_endless and god != null and god.in_night != "" and String(GodNight.hunt_for(god).get("id", "")) == mission_id:
 		_pause.hunt_stake = GodNight.hunt_stake(god)  # the Hunt: Abandon says what the Lantern would seal (god P2, Ruling P2-11)
 	# Endless Night's menu (god P1, Ruling P9): no Restart, no Change powers, and Abandon night, which says whether it costs the night.
 	_pause.setup(_in_campaign, settings, settings_path, _in_endless, _in_endless and god != null and god.in_night != "")

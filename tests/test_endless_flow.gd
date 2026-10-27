@@ -141,6 +141,7 @@ static func _load_god_hunt(t) -> void:
 	var type := _lantern_type()
 	t.check(type != "", "a god type with two starting keys exists (R3)")
 	if type == "":
+		GodTree.dev_fill = false
 		return
 	var god := GodSlot.make(1, type, 4)
 	god.notice = 100
@@ -148,6 +149,7 @@ static func _load_god_hunt(t) -> void:
 	var keys := god.in_tree()
 	t.check(keys.size() >= 2, "the fixture god has two keys in the tree (%s)" % [keys])
 	if keys.size() < 2:
+		GodTree.dev_fill = false
 		return
 	god.carried = {keys[0]: 2, keys[1]: 5}
 	god.in_night = GodNight.HUNTS[0].id
@@ -182,7 +184,13 @@ static func _write_fails(t) -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
 	var src := FileAccess.get_file_as_string("res://src/game/game.gd")
 	t.check(src.contains("write_god(slot, file)"), "load_god() writes through write_god() (pre-flight G1)")
-	t.check(src.contains("_hub_line") and src.contains("WRITE_FAILED"), "Game keeps the failure for the hub")
+	# The hub's line is joined, never doubled, whatever number of writes fail before it is shown (review I1, I2).
+	var f := Game.WRITE_FAILED % 7
+	t.check(Game.join_lines("", f) == f, "a failure on an empty hub line is the line (%s)" % Game.join_lines("", f))
+	t.check(Game.join_lines("a", f) == "a " + f, "a failure after another line is appended (%s)" % Game.join_lines("a", f))
+	t.check(Game.join_lines(f, f) == f, "the same failure twice is shown once (%s)" % Game.join_lines(f, f))
+	t.check(Game.join_lines("a " + f, f) == "a " + f, "even after another line (%s)" % Game.join_lines("a " + f, f))
+	t.check(Game.join_lines("a", "") == "a" and Game.join_lines("", "") == "", "nothing to add changes nothing")
 
 
 ## Task 5's carry: the seeded draw survives a quit. A god written before its Prepare and read back draws the same night.

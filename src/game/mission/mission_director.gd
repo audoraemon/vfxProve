@@ -593,6 +593,9 @@ var leaving: Array = []
 var _leave_to := {}
 ## How near his way off a leaver must come to be taken off the map.
 const LEAVE_REACH := 1.2
+## One sent off has just been taken off the map (god T1R, Task 1 review): emitted with the body before it is freed, so a director can
+## start its next item's clock (spec Problem 4's fallback) or count a carter's load lost. Connect to it; do not edit _step_leaving().
+signal left_the_map(person: Person)
 
 
 ## `p` has left the walls: off his duty, he walks on to the nearest way off the map and is not called back. Once only. A Variant: he may
@@ -625,6 +628,7 @@ func _step_leaving() -> void:
 		var p := v as Person
 		var way: Vector2 = _leave_to.get(p.get_instance_id(), Vector2.INF)
 		if way != Vector2.INF and p.ground_pos.distance_to(way) <= LEAVE_REACH:
+			left_the_map.emit(p)
 			crowd._field.remove(p)
 			crowd.citizens.erase(p)
 			crowd.soldiers.erase(p)

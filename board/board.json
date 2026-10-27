@@ -1,10 +1,10 @@
 {
- "hash": "45dbfe6dd779d88d",
- "updated": "2026-10-27T14:53:43+07:00",
+ "hash": "8bee113ea945b671",
+ "updated": "2026-10-27T15:56:10+07:00",
  "changes": {
-  "date": "<t:1793087623:f>",
+  "date": "<t:1793091370:f>",
   "items": [
-   "Started: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)"
+   "New: Tier 1 routes: every god type can win every Tier 1 mission (in progress)"
   ]
  },
  "snapshot": {
@@ -279,12 +279,22 @@
     "updated": "2026-10-27",
     "order": 189
    },
+   "god-tier1-routes": {
+    "title": "Tier 1 routes: every god type can win every Tier 1 mission",
+    "status": "doing",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "branch": "god/t1routes",
+    "updated": "2026-10-27",
+    "order": 193
+   },
    "god-tree-tier1-fill": {
     "title": "Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
     "status": "doing",
     "area": "Design",
     "version": "next",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
     "updated": "2026-10-27",
     "order": 188
@@ -1064,10 +1074,10 @@
   "branches": [
    {
     "name": "claude/god-p2-lantern-04cddc",
-    "ahead": 33,
+    "ahead": 35,
     "behind": 0,
     "date": "2026-10-27",
-    "subject": "feat: the Lantern's rules -- the Notice moves, 100% brings the Hunt, a lost Hunt seals the most-carried ability (god P2)",
+    "subject": "feat: the Lantern on screen -- the hub's meter, Hunt and seal; the results' Notice change and Hunt lines; sealed cards and the Hunt's stake (god P2)",
     "pushed": false
    },
    {
@@ -1077,6 +1087,14 @@
     "date": "2026-10-27",
     "subject": "feat: the skill tree's Tier 1 filled with the user's picks",
     "pushed": true
+   },
+   {
+    "name": "god/t1routes",
+    "ahead": 32,
+    "behind": 0,
+    "date": "2026-10-27",
+    "subject": "feat: the skill tree's Tier 1 filled with the user's picks",
+    "pushed": false
    },
    {
     "name": "feat/town-lighting",

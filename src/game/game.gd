@@ -1393,6 +1393,7 @@ func _flow_test() -> void:
 	await _flow_tier5(step)
 	await _flow_dev_town(step)
 	await _flow_endless(step)
+	await _flow_lantern(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -2291,6 +2292,235 @@ func _flow_endless(step: Callable) -> void:
 		and FileAccess.get_file_as_bytes(save_path) == disk,
 		"Endless Night left the board's save alone: night %d, believers %d, %d cleared, the campaign, and the file's bytes" % [
 			save.descend.night, save.descend.believers, save.descend.cleared.size()])
+	out.call()
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not (_screen_node as MissionBoard).dev and not GodTree.dev_fill,
+		"the board is rebuilt without the DEV tab, the dev fill off")
+
+
+## The Lantern through the real screens (god P2, spec §10, §14 P2; rulings P2-14, C6, C7, pre-flight B3, R1, R3, G3). Starts where
+## `_flow_endless()` stopped: slot 1's god after Night 3, Notice 50%.
+## 1. The board's ENDLESS (the board is rebuilt with `dev`, as `_flow_endless()` does), Continue on slot 1: the hub, Notice 50%, no Hunt line.
+## 2. A fixture: Notice 75%, the first starting key carried 4 nights and the second 1 (so the Lantern's target is clear), a seed whose night
+##    is neither the last night nor the Hunt's stand-in -- and whose Hunt night, were there no Hunt, would not be the stand-in either.
+## 3. Descend, play into the night, Abandon: a lost night, Notice 100%, the hub says the Hunt is next, the file agrees; dev A is refused.
+## 4. Descend: the Hunt (its stand-in at Tier 1, its name, THE LANTERN HUNT, the stake in IF LOST); in the night the pause confirm names
+##    the stake, and Stay / Resume return to it.
+## 5. The Hunt lost (force_end): results show the Notice change and the seal; the god and its file: the key sealed 3 nights, Notice 50%,
+##    out of the loadout. Continue: the hub's seal line. Descend: another night, the sealed card refuses a pick and says why.
+## 6. The title, and the board's save is what it was (C7). Ends on the board with `dev` restored.
+func _flow_lantern(step: Callable) -> void:
+	var was := dev
+	var disk := FileAccess.get_file_as_bytes(save_path)
+	var out := func() -> void:
+		dev = was
+		GodTree.dev_fill = false
+		go_to(Screen.BOARD)
+	var god_file := func() -> GodSlot: return GodSlot.read(GodSlot.path(god_slot, god_base))
+	var hunt0: Dictionary = GodNight.HUNTS[0]
+	dev = true
+	go_to(Screen.BOARD)
+	var board := _screen_node as MissionBoard
+	board.click(MissionBoard.ENDLESS_RECT.get_center())
+	var slots := _screen_node as SlotScreen
+	if slots == null or slots.slot_line(0) == "Empty":
+		step.call(false, "the Lantern walk finds slot 1 holding the endless walk's god (%s)" % [slots.slot_line(0) if slots != null else "no slot select"])
+		out.call()
+		return
+	slots.click(slots.button_rect(0, "continue").get_center())
+	var hub := _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and god != null and god.notice == 50 and hub.lines()[5] == "Lantern Notice 50%" and hub.hunt_line() == ""
+		and hub.notice_fill() == 0.5,
+		"Continue on slot 1: the hub at Lantern Notice 50%%, no Hunt line (%s)" % [god.notice if god != null else -1])
+	if hub == null or god == null:
+		out.call()
+		return
+
+	# The fixture: Notice 75%, a clear target, a seed that draws neither the last night nor the Hunt's stand-in (R1, R3).
+	if god.in_tree().size() < 2:  # a tree whose Tier 1 holds fewer than two keys of this type: learn one more (pre-flight R3)
+		for key in GodTree.keys_for(god.type, 2):
+			if not god.learned.has(key):
+				god.learned[key] = 1
+				break
+	var keys := god.in_tree()
+	if keys.size() < 2:
+		step.call(false, "the god has two abilities in the tree for the Lantern walk (%s)" % [keys])
+		out.call()
+		return
+	var pair := PackedStringArray([keys[0], keys[1]])
+	god.notice = 75
+	god.carried = {pair[0]: 4, pair[1]: 1}
+	var target := god.seal_target()
+	var night_now := god.night
+	var last_now := god.last_mission
+	var picked := ""
+	var seed_used := 0
+	for s in range(1, 1000):
+		god.seed = s
+		var d := GodNight.draw(god)
+		var def := GodNight.def_for(god, d)
+		if d == god.last_mission or d == String(hunt0.id) or def == null or def.has_acts():
+			continue
+		god.night = night_now + 1  # the Hunt's night, were there no Hunt: it must not be the stand-in either
+		god.last_mission = d
+		god.notice = 0
+		var later := GodNight.draw(god)
+		god.night = night_now
+		god.last_mission = last_now
+		god.notice = 75
+		if later != String(hunt0.id):
+			picked = d
+			seed_used = s
+			break
+	if picked == "":
+		step.call(false, "a seed draws a single-act night that is not the Hunt's stand-in, now or on the next night")
+		out.call()
+		return
+	god.seed = seed_used
+	_write_god()
+	go_to(Screen.HUB)
+	hub = _screen_node as GodHub
+
+	# Night 4 abandoned after the clock: a lost night, the Notice to 100%.
+	var level := god.level
+	hub.click(hub.menu_rect("descend").get_center())
+	var prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == picked and prep.header_text() == "PREPARE THE MANIFESTATION"
+		and target == pair[0],
+		"Descend at Notice 75%% draws %s (seed %d), an ordinary night; the Lantern's target is %s" % [mission_id, seed_used, target])
+	if prep == null:
+		out.call()
+		return
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	await _until(func() -> bool: return god.in_night != "", 3.0)
+	_open_pause()
+	var ask := ""
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+		ask = _pause.confirm_line()
+	step.call(god.in_night == picked and ask == PauseMenu.CONFIRM_LOST, "Pause in an ordinary night: the confirm says it costs Lantern Notice +25%")
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
+	hub = _screen_node as GodHub
+	var saved: GodSlot = god_file.call()
+	step.call(screen == Screen.HUB and hub != null and god.night == night_now + 1 and god.notice == 100 and god.in_night == "" and hub.hunt_line() != ""
+		and hub.lines()[5] == "Lantern Notice 100%" and hub.notice_fill() == 1.0
+		and hub.line == "Night %d was abandoned: a lost night. Lantern Notice +25%%." % god.night
+		and saved != null and saved.notice == 100 and saved.night == god.night and saved.in_night == "",
+		"Abandon after the clock: a lost night, Lantern Notice 100%%, the hub says the Hunt is next, the file agrees (%s)" % [hub.hunt_line() if hub != null else ""])
+	if hub == null:
+		out.call()
+		return
+	hub._unhandled_input(_flow_key(KEY_A))
+	step.call(god.tier == 1 and hub.line == GodHub.AWAKEN_HUNT, "dev A while the Hunt is due is refused (tier %d, \"%s\")" % [god.tier, hub.line])
+
+	# The Hunt: its stand-in, its name, its stake.
+	var hunt_night := god.night
+	var faith_before := god.faith
+	var dp_before := god.divine_power
+	var name_target: String = PowerBook.get_power(target).name
+	hub.click(hub.menu_rect("descend").get_center())
+	prep = _screen_node as PrepareScreen
+	var if_lost := ""
+	if prep != null:
+		for row: Array in prep.brief_rows():
+			if String(row[0]) == "IF LOST":
+				if_lost = String(row[1])
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == String(hunt0.id) and prep.header_text() == "THE LANTERN HUNT"
+		and if_lost.begins_with(GodNight.hunt_stake(god)) and if_lost.contains(name_target),
+		"Descend at Notice 100%% is the Hunt (%s): the header says so and IF LOST names %s (\"%s\")" % [mission_id, name_target, if_lost])
+	if prep == null:
+		out.call()
+		return
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	await _until(func() -> bool: return god.in_night != "", 3.0)
+	if not is_instance_valid(_mission) or _mission.rules() == null:
+		step.call(false, "MANIFEST starts the Hunt")
+		out.call()
+		return
+	var def_now := _mission.rules().mission
+	step.call(god.in_night == String(hunt0.id) and def_now.name == String(hunt0.title) and def_now.tier == 1,
+		"the Hunt is its stand-in at the god's tier, with its own name (%s, Tier %d)" % [def_now.name, def_now.tier])
+	_open_pause()
+	ask = ""
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+		ask = _pause.confirm_line()
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("stay").get_center()))
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("resume").get_center()))
+	await get_tree().process_frame
+	step.call(ask == PauseMenu.CONFIRM_HUNT % GodNight.hunt_stake(god) and not is_instance_valid(_pause) and god.in_night == String(hunt0.id),
+		"Pause in the Hunt: Abandon's confirm names the stake (\"%s\"); Stay and Resume return to the night" % ask)
+
+	# The Hunt lost: the seal.
+	_mission.rules().force_end(false, "dawn")
+	var up := await _until(func() -> bool: return screen == Screen.RESULTS, 8.0)
+	var banked: Dictionary = result.get("god", {})
+	var hunt: Dictionary = banked.get("hunt", {})
+	var lines := ResultsScreen.god_lines(result)
+	var change_at := lines.find("Lantern Notice 50%  (-50%)")
+	var seal_at := lines.find("The Lantern seals %s for 3 nights" % name_target)
+	saved = god_file.call()
+	step.call(up and not hunt.is_empty() and not bool(hunt.get("won", true)) and String(hunt.get("sealed", "")) == target and change_at >= 0 and seal_at > change_at
+		and ResultsScreen.hunt_called(result) != "",
+		"the lost Hunt's results: the Notice change, then \"The Lantern seals %s for 3 nights\", and the Hunt named (%s)" % [name_target, ", ".join(lines)])
+	step.call(god.sealed == target and god.seal_nights == 3 and god.notice == 50 and god.night == hunt_night + 1 and god.last_mission == String(hunt0.id)
+		and not god.loadout.has(target) and god.faith == faith_before and god.divine_power == dp_before and god.level == level
+		and saved != null and saved.sealed == target and saved.seal_nights == 3 and saved.notice == 50 and saved.night == god.night
+		and saved.in_night == "" and not saved.loadout.has(target),
+		"the god and its file: %s sealed 3 nights, Notice 50%%, Night %d, out of the loadout, Faith %d and Divine Power %d as before the Hunt"
+		% [god.sealed, god.night, god.faith, god.divine_power])
+	var res := _screen_node as ResultsScreen
+	if not up or res == null:
+		out.call()
+		return
+	res.action.emit("continue")
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and hub.seal_line() == GodHub.SEALED % [name_target, "3 nights"] and hub.hunt_line() == "",
+		"Continue: the hub says \"%s\" and the Hunt is no longer next" % [hub.seal_line() if hub != null else ""])
+	if hub == null:
+		out.call()
+		return
+
+	# The next night: the sealed card cannot be picked.
+	hub.click(hub.menu_rect("descend").get_center())
+	prep = _screen_node as PrepareScreen
+	if prep == null:
+		step.call(false, "Descend opens Prepare after the Hunt")
+		out.call()
+		return
+	var at_tab := -1
+	var at_card := -1
+	for i in prep.tabs().size():
+		var found := prep.authority_keys(i).find(target)
+		if found >= 0:
+			at_tab = i
+			at_card = found
+	if at_tab >= 0:
+		prep.set_tab(at_tab)
+		prep.click(PrepareScreen.cell_rect(at_card, prep.shown().size()).get_center())
+	step.call(mission_id != String(hunt0.id) and at_tab >= 0 and prep.card_cost_text(target) == "Sealed: 3 nights" and not prep.draft.picks.has(target)
+		and prep.refused_reason == PrepareScreen.REFUSE_SEALED % "3 nights",
+		"Descend after the Hunt is another night (%s); the sealed card says \"%s\" and a click on it picks nothing (\"%s\")"
+		% [mission_id, prep.card_cost_text(target), prep.refused_reason])
+	_on_prepare_action("back", prep)
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and god.night == hunt_night + 1 and god.sealed == target,
+		"Back from Prepare is the hub, nothing counted (Night %d)" % [god.night + 1])
+	if hub == null:
+		out.call()
+		return
+
+	# The title is unchanged and the board's save is what it was (C7).
+	hub.click(hub.menu_rect("title").get_center())
+	step.call(screen == Screen.TITLE and god == null and FileAccess.get_file_as_bytes(save_path) == disk,
+		"the Lantern left the board's save alone: the file's bytes are what they were")
 	out.call()
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not (_screen_node as MissionBoard).dev and not GodTree.dev_fill,
 		"the board is rebuilt without the DEV tab, the dev fill off")

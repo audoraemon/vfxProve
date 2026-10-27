@@ -88,13 +88,23 @@ Merged tree `6ee2b044` is the P2 branch with the user's Tier 1 fill `420a4e37` f
 | Trial merge vs `feat/god-progression` | clean; 1 incoming commit (the Tier 1 fill) | - |
 | Import | exit 0 | - |
 | Suite | `checks=10881 failures=0` (jobs 8) | `checks=10908 failures=0` (jobs 3) |
-| References, every row | TBD-REFS | digest, `crowd_check` and `calm` OK |
-| `digest` | TBD-REFS | `61267b7e90524d800bf1c3473a71146b` OK |
-| `crowd_check` | TBD-REFS | `-935602679` OK |
-| FLOW alone | `checks=175 failures=0` (230 s) | TBD-FLOW (final tree) |
-| Bench vs `kak-god-p1` | TBD-BENCH | - |
+| References, every row | `refs ok=286 bad=0` (jobs 8) | digest, `crowd_check` and `calm` OK |
+| `digest` | `61267b7e90524d800bf1c3473a71146b` OK | `61267b7e90524d800bf1c3473a71146b` OK |
+| `crowd_check` | `-935602679` OK | `-935602679` OK |
+| FLOW alone | `checks=175 failures=0` (230 s) | `checks=175 failures=0` (235 s, final tree `71551be8`) |
+| Bench vs `kak-god-p1` | - | run on final tree `71551be8`: no steady change (below) |
 
-Bench pairs (median of 3, fps; A = `kak-god-p1`, B = the final tree): TBD-BENCH.
+Bench pairs (median of 3, fps; A = `kak-god-p1`, B = the final tree `71551be8`). Run 1 had another session's Godot runs starting mid-bench; run 2 began with no other Godot running. Both runs are slow on every board (remote-desktop load), so read the pairs, not the absolute fps.
+
+| Board | Run 1 A / B | Run 2 A / B |
+|---|---|---|
+| warning | 32.4 / 34.0 | 43.6 / 44.3 |
+| miras_house | 37.7 / 33.9 | 34.5 / 32.4 |
+| vigil_flame | 46.6 / 38.3 | 31.5 / 30.0 |
+| procession | 31.7 / 30.4 | 25.8 / 25.1 |
+| last_judgement | 29.0 / 29.2 | 30.3 / 28.4 |
+
+The runs overlap on every board and the direction flips between runs (warning and last_judgement). P2 adds no per-frame work to a mission: the Notice, the Hunt and the seal are read on the hub, Prepare, results and pause screens, and a Hunt night plays a normal board with a different TierBook tier. Rerun on a quiet machine before the next release if a 1-2 fps gap matters.
 
 The milestone review (opus) approved the merged tree: 0 critical, 0 important, 6 minor. The fix wave took M2 and M6; a sonnet re-review approved it. Earlier per-task runs: Task 1 suite 10761, Task 2 10807, Task 3 10861, Task 4 10873 then 10877, Task 5 10873; FLOW alone 160/0 after Task 4 and 175/0 after Task 5 (and again after Task 4's fix round).
 

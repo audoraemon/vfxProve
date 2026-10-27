@@ -45,9 +45,10 @@ static func run(t) -> void:
 	_bolt_teardown(t)
 	_led_hint(t)
 	_passage_dead_end(t)
+	_bound_never_bolts(t)
 
 
-static func _world(stretch := 1.0) -> Dictionary:
+static func _world(stretch := 1.0, custom: LostLambDirector = null) -> Dictionary:
 	var def := MissionBook.lost_lamb()
 	def.stretch = stretch
 	var env := EnvironmentField.new()
@@ -65,7 +66,7 @@ static func _world(stretch := 1.0) -> Dictionary:
 	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
-	var director := def.make_director().setup(rules, crowd, town, null) as LostLambDirector
+	var director := (def.make_director() if custom == null else custom).setup(rules, crowd, town, null) as LostLambDirector
 	rules.director = director
 	return {"env": env, "town": town, "field": field, "world": world, "crowd": crowd, "rules": rules, "d": director,
 		"banners": banners}
@@ -867,4 +868,32 @@ static func _passage_dead_end(t) -> void:
 	t.check(grid.path(spot, d.gate_at).is_empty() and grid.path(spot, LostLambDirector.GATE_MOUTH).is_empty(),
 		"the Passage Lamb policy depends on a dead end (D25): a soldier set down at %s has no path to the gate mouth; if the pocket was opened, the Passage "
 		% [spot] + "gate loses because patrol 1 walks back, not because of the policy")
+	_done(s)
+
+
+## A subclass's charge bound to a stall (the Prisoner's way): the stall down frees him (`bound` false) but `bound_by` is still set, and a startle then does not
+## send him: one guard, `bound_by != null`, for the strip's bolt event and the startle path (review M5).
+class BoundLamb:
+	extends LostLambDirector
+	var stall: Structure
+
+	func _plan() -> void:
+		super()
+		var at := _walkable(START + Vector2(0.0, -1.2))
+		stall = crowd._env.add_structure(Rect2(at - Vector2(0.3, 0.2), Vector2(0.6, 0.4)), 10.0, Structure.Kind.MARKET_STALL, &"stocks")
+		town._built.append(stall)
+		bound_by = stall
+		hunt_at = -1.0
+
+
+static func _bound_never_bolts(t) -> void:
+	var s := _world(1.0, BoundLamb.new())
+	var d: BoundLamb = s.d
+	_clear_watchers(d)
+	t.check(d.bound_by != null and d.bound and d.timeline.upcoming(3).is_empty(), "a bound charge has no bolt on the strip")
+	d.stall.destroy(d.stall.center(), &"blast")
+	_run(s, EscortDirector.TICK * 3.0)
+	t.check(not d.bound and d.bound_by != null, "the stall down frees him, `bound_by` still names it")
+	d._startle(0.0)
+	t.check(not d.bolting, "and a startle at his feet does not send him: the bound guard is `bound_by`, not `bound`")
 	_done(s)

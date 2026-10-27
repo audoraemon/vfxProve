@@ -48,9 +48,23 @@ static func run(t) -> void:
 	_unsealed(t)
 	_reserved(t)
 	_mission(t)
+	_carter_early(t)
+	_out(t)
+	_left_the_map(t)
+	_plague(t)
+	_plague_guarded(t)
+	_blight(t)
+	_blight_guarded(t)
+	_blight_empty(t)
+	_blight_cast(t)
+	_seized(t)
+	_seized_by_law(t)
+	_replaced(t)
+	_road_closed(t)
+	_roads_stay_in(t)
 
 
-static func _world(reserve := false, walled := false) -> Dictionary:
+static func _world(reserve := false, walled := false, loadout := PackedStringArray()) -> Dictionary:
 	var def := MissionBook.spoiled_harvest()
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -63,7 +77,7 @@ static func _world(reserve := false, walled := false) -> Dictionary:
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
 	crowd.profile = def.response_profile(ResponseProfile.DEFAULT)
 	crowd.spawn()
-	var rules := Rules.new().setup(def.default_loadout, null, env, field, crowd, town, def)
+	var rules := Rules.new().setup(def.default_loadout if loadout.is_empty() else loadout, null, env, field, crowd, town, def)
 	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
 	var banners: Array[String] = []
 	rules.banner.connect(func(text: String) -> void: banners.append(text))
@@ -475,6 +489,7 @@ static func _spoiled(t) -> void:
 	h.destroy(h.center(), &"fire")
 	_run(s, DT * 2.0)
 	t.check(d.razed(h) and d.razed_count() == 2, "a granary with its grain in, brought down, is spoiled too, its watchmen there or not")
+	t.check(d.spoiled_by.get(g) == "fire" and d.spoiled_by.get(h) == "fall", "recorded: the one burned by fire, the one brought down by its fall")
 	_done(s)
 
 
@@ -648,3 +663,366 @@ static func _mission(t) -> void:
 	waits.append_array([HarvestDirector.CHAIN_AFTER, HarvestDirector.RETURN_AFTER, HarvestDirector.RELIEF_AFTER, HarvestDirector.SMOTHER_AFTER])
 	t.check(waits.all(func(w: float) -> bool: return w <= 60.0) and HarvestDirector.CHAIN_AFTER <= 45.0 and HarvestDirector.CHAIN_AFTER >= 30.0,
 		"no timed wait is over 60 s, and the chain is 30-45 s (%s)" % [waits])
+
+
+# --- God T1R (Tier 1 routes, Task 4, spec 6) ---
+
+## Where a carter stands to be out of Aldermere's walls (past the ring's east wall by more than Walls.MARGIN).
+const OUTSIDE := Vector2(18.5, 0.0)
+
+
+## The director's tags whose label begins with `prefix`.
+static func _tags_like(d: MissionDirector, prefix: String) -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	for m in d.tags():
+		if m.label.begins_with(prefix):
+			out.append(m)
+	return out
+
+
+## H0: the first carter sets out CARTER_LEAD before the grain, from the Citadel's gate, and waits at the door; he takes no load before the grain.
+static func _carter_early(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	var due := d.grain_due(0)
+	t.check(is_equal_approx(d.carter_out_at(0), due - HarvestDirector.CARTER_LEAD) and is_equal_approx(HarvestDirector.CARTER_LEAD, 30.0)
+		and is_equal_approx(d.carter_out_at(1), d.grain_due(1) - HarvestDirector.CARTER_LEAD), "a carter sets out grain_due - 30 s")
+	_run(s, d.carter_out_at(0) - 1.0)
+	t.check(d.carters[g].is_empty() and _tags_like(d, "CARTER").is_empty(), "before that second there is no carter")
+	_run(s, 1.0 + HarvestDirector.TICK * 2.0)
+	var crew: Array = d.carters[g]
+	var c0: Person = crew[0] if not crew.is_empty() else null
+	t.check(crew.size() == HarvestDirector.CARTERS and c0 != null and c0.mind == Person.Mind.DUTY and c0.goal().distance_to(d.doors[g]) < 0.5
+		and not d.has_grain(g), "at that second the first carter sets out for the door, with no grain yet")
+	t.check(d.carters[d.targets[1]].is_empty(), "the second granary's carter is not out")
+	var tags := _tags_like(d, "CARTER - GRAIN IN ")
+	t.check(tags.size() == 1 and tags[0].edge and tags[0].label.begins_with("CARTER - GRAIN IN 0:"),
+		"he is tagged CARTER - GRAIN IN 0:xx, edge-arrowed (%s)" % [_labels(d)])
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 4.0)
+	t.check(int(d.loads[g]) == HarvestDirector.LOADS and c0.mind == Person.Mind.DUTY, "at the door he waits: no load before the grain")
+	_run(s, float(HarvestDirector.GRAIN_AT[0]) - d._clock + HarvestDirector.TICK * 2.0)
+	var carter_tags := _tags_like(d, "CARTER - ")
+	t.check(d.has_grain(g) and int(d.loads[g]) == HarvestDirector.LOADS - 1 and carter_tags.size() >= 1
+		and carter_tags[0].label == "CARTER - %d LEFT" % (HarvestDirector.LOADS - 1) and carter_tags[0].edge,
+		"the grain comes and he takes his first load at once, tagged CARTER - n LEFT, edge-arrowed (%s)" % [_labels(d)])
+	_done(s)
+
+
+## H1: a carter set down outside the walls, before his grain: the granary is spoiled at once, the chain starts, he is sent off the map.
+static func _out(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	t.check(not d.razed(g), "a carter at his door is in the walls")
+	var before := d._clock
+	_arrive(c0, OUTSIDE)
+	_run(s, HarvestDirector.TICK * 2.0)
+	t.check(Walls.outside(OUTSIDE) and d.razed(g) and d.spoiled_by.get(g) == "out" and d.spoiled_at[0] >= before and d.spoiled_at[0] < before + 1.5
+		and d.is_leaving(c0) and (s.banners as Array).has("THE CARTER LEAVES TOWN - THE GRAIN ROTS"),
+		"out of the walls, before his grain: the granary is spoiled (out), the chain starts from now, and he is leaving")
+	t.check(is_equal_approx(d.grain_due(1), minf(float(HarvestDirector.GRAIN_AT[1]), d.spoiled_at[0] + HarvestDirector.CHAIN_AFTER)),
+		"the next grain is due the chain's 45 s after")
+	_done(s)
+	# After his grain, with a load, too.
+	s = _world()
+	d = s.d
+	g = d.targets[0]
+	d._deliver(g)
+	c0 = d.carters[g][0]
+	_arrive(c0, OUTSIDE)
+	_run(s, HarvestDirector.TICK * 2.0)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "out", "and after it")
+	_done(s)
+
+
+## D15: a carter taken off the map by any way is gone for the night: his granary is spoiled.
+static func _left_the_map(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	d.left_the_map.emit(c0)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "out" and not d.razed(d.targets[1]), "a carter who left the map: his granary is spoiled, no other")
+	_done(s)
+
+
+## H2: no watchman on guard, the carter sick: the granary is spoiled by the plague.
+static func _plague(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_kill_all(s, g)
+	_run(s, HarvestDirector.TICK * 2.0)
+	t.check(not d.razed(g) and not d.guarding(g), "the watchmen are gone, the carter is well: nothing is spoiled")
+	c0.infect(PlagueManager.PLAGUE_LIFE)
+	_run(s, HarvestDirector.TICK * 3.0)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "plague" and (s.banners as Array).has("THE PLAGUE SPOILS THE GRAIN"),
+		"sick, with no watchman on guard: the plague spoils the grain")
+	_done(s)
+
+
+## H2 with a watch: the watch turns the sick cart away (banner once); the watchmen cleared while he is still sick: spoiled.
+static func _plague_guarded(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	c0.infect(PlagueManager.PLAGUE_LIFE)
+	_run(s, 1.5)
+	var turned := (s.banners as Array).count("THE WATCH TURNS THE SICK CART AWAY")
+	t.check(d.guarding(g) and not d.razed(g) and turned == 1 and not (s.banners as Array).has("THE PLAGUE SPOILS THE GRAIN"),
+		"a watchman on guard: the watch turns the sick cart away, nothing spoiled (%d banner)" % turned)
+	_run(s, 1.0)
+	t.check((s.banners as Array).count("THE WATCH TURNS THE SICK CART AWAY") == 1, "the banner shows once for a carter")
+	_kill_all(s, g)
+	_run(s, HarvestDirector.TICK * 3.0)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "plague",
+		"the watchmen then cleared while he is still sick: spoiled (preflight 15)")
+	_done(s)
+
+
+## H3: grain in, no watchman on guard: Blight's mark is the granary, it takes, and it rots.
+static func _blight(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var crowd: Crowd = s.crowd
+	var g := d.targets[0]
+	d._deliver(g)
+	_kill_all(s, g)
+	var aim: Vector2 = g.center() + Vector2(0.5, 0.0)
+	t.check(d.blight_target(aim) == g.center() and d.blight_takes(aim) and d.blight_target(g.center() + Vector2(8.0, 8.0)) == Vector2.INF,
+		"Blight's mark is a granary near the aim; a far aim has none")
+	var alarm := crowd.alarm
+	var took := d.blighted(aim)
+	t.check(took and d.razed(g) and d.spoiled_by.get(g) == "blight" and d.blight_words(aim) == "BLIGHT - THE GRAIN ROTS" and crowd.alarm > alarm,
+		"Blight rots it: spoiled (blight), the words, the town's alarm")
+	t.check(d.blight_target(aim) == Vector2.INF, "and a spoiled granary is no mark")
+	_done(s)
+
+
+## H3 with a watch: Blight does not take, says so, rings no alarm.
+static func _blight_guarded(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var crowd: Crowd = s.crowd
+	var g := d.targets[0]
+	d._deliver(g)
+	var aim: Vector2 = g.center()
+	var alarm := crowd.alarm
+	t.check(d.guarding(g) and d.blight_target(aim) != Vector2.INF and not d.blight_takes(aim), "a watchman on guard: it is a mark, but not taken")
+	t.check(not d.blighted(aim) and d.blight_words(aim) == "THEIR WATCH KEEPS IT" and not d.razed(g) and is_equal_approx(crowd.alarm, alarm),
+		"THEIR WATCH KEEPS IT: not spoiled, no alarm")
+	_done(s)
+
+
+## H3 before the grain: nothing to rot.
+static func _blight_empty(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	_kill_all(s, g)
+	var aim: Vector2 = g.center()
+	t.check(not d.blight_takes(aim) and not d.blighted(aim) and d.blight_words(aim) == "NO GRAIN TO ROT YET" and not d.razed(g),
+		"before its grain: NO GRAIN TO ROT YET, not spoiled")
+	_done(s)
+
+
+## Blight, cast through BlightFx: the director is asked first and its words are the banner.
+static func _blight_cast(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	_kill_all(s, g)
+	var ctx := _fx_context(s)
+	var fx: BlightFx = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), ctx, g.center())
+	fx._process(BlightFx.T_ROT + 0.05)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "blight" and (s.banners as Array).has("BLIGHT - THE GRAIN ROTS") and not g.blighted,
+		"cast through the power: the granary is spoiled, the words are the banner, no structure is ruined")
+	fx.free()
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)
+
+
+## An effect context over the world `s` (as tests/test_decree.gd builds one).
+static func _fx_context(s: Dictionary) -> FxContext:
+	var ctx := FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rules = s.rules
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	return ctx
+
+
+## H4: The Bell Lies, CALL THE GUARD, cast at the carter: the first called soldier arrives, the cart is seized -- up to SEIZE_R (3.0, Leaving Is
+## Prohibited's radius) from the place; 3.2 from it, not.
+static func _seized(t) -> void:
+	for gap in [0.0, 2.9, 3.2]:
+		var s := _world(false, false, PackedStringArray(["belllies", "noleave"]))
+		var d: HarvestDirector = s.d
+		var crowd: Crowd = s.crowd
+		var rules: Rules = s.rules
+		var g := d.targets[0]
+		var ctx := _fx_context(s)
+		rules.caster = func(script: GDScript, at: Vector2, extra: Dictionary) -> FxTimeline:
+			return FxTimeline.cast(script, ctx, at, extra)
+		_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+		var c0: Person = d.carters[g][0]
+		_arrive(c0, d.doors[g])
+		var place: Vector2 = crowd._grid.nearest_walkable(d.doors[g] + Vector2(gap, 0.0))
+		var near: Vector2 = crowd._grid.nearest_walkable(place + Vector2(5.0, 0.0))
+		for sol in crowd.soldiers:
+			sol.ground_pos = near
+		var fx := rules.cast(0, place, {"mode": "guard"}) as BellLiesFx
+		fx._process(BellLiesFx.T_CAST + 0.05)
+		t.check(fx != null and fx.mode == "guard" and fx.called > 0 and rules.last_fx() == fx and not d.razed(g),
+			"(gap %.1f) the guard are called, none has come" % gap)
+		_run(s, HarvestDirector.TICK * 4.0)
+		t.check(not d.razed(g) and d._guard_at != Vector2.INF, "(gap %.1f) none has come yet: nothing is seized" % gap)
+		var first: Person = null
+		for sol in crowd.soldiers:
+			if sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL:
+				first = sol
+				break
+		_arrive(first, first.anchor)  # (people are not walked in this world: the first called soldier stands at his ring spot)
+		_run(s, HarvestDirector.TICK * 3.0)
+		if gap < 3.0:
+			t.check(d.razed(g) and d.spoiled_by.get(g) == "seized" and (s.banners as Array).has("THE GUARD SEIZE THE CART")
+				and not d.razed(d.targets[1]) and d._guard_at == Vector2.INF, "(gap %.1f) the first called soldier arrives: the cart is seized, his granary spoiled" % gap)
+		else:
+			t.check(not d.razed(g) and c0.ground_pos.distance_to(place) > HarvestDirector.SEIZE_R and d._guard_at == Vector2.INF,
+				"the carter 3.2 from the place is not seized (%.2f)" % c0.ground_pos.distance_to(place))
+		fx.free()
+		ctx.overhead.free()
+		ctx.ground.free()
+		_done(s)
+
+
+## H4 with the law and the bell clicked apart (D23): the carter held on the law's circle is in reach when the law's centre is within SEIZE_R of the bell,
+## whatever his distance from the bell; with the law's centre 3.5 from the bell he is not seized.
+static func _seized_by_law(t) -> void:
+	for offset in [1.5, 3.5]:
+		var s := _world(false, false, PackedStringArray(["belllies", "noleave"]))
+		var d: HarvestDirector = s.d
+		var crowd: Crowd = s.crowd
+		var rules: Rules = s.rules
+		var g := d.targets[0]
+		var ctx := _fx_context(s)
+		rules.caster = func(script: GDScript, at: Vector2, extra: Dictionary) -> FxTimeline:
+			return FxTimeline.cast(script, ctx, at, extra)
+		_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+		var c0: Person = d.carters[g][0]
+		var bell: Vector2 = d.doors[g]
+		var law := bell + Vector2(offset, 0.0)
+		# He stands on the law's far edge from the bell (offset 1.5), or well inside it but 5.5 from the bell (offset 3.5).
+		_arrive(c0, law + Vector2(3.0 if offset < 3.0 else 2.0, 0.0))
+		var held := rules.cast(1, law) as NoLeaveFx
+		held._process(NoLeaveFx.T_SEAL + 0.05)
+		t.check(held != null and held.sealed and held.bound.has(c0), "(law %.1f from the bell) the carter is bound by the law" % offset)
+		var near: Vector2 = crowd._grid.nearest_walkable(bell + Vector2(-5.0, 0.0))
+		for sol in crowd.soldiers:
+			sol.ground_pos = near
+		var call := rules.cast(0, bell, {"mode": "guard"}) as BellLiesFx
+		t.check(call != null and rules.last_fx() == call, "(law %.1f) the guard are called" % offset)
+		call._process(BellLiesFx.T_CAST + 0.05)
+		var first: Person = null
+		for sol in crowd.soldiers:
+			if sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL:
+				first = sol
+				break
+		_arrive(first, first.anchor)
+		_run(s, HarvestDirector.TICK * 3.0)
+		t.check(c0.ground_pos.distance_to(bell) > HarvestDirector.SEIZE_R + HarvestDirector.SEIZE_SLACK, "(law %.1f) he stands out of the bell's own reach" % offset)
+		if offset < 3.0:
+			t.check(d.razed(g) and d.spoiled_by.get(g) == "seized", "the soldier arrives: the held carter is seized by the law's centre")
+		else:
+			t.check(not d.razed(g), "a law whose centre is 3.5 from the bell: he is not seized")
+		call.free()
+		held.free()
+		ctx.overhead.free()
+		ctx.ground.free()
+		_done(s)
+
+
+## H5: a carter killed is replaced RELIEF_AFTER later from the Citadel's gate, the loads as they were; killing one never spoils.
+static func _replaced(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	var loads := int(d.loads[g])
+	_free(s, c0)
+	_run(s, HarvestDirector.RELIEF_AFTER - 2.0)
+	t.check(not d._carter_alive(g) and not d.razed(g) and int(d.loads[g]) == loads, "killing a carter does not spoil his granary")
+	_run(s, 2.0 + HarvestDirector.TICK * 3.0)
+	var crew: Array = d.carters[g]
+	var fresh: Person = crew[0] if not crew.is_empty() else null
+	t.check(fresh != null and fresh != c0 and WarningDirector._alive(fresh) and fresh.mind == Person.Mind.DUTY
+		and fresh.goal().distance_to(d.doors[g]) < 0.5 and (s.banners as Array).has("A NEW CARTER SETS OUT")
+		and int(d.loads[g]) == loads and not d.razed(g), "RELIEF_AFTER later a new carter sets out for the door; the loads are as they were")
+	_done(s)
+
+
+## A carter whose road was closed (a Thornwall: his walk found no way and was dropped) and stands with no walk is sent on again once it opens.
+static func _road_closed(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.citadel_door + Vector2(2.0, 0.0))
+	c0.mind = Person.Mind.DUTY
+	c0.anchor = d.doors[g]
+	t.check(c0.goal() == Vector2.INF, "the carter stands with no walk, away from his door")
+	_run(s, HarvestDirector.TICK + DT)
+	t.check(c0.goal().distance_to(d.doors[g]) < 0.5, "and the next look sends him on to the door")
+	# Still blocked (his walk is dropped again after each look): he is sent again at every look and nothing else changes.
+	var loads := int(d.loads[g])
+	var banners := (s.banners as Array).size()
+	var sent := 0
+	for k in 4:
+		c0._goal = Vector2.INF
+		c0._path = PackedVector2Array()
+		_run(s, HarvestDirector.TICK + DT)
+		if c0.goal().distance_to(d.doors[g]) < 0.5:
+			sent += 1
+	t.check(sent == 4 and c0.mind == Person.Mind.DUTY and int(d.loads[g]) == loads and not d.razed(g) and d.emptied == null
+		and (s.banners as Array).size() == banners and d.carters[g][0] == c0 and not d.is_leaving(c0),
+		"a carter who stays blocked is sent again at every look, with no other effect (%d of 4)" % sent)
+	_done(s)
+
+
+## The carters' roads stay inside the walls in Aldermere (an 'out' carter is never one who merely walked his road).
+static func _roads_stay_in(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var grid: WalkGrid = (s.crowd as Crowd)._grid
+	var in_walls := true
+	for g in d.targets:
+		for pair in [[d.citadel_door, d.doors[g]], [d.doors[g], d.citadel_door]]:
+			var path := grid.path(pair[0], pair[1])
+			in_walls = in_walls and not path.is_empty()
+			for pt in path:
+				in_walls = in_walls and not Walls.outside(pt)
+	t.check(in_walls, "every carter's road, Citadel gate to door and back, stays inside the walls")
+	_done(s)

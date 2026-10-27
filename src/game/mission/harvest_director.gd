@@ -15,6 +15,12 @@ extends RazeDirector
 ## before its grain arrives is undone. Spoil all three to win. The controller's Task 3 ruling: a 50-hp house falls in about 13 s
 ## of burning, so 15 s of burning could never be reached; a granary is spoiled after 10 s alight or when it falls, whichever is
 ## first.
+##
+## God T1R (Tier 1 routes, spec 6): a granary can be spoiled in more ways than fire. Its carter sets out CARTER_LEAD before the
+## grain is due and waits at the door (H0); a carter out of the town's walls, or sick (Pestilence) with no watchman on guard,
+## or seized by the guard The Bell Lies calls to him, spoils his granary at once (H1, H2, H4); Blight rots a granary whose grain
+## is in and whose watchmen are not on guard (H3); a carter who dies is replaced RELIEF_AFTER later and killing one never spoils
+## (H5). Every spoil is recorded in `spoiled_by`.
 
 ## One watchman's post (v0.11 M2): a plain record, so the director holds no cycle.
 class Watch:
@@ -49,6 +55,17 @@ const SMOTHER_AFTER := 3.0
 const GUARD_REACH := 2.5
 const RETURN_AFTER := 20.0
 const RELIEF_AFTER := 30.0
+## God T1R (spec 6.9, tunable): how long before its grain is due a granary's carter sets out from the Citadel's gate (20-40); and how
+## near the place The Bell Lies called the guard to a carter must stand to be seized (2.0-3.0), once the first called soldier has come. (Tuned
+## 2.5 -> 3.0 in round 2: Leaving Is Prohibited, which holds a carter on the spot while the guard run, binds within 3.0 -- NoLeaveFx.RADIUS --
+## and sets him back onto that edge, so a held carter is always within it. SEIZE_SLACK covers the float of "onto the edge".)
+const CARTER_LEAD := 30.0
+const SEIZE_R := 3.0
+## How near his ring spot the first called soldier must be for the guard to have come (spec 6.5), and how far from the place a ring
+## spot may lie (BellLiesFx.GUARD_RING, a blocked one moved to the nearest walkable ground).
+const SEIZE_ARRIVE := 0.8
+const SEIZE_SLACK := 0.05
+const SEIZE_RING := 2.4
 ## A watchman at his post while his granary burns is not frightened (Person.fearless_left): the town's ordinary flight from a
 ## fire would empty his post before he could beat the fire out. Held this many seconds past the last look; the god's own holds
 ## (a kill, a whisper, Discord) still take him (v0.11 M2).
@@ -84,6 +101,22 @@ var carters := {}
 var watches := {}
 ## Structure -> true once its grain has arrived (v0.11 M2).
 var grain := {}
+## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight" or "seized" (god T1R, for the report and the tests).
+var spoiled_by := {}
+## Structure -> the second its first carter set out (god T1R, H0).
+var _out_at := {}
+## Structure -> seconds since its carter was last alive (god T1R, H5: a relief is sent RELIEF_AFTER after).
+var _carter_fallen := {}
+## Instance ids of the sick carters the watch has already turned away (god T1R, H2: the banner shows once per carter).
+var _turned := {}
+## The Bell Lies' CALL THE GUARD cast that may still seize a cart, and where it called them (god T1R, H4).
+var _guard_fx: BellLiesFx
+var _guard_at := Vector2.INF
+## The latest Leaving Is Prohibited cast (god T1R, D23): a carter it binds is in reach of the guard when its centre is, whichever way the two clicks fell.
+var _law_fx: NoLeaveFx
+## The words of the Blight that just landed (blighted() keeps them: the granary is spoiled by the time BlightFx asks).
+var _blight_said := ""
+
 ## The granaries whose grain has arrived, in order (v0.11 M2).
 var carting: Array[Structure] = []
 ## The first granary emptied (the night is lost), or null (v0.11 M2).
@@ -134,7 +167,20 @@ func _begin() -> void:
 		var s := targets[i]
 		timeline.add(float(grain_at[i]), "grain_%d" % i, _grain_label(i), _deliver.bind(s),
 			func() -> bool: return not has_grain(s) and not razed(s))
+	rules.cast_made.connect(_on_cast)
+	left_the_map.connect(_on_left)
 	rules.banner.emit("SPOIL THE HARVEST")
+
+
+## Lets go of the casts and the leavers (god T1R), then the Raze type's seals and timeline.
+func teardown() -> void:
+	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
+		rules.cast_made.disconnect(_on_cast)
+	if left_the_map.is_connected(_on_left):
+		left_the_map.disconnect(_on_left)
+	_guard_fx = null
+	_law_fx = null
+	super()
 
 
 ## The strip's and the banner's words when granary `i`'s grain arrives (v0.11 M2).
@@ -187,36 +233,185 @@ func _chain() -> void:
 			_deliver(s)
 
 
-## The grain arrives at `s` (v0.11 M2): it can be spoiled now, and its carter sets out from the Citadel's gate for its door.
+## The grain arrives at `s` (v0.11 M2): it can be spoiled now. Its carter is already at the door (H0, god T1R); one not yet set out
+## (a grain brought in early by a test or a chain) sets out now.
 func _deliver(s: Structure) -> void:
 	if has_grain(s):
 		return
 	grain[s] = true
 	carting.append(s)
+	if not _out_at.has(s):
+		_send_carter(s)
+
+
+## When granary `i`'s carter sets out from the Citadel's gate (god T1R, H0): CARTER_LEAD before its grain is due, at once if that is
+## past; the second he did, once he has.
+func carter_out_at(i: int) -> float:
+	var s := targets[i]
+	if _out_at.has(s):
+		return float(_out_at[s])
+	return maxf(grain_due(i) - CARTER_LEAD, _clock)
+
+
+## A carter sets out for `s`'s door from the Citadel's gate: the lay citizen nearest it not already at work (v0.11 M2; god T1R: the
+## first one early, a replacement after a death).
+func _send_carter(s: Structure) -> void:
+	if not _out_at.has(s):
+		_out_at[s] = _clock
+	_carter_fallen[s] = 0.0
 	var crew := _lay_near(citadel_door, CARTERS, _busy())
 	carters[s] = crew
 	for c in crew:
 		c.go_duty(doors[s])
 
 
+## Whether granary `s`'s carter is alive (god T1R, H5): any of the crew set out for it.
+func _carter_alive(s: Structure) -> bool:
+	for c: Variant in carters.get(s, []):
+		if _alive(c):
+			return true
+	return false
+
+
+## Granary `s` is spoiled by `how` (god T1R): recorded, then razed as a fire or a fall would raze it. Once only.
+func _spoil(s: Structure, how: String) -> void:
+	if razed(s):
+		return
+	spoiled_by[s] = how
+	_raze(s)
+
+
 ## One step (v0.11 M2): the Raze type's, the chain, each granary's watchmen every frame, then every TICK a look at the carters
-## and the watchmen's orders.
+## and the watchmen's orders. (God T1R: the carters set out early, the leavers walk on, and a fallen carter is replaced.)
 func step(delta: float) -> void:
 	_clock += delta
 	super(delta)
 	_chain()
+	_step_leaving()
 	_tick_in -= delta
 	var looking := _tick_in <= 0.0
 	if looking:
 		_tick_in = TICK
-	for s in targets:
-		if not razed(s):
-			_watch(s, delta, looking)
+	for i in targets.size():
+		var s := targets[i]
+		if razed(s):
+			continue
+		_watch(s, delta, looking)
+		if not _out_at.has(s):
+			if _clock >= carter_out_at(i):
+				_send_carter(s)
+		elif _carter_alive(s):
+			_carter_fallen[s] = 0.0
+		else:
+			_carter_fallen[s] = float(_carter_fallen.get(s, 0.0)) + delta
+			if looking and float(_carter_fallen[s]) >= RELIEF_AFTER and emptied == null:
+				_send_carter(s)
+				rules.banner.emit("A NEW CARTER SETS OUT")
 	if not looking:
 		return
-	for s in carting:
-		if emptied == null and not razed(s):
+	_seize_look()
+	for s in targets:
+		if razed(s) or not _out_at.has(s):
+			continue
+		_out_look(s)
+		if not razed(s):
+			_sick_look(s)
+	for s in targets:
+		if emptied == null and _out_at.has(s) and not razed(s):
 			_cart(s)
+
+
+## A carter out of the town's walls (god T1R, H1, spec 2.1): his granary is spoiled at once, before or after its grain, and he is sent
+## on off the map.
+func _out_look(s: Structure) -> void:
+	for c: Variant in carters.get(s, []):
+		if _alive(c) and not (c as Person).inside and Walls.outside((c as Person).ground_pos):
+			rules.banner.emit("THE CARTER LEAVES TOWN - THE GRAIN ROTS")
+			_spoil(s, "out")
+			send_off(c)
+			return
+
+
+## A sick carter (god T1R, H2): with no watchman of his granary on guard, the plague spoils it at the first look (he may have caught it
+## while they stood on guard and be sick still when they fall); with one on guard the watch turns the cart away -- once for each carter.
+func _sick_look(s: Structure) -> void:
+	for c: Variant in carters.get(s, []):
+		if not _alive(c) or (c as Person).inside or (c as Person).sick_left <= 0.0:
+			continue
+		if guarding(s):
+			var id := (c as Person).get_instance_id()
+			if not _turned.has(id):
+				_turned[id] = true
+				rules.banner.emit("THE WATCH TURNS THE SICK CART AWAY")
+			continue
+		rules.banner.emit("THE PLAGUE SPOILS THE GRAIN")
+		_spoil(s, "plague")
+		return
+
+
+## A person was taken off the map (MissionDirector.left_the_map, god T1R): a carter of a granary not yet spoiled has gone for the night
+## and so has his load -- the granary is spoiled. (The out look has done so already, one tick after he passed the wall; this catches a carter
+## who was taken off the map by another way.)
+func _on_left(p: Person) -> void:
+	for s in targets:
+		if razed(s):
+			continue
+		for c: Variant in carters.get(s, []):
+			if c == p:
+				_spoil(s, "out")
+				return
+
+
+## A power was cast (god T1R, H4): The Bell Lies in CALL THE GUARD is kept to see when its first soldier comes (_seize_look()).
+func _on_cast(_slot: int, key: String, at: Vector2) -> void:
+	if key == "noleave":
+		_law_fx = rules.last_fx() as NoLeaveFx
+		return
+	if key != "belllies":
+		return
+	var fx := rules.last_fx() as BellLiesFx
+	if fx != null and fx.mode == "guard":
+		_guard_fx = fx
+		_guard_at = at
+
+
+## Whether carter `p` is in reach of the guard called to `at` (god T1R, D23): within SEIZE_R (+ slack) of the place, or bound by a live Leaving Is
+## Prohibited whose centre lies within SEIZE_R of it -- the law and the bell are two clicks, and a held carter stands on the law's circle, not the bell's.
+func _in_seizing_reach(p: Person, at: Vector2) -> bool:
+	if p.ground_pos.distance_to(at) <= SEIZE_R + SEIZE_SLACK:
+		return true
+	return _law_fx != null and is_instance_valid(_law_fx) and _law_fx.sealed and _law_fx.bound.has(p) and _law_fx.origin.distance_to(at) <= SEIZE_R
+
+
+## The guard The Bell Lies called have come (god T1R, H4): once the first called soldier stands within SEIZE_ARRIVE of his ring spot, every
+## carter alive and out of doors within SEIZE_R of the place is seized -- his granary spoiled at once, the carter sent home -- and the
+## call is spent.
+func _seize_look() -> void:
+	if _guard_at == Vector2.INF:
+		return
+	if _guard_fx == null or not is_instance_valid(_guard_fx) or _guard_fx.finished:
+		_guard_fx = null
+		_guard_at = Vector2.INF
+		return
+	var arrived := false
+	for sol in crowd.soldiers:
+		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL \
+				and sol.anchor.distance_to(_guard_at) <= SEIZE_RING and sol.ground_pos.distance_to(sol.anchor) <= SEIZE_ARRIVE:
+			arrived = true
+			break
+	if not arrived:
+		return
+	var at := _guard_at
+	_guard_fx = null
+	_guard_at = Vector2.INF
+	for s in targets:
+		if razed(s):
+			continue
+		for c: Variant in carters.get(s, []):
+			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at):
+				rules.banner.emit("THE GUARD SEIZE THE CART")
+				_spoil(s, "seized")
+				break
 
 
 ## Whether watchman `w` of `s` is on guard now (v0.11 M2): alive, out of doors, in a calm mind, and at his post.
@@ -319,13 +514,21 @@ func _cart(s: Structure) -> void:
 		if p.ground_pos.distance_to(goal) <= TAKE_REACH:
 			if _hauling.has(id):
 				_hauling.erase(id)
-			else:
+			elif has_grain(s):  # (god T1R, H0: he waits at the door for the grain)
 				_take(s, id)
 				if emptied != null:
 					return
 			goal = citadel_door if _hauling.has(id) else doors[s]
-		if p.mind != Person.Mind.DUTY or p.anchor.distance_to(goal) > 0.3:
+		if _needs_orders(p, goal):
 			p.go_duty(goal)
+
+
+## The carter `p` is to be (re)sent for `goal`: off his duty, or his duty is elsewhere, or (god T1R) his road was closed -- a Thornwall dropped his
+## walk -- and he stands short of the goal with no walk, so the next look tries again once it opens.
+func _needs_orders(p: Person, goal: Vector2) -> bool:
+	if p.mind != Person.Mind.DUTY or p.anchor.distance_to(goal) > 0.3:
+		return true
+	return p.goal() == Vector2.INF and p.ground_pos.distance_to(goal) > TAKE_REACH
 
 
 ## A load taken from `s` by the carter `id` (v0.11 M2); the last one empties it.
@@ -340,6 +543,8 @@ func _take(s: Structure, id: int) -> void:
 ## Spoiled (v0.11 M2): the chain starts for the next granary; its carters and its watchmen go home, and any load they carry is
 ## lost. v0.11 M3: the strip shows the next grain's chained time.
 func _on_razed(s: Structure) -> void:
+	if not spoiled_by.has(s):
+		spoiled_by[s] = "fall" if not is_instance_valid(s) or s.destroyed else "fire"
 	rules.banner.emit("A GRANARY IS SPOILED")
 	var i := targets.find(s)
 	spoiled_at[i] = _clock
@@ -370,6 +575,53 @@ func _release(w: Watch) -> void:
 		crowd.off_duty(p)
 	elif p.mind in GUARD_MINDS and p.profile != null:
 		p.regroup(p.profile.home)
+
+
+## Blight's mark (god T1R, H3, spec 6.4): a granary not yet spoiled within BlightFx.REACH of `at`, guarded or empty or not (a refusal is
+## still a mark, so the player is told why). The granary's middle. Only reads.
+func blight_target(at: Vector2) -> Vector2:
+	var i := _blight_granary(at)
+	return targets[i].center() if i >= 0 else Vector2.INF
+
+
+## Blight rots a granary whose grain is in and that no watchman of it guards (god T1R, H3; Decision 29: no route round the opposition).
+## Only reads.
+func blight_takes(at: Vector2) -> bool:
+	var i := _blight_granary(at)
+	return i >= 0 and has_grain(targets[i]) and not guarding(targets[i])
+
+
+## Blight landed on a granary (god T1R, H3): taken, it is spoiled and the town's alarm rises (the base); not, only the banner shows.
+func blighted(at: Vector2) -> bool:
+	var i := _blight_granary(at)
+	_blight_said = _blight_words_now(at)
+	if not super(at):
+		return false
+	_spoil(targets[i], "blight")
+	return true
+
+
+## The words of the Blight that just landed (god T1R, H3): kept by blighted(), for the granary is spoiled by the time BlightFx asks.
+func blight_words(at: Vector2) -> String:
+	return _blight_said if _blight_said != "" else _blight_words_now(at)
+
+
+func _blight_words_now(at: Vector2) -> String:
+	var i := _blight_granary(at)
+	if i < 0:
+		return ""
+	if not has_grain(targets[i]):
+		return "NO GRAIN TO ROT YET"
+	return "THEIR WATCH KEEPS IT" if guarding(targets[i]) else "BLIGHT - THE GRAIN ROTS"
+
+
+## The granary not yet spoiled whose footprint lies within BlightFx.REACH of `at`, or -1.
+func _blight_granary(at: Vector2) -> int:
+	for i in targets.size():
+		var s := targets[i]
+		if not razed(s) and is_instance_valid(s) and not s.destroyed and s.distance_to(at) <= BlightFx.REACH:
+			return i
+	return -1
 
 
 ## The night is lost once a granary is emptied (v0.11 M2).
@@ -404,12 +656,13 @@ func tags() -> Array[MapTag]:
 				out.append(MapTag.person(p.ground_pos, MARK_WATCHED, "WATCHMAN"))
 			else:
 				out.append(MapTag.pip(p.ground_pos, MARK_WATCHED))
-	for s in carting:
-		if razed(s):
+	for s in targets:
+		if razed(s) or not _out_at.has(s):
 			continue
-		for c: Variant in carters[s]:
+		var label := "CARTER - %d LEFT" % int(loads[s]) if has_grain(s) else "CARTER - GRAIN IN %s" % UiTheme.clock(grain_left(s))
+		for c: Variant in carters.get(s, []):
 			if _alive(c) and not (c as Person).inside:
-				out.append(MapTag.person((c as Person).ground_pos, MARK_CARTER))
+				out.append(MapTag.person((c as Person).ground_pos, MARK_CARTER, label, true))
 	return out
 
 

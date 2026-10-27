@@ -393,7 +393,9 @@ static func summary_lines(result: Dictionary) -> PackedStringArray:
 
 ## An Endless Night's lines under its rows (god P1, spec §9.2), from `result.god` (GodNight.bank()'s dictionary), in order: the Divine
 ## Power earned (and AWAKEN TO GROW when the god is at its cap), one line per level gained, the Divine Power lost at the cap when any
-## was (spec §8: the loss is simple and visible), the believers with the Faith they became and the Faith now, the Lantern Notice, and the night. Empty for a result with no god.
+## was (spec §8: the loss is simple and visible), the believers with the Faith they became and the Faith now, the Lantern Notice (with
+## its change when it moved: god P2, Ruling P2-11), the Hunt's outcome, a seal that ended, a warning that the next night is the Hunt, and
+## the night. Empty for a result with no god.
 static func god_lines(result: Dictionary) -> PackedStringArray:
 	var out := PackedStringArray()
 	var g := _god_of(result)
@@ -405,9 +407,49 @@ static func god_lines(result: Dictionary) -> PackedStringArray:
 	if int(g.get("lost", 0)) > 0:
 		out.append("%d Divine Power lost at the cap" % int(g.get("lost", 0)))
 	out.append("Believers %d   Faith +%d, %d now" % [int(g.get("believers", 0)), int(g.get("faith", 0)), int(g.get("faith_total", 0))])
-	out.append("Lantern Notice %d%%" % int(g.get("notice", 0)))
+	var change := int(g.get("notice_change", 0))
+	if change == 0:
+		out.append("Lantern Notice %d%%" % int(g.get("notice", 0)))
+	else:
+		out.append("Lantern Notice %d%%  (%s%d%%)" % [int(g.get("notice", 0)), "+" if change > 0 else "-", absi(change)])
+	var hunt: Dictionary = g.get("hunt", {}) if g.get("hunt") is Dictionary else {}
+	if not hunt.is_empty():
+		if bool(hunt.get("won", false)):
+			out.append("The Hunt is broken: Notice 0%%, Faith +%d" % int(hunt.get("faith", 0)))
+		elif String(hunt.get("sealed", "")) != "":
+			out.append("The Lantern seals %s for %s" % [PowerBook.get_power(String(hunt.sealed)).name,
+				GodSlot.nights_text(int(hunt.get("seal_nights", 0)))])
+		else:
+			out.append("The Lantern found nothing to seal")
+	var unsealed := String(g.get("unsealed", ""))
+	if unsealed != "":
+		out.append("%s is no longer sealed" % PowerBook.get_power(unsealed).name)
+	if bool(g.get("hunt_next", false)):
+		out.append("THE LANTERN HUNTS: the next night is the Hunt")
 	out.append("Night %d" % int(g.get("night", 0)))
 	return out
+
+
+## The colour of a god line that is not a level line (god P2, Ruling P2-11): a Notice rise, a seal, nothing to seal, the next Hunt and a
+## loss at the cap are red, the Hunt won is gold, the rest plain. Matched by content, as P1 matched the cap loss.
+static func god_line_color(line: String) -> Color:
+	if line.begins_with("Lantern Notice") and line.contains("(+"):
+		return UiTheme.COL_BAD
+	if line.begins_with("The Lantern seals") or line.begins_with("The Lantern found nothing") or line.begins_with("THE LANTERN HUNTS") or line.ends_with("lost at the cap"):
+		return UiTheme.COL_BAD
+	if line.begins_with("The Hunt is broken"):
+		return UiTheme.COL_GOLD
+	return UiTheme.COL_TEXT
+
+
+## "Lantern Hunt: <title>  -  <tier>" when the night was the Lantern's Hunt (god P2, Ruling P2-5), else "": results draw it in place of the
+## mission line.
+static func hunt_called(result: Dictionary) -> String:
+	var g := _god_of(result)
+	var hunt: Dictionary = g.get("hunt", {}) if g.get("hunt") is Dictionary else {}
+	if hunt.is_empty():
+		return ""
+	return "Lantern Hunt: %s  -  %s" % [String(hunt.get("title", "")), TierBook.tier_name(int(hunt.get("tier", 1)))]
 
 
 ## The god's dictionary in a result: `result.god`, or the dictionary itself when it is one (it has Divine Power); {} otherwise.
@@ -469,8 +511,9 @@ static func level_flash(k: int, total: float, t: float) -> float:
 func _draw_descend() -> void:
 	var d: Dictionary = _result.get("descend", {})
 	var def := TierBook.board(String(_result.get("mission", "")))
-	var called := "%s  -  %s" % [def.name if def != null else String(_result.get("mission", "")),
-		TierBook.tier_name(int(d.get("tier", 1)))]
+	var called := hunt_called(_result)
+	if called == "":
+		called = "%s  -  %s" % [def.name if def != null else String(_result.get("mission", "")), TierBook.tier_name(int(d.get("tier", 1)))]
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(called, UiTheme.SIZE_BODY) * 0.5), 84.0), called, UiTheme.SIZE_BODY,
 		UiTheme.COL_DIM)
 	var caught := caught_line(_result)
@@ -515,14 +558,12 @@ func _draw_god_lines(y: float) -> void:
 	var step := UiTheme.LINE_BODY if rest <= 0 else minf(UiTheme.LINE_BODY, (LINES_BOTTOM - y) / float(rest))
 	var size := UiTheme.SIZE_BODY if step >= UiTheme.LINE_BODY - 0.5 else UiTheme.SIZE_SMALL
 	for i in range(1, lines.size()):
-		var col := UiTheme.COL_TEXT
+		var col := god_line_color(lines[i])
 		if i <= gained.size():
 			var k := i - 1
 			col = UiTheme.COL_DIM
 			if level_reached(k, total, _t):
 				col = UiTheme.COL_TEXT.lerp(UiTheme.COL_GOLD, level_flash(k, total, _t))
-		elif lines[i].ends_with("lost at the cap"):
-			col = UiTheme.COL_BAD  # a loss is shown as one (spec §8)
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[i], size) * 0.5), y), lines[i], size, col)
 		y += step
 

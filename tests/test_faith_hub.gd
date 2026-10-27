@@ -1,7 +1,8 @@
 extends RefCounted
 ## God P1 Task 9 (spec §7, §9.1, C9, Rulings P8, P12, P18, P24): the Faith screen and the Endless Night hub -- the Faith rows fit and
 ## buy (or refuse and say why), the hub's lines, the Divine Power bar's text, its buttons and keys, and a god with nothing to draft
-## cannot Descend.
+## cannot Descend. God P2 Task 3 adds the Lantern on the hub: the Notice meter, the Hunt coming, the seal, and the dev Awaken refused
+## while the Hunt is due (spec §9.1, §10; Rulings P2-4, P2-11, preflight R6).
 
 
 static func run(t) -> void:
@@ -10,6 +11,10 @@ static func run(t) -> void:
 	_faith_buy(t)
 	_hub_lines(t)
 	_hub_buttons(t)
+	_hub_notice(t)
+	_hub_hunt(t)
+	_hub_seal(t)
+	_hub_awaken_refused(t)
 	GodTree.dev_fill = false
 	_hub_blocked(t)
 
@@ -156,3 +161,79 @@ static func _hub_blocked(t) -> void:
 	t.check(full.can_descend() and full.blocked_line() == "", "with a filled tree it can Descend and has no blocked line")
 	full.free()
 	GodTree.dev_fill = false
+
+
+## A key of the dev fill that any god of `type` has a spot for (the hub only prints its name).
+static func _tree_key(type := "ruin") -> String:
+	return GodTree.starting(type)[0]
+
+
+static func _hub_notice(t) -> void:
+	var god := _slot()
+	var hub := GodHub.new().setup(god)
+	t.check(hub.lines()[5] == "Lantern Notice 0%" and is_zero_approx(hub.notice_fill()),
+		"Notice 0: the line and an empty meter (%s, %s)" % [hub.lines()[5], hub.notice_fill()])
+	god.notice = 75
+	t.check(hub.lines()[5] == "Lantern Notice 75%" and is_equal_approx(hub.notice_fill(), 0.75),
+		"Notice 75: the line and three quarters of the meter (%s, %s)" % [hub.lines()[5], hub.notice_fill()])
+	god.notice = 100
+	t.check(is_equal_approx(hub.notice_fill(), 1.0), "Notice 100: a full meter (%s)" % hub.notice_fill())
+	t.check(hub.lines()[6] == "Night 1", "the night line stays at index 6 (%s)" % hub.lines()[6])
+	var room := GodHub.NOTICE_BAR.position.x - GodHub.LINES_AT.x - UiTheme.width(hub.lines()[5])
+	t.check(room > 0.0 and Rect2(0, 0, 640, 360).encloses(GodHub.NOTICE_BAR),
+		"the meter sits right of the longest Notice line and on the screen (%s px of room)" % room)
+	hub.free()
+
+
+static func _hub_hunt(t) -> void:
+	var god := _slot()
+	var hub := GodHub.new().setup(god)
+	god.notice = 100
+	t.check(hub.hunt_line() == GodHub.HUNT_DUE % GodNight.HUNTS[0].title,
+		"at Notice 100 the hub says the Hunt is next, by its title (%s)" % hub.hunt_line())
+	god.notice = 99
+	t.check(hub.hunt_line() == "", "at 99 it says nothing (%s)" % hub.hunt_line())
+	hub.free()
+
+
+static func _hub_seal(t) -> void:
+	var god := _slot()
+	var hub := GodHub.new().setup(god)
+	t.check(hub.seal_line() == "", "no seal: no line (%s)" % hub.seal_line())
+	var key := _tree_key()
+	var name: String = PowerBook.get_power(key).name
+	god.sealed = key
+	god.seal_nights = 3
+	t.check(hub.seal_line() == "Sealed by the Lantern: %s, 3 nights left" % name, "a seal of 3 nights (%s)" % hub.seal_line())
+	god.seal_nights = 1
+	t.check(hub.seal_line() == "Sealed by the Lantern: %s, 1 night left" % name, "a seal of 1 night (%s)" % hub.seal_line())
+	# Preflight R6: a three-line one-off line, the seal and the Hunt all up: stacked, clear of the Night line and of the buttons.
+	god.notice = 100
+	hub.line = "Night 4 was abandoned: the Hunt is lost. The Lantern seals a very long ability name for 3 nights. Lantern Notice 50%. " 		+ "The disk is full and the god could not be written, so the Lantern forgets this night when you quit."
+	var lay := hub.status_layout()
+	var ys: Array = lay.line_ys
+	t.check(ys.size() == 3 and is_equal_approx(ys[ys.size() - 1], GodHub.BUTTONS_Y - 14.0),
+		"the one-off line wraps to 3 lines ending at the old baseline (%s)" % [ys])
+	t.check(lay.seal_y > 0.0 and lay.hunt_y > 0.0 and lay.hunt_y < lay.seal_y and lay.seal_y < float(ys[0]),
+		"the seal sits above the line and the Hunt above the seal (%s)" % [lay])
+	t.check(lay.top > GodHub.LINES_AT.y + UiTheme.LINE_BODY * 3.0 + UiTheme.LINE_BODY and float(ys[ys.size() - 1]) < GodHub.BUTTONS_Y,
+		"all of it is below the Night line and above the buttons (top %s)" % lay.top)
+	hub.free()
+
+
+static func _hub_awaken_refused(t) -> void:
+	var god := _slot()
+	var hub := GodHub.new().setup(god, "", true)
+	var emitted := []
+	hub.action.connect(func(what: String) -> void: emitted.append(what))
+	god.notice = 100
+	var tier := god.tier
+	hub._unhandled_input(_key(KEY_A))
+	t.check(emitted.is_empty() and hub.line == GodHub.AWAKEN_HUNT and god.tier == tier,
+		"A while the Hunt is due emits nothing and says why (%s, %s)" % [emitted, hub.line])
+	t.check(GodHub.AWAKEN_HUNT == "The Lantern hunts: face the Hunt first", "its copy (%s)" % GodHub.AWAKEN_HUNT)
+	god.notice = 99
+	hub.line = ""
+	hub._unhandled_input(_key(KEY_A))
+	t.check(emitted == ["awaken_dev"] and hub.line == "", "at 99 A is the dev Awaken as before (%s)" % [emitted])
+	hub.free()

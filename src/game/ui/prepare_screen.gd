@@ -23,6 +23,10 @@ const TAB_H := 16.0
 const TAB_GAP := 4.0
 ## How long a refused pick's reason stays in the panel's hint line (v0.08).
 const REFUSE_SECONDS := 1.5
+## What a click on a sealed card says (god P2, spec §10.3, Ruling P2-7): `%s` is the nights left.
+const REFUSE_SEALED := "Sealed by the Lantern: %s left"
+## The header while the Hunt is the night (god P2, spec §10.2, Ruling P2-5).
+const HUNT_HEADER := "THE LANTERN HUNT"
 ## What the panel says when a pick is refused, by Draft.refusal()'s answer.
 const REFUSALS := {"dp": "Not enough Might", "slots": "No free slot", "pool": "Not a power of this mission",
 	"locked": "Locked: unlock it on the Upgrades screen"}
@@ -107,9 +111,16 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 		draft.slots = god.slots()
 		draft.capacity = god.max_might()
 		draft.levels = god.learned.duplicate()
-		for key in god.draftable():
+		# A sealed key (god P2, Ruling P2-7) is listed in its tab so the player sees it, but never picked: not by a remembered loadout,
+		# whatever the def's pool is (preflight R7), and not by a click.
+		var wanted := PackedStringArray()
+		for key in preselect:
+			if key != god.sealed:
+				wanted.append(key)
+		preselect = wanted
+		for key in god.in_tree():
 			var type := _tab_of(key)
-			if mission.allows(key) and type != "":
+			if (mission.allows(key) or key == god.sealed) and type != "":
 				var keys: PackedStringArray = _god_tabs.get(type, PackedStringArray())
 				keys.append(key)
 				_god_tabs[type] = keys
@@ -342,6 +353,8 @@ func click(point: Vector2) -> void:
 			action.emit("manifest")
 		else:
 			refuse(REFUSE_EMPTY)
+	elif god != null and h != "" and h == god.sealed:
+		refuse(REFUSE_SEALED % GodSlot.nights_text(god.seal_nights))
 	elif h != "":
 		var why := draft.toggle(h)
 		_keep_god_levels()
@@ -373,6 +386,8 @@ func card_cost_text(key: String) -> String:
 	var p := PowerBook.get_power(key)
 	if draft.locked.has(key):
 		return "Locked: %d" % DescendState.unlock_price(key)
+	if god != null and key == god.sealed:
+		return "Sealed: %s" % GodSlot.nights_text(god.seal_nights)
 	if god != null:
 		# A god's card (god P1): the learned level and the Might at that level.
 		return "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p)]
@@ -416,7 +431,7 @@ func preview(key: String) -> void:
 
 func _draw_ui() -> void:
 	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
-	UiTheme.text(_ui, Vector2(8, 24), "PREPARE THE MANIFESTATION", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+	_draw_header()
 	_draw_budget()
 	_draw_panel()
 	_draw_tabs()
@@ -425,6 +440,22 @@ func _draw_ui() -> void:
 		_draw_card(i, String(keys[i]))
 	_draw_loadout()
 	_draw_profile()
+
+
+## The header: THE LANTERN HUNT (red) while the Hunt is the night, else "PREPARE THE MANIFESTATION" (god P2, Ruling P2-5).
+func header_text() -> String:
+	if god != null and not GodNight.hunt_for(god).is_empty():
+		return HUNT_HEADER
+	return "PREPARE THE MANIFESTATION"
+
+
+func _draw_header() -> void:
+	var s := header_text()
+	var size := UiTheme.SIZE_BIG
+	# Body size only if the header would meet the budget text at the right.
+	if 8.0 + UiTheme.width(s, size) > 632.0 - UiTheme.width(budget_text(), UiTheme.SIZE_SMALL) - 8.0:
+		size = UiTheme.SIZE_BODY
+	UiTheme.text(_ui, Vector2(8, 24), s, size, UiTheme.COL_BAD if s == HUNT_HEADER else UiTheme.COL_GOLD)
 
 
 ## "4 / 6 slots   12 / 14 Might" at the header's right (v0.08's budget meter): gold once the slots or the Might
@@ -520,29 +551,67 @@ func _draw_panel() -> void:
 		_draw_power_card(hover, p)
 		_draw_hint("")
 		return
-	var brief := [
+	var layout := _brief_layout()
+	for row: Dictionary in layout.rows:
+		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, float(row.y)), String(row.label), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+		var y := float(row.y)
+		for line in row.lines:
+			UiTheme.text(_ui, Vector2(PANEL.position.x + float(layout.value_x), y), String(line), UiTheme.SIZE_SMALL)
+			y += UiTheme.LINE_SMALL
+	_draw_hint(hint_text())
+
+
+## The briefing's `[label, value]` pairs (god P2, Ruling P2-5). The Hunt's are HUNT (its title and plate), WIN, LOSE, IF WON and IF LOST
+## (the stake, said before it is played: spec §2); the LOADOUT row is left out so they fit the panel (preflight R4, step 1: the header's
+## budget and the hint line already give the slots and the Might). Any other night's are the six it has always had.
+func brief_rows() -> Array:
+	var loadout := ["LOADOUT", "%d slots, %d Might to spend on them" % [draft.slots, draft.capacity]]
+	var hunt := GodNight.hunt_for(god) if god != null else {}
+	if not hunt.is_empty():
+		return [
+			["HUNT", "%s: %s" % [hunt.title, hunt.plate]],
+			["WIN", mission.goal],
+			["LOSE", mission.lose],
+			["IF WON", "Notice %d%%, +%d Faith" % [GodNight.HUNT_WON_NOTICE, GodNight.HUNT_FAITH * int(hunt.tier)]],
+			["IF LOST", "%s; Notice %d%%" % [GodNight.hunt_stake(god), GodNight.HUNT_LOST_NOTICE]],
+		]
+	return [
 		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
 		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
-		["LOADOUT", "%d slots, %d Might to spend on them" % [draft.slots, draft.capacity]],
+		loadout,
 		["TEMPLE", "Its fall resets every cooldown, once"],
 	]
-	# Values start just right of the widest label, measured rather than guessed -- a guessed column ran
-	# TARGET into "Aldermere".
+
+
+## Where the briefing's rows sit: {"value_x", "rows": [{"label", "y", "lines"}], "bottom"} -- `bottom` is the baseline the next row would
+## take, as _draw_panel() steps it. Values start just right of the widest label, measured rather than guessed -- a guessed column ran
+## TARGET into "Aldermere".
+func _brief_layout() -> Dictionary:
+	var brief := brief_rows()
 	var value_x := 0.0
 	for pair: Array in brief:
 		value_x = maxf(value_x, UiTheme.width(String(pair[0]), UiTheme.SIZE_SMALL))
 	value_x = roundf(value_x + 4.0 + LABEL_GAP)
 	var y := PANEL.position.y + 10.0
+	var rows := []
 	for pair: Array in brief:
-		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, y), String(pair[0]), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		for line in UiTheme.wrap(String(pair[1]), PANEL.size.x - value_x - 4.0, UiTheme.SIZE_SMALL):
-			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
-			y += UiTheme.LINE_SMALL
-		y += 3.0
-	_draw_hint("Pick up to %d powers within %d Might%s" % [draft.slots, draft.capacity,
-		". Click the L on a slot to set its level" if level_picker else ""])
+		var lines := UiTheme.wrap(String(pair[1]), PANEL.size.x - value_x - 4.0, UiTheme.SIZE_SMALL)
+		rows.append({"label": String(pair[0]), "y": y, "lines": lines})
+		y += UiTheme.LINE_SMALL * float(lines.size()) + 3.0
+	return {"value_x": value_x, "rows": rows, "bottom": y}
+
+
+## The baseline after the briefing's last row (god P2, preflight R4): what must clear the hint line below it.
+func brief_bottom() -> float:
+	return float(_brief_layout().bottom)
+
+
+## The panel's hint when no refusal is showing: how many powers within how much Might.
+func hint_text() -> String:
+	return "Pick up to %d powers within %d Might%s" % [draft.slots, draft.capacity,
+		". Click the L on a slot to set its level" if level_picker else ""]
 
 
 ## The panel's last line: why a pick was just refused, in red, or else `hint`, dim ("" for none).
@@ -593,7 +662,8 @@ func _draw_card(i: int, key: String) -> void:
 	var icon_px := r.size.y - 8.0 if compact else 42.0
 	var slot := draft.slot_of(key)
 	# A card that would not fit -- no free slot, or over the Might -- is dimmed (v0.08); a picked one never is.
-	var refused := draft.refusal(key) != ""
+	var sealed := god != null and key == god.sealed
+	var refused := sealed or draft.refusal(key) != ""
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
 	var icon: Texture2D = _icons.get(key)
 	if icon != null:
@@ -610,7 +680,12 @@ func _draw_card(i: int, key: String) -> void:
 		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
 	# A locked power (v0.11 M1, spec §3.4) shows its unlocking price instead.
 	var cost := card_cost_text(key)
-	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_BAD if sealed else UiTheme.COL_DIM)
+	if sealed:
+		# The Lantern's seal (god P2): a red cross over the icon, drawn shapes only (C4).
+		var at := r.position + Vector2(4.0, 4.0)
+		_ui.draw_line(at, at + Vector2(icon_px, icon_px), UiTheme.COL_BAD, 2.0)
+		_ui.draw_line(at + Vector2(icon_px, 0.0), at + Vector2(0.0, icon_px), UiTheme.COL_BAD, 2.0)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.
 		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1); so does a price

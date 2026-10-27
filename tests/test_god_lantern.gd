@@ -30,6 +30,8 @@ static func run(t) -> void:
 	_hunt_def(t)
 	_hunt_def_not_due(t)
 	_informer_t3_wishes(t)
+	_after_hunt(t)
+	_before_hunt_file(t)
 	GodTree.dev_fill = false
 
 
@@ -453,3 +455,59 @@ static func _informer_t3_wishes(t) -> void:
 	t.check(heard > 0 and hit == 0, "the Informer at tier 3: wishes heard (%d), none on the director's own people or buildings (%d)" % [heard, hit])
 	if short > 0:
 		print("NOTE: the Informer at tier 3 heard fewer than %d wishes on %d of 4 nights" % [TierBook.wishes(3), short])
+
+
+## Review M3 (fix wave): the night after a Hunt -- won, lost or abandoned -- draws neither the Hunt's stand-in nor the night before the
+## Hunt, on every tier and seed; the night after that forgets the night before the Hunt again.
+static func _after_hunt(t) -> void:
+	for tier in range(1, 6):
+		var pool := TierBook.missions(tier)
+		var hunt_id: String = GodNight.HUNTS[tier - 1].id
+		var before := ""
+		for id in pool:
+			if id != hunt_id:
+				before = id
+				break
+		for how in ["won", "lost", "abandoned"]:
+			var bad := ""
+			for seed_value in range(1, 41):
+				var s := _slot(tier, seed_value)
+				s.last_mission = before
+				s.notice = 100
+				if how == "abandoned":
+					s.in_night = hunt_id
+					GodNight.forfeit(s)
+				else:
+					GodNight.bank(s, hunt_id, PackedStringArray(), _outcome(how == "won", false, 0, 0, tier))
+				if s.before_hunt != before or s.last_mission != hunt_id:
+					bad = "seed %d: before_hunt %s, last %s" % [seed_value, s.before_hunt, s.last_mission]
+					break
+				var next := GodNight.draw(s)
+				if pool.size() > 2 and (next == before or next == hunt_id):
+					bad = "seed %d draws %s" % [seed_value, next]
+					break
+				GodNight.bank(s, next, PackedStringArray(), _outcome(true, true, 0, 0, tier))
+				if s.before_hunt != "" or s.last_mission != next:
+					bad = "seed %d: after a plain night before_hunt is %s" % [seed_value, s.before_hunt]
+					break
+			t.check(before != "" and bad == "", "tier %d, a %s Hunt: the next night is neither %s nor %s, then it is forgotten (%s)" % [tier, how, hunt_id, before, bad])
+	var plain := _slot(1, 7)
+	plain.last_mission = "warning"
+	plain.before_hunt = "tax_collector"
+	GodNight.forfeit(plain)
+	t.check(plain.before_hunt == "", "a plain forfeit clears it (%s)" % plain.before_hunt)
+
+
+## Review M3: `before_hunt` round-trips; an older file (no key) and a key that is not a board mission read as "".
+static func _before_hunt_file(t) -> void:
+	var file := FILE % "g"
+	var w := _slot()
+	w.before_hunt = "tax_collector"
+	w.write(file)
+	var back := GodSlot.read(file)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(file))
+	t.check(back != null and back.before_hunt == "tax_collector", "before_hunt round-trips (%s)" % [back.before_hunt if back != null else "null"])
+	var old := _read_with("h", {"type": _type()})
+	t.check(old != null and old.before_hunt == "", "a file without it reads \"\"")
+	var junk := _read_with("i", {"type": _type(), "before_hunt": "no_such_mission"})
+	t.check(junk != null and junk.before_hunt == "", "an unknown id reads \"\"")

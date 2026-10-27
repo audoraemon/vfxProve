@@ -314,6 +314,8 @@ static func load_god(file: String) -> Array:
 
 ## What the hub says once when the god's file could not be written (god P2, Ruling P2-13): `%d` is the error code.
 const WRITE_FAILED := "The god could not be saved (error %d): progress since the last save may be lost."
+## The night's banner when the clock's start could not be written (review M4): a quit from here would escape the Notice unseen otherwise.
+const CLOCK_SAVE_FAILED := "THE GOD COULD NOT BE SAVED"
 
 
 ## Writes `slot` to `file` (god P2, Ruling P2-13): "" when saved, else WRITE_FAILED's line. A forfeit costs Notice now, so a quit that
@@ -902,7 +904,9 @@ func _build_mission() -> Mission:
 		mission.levels = god.learned.duplicate()
 		mission.wish_seed = GodNight.wish_seed(god, mission_id)
 		mission.restart_locked = true
-		mission.clock_started.connect(_on_clock_started)
+		mission.report_on_decision = true  # the night banks when it is decided, not after its ending (review M1)
+		mission.clock_started.connect(_on_clock_started.bind(mission))
+		mission.decided.connect(_on_night_decided)
 	add_child(mission)
 	mission.finished.connect(_on_mission_finished)
 	mission.act_over.connect(_on_act_over)
@@ -921,13 +925,24 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 	_between_acts = false
 	result = outcome
 	if _in_endless and god != null:
-		# Endless Night (god P1, Rulings P9, P10, C7): the night is banked to the god and only the god's file is written.
-		bank_god_night(god, mission_id, loadout, result)
-		_write_god()
+		# Endless Night (god P1, Rulings P9, P10, C7): the night is banked to the god and only the god's file is written -- already
+		# done when the night was decided (review M1), which put "god" in this same result.
+		if not outcome.has("god"):
+			bank_god_night(god, mission_id, loadout, result)
+			_write_god()
 	else:
 		bank_night(save, mission_id, loadout, result, _in_campaign)
 		save.save_to(save_path)
 	on_action("mission:over")
+
+
+## An Endless night is decided (god P2 fix wave, review M1): it is banked and written now, so a window closed during the 2-3 s ending
+## keeps the night as played instead of forfeiting it. `finished` brings the same result afterwards and does not bank it again.
+func _on_night_decided(outcome: Dictionary) -> void:
+	if not _in_endless or god == null:
+		return
+	bank_god_night(god, mission_id, loadout, outcome)
+	_write_god()
 
 
 ## What a finished night does to the save (not written to disk: the caller does that), a static so a suite can prove it (v0.12): a
@@ -1102,21 +1117,24 @@ func _abandon_night() -> void:
 
 
 ## The night's clock has started (god P1, Ruling P9): from here leaving is a lost night, so the god's file says so now, once.
-func _on_clock_started() -> void:
+## A failed write shows on the night's banner at once too (review M4): the hub's line alone is never seen if the player then quits.
+func _on_clock_started(mission: Mission) -> void:
 	if god == null or not _in_endless or god.in_night == mission_id:
 		return
 	god.in_night = mission_id
-	_write_god()
+	if _write_god() != "" and is_instance_valid(mission):
+		mission.announce(CLOCK_SAVE_FAILED)
 
 
-## Writes the god in play to its slot's file.
-func _write_god() -> void:
+## Writes the god in play to its slot's file: "" when saved, else the failure's line (also kept for the next hub).
+func _write_god() -> String:
 	if god == null or god_slot < 1:
-		return
+		return ""
 	var failed := write_god(god, GodSlot.path(god_slot, god_base))
 	if failed != "":
 		push_warning("KAK could not write the god in slot %d: %s" % [god_slot, failed])
 		_hub_line = join_lines(_hub_line, failed)  # the next hub shows it once (god P2, Ruling P2-13)
+	return failed
 
 
 ## Removes the three slot files under `god_base`: a --flow-test or --show run starts and ends without a god.
@@ -2471,6 +2489,10 @@ func _flow_lantern(step: Callable) -> void:
 
 	# The Hunt lost: the seal.
 	_mission.rules().force_end(false, "dawn")
+	var decided_file: GodSlot = god_file.call()
+	step.call(screen != Screen.RESULTS and god.in_night == "" and god.night == hunt_night + 1 and decided_file != null
+		and decided_file.in_night == "" and decided_file.night == hunt_night + 1 and decided_file.sealed == target,
+		"the Hunt is banked and written the moment it is decided, during its ending (review M1: a window closed now keeps the night)")
 	var up := await _until(func() -> bool: return screen == Screen.RESULTS, 8.0)
 	var banked: Dictionary = result.get("god", {})
 	var hunt: Dictionary = banked.get("hunt", {})
@@ -2481,6 +2503,8 @@ func _flow_lantern(step: Callable) -> void:
 	step.call(up and not hunt.is_empty() and not bool(hunt.get("won", true)) and String(hunt.get("sealed", "")) == target and change_at >= 0 and seal_at > change_at
 		and ResultsScreen.hunt_called(result) != "",
 		"the lost Hunt's results: the Notice change, then \"The Lantern seals %s for 3 nights\", and the Hunt named (%s)" % [name_target, ", ".join(lines)])
+	step.call(god.before_hunt == picked and saved != null and saved.before_hunt == picked,
+		"the night before the Hunt is remembered, in the file too (review M3: %s)" % god.before_hunt)
 	step.call(god.sealed == target and god.seal_nights == 3 and god.notice == 50 and god.night == hunt_night + 1 and god.last_mission == String(hunt0.id)
 		and not god.loadout.has(target) and god.faith == faith_before and god.divine_power == dp_before and god.level == level
 		and saved != null and saved.sealed == target and saved.seal_nights == 3 and saved.notice == 50 and saved.night == god.night
@@ -2506,6 +2530,8 @@ func _flow_lantern(step: Callable) -> void:
 		step.call(false, "Descend opens Prepare after the Hunt")
 		out.call()
 		return
+	step.call(mission_id != picked and mission_id != String(hunt0.id),
+		"the night after the Hunt is neither the Hunt's stand-in nor the night before it (review M3: %s)" % mission_id)
 	var at_tab := -1
 	var at_card := -1
 	for i in prep.tabs().size():

@@ -193,4 +193,5 @@ static func _mission_hooks(t) -> void:
 	t.check(m._mission_def(PackedStringArray()).pool == s.draftable(), "night_def replaces the mission's def")
 	t.check(m.restart_locked == false, "R restarts unless locked")
 	t.check(m.has_signal("clock_started"), "the mission announces its clock starting")
+	t.check(m.has_signal("decided") and m.report_on_decision == false, "the mission can report when a run is decided; off unless Endless sets it (review M1)")
 	m.free()

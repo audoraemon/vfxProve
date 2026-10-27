@@ -74,6 +74,9 @@ var seal_nights := 0
 var night := 0
 ## The last mission played, a board mission id, or "".
 var last_mission := ""
+## The mission played the night before the Hunt, kept only while the last night was the Hunt, or "" (god P2 fix wave, review M3): the night
+## after a Hunt draws neither. An old file has no key and reads "".
+var before_hunt := ""
 ## The mission whose clock has started and not yet ended, or "" (Ruling P9: no escape by quitting).
 var in_night := ""
 ## Stolen gifts won by Awaken rites (P3-P4); ids as strings.
@@ -150,6 +153,8 @@ static func read(file: String) -> GodSlot:
 		s.seal_nights = 0
 	var last := _string(cfg.get_value(SECTION, "last_mission", ""))
 	s.last_mission = last if TierBook.has(last) else ""
+	var before := _string(cfg.get_value(SECTION, "before_hunt", ""))
+	s.before_hunt = before if TierBook.has(before) else ""
 	var open := _string(cfg.get_value(SECTION, "in_night", ""))
 	s.in_night = open if TierBook.has(open) else ""
 	s.gifts = _strings(cfg.get_value(SECTION, "gifts", PackedStringArray()))
@@ -201,6 +206,7 @@ func write(file: String) -> Error:
 	cfg.set_value(SECTION, "seal_nights", seal_nights)
 	cfg.set_value(SECTION, "night", night)
 	cfg.set_value(SECTION, "last_mission", last_mission)
+	cfg.set_value(SECTION, "before_hunt", before_hunt)
 	cfg.set_value(SECTION, "in_night", in_night)
 	cfg.set_value(SECTION, "gifts", gifts)
 	cfg.set_value(SECTION, "bests", bests)

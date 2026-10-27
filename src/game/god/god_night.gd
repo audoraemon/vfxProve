@@ -91,7 +91,8 @@ static func notice_delta(d: Dictionary) -> int:
 
 
 ## The next night's mission (spec §9.1): the Hunt when the Notice is full (it cannot be skipped: no seed, no no-repeat; Ruling P2-4),
-## else one of the god's tier missions (TierBook.missions()), never the last one played, picked by a generator seeded with
+## else one of the god's tier missions (TierBook.missions()), never the last one played -- nor, after a Hunt, the one before it (review
+## M3) -- picked by a generator seeded with
 ## night_seed(). Nothing changes, so the same slot gives the same night until one counts.
 static func draw(slot: GodSlot) -> String:
 	var hunt := hunt_for(slot)
@@ -99,7 +100,7 @@ static func draw(slot: GodSlot) -> String:
 		return String(hunt.id)
 	var pool := PackedStringArray()
 	for id in TierBook.missions(slot.tier):
-		if id != slot.last_mission:
+		if id != slot.last_mission and id != slot.before_hunt:
 			pool.append(id)
 	if pool.is_empty():  # a tier with one mission: nothing else to draw
 		pool = TierBook.missions(slot.tier)
@@ -171,6 +172,7 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 	var notice_before := slot.notice
 	var unsealed := slot.tick_seal()
 	slot.night += 1
+	slot.before_hunt = "" if hunt.is_empty() else slot.last_mission  # review M3
 	slot.last_mission = id
 	slot.in_night = ""
 	var earned := maxi(int(d.get("earned", 0)), 0)
@@ -242,6 +244,7 @@ static func forfeit(slot: GodSlot) -> Dictionary:
 	var notice_before := slot.notice
 	var unsealed := slot.tick_seal()
 	slot.night += 1
+	slot.before_hunt = "" if hunt.is_empty() else slot.last_mission  # review M3
 	if slot.in_night != "":
 		slot.last_mission = slot.in_night
 	slot.in_night = ""

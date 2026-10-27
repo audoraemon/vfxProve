@@ -11,5 +11,5 @@ static func overrides() -> Dictionary:
 	var camera := shrine.lerp(poor, 0.8)
 	return {
 		"def": {"camera_at": camera, "intro_from": camera + Vector2(0.0, 6.0)},
-		"director": {"shrine_at": shrine, "poor_spot": poor, "poor_quarter": "west market's back lanes"},
+		"director": {"shrine_at": shrine, "poor_spot": poor, "poor_quarter": "west market's back lanes", "poor_out_at": [150.0, 210.0, 270.0]},
 	}

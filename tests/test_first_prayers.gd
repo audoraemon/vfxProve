@@ -22,6 +22,16 @@ static func run(t) -> void:
 	_fetch(t)
 	_mission(t)
 	_lantern(t)
+	_walker_sets_out(t)
+	_walker_seen(t)
+	_walker_prays(t)
+	_walker_waits(t)
+	_walker_whispered(t)
+	_fire_pulls(t)
+	_thorns_block(t)
+	_lie(t)
+	_drop(t)
+	_walker_stalls(t)
 
 
 static func _world() -> Dictionary:
@@ -116,9 +126,11 @@ static func _setup(t) -> void:
 	t.check(d.need == FirstPrayersDirector.NEED and is_equal_approx(d.read_seconds, FirstPrayersDirector.PRAY_SECONDS) and d.one_at_a_time,
 		"three must pray, PRAY_SECONDS (%.0f) each, one at a time" % [FirstPrayersDirector.PRAY_SECONDS])
 	var at := []
-	for e in d.timeline.upcoming(2):
+	for e in d.timeline.upcoming(4):
 		at.append(float(e.at))
-	t.check(at == [FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.PRIESTS_AT], "the market at MARKET_AT, the priests at PRIESTS_AT (%s)" % [at])
+	var want := [FirstPrayersDirector.POOR_OUT_AT[0], FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.POOR_OUT_AT[1], FirstPrayersDirector.PRIESTS_AT]
+	want.sort()
+	t.check(at == want, "the strip: the walkers' times and the market at MARKET_AT, the priests at PRIESTS_AT (%s)" % [at])
 	_blind(d)
 	t.check(_labels(d) == ["OLD WELL SHRINE", "DOOR - CLEAR"] and d.hint_phase() == "",
 		"tagged: the shrine and its clear door (%s)" % [_labels(d)])
@@ -346,3 +358,275 @@ static func _lantern(t) -> void:
 	rules.lantern = null
 	_done(s)
 
+
+
+# --- God T1R, Task 6 (spec 8): the poor come to pray, fire pulls the Faithful, Thornwall blocks sight, ALL IS WELL ---
+
+## Runs `seconds` with every Faithful kept well away from the door (the poor walk past nobody who sees).
+static func _run_blind(s: Dictionary, seconds: float) -> void:
+	var left := seconds
+	while left > 0.0:
+		_blind(s.d)
+		var step := minf(left, 1.0)
+		_run(s, step)
+		left -= step
+
+
+## One of the poor (the fourth) is set right by the door, so he is the nearest when the first walker is picked.
+static func _nearest_poor(s: Dictionary) -> Person:
+	var d: FirstPrayersDirector = s.d
+	var near: Person = d.grieving[3]
+	near.mind = Person.Mind.CALM
+	_arrive(near, d.door + Vector2(2.0, 0.0))
+	return near
+
+
+## F1: the first walker sets out at POOR_OUT_AT[0], the nearest unbelieving poor, on duty for the door, tagged; the next POOR_CHAIN after he
+## went in (sooner than POOR_OUT_AT[1]).
+static func _walker_sets_out(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var near := _nearest_poor(s)
+	var out_at := float(FirstPrayersDirector.POOR_OUT_AT[0])
+	_run_blind(s, out_at - 2.0)
+	t.check(d.walker == null and is_equal_approx(d.walk_due(), out_at), "no walker before POOR_OUT_AT[0] (due %.0f)" % d.walk_due())
+	_nearest_poor(s)
+	_run_blind(s, 2.0 + DT * 3.0)
+	t.check(d.walker == near and near.mind == Person.Mind.DUTY and near.anchor.distance_to(d.door) < 0.5
+		and _labels(d).has("POOR - TO THE SHRINE") and (s.banners as Array).has("ONE OF THE POOR SETS OUT FOR THE SHRINE"),
+		"POOR_OUT_AT[0]: the nearest of the poor sets out on duty for the door, tagged and announced (%s)" % [_labels(d)])
+	var tag: MapTag = null
+	for m in d.tags():
+		if m.label == "POOR - TO THE SHRINE":
+			tag = m
+	t.check(tag != null and tag.edge, "the walker's tag is pointed at from the edge")
+	_arrive(near, d.door)
+	_run_blind(s, DT * 2.0)
+	var went_in := d.timeline.elapsed()
+	t.check(near.inside and d.walker == null and d.walk_due() < float(FirstPrayersDirector.POOR_OUT_AT[1])
+		and absf(d.walk_due() - (went_in + FirstPrayersDirector.POOR_CHAIN)) <= DT * 3.0,
+		"he goes in; the next is due POOR_CHAIN later, sooner than POOR_OUT_AT[1] (%.1f, in at %.1f)" % [d.walk_due(), went_in])
+	_run_blind(s, FirstPrayersDirector.POOR_CHAIN + 0.5)
+	t.check(d.walker != null and d.walker != near and d.walker.mind == Person.Mind.DUTY,
+		"POOR_CHAIN after he went in, the next of the poor sets out")
+	_done(s)
+
+
+## F1: the door watched (a Faithful by it) when he arrives: turned away, a report started, he goes home and the chain begins.
+static func _walker_seen(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var near := _nearest_poor(s)
+	_run_blind(s, float(FirstPrayersDirector.POOR_OUT_AT[0]) + DT * 3.0)
+	t.check(d.walker == near, "the walker is out")
+	var f: Person = d.faithful[0]
+	_arrive(f, d.door + Vector2(1.5, 0.0))
+	f.mind = Person.Mind.CALM
+	_arrive(near, d.door)
+	_run(s, DT * 2.0)
+	t.check(not near.inside and d.reports_started == 1 and d.walker == null and near.mind != Person.Mind.DUTY,
+		"a Faithful sees him at the door: turned away, a report started, the walker goes home")
+	t.check(d.walk_due() < float(FirstPrayersDirector.POOR_OUT_AT[1]) and d.walk_due() > d.timeline.elapsed(),
+		"and the chain starts for the next (due %.1f)" % d.walk_due())
+	_done(s)
+
+
+## F1: the door clear, he goes in.
+static func _walker_prays(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var near := _nearest_poor(s)
+	_run_blind(s, float(FirstPrayersDirector.POOR_OUT_AT[0]) + DT * 3.0)
+	_arrive(near, d.door)
+	_run_blind(s, DT * 2.0)
+	t.check(near.inside and d.inside().size() == 1 and d.reports_started == 0, "the door clear, the walker goes in")
+	_done(s)
+
+
+## One praying, the walker waits at the door and goes in when the shrine is free.
+static func _walker_waits(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var near := _nearest_poor(s)
+	var other: Person = d.grieving[0]
+	_run_blind(s, float(FirstPrayersDirector.POOR_OUT_AT[0]) - 6.0)
+	_bring(d, other)
+	_run_blind(s, DT * 2.0)
+	t.check(other.inside, "one is praying")
+	_run_blind(s, 5.0 - DT * 2.0)
+	_nearest_poor(s)
+	_run_blind(s, 1.0 + DT * 3.0)
+	_arrive(near, d.door)
+	_run_blind(s, DT * 2.0)
+	t.check(d.walker == near and not near.inside and near.mind == Person.Mind.DUTY, "he waits at the door while another prays")
+	_run_blind(s, FirstPrayersDirector.PRAY_SECONDS)
+	t.check(near.inside or d.believers.has(near), "and goes in when the shrine is free")
+	_done(s)
+
+
+## A walker whispered elsewhere drops the walk; back on his feet he takes it up again.
+static func _walker_whispered(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var near := _nearest_poor(s)
+	_run_blind(s, float(FirstPrayersDirector.POOR_OUT_AT[0]) + DT * 3.0)
+	t.check(d.walker == near, "the walker is out")
+	near.mind = Person.Mind.WHISPERED
+	_arrive(near, d.door + Vector2(-9.0, 5.0))
+	_run_blind(s, 1.0)
+	t.check(d.walker == near and near.mind == Person.Mind.WHISPERED, "whispered elsewhere, he is off his walk")
+	near.mind = Person.Mind.RECOVER
+	_run_blind(s, DT * 3.0)
+	t.check(near.mind == Person.Mind.DUTY and near.anchor.distance_to(d.door) < 0.5, "back on his feet he takes the walk up again")
+	_done(s)
+
+
+## F2: a house burning within FIRE_PULL of the door during the market window pulls the liners to the fire; out, they go back.
+static func _fire_pulls(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var crowd: Crowd = s.crowd
+	var house: Structure = null
+	for st: Structure in (s.town as Town)._built:
+		if st.kind == Structure.Kind.HOUSE and st.role == &"house" and st.center().distance_to(d.door) <= FirstPrayersDirector.FIRE_PULL \
+				and (house == null or st.center().distance_to(d.door) < house.center().distance_to(d.door)):
+			house = st
+	t.check(house != null, "a house stands within FIRE_PULL (%.0f) of the shrine's door" % FirstPrayersDirector.FIRE_PULL)
+	if house == null:
+		_done(s)
+		return
+	_run_blind(s, FirstPrayersDirector.MARKET_AT + DT * 2.0)
+	var line: Array[Person] = d.liners.duplicate()
+	for f in line:
+		_arrive(f, f.anchor)
+	t.check(not line.is_empty() and d.hint_phase() == "watched", "the market has filled: the door is watched")
+	crowd.fires.ignite(house, 0.4)
+	_run(s, DT * 3.0)
+	var by := true
+	for f in line:
+		by = by and f.mind == Person.Mind.DUTY and f.anchor.distance_to(house.center()) <= 4.5 + maxf(house.footprint.size.x, house.footprint.size.y)
+	t.check(by and (s.banners as Array).has("THE FAITHFUL RUN TO THE FIRE"),
+		"the house burns: the Faithful lining the door stand by the fire (banner)")
+	for f in line:
+		_arrive(f, f.anchor)
+	t.check(d.hint_phase() == "" and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null, "and the door is not watched")
+	crowd.fires.fires.erase(house)
+	_run(s, DT * 3.0)
+	var back := true
+	for f in line:
+		back = back and f.mind == Person.Mind.DUTY and f.anchor.distance_to(d.door) <= MirasHouseDirector.SIGHT
+	t.check(back, "the fire out, a liner whose window is open goes back to his spot")
+	_done(s)
+
+
+## F3: a thorn segment on the line from a Faithful to the door hides it from him; moved off the line, he sees it again.
+static func _thorns_block(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var env: EnvironmentField = s.env
+	for g in d.faithful:
+		_arrive(g, d.door + Vector2(40.0, 40.0))
+	var f: Person = d.faithful[0]
+	_arrive(f, d.door + Vector2(2.0, 0.0))
+	f.mind = Person.Mind.CALM
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "a Faithful 2 from the door sees it")
+	var seg := env.add_structure(Rect2(d.door + Vector2(0.7, -0.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null and d.watchers(d.door, MirasHouseDirector.SIGHT).is_empty()
+		and d.hint_phase() == "", "a bramble segment on the line: the door is not seen")
+	env.remove(seg)
+	seg = env.add_structure(Rect2(d.door + Vector2(0.7, 1.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "moved off the line, he sees it again")
+	env.remove(seg)
+	seg = env.add_structure(Rect2(d.door + Vector2(0.7, -0.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"fence", &"fence")
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "a block that is not brambles hides nothing (Mira's rule)")
+	env.remove(seg)
+	_done(s)
+
+
+## F5: the bell lies ALL IS WELL -- liners stood down, a running report dropped (nothing delivered, the Gaze unchanged); a window due during
+## the lie forms when it ends, for the seconds it has left.
+static func _lie(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var crowd: Crowd = s.crowd
+	_run_blind(s, FirstPrayersDirector.MARKET_AT + DT * 2.0)
+	t.check(not d.liners.is_empty(), "the market has filled")
+	var runner: Person = null
+	for f in d.faithful:
+		if not d.liners.has(f):
+			runner = f
+			break
+	d._report(runner, d.temple_door)
+	t.check(d.reports.size() == 1, "a report is running")
+	var gaze := d.gaze.value
+	crowd.bell_lies(45.0)
+	_run(s, DT * 2.0)
+	t.check(d.liners.is_empty() and d.reports.is_empty() and runner.mind != Person.Mind.DUTY, "ALL IS WELL: the line is stood down, the report dropped")
+	t.check((s.banners as Array).has("ALL IS WELL - THE FAITHFUL GO HOME"), "banner")
+	_arrive(runner, d.temple_door)
+	_run(s, DT * 4.0)
+	t.check(is_equal_approx(d.gaze.value, gaze) and d.reports_started == 1, "nothing was delivered: the Gaze is as it was")
+	_done(s)
+	# A window due during the lie forms when it ends, for the seconds it has left.
+	var u := _world()
+	var e: FirstPrayersDirector = u.d
+	_run_blind(u, FirstPrayersDirector.MARKET_AT - 5.0)
+	(u.crowd as Crowd).bell_lies(20.0)
+	_run_blind(u, 6.0)
+	t.check(e.liners.is_empty() and (u.banners as Array).has("ALL IS WELL - THE FAITHFUL GO HOME"), "a window due in the lie: no line")
+	_run_blind(u, 15.0)
+	t.check(not e.liners.is_empty() and e._liners_left <= 25.0 and e._liners_left > 20.0,
+		"the lie ended: the line forms for the seconds the window has left (%.1f)" % e._liners_left)
+	_run_blind(u, 26.0)
+	t.check(e.liners.is_empty(), "and goes home when the window closes")
+	_done(u)
+	# A lie that outlasts the window: it never forms.
+	var w := _world()
+	_run_blind(w, FirstPrayersDirector.MARKET_AT - 5.0)
+	(w.crowd as Crowd).bell_lies(60.0)
+	_run_blind(w, 70.0)
+	t.check((w.d as FirstPrayersDirector).liners.is_empty(), "a window the lie outlasts never forms")
+	_done(w)
+
+
+## TempleReport.drop(): an open report is closed undelivered and its carrier goes back to his day; nothing else calls it.
+static func _drop(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var crowd: Crowd = s.crowd
+	var f: Person = d.faithful[0]
+	var r := TempleReport.new(f, d.temple_door)
+	t.check(r.is_open() and f.mind == Person.Mind.DUTY, "a report is open, its carrier on duty")
+	r.drop()
+	t.check(not r.is_open() and r.dropped and not r.delivered and f.mind != Person.Mind.DUTY, "dropped: closed, undelivered, the carrier let go")
+	_arrive(f, d.temple_door)
+	r.step(1.0, crowd)
+	t.check(not r.delivered, "its step() delivers nothing")
+	var g := TempleReport.new(d.faithful[1], d.temple_door)
+	_arrive(d.faithful[1], d.temple_door)
+	g.step(1.0, crowd)
+	t.check(g.delivered and not g.is_open(), "(a report that is not dropped is delivered as before)")
+	_done(s)
+
+
+## A walker who cannot get on (held where he stands) gives the walk up after WALK_STALL seconds: home, and the chain goes on with the next.
+static func _walker_stalls(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var near := _nearest_poor(s)
+	_run_blind(s, float(d.poor_out_at[0]) - 1.0)
+	_nearest_poor(s)
+	_run_blind(s, 1.0 + DT * 3.0)
+	t.check(d.walker == near, "the walker is out")
+	var far := d.door + Vector2(-9.0, 5.0)
+	for i in roundi((FirstPrayersDirector.WALK_STALL + 3.0) / DT):
+		if d.walker == null:
+			break
+		_arrive(near, far)
+		near.mind = Person.Mind.DUTY
+		if i % 20 == 0:
+			_blind(d)
+		_run(s, DT)
+	t.check(d.walker == null and near.mind != Person.Mind.DUTY, "he stood still for WALK_STALL seconds: the walk is given up (walker %s, mind %s, still %.1f)" % [d.walker, near.mind, d._walker_still])
+	t.check(d.walk_due() < INF and d.walk_due() <= d.timeline.elapsed() + FirstPrayersDirector.POOR_CHAIN, "and the chain begins for the next")
+	_done(s)

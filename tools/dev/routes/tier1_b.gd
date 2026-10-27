@@ -478,18 +478,23 @@ static func act_prayers(bc, ctx: Dictionary) -> String:
 	if did != "":
 		memo["last"] = rules.time_left
 		return did
-	# Idle a while with nothing to fetch or hold: Silent Doom takes a Faithful where nobody would see it (one fewer to stand by the door
-	# later), the nearest the door first -- the player always has a hand to play.
-	if float(memo.get("last", rules.time_left)) - rules.time_left >= PRAYB_IDLE and bc._slot_ready(rules, ctx.slots, "doom"):
-		var d := ctx.d as MirasHouseDirector
-		var free := d._free_faithful()
-		free.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(d.door) < b.ground_pos.distance_to(d.door))
-		for f in free:
-			if bc._doom_unseen(ctx.crowd, f.ground_pos, [], 0.3):
-				rules.cast(ctx.slots.doom, f.ground_pos)
-				memo["last"] = rules.time_left
-				return "doom a Faithful where nobody sees"
+	# Nothing to fetch or hold: Silent Doom takes the Faithful, wherever one can be taken (one fewer to stand by the door later; the poor now
+	# walk to it themselves, so the Faithful at it must be few when they come) -- the player always has a hand to play (god T1R).
+	var kill: String = load("res://tools/dev/routes/god_t1/prayers.gd").doom_faithful(bc, ctx, 55.0)
+	if kill != "":
+		memo["last"] = rules.time_left
+		return kill
+	# Still nothing to do after PRAYB_FILL seconds: Discord at the Temple's door, where only the clergy loiter -- the player always has a hand to play.
+	if float(memo.get("last", rules.time_left)) - rules.time_left >= PRAYB_FILL and bc._slot_ready(rules, ctx.slots, "discord") \
+			and not MissionDirector._alive((ctx.d as MirasHouseDirector).walker if ctx.d is FirstPrayersDirector else null):
+		memo["last"] = rules.time_left
+		rules.cast(ctx.slots.discord, (ctx.d as MirasHouseDirector).temple_door)
+		return "discord at the Temple's door"
 	return ""
+
+
+## Seconds without a cast after which loadout B (god T1R) fills the time with a Discord at the Temple.
+const PRAYB_FILL := 36.0
 
 
 ## Seconds without a cast after which the policy takes a Faithful with Silent Doom.
@@ -556,6 +561,8 @@ static func _prayers_clear(bc, d: MirasHouseDirector, arrive: float) -> bool:
 	var fp := d as FirstPrayersDirector
 	if fp == null:
 		return true
+	if fp._free_faithful().is_empty():
+		return true  # no Faithful left to stand by the door: no window forms (god T1R)
 	var now := fp.timeline.elapsed()
 	var wait := left if left != INF else 0.0
 	var enter_from := now + maxf(arrive - PRAYB_JITTER, wait)

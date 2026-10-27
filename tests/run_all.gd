@@ -184,6 +184,8 @@ const SUITES := [
 	"res://tests/test_slot_screens.gd",
 	"res://tests/test_faith_hub.gd",
 	"res://tests/test_endless_flow.gd",
+	"res://tests/test_walls.gd",
+	"res://tests/test_god_routes.gd",
 ]
 
 var failures := 0

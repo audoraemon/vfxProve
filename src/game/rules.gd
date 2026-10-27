@@ -405,6 +405,15 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	return fx
 
 
+## The effect of the latest cast (god T1R): what a director reads of the power just cast (the mode of The Bell Lies, the people Leaving
+## Is Prohibited bound). Null before any cast, or when the effect has been freed since. Only reads.
+func last_fx() -> FxTimeline:
+	if _casts.is_empty():
+		return null
+	var fx: Variant = _casts.back().fx
+	return fx as FxTimeline if is_instance_valid(fx) else null
+
+
 ## The power key credited with this damage kind: among the casts still running, the one whose power deals it,
 ## latest first (spec §4.1). "" when nothing running claims it -- a building that falls to a stray fire after
 ## its cast is gone still counts, it just has nobody to chain for.

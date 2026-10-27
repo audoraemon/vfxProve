@@ -583,3 +583,61 @@ static func _hold_all(people: Array, evacuating: bool) -> void:
 		if _alive(v):
 			_keep_from_flight(v as Person, evacuating)
 			(v as Person)._reassured_fled = false
+
+
+## Those this director has sent off the map (god T1R, spec 2.1): a warning's carrier, a collector or a carter who left the walls. Untyped,
+## as the bodies are freed. The director that calls send_off() calls _step_leaving() in its own step() (a warning does it on itself,
+## before its OVER return, so a leaver is still taken off after the warning is over).
+var leaving: Array = []
+## Where each one leaving is going, by instance id: his way off the map (Walls.way_off()), kept so a fright does not change it.
+var _leave_to := {}
+## How near his way off a leaver must come to be taken off the map.
+const LEAVE_REACH := 1.2
+
+
+## `p` has left the walls: off his duty, he walks on to the nearest way off the map and is not called back. Once only. A Variant: he may
+## be a body already freed.
+func send_off(p: Variant) -> void:
+	if not _alive(p) or is_leaving(p):
+		return
+	var person := p as Person
+	var way := Walls.way_off(person.ground_pos)
+	if way == Vector2.INF:
+		return  # a town with no way off the map: nowhere to send him
+	if person.mind == Person.Mind.DUTY:
+		crowd.off_duty(person)
+	person.go_duty(way)
+	leaving.append(person)
+	_leave_to[person.get_instance_id()] = way
+
+
+## Each one leaving walks on; one who comes within LEAVE_REACH of his way off is taken off the map -- out of the field and the crowd,
+## freed, and not counted as an escape (he is stopped, not a citizen who got away). The dead and the freed are let go. One knocked off
+## his walk (a fright) is sent again once he is on his feet.
+func _step_leaving() -> void:
+	if leaving.is_empty():
+		return
+	var keep: Array = []
+	var ways := {}
+	for v: Variant in leaving:
+		if not _alive(v):
+			continue
+		var p := v as Person
+		var way: Vector2 = _leave_to.get(p.get_instance_id(), Vector2.INF)
+		if way != Vector2.INF and p.ground_pos.distance_to(way) <= LEAVE_REACH:
+			crowd._field.remove(p)
+			crowd.citizens.erase(p)
+			crowd.soldiers.erase(p)
+			p.queue_free()
+			continue
+		if way != Vector2.INF and p.mind in RECALL_MINDS:
+			p.go_duty(way)
+		keep.append(p)
+		ways[p.get_instance_id()] = way
+	leaving = keep
+	_leave_to = ways
+
+
+## `p` has been sent off the map and not yet taken off it.
+func is_leaving(p: Variant) -> bool:
+	return is_instance_valid(p) and leaving.has(p)

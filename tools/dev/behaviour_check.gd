@@ -9,6 +9,10 @@ extends SceneTree
 ##          `BEHAVIOUR refused scenario=<s> god=<type>:<tier> outside=<k1,k2>` and quits 1 (gate.sh reads that as a FAIL), else the run
 ##          prints `BEHAVIOUR god=<type>:<tier>` (in no checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
 ##          No flag: the run is exactly as before.
+##          God T1R: `--god=<type>:1` with NO --route on a scenario of tools/dev/routes/god_t1.gd (warning, tax, harvest, lamb, prayers) plays
+##          that type's own policy for the mission (god_t1/<scenario>.gd act_<type>) with the real tree's two Tier 1 keys, hit-stop off, printing
+##          `BEHAVIOUR god=<type>:1 route=god` and the gate's result line (`--board` for warning, as route b needs it). `--god` with
+##          --route=a|b, or on another scenario, refuses a loadout outside the type as above. Every --god run turns hit-stop off.
 ##   --case=toll (v0.11.2, a Lantern night, D32): the scripted player casts nothing until the bell tolls and the Lantern turns
 ##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
 ##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
@@ -453,6 +457,9 @@ const ROUTE_IDS := {"warning": "warning", "tax": "tax_collector", "harvest": "sp
 const TIER_B := [preload("res://tools/dev/routes/tier1_b.gd"), preload("res://tools/dev/routes/tier2_b.gd"),
 	preload("res://tools/dev/routes/tier3_b.gd"), preload("res://tools/dev/routes/tier4_b.gd"), preload("res://tools/dev/routes/tier5_b.gd")]
 
+## The per-type policies of the five Tier 1 missions (god T1R, spec 9): `--god=<type>:1` with no --route on one of GOD_T1.SCENARIOS.
+const GOD_T1 := preload("res://tools/dev/routes/god_t1.gd")
+
 ## The capital's evacuation (capital_evac): how long it runs after the alarm, and when the east stone bridge falls.
 const CAPITAL_EVAC_SECONDS := 180.0
 const CAPITAL_CUT_AT := 10.0
@@ -598,6 +605,11 @@ func _run() -> void:
 			push_error("behaviour_check: unknown --god=%s (<type>:<tier>, type one of %s, tier 1-%d)" % [god_arg, ",".join(GodTree.RING), GodTree.TIERS])
 			quit(1)
 			return
+	# God T1R: --god with no --route on a Tier 1 mission plays that type's own policy (GOD_T1) and drafts exactly its Tier 1 keys (the real
+	# tree). With --route=a|b, or on another scenario, the check below refuses a loadout outside the type, as before.
+	var god_route := god_type != "" and god_tier == 1 and route == "" and scenario in GOD_T1.SCENARIOS
+	if god_route:
+		powers = GOD_T1.loadout(god_type)
 	# The loadout the run will draft: this scenario's, or (empty) the one the throw-away start in _ready() already drafted.
 	var drafted := powers if not powers.is_empty() else mission._drafted
 	if god_type != "":
@@ -619,8 +631,8 @@ func _run() -> void:
 		return
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
 	if god_type != "":
-		print("BEHAVIOUR god=%s:%d" % [god_type, god_tier])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
-	if route == "b" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
+		print("BEHAVIOUR god=%s:%d%s" % [god_type, god_tier, " route=god" if god_route else ""])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
+	if route == "b" or god_type != "" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -628,6 +640,8 @@ func _run() -> void:
 	if Battlefield.arg_value(args, "--case") == "toll" and scenario in TOLL_CALLED:
 		_toll_caller.call_deferred(TOLL_CALLED[scenario])
 	match scenario:
+		_ when god_route:
+			await _god_route(scenario, god_type, Battlefield.arg_value(args, "--case"))
 		_ when route == "b":
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
 		"calm", "":
@@ -750,6 +764,15 @@ func _route_b(scenario: String, case_arg: String) -> void:
 	await _scripted(label, case_arg if case_arg != "" else "play",
 		func() -> String: return String(tier.call("act_" + label, self, _route_ctx(memo))),
 		func() -> String: return String(tier.call("state_" + label, self, _route_ctx(memo))))
+
+
+## `--god=<type>:1` (god T1R, spec 9): the scenario's Tier 1 mission played with `type`'s own two powers, by GOD_T1's act(scenario, type, ...)
+## through _scripted() (the label is the scenario's; the star is the board's under --board, as for route b). ctx as _route_ctx() builds it.
+func _god_route(scenario: String, type: String, case_arg: String) -> void:
+	var memo := {}
+	await _scripted(scenario, case_arg if case_arg != "" else "play",
+		func() -> String: return GOD_T1.act(scenario, type, self, _route_ctx(memo)),
+		func() -> String: return GOD_T1.state(scenario, self, _route_ctx(memo)))
 
 
 ## A B policy's ctx, built afresh at every look (v0.11.1): the rules, director and crowd change at a night's next_act, so a ctx kept

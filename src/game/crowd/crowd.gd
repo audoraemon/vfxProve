@@ -1374,6 +1374,11 @@ func is_bell_lying() -> bool:
 	return _clock < _bell_lies_until
 
 
+## Seconds the bell still lies, on the crowd's clock (god T1R): 0 when it does not. Only reads.
+func lie_left() -> float:
+	return maxf(0.0, _bell_lies_until - _clock)
+
+
 ## The bell tolls, and it says all is well: the town is not warned, its alarm falls by LIE_CALM, and every citizen
 ## who hears it -- all of them -- takes heart for LIE_REASSURE (Person.reassure()).
 func false_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:

@@ -2,9 +2,9 @@
 capital_starfall_none_1	--scenario=warning --case=none --route=b --board --seed=1 --city=capital	-827575092
 capital_starfall_none_2	--scenario=warning --case=none --route=b --board --seed=2 --city=capital	-748527231
 capital_starfall_none_3	--scenario=warning --case=none --route=b --board --seed=3 --city=capital	-817964770
-capital_starfall_b_play_1	--scenario=warning --case=play --route=b --board --seed=1 --city=capital	-962597497
-capital_starfall_b_play_2	--scenario=warning --case=play --route=b --board --seed=2 --city=capital	-100093365
-capital_starfall_b_play_3	--scenario=warning --case=play --route=b --board --seed=3 --city=capital	-522516453
-capital_starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1 --city=capital	-450502486
-capital_starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2 --city=capital	-156575536
-capital_starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3 --city=capital	-265685181
+capital_starfall_b_play_1	--scenario=warning --case=play --route=b --board --seed=1 --city=capital	-702853017
+capital_starfall_b_play_2	--scenario=warning --case=play --route=b --board --seed=2 --city=capital	-974503280
+capital_starfall_b_play_3	--scenario=warning --case=play --route=b --board --seed=3 --city=capital	-838343308
+capital_starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1 --city=capital	-941019706
+capital_starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2 --city=capital	-550957362
+capital_starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3 --city=capital	-996445744

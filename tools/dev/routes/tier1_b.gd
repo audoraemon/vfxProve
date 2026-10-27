@@ -13,7 +13,7 @@ static func act_warning(bc, ctx: Dictionary) -> String:
 	if d == null:
 		return act_warning_runner(bc, ctx, ctx.d as WarningDirector)  # a single warning (the campaign's, or a night's Omen)
 	for w: WarningDirector in d.stars:
-		var did := act_warning_runner(bc, ctx, w)
+		var did := act_warning_runner(bc, ctx, w, true)
 		if did != "":
 			return did
 	return ""
@@ -52,7 +52,7 @@ const WARN_WALK_MAX := 40.0
 ## - Mind Whisper cooling (or he shakes it off): Discord holds him instead, and the mark falls when the street round him is clear.
 ## - Carried on by a witness (the old carrier seen to fall): the same again.
 ## Casts through Rules.cast(), only when the slot allows it.
-static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> String:
+static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector, hops := false) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var crowd: Crowd = ctx.crowd
@@ -84,12 +84,34 @@ static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> Strin
 			if spot == Vector2.INF:
 				spot = _warning_spot(bc, crowd, w, m, maxf(clear - WARN_RELAX, WARN_CLEAR_HERALD))
 			if spot != Vector2.INF:
+				if hops:
+					spot = _warning_hop(crowd, m, spot)
 				rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": spot})
 				return "whisper the carrier to (%.1f, %.1f)" % [spot.x, spot.y]
 	if not whispered and (not whisper_ok or herald) and discord_ok and m.mind != Person.Mind.CONFUSED:
 		rules.cast(slots.discord, m.ground_pos)
 		return "discord the carrier, to hold him"
 	return ""
+
+
+## The board's Warning (god T1R): a quiet spot outside the walls is now where the warning stops, but the walk there can be long (the postern is shut at
+## night: the Postern's watchman goes round by the Main Gate), so the whisper takes him on in hops of WARN_HOP units of walking, each sent again as he stands;
+## the hunt for the spot, the mark and the hold are as ever. The Omen's act (hops off) plays as it did.
+const WARN_HOP := 8.0
+
+
+static func _warning_hop(crowd: Crowd, m: Person, spot: Vector2) -> Vector2:
+	var path := crowd._grid.path(m.ground_pos, spot)
+	var at := m.ground_pos
+	var left := WARN_HOP
+	for q in path:
+		var seg := at.distance_to(q)
+		if seg >= left:
+			var hop: Vector2 = crowd._grid.nearest_walkable(at.move_toward(q, left), 2)
+			return hop if hop != Vector2.INF and hop.distance_to(m.ground_pos) <= MindWhisperFx.REACH - 0.5 else spot
+		left -= seg
+		at = q
+	return spot
 
 
 ## The spot within Mind Whisper's reach of `m` with nobody out of doors within WARN_CLEAR of it: of those, the nearest by his walk

@@ -87,6 +87,7 @@ static func run(t) -> void:
 	_interruptions(t)
 	_bonus(t)
 	_teardown_releases_the_bell(t)
+	_flags_off(t)
 
 
 ## The watchman, the omen, the run, the re-aim and the delivery.
@@ -297,4 +298,51 @@ static func _teardown_releases_the_bell(t) -> void:
 	t.check(crowd.bell.hold_on_death, "the warning holds the bell while it lives")
 	(s.d as WarningDirector).teardown()
 	t.check(not crowd.bell.hold_on_death, "and lets it go when it is torn down")
+	_done(s)
+
+
+## God T1R (spec 4.1): a lone WarningDirector (the campaign's) has walls_stop and lie_stops at their defaults, off: a messenger
+## outside the walls and a delivery while the bell lies change nothing.
+static func _flags_off(t) -> void:
+	var s := _setup()
+	var d: WarningDirector = s.d
+	var crowd: Crowd = s.crowd
+	t.check(not d.walls_stop and not d.lie_stops and d.stopped_how == "", "both rules default off")
+	_run(s, 6.2)
+	var w := d.messenger
+	t.check(w.fold(Vector2(2.7, 18.0)) and Walls.outside(w.ground_pos), "the messenger is set down outside the walls")
+	_run(s, 0.5)
+	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.RUN and d.leaving.is_empty() and d.stopped_how == "",
+		"not stopped, not sent off")
+	crowd.bell_lies(45.0)
+	_arrive(w, crowd.bell.keeper.ground_pos + Vector2(0.4, 0.0))
+	_run(s, 0.7)
+	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.DELIVERED and crowd.bell.state == BellNetwork.State.CALLED
+		and _tag(d, "BELLKEEPER") != null,
+		"delivered while the bell lies, the bell called, a plain BELLKEEPER tag (%s)" % BellNetwork.State.keys()[crowd.bell.state])
+	crowd.bell_lies(45.0)
+	_run(s, 0.3)
+	t.check(not d.warning_dead and d.phase == WarningDirector.Phase.DELIVERED and crowd.bell.state != BellNetwork.State.IDLE,
+		"a lie heard once the bell is called calls nothing off (D27 is the board's)")
+	_done(s)
+	_gate_off(t)
+
+
+## (god T1R fix round) W3 is the board's: the campaign's watchman, staring at his star, stares on when a man falls just outside his gate.
+static func _gate_off(t) -> void:
+	var s := _setup()
+	var d: WarningDirector = s.d
+	t.check(not d.gate_keeps, "W3 defaults off")
+	_run(s, WarningDirector.OMEN_AT + 1.0)
+	t.check(d.phase == WarningDirector.Phase.STARE, "the watchman stares")
+	var crowd: Crowd = s.crowd
+	var g: Person = null
+	for p in crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and not p.inside:
+			g = p
+			break
+	g.ground_pos = Vector2(2.7, 17.2)
+	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
+	t.check(d.messenger.mind != Person.Mind.DUTY and d._drawn_to == Vector2.INF and not (s.banners as Array).has("THE WATCHMAN GOES OUT TO THE BODY"),
+		"a man killed outside his gate draws nobody")
 	_done(s)

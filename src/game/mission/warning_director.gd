@@ -40,6 +40,25 @@ const HELD := [Person.Mind.CONFUSED, Person.Mind.WHISPERED]
 const MARK_MESSENGER := Color("d8b23a")
 const MARK_KEEPER := Color("8fb8e8")
 const MARK_WATCHED := Color("c8342a")
+## W3 (god T1R fix round): how near his post a death outside the walls must fall for the staring watchman to go out to it (Death Mark's
+## gawkers come from as far: DeathMarkFx.LOOK_R); how near a barred postern its watchman must stand to unbar it, and how far beyond it he
+## steps out.
+const GATE_SIGHT := 4.0
+const KEY_REACH := 1.5
+const KEY_STEP := 1.2
+
+## (god T1R, spec 4.1; both default off, so the campaign's Warning, the Omen and The Bell-Ringers play as ever -- StarfallDirector sets them.)
+## W1 Out of the walls: the carrier, in any phase, who stands outside Walls (however he got there) stops the warning for the night; he
+## walks on off the map. W2 The keeper who heard ALL IS WELL: a carrier who reaches the keeper (or takes the rope) while the bell lies
+## is not believed; the warning dies and he is sent home. (A Herald is not fooled: the Temple is not.)
+var walls_stop := false
+var lie_stops := false
+## W3 The watchman keeps his gate (god T1R fix round, D26; default off, StarfallDirector sets it): while the star's watchman stares at it, a man
+## killed just outside his gate (out of the walls, within GATE_SIGHT of his post) draws him out to the body; and the watchman of a barred
+## postern holds its key: whatever takes him beyond it (a fright, that body) takes him out through it. Either way W1 then stops the warning.
+var gate_keeps := false
+## How the warning was stopped, once it is: "kill" (an unseen kill), "out" (W1) or "lie" (W2); "" while it lives.
+var stopped_how := ""
 
 var phase := Phase.OMEN
 var watchman: Person
@@ -65,6 +84,11 @@ var _clock := 0.0
 var _retarget_in := 0.0
 ## Where the messenger fell, waiting to be judged once the cast's other victims have fallen too.
 var _fell_at := Vector2.INF
+## W3: where the body lies that the watchman goes out to (INF for none), and the barred postern whose key he holds (null for none).
+var _drawn_to := Vector2.INF
+var _key_gate: Structure = null
+## The town's own bellkeeper, for the rope to go back to when a called bell is called off by the lie (D27; a Variant: he may be freed).
+var _town_keeper: Variant = null
 
 
 func _begin() -> void:
@@ -72,6 +96,9 @@ func _begin() -> void:
 	gate_spot = free if free != Vector2.INF else post
 	if crowd.bell != null:
 		crowd.bell.hold_on_death = true
+		_town_keeper = crowd.bell.keeper
+	if gate_keeps and town != null and is_instance_valid(town.postern) and town.postern.center().distance_to(gate_spot) <= KEY_REACH:
+		_key_gate = town.postern
 	watchman = _appoint_watchman()
 	messenger = watchman
 	crowd._field.enemy_killed.connect(_on_killed)
@@ -107,6 +134,8 @@ func _appoint_watchman() -> Person:
 
 
 func step(delta: float) -> void:
+	if walls_stop:
+		_step_leaving()  # (god T1R) a leaver is walked off the map even after the warning is over
 	if phase == Phase.OVER:
 		return
 	_clock += delta
@@ -118,6 +147,12 @@ func step(delta: float) -> void:
 			return
 	if not omen_fallen and _clock >= OMEN_AT:
 		_omen()
+	if gate_keeps:
+		_use_key()
+	if walls_stop and _out_of_walls():
+		return
+	if phase == Phase.DELIVERED and _lie_stops_now() and _call_off():
+		return
 	var herald := heralding()
 	if herald:
 		_herald_tick(delta)
@@ -182,6 +217,10 @@ func _rings_himself() -> bool:
 ## (`relay`), at once unless Discord or Mind Whisper holds the witness. v0.11 M3: one who rings it himself (_rings_himself()) is
 ## never told off to a keeper and takes the rope at the foot.
 func _run(relay := false) -> void:
+	if _drawn_to != Vector2.INF:
+		if _alive(messenger) and messenger == watchman and messenger.mind == Person.Mind.DUTY and messenger.has_goal():
+			return  # W3: on his way out to the body at his gate; the walls stop him there
+		_drawn_to = Vector2.INF  # frightened off it, or there: the errand is the bell's again
 	if heralding():
 		_herald_run(relay)  # v0.11.2: the Temple's door, whatever the bell's rope or the keeper were
 		return
@@ -301,6 +340,9 @@ func herald_label() -> String:
 ## The keeper is told: the bell is called, and the warning is the keeper's to carry now. (A bell already called -- by
 ## the town's own alarm -- carries on as it was; one silenced stays silent.)
 func _deliver() -> void:
+	if _lie_stops_now():
+		_stop_lie()
+		return
 	var bell := crowd.bell
 	var was := messenger
 	messenger = bell.keeper
@@ -315,14 +357,125 @@ func _take_rope() -> void:
 	var bell := crowd.bell
 	if bell.state == BellNetwork.State.RUNG or bell.state == BellNetwork.State.SILENCED:
 		return  # nothing left to ring
+	if _lie_stops_now():
+		_stop_lie()
+		return
 	bell.replace_keeper(messenger)
 	phase = Phase.DELIVERED
+
+
+## W1 (god T1R): the carrier stands out of doors outside the walls -- the warning stops for the night, he is sent on off the map (send_off()), and
+## the star's chain goes on as after a kill. True when it did.
+func _out_of_walls() -> bool:
+	if not _alive(messenger) or messenger.inside or not Walls.outside(messenger.ground_pos):
+		return false
+	var gone := messenger
+	_end("out")
+	if gone == _slowed:
+		gone.statuses.erase(&"slow")  # a Herald's pace is his errand's, and the errand is over
+	send_off(gone)
+	rules.banner.emit("THE WARNING LEAVES TOWN")
+	return true
+
+
+## W2 (god T1R): the bell lies (ALL IS WELL) and this warning is one that would be believed.
+func _lie_stops_now() -> bool:
+	return lie_stops and crowd.is_bell_lying() and not heralding()
+
+
+## D27 (god T1R fix round): the bell is called and the keeper carries the warning (DELIVERED) when the bell starts to lie -- he heard ALL IS
+## WELL, so he calls the ringer back before the toll: the warning dies as W2's, the bell goes back to idle with the town's keeper on the rope.
+## A bell that has tolled (RUNG) or been silenced stays as it is. True when it did.
+func _call_off() -> bool:
+	var bell := crowd.bell
+	if bell == null or not (bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING, BellNetwork.State.WAITING]):
+		return false
+	_stop_lie("ALL IS WELL - THE KEEPER CALLS OFF THE BELL")
+	bell.restore(_town_keeper)
+	return true
+
+
+## The keeper heard ALL IS WELL: the carrier is not believed, the bell is not called, and he goes home.
+func _stop_lie(banner := "ALL IS WELL - THE KEEPER SENDS HIM HOME") -> void:
+	var was := messenger
+	_end("lie")
+	if _alive(was):
+		crowd.off_duty(was)
+	rules.banner.emit(banner)
+
+
+## The warning is over, stopped by `how` ("out" or "lie").
+func _end(how: String) -> void:
+	warning_dead = true
+	stopped_how = how
+	killed_by = ""
+	phase = Phase.OVER
 
 
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if e == messenger and phase != Phase.OVER and _fell_at == Vector2.INF:
 		_fell_at = e.ground_pos
 		killed_by = rules.credited_key(kind)
+	elif gate_keeps and phase == Phase.STARE and _fell_at == Vector2.INF and _alive(messenger) and messenger == watchman \
+			and not messenger.inside and not City.current().town().has_point(e.ground_pos) and e.ground_pos.distance_to(gate_spot) <= GATE_SIGHT:
+		_draw_out(e.ground_pos)
+
+
+## W3 (god T1R fix round): a man falls just outside the gate (past the wall's ring) while its watchman stares at the star -- he goes out to him (at
+## the run, on duty), to stand over him a step beyond the walls' margin, and the walls stop the warning there (W1). A fright on the way drops it and
+## the bell's errand is his again (_run()).
+func _draw_out(body: Vector2) -> void:
+	var to := _beyond_walls(body)
+	if crowd._grid != null:
+		to = crowd._grid.nearest_walkable(to, 2)
+	if to == Vector2.INF or not Walls.outside(to):
+		return
+	messenger.go_duty(to)
+	if messenger.mind != Person.Mind.DUTY:
+		return  # past going anywhere (in flight, fighting, held): he stays where the fright has him
+	_drawn_to = to
+	rules.banner.emit("THE WATCHMAN GOES OUT TO THE BODY")
+
+
+## `at`, moved straight out past the walls' margin (Walls.MARGIN) where it lies within it: a step beyond the wall's ring for a body just past it.
+static func _beyond_walls(at: Vector2) -> Vector2:
+	var ring := City.current().town().grow(Walls.MARGIN + KEY_STEP * 0.25)
+	var out := at
+	if at.y >= ring.position.y and at.y <= ring.end.y and at.x >= ring.position.x and at.x <= ring.end.x:
+		var to_edge := [at.x - ring.position.x, ring.end.x - at.x, at.y - ring.position.y, ring.end.y - at.y]
+		var k := to_edge.find(to_edge.min())
+		out = [Vector2(ring.position.x, at.y), Vector2(ring.end.x, at.y), Vector2(at.x, ring.position.y), Vector2(at.x, ring.end.y)][k]
+	return out
+
+
+## W3: the watchman of a barred postern holds its key -- standing at it with his way beyond the wall, given by a fright (his flight) or by W3 (the
+## body he goes out to), he unbars it and steps out through it (set down just beyond; it is barred behind him). Only the gate's own watchman, while he carries the
+## warning; anyone else goes round as ever.
+func _use_key() -> void:
+	if not omen_fallen or key_door() == Vector2.INF or messenger.inside or Walls.outside(messenger.ground_pos):
+		return
+	var at := _key_gate.center()
+	var bound := messenger.goal()
+	if messenger.ground_pos.distance_to(at) > KEY_REACH or bound == Vector2.INF or City.current().town().has_point(bound):
+		return
+	# Only a way W3 or a fright gave him (D29, D30): the body he goes out to, or his flight from a danger near him (PANIC). The town's
+	# evacuation (Crowd._evacuate(): FLEE for a gate) does not turn it, nor does any other walk beyond the wall: he goes round as ever.
+	var frightened := messenger.mind == Person.Mind.PANIC
+	if not frightened and not (_drawn_to != Vector2.INF and bound.distance_to(_drawn_to) <= RETARGET_MOVE):
+		return
+	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
+	if messenger.fold(at + out_dir * KEY_STEP):
+		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+
+
+## W3: the barred postern whose key the carrier holds -- its centre -- while he is this gate's own watchman, alive; Vector2.INF otherwise. Only reads
+## (the Tier 1 policies aim a fright through it).
+func key_door() -> Vector2:
+	if not gate_keeps or not is_instance_valid(_key_gate) or _key_gate.walkable or _key_gate.destroyed:
+		return Vector2.INF
+	if not _alive(messenger) or messenger != watchman:
+		return Vector2.INF
+	return _key_gate.center()
 
 
 ## Judged after the death, once a cast's other victims are dead too (as Crowd._settle_doom()): nobody living near, and
@@ -334,12 +487,15 @@ func _judge() -> void:
 	var witness := _relay_witness(at)
 	if witness == null:
 		warning_dead = true
+		stopped_how = "kill"
 		phase = Phase.OVER
 		return
 	relays += 1
 	messenger = witness
 	killed_by = ""
 	_descend = 0.0  # a relay is on his feet already (v0.11.2)
+	if walls_stop and _out_of_walls():
+		return  # (god T1R) the witness stands outside the walls: the warning goes no further
 	rules.banner.emit("THE WARNING PASSES ON")
 	phase = Phase.RUN
 	_retarget_in = RETARGET
@@ -392,7 +548,7 @@ func tags() -> Array[MapTag]:
 	var keeper: Person = bell.keeper if bell != null and _alive(bell.keeper) else null
 	var label := "MESSENGER"
 	if messenger == keeper:
-		label = "BELLKEEPER"
+		label = _keeper_label()
 	elif phase == Phase.OMEN or phase == Phase.STARE:
 		label = "WATCHMAN"
 	var herald := herald_open()
@@ -400,13 +556,20 @@ func tags() -> Array[MapTag]:
 		label = herald_label()  # v0.11.2: the bell has tolled: the keeper and the tower are no longer the errand
 	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
 	if keeper != null and keeper != messenger and not keeper.inside and not herald:
-		out.append(MapTag.person(keeper.ground_pos, MARK_KEEPER, "BELLKEEPER", phase == Phase.RUN))
+		out.append(MapTag.person(keeper.ground_pos, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
 	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
 		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
 	if phase == Phase.RUN or phase == Phase.DELIVERED:
 		for p in witnesses():
 			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
 	return out
+
+
+## The keeper's tag: while the bell lies and this warning would not be believed, it counts the lie down in mission seconds (god T1R, spec 4.3).
+func _keeper_label() -> String:
+	if lie_stops and crowd.is_bell_lying():
+		return "BELLKEEPER - ALL IS WELL %s" % UiTheme.clock(crowd.lie_left() * (rules.clock_rate if rules != null else 1.0))
+	return "BELLKEEPER"
 
 
 ## Everyone who would see the messenger die where they stand: living, out of doors, within Crowd.DOOM_WITNESS (the rule
@@ -455,7 +618,7 @@ func report() -> Dictionary:
 		for a in PowerBook.AUTHORITIES:
 			if delayed_by.has(a):
 				by.append(PowerBook.authority_title(a))
-	return {"solved_by": by, "relays": relays}
+	return {"solved_by": by, "relays": relays, "stopped_how": stopped_how}
 
 
 func teardown() -> void:

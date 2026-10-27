@@ -175,6 +175,30 @@ const SAMPLE_ENDLESS_RESULT := {
 	"god": {"divine_power": 120, "levels": [7, 8], "points": 2, "lost": 0, "capped": false, "level": 8, "bar": [20, 50], "believers": 30,
 		"faith": 30, "faith_total": 210, "notice": 0, "notice_change": 0, "night": 7, "bests": ["Fastest clear 3:21"]},
 }
+## What --show=results-hunt-won displays (god P2, spec §10.3): The Lost Lamb as the Tier 1 Hunt, won -- the main objective done, the Notice
+## back to 0 (from 100) and the Hunt's Faith bonus paid. Shaped like GodNight.bank()'s result.
+const SAMPLE_HUNT_WON := {
+	"mission": "lost_lamb", "won": true, "reason": "lamb_out", "time": 188.0, "goal": {"label": "The lamb is free", "done": true},
+	"bonuses": [], "best": false,
+	"descend": {"tier": 1, "main": true, "main_time": 188.0, "main_reward": 10, "ascended": false, "caught": "", "lost_text": "",
+		"earned": 10, "kept": 0, "wishes": []},
+	"god": {"divine_power": 80, "levels": [8], "points": 1, "lost": 0, "capped": false, "level": 8, "bar": [15, 50], "believers": 10,
+		"faith": 10, "faith_total": 240, "notice": 0, "notice_change": -100, "night": 7, "bests": [],
+		"hunt": {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": true, "faith": 50, "sealed": "", "seal_nights": 0},
+		"unsealed": "", "hunt_next": false},
+}
+## What --show=results-hunt-lost displays (god P2, spec §10.3): the same Hunt lost -- the acolyte taken back -- the Notice set to 50 and the
+## most-carried ability sealed for three nights.
+const SAMPLE_HUNT_LOST := {
+	"mission": "lost_lamb", "won": false, "reason": "lamb_taken", "time": 140.0, "goal": {"label": "The lamb is free", "done": false},
+	"bonuses": [], "best": false,
+	"descend": {"tier": 1, "main": false, "main_time": 0.0, "main_reward": 10, "ascended": false, "caught": "", "lost_text": "lost: the lamb was taken back",
+		"earned": 0, "kept": 0, "wishes": []},
+	"god": {"divine_power": 0, "levels": [], "points": 0, "lost": 0, "capped": false, "level": 7, "bar": [20, 50], "believers": 0,
+		"faith": 0, "faith_total": 180, "notice": 50, "notice_change": -50, "night": 7, "bests": [],
+		"hunt": {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": false, "faith": 0, "sealed": "smite", "seal_nights": 3},
+		"unsealed": "", "hunt_next": false},
+}
 
 var screen := Screen.TITLE
 var save: SaveFile
@@ -284,8 +308,21 @@ static func load_god(file: String) -> Array:
 	var line := ""
 	if slot.in_night != "":
 		line = String(GodNight.forfeit(slot).line)
-		slot.write(file)
+		var failed := write_god(slot, file)  # a forfeit now costs Notice: a disk error must not hide it (god P2, pre-flight G1)
+		if failed != "":
+			line += " " + failed
 	return [slot, line]
+
+
+## What the hub says once when the god's file could not be written (god P2, Ruling P2-13): `%d` is the error code.
+const WRITE_FAILED := "The god could not be saved (error %d): progress since the last save may be lost."
+
+
+## Writes `slot` to `file` (god P2, Ruling P2-13): "" when saved, else WRITE_FAILED's line. A forfeit costs Notice now, so a quit that
+## escapes it through a disk error has to be seen. A static so a suite can prove it.
+static func write_god(slot: GodSlot, file: String) -> String:
+	var err := slot.write(file)
+	return "" if err == OK else WRITE_FAILED % err
 
 
 ## The levels a between-acts Prepare shows (god P1, final review M1): the board night's, chosen so far; none in the campaign, whose picker is
@@ -466,6 +503,9 @@ func _ready() -> void:
 			go_to(Screen.MISSION)
 		"slots", "god-select", "hub", "hub-capped", "tree", "faith", "results-endless", "prepare-endless", "pause-endless":
 			# Endless Night's screens (god P1), for the photographs: a fixture god on the dev fill, in the show's own slot files.
+			_show_endless(show)
+		"hub-hunt", "hub-sealed", "prepare-hunt", "prepare-sealed", "results-hunt-won", "results-hunt-lost", "pause-hunt":
+			# The Lantern's states (god P2, Ruling P2-15, pre-flight G2): the same fixture god, the Hunt and the seal on show.
 			_show_endless(show)
 		"tiers-all":
 			# The board complete (v0.11 M6): every board mission cleared, the header's "All 25 cleared", for the photograph (SHOW_SAVE).
@@ -1065,9 +1105,10 @@ func _on_clock_started() -> void:
 func _write_god() -> void:
 	if god == null or god_slot < 1:
 		return
-	var err := god.write(GodSlot.path(god_slot, god_base))
-	if err != OK:
-		push_warning("KAK could not write the god in slot %d (%d)" % [god_slot, err])
+	var failed := write_god(god, GodSlot.path(god_slot, god_base))
+	if failed != "":
+		push_warning("KAK could not write the god in slot %d: %s" % [god_slot, failed])
+		_hub_line = failed if _hub_line == "" else _hub_line + " " + failed  # the next hub shows it once (god P2, Ruling P2-13)
 
 
 ## Removes the three slot files under `god_base`: a --flow-test or --show run starts and ends without a god.
@@ -1126,6 +1167,47 @@ func _show_endless(show: String) -> void:
 			go_to(Screen.PREPARE)
 		"pause-endless":
 			mission_id = MissionBook.WARNING
+			loadout = god.loadout.duplicate()
+			god.in_night = mission_id
+			go_to(Screen.MISSION)
+			_open_pause()
+			if is_instance_valid(_pause):
+				_pause._set_confirm(true)
+		"hub-hunt":
+			god.notice = GodSlot.NOTICE_MAX  # the Hunt is due: the meter full, the Hunt's line
+			_write_god()
+			go_to(Screen.HUB)
+		"hub-sealed":
+			# A lost Hunt's aftermath (god P2): the seal target sealed with two nights left, the Notice at 50, and the forfeit's own line.
+			god.notice = GodSlot.NOTICE_MAX
+			god.in_night = GodNight.HUNTS[0].id
+			_write_god()
+			god = GodSlot.read(GodSlot.path(god_slot, god_base))  # a copy, forfeited as a game closed mid-Hunt would be
+			_hub_line = String(GodNight.forfeit(god).line)
+			god.seal_nights = 2
+			_write_god()
+			go_to(Screen.HUB)
+		"prepare-hunt":
+			god.notice = GodSlot.NOTICE_MAX
+			_write_god()
+			mission_id = GodNight.draw(god)
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
+		"prepare-sealed":
+			god.seal(god.seal_target())
+			god.seal_nights = 2
+			god.notice = 50
+			_write_god()
+			mission_id = GodNight.draw(god)
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
+		"results-hunt-won", "results-hunt-lost":
+			result = (SAMPLE_HUNT_WON if show == "results-hunt-won" else SAMPLE_HUNT_LOST).duplicate(true)
+			go_to(Screen.RESULTS)
+		"pause-hunt":
+			# The Hunt's pause menu with Abandon's confirm up: it names what the Lantern would seal (god P2, pre-flight G2).
+			god.notice = GodSlot.NOTICE_MAX
+			mission_id = GodNight.draw(god)
 			loadout = god.loadout.duplicate()
 			god.in_night = mission_id
 			go_to(Screen.MISSION)
@@ -1197,6 +1279,8 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
+	if _in_endless and god != null and god.in_night != "" and god.hunt_due():
+		_pause.hunt_stake = GodNight.hunt_stake(god)  # the Hunt: Abandon says what the Lantern would seal (god P2, Ruling P2-11)
 	# Endless Night's menu (god P1, Ruling P9): no Restart, no Change powers, and Abandon night, which says whether it costs the night.
 	_pause.setup(_in_campaign, settings, settings_path, _in_endless, _in_endless and god != null and god.in_night != "")
 	UiSound.play(&"ui_pause")

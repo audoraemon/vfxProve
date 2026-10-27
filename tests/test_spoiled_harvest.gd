@@ -58,6 +58,7 @@ static func run(t) -> void:
 	_blight_empty(t)
 	_blight_cast(t)
 	_seized(t)
+	_seized_by_law(t)
 	_replaced(t)
 	_road_closed(t)
 	_roads_stay_in(t)
@@ -914,6 +915,52 @@ static func _seized(t) -> void:
 		_done(s)
 
 
+## H4 with the law and the bell clicked apart (D23): the carter held on the law's circle is in reach when the law's centre is within SEIZE_R of the bell,
+## whatever his distance from the bell; with the law's centre 3.5 from the bell he is not seized.
+static func _seized_by_law(t) -> void:
+	for offset in [1.5, 3.5]:
+		var s := _world(false, false, PackedStringArray(["belllies", "noleave"]))
+		var d: HarvestDirector = s.d
+		var crowd: Crowd = s.crowd
+		var rules: Rules = s.rules
+		var g := d.targets[0]
+		var ctx := _fx_context(s)
+		rules.caster = func(script: GDScript, at: Vector2, extra: Dictionary) -> FxTimeline:
+			return FxTimeline.cast(script, ctx, at, extra)
+		_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+		var c0: Person = d.carters[g][0]
+		var bell: Vector2 = d.doors[g]
+		var law := bell + Vector2(offset, 0.0)
+		# He stands on the law's far edge from the bell (offset 1.5), or well inside it but 5.5 from the bell (offset 3.5).
+		_arrive(c0, law + Vector2(3.0 if offset < 3.0 else 2.0, 0.0))
+		var held := rules.cast(1, law) as NoLeaveFx
+		held._process(NoLeaveFx.T_SEAL + 0.05)
+		t.check(held != null and held.sealed and held.bound.has(c0), "(law %.1f from the bell) the carter is bound by the law" % offset)
+		var near: Vector2 = crowd._grid.nearest_walkable(bell + Vector2(-5.0, 0.0))
+		for sol in crowd.soldiers:
+			sol.ground_pos = near
+		var call := rules.cast(0, bell, {"mode": "guard"}) as BellLiesFx
+		t.check(call != null and rules.last_fx() == call, "(law %.1f) the guard are called" % offset)
+		call._process(BellLiesFx.T_CAST + 0.05)
+		var first: Person = null
+		for sol in crowd.soldiers:
+			if sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL:
+				first = sol
+				break
+		_arrive(first, first.anchor)
+		_run(s, HarvestDirector.TICK * 3.0)
+		t.check(c0.ground_pos.distance_to(bell) > HarvestDirector.SEIZE_R + HarvestDirector.SEIZE_SLACK, "(law %.1f) he stands out of the bell's own reach" % offset)
+		if offset < 3.0:
+			t.check(d.razed(g) and d.spoiled_by.get(g) == "seized", "the soldier arrives: the held carter is seized by the law's centre")
+		else:
+			t.check(not d.razed(g), "a law whose centre is 3.5 from the bell: he is not seized")
+		call.free()
+		held.free()
+		ctx.overhead.free()
+		ctx.ground.free()
+		_done(s)
+
+
 ## H5: a carter killed is replaced RELIEF_AFTER later from the Citadel's gate, the loads as they were; killing one never spoils.
 static func _replaced(t) -> void:
 	var s := _world()
@@ -949,6 +996,19 @@ static func _road_closed(t) -> void:
 	t.check(c0.goal() == Vector2.INF, "the carter stands with no walk, away from his door")
 	_run(s, HarvestDirector.TICK + DT)
 	t.check(c0.goal().distance_to(d.doors[g]) < 0.5, "and the next look sends him on to the door")
+	# Still blocked (his walk is dropped again after each look): he is sent again at every look and nothing else changes.
+	var loads := int(d.loads[g])
+	var banners := (s.banners as Array).size()
+	var sent := 0
+	for k in 4:
+		c0._goal = Vector2.INF
+		c0._path = PackedVector2Array()
+		_run(s, HarvestDirector.TICK + DT)
+		if c0.goal().distance_to(d.doors[g]) < 0.5:
+			sent += 1
+	t.check(sent == 4 and c0.mind == Person.Mind.DUTY and int(d.loads[g]) == loads and not d.razed(g) and d.emptied == null
+		and (s.banners as Array).size() == banners and d.carters[g][0] == c0 and not d.is_leaving(c0),
+		"a carter who stays blocked is sent again at every look, with no other effect (%d of 4)" % sent)
 	_done(s)
 
 

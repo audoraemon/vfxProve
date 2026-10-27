@@ -112,6 +112,8 @@ var _turned := {}
 ## The Bell Lies' CALL THE GUARD cast that may still seize a cart, and where it called them (god T1R, H4).
 var _guard_fx: BellLiesFx
 var _guard_at := Vector2.INF
+## The latest Leaving Is Prohibited cast (god T1R, D23): a carter it binds is in reach of the guard when its centre is, whichever way the two clicks fell.
+var _law_fx: NoLeaveFx
 ## The words of the Blight that just landed (blighted() keeps them: the granary is spoiled by the time BlightFx asks).
 var _blight_said := ""
 
@@ -177,6 +179,7 @@ func teardown() -> void:
 	if left_the_map.is_connected(_on_left):
 		left_the_map.disconnect(_on_left)
 	_guard_fx = null
+	_law_fx = null
 	super()
 
 
@@ -361,12 +364,23 @@ func _on_left(p: Person) -> void:
 
 ## A power was cast (god T1R, H4): The Bell Lies in CALL THE GUARD is kept to see when its first soldier comes (_seize_look()).
 func _on_cast(_slot: int, key: String, at: Vector2) -> void:
+	if key == "noleave":
+		_law_fx = rules.last_fx() as NoLeaveFx
+		return
 	if key != "belllies":
 		return
 	var fx := rules.last_fx() as BellLiesFx
 	if fx != null and fx.mode == "guard":
 		_guard_fx = fx
 		_guard_at = at
+
+
+## Whether carter `p` is in reach of the guard called to `at` (god T1R, D23): within SEIZE_R (+ slack) of the place, or bound by a live Leaving Is
+## Prohibited whose centre lies within SEIZE_R of it -- the law and the bell are two clicks, and a held carter stands on the law's circle, not the bell's.
+func _in_seizing_reach(p: Person, at: Vector2) -> bool:
+	if p.ground_pos.distance_to(at) <= SEIZE_R + SEIZE_SLACK:
+		return true
+	return _law_fx != null and is_instance_valid(_law_fx) and _law_fx.sealed and _law_fx.bound.has(p) and _law_fx.origin.distance_to(at) <= SEIZE_R
 
 
 ## The guard The Bell Lies called have come (god T1R, H4): once the first called soldier stands within SEIZE_ARRIVE of his ring spot, every
@@ -394,7 +408,7 @@ func _seize_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and not (c as Person).inside and (c as Person).ground_pos.distance_to(at) <= SEIZE_R + SEIZE_SLACK:
+			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at):
 				rules.banner.emit("THE GUARD SEIZE THE CART")
 				_spoil(s, "seized")
 				break
@@ -505,8 +519,16 @@ func _cart(s: Structure) -> void:
 				if emptied != null:
 					return
 			goal = citadel_door if _hauling.has(id) else doors[s]
-		if p.mind != Person.Mind.DUTY or p.anchor.distance_to(goal) > 0.3 or (p.goal() == Vector2.INF and p.ground_pos.distance_to(goal) > TAKE_REACH):
-			p.go_duty(goal)  # (god T1R: also a carter whose road was closed -- a Thornwall -- and who stands with no walk, once it opens)
+		if _needs_orders(p, goal):
+			p.go_duty(goal)
+
+
+## The carter `p` is to be (re)sent for `goal`: off his duty, or his duty is elsewhere, or (god T1R) his road was closed -- a Thornwall dropped his
+## walk -- and he stands short of the goal with no walk, so the next look tries again once it opens.
+func _needs_orders(p: Person, goal: Vector2) -> bool:
+	if p.mind != Person.Mind.DUTY or p.anchor.distance_to(goal) > 0.3:
+		return true
+	return p.goal() == Vector2.INF and p.ground_pos.distance_to(goal) > TAKE_REACH
 
 
 ## A load taken from `s` by the carter `id` (v0.11 M2); the last one empties it.

@@ -257,9 +257,9 @@ static func _lamb_as_before(t) -> void:
 	for e in d.timeline.upcoming(3):
 		ids.append(e.id)
 	t.check(soldiers and d.watch.size() == 2 and d.patrols.size() == 2 and not d.bound and d.bound_by == null and d.free_by < 0.0
-		and d.hunt_after_free < 0.0 and d.lost_reason() == "" and d.hud_line() == "" and ids == ["hunt"]
+		and d.hunt_after_free < 0.0 and d.lost_reason() == "" and d.hud_line() == "" and ids == ["bolt", "hunt"]
 		and main.hud_text(s.rules) == "Lead the acolyte out" and main.check(s.rules) == Objective.Status.PENDING,
-		"The Lost Lamb's as before: soldiers at their posts, never bound, the searchers on the clock, its own HUD line (%s)" % [ids])
+		"The Lost Lamb's as before: soldiers at their posts, never bound, his bolt (god T1R) and the searchers on the clock, its own HUD line (%s)" % [ids])
 	var watching := d._watchers()
 	d._hunt()
 	var fresh := d.hunters.size() == LostLambDirector.HUNTERS

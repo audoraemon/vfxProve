@@ -1,0 +1,19 @@
+# KAK The Lost Lamb for every god type (god T1R Task 5): the per-type gate's play runs, seeds 1-3 in Aldermere (tools/dev/routes/god_t1/lamb.gd; bash tools/dev/gate.sh lamb --god=<type>:1). name<TAB>how<TAB>expected
+god_ruin_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=ruin:1	-450677051
+god_ruin_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=ruin:1	-997059630
+god_ruin_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=ruin:1	-196611736
+god_death_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=death:1	943752116
+god_death_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=death:1	-719584273
+god_death_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=death:1	-934491473
+god_veil_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=veil:1	-155818934
+god_veil_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=veil:1	-847525872
+god_veil_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=veil:1	-721692888
+god_passage_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=passage:1	-294409351
+god_passage_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=passage:1	-730844888
+god_passage_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=passage:1	-55438956
+god_decree_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=decree:1	271553710
+god_decree_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=decree:1	-540269164
+god_decree_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=decree:1	-346982319
+god_dominion_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=dominion:1	183724006
+god_dominion_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=dominion:1	-920685696
+god_dominion_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=dominion:1	-894560217

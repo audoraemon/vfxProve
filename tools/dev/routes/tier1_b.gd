@@ -385,8 +385,8 @@ static func act_lamb(bc, ctx: Dictionary) -> String:
 		if bc._slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, s.ground_pos)
 			return "discord his seizer"
-		if bc._slot_ready(rules, slots, "doom") and lamb.ground_pos.distance_to(s.ground_pos) > SilentDoom.RADIUS + bc.LAMB_CLEAR \
-				and bc.crowd_alone(s):
+		# (god T1R: a death seen does not lose this night -- route A dooms the seizer all the same -- so no onlooker holds the Doom back)
+		if bc._slot_ready(rules, slots, "doom") and lamb.ground_pos.distance_to(s.ground_pos) > SilentDoom.RADIUS + bc.LAMB_CLEAR:
 			rules.cast(slots.doom, s.ground_pos)
 			return "doom his seizer"
 		return ""

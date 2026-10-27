@@ -327,9 +327,9 @@ static func spoiled_harvest() -> MissionDef:
 
 
 ## The Lost Lamb (v0.11 M2, Tier 1, spec §8 row 4): lead a runaway acolyte out through the west gate past the patrols, the
-## watch and the Temple's searchers (LostLambDirector).
+## watch and the Temple's searchers (LostLambDirector). God T1R: frightened near him, or at 1:00, he bolts for the gate himself.
 static func lost_lamb() -> MissionDef:
-	var m := _tier1(LOST_LAMB, "The Lost Lamb", PackedStringArray(["A runaway acolyte hides from the Temple.",
+	var m := _tier1(LOST_LAMB, "The Lost Lamb", PackedStringArray(["A runaway acolyte hides, then bolts.",
 		"Lead him out through the west gate."]))
 	m.goal = "Lead the runaway acolyte out through the west gate"
 	m.goal_label = "The lamb is free"

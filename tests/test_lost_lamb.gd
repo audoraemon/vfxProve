@@ -30,10 +30,24 @@ static func run(t) -> void:
 	_lured(t)
 	_wisp_leads(t)
 	_mission(t)
+	_bolts_at_one(t)
+	_bolts_on_smite(t)
+	_bolts_on_fire(t)
+	_bolts_on_death(t)
+	_bolts_on_blight(t)
+	_led_never_bolts(t)
+	_bolt_fear(t)
+	_bolt_seized_freed(t)
+	_fold_to_exit_seen(t)
+	_fold_to_exit_clear(t)
+	_tag_countdown(t)
+	_bolt_is_a_minute(t)
+	_bolt_teardown(t)
 
 
-static func _world() -> Dictionary:
+static func _world(stretch := 1.0) -> Dictionary:
 	var def := MissionBook.lost_lamb()
+	def.stretch = stretch
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
@@ -118,15 +132,16 @@ static func _setup(t) -> void:
 		"two watchmen at the gate and two patrols of two, all different soldiers")
 	for w in d.watch:
 		_arrive(w, w.anchor)  # (headless tests never walk: the watch set down at its posts)
-	t.check(_labels(d) == ["ACOLYTE", "WEST GATE - WATCHED", "PATROL", "PATROL"] and d.hint_phase() == "",
-		"tagged: the acolyte, the watched gate, each patrol (%s)" % [_labels(d)])
+	t.check(_labels(d) == ["ACOLYTE - BOLTS IN 1:00", "WEST GATE - WATCHED", "PATROL", "PATROL"] and d.hint_phase() == "",
+		"tagged: the acolyte (and when he bolts), the watched gate, each patrol (%s)" % [_labels(d)])
 	var gate_edged := false
 	for tag in d.tags():
 		gate_edged = gate_edged or (tag.label.begins_with("WEST GATE") and tag.edge)
 	t.check(gate_edged, "the way out is pointed at from the screen's edge, the gate being far from the acolyte (v0.11 M2, Task 8 fix)")
-	var up := d.timeline.upcoming(1)
-	t.check(not up.is_empty() and String(up[0].id) == "hunt" and is_equal_approx(float(up[0].at), LostLambDirector.HUNT_AT),
-		"the searchers set out at 2:30")
+	var up := d.timeline.upcoming(2)
+	t.check(up.size() == 2 and String(up[0].id) == "bolt" and is_equal_approx(float(up[0].at), LostLambDirector.BOLT_AT)
+		and String(up[1].id) == "hunt" and is_equal_approx(float(up[1].at), LostLambDirector.HUNT_AT),
+		"he bolts at 1:00 and the searchers set out at 2:30")
 	var stops := d.tour()
 	t.check(stops.size() == 3 and String(stops[0][1]) == "The runaway acolyte hides by the north-east fountain."
 		and String(stops[2][1]) == "The Temple. At 2:30 it sends searchers after him.", "the tour: him, the gate, the Temple")
@@ -544,3 +559,282 @@ static func _mission(t) -> void:
 		"the Escort type's own default reasons (out, taken, dead) are not the lamb's titles, for a later Escort mission (final review)")
 	var none := EscortObjective.new("Lead the acolyte out", "lamb_out", "lamb_taken", "lamb")
 	t.check(none.reason == "lamb_out" and none.label == "Lead the acolyte out", "its objective's words")
+
+
+# --- God T1R (Task 5): he bolts, and the outer watchman ---
+
+## Nothing done: at BOLT_AT he sets out for the way out on his own -- on duty for it, the banner, the tag RUNNING, the strip's event spent.
+static func _bolts_at_one(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	_run(s, LostLambDirector.BOLT_AT - 1.0)
+	t.check(not d.bolting and not d.led and d.bolt_left() > 0.5 and d.bolt_left() < 1.6 and d.charge.anchor.distance_to(d.charge.ground_pos) < 0.5,
+		"before 1:00 he holds where he hides, a second off his bolt (%.1f)" % d.bolt_left())
+	_clear_watchers(d)
+	_run(s, 1.5)
+	t.check(d.bolting and not d.led and d.charge.mind == Person.Mind.DUTY and d.charge.anchor.distance_to(d.exit_at) < 0.5
+		and d.bolt_left() == 0.0, "at 1:00 he bolts: on duty for the way out")
+	t.check((s.banners as Array).count("HE BOLTS FOR THE WEST GATE") == 1, "the banner says so, once (%s)" % [s.banners])
+	t.check(_labels(d).has("ACOLYTE - RUNNING") and d.hint_phase() == "running", "tagged RUNNING, and the hint's phase is running (%s)" % [_labels(d)])
+	var listed := false
+	for e in d.timeline.upcoming(4):
+		listed = listed or String(e.id) == "bolt"
+	t.check(not listed, "the strip no longer lists the bolt")
+	_done(s)
+
+
+## A loud power's danger landing within BOLT_REACH sends him; one beyond it does not.
+static func _bolts_on_smite(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	_run(s, 20.0)
+	var near: Array[Vector2] = [d.charge.ground_pos + Vector2(4.0, 0.0)]
+	(s.crowd as Crowd).danger_landed.emit("smite", near)
+	t.check(d.bolting and not d.led and (s.banners as Array).has("HE BOLTS FOR THE WEST GATE") and d.charge.mind == Person.Mind.DUTY
+		and d.charge.anchor.distance_to(d.exit_at) < 0.5, "a Smite's danger 4 from him at 0:20: he bolts, and is on his way at once")
+	_done(s)
+	s = _world()
+	d = s.d
+	_clear_watchers(d)
+	_run(s, 20.0)
+	var far: Array[Vector2] = [d.charge.ground_pos + Vector2(7.0, 0.0)]
+	(s.crowd as Crowd).danger_landed.emit("smite", far)
+	_run(s, EscortDirector.TICK * 2.0)
+	t.check(not d.bolting and d.bolt_left() > 39.0, "7 from him: he does not")
+	_done(s)
+
+
+## A building set alight within reach starts his run; one past it does not.
+static func _bolts_on_fire(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	var crowd: Crowd = s.crowd
+	var near: Structure = null
+	var far: Structure = null
+	for st in (s.env as EnvironmentField).structures():
+		if not FireManager.burns(st):
+			continue
+		var gap := st.distance_to(d.charge.ground_pos)
+		if gap <= LostLambDirector.BOLT_REACH - 0.5 and near == null:
+			near = st
+		elif gap > LostLambDirector.BOLT_REACH + 1.0 and far == null:
+			far = st
+	t.check(near != null and far != null, "the town has a burnable building within 5.5 of the fountain and one past 7")
+	if near == null or far == null:
+		_done(s)
+		return
+	crowd.fires.ignite(far, 1.0)
+	_run(s, EscortDirector.TICK * 3.0)
+	t.check(not d.bolting, "a house afire 7 off: he does not bolt")
+	crowd.fires.ignite(near, 1.0)
+	_run(s, EscortDirector.TICK * 3.0)
+	t.check(d.bolting and (s.banners as Array).has("HE BOLTS FOR THE WEST GATE"), "a house afire within 6: he bolts at the next look")
+	_done(s)
+
+
+## A death within reach starts his run (of anyone, however he died); one beyond it does not.
+static func _bolts_on_death(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	var crowd: Crowd = s.crowd
+	var others: Array[Person] = []
+	for p in crowd.citizens:
+		if p != d.charge and others.size() < 2:
+			others.append(p)
+	_arrive(others[0], d.charge.ground_pos + Vector2(9.0, 0.0))
+	crowd._field.kill(others[0], &"fire")
+	t.check(not d.bolting, "a citizen dying 9 off: he does not bolt")
+	_arrive(others[1], d.charge.ground_pos + Vector2(4.0, 0.0))
+	crowd._field.kill(others[1], &"fire")
+	t.check(d.bolting and d.charge.mind == Person.Mind.DUTY, "a citizen dying 4 off: he bolts")
+	_done(s)
+
+
+## His fountain blighted starts his run; another fountain does not.
+static func _bolts_on_blight(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	var env: EnvironmentField = s.env
+	t.check(d.fountain != null and d.fountain.kind == Structure.Kind.FOUNTAIN, "his hiding place is a fountain")
+	var other: Structure = null
+	for st in env.structures():
+		if st.kind == Structure.Kind.FOUNTAIN and st != d.fountain and not st.blighted:
+			other = st
+			break
+	if other != null:
+		env.blight(other)
+		t.check(not d.bolting, "another fountain rotted: he does not bolt")
+	env.blight(d.fountain)
+	t.check(d.bolting and (s.banners as Array).has("HE BOLTS FOR THE WEST GATE"), "his fountain blighted: he bolts")
+	_done(s)
+
+
+## Whispered at 0:05: led, so at BOLT_AT he does not bolt, and a startle later does not start him either.
+static func _led_never_bolts(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	_run(s, 5.0)
+	var to := d.charge.ground_pos + Vector2(0.0, 2.0)
+	t.check(d.charge.whisper(to, MindWhisperFx.LINGER), "whispered at 0:05")
+	_run(s, EscortDirector.TICK * 2.0)
+	t.check(d.led and not d.bolting and d.bolt_left() == 0.0 and _labels(d).has("ACOLYTE"),
+		"led: no bolt coming, and the tag says only ACOLYTE (%s)" % [_labels(d)])
+	_clear_watchers(d)
+	_run(s, LostLambDirector.BOLT_AT)
+	t.check(not d.bolting and not (s.banners as Array).has("HE BOLTS FOR THE WEST GATE"), "past 1:00 he has not bolted")
+	var near: Array[Vector2] = [d.charge.ground_pos + Vector2(3.0, 0.0)]
+	(s.crowd as Crowd).danger_landed.emit("smite", near)
+	t.check(not d.bolting, "and a startle after he was led does not start him")
+	_done(s)
+	# A Wisp's own light within CHARGE_LURE_R leads him too; a Death Mark's body drawing him does not.
+	s = _world()
+	d = s.d
+	_clear_watchers(d)
+	d._on_light(0, "wisp", d.charge.ground_pos + Vector2(0.0, 2.0))
+	d.charge.lure(d.charge.ground_pos + Vector2(0.0, 2.5), 8.0, d.charge.ground_pos + Vector2(0.0, 2.0))
+	d.step(DT)
+	t.check(d.led, "a Wisp's light beside him draws him: led")
+	_done(s)
+	s = _world()
+	d = s.d
+	_clear_watchers(d)
+	d.charge.lure(d.charge.ground_pos + Vector2(0.0, 2.5), 8.0, d.charge.ground_pos + Vector2(0.0, 2.0))
+	d.step(DT)
+	t.check(not d.led, "a body's lure (no Wisp cast) does not lead him")
+	_done(s)
+
+
+## Bolting, a fright on him does not stop him: not indoors, not off his run.
+static func _bolt_fear(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	d._start_bolt(true)
+	d.charge.panic(d.charge.ground_pos + Vector2(1.0, 0.0), 2.0)
+	t.check(d.charge.mind == Person.Mind.DUTY and not d.charge.inside, "a fright on a running acolyte takes at once: he is still on duty, not sheltering")
+	_run(s, EscortDirector.TICK * 2.0)
+	t.check(d.charge.mind == Person.Mind.DUTY and not d.charge.inside and d.charge.anchor.distance_to(d.exit_at) < 0.5,
+		"and a look later: still on duty for the way out")
+	_done(s)
+	# Not bolting, the same fright moves him off his duty, as before.
+	s = _world()
+	d = s.d
+	_clear_watchers(d)
+	d.charge.panic(d.charge.ground_pos + Vector2(1.0, 0.0), 2.0)
+	t.check(d.charge.mind != Person.Mind.DUTY or d.charge.inside, "a fright on him before he bolts still moves him off his duty")
+	_done(s)
+	# A frightened acolyte: the bolt takes him from his fright at once.
+	s = _world()
+	d = s.d
+	_clear_watchers(d)
+	d.charge.panic(d.charge.ground_pos + Vector2(1.0, 0.0), 2.0)
+	if not d.charge.inside:
+		d._start_bolt(true)
+		t.check(d.charge.mind == Person.Mind.DUTY and d.charge.anchor.distance_to(d.exit_at) < 0.5,
+			"panicking when the bolt starts, he is sent on at once")
+	_done(s)
+
+
+## Bolting, seized, the seizer killed: he runs again at once.
+static func _bolt_seized_freed(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	d._start_bolt(true)
+	var p: Person = d.patrols[0][0]
+	_arrive(p, d.charge.ground_pos + Vector2(EscortDirector.SIGHT - 0.5, 0.0))
+	_run(s, EscortDirector.TICK + DT)
+	t.check(d.held and d.seizer == p and d.bolting and _labels(d).has("ACOLYTE - CAUGHT"), "bolting, he is seized as ever (caught, still bolting)")
+	(s.crowd as Crowd)._field.kill(p, &"fire")
+	_run(s, EscortDirector.TICK + DT)
+	t.check(not d.held and d.bolting and d.charge.mind == Person.Mind.DUTY and d.charge.anchor.distance_to(d.exit_at) < 0.5
+		and _labels(d).has("ACOLYTE - RUNNING"), "the seizer felled: bolting again at once, for the way out")
+	_done(s)
+
+
+## Set down on the exit with the outer watchman on his post: seized, not out (preflight 2: sight before the way out).
+static func _fold_to_exit_seen(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	var outer: Person = d.watch[1]
+	t.check(d.watch_posts[1].distance_to(d.exit_at) < 1.0 and d.watch_posts[1].y > d.gate_at.y, "the outer post stands just outside the gate, by the way out")
+	_arrive(outer, d._walkable(d.watch_posts[1]))
+	outer.mind = Person.Mind.POST
+	_arrive(d.charge, d.exit_at + Vector2(0.0, -1.0))
+	d._hold_at = d.charge.ground_pos
+	_run(s, EscortDirector.TICK + DT)
+	t.check(d.held and d.seizer == outer and not d.escaped and not (s.rules as Rules).won,
+		"folded onto the way out with the outer watchman on post: seized, not out")
+	_done(s)
+
+
+## The watch away or drawn off: the same fold is out.
+static func _fold_to_exit_clear(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	_arrive(d.charge, d.exit_at + Vector2(0.0, -1.0))
+	d._hold_at = d.charge.ground_pos
+	_run(s, EscortDirector.TICK + DT)
+	t.check(d.escaped and not d.held and (s.rules as Rules).won, "the watch away: the same fold is out")
+	_done(s)
+	s = _world()
+	d = s.d
+	_clear_watchers(d)
+	var outer: Person = d.watch[1]
+	_arrive(outer, d._walkable(d.watch_posts[1]))
+	outer.mind = Person.Mind.CONFUSED  # drawn off by Discord: he sees nothing
+	_arrive(d.charge, d.exit_at + Vector2(0.0, -1.0))
+	d._hold_at = d.charge.ground_pos
+	_run(s, EscortDirector.TICK + DT)
+	t.check(d.escaped and not d.held, "the outer watchman confused: out")
+	_done(s)
+
+
+## At 0:18 his tag counts down to the bolt.
+static func _tag_countdown(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	_run(s, 18.2)
+	t.check(_labels(d).has("ACOLYTE - BOLTS IN 0:42"), "at 0:18 his tag reads BOLTS IN 0:42 (%s)" % [_labels(d)])
+	var edged := false
+	for tag in d.tags():
+		edged = edged or (tag.label.begins_with("ACOLYTE") and tag.edge)
+	t.check(edged, "and it is pointed at from the screen's edge")
+	_done(s)
+
+
+## The bolt is never a wait over a minute, on the board's stretched clock too: the event falls at a mission minute of the night.
+static func _bolt_is_a_minute(t) -> void:
+	var s := _world(1.5)
+	var d: LostLambDirector = s.d
+	_clear_watchers(d)
+	t.check(is_equal_approx(d.bolt_left(), LostLambDirector.BOLT_AT) and LostLambDirector.BOLT_AT <= 60.0,
+		"on a clock stretched 1.5 times he still shows a minute to his bolt (%.1f)" % d.bolt_left())
+	_run(s, LostLambDirector.BOLT_AT - 1.0)
+	t.check(not d.bolting, "and has not bolted at 0:59")
+	_clear_watchers(d)
+	_run(s, 2.0)
+	t.check(d.bolting, "and bolts at the minute, not at 1:30")
+	_done(s)
+
+
+## Torn down, the director lets go of the signals it listened to for the bolt (a startle after the night is nothing to it).
+static func _bolt_teardown(t) -> void:
+	var s := _world()
+	var d: LostLambDirector = s.d
+	var crowd: Crowd = s.crowd
+	t.check(crowd.danger_landed.is_connected(d._on_danger) and crowd._field.enemy_killed.is_connected(d._on_killed)
+		and crowd._env.structure_blighted.is_connected(d._on_blighted), "the director listens for a danger, a death and a blight")
+	d.teardown()
+	t.check(not crowd.danger_landed.is_connected(d._on_danger) and not crowd._field.enemy_killed.is_connected(d._on_killed)
+		and not crowd._env.structure_blighted.is_connected(d._on_blighted), "and lets go of them at teardown")
+	_done(s)

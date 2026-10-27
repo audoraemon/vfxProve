@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **23** to do · **84** done\n**13** active branches besides Develop-Main\n\n**Since the last update** (<t:1793127048:f>)\n• Done: God P2: Lantern Notice, the Lantern Hunt and seals",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **23** to do · **84** done\n**13** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-28T01:50:48+07:00"
+     "timestamp": "2026-10-28T04:06:02+07:00"
     },
     {
      "title": "feat/god-progression",
@@ -22,6 +22,11 @@
     {
      "title": "claude/god-p2-lantern-04cddc",
      "description": "43 commits not in Develop-Main · last commit today · local only\n> docs: god P2 summary -- references 286/0, FLOW 175/0 on the final tree, bench pairs vs kak-god-p1\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "god/t1r-t2",
+     "description": "39 commits not in Develop-Main · last commit today · local only\n> fix: the postern key ignores the town's evacuation; the running phase's own hint (god T1R Task 2 fix round 3, D30)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -40,13 +45,8 @@
      "color": 5016537
     },
     {
-     "title": "god/t1r-t2",
-     "description": "36 commits not in Develop-Main · last commit today · local only\n> feat: The Warning's routes for every god type -- out of the walls, the keeper who heard ALL IS WELL (god T1R Task 2)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
      "title": "god/t1r-t6",
-     "description": "36 commits not in Develop-Main · last commit yesterday · local only\n> wip: first prayers walkers, fire, thorns, lie; policies\n\n_No Ledger task points at this branch._",
+     "description": "37 commits not in Develop-Main · last commit today · local only\n> wip2: policies, capital walkers, B\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

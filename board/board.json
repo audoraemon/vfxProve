@@ -1,11 +1,9 @@
 {
- "hash": "fb30ca0c5df2ea9e",
- "updated": "2026-10-28T01:50:48+07:00",
+ "hash": "d57c6190f75f5e38",
+ "updated": "2026-10-28T04:06:02+07:00",
  "changes": {
-  "date": "<t:1793127048:f>",
-  "items": [
-   "Done: God P2: Lantern Notice, the Lantern Hunt and seals"
-  ]
+  "date": "<t:1793135162:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1089,6 +1087,14 @@
     "pushed": false
    },
    {
+    "name": "god/t1r-t2",
+    "ahead": 39,
+    "behind": 0,
+    "date": "2026-10-28",
+    "subject": "fix: the postern key ignores the town's evacuation; the running phase's own hint (god T1R Task 2 fix round 3, D30)",
+    "pushed": false
+   },
+   {
     "name": "god/t1r-t5",
     "ahead": 39,
     "behind": 0,
@@ -1113,19 +1119,11 @@
     "pushed": false
    },
    {
-    "name": "god/t1r-t2",
-    "ahead": 36,
+    "name": "god/t1r-t6",
+    "ahead": 37,
     "behind": 0,
     "date": "2026-10-28",
-    "subject": "feat: The Warning's routes for every god type -- out of the walls, the keeper who heard ALL IS WELL (god T1R Task 2)",
-    "pushed": false
-   },
-   {
-    "name": "god/t1r-t6",
-    "ahead": 36,
-    "behind": 0,
-    "date": "2026-10-27",
-    "subject": "wip: first prayers walkers, fire, thorns, lie; policies",
+    "subject": "wip2: policies, capital walkers, B",
     "pushed": false
    },
    {

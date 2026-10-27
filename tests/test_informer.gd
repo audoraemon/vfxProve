@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_freed(t)
 	_stays_in(t)
 	_lantern(t)
+	_walls_off(t)
 
 
 static func _world() -> Dictionary:
@@ -560,3 +561,19 @@ static func _lantern(t) -> void:
 			break
 	t.check(mine and stranger != null, "busy(): the informer, every contact and his company are the director's own, a passer-by is not")
 	Kit.done(b)
+
+
+## God T1R: a target set down outside the walls is stopped only where the director asks for it (walls_stop, The Tax Collector's): The
+## Informer's walls_stop is at its default, so he is not OUT and not sent off the map.
+static func _walls_off(t) -> void:
+	var s := _world()
+	var d: InformerDirector = s.d
+	var q := d.quarries[0]
+	d._set_out(q)
+	q.target.inside = false
+	Kit.arrive(q.target, Vector2(2.7, 17.5))
+	t.check(d._is_out(q) and Walls.outside(q.target.ground_pos), "(set-up) the informer is on his round, outside the walls")
+	Kit.run_for(s, 1.0)
+	t.check(not d.walls_stop and q.state != AssassinateDirector.State.OUT and d.out_count() == 0 and not d.is_leaving(q.target),
+		"with walls_stop at its default he is not OUT and not sent off the map")
+	Kit.done(s)

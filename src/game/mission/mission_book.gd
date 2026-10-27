@@ -291,15 +291,15 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 static func tax_collector() -> MissionDef:
 	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))
-	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
-	m.goal_label = "The collectors are dead"
+	m.goal = "Stop the tax collector and his two deputies before the taxes reach the Citadel"
+	m.goal_label = "The collectors are stopped"
 	m.lose = "A collector reaches the Citadel, or dawn comes"
 	m.camera_at = _home().landmark(&"workshop").get_center() + Vector2(-2.0, 3.0)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "discord", "whisper"])
 	m.director = TaxCollectorDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [AssassinateObjective.new("Kill the collectors", "collector", "taxes"),
+		var out: Array[Objective] = [AssassinateObjective.new("Stop the collectors", "collector", "taxes"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a seen kill's toll turns the Lantern instead of losing the night

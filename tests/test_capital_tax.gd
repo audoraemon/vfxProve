@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_camera_clear(t, cap)
 	_tour_true(t, cap)
 	_waits(t, cap)
+	_inside_walls(t, cap)
 	City.use(&"aldermere")
 	t.check(City.current().id() == &"aldermere", "the Capital tax test leaves Aldermere the active city")
 
@@ -204,3 +205,14 @@ static func _waits(t, cap: Dictionary) -> void:
 	for i in range(1, so.size()):
 		ok = ok and float(so[i]) - float(so[i - 1]) <= 60.0
 	t.check(ok and float(cap.chain_wait) <= 50.0, "no designed wait over 60 s (set out %s, chain %.0f)" % [so, cap.chain_wait])
+
+
+## God T1R (spec 2.1, Problem 9): the Capital's counting-house door, every debtor's door and the Citadel's gate lie inside the old town's walls,
+## so a collector at his post is never "out of the walls" (Walls.outside() of the town's INNER ring, whatever the river gates lead to).
+static func _inside_walls(t, cap: Dictionary) -> void:
+	var city := City.by_id(&"capital")
+	var out := []
+	for at: Vector2 in cap.doors + [cap.door, cap.safe]:
+		if Walls.outside(at, city):
+			out.append(at)
+	t.check(not (cap.doors as Array).is_empty() and out.is_empty(), "the Capital's doors and the Citadel's gate are inside its walls (outside: %s)" % [out])

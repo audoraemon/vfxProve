@@ -42,6 +42,19 @@ const GUARD_R := 0.6
 const FLUSH_GAP := 1.5
 ## The one banner when the counting-house burns or falls with collectors inside (v0.11.1).
 const FLUSH_BANNER := "THE COUNTING-HOUSE BURNS - THE COLLECTORS RUN"
+## God T1R (spec 5.2): the debtors' mob. A collector bound by a sealed Leaving Is Prohibited (NoLeaveFx.bound), out of doors within
+## MOB_DOOR_R of the door of a debtor he has visited tonight, with none of his guards (alive, out of doors) within MOB_GUARD_R of him,
+## for MOB_AFTER seconds, is mobbed by that house's debtors: he dies (kind &"mob", credited to "noleave"), judged unseen -- the debtors
+## raise no cry. His guards must be drawn off first (The Bell Lies, CALL THE GUARD). First guesses, tuned in this order: the policy,
+## then MOB_GUARD_R 1.5 -> 1.0, then MOB_AFTER 3 -> 2.
+const MOB_DOOR_R := 3.0
+const MOB_GUARD_R := 1.5
+const MOB_AFTER := 3.0
+## How many lay citizens nearest the door are sent to stand round the collector for the mob (the sight of it; the kill does not wait on them).
+const MOB_CROWD := 3
+const MOB_BANNER := "THE DEBTORS MOB THE COLLECTOR"
+## The banner when a collector is stopped out of the walls (spec 2.1).
+const OUT_BANNER := "A COLLECTOR LEAVES TOWN - HIS TAXES ARE LOST"
 
 
 ## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace
@@ -56,10 +69,19 @@ var counting_spot := Vector2.INF
 var rounds: Array = ROUNDS
 var set_out_at: Array = SET_OUT_AT
 var guards: Array = GUARDS
+## God T1R: the Leaving Is Prohibited effects cast tonight (kept from _on_cast() through Rules.last_fx()), the doors each collector has gone in
+## at (by his index), the seconds the mob's conditions have held for each, the lay citizens sent to stand round him, and the one the mob
+## is killing this instant (so _on_killed() judges that death unseen).
+var _noleave: Array = []
+var _visited := {}
+var _mob_for := {}
+var _mob_crowd := {}
+var _mobbing: Variant = null
 
 
 ## AssassinateDirector's numbers start at the consts above (v0.12, R31): set at .new(), so a town's override survives setup.
 func _init() -> void:
+	walls_stop = true  # (god T1R) a collector out of the walls is stopped
 	visit_seconds = VISIT_SECONDS
 	hide_seconds = HIDE_SECONDS
 	alarm_reach = ALARM_REACH
@@ -129,6 +151,164 @@ func _flush_banner() -> String:
 ## The banner when a collector reaches the Citadel's gate (v0.11 M2).
 func _safe_banner() -> String:
 	return "THE TAXES ARE IN"
+
+
+## The banner when a collector is stopped out of the walls (god T1R, spec 2.1).
+func _out_banner(_q: Quarry) -> String:
+	return OUT_BANNER
+
+
+## `q` goes into `s` (v0.11 M2): a debtor's house he goes in at is a door he has visited tonight (god T1R: where the mob can take him).
+func _go_in(q: Quarry, s: Structure) -> void:
+	super(q, s)
+	var i := q.stops.find(s)
+	if s != hideout and i >= 0:
+		var seen: Array = _visited.get(q.index, [])
+		if not seen.has(q.stop_doors[i]):
+			seen.append(q.stop_doors[i])
+		_visited[q.index] = seen
+
+
+## A power cast (god T1R): a Leaving Is Prohibited is kept, to read who it binds (Rules.last_fx() is the effect just cast).
+func _on_cast(slot: int, key: String, at: Vector2) -> void:
+	super(slot, key, at)
+	if key == "noleave":
+		var fx: Variant = rules.last_fx()
+		if fx is NoLeaveFx:
+			_noleave.append(fx)
+
+
+## One step: the base's, then the mob (god T1R).
+func step(delta: float) -> void:
+	super(delta)
+	_step_mob(delta)
+
+
+## `q` is bound by a law that holds now (a sealed NoLeaveFx with him in its bound).
+func _bound(q: Quarry) -> bool:
+	for v: Variant in _noleave:
+		if is_instance_valid(v) and (v as NoLeaveFx).sealed and (v as NoLeaveFx).bound.has(q.target):
+			return true
+	return false
+
+
+## The door `q` has visited tonight nearest him and within MOB_DOOR_R of him; Vector2.INF for none.
+func _mob_door(q: Quarry) -> Vector2:
+	var best := Vector2.INF
+	for door: Vector2 in _visited.get(q.index, []):
+		var gap := q.target.ground_pos.distance_to(door)
+		if gap <= MOB_DOOR_R and (best == Vector2.INF or gap < q.target.ground_pos.distance_to(best)):
+			best = door
+	return best
+
+
+## One of `q`'s guards (alive, out of doors) stands within MOB_GUARD_R of him.
+func _guarded(q: Quarry) -> bool:
+	for g: Variant in q.guards:
+		if _alive(g) and not (g as Person).inside and (g as Person).ground_pos.distance_to(q.target.ground_pos) <= MOB_GUARD_R:
+			return true
+	return false
+
+
+## `q` is held by the law at a visited debtor's door: bound, out of doors on his round (or in his flight), within MOB_DOOR_R of the door.
+func _held_at_door(q: Quarry) -> bool:
+	return not q.dead and _alive(q.target) and not q.target.inside and q.state in [State.WALKING, State.FLEEING] \
+		and _bound(q) and _mob_door(q) != Vector2.INF
+
+
+## The debtors can mob `q` now: held at a visited door (_held_at_door()) with no guard of his near. Only reads.
+func mob_ready(q: Quarry) -> bool:
+	return _held_at_door(q) and not _guarded(q)
+
+
+## Each collector the mob is working on: the seconds its conditions have held; at MOB_AFTER he is mobbed. The laws that ran out are let go.
+func _step_mob(delta: float) -> void:
+	_noleave = _noleave.filter(func(v: Variant) -> bool: return is_instance_valid(v) and not (v as NoLeaveFx).finished)
+	for q in quarries:
+		if not mob_ready(q):
+			if _mob_for.has(q.index):
+				_mob_for.erase(q.index)
+				_release_crowd(q)
+			continue
+		if not _mob_for.has(q.index):
+			_mob_for[q.index] = 0.0
+			_call_crowd(q)
+		_mob_for[q.index] = float(_mob_for[q.index]) + delta
+		if float(_mob_for[q.index]) >= MOB_AFTER:
+			_mob_kill(q)
+
+
+## Seconds left before `q` is mobbed (MOB_AFTER while the conditions are not yet met, or have just been); for his tag.
+func mob_left(q: Quarry) -> float:
+	return maxf(MOB_AFTER - float(_mob_for.get(q.index, 0.0)), 0.0)
+
+
+## Up to MOB_CROWD lay citizens nearest the door are sent to stand round `q` (the sight of the mob).
+func _call_crowd(q: Quarry) -> void:
+	var door := _mob_door(q)
+	var skip: Array = _appointed()
+	for o in quarries:
+		skip.append_array(o.guards)
+	var crew: Array = []
+	var near := _lay_near(door, MOB_CROWD, skip)
+	for i in near.size():
+		near[i].go_duty(_ring_spot(q.target.ground_pos, 1.2, i, near.size(), 0.5))
+		crew.append(near[i])
+	_mob_crowd[q.index] = crew
+
+
+## The debtors sent for the mob go back to their day.
+func _release_crowd(q: Quarry) -> void:
+	for v: Variant in _mob_crowd.get(q.index, []):
+		if is_instance_valid(crowd) and _alive(v) and (v as Person).mind == Person.Mind.DUTY:
+			crowd.off_duty(v as Person)
+	_mob_crowd.erase(q.index)
+
+
+## The debtors mob `q`: he falls (kind &"mob"), and _on_killed() judges it unseen and credits Leaving Is Prohibited.
+func _mob_kill(q: Quarry) -> void:
+	var who: Person = q.target
+	rules.banner.emit(MOB_BANNER)
+	_mobbing = who
+	crowd._field.kill(who, &"mob", _mob_door(q))
+	_mobbing = null
+	_mob_for.erase(q.index)
+	_release_crowd(q)
+
+
+## A death in the field: the base's; the mob's is judged unseen at once (the debtors raise no cry) and credited to Leaving Is Prohibited
+## (god T1R), not left to _judge() with its witnesses.
+func _on_killed(e: DummyEnemy, kind: StringName) -> void:
+	var mob: bool = _mobbing != null and _mobbing == e
+	super(e, kind)
+	if not mob:
+		return
+	for q in quarries:
+		var t: Variant = q.target
+		if t == e:
+			q.fell_at = Vector2.INF
+			q.unseen = true
+			q.judged = true
+			q.killed_by = "noleave"
+
+
+## `q`'s own tag: a collector held at a debtor's door shows what is missing or what is coming (god T1R): "GUARDED" while one of his guards
+## stands near him, else the mob's seconds. Otherwise the base's.
+func _target_tag(q: Quarry) -> MapTag:
+	if _held_at_door(q):
+		var words := q.label + " - GUARDED"
+		if not _guarded(q):
+			words = q.label + " - MOB " + UiTheme.clock(ceilf(mob_left(q)))
+		return MapTag.person(q.target.ground_pos, MARK_TARGET, words, true)
+	return super(q)
+
+
+## Lets go of the laws kept and the debtors called (god T1R), then the base's.
+func teardown() -> void:
+	_noleave.clear()
+	for q in quarries:
+		_release_crowd(q)
+	super()
 
 
 ## The tour (spec §1, v0.11 M2): the counting-house and when they set out (the deputies "by" their times: the chain can bring

@@ -17,8 +17,9 @@ extends MissionDirector
 ## the numbers in _plan() (TaxCollectorDirector).
 
 ## What a target is doing (v0.11 M2): waiting indoors at the hideout, walking his round, indoors at a stop, fleeing to hide,
-## hiding, safe (escaped), dead.
-enum State { WAITING, WALKING, VISITING, FLEEING, HIDING, SAFE, DEAD }
+## hiding, safe (escaped), dead. God T1R: OUT (appended, so the old values keep their numbers) -- he went out of the walls and was
+## sent off the map (walls_stop): stopped for the night, counted with the dead, never safe.
+enum State { WAITING, WALKING, VISITING, FLEEING, HIDING, SAFE, DEAD, OUT }
 
 ## Seconds between looks at the targets (v0.11 M2).
 const TICK := 0.5
@@ -115,6 +116,10 @@ var smoke_out := true
 var flush_waiting := false
 ## v0.11.1: seconds between one waiting target's burst from a burning hideout and the next's (flush_waiting).
 var flush_gap := 0.0
+## God T1R (spec 5.1): a target who goes out of the walls (Walls.outside()) while out of doors and alive is stopped for the night: state
+## OUT, counted with the dead (stopped(), all_fallen()), his guards back at their posts, himself sent on to the nearest way off the map.
+## Off by default (The Informer, The Bishop); The Tax Collector sets it.
+var walls_stop := false
 ## The targets in the order they set out (v0.11 M2; _add_quarry() in _plan()).
 var quarries: Array[Quarry] = []
 ## The hideout's door (the safe place's when there is no hideout) (v0.11 M2).
@@ -260,6 +265,11 @@ func _safe_banner() -> String:
 	return "HE IS SAFE"
 
 
+## Virtual (god T1R, walls_stop): the banner when a target is stopped out of the walls; "" for none.
+func _out_banner(_q: Quarry) -> String:
+	return ""
+
+
 ## Virtual (v0.11 M2): the banner when a death is seen.
 func _seen_banner() -> String:
 	return "THE GUARDS CRY MURDER"
@@ -282,6 +292,7 @@ func lost_reason() -> String:
 func step(delta: float) -> void:
 	_clock += mission_delta(delta)
 	timeline.step(delta)
+	_step_leaving()  # (god T1R) those sent off the map walk on; a no-op while nobody was sent
 	_chain()
 	# Judged once the crowd has judged its own doomed (Crowd._settle_doom()), so a cast's victims never witness each other.
 	if crowd._doomed.is_empty():
@@ -293,10 +304,13 @@ func step(delta: float) -> void:
 	if looking:
 		_tick_in = TICK
 	for q in quarries:
-		if q.dead or q.state == State.SAFE:
-			continue
+		if q.dead or q.state == State.SAFE or q.state == State.OUT:
+			continue  # (god T1R) one stopped out of the walls is let go: his body going off the map is no escape (_lost())
 		if not _alive(q.target):
 			_lost(q)
+			continue
+		if walls_stop and _is_out(q) and not q.target.inside and Walls.outside(q.target.ground_pos):
+			_stop_out(q)
 			continue
 		if q.inside_of != null:
 			_indoors(q, delta)
@@ -340,6 +354,22 @@ func _lost(q: Quarry) -> void:
 	q.state = State.SAFE
 	q.inside_of = null
 	rules.banner.emit(_safe_banner())
+
+
+## `q` stands out of the walls, out of doors and alive (god T1R, walls_stop): stopped for the night, however he got there. He counts with the
+## dead from this second (died_at, so the next one's chain runs from it) but is not dead, and never safe; his guards go back to their posts
+## and he is sent on to the nearest way off the map (send_off()), where the director takes him off (_step_leaving()).
+func _stop_out(q: Quarry) -> void:
+	q.state = State.OUT
+	q.died_at = _clock
+	q.inside_of = null
+	_release_guards(q)
+	send_off(q.target)
+	var text := _out_banner(q)
+	if text != "":
+		rules.banner.emit(text)
+	if timeline != null and q.index + 1 < quarries.size():
+		timeline.expect("out_%d" % (q.index + 1), out_at(q.index + 1))  # the strip shows the chained time, as after a death
 
 
 ## `q` indoors (v0.11 M2): waiting for his time, he stays -- even in a hideout alight or fallen, so one fire never sets the
@@ -513,7 +543,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	for q in quarries:
 		# Variant: a target's body may be freed by now; comparing it is safe, passing it on as a Person is not.
 		var t: Variant = q.target
-		if not q.dead and t == e:
+		if not q.dead and q.state != State.OUT and t == e:  # (god T1R) a target stopped out of the walls is not killed again: no death, no cry, no credit
 			q.dead = true
 			q.died_at = _clock
 			q.fell_at = e.ground_pos
@@ -526,7 +556,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			return
 	for q in quarries:
 		for g: Variant in q.guards:
-			if g == e and not q.dead and _alive(q.target):
+			if g == e and not q.dead and q.state != State.OUT and _alive(q.target):
 				q.guard_fell = true
 				return
 
@@ -553,7 +583,7 @@ func _send_guards() -> void:
 	for q in quarries:
 		var base := slot
 		slot += q.guards.size()
-		if q.dead or q.state == State.SAFE or not _alive(q.target):
+		if q.dead or q.state == State.SAFE or q.state == State.OUT or not _alive(q.target):
 			continue
 		var out := not q.target.inside
 		var hurried := q.state == State.FLEEING
@@ -667,9 +697,22 @@ func killed() -> int:
 	return n
 
 
-## Every target is dead (v0.11 M2): AssassinateObjective is done.
+## How many targets were stopped out of the walls (god T1R): 0 while walls_stop is off.
+func out_count() -> int:
+	var n := 0
+	for q in quarries:
+		n += 1 if q.state == State.OUT else 0
+	return n
+
+
+## How many targets are stopped for the night, dead or out of the walls (god T1R). The same as killed() while walls_stop is off.
+func stopped() -> int:
+	return killed() + out_count()
+
+
+## Every target is dead or stopped (v0.11 M2, god T1R: stopped): AssassinateObjective is done.
 func all_fallen() -> bool:
-	return not quarries.is_empty() and killed() == quarries.size()
+	return not quarries.is_empty() and stopped() == quarries.size()
 
 
 ## Some target reached the safe place (v0.11 M2): AssassinateObjective fails.
@@ -785,12 +828,12 @@ func hint_phase() -> String:
 		State.VISITING:
 			return "inside"
 		State.WAITING:
-			return "next" if killed() > 0 else "inside"
+			return "next" if stopped() > 0 else "inside"
 	return "safe" if q.leg >= q.stops.size() else ""
 
 
 ## The results' report (v0.11 M2): how the night ended for the targets ("escaped" if one got away; with all dead, "seen" if any
-## death was seen, else "unseen"; else "alive"), how many died and how many of those were seen, and the alarms.
+## death was seen, else "unseen"; else "alive"), how many died, how many were stopped out of the walls (god T1R) and how many deaths were seen, and the alarms.
 func report() -> Dictionary:
 	var seen := 0
 	var alarms := 0
@@ -802,7 +845,7 @@ func report() -> Dictionary:
 		how = "escaped"
 	elif all_fallen():
 		how = "seen" if seen > 0 else "unseen"
-	return {"target": how, "killed": killed(), "seen": seen, "alarms": alarms}
+	return {"target": how, "killed": killed(), "out": out_count(), "seen": seen, "alarms": alarms}
 
 
 ## `p` is one of this director's own actors (v0.11.2, LanternWatch's Bearer must not take them): a target or a guard of one.

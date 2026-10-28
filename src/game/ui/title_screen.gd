@@ -1,15 +1,16 @@
 class_name TitleScreen
 extends Node
 ## The title (spec §1, §5): "KINGDOMS AMID KATACLYSM" with "KAK" small, over the town of Aldermere drifting
-## slowly past, and five ways on: the Campaign (v0.10), the Missions board, Options (v0.11.2), the VFX Sandbox, Quit. The town is the
+## slowly past, and five ways on: Endless Night (god T1R: the first row since the campaign left the title; the campaign's code stays), the Missions board, Options (v0.11.2), the VFX Sandbox, Quit. The town is the
 ## real one, built without its people -- nothing here needs a crowd, and nothing here should cost a frame.
 
-## "campaign", "play" (the Missions board; also Enter), "sandbox" or "quit". "options" (v0.11.2) opens the volume panel here and is
+## "endless" (Endless Night's slot select, god T1R), "play" (the Missions board; also Enter), "sandbox" or "quit". The title no longer offers
+## "campaign"; Game still answers it. "options" (v0.11.2) opens the volume panel here and is
 ## never emitted.
 signal action(name: String)
 
-const ROWS := ["campaign", "play", "options", "sandbox", "quit"]
-const LABELS := ["Campaign", "Missions", "Options", "VFX Sandbox", "Quit"]
+const ROWS := ["endless", "play", "options", "sandbox", "quit"]
+const LABELS := ["Endless Night", "Missions", "Options", "VFX Sandbox", "Quit"]
 
 ## One slow loop of the camera every 1 / DRIFT_SPEED seconds, this far each way (screen pixels).
 const DRIFT_SPEED := 0.02

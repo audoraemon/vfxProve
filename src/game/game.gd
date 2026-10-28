@@ -34,6 +34,8 @@ const FLOW := {
 	# The Lantern campaign (v0.10): its night screen, the draft for tonight, the night's results leading on to the next
 	# night or the ending, and Pause's way back to the night screen.
 	"title:campaign": Screen.CAMPAIGN,
+	# Endless Night from the title (god T1R, D7): the title's first row opens the slot select; its Back returns to the title.
+	"title:endless": Screen.SLOTS,
 	"campaign:draft": Screen.PREPARE,
 	"campaign:title": Screen.TITLE,
 	"prepare:campaign": Screen.CAMPAIGN,
@@ -53,6 +55,7 @@ const FLOW := {
 	"slots:continue": Screen.HUB,
 	"slots:new": Screen.GOD_SELECT,
 	"slots:back": Screen.BOARD,
+	"slots:title": Screen.TITLE,
 	"god:chosen": Screen.HUB,
 	"god:back": Screen.SLOTS,
 	"hub:descend": Screen.PREPARE,
@@ -232,8 +235,17 @@ var god_base := GodSlot.PATH_BASE
 ## True from the slot select to the hub and its nights (god P1); false at the title and the board, as `_in_campaign` is. Prepare, the
 ## pause menu, the interlude and Results read it: a night is the god's, banked to its file and never to the board's save (C7).
 var _in_endless := false
+## Where the slot select was opened from (god T1R, D7): the title's Endless Night row, or the board's DEV ENDLESS button. Back returns there,
+## and only the board's door turns the tree's dev fill on.
+var _endless_from := Screen.BOARD
 ## A line the next hub shows once (god P1, Ruling P9, P21): "Night 3 was abandoned: a lost night." after an Abandon or a slot found mid-night.
 var _hub_line := ""
+
+
+## The slot select's Back (god T1R, D7): to the title when Endless Night was opened from the title's first row, to the board when from the
+## board's DEV ENDLESS button. A static so a suite can prove it.
+static func slots_back_action(from: int) -> String:
+	return "slots:title" if from == Screen.TITLE else "slots:back"
 
 
 ## The screen an action leads to, or -1 when nothing offers it.
@@ -921,6 +933,7 @@ func _on_board_action(what: String, board: MissionBoard) -> void:
 	if what == "endless":
 		# The DEV door into Endless Night (god P1, Rulings P2, P14): the dev fill of the tree is on for the session.
 		GodTree.dev_fill = true
+		_endless_from = Screen.BOARD
 	if what == "pick":
 		mission_id = board.chosen
 		levels = {}  # a new pick starts every power at level 1 (god P1, ruling P13)
@@ -987,7 +1000,7 @@ func _on_slots_action(what: String, slots: SlotScreen) -> void:
 			god_slot = slots.chosen
 			on_action("slots:new")
 		"back":
-			on_action("slots:back")
+			on_action(slots_back_action(_endless_from))
 
 
 ## The god select (god P1, spec §4): the type chosen makes the god (the seed from the clock) and writes it; Back is the slot select.
@@ -1218,6 +1231,11 @@ func _on_title_action(what: String) -> void:
 			get_tree().change_scene_to_file(SANDBOX_SCENE)
 		"quit":
 			get_tree().quit()
+		"endless":
+			# The real door into Endless Night (god T1R, D7): the tree as the player earns it, no dev fill.
+			GodTree.dev_fill = false
+			_endless_from = Screen.TITLE
+			on_action("title:endless")
 		"campaign":
 			# An ending not yet seen (v0.10 M5: the game quit on the last night's Results) is shown first.
 			if save.campaign != null and save.campaign.ending != "" and not save.campaign.ending_seen:
@@ -1296,6 +1314,7 @@ func _flow_test() -> void:
 	# The title's first frames compile its shaders, which can take seconds; let them pass before anything is timed.
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await _flow_title_endless(step)
 	on_action("title:play")
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Play opens the mission board")
 	step.call(Music.current() == &"theme", "the board plays the theme")
@@ -1947,6 +1966,14 @@ func _flow_endless(step: Callable) -> void:
 	if slots == null:
 		out.call()
 		return
+	slots.click(SlotScreen.BACK_RECT.get_center())
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Back from the slots opened by the board's ENDLESS returns to the board")
+	board = _screen_node as MissionBoard
+	board.click(MissionBoard.ENDLESS_RECT.get_center())
+	slots = _screen_node as SlotScreen
+	if slots == null:
+		out.call()
+		return
 
 	# The god.
 	slots.click(slots.button_rect(0, "new").get_center())
@@ -2200,8 +2227,8 @@ func _flow_endless(step: Callable) -> void:
 	if title != null:
 		for item: Dictionary in title._menu.items:
 			rows_title.append(String(item.action))
-	step.call(screen == Screen.TITLE and title != null and rows_title == ["campaign", "play", "options", "sandbox", "quit"] and god == null,
-		"the hub's Title is the title, its rows unchanged (%s)" % ", ".join(PackedStringArray(rows_title)))
+	step.call(screen == Screen.TITLE and title != null and rows_title == ["endless", "play", "options", "sandbox", "quit"] and god == null,
+		"the hub's Title is the title, its rows as the title has them (%s)" % ", ".join(PackedStringArray(rows_title)))
 	var camp_same := save.campaign == camp and (camp == null or save.campaign.night == camp_night)
 	step.call(save.descend.night == nights and save.descend.believers == believers and save.descend.cleared == cleared and camp_same
 		and FileAccess.get_file_as_bytes(save_path) == disk,
@@ -2210,6 +2237,72 @@ func _flow_endless(step: Callable) -> void:
 	out.call()
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not (_screen_node as MissionBoard).dev and not GodTree.dev_fill,
 		"the board is rebuilt without the DEV tab, the dev fill off")
+
+
+## FLOW (god T1R, D7): the title's first row, Endless Night, with the real tree (no dev fill). The slots are three Empty; New, then the
+## god select, Ruin; the hub at Night 1; Descend draws The Warning and its Prepare offers exactly Smite and Ember; back to the hub; Title.
+## Starts and ends on the title with no god files left (the board's walk after it starts from three Empty slots).
+func _flow_title_endless(step: Callable) -> void:
+	var title := _screen_node as TitleScreen
+	var first := String(title._menu.items[0].action) if title != null and not title._menu.items.is_empty() else ""
+	var label := String(title._menu.items[0].label) if title != null and not title._menu.items.is_empty() else ""
+	step.call(first == "endless" and label == "Endless Night", "the title's first row is Endless Night (%s, %s)" % [first, label])
+	var out := func() -> void:
+		GodTree.dev_fill = false
+		_remove_gods()
+		go_to(Screen.TITLE)
+	if title == null:
+		return
+	title.action.emit("endless")
+	var slots := _screen_node as SlotScreen
+	step.call(screen == Screen.SLOTS and slots != null and not GodTree.dev_fill and slots.slot_line(0) == "Empty"
+		and slots.slot_line(1) == "Empty" and slots.slot_line(2) == "Empty",
+		"Endless Night opens the slot select, three slots Empty, the dev fill off (%s)" % [slots.slot_line(0) if slots != null else "-"])
+	if slots == null:
+		out.call()
+		return
+	slots.click(SlotScreen.BACK_RECT.get_center())
+	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back from the slots returns to the title it came from")
+	(_screen_node as TitleScreen).action.emit("endless")
+	slots = _screen_node as SlotScreen
+	if slots == null:
+		out.call()
+		return
+	slots.click(slots.button_rect(0, "new").get_center())
+	var pick := _screen_node as GodSelectScreen
+	step.call(screen == Screen.GOD_SELECT and pick != null and god_slot == 1, "New opens the god select")
+	if pick == null:
+		out.call()
+		return
+	pick.click(GodSelectScreen.ring_rect(0).get_center())
+	pick.click(GodSelectScreen.CHOOSE_RECT.get_center())
+	var hub := _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and god != null and god.type == "ruin" and hub.lines()[6] == "Night 1",
+		"choosing Ruin opens the hub at Night 1")
+	if hub == null:
+		out.call()
+		return
+	hub.click(hub.menu_rect("descend").get_center())
+	var prep := _screen_node as PrepareScreen
+	var offered := PackedStringArray()
+	if prep != null:
+		for i in prep.tabs().size():
+			offered.append_array(prep.authority_keys(i))
+	offered.sort()
+	step.call(screen == Screen.PREPARE and prep != null and offered == PackedStringArray(["ember", "smite"]) and not GodTree.dev_fill,
+		"Descend's Prepare offers exactly Smite and Ember (%s)" % ", ".join(offered))
+	if prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", prep)
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null, "Back from Prepare is the hub")
+	if hub == null:
+		out.call()
+		return
+	hub.click(hub.menu_rect("title").get_center())
+	step.call(screen == Screen.TITLE and _screen_node is TitleScreen and god == null, "the hub's Title is the title")
+	out.call()
 
 
 ## FLOW (god P1, ruling P11): a board night's bank is a test bank -- flagged, no believers, no progress line, its first clear's fastest

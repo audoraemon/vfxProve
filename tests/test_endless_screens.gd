@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_interlude_endless(t)
 	_refuse_and_card_cost(t)
 	GodTree.dev_fill = false
+	_title_entry(t)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
 
 
@@ -285,3 +286,22 @@ static func _refuse_and_card_cost(t) -> void:
 	var open := prep.card_cost_text("ember")
 	t.check(open.begins_with("%d Might" % PowerBook.might("ember", 1)), "a card not picked shows the base Might (%s)" % open)
 	prep.free()
+
+
+## God T1R Task 8 (D7): the title's Endless Night row opens the slot select, and its Back returns to the title; the board's ENDLESS door
+## still returns to the board. A suite runs before the tree is up, so no Game is built here: the screens the actions lead to, the Back each
+## door picks and the two doors' wiring are proved here, and FLOW walks the screens themselves (the dev fill off from the title, on from the board).
+static func _title_entry(t) -> void:
+	t.check(Game.next_screen("title:endless") == Game.Screen.SLOTS, "the title's Endless Night leads to the slot select")
+	t.check(Game.slots_back_action(Game.Screen.TITLE) == "slots:title" and Game.next_screen("slots:title") == Game.Screen.TITLE,
+		"Back from the slots opened at the title returns to the title")
+	t.check(Game.slots_back_action(Game.Screen.BOARD) == "slots:back" and Game.next_screen("slots:back") == Game.Screen.BOARD,
+		"Back from the slots opened by the board's ENDLESS returns to the board")
+	var text := FileAccess.get_file_as_string("res://src/game/game.gd")
+	var title_door := text.substr(text.find('"endless":
+			# The real door'), 400)
+	t.check(title_door.contains("GodTree.dev_fill = false") and title_door.contains("_endless_from = Screen.TITLE"),
+		"the title's door turns the dev fill off and remembers it came from the title")
+	var board_door := text.substr(text.find('if what == "endless":'), 400)
+	t.check(board_door.contains("GodTree.dev_fill = true") and board_door.contains("_endless_from = Screen.BOARD"),
+		"the board's door keeps the dev fill on and remembers it came from the board")

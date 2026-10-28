@@ -52,8 +52,8 @@ static func _flow_table(t) -> void:
 	t.check(Game.next_screen("title:play") == Game.Screen.BOARD and Game.next_screen("prepare:back") == Game.Screen.BOARD
 		and Game.next_screen("results:replay") == Game.Screen.MISSION and Game.next_screen("pause:restart") == Game.Screen.MISSION
 		and Game.next_screen("interlude:missions") == Game.Screen.BOARD, "the old entries are unchanged")
-	t.check(Game.next_screen("title:endless") == -1 and Game.next_screen("title:slots") == -1,
-		"the title offers no way into Endless Night (C2)")
+	t.check(Game.next_screen("title:endless") == Game.Screen.SLOTS and Game.next_screen("slots:title") == Game.Screen.TITLE
+		and Game.next_screen("title:slots") == -1, "the title's Endless Night leads to the slot select, whose title Back returns (god T1R, D7)")
 
 
 ## C7: a night banked to a god changes the god and nothing of the board's save, in memory or on disk.

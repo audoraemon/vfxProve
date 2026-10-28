@@ -174,4 +174,8 @@ static func _title(t) -> void:
 	var rows := []
 	for a in TitleScreen.ROWS:
 		rows.append(String(a))
-	t.check(rows == ["campaign", "play", "options", "sandbox", "quit"], "Title rows (%s)" % [rows])
+	t.check(rows == ["endless", "play", "options", "sandbox", "quit"], "Title rows (%s)" % [rows])
+	var labels := []
+	for l in TitleScreen.LABELS:
+		labels.append(String(l))
+	t.check(labels == ["Endless Night", "Missions", "Options", "VFX Sandbox", "Quit"], "Title labels (%s)" % [labels])

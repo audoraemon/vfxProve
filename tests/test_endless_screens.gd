@@ -580,5 +580,5 @@ static func _pause_lost_notice(t) -> void:
 	card95.setup(result, [ln.act("festival")], NightState.new())
 	card95.click(card95.button_rect("missions").get_center())
 	t.check(card95.confirm_line().contains("Lantern Notice +5%") and card95.confirm_line().contains("the Lantern Hunts next"),
-		"the interlude at 95 says +5% and the Hunt (%s)" % card95.confirm_line())
+		"the interlude at 95 says +5%% and the Hunt (%s)" % card95.confirm_line())
 	card95.free()

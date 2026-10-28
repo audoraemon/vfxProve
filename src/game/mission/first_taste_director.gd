@@ -30,6 +30,21 @@ const MARCH_AFTER := 10.0
 const MARCHERS := [2, 3]
 const MARCH_GAP := 1.8
 const MARCH_PACE := 0.6
+## The fastest a file may walk the whole way: no marcher covers his path in under this many seconds, however quick his own pace (MS §3.5: the flame is
+## never out sooner than ~110 s after the shard = MARCH_AFTER 10 + 88 + CLEANSE_SECONDS 12; controller ruling, review-t4 I5). A marcher of the usual pace
+## (1.0) walks the 55-unit way in about 92 s; only the quick ones are held to 88.
+const MARCH_WALK_MIN := 88.0
+## How many angles round its ring a kneeling spot is tried at, and how far from the others (over 2 Silent Doom radii, 1.6, with a margin) and from the
+## shrine it may lie after the walk grid's snap.
+const KNEEL_TRIES := 24
+const KNEEL_APART := 1.7
+const KNEEL_MAX := 3.6
+## A follower waits when he is under MARCH_GAP + FILE_WAIT behind the one ahead and sets on again at MARCH_GAP + FILE_GO (a margin: the checks are TICK
+## apart, and behind a held leader he must still stay over 1.6).
+const FILE_WAIT := 0.2
+const FILE_GO := 0.4
+## How much further out than KNEEL_RING a later march kneels, so two marches never share a ring (the spread rule between marches).
+const KNEEL_OUTER := 0.9
 ## Seconds two kneeling marchers cleanse the shrine in, how many must kneel, the ring their kneeling spots lie on round the shrine (MS §3.4; *my call*:
 ## 1.1, so three kneelers stand 1.9 apart, over the 1.6 of two Silent Doom radii -- the plan's 0.8 would have put them 1.4 apart) and how near a spot
 ## counts as kneeling on it.
@@ -59,8 +74,9 @@ const STRIP_ROW := "The clergy reach the shrine"
 ## One clergy march: its people in file order (the leader first), its muster, and who has fled it.
 class March extends RefCounted:
 	## The marchers still on it (alive, not fled), the ones who left it frightened, the seconds of muster left and whether the file is walking.
-	var people: Array[Person] = []
-	var fled: Array[Person] = []
+	## Untyped so a body freed after its death fade never trips a typed read (review-t4 I1); every use goes through _alive().
+	var people: Array = []
+	var fled: Array = []
 	var muster_left := 0.0
 	var walking := false
 	## It is over: broken (too few left) or it has done its work.
@@ -69,16 +85,21 @@ class March extends RefCounted:
 	var spots := {}
 	var pace0 := {}
 	var paused := {}
-	## Seconds the leader needs to reach the shrine at his pace (refreshed at each look, counted down each frame).
+	## Person -> his walking speed in units a second, fixed at the set-out (MARCH_PACE times his pace, capped by MARCH_WALK_MIN).
+	var speeds := {}
+	## The kneeling spots planned for the march, one per marcher, in file order (_plan_spots()).
+	var plan: Array[Vector2] = []
+	## Seconds the leader still needs to walk to the shrine (the walk only; set at the muster from the door, refreshed at each look once walking,
+	## counted down each frame). march_eta() adds the muster.
 	var eta := 0.0
 
 ## The people on rounds, one per round (null once that round's lamplighter is gone and none replaced him), and each round's lamp and the time he
 ## reached it (-1: not there).
-var lamps: Array[Person] = []
+var lamps: Array = []
 var _stage := PackedInt32Array()
 var _reached := PackedFloat32Array()
 ## The Watch, each at his post, and the clergy marches (a finished one stays listed).
-var watch: Array[Person] = []
+var watch: Array = []
 var _posts := {}
 var marches: Array[March] = []
 ## Seconds the shrine has been cleansed so far, and whether this run of it has been announced.
@@ -163,15 +184,15 @@ func _make_lamplighter(v: Person, at: Vector2) -> void:
 ## The Watch still standing and the marchers on their way (walking or kneeling); a muster is not yet a breaker.
 func _breakers() -> Array[Person]:
 	var out: Array[Person] = []
-	for s in watch:
+	for s: Variant in watch:
 		if _alive(s):
-			out.append(s)
+			out.append(s as Person)
 	for m in marches:
 		if m.done or not m.walking:
 			continue
-		for p in m.people:
+		for p: Variant in m.people:
 			if _alive(p):
-				out.append(p)
+				out.append(p as Person)
 	return out
 
 
@@ -202,12 +223,17 @@ func _marching(p: Variant) -> bool:
 
 ## Everyone the director keeps at his errand through an evacuation (MS §0): the base's, the whole Watch and every marcher.
 func _held_people() -> Array:
-	var out := super._held_people()
-	out.append_array(watch)
-	out.append_array(lamps)
+	var all: Array = []
+	all.append_array(super._held_people())
+	all.append_array(watch)
+	all.append_array(lamps)
 	for m in marches:
 		if not m.done:
-			out.append_array(m.people)
+			all.append_array(m.people)
+	var out: Array = []
+	for v: Variant in all:
+		if v != null and not out.has(v):
+			out.append(v)
 	return out
 
 
@@ -256,19 +282,20 @@ func _kneeling() -> int:
 	for m in marches:
 		if m.done or not m.walking:
 			continue
-		for p in m.people:
+		for p: Variant in m.people:
 			if _kneels(m, p):
 				n += 1
 	return n
 
 
-func _kneels(m: March, p: Person) -> bool:
-	return _alive(p) and not held(p) and p.ground_pos.distance_to(m.spots.get(p, Vector2.INF)) <= KNEEL_REACH
+func _kneels(m: March, p: Variant) -> bool:
+	return _alive(p) and not held(p) and (p as Person).ground_pos.distance_to(m.spots.get(p, Vector2.INF)) <= KNEEL_REACH
 
 
 # --- Each look (every TICK) ----------------------------------------------------------------------
 
 func _look() -> void:
+	_prune_watch()
 	super._look()
 	_step_rounds()
 	_look_marches()
@@ -278,8 +305,11 @@ func _look() -> void:
 ## freed runner), or one the god holds, is left alone; when his hold ends he is called back to his lamp.
 func _step_rounds() -> void:
 	for i in lamps.size():
-		var p := lamps[i]
-		if not _alive(p) or safe.has(p) or claimed(p) or held(p):
+		var v: Variant = lamps[i]
+		if not _alive(v):
+			continue
+		var p := v as Person
+		if safe.has(p) or claimed(p) or held(p):
 			continue
 		var at := _lamp_spot(i, _stage[i])
 		if p.ground_pos.distance_to(at) <= LAMP_REACH:
@@ -294,6 +324,20 @@ func _step_rounds() -> void:
 			_recall_to(p, at)
 
 
+## The Watch without the dead and freed (a body is freed after its death fade): the posts follow (review-t4 I1).
+func _prune_watch() -> void:
+	var keep: Array = []
+	for s: Variant in watch:
+		if _alive(s):
+			keep.append(s)
+	if keep.size() == watch.size():
+		return
+	watch = keep
+	for k in _posts.keys():
+		if not _alive(k):
+			_posts.erase(k)
+
+
 ## The lamp round `i`'s lamplighter walks to or stands at now.
 func lamp_of(i: int) -> Vector2:
 	return _lamp_spot(i, _stage[i])
@@ -301,7 +345,7 @@ func lamp_of(i: int) -> Vector2:
 
 ## Round `i` has no lamplighter on it: his man is dead or safe at the Temple, and no new one has set out.
 func _gone(i: int) -> bool:
-	var p := lamps[i]
+	var p: Variant = lamps[i]
 	return not _alive(p) or safe.has(p)
 
 
@@ -341,14 +385,16 @@ func _answer(shard: int) -> void:
 	var m := March.new()
 	m.people = people
 	m.muster_left = MARCH_AFTER
+	marches.append(m)
+	m.plan = _plan_spots(m)
 	var door := lantern_door()
 	for k in people.size():
 		var p: Person = people[k]
 		m.pace0[p] = p.pace
 		m.paused[p] = k > 0
 		p.go_duty(_ring_spot(door, MUSTER_RING, k, people.size()))
-	m.eta = MARCH_AFTER + _march_seconds(people[0], m)
-	marches.append(m)
+	# The walk only: march_eta() adds the muster (review-t4 I4).
+	m.eta = _walk_seconds(door, _kneel_spot(m, 0), float(m.pace0[people[0]]))
 	rules.banner.emit(ANSWER)
 
 
@@ -383,7 +429,8 @@ func _set_out(m: March) -> void:
 	for k in m.people.size():
 		var p: Person = m.people[k]
 		m.spots[p] = _kneel_spot(m, k)
-		p.pace = MARCH_PACE * float(m.pace0[p]) / Person.PANIC_SPEED
+		m.speeds[p] = _march_speed(p.ground_pos, m.spots[p], float(m.pace0[p]))
+		p.pace = float(m.speeds[p]) / Person.PANIC_SPEED
 		if k == 0:
 			m.paused[p] = false
 			p.go_duty(m.spots[p])
@@ -392,16 +439,83 @@ func _set_out(m: March) -> void:
 	m.eta = _march_seconds(m.people[0], m)
 
 
-## Marcher `k`'s kneeling spot, on the ring round the shrine; a later march turns its ring a little so two marches do not share spots.
+## Marcher `k`'s kneeling spot (planned when the march forms).
 func _kneel_spot(m: March, k: int) -> Vector2:
-	var turn := float(marches.find(m)) * 0.9 + 0.3
-	return _ring_spot(_shrine, KNEEL_RING, k, maxi(m.people.size(), CLEANSE_NEED), turn)
+	return m.plan[k] if k < m.plan.size() else _shrine
 
 
-## Seconds `p` needs to walk the grid's path from where he stands to the shrine at his march pace.
-func _march_seconds(p: Person, m: March) -> float:
-	var way := _path_length(p.ground_pos)
-	return maxf(way, 0.0) / maxf(MARCH_PACE * float(m.pace0.get(p, 1.0)), 0.05)
+## The march's kneeling spots, one per marcher: on a ring round the shrine (a later march on a ring KNEEL_OUTER further out), each the first of
+## KNEEL_TRIES angles whose point -- after the walk grid's snap -- lies more than KNEEL_APART from every spot already planned (this march's and the
+## earlier marches'), not on the stone and not far from it, and has a way from the Temple door. The spread rule must hold on the real shrine, not on
+## a perfect ring (review-t4 I3).
+func _plan_spots(m: March) -> Array[Vector2]:
+	var index := maxi(marches.find(m), 0)
+	var taken: Array[Vector2] = []
+	for other in marches:
+		if other != m:
+			taken.append_array(other.plan)
+	var n := maxi(m.people.size(), CLEANSE_NEED)
+	var out: Array[Vector2] = []
+	for k in n:
+		var chosen := Vector2.INF
+		for r_extra in [0.0, 0.5, 1.0]:
+			for j in KNEEL_TRIES:
+				var angle := float(index) * 0.9 + 0.3 + TAU * float(k) / float(n) + TAU * float(j) / float(KNEEL_TRIES)
+				var at := _walkable(_shrine + Vector2.from_angle(angle) * (KNEEL_RING + KNEEL_OUTER * float(index) + r_extra))
+				var d_shrine := at.distance_to(_shrine)
+				if d_shrine < SHRINE_REACH or d_shrine > KNEEL_MAX or _walk_way(lantern_door(), at) < 0.0:
+					continue
+				var apart := true
+				for o in taken:
+					if at.distance_to(o) <= KNEEL_APART:
+						apart = false
+				for o in out:
+					if at.distance_to(o) <= KNEEL_APART:
+						apart = false
+				if apart:
+					chosen = at
+					break
+			if chosen != Vector2.INF:
+				break
+		out.append(chosen if chosen != Vector2.INF else _ring_spot(_shrine, KNEEL_RING, k, n))
+	return out
+
+
+## The length in units of the grid's path from `from` to `to` (-1 when there is none).
+func _walk_way(from: Vector2, to: Vector2) -> float:
+	if from.distance_to(to) <= 0.01:
+		return 0.0
+	var way := crowd._grid.path(from, to)
+	if way.is_empty():
+		return -1.0
+	var total := 0.0
+	var at := from
+	for pt in way:
+		total += at.distance_to(pt)
+		at = pt
+	return total + at.distance_to(to)
+
+
+## A marcher's speed in units a second: MARCH_PACE times his own pace, but never fast enough to cover his way in under MARCH_WALK_MIN seconds.
+func _march_speed(from: Vector2, to: Vector2, pace0: float) -> float:
+	var speed := MARCH_PACE * pace0
+	var way := _walk_way(from, to)
+	if way > 0.0:
+		speed = minf(speed, way / MARCH_WALK_MIN)
+	return maxf(speed, 0.05)
+
+
+## Seconds to walk from `from` to `to` at a marcher's speed.
+func _walk_seconds(from: Vector2, to: Vector2, pace0: float) -> float:
+	return maxf(_walk_way(from, to), 0.0) / _march_speed(from, to, pace0)
+
+
+## Seconds `p` still needs to walk from where he stands to his kneeling spot at his march speed (the last estimate when he is gone).
+func _march_seconds(p: Variant, m: March) -> float:
+	if not _alive(p) or not m.spots.has(p):
+		return m.eta
+	var way := _walk_way((p as Person).ground_pos, m.spots[p])
+	return maxf(way, 0.0) / maxf(float(m.speeds.get(p, MARCH_PACE)), 0.05)
 
 
 ## One look at each march: the dead and the frightened leave it for good; under CLEANSE_NEED left it breaks; a walking file keeps MARCH_GAP between
@@ -410,13 +524,17 @@ func _look_marches() -> void:
 	for m in marches:
 		if m.done:
 			continue
-		for p in m.people.duplicate():
-			if not _alive(p):
-				m.people.erase(p)
-			elif p.mind == Person.Mind.PANIC or p.mind == Person.Mind.FLEE or p.mind == Person.Mind.SHELTER:
-				m.people.erase(p)
+		var keep: Array = []
+		for v: Variant in m.people:
+			if not _alive(v):
+				continue
+			var p := v as Person
+			if p.mind == Person.Mind.PANIC or p.mind == Person.Mind.FLEE or p.mind == Person.Mind.SHELTER:
 				m.fled.append(p)
 				_unmarch(m, p, false)
+			else:
+				keep.append(p)
+		m.people = keep
 		if m.people.size() < CLEANSE_NEED:
 			_break_march(m)
 			continue
@@ -429,38 +547,43 @@ func _look_marches() -> void:
 func _break_march(m: March) -> void:
 	m.done = true
 	rules.banner.emit(BREAKS)
-	for p in m.people:
+	for p: Variant in m.people:
 		_unmarch(m, p, true)
 	m.people.clear()
 
 
 ## `p` leaves the march: his own pace back, and sent home when he is still on duty for it.
-func _unmarch(m: March, p: Person, home: bool) -> void:
+func _unmarch(m: March, p: Variant, home: bool) -> void:
 	if not is_instance_valid(p):
 		return
 	if m.pace0.has(p):
-		p.pace = float(m.pace0[p])
+		(p as Person).pace = float(m.pace0[p])
 	if home:
-		crowd.off_duty(p)
+		crowd.off_duty(p as Person)
 
 
 ## The file's order and spacing (MS §3.4: kept 1.8 apart by the director, more than 1.6): a marcher too close behind the one ahead waits where he
 ## stands, and sets on again once the gap is MARCH_GAP; one who was held and is free again is sent on to his spot. A held marcher is left to his hold.
 func _keep_file(m: March) -> void:
-	var ahead: Person = null
-	for p in m.people:
+	var ahead: Variant = null
+	for v: Variant in m.people:
+		if not _alive(v):
+			continue
+		var p := v as Person
 		var spot: Vector2 = m.spots[p]
 		if held(p):
 			ahead = p
 			continue
-		var close := ahead != null and p.ground_pos.distance_to(ahead.ground_pos) < MARCH_GAP and not _kneels(m, ahead)
-		if close:
-			if not bool(m.paused[p]):
-				m.paused[p] = true
-				_stand(p)
-		elif bool(m.paused[p]):
-			m.paused[p] = false
-			p.go_duty(spot)
+		var gap := p.ground_pos.distance_to((ahead as Person).ground_pos) if ahead != null and _alive(ahead) else INF
+		var behind := ahead != null and _alive(ahead) and not _kneels(m, ahead)
+		if bool(m.paused[p]):
+			# Waiting: set on again once the one ahead is MARCH_GAP + FILE_GO on (or has gone to his knees).
+			if not behind or gap >= MARCH_GAP + FILE_GO:
+				m.paused[p] = false
+				p.go_duty(spot)
+		elif behind and gap < MARCH_GAP + FILE_WAIT:
+			m.paused[p] = true
+			_stand(p)
 		else:
 			_recall_to(p, spot)
 		ahead = p
@@ -468,9 +591,9 @@ func _keep_file(m: March) -> void:
 
 # --- Reports for the HUD -----------------------------------------------------------------------
 
-## A march's seconds to the shrine: the muster and the walk, the leader's.
+## A march's seconds to the shrine: the muster still to run and the leader's walk (review-t4 I4: counted once, smooth through the set-out).
 func march_eta(m: March) -> float:
-	return (maxf(m.muster_left, 0.0) + m.eta) if not m.walking else m.eta
+	return (maxf(m.muster_left, 0.0) if not m.walking else 0.0) + m.eta
 
 
 func strip_rows() -> Array[Dictionary]:
@@ -478,14 +601,14 @@ func strip_rows() -> Array[Dictionary]:
 	for m in marches:
 		if m.done or (m.walking and _kneeling_all(m)):
 			continue
-		out.append({"in": maxf(m.muster_left, 0.0) if not m.walking else m.eta, "label": STRIP_ROW})
+		out.append({"in": march_eta(m), "label": STRIP_ROW})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["in"]) < float(b["in"]))
 	return out
 
 
 ## Every marcher of `m` kneels on his spot.
 func _kneeling_all(m: March) -> bool:
-	for p in m.people:
+	for p: Variant in m.people:
 		if not _kneels(m, p):
 			return false
 	return not m.people.is_empty()
@@ -496,8 +619,10 @@ func cleansing() -> bool:
 	return _cleansing and not flame_out
 
 
-## "cleanse" while the shrine is being cleansed; "march" while a file walks; "drag" with a captive; "chain" otherwise (the mission's own line).
+## "drag" first while a breaker has his grip on the captive (the time-critical case: the Yank line); "cleanse" while the shrine is being cleansed; "march" while a file walks; "drag" with a captive; "chain" otherwise (the mission's own line).
 func hint_phase() -> String:
+	if grip_by != null and _alive(grip_by) and chain_state == Chain.DRAG:
+		return "drag"
 	if cleansing():
 		return "cleanse"
 	for m in marches:
@@ -513,7 +638,7 @@ func tour() -> Array:
 	var out := []
 	out.append([_shrine, "Mira's shrine, past the west wall. Drag three of Halcyon's lamplighters here."])
 	if watch.size() >= 2 and _alive(watch[0]) and _alive(watch[1]):
-		out.append([(watch[0].ground_pos + watch[1].ground_pos) * 0.5, "The Watch holds the Main Gate. Anyone who sees a captive grips his chain."])
+		out.append([((watch[0] as Person).ground_pos + (watch[1] as Person).ground_pos) * 0.5, "The Watch holds the Main Gate. Anyone who sees a captive grips his chain."])
 	out.append([CAMERA_AT, "Halcyon's lamplighters walk their rounds. Press C, then click one."])
 	return out
 
@@ -533,17 +658,18 @@ func tags() -> Array[MapTag]:
 		if m.done:
 			continue
 		for k in m.people.size():
-			var p: Person = m.people[k]
-			if not _alive(p) or p.inside:
+			var v: Variant = m.people[k]
+			if not _alive(v) or (v as Person).inside:
 				continue
+			var p := v as Person
 			var label := TAG_CLERGY
 			if k == 0 and not (m.walking and _kneeling_all(m)):
 				label = (TAG_MUSTER % UiTheme.clock(m.muster_left)) if not m.walking else (TAG_LEADER % UiTheme.clock(m.eta))
 			out.insert(idx, MapTag.person(p.ground_pos, EscortDirector.MARK_WATCHED, label, true))
 			idx += 1
-	for s in watch:
-		if _alive(s) and not s.inside:
-			out.append(MapTag.person(s.ground_pos, EscortDirector.MARK_WATCHED, TAG_WATCH))
+	for w: Variant in watch:
+		if _alive(w) and not (w as Person).inside:
+			out.append(MapTag.person((w as Person).ground_pos, EscortDirector.MARK_WATCHED, TAG_WATCH))
 	return out
 
 
@@ -556,7 +682,7 @@ func report() -> Dictionary:
 
 func teardown() -> void:
 	for m in marches:
-		for p in m.people:
+		for p: Variant in m.people:
 			if is_instance_valid(p) and m.pace0.has(p):
-				p.pace = float(m.pace0[p])
+				(p as Person).pace = float(m.pace0[p])
 	super.teardown()

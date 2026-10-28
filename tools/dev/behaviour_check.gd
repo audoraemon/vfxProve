@@ -570,7 +570,7 @@ func _run() -> void:
 		# God P3 (plan Task 4, pre-flight G4): the rite's loadout is the def's own, or with --god=<type> the type's two Tier 1 keys (the real TABLE's;
 		# --dev-tree is only for a tree edited elsewhere). The --god parse below is not touched (R3): it reads the type itself.
 		var rite_type := String(Battlefield.arg_value(args, "--god")).split(":")[0]
-		powers = GodTree.starting(rite_type) if rite_type in GodTree.RING else PackedStringArray(["doom", "whisper", "smite"])
+		powers = GodTree.starting(rite_type) if rite_type in GodTree.RING else MissionBook.first_taste().default_loadout
 		mission.mission_id = MissionBook.FIRST_TASTE
 	elif scenario == "capital_calm" or scenario == "capital_evac":
 		City.use(&"capital")

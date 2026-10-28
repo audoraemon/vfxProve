@@ -17,6 +17,13 @@ static func run(t) -> void:
 	_march_one(t)
 	_march_two(t)
 	_march_breaks(t)
+	_march_timeline(t)
+	_kneel_spots(t)
+	_file_gap(t)
+	_marchers_grip(t)
+	_hint_order(t)
+	_freed_people(t)
+	_final_frame(t)
 	_cleanse_runs(t)
 	_cleanse_resets(t)
 	_win_beats_cleanse(t)
@@ -70,8 +77,10 @@ static func _done(s: Dictionary) -> void:
 static func _step(s: Dictionary) -> void:
 	(s.crowd as Crowd).advance(DT)
 	var d: FirstTasteDirector = s.d
+	var seen := {}
 	for p: Variant in d._held_people():
-		if is_instance_valid(p):
+		if is_instance_valid(p) and not seen.has(p):
+			seen[p] = true
 			(p as Person).tick(DT)
 	(s.rules as Rules).advance(DT)
 
@@ -136,7 +145,7 @@ static func _setup(t) -> void:
 	var rounds_ok := true
 	var faith_ok := true
 	for i in 5:
-		var p := d.lamps[i]
+		var p: Person = d.lamps[i]
 		if p == null or not d.marked.has(p) or p.ground_pos.distance_to(d._lamp_spot(i, 0)) > 0.3:
 			rounds_ok = false
 		if p == null or p.profile.faith != CitizenProfile.Faith.FAITHFUL:
@@ -157,7 +166,7 @@ static func _setup(t) -> void:
 	var spread := INF
 	var at_post := true
 	for i in d.watch.size():
-		var w := d.watch[i]
+		var w: Person = d.watch[i]
 		if w.ground_pos.distance_to(d._post_of(w)) > 0.3:
 			at_post = false
 		for j in range(i + 1, d.watch.size()):
@@ -178,7 +187,7 @@ static func _setup(t) -> void:
 static func _rounds(t) -> void:
 	var s := _world()
 	var d: FirstTasteDirector = s.d
-	var p := d.lamps[2]
+	var p: Person = d.lamps[2]
 	var stages: Array[int] = [d._stage[2]]
 	var reached_at := -1.0
 	var dwell: Array[float] = []
@@ -223,6 +232,13 @@ static func _drag_path(t) -> void:
 		if way / RiteDirector.drag_pace(way) > RiteDirector.DRAG_MAX + 0.001:
 			ok_time = false
 		report.append("%d: %.1f" % [i + 1, way])
+	var shortest := INF
+	var longest := 0.0
+	for i in 5:
+		var w := d._path_length(d._lamp_spot(i, 0))
+		shortest = minf(shortest, w)
+		longest = maxf(longest, w)
+	t.check(shortest >= 30.0 and longest <= 60.0, "the ways are between 30 and 60 units (%.1f to %.1f)" % [shortest, longest])
 	t.check(ok_gate, "every round's first lamp has a path to the shrine through the Main Gate (within 2.0)")
 	t.check(ok_time, "and at drag_pace() no drag takes over 55 s (path lengths by round: %s; over 45 is reported, not failed)" % ", ".join(report))
 	_done(s)
@@ -259,11 +275,11 @@ static func _watch_breaks(t) -> void:
 static func _watch_not_reposted(t) -> void:
 	var s := _world()
 	var d: FirstTasteDirector = s.d
-	var w := d.watch[2]
+	var w: Person = d.watch[2]
 	var post := d._post_of(w)
 	w.compel(post + Vector2(0.0, 0.0), 3.0, 0.5, Color.WHITE)
 	t.check(w.held_by_god() and d.held(w), "a compelled watchman is held")
-	var anchor := w.anchor
+	var anchor: Vector2 = w.anchor
 	_run(s, 1.0)
 	t.check(w.mind == Person.Mind.COMPELLED, "and the director leaves him to the hold (mind %s)" % [w.mind])
 	_run(s, 3.5)
@@ -275,6 +291,7 @@ static func _watch_not_reposted(t) -> void:
 static func _march_one(t) -> void:
 	var s := _world()
 	var d: FirstTasteDirector = s.d
+	_usual_pace(s)
 	t.check(d.offer(d.marked[0]) and d.shards == 1, "a lamplighter offered on the stone: shard 1")
 	t.check(d.marches.size() == 1, "one march is formed (%d)" % d.marches.size())
 	if d.marches.is_empty():
@@ -295,14 +312,21 @@ static func _march_one(t) -> void:
 		"the leader's tag counts the muster: %s" % [muster.label if muster != null else "none"])
 	t.check(_tags(d, FirstTasteDirector.TAG_CLERGY).size() >= 2, "red CLERGY tags")
 	var rows := d.strip_rows()
-	t.check(rows.size() == 1 and String(rows[0]["label"]) == FirstTasteDirector.STRIP_ROW and float(rows[0]["in"]) > 9.0
-		and float(rows[0]["in"]) <= FirstTasteDirector.MARCH_AFTER, "the strip counts the muster (%s)" % [rows])
+	var total0 := float(rows[0]["in"]) if not rows.is_empty() else -1.0
+	t.check(rows.size() == 1 and String(rows[0]["label"]) == FirstTasteDirector.STRIP_ROW and total0 > 95.0 and total0 < 115.0,
+		"the strip counts the muster and the walk once: about 10 + 92 s (%s)" % [rows])
 	t.check(d.hint_phase() != "march", "no march walks yet: phase %s" % d.hint_phase())
-	_run(s, FirstTasteDirector.MARCH_AFTER)
-	t.check(m.walking, "after 10 s they set out")
+	var before_out := 0.0
+	while not m.walking:
+		before_out = float(d.strip_rows()[0]["in"])
+		_step(s)
+	var after_out := float(d.strip_rows()[0]["in"])
+	t.check(m.walking and before_out - after_out >= 0.0 and before_out - after_out < 2.0,
+		"the strip's row counts down smoothly through the set-out (%.1f -> %.1f)" % [before_out, after_out])
+	t.check(absf(m.eta - 92.0) < 8.0, "a marcher of the usual pace walks the way in about 90 s (%.1f s)" % m.eta)
 	t.check(d.hint_phase() == "march", "phase march while a file walks (%s)" % d.hint_phase())
 	var gap := INF
-	var started := m.people[0].ground_pos
+	var started: Vector2 = m.people[0].ground_pos
 	var eta0 := m.eta
 	for i in roundi(12.0 / DT):
 		_step(s)
@@ -311,13 +335,13 @@ static func _march_one(t) -> void:
 		"in file they keep MARCH_GAP (1.8) apart, over 1.6 (nearest %.2f)" % gap)
 	t.check(m.people[0].ground_pos.distance_to(started) > 3.0, "the leader walks (%.1f units)" % m.people[0].ground_pos.distance_to(started))
 	var leader := _tag(d, "CLERGY - SHRINE IN")
-	t.check(leader != null and _clock_of(leader.label) < eta0 - 5.0 and _clock_of(leader.label) > 20.0,
+	t.check(leader != null and _clock_of(leader.label) < eta0 - 5.0 and _clock_of(leader.label) > 60.0,
 		"the leader's tag counts down: %s (started at about %.0f s)" % [leader.label if leader != null else "none", eta0])
 	var speed_ok := true
 	for p in m.people:
 		if absf(p.pace * Person.PANIC_SPEED - FirstTasteDirector.MARCH_PACE * float(m.pace0[p])) > 0.001:
 			speed_ok = false
-	t.check(speed_ok, "each walks at MARCH_PACE times his own pace")
+	t.check(speed_ok, "each walks at MARCH_PACE times his own pace (the usual pace is under the 88 s cap)")
 	rows = d.strip_rows()
 	t.check(rows.size() == 1 and float(rows[0]["in"]) < eta0, "the strip's row counts down (%s)" % [rows])
 	_done(s)
@@ -393,7 +417,7 @@ static func _march_breaks(t) -> void:
 	held_one.whisper(held_one.ground_pos + Vector2(0.0, 4.0), 2.0)
 	_run(s, 1.0)
 	t.check(m.people.has(held_one) and not m.done, "a whispered marcher stays on the march")
-	_run(s, 12.0)
+	_until(s, 40.0, func() -> bool: return held_one.mind == Person.Mind.DUTY)
 	t.check(m.people.has(held_one) and held_one.mind == Person.Mind.DUTY and held_one.anchor.distance_to(m.spots[held_one]) < 0.4,
 		"and is on duty for his spot again once the whisper ends (mind %s)" % [held_one.mind])
 	t.check(before.distance_to(held_one.ground_pos) > 0.0, "(he has moved)")
@@ -481,8 +505,8 @@ static func _win_beats_cleanse(t) -> void:
 static func _replacement(t) -> void:
 	var s := _world()
 	var d: FirstTasteDirector = s.d
-	var first_a := d.lamps[1]
-	var first_b := d.lamps[3]
+	var first_a: Person = d.lamps[1]
+	var first_b: Person = d.lamps[3]
 	(s.crowd as Crowd)._field.kill(first_a, &"fire")
 	_run(s, 0.6)
 	t.check(d.left() == 4 and d.marked.size() == 4 and not (s.banners as Array).has(FirstTasteDirector.NEW_LAMPLIGHTER),
@@ -497,7 +521,7 @@ static func _replacement(t) -> void:
 	_run(s, 0.6)
 	t.check(not MissionDirector._alive(d.lamps[3]) and d.left() >= 4, "(round 4 stays empty: only enough are replaced, %d left)" % d.left())
 	# A safe lamplighter (reached the Temple) is also gone.
-	var victim := d.lamps[0]
+	var victim: Person = d.lamps[0]
 	d.safe.append(victim)
 	d.marked.erase(victim)
 	_run(s, 0.6)
@@ -529,6 +553,18 @@ static func _evacuation(t) -> void:
 		if v.mind == Person.Mind.DUTY:
 			on_duty += 1
 	t.check(on_duty == d.marked.size(), "the lamplighters are on duty (%d of %d)" % [on_duty, d.marked.size()])
+	var post_ok := 0
+	for w: Variant in d.watch:
+		if (w as Person).mind in EscortDirector.POST_MINDS:
+			post_ok += 1
+	t.check(post_ok == d.watch.size(), "the Watch stays at its posts through the evacuation (%d of %d)" % [post_ok, d.watch.size()])
+	var m: FirstTasteDirector.March = d.marches[0]
+	_run(s, FirstTasteDirector.MARCH_AFTER + 1.0)
+	var marching := 0
+	for p: Variant in m.people:
+		if (p as Person).mind == Person.Mind.DUTY:
+			marching += 1
+	t.check(m.walking and marching == m.people.size() and not m.done, "and the march sets out and walks on (%d of %d on duty)" % [marching, m.people.size()])
 	_done(s)
 
 
@@ -569,4 +605,211 @@ static func _mission(t) -> void:
 	var tour := d.tour()
 	t.check(tour.size() == 3 and (tour[0][0] as Vector2).distance_to(d.shrine()) < 0.1 and (tour[2][0] as Vector2) == FirstTasteDirector.CAMERA_AT,
 		"the tour: the shrine, the gate pair, the camera's spot (%d stops)" % tour.size())
+	_done(s)
+
+
+# --- Review round (review-t4) --------------------------------------------------------------------
+
+## Every citizen at the usual pace 1.0, so a march walks the typical way.
+static func _usual_pace(s: Dictionary) -> void:
+	for p: Person in (s.crowd as Crowd).citizens:
+		p.pace = 1.0
+
+
+## Review I5 (controller ruling), MS §3.5: the flame is never out sooner than ~110 s after the shard, even for the quickest clergy (pace 1.2); a march
+## of the usual pace walks about 90 s.
+static func _march_timeline(t) -> void:
+	for pace in [1.2, 1.0]:
+		var s := _world()
+		var d: FirstTasteDirector = s.d
+		for p: Person in (s.crowd as Crowd).citizens:
+			p.pace = pace
+		d.offer(d.marked[0])
+		var m: FirstTasteDirector.March = d.marches[0]
+		var took := _until(s, 200.0, func() -> bool: return d.flame_out)
+		if pace == 1.2:
+			t.check(d.flame_out and took >= 110.0 - 0.3, "the quickest clergy (1.2): the flame is out %.1f s after the shard, not under 110 s" % took)
+		else:
+			t.check(d.flame_out and took >= 110.0 and took < 135.0, "the usual clergy (1.0): the flame is out %.1f s after the shard (about 10 + 92 + 12 + the file's stagger)" % took)
+		var rules: Rules = s.rules
+		_run(s, 0.2)
+		t.check(rules.finished and rules.result().reason == "cleansed" and m.walking, "and the rules lose: cleansed")
+		_done(s)
+
+
+## Review I3: the kneeling spots, after the walk grid's snap, at the real shrine -- one march of 2, one of 3, and both together -- stay over two Silent Doom
+## radii apart and each has a way.
+static func _kneel_spots(t) -> void:
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	d.offer(d.marked[0])
+	d.offer(d.marked[0])
+	var spots: Array[Vector2] = []
+	var all_walk := true
+	var per_march := PackedStringArray()
+	for m: FirstTasteDirector.March in d.marches:
+		var mine: Array[Vector2] = []
+		for k in m.people.size():
+			var at := d._kneel_spot(m, k)
+			mine.append(at)
+			spots.append(at)
+			if d._walk_way(d.lantern_door(), at) < 0.0:
+				all_walk = false
+		per_march.append("%d spots" % mine.size())
+	var nearest := INF
+	for i in spots.size():
+		for j in range(i + 1, spots.size()):
+			nearest = minf(nearest, spots[i].distance_to(spots[j]))
+	t.check(spots.size() == 5 and nearest > 2.0 * SilentDoom.RADIUS,
+		"the five kneeling spots of both marches stay over 1.6 apart after the snap (nearest %.2f; %s)" % [nearest, ", ".join(per_march)])
+	t.check(all_walk, "and each has a way from the Temple door")
+	var near_shrine := true
+	for at in spots:
+		if at.distance_to(d.shrine()) > 3.5:
+			near_shrine = false
+	t.check(near_shrine, "and each kneels near the shrine")
+	_done(s)
+
+
+## Review minor: behind a held (stationary) leader a follower keeps over 1.6 (the margin).
+static func _file_gap(t) -> void:
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	_usual_pace(s)
+	d.offer(d.marked[0])
+	var m: FirstTasteDirector.March = d.marches[0]
+	_until(s, 20.0, func() -> bool: return m.walking)
+	_run(s, 6.0)
+	var leader: Person = m.people[0]
+	var follower: Person = m.people[1]
+	# Hold the leader still (a compulsion on the spot) for 15 s.
+	var low := INF
+	var held_frames := 0
+	for i in roundi(15.0 / DT):
+		if i == 0:
+			leader.compel(leader.ground_pos, 15.0, 0.5, Color.WHITE)
+		_step(s)
+		low = minf(low, leader.ground_pos.distance_to(follower.ground_pos))
+		held_frames += 1 if d.held(leader) else 0
+	t.check(held_frames > 100 and low > 2.0 * SilentDoom.RADIUS,
+		"behind a held leader (held %d of 300 frames) the follower stays over 1.6 (nearest %.2f)" % [held_frames, low])
+	_done(s)
+
+
+## MS §3.4: a walking marcher grips a captive (marchers are breakers); a mustering one does not.
+static func _marchers_grip(t) -> void:
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	d.offer(d.marked[0])
+	var m: FirstTasteDirector.March = d.marches[0]
+	var marcher: Person = m.people[0]
+	var v := _victim(d, 0, Vector2(-8.0, 19.4))
+	d.chain(v)
+	_arrive(marcher, v.ground_pos + Vector2(0.4, 0.0))
+	marcher.go_duty(marcher.ground_pos)
+	# Out of the watchmen's way: set the Watch's soldiers far off.
+	for w: Variant in d.watch:
+		(w as Person).ground_pos = Vector2(14.0, -12.0)
+		(w as Person).send_to_post((w as Person).ground_pos)
+	_run(s, 2.0)
+	t.check(d.grip_by != marcher and d.grip == 0.0 or d.chain_state != RiteDirector.Chain.DRAG,
+		"a mustering marcher beside the captive does not grip (grip %.2f)" % d.grip)
+	m.walking = true
+	m.muster_left = 0.0
+	for p: Variant in m.people:
+		m.spots[p] = d._kneel_spot(m, m.people.find(p))
+		m.paused[p] = false
+	if d.chain_state == RiteDirector.Chain.DRAG:
+		_arrive(marcher, v.ground_pos + Vector2(0.4, 0.0))
+		marcher.go_duty(d.shrine())
+		_until(s, 1.0, func() -> bool: return d.grip_by == marcher)
+		t.check(d.grip_by == marcher and d.grip > 0.0, "a walking marcher beside the captive grips (grip %.2f)" % d.grip)
+	else:
+		t.check(false, "the chain was still dragging (state %s)" % [d.chain_state])
+	_done(s)
+
+
+## Review minor: the drag line shows first while a breaker has his grip, even with a march walking.
+static func _hint_order(t) -> void:
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	t.check(d.hint_phase() == "chain", "ready, nothing marching: phase chain (%s)" % d.hint_phase())
+	d.offer(d.marked[0])
+	var m: FirstTasteDirector.March = d.marches[0]
+	m.walking = true
+	t.check(d.hint_phase() == "march", "a file walking: phase march (%s)" % d.hint_phase())
+	d.chain_state = RiteDirector.Chain.DRAG
+	d.grip_by = d.watch[0]
+	t.check(d.hint_phase() == "drag", "a grip on the captive: phase drag first (%s)" % d.hint_phase())
+	d.grip_by = null
+	d.chain_state = RiteDirector.Chain.READY
+	_done(s)
+
+
+## Review I1, I2: a body is freed after its death fade. The Watch, the rounds, the marches and the replacement rule go on past it.
+static func _freed_people(t) -> void:
+	# (a) the Watch: one killed (and freed after its fade), one freed at once.
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	var killed: Person = d.watch[0]
+	var freed: Person = d.watch[1]
+	(s.crowd as Crowd)._field.kill(killed, &"fire")
+	freed.free()
+	_run(s, 3.0)
+	d._look()
+	t.check(d.watch.size() == 2 and d._breakers().size() == 2, "the Watch is pruned to the living (%d, %d breakers)" % [d.watch.size(), d._breakers().size()])
+	t.check(d.busy(d.marked[0]) and not d.tags().is_empty() and d._held_people().size() >= 7, "busy(), tags() and _held_people() pass over the freed Watch")
+	# a gripping breaker among the survivors still grips
+	var v := _victim(d, 0, Vector2(-8.0, 19.4))
+	var post_man: Person = d.watch[0] if d.watch[0].ground_pos.distance_to(Vector2(-8.0, 17.6)) < 1.0 else d.watch[1]
+	d.chain(v)
+	_run(s, 6.0)
+	t.check(post_man.ground_pos.distance_to(Vector2(-8.0, 17.6)) < 1.0 and (d.grip_by == post_man or (s.banners as Array).has(RiteDirector.FREED_BANNER)),
+		"the surviving watchman at the shrine road still grips (grip by him: %s)" % [d.grip_by == post_man])
+	_done(s)
+	# (b) the rounds and the replacement rule: one sacrificed, two freed.
+	s = _world()
+	d = s.d
+	var keep: Person = d.lamps[2]
+	var gone1: Person = d.lamps[0]
+	var gone2: Person = d.lamps[1]
+	d.offer(d.lamps[3])
+	gone1.free()
+	gone2.free()
+	_run(s, 3.0)
+	t.check((s.banners as Array).has(FirstTasteDirector.NEW_LAMPLIGHTER) and d.left() >= 3,
+		"past the fade the replacement rule still fires and a new lamplighter sets out (%d left)" % d.left())
+	_run(s, 12.0)
+	t.check(MissionDirector._alive(keep) and d._stage[2] >= 1, "and another round goes on: the lamplighter of round 3 reached his second lamp (stage %d)" % d._stage[2])
+	_done(s)
+	# (c) a marcher of three freed: the march goes on with two.
+	s = _world()
+	d = s.d
+	d.offer(d.marked[0])
+	d.offer(d.marked[0])
+	var m: FirstTasteDirector.March = d.marches[1]
+	var lost: Person = m.people[2]
+	lost.free()
+	_run(s, 3.0)
+	t.check(not m.done and m.people.size() == 2 and m.fled.size() == 0, "a marcher freed: the march goes on with two (%d)" % m.people.size())
+	_run(s, FirstTasteDirector.MARCH_AFTER)
+	t.check(m.walking and d._breakers().size() >= 2 and d.tags().size() > 0, "and sets out, its people breakers, tags() working")
+	_done(s)
+
+
+## The third shard and a cleanse that fills in the same step: the win comes first.
+static func _final_frame(t) -> void:
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	var rules: Rules = s.rules
+	d.offer(d.marked[0])
+	var m: FirstTasteDirector.March = d.marches[0]
+	_kneel_all(m, d)
+	_run(s, 1.0)
+	d.cleanse = FirstTasteDirector.CLEANSE_SECONDS - 0.04
+	d.offer(d.marked[0])
+	d.offer(d.marked[0])
+	_step(s)
+	t.check(d.flame_out and d.shards == 3, "the cleanse filled in the step of the third shard (flame_out %s, shards %d)" % [d.flame_out, d.shards])
+	t.check(rules.finished and rules.result().won and rules.result().reason == "shards", "and the night is won, reason shards (%s)" % [rules.result().reason])
 	_done(s)

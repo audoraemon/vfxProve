@@ -1802,6 +1802,10 @@ func _faith_look(rules: Rules, slots: Dictionary, d: MirasHouseDirector, fetch: 
 		var guarded := _faith_guard(rules, slots, d, watcher, fetch)
 		if guarded != "":
 			return guarded
+	if fetch:
+		var back := _prayers_walker_back(rules, slots, d)
+		if back != "":
+			return back
 	if d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) != null or not _slot_ready(rules, slots, "whisper"):
 		return ""
 	var best: Person = null
@@ -1840,6 +1844,35 @@ func _faith_guard(rules: Rules, slots: Dictionary, d: MirasHouseDirector, w: Per
 		return "whisper a Faithful away from the door" if rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": away}) != null \
 			else ""
 	return ""
+
+
+## First Prayers' walker (god T1R: one of the poor walking to the shrine on his own) would go in under the Faithful's eyes -- a window's line at
+## the door when he gets there, or when the shrine frees for him, or one of them by it now as he comes up: a whisper sends him back down his road,
+## and he comes again when it wears off. Only First Prayers has a walker (`fetch`); what it cast, or "".
+func _prayers_walker_back(rules: Rules, slots: Dictionary, d: MirasHouseDirector) -> String:
+	var fp := d as FirstPrayersDirector
+	if fp == null or not _slot_ready(rules, slots, "whisper"):
+		return ""
+	var w := fp.walker
+	if not MissionDirector._alive(w) or w.inside or w.shaken() or w.mind != Person.Mind.DUTY:
+		return ""
+	var gap := w.ground_pos.distance_to(fp.door)
+	if gap > MindWhisperFx.REACH:
+		return ""  # far off yet: there is time
+	var left := fp.reading_left()
+	var walk := _walk_len(mission._crowd, w.ground_pos, fp.door) / maxf(w.walk_speed, 0.05)
+	var goes_in := fp.timeline.elapsed() + maxf(walk, left if left != INF else 0.0)
+	var seen := fp.faithful_seeing(fp.door, MirasHouseDirector.SIGHT) != null and walk <= PRAYERS_WALK
+	for win: Array in [[fp.market_at, fp.market_seconds, fp._free_faithful()], [fp.priests_at, fp.priests_seconds, fp._free_clergy()]]:
+		if not (win[2] as Array).is_empty() and goes_in >= float(win[0]) - 1.0 and goes_in <= float(win[0]) + float(win[1]) + PRAYERS_SLACK:
+			seen = true
+	if not seen:
+		return ""
+	var away := w.ground_pos - fp.door
+	var to := fp._walkable(w.ground_pos + (away.normalized() if away.length() > 0.1 else Vector2.DOWN) * (MindWhisperFx.REACH - 0.5))
+	if rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": to}) == null:
+		return ""
+	return "whisper the walker back down his road (he would go in at %.0f under their eyes)" % goes_in
 
 
 ## The door matters to the prayers policy (v0.11 M2): a Believer is about to come out (within PRAYERS_EXIT), or nobody prays and

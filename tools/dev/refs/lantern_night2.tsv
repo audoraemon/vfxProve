@@ -10,4 +10,4 @@ sermon_toll_2	--scenario=sermon --case=toll --seed=2	-953070306
 sermon_toll_3	--scenario=sermon --case=toll --seed=3	-407130082
 prayers_toll_1	--scenario=prayers --case=toll --seed=1	-559324072
 prayers_toll_2	--scenario=prayers --case=toll --seed=2	-32253463
-prayers_toll_3	--scenario=prayers --case=toll --seed=3	-412406522
+prayers_toll_3	--scenario=prayers --case=toll --seed=3	-691793593

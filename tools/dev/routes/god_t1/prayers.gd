@@ -261,94 +261,176 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 
 # --- Passage: Thornwall and Mirrorfold ---
 
+## Passage (D32, F3b): brambles laid by the well hide its steps, and one who goes down hidden comes up hidden. So a wall is laid by the door
+## as each walker sets out (it stands 25 s, cools 42; the walkers come about 50 s apart), and a walker too far off to reach it while it stands
+## is mirrored to the door (the routes table: "mirror the poor to the shrine door"). A prayer begun unhidden has its coming-out hidden by a wall
+## instead. With nobody left to see, nothing needs hiding.
+## A wall hides the door for this many seconds after it is cast (it withers at ThornwallFx.THORN_TIME, 25).
+const WALL_TO := 23.5
+## Thornwall's cooldown (PowerBook).
+const THORN_COOL := 42.0
+## A wall is laid from WALL_EARLY seconds before the next walker sets out (it then hides the door until his walk of about 9 s is done), where it
+## draws none of the poor by the door to look at it; at WALL_LEAD seconds before, wherever it must.
+const WALL_EARLY := 14.0
+const WALL_LEAD := 1.0
+## A walker this far from the door is mirrored to it, while a wall hides it, if he would not reach it before the wall withers.
+const BRING_FROM := 6.0
+## How far ahead of the walker, on his way, the mirror's way in is laid.
+const BRING_AHEAD := 1.2
+## How far from the door a mirror holding a walker off sets him down, and how near the door he is held (off the mirror's oval).
+const LOOP_OUT := 6.0
+const LOOP_NEAR := 5.5
+
+
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
-	var tl := d.timeline.elapsed()
-	var now := _t(ctx)
-	var trapped := now < float(ctx.memo.get("trap_until", -1.0))
-	var crit := INF if trapped else crit_in(bc, ctx)
-	var watchers := _watchers(d)
-	# The market's four stand at the door for 40 s, and there is no wall long enough for all four. A mirror laid over the door as the first walker sets out
-	# sets him down, far off, whenever he steps onto it, and he walks back into it again
-	# (the loop of F4's mirror) while it lies, 30 s, and the walk back: he comes after the market has closed.
-	if _ready(bc, ctx, "mirror") and not ctx.memo.has("trap") and MissionDirector._alive(d.walker) and tl >= d.market_at \
-			and tl <= d.market_at + d.market_seconds - 15.0 and bc._walk_len(ctx.crowd, d.walker.ground_pos, d.door) > 1.5:
-		var at := d.door
-		var out := _loop_exit(ctx, at)
-		if out != Vector2.INF:
-			ctx.memo["trap"] = true
-			ctx.memo["trap_until"] = now + MirrorfoldFx.MIRROR_TIME + 1.0
-			return _cast(ctx, "mirror", at, "mirror over the door: the walker is set down far off, and again", {"to": out})
-	# Thornwall between the door and the Faithful who would see it (F3), as a crit nears; one wall holds 25 s.
-	var wall_free: bool = ctx.memo.has("trap") or tl > d.market_at + d.market_seconds - 15.0  # the market is the mirror's work, until it has been laid
-	if _ready(bc, ctx, "thorns") and wall_free and not watchers.is_empty() and crit <= WALL_LEAD:
-		var c := Vector2.ZERO
-		for w in watchers:
-			c += w.ground_pos - d.door
-		c /= float(watchers.size())
-		var toward := c.normalized() if c.length() > 0.1 else Vector2.DOWN
-		return _cast(ctx, "thorns", d._walkable(d.door + toward * 0.8), "thornwall between the door and the Faithful", {"dir": toward.orthogonal()})
-	# Never idle past the clock: a bramble wall at the door's blind side, or the mirror laid where no one walks.
-	if _idle(ctx) > FILL_AFTER - 6.0 and crit > 20.0:
-		if _ready(bc, ctx, "thorns") and watchers.is_empty():
-			return _cast(ctx, "thorns", d._walkable(d.door + Vector2(0.0, 1.6)), "thornwall at the door", {"dir": Vector2(1.0, 0.0)})
-		if _ready(bc, ctx, "mirror") and ctx.memo.has("trap") and not MissionDirector._alive(d.walker):
-			var out := _mirror_exit(bc, ctx)
+	# A report on the run (the door was seen): a mirror over the Temple's door folds the runner away each time he comes to it, until it lifts.
+	var runners := _runners(d)
+	if not runners.is_empty() and _ready(bc, ctx, "mirror") and runners[0].ground_pos.distance_to(d.temple_door) > MirrorfoldFx.HALF_WIDE + 0.5:
+		var away := d._walkable(d.temple_door + (runners[0].ground_pos - d.temple_door).normalized() * LOOP_OUT)
+		return _cast(ctx, "mirror", d.temple_door, "mirror over the Temple's door: the runner is set down again and again", {"to": away})
+	if _faithful(d).is_empty():
+		return _passage_fill(bc, ctx)
+	var walker := d.walker if MissionDirector._alive(d.walker) and not d.walker.inside else null
+	var hides_now := d.door_hidden() and d.hidden_left() > 2.0
+	# A walker setting out, or on his way, with the door not hidden: a wall by it now.
+	var due_in := INF
+	if walker == null and d.walk_due() != INF and d.next_walker() != null:
+		due_in = maxf(d.walk_due() - d.timeline.elapsed(), 0.0) / maxf((ctx.rules as Rules).clock_rate, 0.1)
+	var coming := walker != null and walker.mind == Person.Mind.DUTY
+	if _ready(bc, ctx, "thorns") and not hides_now and (coming or due_in <= WALL_EARLY):
+		var spot := _wall_spot(bc, ctx, coming or due_in <= WALL_LEAD)
+		if spot.size() == 2:
+			return _cast(ctx, "thorns", spot[0], "thornwall by the well: the door hidden for the walker", {"dir": spot[1]})
+	# A prayer begun unhidden: a wall by the door for its coming-out.
+	var left := d.reading_left()
+	if left != INF and left <= WALL_TO - 2.0 and not _prayer_hidden(d) and not (d.door_hidden() and d.hidden_left() > left + 0.5) \
+			and _ready(bc, ctx, "thorns"):
+		var spot := _wall_spot(bc, ctx)
+		if spot.size() == 2:
+			return _cast(ctx, "thorns", spot[0], "thornwall by the well: the coming-out hidden", {"dir": spot[1]})
+	if coming and _ready(bc, ctx, "mirror"):
+		var gap := walker.ground_pos.distance_to(d.door)
+		var walk: float = bc._walk_len(ctx.crowd, walker.ground_pos, d.door) / maxf(walker.walk_speed, 0.05)
+		# The door hidden, and the walker too far to reach it while it stays so: the mirror brings him to it.
+		if hides_now and gap >= BRING_FROM and walk > d.hidden_left() - 2.0:
+			var into := _bring_in(ctx, walker)
+			if into != Vector2.INF:
+				return _cast(ctx, "mirror", into, "mirror the walker to the shrine's door", {"to": d.door})
+		# The door not hidden and no wall to hide it: the mirror over the door holds him off until one is ready.
+		if not d.door_hidden() and not _ready(bc, ctx, "thorns") and gap <= LOOP_NEAR and gap > MirrorfoldFx.HALF_WIDE + 0.3:
+			var out := _loop_out(ctx)
 			if out != Vector2.INF:
-				return _cast(ctx, "mirror", d._walkable(d.door - (out - d.door)), "mirror laid away from the door", {"to": out})
-	return ""
+				return _cast(ctx, "mirror", d.door, "mirror over the door: the walker is held off until a wall is ready", {"to": out})
+	return _passage_fill(bc, ctx)
 
 
-## The seconds before a crit a bramble wall is raised.
-const WALL_LEAD := 8.0
+## The one praying now (the soonest to come up) went down hidden (F3b).
+static func _prayer_hidden(d: FirstPrayersDirector) -> bool:
+	var left := d.reading_left()
+	for p: Variant in d._hidden_prayers.keys():
+		if is_instance_valid(p) and d._reading.has(p) and is_equal_approx(float(d._reading[p]), left):
+			return true
+	return false
 
 
-## Where a mirror laid at `centre` sets its walkers down so that their way back to the door crosses it again: the farthest ground (a lattice of 2) whose
-## way to the door steps onto the mirror, so each fold costs the walk from there and he is folded again, for as long as the mirror lies.
-static func _loop_exit(ctx: Dictionary, centre: Vector2) -> Vector2:
+## Where a wall is laid by the door, and along which way: a 3-unit line 1.0 off the door, on the side away from the walker's road, that does not
+## sit on his way in or on the shrine; [] for none. One that would draw one of the poor standing by the door to look at it (Crowd.THORN_LOOK: he
+## would be brought in, ahead of the walker, who would then wait at the door) is taken only when there is no other.
+static func _wall_spot(_bc, ctx: Dictionary, may_draw := true) -> Array:
 	var d := ctx.d as FirstPrayersDirector
-	var grid: WalkGrid = ctx.crowd._grid
-	var best := Vector2.INF
-	var far := 0.0
-	var x := -16.0
-	while x <= 16.0:
-		var y := -16.0
-		while y <= 16.0:
-			var g := Vector2(x, y)
-			if grid.walkable(g) and g.distance_to(d.door) > far and g.distance_to(centre) >= MirrorfoldFx.MIN_APART + 0.5 and not Walls.outside(g) \
-					and _crosses(grid.path(g, d.door), g, centre):
-				best = g
-				far = g.distance_to(d.door)
-			y += 2.0
-		x += 2.0
-	return best
+	var next := d.next_walker()
+	var from := d.walker.ground_pos if MissionDirector._alive(d.walker) else (next.ground_pos if next != null else d.poor_spot)
+	var way: PackedVector2Array = ctx.crowd._grid.path(from, d.door)
+	var away := (d.door - from).normalized() if from.distance_to(d.door) > 0.1 else Vector2.UP
+	var by_door: Array[Person] = []
+	for g in d.grieving:
+		if MissionDirector._alive(g) and not g.inside and g != d.walker and g.ground_pos.distance_to(d.door) <= MirasHouseDirector.LURE_REACH + 0.6:
+			by_door.append(g)
+	var fallback := []
+	for k in 8:
+		var dir := away.rotated(float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0) * TAU / 8.0)
+		var centre := d.door + dir * 1.0
+		var ok := true
+		var draws := false
+		for r in ThornwallFx.rects(centre, dir.orthogonal()):
+			if r.grow(0.45).has_point(d.door) or (d.house != null and r.intersects(d.house.footprint.grow(0.1))) or _on_way(way, from, r):
+				ok = false
+				break
+			for g in by_door:
+				draws = draws or g.ground_pos.distance_to(r.get_center()) <= Crowd.THORN_LOOK + 0.2
+		if not ok:
+			continue
+		if not draws:
+			return [centre, dir.orthogonal()]
+		if fallback.is_empty() and may_draw:
+			fallback = [centre, dir.orthogonal()]
+	return fallback
 
 
-## The way `way` from `from` steps onto the mirror at `centre`.
-static func _crosses(way: PackedVector2Array, from: Vector2, centre: Vector2) -> bool:
-	if way.is_empty():
-		return false
+## The way `way` from `from` passes within 0.4 of the rect.
+static func _on_way(way: PackedVector2Array, from: Vector2, r: Rect2) -> bool:
 	var at := from
+	var grown := r.grow(0.4)
 	for step in way:
-		var n := maxi(1, int(at.distance_to(step) / 0.25))
+		var n := maxi(1, int(at.distance_to(step) / 0.2))
 		for i in n + 1:
-			if MirrorfoldFx.on_mirror(centre, at.lerp(step, float(i) / float(n))):
+			if grown.has_point(at.lerp(step, float(i) / float(n))):
 				return true
 		at = step
 	return false
 
 
-## Where a mirror's way out is laid: ground 12-15 from the door, in the direction most away from the poor, clear of the walkers' road.
-static func _mirror_exit(_bc, ctx: Dictionary) -> Vector2:
+## Where the mirror's way in is laid to bring `w` to the door: BRING_AHEAD along his way, at least the mirrors' MIN_APART from the door (the way
+## out); Vector2.INF for none.
+static func _bring_in(ctx: Dictionary, w: Person) -> Vector2:
 	var d := ctx.d as FirstPrayersDirector
-	var away := (d.door - d.poor_spot).normalized()
-	var best := Vector2.INF
+	var way: PackedVector2Array = ctx.crowd._grid.path(w.ground_pos, d.door)
+	var left := BRING_AHEAD
+	var at := w.ground_pos
+	for step in way:
+		var seg := at.distance_to(step)
+		if seg >= left:
+			at = at.move_toward(step, left)
+			break
+		left -= seg
+		at = step
+	return at if at.distance_to(d.door) >= MirrorfoldFx.MIN_APART + 0.2 else Vector2.INF
+
+
+## Where the mirror over the door sets a walker down to hold him off: walkable ground LOOP_OUT from the door on his side of it (his way back steps
+## onto it again at once), off the mirror; Vector2.INF for none.
+static func _loop_out(ctx: Dictionary) -> Vector2:
+	var d := ctx.d as FirstPrayersDirector
+	var grid: WalkGrid = ctx.crowd._grid
+	var base := (d.walker.ground_pos - d.door).normalized()
 	for k in 8:
-		var dir := away.rotated(float(k) * TAU / 8.0)
-		var spot := d._walkable(d.door + dir * 13.0)
-		if spot.distance_to(d.door) > 10.0 and spot.distance_to(d.poor_spot) > 6.0 and ctx.crowd._grid.walkable(spot):
+		var dir := base.rotated(float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0) * TAU / 8.0)
+		var spot := d._walkable(d.door + dir * LOOP_OUT)
+		if grid.walkable(spot) and spot.distance_to(d.door) >= MirrorfoldFx.MIN_APART and not MirrorfoldFx.on_mirror(d.door, spot) \
+				and not grid.path(spot, d.door).is_empty() and not Walls.outside(spot):
 			return spot
-	return best
+	return Vector2.INF
+
+
+## Never idle past the clock: a wall by the door when it will be ready again before the next walker sets out, else the mirror laid over the
+## Temple's door (where only the clergy loiter; a runner there would be folded away) while no walker is on his way.
+static func _passage_fill(bc, ctx: Dictionary) -> String:
+	if _idle(ctx) <= FILL_AFTER - 4.0:
+		return ""
+	var d := ctx.d as FirstPrayersDirector
+	var walking := MissionDirector._alive(d.walker) and not d.walker.inside
+	var due_in := INF
+	if d.walk_due() != INF:
+		due_in = maxf(d.walk_due() - d.timeline.elapsed(), 0.0) / maxf((ctx.rules as Rules).clock_rate, 0.1)
+	if _ready(bc, ctx, "thorns") and not walking and due_in >= THORN_COOL + WALL_EARLY + 1.0:
+		var spot := _wall_spot(bc, ctx, false)
+		if spot.size() == 2:
+			return _cast(ctx, "thorns", spot[0], "thornwall by the well (ready again before the next walker)", {"dir": spot[1]})
+	if _ready(bc, ctx, "mirror") and not walking:
+		var away := d._walkable(d.temple_door + Vector2(0.0, LOOP_OUT))
+		return _cast(ctx, "mirror", d.temple_door, "mirror over the Temple's door", {"to": away})
+	return ""
 
 
 # --- Decree: Leaving Is Prohibited and The Bell Lies ---

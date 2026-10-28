@@ -39,9 +39,9 @@ lamb_play_3	--scenario=lamb --case=play --seed=3	-436063026
 prayers_none_1	--scenario=prayers --case=none --seed=1	-331611695
 prayers_none_2	--scenario=prayers --case=none --seed=2	-257276667
 prayers_none_3	--scenario=prayers --case=none --seed=3	478353226
-prayers_play_1	--scenario=prayers --case=play --seed=1	-17996693
+prayers_play_1	--scenario=prayers --case=play --seed=1	590164659
 prayers_play_2	--scenario=prayers --case=play --seed=2	-347557485
-prayers_play_3	--scenario=prayers --case=play --seed=3	-931026114
+prayers_play_3	--scenario=prayers --case=play --seed=3	-412868905
 ringers_none_1	--scenario=ringers --case=none --seed=1	-163252440
 ringers_none_2	--scenario=ringers --case=none --seed=2	-157864236
 ringers_none_3	--scenario=ringers --case=none --seed=3	-363113896

@@ -32,6 +32,10 @@ static func run(t) -> void:
 	_lie(t)
 	_drop(t)
 	_walker_stalls(t)
+	_brambles_hide(t)
+	_hidden_prayer(t)
+	_believer_once(t)
+	_passage_walls_fit(t)
 
 
 static func _world() -> Dictionary:
@@ -519,7 +523,8 @@ static func _fire_pulls(t) -> void:
 	_done(s)
 
 
-## F3: a thorn segment on the line from a Faithful to the door hides it from him; moved off the line, he sees it again.
+## F3: a thorn segment on the line from a Faithful to the door hides it from him; moved off the line, he sees it again. (Fix round: the segments
+## stand beyond THORN_HIDE of the door, so F3b's brambles-by-the-well rule does not hide it for them.)
 static func _thorns_block(t) -> void:
 	var s := _world()
 	var d: FirstPrayersDirector = s.d
@@ -527,17 +532,18 @@ static func _thorns_block(t) -> void:
 	for g in d.faithful:
 		_arrive(g, d.door + Vector2(40.0, 40.0))
 	var f: Person = d.faithful[0]
-	_arrive(f, d.door + Vector2(2.0, 0.0))
+	_arrive(f, d.door + Vector2(2.8, 0.0))
 	f.mind = Person.Mind.CALM
-	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "a Faithful 2 from the door sees it")
-	var seg := env.add_structure(Rect2(d.door + Vector2(0.7, -0.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
+	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "a Faithful 2.8 from the door sees it")
+	var seg := env.add_structure(Rect2(d.door + Vector2(1.8, -0.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
+	t.check(not d.door_hidden(), "(the segment stands beyond THORN_HIDE of the door)")
 	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null and d.watchers(d.door, MirasHouseDirector.SIGHT).is_empty()
 		and d.hint_phase() == "", "a bramble segment on the line: the door is not seen")
 	env.remove(seg)
-	seg = env.add_structure(Rect2(d.door + Vector2(0.7, 1.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
+	seg = env.add_structure(Rect2(d.door + Vector2(1.8, 1.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
 	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "moved off the line, he sees it again")
 	env.remove(seg)
-	seg = env.add_structure(Rect2(d.door + Vector2(0.7, -0.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"fence", &"fence")
+	seg = env.add_structure(Rect2(d.door + Vector2(1.8, -0.5), Vector2(0.6, 1.0)), 14.0, Structure.Kind.TREE, &"fence", &"fence")
 	t.check(d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "a block that is not brambles hides nothing (Mira's rule)")
 	env.remove(seg)
 	_done(s)
@@ -628,5 +634,114 @@ static func _walker_stalls(t) -> void:
 			_blind(d)
 		_run(s, DT)
 	t.check(d.walker == null and near.mind != Person.Mind.DUTY, "he stood still for WALK_STALL seconds: the walk is given up (walker %s, mind %s, still %.1f)" % [d.walker, near.mind, d._walker_still])
+	t.check((s.banners as Array).has("ONE OF THE POOR GIVES UP THE WALK"), "(D31) a walk given up is never silent: banner")
 	t.check(d.walk_due() < INF and d.walk_due() <= d.timeline.elapsed() + FirstPrayersDirector.POOR_CHAIN, "and the chain begins for the next")
+	_done(s)
+
+
+# --- God T1R fix round (D32): F3b, brambles by the well hide its steps ---
+
+## A bramble segment by the door, as a Thornwall lays one (role `thorns`), centred `off` from it.
+static func _bramble(env: EnvironmentField, d: FirstPrayersDirector, off: Vector2) -> Structure:
+	var c := d.door + off
+	return env.add_structure(Rect2(c - Vector2(0.3, 0.3), Vector2(0.6, 0.6)), 14.0, Structure.Kind.TREE, &"thorns", &"thorns")
+
+
+## F3b: a segment within THORN_HIDE of the door hides it from a Faithful on the far side (whose line to it the segment does not cross, so F3 alone
+## would not); the door's tag counts the brambles down and a banner says so. Beyond THORN_HIDE (and off his line) he sees it again.
+static func _brambles_hide(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var env: EnvironmentField = s.env
+	for g in d.faithful:
+		_arrive(g, d.door + Vector2(40.0, 40.0))
+	var f: Person = d.faithful[0]
+	_arrive(f, d.door + Vector2(2.0, 0.0))
+	f.mind = Person.Mind.CALM
+	var seg := _bramble(env, d, Vector2(-1.0, 0.0))
+	t.check(not d._thorned(f.ground_pos, d.door), "(the segment is not on his line: F3 alone would let him see)")
+	t.check(d.door_hidden() and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null and d.watchers(d.door, MirasHouseDirector.SIGHT).is_empty()
+		and d.hint_phase() == "", "F3b: brambles by the well hide its door from every side")
+	_run(s, DT * 2.0)
+	t.check((s.banners as Array).has("BRAMBLES HIDE THE WELL") and _labels(d).has("DOOR - HIDDEN %d" % ceili(ThornwallFx.THORN_TIME - DT * 2.0)),
+		"banner, and the door's tag counts the brambles down (%s)" % [_labels(d)])
+	t.check(f.ground_pos.distance_to(d.door + Vector2(2.0, 0.0)) < 0.6 and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null,
+		"a step later he still does not see it")
+	env.remove(seg)
+	_arrive(f, d.door + Vector2(2.0, 0.0))
+	seg = _bramble(env, d, Vector2(-(FirstPrayersDirector.THORN_HIDE + 0.6), 0.0))
+	t.check(not d.door_hidden() and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == f, "brambles beyond THORN_HIDE (and off his line) hide nothing")
+	env.remove(seg)
+	_done(s)
+
+
+## F3b: one who goes down while brambles hide the door comes up hidden, though the wall has withered and a Faithful stands by the door; the
+## shrine's tag says HIDDEN. One who went down with the door clear is seen coming up, as before.
+static func _hidden_prayer(t) -> void:
+	for hidden in [true, false]:
+		var s := _world()
+		var d: FirstPrayersDirector = s.d
+		var env: EnvironmentField = s.env
+		_blind(d)
+		var seg: Structure = _bramble(env, d, Vector2(-1.0, 0.0)) if hidden else null
+		var g: Person = d.grieving[0]
+		_bring(d, g)
+		_run(s, DT * 2.0)
+		t.check(g.inside, "one of the poor goes down (%s)" % ("hidden" if hidden else "the door clear"))
+		var label := ""
+		for m in d.tags():
+			if m.label.begins_with("PRAYING"):
+				label = m.label
+		t.check(label.ends_with(" - HIDDEN") == hidden, "the shrine's tag: %s" % label)
+		if seg != null:
+			env.remove(seg)
+		var f: Person = d.faithful[0]
+		_arrive(f, d.door + Vector2(1.5, 0.0))
+		f.mind = Person.Mind.CALM
+		var left := 0.0
+		while not d.believers.has(g) and left < FirstPrayersDirector.PRAY_SECONDS + 2.0:
+			_arrive(f, d.door + Vector2(1.5, 0.0))
+			_run(s, DT)
+			left += DT
+		t.check(d.believers.has(g) and (d.reports_started == 0) == hidden,
+			"%s: %s (reports %d)" % ["went down hidden" if hidden else "went down unhidden", "comes up unseen" if hidden else "is seen coming up", d.reports_started])
+		_done(s)
+
+
+## One who has prayed does not go down again (a Believer looking at brambles by the shrine is not brought twice).
+static func _believer_once(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	_blind(d)
+	var g: Person = d.grieving[0]
+	_bring(d, g)
+	_run(s, DT * 2.0)
+	_run_blind(s, FirstPrayersDirector.PRAY_SECONDS + 1.0)
+	t.check(d.believers.has(g) and not g.inside, "he has prayed and come up")
+	_bring(d, g)
+	_run(s, DT * 2.0)
+	t.check(not g.inside and d.inside().is_empty(), "brought to the door again, a Believer does not go down a second time")
+	_done(s)
+
+
+## The map and numbers Passage's First Prayers policy leans on (tools/dev/routes/god_t1/prayers.gd act_passage): round the Aldermere shrine's door
+## a Thornwall can be laid 1.0 off it, along the tangent, with all five segments on open ground and within THORN_HIDE of the door; and the walkers
+## come at least a Thornwall cooldown apart (POOR_CHAIN), so one wall is ready for each. If this fails, Passage's Prayers route has lost its ground.
+static func _passage_walls_fit(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var env: EnvironmentField = s.env
+	var clear := 0
+	var sides := PackedStringArray()
+	for k in 8:
+		var dir := Vector2.RIGHT.rotated(float(k) * TAU / 8.0)
+		var ok := true
+		for r in ThornwallFx.rects(d.door + dir, dir.orthogonal()):
+			ok = ok and not env.blocked(r.get_center(), 0.0) and not r.intersects(d.house.footprint) and r.grow(FirstPrayersDirector.THORN_HIDE).has_point(d.door)
+		clear += 1 if ok else 0
+		if ok:
+			sides.append("%d" % (k * 45))
+	t.check(clear >= 2, "Passage's First Prayers policy: a Thornwall fits by the shrine's door on %d of 8 sides (%s deg; needs 2, so one is off the walker's road)" % [clear, ",".join(sides)])
+	var cool := float(PowerBook.get_power("thorns").cooldown)
+	t.check(cool <= FirstPrayersDirector.POOR_CHAIN, "Passage's First Prayers policy: Thornwall cools %.0f s, within the walkers' POOR_CHAIN %.0f s" % [cool, FirstPrayersDirector.POOR_CHAIN])
 	_done(s)

@@ -46,6 +46,11 @@ const FIRE_PULL := 7.0
 const FIRE_STAND := 1.5
 ## Seconds a walker may stand still on his way before he gives the walk up.
 const WALK_STALL := 20.0
+## F3b (god T1R fix round, D32): brambles by the well hide its steps. While a Thornwall segment stands within THORN_HIDE of the door, no
+## Faithful sees who goes down or comes up, from any side; and one who went down hidden comes up hidden, his prayer over (a wall stands 25 s,
+## a prayer takes 32). F3's line test alone gave Passage no route: one 3-unit wall cannot stand between the door and a line round it (the
+## market's four stand on both sides), and a wall cools 42 s, so one could never hide both a going-in and its coming-out.
+const THORN_HIDE := 1.5
 
 
 ## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace them.
@@ -88,6 +93,12 @@ var _line_spots := {}
 ## F5: a window that came due during the lie ({pool: Callable, spots: Array, ends: float on _t}); it forms when the lie ends.
 var _late: Array[Dictionary] = []
 var _lie_told := false
+## F3b: the night second each bramble segment by the door was first seen (by instance id), and whether the door was hidden at the last step;
+## the poor who went down hidden (Person -> true), and the one coming up hidden now (nobody sees the door while he does).
+var _brambles := {}
+var _hid := false
+var _hidden_prayers := {}
+var _hush := false
 
 
 ## MirasHouseDirector's prayer length starts at PRAY_SECONDS (v0.12, R31): set at .new(), so a town's override survives setup.
@@ -137,10 +148,15 @@ func _opening_banner() -> String:
 
 
 ## What the shrine's tag says (v0.11 M2): its name, or while someone prays the seconds left, as Broken Lanterns' DRAINING counts
-## them (whole seconds, rounded up).
+## them (whole seconds, rounded up); HIDDEN as well while the one praying went down hidden (god T1R, F3b: he comes up unseen).
 func _house_label() -> String:
 	var left := reading_left()
-	return "OLD WELL SHRINE" if left == INF else "PRAYING %d" % ceili(left)
+	if left == INF:
+		return "OLD WELL SHRINE"
+	for p: Variant in _hidden_prayers.keys():
+		if is_instance_valid(p) and _reading.has(p) and is_equal_approx(float(_reading[p]), left):
+			return "PRAYING %d - HIDDEN" % ceili(left)
+	return "PRAYING %d" % ceili(left)
 
 
 ## Dawn (v0.11 M2): on the tier board a won night is held to dawn, so the roof of Mira's House does not fall here. Nobody goes in
@@ -243,6 +259,7 @@ func _line_door(pool: Array[Person], spots: Array, seconds: float) -> void:
 func step(delta: float) -> void:
 	_t += delta
 	_lie_step()
+	_bramble_step()
 	super(delta)
 	_fire_step()
 	_walker_step(delta)
@@ -476,6 +493,7 @@ func _walker_keep(delta: float) -> void:
 		_walker_still += delta
 		if _walker_still >= WALK_STALL:
 			walker.leave_shelter(false)
+			rules.banner.emit("ONE OF THE POOR GIVES UP THE WALK")  # (D31) not a loss -- the chain sends the next -- but never a silent one
 			_walker_done()
 			return
 	else:
@@ -489,18 +507,77 @@ func _walker_keep(delta: float) -> void:
 
 
 ## The walker on duty at the door is brought (Mira's rules: turned away if a Faithful sees, else in, one at a time) as well as a whispered or lured one.
+## One who has prayed does not go down again (god T1R fix round): Mira's base let a Believer stopping to look at something by the shrine (brambles
+## grown by it) pray twice, out of the count for 32 s and keeping the walker waiting.
 func _brought(p: Person) -> bool:
+	if believers.has(p):
+		return false
 	if p == walker and p.mind == Person.Mind.DUTY and _near_house(p.ground_pos, DOOR_REACH):
 		return true
 	return super(p)
 
 
-## F3 Thornwall blocks sight: a Faithful whose straight line to `at` crosses a bramble segment does not see it. F5: while the bell lies ALL IS
-## WELL (Crowd.is_bell_lying()) no Faithful sees anything to report -- they have gone home, or are going.
+## F3 Thornwall blocks sight: a Faithful whose straight line to `at` crosses a bramble segment does not see it; F3b: brambles by the well
+## (door_hidden()) hide its door from every side. F5: while the bell lies ALL IS WELL (Crowd.is_bell_lying()) no Faithful sees anything to
+## report -- they have gone home, or are going.
 func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
 	if crowd.is_bell_lying() or not super(f, at, reach, exclude):
 		return false
+	if at.distance_to(door) < 0.05 and (_hush or door_hidden()):
+		return false
 	return not _thorned((f as Person).ground_pos, at)
+
+
+## F3b: one who goes down while brambles hide the door is hidden for his whole prayer.
+func _entered(p: Person) -> void:
+	if door_hidden():
+		_hidden_prayers[p] = true
+	super(p)
+
+
+## F3b: one who went down hidden comes up hidden -- nobody sees the door as he does.
+func _exit(p: Person) -> void:
+	_hush = _hidden_prayers.has(p)
+	_hidden_prayers.erase(p)
+	super(p)
+	_hush = false
+
+
+## F3b: the bramble segments (role `thorns`) standing within THORN_HIDE of the shrine's door.
+func _hiding() -> Array[Structure]:
+	var out: Array[Structure] = []
+	if crowd == null or crowd._env == null or door == Vector2.INF:
+		return out
+	for s in crowd._env.near(door, THORN_HIDE + 1.0):
+		if s.role == &"thorns" and not s.destroyed and s.footprint.grow(THORN_HIDE).has_point(door):
+			out.append(s)
+	return out
+
+
+## F3b: brambles stand by the well, and nobody sees its door.
+func door_hidden() -> bool:
+	return not _hiding().is_empty()
+
+
+## F3b: the seconds the brambles by the door still hide it (a Thornwall withers ThornwallFx.THORN_TIME after it grows; the youngest segment
+## counts); 0 when none stands there.
+func hidden_left() -> float:
+	var most := 0.0
+	for s in _hiding():
+		most = maxf(most, ThornwallFx.THORN_TIME - (_t - float(_brambles.get(s.get_instance_id(), _t))))
+	return maxf(most, 0.0)
+
+
+## F3b: notes when each bramble by the door grew (for its countdown), and says so when the door is first hidden.
+func _bramble_step() -> void:
+	var now_hidden := false
+	for s in _hiding():
+		now_hidden = true
+		if not _brambles.has(s.get_instance_id()):
+			_brambles[s.get_instance_id()] = _t
+	if now_hidden and not _hid and not burning and not roof_fallen:
+		rules.banner.emit("BRAMBLES HIDE THE WELL")
+	_hid = now_hidden
 
 
 ## A Thornwall segment (role `thorns`) stands on the straight line from `a` to `b`.
@@ -536,9 +613,14 @@ static func _segment_hits(a: Vector2, b: Vector2, r: Rect2) -> bool:
 	return true
 
 
-## The tags (god T1R): Mira's, with the walking poor named and pointed at from the edge.
+## The tags (god T1R): Mira's, with the walking poor named and pointed at from the edge, and the door hidden by brambles counting down (F3b).
 func tags() -> Array[MapTag]:
 	var out := super()
+	if door_hidden() and not burning and not roof_fallen:
+		for i in out.size():
+			if out[i].at == door and out[i].label == "DOOR - CLEAR":
+				out[i] = MapTag.place(door, MARK_CLEAR, "DOOR - HIDDEN %d" % ceili(hidden_left()), 0.0, false)
+				break
 	if _alive(walker) and not walker.inside:
 		for i in out.size():
 			if out[i].at == walker.ground_pos and out[i].label == "":

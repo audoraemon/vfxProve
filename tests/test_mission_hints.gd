@@ -51,7 +51,7 @@ const SPEC := [
 	["lost_lamb.gate", "The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off."],
 	["lost_lamb.clear", "The watch is changing. Send him through the gate now."],
 	# First Prayers (v0.11 M2).
-	["first_prayers", "The poor (gold) walk to the old well shrine, one at a time. Keep the Faithful (red) from its door: three must pray."],
+	["first_prayers", "The poor (gold) walk to the old well one at a time, together once no Faithful (red) is left. Three must pray unseen."],
 	["first_prayers.watched", "Faithful (red) watch the door. Fire draws them off, ALL IS WELL sends them home, brambles by it hide who prays."],
 	# The Bell-Ringers (v0.11 M3).
 	["bell_ringers", "Kill each ringer (gold) where no one (red) sees, before he climbs the bell tower. His mates run with him."],

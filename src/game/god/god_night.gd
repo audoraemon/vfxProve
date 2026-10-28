@@ -22,7 +22,7 @@ const NOTICE_LOST := 25
 const NOTICE_CAUGHT := 10
 ## The Notice a clean win (the god ascended) adds: negative (Ruling P2-1, P2-2).
 const NOTICE_CLEAN := -5
-## The Notice a lost Awaken rite will add (spec §10.1); unused until P3 (Ruling P2-1).
+## The Notice a lost Awaken rite adds (spec §10.1, Ruling P2-1; used from god P3).
 const NOTICE_LOST_RITE := 25
 ## The Notice after a won Hunt: set, not added (spec §10.3, Ruling P2-6).
 const HUNT_WON_NOTICE := 0
@@ -43,6 +43,8 @@ const HUNTS := [
 const NOTICE_UP := "Lantern Notice +%d%%."
 ## The line a seal that ran out adds: `%s` is the ability's name.
 const UNSEALED := "%s is no longer sealed."
+## The line for a rite left once its clock had started (god P3, MS §1): `%d` is the night's number.
+const RITE_ABANDONED := "Night %d was abandoned: the rite is lost."
 ## The line for a Hunt left once its clock had started: `%d` is the night's number.
 const HUNT_ABANDONED := "Night %d was abandoned: the Hunt is lost."
 ## What a lost Hunt's forfeit says it sealed: the ability's name, the nights.
@@ -62,6 +64,24 @@ static func night_seed(slot: GodSlot) -> int:
 ## The seed of the night's wishes for mission `id` (Ruling P17): stable for the same slot, night and mission.
 static func wish_seed(slot: GodSlot, id: String) -> int:
 	return hash([slot.seed, slot.night, id])
+
+
+## What Awaken offers this god (god P3, MS §1, parent spec §9.3, Ruling P3-2): "" when it is not at its tier's cap or is at the highest level,
+## "rite" when a rite is written for its level, "unwritten" when it is capped and none is (levels 20, 30, 40 in P3).
+static func awaken_state(slot: GodSlot) -> String:
+	if not slot.capped() or slot.level >= GodSlot.MAX_LEVEL:
+		return ""
+	return "rite" if not RiteBook.at_level(slot.level).is_empty() else "unwritten"
+
+
+## The rite row this god plays at Awaken, or {} when awaken_state() is not "rite".
+static func rite_for(slot: GodSlot) -> Dictionary:
+	return RiteBook.at_level(slot.level) if awaken_state(slot) == "rite" else {}
+
+
+## True when `id` is an Awaken rite's mission id (god P3, Ruling P3-4): checked before the Hunt wherever a night is banked or forfeited.
+static func is_rite(id: String) -> bool:
+	return RiteBook.has(id)
 
 
 ## The Lantern Hunt this god faces next, or {} when the Notice is below 100 (spec §10.2, Ruling P2-3): HUNTS' entry for the god's tier
@@ -114,6 +134,8 @@ static func draw(slot: GodSlot) -> String:
 ## the tier's times and only dawn comes later). A night with acts has the clock added to each act. Null for an id not on the board.
 ## The Lantern's Hunt (god P2, spec §10.2, Ruling P2-5) is its stand-in built at the god's tier, then dressed with the Hunt's title and banner.
 static func def_for(slot: GodSlot, id: String) -> MissionDef:
+	if is_rite(id):
+		return _rite_def(slot, id)
 	var hunt := hunt_for(slot)
 	var is_hunt := not hunt.is_empty() and id == String(hunt.id)
 	var def := TierBook.board(id, null, slot.tier) if is_hunt else TierBook.board(id, null)
@@ -132,7 +154,31 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 		def.clock += extra
 	if is_hunt:
 		_dress_hunt(def, hunt)
+	_carry_gifts(def, slot)
 	return def
+
+
+## The rite `id` as this god plays it (god P3, MS §1, Ruling P3-3): the rite's frame at the god's tier with its slots, Might, drafted
+## abilities and the tier's clock plus the Faith clock. Its town is the frame's Unaware one.
+static func _rite_def(slot: GodSlot, id: String) -> MissionDef:
+	var def := RiteBook.def(id)
+	if def == null:
+		return null
+	var pool := slot.draftable()
+	if pool.is_empty():
+		pool = PackedStringArray([NO_POWERS])
+	def.tier = slot.tier
+	_apply_god(def, slot, pool)
+	def.clock = TierBook.clock(slot.tier) + slot.extra_clock()
+	_carry_gifts(def, slot)
+	return def
+
+
+## The god's stolen gifts on a def and on each of its acts (god P3, MS §4): copies, so a def never edits the slot's list.
+static func _carry_gifts(def: MissionDef, slot: GodSlot) -> void:
+	def.gifts = slot.gifts.duplicate()
+	for a: ActDef in def.acts:
+		a.gifts = slot.gifts.duplicate()
 
 
 ## The Hunt's own title and banner on its stand-in; brief, goal and lose stay the stand-in's (god P2, Ruling P2-5).
@@ -166,6 +212,8 @@ static func divine_power(d: Dictionary) -> int:
 ## "hunt" ({} or {"tier", "id", "title", "won", "faith", "sealed", "seal_nights"}), "unsealed" (a key whose seal ended, or ""),
 ## "hunt_next"}.
 static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome: Dictionary) -> Dictionary:
+	if is_rite(id):
+		return _bank_rite(slot, id, drafted, outcome)
 	var d: Dictionary = outcome.get("descend", {})
 	var hunt := hunt_for(slot)
 	var target := slot.seal_target() if not hunt.is_empty() else ""
@@ -208,6 +256,37 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due()}
 
 
+## Banks a finished Awaken rite (god P3, MS §1 R2-R4, Ruling P3-4, P3-5): a seal ticks, the night counts, and nothing else of an ordinary
+## night is earned -- no Divine Power, Faith, believers or best, and `last_mission` and `before_hunt` stay (so the next draw is as if the
+## rite had not been played). The draft is carried and remembered. Won (`outcome.won`): the tier rises, AWAKEN_POINTS come, the gift is
+## stolen (once) and the Notice stays; lost: the Notice rises by NOTICE_LOST_RITE and the god stays capped. Returns bank()'s keys plus
+## "rite" ({"id", "name", "won", "tier" (after), "points", "gift" (id stolen now, or ""), "shards" (`outcome.rite.shards`), "need"}).
+static func _bank_rite(slot: GodSlot, id: String, drafted: PackedStringArray, outcome: Dictionary) -> Dictionary:
+	var row := RiteBook.row(id)
+	var won := bool(outcome.get("won", false))
+	var notice_before := slot.notice
+	var unsealed := slot.tick_seal()
+	slot.night += 1
+	slot.in_night = ""
+	for key in drafted:
+		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
+	slot.loadout = drafted.duplicate()
+	var stolen := ""
+	if won:
+		slot.awaken()
+		if slot.steal(String(row.gift)):
+			stolen = String(row.gift)
+	else:
+		slot.add_notice(NOTICE_LOST_RITE)
+	var made: Dictionary = outcome.get("rite", {})
+	var result := {"id": id, "name": row.name, "won": won, "tier": slot.tier, "points": GodSlot.AWAKEN_POINTS if won else 0, "gift": stolen,
+		"shards": int(made.get("shards", 0)), "need": int(row.shards)}
+	return {"divine_power": 0, "levels": PackedInt32Array(), "points": result.points, "lost": 0, "capped": slot.capped(), "level": slot.level,
+		"bar": [slot.divine_power, slot.need()], "believers": 0, "faith": 0, "faith_total": slot.faith, "notice": slot.notice,
+		"notice_change": slot.notice - notice_before, "night": slot.night, "bests": PackedStringArray(), "hunt": {}, "unsealed": unsealed,
+		"hunt_next": slot.hunt_due(), "rite": result}
+
+
 ## The "hunt" entry of bank()'s and forfeit()'s result: the Hunt as played, how it ended, and what it sealed (spec §10.3).
 static func _hunt_result(hunt: Dictionary, won: bool, bonus: int, target: String) -> Dictionary:
 	return {"tier": hunt.tier, "id": hunt.id, "title": hunt.title, "won": won, "faith": bonus,
@@ -239,6 +318,8 @@ static func _keep_bests(slot: GodSlot, id: String, d: Dictionary) -> PackedStrin
 ## ability is sealed and the Notice is set to 50 (Ruling P2-6). Returns {"night": the new count, "line": the line the hub shows,
 ## "notice", "notice_change", "hunt" (as bank()'s, never won), "unsealed", "hunt_next"}.
 static func forfeit(slot: GodSlot) -> Dictionary:
+	if is_rite(slot.in_night):
+		return _forfeit_rite(slot)
 	var hunt := hunt_for(slot)
 	var target := slot.seal_target() if not hunt.is_empty() else ""
 	var notice_before := slot.notice
@@ -269,3 +350,23 @@ static func forfeit(slot: GodSlot) -> Dictionary:
 		line = HUNT_ABANDONED % slot.night + " " + seals + " " + NOTICE_AT % slot.notice
 	return {"night": slot.night, "line": line, "notice": slot.notice, "notice_change": slot.notice - notice_before,
 		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due()}
+
+
+## An Awaken rite left once its clock had started is a lost one (god P3, MS §1 "a closed game is a lost rite", Ruling P3-4): a seal ticks,
+## the night counts, `last_mission` stays, and the Notice rises by NOTICE_LOST_RITE. Returns forfeit()'s keys plus "rite" (bank()'s, never won).
+static func _forfeit_rite(slot: GodSlot) -> Dictionary:
+	var id := slot.in_night
+	var row := RiteBook.row(id)
+	var notice_before := slot.notice
+	var unsealed := slot.tick_seal()
+	slot.night += 1
+	slot.in_night = ""
+	var change := slot.add_notice(NOTICE_LOST_RITE)
+	var line := RITE_ABANDONED % slot.night
+	if change > 0:
+		line += " " + NOTICE_UP % change
+	if unsealed != "":
+		line += " " + UNSEALED % PowerBook.get_power(unsealed).name
+	return {"night": slot.night, "line": line, "notice": slot.notice, "notice_change": slot.notice - notice_before, "hunt": {},
+		"unsealed": unsealed, "hunt_next": slot.hunt_due(),
+		"rite": {"id": id, "name": row.name, "won": false, "tier": slot.tier, "points": 0, "gift": "", "shards": 0, "need": int(row.shards)}}

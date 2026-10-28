@@ -156,7 +156,7 @@ static func read(file: String) -> GodSlot:
 	var before := _string(cfg.get_value(SECTION, "before_hunt", ""))
 	s.before_hunt = before if TierBook.has(before) else ""
 	var open := _string(cfg.get_value(SECTION, "in_night", ""))
-	s.in_night = open if TierBook.has(open) else ""
+	s.in_night = open if TierBook.has(open) or RiteBook.has(open) else ""  # god P3, pre-flight B1: a closed game mid-rite is a lost rite
 	s.gifts = _strings(cfg.get_value(SECTION, "gifts", PackedStringArray()))
 	for key in _strings(cfg.get_value(SECTION, "loadout", PackedStringArray())):
 		if _is_power(key):
@@ -296,6 +296,14 @@ func awaken() -> void:
 	tier += 1
 	points += AWAKEN_POINTS
 	_fill()
+
+
+## Takes a stolen gift (god P3, MS §4): appended once; false (nothing changes) when already held or `gift` is empty.
+func steal(gift: String) -> bool:
+	if gift == "" or gifts.has(gift):
+		return false
+	gifts.append(gift)
+	return true
 
 
 ## Points earned so far, derived: one per level after the first, AWAKEN_POINTS per tier after the first (Ruling P5; 57 at level 50).

@@ -2,10 +2,11 @@ extends RefCounted
 ## v0.12 Task 3: missions list what a town must have for them (MissionNeeds), the places a director reads are all listed, and the
 ## intro camera asks the town (MissionDef.camera()) while MissionBook's builders keep Aldermere's own framing.
 
-## Every mission id that exists: the board's three, the campaign's, the tier missions, the dev ones, and the board's list.
+## Every mission id that exists: the board's three, the campaign's, the tier missions, the dev ones, the Awaken rites (god P3) and the board's list.
 static func _all_ids() -> Array[String]:
 	var out: Array[String] = []
-	for list: Array in [MissionBook.all(), MissionBook.campaign_missions(), MissionBook.tier_missions(), MissionBook.dev_missions()]:
+	for list: Array in [MissionBook.all(), MissionBook.campaign_missions(), MissionBook.tier_missions(), MissionBook.dev_missions(),
+			MissionBook.rite_missions()]:
 		for m: MissionDef in list:
 			if not out.has(m.id):
 				out.append(m.id)
@@ -32,7 +33,7 @@ static func run(t) -> void:
 static func _every_mission(t) -> void:
 	var al := City.by_id(&"aldermere")
 	var ids := _all_ids()
-	t.check(ids.size() == 28, "all 28 missions are listed (%d)" % ids.size())
+	t.check(ids.size() == 29, "all 29 missions are listed (%d)" % ids.size())
 	for id: String in ids:
 		t.check(MissionNeeds.TABLE.has(id), "%s lists its needs" % id)
 		if MissionNeeds.TABLE.has(id):
@@ -89,7 +90,7 @@ static func _reads_are_needs(t) -> void:
 				missing.append("%s:%d" % [name, int(reads[name])])
 		t.check(missing.is_empty(), "%s lists every place its directors read (missing %s)" % [id, ", ".join(missing)])
 		checked += 1
-	t.check(checked == 28 and scripts_seen > 25, "the scan walks every mission's directors (%d missions, %d scripts)" % [checked, scripts_seen])
+	t.check(checked == 29 and scripts_seen > 25, "the scan walks every mission's directors (%d missions, %d scripts)" % [checked, scripts_seen])
 	# The scan sees a read: a made-up script that reads a place no row lists is caught.
 	var probe := {}
 	_collect_text("var a = Places.rect(&\"temple\")\nvar b = City.current().taverns()[1]\n# Places.rect(&\"ghost\")\n",

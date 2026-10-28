@@ -16,8 +16,8 @@
 # median is printed and never judged (rulings D10, either town).
 # A route b gate with --with-none prints the none runs as well and none_lost=K/3 (without it none_lost prints -).
 # The gate (spec §7 and the plan's Global Constraints): the none runs all lose (route a only; with --route=b they are skipped and
-# none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission -- at most 270 s
-# for prayers, D34 -- only reported for a ★ --board one,
+# none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission; for prayers
+# no 150 s floor (D34), at most 270 s; only reported for a ★ --board one,
 # D33); no idle stretch over 45 s in a play run. A play run whose result line has no idle= makes idle_max ? and the gate FAIL.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}

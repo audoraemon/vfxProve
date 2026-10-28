@@ -108,6 +108,9 @@ var _thorn_spots := {}
 ## D34: the door has stood empty (and EMPTY_BANNER been shown); the poor hurrying to the shrine together besides the walker.
 var _emptied := false
 var _hurrying: Array[Person] = []
+## D35: each one hurrying, where he last moved from and how long he has stood (the walker's WALK_STALL give-up, per person).
+var _hurry_at := {}
+var _hurry_still := {}
 
 
 ## MirasHouseDirector's prayer length starts at PRAY_SECONDS (v0.12, R31): set at .new(), so a town's override survives setup.
@@ -212,7 +215,7 @@ func _add_events() -> void:
 	# (the walker goes as soon as the one before him is done: _walker_step()).
 	for k in poor_out_at.size():
 		timeline.add(float(poor_out_at[k]), "poor_%d" % k, "One of the poor sets out", Callable(),
-			func() -> bool: return _walk_n <= k and walker == null)
+			func() -> bool: return _walk_n <= k and walker == null and not door_empty())
 	timeline.add(market_at, "market", "The market fills", _market_fills, func() -> bool: return not _free_faithful().is_empty())
 	timeline.add(priests_at, "priests", "The priests come to the well", _priests_come,
 		func() -> bool: return not _free_clergy().is_empty())
@@ -273,7 +276,7 @@ func step(delta: float) -> void:
 	super(delta)
 	_fire_step()
 	_walker_step(delta)
-	_hurry()
+	_hurry(delta)
 
 
 ## F5 ALL IS WELL (the bell lies): every liner is stood down at once, every running report dropped (the carrier goes back to his day, nothing is
@@ -467,21 +470,41 @@ func still_needed() -> int:
 
 
 ## D34: with the door empty, as many of the poor as the night still needs set out at once besides the walker, together (the chain skipped for
-## each); each keeps to his walk as the walker does. Quiet while a Faithful lives.
-func _hurry() -> void:
+## each); each keeps to his walk as the walker does, and (D35) one who stands still WALK_STALL seconds on his way gives the walk up, with the
+## walker's banner, and another is sent in his place. Quiet while a Faithful lives.
+func _hurry(delta: float) -> void:
 	var still: Array[Person] = []
 	for p in _hurrying:
 		if _alive(p) and not p.inside and not _reading.has(p) and not believers.has(p):
 			still.append(p)
 	_hurrying = still
+	for k: Variant in _hurry_at.keys():
+		if not _hurrying.has(k):
+			_hurry_at.erase(k)
+			_hurry_still.erase(k)
 	if burning or roof_fallen or not door_empty():
 		return
+	var gave_up: Array[Person] = []
 	for p in _hurrying:
+		if p.ground_pos.distance_to(door) > DOOR_REACH + 0.6 and p.ground_pos.distance_to(_hurry_at.get(p, Vector2.INF)) < 0.4:
+			_hurry_still[p] = float(_hurry_still.get(p, 0.0)) + delta
+			if float(_hurry_still[p]) >= WALK_STALL:
+				gave_up.append(p)
+				continue
+		else:
+			_hurry_at[p] = p.ground_pos
+			_hurry_still[p] = 0.0
 		if p.mind == Person.Mind.DUTY:
 			if not p.has_goal() and p.ground_pos.distance_to(door) > DOOR_REACH:
 				p.go_duty(door)
 		elif p.mind in Person.LURABLE and not p.held_by_god():
 			p.go_duty(door)
+	for p in gave_up:
+		_hurrying.erase(p)
+		_hurry_at.erase(p)
+		_hurry_still.erase(p)
+		p.leave_shelter(false)
+		rules.banner.emit("ONE OF THE POOR GIVES UP THE WALK")  # (D35, as D31) not a loss -- another is sent -- but never a silent one
 	var more := still_needed()
 	while more > 0:
 		var pick := next_walker()
@@ -511,7 +534,7 @@ func next_walker() -> Person:
 	var most := 99
 	for g in grieving:
 		if not _alive(g) or g.inside or believers.has(g) or _reading.has(g) or _carrying(g) or g.held_by_god() \
-				or not g.mind in Person.LURABLE:
+				or not g.mind in Person.LURABLE or g == walker or _hurrying.has(g):
 			continue
 		var n := int(_walked.get(g, 0))
 		var d := g.ground_pos.distance_to(door)

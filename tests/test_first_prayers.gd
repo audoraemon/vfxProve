@@ -43,6 +43,9 @@ static func run(t) -> void:
 	_waits_walking(t, &"capital")
 	_door_empty(t)
 	_pray_together(t)
+	_hurrier_gives_up(t)
+	_empty_no_sets_out(t)
+	_next_not_twice(t)
 
 
 static func _world() -> Dictionary:
@@ -872,6 +875,7 @@ static func _door_empty(t) -> void:
 	t.check(not d.door_empty() and d.walker == null and d._hurrying.is_empty() and not (s.banners as Array).has(FirstPrayersDirector.EMPTY_BANNER),
 		"while a Faithful lives: no walker before POOR_OUT_AT[0], nobody hurrying, no banner")
 	_empty_the_door(s)
+	t.check((s.banners as Array).count(FirstPrayersDirector.EMPTY_BANNER) == 1, "banner %s, once" % FirstPrayersDirector.EMPTY_BANNER)
 	t.check(d.door_empty() and is_equal_approx(d.walk_due(), d.timeline.elapsed()), "the door stands empty: the next walker is due now (the chain skipped)")
 	t.check(d.walker != null and d.walker.mind == Person.Mind.DUTY and d.timeline.elapsed() < float(d.poor_out_at[0]),
 		"the walker sets out at once, %.0f s before POOR_OUT_AT[0]" % (float(d.poor_out_at[0]) - d.timeline.elapsed()))
@@ -884,18 +888,26 @@ static func _door_empty(t) -> void:
 	for m in d.tags():
 		tagged += 1 if m.label == "POOR - TO THE SHRINE" and m.edge else 0
 	t.check(tagged == FirstPrayersDirector.NEED, "each one hurrying is tagged and pointed at (%d)" % tagged)
-	var n := 0
-	for b in s.banners:
-		n += 1 if b == FirstPrayersDirector.EMPTY_BANNER else 0
 	_run(s, 1.0)
-	for b in s.banners:
-		n -= 1 if b == FirstPrayersDirector.EMPTY_BANNER else 0
-	t.check(n == 0 and (s.banners as Array).has(FirstPrayersDirector.EMPTY_BANNER), "banner %s, once" % FirstPrayersDirector.EMPTY_BANNER)
+	t.check((s.banners as Array).count(FirstPrayersDirector.EMPTY_BANNER) == 1, "and not again a second later")
 	var h: Person = d._hurrying[0] if not d._hurrying.is_empty() else null
 	if h != null:
 		_arrive(h, d.door)
 		_run(s, DT * 2.0)
 	t.check(h != null and h.inside, "one hurrying with the walker goes down when he reaches the door")
+	# M5: the night's need all down the well, no one more is sent, though the next walker is due now.
+	var sent: Array[Person] = d._hurrying.duplicate()
+	if d.walker != null:
+		sent.append(d.walker)
+	for p in sent:
+		_arrive(p, d.door)
+	_run(s, DT * 3.0)
+	var down := 0
+	for p in d.grieving:
+		down += 1 if p.inside else 0
+	_run(s, 2.0)
+	t.check(down >= FirstPrayersDirector.NEED and d.still_needed() <= 0 and d.walker == null and d._hurrying.is_empty(),
+		"the need met (%d praying), no one more is sent (walker %s, %d hurrying)" % [down, d.walker, d._hurrying.size()])
 	_done(s)
 
 
@@ -919,3 +931,77 @@ static func _pray_together(t) -> void:
 			_run(s, FirstPrayersDirector.PRAY_SECONDS + 1.0)
 			t.check(d.believers.has(a) and d.believers.has(b) and d.believers_outside() >= 2, "each is counted a Believer")
 		_done(s)
+
+
+## (D35) One hurrying who cannot get on -- walled in where he stands -- gives the walk up after WALK_STALL seconds, with the walker's banner, and
+## another of the poor is sent in his place; the others walk on (everyone ticked: real pathing).
+static func _hurrier_gives_up(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var env: EnvironmentField = s.env
+	_walk_blind(s, 10.0)
+	_empty_the_door(s)
+	t.check(not d._hurrying.is_empty(), "(the door empty, poor hurrying)")
+	if d._hurrying.is_empty():
+		_done(s)
+		return
+	var stuck: Person = d._hurrying[0]
+	var at := stuck.ground_pos
+	for r in [Rect2(at + Vector2(-1.2, -1.2), Vector2(0.5, 2.4)), Rect2(at + Vector2(0.7, -1.2), Vector2(0.5, 2.4)),
+			Rect2(at + Vector2(-1.2, -1.2), Vector2(2.4, 0.5)), Rect2(at + Vector2(-1.2, 0.7), Vector2(2.4, 0.5))]:
+		env.add_structure(r, 14.0, Structure.Kind.TREE, &"fence", &"fence")
+	var before: Array[Person] = d._hurrying.duplicate()
+	if d.walker != null:
+		before.append(d.walker)
+	_walk_blind(s, FirstPrayersDirector.WALK_STALL + 2.0)
+	t.check(stuck.ground_pos.distance_to(at) < 0.75 and (s.crowd as Crowd)._grid.path(stuck.ground_pos, d.door).is_empty(),
+		"(walled in: he has no way to the door, %.2f from where he stood)" % stuck.ground_pos.distance_to(at))
+	var fresh := false
+	for p in d._hurrying + ([d.walker] if d.walker != null else []):
+		fresh = fresh or not before.has(p)
+	for p in d.grieving:
+		fresh = fresh or (p.inside and not before.has(p))
+	t.check((s.banners as Array).has("ONE OF THE POOR GIVES UP THE WALK") and not d._hurrying.has(stuck) and stuck.mind != Person.Mind.DUTY,
+		"one hurrying who stands still WALK_STALL seconds gives the walk up, with the walker's banner")
+	t.check(fresh, "and another of the poor is sent in his place")
+	_done(s)
+
+
+## (D34 review M4) With the door empty and the need gone out at once, the strip does not announce a walker at POOR_OUT_AT[1] that nobody sends: the walker
+## gone down and two hurrying, the event's guard says no.
+static func _empty_no_sets_out(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	_run_blind(s, 10.0)
+	_empty_the_door(s)
+	var w := d.walker
+	if w != null:
+		w.mind = Person.Mind.WHISPERED
+		_arrive(w, d.door)
+	_run(s, DT * 3.0)
+	var ev: Dictionary = {}
+	for e in d.timeline._events:
+		if e.id == "poor_1":
+			ev = e
+	t.check(w != null and w.inside and d.walker == null and d._walk_n <= 1 and not d._hurrying.is_empty() and not ev.is_empty()
+		and not d.timeline._applies(ev), "the door empty and nobody to send: no \"One of the poor sets out\" at POOR_OUT_AT[1]")
+	_done(s)
+
+
+## (D34 review M3) The next walker is never the walker or one already hurrying, even one a go_duty() left calm (a firm will, a fright): with every
+## other of the poor gone, there is no one to send.
+static func _next_not_twice(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	_run_blind(s, 10.0)
+	_empty_the_door(s)
+	var going: Array[Person] = d._hurrying.duplicate()
+	if d.walker != null:
+		going.append(d.walker)
+	for g in d.grieving:
+		if not going.has(g) and g.is_alive():
+			(s.crowd as Crowd)._field.kill(g, &"doom")
+	for p in going:
+		p.mind = Person.Mind.CALM
+	t.check(going.size() == FirstPrayersDirector.NEED and d.next_walker() == null, "nobody is picked twice: the walker and those hurrying are never the next walker")
+	_done(s)

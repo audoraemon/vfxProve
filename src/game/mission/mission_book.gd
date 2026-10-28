@@ -347,7 +347,8 @@ static func lost_lamb() -> MissionDef:
 
 
 ## First Prayers (v0.11 M2, Tier 1, spec §8 row 5): three of the poor must pray at the old well shrine by the market, unseen by
-## Halcyon's few Faithful (FirstPrayersDirector, Mira's House's Convert). (God T1R, D33: the poor walk there themselves, one at a time; the copy says so.)
+## Halcyon's few Faithful (FirstPrayersDirector, Mira's House's Convert). (God T1R, D33/D34: the poor walk there themselves -- one at a time while a
+## Faithful watches the door, all together once none is left -- and the copy and the first_prayers hint say so.)
 static func first_prayers() -> MissionDef:
 	var m := _tier1(FIRST_PRAYERS, "First Prayers", PackedStringArray(["The poor have no shrine of their own.",
 		"They walk to the old well: let three pray unseen."]))

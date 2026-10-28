@@ -1,6 +1,6 @@
 # KAK god P3: The First Taste (rite mission spec)
 
-Date: 2026-10-28. Status: **for the user's approval** before it is built. Branch `god/p3-rite` (from `feat/god-progression`
+Date: 2026-10-28. Status: **approved by the user 2026-10-28, with all six recommended answers** (open questions below). Branch `god/p3-rite` (from `feat/god-progression`
 `a0185497`). Parent spec: `2026-10-26-kak-god-progression-design.md` (cited as §n). P1/P2 as shipped:
 `docs/KAK_God_P1_Summary.md`, `docs/KAK_God_P2_Summary.md`.
 
@@ -220,7 +220,7 @@ Yank. That is the risk the scripted check must clear (§6, open question 1).
 | Moving targets edge-arrowed, tags count down | PASS | Lamplighters, captive, marchers; captive, march and cleanse tags count down. |
 | No progress lost to luck, no hidden loss (§2) | PASS | A lost rite's cost (+25 Notice) is on Prepare and the pause confirm. |
 
-### Open questions for the user
+### Open questions for the user (answered 2026-10-28: all six as recommended)
 
 1. **The Yank** (C again, once per drag). *Recommend yes:* it gives every type the same floor and keeps Passage and Decree winnable.
 2. **The way out:** the Main Gate (watched, drag pace scaled up to about 0.82) or open the postern for rites. *Recommend the Main Gate:* opening the postern changes the evacuation.

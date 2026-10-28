@@ -269,7 +269,7 @@ static func _mission_book_rite(t) -> void:
 	var m := MissionBook.get_mission("first_taste")
 	t.check(m.id == "first_taste" and m.tier == 1 and m.lantern == "watch" and m.slots == 3 and m.dp_capacity == 6, "get_mission finds the rite's frame")
 	t.check(m.default_loadout == PackedStringArray(["doom", "whisper", "smite"]) and m.goal_label == "Three Lantern shards", "its loadout and goal label")
-	t.check(m.objectives().size() == 2 and m.director == null, "two objectives and no director yet (Task 4)")
+	t.check(m.objectives().size() == 3 and m.director == FirstTasteDirector, "shards, the flame and Dawn; FirstTasteDirector (Task 4)")
 	t.check(MissionBook.is_dev("first_taste") and MissionBook.is_dev("capital_sandbox") and not MissionBook.is_dev("warning"), "is_dev: the rite and the sandbox")
 	t.check(MissionBook.rite_missions().size() == 1 and MissionBook.rite_missions()[0].id == "first_taste", "rite_missions")
 	var in_dev := false

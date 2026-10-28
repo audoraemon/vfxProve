@@ -566,6 +566,12 @@ func _run() -> void:
 	elif scenario == "heart":
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
 		mission.mission_id = MissionBook.HEART_OF_FAITH
+	elif scenario == "first_taste":
+		# God P3 (plan Task 4, pre-flight G4): the rite's loadout is the def's own, or with --god=<type> the type's two Tier 1 keys (the real TABLE's;
+		# --dev-tree is only for a tree edited elsewhere). The --god parse below is not touched (R3): it reads the type itself.
+		var rite_type := String(Battlefield.arg_value(args, "--god")).split(":")[0]
+		powers = GodTree.starting(rite_type) if rite_type in GodTree.RING else PackedStringArray(["doom", "whisper", "smite"])
+		mission.mission_id = MissionBook.FIRST_TASTE
 	elif scenario == "capital_calm" or scenario == "capital_evac":
 		City.use(&"capital")
 		mission.city = &"capital"
@@ -714,6 +720,8 @@ func _run() -> void:
 			await _exodus(Battlefield.arg_value(args, "--case"))
 		"heart":
 			await _heart(Battlefield.arg_value(args, "--case"))
+		"first_taste":
+			await _first_taste(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -5280,3 +5288,148 @@ func _checksum() -> int:
 			h = (h * 31 + roundi(p.ground_pos.y * 100.0)) % 1000000007
 			h = (h * 31 + int(p.mind)) % 1000000007
 	return h
+
+
+# --- The First Taste (god P3, plan Task 4; the per-type answers are Task 7's) ---------------------------------------
+
+## How far from the drag a breaker is struck before he can grip (MS §3.9 "within 4 units"), how soon a walking march must be to the shrine before the
+## policy turns from chaining to stop it (MS §3.9 "within 45 s of the shrine"), and the seconds between the policy's "drag on" lines (pre-flight R7).
+const FT_STRIKE_R := 4.0
+const FT_MARCH_NEAR := 45.0
+const FT_SAY_EVERY := 20.0
+## A strike keeps this clear of the captive and the other victims (Silent Doom's and Smite's radius, and a margin).
+const FT_CLEAR := 1.2
+
+
+## The First Taste (god P3, MS §3.9), through _scripted(): the shared plan. Smite's hit-stop is wall clock, so it is switched off here first
+## (pre-flight R3: nothing is cast before this line, and the shared hit-stop-off list is not edited).
+func _first_taste(which: String) -> void:
+	mission._bf.ctx.impact.hitstop_enabled = false
+	var rules: Rules = mission._rules
+	var d := rules.director as FirstTasteDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	var memo := {"said": -INF}
+	await _scripted("first_taste", which, func() -> String: return _first_taste_act(rules, slots, d, crowd, memo),
+		func() -> String: return _first_taste_state(d))
+
+
+## The state line: `shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s`.
+func _first_taste_state(d: FirstTasteDirector) -> String:
+	var marches := PackedStringArray()
+	for m in d.marches:
+		marches.append("%d%s" % [m.people.size(), "x" if m.done else ("w" if m.walking else "m")])
+	return "shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s" % [d.shards, d.need(), RiteDirector.Chain.keys()[d.chain_state],
+		",".join(marches) if not marches.is_empty() else "-", d.cleanse, d.hint_phase()]
+
+
+## One look of the shared plan: a march near the shrine is answered before chaining; a ready chain takes the lamplighter with the shortest way to the
+## shrine; in a drag a breaker within FT_STRIKE_R of the captive is struck before he grips, a grip past 1.5 s is Yanked, and a drag that is only
+## walking says so every FT_SAY_EVERY seconds (R7: MS §3.7 counts the drag as acting). "" when nothing was done.
+func _first_taste_act(rules: Rules, slots: Dictionary, d: FirstTasteDirector, crowd: Crowd, memo: Dictionary) -> String:
+	if d.stages_done() or d.flame_out:
+		return ""
+	if d.chain_state == RiteDirector.Chain.READY:
+		var march := _first_taste_march(d, FT_MARCH_NEAR)
+		if march != null:
+			var stopped := _first_taste_stop(rules, slots, d, crowd, march)
+			if stopped != "":
+				return stopped
+		var v := _first_taste_pick(d)
+		if v != null and d.chain(v) == "":
+			memo.said = d._now
+			return "chain a lamplighter, %.0f units from the shrine" % d._way
+		return ""
+	if d.chain_state == RiteDirector.Chain.COOLDOWN:
+		var cooling := _first_taste_march(d, FT_MARCH_NEAR)
+		return _first_taste_stop(rules, slots, d, crowd, cooling) if cooling != null else ""
+	if d.grip > 1.5 and d.yanks_left > 0:
+		if d.chain_key() == "yank":
+			return "yank him on (a grip of %.1f s)" % d.grip
+	var near := _first_taste_breaker(d)
+	if near != null:
+		var struck := _first_taste_strike(rules, slots, d, near)
+		if struck != "":
+			return struck
+	if d._now - float(memo.said) >= FT_SAY_EVERY:
+		memo.said = d._now
+		return "drag on, shrine in %s" % UiTheme.clock(d.drag_eta())
+	return ""
+
+
+## The marked lamplighter with the shortest way to the shrine, or null.
+func _first_taste_pick(d: FirstTasteDirector) -> Person:
+	var best: Person = null
+	var best_way := INF
+	for v in d.marked:
+		if not WarningDirector._alive(v) or v.inside or v == d.captive:
+			continue
+		var way := d._path_length(v.ground_pos)
+		if way >= 0.0 and way < best_way:
+			best = v
+			best_way = way
+	return best
+
+
+## The walking march whose leader is within `seconds` of the shrine, soonest first; null for none.
+func _first_taste_march(d: FirstTasteDirector, seconds: float) -> FirstTasteDirector.March:
+	var best: FirstTasteDirector.March = null
+	for m in d.marches:
+		if m.done or m.people.is_empty() or not m.walking:
+			continue
+		if d.march_eta(m) <= seconds and (best == null or d.march_eta(m) < d.march_eta(best)):
+			best = m
+	return best
+
+
+## The breaker nearest the captive within FT_STRIKE_R, standing free to grip (not held); null for none.
+func _first_taste_breaker(d: FirstTasteDirector) -> Person:
+	if not WarningDirector._alive(d.captive):
+		return null
+	var best: Person = null
+	for b in d._breakers():
+		if d.held(b):
+			continue
+		var gap := b.ground_pos.distance_to(d.captive.ground_pos)
+		if gap <= FT_STRIKE_R and (best == null or gap < best.ground_pos.distance_to(d.captive.ground_pos)):
+			best = b
+	return best
+
+
+## Stops a march: the marcher nearest the shrine first, with whatever the loadout holds ready.
+func _first_taste_stop(rules: Rules, slots: Dictionary, d: FirstTasteDirector, _crowd: Crowd, m: FirstTasteDirector.March) -> String:
+	var target: Person = null
+	for p in m.people:
+		if WarningDirector._alive(p) and not d.held(p) \
+				and (target == null or p.ground_pos.distance_to(d.shrine()) < target.ground_pos.distance_to(d.shrine())):
+			target = p
+	if target == null:
+		return ""
+	return _first_taste_strike(rules, slots, d, target)
+
+
+## One strike at `b` with whatever the loadout holds ready, killing before holding: Silent Doom and Smite where neither takes the captive or a
+## lamplighter with him (FT_CLEAR), else Discord, else Mind Whisper sends him away from the captive. "" when nothing is ready or safe.
+func _first_taste_strike(rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person) -> String:
+	var at := b.ground_pos + _tax_lead(b)
+	var clear := true
+	for v in d.marked:
+		if WarningDirector._alive(v) and v.ground_pos.distance_to(at) < FT_CLEAR:
+			clear = false
+	if WarningDirector._alive(d.captive) and d.captive.ground_pos.distance_to(at) < FT_CLEAR:
+		clear = false
+	if clear and _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, at)
+		return "doom a breaker"
+	if clear and _slot_ready(rules, slots, "smite"):
+		rules.cast(slots.smite, at)
+		return "smite a breaker"
+	if _slot_ready(rules, slots, "discord"):
+		rules.cast(slots.discord, b.ground_pos)
+		return "discord a breaker"
+	if _slot_ready(rules, slots, "whisper") and not b.shaken():
+		var from := d.captive.ground_pos if WarningDirector._alive(d.captive) else d.shrine()
+		var away := b.ground_pos + (b.ground_pos - from).normalized() * 5.0
+		rules.cast(slots.whisper, b.ground_pos, {"target": b, "to": MindWhisperFx.clamp_to(mission._crowd._grid, b.ground_pos, away)})
+		return "whisper a breaker away"
+	return ""

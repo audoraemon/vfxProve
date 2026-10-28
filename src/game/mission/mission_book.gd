@@ -982,8 +982,9 @@ static func feast(act_id: String) -> MissionDef:
 
 
 ## The First Taste (god P3, MS §1, §3; Ruling P3-3): a Tier 1 frame at the Watch's bell -- drag three of Halcyon's lamplighters to Mira's
-## shrine before the clergy cleanse it or dawn comes. Task 1 builds the frame and its two objectives only; the director, the flame's
-## objective, the camera and the tour come with Task 4.
+## shrine before the clergy cleanse it or dawn comes. The frame (Task 1); the director, the flame's objective, the camera (the gate plaza, where
+## lamplighters #3 and #4 are) and the tour come with Task 4. The objectives run in this order so the last shard wins before a full cleanse can
+## lose (MS §6: the winning strike never also loses).
 static func first_taste() -> MissionDef:
 	var r := RiteBook.row(FIRST_TASTE)
 	var m := _tier1(FIRST_TASTE, String(r.name), PackedStringArray([String(r.plate)]))
@@ -992,7 +993,11 @@ static func first_taste() -> MissionDef:
 	m.lose = String(r.lose_line)
 	m.lantern = LanternWatch.KIND_WATCH
 	m.default_loadout = PackedStringArray(["doom", "whisper", "smite"])
+	m.director = FirstTasteDirector
+	m.camera_at = FirstTasteDirector.CAMERA_AT
+	m.intro_from = FirstTasteDirector.CAMERA_AT + Vector2(0.0, 6.0)
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [StagesObjective.new("Lantern shards", "shards"), ClockObjective.new(false, "Dawn", "dawn")]
+		var out: Array[Objective] = [StagesObjective.new("Lantern shards", "shards"), RiteFlameObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m

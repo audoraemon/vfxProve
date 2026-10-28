@@ -1,0 +1,19 @@
+# KAK per-type references, First Prayers (god T1R Task 6): the scripted policy of each god type (tools/dev/routes/god_t1/prayers.gd), playing only its two Tier 1 powers (behaviour_check --god=<type>:1). name<TAB>how<TAB>expected
+god_ruin_prayers_play_1	--scenario=prayers --case=play --god=ruin:1 --seed=1	-248889607
+god_ruin_prayers_play_2	--scenario=prayers --case=play --god=ruin:1 --seed=2	-249023333
+god_ruin_prayers_play_3	--scenario=prayers --case=play --god=ruin:1 --seed=3	-518716890
+god_death_prayers_play_1	--scenario=prayers --case=play --god=death:1 --seed=1	-272425321
+god_death_prayers_play_2	--scenario=prayers --case=play --god=death:1 --seed=2	-949896001
+god_death_prayers_play_3	--scenario=prayers --case=play --god=death:1 --seed=3	-181491316
+god_veil_prayers_play_1	--scenario=prayers --case=play --god=veil:1 --seed=1	-632976122
+god_veil_prayers_play_2	--scenario=prayers --case=play --god=veil:1 --seed=2	761854837
+god_veil_prayers_play_3	--scenario=prayers --case=play --god=veil:1 --seed=3	110356326
+god_passage_prayers_play_1	--scenario=prayers --case=play --god=passage:1 --seed=1	-388650286
+god_passage_prayers_play_2	--scenario=prayers --case=play --god=passage:1 --seed=2	-593768576
+god_passage_prayers_play_3	--scenario=prayers --case=play --god=passage:1 --seed=3	-599072419
+god_decree_prayers_play_1	--scenario=prayers --case=play --god=decree:1 --seed=1	-471920666
+god_decree_prayers_play_2	--scenario=prayers --case=play --god=decree:1 --seed=2	195014660
+god_decree_prayers_play_3	--scenario=prayers --case=play --god=decree:1 --seed=3	-60053170
+god_dominion_prayers_play_1	--scenario=prayers --case=play --god=dominion:1 --seed=1	-465532031
+god_dominion_prayers_play_2	--scenario=prayers --case=play --god=dominion:1 --seed=2	-973316398
+god_dominion_prayers_play_3	--scenario=prayers --case=play --god=dominion:1 --seed=3	-319125523

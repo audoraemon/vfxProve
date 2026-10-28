@@ -321,6 +321,10 @@ var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
 ## reads and steps it; the person only carries it, and responds to what the manager asks of it.
 var statuses := {}
+## Held by a rite's Chain of the Forgotten (god P3, MS §2, Ruling P3-12): a captive being dragged to the shrine. Only RiteDirector sets it, and only
+## NoLeaveFx reads it (a chained person is never set back by a Leaving Is Prohibited circle: the chain is stronger, R10). False for everyone else,
+## so nothing outside a rite changes.
+var chained := false
 ## The field this person is in, for blows that kill (null for one made on its own).
 var field: EnemyField
 ## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).

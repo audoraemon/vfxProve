@@ -158,6 +158,7 @@ func _held_people() -> Array:
 
 # --- Set up ------------------------------------------------------------------------------------
 
+## The shrine on walkable ground, then the subclass's victims marked.
 func _begin() -> void:
 	_shrine = _walkable(SHRINE)
 	for v in _appoint_victims():
@@ -234,9 +235,10 @@ func chain_key() -> String:
 ## The aim was clicked on `ground`: the marked victim nearest within PICK_R is chained ("" on success, else the refusal); none there is NOT_VICTIM.
 func chain_at(ground: Vector2) -> String:
 	var best: Person = null
-	for v in marked:
-		if not _alive(v) or v.inside or v == captive:
+	for w: Variant in marked:
+		if not _alive(w) or (w as Person).inside or w == captive:
 			continue
+		var v := w as Person
 		var d := v.ground_pos.distance_to(ground)
 		if d <= PICK_R and (best == null or d < best.ground_pos.distance_to(ground)):
 			best = v
@@ -278,7 +280,7 @@ func chain(p: Person) -> String:
 
 
 ## How fast a captive is dragged (units a second) along a path `path_len` long: the pace that takes DRAG_MAX seconds, never under PACE_MIN, so
-## every drag is DRAG_MAX seconds or less (MS §2).
+## every drag is DRAG_MAX seconds or less (MS §2) -- at full speed: a power that slows him (Death Mark's slow, Pestilence) lengthens it, and the god chose that.
 static func drag_pace(path_len: float) -> float:
 	return maxf(PACE_MIN, path_len / DRAG_MAX)
 
@@ -291,14 +293,14 @@ func yank() -> bool:
 	yanks_left -= 1
 	var way := crowd._grid.path(captive.ground_pos, _shrine)
 	var at := captive.ground_pos
-	var left := YANK_STEP
+	var rest := YANK_STEP
 	for i in way.size():
 		var seg := at.distance_to(way[i])
-		if seg >= left:
-			at = at.move_toward(way[i], left)
-			left = 0.0
+		if seg >= rest:
+			at = at.move_toward(way[i], rest)
+			rest = 0.0
 			break
-		left -= seg
+		rest -= seg
 		at = way[i]
 	if grip_by != null and _alive(grip_by):
 		_stunned[grip_by] = YANK_STUN
@@ -331,7 +333,8 @@ func chain_plate() -> String:
 
 ## The captive is sacrificed on the shrine's stone (a captive within SHRINE_REACH, or a test or FLOW hook on any marked victim): he dies, a shard
 ## is won, the flame grows a step, the subclass answers, and the chain (if he was its captive) goes to its cooldown. False when `p` is not a living
-## marked victim.
+## marked victim. Quiet (MS §2 "Noise: Quiet: no alarm"; review Ruling): he is killed with Person.die(), not EnemyField.kill(), so no enemy_killed
+## is emitted -- the crowd counts no kill, raises no incident and hears no alarm, and the town's soldiers are never drawn to the shrine (MS §0, no luck).
 func offer(p: Person) -> bool:
 	if not _alive(p) or not marked.has(p):
 		return false
@@ -341,7 +344,7 @@ func offer(p: Person) -> bool:
 		_end_chain()
 	marked.erase(p)
 	_runners.erase(p)
-	crowd._field.kill(p, &"rite", _shrine)
+	p.die(&"rite", _shrine)
 	shards += 1
 	rules.banner.emit(SHARD_BANNER % [String(RiteBook.row(rite_id()).get("name", "THE RITE")).to_upper(), shards, need()])
 	_answer(shards)
@@ -367,8 +370,8 @@ func held(b: Variant) -> bool:
 
 ## Breaker `b` is on the director's errand and looking: not held, and at a post or on duty -- never taken by the rally, a marshal's post or a fight
 ## (MS §0 "no luck").
-func _active(b: Person) -> bool:
-	return not held(b) and (b.mind == Person.Mind.DUTY or b.mind in EscortDirector.POST_MINDS)
+func _active(b: Variant) -> bool:
+	return not held(b) and ((b as Person).mind == Person.Mind.DUTY or (b as Person).mind in EscortDirector.POST_MINDS)
 
 
 ## The breaker gripping the captive now, or null: the one already gripping while he still can, else the nearest active one within GRIP_REACH.
@@ -376,9 +379,10 @@ func _gripper() -> Person:
 	if grip_by != null and _alive(grip_by) and _active(grip_by) and grip_by.ground_pos.distance_to(captive.ground_pos) <= GRIP_REACH:
 		return grip_by
 	var best: Person = null
-	for b in _breakers():
-		if not _alive(b) or not _active(b):
+	for w: Variant in _breakers():
+		if not _alive(w) or not _active(w):
 			continue
+		var b := w as Person
 		var d := b.ground_pos.distance_to(captive.ground_pos)
 		if d <= GRIP_REACH and (best == null or d < best.ground_pos.distance_to(captive.ground_pos)):
 			best = b
@@ -387,6 +391,7 @@ func _gripper() -> Person:
 
 # --- Each frame ----------------------------------------------------------------------------------
 
+## One frame: the Yank stuns tick down, the chain's state advances (the bite, the drag and its grip, the cooldown), and every TICK a look.
 func step(delta: float) -> void:
 	for k in _stunned.keys():
 		if not is_instance_valid(k):
@@ -498,7 +503,7 @@ func _release(p: Person) -> void:
 	p.pace = _pace_before
 	p._shaken_left = 0.0
 	if p.fearless_left <= HOLD:
-		p.fearless_left = 0.0
+		p.fearless_left = 0.0  # (only what _hold_captive() laid: a longer fearless from a Reassure stays)
 
 
 ## The chain ends (sacrificed, freed or died): the captive is let go of and the cooldown begins.
@@ -537,21 +542,23 @@ func _path_length(at: Vector2) -> float:
 func _remaining() -> float:
 	var p := captive
 	if p.has_goal() and p._leg < p._path.size():
-		var left := 0.0
+		var rest := 0.0
 		var from := p.ground_pos
 		for i in range(p._leg, p._path.size()):
-			left += from.distance_to(p._path[i])
+			rest += from.distance_to(p._path[i])
 			from = p._path[i]
-		return left + from.distance_to(_shrine)
+		return rest + from.distance_to(_shrine)
 	return p.ground_pos.distance_to(_shrine)
 
 
 # --- Each look (every TICK) ----------------------------------------------------------------------
 
+## Every TICK: the director's people kept at their errands through an evacuation, the freed and the dead dropped (a body may be freed: Variants
+## throughout), the runners and the breakers looked at, the replacement rule.
 func _look() -> void:
 	_hold_all(_held_people(), _evacuation_began())
-	marked.assign(marked.filter(func(v: Person) -> bool: return _alive(v)))
-	_runners.assign(_runners.filter(func(v: Person) -> bool: return _alive(v)))
+	marked.assign(marked.filter(func(v: Variant) -> bool: return _alive(v)))
+	_runners.assign(_runners.filter(func(v: Variant) -> bool: return _alive(v)))
 	_step_runners()
 	_step_breakers()
 	_replace_if_short()
@@ -560,7 +567,8 @@ func _look() -> void:
 ## Freed victims run on for the Temple's door; one who gets there is safe and unmarked (MS §2).
 func _step_runners() -> void:
 	var door := lantern_door()
-	for p in _runners.duplicate():
+	for w: Variant in _runners.duplicate():
+		var p := w as Person
 		if p.ground_pos.distance_to(door) <= SAFE_REACH:
 			_runners.erase(p)
 			marked.erase(p)
@@ -573,9 +581,10 @@ func _step_runners() -> void:
 ## A breaker within SIGHT of the captive walks to him; with none in sight he goes back to his post. A held one is left to his hold (R5).
 func _step_breakers() -> void:
 	var seen := _alive(captive) and chain_state != Chain.COOLDOWN
-	for b in _breakers():
-		if not _alive(b) or not _active(b):
+	for w: Variant in _breakers():
+		if not _alive(w) or not _active(w):
 			continue
+		var b := w as Person
 		if seen and b.ground_pos.distance_to(captive.ground_pos) <= SIGHT:
 			if b.anchor.distance_to(captive.ground_pos) > MOVE * 2.0:
 				_go_grip(b, captive.ground_pos)
@@ -597,7 +606,7 @@ func _replace_if_short() -> void:
 ## The marked victims still in play: alive, not safe (the captive counts).
 func left() -> int:
 	var n := 0
-	for v in marked:
+	for v: Variant in marked:
 		if _alive(v) and not safe.has(v):
 			n += 1
 	return n
@@ -616,9 +625,10 @@ func tags() -> Array[MapTag]:
 		out.append(c)
 	var rise := 0.0 if flame_out else FLAME_RISE + FLAME_STEP * float(shards)
 	out.append(MapTag.place(_shrine, MARK_SHRINE, SHRINE_TAG % [shards, need()], rise, true))
-	for v in marked:
-		if not _alive(v) or v == captive or v.inside:
+	for w: Variant in marked:
+		if not _alive(w) or w == captive or (w as Person).inside:
 			continue
+		var v := w as Person
 		out.append(MapTag.person(v.ground_pos, MARK_VICTIM, victim_word(), true))
 		var pip := MapTag.pip(v.ground_pos, MARK_VICTIM)
 		pip.lift = 8.0
@@ -626,11 +636,12 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## Lets the captive and the runners go (their flags and pace); a freed body is passed over.
 func teardown() -> void:
 	if is_instance_valid(captive):
 		_release(captive)
-	for p in _runners:
+	for p: Variant in _runners:
 		if is_instance_valid(p):
-			p.chained = false
+			(p as Person).chained = false
 	captive = null
 	grip_by = null

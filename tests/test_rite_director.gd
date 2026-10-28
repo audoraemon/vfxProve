@@ -15,6 +15,8 @@ class TestRite extends RiteDirector:
 	var answers: Array[int] = []
 	var replaced := 0
 	var breaker: Person
+	## The raw list, as a real subclass keeps it (the Watch): a body freed after its death fade stays in it.
+	var raw: Array[Person] = []
 	var spots := [Vector2(5.5, 12.5), Vector2(-10.0, 9.0), Vector2(0.0, 7.5), Vector2(9.5, 8.8)]
 
 	func rite_id() -> String:
@@ -36,13 +38,11 @@ class TestRite extends RiteDirector:
 			breaker = soldiers[0]
 			breaker.ground_pos = ELSEWHERE
 			breaker.send_to_post(ELSEWHERE)
+			raw.append(breaker)
 		return out
 
 	func _breakers() -> Array[Person]:
-		var out: Array[Person] = []
-		if breaker != null and is_instance_valid(breaker):
-			out.append(breaker)
-		return out
+		return raw
 
 	func _post_of(_b: Person) -> Vector2:
 		return ELSEWHERE
@@ -77,6 +77,8 @@ static func run(t) -> void:
 	_busy(t)
 	_tags(t)
 	_report(t)
+	_freed_people(t)
+	_quiet_sacrifice(t)
 
 
 # --- The world -----------------------------------------------------------------------------------
@@ -123,7 +125,8 @@ static func _done(s: Dictionary) -> void:
 static func _step(s: Dictionary) -> void:
 	(s.crowd as Crowd).advance(DT)
 	var d: TestRite = s.d
-	var walkers: Array = d.marked.duplicate()
+	var walkers: Array = []
+	walkers.append_array(d.marked)
 	walkers.append(d.breaker)
 	walkers.append(d.captive)
 	walkers.append_array(s.get("also", []))
@@ -217,7 +220,6 @@ static func _bite_then_drag(t) -> void:
 	var d: TestRite = s.d
 	var v := _victim(d, 0, FAR)
 	var start := v.ground_pos
-	var pace_before := v.pace
 	t.check(d.chain(v) == "" and v.chained and d.chain_state == RiteDirector.Chain.BITE, "the chain takes him: chained, the bite begins")
 	_run(s, RiteDirector.BITE * 0.5)
 	t.check(v.ground_pos.distance_to(start) < 0.05 and v.mind == Person.Mind.COMPELLED and v.compel_pose == &"kneel",
@@ -229,7 +231,6 @@ static func _bite_then_drag(t) -> void:
 	var took := _until(s, 58.0, func() -> bool: return d.shards == 1)
 	t.check(d.shards == 1 and took <= RiteDirector.DRAG_MAX + RiteDirector.BITE + 1.0,
 		"with no breaker he reaches the shrine within 55 s of the bite (%.1f s, shards %d)" % [took, d.shards])
-	t.check(absf(v.pace - pace_before) < 0.0001 or not MissionDirector._alive(v), "(his own pace is back once he is let go)")
 	_done(s)
 
 
@@ -512,7 +513,7 @@ static func _tags(t) -> void:
 	t.check(captive_tag != null and captive_tag.edge and captive_tag.label == "CAPTIVE - SHRINE IN %s" % UiTheme.clock(d.drag_eta()) and captive_tag.ring == -1.0
 		and plain_lamps == 3, "the captive's tag counts down his drag, edge-arrowed, no ring; the other three keep theirs (%s)" % [captive_tag.label])
 	t.check(d.chain_plate() == "DRAG %s" % UiTheme.clock(d.drag_eta()), "the plate reads DRAG with the time left (%s)" % d.chain_plate())
-	t.check(v != null and RiteDirector.MARK_SHRINE == Color("ff9a3a"), "the shrine's orange is MARK_SHRINE")
+	t.check(v != null and RiteDirector.MARK_SHRINE == AssassinateDirector.MARK_PLACE, "the shrine's orange is the Assassinate mark's")
 	_done(s)
 
 
@@ -525,4 +526,68 @@ static func _report(t) -> void:
 	t.check(d.hud_line() == "Lantern shards 0/3" and not d.stages_done() and d.lost_reason() == "", "the HUD line, the stages and no loss of its own")
 	d.shards = 3
 	t.check(d.stages_done() and d.report().rite.shards == 3, "three shards are the win")
+	_done(s)
+
+
+## A freed body in the director's lists never aborts a function (review I1/I2): a captive that escaped, a breaker freed mid-grip, a marked victim and
+## a runner freed, with the stand-in keeping its raw breaker list as a real subclass does.
+static func _freed_people(t) -> void:
+	# (a) the captive is freed mid-drag.
+	var s := _world()
+	var d: TestRite = s.d
+	var v := _dragging(s, 0, FAR)
+	var keep: Person = d.marked[1]
+	_run(s, 2.0)
+	v.free()
+	_run(s, 0.6)
+	t.check(d.shards == 0 and d.captive == null and d.chain_state == RiteDirector.Chain.COOLDOWN and (s.banners as Array).has(RiteDirector.LOST_BANNER),
+		"a captive freed mid-drag is wasted: no shard, the chain cools down")
+	t.check(d.marked.has(keep) and d.tags().size() >= 4 and d.left() >= 3, "and tags() and left() still work (%d tags, %d left)" % [d.tags().size(), d.left()])
+	_done(s)
+	# (b) the breaker is freed while gripping.
+	s = _world()
+	d = s.d
+	v = _dragging(s, 0, FAR, Vector2(0.4, 0.0))
+	_run(s, 1.0)
+	var gripping: bool = d.grip_by == d.breaker and d.grip > 0.5
+	var before := v.ground_pos
+	d.breaker.free()
+	_run(s, 0.3)
+	t.check(gripping and d.grip == 0.0 and d.grip_by == null, "a breaker freed mid-grip: the grip resets (grip %.2f)" % d.grip)
+	_run(s, 1.5)
+	t.check(v.ground_pos.distance_to(before) > 0.5 and d.chain_state == RiteDirector.Chain.DRAG, "and the drag walks on (%.2f units)" % v.ground_pos.distance_to(before))
+	t.check(d.busy(d.marked[1]) and d.held(d.raw[0]), "busy() and held() pass over the freed breaker")
+	_done(s)
+	# (c) a marked victim and a runner are freed: the looks go on, and the rule replaces them.
+	s = _world()
+	d = s.d
+	var gone: Person = d.marked[1]
+	var runner: Person = d.marked[2]
+	var keep0: Person = d.marked[0]
+	var keep3: Person = d.marked[3]
+	d._runners.append(runner)
+	gone.free()
+	runner.free()
+	var replaced_before := d.replaced
+	_run(s, 0.8)
+	t.check(d.replaced == replaced_before + 2 and d.marked.has(keep0) and d.marked.has(keep3) and d.left() == 4,
+		"freed victims and runners: the living stay marked and _look() reaches the replacement rule, which adds two (%d calls, %d left)" % [d.replaced, d.left()])
+	t.check(d.chain_at(Vector2(-25.0, -25.0)) == "NOT A LAMPLIGHTER" and d.left() >= 3 and not d.tags().is_empty(),
+		"and chain_at(), left() and tags() work (%d left)" % d.left())
+	_done(s)
+
+
+## The sacrifice is quiet (review I3, MS §2 "Noise: Quiet"): the crowd counts no kill and the town's alarm does not move.
+static func _quiet_sacrifice(t) -> void:
+	var s := _world()
+	var d: TestRite = s.d
+	var crowd: Crowd = s.crowd
+	var v := _victim(d, 0, NEAR)
+	var alarm := crowd.alarm
+	var kills := crowd.killed_citizens
+	d.chain(v)
+	_run(s, 2.0)
+	t.check(d.shards == 1 and not MissionDirector._alive(v), "the captive was sacrificed")
+	t.check(crowd.alarm == alarm and crowd.killed_citizens == kills,
+		"and the town heard nothing: alarm %.2f (was %.2f), kills %d (was %d)" % [crowd.alarm, alarm, crowd.killed_citizens, kills])
 	_done(s)

@@ -25,6 +25,12 @@ static func run(t) -> void:
 	_prepare_sealed(t)
 	_prepare_hunt(t)
 	_prepare_hunt_fits(t)
+	_prepare_rite(t)
+	_prepare_gifts_row(t)
+	_god_lines_rite_won(t)
+	_god_lines_rite_lost(t)
+	_rite_called(t)
+	_pause_rite(t)
 	_interlude_endless(t)
 	_refuse_and_card_cost(t)
 	GodTree.dev_fill = false
@@ -562,3 +568,209 @@ static func _pause_lost_notice(t) -> void:
 	t.check(card95.confirm_line().contains("Lantern Notice +5%") and card95.confirm_line().contains("the Lantern Hunts next"),
 		"the interlude at 95 says +5% and the Hunt (%s)" % card95.confirm_line())
 	card95.free()
+
+
+## God P3 (MS §1, §4, §5, Rulings P3-4, P3-8, preflight R1, G1, G2, G6): the god at the cap of tier 1, level 10, bar full.
+static func _rite_god(t, notice := 0) -> GodSlot:
+	var god := _fixture_god(t)
+	god.level = 10
+	god.divine_power = god.need()
+	god.notice = notice
+	return god
+
+
+## A rite's Prepare, with `god` and the rite's def as the god plays it.
+static func _rite_prepare(god: GodSlot) -> PrepareScreen:
+	var prep := PrepareScreen.new()
+	prep.god = god
+	prep.setup(GodNight.def_for(god, MissionBook.FIRST_TASTE), PackedStringArray())
+	return prep
+
+
+## The rite's Prepare: THE AWAKENING RITE in gold, the six rows with the exact copy (tier as "Tier 2: Omen", G6), and every row above the hint.
+static func _prepare_rite(t) -> void:
+	var god := _rite_god(t)
+	var prep := _rite_prepare(god)
+	t.check(prep.is_rite() and prep.header_text() == "THE AWAKENING RITE" and PrepareScreen.RITE_HEADER == "THE AWAKENING RITE",
+		"a rite's header (%s)" % prep.header_text())
+	var rows := prep.brief_rows()
+	var labels := []
+	for row: Array in rows:
+		labels.append(row[0])
+	t.check(labels == ["RITE", "WIN", "LOSE", "IF WON", "IF LOST", "CHAIN"], "a rite's briefing rows (%s)" % [labels])
+	var row := RiteBook.row(MissionBook.FIRST_TASTE)
+	t.check(String(rows[0][1]) == String(row.name), "RITE is the name (the plate does not fit six rows, preflight R1) (%s)" % rows[0][1])
+	t.check(String(rows[1][1]) == prep.mission.goal and String(rows[2][1]) == prep.mission.lose, "WIN and LOSE are the mission's (%s, %s)" % [rows[1][1], rows[2][1]])
+	t.check(String(rows[3][1]) == "Tier 2: Omen, +2 ability points, The Watchful Bell", "IF WON (%s)" % rows[3][1])
+	t.check(String(rows[4][1]) == "Lantern Notice +25%; the god stays capped", "IF LOST (%s)" % rows[4][1])
+	t.check(String(rows[5][1]) == "Chain of the Forgotten (C): free", "CHAIN (%s)" % rows[5][1])
+	var hint_lines := UiTheme.wrap(prep.hint_text(), PrepareScreen.PANEL.size.x - 8.0, UiTheme.SIZE_SMALL).size()
+	var limit := PrepareScreen.PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint_lines)
+	t.check(prep.brief_bottom() <= limit, "the six rows end at %s, above the hint (limit %s)" % [prep.brief_bottom(), limit])
+	prep.free()
+	# A Hunt due (Notice 100) does not turn the rite's Prepare into the Hunt's: the rite is the mission (Game plays the Hunt first, Task 8).
+	var due := _rite_god(t, 100)
+	var hunt_prep := _rite_prepare(due)
+	t.check(hunt_prep.header_text() == "THE AWAKENING RITE" and hunt_prep.brief_rows()[0][0] == "RITE", "a rite mission keeps its own header and rows")
+	hunt_prep.free()
+	# A god of tier 1 only: the row's tier is one above the god's.
+	var tier2 := _rite_god(t)
+	tier2.tier = 2
+	tier2.level = 20
+	var other := PrepareScreen.new()
+	other.god = tier2
+	other.setup(GodNight.def_for(tier2, MissionBook.FIRST_TASTE), PackedStringArray())
+	t.check(String(other.brief_rows()[3][1]).begins_with("Tier 3: Wrath"), "IF WON names the tier above the god's (%s)" % other.brief_rows()[3][1])
+	other.free()
+
+
+## An ordinary night with stolen gifts shows GIFTS in place of CITY (Ruling P3-8); no gifts keep P2's six rows; the Hunt's rows are unchanged.
+static func _prepare_gifts_row(t) -> void:
+	var god := _fixture_god(t)
+	god.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL])
+	var prep := PrepareScreen.new()
+	prep.god = god
+	prep.setup(GodNight.def_for(god, "warning"), PackedStringArray())
+	var labels := []
+	for row: Array in prep.brief_rows():
+		labels.append(row[0])
+	t.check(labels == ["TARGET", "WIN", "LOSE", "GIFTS", "LOADOUT", "TEMPLE"], "a gifted night: GIFTS replaces CITY (%s)" % [labels])
+	t.check(String(prep.brief_rows()[3][1]) == "The bell takes 20% longer to ring", "its words are the gift's effect (%s)" % prep.brief_rows()[3][1])
+	var hint_lines := UiTheme.wrap(prep.hint_text(), PrepareScreen.PANEL.size.x - 8.0, UiTheme.SIZE_SMALL).size()
+	t.check(prep.brief_bottom() <= PrepareScreen.PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint_lines), "and the rows still fit (%s)" % prep.brief_bottom())
+	prep.free()
+	god.gifts = PackedStringArray()
+	var none := PrepareScreen.new()
+	none.god = god
+	none.setup(GodNight.def_for(god, "warning"), PackedStringArray())
+	var none_labels := []
+	for row: Array in none.brief_rows():
+		none_labels.append(row[0])
+	t.check(none_labels == ["TARGET", "WIN", "LOSE", "CITY", "LOADOUT", "TEMPLE"], "no gifts: P2's rows (%s)" % [none_labels])
+	none.free()
+	god.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL])
+	god.notice = 100
+	var hunt := GodNight.hunt_for(god)
+	var hunt_prep := PrepareScreen.new()
+	hunt_prep.god = god
+	hunt_prep.setup(GodNight.def_for(god, String(hunt.id)), PackedStringArray())
+	var hunt_labels := []
+	for row: Array in hunt_prep.brief_rows():
+		hunt_labels.append(row[0])
+	t.check(hunt_labels == ["HUNT", "WIN", "LOSE", "IF WON", "IF LOST"], "a Hunt with gifts keeps its five rows (%s)" % [hunt_labels])
+	hunt_prep.free()
+	var board := PrepareScreen.new()
+	board.setup(TierBook.board("warning"), PackedStringArray())
+	var board_labels := []
+	for row: Array in board.brief_rows():
+		board_labels.append(row[0])
+	t.check(board_labels == ["TARGET", "WIN", "LOSE", "CITY", "LOADOUT", "TEMPLE"], "a board night has no GIFTS row (%s)" % [board_labels])
+	board.free()
+
+
+## A rite result as Game builds it: GodNight.bank()'s dictionary under `god`, the rules' goal row, the reason the rite ended on.
+static func _rite_result(t, won: bool, shards := 3, notice := 0) -> Dictionary:
+	var god := _rite_god(t, notice)
+	var kept := god.draftable()
+	var banked := GodNight.bank(god, MissionBook.FIRST_TASTE, kept, {"won": won, "reason": "shards" if won else "cleansed", "rite": {"shards": shards}})
+	return {"mission": MissionBook.FIRST_TASTE, "won": won, "reason": "shards" if won else "cleansed", "time": 200.0,
+		"goal": {"label": "Three Lantern shards", "done": won}, "bonuses": [], "best": false, "god": banked}
+
+
+static func _god_lines_rite_won(t) -> void:
+	var result := _rite_result(t, true)
+	var lines := ResultsScreen.god_lines(result)
+	var want := PackedStringArray(["Divine Power: none - the rite feeds no bar", "Tier 2: Omen", "+2 ability points",
+		"Stolen: The Watchful Bell - a bell ringer takes 20% longer to start the toll", "Lantern Notice 0%", "Night 1"])
+	t.check(lines == want, "a won rite's lines in MS §5's order (%s)" % [lines])
+	t.check(not "\n".join(lines).contains("Believers") and not "\n".join(lines).contains("Faith"), "no believers or Faith line (MS §1 R1)")
+	t.check(ResultsScreen.god_line_color(lines[1]) == UiTheme.COL_GOLD and ResultsScreen.god_line_color(lines[3]) == UiTheme.COL_GOLD
+		and ResultsScreen.god_line_color(lines[2]) == UiTheme.COL_TEXT, "the tier and the gift are gold, the points plain")
+	var widest := 0.0
+	for line in lines:
+		widest = maxf(widest, UiTheme.width(line, UiTheme.SIZE_BODY))
+	t.check(widest <= ResultsScreen.PANEL.size.x - 16.0, "every line fits the panel (%s of %s)" % [widest, ResultsScreen.PANEL.size.x])
+	# G1: the goal row is ticked by the win, though a rite has no Descent.
+	var rows := ResultsScreen.descend_rows(result)
+	t.check(rows.size() == 1 and rows[0][0] == "Three Lantern shards" and rows[0][1] == "" and rows[0][2] == "ok",
+		"the goal row of a won rite is ticked and pays no believers (%s)" % [rows])
+	# Several lines fit above the buttons.
+	var res := ResultsScreen.new().setup(result)
+	t.check(res.endless and res.descend and _rows(res._menu) == ["continue", "tree", "faith"], "its results lead on with Continue / Skill Tree / Faith")
+	res.free()
+	# A seal that ran out and the Hunt next are still said.
+	var banked: Dictionary = result.god
+	banked["unsealed"] = GodTree.starting(_two_key_type(t))[0]
+	banked["hunt_next"] = true
+	var more := ResultsScreen.god_lines(result)
+	t.check(more[more.size() - 3].ends_with("is no longer sealed") and more[more.size() - 2].begins_with("THE LANTERN HUNTS") and more[more.size() - 1] == "Night 1",
+		"a seal that ended and the coming Hunt come before the night (%s)" % [more])
+
+
+static func _god_lines_rite_lost(t) -> void:
+	var result := _rite_result(t, false, 2)
+	var lines := ResultsScreen.god_lines(result)
+	var want := PackedStringArray(["Divine Power: none - the rite feeds no bar", "Lantern shards 2/3",
+		"The god is still capped. Awaken again when ready.", "Lantern Notice 25%  (+25%)", "Night 1"])
+	t.check(lines == want, "a lost rite's lines (%s)" % [lines])
+	t.check(ResultsScreen.god_line_color(lines[2]) == UiTheme.COL_BAD and ResultsScreen.god_line_color(lines[3]) == UiTheme.COL_BAD
+		and ResultsScreen.god_line_color(lines[1]) == UiTheme.COL_TEXT, "the capped line and the Notice rise are red, the shards plain")
+	var rows := ResultsScreen.descend_rows(result)
+	t.check(rows.size() == 1 and rows[0][1] == "" and rows[0][2] == "x", "the goal row of a lost rite is crossed (%s)" % [rows])
+	# At the brink, the Hunt is named.
+	var near := ResultsScreen.god_lines(_rite_result(t, false, 0, 90))
+	t.check(near.has("Lantern Notice 100%  (+10%)") and near.has("THE LANTERN HUNTS: the next night is the Hunt"), "a lost rite that fills the meter names the Hunt (%s)" % [near])
+	# G2: the rite's ending titles.
+	t.check(ResultsScreen.title_for(true, "shards") == "THE RITE IS DONE" and ResultsScreen.title_for(false, "cleansed") == "THE SHRINE IS CLEANSED"
+		and ResultsScreen.title_for(false, "dawn") == "DAWN COMES", "the rite's reasons have their own titles (%s, %s)" % [
+			ResultsScreen.title_for(true, "shards"), ResultsScreen.title_for(false, "cleansed")])
+	# Not a rite: the old lines and rows.
+	var plain := ResultsScreen.god_lines(_god_result())
+	t.check(plain[0] == "Divine Power +120" and ResultsScreen.rite_of(_god_result()).is_empty(), "an ordinary night is not a rite (%s)" % [plain])
+
+
+static func _rite_called(t) -> void:
+	var won := ResultsScreen.rite_called(_rite_result(t, true))
+	t.check(won == "Awakening Rite: The First Taste  -  Whisper", "a won rite names the tier played, not the one crossed into (%s)" % won)
+	var lost := ResultsScreen.rite_called(_rite_result(t, false, 1))
+	t.check(lost == "Awakening Rite: The First Taste  -  Whisper", "a lost rite too (%s)" % lost)
+	t.check(ResultsScreen.rite_called({"god": _g()}) == "" and ResultsScreen.rite_called({}) == "" and ResultsScreen.hunt_called(_rite_result(t, true)) == "",
+		"a night, no god, or a rite for the Hunt's line: nothing")
+
+
+static func _pause_rite(t) -> void:
+	var cases := [{"notice": 0, "rise": 25, "hunt": false}, {"notice": 25, "rise": 25, "hunt": false}, {"notice": 80, "rise": 20, "hunt": true},
+		{"notice": 100, "rise": 0, "hunt": true}]
+	t.check(PauseMenu.CONFIRM_RITE == "Abandon the rite and it is lost: Lantern Notice +%d%%. The god stays capped.", "the rite's confirm copy")
+	for c: Dictionary in cases:
+		var pause := PauseMenu.new()
+		pause.rite = true
+		pause.notice = int(c.notice)
+		pause.setup(false, Settings.new(), PATH, true, true)
+		pause._on_gui_input(_click((pause._menu.rect_of("abandon") as Rect2).get_center()))
+		var line := pause.confirm_line()
+		t.check(line == PauseMenu.rite_line(int(c.notice)) and line.begins_with("Abandon the rite and it is lost"), "notice %d: the rite's confirm (%s)" % [c.notice, line])
+		if int(c.rise) > 0:
+			t.check(line.contains("Lantern Notice +%d%%" % int(c.rise)), "notice %d: it states the real rise +%d%% (%s)" % [c.notice, c.rise, line])
+		else:
+			t.check(line.contains("already 100%") and not line.contains("+"), "notice 100: no rise is promised (%s)" % line)
+		t.check(line.contains("The god stays capped"), "notice %d: it says the god stays capped" % c.notice)
+		t.check(line.contains("The Lantern Hunts next") == bool(c.hunt), "notice %d: the Hunt is named only when it comes (%s)" % [c.notice, line])
+		var lines := UiTheme.wrap(line, PauseMenu.CONFIRM_WIDTH, UiTheme.SIZE_BODY)
+		var row := pause._menu.rect_of("abandon") as Rect2
+		t.check(lines.size() <= 3 and row.position.y > PauseMenu.CONFIRM_Y + UiTheme.LINE_BODY * float(lines.size() - 1) + 3.0 and row.end.y < 360.0,
+			"notice %d: it takes %d lines and the buttons sit under them" % [c.notice, lines.size()])
+		pause.free()
+	var free := PauseMenu.new()
+	free.rite = true
+	free.notice = 25
+	free.setup(false, Settings.new(), PATH, true, false)
+	free._on_gui_input(_click((free._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(free.confirm_line() == PauseMenu.CONFIRM_FREE, "before the clock starts leaving the rite is free (%s)" % free.confirm_line())
+	free.free()
+	var plain := PauseMenu.new()
+	plain.notice = 25
+	plain.setup(false, Settings.new(), PATH, true, true)
+	plain._on_gui_input(_click((plain._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(plain.confirm_line() == PauseMenu.lost_line(25), "a night that is not a rite keeps P2's confirm (%s)" % plain.confirm_line())
+	plain.free()

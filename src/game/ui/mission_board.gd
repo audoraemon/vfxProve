@@ -9,6 +9,8 @@ extends Node
 ## - With --dev (Game sets `dev`), a DEV tab beside the title holds the dev-only missions (MissionBook.dev_missions(): the
 ##   capital's sandbox, then each town's hostable missions as composite ids, `tax_collector@capital`: v0.12), always open;
 ##   D opens it. A town mission's card shows its name, the town (gold) and its type, no brief. Nothing of it shows without the flag.
+## - God P3 (MS §1 R6, Ruling P3-7): with --dev the DEV tab ends with the Awaken rites (MissionBook.rite_missions()), titled "<name> (rite)", for
+##   testing and the scripted check; they are on no tier tab.
 ## - With --dev, an ENDLESS button beside DEV (god P1, Ruling P14) emits "endless": Game opens Endless Night's slot select.
 
 ## "pick" (the player chose `chosen`) or "back" (Esc).
@@ -128,6 +130,9 @@ func _missions_of(t: int) -> PackedStringArray:
 			for city: StringName in City.ids():
 				if city != &"aldermere":
 					out.append_array(MissionBook.town_missions(city))
+			# The rites come after the towns' missions, so a slice of the list that stops at the towns is unchanged (god P3, Ruling P3-7).
+			for m in MissionBook.rite_missions():
+				out.append(m.id)
 		return out
 	return TierBook.missions(t)
 
@@ -177,7 +182,7 @@ func best_line(id: String) -> String:
 func brief_lines(id: String, room: float) -> PackedStringArray:
 	var out := PackedStringArray()
 	var def: MissionDef = _defs.get(id)
-	if def != null and MissionBook.split_city(id)[1] == &"":
+	if def != null and MissionBook.split_city(id)[1] == &"" and not RiteBook.has(id):  # a rite's card, like a town's, has no brief (god P3)
 		for brief in def.brief:
 			out.append_array(UiTheme.wrap(brief, room, UiTheme.SIZE_BODY))
 	return out
@@ -228,13 +233,23 @@ func kind_lines(id: String) -> PackedStringArray:
 	var parts := MissionBook.split_city(id)
 	if parts[1] != &"":
 		return PackedStringArray([String(parts[1]).to_upper(), TierBook.type_of(parts[0]).to_upper()])
+	if RiteBook.has(id):
+		return PackedStringArray(["RITE"])
 	return PackedStringArray([("Dev sandbox" if tier == DEV_TIER else TierBook.type_of(id)).to_upper()])
+
+
+## A card's title: the mission's name, and "<name> (rite)" for an Awaken rite (god P3, MS §1 R6).
+func card_title(id: String) -> String:
+	var def: MissionDef = _defs.get(id)
+	if def == null:
+		return id
+	return "%s (rite)" % def.name if RiteBook.has(id) else def.name
 
 
 ## The y of the first line of a card's brief (v0.11 M2, Task 8): under its name, however many lines that wraps to, and its type.
 func brief_top(id: String, r: Rect2) -> float:
 	var def: MissionDef = _defs.get(id)
-	var names := UiTheme.wrap(def.name, r.size.x - PAD * 2.0 - 12.0, UiTheme.SIZE_BIG).size()
+	var names := UiTheme.wrap(card_title(id), r.size.x - PAD * 2.0 - 12.0, UiTheme.SIZE_BIG).size()
 	return r.position.y + PAD + 14.0 + (UiTheme.LINE_BODY + 3.0) * float(names) + UiTheme.LINE_SMALL * float(kind_lines(id).size()) + 8.0
 
 
@@ -417,7 +432,7 @@ func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 	var room := r.size.x - PAD * 2.0
 	var text_col := UiTheme.COL_TEXT if on else UiTheme.COL_DIM
 	var y := r.position.y + PAD + 14.0
-	for line in UiTheme.wrap(def.name, room - 12.0, UiTheme.SIZE_BIG):
+	for line in UiTheme.wrap(card_title(id), room - 12.0, UiTheme.SIZE_BIG):
 		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BIG, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
 		y += UiTheme.LINE_BODY + 3.0
 	if _state().cleared.has(id):

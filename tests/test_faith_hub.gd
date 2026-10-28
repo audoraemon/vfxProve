@@ -15,6 +15,12 @@ static func run(t) -> void:
 	_hub_hunt(t)
 	_hub_seal(t)
 	_hub_awaken_refused(t)
+	_hub_awaken_rite(t)
+	_hub_awaken_unwritten(t)
+	_hub_awaken_hidden(t)
+	_hub_awaken_hunt(t)
+	_hub_gifts(t)
+	_hub_lines_unchanged(t)
 	GodTree.dev_fill = false
 	_hub_blocked(t)
 
@@ -239,4 +245,146 @@ static func _hub_awaken_refused(t) -> void:
 	hub.line = ""
 	hub._unhandled_input(_key(KEY_A))
 	t.check(emitted == ["awaken_dev"] and hub.line == "", "at 99 A is the dev Awaken as before (%s)" % [emitted])
+	hub.free()
+
+
+## A god capped at `level` of its tier (God P3: the Awaken button shows only at the cap).
+static func _capped(level: int, tier := 1) -> GodSlot:
+	var god := _slot()
+	god.tier = tier
+	god.level = level
+	god.divine_power = god.need()
+	return god
+
+
+## God P3 (MS §1, parent spec §9.3): a god capped at level 10 gets a fifth button, Awaken; a click or A emits "awaken" in any build (not only
+## under --dev), the row fits the 640 px, and the key row names A.
+static func _hub_awaken_rite(t) -> void:
+	var god := _capped(10)
+	t.check(god.capped() and GodNight.awaken_state(god) == "rite", "fixture: a capped level 10 god has a rite (%s)" % GodNight.awaken_state(god))
+	var hub := GodHub.new().setup(god)
+	var emitted := []
+	hub.action.connect(func(what: String) -> void: emitted.append(what))
+	t.check(hub.awaken_shown() and not hub.awaken_dim() and hub._menu.items.size() == 5, "five buttons and Awaken is lit (%d)" % hub._menu.items.size())
+	var actions := []
+	for item: Dictionary in hub._menu.items:
+		actions.append(String(item.action))
+	t.check(actions == ["descend", "awaken", "tree", "faith", "title"], "in order, Awaken beside Descend (%s)" % [actions])
+	var all_in := true
+	var overlap := false
+	for i in hub._menu.items.size():
+		var r: Rect2 = hub._menu.items[i].rect
+		all_in = all_in and Rect2(0, 0, 640, 360).encloses(r)
+		for j in range(i + 1, hub._menu.items.size()):
+			overlap = overlap or r.intersects(hub._menu.items[j].rect)
+		t.check(UiTheme.width(String(hub._menu.items[i].label)) <= r.size.x - 8.0, "the label %s fits its button (%s px of %s)" % [
+			hub._menu.items[i].label, UiTheme.width(String(hub._menu.items[i].label)), r.size.x])
+	t.check(all_in and not overlap and GodHub.BUTTON_W_FIVE == 108.0, "the row fits the screen without overlap (108 px buttons)")
+	var span: float = (hub._menu.items[4].rect as Rect2).end.x - (hub._menu.items[0].rect as Rect2).position.x
+	t.check(is_equal_approx(span, 572.0), "five of 108 and four gaps of 8 span 572 px (%s)" % span)
+	hub._on_gui_input(_click(hub.menu_rect("awaken").get_center()))
+	t.check(emitted == ["awaken"], "a click on Awaken emits awaken (%s)" % [emitted])
+	emitted.clear()
+	hub._unhandled_input(_key(KEY_A))
+	t.check(emitted == ["awaken"], "A emits awaken without dev (%s)" % [emitted])
+	t.check(hub.hint_text().contains("A: Awaken") and UiTheme.width(hub.hint_text(), UiTheme.SIZE_SMALL) < 620.0,
+		"the key row names A and fits (%s)" % hub.hint_text())
+	hub.free()
+	var dev := GodHub.new().setup(god, "", true)
+	var dev_emitted := []
+	dev.action.connect(func(what: String) -> void: dev_emitted.append(what))
+	dev._unhandled_input(_key(KEY_A))
+	t.check(dev_emitted == ["awaken"] and dev.hint_text().contains("A: Awaken") and not dev.hint_text().contains("DEV"),
+		"under dev A still emits awaken for a written rite, and the row does not name it twice (%s, %s)" % [dev_emitted, dev.hint_text()])
+	dev.free()
+
+
+## No rite is written at levels 20, 30, 40: the button is dim, a click or A buzzes and says why, nothing is emitted; under dev A is the hook.
+static func _hub_awaken_unwritten(t) -> void:
+	var god := _capped(20, 2)
+	t.check(GodNight.awaken_state(god) == "unwritten", "fixture: tier 2 level 20 has no rite (%s)" % GodNight.awaken_state(god))
+	var hub := GodHub.new().setup(god)
+	var emitted := []
+	hub.action.connect(func(what: String) -> void: emitted.append(what))
+	t.check(hub.awaken_shown() and hub.awaken_dim(), "Awaken is shown and dim")
+	hub._unhandled_input(_key(KEY_A))
+	t.check(emitted.is_empty() and hub.line == GodHub.RITE_UNWRITTEN and GodHub.RITE_UNWRITTEN == "Rite not yet written",
+		"A without dev says Rite not yet written and emits nothing (%s, %s)" % [emitted, hub.line])
+	hub.line = ""
+	hub._on_gui_input(_click(hub.menu_rect("awaken").get_center()))
+	t.check(emitted.is_empty() and hub.line == GodHub.RITE_UNWRITTEN, "a click on the dim button does the same (%s, %s)" % [emitted, hub.line])
+	hub.free()
+	var dev := GodHub.new().setup(god, "", true)
+	var dev_emitted := []
+	dev.action.connect(func(what: String) -> void: dev_emitted.append(what))
+	dev._unhandled_input(_key(KEY_A))
+	t.check(dev_emitted == ["awaken_dev"] and dev.line == "", "under dev A is still the awaken_dev hook (%s, %s)" % [dev_emitted, dev.line])
+	dev.free()
+	# Level 50 is the end of the tree: no button.
+	var top := _capped(50, 5)
+	var end_hub := GodHub.new().setup(top)
+	t.check(not end_hub.awaken_shown() and end_hub._menu.items.size() == 4, "a level 50 god has no Awaken button")
+	end_hub.free()
+
+
+## Below the cap there is no button and no A (without dev); the four buttons are P1's, 120 px wide.
+static func _hub_awaken_hidden(t) -> void:
+	var god := _capped(10)
+	god.level = 9
+	god.divine_power = 0
+	var hub := GodHub.new().setup(god)
+	var emitted := []
+	hub.action.connect(func(what: String) -> void: emitted.append(what))
+	t.check(not hub.awaken_shown() and not hub.awaken_dim() and hub._menu.items.size() == 4 and hub.menu_rect("awaken") == Rect2(),
+		"level 9: four buttons, no Awaken (%d)" % hub._menu.items.size())
+	hub._unhandled_input(_key(KEY_A))
+	t.check(emitted.is_empty() and hub.line == "", "A does nothing (%s, %s)" % [emitted, hub.line])
+	t.check(not hub.hint_text().contains("A:"), "and the key row does not name it (%s)" % hub.hint_text())
+	hub.free()
+
+
+## While the Hunt is due, Awaken leads to the Hunt as Descend does: A and the button emit awaken, and Game routes it (Task 8).
+static func _hub_awaken_hunt(t) -> void:
+	for level_tier in [[10, 1], [20, 2]]:
+		var god := _capped(int(level_tier[0]), int(level_tier[1]))
+		god.notice = 100
+		var hub := GodHub.new().setup(god)
+		var emitted := []
+		hub.action.connect(func(what: String) -> void: emitted.append(what))
+		t.check(hub.awaken_shown() and not hub.awaken_dim(), "level %d at Notice 100: Awaken is lit, the Hunt leads" % int(level_tier[0]))
+		hub._unhandled_input(_key(KEY_A))
+		hub._on_gui_input(_click(hub.menu_rect("awaken").get_center()))
+		t.check(emitted == ["awaken", "awaken"] and hub.line == "", "A and the button emit awaken (%s, %s)" % [emitted, hub.line])
+		hub.free()
+	# Dev, not capped, Hunt due: P2's refusal (kept).
+	var low := _slot()
+	low.notice = 100
+	var dev := GodHub.new().setup(low, "", true)
+	var dev_emitted := []
+	dev.action.connect(func(what: String) -> void: dev_emitted.append(what))
+	dev._unhandled_input(_key(KEY_A))
+	t.check(dev_emitted.is_empty() and dev.line == GodHub.AWAKEN_HUNT, "dev, not capped, Hunt due: P2's refusal (%s, %s)" % [dev_emitted, dev.line])
+	dev.free()
+
+
+## "Stolen gifts: ..." (MS §4): "" with none; one gift exactly; the names joined with ", ".
+static func _hub_gifts(t) -> void:
+	var god := _slot()
+	var hub := GodHub.new().setup(god)
+	t.check(hub.gifts_line() == "", "no gifts: no line (%s)" % hub.gifts_line())
+	god.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL])
+	t.check(hub.gifts_line() == "Stolen gifts: The Watchful Bell", "one gift (%s)" % hub.gifts_line())
+	god.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL, "nobody_knows"])
+	t.check(hub.gifts_line() == "Stolen gifts: The Watchful Bell", "an unknown id is not named (%s)" % hub.gifts_line())
+	t.check(UiTheme.width(hub.gifts_line()) < 600.0, "and it fits the screen")
+	hub.free()
+
+
+## P1's lines keep their indices with gifts present (the gifts line is drawn after them).
+static func _hub_lines_unchanged(t) -> void:
+	var god := _slot()
+	god.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL])
+	var hub := GodHub.new().setup(god)
+	t.check(Array(hub.lines()) == ["RUIN", "Level 1   Whisper", "0 / 50 Divine Power", "Ability points 0", "Faith 0", "Lantern Notice 0%",
+		"Night 1"], "the hub's lines are P1's whatever the gifts (%s)" % [hub.lines()])
 	hub.free()

@@ -113,9 +113,9 @@ The milestone review (opus) approved the merged tree: 0 critical, 0 important, 6
 Left on purpose; each has a short fix or waits for a later task.
 
 **From the milestone review (left in the fix wave, C13):**
-- M1. A night that is already decided but closed during the 2-3 s ending is forfeited. A won Hunt becomes a lost Hunt with a seal (and any won night becomes +25 instead of its own change). The file still says `in_night` from the end of the objective until the ending finishes. P1 accepted "a crash mid-night costs a night"; P2 makes the window cost more. Fix: have Game bank on the mission's `over` signal and leave only the screen change to `finished`.
-- M3. The night after a Hunt may be the night before it. The Hunt's stand-in becomes the "last mission", so the draw may pick the mission played before the Hunt (the FLOW log shows first_prayers, the Hunt, first_prayers). As ruled (P2-10). Avoiding it needs a second remembered id.
-- M4. A failed clock-start write is invisible if the player then quits. The failure line lives in memory for the next hub; with the file missing `in_night` the reload forfeits nothing and nothing was shown. A disk error only (a failing disk usually failed earlier writes too, which were shown).
+- M1. Fixed after landing (`96075662`, Ruling F4): an Endless night banks the moment it is decided, so closing the window during the ending keeps a won night.
+- M3. Fixed after landing (`96075662`, Ruling F5): the night after a Hunt draws neither the stand-in nor the night before the Hunt.
+- M4. Fixed after landing (`96075662`, Ruling F6): a failed clock-start write also shows THE GOD COULD NOT BE SAVED on the night's banner. A second act does not repeat it.
 
 **From the tasks' deferred minors (`progress.md`):**
 - Task 1 M1. A lost Hunt with nothing to seal keeps `unsealed` when a seal just ran out, and no test reaches it; the Hunt's forfeit line never mentions the freed ability. Practically unreachable (it needs a seal whose key was respecced out).

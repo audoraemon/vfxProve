@@ -457,7 +457,7 @@ static func toggles_ui(event: InputEvent) -> bool:
 
 ## Shows `text` on the mission's banner, as the town's responses do (god P2 fix wave, review M4: a failed save at the clock's start).
 func announce(text: String) -> void:
-	if _rules != null:
+	if is_instance_valid(_rules):
 		_rules.banner.emit(text)
 
 

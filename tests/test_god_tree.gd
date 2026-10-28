@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_dev_fill(t)
 	_real_wins(t)
 	_flavour(t)
+	_tier1_real(t)
 
 
 static func _shape(t) -> void:
@@ -144,3 +145,12 @@ static func _flavour(t) -> void:
 	for type: String in GodTree.RING:
 		ok = ok and String(GodTree.FLAVOUR.get(type, "")) != ""
 	t.check(ok, "each of the six types has a flavour line")
+
+
+## The real tree's Tier 1 is the user's D2 picks, in spot order (god T1R Task 7): the table the 30-pair gate plays.
+static func _tier1_real(t) -> void:
+	var want := {"ruin": ["smite", "ember"], "death": ["deathmark", "pestilence"], "veil": ["doom", "blight"],
+		"passage": ["thorns", "mirror"], "decree": ["noleave", "belllies"], "dominion": ["whisper", "discord"]}
+	var real := GodTree.real()
+	for type: String in GodTree.RING:
+		t.check(Array(real[type][0]) == want[type], "real tree Tier 1 of %s is %s, in spot order (%s)" % [type, want[type], real[type][0]])

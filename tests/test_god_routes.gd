@@ -19,6 +19,7 @@ class FakeBc:
 
 static func run(t) -> void:
 	_dispatch(t)
+	_all_filled(t)
 	_god_draft(t)
 	_last_fx(t)
 	_outside_spot(t)
@@ -81,6 +82,14 @@ static func _dispatch(t) -> void:
 	t.check(stubs_quiet, "a stub casts nothing on an empty ctx")
 	t.check(not GodT1.has_policy("miras", "ruin") and not GodT1.has_policy("tax", "nobody"), "an unknown scenario or type has none")
 	t.check(GodT1.filled("nowhere").is_empty() and GodT1.state("nowhere", null, {}) == "", "an unknown scenario has nothing filled")
+
+
+## Every mission's policy file has written all six types (god T1R Task 7): FILLED names them, so no pair is a stub at the 30-pair gate.
+static func _all_filled(t) -> void:
+	for scenario: String in GodT1.SCENARIOS:
+		var filled := GodT1.filled(scenario)
+		for type: String in GodTree.RING:
+			t.check(type in filled, "%s: the %s policy is filled (FILLED holds %s)" % [scenario, type, Array(filled)])
 
 
 ## The draft behaviour_check plays under --god=<type>:1 with no --route: the real tree's Tier 1 pair (D2), dev fill off.

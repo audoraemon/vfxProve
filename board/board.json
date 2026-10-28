@@ -1,8 +1,8 @@
 {
- "hash": "d57c6190f75f5e38",
- "updated": "2026-10-28T04:06:02+07:00",
+ "hash": "7283094d66b5a434",
+ "updated": "2026-10-28T07:22:56+07:00",
  "changes": {
-  "date": "<t:1793135162:f>",
+  "date": "<t:1793146976:f>",
   "items": []
  },
  "snapshot": {
@@ -1071,67 +1071,35 @@
   },
   "branches": [
    {
-    "name": "feat/god-progression",
-    "ahead": 43,
-    "behind": 0,
-    "date": "2026-10-28",
-    "subject": "docs: god P2 summary -- references 286/0, FLOW 175/0 on the final tree, bench pairs vs kak-god-p1",
-    "pushed": true
-   },
-   {
-    "name": "claude/god-p2-lantern-04cddc",
-    "ahead": 43,
-    "behind": 0,
-    "date": "2026-10-28",
-    "subject": "docs: god P2 summary -- references 286/0, FLOW 175/0 on the final tree, bench pairs vs kak-god-p1",
-    "pushed": false
-   },
-   {
-    "name": "god/t1r-t2",
-    "ahead": 39,
+    "name": "god/t1routes",
+    "ahead": 52,
     "behind": 0,
     "date": "2026-10-28",
     "subject": "fix: the postern key ignores the town's evacuation; the running phase's own hint (god T1R Task 2 fix round 3, D30)",
     "pushed": false
    },
    {
-    "name": "god/t1r-t5",
-    "ahead": 39,
+    "name": "feat/god-progression",
+    "ahead": 45,
     "behind": 0,
     "date": "2026-10-28",
-    "subject": "test: pin the bound_by guard on the Lamb startle path (review M5, god T1R Task 5)",
-    "pushed": false
+    "subject": "docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid",
+    "pushed": true
    },
    {
-    "name": "god/t1r-t3",
-    "ahead": 38,
+    "name": "claude/god-p2-lantern-04cddc",
+    "ahead": 45,
     "behind": 0,
     "date": "2026-10-28",
-    "subject": "test: Tax Collector fix round 2 -- the visited-door and unsealed-law tests bite (god T1R Task 3)",
-    "pushed": false
-   },
-   {
-    "name": "god/t1r-t4",
-    "ahead": 37,
-    "behind": 0,
-    "date": "2026-10-28",
-    "subject": "fix: Spoiled Harvest's seizure reads the law's centre; carter orders in a helper (god T1R Task 4, fix round 1)",
+    "subject": "docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid",
     "pushed": false
    },
    {
     "name": "god/t1r-t6",
-    "ahead": 37,
+    "ahead": 36,
     "behind": 0,
     "date": "2026-10-28",
-    "subject": "wip2: policies, capital walkers, B",
-    "pushed": false
-   },
-   {
-    "name": "god/t1routes",
-    "ahead": 35,
-    "behind": 0,
-    "date": "2026-10-27",
-    "subject": "feat: MissionDirector.left_the_map signal for leavers taken off the map",
+    "subject": "feat: First Prayers' routes for every god type -- the poor come to pray (god T1R Task 6)",
     "pushed": false
    },
    {

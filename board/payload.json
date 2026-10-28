@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **23** to do · **84** done\n**9** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **22** to do · **84** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1793205871:f>)\n• Started: God P3: the Awaken rite mission type and the first rite",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-28T15:02:57+07:00"
+     "timestamp": "2026-10-28T23:44:31+07:00"
     },
     {
      "title": "god/t1routes",
@@ -20,13 +20,13 @@
      "color": 5016537
     },
     {
-     "title": "feat/god-progression",
-     "description": "45 commits not in Develop-Main · last commit today\n> docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid\n\n**In progress** (1)\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n\n**To do** (2)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• God P3: the Awaken rite mission type and the first rite",
+     "title": "god/p3-rite",
+     "description": "47 commits not in Develop-Main · last commit today · local only\n> docs: god P3 spec approved by the user with all six recommended answers\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
-     "title": "claude/god-p2-lantern-04cddc",
-     "description": "45 commits not in Develop-Main · last commit today · local only\n> docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid\n\n_No Ledger task points at this branch._",
+     "title": "feat/god-progression",
+     "description": "45 commits not in Develop-Main · last commit today\n> docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid\n\n**In progress** (2)\n• God P3: the Awaken rite mission type and the first rite\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n\n**To do** (1)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {

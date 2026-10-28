@@ -1,9 +1,11 @@
 {
- "hash": "6869743d1acc15f9",
- "updated": "2026-10-28T15:02:57+07:00",
+ "hash": "67bae54884994ce1",
+ "updated": "2026-10-28T23:44:31+07:00",
  "changes": {
-  "date": "<t:1793174577:f>",
-  "items": []
+  "date": "<t:1793205871:f>",
+  "items": [
+   "Started: God P3: the Awaken rite mission type and the first rite"
+  ]
  },
  "snapshot": {
   "project": {
@@ -249,12 +251,12 @@
    },
    "god-p3-first-rite": {
     "title": "God P3: the Awaken rite mission type and the first rite",
-    "status": "todo",
+    "status": "doing",
     "area": "Design",
     "version": "next",
     "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-10-27",
+    "updated": "2026-10-28",
     "order": 191
    },
    "god-progression-design": {
@@ -1079,20 +1081,20 @@
     "pushed": false
    },
    {
+    "name": "god/p3-rite",
+    "ahead": 47,
+    "behind": 0,
+    "date": "2026-10-28",
+    "subject": "docs: god P3 spec approved by the user with all six recommended answers",
+    "pushed": false
+   },
+   {
     "name": "feat/god-progression",
     "ahead": 45,
     "behind": 0,
     "date": "2026-10-28",
     "subject": "docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid",
     "pushed": true
-   },
-   {
-    "name": "claude/god-p2-lantern-04cddc",
-    "ahead": 45,
-    "behind": 0,
-    "date": "2026-10-28",
-    "subject": "docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid",
-    "pushed": false
    },
    {
     "name": "god/t1r-t6",

@@ -16,6 +16,9 @@ class StubRite extends RiteDirector:
 	var rows: Array[Dictionary] = []
 	var key_answer := ""
 	var tag_ring := -1.0
+	## Where the one tag sits (screen pixels with an identity camera, lift 0), whether it is edge-arrowed, and its label.
+	var tag_screen := Vector2.INF
+	var tag_edge := false
 
 	func rite_id() -> String:
 		return RiteBook.FIRST_TASTE
@@ -43,7 +46,8 @@ class StubRite extends RiteDirector:
 
 	func tags() -> Array[MapTag]:
 		var out: Array[MapTag] = []
-		var t := MapTag.person(Vector2(2.0, 3.0), Color.RED, "CAPTIVE")
+		var t := MapTag.person(Vector2(2.0, 3.0) if tag_screen == Vector2.INF else Iso.screen_to_ground(tag_screen), Color.RED, "CAPTIVE", tag_edge)
+		t.lift = 0.0
 		t.ring = tag_ring
 		out.append(t)
 		return out
@@ -57,6 +61,8 @@ static func run(t) -> void:
 	_chains_key(t)
 	_refused_shows(t)
 	_tags_clear_chain(t)
+	_arrows_clear_chain(t)
+	_refused_once(t)
 	_strip_merges(t)
 	_ring_redraw(t)
 	_rise_scale(t)
@@ -252,25 +258,71 @@ static func _refused_shows(t) -> void:
 	_done(s)
 
 
-## A tag whose label would lie under the plate is moved off it by tag_layout(): its label stays off (no tag's plate over the chain plate).
+## A tag whose label would lie under the plate has it moved off or left out, through the HUD's own layout (_lay_out_tags(), the one _draw_tags() draws),
+## so dropping the chain rect from its plates fails here (task 5 review minor).
 static func _tags_clear_chain(t) -> void:
 	var s := _world(THREE)
 	var hud: Hud = s.hud
+	var d: StubRite = s.d
 	var chain := hud.chain_rect()
-	var c := chain.get_center() + Vector2(0.0, 6.0)  # the diamond inside the plate's lower half, its label above it
-	var tag := MapTag.person(Iso.screen_to_ground(c), Color.RED, "CAPTIVE")
-	tag.lift = 0.0
-	var tags: Array[MapTag] = [tag]
-	var view := Vector2(640.0, 360.0)
-	var free := Hud.tag_layout(tags, Transform2D.IDENTITY, view)
-	var taken: Array[Rect2] = [chain]
-	var kept := Hud.tag_layout(tags, Transform2D.IDENTITY, view, Rect2(), taken)
-	var e: Dictionary = free[0]
-	t.check(String(e.mode) == "map" and bool(e.show) and (e.label as Rect2).intersects(chain),
-		"without the plate counted, the label lies on it (%s over %s, shown %s)" % [e.label, chain, e.show])
-	var k: Dictionary = kept[0]
+	d.tag_screen = chain.get_center() + Vector2(0.0, 6.0)  # the diamond inside the plate's lower half, its label above it
+	var layout := hud._lay_out_tags()
+	var k: Dictionary = layout[0]
 	t.check(String(k.mode) == "map" and (not bool(k.show) or not (k.label as Rect2).intersects(chain)),
-		"with it counted, the label is moved off or left out (%s, shown %s)" % [k.label, k.show])
+		"the HUD's layout keeps the label off the plate (%s over %s, shown %s)" % [k.label, chain, k.show])
+	var tags: Array[MapTag] = [d.tags()[0]]
+	var bare := Hud.tag_layout(tags, Transform2D.IDENTITY, Vector2(640.0, 360.0))
+	var e: Dictionary = bare[0]
+	t.check(String(e.mode) == "map" and bool(e.show) and (e.label as Rect2).intersects(chain),
+		"and without the plate counted the label would lie on it (%s, shown %s)" % [e.label, e.show])
+	_done(s)
+
+
+## Review I1: the plate is a keepout for edge arrows and diamonds too. A victim far to the south-east gets an arrow on the frame's bottom edge right
+## over the plate's x-range; a victim's diamond under the plate becomes an arrow above it.
+static func _arrows_clear_chain(t) -> void:
+	var s := _world(SIX)
+	var hud: Hud = s.hud
+	var d: StubRite = s.d
+	var chain := hud.chain_rect()
+	var view := Vector2(640.0, 360.0)
+	d.tag_edge = true
+	d.tag_screen = Vector2(2900.0, 1365.0)
+	var tags: Array[MapTag] = [d.tags()[0]]
+	var bare: Dictionary = Hud.tag_layout(tags, Transform2D.IDENTITY, view)[0]
+	var pad := Vector2.ONE * Hud.ARROW_PAD
+	t.check(String(bare.mode) == "arrow" and Rect2((bare.arrow as Vector2) - pad, pad * 2.0).intersects(chain),
+		"far south-east: without the keepout the arrow's tip sits on the plate (%s over %s)" % [bare.arrow, chain])
+	var e: Dictionary = hud._lay_out_tags()[0]
+	var tip: Vector2 = e.arrow
+	t.check(String(e.mode) == "arrow" and not Rect2(tip - pad, pad * 2.0).intersects(chain) and Rect2(Vector2.ZERO, view).has_point(tip),
+		"with it the HUD's layout puts the tip clear of the plate (%s, plate %s)" % [tip, chain])
+	t.check((e.dir as Vector2).x > 0.0 and (e.dir as Vector2).y > 0.0 and (not bool(e.show) or not (e.label as Rect2).intersects(chain)),
+		"still pointing south-east, its label off the plate")
+	# A diamond under the plate: an edge tag becomes an arrow above it; a tag without edge keeps its diamond.
+	d.tag_screen = chain.get_center()
+	var under: Dictionary = hud._lay_out_tags()[0]
+	var tip2: Vector2 = under.arrow
+	t.check(String(under.mode) == "arrow" and not Rect2(tip2 - pad, pad * 2.0).intersects(chain),
+		"a diamond under the plate becomes an arrow above it (%s)" % [under.mode])
+	d.tag_edge = false
+	t.check(String((hud._lay_out_tags()[0] as Dictionary).mode) == "map", "a tag without edge keeps its diamond")
+	_done(s)
+
+
+## Review I3: the same refusal twice running is queued once, however often C is pressed; a different one queues, and then the first again.
+static func _refused_once(t) -> void:
+	var s := _world(THREE)
+	var hud: Hud = s.hud
+	for i in 10:
+		hud.chain_refused(RiteDirector.ONE_CHAIN)
+	t.check(hud.banners() == PackedStringArray([RiteDirector.ONE_CHAIN]), "ten refusals with the same words queue one banner (%s)" % [hud.banners()])
+	t.check(hud.chain_flashing(), "and the plate still flashes")
+	hud.chain_refused(RiteDirector.NOT_READY)
+	hud.chain_refused(RiteDirector.NOT_READY)
+	hud.chain_refused(RiteDirector.ONE_CHAIN)
+	t.check(hud.banners() == PackedStringArray([RiteDirector.ONE_CHAIN, RiteDirector.NOT_READY, RiteDirector.ONE_CHAIN]),
+		"other words queue, and the first again after them (%s)" % [hud.banners()])
 	_done(s)
 
 
@@ -337,8 +389,13 @@ static func _rite_plate(t) -> void:
 	var lines := RiteBook.plate_lines(RiteBook.FIRST_TASTE)
 	hud.show_rite_plate(lines)
 	var r := hud.rite_plate_rect()
-	t.check(hud.rite_plate_up() and r.position.y == 120.0 and r.end.y == 200.0 and absf(r.get_center().x - 320.0) <= 1.0
-		and Rect2(0.0, 0.0, 640.0, 360.0).encloses(r), "the plate is centred at y 120 to 200 (%s)" % r)
+	t.check(hud.rite_plate_up() and r.position.y == Hud.RITE_PLATE_TOP and r.size.y == Hud.RITE_PLATE_H and absf(r.get_center().x - 320.0) <= 1.0
+		and Rect2(0.0, 0.0, 640.0, 360.0).encloses(r), "the plate is centred, 80 tall, inside the screen (%s)" % r)
+	# Review I2: the banner's bar (the last shard's banner is up as the plate is) and Cael's line stay uncovered, however wide they are.
+	var bar := Rect2(0.0, Hud.BANNER_TOP, 640.0, Hud.BANNER_H)
+	var cael := Rect2(0.0, Hud.SUBTITLE_TOP, 640.0, Hud.SUBTITLE_H)
+	t.check(not r.intersects(bar) and not r.intersects(cael) and r.position.y > bar.end.y and r.position.y > cael.end.y,
+		"the plate lies below the banner's bar (%s) and Cael's line (%s), covering neither" % [bar, cael])
 	t.check(not hud.stack_rect().has_area() and not hud.events_rect(640.0).has_area() and not hud.chain_shown(),
 		"and it replaces the stack, the strip and the chain plate")
 	var rest := UiTheme.wrap(lines[2], Hud.RITE_PLATE_WRAP, UiTheme.SIZE_SMALL)
@@ -388,9 +445,11 @@ static func _keys_drive_the_chain(t) -> void:
 	m._unhandled_input(_key(KEY_C))
 	m._unhandled_input(_click(hud.slot_rect(0).get_center()))
 	t.check(not m.chain_aim and aim.slot == 0, "a click on a slot ends it too and focuses that slot")
+	var pauses := [0]
+	m.pause_pressed.connect(func() -> void: pauses[0] += 1)
 	m._unhandled_input(_key(KEY_C))
 	m._unhandled_input(_key(KEY_ESCAPE))
-	t.check(not m.chain_aim and not hud.chain_aiming, "Esc ends it, and opens no pause menu")
+	t.check(not m.chain_aim and not hud.chain_aiming and pauses[0] == 0, "Esc ends it, and opens no pause menu (%d)" % pauses[0])
 	m._unhandled_input(_key(KEY_C))
 	m._unhandled_input(_click(Vector2(100.0, 100.0), MOUSE_BUTTON_RIGHT))
 	t.check(not m.chain_aim, "a right-click ends it")
@@ -413,9 +472,10 @@ static func _keys_drive_the_chain(t) -> void:
 		# Not ready now: C is refused with the director's words, flashes, and begins no aim.
 		hud.advance(1.0)
 		var banners := hud.banners().size()
-		m._unhandled_input(_key(KEY_C))
+		for i in 10:
+			m._unhandled_input(_key(KEY_C))
 		t.check(not m.chain_aim and hud.chain_flashing() and hud.banners().size() == banners + 1 and hud.banners()[banners] == RiteDirector.ONE_CHAIN,
-			"C during a chain: ONE CHAIN AT A TIME, the plate flashes, no aim (%s)" % [hud.banners()])
+			"C ten times during a chain: ONE CHAIN AT A TIME queued once, the plate flashes, no aim (%s)" % [hud.banners()])
 	# A Yank is the director's own; Mission only clicks.
 	hud.advance(1.0)
 	d.key_answer = "yank"

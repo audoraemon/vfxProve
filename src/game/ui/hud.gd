@@ -16,6 +16,12 @@ const BANNER_SECONDS := 2.2
 const SUBTITLE_SECONDS := 4.0
 const SUBTITLE_TOP := 140.0
 const SUBTITLE_GAP := 6.0
+## The banner's bar (y 116, 20 tall) and Cael's plate (17 tall) as _draw_banners() and _draw_subtitle() draw them.
+const BANNER_TOP := 116.0
+const BANNER_H := 20.0
+const SUBTITLE_H := 17.0
+## How far an edge arrow's disc reaches round its tip: a tip that close to the chain plate is moved off it (task 5 review I1).
+const ARROW_PAD := 8.0
 ## A slot that refused a cast stays red for this long (spec §1; the buzz that goes with it is milestone 5's).
 const FLASH_SECONDS := 0.35
 ## The clock turns red and pulses under this many seconds (spec §5).
@@ -114,8 +120,9 @@ const CHAIN_LABEL := "C CHAIN"
 ## The plate's icon: an existing one (Leaving Is Prohibited's, plan P3-17, C4: no new art).
 const CHAIN_ICON := "noleave"
 const CHAIN_ICON_SIZE := 16.0
-## The rite's win plate (god P3, MS §5, plan P3-18): centred, y 120 to 200, in place of the stack, the strip and the slots while it shows.
-const RITE_PLATE_TOP := 120.0
+## The rite's win plate (god P3, MS §5, plan P3-18): centred, below the banner's bar (BANNER_TOP + BANNER_H) and Cael's line (SUBTITLE_TOP + SUBTITLE_H) so
+## neither is covered while it shows (task 5 review I2), in place of the stack, the strip and the slots while it shows.
+const RITE_PLATE_TOP := 164.0
 const RITE_PLATE_H := 80.0
 const RITE_PLATE_WRAP := 560.0
 
@@ -669,11 +676,11 @@ func wish_at(point: Vector2) -> int:
 
 
 ## The ascent begins (v0.11 M1, spec §6): a column of light over the ground point `at`.
-## god P3 (MS §5, plan P3-18): `scale` widens the column -- a won rite's is Mission.RITE_RISE, twice the ascent's. 1.0 draws exactly as before.
-func rise(at: Vector2, scale := 1.0) -> void:
+## god P3 (MS §5, plan P3-18): `width_scale` widens the column -- a won rite's is Mission.RITE_RISE, twice the ascent's. 1.0 draws exactly as before.
+func rise(at: Vector2, width_scale := 1.0) -> void:
 	_rise_at = at
 	_rise_age = 0.0
-	_rise_scale = scale
+	_rise_scale = width_scale
 
 
 ## How wide the column is drawn relative to the ascent's (god P3).
@@ -740,9 +747,7 @@ func _draw_gaze(w: float) -> void:
 func _draw_tags() -> void:
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
 	# v0.11.1 §3: the hover comes from the previous frame's arrows (cheap, one frame late), read before the layout is replaced.
-	var hover := _hover_point()
-	_layout = tag_layout(all_tags(), xf, _view(), stack_rect(), [events_rect(_view().x), slots_rect(), chain_rect() if chain_shown() else Rect2()],
-		hover, details)
+	_layout = _lay_out_tags()
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
 	# earlier one.
 	for e: Dictionary in _layout:
@@ -760,6 +765,17 @@ func _draw_tags() -> void:
 		if String(e.mode) == "map" and bool(e.show):
 			var t: MapTag = e.tag
 			_plate((e.label as Rect2).position, t.label, t.color)
+
+
+## The frame's tag layout (tag_layout()) with the HUD's own plates kept clear: the stack as the keepout, the strip, the slot bar and the chain plate
+## as plates no label may cover, and the chain plate also as a place no arrow or diamond may sit (god P3, task 5 review I1).
+func _lay_out_tags() -> Array:
+	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	# v0.11.1 §3: the hover comes from the previous frame's arrows (cheap, one frame late), read before the layout is replaced.
+	var hover := _hover_point()
+	var chain := chain_rect() if chain_shown() else Rect2()
+	var taken: Array[Rect2] = [events_rect(_view().x), slots_rect(), chain]
+	return tag_layout(all_tags(), xf, _view(), stack_rect(), taken, hover, details, chain)
 
 
 ## A tag's ring (god P3, MS §2, §3.4): a dark circle round the diamond and, over it, a red arc filling clockwise from the top as `t.ring` goes 0 to 1 --
@@ -874,8 +890,10 @@ static func label_rect(text: String, centre: Vector2, view: Vector2) -> Rect2:
 ## v0.11.1 §3: with `arrow_labels` false an off-screen tag's arrow shows no label plate unless `hover` (screen pixels) is within
 ## ARROW_HOVER_PX of its disc -- the nearest one only; a bare arrow's plate is never placed, so it blocks no label. The defaults
 ## (labels on, no hover) are v0.11's layout exactly.
+## god P3 (task 5 review I1) `avoid`, the chain plate: empty, the layout as it was. Else an `edge` tag whose diamond lies under it becomes an arrow
+## just above it, and an arrow whose tip would sit within ARROW_PAD of it moves up to ARROW_PAD above it, so the player can still see what he must chain.
 static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keepout := Rect2(), taken: Array[Rect2] = [],
-		hover := Vector2.INF, arrow_labels := true) -> Array:
+		hover := Vector2.INF, arrow_labels := true, avoid := Rect2()) -> Array:
 	var out := []
 	var frame := tag_frame(view)
 	var keep := keepout.has_area()
@@ -889,7 +907,8 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keep
 		var c := tag_point(t, xf)
 		var e := {"tag": t, "c": c, "mode": "", "arrow": Vector2.INF, "dir": Vector2.ZERO, "label": Rect2(), "show": false}
 		var hidden := keep and t.edge and keepout.has_point(c)
-		if (frame.has_point(c) and not hidden) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
+		var under := avoid.has_area() and t.edge and avoid.has_point(c)
+		if (frame.has_point(c) and not hidden and not under) or (not t.edge and Rect2(Vector2.ZERO, view).has_point(c)):
 			e.mode = "map"
 			e.label = label_rect(t.label, c - Vector2(0.0, t.size + LABEL_GAP + PLATE_H * 0.5), view)
 			if keep and not keepout.has_point(c) and (e.label as Rect2).intersects(keepout):
@@ -899,6 +918,8 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keep
 					e.label = _label_aside(t.label, c, t.size, b, view)
 		elif t.edge:
 			var tip := frame_point(c, frame, keepout)
+			if avoid.has_area() and (under or Rect2(tip - Vector2.ONE * ARROW_PAD, Vector2.ONE * ARROW_PAD * 2.0).intersects(avoid)):
+				tip = Vector2(clampf(tip.x, frame.position.x, frame.end.x), avoid.position.y - ARROW_PAD)
 			var d := (c - frame.get_center()).normalized()
 			var reach := ARROW_REACH + absf(d.x) * plate_size(t.label).x * 0.5 \
 				+ absf(d.y) * PLATE_H * 0.5
@@ -1535,7 +1556,7 @@ func _draw_banners(w: float) -> void:
 	var x := roundf((w - text_w) * 0.5)
 	# A banner announces something that is happening right now, which means it lands on top of the effect that
 	# caused it. On its own bar with a gold edge it stays readable over lightning or a wave.
-	var bar := Rect2(x - 8.0, 116.0, text_w + 16.0, 20.0)
+	var bar := Rect2(x - 8.0, BANNER_TOP, text_w + 16.0, BANNER_H)
 	draw_rect(bar, Color(0.03, 0.03, 0.05, 0.78 * fade))
 	var edge := UiTheme.COL_GOLD_DARK
 	edge.a = fade
@@ -1555,7 +1576,7 @@ func _draw_subtitle(w: float) -> void:
 	var who := speaker()
 	var who_w := UiTheme.width(who, UiTheme.SIZE_SMALL)
 	var x := roundf((w - subtitle_width(text)) * 0.5)
-	draw_rect(Rect2(x - 6.0, SUBTITLE_TOP, subtitle_width(text) + 12.0, 17.0), Color(0.03, 0.03, 0.05, 0.72 * fade))
+	draw_rect(Rect2(x - 6.0, SUBTITLE_TOP, subtitle_width(text) + 12.0, SUBTITLE_H), Color(0.03, 0.03, 0.05, 0.72 * fade))
 	var gold := UiTheme.COL_GOLD
 	gold.a = fade
 	var body := UiTheme.COL_TEXT
@@ -1627,7 +1648,8 @@ func _modes_labels(modes: Array) -> Array[String]:
 
 
 ## Where the focused power's modes plate is drawn over its slot `box` (god P3 pre-flight R2: the chain plate steps clear of it); Rect2() when the
-## focused power has no modes. `box` defaults to the focused slot's.
+## focused power has no modes. `box` defaults to the focused slot's. The right-edge clamp reads _view() (the Control's width), as slot_rect() does for the row
+## this plate sits over: the HUD is a full-rect Control, so it is the viewport's width in the game (the clamp this replaced read the viewport directly).
 func modes_rect(box := Rect2()) -> Rect2:
 	if _aim == null or _rules == null or _aim.slot < 0 or _aim.slot >= _rules.loadout.size():
 		return Rect2()
@@ -1678,10 +1700,13 @@ func chain_state() -> String:
 	return d.chain_plate() if d != null else ""
 
 
-## A chain was refused (god P3, MS §2): the plate flashes red, a buzz sounds and the words show as a quiet banner (the buzz is its sound).
+## A chain was refused (god P3, MS §2): the plate flashes red, a buzz sounds and the words show as a quiet banner (the buzz is its sound); the
+## same words twice running show once (task 5 review I3).
 func chain_refused(text: String) -> void:
 	_chain_flash = FLASH_SECONDS
-	push_banner(text, true)
+	# The same words as the last one queued are not queued again: tapping C through a drag must not stack 2.2 s banners in front of the director's own.
+	if _banners.is_empty() or String(_banners.back()[0]) != text:
+		push_banner(text, true)
 	UiSound.play(&"ui_buzz")
 
 

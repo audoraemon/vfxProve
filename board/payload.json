@@ -12,7 +12,7 @@
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-28T07:22:56+07:00"
+     "timestamp": "2026-10-28T15:02:57+07:00"
     },
     {
      "title": "god/t1routes",
@@ -31,7 +31,7 @@
     },
     {
      "title": "god/t1r-t6",
-     "description": "36 commits not in Develop-Main · last commit today · local only\n> feat: First Prayers' routes for every god type -- the poor come to pray (god T1R Task 6)\n\n_No Ledger task points at this branch._",
+     "description": "38 commits not in Develop-Main · last commit today · local only\n> fix: First Prayers -- D33's conditions: the hint names the brambles, the poor come themselves, no bramble-look Believer, a wall on the door works (go…\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

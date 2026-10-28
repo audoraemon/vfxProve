@@ -1,8 +1,8 @@
 {
- "hash": "7283094d66b5a434",
- "updated": "2026-10-28T07:22:56+07:00",
+ "hash": "6869743d1acc15f9",
+ "updated": "2026-10-28T15:02:57+07:00",
  "changes": {
-  "date": "<t:1793146976:f>",
+  "date": "<t:1793174577:f>",
   "items": []
  },
  "snapshot": {
@@ -1096,10 +1096,10 @@
    },
    {
     "name": "god/t1r-t6",
-    "ahead": 36,
+    "ahead": 38,
     "behind": 0,
     "date": "2026-10-28",
-    "subject": "feat: First Prayers' routes for every god type -- the poor come to pray (god T1R Task 6)",
+    "subject": "fix: First Prayers -- D33's conditions: the hint names the brambles, the poor come themselves, no bramble-look Believer, a wall on the door works (god T1R Task 6, fix round 2)",
     "pushed": false
    },
    {

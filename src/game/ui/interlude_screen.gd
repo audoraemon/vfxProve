@@ -29,6 +29,8 @@ var choices: Array = []
 var selected := 0
 ## True in an Endless Night (set before setup()): the second button abandons the night after a confirm, and Esc does not leave.
 var endless := false
+## The god's Lantern Notice now, set by Game (god P2 fix wave, M2): the confirm states the rise it will really cause.
+var notice := 0
 
 var _result := {}
 ## The name of the act just played, looked up once.
@@ -112,9 +114,9 @@ func confirming() -> bool:
 	return _confirm
 
 
-## What the confirm says: the pause menu's words for a night whose clock has started (every interlude is after the first act); "" while it is not up.
+## What the confirm says: the pause menu's words (PauseMenu.lost_line at the god's Notice, god P2 fix wave M2) for a night whose clock has started (every interlude is after the first act); "" while it is not up.
 func confirm_line() -> String:
-	return PauseMenu.CONFIRM_LOST if _confirm else ""
+	return PauseMenu.lost_line(notice) if _confirm else ""
 
 
 ## Opens (or closes) the confirm: the buttons become Abandon and Stay, and the two rows return on Stay.

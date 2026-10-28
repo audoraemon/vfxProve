@@ -17,6 +17,9 @@ signal prewarmed
 ## The clock starts (god P1, Ruling P9): once at the end of each intro, a mission's or an act's. Endless Night marks the god's night
 ## open on it, and a night left after this counts as lost.
 signal clock_started
+## The run is decided (god P2 fix wave, review M1): only when `report_on_decision`, at the start of the ending, with the very result
+## `finished` carries after it, so Endless Night can bank the night before the 2-3 s ending a closed window would otherwise lose.
+signal decided(result: Dictionary)
 
 ## The four powers a mission starts with until the Prepare screen exists (milestone 4). Override on the
 ## command line: -- --loadout=heaven,gravity,judgement,nova
@@ -114,6 +117,9 @@ var levels := {}
 var night_def: Callable
 ## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
 var restart_locked := false
+## True in Endless Night (review M1): the last act's result is taken when the run is decided and `decided` carries it; `finished`
+## then carries the same dictionary. Off everywhere else, so every other result is still taken after the ending.
+var report_on_decision := false
 ## The loadout start() was last given (v0.11 M1): an R restart passes none and replays this one, not the mission's default
 ## (which on the board would hand out locked powers and drop what the player drafted).
 var _drafted := PackedStringArray()
@@ -447,6 +453,12 @@ func set_ui_hidden(on: bool) -> void:
 ## Whether `event` is HIDE_UI_KEY pressed.
 static func toggles_ui(event: InputEvent) -> bool:
 	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == HIDE_UI_KEY
+
+
+## Shows `text` on the mission's banner, as the town's responses do (god P2 fix wave, review M4: a failed save at the clock's start).
+func announce(text: String) -> void:
+	if is_instance_valid(_rules):
+		_rules.banner.emit(text)
 
 
 ## The banners held while the act was built, after its intro's own (the HUD queues them).
@@ -859,6 +871,10 @@ func _play_ending() -> void:
 	set_ui_hidden(false)  # the ending's banner and the result are never hidden
 	_aim.unfocus()
 	var ended := _rules
+	var early := {}
+	if report_on_decision and (_night == null or _act.is_last()):
+		early = _final_result()
+		decided.emit(early)
 	if not _scripted:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
@@ -869,15 +885,25 @@ func _play_ending() -> void:
 			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.
 			return
 		_bf.ctx.impact.set_base_time_scale(1.0)
+	if not early.is_empty():
+		finished.emit(early)
+		return
+	if _night == null or _act.is_last():
+		finished.emit(_final_result())
+		return
+	var res := _rules.result()
+	_night.record(_act.id, res, _crowd)
+	act_over.emit(res)
+
+
+## The run's last result, as `finished` carries it: the mission's, or the night's with this last act recorded; a board night's with its
+## Descent's report.
+func _final_result() -> Dictionary:
 	var res := _rules.result()
 	if _night == null:
-		finished.emit(_with_descent(res))
-		return
+		return _with_descent(res)
 	_night.record(_act.id, res, _crowd)
-	if _act.is_last():
-		finished.emit(_with_descent(_night.result(res, _def.id, _def.scored)))
-	else:
-		act_over.emit(res)
+	return _with_descent(_night.result(res, _def.id, _def.scored))
 
 
 ## A board night's result (v0.11 M1) with its Descent's report merged in ("descend"); any other as it is.

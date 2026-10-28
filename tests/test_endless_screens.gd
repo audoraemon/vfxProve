@@ -1,4 +1,6 @@
 extends RefCounted
+## God P2 Task 3 adds the Lantern to these screens: the results' Notice change and Hunt lines, Prepare's Hunt header and stake and its
+## sealed cards, and the pause confirm's price (spec §9.1, §10; Rulings P2-4, P2-5, P2-11; preflight B2, R4, R5, R7).
 ## God P1 Task 10 (spec §9.1, §9.2, Rulings P9 and P21): Endless Night's results (the god's lines and menu), the pause menu's Abandon
 ## confirm (it says what leaving costs before it asks), and Prepare from the learned abilities at their levels.
 ##
@@ -12,9 +14,17 @@ static func run(t) -> void:
 	GodTree.dev_fill = true
 	_results_menu(t)
 	_god_lines(t)
+	_god_lines_notice(t)
+	_god_lines_hunt(t)
+	_hunt_called(t)
 	_bar_animation(t)
 	_pause_endless(t)
+	_pause_hunt(t)
+	_pause_lost_notice(t)
 	_prepare_god(t)
+	_prepare_sealed(t)
+	_prepare_hunt(t)
+	_prepare_hunt_fits(t)
 	_interlude_endless(t)
 	_refuse_and_card_cost(t)
 	GodTree.dev_fill = false
@@ -135,7 +145,7 @@ static func _pause_endless(t) -> void:
 	pause._on_gui_input(_click((pause._menu.rect_of("abandon") as Rect2).get_center()))
 	t.check(emitted.is_empty() and pause.confirming(), "Abandon emits nothing, it asks (%s)" % [emitted])
 	t.check(pause.confirm_line() == PauseMenu.CONFIRM_LOST
-		and PauseMenu.CONFIRM_LOST == "Abandon now and the night is lost: no Divine Power, no Faith.",
+		and PauseMenu.CONFIRM_LOST == "Abandon now and the night is lost: no Divine Power, no Faith, Lantern Notice +25%.",
 		"and says what it costs (%s)" % [pause.confirm_line()])
 	t.check(_rows(pause._menu) == ["abandon", "stay"] and _labels(pause._menu) == ["Abandon", "Stay"],
 		"with Abandon and Stay (%s)" % [_rows(pause._menu)])
@@ -305,3 +315,270 @@ static func _title_entry(t) -> void:
 	var board_door := text.substr(text.find('if what == "endless":'), 400)
 	t.check(board_door.contains("GodTree.dev_fill = true") and board_door.contains("_endless_from = Screen.BOARD"),
 		"the board's door keeps the dev fill on and remembers it came from the board")
+
+
+## A key's name, for hand-built results (names are read from PowerBook, never typed).
+static func _name_of(key: String) -> String:
+	return String(PowerBook.get_power(key).name)
+
+
+## A god dictionary in bank()'s shape with the Lantern's fields; `extra` overrides.
+static func _g(extra := {}) -> Dictionary:
+	var g := {"divine_power": 10, "levels": [], "capped": false, "lost": 0, "believers": 1, "faith": 1, "faith_total": 1, "notice": 0,
+		"notice_change": 0, "night": 1}
+	g.merge(extra, true)
+	return g
+
+
+static func _god_lines_notice(t) -> void:
+	var up := ResultsScreen.god_lines({"god": _g({"notice": 25, "notice_change": 25})})
+	t.check(up == PackedStringArray(["Divine Power +10", "Believers 1   Faith +1, 1 now", "Lantern Notice 25%  (+25%)", "Night 1"]),
+		"a Notice that rose shows the change (%s)" % [up])
+	var down := ResultsScreen.god_lines({"god": _g({"notice": 45, "notice_change": -5})})
+	t.check(down[2] == "Lantern Notice 45%  (-5%)", "a Notice that fell shows the change (%s)" % [down])
+	var same := ResultsScreen.god_lines({"god": _g({"notice": 45})})
+	t.check(same[2] == "Lantern Notice 45%", "no change: P1's text (%s)" % [same])
+	var absent := _g({"notice": 45})
+	absent.erase("notice_change")
+	t.check(ResultsScreen.god_lines({"god": absent})[2] == "Lantern Notice 45%", "an absent change: P1's text too")
+
+
+static func _god_lines_hunt(t) -> void:
+	var key: String = GodTree.starting("ruin")[0]
+	var name := _name_of(key)
+	var hunt := {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": true, "faith": 50, "sealed": "", "seal_nights": 0}
+	var won := ResultsScreen.god_lines({"god": _g({"notice": 0, "notice_change": -100, "hunt": hunt})})
+	t.check(won == PackedStringArray(["Divine Power +10", "Believers 1   Faith +1, 1 now", "Lantern Notice 0%  (-100%)",
+		"The Hunt is broken: Notice 0%, Faith +50", "Night 1"]), "a won Hunt (%s)" % [won])
+	var lost_hunt := {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": false, "faith": 0, "sealed": key, "seal_nights": 3}
+	var lost := ResultsScreen.god_lines({"god": _g({"notice": 50, "notice_change": -50, "hunt": lost_hunt})})
+	t.check(lost == PackedStringArray(["Divine Power +10", "Believers 1   Faith +1, 1 now", "Lantern Notice 50%  (-50%)",
+		"The Lantern seals %s for 3 nights" % name, "Night 1"]), "a lost Hunt that sealed (%s)" % [lost])
+	lost_hunt["sealed"] = ""
+	lost_hunt["seal_nights"] = 0
+	var nothing := ResultsScreen.god_lines({"god": _g({"notice": 50, "notice_change": -50, "hunt": lost_hunt})})
+	t.check(nothing[3] == "The Lantern found nothing to seal" and nothing.size() == 5, "a lost Hunt with nothing to seal (%s)" % [nothing])
+	var ended := ResultsScreen.god_lines({"god": _g({"notice": 20, "notice_change": -5, "unsealed": key})})
+	t.check(ended == PackedStringArray(["Divine Power +10", "Believers 1   Faith +1, 1 now", "Lantern Notice 20%  (-5%)",
+		"%s is no longer sealed" % name, "Night 1"]), "a seal that ended (%s)" % [ended])
+	var next := ResultsScreen.god_lines({"god": _g({"notice": 100, "notice_change": 25, "hunt_next": true})})
+	t.check(next == PackedStringArray(["Divine Power +10", "Believers 1   Faith +1, 1 now", "Lantern Notice 100%  (+25%)",
+		"THE LANTERN HUNTS: the next night is the Hunt", "Night 1"]), "the next night is the Hunt (%s)" % [next])
+	# C12: a lost Hunt that found nothing to seal still reports a seal that just ended, in order: Hunt, unsealed.
+	var both := ResultsScreen.god_lines({"god": _g({"notice": 50, "notice_change": -50, "hunt": lost_hunt, "unsealed": key})})
+	t.check(both[3] == "The Lantern found nothing to seal" and both[4] == "%s is no longer sealed" % name, "Hunt line then unsealed line (%s)" % [both])
+	# Colours (Ruling P2-11): the bad news is red, the Hunt won is gold, the rest as ever.
+	t.check(ResultsScreen.god_line_color("Lantern Notice 25%  (+25%)") == UiTheme.COL_BAD
+		and ResultsScreen.god_line_color("Lantern Notice 45%  (-5%)") == UiTheme.COL_TEXT
+		and ResultsScreen.god_line_color("Lantern Notice 45%") == UiTheme.COL_TEXT, "only a Notice rise is red")
+	t.check(ResultsScreen.god_line_color("The Lantern seals %s for 3 nights" % name) == UiTheme.COL_BAD
+		and ResultsScreen.god_line_color("The Lantern found nothing to seal") == UiTheme.COL_BAD
+		and ResultsScreen.god_line_color("THE LANTERN HUNTS: the next night is the Hunt") == UiTheme.COL_BAD
+		and ResultsScreen.god_line_color("30 Divine Power lost at the cap") == UiTheme.COL_BAD,
+		"a seal, nothing to seal, the next Hunt, a cap loss: red")
+	t.check(ResultsScreen.god_line_color("The Hunt is broken: Notice 0%, Faith +50") == UiTheme.COL_GOLD
+		and ResultsScreen.god_line_color("Night 1") == UiTheme.COL_TEXT, "the Hunt won is gold, a night line plain")
+
+
+static func _hunt_called(t) -> void:
+	var hunt := {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": true, "faith": 50, "sealed": "", "seal_nights": 0}
+	var called := ResultsScreen.hunt_called({"god": _g({"hunt": hunt})})
+	t.check(called == "Lantern Hunt: Hide the faithful  -  Whisper", "a Hunt result is called by its title and tier (%s)" % called)
+	t.check(ResultsScreen.hunt_called({"god": _g()}) == "" and ResultsScreen.hunt_called({}) == "", "a night, or no god: nothing")
+
+
+## A type of the dev fill with two starting keys, so a god of it has a seal target (preflight R3); fails the test with a message if none.
+static func _two_key_type(t) -> String:
+	for type: String in GodTree.RING:
+		if GodTree.starting(type).size() >= 2:
+			return type
+	t.check(false, "the dev fill has a type with two starting keys")
+	return ""
+
+
+static func _fixture_god(t, tier := 1) -> GodSlot:
+	var type := _two_key_type(t)
+	var god := GodSlot.make(1, type, 7)
+	god.tier = tier
+	for key in GodTree.starting(type):
+		god.learned[key] = 1
+	return god
+
+
+static func _prepare_sealed(t) -> void:
+	var god := _fixture_god(t)
+	var keys := god.in_tree()
+	var key := keys[0]
+	var type := str(GodTree.spot_of(key).get("type", ""))
+	god.sealed = key
+	god.seal_nights = 2
+	var prep := PrepareScreen.new()
+	prep.god = god
+	prep.setup(_def_for(god), PackedStringArray([key]))
+	var tab := prep.tabs().find(type)
+	t.check(tab >= 0 and prep.authority_keys(tab).has(key), "a sealed key is listed in its type's tab (%s, tab %d)" % [prep.tabs(), tab])
+	t.check(prep.draft.picks.is_empty(), "a remembered loadout cannot pick the sealed key (%s)" % [prep.draft.picks])
+	prep.set_tab(maxi(tab, 0))
+	t.check(prep.card_cost_text(key) == "Sealed: 2 nights", "its card says it is sealed (%s)" % prep.card_cost_text(key))
+	prep.click(PrepareScreen.cell_rect(prep.shown().find(key), prep.shown().size()).get_center())
+	t.check(not prep.draft.picks.has(key) and prep.refused_reason == "Sealed by the Lantern: 2 nights left",
+		"a click on it picks nothing and says why (%s, %s)" % [prep.draft.picks, prep.refused_reason])
+	# R7: even a def whose pool is empty (every power) cannot pick or preselect the sealed key.
+	var open := TierBook.board("warning")
+	t.check(open.pool.is_empty(), "the board's def has an empty pool, which means every power")
+	var loose := PrepareScreen.new()
+	loose.god = god
+	loose.setup(open, PackedStringArray([key]))
+	t.check(loose.draft.picks.is_empty(), "an empty-pool def: preselect keeps the sealed key out (%s)" % [loose.draft.picks])
+	loose.set_tab(maxi(loose.tabs().find(type), 0))
+	loose.click(PrepareScreen.cell_rect(loose.shown().find(key), loose.shown().size()).get_center())
+	t.check(not loose.draft.picks.has(key) and loose.refused_reason == "Sealed by the Lantern: 2 nights left",
+		"and a click keeps it out (%s)" % [loose.draft.picks])
+	loose.free()
+	# The other key still picks.
+	prep.refused_reason = ""
+	var other := keys[1]
+	prep.set_tab(prep.tabs().find(str(GodTree.spot_of(other).get("type", ""))))
+	prep.click(PrepareScreen.cell_rect(prep.shown().find(other), prep.shown().size()).get_center())
+	t.check(prep.draft.picks.has(other) and prep.refused_reason == "", "an unsealed key is picked as before (%s)" % [prep.draft.picks])
+	prep.free()
+
+
+static func _prepare_hunt(t) -> void:
+	var god := _fixture_god(t)
+	god.notice = 100
+	var hunt := GodNight.hunt_for(god)
+	var prep := PrepareScreen.new()
+	prep.god = god
+	prep.setup(GodNight.def_for(god, String(hunt.id)), PackedStringArray())
+	t.check(prep.header_text() == "THE LANTERN HUNT" and PrepareScreen.HUNT_HEADER == "THE LANTERN HUNT", "a Hunt's header (%s)" % prep.header_text())
+	var rows := prep.brief_rows()
+	var labels := []
+	for row: Array in rows:
+		labels.append(row[0])
+	t.check(labels == ["HUNT", "WIN", "LOSE", "IF WON", "IF LOST"], "a Hunt's briefing rows (%s)" % [labels])
+	t.check(String(rows[0][1]) == "%s: %s" % [hunt.title, hunt.plate], "the HUNT row is the title and its plate (%s)" % rows[0][1])
+	t.check(String(rows[3][1]) == "Notice 0%%, +%d Faith" % (GodNight.HUNT_FAITH * god.tier), "IF WON (%s)" % rows[3][1])
+	t.check(String(rows[4][1]).begins_with(GodNight.hunt_stake(god)) and String(rows[4][1]).ends_with("Notice 50%"),
+		"IF LOST names the stake (%s)" % rows[4][1])
+	prep.free()
+	god.notice = 0
+	var plain := PrepareScreen.new()
+	plain.god = god
+	plain.setup(GodNight.def_for(god, "warning"), PackedStringArray())
+	var plain_labels := []
+	for row: Array in plain.brief_rows():
+		plain_labels.append(row[0])
+	t.check(plain.header_text() == "PREPARE THE MANIFESTATION" and plain_labels == ["TARGET", "WIN", "LOSE", "CITY", "LOADOUT", "TEMPLE"],
+		"any other night keeps the header and the six rows (%s %s)" % [plain.header_text(), plain_labels])
+	plain.free()
+
+
+## Preflight R4: the Hunt's rows fit the left panel above the hint line, for every god tier.
+static func _prepare_hunt_fits(t) -> void:
+	for tier in range(1, 6):
+		var god := _fixture_god(t, tier)
+		god.notice = 100
+		var hunt := GodNight.hunt_for(god)
+		var prep := PrepareScreen.new()
+		prep.god = god
+		prep.setup(GodNight.def_for(god, String(hunt.id)), PackedStringArray())
+		var hint_lines := UiTheme.wrap(prep.hint_text(), PrepareScreen.PANEL.size.x - 8.0, UiTheme.SIZE_SMALL).size()
+		var limit := PrepareScreen.PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint_lines)
+		t.check(prep.brief_bottom() <= limit, "tier %d's Hunt rows end at %s, above the hint (limit %s)" % [tier, prep.brief_bottom(), limit])
+		prep.free()
+
+
+static func _pause_hunt(t) -> void:
+	var stake := "The Lantern will seal Judgement of the Ancients for 3 nights"
+	var pause := PauseMenu.new()
+	pause.hunt_stake = stake
+	pause.setup(false, Settings.new(), PATH, true, true)
+	pause._on_gui_input(_click((pause._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(pause.confirm_line() == PauseMenu.CONFIRM_HUNT % stake
+		and PauseMenu.CONFIRM_HUNT == "Abandon the Hunt and it is lost. %s, and the Notice goes to 50%%.",
+		"a Hunt's confirm names the stake (%s)" % pause.confirm_line())
+	var lines := UiTheme.wrap(pause.confirm_line(), PauseMenu.CONFIRM_WIDTH, UiTheme.SIZE_BODY)
+	var last_baseline := PauseMenu.CONFIRM_Y + UiTheme.LINE_BODY * float(lines.size() - 1)
+	var row := pause._menu.rect_of("abandon") as Rect2
+	t.check(lines.size() <= 3 and row.position.y > last_baseline + 3.0 and row.end.y < 360.0,
+		"it takes at most 3 lines and the buttons sit under them (%d lines, last baseline %s, buttons at %s)" % [lines.size(), last_baseline, row])
+	pause.free()
+	var plain := PauseMenu.new()
+	plain.setup(false, Settings.new(), PATH, true, true)
+	plain._on_gui_input(_click((plain._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(plain.confirm_line() == PauseMenu.CONFIRM_LOST and PauseMenu.CONFIRM_LOST.contains("Lantern Notice +25%"),
+		"without a stake, a lost night's confirm says the Notice rises (%s)" % plain.confirm_line())
+	plain.free()
+	var free := PauseMenu.new()
+	free.hunt_stake = stake
+	free.setup(false, Settings.new(), PATH, true, false)
+	free._on_gui_input(_click((free._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(free.confirm_line() == PauseMenu.CONFIRM_FREE, "before the clock starts leaving the Hunt is still free (%s)" % free.confirm_line())
+	free.free()
+
+
+## God P2 fix wave (final review M2, Ruling F1): the lost-night confirm states the Notice rise that will really happen after the clamp
+## (min(25, 100 - notice)) and, when the abandon fills the meter, that the Lantern Hunts next; at 100 already it says so plainly. The
+## interlude's confirm reads the same words. A board night's and the Hunt's confirms are unchanged.
+static func _pause_lost_notice(t) -> void:
+	var cases := [
+		{"notice": 0, "rise": 25, "hunt": false}, {"notice": 50, "rise": 25, "hunt": false},
+		{"notice": 75, "rise": 25, "hunt": true}, {"notice": 95, "rise": 5, "hunt": true}, {"notice": 100, "rise": 0, "hunt": true},
+	]
+	for c: Dictionary in cases:
+		var n: int = c.notice
+		var pause := PauseMenu.new()
+		pause.notice = n
+		pause.setup(false, Settings.new(), PATH, true, true)
+		pause._on_gui_input(_click((pause._menu.rect_of("abandon") as Rect2).get_center()))
+		var line := pause.confirm_line()
+		var rise_text := "Lantern Notice +%d%%" % c.rise
+		t.check(line == PauseMenu.lost_line(n) and line.begins_with("Abandon now and the night is lost: no Divine Power, no Faith"),
+			"notice %d: the confirm is lost_line (%s)" % [n, line])
+		if c.rise > 0:
+			t.check(line.contains(rise_text),
+				"notice %d: it states the real rise, %s (%s)" % [n, rise_text, line])
+		else:
+			t.check(not line.contains("+") and line.contains("already 100%"), "notice 100: no rise is promised and it says it is already full (%s)" % line)
+		t.check(line.contains("the Lantern Hunts next") == bool(c.hunt), "notice %d: the Hunt is named exactly when the abandon fills the meter (%s)" % [n, line])
+		var lines := UiTheme.wrap(line, PauseMenu.CONFIRM_WIDTH, UiTheme.SIZE_BODY)
+		var row := pause._menu.rect_of("abandon") as Rect2
+		var last_baseline := PauseMenu.CONFIRM_Y + UiTheme.LINE_BODY * float(lines.size() - 1)
+		t.check(lines.size() <= 3 and row.position.y > last_baseline + 3.0 and row.end.y < 360.0,
+			"notice %d: at most 3 lines, buttons under them (%d lines, last baseline %s, buttons %s)" % [n, lines.size(), last_baseline, row])
+		pause.free()
+	t.check(PauseMenu.lost_line(0) == PauseMenu.CONFIRM_LOST, "the default (rise 25, no Hunt) is CONFIRM_LOST word for word (%s)" % PauseMenu.lost_line(0))
+	# The Hunt's own confirm ignores the Notice; a free exit still says free.
+	var hunt := PauseMenu.new()
+	hunt.hunt_stake = "The Lantern will seal X for 3 nights"
+	hunt.notice = 95
+	hunt.setup(false, Settings.new(), PATH, true, true)
+	hunt._on_gui_input(_click((hunt._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(hunt.confirm_line() == PauseMenu.CONFIRM_HUNT % hunt.hunt_stake, "a Hunt night's confirm is unchanged at any Notice (%s)" % hunt.confirm_line())
+	hunt.free()
+	var free := PauseMenu.new()
+	free.notice = 95
+	free.setup(false, Settings.new(), PATH, true, false)
+	free._on_gui_input(_click((free._menu.rect_of("abandon") as Rect2).get_center()))
+	t.check(free.confirm_line() == PauseMenu.CONFIRM_FREE, "before the clock, leaving is free at any Notice (%s)" % free.confirm_line())
+	free.free()
+	# The interlude says the same.
+	var ln := MissionBook.long_night()
+	var result := {"mission": "omen", "won": true, "goal": {"label": "Stop the warning", "done": true}, "bonuses": [], "time": 21.4}
+	for n: int in [0, 95, 100]:
+		var card := InterludeScreen.new()
+		card.endless = true
+		card.notice = n
+		card.setup(result, [ln.act("festival")], NightState.new())
+		card.click(card.button_rect("missions").get_center())
+		t.check(card.confirm_line() == PauseMenu.lost_line(n), "notice %d: the interlude's confirm is lost_line (%s)" % [n, card.confirm_line()])
+		card.free()
+	var card95 := InterludeScreen.new()
+	card95.endless = true
+	card95.notice = 95
+	card95.setup(result, [ln.act("festival")], NightState.new())
+	card95.click(card95.button_rect("missions").get_center())
+	t.check(card95.confirm_line().contains("Lantern Notice +5%") and card95.confirm_line().contains("the Lantern Hunts next"),
+		"the interlude at 95 says +5% and the Hunt (%s)" % card95.confirm_line())
+	card95.free()

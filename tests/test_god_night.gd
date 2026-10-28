@@ -43,6 +43,7 @@ static func _draw_no_repeat(t) -> void:
 			repeats += 1
 		s.in_night = id
 		GodNight.forfeit(s)
+		s.notice = 0  # P1's draw only: the Hunt is P2's and is proved in test_god_lantern
 		last = id
 	t.check(repeats == 0, "no night is drawn twice in a row (%d repeats in 40)" % repeats)
 	var missing := []
@@ -67,6 +68,7 @@ static func _draw_seeded(t) -> void:
 			run += id + ","
 			g.in_night = id
 			GodNight.forfeit(g)
+			g.notice = 0  # P1's draw only: the Hunt is P2's and is proved in test_god_lantern
 		runs.append(run)
 	t.check(runs[0] != runs[1], "seeds 3 and 4 give different ten-night runs (%s | %s)" % [runs[0], runs[1]])
 
@@ -129,7 +131,7 @@ static func _dp(t) -> void:
 	t.check(s.carried == {"smite": 1}, "the drafted ability is carried once (%s)" % [s.carried])
 	t.check(s.loadout == PackedStringArray(["smite"]), "the loadout is the last draft")
 	t.check(out.bar == [s.divine_power, s.need()], "the bar is the god's (%s)" % [out.bar])
-	t.check(out.notice == 0 and out.notice_change == 0, "the Notice does not move in P1")
+	t.check(out.notice == 10 and out.notice_change == 10, "this fixture has no ascent, so it is a caught win: Notice +10 (%d)" % out.notice)
 	t.check(out.believers == 30, "believers banked: 30 (%d)" % out.believers)
 
 
@@ -163,7 +165,7 @@ static func _forfeit(t) -> void:
 	var out := GodNight.forfeit(s)
 	t.check(s.night == 1 and s.last_mission == "tax_collector" and s.in_night == "", "a forfeit counts the night and closes it (%d, %s, %s)" % [s.night, s.last_mission, s.in_night])
 	t.check(s.faith == 7 and s.level == level, "and earns nothing")
-	t.check(out.line == "Night 1 was abandoned: a lost night." and out.night == 1, "its line (%s)" % out.line)
+	t.check(out.line == "Night 1 was abandoned: a lost night. Lantern Notice +25%." and out.night == 1, "its line (%s)" % out.line)
 
 
 static func _wish_seed(t) -> void:
@@ -191,4 +193,5 @@ static func _mission_hooks(t) -> void:
 	t.check(m._mission_def(PackedStringArray()).pool == s.draftable(), "night_def replaces the mission's def")
 	t.check(m.restart_locked == false, "R restarts unless locked")
 	t.check(m.has_signal("clock_started"), "the mission announces its clock starting")
+	t.check(m.has_signal("decided") and m.report_on_decision == false, "the mission can report when a run is decided; off unless Endless sets it (review M1)")
 	m.free()

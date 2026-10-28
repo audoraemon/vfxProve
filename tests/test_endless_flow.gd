@@ -12,6 +12,8 @@ static func run(t) -> void:
 	_flow_table(t)
 	_bank_leaves_save(t)
 	_load_god_forfeits(t)
+	_load_god_hunt(t)
+	_write_fails(t)
 	_draw_survives_quit(t)
 	_endless_button(t)
 	_between_acts_levels(t)
@@ -105,7 +107,7 @@ static func _load_god_forfeits(t) -> void:
 	var s: GodSlot = got[0]
 	t.check(s != null and s.night == 3 and s.in_night == "" and s.last_mission == "tax_collector",
 		"a slot found mid-night is forfeited: night 3, nothing open, the mission remembered")
-	t.check(got[1] == "Night 3 was abandoned: a lost night.", "and the line says so (%s)" % got[1])
+	t.check(got[1] == "Night 3 was abandoned: a lost night. Lantern Notice +25%.", "and the line says so (%s)" % got[1])
 	t.check(s != null and s.faith == 12 and s.level == 1, "nothing is earned and nothing is lost")
 	var again := GodSlot.read(FILE)
 	t.check(again != null and again.night == 3 and again.in_night == "" and again.last_mission == "tax_collector",
@@ -121,6 +123,74 @@ static func _load_god_forfeits(t) -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
 	var none := Game.load_god(FILE)
 	t.check(none[0] == null and none[1] == "", "a missing file gives no god and no line")
+
+
+## The fixture type for P2's slots (R3): the first ring type with two starting keys on the merged table, or "" when none.
+static func _lantern_type() -> String:
+	for type: String in GodTree.RING:
+		if GodTree.starting(type).size() >= 2:
+			return type
+	return ""
+
+
+## A game closed mid-Hunt is a lost Hunt when the slot is opened (god P2, Ruling P2-4, P2-9): the most-carried ability is sealed, the
+## Notice is 50, the night counts, the line says all three, the file agrees and a second opening changes nothing.
+static func _load_god_hunt(t) -> void:
+	_clear()
+	GodTree.dev_fill = true
+	var type := _lantern_type()
+	t.check(type != "", "a god type with two starting keys exists (R3)")
+	if type == "":
+		GodTree.dev_fill = false
+		return
+	var god := GodSlot.make(1, type, 4)
+	god.notice = 100
+	god.night = 6
+	var keys := god.in_tree()
+	t.check(keys.size() >= 2, "the fixture god has two keys in the tree (%s)" % [keys])
+	if keys.size() < 2:
+		GodTree.dev_fill = false
+		return
+	god.carried = {keys[0]: 2, keys[1]: 5}
+	god.in_night = GodNight.HUNTS[0].id
+	var want := god.seal_target()
+	t.check(want == keys[1], "the most-carried key is the target (%s)" % want)
+	t.check(god.write(FILE) == OK, "the Hunt slot is written")
+	var got := Game.load_god(FILE)
+	var s: GodSlot = got[0]
+	var name: String = PowerBook.get_power(want).name
+	t.check(s != null and s.sealed == want and s.seal_nights == 3 and s.notice == 50 and s.night == 7 and s.in_night == "",
+		"a slot left mid-Hunt: %s sealed 3 nights, Notice 50, night counted" % want)
+	var line: String = GodNight.HUNT_ABANDONED % 7 + " " + GodNight.SEALS % [name, "3 nights"] + " " + GodNight.NOTICE_AT % 50
+	t.check(got[1] == line, "and the line says so (%s)" % got[1])
+	var back := GodSlot.read(FILE)
+	t.check(back != null and back.sealed == want and back.seal_nights == 3 and back.notice == 50 and back.night == 7 and back.in_night == "",
+		"the file agrees")
+	var again := Game.load_god(FILE)
+	t.check(again[1] == "" and again[0].sealed == want and again[0].seal_nights == 3 and again[0].notice == 50 and again[0].night == 7,
+		"opened again, nothing changes (%s)" % [again[1]])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	GodTree.dev_fill = false
+
+
+## A failed write of the god's file is told, not swallowed (god P2, Ruling P2-13, pre-flight G1): write_god() gives "" when saved and
+## WRITE_FAILED's line otherwise, and load_god() writes through it, so a quit that escapes the Notice by a disk error shows on the hub.
+static func _write_fails(t) -> void:
+	_clear()
+	var slot := GodSlot.make(1, "ruin", 4)
+	var bad := Game.write_god(slot, "user://no_such_dir_p2/x.cfg")
+	t.check(bad.begins_with("The god could not be saved (error "), "a write to a missing place says so (%s)" % bad)
+	t.check(Game.write_god(slot, FILE) == "", "a write that works says nothing")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	var src := FileAccess.get_file_as_string("res://src/game/game.gd")
+	t.check(src.contains("write_god(slot, file)"), "load_god() writes through write_god() (pre-flight G1)")
+	# The hub's line is joined, never doubled, whatever number of writes fail before it is shown (review I1, I2).
+	var f := Game.WRITE_FAILED % 7
+	t.check(Game.join_lines("", f) == f, "a failure on an empty hub line is the line (%s)" % Game.join_lines("", f))
+	t.check(Game.join_lines("a", f) == "a " + f, "a failure after another line is appended (%s)" % Game.join_lines("a", f))
+	t.check(Game.join_lines(f, f) == f, "the same failure twice is shown once (%s)" % Game.join_lines(f, f))
+	t.check(Game.join_lines("a " + f, f) == "a " + f, "even after another line (%s)" % Game.join_lines("a " + f, f))
+	t.check(Game.join_lines("a", "") == "a" and Game.join_lines("", "") == "", "nothing to add changes nothing")
 
 
 ## Task 5's carry: the seeded draw survives a quit. A god written before its Prepare and read back draws the same night.

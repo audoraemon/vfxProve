@@ -181,6 +181,7 @@ const SUITES := [
 	"res://tests/test_god_tree.gd",
 	"res://tests/test_god_slot.gd",
 	"res://tests/test_god_night.gd",
+	"res://tests/test_god_lantern.gd",
 	"res://tests/test_slot_screens.gd",
 	"res://tests/test_faith_hub.gd",
 	"res://tests/test_endless_flow.gd",

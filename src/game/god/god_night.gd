@@ -210,7 +210,7 @@ static func divine_power(d: Dictionary) -> int:
 ## `outcome` is a result with Descent.report()'s "descend". Returns what the results show: {"divine_power", "levels", "points", "lost",
 ## "capped", "level", "bar": [divine_power, need], "believers", "faith", "faith_total", "notice", "notice_change", "night", "bests",
 ## "hunt" ({} or {"tier", "id", "title", "won", "faith", "sealed", "seal_nights"}), "unsealed" (a key whose seal ended, or ""),
-## "hunt_next"}.
+## "hunt_next"}. A rite (RiteBook.has(id)) goes to _bank_rite() instead, before the Hunt, and its result adds a "rite" key.
 static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome: Dictionary) -> Dictionary:
 	if is_rite(id):
 		return _bank_rite(slot, id, drafted, outcome)
@@ -316,7 +316,8 @@ static func _keep_bests(slot: GodSlot, id: String, d: Dictionary) -> PackedStrin
 ## A night left once its clock had started is a lost one (spec §9.1, §10, Ruling P9, P2-1): it counts, the mission is the last played,
 ## nothing is earned, a seal ticks, and the Notice goes up by NOTICE_LOST -- or, if the Hunt was due, the Hunt is lost: the most-carried
 ## ability is sealed and the Notice is set to 50 (Ruling P2-6). Returns {"night": the new count, "line": the line the hub shows,
-## "notice", "notice_change", "hunt" (as bank()'s, never won), "unsealed", "hunt_next"}.
+## "notice", "notice_change", "hunt" (as bank()'s, never won), "unsealed", "hunt_next"}. A rite left in the night goes to
+## _forfeit_rite() instead, before the Hunt, and its result adds a "rite" key.
 static func forfeit(slot: GodSlot) -> Dictionary:
 	if is_rite(slot.in_night):
 		return _forfeit_rite(slot)

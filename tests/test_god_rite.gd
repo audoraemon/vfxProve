@@ -47,6 +47,7 @@ static func _outcome(won: bool, shards := 0) -> Dictionary:
 
 
 static func _rite_book(t) -> void:
+	t.check(RiteBook.FIRST_TASTE == MissionBook.FIRST_TASTE, "RiteBook and MissionBook name the same rite id")
 	t.check(RiteBook.has("first_taste") and not RiteBook.has("warning") and not RiteBook.has(""), "RiteBook.has: the first rite only")
 	t.check(String(RiteBook.at_level(10).get("id", "")) == "first_taste", "at_level(10) is The First Taste (%s)" % [RiteBook.at_level(10)])
 	t.check(RiteBook.at_level(20) == {} and RiteBook.at_level(1) == {}, "no rite at level 20 or 1 in P3")
@@ -89,10 +90,13 @@ static func _awaken_state(t) -> void:
 static func _rite_def(t) -> void:
 	var s := _slot()
 	s.bought["clock"] = 1
+	s.bought["slot"] = 1  # off the Tier 1 frame's 3 slots and 6 Might, so the god's values must be applied to pass (review I1)
+	s.bought["might"] = 2
 	var d := GodNight.def_for(s, "first_taste")
 	t.check(d != null and d.id == "first_taste" and d.tier == 1, "the rite's def: id and tier 1")
 	if d == null:
 		return
+	t.check(d.slots == 4 and d.dp_capacity == 8, "a bought slot and 2 bought Might reach the rite (%d, %d)" % [d.slots, d.dp_capacity])
 	t.check(d.slots == s.slots() and d.dp_capacity == s.max_might() and d.pool == s.draftable(), "the god's slots, Might and pool (%d, %d)" % [d.slots, d.dp_capacity])
 	t.check(is_equal_approx(d.clock, TierBook.clock(1) + s.extra_clock()) and is_equal_approx(d.clock, 315.0), "clock 300 + one Faith clock (%f)" % d.clock)
 	t.check(d.lantern == "watch" and d.profile == "unaware", "the Watch's bell and the Unaware town (%s, %s)" % [d.lantern, d.profile])

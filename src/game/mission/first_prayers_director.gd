@@ -99,6 +99,8 @@ var _brambles := {}
 var _hid := false
 var _hidden_prayers := {}
 var _hush := false
+## D33: where each bramble segment near the shrine stood (by instance id), so a look at one is known after it has withered.
+var _thorn_spots := {}
 
 
 ## MirasHouseDirector's prayer length starts at PRAY_SECONDS (v0.12, R31): set at .new(), so a town's override survives setup.
@@ -144,7 +146,7 @@ func teardown() -> void:
 
 ## The night's opening banner (v0.11 M2).
 func _opening_banner() -> String:
-	return "LEAD THE POOR TO THE OLD WELL"
+	return "THE POOR COME TO THE OLD WELL"
 
 
 ## What the shrine's tag says (v0.11 M2): its name, or while someone prays the seconds left, as Broken Lanterns' DRAINING counts
@@ -317,10 +319,8 @@ func _fire_step() -> void:
 			_fire_out()
 		_blaze = null
 		return
-	if blaze != _blaze:
-		_blaze = blaze
+	_blaze = blaze
 	var pulled_now := false
-	var from := blaze.center()
 	var crowd_n := _pulled.size()
 	var who: Array[Person] = []
 	for f: Variant in liners:
@@ -506,15 +506,42 @@ func _walker_keep(delta: float) -> void:
 		walker.go_duty(door)
 
 
-## The walker on duty at the door is brought (Mira's rules: turned away if a Faithful sees, else in, one at a time) as well as a whispered or lured one.
-## One who has prayed does not go down again (god T1R fix round): Mira's base let a Believer stopping to look at something by the shrine (brambles
-## grown by it) pray twice, out of the count for 32 s and keeping the walker waiting.
+## The walker on duty at the door is brought (Mira's rules: turned away if a Faithful sees, else in, one at a time) as well as a whispered or lured one;
+## with brambles grown over the door itself (a Thornwall clicked on it), he is at the door from DOOR_REACH of the brambles. One who has prayed does not go
+## down again (god T1R fix round): Mira's base let a Believer stopping to look at something by the shrine pray twice, out of the count for 32 s and
+## keeping the walker waiting. And a poor who stops to look at brambles grown by the shrine (Crowd.THORN_LOOK) is not brought by the look (D33): it
+## is no lure of the god's, and it would make an unannounced Believer.
 func _brought(p: Person) -> bool:
 	if believers.has(p):
 		return false
-	if p == walker and p.mind == Person.Mind.DUTY and _near_house(p.ground_pos, DOOR_REACH):
-		return true
+	if p == walker and p.mind == Person.Mind.DUTY:
+		var reach := DOOR_REACH + ThornwallFx.SEG if _door_overgrown() else DOOR_REACH
+		if _near_house(p.ground_pos, DOOR_REACH) or p.ground_pos.distance_to(door) <= reach:
+			return true
+	if p.mind == Person.Mind.OBSERVE and _looks_at_brambles(p):
+		return false
 	return super(p)
+
+
+## D33: `p` is looking at a bramble segment (Crowd.THORN_LOOK makes calm people by a new wall stop and look at its segments' centres).
+func _looks_at_brambles(p: Person) -> bool:
+	if p._threat == Vector2.INF or crowd == null or crowd._env == null:
+		return false
+	for s in crowd._env.near(p._threat, 0.5):
+		if s.role == &"thorns" and s.center().distance_to(p._threat) < 0.05:
+			return true
+	for at: Variant in _thorn_spots.values():
+		if (at as Vector2).distance_to(p._threat) < 0.05:
+			return true
+	return false
+
+
+## D33: a bramble segment stands on the door itself (a Thornwall clicked on it): its rect, grown by a person's reach, holds the door.
+func _door_overgrown() -> bool:
+	for s in _hiding():
+		if s.footprint.grow(Person.GOAL_REACH).has_point(door):
+			return true
+	return false
 
 
 ## F3 Thornwall blocks sight: a Faithful whose straight line to `at` crosses a bramble segment does not see it; F3b: brambles by the well
@@ -568,8 +595,13 @@ func hidden_left() -> float:
 	return maxf(most, 0.0)
 
 
-## F3b: notes when each bramble by the door grew (for its countdown), and says so when the door is first hidden.
+## F3b: notes when each bramble by the door grew (for its countdown), and says so when the door is first hidden; D33: notes where every bramble
+## near the shrine stands.
 func _bramble_step() -> void:
+	if crowd != null and crowd._env != null and door != Vector2.INF:
+		for s in crowd._env.near(door, THORN_HIDE + Crowd.THORN_LOOK + LURE_REACH):
+			if s.role == &"thorns" and not _thorn_spots.has(s.get_instance_id()):
+				_thorn_spots[s.get_instance_id()] = s.center()
 	var now_hidden := false
 	for s in _hiding():
 		now_hidden = true
@@ -638,7 +670,7 @@ func hint_phase() -> String:
 func tour() -> Array:
 	var out := []
 	if door != Vector2.INF:
-		out.append([door, "The old well shrine, by the market. Lead the poor here."])
+		out.append([door, "The old well shrine, by the market. The poor come here to pray."])
 	for p: Variant in grieving:
 		if _alive(p):
 			out.append([(p as Person).ground_pos, "The poor of the %s. Three must pray at the well." % poor_quarter])

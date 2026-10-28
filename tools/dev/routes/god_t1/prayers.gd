@@ -438,7 +438,6 @@ static func _passage_fill(bc, ctx: Dictionary) -> String:
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
 	var crowd: Crowd = ctx.crowd
-	var tl := d.timeline.elapsed()
 	# ALL IS WELL (F5): rung BELL_LEAD seconds before the next crit (a walker's arrival or a prayer's end), it lies through the walker's going in and
 	# his coming out (32 s), and stands the line down on the spot; and with the bell free, for a report on the run.
 	if _ready(bc, ctx, "belllies") and not crowd.is_bell_lying():

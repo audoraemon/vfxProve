@@ -52,7 +52,7 @@ const SPEC := [
 	["lost_lamb.clear", "The watch is changing. Send him through the gate now."],
 	# First Prayers (v0.11 M2).
 	["first_prayers", "The poor (gold) walk to the old well shrine, one at a time. Keep the Faithful (red) from its door: three must pray."],
-	["first_prayers.watched", "Faithful (red) crowd the shrine's door. Draw them off, or let them go before you send anyone in."],
+	["first_prayers.watched", "Faithful (red) watch the door. Fire draws them off, ALL IS WELL sends them home, brambles by it hide who prays."],
 	# The Bell-Ringers (v0.11 M3).
 	["bell_ringers", "Kill each ringer (gold) where no one (red) sees, before he climbs the bell tower. His mates run with him."],
 	["bell_ringers.mates", "His mates (red) would see him die and run on. Draw them off or strike them first."],

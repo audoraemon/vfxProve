@@ -6,6 +6,7 @@ extends RefCounted
 ## Faithful at the door each time, none of them a wait over a minute. Mira's House keeps its own numbers.
 
 const DT := 0.05
+const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 
 static func run(t) -> void:
@@ -36,6 +37,10 @@ static func run(t) -> void:
 	_hidden_prayer(t)
 	_believer_once(t)
 	_passage_walls_fit(t)
+	_bramble_look(t)
+	_wall_on_door(t)
+	_waits_walking(t, &"aldermere")
+	_waits_walking(t, &"capital")
 
 
 static func _world() -> Dictionary:
@@ -139,9 +144,9 @@ static func _setup(t) -> void:
 	t.check(_labels(d) == ["OLD WELL SHRINE", "DOOR - CLEAR"] and d.hint_phase() == "",
 		"tagged: the shrine and its clear door (%s)" % [_labels(d)])
 	var stops := d.tour()
-	t.check(stops.size() == 3 and String(stops[0][1]) == "The old well shrine, by the market. Lead the poor here."
+	t.check(stops.size() == 3 and String(stops[0][1]) == "The old well shrine, by the market. The poor come here to pray."
 		and String(stops[2][1]) == "The Temple. A Faithful who sees you runs here.", "the tour: the shrine, the poor, the Temple")
-	t.check((s.banners as Array).has("LEAD THE POOR TO THE OLD WELL"), "its opening banner")
+	t.check((s.banners as Array).has("THE POOR COME TO THE OLD WELL"), "its opening banner")
 	_done(s)
 
 
@@ -662,9 +667,11 @@ static func _brambles_hide(t) -> void:
 	t.check(not d._thorned(f.ground_pos, d.door), "(the segment is not on his line: F3 alone would let him see)")
 	t.check(d.door_hidden() and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null and d.watchers(d.door, MirasHouseDirector.SIGHT).is_empty()
 		and d.hint_phase() == "", "F3b: brambles by the well hide its door from every side")
-	_run(s, DT * 2.0)
-	t.check((s.banners as Array).has("BRAMBLES HIDE THE WELL") and _labels(d).has("DOOR - HIDDEN %d" % ceili(ThornwallFx.THORN_TIME - DT * 2.0)),
-		"banner, and the door's tag counts the brambles down (%s)" % [_labels(d)])
+	for i in 62:  # 3.1 s, the Faithful held where he stands
+		_arrive(f, d.door + Vector2(2.0, 0.0))
+		_run(s, DT)
+	t.check((s.banners as Array).has("BRAMBLES HIDE THE WELL") and _labels(d).has("DOOR - HIDDEN 22"),
+		"banner, and the door's tag counts the brambles down: 3.1 s on, 22 (%s)" % [_labels(d)])
 	t.check(f.ground_pos.distance_to(d.door + Vector2(2.0, 0.0)) < 0.6 and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null,
 		"a step later he still does not see it")
 	env.remove(seg)
@@ -745,3 +752,99 @@ static func _passage_walls_fit(t) -> void:
 	var cool := float(PowerBook.get_power("thorns").cooldown)
 	t.check(cool <= FirstPrayersDirector.POOR_CHAIN, "Passage's First Prayers policy: Thornwall cools %.0f s, within the walkers' POOR_CHAIN %.0f s" % [cool, FirstPrayersDirector.POOR_CHAIN])
 	_done(s)
+
+
+## Runs `seconds` with everyone out of doors walking for real (each person ticked every step, as test_capital_evac's _step: the headless suite
+## has no frames, so people otherwise stand) and every Faithful kept well away from the door.
+static func _walk_blind(s: Dictionary, seconds: float) -> void:
+	var crowd: Crowd = s.crowd
+	for i in roundi(seconds / DT):
+		if i % 20 == 0:
+			_blind(s.d)
+		for p in crowd.citizens + crowd.soldiers:
+			if is_instance_valid(p) and not p.inside:
+				p.tick(DT)
+		crowd.advance(DT)
+		(s.rules as Rules).advance(DT)
+
+
+## (Fix round 2, D33) A poor who stops to look at brambles grown by the shrine (Crowd.THORN_LOOK) is not brought in by the look; one who stops to look
+## at anything else by it still is (Mira's rule, unchanged).
+static func _bramble_look(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var env: EnvironmentField = s.env
+	_blind(d)
+	var g: Person = d.grieving[0]
+	g.mind = Person.Mind.CALM
+	_arrive(g, d.door + Vector2(0.4, 0.0))
+	var seg := _bramble(env, d, Vector2(-1.0, 0.0))
+	g.observe(seg.center())
+	t.check(g.mind == Person.Mind.OBSERVE and d._near_house(g._threat, MirasHouseDirector.LURE_REACH) and d._near_house(g.ground_pos, MirasHouseDirector.LURE_REACH),
+		"(a poor by the door stops to look at the brambles, both within LURE_REACH of the shrine)")
+	_run(s, DT * 2.0)
+	t.check(not g.inside and d.inside().is_empty(), "a look at brambles by the shrine brings nobody in: no unadvertised Believer")
+	env.remove(seg)
+	g.mind = Person.Mind.CALM
+	_arrive(g, d.door + Vector2(0.4, 0.0))
+	g.observe(d.door + Vector2(0.0, 0.8))
+	_run(s, DT * 2.0)
+	t.check(g.inside, "(a look at something else by the shrine still brings him in, Mira's rule)")
+	_done(s)
+
+
+## (Fix round 2, D33) A Thornwall clicked on the shrine's door itself, either way along: it hides the door, and the walker, walking there on his own
+## (no teleport), still gets down the well.
+static func _wall_on_door(t) -> void:
+	for dir: Vector2 in [Vector2.RIGHT, Vector2.DOWN]:
+		var s := _world()
+		var d: FirstPrayersDirector = s.d
+		var env: EnvironmentField = s.env
+		var out_at := float(d.poor_out_at[0])
+		_walk_blind(s, out_at - 1.0)
+		for r in ThornwallFx.rects(d.door, dir):
+			if not env.blocked(r.get_center(), 0.0):
+				env.add_structure(r, ThornwallFx.HEIGHT, Structure.Kind.TREE, &"thorns", &"thorns")
+		t.check(d.door_hidden(), "a wall on the door (along %s) hides it" % [dir])
+		_walk_blind(s, 1.0 + DT * 3.0)
+		var w := d.walker
+		var went := false
+		for i in roundi((ThornwallFx.THORN_TIME - 2.0) / 1.0):
+			_walk_blind(s, 1.0)
+			if w != null and (w.inside or d.believers.has(w)):
+				went = true
+				break
+		t.check(w != null and went and d.reports_started == 0,
+			"a wall on the door (along %s): the walker walks round it and goes down, unseen (%s, %.1f from the door)" % [dir, "in" if went else "not in",
+			w.ground_pos.distance_to(d.door) if w != null else -1.0])
+		_done(s)
+
+
+## (Fix round 2, D33) A walker who walks to a busy shrine on his own (no teleport) and waits there for a long prayer never gives the walk up
+## (WALK_STALL), in Aldermere and the Capital; he goes down when the shrine is free.
+static func _waits_walking(t, city: StringName) -> void:
+	City.use(city)
+	var s := _world() if city == &"aldermere" else Kit.world(MissionBook.get_mission("first_prayers@capital"))
+	var d: FirstPrayersDirector = s.d
+	d.read_seconds = FirstPrayersDirector.WALK_STALL * 3.0
+	var out_at := float(d.poor_out_at[0])
+	_walk_blind(s, out_at - 1.0)
+	var g: Person = d.grieving[d.grieving.size() - 1]
+	_bring(d, g)
+	_run(s, DT * 2.0)
+	t.check(g.inside, "%s: one of the poor is praying" % city)
+	_walk_blind(s, 1.0 + DT * 3.0)
+	var w := d.walker
+	t.check(w != null and w != g, "%s: the walker sets out" % city)
+	var kept := true
+	var rest := INF
+	while w != null and g.inside:
+		_walk_blind(s, 1.0)
+		kept = kept and (d.walker == w or w.inside)
+		rest = w.ground_pos.distance_to(d.door)
+	t.check(kept and not (s.banners as Array).has("ONE OF THE POOR GIVES UP THE WALK"),
+		"%s: he waits out a %.0f s prayer at the shrine without giving the walk up (he stood %.2f from the door)" % [city, d.read_seconds, rest])
+	_walk_blind(s, 2.0)
+	t.check(w != null and (w.inside or d.believers.has(w)), "%s: and goes down when the shrine is free" % city)
+	_done(s)
+	City.use(&"aldermere")

@@ -45,7 +45,7 @@ var ring_show := 0.0
 
 func setup(crowd: Crowd, env: EnvironmentField, keeper_person: Person, foot_point: Vector2) -> BellNetwork:
 	_crowd = crowd
-	climb = crowd.profile.bell_climb
+	climb = crowd.profile.bell_climb * crowd.climb_scale
 	keeper = keeper_person
 	foot = foot_point
 	for s in env.structures():
@@ -149,7 +149,7 @@ func restore(p: Variant) -> void:
 	keeper = p as Person if is_instance_valid(p) else null
 	keeper_is_soldier = false
 	_replaced = false
-	climb = _crowd.profile.bell_climb
+	climb = _crowd.profile.bell_climb * _crowd.climb_scale
 	progress = 0.0
 	state = State.IDLE
 

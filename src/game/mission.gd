@@ -370,6 +370,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	var town_people := City.current().citizens() + City.current().soldiers()
 	var people := int(wanted) if wanted != "" else town_people
 	var citizens := roundi(float(people) * float(City.current().citizens()) / float(town_people))
+	_crowd.climb_scale = RiteBook.climb_scale(_def.gifts)  # the Watchful Bell (god P3, MS §4); 1.0 for every def but a god's later night
 	_crowd.spawn(citizens, people - citizens)
 
 	_wired.clear()

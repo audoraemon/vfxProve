@@ -65,6 +65,12 @@ const ENDING_TIME_SCALE := 0.3
 ## The ascent's slow motion (v0.11 M1, spec §6: about 2 s) in place of the ending's ENDING_SECONDS, and its banner.
 const ASCEND_SECONDS := 2.0
 const ASCEND_BANNER := "YOU ASCEND"
+## The chain's key (god P3, MS §2, plan Task 5): C, free among the mission keys (1-6, Tab, F, H, R, Q/E, Esc, F1). Only in a rite.
+const CHAIN_KEY := KEY_C
+## A won rite's ending (god P3, MS §5, plan P3-18): the shard's light rises from the shrine twice as wide as the ascent's, and the win plate
+## shows for RITE_SECONDS real seconds in slow motion before the results (the bank happened at the decision: P2's review M1).
+const RITE_RISE := 2.0
+const RITE_SECONDS := 4.0
 
 ## The scripted run: [seconds, slot, ground (Vector2.INF: the active city's Citadel), drag direction or Vector2.ZERO].
 ## Spaced so each power has finished before the next is cast (Rules.busy_left()): Heaven 8.5 s, Cinderfall 12,
@@ -117,6 +123,13 @@ var levels := {}
 var night_def: Callable
 ## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
 var restart_locked := false
+## The chain's aim is up (god P3, MS §2): C was pressed in a rite with the chain ready, and the next click on the map chains the marked victim under
+## it. A slot key or click, Esc or a right-click ends it; a refused click keeps it. The HUD's plate turns gold while it is up.
+var chain_aim := false:
+	set(on):
+		chain_aim = on
+		if is_instance_valid(_hud):
+			_hud.chain_aiming = on
 ## True in Endless Night (review M1): the last act's result is taken when the run is decided and `decided` carries it; `finished`
 ## then carries the same dictionary. Off everywhere else, so every other result is still taken after the ending.
 var report_on_decision := false
@@ -292,6 +305,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		print("BEHAVIOUR refused %s" % refused)
 		return
 	_close_legend()
+	chain_aim = false
 	if powers.is_empty():
 		powers = _drafted
 	_drafted = powers
@@ -550,6 +564,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	if _night == null or _act == null or _act.is_last():
 		return
 	_close_legend()
+	chain_aim = false
 	var ids := _act.next
 	var id := path if path != "" and ids.has(path) else String(ids[0])
 	if ids.size() > 1:
@@ -641,6 +656,68 @@ static func ascends(event: InputEvent) -> bool:
 	if event is InputEventKey:
 		return event.pressed and not event.echo and event.physical_keycode == KEY_F
 	return false
+
+
+## The chain's key (god P3, MS §2): C pressed -- not an echo, nor a release, and with no modifier (Ctrl+C is not the chain).
+static func chains(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo and event.physical_keycode == CHAIN_KEY \
+			and not (event.alt_pressed or event.ctrl_pressed or event.meta_pressed or event.shift_pressed)
+	return false
+
+
+## The running rite's director (god P3), or null off a rite.
+func _rite() -> RiteDirector:
+	return _rules.director as RiteDirector if started() else null
+
+
+## C was pressed, or the chain plate clicked (god P3, MS §2, plan P3-17): the chain's answer is "aim" (a ready chain: the next click on the map
+## chains the victim under it, the focused slot is let go), "yank" (a drag's one Yank, done), or the words of a refusal (the plate flashes, a buzz
+## and a quiet banner). Pressing it again during the aim lets the aim go, as a slot key lets its power go.
+func chain_pressed() -> void:
+	var rite := _rite()
+	if rite == null or _ending or in_intro() or not is_instance_valid(_hud):
+		return
+	if chain_aim:
+		_end_chain_aim()
+		return
+	var answer := rite.chain_key()
+	if answer == "aim":
+		_aim.unfocus()
+		chain_aim = true
+		UiSound.play(&"ui_focus")
+	elif answer == "yank":
+		UiSound.play(&"ui_click")
+	else:
+		_hud.chain_refused(answer)
+
+
+## The chain's aim never outlives its chain (god P3): once the chain is not ready (a refusal kept it up, then it began another way), or the
+## night is ending, the aim is let go. Read every frame.
+func _sync_chain_aim() -> void:
+	if chain_aim and (_ending or _rite() == null or _rite().chain_state != RiteDirector.Chain.READY):
+		chain_aim = false
+
+
+## The aim ends without a chain (a second C, a slot, Esc, a right-click).
+func _end_chain_aim() -> void:
+	if chain_aim:
+		chain_aim = false
+		UiSound.play(&"ui_back")
+
+
+## The aim was clicked at `ground` (god P3, MS §2): the marked victim there is chained and the aim ends, or the refusal shows and the aim stays.
+func chain_click(ground: Vector2) -> void:
+	var rite := _rite()
+	if rite == null:
+		chain_aim = false
+		return
+	var refusal := rite.chain_at(ground)
+	if refusal == "":
+		chain_aim = false
+		UiSound.play(&"ui_click")
+	elif is_instance_valid(_hud):
+		_hud.chain_refused(refusal)
 
 
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
@@ -851,7 +928,10 @@ static func blight_banner(s: Structure) -> String:
 
 
 func _on_over(won: bool, reason: String) -> void:
-	_rules.banner.emit(ASCEND_BANNER if _rules.ascended else ResultsScreen.title_for(won, reason))
+	if _rite_won():
+		_show_rite_win()
+	else:
+		_rules.banner.emit(ASCEND_BANNER if _rules.ascended else ResultsScreen.title_for(won, reason))
 	if _scripted:
 		# The scripted runs have no Results screen to show, so they keep printing what they found.
 		if _act != null:
@@ -867,9 +947,24 @@ func _on_over(won: bool, reason: String) -> void:
 	_play_ending()
 
 
+## A won rite (god P3, MS §5, plan P3-18): the shard's light rises from the shrine twice as wide as the ascent's and the win plate replaces the
+## stack, the strip and the slots; no banner (ResultsScreen.title_for() has no title for the shards). The bank happened at the decision.
+func _show_rite_win() -> void:
+	var rite := _rite()
+	if rite != null and is_instance_valid(_hud):
+		_hud.rise(rite.shrine(), RITE_RISE)
+		_hud.show_rite_plate(RiteBook.plate_lines(rite.rite_id()))
+
+
+## The run was a rite, and it is won (god P3).
+func _rite_won() -> bool:
+	return started() and _rules.won and _rite() != null
+
+
 func _play_ending() -> void:
 	_ending = true
 	set_ui_hidden(false)  # the ending's banner and the result are never hidden
+	chain_aim = false
 	_aim.unfocus()
 	var ended := _rules
 	var early := {}
@@ -879,7 +974,7 @@ func _play_ending() -> void:
 	if not _scripted:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
-		var wait := ASCEND_SECONDS if _rules.ascended else ENDING_SECONDS
+		var wait := ASCEND_SECONDS if _rules.ascended else (RITE_SECONDS if _rite_won() else ENDING_SECONDS)
 		await get_tree().create_timer(wait, true, false, true).timeout
 		if ended != _rules:
 			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
@@ -929,7 +1024,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if event is InputEventKey and event.pressed and not event.echo \
-				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H]):
+				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H] or (chains(event) and _rite() != null)):
 			set_ui_hidden(false)
 	if toggles_legend(event):
 		# H opens the legend (over the intro's tour too), or turns its page. Handled here, so the panel it opens cannot take the
@@ -959,13 +1054,17 @@ func _unhandled_input(event: InputEvent) -> void:
 				start(PackedStringArray(), Time.get_ticks_usec())
 		elif ascends(event):
 			ascend()
+		elif chains(event) and _rite() != null:
+			chain_pressed()
 		elif toggles_details(event):
 			get_viewport().set_input_as_handled()
 			_hud.toggle_details()
 		elif event.physical_keycode == KEY_ESCAPE:
-			# Esc first calls off a held press, then unfocuses the power. With nothing focused it is the
+			# Esc first lets go of the chain's aim (god P3), then calls off a held press, then unfocuses the power. With nothing focused it is the
 			# pause menu's -- or, for a mission running on its own with no Game around it, still the way out.
-			if _aim.cancel():
+			if chain_aim:
+				_end_chain_aim()
+			elif _aim.cancel():
 				UiSound.play(&"ui_back")  # a held press was called off
 			elif _aim.slot >= 0:
 				_aim.unfocus()
@@ -987,6 +1086,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.
 		var focused := _aim.slot >= 0
+		_end_chain_aim()  # god P3: the chain's aim goes first (it has no slot and no held press)
 		if not _aim.cancel():
 			_aim.unfocus()
 		if focused:
@@ -1001,10 +1101,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			if wish >= 0 and _descent != null and _descent.engage(wish):
 				UiSound.play(&"ui_click")
 				return
+			# A click on the chain plate is C (god P3, plan P3-17).
+			if _hud.chain_shown() and _hud.chain_rect().has_point(event.position):
+				chain_pressed()
+				return
 			# A click on a HUD slot focuses that power instead of casting into the town under it.
 			var on_slot := _hud.slot_at(event.position)
 			if on_slot >= 0 and on_slot < _rules.loadout.size():
 				_pick(on_slot)
+				return
+			# With the chain's aim up the click is the chain's, not a cast (god P3, MS §2).
+			if chain_aim:
+				chain_click(_bf.mouse_ground())
 				return
 			_pressing = true
 			_aim.press(_bf.mouse_ground())
@@ -1055,6 +1163,7 @@ func _close_legend() -> void:
 ## Focus a slot by its key or its card. The focused one's own again lets it go (Targeting.pick), and that is the
 ## player letting go, so it sounds as Esc and a right-click do. A cast lets go too, but quietly: the power is heard.
 func _pick(i: int) -> void:
+	chain_aim = false  # a slot key or click lets the chain's aim go (god P3, plan P3-17)
 	if i == _aim.slot:
 		UiSound.play(&"ui_back")
 	_aim.pick(i)
@@ -1063,6 +1172,7 @@ func _pick(i: int) -> void:
 func _process(delta: float) -> void:
 	if not started():
 		return
+	_sync_chain_aim()
 	if not _ending:
 		_music_in -= delta
 		if _music_in <= 0.0:

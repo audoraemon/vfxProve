@@ -106,6 +106,18 @@ const RISE_SECONDS := 2.0
 const RISE_COL := Color(1.0, 0.93, 0.7)
 ## How near a click must come to a waiting wish's tag to engage it (spec §5.2).
 const ENGAGE_PX := 8.0
+## The chain plate (god P3, MS §2 "Key, plate", R7): C's own plate above the slot row's right end, 100 x 20, CHAIN_GAP above SLOT_TOP. At six
+## slots the row is 620 of 640 px, so there is no room beside it.
+const CHAIN_SIZE := Vector2(100.0, 20.0)
+const CHAIN_GAP := 4.0
+const CHAIN_LABEL := "C CHAIN"
+## The plate's icon: an existing one (Leaving Is Prohibited's, plan P3-17, C4: no new art).
+const CHAIN_ICON := "noleave"
+const CHAIN_ICON_SIZE := 16.0
+## The rite's win plate (god P3, MS §5, plan P3-18): centred, y 120 to 200, in place of the stack, the strip and the slots while it shows.
+const RITE_PLATE_TOP := 120.0
+const RITE_PLATE_H := 80.0
+const RITE_PLATE_WRAP := 560.0
 
 var _rules: Rules
 var _crowd: Crowd
@@ -150,6 +162,15 @@ var intro := false
 ## The ascent's column (v0.11 M1): its ground point (Vector2.INF for none) and its real seconds so far.
 var _rise_at := Vector2.INF
 var _rise_age := 0.0
+## How wide the column is drawn, 1.0 for the ascent's (god P3, MS §5: a won rite's rises larger, Mission.RITE_RISE).
+var _rise_scale := 1.0
+## The chain plate (god P3, MS §2): Mission sets `chain_aiming` while C's aim is up (the plate's frame turns gold); a refused chain flashes it
+## red for FLASH_SECONDS.
+var chain_aiming := false
+var _chain_flash := 0.0
+var _chain_icon: Texture2D
+## The rite's win plate lines (MS §5) while it shows; empty otherwise.
+var _rite_lines := PackedStringArray()
 ## The objective rows, the how-to-win line and its wrapped lines, taken once at the start of advance() and dropped at its end (v0.11
 ## M6's final review): the redraw signature and the tags' keepout (stack_rect(), each frame) read them several times a frame, and the
 ## line's wrapping was done twice for each. null outside advance(), where every reader takes them live.
@@ -239,6 +260,8 @@ func _advance(delta: float) -> void:
 	for i in _flash.size():
 		_flash[i] = maxf(0.0, _flash[i] - delta)
 		flashing = flashing or _flash[i] > 0.0
+	_chain_flash = maxf(0.0, _chain_flash - delta)
+	flashing = flashing or _chain_flash > 0.0
 	# The tags follow their people and the camera (v0.10 M6): their own layer redraws whenever a tag or the camera has
 	# changed, and once more as the last goes (board tags).
 	var tags_now := _tag_signature()
@@ -370,6 +393,8 @@ func event_rows() -> Array:
 		soon.append_array(_rules.director.timeline.upcoming(want))
 	if _rules.lantern != null:
 		soon.append_array(_rules.lantern.strip_rows())
+	if _rules.director != null:
+		soon.append_array(_rules.director.strip_rows())  # god P3 (MS §3.4): a rite's clergy march counts down here; empty for every other director
 	soon.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["in"]) < float(b["in"]))
 	for e: Dictionary in soon.slice(0, want):
 		rows.append([String(e["clock"]) if e.has("clock") else UiTheme.clock(float(e["in"])), String(e["label"])])  # (a row may carry no countdown)
@@ -447,7 +472,7 @@ static func hint_width(lines: PackedStringArray) -> float:
 ## keep clear of it): centred under the clock, `Rect2()` when it has no rows.
 func events_rect(w: float) -> Rect2:
 	var rows := event_rows()
-	if rows.is_empty():
+	if rows.is_empty() or rite_plate_up():
 		return Rect2()
 	var wide := 0.0
 	for row: Array in rows:
@@ -539,8 +564,8 @@ func _wishes_plate(hint: Rect2) -> Rect2:
 ## drawn whenever the HUD is -- the tour's caption and the night's end leave them -- so it is empty only while none has anything to show.
 ## The tags' keepout (_draw_tags()).
 func stack_rect() -> Rect2:
-	if _rules == null or _rules.mission == null or intro:
-		return Rect2()  # v0.11.1: the stack is not drawn during the intro, so it keeps nothing clear
+	if _rules == null or _rules.mission == null or intro or rite_plate_up():
+		return Rect2()  # v0.11.1: the stack is not drawn during the intro, so it keeps nothing clear (nor under a rite's win plate, god P3)
 	var right := 0.0
 	var bottom := 0.0
 	var hint := hint_rect()  # measured once: the how-to-win plate wraps its words, and the wishes' plate sits under it
@@ -644,9 +669,16 @@ func wish_at(point: Vector2) -> int:
 
 
 ## The ascent begins (v0.11 M1, spec §6): a column of light over the ground point `at`.
-func rise(at: Vector2) -> void:
+## god P3 (MS §5, plan P3-18): `scale` widens the column -- a won rite's is Mission.RITE_RISE, twice the ascent's. 1.0 draws exactly as before.
+func rise(at: Vector2, scale := 1.0) -> void:
 	_rise_at = at
 	_rise_age = 0.0
+	_rise_scale = scale
+
+
+## How wide the column is drawn relative to the ascent's (god P3).
+func rise_scale() -> float:
+	return _rise_scale
 
 
 func rising() -> bool:
@@ -709,7 +741,8 @@ func _draw_tags() -> void:
 	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
 	# v0.11.1 §3: the hover comes from the previous frame's arrows (cheap, one frame late), read before the layout is replaced.
 	var hover := _hover_point()
-	_layout = tag_layout(all_tags(), xf, _view(), stack_rect(), [events_rect(_view().x), slots_rect()], hover, details)
+	_layout = tag_layout(all_tags(), xf, _view(), stack_rect(), [events_rect(_view().x), slots_rect(), chain_rect() if chain_shown() else Rect2()],
+		hover, details)
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
 	# earlier one.
 	for e: Dictionary in _layout:
@@ -721,10 +754,21 @@ func _draw_tags() -> void:
 			_canvas.draw_colored_polygon(shape, t.color)
 			shape.append(shape[0])
 			_canvas.draw_polyline(shape, MARK_EDGE, 1.0)
+			if t.ring >= 0.0:
+				_draw_ring(e.c, t)
 	for e: Dictionary in _layout:
 		if String(e.mode) == "map" and bool(e.show):
 			var t: MapTag = e.tag
 			_plate((e.label as Rect2).position, t.label, t.color)
+
+
+## A tag's ring (god P3, MS §2, §3.4): a dark circle round the diamond and, over it, a red arc filling clockwise from the top as `t.ring` goes 0 to 1 --
+## a breaker's grip on a chained captive, the clergy's cleanse of the shrine. A tag with no ring (-1, the default) draws exactly as before.
+func _draw_ring(c: Vector2, t: MapTag) -> void:
+	var r := t.size + 3.0
+	_canvas.draw_arc(c, r, 0.0, TAU, 32, Color(0.0, 0.0, 0.0, 0.6), 3.0)
+	if t.ring > 0.0:
+		_canvas.draw_arc(c, r, -PI * 0.5, -PI * 0.5 + TAU * clampf(t.ring, 0.0, 1.0), 32, UiTheme.COL_BAD, 2.0)
 
 
 ## The tags outside the frame (v0.10 M6): an arrow at the frame's edge for each, its label beside it. Every arrow first, then
@@ -1126,6 +1170,9 @@ func _signature() -> String:
 	out += "|%s" % intro
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
 	out += "|%s|%s" % [details, wish_summary()]
+	if chain_shown():
+		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
+	out += "|" + "/".join(_rite_lines)
 	for i in _rules.loadout.size():
 		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
 	return out
@@ -1142,11 +1189,12 @@ func _tag_signature(with_stack := true) -> String:
 	# review: the strip and the slot bar are placed for the labels, so the same for them (`with_stack` false leaves all three out).
 	var out := "%s|%s|%s" % [xf, _view(), stack_rect() if with_stack else Rect2()]
 	if with_stack:
-		out += "|%s|%s" % [events_rect(_view().x), slots_rect()]
+		out += "|%s|%s|%s" % [events_rect(_view().x), slots_rect(), chain_rect() if chain_shown() else Rect2()]
 	# v0.11.1 §3: which bare arrow the mouse is over (from the last layout: one frame late, no layout needed here) and whether all show.
 	out += "|%s|%d" % [details, hovered_arrow(_layout, _hover_point())]
 	for t in tags:
-		out += "|%s%s%s%s%s%s%s%s%s" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid()]
+		out += "|%s%s%s%s%s%s%s%s%s%d" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid(),
+			roundi(t.ring * 48.0)]  # god P3: a ring filling (a grip on a standing captive) redraws the layer
 	return out
 
 
@@ -1167,14 +1215,17 @@ func _draw() -> void:
 	_draw_rise()
 	_draw_clock(w)
 	_draw_rite(w)
-	if not intro:
+	if not intro and not rite_plate_up():
 		_draw_play_plates(w)
 	_draw_banners(w)
 	_draw_subtitle(w)
 	_draw_prayers(w)
 	_draw_caption(w)
-	_draw_ascend()
-	_draw_slots(w)
+	_draw_rite_plate(w)  # god P3: a won rite's plate stands in place of the stack, the strip and the slots
+	if not rite_plate_up():
+		_draw_ascend()
+		_draw_chain()
+		_draw_slots(w)
 	_frame_wishes = null
 
 
@@ -1432,7 +1483,7 @@ func _draw_rise() -> void:
 	var k := clampf(_rise_age / RISE_SECONDS, 0.0, 1.0)
 	var top := lerpf(foot.y, 0.0, minf(k * 2.0, 1.0))
 	for i in 3:
-		var half := (9.0 - float(i) * 3.0) * (1.0 - k * 0.5)
+		var half := (9.0 - float(i) * 3.0) * (1.0 - k * 0.5) * _rise_scale
 		var col := RISE_COL
 		col.a = (0.16 + 0.18 * float(i)) * (1.0 - k)
 		draw_rect(Rect2(foot.x - half, top, half * 2.0, maxf(foot.y - top, 1.0)), col)
@@ -1558,19 +1609,161 @@ func _draw_modes(box: Rect2) -> void:
 	var modes := _aim.modes()
 	if modes.is_empty():
 		return
-	var labels: Array[String] = ["Q/E"]
-	for m: Dictionary in modes:
-		labels.append(String(m.name))
-	var total := 0.0
-	for l in labels:
-		total += UiTheme.width(l, UiTheme.SIZE_SMALL) + 6.0
-	var view_w := get_viewport_rect().size.x
-	var x := clampf(box.position.x, 2.0, maxf(view_w - total - 2.0, 2.0))
+	var labels := _modes_labels(modes)
+	var x := modes_rect(box).position.x
 	var y := box.position.y - PLATE_H - 3.0
 	for k in labels.size():
 		var col := UiTheme.COL_DIM if k == 0 else (UiTheme.COL_GOLD if k - 1 == _aim.mode_index() else UiTheme.COL_TEXT)
 		_plate(Vector2(x, y), labels[k], col)
 		x += UiTheme.width(labels[k], UiTheme.SIZE_SMALL) + 6.0
+
+
+## The labels of a focused power's modes plate: the keys, then each mode's name.
+func _modes_labels(modes: Array) -> Array[String]:
+	var labels: Array[String] = ["Q/E"]
+	for m: Dictionary in modes:
+		labels.append(String(m.name))
+	return labels
+
+
+## Where the focused power's modes plate is drawn over its slot `box` (god P3 pre-flight R2: the chain plate steps clear of it); Rect2() when the
+## focused power has no modes. `box` defaults to the focused slot's.
+func modes_rect(box := Rect2()) -> Rect2:
+	if _aim == null or _rules == null or _aim.slot < 0 or _aim.slot >= _rules.loadout.size():
+		return Rect2()
+	var modes := _aim.modes()
+	if modes.is_empty():
+		return Rect2()
+	if not box.has_area():
+		box = slot_rect(_aim.slot)
+	var total := 0.0
+	for l in _modes_labels(modes):
+		total += UiTheme.width(l, UiTheme.SIZE_SMALL) + 6.0
+	var x := clampf(box.position.x, 2.0, maxf(_view().x - total - 2.0, 2.0))
+	return Rect2(x, box.position.y - PLATE_H - 3.0, total, PLATE_H)
+
+
+# --- The chain plate and the rite's win plate (god P3) -------------------------------------------
+
+## The rite's director, or null off a rite.
+func _rite_director() -> RiteDirector:
+	return _rules.director as RiteDirector if _rules != null else null
+
+
+## The chain plate shows (god P3, MS §2): in a rite, in play (the tour's caption would lie over it), until the night is over.
+func chain_shown() -> bool:
+	return _rules != null and _rules.director is RiteDirector and not intro and not _rules.finished and not rite_plate_up()
+
+
+## The chain plate's rectangle (MS §2, R7): 100 x 20 above the slot row's right end, CHAIN_GAP above SLOT_TOP; centred with no slots. Pre-flight R2:
+## when the focused power's modes plate (Decree's The Bell Lies in the last slot) would lie under it, it steps up one PLATE_H + CHAIN_GAP.
+func chain_rect() -> Rect2:
+	if _rules == null:
+		return Rect2()
+	var left := roundf((_view().x - CHAIN_SIZE.x) * 0.5) if _rules.loadout.is_empty() else slots_rect().end.x - CHAIN_SIZE.x
+	var r := Rect2(left, SLOT_TOP - CHAIN_GAP - CHAIN_SIZE.y, CHAIN_SIZE.x, CHAIN_SIZE.y)
+	if modes_rect().intersects(r):
+		r.position.y -= PLATE_H + CHAIN_GAP
+	return r
+
+
+## The plate's label.
+func chain_label() -> String:
+	return CHAIN_LABEL
+
+
+## The plate's state words: READY, DRAG 0:41 or the cooldown's clock (the director's chain_plate()); "" off a rite.
+func chain_state() -> String:
+	var d := _rite_director()
+	return d.chain_plate() if d != null else ""
+
+
+## A chain was refused (god P3, MS §2): the plate flashes red, a buzz sounds and the words show as a quiet banner (the buzz is its sound).
+func chain_refused(text: String) -> void:
+	_chain_flash = FLASH_SECONDS
+	push_banner(text, true)
+	UiSound.play(&"ui_buzz")
+
+
+## The chain plate is still red from a refusal.
+func chain_flashing() -> bool:
+	return _chain_flash > 0.0
+
+
+## The plate: the icon, the label over the state, in a frame that turns gold while C's aim is up. Two lines of capitals in 20 px.
+func _draw_chain() -> void:
+	if not chain_shown():
+		return
+	var r := chain_rect()
+	var d := _rite_director()
+	var ready := d != null and d.chain_state == RiteDirector.Chain.READY
+	draw_rect(r, UiTheme.COL_PANEL)
+	if chain_flashing():
+		var red := UiTheme.COL_BAD
+		red.a = _chain_flash / FLASH_SECONDS
+		draw_rect(r, red)
+	if _chain_icon == null:
+		_chain_icon = PowerBook.hud_icon(CHAIN_ICON)
+	if _chain_icon != null:
+		draw_texture_rect(_chain_icon, Rect2(r.position + Vector2(2.0, 2.0), Vector2.ONE * CHAIN_ICON_SIZE), false,
+			Color.WHITE if ready else Color(0.45, 0.45, 0.5))
+	UiTheme.frame(self, r, chain_aiming)
+	var x := r.position.x + CHAIN_ICON_SIZE + 6.0
+	UiTheme.text(self, Vector2(x, r.position.y + 9.0), chain_label(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if chain_aiming else UiTheme.COL_TEXT)
+	UiTheme.text(self, Vector2(x, r.position.y + 18.0), chain_state(), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if ready else UiTheme.COL_DIM)
+
+
+## A won rite's plate (MS §5, plan P3-18): the lines (RiteBook.plate_lines()) replace the stack, the strip, the chain plate and the slots until the
+## results come.
+func show_rite_plate(lines: PackedStringArray) -> void:
+	_rite_lines = lines
+	queue_redraw()
+
+
+## The win plate is up.
+func rite_plate_up() -> bool:
+	return not _rite_lines.is_empty()
+
+
+## The win plate's rectangle: centred, RITE_PLATE_TOP to RITE_PLATE_TOP + RITE_PLATE_H, as wide as its widest line (the third wraps at RITE_PLATE_WRAP);
+## Rect2() while it is not up.
+func rite_plate_rect() -> Rect2:
+	if not rite_plate_up():
+		return Rect2()
+	var wide := UiTheme.width(_rite_lines[0], UiTheme.SIZE_BIG)
+	if _rite_lines.size() > 1:
+		wide = maxf(wide, UiTheme.width(_rite_lines[1], UiTheme.SIZE_BODY))
+	for l in _rite_rest():
+		wide = maxf(wide, UiTheme.width(l, UiTheme.SIZE_SMALL))
+	wide = minf(wide + 32.0, _view().x - 8.0)
+	return Rect2(roundf((_view().x - wide) * 0.5), RITE_PLATE_TOP, wide, RITE_PLATE_H)
+
+
+## The plate's third and later lines as drawn: wrapped to RITE_PLATE_WRAP.
+func _rite_rest() -> PackedStringArray:
+	var out := PackedStringArray()
+	for i in range(2, _rite_lines.size()):
+		out.append_array(UiTheme.wrap(_rite_lines[i], RITE_PLATE_WRAP, UiTheme.SIZE_SMALL))
+	return out
+
+
+## The win plate drawn: the title in gold, the points, then the stolen gift wrapped, on a gold-framed dark plate (MS §5).
+func _draw_rite_plate(w: float) -> void:
+	if not rite_plate_up():
+		return
+	var r := rite_plate_rect()
+	draw_rect(r, Color(0.07, 0.055, 0.02, 0.94))
+	UiTheme.frame(self, r, true)
+	var title := _rite_lines[0]
+	UiTheme.text(self, Vector2(roundf((w - UiTheme.width(title, UiTheme.SIZE_BIG)) * 0.5), r.position.y + 26.0), title, UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+	var y := r.position.y + 46.0
+	if _rite_lines.size() > 1:
+		var points := _rite_lines[1]
+		UiTheme.text(self, Vector2(roundf((w - UiTheme.width(points, UiTheme.SIZE_BODY)) * 0.5), y), points, UiTheme.SIZE_BODY)
+		y += 16.0
+	for l in _rite_rest():
+		UiTheme.text(self, Vector2(roundf((w - UiTheme.width(l, UiTheme.SIZE_SMALL)) * 0.5), y), l, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		y += UiTheme.LINE_SMALL
 
 
 ## A short label on a dark plate, `at` being the plate's top-left corner.

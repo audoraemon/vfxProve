@@ -12,6 +12,6 @@ harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3	541794606
 lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1	-898699529
 lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2	-584713426
 lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3	-326951286
-prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1	147325362
-prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	-424633409
-prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	-676796406
+prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1	-908700531
+prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	214861832
+prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	-706005903

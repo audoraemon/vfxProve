@@ -171,6 +171,10 @@ static func _alone(d: FirstPrayersDirector, p: Person, reach: float) -> bool:
 
 # --- Death: Death Mark and Pestilence ---
 
+## Death (D34) takes every Faithful as fast as its two casts allow -- the market lines the door with the four nearest at 1:15, a walker comes at 1:20,
+## and two casts cannot take four in five seconds, so they must all be gone by then anyway. With the door empty the poor hurry in and pray
+## together, and the night ends about one prayer after the last death: its idle stretch (D34: up to 60 s) is that kill's fuse, the walk and the prayer.
+
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
 	for c in _runners(d):

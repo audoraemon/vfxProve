@@ -51,6 +51,10 @@ const WALK_STALL := 20.0
 ## a prayer takes 32). F3's line test alone gave Passage no route: one 3-unit wall cannot stand between the door and a line round it (the
 ## market's four stand on both sides), and a wall cools 42 s, so one could never hide both a going-in and its coming-out.
 const THORN_HIDE := 1.5
+## D34 (god T1R fix round 3, the user's option c): once no Faithful is left alive the door stands empty -- the next walker sets out at once (the
+## chain is skipped) and the poor may pray together, several at the shrine at once, each counted. Without it a player who has taken every Faithful
+## (Death's whole kit) could only wait out three prayers one at a time, 100 s and more. Banner EMPTY_BANNER, once.
+const EMPTY_BANNER := "THE DOOR STANDS EMPTY - THE POOR HURRY IN"
 
 
 ## The town's places and numbers (v0.12, spec 1.5): seeded from the consts above, which are Aldermere's; a town's overrides replace them.
@@ -101,6 +105,9 @@ var _hidden_prayers := {}
 var _hush := false
 ## D33: where each bramble segment near the shrine stood (by instance id), so a look at one is known after it has withered.
 var _thorn_spots := {}
+## D34: the door has stood empty (and EMPTY_BANNER been shown); the poor hurrying to the shrine together besides the walker.
+var _emptied := false
+var _hurrying: Array[Person] = []
 
 
 ## MirasHouseDirector's prayer length starts at PRAY_SECONDS (v0.12, R31): set at .new(), so a town's override survives setup.
@@ -262,9 +269,11 @@ func step(delta: float) -> void:
 	_t += delta
 	_lie_step()
 	_bramble_step()
+	_empty_step()
 	super(delta)
 	_fire_step()
 	_walker_step(delta)
+	_hurry()
 
 
 ## F5 ALL IS WELL (the bell lies): every liner is stood down at once, every running report dropped (the carrier goes back to his day, nothing is
@@ -428,17 +437,70 @@ func _walker_step(delta: float) -> void:
 		else:
 			_walker_keep(delta)
 		return
-	if timeline.elapsed() >= walk_due():
+	if timeline.elapsed() >= walk_due() and not (door_empty() and still_needed() <= 0):
 		_walker_out()
 
 
 ## The timeline second the next walker sets out: his own time, or POOR_CHAIN after the one before him was done if that is sooner; INF while one walks
-## and there is no chain yet.
+## and there is no chain yet. With the door empty (D34), now.
 func walk_due() -> float:
 	var at := float(poor_out_at[_walk_n]) if _walks_left > 0 else INF  # past the list a walker goes by the chain alone
 	if _chain_from >= 0.0:
 		at = minf(at, _chain_from + POOR_CHAIN)
+	if door_empty():
+		at = minf(at, timeline.elapsed())
 	return at
+
+
+## D34: no Faithful is left alive -- nobody can watch the door again.
+func door_empty() -> bool:
+	for f in faithful:
+		if _alive(f):
+			return false
+	return true
+
+
+## D34: how many more of the poor must set out for the night to be won: NEED less the Believers out, those praying, the walker and those hurrying.
+func still_needed() -> int:
+	var on_way := 1 if _alive(walker) and not walker.inside else 0
+	return need - believers_outside() - inside().size() - on_way - _hurrying.size()
+
+
+## D34: with the door empty, as many of the poor as the night still needs set out at once besides the walker, together (the chain skipped for
+## each); each keeps to his walk as the walker does. Quiet while a Faithful lives.
+func _hurry() -> void:
+	var still: Array[Person] = []
+	for p in _hurrying:
+		if _alive(p) and not p.inside and not _reading.has(p) and not believers.has(p):
+			still.append(p)
+	_hurrying = still
+	if burning or roof_fallen or not door_empty():
+		return
+	for p in _hurrying:
+		if p.mind == Person.Mind.DUTY:
+			if not p.has_goal() and p.ground_pos.distance_to(door) > DOOR_REACH:
+				p.go_duty(door)
+		elif p.mind in Person.LURABLE and not p.held_by_god():
+			p.go_duty(door)
+	var more := still_needed()
+	while more > 0:
+		var pick := next_walker()
+		if pick == null:
+			break
+		_walked[pick] = int(_walked.get(pick, 0)) + 1
+		pick.go_duty(door)
+		_hurrying.append(pick)
+		more -= 1
+
+
+## D34: with the door empty the shrine takes the poor together (Mira's one_at_a_time off), and the moment is announced once.
+func _empty_step() -> void:
+	if burning or roof_fallen or not door_empty():
+		return
+	one_at_a_time = false
+	if not _emptied:
+		_emptied = true
+		rules.banner.emit(EMPTY_BANNER)
 
 
 ## The one of the poor who would set out next: the unbelieving poor nearest the door who is alive, out of doors and free (not held by the god,
@@ -514,7 +576,7 @@ func _walker_keep(delta: float) -> void:
 func _brought(p: Person) -> bool:
 	if believers.has(p):
 		return false
-	if p == walker and p.mind == Person.Mind.DUTY:
+	if (p == walker or _hurrying.has(p)) and p.mind == Person.Mind.DUTY:
 		var reach := DOOR_REACH + ThornwallFx.SEG if _door_overgrown() else DOOR_REACH
 		if _near_house(p.ground_pos, DOOR_REACH) or p.ground_pos.distance_to(door) <= reach:
 			return true
@@ -645,7 +707,7 @@ static func _segment_hits(a: Vector2, b: Vector2, r: Rect2) -> bool:
 	return true
 
 
-## The tags (god T1R): Mira's, with the walking poor named and pointed at from the edge, and the door hidden by brambles counting down (F3b).
+## The tags (god T1R): Mira's, with the walking poor (the walker, and those hurrying with him, D34) named and pointed at from the edge, and the door hidden by brambles counting down (F3b).
 func tags() -> Array[MapTag]:
 	var out := super()
 	if door_hidden() and not burning and not roof_fallen:
@@ -653,10 +715,15 @@ func tags() -> Array[MapTag]:
 			if out[i].at == door and out[i].label == "DOOR - CLEAR":
 				out[i] = MapTag.place(door, MARK_CLEAR, "DOOR - HIDDEN %d" % ceili(hidden_left()), 0.0, false)
 				break
-	if _alive(walker) and not walker.inside:
+	var going: Array[Person] = _hurrying.duplicate()
+	if _alive(walker):
+		going.append(walker)
+	for w in going:
+		if not _alive(w) or w.inside:
+			continue
 		for i in out.size():
-			if out[i].at == walker.ground_pos and out[i].label == "":
-				out[i] = MapTag.person(walker.ground_pos, MARK_GRIEVING, "POOR - TO THE SHRINE", true)
+			if out[i].at == w.ground_pos and out[i].label == "":
+				out[i] = MapTag.person(w.ground_pos, MARK_GRIEVING, "POOR - TO THE SHRINE", true)
 				break
 	return out
 

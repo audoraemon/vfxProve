@@ -41,6 +41,8 @@ static func run(t) -> void:
 	_wall_on_door(t)
 	_waits_walking(t, &"aldermere")
 	_waits_walking(t, &"capital")
+	_door_empty(t)
+	_pray_together(t)
 
 
 static func _world() -> Dictionary:
@@ -848,3 +850,72 @@ static func _waits_walking(t, city: StringName) -> void:
 	t.check(w != null and (w.inside or d.believers.has(w)), "%s: and goes down when the shrine is free" % city)
 	_done(s)
 	City.use(&"aldermere")
+
+
+# --- God T1R fix round 3 (D34, the user's option c): the door stands empty ---
+
+## Every Faithful dies (unseen: the poor are all inside or far off), and a step is run.
+static func _empty_the_door(s: Dictionary) -> void:
+	var d: FirstPrayersDirector = s.d
+	for f in d.faithful:
+		if is_instance_valid(f) and f.is_alive():
+			(s.crowd as Crowd)._field.kill(f, &"doom")
+	_run(s, DT * 3.0)
+
+
+## D34: with every Faithful dead, the walker the night needs sets out at once -- here long before POOR_OUT_AT[0], with no chain -- and with him as
+## many more of the poor as the night still needs, together, each tagged; the moment has its own banner, once. While one Faithful lives, none of it.
+static func _door_empty(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	_run_blind(s, 10.0)
+	t.check(not d.door_empty() and d.walker == null and d._hurrying.is_empty() and not (s.banners as Array).has(FirstPrayersDirector.EMPTY_BANNER),
+		"while a Faithful lives: no walker before POOR_OUT_AT[0], nobody hurrying, no banner")
+	_empty_the_door(s)
+	t.check(d.door_empty() and is_equal_approx(d.walk_due(), d.timeline.elapsed()), "the door stands empty: the next walker is due now (the chain skipped)")
+	t.check(d.walker != null and d.walker.mind == Person.Mind.DUTY and d.timeline.elapsed() < float(d.poor_out_at[0]),
+		"the walker sets out at once, %.0f s before POOR_OUT_AT[0]" % (float(d.poor_out_at[0]) - d.timeline.elapsed()))
+	var going := d._hurrying.size() + (1 if d.walker != null else 0)
+	var duty := true
+	for p in d._hurrying:
+		duty = duty and p.mind == Person.Mind.DUTY and p.anchor.distance_to(d.door) < 0.5 and p != d.walker
+	t.check(going == FirstPrayersDirector.NEED and duty, "as many of the poor as the night needs (%d of %d) hurry to the door together" % [going, FirstPrayersDirector.NEED])
+	var tagged := 0
+	for m in d.tags():
+		tagged += 1 if m.label == "POOR - TO THE SHRINE" and m.edge else 0
+	t.check(tagged == FirstPrayersDirector.NEED, "each one hurrying is tagged and pointed at (%d)" % tagged)
+	var n := 0
+	for b in s.banners:
+		n += 1 if b == FirstPrayersDirector.EMPTY_BANNER else 0
+	_run(s, 1.0)
+	for b in s.banners:
+		n -= 1 if b == FirstPrayersDirector.EMPTY_BANNER else 0
+	t.check(n == 0 and (s.banners as Array).has(FirstPrayersDirector.EMPTY_BANNER), "banner %s, once" % FirstPrayersDirector.EMPTY_BANNER)
+	var h: Person = d._hurrying[0] if not d._hurrying.is_empty() else null
+	if h != null:
+		_arrive(h, d.door)
+		_run(s, DT * 2.0)
+	t.check(h != null and h.inside, "one hurrying with the walker goes down when he reaches the door")
+	_done(s)
+
+
+## D34: with the door empty the poor pray together, several at the shrine at once, and each is counted; while a Faithful lives, one at a time.
+static func _pray_together(t) -> void:
+	for empty in [true, false]:
+		var s := _world()
+		var d: FirstPrayersDirector = s.d
+		_blind(d)
+		if empty:
+			_empty_the_door(s)
+		var a: Person = d.grieving[0]
+		var b: Person = d.grieving[1]
+		_bring(d, a)
+		_run(s, DT * 2.0)
+		_bring(d, b)
+		_run(s, DT * 2.0)
+		t.check(a.inside and b.inside == empty, "%s: %s" % ["the door empty" if empty else "a Faithful alive",
+			"two pray at the shrine at once" if empty else "the second waits his turn"])
+		if empty:
+			_run(s, FirstPrayersDirector.PRAY_SECONDS + 1.0)
+			t.check(d.believers.has(a) and d.believers.has(b) and d.believers_outside() >= 2, "each is counted a Believer")
+		_done(s)

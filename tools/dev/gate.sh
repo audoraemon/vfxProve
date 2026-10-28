@@ -7,7 +7,8 @@
 #        [--with-none]   (v0.12, D23: with --route=b also runs the three none cases and judges none_lost 3/3, FAIL otherwise; route a always does)
 #        [--god=<type>:<tier>]   (god T1R, spec 9: the per-type gate -- every run plays that god type's own policy with its Tier 1 powers
 #                         (behaviour_check --god=, no --route); cases play, plus none with --with-none; the verdict line reads `route=god:<type>`)
-#        [--idle-max=N]  (god T1R: the longest idle stretch a play run may have, default 45; Harvest x Decree's per-type gate passes 60, D12)
+#        [--idle-max=N]  (god T1R: the longest idle stretch a play run may have, default 45; Harvest x Decree's per-type gate passes 60, D12,
+#                         and so does Prayers x Death, D34)
 #   (from the project root; G= overrides the Godot path)
 # Per run:   <scenario> <case> seed=N won=.. reason=.. time=.. idle=.. checksum=..
 # Last line: gate <scenario> route=<a|b|god:<type>> none_lost=K/3 wins=K/3 median=S idle_max=S PASS|FAIL      (exit 1 on FAIL)
@@ -15,7 +16,8 @@
 # median is printed and never judged (rulings D10, either town).
 # A route b gate with --with-none prints the none runs as well and none_lost=K/3 (without it none_lost prints -).
 # The gate (spec §7 and the plan's Global Constraints): the none runs all lose (route a only; with --route=b they are skipped and
-# none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission, only reported for a ★ --board one,
+# none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission -- at most 270 s
+# for prayers, D34 -- only reported for a ★ --board one,
 # D33); no idle stretch over 45 s in a play run. A play run whose result line has no idle= makes idle_max ? and the gate FAIL.
 set -u
 G=${G:-/c/BURIN_NITRO/Godot/Godot_v4.7.2-stable_win64_console.exe}
@@ -93,8 +95,11 @@ if [ "$ROUTE" = a ]; then
   { [ "$median" = "-" ] || [ "$median" -lt 180 ] || [ "$median" -gt 240 ]; } && verdict=FAIL
 fi
 # A tier mission's second loadout (no --board): its median may stray a little from A's band, never trivially fast (rulings R6).
+# (god T1R, D34) First Prayers only: B's 150 s floor is relaxed -- once no Faithful is left the poor hurry in and pray together, and B takes every
+# Faithful -- so its median is judged only against the 270 s ceiling there; its wins (and with --with-none, none_lost) are judged as before.
+B_FLOOR=150; [ "$S" = prayers ] && B_FLOOR=0
 if [ "$ROUTE" = b ] && [ -z "$BOARD" ]; then
-  { [ "$median" = "-" ] || [ "$median" -lt 150 ] || [ "$median" -gt 270 ]; } && verdict=FAIL
+  { [ "$median" = "-" ] || [ "$median" -lt "$B_FLOOR" ] || [ "$median" -gt 270 ]; } && verdict=FAIL
 fi
 [ "$time_ok" -eq 0 ] && { verdict=FAIL; median="time?"; }  # a win with no time= can not be judged
 if [ "$idle_ok" -eq 0 ]; then idle_show="?"; verdict=FAIL; else

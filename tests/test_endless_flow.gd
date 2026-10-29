@@ -13,6 +13,9 @@ static func run(t) -> void:
 	_bank_leaves_save(t)
 	_load_god_forfeits(t)
 	_load_god_hunt(t)
+	_awaken_routes(t)
+	_load_god_rite(t)
+	_rite_bank_writes(t)
 	_write_fails(t)
 	_draw_survives_quit(t)
 	_endless_button(t)
@@ -38,7 +41,7 @@ static func _flow_table(t) -> void:
 	var want := {
 		"board:endless": Game.Screen.SLOTS, "slots:continue": Game.Screen.HUB, "slots:new": Game.Screen.GOD_SELECT,
 		"slots:back": Game.Screen.BOARD, "god:chosen": Game.Screen.HUB, "god:back": Game.Screen.SLOTS,
-		"hub:descend": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
+		"hub:descend": Game.Screen.PREPARE, "hub:awaken": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
 		"hub:title": Game.Screen.TITLE, "tree:back": Game.Screen.HUB, "faith:back": Game.Screen.HUB,
 		"prepare:hub": Game.Screen.HUB, "results:continue": Game.Screen.HUB, "results:tree": Game.Screen.TREE,
 		"results:faith": Game.Screen.FAITH, "pause:abandon": Game.Screen.HUB, "interlude:hub": Game.Screen.HUB,
@@ -169,6 +172,107 @@ static func _load_god_hunt(t) -> void:
 	var again := Game.load_god(FILE)
 	t.check(again[1] == "" and again[0].sealed == want and again[0].seal_nights == 3 and again[0].notice == 50 and again[0].night == 7,
 		"opened again, nothing changes (%s)" % [again[1]])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	GodTree.dev_fill = false
+
+
+## A tier-1 god at its cap with a full bar, its type's two starting keys known (god P3, Task 8's fixture).
+static func _capped(seed_value := 5) -> GodSlot:
+	var g := GodSlot.make(1, _lantern_type(), seed_value)
+	g.level = g.cap()
+	g.divine_power = g.need()
+	g.notice = 50
+	g.night = 4
+	g.last_mission = "warning"
+	return g
+
+
+## Awaken opens the rite, the Hunt first (god P3, MS §1, Ruling P3-21; Review Focus 1): `Game.awaken_target()` is the id Awaken's Prepare
+## would draw -- the rite at the cap, the Hunt while the Notice is full (exactly Descend's path), nothing below the cap, at level 50 or
+## where no rite is written yet, and nothing for a god with nothing to draft.
+static func _awaken_routes(t) -> void:
+	GodTree.dev_fill = true
+	var g := _capped()
+	t.check(g.draftable().size() > 0, "the fixture god has something to draft (%s)" % [g.draftable()])
+	t.check(Game.awaken_target(g) == RiteBook.FIRST_TASTE, "capped at level 10: Awaken opens the First Taste (%s)" % Game.awaken_target(g))
+	g.notice = 100
+	var hunt := GodNight.draw(g)
+	t.check(Game.awaken_target(g) == hunt and hunt == String(GodNight.HUNTS[0].id) and GodNight.is_rite(hunt) == false,
+		"capped with the Notice full: the Hunt first, exactly Descend's draw (%s)" % Game.awaken_target(g))
+	g.notice = 50
+	var up := _capped()
+	up.level = 9
+	t.check(Game.awaken_target(up) == "", "below the cap Awaken opens nothing (%s)" % Game.awaken_target(up))
+	up.notice = 100
+	t.check(Game.awaken_target(up) == "", "and the Hunt does not make it open (%s)" % Game.awaken_target(up))
+	var none := _capped()
+	none.tier = 2
+	none.level = none.cap()
+	t.check(GodNight.awaken_state(none) == "unwritten" and Game.awaken_target(none) == "",
+		"capped at level 20, no rite written: nothing (%s)" % Game.awaken_target(none))
+	none.notice = 100
+	t.check(Game.awaken_target(none) == String(GodNight.HUNTS[1].id), "but the Hunt is still due first (%s)" % Game.awaken_target(none))
+	var top := _capped()
+	top.tier = 5
+	top.level = GodSlot.MAX_LEVEL
+	t.check(Game.awaken_target(top) == "", "at level 50 there is nothing to awaken to (%s)" % Game.awaken_target(top))
+	var empty := _capped()
+	empty.learned = {}
+	t.check(empty.draftable().is_empty() and Game.awaken_target(empty) == "",
+		"a god with nothing to draft opens nothing, as Descend does (%s)" % Game.awaken_target(empty))
+	GodTree.dev_fill = false
+
+
+## A game closed in the middle of a rite is a lost rite when the slot is opened (god P3, MS §1, pre-flight B1; Review Focus 2): the file
+## written by the clock start (`in_night = "first_taste"`) is read back, Notice +25, the night counts, the tier and `last_mission` stay,
+## the line is RITE_ABANDONED's, the file agrees and a second opening changes nothing.
+static func _load_god_rite(t) -> void:
+	_clear()
+	GodTree.dev_fill = true
+	var g := _capped(4)
+	g.in_night = RiteBook.FIRST_TASTE
+	t.check(g.write(FILE) == OK, "the mid-rite slot is written")
+	var got := Game.load_god(FILE)
+	var s: GodSlot = got[0]
+	t.check(s != null and s.notice == 75 and s.night == 5 and s.in_night == "" and s.tier == 1 and s.capped() and s.last_mission == "warning",
+		"a slot left mid-rite: Notice 75, the night counted, still tier 1 and capped, last_mission untouched")
+	t.check(got[1] == GodNight.RITE_ABANDONED % 5 + " Lantern Notice +25%.", "and the line says the rite is lost (%s)" % got[1])
+	t.check(s != null and s.gifts.is_empty() and GodNight.awaken_state(s) == "rite", "nothing is stolen and Awaken is offered again")
+	var back := GodSlot.read(FILE)
+	t.check(back != null and back.notice == 75 and back.night == 5 and back.in_night == "" and back.tier == 1 and back.last_mission == "warning",
+		"the forfeit was written: the file says the same")
+	var again := Game.load_god(FILE)
+	t.check(again[1] == "" and again[0].notice == 75 and again[0].night == 5, "opened again, nothing more is charged (%s)" % [again[1]])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	GodTree.dev_fill = false
+
+
+## A won rite banked and written (god P3, MS §1 R2; Review Focus 2): the file reads tier 2, the gift, the points and the same Notice,
+## and the night is closed. (Game banks at the decision and writes at once: `_on_night_decided`.)
+static func _rite_bank_writes(t) -> void:
+	_clear()
+	GodTree.dev_fill = true
+	var g := _capped(6)
+	g.points = 1
+	g.faith = 9
+	g.in_night = RiteBook.FIRST_TASTE
+	var keys := g.in_tree()
+	var out := {"won": true, "reason": "shards", "rite": {"shards": 3}}
+	Game.bank_god_night(g, RiteBook.FIRST_TASTE, PackedStringArray([keys[0]]), out)
+	t.check(Game.write_god(g, FILE) == "", "the banked god is written")
+	var s := GodSlot.read(FILE)
+	t.check(s != null and s.tier == 2 and s.points == 3 and s.gifts == PackedStringArray(["watchful_bell"]) and s.notice == 50 and s.night == 5
+		and s.in_night == "" and s.last_mission == "warning" and s.faith == 9 and s.cap() == 20 and not s.capped(),
+		"the file reads tier 2, +2 points, the gift, Notice 50, Night 5, Faith as before, the cap lifted")
+	t.check(out.god.rite.won == true and out.god.rite.gift == "watchful_bell" and out.best == false, "the result carries the rite for the results screen (%s)" % [out.god.rite])
+	var lost := _capped(6)
+	lost.in_night = RiteBook.FIRST_TASTE
+	var out2 := {"won": false, "reason": "dawn", "rite": {"shards": 1}}
+	Game.bank_god_night(lost, RiteBook.FIRST_TASTE, PackedStringArray([keys[0]]), out2)
+	Game.write_god(lost, FILE)
+	var l := GodSlot.read(FILE)
+	t.check(l != null and l.tier == 1 and l.capped() and l.notice == 75 and l.night == 5 and l.gifts.is_empty() and l.in_night == "",
+		"a lost rite writes: tier 1, still capped, Notice 75, no gift")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
 	GodTree.dev_fill = false
 

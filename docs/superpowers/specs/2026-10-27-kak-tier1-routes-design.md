@@ -3,6 +3,10 @@
 Date: 2026-10-27. Status: written for the controller (rulings D1-D9 in `.superpowers/sdd/t1routes/rulings.md`); the routes table is
 the user's (2026-10-27). Branch `god/t1routes` off `feat/god-progression` `420a4e37`; lands on `feat/god-progression` only (D1).
 
+As built: the numbers and rules that changed while the milestone was built are in `docs/KAK_God_T1_Routes_Summary.md`, and each choice is
+in `docs/KAK_God_T1R_Rulings.md`. The main ones are W3 (§4.1), F3b and the door-stands-empty rule (§8.3), the dropped L2 (§7.2), the Harvest
+`SEIZE_R` 3.0 and the Prayers numbers (§8.8). Text below is amended in place only where a rule was added.
+
 Marks: **(user)** the user's decision; **(D<n>)** a controller ruling; **(my call)** the designer's choice, open to a ruling;
 *tunable* a first guess tuned in the order given. Code names are today's (read at `420a4e37`).
 
@@ -126,25 +130,37 @@ Today: three stars at 0:10, by 1:30 and by 3:00 (each no later than 30 s after t
 stares 4 s then runs (on duty, 1.6 u/s) to the bellkeeper; told, the keeper rings; on this Herald night the toll turns the Lantern and the
 keeper comes down as the Herald for the Temple. A warning dies only by an unseen kill; a seen one passes to the nearest witness.
 
-### 4.1 New rules (StarfallDirector sets both on each WarningDirector; both default off)
+### 4.1 New rules (StarfallDirector sets all three on each WarningDirector; all default off)
 - **W1 Out of the walls** (`walls_stop`): §2.1 for every carrier, at every phase (staring watchman, runner, relay, keeper, Herald). A
   relay witness standing outside the walls is out at once.
 - **W2 The keeper who heard ALL IS WELL** (`lie_stops`, NEW, user): while `crowd.is_bell_lying()`, a carrier who reaches the keeper
   (`DELIVER_REACH`) is not believed: the warning dies (`stopped_how = "lie"`), the bell is not called, the carrier goes home (off duty).
   The same for a carrier who takes the rope with the keeper dead. On a Herald night after the toll the Herald's errand is the Temple:
-  the lie does not stop a Herald *(my call: the Temple is not fooled)*. Banner `ALL IS WELL - THE KEEPER SENDS HIM HOME`.
+  the lie does not stop a Herald *(my call: the Temple is not fooled)*. Banner `ALL IS WELL - THE KEEPER SENDS HIM HOME`. (D27) A keeper whose
+  bell is already called, climbing or waiting, and who then hears the lie, calls the ringer back (`ALL IS WELL - THE KEEPER CALLS OFF THE
+  BELL`); a bell already tolling or silenced stays.
+- **W3 The watchman keeps his gate** (`gate_keeps`, NEW, D28; found by the Ruin and Death rounds): during the 4 s stare, a death just outside
+  the gate (past the wall's ring, within `GATE_SIGHT` 4.0 of the post) draws the star's watchman out on duty to the body, to a spot just past
+  the walls' margin, and W1 stops the warning there. The barred postern's watchman holds its key: once his star has fallen, a body goal or a
+  fright sets him down `KEY_STEP` 1.2 beyond the postern (it stays barred; an evacuation's flight does not turn the key, D30). Banners `THE
+  WATCHMAN GOES OUT TO THE BODY`, `THE WATCHMAN UNBARS THE POSTERN`. W3 changes no number, power or opposition; it ends the 40 s stall of a
+  frightened man at the postern. The gate pins `_gate_guards` that each star's gate has a posted guard outside the walls (D29).
 
 ### 4.2 Routes (D3)
 | Type | Powers (mode) | What counts | Policy outline | Proven / new |
 |---|---|---|---|---|
-| Ruin | Smite, Ember | Unseen kill (no one within `DOOM_WITNESS` 2.0 but those the bolt takes) | Smite led half a step ahead (as tier1_b's `_tax_fall`); Ember a house beside his road ahead to draw the street to the fire (the town's responders) so the bolt falls unseen; a relay: again | New kit, old rule |
-| Death | Death Mark, Pestilence | Unseen death | Death Mark during the stare at the post (he dies 10 s on, slowed to 0.6, ~6 u from the gate) where the street is clear; Pestilence on him when everyone within 2.0 is within its 1.2 and falls with him | **Proven** (B's Death Mark) |
+| Ruin | Smite, Ember | Unseen kill (no one within `DOOM_WITNESS` 2.0 but those the bolt takes); W3 | As built (D28): in the stare, Smite the guard posted outside his gate, clear of the watchman, so he is drawn out and W1 stops the warning; fallback the scare through the postern | New kit; W3 |
+| Death | Death Mark, Pestilence | Unseen death; W3 | As built (D28): Death Mark the guard posted outside his gate 8.5 s before the star falls, so he dies 1.5 s into the stare; fallback Pestilence or the mark on the carrier | **Proven** kit; W3 |
 | Veil | Silent Doom, Blight | Unseen kill | Doom where nobody else is within 2.0. Never Blight the tower (a silenced bell sends the warning to the Temple at once) | **Proven** (A's Doom) |
 | Passage | Thornwall, Mirrorfold | W1 | Lay each way in 19-30 s ahead of its runner, far along his road, way out beyond the nearest wall; Thornwall across his street to lengthen a run (real delay) between mirrors | NEW (W1); tight, Problem 4 |
 | Decree | Leaving Is Prohibited, The Bell Lies (ALL IS WELL) | W2 | ALL IS WELL so each delivery falls inside a lie; LIP pins a runner at his post (15 s) to hold him until the lie is up | NEW (W2); tight, Problem 5 |
 | Dominion | Mind Whisper, Discord | W1 | Whisper him from his post through his gate to a spot outside within `REACH` 10; Discord holds him if a whisper is refused | NEW (W1) |
 
 ### 4.3 What the player sees
+- (D29, D30) Board-only hint keys, so the campaign Warning and the Omen keep theirs: `warning.stars` ("Kill the messenger (gold) unseen (red), let
+  the bell lie, or get him out: kill a man just outside his gate as he stares at his star."), `warning.waiting` (the next star's gate) and
+  `warning.running` (no stare clause). The NEXT STAR tag counts down to the fall (`NEXT STAR - FALLS IN m:ss`) so a 10 s Death Mark can be timed.
+  The W3 banners are in §4.1.
 - Hint `warning` *(copy my call; must fit 3 lines of `Hud.HINT_W`)*: "Stop the messenger (gold): kill him with no one near (red), send him
   out of the walls, or let him find the bell lying."
 - The BELLKEEPER tag reads `BELLKEEPER - ALL IS WELL m:ss` while the bell lies (the lie's seconds left, in mission seconds).
@@ -265,7 +281,7 @@ marches him to the Temple (loss). He escapes within 1.2 of `exit_at`.
 Tags: `ACOLYTE - BOLTS IN m:ss` before (to `BOLT_AT`, mission seconds), `ACOLYTE - RUNNING` while bolting; the strip's event "He bolts
 for the gate" at `BOLT_AT` (cancelled once led or bolted). Banner `HE BOLTS FOR THE WEST GATE`.
 
-### 7.2 L2 Out of the walls
+### 7.2 L2 Out of the walls (DROPPED, pre-flight item 2: the acolyte is out only within `ESCAPE_REACH` of `exit_at`, as today)
 `_exit_reached()` (an existing hook) is also true outside the walls (§2.1): a fold past the wall is out, as the user's win is.
 Problem 10: this makes the Passage route a one-mirror win.
 
@@ -274,7 +290,7 @@ Problem 10: this makes the Passage route a one-mirror win.
 |---|---|---|---|---|
 | Ruin | Smite, Ember | Smite (≥ 1.5 from him) or Ember on a house within `BOLT_REACH` | Smite each patrol pair at its centre (both within 0.6), the watch (two bolts), a seizer (frees him), searchers | NEW (L1) |
 | Death | Death Mark, Pestilence | Death Mark a citizen within `BOLT_REACH` (dies 10 s on) | Death Mark patrolmen and the watch; Pestilence on a patrol pair ≥ `PLAGUE_CLEAR` (8) from him (the spread could reach him: a loss) | NEW (L1) |
-| Veil | Silent Doom, Blight | Blight his fountain | Doom each patrol pair, the watch (one Doom at its midpoint takes both), a seizer | NEW (L1) |
+| Veil | Silent Doom, Blight | Blight his fountain | Doom each patrol pair, the watch (two Dooms: the outer post stands 2.2 from the inner one, pre-flight item 2), a seizer | NEW (L1) |
 | Passage | Thornwall, Mirrorfold | 1:00 | Thornwall across a patrol's beat ahead of him (from ~0:30, real work before the bolt); a way in on his road, way out near the gate | NEW (L1); Problem 10 |
 | Decree | LIP, The Bell Lies (CALL THE GUARD) | 1:00 | LIP pins a patrol off his road (from ~0:30); CALL THE GUARD on a spot away from his road as he nears the gate: the watch and the nearest patrol run there 20 s and see nothing | NEW (L1) |
 | Dominion | Mind Whisper, Discord | (led from the start: never bolts) | A's policy | **Proven** (A) |
@@ -308,6 +324,16 @@ goes back to his spot. Banner `THE FAITHFUL RUN TO THE FIRE`.
 ### 8.3 F3 Thornwall blocks sight (Passage)
 A Faithful does not see the door when the straight line from him to it crosses a Thornwall segment (`role == &"thorns"`):
 `FirstPrayersDirector._sees()` override.
+
+**F3b Brambles by the well** (NEW, D33; Passage had no route without it: the wall lasts 25 s and a prayer 32 s): while a Thornwall segment
+stands within `THORN_HIDE` 1.5 of the shrine's door, no Faithful sees the door from any side, and a poor who went down hidden comes up hidden
+(the prayer is not seen when it ends). A Believer never goes down a second time; a Thornwall's look-lure never counts a poor as brought in; a
+wall laid along either axis on the door works. Banner `BRAMBLES HIDE THE WELL`; tags `DOOR - HIDDEN n` and `PRAYING n - HIDDEN`. The
+`first_prayers.watched` hint names F3b, fire and ALL IS WELL.
+
+**F6 The door stands empty** (NEW, user D34): once no Faithful is left alive, the chain is skipped and the next walker sets out at once, with as
+many more of the poor as the night still needs; the shrine takes them together (several pray at once, each counted). Banner `THE DOOR STANDS
+EMPTY - THE POOR HURRY IN`. Each hurrying poor has the walker's `WALK_STALL` give-up (`ONE OF THE POOR GIVES UP THE WALK`) and is replaced.
 
 ### 8.4 F4 Mirrorfold brings a walker (Passage)
 No new rule: a walker who folds keeps his goal (the door); a way out by the door brings him there at once.

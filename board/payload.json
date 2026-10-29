@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **27** to do · **87** done\n**8** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **27** to do · **87** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1793270338:f>)\n• New: God P5: the five Lantern Hunt nights (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-29T17:38:07+07:00"
+     "timestamp": "2026-10-29T17:38:58+07:00"
     },
     {
      "title": "feat/god-progression",
@@ -21,7 +21,7 @@
     },
     {
      "title": "god/p5-hunts",
-     "description": "103 commits not in Develop-Main · last commit today · local only\n> docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)\n\n_No Ledger task points at this branch._",
+     "description": "103 commits not in Develop-Main · last commit today · local only\n> docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)\n\n**In progress** (1)\n• God P5: the five Lantern Hunt nights",
      "color": 5016537
     },
     {

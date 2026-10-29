@@ -1,9 +1,11 @@
 {
- "hash": "742f13c80dbfac9a",
- "updated": "2026-10-29T17:38:07+07:00",
+ "hash": "099e5cfc9eca76df",
+ "updated": "2026-10-29T17:38:58+07:00",
  "changes": {
-  "date": "<t:1793270287:f>",
-  "items": []
+  "date": "<t:1793270338:f>",
+  "items": [
+   "New: God P5: the five Lantern Hunt nights (in progress)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -256,6 +258,16 @@
     "branch": "feat/god-progression",
     "updated": "2026-10-29",
     "order": 191
+   },
+   "god-p5-hunts": {
+    "title": "God P5: the five Lantern Hunt nights",
+    "status": "doing",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "branch": "god/p5-hunts",
+    "updated": "2026-10-29",
+    "order": 199
    },
    "god-progression-design": {
     "title": "Design: god progression and Endless Night",

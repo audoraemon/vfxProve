@@ -35,6 +35,14 @@ var tower: Structure
 var own_keeper: Variant = null
 ## The mates (v0.11 M3), held as Variants: any may be a body freed after its death fade.
 var mates: Array = []
+## The numbers a Lantern Hunt changes (god P5, MS H11, Ruling C1), each equal to its const and read in its place: how many mates run with the ringer,
+var tune_mates := MATES
+## how far behind the carrier they run and stand at the door,
+var tune_mate_gap := MATE_GAP
+## how far to either side of his way they run,
+var tune_mate_side := MATE_SIDE
+## and the seconds the crew stands at the door before the ringer runs.
+var tune_out_pause := OUT_PAUSE
 ## Still inside the tower, waiting to be sent (v0.11 M3).
 var waiting := true
 ## Who the other warnings own (v0.11 M3, controller ruling): set by BellRingersDirector before setup(), it returns an Array of
@@ -58,7 +66,7 @@ func _begin() -> void:
 ## The ringer and his mates (v0.11 M3, Decision 6): the 1 + MATES lay citizens nearest the post's door (none reserved), made
 ## watchmen -- the watch cloak and lantern -- and taken inside the tower. Returns the ringer; null with nobody to spare.
 func _appoint_watchman() -> Person:
-	var crew := _lay_near(gate_spot, 1 + MATES)
+	var crew := _lay_near(gate_spot, 1 + tune_mates)
 	if crew.is_empty():
 		return null
 	for p in crew:
@@ -91,7 +99,7 @@ func set_out() -> void:
 		_set_down(v as Person, at)
 	omen_fallen = true
 	phase = Phase.STARE
-	_clock = OMEN_AT + STARE - OUT_PAUSE
+	_clock = OMEN_AT + STARE - tune_out_pause
 
 
 ## No star falls (v0.11 M3): set_out() starts the warning.
@@ -246,8 +254,8 @@ func _step_mates() -> void:
 ## Where mate `k` runs from a carrier at `at` going `dir` (v0.11 M3, mission spec §1): MATE_GAP behind him and MATE_SIDE to his
 ## side -- the first mate on one side, the second on the other -- on walkable ground.
 func _heel(at: Vector2, dir: Vector2, k: int) -> Vector2:
-	var side := MATE_SIDE if k % 2 == 0 else -MATE_SIDE
-	return _walkable(at - dir * MATE_GAP + dir.orthogonal() * side)
+	var side := tune_mate_side if k % 2 == 0 else -tune_mate_side
+	return _walkable(at - dir * tune_mate_gap + dir.orthogonal() * side)
 
 
 ## Where the mates stand at the door by the ringer at `at` (v0.11 M3, Decision 6): of DOOR_RING walkable spots round him at
@@ -256,7 +264,7 @@ func _heel(at: Vector2, dir: Vector2, k: int) -> Vector2:
 func _door_spots(at: Vector2) -> Array[Vector2]:
 	var fit: Array[Vector2] = []
 	for k in DOOR_RING:
-		var g := _walkable(at + Vector2.from_angle(TAU * float(k) / float(DOOR_RING)) * MATE_GAP)
+		var g := _walkable(at + Vector2.from_angle(TAU * float(k) / float(DOOR_RING)) * tune_mate_gap)
 		var gap := g.distance_to(at)
 		if gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS - DOOR_MARGIN and not fit.has(g):
 			fit.append(g)

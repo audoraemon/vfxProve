@@ -152,11 +152,11 @@ static func read(file: String) -> GodSlot:
 		s.sealed = ""
 		s.seal_nights = 0
 	var last := _string(cfg.get_value(SECTION, "last_mission", ""))
-	s.last_mission = last if TierBook.has(last) else ""
+	s.last_mission = last if TierBook.has(last) or HuntBook.has(last) else ""  # god P5 (MS §1, R4): the last night may have been a Hunt
 	var before := _string(cfg.get_value(SECTION, "before_hunt", ""))
 	s.before_hunt = before if TierBook.has(before) else ""
 	var open := _string(cfg.get_value(SECTION, "in_night", ""))
-	s.in_night = open if TierBook.has(open) or RiteBook.has(open) else ""  # god P3, pre-flight B1: a closed game mid-rite is a lost rite
+	s.in_night = open if TierBook.has(open) or RiteBook.has(open) or HuntBook.has(open) else ""  # god P3, pre-flight B1: a closed game mid-rite is a lost rite; god P5 (R4): and mid-Hunt a lost Hunt
 	s.gifts = _strings(cfg.get_value(SECTION, "gifts", PackedStringArray()))
 	for key in _strings(cfg.get_value(SECTION, "loadout", PackedStringArray())):
 		if _is_power(key):

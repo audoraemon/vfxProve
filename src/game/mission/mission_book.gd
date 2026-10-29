@@ -36,6 +36,12 @@ const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
 ## The Awaken rite (god P3, MS §1): The First Taste, played at the Tier 1 cap. Dev-only on the board; RiteBook holds its row.
 const FIRST_TASTE := "first_taste"
+## The five Lantern Hunts (god P5, MS §1): one per god tier, played when the Notice is full. Dev-only on the board; HuntBook holds their rows.
+const HIDE_FAITHFUL := "hide_faithful"
+const SILENCE_WITNESS := "silence_witness"
+const EXPEL_INQUISITOR := "expel_inquisitor"
+const BREAK_HUNT := "break_hunt"
+const FACE_HALCYON := "face_halcyon"
 ## Between a mission's id and its town in a composite id (v0.12): `tax_collector@capital`.
 const CITY_SEP := "@"
 ## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
@@ -83,6 +89,9 @@ static func get_mission(id: String) -> MissionDef:
 	for m in rite_missions():
 		if m.id == id:
 			return m
+	for m in hunt_missions():  # god P5 (MS §1)
+		if m.id == id:
+			return m
 	return last_judgement()
 
 
@@ -100,7 +109,7 @@ static func is_dev(id: String) -> bool:
 	for m in dev_missions():
 		if m.id == id:
 			return true
-	return RiteBook.has(id)  # god P3 (Ruling P3-6): a rite on the board is dev-only too
+	return RiteBook.has(id) or HuntBook.has(id)  # god P3 (Ruling P3-6): a rite on the board is dev-only too; god P5 (MS §1): so is a Hunt
 
 
 ## The id of mission `id` played in `city` (v0.12): `tax_collector@capital`. It rides through Game, Prepare, the board, Restart
@@ -194,6 +203,13 @@ static func capital_sandbox() -> MissionDef:
 ## board, in the campaign or in dev_missions().
 static func rite_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [first_taste()]
+	return out
+
+
+## The Lantern Hunts' missions (god P5, MS §1, Ruling P5-3): reached by id from the god's draw and from the board's DEV tab; never listed on
+## the board, in the campaign, in dev_missions() or in tier_missions(). Each is on its tier's frame; its director comes with its own task.
+static func hunt_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [hide_faithful(), silence_witness(), expel_inquisitor(), break_hunt(), face_halcyon()]
 	return out
 
 
@@ -1003,3 +1019,66 @@ static func first_taste() -> MissionDef:
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	return m
+
+
+## Dresses a Hunt's frame with the strings every Hunt shares (god P5, MS §1, Ruling P5-3): its brief, goal, label and lose as the spec gives
+## them, its default loadout, its Lantern (a watch; the Gaze at Tier 5), a camera at `camera` and a do-nothing director whose only objective
+## is the dawn, so the night runs to the clock until the Hunt's own task replaces `director` and `make_objectives`.
+static func _hunt(m: MissionDef, goal: String, label: String, lose: String, loadout: Array, camera: Vector2, kind := LanternWatch.KIND_WATCH) -> MissionDef:
+	m.goal = goal
+	m.goal_label = label
+	m.lose = lose
+	m.lantern = kind
+	m.default_loadout = PackedStringArray(loadout)
+	m.camera_at = camera
+	m.intro_from = camera + Vector2(0.0, 6.0)
+	m.director = MissionDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Hide the faithful (god P5, MS §2, Tier 1, the Lantern Hunt of the Escort type): two households of three walk out of the walls before the
+## Inquisition's search reaches their houses. The frame (Task 1); HideFaithfulDirector, its objective, camera and tour come with Task 4.
+static func hide_faithful() -> MissionDef:
+	var m := _tier1(HIDE_FAITHFUL, String(HuntBook.row(HIDE_FAITHFUL).title), PackedStringArray(["The Inquisition searches house by house.",
+		"Lead your believers out before it reaches them."]))
+	return _hunt(m, "Lead five of your six believers out of the walls before the Inquisition takes them", "The faithful are hidden",
+		"Two believers are taken or killed, or dawn comes", ["whisper", "doom", "discord"], Vector2(-11.0, -1.5))
+
+
+## Silence the witness (god P5, MS §3, Tier 2, the Lantern Hunt of the Intercept type): four witnesses run for the Temple, and only their own
+## mates can carry the word on. The frame (Task 1); SilenceWitnessDirector and its objective come with Task 5.
+static func silence_witness() -> MissionDef:
+	var m := _tier2(SILENCE_WITNESS, String(HuntBook.row(SILENCE_WITNESS).title), PackedStringArray(["Four witnesses saw you work.",
+		"Stop them before they reach the Temple."]))
+	return _hunt(m, "Stop all four witnesses before word of you reaches the Temple", "The witnesses are silent",
+		"A witness reaches the Temple, or dawn comes", ["doom", "whisper", "discord"], Vector2(-11.5, 2.0))
+
+
+## Expel the inquisitor (god P5, MS §4, Tier 3, the Lantern Hunt of the Assassinate type): three wardens, then the captain, who three frights
+## drive out of the town. The frame (Task 1); ExpelInquisitorDirector comes with Task 6.
+static func expel_inquisitor() -> MissionDef:
+	var m := _tier3(EXPEL_INQUISITOR, String(HuntBook.row(EXPEL_INQUISITOR).title), PackedStringArray(["The Lantern's captain walks your town.",
+		"Break his wardens, then kill him or drive him out."]))
+	return _hunt(m, "Stop his three wardens, then kill the captain or drive him out of the town", "The inquisitor is gone",
+		"The captain reaches the Citadel, or dawn comes", ["doom", "smite", "whisper"], Vector2(-12.0, 1.0))
+
+
+## Break the hunt (god P5, MS §5, Tier 4, the Lantern Hunt of the Hunt type): four standards march on three believers' houses, and an escort
+## takes a guarded standard up. The frame (Task 1); BreakHuntDirector comes with Task 7.
+static func break_hunt() -> MissionDef:
+	var m := _tier4(BREAK_HUNT, String(HuntBook.row(BREAK_HUNT).title), PackedStringArray(["Four standards march on your believers' houses.",
+		"Break every standard before they plant them."]))
+	return _hunt(m, "Break the four standards before they take two of your believers' houses", "The hunt is broken",
+		"Two believers' houses are taken, or dawn comes", ["doom", "smite", "heaven"], Vector2(6.0, -13.5))
+
+
+## Face Halcyon (god P5, MS §6, Tier 5, the Lantern Hunt of the Gaze): four believers led to the pyre, freed by breaking their escorts unseen.
+## The frame (Task 1), with the Gaze as its Lantern; FaceHalcyonDirector and its Gaze objective come with Task 8.
+static func face_halcyon() -> MissionDef:
+	var m := _tier5(FACE_HALCYON, String(HuntBook.row(FACE_HALCYON).title), PackedStringArray(["Halcyon's Gaze is on the whole town.",
+		"Free your believers from the pyre unseen."]))
+	return _hunt(m, "Free three of the four believers led to the pyre, unseen by Halcyon", "The pyre stays cold",
+		"Two believers burn, Halcyon's Gaze fills, or dawn comes", ["whisper", "discord", "doom"], Vector2(0.8, -2.5), LanternWatch.KIND_GAZE)

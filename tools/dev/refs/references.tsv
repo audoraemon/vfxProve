@@ -152,3 +152,13 @@ first_taste_decree_play_3	--scenario=first_taste --case=play --seed=3 --god=decr
 first_taste_dominion_play_1	--scenario=first_taste --case=play --seed=1 --god=dominion:1 --dev-tree	-542144112
 first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-854083926
 first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=dominion:1 --dev-tree	-465385105
+
+# god P5 Hide the faithful (Task 9) -- rows below
+
+# god P5 Silence the witness (Task 10) -- rows below
+
+# god P5 Expel the inquisitor (Task 11) -- rows below
+
+# god P5 Break the hunt (Task 12) -- rows below
+
+# god P5 Face Halcyon (Task 13) -- rows below

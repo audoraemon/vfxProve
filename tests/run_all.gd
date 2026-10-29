@@ -192,6 +192,14 @@ const SUITES := [
 	"res://tests/test_endless_flow.gd",
 	"res://tests/test_walls.gd",
 	"res://tests/test_god_routes.gd",
+	"res://tests/test_hunt_book.gd",
+	"res://tests/test_hunt_hooks.gd",
+	"res://tests/test_hunt_tools.gd",
+	"res://tests/test_hide_faithful.gd",
+	"res://tests/test_silence_witness.gd",
+	"res://tests/test_expel_inquisitor.gd",
+	"res://tests/test_break_hunt.gd",
+	"res://tests/test_face_halcyon.gd",
 ]
 
 var failures := 0

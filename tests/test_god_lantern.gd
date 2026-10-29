@@ -123,11 +123,11 @@ static func _hunt_due(t) -> void:
 	s.notice = 99
 	t.check(not s.hunt_due() and GodNight.hunt_for(s).is_empty(), "at 99% there is no Hunt")
 	t.check(GodNight.HUNTS.size() == 5, "five Hunts")
-	t.check(GodNight.HUNTS[0].id == MissionBook.LOST_LAMB and GodNight.HUNTS[1].id == MissionBook.BELL_RINGERS
-		and GodNight.HUNTS[2].id == MissionBook.INFORMER and GodNight.HUNTS[3].id == MissionBook.ARMOURY
-		and GodNight.HUNTS[4].id == MissionBook.HEART_OF_FAITH, "the stand-ins are the MissionBook ids")
+	t.check(GodNight.HUNTS[0].id == MissionBook.HIDE_FAITHFUL and GodNight.HUNTS[1].id == MissionBook.SILENCE_WITNESS
+		and GodNight.HUNTS[2].id == MissionBook.EXPEL_INQUISITOR and GodNight.HUNTS[3].id == MissionBook.BREAK_HUNT
+		and GodNight.HUNTS[4].id == MissionBook.FACE_HALCYON, "the Hunts are the real MissionBook ids (god P5: the stand-ins are gone)")
 	for h2: Dictionary in GodNight.HUNTS:
-		t.check(TierBook.has(h2.id), "the stand-in %s is on the board" % h2.id)
+		t.check(HuntBook.has(h2.id) and not TierBook.has(h2.id), "the Hunt %s is HuntBook's and not a board id" % h2.id)
 
 
 static func _hunt_draw(t) -> void:
@@ -409,14 +409,14 @@ static func _hunt_def(t) -> void:
 		s.bought["clock"] = 1
 		var h: Dictionary = GodNight.HUNTS[tier - 1]
 		var def := GodNight.def_for(s, h.id)
-		var board := TierBook.board(h.id)
+		var real := HuntBook.def(h.id)
 		t.check(def.tier == tier and def.name == h.title and def.intro_banner == String(h.title).to_upper(),
 			"tier %d Hunt: tier, the Hunt's title and its banner (%d, %s, %s)" % [tier, def.tier, def.name, def.intro_banner])
 		t.check(def.slots == s.slots() and def.dp_capacity == s.max_might() and def.pool == s.draftable(),
 			"tier %d Hunt: the god's slots, Might and pool (%d, %d)" % [tier, def.slots, def.dp_capacity])
 		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001, "tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])
-		t.check(def.goal == board.goal and def.lose == board.lose and def.brief == board.brief, "tier %d Hunt: brief, goal and lose are the stand-in's" % tier)
-		t.check(int(_shape(def)[8]) == (1 if tier == 5 else 0), "tier %d Hunt: Gaze only at tier 5 (%d)" % [tier, int(_shape(def)[8])])
+		t.check(def.goal == real.goal and def.lose == real.lose and def.brief == real.brief, "tier %d Hunt: brief, goal and lose are the real Hunt's" % tier)
+		t.check(def.lantern == (LanternWatch.KIND_GAZE if tier == 5 else LanternWatch.KIND_WATCH), "tier %d Hunt: the Gaze Lantern only at tier 5 (%s)" % [tier, def.lantern])
 		t.check(Descent.new().setup(def, 1).tier == tier, "tier %d Hunt: the Descent plays it at the god tier" % tier)
 
 
@@ -426,7 +426,10 @@ static func _hunt_def_not_due(t) -> void:
 	var def := GodNight.def_for(s, "lost_lamb")
 	var own := MissionBook.get_mission("lost_lamb")
 	t.check(def.name == own.name and def.intro_banner == own.intro_banner, "at 99%% the stand-in plays under its own name and banner (%s)" % def.name)
-	# A due Hunt only renames the Hunt's own mission: any other board id is the god's ordinary night.
+	# A Hunt id builds the Hunt at any Notice (god P5, Ruling P5-2); any other board id is the god's ordinary night.
+	var hunt_at_99 := GodNight.def_for(s, MissionBook.HIDE_FAITHFUL)
+	t.check(hunt_at_99 != null and hunt_at_99.name == "Hide the faithful" and hunt_at_99.intro_banner == "HIDE THE FAITHFUL",
+		"at 99%% a Hunt id still builds the Hunt, under its title and banner (%s)" % [hunt_at_99.name if hunt_at_99 != null else "null"])
 	s.notice = 100
 	var other := GodNight.def_for(s, "warning")
 	t.check(other != null and other.name == TierBook.board("warning").name, "at 100%% another mission keeps its name (%s)" % other.name)

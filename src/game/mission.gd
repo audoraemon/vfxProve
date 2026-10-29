@@ -857,9 +857,10 @@ static func wanted_city(args: PackedStringArray, autostart_run: bool) -> StringN
 
 
 ## Whether a night of `def` has a Descent (v0.12, D20): a board night in Aldermere only -- no wishes, believers, banking or tier
-## progress in another town.
+## progress in another town. A Lantern Hunt has one too (god P5, MS §1, R6, open issue 4: it hears the tier's wishes and banks believers, as
+## the stand-ins did); a rite does not.
 static func has_descent(def: MissionDef, on_board: bool) -> bool:
-	return on_board and TierBook.has(def.id) and def.city == &"aldermere"
+	return on_board and (TierBook.has(def.id) or HuntBook.has(def.id)) and def.city == &"aldermere"
 
 
 ## This is a board night (v0.11 M1): Game said so, or a standalone run was given --board.

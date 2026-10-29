@@ -30,15 +30,9 @@ const HUNT_WON_NOTICE := 0
 const HUNT_LOST_NOTICE := 50
 ## Bonus Faith a won Hunt pays, times the god tier (spec §10.3, Ruling P2-6; *tunable*).
 const HUNT_FAITH := 50
-## The five Hunts, index = god tier - 1 (spec §10.2, Ruling P2-5): the stand-in mission each is played as, with the Hunt's own title and
-## plate. P5 replaces the stand-ins with real Hunts.
-const HUNTS := [
-	{"id": MissionBook.LOST_LAMB, "title": "Hide the faithful", "plate": "Lead your believers out before the inquisitors reach them"},
-	{"id": MissionBook.BELL_RINGERS, "title": "Silence the witness", "plate": "Stop the runner carrying word of you to the Lantern"},
-	{"id": MissionBook.INFORMER, "title": "Expel the inquisitor", "plate": "Drive out or kill the Lantern's captain in the town"},
-	{"id": MissionBook.ARMOURY, "title": "Break the hunt", "plate": "Smash their standards before they reach your believers"},
-	{"id": MissionBook.HEART_OF_FAITH, "title": "Face Halcyon", "plate": "His Gaze is on the whole town, and a seen death fills it"},
-]
+## The five Hunts, index = god tier - 1 (spec §10.2, Ruling P2-5; god P5, MS §1, Ruling P5-1): HuntBook's rows, aliased so the screens
+## and FLOW that read `GodNight.HUNTS[0]` keep working. P2 played a stand-in board mission under each; P5 plays the real Hunt.
+const HUNTS := HuntBook.HUNTS
 ## The line a forfeit that raised the Notice adds: `%d` is the change (Ruling P2-11; *my call*).
 const NOTICE_UP := "Lantern Notice +%d%%."
 ## The line a seal that ran out adds: `%s` is the ability's name.
@@ -84,12 +78,17 @@ static func is_rite(id: String) -> bool:
 	return RiteBook.has(id)
 
 
-## The Lantern Hunt this god faces next, or {} when the Notice is below 100 (spec §10.2, Ruling P2-3): HUNTS' entry for the god's tier
-## plus `"tier"`. Derived from the Notice, so quitting and coming back gives the same Hunt.
+## True when `id` is a Lantern Hunt's mission id (god P5, MS §1): checked, like a rite, wherever a night is built.
+static func is_hunt(id: String) -> bool:
+	return HuntBook.has(id)
+
+
+## The Lantern Hunt this god faces next, or {} when the Notice is below 100 (spec §10.2, Ruling P2-3): HuntBook's row for the god's tier
+## plus `"tier"` (the god's, which is the row's own). Derived from the Notice, so quitting and coming back gives the same Hunt.
 static func hunt_for(slot: GodSlot) -> Dictionary:
 	if not slot.hunt_due():
 		return {}
-	var out: Dictionary = HUNTS[clampi(slot.tier, 1, HUNTS.size()) - 1].duplicate()
+	var out := HuntBook.at_tier(slot.tier)
 	out["tier"] = slot.tier
 	return out
 
@@ -132,13 +131,13 @@ static func draw(slot: GodSlot) -> String:
 ## The mission `id` as `slot`'s god plays it (spec §9.1): the board's version at the god's tier with the god's slots, Might and
 ## drafted abilities, and the Faith clock added to the night's clock after the board stretched its events (Ruling P7: the events keep
 ## the tier's times and only dawn comes later). A night with acts has the clock added to each act. Null for an id not on the board.
-## The Lantern's Hunt (god P2, spec §10.2, Ruling P2-5) is its stand-in built at the god's tier, then dressed with the Hunt's title and banner.
+## A Lantern Hunt (god P5, MS §1, Ruling P5-2) is built from HuntBook at any Notice -- a stale `in_night` or a test asks for it by id -- on
+## its own tier's frame (the Hunt's tier, not the god's: a Hunt is played at its own tier), then dressed with its title and banner.
 static func def_for(slot: GodSlot, id: String) -> MissionDef:
 	if is_rite(id):
 		return _rite_def(slot, id)
-	var hunt := hunt_for(slot)
-	var is_hunt := not hunt.is_empty() and id == String(hunt.id)
-	var def := TierBook.board(id, null, slot.tier) if is_hunt else TierBook.board(id, null)
+	var is_hunt := HuntBook.has(id)
+	var def := HuntBook.def(id) if is_hunt else TierBook.board(id, null)
 	if def == null:
 		return null
 	var pool := slot.draftable()
@@ -151,9 +150,9 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 			_apply_god(a, slot, pool)
 			a.clock += extra
 	else:
-		def.clock += extra
+		def.clock = (TierBook.clock(def.tier) if is_hunt else def.clock) + extra
 	if is_hunt:
-		_dress_hunt(def, hunt)
+		_dress_hunt(def, HuntBook.row(id))
 	_carry_gifts(def, slot)
 	return def
 
@@ -181,7 +180,7 @@ static func _carry_gifts(def: MissionDef, slot: GodSlot) -> void:
 		a.gifts = slot.gifts.duplicate()
 
 
-## The Hunt's own title and banner on its stand-in; brief, goal and lose stay the stand-in's (god P2, Ruling P2-5).
+## The Hunt's own title and banner on its def; its brief, goal and lose are the frame's own (god P5, MS §2-§6).
 static func _dress_hunt(def: MissionDef, hunt: Dictionary) -> void:
 	def.name = String(hunt.title)
 	def.intro_banner = String(hunt.title).to_upper()

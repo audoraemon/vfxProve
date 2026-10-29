@@ -152,6 +152,16 @@ const LINES := {
 	"first_taste.drag": "Keep the Watch (red) off him. C again to Yank him on once.",
 	"first_taste.march": "The clergy (red) march on the shrine: stop two of them, or win first.",
 	"first_taste.cleanse": "The clergy cleanse the shrine: strike a kneeler now.",
+
+	# hide_faithful (god P5 Task 4)
+
+	# silence_witness (god P5 Task 5)
+
+	# expel_inquisitor (god P5 Task 6)
+
+	# break_hunt (god P5 Task 7)
+
+	# face_halcyon (god P5 Task 8)
 }
 
 

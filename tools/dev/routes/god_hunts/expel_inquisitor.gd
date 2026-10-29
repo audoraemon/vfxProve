@@ -35,6 +35,9 @@ const HEAVEN := preload("res://src/fx/set2/heaven_splitter.gd")
 const B := preload("res://tools/dev/routes/tier1_b.gd")
 ## Ruin: the seconds since a man first came out before a Smite is struck where he would be seen (a seen death tolls the bell).
 const RUIN_PATIENCE := 6.0
+## Ruin: the guard at the next man's door is struck in the last this many seconds of the wait, so the bolt that kills him (after the patience) is not
+## 50 s after the last cast (Task 11 round 2: the first warden at 44 s printed idle 50).
+const RUIN_PREP_LEAD := 24.0
 ## Death: the seconds either side of the fuse (MARK_TIME 10) a marked man must be out of doors for the mark to take him (a man indoors at the
 ## fuse lives), and the captain's countdown (real seconds) at or under which the Glacial burst (impact 1.2 s, radius 5) is spent on his last leg.
 const DEATH_MARGIN := 0.8
@@ -131,11 +134,12 @@ static func _rate(ctx: Dictionary) -> float:
 
 
 ## The guards of the next target to set out, standing out of doors at his door, while nobody is out: the men a player strikes in the wait
-## between one stopped and the next coming out, so the target comes out alone. Empty when somebody is out, or the next target has none out.
-static func _door_guards(d: ExpelInquisitorDirector) -> Array[Person]:
+## between one stopped and the next coming out, so the target comes out alone; with a `lead`, only in its last `lead` seconds. Empty when somebody
+## is out, or the next target has none out.
+static func _door_guards(d: ExpelInquisitorDirector, lead := INF) -> Array[Person]:
 	var out: Array[Person] = []
 	var next := d._next_waiting()
-	if d._anyone_out() or next == null or not MissionDirector._alive(next.target):
+	if d._anyone_out() or next == null or not MissionDirector._alive(next.target) or d.out_at(next.index) - d._clock > lead:
 		return out
 	for g: Variant in next.guards:
 		if MissionDirector._alive(g) and not (g as Person).inside:
@@ -248,7 +252,7 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 			rules.cast(int(slots.tornado), GOD.road_ahead(p, 1.0))
 			return "tornado %s" % q.label
 	if street.is_empty() and bc._slot_ready(rules, slots, "smite"):
-		for g in _door_guards(d):
+		for g in _door_guards(d, RUIN_PREP_LEAD):
 			rules.cast(int(slots.smite), g.ground_pos)
 			return "smite the guard at the door"
 	return ""

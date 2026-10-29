@@ -138,10 +138,10 @@ static func _setup(t) -> void:
 			min_gap = minf(min_gap, gap)
 			far = far and gap > 2.0 * SilentDoom.RADIUS
 	t.check(far, "no two guards post within two Silent Doom radii of each other (closest %.2f)" % min_gap)
-	t.check(d.out_at(0) == 20.0 and d.out_at(1) == 70.0 and d.out_at(2) == 120.0 and d.out_at(3) == 190.0, "set-out times 0:20, 1:10, 2:00 and 3:10 (%s)"
+	t.check(d.out_at(0) == 44.0 and d.out_at(1) == 94.0 and d.out_at(2) == 144.0 and d.out_at(3) == 190.0, "set-out times 0:44, 1:34, 2:24 and 3:10 (%s)"
 		% [[d.out_at(0), d.out_at(1), d.out_at(2), d.out_at(3)]])
 	var labels := Kit.labels(d)
-	t.check(labels.has("WARDEN OUT IN 0:20") and labels.has("WARDEN OUT IN 1:10") and labels.has("WARDEN OUT IN 2:00") and labels.has("CAPTAIN OUT IN 3:10")
+	t.check(labels.has("WARDEN OUT IN 0:44") and labels.has("WARDEN OUT IN 1:34") and labels.has("WARDEN OUT IN 2:24") and labels.has("CAPTAIN OUT IN 3:10")
 		and labels.has("CITADEL"), "the grey countdowns and the Citadel are tagged at the start (%s)" % [labels])
 	t.check(d.hint_phase() == "" and d.frights() == 0 and not d.fled() and d.captain_eta() == INF and d.strip_rows().is_empty(), "the hint is the mission's; no fright, no row")
 	t.check(rules.objectives[0].hud_text(rules) == "Expel the inquisitor: 0 / 4", "the HUD counts the four (%s)" % rules.objectives[0].hud_text(rules))
@@ -154,16 +154,16 @@ static func _chain(t) -> void:
 	var s := _world()
 	var d := _ei(s)
 	var wait := ExpelInquisitorDirector.EI_CHAIN
-	Kit.run_for(s, 21.0)
+	Kit.run_for(s, 45.0)
 	t.check(d.quarries[0].state == State.WALKING and (s.banners as Array).has("A WARDEN SETS OUT") and d.quarries[1].state == State.WAITING,
-		"0:20: the first warden sets out, the others wait")
+		"0:44: the first warden sets out, the others wait")
 	t.check(d.quarries[0].leg == 1, "he is bound for the second stop of his round (he has stood in the first)")
 	Kit.arrive(d.quarries[0].target, d.quarries[0].stop_doors[0])
 	_kill(s, d.quarries[0])
 	var died := d.quarries[0].died_at
-	t.check(is_equal_approx(d.out_at(1), minf(70.0, died + wait)) and d.out_at(1) <= 70.0 and d.out_at(1) - died <= wait + 0.01,
+	t.check(is_equal_approx(d.out_at(1), minf(94.0, died + wait)) and d.out_at(1) <= 94.0 and d.out_at(1) - died <= wait + 0.01,
 		"the first warden stopped: the next is due by the chain (%.1f; stopped %.1f)" % [d.out_at(1), died])
-	t.check(d.out_at(2) == 120.0, "the third keeps his time while the second lives")
+	t.check(d.out_at(2) == 144.0, "the third keeps his time while the second lives")
 	_out(d, d.quarries[1])
 	_kill(s, d.quarries[1])
 	t.check(d.out_at(2) <= d.quarries[1].died_at + wait + 0.01, "and after the second, the third is due within 45 s")
@@ -727,7 +727,7 @@ static func _camera(t) -> void:
 	var clear := true
 	var failed := ""
 	for m in d.tags():
-		if not m.label.begins_with("WARDEN OUT IN 0:20"):
+		if not m.label.begins_with("WARDEN OUT IN 0:44"):
 			continue
 		if not Kit.clear_of_stack(m.at, cam, Kit.STACK):
 			clear = false

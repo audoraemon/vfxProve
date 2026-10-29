@@ -37,8 +37,10 @@ const EI_LABELS := ["WARDEN", "WARDEN", "WARDEN", "CAPTAIN"]
 const EI_WARDENS := 3
 ## Each warden's guards and the captain's (MS §4: one a warden, two the captain, 0.9 off him).
 const EI_GUARDS := [1, 1, 1, 2]
-## When each warden sets out at the latest (the strip's seconds, MS §4 *fg*): 0:20, 1:10, 2:00; each next sooner if the one before is stopped.
-const EI_WARDEN_AT := [20.0, 70.0, 120.0]
+## When each warden sets out at the latest (the strip's seconds, MS §4 *fg*): 0:44, 1:34, 2:24; each next sooner if the one before is stopped.
+## Round 2 of Task 11 tuning (Ruling P5-T11-R1, P5-C10 "harder"): was 20 / 70 / 120. A fast killer is bound by the first warden's time plus three
+## chains (45 s), so the Hunt's pooled median sat at 157 s (round 1's VISIT / HIDE / FRIGHT_GAP left it there); 44 keeps the first wait under 45 s.
+const EI_WARDEN_AT := [44.0, 94.0, 144.0]
 ## How long after one is stopped the next sets out at the latest (MS §0: no wait over 60 s; the chain is 45).
 const EI_CHAIN := 45.0
 ## When the captain sets out at the latest (3:10 *fg*), or this long after the third warden is stopped, whichever is sooner.

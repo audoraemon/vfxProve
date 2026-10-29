@@ -125,12 +125,12 @@ Landing follows Ruling C1 and the plan's P3-24: fetch, trial-merge the then-curr
 |---|---|
 | Import | exit 0 |
 | Suite | `checks=11488 failures=0` (P2 ended at 10928) |
-| References, every row | <<REFS>> |
+| References, every row | 307 ok, 0 bad (land.sh on 183c8781; trial merge with origin/feat/Develop-Main clean, 0 incoming) |
 | `digest` | `61267b7e90524d800bf1c3473a71146b` (unchanged) |
 | `crowd_check` | `-935602679` (unchanged) |
-| FLOW alone | <<FLOW>> (the rite walk adds 25 checks; 200 at Task 8) |
-| Bench vs `kak-god-p2` | <<BENCH>> |
-| Landed commit | <<COMMIT>> |
+| FLOW alone | `checks=200 failures=0`, run alone on 183c8781 (land.sh gave NO RESULT under other sessions' Godot load; rerun alone after a quiet wait) |
+| Bench vs `kak-god-p2` | within noise on every pair, median of 3 fps, A = kak-god-p2, B = 183c8781: warning 30.4 / 31.2, miras_house 26.9 / 26.9, vigil_flame 27.3 / 27.5, procession 24.7 / 24.4, last_judgement 25.5 / 26.2 (absolute fps low: a shared, busy machine; both sides ran under the same load) |
+| Landed commit | the tip of god/p3-rite, fast-forwarded onto feat/god-progression, tag `kak-god-p3` |
 
 **References: 286 to 307.** The 21 new rows are `first_taste_none_1..3` and `first_taste_<type>_play_1..3` for the six types, all added in a commented block at the end of `tools/dev/refs/references.tsv`. No pre-P3 row moved (digest, `crowd_check` and `calm` are unchanged at every task). Three of the rite's own rows were re-recorded after they were first recorded: the 17 `_play_` rows that moved when the muster spacing was fixed (the milestone fix wave), then Decree's three (the policy round of Task 7's review), then Passage's three (the Passage policy round); the `none` rows never moved (`-862607621`, `-634128792`, `-483087079`, the same for every type because nothing is cast). The only code that could reach an old reference is `Crowd.climb_scale` (1.0 by default, `x * 1.0` is exact), `Person.chained` (false) and the `chained` skip in `NoLeaveFx`; the references prove none of them moves anything.
 

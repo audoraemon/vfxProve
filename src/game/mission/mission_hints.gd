@@ -159,6 +159,9 @@ const LINES := {
 	"hide_faithful.seized": "A believer is seized: strike his seizer before he reaches the Temple.",
 
 	# silence_witness (god P5 Task 5)
+	"silence_witness": "A witness (gold) walks to the Temple with two mates (red). Kill him where his mates cannot see.",
+	"silence_witness.relay": "His mate saw it and runs on: stop him too.",
+	"silence_witness.near": "The witness nears the Temple: stop him now.",
 
 	# expel_inquisitor (god P5 Task 6)
 

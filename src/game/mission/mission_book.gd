@@ -1057,12 +1057,19 @@ static func hide_faithful() -> MissionDef:
 
 
 ## Silence the witness (god P5, MS §3, Tier 2, the Lantern Hunt of the Intercept type): four witnesses run for the Temple, and only their own
-## mates can carry the word on. The frame (Task 1); SilenceWitnessDirector and its objective come with Task 5.
+## mates can carry the word on. The frame (Task 1); the director, the objective that loses on `word`, the camera and the tour are Task 5's: the Lantern
+## is a watch (the toll only turns it), the witnesses' count wins first, the dawn last.
 static func silence_witness() -> MissionDef:
 	var m := _tier2(SILENCE_WITNESS, String(HuntBook.row(SILENCE_WITNESS).title), PackedStringArray(["Four witnesses saw you work.",
 		"Stop them before they reach the Temple."]))
-	return _hunt(m, "Stop all four witnesses before word of you reaches the Temple", "The witnesses are silent",
-		"A witness reaches the Temple, or dawn comes", ["doom", "whisper", "discord"], Vector2(-11.5, 2.0))
+	_hunt(m, "Stop all four witnesses before word of you reaches the Temple", "The witnesses are silent",
+		"A witness reaches the Temple, or dawn comes", ["doom", "whisper", "discord"], SilenceWitnessDirector.SW_CAMERA_AT)
+	m.director = SilenceWitnessDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [WitnessObjective.new("Silence the witnesses", "witnesses", "Witnesses silenced"),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
 
 
 ## Expel the inquisitor (god P5, MS §4, Tier 3, the Lantern Hunt of the Assassinate type): three wardens, then the captain, who three frights

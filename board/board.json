@@ -1,10 +1,11 @@
 {
- "hash": "099e5cfc9eca76df",
- "updated": "2026-10-29T17:38:58+07:00",
+ "hash": "dc1b91c80be240d3",
+ "updated": "2026-10-30T02:38:25+07:00",
  "changes": {
-  "date": "<t:1793270338:f>",
+  "date": "<t:1793302705:f>",
   "items": [
-   "New: God P5: the five Lantern Hunt nights (in progress)"
+   "Done: Board sweep: play the 24 non-Warning god pairs as the board version once",
+   "Done: Capital Tax: a Passage deputy stalls near a Thornwall"
   ]
  },
  "snapshot": {
@@ -291,32 +292,32 @@
    },
    "god-t1r-board-sweep": {
     "title": "Board sweep: play the 24 non-Warning god pairs as the board version once",
-    "status": "todo",
+    "status": "done",
     "area": "Tools",
     "version": "next",
     "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-10-29",
+    "updated": "2026-10-30",
     "order": 198
    },
    "god-t1r-capital-rows": {
-    "title": "Capital per-type Tier 1 rows: 24 of 30 pass",
+    "title": "Capital per-type Tier 1 rows: 22 of 30 pass",
     "status": "todo",
     "area": "Design",
     "version": "next",
     "needs_you": true,
     "branch": "feat/god-progression",
-    "updated": "2026-10-29",
+    "updated": "2026-10-30",
     "order": 194
    },
    "god-t1r-capital-tax-stall": {
     "title": "Capital Tax: a Passage deputy stalls near a Thornwall",
-    "status": "todo",
+    "status": "done",
     "area": "Crowd",
     "version": "next",
     "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-10-29",
+    "updated": "2026-10-30",
     "order": 196
    },
    "god-t1r-play-by-hand": {
@@ -1133,27 +1134,43 @@
   },
   "branches": [
    {
-    "name": "feat/god-progression",
-    "ahead": 103,
+    "name": "god/p5-t7",
+    "ahead": 121,
     "behind": 0,
-    "date": "2026-10-29",
-    "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
-    "pushed": true
-   },
-   {
-    "name": "god/p5-hunts",
-    "ahead": 103,
-    "behind": 0,
-    "date": "2026-10-29",
-    "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
+    "date": "2026-10-30",
+    "subject": "fix: Break the hunt review round 2 -- a new bearer waits for his fellow to close up; take-up tested with bodies stepped (god P5 Hunt 4)",
     "pushed": false
    },
    {
-    "name": "god/t1routes",
-    "ahead": 103,
+    "name": "god/p5-t8",
+    "ahead": 120,
+    "behind": 0,
+    "date": "2026-10-30",
+    "subject": "fix: Face Halcyon -- the escorts walk in file so none bunches (review of Task 8, I1); ESCORT tag counts the rule; four houses with a lane behind the door",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-progression",
+    "ahead": 104,
+    "behind": 0,
+    "date": "2026-10-30",
+    "subject": "fix: Capital walker stops on a free waypoint instead of rocking (D42); Passage fold window 50 s at First Prayers (D41); god_gate --board",
+    "pushed": true
+   },
+   {
+    "name": "god/t1r-follow",
+    "ahead": 104,
+    "behind": 0,
+    "date": "2026-10-30",
+    "subject": "fix: Capital walker stops on a free waypoint instead of rocking (D42); Passage fold window 50 s at First Prayers (D41); god_gate --board",
+    "pushed": false
+   },
+   {
+    "name": "god/p5-hunts",
+    "ahead": 118,
     "behind": 0,
     "date": "2026-10-29",
-    "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
+    "subject": "fix: Hide the faithful -- the two inquisitors stay more than a Silent Doom apart at every stop and on the trail (review of Task 4, Important 1)",
     "pushed": false
    },
    {

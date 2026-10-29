@@ -203,6 +203,7 @@ static func _fill_idle(t) -> void:
 	var left := PackedStringArray()
 	for path: String in ["res://tools/dev/routes/god_t1/warning.gd", "res://tools/dev/routes/god_t1/tax.gd", "res://tools/dev/routes/god_t1/harvest.gd",
 			"res://tools/dev/routes/god_t1/lamb.gd", "res://tools/dev/routes/god_t1/prayers.gd", "res://tools/dev/routes/tier1_b.gd"]:
-		if FileAccess.get_file_as_string(path).contains('"' + GodT1.FILL):
+		var src := FileAccess.get_file_as_string(path)
+		if src.contains('"' + GodT1.FILL) or src.contains("FILL +"):
 			left.append(path.get_file())
 	t.check(left.is_empty(), "no Tier 1 policy casts a filler (%s)" % ", ".join(left))

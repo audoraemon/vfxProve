@@ -5331,7 +5331,9 @@ const FT_SHIFTS: Array[Vector2] = [Vector2.ZERO, Vector2(1, 0), Vector2(-1, 0), 
 ## Passage: a march this near the shrine (seconds) is folded back to the market, sooner the mirror is kept for the drag; a march leader inside the Main Gate
 ## and within FT_SEAL_R of it has the gate's mouth walled across before him once no captive is still to pass it.
 const FT_FOLD_BACK_AT := 20.0
-const FT_SEAL_R := 8.0
+const FT_SEAL_R := 4.5
+## Passage: a folded captive this far from the gate has been set down beyond it.
+const FT_SEAL_FAR := 14.0
 ## Passage, when no fold can be made: a Thornwall goes between the captive and a breaker within FT_WALL_R of him (kept for the approach post, FT_LAST_POST
 ## from the shrine, once a fold has been made).
 const FT_WALL_R := 1.8
@@ -5401,7 +5403,7 @@ func _first_taste_act(rules: Rules, slots: Dictionary, d: FirstTasteDirector, cr
 			if stopped != "":
 				return stopped
 		# Passage chains only with the mirror ready: its fold is what gets a drag past the Watch (MS §3.8), and the wait is the mirror's cooldown.
-		var v := _first_taste_pick(d, type in ["passage", "decree"], FT_FOLD_BEFORE + 2.0 if type == "passage" else 0.0)
+		var v := _first_taste_pick(d, type in ["passage", "decree"], FT_FOLD_BEFORE + 2.0 if type == "passage" else 0.0, type == "passage")
 		# Passage chains so that its captive reaches the first post as the mirror comes back (MS §3.8: the fold is what gets a drag past the Watch).
 		if v != null and type == "passage":
 			var wait := (_first_taste_lead(d, v.ground_pos) - FT_FOLD_BEFORE - 1.0) / RiteDirector.drag_pace(d._path_length(v.ground_pos))
@@ -5518,7 +5520,7 @@ func _first_taste_mark_ahead(rules: Rules, slots: Dictionary, d: FirstTasteDirec
 ## The marked lamplighter with the shortest way to the shrine, or null. With `avoid`, one standing within FT_SIGHT_PAD of a breaker who is free to grip
 ## is passed over while another stands clear: a player does not chain a man the Watch is already looking at (the types that can only hold or fold a
 ## breaker, not kill him, pick this way).
-func _first_taste_pick(d: FirstTasteDirector, avoid := false, lead := 0.0) -> Person:
+func _first_taste_pick(d: FirstTasteDirector, avoid := false, lead := 0.0, by_room := false) -> Person:
 	var best: Person = null
 	var best_way := INF
 	var best_clear := false
@@ -5533,8 +5535,11 @@ func _first_taste_pick(d: FirstTasteDirector, avoid := false, lead := 0.0) -> Pe
 			for b in d._breakers():
 				if not d.held(b) and b.ground_pos.distance_to(v.ground_pos) < FT_SIGHT_PAD:
 					clear = false
-		if clear and lead > 0.0 and _first_taste_lead(d, v.ground_pos) < lead:
+		var room := _first_taste_lead(d, v.ground_pos) if lead > 0.0 or by_room else INF
+		if clear and lead > 0.0 and room < lead:
 			clear = false
+		if by_room:
+			way = -minf(room, 60.0)  # (the most room first: he can set out earliest, and the wait for the mirror is the shortest)
 		if best == null or (clear and not best_clear) or (clear == best_clear and way < best_way):
 			best = v
 			best_way = way
@@ -5786,8 +5791,10 @@ func _first_taste_seal_gate(rules: Rules, slots: Dictionary, d: FirstTasteDirect
 	if not _slot_ready(rules, slots, "thorns"):
 		return ""
 	var gate := TownLayout.MAIN_GATE.get_center()
-	if WarningDirector._alive(d.captive) and int(memo.folded) != d.captive.get_instance_id():
-		return ""  # (a captive not yet folded will use the gate within the wall's 25 s)
+	if WarningDirector._alive(d.captive) and (int(memo.folded) != d.captive.get_instance_id() or d.captive.ground_pos.distance_to(gate) < FT_SEAL_FAR):
+		return ""  # (a captive not yet folded, or not yet set down beyond the gate, will use the gate within the wall's 25 s)
+	if d.chain_state == RiteDirector.Chain.READY:
+		return ""  # (the next captive is about to set out and may need the gate; a sealed gate sends him round by the side gate, to the marchers)
 	for m in d.marches:
 		if m.done or not m.walking:
 			continue

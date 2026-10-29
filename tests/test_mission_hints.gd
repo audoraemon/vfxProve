@@ -165,6 +165,10 @@ const SPEC := [
 	["hide_faithful", "Your believers (blue) walk out by themselves. Clear the watch (red) from their road to the gate."],
 	["hide_faithful.trail", "The Inquisition found the trail: keep its searchers off the household."],
 	["hide_faithful.seized", "A believer is seized: strike his seizer before he reaches the Temple."],
+	# Expel the inquisitor (god P5 Task 6, MS §4): pinned like the rest, appended at the end (the other Hunts' tasks append their own after it).
+	["expel_inquisitor", "Stop each lantern-warden (gold): kill him, or put him out of the walls."],
+	["expel_inquisitor.captain", "The captain walks his rounds: kill him, or frighten him three times."],
+	["expel_inquisitor.near", "The captain nears the Citadel: stop him now."],
 ]
 
 

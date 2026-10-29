@@ -126,8 +126,8 @@ procession_none_3	--scenario=feast --path=procession --board --case=none --seed=
 procession_play_1	--scenario=feast --path=procession --board --case=play --seed=1	-718175967
 procession_play_2	--scenario=feast --path=procession --board --case=play --seed=2	-616815945
 procession_play_3	--scenario=feast --path=procession --board --case=play --seed=3	728363854
-capital_calm	--scenario=capital_calm --seconds=60	-713901328
-capital_evac	--scenario=capital_evac	122086902
+capital_calm	--scenario=capital_calm --seconds=60	-597838260
+capital_evac	--scenario=capital_evac	570880938
 # god P3 (2026-10-29): The First Taste, the per-type rite check (Task 7). none = nothing cast (the same for every loadout); play = that type's Tier 1 pair
 # (--god=<type>:1) through the type's own answers in behaviour_check's _first_taste_*(). Decree re-recorded in the Task 7 review fix (10 of 10 seeds win). The 17 play rows re-recorded in the milestone fix wave (the muster spots are planned apart, so the marchers stand elsewhere; Passage seed 3 now loses to the cleanse, 2/3 wins).
 # Passage clears in about 112 s, under the 180 s band: accepted by the user (rulings C11). Its rows were re-recorded when its scripted policy changed (10 of 10 seeds win).

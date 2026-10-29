@@ -452,7 +452,7 @@ static func _passage_fold(bc, ctx: Dictionary) -> String:
 ## walking, is folded off; the way in is laid on his way FOLD_AHEAD seconds on or more (_fold_in()), with none of the poor within FOLD_CLEAR of
 ## it; the way out is tried FOLD_FAR from the way in round the compass, the one with the longest walk back to the door.
 const FOLD_IDLE := 8.0
-const FOLD_LEAD := 40.0
+const FOLD_LEAD := 50.0
 const FOLD_NEAR := 10.0
 const FOLD_AHEAD := 1.5
 const FOLD_AHEAD_MAX := 5.0

@@ -83,10 +83,11 @@ The existing routes keep their verdicts, in both towns, with their `none` cases.
 
 ### In the Capital (reported only)
 
-Tier 1 in the Capital is dev-only, so these are not binding (D10, D36): `pass=24/30 none_lost=5/5`.
+Tier 1 in the Capital is dev-only, so these are not binding (D10, D36): `pass=22/30 none_lost=5/5` since the walker fix (D42); it was 24/30 at landing.
 
 - The Warning 3/6 of its pairs: Death 0/3, Passage 0/3, Veil 1/3.
-- First Prayers 3/6: Ruin 0/3, Death 1/3, Passage 2/3 with a 297 s median, Dominion 3/3 with a 72 s idle.
+- First Prayers 1/6: Ruin 0/3, Death 1/3, Veil 3/3 with a 52 s idle, Passage 3/3 with an 81 s idle (297 s median), Dominion 3/3
+  with a 72 s idle. At landing it was 3/6 (Veil passed, Passage was 2/3); the walker fix (D42) moved these runs, not D41.
 - Tax 6/6 (Passage 2/3), Harvest 6/6, Lamb 6/6 (Passage and Dominion 2/3).
 
 The policies were tuned in Aldermere. The Capital's West River and West Gates have no guard posted outside (so W3 has no body to draw him out), and its first walker goes at 150 s to keep route A's median.
@@ -165,7 +166,7 @@ Left on purpose; each is reported, not hidden.
 - **Veil x Tax leans on Blight cracking the Bell Tower** (a seen death then rings nothing). A legitimate move; a reviewer may rule otherwise.
 - **Passage x Lamb has no slack:** its idle is 42 s of 45, and the dead-end pocket carries it.
 - **Policies read some director state** (the late window, the fire, the walker's road); each is something the player is shown as a tag, banner or strip entry.
-- **A Capital Tax Passage deputy stalls near a Thornwall** (Capital seed 2: he stands still from 100 s to the end; the same run without the smoke Thornwall wins). Cause not found; not a Task 3 rule.
+- ~~A Capital Tax Passage deputy stalls near a Thornwall~~ -- fixed after landing (see Follow-ups): a Capital walker's short step past a free waypoint into a building margin rocked across the waypoint for ever.
 - **The campaign's "ending not yet seen" branch** is unreachable from the title (D7).
 - **Parked minor test gaps:** Harvest's `bound.has(p)` term is not pinned by a test; a law-in-two-slots loadout would miss the earlier law; a hurrier wedged 0.7 to 1.3 from a door that is not overgrown holds a slot (the walker has the same gap, a follow-up if you want no slot held); the hurrier give-up test checks banner text the walker also emits.
 - **Landing noise:** FLOW fails or gives no result when launched from a background shell (it passes in the foreground and alone); machines were rarely quiet, and bench fps flipped between two regimes for both sides together.
@@ -174,7 +175,7 @@ Left on purpose; each is reported, not hidden.
 
 - **The level tables, batch 1, and god names and flavour lines** (from P1), still to be written.
 - **Per-type hints.** Hints are per mission; they do not say how a Decree or a Passage god wins. A hint per type would help a first-time player.
-- **The Capital per-type rows** (24 of 30 pass). Tuning them is a follow-up if Tier 1 ever opens in the Capital.
+- **The Capital per-type rows** (22 of 30 pass). Tuning them is a follow-up if Tier 1 ever opens in the Capital.
 - **A `--board` sweep of the 24 other pairs.** The gate plays the board version only for the Warning; Endless Night serves every Tier 1 mission as `TierBook.board(id)`. A one-off sweep would close that gap before the next tier.
 - **The five real Hunt nights (P5)** still use P2's stand-ins; the Lamb stand-in now bolts, and its Hunt plate does not mention it.
 - **Gifts beyond the first, rites at levels 20, 30 and 40** (P4).
@@ -194,10 +195,24 @@ The scripted player is not a human. These are the ones most worth a minute of yo
 
 ## Needs you
 
-- **Pairs reported, not binding.** The Capital's 24 of 30, and the short medians above. Say so if any should be tuned.
+- **Pairs reported, not binding.** The Capital's 22 of 30, and the short medians above. Say so if any should be tuned.
 - **Passage x Lost Lamb's dead end** (D25) and **Passage x Harvest's 86 s night** (D24): both are final unless you reopen them. For the Lamb the lever is a hard Thornwall rule (a Thornwall also stops a patrol's walk) or a second mirror charge.
 - **Passage x Prayers** at 59 s of your 60, with a 1 s margin on seed 1.
 - **The copy.** The spec's hint lines are a first draft; every line is tested to fit three lines of `Hud.HINT_W`. The banners are my call.
 - **The tunable numbers** (the table above), none moved from the spec except the ones in the Rulings note (Harvest `SEIZE_R`, Prayers first walker and chain).
 - **Pushing.** After landing, local `feat/god-progression` holds P2, P3 and this milestone; the local tag is `kak-god-t1r`. Nothing is pushed without your yes; `feat/Develop-Main` is untouched.
 - Still open from P1 and P2: the level tables for the first powers, the god names and flavour lines, whether to delete the Missions board, the five real Hunt nights, and whether a clean win should also need no seen death.
+
+## Follow-ups (after kak-god-t1r, 2026-10-29)
+
+- **Board sweep.** `god_gate.sh --board` (new option) plays every pair as the board version. Tax, Harvest and Lamb: 6/6 each, the same
+  numbers as the gate. First Prayers: 5/6 before the fix below -- Passage waited 62 s at seed 1 (wall at 66 s, next fold at 128 s); Death won 2/3.
+- **Passage x First Prayers, a wider fold window** (D41). The policy now folds a Faithful when the door next matters within 50 s
+  (`FOLD_LEAD` 40 -> 50 in `tools/dev/routes/god_t1/prayers.gd`; 60 was no better). Real idle: gate 47/47/55 (was 59/53/53), board 59/47/55
+  (was 62/53/53); all six runs win. Still over 45, so D40's 60 s allowance stays. `god_passage_prayers_play_1-3` re-recorded.
+- **The Capital walker rock** (D42). `DummyEnemy._move()`: in the Capital (the only city that passes `to`), a step past a waypoint it could
+  stand on, with the overshoot in a margin, now stops on the waypoint. Steps under twice ARRIVE (0.1) slid to and fro across it for ever;
+  the long-step rule only covered longer ones. Capital Tax Passage seed 2 now wins at 161.7 s (was lost at dawn). Test in
+  `tests/test_v012_merge.gd` (fails without the fix). Aldermere walkers never pass `to`, so nothing there moves. Every Capital run
+  moves a little: 53 Capital rows re-recorded (no win or loss flipped), and the Capital per-type report goes 24/30 -> 22/30 (First
+  Prayers Veil idle 52 s, Passage idle 81 s; the same with `FOLD_LEAD` 40, so not D41). Reported only, as before.

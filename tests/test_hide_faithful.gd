@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_chain(t)
 	_trail(t)
 	_relief(t)
+	_pair_apart(t)
 	_strip_rows(t)
 	_seize_free(t)
 	_lose_two(t)
@@ -404,6 +405,52 @@ static func _relief(t) -> void:
 	Kit.run_for(s, ExodusDirector.RELIEF_AFTER + 4.0 * EscortDirector.TICK)
 	t.check(d.watch[0] == watch_dead and d.reliefs == 0 and not (s.banners as Array).has("A NEW WATCHMAN COMES FROM THE TEMPLE"),
 		"a gate watchman killed is never replaced")
+	Kit.done(s)
+
+
+## Review of Task 4, Important 1: the two inquisitors stay more than two Silent Doom radii apart wherever the search sends them -- at every
+## listed door they stand at, and at every point of both households' roads, where one stands at the lamp and the other behind him on its trail.
+static func _pair_apart(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	var limit := 2.0 * SilentDoom.RADIUS + 0.1  # places, not people: the pair's places, 0.1 over a Doom's reach
+	var worst_door := INF
+	var from := d.temple_door
+	for e: Dictionary in d._search:
+		var spots := d.pair_spots(e.door, 2, from)
+		worst_door = minf(worst_door, spots[0].distance_to(spots[1]))
+		from = e.door
+	var start := d.pair_spots(d.temple_door, 2)
+	t.check(worst_door > limit and start[0].distance_to(start[1]) > limit,
+		"at each of the six listed doors and at the Temple's the pair's two places are more than %.1f apart (nearest %.2f)" % [limit, worst_door])
+	var worst_road := INF
+	var points := 0
+	for i in d.households.size():
+		var h: ExodusDirector.Household = d.households[i]
+		var line: Array = d.road(i)
+		h.trail.clear()
+		var at: Vector2 = line[0]
+		for k in range(1, line.size()):
+			var to: Vector2 = line[k]
+			var run := at.distance_to(to)
+			var steps := maxi(1, ceili(run / (ExodusDirector.FOLLOW_GAP * 0.5)))
+			for q in range(1, steps + 1):
+				var here := at.lerp(to, float(q) / float(steps))
+				h.trail.append(here)
+				var spots := d.pair_spots(here, 2, Vector2.INF, h)
+				worst_road = minf(worst_road, spots[0].distance_to(spots[1]))
+				points += 1
+			at = to
+		h.trail.clear()
+	t.check(points > 100 and worst_road > limit, "along both households' roads (%d points) the pair on the trail is more than %.1f apart (nearest %.2f)" % [points, limit, worst_road])
+	# Sent to a door, the pair is ordered to those places and no others.
+	d._search_at = 3
+	for v: Variant in d.inquisitors:
+		Kit.arrive(v as Person, d._search[3].door)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var a := d.inquisitors[0] as Person
+	var b := d.inquisitors[1] as Person
+	t.check(a.anchor.distance_to(b.anchor) > limit, "the orders to the third listed door keep them %.2f apart" % a.anchor.distance_to(b.anchor))
 	Kit.done(s)
 
 

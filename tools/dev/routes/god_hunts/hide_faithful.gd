@@ -40,8 +40,8 @@ static func state(_bc, ctx: Dictionary) -> String:
 	var alive := 0
 	for v: Variant in d.inquisitors:
 		alive += 1 if MissionDirector._alive(v) else 0
-	return "out=%d lost=%d left=%d seizures=%d searched=%d trail=%d inquisitors=%d reliefs=%d phase=%s" % [d.out_count(), d.lost(), d.left_count(),
-		d.seizures, d.searched, d.trail_of(), alive, d.inq_reliefs, d.hint_phase()]
+	return "out=%d lost=%d left=%d seizures=%d searched=%d trail=%d inquisitors=%d reliefs=%d pair=%.2f/%d phase=%s" % [d.out_count(), d.lost(), d.left_count(),
+		d.seizures, d.searched, d.trail_of(), alive, d.inq_reliefs, minf(d.stopped_gap_min, 99.0), d.stopped_gaps, d.hint_phase()]
 
 
 ## The shared plan with the def's own loadout (Mind Whisper, Silent Doom, Discord; no `--god`): the households walk themselves, so the

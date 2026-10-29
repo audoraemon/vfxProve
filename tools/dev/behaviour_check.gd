@@ -2476,8 +2476,8 @@ func _watch_bearer_act(rules: Rules, slots: Dictionary, crowd: Crowd) -> String:
 
 ## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its
 ## main objective is done, every LOOK_FRAMES with `play` the policy's move (`act.call()`: what it cast, or ""), printed; a report
-## every 10 s (`state.call()`); then the result, with the longest stretch between two casts as `idle` (the gate: 45 s or less).
-## `none` casts nothing.
+## every 10 s (`state.call()`); then the result, with the longest stretch between two casts as `idle` (the gate: 45 s or less). A filler cast
+## (words starting GOD_T1.FILL, god T1R D38) is printed but ends no stretch, so `idle` is the real wait. `none` casts nothing.
 func _scripted(label: String, which: String, act: Callable, state: Callable) -> void:
 	var rules: Rules = mission._rules
 	_board_line()
@@ -2500,8 +2500,7 @@ func _scripted(label: String, which: String, act: Callable, state: Callable) -> 
 			did = String(act.call())
 		if did != "":
 			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
-			acts.longest = maxf(float(acts.longest), t - float(acts.last))
-			acts.last = t
+			GOD_T1.note_cast(acts, t, did)  # (god T1R, D38) a filler ("fill: ...") is printed but does not end an idle stretch
 	acts.longest = maxf(float(acts.longest), t - float(acts.last))
 	print("BEHAVIOUR %s result %s %s idle=%.0f" % [label, _outcome(rules), String(state.call()), float(acts.longest)])
 

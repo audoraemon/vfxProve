@@ -66,6 +66,8 @@ const SEIZE_R := 3.0
 const SEIZE_ARRIVE := 0.8
 const SEIZE_SLACK := 0.05
 const SEIZE_RING := 2.4
+## The called guard come and find no carter in reach (final review M7): the call is spent, and the player is told so (no hidden loss).
+const NO_CART_BANNER := "THE GUARD FIND NO CART"
 ## A watchman at his post while his granary burns is not frightened (Person.fearless_left): the town's ordinary flight from a
 ## fire would empty his post before he could beat the fire out. Held this many seconds past the last look; the god's own holds
 ## (a kill, a whisper, Discord) still take him (v0.11 M2).
@@ -385,7 +387,7 @@ func _in_seizing_reach(p: Person, at: Vector2) -> bool:
 
 ## The guard The Bell Lies called have come (god T1R, H4): once the first called soldier stands within SEIZE_ARRIVE of his ring spot, every
 ## carter alive and out of doors within SEIZE_R of the place is seized -- his granary spoiled at once, the carter sent home -- and the
-## call is spent.
+## call is spent; with none in reach it is spent all the same, under NO_CART_BANNER.
 func _seize_look() -> void:
 	if _guard_at == Vector2.INF:
 		return
@@ -404,6 +406,7 @@ func _seize_look() -> void:
 	var at := _guard_at
 	_guard_fx = null
 	_guard_at = Vector2.INF
+	var seized := false
 	for s in targets:
 		if razed(s):
 			continue
@@ -411,7 +414,10 @@ func _seize_look() -> void:
 			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at):
 				rules.banner.emit("THE GUARD SEIZE THE CART")
 				_spoil(s, "seized")
+				seized = true
 				break
+	if not seized:
+		rules.banner.emit(NO_CART_BANNER)
 
 
 ## Whether watchman `w` of `s` is on guard now (v0.11 M2): alive, out of doors, in a calm mind, and at his post.

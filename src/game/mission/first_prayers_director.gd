@@ -479,7 +479,8 @@ func _hurry(delta: float) -> void:
 			still.append(p)
 	_hurrying = still
 	for k: Variant in _hurry_at.keys():
-		if not _hurrying.has(k):
+		# A key freed without dying (a flight out through a gate, Crowd._escapes()) is dropped before has(): has() on a typed array errors on a freed one.
+		if not is_instance_valid(k) or not _hurrying.has(k):
 			_hurry_at.erase(k)
 			_hurry_still.erase(k)
 	if burning or roof_fallen or not door_empty():

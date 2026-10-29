@@ -1426,7 +1426,7 @@ func _flow_test() -> void:
 	# The title's first frames compile its shaders, which can take seconds; let them pass before anything is timed.
 	await get_tree().process_frame
 	await get_tree().process_frame
-	await _flow_title_endless(step)
+	_flow_title_endless(step)  # no await: it waits on nothing (an await on it is GDScript's REDUNDANT_AWAIT); add one if it ever does
 	on_action("title:play")
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Play opens the mission board")
 	step.call(Music.current() == &"theme", "the board plays the theme")
@@ -2082,6 +2082,9 @@ func _flow_endless(step: Callable) -> void:
 	slots.click(SlotScreen.BACK_RECT.get_center())
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard, "Back from the slots opened by the board's ENDLESS returns to the board")
 	board = _screen_node as MissionBoard
+	if board == null:  # Back landed elsewhere: the step above failed; stop here rather than die on a null
+		out.call()
+		return
 	board.click(MissionBoard.ENDLESS_RECT.get_center())
 	slots = _screen_node as SlotScreen
 	if slots == null:
@@ -2376,7 +2379,11 @@ func _flow_title_endless(step: Callable) -> void:
 		return
 	slots.click(SlotScreen.BACK_RECT.get_center())
 	step.call(screen == Screen.TITLE and _screen_node is TitleScreen, "Back from the slots returns to the title it came from")
-	(_screen_node as TitleScreen).action.emit("endless")
+	title = _screen_node as TitleScreen
+	if title == null:  # Back landed elsewhere: the step above failed; stop here rather than die on a null
+		out.call()
+		return
+	title.action.emit("endless")
 	slots = _screen_node as SlotScreen
 	if slots == null:
 		out.call()

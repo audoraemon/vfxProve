@@ -33,7 +33,7 @@ const EXIT_MAX := 26.0
 ## the hold being laid.
 const HOLD_LEAD := 0.6
 const HOLD_PLAN := 4.0
-## Decree: the longest the policy goes without a cast (a Leaving Is Prohibited laid at the next granary's door does no harm).
+## Passage: with the Mirrorfold cooling, a Thornwall across the carter's road is laid once FILL_AFTER - 5 s have passed with nothing cast.
 const FILL_AFTER := 30.0
 ## Dominion: how far ahead along his road a carter is whispered (Mind Whisper's REACH is 10).
 const WHISPER_STEP := 9.0
@@ -278,8 +278,8 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 # --- Decree: Leaving Is Prohibited, The Bell Lies ------------------------------------------------------------------------
 
 ## H4: hold the carter (Leaving Is Prohibited) at the place the guard are called to (The Bell Lies, CALL THE GUARD): on him, the hold first and the
-## call a look after, so he cannot walk out of the seizing radius while the guard run there. The bell's 60 s are the long wait; a hold laid at the next
-## granary's door fills a stretch of FILL_AFTER with nothing cast, if the hold will have cooled when the bell is ready.
+## call a look after, so he cannot walk out of the seizing radius while the guard run there. The bell's 60 s are the long wait (D12: Decree may idle up
+## to 60 s here); the hold once laid at the next granary's door to fill it did nothing, and is gone (D38).
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as HarvestDirector
 	var rules: Rules = ctx.rules
@@ -287,7 +287,6 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 		return ""
 	var memo: Dictionary = ctx.memo
 	var now := d._clock
-	var last: float = memo.get("last", 0.0)
 	var plan: Dictionary = memo.get("plan", {})
 	if not plan.is_empty():
 		if now - float(plan.t) > HOLD_PLAN:
@@ -313,11 +312,6 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 			memo.last = now
 			return "the bell calls the guard to the %s granary's carter" % _name(d, s)
 		return ""
-	if now - last >= FILL_AFTER and _ready(bc, ctx, "noleave") and _cd(ctx, "belllies") > 22.0:
-		for s in _order(d):
-			rules.cast(int(ctx.slots.noleave), d.doors[s])
-			memo.last = now
-			return "leaving is prohibited at the next granary"
 	return ""
 
 

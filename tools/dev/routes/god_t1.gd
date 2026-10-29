@@ -14,6 +14,11 @@ const FILES := {
 	"prayers": preload("res://tools/dev/routes/god_t1/prayers.gd"),
 }
 
+## A filler cast (god T1R, D38): one with no lasting effect, cast only so the scripted player is not idle (a power aimed at nobody who matters).
+## A policy's words for it start with FILL, and the idle measure (behaviour_check's _scripted(), through note_cast()) does not count it as an
+## act, so the idle the gate prints is the real wait. A policy should not need one: a filler that remains is printed, never hidden.
+const FILL := "fill: "
+
 ## The spots tried for ground past the wall (outside_spot()): every OUTSIDE_STEP out from the person, in OUTSIDE_DIRS directions.
 const OUTSIDE_STEP := 0.5
 const OUTSIDE_DIRS := 24
@@ -48,6 +53,20 @@ static func state(scenario: String, bc, ctx: Dictionary) -> String:
 	if not FILES.has(scenario):
 		return ""
 	return String((FILES[scenario] as GDScript).call("state", bc, ctx))
+
+
+## A cast's words mark a filler (FILL).
+static func is_fill(did: String) -> bool:
+	return did.begins_with(FILL)
+
+
+## The idle measure (D38): a cast `did` at second `t` ends the stretch since the last act in `acts` {last, longest} -- unless it is a filler,
+## which leaves the stretch running. A play run's printed idle is `acts.longest` with the stretch to the night's end counted.
+static func note_cast(acts: Dictionary, t: float, did: String) -> void:
+	if did == "" or is_fill(did):
+		return
+	acts.longest = maxf(float(acts.longest), t - float(acts.last))
+	acts.last = t
 
 
 ## The loadout a god type plays at Tier 1: its two Tier 1 keys in the real tree (GodTree.keys_for).

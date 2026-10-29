@@ -26,6 +26,7 @@ static func run(t) -> void:
 	_road_ahead(t)
 	_plague_aim(t)
 	_casts(t)
+	_fill_idle(t)
 
 
 static func _world(loadout: PackedStringArray) -> Dictionary:
@@ -183,3 +184,25 @@ static func _casts(t) -> void:
 	t.check(GodT1.cast_bell(bc, ctx, "guard", Vector2(3, 4)), "the bell calls the guard when ready")
 	t.check(calls.size() == 2 and calls[1].at == Vector2(3, 4) and calls[1].extra.mode == "guard", "to the place given, in the mode given")
 	_done(s)
+
+
+## D38 (final review I1): the gate's idle is the real wait. A filler cast ("fill: ..."), made only so the scripted player is not idle, is printed
+## but does not end an idle stretch; any other cast does. And no Tier 1 policy keeps a filler: each was deleted or replaced with a real play.
+static func _fill_idle(t) -> void:
+	var acts := {"last": 0.0, "longest": 0.0}
+	GodT1.note_cast(acts, 30.0, "smite a runner")
+	t.check(is_equal_approx(float(acts.longest), 30.0) and is_equal_approx(float(acts.last), 30.0), "a cast at 30 s ends the first stretch (30 s)")
+	GodT1.note_cast(acts, 60.0, GodT1.FILL + "mirror over an empty door")
+	GodT1.note_cast(acts, 85.0, "")
+	t.check(is_equal_approx(float(acts.last), 30.0) and is_equal_approx(float(acts.longest), 30.0),
+		"a filler at 60 s and no cast at 85 s leave the stretch running")
+	GodT1.note_cast(acts, 100.0, "thornwall by the well")
+	t.check(is_equal_approx(float(acts.longest), 70.0),
+		"the next real cast at 100 s ends a 70 s stretch, the filler not counted (%.0f)" % float(acts.longest))
+	t.check(GodT1.is_fill("fill: x") and not GodT1.is_fill("mirror a Faithful off"), "the mark is the words' prefix")
+	var left := PackedStringArray()
+	for path: String in ["res://tools/dev/routes/god_t1/warning.gd", "res://tools/dev/routes/god_t1/tax.gd", "res://tools/dev/routes/god_t1/harvest.gd",
+			"res://tools/dev/routes/god_t1/lamb.gd", "res://tools/dev/routes/god_t1/prayers.gd", "res://tools/dev/routes/tier1_b.gd"]:
+		if FileAccess.get_file_as_string(path).contains('"' + GodT1.FILL):
+			left.append(path.get_file())
+	t.check(left.is_empty(), "no Tier 1 policy casts a filler (%s)" % ", ".join(left))

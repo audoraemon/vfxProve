@@ -44,6 +44,7 @@ static func run(t) -> void:
 	_door_empty(t)
 	_pray_together(t)
 	_hurrier_gives_up(t)
+	_hurrier_freed(t)
 	_empty_no_sets_out(t)
 	_next_not_twice(t)
 
@@ -964,6 +965,50 @@ static func _hurrier_gives_up(t) -> void:
 	t.check((s.banners as Array).has("ONE OF THE POOR GIVES UP THE WALK") and not d._hurrying.has(stuck) and stuck.mind != Person.Mind.DUTY,
 		"one hurrying who stands still WALK_STALL seconds gives the walk up, with the walker's banner")
 	t.check(fresh, "and another of the poor is sent in his place")
+	_done(s)
+
+
+## Engine errors logged while it is added (OS.add_logger): a freed node touched shows here, though GDScript goes on.
+class ErrorLog:
+	extends Logger
+	var errors: Array[String] = []
+
+	func _log_error(_function: String, _file: String, _line: int, code: String, rationale: String, _editor_notify: bool, _error_type: int,
+			_script_backtraces: Array[ScriptBacktrace]) -> void:
+		errors.append(rationale if rationale != "" else code)
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
+
+## (final review M5) One hurrying who is freed without dying (a flight out through a gate ends in Crowd._escapes()'s queue_free) is let go
+## without touching the freed body -- no engine error -- and another of the poor is sent in his place.
+static func _hurrier_freed(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var crowd: Crowd = s.crowd
+	_run_blind(s, 10.0)
+	_empty_the_door(s)
+	t.check(not d._hurrying.is_empty(), "(the door empty, poor hurrying)")
+	if d._hurrying.is_empty():
+		_done(s)
+		return
+	var gone: Variant = d._hurrying[0]
+	t.check(d._hurry_at.has(gone), "(his place on the way is kept)")
+	var before := d._hurrying.size()
+	crowd._field.remove(gone)
+	crowd.citizens.erase(gone)
+	(gone as Person).free()
+	var log := ErrorLog.new()
+	OS.add_logger(log)
+	_run(s, DT * 2.0)
+	OS.remove_logger(log)
+	var stale := false
+	for k: Variant in d._hurry_at.keys():
+		stale = stale or not is_instance_valid(k)
+	t.check(log.errors.is_empty(), "the freed one is let go without an engine error (%s)" % [log.errors])
+	t.check(not stale and d._hurrying.size() == before,
+		"his keys are dropped, and another of the poor is sent in his place (%d hurrying)" % d._hurrying.size())
 	_done(s)
 
 

@@ -245,8 +245,9 @@ has a two-minute route round the watchmen).
 | Dominion | Mind Whisper, Discord | H1 | Whisper the carter to a spot beyond the nearest wall within `REACH`; from the north-east granary (21 u from the Side Gate) he walks round by it (~40 s); Discord holds him in between | NEW (H1) |
 
 ### 6.8 What the player sees
-- Hint `spoiled_harvest` *(my call)*: "Spoil each granary (gold) before its carter (blue) empties it: burn it, or stop its carter. Its
-  watchmen (red) guard it." `spoiled_harvest.empty` keeps its line; the H2/H3 refusals are the banners.
+- Hint `spoiled_harvest` *(my call; final review M6 names Veil's Blight)*: "Spoil each granary (gold) before its carter (blue) empties it:
+  burn or blight it, or stop him. Its watchmen (red) guard it." `spoiled_harvest.empty` keeps its line; the H2/H3 refusals are the banners;
+  a CALL THE GUARD that finds no carter in reach is spent under THE GUARD FIND NO CART (M7).
 - Carter tags (§6.1); the strip's grain events unchanged.
 
 ### 6.9 Numbers

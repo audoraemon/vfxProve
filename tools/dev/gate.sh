@@ -13,7 +13,8 @@
 # Per run:   <scenario> <case> seed=N won=.. reason=.. time=.. idle=.. checksum=..
 # Last line: gate <scenario> route=<a|b|god:<type>> none_lost=K/3 wins=K/3 median=S idle_max=S PASS|FAIL      (exit 1 on FAIL)
 # A --god gate judges wins at least 2/3, the idle stretch (--idle-max, default 45), none_lost 3/3 with --with-none, and a refusal FAILs; its
-# median is printed and never judged (rulings D10, either town).
+# median is printed and never judged (rulings D10, either town). Its idle is the real wait: a policy's filler cast (words "fill: ...", a cast
+# with no lasting effect, god T1R D38) ends no idle stretch in behaviour_check, and no Tier 1 policy keeps one (tests/test_god_routes.gd).
 # A route b gate with --with-none prints the none runs as well and none_lost=K/3 (without it none_lost prints -).
 # The gate (spec §7 and the plan's Global Constraints): the none runs all lose (route a only; with --route=b they are skipped and
 # none_lost prints -); play wins at least 2 of 3; route a: the median of the wins' times is 180-240 s (route b: 150-270 s for a tier mission; for prayers

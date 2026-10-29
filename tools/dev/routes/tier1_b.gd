@@ -506,17 +506,7 @@ static func act_prayers(bc, ctx: Dictionary) -> String:
 	if kill != "":
 		memo["last"] = rules.time_left
 		return kill
-	# Still nothing to do after PRAYB_FILL seconds: Discord at the Temple's door, where only the clergy loiter -- the player always has a hand to play.
-	if float(memo.get("last", rules.time_left)) - rules.time_left >= PRAYB_FILL and bc._slot_ready(rules, ctx.slots, "discord") \
-			and not MissionDirector._alive((ctx.d as FirstPrayersDirector).walker if ctx.d is FirstPrayersDirector else null):
-		memo["last"] = rules.time_left
-		rules.cast(ctx.slots.discord, (ctx.d as MirasHouseDirector).temple_door)
-		return "discord at the Temple's door"
 	return ""
-
-
-## Seconds without a cast after which loadout B (god T1R) fills the time with a Discord at the Temple.
-const PRAYB_FILL := 36.0
 
 
 ## Seconds without a cast after which the policy takes a Faithful with Silent Doom.

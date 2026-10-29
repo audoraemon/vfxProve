@@ -8,6 +8,8 @@ extends RefCounted
 ## with fire (F2), Death and Veil by killing the ones who would watch, Passage with brambles and a mirror (F3), Decree with ALL IS WELL (F5),
 ## Dominion as loadout A does (Whisper and Discord).
 
+const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
+
 ## The types whose policy is written.
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 
@@ -229,6 +231,7 @@ static func _plague_on(ctx: Dictionary, pool: Array[Person], least: int) -> Vect
 
 
 # --- Veil: Silent Doom and Blight ---
+# (Blight has no use at First Prayers: the fountain it once rotted only to break an idle stretch was a filler, D38, and is gone.)
 
 static func act_veil(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
@@ -256,10 +259,6 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 			all = _doom_aim(bc, ctx, _faithful(d), true)
 		if all != Vector2.INF:
 			return _cast(ctx, "doom", all, "doom the Faithful where nobody sees")
-	if _ready(bc, ctx, "blight") and _idle(ctx) > FILL_AFTER:
-		for s in ctx.crowd._env.structures():
-			if is_instance_valid(s) and not s.destroyed and s.kind == Structure.Kind.FOUNTAIN and not s.blighted:
-				return _cast(ctx, "blight", s.center(), "blight a fountain")
 	return ""
 
 
@@ -268,11 +267,11 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 ## Passage (D32, F3b): brambles laid by the well hide its steps, and one who goes down hidden comes up hidden. So a wall is laid by the door
 ## as each walker sets out (it stands 25 s, cools 42; the walkers come about 50 s apart), and a walker too far off to reach it while it stands
 ## is mirrored to the door (the routes table: "mirror the poor to the shrine door"). A prayer begun unhidden has its coming-out hidden by a wall
-## instead. With nobody left to see, nothing needs hiding.
+## instead. With nobody left to see, nothing needs hiding. Between, the mirror folds a Faithful walking near the shrine far off (_passage_fold(),
+## D38), so he is out of the door's watch for his long walk back. (Its real wait is still over 45 s twice a night: before the first wall, and
+## while the market's line stands at the door with nobody walking to fold -- reported to the user, D38.)
 ## A wall hides the door for this many seconds after it is cast (it withers at ThornwallFx.THORN_TIME, 25).
 const WALL_TO := 23.5
-## Thornwall's cooldown (PowerBook).
-const THORN_COOL := 42.0
 ## A wall is laid from WALL_EARLY seconds before the next walker sets out (it then hides the door until his walk of about 9 s is done), where it
 ## draws none of the poor by the door to look at it; at WALL_LEAD seconds before, wherever it must.
 const WALL_EARLY := 14.0
@@ -294,7 +293,7 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 		var away := d._walkable(d.temple_door + (runners[0].ground_pos - d.temple_door).normalized() * LOOP_OUT)
 		return _cast(ctx, "mirror", d.temple_door, "mirror over the Temple's door: the runner is set down again and again", {"to": away})
 	if _faithful(d).is_empty():
-		return _passage_fill(bc, ctx)
+		return _passage_fold(bc, ctx)
 	var walker := d.walker if MissionDirector._alive(d.walker) and not d.walker.inside else null
 	var hides_now := d.door_hidden() and d.hidden_left() > 2.0
 	# A walker setting out, or on his way, with the door not hidden: a wall by it now.
@@ -326,7 +325,7 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 			var out := _loop_out(ctx)
 			if out != Vector2.INF:
 				return _cast(ctx, "mirror", d.door, "mirror over the door: the walker is held off until a wall is ready", {"to": out})
-	return _passage_fill(bc, ctx)
+	return _passage_fold(bc, ctx)
 
 
 ## The one praying now (the soonest to come up) went down hidden (F3b).
@@ -417,24 +416,101 @@ static func _loop_out(ctx: Dictionary) -> Vector2:
 	return Vector2.INF
 
 
-## Never idle past the clock: a wall by the door when it will be ready again before the next walker sets out, else the mirror laid over the
-## Temple's door (where only the clergy loiter; a runner there would be folded away) while no walker is on his way.
-static func _passage_fill(bc, ctx: Dictionary) -> String:
-	if _idle(ctx) <= FILL_AFTER - 4.0:
+## With nothing to hide now (D38): a Faithful walking near the shrine is folded far off -- the mirror laid on his way a step ahead of him, its way
+## out where his walk back to the door is longest -- so he is out of the door's watch for that walk (a market liner on his way to the line, a priest
+## coming to the well, one strolling by). Never where the walker, the next to set out or any of the poor would step on the way in. "" for none.
+static func _passage_fold(bc, ctx: Dictionary) -> String:
+	if _idle(ctx) < FOLD_IDLE or not _ready(bc, ctx, "mirror") or _door_due(ctx) > FOLD_LEAD:
 		return ""
 	var d := ctx.d as FirstPrayersDirector
-	var walking := MissionDirector._alive(d.walker) and not d.walker.inside
-	var due_in := INF
-	if d.walk_due() != INF:
-		due_in = maxf(d.walk_due() - d.timeline.elapsed(), 0.0) / maxf((ctx.rules as Rules).clock_rate, 0.1)
-	if _ready(bc, ctx, "thorns") and not walking and due_in >= THORN_COOL + WALL_EARLY + 1.0:
-		var spot := _wall_spot(bc, ctx, false)
-		if spot.size() == 2:
-			return _cast(ctx, "thorns", spot[0], "thornwall by the well (ready again before the next walker)", {"dir": spot[1]})
-	if _ready(bc, ctx, "mirror") and not walking:
-		var away := d._walkable(d.temple_door + Vector2(0.0, LOOP_OUT))
-		return _cast(ctx, "mirror", d.temple_door, "mirror over the Temple's door", {"to": away})
+	var ways: Array[PackedVector2Array] = []
+	for w: Variant in [d.walker, d.next_walker()]:
+		if MissionDirector._alive(w) and not (w as Person).inside:
+			var way: PackedVector2Array = ctx.crowd._grid.path((w as Person).ground_pos, d.door)
+			way.insert(0, (w as Person).ground_pos)
+			ways.append(way)
+	for f in _faithful(d):
+		if f.ground_pos.distance_to(d.door) > FOLD_NEAR or not f.has_goal() or f.held_by_god() or d._carrying(f):
+			continue
+		var way_in := _fold_in(f)
+		if way_in == Vector2.INF or way_in.distance_to(d.door) < MirrorfoldFx.HALF_WIDE + 1.5:
+			continue
+		var clear := true
+		for g in _spare(d):
+			clear = clear and (g as Person).ground_pos.distance_to(way_in) > FOLD_CLEAR
+		for way in ways:
+			clear = clear and not _way_near(way, way_in, MirrorfoldFx.HALF_WIDE + 1.0)
+		if not clear:
+			continue
+		var out := _fold_out(bc, ctx, way_in)
+		if out != Vector2.INF:
+			return _cast(ctx, "mirror", way_in, "mirror a Faithful off from the shrine (%.0f to walk back)" % bc._walk_len(ctx.crowd, out, d.door), {"to": out})
 	return ""
+
+
+## Passage's fold (D38): with FOLD_IDLE seconds since the last cast and the door next mattering within FOLD_LEAD, a Faithful this near the door,
+## walking, is folded off; the way in is laid on his way FOLD_AHEAD seconds on or more (_fold_in()), with none of the poor within FOLD_CLEAR of
+## it; the way out is tried FOLD_FAR from the way in round the compass, the one with the longest walk back to the door.
+const FOLD_IDLE := 8.0
+const FOLD_LEAD := 40.0
+const FOLD_NEAR := 10.0
+const FOLD_AHEAD := 1.5
+const FOLD_AHEAD_MAX := 5.0
+const FOLD_CLEAR := 4.0
+const FOLD_FAR := 16.0
+
+
+## Where the way in is laid to fold `f`: on his way, the first spot from FOLD_AHEAD seconds on (in half seconds, up to FOLD_AHEAD_MAX) that he
+## does not stand on now -- a mirror folds only those who step onto it, not one already on it when it is laid -- and that he walks onto;
+## Vector2.INF for none.
+static func _fold_in(f: Person) -> Vector2:
+	var ahead := FOLD_AHEAD
+	while ahead <= FOLD_AHEAD_MAX:
+		var at := GodT1.road_ahead(f, ahead)
+		if MirrorfoldFx.local(at, f.ground_pos).length() > 1.3 and MirrorfoldFx.local(at, GodT1.road_ahead(f, ahead + 0.5)).length() < 1.0:
+			return at
+		ahead += 0.5
+	return Vector2.INF
+
+
+## Seconds until the door next matters: the next walker sets out, or the market's or the priests' line is called (0 while one is open), on the
+## night's clock as the strip shows them.
+static func _door_due(ctx: Dictionary) -> float:
+	var d := ctx.d as FirstPrayersDirector
+	var tl := d.timeline.elapsed()
+	var due := d.walk_due()
+	for w: Array in [[d.market_at, d.market_seconds], [d.priests_at, d.priests_seconds]]:
+		if tl >= float(w[0]) and tl <= float(w[0]) + float(w[1]):
+			return 0.0
+		if float(w[0]) > tl:
+			due = minf(due, float(w[0]))
+	return maxf(due - tl, 0.0) / maxf((ctx.rules as Rules).clock_rate, 0.1)
+
+
+## The way `way` (its first point where he stands) passes within `reach` of `at`.
+static func _way_near(way: PackedVector2Array, at: Vector2, reach: float) -> bool:
+	for k in range(1, way.size()):
+		if Geometry2D.get_closest_point_to_segment(at, way[k - 1], way[k]).distance_to(at) <= reach:
+			return true
+	return way.size() == 1 and way[0].distance_to(at) <= reach
+
+
+## The fold's way out for a way in at `way_in`: walkable ground FOLD_FAR off it, round the compass, with the longest walk back to the door;
+## Vector2.INF for none.
+static func _fold_out(bc, ctx: Dictionary, way_in: Vector2) -> Vector2:
+	var d := ctx.d as FirstPrayersDirector
+	var grid: WalkGrid = ctx.crowd._grid
+	var best := Vector2.INF
+	var longest := 0.0
+	for i in 16:
+		var spot := way_in + Vector2.from_angle(TAU * float(i) / 16.0) * FOLD_FAR
+		if not grid.walkable(spot) or MirrorfoldFx.on_mirror(way_in, spot):
+			continue
+		var back: float = bc._walk_len(ctx.crowd, spot, d.door)
+		if back != INF and back > longest:
+			best = spot
+			longest = back
+	return best
 
 
 # --- Decree: Leaving Is Prohibited and The Bell Lies ---
@@ -545,10 +621,9 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 			if hop.length() > MindWhisperFx.REACH - 0.5:
 				to = d._walkable(best_g.ground_pos + hop.normalized() * (MindWhisperFx.REACH - 0.5))
 			return _cast(ctx, "whisper", best_g.ground_pos, "whisper one of the poor toward the shrine", {"target": best_g, "to": to})
-	# Never idle past the clock: Discord at the Temple's door, where only the clergy loiter, or a Faithful sent a way off from the shrine.
+	# With nothing else to do: a Faithful sent a way off from the shrine (he walks back from farther off). (D38: the Discord at the empty Temple
+	# door that stood here was a filler, and is gone.)
 	if _idle(ctx) > FILL_AFTER - 2.0 and crit > 16.0 and not market_open and walker == null:
-		if _ready(bc, ctx, "discord"):
-			return _cast(ctx, "discord", d.temple_door, "discord at the Temple's door")
 		if _ready(bc, ctx, "whisper"):
 			for f in _faithful(d):
 				if not f.shaken() and f.mind != Person.Mind.WHISPERED and not d._carrying(f):

@@ -906,9 +906,13 @@ static func _seized(t) -> void:
 		if gap < 3.0:
 			t.check(d.razed(g) and d.spoiled_by.get(g) == "seized" and (s.banners as Array).has("THE GUARD SEIZE THE CART")
 				and not d.razed(d.targets[1]) and d._guard_at == Vector2.INF, "(gap %.1f) the first called soldier arrives: the cart is seized, his granary spoiled" % gap)
+			t.check(not (s.banners as Array).has(HarvestDirector.NO_CART_BANNER), "(gap %.1f) and no word of an empty call" % gap)
 		else:
 			t.check(not d.razed(g) and c0.ground_pos.distance_to(place) > HarvestDirector.SEIZE_R and d._guard_at == Vector2.INF,
 				"the carter 3.2 from the place is not seized (%.2f)" % c0.ground_pos.distance_to(place))
+			# (final review M7) The call is spent with no cart in reach: never a silent one.
+			t.check((s.banners as Array).count(HarvestDirector.NO_CART_BANNER) == 1 and not (s.banners as Array).has("THE GUARD SEIZE THE CART"),
+				"the guard come and find no cart: the spent call is announced, once (%s)" % [s.banners])
 		fx.free()
 		ctx.overhead.free()
 		ctx.ground.free()

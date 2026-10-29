@@ -308,13 +308,26 @@ static func _title_entry(t) -> void:
 	t.check(Game.slots_back_action(Game.Screen.BOARD) == "slots:back" and Game.next_screen("slots:back") == Game.Screen.BOARD,
 		"Back from the slots opened by the board's ENDLESS returns to the board")
 	var text := FileAccess.get_file_as_string("res://src/game/game.gd")
-	var title_door := text.substr(text.find('"endless":
-			# The real door'), 400)
+	# Each door's lines in game.gd, read from a one-line anchor (a reworded anchor fails here by name, never passes on an empty window).
+	var title_door := _lines_after(text, "# The real door into Endless Night", 3)
+	t.check(title_door != "", "game.gd still has the title's Endless Night door comment (the anchor of the next check)")
 	t.check(title_door.contains("GodTree.dev_fill = false") and title_door.contains("_endless_from = Screen.TITLE"),
 		"the title's door turns the dev fill off and remembers it came from the title")
-	var board_door := text.substr(text.find('if what == "endless":'), 400)
+	var board_door := _lines_after(text, 'if what == "endless":', 4)
+	t.check(board_door != "", "game.gd still has the board's ENDLESS door (the anchor of the next check)")
 	t.check(board_door.contains("GodTree.dev_fill = true") and board_door.contains("_endless_from = Screen.BOARD"),
 		"the board's door keeps the dev fill on and remembers it came from the board")
+
+
+## The line of `text` holding `anchor` and the `more` lines after it, joined; "" when no line holds it.
+static func _lines_after(text: String, anchor: String, more: int) -> String:
+	var lines := text.split("
+")
+	for i in lines.size():
+		if lines[i].contains(anchor):
+			return "
+".join(lines.slice(i, i + more + 1))
+	return ""
 
 
 ## A key's name, for hand-built results (names are read from PowerBook, never typed).

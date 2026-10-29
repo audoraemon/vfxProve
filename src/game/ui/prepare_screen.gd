@@ -628,9 +628,21 @@ func _rite_rows() -> Array:
 		["LOSE", mission.lose],
 		["IF WON", "Tier %d: %s, +%d ability points, %s" % [next_tier, TierBook.tier_name(next_tier), GodSlot.AWAKEN_POINTS,
 			RiteBook.gift_name(String(row.get("gift", "")))]],
-		["IF LOST", "Lantern Notice +%d%%; the god stays capped" % GodNight.NOTICE_LOST_RITE],
+		["IF LOST", _rite_lost_line()],
 		["CHAIN", CHAIN_ROW],
 	]
+
+
+## IF LOST for a rite (milestone review Minor 5): the Notice rise after the clamp, as the pause confirm says it (PauseMenu.rite_rise), and the Hunt that
+## follows when the rise fills the meter. At Notice 0 it is the spec's exact "Lantern Notice +25%; the god stays capped".
+func _rite_lost_line() -> String:
+	var at := god.notice if god != null else 0
+	var rise := PauseMenu.rite_rise(at)
+	if rise == 0:
+		return "Lantern Notice is already 100%; the god stays capped; the Lantern Hunts next"
+	if at + rise >= GodSlot.NOTICE_MAX:
+		return "Lantern Notice +%d%%; the god stays capped; the Lantern Hunts next" % rise
+	return "Lantern Notice +%d%%; the god stays capped" % rise
 
 
 ## Where the briefing's rows sit: {"value_x", "rows": [{"label", "y", "lines"}], "bottom"} -- `bottom` is the baseline the next row would

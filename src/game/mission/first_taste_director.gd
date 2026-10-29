@@ -343,10 +343,11 @@ func lamp_of(i: int) -> Vector2:
 	return _lamp_spot(i, _stage[i])
 
 
-## Round `i` has no lamplighter on it: his man is dead or safe at the Temple, and no new one has set out.
+## Round `i` has no lamplighter on it: his man is dead, safe at the Temple or stranded (the chain let go of him because he could not move: a closed
+## pocket after a Mirrorfold; milestone review I1), and no new one has set out. A stranded man stays marked; a later chain of him still works.
 func _gone(i: int) -> bool:
 	var p: Variant = lamps[i]
-	return not _alive(p) or safe.has(p)
+	return not _alive(p) or safe.has(p) or _stranded.has(p)
 
 
 ## MS §3.6, P3-16: the eligible resident or labourer nearest the Temple door sets out on the lowest round whose lamplighter is gone, from where he
@@ -388,14 +389,39 @@ func _answer(shard: int) -> void:
 	marches.append(m)
 	m.plan = _plan_spots(m)
 	var door := lantern_door()
+	var muster := _plan_muster(people.size())
 	for k in people.size():
 		var p: Person = people[k]
 		m.pace0[p] = p.pace
 		m.paused[p] = k > 0
-		p.go_duty(_ring_spot(door, MUSTER_RING, k, people.size()))
+		p.go_duty(muster[k])
 	# The walk only: march_eta() adds the muster (review-t4 I4).
 	m.eta = _walk_seconds(door, _kneel_spot(m, 0), float(m.pace0[people[0]]))
 	rules.banner.emit(ANSWER)
+
+
+## The muster spots round the Temple door, one per marcher: on a ring of MUSTER_RING, each the first of KNEEL_TRIES angles whose point -- after the walk
+## grid's snap -- lies more than KNEEL_APART from the spots already planned, so the spread rule holds at the muster too (milestone review Minor 3).
+func _plan_muster(n: int) -> Array[Vector2]:
+	var door := lantern_door()
+	var out: Array[Vector2] = []
+	for k in n:
+		var chosen := Vector2.INF
+		# The Temple's door opens on a street a unit or two wide, so the ring may be too tight: try wider ones.
+		for r_extra in [0.0, 1.0, 2.0]:
+			for j in KNEEL_TRIES:
+				var at := _walkable(door + Vector2.from_angle(TAU * float(k) / float(n) + TAU * float(j) / float(KNEEL_TRIES)) * (MUSTER_RING + r_extra))
+				var apart := true
+				for o in out:
+					if at.distance_to(o) <= KNEEL_APART:
+						apart = false
+				if apart:
+					chosen = at
+					break
+			if chosen != Vector2.INF:
+				break
+		out.append(chosen if chosen != Vector2.INF else _ring_spot(door, MUSTER_RING, k, n))
+	return out
 
 
 ## The `n` marchers: clergy nearest the door first (R8: through is_clergy), then Faithful residents who are not on the rite's other errands.
@@ -427,7 +453,10 @@ func _marchers(n: int) -> Array[Person]:
 func _set_out(m: March) -> void:
 	m.walking = true
 	for k in m.people.size():
-		var p: Person = m.people[k]
+		var v: Variant = m.people[k]
+		if not _alive(v):
+			continue
+		var p := v as Person
 		m.spots[p] = _kneel_spot(m, k)
 		m.speeds[p] = _march_speed(p.ground_pos, m.spots[p], float(m.pace0[p]))
 		p.pace = float(m.speeds[p]) / Person.PANIC_SPEED

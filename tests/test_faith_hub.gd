@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_hub_awaken_unwritten(t)
 	_hub_awaken_hidden(t)
 	_hub_awaken_hunt(t)
+	_hub_awaken_blocked(t)
 	_hub_gifts(t)
 	_hub_lines_unchanged(t)
 	GodTree.dev_fill = false
@@ -341,6 +342,26 @@ static func _hub_awaken_hidden(t) -> void:
 	t.check(emitted.is_empty() and hub.line == "", "A does nothing (%s, %s)" % [emitted, hub.line])
 	t.check(not hub.hint_text().contains("A:"), "and the key row does not name it (%s)" % hub.hint_text())
 	hub.free()
+
+
+## Milestone review Minor 6: a capped god with nothing to draft sees Awaken dim and buzzing, as Descend is; the click and A emit nothing.
+static func _hub_awaken_blocked(t) -> void:
+	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
+	var god := _capped(10)
+	var hub := GodHub.new().setup(god)
+	var emitted := []
+	hub.action.connect(func(what: String) -> void: emitted.append(what))
+	t.check(hub.awaken_shown() and not hub.can_descend() and hub.awaken_dim(), "nothing to draft: Awaken is shown and dim")
+	hub._on_gui_input(_click(hub.menu_rect("awaken").get_center()))
+	hub._unhandled_input(_key(KEY_A))
+	t.check(emitted.is_empty(), "and the click and A emit nothing (%s)" % [emitted])
+	hub.free()
+	GodTree.use_table({})
+	GodTree.dev_fill = true
+	var lit := GodHub.new().setup(_capped(10))
+	t.check(lit.can_descend() and not lit.awaken_dim(), "with a filled tree Awaken is lit again")
+	lit.free()
 
 
 ## While the Hunt is due, Awaken leads to the Hunt as Descend does: A and the button emit awaken, and Game routes it (Task 8).

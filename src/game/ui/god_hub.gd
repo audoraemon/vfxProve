@@ -104,7 +104,7 @@ func awaken_shown() -> bool:
 ## True when the Awaken button is shown but dim: the god is capped and no rite is written for its level, and the Hunt is not next (the Hunt
 ## leads from Awaken as from Descend, so it is not dim then).
 func awaken_dim() -> bool:
-	return _awaken == "unwritten" and GodNight.hunt_for(_slot).is_empty()
+	return awaken_shown() and (not can_descend() or _awaken == "unwritten" and GodNight.hunt_for(_slot).is_empty())
 
 
 ## The Notice as a fraction of a full meter, 0 to 1 (god P2, spec §10.1).
@@ -173,6 +173,9 @@ func _emit(what: String) -> void:
 		UiSound.play(&"ui_buzz")
 		return
 	if what == "awaken":
+		if not can_descend():
+			UiSound.play(&"ui_buzz")  # nothing to draft: Awaken is blocked as Descend is (milestone review Minor 6)
+			return
 		_awaken_pressed(false)
 		return
 	UiSound.play(&"ui_click")
@@ -183,6 +186,9 @@ func _emit(what: String) -> void:
 ## P2-4). A rite written: "awaken" in any build (Game plays the Hunt first when it is due, Task 8). No rite written: while the Hunt is due the
 ## same ("awaken"; the Hunt leads), else the dev hook on the key under --dev, else a buzz and RITE_UNWRITTEN.
 func _awaken_pressed(from_key: bool) -> void:
+	if not can_descend() and _awaken != "":
+		UiSound.play(&"ui_buzz")
+		return
 	var hunt_due := not GodNight.hunt_for(_slot).is_empty()
 	if _awaken == "":
 		if not (from_key and dev):

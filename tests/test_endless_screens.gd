@@ -604,6 +604,17 @@ static func _prepare_rite(t) -> void:
 	t.check(String(rows[3][1]) == "Tier 2: Omen, +2 ability points, The Watchful Bell", "IF WON (%s)" % rows[3][1])
 	t.check(String(rows[4][1]) == "Lantern Notice +25%; the god stays capped", "IF LOST (%s)" % rows[4][1])
 	t.check(String(rows[5][1]) == "Chain of the Forgotten (C): free", "CHAIN (%s)" % rows[5][1])
+	# Milestone review Minor 5: IF LOST shows the real clamped rise and names the Hunt it brings, as the pause confirm does.
+	for at in [80, 90, 100]:
+		var late := _rite_prepare(_rite_god(t, at))
+		var rise: int = PauseMenu.rite_rise(at)
+		var line := String(late.brief_rows()[4][1])
+		var hunts: bool = at + rise >= GodSlot.NOTICE_MAX
+		t.check(line.contains("+%d%%" % rise if rise > 0 else "already 100%") and line.contains("Hunts next") == hunts,
+			"notice %d: IF LOST reads the real rise %d%s (%s)" % [at, rise, " and the Hunt" if hunts else "", line])
+		var late_hint := UiTheme.wrap(late.hint_text(), PrepareScreen.PANEL.size.x - 8.0, UiTheme.SIZE_SMALL).size()
+		t.check(late.brief_bottom() <= PrepareScreen.PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(late_hint), "notice %d: the rows still end above the hint (%s)" % [at, late.brief_bottom()])
+		late.free()
 	var hint_lines := UiTheme.wrap(prep.hint_text(), PrepareScreen.PANEL.size.x - 8.0, UiTheme.SIZE_SMALL).size()
 	var limit := PrepareScreen.PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * float(hint_lines)
 	t.check(prep.brief_bottom() <= limit, "the six rows end at %s, above the hint (limit %s)" % [prep.brief_bottom(), limit])

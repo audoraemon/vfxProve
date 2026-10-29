@@ -101,10 +101,15 @@ static func lost_line(at_notice: int) -> String:
 	return CONFIRM_LOST
 
 
+## The Notice a lost rite adds for a god at `at_notice`: GodNight.NOTICE_LOST_RITE, never past 100 (the pause confirm's and Prepare's IF LOST read it).
+static func rite_rise(at_notice: int) -> int:
+	return clampi(mini(GodNight.NOTICE_LOST_RITE, GodSlot.NOTICE_MAX - at_notice), 0, GodNight.NOTICE_LOST_RITE)
+
+
 ## The lost-rite confirm for a god at `at_notice` (god P3, MS §1; Ruling P3-4): the Notice rise after the clamp -- GodNight.NOTICE_LOST_RITE, but
 ## never past 100 -- and "the Lantern Hunts next" when the abandon fills the meter. Static so a test can read it without a screen.
 static func rite_line(at_notice: int) -> String:
-	var rise := clampi(mini(GodNight.NOTICE_LOST_RITE, GodSlot.NOTICE_MAX - at_notice), 0, GodNight.NOTICE_LOST_RITE)
+	var rise := rite_rise(at_notice)
 	if rise == 0:
 		return CONFIRM_RITE_FULL
 	if at_notice + rise >= GodSlot.NOTICE_MAX:

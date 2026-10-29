@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_hint_order(t)
 	_freed_people(t)
 	_final_frame(t)
+	_stranded_replaced(t)
 	_cleanse_runs(t)
 	_cleanse_resets(t)
 	_win_beats_cleanse(t)
@@ -360,6 +361,13 @@ static func _march_two(t) -> void:
 		if d.marches[0].people.has(p):
 			fresh = false
 	t.check(fresh, "the second march are other clergy")
+	# The musterers stand over two Silent Doom radii apart after the walk grid's snap (milestone review Minor 3).
+	var nearest := INF
+	var mus: Array = d.marches[1].people
+	for i in mus.size():
+		for j in range(i + 1, mus.size()):
+			nearest = minf(nearest, (mus[i] as Person).anchor.distance_to((mus[j] as Person).anchor))
+	t.check(nearest > 2.0 * SilentDoom.RADIUS, "the three musterers' spots are over 1.6 apart (nearest %.2f)" % nearest)
 	d.offer(d.marked[0])
 	t.check(d.shards == 3 and d.marches.size() == 2 and d.stages_done(), "shard 3 sends no march, and the shards are done (%d marches)" % d.marches.size())
 	_done(s)
@@ -712,7 +720,7 @@ static func _marchers_grip(t) -> void:
 		(w as Person).ground_pos = Vector2(14.0, -12.0)
 		(w as Person).send_to_post((w as Person).ground_pos)
 	_run(s, 2.0)
-	t.check(d.grip_by != marcher and d.grip == 0.0 or d.chain_state != RiteDirector.Chain.DRAG,
+	t.check(d.chain_state == RiteDirector.Chain.DRAG and d.grip_by != marcher and d.grip == 0.0,
 		"a mustering marcher beside the captive does not grip (grip %.2f)" % d.grip)
 	m.walking = true
 	m.muster_left = 0.0
@@ -812,4 +820,47 @@ static func _final_frame(t) -> void:
 	_step(s)
 	t.check(d.flame_out and d.shards == 3, "the cleanse filled in the step of the third shard (flame_out %s, shards %d)" % [d.flame_out, d.shards])
 	t.check(rules.finished and rules.result().won and rules.result().reason == "shards", "and the night is won, reason shards (%s)" % [rules.result().reason])
+	_done(s)
+
+
+## Milestone review I1, on the REAL director (the stub's _replace() always adds someone): lamplighters the chain let go of because they could not move (a
+## closed pocket after a Mirrorfold) stay alive and out of safety, so no round is free unless the stranded one's round counts as gone. Shard 2 is set by
+## hand (no one dies, so no round is free for another reason), four of the five are stranded and kept in their pockets, and a new lamplighter must set out on
+## a stranded man's round.
+static func _stranded_replaced(t) -> void:
+	var s := _world()
+	var d: FirstTasteDirector = s.d
+	d.shards = 2
+	var pins := {}
+	var rounds: Array[int] = []
+	var originals: Array = d.lamps.duplicate()
+	for n in 4:
+		_until(s, 20.0, func() -> bool: return d.chain_state == RiteDirector.Chain.READY)
+		var v: Person = null
+		for m: Person in d.marked:
+			if not d._stranded.has(m) and MissionDirector._alive(m):
+				v = m
+				break
+		pins[v] = v.ground_pos
+		d.chain(v)
+		var held_for := 0.0
+		while held_for < RiteDirector.STUCK_SECONDS + 3.0 and d.chain_state != RiteDirector.Chain.COOLDOWN:
+			for k: Person in pins:
+				k.ground_pos = pins[k]
+			_step(s)
+			held_for += DT
+		rounds.append(d.lamps.find(v))
+	t.check(d._stranded.size() == 4, "four are stranded (%d)" % d._stranded.size())
+	for i in roundi(1.0 / DT):
+		for k: Person in pins:
+			k.ground_pos = pins[k]
+		_step(s)
+	t.check((s.banners as Array).has(FirstTasteDirector.NEW_LAMPLIGHTER), "a new lamplighter sets out (%s)" % [s.banners])
+	t.check(d.left() >= d.need() - d.shards + 1, "enough are in play again (%d left, need %d)" % [d.left(), d.need() - d.shards + 1])
+	var fresh_round := -1
+	for i in d.lamps.size():
+		var man: Variant = d.lamps[i]
+		if MissionDirector._alive(man) and not originals.has(man) and d.marked.has(man):
+			fresh_round = i
+	t.check(fresh_round >= 0 and rounds.has(fresh_round), "the new man took a stranded man's round (round %d; stranded rounds %s)" % [fresh_round, rounds])
 	_done(s)

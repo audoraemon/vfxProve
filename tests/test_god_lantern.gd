@@ -460,17 +460,14 @@ static func _informer_t3_wishes(t) -> void:
 		print("NOTE: the Informer at tier 3 heard fewer than %d wishes on %d of 4 nights" % [TierBook.wishes(3), short])
 
 
-## Review M3 (fix wave): the night after a Hunt -- won, lost or abandoned -- draws neither the Hunt's stand-in nor the night before the
-## Hunt, on every tier and seed; the night after that forgets the night before the Hunt again.
+## Review M3 (fix wave): the night after a Hunt -- won, lost or abandoned -- draws not the night before the Hunt, on every tier and seed;
+## the night after that forgets the night before the Hunt again. (A real Hunt id is never in a tier's pool: god P5 removed the stand-ins.)
 static func _after_hunt(t) -> void:
 	for tier in range(1, 6):
 		var pool := TierBook.missions(tier)
 		var hunt_id: String = GodNight.HUNTS[tier - 1].id
 		var before := ""
-		for id in pool:
-			if id != hunt_id:
-				before = id
-				break
+		before = pool[0]
 		for how in ["won", "lost", "abandoned"]:
 			var bad := ""
 			for seed_value in range(1, 41):
@@ -486,7 +483,7 @@ static func _after_hunt(t) -> void:
 					bad = "seed %d: before_hunt %s, last %s" % [seed_value, s.before_hunt, s.last_mission]
 					break
 				var next := GodNight.draw(s)
-				if pool.size() > 2 and (next == before or next == hunt_id):
+				if pool.size() > 2 and next == before:
 					bad = "seed %d draws %s" % [seed_value, next]
 					break
 				GodNight.bank(s, next, PackedStringArray(), _outcome(true, true, 0, 0, tier))

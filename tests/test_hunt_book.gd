@@ -6,6 +6,24 @@ extends RefCounted
 
 const FILE := "user://test_hunt_book_%s.cfg"
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
+## The frames' copy, exactly as MS §2-§6 give it: brief (two lines), goal, goal_label, lose, by Hunt in tier order.
+const COPY := [
+	{"brief": ["The Inquisition searches house by house.", "Lead your believers out before it reaches them."],
+		"goal": "Lead five of your six believers out of the walls before the Inquisition takes them", "label": "The faithful are hidden",
+		"lose": "Two believers are taken or killed, or dawn comes"},
+	{"brief": ["Four witnesses saw you work.", "Stop them before they reach the Temple."],
+		"goal": "Stop all four witnesses before word of you reaches the Temple", "label": "The witnesses are silent",
+		"lose": "A witness reaches the Temple, or dawn comes"},
+	{"brief": ["The Lantern's captain walks your town.", "Break his wardens, then kill him or drive him out."],
+		"goal": "Stop his three wardens, then kill the captain or drive him out of the town", "label": "The inquisitor is gone",
+		"lose": "The captain reaches the Citadel, or dawn comes"},
+	{"brief": ["Four standards march on your believers' houses.", "Break every standard before they plant them."],
+		"goal": "Break the four standards before they take two of your believers' houses", "label": "The hunt is broken",
+		"lose": "Two believers' houses are taken, or dawn comes"},
+	{"brief": ["Halcyon's Gaze is on the whole town.", "Free your believers from the pyre unseen."],
+		"goal": "Free three of the four believers led to the pyre, unseen by Halcyon", "label": "The pyre stays cold",
+		"lose": "Two believers burn, Halcyon's Gaze fills, or dawn comes"},
+]
 ## P2's titles and plates (GodNight.HUNTS before P5): the real Hunts keep them (open issue 9, ruling C9).
 const TITLES := ["Hide the faithful", "Silence the witness", "Expel the inquisitor", "Break the hunt", "Face Halcyon"]
 const PLATES := ["Lead your believers out before the inquisitors reach them", "Stop the runner carrying word of you to the Lantern",
@@ -93,7 +111,10 @@ static func _frames(t) -> void:
 		t.check(def.mission_tags.has(TierBook.UNAWARE_TAG) == (tier == 1), "%s: the Unaware tag at Tier 1 only (%s)" % [id, def.mission_tags])
 		t.check(def.goal.length() <= 91 and def.goal != "", "%s: goal fits the Informer's 91 characters (%d)" % [id, def.goal.length()])
 		t.check(def.lose.length() <= 96 and def.lose != "", "%s: lose fits the Informer's 96 characters (%d)" % [id, def.lose.length()])
-		t.check(def.goal_label != "" and def.brief.size() == 2 and def.city == &"aldermere", "%s: label, a two-line brief, Aldermere" % id)
+		var copy: Dictionary = COPY[tier - 1]
+		t.check(def.brief == PackedStringArray(copy.brief) and def.goal == copy.goal and def.goal_label == copy.label and def.lose == copy.lose,
+			"%s: the brief, goal, label and lose are the spec's, word for word (%s / %s / %s / %s)" % [id, def.brief, def.goal, def.goal_label, def.lose])
+		t.check(def.city == &"aldermere", "%s: in Aldermere" % id)
 		t.check(def.default_loadout.size() == 3 and def.make_objectives.is_valid() and def.director != null, "%s: a loadout, objectives, a director" % id)
 		var objectives := def.objectives()
 		t.check(objectives.size() >= 1 and objectives[objectives.size() - 1] is ClockObjective, "%s: the Dawn is last (%d)" % [id, objectives.size()])
@@ -130,6 +151,7 @@ static func _hunt_def(t) -> void:
 		var s := _slot(tier)
 		s.notice = 100
 		s.bought["clock"] = 1
+		s.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL])
 		var h := HuntBook.at_tier(tier)
 		var def := GodNight.def_for(s, String(h.id))
 		t.check(def != null and def.tier == tier and def.id == h.id and def.name == h.title and def.intro_banner == String(h.title).to_upper(),
@@ -140,7 +162,9 @@ static func _hunt_def(t) -> void:
 			"tier %d Hunt: the god's slots, Might and pool (%d, %d)" % [tier, def.slots, def.dp_capacity])
 		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001 and s.extra_clock() > 0.0,
 			"tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])
-		t.check(def.gifts == s.gifts, "tier %d Hunt: the god's gifts" % tier)
+		t.check(def.gifts == PackedStringArray([RiteBook.WATCHFUL_BELL]) and def.gifts == s.gifts, "tier %d Hunt: the god's gifts (%s)" % [tier, def.gifts])
+		def.gifts.append("x")
+		t.check(s.gifts.size() == 1, "tier %d Hunt: the def's gifts are a copy of the slot's" % tier)
 		t.check(def.goal == HuntBook.def(String(h.id)).goal and def.lose == HuntBook.def(String(h.id)).lose, "tier %d Hunt: the Hunt's own goal and lose" % tier)
 		t.check(Descent.new().setup(def, 1).tier == tier, "tier %d Hunt: the Descent plays it at the god tier" % tier)
 		# A Hunt id builds the Hunt at any Notice (Ruling P5-2): a stale in_night, a test.

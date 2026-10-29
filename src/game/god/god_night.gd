@@ -150,7 +150,7 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 			_apply_god(a, slot, pool)
 			a.clock += extra
 	else:
-		def.clock = (TierBook.clock(def.tier) if is_hunt else def.clock) + extra
+		def.clock += extra  # a Hunt's frame clock is its tier's (MissionBook._tier1.._tier5), so this is the tier's clock plus the Faith clock
 	if is_hunt:
 		_dress_hunt(def, HuntBook.row(id))
 	_carry_gifts(def, slot)

@@ -5304,7 +5304,7 @@ const FT_CLEAR := 1.2
 ## The keys each type's answer casts (MS §3.8). They are checked against GodTree.starting(type) and the drafted slots when the run starts, so an edited
 ## tree fails with a clear line instead of a night in which the policy silently casts nothing (C2).
 const FT_USES := {
-	"ruin": ["smite", "ember"],
+	"ruin": ["smite", "ember"],  # (Ember is required but never cast: Ruin wins on Smite alone; MS §3.8's Ember to draw the town is left out)
 	"death": ["deathmark", "pestilence"],
 	"veil": ["doom", "blight"],
 	"passage": ["thorns", "mirror"],
@@ -5340,6 +5340,8 @@ const FT_LAST_POST := 9.0
 ## seconds of the shrine or a cleanse has begun (two held kneelers reset the ring).
 const FT_RESERVE := 24.0
 const FT_KNEEL_NEAR := 6.0
+## Decree: a Watchman this near the Main Gate's centre is the gate pair (posts at 1.1 from it).
+const FT_GATE_PAIR := 3.0
 
 
 ## The First Taste (god P3, MS §3.9), through _scripted(): the shared plan and, with --god=<type>, that type's own answers. Smite's hit-stop is wall clock,
@@ -5364,7 +5366,7 @@ func _first_taste(which: String) -> void:
 		func() -> String: return _first_taste_state(d))
 
 
-## The state line: `shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s` (the captive: `(x, y) walks|STILL <path points to the shrine>`, or `-`).
+## The state line: `shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s` (the captive: `(x, y) walks|STILL <path points to the shrine>`, or `-`; `flame_in`: seconds to the flame's end at the soonest, or `-`).
 func _first_taste_state(d: FirstTasteDirector) -> String:
 	var marches := PackedStringArray()
 	for m in d.marches:
@@ -5373,8 +5375,13 @@ func _first_taste_state(d: FirstTasteDirector) -> String:
 	if WarningDirector._alive(d.captive):
 		cap = "(%.1f, %.1f) %s %d" % [d.captive.ground_pos.x, d.captive.ground_pos.y, "walks" if d.captive.has_goal() else "STILL",
 			mission._crowd._grid.path(d.captive.ground_pos, d.shrine()).size()]
-	return "shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s" % [d.shards, d.need(), RiteDirector.Chain.keys()[d.chain_state],
-		",".join(marches) if not marches.is_empty() else "-", d.cleanse, d.hint_phase(), cap]
+	# The margin of a night: the seconds until the flame would go out, at the soonest (a walking march's arrival plus the cleanse still to do); "-" with none.
+	var flame := INF
+	for m in d.marches:
+		if not m.done and not m.people.is_empty() and m.walking:
+			flame = minf(flame, d.march_eta(m) + FirstTasteDirector.CLEANSE_SECONDS - d.cleanse)
+	return "shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s flame_in=%s" % [d.shards, d.need(), RiteDirector.Chain.keys()[d.chain_state],
+		",".join(marches) if not marches.is_empty() else "-", d.cleanse, d.hint_phase(), cap, "-" if flame == INF else "%.0f" % flame]
 
 
 ## One look of the shared plan: a march near the shrine is answered before chaining; a ready chain takes the lamplighter with the shortest way to the
@@ -5396,8 +5403,10 @@ func _first_taste_act(rules: Rules, slots: Dictionary, d: FirstTasteDirector, cr
 		# Passage chains only with the mirror ready: its fold is what gets a drag past the Watch (MS §3.8), and the wait is the mirror's cooldown.
 		var v := _first_taste_pick(d, type in ["passage", "decree"], FT_FOLD_BEFORE + 2.0 if type == "passage" else 0.0)
 		# Passage chains so that its captive reaches the first post as the mirror comes back (MS §3.8: the fold is what gets a drag past the Watch).
-		if v != null and type == "passage" and float(rules.cooldown_left(slots.mirror)) 				> (_first_taste_lead(d, v.ground_pos) - FT_FOLD_BEFORE - 1.0) / RiteDirector.drag_pace(d._path_length(v.ground_pos)):
-			v = null
+		if v != null and type == "passage":
+			var wait := (_first_taste_lead(d, v.ground_pos) - FT_FOLD_BEFORE - 1.0) / RiteDirector.drag_pace(d._path_length(v.ground_pos))
+			if float(rules.cooldown_left(slots.mirror)) > wait:
+				v = null
 		if v != null and d.chain(v) == "":
 			memo.said = d._now
 			return "chain a lamplighter, %.0f units from the shrine" % d._way
@@ -5633,9 +5642,17 @@ func _first_taste_hit(type: String, rules: Rules, slots: Dictionary, d: FirstTas
 				return "thornwall between a breaker and the captive"
 			return ""
 		"decree":
-			# CALL THE GUARD holds the whole Watch for 20 s (a 60 s power, so it is the first answer); the circle holds those within 3 of it for 15 s.
+			# MS §3.8: the circle on the gate pair as the drag passes (15 s, 20 s to come back), CALL THE GUARD for the posts beyond it -- it holds every soldier
+			# for 20 s, and the shrine road and the approach lie 11 units apart, one call covers both (a 60 s power; Task 7 review I3: the circle is then free
+			# for the march). A power that is not ready gives way to the other.
+			var gate_pair := b.ground_pos.distance_to(TownLayout.MAIN_GATE.get_center()) <= FT_GATE_PAIR
+			if gate_pair:
+				var circled := _first_taste_circle(rules, slots, d, b, false)
+				if circled != "":
+					return circled
 			if d.watch.has(b) and WarningDirector._alive(d.captive) and _slot_ready(rules, slots, "belllies"):
-				# The bell calls the 12 soldiers nearest the place: the spot lies 6 units from the Watchman, away from the captive, so he is among them.
+				# The bell calls the 12 soldiers nearest the place: the spot lies 6 units from the Watchman, away from the captive, so he is among them (a
+				# rule of the_bell_lies.gd's GUARDS the power's text does not state).
 				var away := (b.ground_pos - d.captive.ground_pos).normalized() * 6.0
 				var spot: Vector2 = mission._crowd._grid.nearest_walkable(b.ground_pos + away)
 				rules.cast(slots.belllies, spot if spot != Vector2.INF else b.ground_pos, {"mode": "guard"})
@@ -5749,7 +5766,8 @@ func _first_taste_fold_past(rules: Rules, slots: Dictionary, d: FirstTasteDirect
 
 
 ## Whether a person set down anywhere on a Mirrorfold's way out at `p` has a way to the shrine: the way out is an oval (2.4 by 1.0 units), a walker lands at
-## the same place on it as he stood on the way in, and ground beside a wall can be a pocket with no way out of it.
+## the same place on it as he stood on the way in, and ground beside a wall can be a pocket with no way out of it. (This reads the walk grid, which a player
+## sees only as walls: a mild oracle, and the reason the scripted Passage never meets the stranded captive Task 7 found with a plain landing.)
 func _first_taste_landing_ok(d: FirstTasteDirector, p: Vector2) -> bool:
 	var grid: WalkGrid = mission._crowd._grid
 	for off: Vector2 in [Vector2.ZERO, MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE, -MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE,

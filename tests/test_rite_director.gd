@@ -81,6 +81,7 @@ static func run(t) -> void:
 	_quiet_sacrifice(t)
 	_blocked_walk_retries(t)
 	_stuck_captive_freed(t)
+	_stranded_replaced(t)
 
 
 # --- The world -----------------------------------------------------------------------------------
@@ -639,4 +640,32 @@ static func _stuck_captive_freed(t) -> void:
 	t.check(d.chain_state == RiteDirector.Chain.COOLDOWN and d.captive == null and (s.banners as Array).has(RiteDirector.FREED_BANNER),
 		"stood still %.1f s: the chain lets go of him (cooldown, THE CHAIN BREAKS)" % held_for)
 	t.check(not v.chained, "and he is no longer chained")
+	_done(s)
+
+
+## Task 7 review I4: a man the chain let go of because he could not move (a closed pocket) is no victim the night can use, so the replacement rule sends
+## another when the count falls short; a man freed by a grip is not stranded and counts as before.
+static func _stranded_replaced(t) -> void:
+	var s := _world()
+	var d: TestRite = s.d
+	var v := _dragging(s, 0, FAR)
+	_run(s, 2.0)
+	t.check(d.left() == 4 and d.replaced == 0, "four victims in play, none added (%d left, %d added)" % [d.left(), d.replaced])
+	var at := v.ground_pos
+	var held_for := 0.0
+	while held_for < RiteDirector.STUCK_SECONDS + 2.0 and d.chain_state == RiteDirector.Chain.DRAG:
+		v.ground_pos = at
+		_step(s)
+		held_for += DT
+	t.check(d.chain_state == RiteDirector.Chain.COOLDOWN and d._stranded.has(v), "the stuck captive is freed and marked stranded")
+	t.check(d.left() == 4 - 1 + d.replaced, "he is no longer counted as in play (%d left, %d replacements)" % [d.left(), d.replaced])
+	_run(s, 0.6)
+	t.check(d.replaced == 1 and d.left() == 4, "and a replacement sets out (%d calls, %d left)" % [d.replaced, d.left()])
+	_done(s)
+	# A grip frees a man who can still be chained: he stays counted and nothing is stranded.
+	s = _world()
+	d = s.d
+	var w := _dragging(s, 0, FAR, Vector2(0.5, 0.0))
+	_until(s, 8.0, func() -> bool: return d.chain_state == RiteDirector.Chain.COOLDOWN)
+	t.check(w != null and d._stranded.is_empty() and d.left() == 4, "a grip strands nobody (%d stranded, %d left)" % [d._stranded.size(), d.left()])
 	_done(s)

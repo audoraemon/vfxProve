@@ -37,7 +37,8 @@ const YANKS := 1
 ## the cooldown advance every frame).
 const PICK_R := 1.0
 const TICK := 0.25
-## A captive who stands still this long (seconds) within this many units, ungripped, is let go of (_check_stuck()): no way to the shrine from where he is.
+## A captive who stands still this long (seconds) within this many units, ungripped, is let go of (_check_stuck()): no way to the shrine from where he is. (A man
+## held in a gate's queue behind a jammed gate would be freed too; no Tier 1 power does that.)
 const STUCK_SECONDS := 8.0
 const STUCK_STEP := 0.3
 ## A freed captive, running for the Temple's door, is safe within this of it (MS §2).
@@ -99,6 +100,8 @@ var _stunned := {}
 var _tick_in := 0.0
 ## Seconds until a captive whose walk found no way tries again (_step_drag()), and how long he has stood within STUCK_STEP of `_still_at` ungripped.
 var _repath_in := 0.0
+## Victims _check_stuck() let go of because no way led from where they stood: not counted by left() until chained again (Task 7 review I4).
+var _stranded: Array = []
 var _still := 0.0
 var _still_at := Vector2.INF
 var _need := -1
@@ -269,6 +272,7 @@ func chain(p: Person) -> String:
 		return CANT_REACH
 	captive = p
 	_runners.erase(p)
+	_stranded.erase(p)
 	p.chained = true
 	_way = way
 	_speed = drag_pace(way)
@@ -489,6 +493,7 @@ func _check_stuck(delta: float) -> void:
 	_still += delta
 	if _still >= STUCK_SECONDS:
 		_still = 0.0
+		_stranded.append(captive)
 		_break()
 
 
@@ -636,11 +641,12 @@ func _replace_if_short() -> void:
 			break
 
 
-## The marked victims still in play: alive, not safe (the captive counts).
+## The marked victims still in play: alive, not safe, and not stranded (the captive counts). A man _check_stuck() freed from a pocket is no victim the
+## night can use, so the replacement rule (MS §3.6 "never a dead end") sends another.
 func left() -> int:
 	var n := 0
 	for v: Variant in marked:
-		if _alive(v) and not safe.has(v):
+		if _alive(v) and not safe.has(v) and not _stranded.has(v):
 			n += 1
 	return n
 

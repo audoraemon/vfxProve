@@ -1040,12 +1040,20 @@ static func _hunt(m: MissionDef, goal: String, label: String, lose: String, load
 
 
 ## Hide the faithful (god P5, MS §2, Tier 1, the Lantern Hunt of the Escort type): two households of three walk out of the walls before the
-## Inquisition's search reaches their houses. The frame (Task 1); HideFaithfulDirector, its objective, camera and tour come with Task 4.
+## Inquisition's search reaches their houses. The frame (Task 1), with HideFaithfulDirector, its Escort objective (five out; it fails only through
+## the director's lost_reason(), "faithful_lost"), the camera and the tour (Task 4). The objectives run in this order so the fifth out wins before
+## a second loss can fail (MS §0: the winning strike never also loses).
 static func hide_faithful() -> MissionDef:
 	var m := _tier1(HIDE_FAITHFUL, String(HuntBook.row(HIDE_FAITHFUL).title), PackedStringArray(["The Inquisition searches house by house.",
 		"Lead your believers out before it reaches them."]))
-	return _hunt(m, "Lead five of your six believers out of the walls before the Inquisition takes them", "The faithful are hidden",
-		"Two believers are taken or killed, or dawn comes", ["whisper", "doom", "discord"], Vector2(-11.0, -1.5))
+	_hunt(m, "Lead five of your six believers out of the walls before the Inquisition takes them", "The faithful are hidden",
+		"Two believers are taken or killed, or dawn comes", ["whisper", "doom", "discord"], HideFaithfulDirector.HF_CAMERA_AT)
+	m.director = HideFaithfulDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Lead them out", "faithful_out", "faithful_taken", "faithful_dead",
+			HideFaithfulDirector.HF_NEED), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
 
 
 ## Silence the witness (god P5, MS §3, Tier 2, the Lantern Hunt of the Intercept type): four witnesses run for the Temple, and only their own

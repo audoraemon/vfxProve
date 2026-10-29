@@ -37,6 +37,9 @@ const YANKS := 1
 ## the cooldown advance every frame).
 const PICK_R := 1.0
 const TICK := 0.25
+## A captive who stands still this long (seconds) within this many units, ungripped, is let go of (_check_stuck()): no way to the shrine from where he is.
+const STUCK_SECONDS := 8.0
+const STUCK_STEP := 0.3
 ## A freed captive, running for the Temple's door, is safe within this of it (MS §2).
 const SAFE_REACH := 1.0
 ## How far a person stands from where the drag left him before the director sets him back on it, and how long past each frame a captive is kept
@@ -94,6 +97,10 @@ var _runners: Array[Person] = []
 ## Breakers a Yank has stunned: Person -> seconds left.
 var _stunned := {}
 var _tick_in := 0.0
+## Seconds until a captive whose walk found no way tries again (_step_drag()), and how long he has stood within STUCK_STEP of `_still_at` ungripped.
+var _repath_in := 0.0
+var _still := 0.0
+var _still_at := Vector2.INF
 var _need := -1
 
 
@@ -270,6 +277,8 @@ func chain(p: Person) -> String:
 	grip = 0.0
 	grip_by = null
 	_stopped = false
+	_still = 0.0
+	_still_at = Vector2.INF
 	yanks_left = YANKS
 	chain_state = Chain.BITE
 	_bite_left = BITE
@@ -447,7 +456,17 @@ func _step_drag(delta: float) -> void:
 			_resume()
 		elif captive.mind != Person.Mind.DUTY or captive.anchor.distance_to(_shrine) > MOVE:
 			captive.go_duty(_shrine)
+		elif not captive.has_goal():
+			# A walk that found no way (a Thornwall grown across his lane, a jam) leaves him with no goal for good; try again every TICK, so a wall that
+			# withers lets the drag go on instead of leaving the chain stuck in its drag until dawn (found by Task 7's scripted Passage).
+			_repath_in -= delta
+			if _repath_in <= 0.0:
+				_repath_in = TICK
+				captive.go_duty(_shrine)
+		_check_stuck(delta)
 		return
+	_still = 0.0
+	_still_at = captive.ground_pos
 	if by != grip_by:
 		grip_by = by
 		grip = 0.0
@@ -456,6 +475,20 @@ func _step_drag(delta: float) -> void:
 		_stand(captive)
 	grip += delta
 	if grip >= BREAK_SECONDS:
+		_break()
+
+
+## A captive who has not moved STUCK_STEP in STUCK_SECONDS while no one grips him has no way to the shrine (a Mirrorfold set him down in a closed
+## pocket, a wall that does not wither): the chain lets go of him like a broken one, so the night is never left with a chain stuck in its drag until
+## dawn (MS §3.6 "never a dead end"; found by Task 7's scripted Passage).
+func _check_stuck(delta: float) -> void:
+	if captive.ground_pos.distance_to(_still_at) > STUCK_STEP:
+		_still_at = captive.ground_pos
+		_still = 0.0
+		return
+	_still += delta
+	if _still >= STUCK_SECONDS:
+		_still = 0.0
 		_break()
 
 

@@ -79,6 +79,8 @@ static func run(t) -> void:
 	_report(t)
 	_freed_people(t)
 	_quiet_sacrifice(t)
+	_blocked_walk_retries(t)
+	_stuck_captive_freed(t)
 
 
 # --- The world -----------------------------------------------------------------------------------
@@ -590,4 +592,51 @@ static func _quiet_sacrifice(t) -> void:
 	t.check(d.shards == 1 and not MissionDirector._alive(v), "the captive was sacrificed")
 	t.check(crowd.alarm == alarm and crowd.killed_citizens == kills,
 		"and the town heard nothing: alarm %.2f (was %.2f), kills %d (was %d)" % [crowd.alarm, alarm, crowd.killed_citizens, kills])
+	_done(s)
+
+
+## A walk that found no way (a Thornwall across his lane, a jam) leaves the captive with no goal; the drag tries again, so the chain is never stuck
+## in its drag for good (found by Task 7's scripted Passage: a wall between the captive and a breaker stalled him until dawn).
+static func _blocked_walk_retries(t) -> void:
+	var s := _world()
+	var d: TestRite = s.d
+	var v := _dragging(s, 0, FAR)
+	_run(s, 2.0)
+	t.check(v.has_goal() and d.chain_state == RiteDirector.Chain.DRAG, "the captive is walking")
+	var at := v.ground_pos
+	d._clear_walk(v)
+	t.check(not v.has_goal(), "(his walk is lost)")
+	_run(s, 1.0)
+	t.check(v.has_goal(), "a captive who lost his walk is sent on again within a second")
+	var before := v.ground_pos
+	_run(s, 3.0)
+	t.check(v.ground_pos.distance_to(before) > 0.5 and v.ground_pos.distance_to(d.shrine()) < at.distance_to(d.shrine()),
+		"and walks on toward the shrine (%.1f units nearer)" % [at.distance_to(d.shrine()) - v.ground_pos.distance_to(d.shrine())])
+	_done(s)
+
+
+## A captive who cannot move for STUCK_SECONDS and is not gripped (set down in a closed pocket by a Mirrorfold, say) is let go of like a broken chain, so
+## the chain is free for another victim; one who keeps walking, or who is gripped, is not.
+static func _stuck_captive_freed(t) -> void:
+	var s := _world()
+	var d: TestRite = s.d
+	var v := _dragging(s, 0, FAR)
+	_run(s, 2.0)
+	t.check(d.chain_state == RiteDirector.Chain.DRAG, "the captive is in his drag")
+	_run(s, RiteDirector.STUCK_SECONDS * 1.5)
+	t.check(d.chain_state == RiteDirector.Chain.DRAG, "a captive who keeps walking is never let go of (%s)" % [RiteDirector.Chain.keys()[d.chain_state]])
+	var at := v.ground_pos
+	var held_for := 0.0
+	while held_for < RiteDirector.STUCK_SECONDS - 1.0:
+		v.ground_pos = at
+		_step(s)
+		held_for += DT
+	t.check(d.chain_state == RiteDirector.Chain.DRAG, "stood still for %.0f s: not yet let go of" % held_for)
+	while held_for < RiteDirector.STUCK_SECONDS + 2.0 and d.chain_state == RiteDirector.Chain.DRAG:
+		v.ground_pos = at
+		_step(s)
+		held_for += DT
+	t.check(d.chain_state == RiteDirector.Chain.COOLDOWN and d.captive == null and (s.banners as Array).has(RiteDirector.FREED_BANNER),
+		"stood still %.1f s: the chain lets go of him (cooldown, THE CHAIN BREAKS)" % held_for)
+	t.check(not v.chained, "and he is no longer chained")
 	_done(s)

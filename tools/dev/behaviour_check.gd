@@ -5301,74 +5301,246 @@ const FT_SAY_EVERY := 20.0
 const FT_CLEAR := 1.2
 
 
-## The First Taste (god P3, MS §3.9), through _scripted(): the shared plan. Smite's hit-stop is wall clock, so it is switched off here first
-## (pre-flight R3: nothing is cast before this line, and the shared hit-stop-off list is not edited).
+## The keys each type's answer casts (MS §3.8). They are checked against GodTree.starting(type) and the drafted slots when the run starts, so an edited
+## tree fails with a clear line instead of a night in which the policy silently casts nothing (C2).
+const FT_USES := {
+	"ruin": ["smite", "ember"],
+	"death": ["deathmark", "pestilence"],
+	"veil": ["doom", "blight"],
+	"passage": ["thorns", "mirror"],
+	"decree": ["noleave", "belllies"],
+	"dominion": ["whisper", "discord"],
+}
+## A breaker's sight (EscortDirector.SIGHT, 2.5) and a margin: a lamplighter nearer than this to one is already seen. A breaker within FT_ON_PATH of the
+## captive's way ahead (within FT_AHEAD units of him) is one the drag will meet.
+const FT_SIGHT_PAD := 3.5
+const FT_ON_PATH := 2.6
+const FT_AHEAD := 60.0
+## Passage (MS §3.8): the way in of a Mirrorfold lies FT_FOLD_BEFORE units on the path before the first Watchman it skips (the post sees 2.5, the oval is 2.4
+## long), the way out FT_FOLD_AFTER past the last post it skips and nowhere nearer than FT_LAND to a breaker free to grip, on open ground (FT_SHIFTS: the
+## path itself first, then beside it). The fold skips every post, the approach post too (FT_FOLD_ALL): that post stands 5 units from the shrine, in the
+## lane, and a Thornwall (which a breaker walks round in about 3 s) and one Yank (1.5 units) cannot take a captive 5 units past a gripping Watchman, so
+## a plan that leaves it won 0 of 3 (Task 7, round 0); the clear is then the mirror's cooldown (54 s) a drag, about 116-177 s.
+const FT_FOLD_BEFORE := 4.0
+const FT_FOLD_AFTER := 3.5
+const FT_FOLD_ALL := true
+const FT_LAND := 3.0
+const FT_SHIFTS: Array[Vector2] = [Vector2.ZERO, Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1), Vector2(1, 1), Vector2(-1, -1),
+	Vector2(1, -1), Vector2(-1, 1), Vector2(2, 0), Vector2(-2, 0), Vector2(0, 2), Vector2(0, -2), Vector2(2, 2), Vector2(-2, -2), Vector2(2, -2),
+	Vector2(-2, 2)]
+## Passage: a march this near the shrine (seconds) is folded back to the market, sooner the mirror is kept for the drag; a march leader inside the Main Gate
+## and within FT_SEAL_R of it has the gate's mouth walled across before him once no captive is still to pass it.
+const FT_FOLD_BACK_AT := 20.0
+const FT_SEAL_R := 8.0
+## Passage, when no fold can be made: a Thornwall goes between the captive and a breaker within FT_WALL_R of him (kept for the approach post, FT_LAST_POST
+## from the shrine, once a fold has been made).
+const FT_WALL_R := 1.8
+const FT_LAST_POST := 9.0
+## Decree: the circle (20 s to come back) is kept for the Watch when the drag has a post within FT_RESERVE units ahead, unless a march is within FT_KNEEL_NEAR
+## seconds of the shrine or a cleanse has begun (two held kneelers reset the ring).
+const FT_RESERVE := 24.0
+const FT_KNEEL_NEAR := 6.0
+
+
+## The First Taste (god P3, MS §3.9), through _scripted(): the shared plan and, with --god=<type>, that type's own answers. Smite's hit-stop is wall clock,
+## so it is switched off here first (pre-flight R3: nothing is cast before this line, and the shared hit-stop-off list is not edited).
 func _first_taste(which: String) -> void:
 	mission._bf.ctx.impact.hitstop_enabled = false
 	var rules: Rules = mission._rules
 	var d := rules.director as FirstTasteDirector
 	var crowd: Crowd = mission._crowd
 	var slots := _slots(rules)
-	var memo := {"said": -INF}
+	var type := String(Battlefield.arg_value(OS.get_cmdline_user_args(), "--god")).split(":")[0]
+	var lacks := PackedStringArray()
+	for key: String in FT_USES.get(type, []):
+		if not slots.has(key) or not GodTree.starting(type).has(key):
+			lacks.append(key)
+	if not lacks.is_empty():
+		print("BEHAVIOUR refused scenario=first_taste god=%s missing=%s" % [type, ",".join(lacks)])
+		quit(1)
+		return
+	var memo := {"said": -INF, "type": type, "pest": {}, "folded": 0, "blighted": false}
 	await _scripted("first_taste", which, func() -> String: return _first_taste_act(rules, slots, d, crowd, memo),
 		func() -> String: return _first_taste_state(d))
 
 
-## The state line: `shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s`.
+## The state line: `shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s` (the captive: `(x, y) walks|STILL <path points to the shrine>`, or `-`).
 func _first_taste_state(d: FirstTasteDirector) -> String:
 	var marches := PackedStringArray()
 	for m in d.marches:
 		marches.append("%d%s" % [m.people.size(), "x" if m.done else ("w" if m.walking else "m")])
-	return "shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s" % [d.shards, d.need(), RiteDirector.Chain.keys()[d.chain_state],
-		",".join(marches) if not marches.is_empty() else "-", d.cleanse, d.hint_phase()]
+	var cap := "-"
+	if WarningDirector._alive(d.captive):
+		cap = "(%.1f, %.1f) %s %d" % [d.captive.ground_pos.x, d.captive.ground_pos.y, "walks" if d.captive.has_goal() else "STILL",
+			mission._crowd._grid.path(d.captive.ground_pos, d.shrine()).size()]
+	return "shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s" % [d.shards, d.need(), RiteDirector.Chain.keys()[d.chain_state],
+		",".join(marches) if not marches.is_empty() else "-", d.cleanse, d.hint_phase(), cap]
 
 
 ## One look of the shared plan: a march near the shrine is answered before chaining; a ready chain takes the lamplighter with the shortest way to the
-## shrine; in a drag a breaker within FT_STRIKE_R of the captive is struck before he grips, a grip past 1.5 s is Yanked, and a drag that is only
-## walking says so every FT_SAY_EVERY seconds (R7: MS §3.7 counts the drag as acting). "" when nothing was done.
+## shrine; in a drag a breaker within FT_STRIKE_R of the captive is answered before he grips (the type's own answer: _first_taste_hit()), a grip past
+## 1.5 s is Yanked, and a drag that is only walking says so every FT_SAY_EVERY seconds (R7: MS §3.7 counts the drag as acting). "" when nothing was done.
 func _first_taste_act(rules: Rules, slots: Dictionary, d: FirstTasteDirector, crowd: Crowd, memo: Dictionary) -> String:
 	if d.stages_done() or d.flame_out:
 		return ""
+	var type := String(memo.type)
+	var opening := _first_taste_opening(type, rules, slots, memo)
+	if opening != "":
+		return opening
 	if d.chain_state == RiteDirector.Chain.READY:
 		var march := _first_taste_march(d, FT_MARCH_NEAR)
 		if march != null:
-			var stopped := _first_taste_stop(rules, slots, d, crowd, march)
+			var stopped := _first_taste_stop(type, rules, slots, d, march, memo)
 			if stopped != "":
 				return stopped
-		var v := _first_taste_pick(d)
+		# Passage chains only with the mirror ready: its fold is what gets a drag past the Watch (MS §3.8), and the wait is the mirror's cooldown.
+		var v := _first_taste_pick(d, type in ["passage", "decree"], FT_FOLD_BEFORE + 2.0 if type == "passage" else 0.0)
+		# Passage chains so that its captive reaches the first post as the mirror comes back (MS §3.8: the fold is what gets a drag past the Watch).
+		if v != null and type == "passage" and float(rules.cooldown_left(slots.mirror)) 				> (_first_taste_lead(d, v.ground_pos) - FT_FOLD_BEFORE - 1.0) / RiteDirector.drag_pace(d._path_length(v.ground_pos)):
+			v = null
 		if v != null and d.chain(v) == "":
 			memo.said = d._now
 			return "chain a lamplighter, %.0f units from the shrine" % d._way
-		return ""
+		return _first_taste_prep(type, rules, slots, d, crowd, memo)
 	if d.chain_state == RiteDirector.Chain.COOLDOWN:
 		var cooling := _first_taste_march(d, FT_MARCH_NEAR)
-		return _first_taste_stop(rules, slots, d, crowd, cooling) if cooling != null else ""
+		if cooling != null:
+			var did := _first_taste_stop(type, rules, slots, d, cooling, memo)
+			if did != "":
+				return did
+		return _first_taste_prep(type, rules, slots, d, crowd, memo)
+	var gripper := d.grip_by
+	if gripper != memo.get("gripper"):
+		memo.gripper = gripper  # (a log line only: who took hold, and where; it is not an act and not in any checksum)
+		if WarningDirector._alive(gripper):
+			print("BEHAVIOUR first_taste t=%.1f grip by %s at %s, captive %s" % [d._now, "the Watch" if d.watch.has(gripper) else "a marcher",
+				gripper.ground_pos.round(), d.captive.ground_pos.round() if WarningDirector._alive(d.captive) else "-"])
+	if WarningDirector._alive(gripper) and not d.held(gripper):
+		var answered := _first_taste_hit(type, rules, slots, d, gripper, memo)
+		if answered != "":
+			return answered
 	if d.grip > 1.5 and d.yanks_left > 0:
 		if d.chain_key() == "yank":
 			return "yank him on (a grip of %.1f s)" % d.grip
 	var near := _first_taste_breaker(d)
 	if near != null:
-		var struck := _first_taste_strike(rules, slots, d, near)
+		var struck := _first_taste_hit(type, rules, slots, d, near, memo)
 		if struck != "":
 			return struck
+	var prep := _first_taste_prep(type, rules, slots, d, crowd, memo)
+	if prep != "":
+		return prep
 	if d._now - float(memo.said) >= FT_SAY_EVERY:
 		memo.said = d._now
 		return "drag on, shrine in %s" % UiTheme.clock(d.drag_eta())
 	return ""
 
 
-## The marked lamplighter with the shortest way to the shrine, or null.
-func _first_taste_pick(d: FirstTasteDirector) -> Person:
+## The type's opening move, once: Veil ruins the Bell Tower's bell at the start (MS §3.8 "no toll all night"). "" for the rest.
+func _first_taste_opening(type: String, rules: Rules, slots: Dictionary, memo: Dictionary) -> String:
+	if type == "veil" and not bool(memo.blighted) and _slot_ready(rules, slots, "blight"):
+		memo.blighted = true
+		rules.cast(slots.blight, TownLayout.BELL_TOWER.get_center())
+		return "blight the Bell Tower"
+	return ""
+
+
+## What the type does between breakers and marches (MS §3.8): Death marks the next Watchman ahead of the drag and sickens a muster; Passage folds the drag
+## past the Watch; every type stops a march that is near the shrine once the drag has nothing more urgent. "" when nothing.
+func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, _crowd: Crowd, memo: Dictionary) -> String:
+	var march := _first_taste_march(d, FT_MARCH_NEAR)
+	if march != null:
+		var stopped := _first_taste_stop(type, rules, slots, d, march, memo)
+		if stopped != "":
+			return stopped
+	match type:
+		"death":
+			for m in d.marches:
+				if m.done or m.walking or m.muster_left <= 0.0 or memo.pest.has(m) or not _slot_ready(rules, slots, "pestilence"):
+					continue
+				var at := Vector2.ZERO
+				var n := 0
+				for p in m.people:
+					if WarningDirector._alive(p):
+						at += (p as Person).ground_pos
+						n += 1
+				if n > 0:
+					memo.pest[m] = true
+					rules.cast(slots.pestilence, at / float(n))
+					return "pestilence on a muster of %d" % n
+			return _first_taste_mark_ahead(rules, slots, d)
+		"passage":
+			var folded := _first_taste_fold_past(rules, slots, d, memo)
+			if folded != "":
+				return folded
+			return _first_taste_seal_gate(rules, slots, d, memo)
+		"decree":
+			# Circle the march every 20 s whenever the circle is free (held 15 of 20: it crawls), not only when it is near.
+			var walking := _first_taste_march(d, INF)
+			if walking != null:
+				return _first_taste_stop(type, rules, slots, d, walking, memo)
+	return ""
+
+
+## Death: a Death Mark on the Watchman nearest the captive (before a drag, nearest the next lamplighter), whom nothing holds yet: he is frail at once and
+## dead in 10 s (MS §3.8 "mark ahead of each drag"). "" when none is left or the mark is not ready.
+func _first_taste_mark_ahead(rules: Rules, slots: Dictionary, d: FirstTasteDirector) -> String:
+	if not _slot_ready(rules, slots, "deathmark"):
+		return ""
+	var ref := d.shrine()
+	if WarningDirector._alive(d.captive):
+		ref = d.captive.ground_pos
+	else:
+		var v := _first_taste_pick(d)
+		if v != null:
+			ref = v.ground_pos
+	var best: Person = null
+	for w in d.watch:
+		if not WarningDirector._alive(w) or d.held(w):
+			continue
+		if best == null or (w as Person).ground_pos.distance_to(ref) < best.ground_pos.distance_to(ref):
+			best = w
+	if best == null:
+		return ""
+	rules.cast(slots.deathmark, best.ground_pos)
+	return "death mark a watchman ahead of the drag"
+
+
+## The marked lamplighter with the shortest way to the shrine, or null. With `avoid`, one standing within FT_SIGHT_PAD of a breaker who is free to grip
+## is passed over while another stands clear: a player does not chain a man the Watch is already looking at (the types that can only hold or fold a
+## breaker, not kill him, pick this way).
+func _first_taste_pick(d: FirstTasteDirector, avoid := false, lead := 0.0) -> Person:
 	var best: Person = null
 	var best_way := INF
+	var best_clear := false
 	for v in d.marked:
 		if not WarningDirector._alive(v) or v.inside or v == d.captive:
 			continue
 		var way := d._path_length(v.ground_pos)
-		if way >= 0.0 and way < best_way:
+		if way < 0.0:
+			continue
+		var clear := true
+		if avoid:
+			for b in d._breakers():
+				if not d.held(b) and b.ground_pos.distance_to(v.ground_pos) < FT_SIGHT_PAD:
+					clear = false
+		if clear and lead > 0.0 and _first_taste_lead(d, v.ground_pos) < lead:
+			clear = false
+		if best == null or (clear and not best_clear) or (clear == best_clear and way < best_way):
 			best = v
 			best_way = way
+			best_clear = clear
 	return best
+
+
+## How many units of the way from `from` to the shrine lie before the first breaker free to grip (INF when none lies on it): the room a Mirrorfold has to be
+## laid in.
+func _first_taste_lead(d: FirstTasteDirector, from: Vector2) -> float:
+	for sm: Dictionary in _first_taste_way(d, from):
+		for b in d._breakers():
+			if not d.held(b) and b.ground_pos.distance_to(sm.at) <= FT_ON_PATH:
+				return float(sm.s)
+	return INF
 
 
 ## The walking march whose leader is within `seconds` of the shrine, soonest first; null for none.
@@ -5396,8 +5568,8 @@ func _first_taste_breaker(d: FirstTasteDirector) -> Person:
 	return best
 
 
-## Stops a march: the marcher nearest the shrine first, with whatever the loadout holds ready.
-func _first_taste_stop(rules: Rules, slots: Dictionary, d: FirstTasteDirector, _crowd: Crowd, m: FirstTasteDirector.March) -> String:
+## Stops a march (MS §3.8 "answers a march"): the type's own move on its people, the one nearest the shrine first.
+func _first_taste_stop(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, m: FirstTasteDirector.March, memo: Dictionary) -> String:
 	var target: Person = null
 	for p in m.people:
 		if WarningDirector._alive(p) and not d.held(p) \
@@ -5405,7 +5577,238 @@ func _first_taste_stop(rules: Rules, slots: Dictionary, d: FirstTasteDirector, _
 			target = p
 	if target == null:
 		return ""
+	match type:
+		"death":
+			if _slot_ready(rules, slots, "deathmark"):
+				rules.cast(slots.deathmark, target.ground_pos)
+				return "death mark a marcher"
+			return ""
+		"passage":
+			# The mirror goes to the next drag's fold, and to the march only when it is about to kneel (FT_FOLD_BACK_AT seconds off).
+			if d.march_eta(m) > FT_FOLD_BACK_AT:
+				return ""
+			if WarningDirector._alive(d.captive) and int(memo.folded) != d.captive.get_instance_id():
+				return ""  # (a captive who has not yet had his fold has the first claim on the mirror)
+			return _first_taste_fold_back(rules, slots, d, m)
+		"decree":
+			# The circle is kept for the Watch while the drag has a post within FT_RESERVE units ahead; the march is circled when the road is clear.
+			if d.cleanse <= 0.0 and d.march_eta(m) > FT_KNEEL_NEAR and _first_taste_watch_ahead(d, FT_RESERVE):
+				return ""
+			return _first_taste_circle(rules, slots, d, target, true)
 	return _first_taste_strike(rules, slots, d, target)
+
+
+## Whether an unheld Watchman stands within FT_ON_PATH of the captive's way in the next `reach` units (false with no captive).
+func _first_taste_watch_ahead(d: FirstTasteDirector, reach: float) -> bool:
+	if d.chain_state not in [RiteDirector.Chain.BITE, RiteDirector.Chain.DRAG] or not WarningDirector._alive(d.captive):
+		return false
+	for sm: Dictionary in _first_taste_way(d, d.captive.ground_pos):
+		if float(sm.s) > reach:
+			break
+		for w in d.watch:
+			if WarningDirector._alive(w) and not d.held(w) and (w as Person).ground_pos.distance_to(sm.at) <= FT_ON_PATH:
+				return true
+	return false
+
+
+## The type's answer to a breaker `b` who is near the captive or gripping him (MS §3.8 "answers the Watch").
+func _first_taste_hit(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person, memo: Dictionary) -> String:
+	match type:
+		"death":
+			if _slot_ready(rules, slots, "deathmark"):
+				rules.cast(slots.deathmark, b.ground_pos)
+				return "death mark a breaker"
+			return ""
+		"passage":
+			var folded := _first_taste_fold_past(rules, slots, d, memo)
+			if folded != "":
+				return folded
+			# The wall is kept for the post the fold leaves (the approach, FT_LAST_POST from the shrine) once a fold has been made this drag.
+			var walls := WarningDirector._alive(d.captive) and (int(memo.folded) != d.captive.get_instance_id() \
+					or b.ground_pos.distance_to(d.shrine()) <= FT_LAST_POST)
+			if walls and b.ground_pos.distance_to(d.captive.ground_pos) <= FT_WALL_R and _slot_ready(rules, slots, "thorns"):
+				var axis := d.captive.ground_pos - b.ground_pos
+				var dir := axis.orthogonal().normalized() if axis.length() > 0.01 else Vector2.RIGHT
+				rules.cast(slots.thorns, (d.captive.ground_pos + b.ground_pos) * 0.5, {"dir": dir})
+				return "thornwall between a breaker and the captive"
+			return ""
+		"decree":
+			# CALL THE GUARD holds the whole Watch for 20 s (a 60 s power, so it is the first answer); the circle holds those within 3 of it for 15 s.
+			if d.watch.has(b) and WarningDirector._alive(d.captive) and _slot_ready(rules, slots, "belllies"):
+				# The bell calls the 12 soldiers nearest the place: the spot lies 6 units from the Watchman, away from the captive, so he is among them.
+				var away := (b.ground_pos - d.captive.ground_pos).normalized() * 6.0
+				var spot: Vector2 = mission._crowd._grid.nearest_walkable(b.ground_pos + away)
+				rules.cast(slots.belllies, spot if spot != Vector2.INF else b.ground_pos, {"mode": "guard"})
+				return "call the guard away"
+			return _first_taste_circle(rules, slots, d, b, false)
+	return _first_taste_strike(rules, slots, d, b)
+
+
+## Decree: Leaving Is Prohibited on `b` and every other breaker within 2.4 of him (the circle is 3 across), so that all of them are bound under its bars
+## (held, B5) for 15 s -- or, on a march, on its leader and those behind him.
+func _first_taste_circle(rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person, march: bool) -> String:
+	if not _slot_ready(rules, slots, "noleave"):
+		return ""
+	var sum := b.ground_pos
+	var n := 1.0
+	for o in d._breakers():
+		if o != b and WarningDirector._alive(o) and not d.held(o) and o.ground_pos.distance_to(b.ground_pos) <= 2.4:
+			sum += (o as Person).ground_pos
+			n += 1.0
+	rules.cast(slots.noleave, sum / n)
+	return ("circle a march of %d" if march else "circle %d breakers") % int(n)
+
+
+## The way from `from` to the shrine as samples every half unit: {"at": point, "s": arc length from `from`}.
+func _first_taste_way(d: FirstTasteDirector, from: Vector2) -> Array:
+	var pts := PackedVector2Array([from])
+	pts.append_array(mission._crowd._grid.path(from, d.shrine()))
+	pts.append(d.shrine())
+	var out: Array = []
+	var s := 0.0
+	var next := 0.0
+	for i in range(1, pts.size()):
+		var seg := pts[i - 1].distance_to(pts[i])
+		while next <= s + seg and seg > 0.0:
+			out.append({"at": pts[i - 1].lerp(pts[i], (next - s) / seg), "s": next})
+			next += 0.5
+		s += seg
+	return out
+
+
+## Passage: a Mirrorfold laid on the captive's way FT_FOLD_BEFORE units before the first Watchman the drag will meet, and out FT_FOLD_AFTER past the last
+## of his post, where no breaker stands within FT_LAND (MS §3.8: in on the gate plaza path, out on the shrine road). Once a drag. "" when no breaker
+## lies ahead, the way in would lie behind the captive, no clear landing exists, or the mirror is not ready.
+func _first_taste_fold_past(rules: Rules, slots: Dictionary, d: FirstTasteDirector, memo: Dictionary) -> String:
+	var cap := d.captive
+	if d.chain_state not in [RiteDirector.Chain.BITE, RiteDirector.Chain.DRAG] or not WarningDirector._alive(cap) \
+			or not _slot_ready(rules, slots, "mirror") or int(memo.folded) == cap.get_instance_id():
+		return ""
+	if d._now - float(memo.get("fold_try", -INF)) < 1.0:
+		return ""
+	memo.fold_try = d._now
+	var way := _first_taste_way(d, cap.ground_pos)
+	var threats: Array[float] = []
+	for b in d._breakers():
+		if d.held(b):
+			continue
+		var gap := INF
+		var at := 0.0
+		for sm: Dictionary in way:
+			if float(sm.s) > FT_AHEAD:
+				break
+			var g := (sm.at as Vector2).distance_to(b.ground_pos)
+			if g < gap:
+				gap = g
+				at = float(sm.s)
+		if gap <= FT_ON_PATH:
+			threats.append(at)
+	if threats.is_empty():
+		_first_taste_note(memo, cap, "no breaker on the way ahead")
+		return ""
+	threats.sort()
+	# The posts come in clusters (the gate pair; the shrine road; the approach). The fold skips every cluster but the last, or the only one (MS §3.8:
+	# past the gate pair and the outside post), and leaves the approach post to a Thornwall and the Yank.
+	var ends: Array[float] = []
+	var starts: Array[float] = []
+	for t in threats:
+		if ends.is_empty() or t - ends[ends.size() - 1] > 4.0:
+			starts.append(t)
+			ends.append(t)
+		else:
+			ends[ends.size() - 1] = t
+	var s_in := starts[0] - FT_FOLD_BEFORE
+	if s_in < 1.0:
+		_first_taste_note(memo, cap, "the first breaker is only %.1f units on" % starts[0])
+		return ""
+	var last := ends[ends.size() - 1] if FT_FOLD_ALL else ends[maxi(ends.size() - 2, 0)]
+	var p_in := Vector2.INF
+	var p_out := Vector2.INF
+	for sm: Dictionary in way:
+		if p_in == Vector2.INF and float(sm.s) >= s_in:
+			p_in = sm.at
+		if p_in == Vector2.INF or float(sm.s) < last + FT_FOLD_AFTER:
+			continue
+		for shift: Vector2 in FT_SHIFTS:
+			var c: Vector2 = (sm.at as Vector2) + shift
+			var clear := c.distance_to(p_in) >= 5.2
+			for b in d._breakers():
+				if not d.held(b) and b.ground_pos.distance_to(c) < FT_LAND:
+					clear = false
+			if clear and _first_taste_landing_ok(d, c):
+				p_out = c
+				break
+		if p_out != Vector2.INF:
+			break
+	if p_in == Vector2.INF or p_out == Vector2.INF:
+		_first_taste_note(memo, cap, "no clear landing past %.1f units" % last)
+		return ""
+	memo.folded = cap.get_instance_id()
+	rules.cast(slots.mirror, p_in, {"to": p_out})
+	return "mirrorfold past the Watch (%.0f units on, out %.0f)" % [s_in, p_out.distance_to(p_in)]
+
+
+## Whether a person set down anywhere on a Mirrorfold's way out at `p` has a way to the shrine: the way out is an oval (2.4 by 1.0 units), a walker lands at
+## the same place on it as he stood on the way in, and ground beside a wall can be a pocket with no way out of it.
+func _first_taste_landing_ok(d: FirstTasteDirector, p: Vector2) -> bool:
+	var grid: WalkGrid = mission._crowd._grid
+	for off: Vector2 in [Vector2.ZERO, MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE, -MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE,
+			MirrorfoldFx.DOWN * MirrorfoldFx.HALF_DEEP, -MirrorfoldFx.DOWN * MirrorfoldFx.HALF_DEEP]:
+		if not grid.walkable(p + off * 0.9):
+			return false
+	for off: Vector2 in [Vector2.ZERO, MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE, -MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE]:
+		if grid.path(p + off * 0.9, d.shrine()).is_empty():
+			return false
+	return true
+
+
+## Passage: a Thornwall across the Main Gate's mouth (MS §3.8 "across the gate mouth, 25 s") when a walking march's leader is inside and within
+## FT_SEAL_R of it and no captive is still to pass it: the file waits at the wall. "" when none lies there, the wall is not ready, or a captive is about to use the gate.
+func _first_taste_seal_gate(rules: Rules, slots: Dictionary, d: FirstTasteDirector, memo: Dictionary) -> String:
+	if not _slot_ready(rules, slots, "thorns"):
+		return ""
+	var gate := TownLayout.MAIN_GATE.get_center()
+	if WarningDirector._alive(d.captive) and int(memo.folded) != d.captive.get_instance_id():
+		return ""  # (a captive not yet folded will use the gate within the wall's 25 s)
+	for m in d.marches:
+		if m.done or not m.walking:
+			continue
+		for p in m.people:
+			if WarningDirector._alive(p) and (p as Person).ground_pos.y < gate.y - 0.5 and (p as Person).ground_pos.distance_to(gate) <= FT_SEAL_R:
+				rules.cast(slots.thorns, gate, {"dir": Vector2.RIGHT})
+				return "thornwall across the Main Gate before a march"
+	return ""
+
+
+## A log line (not an act, not in any checksum) saying why the policy held back, once per captive and reason.
+func _first_taste_note(memo: Dictionary, cap: Person, why: String) -> void:
+	var key := "%d %s" % [cap.get_instance_id(), why.get_slice(" ", 0) + why.get_slice(" ", 1)]
+	if memo.get("note") != key:
+		memo.note = key
+		print("BEHAVIOUR first_taste note: the fold waits (%s)" % why)
+
+
+## Passage: a Mirrorfold laid on a walking march's way 4 units before its leader and out at the market, so the file walks the long way again (MS §3.8
+## "Mirror the march back inside"). "" when the mirror is not ready.
+func _first_taste_fold_back(rules: Rules, slots: Dictionary, d: FirstTasteDirector, m: FirstTasteDirector.March) -> String:
+	if not _slot_ready(rules, slots, "mirror"):
+		return ""
+	var lead: Person = null
+	for p in m.people:
+		if WarningDirector._alive(p) and (lead == null or p.ground_pos.distance_to(d.shrine()) < lead.ground_pos.distance_to(d.shrine())):
+			lead = p
+	if lead == null:
+		return ""
+	var p_in := lead.ground_pos
+	for sm: Dictionary in _first_taste_way(d, lead.ground_pos):
+		if float(sm.s) >= 4.0:
+			p_in = sm.at
+			break
+	var p_out: Vector2 = mission._crowd._grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	if p_out == Vector2.INF or p_out.distance_to(p_in) < 5.2:
+		return ""
+	rules.cast(slots.mirror, p_in, {"to": p_out})
+	return "mirrorfold the march back to the market"
 
 
 ## One strike at `b` with whatever the loadout holds ready, killing before holding: Silent Doom and Smite where neither takes the captive or a

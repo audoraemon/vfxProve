@@ -530,21 +530,81 @@ static func _guard_rules(t) -> void:
 	Kit.done(s)
 
 
-## The take-up (Ruling P5-T7-R8): a guarded bearer struck dead is judged as he stood at the look before, so the fright his death gives his escorts does
-## not stop one taking the standard up; he and his fellow are steadied for BH_STEADY seconds; after that the normal rules apply.
-static func _take_up(t) -> void:
+## A walker for standard `i`: the street from its muster to its house, and where the bearer stands on it.
+static func _walker(d: BreakHuntDirector, i: int) -> Dictionary:
+	return {"road": d.crowd._grid.path(d.steps[i].spot, d.house_doors[d._dest[i]]), "k": 0, "at": d.bearer(i).ground_pos, "b": d.bearer(i)}
+
+
+## The bearer stands: on duty with no goal further than a pace off (the base's resume, or a take-up waiting for his fellow).
+static func _is_held(b: Person) -> bool:
+	return b.mind == Person.Mind.DUTY and (not b.has_goal() or b.goal().distance_to(b.ground_pos) < 0.3)
+
+
+## One frame of standard `i`'s company with bodies stepped (the test world does not walk them): the bearer along the street at his pace unless he stands,
+## each escort straight toward the place the director last gave him at his own pace; then the world runs the frame.
+static func _walk_frame(s: Dictionary, d: BreakHuntDirector, i: int, w: Dictionary, dt: float) -> void:
+	var b := d.bearer(i)
+	if b != null:
+		if b != w.b:
+			w.b = b
+			w.at = b.ground_pos
+		if _is_held(b):
+			w.at = b.ground_pos
+		else:
+			var road: PackedVector2Array = w.road
+			var left := Person.PANIC_SPEED * b.pace * dt
+			var at: Vector2 = w.at
+			var k: int = w.k
+			while left > 0.0 and k < road.size():
+				var gap := at.distance_to(road[k])
+				if gap <= left:
+					at = road[k]
+					left -= gap
+					k += 1
+				else:
+					at = at.move_toward(road[k], left)
+					left = 0.0
+			w.at = at
+			w.k = k
+			b.ground_pos = at
+	for g: HuntDirector.Guard in d.steps[i].party:
+		if MissionDirector._alive(g.man):
+			var e: Person = g.man
+			e.ground_pos = e.ground_pos.move_toward(g.post, Person.PANIC_SPEED * e.pace * dt)
+	Kit.run_for(s, dt)
+
+
+## A world where standard 0 has marched 8 s and its bearer is killed (a witnessed, loud kill): run until an escort has taken it up.
+static func _taken_up_world() -> Dictionary:
 	var s := _world()
 	var d := _bh(s)
 	_raise(s, 0)
+	var w := _walker(d, 0)
+	for f in 160:
+		_walk_frame(s, d, 0, w, DT)
 	var es := _escorts(d, 0)
+	_kill(s, d.bearer(0))
+	var n := 0
+	while d.took_up_count == 0 and n < 40:
+		_walk_frame(s, d, 0, w, DT)
+		n += 1
+	return {"s": s, "d": d, "w": w, "es": es}
+
+
+## The take-up (Ruling P5-T7-R8): a guarded bearer struck dead is judged as he stood at the look before, so the fright his death gives his escorts does
+## not stop one taking the standard up; he and his fellow are steadied for BH_STEADY seconds; after that the normal rules apply.
+static func _take_up(t) -> void:
+	var tw := _taken_up_world()
+	var s: Dictionary = tw.s
+	var d: BreakHuntDirector = tw.d
+	var walk: Dictionary = tw.w
+	var es: Array = tw.es
 	var goal: Vector2 = d.house_doors[d._dest[0]]
-	_kill(s, d.bearer(0))  # a loud kill, witnessed: his escorts shelter or run
-	Kit.run_for(s, LOOK)
 	t.check(not d.steps[0].broken and d.bearer(0) != null and es.has(d.bearer(0)) and (s.banners as Array).has("THE STANDARD IS TAKEN UP"),
-		"a guarded bearer killed in a witnessed blow: an escort takes the standard up, not a break (%s)" % [s.banners])
+		"a guarded bearer killed in a witnessed blow after a march: an escort takes the standard up, not a break (%s)" % [s.banners])
 	var up := d.bearer(0)
 	var left: HuntDirector.Guard = d.steps[0].party[0]
-	t.check(left.post.distance_to(up.ground_pos) <= BreakHuntDirector.BH_FLANK_NEAR, "(the one left is sent to a place beside the new bearer at once)")
+	t.check(left.post.distance_to(up.ground_pos) <= BreakHuntDirector.BH_GUARD_REACH, "(the one left is sent to a place beside the new bearer at once)")
 	t.check(up.fearless_left > 0.0 and (left.man as Person).fearless_left > 0.0 and up.fearless_left <= BreakHuntDirector.BH_STEADY + 0.01,
 		"he and his fellow are steadied for %d s (%.1f, %.1f)" % [roundi(BreakHuntDirector.BH_STEADY), up.fearless_left, (left.man as Person).fearless_left])
 	var tagged := false
@@ -553,11 +613,30 @@ static func _take_up(t) -> void:
 	t.check(tagged, "the new bearer's tag reads STANDARD - TAKEN UP - HOUSE IN m:ss while he is steadied (%s)" % [Kit.labels(d)])
 	t.check(d.steps[0].party.size() == 1 and (d.steps[0].party[0] as HuntDirector.Guard).man != up and d.took_up_count == 1 and d.hint_phase() == "carried",
 		"he is no longer among the escorts; the hint reads 'carried' (%s)" % d.hint_phase())
-	t.check(up.badge_glyph == BreakHuntDirector.BH_FLAG and up.goal().distance_to(goal) < 0.6, "he carries the pennant and marches on for the same house")
-	# His fellow closes up (people do not walk in this world) and a look sees him guarding.
-	Kit.arrive(left.man, left.post)
+	t.check(up.badge_glyph == BreakHuntDirector.BH_FLAG and _is_held(up), "he carries the pennant and stands while his fellow closes up (Ruling P5-T7-R11)")
+	# The fellow closes up with bodies stepped frame by frame: at every frame he is within the guard reach of the new bearer, or the bearer stands.
+	var fellow := left.man as Person
+	var held_at := up.ground_pos
+	var bad := 0
+	var reach_at := -1.0
+	var moved_held := false
+	for f in 120:
+		var held := _is_held(up)
+		var before := up.ground_pos
+		_walk_frame(s, d, 0, walk, DT)
+		if held and up.ground_pos != before and _is_held(up):
+			moved_held = true
+		var near := fellow.ground_pos.distance_to(up.ground_pos) <= BreakHuntDirector.BH_GUARD_REACH
+		if near and reach_at < 0.0:
+			reach_at = float(f) * DT
+		if not near and not held:
+			bad += 1
+	t.check(bad == 0 and reach_at >= 0.0 and reach_at <= 3.0 and not moved_held,
+		"after a take-up his fellow is within the guard reach at every frame or the bearer stands: %d bad frames, in reach at %.2f s, the bearer %s while held" % [
+		bad, reach_at, "moved" if moved_held else "stood"])
+	t.check(not _is_held(up) and up.goal().distance_to(goal) < 0.6 and d.guarded(0) and not d.steps[0].broken,
+		"then he marches on for the same house, his last escort guarding him")
 	Kit.run_for(s, LOOK)
-	t.check(d.guarded(0) and not d.steps[0].broken, "his last escort guards him once he has closed up")
 	# Taken up again: the steadied fellow carries it though the second death frightens him as well.
 	_kill(s, up)
 	Kit.run_for(s, LOOK)
@@ -570,6 +649,18 @@ static func _take_up(t) -> void:
 	Kit.run_for(s, LOOK)
 	t.check(d.steps[0].broken and d.bearer(0) == null and d.broken_count() == 1, "he is killed with no escort left: the standard is broken at last")
 	Kit.done(s)
+
+	# A blow on the new bearer while his fellow is still out of reach follows the rule as written: no escort in reach, so it breaks.
+	var win := _taken_up_world()
+	var dwin: BreakHuntDirector = win.d
+	for f in 10:
+		_walk_frame(win.s, dwin, 0, win.w, DT)
+	var far_fellow := (dwin.steps[0].party[0] as HuntDirector.Guard).man as Person
+	var far_ok := far_fellow.ground_pos.distance_to(dwin.bearer(0).ground_pos) > BreakHuntDirector.BH_GUARD_REACH
+	_kill(win.s, dwin.bearer(0))
+	Kit.run_for(win.s, LOOK)
+	t.check(far_ok and dwin.steps[0].broken and dwin.took_up_count == 1, "a blow on the new bearer while his fellow is still out of reach breaks the standard (no escort in reach)")
+	Kit.done(win.s)
 
 	# After the steadiness the normal rules apply: a fright with nobody guarding breaks the standard.
 	var a := _world()
@@ -587,17 +678,19 @@ static func _take_up(t) -> void:
 	t.check(da.steps[1].broken, "once the steadiness is over, a frightened bearer with no escort by him breaks his standard")
 	Kit.done(a)
 
-	# An unguarded bearer killed still breaks (his escorts were dead before the blow).
+	# An unguarded bearer killed breaks: his escorts are alive but out of reach, he is steady, so the kill itself is what breaks it.
 	var u := _world()
 	var du := _bh(u)
 	_raise(u, 2)
-	for e: Person in _escorts(du, 2):
-		_kill(u, e)
-	Kit.run_for(u, LOOK)
 	du.bearer(2).fearless_left = 600.0
+	for e: Person in _escorts(du, 2):
+		e.ground_pos += Vector2(12.0, 0.0)
+	Kit.run_for(u, LOOK)
+	t.check(not du.steps[2].broken and not du._guarded(2), "(set-up) his escorts are alive but out of reach, and the standard still stands: nothing but a blow breaks it")
 	_kill(u, du.bearer(2))
 	Kit.run_for(u, LOOK)
-	t.check(du.steps[2].broken and du.took_up_count == 0 and not (u.banners as Array).has("THE STANDARD IS TAKEN UP"), "a bearer killed with no escort left breaks his standard")
+	t.check(du.steps[2].broken and du.took_up_count == 0 and not (u.banners as Array).has("THE STANDARD IS TAKEN UP"),
+		"a bearer killed with no escort in reach breaks his standard, the kill itself being what breaks it")
 	Kit.done(u)
 
 	# Bearer and one escort killed together: the other takes it up.

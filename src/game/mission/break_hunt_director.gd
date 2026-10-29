@@ -130,6 +130,8 @@ var _flank_ang: Array[float] = []
 var _snap: Array = []
 var _afraid_prev: Array[bool] = []
 var _steady_until: Array[float] = []
+## By step: the clock until which a bearer who has just taken a standard up stands and waits for his fellow to come within the guard reach (-1 for none).
+var _hold_until: Array[float] = []
 ## By step: the road the bearer has walked, newest last (for the escort behind him).
 var _trail: Array = []
 ## The closest the two escorts of a raised standard have stood to each other at a look (their bodies, in motion), how many looks they stood 1.6 or
@@ -172,6 +174,7 @@ func _plan() -> void:
 		_snap.append([])
 		_afraid_prev.append(false)
 		_steady_until.append(-1.0)
+		_hold_until.append(-1.0)
 		_trail.append([])
 	if houses.is_empty():
 		push_warning("BreakHuntDirector: no house; the standards have nowhere to march")
@@ -372,8 +375,9 @@ func _party_post(i: int, k: int) -> Vector2:
 	return _flanks(i)[k % 2]
 
 
-## The two places beside step `i`'s bearer: on the march, ahead of him and behind him along his road (_file_pair()); standing -- at the muster, planted,
-## or with no house to march on -- one either side (_flank_pair()), the pair keeping its orientation from look to look.
+## The two places beside step `i`'s bearer: on the march, and at the muster, ahead of him and behind him along his road (_file_pair()); planted, or with
+## no house to march on, the lane pair (_flank_pair()) -- opposite each other round him, first along his last heading, then keeping its orientation
+## from look to look and changing only when it is no longer valid.
 func _flanks(i: int) -> Array[Vector2]:
 	var file := _file_pair(i)
 	if not file.is_empty():
@@ -795,6 +799,7 @@ func _look(i: int, evacuating: bool) -> void:
 		_post_escorts(i, evacuating)  # the one left closes up on the new bearer at once
 		_took_up[i] = true
 		took_up_count += 1
+		_hold_until[i] = _steady_until[i]  # he stands until his fellow has closed up, at most as long as the steadiness (Ruling P5-T7-R11)
 		rules.banner.emit(BH_TAKEN_UP)
 		b = up
 	_last_at[i] = b.ground_pos
@@ -821,8 +826,32 @@ func _look(i: int, evacuating: bool) -> void:
 		if _dest[i] < 0 or _taken[_dest[i]]:
 			_dest[i] = _pick_dest(i)
 		if _dest[i] >= 0:
-			_recall_to(b, house_doors[_dest[i]], evacuating)
+			if _waits(i, b):
+				_stand(b)
+			else:
+				_recall_to(b, house_doors[_dest[i]], evacuating)
 		_refresh_eta(i)
+
+
+## Step `i`'s bearer, who has just taken the standard up, stands and waits (Ruling P5-T7-R11): until his fellow is within the guard reach, and at most
+## until the steadiness ends. False once the fellow is in reach, none is left, or the time is up.
+func _waits(i: int, b: Person) -> bool:
+	if _hold_until[i] < 0.0:
+		return false
+	if _clock >= _hold_until[i]:
+		_hold_until[i] = -1.0
+		return false
+	for g: Guard in steps[i].party:
+		if _alive(g.man) and not (g.man as Person).inside and (g.man as Person).ground_pos.distance_to(b.ground_pos) > guard_reach:
+			return true
+	_hold_until[i] = -1.0
+	return false
+
+
+## `b` stands where he is, on duty (the base's resume stops a man the same way, going on duty at his own place).
+func _stand(b: Person) -> void:
+	if b.mind in RECALL_MINDS or (b.mind == Person.Mind.DUTY and b.anchor.distance_to(b.ground_pos) > 0.3):
+		b.go_duty(b.ground_pos)
 
 
 ## How far apart step `i`'s two escorts stand now (their bodies), sampled at each look of a raised standard: the closest ever and the looks at 1.6 or

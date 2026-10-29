@@ -1,11 +1,9 @@
 {
- "hash": "f5b1e5507fbb6988",
- "updated": "2026-10-29T14:00:21+07:00",
+ "hash": "c0068d486798522e",
+ "updated": "2026-10-29T16:11:45+07:00",
  "changes": {
-  "date": "<t:1793257221:f>",
-  "items": [
-   "Done: God P3: the Awaken rite mission type and the first rite"
-  ]
+  "date": "<t:1793265105:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1074,10 +1072,10 @@
   "branches": [
    {
     "name": "god/t1routes",
-    "ahead": 78,
+    "ahead": 100,
     "behind": 0,
     "date": "2026-10-29",
-    "subject": "test: the no-filler check also catches a filler built from GodT1.FILL + words (final re-review N1)",
+    "subject": "dev: god_gate passes Passage x First Prayers at 60 s idle (user ruling D40)",
     "pushed": false
    },
    {
@@ -1087,14 +1085,6 @@
     "date": "2026-10-29",
     "subject": "docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2",
     "pushed": true
-   },
-   {
-    "name": "god/p3-rite",
-    "ahead": 65,
-    "behind": 0,
-    "date": "2026-10-29",
-    "subject": "docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2",
-    "pushed": false
    },
    {
     "name": "feat/town-lighting",

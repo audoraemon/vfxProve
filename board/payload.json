@@ -7,26 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **22** to do · **85** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1793257221:f>)\n• Done: God P3: the Awaken rite mission type and the first rite",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **22** to do · **85** done\n**7** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-29T14:00:21+07:00"
+     "timestamp": "2026-10-29T16:11:45+07:00"
     },
     {
      "title": "god/t1routes",
-     "description": "78 commits not in Develop-Main · last commit today · local only\n> test: the no-filler check also catches a filler built from GodT1.FILL + words (final re-review N1)\n\n**In progress** (1)\n• Tier 1 routes: every god type can win every Tier 1 mission",
+     "description": "100 commits not in Develop-Main · last commit today · local only\n> dev: god_gate passes Passage x First Prayers at 60 s idle (user ruling D40)\n\n**In progress** (1)\n• Tier 1 routes: every god type can win every Tier 1 mission",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
      "description": "65 commits not in Develop-Main · last commit today\n> docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2\n\n**In progress** (1)\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n\n**To do** (1)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "god/p3-rite",
-     "description": "65 commits not in Develop-Main · last commit today · local only\n> docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -58,14 +53,7 @@
      "title": "feat/Develop-Main",
      "description": "Main line · last commit 2026-10-24\n> docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
+    },
     {
      "title": "Recently done",
      "description": "• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_\n• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop _(10-27)_\n• Design: god progression and Endless Night _(10-26)_\n• v0.12 Many Towns: missions on any town (Capital first) _(10-25)_\n• Discord #board: live project board _(10-24)_\n• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_",

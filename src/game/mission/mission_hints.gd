@@ -170,7 +170,10 @@ const LINES := {
 
 	# break_hunt (god P5 Task 7)
 
-	# face_halcyon (god P5 Task 8)
+	# face_halcyon (god P5 Task 8; MS §6, *my call*)
+	"face_halcyon": "Break a believer's escort (red) without a seen death: frighten, hold or turn them.",
+	"face_halcyon.pyre": "A believer is at the pyre: break his escort before the fire takes him.",
+	"face_halcyon.gaze": "Halcyon's Gaze is filling: free them quietly.",
 }
 
 

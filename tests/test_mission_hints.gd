@@ -169,6 +169,10 @@ const SPEC := [
 	["expel_inquisitor", "Stop each lantern-warden (gold): kill him, or put him out of the walls."],
 	["expel_inquisitor.captain", "The captain walks his rounds: kill him, or frighten him three times."],
 	["expel_inquisitor.near", "The captain nears the Citadel: stop him now."],
+	# face_halcyon (god P5 Task 8, MS §6): appended after the expel_inquisitor rows.
+	["face_halcyon", "Break a believer's escort (red) without a seen death: frighten, hold or turn them."],
+	["face_halcyon.pyre", "A believer is at the pyre: break his escort before the fire takes him."],
+	["face_halcyon.gaze", "Halcyon's Gaze is filling: free them quietly."],
 ]
 
 

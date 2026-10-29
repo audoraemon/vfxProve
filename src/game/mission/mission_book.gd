@@ -1098,9 +1098,17 @@ static func break_hunt() -> MissionDef:
 
 
 ## Face Halcyon (god P5, MS §6, Tier 5, the Lantern Hunt of the Gaze): four believers led to the pyre, freed by breaking their escorts unseen.
-## The frame (Task 1), with the Gaze as its Lantern; FaceHalcyonDirector and its Gaze objective come with Task 8.
+## The frame (Task 1) with FaceHalcyonDirector (Task 8), the Gaze as its Lantern, and the Escort objective (three freed; it fails only through the
+## director's lost_reason(), "burned"), then the Gaze and the dawn: the objectives run in this order so the third believer freed wins before a
+## second burning or a full Gaze can lose (MS §0: the winning strike never also loses).
 static func face_halcyon() -> MissionDef:
 	var m := _tier5(FACE_HALCYON, String(HuntBook.row(FACE_HALCYON).title), PackedStringArray(["Halcyon's Gaze is on the whole town.",
 		"Free your believers from the pyre unseen."]))
-	return _hunt(m, "Free three of the four believers led to the pyre, unseen by Halcyon", "The pyre stays cold",
-		"Two believers burn, Halcyon's Gaze fills, or dawn comes", ["whisper", "discord", "doom"], Vector2(0.8, -2.5), LanternWatch.KIND_GAZE)
+	_hunt(m, "Free three of the four believers led to the pyre, unseen by Halcyon", "The pyre stays cold",
+		"Two believers burn, Halcyon's Gaze fills, or dawn comes", ["whisper", "discord", "doom"], FaceHalcyonDirector.FH_CAMERA_AT, LanternWatch.KIND_GAZE)
+	m.director = FaceHalcyonDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Free the believers", "freed", "burned", "burned", FaceHalcyonDirector.FH_NEED),
+			GazeObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m

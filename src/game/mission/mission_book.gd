@@ -1089,12 +1089,19 @@ static func expel_inquisitor() -> MissionDef:
 
 
 ## Break the hunt (god P5, MS §5, Tier 4, the Lantern Hunt of the Hunt type): four standards march on three believers' houses, and an escort
-## takes a guarded standard up. The frame (Task 1); BreakHuntDirector comes with Task 7.
+## takes a guarded standard up. The frame (Task 1) with BreakHuntDirector (Task 7): the Hunt objective runs ahead of the dawn, so breaking the
+## fourth standard wins before a second house can be taken (MS §0: the winning strike never also loses); the camera looks at the north muster's
+## side, clear of the HUD stack.
 static func break_hunt() -> MissionDef:
 	var m := _tier4(BREAK_HUNT, String(HuntBook.row(BREAK_HUNT).title), PackedStringArray(["Four standards march on your believers' houses.",
 		"Break every standard before they plant them."]))
-	return _hunt(m, "Break the four standards before they take two of your believers' houses", "The hunt is broken",
-		"Two believers' houses are taken, or dawn comes", ["doom", "smite", "heaven"], Vector2(6.0, -13.5))
+	_hunt(m, "Break the four standards before they take two of your believers' houses", "The hunt is broken",
+		"Two believers' houses are taken, or dawn comes", ["doom", "smite", "heaven"], BreakHuntDirector.BH_CAMERA_AT)
+	m.director = BreakHuntDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [HuntObjective.new("Break the hunt", "standards"), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
 
 
 ## Face Halcyon (god P5, MS §6, Tier 5, the Lantern Hunt of the Gaze): four believers led to the pyre, freed by breaking their escorts unseen.

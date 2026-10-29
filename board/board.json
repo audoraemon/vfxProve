@@ -1,9 +1,17 @@
 {
- "hash": "c0068d486798522e",
- "updated": "2026-10-29T16:11:45+07:00",
+ "hash": "ed4ec1e62801dbab",
+ "updated": "2026-10-29T16:51:38+07:00",
  "changes": {
-  "date": "<t:1793265105:f>",
-  "items": []
+  "date": "<t:1793267498:f>",
+  "items": [
+   "Done: Tier 1 routes: every god type can win every Tier 1 mission",
+   "Done: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
+   "New: Board sweep: play the 24 non-Warning god pairs as the board version once",
+   "New: Capital per-type Tier 1 rows: 24 of 30 pass",
+   "New: Capital Tax: a Passage deputy stalls near a Thornwall",
+   "New: Play the new Tier 1 routes by hand",
+   "New: Short Tier 1 wins reported: are these too quick?"
+  ]
  },
  "snapshot": {
   "project": {
@@ -277,24 +285,74 @@
     "updated": "2026-10-27",
     "order": 189
    },
-   "god-tier1-routes": {
-    "title": "Tier 1 routes: every god type can win every Tier 1 mission",
-    "status": "doing",
-    "area": "Design",
+   "god-t1r-board-sweep": {
+    "title": "Board sweep: play the 24 non-Warning god pairs as the board version once",
+    "status": "todo",
+    "area": "Tools",
     "version": "next",
     "needs_you": false,
-    "branch": "god/t1routes",
-    "updated": "2026-10-27",
+    "branch": "feat/god-progression",
+    "updated": "2026-10-29",
+    "order": 198
+   },
+   "god-t1r-capital-rows": {
+    "title": "Capital per-type Tier 1 rows: 24 of 30 pass",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-29",
+    "order": 194
+   },
+   "god-t1r-capital-tax-stall": {
+    "title": "Capital Tax: a Passage deputy stalls near a Thornwall",
+    "status": "todo",
+    "area": "Crowd",
+    "version": "next",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-29",
+    "order": 196
+   },
+   "god-t1r-play-by-hand": {
+    "title": "Play the new Tier 1 routes by hand",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-29",
+    "order": 197
+   },
+   "god-t1r-short-medians": {
+    "title": "Short Tier 1 wins reported: are these too quick?",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-29",
+    "order": 195
+   },
+   "god-tier1-routes": {
+    "title": "Tier 1 routes: every god type can win every Tier 1 mission",
+    "status": "done",
+    "area": "Design",
+    "version": "kak-god-t1r",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-29",
     "order": 193
    },
    "god-tree-tier1-fill": {
     "title": "Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
-    "status": "doing",
+    "status": "done",
     "area": "Design",
-    "version": "next",
+    "version": "kak-god-t1r",
     "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-10-27",
+    "updated": "2026-10-29",
     "order": 188
    },
    "hide-ui-f1": {
@@ -1071,20 +1129,20 @@
   },
   "branches": [
    {
-    "name": "god/t1routes",
-    "ahead": 100,
+    "name": "feat/god-progression",
+    "ahead": 103,
     "behind": 0,
     "date": "2026-10-29",
-    "subject": "dev: god_gate passes Passage x First Prayers at 60 s idle (user ruling D40)",
-    "pushed": false
+    "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
+    "pushed": true
    },
    {
-    "name": "feat/god-progression",
-    "ahead": 65,
+    "name": "god/t1routes",
+    "ahead": 103,
     "behind": 0,
     "date": "2026-10-29",
-    "subject": "docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2",
-    "pushed": true
+    "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
+    "pushed": false
    },
    {
     "name": "feat/town-lighting",

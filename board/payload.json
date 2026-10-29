@@ -7,21 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **22** to do · **85** done\n**7** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **27** to do · **87** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793267498:f>)\n• Done: Tier 1 routes: every god type can win every Tier 1 mission\n• Done: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n• New: Board sweep: play the 24 non-Warning god pairs as the board version once\n• New: Capital per-type Tier 1 rows: 24 of 30 pass\n• New: Capital Tax: a Passage deputy stalls near a Thornwall\n• New: Play the new Tier 1 routes by hand\n• New: Short Tier 1 wins reported: are these too quick?",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-29T16:11:45+07:00"
-    },
-    {
-     "title": "god/t1routes",
-     "description": "100 commits not in Develop-Main · last commit today · local only\n> dev: god_gate passes Passage x First Prayers at 60 s idle (user ruling D40)\n\n**In progress** (1)\n• Tier 1 routes: every god type can win every Tier 1 mission",
-     "color": 5016537
+     "timestamp": "2026-10-29T16:51:38+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "65 commits not in Develop-Main · last commit today\n> docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2\n\n**In progress** (1)\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n\n**To do** (1)\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "103 commits not in Develop-Main · last commit today\n> docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)\n\n**To do** (6)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 24 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• Board sweep: play the 24 non-Warning god pairs as the board version once\n• Capital Tax: a Passage deputy stalls near a Thornwall",
+     "color": 5016537
+    },
+    {
+     "title": "god/t1routes",
+     "description": "103 commits not in Develop-Main · last commit today · local only\n> docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -56,7 +56,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_\n• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop _(10-27)_\n• Design: god progression and Endless Night _(10-26)_\n• v0.12 Many Towns: missions on any town (Capital first) _(10-25)_\n• Discord #board: live project board _(10-24)_\n• People animations phase 1: madness _(10-24)_\n• Discord #changelog feed _(10-23)_",
+     "description": "• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_\n• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop _(10-27)_\n• Design: god progression and Endless Night _(10-26)_\n• v0.12 Many Towns: missions on any town (Capital first) _(10-25)_\n• Discord #board: live project board _(10-24)_",
      "color": 10185686
     }
    ]

@@ -1,10 +1,10 @@
 {
- "hash": "67bae54884994ce1",
- "updated": "2026-10-28T23:44:31+07:00",
+ "hash": "f5b1e5507fbb6988",
+ "updated": "2026-10-29T14:00:21+07:00",
  "changes": {
-  "date": "<t:1793205871:f>",
+  "date": "<t:1793257221:f>",
   "items": [
-   "Started: God P3: the Awaken rite mission type and the first rite"
+   "Done: God P3: the Awaken rite mission type and the first rite"
   ]
  },
  "snapshot": {
@@ -251,12 +251,12 @@
    },
    "god-p3-first-rite": {
     "title": "God P3: the Awaken rite mission type and the first rite",
-    "status": "doing",
+    "status": "done",
     "area": "Design",
-    "version": "next",
+    "version": "kak-god-p3",
     "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-10-28",
+    "updated": "2026-10-29",
     "order": 191
    },
    "god-progression-design": {
@@ -1074,34 +1074,26 @@
   "branches": [
    {
     "name": "god/t1routes",
-    "ahead": 52,
+    "ahead": 78,
     "behind": 0,
-    "date": "2026-10-28",
-    "subject": "fix: the postern key ignores the town's evacuation; the running phase's own hint (god T1R Task 2 fix round 3, D30)",
-    "pushed": false
-   },
-   {
-    "name": "god/p3-rite",
-    "ahead": 47,
-    "behind": 0,
-    "date": "2026-10-28",
-    "subject": "docs: god P3 spec approved by the user with all six recommended answers",
+    "date": "2026-10-29",
+    "subject": "test: the no-filler check also catches a filler built from GodT1.FILL + words (final re-review N1)",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
-    "ahead": 45,
+    "ahead": 65,
     "behind": 0,
-    "date": "2026-10-28",
-    "subject": "docs: god P2 rulings F4-F6 (review M1, M3, M4 fixed); announce() checks is_instance_valid",
+    "date": "2026-10-29",
+    "subject": "docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2",
     "pushed": true
    },
    {
-    "name": "god/t1r-t6",
-    "ahead": 38,
+    "name": "god/p3-rite",
+    "ahead": 65,
     "behind": 0,
-    "date": "2026-10-28",
-    "subject": "fix: First Prayers -- D33's conditions: the hint names the brambles, the poor come themselves, no bramble-look Believer, a wall on the door works (god T1R Task 6, fix round 2)",
+    "date": "2026-10-29",
+    "subject": "docs: god P3 summary -- references 307/0, FLOW 200/0 alone, bench pairs vs kak-god-p2",
     "pushed": false
    },
    {

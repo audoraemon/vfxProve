@@ -15,7 +15,9 @@ extends AssassinateDirector
 ## are held through an evacuation every look (MS §0, _hold_all). Banners and tags are MS §4's.
 
 ## The wardens' rounds, one per warden: four stops each as spots, snapped to the dwelling nearest each whose door the street reaches
-## (_house_reached()). Along the wall side of a quarter (MS §4 *fg*); the west, the south-east, the north-east. Aldermere's.
+## (_house_reached()). The west round keeps to the wall side of its quarter; the south-east and north-east rounds sit at x 6-8, inside the
+## town, because the dwellings nearest the spec's wall-side spots are there (the wall side has none the street reaches), so those two wardens
+## walk the interior (MS §4 *fg*; Task 6's geometry probe). Aldermere's.
 const EI_ROUNDS := [
 	[Vector2(-13.9, -3.5), Vector2(-12.1, 3.8), Vector2(-9.9, 5.5), Vector2(-9.9, -3.5)],
 	[Vector2(5.9, 7.2), Vector2(7.9, 10.9), Vector2(6.2, 13.8), Vector2(7.9, 12.5)],
@@ -53,6 +55,11 @@ const EI_FRIGHTS := 3
 const EI_FRIGHT_GAP := 8.0
 ## Mission seconds before the captain reaches the Citadel at which the banner and the hint warn (MS §4: 20 s).
 const EI_NEAR_WARN := 20.0
+## The share of a walked road's seconds the captain's countdown adds back (god P5 Task 11, review of Task 6): he walks the last leg 10-15 % slower
+## than PANIC_SPEED x pace says (measured with Person.tick from the last door through the waypoint to the gate: 1.09 at the slow end of
+## PACE_RANGE, 1.11 mid, 1.14 at the fast end), so the tag read 0:00 about 6 s before he came. 1.15 keeps the tag at or just over the real walk
+## (0.3 to 3.5 s over) and the window above its 45 s floor.
+const EI_WALK_SCALE := 1.15
 ## The slots on a door's ring of guards, so the captain's two guards at the Temple's door stand 1.73 apart (more than 1.6, MS §0).
 const EI_DOOR_SLOTS := 3
 ## The map tags' grey for a target waiting for his time.
@@ -77,6 +84,11 @@ var _near_told := false
 var _via := false
 ## Seconds to the next hold of the town's people (TICK).
 var _hold_in := 0.0
+## The last countdown computed and what it was computed from (the director's clock, the captain's place, state, leg, pace, slow, visit clock and
+## the waypoint passed), so the four asks of one look share one search (captain_eta()); and how many searches have run (eta_runs(), the tests').
+var _eta := INF
+var _eta_key: Array = []
+var _eta_runs := 0
 
 
 ## The Assassinate numbers start at this Hunt's consts (MS §4); a board tune may override them after .new().
@@ -350,11 +362,30 @@ func _warned(q: Quarry) -> bool:
 
 
 ## Mission seconds until the captain reaches the Citadel on his warned walk: the rest of his last visit, then the walk from the stop's door
-## (or from where he stands) through the waypoint to the gate, at his pace (real seconds times the clock's rate); INF while he is not warned.
+## (or from where he stands) through the waypoint to the gate, at his pace (EI_WALK_SCALE over PANIC_SPEED x pace), all times the clock's rate;
+## INF while he is not warned. Computed once for a look: the same place, state, pace and clock give the answer already found.
 func captain_eta() -> float:
 	var q := captain()
 	if q == null or not _warned(q):
 		return INF
+	var p: Person = q.target
+	var key := [_clock, p.ground_pos, int(q.state), q.leg, _via, p.pace, float(p.statuses.get(&"slow", 1.0)), q.indoors_left,
+		rules.clock_rate if is_instance_valid(rules) else 1.0]
+	if key == _eta_key:
+		return _eta
+	_eta_key = key
+	_eta = _compute_eta(q)
+	return _eta
+
+
+## How many times the countdown's road has been searched (captain_eta() answers from the last search when nothing it reads has moved).
+func eta_runs() -> int:
+	return _eta_runs
+
+
+## The countdown's search: the visit that is left, then the road door -> waypoint -> gate at his pace times EI_WALK_SCALE, in mission seconds.
+func _compute_eta(q: Quarry) -> float:
+	_eta_runs += 1
 	var rate: float = rules.clock_rate if is_instance_valid(rules) else 1.0
 	var p: Person = q.target
 	var speed := maxf(Person.PANIC_SPEED * p.pace * float(p.statuses.get(&"slow", 1.0)), 0.05)
@@ -368,7 +399,7 @@ func captain_eta() -> float:
 		way += _way(from, _walkable(EI_FINAL_WAYPOINT))
 		from = _walkable(EI_FINAL_WAYPOINT)
 	way += _way(from, safe_at)
-	return (wait + way / speed) * rate
+	return (wait + way / speed * EI_WALK_SCALE) * rate
 
 
 ## The length of the street walk from `a` to `b` (straight when no path is found).

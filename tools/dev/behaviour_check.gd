@@ -13,6 +13,12 @@ extends SceneTree
 ##          that type's own policy for the mission (god_t1/<scenario>.gd act_<type>) with the real tree's two Tier 1 keys, hit-stop off, printing
 ##          `BEHAVIOUR god=<type>:1 route=god` and the gate's result line (`--board` for warning, as route b needs it). `--god` with
 ##          --route=a|b, or on another scenario, refuses a loadout outside the type as above. Every --god run turns hit-stop off.
+##          God P5 (the Lantern Hunts, MS §7, R37-R38): `--scenario=<hunt id>` (hide_faithful, silence_witness, expel_inquisitor, break_hunt,
+##          face_halcyon) is one of tools/dev/routes/god_hunts.gd's SCENARIOS and takes --case=none|play. Play without --god casts the Hunt's
+##          shared plan (god_hunts/<id>.gd act_shared) with the def's own loadout; `--god=<type>:<tier> --dev-tree` plays that type's policy
+##          (act_<type>) with the loadout the file's LOADOUT names. A tier other than the Hunt's prints
+##          `BEHAVIOUR refused scenario=<id> god=<type>:<n> hunt_tier=<m>` and quits 1; a loadout the tree at that tier cannot draft (or over
+##          GodSlot.BASE_SLOTS keys, or over TierBook.dp(tier) Might) prints `... god=<type>:<n> missing=<...>`; both are a FAIL to gate.sh.
 ##   --case=toll (v0.11.2, a Lantern night, D32): the scripted player casts nothing until the bell tolls and the Lantern turns
 ##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
 ##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
@@ -459,6 +465,8 @@ const TIER_B := [preload("res://tools/dev/routes/tier1_b.gd"), preload("res://to
 
 ## The per-type policies of the five Tier 1 missions (god T1R, spec 9): `--god=<type>:1` with no --route on one of GOD_T1.SCENARIOS.
 const GOD_T1 := preload("res://tools/dev/routes/god_t1.gd")
+## The per-type policies of the five Lantern Hunts (god P5, MS §7): any Hunt's id as `--scenario`, with or without `--god=<type>:<tier>`.
+const GOD_HUNTS := preload("res://tools/dev/routes/god_hunts.gd")
 
 ## The capital's evacuation (capital_evac): how long it runs after the alarm, and when the east stone bridge falls.
 const CAPITAL_EVAC_SECONDS := 180.0
@@ -579,6 +587,10 @@ func _run() -> void:
 		var rite_type := String(Battlefield.arg_value(args, "--god")).split(":")[0]
 		powers = GodTree.starting(rite_type) if rite_type in GodTree.RING else MissionBook.first_taste().default_loadout
 		mission.mission_id = MissionBook.FIRST_TASTE
+	elif scenario in GOD_HUNTS.SCENARIOS:
+		# God P5 (plan Task 3): a Lantern Hunt is played by its id; its def's own loadout here, the type's below (the --god parse, hunt_route).
+		powers = MissionBook.get_mission(scenario).default_loadout
+		mission.mission_id = scenario
 	elif scenario == "capital_calm" or scenario == "capital_evac":
 		City.use(&"capital")
 		mission.city = &"capital"
@@ -616,6 +628,20 @@ func _run() -> void:
 	var god_route := god_type != "" and god_tier == 1 and route == "" and scenario in GOD_T1.SCENARIOS
 	if god_route:
 		powers = GOD_T1.loadout(god_type)
+	# God P5: --god on a Lantern Hunt plays that type's policy (GOD_HUNTS) at the Hunt's own tier with the file's checked loadout. Another tier,
+	# or a loadout the tree at that tier cannot draft, is refused (gate.sh reads either as a FAIL).
+	var hunt_route := god_type != "" and route == "" and scenario in GOD_HUNTS.SCENARIOS
+	if hunt_route:
+		if god_tier != GOD_HUNTS.tier_of(scenario):
+			print("BEHAVIOUR refused scenario=%s god=%s:%d hunt_tier=%d" % [scenario, god_type, god_tier, GOD_HUNTS.tier_of(scenario)])
+			quit(1)
+			return
+		var hunt_problems: PackedStringArray = GOD_HUNTS.problems(scenario, god_type, god_tier)
+		if not hunt_problems.is_empty():
+			print("BEHAVIOUR refused scenario=%s god=%s:%d missing=%s" % [scenario, god_type, god_tier, ",".join(hunt_problems)])
+			quit(1)
+			return
+		powers = GOD_HUNTS.loadout(scenario, god_type, god_tier)
 	# The loadout the run will draft: this scenario's, or (empty) the one the throw-away start in _ready() already drafted.
 	var drafted := powers if not powers.is_empty() else mission._drafted
 	if god_type != "":
@@ -637,8 +663,8 @@ func _run() -> void:
 		return
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
 	if god_type != "":
-		print("BEHAVIOUR god=%s:%d%s" % [god_type, god_tier, " route=god" if god_route else ""])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
-	if route == "b" or god_type != "" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
+		print("BEHAVIOUR god=%s:%d%s" % [god_type, god_tier, " route=god" if god_route else (" route=hunt" if hunt_route else "")])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
+	if route == "b" or god_type != "" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"] or scenario in GOD_HUNTS.SCENARIOS:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -648,6 +674,8 @@ func _run() -> void:
 	match scenario:
 		_ when god_route:
 			await _god_route(scenario, god_type, Battlefield.arg_value(args, "--case"))
+		_ when scenario in GOD_HUNTS.SCENARIOS:
+			await _god_hunt(scenario, god_type if hunt_route else "", Battlefield.arg_value(args, "--case"))
 		_ when route == "b":
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
 		"calm", "":
@@ -781,6 +809,15 @@ func _god_route(scenario: String, type: String, case_arg: String) -> void:
 	await _scripted(scenario, case_arg if case_arg != "" else "play",
 		func() -> String: return GOD_T1.act(scenario, type, self, _route_ctx(memo)),
 		func() -> String: return GOD_T1.state(scenario, self, _route_ctx(memo)))
+
+
+## A Lantern Hunt (god P5, MS §7, R37-R38) played through _scripted(): GOD_HUNTS' act(scenario, type, ...) with `type` "" for the shared plan
+## (no `--god`) or the god type's own policy, and the Hunt's state line. The label is the Hunt's id; ctx as _route_ctx() builds it.
+func _god_hunt(scenario: String, type: String, case_arg: String) -> void:
+	var memo := {}
+	await _scripted(scenario, case_arg if case_arg != "" else "play",
+		func() -> String: return GOD_HUNTS.act(scenario, type, self, _route_ctx(memo)),
+		func() -> String: return GOD_HUNTS.state(scenario, self, _route_ctx(memo)))
 
 
 ## A B policy's ctx, built afresh at every look (v0.11.1): the rules, director and crowd change at a night's next_act, so a ctx kept

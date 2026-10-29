@@ -8,7 +8,7 @@
 #        [--god=<type>:<tier>]   (god T1R, spec 9: the per-type gate -- every run plays that god type's own policy with its Tier 1 powers
 #                         (behaviour_check --god=, no --route); cases play, plus none with --with-none; the verdict line reads `route=god:<type>`)
 #        [--idle-max=N]  (god T1R: the longest idle stretch a play run may have, default 45; Harvest x Decree's per-type gate passes 60, D12,
-#                         and so does Prayers x Death, D34)
+#                         and so do Prayers x Death, D34, and Prayers x Passage, D40)
 #   (from the project root; G= overrides the Godot path)
 # Per run:   <scenario> <case> seed=N won=.. reason=.. time=.. idle=.. checksum=..
 # Last line: gate <scenario> route=<a|b|god:<type>> none_lost=K/3 wins=K/3 median=S idle_max=S PASS|FAIL      (exit 1 on FAIL)

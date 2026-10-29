@@ -130,6 +130,10 @@ var evac: EvacuationManager
 var fires: FireManager
 ## How ready the town is (v0.05): which responses it has and how strong. Mission sets it before spawn().
 var profile := ResponseProfile.for_tier(ResponseProfile.DEFAULT)
+## The Watchful Bell (god P3, MS §4, R12): every bell climb is this many times longer than the profile's `bell_climb` (the god's stolen gift
+## sets 1.2 on a later night; Mission sets it from the def's gifts before spawn()). Exactly 1.0 otherwise, so `x * 1.0` leaves every
+## climb, and every reference, as it was. The stand-in's ESCORT_CLIMB stacks on top; the Herald's descent is not a climb and never reads it.
+var climb_scale := 1.0
 ## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
 var shelters: ShelterManager
 var _stage_in := 0.0
@@ -1691,7 +1695,7 @@ func raise_profile(p: ResponseProfile) -> PackedStringArray:
 	profile = p
 	alarms.regroup_seconds = p.regroup_seconds
 	if bell != null and bell.state in [BellNetwork.State.IDLE, BellNetwork.State.WAITING]:
-		bell.climb = p.bell_climb
+		bell.climb = p.bell_climb * climb_scale
 	if p.rite and rite != null and rite.off_by_profile and _standing(rite.cathedral):
 		rite = BanishingRite.new().setup(self, _env, _grid)
 		if rite.state != BanishingRite.State.ENDED:

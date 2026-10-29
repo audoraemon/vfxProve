@@ -123,6 +123,14 @@ func hud_line() -> String:
 	return ""
 
 
+## Virtual (god P3, MS §3.4, plan Task 3): rows the HUD's strip merges with the timeline's and the Lantern's, soonest first -- dictionaries of
+## {"in": seconds still to come, "label": String} as LanternWatch.strip_rows() gives them (a row may carry its own "clock" text instead of a
+## countdown). The rite directors count down a clergy march with one. None by default, so no other mission's strip changes.
+func strip_rows() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	return out
+
+
 ## Virtual (v0.11.1, spec §7.3): a thing of this director's own that Blight can ruin within BlightFx.REACH of `at` -- an unguarded
 ## standard, an unguarded mirror -- as the ground point Blight rots (Vector2.INF for none, the default). Only reads. BlightFx asks
 ## the director before it looks for a structure.

@@ -5,8 +5,9 @@ extends Node
 ## Faith and Title. A god with nothing to draft cannot Descend (Ruling P8). In the DEV build the A key is the Awaken hook (Ruling P18).
 ## God P2 (spec §9.1, §10) draws the Notice as a meter beside its line and says in red above the buttons when the Hunt is next and
 ## which ability the Lantern has sealed, for how long; the dev Awaken is refused while the Hunt is due (Ruling P2-4).
+## God P3 (MS §1, §4, parent spec §9.3, Ruling P3-2) adds the Awaken button beside Descend while the god is capped, and the stolen gifts.
 
-## "descend", "tree", "faith", "title" or "awaken_dev".
+## "descend", "awaken", "tree", "faith", "title" or "awaken_dev".
 signal action(name: String)
 
 ## What the hub says when the god has nothing to draft (Ruling P8).
@@ -15,6 +16,8 @@ const BLOCKED := "Nothing to draft: the tree's Tier 1 is not filled yet"
 const BAR_RECT := Rect2(24.0, 74.0, 280.0, 14.0)
 const BUTTONS_Y := 280.0
 const BUTTON_W := 120.0
+## A button's width when Awaken makes the row five (god P3, MS §1): five of 108 and four gaps of 8 are 572 px, inside the 640.
+const BUTTON_W_FIVE := 108.0
 ## Where the lines under the bar begin.
 const LINES_AT := Vector2(24.0, 112.0)
 ## The Lantern Notice meter, beside its line (index 5, baseline 142) (god P2, Ruling P2-11; preflight R6).
@@ -27,6 +30,10 @@ const HUNT_DUE := "THE LANTERN HUNTS: the next night is the Hunt, %s"
 const SEALED := "Sealed by the Lantern: %s, %s left"
 ## What the dev Awaken says while the Hunt is due (Ruling P2-4; *my call*).
 const AWAKEN_HUNT := "The Lantern hunts: face the Hunt first"
+## What a click on the dim Awaken button says when no rite is written for the god's level (god P3, MS §1; levels 20, 30 and 40 until P4).
+const RITE_UNWRITTEN := "Rite not yet written"
+## The hub's line of stolen gifts (god P3, MS §4 "Shown"): `%s` is the gifts' names, joined with ", ".
+const GIFTS_LINE := "Stolen gifts: %s"
 
 ## A one-off message shown over the buttons (e.g. GodNight.ABANDONED); "" for none.
 var line := ""
@@ -36,13 +43,20 @@ var _slot: GodSlot
 var _menu: Menu
 var _ui: Control
 var _hover := ""
+## What Awaken offers this god, fixed at setup like the buttons (GodNight.awaken_state(): "", "rite" or "unwritten").
+var _awaken := ""
 
 
 func setup(slot: GodSlot, p_line := "", p_dev := false) -> GodHub:
 	_slot = slot
 	line = p_line
 	dev = p_dev
-	_menu = Menu.row(["descend", "tree", "faith", "title"], ["Descend", "Skill Tree", "Faith", "Title"], 320.0, BUTTONS_Y, BUTTON_W)
+	_awaken = GodNight.awaken_state(slot)
+	if _awaken != "":
+		_menu = Menu.row(["descend", "awaken", "tree", "faith", "title"], ["Descend", "Awaken", "Skill Tree", "Faith", "Title"], 320.0,
+			BUTTONS_Y, BUTTON_W_FIVE)
+	else:
+		_menu = Menu.row(["descend", "tree", "faith", "title"], ["Descend", "Skill Tree", "Faith", "Title"], 320.0, BUTTONS_Y, BUTTON_W)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -70,6 +84,27 @@ func lines() -> PackedStringArray:
 	return PackedStringArray([PowerBook.authority_title(_slot.type), "Level %d   %s" % [_slot.level, TierBook.tier_name(_slot.tier)],
 		bar_text(_slot), "Ability points %d" % _slot.points, "Faith %d" % _slot.faith, "Lantern Notice %d%%" % _slot.notice,
 		"Night %d" % (_slot.night + 1)])
+
+
+## "Stolen gifts: The Watchful Bell" (the names joined with ", ") when the god has stolen any, else "" (god P3, MS §4). Drawn after lines(), so
+## P1's line indices are unchanged.
+func gifts_line() -> String:
+	var names := PackedStringArray()
+	for g in _slot.gifts:
+		if RiteBook.gift_name(g) != "":
+			names.append(RiteBook.gift_name(g))
+	return "" if names.is_empty() else GIFTS_LINE % ", ".join(names)
+
+
+## True when the Awaken button is on the row (god P3, MS §1): the god is capped below level 50.
+func awaken_shown() -> bool:
+	return _awaken != ""
+
+
+## True when the Awaken button is shown but dim: the god is capped and no rite is written for its level, and the Hunt is not next (the Hunt
+## leads from Awaken as from Descend, so it is not dim then).
+func awaken_dim() -> bool:
+	return awaken_shown() and (not can_descend() or _awaken == "unwritten" and GodNight.hunt_for(_slot).is_empty())
 
 
 ## The Notice as a fraction of a full meter, 0 to 1 (god P2, spec §10.1).
@@ -121,7 +156,7 @@ func blocked_line() -> String:
 	return "" if can_descend() else BLOCKED
 
 
-## Where the button for `what` ("descend", "tree", "faith", "title") is drawn; empty for none.
+## Where the button for `what` ("descend", "awaken", "tree", "faith", "title") is drawn; empty for none.
 func menu_rect(what: String) -> Rect2:
 	return _menu.rect_of(what)
 
@@ -137,8 +172,46 @@ func _emit(what: String) -> void:
 	if what == "descend" and not can_descend():
 		UiSound.play(&"ui_buzz")
 		return
+	if what == "awaken":
+		if not can_descend():
+			UiSound.play(&"ui_buzz")  # nothing to draft: Awaken is blocked as Descend is (milestone review Minor 6)
+			return
+		_awaken_pressed(false)
+		return
 	UiSound.play(&"ui_click")
 	action.emit(what)
+
+
+## Awaken, by its button or the A key (god P3, MS §1, §9.3). Not capped: only the dev hook, as in P2 (refused while the Hunt is due, Ruling
+## P2-4). A rite written: "awaken" in any build (Game plays the Hunt first when it is due, Task 8). No rite written: while the Hunt is due the
+## same ("awaken"; the Hunt leads), else the dev hook on the key under --dev, else a buzz and RITE_UNWRITTEN.
+func _awaken_pressed(from_key: bool) -> void:
+	if not can_descend() and _awaken != "":
+		UiSound.play(&"ui_buzz")
+		return
+	var hunt_due := not GodNight.hunt_for(_slot).is_empty()
+	if _awaken == "":
+		if not (from_key and dev):
+			return
+		if hunt_due:
+			# The Hunt cannot be skipped (Ruling P2-4): say so, emit nothing.
+			UiSound.play(&"ui_buzz")
+			line = AWAKEN_HUNT
+			_redraw()
+		else:
+			UiSound.play(&"ui_click")
+			action.emit("awaken_dev")
+		return
+	if _awaken == "rite" or hunt_due:
+		UiSound.play(&"ui_click")
+		action.emit("awaken")
+	elif from_key and dev:
+		UiSound.play(&"ui_click")
+		action.emit("awaken_dev")
+	else:
+		UiSound.play(&"ui_buzz")
+		line = RITE_UNWRITTEN
+		_redraw()
 
 
 func _redraw() -> void:
@@ -159,15 +232,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_ESCAPE:
 			_emit("title")
 		KEY_A:
-			if dev:
-				if GodNight.hunt_for(_slot).is_empty():
-					UiSound.play(&"ui_click")
-					action.emit("awaken_dev")
-				else:
-					# The Hunt cannot be skipped (Ruling P2-4): say so, emit nothing.
-					UiSound.play(&"ui_buzz")
-					line = AWAKEN_HUNT
-					_redraw()
+			_awaken_pressed(true)
 
 
 func _on_gui_input(event: InputEvent) -> void:
@@ -199,6 +264,8 @@ func _draw_ui() -> void:
 	for i in range(3, text.size()):
 		UiTheme.text(_ui, LINES_AT + Vector2(0.0, UiTheme.LINE_BODY * float(i - 3)), text[i], UiTheme.SIZE_BODY,
 			UiTheme.COL_GOLD if i == 3 and _slot.points > 0 else UiTheme.COL_TEXT)
+	if gifts_line() != "":
+		UiTheme.text(_ui, LINES_AT + Vector2(0.0, UiTheme.LINE_BODY * float(text.size() - 3)), gifts_line(), UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 	var lay := status_layout()
 	var wrapped := UiTheme.wrap(line, LINE_WIDTH, UiTheme.SIZE_BODY) if line != "" else PackedStringArray()
 	for i in wrapped.size():
@@ -208,12 +275,23 @@ func _draw_ui() -> void:
 		if String(pair[0]) != "":
 			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(String(pair[0])) * 0.5), float(pair[1])), String(pair[0]),
 				UiTheme.SIZE_BODY, UiTheme.COL_BAD)
-	_menu.draw_on(_ui, _hover, PackedStringArray() if can_descend() else PackedStringArray(["descend"]))
+	var dim := PackedStringArray() if can_descend() else PackedStringArray(["descend"])
+	if awaken_dim():
+		dim.append("awaken")
+	_menu.draw_on(_ui, _hover, dim)
 	var blocked := blocked_line()
 	if blocked != "":
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(blocked, UiTheme.SIZE_SMALL) * 0.5), BUTTONS_Y + Menu.HEIGHT + 16.0),
 			blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD)
-	var hint := "Enter: Descend   T: Skill Tree   F: Faith   Esc: Title"
-	if dev:
-		hint += "   DEV  A: awaken"
+	var hint := hint_text()
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), 346.0), hint, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
+## The keys row under the buttons: Awaken's key joins it while the button is shown (god P3), else the dev hook is named under --dev.
+func hint_text() -> String:
+	var hint := "Enter: Descend   T: Skill Tree   F: Faith   Esc: Title"
+	if awaken_shown():
+		hint += "   A: Awaken"
+	elif dev:
+		hint += "   DEV  A: awaken"
+	return hint

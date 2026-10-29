@@ -128,3 +128,27 @@ procession_play_2	--scenario=feast --path=procession --board --case=play --seed=
 procession_play_3	--scenario=feast --path=procession --board --case=play --seed=3	728363854
 capital_calm	--scenario=capital_calm --seconds=60	-713901328
 capital_evac	--scenario=capital_evac	122086902
+# god P3 (2026-10-29): The First Taste, the per-type rite check (Task 7). none = nothing cast (the same for every loadout); play = that type's Tier 1 pair
+# (--god=<type>:1) through the type's own answers in behaviour_check's _first_taste_*(). Decree re-recorded in the Task 7 review fix (10 of 10 seeds win). The 17 play rows re-recorded in the milestone fix wave (the muster spots are planned apart, so the marchers stand elsewhere; Passage seed 3 now loses to the cleanse, 2/3 wins).
+# Passage clears in about 112 s, under the 180 s band: accepted by the user (rulings C11). Its rows were re-recorded when its scripted policy changed (10 of 10 seeds win).
+first_taste_none_1	--scenario=first_taste --case=none --seed=1	-862607621
+first_taste_none_2	--scenario=first_taste --case=none --seed=2	-634128792
+first_taste_none_3	--scenario=first_taste --case=none --seed=3	-483087079
+first_taste_ruin_play_1	--scenario=first_taste --case=play --seed=1 --god=ruin:1 --dev-tree	-590282447
+first_taste_ruin_play_2	--scenario=first_taste --case=play --seed=2 --god=ruin:1 --dev-tree	881036810
+first_taste_ruin_play_3	--scenario=first_taste --case=play --seed=3 --god=ruin:1 --dev-tree	275180953
+first_taste_death_play_1	--scenario=first_taste --case=play --seed=1 --god=death:1 --dev-tree	-672795500
+first_taste_death_play_2	--scenario=first_taste --case=play --seed=2 --god=death:1 --dev-tree	-548307277
+first_taste_death_play_3	--scenario=first_taste --case=play --seed=3 --god=death:1 --dev-tree	-669140319
+first_taste_veil_play_1	--scenario=first_taste --case=play --seed=1 --god=veil:1 --dev-tree	-6564974
+first_taste_veil_play_2	--scenario=first_taste --case=play --seed=2 --god=veil:1 --dev-tree	762669956
+first_taste_veil_play_3	--scenario=first_taste --case=play --seed=3 --god=veil:1 --dev-tree	-777885062
+first_taste_passage_play_1	--scenario=first_taste --case=play --seed=1 --god=passage:1 --dev-tree	-464776195
+first_taste_passage_play_2	--scenario=first_taste --case=play --seed=2 --god=passage:1 --dev-tree	-461028772
+first_taste_passage_play_3	--scenario=first_taste --case=play --seed=3 --god=passage:1 --dev-tree	-766263902
+first_taste_decree_play_1	--scenario=first_taste --case=play --seed=1 --god=decree:1 --dev-tree	-128339540
+first_taste_decree_play_2	--scenario=first_taste --case=play --seed=2 --god=decree:1 --dev-tree	-888023440
+first_taste_decree_play_3	--scenario=first_taste --case=play --seed=3 --god=decree:1 --dev-tree	-366833705
+first_taste_dominion_play_1	--scenario=first_taste --case=play --seed=1 --god=dominion:1 --dev-tree	-542144112
+first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-854083926
+first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=dominion:1 --dev-tree	-465385105

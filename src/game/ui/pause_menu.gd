@@ -20,6 +20,13 @@ const CONFIRM_HUNT := "Abandon the Hunt and it is lost. %s, and the Notice goes 
 const CONFIRM_LOST_HUNT := "Abandon now and the night is lost: no Divine Power, no Faith, Lantern Notice +%d%%, and the Lantern Hunts next."
 ## And when the Notice is full already (rise 0): no rise is promised; the Hunt is still the next night. *My call* (copy).
 const CONFIRM_LOST_FULL := "Abandon now and the night is lost: no Divine Power, no Faith. Lantern Notice is already 100%, and the Lantern Hunts next."
+## An Awaken rite's Abandon confirm (god P3, MS §1, spec §2: a penalty is shown before it happens; *my call*): `%d` is the Notice rise that really
+## happens after the clamp (min(25, 100 - Notice)).
+const CONFIRM_RITE := "Abandon the rite and it is lost: Lantern Notice +%d%%. The god stays capped."
+## The same when the abandon fills the meter: the Hunt is named because the next night will be it.
+const CONFIRM_RITE_HUNT := "Abandon the rite and it is lost: Lantern Notice +%d%%. The god stays capped. The Lantern Hunts next."
+## And when the Notice is full already (rise 0): no rise is promised.
+const CONFIRM_RITE_FULL := "Abandon the rite and it is lost. Lantern Notice is already 100%. The god stays capped. The Lantern Hunts next."
 ## And before the clock starts (the intro, Prepare's side of it): leaving costs nothing.
 const CONFIRM_FREE := "The clock has not started: leaving is free."
 ## The confirm's text block: its width, its first baseline, and the row of buttons under it.
@@ -40,6 +47,8 @@ var _endless := false
 var _forfeits := false
 ## What a lost Hunt would seal (GodNight.hunt_stake()), set by Game before setup() when the night is the Hunt; "" for any other night.
 var hunt_stake := ""
+## True while the night is an Awaken rite, set by Game before setup() (god P3, MS §1): Abandon then says the rite is lost and what it costs.
+var rite := false
 ## The god's Lantern Notice now, set by Game before setup() (god P2 fix wave, M2): the lost-night confirm states the rise it will really cause.
 var notice := 0
 ## The rows the menu goes back to when Stay is pressed, and whether the confirm is up.
@@ -92,13 +101,31 @@ static func lost_line(at_notice: int) -> String:
 	return CONFIRM_LOST
 
 
-## What the confirm says: once the clock has started CONFIRM_HUNT for the Hunt (it names the stake) or else lost_line(notice); before it,
+## The Notice a lost rite adds for a god at `at_notice`: GodNight.NOTICE_LOST_RITE, never past 100 (the pause confirm's and Prepare's IF LOST read it).
+static func rite_rise(at_notice: int) -> int:
+	return clampi(mini(GodNight.NOTICE_LOST_RITE, GodSlot.NOTICE_MAX - at_notice), 0, GodNight.NOTICE_LOST_RITE)
+
+
+## The lost-rite confirm for a god at `at_notice` (god P3, MS §1; Ruling P3-4): the Notice rise after the clamp -- GodNight.NOTICE_LOST_RITE, but
+## never past 100 -- and "the Lantern Hunts next" when the abandon fills the meter. Static so a test can read it without a screen.
+static func rite_line(at_notice: int) -> String:
+	var rise := rite_rise(at_notice)
+	if rise == 0:
+		return CONFIRM_RITE_FULL
+	if at_notice + rise >= GodSlot.NOTICE_MAX:
+		return CONFIRM_RITE_HUNT % rise
+	return CONFIRM_RITE % rise
+
+
+## What the confirm says: once the clock has started CONFIRM_RITE for a rite, CONFIRM_HUNT for the Hunt (it names the stake) or else lost_line(notice); before it,
 ## CONFIRM_FREE; "" while it is not up.
 func confirm_line() -> String:
 	if not _confirm:
 		return ""
 	if not _forfeits:
 		return CONFIRM_FREE
+	if rite:
+		return rite_line(notice)
 	return CONFIRM_HUNT % hunt_stake if hunt_stake != "" else lost_line(notice)
 
 

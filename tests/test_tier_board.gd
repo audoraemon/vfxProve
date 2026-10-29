@@ -190,7 +190,9 @@ static func _dev_town(t) -> void:
 	var want: Array = [MissionBook.CAPITAL_SANDBOX]
 	want.append_array(Array(MissionBook.town_missions(&"capital")))
 	want.append_array(["tax_collector@fixture"])
-	t.check(Array(board._missions_of(MissionBoard.DEV_TIER)) == want, "the DEV tab lists the sandbox, the Capital's missions, the fixture town's (%s)" % [board._missions_of(MissionBoard.DEV_TIER)])
+	# God P3 (preflight B4, Ruling P3-7): the Awaken rites come last, after the towns' missions.
+	want.append_array([MissionBook.FIRST_TASTE])
+	t.check(Array(board._missions_of(MissionBoard.DEV_TIER)) == want, "the DEV tab lists the sandbox, the Capital's missions, the fixture town's, then the rites (%s)" % [board._missions_of(MissionBoard.DEV_TIER)])
 	t.check(not Array(board._missions_of(MissionBoard.DEV_TIER)).any(func(id: String) -> bool: return id.ends_with("@aldermere")),
 		"Aldermere lists nothing of its own on the DEV tab")
 	board.open_tab(MissionBoard.DEV_TIER)

@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_picker_layout(t)
 	_unpick_clears(t)
 	_levels_carried(t)
+	_dev_tab_rite(t)
 
 
 static func _key(code: Key) -> InputEventKey:
@@ -252,3 +253,52 @@ static func _levels_carried(t) -> void:
 	over.setup(TierBook.board("warning"), PackedStringArray(["smite", "tornado", "doom", "ember"]))
 	t.check(over.draft.spent() <= over.draft.capacity, "levels never take a draft over its Might (%d)" % over.draft.spent())
 	over.free()
+
+
+## God P3 (MS §1 R6, Ruling P3-7, preflight B4): with --dev the DEV tab ends with the Awaken rite, titled "The First Taste (rite)", kind line
+## RITE and no brief; without --dev it is nowhere on the board; the Capital's ids still come first; the card fits however many cards the tab holds.
+static func _dev_tab_rite(t) -> void:
+	var save := SaveFile.new()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "warning")
+	board.open_tab(MissionBoard.DEV_TIER)
+	var ids := board.missions()
+	t.check(ids.size() >= 2 and ids[ids.size() - 1] == MissionBook.FIRST_TASTE, "first_taste is last on the DEV tab (%s)" % [ids])
+	var capital := Array(MissionBook.town_missions(&"capital"))
+	t.check(Array(ids).slice(0, 1 + capital.size()) == [MissionBook.CAPITAL_SANDBOX] + capital,
+		"the sandbox and the Capital's ids still come first (%s)" % [ids])
+	t.check(board.card_title(MissionBook.FIRST_TASTE) == "The First Taste (rite)", "its title (%s)" % board.card_title(MissionBook.FIRST_TASTE))
+	t.check(Array(board.kind_lines(MissionBook.FIRST_TASTE)) == ["RITE"], "its kind line (%s)" % [board.kind_lines(MissionBook.FIRST_TASTE)])
+	t.check(board.brief_lines(MissionBook.FIRST_TASTE, 60.0).is_empty(), "it shows no brief")
+	t.check(board.card_title("warning") == TierBook.board("warning").name and board.card_title(MissionBook.CAPITAL_SANDBOX) == MissionBook.capital_sandbox().name,
+		"other cards keep their names")
+	# It fits the card: every wrapped title line, the kind line and the best are inside the card, and the type lines clear the rule.
+	var r := MissionBoard.card_rect(0, ids.size())
+	var room := r.size.x - 2.0 * MissionBoard.PAD
+	var wide := []
+	# (No tick sits at the title's right: a rite is never "cleared", so the whole room is the title's.)
+	for line in UiTheme.wrap(board.card_title(MissionBook.FIRST_TASTE), room, UiTheme.SIZE_BIG):
+		if UiTheme.width(line, UiTheme.SIZE_BIG) > room:
+			wide.append("%s (%s px of %s)" % [line, UiTheme.width(line, UiTheme.SIZE_BIG), room])
+	for line in board.best_lines(MissionBook.FIRST_TASTE, room):
+		if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
+			wide.append(line)
+	for line in board.kind_lines(MissionBook.FIRST_TASTE):
+		if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
+			wide.append(line)
+	t.check(wide.is_empty(), "every line of the rite's card fits %d cards (%s)" % [ids.size(), wide])
+	t.check(board.brief_top(MissionBook.FIRST_TASTE, r) < MissionBoard.rule_y(r, board.best_rows()),
+		"its title and kind line end above the rule (%s < %s)" % [board.brief_top(MissionBook.FIRST_TASTE, r), MissionBoard.rule_y(r, board.best_rows())])
+	var picked := []
+	board.action.connect(func(what: String) -> void: picked.append(what))
+	board.choose(MissionBook.FIRST_TASTE)
+	t.check(picked == ["pick"] and board.chosen == MissionBook.FIRST_TASTE and board.tier == MissionBoard.DEV_TIER, "it can be picked (%s)" % [picked])
+	board.free()
+	var plain := MissionBoard.new().setup(save, "warning")
+	var seen := false
+	for tier in range(1, TierBook.NAMES.size() + 2):
+		plain.tier = tier
+		seen = seen or plain.missions().has(MissionBook.FIRST_TASTE)
+	t.check(not seen, "without --dev the rite is on no tab")
+	plain.free()

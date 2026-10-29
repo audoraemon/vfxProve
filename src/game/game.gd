@@ -59,6 +59,7 @@ const FLOW := {
 	"god:chosen": Screen.HUB,
 	"god:back": Screen.SLOTS,
 	"hub:descend": Screen.PREPARE,
+	"hub:awaken": Screen.PREPARE,
 	"hub:tree": Screen.TREE,
 	"hub:faith": Screen.FAITH,
 	"hub:title": Screen.TITLE,
@@ -105,6 +106,12 @@ const TIER4_SHOWS := ["bishop", "armoury", "sermon", "relic_run"]
 ## The new Tier 5 missions' photographs (v0.11 M6): each its board night as the tour lands, its tags and HUD in view; lantern_eye-hunt has
 ## its first mirror up at once and a beam drawn to a cast; heart_of_faith-odran has the flame out and the litter on its road.
 const TIER5_SHOWS := ["lantern_eye", "exodus", "heart_of_faith", "lantern_eye-hunt", "heart_of_faith-odran"]
+## The Awaken rite's photographs (god P3, Task 8, MS §6 GAP): the First Taste in the god's own night. `start` is the intro's end (tags, the Watch, the
+## chain plate READY, 3 slots), `six` the same with 6 slots, `modes` Decree's Bell Lies focused last of 6 (pre-flight R2), `drag` a captive in the
+## Watch's grip (the ring), `march` the muster after the first shard (leader tag, strip row), `walk` the file on its road, `cleanse` two clergy
+## kneeling (the shrine's ring) and `win` the third shard (the win plate). Staged by `_stage_rite()`.
+const RITE_SHOWS := ["first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk",
+	"first_taste-cleanse", "first_taste-win"]
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -527,6 +534,11 @@ func _ready() -> void:
 		"hub-hunt", "hub-sealed", "prepare-hunt", "prepare-sealed", "results-hunt-won", "results-hunt-lost", "pause-hunt":
 			# The Lantern's states (god P2, Ruling P2-15, pre-flight G2): the same fixture god, the Hunt and the seal on show.
 			_show_endless(show)
+		"hub-awaken", "hub-unwritten", "hub-gifts", "prepare-rite", "prepare-gifts", "results-rite-won", "results-rite-lost", "pause-rite":
+			# The Awaken rite's screens (god P3, Task 8): the hub's fifth button, the dim one, the gifts line, the rite's Prepare and results.
+			_show_endless(show)
+		"first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk", "first_taste-cleanse", "first_taste-win":
+			_show_endless(show)
 		"tiers-all":
 			# The board complete (v0.11 M6): every board mission cleared, the header's "All 25 cleared", for the photograph (SHOW_SAVE).
 			save.descend = DescendState.new()
@@ -545,7 +557,7 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -562,7 +574,7 @@ func _ready() -> void:
 				heart._open(1)
 				heart._raze(heart.targets[1])
 				heart._odran_comes()
-		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
 				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)
@@ -570,6 +582,8 @@ func _ready() -> void:
 				if _mission._hud.banners().is_empty():
 					break
 				await get_tree().process_frame
+		if show in RITE_SHOWS and is_instance_valid(_mission):
+			await _stage_rite(show)
 		if show == "ascend" and is_instance_valid(_mission):
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -591,7 +605,9 @@ func _ready() -> void:
 			_mission._hud.push_banner("THE INQUISITOR SEARCHES")
 			_mission._hud.push_subtitle(CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn"))
 		var wait := 1.0
-		if show.begins_with("flame"):
+		if show == "first_taste-win":
+			wait = 0.6  # at the ending's 0.3 time scale: about 2 s real, inside the win plate's 4
+		elif show.begins_with("flame"):
 			wait = 2.0
 		elif show == "tour":
 			# v0.11.1: the tour waits for the opening banners; then held at the second stop.
@@ -1078,8 +1094,24 @@ func _on_god_select_action(what: String, pick: GodSelectScreen) -> void:
 			on_action("god:back")
 
 
+## The mission id Awaken opens for `slot` (god P3, MS §1, Ruling P3-21): "" when it opens nothing -- the god is below its tier's cap, is at
+## the highest level, has no rite written for its level, or has nothing to draft (as Descend) -- else the Hunt while the Notice is full
+## (exactly Descend's draw: the Hunt cannot be skipped, P2-4; the rite waits for the next night), else the rite for its level. A static so
+## a suite can prove it.
+static func awaken_target(slot: GodSlot) -> String:
+	if slot == null or slot.draftable().is_empty():
+		return ""
+	var state := GodNight.awaken_state(slot)
+	if state == "":
+		return ""
+	if slot.hunt_due():
+		return GodNight.draw(slot)
+	return String(GodNight.rite_for(slot).get("id", ""))
+
+
 ## The hub (god P1, spec §9): Descend draws the night (the same until one counts) and opens its Prepare, blocked while the god has nothing
-## to draft; Awaken (dev) raises the tier and writes; the rest are FLOW's.
+## to draft; Awaken (god P3) opens the rite's Prepare -- the Hunt's while it is due (`awaken_target()`); `awaken_dev` (dev, a level with no rite
+## written) raises the tier and writes; the rest are FLOW's.
 func _on_hub_action(what: String) -> void:
 	match what:
 		"descend":
@@ -1088,6 +1120,13 @@ func _on_hub_action(what: String) -> void:
 			mission_id = GodNight.draw(god)
 			loadout = god.loadout.duplicate()
 			on_action("hub:descend")
+		"awaken":
+			var target := awaken_target(god)
+			if target == "":
+				return
+			mission_id = target
+			loadout = god.loadout.duplicate()
+			on_action("hub:awaken")
 		"awaken_dev":
 			god.awaken()
 			_write_god()
@@ -1156,12 +1195,12 @@ func _remove_gods() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GodSlot.path(n, god_base)))
 
 
-## The photographed god (god P1): a ruin god, level 7 (or `level`), tier 1, three points, Smite at 3, Ember and Deathmark at 1, 180 Faith,
-## on its sixth night.
-func _show_god(level: int) -> GodSlot:
+## The photographed god (god P1): a ruin god, level 7 (or `level`), tier 1 (or `tier`, god P3), three points, Smite at 3, Ember and Deathmark at 1,
+## 180 Faith, on its sixth night.
+func _show_god(level: int, tier := 1) -> GodSlot:
 	var g := GodSlot.make(1, "ruin", 77)
 	g.level = level
-	g.tier = 1
+	g.tier = tier
 	g.points = 3
 	g.learned = {"smite": 3, "ember": 1, "deathmark": 1}
 	g.faith = 180
@@ -1179,7 +1218,18 @@ func _show_endless(show: String) -> void:
 	dev = true
 	_in_endless = true
 	god_slot = 1
-	god = _show_god(10 if show == "hub-capped" else 7)
+	var rite_night := show in RITE_SHOWS
+	match show:
+		"hub-unwritten":
+			god = _show_god(20, 2)  # capped at the next cap, no rite written there yet: the dim Awaken
+		"hub-gifts", "prepare-gifts":
+			god = _show_god(12, 2)  # past the First Taste, holding its gift
+			god.gifts = PackedStringArray([RiteBook.WATCHFUL_BELL])
+		_:
+			var capped := show in ["hub-capped", "hub-awaken", "prepare-rite", "results-rite-won", "results-rite-lost", "pause-rite"] or rite_night
+			god = _show_god(10 if capped else 7)
+	if rite_night:
+		_show_rite_loadout(show)
 	_write_god()
 	match show:
 		"slots":
@@ -1253,6 +1303,108 @@ func _show_endless(show: String) -> void:
 			_open_pause()
 			if is_instance_valid(_pause):
 				_pause._set_confirm(true)
+		"hub-awaken", "hub-unwritten", "hub-gifts":
+			_hub_line = ""
+			go_to(Screen.HUB)
+		"prepare-rite":
+			mission_id = RiteBook.FIRST_TASTE
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
+		"prepare-gifts":
+			mission_id = GodNight.draw(god)
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
+		"results-rite-won", "results-rite-lost":
+			# The rite's results as banking makes them (god P3, P2's Task 4 M5): GodNight.bank() on the fixture god, from a result shaped
+			# like the director's -- never a hand-written "god" entry.
+			var won := show == "results-rite-won"
+			result = {"mission": RiteBook.FIRST_TASTE, "won": won, "reason": "shards" if won else "cleansed", "time": 197.0 if won else 143.0,
+				"goal": {"label": "Three Lantern shards", "done": won}, "bonuses": [], "best": false,
+				"rite": {"id": RiteBook.FIRST_TASTE, "shards": 3 if won else 2, "need": 3, "flame_out": not won, "marches": 2}}
+			loadout = god.loadout.duplicate()
+			god.in_night = RiteBook.FIRST_TASTE
+			bank_god_night(god, RiteBook.FIRST_TASTE, loadout, result)
+			go_to(Screen.RESULTS)
+		"pause-rite":
+			# The rite's pause menu with Abandon's confirm up: it says the rite is lost and what that costs (god P3, MS §1).
+			mission_id = RiteBook.FIRST_TASTE
+			loadout = god.loadout.duplicate()
+			god.in_night = mission_id
+			go_to(Screen.MISSION)
+			_open_pause()
+			if is_instance_valid(_pause):
+				_pause._set_confirm(true)
+		_:
+			if rite_night:
+				mission_id = RiteBook.FIRST_TASTE
+				go_to(Screen.MISSION)
+
+
+## The god of a First Taste photograph (god P3): `six` and `modes` have six slots and six learned abilities (`modes`: Decree's, The Bell Lies last), the
+## others the fixture's three. Sets `loadout` as the draft would.
+func _show_rite_loadout(show: String) -> void:
+	loadout = god.loadout.duplicate()
+	if show not in ["first_taste-six", "first_taste-modes"]:
+		return
+	god.bought["slot"] = 3
+	var keys := PackedStringArray()
+	for type: String in GodTree.RING:  # any six abilities will do for a photograph of the row: every type's, learned at 1
+		for key in GodTree.keys_for(type, 5):
+			if key != "belllies" and not keys.has(key):
+				keys.append(key)
+				god.learned[key] = maxi(int(god.learned.get(key, 0)), 1)
+	god.learned["belllies"] = 1
+	loadout = PackedStringArray()
+	for key in keys:
+		if loadout.size() < (5 if show == "first_taste-modes" else 6):
+			loadout.append(key)
+	if show == "first_taste-modes":
+		loadout.append("belllies")
+
+
+## Stages a First Taste photograph past its intro (god P3, Task 8): the director's own paths, as the Tier 5 shots are staged. The mission is up
+## and started; the opening banners are waited out by the caller for `start`/`six`/`modes`, and here for the rest.
+func _stage_rite(show: String) -> void:
+	await _until(func() -> bool: return _mission.started(), 10.0)
+	_mission.skip_intro()
+	var d := _mission.rules().director as FirstTasteDirector
+	if d == null or not is_instance_valid(_mission._hud):
+		return
+	for _frame in 1200:  # the opening banners cover the middle of the screen for their first seconds
+		if _mission._hud.banners().is_empty():
+			break
+		await get_tree().process_frame
+	match show:
+		"first_taste-modes":
+			_mission._aim.pick(5)  # The Bell Lies, last of six: its modes plate lies where the chain plate would sit
+		"first_taste-drag":
+			var victim: Person = d.marked[0]
+			d.chain(victim)
+			await get_tree().create_timer(RiteDirector.BITE + 1.5).timeout
+			var watchman: Variant = d.watch[0] if not d.watch.is_empty() else null
+			if watchman is Person and is_instance_valid(victim):
+				(watchman as Person).ground_pos = victim.ground_pos + Vector2(0.6, 0.0)  # the grip: the ring fills on his tag
+				await get_tree().create_timer(1.6).timeout
+		"first_taste-march", "first_taste-walk", "first_taste-cleanse":
+			d.offer(d.marked[0])
+			if show == "first_taste-march":
+				await get_tree().create_timer(3.0).timeout
+			elif show == "first_taste-walk":
+				await get_tree().create_timer(FirstTasteDirector.MARCH_AFTER + 6.0).timeout
+			else:
+				var m: FirstTasteDirector.March = d.marches[0]
+				m.walking = true
+				m.muster_left = 0.0
+				for k in m.people.size():
+					var p := m.people[k] as Person
+					m.spots[p] = d._kneel_spot(m, k)
+					m.paused[p] = false
+					p.ground_pos = m.spots[p]
+					p.go_duty(p.ground_pos)
+				await get_tree().create_timer(4.0).timeout
+		"first_taste-win":
+			for _shard in d.need():
+				d.offer(d.marked[0])  # the ending runs at 0.3 time scale: the generic wait below is short, so the plate (4 s real) is still up
 
 
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
@@ -1323,6 +1475,7 @@ func _open_pause() -> void:
 	if _in_endless and god != null:
 		_pause.notice = god.notice  # the lost-night confirm states the rise it will really cause (god P2 fix wave, M2)
 	# Endless Night's menu (god P1, Ruling P9): no Restart, no Change powers, and Abandon night, which says whether it costs the night.
+	_pause.rite = _in_endless and god != null and GodNight.is_rite(mission_id)  # the lost-rite confirm (god P3, MS §1)
 	_pause.setup(_in_campaign, settings, settings_path, _in_endless, _in_endless and god != null and god.in_night != "")
 	UiSound.play(&"ui_pause")
 	Music.set_ducked(true)
@@ -1441,6 +1594,7 @@ func _flow_test() -> void:
 	await _flow_dev_town(step)
 	await _flow_endless(step)
 	await _flow_lantern(step)
+	await _flow_rite(step)
 	_veteran()
 	(_screen_node as MissionBoard).choose(MissionBook.LAST_JUDGEMENT)
 	step.call(screen == Screen.PREPARE and _screen_node is PrepareScreen
@@ -2661,6 +2815,279 @@ func _flow_lantern(step: Callable) -> void:
 	out.call()
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not (_screen_node as MissionBoard).dev and not GodTree.dev_fill,
 		"the board is rebuilt without the DEV tab, the dev fill off")
+
+
+## The Awaken rite through the real screens (god P3, MS §1, §2, §5, §9.1; plan P3-21, P3-22; pre-flight G5). Starts where `_flow_lantern()`
+## stopped (the board; slot 1 holds the Lantern walk's god) and ends on the board with `dev` restored.
+## 1. The board's ENDLESS, a fixture written over slot 1 (tier 1, level 10, the bar full, Notice 50, no seal, no gift), Continue: the hub shows
+##    Awaken and no gifts line.
+## 2. The Hunt first: Notice 100% (fixture), Awaken opens the Hunt's Prepare ("THE LANTERN HUNT"); Back is free; Notice back to 50.
+## 3. Awaken: "THE AWAKENING RITE", its six rows, IF LOST exact. MANIFEST, past the intro: `in_night` is the rite, the def is Tier 1 with the Watch,
+##    the director a FirstTasteDirector, the chain plate up. Real input: C then Esc ends an aim; C then a click on a lamplighter chains him (the
+##    mouse is warped onto him; where this machine will not warp it, the click's own `chain_click()` is used and the step says so). The pause confirm
+##    says the rite is lost and what it costs (+25%); Stay and Resume return to the night.
+## 4. Win the real way: `offer()` three marked lamplighters (the captive first: the director's own sacrifice path -- shard banners, marches, the real
+##    objective). Banked at the decision: Tier 2, +2 points, the cap 20, the gift, Notice 50, Night +1, `last_mission` as before, Faith and Divine
+##    Power as before. The results: the rite's lines.
+## 5. Continue: the hub has no Awaken and shows the gift. Descend: a Tier 2 night, Prepare's GIFTS row, the def's gifts. Back is free.
+## 6. The god back at tier 1 capped (fixture). Awaken, MANIFEST, past the intro, lost the real way (`force_end(false, "dawn")`): Notice 75, Night +1,
+##    still capped, no gift; the results say so; Continue offers Awaken again.
+## 7. The title, and the board's save is what it was (C7).
+func _flow_rite(step: Callable) -> void:
+	var was := dev
+	var disk := FileAccess.get_file_as_bytes(save_path)
+	var out := func() -> void:
+		dev = was
+		GodTree.dev_fill = false
+		go_to(Screen.BOARD)
+	var god_file := func() -> GodSlot: return GodSlot.read(GodSlot.path(god_slot, god_base))
+	var hunt0: Dictionary = GodNight.HUNTS[0]
+	dev = true
+	go_to(Screen.BOARD)
+	(_screen_node as MissionBoard).click(MissionBoard.ENDLESS_RECT.get_center())
+	var slots := _screen_node as SlotScreen
+	if slots == null or slots.slot_line(0) == "Empty":
+		step.call(false, "the rite walk finds slot 1 holding the Lantern walk's god (%s)" % [slots.slot_line(0) if slots != null else "no slot select"])
+		out.call()
+		return
+
+	# 1. The fixture: a Tier 1 god at its cap with a full bar, Notice 50, nothing sealed, no gift.
+	var fx: GodSlot = god_file.call()
+	if fx == null or fx.in_tree().size() < 2:
+		step.call(false, "slot 1 holds a god with two abilities in the tree for the rite walk (%s)" % [fx.in_tree() if fx != null else "no file"])
+		out.call()
+		return
+	var pair := PackedStringArray([fx.in_tree()[0], fx.in_tree()[1]])
+	fx.tier = 1
+	fx.level = fx.cap()
+	fx.divine_power = fx.need()
+	fx.notice = 50
+	fx.sealed = ""
+	fx.seal_nights = 0
+	fx.in_night = ""
+	fx.before_hunt = ""
+	fx.gifts = PackedStringArray()
+	fx.loadout = pair.duplicate()
+	fx.write(GodSlot.path(god_slot, god_base))
+	slots.click(slots.button_rect(0, "continue").get_center())
+	var hub := _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and god != null and god.tier == 1 and god.level == 10 and god.capped() and god.divine_power == god.need()
+		and hub.lines()[2] == "AWAKEN TO GROW" and god.notice == 50 and god.seal_nights == 0 and god.gifts.is_empty(),
+		"Continue on the fixture: Tier 1, level 10, the bar full, Notice 50%%, nothing sealed (%s)" % [hub.lines() if hub != null else []])
+	step.call(hub != null and hub.awaken_shown() and not hub.awaken_dim() and hub.gifts_line() == "" and hub.hint_text().contains("A: Awaken"),
+		"the hub shows Awaken (not dim), no gifts line, and the A hint")
+	if hub == null or god == null:
+		out.call()
+		return
+	var night0 := god.night
+	var last0 := god.last_mission
+	var faith0 := god.faith
+	var dp0 := god.divine_power
+	var points0 := god.points
+
+	# 2. The Hunt first.
+	god.notice = 100
+	_write_god()
+	go_to(Screen.HUB)
+	hub = _screen_node as GodHub
+	hub.click(hub.menu_rect("awaken").get_center())
+	var prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == String(hunt0.id) and prep.header_text() == "THE LANTERN HUNT" and god.night == night0,
+		"Awaken at Notice 100%% opens the Hunt, not the rite (%s, \"%s\")" % [mission_id, prep.header_text() if prep != null else ""])
+	if prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", prep)
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and god.night == night0 and god.in_night == "", "Back from the Hunt's Prepare is the hub, free")
+	god.notice = 50
+	_write_god()
+	go_to(Screen.HUB)
+	hub = _screen_node as GodHub
+
+	# 3. The rite: Prepare, the night, real input, the pause.
+	if not await _flow_enter_rite(step, hub, pair):
+		out.call()
+		return
+	var d := _mission.rules().director as FirstTasteDirector
+	var def_now := _mission.rules().mission
+	step.call(god.in_night == RiteBook.FIRST_TASTE and def_now.tier == 1 and def_now.lantern == LanternWatch.KIND_WATCH and d != null
+		and _mission._hud.chain_shown(),
+		"MANIFEST: the rite's night is the god's (in_night %s, Tier %d, the %s lantern, a FirstTasteDirector, the chain plate up)" % [god.in_night, def_now.tier, def_now.lantern])
+	if d == null or d.marked.is_empty():
+		out.call()
+		return
+	_mission._unhandled_input(_flow_key(KEY_C))
+	var aimed: bool = _mission.chain_aim and _mission._hud.chain_aiming
+	_mission._unhandled_input(_flow_key(KEY_ESCAPE))
+	step.call(aimed and not _mission.chain_aim and not _mission._hud.chain_aiming and not is_instance_valid(_pause),
+		"C raises the chain's aim (the plate's frame goes gold) and Esc lets it go without opening the pause menu")
+	_mission._unhandled_input(_flow_key(KEY_C))
+	var victim: Person = d.marked[0]
+	var landed := await _flow_click_ground(victim.ground_pos)
+	step.call(d.chain_state == RiteDirector.Chain.BITE and d.captive == victim and not _mission.chain_aim,
+		"C then a click on a lamplighter chains him (%s); the aim ends" % ["a real click" if landed else "chain_click(): this machine would not warp the mouse"])
+	_open_pause()
+	var ask := ""
+	if is_instance_valid(_pause):
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
+		ask = _pause.confirm_line()
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("stay").get_center()))
+		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("resume").get_center()))
+	await get_tree().process_frame
+	step.call(ask == PauseMenu.rite_line(50) and ask.contains("Lantern Notice +25%") and not is_instance_valid(_pause) and god.in_night == RiteBook.FIRST_TASTE,
+		"Pause in the rite: Abandon's confirm says it is lost and costs Notice +25%% (\"%s\"); Stay and Resume return to the night" % ask)
+
+	# 4. Won the real way: the captive, then two more, each through offer().
+	var picks: Array[Person] = [victim]
+	for p: Person in d.marked:
+		if picks.size() < d.need() and not picks.has(p):
+			picks.append(p)
+	for p in picks:
+		d.offer(p)
+	var decided := await _until(func() -> bool: return god.in_night == "", 6.0)
+	var won_file: GodSlot = god_file.call()
+	step.call(decided and d.shards == 3 and god.tier == 2 and god.points == points0 + 2 and god.cap() == 20 and not god.capped()
+		and god.gifts == PackedStringArray([RiteBook.WATCHFUL_BELL]) and god.notice == 50 and god.night == night0 + 1 and god.last_mission == last0
+		and god.faith == faith0 and god.divine_power == dp0,
+		"three shards banked at the decision: Tier 2, +2 points, the cap 20, the gift, Notice 50, Night %d, last mission and Faith and Divine Power as before (tier %d, %s)"
+		% [night0 + 1, god.tier, god.gifts])
+	step.call(won_file != null and won_file.tier == 2 and won_file.gifts == god.gifts and won_file.points == god.points and won_file.in_night == ""
+		and won_file.notice == 50 and won_file.night == night0 + 1,
+		"and the god's file agrees the moment it is decided (a window closed during the ending keeps the rite)")
+	var up := await _until(func() -> bool: return screen == Screen.RESULTS, 12.0)
+	var banked: Dictionary = result.get("god", {})
+	var rite: Dictionary = banked.get("rite", {})
+	var lines := ResultsScreen.god_lines(result)
+	var stolen_at := -1
+	for i in lines.size():
+		if lines[i].begins_with("Stolen: The Watchful Bell"):
+			stolen_at = i
+	step.call(up and bool(rite.get("won", false)) and String(rite.get("gift", "")) == RiteBook.WATCHFUL_BELL and lines.has("Tier 2: Omen")
+		and lines.has("+2 ability points") and stolen_at > lines.find("Tier 2: Omen") and ResultsScreen.rite_called(result) != ""
+		and String(result.get("reason", "")) == "shards" and bool(result.get("goal", {}).get("done", false)),
+		"the won rite's results: the goal done, the Tier and the Stolen lines, the rite named (%s)" % [", ".join(lines)])
+	var res := _screen_node as ResultsScreen
+	if not up or res == null:
+		out.call()
+		return
+
+	# 5. The hub after: no Awaken, the gift; a Tier 2 night carries it.
+	res.action.emit("continue")
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and not hub.awaken_shown() and hub.gifts_line() == GodHub.GIFTS_LINE % RiteBook.gift_name(RiteBook.WATCHFUL_BELL),
+		"Continue: the hub has no Awaken and says \"%s\"" % [hub.gifts_line() if hub != null else ""])
+	if hub == null:
+		out.call()
+		return
+	hub.click(hub.menu_rect("descend").get_center())
+	prep = _screen_node as PrepareScreen
+	var gifts_row := ""
+	if prep != null:
+		for row: Array in prep.brief_rows():
+			if String(row[0]) == "GIFTS":
+				gifts_row = String(row[1])
+	var next_def := GodNight.def_for(god, mission_id) if prep != null else null
+	step.call(screen == Screen.PREPARE and prep != null and next_def != null and next_def.tier == 2 and not prep.is_rite()
+		and gifts_row == RiteBook.gift_effect(RiteBook.WATCHFUL_BELL) and next_def.gifts == PackedStringArray([RiteBook.WATCHFUL_BELL]),
+		"Descend is a Tier 2 night (%s): Prepare's GIFTS row says \"%s\" and the night's def carries the gift" % [mission_id, gifts_row])
+	if prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", prep)
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and god.night == night0 + 1, "Back from Prepare is the hub, nothing counted")
+
+	# 6. Lost the real way: the god put back at the cap with no gift.
+	god.tier = 1
+	god.level = god.cap()
+	god.divine_power = god.need()
+	god.points = points0
+	god.gifts = PackedStringArray()
+	god.notice = 50
+	_write_god()
+	go_to(Screen.HUB)
+	hub = _screen_node as GodHub
+	step.call(hub != null and hub.awaken_shown() and god.capped() and god.gifts.is_empty(), "the fixture again: Tier 1 at the cap, Awaken offered")
+	if hub == null or not await _flow_enter_rite(step, hub, pair):
+		out.call()
+		return
+	var lost_night := god.night
+	_mission.rules().force_end(false, "dawn")
+	var lost_file: GodSlot = god_file.call()
+	step.call(god.in_night == "" and god.tier == 1 and god.capped() and god.notice == 75 and god.night == lost_night + 1 and god.gifts.is_empty()
+		and god.points == points0 and god.last_mission == last0 and lost_file != null and lost_file.notice == 75 and lost_file.night == lost_night + 1
+		and lost_file.tier == 1 and lost_file.in_night == "",
+		"the lost rite is banked at the decision: Tier 1 and capped, no gift, Notice 75, Night %d, the file agrees (Notice %d)" % [lost_night + 1, god.notice])
+	up = await _until(func() -> bool: return screen == Screen.RESULTS, 8.0)
+	banked = result.get("god", {})
+	rite = banked.get("rite", {})
+	lines = ResultsScreen.god_lines(result)
+	step.call(up and not rite.is_empty() and not bool(rite.get("won", true)) and lines.has("The god is still capped. Awaken again when ready.")
+		and lines.has("Lantern Notice 75%  (+25%)") and ResultsScreen.rite_called(result) != "" and not bool(result.get("goal", {}).get("done", true)),
+		"the lost rite's results: the goal missed, the god still capped, Notice +25%% (%s)" % [", ".join(lines)])
+	res = _screen_node as ResultsScreen
+	if not up or res == null:
+		out.call()
+		return
+	res.action.emit("continue")
+	hub = _screen_node as GodHub
+	step.call(screen == Screen.HUB and hub != null and hub.awaken_shown() and god.notice == 75,
+		"Continue: Awaken is offered again at Notice 75%")
+	if hub == null:
+		out.call()
+		return
+
+	# 7. The title is unchanged and the board's save is what it was (C7).
+	hub.click(hub.menu_rect("title").get_center())
+	step.call(screen == Screen.TITLE and god == null and FileAccess.get_file_as_bytes(save_path) == disk,
+		"the rite left the board's save alone: the file's bytes are what they were")
+	out.call()
+	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not (_screen_node as MissionBoard).dev and not GodTree.dev_fill,
+		"the board is rebuilt without the DEV tab, the dev fill off")
+
+
+## Awaken from the hub, Prepare's rite page, MANIFEST and into the night past its intro (FLOW, god P3): the rite's header and rows are checked,
+## the draft is `pair`. False (and a failed step) when the screens do not come up.
+func _flow_enter_rite(step: Callable, hub: GodHub, pair: PackedStringArray) -> bool:
+	hub.click(hub.menu_rect("awaken").get_center())
+	var prep := _screen_node as PrepareScreen
+	var labels := PackedStringArray()
+	var if_lost := ""
+	if prep != null:
+		for row: Array in prep.brief_rows():
+			labels.append(String(row[0]))
+			if String(row[0]) == "IF LOST":
+				if_lost = String(row[1])
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == RiteBook.FIRST_TASTE and prep.header_text() == PrepareScreen.RITE_HEADER
+		and labels == PackedStringArray(["RITE", "WIN", "LOSE", "IF WON", "IF LOST", "CHAIN"]) and if_lost == "Lantern Notice +25%; the god stays capped",
+		"Awaken opens THE AWAKENING RITE (%s): its six rows and IF LOST \"%s\"" % [", ".join(labels), if_lost])
+	if prep == null or mission_id != RiteBook.FIRST_TASTE:
+		return false
+	prep.draft.preselect(pair)
+	_on_prepare_action("manifest", prep)
+	await _until(func() -> bool: return _mission_up(null), 15.0)
+	await _past_intro()
+	await _until(func() -> bool: return god.in_night != "", 3.0)
+	return is_instance_valid(_mission) and _mission.rules() != null
+
+
+## A real left click on the ground point `ground` (FLOW, god P3, pre-flight G5): the mouse is warped onto it, the click goes through the mission's
+## own `_unhandled_input`, and true says the mouse really was there. Where this machine will not warp the mouse the click's work is done by
+## `Mission.chain_click()` instead (false), so FLOW tests the rite and not the window manager.
+func _flow_click_ground(ground: Vector2) -> bool:
+	var view := get_viewport()
+	var at := view.get_canvas_transform() * Iso.ground_to_screen(ground)
+	view.warp_mouse(at)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var landed: bool = _mission._bf.mouse_ground().distance_to(ground) < 0.4 and not _mission._hud.chain_rect().has_point(at) \
+		and _mission._hud.slot_at(at) < 0 and view.get_visible_rect().has_point(at)
+	if landed:
+		_mission._unhandled_input(_flow_mouse(at))
+	else:
+		_mission.chain_click(ground)
+	return landed
 
 
 ## FLOW (god P1, ruling P11): a board night's bank is a test bank -- flagged, no believers, no progress line, its first clear's fastest

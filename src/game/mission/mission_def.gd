@@ -59,6 +59,9 @@ var mission_tags := PackedStringArray()
 ## bell's ringer runs for the Temple: Warning, Omen, Starfall, Bell-Ringers), "watch" (Tax Collector, Informer), "gaze" (the toll adds
 ## LanternWatch.GAZE_TOLL to the Gaze: Mira's House, the Vigil Flame, Broken Lanterns, the Relic Run, the Sermon). An ActDef inherits it.
 var lantern := ""
+## The stolen gifts the god carries into this night (god P3, MS §4): RiteBook ids. Set only by GodNight.def_for() -- the board, the campaign
+## and the references never set it, so it stays empty and moves nothing. An ActDef inherits it.
+var gifts := PackedStringArray()
 
 
 ## A mission played in acts (v0.09, The Long Night): its ActDefs, the first one first. Empty for a single act.

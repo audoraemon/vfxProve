@@ -27,6 +27,10 @@ const REFUSE_SECONDS := 1.5
 const REFUSE_SEALED := "Sealed by the Lantern: %s left"
 ## The header while the Hunt is the night (god P2, spec §10.2, Ruling P2-5).
 const HUNT_HEADER := "THE LANTERN HUNT"
+## The header while an Awaken rite is the night (god P3, MS §1; gold).
+const RITE_HEADER := "THE AWAKENING RITE"
+## The rite's CHAIN row: Chain of the Forgotten is the rite's own power, outside the draft and its Might (god P3, MS §1 "free").
+const CHAIN_ROW := "Chain of the Forgotten (C): free"
 ## What the panel says when a pick is refused, by Draft.refusal()'s answer.
 const REFUSALS := {"dp": "Not enough Might", "slots": "No free slot", "pool": "Not a power of this mission",
 	"locked": "Locked: unlock it on the Upgrades screen"}
@@ -442,8 +446,11 @@ func _draw_ui() -> void:
 	_draw_profile()
 
 
-## The header: THE LANTERN HUNT (red) while the Hunt is the night, else "PREPARE THE MANIFESTATION" (god P2, Ruling P2-5).
+## The header: THE AWAKENING RITE (gold) while a rite is the night (god P3, MS §1), THE LANTERN HUNT (red) while the Hunt is, else "PREPARE THE
+## MANIFESTATION" (god P2, Ruling P2-5).
 func header_text() -> String:
+	if is_rite():
+		return RITE_HEADER
 	if god != null and not GodNight.hunt_for(god).is_empty():
 		return HUNT_HEADER
 	return "PREPARE THE MANIFESTATION"
@@ -456,6 +463,11 @@ func _draw_header() -> void:
 	if 8.0 + UiTheme.width(s, size) > 632.0 - UiTheme.width(budget_text(), UiTheme.SIZE_SMALL) - 8.0:
 		size = UiTheme.SIZE_BODY
 	UiTheme.text(_ui, Vector2(8, 24), s, size, UiTheme.COL_BAD if s == HUNT_HEADER else UiTheme.COL_GOLD)
+
+
+## True when this screen prepares an Awaken rite for a god (god P3, MS §1): the mission is a rite's and there is a god.
+func is_rite() -> bool:
+	return god != null and GodNight.is_rite(mission.id)
 
 
 ## "4 / 6 slots   12 / 14 Might" at the header's right (v0.08's budget meter): gold once the slots or the Might
@@ -566,6 +578,8 @@ func _draw_panel() -> void:
 ## budget and the hint line already give the slots and the Might). Any other night's are the six it has always had.
 func brief_rows() -> Array:
 	var loadout := ["LOADOUT", "%d slots, %d Might to spend on them" % [draft.slots, draft.capacity]]
+	if is_rite():
+		return _rite_rows()
 	var hunt := GodNight.hunt_for(god) if god != null else {}
 	if not hunt.is_empty():
 		return [
@@ -575,14 +589,60 @@ func brief_rows() -> Array:
 			["IF WON", "Notice %d%%, +%d Faith" % [GodNight.HUNT_WON_NOTICE, GodNight.HUNT_FAITH * int(hunt.tier)]],
 			["IF LOST", "%s; Notice %d%%" % [GodNight.hunt_stake(god), GodNight.HUNT_LOST_NOTICE]],
 		]
+	# An ordinary Endless night with stolen gifts shows what they do in place of the city's counts (god P3, Ruling P3-8); a Hunt does not.
+	var city := ["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]]
+	if god != null and not gift_effects().is_empty():
+		city = ["GIFTS", "; ".join(gift_effects())]
 	return [
 		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
-		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
+		city,
 		loadout,
 		["TEMPLE", "Its fall resets every cooldown, once"],
 	]
+
+
+## What the god's stolen gifts do, one effect line each (god P3, MS §4 "Shown"); empty without a god or gifts.
+func gift_effects() -> PackedStringArray:
+	var out := PackedStringArray()
+	if god == null:
+		return out
+	for g in god.gifts:
+		if RiteBook.gift_effect(g) != "":
+			out.append(RiteBook.gift_effect(g))
+	return out
+
+
+## A rite's briefing (god P3, MS §1, preflight R1): RITE (its name only: the full plate with six rows ran past the hint line by 2 px, and the plate's
+## sense is the WIN row's), WIN, LOSE, IF WON (the tier crossed into, the points, the gift),
+## IF LOST (the Notice rise, shown before it happens: spec §2) and CHAIN. The LOADOUT row is left out as the Hunt's is. Tier copy is "Tier 2: Omen"
+## (MS §5, preflight G6).
+func _rite_rows() -> Array:
+	var row := RiteBook.row(mission.id)
+	var next_tier := god.tier + 1
+	var rite_name := String(row.get("name", mission.name))
+	return [
+		["RITE", rite_name],
+		["WIN", mission.goal],
+		["LOSE", mission.lose],
+		["IF WON", "Tier %d: %s, +%d ability points, %s" % [next_tier, TierBook.tier_name(next_tier), GodSlot.AWAKEN_POINTS,
+			RiteBook.gift_name(String(row.get("gift", "")))]],
+		["IF LOST", _rite_lost_line()],
+		["CHAIN", CHAIN_ROW],
+	]
+
+
+## IF LOST for a rite (milestone review Minor 5): the Notice rise after the clamp, as the pause confirm says it (PauseMenu.rite_rise), and the Hunt that
+## follows when the rise fills the meter. At Notice 0 it is the spec's exact "Lantern Notice +25%; the god stays capped".
+func _rite_lost_line() -> String:
+	var at := god.notice if god != null else 0
+	var rise := PauseMenu.rite_rise(at)
+	if rise == 0:
+		return "Lantern Notice is already 100%; the god stays capped; the Lantern Hunts next"
+	if at + rise >= GodSlot.NOTICE_MAX:
+		return "Lantern Notice +%d%%; the god stays capped; the Lantern Hunts next" % rise
+	return "Lantern Notice +%d%%; the god stays capped" % rise
 
 
 ## Where the briefing's rows sit: {"value_x", "rows": [{"label", "y", "lines"}], "bottom"} -- `bottom` is the baseline the next row would

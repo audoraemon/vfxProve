@@ -147,6 +147,11 @@ const LINES := {
 	"heart_of_faith.litter": "Odran rides in his litter, untouchable. Kill his bearers (red): with fewer than two, it falls.",
 	"heart_of_faith.on_foot": "Odran walks to the Temple's steps (orange). Kill him before he rekindles the flame.",
 	"heart_of_faith.rite": "Odran rekindles the flame. Kill him now, or whisper him off the steps to start it again.",
+	# The First Taste (god P3, plan Task 4; *my call*): the rite's own lines. "chain" has none, so it takes the mission's.
+	"first_taste": "Press C, then click a lamplighter (gold): he walks to Mira's shrine (orange). Three win the rite.",
+	"first_taste.drag": "Keep the Watch (red) off him. C again to Yank him on once.",
+	"first_taste.march": "The clergy (red) march on the shrine: stop two of them, or win first.",
+	"first_taste.cleanse": "The clergy cleanse the shrine: strike a kneeler now.",
 }
 
 

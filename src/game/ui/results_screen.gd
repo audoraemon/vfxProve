@@ -66,6 +66,7 @@ var _t := 0.0
 ## v0.11 M4: Wrath's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M5: Reckoning's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M6: Ascendance's new missions' endings, each under the mission's own reason keys.
+## God P3 (preflight G2): an Awaken rite's endings, `shards` (the last shard, won) and `cleansed` (the shrine lost); a rite that dawn ends reads "dawn".
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
 	"gaze": "THE LANTERN LOOKS", "lantern": "THE LANTERN HEARS", "believers": "THEY BELIEVE", "few": "TOO FEW BELIEVE",
@@ -85,7 +86,8 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 	"relic": "THE RELIC IS OURS", "relic_kept": "THE RELIC REACHES THE CITADEL", "pip": "THE BOY IS DEAD",
 	"eye_blind": "THE LANTERN'S EYE IS BLIND", "eye_open": "THE EYE OPENS",
 	"exodus": "THE FAITHFUL ARE OUT", "exodus_few": "TOO FEW ARE LEFT", "gates_shut": "THE GATES ARE SHUT",
-	"heart": "THE HEART OF FAITH IS BROKEN", "blessed": "THE GREAT FLAME IS BLESSED", "kindled": "THE FLAME IS KINDLED ANEW"}
+	"heart": "THE HEART OF FAITH IS BROKEN", "blessed": "THE GREAT FLAME IS BLESSED", "kindled": "THE FLAME IS KINDLED ANEW",
+	"shards": "THE RITE IS DONE", "cleansed": "THE SHRINE IS CLEANSED"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:
@@ -343,6 +345,10 @@ static func campaign_line(c: Dictionary) -> String:
 static func descend_rows(result: Dictionary) -> Array:
 	var d: Dictionary = result.get("descend", {})
 	var goal: Dictionary = result.get("goal", {})
+	# An Awaken rite has no Descent (god P3, preflight G1): its goal row is ticked by the rite's win and pays no believers.
+	if not rite_of(result).is_empty():
+		var rite_won := bool(result.get("won", false))
+		return [[String(goal.get("label", "")), "", "ok" if rite_won else "x", ""]]
 	var main := bool(d.get("main", false))
 	var rows := [[String(goal.get("label", "")), ("+%d" % int(d.get("main_reward", 0))) if main else "", "ok" if main else "x", ""]]
 	for w: Dictionary in d.get("wishes", []):
@@ -401,6 +407,8 @@ static func god_lines(result: Dictionary) -> PackedStringArray:
 	var g := _god_of(result)
 	if g.is_empty():
 		return out
+	if not rite_of(result).is_empty():
+		return _rite_lines(g)
 	out.append("Divine Power +%d%s" % [int(g.get("divine_power", 0)), "   AWAKEN TO GROW" if bool(g.get("capped", false)) else ""])
 	for level in _levels_of(g):
 		out.append("Level %d   +1 ability point" % level)
@@ -430,6 +438,36 @@ static func god_lines(result: Dictionary) -> PackedStringArray:
 	return out
 
 
+## An Awaken rite's god lines (god P3, MS §5, Ruling P3-4, preflight G6), in order: the Divine Power it feeds (none), then won: the tier
+## crossed into ("Tier 2: Omen"), the points, the gift stolen; lost: the shards brought and that the god is still capped; then the Notice (with
+## its change), a seal that ended, the Hunt coming and the night. No believers line (MS §1 R1).
+static func _rite_lines(g: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	var rite: Dictionary = g.rite
+	out.append("Divine Power: none - the rite feeds no bar")
+	if bool(rite.get("won", false)):
+		out.append("Tier %d: %s" % [int(rite.get("tier", 1)), TierBook.tier_name(int(rite.get("tier", 1)))])
+		out.append("+%d ability points" % int(rite.get("points", 0)))
+		var gift: Dictionary = RiteBook.GIFTS.get(String(rite.get("gift", "")), {})
+		if not gift.is_empty():
+			out.append("Stolen: %s - %s" % [gift.name, gift.stolen])
+	else:
+		out.append("Lantern shards %d/%d" % [int(rite.get("shards", 0)), int(rite.get("need", 0))])
+		out.append("The god is still capped. Awaken again when ready.")
+	var change := int(g.get("notice_change", 0))
+	if change == 0:
+		out.append("Lantern Notice %d%%" % int(g.get("notice", 0)))
+	else:
+		out.append("Lantern Notice %d%%  (%s%d%%)" % [int(g.get("notice", 0)), "+" if change > 0 else "-", absi(change)])
+	var unsealed := String(g.get("unsealed", ""))
+	if unsealed != "":
+		out.append("%s is no longer sealed" % PowerBook.get_power(unsealed).name)
+	if bool(g.get("hunt_next", false)):
+		out.append("THE LANTERN HUNTS: the next night is the Hunt")
+	out.append("Night %d" % int(g.get("night", 0)))
+	return out
+
+
 ## The colour of a god line that is not a level line (god P2, Ruling P2-11): a Notice rise, a seal, nothing to seal, the next Hunt and a
 ## loss at the cap are red, the Hunt won is gold, the rest plain. Matched by content, as P1 matched the cap loss.
 static func god_line_color(line: String) -> Color:
@@ -438,6 +476,11 @@ static func god_line_color(line: String) -> Color:
 	if line.begins_with("The Lantern seals") or line.begins_with("The Lantern found nothing") or line.begins_with("THE LANTERN HUNTS") or line.ends_with("lost at the cap"):
 		return UiTheme.COL_BAD
 	if line.begins_with("The Hunt is broken"):
+		return UiTheme.COL_GOLD
+	# A rite (god P3): the tier crossed into and the gift are gold, the god left capped is red.
+	if line.begins_with("The god is still capped"):
+		return UiTheme.COL_BAD
+	if line.begins_with("Stolen: ") or (line.begins_with("Tier ") and line.contains(": ")):
 		return UiTheme.COL_GOLD
 	return UiTheme.COL_TEXT
 
@@ -450,6 +493,22 @@ static func hunt_called(result: Dictionary) -> String:
 	if hunt.is_empty():
 		return ""
 	return "Lantern Hunt: %s  -  %s" % [String(hunt.get("title", "")), TierBook.tier_name(int(hunt.get("tier", 1)))]
+
+
+## "Awakening Rite: <name>  -  <tier played>" when the night was an Awaken rite (god P3, MS §1), else "": results draw it in place of the mission
+## line. The tier is the one played: a won rite's `tier` is the one crossed into, so it is one less.
+static func rite_called(result: Dictionary) -> String:
+	var rite := rite_of(result)
+	if rite.is_empty():
+		return ""
+	var played := maxi(int(rite.get("tier", 1)) - (1 if bool(rite.get("won", false)) else 0), 1)
+	return "Awakening Rite: %s  -  %s" % [String(rite.get("name", "")), TierBook.tier_name(played)]
+
+
+## The rite's entry (GodNight.bank()'s "rite") in a result, or {} when the night was not an Awaken rite (god P3).
+static func rite_of(result: Dictionary) -> Dictionary:
+	var g := _god_of(result)
+	return g.rite if g.get("rite") is Dictionary and not (g.rite as Dictionary).is_empty() else {}
 
 
 ## The god's dictionary in a result: `result.god`, or the dictionary itself when it is one (it has Divine Power); {} otherwise.
@@ -510,9 +569,11 @@ static func level_flash(k: int, total: float, t: float) -> float:
 ## (god P1, spec §9.2) has the same rows and, in place of the bank's lines, the god's, with the Divine Power bar under the first.
 func _draw_descend() -> void:
 	var d: Dictionary = _result.get("descend", {})
-	var def := TierBook.board(String(_result.get("mission", "")))
 	var called := hunt_called(_result)
 	if called == "":
+		called = rite_called(_result)
+	if called == "":
+		var def := TierBook.board(String(_result.get("mission", "")))
 		called = "%s  -  %s" % [def.name if def != null else String(_result.get("mission", "")), TierBook.tier_name(int(d.get("tier", 1)))]
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(called, UiTheme.SIZE_BODY) * 0.5), 84.0), called, UiTheme.SIZE_BODY,
 		UiTheme.COL_DIM)

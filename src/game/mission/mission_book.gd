@@ -34,6 +34,8 @@ const RELIC_RUN := "relic_run"
 const LANTERN_EYE := "lantern_eye"
 const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
+## The Awaken rite (god P3, MS §1): The First Taste, played at the Tier 1 cap. Dev-only on the board; RiteBook holds its row.
+const FIRST_TASTE := "first_taste"
 ## Between a mission's id and its town in a composite id (v0.12): `tax_collector@capital`.
 const CITY_SEP := "@"
 ## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
@@ -78,6 +80,9 @@ static func get_mission(id: String) -> MissionDef:
 	for m in dev_missions():
 		if m.id == id:
 			return m
+	for m in rite_missions():
+		if m.id == id:
+			return m
 	return last_judgement()
 
 
@@ -95,7 +100,7 @@ static func is_dev(id: String) -> bool:
 	for m in dev_missions():
 		if m.id == id:
 			return true
-	return false
+	return RiteBook.has(id)  # god P3 (Ruling P3-6): a rite on the board is dev-only too
 
 
 ## The id of mission `id` played in `city` (v0.12): `tax_collector@capital`. It rides through Game, Prepare, the board, Restart
@@ -183,6 +188,13 @@ static func capital_sandbox() -> MissionDef:
 		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]
 		return out
 	return m
+
+
+## The Awaken rites' missions (god P3, Ruling P3-6): reached by id from the god's hub, and from the board's DEV tab; never listed on the
+## board, in the campaign or in dev_missions().
+static func rite_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [first_taste()]
+	return out
 
 
 ## The Lantern campaign's missions (v0.10): played from the campaign's night screen, never listed on the board.
@@ -968,4 +980,26 @@ static func feast(act_id: String) -> MissionDef:
 	m.acts = [a]
 	m.make_objectives = a.make_objectives
 	m.make_bonuses = a.make_bonuses
+	return m
+
+
+## The First Taste (god P3, MS §1, §3; Ruling P3-3): a Tier 1 frame at the Watch's bell -- drag three of Halcyon's lamplighters to Mira's
+## shrine before the clergy cleanse it or dawn comes. The frame (Task 1); the director, the flame's objective, the camera (the gate plaza, where
+## lamplighters #3 and #4 are) and the tour come with Task 4. The objectives run in this order so the last shard wins before a full cleanse can
+## lose (MS §6: the winning strike never also loses).
+static func first_taste() -> MissionDef:
+	var r := RiteBook.row(FIRST_TASTE)
+	var m := _tier1(FIRST_TASTE, String(r.name), PackedStringArray([String(r.plate)]))
+	m.goal = "Drag three of Halcyon's lamplighters to Mira's shrine"
+	m.goal_label = "Three Lantern shards"
+	m.lose = String(r.lose_line)
+	m.lantern = LanternWatch.KIND_WATCH
+	m.default_loadout = PackedStringArray(["doom", "whisper", "smite"])
+	m.director = FirstTasteDirector
+	m.camera_at = FirstTasteDirector.CAMERA_AT
+	m.intro_from = FirstTasteDirector.CAMERA_AT + Vector2(0.0, 6.0)
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [StagesObjective.new("Lantern shards", "shards"), RiteFlameObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
 	return m

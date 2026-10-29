@@ -9,7 +9,10 @@ extends HuntDirector
 ## The Hunt's own rule is that the standard is carried, not planted: there is no Structure (Ruling C4). A bearer killed or frightened (by the god
 ## or by the town's own panic) while no escort guards him breaks the standard; while one does, that escort takes it up and marches on as the
 ## bearer. An escort guards when he is alive, out of doors, within `guard_reach` of the bearer, not held by the god, not fighting, not frail and
-## not afraid. A fallen escort is not replaced, so each standard grows easier. A bearer out of the walls (shared rule 1) breaks his standard
+## not afraid -- judged, for a bearer struck dead or newly frightened, as the escorts stood at the look before the blow (their fear from witnessing this
+## very death does not count), and the escort who takes it up and his fellow are then steadied for BH_STEADY seconds (Ruling P5-T7-R8). On the march
+## the escorts walk in file ahead of him and behind him along the street (R10), and no street to a house passes within BH_DOOR_CLEAR of another house's
+## door (R9). A fallen escort is not replaced, so each standard grows easier. A bearer out of the walls (shared rule 1) breaks his standard
 ## and is walked off the map. A planted standard is still breakable and still counts for the win.
 ##
 ## It is the Hunt type with no head and no Structure, so the paths that assume one are replaced (pre-flight B4): _plan() (the musters, the
@@ -33,9 +36,9 @@ const BH_ESCORT_OFF := 0.9
 const BH_BEARER_AT := [20.0, 70.0, 120.0, 170.0]
 ## How long after one standard is broken the next is raised at the latest (MS §0: no wait over 60 s; the chain is 45).
 const BH_CHAIN := 45.0
-## The pace the bearer and his escorts all walk at, in ground units a second (MS §5 *fg*: 0.5 makes the 25-35 units of street from a muster to
-## a house 50-70 s; MS §7 tunes it to 0.45): the same for all three, so the escorts keep up (Ruling P5-T7-R1: Person.pace is a share of
-## Person.PANIC_SPEED, so each is set to BH_BEARER_PACE / PANIC_SPEED).
+## The pace the bearer walks at, in ground units a second (MS §5 *fg*: 0.5 makes the 25-35 units of street from a muster to a house 50-70 s; MS §7
+## tunes it to 0.45). Person.pace is a share of Person.PANIC_SPEED, so he is set to BH_BEARER_PACE / PANIC_SPEED (Ruling P5-T7-R1); only he is held
+## to it: his escorts walk BH_ESCORT_PACE times as fast, to keep their places.
 const BH_BEARER_PACE := 0.5
 ## How near the bearer an escort must stand to guard him (MS §5: 1.5; MS §7 tunes it to 1.2).
 const BH_GUARD_REACH := 1.5
@@ -59,8 +62,28 @@ const BH_FLANK_SNAP := 0.3
 ## The least two escorts stand apart (more than two Silent Doom radii, 1.6) and the furthest from the bearer one may stand and still guard.
 const BH_FLANK_GAP := 1.7
 const BH_FLANK_NEAR := 1.3
+## On the march the escorts walk in file along the street, one this far ahead of the bearer along his road and one this far behind along the road he
+## has walked (Ruling P5-T7-R10): in a one-wide street there is no side to stand on, and a file never crosses at a corner. 1.2 along a right-angled
+## corner is 1.7 across, so the two stay more than 1.6 apart, and 1.2 is inside the guard reach.
+const BH_FILE_ARC := 1.3
+## The street's first waypoints nearer the bearer than this are the cell he stands in, and are skipped when looking ahead.
+const BH_FILE_SKIP := 0.6
+## How much further out the two stand, at most, round a sharp bend that would bring them under BH_FLANK_GAP apart.
+const BH_FILE_MORE := 0.15
+## How far the bearer moves before a point is added to the road he has walked, and how many points are kept.
+const BH_TRAIL_STEP := 0.2
+const BH_TRAIL_KEEP := 60
 ## The minds that are afraid (the Assassinate type's FRIGHT): a bearer in one while no escort guards him breaks his standard.
 const BH_FRIGHT := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
+## The share of the bearer's pace his escorts walk at (a margin, so one displaced at a corner closes up again and stands by at a stop; only the
+## bearer is held to BH_BEARER_PACE: Ruling P5-T7-R1 as amended by the first fix round).
+const BH_ESCORT_PACE := 1.3
+## How long the escort who takes a standard up, and his fellow, fear nothing, in real seconds (Ruling P5-T7-R8): the death that made him bearer
+## frightens no one into breaking it. After that the normal rules apply.
+const BH_STEADY := 5.0
+## How far the street from a muster to a house must pass from every other house's door (Ruling P5-T7-R9): a planted company stands 0.9 each side
+## of its bearer, and the next company must pass it by more than two Silent Doom radii.
+const BH_DOOR_CLEAR := 2.7
 ## The bearer's drawn pole and pennant (a badge over his head, no art): a pennant on a pole.
 const BH_FLAG: Array[int] = [0b11110, 0b11100, 0b10000, 0b10000, 0b10000]
 ## The seconds each refresh of the pennant lasts, and how little may be left before it is refreshed.
@@ -99,6 +122,21 @@ var _dir: Array[Vector2] = []
 var _eta: Array[float] = []
 var _eta_clock: Array[float] = []
 var _told: Array[bool] = []
+## By step: the pace share the company walks at (the bearer's; the escorts' is BH_ESCORT_PACE times it), the angle of the first flank place from the
+## bearer (NAN until the first look: the pair keeps its orientation unless it is no longer valid), the escorts who guarded at the last look (the state
+## "as the bearer stood" when he is struck, Ruling P5-T7-R8), whether the bearer was afraid at the last look, and the clock a take-up's steadiness ends.
+var _share: Array[float] = []
+var _flank_ang: Array[float] = []
+var _snap: Array = []
+var _afraid_prev: Array[bool] = []
+var _steady_until: Array[float] = []
+## By step: the road the bearer has walked, newest last (for the escort behind him).
+var _trail: Array = []
+## The closest the two escorts of a raised standard have stood to each other at a look (their bodies, in motion), how many looks they stood 1.6 or
+## less apart, and how many looks were sampled.
+var pair_min := INF
+var pair_low := 0
+var pair_looks := 0
 ## How many standards an escort took up, and how many the walls stopped, for the report.
 var took_up_count := 0
 var walled_count := 0
@@ -129,6 +167,12 @@ func _plan() -> void:
 		_eta.append(INF)
 		_eta_clock.append(0.0)
 		_told.append(false)
+		_share.append(BH_BEARER_PACE / Person.PANIC_SPEED)
+		_flank_ang.append(NAN)
+		_snap.append([])
+		_afraid_prev.append(false)
+		_steady_until.append(-1.0)
+		_trail.append([])
 	if houses.is_empty():
 		push_warning("BreakHuntDirector: no house; the standards have nowhere to march")
 	for i in steps.size():
@@ -149,38 +193,125 @@ func _street_spot(m: Vector2, hub: Vector2) -> Vector2:
 	return _walkable(m)
 
 
-## The three houses: for each point the dwelling nearest it that is not reserved, not already picked and has a door the street reaches from
-## every muster (`from`); each made stone for the night.
+## The three houses: for each point the dwellings nearest it, in order, that are not reserved and have a door the street reaches from every muster
+## (`from`). The nearest of each is taken; one with no door that every muster's street to the other houses passes by BH_DOOR_CLEAR is replaced by
+## the next nearest to its point (the spec's second house, on the east road, has none: Ruling P5-T7-R9), and each door is the first clear one
+## (_clear_doors()). Each house is made stone for the night.
 func _pick_houses(from: Array[Vector2]) -> void:
-	var skip: Array = []
+	var cands: Array = []
 	for p: Vector2 in BH_HOUSE_POINTS:
+		var list: Array = []
+		var skip: Array = []
 		for k in BH_HOUSE_TRIES:
 			var h := _house_near(p, skip)
 			if h == null:
 				break
 			skip.append(h)
-			var door := _door_from_all(h, from)
-			if door == Vector2.INF:
+			var doors := _doors_from_all(h, from)
+			if not doors.is_empty():
+				list.append([h, doors])
+		cands.append(list)
+	var idx: Array[int] = []
+	for list: Array in cands:
+		idx.append(0)
+	var options: Array = []
+	for round_no in BH_HOUSE_TRIES * cands.size():
+		houses.clear()
+		house_doors.clear()
+		options.clear()
+		for k in cands.size():
+			var list: Array = cands[k]
+			while idx[k] < list.size() and houses.has(list[idx[k]][0]):
+				idx[k] += 1
+			if idx[k] >= list.size():
 				continue
-			houses.append(h)
-			house_doors.append(door)
-			_taken.append(false)
-			_house_filters[h.get_instance_id()] = h.damage_filter
-			h.damage_filter = _stone
+			houses.append(list[idx[k]][0])
+			options.append(list[idx[k]][1])
+			house_doors.append((list[idx[k]][1] as Array)[0])
+		_clear_doors(from, options)
+		var bad := -1
+		for h in houses.size():
+			if _door_clearance(h, house_doors[h], from) < BH_DOOR_CLEAR:
+				bad = h
+				break
+		if bad < 0:
 			break
+		var owner := -1  # the point whose candidate house `bad` is
+		for k in cands.size():
+			var list: Array = cands[k]
+			if idx[k] < list.size() and list[idx[k]][0] == houses[bad]:
+				owner = k
+		if owner < 0 or idx[owner] + 1 >= (cands[owner] as Array).size():
+			break
+		idx[owner] += 1
+	for h in houses.size():
+		_taken.append(false)
+		_house_filters[houses[h].get_instance_id()] = houses[h].damage_filter
+		houses[h].damage_filter = _stone
+		if _door_clearance(h, house_doors[h], from) < BH_DOOR_CLEAR:
+			push_warning("BreakHuntDirector: house %d has no door %.1f clear of the other streets" % [h, BH_DOOR_CLEAR])
 
 
-## A door of `h` the street reaches from every one of `from` (front, back, then the sides), or Vector2.INF.
-func _door_from_all(h: Structure, from: Array[Vector2]) -> Vector2:
+## Every door of `h` the street reaches from all of `from` (front, back, then the sides), in that order; empty for none.
+func _doors_from_all(h: Structure, from: Array[Vector2]) -> Array[Vector2]:
+	var out: Array[Vector2] = []
 	var half := h.footprint.size * 0.5 + Vector2(0.5, 0.5)
 	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
 		var door := _walkable(h.center() + off)
 		var ok := true
 		for f: Vector2 in from:
 			ok = ok and (crowd._grid == null or not crowd._grid.path(f, door).is_empty())
-		if ok:
-			return door
-	return Vector2.INF
+		if ok and not out.has(door):
+			out.append(door)
+	return out
+
+
+## Each house's door, of the doors the streets reach (`options`), the first that no muster's street to any other house passes within BH_DOOR_CLEAR
+## of: two passes, so a door moved in the first is judged against the streets to its neighbours' final doors. A house with no clear door keeps its
+## first (_pick_houses() tries the next dwelling then; street_clearance() tells).
+func _clear_doors(from: Array[Vector2], options: Array) -> void:
+	for pass_no in 2:
+		for h in houses.size():
+			var doors: Array = options[h]
+			var chosen: Vector2 = doors[0]
+			for door: Vector2 in doors:
+				if _door_clearance(h, door, from) >= BH_DOOR_CLEAR:
+					chosen = door
+					break
+			house_doors[h] = chosen
+
+
+## How near the streets from every muster to every other house than `h` pass `door`, taken as `h`'s door.
+func _door_clearance(h: int, door: Vector2, from: Array[Vector2]) -> float:
+	var best := INF
+	for g in houses.size():
+		if g == h:
+			continue
+		for f: Vector2 in from:
+			var route := crowd._grid.path(f, house_doors[g]) if crowd._grid != null else PackedVector2Array()
+			best = minf(best, _path_gap(f, route, door))
+	return best
+
+
+## How near the walk from `start` along `route` passes `p`.
+func _path_gap(start: Vector2, route: PackedVector2Array, p: Vector2) -> float:
+	var best := start.distance_to(p)
+	var at := start
+	for pt in route:
+		best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, at, pt)))
+		at = pt
+	return best
+
+
+## The least any muster's street to a house passes the door of another house (BH_DOOR_CLEAR or more when the plan held).
+func street_clearance() -> float:
+	var from: Array[Vector2] = []
+	for st in steps:
+		from.append(st.spot)
+	var best := INF
+	for h in houses.size():
+		best = minf(best, _door_clearance(h, house_doors[h], from))
+	return best
 
 
 ## Structure.damage_filter for a believers' house: stone tonight, a blow only shakes it, until teardown().
@@ -207,6 +338,8 @@ func _first_dest(i: int, from: Vector2) -> int:
 ## The setup: the base's (the parties appointed at their musters and kept there, the timeline), then the town's flight kept off them.
 func _begin() -> void:
 	super()
+	for i in steps.size():
+		_snapshot(i)
 	_keep_held(false)
 
 
@@ -221,13 +354,14 @@ func _appoint_party(i: int) -> Array[Person]:
 		crew.append(b[0])
 		_set_down(b[0], spot)
 		b[0].go_duty(spot)
-		b[0].pace = BH_BEARER_PACE / Person.PANIC_SPEED
+		b[0].pace = _share[i]
+		_seed_trail(i)  # the road behind him, so the escorts stand in file from the first look
 	for k in steps[i].party_size:
 		var picked := _lay_near(_party_post(i, k), 1, _in_use() + out)
 		if picked.is_empty():
 			break
 		_dress_guard(picked[0])
-		picked[0].pace = BH_BEARER_PACE / Person.PANIC_SPEED
+		picked[0].pace = _share[i] * BH_ESCORT_PACE
 		crew.append(picked[0])
 		out.append(picked[0])
 	return out
@@ -238,34 +372,99 @@ func _party_post(i: int, k: int) -> Vector2:
 	return _flanks(i)[k % 2]
 
 
-## The two places beside step `i`'s bearer (_flank_pair()).
+## The two places beside step `i`'s bearer: on the march, ahead of him and behind him along his road (_file_pair()); standing -- at the muster, planted,
+## or with no house to march on -- one either side (_flank_pair()), the pair keeping its orientation from look to look.
 func _flanks(i: int) -> Array[Vector2]:
+	var file := _file_pair(i)
+	if not file.is_empty():
+		return file
 	var at := _bearer_pos(i)
-	var pair := _flank_pair(at, _heading(i).rotated(PI * 0.5).angle(), true)
-	return pair
+	var prev := _flank_ang[i]
+	if is_nan(prev):
+		prev = _heading(i).angle()  # along his road, where the file will stand
+	var found := _flank_pair(at, prev, true)
+	if found[0] != at:
+		_flank_ang[i] = (found[0] - at).angle()
+	return found
 
 
-## The two places beside a bearer at `at`: BH_ESCORT_OFF from him and on opposite sides of him (1.8 apart, more than two Silent Doom radii) --
-## of the BH_FLANK_TURNS / 2 opposite pairs round him the one whose two places are both on the street, at least BH_FLANK_GAP apart, and whose
-## line is nearest the angle `square`. With none (a lane too narrow or bent), the two places on the street within BH_FLANK_NEAR of him that are
-## furthest apart when `fallback`, else an empty array.
-func _flank_pair(at: Vector2, square: float, fallback: bool) -> Array[Vector2]:
+## The escorts' places in file on the march (Ruling P5-T7-R10): BH_FILE_ARC ahead of the bearer along the street to his house and BH_FILE_ARC behind
+## him along the road he has walked, both moved on by the pace he walks in half a look (the places are seen once a look, so they are aimed at where
+## he will be in the middle of it); empty when the standard is not marching.
+func _file_pair(i: int) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if _planted[i] or _dest[i] < 0 or crowd._grid == null:
+		return out
+	var at := _bearer_pos(i)
+	var back := PackedVector2Array()
+	for k in range(_trail[i].size() - 1, -1, -1):
+		back.append(_trail[i][k])
+	var lead := 0.0
+	if steps[i].raised and _alive(bearers[i]):
+		lead = Person.PANIC_SPEED * (bearers[i] as Person).pace * HuntDirector.TICK * 0.5
+	var extra := 0.0
+	while true:
+		out.clear()
+		out.append(_ahead(i, at, BH_FILE_ARC + lead + extra))
+		out.append(_along(at, back, BH_FILE_ARC - lead + extra))
+		if out[0].distance_to(out[1]) >= BH_FLANK_GAP or extra >= BH_FILE_MORE:
+			break
+		extra += BH_FILE_MORE / 3.0  # a sharp bend: stand a little further out, so the two are still apart
+	return out
+
+
+## The point `arc` ahead of `at` along the street to step `i`'s house.
+func _ahead(i: int, at: Vector2, arc := BH_FILE_ARC) -> Vector2:
+	var road := PackedVector2Array()
+	for pt in crowd._grid.path(at, house_doors[_dest[i]]):
+		if road.is_empty() and at.distance_to(pt) < BH_FILE_SKIP:
+			continue  # the centre of the cell he stands in, as likely behind him as ahead
+		road.append(pt)
+	return _along(at, road, arc)
+
+
+## The point `arc` along `route` from `from` (the route's end when it is shorter).
+func _along(from: Vector2, route: PackedVector2Array, arc := BH_FILE_ARC) -> Vector2:
+	var left := arc
+	var at := from
+	for pt in route:
+		var seg := at.distance_to(pt)
+		if seg >= left:
+			return at.move_toward(pt, left)
+		left -= seg
+		at = pt
+	return at
+
+
+## Step `i`'s bearer is at `at`: the road he has walked grows by it.
+func _note_trail(i: int, at: Vector2) -> void:
+	var trail: Array = _trail[i]
+	if trail.is_empty() or (trail.back() as Vector2).distance_to(at) >= BH_TRAIL_STEP:
+		trail.append(at)
+		if trail.size() > BH_TRAIL_KEEP:
+			trail.pop_front()
+
+
+## The two places beside a bearer at `at`: BH_ESCORT_OFF from him and on opposite sides of him (1.8 apart, more than two Silent Doom radii). The pair
+## at the angle `prev` is kept while both its places are on the street and BH_FLANK_GAP apart; else, of the BH_FLANK_TURNS / 2 opposite pairs round
+## him that are, the one whose line turns least from `prev`. With none (a lane too narrow or bent), the two places on the street within
+## BH_FLANK_NEAR of him that are furthest apart when `fallback`, else an empty array.
+func _flank_pair(at: Vector2, prev: float, fallback: bool) -> Array[Vector2]:
+	var kept := _pair_at(at, prev)
+	if not kept.is_empty():
+		return kept
 	var best: Array[Vector2] = []
-	var best_score := INF
-	var spots: Array[Vector2] = []
-	for k in BH_FLANK_TURNS:
-		spots.append(_walkable(at + Vector2.from_angle(TAU * float(k) / float(BH_FLANK_TURNS)) * BH_ESCORT_OFF))
+	var best_turn := INF
 	for k in BH_FLANK_TURNS / 2:
 		var ang := TAU * float(k) / float(BH_FLANK_TURNS)
-		var a := spots[k]
-		var b := spots[k + BH_FLANK_TURNS / 2]
-		if a.distance_to(at + Vector2.from_angle(ang) * BH_ESCORT_OFF) > BH_FLANK_SNAP 				or b.distance_to(at - Vector2.from_angle(ang) * BH_ESCORT_OFF) > BH_FLANK_SNAP or a.distance_to(b) < BH_FLANK_GAP:
+		var pair := _pair_at(at, ang)
+		if pair.is_empty():
 			continue
-		var off := absf(angle_difference(ang, square))
-		off = minf(off, PI - off)
-		if off < best_score:
-			best_score = off
-			best = [a, b]
+		var turn := absf(angle_difference(ang, prev))
+		turn = minf(turn, PI - turn)
+		if turn < best_turn:
+			best_turn = turn
+			best = pair
 	if not best.is_empty() or not fallback:
 		return best
 	var near: Array[Vector2] = []
@@ -283,6 +482,21 @@ func _flank_pair(at: Vector2, square: float, fallback: bool) -> Array[Vector2]:
 				widest = gap
 				best = [near[m], near[n]]
 	return best
+
+
+## The pair of places at angle `ang` and opposite round `at`, or an empty array when either is off the street or they are under BH_FLANK_GAP apart.
+func _pair_at(at: Vector2, ang: float) -> Array[Vector2]:
+	var want_a := at + Vector2.from_angle(ang) * BH_ESCORT_OFF
+	var want_b := at - Vector2.from_angle(ang) * BH_ESCORT_OFF
+	var a := _walkable(want_a)
+	var b := _walkable(want_b)
+	var out: Array[Vector2] = []
+	var off := a.distance_to(want_a) > BH_FLANK_SNAP or b.distance_to(want_b) > BH_FLANK_SNAP
+	if off or a.distance_to(b) < BH_FLANK_GAP:
+		return out
+	out.append(a)
+	out.append(b)
+	return out
 
 
 ## The way step `i`'s bearer heads: toward the next bend of the street to his house's door; the way he last headed when he stands at it.
@@ -346,6 +560,7 @@ func _raise(i: int) -> void:
 		_make_bearer(i, up)
 	_dest[i] = _pick_dest(i)
 	var b := bearer(i)
+	_seed_trail(i)
 	_mark(b)
 	_set_pace(i)
 	if _dest[i] >= 0:
@@ -353,19 +568,36 @@ func _raise(i: int) -> void:
 	_refresh_eta(i)
 
 
-## Step `i`'s bearer and escorts walk at the march's pace (BH_BEARER_PACE, or slower where the street to the house is short: BH_MARCH_MIN).
+## The road behind a bearer who has not yet moved: the muster and the place BH_FILE_ARC from him on the street that is farthest from the place ahead
+## of him, so the escort behind him has somewhere to stand, well clear of the one ahead, from the first look.
+func _seed_trail(i: int) -> void:
+	var at := _bearer_pos(i)
+	var rear := at
+	if _dest[i] >= 0:
+		var ahead := _ahead(i, at)
+		var far := -1.0
+		for k in BH_FLANK_TURNS:
+			var want := at + Vector2.from_angle(TAU * float(k) / float(BH_FLANK_TURNS)) * BH_FILE_ARC
+			var q := _walkable(want)
+			if q.distance_to(want) <= BH_FLANK_SNAP and q.distance_to(ahead) > far:
+				far = q.distance_to(ahead)
+				rear = q
+	_trail[i] = [rear, at]
+
+
+## Step `i`'s bearer walks at the march's pace (BH_BEARER_PACE, or slower where the street to the house is short: BH_MARCH_MIN); his escorts at
+## BH_ESCORT_PACE times it, so one displaced closes up again.
 func _set_pace(i: int) -> void:
 	var speed := BH_BEARER_PACE
 	if _dest[i] >= 0:
 		var rate: float = rules.clock_rate if is_instance_valid(rules) else 1.0
 		speed = minf(speed, _way(_bearer_pos(i), house_doors[_dest[i]]) * rate / BH_MARCH_MIN)
-	var share := speed / Person.PANIC_SPEED
-	var people: Array = [bearers[i]]
+	_share[i] = speed / Person.PANIC_SPEED
+	if _alive(bearers[i]):
+		(bearers[i] as Person).pace = _share[i]
 	for g: Guard in steps[i].party:
-		people.append(g.man)
-	for v: Variant in people:
-		if _alive(v):
-			(v as Person).pace = share
+		if _alive(g.man):
+			(g.man as Person).pace = _share[i] * BH_ESCORT_PACE
 
 
 ## `p` carries a standard: the pennant over his head, unless a power's badge is on him.
@@ -380,23 +612,74 @@ func _make_bearer(i: int, p: Person) -> void:
 	for g: Guard in st.party.duplicate():
 		if g.man == p:
 			st.party.erase(g)
+	var fell := _bearer_pos(i)
 	bearers[i] = p
+	p.pace = _share[i]
 	_last_at[i] = p.ground_pos
+	_trail[i] = [fell, p.ground_pos]
 
 
-## Step `i`'s escort who takes the standard up now, the nearest guarding the bearer's place; null for none.
+## Step `i`'s escort who takes the standard up now (Ruling P5-T7-R8): of the escorts who guarded at the look before the blow (_snap), the nearest to the
+## bearer's place who is still alive, out of doors, not held by the god, not fighting and not frail. Fear from witnessing this very death does not
+## count against him. Null for none.
 func _taker(i: int) -> Person:
 	var best: Person = null
 	var best_gap := INF
 	var at := _bearer_pos(i)
-	for g: Guard in steps[i].party:
-		if not _guarding(i, g):
+	for v: Variant in _snap[i]:
+		if not _able(v):
 			continue
-		var gap := (g.man as Person).ground_pos.distance_to(at)
+		var gap := (v as Person).ground_pos.distance_to(at)
 		if gap < best_gap:
 			best_gap = gap
-			best = g.man as Person
+			best = v as Person
 	return best
+
+
+## `v` is a man who could still take a standard up: alive, not held by the god, not fighting, not frail, and out of doors -- or sheltering, which is
+## only the fright his bearer's death gave him (_steady_company() brings him back out). His fear is not asked.
+func _able(v: Variant) -> bool:
+	if not _alive(v):
+		return false
+	var p := v as Person
+	return not (p.held_by_god() or p.mind == Person.Mind.FIGHT or p.statuses.has(&"frail") or (p.inside and p.mind != Person.Mind.SHELTER))
+
+
+## The escorts who guard step `i`'s bearer now, remembered as how the bearer stood when a blow lands before the next look (Ruling P5-T7-R8).
+func _snapshot(i: int) -> void:
+	var men: Array = []
+	for g: Guard in steps[i].party:
+		if _guarding(i, g):
+			men.append(g.man)
+	_snap[i] = men
+
+
+## Step `i` was guarded at the look before, by an escort who is still able (Ruling P5-T7-R8: for a bearer newly frightened).
+func _snap_guarded(i: int) -> bool:
+	for v: Variant in _snap[i]:
+		if _able(v):
+			return true
+	return false
+
+
+## The escort who took step `i`'s standard up and his fellow fear nothing for BH_STEADY seconds (Ruling P5-T7-R8): one running for shelter, or
+## already in it, is brought back out first.
+func _steady_company(i: int) -> void:
+	var rate: float = rules.clock_rate if is_instance_valid(rules) else 1.0
+	_steady_until[i] = _clock + BH_STEADY * rate
+	var people: Array = [bearers[i]]
+	for g: Guard in steps[i].party:
+		people.append(g.man)
+	for v: Variant in people:
+		if not _alive(v):
+			continue
+		var p := v as Person
+		if p.mind == Person.Mind.SHELTER:
+			if p.inside and crowd.shelters != null:
+				crowd.shelters.release(p)
+			else:
+				p.leave_shelter(false)
+		p.reassure(BH_STEADY)
 
 
 ## Escort `g` of step `i` guards the bearer now (MS §5): alive, out of doors, within `guard_reach` of the bearer's place, not held by the god
@@ -457,7 +740,8 @@ func step(delta: float) -> void:
 ## A step's looks, every TICK for each unbroken step (the base calls this where it keeps a party on its posts): the escorts to their places beside
 ## the bearer, then the bearer himself -- fallen (an escort takes it up, or it breaks), out of the walls (it breaks), afraid with no escort by
 ## (it breaks), at a door (it plants), held and back on his feet (he takes up the march again). On the look the evacuation began the fright
-## test is skipped: the town's flight is not a fright (_hold_all has just called the people back).
+## test is skipped: the town's flight is not a fright (_hold_all has just called the people back). The look ends by remembering who guarded
+## (_snapshot()) and how far apart the escorts stood.
 func _keep_party(i: int, _delta: float, looking: bool, evacuating := false) -> void:
 	if not looking:
 		return
@@ -468,19 +752,34 @@ func _keep_party(i: int, _delta: float, looking: bool, evacuating := false) -> v
 		if waiting != null:
 			_last_at[i] = waiting.ground_pos
 			_recall_to(waiting, st.spot, evacuating)
+		_snapshot(i)
 		return
 	_look(i, evacuating)
+	if not st.broken:
+		_snapshot(i)
+		_measure_pair(i)
 
 
-## Step `i`'s escorts to their places beside the bearer where he stands now.
+## Step `i`'s escorts to their places beside the bearer where he stands now: each to the nearer of the two places (they never cross), the one
+## standing to the other's place only when that is the shorter way for both.
 func _post_escorts(i: int, evacuating: bool) -> void:
-	var st := steps[i]
-	var posts := _flanks(i)
-	for k in st.party.size():
-		var g: Guard = st.party[k]
-		g.post = posts[k % 2]
+	var live: Array[Guard] = []
+	for g: Guard in steps[i].party:
 		if _alive(g.man) and not (g.man as Person).inside:
-			_recall_to(g.man, g.post, evacuating)
+			live.append(g)
+	var posts := _flanks(i)
+	if live.size() >= 2:
+		var a := (live[0].man as Person).ground_pos
+		var b := (live[1].man as Person).ground_pos
+		var straight := a.distance_to(posts[0]) + b.distance_to(posts[1])
+		var crossed := a.distance_to(posts[1]) + b.distance_to(posts[0])
+		live[0].post = posts[0] if straight <= crossed else posts[1]
+		live[1].post = posts[1] if straight <= crossed else posts[0]
+	elif live.size() == 1:
+		var here := (live[0].man as Person).ground_pos
+		live[0].post = posts[0] if here.distance_to(posts[0]) <= here.distance_to(posts[1]) else posts[1]
+	for g in live:
+		_recall_to(g.man, g.post, evacuating)
 
 
 ## Step `i`'s bearer at a look (see _keep_party()).
@@ -492,18 +791,23 @@ func _look(i: int, evacuating: bool) -> void:
 			_break(i)
 			return
 		_make_bearer(i, up)
+		_steady_company(i)
 		_post_escorts(i, evacuating)  # the one left closes up on the new bearer at once
 		_took_up[i] = true
 		took_up_count += 1
 		rules.banner.emit(BH_TAKEN_UP)
 		b = up
 	_last_at[i] = b.ground_pos
+	_note_trail(i, b.ground_pos)
 	if Walls.outside(b.ground_pos):
 		walled_count += 1
 		send_off(b)
 		_break(i)
 		return
-	if not evacuating and b.mind in BH_FRIGHT and not _guarded(i):
+	var afraid := b.mind in BH_FRIGHT
+	var guarded := _snap_guarded(i) if afraid and not _afraid_prev[i] else _guarded(i)
+	_afraid_prev[i] = afraid
+	if not evacuating and afraid and not guarded:
 		_break(i)
 		return
 	_mark(b)
@@ -519,6 +823,22 @@ func _look(i: int, evacuating: bool) -> void:
 		if _dest[i] >= 0:
 			_recall_to(b, house_doors[_dest[i]], evacuating)
 		_refresh_eta(i)
+
+
+## How far apart step `i`'s two escorts stand now (their bodies), sampled at each look of a raised standard: the closest ever and the looks at 1.6 or
+## less (a Silent Doom takes both).
+func _measure_pair(i: int) -> void:
+	var men: Array = []
+	for g: Guard in steps[i].party:
+		if _alive(g.man) and not (g.man as Person).inside:
+			men.append(g.man)
+	if men.size() < 2:
+		return
+	var gap := (men[0] as Person).ground_pos.distance_to((men[1] as Person).ground_pos)
+	pair_looks += 1
+	pair_min = minf(pair_min, gap)
+	if gap <= 2.0 * SilentDoom.RADIUS:
+		pair_low += 1
 
 
 ## Step `i`'s bearer plants the standard at house `h`: it is taken, a setback, and he stands there still breakable.
@@ -691,15 +1011,16 @@ func tags() -> Array[MapTag]:
 		var b := bearer(i)
 		if not steps[i].raised or steps[i].broken or b == null or b.inside:
 			continue
-		var label := standard_label + (" - PLANTED" if _planted[i] else " - HOUSE IN %s" % UiTheme.clock(ceilf(eta(i))))
+		var held := " - TAKEN UP" if _clock < _steady_until[i] else ""
+		var label := standard_label + held + (" - PLANTED" if _planted[i] else " - HOUSE IN %s" % UiTheme.clock(ceilf(eta(i))))
 		out.append(MapTag.person(b.ground_pos, MARK_TARGET, label, true))
 	for h in houses.size():
 		if _taken[h]:
-			out.append(MapTag.place(house_doors[h], BH_MARK_TAKEN, "BELIEVERS - TAKEN", houses[h].height, true))
+			out.append(MapTag.place(house_doors[h], BH_MARK_TAKEN, "BELIEVERS - TAKEN", (houses[h].height if is_instance_valid(houses[h]) else 0.0), true))
 			continue
 		var soon := house_eta(h)
 		var words := "BELIEVERS" if soon == INF else "BELIEVERS - STANDARD IN %s" % UiTheme.clock(ceilf(soon))
-		out.append(MapTag.place(house_doors[h], BH_MARK_HOUSE, words, houses[h].height, soon != INF))
+		out.append(MapTag.place(house_doors[h], BH_MARK_HOUSE, words, (houses[h].height if is_instance_valid(houses[h]) else 0.0), soon != INF))
 	var next := next_step()
 	for i in steps.size():
 		if not steps[i].raised:
@@ -735,6 +1056,7 @@ func report() -> Dictionary:
 	out["taken"] = taken()
 	out["took_up"] = took_up_count
 	out["walled"] = walled_count
+	out["pair_min"] = pair_min
 	return out
 
 

@@ -18,6 +18,8 @@ static func run(t) -> void:
 	_raise_not_broken(t)
 	_pace_and_window(t)
 	_escorts_follow(t)
+	_walk_model(t)
+	_street_clear(t)
 	_fallen_not_replaced(t)
 	_break_unguarded(t)
 	_guard_rules(t)
@@ -58,8 +60,9 @@ static func _escorts(d: BreakHuntDirector, i: int) -> Array:
 
 
 ## Everyone at the hunt's work told there is nothing to fear (Person.fearless_left): a death beside them frightens no one, as a quiet kill
-## (Death Mark, an unseen Doom) does not. A loud one scatters the company -- every one of them shelters or runs, which is a fright -- and a
-## standard struck so breaks at once (MS §5: "A fright counts whoever set it going"); the tests that need a calm company say so here.
+## does. A loud one scatters the company -- every one of them shelters or runs, which is a fright -- and a standard left so breaks within two
+## looks (MS §5: "A fright counts whoever set it going"; the first look judges the bearer as he stood, R8). The tests that need a calm company
+## through several looks say so here.
 static func _steady(d: BreakHuntDirector) -> void:
 	for v: Variant in d.crew:
 		if MissionDirector._alive(v):
@@ -136,13 +139,13 @@ static func _setup(t) -> void:
 		everyone.append(b)
 		for e: Person in es:
 			posts_ok = posts_ok and e != null and e.profile.role == CitizenProfile.Role.WATCHMAN and not e.inside
-			reach_ok = reach_ok and e.ground_pos.distance_to(b.ground_pos) <= BreakHuntDirector.BH_ESCORT_OFF + 0.35
+			reach_ok = reach_ok and e.ground_pos.distance_to(b.ground_pos) <= BreakHuntDirector.BH_GUARD_REACH
 			everyone.append(e)
 		t.check(d.steps[i].party_size == 2 and d.guarded(i) == false, "standard %d is not raised yet (guarded() reads only a raised one)" % i)
 		t.check(d._guarded(i), "(but its two escorts guard its bearer from the start)")
 		t.check(not d.reserved.has(b), "the bearer is not a wish's person")
 	t.check(posts_ok, "each bearer has two escorts, lay citizens dressed as guards")
-	t.check(reach_ok, "each escort stands within a pace of his bearer")
+	t.check(reach_ok, "each escort stands within the guard reach of his bearer")
 	var unique := true
 	for i in everyone.size():
 		for j in range(i + 1, everyone.size()):
@@ -222,14 +225,17 @@ static func _raise_not_broken(t) -> void:
 		"the bearer is marked with a pennant and marches for his house's door")
 	t.check(d.guarded(0) and d.hint_phase() == "", "a raised standard with escorts by him is guarded")
 	# Raising twice does nothing more.
+	var first_at := d.steps[0].raised_at
+	Kit.run_for(s, 3.0)
 	d._raise(0)
-	t.check(d.steps[0].raised_at == d.steps[0].raised_at and d.broken_count() == 0, "raising it again changes nothing")
+	t.check(d.steps[0].raised_at == first_at and d.broken_count() == 0 and d.took_up_count == 0, "raising it again changes nothing (raised at %.1f)" % first_at)
 	# A bearer fallen at the muster before his time: an escort carries it; with none left, the step breaks at its time.
 	var u := _world()
 	var du := _bh(u)
+	var muster_escorts := _escorts(du, 1)
 	_kill(u, du.bearer(1))
 	du._raise(1)
-	t.check(du.steps[1].raised and not du.steps[1].broken and du.bearer(1) != null and du.bearer(1) != null and _escorts(du, 1).size() == 1,
+	t.check(du.steps[1].raised and not du.steps[1].broken and muster_escorts.has(du.bearer(1)) and _escorts(du, 1).size() == 1,
 		"a bearer fallen before his time: an escort carries the standard when it is raised")
 	Kit.done(u)
 	var w := _world()
@@ -259,9 +265,9 @@ static func _pace_and_window(t) -> void:
 		var b := d.bearer(i)
 		same = same and b.pace <= BreakHuntDirector.BH_BEARER_PACE / Person.PANIC_SPEED + 0.0001
 		for e: Person in _escorts(d, i):
-			same = same and is_equal_approx(e.pace, b.pace)
-	t.check(same, "a bearer and his escorts walk at one pace, no faster than the Hunt's (%.2f units a second)" % BreakHuntDirector.BH_BEARER_PACE)
-	var apart := true
+			same = same and is_equal_approx(e.pace, b.pace * BreakHuntDirector.BH_ESCORT_PACE)
+	t.check(same, "a bearer walks no faster than the Hunt's pace (%.2f units a second) and his escorts at %.1f times it" % [
+		BreakHuntDirector.BH_BEARER_PACE, BreakHuntDirector.BH_ESCORT_PACE])
 	var doors: Array = []
 	for i in 4:
 		doors.append(d._dest[i])
@@ -298,7 +304,7 @@ static func _escorts_follow(t) -> void:
 				worst_where = "standard %d stop %d" % [i, k]
 			pair_ok = pair_ok and gap > 2.0 * SilentDoom.RADIUS
 			var at := d.bearer(i).ground_pos
-			near_ok = near_ok and g0.post.distance_to(at) <= BreakHuntDirector.BH_FLANK_NEAR + 0.01 and g1.post.distance_to(at) <= BreakHuntDirector.BH_FLANK_NEAR + 0.01
+			near_ok = near_ok and g0.post.distance_to(at) <= BreakHuntDirector.BH_GUARD_REACH and g1.post.distance_to(at) <= BreakHuntDirector.BH_GUARD_REACH
 			for j in 4:
 				if j == i:
 					continue
@@ -308,7 +314,7 @@ static func _escorts_follow(t) -> void:
 		# Back to the muster for the next walk's check.
 		_march_to(s, i, d.steps[i].spot)
 	t.check(stops > 12 and pair_ok, "at every stop of every walk (%d) the two escorts' posts stand more than 1.6 apart (closest %.2f at %s)" % [stops, worst, worst_where])
-	t.check(near_ok, "and within a pace of the bearer")
+	t.check(near_ok, "and within the guard reach of the bearer")
 	t.check(cross_ok, "and more than 1.6 from every other standard's escorts")
 	# The escorts are sent to the posts beside him, not left at the muster.
 	var d2 := d
@@ -317,6 +323,101 @@ static func _escorts_follow(t) -> void:
 	var g0: HuntDirector.Guard = d2.steps[0].party[0]
 	t.check(e0.mind == Person.Mind.DUTY and e0.goal().distance_to(g0.post) < 0.6 and g0.post.distance_to(d2.steps[0].spot) > 1.5,
 		"each look sends an escort to the post beside the bearer where he now is (%s -> %s)" % [e0.goal(), g0.post])
+	Kit.done(s)
+
+
+## The company on a real walk (wave 1's finding, the first review's I1): bodies stepped frame by frame along each of the four routes at their own paces
+## (the test world does not walk them): the bearer along the street at the Hunt's pace, each escort straight toward the place the director last gave
+## him at his own pace (1.3 times the bearer's). At every frame the two escorts stand more than 1.6 apart and each within the guard reach of the
+## bearer; the closest and the farthest are printed.
+static func _walk_model(t) -> void:
+	var worst_gap := INF
+	var worst_reach := 0.0
+	var bad := 0
+	var frames := 0
+	var where := ""
+	var dt := 0.05
+	for i in 4:
+		var s := _world()
+		var d := _bh(s)
+		d._raise(i)
+		var road := d.crowd._grid.path(d.steps[i].spot, d.house_doors[d._dest[i]])
+		var b := d.bearer(i)
+		var at := b.ground_pos
+		var k := 0
+		var end := d.house_doors[d._dest[i]]
+		var guard: Array = d.steps[i].party
+		var route_bad := 0
+		while k < road.size() and at.distance_to(end) > 2.5:
+			var left := Person.PANIC_SPEED * b.pace * dt
+			while left > 0.0 and k < road.size():
+				var to: Vector2 = road[k]
+				var gap := at.distance_to(to)
+				if gap <= left:
+					at = to
+					left -= gap
+					k += 1
+				else:
+					at = at.move_toward(to, left)
+					left = 0.0
+			Kit.arrive(b, at)
+			for g: HuntDirector.Guard in guard:
+				var e: Person = g.man
+				Kit.arrive(e, e.ground_pos.move_toward(g.post, Person.PANIC_SPEED * e.pace * dt))
+			Kit.run_for(s, dt)
+			var p0: Person = (guard[0] as HuntDirector.Guard).man
+			var p1: Person = (guard[1] as HuntDirector.Guard).man
+			var pair := p0.ground_pos.distance_to(p1.ground_pos)
+			var reach := maxf(p0.ground_pos.distance_to(b.ground_pos), p1.ground_pos.distance_to(b.ground_pos))
+			frames += 1
+			if pair < worst_gap:
+				worst_gap = pair
+				where = "route %d frame %d" % [i, frames]
+			worst_reach = maxf(worst_reach, reach)
+			if pair <= 2.0 * SilentDoom.RADIUS or reach > BreakHuntDirector.BH_GUARD_REACH:
+				bad += 1
+				route_bad += 1
+		t.check(not d.steps[i].broken and d.taken() == 0 and route_bad == 0, "route %d: the company walked to the last stretch with its standard standing and no bad frame (%d)" % [i, route_bad])
+		t.check(d.pair_looks > 10 and d.pair_min < INF and d.pair_low == 0, "route %d: the director sampled the pair at %d looks, closest %.2f, %d at 1.6 or less" % [i, d.pair_looks, d.pair_min, d.pair_low])
+		Kit.done(s)
+	t.check(frames > 2000 and bad == 0, "on all four walks (%d frames) the escorts stand more than 1.6 apart and within %.1f of the bearer at every frame (%d bad; closest %.2f at %s, farthest %.2f)" % [
+		frames, BreakHuntDirector.BH_GUARD_REACH, bad, worst_gap, where, worst_reach])
+
+
+## Ruling P5-T7-R9: no muster's street to a house passes within 2.7 of another house's door (a planted company stands there), sampled here
+## from the streets themselves.
+static func _street_clear(t) -> void:
+	var s := _world()
+	var d := _bh(s)
+	var least := INF
+	var streets := 0
+	for m in d.steps.size():
+		for h in d.houses.size():
+			var route := d.crowd._grid.path(d.steps[m].spot, d.house_doors[h])
+			for g in d.houses.size():
+				if g == h:
+					continue
+				var from := d.steps[m].spot
+				for pt in route:
+					least = minf(least, d.house_doors[g].distance_to(Geometry2D.get_closest_point_to_segment(d.house_doors[g], from, pt)))
+					from = pt
+			streets += 1
+	t.check(streets == 12 and least >= BreakHuntDirector.BH_DOOR_CLEAR, "the 12 streets pass every other house's door by %.2f or more (the least asked is %.1f)" % [least, BreakHuntDirector.BH_DOOR_CLEAR])
+	t.check(d.street_clearance() >= BreakHuntDirector.BH_DOOR_CLEAR, "and the director reports the same (%.2f)" % d.street_clearance())
+	# A company planted at a house does not stand within 1.6 of an escort walking another standard's street.
+	var near := 0
+	for h in d.houses.size():
+		var planted := d.house_doors[h]
+		for m in d.steps.size():
+			for g in d.houses.size():
+				if g == h:
+					continue
+				var from := d.steps[m].spot
+				for pt in d.crowd._grid.path(d.steps[m].spot, d.house_doors[g]):
+					var gap := planted.distance_to(Geometry2D.get_closest_point_to_segment(planted, from, pt))
+					near += 1 if gap < BreakHuntDirector.BH_ESCORT_OFF + 2.0 * SilentDoom.RADIUS else 0
+					from = pt
+	t.check(near == 0, "so a planted company (0.9 each side of its bearer) is never within a Doom's reach of a company on its way (%d points)" % near)
 	Kit.done(s)
 
 
@@ -375,7 +476,8 @@ static func _break_unguarded(t) -> void:
 	_raise(m, 2)
 	for e: Person in _escorts(dm, 2):
 		e.statuses[&"frail"] = 1.0
-	t.check(not dm._guarded(2), "frail escorts do not guard")
+	Kit.run_for(m, LOOK)
+	t.check(not dm._guarded(2) and not dm.steps[2].broken, "frail escorts do not guard")
 	_kill(m, dm.bearer(2))
 	Kit.run_for(m, LOOK)
 	t.check(dm.steps[2].broken and not (m.banners as Array).has("THE STANDARD IS TAKEN UP"), "the bearer killed with both escorts frail: broken, not taken up")
@@ -389,7 +491,7 @@ static func _break_unguarded(t) -> void:
 		_kill(r, e)
 	_kill(r, dr.bearer(3))
 	Kit.run_for(r, LOOK)
-	t.check(dr.steps[3].broken and dr.timeline.seconds_to("step_3") >= -1.0, "the fourth breaks; the win needs all four")
+	t.check(dr.steps[3].broken and dr.broken_count() == 1 and not dr.broken_all(), "the fourth breaks; the win needs all four")
 	Kit.done(r)
 
 
@@ -428,61 +530,100 @@ static func _guard_rules(t) -> void:
 	Kit.done(s)
 
 
+## The take-up (Ruling P5-T7-R8): a guarded bearer struck dead is judged as he stood at the look before, so the fright his death gives his escorts does
+## not stop one taking the standard up; he and his fellow are steadied for BH_STEADY seconds; after that the normal rules apply.
 static func _take_up(t) -> void:
 	var s := _world()
 	var d := _bh(s)
-	_steady(d)
 	_raise(s, 0)
 	var es := _escorts(d, 0)
-	var first: Person = es[0]
-	var second: Person = es[1]
 	var goal: Vector2 = d.house_doors[d._dest[0]]
-	_kill(s, d.bearer(0))
+	_kill(s, d.bearer(0))  # a loud kill, witnessed: his escorts shelter or run
 	Kit.run_for(s, LOOK)
-	t.check(not d.steps[0].broken and d.bearer(0) != null and (d.bearer(0) == first or d.bearer(0) == second) and (s.banners as Array).has("THE STANDARD IS TAKEN UP"),
-		"the bearer killed with escorts by him: an escort takes the standard up (%s)" % [s.banners])
+	t.check(not d.steps[0].broken and d.bearer(0) != null and es.has(d.bearer(0)) and (s.banners as Array).has("THE STANDARD IS TAKEN UP"),
+		"a guarded bearer killed in a witnessed blow: an escort takes the standard up, not a break (%s)" % [s.banners])
 	var up := d.bearer(0)
 	var left: HuntDirector.Guard = d.steps[0].party[0]
 	t.check(left.post.distance_to(up.ground_pos) <= BreakHuntDirector.BH_FLANK_NEAR, "(the one left is sent to a place beside the new bearer at once)")
-	Kit.arrive(left.man, left.post)  # (people do not walk in this world)
+	t.check(up.fearless_left > 0.0 and (left.man as Person).fearless_left > 0.0 and up.fearless_left <= BreakHuntDirector.BH_STEADY + 0.01,
+		"he and his fellow are steadied for %d s (%.1f, %.1f)" % [roundi(BreakHuntDirector.BH_STEADY), up.fearless_left, (left.man as Person).fearless_left])
+	var tagged := false
+	for l: String in Kit.labels(d):
+		tagged = tagged or l.begins_with("STANDARD - TAKEN UP - HOUSE IN ")
+	t.check(tagged, "the new bearer's tag reads STANDARD - TAKEN UP - HOUSE IN m:ss while he is steadied (%s)" % [Kit.labels(d)])
 	t.check(d.steps[0].party.size() == 1 and (d.steps[0].party[0] as HuntDirector.Guard).man != up and d.took_up_count == 1 and d.hint_phase() == "carried",
 		"he is no longer among the escorts; the hint reads 'carried' (%s)" % d.hint_phase())
-	t.check(up.badge_glyph == BreakHuntDirector.BH_FLAG and up.goal().distance_to(goal) < 0.6 and d.guarded(0),
-		"he carries the pennant and marches on for the same house; his last escort guards him")
-	# Taken up again: the last escort carries it.
+	t.check(up.badge_glyph == BreakHuntDirector.BH_FLAG and up.goal().distance_to(goal) < 0.6, "he carries the pennant and marches on for the same house")
+	# His fellow closes up (people do not walk in this world) and a look sees him guarding.
+	Kit.arrive(left.man, left.post)
+	Kit.run_for(s, LOOK)
+	t.check(d.guarded(0) and not d.steps[0].broken, "his last escort guards him once he has closed up")
+	# Taken up again: the steadied fellow carries it though the second death frightens him as well.
 	_kill(s, up)
 	Kit.run_for(s, LOOK)
 	var last := d.bearer(0)
 	t.check(not d.steps[0].broken and last != null and last != up and d.steps[0].party.is_empty() and d.took_up_count == 2,
-		"the new bearer killed too: his last escort takes it up (%d taken up)" % d.took_up_count)
-	t.check(not d.guarded(0), "and now no one guards him")
+		"the new bearer killed too, his fellow steadied and in reach: another take-up (%d taken up)" % d.took_up_count)
+	t.check(not d.guarded(0) and last.fearless_left > 0.0, "and now no one guards him, but he is steadied")
+	# With no escort left in reach, it breaks.
 	_kill(s, last)
 	Kit.run_for(s, LOOK)
-	t.check(d.steps[0].broken and d.bearer(0) == null and d.broken_count() == 1, "he is killed unguarded: the standard is broken at last")
+	t.check(d.steps[0].broken and d.bearer(0) == null and d.broken_count() == 1, "he is killed with no escort left: the standard is broken at last")
 	Kit.done(s)
 
-	# Bearer and one escort killed together: the other takes it up.
+	# After the steadiness the normal rules apply: a fright with nobody guarding breaks the standard.
+	var a := _world()
+	var da := _bh(a)
+	_raise(a, 1)
+	_kill(a, da.bearer(1))
+	Kit.run_for(a, LOOK)
+	var carrier := da.bearer(1)
+	for g: HuntDirector.Guard in da.steps[1].party:
+		_kill(a, g.man)
+	Kit.run_for(a, BreakHuntDirector.BH_STEADY + 1.0)
+	carrier.fearless_left = 0.0
+	carrier.mind = Person.Mind.PANIC
+	Kit.run_for(a, 2.0 * LOOK)
+	t.check(da.steps[1].broken, "once the steadiness is over, a frightened bearer with no escort by him breaks his standard")
+	Kit.done(a)
+
+	# An unguarded bearer killed still breaks (his escorts were dead before the blow).
 	var u := _world()
 	var du := _bh(u)
-	_steady(du)
-	_raise(u, 1)
-	var e1: Person = _escorts(du, 1)[0]
-	var e2: Person = _escorts(du, 1)[1]
-	_kill(u, du.bearer(1))
-	_kill(u, e1)
+	_raise(u, 2)
+	for e: Person in _escorts(du, 2):
+		_kill(u, e)
 	Kit.run_for(u, LOOK)
-	t.check(du.bearer(1) == e2 and not du.steps[1].broken, "bearer and one escort killed in one blow: the other takes it up")
+	du.bearer(2).fearless_left = 600.0
+	_kill(u, du.bearer(2))
+	Kit.run_for(u, LOOK)
+	t.check(du.steps[2].broken and du.took_up_count == 0 and not (u.banners as Array).has("THE STANDARD IS TAKEN UP"), "a bearer killed with no escort left breaks his standard")
 	Kit.done(u)
 
-	# A loud kill: the death frightens the company, so no escort guards and the standard breaks instead of being taken up.
-	var l := _world()
-	var dl := _bh(l)
-	_raise(l, 3)
-	_kill(l, dl.bearer(3))
-	Kit.run_for(l, LOOK)
-	t.check(dl.steps[3].broken and not (l.banners as Array).has("THE STANDARD IS TAKEN UP"),
-		"a loud kill frightens his escorts too: none guards, so the standard breaks (the Hunt's rule: a fright counts whoever set it going)")
-	Kit.done(l)
+	# Bearer and one escort killed together: the other takes it up.
+	var b := _world()
+	var db := _bh(b)
+	_raise(b, 1)
+	var e1: Person = _escorts(db, 1)[0]
+	var e2: Person = _escorts(db, 1)[1]
+	_kill(b, db.bearer(1))
+	_kill(b, e1)
+	Kit.run_for(b, LOOK)
+	t.check(db.bearer(1) == e2 and not db.steps[1].broken, "bearer and one escort killed in one blow: the other takes it up")
+	Kit.done(b)
+
+	# An escort who was held by the god at the blow (whispered) does not take it up.
+	var w := _world()
+	var dw := _bh(w)
+	_raise(w, 3)
+	for e: Person in _escorts(dw, 3):
+		e.mind = Person.Mind.WHISPERED
+		e._whisper_left = 30.0  # (a whisper that lasts the look, and a mind no fright can take it from)
+		e.fearless_left = 100.0
+	_kill(w, dw.bearer(3))
+	Kit.run_for(w, LOOK)
+	t.check(dw.steps[3].broken, "escorts held by the god when the bearer falls: none takes the standard up")
+	Kit.done(w)
 
 	# A bearer held (a whisper) and back on his feet takes the march up again.
 	var h := _world()
@@ -545,7 +686,7 @@ static func _taken(t) -> void:
 	t.check(d._dest[1] >= 0 and not d._taken[d._dest[1]], "a later bearer is bound for a house still standing free (%d)" % d._dest[1])
 	# A bearer at a taken house's door does not take it twice.
 	_march_to(s, 1, d.house_doors[h])
-	t.check(d.taken() == 1 or d._dest[1] != h, "and a taken house is not taken again")
+	t.check(d.taken() == 1 and d._dest[1] != h and not d._planted[1], "and a taken house is not taken again; he marches on another")
 	Kit.done(s)
 
 	# A bearer not on duty (frightened) near a door plants nothing.
@@ -780,7 +921,7 @@ static func _teardown_clean(t) -> void:
 	d.teardown()
 	t.check(not h.damage_filter.is_valid() and b.badge_left <= 0.0 and d.standards.is_empty(), "teardown puts the house's own filter back and takes the pennant off")
 	d.teardown()
-	t.check(true, "a second teardown raises no error")
+	t.check(not h.damage_filter.is_valid() and d.standards.is_empty() and d.timeline == null, "a second teardown raises no error and changes nothing")
 	Kit.done(s)
 
 

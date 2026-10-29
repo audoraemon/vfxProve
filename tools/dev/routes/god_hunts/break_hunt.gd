@@ -33,7 +33,8 @@ static func _bh(ctx: Dictionary) -> BreakHuntDirector:
 
 
 ## The numbers this Hunt's report lines print: standards broken, houses taken, standards marching, taken up by an escort, stopped by the walls, the
-## soonest standard's seconds to a house and the hint's phase.
+## soonest standard's seconds to a house, the closest the two escorts of a marching standard stood to each other in motion and the looks that was 1.6
+## or less (`pair=min/low`, as Hunt 1's check prints), and the hint's phase.
 static func state(_bc, ctx: Dictionary) -> String:
 	var d := _bh(ctx)
 	if d == null:
@@ -42,8 +43,8 @@ static func state(_bc, ctx: Dictionary) -> String:
 	for i in d.steps.size():
 		marching += 1 if d.steps[i].raised and not d.steps[i].broken else 0
 	var soon := d.soonest_eta()
-	return "broken=%d taken=%d marching=%d took_up=%d walled=%d soonest=%s phase=%s" % [d.broken_count(), d.taken(), marching, d.took_up_count, d.walled_count,
-		"-" if soon == INF else str(roundi(soon)), d.hint_phase()]
+	return "broken=%d taken=%d marching=%d took_up=%d walled=%d soonest=%s pair=%.2f/%d phase=%s" % [d.broken_count(), d.taken(), marching, d.took_up_count,
+		d.walled_count, "-" if soon == INF else str(roundi(soon)), minf(d.pair_min, 99.0), d.pair_low, d.hint_phase()]
 
 
 ## The standards in the street, soonest to a house first (a planted one last): the raised, unbroken ones whose bearer lives and is out of doors.

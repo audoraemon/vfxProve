@@ -28,7 +28,7 @@ extends ExodusDirector
 ## strip_rows(), busy(), report(), tour().
 
 ## The processions' houses (MS §6 *fg*): the dwelling nearest each point whose door the street reaches from the pyre, with a walk of FH_WALK_MIN seconds
-## or more and a lane behind it for the file (_roomy_door()): the west, the north, the south-east and the south-west (the spec's north-east (12.5, -11) has
+## or more and a lane behind it for the file (_best_door()): the west, the north, the south-east and the south-west (the spec's north-east (12.5, -11) has
 ## no dwelling more than 16 units from the pyre, and the north-east corner's doors are in pockets). The walk is 28-33 s estimated at pace 0.5 (the spec's
 ## 25-32 units and 50-64 s do not agree: Task 13's to tune); their words and the names on the tags and banners.
 const FH_HOUSE_POINTS := [Vector2(-11.5, 7.0), Vector2(3.0, -12.0), Vector2(12.0, 12.0), Vector2(-8.0, 11.0)]
@@ -62,6 +62,12 @@ const FH_STOP_SHORT := 0.45
 ## short of a goal, which together take about 2.5 s off the estimate, so forming 8 + (27.5 - 2.5) + burning 12 make at least 45 s, the room an instant loss is
 ## warned with (MS §0; review of wave 1, point b).
 const FH_WALK_MIN := 27.5
+## The least distance between a house's door and road and another's (outside FH_QUEUE of the pyre): more than two Silent Doom radii and a bit, so a cast on one
+## procession's escorts never lands on another's and the files never meet (Hunt 4's rule).
+const FH_CLEAR := 2.7
+## Inside this far of the pyre the roads may be nearer than FH_CLEAR to each other: measured in Aldermere, the west and south-east roads share their last
+## 4.6-6.5 units (the plaza before the Temple), so the rule starts a little beyond FH_QUEUE (5.0), at 7.0.
+const FH_MERGE := 7.0
 ## An escort within this far of his place stands at it (the pair measure).
 const FH_STOPPED := 0.6
 ## When each procession forms up at the latest (0:30, 1:35, 2:40, 3:45 *fg*) and the chain (a rule: no wait over 45 s after the one before is
@@ -124,6 +130,10 @@ class Procession:
 	## How it was freed ("broken", "walls") or "" if not.
 	var freed_by := ""
 
+## Each procession's road from its door to the pyre (polylines, in the order of the households), kept for the house clearance.
+var house_roads: Array = []
+## How far each house keeps from the houses given before it (house_clearance(), 99 for the first): FH_CLEAR or more unless no dwelling could (_plan()).
+var house_clear: Array[float] = []
 ## The pyre, snapped to walkable ground (_plan()).
 var pyre_at := Vector2.INF
 ## Every procession, in order (the index of its Household).
@@ -190,38 +200,94 @@ func _plan() -> void:
 		h.name = String(FH_HOUSE_NAMES[i])
 		h.gate = 0
 		var tried := skip.duplicate()
+		var best := {"clear": -1.0}
 		for k in HOUSE_TRIES:
 			var near := _house_near(FH_HOUSE_POINTS[i], tried)
 			if near == null:
 				break
 			tried.append(near)
-			var door := _roomy_door(near)
-			if door != Vector2.INF:
-				h.house = near
-				h.door = door
+			var pick := _best_door(near)
+			if pick.is_empty():
+				continue
+			if float(pick.clear) > float(best.clear):
+				best = {"clear": pick.clear, "door": pick.door, "house": near}
+			if float(pick.clear) >= FH_CLEAR:
 				break
-		if h.house == null:
+		if not best.has("house"):
 			push_warning("FaceHalcyonDirector: no house for %s" % h.words)
 			continue
+		h.house = best.house
+		h.door = best.door
+		house_clear.append(minf(float(best.clear), 99.0))
+		if float(best.clear) < FH_CLEAR:
+			push_warning("FaceHalcyonDirector: %s keeps only %.1f from another procession (no dwelling keeps %.1f)" % [h.words, float(best.clear), FH_CLEAR])
 		skip.append(h.house)
 		households.append(h)
+		house_roads.append(_road(h.door))
 		procs.append(Procession.new())
 
 
-## A door of dwelling `s` for a procession (MS §6): the first of its four sides the street reaches from the pyre, with a walk to the pyre of at least
-## FH_WALK_MIN seconds (so a burn is warned FH_FORM + FH_WALK_MIN + FH_BURN seconds ahead) and a lane behind it for the escorts (_tail_from()); Vector2.INF for none.
-## Only reads.
-func _roomy_door(s: Structure) -> Vector2:
+## The best door of dwelling `s` for a procession (MS §6): of its four sides those the street reaches from the pyre, with a walk to the pyre of at least
+## FH_WALK_MIN seconds (so a burn is warned FH_FORM + FH_WALK_MIN + FH_BURN seconds ahead) and a lane behind for the escorts (_tail_from()), the one that
+## keeps farthest from the processions already given a house (_clearance_of_others()); {"door", "clear"}, empty for none. Only reads.
+func _best_door(s: Structure) -> Dictionary:
 	var half := s.footprint.size * 0.5 + Vector2(0.5, 0.5)
+	var best := {}
 	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
 		var door := _walkable(s.center() + off)
 		if crowd._grid != null and crowd._grid.path(pyre_at, door).is_empty():
 			continue
 		if _walk_secs(door) < FH_WALK_MIN:
 			continue
-		if not _tail_from(door, _road(door)).is_empty():
-			return door
-	return Vector2.INF
+		var road := _road(door)
+		if _tail_from(door, road).is_empty():
+			continue
+		var clear := _clearance_of_others(door, road)
+		if best.is_empty() or clear > float(best.clear):
+			best = {"door": door, "clear": clear}
+	return best
+
+
+## How far `door` and `road` (a polyline from it to the pyre) keep from every road already given to a procession (review of Task 8, F1; Hunt 4's rule is that
+## it be FH_CLEAR or more): see house_clearance(); INF when none has a house yet. Only reads.
+func _clearance_of_others(door: Vector2, road: Array[Vector2]) -> float:
+	var least := INF
+	for k in house_roads.size():
+		var other: Array[Vector2] = house_roads[k]
+		least = minf(least, house_clearance(door, road, other[0], other))
+	return least
+
+
+## The least distance between one house's door and road and another's: each door from the other's road, and the two roads from each other at points
+## farther than FH_MERGE from the pyre (nearer it every road comes in by the same plaza). Only reads.
+func house_clearance(door_a: Vector2, road_a: Array[Vector2], door_b: Vector2, road_b: Array[Vector2]) -> float:
+	var least := minf(_to_line(door_a, road_b), _to_line(door_b, road_a))
+	for q in _samples(road_a):
+		if q.distance_to(pyre_at) > FH_MERGE:
+			least = minf(least, _to_line(q, road_b))
+	for q in _samples(road_b):
+		if q.distance_to(pyre_at) > FH_MERGE:
+			least = minf(least, _to_line(q, road_a))
+	return least
+
+
+## Points every 0.5 along polyline `line`.
+func _samples(line: Array[Vector2]) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for k in range(line.size() - 1):
+		var steps := maxi(1, ceili(line[k].distance_to(line[k + 1]) / 0.5))
+		for q in steps:
+			out.append(line[k].lerp(line[k + 1], float(q) / float(steps)))
+	out.append(line.back())
+	return out
+
+
+## The distance from `at` to polyline `line`.
+func _to_line(at: Vector2, line: Array[Vector2]) -> float:
+	var least := INF
+	for k in range(line.size() - 1):
+		least = minf(least, Geometry2D.get_closest_point_to_segment(at, line[k], line[k + 1]).distance_to(at))
+	return least
 
 
 ## A lane behind `door`, off the road (the walk grid's path from it to the pyre), long enough for the second and third escorts to stand in (BFS over the

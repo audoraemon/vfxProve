@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_chain(t)
 	_form_and_walk(t)
 	_file_places(t)
+	_house_clearance(t)
 	_body_walk(t)
 	_tag_matches_rule(t)
 	_report(t)
@@ -311,6 +312,7 @@ static func _file_places(t) -> void:
 	var worst := INF
 	var far := 0.0
 	var points := 0
+	var under := 0
 	for i in 4:
 		var h: ExodusDirector.Household = d.households[i]
 		var pr: FaceHalcyonDirector.Procession = d.procs[i]
@@ -325,13 +327,18 @@ static func _file_places(t) -> void:
 				Kit.arrive(pr.charge.man as Person, here)
 				d._note_trail(pr, pr.charge.man as Person)
 				var spots := d._file_places(pr, here)
+				var near := INF
 				for a in 3:
 					for b in range(a + 1, 3):
-						worst = minf(worst, spots[a].distance_to(spots[b]))
+						near = minf(near, spots[a].distance_to(spots[b]))
 					far = maxf(far, spots[a].distance_to(here))
+				worst = minf(worst, near)
+				under += 1 if near < 2.0 * SilentDoom.RADIUS + 0.05 else 0
 				points += 1
 			at = to
-	t.check(points > 500 and worst > 1.5, "along all four roads (%d points) the escorts' places are more than 1.5 apart (nearest %.2f; round a right-angled lane corner the 2.6 along the road are 1.6 apart as the crow flies; the bodies are pinned in _body_walk)" % [points, worst])
+	t.check(points > 500 and worst > 1.5 and under * 100 <= points * 2,
+		"along all four roads (%d points) the file's places are more than 1.5 apart (nearest %.2f) and under 1.65 apart at only %d of them (at most 2%%): round a right-angled lane corner the 2.6 along the road are 1.6 apart as the crow flies, so the planned places can dip where the bodies never do (_body_walk pins those)" % [points, worst, under])
+	print("NOTE: face_halcyon: file places under 1.65 apart at %d of %d road points, nearest %.2f" % [under, points, worst])
 	t.check(far <= FaceHalcyonDirector.FH_SPAN, "every place is within %.1f of the believer (farthest %.2f)" % [FaceHalcyonDirector.FH_SPAN, far])
 	# Standing on their places they are able: at the door, on the road and at the stake.
 	var n := _world()
@@ -350,6 +357,31 @@ static func _file_places(t) -> void:
 		seeded = seeded and (e.procs[i] as FaceHalcyonDirector.Procession).places.size() == 3
 	t.check(seeded, "every procession has its three places")
 	Kit.done(n)
+	Kit.done(s)
+
+
+## Every house keeps FH_CLEAR from the others (review of Task 8, F1; Hunt 4's rule): each door from every other procession's road, and the roads from each other
+## beyond FH_MERGE of the pyre. Aldermere has three approaches to the Temple's plaza (north-east, west, south) and the south one is shared by its south-east
+## and south-west houses (the lane (3, 7)-(8, 9) is one road), and the south-west house's door is 2.0 from the west road, so no fourth dwelling can keep it:
+## the first three houses are pinned at FH_CLEAR, the fourth at the least the town gives (its pair distances are pinned, and the director names the shortfall).
+static func _house_clearance(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	var strict := true
+	var least := INF
+	var short := []
+	for a in 4:
+		for b in range(a + 1, 4):
+			var c := d.house_clearance((d.households[a] as ExodusDirector.Household).door, d.house_roads[a], (d.households[b] as ExodusDirector.Household).door, d.house_roads[b])
+			if c < FaceHalcyonDirector.FH_CLEAR:
+				short.append("%d-%d %.2f" % [a, b, c])
+				strict = strict and b == 3  # only the last house may fall short
+				least = minf(least, c)
+	t.check(strict and d.house_clear.size() == 4 and d.house_clear[0] >= 98.0 and d.house_clear[1] >= FaceHalcyonDirector.FH_CLEAR and d.house_clear[2] >= FaceHalcyonDirector.FH_CLEAR,
+		"the west, north and south-east houses keep %.1f from each other (door to road, roads beyond %.0f of the pyre); only the south-west falls short (%s)" % [
+		FaceHalcyonDirector.FH_CLEAR, FaceHalcyonDirector.FH_MERGE, short])
+	t.check(least >= 1.5 and d.house_clear[3] >= 1.5 and short.size() <= 2,
+		"and the south-west house keeps at least 1.5 from the others, from two of them at most (nearest %.2f, the town's best)" % least)
 	Kit.done(s)
 
 

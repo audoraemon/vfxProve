@@ -76,12 +76,12 @@ static func _frame(t) -> void:
 	t.check(MissionHints.line("expel_inquisitor") == "Stop each lantern-warden (gold): kill him, or put him out of the walls."
 		and MissionHints.line("expel_inquisitor", "captain") == "The captain walks his rounds: kill him, or frighten him three times."
 		and MissionHints.line("expel_inquisitor", "near") == "The captain nears the Citadel: stop him now.", "the three hints")
-	t.check(m.camera_at == ExpelInquisitorDirector.CAMERA_AT and m.intro_from == m.camera_at + Vector2(0.0, 6.0), "the camera is the director's")
+	t.check(m.camera_at == ExpelInquisitorDirector.EI_CAMERA_AT and m.intro_from == m.camera_at + Vector2(0.0, 6.0), "the camera is the director's")
 	# C2: no parent const name is redeclared (a parse error otherwise); the Hunt's numbers carry its prefix.
 	var own := (ExpelInquisitorDirector as GDScript).get_script_constant_map()
 	var prefixed := true
 	for k: String in own.keys():
-		prefixed = prefixed and (k.begins_with("EI_") or ["MARK_WAIT", "CAMERA_AT"].has(k))
+		prefixed = prefixed and k.begins_with("EI_")
 	t.check(prefixed, "every const of the Hunt carries the EI_ prefix (C2)")
 
 
@@ -431,21 +431,44 @@ static func _captain_safe(t) -> void:
 	_out(d, cap)
 	var visit := ExpelInquisitorDirector.EI_VISIT
 	var banners: Array = s.banners
-	for i in cap.stops.size():
-		t.check(d.captain_eta() == INF and d.hint_phase() == "captain" and not Kit.labels(d).has("CAPTAIN - CITADEL IN 0:00"), "stop %d: still on his round, no countdown" % (i + 1))
+	var last := cap.stops.size() - 1
+	for i in last:
+		t.check(d.captain_eta() == INF and d.strip_rows().is_empty() and d.hint_phase() == "captain", "stop %d: still on his round, no countdown" % (i + 1))
 		_walk_to(s, cap, cap.stop_doors[i])
 		Kit.run_for(s, visit + AssassinateDirector.TICK + DT)
-	t.check(cap.state == State.WALKING and cap.leg == cap.stops.size() and cap.target.goal().distance_to(d.safe_at) < 0.5, "his round done, he makes for the Citadel")
+	t.check(d.captain_eta() == INF and not banners.has("THE CAPTAIN NEARS THE CITADEL"), "on his way to the last stop: no countdown yet")
+	# His last visit begins: the countdown, the strip row and the tag show (Ruling P5-T6-R1), with the whole walk ahead of him.
+	_walk_to(s, cap, cap.stop_doors[last])
+	t.check(cap.state == State.VISITING and cap.leg == last, "(set-up) he is indoors at his last stop")
 	var eta := d.captain_eta()
-	t.check(eta < INF and eta > 0.0, "his arrival is counted (%.1f s)" % eta)
 	var rows := d.strip_rows()
 	var citadel_tag := ""
 	for m in d.tags():
 		if m.label.begins_with("CAPTAIN - CITADEL IN"):
 			citadel_tag = m.label
+	t.check(eta >= 45.0 and eta < INF, "the countdown first shows with at least 45 s to run (%.1f s)" % eta)
 	t.check(rows.size() == 1 and rows[0].label == "The captain reaches the Citadel" and absf(float(rows[0]["in"]) - eta) < 0.1 and citadel_tag != "",
-		"the strip has its row and the tag counts down (%s; %s)" % [rows, citadel_tag])
+		"the strip has its row and the tag counts down from his last visit (%s; %s)" % [rows, citadel_tag])
+	t.check(not banners.has("THE CAPTAIN NEARS THE CITADEL") and d.hint_phase() == "captain",
+		"and the 20 s banner and hint have not fired in the same look (%s)" % [banners])
 	t.check(Kit.edged(d, citadel_tag) and Kit.edged(d, "CITADEL"), "the captain and the Citadel are pointed at from the edge")
+	# The window at the two ends of PACE_RANGE (visit left included, then the walk through the waypoint).
+	var slow := 0.0
+	var fast := 0.0
+	var original := cap.target.pace
+	cap.target.pace = Person.PACE_RANGE.x
+	slow = d.captain_eta()
+	cap.target.pace = Person.PACE_RANGE.y
+	fast = d.captain_eta()
+	cap.target.pace = original
+	t.check(fast >= 45.0 and slow >= fast, "from the start of the last visit: %.1f s at the fast end, %.1f s at the slow end, both at least 45 s" % [fast, slow])
+	print("NOTE: expel_inquisitor countdown window: %.1f s (fast pace) to %.1f s (slow pace), the walk alone %.1f / %.1f s" % [fast, slow, fast - visit, slow - visit])
+	Kit.run_for(s, visit + AssassinateDirector.TICK + DT)
+	t.check(cap.state == State.WALKING and cap.leg == cap.stops.size() and cap.target.goal().distance_to(d._walkable(ExpelInquisitorDirector.EI_FINAL_WAYPOINT)) < 0.5
+		and cap.target.goal().distance_to(d.safe_at) > 10.0, "his round done, he walks through the final waypoint first, not straight to the gate")
+	t.check(d.captain_eta() < eta and d.captain_eta() >= 30.0, "the countdown went on (%.1f s)" % d.captain_eta())
+	_walk_to(s, cap, d._walkable(ExpelInquisitorDirector.EI_FINAL_WAYPOINT))
+	t.check(not d.any_safe() and cap.target.goal().distance_to(d.safe_at) < 0.5, "through the waypoint he makes for the Citadel")
 	# 20 s out: the banner and the hint.
 	var near_pos := d.safe_at + Vector2(1.0, 0.0)
 	Kit.arrive(cap.target, near_pos)
@@ -587,7 +610,7 @@ static func _tags(t) -> void:
 static func _camera(t) -> void:
 	var s := _world()
 	var d := _ei(s)
-	var cam := ExpelInquisitorDirector.CAMERA_AT
+	var cam := ExpelInquisitorDirector.EI_CAMERA_AT
 	var clear := true
 	var failed := ""
 	for m in d.tags():

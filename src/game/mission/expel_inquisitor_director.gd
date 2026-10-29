@@ -18,12 +18,17 @@ extends AssassinateDirector
 ## (_house_reached()). Along the wall side of a quarter (MS §4 *fg*); the west, the south-east, the north-east. Aldermere's.
 const EI_ROUNDS := [
 	[Vector2(-13.9, -3.5), Vector2(-12.1, 3.8), Vector2(-9.9, 5.5), Vector2(-9.9, -3.5)],
-	[Vector2(13.8, 12.3), Vector2(7.9, 10.9), Vector2(6.2, 13.8), Vector2(7.9, 12.5)],
+	[Vector2(5.9, 7.2), Vector2(7.9, 10.9), Vector2(6.2, 13.8), Vector2(7.9, 12.5)],
 	[Vector2(7.9, -6.6), Vector2(7.9, -8.4), Vector2(7.85, -12.3), Vector2(6.0, -10.4)],
 ]
-## The captain's four stops as spots (MS §4 *fg*): the bell tower's door, the market's south end, the Main Gate's plaza, the east quarter
-## (Aldermere has no well in the east: its one house by the wall). Then the Citadel.
-const EI_CAPTAIN_STOPS := [Vector2(7.0, 0.8), Vector2(-3.5, 8.0), Vector2(1.7, 13.5), Vector2(11.7, -6.7)]
+## The captain's four stops as spots (MS §4 *fg*): the bell tower's door, the market's south end, the Main Gate's plaza, and last the far
+## south-east house by the east wall (Aldermere has no well in the east; this is the house farthest by path from the Citadel's gate, 41 units,
+## so his last walk is the longest the town gives: Ruling P5-T6-R1). Then the final waypoint, then the Citadel.
+const EI_CAPTAIN_STOPS := [Vector2(7.0, 0.8), Vector2(-3.5, 8.0), Vector2(1.7, 13.5), Vector2(13.8, 12.3)]
+## The street point the captain walks through between his last stop and the Citadel's gate (north of the Temple, snapped to walkable ground):
+## from the south-east house the town gives only 41 units to the gate, so the long way round the north wall (about 80) makes the warned
+## last walk 40-60 s at the fast and slow ends of PACE_RANGE (Ruling P5-T6-R1; MS §4's example reads `CITADEL IN 1:12`).
+const EI_FINAL_WAYPOINT := Vector2(0.8, -14.5)
 ## The tags' words, in the quarries' order: three wardens, then the captain.
 const EI_LABELS := ["WARDEN", "WARDEN", "WARDEN", "CAPTAIN"]
 ## How many wardens there are (the captain is the quarry after them).
@@ -51,7 +56,7 @@ const EI_NEAR_WARN := 20.0
 ## The slots on a door's ring of guards, so the captain's two guards at the Temple's door stand 1.73 apart (more than 1.6, MS §0).
 const EI_DOOR_SLOTS := 3
 ## The map tags' grey for a target waiting for his time.
-const MARK_WAIT := Color("9aa0a8")
+const EI_MARK_WAIT := Color("9aa0a8")
 ## The Citadel's gate: Aldermere's place citadel_gate.
 const EI_SAFE_PLACE := &"citadel_gate"
 ## Banners (MS §4).
@@ -60,7 +65,7 @@ const EI_FLEES := "THE CAPTAIN FLEES ALDERMERE"
 const EI_NEARS := "THE CAPTAIN NEARS THE CITADEL"
 const EI_ROW := "The captain reaches the Citadel"
 ## Where the camera stands (the west warden's quarter, clear of the HUD stack) and the strip row's key are the frame's.
-const CAMERA_AT := Vector2(-12.0, 1.0)
+const EI_CAMERA_AT := Vector2(-12.0, 1.0)
 
 ## Counted frights on the captain (EI_FRIGHTS ends it), the real seconds before the next can count, whether he fled, and whether the
 ## nearing banner was told for this approach.
@@ -68,6 +73,8 @@ var _frights := 0
 var _fright_wait := 0.0
 var _fled := false
 var _near_told := false
+## The captain has walked through EI_FINAL_WAYPOINT on his last leg (so his goal is the Citadel's gate).
+var _via := false
 ## Seconds to the next hold of the town's people (TICK).
 var _hold_in := 0.0
 
@@ -92,16 +99,21 @@ func _plan() -> void:
 	safe_label = "CITADEL"
 	var door := _walkable(lantern_door())
 	var taken: Array = [hideout]
-	for i in EI_WARDENS + 1:
-		var spots: Array = EI_ROUNDS[i] if i < EI_WARDENS else EI_CAPTAIN_STOPS
-		var stops: Array[Structure] = []
-		for spot: Vector2 in spots:
-			var h := _house_reached(spot, door, taken)
-			if h != null:
-				stops.append(h)
-				taken.append(h)
-		var at: float = float(EI_WARDEN_AT[i]) if i < EI_WARDENS else EI_CAPTAIN_AT
-		_add_quarry(String(EI_LABELS[i]), at, stops, int(EI_GUARDS[i]))
+	var captain_stops := _resolve(EI_CAPTAIN_STOPS, door, taken)  # first, so no warden's round takes the captain's houses
+	for i in EI_WARDENS:
+		_add_quarry(String(EI_LABELS[i]), float(EI_WARDEN_AT[i]), _resolve(EI_ROUNDS[i], door, taken), int(EI_GUARDS[i]))
+	_add_quarry(String(EI_LABELS[EI_WARDENS]), EI_CAPTAIN_AT, captain_stops, int(EI_GUARDS[EI_WARDENS]))
+
+
+## The houses nearest `spots` whose doors the street reaches from `door`, each different from the rest and from `taken` (which grows).
+func _resolve(spots: Array, door: Vector2, taken: Array) -> Array[Structure]:
+	var stops: Array[Structure] = []
+	for spot: Vector2 in spots:
+		var h := _house_reached(spot, door, taken)
+		if h != null:
+			stops.append(h)
+			taken.append(h)
+	return stops
 
 
 ## The Temple, by its role; null for none.
@@ -175,6 +187,8 @@ func _leg_goal(q: Quarry) -> Vector2:
 			return _walkable(q.target.ground_pos)
 		if q.leg >= q.stops.size():
 			q.leg = 0
+	if _is_captain(q) and q.leg >= q.stops.size() and not _via:
+		return _walkable(EI_FINAL_WAYPOINT)
 	return super(q)
 
 
@@ -192,6 +206,10 @@ func _arrive(q: Quarry) -> void:
 			q.target.go_duty(_leg_goal(q))
 		return
 	if not _is_captain(q) and q.stops.is_empty():
+		return
+	if _is_captain(q) and q.leg >= q.stops.size() and not _via:
+		_via = true  # through the final waypoint: now the Citadel's gate
+		q.target.go_duty(safe_at)
 		return
 	super(q)
 
@@ -323,18 +341,45 @@ func _hold_people(evacuating: bool) -> void:
 	_hold_all(people, evacuating)
 
 
-## The captain's last stop is done and he walks for the Citadel (alive, out, not yet there).
-func _final_leg(q: Quarry) -> bool:
-	return _is_captain(q) and q.state == State.WALKING and q.leg >= q.stops.size() and _alive(q.target)
+## The captain's last walk is warned (Ruling P5-T6-R1): from the moment his last visit begins until he is stopped or there -- inside the last
+## stop, or walking the last leg (through the waypoint, to the gate).
+func _warned(q: Quarry) -> bool:
+	if not _is_captain(q) or q.stops.is_empty() or not _alive(q.target):
+		return false
+	return (q.state == State.VISITING and q.leg == q.stops.size() - 1) or (q.state == State.WALKING and q.leg >= q.stops.size())
 
 
-## Mission seconds until the captain reaches the Citadel on his last leg (the remaining walk in real seconds times the clock's rate); INF while
-## he is not on it.
+## Mission seconds until the captain reaches the Citadel on his warned walk: the rest of his last visit, then the walk from the stop's door
+## (or from where he stands) through the waypoint to the gate, at his pace (real seconds times the clock's rate); INF while he is not warned.
 func captain_eta() -> float:
 	var q := captain()
-	if q == null or not _final_leg(q):
+	if q == null or not _warned(q):
 		return INF
-	return TempleReport.walk_seconds(q.target, safe_at) * (rules.clock_rate if is_instance_valid(rules) else 1.0)
+	var rate: float = rules.clock_rate if is_instance_valid(rules) else 1.0
+	var p: Person = q.target
+	var speed := maxf(Person.PANIC_SPEED * p.pace * float(p.statuses.get(&"slow", 1.0)), 0.05)
+	var wait := 0.0
+	var from: Vector2 = p.ground_pos
+	if q.state == State.VISITING:
+		wait = maxf(q.indoors_left, 0.0)
+		from = q.stop_doors[q.stops.size() - 1]
+	var way := 0.0
+	if not _via:
+		way += _way(from, _walkable(EI_FINAL_WAYPOINT))
+		from = _walkable(EI_FINAL_WAYPOINT)
+	way += _way(from, safe_at)
+	return (wait + way / speed) * rate
+
+
+## The length of the street walk from `a` to `b` (straight when no path is found).
+func _way(a: Vector2, b: Vector2) -> float:
+	var steps := crowd._grid.path(a, b) if crowd._grid != null else PackedVector2Array()
+	var total := 0.0
+	var at := a
+	for pt in steps:
+		total += at.distance_to(pt)
+		at = pt
+	return total + at.distance_to(b)
 
 
 ## Mission seconds until the captain sets out, 0 once he has.
@@ -350,7 +395,7 @@ func _warn_near() -> void:
 	var q := captain()
 	if q == null:
 		return
-	if not _final_leg(q):
+	if not _warned(q):
 		_near_told = false
 		return
 	if not _near_told and captain_eta() <= EI_NEAR_WARN:
@@ -372,7 +417,7 @@ func fled() -> bool:
 func strip_rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var q := captain()
-	if q != null and _final_leg(q):
+	if q != null and _warned(q):
 		out.append({"in": captain_eta(), "label": EI_ROW})
 	return out
 
@@ -382,7 +427,7 @@ func hint_phase() -> String:
 	var q := captain()
 	if q == null or not _alive(q.target) or q.dead or q.state == State.OUT or q.state == State.SAFE:
 		return ""
-	if _final_leg(q) and captain_eta() <= EI_NEAR_WARN:
+	if _warned(q) and captain_eta() <= EI_NEAR_WARN:
 		return "near"
 	if _is_out(q):
 		return "captain"
@@ -414,7 +459,7 @@ func tags() -> Array[MapTag]:
 		if q.state == State.WAITING and not q.dead and _alive(q.target):
 			out.append(_waiting_tag(q))
 	for q in order:
-		if _final_leg(q):
+		if _warned(q):
 			out.append(MapTag.place(safe_at, MARK_WATCHED, safe_label, 0.0, true))  # his last leg: red, and pointed at from the edge
 		elif _is_captain(q) or q.leg < q.stops.size():
 			_place_tag(q, out)  # (a warden whose last stop was just skipped has no stop tag until his round turns, never the Citadel's)
@@ -437,17 +482,19 @@ func tags() -> Array[MapTag]:
 	return out
 
 
-## `q`'s own tag. The captain: his Citadel countdown on the last leg, his fright count otherwise, the seconds he is inside; a warden: the base's.
+## `q`'s own tag. The captain: his Citadel countdown once his last visit begins, his fright count otherwise, the seconds he is inside; a warden: the base's.
 func _target_tag(q: Quarry) -> MapTag:
 	if not _is_captain(q):
 		return super(q)
 	if q.target.inside:
+		if _warned(q):
+			return MapTag.place(_door_in(q), MARK_TARGET, "%s - CITADEL IN %s" % [q.label, UiTheme.clock(ceilf(captain_eta()))], 0.0, true)
 		var words := "%s - INSIDE %s" % [q.label, UiTheme.clock(maxf(q.indoors_left, 0.0) * (rules.clock_rate if is_instance_valid(rules) else 1.0))]
 		if _frights > 0:
 			words += " - SHAKEN %d/%d" % [_frights, EI_FRIGHTS]
 		return MapTag.place(_door_in(q), MARK_TARGET, words, 0.0, true)
 	var label := "%s - SHAKEN %d/%d" % [q.label, _frights, EI_FRIGHTS]
-	if _final_leg(q):
+	if _warned(q):
 		label = "%s - CITADEL IN %s" % [q.label, UiTheme.clock(ceilf(captain_eta()))]
 	return MapTag.person(q.target.ground_pos, MARK_TARGET, label, true)
 
@@ -456,7 +503,7 @@ func _target_tag(q: Quarry) -> MapTag:
 func _waiting_tag(q: Quarry) -> MapTag:
 	var seconds := ceilf(maxf(out_at(q.index) - _clock, 0.0))
 	var at: Vector2 = hide_door if (_is_captain(q) or q.stop_doors.is_empty()) else q.stop_doors[0]
-	return MapTag.place(at, MARK_WAIT, "%s OUT IN %s" % [q.label, UiTheme.clock(seconds)], 0.0, false)
+	return MapTag.place(at, EI_MARK_WAIT, "%s OUT IN %s" % [q.label, UiTheme.clock(seconds)], 0.0, false)
 
 
 ## The results' report: the base's, with the counted frights and whether the captain fled.

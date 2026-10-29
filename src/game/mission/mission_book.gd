@@ -1064,7 +1064,7 @@ static func expel_inquisitor() -> MissionDef:
 	var m := _tier3(EXPEL_INQUISITOR, String(HuntBook.row(EXPEL_INQUISITOR).title), PackedStringArray(["The Lantern's captain walks your town.",
 		"Break his wardens, then kill him or drive him out."]))
 	_hunt(m, "Stop his three wardens, then kill the captain or drive him out of the town", "The inquisitor is gone",
-		"The captain reaches the Citadel, or dawn comes", ["doom", "smite", "whisper"], ExpelInquisitorDirector.CAMERA_AT)
+		"The captain reaches the Citadel, or dawn comes", ["doom", "smite", "whisper"], ExpelInquisitorDirector.EI_CAMERA_AT)
 	m.director = ExpelInquisitorDirector
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [AssassinateObjective.new("Expel the inquisitor", "expelled", "captain_safe"),

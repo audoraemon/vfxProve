@@ -271,7 +271,7 @@ Order: 1 -> A (2 and 3) -> B (4, 5 and 6) -> 7 -> 8 -> 9 -> the controller's opu
 - `tag_layout()` keeps labels off `chain_rect()` as it keeps them off `slots_rect()`.
 - `_draw_tags()`: a tag with `ring >= 0` gets a ring that fills clockwise (red), radius `MapTag.SIZE + 3`.
 - `event_rows()` merges `_rules.director.strip_rows()` with the timeline's and the Lantern's, soonest first.
-- `rise(at, scale := 1.0)` (MS §5 "larger": `RITE_RISE := 2.0`); `show_rite_plate(lines)`: a centred plate (y 120-200), drawn in place of the stack, strip and slots while it shows.
+- `rise(at, scale := 1.0)` (MS §5 "larger": `RITE_RISE := 2.0`); `show_rite_plate(lines)`: a centred plate (y 164-244; ruling, Task 5 fix: below the banner bar and Cael's line), drawn in place of the stack, strip and slots while it shows.
 
 - [ ] **Step 1: Failing tests** (`test_rite_hud.gd`):
   - `_chain_rect_3` / `_chain_rect_6`: with 3 and 6 slots the plate is 100 x 20, ends at `slots_rect().end.x`, sits 4 px above `SLOT_TOP`, does not intersect any `slot_rect(i)`, `stack_rect()`, `events_rect()`, `ascend_rect()`, and is inside 640 x 360.

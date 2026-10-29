@@ -417,6 +417,7 @@ static func _hunt_def(t) -> void:
 		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001, "tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])
 		t.check(def.goal == real.goal and def.lose == real.lose and def.brief == real.brief, "tier %d Hunt: brief, goal and lose are the real Hunt's" % tier)
 		t.check(def.lantern == (LanternWatch.KIND_GAZE if tier == 5 else LanternWatch.KIND_WATCH), "tier %d Hunt: the Gaze Lantern only at tier 5 (%s)" % [tier, def.lantern])
+		t.check(int(_shape(def)[8]) == (1 if tier == 5 else 0), "tier %d Hunt: a Gaze objective of its own only at tier 5 (Face Halcyon lists one) (%d)" % [tier, int(_shape(def)[8])])
 		t.check(Descent.new().setup(def, 1).tier == tier, "tier %d Hunt: the Descent plays it at the god tier" % tier)
 
 

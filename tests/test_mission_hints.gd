@@ -173,6 +173,10 @@ const SPEC := [
 	["break_hunt", "Standards (gold) march on your believers' houses (blue). Strike a bearer when no escort (red) stands by him."],
 	["break_hunt.carried", "An escort took up the standard: strike him too."],
 	["break_hunt.taken", "A house is taken: one more and the hunt has won."],
+	# face_halcyon (god P5 Task 8, MS §6): appended after the expel_inquisitor rows.
+	["face_halcyon", "Break a believer's escort (red) without a seen death: frighten, hold or turn them."],
+	["face_halcyon.pyre", "A believer is at the pyre: break his escort before the fire takes him."],
+	["face_halcyon.gaze", "Halcyon's Gaze is filling: free them quietly."],
 ]
 
 

@@ -14,10 +14,10 @@ extends ExodusDirector
 ##
 ## Each procession is one Exodus Household of one believer (its record keeps the house, door and chain), plus a Procession record of its own
 ## (phase, escorts, their places, the burn clock). Each is chained on the base's own timing: it forms at FH_PROC_AT or FH_CHAIN seconds after the one
-## before is freed or burned. Opposition stands more than 1.6 apart (MS §0): escort_spots() gives each escort a place FH_SPACE or more from the others'
-## (the ring of 1.0 where there is room, the file along a lane where there is not: Aldermere's lanes are one or two cells wide), a house is chosen only
-## if it has the room at its door and all the way to the pyre (road_roomy()), and two processions are never at one stake at a time (a second waits
-## short of the pyre).
+## before is freed or burned. Opposition stands more than 1.6 apart (MS §0): the escorts walk in file along the believer's road (Aldermere's lanes are one or
+## two cells wide, no ring fits: _file_places(), the lead ahead, two behind along his trail, 2.4 apart along it), a house is chosen only if a lane behind
+## its door has room for the file (_tail_from()), two escorts under 1.7 apart give way and the march waits for them (_give_way(), _march()), and two
+## processions are never at one stake at a time (a second waits short of the pyre).
 ##
 ## Overrides of ExodusDirector (the MS §6 checklist): _plan() (houses, the pyre, no gates, no watch, no patrols), the tune_ vars (setup(), _tune()),
 ## _place_charge() (a bound believer in the escort; the base's _appoint_charges() serves, one a house by tune_per_house), _step_held() (replaces the
@@ -28,12 +28,12 @@ extends ExodusDirector
 ## strip_rows(), busy(), report(), tour().
 
 ## The processions' houses (MS §6 *fg*): the dwelling nearest each point whose door the street reaches from the pyre, with a walk of FH_WALK_MIN seconds
-## or more and room all the way (_roomy_door()) -- west, north-east, south-east, south-west -- 23-29 units of street from the pyre in Aldermere (the
-## spec's 25-32; the north-east point moved from (12.5, -11) to (6.0, -12.4), where no dwelling of the north-east corner is more than 16 units away); their
-## words and the names on the tags and banners.
-const FH_HOUSE_POINTS := [Vector2(-11.5, 4.0), Vector2(6.0, -12.4), Vector2(12.0, 12.0), Vector2(-11.0, 12.5)]
-const FH_HOUSE_WORDS := ["the west procession", "the north-east procession", "the south-east procession", "the south-west procession"]
-const FH_HOUSE_NAMES := ["WEST", "NORTH-EAST", "SOUTH-EAST", "SOUTH-WEST"]
+## or more and a lane behind it for the file (_roomy_door()): the west, the north, the south-east and the south-west (the spec's north-east (12.5, -11) has
+## no dwelling more than 16 units from the pyre, and the north-east corner's doors are in pockets). The walk is 28-33 s estimated at pace 0.5 (the spec's
+## 25-32 units and 50-64 s do not agree: Task 13's to tune); their words and the names on the tags and banners.
+const FH_HOUSE_POINTS := [Vector2(-11.5, 7.0), Vector2(3.0, -12.0), Vector2(12.0, 12.0), Vector2(-8.0, 11.0)]
+const FH_HOUSE_WORDS := ["the west procession", "the north procession", "the south-east procession", "the south-west procession"]
+const FH_HOUSE_NAMES := ["WEST", "NORTH", "SOUTH-EAST", "SOUTH-WEST"]
 ## Where the pyre stands from the Temple's door (MS §6): 2.5 south of it, snapped to walkable ground.
 const FH_PYRE_OFF := Vector2(0.0, 2.5)
 ## How many soldiers escort a believer (*fg*; MS §7 tunes it to 2), how far from him they ring where there is room (1.7 apart for three), how many able
@@ -42,23 +42,26 @@ const FH_ESCORT := 3
 const FH_ESCORT_RING := 1.0
 const FH_ESCORT_HOLD := 2
 const FH_ESCORT_REACH := 1.6
-## Aldermere's lanes are one or two cells wide, so three escorts 1.7 apart cannot all stand within FH_ESCORT_REACH of him (two in a line is all that
-## fits): each has his own place in the procession (escort_spots(), at most FH_SPAN from the believer, FH_SPACE or more from the others' places) and is
-## with the procession while he stands within FH_ESCORT_REACH of the believer or of his own place (Ruling P5-T8-R1). Walking, he lags his place a
-## moment (a corner moves it by two units at once), so an escort that is with the procession by neither is not able only after FH_GRACE seconds of it; one
-## the god has disabled is not able at once.
-const FH_SPAN := 4.0
+## Aldermere's lanes are one or two cells wide, so three escorts more than 1.6 apart cannot all stand within FH_ESCORT_REACH of the believer (two in a
+## line is all that fits), and a ring cannot be walked in a lane. The escorts therefore walk in file along the believer's own road (review of Task 8, I1):
+## the lead FH_LEAD ahead of him along the road to the pyre, the second FH_BACK1 behind him along his trail and the third FH_BACK2 behind (2.4 apart along
+## the road, so even round a right-angled lane corner they are 1.7 apart), each place moving smoothly with him so nobody passes another. Each escort is
+## with the procession while he stands within FH_ESCORT_REACH of the believer or of his own place (Ruling P5-T8-R1). Walking, he lags his place a moment,
+## so an escort that is with the procession by neither is not able only after FH_GRACE seconds of it; one the god has disabled is not able at once.
+const FH_LEAD := 1.4
+const FH_BACK1 := 1.8
+const FH_BACK2 := 4.4
+const FH_SPAN := 5.0
 const FH_SPACE := 1.7
-## The places are first sought this far apart (walkers stop up to a half unit short of or past theirs), then FH_SPACE.
-const FH_SPACE_WIDE := 2.0
 const FH_GRACE := 2.0
-## The shortest walk (seconds, at the believers' pace) a procession's house may be from the pyre: forming and burning with it make at least 45 s, the
-## room an instant loss is warned with (MS §0; review of wave 1, point b).
-const FH_WALK_MIN := 25.0
-## How often along a road (ground units) a house's room is looked at (road_roomy()).
-const FH_ROAD_STEP := 0.4
-## How far (ground units) an escort's place may move in one look when the gap allows (escort_spots()): a place follows the believer, it does not jump.
-const FH_MOVE := 1.0
+## How far the believer must move before his trail takes another point.
+const FH_TRAIL_STEP := 0.25
+## A walker stops up to this far short of his place (Person.GOAL_REACH): a give-way cell is this much farther than FH_SPACE from the others.
+const FH_STOP_SHORT := 0.45
+## The shortest walk (seconds, estimated at the believers' pace) a procession's house may be from the pyre: he is bound at 1.2 from the pyre and a walker stops
+## short of a goal, which together take about 2.5 s off the estimate, so forming 8 + (27.5 - 2.5) + burning 12 make at least 45 s, the room an instant loss is
+## warned with (MS §0; review of wave 1, point b).
+const FH_WALK_MIN := 27.5
 ## An escort within this far of his place stands at it (the pair measure).
 const FH_STOPPED := 0.6
 ## When each procession forms up at the latest (0:30, 1:35, 2:40, 3:45 *fg*) and the chain (a rule: no wait over 45 s after the one before is
@@ -90,8 +93,8 @@ const FH_PILE := 0.8
 const FH_ROW := "A believer reaches the pyre"
 const FH_ROW_BURN := "The fire takes a believer"
 ## Where the camera rests (MS §6 leaves it to the frame): the pyre low and right of the middle, the Temple's door above it; the four doors' arrows and the
-## pyre's keep 29 px clear of the padded HUD stack (found by search over the town: the doors pull the camera north-west).
-const FH_CAMERA_AT := Vector2(-6.0, -5.5)
+## pyre's keep 60 px clear of the padded HUD stack (found by search over the town: the doors pull the camera north-west).
+const FH_CAMERA_AT := Vector2(-7.0, -4.5)
 
 ## One procession (god P5, MS §6): a plain record, so the director holds no cycle.
 class Procession:
@@ -102,7 +105,7 @@ class Procession:
 	## The believer's Charge record and his soldiers (Variants: any may be freed).
 	var charge: EscortDirector.Charge
 	var escorts: Array = []
-	## Where each escort is sent (escort_spots(), kept so the places do not jump between looks).
+	## Where each escort is sent (_file_places()).
 	var places: Array[Vector2] = []
 	## The clock second each escort first stood with the procession by neither of his two measures (-1 while he does).
 	var apart: Array[float] = []
@@ -111,9 +114,10 @@ class Procession:
 	## The second (the director's clock) forming ends and the burning ends.
 	var form_end := 0.0
 	var burn_end := 0.0
-	## The ring's turn, and the seconds the march has waited for a straggler.
-	var turn := 0.0
+	## The seconds the march has waited for a straggler or a close pair.
 	var stall := 0.0
+	## Where the believer has been, oldest first (seeded with the lane behind his door): the second and third escorts walk along it.
+	var trail: Array[Vector2] = []
 	## Seconds to the pyre as last worked out, and the clock second it was worked out at (INF until then).
 	var eta := INF
 	var eta_at := 0.0
@@ -205,7 +209,7 @@ func _plan() -> void:
 
 
 ## A door of dwelling `s` for a procession (MS §6): the first of its four sides the street reaches from the pyre, with a walk to the pyre of at least
-## FH_WALK_MIN seconds (so a burn is warned FH_FORM + FH_WALK_MIN + FH_BURN seconds ahead) and room all the way (road_roomy()); Vector2.INF for none.
+## FH_WALK_MIN seconds (so a burn is warned FH_FORM + FH_WALK_MIN + FH_BURN seconds ahead) and a lane behind it for the escorts (_tail_from()); Vector2.INF for none.
 ## Only reads.
 func _roomy_door(s: Structure) -> Vector2:
 	var half := s.footprint.size * 0.5 + Vector2(0.5, 0.5)
@@ -215,34 +219,95 @@ func _roomy_door(s: Structure) -> Vector2:
 			continue
 		if _walk_secs(door) < FH_WALK_MIN:
 			continue
-		if road_roomy(door):
+		if not _tail_from(door, _road(door)).is_empty():
 			return door
 	return Vector2.INF
 
 
-## The believer and three escorts have room to stand FH_SPACE apart at the door and at every FH_ROAD_STEP of the road from it to the pyre (the walk grid's
-## path): a door in a pocket, or a road through a dead-end lane, fails. Only reads.
-func road_roomy(door: Vector2) -> bool:
-	var line: Array = [door]
-	if crowd._grid != null:
-		line.append_array(Array(crowd._grid.path(door, pyre_at)))
-	line.append(pyre_at)
-	var at: Vector2 = line[0]
-	var prev: Array = []
-	var turn := 0.0
-	for k in range(1, line.size()):
-		var to: Vector2 = line[k]
-		var steps := maxi(1, ceili(at.distance_to(to) / FH_ROAD_STEP))
-		turn = (to - at).angle() if at.distance_to(to) > 0.1 else turn
-		for q in range(0 if k == 1 else 1, steps + 1):
-			var spots := escort_spots(at.lerp(to, float(q) / float(steps)), FH_ESCORT, turn, prev)
-			for a in spots.size():
-				for b in range(a + 1, spots.size()):
-					if spots[a].distance_to(spots[b]) < FH_SPACE - 0.01:
-						return false
-			prev = spots
-		at = to
-	return true
+## A lane behind `door`, off the road (the walk grid's path from it to the pyre), long enough for the second and third escorts to stand in (BFS over the
+## cells that are not within a unit of the road's first three units): the cells from its far end to `door`, rear first, the last `door` itself; empty
+## when there is no such lane (a door in a pocket).
+func _tail_from(door: Vector2, road: Array[Vector2]) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var grid: WalkGrid = crowd._grid
+	if grid == null:
+		return out
+	var shut: Array[Vector2] = []
+	var along := 0.5
+	while along <= 2.0:
+		shut.append(_along(road, along))
+		along += 0.5
+	var lead := _along(road, FH_LEAD)
+	var start := grid.world_to_id(door)
+	var depth := {start: 0}
+	var parent := {start: start}
+	var queue: Array[Vector2i] = [start]
+	var ends: Array[Vector2i] = []
+	var limit := ceili((FH_BACK2 + 0.6) / WalkGrid.CELL)
+	var head := 0
+	while head < queue.size():
+		var at := queue[head]
+		head += 1
+		var d: int = depth[at]
+		if d >= limit:
+			ends.append(at)
+			continue
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nxt := at + step
+			if depth.has(nxt) or not grid.grid.is_in_boundsv(nxt) or grid.grid.is_point_solid(nxt):
+				continue
+			var w := grid.id_to_world(nxt)
+			var blocked := false
+			for q in shut:
+				blocked = blocked or w.distance_to(q) < 0.7
+			if blocked:
+				continue
+			depth[nxt] = d + 1
+			parent[nxt] = at
+			queue.append(nxt)
+	ends.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return grid.id_to_world(a).distance_to(door) > grid.id_to_world(b).distance_to(door))
+	for end in ends.slice(0, 24):
+		var tail: Array[Vector2] = []
+		var cell: Vector2i = end
+		while cell != start:
+			tail.append(grid.id_to_world(cell))
+			cell = parent[cell]
+		tail.append(door)
+		var back: Array[Vector2] = []
+		for k in range(tail.size() - 1, -1, -1):
+			back.append(tail[k])
+		var mid := _along(back, FH_BACK1)
+		var rear := _along(back, FH_BACK2)
+		if lead.distance_to(mid) >= FH_SPACE + 0.1 and mid.distance_to(rear) >= FH_SPACE + 0.1 and lead.distance_to(rear) >= FH_SPACE + 0.1:
+			return tail
+	return out
+
+
+## The grid path from `from` to the pyre as a polyline starting at `from`, points behind him (the path starts at the cell he stands in) dropped.
+func _road(from: Vector2) -> Array[Vector2]:
+	var line: Array[Vector2] = [from]
+	if crowd._grid == null:
+		line.append(pyre_at)
+		return line
+	var path := crowd._grid.path(from, pyre_at)
+	for k in path.size():
+		var q: Vector2 = path[k]
+		if k + 1 < path.size() and (from - q).dot(path[k + 1] - q) > 0.0:
+			continue
+		if q.distance_to(line.back()) > 0.05:
+			line.append(q)
+	return line
+
+
+## The point `d` along polyline `line` from its first point (its last point if it is shorter).
+static func _along(line: Array[Vector2], d: float) -> Vector2:
+	var left := d
+	for k in range(line.size() - 1):
+		var seg := line[k].distance_to(line[k + 1])
+		if seg >= left:
+			return line[k].move_toward(line[k + 1], left)
+		left -= seg
+	return line.back()
 
 
 ## The base's setup, then each procession's escorts inside its house, and the strip and banners on this Hunt's own words.
@@ -381,8 +446,11 @@ func _come_out(i: int) -> void:
 			c.hold_at = h.door
 		c.held = true
 		_bind(p)
-	var spots := escort_spots(h.door, pr.escorts.size(), pr.turn)
-	pr.places = spots
+	pr.trail = _tail_from(h.door, _road(h.door))
+	if pr.trail.is_empty():
+		pr.trail = [h.door]
+	pr.places = _file_places(pr, h.door)
+	var spots := pr.places
 	for k in pr.escorts.size():
 		var v: Variant = pr.escorts[k]
 		if not _alive(v) or not (v as Person).inside:
@@ -437,7 +505,7 @@ func _step_held(c: Charge) -> void:
 
 
 ## The march (MS §6): on to the pyre; within FH_PYRE_REACH he is bound to the stake; held short of it while another burns there; held a moment
-## for an escort straggling (FH_LAG), at most FH_STRAGGLE seconds in all.
+## for an escort straggling (FH_LAG) or a fit pair under FH_SPACE apart (they sort themselves out, _give_way()), at most FH_STRAGGLE seconds in all.
 func _march(pr: Procession, p: Person) -> void:
 	var dist := p.ground_pos.distance_to(pyre_at)
 	if dist <= FH_PYRE_REACH:
@@ -445,12 +513,10 @@ func _march(pr: Procession, p: Person) -> void:
 		pr.burn_end = _clock + FH_BURN
 		_stand_at(p, pyre_at)
 		return
-	if dist > 1.5:
-		pr.turn = (pyre_at - p.ground_pos).angle()
 	if dist <= FH_QUEUE and _pyre_busy(pr):
 		_stand_at(p, p.ground_pos)
 		return
-	if _straggling(pr):
+	if _straggling(pr) or _pair_close(pr):
 		if pr.stall < FH_STRAGGLE:
 			pr.stall += TICK
 			_stand_at(p, p.ground_pos)
@@ -484,59 +550,134 @@ func _pyre_busy(pr: Procession) -> bool:
 	return false
 
 
-## The `spots` given to the escorts of `pr` so that the sum of their walks is the least (no two cross in a lane): escort k gets the place nearest him that
-## no shorter assignment gives another; a dead or indoor escort keeps his old place. The places themselves are escort_spots()'s.
-func _match_places(spots: Array[Vector2], pr: Procession) -> Array[Vector2]:
-	var n := spots.size()
-	var from: Array[Vector2] = []
-	for k in n:
-		var v: Variant = pr.escorts[k]
-		if _alive(v) and not (v as Person).inside:
-			from.append((v as Person).ground_pos)
-		else:
-			from.append(pr.places[k] if k < pr.places.size() else spots[k])
-	return _assigned(spots, from)
+## The trail takes the believer's place when he has moved FH_TRAIL_STEP, and is cut to what the file needs (FH_BACK2 and a margin).
+func _note_trail(pr: Procession, p: Person) -> void:
+	if pr.trail.is_empty() or p.ground_pos.distance_to(pr.trail.back()) >= FH_TRAIL_STEP:
+		pr.trail.append(p.ground_pos)
+	var run := 0.0
+	for k in range(pr.trail.size() - 1, 0, -1):
+		run += pr.trail[k].distance_to(pr.trail[k - 1])
+		if run > FH_BACK2 + 1.5:
+			pr.trail = pr.trail.slice(k - 1)
+			break
 
 
-## The assignment of `spots` to the escorts at `from` (same count) with the least total walk, by trying every order (at most three or four escorts).
-func _assigned(spots: Array[Vector2], from: Array[Vector2]) -> Array[Vector2]:
-	var n := spots.size()
-	var best: Array[Vector2] = spots.duplicate()
+## The three escorts' places for a believer standing at `at` (review of Task 8, I1): the lead FH_LEAD ahead along the road to the pyre (past its end, straight
+## on), the second FH_BACK1 and the third FH_BACK2 behind along his trail (the last point of it if shorter); one place each, in that order. Only reads.
+func _file_places(pr: Procession, at: Vector2) -> Array[Vector2]:
+	var ahead := _road(at)
+	if _along_length(ahead) < FH_LEAD + 0.1:
+		var dir := Vector2.ZERO
+		if ahead.size() >= 2:
+			dir = (ahead[ahead.size() - 1] - ahead[ahead.size() - 2]).normalized()
+		elif pr.trail.size() > 1 and at.distance_to(pr.trail[maxi(pr.trail.size() - 5, 0)]) > 0.05:
+			dir = (at - pr.trail[maxi(pr.trail.size() - 5, 0)]).normalized()
+		ahead.append(ahead.back() + (dir if dir != Vector2.ZERO else Vector2.DOWN) * 3.0)
+	var behind: Array[Vector2] = [at]
+	for k in range(pr.trail.size() - 1, -1, -1):
+		if pr.trail[k].distance_to(behind.back()) > 0.05:
+			behind.append(pr.trail[k])
+	var out: Array[Vector2] = [_walkable(_along(ahead, FH_LEAD)), _walkable(_along(behind, FH_BACK1)), _walkable(_along(behind, FH_BACK2))]
+	return out.slice(0, pr.escorts.size())
+
+
+## The length of polyline `line`.
+func _along_length(line: Array[Vector2]) -> float:
+	var n := 0.0
+	for k in range(line.size() - 1):
+		n += line[k].distance_to(line[k + 1])
+	return n
+
+
+## Each fit escort of `pr` sent to his place in the file (MS §6): one under the god's hold, afraid or frail is left be, and one back on his feet (or taken
+## off the errand by the town) goes back to his place. The places move with the believer; two fit escorts under FH_SPACE apart give way (_give_way()).
+func _order_escorts(pr: Procession, p: Person) -> void:
+	_note_trail(pr, p)
+	pr.places = _file_places(pr, p.ground_pos)
+	var target: Array[Vector2] = pr.places.duplicate()
+	_give_way(pr, target)
+	for k in pr.escorts.size():
+		if not _fit(pr, k):
+			continue
+		var e := pr.escorts[k] as Person
+		if e.mind != Person.Mind.DUTY or e.anchor.distance_to(target[k]) > MOVE:
+			e.go_duty(target[k])
+
+
+## Escort `k` of `pr` is fit: alive, out of doors, not being sent off, not disabled by the god (he can be sent to his place).
+func _fit(pr: Procession, k: int) -> bool:
+	var v: Variant = pr.escorts[k]
+	return _alive(v) and not (v as Person).inside and not is_leaving(v) and not _disabled(v as Person)
+
+
+## Two fit escorts of `pr` stand under FH_SPACE apart (the walk's give-way, review of Task 8, I1): the one farther from his own place is sent to the walkable
+## cell nearest his place that is FH_SPACE or more from the other and from every other fit escort, on the side away from the other (not through him).
+## `target` (one place per escort) is changed for him. Only reads the world.
+func _give_way(pr: Procession, target: Array[Vector2]) -> void:
+	var fit: Array[int] = []
+	for k in pr.escorts.size():
+		if _fit(pr, k):
+			fit.append(k)
+	for a in fit.size():
+		for b in range(a + 1, fit.size()):
+			var i := fit[a]
+			var j := fit[b]
+			var ei := pr.escorts[i] as Person
+			var ej := pr.escorts[j] as Person
+			if ei.ground_pos.distance_to(ej.ground_pos) >= FH_SPACE:
+				continue
+			var loser := i if ei.ground_pos.distance_to(target[i]) > ej.ground_pos.distance_to(target[j]) else j
+			var other := j if loser == i else i
+			var rest: Array[Vector2] = []
+			for k in fit:
+				if k != loser:
+					rest.append((pr.escorts[k] as Person).ground_pos)
+			var cell := _give_way_cell((pr.escorts[loser] as Person).ground_pos, target[loser], (pr.escorts[other] as Person).ground_pos, rest)
+			if cell != Vector2.INF:
+				target[loser] = cell
+
+
+## The walkable cell nearest `place` (within FH_SPAN of it) that a man standing at `from` can step to without passing the one at `away`: FH_SPACE or more
+## from every point of `rest` (the other fit escorts), a clear line from `from`, on the far side of `from` from `away`. Vector2.INF for none.
+func _give_way_cell(from: Vector2, place: Vector2, away: Vector2, rest: Array[Vector2]) -> Vector2:
+	var grid: WalkGrid = crowd._grid
+	if grid == null:
+		return Vector2.INF
+	var span := ceili(FH_SPAN / WalkGrid.CELL)
+	var base := grid.world_to_id(place)
+	var best := Vector2.INF
 	var best_cost := INF
-	var perms: Array = [[]]
-	for k in n:
-		var grown: Array = []
-		for p: Array in perms:
-			for j in n:
-				if not p.has(j):
-					var q := p.duplicate()
-					q.append(j)
-					grown.append(q)
-		perms = grown
-	for p: Array in perms:
-		var cost := 0.0
-		for k in n:
-			cost += from[k].distance_to(spots[int(p[k])])
-		if cost < best_cost - 0.001:
-			best_cost = cost
-			for k in n:
-				best[k] = spots[int(p[k])]
+	for dy in range(-span, span + 1):
+		for dx in range(-span, span + 1):
+			var id := base + Vector2i(dx, dy)
+			if not grid.grid.is_in_boundsv(id) or grid.grid.is_point_solid(id):
+				continue
+			var w := grid.id_to_world(id)
+			if w.distance_to(place) > FH_SPAN or (w - from).dot(from - away) < -0.01 or w.distance_to(away) < FH_SPACE + FH_STOP_SHORT:
+				continue
+			var fits := true
+			for q in rest:
+				fits = fits and w.distance_to(q) >= FH_SPACE + FH_STOP_SHORT
+			if not fits or not grid.clear_line(from, w):
+				continue
+			var cost := w.distance_to(place) + 0.2 * w.distance_to(from)
+			if cost < best_cost:
+				best_cost = cost
+				best = w
 	return best
 
 
-## Each fit escort of `pr` sent to his place round `p` (MS §6): one under the god's hold, afraid or frail is left be, and one back on his feet (or
-## taken off the errand by the town) goes back to his place. Escorts never lose a slot: slot k keeps its side of the believer (escort_spots()).
-func _order_escorts(pr: Procession, p: Person) -> void:
-	pr.places = _match_places(escort_spots(p.ground_pos, pr.escorts.size(), pr.turn, pr.places), pr)
+## Two fit escorts of `pr` stand under FH_SPACE apart now.
+func _pair_close(pr: Procession) -> bool:
+	var live: Array[Vector2] = []
 	for k in pr.escorts.size():
-		var v: Variant = pr.escorts[k]
-		if not _alive(v):
-			continue
-		var e := v as Person
-		if e.inside or is_leaving(e) or _disabled(e):
-			continue
-		if e.mind != Person.Mind.DUTY or e.anchor.distance_to(pr.places[k]) > MOVE:
-			e.go_duty(pr.places[k])
+		if _fit(pr, k):
+			live.append((pr.escorts[k] as Person).ground_pos)
+	for a in live.size():
+		for b in range(a + 1, live.size()):
+			if live[a].distance_to(live[b]) < FH_SPACE:
+				return true
+	return false
 
 
 ## The nearest two of `pr`'s escorts now (alive, out of doors, not held by the god), noted in walk_min and, when all of them stand within a step of their places
@@ -686,83 +827,6 @@ func _households() -> void:
 	super()
 
 
-## The places of `n` escorts round `center` (MS §6, MS §0: more than two Silent Doom radii apart, so one blow never takes two). Slot k wants the cell
-## nearest the ring of FH_ESCORT_RING at its side of the believer (`turn` + k/n of a turn; slot 0 leads), among the walkable cells within FH_SPAN of
-## `center` with a clear line to it; the first set (in order of wish) whose places are all FH_SPACE or more apart is taken, so on open ground the ring and
-## in a lane the file along it (a third man 2.7 away). A slot keeps its previous place `prev[k]` unless another is clearly better (no jumping between
-## looks). If no set has the gap, the widest the cells allow (1.5, 1.2, then any). With no walk grid, the plain ring. Only reads.
-func escort_spots(center: Vector2, n: int, turn := 0.0, prev: Array = []) -> Array[Vector2]:
-	var out: Array[Vector2] = []
-	if n <= 0:
-		return out
-	var grid: WalkGrid = crowd._grid
-	if grid == null:
-		for k in n:
-			out.append(center + Vector2.from_angle(turn + TAU * float(k) / float(n)) * FH_ESCORT_RING)
-		return out
-	var cells: Array[Vector2] = []
-	var span := ceili(FH_SPAN / WalkGrid.CELL)
-	var base := grid.world_to_id(center)
-	var eye := center if grid.walkable(center) else _walkable(center)  # (a person may graze a solid corner on a diagonal)
-	for dy in range(-span, span + 1):
-		for dx in range(-span, span + 1):
-			var id := base + Vector2i(dx, dy)
-			if not grid.grid.is_in_boundsv(id) or grid.grid.is_point_solid(id):
-				continue
-			var w := grid.id_to_world(id)
-			var d := w.distance_to(center)
-			if d > FH_SPAN or d < 0.7 or not grid.clear_line(eye, w):
-				continue
-			cells.append(w)
-	if cells.is_empty():
-		for k in n:
-			out.append(_walkable(center))
-		return out
-	var wishes: Array = []
-	for k in n:
-		var side := turn + TAU * float(k) / float(n)
-		var ranked: Array = []
-		for w in cells:
-			var cost := absf(w.distance_to(center) - FH_ESCORT_RING) + 0.35 * absf(angle_difference(side, (w - center).angle()))
-			if k < prev.size() and prev[k] is Vector2:
-				var moved := w.distance_to(prev[k] as Vector2)
-				cost += 0.9 * moved - (0.6 if moved < 0.1 else 0.0)
-			ranked.append([cost, w])
-		ranked.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
-		wishes.append(ranked.slice(0, 40))
-	for apart in [FH_SPACE_WIDE, FH_SPACE, 1.5, 1.2, 0.5, 0.0]:
-		for reach in [FH_MOVE, FH_MOVE * 2.0, INF]:
-			if reach < INF and prev.size() < n:
-				continue
-			var picked: Array[Vector2] = []
-			if _pick_places(wishes, picked, float(apart), prev, float(reach)):
-				return picked
-	return out
-
-
-## Fills `picked` with one place per slot of `wishes` (each slot's [cost, place] list, best first), every place `apart` or more from the others and
-## no more than `reach` from the slot's previous place `prev[k]` (when it has one); false if no set does. (Depth first, so the first set found is the
-## best-wished.)
-func _pick_places(wishes: Array, picked: Array[Vector2], apart: float, prev: Array, reach: float) -> bool:
-	if picked.size() == wishes.size():
-		return true
-	var k := picked.size()
-	for entry: Array in wishes[k]:
-		var w: Vector2 = entry[1]
-		if reach < INF and k < prev.size() and prev[k] is Vector2 and w.distance_to(prev[k] as Vector2) > reach:
-			continue
-		var fits := true
-		for q in picked:
-			fits = fits and q.distance_to(w) >= apart - 0.001
-		if not fits:
-			continue
-		picked.append(w)
-		if _pick_places(wishes, picked, apart, prev, reach):
-			return true
-		picked.pop_back()
-	return false
-
-
 ## Each procession still waiting whose chained time has come forms up (MS §6); its own time is the timeline's. The base's, with this Hunt's banner.
 func _chain() -> void:
 	for i in range(1, households.size()):
@@ -845,6 +909,8 @@ func _refresh_eta(pr: Procession) -> void:
 	if pr.phase == Procession.Phase.FORMING:
 		t += maxf(pr.form_end - _clock, 0.0)
 	pr.eta = t + _walk_secs(p.ground_pos)
+	if pr.phase == Procession.Phase.MARCHING and (_straggling(pr) or _pair_close(pr)):
+		pr.eta += maxf(FH_STRAGGLE - pr.stall, 0.0)  # the countdown counts the wait the march may be holding for
 
 
 # --- The loss, the banners, the strip, the tags ----------------------------------------------------------------------------------------
@@ -936,9 +1002,9 @@ func tags() -> Array[MapTag]:
 		var pr: Procession = procs[i]
 		if not pr.phase in [Procession.Phase.FORMING, Procession.Phase.MARCHING, Procession.Phase.BURNING]:
 			continue
-		for v: Variant in pr.escorts:
-			if _alive(v) and not (v as Person).inside and not is_leaving(v) and not _disabled(v as Person):
-				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "ESCORT", true))
+		for k in pr.escorts.size():
+			if _able(pr, k):
+				out.append(MapTag.person((pr.escorts[k] as Person).ground_pos, MARK_WATCHED, "ESCORT", true))
 	for i in households.size():
 		if not (households[i] as Household).out:
 			out.append(_waiting_tag(i))

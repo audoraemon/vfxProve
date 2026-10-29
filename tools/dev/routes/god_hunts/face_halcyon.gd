@@ -20,9 +20,8 @@ const LOADOUT := {
 
 
 ## How near the Gaze may climb before the shared plan stops striking where it can be seen (each seen death is GazeMeter.SEEN_DEATH of 100; three freed
-## take at most six strikes), and how far Mind Whisper sends an escort off (MS §6: Dominion's "Whisper an escort away").
+## take at most six strikes).
 const GAZE_CAP := 60.0
-const WHISPER_AWAY := 6.0
 
 
 ## The director when the night is on, else null.
@@ -42,9 +41,9 @@ static func state(_bc, ctx: Dictionary) -> String:
 	for i in d.procs.size():
 		phases += "WFMBRXD"[int(d.phase_of(i))]
 		able.append(d.able_escort(i))
-	return "freed=%d (broken %d walls %d) burned=%d left=%d gaze=%d phases=%s able=%s stopped=%.2f/%d/%d walking=%.2f/%d/%d phase=%s" % [d.freed(),
+	return "freed=%d (broken %d walls %d) burned=%d left=%d gaze=%d phases=%s able=%s stopped=%.2f/%d/%d walking=%.2f/%d/%d pair_min=%.2f under1.6=%.1f%% phase=%s" % [d.freed(),
 		d.freed_broken, d.freed_walls, d.burned(), d.left_count(), roundi(d.gaze.value), phases, able, minf(d.pair_min, 99.0), d.pair_under, d.pair_looks,
-		minf(d.walk_min, 99.0), d.walk_under, d.walk_looks, d.hint_phase()]
+		minf(d.walk_min, 99.0), d.walk_under, d.walk_looks, minf(d.walk_min, 99.0), 100.0 * float(d.walk_under) / float(maxi(d.walk_looks, 1)), d.hint_phase()]
 
 
 ## The processions in the order they press: the one at the stake first, then by the seconds to the pyre.

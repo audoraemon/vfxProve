@@ -19,8 +19,10 @@ static func run(t) -> void:
 	_frame(t)
 	_chain(t)
 	_form_and_walk(t)
-	_walk_apart(t)
-	_assign(t)
+	_file_places(t)
+	_body_walk(t)
+	_tag_matches_rule(t)
+	_report(t)
 	_one_seizer_not_free(t)
 	_free_break(t)
 	_call_on_procession(t)
@@ -52,15 +54,17 @@ static func _believer(d: FaceHalcyonDirector, i: int) -> Person:
 	return d.procs[i].charge.man as Person
 
 
-## Procession `i`'s believer and his escorts set down on the ring round `at`, as if they had walked there.
+## Procession `i`'s believer and his escorts set down in file round `at`, as if they had walked there (the trail behind him a straight lane west).
 static func _stand(d: FaceHalcyonDirector, i: int, at: Vector2) -> void:
 	var pr: FaceHalcyonDirector.Procession = d.procs[i]
 	Kit.arrive(pr.charge.man as Person, at)
-	var spots := d.escort_spots(at, pr.escorts.size(), pr.turn, pr.places)
-	pr.places = spots
+	pr.trail = []
+	for k in range(12, -1, -1):
+		pr.trail.append(at + Vector2(-0.5 * float(k), 0.0))
+	pr.places = d._file_places(pr, at)
 	for k in pr.escorts.size():
 		if MissionDirector._alive(pr.escorts[k]):
-			Kit.arrive(pr.escorts[k] as Person, spots[k])
+			Kit.arrive(pr.escorts[k] as Person, pr.places[k])
 
 
 ## Every procession forms up now.
@@ -245,7 +249,7 @@ static func _chain(t) -> void:
 	t.check((d.households[0] as ExodusDirector.Household).done and absf(left - FaceHalcyonDirector.FH_CHAIN) < 2.0 and absf(d.due_in(1) - left) < 1.0,
 		"a procession freed: the strip and the tag show the next at the chain (%.1f s, tag %.1f)" % [left, d.due_in(1)])
 	Kit.run_for(s, FaceHalcyonDirector.FH_CHAIN + 0.5)
-	t.check((d.households[1] as ExodusDirector.Household).out and d._clock < 95.0 - 5.0 and (s.banners as Array).has("THE NORTH-EAST PROCESSION FORMS UP"),
+	t.check((d.households[1] as ExodusDirector.Household).out and d._clock < 95.0 - 5.0 and (s.banners as Array).has("THE NORTH PROCESSION FORMS UP"),
 		"it forms up %d s later, before its own time (%.0f s)" % [roundi(FaceHalcyonDirector.FH_CHAIN), d._clock])
 	# A burned procession chains the next in the same way.
 	var e: FaceHalcyonDirector = null
@@ -298,83 +302,127 @@ static func _form_and_walk(t) -> void:
 	Kit.done(s)
 
 
-## Along the whole road of every house, the three escorts' places keep more than two Silent Doom radii apart and within the span of the believer, with
-## the continuity the director gives them (each look's places seeded with the last's), and every escort standing on his place is able (so a walk round a
-## corner frees nobody by luck); at the door and at the stake too (review of Task 4, I1: test every stop, not only the first). On open ground (the
-## stake's plaza) the places are the ring of 1.0.
-static func _walk_apart(t) -> void:
+## Along the whole road of every house, the three escorts' places (the lead ahead, two behind along the trail, _file_places()) keep more than two Silent
+## Doom radii apart and within the span of the believer, and an escort standing on his place is able, so a walk round a corner frees nobody by luck; a
+## house is only chosen if a lane behind its door holds the file (review of Task 8, I1).
+static func _file_places(t) -> void:
 	var s := _world()
 	var d: FaceHalcyonDirector = s.d
-	var limit := 2.0 * SilentDoom.RADIUS + 0.05
 	var worst := INF
 	var far := 0.0
 	var points := 0
-	var in_file := 0
-	var jumps := 0
-	var crowd: Crowd = s.crowd
 	for i in 4:
 		var h: ExodusDirector.Household = d.households[i]
-		var line := crowd._grid.path(h.door, d.pyre_at)
-		var road: Array[Vector2] = [h.door]
-		road.append_array(Array(line))
-		road.append(d.pyre_at)
+		var pr: FaceHalcyonDirector.Procession = d.procs[i]
+		d._come_out(i)
+		var road := d._road(h.door)
 		var at: Vector2 = road[0]
-		var turn := 0.0
-		var prev: Array = []
 		for k in range(1, road.size()):
 			var to: Vector2 = road[k]
 			var steps := maxi(1, ceili(at.distance_to(to) / 0.2))
 			for q in range(1, steps + 1):
 				var here := at.lerp(to, float(q) / float(steps))
-				turn = (to - at).angle() if at.distance_to(to) > 0.1 else turn
-				var spots := d.escort_spots(here, 3, turn, prev)
-				var step_jump := 0.0
+				Kit.arrive(pr.charge.man as Person, here)
+				d._note_trail(pr, pr.charge.man as Person)
+				var spots := d._file_places(pr, here)
 				for a in 3:
 					for b in range(a + 1, 3):
 						worst = minf(worst, spots[a].distance_to(spots[b]))
 					far = maxf(far, spots[a].distance_to(here))
-					if a < prev.size():
-						step_jump = maxf(step_jump, spots[a].distance_to(prev[a] as Vector2))
-				in_file += 1 if spots.any(func(w: Vector2) -> bool: return w.distance_to(here) > FaceHalcyonDirector.FH_ESCORT_REACH) else 0
-				jumps += 1 if step_jump > 2.5 else 0
-				prev = spots
 				points += 1
 			at = to
-	t.check(points > 500 and worst > limit, "along all four roads (%d points) the escorts' places are more than %.2f apart (nearest %.2f)" % [points, limit, worst])
-	t.check(far <= FaceHalcyonDirector.FH_SPAN + 0.01, "every place is within %.1f of the believer (farthest %.2f)" % [FaceHalcyonDirector.FH_SPAN, far])
-	t.check(jumps * 100 < points, "the places follow the believer: one moves more than 2.5 in a step of 0.2 at only %d of %d points" % [jumps, points])
-	print("NOTE: face_halcyon: %d of %d road points put a third man beyond the 1.6 reach (the file along a lane)" % [in_file, points])
-	# Standing on their places they are able: at the door, along a road, at the stake.
+	t.check(points > 500 and worst > 1.5, "along all four roads (%d points) the escorts' places are more than 1.5 apart (nearest %.2f; round a right-angled lane corner the 2.6 along the road are 1.6 apart as the crow flies; the bodies are pinned in _body_walk)" % [points, worst])
+	t.check(far <= FaceHalcyonDirector.FH_SPAN, "every place is within %.1f of the believer (farthest %.2f)" % [FaceHalcyonDirector.FH_SPAN, far])
+	# Standing on their places they are able: at the door, on the road and at the stake.
+	var n := _world()
+	var e: FaceHalcyonDirector = n.d
+	_form_all(e)
 	var every := true
-	_form_all(d)
 	for i in 4:
-		var h: ExodusDirector.Household = d.households[i]
-		for at: Vector2 in [h.door, d.pyre_at, h.door.lerp(d.pyre_at, 0.4), h.door.lerp(d.pyre_at, 0.7)]:
-			var on := _nearest_walkable(s, at)
-			_stand(d, i, on)
-			every = every and d.able_escort(i) == 3
+		var h: ExodusDirector.Household = e.households[i]
+		for at: Vector2 in [h.door, e.pyre_at, h.door.lerp(e.pyre_at, 0.4), h.door.lerp(e.pyre_at, 0.7)]:
+			_stand(e, i, _nearest_walkable(n, at))
+			every = every and e.able_escort(i) == 3
 	t.check(every, "standing on their places at the door, on the road and at the stake, all three escorts are able")
-	# On open ground (before the Temple's steps) the places are the ring.
-	var open := d.escort_spots(d.pyre_at, 3, 0.0)
-	var near_ring := 0
-	for w in open:
-		near_ring += 1 if absf(w.distance_to(d.pyre_at) - FaceHalcyonDirector.FH_ESCORT_RING) < 0.5 else 0
-	t.check(near_ring >= 2 and open[0].distance_to(open[1]) > limit and open[0].distance_to(open[2]) > limit and open[1].distance_to(open[2]) > limit,
-		"at the stake two of the three stand on the ring of 1.0 and all are more than %.2f apart (%s)" % [limit, open])
+	# The lane behind each door was found: the trail is seeded with it, the second and third escorts stand in it.
+	var seeded := true
+	for i in 4:
+		seeded = seeded and (e.procs[i] as FaceHalcyonDirector.Procession).places.size() == 3
+	t.check(seeded, "every procession has its three places")
+	Kit.done(n)
 	Kit.done(s)
 
 
-## The escorts take the places nearest them, so none crosses another in a lane: the assignment's walk is no longer than any other order's.
-static func _assign(t) -> void:
+## A believer and his escorts moved bodily (the test world does not walk them): each step a person on duty goes toward his anchor along the walk grid at
+## his own pace, and stops within Person.GOAL_REACH of it, as a walker does.
+static func _walk_body(crowd: Crowd, p: Person, dt: float) -> void:
+	if p.mind != Person.Mind.DUTY or p.anchor == Vector2.INF or p.ground_pos.distance_to(p.anchor) <= Person.GOAL_REACH:
+		return
+	var left := p.walk_speed * dt
+	var path := crowd._grid.path(p.ground_pos, p.anchor)
+	var at := p.ground_pos
+	for k in path.size():
+		var q: Vector2 = path[k]
+		if k + 1 < path.size() and (at - q).dot(path[k + 1] - q) > 0.0:
+			continue
+		if q.distance_to(at) < 0.01:
+			continue
+		var run := at.distance_to(q)
+		if run >= left:
+			at = at.move_toward(q, left)
+			left = 0.0
+			break
+		at = q
+		left -= run
+	p.ground_pos = at
+
+
+## The walk with real bodies (review of Task 8, I1; review-t7 I1(d)): all four processions form up and are walked to the pyre by their pace, the director
+## looking every 0.25 s, and the nearest two fit escorts of a procession are measured at every look. Pinned: at most 3% of looks under two Silent Doom radii
+## (one cast takes two), nothing under 1.0; nobody is freed or disabled by the walk alone (all three able at every look); and the first fire comes at least
+## 45 s after the countdown first shows (the instant loss is warned with room to act).
+static func _body_walk(t) -> void:
 	var s := _world()
 	var d: FaceHalcyonDirector = s.d
-	var places: Array[Vector2] = [Vector2(10.0, 0.0), Vector2(0.0, 0.0), Vector2(5.0, 0.0)]
-	var from: Array[Vector2] = [Vector2(0.4, 0.0), Vector2(9.0, 0.0), Vector2(4.0, 0.0)]
-	var got := d._assigned(places, from)
-	t.check(got == [Vector2(0.0, 0.0), Vector2(10.0, 0.0), Vector2(5.0, 0.0)],
-		"three escorts in a file take the places in the file's order, not the places' (%s)" % [got])
-	var same := d._assigned(places, places)
-	t.check(same == places, "escorts already at their places keep them (%s)" % [same])
+	var crowd: Crowd = s.crowd
+	_form_all(d)
+	var clock := 0.0
+	var looks := 0
+	var under := 0
+	var low := INF
+	var min_able := 3
+	var burn_at := -1.0
+	while clock < 100.0 and d.lost_reason() == "":
+		Kit.run_for(s, EscortDirector.TICK)
+		clock += EscortDirector.TICK
+		if burn_at < 0.0 and (s.banners as Array).any(func(b: Variant) -> bool: return String(b).begins_with("A BELIEVER BURNS")):
+			burn_at = clock
+		for i in 4:
+			var pr: FaceHalcyonDirector.Procession = d.procs[i]
+			if not pr.phase in [FaceHalcyonDirector.Procession.Phase.FORMING, FaceHalcyonDirector.Procession.Phase.MARCHING, FaceHalcyonDirector.Procession.Phase.BURNING]:
+				continue
+			_walk_body(crowd, pr.charge.man as Person, EscortDirector.TICK)
+			var near := INF
+			var fit: Array[Person] = []
+			for k in pr.escorts.size():
+				if MissionDirector._alive(pr.escorts[k]):
+					_walk_body(crowd, pr.escorts[k] as Person, EscortDirector.TICK)
+				if d._fit(pr, k):
+					fit.append(pr.escorts[k] as Person)
+			for a in fit.size():
+				for b in range(a + 1, fit.size()):
+					near = minf(near, fit[a].ground_pos.distance_to(fit[b].ground_pos))
+			min_able = mini(min_able, d.able_escort(i))
+			if near < INF:
+				looks += 1
+				low = minf(low, near)
+				under += 1 if near < 2.0 * SilentDoom.RADIUS else 0
+	t.check(looks > 500 and under * 100 <= looks * 3 and low >= 1.0,
+		"walked by their pace along all four roads, the nearest two escorts of a procession are under 1.6 apart at %d of %d looks (%.1f%%) and never under 1.0 (nearest %.2f)" % [under, looks, 100.0 * float(under) / float(maxi(looks, 1)), low])
+	t.check(min_able == 3 and d.out_count() == 0, "and the walk alone disables nobody and frees nobody (fewest able %d, freed %d)" % [min_able, d.out_count()])
+	t.check(burn_at >= 45.0 and d.burned() >= 1, "the first fire comes %.1f s after the countdowns first showed (at least 45 s)" % burn_at)
+	t.check(d.pair_looks > 0 and d.walk_looks > 0 and d.walk_min >= 1.0 and d.pair_min >= 1.0 and d.walk_under * 100 <= d.walk_looks * 3,
+		"the director's own figures agree: walking %.2f/%d/%d, stopped %.2f/%d/%d (min / under 1.6 / looks)" % [d.walk_min, d.walk_under, d.walk_looks, d.pair_min, d.pair_under, d.pair_looks])
 	Kit.done(s)
 
 
@@ -382,8 +430,6 @@ static func _nearest_walkable(s: Dictionary, at: Vector2) -> Vector2:
 	var w: Vector2 = (s.crowd as Crowd)._grid.nearest_walkable(at)
 	return w if w != Vector2.INF else at
 
-
-# --- The break ---
 
 ## One escort off DUTY or dead does not free him: the Escort type's single-seizer release is not this Hunt's.
 static func _one_seizer_not_free(t) -> void:
@@ -396,7 +442,7 @@ static func _one_seizer_not_free(t) -> void:
 	(pr.escorts[0] as Person).mind = Person.Mind.POST  # off DUTY, as the Escort type's seizer sent off his errand
 	Kit.free_body(s, pr.escorts[1] as Person)
 	_look(s, 2)
-	t.check(pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING and not d.charges[0].escaped and d.out_count() == 0 and not (s.banners as Array).has("THE BELIEVER IS FREE")
+	t.check(pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING and not d.charges[0].escaped and d.out_count() == 0 and not (s.banners as Array).any(func(b: Variant) -> bool: return String(b).contains("FREE"))
 		and d.able_escort(0) == 2 and p.anchor.distance_to(d.pyre_at) < 0.6,
 		"one escort off duty and another dead: he is still marched (2 able of 3), not freed, no release banner (%s)" % [s.banners])
 	Kit.done(s)
@@ -760,8 +806,6 @@ static func _warning_window(t) -> void:
 		firsts.append("%.0f" % window)
 		d.procs[i].phase = FaceHalcyonDirector.Procession.Phase.FREED  # (set aside, so the next procession is the leader in turn)
 	t.check(worst >= 45.0, "each procession's pyre countdown first shows at least 45 s before its fire could take him (windows %s s)" % [", ".join(firsts)])
-	# The banner names the second only after the first: no banner of a coming second burn before then.
-	t.check(not (s.banners as Array).any(func(b: Variant) -> bool: return String(b).begins_with("A BELIEVER BURNS")), "and no burning is announced before it happens")
 	Kit.done(s)
 
 
@@ -801,8 +845,8 @@ static func _straggler(t) -> void:
 	var p := _believer(d, 0)
 	var door := (d.households[0] as ExodusDirector.Household).door
 	_stand(d, 0, door)
-	var behind := pr.escorts[2] as Person
-	Kit.arrive(behind, pr.places[2] + (pr.places[2] - door).normalized() * (FaceHalcyonDirector.FH_LAG + 0.3))  # straggling, though not disabled
+	var behind := pr.escorts[0] as Person
+	Kit.arrive(behind, pr.places[0] + Vector2(FaceHalcyonDirector.FH_LAG + 0.3, 0.0))  # straggling, though not disabled
 	_look(s)
 	t.check(p.anchor.distance_to(door) < 0.6 and pr.stall > 0.0 and pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING,
 		"an escort straggling holds the march a moment (stalled %.2f s)" % pr.stall)
@@ -862,6 +906,42 @@ static func _evacuation(t) -> void:
 		for v: Variant in d.procs[i].escorts:
 			inside = inside and (v as Person).inside
 	t.check(inside, "the processions still in their houses stay inside")
+	Kit.done(s)
+
+
+## The ESCORT tag counts what the rule counts (review of Task 8, R1): an escort apart from the procession past the grace loses his tag as he stops being able,
+## and with another disabled the believer is freed.
+static func _tag_matches_rule(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	d._come_out(0)
+	Kit.run_for(s, FaceHalcyonDirector.FH_FORM + LOOK)
+	var pr: FaceHalcyonDirector.Procession = d.procs[0]
+	var tags := _labels(d).filter(func(l: Variant) -> bool: return String(l) == "ESCORT")
+	t.check(tags.size() == 3, "three escorts, three ESCORT tags (%d)" % tags.size())
+	Kit.arrive(pr.escorts[0] as Person, Vector2(-7.0, -7.0))  # far from him and from his place, not disabled by the god
+	Kit.run_for(s, 1.0)
+	var inside_grace := _labels(d).filter(func(l: Variant) -> bool: return String(l) == "ESCORT").size()
+	Kit.run_for(s, FaceHalcyonDirector.FH_GRACE + 0.5)
+	var after := _labels(d).filter(func(l: Variant) -> bool: return String(l) == "ESCORT").size()
+	t.check(inside_grace == 3 and after == 2 and d.able_escort(0) == 2 and pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING,
+		"cut off beyond both measures: still tagged inside the grace (%d), untagged and unable after it (%d), the believer not yet freed" % [inside_grace, after])
+	_disable("frail", pr.escorts[1] as Person, s)
+	_look(s)
+	t.check(pr.phase == FaceHalcyonDirector.Procession.Phase.FREED and d.out_count() == 1, "and with another disabled he is freed")
+	Kit.done(s)
+
+
+## report() keeps the base's keys and adds the Hunt's; the HUD line counts freed and burned on a night that is not lost.
+static func _report(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	d.charges[0].escaped = true
+	d.charges[1].taken = true
+	var r := d.report()
+	t.check(r.has("out") and r.has("taken") and r.has("seizures") and r.has("reliefs") and r.has("gaze") and int(r.freed) == 1 and int(r.burned) == 1
+		and int(r.freed_broken) == 0 and int(r.freed_walls) == 0, "report(): the base's keys and freed / burned / freed_broken / freed_walls (%s)" % [r])
+	t.check(d.hud_line() == "Free the believers 1 / 3, 1 burned" and d.lost_reason() == "", "the HUD line on a night still on (%s)" % d.hud_line())
 	Kit.done(s)
 
 

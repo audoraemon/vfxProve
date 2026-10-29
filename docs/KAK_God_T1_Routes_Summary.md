@@ -119,14 +119,14 @@ Landing follows D1 and D37: P2 landed first, so `feat/god-progression` was merge
 | Gate | Result |
 |---|---|
 | Import | exit 0 |
-| Suite | `<LANDING: suite count>` (P3 ended at 11488; the tree before the P3 merge was `checks=11364 failures=0`) |
-| References, every row | `<LANDING: references count>` (P3 ended at 307; Tier 1 routes add 90 `god_<type>_<scenario>_play_<n>` rows, 6 startle rows and re-recorded rows) |
+| Suite | `checks=11924 failures=0` (land.sh on d95cf423, P3 merged in; P3 alone ended at 11488) |
+| References, every row | `refs ok=403 bad=0` (P3 ended at 307; Tier 1 routes add 90 `god_<type>_<scenario>_play_<n>` rows, 6 startle rows and re-recorded rows) |
 | `digest` | `61267b7e90524d800bf1c3473a71146b` (unchanged) |
 | `crowd_check` | `-935602679` (unchanged) |
-| FLOW alone | `<LANDING: FLOW count>` (the tree before the P3 merge ran `checks=187 failures=0`) |
-| Bench vs `kak-god-p3` | `<LANDING: bench pairs vs kak-god-p3>` |
+| FLOW alone | `checks=209 failures=0`, alone in the foreground (land.sh's own FLOW gave no result, and one earlier rerun failed at the first results screen's banked believers under load; the rerun alone passed) |
+| Bench vs `kak-god-p3` | median of 3 fps, A = kak-god-p3, B = this branch: warning 34.1 / 33.9, miras_house 30.1 / 29.3, vigil_flame 31.6 / 32.2, procession 28.2 / 28.7, last_judgement 29.0 / 28.7 -- all within 1 fps (a busy machine; both sides equally low) |
 | 30-pair gate (Aldermere) | `pass=30/30 none_lost=5/5 PASS` |
-| Landed commit | `<LANDING: landed commit>` |
+| Landed commit | the `feat/god-progression` tip tagged `kak-god-t1r` |
 
 **References.** The 99 Tier 1 rows were allowed to move and were re-recorded in the commit that moved each, with the reason: the Warning's route B and toll rows (the whisper now reaches outside the walls), the Harvest rows (carters wait at the door), the Lamb rows (the bolt and the outer post), the Prayers rows (walkers, and the door stands empty). The other rows, the digest and `crowd_check` did not move. At the final review the 382 rows were all OK, and the final fix wave re-recorded 9 more (Passage x Prayers 1 to 3, Dominion x Prayers seeds 2 and 3, Decree x Harvest 1 to 3, and `capital_prayers_b_play_2`) because fillers were deleted.
 

@@ -168,7 +168,10 @@ const LINES := {
 	"expel_inquisitor.captain": "The captain walks his rounds: kill him, or frighten him three times.",
 	"expel_inquisitor.near": "The captain nears the Citadel: stop him now.",
 
-	# break_hunt (god P5 Task 7)
+	# break_hunt (god P5 Task 7; MS §5, *my call*)
+	"break_hunt": "Standards (gold) march on your believers' houses (blue). Strike a bearer when no escort (red) stands by him.",
+	"break_hunt.carried": "An escort took up the standard: strike him too.",
+	"break_hunt.taken": "A house is taken: one more and the hunt has won.",
 
 	# face_halcyon (god P5 Task 8)
 }

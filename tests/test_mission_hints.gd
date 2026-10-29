@@ -169,6 +169,10 @@ const SPEC := [
 	["expel_inquisitor", "Stop each lantern-warden (gold): kill him, or put him out of the walls."],
 	["expel_inquisitor.captain", "The captain walks his rounds: kill him, or frighten him three times."],
 	["expel_inquisitor.near", "The captain nears the Citadel: stop him now."],
+	# Break the hunt (god P5 Task 7, MS §5).
+	["break_hunt", "Standards (gold) march on your believers' houses (blue). Strike a bearer when no escort (red) stands by him."],
+	["break_hunt.carried", "An escort took up the standard: strike him too."],
+	["break_hunt.taken", "A house is taken: one more and the hunt has won."],
 ]
 
 

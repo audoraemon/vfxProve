@@ -157,7 +157,10 @@ const LINES := {
 
 	# silence_witness (god P5 Task 5)
 
-	# expel_inquisitor (god P5 Task 6)
+	# expel_inquisitor (god P5 Task 6; MS §4, *my call*)
+	"expel_inquisitor": "Stop each lantern-warden (gold): kill him, or put him out of the walls.",
+	"expel_inquisitor.captain": "The captain walks his rounds: kill him, or frighten him three times.",
+	"expel_inquisitor.near": "The captain nears the Citadel: stop him now.",
 
 	# break_hunt (god P5 Task 7)
 

@@ -1058,12 +1058,19 @@ static func silence_witness() -> MissionDef:
 
 
 ## Expel the inquisitor (god P5, MS §4, Tier 3, the Lantern Hunt of the Assassinate type): three wardens, then the captain, who three frights
-## drive out of the town. The frame (Task 1); ExpelInquisitorDirector comes with Task 6.
+## drive out of the town. The frame (Task 1) with ExpelInquisitorDirector (Task 6): the Assassinate objective runs ahead of the dawn, so the
+## winning strike never also loses (MS §0); the camera looks at the west warden's quarter, clear of the HUD stack.
 static func expel_inquisitor() -> MissionDef:
 	var m := _tier3(EXPEL_INQUISITOR, String(HuntBook.row(EXPEL_INQUISITOR).title), PackedStringArray(["The Lantern's captain walks your town.",
 		"Break his wardens, then kill him or drive him out."]))
-	return _hunt(m, "Stop his three wardens, then kill the captain or drive him out of the town", "The inquisitor is gone",
-		"The captain reaches the Citadel, or dawn comes", ["doom", "smite", "whisper"], Vector2(-12.0, 1.0))
+	_hunt(m, "Stop his three wardens, then kill the captain or drive him out of the town", "The inquisitor is gone",
+		"The captain reaches the Citadel, or dawn comes", ["doom", "smite", "whisper"], ExpelInquisitorDirector.CAMERA_AT)
+	m.director = ExpelInquisitorDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [AssassinateObjective.new("Expel the inquisitor", "expelled", "captain_safe"),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
 
 
 ## Break the hunt (god P5, MS §5, Tier 4, the Lantern Hunt of the Hunt type): four standards march on three believers' houses, and an escort

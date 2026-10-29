@@ -157,6 +157,10 @@ const SPEC := [
 	["first_taste.drag", "Keep the Watch (red) off him. C again to Yank him on once."],
 	["first_taste.march", "The clergy (red) march on the shrine: stop two of them, or win first."],
 	["first_taste.cleanse", "The clergy cleanse the shrine: strike a kneeler now."],
+	# Expel the inquisitor (god P5 Task 6, MS §4): pinned like the rest, appended at the end (the other Hunts' tasks append their own after it).
+	["expel_inquisitor", "Stop each lantern-warden (gold): kill him, or put him out of the walls."],
+	["expel_inquisitor.captain", "The captain walks his rounds: kill him, or frighten him three times."],
+	["expel_inquisitor.near", "The captain nears the Citadel: stop him now."],
 ]
 
 

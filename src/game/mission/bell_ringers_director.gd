@@ -38,6 +38,10 @@ var posts: Array[Structure] = []
 var doors: Array[Vector2] = []
 ## Each post's name (v0.11 M3): "north-east", "south-west", "east".
 var post_names: Array[String] = []
+## The numbers a Lantern Hunt changes (god P5, MS H11, Ruling C1), each equal to its const and read in its place: when each post sends its ringer,
+var tune_set_out_at: Array = SET_OUT_AT.duplicate()
+## and the seconds after the warning before it is stopped that the next post sends at the latest.
+var tune_chain_wait := CHAIN_WAIT
 ## Each post's warning (v0.11 M3), set up at the start: its ringer and his mates wait inside until sent.
 var ringers: Array[RingerDirector] = []
 ## The night's second each warning was first seen stopped, or -1 (v0.11 M3).
@@ -85,7 +89,7 @@ func _begin() -> void:
 		r.setup(rules, crowd, town, ctx, night)
 		ringers.append(r)
 		_stopped_at.append(-1.0)
-		timeline.add(float(SET_OUT_AT[i]), "out_%d" % i, _out_label(i), _send.bind(i), func() -> bool: return r.waiting)
+		timeline.add(float(tune_set_out_at[i]), "out_%d" % i, _out_label(i), _send.bind(i), func() -> bool: return r.waiting)
 	rules.cast_made.connect(_on_cast)
 	rules.banner.emit("THE WATCH POSTS ARE MANNED")
 
@@ -152,9 +156,9 @@ func claimed_besides(i: int) -> Array:
 ## The second into the night post `i` sends its ringer at the latest (v0.11 M3, Decision 8): its own time, or CHAIN_WAIT after the
 ## warning before it was stopped if that is sooner. One still running never brings it forward.
 func out_at(i: int) -> float:
-	var at := float(SET_OUT_AT[i]) * timeline.stretch_factor()
+	var at := float(tune_set_out_at[i]) * timeline.stretch_factor()
 	if i > 0 and _stopped_at[i - 1] >= 0.0:
-		at = minf(at, _stopped_at[i - 1] + CHAIN_WAIT)
+		at = minf(at, _stopped_at[i - 1] + tune_chain_wait)
 	return at
 
 
@@ -276,7 +280,7 @@ func hint_phase() -> String:
 func tour() -> Array:
 	var out := []
 	for i in posts.size():
-		var when := UiTheme.clock(float(SET_OUT_AT[i]))
+		var when := UiTheme.clock(float(tune_set_out_at[i]))
 		var line := "The %s post. Its ringer runs for the bell at %s." % [post_names[i], when]
 		if i == 1:
 			line = "The %s post. Its ringer comes by %s." % [post_names[i], when]

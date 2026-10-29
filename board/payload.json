@@ -7,16 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **27** to do · **87** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793267498:f>)\n• Done: Tier 1 routes: every god type can win every Tier 1 mission\n• Done: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)\n• New: Board sweep: play the 24 non-Warning god pairs as the board version once\n• New: Capital per-type Tier 1 rows: 24 of 30 pass\n• New: Capital Tax: a Passage deputy stalls near a Thornwall\n• New: Play the new Tier 1 routes by hand\n• New: Short Tier 1 wins reported: are these too quick?",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **27** to do · **87** done\n**8** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-29T16:51:38+07:00"
+     "timestamp": "2026-10-29T17:38:07+07:00"
     },
     {
      "title": "feat/god-progression",
      "description": "103 commits not in Develop-Main · last commit today\n> docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)\n\n**To do** (6)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 24 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• Board sweep: play the 24 non-Warning god pairs as the board version once\n• Capital Tax: a Passage deputy stalls near a Thornwall",
+     "color": 5016537
+    },
+    {
+     "title": "god/p5-hunts",
+     "description": "103 commits not in Develop-Main · last commit today · local only\n> docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -53,7 +58,14 @@
      "title": "feat/Develop-Main",
      "description": "Main line · last commit 2026-10-24\n> docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "Recently done",
      "description": "• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_\n• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop _(10-27)_\n• Design: god progression and Endless Night _(10-26)_\n• v0.12 Many Towns: missions on any town (Capital first) _(10-25)_\n• Discord #board: live project board _(10-24)_",

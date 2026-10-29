@@ -1,17 +1,9 @@
 {
- "hash": "ed4ec1e62801dbab",
- "updated": "2026-10-29T16:51:38+07:00",
+ "hash": "742f13c80dbfac9a",
+ "updated": "2026-10-29T17:38:07+07:00",
  "changes": {
-  "date": "<t:1793267498:f>",
-  "items": [
-   "Done: Tier 1 routes: every god type can win every Tier 1 mission",
-   "Done: Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10)",
-   "New: Board sweep: play the 24 non-Warning god pairs as the board version once",
-   "New: Capital per-type Tier 1 rows: 24 of 30 pass",
-   "New: Capital Tax: a Passage deputy stalls near a Thornwall",
-   "New: Play the new Tier 1 routes by hand",
-   "New: Short Tier 1 wins reported: are these too quick?"
-  ]
+  "date": "<t:1793270287:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1135,6 +1127,14 @@
     "date": "2026-10-29",
     "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
     "pushed": true
+   },
+   {
+    "name": "god/p5-hunts",
+    "ahead": 103,
+    "behind": 0,
+    "date": "2026-10-29",
+    "subject": "docs: Tier 1 routes summary -- landing numbers (suite 11924/0, references 403/0, FLOW 209/0, bench vs kak-god-p3)",
+    "pushed": false
    },
    {
     "name": "god/t1routes",

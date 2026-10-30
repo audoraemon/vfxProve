@@ -825,11 +825,13 @@ func _look(i: int, evacuating: bool) -> void:
 	if not _planted[i]:
 		if _dest[i] < 0 or _taken[_dest[i]]:
 			_dest[i] = _pick_dest(i)
+			_set_pace(i)  # the new street has its own length, so its own pace (task 12, review-t7 M5): never faster than the 50 s a countdown needs
 		if _dest[i] >= 0:
 			if _waits(i, b):
 				_stand(b)
 			else:
 				_recall_to(b, house_doors[_dest[i]], evacuating)
+				_resume(b, house_doors[_dest[i]])
 		_refresh_eta(i)
 
 
@@ -846,6 +848,13 @@ func _waits(i: int, b: Person) -> bool:
 			return true
 	_hold_until[i] = -1.0
 	return false
+
+
+## A bearer on duty for the door `door` who has no way to walk -- a thornwall shut his street when he was sent, and has withered since -- is sent again
+## (MS §5: held by a wall, he takes the march up again; _recall_to() sends only a man whose duty is somewhere else). Task 12, Ruling P5-T12-R1.
+func _resume(b: Person, door: Vector2) -> void:
+	if b.mind == Person.Mind.DUTY and not b.has_goal() and not b.inside and b.ground_pos.distance_to(door) > BH_TAKE_REACH:
+		b.go_duty(door)
 
 
 ## `b` stands where he is, on duty (the base's resume stops a man the same way, going on duty at his own place).

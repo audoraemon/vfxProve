@@ -17,6 +17,9 @@ static func run(t) -> void:
 	_chain(t)
 	_raise_not_broken(t)
 	_pace_and_window(t)
+	_reaim_pace(t)
+	_resume_march(t)
+	_reaim_walk(t)
 	_escorts_follow(t)
 	_walk_model(t)
 	_street_clear(t)
@@ -37,6 +40,9 @@ static func run(t) -> void:
 	_evacuation(t)
 	_teardown_clean(t)
 	_wishes(t)
+	_policies_written(t)
+	_policies_play(t)
+	_aim_teeth(t)
 
 
 ## The Hunt's world: its town, Rules and director, with the watch Lantern the game gives the night.
@@ -276,6 +282,95 @@ static func _pace_and_window(t) -> void:
 	Kit.done(s)
 
 
+## Task 12, review-t7 M5: a bearer re-aimed at another house (his own was taken by another standard) walks the pace of the NEW street, not the one
+## he was raised with: never faster than the 50 s a countdown needs (BH_MARCH_MIN), and no slower than the street allows. Tried for every standard (its house taken by another); at least one case must differ from the pace he was raised with, or the test proves nothing.
+static func _reaim_pace(t) -> void:
+	var differs := 0
+	var tried := 0
+	var bad := []
+	for i in 4:
+		for pass_no in 1:
+			var s := _world()
+			var d := _bh(s)
+			_steady(d)
+			_raise(s, i)
+			if d.bearer(i) == null:
+				Kit.done(s)
+				continue
+			var raised_pace := d.bearer(i).pace
+			d._taken[d._dest[i]] = true  # another standard planted there
+			Kit.run_for(s, LOOK)
+			var b := d.bearer(i)
+			if b == null or d._dest[i] < 0:
+				Kit.done(s)
+				continue
+			tried += 1
+			var want := minf(BreakHuntDirector.BH_BEARER_PACE, d._way(b.ground_pos, d.house_doors[d._dest[i]]) / BreakHuntDirector.BH_MARCH_MIN) / Person.PANIC_SPEED
+			differs += 1 if absf(want - raised_pace) > 0.001 else 0
+			var escorts_ok := true
+			for e: Person in _escorts(d, i):
+				escorts_ok = escorts_ok and is_equal_approx(e.pace, want * BreakHuntDirector.BH_ESCORT_PACE)
+			if absf(b.pace - want) > 0.001 or not escorts_ok or d.eta(i) < BreakHuntDirector.BH_MARCH_MIN - 2.0:
+				bad.append("%d->%d pace %.4f want %.4f eta %.1f" % [i, d._dest[i], b.pace, want, d.eta(i)])
+			Kit.done(s)
+	t.check(tried == 4 and differs >= 2 and bad.is_empty(), "a re-aimed bearer and his escorts walk the new street's pace, and its countdown shows 50 s (tried %d, %d differ from the raise's pace; bad %s)" % [tried, differs, bad])
+
+
+## Task 12, Ruling P5-T12-R1: a bearer sent for his house who has no way to walk (a thornwall shut the street the look he was sent, and has withered since) is
+## sent again, so he takes the march up (MS §5), not stands at his muster until dawn. His goal is cleared by hand here (the test world's streets are open).
+static func _resume_march(t) -> void:
+	var s := _world()
+	var d := _bh(s)
+	_steady(d)
+	_raise(s, 3)
+	var b := d.bearer(3)
+	var door: Vector2 = d.house_doors[d._dest[3]]
+	t.check(b.has_goal() and b.anchor.distance_to(door) < 0.5, "(set-up) the bearer is sent for his house (%s)" % [b.anchor])
+	b._goal = Vector2.INF  # the street was shut when he was sent: no way, and he stands on duty
+	Kit.run_for(s, LOOK)
+	t.check(b.has_goal() and b.mind == Person.Mind.DUTY, "a bearer on duty with no way to walk is sent again at the next look")
+	b._goal = Vector2.INF
+	Kit.arrive(b, door + Vector2(0.0, 0.5))
+	Kit.run_for(s, LOOK)
+	t.check(d.taken() == 1 and d._planted[3], "and one at the door plants (the resend never stands in the plant's way)")
+	Kit.done(s)
+
+
+## Task 12 (the wave-1 lesson on the walk): a standard re-aimed at another house while it marches (its house taken by another company) keeps its escorts in file,
+## more than 1.6 apart, on the new street: bodies stepped frame by frame for 8 s on the first street, then along the new one, every step counted from the
+## re-aim on, none excluded.
+static func _reaim_walk(t) -> void:
+	var s := _world()
+	var d := _bh(s)
+	_steady(d)
+	_raise(s, 1)
+	var w := _walker(d, 1)
+	for f in 160:
+		_walk_frame(s, d, 1, w, DT)
+	d._taken[d._dest[1]] = true  # another standard planted there
+	var was: int = d._dest[1]
+	_walk_frame(s, d, 1, w, DT)
+	var b := d.bearer(1)
+	w.road = d.crowd._grid.path(b.ground_pos, d.house_doors[d._dest[1]])
+	w.k = 0
+	w.at = b.ground_pos
+	var steps := 0
+	var low := 0
+	var closest := INF
+	for f in 600:
+		_walk_frame(s, d, 1, w, DT)
+		var men := _escorts(d, 1).filter(func(e: Variant) -> bool: return MissionDirector._alive(e))
+		if men.size() < 2 or d.steps[1].broken or d._planted[1]:
+			break
+		var gap: float = (men[0] as Person).ground_pos.distance_to((men[1] as Person).ground_pos)
+		steps += 1
+		closest = minf(closest, gap)
+		low += 1 if gap <= 2.0 * SilentDoom.RADIUS else 0
+	t.check(d._dest[1] != was and steps > 200 and float(low) <= 0.05 * float(steps) and not d.steps[1].broken,
+		"after a re-aim the escorts keep apart on the new street: %d of %d steps at 1.6 or less (the least asked is 5%%), closest %.2f" % [low, steps, closest])
+	Kit.done(s)
+
+
 ## The escorts' places move with the bearer, every look, and stay apart (MS §0, wave 1's finding): at every stop of every walk the two posts are
 ## on opposite sides of him more than 1.6 apart, and no escort post is within 1.6 of another standard's.
 static func _escorts_follow(t) -> void:
@@ -404,20 +499,35 @@ static func _street_clear(t) -> void:
 			streets += 1
 	t.check(streets == 12 and least >= BreakHuntDirector.BH_DOOR_CLEAR, "the 12 streets pass every other house's door by %.2f or more (the least asked is %.1f)" % [least, BreakHuntDirector.BH_DOOR_CLEAR])
 	t.check(d.street_clearance() >= BreakHuntDirector.BH_DOOR_CLEAR, "and the director reports the same (%.2f)" % d.street_clearance())
-	# A company planted at a house does not stand within 1.6 of an escort walking another standard's street.
+	# A company planted at a house (its bearer at the door, its escorts at the posts _flanks() gives them) stands more than a Doom's reach
+	# (BH_FLANK_GAP) from the walk of every company on its way to another house: the planted escorts' real places, not the door alone (task 12, M2).
 	var near := 0
+	var closest := INF
+	var planted_posts := 0
 	for h in d.houses.size():
-		var planted := d.house_doors[h]
-		for m in d.steps.size():
-			for g in d.houses.size():
-				if g == h:
+		for i in d.steps.size():
+			d._dest[i] = h
+			d._planted[i] = true
+			d._flank_ang[i] = NAN
+			Kit.arrive(d.bearer(i), d.house_doors[h])  # the bearer planted at the door
+			var posts := d._flanks(i)
+			d._planted[i] = false
+			var stand: Array[Vector2] = [d.bearer(i).ground_pos, posts[0], posts[1]]
+			planted_posts += 1 if posts[0].distance_to(d.house_doors[h]) < 2.0 and posts[1].distance_to(d.house_doors[h]) < 2.0 else 0
+			for m in d.steps.size():
+				if m == i:
 					continue
-				var from := d.steps[m].spot
-				for pt in d.crowd._grid.path(d.steps[m].spot, d.house_doors[g]):
-					var gap := planted.distance_to(Geometry2D.get_closest_point_to_segment(planted, from, pt))
-					near += 1 if gap < BreakHuntDirector.BH_ESCORT_OFF + 2.0 * SilentDoom.RADIUS else 0
-					from = pt
-	t.check(near == 0, "so a planted company (0.9 each side of its bearer) is never within a Doom's reach of a company on its way (%d points)" % near)
+				for g in d.houses.size():
+					if g == h:
+						continue
+					var from := d.steps[m].spot
+					for pt in d.crowd._grid.path(d.steps[m].spot, d.house_doors[g]):
+						for q in stand:
+							var gap := q.distance_to(Geometry2D.get_closest_point_to_segment(q, from, pt))
+							closest = minf(closest, gap)
+							near += 1 if gap < BreakHuntDirector.BH_FLANK_GAP else 0
+						from = pt
+	t.check(near == 0 and planted_posts == 12, "so a planted company (bearer and both escorts, at their real places beside the door: %d of 12) is never within a Doom's reach of a company on its way (%d points; closest %.2f)" % [planted_posts, near, closest])
 	Kit.done(s)
 
 
@@ -1044,3 +1154,165 @@ static func _wishes(t) -> void:
 		descent.release()
 		Kit.done(n)
 	t.check(heard > 0 and hit == 0, "wishes heard (%d), none on the director's own people or buildings (%d)" % [heard, hit])
+
+
+# --- Task 12: the six types' scripted policies (tools/dev/routes/god_hunts/break_hunt.gd) -------------------------------------------------------------
+
+const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
+const Policies := preload("res://tools/dev/routes/god_hunts/break_hunt.gd")
+
+
+## What behaviour_check gives a Hunt policy (the slot test, the cooldown, the walk's length), as the policies call them.
+class Bc:
+	extends RefCounted
+
+	func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key) and rules.refusal(int(slots[key])) == ""
+
+	func _slot_wait(rules: Rules, slots: Dictionary, key: String) -> float:
+		return rules.cooldown_left(int(slots[key])) if slots.has(key) else INF
+
+	func _walk_len(crowd: Crowd, from: Vector2, to: Vector2) -> float:
+		var path := crowd._grid.path(from, to)
+		if path.is_empty():
+			return INF
+		var n := 0.0
+		var at := from
+		for q in path:
+			n += at.distance_to(q)
+			at = q
+		return n
+
+
+## All six types are written and none is a filler (T1R D38: a cast made only so the scripted player is not idle). The file never names the filler mark; the
+## behavioural proof is _policies_play.
+static func _policies_written(t) -> void:
+	var file := FileAccess.get_file_as_string("res://tools/dev/routes/god_hunts/break_hunt.gd")
+	t.check(Array(GodHunts.filled("break_hunt")) == ["ruin", "death", "veil", "passage", "decree", "dominion"], "all six types are filled (%s)" % [GodHunts.filled("break_hunt")])
+	t.check(not file.contains("GOD.FILL") and not file.contains("GodT1.FILL") and not file.contains("\"fill:"), "no policy of the file names the filler mark (D38)")
+
+
+## How near a cast's aim must lie to someone the night still has to answer -- a bearer or an escort of an unbroken standard, out of doors -- by power (the effect's
+## own reach: Silent Doom 0.8 and its walk, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Mind Whisper 0.6, Leaving Is Prohibited 3.0, Heaven
+## Splitter's core 1.6, the wall and the mirror a few units ahead of the file).
+const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "heaven": 1.6, "thorns": 8.0, "mirror": 8.0}
+
+
+## The Hunt's people who still have to be answered: the bearer and the escorts of every unbroken standard, alive and out of doors.
+static func _needy(d: BreakHuntDirector) -> Array[Person]:
+	var out: Array[Person] = []
+	for i in d.steps.size():
+		if d.steps[i].broken:
+			continue
+		if d.bearer(i) != null and not d.bearer(i).inside:
+			out.append(d.bearer(i))
+		for e: Variant in _escorts(d, i):
+			if MissionDirector._alive(e) and not (e as Person).inside:
+				out.append(e as Person)
+	return out
+
+
+## What is wrong with a cast of `key` at `at` as the night stands: "" when its aim is within the power's reach of someone the night still has to answer and --
+## for the powers that mark one man -- he is not already answered by it (a Death Mark on the frail, Pestilence on the sick, Discord on the confused, a whisper
+## on the whispered). Blight must be on the Bell Tower. An empty cast is a filler.
+static func _aim_problem(d: BreakHuntDirector, key: String, at: Vector2) -> String:
+	if key == "blight":
+		return "" if at.distance_to(City.current().landmark(&"bell_tower").get_center()) <= 1.0 else "not on the Bell Tower"
+	var reach: float = float(AIM_REACH.get(key, 1.0))
+	var near := INF
+	var fresh := false
+	for p in _needy(d):
+		var gap := p.ground_pos.distance_to(at)
+		near = minf(near, gap)
+		if gap > reach:
+			continue
+		match key:
+			"deathmark": fresh = fresh or not p.statuses.has(&"frail")
+			"pestilence": fresh = fresh or p.sick_left <= 0.0
+			"discord": fresh = fresh or p.mind != Person.Mind.CONFUSED
+			"whisper": fresh = fresh or p.mind != Person.Mind.WHISPERED
+			_: fresh = true
+	if near > reach:
+		return "no bearer or escort within %.1f (the nearest %.1f)" % [reach, near]
+	if not fresh:
+		return "everyone in reach is already answered by it"
+	return ""
+
+
+## The Hunt's world with the type's loadout (the def's default_loadout) and its slots by key.
+static func _policy_world(type: String) -> Dictionary:
+	var def := MissionBook.break_hunt()
+	def.default_loadout = GodHunts.loadout("break_hunt", type, 4)
+	var s := Kit.world(def)
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_WATCH)
+	(s.rules as Rules).lantern = lw
+	var slots := {}
+	for slot in (s.rules as Rules).loadout.size():
+		if (s.rules as Rules).key(slot) != "":
+			slots[(s.rules as Rules).key(slot)] = slot
+	s["slots"] = slots
+	s["def"] = def
+	return s
+
+
+## Each type's policy, played for a minute and a half of the night with the bodies where they stand (the casts do nothing in this world: only the choice is
+## checked). Every cast is a key of the type's loadout, none is a filler word, and every cast lands within its power's reach of someone the night still has
+## to answer and not on one it has already answered (Ruling P5-T10-R2, P5-T11-R7): the proof that no policy casts only to end a stretch of idle.
+static func _policies_play(t) -> void:
+	GodTree.dev_fill = true
+	for type: String in GodHunts.TYPES:
+		var s := _policy_world(type)
+		var d := _bh(s)
+		var rules: Rules = s.rules
+		var casts: Array[String] = []
+		var misses: Array[String] = []
+		rules.cast_made.connect(func(_slot: int, key: String, at: Vector2) -> void:
+			casts.append(key)
+			var why := _aim_problem(d, key, at)
+			if why != "":
+				misses.append("%s at %s: %s" % [key, at, why]))
+		var said: Array[String] = []
+		var memo := {}
+		var bc := Bc.new()
+		for i in roundi(90.0 / DT):
+			Kit.run_for(s, DT)
+			if i % 10 == 0:
+				var ctx := {"rules": rules, "slots": s.slots, "d": rules.director, "crowd": s.crowd, "memo": memo, "mission": null}
+				var did := GodHunts.act("break_hunt", type, bc, ctx)
+				if did != "":
+					said.append(did)
+		var ok := true
+		for key in casts:
+			ok = ok and (s.def as MissionDef).default_loadout.has(key)
+		var fills := said.filter(func(w: String) -> bool: return GodHunts.GOD_T1.is_fill(w))
+		t.check(ok and fills.is_empty() and not casts.is_empty(), "%s: the policy casts (%s), only keys of its loadout, no filler (%s)" % [type, casts, said])
+		t.check(misses.is_empty(), "%s: every cast lands on a bearer or an escort the night still has to answer, within its reach, and not on one it has already answered (%s)" % [type, misses])
+		Kit.done(s)
+	GodTree.dev_fill = false
+
+
+## The aim check itself can fail (the mutation of the no-filler proof): a cast at nobody, a Death Mark on the frail, Pestilence on the sick, Discord on the
+## confused, a whisper on the whispered, a Blight away from the Bell Tower are all told.
+static func _aim_teeth(t) -> void:
+	var s := _world()
+	var d := _bh(s)
+	_raise(s, 0)
+	var b := d.bearer(0)
+	t.check(_aim_problem(d, "doom", b.ground_pos) == "" and _aim_problem(d, "doom", b.ground_pos + Vector2(40.0, 0.0)) != "",
+		"a Doom on the bearer is aimed; the same far from everyone is an empty cast")
+	# Everyone else out of the way, the bearer alone and answered every way a power can answer him.
+	for i in 4:
+		for v: Variant in _escorts(d, i):
+			if MissionDirector._alive(v):
+				(v as Person).ground_pos = Vector2(-60.0, -60.0 + float(i))
+		if i > 0 and d.bearer(i) != null:
+			d.bearer(i).ground_pos = Vector2(60.0, 60.0 + float(i))
+	b.statuses[&"frail"] = true
+	b.sick_left = 4.0
+	b.mind = Person.Mind.WHISPERED
+	t.check(_aim_problem(d, "deathmark", b.ground_pos) != "" and _aim_problem(d, "pestilence", b.ground_pos) != "" and _aim_problem(d, "whisper", b.ground_pos) != "",
+		"a Death Mark on the frail, Pestilence on the sick and a whisper on the whispered are repeats")
+	b.mind = Person.Mind.CONFUSED
+	t.check(_aim_problem(d, "discord", b.ground_pos) != "", "a Discord on the confused is a repeat")
+	t.check(_aim_problem(d, "blight", Vector2.ZERO) != "" and _aim_problem(d, "blight", City.current().landmark(&"bell_tower").get_center()) == "", "Blight is aimed at the Bell Tower")
+	Kit.done(s)

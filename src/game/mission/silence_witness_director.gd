@@ -12,13 +12,13 @@ extends BellRingersDirector
 ## copied into the base's `tune_` vars and the witnesses' vars (MS H11). This director replaces BellRingersDirector._begin() (it builds
 ## RingerDirector.new()); the posts, doors and post_names the base keeps hold the houses, their doors and their names.
 
-## Where each district's house is looked for (MS §3: one per district; the dwelling nearest, whose door the street reaches, quiet) *fg*, in the order
-## they send their witness: west, north-east, south-west, south-east. Tuning, round 1 (god P5 Task 10; the spec's order was west, south-west, south-east,
-## north-east): the last witness is the one with the shortest road out of the walls (the south-east door is 7 units of street from the east gate; the
-## north-east 34, the west 28, the south-west 22), so Mind Whisper's long walk out of the town (a whispered man walks at 0.4 units a second) ends the
-## night inside the 45 s the player may be idle (Dominion had idle 72-90 with the north-east last), and the north-east's short road (19.8 units) comes
-## second, before the Lantern burns the clock to x2 (Death lost 3/3 with it third or fourth, won 3/3 with it second). The west house stays first: the
-## camera (SW_CAMERA_AT) shows it. The streets, times and chain are untouched.
+## Where each district's house is looked for (MS §3: one per district; the dwelling nearest, whose door the street reaches, quiet) *fg*, in the order they send
+## their witness: west, north-east, south-west, south-east. Tuning, round 1 (god P5 Task 10, Ruling P5-T10-R1; the spec's order was west, south-west, south-east,
+## north-east). Measured on the doors (the street to the Temple's door / the walk to the nearest ground out of the walls): west 31.2 / 28.5, north-east 19.8 / 34.5,
+## south-west 27.0 / 22.1, south-east 29.2 / 7.2 units. The last witness is the one with the shortest walk out (the south-east: Mind Whisper's walk out of the town,
+## about 0.4 units a second on the west and north-east walks, ends Dominion's night inside the 45 s a player may idle -- idle 72-90 with the north-east last, 40 now),
+## and the north-east's short road comes second, before the Lantern burns the clock to x2 (Death lost 3/3 with it third, won 3/3 second). The west house stays first:
+## the camera (SW_CAMERA_AT) shows it. The streets, times and chain are untouched.
 const SW_HOUSE_POINTS := [Vector2(-11.5, 2.0), Vector2(12.5, -11.0), Vector2(-11.0, 12.5), Vector2(12.5, 12.0)]
 ## The houses' names on the banners, the strip and the tour.
 const SW_HOUSE_NAMES := ["west", "north-east", "south-west", "south-east"]
@@ -34,9 +34,10 @@ const SW_OUT_PAUSE := 3.0
 const SW_MATES := 2
 ## How far behind the witness his mates walk, and stand at the door.
 const SW_MATE_GAP := 1.2
-## How far to either side of his way they walk *fg*: the pair 1.7 apart, more than two Silent Doom radii.
+## How far to either side of his way they stand at the door *fg* (the pair 1.7 apart, more than two Silent Doom radii). On the walk they go in file instead (WitnessDirector.SW_HEEL_BEHIND / SW_HEEL_AHEAD, Ruling P5-T10-R3): abreast the pair closed in lanes.
 const SW_MATE_SIDE := 0.85
-## The share of his own pace the witness walks at *fg* (35-50 s to the Temple).
+## The share of his own pace the witness walks at *fg*: 19-31 s to the Temple (the streets are 19.8-31.2 units at 1.6 x 0.65 = 1.04 a second; the spec's first "35-50 s" no
+## street of Aldermere gives, review of Task 5).
 const SW_WITNESS_PACE := 0.65
 ## At this many mission seconds from the Temple's door the banner `A WITNESS NEARS THE TEMPLE` shows.
 const SW_NEAR_WARN := 15.0

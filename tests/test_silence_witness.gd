@@ -31,6 +31,7 @@ static func run(t) -> void:
 	_frame(t)
 	_chain(t)
 	_mates_apart(t)
+	_mates_walk(t)
 	_relay_mate(t)
 	_no_luck(t)
 	_held_mate(t)
@@ -50,6 +51,7 @@ static func run(t) -> void:
 	_hunt_wishes(t)
 	_policies_written(t)
 	_policies_play(t)
+	_aim_teeth(t)
 
 
 ## The Hunt's world: its town, Rules and director, with the watch Lantern the game gives the night (Mission builds it; test_lantern does the same).
@@ -258,11 +260,53 @@ static func _mates_apart(t) -> void:
 			"at his heels from the %s house (_heel()): the mates' places more than 1.6 apart, each within 2.0 of him (%.2f, %.2f / %.2f)" % [
 				d2.post_names[i], g0.distance_to(at), g1.distance_to(at), g0.distance_to(g1)])
 		if i == 0:
-			t.check(is_equal_approx(g0.distance_to(g1), 1.7), "in the open street the pair is the spec's 1.7 apart (%.2f)" % g0.distance_to(g1))
+			t.check(g0.distance_to(g1) > 2.0 and g0.distance_to(g1) <= WitnessDirector.SW_HEEL_BEHIND + WitnessDirector.SW_HEEL_AHEAD + 0.5,
+				"in file the pair is about %.1f apart, room to spare over the spec's 1.7 (%.2f)" % [WitnessDirector.SW_HEEL_BEHIND + WitnessDirector.SW_HEEL_AHEAD, g0.distance_to(g1)])
 			var slow := r2.messenger.pace
 			t.check(slow < 0.65 * Person.PACE_RANGE.y + 0.001 and slow >= 0.65 * Person.PACE_RANGE.x - 0.001,
 				"the witness walks at 0.65 of his pace (%.2f of a 0.85-1.2 pace)" % slow)
 		Kit.done(s2)
+
+
+## Review of Task 10, I3 (Ruling P5-T10-R3, MS §0, as Task 11's guards, P5-T11-R8): a witness's two mates stay more than 1.6 apart on every walk, so one Silent
+## Doom never takes both. The bodies are moved: each house sends its witness, who walks the street to the Temple's door with his mates ticked beside him
+## (Person.tick; the Kit world does not step bodies), and the gap between the mates is read every step. It holds but at the turns of the road (a pair in file
+## must pass the same corner): at most 5 % of the steps. They also keep up with him (the farthest a mate strays from the witness is under the sight of a
+## death, Crowd.DOOM_WITNESS), or "apart" would only mean "left behind".
+static func _mates_walk(t) -> void:
+	for house in 4:
+		var s := _world()
+		var d: SilenceWitnessDirector = s.d
+		var rules: Rules = s.rules
+		var r := d.ringers[house] as WitnessDirector
+		d._send(house)
+		var steps := 0
+		var under := 0
+		var worst := INF
+		var farthest := 0.0
+		var secs := 0.0
+		while secs < 70.0 and not r.in_temple and not r.warning_dead:
+			(s.crowd as Crowd).advance(DT)
+			rules.advance(DT)
+			secs += DT
+			for v: Variant in [r.messenger] + r.mates:
+				if MissionDirector._alive(v):
+					(v as Person).tick(DT)
+			if r.phase != WarningDirector.Phase.RUN or r.mates.size() < 2 or not MissionDirector._alive(r.mates[0]) or not MissionDirector._alive(r.mates[1]):
+				continue
+			var a: Person = r.mates[0]
+			var b: Person = r.mates[1]
+			if a.inside or b.inside or secs < SilenceWitnessDirector.SW_OUT_PAUSE + 3.0:
+				continue
+			var gap := a.ground_pos.distance_to(b.ground_pos)
+			steps += 1
+			under += 1 if gap <= 1.6 else 0
+			worst = minf(worst, gap)
+			farthest = maxf(farthest, maxf(a.ground_pos.distance_to(r.messenger.ground_pos), b.ground_pos.distance_to(r.messenger.ground_pos)))
+		t.check(steps > 200 and float(under) <= 0.05 * float(steps),
+			"%s house: the two mates stay over 1.6 apart on the walk but at the turns: %d of %d steps under (closest %.2f)" % [d.post_names[house], under, steps, worst])
+		t.check(farthest < 4.0, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
+		Kit.done(s)
 
 
 static func _relay_mate(t) -> void:
@@ -779,6 +823,48 @@ static func _policies_written(t) -> void:
 	t.check(not file.contains("GodT1.FILL") and not file.contains("FILL +") and not file.contains("\"fill:"), "no policy of the file keeps a filler cast (D38)")
 
 
+## How near a cast's aim must lie to someone the night still needs answered -- a walking witness or one of his mates, out of doors -- by power (the effect's own reach,
+## less nothing: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Madness Bloom 1.5, Leaving Is Prohibited 3.0; the wide ones by the
+## file's size: Heaven Splitter's core 1.6, Glacial Cataclysm 5, Tsunami Breaker's lane 8 from its wall's start, a thornwall and a mirror's way in a few units ahead).
+const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "heaven": 1.6, "glacial": 3.0,
+	"tsunami": 8.0, "thorns": 6.0, "mirror": 6.0}
+
+
+## What is wrong with a cast of `key` at `at` as the night stands (review of Task 10, M1; Ruling P5-T10-R2): "" when its aim is within its reach of a walking
+## witness or a mate of his who still has to be answered, and -- for the powers that mark one man -- he is not already answered by it (a Death Mark on the frail,
+## Pestilence on the sick, Discord on the confused, a whisper on the whispered). Blight must be on the Bell Tower. A repeat or an empty cast is a filler.
+static func _aim_problem(d: SilenceWitnessDirector, key: String, at: Vector2) -> String:
+	if key == "blight":
+		return "" if at.distance_to(City.current().landmark(&"bell_tower").get_center()) <= 1.0 else "not on the Bell Tower"
+	var reach: float = float(AIM_REACH.get(key, 1.0))
+	var best: Person = null
+	var best_d := INF
+	var fresh := false
+	for r in d.running():
+		var crew: Array = [r.messenger]
+		crew.append_array((r as WitnessDirector).mates)
+		for v: Variant in crew:
+			if not MissionDirector._alive(v) or (v as Person).inside:
+				continue
+			var p := v as Person
+			var gap := p.ground_pos.distance_to(at)
+			if gap <= reach:
+				match key:
+					"deathmark": fresh = fresh or not p.statuses.has(&"frail")
+					"pestilence": fresh = fresh or p.sick_left <= 0.0
+					"discord": fresh = fresh or p.mind != Person.Mind.CONFUSED
+					"whisper": fresh = fresh or p.mind != Person.Mind.WHISPERED
+					_: fresh = true
+			if gap < best_d:
+				best_d = gap
+				best = p
+	if best == null or best_d > reach:
+		return "no witness or mate of his within %.1f (the nearest %.1f)" % [reach, best_d]
+	if not fresh:
+		return "everyone in reach is already answered by it"
+	return ""
+
+
 ## Each type's policy, played on a witness who walks (the casts do nothing in this world: only the choice is checked). Every cast is a key of the type's
 ## loadout, none is a filler, and by the time the witness is a few seconds out the policy has cast at least once.
 static func _policies_play(t) -> void:
@@ -790,7 +876,12 @@ static func _policies_play(t) -> void:
 		var d: SilenceWitnessDirector = s.d
 		var rules: Rules = s.rules
 		var casts: Array[String] = []
-		rules.cast_made.connect(func(_slot: int, key: String, _at: Vector2) -> void: casts.append(key))
+		var misses: Array[String] = []
+		rules.cast_made.connect(func(_slot: int, key: String, at: Vector2) -> void:
+			casts.append(key)
+			var why := _aim_problem(d, key, at)
+			if why != "":
+				misses.append("%s at %s: %s" % [key, at, why]))
 		var slots := {}
 		for slot in rules.loadout.size():
 			if rules.key(slot) != "":
@@ -812,5 +903,26 @@ static func _policies_play(t) -> void:
 		var fills := said.filter(func(w: String) -> bool: return GodHunts.GOD_T1.is_fill(w))
 		t.check(ok and fills.is_empty() and not casts.is_empty(),
 			"%s: the policy casts (%s), only keys of its loadout, no filler (%s)" % [type, casts, said])
+		t.check(misses.is_empty(), "%s: every cast lands on someone the night still needs answered, within its reach, and not on one it has already answered (%s)" % [type, misses])
 		Kit.done(s)
 	GodTree.dev_fill = false
+
+
+## The aim check itself can fail (a repeat or an empty cast is told): a cast at nobody, a Discord on the confused, a Death Mark on the frail, Pestilence on the sick.
+static func _aim_teeth(t) -> void:
+	var s := _world()
+	var d: SilenceWitnessDirector = s.d
+	var r := _out(s, 0)
+	var w := r.messenger
+	t.check(_aim_problem(d, "doom", w.ground_pos) == "" and _aim_problem(d, "doom", w.ground_pos + Vector2(9.0, 0.0)) != "",
+		"a Doom on the witness is aimed; the same far from everyone is an empty cast")
+	w.mind = Person.Mind.CONFUSED
+	for v: Variant in r.mates:
+		(v as Person).ground_pos = w.ground_pos + Vector2(30.0, 0.0)
+	t.check(_aim_problem(d, "discord", w.ground_pos) != "", "a Discord on the confused is a repeat")
+	w.mind = Person.Mind.DUTY
+	w.statuses[&"frail"] = true
+	w.sick_left = 4.0
+	t.check(_aim_problem(d, "deathmark", w.ground_pos) != "" and _aim_problem(d, "pestilence", w.ground_pos) != "", "a Death Mark on the frail and Pestilence on the sick are repeats")
+	t.check(_aim_problem(d, "blight", Vector2.ZERO) != "" and _aim_problem(d, "blight", City.current().landmark(&"bell_tower").get_center()) == "", "Blight is aimed at the Bell Tower")
+	Kit.done(s)

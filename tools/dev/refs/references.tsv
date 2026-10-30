@@ -156,27 +156,27 @@ first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=do
 # god P5 Hide the faithful (Task 9) -- rows below
 
 # god P5 Silence the witness (Task 10) -- rows below
-silence_witness_none_1	--scenario=silence_witness --case=none --seed=1	-525751142
-silence_witness_none_2	--scenario=silence_witness --case=none --seed=2	-729120592
-silence_witness_none_3	--scenario=silence_witness --case=none --seed=3	328326626
-silence_witness_ruin_play_1	--scenario=silence_witness --case=play --seed=1 --god=ruin:2 --dev-tree	-901873848
-silence_witness_ruin_play_2	--scenario=silence_witness --case=play --seed=2 --god=ruin:2 --dev-tree	389700845
-silence_witness_ruin_play_3	--scenario=silence_witness --case=play --seed=3 --god=ruin:2 --dev-tree	-93933513
-silence_witness_death_play_1	--scenario=silence_witness --case=play --seed=1 --god=death:2 --dev-tree	-553799661
-silence_witness_death_play_2	--scenario=silence_witness --case=play --seed=2 --god=death:2 --dev-tree	-969309948
-silence_witness_death_play_3	--scenario=silence_witness --case=play --seed=3 --god=death:2 --dev-tree	-694219907
-silence_witness_veil_play_1	--scenario=silence_witness --case=play --seed=1 --god=veil:2 --dev-tree	-284645907
-silence_witness_veil_play_2	--scenario=silence_witness --case=play --seed=2 --god=veil:2 --dev-tree	-828682209
-silence_witness_veil_play_3	--scenario=silence_witness --case=play --seed=3 --god=veil:2 --dev-tree	-37361140
-silence_witness_passage_play_1	--scenario=silence_witness --case=play --seed=1 --god=passage:2 --dev-tree	-930971774
-silence_witness_passage_play_2	--scenario=silence_witness --case=play --seed=2 --god=passage:2 --dev-tree	383547594
-silence_witness_passage_play_3	--scenario=silence_witness --case=play --seed=3 --god=passage:2 --dev-tree	-288338990
-silence_witness_decree_play_1	--scenario=silence_witness --case=play --seed=1 --god=decree:2 --dev-tree	-794602738
-silence_witness_decree_play_2	--scenario=silence_witness --case=play --seed=2 --god=decree:2 --dev-tree	-618912143
-silence_witness_decree_play_3	--scenario=silence_witness --case=play --seed=3 --god=decree:2 --dev-tree	-388935832
-silence_witness_dominion_play_1	--scenario=silence_witness --case=play --seed=1 --god=dominion:2 --dev-tree	-426607297
-silence_witness_dominion_play_2	--scenario=silence_witness --case=play --seed=2 --god=dominion:2 --dev-tree	-521716089
-silence_witness_dominion_play_3	--scenario=silence_witness --case=play --seed=3 --god=dominion:2 --dev-tree	-931723698
+silence_witness_none_1	--scenario=silence_witness --case=none --seed=1	-290560938
+silence_witness_none_2	--scenario=silence_witness --case=none --seed=2	-868103092
+silence_witness_none_3	--scenario=silence_witness --case=none --seed=3	89419789
+silence_witness_ruin_play_1	--scenario=silence_witness --case=play --seed=1 --god=ruin:2 --dev-tree	-653907129
+silence_witness_ruin_play_2	--scenario=silence_witness --case=play --seed=2 --god=ruin:2 --dev-tree	586995741
+silence_witness_ruin_play_3	--scenario=silence_witness --case=play --seed=3 --god=ruin:2 --dev-tree	-181708191
+silence_witness_death_play_1	--scenario=silence_witness --case=play --seed=1 --god=death:2 --dev-tree	-397643768
+silence_witness_death_play_2	--scenario=silence_witness --case=play --seed=2 --god=death:2 --dev-tree	152793487
+silence_witness_death_play_3	--scenario=silence_witness --case=play --seed=3 --god=death:2 --dev-tree	457658897
+silence_witness_veil_play_1	--scenario=silence_witness --case=play --seed=1 --god=veil:2 --dev-tree	-445821788
+silence_witness_veil_play_2	--scenario=silence_witness --case=play --seed=2 --god=veil:2 --dev-tree	-165945103
+silence_witness_veil_play_3	--scenario=silence_witness --case=play --seed=3 --god=veil:2 --dev-tree	-939959844
+silence_witness_passage_play_1	--scenario=silence_witness --case=play --seed=1 --god=passage:2 --dev-tree	-347018553
+silence_witness_passage_play_2	--scenario=silence_witness --case=play --seed=2 --god=passage:2 --dev-tree	570977986
+silence_witness_passage_play_3	--scenario=silence_witness --case=play --seed=3 --god=passage:2 --dev-tree	-861208441
+silence_witness_decree_play_1	--scenario=silence_witness --case=play --seed=1 --god=decree:2 --dev-tree	-875062699
+silence_witness_decree_play_2	--scenario=silence_witness --case=play --seed=2 --god=decree:2 --dev-tree	-741200594
+silence_witness_decree_play_3	--scenario=silence_witness --case=play --seed=3 --god=decree:2 --dev-tree	-455380156
+silence_witness_dominion_play_1	--scenario=silence_witness --case=play --seed=1 --god=dominion:2 --dev-tree	-567743550
+silence_witness_dominion_play_2	--scenario=silence_witness --case=play --seed=2 --god=dominion:2 --dev-tree	-545100207
+silence_witness_dominion_play_3	--scenario=silence_witness --case=play --seed=3 --god=dominion:2 --dev-tree	-104342724
 
 # god P5 Expel the inquisitor (Task 11) -- rows below
 

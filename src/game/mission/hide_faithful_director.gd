@@ -43,7 +43,7 @@ const HF_GATES := [
 ## When each household comes out at the latest (fg), the chain (a rule: no wait over 45 s), and how long before the search would reach a
 ## household's house it slips out (fg).
 ## Tuning round 1 (Task 9): the second household 110 -> 140 and the believers' pace 0.45 -> 0.40 (ruling P5-C10: the default play won at 150-168 s, under
-## the 180-240 s bar; later and slower is the reverse of MS §7's easier moves). Result: wins at 166-205 s, the Hunt's pooled median 189 s. The pace did the
+## the 180-240 s bar; later and slower is the reverse of MS §7's easier moves). Result: wins at 166-205 s, the Hunt's pooled median 186 s (final gate). The pace did the
 ## work: the chain (45 s after the first household is done, about 95 s) brings the second household out at about 140 s whichever of the two numbers is
 ## used, so 140 rarely binds alone. The chain (45 s) still ends the wait.
 const HF_OUT_AT := [15.0, 140.0]

@@ -54,6 +54,7 @@ static func run(t) -> void:
 	_policies_answer(t)
 	_no_filler_casts(t)
 	_pair_orders(t)
+	_walk_fixes(t)
 	_strip_rows(t)
 	_seize_free(t)
 	_lose_two(t)
@@ -739,8 +740,8 @@ static func _policies_answer(t) -> void:
 ## The inquisitor pair walks the whole six-house list on its own feet (the people are ticked; both households done and gone, so no believer is seized and
 ## marched), the gap between the two read every step of 0.05 s (Ruling P5-T9-R8, the standard of P5-T11-R9). `relief` kills one at 3 s, 50 s and 110 s so a
 ## relief walks in. Returns {steps, under, walk_steps,
-## walk_under, nearest, stop_nearest, doors, stops, reliefs}: every step but the first after a change of state (a stop begins or ends, the trail) is
-## counted; `walk_*` counts only the steps when the two are not both standing at their places.
+## walk_under, nearest, stop_nearest, doors, stops, reliefs}: every step while both stand is counted, the first after a change of state (a stop begins or
+## ends, the trail) included; `walk_*` counts only the steps when the two are not both standing at their places.
 static func _walk_metrics(relief: bool) -> Dictionary:
 	var s := _world()
 	var d: HideFaithfulDirector = s.d
@@ -749,7 +750,6 @@ static func _walk_metrics(relief: bool) -> Dictionary:
 		h.out = true
 		h.done = true
 	var m := {"steps": 0, "under": 0, "walk_steps": 0, "walk_under": 0, "nearest": INF, "stop_nearest": INF, "stops": 0}
-	var last_state := ""
 	var kills := [3.0, 50.0, 110.0]
 	for i in roundi(330.0 / DT):
 		(s.crowd as Crowd).advance(DT)
@@ -761,24 +761,21 @@ static func _walk_metrics(relief: bool) -> Dictionary:
 			kills.pop_front()
 			Kit.free_body(s, d.inquisitors[1] as Person)
 		if d.inquisitors.size() != 2 or not MissionDirector._alive(d.inquisitors[0]) or not MissionDirector._alive(d.inquisitors[1]):
-			last_state = ""
 			continue
-		var state := "%d/%s/%d" % [d._search_at, d._search_stop >= 0.0, d._trail]
 		var a := d.inquisitors[0] as Person
 		var b := d.inquisitors[1] as Person
 		var gap := a.ground_pos.distance_to(b.ground_pos)
-		if state == last_state:
-			var settled := a.ground_pos.distance_to(a.anchor) < HideFaithfulDirector.HF_PLACE_NEAR and b.ground_pos.distance_to(b.anchor) < HideFaithfulDirector.HF_PLACE_NEAR 				and a.anchor.distance_to(b.anchor) < 6.0
-			m.steps += 1
-			m.under += 1 if gap < 1.6 else 0
-			m.nearest = minf(m.nearest, gap)
-			if settled and d._search_stop >= 0.0:
-				m.stops += 1
-				m.stop_nearest = minf(m.stop_nearest, gap)
-			if not settled:
-				m.walk_steps += 1
-				m.walk_under += 1 if gap < 1.6 else 0
-		last_state = state
+		var settled := a.ground_pos.distance_to(a.anchor) < HideFaithfulDirector.HF_PLACE_NEAR and b.ground_pos.distance_to(b.anchor) < HideFaithfulDirector.HF_PLACE_NEAR \
+			and a.anchor.distance_to(b.anchor) < 6.0
+		m.steps += 1  # (every sample while both stand: the first after a change of state too, nothing left out)
+		m.under += 1 if gap < 1.6 else 0
+		m.nearest = minf(m.nearest, gap)
+		if settled and d._search_stop >= 0.0:
+			m.stops += 1
+			m.stop_nearest = minf(m.stop_nearest, gap)
+		if not settled:
+			m.walk_steps += 1
+			m.walk_under += 1 if gap < 1.6 else 0
 	m["doors"] = d.stopped_door_gap.duplicate()
 	m["reliefs"] = d.inq_reliefs
 	Kit.done(s)
@@ -788,8 +785,8 @@ static func _walk_metrics(relief: bool) -> Dictionary:
 ## Ruling P5-T9-R8 (review of Task 9, I1): the inquisitor pair walks apart on its whole walk, not only at its stops -- the place of each by who is nearer
 ## along the path, the rear man holding on leaving a stop until the gap along the path opens to HF_PAIR_FILE. The standard (P5-T11-R9): at a stop the pair
 ## stands over 1.6 apart always -- at each of the six doors -- and on the walk at most 5 % of the steps are under 1.6 (corners, the first steps out of a door).
-## Measured shares are in the check message. (Mutations: places by index; no hold; both failed this before the fix, 8.0 % of the walk under 1.6 and one
-## sample at 0.01.)
+## Measured shares are in the check message. (Mutation: the file order off -- places by index, no hold -- reads 6.0 % of all steps and 19.8 % of the walking
+## steps under 1.6, nearest 0.00; the review measured 8.0 % of the walk on the old director.)
 static func _pair_walk(t) -> void:
 	for relief in [false, true]:
 		var m := _walk_metrics(relief)
@@ -801,9 +798,9 @@ static func _pair_walk(t) -> void:
 			worst_door = minf(worst_door, float(g))
 		var share := float(m.under) / float(maxi(m.steps, 1))
 		var walk_share := float(m.walk_under) / float(maxi(m.walk_steps, 1))
-		# (A door in an alley, or one where the rear man comes in as the stop ends, is never stood at by both: the pair's places at all six are held by
-		# _pair_apart; here every door the pair does stand at is over 1.6.)
-		t.check(m.stops > (10 if relief else 20) and float(m.stop_nearest) > 1.6 and noted >= (1 if relief else 4) and worst_door > 1.6,
+		# (Door 3 is never stood at by both on the walk -- the rear man comes in as the stop ends -- and the alley door is stood at 4.2 apart: five doors are
+		# sampled; the pair's places at all six are held by _pair_apart and _pair_orders, the forced stops at all six by _pair_door_gaps.)
+		t.check(m.stops > (10 if relief else 20) and float(m.stop_nearest) > 1.6 and noted >= (1 if relief else 5) and worst_door > 1.6,
 			"%s: at each door the pair stands at it is over 1.6 apart (%d samples at %d doors, nearest %.2f, per door %s)" % ["with a relief" if relief else "plain", m.stops, noted, m.stop_nearest, doors])
 		t.check(m.steps > (600 if relief else 3000) and share <= 0.05 and float(m.nearest) > 0.5,
 			"%s: on the whole walk %.1f %% of the %d steps are under 1.6 apart (%.1f %% of the %d walking steps; nearest %.2f) -- at most 5 %%" % [
@@ -839,6 +836,15 @@ class SpyBc:
 		return slots.has(key)
 
 
+## What watcher `p` is: "watch", "patrol" or "inquisitor".
+static func _kind_of(d: HideFaithfulDirector, p: Person) -> String:
+	if d.watch.has(p):
+		return "watch"
+	if d.inquisitors.has(p):
+		return "inquisitor"
+	return "patrol"
+
+
 ## Everybody the night still needs answered: each watcher, patrolman, inquisitor and watchman alive out of doors.
 static func _needed(d: HideFaithfulDirector) -> Array[Vector2]:
 	var out: Array[Vector2] = []
@@ -860,6 +866,7 @@ static func _no_filler_casts(t) -> void:
 		var total := 0
 		var strays := PackedStringArray()
 		var idle_casts := 0
+		var idle_watch := 0
 		for night in 3:
 			var def := HuntBook.def(MissionBook.HIDE_FAITHFUL)
 			def.default_loadout = Hunts.loadout("hide_faithful", type)
@@ -907,9 +914,10 @@ static func _no_filler_casts(t) -> void:
 				Kit.run_for(s, 0.5)
 				var before := spy.casts.size()
 				var did := String(act.call(bc, ctx))
+				if spy.casts.size() > before:
+					spy.casts[spy.casts.size() - 1]["did"] = did  # (what the cast names: "smite a patrol", "doom a watch", ...)
 				t.check((did == "") == (spy.casts.size() == before), "%s night %d: what the policy returns says whether it cast (%s)" % [type, night, did])
 				t.check(not Hunts.GOD_T1.is_fill(did), "%s night %d: the cast is not worded a filler (%s)" % [type, night, did])
-			var needed := _needed(d)
 			var roads: Array = []
 			for i in d.households.size():
 				if not (d.households[i] as ExodusDirector.Household).done:
@@ -926,22 +934,35 @@ static func _no_filler_casts(t) -> void:
 					var tower: Structure = (s.crowd as Crowd).bell.tower  # (the Bell Tower, so a seen death rings nothing: it ends no stretch, the tower is ruined for good)
 					near = tower != null and (c.at as Vector2).distance_to(tower.center()) <= 1.0
 				else:
-					var reach := 16.0 if key == "belllies" else 3.5
-					for at: Vector2 in needed:
+					# The cast names its target ("smite a patrol", "doom a watch", "leaving is prohibited: a patrol group ..."): it lands on one of THAT kind, a
+					# strike within 1.5 of him, a cage within 3.5, the call of the guard within 16 of the soldiers it takes.
+					var said := String(c.get("did", ""))
+					var kind := "inquisitor" if said.contains("inquisitor") else ("patrol" if said.contains("patrol") else ("watch" if said.contains("watch") else ""))
+					var reach := 16.0 if key == "belllies" else (3.5 if key == "noleave" else 1.5)
+					var named: Array[Vector2] = []
+					for v: Variant in d._watchers():
+						if MissionDirector._alive(v) and _kind_of(d, v as Person) == kind or (key == "belllies" and MissionDirector._alive(v) and _kind_of(d, v as Person) != "inquisitor"):
+							named.append((v as Person).ground_pos)
+					for at: Vector2 in named:
 						near = near or (c.at as Vector2).distance_to(at) <= reach
+					if night == 2 and kind == "watch":
+						idle_watch += 1
 				if not near:
-					strays.append("%s night %d at %s" % [key, night, c.at])
+					strays.append("%s night %d at %s (%s)" % [key, night, c.at, c.get("did", "")])
 			spy.free()
 			Kit.done(s)
 		t.check(total > 0, "%s: the policy casts over the three nights (%d casts)" % [type, total])
 		t.check(strays.is_empty(), "%s: every cast lands on somebody the night still needs answered (strays: %s)" % [type, ", ".join(strays)])
 		if type == "dominion":
 			t.check(idle_casts == 0, "dominion: on the idle night, with the watch 60 s from its sight, it casts nothing (%d casts)" % idle_casts)
+		if type in ["ruin", "death"]:
+			# The idle lead: a real, permanent kill, made earlier than its lead -- on the gate watchman it names, the watch 60 s from its sight.
+			t.check(idle_watch >= 1, "%s: on the idle night it kills a gate watchman 60 s ahead of his sight, and the cast lands on him (%d such casts)" % [type, idle_watch])
 	GodTree.dev_fill = false
 
 
 ## Review of Task 9, M2: tests that fail without HF_PAIR_SLACK 0.6, the inquisitors' one pace and the pair being re-ordered together. (Mutations: slack
-## 0.5, `p.pace = HF_SEARCH_BASE_PACE` removed, `resend` per man -- each fails here.)
+## 0.5 -- the constant pin and the walk test fail, the 2.3 floor alone does not (nearest 2.33); `p.pace = HF_SEARCH_BASE_PACE` removed, `resend` per man -- each fails here.)
 static func _pair_orders(t) -> void:
 	var s := _world()
 	var d: HideFaithfulDirector = s.d
@@ -951,7 +972,7 @@ static func _pair_orders(t) -> void:
 		paces[float(d._inq_base[(v as Person).get_instance_id()])] = true
 	t.check(paces.size() == 1 and is_equal_approx(float(paces.keys()[0]), HideFaithfulDirector.HF_SEARCH_BASE_PACE),
 		"the two inquisitors share one base pace, %.1f (%s)" % [HideFaithfulDirector.HF_SEARCH_BASE_PACE, paces.keys()])
-	# The places are over HF_SEARCH_GAP + 0.6 - 0.1 = 2.3 apart at the six doors (absolute: the slack is 0.6).
+	# The places are over HF_SEARCH_GAP + 0.6 - 0.1 = 2.3 apart at the six doors (the design is 2.4; absolute: the slack is 0.6).
 	var worst := INF
 	var from := d.temple_door
 	for e: Dictionary in d._search:
@@ -981,6 +1002,109 @@ static func _pair_orders(t) -> void:
 		or (anchors[0] as Vector2).distance_to(spots[1]) < 0.05 and (anchors[1] as Vector2).distance_to(spots[0]) < 0.05
 	t.check(placed, "when one of the pair needs a new order both are sent: the anchors stand at the two places (%s, places %s)" % [anchors, spots])
 	Kit.done(s)
+
+
+## A Lantern whose Bearer's errand is `busy`'s alone.
+class ErrandLantern:
+	extends LanternWatch
+	var busy: Variant = null
+
+	func has_errand(p: Variant) -> bool:
+		return p == busy
+
+
+## A director whose walk is shut between chosen places: `_reaches(a, b)` is false for each blocked [from, to] pair (each end within 0.05).
+class ShutDirector:
+	extends HideFaithfulDirector
+	var blocked: Array = []
+
+	func _reaches(a: Vector2, b: Vector2) -> bool:
+		for pair: Array in blocked:
+			if a.distance_to(pair[0]) < 0.05 and b.distance_to(pair[1]) < 0.05:
+				return false
+		return super(a, b)
+
+
+## Review of Task 9 (re-review): the director fixes the walk test found. (Mutations, each failing here: the Lantern filter left out of
+## `_relief_from_temple`; the inquisitors not put in `reserved`; a man sent to a place he cannot reach instead of the door; `pair_spots` not asking that a
+## place can be walked from to the door; or from the door the search comes from.)
+static func _walk_fixes(t) -> void:
+	# The relief is not the Lantern Bearer's escort: the man the base would pick (nearest the Temple) walks the Lantern's errand, and another comes.
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	var rules: Rules = s.rules
+	var plain: Person = null
+	for p in d._lay_near(d.temple_door, MissionDirector.REACH_PICKS, d._in_use(d.charge)):
+		if (s.crowd as Crowd)._grid == null or not (s.crowd as Crowd)._grid.path(p.ground_pos, d.temple_door).is_empty():
+			plain = p
+			break
+	var kept := rules.lantern
+	var lantern := ErrandLantern.new()
+	rules.lantern = lantern
+	var first := d._relief_from_temple(d.temple_door)
+	lantern.busy = plain
+	var second := d._relief_from_temple(d.temple_door)
+	t.check(plain != null and first == plain and second != null and second != plain,
+		"the relief is the nearest lay citizen, but not one walking the Lantern's errand (%s, then %s instead)" % [first, second])
+	rules.lantern = kept
+	# The inquisitors are set aside from the Bearer: reserved, and so left out of his pool even when one has a free mind.
+	var all_reserved := true
+	for v: Variant in d.inquisitors:
+		all_reserved = all_reserved and d.reserved.has(v)
+	var spare := d.inquisitors[0] as Person
+	spare.mind = Person.Mind.CALM
+	var bearer := LanternBearer.new()
+	bearer.crowd = s.crowd
+	bearer.door = d.temple_door
+	bearer._reserved = d.reserved
+	var pooled := false
+	var rows := bearer._pool()
+	for row: Array in rows:
+		pooled = pooled or row[2] == spare
+	t.check(all_reserved and not rows.is_empty() and not pooled,
+		"both inquisitors are in `reserved` and the Bearer's pool (%d free citizens) leaves out one with a free mind" % rows.size())
+	Kit.done(s)
+	# A place he cannot walk to from where he stands is not sent to: the man goes to the door.
+	var w := Kit.world(HuntBook.def(MissionBook.HIDE_FAITHFUL), ShutDirector.new())
+	var e: ShutDirector = w.d
+	_clear_watch_but_search(e)
+	for h: ExodusDirector.Household in e.households:
+		h.out = true
+		h.done = true
+	e._search_at = 3
+	var door: Vector2 = e._search[3].door
+	var spots: Array[Vector2] = e._door_spots(door, 2)
+	var men: Array[Person] = [e.inquisitors[0] as Person, e.inquisitors[1] as Person]
+	for m in men:
+		Kit.arrive(m, door + Vector2(-6.0, 0.0))
+		m.go_duty(door + Vector2(-6.0, 0.0))
+		e._set_pace(m, HideFaithfulDirector.HF_SEARCH_PACE)
+	for from_man in 2:
+		e.blocked.append([men[from_man].ground_pos, spots[0]])  # (the street to the first place is shut from each of them)
+	e._order_search()
+	var at_shut := false
+	var at_door := false
+	for m in men:
+		at_shut = at_shut or m.anchor.distance_to(spots[0]) < 0.05
+		at_door = at_door or m.anchor.distance_to(e._walkable(door)) < 0.05
+	t.check(not at_shut and at_door, "a man who cannot walk to his place is sent to the door, not anchored to the place (anchors %s %s, place %s, door %s)" % [men[0].anchor, men[1].anchor, spots[0], door])
+	# pair_spots: a place that cannot be walked from to the door, or from the door the search comes from, is not a place of the pair.
+	e.blocked.clear()
+	var from_door: Vector2 = e._search[2].door
+	var base := e.pair_spots(door, 2, from_door)
+	e.blocked.append([base[0], door])
+	var back := e.pair_spots(door, 2, from_door)
+	var kept_back := false
+	for q in back:
+		kept_back = kept_back or q.distance_to(base[0]) < 0.05
+	e.blocked.clear()
+	e.blocked.append([from_door, base[0]])
+	var shut_in := e.pair_spots(door, 2, from_door)
+	var kept_in := false
+	for q in shut_in:
+		kept_in = kept_in or q.distance_to(base[0]) < 0.05
+	t.check(not kept_back and not kept_in, "a place shut from the door, or from the door the search comes from, is left out of the pair (kept: back %s, in %s; %s -> %s -> %s)" % [kept_back, kept_in, base, back, shut_in])
+	Kit.done(w)
 
 
 static func _strip_rows(t) -> void:

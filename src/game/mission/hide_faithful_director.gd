@@ -42,16 +42,23 @@ const HF_GATES := [
 ]
 ## When each household comes out at the latest (fg), the chain (a rule: no wait over 45 s), and how long before the search would reach a
 ## household's house it slips out (fg).
-const HF_OUT_AT := [15.0, 110.0]
+## Tuning round 1 (Task 9): the second household 110 -> 140 and the believers' pace 0.45 -> 0.40 (ruling P5-C10: the default play won at 150-168 s, under
+## the 180-240 s bar; later and slower is the reverse of MS §7's easier moves). Result: wins at 166-205 s, the Hunt's pooled median 186 s (final gate). The pace did the
+## work: the chain (45 s after the first household is done, about 95 s) brings the second household out at about 140 s whichever of the two numbers is
+## used, so 140 rarely binds alone. The chain (45 s) still ends the wait.
+const HF_OUT_AT := [15.0, 140.0]
 const HF_CHAIN := 45.0
 const HF_SLIP := 30.0
-## The believers' pace as a fraction of a citizen's (fg: tuned up to 0.5).
-const HF_BELIEVER_PACE := 0.45
+## The believers' pace as a fraction of a citizen's (fg 0.45; 0.40 in tuning round 1, see HF_OUT_AT).
+const HF_BELIEVER_PACE := 0.40
 ## The watch: the gates' four posts (two inside the Main Gate and just outside it, two at the Side Gate's mouth and outside it), the patrols'
 ## beats (the Lost Lamb's), how far apart a patrol walks, and how near a door must be quiet (no post or beat within it).
 const HF_POSTS := [Vector2(2.7, 14.6), Vector2(2.7, 16.8), Vector2(14.6, 9.0), Vector2(16.8, 9.0)]
 const HF_BEATS := LostLambDirector.BEATS
-const HF_PATROL_GAP := 1.8
+## (2.0 from Task 9, first review Minor 4: patrol pairs measured 1.5-1.6 apart in motion at a nominal 1.8. Two causes were found and fixed: the
+## follower's own pace (_match_pace(): the pair walks at its slowest man's, else the follower gained down to 0.4 apart) and the lead's arrival
+## (_step_patrols() measures it from his place of the pair, not the beat's point); measured in motion over 90 s, nearest 2.0.)
+const HF_PATROL_GAP := 2.0
 const HF_SIGHT := 2.5
 const HF_QUIET := 3.5
 ## The search (MS §2, fg): how many inquisitors, how many houses listed (the households' included), how long they stand at a door, how far
@@ -62,9 +69,20 @@ const HF_SEARCHERS := 2
 const HF_SEARCH_LIST := 6
 const HF_SEARCH_STOP := 6.0
 const HF_SEARCH_GAP := 1.8
-## Added to HF_SEARCH_GAP when the pair is sent to its places (pair_spots()): a person stops a step short of or past his place, so places 2.3 apart
-## keep the two more than two Silent Doom radii apart.
-const HF_PAIR_SLACK := 0.5
+## Added to HF_SEARCH_GAP when the pair is sent to its places (pair_spots()): a person stops a step short of or past his place, so places this much
+## farther apart than HF_SEARCH_GAP keep the two more than two Silent Doom radii apart. 0.6 from Task 9 (ruling P5-T9-R1): at 0.5 a pair stopped at a door,
+## or a relief arriving at his place, was sampled 1.4 apart while he was still a step short of it; places 2.4 apart keep the two more than 1.6 apart while
+## one is within HF_PLACE_NEAR of his place and the other settled (0.8 left no room for the arrival guard at one door).
+const HF_PAIR_SLACK := 0.6
+## How near his place an inquisitor counts as standing at it (the report line's pair gap is sampled only then).
+const HF_PLACE_NEAR := 0.5
+## The pair walks in file (ruling P5-T9-R8): the rear man holds where he stands until he is this far behind his fellow along the path, and which of
+## the two is the front changes only when the other is nearer the place by more than HF_FILE_STICKY.
+const HF_PAIR_FILE := 2.3
+const HF_FILE_STICKY := 0.6
+## The pace every inquisitor walks at before HF_SEARCH_PACE (a citizen's mean): citizens' own paces differ by a tenth, and the faster of a pair
+## (or a relief walking in) closed on his fellow along a leg to 1.4 apart -- inside one Silent Doom -- before he stopped at his place (ruling P5-T9-R1).
+const HF_SEARCH_BASE_PACE := 1.0
 const HF_SEARCH_PACE := 0.6
 const HF_TRAIL_PACE := 1.0
 const HF_SEARCH_RELIEF_AFTER := 30.0
@@ -102,14 +120,20 @@ var _march := {}
 ## would take together; the scripted run prints it (god P5, review of Task 4).
 var stopped_gap_min := INF
 var stopped_gaps := 0
+## The same, kept per listed house (by its index in the list; INF until sampled there): a run's line prints every door's, not the first's
+## alone (review of Task 4, re-review item 2).
+var stopped_door_gap: Array[float] = []
 ## The first loss has been announced.
 var _lost_said := false
 ## The Gaze meter the base steps and this Hunt never shows (step()).
 var _no_gaze: GazeMeter
 ## Leg lengths between listed doors, by "a>b".
 var _legs := {}
-## The pair's places at each listed door, by "door/count" (_door_spots()).
+## The pair's places at the listed door the search is bound for, by "door/count" (_door_spots()); cleared at each arrival and each move on, so a
+## house fallen or rebuilt since is seen (review of Task 4, re-review item 5).
 var _pairs := {}
+## The instance id of the inquisitor in front along the path (_order_search()), kept so the two do not swap places look to look.
+var _file_front := 0
 
 
 ## The Hunt's numbers into the base's tune_ vars and existing vars before the base sets up (god P5, MS H11, H12, Ruling C2): no gate shuts,
@@ -189,6 +213,7 @@ func _begin() -> void:
 	for k in patrols.size():
 		var squad: Array = patrols[k]
 		var beat: PackedVector2Array = beats[k]
+		_match_pace(squad)
 		for i in squad.size():
 			var spot := _gap_spot(beat, beat[0], i, squad.size())
 			_set_down(squad[i] as Person, spot)
@@ -221,6 +246,18 @@ func _slips_banner(i: int) -> String:
 func _gap_spot(beat: PackedVector2Array, at: Vector2, i: int, n: int) -> Vector2:
 	var turn := (beat[beat.size() - 1] - beat[0]).angle() if beat.size() > 1 else 0.0
 	return _ring_spot(at, HF_PATROL_GAP * 0.5, i, n, turn)
+
+
+## The squad walks at one pace, its slowest man's (Task 9, first review Minor 4): citizens' paces differ by a tenth, and a follower a tenth faster
+## than his lead closes the gap along a beat -- measured, 2.0 apart at a turn and 0.4 at the far end -- so the pair would stand within one Silent Doom.
+func _match_pace(squad: Array) -> void:
+	var slowest := INF
+	for v: Variant in squad:
+		if is_instance_valid(v):
+			slowest = minf(slowest, (v as Person).pace)
+	for v: Variant in squad:
+		if is_instance_valid(v) and slowest < INF:
+			(v as Person).pace = slowest
 
 
 ## Each post's watchman (MS §2): the free soldier nearest the post, set down there. Soldiers, as the Lost Lamb's, so CALL THE GUARD answers.
@@ -266,13 +303,17 @@ func _step_patrols() -> void:
 		var squad: Array = patrols[k]
 		var beat: PackedVector2Array = beats[k]
 		var lead: Variant = null
-		for v: Variant in squad:
-			if _on_post(v):
-				lead = v
+		var lead_i := 0
+		for i in squad.size():
+			if _on_post(squad[i]):
+				lead = squad[i]
+				lead_i = i
 				break
 		if lead == null:
 			continue
-		if (lead as Person).ground_pos.distance_to(beat[_beat_at[k]]) <= ARRIVE:
+		# He has arrived when he stands at his own place of the pair round the beat's point (HF_PATROL_GAP * 0.5 off it, which is more than
+		# ARRIVE: measured from the point itself, a pair this wide never arrived and stood at the beat's start for good).
+		if (lead as Person).ground_pos.distance_to(_gap_spot(beat, beat[_beat_at[k]], lead_i, squad.size())) <= ARRIVE:
 			_beat_at[k] = (_beat_at[k] + 1) % beat.size()
 		var to := beat[_beat_at[k]]
 		for i in squad.size():
@@ -306,6 +347,9 @@ func _appoint_inquisitors() -> void:
 ## `p` in the inquisitors' cloak, his own pace remembered.
 func _make_inquisitor(p: Person) -> void:
 	_watchman(p)
+	if not reserved.has(p):
+		reserved.append(p)  # set aside: the Lantern's Bearer picks his escort from the watchmen free to walk, and took the inquisitors off the search for good
+	p.pace = HF_SEARCH_BASE_PACE  # one pace for the pair, as for a patrol (_match_pace): a faster man closes on his fellow along a leg
 	_inq_base[p.get_instance_id()] = p.pace
 	if crowd._fled_all:
 		_keep_from_flight(p, true)  # chosen once the town is running: never one of the flight
@@ -535,6 +579,19 @@ func _retime(id: String, at: float) -> void:
 			return
 
 
+## The relief for a fallen inquisitor: the lay citizen nearest the Temple's door with a way on foot to it, not one walking the Lantern's errand (its Bearer's
+## escort: the Bearer kept driving him, and the search stood still for the night) -- the base's, with that left out.
+func _relief_from_temple(post: Vector2) -> Person:
+	var busy := _in_use(charge)
+	for p: Person in crowd.citizens:
+		if on_lantern_errand(p):
+			busy.append(p)
+	for p in _lay_near(temple_door, REACH_PICKS, busy):
+		if crowd._grid == null or not crowd._grid.path(p.ground_pos, post).is_empty():
+			return p
+	return null
+
+
 ## A fallen inquisitor is replaced HF_SEARCH_RELIEF_AFTER after he fell by the lay citizen nearest the Temple's door with a way on foot to
 ## it, at most HF_SEARCH_RELIEFS a night (MS §2).
 func _relieve_search() -> void:
@@ -568,6 +625,7 @@ func _advance_search() -> void:
 		_trail = -1
 		_search_at += 1
 		_search_stop = -1.0
+		_pairs.clear()
 	if _search_at >= _search.size():
 		return
 	var e: Dictionary = _search[_search_at]
@@ -575,9 +633,11 @@ func _advance_search() -> void:
 		if _clock >= _search_stop:
 			_search_at += 1
 			_search_stop = -1.0
+			_pairs.clear()
 		return
 	if not _search_near(e.door, HF_ARRIVE):
 		return
+	_pairs.clear()  # an arrival: the pair's places are worked out afresh, on the ground as it stands now
 	var hi := int(e.household)
 	if hi >= 0 and (households[hi] as Household).out and not (households[hi] as Household).done:
 		_trail = hi
@@ -625,18 +685,56 @@ func _order_search() -> void:
 	var trailing := _trail >= 0
 	var on_trail: Household = households[_trail] if trailing else null
 	var spots := _door_spots(target, live.size()) if not trailing else pair_spots(target, live.size(), Vector2.INF, on_trail)
+	var holding: Person = null
+	if live.size() == 2 and spots.size() == 2:
+		# The pair walks in file (ruling P5-T9-R8): the man nearer the place along the path goes to the place beyond (the far one from his fellow), the
+		# other to the near one, so neither overtakes through the other; and the rear man holds where he stands until the gap along the path opens to
+		# HF_PAIR_FILE, so that leaving a stop they do not walk side by side in a one-wide street.
+		var a := live[0]
+		var b := live[1]
+		var la := _path_len(a.ground_pos, target)
+		var lb := _path_len(b.ground_pos, target)
+		var front := a
+		var rear := b
+		if absf(la - lb) < HF_FILE_STICKY and (b.get_instance_id() == _file_front):
+			front = b
+			rear = a
+		elif lb < la - HF_FILE_STICKY:
+			front = b
+			rear = a
+		_file_front = front.get_instance_id()
+		var near_spot := spots[0] if rear.ground_pos.distance_to(spots[0]) <= rear.ground_pos.distance_to(spots[1]) else spots[1]
+		var far_spot := spots[1] if near_spot == spots[0] else spots[0]
+		live = [front, rear]
+		spots = [far_spot, near_spot]
+		var l_front := la if front == a else lb
+		var l_rear := lb if front == a else la
+		if rear.mind == Person.Mind.DUTY and l_rear - l_front < HF_PAIR_FILE and l_front > HF_ARRIVE + HF_PAIR_FILE:
+			holding = rear
+	# A place the man cannot walk to from where he stands (the street to it is shut from here) is not sent to: he goes to the door itself, and the places
+	# are worked out afresh when the search arrives. (Else he stood still for good, anchored to it.)
+	var dest: Array[Vector2] = []
+	for k in live.size():
+		dest.append(spots[k] if _reaches(live[k].ground_pos, spots[k]) else _walkable(target))
+	# When one of the pair needs a new order they are both sent, so their anchors always stand together as the places do (on a trail the lamp
+	# moves, and each re-ordered alone on his own distance left anchors 1.7 apart: ruling P5-T9-R1).
+	var resend := false
+	for k in live.size():
+		var p := live[k]
+		if p == holding or (p.mind != Person.Mind.DUTY and not p.mind in RECALL_MINDS):
+			continue
+		resend = resend or p.mind != Person.Mind.DUTY or p.anchor.distance_to(dest[k]) > (1.0 if trailing else MOVE)
 	for k in live.size():
 		var p := live[k]
 		if p.mind != Person.Mind.DUTY and not p.mind in RECALL_MINDS:
 			continue
-		var spot := spots[k]
 		var paced := _set_pace(p, HF_TRAIL_PACE if trailing else HF_SEARCH_PACE)
-		if paced or p.mind != Person.Mind.DUTY or p.anchor.distance_to(spot) > (1.0 if trailing else MOVE):
-			p.go_duty(spot)
+		if p != holding and (paced or resend):
+			p.go_duty(dest[k])
 
 
 ## The pair's places at the listed door `target` (the search is bound for it), worked out once: the line of walk is from the listed door before
-## it (the Temple's door for the first), so the places never flip between looks.
+## it (the Temple's door for the first), so the places never flip between looks. (Cleared at each arrival.)
 func _door_spots(target: Vector2, n: int) -> Array[Vector2]:
 	var key := "%s/%d" % [target, n]
 	if not _pairs.has(key):
@@ -650,10 +748,13 @@ func _door_spots(target: Vector2, n: int) -> Array[Vector2]:
 
 ## The places the `n` inquisitors are sent to round `target` (god P5, MS §0 and §2: more than two Silent Doom radii apart, walking
 ## HF_SEARCH_GAP apart, at every stop and on a trail, so one Doom never takes the pair). On a trail (`trail`: the household's record) the
-## first stands at the lamp's place and the second behind him on the lamp's trail. Otherwise the pair stands in file along their line of walk
-## (from `toward`, where the lead is now), else along the street axes, else the diagonals: a ring turned to each in turn, each spot snapped to
-## walkable ground (_walkable() can pull two spots together), and the first turn that leaves them HF_SEARCH_GAP + HF_PAIR_SLACK - 0.1 apart is kept; none
-## does, the widest. Only reads.
+## first stands at the lamp's place and the second behind him: on the lamp's trail when that reaches far enough back, else, while the lamp is
+## still near its house door, on the road's own points before the lamp (_road_behind(), the road drawn on past the door); the ring below
+## only when neither leaves the pair apart (review of Task 4, re-review item 1; Task 9). Otherwise the pair stands in file along their line of
+## walk (from `toward`, the listed door before the target, or the Temple's door for the first), else along the street axes, else the diagonals:
+## a ring turned to each in turn, each spot snapped to walkable ground (_walkable() can pull two spots together), every place within HF_ARRIVE
+## of the door (the stop starts when one of them is, so a place beyond it could stall the search) and reachable on foot, and the first turn
+## that leaves them HF_SEARCH_GAP + HF_PAIR_SLACK - 0.1 apart is kept; none does, the widest. Only reads.
 func pair_spots(target: Vector2, n: int, toward := Vector2.INF, trail: Household = null) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	if n <= 1:
@@ -661,15 +762,25 @@ func pair_spots(target: Vector2, n: int, toward := Vector2.INF, trail: Household
 			out.append(_walkable(target))
 		return out
 	var want := HF_SEARCH_GAP + HF_PAIR_SLACK - 0.1
-	if trail != null and not trail.trail.is_empty():
+	if trail != null:
 		var lead := _walkable(target)
-		for step in 10:
-			var behind := _trail_point(trail, target, HF_SEARCH_GAP + HF_PAIR_SLACK + 0.4 * float(step))
-			if lead.distance_to(behind) >= want:
-				out = [lead, behind]
-				for k in range(2, n):
-					out.append(_ring_spot(target, HF_SEARCH_GAP, k, n))
-				return out
+		if not trail.trail.is_empty():
+			for step in 10:
+				var behind := _trail_point(trail, target, HF_SEARCH_GAP + HF_PAIR_SLACK + 0.4 * float(step))
+				if lead.distance_to(behind) >= want:
+					out = [lead, behind]
+					for k in range(2, n):
+						out.append(_ring_spot(target, HF_SEARCH_GAP, k, n))
+					return out
+		var i := households.find(trail)
+		if i >= 0:
+			for step in 10:
+				var behind := _road_behind(i, target, HF_SEARCH_GAP + HF_PAIR_SLACK + 0.4 * float(step))
+				if behind != Vector2.INF and lead.distance_to(behind) >= want and _reaches(lead, behind):
+					out = [lead, behind]
+					for k in range(2, n):
+						out.append(_ring_spot(target, HF_SEARCH_GAP, k, n))
+					return out
 	var turns: Array[float] = []
 	if toward != Vector2.INF and toward.distance_to(target) > 1.0:
 		turns.append((target - toward).angle())
@@ -686,14 +797,64 @@ func pair_spots(target: Vector2, n: int, toward := Vector2.INF, trail: Household
 			for a in n:
 				for b in range(a + 1, n):
 					gap = minf(gap, tried[a].distance_to(tried[b]))
-				if not _reaches(target, tried[a]):
-					gap = -1.0  # a place in a closed yard: nobody can walk to it
+				if not _reaches(target, tried[a]) or not _reaches(tried[a], target) or (toward != Vector2.INF and not _reaches(toward, tried[a])):
+					gap = -1.0  # a place in a closed yard: nobody can walk to it (from the door, or from the door the search comes from)
+				if trail == null and tried[a].distance_to(target) > HF_ARRIVE:
+					gap = -1.0  # a place out of reach of the door: the stop might never start
 			if gap > best_gap:
 				best_gap = gap
 				out = tried
 			if gap >= want:
 				return out
+	if best_gap < 0.0 and n == 2:
+		# No ring leaves both places walkable to and from the door (a door in an alley whose far side is shut): the pair is made of the places that are,
+		# the two farthest apart of the door itself and every ring place that can be walked to and from it.
+		var open: Array[Vector2] = [_walkable(target)]
+		for radius in [(HF_SEARCH_GAP + HF_PAIR_SLACK) * 0.5, (HF_SEARCH_GAP + HF_PAIR_SLACK) * 0.65, HF_ARRIVE, HF_ARRIVE + 0.8, HF_ARRIVE + 1.6]:
+			for k in 16:
+				var q := _walkable(target + Vector2.from_angle(TAU * float(k) / 16.0) * float(radius))
+				if _reaches(target, q) and _reaches(q, target) and (toward == Vector2.INF or _reaches(toward, q)):
+					open.append(q)
+		var widest := -1.0
+		for a in open.size():
+			for b in range(a + 1, open.size()):
+				# (the stop begins when one of them is within HF_ARRIVE of the door, the other may stand a little farther)
+				if minf(open[a].distance_to(target), open[b].distance_to(target)) <= HF_ARRIVE - 0.2 and open[a].distance_to(open[b]) > widest:
+					widest = open[a].distance_to(open[b])
+					out = [open[a], open[b]]
 	return out
+
+
+## The point `back` units behind `at` on household `i`'s own road (the walk from its door to its gate's way out): `at`'s nearest place on the
+## road, then back along it; past the door, the road drawn on backwards along its first leg. On walkable ground; Vector2.INF with no road.
+## Only reads. (Task 9: where the lamp's trail is still short, the second inquisitor stands on the road behind the lamp.)
+func _road_behind(i: int, at: Vector2, back: float) -> Vector2:
+	var line: Array = []
+	for q: Vector2 in road(i):
+		if line.is_empty() or (line.back() as Vector2).distance_to(q) > 0.01:
+			line.append(q)  # (a road can repeat its first point: the door and the grid's first step)
+	if line.size() < 2:
+		return Vector2.INF
+	var seg := 0
+	var best := INF
+	for k in range(line.size() - 1):
+		var q := Geometry2D.get_closest_point_to_segment(at, line[k], line[k + 1])
+		if q.distance_to(at) < best:
+			best = q.distance_to(at)
+			seg = k
+	var here: Vector2 = Geometry2D.get_closest_point_to_segment(at, line[seg], line[seg + 1])
+	var left := back
+	var k := seg
+	while k >= 0:
+		var a: Vector2 = line[k]
+		var run := here.distance_to(a)
+		if run >= left:
+			return _walkable(here.move_toward(a, left))
+		left -= run
+		here = a
+		k -= 1
+	var out_dir := ((line[0] as Vector2) - (line[1] as Vector2)).normalized()
+	return _walkable(here + out_dir * left)
 
 
 ## A person at `a` can walk to `b` on the town's streets (always without a grid).
@@ -701,9 +862,10 @@ func _reaches(a: Vector2, b: Vector2) -> bool:
 	return crowd._grid == null or a.distance_to(b) < 0.5 or not crowd._grid.path(a, b).is_empty()
 
 
-## While the search stands at a door, the gap between the two inquisitors when both stand within a step of their places is noted (stopped_gap_min).
+## While the search stands at a door (or follows a trail), the gap between the two inquisitors when both stand within a step of their places is
+## noted (stopped_gap_min, and per listed house in stopped_door_gap).
 func _note_pair() -> void:
-	if _search_stop < 0.0 or inquisitors.size() < 2:
+	if (_search_stop < 0.0 and _trail < 0) or inquisitors.size() < 2 or _search_at >= _search.size():
 		return
 	var a: Variant = inquisitors[0]
 	var b: Variant = inquisitors[1]
@@ -711,9 +873,13 @@ func _note_pair() -> void:
 		return
 	var pa := a as Person
 	var pb := b as Person
-	if pa.ground_pos.distance_to(pa.anchor) < 1.0 and pb.ground_pos.distance_to(pb.anchor) < 1.0 and pa.anchor.distance_to(pb.anchor) < 4.0:
+	if pa.ground_pos.distance_to(pa.anchor) < HF_PLACE_NEAR and pb.ground_pos.distance_to(pb.anchor) < HF_PLACE_NEAR and pa.anchor.distance_to(pb.anchor) < 6.0:  # (6: an alley door's two places stand 4.5 apart)
+		var gap := pa.ground_pos.distance_to(pb.ground_pos)
 		stopped_gaps += 1
-		stopped_gap_min = minf(stopped_gap_min, pa.ground_pos.distance_to(pb.ground_pos))
+		stopped_gap_min = minf(stopped_gap_min, gap)
+		while stopped_door_gap.size() < _search.size():
+			stopped_door_gap.append(INF)
+		stopped_door_gap[_search_at] = minf(stopped_door_gap[_search_at], gap)
 
 
 ## The seconds from now until the search reaches each listed house (MS §2, Ruling P5-11): the lead inquisitor's walk to the door it is

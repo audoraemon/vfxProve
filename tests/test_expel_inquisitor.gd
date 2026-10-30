@@ -7,7 +7,11 @@ extends RefCounted
 
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const DT := 0.05
+## Seconds after the captain leaves a door before the guards' distance FROM HIM is read (the keep-up check only; their gap is read from the first step): they walk from the door ring to his heels.
+const SETTLE := 8.0
 const State := AssassinateDirector.State
+const HUNT := preload("res://tools/dev/routes/god_hunts/expel_inquisitor.gd")
+const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
 
 
 static func run(t) -> void:
@@ -20,6 +24,13 @@ static func run(t) -> void:
 	_out_of_walls(t)
 	_no_citadel_flight(t)
 	_captain_safe(t)
+	_eta_true(t)
+	_eta_once(t)
+	_policies(t)
+	_door_policies(t)
+	_bloom_casts(t)
+	_no_filler_casts(t)
+	_guards_walk(t)
 	_win_beats_loss(t)
 	_lost_body(t)
 	_tags(t)
@@ -133,10 +144,10 @@ static func _setup(t) -> void:
 			min_gap = minf(min_gap, gap)
 			far = far and gap > 2.0 * SilentDoom.RADIUS
 	t.check(far, "no two guards post within two Silent Doom radii of each other (closest %.2f)" % min_gap)
-	t.check(d.out_at(0) == 20.0 and d.out_at(1) == 70.0 and d.out_at(2) == 120.0 and d.out_at(3) == 190.0, "set-out times 0:20, 1:10, 2:00 and 3:10 (%s)"
+	t.check(d.out_at(0) == 44.0 and d.out_at(1) == 94.0 and d.out_at(2) == 144.0 and d.out_at(3) == 190.0, "set-out times 0:44, 1:34, 2:24 and 3:10 (%s)"
 		% [[d.out_at(0), d.out_at(1), d.out_at(2), d.out_at(3)]])
 	var labels := Kit.labels(d)
-	t.check(labels.has("WARDEN OUT IN 0:20") and labels.has("WARDEN OUT IN 1:10") and labels.has("WARDEN OUT IN 2:00") and labels.has("CAPTAIN OUT IN 3:10")
+	t.check(labels.has("WARDEN OUT IN 0:44") and labels.has("WARDEN OUT IN 1:34") and labels.has("WARDEN OUT IN 2:24") and labels.has("CAPTAIN OUT IN 3:10")
 		and labels.has("CITADEL"), "the grey countdowns and the Citadel are tagged at the start (%s)" % [labels])
 	t.check(d.hint_phase() == "" and d.frights() == 0 and not d.fled() and d.captain_eta() == INF and d.strip_rows().is_empty(), "the hint is the mission's; no fright, no row")
 	t.check(rules.objectives[0].hud_text(rules) == "Expel the inquisitor: 0 / 4", "the HUD counts the four (%s)" % rules.objectives[0].hud_text(rules))
@@ -149,16 +160,16 @@ static func _chain(t) -> void:
 	var s := _world()
 	var d := _ei(s)
 	var wait := ExpelInquisitorDirector.EI_CHAIN
-	Kit.run_for(s, 21.0)
+	Kit.run_for(s, 45.0)
 	t.check(d.quarries[0].state == State.WALKING and (s.banners as Array).has("A WARDEN SETS OUT") and d.quarries[1].state == State.WAITING,
-		"0:20: the first warden sets out, the others wait")
+		"0:44: the first warden sets out, the others wait")
 	t.check(d.quarries[0].leg == 1, "he is bound for the second stop of his round (he has stood in the first)")
 	Kit.arrive(d.quarries[0].target, d.quarries[0].stop_doors[0])
 	_kill(s, d.quarries[0])
 	var died := d.quarries[0].died_at
-	t.check(is_equal_approx(d.out_at(1), minf(70.0, died + wait)) and d.out_at(1) <= 70.0 and d.out_at(1) - died <= wait + 0.01,
+	t.check(is_equal_approx(d.out_at(1), minf(94.0, died + wait)) and d.out_at(1) <= 94.0 and d.out_at(1) - died <= wait + 0.01,
 		"the first warden stopped: the next is due by the chain (%.1f; stopped %.1f)" % [d.out_at(1), died])
-	t.check(d.out_at(2) == 120.0, "the third keeps his time while the second lives")
+	t.check(d.out_at(2) == 144.0, "the third keeps his time while the second lives")
 	_out(d, d.quarries[1])
 	_kill(s, d.quarries[1])
 	t.check(d.out_at(2) <= d.quarries[1].died_at + wait + 0.01, "and after the second, the third is due within 45 s")
@@ -494,6 +505,343 @@ static func _captain_safe(t) -> void:
 	Kit.done(f)
 
 
+## The countdown is true (god P5 Task 11, review of Task 6): walked by the person himself, from his last stop's door through the waypoint to the gate,
+## the captain arrives no sooner than his tag reads 0:00 and not long after it, at the two ends of PACE_RANGE and between (the walk term is scaled to
+## the measured pace, EI_WALK_SCALE; the ETA was about 15 % short, so the tag showed 0:00 about 6 s before he came).
+static func _eta_true(t) -> void:
+	for pace: float in [Person.PACE_RANGE.x, 1.0, Person.PACE_RANGE.y]:
+		var s := _world()
+		var d := _ei(s)
+		var cap := d.captain()
+		var p: Person = cap.target
+		d._set_out(cap)
+		p.pace = pace
+		p.walk_speed = Person.PANIC_SPEED * pace
+		Kit.arrive(p, cap.stop_doors[cap.stops.size() - 1])
+		cap.state = State.WALKING
+		cap.leg = cap.stops.size()
+		var eta := d.captain_eta()
+		var wp := d._walkable(ExpelInquisitorDirector.EI_FINAL_WAYPOINT)
+		p.go_duty(wp)
+		var secs := 0.0
+		var through := false
+		while secs < 200.0:
+			p.tick(0.05)
+			secs += 0.05
+			if not through and p.ground_pos.distance_to(wp) < 0.6:
+				through = true
+				p.go_duty(d.safe_at)
+			elif through and p.ground_pos.distance_to(d.safe_at) < 0.6:
+				break
+		t.check(through and secs < 200.0, "(set-up) the walk reached the gate at pace %.2f (%.1f s)" % [pace, secs])
+		t.check(eta >= secs - 0.5 and eta - secs <= 4.0, "pace %.2f: the tag reads %.1f s and he walks it in %.1f s (never early, at most 4 s over)" % [pace, eta, secs])
+		Kit.done(s)
+
+
+## The ETA is computed once for a look (god P5 Task 11, review of Task 6): the strip row, the hint, the banner check and the tag together ask for it
+## four times a frame in the warned window, and each ask is two path searches. Asking again where nothing moved costs no search.
+static func _eta_once(t) -> void:
+	var s := _world()
+	var d := _ei(s)
+	var cap := d.captain()
+	d._set_out(cap)
+	Kit.arrive(cap.target, cap.stop_doors[cap.stops.size() - 1])
+	cap.state = State.VISITING
+	cap.leg = cap.stops.size() - 1
+	cap.indoors_left = 4.0
+	var before := d.eta_runs()
+	var first := d.captain_eta()
+	d.strip_rows()
+	d.hint_phase()
+	d.tags()
+	var again := d.captain_eta()
+	t.check(d.eta_runs() == before + 1 and again == first, "four asks in one look run the search once (%d runs) and agree (%.1f, %.1f)" % [d.eta_runs() - before, first, again])
+	cap.target.pace = 1.0
+	cap.indoors_left = 3.0
+	d.captain_eta()
+	t.check(d.eta_runs() == before + 2, "a changed pace or visit clock asks again (%d runs)" % [d.eta_runs() - before])
+	Kit.run_for(s, AssassinateDirector.TICK + DT)
+	var stepped := d.eta_runs()
+	d.captain_eta()
+	d.captain_eta()
+	t.check(d.eta_runs() <= stepped + 1, "and after a step the next asks share one search (%d more)" % [d.eta_runs() - stepped])
+	cap.state = State.WAITING
+	var idle_runs := d.eta_runs()
+	t.check(d.captain_eta() == INF and d.eta_runs() == idle_runs, "a captain not warned costs no search")
+	Kit.done(s)
+
+
+## The Hunt's six per-type policies (god P5 Task 11): all six written, their loadouts within the tree and the floor, none a filler (D38: no cast whose
+## only purpose is to end an idle stretch -- the policy file holds no FILL word), the Silent Doom aimed where the man stands now (it takes whoever is
+## within its radius at the cast), a Death Mark held back while the fuse would find him indoors, and Decree a delay only.
+static func _policies(t) -> void:
+	var filled := GodHunts.filled("expel_inquisitor")
+	for type: String in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
+		t.check(filled.has(type) and GodHunts.has_policy("expel_inquisitor", type), "the %s policy is written (FILLED %s)" % [type, Array(filled)])
+	GodTree.dev_fill = true
+	for type: String in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
+		t.check(GodHunts.problems("expel_inquisitor", type, 3).is_empty(), "%s: the loadout is in the tree at Tier 3 and within the floor (%s)" % [type, Array(GodHunts.problems("expel_inquisitor", type, 3))])
+	GodTree.dev_fill = false
+	var src := FileAccess.get_file_as_string("res://tools/dev/routes/god_hunts/expel_inquisitor.gd")
+	t.check(not src.contains("GOD.FILL") and not src.contains("FILL +") and not src.contains('"fill:') and not src.contains("is_fill"), "no policy of the Hunt casts a filler (D38)")
+	# The Doom: on him where he stands; the midpoint when his guard stands within a Doom's reach of it.
+	var s := _world()
+	var d := _ei(s)
+	var q := d.quarries[0]
+	_out(d, q)
+	var guard: Person = q.guards[0]
+	guard.ground_pos = q.target.ground_pos + Vector2(6.0, 0.0)
+	t.check(HUNT._doom_aim(q).distance_to(q.target.ground_pos) < 0.01, "the Doom is aimed at the man where he stands now, a guard far off (%s)" % [HUNT._doom_aim(q)])
+	guard.ground_pos = q.target.ground_pos + Vector2(0.9, 0.0)
+	t.check(HUNT._doom_aim(q).distance_to(q.target.ground_pos + Vector2(0.45, 0.0)) < 0.01, "and at the midpoint when his guard is 0.9 off, so both fall (%s)" % [HUNT._doom_aim(q)])
+	# The mark: a man inside for longer than the fuse is not marked; the door guards are a waiting target's only.
+	var ctx := {"d": d, "crowd": s.crowd, "rules": s.rules}
+	var w := d.quarries[1]
+	_out(d, w)
+	w.state = State.VISITING
+	w.indoors_left = 20.0
+	t.check(not HUNT._mark_holds(ctx, w), "a Death Mark is not laid on a man who is indoors for 20 s more")
+	t.check(HUNT._door_guards(d).is_empty(), "with somebody out, nobody's guards at a door are struck")
+	Kit.done(s)
+	var n := _world()
+	var dn := _ei(n)
+	Kit.arrive(dn.quarries[0].guards[0], dn.quarries[0].stop_doors[0] + Vector2(1.0, 0.0))
+	t.check(HUNT._door_guards(dn).size() == 1 and HUNT._door_guards(dn)[0] == dn.quarries[0].guards[0], "before anyone is out, the first warden's guard at his door is the one struck")
+	# Decree: no route (MS §9 open issue 1); its one act is the law laid over the captain, to delay him.
+	var from := src.find("static func act_decree")
+	var body := src.substr(from, src.find("# --- Dominion") - from)
+	t.check(body.contains("slots.noleave") and body.count("rules.cast(") == 1, "the Decree policy casts the one law (Leaving Is Prohibited), over the captain, and nothing else")
+	Kit.done(n)
+
+
+## The door preps of the policies (review of Task 11, I1, M1, M2; Rulings P5-T11-R6, R7): a guard is struck at his door only in the last RUIN_PREP_LEAD seconds
+## of the wait (Ruin), only while he stands at it, and the Madness Bloom lands once for each target and never on a guard who has wandered off. The tour line.
+static func _door_policies(t) -> void:
+	var s := _world()
+	var d := _ei(s)
+	var first := d.quarries[0]
+	var guard: Person = first.guards[0]
+	var door: Vector2 = first.stop_doors[0]
+	Kit.arrive(guard, door + Vector2(1.0, 0.0))  # (the Kit world does not walk bodies: he stands where his post would put him)
+	# The lead: the wait is 44 s; at 0 s the last-24-s window has not come, at 21 s it has.
+	t.check(HUNT._door_guards(d, HUNT.RUIN_PREP_LEAD).is_empty() and HUNT._door_guards(d).size() == 1,
+		"before the last %.0f s of the wait the Ruin prep strikes nobody; with no lead the guard is there" % HUNT.RUIN_PREP_LEAD)
+	Kit.run_for(s, 21.0)
+	t.check(HUNT._door_guards(d, HUNT.RUIN_PREP_LEAD).size() == 1, "in the last %.0f s of the wait it strikes the guard at the door (clock %.1f)" % [HUNT.RUIN_PREP_LEAD, d._clock])
+	# The Bloom: once for each target, and only on a guard at his door.
+	var memo := {}
+	var aim := HUNT._bloom_aim(d, memo)
+	t.check(aim != Vector2.INF and aim.distance_to(guard.ground_pos) < 0.01, "the Bloom is aimed at the guard at the first warden's door (%s)" % [aim])
+	HUNT._bloom_done(d, memo)
+	t.check(HUNT._bloom_aim(d, memo) == Vector2.INF, "and not again for the same target (a repeat cast is a filler)")
+	var memo2 := {}
+	var home := guard.ground_pos
+	guard.ground_pos = door + Vector2(HUNT.DOOR_REACH + 4.0, 0.0)
+	t.check(HUNT._bloom_aim(d, memo2) == Vector2.INF and HUNT._door_guards(d, INF, HUNT.DOOR_REACH).is_empty(), "a guard who has wandered off from the door is not bloomed")
+	guard.ground_pos = home
+	t.check(HUNT._bloom_aim(d, memo2) != Vector2.INF, "back at the door he is (the aim is not lost for good)")
+	# The next target: after the first is out, the Bloom is for the second warden's guard, once.
+	d._set_out(first)
+	Kit.done(s)
+	var n := _world()
+	var dn := _ei(n)
+	var memo4 := {"bloom_0": true}
+	dn.quarries[0].state = State.DEAD
+	dn.quarries[0].dead = true
+	var second: Person = dn.quarries[1].guards[0]
+	Kit.arrive(second, dn.quarries[1].stop_doors[0] + Vector2(0.0, 1.0))
+	t.check(HUNT._bloom_aim(dn, memo4) != Vector2.INF and HUNT._bloom_aim(dn, memo4).distance_to(second.ground_pos) < 0.01,
+		"with the first done, the Bloom is for the second warden's guard")
+	HUNT._bloom_done(dn, memo4)
+	t.check(memo4.has("bloom_1") and HUNT._bloom_aim(dn, memo4) == Vector2.INF, "once for him too")
+	Kit.done(n)
+	# The tour line reads the first warden's time.
+	var w := _world()
+	var tour := _ei(w).tour()
+	t.check(tour.size() == 3 and String(tour[0][1]) == "A lantern-warden waits in his house. He sets out at 0:44; two more follow.", "the tour line: He sets out at 0:44 (%s)" % [tour[0][1]])
+	Kit.done(w)
+
+
+## A stand-in for Rules that records the casts the policies make (their slot, aim and extras) and casts nothing; the stand-in for behaviour_check
+## answers every key ready (the policies' own cooldown reasoning is not under test: what they choose to strike is).
+class SpyRules extends Rules:
+	var casts: Array[Dictionary] = []
+
+	func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
+		casts.append({"slot": slot, "at": ground, "extra": extra})
+		return null
+
+
+class SpyBc:
+	func _slot_ready(_rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key)
+
+
+## The slots a spy ctx gives the type's LOADOUT keys (key -> index) and the ctx the policies take.
+static func _spy_ctx(s: Dictionary, spy: SpyRules, type: String) -> Dictionary:
+	var slots := {}
+	for key: String in HUNT.LOADOUT[type]:
+		slots[key] = slots.size()
+	return {"d": s.d, "rules": spy, "slots": slots, "crowd": s.crowd, "memo": {}}
+
+
+## Everybody the night still needs answered: the position of every target not yet stopped and of each of his guards still on their feet.
+static func _needed(d: ExpelInquisitorDirector) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for q in d.quarries:
+		if q.dead or q.state == State.OUT or q.state == State.SAFE or not MissionDirector._alive(q.target):
+			continue
+		out.append((q.target as Person).ground_pos)
+		for g: Variant in q.guards:
+			if MissionDirector._alive(g):
+				out.append((g as Person).ground_pos)
+	return out
+
+
+## The guards of the waiting wardens stand at their doors, and the captain's two at the Temple's (the Kit world does not walk bodies to their posts).
+static func _guards_to_doors(d: ExpelInquisitorDirector) -> void:
+	for q in d.quarries:
+		if d._is_captain(q):
+			var pair := d._door_pair(d.hide_door)
+			for k in q.guards.size():
+				Kit.arrive(q.guards[k], pair[k % 2])
+		else:
+			for g in q.guards:
+				Kit.arrive(g, q.stop_doors[0] + Vector2(1.0, 0.0))
+
+
+## act_dominion driven itself (review of Task 11, I1; Ruling P5-T11-R7): over 40 s of looks (the first warden waits, none is out) with his guard at his door
+## and the others' wandered 20 units off, it casts the Madness Bloom ONCE, on that guard; with his guard wandered too it casts none. (Mutation: the old
+## loop `for g in _door_guards(d): rules.cast(...)` casts at every look and fails the first check.)
+static func _bloom_casts(t) -> void:
+	for wandered in [false, true]:
+		var s := _world()
+		var d := _ei(s)
+		for q in d.quarries:
+			for g in q.guards:
+				Kit.arrive(g, (d.hide_door if d._is_captain(q) else q.stop_doors[0]) + Vector2(20.0, 0.0))
+		var guard: Person = d.quarries[0].guards[0]
+		var door: Vector2 = d.quarries[0].stop_doors[0]
+		if not wandered:
+			Kit.arrive(guard, door + Vector2(1.0, 0.0))
+		var spy := SpyRules.new()
+		var ctx := _spy_ctx(s, spy, "dominion")
+		var bc := SpyBc.new()
+		for look in 80:
+			Kit.run_for(s, 0.5)
+			HUNT.act_dominion(bc, ctx)
+		if wandered:
+			t.check(spy.casts.is_empty(), "with the first warden's guard wandered past DOOR_REACH, and every other guard too, no Bloom is cast in 40 s (%d casts)" % spy.casts.size())
+		else:
+			t.check(spy.casts.size() == 1 and spy.casts[0].at.distance_to(guard.ground_pos) < 0.01 and spy.casts[0].slot == ctx.slots.madness,
+				"one Bloom in 40 s of looks, on the guard at the first warden's door, none on the wandered guards (%d casts)" % spy.casts.size())
+		spy.free()
+		Kit.done(s)
+
+
+## No filler (review of Task 11, M2, D38), by behaviour not by words: every policy is driven through three nights -- all waiting, a warden in the street, the
+## captain in the street -- and each cast it records lands within CAST_REACH of somebody the night still needs answered (a target not yet stopped, or one of his
+## guards still standing), or, for the Blight, on the Bell Tower. A cast made only to end an idle stretch has nobody there. Each type must cast at least once.
+static func _no_filler_casts(t) -> void:
+	const CAST_REACH := 9.0
+	for type: String in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
+		var total := 0
+		var strays := PackedStringArray()
+		for night in 3:
+			var s := _world()
+			var d := _ei(s)
+			Kit.run_for(s, 21.0)  # (clock 21 s: the Blight wait and the last-24-s window of the Ruin prep are open; nobody is out before 44)
+			_guards_to_doors(d)
+			if night == 1:
+				_out(d, d.quarries[0])
+			elif night == 2:
+				_out(d, d.captain())
+			var spy := SpyRules.new()
+			var ctx := _spy_ctx(s, spy, type)
+			for q in d.quarries:
+				ctx.memo["street_%d" % q.index] = -10.0  # (Ruin's patience is spent: it strikes where he would be seen)
+			var bc := SpyBc.new()
+			var act := Callable(HUNT, "act_" + type)
+			for look in 4:
+				Kit.run_for(s, 0.5)
+				var before := spy.casts.size()
+				var did := String(act.call(bc, ctx))
+				t.check((did == "") == (spy.casts.size() == before), "%s night %d: what the policy returns says whether it cast (%s)" % [type, night, did])
+				t.check(not did.begins_with("fill"), "%s night %d: the cast is not worded a filler (%s)" % [type, night, did])
+			var needed := _needed(d)
+			var tower: Structure = (s.crowd as Crowd).bell.tower if (s.crowd as Crowd).bell != null else null
+			for c in spy.casts:
+				total += 1
+				var near := false
+				for at in needed:
+					near = near or (c.at as Vector2).distance_to(at) <= CAST_REACH
+				if tower != null and (c.at as Vector2).distance_to(tower.center()) <= 1.0:
+					near = true
+				if not near:
+					strays.append("night %d at %s" % [night, c.at])
+			spy.free()
+			Kit.done(s)
+		t.check(total > 0, "%s: the policy casts in the three nights (%d casts)" % [type, total])
+		t.check(strays.is_empty(), "%s: every cast lands within %.0f of somebody the night still needs answered (strays: %s)" % [type, CAST_REACH, ", ".join(strays)])
+
+
+## The captain's two guards stay apart on his walk (review of Task 11, M3; Ruling P5-T11-R8, MS §0: one Doom or strike must not take both). The bodies
+## are moved: the captain walks his whole round to the Citadel with his two guards ticked beside him (Person.tick; the Kit world does not step bodies),
+## and the gap between the guards is read every step from the one the state changes on (nothing is left out). At a stop (he indoors, the two at his door) it stays over 1.6 always; on the walk it does but for
+## the turns of the road and the first steps out of a door (a corner, the doubling-back at the waypoint, the guards falling into file) -- at most 5 % of ALL the steps (about 3.9 % measured).
+## They also keep up with him (the farthest a guard strays from him is under 6), or "apart" would only mean "left behind".
+static func _guards_walk(t) -> void:
+	var s := _world()
+	var d := _ei(s)
+	var cap := d.captain()
+	var rules: Rules = s.rules
+	var pair := d._door_pair(d.hide_door)
+	for k in 2:
+		Kit.arrive(cap.guards[k], pair[k])  # (the guards at the Temple's door, where their posts put them)
+	d._set_out(cap)
+	var settle := 0.0
+	var last_state := -1
+	var steps := 0
+	var stop_steps := 0
+	var stop_under := 0
+	var walk_steps := 0
+	var walk_under := 0
+	var worst_stop := INF
+	var farthest := 0.0
+	var secs := 0.0
+	while secs < 220.0 and not rules.finished:
+		(s.crowd as Crowd).advance(DT)
+		rules.advance(DT)
+		secs += DT
+		for p: Variant in [cap.target] + cap.guards:
+			if MissionDirector._alive(p):
+				(p as Person).tick(DT)
+		if int(cap.state) != last_state:
+			last_state = int(cap.state)
+			settle = 0.0
+		settle += DT
+		var a: Person = cap.guards[0]
+		var b: Person = cap.guards[1]
+		if not MissionDirector._alive(a) or not MissionDirector._alive(b) or a.inside or b.inside:
+			continue
+		var gap := a.ground_pos.distance_to(b.ground_pos)
+		steps += 1
+		if cap.state == State.VISITING:
+			stop_steps += 1
+			worst_stop = minf(worst_stop, gap)
+			stop_under += 1 if gap <= 1.6 else 0
+		elif cap.state == State.WALKING:
+			walk_steps += 1
+			walk_under += 1 if gap <= 1.6 else 0
+			if settle >= SETTLE:
+				farthest = maxf(farthest, maxf(a.ground_pos.distance_to(cap.target.ground_pos), b.ground_pos.distance_to(cap.target.ground_pos)))
+	t.check(rules.finished and walk_steps > 800, "(set-up) the captain walked his round (%d steps walking, %d at stops, %.0f s)" % [walk_steps, stop_steps, secs])
+	t.check(stop_steps > 100 and stop_under == 0, "at his stops the two guards stand over 1.6 apart always (%d steps, closest %.2f)" % [stop_steps, worst_stop])
+	t.check(float(walk_under) <= 0.05 * float(walk_steps), "on his walk, EVERY step counted from the one he leaves the door on, they are under 1.6 apart in at most 5 %%: %d of %d steps (%.1f %%)" % [walk_under, walk_steps, 100.0 * float(walk_under) / float(maxi(walk_steps, 1))])
+	t.check(farthest < 6.0, "and they keep up with him (the farthest a guard strays from him: %.1f)" % farthest)
+	Kit.done(s)
+
+
 static func _win_beats_loss(t) -> void:
 	# The last warden falls the moment the captain is on the Citadel's step: the win is checked first.
 	var s := _world()
@@ -614,7 +962,7 @@ static func _camera(t) -> void:
 	var clear := true
 	var failed := ""
 	for m in d.tags():
-		if not m.label.begins_with("WARDEN OUT IN 0:20"):
+		if not m.label.begins_with("WARDEN OUT IN 0:44"):
 			continue
 		if not Kit.clear_of_stack(m.at, cam, Kit.STACK):
 			clear = false
